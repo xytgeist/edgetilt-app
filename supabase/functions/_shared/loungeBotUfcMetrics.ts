@@ -44,10 +44,49 @@ export type UfcFighterMetric = {
   is_custom_override?: boolean
 }
 
+export type DivisionFinishBaseline = {
+  division: UfcDivision
+  avgFinishRate: number // empirical finish % (KO + Sub)
+  avgKoRate: number
+  avgSubRate: number
+  avgDecisionRate: number
+}
+
+/**
+ * Empirical UFC finishing baselines by weight class (UFC Stats historical averages).
+ * Heavyweights finish ~75% of fights, whereas Flyweights go to decision ~65% of the time.
+ */
+export const DIVISION_FINISH_BASELINES: Record<string, DivisionFinishBaseline> = {
+  'Flyweight': { division: 'Flyweight', avgFinishRate: 0.35, avgKoRate: 0.16, avgSubRate: 0.19, avgDecisionRate: 0.65 },
+  'Bantamweight': { division: 'Bantamweight', avgFinishRate: 0.44, avgKoRate: 0.24, avgSubRate: 0.20, avgDecisionRate: 0.56 },
+  'Featherweight': { division: 'Featherweight', avgFinishRate: 0.49, avgKoRate: 0.29, avgSubRate: 0.20, avgDecisionRate: 0.51 },
+  'Lightweight': { division: 'Lightweight', avgFinishRate: 0.55, avgKoRate: 0.32, avgSubRate: 0.23, avgDecisionRate: 0.45 },
+  'Welterweight': { division: 'Welterweight', avgFinishRate: 0.53, avgKoRate: 0.33, avgSubRate: 0.20, avgDecisionRate: 0.47 },
+  'Middleweight': { division: 'Middleweight', avgFinishRate: 0.61, avgKoRate: 0.43, avgSubRate: 0.18, avgDecisionRate: 0.39 },
+  'Light Heavyweight': { division: 'Light Heavyweight', avgFinishRate: 0.68, avgKoRate: 0.53, avgSubRate: 0.15, avgDecisionRate: 0.32 },
+  'Heavyweight': { division: 'Heavyweight', avgFinishRate: 0.77, avgKoRate: 0.64, avgSubRate: 0.13, avgDecisionRate: 0.23 },
+  "Women's Strawweight": { division: "Women's Strawweight", avgFinishRate: 0.31, avgKoRate: 0.12, avgSubRate: 0.19, avgDecisionRate: 0.69 },
+  "Women's Flyweight": { division: "Women's Flyweight", avgFinishRate: 0.34, avgKoRate: 0.15, avgSubRate: 0.19, avgDecisionRate: 0.66 },
+  "Women's Bantamweight": { division: "Women's Bantamweight", avgFinishRate: 0.42, avgKoRate: 0.21, avgSubRate: 0.21, avgDecisionRate: 0.58 },
+}
+
+export type MethodOfVictoryProjections = {
+  koProbA: number
+  subProbA: number
+  decProbA: number
+  koProbB: number
+  subProbB: number
+  decProbB: number
+  fdgtdProb: number // Fight Doesn't Go The Distance %
+  fgtdProb: number  // Fight Goes The Distance %
+  topMethodLabel: string
+}
+
 export type UfcMatchupAnalysis = {
   fighterA: string
   fighterB: string
   division: string
+  isFiveRounds: boolean
   strikingDiffA: number   // (A.slpm - A.sapm) - (B.slpm - B.sapm)
   takedownControlA: number // Projected takedown success rate A vs B defense
   takedownControlB: number // Projected takedown success rate B vs A defense
@@ -60,6 +99,7 @@ export type UfcMatchupAnalysis = {
   modelFairOddsB: number   // American odds e.g. +145
   expectedRounds: number   // Expected round total (e.g. 2.1 rounds)
   projectedFinishProb: number // 0.0 - 1.0 likelihood fight ends inside distance
+  methodProjections: MethodOfVictoryProjections
   summaryLine: string
 }
 
@@ -156,13 +196,15 @@ export function findFighterMetric(
 
 /**
  * Quantitative MMA Matchup Engine:
- * Compares two fighters' striking differentials, grappling control factors, reach, stance, and cage size.
+ * Compares two fighters' striking differentials, grappling control factors, reach, stance, cage size,
+ * weight class finish baselines, and championship 5-round cardio degradation.
  */
 export function analyzeUfcMatchup(
   fighterAName: string,
   fighterBName: string,
   metricsList: UfcFighterMetric[] = UFC_BASELINE_FIGHTER_METRICS,
   isApexCage = false, // true = 25 ft small cage, false = 30 ft arena
+  isFiveRounds = false, // Main event / Title fight
 ): UfcMatchupAnalysis | null {
   const fA = findFighterMetric(fighterAName, metricsList)
   const fB = findFighterMetric(fighterBName, metricsList)
@@ -170,6 +212,9 @@ export function analyzeUfcMatchup(
   if (!fA || !fB) {
     return null
   }
+
+  const divisionKey = fA.division || 'Lightweight'
+  const baseline = DIVISION_FINISH_BASELINES[divisionKey] || DIVISION_FINISH_BASELINES['Lightweight']
 
   // 1. Striking Differential
   // (A's net strikes/min) vs (B's net strikes/min)
@@ -207,6 +252,13 @@ export function analyzeUfcMatchup(
   // Submission threat disparity
   probA += ((fA.sub_avg - fB.sub_avg) * 0.03)
 
+  // 5-Round Championship Cardio & Pace Modeling
+  // High-volume cardio machines get boosted in 25-minute fights
+  if (isFiveRounds) {
+    const cardioDisparity = (fA.slpm - fB.slpm) * 0.02
+    probA += cardioDisparity
+  }
+
   // Small cage adjustment: boosts aggressive grapplers and heavy hitters
   if (isApexCage) {
     if (tdControlA > tdControlB) probA += 0.03
@@ -222,13 +274,36 @@ export function analyzeUfcMatchup(
   const fairOddsA = impliedToAmerican(probA)
   const fairOddsB = impliedToAmerican(probB)
 
-  // 6. Expected Rounds & Finish Probability
-  const combinedFinishRate = (fA.finish_rate + fB.finish_rate) / 2
-  let finishProb = combinedFinishRate / 100
-  if (isApexCage) finishProb = Math.min(0.92, finishProb + 0.12) // Apex 25ft cage increases finish rate ~12-15%
+  // 6. Empirical Method-of-Victory & FDGTD Modeling
+  const fighterFinishAvg = ((fA.finish_rate + fB.finish_rate) / 2) / 100
+  // Blend empirical weight-class finish baseline with individual fighter finish rates (60/40 blend)
+  let finishProb = (baseline.avgFinishRate * 0.6) + (fighterFinishAvg * 0.4)
+  if (isApexCage) finishProb = Math.min(0.92, finishProb + 0.10)
+  if (isFiveRounds) finishProb = Math.min(0.94, finishProb + 0.12) // 10 more minutes = +12% finish equity
 
-  // Expected rounds: 3-round standard (15 mins total)
-  let expectedRounds = 3.0 - (finishProb * 1.6)
+  const fdgtdProb = Math.round(finishProb * 100) / 100
+  const fgtdProb = Math.round((1 - fdgtdProb) * 100) / 100
+
+  // Detailed Method breakdowns per fighter
+  const koProbA = Math.round(probA * ((fA.ko_finish_rate / 100) * 0.7 + baseline.avgKoRate * 0.3) * 100) / 100
+  const subProbA = Math.round(probA * ((fA.sub_finish_rate / 100) * 0.7 + baseline.avgSubRate * 0.3) * 100) / 100
+  const decProbA = Math.max(0.05, Math.round((probA - koProbA - subProbA) * 100) / 100)
+
+  const koProbB = Math.round(probB * ((fB.ko_finish_rate / 100) * 0.7 + baseline.avgKoRate * 0.3) * 100) / 100
+  const subProbB = Math.round(probB * ((fB.sub_finish_rate / 100) * 0.7 + baseline.avgSubRate * 0.3) * 100) / 100
+  const decProbB = Math.max(0.05, Math.round((probB - koProbB - subProbB) * 100) / 100)
+
+  let topMethodLabel = `${fA.fighter_name} via Decision`
+  if (koProbA > decProbA && koProbA > koProbB) topMethodLabel = `${fA.fighter_name} via KO/TKO (${Math.round(koProbA * 100)}%)`
+  else if (subProbA > decProbA && subProbA > subProbB) topMethodLabel = `${fA.fighter_name} via Submission (${Math.round(subProbA * 100)}%)`
+  else if (koProbB > decProbB && koProbB > koProbA) topMethodLabel = `${fB.fighter_name} via KO/TKO (${Math.round(koProbB * 100)}%)`
+  else if (subProbB > decProbB && subProbB > subProbA) topMethodLabel = `${fB.fighter_name} via Submission (${Math.round(subProbB * 100)}%)`
+  else if (decProbB > decProbA) topMethodLabel = `${fB.fighter_name} via Decision (${Math.round(decProbB * 100)}%)`
+  else topMethodLabel = `${fA.fighter_name} via Decision (${Math.round(decProbA * 100)}%)`
+
+  // 7. Expected Rounds
+  const totalRoundPeriods = isFiveRounds ? 5.0 : 3.0
+  let expectedRounds = totalRoundPeriods - (fdgtdProb * (isFiveRounds ? 2.4 : 1.5))
   if (isApexCage) expectedRounds = Math.max(1.1, expectedRounds - 0.3)
   expectedRounds = Math.round(expectedRounds * 10) / 10
 
@@ -241,12 +316,13 @@ export function analyzeUfcMatchup(
     ? `+${Math.abs(Math.round((tdControlA - tdControlB) * 10) / 10)} takedown control edge`
     : `${Math.abs(reachDeltaA)}" reach delta`
 
-  const summaryLine = `UFC Model Delta · ${advFighter} (${advSpread > 0 ? `+${advSpread}` : advSpread}) · ${diffDisplay}${isApexCage ? ' · Apex 25ft Cage' : ''}`
+  const summaryLine = `UFC Model Delta · ${advFighter} (${advSpread > 0 ? `+${advSpread}` : advSpread}) · ${diffDisplay}${isApexCage ? ' · Apex 25ft Cage' : ''} · FDGTD ${Math.round(fdgtdProb * 100)}%`
 
   return {
     fighterA: fA.fighter_name,
     fighterB: fB.fighter_name,
     division: fA.division,
+    isFiveRounds,
     strikingDiffA,
     takedownControlA,
     takedownControlB,
@@ -258,7 +334,18 @@ export function analyzeUfcMatchup(
     modelFairOddsA: fairOddsA,
     modelFairOddsB: fairOddsB,
     expectedRounds,
-    projectedFinishProb: Math.round(finishProb * 100) / 100,
+    projectedFinishProb: fdgtdProb,
+    methodProjections: {
+      koProbA,
+      subProbA,
+      decProbA,
+      koProbB,
+      subProbB,
+      decProbB,
+      fdgtdProb,
+      fgtdProb,
+      topMethodLabel,
+    },
     summaryLine,
   }
 }

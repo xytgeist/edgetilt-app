@@ -657,13 +657,18 @@ export function SyndicateApp() {
                           ? '🎯 3-1 Consensus'
                           : 'Solo Spot')
 
+                      const isMma = pick.sport_key?.includes('mma') || pick.sport_key?.includes('ufc')
                       const eventLabel =
                         pick.away_team && pick.home_team
-                          ? `${pick.away_team} @ ${pick.home_team}`
+                          ? isMma
+                            ? `${pick.home_team} vs ${pick.away_team}`
+                            : `${pick.away_team} @ ${pick.home_team}`
                           : pick.event_name || 'Game'
 
                       const scoreText =
-                        pick.away_score != null && pick.home_score != null
+                        pick.metadata?.method_result
+                          ? ` (${pick.metadata.method_result})`
+                          : pick.away_score != null && pick.home_score != null
                           ? ` (${pick.away_score}-${pick.home_score})`
                           : ''
 

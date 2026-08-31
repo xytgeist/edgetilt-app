@@ -24,6 +24,7 @@ export default function BotUfcMetricsEditor({ supabaseClient, setToast }) {
   const [fighterAId, setFighterAId] = useState('')
   const [fighterBId, setFighterBId] = useState('')
   const [isApexCage, setIsApexCage] = useState(false)
+  const [isFiveRounds, setIsFiveRounds] = useState(false)
 
   const loadFighters = useCallback(async () => {
     if (!supabaseClient) return
@@ -154,6 +155,9 @@ export default function BotUfcMetricsEditor({ supabaseClient, setToast }) {
     const reachDeltaA = Math.round((Number(simFighterA.reach_inches) - Number(simFighterB.reach_inches)) * 10) / 10
 
     let probA = 0.50 + (strikingDiffA * 0.05) + ((tdControlA - tdControlB) * 0.07) + (reachDeltaA * 0.008)
+    if (isFiveRounds) {
+      probA += (Number(simFighterA.slpm) - Number(simFighterB.slpm)) * 0.02
+    }
     if (isApexCage) {
       if (tdControlA > tdControlB) probA += 0.03
       else if (tdControlB > tdControlA) probA -= 0.03
@@ -165,6 +169,16 @@ export default function BotUfcMetricsEditor({ supabaseClient, setToast }) {
     const oddsA = probA >= 0.50 ? Math.round(-(probA / (1 - probA)) * 100) : Math.round(((1 - probA) / probA) * 100)
     const oddsB = probB >= 0.50 ? Math.round(-(probB / (1 - probB)) * 100) : Math.round(((1 - probB) / probB) * 100)
 
+    // Method projections
+    const avgFinish = (Number(simFighterA.finish_rate) + Number(simFighterB.finish_rate)) / 200
+    let fdgtd = avgFinish
+    if (isApexCage) fdgtd = Math.min(0.92, fdgtd + 0.10)
+    if (isFiveRounds) fdgtd = Math.min(0.94, fdgtd + 0.12)
+    const fdgtdPct = Math.round(fdgtd * 100)
+
+    const koA = Math.round(probA * (Number(simFighterA.finish_rate) * 0.7) * 10) / 10
+    const decA = Math.round((probA * 100 - koA) * 10) / 10
+
     simAnalysis = {
       strikingDiffA,
       tdControlA,
@@ -174,6 +188,9 @@ export default function BotUfcMetricsEditor({ supabaseClient, setToast }) {
       probB,
       oddsA,
       oddsB,
+      fdgtdPct,
+      koA,
+      decA,
     }
   }
 
@@ -207,15 +224,26 @@ export default function BotUfcMetricsEditor({ supabaseClient, setToast }) {
           <h4 className="text-sm font-semibold text-red-300 flex items-center gap-1.5">
             <span>⚡</span> Octagon Matchup Simulator
           </h4>
-          <label className="flex items-center gap-2 text-xs text-zinc-300 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isApexCage}
-              onChange={(e) => setIsApexCage(e.target.checked)}
-              className="rounded bg-zinc-800 border-zinc-700 text-red-500 focus:ring-0"
-            />
-            <span>Apex 25ft Cage (+Finish / +Grapple)</span>
-          </label>
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-1.5 text-xs text-zinc-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isFiveRounds}
+                onChange={(e) => setIsFiveRounds(e.target.checked)}
+                className="rounded bg-zinc-800 border-zinc-700 text-red-500 focus:ring-0"
+              />
+              <span>5-Round Main/Title</span>
+            </label>
+            <label className="flex items-center gap-1.5 text-xs text-zinc-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isApexCage}
+                onChange={(e) => setIsApexCage(e.target.checked)}
+                className="rounded bg-zinc-800 border-zinc-700 text-red-500 focus:ring-0"
+              />
+              <span>Apex 25ft Cage (+Finish)</span>
+            </label>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
@@ -250,30 +278,32 @@ export default function BotUfcMetricsEditor({ supabaseClient, setToast }) {
         </div>
 
         {simAnalysis && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3 border-t border-zinc-800/80 text-xs">
-            <div className="bg-zinc-950/60 p-2 rounded-lg border border-zinc-800">
-              <span className="text-zinc-500 block text-[10px]">Model Win Prob</span>
-              <span className="font-bold text-red-300">
-                {Math.round(simAnalysis.probA * 100)}% vs {Math.round(simAnalysis.probB * 100)}%
-              </span>
-            </div>
-            <div className="bg-zinc-950/60 p-2 rounded-lg border border-zinc-800">
-              <span className="text-zinc-500 block text-[10px]">Model Fair ML</span>
-              <span className="font-bold text-emerald-400">
-                {simAnalysis.oddsA > 0 ? `+${simAnalysis.oddsA}` : simAnalysis.oddsA} / {simAnalysis.oddsB > 0 ? `+${simAnalysis.oddsB}` : simAnalysis.oddsB}
-              </span>
-            </div>
-            <div className="bg-zinc-950/60 p-2 rounded-lg border border-zinc-800">
-              <span className="text-zinc-500 block text-[10px]">Net Strike Delta</span>
-              <span className="font-semibold text-zinc-200">
-                {simAnalysis.strikingDiffA > 0 ? `+${simAnalysis.strikingDiffA}` : simAnalysis.strikingDiffA} SLpM
-              </span>
-            </div>
-            <div className="bg-zinc-950/60 p-2 rounded-lg border border-zinc-800">
-              <span className="text-zinc-500 block text-[10px]">Takedown Control</span>
-              <span className="font-semibold text-zinc-200">
-                {simAnalysis.tdControlA} vs {simAnalysis.tdControlB} TD/15m
-              </span>
+          <div className="space-y-2 pt-3 border-t border-zinc-800/80 text-xs">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="bg-zinc-950/60 p-2 rounded-lg border border-zinc-800">
+                <span className="text-zinc-500 block text-[10px]">Model Win Prob</span>
+                <span className="font-bold text-red-300">
+                  {Math.round(simAnalysis.probA * 100)}% vs {Math.round(simAnalysis.probB * 100)}%
+                </span>
+              </div>
+              <div className="bg-zinc-950/60 p-2 rounded-lg border border-zinc-800">
+                <span className="text-zinc-500 block text-[10px]">Model Fair ML</span>
+                <span className="font-bold text-emerald-400">
+                  {simAnalysis.oddsA > 0 ? `+${simAnalysis.oddsA}` : simAnalysis.oddsA} / {simAnalysis.oddsB > 0 ? `+${simAnalysis.oddsB}` : simAnalysis.oddsB}
+                </span>
+              </div>
+              <div className="bg-zinc-950/60 p-2 rounded-lg border border-zinc-800">
+                <span className="text-zinc-500 block text-[10px]">Net Strike Delta</span>
+                <span className="font-semibold text-zinc-200">
+                  {simAnalysis.strikingDiffA > 0 ? `+${simAnalysis.strikingDiffA}` : simAnalysis.strikingDiffA} SLpM
+                </span>
+              </div>
+              <div className="bg-zinc-950/60 p-2 rounded-lg border border-zinc-800">
+                <span className="text-zinc-500 block text-[10px]">FDGTD (Inside Distance)</span>
+                <span className="font-bold text-amber-300">
+                  {simAnalysis.fdgtdPct}% {simAnalysis.fdgtdPct >= 60 ? '🔥 UNDER Edge' : '⏱️ OVER Edge'}
+                </span>
+              </div>
             </div>
           </div>
         )}

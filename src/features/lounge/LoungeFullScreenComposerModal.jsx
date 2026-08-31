@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Eye, Edit3, Minimize2, Sparkles, Globe, Users, Lock } from 'lucide-react'
 import LoungeComposerCharRing from './LoungeComposerCharRing.jsx'
@@ -108,6 +108,8 @@ export default function LoungeFullScreenComposerModal({
   const [activeTab, setActiveTab] = useState('write') // 'write' | 'preview'
   const textareaRef = useRef(null)
   const anchorRef = useRef(null)
+  const scrollContainerRef = useRef(null)
+  const toolbarContainerRef = useRef(null)
 
   // Mobile / iOS / Android keyboard lift
   const iosSafeBottomPx = useLoungeIosSafeBottomPx(LOUNGE_IOS)
@@ -121,6 +123,17 @@ export default function LoungeFullScreenComposerModal({
     ? `${Math.round(kbFooterLiftPx + 2)}px`
     : loungeComposerFooterPaddingBottom(0, Math.max(8, iosSafeBottomPx))
 
+  const scrollToToolbar = useCallback(() => {
+    if (!scrollContainerRef.current || !toolbarContainerRef.current) return
+    const container = scrollContainerRef.current
+    const toolbar = toolbarContainerRef.current
+    const toolbarTop = toolbar.offsetTop - 8 // small top buffer so it sits nicely right below header
+    container.scrollTo({
+      top: Math.max(0, toolbarTop),
+      behavior: 'smooth',
+    })
+  }, [])
+
   useEffect(() => {
     if (!open) return
     setActiveTab('write')
@@ -128,6 +141,15 @@ export default function LoungeFullScreenComposerModal({
       textareaRef.current?.focus()
     })
   }, [open])
+
+  useEffect(() => {
+    if (keyboardUp && activeTab === 'write') {
+      const t = setTimeout(() => {
+        scrollToToolbar()
+      }, 120)
+      return () => clearTimeout(t)
+    }
+  }, [keyboardUp, activeTab, scrollToToolbar])
 
   if (!open || typeof document === 'undefined') return null
 
@@ -227,24 +249,24 @@ export default function LoungeFullScreenComposerModal({
       </header>
 
       {/* ── Main Content Area ── */}
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3.5 py-3 sm:px-6 sm:py-4">
+      <div ref={scrollContainerRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3.5 py-3 sm:px-6 sm:py-4">
         {activeTab === 'write' ? (
           <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col space-y-4">
-            {/* ── Row 1: Pill Tab Selectors for "Display to" and "Who can reply" (Single Row) ── */}
-            <div className="flex w-full items-center justify-between gap-2 border-b border-zinc-800/80 pb-2.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {/* ── Row 1: Pill Tab Selectors for "Display to" and "Who can reply" (Labels on Top) ── */}
+            <div className="flex w-full items-start justify-between gap-3 border-b border-zinc-800/80 pb-3">
               {/* Display to selector */}
-              <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-                <span className="text-[11px] sm:text-[12px] font-bold uppercase tracking-wider text-zinc-400 shrink-0">
-                  Display to:
+              <div className="flex flex-col gap-1.5 min-w-0">
+                <span className="text-[11px] sm:text-[12px] font-bold uppercase tracking-wider text-zinc-400">
+                  Display to
                 </span>
-                <div className="inline-flex items-center rounded-xl bg-zinc-900/90 p-0.5 border border-zinc-800">
+                <div className="inline-flex items-center rounded-xl bg-zinc-900/90 p-0.5 border border-zinc-800 self-start">
                   <button
                     type="button"
                     disabled={postBusy}
                     onMouseDown={(e) => e.preventDefault()}
                     onPointerDown={(e) => e.preventDefault()}
                     onClick={() => onAudienceChange?.(LOUNGE_COMPOSER_AUDIENCE_ALL)}
-                    className={`inline-flex items-center gap-1 rounded-lg px-2 py-0.5 sm:px-2.5 sm:py-1 text-[11px] sm:text-[12px] font-bold transition-all touch-manipulation ${
+                    className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] sm:text-[12px] font-bold transition-all touch-manipulation ${
                       composerAudience === LOUNGE_COMPOSER_AUDIENCE_ALL
                         ? 'bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/50 shadow-sm'
                         : 'text-zinc-400 hover:text-zinc-200'
@@ -260,7 +282,7 @@ export default function LoungeFullScreenComposerModal({
                     onMouseDown={(e) => e.preventDefault()}
                     onPointerDown={(e) => e.preventDefault()}
                     onClick={() => onAudienceChange?.(LOUNGE_COMPOSER_AUDIENCE_SUBS)}
-                    className={`inline-flex items-center gap-1 rounded-lg px-2 py-0.5 sm:px-2.5 sm:py-1 text-[11px] sm:text-[12px] font-bold transition-all touch-manipulation ${
+                    className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] sm:text-[12px] font-bold transition-all touch-manipulation ${
                       composerAudience === LOUNGE_COMPOSER_AUDIENCE_SUBS
                         ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/50 shadow-sm'
                         : 'text-zinc-400 hover:text-zinc-200'
@@ -273,9 +295,9 @@ export default function LoungeFullScreenComposerModal({
               </div>
 
               {/* Who can reply selector */}
-              <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-                <span className="text-[11px] sm:text-[12px] font-bold uppercase tracking-wider text-zinc-400 shrink-0">
-                  Who can reply:
+              <div className="flex flex-col gap-1.5 min-w-0 items-end sm:items-start">
+                <span className="text-[11px] sm:text-[12px] font-bold uppercase tracking-wider text-zinc-400">
+                  Who can reply
                 </span>
                 <div className="inline-flex items-center rounded-xl bg-zinc-900/90 p-0.5 border border-zinc-800">
                   <button
@@ -284,7 +306,7 @@ export default function LoungeFullScreenComposerModal({
                     onMouseDown={(e) => e.preventDefault()}
                     onPointerDown={(e) => e.preventDefault()}
                     onClick={() => onReplyGateChange?.(false)}
-                    className={`inline-flex items-center gap-1 rounded-lg px-2 py-0.5 sm:px-2.5 sm:py-1 text-[11px] sm:text-[12px] font-bold transition-all touch-manipulation ${
+                    className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] sm:text-[12px] font-bold transition-all touch-manipulation ${
                       !composerReplyGateEdgePro
                         ? 'bg-sky-500/20 text-sky-400 ring-1 ring-sky-500/50 shadow-sm'
                         : 'text-zinc-400 hover:text-zinc-200'
@@ -300,7 +322,7 @@ export default function LoungeFullScreenComposerModal({
                     onMouseDown={(e) => e.preventDefault()}
                     onPointerDown={(e) => e.preventDefault()}
                     onClick={() => onReplyGateChange?.(true)}
-                    className={`inline-flex items-center gap-1 rounded-lg px-2 py-0.5 sm:px-2.5 sm:py-1 text-[11px] sm:text-[12px] font-bold transition-all touch-manipulation ${
+                    className={`inline-flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] sm:text-[12px] font-bold transition-all touch-manipulation ${
                       composerReplyGateEdgePro
                         ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/50 shadow-sm'
                         : 'text-zinc-400 hover:text-zinc-200'
@@ -326,12 +348,14 @@ export default function LoungeFullScreenComposerModal({
             </div>
 
             {/* ── Markdown Formatting Toolbar ── */}
-            <LoungeMarkdownToolbar
-              textareaRef={textareaRef}
-              onTextChange={onTextChange}
-              isEdgePro={isEdgePro || isStaff}
-              onUpgradeClick={onUpgradeClick}
-            />
+            <div ref={toolbarContainerRef} className="w-full">
+              <LoungeMarkdownToolbar
+                textareaRef={textareaRef}
+                onTextChange={onTextChange}
+                isEdgePro={isEdgePro || isStaff}
+                onUpgradeClick={onUpgradeClick}
+              />
+            </div>
 
             {/* ── Textarea with Mention/Cashtag Support ── */}
             <div ref={anchorRef} className="relative flex min-h-[16rem] sm:min-h-[22rem] flex-1 flex-col">
@@ -341,9 +365,13 @@ export default function LoungeFullScreenComposerModal({
                 value={postText}
                 onChange={onTextChange}
                 maxLength={captionMax}
-                placeholder="What's on your mind? Format with **bold**, *italic*, `code`, quotes, and lists..."
+                placeholder="Are ya winning, son? Format with **bold**, *italic*, `code`, quotes, and lists..."
                 ariaLabel="Full screen post caption"
                 className="flex-1 h-full min-h-[16rem] sm:min-h-[22rem] w-full resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 placeholder-zinc-500 outline-none transition-colors focus:border-cyan-500/50"
+                onFocus={() => {
+                  if (keyboardUp) scrollToToolbar()
+                  else setTimeout(scrollToToolbar, 250)
+                }}
                 onKeyDown={(e) => {
                   if (cashtagComposer?.onCashtagKeyDown(e, onTextChange, textareaRef.current)) return
                   mentionComposer?.onMentionKeyDown(e, onTextChange, textareaRef.current)

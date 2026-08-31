@@ -2300,13 +2300,12 @@ export default function SocialFeed({
     (target) => ({
       onClick: () => {
         beginLoungeComposerMediaPicker(target)
-        blurLoungeComposerCaptionForTarget(target)
       },
       onCancel: () => {
         endLoungeComposerMediaPicker(target)
       },
     }),
-    [beginLoungeComposerMediaPicker, blurLoungeComposerCaptionForTarget, endLoungeComposerMediaPicker],
+    [beginLoungeComposerMediaPicker, endLoungeComposerMediaPicker],
   )
 
   const openKlipyPicker = useCallback(
@@ -2314,10 +2313,9 @@ export default function SocialFeed({
       if (openProfileGateIfNeeded()) return
       if (target === 'detailComment') beginLoungeDetailCommentMediaSession()
       setKlipyPickerTarget(target)
-      blurLoungeComposerCaptionForTarget(target)
       setKlipyPickerOpen(true)
     },
-    [beginLoungeDetailCommentMediaSession, blurLoungeComposerCaptionForTarget, openProfileGateIfNeeded],
+    [beginLoungeDetailCommentMediaSession, openProfileGateIfNeeded],
   )
 
   const openMarketPicker = useCallback(

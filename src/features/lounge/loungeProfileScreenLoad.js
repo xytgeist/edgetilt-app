@@ -11,7 +11,7 @@ export const LOUNGE_PROFILE_POST_RPC_MAX = 60
 export const LOUNGE_PROFILE_TAB_PAGE_SIZE = 20
 
 const PROFILE_SELECT_FULL =
-  'user_id,handle,display_name,avatar_url,bio,about_me,banner_url,location,category_pills,created_at,role,handle_changed_at,is_og'
+  'user_id,handle,display_name,avatar_url,bio,about_me,banner_url,location,website_url,category_pills,created_at,role,handle_changed_at,is_og'
 
 const PROFILE_SELECT_CORE =
   'user_id,handle,display_name,avatar_url,bio,created_at,role,handle_changed_at,is_og'

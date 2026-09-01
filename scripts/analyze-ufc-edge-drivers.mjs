@@ -255,7 +255,7 @@ async function main() {
 
   const from = argValue('--from') || '2024-01-01'
   const to = argValue('--to') || '2025-12-31'
-  const exampleBout = argValue('--example') || 'Chase Hooper'
+  const exampleBout = argValue('--example') || 'Clay Guida'
 
   const raw = fs.readFileSync(csvPath, 'utf8')
   const { fights } = parseUfcCsv(raw)

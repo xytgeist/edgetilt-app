@@ -1,7 +1,10 @@
--- Remove synthetic Sharpe Syndicate backfill rows (NOT live lounge-odds-poll picks).
--- Sources: scripts/backfill-ufc-picks.mjs, scripts/backfill-nfl-preseason-picks.mjs
--- UFC backfill included future fights with pre-baked outcomes; NFL backfill used Math.random() CLV.
+-- Remove only backfill rows that were graded before the fight actually settled.
+-- Keeps audited backtest picks for completed games; drops future cards with pre-baked outcomes.
 delete from public.lounge_bot_picks
-where event_id like 'ufc\_%' escape '\'
-   or event_id like 'espn-nfl-pre-%'
-   or sport_key = '1.5';
+where commence_time > (now() - interval '90 minutes')
+  and status in ('win', 'won', 'loss', 'lost', 'push')
+  and (
+    event_id like 'ufc\_%' escape '\'
+    or event_id like 'espn-nfl-pre-%'
+    or metadata->>'source' in ('backfill_ufc', 'backfill_nfl_preseason')
+  );

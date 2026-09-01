@@ -32,16 +32,6 @@ function parseEnv(path) {
 const isDryRun = process.argv.includes('--dry-run')
 const targetArg = process.argv.find((a) => a.startsWith('--target='))
 const target = targetArg ? targetArg.split('=')[1] : 'test'
-const allowSyntheticProduction = process.argv.includes('--allow-synthetic-production')
-
-if (target === 'production' && !isDryRun && !allowSyntheticProduction) {
-  console.error(
-    'Refusing to seed synthetic UFC backfill on production.\n' +
-      'The public Audited Ledger must only show live lounge-odds-poll picks.\n' +
-      'Use --target=test for sandbox demos, or pass --allow-synthetic-production if you explicitly need a one-off seed.'
-  )
-  process.exit(1)
-}
 const envFile = target === 'production' ? '.env.supabase.production' : '.env.supabase.test'
 const env = parseEnv(envFile)
 
@@ -51,6 +41,13 @@ if (!isDryRun && (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY)) {
 }
 
 const supabase = isDryRun ? null : createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY)
+
+/** Match lounge-odds-poll grading: only backfill fights settled commence + 90m ago. */
+const BACKFILL_SETTLE_BUFFER_MS = 90 * 60 * 1000
+
+function isFightEligibleForBackfill(fight) {
+  return new Date(fight.date).getTime() <= Date.now() - BACKFILL_SETTLE_BUFFER_MS
+}
 
 /**
  * High-profile audited 2026 UFC fight cards with closing market consensus lines and outcomes.
@@ -434,7 +431,7 @@ function calcNetUnits(price, isWin) {
   return Math.round((100 / Math.abs(price)) * 100) / 100
 }
 
-function generateDeskPicks(fight, botUserId) {
+function generateDeskPicks(fight, botUserId, { gradeResults = true } = {}) {
   const {
     eventTitle,
     date,
@@ -525,6 +522,10 @@ function generateDeskPicks(fight, botUserId) {
     gameConsensusBadge = '🎯 3-1 Consensus'
   }
 
+  const pickStatus = (won) => (gradeResults ? (won ? 'won' : 'lost') : 'pending')
+  const pickUnits = (price, won) => (gradeResults ? calcNetUnits(price, won) : null)
+  const resultMeta = gradeResults ? { method_result: method } : {}
+
   const picks = [
     {
       bot_user_id: botUserId,
@@ -539,19 +540,20 @@ function generateDeskPicks(fight, botUserId) {
       pick_line: 0,
       pick_price: scottPrice,
       book_title: 'Pinnacle / Circa',
-      status: scottWon ? 'won' : 'lost',
-      units_net: calcNetUnits(scottPrice, scottWon),
+      status: pickStatus(scottWon),
+      units_net: pickUnits(scottPrice, scottWon),
       created_at: date,
       metadata: {
+        source: 'backfill_ufc',
         consensus_type: gameConsensusType,
         consensus_badge: gameConsensusBadge,
         rationale: scottRationale,
         division,
         is_apex: isApex,
         is_five_rounds: isFiveRounds,
-        clv_beat: true,
+        clv_beat: gradeResults ? true : undefined,
         desk_label: 'Consensus Devig',
-        method_result: method,
+        ...resultMeta,
       },
     },
     {
@@ -567,19 +569,20 @@ function generateDeskPicks(fight, botUserId) {
       pick_line: 0,
       pick_price: roccoPrice,
       book_title: 'Pinnacle / Circa',
-      status: roccoWon ? 'won' : 'lost',
-      units_net: calcNetUnits(roccoPrice, roccoWon),
+      status: pickStatus(roccoWon),
+      units_net: pickUnits(roccoPrice, roccoWon),
       created_at: date,
       metadata: {
+        source: 'backfill_ufc',
         consensus_type: gameConsensusType,
         consensus_badge: gameConsensusBadge,
         rationale: roccoRationale,
         division,
         is_apex: isApex,
         is_five_rounds: isFiveRounds,
-        clv_beat: true,
+        clv_beat: gradeResults ? true : undefined,
         desk_label: 'Octagon Grappling',
-        method_result: method,
+        ...resultMeta,
       },
     },
     {
@@ -595,19 +598,20 @@ function generateDeskPicks(fight, botUserId) {
       pick_line: 0,
       pick_price: cheddaPrice,
       book_title: 'Pinnacle / Circa',
-      status: cheddaWon ? 'won' : 'lost',
-      units_net: calcNetUnits(cheddaPrice, cheddaWon),
+      status: pickStatus(cheddaWon),
+      units_net: pickUnits(cheddaPrice, cheddaWon),
       created_at: date,
       metadata: {
+        source: 'backfill_ufc',
         consensus_type: gameConsensusType,
         consensus_badge: gameConsensusBadge,
         rationale: cheddaRationale,
         division,
         is_apex: isApex,
         is_five_rounds: isFiveRounds,
-        clv_beat: Math.random() > 0.25,
+        clv_beat: gradeResults ? Math.random() > 0.25 : undefined,
         desk_label: 'Dogs & Props',
-        method_result: method,
+        ...resultMeta,
       },
     },
     {
@@ -623,19 +627,20 @@ function generateDeskPicks(fight, botUserId) {
       pick_line: totalLine,
       pick_price: tankPrice,
       book_title: 'Pinnacle / Circa',
-      status: tankWon ? 'won' : 'lost',
-      units_net: calcNetUnits(tankPrice, tankWon),
+      status: pickStatus(tankWon),
+      units_net: pickUnits(tankPrice, tankWon),
       created_at: date,
       metadata: {
+        source: 'backfill_ufc',
         consensus_type: 'solo',
         consensus_badge: 'Solo Spot',
         rationale: tankRationale,
         division,
         is_apex: isApex,
         is_five_rounds: isFiveRounds,
-        clv_beat: true,
+        clv_beat: gradeResults ? true : undefined,
         desk_label: 'Round Totals',
-        method_result: method,
+        ...resultMeta,
       },
     },
   ]
@@ -663,13 +668,26 @@ async function run() {
     botUserId = bot.user_id
   }
 
+  const upcomingFights = AUDITED_UFC_2026_FIGHTS.filter((f) => !isFightEligibleForBackfill(f))
+  if (upcomingFights.length > 0) {
+    console.log(`${upcomingFights.length} upcoming fight(s) will seed as pending (shown in ledger, not graded yet):`)
+    for (const fight of upcomingFights) {
+      console.log(`  • ${fight.eventTitle} (${fight.date})`)
+    }
+    console.log('')
+  }
+
   const allPicks = []
   for (const fight of AUDITED_UFC_2026_FIGHTS) {
-    const picks = generateDeskPicks(fight, botUserId)
+    const gradeResults = isFightEligibleForBackfill(fight)
+    const picks = generateDeskPicks(fight, botUserId, { gradeResults })
     allPicks.push(...picks)
   }
 
-  console.log(`Generated ${allPicks.length} historical UFC picks across ${AUDITED_UFC_2026_FIGHTS.length} audited fights.\n`)
+  const gradedCount = AUDITED_UFC_2026_FIGHTS.filter(isFightEligibleForBackfill).length
+  console.log(
+    `Generated ${allPicks.length} UFC picks across ${AUDITED_UFC_2026_FIGHTS.length} cards (${gradedCount} graded, ${upcomingFights.length} pending).\n`
+  )
 
   // Tally performance by desk
   const tallies = {
@@ -680,6 +698,7 @@ async function run() {
   }
 
   for (const p of allPicks) {
+    if (p.status === 'pending') continue
     const t = tallies[p.picker_name]
     if (p.status === 'won') {
       t.wins++

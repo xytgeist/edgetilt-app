@@ -259,8 +259,8 @@ export default function LoungeFullScreenComposerModal({
   }, [])
 
   // After a picker, the write field often stays focused (toolbar preventFocusSteal),
-  // so chromeCompact never drops and the carousel stays gone. Treat a new
-  // attachment as keyboard-down so the user can see what they just added.
+  // so chromeCompact never drops and the carousel stays gone. Reveal only after
+  // files land… never on image/video pointer-down (that cancels the iOS picker).
   const writeAttachmentEpoch = [
     composerImageItems.length,
     String(composerMediaUrl || '').trim() ? 1 : 0,
@@ -794,22 +794,10 @@ export default function LoungeFullScreenComposerModal({
               className="!gap-3 sm:!gap-4"
               imageInputId={imageInputId}
               videoInputId={videoInputId}
-              onImagePointerDown={() => {
-                revealWriteAttachments()
-                onImagePointerDown?.()
-              }}
-              onVideoPointerDown={() => {
-                revealWriteAttachments()
-                onVideoPointerDown?.()
-              }}
-              onOpenGifPicker={() => {
-                revealWriteAttachments()
-                onOpenGifPicker?.()
-              }}
-              onOpenMarketPicker={() => {
-                revealWriteAttachments()
-                onOpenMarketPicker?.()
-              }}
+              onImagePointerDown={onImagePointerDown}
+              onVideoPointerDown={onVideoPointerDown}
+              onOpenGifPicker={onOpenGifPicker}
+              onOpenMarketPicker={onOpenMarketPicker}
             />
 
             <div className="text-xs sm:text-sm font-semibold text-zinc-400">

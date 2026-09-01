@@ -61,9 +61,21 @@ function findEventInSnapshot(data, fighterA, fighterB) {
       if (!prices) continue
       const flipped =
         normalizeName(home) === normalizeName(fighterB) && normalizeName(away) === normalizeName(fighterA)
+      const base = {
+        apiHome: home,
+        apiAway: away,
+        eventId: ev.id || null,
+        source: 'odds-api',
+      }
       return flipped
-        ? { oddsA: prices.oddsB, oddsB: prices.oddsA, book: prices.book, commenceTime: ev.commence_time }
-        : { ...prices, commenceTime: ev.commence_time }
+        ? {
+            ...base,
+            oddsA: prices.oddsB,
+            oddsB: prices.oddsA,
+            book: prices.book,
+            commenceTime: ev.commence_time,
+          }
+        : { ...base, ...prices, commenceTime: ev.commence_time }
     }
   }
   return null

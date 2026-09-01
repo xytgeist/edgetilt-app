@@ -19,11 +19,12 @@
  *   node scripts/backtest-ufc-model.mjs --csv data/ufc/UFC_full_data_silver_v2.csv --from 2024-01-01 --to 2025-12-31
  *   node scripts/backtest-ufc-model.mjs --csv data/ufc/sample_200.csv --from 2024-01-01 --with-odds
  *   node scripts/backtest-ufc-model.mjs --probe-csv data/ufc/UFC_full_data_silver_v2.csv
- *   node scripts/backtest-ufc-model.mjs --use-embedded-stats
+ *   node scripts/backtest-ufc-model.mjs --with-odds --audit-odds
+ *   node scripts/backtest-ufc-model.mjs --with-odds --audit-odds=30
  *
  * Env:
  *   KAGGLE_API_TOKEN — kagglehub auth (or kaggle auth login / ~/.kaggle/kaggle.json)
- *   THE_ODDS_API_KEY — required for --with-odds (Business/paid historical tier)
+ *   THE_ODDS_API_KEY — required for --with-odds / --audit-odds (Edge mirror in .env.supabase.test)
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -33,6 +34,7 @@ import { applyWalkForwardSnapshots } from './lib/ufcWalkForward.mjs'
 import { analyzeUfcMatchupFromSnapshots, pickScottSide } from './lib/ufcMatchupEngine.mjs'
 import { attachHistoricalOdds } from './lib/ufcHistoricalOdds.mjs'
 import { attachCsvOdds } from './lib/ufcCsvOdds.mjs'
+import { collectOddsAuditRows, printOddsAudit } from './lib/ufcOddsAudit.mjs'
 import { americanToImplied, calcNetUnits } from './lib/ufcOddsMath.mjs'
 
 function parseEnvFile(filePath) {
@@ -67,6 +69,15 @@ function argValue(flag) {
 
 function hasFlag(flag) {
   return process.argv.includes(flag)
+}
+
+function auditOddsSampleSize() {
+  const eq = process.argv.find((a) => a.startsWith('--audit-odds='))
+  if (eq) {
+    const n = Number(eq.split('=')[1])
+    return Number.isFinite(n) && n > 0 ? n : 20
+  }
+  return hasFlag('--audit-odds') ? 20 : 0
 }
 
 function filterByDate(fights, from, to) {
@@ -237,7 +248,8 @@ async function main() {
   const to = argValue('--to') || '2025-12-31'
   const minPrior = Number(argValue('--min-prior') || 1)
   const useEmbedded = hasFlag('--use-embedded-stats')
-  const withOddsApi = hasFlag('--with-odds')
+  const auditSample = auditOddsSampleSize()
+  const withOddsApi = hasFlag('--with-odds') || auditSample > 0
   const skipCsvOdds = hasFlag('--no-csv-odds')
   const verboseMisses = hasFlag('--verbose-misses')
 
@@ -257,13 +269,18 @@ async function main() {
   if (withOddsApi) {
     const apiKey = loadOddsApiKey()
     if (!apiKey) {
-      console.error('THE_ODDS_API_KEY not set. Add to .env.local for --with-odds.')
+      console.error('THE_ODDS_API_KEY not set. Add to .env.supabase.test (or .env.local) for --with-odds / --audit-odds.')
       process.exit(1)
     }
-    oddsApiSummary = await attachHistoricalOdds(inRange, apiKey, { verbose: true })
+    oddsApiSummary = await attachHistoricalOdds(inRange, apiKey, { verbose: !hasFlag('--quiet-odds') })
   }
 
   const results = runBacktest(inRange, { verboseMisses })
+
+  if (auditSample > 0) {
+    const auditRows = collectOddsAuditRows(inRange)
+    printOddsAudit(auditRows, { sampleSize: auditSample, seed: Number(argValue('--audit-seed') || 42) })
+  }
 
   console.log('')
   console.log('=== UFC Syndicate Model Backtest ===')
@@ -312,6 +329,9 @@ async function main() {
       console.log(`Bets: ${results.positiveEdgeBets}`)
       console.log(`Hit rate: ${(results.positiveEdgeHitRate * 100).toFixed(1)}%`)
       console.log(`Flat 1u ROI: ${(results.roi * 100).toFixed(1)}% (${results.units >= 0 ? '+' : ''}${results.units.toFixed(2)}u)`)
+      console.log(
+        'Note: with model probs summing ~100%, vig ensures one side often has +edge — high bet count is structural. Use --audit-odds to spot-check.',
+      )
     }
   } else if (!csvOddsSummary?.attached && !withOddsApi) {
     console.log('')

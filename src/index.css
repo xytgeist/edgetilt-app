@@ -11195,16 +11195,8 @@ html.light [data-lounge-publish-modal] {
   color: #09090b !important;
 }
 
-html.light [data-lounge-publish-modal] button:not([data-lounge-category-slug]) {
+html.light [data-lounge-publish-modal] button {
   color: inherit;
-}
-
-html.light [data-lounge-publish-modal] [data-lounge-composer-category] {
-  --lounge-category-fade-from: #ffffff;
-}
-
-html.light [data-lounge-publish-modal] [data-lounge-composer-category] p {
-  color: #71717a !important;
 }
 
 html.light [data-lounge-tribe-max-alert] {

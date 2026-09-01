@@ -4,7 +4,6 @@ import { Eye, Edit3, Minimize2, Sparkles, Globe, Users, Lock, Check, X, Settings
 import LoungeComposerCharRing from './LoungeComposerCharRing.jsx'
 import LoungeComposerMediaToolbar from './LoungeComposerMediaToolbar.jsx'
 import LoungePostCategoryPillPicker from './LoungePostCategoryPillPicker.jsx'
-import LoungePostCategoryPillRow from './LoungePostCategoryPillRow.jsx'
 import LoungeComposerMarketChartStrip from './LoungeComposerMarketChartStrip.jsx'
 import { LoungeImageCarousel } from './LoungePostFeedMedia.jsx'
 import LoungeMarkdownToolbar from './LoungeMarkdownToolbar.jsx'
@@ -169,9 +168,9 @@ export default function LoungeFullScreenComposerModal({
   })
   const kbFooterLiftPx = Math.max(kbOverlapPx, kbOverlapTargetPx)
   const keyboardUp = kbFooterLiftPx > iosSafeBottomPx + 0.5
-  // IPA: `100dvh` shrinks with the keys so visualViewport overlap stays ~0.
-  // Treat write-focus as keyboard-up on iOS so the markdown toolbar sits
-  // under the header the way Safari chrome does.
+  // IPA: `100dvh` shrinks with the keys so visualViewport overlap stays ~0 and
+  // scroll-to-toolbar is a no-op (pills stay on screen). Treat write-focus as
+  // keyboard-up on iOS so chrome matches Safari (toolbar under the header).
   const chromeCompact = activeTab === 'write' && (keyboardUp || (LOUNGE_IOS && writeFocused))
   const footerPadBottom = keyboardUp
     ? `${Math.round(kbFooterLiftPx + 2)}px`
@@ -434,8 +433,8 @@ export default function LoungeFullScreenComposerModal({
                 ? 'border-amber-500/50 bg-amber-500/10 text-amber-300 ring-1 ring-amber-500/30'
                 : 'border-zinc-800 bg-zinc-900/80 text-zinc-300 hover:border-zinc-700 hover:bg-zinc-800'
             }`}
-            title="Post audience, tribes, and reply settings"
-            aria-label="Post audience, tribes, and reply settings"
+            title="Post audience and reply settings"
+            aria-label="Post audience and reply settings"
           >
             <Settings2 className="h-4 w-4" />
             <span className="hidden md:inline">
@@ -467,6 +466,22 @@ export default function LoungeFullScreenComposerModal({
       <div ref={scrollContainerRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-3.5 py-3 sm:px-6 sm:py-4">
         {activeTab === 'write' ? (
           <div className="mx-auto flex w-full max-w-3xl flex-1 min-w-0 flex-col space-y-3.5">
+            {/* ── Row 1: Tribe Pills (hidden while the iOS keyboard is up) ── */}
+            {!chromeCompact ? (
+              <div className="w-full min-w-0 overflow-hidden">
+                <LoungePostCategoryPillPicker
+                  value={composerCategoryPills}
+                  onChange={onCategoryPillsChange}
+                  disabled={postBusy}
+                  size="lg"
+                  hint=""
+                  hideExpandCaret
+                  onMaxPillsReached={() => setTribeMaxAlertOpen(true)}
+                  className="!mt-0 !mb-0"
+                />
+              </div>
+            ) : null}
+
             {/* ── Markdown Formatting Toolbar ── */}
             <div ref={toolbarContainerRef} className="w-full min-w-0 overflow-hidden">
               <LoungeMarkdownToolbar
@@ -647,10 +662,6 @@ export default function LoungeFullScreenComposerModal({
                 )}
               </div>
 
-              {composerCategoryPills.length > 0 ? (
-                <LoungePostCategoryPillRow pills={composerCategoryPills} className="mt-2.5" />
-              ) : null}
-
               {/* Rendered Media in Preview */}
               {carouselUrls.length > 0 ? (
                 <LoungeImageCarousel
@@ -773,7 +784,7 @@ export default function LoungeFullScreenComposerModal({
         >
           <div
             data-lounge-publish-modal=""
-            className="w-full max-w-md max-h-[min(74dvh,calc(100dvh-2rem))] flex flex-col overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900 p-3.5 sm:p-4 shadow-2xl animate-in zoom-in-95 duration-200"
+            className="w-full max-w-md max-h-[min(62dvh,calc(100dvh-2rem))] flex flex-col overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900 p-3.5 sm:p-4 shadow-2xl animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -784,8 +795,8 @@ export default function LoungeFullScreenComposerModal({
                 </h3>
                 <p className="text-[11px] text-zinc-400">
                   {modalMode === 'pre_post'
-                    ? 'Confirm audience, tribes, and reply permissions'
-                    : 'Who sees this, which tribes, and who can reply'}
+                    ? 'Confirm audience & reply permissions'
+                    : 'Configure post visibility and reply gating'}
                 </p>
               </div>
               <button
@@ -851,24 +862,6 @@ export default function LoungeFullScreenComposerModal({
                     </div>
                   </button>
                 </div>
-              </div>
-
-              {/* Tribes ... same "who is this for" decision as audience */}
-              <div>
-                <h4 className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 mb-1.5">
-                  Tribes
-                </h4>
-                <LoungePostCategoryPillPicker
-                  value={composerCategoryPills}
-                  onChange={onCategoryPillsChange}
-                  disabled={postBusy}
-                  size="md"
-                  hint="Optional · helps people find this post"
-                  collapsibleSingleRow={false}
-                  hideExpandCaret
-                  onMaxPillsReached={() => setTribeMaxAlertOpen(true)}
-                  className="!mt-0 !mb-0"
-                />
               </div>
 
               {/* Reply Gating Section */}
@@ -974,6 +967,7 @@ export default function LoungeFullScreenComposerModal({
           role="dialog"
           aria-modal="true"
           className="fixed inset-0 z-[250] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 animate-in fade-in duration-150"
+          style={{ paddingBottom: keyboardUp ? `${Math.round(kbFooterLiftPx)}px` : undefined }}
           onClick={() => setTribeMaxAlertOpen(false)}
         >
           <div

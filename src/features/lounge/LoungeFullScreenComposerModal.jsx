@@ -5,7 +5,6 @@ import LoungeComposerCharRing from './LoungeComposerCharRing.jsx'
 import LoungeComposerMediaToolbar from './LoungeComposerMediaToolbar.jsx'
 import LoungePostCategoryPillPicker from './LoungePostCategoryPillPicker.jsx'
 import LoungeComposerMarketChartStrip from './LoungeComposerMarketChartStrip.jsx'
-import LoungeComposerMarketSymbolPills from './LoungeComposerMarketSymbolPills.jsx'
 import { LoungeImageCarousel } from './LoungePostFeedMedia.jsx'
 import LoungeMarkdownToolbar from './LoungeMarkdownToolbar.jsx'
 import LoungeCashtagDropdown from './LoungeCashtagDropdown.jsx'
@@ -250,6 +249,37 @@ export default function LoungeFullScreenComposerModal({
     setWriteFocused(false)
   }, [])
 
+  const revealWriteAttachments = useCallback(() => {
+    setWriteFocused(false)
+    try {
+      textareaRef.current?.blur()
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  // After a picker, the write field often stays focused (toolbar preventFocusSteal),
+  // so chromeCompact never drops and the carousel stays gone. Reveal only after
+  // files land… never on image/video pointer-down (that cancels the iOS picker).
+  const writeAttachmentEpoch = [
+    composerImageItems.length,
+    String(composerMediaUrl || '').trim() ? 1 : 0,
+    composerVideoSlot?.preview ? 1 : 0,
+    composerMarketSymbols.length,
+  ].join(':')
+  const skipAttachRevealRef = useRef(true)
+  useEffect(() => {
+    if (!open) {
+      skipAttachRevealRef.current = true
+      return
+    }
+    if (skipAttachRevealRef.current) {
+      skipAttachRevealRef.current = false
+      return
+    }
+    revealWriteAttachments()
+  }, [open, writeAttachmentEpoch, revealWriteAttachments])
+
   const onComposerTouchStart = useCallback((e) => {
     if (!LOUNGE_IOS || !writeFocused) return
     swipeStartYRef.current = e.touches?.[0]?.clientY ?? null
@@ -468,9 +498,9 @@ export default function LoungeFullScreenComposerModal({
       {/* ── Main Content Area ── */}
       <div ref={scrollContainerRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-3.5 py-3 sm:px-6 sm:py-4">
         {activeTab === 'write' ? (
-          <div className="mx-auto flex w-full max-w-3xl flex-1 min-h-0 min-w-0 flex-col space-y-3.5">
+          <div className="mx-auto flex w-full max-w-3xl flex-1 min-w-0 flex-col space-y-3.5">
             {/* ── Row 1: Tribe Pills (stay visible with the keyboard up) ── */}
-            <div ref={tribePillsContainerRef} className="w-full min-w-0 shrink-0 overflow-hidden">
+            <div ref={tribePillsContainerRef} className="w-full min-w-0 overflow-hidden">
               <LoungePostCategoryPillPicker
                 value={composerCategoryPills}
                 onChange={onCategoryPillsChange}
@@ -484,7 +514,7 @@ export default function LoungeFullScreenComposerModal({
             </div>
 
             {/* ── Markdown Formatting Toolbar ── */}
-            <div ref={toolbarContainerRef} className="w-full min-w-0 shrink-0 overflow-hidden">
+            <div ref={toolbarContainerRef} className="w-full min-w-0 overflow-hidden">
               <LoungeMarkdownToolbar
                 textareaRef={textareaRef}
                 onTextChange={handleTextChange}
@@ -493,22 +523,17 @@ export default function LoungeFullScreenComposerModal({
               />
             </div>
 
-            {/* Caption card: text + thumbs in one surface so the keyboard cannot
-                shove attachments under the keys or steal the file-picker gesture. */}
+            {/* ── Native Textarea with Mention/Cashtag Support ── */}
             <div
               ref={anchorRef}
-              data-lounge-caption-card=""
-              onClick={(e) => {
-                if (e.target.closest('[data-lounge-caption-attach-dock]')) return
-                textareaRef.current?.focus()
-              }}
-              className="relative flex flex-1 min-h-0 flex-col cursor-text overflow-hidden rounded-2xl border border-zinc-800/90 bg-zinc-900/50"
+              onClick={() => textareaRef.current?.focus()}
+              className="relative flex flex-1 min-h-0 flex-col cursor-text"
             >
               <textarea
                 ref={textareaRef}
                 id="pro-composer-textarea"
                 autoFocus
-                rows={4}
+                rows={8}
                 value={localText}
                 onChange={(e) => {
                   const val = e.target.value
@@ -521,7 +546,7 @@ export default function LoungeFullScreenComposerModal({
                 spellCheck
                 aria-label="Full screen post caption"
                 placeholder="Are ya winning, son?"
-                className="flex-1 w-full min-h-[5.5rem] resize-none border-0 bg-transparent p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 caret-cyan-400 placeholder-zinc-500 outline-none focus:outline-none focus:ring-0 touch-manipulation whitespace-pre-wrap break-words overflow-y-auto"
+                className="flex-1 w-full min-h-[16rem] resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 caret-cyan-400 placeholder-zinc-500 outline-none focus:outline-none focus:ring-0 focus:border-zinc-800/90 touch-manipulation whitespace-pre-wrap break-words overflow-y-auto"
                 onFocus={() => {
                   setWriteFocused(true)
                   if (keyboardUp || LOUNGE_IOS) scrollToWriteChrome()
@@ -567,71 +592,60 @@ export default function LoungeFullScreenComposerModal({
                   caretFieldRef={textareaRef}
                 />
               ) : null}
-
-              {composerMarketSymbols.length > 0 || carouselUrls.length > 0 || composerVideoSlot?.preview ? (
-                <div
-                  data-lounge-caption-attach-dock=""
-                  className="shrink-0 border-t border-zinc-800/80 px-3 pb-3 pt-2"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {composerMarketSymbols.length > 0 ? (
-                    chromeCompact ? (
-                      <LoungeComposerMarketSymbolPills
-                        symbols={composerMarketSymbols}
-                        onChange={onMarketSymbolsChange}
-                        className="mb-2"
-                      />
-                    ) : (
-                      <LoungeComposerMarketChartStrip
-                        symbols={composerMarketSymbols}
-                        onChange={onMarketSymbolsChange}
-                        className="!mt-0 mb-2"
-                      />
-                    )
-                  ) : null}
-
-                  {carouselUrls.length > 0 ? (
-                    <LoungeImageCarousel
-                      urls={carouselUrls}
-                      variant="composer"
-                      firstMarginTopClass="mt-0"
-                      regionAriaLabel={gifUrl ? 'Post images and GIF' : 'Post images'}
-                      removeLabelForIndex={(i) => (i < nImg ? 'Remove image' : 'Remove GIF')}
-                      onRemoveIndex={(i) => {
-                        if (i < nImg) {
-                          onRemoveImageIndex?.(i)
-                        } else {
-                          onRemoveGif?.()
-                        }
-                      }}
-                    />
-                  ) : null}
-
-                  {composerVideoSlot?.preview ? (
-                    <div className={`relative inline-flex max-w-[min(42vw,9rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none ${carouselUrls.length > 0 ? 'mt-2' : ''}`}>
-                      <video
-                        src={composerVideoSlot.preview}
-                        poster={composerVideoSlot.posterUrl || undefined}
-                        className="block h-auto max-h-[5.5rem] w-auto max-w-[min(42vw,9rem)] object-contain"
-                        controls
-                        playsInline
-                        preload="metadata"
-                        aria-label="Video preview"
-                      />
-                      <button
-                        type="button"
-                        onClick={onRemoveVideo}
-                        className="absolute right-1.5 top-1.5 grid h-8 w-8 place-items-center rounded-full border border-zinc-500/35 bg-black/40 text-base leading-none text-zinc-100 backdrop-blur-[2px] touch-manipulation hover:bg-black/60"
-                        aria-label="Remove video"
-                      >
-                        ×
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
             </div>
+
+            {/* Keyboard-up / write-focused: drop attachments from layout.
+                Keyboard-down (incl. right after a pick) shows the carousel again. */}
+            {!chromeCompact ? (
+              <>
+                {composerMarketSymbols.length > 0 ? (
+                  <LoungeComposerMarketChartStrip
+                    symbols={composerMarketSymbols}
+                    onChange={onMarketSymbolsChange}
+                    className="mt-2"
+                  />
+                ) : null}
+
+                {carouselUrls.length > 0 ? (
+                  <LoungeImageCarousel
+                    urls={carouselUrls}
+                    variant="composer"
+                    firstMarginTopClass="mt-2"
+                    regionAriaLabel={gifUrl ? 'Post images and GIF' : 'Post images'}
+                    removeLabelForIndex={(i) => (i < nImg ? 'Remove image' : 'Remove GIF')}
+                    onRemoveIndex={(i) => {
+                      if (i < nImg) {
+                        onRemoveImageIndex?.(i)
+                      } else {
+                        onRemoveGif?.()
+                      }
+                    }}
+                  />
+                ) : null}
+
+                {composerVideoSlot?.preview ? (
+                  <div className="relative mt-2 inline-flex max-w-[min(78vw,20rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none">
+                    <video
+                      src={composerVideoSlot.preview}
+                      poster={composerVideoSlot.posterUrl || undefined}
+                      className="block h-auto max-h-56 w-auto max-w-[min(78vw,20rem)] object-contain"
+                      controls
+                      playsInline
+                      preload="metadata"
+                      aria-label="Video preview"
+                    />
+                    <button
+                      type="button"
+                      onClick={onRemoveVideo}
+                      className="absolute right-1.5 top-1.5 grid h-8 w-8 place-items-center rounded-full border border-zinc-500/35 bg-black/40 text-base leading-none text-zinc-100 backdrop-blur-[2px] touch-manipulation hover:bg-black/60"
+                      aria-label="Remove video"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : null}
+              </>
+            ) : null}
           </div>
         ) : (
           /* ── 1:1 Live Preview Card ── */

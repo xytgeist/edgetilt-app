@@ -11120,24 +11120,10 @@ html.light [data-lounge-fullscreen-composer] [data-lounge-publish-submit-btn]:ac
   color: #ffffff !important;
 }
 
-/* Caption card holds the fill… textarea is transparent inside it */
-html.light [data-lounge-fullscreen-composer] [data-lounge-caption-card] {
+/* Textarea & Caret - normal blue cursor */
+html.light [data-lounge-fullscreen-composer] textarea {
   background-color: #f8fafc !important;
   border-color: #e2e8f0 !important;
-}
-html.light [data-lounge-fullscreen-composer] [data-lounge-caption-attach-dock] {
-  border-color: #e2e8f0 !important;
-}
-html.light [data-lounge-fullscreen-composer] [data-lounge-caption-attach-dock] button.text-cyan-300,
-html.light [data-lounge-fullscreen-composer] [data-lounge-caption-attach-dock] .text-cyan-300 {
-  color: #1d4ed8 !important;
-}
-html.light [data-lounge-fullscreen-composer] [data-lounge-caption-attach-dock] .bg-cyan-500\/15 {
-  background-color: rgba(37, 99, 235, 0.12) !important;
-}
-html.light [data-lounge-fullscreen-composer] textarea {
-  background-color: transparent !important;
-  border-color: transparent !important;
   color: #0f172a !important;
   caret-color: #2563eb !important;
 }
@@ -11196,16 +11182,6 @@ html.light [data-lounge-fullscreen-composer] footer svg rect {
   fill-opacity: 0.12 !important;
   fill: #2563eb !important;
   stroke: #2563eb !important;
-}
-
-/* Compact thumbs inside the Pro caption card (both modes) */
-[data-lounge-fullscreen-composer] [data-lounge-caption-attach-dock] img,
-[data-lounge-fullscreen-composer] [data-lounge-caption-attach-dock] video {
-  max-height: 5.5rem !important;
-}
-[data-lounge-fullscreen-composer][data-composer-compact="true"] [data-lounge-caption-attach-dock] img,
-[data-lounge-fullscreen-composer][data-composer-compact="true"] [data-lounge-caption-attach-dock] video {
-  max-height: 4.25rem !important;
 }
 
 html.light [data-lounge-preview-card] {

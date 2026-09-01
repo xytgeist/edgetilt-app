@@ -625,7 +625,7 @@ export default function LoungeFullScreenComposerModal({
                 />
               ) : null}
 
-              {mentionComposer?.isOpen ? (
+              {mentionComposer ? (
                 <LoungeMentionDropdown
                   suggestions={mentionComposer.suggestions}
                   activeIndex={mentionComposer.activeIndex}

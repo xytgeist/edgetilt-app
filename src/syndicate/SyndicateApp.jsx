@@ -325,7 +325,7 @@ export function SyndicateApp() {
             </div>
 
             {/* Live Syndicate Performance Ticker */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-3.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-3.5">
               <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur flex flex-col justify-between">
                 <div className="text-[10px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">Net Units</div>
                 <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-emerald-400">
@@ -387,15 +387,7 @@ export function SyndicateApp() {
                 <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-emerald-400">
                   {clvRate}%
                 </div>
-                <div className="text-[10px] sm:text-[11px] text-zinc-500">Closing line value</div>
-              </div>
-
-              <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur flex flex-col justify-between min-w-0 overflow-hidden">
-                <div className="text-[10px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">Benchmark Feed</div>
-                <div className="my-1.5 text-[11px] sm:text-sm lg:text-base font-mono font-extrabold text-amber-400 leading-tight break-words">
-                  Pinnacle / Circa
-                </div>
-                <div className="text-[10px] sm:text-[11px] text-zinc-500">5.5x sharp weight</div>
+                <div className="text-[10px] sm:text-[11px] text-zinc-500">Benchmark: Pinnacle</div>
               </div>
             </div>
 

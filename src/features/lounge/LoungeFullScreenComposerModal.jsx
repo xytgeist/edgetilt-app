@@ -354,7 +354,13 @@ export default function LoungeFullScreenComposerModal({
       onTouchCancel={onComposerTouchEnd}
     >
       {/* ── Top Bar ── */}
-      <header className="flex shrink-0 items-center justify-between border-b border-zinc-800/90 bg-zinc-900/95 px-3.5 py-3 backdrop-blur-md sm:px-6 sm:py-3.5">
+      <header
+        className="flex shrink-0 items-center justify-between border-b border-zinc-800/90 bg-zinc-900/95 px-3.5 pb-3 backdrop-blur-md sm:px-6 sm:pb-3.5"
+        style={{
+          // Inline … Tailwind arbitrary max(env, --edge-sat) has broken before (profile title bar).
+          paddingTop: 'calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 0.75rem)',
+        }}
+      >
         <div className="flex items-center gap-2.5">
           <button
             type="button"

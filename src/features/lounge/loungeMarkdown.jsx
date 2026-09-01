@@ -231,9 +231,9 @@ export function renderLoungeMarkdown(raw, captionOpts = {}) {
         <pre
           key={`lmd-codeblock-${elemKey++}`}
           data-lounge-code-block=""
-          className="my-2 overflow-x-auto rounded-xl border border-zinc-800 bg-zinc-950/90 p-3 font-mono text-[13px] leading-relaxed text-cyan-300"
+          className="my-2 max-w-full min-w-0 overflow-x-hidden whitespace-pre-wrap break-words rounded-xl border border-zinc-800 bg-zinc-950/90 p-3 font-mono text-[13px] leading-relaxed text-cyan-300 [overflow-wrap:anywhere]"
         >
-          <code>{codeLines.join('\n')}</code>
+          <code className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{codeLines.join('\n')}</code>
         </pre>
       )
       continue

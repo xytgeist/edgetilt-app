@@ -20,7 +20,8 @@
  *   node scripts/backtest-ufc-model.mjs --csv data/ufc/sample_200.csv --from 2024-01-01 --with-odds
  *   node scripts/backtest-ufc-model.mjs --probe-csv data/ufc/UFC_full_data_silver_v2.csv
  *   node scripts/backtest-ufc-model.mjs --with-odds --audit-odds
- *   node scripts/backtest-ufc-model.mjs --with-odds --audit-odds=30
+ *   node scripts/backtest-ufc-model.mjs --with-odds --quiet-odds          # v0.6 calibrated (default)
+ *   node scripts/backtest-ufc-model.mjs --with-odds --raw-prob              # v0.5 coefficient probs only
  *
  * Env:
  *   KAGGLE_API_TOKEN — kagglehub auth (or kaggle auth login / ~/.kaggle/kaggle.json)
@@ -31,7 +32,8 @@ import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { parseUfcCsv, probeCsvColumns, normalizeName } from './lib/ufcCsvParser.mjs'
 import { applyWalkForwardSnapshots } from './lib/ufcWalkForward.mjs'
-import { analyzeUfcMatchupFromSnapshots, pickScottSide } from './lib/ufcMatchupEngine.mjs'
+import { analyzeUfcMatchupFromSnapshots, analyzeUfcMatchupCalibrated, pickScottSide } from './lib/ufcMatchupEngine.mjs'
+import { fitProbCalibration, fightsBeforeDate } from './lib/ufcProbCalibration.mjs'
 import { attachHistoricalOdds } from './lib/ufcHistoricalOdds.mjs'
 import { attachCsvOdds } from './lib/ufcCsvOdds.mjs'
 import { collectOddsAuditRows, printOddsAudit } from './lib/ufcOddsAudit.mjs'
@@ -97,113 +99,175 @@ function favoriteSide(oddsA, oddsB) {
 }
 
 function runBacktest(fights, opts) {
-  let graded = 0
-  let wins = 0
-  let losses = 0
-  let skippedDebut = 0
-  let skippedNoPick = 0
-  let favoriteWins = 0
-  let favoriteGraded = 0
-  let brierSum = 0
-  let brierN = 0
-  let marketBrierSum = 0
-  let units = 0
-  let bets = 0
-  let positiveEdgeBets = 0
-  let positiveEdgeWins = 0
+  const useRawOnly = Boolean(opts.useRawProb)
+  const calibration = opts.calibration
+  const marketBlend = Number(opts.marketBlend ?? 0.25)
+  const minEdge = Number(opts.minEdge ?? 0.03)
 
-  /** @type {Array<object>} */
-  const misses = []
+  /** @param {'raw' | 'calibrated'} mode */
+  function makeStats(mode) {
+    return {
+      graded: 0,
+      wins: 0,
+      losses: 0,
+      skippedDebut: 0,
+      skippedNoPick: 0,
+      favoriteWins: 0,
+      favoriteGraded: 0,
+      brierSum: 0,
+      brierN: 0,
+      marketBrierSum: 0,
+      units: 0,
+      bets: 0,
+      positiveEdgeBets: 0,
+      positiveEdgeWins: 0,
+      statDogPicks: 0,
+      statDogWins: 0,
+      misses: [],
+      mode,
+    }
+  }
+
+  const primary = makeStats(useRawOnly ? 'raw' : 'calibrated')
+  const compareRaw = !useRawOnly ? makeStats('raw') : null
 
   for (const fight of fights) {
     if (fight.skippedForDebut) {
-      skippedDebut += 1
+      primary.skippedDebut += 1
+      if (compareRaw) compareRaw.skippedDebut += 1
       continue
     }
 
-    const matchup = analyzeUfcMatchupFromSnapshots(fight.modelA, fight.modelB, {
+    const matchupOpts = {
       isApexCage: fight.isApexCage,
       isFiveRounds: fight.isFiveRounds,
-    })
-
+    }
     const oddsA = fight.marketOdds?.oddsA
     const oddsB = fight.marketOdds?.oddsB
 
-    let pick = null
-    if (oddsA && oddsB) {
-      pick = pickScottSide(matchup, oddsA, oddsB)
-      const fav = favoriteSide(oddsA, oddsB)
+    const rawMatchup = analyzeUfcMatchupFromSnapshots(fight.modelA, fight.modelB, matchupOpts)
+    const calMatchup =
+      calibration &&
+      analyzeUfcMatchupCalibrated(fight.modelA, fight.modelB, {
+        ...matchupOpts,
+        oddsA,
+        oddsB,
+        marketBlend: oddsA && oddsB ? marketBlend : 0,
+      }, calibration)
+
+    /** @param {ReturnType<typeof analyzeUfcMatchupFromSnapshots>} matchup @param {ReturnType<typeof makeStats>} bucket */
+    function gradeFight(matchup, bucket) {
+      if (!matchup) return
+
+      let pick = null
+      if (oddsA && oddsB) {
+        pick = pickScottSide(matchup, oddsA, oddsB)
+        const fav = favoriteSide(oddsA, oddsB)
+        const actual = winnerSide(fight)
+        if (actual) {
+          bucket.favoriteGraded += 1
+          if (fav === actual) bucket.favoriteWins += 1
+        }
+      } else {
+        pick = matchup.projectedWinProbA >= matchup.projectedWinProbB
+          ? { side: 'A', edge: 0, prob: matchup.projectedWinProbA }
+          : { side: 'B', edge: 0, prob: matchup.projectedWinProbB }
+      }
+
+      if (!pick?.side) {
+        bucket.skippedNoPick += 1
+        return
+      }
+
       const actual = winnerSide(fight)
-      if (actual) {
-        favoriteGraded += 1
-        if (fav === actual) favoriteWins += 1
+      if (!actual) return
+
+      bucket.graded += 1
+      const won = pick.side === actual
+      if (won) bucket.wins += 1
+      else bucket.losses += 1
+
+      const probPicked = pick.side === 'A' ? matchup.projectedWinProbA : matchup.projectedWinProbB
+      bucket.brierSum += (probPicked - (won ? 1 : 0)) ** 2
+      bucket.brierN += 1
+
+      const statDog =
+        pick.side === 'A' ? matchup.flags?.statDogA : matchup.flags?.statDogB
+      if (statDog) {
+        bucket.statDogPicks += 1
+        if (won) bucket.statDogWins += 1
       }
+
+      if (oddsA && oddsB) {
+        const marketProb = pick.side === 'A' ? americanToImplied(oddsA) : americanToImplied(oddsB)
+        bucket.marketBrierSum += (marketProb - (won ? 1 : 0)) ** 2
+
+        if (pick.edge >= minEdge) {
+          bucket.positiveEdgeBets += 1
+          if (won) bucket.positiveEdgeWins += 1
+          const price = pick.side === 'A' ? oddsA : oddsB
+          bucket.units += calcNetUnits(price, won)
+          bucket.bets += 1
+        }
+      }
+
+      if (!won && opts.verboseMisses && bucket.misses.length < 15 && bucket === primary) {
+        bucket.misses.push({
+          date: fight.eventDate,
+          bout: `${fight.fighterA} vs ${fight.fighterB}`,
+          pick: pick.side === 'A' ? fight.fighterA : fight.fighterB,
+          winner: fight.winner,
+          modelProb: Math.round(probPicked * 1000) / 10,
+          edgePct: Math.round((pick.edge || 0) * 1000) / 10,
+          odds: pick.side === 'A' ? oddsA : oddsB,
+          statDog: Boolean(statDog),
+        })
+      }
+    }
+
+    if (useRawOnly) {
+      gradeFight(rawMatchup, primary)
     } else {
-      pick = matchup.projectedWinProbA >= matchup.projectedWinProbB
-        ? { side: 'A', edge: 0, prob: matchup.projectedWinProbA }
-        : { side: 'B', edge: 0, prob: matchup.projectedWinProbB }
+      gradeFight(calMatchup, primary)
+      if (compareRaw) gradeFight(rawMatchup, compareRaw)
     }
+  }
 
-    if (!pick?.side) {
-      skippedNoPick += 1
-      continue
-    }
-
-    const actual = winnerSide(fight)
-    if (!actual) continue
-
-    graded += 1
-    const won = pick.side === actual
-    if (won) wins += 1
-    else losses += 1
-
-    const probPicked = pick.side === 'A' ? matchup.projectedWinProbA : matchup.projectedWinProbB
-    brierSum += (probPicked - (won ? 1 : 0)) ** 2
-    brierN += 1
-
-    if (oddsA && oddsB) {
-      const marketProb = pick.side === 'A' ? americanToImplied(oddsA) : americanToImplied(oddsB)
-      marketBrierSum += (marketProb - (won ? 1 : 0)) ** 2
-
-      if (pick.edge > 0) {
-        positiveEdgeBets += 1
-        if (won) positiveEdgeWins += 1
-        const price = pick.side === 'A' ? oddsA : oddsB
-        units += calcNetUnits(price, won)
-        bets += 1
-      }
-    }
-
-    if (!won && opts.verboseMisses && misses.length < 15) {
-      misses.push({
-        date: fight.eventDate,
-        bout: `${fight.fighterA} vs ${fight.fighterB}`,
-        pick: pick.side === 'A' ? fight.fighterA : fight.fighterB,
-        winner: fight.winner,
-        modelProb: Math.round(probPicked * 1000) / 10,
-        edgePct: Math.round((pick.edge || 0) * 1000) / 10,
-        odds: pick.side === 'A' ? oddsA : oddsB,
-      })
+  function finalize(bucket) {
+    return {
+      ...bucket,
+      hitRate: bucket.graded ? bucket.wins / bucket.graded : 0,
+      brier: bucket.brierN ? bucket.brierSum / bucket.brierN : null,
+      marketBrier: bucket.brierN && bucket.favoriteGraded ? bucket.marketBrierSum / bucket.brierN : null,
+      roi: bucket.bets ? bucket.units / bucket.bets : 0,
+      positiveEdgeHitRate: bucket.positiveEdgeBets ? bucket.positiveEdgeWins / bucket.positiveEdgeBets : 0,
+      favoriteHitRate: bucket.favoriteGraded ? bucket.favoriteWins / bucket.favoriteGraded : 0,
+      statDogHitRate: bucket.statDogPicks ? bucket.statDogWins / bucket.statDogPicks : 0,
     }
   }
 
   return {
-    graded,
-    wins,
-    losses,
-    hitRate: graded ? wins / graded : 0,
-    skippedDebut,
-    skippedNoPick,
-    favoriteHitRate: favoriteGraded ? favoriteWins / favoriteGraded : 0,
-    favoriteGraded,
-    brier: brierN ? brierSum / brierN : null,
-    marketBrier: brierN && favoriteGraded ? marketBrierSum / brierN : null,
-    units,
-    bets,
-    roi: bets ? units / bets : 0,
-    positiveEdgeBets,
-    positiveEdgeHitRate: positiveEdgeBets ? positiveEdgeWins / positiveEdgeBets : 0,
-    misses,
+    primary: finalize(primary),
+    raw: compareRaw ? finalize(compareRaw) : null,
+    useRawOnly,
+  }
+}
+
+function printBacktestBlock(label, results) {
+  console.log(`--- ${label} ---`)
+  console.log(`Graded: ${results.graded} (skipped debut/low history: ${results.skippedDebut})`)
+  console.log(`Record: ${results.wins}-${results.losses} (${(results.hitRate * 100).toFixed(1)}%)`)
+  if (results.brier != null) {
+    console.log(`Brier score (model): ${results.brier.toFixed(4)} (lower is better)`)
+  }
+  if (results.marketBrier != null) {
+    console.log(`Brier score (market on picked side): ${results.marketBrier.toFixed(4)}`)
+  }
+  if (results.positiveEdgeBets) {
+    console.log(`+EV bets: ${results.positiveEdgeBets} | hit ${(results.positiveEdgeHitRate * 100).toFixed(1)}% | ROI ${(results.roi * 100).toFixed(1)}% (${results.units >= 0 ? '+' : ''}${results.units.toFixed(2)}u)`)
+  }
+  if (results.statDogPicks) {
+    console.log(`Stat-dog picks: ${results.statDogPicks} (${(results.statDogHitRate * 100).toFixed(1)}% hit)`)
   }
 }
 
@@ -248,6 +312,10 @@ async function main() {
   const to = argValue('--to') || '2025-12-31'
   const minPrior = Number(argValue('--min-prior') || 1)
   const useEmbedded = hasFlag('--use-embedded-stats')
+  const useRawProb = hasFlag('--raw-prob')
+  const calibrateBefore = argValue('--calibrate-before') || from
+  const marketBlend = Number(argValue('--market-blend') ?? 0.25)
+  const minEdge = Number(argValue('--min-edge') ?? 0.03)
   const auditSample = auditOddsSampleSize()
   const withOddsApi = hasFlag('--with-odds') || auditSample > 0
   const skipCsvOdds = hasFlag('--no-csv-odds')
@@ -259,6 +327,9 @@ async function main() {
   // Walk-forward must see full chronological history before slicing the test window.
   applyWalkForwardSnapshots(allFights, { minPrior, useEmbeddedStats: useEmbedded })
   const inRange = filterByDate(allFights, from, to)
+
+  const trainFights = fightsBeforeDate(allFights, calibrateBefore)
+  const calibration = fitProbCalibration(trainFights)
 
   let csvOddsSummary = null
   if (!skipCsvOdds) {
@@ -275,7 +346,14 @@ async function main() {
     oddsApiSummary = await attachHistoricalOdds(inRange, apiKey, { verbose: !hasFlag('--quiet-odds') })
   }
 
-  const results = runBacktest(inRange, { verboseMisses })
+  const backtestOut = runBacktest(inRange, {
+    verboseMisses,
+    useRawProb,
+    calibration: useRawProb ? null : calibration,
+    marketBlend,
+    minEdge,
+  })
+  const results = backtestOut.primary
 
   if (auditSample > 0) {
     const auditRows = collectOddsAuditRows(inRange)
@@ -289,6 +367,12 @@ async function main() {
   console.log(`Fights in window: ${inRange.length}`)
   console.log(`Stats mode: ${useEmbedded ? 'embedded pre-fight columns when present' : 'walk-forward only'}`)
   console.log(`Min prior UFC fights per fighter: ${minPrior}`)
+  if (!useRawProb) {
+    console.log(`Prob layer: v0.6 calibrated (train before ${calibrateBefore}, n=${calibration.graded})`)
+    console.log(`Market blend when odds present: ${(marketBlend * 100).toFixed(0)}% | +EV min edge ${(minEdge * 100).toFixed(0)}% (devigged market)`)
+  } else {
+    console.log('Prob layer: v0.5 raw coefficients (--raw-prob)')
+  }
   if (csvOddsSummary) {
     console.log(
       `CSV odds (f_1_odds/f_2_odds): ${csvOddsSummary.attached}/${inRange.length} fights (${(csvOddsSummary.coverage * 100).toFixed(1)}% in file: ${csvOddsInFile ?? 0})`,
@@ -296,26 +380,21 @@ async function main() {
   }
   console.log('')
 
-  console.log('--- Model (Scott ML pick) ---')
-  console.log(`Graded: ${results.graded} (skipped debut/low history: ${results.skippedDebut})`)
-  console.log(`Record: ${results.wins}-${results.losses} (${(results.hitRate * 100).toFixed(1)}%)`)
-  if (results.brier != null) {
-    console.log(`Brier score (model): ${results.brier.toFixed(4)} (lower is better)`)
-  }
-  if (results.marketBrier != null) {
-    console.log(`Brier score (market on picked side): ${results.marketBrier.toFixed(4)}`)
+  printBacktestBlock(useRawProb ? 'Model (Scott ML pick, raw v0.5)' : 'Model (Scott ML pick, calibrated v0.6)', results)
+
+  if (backtestOut.raw) {
+    console.log('')
+    printBacktestBlock('Comparison (raw v0.5 coefficients)', backtestOut.raw)
   }
 
   console.log('')
   console.log('--- Market baseline ---')
   console.log(`Favorite ML hit rate: ${(results.favoriteHitRate * 100).toFixed(1)}% (${results.favoriteGraded} fights with odds)`)
 
-  if (csvOddsSummary?.attached) {
+  if (csvOddsSummary?.attached && results.positiveEdgeBets) {
     console.log('')
     console.log('--- +EV subset (Scott: model edge > 0 vs CSV close) ---')
-    console.log(`Bets: ${results.positiveEdgeBets}`)
-    console.log(`Hit rate: ${(results.positiveEdgeHitRate * 100).toFixed(1)}%`)
-    console.log(`Flat 1u ROI: ${(results.roi * 100).toFixed(1)}% (${results.units >= 0 ? '+' : ''}${results.units.toFixed(2)}u)`)
+    console.log(`See calibrated block above for bet count / ROI.`)
   }
 
   if (withOddsApi && oddsApiSummary) {
@@ -323,15 +402,8 @@ async function main() {
     console.log('--- Odds API coverage ---')
     console.log(`Matched closing lines: ${oddsApiSummary.attached}`)
     console.log(`Missed: ${oddsApiSummary.missed}`)
-    if (oddsApiSummary.attached && !csvOddsSummary?.attached) {
-      console.log('')
-      console.log('--- +EV subset (Scott: model edge > 0 vs Odds API close) ---')
-      console.log(`Bets: ${results.positiveEdgeBets}`)
-      console.log(`Hit rate: ${(results.positiveEdgeHitRate * 100).toFixed(1)}%`)
-      console.log(`Flat 1u ROI: ${(results.roi * 100).toFixed(1)}% (${results.units >= 0 ? '+' : ''}${results.units.toFixed(2)}u)`)
-      console.log(
-        'Note: with model probs summing ~100%, vig ensures one side often has +edge — high bet count is structural. Use --audit-odds to spot-check.',
-      )
+    if (oddsApiSummary.attached && !csvOddsSummary?.attached && results.positiveEdgeBets) {
+      console.log('Use --audit-odds to spot-check line matches.')
     }
   } else if (!csvOddsSummary?.attached && !withOddsApi) {
     console.log('')
@@ -343,7 +415,7 @@ async function main() {
     console.log('--- Sample misses ---')
     for (const m of results.misses) {
       console.log(`${m.date} · ${m.bout}`)
-      console.log(`  Picked ${m.pick} (${m.modelProb}% model, +${m.edgePct}% edge @ ${m.odds ?? 'n/a'}) → ${m.winner} won`)
+      console.log(`  Picked ${m.pick} (${m.modelProb}% model, +${m.edgePct}% edge @ ${m.odds ?? 'n/a'}${m.statDog ? ', stat-dog' : ''}) → ${m.winner} won`)
     }
   }
 

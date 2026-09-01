@@ -2,7 +2,8 @@
  * Port of supabase/functions/_shared/loungeBotUfcMetrics.ts analyzeUfcMatchup
  * for Node backtests (keep in sync when tuning coefficients).
  */
-import { americanToImplied, impliedToAmerican } from './ufcOddsMath.mjs'
+import { americanToImplied, impliedToAmerican, devigAmericanTwoWay } from './ufcOddsMath.mjs'
+import { computeSkillScore, computeMatchupSkillGap } from './ufcSkillRanker.mjs'
 
 export const DIVISION_FINISH_BASELINES = {
   Flyweight: { avgFinishRate: 0.35, avgKoRate: 0.16, avgSubRate: 0.19, avgDecisionRate: 0.65 },
@@ -75,11 +76,75 @@ export function analyzeUfcMatchupFromSnapshots(fA, fB, opts = {}) {
   }
 }
 
-/** Scott desk: pick side with higher model edge vs market ML. */
-export function pickScottSide(matchup, oddsA, oddsB) {
+/**
+ * Stat-favored dog: market underdog with skill + striking edge on our side.
+ * @param {import('./ufcCsvParser.mjs').UfcFighterSnapshot} fPick
+ * @param {import('./ufcCsvParser.mjs').UfcFighterSnapshot} fOpp
+ * @param {number} oddsPick American ML on picked fighter
+ * @param {number} skillGapPick skill score pick minus opp
+ */
+export function detectStatDog(fPick, fOpp, oddsPick, skillGapPick) {
+  const imp = americanToImplied(oddsPick)
+  const netStrPick = fPick.slpm - fPick.sapm
+  const netStrOpp = fOpp.slpm - fOpp.sapm
+  return imp < 0.5 && skillGapPick > 0.25 && netStrPick - netStrOpp > 0.5
+}
+
+/**
+ * v0.6: ranker skill gap → calibrated win prob (optional market shrink).
+ * @param {{ lookupProbA: (gap: number) => number }} calibration
+ */
+export function analyzeUfcMatchupCalibrated(fA, fB, opts = {}, calibration) {
+  const raw = analyzeUfcMatchupFromSnapshots(fA, fB, opts)
+  const scoreA = computeSkillScore(fA)
+  const scoreB = computeSkillScore(fB)
+  const skillGap = computeMatchupSkillGap(fA, fB)
+
+  let probA = calibration?.lookupProbA ? calibration.lookupProbA(skillGap) : 0.5
+  const marketBlend = Number(opts.marketBlend ?? 0)
+  const oddsA = opts.oddsA
+  const oddsB = opts.oddsB
+
+  if (marketBlend > 0 && oddsA && oddsB) {
+    const impA = americanToImplied(oddsA)
+    probA = (1 - marketBlend) * probA + marketBlend * impA
+  }
+
+  probA = Math.max(0.08, Math.min(0.92, probA))
+  probA = Math.round(probA * 1000) / 1000
+  const probB = Math.round((1 - probA) * 1000) / 1000
+
+  const statDogA =
+    oddsA && oddsB
+      ? detectStatDog(fA, fB, oddsA, skillGap)
+      : skillGap > 0.25 && fA.slpm - fA.sapm > fB.slpm - fB.sapm + 0.5
+  const statDogB =
+    oddsA && oddsB
+      ? detectStatDog(fB, fA, oddsB, -skillGap)
+      : skillGap < -0.25 && fB.slpm - fB.sapm > fA.slpm - fA.sapm + 0.5
+
+  return {
+    ...raw,
+    skillScoreA: Math.round(scoreA * 1000) / 1000,
+    skillScoreB: Math.round(scoreB * 1000) / 1000,
+    skillGap: Math.round(skillGap * 1000) / 1000,
+    rawWinProbA: raw.projectedWinProbA,
+    rawWinProbB: raw.projectedWinProbB,
+    projectedWinProbA: probA,
+    projectedWinProbB: probB,
+    modelFairOddsA: impliedToAmerican(probA),
+    modelFairOddsB: impliedToAmerican(probB),
+    flags: { statDogA, statDogB },
+  }
+}
+
+/** Scott desk: pick side with higher model edge vs devigged market ML. */
+export function pickScottSide(matchup, oddsA, oddsB, opts = {}) {
   if (!matchup) return null
-  const edgeA = matchup.projectedWinProbA - americanToImplied(oddsA)
-  const edgeB = matchup.projectedWinProbB - americanToImplied(oddsB)
+  const devig = opts.devig !== false
+  const market = devig ? devigAmericanTwoWay(oddsA, oddsB) : { impA: americanToImplied(oddsA), impB: americanToImplied(oddsB) }
+  const edgeA = matchup.projectedWinProbA - market.impA
+  const edgeB = matchup.projectedWinProbB - market.impB
   if (edgeB > edgeA) {
     return { side: 'B', edge: edgeB, prob: matchup.projectedWinProbB }
   }

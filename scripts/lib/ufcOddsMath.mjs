@@ -22,6 +22,19 @@ export function calcNetUnits(price, won) {
   return Math.round((100 / Math.abs(p)) * 100) / 100
 }
 
+/** Remove two-way book vig so model fair prob compares to normalized market. */
+export function devigTwoWay(impA, impB) {
+  const a = Number(impA)
+  const b = Number(impB)
+  const sum = a + b
+  if (!Number.isFinite(sum) || sum <= 0) return { impA: 0.5, impB: 0.5 }
+  return { impA: a / sum, impB: b / sum }
+}
+
+export function devigAmericanTwoWay(oddsA, oddsB) {
+  return devigTwoWay(americanToImplied(oddsA), americanToImplied(oddsB))
+}
+
 /** Parse American / decimal ML prices from CSV (Kaggle scarekrow f_*_odds). */
 export function parseMarketOdds(raw) {
   const text = String(raw ?? '').trim()

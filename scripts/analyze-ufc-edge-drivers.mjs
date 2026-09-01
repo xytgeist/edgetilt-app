@@ -4,7 +4,7 @@
  *
  * Usage:
  *   npm run backtest:ufc:drivers
- *   npm run backtest:ufc:drivers -- --from 2024-01-01 --to 2025-12-31
+ *   npm run backtest:ufc:drivers -- --raw-prob
  *
  * Requires THE_ODDS_API_KEY in .env.supabase.test (or warm data/ufc/odds-cache/).
  */
@@ -12,7 +12,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { parseUfcCsv, normalizeName } from './lib/ufcCsvParser.mjs'
 import { applyWalkForwardSnapshots } from './lib/ufcWalkForward.mjs'
-import { analyzeUfcMatchupFromSnapshots, pickScottSide } from './lib/ufcMatchupEngine.mjs'
+import { analyzeUfcMatchupFromSnapshots, analyzeUfcMatchupCalibrated, pickScottSide } from './lib/ufcMatchupEngine.mjs'
+import { fitProbCalibration, fightsBeforeDate } from './lib/ufcProbCalibration.mjs'
 import { attachCsvOdds } from './lib/ufcCsvOdds.mjs'
 import { attachHistoricalOdds } from './lib/ufcHistoricalOdds.mjs'
 import { americanToImplied, calcNetUnits } from './lib/ufcOddsMath.mjs'
@@ -89,8 +90,16 @@ function summarizeBucket(label, rows) {
   }
 }
 
+function hasFlag(flag) {
+  return process.argv.includes(flag)
+}
+
 /** @param {import('./lib/ufcCsvParser.mjs').UfcFightRow[]} fights */
-export function collectEdgeDriverRows(fights) {
+export function collectEdgeDriverRows(fights, opts = {}) {
+  const useRaw = Boolean(opts.useRawProb)
+  const calibration = opts.calibration
+  const marketBlend = Number(opts.marketBlend ?? 0.25)
+  const minEdge = Number(opts.minEdge ?? 0.03)
   /** @type {object[]} */
   const rows = []
 
@@ -102,10 +111,16 @@ export function collectEdgeDriverRows(fights) {
     const actual = winnerSide(fight)
     if (!actual) continue
 
-    const matchup = analyzeUfcMatchupFromSnapshots(fight.modelA, fight.modelB, {
+    const matchupOpts = {
       isApexCage: fight.isApexCage,
       isFiveRounds: fight.isFiveRounds,
-    })
+      oddsA,
+      oddsB,
+      marketBlend: oddsA && oddsB ? marketBlend : 0,
+    }
+    const matchup = useRaw
+      ? analyzeUfcMatchupFromSnapshots(fight.modelA, fight.modelB, matchupOpts)
+      : analyzeUfcMatchupCalibrated(fight.modelA, fight.modelB, matchupOpts, calibration)
     const pick = pickScottSide(matchup, oddsA, oddsB)
     if (!pick?.side || pick.edge <= 0) continue
 
@@ -140,6 +155,7 @@ export function collectEdgeDriverRows(fights) {
       impB,
       won: pick.side === actual,
       isDog: pickImp < 0.5,
+      statDog: pick.side === 'A' ? matchup.flags?.statDogA : matchup.flags?.statDogB,
       strikeDiffPick,
       tdPick,
       reachPick,
@@ -153,7 +169,7 @@ export function collectEdgeDriverRows(fights) {
 
 export function printEdgeDriverReport(rows, opts = {}) {
   console.log('')
-  console.log('=== UFC edge driver report ===')
+  console.log(`=== UFC edge driver report (${opts.useRawProb ? 'raw v0.5' : 'calibrated v0.6'}) ===`)
   console.log(`+EV picks analyzed: ${rows.length}`)
   console.log('')
   console.log('=== Edge bucket: hit rate vs MARKET implied (direction, not calibration) ===')
@@ -236,9 +252,8 @@ export function printEdgeDriverReport(rows, opts = {}) {
       `Huge-edge (>15%) subset beats market implied by ~${((hugeHit - hugeImp) * 100).toFixed(1)}pp on average.`,
     )
     console.log(
-      'Inflated model edge often means walk-forward stats love a dog the market is sleeping on ... not literal +40% EV.',
+      'Calibrated probs shrink cartoon edges while preserving directional stat-dog signal.',
     )
-    console.log('Next: calibrate probability magnitude, preserve directional flags (striking/TD/finish on dogs).')
   }
 
   console.log('')
@@ -256,10 +271,14 @@ async function main() {
   const from = argValue('--from') || '2024-01-01'
   const to = argValue('--to') || '2025-12-31'
   const exampleBout = argValue('--example') || 'Clay Guida'
+  const useRawProb = hasFlag('--raw-prob')
+  const marketBlend = Number(argValue('--market-blend') ?? 0.25)
+  const minEdge = Number(argValue('--min-edge') ?? 0.03)
 
-  const raw = fs.readFileSync(csvPath, 'utf8')
-  const { fights } = parseUfcCsv(raw)
+  const rawCsv = fs.readFileSync(csvPath, 'utf8')
+  const { fights } = parseUfcCsv(rawCsv)
   applyWalkForwardSnapshots(fights, { minPrior: 1 })
+  const calibration = fitProbCalibration(fightsBeforeDate(fights, from))
   const inRange = fights.filter((f) => f.eventDate >= from && f.eventDate <= to)
 
   attachCsvOdds(inRange)
@@ -272,8 +291,8 @@ async function main() {
   const summary = await attachHistoricalOdds(inRange, key, { verbose: false })
   console.log(`Odds attached: ${summary.attached}/${inRange.length} fights (${from} → ${to})`)
 
-  const rows = collectEdgeDriverRows(inRange)
-  printEdgeDriverReport(rows, { exampleBout })
+  const rows = collectEdgeDriverRows(inRange, { useRawProb, calibration, marketBlend, minEdge })
+  printEdgeDriverReport(rows, { exampleBout, useRawProb })
 }
 
 main().catch((e) => {

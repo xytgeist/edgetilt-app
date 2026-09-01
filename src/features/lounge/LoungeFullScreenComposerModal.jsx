@@ -563,54 +563,57 @@ export default function LoungeFullScreenComposerModal({
               ) : null}
             </div>
 
-            {/* ── Attached Market Charts Strip ── */}
-            {composerMarketSymbols.length > 0 ? (
-              <LoungeComposerMarketChartStrip
-                symbols={composerMarketSymbols}
-                onChange={onMarketSymbolsChange}
-                className="mt-2"
-              />
-            ) : null}
+            {/* Keyboard-up: drop attachments from layout so they cannot fight the keys.
+                Still attached… Preview + keyboard-down write chrome show them. */}
+            {!chromeCompact ? (
+              <>
+                {composerMarketSymbols.length > 0 ? (
+                  <LoungeComposerMarketChartStrip
+                    symbols={composerMarketSymbols}
+                    onChange={onMarketSymbolsChange}
+                    className="mt-2"
+                  />
+                ) : null}
 
-            {/* ── Attached Images / GIFs Carousel ── */}
-            {carouselUrls.length > 0 ? (
-              <LoungeImageCarousel
-                urls={carouselUrls}
-                variant="composer"
-                firstMarginTopClass="mt-2"
-                regionAriaLabel={gifUrl ? 'Post images and GIF' : 'Post images'}
-                removeLabelForIndex={(i) => (i < nImg ? 'Remove image' : 'Remove GIF')}
-                onRemoveIndex={(i) => {
-                  if (i < nImg) {
-                    onRemoveImageIndex?.(i)
-                  } else {
-                    onRemoveGif?.()
-                  }
-                }}
-              />
-            ) : null}
+                {carouselUrls.length > 0 ? (
+                  <LoungeImageCarousel
+                    urls={carouselUrls}
+                    variant="composer"
+                    firstMarginTopClass="mt-2"
+                    regionAriaLabel={gifUrl ? 'Post images and GIF' : 'Post images'}
+                    removeLabelForIndex={(i) => (i < nImg ? 'Remove image' : 'Remove GIF')}
+                    onRemoveIndex={(i) => {
+                      if (i < nImg) {
+                        onRemoveImageIndex?.(i)
+                      } else {
+                        onRemoveGif?.()
+                      }
+                    }}
+                  />
+                ) : null}
 
-            {/* ── Attached Video ── */}
-            {composerVideoSlot?.preview ? (
-              <div className="relative mt-2 inline-flex max-w-[min(78vw,20rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none">
-                <video
-                  src={composerVideoSlot.preview}
-                  poster={composerVideoSlot.posterUrl || undefined}
-                  className="block h-auto max-h-56 w-auto max-w-[min(78vw,20rem)] object-contain"
-                  controls
-                  playsInline
-                  preload="metadata"
-                  aria-label="Video preview"
-                />
-                <button
-                  type="button"
-                  onClick={onRemoveVideo}
-                  className="absolute right-1.5 top-1.5 grid h-8 w-8 place-items-center rounded-full border border-zinc-500/35 bg-black/40 text-base leading-none text-zinc-100 backdrop-blur-[2px] touch-manipulation hover:bg-black/60"
-                  aria-label="Remove video"
-                >
-                  ×
-                </button>
-              </div>
+                {composerVideoSlot?.preview ? (
+                  <div className="relative mt-2 inline-flex max-w-[min(78vw,20rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none">
+                    <video
+                      src={composerVideoSlot.preview}
+                      poster={composerVideoSlot.posterUrl || undefined}
+                      className="block h-auto max-h-56 w-auto max-w-[min(78vw,20rem)] object-contain"
+                      controls
+                      playsInline
+                      preload="metadata"
+                      aria-label="Video preview"
+                    />
+                    <button
+                      type="button"
+                      onClick={onRemoveVideo}
+                      className="absolute right-1.5 top-1.5 grid h-8 w-8 place-items-center rounded-full border border-zinc-500/35 bg-black/40 text-base leading-none text-zinc-100 backdrop-blur-[2px] touch-manipulation hover:bg-black/60"
+                      aria-label="Remove video"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : null}
+              </>
             ) : null}
           </div>
         ) : (

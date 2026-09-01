@@ -22,6 +22,7 @@ import { LOUNGE_COMMENT_BUBBLE_D, LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS } from './l
 import { LOUNGE_REPOST_ARROWS_D } from './loungeRepostGlyph.js'
 import {
   useLoungeKeyboardOverlapPx,
+  useLockedLayoutKeyboardOverlapPx,
   useLoungeIosSafeBottomPx,
   loungeComposerFooterPaddingBottom,
   LOUNGE_IOS,
@@ -165,11 +166,15 @@ export default function LoungeFullScreenComposerModal({
     smooth: LOUNGE_IOS,
     smoothMs: LOUNGE_IOS_KEYBOARD_SMOOTH_MS,
   })
+  const { overlapPx: lockedKbPx } = useLockedLayoutKeyboardOverlapPx(open)
   const kbFooterLiftPx = Math.max(kbOverlapPx, kbOverlapTargetPx)
   const keyboardUp = kbFooterLiftPx > iosSafeBottomPx + 0.5
-  // IPA: `100dvh` shrinks with the keys so visualViewport overlap stays ~0.
-  // writeFocused is the keyboard-up proxy so thumbs leave the layout while typing.
-  const chromeCompact = activeTab === 'write' && (keyboardUp || (LOUNGE_IOS && writeFocused))
+  // IPA: `100dvh` shrinks with the keys so the simple overlap stays ~0.
+  // Lock the pre-keyboard layout height so we still know when the keys are up.
+  // Do not use writeFocused here… swiping the keyboard down leaves the caption
+  // focused, which would keep thumbs hidden.
+  const keyboardVisuallyUp = LOUNGE_IOS ? lockedKbPx > 80 : keyboardUp
+  const chromeCompact = activeTab === 'write' && keyboardVisuallyUp
   const footerPadBottom = keyboardUp
     ? `${Math.round(kbFooterLiftPx + 2)}px`
     : loungeComposerFooterPaddingBottom(0, Math.max(8, iosSafeBottomPx))

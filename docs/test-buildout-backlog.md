@@ -2790,6 +2790,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-01:** Pro composer hides write-field thumbs only while the keyboard is visually up (`useLockedLayoutKeyboardOverlapPx`). Swiping the keys down brings the carousel back even if the caption stays focused; tapping the caption hides them again.
 - **2026-08-31:** Pro composer pins `window` / visualViewport to 0 while the caption is focused (`pinComposerViewport`). iOS was scrolling the whole overlay to keep the caret on screen (header/tribes/footer gone until a pull-down). `scrollToWriteChrome` is gone.
 - **2026-08-31:** Reverted Pro composer in-caption thumbs. Same keyboard/picker clash, and the older below-caption carousel looked better. Hide-on-keyboard + reveal-after-pick is back (`eeb5ce1a`).
 - **2026-08-31:** Pro composer no longer blurs the caption on image/video pointer-down. That killed the iOS file-picker gesture (footer jumped behind the keyboard, Photos never opened). Carousel still reveals after files land (`writeAttachmentEpoch`).

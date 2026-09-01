@@ -249,6 +249,37 @@ export default function LoungeFullScreenComposerModal({
     setWriteFocused(false)
   }, [])
 
+  const revealWriteAttachments = useCallback(() => {
+    setWriteFocused(false)
+    try {
+      textareaRef.current?.blur()
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  // After a picker, the write field often stays focused (toolbar preventFocusSteal),
+  // so chromeCompact never drops and the carousel stays gone. Treat a new
+  // attachment as keyboard-down so the user can see what they just added.
+  const writeAttachmentEpoch = [
+    composerImageItems.length,
+    String(composerMediaUrl || '').trim() ? 1 : 0,
+    composerVideoSlot?.preview ? 1 : 0,
+    composerMarketSymbols.length,
+  ].join(':')
+  const skipAttachRevealRef = useRef(true)
+  useEffect(() => {
+    if (!open) {
+      skipAttachRevealRef.current = true
+      return
+    }
+    if (skipAttachRevealRef.current) {
+      skipAttachRevealRef.current = false
+      return
+    }
+    revealWriteAttachments()
+  }, [open, writeAttachmentEpoch, revealWriteAttachments])
+
   const onComposerTouchStart = useCallback((e) => {
     if (!LOUNGE_IOS || !writeFocused) return
     swipeStartYRef.current = e.touches?.[0]?.clientY ?? null
@@ -563,8 +594,8 @@ export default function LoungeFullScreenComposerModal({
               ) : null}
             </div>
 
-            {/* Keyboard-up: drop attachments from layout so they cannot fight the keys.
-                Still attached… Preview + keyboard-down write chrome show them. */}
+            {/* Keyboard-up / write-focused: drop attachments from layout.
+                Keyboard-down (incl. right after a pick) shows the carousel again. */}
             {!chromeCompact ? (
               <>
                 {composerMarketSymbols.length > 0 ? (
@@ -763,10 +794,22 @@ export default function LoungeFullScreenComposerModal({
               className="!gap-3 sm:!gap-4"
               imageInputId={imageInputId}
               videoInputId={videoInputId}
-              onImagePointerDown={onImagePointerDown}
-              onVideoPointerDown={onVideoPointerDown}
-              onOpenGifPicker={onOpenGifPicker}
-              onOpenMarketPicker={onOpenMarketPicker}
+              onImagePointerDown={() => {
+                revealWriteAttachments()
+                onImagePointerDown?.()
+              }}
+              onVideoPointerDown={() => {
+                revealWriteAttachments()
+                onVideoPointerDown?.()
+              }}
+              onOpenGifPicker={() => {
+                revealWriteAttachments()
+                onOpenGifPicker?.()
+              }}
+              onOpenMarketPicker={() => {
+                revealWriteAttachments()
+                onOpenMarketPicker?.()
+              }}
             />
 
             <div className="text-xs sm:text-sm font-semibold text-zinc-400">

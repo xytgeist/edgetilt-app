@@ -986,7 +986,7 @@ export default function LoungeFullScreenComposerModal({
             </div>
             <h3 className="mt-3 text-base font-bold text-zinc-100">Three tribes max</h3>
             <p className="mt-1.5 text-xs text-zinc-400">
-              Three tribes max. Deselect a tribe to select this one.
+              Deselect a tribe to select this one.
             </p>
             <button
               type="button"

@@ -172,6 +172,11 @@ Deno.serve(async (req) => {
         publishAndRecordNflSlateCard,
       } = await import('../_shared/loungeBotPredictivePick.ts')
       const { fetchSportOdds } = await import('../_shared/loungeBotOddsRun.ts')
+      const {
+        filterOddsEventsForNextFootballSlate,
+        FOOTBALL_SLATE_CLUSTER_DAYS,
+        FOOTBALL_SLATE_MAX_LOOKAHEAD_DAYS,
+      } = await import('../_shared/loungeBotOddsCaption.ts')
 
       let sportKey = String(body?.sportKey || 'americanfootball_nfl').trim()
       let oddsData: any
@@ -188,7 +193,8 @@ Deno.serve(async (req) => {
         return adminOpsJson(500, { ok: false, error: `Failed to fetch odds for ${sportKey}: ${e}` })
       }
 
-      const events = oddsData?.events || []
+      const rawEvents = oddsData?.events || []
+      const events = filterOddsEventsForNextFootballSlate(rawEvents)
       const { loadPersonaWeights } = await import('../_shared/loungeBotPersonaAdaptive.ts')
       const { loadDbTeamMetricsMap } = await import('../_shared/loungeBotTeamMetrics.ts')
       const { loadDbCfbPowerRatingsMap } = await import('../_shared/loungeBotCfbPowerRatings.ts')
@@ -207,8 +213,11 @@ Deno.serve(async (req) => {
       if (!card) {
         return adminOpsJson(200, {
           ok: false,
-          message: `No active games with spread markets found for ${sportKey}.`,
-          totalEvents: events.length,
+          message: `No upcoming games with spread markets in the next ${FOOTBALL_SLATE_MAX_LOOKAHEAD_DAYS} days for ${sportKey}.`,
+          totalEventsRaw: rawEvents.length,
+          totalEventsInWindow: events.length,
+          clusterDays: FOOTBALL_SLATE_CLUSTER_DAYS,
+          maxLookaheadDays: FOOTBALL_SLATE_MAX_LOOKAHEAD_DAYS,
         })
       }
 
@@ -220,6 +229,10 @@ Deno.serve(async (req) => {
           hammersCount: card.hammers.length,
           consensusCount: card.consensus.length,
           splitsCount: card.splits.length,
+          totalEventsRaw: rawEvents.length,
+          totalEventsInWindow: events.length,
+          clusterDays: FOOTBALL_SLATE_CLUSTER_DAYS,
+          maxLookaheadDays: FOOTBALL_SLATE_MAX_LOOKAHEAD_DAYS,
           card,
         })
       }
@@ -237,6 +250,8 @@ Deno.serve(async (req) => {
         hammersCount: card.hammers.length,
         consensusCount: card.consensus.length,
         splitsCount: card.splits.length,
+        totalEventsRaw: rawEvents.length,
+        totalEventsInWindow: events.length,
         ...result,
       })
     }
@@ -244,16 +259,21 @@ Deno.serve(async (req) => {
     if (action === 'nfl_wong_teaser') {
       const { fetchSportOdds } = await import('../_shared/loungeBotOddsRun.ts')
       const { buildWongTeaserPair, publishAndRecordWongTeaser } = await import('../_shared/loungeBotWongTeaser.ts')
+      const {
+        filterOddsEventsForNextFootballSlate,
+      } = await import('../_shared/loungeBotOddsCaption.ts')
 
       const oddsData = await fetchSportOdds('americanfootball_nfl', ['us', 'us2'], ['spreads', 'totals'])
-      const pair = buildWongTeaserPair(oddsData.events)
+      const events = filterOddsEventsForNextFootballSlate(oddsData.events || [])
+      const pair = buildWongTeaserPair(events)
 
       if (!pair) {
         return adminOpsJson(200, {
           ok: false,
           action: 'nfl_wong_teaser',
           message: 'Fewer than 2 qualifying NFL Wong teaser legs available on the active board.',
-          totalEvents: oddsData.events.length,
+          totalEventsRaw: (oddsData.events || []).length,
+          totalEventsInWindow: events.length,
         })
       }
 
@@ -269,7 +289,7 @@ Deno.serve(async (req) => {
       const result = await publishAndRecordWongTeaser(
         admin,
         bot.user_id,
-        oddsData.events,
+        events,
         bot.category_pills_default || ['sports', 'nfl'],
       )
 

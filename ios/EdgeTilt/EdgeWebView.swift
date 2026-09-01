@@ -16,6 +16,7 @@ struct EdgeWebView: UIViewRepresentable {
     webView.navigationDelegate = context.coordinator.bridge
     webView.uiDelegate = context.coordinator.bridge
     webView.scrollView.contentInsetAdjustmentBehavior = .never
+    webView.scrollView.keyboardDismissMode = .interactive
     webView.isOpaque = false
     webView.backgroundColor = .black
     webView.scrollView.backgroundColor = .black

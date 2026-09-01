@@ -167,7 +167,7 @@ export function BotSharpDeskPanel({
       if (error) {
         setToast?.(`${sportName} Slate Card failed: ${error.message}`)
       } else if (data?.dryRun) {
-        setToast?.(`[Dry Run] ${sportName} Slate Card: ${data.totalGames || 0} games (${data.hammersCount || 0} Hammers, ${data.consensusCount || 0} Consensus, ${data.splitsCount || 0} Splits).`)
+        setToast?.(`[Dry Run] ${sportName} Slate Card: ${data.totalGames || 0} games (${data.hammersCount || 0} Hammers, ${data.consensusCount || 0} Consensus, ${data.splitsCount || 0} Splits)${data.totalEventsRaw != null ? ` · window ${data.totalEventsInWindow}/${data.totalEventsRaw}` : ''}.`)
       } else if (data?.ok) {
         setToast?.(`Published ${sportName} Slate Card: ${data.totalGames || 0} games (${data.hammersCount || 0} Hammers, ${data.consensusCount || 0} Consensus).`)
         await loadData()

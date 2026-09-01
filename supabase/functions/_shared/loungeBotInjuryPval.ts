@@ -12,7 +12,7 @@ import {
 } from './loungeSportsPlayerValues.ts'
 import {
   injuryImpactPlayers,
-  resolveRundownEventContext,
+  resolveRundownEvent,
   oddsSportKeyToRundownSportId,
 } from './loungeBotRundownContext.ts'
 
@@ -101,7 +101,12 @@ export async function fetchGameInjuryPval(
   if (!sportId) return null
 
   try {
-    const ctx = await resolveRundownEventContext(sportId, homeTeam, awayTeam, commenceTimeIso)
+    const ctx = await resolveRundownEvent({
+      sportKey,
+      homeTeam,
+      awayTeam,
+      commenceTime: commenceTimeIso,
+    })
     if (!ctx) return null
 
     const allInactives = injuryImpactPlayers(ctx)
@@ -110,9 +115,8 @@ export async function fetchGameInjuryPval(
     // Load dynamic DB overrides if admin client provided
     const dynamicDbMap = admin ? await loadDbPlayerPvalMap(admin) : null
 
-    // Separate home and away inactives by team ID if available, otherwise by name
-    const homeTeamId = ctx.rawEvent?.teams_normalized?.find((t: any) => t.is_home)?.team_id
-    const awayTeamId = ctx.rawEvent?.teams_normalized?.find((t: any) => t.is_away)?.team_id
+    const homeTeamId = ctx.homeTeamId
+    const awayTeamId = ctx.awayTeamId
 
     const homeInactives = allInactives.filter((p) => p.teamId === homeTeamId)
     const awayInactives = allInactives.filter((p) => p.teamId === awayTeamId)

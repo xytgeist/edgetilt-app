@@ -22,6 +22,7 @@ import { LOUNGE_COMMENT_BUBBLE_D, LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS } from './l
 import { LOUNGE_REPOST_ARROWS_D } from './loungeRepostGlyph.js'
 import {
   useLoungeKeyboardOverlapPx,
+  useLockedLayoutKeyboardOverlapPx,
   useLoungeIosSafeBottomPx,
   loungeComposerFooterPaddingBottom,
   LOUNGE_IOS,
@@ -119,7 +120,8 @@ export default function LoungeFullScreenComposerModal({
   const textareaRef = useRef(null)
   const anchorRef = useRef(null)
   const scrollContainerRef = useRef(null)
-  const toolbarContainerRef = useRef(null)
+  const swipeStartYRef = useRef(null)
+  const [writeFocused, setWriteFocused] = useState(false)
 
   // Only sync down from props when opening the modal (isolates modal typing from feed re-renders)
   useEffect(() => {
@@ -164,22 +166,67 @@ export default function LoungeFullScreenComposerModal({
     smooth: LOUNGE_IOS,
     smoothMs: LOUNGE_IOS_KEYBOARD_SMOOTH_MS,
   })
+  const { overlapPx: lockedKbPx } = useLockedLayoutKeyboardOverlapPx(open)
   const kbFooterLiftPx = Math.max(kbOverlapPx, kbOverlapTargetPx)
   const keyboardUp = kbFooterLiftPx > iosSafeBottomPx + 0.5
+  // IPA: `100dvh` shrinks with the keys so the simple overlap stays ~0.
+  // Lock the pre-keyboard layout height so we still know when the keys are up.
+  // Do not use writeFocused here… swiping the keyboard down leaves the caption
+  // focused, which would keep thumbs hidden.
+  const keyboardVisuallyUp = LOUNGE_IOS ? lockedKbPx > 80 : keyboardUp
+  const chromeCompact = activeTab === 'write' && keyboardVisuallyUp
   const footerPadBottom = keyboardUp
     ? `${Math.round(kbFooterLiftPx + 2)}px`
     : loungeComposerFooterPaddingBottom(0, Math.max(8, iosSafeBottomPx))
 
-  const scrollToToolbar = useCallback(() => {
-    if (!scrollContainerRef.current || !toolbarContainerRef.current) return
-    const container = scrollContainerRef.current
-    const toolbar = toolbarContainerRef.current
-    const toolbarTop = toolbar.offsetTop - 4 // sits directly under fixed header
-    container.scrollTo({
-      top: Math.max(0, toolbarTop),
-      behavior: 'smooth',
-    })
+  // iOS scrolls the layout/visual viewport to keep the caret on screen, which
+  // shoves the header and footer off-screen. Pull-down undoes that. Do it here.
+  const pinComposerViewport = useCallback((resetScroller = false) => {
+    if (typeof window === 'undefined') return
+    try {
+      window.scrollTo(0, 0)
+      const de = document.documentElement
+      if (de) de.scrollTop = 0
+      if (document.body) document.body.scrollTop = 0
+      const vv = window.visualViewport
+      const offset = vv?.offsetTop ?? 0
+      if (offset > 0.5) {
+        window.scrollTo(0, offset)
+        window.scrollTo(0, 0)
+      }
+    } catch {
+      // ignore
+    }
+    if (resetScroller) {
+      const scroller = scrollContainerRef.current
+      if (scroller && scroller.scrollTop) scroller.scrollTop = 0
+    }
   }, [])
+
+  const focusCaptionNoScroll = useCallback(
+    (el) => {
+      if (!el) return
+      try {
+        el.focus({ preventScroll: true })
+      } catch {
+        try {
+          el.focus()
+        } catch {
+          return
+        }
+      }
+      const end = el.value?.length ?? 0
+      if (typeof el.setSelectionRange === 'function') {
+        try {
+          el.setSelectionRange(end, end)
+        } catch {
+          // ignore
+        }
+      }
+      pinComposerViewport(true)
+    },
+    [pinComposerViewport],
+  )
 
   useEffect(() => {
     if (!open) return
@@ -190,49 +237,108 @@ export default function LoungeFullScreenComposerModal({
     setTribeMaxAlertOpen(false)
 
     // Focus composer textarea immediately when opening
-    const focusEl = () => {
-      if (textareaRef.current) {
-        const el = textareaRef.current
-        el.focus()
-        const end = el.value?.length ?? 0
-        if (typeof el.setSelectionRange === 'function') {
-          el.setSelectionRange(end, end)
-        }
-      }
-    }
+    if (LOUNGE_IOS) setWriteFocused(true)
+    const focusEl = () => focusCaptionNoScroll(textareaRef.current)
     focusEl()
     requestAnimationFrame(focusEl)
     const t = setTimeout(focusEl, 30)
     return () => clearTimeout(t)
-  }, [open])
+  }, [open, focusCaptionNoScroll])
 
   useEffect(() => {
     if (open && activeTab === 'write') {
-      const focusEl = () => {
-        if (textareaRef.current) {
-          const el = textareaRef.current
-          el.focus()
-          const end = el.value?.length ?? 0
-          if (typeof el.setSelectionRange === 'function') {
-            el.setSelectionRange(end, end)
-          }
-        }
-      }
+      const focusEl = () => focusCaptionNoScroll(textareaRef.current)
       focusEl()
       requestAnimationFrame(focusEl)
       const t = setTimeout(focusEl, 30)
       return () => clearTimeout(t)
     }
-  }, [open, activeTab])
+  }, [open, activeTab, focusCaptionNoScroll])
 
   useEffect(() => {
-    if (keyboardUp && activeTab === 'write') {
-      const t = setTimeout(() => {
-        scrollToToolbar()
-      }, 120)
-      return () => clearTimeout(t)
+    if (!chromeCompact) return undefined
+    pinComposerViewport(true)
+    const t0 = setTimeout(() => pinComposerViewport(true), 80)
+    const t1 = setTimeout(() => pinComposerViewport(), 220)
+    const t2 = setTimeout(() => pinComposerViewport(), 360)
+    return () => {
+      clearTimeout(t0)
+      clearTimeout(t1)
+      clearTimeout(t2)
     }
-  }, [keyboardUp, activeTab, scrollToToolbar])
+  }, [chromeCompact, pinComposerViewport])
+
+  useEffect(() => {
+    if (!open || !writeFocused || typeof window === 'undefined') return undefined
+    const pin = () => pinComposerViewport()
+    const vv = window.visualViewport
+    window.addEventListener('scroll', pin, { passive: true })
+    vv?.addEventListener('scroll', pin)
+    vv?.addEventListener('resize', pin)
+    return () => {
+      window.removeEventListener('scroll', pin)
+      vv?.removeEventListener('scroll', pin)
+      vv?.removeEventListener('resize', pin)
+    }
+  }, [open, writeFocused, pinComposerViewport])
+
+  const dismissKeyboard = useCallback(() => {
+    blurActiveInput()
+    setWriteFocused(false)
+  }, [])
+
+  const revealWriteAttachments = useCallback(() => {
+    setWriteFocused(false)
+    try {
+      textareaRef.current?.blur()
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  // After a picker, the write field often stays focused (toolbar preventFocusSteal),
+  // so chromeCompact never drops and the carousel stays gone. Reveal only after
+  // files land… never on image/video pointer-down (that cancels the iOS picker).
+  const writeAttachmentEpoch = [
+    composerImageItems.length,
+    String(composerMediaUrl || '').trim() ? 1 : 0,
+    composerVideoSlot?.preview ? 1 : 0,
+    composerMarketSymbols.length,
+  ].join(':')
+  const skipAttachRevealRef = useRef(true)
+  useEffect(() => {
+    if (!open) {
+      skipAttachRevealRef.current = true
+      return
+    }
+    if (skipAttachRevealRef.current) {
+      skipAttachRevealRef.current = false
+      return
+    }
+    revealWriteAttachments()
+  }, [open, writeAttachmentEpoch, revealWriteAttachments])
+
+  const onComposerTouchStart = useCallback((e) => {
+    if (!LOUNGE_IOS || !writeFocused) return
+    swipeStartYRef.current = e.touches?.[0]?.clientY ?? null
+  }, [writeFocused])
+
+  const onComposerTouchMove = useCallback((e) => {
+    if (swipeStartYRef.current == null) return
+    const y = e.touches?.[0]?.clientY
+    if (typeof y !== 'number') return
+    const dy = y - swipeStartYRef.current
+    const scroller = scrollContainerRef.current
+    const atTop = !scroller || scroller.scrollTop <= 2
+    if (dy > 48 && atTop) {
+      swipeStartYRef.current = null
+      dismissKeyboard()
+    }
+  }, [dismissKeyboard])
+
+  const onComposerTouchEnd = useCallback(() => {
+    swipeStartYRef.current = null
+  }, [])
 
   if (!open || typeof document === 'undefined') return null
 
@@ -262,6 +368,7 @@ export default function LoungeFullScreenComposerModal({
     if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
       document.activeElement.blur()
     }
+    setWriteFocused(false)
   }
 
   const handleOpenSettingsFromHeader = () => {
@@ -310,10 +417,21 @@ export default function LoungeFullScreenComposerModal({
       aria-modal="true"
       aria-labelledby="pro-composer-title"
       data-lounge-fullscreen-composer=""
+      data-composer-compact={chromeCompact ? 'true' : 'false'}
       className="fixed inset-0 z-[220] flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-zinc-950 text-zinc-100 animate-in fade-in duration-150"
+      onTouchStart={onComposerTouchStart}
+      onTouchMove={onComposerTouchMove}
+      onTouchEnd={onComposerTouchEnd}
+      onTouchCancel={onComposerTouchEnd}
     >
       {/* ── Top Bar ── */}
-      <header className="flex shrink-0 items-center justify-between border-b border-zinc-800/90 bg-zinc-900/95 px-3.5 py-3 backdrop-blur-md sm:px-6 sm:py-3.5">
+      <header
+        className="flex shrink-0 items-center justify-between border-b border-zinc-800/90 bg-zinc-900/95 px-3.5 pb-3 backdrop-blur-md sm:px-6 sm:pb-3.5"
+        style={{
+          // Inline … Tailwind arbitrary max(env, --edge-sat) has broken before (profile title bar).
+          paddingTop: 'calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 0.75rem)',
+        }}
+      >
         <div className="flex items-center gap-2.5">
           <button
             type="button"
@@ -419,7 +537,7 @@ export default function LoungeFullScreenComposerModal({
       <div ref={scrollContainerRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-3.5 py-3 sm:px-6 sm:py-4">
         {activeTab === 'write' ? (
           <div className="mx-auto flex w-full max-w-3xl flex-1 min-w-0 flex-col space-y-3.5">
-            {/* ── Row 1: Tribe Pills (Horizontal swipe, clean look) ── */}
+            {/* ── Row 1: Tribe Pills (stay visible with the keyboard up) ── */}
             <div className="w-full min-w-0 overflow-hidden">
               <LoungePostCategoryPillPicker
                 value={composerCategoryPills}
@@ -434,7 +552,7 @@ export default function LoungeFullScreenComposerModal({
             </div>
 
             {/* ── Markdown Formatting Toolbar ── */}
-            <div ref={toolbarContainerRef} className="w-full min-w-0 overflow-hidden">
+            <div className="w-full min-w-0 overflow-hidden">
               <LoungeMarkdownToolbar
                 textareaRef={textareaRef}
                 onTextChange={handleTextChange}
@@ -466,11 +584,18 @@ export default function LoungeFullScreenComposerModal({
                 spellCheck
                 aria-label="Full screen post caption"
                 placeholder="Are ya winning, son?"
-                className="flex-1 w-full min-h-[16rem] resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 caret-cyan-400 placeholder-zinc-500 outline-none focus:outline-none focus:ring-0 focus:border-zinc-800/90 touch-manipulation whitespace-pre-wrap break-words overflow-y-auto"
+                className={`flex-1 w-full resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 caret-cyan-400 placeholder-zinc-500 outline-none focus:outline-none focus:ring-0 focus:border-zinc-800/90 touch-manipulation whitespace-pre-wrap break-words overflow-y-auto ${
+                  chromeCompact ? 'min-h-[6rem]' : 'min-h-[16rem]'
+                }`}
                 onFocus={() => {
-                  if (keyboardUp) scrollToToolbar()
-                  else setTimeout(scrollToToolbar, 250)
+                  setWriteFocused(true)
+                  pinComposerViewport(true)
+                  requestAnimationFrame(() => pinComposerViewport())
+                  setTimeout(() => pinComposerViewport(), 80)
+                  setTimeout(() => pinComposerViewport(), 220)
+                  setTimeout(() => pinComposerViewport(), 360)
                 }}
+                onBlur={() => setWriteFocused(false)}
                 onKeyDown={(e) => {
                   if (cashtagComposer?.onCashtagKeyDown(e, handleTextChange, textareaRef.current)) return
                   mentionComposer?.onMentionKeyDown(e, handleTextChange, textareaRef.current)
@@ -512,54 +637,57 @@ export default function LoungeFullScreenComposerModal({
               ) : null}
             </div>
 
-            {/* ── Attached Market Charts Strip ── */}
-            {composerMarketSymbols.length > 0 ? (
-              <LoungeComposerMarketChartStrip
-                symbols={composerMarketSymbols}
-                onChange={onMarketSymbolsChange}
-                className="mt-2"
-              />
-            ) : null}
+            {/* Keyboard-up / write-focused: drop attachments from layout.
+                Keyboard-down (incl. right after a pick) shows the carousel again. */}
+            {!chromeCompact ? (
+              <>
+                {composerMarketSymbols.length > 0 ? (
+                  <LoungeComposerMarketChartStrip
+                    symbols={composerMarketSymbols}
+                    onChange={onMarketSymbolsChange}
+                    className="mt-2"
+                  />
+                ) : null}
 
-            {/* ── Attached Images / GIFs Carousel ── */}
-            {carouselUrls.length > 0 ? (
-              <LoungeImageCarousel
-                urls={carouselUrls}
-                variant="composer"
-                firstMarginTopClass="mt-2"
-                regionAriaLabel={gifUrl ? 'Post images and GIF' : 'Post images'}
-                removeLabelForIndex={(i) => (i < nImg ? 'Remove image' : 'Remove GIF')}
-                onRemoveIndex={(i) => {
-                  if (i < nImg) {
-                    onRemoveImageIndex?.(i)
-                  } else {
-                    onRemoveGif?.()
-                  }
-                }}
-              />
-            ) : null}
+                {carouselUrls.length > 0 ? (
+                  <LoungeImageCarousel
+                    urls={carouselUrls}
+                    variant="composer"
+                    firstMarginTopClass="mt-2"
+                    regionAriaLabel={gifUrl ? 'Post images and GIF' : 'Post images'}
+                    removeLabelForIndex={(i) => (i < nImg ? 'Remove image' : 'Remove GIF')}
+                    onRemoveIndex={(i) => {
+                      if (i < nImg) {
+                        onRemoveImageIndex?.(i)
+                      } else {
+                        onRemoveGif?.()
+                      }
+                    }}
+                  />
+                ) : null}
 
-            {/* ── Attached Video ── */}
-            {composerVideoSlot?.preview ? (
-              <div className="relative mt-2 inline-flex max-w-[min(78vw,20rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none">
-                <video
-                  src={composerVideoSlot.preview}
-                  poster={composerVideoSlot.posterUrl || undefined}
-                  className="block h-auto max-h-56 w-auto max-w-[min(78vw,20rem)] object-contain"
-                  controls
-                  playsInline
-                  preload="metadata"
-                  aria-label="Video preview"
-                />
-                <button
-                  type="button"
-                  onClick={onRemoveVideo}
-                  className="absolute right-1.5 top-1.5 grid h-8 w-8 place-items-center rounded-full border border-zinc-500/35 bg-black/40 text-base leading-none text-zinc-100 backdrop-blur-[2px] touch-manipulation hover:bg-black/60"
-                  aria-label="Remove video"
-                >
-                  ×
-                </button>
-              </div>
+                {composerVideoSlot?.preview ? (
+                  <div className="relative mt-2 inline-flex max-w-[min(78vw,20rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none">
+                    <video
+                      src={composerVideoSlot.preview}
+                      poster={composerVideoSlot.posterUrl || undefined}
+                      className="block h-auto max-h-56 w-auto max-w-[min(78vw,20rem)] object-contain"
+                      controls
+                      playsInline
+                      preload="metadata"
+                      aria-label="Video preview"
+                    />
+                    <button
+                      type="button"
+                      onClick={onRemoveVideo}
+                      className="absolute right-1.5 top-1.5 grid h-8 w-8 place-items-center rounded-full border border-zinc-500/35 bg-black/40 text-base leading-none text-zinc-100 backdrop-blur-[2px] touch-manipulation hover:bg-black/60"
+                      aria-label="Remove video"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : null}
+              </>
             ) : null}
           </div>
         ) : (
@@ -728,13 +856,12 @@ export default function LoungeFullScreenComposerModal({
           role="dialog"
           aria-modal="true"
           aria-labelledby="settings-modal-title"
-          className="fixed inset-0 z-[240] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-150"
-          style={{ paddingBottom: keyboardUp ? `${Math.round(kbFooterLiftPx)}px` : undefined }}
+          className="fixed inset-0 z-[240] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 pt-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] animate-in fade-in duration-150"
           onClick={() => setSettingsModalOpen(false)}
         >
           <div
             data-lounge-publish-modal=""
-            className="w-full max-w-md max-h-[min(62dvh,calc(100dvh-2rem))] flex flex-col overflow-hidden rounded-t-3xl sm:rounded-3xl border border-zinc-800 bg-zinc-900 p-3.5 sm:p-4 shadow-2xl animate-in slide-in-from-bottom duration-200"
+            className="w-full max-w-md max-h-[min(62dvh,calc(100dvh-2rem))] flex flex-col overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900 p-3.5 sm:p-4 shadow-2xl animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -921,6 +1048,7 @@ export default function LoungeFullScreenComposerModal({
           onClick={() => setTribeMaxAlertOpen(false)}
         >
           <div
+            data-lounge-tribe-max-alert=""
             className="w-full max-w-sm rounded-3xl border border-zinc-800 bg-zinc-900 p-5 text-center shadow-2xl animate-in zoom-in-95 duration-150"
             onClick={(e) => e.stopPropagation()}
           >
@@ -929,7 +1057,7 @@ export default function LoungeFullScreenComposerModal({
             </div>
             <h3 className="mt-3 text-base font-bold text-zinc-100">Three tribes max</h3>
             <p className="mt-1.5 text-xs text-zinc-400">
-              Three tribes max. Deselect a tribe to select this one.
+              Deselect a tribe to select this one.
             </p>
             <button
               type="button"

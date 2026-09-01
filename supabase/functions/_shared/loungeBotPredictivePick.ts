@@ -181,8 +181,14 @@ export function formatSyndicateCardCaption(title: string, picks: SinglePickerPic
   return lines.join('\n')
 }
 
+/** Public Lounge slate teaser caps (VIP still gets full uncut desk cards). */
+export const PUBLIC_SLATE_HAMMER_CAP = 1
+export const PUBLIC_SLATE_CONSENSUS_CAP = 2
+export const PUBLIC_SLATE_HOUSE_DIVIDED_CAP = 3
+
 /**
  * Format an NFL / Football Slate Card caption for the Lounge feed.
+ * Public tease only: max 1 hammer, 2 consensus, 3 house-divided games (one row each).
  * Highlights:
  * 1. 🔥 Unanimous 4-0 Hammers
  * 2. 🎯 3-1 Consensus Plays
@@ -190,10 +196,13 @@ export function formatSyndicateCardCaption(title: string, picks: SinglePickerPic
  */
 export function formatNflSlateCardCaption(card: NflSlateCard): string {
   const lines: string[] = [`${card.cardTitle || '🏈 NFL Sharpe Syndicate Slate'}\n`]
+  const hammers = card.hammers.slice(0, PUBLIC_SLATE_HAMMER_CAP)
+  const consensus = card.consensus.slice(0, PUBLIC_SLATE_CONSENSUS_CAP)
+  const splits = card.splits.slice(0, PUBLIC_SLATE_HOUSE_DIVIDED_CAP)
 
-  if (card.hammers.length > 0) {
+  if (hammers.length > 0) {
     lines.push('🔥 UNANIMOUS 4-0 HAMMERS:')
-    for (const g of card.hammers) {
+    for (const g of hammers) {
       const away = shortDisplayName(g.awayTeam)
       const home = shortDisplayName(g.homeTeam)
       const when = formatOddsCommenceTimeShort(g.commenceTime)
@@ -202,9 +211,9 @@ export function formatNflSlateCardCaption(card: NflSlateCard): string {
     lines.push('')
   }
 
-  if (card.consensus.length > 0) {
+  if (consensus.length > 0) {
     lines.push('🎯 3-1 CONSENSUS PLAYS:')
-    for (const g of card.consensus) {
+    for (const g of consensus) {
       const away = shortDisplayName(g.awayTeam)
       const home = shortDisplayName(g.homeTeam)
       const agreeing = SHARP_PICKERS.filter((p) => g.pickerPicks[p].side === g.consensusPick.side).join(', ')
@@ -213,9 +222,9 @@ export function formatNflSlateCardCaption(card: NflSlateCard): string {
     lines.push('')
   }
 
-  if (card.splits.length > 0) {
+  if (splits.length > 0) {
     lines.push('⚔️ HOUSE DIVIDED (2-2):')
-    for (const g of card.splits) {
+    for (const g of splits) {
       const away = shortDisplayName(g.awayTeam)
       const home = shortDisplayName(g.homeTeam)
       const homePickers = SHARP_PICKERS.filter((p) => g.pickerPicks[p].side === 'home').join('/')

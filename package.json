@@ -53,6 +53,7 @@
     "backfill:ufc:production": "node scripts/backfill-ufc-picks.mjs --target=production",
     "backtest:ufc": "node scripts/backtest-ufc-model.mjs",
     "backtest:ufc:odds": "node scripts/backtest-ufc-model.mjs --with-odds",
+    "backtest:ufc:drivers": "node scripts/analyze-ufc-edge-drivers.mjs",
     "fetch:ufc-data": "node scripts/fetch-ufc-kaggle-data.mjs",
     "backtest:ufc:full": "node scripts/backtest-ufc-model.mjs --fetch-kaggle",
     "theo": "node scripts/theo-channel.mjs",

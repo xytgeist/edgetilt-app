@@ -88,6 +88,33 @@ export function SyndicateApp() {
     totalGames: consensusTotalGames,
   } = groupConsensusGames(consensusPicks)
 
+  const summarizePicks = (pickList) => {
+    const graded = pickList.filter((p) => p.status && p.status !== 'pending')
+    const w = graded.filter((p) => p.status === 'win' || p.status === 'won').length
+    const l = graded.filter((p) => p.status === 'loss' || p.status === 'lost').length
+    const pu = graded.filter((p) => p.status === 'push').length
+    const units = graded.reduce((acc, p) => acc + (Number(p.units_net) || 0), 0)
+    const rate = w + l > 0 ? ((w / (w + l)) * 100).toFixed(1) : null
+    const display = units >= 0 ? `+${units.toFixed(2)}` : units.toFixed(2)
+    return {
+      wins: w,
+      losses: l,
+      pushes: pu,
+      netUnits: units,
+      winRate: rate,
+      displayUnits: display,
+      gradedCount: graded.length,
+      pendingCount: pickList.length - graded.length,
+    }
+  }
+
+  const deskStatsByName = {
+    Scott: summarizePicks(gradedPicks.filter((p) => (p.picker_name || 'Scott') === 'Scott')),
+    Rocco: summarizePicks(gradedPicks.filter((p) => p.picker_name === 'Rocco')),
+    Chedda: summarizePicks(gradedPicks.filter((p) => p.picker_name === 'Chedda')),
+    Tank: summarizePicks(gradedPicks.filter((p) => p.picker_name === 'Tank')),
+  }
+
   const filteredPicks = picks.filter((p) => {
     if (deskFilter !== 'all' && (p.picker_name || 'Scott') !== deskFilter) {
       return false
@@ -106,6 +133,8 @@ export function SyndicateApp() {
     if (sportFilter === 'nba') return p.sport_key?.includes('basketball')
     return true
   })
+
+  const filteredStats = summarizePicks(filteredPicks)
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-emerald-500/30">
@@ -334,9 +363,9 @@ export function SyndicateApp() {
                 <div className="text-[10px] sm:text-[11px] text-zinc-500">Closing line value</div>
               </div>
 
-              <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur flex flex-col justify-between">
+              <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur flex flex-col justify-between min-w-0 overflow-hidden">
                 <div className="text-[10px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">Benchmark Feed</div>
-                <div className="my-1.5 text-sm sm:text-lg lg:text-xl font-mono font-extrabold text-amber-400 whitespace-nowrap">
+                <div className="my-1.5 text-[11px] sm:text-sm lg:text-base font-mono font-extrabold text-amber-400 leading-tight break-words">
                   Pinnacle / Circa
                 </div>
                 <div className="text-[10px] sm:text-[11px] text-zinc-500">5.5x sharp weight</div>
@@ -372,6 +401,22 @@ export function SyndicateApp() {
                       <span className="text-xs font-mono text-zinc-500">HEAD OF TRADING</span>
                     </div>
                     <h3 className="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors">Scott Sharpe</h3>
+                    <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 px-3 py-2 font-mono">
+                      <div className="text-[10px] uppercase tracking-wider text-emerald-400/80">Overall record</div>
+                      <div className="mt-0.5 flex items-baseline justify-between gap-2">
+                        <span className="text-sm font-bold text-white">
+                          {deskStatsByName.Scott.gradedCount > 0
+                            ? `${deskStatsByName.Scott.wins}W-${deskStatsByName.Scott.losses}L${deskStatsByName.Scott.pushes > 0 ? `-${deskStatsByName.Scott.pushes}P` : ''}`
+                            : '—'}
+                        </span>
+                        <span className={`text-sm font-extrabold ${deskStatsByName.Scott.netUnits >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {deskStatsByName.Scott.gradedCount > 0 ? `${deskStatsByName.Scott.displayUnits}U` : '—'}
+                        </span>
+                      </div>
+                      {deskStatsByName.Scott.winRate ? (
+                        <div className="mt-0.5 text-[10px] text-zinc-500">{deskStatsByName.Scott.winRate}% ATS</div>
+                      ) : null}
+                    </div>
                     <p className="text-xs text-zinc-400 leading-relaxed">
                       Syndicate founder &amp; lead quantitative trader. Synthesizes sharp offshore pricing (Pinnacle/Circa), orchestrates syndicate consensus, and manages bankroll exposure.
                     </p>
@@ -404,6 +449,22 @@ export function SyndicateApp() {
                       <span className="text-xs font-mono text-zinc-500">TRENCHES &amp; EPA</span>
                     </div>
                     <h3 className="text-lg font-bold text-white group-hover:text-blue-300 transition-colors">Rocco</h3>
+                    <div className="rounded-xl border border-blue-500/25 bg-blue-500/5 px-3 py-2 font-mono">
+                      <div className="text-[10px] uppercase tracking-wider text-blue-400/80">Overall record</div>
+                      <div className="mt-0.5 flex items-baseline justify-between gap-2">
+                        <span className="text-sm font-bold text-white">
+                          {deskStatsByName.Rocco.gradedCount > 0
+                            ? `${deskStatsByName.Rocco.wins}W-${deskStatsByName.Rocco.losses}L${deskStatsByName.Rocco.pushes > 0 ? `-${deskStatsByName.Rocco.pushes}P` : ''}`
+                            : '—'}
+                        </span>
+                        <span className={`text-sm font-extrabold ${deskStatsByName.Rocco.netUnits >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {deskStatsByName.Rocco.gradedCount > 0 ? `${deskStatsByName.Rocco.displayUnits}U` : '—'}
+                        </span>
+                      </div>
+                      {deskStatsByName.Rocco.winRate ? (
+                        <div className="mt-0.5 text-[10px] text-zinc-500">{deskStatsByName.Rocco.winRate}% ATS</div>
+                      ) : null}
+                    </div>
                     <p className="text-xs text-zinc-400 leading-relaxed">
                       Trench &amp; offensive efficiency specialist. Breaks down line-of-scrimmage win rates (PBWR/PRWR), net EPA per play, and injury spread value (PVAL).
                     </p>
@@ -436,6 +497,22 @@ export function SyndicateApp() {
                       <span className="text-xs font-mono text-zinc-500">DOGS &amp; RLM</span>
                     </div>
                     <h3 className="text-lg font-bold text-white group-hover:text-amber-300 transition-colors">Chedda</h3>
+                    <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-3 py-2 font-mono">
+                      <div className="text-[10px] uppercase tracking-wider text-amber-400/80">Overall record</div>
+                      <div className="mt-0.5 flex items-baseline justify-between gap-2">
+                        <span className="text-sm font-bold text-white">
+                          {deskStatsByName.Chedda.gradedCount > 0
+                            ? `${deskStatsByName.Chedda.wins}W-${deskStatsByName.Chedda.losses}L${deskStatsByName.Chedda.pushes > 0 ? `-${deskStatsByName.Chedda.pushes}P` : ''}`
+                            : '—'}
+                        </span>
+                        <span className={`text-sm font-extrabold ${deskStatsByName.Chedda.netUnits >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {deskStatsByName.Chedda.gradedCount > 0 ? `${deskStatsByName.Chedda.displayUnits}U` : '—'}
+                        </span>
+                      </div>
+                      {deskStatsByName.Chedda.winRate ? (
+                        <div className="mt-0.5 text-[10px] text-zinc-500">{deskStatsByName.Chedda.winRate}% ATS</div>
+                      ) : null}
+                    </div>
                     <p className="text-xs text-zinc-400 leading-relaxed">
                       Underdog value and market flow specialist. Tracks handle vs. ticket splits to catch Reverse Line Movement (RLM), sharp book divergence, and red zone TD targets.
                     </p>
@@ -468,6 +545,22 @@ export function SyndicateApp() {
                       <span className="text-xs font-mono text-zinc-500">TOTALS &amp; PACE</span>
                     </div>
                     <h3 className="text-lg font-bold text-white group-hover:text-purple-300 transition-colors">Tank</h3>
+                    <div className="rounded-xl border border-purple-500/25 bg-purple-500/5 px-3 py-2 font-mono">
+                      <div className="text-[10px] uppercase tracking-wider text-purple-400/80">Overall record</div>
+                      <div className="mt-0.5 flex items-baseline justify-between gap-2">
+                        <span className="text-sm font-bold text-white">
+                          {deskStatsByName.Tank.gradedCount > 0
+                            ? `${deskStatsByName.Tank.wins}W-${deskStatsByName.Tank.losses}L${deskStatsByName.Tank.pushes > 0 ? `-${deskStatsByName.Tank.pushes}P` : ''}`
+                            : '—'}
+                        </span>
+                        <span className={`text-sm font-extrabold ${deskStatsByName.Tank.netUnits >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {deskStatsByName.Tank.gradedCount > 0 ? `${deskStatsByName.Tank.displayUnits}U` : '—'}
+                        </span>
+                      </div>
+                      {deskStatsByName.Tank.winRate ? (
+                        <div className="mt-0.5 text-[10px] text-zinc-500">{deskStatsByName.Tank.winRate}% ATS</div>
+                      ) : null}
+                    </div>
                     <p className="text-xs text-zinc-400 leading-relaxed">
                       Over/Under totals and situational pace specialist. Evaluates seconds per play, atmospheric weather impacts (wind/cold), and rest/travel scheduling spots.
                     </p>
@@ -617,6 +710,39 @@ export function SyndicateApp() {
                 </div>
               </div>
             ) : (
+              <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 px-3.5 py-3">
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Filtered record</div>
+                  <div className="mt-1 text-sm sm:text-base font-mono font-bold text-white">
+                    {filteredStats.gradedCount > 0
+                      ? `${filteredStats.wins}W-${filteredStats.losses}L${filteredStats.pushes > 0 ? `-${filteredStats.pushes}P` : ''}`
+                      : 'No graded picks'}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 px-3.5 py-3">
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Filtered net units</div>
+                  <div className={`mt-1 text-sm sm:text-base font-mono font-extrabold ${filteredStats.netUnits >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {filteredStats.gradedCount > 0 ? `${filteredStats.displayUnits}U` : '—'}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 px-3.5 py-3">
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Win rate</div>
+                  <div className="mt-1 text-sm sm:text-base font-mono font-bold text-white">
+                    {filteredStats.winRate ? `${filteredStats.winRate}%` : '—'}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 px-3.5 py-3">
+                  <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500">Rows in view</div>
+                  <div className="mt-1 text-sm sm:text-base font-mono font-bold text-zinc-200">
+                    {filteredPicks.length}
+                    {filteredStats.pendingCount > 0 ? (
+                      <span className="ml-1 text-[10px] font-semibold text-zinc-500">({filteredStats.pendingCount} pending)</span>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
+
               <div className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-900/40">
                 <table className="w-full text-left border-collapse text-xs sm:text-sm">
                   <thead>
@@ -772,6 +898,7 @@ export function SyndicateApp() {
                   </tbody>
                 </table>
               </div>
+              </>
             )}
           </div>
         )}

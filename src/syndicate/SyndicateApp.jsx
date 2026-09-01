@@ -13,6 +13,13 @@ function pickCommenceMs(pick) {
   return t ? new Date(t).getTime() : 0
 }
 
+/** True when the event has started long enough ago to appear in the Audited Ledger. */
+function isPickAuditable(pick) {
+  const commence = pickCommenceMs(pick)
+  if (!commence) return false
+  return commence <= Date.now() - PICK_SETTLE_BUFFER_MS
+}
+
 /** True only when the game should have finished and status is not pending. */
 function isPickSettled(pick) {
   if (!pick.status || pick.status === 'pending') return false
@@ -135,6 +142,7 @@ export function SyndicateApp() {
   }
 
   const filteredPicks = picks.filter((p) => {
+    if (!isPickAuditable(p)) return false
     if (deskFilter !== 'all' && (p.picker_name || 'Scott') !== deskFilter) {
       return false
     }

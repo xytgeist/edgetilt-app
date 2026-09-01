@@ -668,9 +668,12 @@ async function run() {
     botUserId = bot.user_id
   }
 
+  const eligibleFights = AUDITED_UFC_2026_FIGHTS.filter(isFightEligibleForBackfill)
   const upcomingFights = AUDITED_UFC_2026_FIGHTS.filter((f) => !isFightEligibleForBackfill(f))
   if (upcomingFights.length > 0) {
-    console.log(`${upcomingFights.length} upcoming fight(s) will seed as pending (shown in ledger, not graded yet):`)
+    console.log(
+      `${upcomingFights.length} upcoming fight(s) omitted from backfill (Audited Ledger is historical only):`
+    )
     for (const fight of upcomingFights) {
       console.log(`  • ${fight.eventTitle} (${fight.date})`)
     }
@@ -679,14 +682,13 @@ async function run() {
 
   const allPicks = []
   for (const fight of AUDITED_UFC_2026_FIGHTS) {
-    const gradeResults = isFightEligibleForBackfill(fight)
-    const picks = generateDeskPicks(fight, botUserId, { gradeResults })
+    if (!isFightEligibleForBackfill(fight)) continue
+    const picks = generateDeskPicks(fight, botUserId, { gradeResults: true })
     allPicks.push(...picks)
   }
 
-  const gradedCount = AUDITED_UFC_2026_FIGHTS.filter(isFightEligibleForBackfill).length
   console.log(
-    `Generated ${allPicks.length} UFC picks across ${AUDITED_UFC_2026_FIGHTS.length} cards (${gradedCount} graded, ${upcomingFights.length} pending).\n`
+    `Generated ${allPicks.length} historical UFC picks across ${allPicks.length / 4} audited fights.\n`
   )
 
   // Tally performance by desk

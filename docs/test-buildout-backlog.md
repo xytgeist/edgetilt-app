@@ -2790,7 +2790,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
-- **2026-09-01:** **Syndicate ledger integrity:** backtest picks stay in the Audited Ledger; **future** cards seed as **`pending`** (visible, no WIN/LOSS). Only **settled** backfill rows get historical grades. `backfill-ufc-picks.mjs` grades past fights only; migration **`20260901100000`** strips any future rows that were wrongly pre-graded. **`SyndicateApp`:** ledger shows all picks; stats/outcomes only after commence+90m.
+- **2026-09-01:** **Audited Ledger scope:** historical only ... **`SyndicateApp`** excludes picks whose `commence_time` is still in the future (+ 90m buffer). `backfill-ufc-picks.mjs` omits upcoming cards entirely (no pending future rows). Migration **`20260901100000`** strips wrongly pre-graded future backfill rows.
 - **2026-09-01:** **sharpesyndicate.com:** fix Benchmark Feed overflow (Pinnacle / Circa); show each desk overall W-L / net units / ATS on Overview cards; Audited Ledger shows filtered record + net units + win rate for current desk/signal/sport filters.
 - **2026-09-01:** Locked Scott **major-post markdown** for public NFL/CFB slate + weekly ledger (`formatNflSlateCardCaption`, `formatWeeklySyndicateRecapCaption`); dialect in **`docs/lounge-bot-sports-odds.md`**. Other alert kinds still plain. Redeploy **`lounge-odds-poll`**.
 - **2026-09-01:** Prod promote **`main` @ `49a7bd2b`:** Lounge `… see more` in-feed expand + public NFL slate teaser caps (1/2/3). Redeployed **`lounge-odds-poll`** on **`jtjgtucumuoswnbauxry`** (+ test). **No new SQL.** Scott markdown dialect (gold hammers/consensus, bold house divided) still **test-feed mocks only** … formatters not wired yet.

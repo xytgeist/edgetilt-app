@@ -12,6 +12,8 @@ import { resolveRundownEvent } from './loungeBotRundownContext.ts'
 const CAPTION_MAX = 2000
 
 export const DEFAULT_ODDS_WINDOW_HOURS = 48
+/** Syndicate NFL/CFB slate cards: upcoming week only (not full-season Odds API dump). */
+export const FOOTBALL_SLATE_WINDOW_HOURS = 7 * 24
 export const DEFAULT_MIN_BOOKS = 3
 /** Pre-match +EV edge alerts require stronger book consensus (v1). */
 export const EDGE_ALERT_MIN_BOOKS = 4

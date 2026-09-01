@@ -173,8 +173,9 @@ Deno.serve(async (req) => {
       } = await import('../_shared/loungeBotPredictivePick.ts')
       const { fetchSportOdds } = await import('../_shared/loungeBotOddsRun.ts')
       const {
-        filterOddsEventsByWindow,
-        FOOTBALL_SLATE_WINDOW_HOURS,
+        filterOddsEventsForNextFootballSlate,
+        FOOTBALL_SLATE_CLUSTER_DAYS,
+        FOOTBALL_SLATE_MAX_LOOKAHEAD_DAYS,
       } = await import('../_shared/loungeBotOddsCaption.ts')
 
       let sportKey = String(body?.sportKey || 'americanfootball_nfl').trim()
@@ -193,7 +194,7 @@ Deno.serve(async (req) => {
       }
 
       const rawEvents = oddsData?.events || []
-      const events = filterOddsEventsByWindow(rawEvents, FOOTBALL_SLATE_WINDOW_HOURS)
+      const events = filterOddsEventsForNextFootballSlate(rawEvents)
       const { loadPersonaWeights } = await import('../_shared/loungeBotPersonaAdaptive.ts')
       const { loadDbTeamMetricsMap } = await import('../_shared/loungeBotTeamMetrics.ts')
       const { loadDbCfbPowerRatingsMap } = await import('../_shared/loungeBotCfbPowerRatings.ts')
@@ -212,10 +213,11 @@ Deno.serve(async (req) => {
       if (!card) {
         return adminOpsJson(200, {
           ok: false,
-          message: `No upcoming games with spread markets in the next ${FOOTBALL_SLATE_WINDOW_HOURS / 24} days for ${sportKey}.`,
+          message: `No upcoming games with spread markets in the next ${FOOTBALL_SLATE_MAX_LOOKAHEAD_DAYS} days for ${sportKey}.`,
           totalEventsRaw: rawEvents.length,
           totalEventsInWindow: events.length,
-          windowHours: FOOTBALL_SLATE_WINDOW_HOURS,
+          clusterDays: FOOTBALL_SLATE_CLUSTER_DAYS,
+          maxLookaheadDays: FOOTBALL_SLATE_MAX_LOOKAHEAD_DAYS,
         })
       }
 
@@ -229,7 +231,8 @@ Deno.serve(async (req) => {
           splitsCount: card.splits.length,
           totalEventsRaw: rawEvents.length,
           totalEventsInWindow: events.length,
-          windowHours: FOOTBALL_SLATE_WINDOW_HOURS,
+          clusterDays: FOOTBALL_SLATE_CLUSTER_DAYS,
+          maxLookaheadDays: FOOTBALL_SLATE_MAX_LOOKAHEAD_DAYS,
           card,
         })
       }
@@ -257,12 +260,11 @@ Deno.serve(async (req) => {
       const { fetchSportOdds } = await import('../_shared/loungeBotOddsRun.ts')
       const { buildWongTeaserPair, publishAndRecordWongTeaser } = await import('../_shared/loungeBotWongTeaser.ts')
       const {
-        filterOddsEventsByWindow,
-        FOOTBALL_SLATE_WINDOW_HOURS,
+        filterOddsEventsForNextFootballSlate,
       } = await import('../_shared/loungeBotOddsCaption.ts')
 
       const oddsData = await fetchSportOdds('americanfootball_nfl', ['us', 'us2'], ['spreads', 'totals'])
-      const events = filterOddsEventsByWindow(oddsData.events || [], FOOTBALL_SLATE_WINDOW_HOURS)
+      const events = filterOddsEventsForNextFootballSlate(oddsData.events || [])
       const pair = buildWongTeaserPair(events)
 
       if (!pair) {

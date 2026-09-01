@@ -12,8 +12,12 @@ import { resolveRundownEvent } from './loungeBotRundownContext.ts'
 const CAPTION_MAX = 2000
 
 export const DEFAULT_ODDS_WINDOW_HOURS = 48
-/** Syndicate NFL/CFB slate cards: upcoming week only (not full-season Odds API dump). */
-export const FOOTBALL_SLATE_WINDOW_HOURS = 7 * 24
+/**
+ * Syndicate NFL/CFB slate: take the next kickoff cluster (soonest upcoming game + N days),
+ * not a fixed rolling window (Week 1 can sit 8-10 days out) and not the full-season dump.
+ */
+export const FOOTBALL_SLATE_CLUSTER_DAYS = 5
+export const FOOTBALL_SLATE_MAX_LOOKAHEAD_DAYS = 21
 export const DEFAULT_MIN_BOOKS = 3
 /** Pre-match +EV edge alerts require stronger book consensus (v1). */
 export const EDGE_ALERT_MIN_BOOKS = 4
@@ -254,6 +258,33 @@ export function filterOddsEventsForPtCalendarDay(
     const t = Date.parse(iso)
     return Number.isFinite(t) && t > now
   })
+}
+
+/**
+ * Next football slate only: soonest upcoming kickoff, then games within `clusterDays` of that.
+ * Caps lookahead so a full-season Odds API dump never becomes the card.
+ */
+export function filterOddsEventsForNextFootballSlate(
+  events: OddsEvent[],
+  opts: { clusterDays?: number; maxLookaheadDays?: number } = {},
+): OddsEvent[] {
+  const clusterDays = opts.clusterDays ?? FOOTBALL_SLATE_CLUSTER_DAYS
+  const maxLookaheadDays = opts.maxLookaheadDays ?? FOOTBALL_SLATE_MAX_LOOKAHEAD_DAYS
+  const now = Date.now()
+  const maxMs = now + maxLookaheadDays * 86_400_000
+
+  const upcoming = events
+    .filter((ev) => {
+      const t = Date.parse(String(ev.commence_time || ''))
+      return Number.isFinite(t) && t > now && t <= maxMs
+    })
+    .sort((a, b) => Date.parse(String(a.commence_time)) - Date.parse(String(b.commence_time)))
+
+  if (!upcoming.length) return []
+
+  const firstMs = Date.parse(String(upcoming[0].commence_time))
+  const clusterEnd = firstMs + clusterDays * 86_400_000
+  return upcoming.filter((ev) => Date.parse(String(ev.commence_time)) <= clusterEnd)
 }
 
 export function formatOddsCommenceTime(iso: string): string {

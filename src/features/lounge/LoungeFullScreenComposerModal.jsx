@@ -120,6 +120,8 @@ export default function LoungeFullScreenComposerModal({
   const anchorRef = useRef(null)
   const scrollContainerRef = useRef(null)
   const toolbarContainerRef = useRef(null)
+  const swipeStartYRef = useRef(null)
+  const [writeFocused, setWriteFocused] = useState(false)
 
   // Only sync down from props when opening the modal (isolates modal typing from feed re-renders)
   useEffect(() => {
@@ -166,6 +168,10 @@ export default function LoungeFullScreenComposerModal({
   })
   const kbFooterLiftPx = Math.max(kbOverlapPx, kbOverlapTargetPx)
   const keyboardUp = kbFooterLiftPx > iosSafeBottomPx + 0.5
+  // IPA: `100dvh` shrinks with the keys so visualViewport overlap stays ~0 and
+  // scroll-to-toolbar is a no-op (pills stay on screen). Treat write-focus as
+  // keyboard-up on iOS so chrome matches Safari (toolbar under the header).
+  const chromeCompact = activeTab === 'write' && (keyboardUp || (LOUNGE_IOS && writeFocused))
   const footerPadBottom = keyboardUp
     ? `${Math.round(kbFooterLiftPx + 2)}px`
     : loungeComposerFooterPaddingBottom(0, Math.max(8, iosSafeBottomPx))
@@ -190,6 +196,7 @@ export default function LoungeFullScreenComposerModal({
     setTribeMaxAlertOpen(false)
 
     // Focus composer textarea immediately when opening
+    if (LOUNGE_IOS) setWriteFocused(true)
     const focusEl = () => {
       if (textareaRef.current) {
         const el = textareaRef.current
@@ -226,13 +233,41 @@ export default function LoungeFullScreenComposerModal({
   }, [open, activeTab])
 
   useEffect(() => {
-    if (keyboardUp && activeTab === 'write') {
-      const t = setTimeout(() => {
-        scrollToToolbar()
-      }, 120)
-      return () => clearTimeout(t)
+    if (!chromeCompact) return undefined
+    const t = setTimeout(() => {
+      const scroller = scrollContainerRef.current
+      if (scroller) scroller.scrollTop = 0
+      scrollToToolbar()
+    }, 80)
+    return () => clearTimeout(t)
+  }, [chromeCompact, scrollToToolbar])
+
+  const dismissKeyboard = useCallback(() => {
+    blurActiveInput()
+    setWriteFocused(false)
+  }, [])
+
+  const onComposerTouchStart = useCallback((e) => {
+    if (!LOUNGE_IOS || !writeFocused) return
+    swipeStartYRef.current = e.touches?.[0]?.clientY ?? null
+  }, [writeFocused])
+
+  const onComposerTouchMove = useCallback((e) => {
+    if (swipeStartYRef.current == null) return
+    const y = e.touches?.[0]?.clientY
+    if (typeof y !== 'number') return
+    const dy = y - swipeStartYRef.current
+    const scroller = scrollContainerRef.current
+    const atTop = !scroller || scroller.scrollTop <= 2
+    if (dy > 48 && atTop) {
+      swipeStartYRef.current = null
+      dismissKeyboard()
     }
-  }, [keyboardUp, activeTab, scrollToToolbar])
+  }, [dismissKeyboard])
+
+  const onComposerTouchEnd = useCallback(() => {
+    swipeStartYRef.current = null
+  }, [])
 
   if (!open || typeof document === 'undefined') return null
 
@@ -262,6 +297,7 @@ export default function LoungeFullScreenComposerModal({
     if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
       document.activeElement.blur()
     }
+    setWriteFocused(false)
   }
 
   const handleOpenSettingsFromHeader = () => {
@@ -310,7 +346,12 @@ export default function LoungeFullScreenComposerModal({
       aria-modal="true"
       aria-labelledby="pro-composer-title"
       data-lounge-fullscreen-composer=""
+      data-composer-compact={chromeCompact ? 'true' : 'false'}
       className="fixed inset-0 z-[220] flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-zinc-950 text-zinc-100 animate-in fade-in duration-150"
+      onTouchStart={onComposerTouchStart}
+      onTouchMove={onComposerTouchMove}
+      onTouchEnd={onComposerTouchEnd}
+      onTouchCancel={onComposerTouchEnd}
     >
       {/* ── Top Bar ── */}
       <header className="flex shrink-0 items-center justify-between border-b border-zinc-800/90 bg-zinc-900/95 px-3.5 py-3 backdrop-blur-md sm:px-6 sm:py-3.5">
@@ -419,19 +460,21 @@ export default function LoungeFullScreenComposerModal({
       <div ref={scrollContainerRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-3.5 py-3 sm:px-6 sm:py-4">
         {activeTab === 'write' ? (
           <div className="mx-auto flex w-full max-w-3xl flex-1 min-w-0 flex-col space-y-3.5">
-            {/* ── Row 1: Tribe Pills (Horizontal swipe, clean look) ── */}
-            <div className="w-full min-w-0 overflow-hidden">
-              <LoungePostCategoryPillPicker
-                value={composerCategoryPills}
-                onChange={onCategoryPillsChange}
-                disabled={postBusy}
-                size="lg"
-                hint=""
-                hideExpandCaret
-                onMaxPillsReached={() => setTribeMaxAlertOpen(true)}
-                className="!mt-0 !mb-0"
-              />
-            </div>
+            {/* ── Row 1: Tribe Pills (hidden while the iOS keyboard is up) ── */}
+            {!chromeCompact ? (
+              <div className="w-full min-w-0 overflow-hidden">
+                <LoungePostCategoryPillPicker
+                  value={composerCategoryPills}
+                  onChange={onCategoryPillsChange}
+                  disabled={postBusy}
+                  size="lg"
+                  hint=""
+                  hideExpandCaret
+                  onMaxPillsReached={() => setTribeMaxAlertOpen(true)}
+                  className="!mt-0 !mb-0"
+                />
+              </div>
+            ) : null}
 
             {/* ── Markdown Formatting Toolbar ── */}
             <div ref={toolbarContainerRef} className="w-full min-w-0 overflow-hidden">
@@ -468,9 +511,11 @@ export default function LoungeFullScreenComposerModal({
                 placeholder="Are ya winning, son?"
                 className="flex-1 w-full min-h-[16rem] resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 caret-cyan-400 placeholder-zinc-500 outline-none focus:outline-none focus:ring-0 focus:border-zinc-800/90 touch-manipulation whitespace-pre-wrap break-words overflow-y-auto"
                 onFocus={() => {
-                  if (keyboardUp) scrollToToolbar()
+                  setWriteFocused(true)
+                  if (keyboardUp || LOUNGE_IOS) scrollToToolbar()
                   else setTimeout(scrollToToolbar, 250)
                 }}
+                onBlur={() => setWriteFocused(false)}
                 onKeyDown={(e) => {
                   if (cashtagComposer?.onCashtagKeyDown(e, handleTextChange, textareaRef.current)) return
                   mentionComposer?.onMentionKeyDown(e, handleTextChange, textareaRef.current)

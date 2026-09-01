@@ -1,6 +1,7 @@
 /**
  * Parse UFC fight CSVs (HuggingFace xtinkarpiu format + Kaggle scarekrow f_1_* format).
  */
+import { parseMarketOdds } from './ufcOddsMath.mjs'
 
 /** @typedef {object} UfcFighterSnapshot */
 /** @typedef {object} UfcFightRow
@@ -195,6 +196,9 @@ function canonicalizeFightOrder(fight) {
     snapshotA: fight.snapshotB,
     snapshotB: fight.snapshotA,
     fightTotals: { a: fight.fightTotals.b, b: fight.fightTotals.a },
+    csvOdds: fight.csvOdds
+      ? { oddsA: fight.csvOdds.oddsB, oddsB: fight.csvOdds.oddsA, source: fight.csvOdds.source }
+      : null,
   }
 }
 
@@ -290,6 +294,10 @@ function parseKaggleRow(values, headers, colMap) {
     finishWin: wonB && completedRounds < 5,
   }
 
+  const oddsF1 = parseMarketOdds(kaggleField(row, colMap, 'f_1_', ['odds']))
+  const oddsF2 = parseMarketOdds(kaggleField(row, colMap, 'f_2_', ['odds']))
+  const csvOdds = oddsF1 && oddsF2 ? { oddsA: oddsF1, oddsB: oddsF2, source: 'kaggle-csv' } : null
+
   return canonicalizeFightOrder({
     id: `${eventDate}:${normalizeName(fighterA)}:${normalizeName(fighterB)}`,
     eventName,
@@ -304,6 +312,7 @@ function parseKaggleRow(values, headers, colMap) {
     snapshotA: snapA,
     snapshotB: snapB,
     fightTotals: { a: f1Totals, b: f2Totals },
+    csvOdds,
     format: 'kaggle',
   })
 }
@@ -376,7 +385,8 @@ export function parseUfcCsv(text) {
   }
 
   fights.sort((a, b) => a.eventDate.localeCompare(b.eventDate))
-  return { fights, format, headers }
+  const csvOddsInFile = fights.filter((f) => f.csvOdds?.oddsA && f.csvOdds?.oddsB).length
+  return { fights, format, headers, csvOddsInFile }
 }
 
 export function probeCsvColumns(headers) {
@@ -386,5 +396,6 @@ export function probeCsvColumns(headers) {
     sampleColumns: headers.slice(0, 40),
     totalColumns: headers.length,
     hasWalkForwardTotals: headers.some((h) => /landed_significant|sig_str_landed|f_1_sig/i.test(h)),
+    hasCsvOddsColumns: headers.includes('f_1_odds') && headers.includes('f_2_odds'),
   }
 }

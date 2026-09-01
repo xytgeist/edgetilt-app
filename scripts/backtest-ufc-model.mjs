@@ -5,7 +5,8 @@
  * Data sources:
  *   Layer 1 — fight outcomes from CSV (Kaggle scarekrow or HuggingFace xtinkarpiu format)
  *   Layer 2 — walk-forward fighter stats (no future leakage) or embedded pre-fight columns (HF)
- *   Layer 3 — The Odds API historical MMA ML snapshots (--with-odds, needs THE_ODDS_API_KEY)
+ *   Layer 3 — CSV moneyline columns (Kaggle f_1_odds / f_2_odds) auto-attached when populated
+ *   Layer 4 — The Odds API historical MMA snapshots (--with-odds, overrides CSV where matched)
  *
  * Setup:
  *   npm run fetch:ufc-data          # kagglehub → data/ufc/UFC_full_data_silver_v2.csv
@@ -31,6 +32,7 @@ import { parseUfcCsv, probeCsvColumns, normalizeName } from './lib/ufcCsvParser.
 import { applyWalkForwardSnapshots } from './lib/ufcWalkForward.mjs'
 import { analyzeUfcMatchupFromSnapshots, pickScottSide } from './lib/ufcMatchupEngine.mjs'
 import { attachHistoricalOdds } from './lib/ufcHistoricalOdds.mjs'
+import { attachCsvOdds } from './lib/ufcCsvOdds.mjs'
 import { americanToImplied, calcNetUnits } from './lib/ufcOddsMath.mjs'
 
 function parseEnvFile(filePath) {
@@ -235,24 +237,30 @@ async function main() {
   const to = argValue('--to') || '2025-12-31'
   const minPrior = Number(argValue('--min-prior') || 1)
   const useEmbedded = hasFlag('--use-embedded-stats')
-  const withOdds = hasFlag('--with-odds')
+  const withOddsApi = hasFlag('--with-odds')
+  const skipCsvOdds = hasFlag('--no-csv-odds')
   const verboseMisses = hasFlag('--verbose-misses')
 
   const raw = fs.readFileSync(csvPath, 'utf8')
-  const { fights: allFights, format } = parseUfcCsv(raw)
+  const { fights: allFights, format, csvOddsInFile } = parseUfcCsv(raw)
 
   // Walk-forward must see full chronological history before slicing the test window.
   applyWalkForwardSnapshots(allFights, { minPrior, useEmbeddedStats: useEmbedded })
   const inRange = filterByDate(allFights, from, to)
 
-  let oddsSummary = null
-  if (withOdds) {
+  let csvOddsSummary = null
+  if (!skipCsvOdds) {
+    csvOddsSummary = attachCsvOdds(inRange)
+  }
+
+  let oddsApiSummary = null
+  if (withOddsApi) {
     const apiKey = loadOddsApiKey()
     if (!apiKey) {
-      console.error('THE_ODDS_API_KEY not set. Add to .env or environment for --with-odds.')
+      console.error('THE_ODDS_API_KEY not set. Add to .env.local for --with-odds.')
       process.exit(1)
     }
-    oddsSummary = await attachHistoricalOdds(inRange, apiKey, { verbose: true })
+    oddsApiSummary = await attachHistoricalOdds(inRange, apiKey, { verbose: true })
   }
 
   const results = runBacktest(inRange, { verboseMisses })
@@ -264,6 +272,11 @@ async function main() {
   console.log(`Fights in window: ${inRange.length}`)
   console.log(`Stats mode: ${useEmbedded ? 'embedded pre-fight columns when present' : 'walk-forward only'}`)
   console.log(`Min prior UFC fights per fighter: ${minPrior}`)
+  if (csvOddsSummary) {
+    console.log(
+      `CSV odds (f_1_odds/f_2_odds): ${csvOddsSummary.attached}/${inRange.length} fights (${(csvOddsSummary.coverage * 100).toFixed(1)}% in file: ${csvOddsInFile ?? 0})`,
+    )
+  }
   console.log('')
 
   console.log('--- Model (Scott ML pick) ---')
@@ -273,26 +286,36 @@ async function main() {
     console.log(`Brier score (model): ${results.brier.toFixed(4)} (lower is better)`)
   }
   if (results.marketBrier != null) {
-    console.log(`Brier score (market): ${results.marketBrier.toFixed(4)}`)
+    console.log(`Brier score (market on picked side): ${results.marketBrier.toFixed(4)}`)
   }
 
   console.log('')
   console.log('--- Market baseline ---')
   console.log(`Favorite ML hit rate: ${(results.favoriteHitRate * 100).toFixed(1)}% (${results.favoriteGraded} fights with odds)`)
 
-  if (withOdds && oddsSummary) {
+  if (csvOddsSummary?.attached) {
     console.log('')
-    console.log('--- Odds API coverage ---')
-    console.log(`Matched closing lines: ${oddsSummary.attached}`)
-    console.log(`Missed: ${oddsSummary.missed}`)
-    console.log('')
-    console.log('--- +EV subset (model edge > 0 vs close) ---')
+    console.log('--- +EV subset (Scott: model edge > 0 vs CSV close) ---')
     console.log(`Bets: ${results.positiveEdgeBets}`)
     console.log(`Hit rate: ${(results.positiveEdgeHitRate * 100).toFixed(1)}%`)
     console.log(`Flat 1u ROI: ${(results.roi * 100).toFixed(1)}% (${results.units >= 0 ? '+' : ''}${results.units.toFixed(2)}u)`)
-  } else if (!withOdds) {
+  }
+
+  if (withOddsApi && oddsApiSummary) {
     console.log('')
-    console.log('Tip: re-run with --with-odds for CLV/ROI vs historical closing lines.')
+    console.log('--- Odds API coverage ---')
+    console.log(`Matched closing lines: ${oddsApiSummary.attached}`)
+    console.log(`Missed: ${oddsApiSummary.missed}`)
+    if (oddsApiSummary.attached && !csvOddsSummary?.attached) {
+      console.log('')
+      console.log('--- +EV subset (Scott: model edge > 0 vs Odds API close) ---')
+      console.log(`Bets: ${results.positiveEdgeBets}`)
+      console.log(`Hit rate: ${(results.positiveEdgeHitRate * 100).toFixed(1)}%`)
+      console.log(`Flat 1u ROI: ${(results.roi * 100).toFixed(1)}% (${results.units >= 0 ? '+' : ''}${results.units.toFixed(2)}u)`)
+    }
+  } else if (!csvOddsSummary?.attached && !withOddsApi) {
+    console.log('')
+    console.log('Tip: Kaggle f_1_odds/f_2_odds empty in this export? Add THE_ODDS_API_KEY and re-run with --with-odds.')
   }
 
   if (results.misses.length) {

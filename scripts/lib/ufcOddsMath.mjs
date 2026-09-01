@@ -21,3 +21,23 @@ export function calcNetUnits(price, won) {
   if (p > 0) return Math.round((p / 100) * 100) / 100
   return Math.round((100 / Math.abs(p)) * 100) / 100
 }
+
+/** Parse American / decimal ML prices from CSV (Kaggle scarekrow f_*_odds). */
+export function parseMarketOdds(raw) {
+  const text = String(raw ?? '').trim()
+  if (!text) return null
+
+  if (/^[+-]?\d+(\.\d+)?$/.test(text)) {
+    const n = Number(text)
+    if (!Number.isFinite(n) || n === 0) return null
+    // Decimal prices (e.g. 1.91, 2.50)
+    if (Math.abs(n) > 0 && Math.abs(n) < 20 && !String(text).startsWith('+') && !String(text).startsWith('-')) {
+      if (n <= 1) return null
+      const prob = 1 / n
+      return impliedToAmerican(prob)
+    }
+    return Math.round(n)
+  }
+
+  return null
+}

@@ -8,22 +8,25 @@
  *   Layer 3 — The Odds API historical MMA ML snapshots (--with-odds, needs THE_ODDS_API_KEY)
  *
  * Setup:
- *   1. Download Kaggle CSV to data/ufc/UFC_full_data_silver_v2.csv
- *      https://www.kaggle.com/datasets/scarekrow/ufc-data
+ *   npm run fetch:ufc-data          # kagglehub → data/ufc/UFC_full_data_silver_v2.csv
+ *   or drop CSV manually from https://www.kaggle.com/datasets/scarekrow/ufc-data
  *   OR use bundled sample: data/ufc/sample_200.csv (HF format, partial dates)
  *
  * Usage:
- *   node scripts/backtest-ufc-model.mjs
+ *   npm run fetch:ufc-data
+ *   node scripts/backtest-ufc-model.mjs --fetch-kaggle
  *   node scripts/backtest-ufc-model.mjs --csv data/ufc/UFC_full_data_silver_v2.csv --from 2024-01-01 --to 2025-12-31
  *   node scripts/backtest-ufc-model.mjs --csv data/ufc/sample_200.csv --from 2024-01-01 --with-odds
  *   node scripts/backtest-ufc-model.mjs --probe-csv data/ufc/UFC_full_data_silver_v2.csv
  *   node scripts/backtest-ufc-model.mjs --use-embedded-stats
  *
  * Env:
+ *   KAGGLE_API_TOKEN — kagglehub auth (or kaggle auth login / ~/.kaggle/kaggle.json)
  *   THE_ODDS_API_KEY — required for --with-odds (Business/paid historical tier)
  */
 import fs from 'node:fs'
 import path from 'node:path'
+import { spawnSync } from 'node:child_process'
 import { parseUfcCsv, probeCsvColumns, normalizeName } from './lib/ufcCsvParser.mjs'
 import { applyWalkForwardSnapshots } from './lib/ufcWalkForward.mjs'
 import { analyzeUfcMatchupFromSnapshots, pickScottSide } from './lib/ufcMatchupEngine.mjs'
@@ -192,6 +195,15 @@ function runBacktest(fights, opts) {
 }
 
 async function main() {
+  if (hasFlag('--fetch-kaggle')) {
+    const fetchScript = path.join(process.cwd(), 'scripts/fetch-ufc-kaggle-data.mjs')
+    const force = hasFlag('--force-fetch')
+    const run = spawnSync(process.execPath, [fetchScript, ...(force ? ['--force'] : [])], {
+      stdio: 'inherit',
+    })
+    if (run.status !== 0) process.exit(run.status ?? 1)
+  }
+
   const csvPath =
     argValue('--csv') ||
     (fs.existsSync('data/ufc/UFC_full_data_silver_v2.csv')
@@ -213,7 +225,8 @@ async function main() {
   }
 
   if (!csvPath || !fs.existsSync(csvPath)) {
-    console.error(`CSV not found. Download Kaggle file to data/ufc/UFC_full_data_silver_v2.csv`)
+    console.error(`CSV not found at data/ufc/UFC_full_data_silver_v2.csv`)
+    console.error(`  npm run fetch:ufc-data   # kagglehub (scarekrow/ufc-data)`)
     console.error(`  https://www.kaggle.com/datasets/scarekrow/ufc-data`)
     process.exit(1)
   }

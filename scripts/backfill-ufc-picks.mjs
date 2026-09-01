@@ -681,14 +681,14 @@ async function run() {
   }
 
   const allPicks = []
-  for (const fight of AUDITED_UFC_2026_FIGHTS) {
+  for (const fight of eligibleFights) {
     if (!isFightEligibleForBackfill(fight)) continue
     const picks = generateDeskPicks(fight, botUserId, { gradeResults: true })
     allPicks.push(...picks)
   }
 
   console.log(
-    `Generated ${allPicks.length} historical UFC picks across ${allPicks.length / 4} audited fights.\n`
+    `Generated ${allPicks.length} historical UFC picks across ${eligibleFights.length} audited fights.\n`
   )
 
   // Tally performance by desk

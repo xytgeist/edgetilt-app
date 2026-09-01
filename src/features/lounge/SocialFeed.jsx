@@ -2081,6 +2081,51 @@ export default function SocialFeed({
     el.scrollTo({ top: 0, behavior: 'auto' })
   }, [])
 
+  // iOS/WKWebView often eats the first `click` on a control inside the feed
+  // scroller (hover emulation + scroll-intent). Expand on pointerup instead.
+  const feedComposerExpandGestureRef = useRef(null)
+  const expandLoungeFeedComposer = useCallback(() => {
+    if (composerExpandedRef.current) return
+    composerFoldRevealRef.current = 1
+    flushSync(() => {
+      setComposerFoldReveal(1)
+      composerExpandedRef.current = true
+      setComposerExpanded(true)
+      setComposerFocusToken((t) => t + 1)
+    })
+    focusLoungeComposerCaption(() => composerFieldRef.current, {
+      scrollFeedToTop: scrollLoungeFeedToTopInstant,
+    })
+    scheduleLoungeComposerTextareaFocus({
+      getTextarea: () => composerFieldRef.current,
+      scrollFeedToTop: scrollLoungeFeedToTopInstant,
+    })
+  }, [scrollLoungeFeedToTopInstant])
+  const onFeedComposerExpandPointerDown = useCallback((e) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    feedComposerExpandGestureRef.current = { x: e.clientX, y: e.clientY, id: e.pointerId }
+  }, [])
+  const onFeedComposerExpandPointerUp = useCallback(
+    (e) => {
+      const g = feedComposerExpandGestureRef.current
+      feedComposerExpandGestureRef.current = null
+      if (!g || g.id !== e.pointerId) return
+      if (Math.hypot(e.clientX - g.x, e.clientY - g.y) > 14) return
+      expandLoungeFeedComposer()
+    },
+    [expandLoungeFeedComposer],
+  )
+  const onFeedComposerExpandPointerCancel = useCallback(() => {
+    feedComposerExpandGestureRef.current = null
+  }, [])
+  const onFeedComposerExpandClick = useCallback(
+    (e) => {
+      e.preventDefault()
+      expandLoungeFeedComposer()
+    },
+    [expandLoungeFeedComposer],
+  )
+
   const scrollLoungePostDetailToTopInstant = useCallback(() => {
     const el = loungePostDetailScrollRef.current
     if (!el) return
@@ -16580,22 +16625,11 @@ export default function SocialFeed({
             ) : (
               <button
                 type="button"
-                onClick={() => {
-                  composerFoldRevealRef.current = 1
-                  flushSync(() => {
-                    setComposerFoldReveal(1)
-                    composerExpandedRef.current = true
-                    setComposerExpanded(true)
-                    setComposerFocusToken((t) => t + 1)
-                  })
-                  focusLoungeComposerCaption(() => composerFieldRef.current, {
-                    scrollFeedToTop: scrollLoungeFeedToTopInstant,
-                  })
-                  scheduleLoungeComposerTextareaFocus({
-                    getTextarea: () => composerFieldRef.current,
-                    scrollFeedToTop: scrollLoungeFeedToTopInstant,
-                  })
-                }}
+                data-lounge-feed-composer-expand=""
+                onPointerDown={onFeedComposerExpandPointerDown}
+                onPointerUp={onFeedComposerExpandPointerUp}
+                onPointerCancel={onFeedComposerExpandPointerCancel}
+                onClick={onFeedComposerExpandClick}
                 className="mt-0.5 flex min-h-10 w-full min-w-0 touch-manipulation items-center justify-start sm:min-h-[2.75rem] text-left text-[17px] leading-[1.25] text-zinc-500"
               >
                 {(() => {

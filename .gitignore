@@ -84,3 +84,8 @@ scripts/tmp-*
 test_files/
 assets/lightbox-ref-frames/
 assets/lightbox-close-ref-frames/
+
+# UFC backtest datasets + Odds API cache (local only)
+data/ufc/*.csv
+data/ufc/odds-cache/
+!data/ufc/.gitkeep

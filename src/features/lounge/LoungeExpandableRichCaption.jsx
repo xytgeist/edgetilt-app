@@ -6,8 +6,7 @@ import { useLoungeMarketFeedQuotes } from './LoungeMarketFeedContext.jsx'
 
 /**
  * Rich caption with optional collapse at {@link LOUNGE_CAPTION_DISPLAY_MAX} chars /
- * {@link LOUNGE_CAPTION_DISPLAY_MAX_LINES} lines + trailing ellipsis (no Show more).
- * Open the post / thread for the full caption.
+ * {@link LOUNGE_CAPTION_DISPLAY_MAX_LINES} lines + inline `… see more` that expands in place.
  *
  * Lightbox: pass `collapsedLines` + `expandedMaxLines` (+ `expandOnTap`) for CSS visual-line
  * clamp with ellipsis; tap the caption to expand into a fixed-height scroll box.
@@ -28,8 +27,7 @@ import { useLoungeMarketFeedQuotes } from './LoungeMarketFeedContext.jsx'
 export default function LoungeExpandableRichCaption({
   text,
   className = '',
-  // Kept for call-site compat; char/line truncate no longer renders a Show more control.
-  moreClassName: _moreClassName,
+  moreClassName = 'lounge-caption-more touch-manipulation [-webkit-tap-highlight-color:transparent]',
   displayMax = LOUNGE_CAPTION_DISPLAY_MAX,
   displayMaxLines = LOUNGE_CAPTION_DISPLAY_MAX_LINES,
   collapsedLines,
@@ -153,16 +151,33 @@ export default function LoungeExpandableRichCaption({
     )
   }
 
-  // Char/line path stays collapsed in the feed … ellipsis is the only cue; open the post for full text.
-  // `startExpanded` / lightbox CSS-clamp path above still expand in place.
-  const displayText = isTruncated && !expanded ? preview : source
+  // Char/line path: truncated preview + `… see more` expands the full caption in the feed.
+  // stopPropagation so the control does not open post detail via the parent caption click.
+  const showMore = isTruncated && !expanded
+  const displayText = showMore ? preview : source
   const rich = renderLoungeMarkdown(displayText, mergedCaptionOpts)
   if (!rich) return null
 
   return (
     <span className={`min-w-0 max-w-full whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${className}`.trim()}>
       {rich}
-      {isTruncated && !expanded ? '…' : null}
+      {showMore ? (
+        <>
+          {'… '}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              e.preventDefault()
+              setExpanded(true)
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className={`inline ${moreClassName}`}
+          >
+            see more
+          </button>
+        </>
+      ) : null}
     </span>
   )
 }

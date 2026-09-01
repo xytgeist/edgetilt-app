@@ -3242,6 +3242,22 @@ html.light [data-lounge-market-chart-compare] {
   color: var(--color-zinc-600) !important;
 }
 
+/* Lounge feed truncated caption: in-place expand control. */
+.lounge-caption-more {
+  font-weight: 500;
+  color: rgb(34 211 238 / 0.92);
+}
+.lounge-caption-more:hover {
+  color: rgb(103 232 249);
+}
+
+html.light .lounge-caption-more {
+  color: #2563eb !important;
+}
+html.light .lounge-caption-more:hover {
+  color: #1d4ed8 !important;
+}
+
 /* Lounge post / composer $TICKER cashtags (positive day change) */
 .lounge-cashtag-positive {
   color: var(--color-lv-green);

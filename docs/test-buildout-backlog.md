@@ -2790,7 +2790,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
-- **2026-08-31:** Pro composer no longer blurs the caption on image/video pointer-down. That killed the iOS file-picker gesture (footer jumped behind the keyboard, Photos never opened). Carousel still reveals after files land (`writeAttachmentEpoch`).
+- **2026-08-31:** Pro composer write attachments live inside the caption card (`data-lounge-caption-card`), pinned to the bottom. No more hide-on-keyboard / blur-to-reveal. Keyboard-up uses compact thumbs (market pills instead of mini charts). Preview tab is unchanged.
 - **2026-08-31:** Pro composer keeps tribe pills visible while the keyboard is up (`LoungeFullScreenComposerModal.jsx`). Accessory pill is gone so they no longer hide under the header; write-chrome scroll targets the pills row.
 - **2026-08-31:** Feed composer expand listens for `pointerup` (`SocialFeed.jsx`). First iOS/WKWebView tap often never fires `click` inside the feed scroller, so the collapsed “Are ya winning, son?” row looked dead until a second tap.
 - **2026-08-31:** Reverted Pro composer tribes out of Audience & Replies. Picker is back on the write field (hidden while the iOS keyboard is up). Warning copy is still title + “Deselect a tribe…” only.

@@ -2790,6 +2790,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-08-31:** Pro composer keeps tribe pills visible while the keyboard is up (`LoungeFullScreenComposerModal.jsx`). Accessory pill is gone so they no longer hide under the header; write-chrome scroll targets the pills row.
 - **2026-08-31:** Feed composer expand listens for `pointerup` (`SocialFeed.jsx`). First iOS/WKWebView tap often never fires `click` inside the feed scroller, so the collapsed “Are ya winning, son?” row looked dead until a second tap.
 - **2026-08-31:** Reverted Pro composer tribes out of Audience & Replies. Picker is back on the write field (hidden while the iOS keyboard is up). Warning copy is still title + “Deselect a tribe…” only.
 - **2026-08-30:** Call lifecycle, push freshness & minimized UI polish (`ChatCallSession.jsx`, `supabase/functions/chat-calls/index.ts`, `supabase/functions/_shared/apnsPush.ts`): (1) Added `apns-expiration` (30s TTL) to VoIP & alert call invite pushes so stale calls are never delivered after a device reconnects. (2) Formatted group call titles to `[Caller] in [Group Name]` in pushes and CallKit. (3) Wired auto-expand to the video switch confirmation modal when tapping Video inside a minimized audio call pill. (4) Added auto-hangup detection when all other members leave a group call (ending solo ghost calls). (5) Enhanced minimized audio call pill contrast and border illumination against dark theme backgrounds.

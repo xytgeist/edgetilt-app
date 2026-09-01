@@ -120,6 +120,7 @@ export default function LoungeFullScreenComposerModal({
   const anchorRef = useRef(null)
   const scrollContainerRef = useRef(null)
   const toolbarContainerRef = useRef(null)
+  const tribePillsContainerRef = useRef(null)
   const swipeStartYRef = useRef(null)
   const [writeFocused, setWriteFocused] = useState(false)
 
@@ -168,21 +169,22 @@ export default function LoungeFullScreenComposerModal({
   })
   const kbFooterLiftPx = Math.max(kbOverlapPx, kbOverlapTargetPx)
   const keyboardUp = kbFooterLiftPx > iosSafeBottomPx + 0.5
-  // IPA: `100dvh` shrinks with the keys so visualViewport overlap stays ~0 and
-  // scroll-to-toolbar is a no-op (pills stay on screen). Treat write-focus as
-  // keyboard-up on iOS so chrome matches Safari (toolbar under the header).
+  // IPA: `100dvh` shrinks with the keys so visualViewport overlap stays ~0.
+  // Treat write-focus as keyboard-up on iOS so write chrome (tribes + markdown
+  // toolbar) sits under the header. Accessory pill is already gone, so tribes stay.
   const chromeCompact = activeTab === 'write' && (keyboardUp || (LOUNGE_IOS && writeFocused))
   const footerPadBottom = keyboardUp
     ? `${Math.round(kbFooterLiftPx + 2)}px`
     : loungeComposerFooterPaddingBottom(0, Math.max(8, iosSafeBottomPx))
 
-  const scrollToToolbar = useCallback(() => {
-    if (!scrollContainerRef.current || !toolbarContainerRef.current) return
+  const scrollToWriteChrome = useCallback(() => {
+    if (!scrollContainerRef.current) return
     const container = scrollContainerRef.current
-    const toolbar = toolbarContainerRef.current
-    const toolbarTop = toolbar.offsetTop - 4 // sits directly under fixed header
+    const chrome = tribePillsContainerRef.current || toolbarContainerRef.current
+    if (!chrome) return
+    const chromeTop = chrome.offsetTop - 4
     container.scrollTo({
-      top: Math.max(0, toolbarTop),
+      top: Math.max(0, chromeTop),
       behavior: 'smooth',
     })
   }, [])
@@ -237,10 +239,10 @@ export default function LoungeFullScreenComposerModal({
     const t = setTimeout(() => {
       const scroller = scrollContainerRef.current
       if (scroller) scroller.scrollTop = 0
-      scrollToToolbar()
+      scrollToWriteChrome()
     }, 80)
     return () => clearTimeout(t)
-  }, [chromeCompact, scrollToToolbar])
+  }, [chromeCompact, scrollToWriteChrome])
 
   const dismissKeyboard = useCallback(() => {
     blurActiveInput()
@@ -466,21 +468,19 @@ export default function LoungeFullScreenComposerModal({
       <div ref={scrollContainerRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-3.5 py-3 sm:px-6 sm:py-4">
         {activeTab === 'write' ? (
           <div className="mx-auto flex w-full max-w-3xl flex-1 min-w-0 flex-col space-y-3.5">
-            {/* ── Row 1: Tribe Pills (hidden while the iOS keyboard is up) ── */}
-            {!chromeCompact ? (
-              <div className="w-full min-w-0 overflow-hidden">
-                <LoungePostCategoryPillPicker
-                  value={composerCategoryPills}
-                  onChange={onCategoryPillsChange}
-                  disabled={postBusy}
-                  size="lg"
-                  hint=""
-                  hideExpandCaret
-                  onMaxPillsReached={() => setTribeMaxAlertOpen(true)}
-                  className="!mt-0 !mb-0"
-                />
-              </div>
-            ) : null}
+            {/* ── Row 1: Tribe Pills (stay visible with the keyboard up) ── */}
+            <div ref={tribePillsContainerRef} className="w-full min-w-0 overflow-hidden">
+              <LoungePostCategoryPillPicker
+                value={composerCategoryPills}
+                onChange={onCategoryPillsChange}
+                disabled={postBusy}
+                size="lg"
+                hint=""
+                hideExpandCaret
+                onMaxPillsReached={() => setTribeMaxAlertOpen(true)}
+                className="!mt-0 !mb-0"
+              />
+            </div>
 
             {/* ── Markdown Formatting Toolbar ── */}
             <div ref={toolbarContainerRef} className="w-full min-w-0 overflow-hidden">
@@ -518,8 +518,8 @@ export default function LoungeFullScreenComposerModal({
                 className="flex-1 w-full min-h-[16rem] resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 caret-cyan-400 placeholder-zinc-500 outline-none focus:outline-none focus:ring-0 focus:border-zinc-800/90 touch-manipulation whitespace-pre-wrap break-words overflow-y-auto"
                 onFocus={() => {
                   setWriteFocused(true)
-                  if (keyboardUp || LOUNGE_IOS) scrollToToolbar()
-                  else setTimeout(scrollToToolbar, 250)
+                  if (keyboardUp || LOUNGE_IOS) scrollToWriteChrome()
+                  else setTimeout(scrollToWriteChrome, 250)
                 }}
                 onBlur={() => setWriteFocused(false)}
                 onKeyDown={(e) => {

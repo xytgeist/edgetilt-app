@@ -2790,6 +2790,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-01:** Public NFL/CFB slate Lounge caption caps at **1 hammer / 2 consensus / 3 house-divided games** (`formatNflSlateCardCaption`); VIP desk cards still full slate. Redeploy **`lounge-odds-poll`** to pick up.
 - **2026-09-01:** Pro composer mention picker was gated on `mentionComposer.isOpen`, which `useMentionState` never sets. Dropdown now mounts like the feed and hides itself when there are no hits.
 - **2026-09-01:** Lounge markdown fenced code blocks wrap (`whitespace-pre-wrap`) instead of a one-line horizontal slide. Feed, post detail, and Pro preview share `renderLoungeMarkdown`.
 - **2026-09-01:** Pro composer hides write-field thumbs only while the keyboard is visually up (`useLockedLayoutKeyboardOverlapPx`). Swiping the keys down brings the carousel back even if the caption stays focused; tapping the caption hides them again.

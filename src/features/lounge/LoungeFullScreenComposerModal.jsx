@@ -119,8 +119,6 @@ export default function LoungeFullScreenComposerModal({
   const textareaRef = useRef(null)
   const anchorRef = useRef(null)
   const scrollContainerRef = useRef(null)
-  const toolbarContainerRef = useRef(null)
-  const tribePillsContainerRef = useRef(null)
   const swipeStartYRef = useRef(null)
   const [writeFocused, setWriteFocused] = useState(false)
 
@@ -170,24 +168,60 @@ export default function LoungeFullScreenComposerModal({
   const kbFooterLiftPx = Math.max(kbOverlapPx, kbOverlapTargetPx)
   const keyboardUp = kbFooterLiftPx > iosSafeBottomPx + 0.5
   // IPA: `100dvh` shrinks with the keys so visualViewport overlap stays ~0.
-  // Treat write-focus as keyboard-up on iOS so write chrome (tribes + markdown
-  // toolbar) sits under the header. Accessory pill is already gone, so tribes stay.
+  // writeFocused is the keyboard-up proxy so thumbs leave the layout while typing.
   const chromeCompact = activeTab === 'write' && (keyboardUp || (LOUNGE_IOS && writeFocused))
   const footerPadBottom = keyboardUp
     ? `${Math.round(kbFooterLiftPx + 2)}px`
     : loungeComposerFooterPaddingBottom(0, Math.max(8, iosSafeBottomPx))
 
-  const scrollToWriteChrome = useCallback(() => {
-    if (!scrollContainerRef.current) return
-    const container = scrollContainerRef.current
-    const chrome = tribePillsContainerRef.current || toolbarContainerRef.current
-    if (!chrome) return
-    const chromeTop = chrome.offsetTop - 4
-    container.scrollTo({
-      top: Math.max(0, chromeTop),
-      behavior: 'smooth',
-    })
+  // iOS scrolls the layout/visual viewport to keep the caret on screen, which
+  // shoves the header and footer off-screen. Pull-down undoes that. Do it here.
+  const pinComposerViewport = useCallback((resetScroller = false) => {
+    if (typeof window === 'undefined') return
+    try {
+      window.scrollTo(0, 0)
+      const de = document.documentElement
+      if (de) de.scrollTop = 0
+      if (document.body) document.body.scrollTop = 0
+      const vv = window.visualViewport
+      const offset = vv?.offsetTop ?? 0
+      if (offset > 0.5) {
+        window.scrollTo(0, offset)
+        window.scrollTo(0, 0)
+      }
+    } catch {
+      // ignore
+    }
+    if (resetScroller) {
+      const scroller = scrollContainerRef.current
+      if (scroller && scroller.scrollTop) scroller.scrollTop = 0
+    }
   }, [])
+
+  const focusCaptionNoScroll = useCallback(
+    (el) => {
+      if (!el) return
+      try {
+        el.focus({ preventScroll: true })
+      } catch {
+        try {
+          el.focus()
+        } catch {
+          return
+        }
+      }
+      const end = el.value?.length ?? 0
+      if (typeof el.setSelectionRange === 'function') {
+        try {
+          el.setSelectionRange(end, end)
+        } catch {
+          // ignore
+        }
+      }
+      pinComposerViewport(true)
+    },
+    [pinComposerViewport],
+  )
 
   useEffect(() => {
     if (!open) return
@@ -199,50 +233,49 @@ export default function LoungeFullScreenComposerModal({
 
     // Focus composer textarea immediately when opening
     if (LOUNGE_IOS) setWriteFocused(true)
-    const focusEl = () => {
-      if (textareaRef.current) {
-        const el = textareaRef.current
-        el.focus()
-        const end = el.value?.length ?? 0
-        if (typeof el.setSelectionRange === 'function') {
-          el.setSelectionRange(end, end)
-        }
-      }
-    }
+    const focusEl = () => focusCaptionNoScroll(textareaRef.current)
     focusEl()
     requestAnimationFrame(focusEl)
     const t = setTimeout(focusEl, 30)
     return () => clearTimeout(t)
-  }, [open])
+  }, [open, focusCaptionNoScroll])
 
   useEffect(() => {
     if (open && activeTab === 'write') {
-      const focusEl = () => {
-        if (textareaRef.current) {
-          const el = textareaRef.current
-          el.focus()
-          const end = el.value?.length ?? 0
-          if (typeof el.setSelectionRange === 'function') {
-            el.setSelectionRange(end, end)
-          }
-        }
-      }
+      const focusEl = () => focusCaptionNoScroll(textareaRef.current)
       focusEl()
       requestAnimationFrame(focusEl)
       const t = setTimeout(focusEl, 30)
       return () => clearTimeout(t)
     }
-  }, [open, activeTab])
+  }, [open, activeTab, focusCaptionNoScroll])
 
   useEffect(() => {
     if (!chromeCompact) return undefined
-    const t = setTimeout(() => {
-      const scroller = scrollContainerRef.current
-      if (scroller) scroller.scrollTop = 0
-      scrollToWriteChrome()
-    }, 80)
-    return () => clearTimeout(t)
-  }, [chromeCompact, scrollToWriteChrome])
+    pinComposerViewport(true)
+    const t0 = setTimeout(() => pinComposerViewport(true), 80)
+    const t1 = setTimeout(() => pinComposerViewport(), 220)
+    const t2 = setTimeout(() => pinComposerViewport(), 360)
+    return () => {
+      clearTimeout(t0)
+      clearTimeout(t1)
+      clearTimeout(t2)
+    }
+  }, [chromeCompact, pinComposerViewport])
+
+  useEffect(() => {
+    if (!open || !writeFocused || typeof window === 'undefined') return undefined
+    const pin = () => pinComposerViewport()
+    const vv = window.visualViewport
+    window.addEventListener('scroll', pin, { passive: true })
+    vv?.addEventListener('scroll', pin)
+    vv?.addEventListener('resize', pin)
+    return () => {
+      window.removeEventListener('scroll', pin)
+      vv?.removeEventListener('scroll', pin)
+      vv?.removeEventListener('resize', pin)
+    }
+  }, [open, writeFocused, pinComposerViewport])
 
   const dismissKeyboard = useCallback(() => {
     blurActiveInput()
@@ -500,7 +533,7 @@ export default function LoungeFullScreenComposerModal({
         {activeTab === 'write' ? (
           <div className="mx-auto flex w-full max-w-3xl flex-1 min-w-0 flex-col space-y-3.5">
             {/* ── Row 1: Tribe Pills (stay visible with the keyboard up) ── */}
-            <div ref={tribePillsContainerRef} className="w-full min-w-0 overflow-hidden">
+            <div className="w-full min-w-0 overflow-hidden">
               <LoungePostCategoryPillPicker
                 value={composerCategoryPills}
                 onChange={onCategoryPillsChange}
@@ -514,7 +547,7 @@ export default function LoungeFullScreenComposerModal({
             </div>
 
             {/* ── Markdown Formatting Toolbar ── */}
-            <div ref={toolbarContainerRef} className="w-full min-w-0 overflow-hidden">
+            <div className="w-full min-w-0 overflow-hidden">
               <LoungeMarkdownToolbar
                 textareaRef={textareaRef}
                 onTextChange={handleTextChange}
@@ -546,11 +579,16 @@ export default function LoungeFullScreenComposerModal({
                 spellCheck
                 aria-label="Full screen post caption"
                 placeholder="Are ya winning, son?"
-                className="flex-1 w-full min-h-[16rem] resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 caret-cyan-400 placeholder-zinc-500 outline-none focus:outline-none focus:ring-0 focus:border-zinc-800/90 touch-manipulation whitespace-pre-wrap break-words overflow-y-auto"
+                className={`flex-1 w-full resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 caret-cyan-400 placeholder-zinc-500 outline-none focus:outline-none focus:ring-0 focus:border-zinc-800/90 touch-manipulation whitespace-pre-wrap break-words overflow-y-auto ${
+                  chromeCompact ? 'min-h-[6rem]' : 'min-h-[16rem]'
+                }`}
                 onFocus={() => {
                   setWriteFocused(true)
-                  if (keyboardUp || LOUNGE_IOS) scrollToWriteChrome()
-                  else setTimeout(scrollToWriteChrome, 250)
+                  pinComposerViewport(true)
+                  requestAnimationFrame(() => pinComposerViewport())
+                  setTimeout(() => pinComposerViewport(), 80)
+                  setTimeout(() => pinComposerViewport(), 220)
+                  setTimeout(() => pinComposerViewport(), 360)
                 }}
                 onBlur={() => setWriteFocused(false)}
                 onKeyDown={(e) => {

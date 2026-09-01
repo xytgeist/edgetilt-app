@@ -173,26 +173,51 @@ function hfFightTotals(row, headers, prefix, won, method) {
   }
 }
 
-function kaggleSnapshot(row, colMap, side, fighterName, division) {
-  const p = side === 1 ? 'f_1_' : 'f_2_'
-  const g = (suffix) => {
-    const col = colMap[`${p}${suffix}`]
-    return col != null ? row[col] : ''
+function kaggleField(row, colMap, sidePrefix, suffixes) {
+  for (const suffix of suffixes) {
+    const col = colMap[`${sidePrefix}${suffix}`]
+    if (col != null && row[col] !== '') return row[col]
   }
+  return ''
+}
+
+function kaggleSidePrefix(side) {
+  return side === 1 ? 'f_1_' : 'f_2_'
+}
+
+/** scarekrow/ufc-data lists the winner in f_1 — canonicalize A/B alphabetically. */
+function canonicalizeFightOrder(fight) {
+  if (normalizeName(fight.fighterA) <= normalizeName(fight.fighterB)) return fight
+  return {
+    ...fight,
+    fighterA: fight.fighterB,
+    fighterB: fight.fighterA,
+    snapshotA: fight.snapshotB,
+    snapshotB: fight.snapshotA,
+    fightTotals: { a: fight.fightTotals.b, b: fight.fightTotals.a },
+  }
+}
+
+function kaggleSnapshot(row, colMap, side, fighterName, division) {
+  const p = kaggleSidePrefix(side)
+  const g = (...suffixes) => kaggleField(row, colMap, p, suffixes)
+
+  const reachCm = num(g('fighter_reach_cm', 'reach_cm', 'reach_inches'), 0)
+  const reachIn = reachCm > 0 ? Math.round((reachCm / 2.54) * 10) / 10 : 72
 
   return {
     fighter_name: fighterName,
     division,
-    reach_inches: num(g('reach'), num(g('reach_inches'), 72)),
-    stance: normalizeStance(g('stance')),
-    slpm: num(g('slpm'), num(g('sig_str_landed_per_min'), 0)),
-    sapm: num(g('sapm'), num(g('sig_str_absorbed_per_min'), 0)),
-    str_acc: pct(g('str_acc'), pct(g('str_acc_pct'), 50)),
-    str_def: pct(g('str_def'), 50),
-    td_avg: num(g('td_avg'), 0),
-    td_acc: pct(g('td_acc'), 50),
-    td_def: pct(g('td_def'), 50),
-    sub_avg: num(g('sub_avg'), 0),
+    reach_inches: reachIn,
+    stance: normalizeStance(g('fighter_stance', 'stance')),
+    slpm: num(g('fighter_SlpM', 'slpm', 'sig_str_landed_per_min'), 0),
+    sapm: num(g('fighter_SApM', 'sapm', 'sig_str_absorbed_per_min'), 0),
+    str_acc: pct(g('fighter_Str_Acc', 'str_acc', 'str_acc_pct'), 50),
+    str_def: pct(g('fighter_Str_Def', 'str_def'), 50),
+    td_avg: num(g('fighter_TD_Avg', 'td_avg'), 0),
+    td_acc: pct(g('fighter_TD_Acc', 'td_acc'), 50),
+    td_def: pct(g('fighter_TD_Def', 'td_def'), 50),
+    sub_avg: num(g('fighter_Sub_Avg', 'sub_avg'), 0),
     finish_rate: pct(g('finish_rate'), 50),
     ko_finish_rate: pct(g('ko_finish_rate'), 33),
     sub_finish_rate: pct(g('sub_finish_rate'), 17),
@@ -222,7 +247,7 @@ function parseKaggleRow(values, headers, colMap) {
   const genderCol = pickCol(headers, ['gender'])
   const titleCol = pickCol(headers, ['title_fight', 'is_title_fight'])
   const finishRoundCol = pickCol(headers, ['finish_round', 'num_rounds', 'round'])
-  const locationCol = pickCol(headers, ['location', 'event_location'])
+  const locationCol = pickCol(headers, ['location', 'event_location', 'event_city'])
 
   if (!f1NameCol || !f2NameCol || !dateCol) return null
 
@@ -234,7 +259,8 @@ function parseKaggleRow(values, headers, colMap) {
   const gender = genderCol ? row[idx(genderCol)] : ''
   const division = normalizeDivision(wcCol ? row[idx(wcCol)] : '', gender)
   const titleFight = titleCol ? String(row[idx(titleCol)]).toLowerCase() === 'true' : false
-  const completedRounds = num(finishRoundCol ? row[idx(finishRoundCol)] : 3, 3)
+  const finishRound = num(finishRoundCol ? row[idx(finishRoundCol)] : 3, 3)
+  const completedRounds = finishRound > 0 ? finishRound : 3
   const location = locationCol ? row[idx(locationCol)] : ''
 
   const snapA = kaggleSnapshot(row, colMap, 1, fighterA, division)
@@ -243,7 +269,28 @@ function parseKaggleRow(values, headers, colMap) {
   const wonA = normalizeName(winner) === normalizeName(fighterA)
   const wonB = normalizeName(winner) === normalizeName(fighterB)
 
-  return {
+  const f1Totals = {
+    sigStrikesLanded: num(kaggleField(row, colMap, 'f_1_', ['sig_strikes_succ', 'sig_str_landed', 'total_sig_strikes_landed']), 0),
+    sigStrikesAttempted: num(kaggleField(row, colMap, 'f_1_', ['sig_strikes_att', 'sig_str_attempted']), 0),
+    takedownsLanded: num(kaggleField(row, colMap, 'f_1_', ['takedown_succ', 'td_landed']), 0),
+    takedownsAttempted: num(kaggleField(row, colMap, 'f_1_', ['takedown_att', 'td_attempted']), 0),
+    subAttempts: num(kaggleField(row, colMap, 'f_1_', ['submission_att', 'sub_attempts']), 0),
+    fightSeconds: completedRounds * 300,
+    won: wonA,
+    finishWin: wonA && completedRounds < 5,
+  }
+  const f2Totals = {
+    sigStrikesLanded: num(kaggleField(row, colMap, 'f_2_', ['sig_strikes_succ', 'sig_str_landed', 'total_sig_strikes_landed']), 0),
+    sigStrikesAttempted: num(kaggleField(row, colMap, 'f_2_', ['sig_strikes_att', 'sig_str_attempted']), 0),
+    takedownsLanded: num(kaggleField(row, colMap, 'f_2_', ['takedown_succ', 'td_landed']), 0),
+    takedownsAttempted: num(kaggleField(row, colMap, 'f_2_', ['takedown_att', 'td_attempted']), 0),
+    subAttempts: num(kaggleField(row, colMap, 'f_2_', ['submission_att', 'sub_attempts']), 0),
+    fightSeconds: completedRounds * 300,
+    won: wonB,
+    finishWin: wonB && completedRounds < 5,
+  }
+
+  return canonicalizeFightOrder({
     id: `${eventDate}:${normalizeName(fighterA)}:${normalizeName(fighterB)}`,
     eventName,
     eventDate,
@@ -256,30 +303,9 @@ function parseKaggleRow(values, headers, colMap) {
     completedRounds,
     snapshotA: snapA,
     snapshotB: snapB,
-    fightTotals: {
-      a: {
-        sigStrikesLanded: num(row[colMap['f_1_sig_str_landed']] ?? row[colMap['f_1_total_sig_strikes_landed']], 0),
-        sigStrikesAttempted: num(row[colMap['f_1_sig_str_attempted']], 0),
-        takedownsLanded: num(row[colMap['f_1_td_landed']], 0),
-        takedownsAttempted: num(row[colMap['f_1_td_attempted']], 0),
-        subAttempts: num(row[colMap['f_1_sub_attempts']], 0),
-        fightSeconds: completedRounds * 300,
-        won: wonA,
-        finishWin: wonA && completedRounds < 5,
-      },
-      b: {
-        sigStrikesLanded: num(row[colMap['f_2_sig_str_landed']] ?? row[colMap['f_2_total_sig_strikes_landed']], 0),
-        sigStrikesAttempted: num(row[colMap['f_2_sig_str_attempted']], 0),
-        takedownsLanded: num(row[colMap['f_2_td_landed']], 0),
-        takedownsAttempted: num(row[colMap['f_2_td_attempted']], 0),
-        subAttempts: num(row[colMap['f_2_sub_attempts']], 0),
-        fightSeconds: completedRounds * 300,
-        won: wonB,
-        finishWin: wonB && completedRounds < 5,
-      },
-    },
+    fightTotals: { a: f1Totals, b: f2Totals },
     format: 'kaggle',
-  }
+  })
 }
 
 function parseHfRow(values, headers) {

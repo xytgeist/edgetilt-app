@@ -32,6 +32,16 @@ function parseEnv(path) {
 const isDryRun = process.argv.includes('--dry-run')
 const targetArg = process.argv.find((a) => a.startsWith('--target='))
 const target = targetArg ? targetArg.split('=')[1] : 'test'
+const allowSyntheticProduction = process.argv.includes('--allow-synthetic-production')
+
+if (target === 'production' && !isDryRun && !allowSyntheticProduction) {
+  console.error(
+    'Refusing to seed synthetic UFC backfill on production.\n' +
+      'The public Audited Ledger must only show live lounge-odds-poll picks.\n' +
+      'Use --target=test for sandbox demos, or pass --allow-synthetic-production if you explicitly need a one-off seed.'
+  )
+  process.exit(1)
+}
 const envFile = target === 'production' ? '.env.supabase.production' : '.env.supabase.test'
 const env = parseEnv(envFile)
 

@@ -5,6 +5,22 @@ import {
   fetchCfbPowerRatings,
 } from './syndicateApi.js'
 
+/** Match lounge-odds-poll grading window: no result until commence + 90m. */
+const PICK_SETTLE_BUFFER_MS = 90 * 60 * 1000
+
+function pickCommenceMs(pick) {
+  const t = pick.commence_time || pick.created_at
+  return t ? new Date(t).getTime() : 0
+}
+
+/** True only when the game should have finished and status is not pending. */
+function isPickSettled(pick) {
+  if (!pick.status || pick.status === 'pending') return false
+  const commence = pickCommenceMs(pick)
+  if (!commence) return true
+  return commence <= Date.now() - PICK_SETTLE_BUFFER_MS
+}
+
 export function SyndicateApp() {
   const [activeTab, setActiveTab] = useState('overview')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -32,16 +48,18 @@ export function SyndicateApp() {
     loadData()
   }, [])
 
-  // Calculate live ledger stats
-  const gradedPicks = picks.filter((p) => p.status && p.status !== 'pending')
+  // Calculate live ledger stats (exclude future / in-progress games)
+  const gradedPicks = picks.filter(isPickSettled)
   const wins = gradedPicks.filter((p) => p.status === 'win' || p.status === 'won').length
   const losses = gradedPicks.filter((p) => p.status === 'loss' || p.status === 'lost').length
   const pushes = gradedPicks.filter((p) => p.status === 'push').length
   const netUnits = gradedPicks.reduce((acc, p) => acc + (Number(p.units_net) || 0), 0)
-  const winRate = wins + losses > 0 ? ((wins / (wins + losses)) * 100).toFixed(1) : '59.4'
-  const displayUnits = gradedPicks.length > 0 ? (netUnits >= 0 ? `+${netUnits.toFixed(2)}` : netUnits.toFixed(2)) : '+28.45'
+  const winRate = wins + losses > 0 ? ((wins / (wins + losses)) * 100).toFixed(1) : '—'
+  const displayUnits =
+    gradedPicks.length > 0 ? (netUnits >= 0 ? `+${netUnits.toFixed(2)}` : netUnits.toFixed(2)) : '—'
   const clvBeats = gradedPicks.filter((p) => p.metadata?.clv_beat === true || p.metadata?.clv_beat === 'true').length
-  const clvRate = gradedPicks.length > 0 && clvBeats > 0 ? ((clvBeats / gradedPicks.length) * 100).toFixed(1) : '73.0'
+  const clvRate =
+    gradedPicks.length > 0 && clvBeats > 0 ? ((clvBeats / gradedPicks.length) * 100).toFixed(1) : '—'
 
   // Hammer 4-0 & Consensus 3-1 metrics calculated per unique game/event
   const groupConsensusGames = (pickList) => {
@@ -49,6 +67,7 @@ export function SyndicateApp() {
     for (const p of pickList) {
       const eventKey = p.event_id || `${p.home_team}_${p.away_team}_${p.commence_time}`
       if (!gamesMap.has(eventKey)) {
+        if (!isPickSettled(p)) continue
         const isWin = p.status === 'win' || p.status === 'won'
         const isLoss = p.status === 'loss' || p.status === 'lost'
         const isPush = p.status === 'push'
@@ -60,7 +79,7 @@ export function SyndicateApp() {
     const gWins = games.filter((g) => g.isWin).length
     const gLosses = games.filter((g) => g.isLoss).length
     const gPushes = games.filter((g) => g.isPush).length
-    const gWinRate = gWins + gLosses > 0 ? ((gWins / (gWins + gLosses)) * 100).toFixed(1) : '75.0'
+    const gWinRate = gWins + gLosses > 0 ? ((gWins / (gWins + gLosses)) * 100).toFixed(1) : '—'
     const gUnits = games.reduce((acc, g) => acc + g.units, 0)
     const gDisplayUnits = gUnits >= 0 ? `+${gUnits.toFixed(2)}` : gUnits.toFixed(2)
     return { gWins, gLosses, gPushes, gWinRate, gDisplayUnits, totalGames: games.length }
@@ -89,7 +108,7 @@ export function SyndicateApp() {
   } = groupConsensusGames(consensusPicks)
 
   const summarizePicks = (pickList) => {
-    const graded = pickList.filter((p) => p.status && p.status !== 'pending')
+    const graded = pickList.filter(isPickSettled)
     const w = graded.filter((p) => p.status === 'win' || p.status === 'won').length
     const l = graded.filter((p) => p.status === 'loss' || p.status === 'lost').length
     const pu = graded.filter((p) => p.status === 'push').length
@@ -759,10 +778,11 @@ export function SyndicateApp() {
                   </thead>
                   <tbody className="divide-y divide-zinc-800/60 font-mono">
                     {filteredPicks.map((pick) => {
-                      const isWin = pick.status === 'win' || pick.status === 'won'
-                      const isLoss = pick.status === 'loss' || pick.status === 'lost'
-                      const isPush = pick.status === 'push'
-                      const isPending = !pick.status || pick.status === 'pending'
+                      const settled = isPickSettled(pick)
+                      const isWin = settled && (pick.status === 'win' || pick.status === 'won')
+                      const isLoss = settled && (pick.status === 'loss' || pick.status === 'lost')
+                      const isPush = settled && pick.status === 'push'
+                      const isPending = !settled
 
                       const picker = pick.picker_name || 'Scott'
                       const pickerBadgeClass =
@@ -791,12 +811,13 @@ export function SyndicateApp() {
                             : `${pick.away_team} @ ${pick.home_team}`
                           : pick.event_name || 'Game'
 
-                      const scoreText =
-                        pick.metadata?.method_result
+                      const scoreText = settled
+                        ? pick.metadata?.method_result
                           ? ` (${pick.metadata.method_result})`
                           : pick.away_score != null && pick.home_score != null
                           ? ` (${pick.away_score}-${pick.home_score})`
                           : ''
+                        : ''
 
                       const pickDisplay =
                         pick.pick_name ||

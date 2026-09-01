@@ -11195,8 +11195,38 @@ html.light [data-lounge-publish-modal] {
   color: #09090b !important;
 }
 
-html.light [data-lounge-publish-modal] button {
+html.light [data-lounge-publish-modal] button:not([data-lounge-category-slug]) {
   color: inherit;
+}
+
+html.light [data-lounge-publish-modal] [data-lounge-composer-category] {
+  --lounge-category-fade-from: #ffffff;
+}
+
+html.light [data-lounge-publish-modal] [data-lounge-composer-category] p {
+  color: #71717a !important;
+}
+
+html.light [data-lounge-tribe-max-alert] {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+
+html.light [data-lounge-tribe-max-alert] h3 {
+  color: #18181b !important;
+}
+
+html.light [data-lounge-tribe-max-alert] p {
+  color: #71717a !important;
+}
+
+html.light [data-lounge-tribe-max-alert] button {
+  background-color: #f4f4f5 !important;
+  color: #18181b !important;
+}
+
+html.light [data-lounge-tribe-max-alert] button:hover {
+  background-color: #e4e4e7 !important;
 }
 
 

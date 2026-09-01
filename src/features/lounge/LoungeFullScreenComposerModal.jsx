@@ -779,13 +779,12 @@ export default function LoungeFullScreenComposerModal({
           role="dialog"
           aria-modal="true"
           aria-labelledby="settings-modal-title"
-          className="fixed inset-0 z-[240] flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-4 animate-in fade-in duration-150"
-          style={{ paddingBottom: keyboardUp ? `${Math.round(kbFooterLiftPx)}px` : undefined }}
+          className="fixed inset-0 z-[240] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 pt-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] animate-in fade-in duration-150"
           onClick={() => setSettingsModalOpen(false)}
         >
           <div
             data-lounge-publish-modal=""
-            className="w-full max-w-md max-h-[min(62dvh,calc(100dvh-2rem))] flex flex-col overflow-hidden rounded-t-3xl sm:rounded-3xl border border-zinc-800 bg-zinc-900 p-3.5 sm:p-4 shadow-2xl animate-in slide-in-from-bottom duration-200"
+            className="w-full max-w-md max-h-[min(62dvh,calc(100dvh-2rem))] flex flex-col overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900 p-3.5 sm:p-4 shadow-2xl animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}

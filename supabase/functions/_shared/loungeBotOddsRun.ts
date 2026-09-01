@@ -278,6 +278,9 @@ export async function fetchActiveSportKeys(): Promise<Set<string>> {
   return catalog.keys
 }
 
+/** Hard cap so slate/preview Edge calls fail fast instead of hitting Supabase 150s idle timeout. */
+const ODDS_FETCH_TIMEOUT_MS = 25_000
+
 export async function fetchSportOdds(sport: string, regions: string[], markets: string[]) {
   const key = oddsApiKey()
   if (!key) throw new Error('THE_ODDS_API_KEY not set on Edge.')
@@ -287,7 +290,18 @@ export async function fetchSportOdds(sport: string, regions: string[], markets: 
     markets: markets.join(','),
     oddsFormat: 'american',
   })
-  const res = await fetch(`${ODDS_BASE}/sports/${sport}/odds?${qs}`)
+  let res: Response
+  try {
+    res = await fetch(`${ODDS_BASE}/sports/${sport}/odds?${qs}`, {
+      signal: AbortSignal.timeout(ODDS_FETCH_TIMEOUT_MS),
+    })
+  } catch (err) {
+    const name = err instanceof Error ? err.name : ''
+    if (name === 'TimeoutError' || name === 'AbortError') {
+      throw new Error(`Odds API timeout after ${ODDS_FETCH_TIMEOUT_MS}ms for ${sport}`)
+    }
+    throw err
+  }
   if (!res.ok) throw new Error(await readOddsApiError(res, sport))
   return {
     events: await res.json(),

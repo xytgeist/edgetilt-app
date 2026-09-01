@@ -782,6 +782,27 @@ Use **`npm run db:query:production`** / **`db:query:test`** — not parallel raw
 
 ---
 
+## Locked major-post markdown dialect (2026-09-01)
+
+**Scope so far:** public **NFL/CFB Slate Card** + **Weekly Syndicate Ledger** only. Most alerts stay plain. More post kinds still TBD.
+
+**Composer dialect only** (`loungeMarkdown.jsx`): headings, lists, `**bold**`, `==highlight==`, `[green]/[red]/[gold]` color tags, `>`, `---`. Prefer `, ` over middle dots (`·`) so `sanitizeBotProse` does not rewrite separators to ` ... `.
+
+### Public slate teaser (`formatNflSlateCardCaption`)
+
+- Caps: **1** hammer, **2** consensus, **3** house-divided games (VIP still gets full desk cards)
+- H1 title + week date line; H1 section headers with emojis
+- Hammers / consensus lines: `- **[gold]{pick}[/gold]** ({away}/{home}, {when})`
+- House divided: one row per game, **bold only** (no color): `- **{awayLine}** vs **{homeLine}** ({away}/{home}, {when})`
+- No desk names on the public tease
+
+### Weekly ledger (`formatWeeklySyndicateRecapCaption`)
+
+- H1 title / crew / syndicate total; H2 for CLV + boxscore
+- green = +units; red = −units; gold = syndicate net headline; `==🏆 Top Earner==` highlight
+
+---
+
 ## Open questions
 
 - [x] Supabase cron schedule for **`poll_edges`** / **`daily_slates`** — **`20260704230000`** (Vault + apply per project)

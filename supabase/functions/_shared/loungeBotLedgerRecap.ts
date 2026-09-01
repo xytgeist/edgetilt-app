@@ -203,51 +203,70 @@ export async function compileWeeklySyndicateRecap(
 }
 
 /**
- * Format the Tuesday Morning Syndicate Weekly Ledger & Post-Mortem caption.
+ * Locked public weekly ledger markdown dialect (paired with slate v10):
+ * - H1 title + crew / syndicate total; H2 for CLV + boxscore
+ * - green = +units / +CLV; red = -units; gold = syndicate net headline
+ * - Top earner uses ==highlight==; prefer `, ` over middle dots for sanitizeBotProse
  */
 export function formatWeeklySyndicateRecapCaption(recap: WeeklyRecapPayload): string {
   const lines: string[] = []
 
   const uNet = recap.overall.unitsNet
   const uSign = uNet > 0 ? `+${uNet.toFixed(2)}` : uNet.toFixed(2)
+  const uColored =
+    uNet > 0 ? `**[gold]${uSign}u net[/gold]**` : uNet < 0 ? `**[red]${uSign}u net[/red]**` : `**${uSign}u net**`
 
-  lines.push(`📊 **SHARPE SYNDICATE · WEEKLY LEDGER & POST-MORTEM**`)
-  lines.push(`Official 7-Day Performance Across All 4 Desks`)
+  lines.push(`# 📊 Sharpe Syndicate · Weekly Ledger`)
+  lines.push(`Official 7-day performance across all 4 desks`)
   lines.push('')
 
-  lines.push('📋 **Crew Breakdown:**')
+  lines.push('# 📋 Crew Breakdown')
   for (const key of ['Scott', 'Rocco', 'Chedda', 'Tank'] as const) {
     const p = recap.pickers[key]
     const pSign = p.unitsNet > 0 ? `+${p.unitsNet.toFixed(2)}` : p.unitsNet.toFixed(2)
-    const trophy = recap.topPerformer?.pickerName === p.pickerName ? ' 🏆 *Top Earner*' : ''
-    lines.push(`• **${p.pickerName} (${p.roleTitle}):** ${p.wins}-${p.losses}${p.pushes > 0 ? `-${p.pushes}` : ''} (${pSign}u · ${p.winRatePct}%)${trophy}`)
+    const pUnits =
+      p.unitsNet > 0
+        ? `[green]${pSign}u[/green]`
+        : p.unitsNet < 0
+          ? `[red]${pSign}u[/red]`
+          : `${pSign}u`
+    const record = `${p.wins}-${p.losses}${p.pushes > 0 ? `-${p.pushes}` : ''}`
+    const top = recap.topPerformer?.pickerName === p.pickerName ? ' ==🏆 Top Earner==' : ''
+    lines.push(`- **${p.pickerName} (${p.roleTitle}):** ${record} (${pUnits}, ${p.winRatePct}%)${top}`)
   }
 
-  lines.push('────────────────────────')
-  lines.push(`🎯 **Syndicate Total:** **${uSign}u Net** · ${recap.overall.wins}-${recap.overall.losses}${recap.overall.pushes > 0 ? `-${recap.overall.pushes}` : ''} (${recap.overall.winRatePct}% win)`)
+  lines.push('')
+  lines.push('---')
+  lines.push('')
+  lines.push('# 🎯 Syndicate Total')
+  lines.push(
+    `${uColored} · ${recap.overall.wins}-${recap.overall.losses}${recap.overall.pushes > 0 ? `-${recap.overall.pushes}` : ''} (${recap.overall.winRatePct}% win)`,
+  )
   lines.push('')
 
   if (recap.clvSummary) {
-    lines.push(`📈 **Closing Line Value (CLV):** ${recap.clvSummary}`)
+    lines.push('## 📈 Closing Line Value')
+    lines.push(String(recap.clvSummary).replace(/\s·\s/g, ', ').replace(/·/g, ', '))
     lines.push('')
   }
 
-  // Boxscore & Process Reality (Never say "Model Accuracy")
   if (recap.boxscoreHighlights.biggestWin || recap.boxscoreHighlights.badBeat) {
-    lines.push('🔍 **Boxscore Post-Mortem & Process Reality:**')
+    lines.push('## 🔍 Boxscore Post-Mortem')
     if (recap.boxscoreHighlights.biggestWin) {
-      lines.push(`• 🔨 **Yardage Dominance:** ${recap.boxscoreHighlights.biggestWin}`)
+      lines.push(`- 🔨 **Yardage Dominance:** ${recap.boxscoreHighlights.biggestWin}`)
     }
     if (recap.boxscoreHighlights.badBeat) {
-      lines.push(`• 🎲 **Turnover Variance:** ${recap.boxscoreHighlights.badBeat} *We back that exact yardage profile every single week.*`)
+      lines.push(
+        `- 🎲 **Turnover Variance:** ${recap.boxscoreHighlights.badBeat} *We back that exact yardage profile every week.*`,
+      )
     }
     lines.push('')
   }
 
-  lines.push(`🌐 *Audited ledger, model whitepapers & CLV breakdown: sharpesyndicate.com*`)
-  lines.push(`💬 *Full uncut slate cards, early CLV line moves, and Thursday Night Football spotlight dropping in Sharpe VIP Syndicate chat.*`)
+  lines.push('> 🌐 Audited ledger + CLV: sharpesyndicate.com')
+  lines.push('> 💬 Full uncut slate cards drop in Sharpe VIP Syndicate chat')
 
-  return lines.join('\n')
+  return lines.join('\n').trim()
 }
 
 /**

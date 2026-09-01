@@ -187,56 +187,84 @@ export const PUBLIC_SLATE_CONSENSUS_CAP = 2
 export const PUBLIC_SLATE_HOUSE_DIVIDED_CAP = 3
 
 /**
+ * Locked public slate markdown dialect (v10):
+ * - H1 title + optional week line; H1 section headers (Hammers / Consensus / House Divided)
+ * - Hammers + consensus picks: gold color tags; house divided: bold only
+ * - One bullet per hammer/consensus; one row per house-divided game (both sides)
+ * - Caps: 1 / 2 / 3; no desk names on public tease
+ * - Prefer `, ` over middle dots (·) so sanitizeBotProse does not rewrite separators
+ */
+function formatSlateWeekSubtitle(games: SlateGamePick[]): string | null {
+  const times = games
+    .map((g) => Date.parse(String(g.commenceTime || '')))
+    .filter((t) => Number.isFinite(t))
+    .sort((a, b) => a - b)
+  if (!times.length) return null
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    month: 'short',
+    day: 'numeric',
+  })
+  const start = fmt.format(new Date(times[0]))
+  const end = fmt.format(new Date(times[times.length - 1]))
+  return start === end ? start : `${start}-${end}`
+}
+
+/**
  * Format an NFL / Football Slate Card caption for the Lounge feed.
  * Public tease only: max 1 hammer, 2 consensus, 3 house-divided games (one row each).
- * Highlights:
- * 1. 🔥 Unanimous 4-0 Hammers
- * 2. 🎯 3-1 Consensus Plays
- * 3. ⚔️ 2-2 House Divided / Splits
  */
 export function formatNflSlateCardCaption(card: NflSlateCard): string {
-  const lines: string[] = [`${card.cardTitle || '🏈 NFL Sharpe Syndicate Slate'}\n`]
   const hammers = card.hammers.slice(0, PUBLIC_SLATE_HAMMER_CAP)
   const consensus = card.consensus.slice(0, PUBLIC_SLATE_CONSENSUS_CAP)
   const splits = card.splits.slice(0, PUBLIC_SLATE_HOUSE_DIVIDED_CAP)
 
+  const title = card.cardTitle || '🏈 NFL Sharpe Syndicate Slate'
+  const lines: string[] = [`# ${title}`]
+  const weekLine = formatSlateWeekSubtitle(card.games)
+  if (weekLine) lines.push(weekLine)
+  lines.push('')
+
   if (hammers.length > 0) {
-    lines.push('🔥 UNANIMOUS 4-0 HAMMERS:')
+    lines.push('# 🔥 Unanimous 4-0 Hammers')
     for (const g of hammers) {
       const away = shortDisplayName(g.awayTeam)
       const home = shortDisplayName(g.homeTeam)
       const when = formatOddsCommenceTimeShort(g.commenceTime)
-      lines.push(`• ${g.consensusPick.lineDisplay} (${away}/${home} · ${when})`)
+      lines.push(`- **[gold]${g.consensusPick.lineDisplay}[/gold]** (${away}/${home}, ${when})`)
     }
     lines.push('')
   }
 
   if (consensus.length > 0) {
-    lines.push('🎯 3-1 CONSENSUS PLAYS:')
+    lines.push('# 🎯 3-1 Consensus')
     for (const g of consensus) {
       const away = shortDisplayName(g.awayTeam)
       const home = shortDisplayName(g.homeTeam)
-      const agreeing = SHARP_PICKERS.filter((p) => g.pickerPicks[p].side === g.consensusPick.side).join(', ')
-      lines.push(`• ${g.consensusPick.lineDisplay} (${agreeing}) · ${away}/${home}`)
+      const when = formatOddsCommenceTimeShort(g.commenceTime)
+      lines.push(`- **[gold]${g.consensusPick.lineDisplay}[/gold]** (${away}/${home}, ${when})`)
     }
     lines.push('')
   }
 
   if (splits.length > 0) {
-    lines.push('⚔️ HOUSE DIVIDED (2-2):')
+    lines.push('# ⚔️ House Divided (2-2)')
     for (const g of splits) {
       const away = shortDisplayName(g.awayTeam)
       const home = shortDisplayName(g.homeTeam)
-      const homePickers = SHARP_PICKERS.filter((p) => g.pickerPicks[p].side === 'home').join('/')
-      const awayPickers = SHARP_PICKERS.filter((p) => g.pickerPicks[p].side === 'away').join('/')
-      const homeLine = g.pickerPicks[SHARP_PICKERS.find((p) => g.pickerPicks[p].side === 'home')!].lineDisplay
-      const awayLine = g.pickerPicks[SHARP_PICKERS.find((p) => g.pickerPicks[p].side === 'away')!].lineDisplay
-      lines.push(`• ${away}/${home}: ${awayPickers} (${awayLine}) vs ${homePickers} (${homeLine})`)
+      const when = formatOddsCommenceTimeShort(g.commenceTime)
+      const homePicker = SHARP_PICKERS.find((p) => g.pickerPicks[p].side === 'home')
+      const awayPicker = SHARP_PICKERS.find((p) => g.pickerPicks[p].side === 'away')
+      const homeLine = homePicker ? g.pickerPicks[homePicker].lineDisplay : shortDisplayName(g.homeTeam)
+      const awayLine = awayPicker ? g.pickerPicks[awayPicker].lineDisplay : shortDisplayName(g.awayTeam)
+      lines.push(`- **${awayLine}** vs **${homeLine}** (${away}/${home}, ${when})`)
     }
     lines.push('')
   }
 
-  lines.push('📊 Full 16-game interactive grid & in-game edges in the Sharpe VIP Syndicate.')
+  lines.push('---')
+  lines.push('')
+  lines.push('📊 Full 16-game grid + in-game edges in **Sharpe VIP Syndicate**')
   return lines.join('\n').trim()
 }
 

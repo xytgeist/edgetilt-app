@@ -202,12 +202,27 @@ Deno.serve(async (req) => {
       const teamMetricsMap = await loadDbTeamMetricsMap(admin)
       const cfbRatingsMap = await loadDbCfbPowerRatingsMap(admin)
 
-      const card = buildNflAtsSlateCard(events, {
+      // Post-consensus QB/injury: manual overrides + Rundown×PVAL (real matches only)
+      const { resolveSideModifiersForSlate } = await import('../_shared/loungeBotSideModifier.ts')
+      const sideModifiersByEventId = await resolveSideModifiersForSlate(admin, sportKey, events)
+
+      // Need totals for Tank's O/U lane
+      let eventsWithTotals = events
+      try {
+        const withTotals = await fetchSportOdds(sportKey, ['us'], ['spreads', 'totals'])
+        const merged = filterOddsEventsForNextFootballSlate(withTotals?.events || [])
+        if (merged.length) eventsWithTotals = merged
+      } catch {
+        // keep spreads-only events
+      }
+
+      const card = buildNflAtsSlateCard(eventsWithTotals, {
         cardTitle: body?.cardTitle,
         sportKey,
         weightsMap,
         teamMetricsMap,
         cfbRatingsMap,
+        sideModifiersByEventId,
       })
 
       if (!card) {

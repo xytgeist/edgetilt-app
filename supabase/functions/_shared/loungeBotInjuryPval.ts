@@ -16,6 +16,11 @@ import {
   oddsSportKeyToRundownSportId,
 } from './loungeBotRundownContext.ts'
 
+function isHardOutStatus(status: string): boolean {
+  const s = String(status || '').trim()
+  return /^(out|inactive|suspended|ir|pup)$/i.test(s) || /injured reserve/i.test(s)
+}
+
 export type TeamInjuryReport = {
   teamName: string
   totalPvalLost: number
@@ -96,6 +101,7 @@ export async function fetchGameInjuryPval(
   awayTeam: string,
   commenceTimeIso: string,
   admin?: SupabaseClient | null,
+  opts?: { hardOutsOnly?: boolean },
 ): Promise<GameInjurySummary | null> {
   const sportId = oddsSportKeyToRundownSportId(sportKey)
   if (!sportId) return null
@@ -109,7 +115,9 @@ export async function fetchGameInjuryPval(
     })
     if (!ctx) return null
 
-    const allInactives = injuryImpactPlayers(ctx)
+    const allInactives = (opts?.hardOutsOnly !== false
+      ? ctx.inactivePlayers.filter((p) => isHardOutStatus(p.status))
+      : injuryImpactPlayers(ctx))
     if (!allInactives || allInactives.length === 0) return null
 
     // Load dynamic DB overrides if admin client provided

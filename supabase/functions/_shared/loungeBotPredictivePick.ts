@@ -32,6 +32,11 @@ import {
 } from './loungeBotCfbPowerRatings.ts'
 import { fetchEspnGameSummary, type EspnGameSummary } from './loungeBotEspnSummary.ts'
 import { analyzeFootballKeyNumbers } from './loungeBotKeyNumbers.ts'
+import {
+  applySideModifierToModelSpread,
+  valueFlagFromModelMarket,
+  type SideModifier,
+} from './loungeBotSideModifier.ts'
 
 const ODDS_BASE = 'https://api.the-odds-api.com/v4'
 
@@ -57,6 +62,9 @@ export type SlateGamePick = {
   spreadPoint: number | null // home spread point (e.g. -3.5 or +2.5)
   marketTotal: number | null
   modelTotal: number | null
+  /** Post-consensus QB/injury adjustment (home-centric). */
+  sideModifier?: SideModifier | null
+  adjustedModelSpreadHome?: number | null
   splits?: BettingSplitSummary
   trenchEpa?: TrenchEpaMatchupSummary | null
   consensusPick: {
@@ -317,6 +325,17 @@ export function formatNflSlateCardCaption(card: NflSlateCard): string {
     lines.push('# 🛡️ Tank Totals')
     for (const g of tankTotals) {
       lines.push(formatSlatePickBullet(g, g.pickerPicks.Tank.lineDisplay, ['Tank']))
+    }
+    lines.push('')
+  }
+
+  const injuryNotes = card.games.filter((g) => g.sideModifier?.isSignificant).slice(0, 4)
+  if (injuryNotes.length > 0) {
+    lines.push('# 🚑 Side modifiers (post-board)')
+    for (const g of injuryNotes) {
+      const away = shortDisplayName(g.awayTeam)
+      const home = shortDisplayName(g.homeTeam)
+      lines.push(`- ${away}/${home}: ${g.sideModifier!.reason}`)
     }
     lines.push('')
   }
@@ -596,6 +615,8 @@ export function buildNflAtsSlateCard(
     weightsMap?: Map<string, number>
     teamMetricsMap?: Map<string, NflTeamMetrics>
     cfbRatingsMap?: Map<string, CfbTeamPowerRating>
+    /** Post-consensus QB/injury modifiers keyed by Odds API event id. */
+    sideModifiersByEventId?: Map<string, SideModifier>
   } = {},
 ): NflSlateCard | null {
   if (!Array.isArray(events) || events.length === 0) return null
@@ -607,6 +628,7 @@ export function buildNflAtsSlateCard(
   const weights = opts.weightsMap || new Map<string, number>()
   const teamMetrics = opts.teamMetricsMap
   const cfbRatings = opts.cfbRatingsMap
+  const sideModifiers = opts.sideModifiersByEventId || new Map<string, SideModifier>()
 
   for (const ev of events) {
     const homeTeam = ev.home_team
@@ -684,6 +706,18 @@ export function buildNflAtsSlateCard(
     const trenchEpa = !isCfb ? calculateTrenchEpaMatchup(homeTeam, awayTeam, teamMetrics) : null
     const cfbMatchup = isCfb ? calculateCfbMatchupProjection(homeTeam, awayTeam, homePoint, cfbRatings) : null
 
+    // Post-consensus QB/injury: adjust model BEFORE Scott value flag. Tank totals untouched.
+    const sideModifier = sideModifiers.get(String(ev.id || '').trim()) || null
+    const baseModelSpreadHome = isCfb
+      ? (cfbMatchup?.modelSpreadHome ?? null)
+      : (trenchEpa != null ? -trenchEpa.epaSpreadImpactHome : null)
+    const adjustedModelSpreadHome = baseModelSpreadHome != null && sideModifier
+      ? applySideModifierToModelSpread(baseModelSpreadHome, sideModifier.netSpreadImpactHome)
+      : baseModelSpreadHome
+    const injuryValue = adjustedModelSpreadHome != null
+      ? valueFlagFromModelMarket(adjustedModelSpreadHome, homePoint, 2.5)
+      : null
+
     // Key Number Hook Intelligence (NFL only)
     const homeKeyAnalysis = !isCfb ? analyzeFootballKeyNumbers(homePoint) : null
     const awayKeyAnalysis = !isCfb ? analyzeFootballKeyNumbers(awayPoint) : null
@@ -695,17 +729,19 @@ export function buildNflAtsSlateCard(
     const tankRestWeight = weights.get('Tank:rest_advantage') || 1.0
 
     // Desk lanes (real feeds):
-    // Scott: market/EV + CFB consensus vs number (or NFL EPA)
+    // Scott: market/EV + injury-adjusted model vs number (board first, then QB/injury mod)
     // Rocco: SP+/EPA strength + short favorites / key numbers (trenches offline until PFF)
     // Chedda: dogs, RLM/splits, golden hooks
-    // Tank: totals vs model (CFB SP+ off/def+tempo; NFL EPA scoring environment)
+    // Tank: totals (PASS default; ≥3.5 or key-cross) — not injury-adjusted unless pace profile changes
     const sharpSplitBonus = sharpFavorsHome ? 0.35 : sharpFavorsAway ? -0.35 : 0
-    // 1. Scott — model price vs market
-    const epaBonus = trenchEpa
+    // 1. Scott — model price vs market (uses injury-adjusted value when present)
+    const epaBonus = trenchEpa && !injuryValue?.isValuePlay
       ? Math.max(-1.5, Math.min(1.5, trenchEpa.epaSpreadImpactHome * 0.3))
-      : cfbMatchup && cfbMatchup.isValuePlay
-        ? (cfbMatchup.valueSide === 'home' ? 1.4 : -1.4)
-        : 0
+      : injuryValue?.isValuePlay
+        ? (injuryValue.valueSide === 'home' ? 1.4 : -1.4)
+        : cfbMatchup && cfbMatchup.isValuePlay && !sideModifier
+          ? (cfbMatchup.valueSide === 'home' ? 1.4 : -1.4)
+          : 0
     const scottScoreHome = ((homePrice > awayPrice ? 1.0 : -0.5) + (homePoint < 0 ? 0.3 : 0.1) + sharpSplitBonus + epaBonus) * scottWeight
     const scottSide: 'home' | 'away' = scottScoreHome >= 0 ? 'home' : 'away'
 
@@ -889,6 +925,8 @@ export function buildNflAtsSlateCard(
       spreadPoint: homePoint,
       marketTotal: marketTotalQuote?.total ?? null,
       modelTotal,
+      sideModifier,
+      adjustedModelSpreadHome,
       splits: gameSplits,
       trenchEpa,
       consensusPick: {
@@ -966,6 +1004,7 @@ export async function publishAndRecordNflSlateCard(
       if (isSweetDog) factors.push('dog_sweet_spot_130_175')
       if (isKey3) factors.push('key_number_3_value')
       if (pName === 'Scott') factors.push('model_clv_high_ev')
+      if (pName === 'Scott' && g.sideModifier?.isSignificant) factors.push('qb_injury_side_mod')
       if (pName === 'Tank') factors.push('totals_model_edge')
       if (g.splits?.isRlm) factors.push('reverse_line_movement')
       if (g.splits?.isSharpDivergence) factors.push('sharp_money_divergence')

@@ -86,8 +86,12 @@ Do **not** reshuffle Phase 1 blend weights while operating this loop.
    Totals never bleed into side votes. Tank ledger = **totals only** (do not mix into side scoreboard / adaptive ATS weights).  
    Weather/rest still optional boosts later.
 
-3. **QB / injury modifier**  
-   Applied **after** consensus board, **before** publish. Manual/override table is fine at first (−3 to −7 style). Do not rebuild the whole board for one QB.
+3. **QB / injury modifier (shipped v1)**  
+   Applied **after** consensus board, **before** Scott’s value flag. Does **not** rebuild SP+/FPI.  
+   - Table **`syndicate_side_modifiers`**: manual CFB (and any override) with real −3 to −7 style impacts + reason  
+   - Auto: Rundown **hard outs** × known **PVAL** matches only (no invented values for unknown players)  
+   - Scott’s model spread is injury-adjusted; Rocco/Chedda stay on their own inputs; **Tank totals untouched** unless a backup changes pace (future)  
+   - Empty/manual-missing = no modifier (PASS), never theater
 
 4. **Monthly desk + bucket scoreboard**  
    ATS + CLV by Scott / Rocco / Chedda / Tank and by Hammer / Consensus / Divided.  

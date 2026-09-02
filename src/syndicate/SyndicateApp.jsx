@@ -45,6 +45,47 @@ function isPickSettled(pick) {
   return commence <= Date.now() - PICK_SETTLE_BUFFER_MS
 }
 
+/** Deterministic fake model digits for public tease columns (not real ratings). */
+function hashStr(s) {
+  let h = 2166136261
+  for (let i = 0; i < s.length; i += 1) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 16777619)
+  }
+  return h >>> 0
+}
+
+function formatTeasePoints(v) {
+  const n = Math.round(Number(v) * 10) / 10
+  if (!Number.isFinite(n)) return '+0.0'
+  return n > 0 ? `+${n}` : String(n)
+}
+
+/**
+ * Public-only placeholders on a shared points-ish scale so no voter fingerprint
+ * (e.g. Sagarin ~100) leaks through blur.
+ */
+function fakeModelPlaceholders(teamName, consensus, rankIdx) {
+  const h = hashStr(`${teamName || 'team'}|syndicate-model-tease-v1`)
+  const base = Number.isFinite(Number(consensus)) ? Number(consensus) : Math.max(0, 28 - rankIdx)
+  const j1 = ((h % 17) - 8) / 10
+  const j2 = (((h >>> 5) % 19) - 9) / 10
+  const j3 = (((h >>> 11) % 15) - 7) / 10
+  return {
+    a: formatTeasePoints(base + j1 + 1.1),
+    b: formatTeasePoints(base + j2 - 0.5),
+    c: formatTeasePoints(base + j3 + 0.2),
+  }
+}
+
+function BlurredModelTease({ value }) {
+  return (
+    <span className="syndicate-model-tease" aria-hidden="true">
+      {value}
+    </span>
+  )
+}
+
 export function SyndicateApp() {
   const [activeTab, setActiveTab] = useState('overview')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -198,7 +239,10 @@ export function SyndicateApp() {
   const filteredStats = summarizePicks(filteredPicks)
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-emerald-500/30">
+    <div
+      data-syndicate
+      className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col selection:bg-emerald-500/30"
+    >
       {/* Top Navigation */}
       <header className="sticky top-0 z-50 border-b border-zinc-800/80 bg-zinc-950/95 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -1118,13 +1162,13 @@ export function SyndicateApp() {
           </div>
         )}
 
-        {/* CFB Power Index Tab (consensus: SP+ / FPI / Sagarin / Elo) */}
+        {/* CFB Power Index Tab (public consensus; model stack teased/blurred) */}
         {activeTab === 'cfb' && (
           <div className="space-y-6">
             <div className="border-b border-zinc-800 pb-4">
               <h2 className="text-2xl font-bold text-white tracking-tight">College Football Power Ratings</h2>
               <p className="text-zinc-400 text-xs sm:text-sm mt-1">
-                Consensus blend: 40% SP+ · 25% FPI · 25% Sagarin Predictor · 10% score Elo. Off/def are SP+ unit ratings. Not an AP poll.
+                Multi-model consensus board. Component models stay locked on the public view. Not an AP poll.
               </p>
             </div>
 
@@ -1134,9 +1178,15 @@ export function SyndicateApp() {
                   <tr className="border-b border-zinc-800 bg-zinc-900/80 text-zinc-400 text-[11px] uppercase tracking-wider">
                     <th className="py-3 px-4">Program</th>
                     <th className="py-3 px-4">Consensus</th>
-                    <th className="py-3 px-4">SP+</th>
-                    <th className="py-3 px-4">FPI</th>
-                    <th className="py-3 px-4">Sagarin</th>
+                    <th className="py-3 px-4" title="Locked on public">
+                      Model A
+                    </th>
+                    <th className="py-3 px-4" title="Locked on public">
+                      Model B
+                    </th>
+                    <th className="py-3 px-4" title="Locked on public">
+                      Model C
+                    </th>
                     <th className="py-3 px-4">Off</th>
                     <th className="py-3 px-4">Def</th>
                     <th className="py-3 px-4">HFA</th>
@@ -1147,38 +1197,39 @@ export function SyndicateApp() {
                   {cfbData.length === 0 ? (
                     <tr>
                       <td colSpan="9" className="py-12 text-center text-zinc-500 font-sans">
-                        CFB consensus board updates weekly from CFBD + Sagarin.
+                        CFB consensus board updates weekly.
                       </td>
                     </tr>
                   ) : (
-                    cfbData.map((team, idx) => (
-                      <tr key={team.id || team.team_name} className="hover:bg-zinc-800/30">
-                        <td className="py-2.5 px-4 text-white font-sans font-semibold whitespace-nowrap">
-                          <span className="text-zinc-500 text-xs mr-2">{idx + 1}.</span>
-                          {team.team_name}
-                        </td>
-                        <td className="py-2.5 px-4 text-emerald-400 font-bold">
-                          {team.power_rating > 0 ? `+${team.power_rating}` : team.power_rating}
-                        </td>
-                        <td className="py-2.5 px-4 text-zinc-300">
-                          {team.sp_rating != null ? team.sp_rating : '—'}
-                        </td>
-                        <td className="py-2.5 px-4 text-zinc-300">
-                          {team.fpi_rating != null
-                            ? team.fpi_rating > 0
-                              ? `+${team.fpi_rating}`
-                              : team.fpi_rating
-                            : '—'}
-                        </td>
-                        <td className="py-2.5 px-4 text-zinc-300">
-                          {team.sagarin_rating != null ? team.sagarin_rating : '—'}
-                        </td>
-                        <td className="py-2.5 px-4 text-zinc-300">{team.off_rating}</td>
-                        <td className="py-2.5 px-4 text-zinc-300">{team.def_rating}</td>
-                        <td className="py-2.5 px-4 text-zinc-400">+{team.home_field_advantage ?? team.home_field_adv ?? 2.5}</td>
-                        <td className="py-2.5 px-4 text-zinc-400">{team.tempo_rating ?? '—'}</td>
-                      </tr>
-                    ))
+                    cfbData.map((team, idx) => {
+                      const tease = fakeModelPlaceholders(team.team_name, team.power_rating, idx)
+                      return (
+                        <tr key={team.id || team.team_name} className="hover:bg-zinc-800/30">
+                          <td className="py-2.5 px-4 text-white font-sans font-semibold whitespace-nowrap">
+                            <span className="text-zinc-500 text-xs mr-2">{idx + 1}.</span>
+                            {team.team_name}
+                          </td>
+                          <td className="py-2.5 px-4 text-emerald-400 font-bold">
+                            {team.power_rating > 0 ? `+${team.power_rating}` : team.power_rating}
+                          </td>
+                          <td className="py-2.5 px-4 text-zinc-400">
+                            <BlurredModelTease value={tease.a} />
+                          </td>
+                          <td className="py-2.5 px-4 text-zinc-400">
+                            <BlurredModelTease value={tease.b} />
+                          </td>
+                          <td className="py-2.5 px-4 text-zinc-400">
+                            <BlurredModelTease value={tease.c} />
+                          </td>
+                          <td className="py-2.5 px-4 text-zinc-300">{team.off_rating}</td>
+                          <td className="py-2.5 px-4 text-zinc-300">{team.def_rating}</td>
+                          <td className="py-2.5 px-4 text-zinc-400">
+                            +{team.home_field_advantage ?? team.home_field_adv ?? 2.5}
+                          </td>
+                          <td className="py-2.5 px-4 text-zinc-400">{team.tempo_rating ?? '—'}</td>
+                        </tr>
+                      )
+                    })
                   )}
                 </tbody>
               </table>

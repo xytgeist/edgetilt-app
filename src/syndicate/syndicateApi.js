@@ -82,7 +82,9 @@ export async function fetchUfcFighterMetrics() {
 }
 
 /**
- * Fetch CFB consensus power board (SP+ / FPI / Sagarin / Elo blend).
+ * Fetch CFB consensus power board for the public syndicate site.
+ * Component model ratings are intentionally omitted from this client select
+ * (public UI uses blurred placeholders instead of live SP+/FPI/Sagarin values).
  */
 export async function fetchCfbPowerRatings() {
   if (!syndicateSupabase) return { data: [], error: null }
@@ -90,7 +92,7 @@ export async function fetchCfbPowerRatings() {
     const { data, error } = await syndicateSupabase
       .from('cfb_team_power_ratings')
       .select(
-        'id, team_name, team_abbr, conference, power_rating, off_rating, def_rating, tempo_rating, home_field_advantage, fpi_rating, sp_rating, sagarin_rating'
+        'id, team_name, team_abbr, conference, power_rating, off_rating, def_rating, tempo_rating, home_field_advantage'
       )
       .order('power_rating', { ascending: false })
       .limit(100)

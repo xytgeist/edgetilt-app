@@ -615,7 +615,7 @@ export async function compileWeeklySyndicateRecap(
   const topPerformer = topPicker && topPicker.unitsNet > 0 ? {
     pickerName: topPicker.pickerName,
     unitsNet: topPicker.unitsNet,
-    summary: `${topPicker.pickerName} (${topPicker.roleTitle}) led the desk at ${topPicker.wins}-${topPicker.losses} (+${topPicker.unitsNet.toFixed(2)}u)`,
+    summary: `${topPicker.pickerName} (${topPicker.roleTitle}) led the desk at ${topPicker.wins}-${topPicker.losses} (${formatColoredUnits(topPicker.unitsNet)})`,
   } : null
 
   // ESPN post-mortem: best split-game pair when available; omit section only on thin weeks
@@ -660,17 +660,23 @@ export async function compileWeeklySyndicateRecap(
  * Locked public weekly ledger markdown dialect (paired with slate v5):
  * - H1 title + crew / syndicate total; H2 for CLV + boxscore
  * - Crew lines use comma between units and win%
- * - green/red/gold color tags; ==🏆 Top Earner== highlight
+ * - green/red for +/- unit results; gold for pick lines in post-mortem; ==🏆 Top Earner== highlight
  * - Post-mortem section omitted when no substantive boxscore story; ledger still posts
  * - Post-mortem: pick + matchup · boxscore detail; bad-beat tagline rotated (~25% weeks omit)
  */
+function formatColoredUnits(unitsNet: number, suffix = 'u'): string {
+  const sign = unitsNet > 0 ? `+${unitsNet.toFixed(2)}` : unitsNet.toFixed(2)
+  const text = `${sign}${suffix}`
+  if (unitsNet > 0) return `[green]${text}[/green]`
+  if (unitsNet < 0) return `[red]${text}[/red]`
+  return text
+}
+
 export function formatWeeklySyndicateRecapCaption(recap: WeeklyRecapPayload): string {
   const lines: string[] = []
 
   const uNet = recap.overall.unitsNet
-  const uSign = uNet > 0 ? `+${uNet.toFixed(2)}` : uNet.toFixed(2)
-  const uColored =
-    uNet > 0 ? `**[gold]${uSign}u net[/gold]**` : uNet < 0 ? `**[red]${uSign}u net[/red]**` : `**${uSign}u net**`
+  const uColored = `**${formatColoredUnits(uNet, 'u net')}**`
 
   lines.push(`# 📊 Sharpe Syndicate · Weekly Ledger`)
   lines.push(`Official 7-day performance across all 4 desks`)
@@ -679,13 +685,7 @@ export function formatWeeklySyndicateRecapCaption(recap: WeeklyRecapPayload): st
   lines.push('# 📋 Crew Breakdown')
   for (const key of ['Scott', 'Rocco', 'Chedda', 'Tank'] as const) {
     const p = recap.pickers[key]
-    const pSign = p.unitsNet > 0 ? `+${p.unitsNet.toFixed(2)}` : p.unitsNet.toFixed(2)
-    const pUnits =
-      p.unitsNet > 0
-        ? `[green]${pSign}u[/green]`
-        : p.unitsNet < 0
-          ? `[red]${pSign}u[/red]`
-          : `${pSign}u`
+    const pUnits = formatColoredUnits(p.unitsNet)
     const record = `${p.wins}-${p.losses}${p.pushes > 0 ? `-${p.pushes}` : ''}`
     const top = recap.topPerformer?.pickerName === p.pickerName ? ' ==🏆 Top Earner==' : ''
     lines.push(`- **${p.pickerName} (${p.roleTitle}):** ${record} (${pUnits}, ${p.winRatePct}%)${top}`)
@@ -755,7 +755,7 @@ export async function publishWeeklySyndicateRecap(
 
   const vipDrop = [
     `📊 **Sharpe VIP Syndicate · Weekly Ledger Complete**`,
-    `Desk Net: **${recap.overall.unitsNet > 0 ? `+${recap.overall.unitsNet.toFixed(2)}` : recap.overall.unitsNet.toFixed(2)}u** (${recap.overall.wins}-${recap.overall.losses})`,
+    `Desk Net: **${formatColoredUnits(recap.overall.unitsNet)}** (${recap.overall.wins}-${recap.overall.losses})`,
     '',
     `Top Performer: ${recap.topPerformer?.summary || 'Even contribution across the crew.'}`,
     '',

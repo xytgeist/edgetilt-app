@@ -1182,13 +1182,19 @@ export function SyndicateApp() {
                     <th className="py-3 px-4">Program</th>
                     <th className="py-3 px-4">Consensus</th>
                     <th className="py-3 px-4" title="Locked on public">
-                      Model A
+                      <span className="syndicate-model-tease inline-block select-none pointer-events-none blur-[7px]">
+                        Model A
+                      </span>
                     </th>
                     <th className="py-3 px-4" title="Locked on public">
-                      Model B
+                      <span className="syndicate-model-tease inline-block select-none pointer-events-none blur-[7px]">
+                        Model B
+                      </span>
                     </th>
                     <th className="py-3 px-4" title="Locked on public">
-                      Model C
+                      <span className="syndicate-model-tease inline-block select-none pointer-events-none blur-[7px]">
+                        Model C
+                      </span>
                     </th>
                     <th className="py-3 px-4">Off</th>
                     <th className="py-3 px-4">Def</th>

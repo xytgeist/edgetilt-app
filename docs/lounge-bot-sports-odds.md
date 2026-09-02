@@ -782,6 +782,39 @@ Use **`npm run db:query:production`** / **`db:query:test`** — not parallel raw
 
 ---
 
+## NFL EPA + CFB Elo/SRS metric sync (real ingest)
+
+**Problem we fixed:** `nfl_team_metrics` and `cfb_team_power_ratings` originally shipped with **hand-seeded** boards (no live feed). Trench win rates (PBWR/PRWR/RBWR/RSWR) are **PFF-class** and stay out of model math until a paid charting API is wired.
+
+**NFL (free):** [`scripts/sync-nfl-team-metrics.mjs`](../scripts/sync-nfl-team-metrics.mjs) pulls nflverse play-by-play and upserts `off_epa_play`, `def_epa_play`, `success_rate`. Skips `is_custom_override` rows. Does **not** invent trench columns.
+
+```bash
+npm run syndicate:sync-nfl-metrics:test
+npm run syndicate:sync-nfl-metrics:test -- --dry-run
+npm run syndicate:sync-nfl-metrics:production   # Ryan explicit only
+```
+
+**CFB (CFBD + owned formula):** [`scripts/sync-cfb-power-ratings.mjs`](../scripts/sync-cfb-power-ratings.mjs) uses CollegeFootballData **games results** to compute:
+
+1. Margin-aware **Elo** (prior season + current)
+2. `power_rating = (elo - mean_elo) * 0.04` (points vs avg FBS)
+3. Iterative **SRS** → `off_rating` / `def_rating`
+4. **HFA** from home-margin residual (min sample; else 2.5)
+5. **Tempo** from CFBD season stats when present
+
+Requires **`CFBD_API_KEY`** in `.env.supabase.{test,production}` and GitHub Actions secret `CFBD_API_KEY` ([get key](https://collegefootballdata.com/key)). Free tier is 1k calls/mo … weekly sync is fine; Patreon ~$5/mo if you need more.
+
+```bash
+npm run syndicate:sync-cfb-power:test
+npm run syndicate:sync-cfb-power:production   # Ryan explicit only
+```
+
+**Cron:** [`.github/workflows/syndicate-football-metrics-sync.yml`](../.github/workflows/syndicate-football-metrics-sync.yml) … Tuesdays **14:00 UTC** syncs **test**. Production only via `workflow_dispatch` with **`sync_production=true`** (Ryan explicit).
+
+**Model honesty:** [`loungeBotTeamMetrics.ts`](../supabase/functions/_shared/loungeBotTeamMetrics.ts) `calculateTrenchEpaMatchup` is **EPA-only** (trench spread impact hard-zero) until PFF/B2B. Redeploy **`lounge-odds-poll`** after pulling that change.
+
+---
+
 ## Locked major-post markdown dialect (2026-09-01)
 
 **Scope so far:** public **NFL/CFB Slate Card** + **Weekly Syndicate Ledger** only. Most alerts stay plain. More post kinds still TBD.

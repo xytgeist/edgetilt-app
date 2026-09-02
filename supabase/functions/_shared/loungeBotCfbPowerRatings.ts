@@ -1,11 +1,9 @@
 /**
  * College Football (NCAAF) Power Index, Off/Def Ratings, and Model Spread Engine.
  *
- * Provides:
- * 1. Power ratings (Points vs Average FBS Team) across SEC, Big Ten, Big 12, ACC, Notre Dame, and G5.
- * 2. Offensive & Defensive efficiency metrics.
- * 3. Stadium-specific Home Field Advantage (HFA).
- * 4. Model spread projection and value calculation vs market lines for Scott & Rocco.
+ * Runtime prefers public.cfb_team_power_ratings (filled by scripts/sync-cfb-power-ratings.mjs
+ * from CollegeFootballData games via owned Elo + SRS). Static CFB_BASELINE_POWER_RATINGS
+ * is fallback only when the DB board is empty.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { shortDisplayName } from './loungeBotOddsCaption.ts'

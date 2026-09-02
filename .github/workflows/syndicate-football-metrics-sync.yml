@@ -1,0 +1,87 @@
+# Weekly NFL EPA (nflverse) + CFB Elo/SRS (CollegeFootballData) sync.
+#
+# Schedule: Tuesdays 14:00 UTC (~7:00am PT) → test Supabase only.
+# Production upserts require workflow_dispatch with sync_production=true
+# (Ryan explicit … matches AGENTS prod ingest guard).
+#
+# Required GitHub repo secrets:
+#   SUPABASE_URL_TEST / SUPABASE_SERVICE_ROLE_KEY_TEST
+#   SUPABASE_URL_PRODUCTION / SUPABASE_SERVICE_ROLE_KEY_PRODUCTION (for prod dispatch)
+#   CFBD_API_KEY  (https://collegefootballdata.com/key)
+
+name: Syndicate football metrics sync
+
+on:
+  schedule:
+    - cron: '0 14 * * 2'
+  workflow_dispatch:
+    inputs:
+      sync_production:
+        description: 'Also upsert production Supabase (Ryan explicit)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: syndicate-football-metrics-sync
+  cancel-in-progress: false
+
+jobs:
+  sync-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync NFL EPA metrics (test)
+        env:
+          SUPABASE_URL_TEST: ${{ secrets.SUPABASE_URL_TEST }}
+          SUPABASE_SERVICE_ROLE_KEY_TEST: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TEST }}
+        run: npm run syndicate:sync-nfl-metrics:test
+
+      - name: Sync CFB Elo/SRS power board (test)
+        env:
+          SUPABASE_URL_TEST: ${{ secrets.SUPABASE_URL_TEST }}
+          SUPABASE_SERVICE_ROLE_KEY_TEST: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TEST }}
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: npm run syndicate:sync-cfb-power:test
+
+  sync-production:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.sync_production == true }}
+    needs: sync-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync NFL EPA metrics (production)
+        env:
+          SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
+          SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
+        run: npm run syndicate:sync-nfl-metrics:production
+
+      - name: Sync CFB Elo/SRS power board (production)
+        env:
+          SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
+          SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
+          CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
+        run: npm run syndicate:sync-cfb-power:production

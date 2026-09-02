@@ -1,11 +1,10 @@
 /**
- * NFL Team EPA & Trench Efficiency Registry and Matchup Calculator.
+ * NFL Team EPA registry and matchup calculator.
  *
- * Provides:
- * 1. Off / Def EPA per play ratings.
- * 2. Pass Block Win Rate (PBWR) & Pass Rush Win Rate (PRWR).
- * 3. Run Block Win Rate (RBWR) & Run Stop Win Rate (RSWR).
- * 4. Matchup trench disparity & EPA model spread calculation for Rocco & Scott.
+ * Provides Off / Def EPA per play (+ success rate in DB) for Scott & Rocco.
+ * Pass/run block & rush win rates (PBWR/PRWR/RBWR/RSWR) are PFF-class charting …
+ * columns may exist in DB for future paid ingest, but matchup math ignores them
+ * until a real charting feed is wired (see scripts/sync-nfl-team-metrics.mjs).
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { shortDisplayName } from './loungeBotOddsCaption.ts'
@@ -46,7 +45,8 @@ export type TrenchEpaMatchupSummary = {
 }
 
 /**
- * High-fidelity baseline 2026 NFL metrics across all 32 franchises.
+ * High-fidelity baseline NFL metrics (fallback only when DB is empty).
+ * Prefer nflverse sync via scripts/sync-nfl-team-metrics.mjs.
  */
 export const NFL_BASELINE_TEAM_METRICS: NflTeamMetrics[] = [
   // AFC EAST
@@ -159,7 +159,9 @@ export async function loadDbTeamMetricsMap(admin: SupabaseClient): Promise<Map<s
 }
 
 /**
- * Calculate Trench Disparity & Net EPA impact between two teams.
+ * Net EPA matchup impact between two teams.
+ * Trench win-rate disparities are disabled until a paid charting feed exists
+ * (netTrenchSpreadImpactHome stays 0; isTrenchMismatch stays false).
  */
 export function calculateTrenchEpaMatchup(
   homeTeamName: string,
@@ -179,37 +181,16 @@ export function calculateTrenchEpaMatchup(
   // Net EPA spread impact: 1 net EPA unit per play ~ 22.0 spread points across ~65 plays
   const epaSpreadImpactHome = Math.round(netEpaDeltaHome * 22.0 * 10) / 10
 
-  // 2. Trench Matchup Calculations
-  // Home Offense Pass Protection vs Away Pass Rush
-  const homePassTrenchDelta = home.pass_block_win_rate - away.pass_rush_win_rate
-  // Away Offense Pass Protection vs Home Pass Rush
-  const awayPassTrenchDelta = away.pass_block_win_rate - home.pass_rush_win_rate
-
-  // Run Game Push: RBWR vs RSWR
-  const homeRunTrenchDelta = home.run_block_win_rate - away.run_stop_win_rate
-  const awayRunTrenchDelta = away.run_block_win_rate - home.run_stop_win_rate
-
-  // Point spread impact from line disparities:
-  // Pass protection disparity is primary (div 12), Run push secondary (div 25)
-  const passTrenchPoints = (homePassTrenchDelta - awayPassTrenchDelta) / 12.0
-  const runTrenchPoints = (homeRunTrenchDelta - awayRunTrenchDelta) / 25.0
-  const netTrenchSpreadImpactHome = Math.round((passTrenchPoints + runTrenchPoints) * 10) / 10
-
-  let trenchAdvantageSide: 'home' | 'away' | null = null
-  if (netTrenchSpreadImpactHome >= 0.8) trenchAdvantageSide = 'home'
-  else if (netTrenchSpreadImpactHome <= -0.8) trenchAdvantageSide = 'away'
-
-  const isTrenchMismatch = Math.abs(netTrenchSpreadImpactHome) >= 0.8
+  // 2. Trench win rates: frozen at 0 until real PBWR/PRWR/RBWR/RSWR ingest (PFF / equivalent)
+  const homePassTrenchDelta = 0
+  const awayPassTrenchDelta = 0
+  const netTrenchSpreadImpactHome = 0
+  const trenchAdvantageSide: 'home' | 'away' | null = null
+  const isTrenchMismatch = false
   const isEpaMismatch = Math.abs(epaSpreadImpactHome) >= 2.0
 
-  // Concise insight summary line
   let summaryLine = ''
-  if (isTrenchMismatch) {
-    const advSide = trenchAdvantageSide === 'home' ? home : away
-    const oppSide = trenchAdvantageSide === 'home' ? away : home
-    const advPts = Math.abs(netTrenchSpreadImpactHome)
-    summaryLine = `Trench Mismatch · ${shortDisplayName(advSide.team_name)} O-Line (${advSide.pass_block_win_rate}% PBWR vs ${oppSide.pass_rush_win_rate}% PRWR) · +${advPts} pt line edge`
-  } else if (isEpaMismatch) {
+  if (isEpaMismatch) {
     const advSide = epaSpreadImpactHome > 0 ? home : away
     const oppSide = epaSpreadImpactHome > 0 ? away : home
     const advPts = Math.abs(epaSpreadImpactHome)

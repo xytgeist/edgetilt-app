@@ -190,8 +190,54 @@ function formatTurnoverBattleNote(espn: EspnGameSummary | null, forLoss: boolean
   return margin >= 2 ? 'Won the turnover battle' : 'Protected the football'
 }
 
+function formatTotalMissPoints(pick: LedgerPickRow, total: number): number | null {
+  const line = Number(pick.pick_line)
+  if (!Number.isFinite(line) || !Number.isFinite(total)) return null
+
+  const isUnder = /under/i.test(String(pick.pick_name || ''))
+  const isHalf = Math.abs(line * 2 - Math.round(line * 2)) < 0.01 && Math.abs(line % 1) >= 0.25
+
+  if (isUnder) {
+    const maxWinTotal = isHalf ? Math.floor(line) : line - 1
+    if (total <= maxWinTotal) return null
+    return total - maxWinTotal
+  }
+
+  const minWinTotal = isHalf ? Math.ceil(line) : line + 1
+  if (total >= minWinTotal) return null
+  return minWinTotal - total
+}
+
+function formatPointsPhrase(points: number): string {
+  return points % 1 === 0 ? String(points) : points.toFixed(1)
+}
+
 function buildWinPostMortemThesis(pick: LedgerPickRow, espn: EspnGameSummary | null): string {
   if (pick.market_key === 'totals') {
+    const away = Number(pick.away_score)
+    const home = Number(pick.home_score)
+    const line = Number(pick.pick_line)
+    if (Number.isFinite(away) && Number.isFinite(home) && Number.isFinite(line)) {
+      const total = away + home
+      const isUnder = /under/i.test(String(pick.pick_name || ''))
+      const isHalf = Math.abs(line * 2 - Math.round(line * 2)) < 0.01 && Math.abs(line % 1) >= 0.25
+      if (isUnder) {
+        const maxWinTotal = isHalf ? Math.floor(line) : line - 1
+        const cushion = maxWinTotal - total
+        if (cushion > 0) {
+          return `Cleared the under by ${formatPointsPhrase(cushion)} points.`
+        }
+      } else {
+        const minWinTotal = isHalf ? Math.ceil(line) : line + 1
+        const cushion = total - minWinTotal
+        if (cushion > 0) {
+          return `Cleared the over by ${formatPointsPhrase(cushion)} points.`
+        }
+        if (cushion === 0) {
+          return 'Closed right on the over number.'
+        }
+      }
+    }
     return 'Closing total cleared with room to spare.'
   }
   if (espn?.isModelBlowoutDomination) {
@@ -213,15 +259,14 @@ function buildLossPostMortemThesis(pick: LedgerPickRow, espn: EspnGameSummary | 
   if (pick.market_key === 'totals') {
     const away = Number(pick.away_score)
     const home = Number(pick.home_score)
-    const line = Number(pick.pick_line)
-    if (Number.isFinite(away) && Number.isFinite(home) && Number.isFinite(line)) {
+    if (Number.isFinite(away) && Number.isFinite(home)) {
       const total = away + home
-      const isUnder = /under/i.test(String(pick.pick_name || ''))
-      const delta = isUnder ? total - line : line - total
-      if (delta > 0) {
+      const miss = formatTotalMissPoints(pick, total)
+      if (miss != null && miss > 0) {
+        const isUnder = /under/i.test(String(pick.pick_name || ''))
         return isUnder
-          ? `Missed the under by ${delta % 1 === 0 ? delta : delta.toFixed(1)} points.`
-          : `Missed the over by ${delta % 1 === 0 ? delta : delta.toFixed(1)} points.`
+          ? `Missed the under by ${formatPointsPhrase(miss)} points.`
+          : `Missed the over by ${formatPointsPhrase(miss)} points.`
       }
     }
     return 'Late scoring variance pushed the total past the number.'

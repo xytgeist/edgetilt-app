@@ -9,6 +9,7 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { publishLoungeBotPost } from './loungeBotPublish.ts'
 import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
 import { fetchEspnGameSummary, type EspnGameSummary } from './loungeBotEspnSummary.ts'
+import { shortDisplayName } from './loungeBotOddsCaption.ts'
 
 export type PersonaWeeklyTally = {
   pickerName: 'Scott' | 'Rocco' | 'Chedda' | 'Tank'
@@ -21,10 +22,31 @@ export type PersonaWeeklyTally = {
 }
 
 export type PostMortemHighlight = {
-  hook: string
+  pickLine: string
+  matchup: string
   narrative: string
   tagline?: string | null
 }
+
+type LedgerPickRow = {
+  event_id: string
+  sport_key?: string | null
+  home_team?: string | null
+  away_team?: string | null
+  market_key?: string | null
+  pick_name?: string | null
+  pick_line?: number | null
+  home_score?: number | null
+  away_score?: number | null
+  units_net?: number | null
+  status?: string | null
+}
+
+/** Combined pair score must clear this or we omit the post-mortem section entirely. */
+const POST_MORTEM_MIN_PAIR_SCORE = 6
+
+/** One highlight needs this to publish solo when no paired story exists. */
+const POST_MORTEM_MIN_SOLO_SCORE = 5
 
 export type WeeklyRecapPayload = {
   startDateIso: string
@@ -85,39 +107,341 @@ function resolveBadBeatTagline(endDateIso: string): string | null {
   return BAD_BEAT_TAGLINES[h % BAD_BEAT_TAGLINES.length]
 }
 
-function formatPostMortemSpreadHook(pick: {
-  pick_line?: number | null
-  pick_name?: string | null
-  market_key?: string | null
-}): string {
+function formatPostMortemPickLine(pick: LedgerPickRow): string {
+  const name = String(pick.pick_name || '').trim()
   const line = pick.pick_line
+
+  if (/^(Over|Under)\s+[\d.]+/i.test(name)) {
+    const ouMatch = name.match(/^(Over|Under)\s+([\d.]+)/i)
+    if (ouMatch) return `${ouMatch[1]!.charAt(0).toUpperCase()}${ouMatch[1]!.slice(1).toLowerCase()} ${ouMatch[2]}`
+  }
+
+  const spreadInName = name.match(/^(.+?)\s+([+-]\d+(?:\.\d+)?)\s*$/)
+  if (spreadInName) {
+    return `${shortDisplayName(spreadInName[1]!.trim())} ${spreadInName[2]}`
+  }
+
+  if (pick.market_key === 'totals') {
+    const ou = name.match(/^(Over|Under)/i)?.[1]
+    const pt =
+      line != null && Number.isFinite(Number(line))
+        ? Number(line)
+        : Number(name.match(/([\d.]+)/)?.[1] || NaN)
+    if (ou && Number.isFinite(pt)) {
+      return `${ou.charAt(0).toUpperCase()}${ou.slice(1).toLowerCase()} ${pt}`
+    }
+    return name || 'Total'
+  }
+
+  const team = shortDisplayName(name)
   if (line != null && Number.isFinite(Number(line))) {
     const pt = Number(line)
-    if (pick.market_key === 'totals') return `${pt}`
-    return pt > 0 ? `+${pt}` : `${pt}`
+    const lineStr = pt > 0 ? `+${pt}` : `${pt}`
+    return `${team} ${lineStr}`
   }
-  const name = String(pick.pick_name || '').trim()
-  const totalMatch = name.match(/^(Over|Under)\s+([\d.]+)/i)
-  if (totalMatch) return totalMatch[2]
-  const spreadMatch = name.match(/([+-]\d+(?:\.\d+)?)\s*$/)
-  if (spreadMatch) return spreadMatch[1]
-  const tail = name.split(/\s+/).pop()
-  return tail || name || '—'
+  return team || name || 'Pick'
 }
 
-function formatPostMortemTotalHook(
-  pick: { home_score?: number | null; away_score?: number | null },
-  espn: EspnGameSummary | null,
-): string {
-  const home = Number(pick.home_score)
+function formatPostMortemMatchup(pick: LedgerPickRow): string {
+  return `${shortDisplayName(String(pick.away_team || ''))}/${shortDisplayName(String(pick.home_team || ''))}`
+}
+
+function dedupePostMortemCandidates(picks: LedgerPickRow[], prefer: 'win' | 'loss'): LedgerPickRow[] {
+  const byKey = new Map<string, LedgerPickRow>()
+  for (const pick of picks) {
+    const key = `${pick.event_id}:${pick.market_key}:${pick.pick_line ?? pick.pick_name}`
+    const existing = byKey.get(key)
+    if (!existing) {
+      byKey.set(key, pick)
+      continue
+    }
+    const units = Number(pick.units_net) || 0
+    const existingUnits = Number(existing.units_net) || 0
+    if (prefer === 'win' ? units > existingUnits : units < existingUnits) {
+      byKey.set(key, pick)
+    }
+  }
+  return [...byKey.values()].sort((a, b) => {
+    const ua = Number(a.units_net) || 0
+    const ub = Number(b.units_net) || 0
+    return prefer === 'win' ? ub - ua : ua - ub
+  })
+}
+
+function formatEspnYardLine(espn: EspnGameSummary | null): string | null {
+  if (!espn?.awayTotalYards || !espn?.homeTotalYards) return null
+  if (espn.awayTotalYards <= 0 && espn.homeTotalYards <= 0) return null
+  return `${espn.awayTotalYards}-${espn.homeTotalYards} yards`
+}
+
+function formatEspnTurnoverLine(espn: EspnGameSummary | null): string | null {
+  if (espn?.homeTurnovers == null || espn?.awayTurnovers == null) return null
+  return `${espn.awayTurnovers}-${espn.homeTurnovers} turnovers`
+}
+
+function formatTurnoverBattleNote(espn: EspnGameSummary | null, forLoss: boolean): string | null {
+  const margin = espn?.turnoverMarginHome
+  if (margin == null || Math.abs(margin) < 2) return null
+  if (forLoss) {
+    return margin >= 2 ? 'Lost the turnover battle' : 'Turnover variance flipped the result'
+  }
+  return margin >= 2 ? 'Won the turnover battle' : 'Protected the football'
+}
+
+function buildWinPostMortemThesis(pick: LedgerPickRow, espn: EspnGameSummary | null): string {
+  if (pick.market_key === 'totals') {
+    return 'Closing total cleared with room to spare.'
+  }
+  if (espn?.isModelBlowoutDomination) {
+    return 'Controlled the line of scrimmage with a decisive yardage advantage.'
+  }
+  if (espn?.yardageMarginHome != null && Math.abs(espn.yardageMarginHome) >= 75) {
+    return 'Yardage dominance backed up the spread cover.'
+  }
+  if (pick.market_key === 'spreads') {
+    return 'Pure execution on key spread numbers.'
+  }
+  return 'Clean cover on the number.'
+}
+
+function buildLossPostMortemThesis(pick: LedgerPickRow, espn: EspnGameSummary | null): string {
+  if (espn?.isFlukeLossForHome || espn?.isFlukeLossForAway) {
+    return 'Outgained opponent in total yards, but turnover variance flipped the cover.'
+  }
+  if (pick.market_key === 'totals') {
+    const away = Number(pick.away_score)
+    const home = Number(pick.home_score)
+    const line = Number(pick.pick_line)
+    if (Number.isFinite(away) && Number.isFinite(home) && Number.isFinite(line)) {
+      const total = away + home
+      const isUnder = /under/i.test(String(pick.pick_name || ''))
+      const delta = isUnder ? total - line : line - total
+      if (delta > 0) {
+        return isUnder
+          ? `Missed the under by ${delta % 1 === 0 ? delta : delta.toFixed(1)} points.`
+          : `Missed the over by ${delta % 1 === 0 ? delta : delta.toFixed(1)} points.`
+      }
+    }
+    return 'Late scoring variance pushed the total past the number.'
+  }
+  if (espn?.turnoverMarginHome != null && Math.abs(espn.turnoverMarginHome) >= 2) {
+    return 'Outgained opponent in total yards, but turnover variance flipped the cover.'
+  }
+  return 'High-leverage red zone stall flipped the spread margin.'
+}
+
+function buildWinPostMortemNarrative(pick: LedgerPickRow, espn: EspnGameSummary | null): string {
   const away = Number(pick.away_score)
-  if (Number.isFinite(home) && Number.isFinite(away)) {
-    return String(home + away)
+  const home = Number(pick.home_score)
+  const parts: string[] = []
+
+  if (pick.market_key === 'totals' && Number.isFinite(away) && Number.isFinite(home)) {
+    parts.push(`Final ${away + home} total`)
+  } else if (Number.isFinite(away) && Number.isFinite(home)) {
+    parts.push(`Final ${away}-${home}`)
   }
-  if (espn?.homeScore != null && espn?.awayScore != null) {
-    return String(Number(espn.homeScore) + Number(espn.awayScore))
+
+  if (espn?.postMortemNote && espn.isModelBlowoutDomination) {
+    parts.push(espn.postMortemNote.replace(/^Model Dominance:\s*/i, ''))
+  } else {
+    const yards = formatEspnYardLine(espn)
+    if (yards) parts.push(yards)
+
+    const turnovers = formatEspnTurnoverLine(espn)
+    if (turnovers) parts.push(turnovers)
+
+    const toBattle = formatTurnoverBattleNote(espn, false)
+    if (toBattle && !parts.some((p) => p.toLowerCase().includes('turnover'))) {
+      parts.push(toBattle)
+    } else if (!yards && espn?.yardageMarginHome != null && Math.abs(espn.yardageMarginHome) >= 75) {
+      parts.push(`${Math.abs(espn.yardageMarginHome)}-yard edge`)
+    }
+
+    parts.push(buildWinPostMortemThesis(pick, espn))
   }
-  return formatPostMortemSpreadHook(pick)
+
+  return parts.length ? parts.join(' · ') : buildWinPostMortemThesis(pick, espn)
+}
+
+function buildLossPostMortemNarrative(pick: LedgerPickRow, espn: EspnGameSummary | null): string {
+  const away = Number(pick.away_score)
+  const home = Number(pick.home_score)
+  const parts: string[] = []
+
+  if (pick.market_key === 'totals' && Number.isFinite(away) && Number.isFinite(home)) {
+    parts.push(`Final ${away + home} total`)
+  } else if (Number.isFinite(away) && Number.isFinite(home)) {
+    parts.push(`Final ${away}-${home}`)
+  }
+
+  if (espn?.postMortemNote && (espn.isFlukeLossForHome || espn.isFlukeLossForAway || espn.isModelBlowoutDomination)) {
+    parts.push(espn.postMortemNote.replace(/^Boxscore Fluke:\s*/i, ''))
+  } else {
+    const yards = formatEspnYardLine(espn)
+    if (yards) parts.push(yards)
+
+    const turnovers = formatEspnTurnoverLine(espn)
+    if (turnovers) parts.push(turnovers)
+
+    const toBattle = formatTurnoverBattleNote(espn, true)
+    if (toBattle) parts.push(toBattle)
+
+    parts.push(buildLossPostMortemThesis(pick, espn))
+  }
+
+  return parts.length ? parts.join(' · ') : buildLossPostMortemThesis(pick, espn)
+}
+
+function postMortemHighlightQuality(
+  pick: LedgerPickRow,
+  espn: EspnGameSummary | null,
+  narrative: string,
+): number {
+  let score = 0
+  const away = Number(pick.away_score)
+  const home = Number(pick.home_score)
+  if (Number.isFinite(away) && Number.isFinite(home)) score += 2
+
+  if (formatEspnYardLine(espn)) score += 2
+  if (formatEspnTurnoverLine(espn)) score += 1
+  if (espn?.postMortemNote) score += 3
+  if (espn?.isFlukeLossForHome || espn?.isFlukeLossForAway) score += 3
+  if (espn?.isModelBlowoutDomination) score += 3
+
+  if (narrative === 'Clean cover on the number.') score -= 2
+  if (narrative === 'Late variance against the closing number.') score -= 2
+  if (narrative.includes('Pure execution') || narrative.includes('turnover variance') || narrative.includes('Missed the under')) {
+    score += 1
+  }
+
+  return score
+}
+
+function toPostMortemHighlight(
+  pick: LedgerPickRow,
+  espn: EspnGameSummary | null,
+  narrative: string,
+  tagline?: string | null,
+): PostMortemHighlight {
+  return {
+    pickLine: formatPostMortemPickLine(pick),
+    matchup: formatPostMortemMatchup(pick),
+    narrative,
+    tagline,
+  }
+}
+
+async function fetchEspnForPick(
+  pick: LedgerPickRow,
+  cache: Map<string, EspnGameSummary | null>,
+): Promise<EspnGameSummary | null> {
+  const cacheKey = `${pick.event_id}:${pick.home_team}:${pick.away_team}`
+  if (cache.has(cacheKey)) return cache.get(cacheKey) ?? null
+  try {
+    const espn = await fetchEspnGameSummary(
+      String(pick.sport_key || ''),
+      String(pick.home_team || ''),
+      String(pick.away_team || ''),
+    )
+    cache.set(cacheKey, espn)
+    return espn
+  } catch (_e) {
+    cache.set(cacheKey, null)
+    return null
+  }
+}
+
+/**
+ * Pick the win/loss pair that tells the best split-game story (same-game market splits
+ * score highest), enrich with ESPN yardage/turnovers when available, and return null pair
+ * on thin weeks so the ledger post still ships without the post-mortem section.
+ */
+async function resolvePostMortemHighlights(
+  picks: LedgerPickRow[],
+  endDateIso: string,
+): Promise<{ biggestWin: PostMortemHighlight | null; badBeat: PostMortemHighlight | null }> {
+  const football = (p: LedgerPickRow) => p.sport_key?.includes('nfl') || p.sport_key?.includes('ncaaf')
+  const wins = dedupePostMortemCandidates(picks.filter((p) => p.status === 'won' && football(p)), 'win')
+  const losses = dedupePostMortemCandidates(picks.filter((p) => p.status === 'lost' && football(p)), 'loss')
+
+  if (!wins.length && !losses.length) {
+    return { biggestWin: null, badBeat: null }
+  }
+
+  const espnCache = new Map<string, EspnGameSummary | null>()
+  type ScoredCandidate = {
+    pick: LedgerPickRow
+    espn: EspnGameSummary | null
+    narrative: string
+    quality: number
+  }
+
+  const scoreSide = async (side: LedgerPickRow[]): Promise<ScoredCandidate[]> => {
+    const out: ScoredCandidate[] = []
+    for (const pick of side.slice(0, 8)) {
+      const espn = await fetchEspnForPick(pick, espnCache)
+      const narrative =
+        pick.status === 'won'
+          ? buildWinPostMortemNarrative(pick, espn)
+          : buildLossPostMortemNarrative(pick, espn)
+      out.push({
+        pick,
+        espn,
+        narrative,
+        quality: postMortemHighlightQuality(pick, espn, narrative),
+      })
+    }
+    return out
+  }
+
+  const [scoredWins, scoredLosses] = await Promise.all([scoreSide(wins), scoreSide(losses)])
+
+  let bestPair: {
+    win: ScoredCandidate
+    loss: ScoredCandidate
+    pairScore: number
+  } | null = null
+
+  for (const win of scoredWins) {
+    for (const loss of scoredLosses) {
+      let pairScore = win.quality + loss.quality
+      if (win.pick.event_id === loss.pick.event_id) {
+        pairScore += 8
+        if (win.pick.market_key !== loss.pick.market_key) pairScore += 4
+      }
+      if (!bestPair || pairScore > bestPair.pairScore) {
+        bestPair = { win, loss, pairScore }
+      }
+    }
+  }
+
+  const tagline = resolveBadBeatTagline(endDateIso)
+
+  if (bestPair && bestPair.pairScore >= POST_MORTEM_MIN_PAIR_SCORE) {
+    return {
+      biggestWin: toPostMortemHighlight(bestPair.win.pick, bestPair.win.espn, bestPair.win.narrative),
+      badBeat: toPostMortemHighlight(bestPair.loss.pick, bestPair.loss.espn, bestPair.loss.narrative, tagline),
+    }
+  }
+
+  const bestWin = scoredWins.sort((a, b) => b.quality - a.quality)[0]
+  const bestLoss = scoredLosses.sort((a, b) => b.quality - a.quality)[0]
+
+  if (bestWin && bestWin.quality >= POST_MORTEM_MIN_SOLO_SCORE && (!bestLoss || bestWin.quality >= bestLoss.quality)) {
+    return {
+      biggestWin: toPostMortemHighlight(bestWin.pick, bestWin.espn, bestWin.narrative),
+      badBeat: null,
+    }
+  }
+
+  if (bestLoss && bestLoss.quality >= POST_MORTEM_MIN_SOLO_SCORE) {
+    return {
+      biggestWin: null,
+      badBeat: toPostMortemHighlight(bestLoss.pick, bestLoss.espn, bestLoss.narrative, tagline),
+    }
+  }
+
+  return { biggestWin: null, badBeat: null }
 }
 
 /**
@@ -198,50 +522,8 @@ export async function compileWeeklySyndicateRecap(
     summary: `${topPicker.pickerName} (${topPicker.roleTitle}) led the desk at ${topPicker.wins}-${topPicker.losses} (+${topPicker.unitsNet.toFixed(2)}u)`,
   } : null
 
-  // Analyze ESPN post-mortem boxscores for biggest win & bad beat
-  let biggestWin: PostMortemHighlight | null = null
-  let badBeat: PostMortemHighlight | null = null
-
-  const wonPicks = picks.filter((p) => p.status === 'won' && (p.sport_key?.includes('nfl') || p.sport_key?.includes('ncaaf')))
-  const lostPicks = picks.filter((p) => p.status === 'lost' && (p.sport_key?.includes('nfl') || p.sport_key?.includes('ncaaf')))
-
-  if (wonPicks.length > 0) {
-    const topWin = wonPicks[0]
-    const hook = formatPostMortemSpreadHook(topWin)
-    let narrative = 'Pure execution on key spread numbers.'
-    try {
-      const espn = await fetchEspnGameSummary(topWin.sport_key, topWin.home_team, topWin.away_team)
-      if (espn?.isModelBlowoutDomination || (espn?.yardageMarginHome && Math.abs(espn.yardageMarginHome) >= 100)) {
-        narrative = 'Controlled the line of scrimmage with a decisive yardage advantage.'
-      }
-    } catch (_e) {
-      narrative = 'Decisive cover on model spread target.'
-    }
-    biggestWin = { hook, narrative }
-  }
-
-  if (lostPicks.length > 0) {
-    const topLoss = lostPicks[0]
-    let espn: EspnGameSummary | null = null
-    let narrative = 'High-leverage red zone stall flipped the spread margin.'
-    try {
-      espn = await fetchEspnGameSummary(topLoss.sport_key, topLoss.home_team, topLoss.away_team)
-      if (espn?.isFlukeLossForHome || espn?.isFlukeLossForAway) {
-        narrative = espn.postMortemNote
-          ? espn.postMortemNote.replace(/^Boxscore Fluke:\s*/i, '')
-          : 'Outgained opponent in total yards, but turnover variance flipped the cover.'
-      } else if (espn?.turnoverMarginHome && Math.abs(espn.turnoverMarginHome) >= 2) {
-        narrative = 'Outgained opponent in total yards, but turnover variance flipped the cover.'
-      }
-    } catch (_e) {
-      narrative = 'Tough late-game variance against closing line.'
-    }
-    badBeat = {
-      hook: formatPostMortemTotalHook(topLoss, espn),
-      narrative,
-      tagline: resolveBadBeatTagline(now.toISOString()),
-    }
-  }
+  // ESPN post-mortem: best split-game pair when available; omit section only on thin weeks
+  const { biggestWin, badBeat } = await resolvePostMortemHighlights(picks, now.toISOString())
 
   let clvBeatsCount = 0
   for (const p of picks) {
@@ -286,7 +568,8 @@ export async function compileWeeklySyndicateRecap(
  * - H1 title + crew / syndicate total; H2 for CLV + boxscore
  * - Crew lines use comma between units and win%
  * - green/red/gold color tags; ==🏆 Top Earner== highlight
- * - Post-mortem: hook · narrative; bad-beat tagline rotated (~25% weeks omit)
+ * - Post-mortem section omitted when no substantive boxscore story; ledger still posts
+ * - Post-mortem: pick + matchup · boxscore detail; bad-beat tagline rotated (~25% weeks omit)
  */
 export function formatWeeklySyndicateRecapCaption(recap: WeeklyRecapPayload): string {
   const lines: string[] = []
@@ -336,13 +619,13 @@ export function formatWeeklySyndicateRecapCaption(recap: WeeklyRecapPayload): st
   if (recap.boxscoreHighlights.biggestWin || recap.boxscoreHighlights.badBeat) {
     lines.push('## 🔍 Boxscore Post-Mortem')
     if (recap.boxscoreHighlights.biggestWin) {
-      const { hook, narrative } = recap.boxscoreHighlights.biggestWin
-      lines.push(`- 🔨 **Yardage Dominance:** ${hook} · ${narrative}`)
+      const { pickLine, matchup, narrative } = recap.boxscoreHighlights.biggestWin
+      lines.push(`- 🔨 **[gold]${pickLine}[/gold]** (${matchup}) · ${narrative}`)
     }
     if (recap.boxscoreHighlights.badBeat) {
-      const { hook, narrative, tagline } = recap.boxscoreHighlights.badBeat
+      const { pickLine, matchup, narrative, tagline } = recap.boxscoreHighlights.badBeat
       const tail = tagline ? ` *${tagline}*` : ''
-      lines.push(`- 🎲 **Turnover Variance:** ${hook} · ${narrative}${tail}`)
+      lines.push(`- 🎲 **[gold]${pickLine}[/gold]** (${matchup}) · ${narrative}${tail}`)
     }
     lines.push('')
   }
@@ -360,14 +643,14 @@ export async function publishWeeklySyndicateRecap(
   admin: SupabaseClient,
   botUserId: string,
   recap: WeeklyRecapPayload,
-  categoryPills: string[] = ['sports', 'recap'],
+  categoryPills: string[] = ['sports'],
 ): Promise<{ ok: boolean; postId?: string; error?: string }> {
   const caption = formatWeeklySyndicateRecapCaption(recap)
 
   const postRes = await publishLoungeBotPost(admin, {
     botUserId,
     caption,
-    categoryPills: [...new Set([...categoryPills, 'recap', 'syndicate'])],
+    categoryPills: [...new Set([...categoryPills, 'sports'])],
   })
 
   if (!postRes.postId) {

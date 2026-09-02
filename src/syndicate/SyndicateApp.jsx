@@ -1,9 +1,25 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import {
   fetchSyndicateLedger,
   fetchTrenchMetrics,
-  fetchCfbPowerRatings,
+  fetchUfcFighterMetrics,
 } from './syndicateApi.js'
+
+const PRIMARY_TABS = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'ledger', label: 'Audited Ledger' },
+  { id: 'whitepapers', label: 'Methodology' },
+]
+
+const SPORT_TABS = [
+  { id: 'nfl', label: 'NFL' },
+  { id: 'cfb', label: 'CFB' },
+  { id: 'ufc', label: 'UFC' },
+]
+
+function isSportTab(tabId) {
+  return SPORT_TABS.some((t) => t.id === tabId)
+}
 
 /** Match lounge-odds-poll grading window: no result until commence + 90m. */
 const PICK_SETTLE_BUFFER_MS = 90 * 60 * 1000
@@ -31,10 +47,13 @@ function isPickSettled(pick) {
 export function SyndicateApp() {
   const [activeTab, setActiveTab] = useState('overview')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [sportsMenuOpen, setSportsMenuOpen] = useState(false)
+  const [mobileSportsOpen, setMobileSportsOpen] = useState(false)
+  const sportsMenuRef = useRef(null)
   const [picks, setPicks] = useState([])
   const [loading, setLoading] = useState(true)
   const [trenchData, setTrenchData] = useState([])
-  const [cfbData, setCfbData] = useState([])
+  const [ufcData, setUfcData] = useState([])
   const [sportFilter, setSportFilter] = useState('all')
   const [deskFilter, setDeskFilter] = useState('all')
   const [signalFilter, setSignalFilter] = useState('all')
@@ -42,18 +61,29 @@ export function SyndicateApp() {
   useEffect(() => {
     async function loadData() {
       setLoading(true)
-      const [ledgerRes, trenchRes, cfbRes] = await Promise.all([
+      const [ledgerRes, trenchRes, ufcRes] = await Promise.all([
         fetchSyndicateLedger(250),
         fetchTrenchMetrics(),
-        fetchCfbPowerRatings(),
+        fetchUfcFighterMetrics(),
       ])
       setPicks(ledgerRes.picks || [])
       setTrenchData(trenchRes.data || [])
-      setCfbData(cfbRes.data || [])
+      setUfcData(ufcRes.data || [])
       setLoading(false)
     }
     loadData()
   }, [])
+
+  useEffect(() => {
+    if (!sportsMenuOpen) return undefined
+    function onPointerDown(e) {
+      if (sportsMenuRef.current && !sportsMenuRef.current.contains(e.target)) {
+        setSportsMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    return () => document.removeEventListener('mousedown', onPointerDown)
+  }, [sportsMenuOpen])
 
   // Calculate live ledger stats (exclude future / in-progress games)
   const gradedPicks = picks.filter(isPickSettled)
@@ -192,16 +222,14 @@ export function SyndicateApp() {
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-1.5">
-            {[
-              { id: 'overview', label: 'Overview' },
-              { id: 'ledger', label: 'Audited Ledger' },
-              { id: 'trenches', label: 'Trench EPA' },
-              { id: 'cfb', label: 'CFB Power Index' },
-              { id: 'whitepapers', label: 'Methodology' },
-            ].map((t) => (
+            {PRIMARY_TABS.filter((t) => t.id !== 'whitepapers').map((t) => (
               <button
                 key={t.id}
-                onClick={() => setActiveTab(t.id)}
+                type="button"
+                onClick={() => {
+                  setActiveTab(t.id)
+                  setSportsMenuOpen(false)
+                }}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                   activeTab === t.id
                     ? 'bg-zinc-800 text-white shadow-sm ring-1 ring-zinc-700'
@@ -211,6 +239,67 @@ export function SyndicateApp() {
                 {t.label}
               </button>
             ))}
+
+            <div className="relative" ref={sportsMenuRef}>
+              <button
+                type="button"
+                onClick={() => setSportsMenuOpen((open) => !open)}
+                className={`inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                  isSportTab(activeTab)
+                    ? 'bg-zinc-800 text-white shadow-sm ring-1 ring-zinc-700'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60'
+                }`}
+                aria-expanded={sportsMenuOpen}
+                aria-haspopup="true"
+              >
+                <span>Sports</span>
+                <svg
+                  className={`w-3.5 h-3.5 transition-transform ${sportsMenuOpen ? 'rotate-180' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {sportsMenuOpen ? (
+                <div className="absolute left-0 top-full z-50 mt-1.5 min-w-[9rem] rounded-xl border border-zinc-800 bg-zinc-950 py-1.5 shadow-xl shadow-black/40">
+                  {SPORT_TABS.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveTab(t.id)
+                        setSportsMenuOpen(false)
+                      }}
+                      className={`w-full text-left px-3 py-2 text-xs font-semibold transition-colors ${
+                        activeTab === t.id
+                          ? 'bg-zinc-800 text-white'
+                          : 'text-zinc-400 hover:bg-zinc-900 hover:text-white'
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('whitepapers')
+                setSportsMenuOpen(false)
+              }}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                activeTab === 'whitepapers'
+                  ? 'bg-zinc-800 text-white shadow-sm ring-1 ring-zinc-700'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/60'
+              }`}
+            >
+              Methodology
+            </button>
 
             <a
               href="https://edgetilt.com/u/sharpesignal?subscribe=1"
@@ -252,18 +341,14 @@ export function SyndicateApp() {
         {/* Mobile Dropdown Menu */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-zinc-800 bg-zinc-950/98 px-4 py-3 space-y-1.5 shadow-2xl">
-            {[
-              { id: 'overview', label: 'Overview' },
-              { id: 'ledger', label: 'Audited Ledger' },
-              { id: 'trenches', label: 'Trench EPA' },
-              { id: 'cfb', label: 'CFB Power Index' },
-              { id: 'whitepapers', label: 'Methodology' },
-            ].map((t) => (
+            {PRIMARY_TABS.filter((t) => t.id !== 'whitepapers').map((t) => (
               <button
                 key={t.id}
+                type="button"
                 onClick={() => {
                   setActiveTab(t.id)
                   setMobileMenuOpen(false)
+                  setMobileSportsOpen(false)
                 }}
                 className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all ${
                   activeTab === t.id
@@ -274,6 +359,66 @@ export function SyndicateApp() {
                 {t.label}
               </button>
             ))}
+
+            <button
+              type="button"
+              onClick={() => setMobileSportsOpen((open) => !open)}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                isSportTab(activeTab)
+                  ? 'bg-zinc-800 text-white font-bold ring-1 ring-zinc-700'
+                  : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+              }`}
+              aria-expanded={mobileSportsOpen}
+            >
+              <span>Sports</span>
+              <svg
+                className={`w-4 h-4 transition-transform ${mobileSportsOpen || isSportTab(activeTab) ? 'rotate-180' : ''}`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {(mobileSportsOpen || isSportTab(activeTab)) && (
+              <div className="ml-2 space-y-1 border-l border-zinc-800 pl-2">
+                {SPORT_TABS.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveTab(t.id)
+                      setMobileMenuOpen(false)
+                      setMobileSportsOpen(true)
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                      activeTab === t.id
+                        ? 'bg-zinc-800 text-white font-bold ring-1 ring-zinc-700'
+                        : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('whitepapers')
+                setMobileMenuOpen(false)
+                setMobileSportsOpen(false)
+              }}
+              className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'whitepapers'
+                  ? 'bg-zinc-800 text-white font-bold ring-1 ring-zinc-700'
+                  : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
+              }`}
+            >
+              Methodology
+            </button>
           </div>
         )}
       </header>
@@ -485,11 +630,11 @@ export function SyndicateApp() {
                       ) : null}
                     </div>
                     <p className="text-xs text-zinc-400 leading-relaxed">
-                      Trench &amp; offensive efficiency specialist. Breaks down line-of-scrimmage win rates (PBWR/PRWR), net EPA per play, and injury spread value (PVAL).
+                      Trench &amp; offensive efficiency specialist. Breaks down net EPA per play and injury spread value (PVAL) for NFL pricing.
                     </p>
                     <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
-                      <div>• Core: PBWR / PRWR Line Ratings</div>
-                      <div>• Factor: Offensive/Defensive EPA</div>
+                      <div>• Core: Offensive / Defensive EPA</div>
+                      <div>• Factor: Injury spread value (PVAL)</div>
                       <div>• Penalty: -3.5 / -7.5 Hook Tax Traps</div>
                     </div>
                   </div>
@@ -924,13 +1069,13 @@ export function SyndicateApp() {
           </div>
         )}
 
-        {/* Trench EPA Tab */}
-        {activeTab === 'trenches' && (
+        {/* NFL EPA Tab */}
+        {activeTab === 'nfl' && (
           <div className="space-y-6">
             <div className="border-b border-zinc-800 pb-4">
-              <h2 className="text-2xl font-bold text-white tracking-tight">NFL Trench & EPA Rankings</h2>
+              <h2 className="text-2xl font-bold text-white tracking-tight">NFL EPA Rankings</h2>
               <p className="text-zinc-400 text-xs sm:text-sm mt-1">
-                Pass Block Win Rate (PBWR), Pass Rush Win Rate (PRWR), and Expected Points Added (EPA) per play.
+                Expected Points Added (EPA) per play on offense and defense. Public efficiency board only.
               </p>
             </div>
 
@@ -941,29 +1086,25 @@ export function SyndicateApp() {
                     <th className="py-3 px-4">Team</th>
                     <th className="py-3 px-4">Off EPA / Play</th>
                     <th className="py-3 px-4">Def EPA / Play</th>
-                    <th className="py-3 px-4">Pass Block (PBWR)</th>
-                    <th className="py-3 px-4">Pass Rush (PRWR)</th>
-                    <th className="py-3 px-4">Run Block (RBWR)</th>
-                    <th className="py-3 px-4">Run Stop (RSWR)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800/60">
                   {trenchData.length === 0 ? (
                     <tr>
-                      <td colSpan="7" className="py-12 text-center text-zinc-500 font-sans">
-                        Trench metrics sync with Tuesday morning weekly calibrations.
+                      <td colSpan="3" className="py-12 text-center text-zinc-500 font-sans">
+                        EPA metrics sync with Tuesday morning weekly calibrations.
                       </td>
                     </tr>
                   ) : (
                     trenchData.map((t) => (
                       <tr key={t.id || t.team_name} className="hover:bg-zinc-800/30">
                         <td className="py-2.5 px-4 text-white font-sans font-semibold">{t.team_name}</td>
-                        <td className="py-2.5 px-4 text-emerald-400 font-semibold">{t.off_epa_play > 0 ? `+${t.off_epa_play}` : t.off_epa_play}</td>
-                        <td className="py-2.5 px-4 text-cyan-400">{t.def_epa_play > 0 ? `+${t.def_epa_play}` : t.def_epa_play}</td>
-                        <td className="py-2.5 px-4 text-zinc-300">{t.pbwr_pct ? `${t.pbwr_pct}%` : '-'}</td>
-                        <td className="py-2.5 px-4 text-zinc-300">{t.prwr_pct ? `${t.prwr_pct}%` : '-'}</td>
-                        <td className="py-2.5 px-4 text-zinc-400">{t.rbwr_pct ? `${t.rbwr_pct}%` : '-'}</td>
-                        <td className="py-2.5 px-4 text-zinc-400">{t.rswr_pct ? `${t.rswr_pct}%` : '-'}</td>
+                        <td className="py-2.5 px-4 text-emerald-400 font-semibold">
+                          {t.off_epa_play > 0 ? `+${t.off_epa_play}` : t.off_epa_play}
+                        </td>
+                        <td className="py-2.5 px-4 text-cyan-400">
+                          {t.def_epa_play > 0 ? `+${t.def_epa_play}` : t.def_epa_play}
+                        </td>
                       </tr>
                     ))
                   )}
@@ -973,49 +1114,106 @@ export function SyndicateApp() {
           </div>
         )}
 
-        {/* CFB Power Index Tab */}
+        {/* CFB Sport Hub */}
         {activeTab === 'cfb' && (
           <div className="space-y-6">
             <div className="border-b border-zinc-800 pb-4">
-              <h2 className="text-2xl font-bold text-white tracking-tight">College Football Power Ratings</h2>
+              <h2 className="text-2xl font-bold text-white tracking-tight">College Football</h2>
+              <p className="text-zinc-400 text-xs sm:text-sm mt-1 max-w-2xl">
+                Public CFB coverage lives in the audited pick ledger. Syndicate power boards and tempo adjustments stay on the desk ... not published here.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 space-y-4 max-w-2xl">
+              <p className="text-sm text-zinc-300 leading-relaxed">
+                Filter the Audited Ledger to CFB for settled Saturday signals, or read Methodology for how the desks price college spreads without dumping the proprietary board.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSportFilter('cfb')
+                    setActiveTab('ledger')
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold tracking-tight transition-all"
+                >
+                  Open CFB ledger
+                  <span className="font-mono">→</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveTab('whitepapers')
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-900 text-zinc-200 text-xs font-semibold hover:border-zinc-500 transition-all"
+                >
+                  Methodology
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* UFC Stats Tab */}
+        {activeTab === 'ufc' && (
+          <div className="space-y-6">
+            <div className="border-b border-zinc-800 pb-4">
+              <h2 className="text-2xl font-bold text-white tracking-tight">UFC Fighter Metrics</h2>
               <p className="text-zinc-400 text-xs sm:text-sm mt-1">
-                Raw point-spread ratings above an average FBS baseline, adjusted for tempo and home-field margin.
+                Official UFC Stats-style striking, grappling, and finish rates. Public numbers available elsewhere.
               </p>
             </div>
 
             <div className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-900/40">
-              <table className="w-full text-left border-collapse text-xs sm:text-sm font-mono">
+              <table className="w-full text-left border-collapse text-[11px] sm:text-xs font-mono">
                 <thead>
-                  <tr className="border-b border-zinc-800 bg-zinc-900/80 text-zinc-400 text-[11px] uppercase tracking-wider">
-                    <th className="py-3 px-4">Program</th>
-                    <th className="py-3 px-4">Power Rating</th>
-                    <th className="py-3 px-4">Off Rating</th>
-                    <th className="py-3 px-4">Def Rating</th>
-                    <th className="py-3 px-4">Home Field Advantage</th>
-                    <th className="py-3 px-4">Tempo Factor</th>
+                  <tr className="border-b border-zinc-800 bg-zinc-900/80 text-zinc-400 text-[10px] uppercase tracking-wider">
+                    <th className="py-3 px-3">Fighter</th>
+                    <th className="py-3 px-3">Division</th>
+                    <th className="py-3 px-3">Reach</th>
+                    <th className="py-3 px-3">Stance</th>
+                    <th className="py-3 px-3">SLpM</th>
+                    <th className="py-3 px-3">SApM</th>
+                    <th className="py-3 px-3">Str Acc</th>
+                    <th className="py-3 px-3">Str Def</th>
+                    <th className="py-3 px-3">TD Avg</th>
+                    <th className="py-3 px-3">TD Acc</th>
+                    <th className="py-3 px-3">TD Def</th>
+                    <th className="py-3 px-3">Sub Avg</th>
+                    <th className="py-3 px-3">Finish %</th>
+                    <th className="py-3 px-3">KO %</th>
+                    <th className="py-3 px-3">Sub %</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800/60">
-                  {cfbData.length === 0 ? (
+                  {ufcData.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="py-12 text-center text-zinc-500 font-sans">
-                        CFB power index updates weekly for Saturday slate pricing.
+                      <td colSpan="15" className="py-12 text-center text-zinc-500 font-sans">
+                        Fighter metrics sync ahead of each UFC card.
                       </td>
                     </tr>
                   ) : (
-                    cfbData.map((team, idx) => (
-                      <tr key={team.id || team.team_name} className="hover:bg-zinc-800/30">
-                        <td className="py-2.5 px-4 text-white font-sans font-semibold">
-                          <span className="text-zinc-500 text-xs mr-2">{idx + 1}.</span>
-                          {team.team_name}
+                    ufcData.map((f) => (
+                      <tr key={f.id || f.fighter_name} className="hover:bg-zinc-800/30">
+                        <td className="py-2 px-3 text-white font-sans font-semibold whitespace-nowrap">
+                          {f.fighter_name}
                         </td>
-                        <td className="py-2.5 px-4 text-emerald-400 font-bold">
-                          {team.power_rating > 0 ? `+${team.power_rating}` : team.power_rating}
-                        </td>
-                        <td className="py-2.5 px-4 text-zinc-300">{team.off_rating}</td>
-                        <td className="py-2.5 px-4 text-zinc-300">{team.def_rating}</td>
-                        <td className="py-2.5 px-4 text-zinc-400">+{team.home_field_adv || 2.5}</td>
-                        <td className="py-2.5 px-4 text-zinc-400">{team.tempo_rating || 'Normal'}</td>
+                        <td className="py-2 px-3 text-zinc-300 whitespace-nowrap">{f.division}</td>
+                        <td className="py-2 px-3 text-zinc-400">{f.reach_inches}&quot;</td>
+                        <td className="py-2 px-3 text-zinc-400">{f.stance}</td>
+                        <td className="py-2 px-3 text-emerald-400">{f.slpm}</td>
+                        <td className="py-2 px-3 text-cyan-400">{f.sapm}</td>
+                        <td className="py-2 px-3 text-zinc-300">{f.str_acc}%</td>
+                        <td className="py-2 px-3 text-zinc-300">{f.str_def}%</td>
+                        <td className="py-2 px-3 text-zinc-300">{f.td_avg}</td>
+                        <td className="py-2 px-3 text-zinc-400">{f.td_acc}%</td>
+                        <td className="py-2 px-3 text-zinc-400">{f.td_def}%</td>
+                        <td className="py-2 px-3 text-zinc-300">{f.sub_avg}</td>
+                        <td className="py-2 px-3 text-zinc-300">{f.finish_rate}%</td>
+                        <td className="py-2 px-3 text-zinc-400">{f.ko_finish_rate}%</td>
+                        <td className="py-2 px-3 text-zinc-400">{f.sub_finish_rate}%</td>
                       </tr>
                     ))
                   )}

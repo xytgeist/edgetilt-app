@@ -43,14 +43,14 @@ export async function fetchSyndicateLedger(limit = 250) {
 }
 
 /**
- * Fetch Team EPA & Trench rankings
+ * Fetch public NFL EPA rankings only (no trench win-rate columns).
  */
 export async function fetchTrenchMetrics() {
   if (!syndicateSupabase) return { data: [], error: null }
   try {
     const { data, error } = await syndicateSupabase
       .from('nfl_team_metrics')
-      .select('*')
+      .select('id, team_name, off_epa_play, def_epa_play')
       .order('off_epa_play', { ascending: false })
 
     if (error) return { data: [], error }
@@ -61,16 +61,18 @@ export async function fetchTrenchMetrics() {
 }
 
 /**
- * Fetch CFB Power Index ratings
+ * Fetch public UFC Stats-style fighter metrics.
  */
-export async function fetchCfbPowerRatings() {
+export async function fetchUfcFighterMetrics() {
   if (!syndicateSupabase) return { data: [], error: null }
   try {
     const { data, error } = await syndicateSupabase
-      .from('cfb_team_power_ratings')
-      .select('*')
-      .order('power_rating', { ascending: false })
-      .limit(50)
+      .from('ufc_fighter_metrics')
+      .select(
+        'id, fighter_name, division, reach_inches, stance, slpm, sapm, str_acc, str_def, td_avg, td_acc, td_def, sub_avg, finish_rate, ko_finish_rate, sub_finish_rate'
+      )
+      .order('division', { ascending: true })
+      .order('fighter_name', { ascending: true })
 
     if (error) return { data: [], error }
     return { data: data || [], error: null }

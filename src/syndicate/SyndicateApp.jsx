@@ -1031,7 +1031,7 @@ export function SyndicateApp() {
             <div className="border-b border-zinc-800 pb-4">
               <h2 className="text-2xl font-bold text-white tracking-tight">Syndicate Methodology & Math</h2>
               <p className="text-zinc-400 text-xs sm:text-sm mt-1">
-                Ensemble overview, then each desk&apos;s actual lane ... written like specialists, not a matched set of opposites.
+                How the ensemble is built, then what each desk actually owns ... without burying four specialists under one generic stack.
               </p>
             </div>
 
@@ -1056,9 +1056,9 @@ export function SyndicateApp() {
                   as a hammer; a 2–2 split stays visible on the slate instead of getting averaged into one buried decimal.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  Disagreement is useful. If Scott&apos;s number and Rocco&apos;s trench read disagree on a -3 hook, that tension stays
-                  on the card. Desk leads can still make situational overrides (short week, weather, late injury) without retraining
-                  the whole stack. The point of the ensemble is specialized lanes + honest conflict ... not four costumes on one model.
+                  That structure leaves room for calibrated human intuition. When Scott&apos;s model and Rocco&apos;s trench read
+                  diverge by half a point on a -3 hook, the tension stays auditable on the card. Desk leads can apply situational
+                  overrides (short-week travel, motivational spots, late injury pivots) without retraining the entire stack.
                 </p>
               </div>
 
@@ -1071,17 +1071,17 @@ export function SyndicateApp() {
                   <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">The Model</span>
                 </div>
                 <h3 className="text-lg font-bold text-white">
-                  Closing-Line EV &amp; Injury Pricing
+                  Pure EV Modeling &amp; Injury PVAL
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  Scott builds a fair number off sharp offshore markets (Pinnacle / Circa first), then asks one question: is the retail
-                  board wrong enough after juice to press? He also runs hammer / consensus calls when multiple desks land on the same
-                  side and manages how hard the syndicate leans into those spots.
+                  Scott&apos;s lane is closing-line EV: synthesize sharp offshore pricing (Pinnacle / Circa), project a fair number,
+                  and only press when the market is wrong enough to clear juice. He owns syndicate consensus orchestration and bankroll
+                  exposure when desks align into a hammer.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  Injuries get priced as Point Spread Value (PVAL) ... market-implied points for missing or limited players, not
-                  sentiment. A starting QB moves the number a lot more than a rotational piece; those values get netted team-to-team
-                  and compared to what the board already baked in.
+                  Injury edges are modeled as Point Spread Value (PVAL). Market-consensus player values (starting QB in the
+                  multi-point range, elite trench / coverage pieces in fractions of a point) net into a quantifiable spread gap versus
+                  retail boards, so a late scratch moves the fair number in a measurable way.
                 </p>
               </div>
 
@@ -1094,17 +1094,17 @@ export function SyndicateApp() {
                   <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Trenches</span>
                 </div>
                 <h3 className="text-lg font-bold text-white">
-                  Trench / EPA Edges &amp; Key Numbers
+                  Key Numbers, Hook Tax &amp; Wong Structure
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  Rocco starts with line play and trench / EPA matchups ... can this favorite actually finish drives and cover the
-                  number people are laying? NFL margins cluster hard around 3 and 7, so -3.5 and -7.5 are expensive unless the trench
-                  edge is real enough to earn crossing the key.
+                  Rocco lives in favorites, trench / EPA edges, and NFL key-number reality. Roughly 15% of games land on 3 and ~9% on 7,
+                  so laying -3.5 or -7.5 carries a real hook tax unless trench dominance justifies crossing the number. Buying
+                  +3.5 / +7.5 still matters on his desk when the cushion around those keys is the edge.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  He also runs the syndicate&apos;s Wong teaser tickets when the structure is clean: low totals, favorites that can be
-                  teased across both 3 and 7, juice that doesn&apos;t wipe the edge. Not every favorite week gets a teaser ... only
-                  the ones that fit the window.
+                  That same key-number map powers the 6-point Wong teaser engine: favorites teased from -7.5/-8.5 down through
+                  -1.5/-2.5 (and paired dog legs in the classic Wong windows) in low-total games (&lt; 49) so both 3 and 7 get
+                  crossed ... enough theoretical edge to fight standard 2-team teaser juice.
                 </p>
               </div>
 
@@ -1117,16 +1117,16 @@ export function SyndicateApp() {
                   <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Dogs &amp; ML</span>
                 </div>
                 <h3 className="text-lg font-bold text-white">
-                  Plus-Money Dogs &amp; Live Moneylines
+                  Underdog Value &amp; Moneyline Pricing
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  Chedda looks for dogs and moneylines where the price is the edge. Public chalk, revenge narratives, and soft retail
-                  juice create a lot of false underdogs ... his filter is whether the true win rate clears the number on the board,
-                  not whether the favorite &quot;looks overrated&quot; on TV.
+                  Chedda hunts mispriced dogs and plus-money moneylines ... spots where public overreaction, inflated favorites, or
+                  soft retail juice leaves +EV on the underdog side. He isolates dogs whose true win probability clears the price
+                  on the board.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  A lot of his best work is just waiting. If the dog is only kinda interesting at +140 and becomes real at +175 after
-                  a steam move or a late injury, that&apos;s the spot. ML tickets and dog spreads both show up; no forced weekly quota.
+                  On structured teasers, Chedda owns the dog-side Wong windows (+1.5/+2.5 up through +7.5/+8.5) when the total stays
+                  low and the hook math still works with the rest of the ticket.
                 </p>
               </div>
 
@@ -1139,16 +1139,16 @@ export function SyndicateApp() {
                   <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Totals</span>
                 </div>
                 <h3 className="text-lg font-bold text-white">
-                  Totals, Pace &amp; Game Environment
+                  Situational Totals &amp; Pace / Environment Edges
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  Tank prices overs and unders from the scoring distribution itself: pace, efficiency, weather, wind, short weeks,
-                  referee tendencies when they matter. A team can be a good side bet and still be a bad total ... those are different
-                  questions, so he keeps them separate.
+                  Tank&apos;s lane is totals-native: pace, play-calling tendencies, weather and wind, short weeks, and other
+                  situational levers that move scoring distribution. Those inputs can change the total even when the side stays put.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  Some total numbers land more often historically than others. Tank cares whether the market is offering a soft number
-                  relative to that distribution, then posts the total on its own. The other desks can ignore it; they often do.
+                  Totals also have their own clustering (certain numbers hit more often historically). Tank prices those frequencies
+                  into whether an under or over at a soft number is actually +EV, then publishes a standalone totals thesis the
+                  other desks can agree with, fade, or leave alone.
                 </p>
               </div>
             </div>

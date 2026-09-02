@@ -535,19 +535,40 @@ function extractEventMarketTotal(ev: {
   }
 }
 
-const TANK_TOTALS_EDGE_PTS = 2.5
+/** Soft look only … not a publish lean by itself. */
+const TANK_TOTALS_LOOK_PTS = 2.5
+/** Publish lean threshold (totals are noisier than sides). */
+const TANK_TOTALS_EDGE_PTS = 3.5
+/** CFB/NFL totals key numbers … allow a 2.5+ lean if model crosses one of these vs market. */
+const TANK_TOTALS_KEY_NUMBERS = [48, 51, 54] as const
 
+function crossesTotalsKeyNumber(modelTotal: number, marketTotal: number): boolean {
+  for (const key of TANK_TOTALS_KEY_NUMBERS) {
+    const modelSide = modelTotal >= key
+    const marketSide = marketTotal >= key
+    if (modelSide !== marketSide) return true
+  }
+  return false
+}
+
+/**
+ * Tank totals vote. PASS is the default.
+ * Play at ≥3.5 pts, or ≥2.5 when model crosses a key total (48/51/54) vs market.
+ */
 function resolveTankTotalsSide(modelTotal: number | null, marketTotal: number | null): 'over' | 'under' | 'pass' {
   if (modelTotal == null || marketTotal == null) return 'pass'
   const delta = modelTotal - marketTotal
-  if (delta >= TANK_TOTALS_EDGE_PTS) return 'over'
-  if (delta <= -TANK_TOTALS_EDGE_PTS) return 'under'
+  const abs = Math.abs(delta)
+  const keyCross = abs >= TANK_TOTALS_LOOK_PTS && crossesTotalsKeyNumber(modelTotal, marketTotal)
+  if (abs < TANK_TOTALS_EDGE_PTS && !keyCross) return 'pass'
+  if (delta > 0) return 'over'
+  if (delta < 0) return 'under'
   return 'pass'
 }
 
 /**
  * Build a full NFL / CFB ATS Slate Card across all games on the board.
- * Side desks (Scott, Rocco, Chedda) vote ATS. Tank votes totals vs model when edge ≥ 2.5.
+ * Side desks (Scott, Rocco, Chedda) vote ATS. Tank votes totals (PASS default; ≥3.5 or key-cross).
  */
 export function buildNflAtsSlateCard(
   events: Array<{
@@ -724,7 +745,7 @@ export function buildNflAtsSlateCard(
     const roccoScoreHome = (isShortFavHome ? (1.2 * roccoWeight) : isShortFavAway ? (-1.2 * roccoWeight) : (homePoint < 0 ? 0.4 : -0.4)) + roccoChalkTrapPenalty + roccoHookTaxPenalty + roccoTrenchBonus
     const roccoSide: 'home' | 'away' = roccoScoreHome >= 0 ? 'home' : 'away'
 
-    // 4. Tank — totals desk (model vs market); pass when edge < 2.5
+    // 4. Tank — totals desk (PASS default; play at ≥3.5 or ≥2.5 into key 48/51/54)
     const marketTotalQuote = extractEventMarketTotal(ev)
     const modelTotal = isCfb
       ? (cfbMatchup?.modelTotal ?? null)

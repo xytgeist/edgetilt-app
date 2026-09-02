@@ -77,9 +77,13 @@ Do **not** reshuffle Phase 1 blend weights while operating this loop.
    Filled automatically on every non-dry `loadSportOddsContext` poll (`loungeBotMarketFile.ts`).  
    Next: wire Scott / CLV grading to read close; backfill is optional (Odds API historical).
 
-2. **Tank as a totals desk (shipped v1)**  
-   Tank votes **Over/Under** when `|modelTotal − marketTotal| ≥ 2.5` (CFB: SP+ off/def + tempo; NFL: EPA scoring environment). Pass otherwise.  
-   ATS Hammers/Consensus are **Scott / Rocco / Chedda only** (3-0 / 2-1 / 1-1). Tank no longer pads fake 4-0 side hammers.  
+2. **Tank as a totals desk (shipped v1 + guardrails)**  
+   Tank votes **Over/Under** only when edge is real; **PASS is the default**.  
+   - Publish lean: `|modelTotal − marketTotal| ≥ 3.5`  
+   - Or ≥ **2.5** when model crosses key totals **48 / 51 / 54** vs market  
+   - 2.5 alone = look, not a force-play (first-pass off/def+tempo … no weather/rest yet)  
+   ATS Hammers/Consensus are **Scott / Rocco / Chedda only** (3-0 / 2-1 / 1-1).  
+   Totals never bleed into side votes. Tank ledger = **totals only** (do not mix into side scoreboard / adaptive ATS weights).  
    Weather/rest still optional boosts later.
 
 3. **QB / injury modifier**  

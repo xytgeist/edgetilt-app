@@ -32,6 +32,10 @@ verify_jwt = false
 [functions.lounge-link-unfurl]
 verify_jwt = true
 
+# Public video proxy for inline X tweet embeds (Referer gate on video.twimg.com).
+[functions.lounge-x-video]
+verify_jwt = false
+
 [functions.lounge-market-data]
 verify_jwt = true
 

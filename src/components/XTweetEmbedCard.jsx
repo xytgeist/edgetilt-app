@@ -6,6 +6,7 @@ import {
   formatXTweetViewCount,
   isXTweetLinkPreview,
   resolveXTweetEmbed,
+  xTweetVideoPlayUrl,
 } from '../utils/xTweetEmbed.js'
 import { profileAvatarInitials, profileAvatarToneClass } from '../features/profiles/profileGate.js'
 
@@ -42,14 +43,16 @@ function XTweetMediaTile({ item, solo }) {
   }
 
   if (item.type === 'video' || item.type === 'animated_gif') {
+    const playUrl = xTweetVideoPlayUrl(item.url)
     return (
       <video
         data-lounge-x-tweet-video=""
-        src={item.url}
+        src={playUrl}
         poster={item.poster_url || undefined}
         controls
         playsInline
         preload="metadata"
+        referrerPolicy="no-referrer"
         loop={item.type === 'animated_gif'}
         muted={item.type === 'animated_gif'}
         className={`w-full bg-black object-contain ${solo ? 'max-h-[28rem]' : 'max-h-56'}`}

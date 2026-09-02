@@ -111,3 +111,21 @@ export function formatXTweetViewCount(count) {
 }
 
 export const CHAT_X_TWEET_EMBED_WIDTH_CLASS = 'w-full max-w-[340px]'
+
+/**
+ * Route X CDN MP4 through our Edge proxy (video.twimg.com 403s on EdgeTilt Referer).
+ * @param {string | null | undefined} sourceUrl
+ */
+export function xTweetVideoPlayUrl(sourceUrl) {
+  const src = String(sourceUrl || '').trim()
+  if (!src) return ''
+  if (!/^https:\/\/video\.twimg\.com\//i.test(src)) return src
+  const base = String(import.meta.env.VITE_SUPABASE_URL || '').replace(/\/$/, '')
+  const key = String(import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim()
+  if (!base || !key) return src
+  const params = new URLSearchParams({
+    u: src,
+    apikey: key,
+  })
+  return `${base}/functions/v1/lounge-x-video?${params.toString()}`
+}

@@ -51,7 +51,8 @@ Public site shows Consensus + Off/Def/HFA/Tempo. Model A/B/C columns are **blurr
 
 | Asset | Status | Gap |
 |-------|--------|-----|
-| Current spreads / juice from books | **Live** via odds poll / ingest | Need durable **open → current → close** per game with timestamps |
+| Current spreads / juice from books | **Live** via odds poll / ingest | — |
+| **Market file** (`lounge_market_files`) | **Live on poll** (test after `20260902200000` + Edge redeploy) | Open = first seen; current = each poll; close locks ≤5 min before kickoff (or after start). Prefers Pinnacle/Circa/LowVig else consensus. Football uses next-slate cluster (not just “today PT”). |
 | Key numbers / hooks | **Partial** | Useful; not a full steam desk |
 | Betting splits / RLM | **Thin** | Chedda can lean dogs/hooks; Circa-class handle is **not** wired as a clean weekly feed |
 | Weather / rest / travel | **Modules exist** | Not yet first-class Tank totals publish lane |
@@ -71,9 +72,10 @@ Buckets: Hammer (4–0) / Consensus (3–1) / House divided (2–2).
 
 Do **not** reshuffle Phase 1 blend weights while operating this loop.
 
-1. **Market file (highest leverage)**  
-   Per game: open / current / close spread + total + juice + timestamps.  
-   Without close, Scott is ungradable on CLV. Without open, “steam” is storytelling.
+1. **Market file (shipped plumbing)**  
+   Table **`lounge_market_files`**: open / current / close spread + total + juice + timestamps + source book.  
+   Filled automatically on every non-dry `loadSportOddsContext` poll (`loungeBotMarketFile.ts`).  
+   Next: wire Scott / CLV grading to read close; backfill is optional (Odds API historical).
 
 2. **Tank as a totals desk**  
    Primary publish lane = O/U from tempo + SP+ off/def matchup + weather/rest when available.  

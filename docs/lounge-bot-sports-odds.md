@@ -175,6 +175,8 @@ Set **`coffee_covers_enabled = false`** on **`lounge_bot_odds_config`** to fall 
 
 ### Line movement alerts (poll_edges)
 
+**Market file (durable open/current/close):** table **`lounge_market_files`** (migration **`20260902200000`**), filled on every non-dry odds fetch in `loadSportOddsContext` via **`loungeBotMarketFile.ts`**. Prefers Pinnacle → Circa → LowVig → consensus. Close locks at kickoff − 5 minutes. Distinct from short-lived **`lounge_odds_event_lines`** movement compares.
+
 **`loungeBotLineMovement.ts`** — runs on every **`poll_edges`** tick (15 min, 24/7):
 
 1. Load prior lines from **`lounge_odds_event_lines`** (saved on the **last poll**, ~**15 min** ago when cron is on schedule)

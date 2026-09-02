@@ -43,6 +43,10 @@ import {
   upsertEventLines,
   type LineMovementAlert,
 } from './loungeBotLineMovement.ts'
+import {
+  eventsForMarketFile,
+  upsertMarketFilesFromEvents,
+} from './loungeBotMarketFile.ts'
 import { fetchRundownContextNote, lineMovementMovedTeam } from './loungeBotRundownContext.ts'
 import { isNcaabCoffeeSport } from './loungeBotNcaabCoffeeFilter.ts'
 import { resolveAlertRoute } from './loungeBotAlertAudience.ts'
@@ -406,6 +410,18 @@ export async function loadSportOddsContext(
         events: upcoming,
       },
     })
+
+    // Market file: open/current/close (football slate cluster or 48h window + recently tipped).
+    try {
+      const marketEvents = eventsForMarketFile(sportKey, raw)
+      await upsertMarketFilesFromEvents(admin, sportKey, marketEvents)
+    } catch (err) {
+      // Never fail the poll over market-file bookkeeping.
+      console.warn(
+        'lounge_market_files upsert failed:',
+        err instanceof Error ? err.message : String(err),
+      )
+    }
   }
 
   return {

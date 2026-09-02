@@ -1,4 +1,6 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
+import { parseXTweetUrl } from './loungeBotXTweetUrl.ts'
+import { buildXTweetLinkPreview, fetchXTweetEmbedData } from './xTweetLinkPreview.ts'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const TRAILING_PUNCT_RE = /[.,;:!?)'\]}>]+$/
@@ -33,10 +35,19 @@ export type LinkPreviewPayload = {
   lounge_post_id: string | null
   /** Brand tint for compact link pills (theme-color, domain map, or client favicon sample). */
   accent_color: string | null
-  /** Inline embed hint for clients (e.g. YouTube, Lounge post). */
-  embed_kind?: 'youtube' | 'lounge_post' | null
+  /** Inline embed hint for clients (e.g. YouTube, Lounge post, X tweet). */
+  embed_kind?: 'youtube' | 'lounge_post' | 'x_tweet' | null
   youtube_video_id?: string | null
   lounge_post?: LoungePostEmbedPreview | null
+  x_tweet?: {
+    id: string
+    text: string
+    author_handle: string | null
+    author_name: string | null
+    author_avatar_url: string | null
+    created_at: string | null
+    media_urls: string[]
+  } | null
 }
 
 const DOMAIN_ACCENT: Record<string, string> = {
@@ -446,6 +457,20 @@ export async function unfurlUrl(
         fetched_at: new Date().toISOString(),
       })
       return lp
+    }
+  }
+
+  const xTweetParsed = parseXTweetUrl(url)
+  if (xTweetParsed?.tweetId) {
+    const tweet = await fetchXTweetEmbedData(url)
+    if (tweet) {
+      const preview = await sanitizePreviewImages(buildXTweetLinkPreview(key, tweet))
+      await admin.from('link_preview_cache').upsert({
+        url_normalized: key,
+        preview,
+        fetched_at: new Date().toISOString(),
+      })
+      return preview
     }
   }
 

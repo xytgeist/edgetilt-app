@@ -1769,6 +1769,15 @@ html.light [data-lounge-youtube-embed] [data-lounge-youtube-embed-footer] .text-
   color: #52525b !important;
 }
 
+/* Lounge X tweet embed - light-mode shell + footer (feed + chat). */
+html.light [data-lounge-x-tweet-embed] {
+  border-color: rgba(228, 228, 231, 0.95);
+}
+html.light [data-lounge-x-tweet-embed] [data-lounge-x-tweet-embed-footer] {
+  border-top-color: rgba(228, 228, 231, 0.95);
+  color: #71717a !important;
+}
+
 /* display + selected chip tokens → tribe fill */
 .lounge-pill-row .bg-amber-500\/10,
 .lounge-pill-row .bg-amber-500\/20,

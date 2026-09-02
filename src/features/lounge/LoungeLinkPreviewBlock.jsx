@@ -1,6 +1,8 @@
 import ChatLinkPreviewCard from '../../components/ChatLinkPreviewCard.jsx'
 import YouTubeLoungeEmbed from '../../components/YouTubeLoungeEmbed.jsx'
+import XTweetEmbedCard from '../../components/XTweetEmbedCard.jsx'
 import { isYouTubeLinkPreview } from '../../utils/youtubeEmbed.js'
+import { isXTweetLinkPreview } from '../../utils/xTweetEmbed.js'
 
 /**
  * Link preview card under a Lounge caption or comment (iMessage-style).
@@ -18,6 +20,15 @@ export default function LoungeLinkPreviewBlock({
   if (isYouTubeLinkPreview(preview)) {
     return (
       <YouTubeLoungeEmbed preview={preview} className={className} iframeLoading={youtubeIframeLoading} />
+    )
+  }
+  if (isXTweetLinkPreview(preview)) {
+    return (
+      <XTweetEmbedCard
+        preview={preview}
+        className={className}
+        onPreviewOpen={onPreviewOpen}
+      />
     )
   }
   return (

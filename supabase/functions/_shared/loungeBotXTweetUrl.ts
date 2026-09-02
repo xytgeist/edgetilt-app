@@ -14,8 +14,14 @@ export function parseXTweetUrl(raw: string): { tweetId: string; handle: string }
     const host = u.hostname.replace(/^www\./, '').toLowerCase()
     if (!['x.com', 'twitter.com', 'mobile.twitter.com'].includes(host)) return null
     const m = u.pathname.match(/^\/([^/]+)\/status\/(\d+)/i)
-    if (!m?.[2]) return null
-    return { tweetId: m[2], handle: String(m[1] || '').replace(/^@/, '').toLowerCase() }
+    if (m?.[2]) {
+      const segment = String(m[1] || '').replace(/^@/, '').toLowerCase()
+      const handle = segment === 'i' ? '' : segment
+      return { tweetId: m[2], handle }
+    }
+    const iStatus = u.pathname.match(/^\/i\/status\/(\d+)/i)
+    if (iStatus?.[1]) return { tweetId: iStatus[1], handle: '' }
+    return null
   } catch {
     return null
   }

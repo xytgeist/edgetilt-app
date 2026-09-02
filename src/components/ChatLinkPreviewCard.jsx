@@ -8,7 +8,9 @@ import {
 } from '../utils/linkPreviewAccent.js'
 import { isLoungePostLinkPreview } from '../utils/loungePostLinkPreview.js'
 import { isYouTubeLinkPreview } from '../utils/youtubeEmbed.js'
+import { isXTweetLinkPreview } from '../utils/xTweetEmbed.js'
 import YouTubeChatEmbed from './YouTubeChatEmbed.jsx'
+import XTweetEmbedCard from './XTweetEmbedCard.jsx'
 
 /**
  * iMessage-style link preview: rich card (og:image) or compact pill (favicon + title + domain).
@@ -90,6 +92,18 @@ export default function ChatLinkPreviewCard({
         className={className}
         isMine={isMine}
         embedded={embedded}
+      />
+    )
+  }
+
+  if (isXTweetLinkPreview(preview)) {
+    return (
+      <XTweetEmbedCard
+        preview={preview}
+        className={className}
+        isMine={isMine}
+        embedded={embedded}
+        onPreviewOpen={onPreviewOpen}
       />
     )
   }

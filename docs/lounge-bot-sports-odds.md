@@ -805,6 +805,8 @@ Sagarin is scraped from the public Predictor board (`scripts/lib/cfbSagarinPredi
 
 Desk mapping: **Scott** = consensus vs market · **Rocco** = SP+/EPA strength · **Chedda** = splits/RLM/dogs · **Tank** = tempo/totals/situational.
 
+**Internal weekly SOP (honest inventory + publish rules):** [`docs/syndicate-cfb-weekly-runbook.md`](./syndicate-cfb-weekly-runbook.md). Keep blend weights out of public UI.
+
 Requires **`CFBD_API_KEY`** in `.env.supabase.{test,production}` and GitHub Actions secret `CFBD_API_KEY` ([get key](https://collegefootballdata.com/key)). Free tier is 1k calls/mo … weekly sync is fine; Patreon ~$5/mo if you need more.
 
 ```bash

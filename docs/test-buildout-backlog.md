@@ -1069,6 +1069,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-09-02: **Monthly syndicate scoreboard (Windows):** dumb ATS + CLV by desk × bucket (hammer/consensus/divided/pass). `loungeBotSyndicateScoreboard.ts`; Edge `syndicate_monthly_scoreboard`; portal Monthly Board. Grade writes `metadata.clv_pts` vs `lounge_market_files` close; Scott/Tank PASS → cancelled Pass-bucket rows. No adaptive weights until real **n**. FEI waits. Redeploy `lounge-odds-poll` test.
+
 - 2026-09-02: **QB/injury prod lock:** Scott vs **current** market (PASS if gap gone); Rocco gets independent `hurtSide` strength flag (not Scott pts); runbook sign convention + QB tier range. SQL + Edge on test+prod; `main` FF.
 
 - 2026-09-02: **QB/injury side modifier v1 (Windows):** `syndicate_side_modifiers` + `loungeBotSideModifier.ts`. Post-board, pre-Scott-value. Manual CFB overrides; NFL/CFB auto only when Rundown hard-out hits a real PVAL. Tank totals untouched. Redeploy `lounge-odds-poll` test.

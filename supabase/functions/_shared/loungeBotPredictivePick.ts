@@ -37,6 +37,10 @@ import {
   valueFlagFromModelMarket,
   type SideModifier,
 } from './loungeBotSideModifier.ts'
+import {
+  computePickClvPts,
+  mapConsensusTypeToBucket,
+} from './loungeBotSyndicateScoreboard.ts'
 
 const ODDS_BASE = 'https://api.the-odds-api.com/v4'
 
@@ -1007,10 +1011,39 @@ export async function publishAndRecordNflSlateCard(
 
   const rowsToInsert: any[] = []
   for (const g of input.card.games) {
+    const gameBucket = mapConsensusTypeToBucket(g.consensusPick.type)
     for (const pName of SHARP_PICKERS) {
       const pPick = g.pickerPicks[pName]
-      if (pName === 'Scott' && pPick.side === 'pass') continue
-      if (pName === 'Tank' && pPick.side === 'pass') continue
+
+      // Scott / Tank PASS → cancelled ledger row (Pass bucket sample size). No ATS.
+      if ((pName === 'Scott' || pName === 'Tank') && pPick.side === 'pass') {
+        rowsToInsert.push({
+          bot_user_id: input.botUserId,
+          picker_name: pName,
+          post_id: postRes.postId,
+          event_id: g.eventId,
+          sport_key: g.sportKey,
+          home_team: g.homeTeam,
+          away_team: g.awayTeam,
+          commence_time: g.commenceTime,
+          market_key: pName === 'Tank' ? 'totals' : 'spreads',
+          pick_name: 'PASS',
+          pick_line: null,
+          pick_price: -110,
+          book_title: null,
+          status: 'cancelled',
+          units_net: 0,
+          resolved_at: new Date().toISOString(),
+          metadata: {
+            bucket: 'pass',
+            lane: pName === 'Tank' ? 'totals' : 'sides',
+            side: 'pass',
+            consensus_type: g.consensusPick.type,
+            vote_count: g.consensusPick.voteCount,
+          },
+        })
+        continue
+      }
 
       // Situational factor tagging for Bayesian learning
       const factors: string[] = []
@@ -1048,6 +1081,8 @@ export async function publishAndRecordNflSlateCard(
         metadata: {
           factors,
           side: pPick.side,
+          bucket: gameBucket,
+          lane: isTankTotals ? 'totals' : 'sides',
           consensus_type: g.consensusPick.type,
           vote_count: g.consensusPick.voteCount,
           splits: g.splits ? {
@@ -1385,6 +1420,23 @@ export async function gradePendingPicks(
 
   const updatedPickIds = new Set<string>()
 
+  // Prefetch market-file closes for CLV on this grade batch
+  const pendingEventIds = [...new Set(pendingPicks.map((p: { event_id: string }) => p.event_id).filter(Boolean))]
+  const closeByEvent = new Map<string, { close_locked: boolean; close_spread_home: number | null; close_total: number | null }>()
+  if (pendingEventIds.length > 0) {
+    const chunkSize = 80
+    for (let i = 0; i < pendingEventIds.length; i += chunkSize) {
+      const chunk = pendingEventIds.slice(i, i + chunkSize)
+      const { data: mfiles } = await admin
+        .from('lounge_market_files')
+        .select('event_id, close_locked, close_spread_home, close_total')
+        .in('event_id', chunk)
+      for (const row of mfiles || []) {
+        closeByEvent.set(row.event_id, row)
+      }
+    }
+  }
+
   for (const [sportKey, picks] of bySport.entries()) {
     try {
       const url = `${ODDS_BASE}/sports/${encodeURIComponent(sportKey)}/scores/?apiKey=${encodeURIComponent(apiKey)}&daysFrom=3`
@@ -1505,7 +1557,19 @@ export async function gradePendingPicks(
 
         const grade = gradePickOutcome(pick, homeScore, awayScore)
 
-        // Update pick row
+        // CLV vs market-file close (when locked) … persist for monthly scoreboard
+        const mfile = closeByEvent.get(pick.event_id) || null
+        const clvPts = computePickClvPts(pick, mfile)
+        const clvMeta = clvPts != null
+          ? {
+              clv_pts: Math.round(clvPts * 100) / 100,
+              clv_beat: clvPts > 0,
+              close_spread_home: mfile?.close_spread_home ?? null,
+              close_total: mfile?.close_total ?? null,
+              close_locked: mfile?.close_locked ?? false,
+            }
+          : {}
+
         await admin
           .from('lounge_bot_picks')
           .update({
@@ -1514,6 +1578,10 @@ export async function gradePendingPicks(
             away_score: awayScore,
             units_net: grade.unitsNet,
             resolved_at: new Date().toISOString(),
+            metadata: {
+              ...(pick.metadata || {}),
+              ...clvMeta,
+            },
           })
           .eq('id', pick.id)
 

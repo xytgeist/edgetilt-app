@@ -91,9 +91,9 @@ Deno.serve(async (req) => {
     const alertKindRaw = String(body?.alertKind || '').trim().toLowerCase()
     const alertKind = alertKindRaw || null
 
-    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'calibrate_persona_models', 'ufc_slate_card'].includes(action)) {
+    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'syndicate_monthly_scoreboard', 'calibrate_persona_models', 'ufc_slate_card'].includes(action)) {
       return adminOpsJson(400, {
-        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, predictive_pick, nfl_slate_card, nfl_wong_teaser, nfl_primetime_spotlight, nfl_halftime_pivot, nfl_anytime_td, nfl_live_middle_arb, weekly_syndicate_recap, calibrate_persona_models, or ufc_slate_card.',
+        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, predictive_pick, nfl_slate_card, nfl_wong_teaser, nfl_primetime_spotlight, nfl_halftime_pivot, nfl_anytime_td, nfl_live_middle_arb, weekly_syndicate_recap, syndicate_monthly_scoreboard, calibrate_persona_models, or ufc_slate_card.',
       })
     }
 
@@ -587,6 +587,26 @@ Deno.serve(async (req) => {
         action: 'weekly_syndicate_recap',
         recap,
         ...result,
+      })
+    }
+
+    if (action === 'syndicate_monthly_scoreboard') {
+      const {
+        compileMonthlySyndicateScoreboard,
+        formatScoreboardToast,
+      } = await import('../_shared/loungeBotSyndicateScoreboard.ts')
+
+      const monthsBack = Math.max(1, Math.min(12, Number(body?.monthsBack) || 1))
+      const scoreboard = await compileMonthlySyndicateScoreboard(admin, bot.user_id, {
+        monthsBack,
+        asOf: body?.asOf ? String(body.asOf) : undefined,
+      })
+
+      return adminOpsJson(200, {
+        ok: true,
+        action: 'syndicate_monthly_scoreboard',
+        summary: formatScoreboardToast(scoreboard),
+        scoreboard,
       })
     }
 

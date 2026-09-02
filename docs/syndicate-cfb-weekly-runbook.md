@@ -57,7 +57,7 @@ Public site shows Consensus + Off/Def/HFA/Tempo. Model A/B/C columns are **blurr
 | Betting splits / RLM | **Thin** | Chedda can lean dogs/hooks; Circa-class handle is **not** wired as a clean weekly feed |
 | Weather / rest / travel | **Modules exist** | Not yet first-class Tank totals publish lane |
 | Starting QB / injury modifiers | **Live** (`syndicate_side_modifiers` + Rundown×PVAL) | Manual CFB first; auto only on known PVAL. Scott vs **current** market; Rocco gets hurt-side strength flag (not Scott’s pts). |
-| Desk scoreboard (ATS/CLV by desk + bucket) | **Missing as product** | Persona adaptive weights exist as concept … **do not trust as live truth** until monthly graded sample exists |
+| Desk scoreboard (ATS/CLV by desk + bucket) | **Live (ops)** | Edge action `syndicate_monthly_scoreboard` + Bots portal **Monthly Board**. Buckets hammer/consensus/divided/pass; desks sides vs Tank totals; every row has **n**. CLV vs `lounge_market_files` close. **Do not turn on adaptive weights** until a bucket has a real sample. FEI still waits. |
 
 ### Desk automation … real but uneven
 
@@ -75,7 +75,7 @@ Do **not** reshuffle Phase 1 blend weights while operating this loop.
 1. **Market file (shipped plumbing)**  
    Table **`lounge_market_files`**: open / current / close spread + total + juice + timestamps + source book.  
    Filled automatically on every non-dry `loadSportOddsContext` poll (`loungeBotMarketFile.ts`).  
-   Next: wire Scott / CLV grading to read close; backfill is optional (Odds API historical).
+   Grade + monthly scoreboard read locked close for CLV. Optional: Odds API historical backfill.
 
 2. **Tank as a totals desk (shipped v1 + guardrails)**  
    Tank votes **Over/Under** only when edge is real; **PASS is the default**.  
@@ -115,9 +115,10 @@ Do **not** reshuffle Phase 1 blend weights while operating this loop.
    );
    ```
 
-4. **Monthly desk + bucket scoreboard** (next gap)  
-   ATS + CLV by Scott / Rocco / Chedda / Tank and by Hammer / Consensus / Divided.  
-   Only then: shrink cold desks / raise hot ones. **Do not chase FEI until hammers vs consensus is graded.**
+4. **Monthly desk + bucket scoreboard** (**shipped, keep dumb**)  
+   ATS + CLV by Scott / Rocco / Chedda (sides) / Tank (totals) and by Hammer / Consensus / Divided / Pass.  
+   Portal: Sharp Desk → **Monthly Board** (this month / 3 mo). Edge: `action: syndicate_monthly_scoreboard`.  
+   Only after real **n**: shrink cold desks / raise hot ones. **Do not chase FEI until hammers vs consensus is graded.**
 
 5. **Later audit columns (not blockers)**  
    FEI, Powers/Makinen, TeamRankings, market-implied ratings.

@@ -7,6 +7,10 @@
  * 3. Minimum Sample Gate (N_min = 10 graded picks before adjusting)
  * 4. Maximum Delta Clamp (Max +/-5% change per calibration cycle)
  * 5. Hard Floor & Ceiling Clamps (0.70 to 1.30 absolute weight bounds)
+ *
+ * Ops gate: treat calibrated weights as experimental until the monthly
+ * desk×bucket scoreboard (`syndicate_monthly_scoreboard`) shows a real sample
+ * for that bucket. Do not chase FEI from this module.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import type { SharpPicker } from './loungeBotPredictivePick.ts'

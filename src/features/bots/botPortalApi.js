@@ -585,6 +585,26 @@ export async function invokeLoungeOddsWeeklyRecap(supabaseClient, opts = {}) {
 }
 
 /**
+ * Monthly desk × bucket ATS + CLV scoreboard (ops JSON … no Lounge publish).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {{ slug?: string, monthsBack?: number, asOf?: string }} [opts]
+ */
+export async function invokeLoungeOddsMonthlyScoreboard(supabaseClient, opts = {}) {
+  const slug = opts.slug || 'sports-odds'
+  const { data, error } = await supabaseClient.functions.invoke('lounge-odds-poll', {
+    body: {
+      slug,
+      action: 'syndicate_monthly_scoreboard',
+      monthsBack: opts.monthsBack ?? 1,
+      asOf: opts.asOf || undefined,
+    },
+  })
+  if (error) return { data: null, error: new Error(error.message || 'Monthly scoreboard failed') }
+  if (data?.error) return { data: null, error: new Error(String(data.error)) }
+  return { data, error: null }
+}
+
+/**
  * Trigger on-demand generation and publishing of NFL Halftime Pivot into Scott's VIP Sub-Chat.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {{ slug?: string, dryRun?: boolean }} [opts]

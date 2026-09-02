@@ -177,6 +177,8 @@ Set **`coffee_covers_enabled = false`** on **`lounge_bot_odds_config`** to fall 
 
 **Market file (durable open/current/close):** table **`lounge_market_files`** (migration **`20260902200000`**), filled on every non-dry odds fetch in `loadSportOddsContext` via **`loungeBotMarketFile.ts`**. Prefers Pinnacle → Circa → LowVig → consensus. Close locks at kickoff − 5 minutes. Distinct from short-lived **`lounge_odds_event_lines`** movement compares.
 
+**Monthly scoreboard (ops):** Edge action **`syndicate_monthly_scoreboard`** (`loungeBotSyndicateScoreboard.ts`) … ATS + CLV by desk × bucket (hammer / consensus / divided / pass). Scott/Rocco/Chedda = sides; Tank = totals only. Every row includes sample **n**. CLV = pick line vs locked market-file close (also written onto pick `metadata` at grade). Portal: Sharp Desk → **Monthly Board**. **Do not trust adaptive persona weights** until a bucket has a real sample. FEI still waits.
+
 **`loungeBotLineMovement.ts`** — runs on every **`poll_edges`** tick (15 min, 24/7):
 
 1. Load prior lines from **`lounge_odds_event_lines`** (saved on the **last poll**, ~**15 min** ago when cron is on schedule)

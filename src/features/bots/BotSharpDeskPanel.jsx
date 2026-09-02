@@ -8,6 +8,7 @@ import {
   invokeLoungeOddsWongTeaser,
   invokeLoungeOddsPrimetimeSpotlight,
   invokeLoungeOddsWeeklyRecap,
+  invokeLoungeOddsMonthlyScoreboard,
   invokeLoungeOddsHalftimePivot,
   invokeLoungeOddsAnytimeTd,
   invokeLoungeOddsMiddleArb,
@@ -71,6 +72,7 @@ export function BotSharpDeskPanel({
   const [cardMode, setCardMode] = useState('auto')
   const [timeframe, setTimeframe] = useState('all_time')
   const [portalSportKey, setPortalSportKey] = useState('all')
+  const [monthlyBoard, setMonthlyBoard] = useState(null)
 
   const loadData = useCallback(async () => {
     if (!supabaseClient || !botUserId) return
@@ -260,6 +262,33 @@ export function BotSharpDeskPanel({
       }
     } catch (err) {
       setToast?.(`Weekly Recap error: ${err.message}`)
+    } finally {
+      setDropping(false)
+      if (setBusy) setBusy(false)
+    }
+  }
+
+  const handleMonthlyScoreboard = async (monthsBack = 1) => {
+    setDropping(true)
+    if (setBusy) setBusy(true)
+    try {
+      const { data, error } = await invokeLoungeOddsMonthlyScoreboard(supabaseClient, {
+        slug: botSlug,
+        monthsBack,
+      })
+      if (error) {
+        setToast?.(`Monthly scoreboard failed: ${error.message}`)
+        setMonthlyBoard(null)
+      } else if (data?.ok) {
+        setMonthlyBoard(data.scoreboard || null)
+        setToast?.(data.summary || 'Monthly scoreboard ready.')
+      } else {
+        setToast?.(data?.message || 'No scoreboard rows.')
+        setMonthlyBoard(null)
+      }
+    } catch (err) {
+      setToast?.(`Monthly scoreboard error: ${err.message}`)
+      setMonthlyBoard(null)
     } finally {
       setDropping(false)
       if (setBusy) setBusy(false)
@@ -603,6 +632,27 @@ export function BotSharpDeskPanel({
                   </button>
                 </div>
 
+                {/* Monthly ATS + CLV scoreboard (ops only) */}
+                <div className="flex items-center gap-1 rounded bg-zinc-900 border border-zinc-800 px-2 py-1">
+                  <span className="font-semibold text-violet-300 text-[11px]">📋 Monthly Board:</span>
+                  <button
+                    type="button"
+                    disabled={busy || dropping || loading}
+                    onClick={() => handleMonthlyScoreboard(1)}
+                    className="rounded bg-violet-700/80 hover:bg-violet-600 px-2 py-0.5 text-[10px] font-bold text-white transition disabled:opacity-50"
+                  >
+                    This month
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy || dropping || loading}
+                    onClick={() => handleMonthlyScoreboard(3)}
+                    className="rounded bg-zinc-800 hover:bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 transition disabled:opacity-50"
+                  >
+                    3 mo
+                  </button>
+                </div>
+
                 {/* Halftime Pivot (VIP Sub-Chat) */}
                 <div className="flex items-center gap-1 rounded bg-zinc-900 border border-zinc-800 px-2 py-1">
                   <span className="font-semibold text-cyan-300 text-[11px]">⚡ Halftime Pivot:</span>
@@ -689,6 +739,95 @@ export function BotSharpDeskPanel({
               </div>
             </div>
           </div>
+
+          {monthlyBoard && (
+            <div className="rounded-lg bg-zinc-950/60 border border-violet-900/50 p-3 space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-xs font-semibold text-violet-300">
+                  Monthly scoreboard · {monthlyBoard.period?.label}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMonthlyBoard(null)}
+                  className="text-[10px] text-zinc-500 hover:text-zinc-300"
+                >
+                  Clear
+                </button>
+              </div>
+              <p className="text-[10px] text-zinc-500">
+                Dumb ATS + CLV vs close. Every row has n. No adaptive weights until sample is real.
+              </p>
+              {monthlyBoard.by_desk?.length > 0 && (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-[11px] text-left">
+                    <thead className="text-zinc-500 border-b border-zinc-800">
+                      <tr>
+                        <th className="py-1 pr-2 font-medium">Desk</th>
+                        <th className="py-1 pr-2 font-medium">Lane</th>
+                        <th className="py-1 pr-2 font-medium">n</th>
+                        <th className="py-1 pr-2 font-medium">ATS</th>
+                        <th className="py-1 pr-2 font-medium">Win%</th>
+                        <th className="py-1 pr-2 font-medium">u</th>
+                        <th className="py-1 pr-2 font-medium">CLV avg</th>
+                        <th className="py-1 font-medium">CLV beat%</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {monthlyBoard.by_desk.map((d) => (
+                        <tr key={d.desk} className="border-b border-zinc-900 text-zinc-200">
+                          <td className="py-1 pr-2 font-semibold">{d.desk}</td>
+                          <td className="py-1 pr-2 text-zinc-400">{d.lane}</td>
+                          <td className="py-1 pr-2 tabular-nums">{d.n}</td>
+                          <td className="py-1 pr-2 tabular-nums">{d.wins}-{d.losses}{d.pushes ? `-${d.pushes}` : ''}</td>
+                          <td className="py-1 pr-2 tabular-nums">{d.ats_win_pct != null ? `${d.ats_win_pct}%` : 'n/a'}</td>
+                          <td className="py-1 pr-2 tabular-nums">{d.units_net > 0 ? `+${d.units_net}` : d.units_net}</td>
+                          <td className="py-1 pr-2 tabular-nums">
+                            {d.clv_avg_pts != null ? `${d.clv_avg_pts > 0 ? '+' : ''}${d.clv_avg_pts}` : 'n/a'}
+                            {d.clv_n ? <span className="text-zinc-500"> (n={d.clv_n})</span> : null}
+                          </td>
+                          <td className="py-1 tabular-nums">{d.clv_beat_pct != null ? `${d.clv_beat_pct}%` : 'n/a'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {monthlyBoard.rows?.length > 0 && (
+                <div className="overflow-x-auto pt-1">
+                  <div className="text-[10px] text-zinc-500 mb-1">By bucket × desk</div>
+                  <table className="w-full text-[10px] text-left">
+                    <thead className="text-zinc-500 border-b border-zinc-800">
+                      <tr>
+                        <th className="py-1 pr-2">Bucket</th>
+                        <th className="py-1 pr-2">Desk</th>
+                        <th className="py-1 pr-2">n</th>
+                        <th className="py-1 pr-2">ATS</th>
+                        <th className="py-1 pr-2">CLV avg</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {monthlyBoard.rows.map((r) => (
+                        <tr key={`${r.bucket}-${r.desk}`} className="border-b border-zinc-900 text-zinc-300">
+                          <td className="py-0.5 pr-2">{r.bucket}</td>
+                          <td className="py-0.5 pr-2">{r.desk}</td>
+                          <td className="py-0.5 pr-2 tabular-nums">{r.n}</td>
+                          <td className="py-0.5 pr-2 tabular-nums">
+                            {r.bucket === 'pass' ? 'pass' : `${r.wins}-${r.losses}`}
+                          </td>
+                          <td className="py-0.5 tabular-nums">
+                            {r.clv_avg_pts != null ? `${r.clv_avg_pts > 0 ? '+' : ''}${r.clv_avg_pts}` : 'n/a'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {(!monthlyBoard.rows || monthlyBoard.rows.length === 0) && (
+                <p className="text-[11px] text-zinc-500">No graded / pass rows in this window yet.</p>
+              )}
+            </div>
+          )}
 
           {/* Overall syndicate banner with Timeframe & Sport Controls */}
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-zinc-900/90 border border-zinc-800 px-3 py-2 text-xs">

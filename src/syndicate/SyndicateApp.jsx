@@ -1118,13 +1118,13 @@ export function SyndicateApp() {
           </div>
         )}
 
-        {/* CFB Power Index Tab (preview of CFBD FPI + SP+ board) */}
+        {/* CFB Power Index Tab (consensus: SP+ / FPI / Sagarin / Elo) */}
         {activeTab === 'cfb' && (
           <div className="space-y-6">
             <div className="border-b border-zinc-800 pb-4">
               <h2 className="text-2xl font-bold text-white tracking-tight">College Football Power Ratings</h2>
               <p className="text-zinc-400 text-xs sm:text-sm mt-1">
-                CFBD Football Power Index (FPI) + SP+ off/def, with a light in-season results blend. Same family of forward ratings as ESPN FPI.
+                Consensus blend: 40% SP+ · 25% FPI · 25% Sagarin Predictor · 10% score Elo. Off/def are SP+ unit ratings. Not an AP poll.
               </p>
             </div>
 
@@ -1133,29 +1133,45 @@ export function SyndicateApp() {
                 <thead>
                   <tr className="border-b border-zinc-800 bg-zinc-900/80 text-zinc-400 text-[11px] uppercase tracking-wider">
                     <th className="py-3 px-4">Program</th>
-                    <th className="py-3 px-4">Power Rating</th>
-                    <th className="py-3 px-4">Off Rating</th>
-                    <th className="py-3 px-4">Def Rating</th>
-                    <th className="py-3 px-4">Home Field Advantage</th>
+                    <th className="py-3 px-4">Consensus</th>
+                    <th className="py-3 px-4">SP+</th>
+                    <th className="py-3 px-4">FPI</th>
+                    <th className="py-3 px-4">Sagarin</th>
+                    <th className="py-3 px-4">Off</th>
+                    <th className="py-3 px-4">Def</th>
+                    <th className="py-3 px-4">HFA</th>
                     <th className="py-3 px-4">Tempo</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800/60">
                   {cfbData.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="py-12 text-center text-zinc-500 font-sans">
-                        CFB power index updates weekly from CFBD game results.
+                      <td colSpan="9" className="py-12 text-center text-zinc-500 font-sans">
+                        CFB consensus board updates weekly from CFBD + Sagarin.
                       </td>
                     </tr>
                   ) : (
                     cfbData.map((team, idx) => (
                       <tr key={team.id || team.team_name} className="hover:bg-zinc-800/30">
-                        <td className="py-2.5 px-4 text-white font-sans font-semibold">
+                        <td className="py-2.5 px-4 text-white font-sans font-semibold whitespace-nowrap">
                           <span className="text-zinc-500 text-xs mr-2">{idx + 1}.</span>
                           {team.team_name}
                         </td>
                         <td className="py-2.5 px-4 text-emerald-400 font-bold">
                           {team.power_rating > 0 ? `+${team.power_rating}` : team.power_rating}
+                        </td>
+                        <td className="py-2.5 px-4 text-zinc-300">
+                          {team.sp_rating != null ? team.sp_rating : '—'}
+                        </td>
+                        <td className="py-2.5 px-4 text-zinc-300">
+                          {team.fpi_rating != null
+                            ? team.fpi_rating > 0
+                              ? `+${team.fpi_rating}`
+                              : team.fpi_rating
+                            : '—'}
+                        </td>
+                        <td className="py-2.5 px-4 text-zinc-300">
+                          {team.sagarin_rating != null ? team.sagarin_rating : '—'}
                         </td>
                         <td className="py-2.5 px-4 text-zinc-300">{team.off_rating}</td>
                         <td className="py-2.5 px-4 text-zinc-300">{team.def_rating}</td>

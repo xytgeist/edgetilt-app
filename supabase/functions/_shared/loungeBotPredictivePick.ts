@@ -593,7 +593,7 @@ export function buildNflAtsSlateCard(
     const tankRestWeight = weights.get('Tank:rest_advantage') || 1.0
 
     // Desk lanes (real feeds):
-    // Scott: market/EV + CFB FPI vs number (or NFL EPA)
+    // Scott: market/EV + CFB consensus vs number (or NFL EPA)
     // Rocco: SP+/EPA strength + short favorites / key numbers (trenches offline until PFF)
     // Chedda: dogs, RLM/splits, golden hooks
     // Tank: situational / rest / market flow; CFB tempo scales modelTotal in matchup projection

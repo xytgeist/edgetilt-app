@@ -1,9 +1,9 @@
 /**
- * College Football Power Index for Scott (FPI vs market) + Rocco (SP+ off/def) + Tank (totals/tempo).
+ * College Football consensus board for Scott (consensus vs market) + Rocco (SP+ off/def) + Tank (totals/tempo).
  *
  * Runtime prefers public.cfb_team_power_ratings filled by scripts/sync-cfb-power-ratings.mjs
- * from CollegeFootballData FPI + SP+ (with light in-season Elo blend). Static baselines
- * are fallback only when the DB board is empty.
+ * (Phase 1: 40% SP+ · 25% FPI · 25% Sagarin Predictor · 10% score Elo).
+ * Static baselines are fallback only when the DB board is empty.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { shortDisplayName } from './loungeBotOddsCaption.ts'
@@ -244,9 +244,9 @@ export function calculateCfbMatchupProjection(
 
   if (isValuePlay && valueSide) {
     const valTeam = valueSide === 'home' ? homeName : awayName
-    summaryLine = `CFB FPI Edge · Model ${homeName} ${spreadDisp} vs ${awayName} · +${spreadDelta} pt on ${valTeam}`
+    summaryLine = `CFB Consensus Edge · Model ${homeName} ${spreadDisp} vs ${awayName} · +${spreadDelta} pt on ${valTeam}`
   } else {
-    summaryLine = `CFB FPI · ${homeName} (${home.power_rating}) vs ${awayName} (${away.power_rating}) · Model ${homeName} ${spreadDisp}`
+    summaryLine = `CFB Consensus · ${homeName} (${home.power_rating}) vs ${awayName} (${away.power_rating}) · Model ${homeName} ${spreadDisp}`
   }
 
   return {

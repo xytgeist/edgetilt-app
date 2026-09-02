@@ -82,7 +82,7 @@ export async function fetchUfcFighterMetrics() {
 }
 
 /**
- * Fetch CFB Elo/SRS power board (CFBD-backed sync).
+ * Fetch CFB consensus power board (SP+ / FPI / Sagarin / Elo blend).
  */
 export async function fetchCfbPowerRatings() {
   if (!syndicateSupabase) return { data: [], error: null }
@@ -90,7 +90,7 @@ export async function fetchCfbPowerRatings() {
     const { data, error } = await syndicateSupabase
       .from('cfb_team_power_ratings')
       .select(
-        'id, team_name, team_abbr, conference, power_rating, off_rating, def_rating, tempo_rating, home_field_advantage'
+        'id, team_name, team_abbr, conference, power_rating, off_rating, def_rating, tempo_rating, home_field_advantage, fpi_rating, sp_rating, sagarin_rating'
       )
       .order('power_rating', { ascending: false })
       .limit(100)

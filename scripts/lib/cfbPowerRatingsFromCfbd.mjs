@@ -1,30 +1,33 @@
 /**
  * CFB power board for Sharpe Syndicate desks (Scott / Rocco / Tank).
  *
- * Real CFBD inputs (deterministic, no LLM):
- * 1. power_rating ← CFBD Football Power Index (FPI), same scale as ESPN FPI
- * 2. off_rating / def_rating ← CFBD SP+ offense / defense ratings
- * 3. In-season blend: as a team plays more games, blend FPI toward score Elo
- * 4. HFA ← home-margin residual vs Elo expectation (min 4 home games)
- * 5. tempo_rating ← CFBD advanced offense.plays / games (prior year until current covers FBS)
+ * Phase 1 consensus (points vs avg FBS, then weighted):
+ *   40% SP+ overall · 25% FPI · 25% Sagarin Predictor · 10% score Elo
  *
- * Requires CFBD_API_KEY (https://collegefootballdata.com/key).
+ * Also stores SP+ off/def (Rocco), tempo (Tank), HFA (home residual).
+ * Requires CFBD_API_KEY. Sagarin is fetched from the public HTML board.
  */
+
+import { fetchSagarinPredictorBySchool } from './cfbSagarinPredictor.mjs'
 
 const CFBD_BASE = 'https://api.collegefootballdata.com'
 
-/** Elo → points vs mean (blend component only). 25 Elo ≈ 1 point. */
+/** Elo → points vs mean. 25 Elo ≈ 1 point. */
 export const ELO_TO_POINTS = 0.04
 export const ELO_K = 24
 export const ELO_HOME_ADV = 65
 export const ELO_START = 1500
 export const DEFAULT_TEMPO = 68
 export const DEFAULT_HFA = 2.5
-/** FBS teams ~6-7 home games/season; 4 keeps early variance usable. */
 export const MIN_HFA_HOME_GAMES = 4
-/** After this many season games, results can weigh up to MAX_RESULTS_BLEND. */
-export const RESULTS_BLEND_GAMES = 8
-export const MAX_RESULTS_BLEND = 0.55
+
+/** Phase 1 consensus weights (renormalize if a voter is missing for a team). */
+export const CONSENSUS_WEIGHTS = {
+  sp: 0.4,
+  fpi: 0.25,
+  sagarin: 0.25,
+  elo: 0.1,
+}
 
 /**
  * @param {string} apiKey
@@ -155,7 +158,6 @@ export function tempoFromAdvancedStats(advancedRows, gamesPlayedByTeam) {
     if (!team) continue
     const plays = Number(row.offense?.plays)
     if (!Number.isFinite(plays) || plays <= 0) continue
-    // CFBD usually returns season play totals (~700-1000). Early-year snippets can look per-game.
     if (plays >= 200) {
       const gp = gamesPlayedByTeam.get(team) || 0
       if (gp < 1) continue
@@ -167,13 +169,6 @@ export function tempoFromAdvancedStats(advancedRows, gamesPlayedByTeam) {
   return tempo
 }
 
-/**
- * Prefer full FBS advanced season for tempo. Sparse early-year rows (e.g. 16 teams)
- * would divide tiny play totals by prior+current game counts and junk the board.
- * @param {string} apiKey
- * @param {number} season
- * @param {number} priorSeason
- */
 async function fetchAdvancedForTempo(apiKey, season, priorSeason) {
   const cur = await cfbdFetch(apiKey, '/stats/season/advanced', { year: season }).catch(() => [])
   if (Array.isArray(cur) && cur.length >= 100) {
@@ -195,13 +190,6 @@ function countGamesPlayed(games) {
   return m
 }
 
-/**
- * Prefer current season ratings; fall back to prior if empty.
- * @param {string} apiKey
- * @param {string} path
- * @param {number} season
- * @param {number} priorSeason
- */
 async function fetchRatingsWithFallback(apiKey, path, season, priorSeason) {
   const current = await cfbdFetch(apiKey, path, { year: season }).catch(() => [])
   if (Array.isArray(current) && current.length > 0) {
@@ -212,35 +200,69 @@ async function fetchRatingsWithFallback(apiKey, path, season, priorSeason) {
 }
 
 /**
+ * Center a rating map on the mean of values present for `schools`.
+ * @param {Map<string, number>} raw
+ * @param {Iterable<string>} schools
+ * @returns {Map<string, number>}
+ */
+export function centerOnMean(raw, schools) {
+  const vals = []
+  for (const s of schools) {
+    const v = raw.get(s)
+    if (v != null && Number.isFinite(v)) vals.push(v)
+  }
+  const mean = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0
+  /** @type {Map<string, number>} */
+  const out = new Map()
+  for (const s of schools) {
+    const v = raw.get(s)
+    if (v == null || !Number.isFinite(v)) continue
+    out.set(s, v - mean)
+  }
+  return out
+}
+
+/**
+ * Weighted blend; renormalizes over voters present for that team.
+ * @param {{ w: number, v: number | null | undefined }[]} parts
+ * @returns {number | null}
+ */
+export function weightedConsensus(parts) {
+  let tw = 0
+  let sum = 0
+  for (const p of parts) {
+    if (p.v == null || !Number.isFinite(p.v)) continue
+    tw += p.w
+    sum += p.w * p.v
+  }
+  if (tw <= 0) return null
+  return Math.round((sum / tw) * 10) / 10
+}
+
+/**
  * @param {object} opts
  * @param {string} opts.apiKey
  * @param {number} opts.season
  * @param {number} [opts.priorSeason]
  */
 export async function buildCfbPowerBoard({ apiKey, season, priorSeason = season - 1 }) {
-  const [
-    fpiPack,
-    spPack,
-    priorGamesRaw,
-    seasonGamesRaw,
-    teamsRaw,
-    advancedPack,
-  ] = await Promise.all([
-    fetchRatingsWithFallback(apiKey, '/ratings/fpi', season, priorSeason),
-    fetchRatingsWithFallback(apiKey, '/ratings/sp', season, priorSeason),
-    cfbdFetch(apiKey, '/games', {
-      year: priorSeason,
-      seasonType: 'regular',
-      classification: 'fbs',
-    }),
-    cfbdFetch(apiKey, '/games', {
-      year: season,
-      seasonType: 'regular',
-      classification: 'fbs',
-    }),
-    cfbdFetch(apiKey, '/teams', { year: season, classification: 'fbs' }),
-    fetchAdvancedForTempo(apiKey, season, priorSeason),
-  ])
+  const [fpiPack, spPack, priorGamesRaw, seasonGamesRaw, teamsRaw, advancedPack] =
+    await Promise.all([
+      fetchRatingsWithFallback(apiKey, '/ratings/fpi', season, priorSeason),
+      fetchRatingsWithFallback(apiKey, '/ratings/sp', season, priorSeason),
+      cfbdFetch(apiKey, '/games', {
+        year: priorSeason,
+        seasonType: 'regular',
+        classification: 'fbs',
+      }),
+      cfbdFetch(apiKey, '/games', {
+        year: season,
+        seasonType: 'regular',
+        classification: 'fbs',
+      }),
+      cfbdFetch(apiKey, '/teams', { year: season, classification: 'fbs' }),
+      fetchAdvancedForTempo(apiKey, season, priorSeason),
+    ])
 
   const priorGames = normalizeCompletedGames(priorGamesRaw)
   const seasonGames = normalizeCompletedGames(seasonGamesRaw)
@@ -261,25 +283,29 @@ export async function buildCfbPowerBoard({ apiKey, season, priorSeason = season 
   const meanElo = eloN ? eloSum / eloN : ELO_START
 
   /** @type {Map<string, number>} */
-  const fpiByTeam = new Map()
+  const fpiRaw = new Map()
   for (const row of fpiPack.rows || []) {
     if (!row.team || row.fpi == null) continue
-    fpiByTeam.set(row.team, Number(row.fpi))
+    fpiRaw.set(row.team, Number(row.fpi))
   }
 
   /** @type {Map<string, { off: number, def: number, sp: number }>} */
   const spByTeam = new Map()
+  /** @type {Map<string, number>} */
+  const spRaw = new Map()
   for (const row of spPack.rows || []) {
     if (!row.team) continue
     const off = Number(row.offense?.rating)
     const def = Number(row.defense?.rating)
     const sp = Number(row.rating)
     if (!Number.isFinite(off) || !Number.isFinite(def)) continue
+    const spVal = Number.isFinite(sp) ? sp : off - def
     spByTeam.set(row.team, {
       off: Math.round(off * 10) / 10,
       def: Math.round(def * 10) / 10,
-      sp: Number.isFinite(sp) ? Math.round(sp * 10) / 10 : Math.round((off - def) * 10) / 10,
+      sp: Math.round(spVal * 10) / 10,
     })
+    spRaw.set(row.team, spVal)
   }
 
   /** @type {Map<string, { conference: string, team_abbr: string, full_name: string }>} */
@@ -297,37 +323,50 @@ export async function buildCfbPowerBoard({ apiKey, season, priorSeason = season 
     })
   }
 
-  const schools = new Set([...fpiByTeam.keys(), ...spByTeam.keys()])
+  const schools = new Set([...fpiRaw.keys(), ...spRaw.keys()])
   if (schools.size < 50) {
     throw new Error(
       `CFBD FPI/SP returned too few teams (${schools.size}). Check API key / year.`,
     )
   }
 
+  let sagarinRaw = new Map()
+  let sagarinOk = false
+  try {
+    const sag = await fetchSagarinPredictorBySchool(schools)
+    sagarinRaw = sag.bySchool
+    sagarinOk = sagarinRaw.size >= 40
+  } catch (err) {
+    console.warn(`[cfb-power] Sagarin unavailable (${err.message || err}); blending without it`)
+  }
+
+  /** @type {Map<string, number>} */
+  const eloRaw = new Map()
+  for (const school of schools) {
+    const eloVal = elo.get(school)
+    if (eloVal == null) continue
+    eloRaw.set(school, (eloVal - meanElo) * ELO_TO_POINTS)
+  }
+
+  const fpiPts = centerOnMean(fpiRaw, schools)
+  const spPts = centerOnMean(spRaw, schools)
+  const sagPts = sagarinOk ? centerOnMean(sagarinRaw, schools) : new Map()
+  const eloPts = centerOnMean(eloRaw, schools)
+
   const board = []
   for (const school of schools) {
-    const fpi = fpiByTeam.get(school)
     const sp = spByTeam.get(school)
-    const eloVal = elo.get(school)
-    const eloPower =
-      eloVal != null ? Math.round((eloVal - meanElo) * ELO_TO_POINTS * 10) / 10 : null
+    const fpi = fpiRaw.get(school)
+    const sag = sagarinRaw.get(school)
+    const eloPower = eloPts.has(school) ? Math.round(eloPts.get(school) * 10) / 10 : null
 
-    const gp = seasonGp.get(school) || 0
-    const resultsW = Math.min(MAX_RESULTS_BLEND, gp / RESULTS_BLEND_GAMES)
-
-    let power_rating
-    if (fpi != null && Number.isFinite(fpi)) {
-      power_rating =
-        eloPower != null
-          ? Math.round(((1 - resultsW) * fpi + resultsW * eloPower) * 10) / 10
-          : Math.round(fpi * 10) / 10
-    } else if (sp != null) {
-      power_rating = sp.sp
-    } else if (eloPower != null) {
-      power_rating = eloPower
-    } else {
-      continue
-    }
+    const power_rating = weightedConsensus([
+      { w: CONSENSUS_WEIGHTS.sp, v: spPts.get(school) },
+      { w: CONSENSUS_WEIGHTS.fpi, v: fpiPts.get(school) },
+      { w: CONSENSUS_WEIGHTS.sagarin, v: sagPts.get(school) },
+      { w: CONSENSUS_WEIGHTS.elo, v: eloPts.get(school) },
+    ])
+    if (power_rating == null) continue
 
     const off_rating =
       sp?.off ??
@@ -351,10 +390,11 @@ export async function buildCfbPowerBoard({ apiKey, season, priorSeason = season 
       def_rating,
       tempo_rating: tempoMap.get(school) ?? DEFAULT_TEMPO,
       home_field_advantage: hfaMap.get(school) ?? DEFAULT_HFA,
-      fpi: fpi != null ? Math.round(fpi * 10) / 10 : null,
-      sp: sp?.sp ?? null,
+      fpi_rating: fpi != null ? Math.round(fpi * 10) / 10 : null,
+      sp_rating: sp?.sp ?? null,
+      sagarin_rating: sag != null ? Math.round(sag * 10) / 10 : null,
       elo_power: eloPower,
-      season_games: gp,
+      season_games: seasonGp.get(school) || 0,
       school,
     })
   }
@@ -365,8 +405,11 @@ export async function buildCfbPowerBoard({ apiKey, season, priorSeason = season 
     priorSeason,
     fpiYear: fpiPack.year,
     spYear: spPack.year,
+    sagarinOk,
+    sagarinMatched: sagarinRaw.size,
     gameCount: allGames.length,
     seasonGameCount: seasonGames.length,
+    weights: CONSENSUS_WEIGHTS,
     board,
   }
 }

@@ -782,7 +782,7 @@ Use **`npm run db:query:production`** / **`db:query:test`** — not parallel raw
 
 ---
 
-## NFL EPA + CFB FPI/SP+ metric sync (real ingest)
+## NFL EPA + CFB consensus metric sync (real ingest)
 
 **Problem we fixed:** `nfl_team_metrics` and `cfb_team_power_ratings` originally shipped with **hand-seeded** boards (no live feed). Trench win rates (PBWR/PRWR/RBWR/RSWR) are **PFF-class** and stay out of model math until a paid charting API is wired.
 
@@ -794,14 +794,16 @@ npm run syndicate:sync-nfl-metrics:test -- --dry-run
 npm run syndicate:sync-nfl-metrics:production   # Ryan explicit only
 ```
 
-**CFB (CFBD FPI + SP+ for desks):** [`scripts/sync-cfb-power-ratings.mjs`](../scripts/sync-cfb-power-ratings.mjs) pulls CollegeFootballData:
+**CFB (Phase 1 consensus blend):** [`scripts/sync-cfb-power-ratings.mjs`](../scripts/sync-cfb-power-ratings.mjs) builds:
 
-1. **`power_rating`** ← CFBD **FPI** (ESPN-scale; light blend toward score Elo as season games pile up)
-2. **`off_rating` / `def_rating`** ← CFBD **SP+** offense / defense (Rocco lane)
-3. **HFA** ← home-margin residual (min 4 home games; else 2.5)
-4. **Tempo** ← advanced season `offense.plays / games` (prior year until current covers FBS; Tank lane)
+1. **`power_rating`** ← **40% SP+ · 25% FPI · 25% Sagarin Predictor · 10% score Elo** (each voter centered to points-vs-avg FBS, then weighted; missing voters renormalize)
+2. Component columns: **`sp_rating`**, **`fpi_rating`**, **`sagarin_rating`** (migration `20260902180000`)
+3. **`off_rating` / `def_rating`** ← CFBD **SP+** unit ratings (Rocco lane)
+4. **HFA** ← home-margin residual · **Tempo** ← advanced plays/game (Tank lane)
 
-Desk mapping: **Scott** = FPI vs market · **Rocco** = SP+/EPA strength · **Chedda** = splits/RLM/dogs · **Tank** = tempo/totals/situational.
+Sagarin is scraped from the public Predictor board (`scripts/lib/cfbSagarinPredictor.mjs`). Phase 2 candidates: FEI, TeamRankings, market-implied, Powers/Makinen.
+
+Desk mapping: **Scott** = consensus vs market · **Rocco** = SP+/EPA strength · **Chedda** = splits/RLM/dogs · **Tank** = tempo/totals/situational.
 
 Requires **`CFBD_API_KEY`** in `.env.supabase.{test,production}` and GitHub Actions secret `CFBD_API_KEY` ([get key](https://collegefootballdata.com/key)). Free tier is 1k calls/mo … weekly sync is fine; Patreon ~$5/mo if you need more.
 

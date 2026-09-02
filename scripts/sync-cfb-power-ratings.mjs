@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Sync CFB Elo/SRS power board from CollegeFootballData into public.cfb_team_power_ratings.
- * Skips is_custom_override rows. Requires CFBD_API_KEY in env / .env.supabase.{target}.
+ * Sync CFB consensus power board into public.cfb_team_power_ratings.
+ * Phase 1: 40% SP+ · 25% FPI · 25% Sagarin Predictor · 10% score Elo.
+ * Skips is_custom_override rows. Requires CFBD_API_KEY.
  *
  * Usage:
  *   node scripts/sync-cfb-power-ratings.mjs --target=test
@@ -74,15 +75,16 @@ async function main() {
   }
 
   const year = season ?? new Date().getFullYear()
-  console.log(`[cfb-power] Building FPI/SP+ board for ${year} (${targetHuman(target)})…`)
+  console.log(`[cfb-power] Building consensus board for ${year} (${targetHuman(target)})…`)
   const result = await buildCfbPowerBoard({ apiKey, season: year })
   console.log(
-    `[cfb-power] FPI year=${result.fpiYear} SP year=${result.spYear} games=${result.gameCount} (season=${result.seasonGameCount}) teams=${result.board.length}`,
+    `[cfb-power] FPI year=${result.fpiYear} SP year=${result.spYear} Sagarin=${result.sagarinOk ? `ok (${result.sagarinMatched} matched)` : 'MISSING'} games=${result.gameCount} (season=${result.seasonGameCount}) teams=${result.board.length}`,
   )
+  console.log('[cfb-power] weights: SP+ 40% · FPI 25% · Sagarin 25% · Elo 10%')
   console.log('[cfb-power] top 10:')
   for (const row of result.board.slice(0, 10)) {
     console.log(
-      `  ${String(row.power_rating).padStart(5)}  ${row.team_name} (FPI ${row.fpi ?? '—'} / SP ${row.sp ?? '—'} · off ${row.off_rating} / def ${row.def_rating} · HFA ${row.home_field_advantage} · tempo ${row.tempo_rating})`,
+      `  ${String(row.power_rating).padStart(5)}  ${row.team_name} (SP ${row.sp_rating ?? '—'} / FPI ${row.fpi_rating ?? '—'} / Sag ${row.sagarin_rating ?? '—'} · off ${row.off_rating} / def ${row.def_rating})`,
     )
   }
 
@@ -114,6 +116,9 @@ async function main() {
       def_rating: b.def_rating,
       tempo_rating: b.tempo_rating,
       home_field_advantage: b.home_field_advantage,
+      fpi_rating: b.fpi_rating,
+      sp_rating: b.sp_rating,
+      sagarin_rating: b.sagarin_rating,
       updated_at: new Date().toISOString(),
     })
   }
@@ -123,7 +128,6 @@ async function main() {
     return
   }
 
-  // Upsert in chunks (unique on team_name)
   const chunkSize = 50
   for (let i = 0; i < rows.length; i += chunkSize) {
     const chunk = rows.slice(i, i + chunkSize)

@@ -56,7 +56,7 @@ Public site shows Consensus + Off/Def/HFA/Tempo. Model A/B/C columns are **blurr
 | Key numbers / hooks | **Partial** | Useful; not a full steam desk |
 | Betting splits / RLM | **Thin** | Chedda can lean dogs/hooks; Circa-class handle is **not** wired as a clean weekly feed |
 | Weather / rest / travel | **Modules exist** | Not yet first-class Tank totals publish lane |
-| Starting QB / injury modifiers | **Light** | No clean “QB out → −3 to −7 after consensus” gate before publish |
+| Starting QB / injury modifiers | **Live** (`syndicate_side_modifiers` + Rundown×PVAL) | Manual CFB first; auto only on known PVAL. Scott vs **current** market; Rocco gets hurt-side strength flag (not Scott’s pts). |
 | Desk scoreboard (ATS/CLV by desk + bucket) | **Missing as product** | Persona adaptive weights exist as concept … **do not trust as live truth** until monthly graded sample exists |
 
 ### Desk automation … real but uneven
@@ -86,16 +86,38 @@ Do **not** reshuffle Phase 1 blend weights while operating this loop.
    Totals never bleed into side votes. Tank ledger = **totals only** (do not mix into side scoreboard / adaptive ATS weights).  
    Weather/rest still optional boosts later.
 
-3. **QB / injury modifier (shipped v1)**  
+3. **QB / injury modifier (shipped + prod-locked rules)**  
    Applied **after** consensus board, **before** Scott’s value flag. Does **not** rebuild SP+/FPI.  
-   - Table **`syndicate_side_modifiers`**: manual CFB (and any override) with real −3 to −7 style impacts + reason  
-   - Auto: Rundown **hard outs** × known **PVAL** matches only (no invented values for unknown players)  
-   - Scott’s model spread is injury-adjusted; Rocco/Chedda stay on their own inputs; **Tank totals untouched** unless a backup changes pace (future)  
-   - Empty/manual-missing = no modifier (PASS), never theater
+   - Table **`syndicate_side_modifiers`**: manual CFB (and any override)  
+   - **Sign:** `net_spread_impact_home` … **positive favors home** (away more hurt)  
+   - **QB range:** not a universal 4.5 … tier by caliber (elite starter ~4–7, average ~3–4.5, MAC/bridge ~2–3)  
+   - Auto: Rundown **hard outs** × known **PVAL** only (no invent for unmatched names)  
+   - **Scott vs current market** (this poll’s number), never opener … if gap is gone after the move, Scott **PASS** (no double-count)  
+   - **Rocco/Chedda independent:** do not feed Scott’s adjusted spread. Rocco gets `hurtSide` as a strength/chalk-trap input only  
+   - **Tank** totals untouched unless backup changes pace/scoring  
+   - Empty/manual-missing = no modifier, never theater
 
-4. **Monthly desk + bucket scoreboard**  
+   Example insert (away QB out → positive home impact):
+
+   ```sql
+   insert into syndicate_side_modifiers (
+     sport_key, home_team, away_team, net_spread_impact_home, reason, source, player_name, player_pos, player_status
+   ) values (
+     'americanfootball_ncaaf',
+     'Ohio State Buckeyes',
+     'Texas Longhorns',
+     4.5,  -- + favors HOME
+     'Texas starting QB OUT … backup drop ~4.5 (tier by caliber, not universal)',
+     'manual',
+     'Arch Manning',
+     'QB',
+     'out'
+   );
+   ```
+
+4. **Monthly desk + bucket scoreboard** (next gap)  
    ATS + CLV by Scott / Rocco / Chedda / Tank and by Hammer / Consensus / Divided.  
-   Only then: shrink cold desks / raise hot ones.
+   Only then: shrink cold desks / raise hot ones. **Do not chase FEI until hammers vs consensus is graded.**
 
 5. **Later audit columns (not blockers)**  
    FEI, Powers/Makinen, TeamRankings, market-implied ratings.

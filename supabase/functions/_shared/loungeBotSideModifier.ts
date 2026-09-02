@@ -17,12 +17,20 @@ export type SideModifier = {
   sportKey: string
   homeTeam: string
   awayTeam: string
-  /** Positive favors home (away more hurt). Clamped ±10. */
+  /** Positive favors home (away more hurt / home less hurt). Clamped ±10. */
   netSpreadImpactHome: number
+  /** Which side is weakened (starter out). Independent of Scott's adjusted pts. */
+  hurtSide: 'home' | 'away' | null
   reason: string
   source: 'manual' | 'rundown_pval'
   /** True when |impact| is large enough to move Scott's value gate. */
   isSignificant: boolean
+}
+
+function hurtSideFromImpact(netSpreadImpactHome: number): 'home' | 'away' | null {
+  if (netSpreadImpactHome > 0) return 'away'
+  if (netSpreadImpactHome < 0) return 'home'
+  return null
 }
 
 const MANUAL_MIN_ABS = 0.5
@@ -89,6 +97,7 @@ function fromManualRow(row: Record<string, unknown>, eventId: string, sportKey: 
     homeTeam: String(row.home_team || ''),
     awayTeam: String(row.away_team || ''),
     netSpreadImpactHome: clamp(Math.round(impact * 10) / 10, -10, 10),
+    hurtSide: hurtSideFromImpact(impact),
     reason,
     source: 'manual',
     isSignificant: Math.abs(impact) >= MANUAL_MIN_ABS,
@@ -128,6 +137,7 @@ function fromInjurySummary(
     homeTeam: summary.homeTeam,
     awayTeam: summary.awayTeam,
     netSpreadImpactHome: impact,
+    hurtSide: hurtSideFromImpact(impact),
     reason: `Injury PVAL · +${Math.abs(impact).toFixed(1)} toward ${favor}: ${bits.join('; ')}`,
     source: 'rundown_pval',
     isSignificant: Math.abs(impact) >= AUTO_MIN_ABS || qbOrBig.some((a) => a.pos === 'QB'),

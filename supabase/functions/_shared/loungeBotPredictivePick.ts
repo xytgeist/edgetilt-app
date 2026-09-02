@@ -743,9 +743,15 @@ export function buildNflAtsSlateCard(
           ? (cfbMatchup.valueSide === 'home' ? 1.4 : -1.4)
           : 0
     const scottScoreHome = ((homePrice > awayPrice ? 1.0 : -0.5) + (homePoint < 0 ? 0.3 : 0.1) + sharpSplitBonus + epaBonus) * scottWeight
-    const scottSide: 'home' | 'away' = scottScoreHome >= 0 ? 'home' : 'away'
+    // Scott vs CURRENT market (homePoint from this poll), not opener … if injury news is already in the number, PASS.
+    const scottSide: SlateDeskSide =
+      sideModifier?.isSignificant && injuryValue && !injuryValue.isValuePlay
+        ? 'pass'
+        : scottScoreHome >= 0
+          ? 'home'
+          : 'away'
 
-    // 2. Chedda — dogs / money
+    // 2. Chedda — dogs / money (does NOT consume Scott's adjusted spread)
     const cheddaSplitBoost = (homePoint > 0 && sharpFavorsHome) ? 1.2 : (awayPoint > 0 && sharpFavorsAway) ? -1.2 : 0
     const cheddaGoldenHookBoost = (homeKeyAnalysis?.isHookGolden && homePoint > 0)
       ? 1.0
@@ -764,7 +770,8 @@ export function buildNflAtsSlateCard(
     const cheddaScoreHome = (homePoint > 0 ? (1.5 * cheddaSweetWeight) : awayPoint > 0 ? (-1.5 * cheddaSweetWeight) : (homePrice > awayPrice ? 0.5 : -0.5)) + cheddaSplitBoost + cheddaGoldenHookBoost + dogTrenchBoost
     const cheddaSide: 'home' | 'away' = cheddaScoreHome >= 0 ? 'home' : 'away'
 
-    // 3. Rocco — SP+/EPA strength on short favorites (CFB power gap uses FPI scale ~10+ pts)
+    // 3. Rocco — SP+/EPA strength on short favorites (independent of Scott's adjusted number)
+    // Starter-out is a strength flag only: fade short chalk on the hurt side without sharing Scott's pts.
     const isShortFavHome = homePoint < 0 && homePoint >= -7.5
     const isShortFavAway = awayPoint < 0 && awayPoint >= -7.5
     const roccoChalkTrapPenalty = (isShortFavHome && sharpFavorsAway) ? -1.5 : (isShortFavAway && sharpFavorsHome) ? 1.5 : 0
@@ -778,7 +785,18 @@ export function buildNflAtsSlateCard(
       : cfbMatchup
         ? (cfbMatchup.homePower - cfbMatchup.awayPower > 10.0 && homePoint < 0 ? 1.2 : cfbMatchup.awayPower - cfbMatchup.homePower > 10.0 && awayPoint < 0 ? -1.2 : 0)
         : 0
-    const roccoScoreHome = (isShortFavHome ? (1.2 * roccoWeight) : isShortFavAway ? (-1.2 * roccoWeight) : (homePoint < 0 ? 0.4 : -0.4)) + roccoChalkTrapPenalty + roccoHookTaxPenalty + roccoTrenchBonus
+    const hurtSide = sideModifier?.hurtSide ?? null
+    const roccoStarterOutPenalty =
+      hurtSide === 'home' && isShortFavHome
+        ? -2.0
+        : hurtSide === 'away' && isShortFavAway
+          ? 2.0
+          : hurtSide === 'home' && homePoint < 0
+            ? -0.8
+            : hurtSide === 'away' && awayPoint < 0
+              ? 0.8
+              : 0
+    const roccoScoreHome = (isShortFavHome ? (1.2 * roccoWeight) : isShortFavAway ? (-1.2 * roccoWeight) : (homePoint < 0 ? 0.4 : -0.4)) + roccoChalkTrapPenalty + roccoHookTaxPenalty + roccoTrenchBonus + roccoStarterOutPenalty
     const roccoSide: 'home' | 'away' = roccoScoreHome >= 0 ? 'home' : 'away'
 
     // 4. Tank — totals desk (PASS default; play at ≥3.5 or ≥2.5 into key 48/51/54)
@@ -844,10 +862,10 @@ export function buildNflAtsSlateCard(
     }> = {
       Scott: {
         side: scottSide,
-        teamName: scottSide === 'home' ? homeTeam : awayTeam,
-        lineDisplay: scottSide === 'home' ? homeLineDisp : awayLineDisp,
-        pickPrice: scottSide === 'home' ? homePrice : awayPrice,
-        pick: scottSide === 'home' ? homePickObj : awayPickObj,
+        teamName: scottSide === 'home' ? homeTeam : scottSide === 'away' ? awayTeam : 'PASS',
+        lineDisplay: scottSide === 'home' ? homeLineDisp : scottSide === 'away' ? awayLineDisp : 'PASS (gap closed vs current)',
+        pickPrice: scottSide === 'home' ? homePrice : scottSide === 'away' ? awayPrice : 0,
+        pick: scottSide === 'home' ? homePickObj : scottSide === 'away' ? awayPickObj : homePickObj,
       },
       Rocco: {
         side: roccoSide,
@@ -876,44 +894,43 @@ export function buildNflAtsSlateCard(
       },
     }
 
-    // Tally ATS side votes only (Scott / Rocco / Chedda)
+    // Tally ATS side votes only (Scott / Rocco / Chedda) … skip PASS (e.g. Scott when market already priced injury)
     let homeVotes = 0
     let awayVotes = 0
+    let activeSideVotes = 0
     for (const p of ATS_SIDE_DESKS) {
-      if (pickerPicks[p].side === 'home') homeVotes++
-      else awayVotes++
+      const side = pickerPicks[p].side
+      if (side === 'home') {
+        homeVotes++
+        activeSideVotes++
+      } else if (side === 'away') {
+        awayVotes++
+        activeSideVotes++
+      }
     }
 
-    let consensusSide: 'home' | 'away' = 'home'
-    let voteCount = homeVotes
+    let consensusSide: 'home' | 'away' = homeVotes >= awayVotes ? 'home' : 'away'
+    let voteCount = Math.max(homeVotes, awayVotes)
     let consensusType: 'hammer' | 'consensus' | 'split' = 'split'
-    let badgeText = '⚔️ 1-1 Split'
+    let badgeText = '⚔️ House Divided'
 
-    if (homeVotes === 3) {
-      consensusSide = 'home'
-      voteCount = 3
+    if (activeSideVotes >= 2 && (homeVotes === activeSideVotes || awayVotes === activeSideVotes)) {
+      consensusSide = homeVotes === activeSideVotes ? 'home' : 'away'
+      voteCount = activeSideVotes
       consensusType = 'hammer'
-      badgeText = '🔥 3-0 Hammer'
-    } else if (awayVotes === 3) {
-      consensusSide = 'away'
-      voteCount = 3
-      consensusType = 'hammer'
-      badgeText = '🔥 3-0 Hammer'
-    } else if (homeVotes === 2) {
-      consensusSide = 'home'
+      badgeText = `🔥 ${activeSideVotes}-0 Hammer`
+    } else if (activeSideVotes >= 3 && (homeVotes === 2 || awayVotes === 2)) {
+      consensusSide = homeVotes === 2 ? 'home' : 'away'
       voteCount = 2
       consensusType = 'consensus'
       badgeText = '🎯 2-1 Consensus'
-    } else if (awayVotes === 2) {
-      consensusSide = 'away'
-      voteCount = 2
-      consensusType = 'consensus'
-      badgeText = '🎯 2-1 Consensus'
-    } else {
-      consensusSide = 'home'
-      voteCount = 1
+    } else if (activeSideVotes === 2 && homeVotes === 1 && awayVotes === 1) {
       consensusType = 'split'
       badgeText = '⚔️ 1-1 Split'
+      voteCount = 1
+    } else {
+      consensusType = 'split'
+      badgeText = activeSideVotes <= 1 ? '⚔️ Thin board' : '⚔️ House Divided'
     }
 
     const gamePick: SlateGamePick = {
@@ -992,6 +1009,7 @@ export async function publishAndRecordNflSlateCard(
   for (const g of input.card.games) {
     for (const pName of SHARP_PICKERS) {
       const pPick = g.pickerPicks[pName]
+      if (pName === 'Scott' && pPick.side === 'pass') continue
       if (pName === 'Tank' && pPick.side === 'pass') continue
 
       // Situational factor tagging for Bayesian learning

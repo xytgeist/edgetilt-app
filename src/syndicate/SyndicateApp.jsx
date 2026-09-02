@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import {
   fetchSyndicateLedger,
   fetchTrenchMetrics,
+  fetchCfbPowerRatings,
   fetchUfcFighterMetrics,
 } from './syndicateApi.js'
 
@@ -53,6 +54,7 @@ export function SyndicateApp() {
   const [picks, setPicks] = useState([])
   const [loading, setLoading] = useState(true)
   const [trenchData, setTrenchData] = useState([])
+  const [cfbData, setCfbData] = useState([])
   const [ufcData, setUfcData] = useState([])
   const [sportFilter, setSportFilter] = useState('all')
   const [deskFilter, setDeskFilter] = useState('all')
@@ -61,13 +63,15 @@ export function SyndicateApp() {
   useEffect(() => {
     async function loadData() {
       setLoading(true)
-      const [ledgerRes, trenchRes, ufcRes] = await Promise.all([
+      const [ledgerRes, trenchRes, cfbRes, ufcRes] = await Promise.all([
         fetchSyndicateLedger(250),
         fetchTrenchMetrics(),
+        fetchCfbPowerRatings(),
         fetchUfcFighterMetrics(),
       ])
       setPicks(ledgerRes.picks || [])
       setTrenchData(trenchRes.data || [])
+      setCfbData(cfbRes.data || [])
       setUfcData(ufcRes.data || [])
       setLoading(false)
     }
@@ -1114,44 +1118,54 @@ export function SyndicateApp() {
           </div>
         )}
 
-        {/* CFB Sport Hub */}
+        {/* CFB Power Index Tab (preview of CFBD-backed Elo/SRS board) */}
         {activeTab === 'cfb' && (
           <div className="space-y-6">
             <div className="border-b border-zinc-800 pb-4">
-              <h2 className="text-2xl font-bold text-white tracking-tight">College Football</h2>
-              <p className="text-zinc-400 text-xs sm:text-sm mt-1 max-w-2xl">
-                Public CFB coverage lives in the audited pick ledger. Syndicate power boards and tempo adjustments stay on the desk ... not published here.
+              <h2 className="text-2xl font-bold text-white tracking-tight">College Football Power Ratings</h2>
+              <p className="text-zinc-400 text-xs sm:text-sm mt-1">
+                Elo + SRS board built from CollegeFootballData game results (points vs average FBS). Preview while we decide what stays public.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-6 space-y-4 max-w-2xl">
-              <p className="text-sm text-zinc-300 leading-relaxed">
-                Filter the Audited Ledger to CFB for settled Saturday signals, or read Methodology for how the desks price college spreads without dumping the proprietary board.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSportFilter('cfb')
-                    setActiveTab('ledger')
-                    window.scrollTo({ top: 0, behavior: 'smooth' })
-                  }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold tracking-tight transition-all"
-                >
-                  Open CFB ledger
-                  <span className="font-mono">→</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setActiveTab('whitepapers')
-                    window.scrollTo({ top: 0, behavior: 'smooth' })
-                  }}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg border border-zinc-700 bg-zinc-900 text-zinc-200 text-xs font-semibold hover:border-zinc-500 transition-all"
-                >
-                  Methodology
-                </button>
-              </div>
+            <div className="overflow-x-auto rounded-2xl border border-zinc-800 bg-zinc-900/40">
+              <table className="w-full text-left border-collapse text-xs sm:text-sm font-mono">
+                <thead>
+                  <tr className="border-b border-zinc-800 bg-zinc-900/80 text-zinc-400 text-[11px] uppercase tracking-wider">
+                    <th className="py-3 px-4">Program</th>
+                    <th className="py-3 px-4">Power Rating</th>
+                    <th className="py-3 px-4">Off Rating</th>
+                    <th className="py-3 px-4">Def Rating</th>
+                    <th className="py-3 px-4">Home Field Advantage</th>
+                    <th className="py-3 px-4">Tempo</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-800/60">
+                  {cfbData.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" className="py-12 text-center text-zinc-500 font-sans">
+                        CFB power index updates weekly from CFBD game results.
+                      </td>
+                    </tr>
+                  ) : (
+                    cfbData.map((team, idx) => (
+                      <tr key={team.id || team.team_name} className="hover:bg-zinc-800/30">
+                        <td className="py-2.5 px-4 text-white font-sans font-semibold">
+                          <span className="text-zinc-500 text-xs mr-2">{idx + 1}.</span>
+                          {team.team_name}
+                        </td>
+                        <td className="py-2.5 px-4 text-emerald-400 font-bold">
+                          {team.power_rating > 0 ? `+${team.power_rating}` : team.power_rating}
+                        </td>
+                        <td className="py-2.5 px-4 text-zinc-300">{team.off_rating}</td>
+                        <td className="py-2.5 px-4 text-zinc-300">{team.def_rating}</td>
+                        <td className="py-2.5 px-4 text-zinc-400">+{team.home_field_advantage ?? team.home_field_adv ?? 2.5}</td>
+                        <td className="py-2.5 px-4 text-zinc-400">{team.tempo_rating ?? '—'}</td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

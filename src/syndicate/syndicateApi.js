@@ -80,3 +80,24 @@ export async function fetchUfcFighterMetrics() {
     return { data: [], error: err }
   }
 }
+
+/**
+ * Fetch CFB Elo/SRS power board (CFBD-backed sync).
+ */
+export async function fetchCfbPowerRatings() {
+  if (!syndicateSupabase) return { data: [], error: null }
+  try {
+    const { data, error } = await syndicateSupabase
+      .from('cfb_team_power_ratings')
+      .select(
+        'id, team_name, team_abbr, conference, power_rating, off_rating, def_rating, tempo_rating, home_field_advantage'
+      )
+      .order('power_rating', { ascending: false })
+      .limit(100)
+
+    if (error) return { data: [], error }
+    return { data: data || [], error: null }
+  } catch (err) {
+    return { data: [], error: err }
+  }
+}

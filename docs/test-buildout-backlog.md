@@ -1069,6 +1069,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-09-02: **Real NFL EPA + CFB Elo/SRS ingest (Windows):** nflverse PBP → `nfl_team_metrics` (`scripts/sync-nfl-team-metrics.mjs`, ran on **test** 32 teams for 2025). CFBD games → owned Elo/SRS → `cfb_team_power_ratings` (`scripts/sync-cfb-power-ratings.mjs`; needs `CFBD_API_KEY`). Trench win-rate matchup math disabled in `loungeBotTeamMetrics.ts` until PFF/B2B. GHA Tuesday cron test-only. Redeployed `lounge-odds-poll` test + prod. Docs: `docs/lounge-bot-sports-odds.md`.
+
 - 2026-08-30: **Tuesday Morning Syndicate Ledger & Key Number Hook Intelligence (`test`):**
   - Created `_shared/loungeBotKeyNumbers.ts` implementing NFL key scoring margin analysis (3, 7, 6, 10, 4), Hook Tax traps (-3.5, -7.5, +2.5), and Golden Hooks (+3.5, +7.5). Integrated into Rocco (penalizes -3.5/-7.5 hook tax) and Chedda (boosts +3.5/+7.5 golden hooks).
   - Created `_shared/loungeBotLedgerRecap.ts` generating Tuesday Morning Syndicate Weekly Ledger & Post-Mortem posts. Completely removed artificial "model accuracy" jargon in favor of authentic sharp language: **Yardage Dominance** (+100 yds margin) vs **Turnover Variance** (bad beat boxscores).

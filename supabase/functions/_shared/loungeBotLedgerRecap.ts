@@ -64,9 +64,9 @@ const PICKER_TITLES: Record<string, string> = {
 /** Rotating bad-beat sign-offs ... ~25% of weeks omit entirely. */
 const BAD_BEAT_TAGLINES = [
   'Variance killed the cover, but the model is sound.',
-  'Process held. The boxscore just flipped late.',
-  'Right read, wrong bounce. We run the same spot again.',
-  'The number was right. The football wasn\'t.',
+  'Trust the process, it\'s bigger than a single game.',
+  'Right read, wrong bounce. We\'d run the same spot again.',
+  'The number was right. The players didn\'t cooperate.',
   'Unlucky finish. The underlying profile still clears our bar.',
 ]
 

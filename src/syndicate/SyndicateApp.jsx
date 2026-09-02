@@ -1036,6 +1036,34 @@ export function SyndicateApp() {
             </div>
 
             <div className="space-y-6">
+              {/* Paper 0: Four-Desk Ensemble */}
+              <div className="p-6 rounded-2xl border border-zinc-800 bg-zinc-900/50 space-y-3">
+                <div className="text-xs font-mono font-bold text-purple-400 uppercase tracking-wider">
+                  ARCHITECTURE · ENSEMBLE DESIGN
+                </div>
+                <h3 className="text-lg font-bold text-white">
+                  Why Four Desks Beat One Overfit Number
+                </h3>
+                <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
+                  Most retail &quot;AI&quot; handicappers stack 120+ micro-weighted features into a single projected spread, then
+                  backtest until the output looks clean. That is curve-fitting: the model memorizes noise in last season&apos;s box
+                  scores and collapses the moment roster churn, officiating variance, or a weather pivot shifts the profile.
+                </p>
+                <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
+                  The Sharpe Syndicate runs four independent desks ... each tuned to a narrow, high-signal lane (pure EV modeling,
+                  trench favorites &amp; key numbers, underdog value, situational totals). Every desk ingests only its most robust
+                  inputs, publishes a standalone pick, and compares that thesis against the other three. Unanimous agreement surfaces
+                  as a hammer; a 2–2 split stays visible on the slate instead of getting averaged into one buried decimal.
+                </p>
+                <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
+                  That structure deliberately leaves room for calibrated human intuition. When Scott&apos;s model and Rocco&apos;s
+                  trench read diverge by half a point on a -3 hook, the tension is auditable ... not smoothed away by a monolithic
+                  weights matrix. Desk leads can apply situational overrides (short-week travel, motivational spots, late injury pivots)
+                  without retraining the entire stack. You get ensemble diversity, transparent disagreement, and just enough
+                  discretionary judgment to catch what spreadsheets miss ... without letting gut feel run the whole card.
+                </p>
+              </div>
+
               {/* Paper 1: PVAL */}
               <div className="p-6 rounded-2xl border border-zinc-800 bg-zinc-900/50 space-y-3">
                 <div className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider">

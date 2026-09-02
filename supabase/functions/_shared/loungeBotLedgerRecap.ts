@@ -71,6 +71,8 @@ export type WeeklyRecapPayload = {
     summary: string
   } | null
   boxscoreHighlights: {
+    sectionTitle: string
+    sectionSubtitle: string
     biggestWin: PostMortemHighlight | null
     badBeat: PostMortemHighlight | null
   }
@@ -351,6 +353,49 @@ async function fetchEspnForPick(
   }
 }
 
+function buildPostMortemSectionFraming(
+  winPick: LedgerPickRow | null,
+  lossPick: LedgerPickRow | null,
+): { sectionTitle: string; sectionSubtitle: string } {
+  if (winPick && lossPick && winPick.event_id === lossPick.event_id) {
+    const matchup = formatPostMortemMatchup(winPick)
+    if (winPick.market_key !== lossPick.market_key) {
+      return {
+        sectionTitle: '⚔️ Split-Game Spotlight',
+        sectionSubtitle: `${matchup} split the card ... one market cashed, another missed on the same final.`,
+      }
+    }
+    return {
+      sectionTitle: '⚔️ Split-Game Spotlight',
+      sectionSubtitle: `${matchup} produced the week's clearest cover and toughest beat on the same board.`,
+    }
+  }
+  if (winPick && lossPick) {
+    return {
+      sectionTitle: '🔍 Cover & Beat of the Week',
+      sectionSubtitle: 'Best execution and toughest variance from the last 7 days of graded picks.',
+    }
+  }
+  if (winPick) {
+    return {
+      sectionTitle: '🔨 Best Cover of the Week',
+      sectionSubtitle: 'Top winning spot from the last 7 days of graded picks.',
+    }
+  }
+  return {
+    sectionTitle: '🎲 Bad Beat of the Week',
+    sectionSubtitle: 'Toughest loss from the last 7 days of graded picks.',
+  }
+}
+
+function emptyPostMortemSection() {
+  return {
+    sectionTitle: '',
+    sectionSubtitle: '',
+    biggestWin: null,
+    badBeat: null,
+  }
+}
 /**
  * Pick the win/loss pair that tells the best split-game story (same-game market splits
  * score highest), enrich with ESPN yardage/turnovers when available, and return null pair
@@ -359,13 +404,13 @@ async function fetchEspnForPick(
 async function resolvePostMortemHighlights(
   picks: LedgerPickRow[],
   endDateIso: string,
-): Promise<{ biggestWin: PostMortemHighlight | null; badBeat: PostMortemHighlight | null }> {
+): Promise<WeeklyRecapPayload['boxscoreHighlights']> {
   const football = (p: LedgerPickRow) => p.sport_key?.includes('nfl') || p.sport_key?.includes('ncaaf')
   const wins = dedupePostMortemCandidates(picks.filter((p) => p.status === 'won' && football(p)), 'win')
   const losses = dedupePostMortemCandidates(picks.filter((p) => p.status === 'lost' && football(p)), 'loss')
 
   if (!wins.length && !losses.length) {
-    return { biggestWin: null, badBeat: null }
+    return emptyPostMortemSection()
   }
 
   const espnCache = new Map<string, EspnGameSummary | null>()
@@ -418,7 +463,9 @@ async function resolvePostMortemHighlights(
   const tagline = resolveBadBeatTagline(endDateIso)
 
   if (bestPair && bestPair.pairScore >= POST_MORTEM_MIN_PAIR_SCORE) {
+    const framing = buildPostMortemSectionFraming(bestPair.win.pick, bestPair.loss.pick)
     return {
+      ...framing,
       biggestWin: toPostMortemHighlight(bestPair.win.pick, bestPair.win.espn, bestPair.win.narrative),
       badBeat: toPostMortemHighlight(bestPair.loss.pick, bestPair.loss.espn, bestPair.loss.narrative, tagline),
     }
@@ -428,20 +475,24 @@ async function resolvePostMortemHighlights(
   const bestLoss = scoredLosses.sort((a, b) => b.quality - a.quality)[0]
 
   if (bestWin && bestWin.quality >= POST_MORTEM_MIN_SOLO_SCORE && (!bestLoss || bestWin.quality >= bestLoss.quality)) {
+    const framing = buildPostMortemSectionFraming(bestWin.pick, null)
     return {
+      ...framing,
       biggestWin: toPostMortemHighlight(bestWin.pick, bestWin.espn, bestWin.narrative),
       badBeat: null,
     }
   }
 
   if (bestLoss && bestLoss.quality >= POST_MORTEM_MIN_SOLO_SCORE) {
+    const framing = buildPostMortemSectionFraming(null, bestLoss.pick)
     return {
+      ...framing,
       biggestWin: null,
       badBeat: toPostMortemHighlight(bestLoss.pick, bestLoss.espn, bestLoss.narrative, tagline),
     }
   }
 
-  return { biggestWin: null, badBeat: null }
+  return emptyPostMortemSection()
 }
 
 /**
@@ -523,7 +574,7 @@ export async function compileWeeklySyndicateRecap(
   } : null
 
   // ESPN post-mortem: best split-game pair when available; omit section only on thin weeks
-  const { biggestWin, badBeat } = await resolvePostMortemHighlights(picks, now.toISOString())
+  const boxscoreHighlights = await resolvePostMortemHighlights(picks, now.toISOString())
 
   let clvBeatsCount = 0
   for (const p of picks) {
@@ -556,10 +607,7 @@ export async function compileWeeklySyndicateRecap(
     clv,
     pickers: pickerTallies,
     topPerformer,
-    boxscoreHighlights: {
-      biggestWin,
-      badBeat,
-    },
+    boxscoreHighlights,
   }
 }
 
@@ -617,7 +665,10 @@ export function formatWeeklySyndicateRecapCaption(recap: WeeklyRecapPayload): st
   }
 
   if (recap.boxscoreHighlights.biggestWin || recap.boxscoreHighlights.badBeat) {
-    lines.push('## 🔍 Boxscore Post-Mortem')
+    lines.push(`## ${recap.boxscoreHighlights.sectionTitle}`)
+    if (recap.boxscoreHighlights.sectionSubtitle) {
+      lines.push(`_${recap.boxscoreHighlights.sectionSubtitle}_`)
+    }
     if (recap.boxscoreHighlights.biggestWin) {
       const { pickLine, matchup, narrative } = recap.boxscoreHighlights.biggestWin
       lines.push(`- 🔨 **[gold]${pickLine}[/gold]** (${matchup}) · ${narrative}`)

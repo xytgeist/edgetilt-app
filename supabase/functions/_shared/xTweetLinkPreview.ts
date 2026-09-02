@@ -3,6 +3,13 @@ import { syndicationTweetResultUrl } from './loungeBotXTweetSyndication.ts'
 import { parseXTweetUrl } from './loungeBotXTweetUrl.ts'
 import type { LinkPreviewPayload } from './linkUnfurl.ts'
 
+export type XTweetMediaItem = {
+  type: 'photo' | 'video' | 'animated_gif'
+  /** Image URL for photos; best MP4 URL for video/gif. */
+  url: string
+  poster_url?: string | null
+}
+
 export type XTweetEmbedPreview = {
   id: string
   text: string
@@ -12,7 +19,9 @@ export type XTweetEmbedPreview = {
   author_verified: boolean
   created_at: string | null
   view_count: number | null
+  /** @deprecated Prefer `media`. Kept for older clients. */
   media_urls: string[]
+  media: XTweetMediaItem[]
 }
 
 function normalizeAvatarUrl(raw: string): string | null {
@@ -32,40 +41,108 @@ function parseViewCount(json: Record<string, unknown>): number | null {
   return null
 }
 
-function mediaUrlsFromSyndication(json: Record<string, unknown>): string[] {
-  const out: string[] = []
+function bestMp4FromVariants(variants: unknown): string | null {
+  if (!Array.isArray(variants)) return null
+  let bestUrl: string | null = null
+  let bestBitrate = -1
+  for (const raw of variants) {
+    if (!raw || typeof raw !== 'object') continue
+    const v = raw as Record<string, unknown>
+    const contentType = String(v.content_type || v.type || '').toLowerCase()
+    if (!contentType.includes('video/mp4')) continue
+    const url = String(v.url || v.src || '').trim()
+    if (!url) continue
+    const bitrate = Number(v.bitrate)
+    const score = Number.isFinite(bitrate) ? bitrate : 0
+    if (score >= bestBitrate) {
+      bestBitrate = score
+      bestUrl = url
+    }
+  }
+  return bestUrl
+}
+
+function mediaFromSyndication(json: Record<string, unknown>): XTweetMediaItem[] {
+  const out: XTweetMediaItem[] = []
   const seen = new Set<string>()
-  const push = (raw: unknown) => {
-    const url = String(raw || '').trim()
-    if (!url || seen.has(url)) return
-    seen.add(url)
-    out.push(url)
+  const push = (item: XTweetMediaItem | null) => {
+    if (!item?.url || seen.has(item.url)) return
+    seen.add(item.url)
+    out.push(item)
+  }
+
+  const mediaDetails = json.mediaDetails
+  if (Array.isArray(mediaDetails)) {
+    for (const raw of mediaDetails) {
+      if (!raw || typeof raw !== 'object') continue
+      const media = raw as Record<string, unknown>
+      const typeRaw = String(media.type || '').toLowerCase()
+      const poster = String(media.media_url_https || '').trim() || null
+      if (typeRaw === 'video' || typeRaw === 'animated_gif') {
+        const videoInfo = media.video_info && typeof media.video_info === 'object'
+          ? media.video_info as Record<string, unknown>
+          : null
+        const mp4 = bestMp4FromVariants(videoInfo?.variants) ||
+          bestMp4FromVariants((json.video as { variants?: unknown } | undefined)?.variants)
+        if (mp4) {
+          push({
+            type: typeRaw === 'animated_gif' ? 'animated_gif' : 'video',
+            url: mp4,
+            poster_url: poster,
+          })
+          continue
+        }
+      }
+      if (poster) push({ type: 'photo', url: poster, poster_url: null })
+    }
+  }
+
+  const topVideo = json.video && typeof json.video === 'object'
+    ? json.video as Record<string, unknown>
+    : null
+  if (topVideo && !out.some((m) => m.type === 'video' || m.type === 'animated_gif')) {
+    const mp4 = bestMp4FromVariants(topVideo.variants)
+    const poster = String(topVideo.poster || '').trim() || null
+    if (mp4) {
+      push({
+        type: 'video',
+        url: mp4,
+        poster_url: poster,
+      })
+    }
   }
 
   const photos = json.photos
   if (Array.isArray(photos)) {
     for (const photo of photos) {
       if (!photo || typeof photo !== 'object') continue
-      push((photo as { url?: string }).url)
-    }
-  }
-
-  const mediaDetails = json.mediaDetails
-  if (Array.isArray(mediaDetails)) {
-    for (const media of mediaDetails) {
-      if (!media || typeof media !== 'object') continue
-      push((media as { media_url_https?: string }).media_url_https)
-    }
-  }
-
-  const entities = json.entities
-  if (entities && typeof entities === 'object' && Array.isArray((entities as { media?: unknown[] }).media)) {
-    for (const media of (entities as { media: { media_url_https?: string }[] }).media) {
-      push(media?.media_url_https)
+      const url = String((photo as { url?: string }).url || '').trim()
+      if (url) push({ type: 'photo', url, poster_url: null })
     }
   }
 
   return out.slice(0, 4)
+}
+
+/** Drop media shortlinks already represented as embed media (keep other outbound t.co links). */
+function stripTrailingMediaUrls(text: string, json: Record<string, unknown>): string {
+  let out = String(text || '').trim()
+  const urls: string[] = []
+  const mediaDetails = Array.isArray(json.mediaDetails) ? json.mediaDetails : []
+  for (const raw of mediaDetails) {
+    if (!raw || typeof raw !== 'object') continue
+    const media = raw as { url?: string }
+    const short = String(media.url || '').trim()
+    if (short) urls.push(short)
+  }
+  for (const short of urls) {
+    if (!out.includes(short)) continue
+    out = out.split(short).join(' ')
+  }
+  return out
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim() || String(text || '').trim()
 }
 
 async function fetchTweetEmbedViaSyndication(tweetId: string): Promise<XTweetEmbedPreview | null> {
@@ -78,13 +155,15 @@ async function fetchTweetEmbedViaSyndication(tweetId: string): Promise<XTweetEmb
   const json = await res.json()
   if (!json || typeof json !== 'object') return null
   const record = json as Record<string, unknown>
-  const text = String(record.text || '').trim()
-  if (!text) return null
+  const rawText = String(record.text || '').trim()
+  if (!rawText) return null
 
   const user = record.user && typeof record.user === 'object' ? record.user as Record<string, unknown> : {}
   const authorHandle = String(user.screen_name || user.name || '').trim().toLowerCase()
   const authorName = String(user.name || '').trim() || null
   const authorVerified = user.is_blue_verified === true || user.verified === true
+  const media = mediaFromSyndication(record)
+  const text = media.length ? stripTrailingMediaUrls(rawText, record) : rawText
 
   return {
     id: tweetId,
@@ -95,7 +174,8 @@ async function fetchTweetEmbedViaSyndication(tweetId: string): Promise<XTweetEmb
     author_verified: authorVerified,
     created_at: typeof record.created_at === 'string' ? record.created_at : null,
     view_count: parseViewCount(record),
-    media_urls: mediaUrlsFromSyndication(record),
+    media_urls: media.map((m) => (m.type === 'photo' ? m.url : (m.poster_url || m.url))).filter(Boolean),
+    media,
   }
 }
 
@@ -128,6 +208,7 @@ export async function fetchXTweetEmbedData(tweetUrl: string): Promise<XTweetEmbe
     created_at: fromOembed.created_at || null,
     view_count: null,
     media_urls: [],
+    media: [],
   }
 }
 
@@ -138,12 +219,15 @@ export function buildXTweetLinkPreview(url: string, tweet: XTweetEmbedPreview): 
     : handle
       ? `${handle} on X`
       : 'Post on X'
+  const firstPoster = tweet.media.find((m) => m.poster_url)?.poster_url
+    || tweet.media.find((m) => m.type === 'photo')?.url
+    || null
 
   return {
     url,
     title,
     description: tweet.text.slice(0, 500) || null,
-    image_url: tweet.media_urls[0] || null,
+    image_url: firstPoster,
     favicon_url: 'https://abs.twimg.com/favicons/twitter.3.ico',
     site_name: 'X',
     layout: 'compact',
@@ -160,6 +244,7 @@ export function buildXTweetLinkPreview(url: string, tweet: XTweetEmbedPreview): 
       created_at: tweet.created_at,
       view_count: tweet.view_count,
       media_urls: tweet.media_urls,
+      media: tweet.media,
     },
   }
 }

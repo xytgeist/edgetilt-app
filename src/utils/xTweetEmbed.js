@@ -1,4 +1,6 @@
-/** @typedef {{ id?: string, text?: string, author_handle?: string | null, author_name?: string | null, author_avatar_url?: string | null, author_verified?: boolean, created_at?: string | null, view_count?: number | null, media_urls?: string[] | null }} XTweetEmbedPreview */
+/** @typedef {{ type?: 'photo' | 'video' | 'animated_gif', url?: string, poster_url?: string | null }} XTweetMediaItem */
+
+/** @typedef {{ id?: string, text?: string, author_handle?: string | null, author_name?: string | null, author_avatar_url?: string | null, author_verified?: boolean, created_at?: string | null, view_count?: number | null, media_urls?: string[] | null, media?: XTweetMediaItem[] | null }} XTweetEmbedPreview */
 
 /** @typedef {{ url?: string, embed_kind?: string | null, x_tweet?: XTweetEmbedPreview | null }} XTweetPreviewLike */
 
@@ -12,6 +14,34 @@ export function isXTweetLinkPreview(preview) {
 }
 
 /**
+ * @param {XTweetEmbedPreview | null | undefined} embed
+ * @returns {XTweetMediaItem[]}
+ */
+function resolveMediaItems(embed) {
+  if (Array.isArray(embed?.media) && embed.media.length) {
+    return embed.media
+      .map((item) => {
+        const url = String(item?.url || '').trim()
+        if (!url) return null
+        const typeRaw = String(item?.type || 'photo').toLowerCase()
+        const type = typeRaw === 'video' || typeRaw === 'animated_gif' ? typeRaw : 'photo'
+        return {
+          type,
+          url,
+          poster_url: String(item?.poster_url || '').trim() || null,
+        }
+      })
+      .filter(Boolean)
+      .slice(0, 4)
+  }
+
+  const urls = Array.isArray(embed?.media_urls)
+    ? embed.media_urls.map((url) => String(url || '').trim()).filter(Boolean)
+    : []
+  return urls.slice(0, 4).map((url) => ({ type: 'photo', url, poster_url: null }))
+}
+
+/**
  * @param {XTweetPreviewLike | null | undefined} preview
  * @returns {XTweetEmbedPreview | null}
  */
@@ -20,9 +50,7 @@ export function resolveXTweetEmbed(preview) {
   if (!embed || typeof embed !== 'object') return null
   const text = String(embed.text || '').trim()
   if (!text) return null
-  const media = Array.isArray(embed.media_urls)
-    ? embed.media_urls.map((url) => String(url || '').trim()).filter(Boolean).slice(0, 4)
-    : []
+  const media = resolveMediaItems(embed)
   const viewCount = Number(embed.view_count)
   return {
     id: String(embed.id || '').trim() || null,
@@ -33,7 +61,8 @@ export function resolveXTweetEmbed(preview) {
     author_verified: embed.author_verified === true,
     created_at: String(embed.created_at || '').trim() || null,
     view_count: Number.isFinite(viewCount) && viewCount > 0 ? Math.floor(viewCount) : null,
-    media_urls: media,
+    media_urls: media.map((m) => (m.type === 'photo' ? m.url : m.poster_url || m.url)).filter(Boolean),
+    media,
   }
 }
 

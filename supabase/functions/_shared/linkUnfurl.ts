@@ -49,6 +49,11 @@ export type LinkPreviewPayload = {
     created_at: string | null
     view_count?: number | null
     media_urls: string[]
+    media?: Array<{
+      type: 'photo' | 'video' | 'animated_gif'
+      url: string
+      poster_url?: string | null
+    }>
   } | null
 }
 
@@ -449,10 +454,15 @@ export async function unfurlUrl(
   if (cached?.preview && typeof cached.preview === 'object') {
     const cachedPreview = cached.preview as LinkPreviewPayload
     if (xTweetParsed?.tweetId) {
-      if (cachedPreview.embed_kind === 'x_tweet' && cachedPreview.x_tweet?.text) {
+      // Require typed `media` so older poster-only caches re-fetch for video MP4s.
+      if (
+        cachedPreview.embed_kind === 'x_tweet' &&
+        cachedPreview.x_tweet?.text &&
+        Array.isArray(cachedPreview.x_tweet.media)
+      ) {
         return sanitizePreviewImages(cachedPreview)
       }
-      // Stale generic og cache for an X status URL — refetch tweet embed below.
+      // Stale og / pre-video x_tweet cache for an X status URL ... refetch below.
     } else {
       return sanitizePreviewImages(cachedPreview)
     }

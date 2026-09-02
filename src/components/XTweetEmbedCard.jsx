@@ -34,6 +34,42 @@ function XBrandMark({ className = '' }) {
 }
 
 /**
+ * @param {{ item: { type: string, url: string, poster_url?: string | null }, solo: boolean }} props
+ */
+function XTweetMediaTile({ item, solo }) {
+  const stop = (e) => {
+    e.stopPropagation()
+  }
+
+  if (item.type === 'video' || item.type === 'animated_gif') {
+    return (
+      <video
+        data-lounge-x-tweet-video=""
+        src={item.url}
+        poster={item.poster_url || undefined}
+        controls
+        playsInline
+        preload="metadata"
+        loop={item.type === 'animated_gif'}
+        muted={item.type === 'animated_gif'}
+        className={`w-full bg-black object-contain ${solo ? 'max-h-[28rem]' : 'max-h-56'}`}
+        onClick={stop}
+        onPointerDown={stop}
+      />
+    )
+  }
+
+  return (
+    <img
+      src={item.url}
+      alt=""
+      className={`w-full object-cover ${solo ? 'max-h-80' : 'max-h-56'}`}
+      loading="lazy"
+    />
+  )
+}
+
+/**
  * Native-style X post card for Lounge feed/comments and chat link previews.
  *
  * @param {{
@@ -62,7 +98,7 @@ export default function XTweetEmbedCard({
   const timestampLabel = formatXTweetTimestamp(embed.created_at)
   const viewLabel = formatXTweetViewCount(embed.view_count)
   const metaLine = [timestampLabel, viewLabel].filter(Boolean).join(' · ')
-  const mediaUrls = embed.media_urls || []
+  const mediaItems = embed.media || []
 
   const openExternal = (e) => {
     e?.stopPropagation?.()
@@ -143,13 +179,14 @@ export default function XTweetEmbedCard({
           <LinkifiedText text={embed.text} linkClassName="text-[#1d9bf0] underline-offset-2 hover:underline" />
         </div>
 
-        {mediaUrls.length ? (
+        {mediaItems.length ? (
           <div
-            className={`mt-3 overflow-hidden rounded-xl border border-zinc-800/80 ${mediaUrls.length > 1 ? 'grid grid-cols-2 gap-0.5' : ''}`}
+            className={`mt-3 overflow-hidden rounded-xl border border-zinc-800/80 ${mediaItems.length > 1 ? 'grid grid-cols-2 gap-0.5' : ''}`}
             onPointerDown={stop}
+            onClick={stop}
           >
-            {mediaUrls.map((url) => (
-              <img key={url} src={url} alt="" className="max-h-80 w-full object-cover" loading="lazy" />
+            {mediaItems.map((item) => (
+              <XTweetMediaTile key={`${item.type}:${item.url}`} item={item} solo={mediaItems.length === 1} />
             ))}
           </div>
         ) : null}
@@ -185,6 +222,10 @@ export default function XTweetEmbedCard({
       className="mt-2 cursor-pointer touch-manipulation [-webkit-tap-highlight-color:transparent]"
       aria-label={`X post by ${displayName}`}
       onClick={(e) => {
+        if (e.target instanceof Element && e.target.closest('[data-lounge-x-tweet-video], video, a')) {
+          stop(e)
+          return
+        }
         stop(e)
         openExternal(e)
       }}

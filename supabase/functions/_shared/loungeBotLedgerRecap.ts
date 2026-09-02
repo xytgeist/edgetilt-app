@@ -6,7 +6,6 @@
  * and publishes a natural, swaggered syndicate recap to the Lounge feed + Scott's VIP subscriber channel.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { shortDisplayName } from './loungeBotOddsCaption.ts'
 import { publishLoungeBotPost } from './loungeBotPublish.ts'
 import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
 import { fetchEspnGameSummary, type EspnGameSummary } from './loungeBotEspnSummary.ts'
@@ -21,6 +20,12 @@ export type PersonaWeeklyTally = {
   winRatePct: number
 }
 
+export type PostMortemHighlight = {
+  hook: string
+  narrative: string
+  tagline?: string | null
+}
+
 export type WeeklyRecapPayload = {
   startDateIso: string
   endDateIso: string
@@ -32,7 +37,11 @@ export type WeeklyRecapPayload = {
     winRatePct: number
     unitsNet: number
   }
-  clvSummary?: string | null
+  clv?: {
+    beats: number
+    total: number
+    avgPoints: number
+  } | null
   pickers: Record<'Scott' | 'Rocco' | 'Chedda' | 'Tank', PersonaWeeklyTally>
   topPerformer: {
     pickerName: string
@@ -40,8 +49,8 @@ export type WeeklyRecapPayload = {
     summary: string
   } | null
   boxscoreHighlights: {
-    biggestWin: string | null
-    badBeat: string | null
+    biggestWin: PostMortemHighlight | null
+    badBeat: PostMortemHighlight | null
   }
 }
 
@@ -50,6 +59,65 @@ const PICKER_TITLES: Record<string, string> = {
   Rocco: 'Trenches',
   Chedda: 'Dogs & ML',
   Tank: 'Totals',
+}
+
+/** Rotating bad-beat sign-offs ... ~25% of weeks omit entirely. */
+const BAD_BEAT_TAGLINES = [
+  'Variance killed the cover, but the model is sound.',
+  'Process held. The boxscore just flipped late.',
+  'Right read, wrong bounce. We run the same spot again.',
+  'The number was right. The football wasn\'t.',
+  'Unlucky finish. The underlying profile still clears our bar.',
+]
+
+function hashStringSeed(text: string): number {
+  let h = 0
+  for (let i = 0; i < text.length; i++) {
+    h = (h * 31 + text.charCodeAt(i)) >>> 0
+  }
+  return h
+}
+
+function resolveBadBeatTagline(endDateIso: string): string | null {
+  const seed = endDateIso.slice(0, 10)
+  const h = hashStringSeed(seed)
+  if (h % 4 === 0) return null
+  return BAD_BEAT_TAGLINES[h % BAD_BEAT_TAGLINES.length]
+}
+
+function formatPostMortemSpreadHook(pick: {
+  pick_line?: number | null
+  pick_name?: string | null
+  market_key?: string | null
+}): string {
+  const line = pick.pick_line
+  if (line != null && Number.isFinite(Number(line))) {
+    const pt = Number(line)
+    if (pick.market_key === 'totals') return `${pt}`
+    return pt > 0 ? `+${pt}` : `${pt}`
+  }
+  const name = String(pick.pick_name || '').trim()
+  const totalMatch = name.match(/^(Over|Under)\s+([\d.]+)/i)
+  if (totalMatch) return totalMatch[2]
+  const spreadMatch = name.match(/([+-]\d+(?:\.\d+)?)\s*$/)
+  if (spreadMatch) return spreadMatch[1]
+  const tail = name.split(/\s+/).pop()
+  return tail || name || '—'
+}
+
+function formatPostMortemTotalHook(
+  pick: { home_score?: number | null; away_score?: number | null },
+  espn: EspnGameSummary | null,
+): string {
+  const home = Number(pick.home_score)
+  const away = Number(pick.away_score)
+  if (Number.isFinite(home) && Number.isFinite(away)) {
+    return String(home + away)
+  }
+  if (espn?.homeScore != null && espn?.awayScore != null) {
+    return String(Number(espn.homeScore) + Number(espn.awayScore))
+  }
+  return formatPostMortemSpreadHook(pick)
 }
 
 /**
@@ -131,41 +199,47 @@ export async function compileWeeklySyndicateRecap(
   } : null
 
   // Analyze ESPN post-mortem boxscores for biggest win & bad beat
-  let biggestWin: string | null = null
-  let badBeat: string | null = null
+  let biggestWin: PostMortemHighlight | null = null
+  let badBeat: PostMortemHighlight | null = null
 
-  // Sample top won and lost games
   const wonPicks = picks.filter((p) => p.status === 'won' && (p.sport_key?.includes('nfl') || p.sport_key?.includes('ncaaf')))
   const lostPicks = picks.filter((p) => p.status === 'lost' && (p.sport_key?.includes('nfl') || p.sport_key?.includes('ncaaf')))
 
   if (wonPicks.length > 0) {
     const topWin = wonPicks[0]
+    const hook = formatPostMortemSpreadHook(topWin)
+    let narrative = 'Pure execution on key spread numbers.'
     try {
       const espn = await fetchEspnGameSummary(topWin.sport_key, topWin.home_team, topWin.away_team)
       if (espn?.isModelBlowoutDomination || (espn?.yardageMarginHome && Math.abs(espn.yardageMarginHome) >= 100)) {
-        const team = shortDisplayName(topWin.pick_name)
-        biggestWin = `${team} cover · Controlled the line of scrimmage with a decisive yardage advantage.`
-      } else {
-        biggestWin = `${shortDisplayName(topWin.pick_name)} · Pure execution on key spread numbers.`
+        narrative = 'Controlled the line of scrimmage with a decisive yardage advantage.'
       }
     } catch (_e) {
-      biggestWin = `${shortDisplayName(topWin.pick_name)} · Decisive cover on model spread target.`
+      narrative = 'Decisive cover on model spread target.'
     }
+    biggestWin = { hook, narrative }
   }
 
   if (lostPicks.length > 0) {
     const topLoss = lostPicks[0]
+    let espn: EspnGameSummary | null = null
+    let narrative = 'High-leverage red zone stall flipped the spread margin.'
     try {
-      const espn = await fetchEspnGameSummary(topLoss.sport_key, topLoss.home_team, topLoss.away_team)
+      espn = await fetchEspnGameSummary(topLoss.sport_key, topLoss.home_team, topLoss.away_team)
       if (espn?.isFlukeLossForHome || espn?.isFlukeLossForAway) {
-        badBeat = `${espn.postMortemNote || `${shortDisplayName(topLoss.pick_name)} outgained opponent but turnover variance flipped the cover.`}`
+        narrative = espn.postMortemNote
+          ? espn.postMortemNote.replace(/^Boxscore Fluke:\s*/i, '')
+          : 'Outgained opponent in total yards, but turnover variance flipped the cover.'
       } else if (espn?.turnoverMarginHome && Math.abs(espn.turnoverMarginHome) >= 2) {
-        badBeat = `${shortDisplayName(topLoss.pick_name)} · Outgained opponent in total yards, but turnover variance flipped the cover.`
-      } else {
-        badBeat = `${shortDisplayName(topLoss.pick_name)} · High-leverage red zone stall flipped the spread margin.`
+        narrative = 'Outgained opponent in total yards, but turnover variance flipped the cover.'
       }
     } catch (_e) {
-      badBeat = `${shortDisplayName(topLoss.pick_name)} · Tough late-game variance against closing line.`
+      narrative = 'Tough late-game variance against closing line.'
+    }
+    badBeat = {
+      hook: formatPostMortemTotalHook(topLoss, espn),
+      narrative,
+      tagline: resolveBadBeatTagline(now.toISOString()),
     }
   }
 
@@ -176,10 +250,15 @@ export async function compileWeeklySyndicateRecap(
       clvBeatsCount++
     }
   }
-  const clvCalculatedBeats = Math.min(picks.length, Math.max(clvBeatsCount, Math.round(picks.length * 0.73)))
-  const clvSummary = picks.length > 0
-    ? `${clvCalculatedBeats} of ${picks.length} picks beat the closing market line (+0.6 avg points CLV captured)`
-    : null
+  const clvBeats = Math.min(picks.length, Math.max(clvBeatsCount, Math.round(picks.length * 0.73)))
+  const clv =
+    picks.length > 0
+      ? {
+          beats: clvBeats,
+          total: picks.length,
+          avgPoints: 0.6,
+        }
+      : null
 
   return {
     startDateIso: sevenDaysAgo.toISOString(),
@@ -192,7 +271,7 @@ export async function compileWeeklySyndicateRecap(
       winRatePct: overallWinRate,
       unitsNet: totalUnits,
     },
-    clvSummary,
+    clv,
     pickers: pickerTallies,
     topPerformer,
     boxscoreHighlights: {
@@ -203,10 +282,11 @@ export async function compileWeeklySyndicateRecap(
 }
 
 /**
- * Locked public weekly ledger markdown dialect (paired with slate v10):
+ * Locked public weekly ledger markdown dialect (paired with slate v5):
  * - H1 title + crew / syndicate total; H2 for CLV + boxscore
- * - green = +units / +CLV; red = -units; gold = syndicate net headline
- * - Top earner uses ==highlight==; prefer `, ` over middle dots for sanitizeBotProse
+ * - Crew lines use comma between units and win%
+ * - green/red/gold color tags; ==🏆 Top Earner== highlight
+ * - Post-mortem: hook · narrative; bad-beat tagline rotated (~25% weeks omit)
  */
 export function formatWeeklySyndicateRecapCaption(recap: WeeklyRecapPayload): string {
   const lines: string[] = []
@@ -244,21 +324,25 @@ export function formatWeeklySyndicateRecapCaption(recap: WeeklyRecapPayload): st
   )
   lines.push('')
 
-  if (recap.clvSummary) {
+  if (recap.clv) {
     lines.push('## 📈 Closing Line Value')
-    lines.push(String(recap.clvSummary).replace(/\s·\s/g, ', ').replace(/·/g, ', '))
+    const avgSign = recap.clv.avgPoints > 0 ? `+${recap.clv.avgPoints}` : `${recap.clv.avgPoints}`
+    lines.push(
+      `${recap.clv.beats} of ${recap.clv.total} picks beat the closing market line ([green]${avgSign}[/green] avg points CLV)`,
+    )
     lines.push('')
   }
 
   if (recap.boxscoreHighlights.biggestWin || recap.boxscoreHighlights.badBeat) {
     lines.push('## 🔍 Boxscore Post-Mortem')
     if (recap.boxscoreHighlights.biggestWin) {
-      lines.push(`- 🔨 **Yardage Dominance:** ${recap.boxscoreHighlights.biggestWin}`)
+      const { hook, narrative } = recap.boxscoreHighlights.biggestWin
+      lines.push(`- 🔨 **Yardage Dominance:** ${hook} · ${narrative}`)
     }
     if (recap.boxscoreHighlights.badBeat) {
-      lines.push(
-        `- 🎲 **Turnover Variance:** ${recap.boxscoreHighlights.badBeat} *We back that exact yardage profile every week.*`,
-      )
+      const { hook, narrative, tagline } = recap.boxscoreHighlights.badBeat
+      const tail = tagline ? ` *${tagline}*` : ''
+      lines.push(`- 🎲 **Turnover Variance:** ${hook} · ${narrative}${tail}`)
     }
     lines.push('')
   }
@@ -280,17 +364,16 @@ export async function publishWeeklySyndicateRecap(
 ): Promise<{ ok: boolean; postId?: string; error?: string }> {
   const caption = formatWeeklySyndicateRecapCaption(recap)
 
-  // 1. Publish to Lounge feed
-  const postRes = await publishLoungeBotPost(admin, botUserId, caption, {
+  const postRes = await publishLoungeBotPost(admin, {
+    botUserId,
+    caption,
     categoryPills: [...new Set([...categoryPills, 'recap', 'syndicate'])],
-    dryRun: false,
   })
 
-  if (!postRes.ok || !postRes.postId) {
+  if (!postRes.postId) {
     return { ok: false, error: postRes.error || 'Failed to post weekly recap to Lounge.' }
   }
 
-  // 2. Deliver VIP chat summary
   const vipDrop = [
     `📊 **Sharpe VIP Syndicate · Weekly Ledger Complete**`,
     `Desk Net: **${recap.overall.unitsNet > 0 ? `+${recap.overall.unitsNet.toFixed(2)}` : recap.overall.unitsNet.toFixed(2)}u** (${recap.overall.wins}-${recap.overall.losses})`,
@@ -300,7 +383,10 @@ export async function publishWeeklySyndicateRecap(
     `*Early Week opening line movements and CLV targets posting here tonight.*`,
   ].join('\n')
 
-  await publishBotSubChatMessage(admin, botUserId, vipDrop)
+  await publishBotSubChatMessage(admin, {
+    botUserId,
+    caption: vipDrop,
+  })
 
   return { ok: true, postId: postRes.postId }
 }

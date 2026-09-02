@@ -66,7 +66,14 @@ export function splitWireSentences(text: string): string[] {
 
 function isMarkdownDialectCaption(text: string): boolean {
   const t = String(text || '').trim()
-  return /^#\s/m.test(t) && (/\[gold\]/.test(t) || /# 🔥/.test(t) || /# 🎯/.test(t))
+  return (
+    /^#\s/m.test(t) &&
+    (/\[gold\]/.test(t) ||
+      /\[green\]/.test(t) ||
+      /# 🔥/.test(t) ||
+      /# 🎯/.test(t) ||
+      /# 📊/.test(t))
+  )
 }
 
 function sanitizeWireProseLine(text: string, opts?: { preserveMiddleDots?: boolean }): string {

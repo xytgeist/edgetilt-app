@@ -799,7 +799,11 @@ Use **`npm run db:query:production`** / **`db:query:test`** — not parallel raw
 ### Weekly ledger (`formatWeeklySyndicateRecapCaption`)
 
 - H1 title / crew / syndicate total; H2 for CLV + boxscore
-- green = +units; red = −units; gold = syndicate net headline; `==🏆 Top Earner==` highlight
+- Crew lines: comma between units and win% (`+1.03u, 55.6%`)
+- green/red/gold color tags; `==🏆 Top Earner==` on top desk
+- CLV: `[green]+0.6[/green] avg points CLV`
+- Post-mortem: `{hook} · {narrative}` (spread line or total points first)
+- Bad-beat tagline: rotating pool (includes *Variance killed the cover, but the model is sound.*); omitted ~25% of weeks
 
 ---
 

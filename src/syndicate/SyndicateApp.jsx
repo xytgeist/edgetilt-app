@@ -80,7 +80,10 @@ function fakeModelPlaceholders(teamName, consensus, rankIdx) {
 
 function BlurredModelTease({ value }) {
   return (
-    <span className="syndicate-model-tease" aria-hidden="true">
+    <span
+      className="syndicate-model-tease inline-block min-w-[2.75rem] select-none pointer-events-none text-zinc-400 tracking-wide blur-[7px]"
+      aria-hidden="true"
+    >
       {value}
     </span>
   )

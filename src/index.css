@@ -11253,22 +11253,6 @@ html.light [data-lounge-tribe-max-alert] button:hover {
   background-color: #e4e4e7 !important;
 }
 
-/* Syndicate public CFB: blurred fake model-stack tease (not live voter ratings) */
-[data-syndicate] .syndicate-model-tease {
-  display: inline-block;
-  min-width: 2.75rem;
-  filter: blur(5px);
-  user-select: none;
-  -webkit-user-select: none;
-  pointer-events: none;
-  color: #a1a1aa;
-  letter-spacing: 0.02em;
-}
-
-html.light [data-syndicate] .syndicate-model-tease {
-  color: #71717a;
-}
-
 
 
 

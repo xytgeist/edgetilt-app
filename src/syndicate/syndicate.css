@@ -37,3 +37,11 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #3f3f46;
 }
+
+/* Public CFB model-stack tease: fake digits, intentionally unreadable */
+.syndicate-model-tease {
+  filter: blur(7px);
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+}

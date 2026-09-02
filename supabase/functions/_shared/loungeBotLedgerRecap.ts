@@ -225,36 +225,36 @@ function buildWinPostMortemThesis(pick: LedgerPickRow, espn: EspnGameSummary | n
         const maxWinTotal = isHalf ? Math.floor(line) : line - 1
         const cushion = maxWinTotal - total
         if (cushion > 0) {
-          return `Cleared the under by ${formatPointsPhrase(cushion)} points.`
+          return `Cleared the under by ${formatPointsPhrase(cushion)}.`
         }
       } else {
         const minWinTotal = isHalf ? Math.ceil(line) : line + 1
         const cushion = total - minWinTotal
         if (cushion > 0) {
-          return `Cleared the over by ${formatPointsPhrase(cushion)} points.`
+          return `Cleared the over by ${formatPointsPhrase(cushion)}.`
         }
         if (cushion === 0) {
-          return 'Closed right on the over number.'
+          return 'Closed right on the over.'
         }
       }
     }
-    return 'Closing total cleared with room to spare.'
+    return 'Total cleared with room.'
   }
   if (espn?.isModelBlowoutDomination) {
-    return 'Controlled the line of scrimmage with a decisive yardage advantage.'
+    return 'Controlled the trenches all game.'
   }
   if (espn?.yardageMarginHome != null && Math.abs(espn.yardageMarginHome) >= 75) {
-    return 'Yardage dominance backed up the spread cover.'
+    return 'Yardage edge backed the cover.'
   }
   if (pick.market_key === 'spreads') {
-    return 'Pure execution on key spread numbers.'
+    return 'Pure execution on the number.'
   }
-  return 'Clean cover on the number.'
+  return 'Clean cover.'
 }
 
 function buildLossPostMortemThesis(pick: LedgerPickRow, espn: EspnGameSummary | null): string {
   if (espn?.isFlukeLossForHome || espn?.isFlukeLossForAway) {
-    return 'Outgained opponent in total yards, but turnover variance flipped the cover.'
+    return 'Outgained them, but turnovers flipped the cover.'
   }
   if (pick.market_key === 'totals') {
     const away = Number(pick.away_score)
@@ -265,16 +265,16 @@ function buildLossPostMortemThesis(pick: LedgerPickRow, espn: EspnGameSummary | 
       if (miss != null && miss > 0) {
         const isUnder = /under/i.test(String(pick.pick_name || ''))
         return isUnder
-          ? `Missed the under by ${formatPointsPhrase(miss)} points.`
-          : `Missed the over by ${formatPointsPhrase(miss)} points.`
+          ? `Missed the under by ${formatPointsPhrase(miss)}.`
+          : `Missed the over by ${formatPointsPhrase(miss)}.`
       }
     }
-    return 'Late scoring variance pushed the total past the number.'
+    return 'Late scoring blew past the number.'
   }
   if (espn?.turnoverMarginHome != null && Math.abs(espn.turnoverMarginHome) >= 2) {
-    return 'Outgained opponent in total yards, but turnover variance flipped the cover.'
+    return 'Outgained them, but lost the turnover battle.'
   }
-  return 'High-leverage red zone stall flipped the spread margin.'
+  return 'Red zone stall flipped the cover.'
 }
 
 function buildWinPostMortemNarrative(pick: LedgerPickRow, espn: EspnGameSummary | null): string {

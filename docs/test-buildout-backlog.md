@@ -1069,6 +1069,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-09-02: **CFB weekly runbook (internal):** `docs/syndicate-cfb-weekly-runbook.md` … real data inventory, desk input rules (anti correlated-noise), hammer ≥2 distinct reasons, publish hammers+consensus only, build order (market file → Tank totals → QB mod → scoreboard). Blend weights stay private.
+
 - 2026-09-02: **CFB Phase 1 consensus blend (Windows):** `power_rating` = 40% SP+ · 25% FPI · 25% Sagarin Predictor · 10% score Elo (centered points-vs-avg). Columns `sp_rating` / `fpi_rating` / `sagarin_rating`. Public CFB table shows Consensus + components. Migration `20260902180000` on test+prod. Resynced both.
 
 - 2026-09-02: **CFB FPI/SP+ rewire (Windows):** `cfb_team_power_ratings` now pulls CFBD **FPI** (`power_rating`) + **SP+** off/def, light Elo results blend, prior-year tempo until current advanced covers FBS, dampened HFA. Resynced **test + prod**. Desk map: Scott=FPI vs market · Rocco=SP+/EPA · Chedda=splits/dogs · Tank=tempo→modelTotal. Docs: `docs/lounge-bot-sports-odds.md`. Redeploy `lounge-odds-poll` after pull.

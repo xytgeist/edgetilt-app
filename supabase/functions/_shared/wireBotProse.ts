@@ -64,7 +64,12 @@ export function splitWireSentences(text: string): string[] {
   return parts.map((part) => unmaskSentenceSplitDots(part).trim()).filter(Boolean)
 }
 
-function sanitizeWireProseLine(text: string): string {
+function isMarkdownDialectCaption(text: string): boolean {
+  const t = String(text || '').trim()
+  return /^#\s/m.test(t) && (/\[gold\]/.test(t) || /# 🔥/.test(t) || /# 🎯/.test(t))
+}
+
+function sanitizeWireProseLine(text: string, opts?: { preserveMiddleDots?: boolean }): string {
   let s = String(text || '')
 
   // Numeric ranges: 2024–2026, $955–968 → hyphen without spaces
@@ -73,8 +78,10 @@ function sanitizeWireProseLine(text: string): string {
   // Prose breaks → ellipses (Scott + wire bots; never em/en dash or middle dot)
   s = s.replace(/\s*[\u2014\u2013]\s*/g, PROSE_BREAK)
   s = s.replace(/\s--\s/g, PROSE_BREAK)
-  s = s.replace(/\s·\s/g, PROSE_BREAK)
-  s = s.replace(/·/g, PROSE_BREAK)
+  if (!opts?.preserveMiddleDots) {
+    s = s.replace(/\s·\s/g, PROSE_BREAK)
+    s = s.replace(/·/g, PROSE_BREAK)
+  }
 
   return s
     .replace(/(?: \.\.\. ){2,}/g, PROSE_BREAK)
@@ -98,7 +105,17 @@ export function cleanWireFeedExcerpt(text: string): string {
 /** Sanitize one line or multi-paragraph caption (preserves blank lines between headline + synopsis). */
 export function sanitizeWireProse(text: string): string {
   const raw = String(text || '')
-  if (!raw.includes('\n')) return sanitizeWireProseLine(raw)
+  const preserveMiddleDots = isMarkdownDialectCaption(raw)
+
+  if (!raw.includes('\n')) return sanitizeWireProseLine(raw, { preserveMiddleDots })
+
+  if (preserveMiddleDots) {
+    return raw
+      .split('\n')
+      .map((line) => (line.trim() ? sanitizeWireProseLine(line, { preserveMiddleDots: true }) : line))
+      .join('\n')
+      .trim()
+  }
 
   return raw
     .split(/\n\n+/)

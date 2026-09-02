@@ -187,12 +187,12 @@ export const PUBLIC_SLATE_CONSENSUS_CAP = 2
 export const PUBLIC_SLATE_HOUSE_DIVIDED_CAP = 3
 
 /**
- * Locked public slate markdown dialect (v10):
- * - H1 title + optional week line; H1 section headers (Hammers / Consensus / House Divided)
- * - Hammers + consensus picks: gold color tags; house divided: bold only
- * - One bullet per hammer/consensus; one row per house-divided game (both sides)
- * - Caps: 1 / 2 / 3; no desk names on public tease
- * - Prefer `, ` over middle dots (·) so sanitizeBotProse does not rewrite separators
+ * Locked public slate markdown dialect (v5):
+ * - H1 title + week line; H1 section headers (Hammers / Consensus / House Divided)
+ * - Hammers + consensus + house-divided sides: **[gold]{pick}[/gold]**
+ * - Game meta: ({away}/{home} · {when}); desk names on consensus + house divided only (not hammers)
+ * - House divided: one bullet per side (gold), not "vs" on one row
+ * - Caps: 1 / 2 / 3 games; middle dots preserved via markdown dialect sanitize
  */
 function formatSlateWeekSubtitle(games: SlateGamePick[]): string | null {
   const times = games
@@ -210,6 +210,48 @@ function formatSlateWeekSubtitle(games: SlateGamePick[]): string | null {
   return start === end ? start : `${start}-${end}`
 }
 
+/** Rough NFL/CFB slate week label from earliest kickoff (display only). */
+function estimateSlateWeekNumber(ms: number): number | null {
+  const d = new Date(ms)
+  const month = d.getUTCMonth()
+  if (month < 7 || month > 11) return null
+  const seasonAnchor = Date.UTC(d.getUTCFullYear(), 8, 1)
+  if (ms < seasonAnchor) return null
+  const week = Math.floor((ms - seasonAnchor) / (7 * 24 * 60 * 60 * 1000)) + 1
+  return Math.min(Math.max(week, 1), 18)
+}
+
+function formatSlateWeekLine(games: SlateGamePick[]): string | null {
+  const range = formatSlateWeekSubtitle(games)
+  if (!range) return null
+  const earliest = games
+    .map((g) => Date.parse(String(g.commenceTime || '')))
+    .filter((t) => Number.isFinite(t))
+    .sort((a, b) => a - b)[0]
+  const weekNum = earliest != null ? estimateSlateWeekNumber(earliest) : null
+  return weekNum ? `Week ${weekNum} · ${range}` : range
+}
+
+function formatSlateGameMeta(g: SlateGamePick): string {
+  const away = shortDisplayName(g.awayTeam)
+  const home = shortDisplayName(g.homeTeam)
+  const when = formatOddsCommenceTimeShort(g.commenceTime)
+  return `(${away}/${home} · ${when})`
+}
+
+function pickersForLineDisplay(g: SlateGamePick, lineDisplay: string): SharpPicker[] {
+  return SHARP_PICKERS.filter((p) => g.pickerPicks[p].lineDisplay === lineDisplay)
+}
+
+function formatSlatePickBullet(
+  g: SlateGamePick,
+  lineDisplay: string,
+  pickers?: SharpPicker[],
+): string {
+  const desks = pickers?.length ? ` · ${pickers.join(', ')}` : ''
+  return `- **[gold]${lineDisplay}[/gold]** ${formatSlateGameMeta(g)}${desks}`
+}
+
 /**
  * Format an NFL / Football Slate Card caption for the Lounge feed.
  * Public tease only: max 1 hammer, 2 consensus, 3 house-divided games (one row each).
@@ -221,17 +263,14 @@ export function formatNflSlateCardCaption(card: NflSlateCard): string {
 
   const title = card.cardTitle || '🏈 NFL Sharpe Syndicate Slate'
   const lines: string[] = [`# ${title}`]
-  const weekLine = formatSlateWeekSubtitle(card.games)
+  const weekLine = formatSlateWeekLine(card.games)
   if (weekLine) lines.push(weekLine)
   lines.push('')
 
   if (hammers.length > 0) {
     lines.push('# 🔥 Unanimous 4-0 Hammers')
     for (const g of hammers) {
-      const away = shortDisplayName(g.awayTeam)
-      const home = shortDisplayName(g.homeTeam)
-      const when = formatOddsCommenceTimeShort(g.commenceTime)
-      lines.push(`- **[gold]${g.consensusPick.lineDisplay}[/gold]** (${away}/${home}, ${when})`)
+      lines.push(formatSlatePickBullet(g, g.consensusPick.lineDisplay))
     }
     lines.push('')
   }
@@ -239,10 +278,8 @@ export function formatNflSlateCardCaption(card: NflSlateCard): string {
   if (consensus.length > 0) {
     lines.push('# 🎯 3-1 Consensus')
     for (const g of consensus) {
-      const away = shortDisplayName(g.awayTeam)
-      const home = shortDisplayName(g.homeTeam)
-      const when = formatOddsCommenceTimeShort(g.commenceTime)
-      lines.push(`- **[gold]${g.consensusPick.lineDisplay}[/gold]** (${away}/${home}, ${when})`)
+      const pickers = pickersForLineDisplay(g, g.consensusPick.lineDisplay)
+      lines.push(formatSlatePickBullet(g, g.consensusPick.lineDisplay, pickers))
     }
     lines.push('')
   }
@@ -250,14 +287,16 @@ export function formatNflSlateCardCaption(card: NflSlateCard): string {
   if (splits.length > 0) {
     lines.push('# ⚔️ House Divided (2-2)')
     for (const g of splits) {
-      const away = shortDisplayName(g.awayTeam)
-      const home = shortDisplayName(g.homeTeam)
-      const when = formatOddsCommenceTimeShort(g.commenceTime)
-      const homePicker = SHARP_PICKERS.find((p) => g.pickerPicks[p].side === 'home')
-      const awayPicker = SHARP_PICKERS.find((p) => g.pickerPicks[p].side === 'away')
-      const homeLine = homePicker ? g.pickerPicks[homePicker].lineDisplay : shortDisplayName(g.homeTeam)
-      const awayLine = awayPicker ? g.pickerPicks[awayPicker].lineDisplay : shortDisplayName(g.awayTeam)
-      lines.push(`- **${awayLine}** vs **${homeLine}** (${away}/${home}, ${when})`)
+      const byLine = new Map<string, SharpPicker[]>()
+      for (const p of SHARP_PICKERS) {
+        const lineDisplay = g.pickerPicks[p].lineDisplay
+        const group = byLine.get(lineDisplay) || []
+        group.push(p)
+        byLine.set(lineDisplay, group)
+      }
+      for (const [lineDisplay, pickers] of byLine) {
+        lines.push(formatSlatePickBullet(g, lineDisplay, pickers))
+      }
     }
     lines.push('')
   }

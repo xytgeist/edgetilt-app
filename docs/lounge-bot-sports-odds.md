@@ -791,10 +791,10 @@ Use **`npm run db:query:production`** / **`db:query:test`** — not parallel raw
 ### Public slate teaser (`formatNflSlateCardCaption`)
 
 - Caps: **1** hammer, **2** consensus, **3** house-divided games (VIP still gets full desk cards)
-- H1 title + week date line; H1 section headers with emojis
-- Hammers / consensus lines: `- **[gold]{pick}[/gold]** ({away}/{home}, {when})`
-- House divided: one row per game, **bold only** (no color): `- **{awayLine}** vs **{homeLine}** ({away}/{home}, {when})`
-- No desk names on the public tease
+- H1 title + `Week N · Sep 10-15` line; H1 section headers with emojis
+- Pick line: `- **[gold]{pick}[/gold]** ({away}/{home} · {when})` plus ` · Scott, Rocco` on **consensus** and **house divided** only (not hammers ... unanimous implies all four)
+- House divided: one gold bullet per side, desk names on each
+- Markdown dialect captions preserve middle dots (`·`) through publish sanitize
 
 ### Weekly ledger (`formatWeeklySyndicateRecapCaption`)
 

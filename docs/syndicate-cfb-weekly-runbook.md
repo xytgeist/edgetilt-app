@@ -134,21 +134,25 @@ Run desk scoring **independently**. Preferred publish set:
 
 - Votes: HOME / AWAY / NO PLAY (automation today is mostly forced side … treat weak scores as soft NO PLAY in human review until code supports it)
 - Conviction 1–3 when reviewing by hand
-- One sentence reason tied to **that desk’s inputs**
-
-**Hammer rule:** a Hammer requires **≥ 2 distinct reasons**, not four copies of the same gap.  
-Example that counts: Scott gap + Rocco short-fav strength.  
-Example that does **not**: Scott gap + Rocco “also gap” + Chedda “also gap” + Tank “also gap.”
+- One sentence reason tied to **that desk’s inputs** (not an essay)
 
 ### Fri … the lock
 
-Buckets:
+**Locked definitions (clarified):**
 
-- **Hammer** … 4–0 with ≥2 distinct reasons → primary publish  
-- **Consensus** … 3–1 → publish if we’d bet it  
-- **Divided** … 2–2 → **pass or tiny look**, do not force a united card  
+| Label | Meaning |
+|-------|---------|
+| **Hammer** | **Alignment + independence.** Usually 4–0 on a side, but only if there are **≥2 distinct input reasons** pointing the same way (e.g. Scott gap + Rocco off/def, or Scott gap + Chedda dog/split). If Scott/Rocco/Chedda are all just reading the same `isValuePlay` flag, that is **one** reason … do **not** brand it a Hammer. |
+| **Consensus** | **3–1.** Publish if we’d bet it. A strong Scott gap can sit here when other desks agree for *their own* reasons. |
+| **Divided** | **2–2.** Pass or small look. Do **not** force a fake united play. |
 
 Publish **Hammers + Consensus only** on the public/VIP slate unless Ryan overrides.
+
+**Not what this means:**
+
+- Not “every Hammer needs two essays”
+- Not “ban all 4–0s” … 4–0 is fine when desks used different features
+- Not “you can’t publish a single-desk Scott lean” as a Scott play or as part of a real 3–1
 
 ### Sun–Mon … grade
 
@@ -171,7 +175,7 @@ After ~6–8 weeks: if Hammers do not beat Consensus, the desks are correlated n
 5. **QB/injury = post-board modifier**, not a secret reweight of SP+/FPI.  
 6. **Totals ≠ power.** Use off/def + tempo (+ weather/rest).  
 7. **Don’t publish Divided as confidence.** Disagreement is data.  
-8. **Don’t touch Phase 1 blend weights** during weekly ops. Change weights only after a graded sample + explicit Ryan call.
+8. **Don’t touch Phase 1 blend weights mid-slate.** Freeze the recipe while picking (ops rule, not forever). Retune only on a fixed schedule after a graded sample + explicit Ryan call.
 
 ---
 
@@ -208,11 +212,12 @@ Off/def remain SP+ units. Tempo/HFA are separate.
 - [ ] Note Sagarin ok / missing  
 - [ ] Price weekend slate (model vs current market)  
 - [ ] List ≥2.5 gap games  
-- [ ] Run four-desk votes; mark distinct reasons  
+- [ ] Run four-desk votes; note each desk’s *own* input reason  
+- [ ] Label Hammer only if alignment **and** ≥2 distinct input reasons  
 - [ ] Publish Hammers + Consensus only  
 - [ ] Skip Divided (or label as look, not lock)  
 - [ ] Log model / market / votes (close when available)  
 - [ ] After games: ATS (+ CLV if close exists)  
-- [ ] **Do not** change blend weights  
+- [ ] **Do not** change blend weights mid-slate  
 
 When in doubt: **pass**. A missed game is cheaper than a fake hammer.

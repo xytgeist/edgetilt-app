@@ -1769,13 +1769,20 @@ html.light [data-lounge-youtube-embed] [data-lounge-youtube-embed-footer] .text-
   color: #52525b !important;
 }
 
-/* Lounge X tweet embed - light-mode shell + footer (feed + chat). */
+/* Lounge X tweet embed - light-mode framed card (native X post layout). */
 html.light [data-lounge-x-tweet-embed] {
-  border-color: rgba(228, 228, 231, 0.95);
+  background-color: #ffffff !important;
+  border-color: rgba(207, 217, 222, 0.95) !important;
 }
-html.light [data-lounge-x-tweet-embed] [data-lounge-x-tweet-embed-footer] {
-  border-top-color: rgba(228, 228, 231, 0.95);
-  color: #71717a !important;
+html.light [data-lounge-x-tweet-embed] [data-lounge-x-tweet-name] {
+  color: #0f1419 !important;
+}
+html.light [data-lounge-x-tweet-embed] [data-lounge-x-tweet-handle],
+html.light [data-lounge-x-tweet-embed] [data-lounge-x-tweet-meta] {
+  color: #536471 !important;
+}
+html.light [data-lounge-x-tweet-embed] [data-lounge-x-tweet-body] {
+  color: #0f1419 !important;
 }
 
 /* display + selected chip tokens → tribe fill */

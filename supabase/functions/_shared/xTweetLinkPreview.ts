@@ -1,4 +1,5 @@
 import { fetchTweetViaOembed } from './loungeBotXTweetFetch.ts'
+import { syndicationTweetResultUrl } from './loungeBotXTweetSyndication.ts'
 import { parseXTweetUrl } from './loungeBotXTweetUrl.ts'
 import type { LinkPreviewPayload } from './linkUnfurl.ts'
 
@@ -8,7 +9,9 @@ export type XTweetEmbedPreview = {
   author_handle: string | null
   author_name: string | null
   author_avatar_url: string | null
+  author_verified: boolean
   created_at: string | null
+  view_count: number | null
   media_urls: string[]
 }
 
@@ -16,6 +19,17 @@ function normalizeAvatarUrl(raw: string): string | null {
   const url = String(raw || '').trim()
   if (!url) return null
   return url.replace('_normal.', '_400x400.').replace('_bigger.', '_400x400.')
+}
+
+function parseViewCount(json: Record<string, unknown>): number | null {
+  const views = json.views
+  if (views && typeof views === 'object') {
+    const count = Number((views as { count?: unknown }).count)
+    if (Number.isFinite(count) && count > 0) return Math.floor(count)
+  }
+  const direct = Number(json.view_count)
+  if (Number.isFinite(direct) && direct > 0) return Math.floor(direct)
+  return null
 }
 
 function mediaUrlsFromSyndication(json: Record<string, unknown>): string[] {
@@ -56,19 +70,21 @@ function mediaUrlsFromSyndication(json: Record<string, unknown>): string[] {
 
 async function fetchTweetEmbedViaSyndication(tweetId: string): Promise<XTweetEmbedPreview | null> {
   if (!tweetId) return null
-  const res = await fetch(
-    `https://cdn.syndication.twimg.com/tweet-result?id=${encodeURIComponent(tweetId)}&lang=en`,
-    { headers: { 'User-Agent': 'EdgeTiltLinkPreview/1.0 (+https://edgetilt.com)' } },
-  )
+  const res = await fetch(syndicationTweetResultUrl(tweetId), {
+    headers: { 'User-Agent': 'EdgeTiltLinkPreview/1.0 (+https://edgetilt.com)' },
+  })
   if (!res.ok) return null
 
   const json = await res.json()
-  const text = String(json?.text || '').trim()
+  if (!json || typeof json !== 'object') return null
+  const record = json as Record<string, unknown>
+  const text = String(record.text || '').trim()
   if (!text) return null
 
-  const user = json?.user && typeof json.user === 'object' ? json.user as Record<string, unknown> : {}
+  const user = record.user && typeof record.user === 'object' ? record.user as Record<string, unknown> : {}
   const authorHandle = String(user.screen_name || user.name || '').trim().toLowerCase()
   const authorName = String(user.name || '').trim() || null
+  const authorVerified = user.is_blue_verified === true || user.verified === true
 
   return {
     id: tweetId,
@@ -76,8 +92,10 @@ async function fetchTweetEmbedViaSyndication(tweetId: string): Promise<XTweetEmb
     author_handle: authorHandle || null,
     author_name: authorName,
     author_avatar_url: normalizeAvatarUrl(String(user.profile_image_url_https || user.profile_image_url || '')),
-    created_at: typeof json?.created_at === 'string' ? json.created_at : null,
-    media_urls: mediaUrlsFromSyndication(json as Record<string, unknown>),
+    author_verified: authorVerified,
+    created_at: typeof record.created_at === 'string' ? record.created_at : null,
+    view_count: parseViewCount(record),
+    media_urls: mediaUrlsFromSyndication(record),
   }
 }
 
@@ -106,7 +124,9 @@ export async function fetchXTweetEmbedData(tweetUrl: string): Promise<XTweetEmbe
     author_handle: fromOembed.authorHandle || parsed.handle || null,
     author_name: authorName,
     author_avatar_url: null,
+    author_verified: false,
     created_at: fromOembed.created_at || null,
+    view_count: null,
     media_urls: [],
   }
 }
@@ -118,16 +138,15 @@ export function buildXTweetLinkPreview(url: string, tweet: XTweetEmbedPreview): 
     : handle
       ? `${handle} on X`
       : 'Post on X'
-  const imageUrl = tweet.media_urls[0] || tweet.author_avatar_url || null
 
   return {
     url,
     title,
     description: tweet.text.slice(0, 500) || null,
-    image_url: imageUrl,
+    image_url: tweet.media_urls[0] || null,
     favicon_url: 'https://abs.twimg.com/favicons/twitter.3.ico',
     site_name: 'X',
-    layout: imageUrl ? 'rich' : 'compact',
+    layout: 'compact',
     lounge_post_id: null,
     accent_color: '#000000',
     embed_kind: 'x_tweet',
@@ -137,7 +156,9 @@ export function buildXTweetLinkPreview(url: string, tweet: XTweetEmbedPreview): 
       author_handle: tweet.author_handle,
       author_name: tweet.author_name,
       author_avatar_url: tweet.author_avatar_url,
+      author_verified: tweet.author_verified,
       created_at: tweet.created_at,
+      view_count: tweet.view_count,
       media_urls: tweet.media_urls,
     },
   }

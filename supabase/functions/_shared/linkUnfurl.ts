@@ -45,7 +45,9 @@ export type LinkPreviewPayload = {
     author_handle: string | null
     author_name: string | null
     author_avatar_url: string | null
+    author_verified?: boolean
     created_at: string | null
+    view_count?: number | null
     media_urls: string[]
   } | null
 }
@@ -437,6 +439,7 @@ export async function unfurlUrl(
   const url = extractFirstUrlFromText(rawUrl) || rawUrl
   if (!url) return null
   const key = normalizeUrlKey(url)
+  const xTweetParsed = parseXTweetUrl(url)
 
   const { data: cached } = await admin
     .from('link_preview_cache')
@@ -444,7 +447,15 @@ export async function unfurlUrl(
     .eq('url_normalized', key)
     .maybeSingle()
   if (cached?.preview && typeof cached.preview === 'object') {
-    return sanitizePreviewImages(cached.preview as LinkPreviewPayload)
+    const cachedPreview = cached.preview as LinkPreviewPayload
+    if (xTweetParsed?.tweetId) {
+      if (cachedPreview.embed_kind === 'x_tweet' && cachedPreview.x_tweet?.text) {
+        return sanitizePreviewImages(cachedPreview)
+      }
+      // Stale generic og cache for an X status URL — refetch tweet embed below.
+    } else {
+      return sanitizePreviewImages(cachedPreview)
+    }
   }
 
   const loungePostId = parseLoungePostId(url)
@@ -460,7 +471,6 @@ export async function unfurlUrl(
     }
   }
 
-  const xTweetParsed = parseXTweetUrl(url)
   if (xTweetParsed?.tweetId) {
     const tweet = await fetchXTweetEmbedData(url)
     if (tweet) {

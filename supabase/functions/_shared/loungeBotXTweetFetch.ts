@@ -1,4 +1,5 @@
 import { readXApiError } from './loungeBotXApi.ts'
+import { syndicationTweetResultUrl } from './loungeBotXTweetSyndication.ts'
 import { canonicalXTweetUrl, parseXTweetUrl } from './loungeBotXTweetUrl.ts'
 
 const X_API = 'https://api.x.com/2'
@@ -140,10 +141,9 @@ export async function fetchTweetViaOembed(tweetUrl: string): Promise<ResolvedTwe
 /** Twitter syndication JSON — no bearer; may break if X changes it. */
 export async function fetchTweetViaSyndication(tweetId: string): Promise<ResolvedTweet | null> {
   if (!tweetId) return null
-  const res = await fetch(
-    `https://cdn.syndication.twimg.com/tweet-result?id=${encodeURIComponent(tweetId)}&lang=en`,
-    { headers: { 'User-Agent': 'EdgeTiltBot/1.0 (+https://edgetilt.com)' } },
-  )
+  const res = await fetch(syndicationTweetResultUrl(tweetId), {
+    headers: { 'User-Agent': 'EdgeTiltBot/1.0 (+https://edgetilt.com)' },
+  })
   if (!res.ok) return null
 
   const json = await res.json()

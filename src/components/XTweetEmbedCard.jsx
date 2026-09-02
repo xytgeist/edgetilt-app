@@ -2,23 +2,39 @@ import { useMemo } from 'react'
 import { LinkifiedText } from '../utils/linkifyText.jsx'
 import {
   CHAT_X_TWEET_EMBED_WIDTH_CLASS,
+  formatXTweetTimestamp,
+  formatXTweetViewCount,
   isXTweetLinkPreview,
   resolveXTweetEmbed,
-  xTweetAgeLabel,
 } from '../utils/xTweetEmbed.js'
-import {
-  LOUNGE_QUOTE_EMBED_AVATAR_CLASS,
-  LOUNGE_QUOTE_EMBED_CAPTION_CLASS,
-  LOUNGE_QUOTE_EMBED_DISPLAY_NAME_CLASS,
-  LOUNGE_QUOTE_EMBED_META_HANDLE_TIME_CLASS,
-  LOUNGE_QUOTE_EMBED_META_ROW_CLASS,
-  LOUNGE_QUOTE_EMBED_SHELL_BASE,
-  LOUNGE_QUOTE_EMBED_SHELL_INTERACTIVE,
-} from '../features/lounge/loungeFeedAvatar.js'
 import { profileAvatarInitials, profileAvatarToneClass } from '../features/profiles/profileGate.js'
 
+function XVerifiedBadge({ className = '' }) {
+  return (
+    <svg
+      viewBox="0 0 22 22"
+      aria-label="Verified account"
+      role="img"
+      className={`h-[1.05em] w-[1.05em] shrink-0 fill-[#1d9bf0] ${className}`}
+    >
+      <path d="M20.396 11c-.018-.646-.215-1.275-.57-1.816-.354-.54-.852-.972-1.438-1.246-1.01-.5-2.196-.5-3.206 0-.586.274-1.084.706-1.438 1.246-.355.54-.552 1.17-.57 1.816v.08c.018.646.215 1.275.57 1.816.354.54.852.972 1.438 1.246 1.01.5 2.196.5 3.206 0 .586-.274 1.084-.706 1.438-1.246.355-.54.552-1.17.57-1.816v-.08zM9.5 14.25 6.25 11l1.06-1.06 2.19 2.19 5.19-5.19L15.75 8 9.5 14.25z" />
+    </svg>
+  )
+}
+
+function XBrandMark({ className = '' }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[15px] font-bold leading-none text-zinc-500 ${className}`}
+    >
+      𝕏
+    </span>
+  )
+}
+
 /**
- * Inline X post card for Lounge feed/comments and chat link previews.
+ * Native-style X post card for Lounge feed/comments and chat link previews.
  *
  * @param {{
  *   preview: object,
@@ -41,22 +57,12 @@ export default function XTweetEmbedCard({
 
   if (!isXTweetLinkPreview(preview) || !embed) return null
 
-  const displayName = embed.author_name || (embed.author_handle ? `@${embed.author_handle}` : 'X')
+  const displayName = embed.author_name || (embed.author_handle ? embed.author_handle : 'X')
   const handleLabel = embed.author_handle ? `@${embed.author_handle}` : ''
-  const ageLabel = xTweetAgeLabel(embed.created_at)
+  const timestampLabel = formatXTweetTimestamp(embed.created_at)
+  const viewLabel = formatXTweetViewCount(embed.view_count)
+  const metaLine = [timestampLabel, viewLabel].filter(Boolean).join(' · ')
   const mediaUrls = embed.media_urls || []
-
-  const marginTop = embedded ? 'mt-2' : 'mt-2'
-  const widthClass = embedded ? CHAT_X_TWEET_EMBED_WIDTH_CLASS : 'w-full max-w-full'
-  const embeddedShell = embedded
-    ? `pt-2 border-t ${isMine ? 'border-white/20' : 'border-zinc-600/50'}`
-    : ''
-  const shellClass = interactive && !embedded
-    ? LOUNGE_QUOTE_EMBED_SHELL_INTERACTIVE
-    : LOUNGE_QUOTE_EMBED_SHELL_BASE
-  const chatShell = embedded
-    ? `${widthClass} overflow-hidden rounded-xl ${isMine ? 'bg-black/12' : 'bg-black/25'}`
-    : ''
 
   const openExternal = (e) => {
     e?.stopPropagation?.()
@@ -80,107 +86,115 @@ export default function XTweetEmbedCard({
   const avatarTone = profileAvatarToneClass(displayName)
   const avatarInitials = profileAvatarInitials(displayName)
 
-  const body = (
-    <>
-      <div className={LOUNGE_QUOTE_EMBED_META_ROW_CLASS}>
-        <div className={`${LOUNGE_QUOTE_EMBED_AVATAR_CLASS} ${avatarTone}`}>
-          {embed.author_avatar_url ? (
-            <img src={embed.author_avatar_url} alt="" className="h-full w-full object-cover" loading="lazy" />
-          ) : (
-            <span className="flex h-full w-full items-center justify-center">{avatarInitials}</span>
-          )}
+  const shellClass = embedded
+    ? `${CHAT_X_TWEET_EMBED_WIDTH_CLASS} ${isMine ? 'border-white/15 bg-black/10' : 'border-zinc-600/40 bg-black/20'}`
+    : 'w-full max-w-full border-zinc-700/75 bg-zinc-950/55'
+
+  const card = (
+    <div
+      data-lounge-x-tweet-embed=""
+      className={`overflow-hidden rounded-2xl border ${shellClass} ${className}`}
+      onPointerDown={stop}
+    >
+      <div className="p-3.5">
+        <div className="flex items-start gap-3">
+          <div className={`h-10 w-10 shrink-0 overflow-hidden rounded-full ${avatarTone}`}>
+            {embed.author_avatar_url ? (
+              <img
+                src={embed.author_avatar_url}
+                alt=""
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center text-[13px] font-bold text-zinc-100">
+                {avatarInitials}
+              </span>
+            )}
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="flex min-w-0 items-center gap-1">
+                  <span
+                    data-lounge-x-tweet-name=""
+                    className="truncate text-[15px] font-bold leading-tight text-zinc-50"
+                  >
+                    {displayName}
+                  </span>
+                  {embed.author_verified ? <XVerifiedBadge className="translate-y-px" /> : null}
+                </div>
+                {handleLabel ? (
+                  <div data-lounge-x-tweet-handle="" className="truncate text-[15px] leading-tight text-zinc-500">
+                    {handleLabel}
+                  </div>
+                ) : null}
+              </div>
+              <XBrandMark />
+            </div>
+          </div>
         </div>
-        <span className={`${LOUNGE_QUOTE_EMBED_DISPLAY_NAME_CLASS} truncate`}>{displayName}</span>
-        {handleLabel && embed.author_name ? (
-          <span className={`${LOUNGE_QUOTE_EMBED_META_HANDLE_TIME_CLASS} truncate`}>{handleLabel}</span>
-        ) : null}
-        {ageLabel ? (
-          <span className={`${LOUNGE_QUOTE_EMBED_META_HANDLE_TIME_CLASS} shrink-0`}>· {ageLabel}</span>
-        ) : null}
-      </div>
 
-      <div className={`${LOUNGE_QUOTE_EMBED_CAPTION_CLASS} mt-1.5`}>
-        <LinkifiedText text={embed.text} linkClassName="underline underline-offset-2" />
-      </div>
-
-      {mediaUrls.length ? (
         <div
-          className={`mt-2 grid gap-1 overflow-hidden rounded-lg ${mediaUrls.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}
-          onPointerDown={stop}
+          data-lounge-x-tweet-body=""
+          className="mt-3 whitespace-pre-wrap break-words text-[15px] leading-[1.35] text-zinc-100 [overflow-wrap:anywhere]"
         >
-          {mediaUrls.map((url) => (
-            <img
-              key={url}
-              src={url}
-              alt=""
-              className="max-h-72 w-full object-cover"
-              loading="lazy"
-            />
-          ))}
+          <LinkifiedText text={embed.text} linkClassName="text-[#1d9bf0] underline-offset-2 hover:underline" />
         </div>
-      ) : null}
 
-      <div
-        data-lounge-x-tweet-embed-footer=""
-        className="mt-2 flex items-center gap-1.5 border-t border-zinc-800/90 pt-2 text-[12px] font-medium text-zinc-400"
-      >
-        <span aria-hidden="true" className="text-[13px] leading-none">
-          𝕏
-        </span>
-        <button
-          type="button"
-          className="touch-manipulation underline-offset-2 hover:underline"
-          onClick={(e) => {
-            stop(e)
-            openExternal(e)
-          }}
-        >
-          View on X
-        </button>
+        {mediaUrls.length ? (
+          <div
+            className={`mt-3 overflow-hidden rounded-xl border border-zinc-800/80 ${mediaUrls.length > 1 ? 'grid grid-cols-2 gap-0.5' : ''}`}
+            onPointerDown={stop}
+          >
+            {mediaUrls.map((url) => (
+              <img key={url} src={url} alt="" className="max-h-80 w-full object-cover" loading="lazy" />
+            ))}
+          </div>
+        ) : null}
+
+        {metaLine ? (
+          <div data-lounge-x-tweet-meta="" className="mt-3 text-[13px] leading-snug text-zinc-500">
+            {metaLine}
+          </div>
+        ) : null}
       </div>
-    </>
+    </div>
   )
 
   if (embedded) {
     return (
       <div
-        data-lounge-x-tweet-embed=""
-        className={`${marginTop} ${embeddedShell} ${chatShell} px-3 py-2.5 ${className}`}
+        className={`mt-2 pt-2 ${isMine ? 'border-t border-white/20' : 'border-t border-zinc-600/50'}`}
         onPointerDown={stop}
       >
-        {body}
+        {card}
       </div>
     )
   }
 
   if (!interactive) {
-    return (
-      <div data-lounge-x-tweet-embed="" className={`${shellClass} ${className}`} onPointerDown={stop}>
-        {body}
-      </div>
-    )
+    return <div className="mt-2">{card}</div>
   }
 
   return (
     <div
-      role="button"
+      role="link"
       tabIndex={0}
-      data-lounge-x-tweet-embed=""
+      className="mt-2 cursor-pointer touch-manipulation [-webkit-tap-highlight-color:transparent]"
       aria-label={`X post by ${displayName}`}
-      className={`${marginTop} ${shellClass} ${className}`}
       onClick={(e) => {
         stop(e)
         openExternal(e)
       }}
       onKeyDown={(e) => {
         if (e.key !== 'Enter' && e.key !== ' ') return
-        if (e.target !== e.currentTarget) return
         e.preventDefault()
         openExternal(e)
       }}
-      onPointerDown={stop}
     >
-      {body}
+      {card}
     </div>
   )
 }

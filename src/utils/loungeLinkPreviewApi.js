@@ -42,3 +42,19 @@ export async function attachLinkPreview(supabase, { entityType, entityId, text }
   })
   return data?.preview ?? null
 }
+
+/**
+ * Admin bot portal "Post as" … unfurl + attach preview on a bot-authored feed post.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {{ postId: string, text: string }} opts
+ * @returns {Promise<object|null>}
+ */
+export async function attachBotPortalPostLinkPreview(supabase, { postId, text }) {
+  if (!postId || !text || !extractFirstUrlFromText(text)) return null
+  const data = await loungeLinkPreviewInvoke(supabase, {
+    action: 'attach_bot_portal_post',
+    post_id: postId,
+    text,
+  })
+  return data?.preview ?? null
+}

@@ -67,6 +67,7 @@ import {
 import { lockStableLayoutViewportHeight } from '../../utils/stableLayoutViewport.js'
 import { uploadLoungeFeedPostImage } from '../../utils/communityFeedPost'
 import { LOUNGE_CAPTION_MAX, LOUNGE_CAPTION_SUBSCRIBER_MAX } from '../../utils/loungeCommentLimits.js'
+import { attachBotPortalPostLinkPreview } from '../../utils/loungeLinkPreviewApi.js'
 import {
   LOUNGE_POST_CATEGORY_PILL_SLUGS,
   loungePostCategoryPillLabel,
@@ -1070,7 +1071,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
         return
       }
 
-      const { error } = await publishBotPost(supabaseClient, {
+      const { data, error } = await publishBotPost(supabaseClient, {
         botUserId: bot.user_id,
         caption,
         categoryPills: composePills,
@@ -1080,6 +1081,10 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
       if (error) {
         fail(error.message || 'Could not publish post.')
         return
+      }
+      const postId = String(data?.post_id || '').trim()
+      if (postId && caption.trim()) {
+        await attachBotPortalPostLinkPreview(supabaseClient, { postId, text: caption })
       }
       setComposeCaption('')
       setComposeMarketSymbols([])

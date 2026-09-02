@@ -1,5 +1,10 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { attachLinkPreviewToEntity, extractFirstUrlFromText, unfurlUrl } from '../_shared/linkUnfurl.ts'
+import {
+  attachLinkPreviewToAdminBotPortalPost,
+  attachLinkPreviewToEntity,
+  extractFirstUrlFromText,
+  unfurlUrl,
+} from '../_shared/linkUnfurl.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -78,6 +83,17 @@ Deno.serve(async (req) => {
       return json(400, { error: 'Invalid entity_type.' })
     }
     const preview = await attachLinkPreviewToEntity(admin, entityType, entityId, text, user.id)
+    return json(200, { ok: true, preview })
+  }
+
+  if (action === 'attach_bot_portal_post') {
+    const postId = String(body?.post_id || body?.entity_id || '').trim()
+    const text = String(body?.text || body?.caption || body?.url || '').trim()
+    if (!postId) return json(400, { error: 'post_id is required.' })
+    if (!text || !extractFirstUrlFromText(text)) {
+      return json(400, { error: 'No URL found in text.' })
+    }
+    const preview = await attachLinkPreviewToAdminBotPortalPost(admin, postId, text, user.id)
     return json(200, { ok: true, preview })
   }
 

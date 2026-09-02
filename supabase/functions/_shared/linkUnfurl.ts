@@ -598,3 +598,41 @@ export async function attachLinkPreviewToEntity(
 
   return null
 }
+
+/** Admin bot portal "Post as" only … attach link/X preview to a bot-authored feed post. */
+export async function attachLinkPreviewToAdminBotPortalPost(
+  admin: SupabaseClient,
+  postId: string,
+  text: string,
+  adminUserId: string,
+): Promise<LinkPreviewPayload | null> {
+  const url = extractFirstUrlFromText(text)
+  if (!url || !postId || !adminUserId) return null
+
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('role')
+    .eq('user_id', adminUserId)
+    .maybeSingle()
+  if (profile?.role !== 'admin') return null
+
+  const { data: post } = await admin
+    .from('community_feed_posts')
+    .select('id, user_id')
+    .eq('id', postId)
+    .maybeSingle()
+  if (!post?.user_id) return null
+
+  const { data: bot } = await admin
+    .from('lounge_bot_accounts')
+    .select('user_id')
+    .eq('user_id', post.user_id)
+    .maybeSingle()
+  if (!bot?.user_id) return null
+
+  const preview = await unfurlUrl(admin, url)
+  if (!preview) return null
+
+  await admin.from('community_feed_posts').update({ link_preview: preview }).eq('id', postId)
+  return preview
+}

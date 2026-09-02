@@ -1031,12 +1031,12 @@ export function SyndicateApp() {
             <div className="border-b border-zinc-800 pb-4">
               <h2 className="text-2xl font-bold text-white tracking-tight">Syndicate Methodology & Math</h2>
               <p className="text-zinc-400 text-xs sm:text-sm mt-1">
-                A quantitative overview of the algorithms, Bayesian shrinkage, and market models powering the Sharpe Syndicate.
+                How the ensemble is built, then what each desk actually owns ... without burying four specialists under one generic stack.
               </p>
             </div>
 
             <div className="space-y-6">
-              {/* Paper 0: Four-Desk Ensemble */}
+              {/* Overview: Four-Desk Ensemble */}
               <div className="p-6 rounded-2xl border border-zinc-800 bg-zinc-900/50 space-y-3">
                 <div className="text-xs font-mono font-bold text-purple-400 uppercase tracking-wider">
                   ARCHITECTURE · ENSEMBLE DESIGN
@@ -1064,48 +1064,94 @@ export function SyndicateApp() {
                 </p>
               </div>
 
-              {/* Paper 1: PVAL */}
-              <div className="p-6 rounded-2xl border border-zinc-800 bg-zinc-900/50 space-y-3">
-                <div className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider">
-                  WHITEPAPER · DESK MATHEMATICS
+              {/* Desk: Scott */}
+              <div id="methodology-scott" className="p-6 rounded-2xl border border-emerald-500/20 bg-gradient-to-b from-emerald-950/15 via-zinc-900/50 to-zinc-950 space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider">
+                    DESK 01 · SCOTT SHARPE
+                  </span>
+                  <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">The Model</span>
                 </div>
                 <h3 className="text-lg font-bold text-white">
-                  Point Spread Value (PVAL) in Player Injury Modeling
+                  Pure EV Modeling &amp; Injury PVAL
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  Traditional handicapping relies on subjective injury sentiment. The Sharpe Syndicate models real market consensus
-                  PVAL values per player (e.g. Starting QB = 3.5 - 7.5 pts, Shutdown Corner = 0.85 pts, Elite LT = 1.25 pts).
-                  Net injury disparities between teams create direct quantifiable edges against retail spreads.
+                  Scott&apos;s lane is closing-line EV: synthesize sharp offshore pricing (Pinnacle / Circa), project a fair number,
+                  and only press when the market is wrong enough to clear juice. He owns syndicate consensus orchestration and bankroll
+                  exposure when desks align into a hammer.
+                </p>
+                <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
+                  Injury edges are modeled as Point Spread Value (PVAL), not vibes. Market-consensus player values (starting QB in the
+                  multi-point range, elite trench / coverage pieces in fractions of a point) net into a quantifiable spread gap versus
+                  retail boards ... so a late scratch becomes math, not a tweet-thread guess.
                 </p>
               </div>
 
-              {/* Paper 2: Key Numbers & Hook Tax */}
-              <div className="p-6 rounded-2xl border border-zinc-800 bg-zinc-900/50 space-y-3">
-                <div className="text-xs font-mono font-bold text-blue-400 uppercase tracking-wider">
-                  MARKET PRICING · SPREAD CLUSTERING
+              {/* Desk: Rocco */}
+              <div id="methodology-rocco" className="p-6 rounded-2xl border border-blue-500/20 bg-gradient-to-b from-blue-950/15 via-zinc-900/50 to-zinc-950 space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-mono font-bold text-blue-400 uppercase tracking-wider">
+                    DESK 02 · ROCCO
+                  </span>
+                  <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Trenches</span>
                 </div>
                 <h3 className="text-lg font-bold text-white">
-                  Key Number Valuation & The -3.5 / -7.5 Hook Tax
+                  Key Numbers, Hook Tax &amp; Wong Structure
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  In the NFL, 15.3% of games finish on a 3-point margin and 9.4% finish on 7. Laying -3.5 or -7.5 incurs a massive
-                  negative EV penalty unless offset by high-confidence trench dominance. Conversely, +3.5 and +7.5 ("Golden Hooks")
-                  provide significant historical variance cushions.
+                  Rocco lives in favorites, trench / EPA edges, and NFL key-number reality. Roughly 15% of games land on 3 and ~9% on 7
+                  ... so laying -3.5 or -7.5 carries a real hook tax unless trench dominance justifies crossing the number. Buying
+                  +3.5 / +7.5 (&quot;golden hooks&quot;) is the flip: variance cushions the desk actually wants.
+                </p>
+                <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
+                  That same key-number map powers the 6-point Wong teaser engine: favorites teased from -7.5/-8.5 down through
+                  -1.5/-2.5 (and paired dog legs in the classic Wong windows) in low-total games (&lt; 49) so both 3 and 7 get
+                  crossed ... enough theoretical edge to fight standard 2-team teaser juice.
                 </p>
               </div>
 
-              {/* Paper 3: Wong Teasers */}
-              <div className="p-6 rounded-2xl border border-zinc-800 bg-zinc-900/50 space-y-3">
-                <div className="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider">
-                  BASIC STRATEGY · ARBITRAGE
+              {/* Desk: Chedda */}
+              <div id="methodology-chedda" className="p-6 rounded-2xl border border-amber-500/20 bg-gradient-to-b from-amber-950/15 via-zinc-900/50 to-zinc-950 space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider">
+                    DESK 03 · CHEDDA
+                  </span>
+                  <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Dogs &amp; ML</span>
                 </div>
                 <h3 className="text-lg font-bold text-white">
-                  Basic Strategy 6-Point Wong Teaser Engine
+                  Underdog Value &amp; Moneyline Pricing
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  Stanford Wong’s basic strategy proves that teasing NFL underdogs from +1.5/+2.5 up through +7.5/+8.5 and favorites
-                  from -7.5/-8.5 down through -1.5/-2.5 in games with low totals (&lt; 49) crosses both critical key numbers (3 and 7),
-                  producing positive EV legs that overcome standard 2-team teaser juice (-120).
+                  Chedda hunts mispriced dogs and plus-money moneylines ... spots where public overreaction, inflated favorites, or
+                  soft retail juice leaves +EV on the underdog side. The job is not &quot;fade every chalk&quot;; it is isolating
+                  dogs whose true win probability clears the price on the board.
+                </p>
+                <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
+                  On structured teasers, Chedda owns the dog-side Wong windows (+1.5/+2.5 up through +7.5/+8.5) when the total stays
+                  low and the hook math cooperates with Rocco&apos;s favorite legs. Same key numbers, opposite side of the ticket.
+                </p>
+              </div>
+
+              {/* Desk: Tank */}
+              <div id="methodology-tank" className="p-6 rounded-2xl border border-rose-500/20 bg-gradient-to-b from-rose-950/15 via-zinc-900/50 to-zinc-950 space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-mono font-bold text-rose-400 uppercase tracking-wider">
+                    DESK 04 · TANK
+                  </span>
+                  <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Totals</span>
+                </div>
+                <h3 className="text-lg font-bold text-white">
+                  Situational Totals &amp; Pace / Environment Edges
+                </h3>
+                <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
+                  Tank does not recycle spread power ratings into an over/under. His lane is totals-native: pace, play-calling
+                  tendencies, weather and wind, short weeks, and other situational levers that move scoring distribution without
+                  necessarily flipping the side.
+                </p>
+                <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
+                  Totals also have their own clustering (certain numbers hit more often historically). Tank prices those frequencies
+                  into whether an under or over at a soft number is actually +EV ... then publishes a standalone totals thesis the
+                  other desks can agree with, fade, or leave alone.
                 </p>
               </div>
             </div>

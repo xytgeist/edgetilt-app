@@ -807,7 +807,7 @@ npm run syndicate:sync-nfl-metrics:production   # Ryan explicit only
 
 Sagarin is scraped from the public Predictor board (`scripts/lib/cfbSagarinPredictor.mjs`). Phase 2 candidates: FEI, TeamRankings, market-implied, Powers/Makinen.
 
-Desk mapping: **Scott** = consensus vs market · **Rocco** = SP+/EPA strength · **Chedda** = splits/RLM/dogs · **Tank** = tempo/totals/situational.
+Desk mapping: **Scott** = consensus vs market (primary side) · **Rocco** = SP+/EPA short-fav confirm/fade (no trench truth yet) · **Chedda** = PASS unless dog+hook or dog+model (synthetic splits do not vote) · **Tank** = tempo/totals first-pass. Hammer = Scott + independent second reason.
 
 **Internal weekly SOP (honest inventory + publish rules):** [`docs/syndicate-cfb-weekly-runbook.md`](./syndicate-cfb-weekly-runbook.md). Keep blend weights out of public UI.
 

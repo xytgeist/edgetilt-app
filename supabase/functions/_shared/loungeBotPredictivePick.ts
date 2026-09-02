@@ -732,11 +732,11 @@ export function buildNflAtsSlateCard(
     const cheddaSweetWeight = weights.get('Chedda:dog_sweet_spot_130_175') || 1.0
     const tankRestWeight = weights.get('Tank:rest_advantage') || 1.0
 
-    // Desk lanes (real feeds):
-    // Scott: market/EV + injury-adjusted model vs number (board first, then QB/injury mod)
-    // Rocco: SP+/EPA strength + short favorites / key numbers (trenches offline until PFF)
-    // Chedda: dogs, RLM/splits, golden hooks
-    // Tank: totals (PASS default; ≥3.5 or key-cross) — not injury-adjusted unless pace profile changes
+    // Desk lanes (this week … incomplete data):
+    // Scott: primary side … model vs current (+ injury); early weeks prefer key/# ~3+
+    // Rocco: confirm/fade short fav + hurtSide (no trench truth claim)
+    // Chedda: PASS unless dog+hook or dog+model (no synthetic steam)
+    // Tank: totals first-pass (3.5 / key); weather/rest later
     const sharpSplitBonus = sharpFavorsHome ? 0.35 : sharpFavorsAway ? -0.35 : 0
     // 1. Scott — model price vs market (uses injury-adjusted value when present)
     const epaBonus = trenchEpa && !injuryValue?.isValuePlay
@@ -755,27 +755,33 @@ export function buildNflAtsSlateCard(
           ? 'home'
           : 'away'
 
-    // 2. Chedda — dogs / money (does NOT consume Scott's adjusted spread)
-    const cheddaSplitBoost = (homePoint > 0 && sharpFavorsHome) ? 1.2 : (awayPoint > 0 && sharpFavorsAway) ? -1.2 : 0
-    const cheddaGoldenHookBoost = (homeKeyAnalysis?.isHookGolden && homePoint > 0)
-      ? 1.0
-      : (awayKeyAnalysis?.isHookGolden && awayPoint > 0)
-        ? -1.0
-        : 0
-    const dogTrenchBoost = (homePoint > 0 && (trenchEpa?.netTrenchSpreadImpactHome ?? 0) > 0.5)
-      ? 0.6
-      : (awayPoint > 0 && (trenchEpa?.netTrenchSpreadImpactHome ?? 0) < -0.5)
-        ? -0.6
-        : (homePoint > 0 && cfbMatchup?.valueSide === 'home')
-          ? 0.8
-          : (awayPoint > 0 && cfbMatchup?.valueSide === 'away')
-            ? -0.8
-            : 0
-    const cheddaScoreHome = (homePoint > 0 ? (1.5 * cheddaSweetWeight) : awayPoint > 0 ? (-1.5 * cheddaSweetWeight) : (homePrice > awayPrice ? 0.5 : -0.5)) + cheddaSplitBoost + cheddaGoldenHookBoost + dogTrenchBoost
-    const cheddaSide: 'home' | 'away' = cheddaScoreHome >= 0 ? 'home' : 'away'
+    // 2. Chedda — dogs only on REAL features this week (no synthetic steam/splits vote).
+    // Eligible: dog + golden hook, or dog + model/EPA gap. Otherwise PASS (quiet > correlated noise).
+    const homeIsDog = homePoint > 0
+    const awayIsDog = awayPoint > 0
+    const cheddaGoldenHookHome = Boolean(homeKeyAnalysis?.isHookGolden && homeIsDog)
+    const cheddaGoldenHookAway = Boolean(awayKeyAnalysis?.isHookGolden && awayIsDog)
+    const cheddaModelDogHome = homeIsDog && (
+      cfbMatchup?.valueSide === 'home'
+      || injuryValue?.valueSide === 'home'
+      || (trenchEpa != null && trenchEpa.epaSpreadImpactHome > 0.5)
+    )
+    const cheddaModelDogAway = awayIsDog && (
+      cfbMatchup?.valueSide === 'away'
+      || injuryValue?.valueSide === 'away'
+      || (trenchEpa != null && trenchEpa.epaSpreadImpactHome < -0.5)
+    )
+    const cheddaHasRealFeature = cheddaGoldenHookHome || cheddaGoldenHookAway || cheddaModelDogHome || cheddaModelDogAway
+    void cheddaSweetWeight // reserved when real ticket/handle feed arrives
+    let cheddaSide: SlateDeskSide = 'pass'
+    if (cheddaHasRealFeature) {
+      if (cheddaGoldenHookHome || cheddaModelDogHome) cheddaSide = 'home'
+      else if (cheddaGoldenHookAway || cheddaModelDogAway) cheddaSide = 'away'
+    }
 
     // 3. Rocco — SP+/EPA strength on short favorites (independent of Scott's adjusted number)
     // Starter-out is a strength flag only: fade short chalk on the hurt side without sharing Scott's pts.
+    // Capped: no "trench truth" claim until real OL/havoc feeds; can confirm Scott or fade logo chalk.
     const isShortFavHome = homePoint < 0 && homePoint >= -7.5
     const isShortFavAway = awayPoint < 0 && awayPoint >= -7.5
     const roccoChalkTrapPenalty = (isShortFavHome && sharpFavorsAway) ? -1.5 : (isShortFavAway && sharpFavorsHome) ? 1.5 : 0
@@ -802,6 +808,14 @@ export function buildNflAtsSlateCard(
               : 0
     const roccoScoreHome = (isShortFavHome ? (1.2 * roccoWeight) : isShortFavAway ? (-1.2 * roccoWeight) : (homePoint < 0 ? 0.4 : -0.4)) + roccoChalkTrapPenalty + roccoHookTaxPenalty + roccoTrenchBonus + roccoStarterOutPenalty
     const roccoSide: 'home' | 'away' = roccoScoreHome >= 0 ? 'home' : 'away'
+    /** True when Rocco's vote is strength/hurt/short-fav … not a soft echo of Scott's gap alone. */
+    const roccoHasStrengthReason =
+      isShortFavHome
+      || isShortFavAway
+      || hurtSide != null
+      || Math.abs(roccoTrenchBonus) >= 1.0
+      || Math.abs(roccoChalkTrapPenalty) >= 1.0
+      || Math.abs(roccoHookTaxPenalty) >= 0.8
 
     // 4. Tank — totals desk (PASS default; play at ≥3.5 or ≥2.5 into key 48/51/54)
     const marketTotalQuote = extractEventMarketTotal(ev)
@@ -880,10 +894,14 @@ export function buildNflAtsSlateCard(
       },
       Chedda: {
         side: cheddaSide,
-        teamName: cheddaSide === 'home' ? homeTeam : awayTeam,
-        lineDisplay: cheddaSide === 'home' ? homeLineDisp : awayLineDisp,
-        pickPrice: cheddaSide === 'home' ? homePrice : awayPrice,
-        pick: cheddaSide === 'home' ? homePickObj : awayPickObj,
+        teamName: cheddaSide === 'home' ? homeTeam : cheddaSide === 'away' ? awayTeam : 'PASS',
+        lineDisplay: cheddaSide === 'home'
+          ? homeLineDisp
+          : cheddaSide === 'away'
+            ? awayLineDisp
+            : 'PASS (no dog+hook / dog+model)',
+        pickPrice: cheddaSide === 'home' ? homePrice : cheddaSide === 'away' ? awayPrice : 0,
+        pick: cheddaSide === 'home' ? homePickObj : cheddaSide === 'away' ? awayPickObj : homePickObj,
       },
       Tank: {
         side: tankTotalsSide,
@@ -918,11 +936,25 @@ export function buildNflAtsSlateCard(
     let consensusType: 'hammer' | 'consensus' | 'split' = 'split'
     let badgeText = '⚔️ House Divided'
 
-    if (activeSideVotes >= 2 && (homeVotes === activeSideVotes || awayVotes === activeSideVotes)) {
+    const unanimousActive =
+      activeSideVotes >= 2 && (homeVotes === activeSideVotes || awayVotes === activeSideVotes)
+    if (unanimousActive) {
       consensusSide = homeVotes === activeSideVotes ? 'home' : 'away'
       voteCount = activeSideVotes
-      consensusType = 'hammer'
-      badgeText = `🔥 ${activeSideVotes}-0 Hammer`
+      // Hammer needs Scott + an independent second reason (Rocco strength OR Chedda real dog feature).
+      // Same power-gap echo across desks = Consensus, not Hammer.
+      const scottAgrees = scottSide === consensusSide
+      const roccoIndependent = roccoSide === consensusSide && roccoHasStrengthReason
+      const cheddaIndependent = cheddaSide === consensusSide
+      const hammerOk = scottAgrees && (roccoIndependent || cheddaIndependent)
+      if (hammerOk) {
+        consensusType = 'hammer'
+        badgeText = `🔥 ${activeSideVotes}-0 Hammer`
+      } else {
+        consensusType = 'consensus'
+        badgeText = activeSideVotes >= 3 ? '🎯 Aligned (soft)' : '🎯 2-0 lean'
+        voteCount = Math.min(voteCount, 2)
+      }
     } else if (activeSideVotes >= 3 && (homeVotes === 2 || awayVotes === 2)) {
       consensusSide = homeVotes === 2 ? 'home' : 'away'
       voteCount = 2
@@ -1015,8 +1047,8 @@ export async function publishAndRecordNflSlateCard(
     for (const pName of SHARP_PICKERS) {
       const pPick = g.pickerPicks[pName]
 
-      // Scott / Tank PASS → cancelled ledger row (Pass bucket sample size). No ATS.
-      if ((pName === 'Scott' || pName === 'Tank') && pPick.side === 'pass') {
+      // Scott / Chedda / Tank PASS → cancelled ledger row (Pass bucket sample size). No ATS.
+      if ((pName === 'Scott' || pName === 'Chedda' || pName === 'Tank') && pPick.side === 'pass') {
         rowsToInsert.push({
           bot_user_id: input.botUserId,
           picker_name: pName,

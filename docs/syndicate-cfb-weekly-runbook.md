@@ -176,18 +176,44 @@ Run desk scoring **independently**. Preferred publish set:
 
 | Label | Meaning |
 |-------|---------|
-| **Hammer** | **Alignment + independence** among **Scott / Rocco / Chedda** (3-0). Still needs ≥2 distinct input reasons … not three copies of `isValuePlay`. Tank is separate (totals). |
-| **Consensus** | **2–1** among side desks. Publish if we’d bet it. |
+| **Hammer** | Scott gap **plus** an independent second reason: **Rocco strength** (short fav / hurtSide / chalk trap) **or** **Chedda** real dog+hook / dog+model. Alignment alone is not enough. |
+| **Consensus** | **2–1**, or unanimous soft align where the second desk is only echoing the same gap. Publish if we’d bet it. |
 | **Divided** | **1–1.** Pass or small look. Do **not** force a fake united play. |
+
+**Not a Hammer:** Scott + Rocco both reading the same power gap, and Chedda echoing because the model likes it. That is Consensus (or Scott-only), not a Hammer.
 
 Publish **Hammers + Consensus only** on the public/VIP slate unless Ryan overrides.
 
 **Not what this means:**
 
 - Not “every Hammer needs two essays”
-- Not “ban all 3–0s” … unanimous side desks are fine when they used different features
+- Not “ban all 3–0s” … fine when desks used different features
 - Not “you can’t publish a single-desk Scott lean” as a Scott play or as part of a real 2–1
 
+---
+
+## 4b. Operating with incomplete data (this week)
+
+Treat desks at different confidence. Do not pretend Chedda has Circa handle.
+
+| Desk | Role this week | Rule |
+|------|----------------|------|
+| **Scott** | Primary side vote | Full loop he has (model, current market, injury mod, market file). Weeks 0–2: prefer key number **or** gap ~**3+** (early priors soft). |
+| **Rocco** | Confirm / fade only | Short fav + power gap + hurtSide + hooks. **Capped** … no “trench truth.” Can confirm Scott or fade logo chalk. Cannot be the sole second Hammer reason if he’s only re-reading Scott’s gap. |
+| **Chedda** | Dog + hook / dog + model only | **PASS** unless a real feature fires. Quiet Chedda > invented steam. Synthetic splits do **not** count as a vote. |
+| **Tank** | First-pass totals | Off/def + tempo vs number (3.5 / key-total). Ignore weather/rest until those modules matter. Few totals > many weak ones. |
+
+**Product honesty:** VIP can show all four votes. Public copy should say model-vs-number / short favorite / dog+hook … not fake steam. Scoreboard decides if Chedda is signal before we buy him better data.
+
+### Close gaps later (priority … not this build sprint)
+
+1. **Chedda splits** … real ticket/handle (Action / paid steam). Until then keep his bucket weight low.
+2. **Scott juice / live CLV** … PASS when the number already moved to the model.
+3. **Rocco trenches** … SP+ line units, CFBD havoc/stuff, returning/gutted OL flags so he can disagree with raw power.
+4. **Tank situation** … weather/rest only when it moves the total (wind, short week).
+5. **FEI** … audit column later, not a driver, not first purchase.
+
+When in doubt this week: **run the slate**, grade it, stop feature-building.
 ### Sun–Mon … grade
 
 For every published (and ideally every voted) game:
@@ -247,11 +273,12 @@ Off/def remain SP+ units. Tempo/HFA are separate.
 - [ ] Price weekend slate (model vs current market)  
 - [ ] List ≥2.5 gap games  
 - [ ] Run four-desk votes; note each desk’s *own* input reason  
-- [ ] Label Hammer only if alignment **and** ≥2 distinct input reasons  
+- [ ] Label Hammer only if Scott gap **and** (Rocco strength **or** Chedda dog+hook/model)  
 - [ ] Publish Hammers + Consensus only  
 - [ ] Skip Divided (or label as look, not lock)  
 - [ ] Log model / market / votes (close when available)  
 - [ ] After games: ATS (+ CLV if close exists)  
 - [ ] **Do not** change blend weights mid-slate  
+- [ ] **Do not** invent Chedda steam or claim Rocco trench truth  
 
-When in doubt: **pass**. A missed game is cheaper than a fake hammer.
+When in doubt: **pass**. A missed game is cheaper than a fake hammer. Quiet Chedda is a feature.

@@ -74,15 +74,15 @@ async function main() {
   }
 
   const year = season ?? new Date().getFullYear()
-  console.log(`[cfb-power] Building Elo/SRS board for ${year} (${targetHuman(target)})…`)
+  console.log(`[cfb-power] Building FPI/SP+ board for ${year} (${targetHuman(target)})…`)
   const result = await buildCfbPowerBoard({ apiKey, season: year })
   console.log(
-    `[cfb-power] games=${result.gameCount} (season=${result.seasonGameCount}) teams=${result.board.length}`,
+    `[cfb-power] FPI year=${result.fpiYear} SP year=${result.spYear} games=${result.gameCount} (season=${result.seasonGameCount}) teams=${result.board.length}`,
   )
   console.log('[cfb-power] top 10:')
   for (const row of result.board.slice(0, 10)) {
     console.log(
-      `  ${String(row.power_rating).padStart(5)}  ${row.team_name} (off ${row.off_rating} / def ${row.def_rating}, HFA ${row.home_field_advantage})`,
+      `  ${String(row.power_rating).padStart(5)}  ${row.team_name} (FPI ${row.fpi ?? '—'} / SP ${row.sp ?? '—'} · off ${row.off_rating} / def ${row.def_rating} · HFA ${row.home_field_advantage} · tempo ${row.tempo_rating})`,
     )
   }
 

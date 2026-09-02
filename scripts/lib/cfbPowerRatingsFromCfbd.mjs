@@ -1,27 +1,30 @@
 /**
- * CFB power board from CollegeFootballData game results.
+ * CFB power board for Sharpe Syndicate desks (Scott / Rocco / Tank).
  *
- * Owned formulas (deterministic, no LLM):
- * 1. Margin-aware Elo over final FBS games (prior season + current).
- * 2. power_rating = (elo - mean_elo) * ELO_TO_POINTS (points vs avg FBS).
- * 3. Iterative SRS for opponent-adjusted off/def point ratings.
- * 4. HFA from multi-year home scoring margin residual (floored sample).
- * 5. Tempo from CFBD season team stats plays/game when present.
+ * Real CFBD inputs (deterministic, no LLM):
+ * 1. power_rating ← CFBD Football Power Index (FPI), same scale as ESPN FPI
+ * 2. off_rating / def_rating ← CFBD SP+ offense / defense ratings
+ * 3. In-season blend: as a team plays more games, blend FPI toward score Elo
+ * 4. HFA ← home-margin residual vs Elo expectation (min 4 home games)
+ * 5. tempo_rating ← CFBD advanced offense.plays / games (prior year until current covers FBS)
  *
  * Requires CFBD_API_KEY (https://collegefootballdata.com/key).
  */
 
 const CFBD_BASE = 'https://api.collegefootballdata.com'
 
-/** Elo → points vs mean. 25 Elo ≈ 1 point. */
+/** Elo → points vs mean (blend component only). 25 Elo ≈ 1 point. */
 export const ELO_TO_POINTS = 0.04
 export const ELO_K = 24
 export const ELO_HOME_ADV = 65
 export const ELO_START = 1500
-export const SRS_ITERS = 400
 export const DEFAULT_TEMPO = 68
 export const DEFAULT_HFA = 2.5
-export const MIN_HFA_HOME_GAMES = 8
+/** FBS teams ~6-7 home games/season; 4 keeps early variance usable. */
+export const MIN_HFA_HOME_GAMES = 4
+/** After this many season games, results can weigh up to MAX_RESULTS_BLEND. */
+export const RESULTS_BLEND_GAMES = 8
+export const MAX_RESULTS_BLEND = 0.55
 
 /**
  * @param {string} apiKey
@@ -70,12 +73,6 @@ export function normalizeCompletedGames(games) {
   return out
 }
 
-/**
- * FiveThirtyEight-style margin multiplier.
- * @param {number} margin
- * @param {number} eloWinner
- * @param {number} eloLoser
- */
 function movMult(margin, eloWinner, eloLoser) {
   return (
     (Math.log(Math.abs(margin) + 1) * 2.2) /
@@ -113,108 +110,6 @@ export function computeEloRatings(games) {
 }
 
 /**
- * Iterative SRS (points vs average), then offensive/defensive point ratings.
- * @param {{ home: string, away: string, homePoints: number, awayPoints: number, neutral: boolean }[]} games
- * @param {number} hfaPoints league-average HFA used while iterating
- */
-export function computeSrsOffDef(games, hfaPoints = DEFAULT_HFA) {
-  /** @type {Set<string>} */
-  const teams = new Set()
-  for (const g of games) {
-    teams.add(g.home)
-    teams.add(g.away)
-  }
-
-  /** @type {Map<string, number>} */
-  const rating = new Map()
-  for (const t of teams) rating.set(t, 0)
-
-  for (let iter = 0; iter < SRS_ITERS; iter++) {
-    /** @type {Map<string, { sum: number, n: number }>} */
-    const acc = new Map()
-    for (const t of teams) acc.set(t, { sum: 0, n: 0 })
-
-    for (const g of games) {
-      const hfa = g.neutral ? 0 : hfaPoints
-      const homeR = rating.get(g.away) ?? 0
-      const awayR = rating.get(g.home) ?? 0
-      // Home margin vs expectation from opponent rating + HFA
-      const homeMargin = g.homePoints - g.awayPoints
-      const homeObs = homeMargin - hfa
-      const awayObs = -homeObs
-
-      const ha = acc.get(g.home)
-      const aa = acc.get(g.away)
-      ha.sum += homeObs + (rating.get(g.away) ?? 0)
-      ha.n += 1
-      aa.sum += awayObs + (rating.get(g.home) ?? 0)
-      aa.n += 1
-      void homeR
-      void awayR
-    }
-
-    let mean = 0
-    let count = 0
-    for (const t of teams) {
-      const a = acc.get(t)
-      const next = a && a.n > 0 ? a.sum / a.n : 0
-      rating.set(t, next)
-      mean += next
-      count += 1
-    }
-    mean = count ? mean / count : 0
-    for (const t of teams) {
-      rating.set(t, (rating.get(t) ?? 0) - mean)
-    }
-  }
-
-  // Off / def: average points for/against adjusted by opponent rating
-  /** @type {Map<string, { pf: number, pa: number, n: number }>} */
-  const pts = new Map()
-  for (const t of teams) pts.set(t, { pf: 0, pa: 0, n: 0 })
-  for (const g of games) {
-    const h = pts.get(g.home)
-    const a = pts.get(g.away)
-    h.pf += g.homePoints
-    h.pa += g.awayPoints
-    h.n += 1
-    a.pf += g.awayPoints
-    a.pa += g.homePoints
-    a.n += 1
-  }
-
-  let leaguePf = 0
-  let leagueN = 0
-  for (const t of teams) {
-    const p = pts.get(t)
-    if (p.n > 0) {
-      leaguePf += p.pf / p.n
-      leagueN += 1
-    }
-  }
-  const avgPf = leagueN ? leaguePf / leagueN : 27
-
-  /** @type {Map<string, { srs: number, off_rating: number, def_rating: number }>} */
-  const out = new Map()
-  for (const t of teams) {
-    const srs = rating.get(t) ?? 0
-    const p = pts.get(t)
-    const pf = p && p.n > 0 ? p.pf / p.n : avgPf
-    const pa = p && p.n > 0 ? p.pa / p.n : avgPf
-    // Split SRS into off/def so off - def ≈ power-ish; center around observed scoring
-    const off_rating = Math.round((pf + srs * 0.5) * 10) / 10
-    const def_rating = Math.round((pa - srs * 0.5) * 10) / 10
-    out.set(t, {
-      srs: Math.round(srs * 10) / 10,
-      off_rating,
-      def_rating,
-    })
-  }
-  return out
-}
-
-/**
- * Per-team home field advantage from residual home margins.
  * @param {{ home: string, away: string, homePoints: number, awayPoints: number, neutral: boolean }[]} games
  * @param {Map<string, number>} elo
  */
@@ -225,8 +120,7 @@ export function computeTeamHfa(games, elo) {
 
   for (const g of games) {
     if (g.neutral) continue
-    const expectedMargin =
-      (getElo(g.home) - getElo(g.away)) * ELO_TO_POINTS
+    const expectedMargin = (getElo(g.home) - getElo(g.away)) * ELO_TO_POINTS
     const residual = g.homePoints - g.awayPoints - expectedMargin
     if (!acc.has(g.home)) acc.set(g.home, { sum: 0, n: 0 })
     const a = acc.get(g.home)
@@ -241,88 +135,122 @@ export function computeTeamHfa(games, elo) {
       hfa.set(team, DEFAULT_HFA)
       continue
     }
-    const raw = a.sum / a.n
-    const clamped = Math.max(1.5, Math.min(4.5, raw))
+    const raw = (a.sum / a.n) * 0.55
+    const clamped = Math.max(1.5, Math.min(3.5, raw))
     hfa.set(team, Math.round(clamped * 10) / 10)
   }
   return hfa
 }
 
 /**
- * @param {any[]} seasonStats
- * @returns {Map<string, number>}
+ * Plays per game from CFBD advanced season stats.
+ * @param {any[]} advancedRows
+ * @param {Map<string, number>} gamesPlayedByTeam
  */
-export function tempoFromSeasonStats(seasonStats) {
+export function tempoFromAdvancedStats(advancedRows, gamesPlayedByTeam) {
   /** @type {Map<string, number>} */
   const tempo = new Map()
-  for (const row of seasonStats || []) {
+  for (const row of advancedRows || []) {
     const team = row.team
     if (!team) continue
-    // CFBD shapes vary: plays, possessionTime, etc.
-    const plays =
-      row.plays ??
-      row.totalPlays ??
-      row.offensivePlays ??
-      (Array.isArray(row.stats)
-        ? Number(
-            (row.stats.find((s) => /plays/i.test(s.stat || s.category || '')) || {})
-              .statValue ??
-              (row.stats.find((s) => /plays/i.test(s.stat || s.category || '')) || {}).value,
-          )
-        : null)
-    const games = row.games ?? row.gamesPlayed ?? null
-    if (plays != null && games != null && Number(games) > 0) {
-      tempo.set(team, Math.round((Number(plays) / Number(games)) * 10) / 10)
-      continue
-    }
-    if (plays != null && Number.isFinite(Number(plays))) {
-      // already per-game in some payloads
-      const v = Number(plays)
-      if (v > 40 && v < 100) tempo.set(team, Math.round(v * 10) / 10)
+    const plays = Number(row.offense?.plays)
+    if (!Number.isFinite(plays) || plays <= 0) continue
+    // CFBD usually returns season play totals (~700-1000). Early-year snippets can look per-game.
+    if (plays >= 200) {
+      const gp = gamesPlayedByTeam.get(team) || 0
+      if (gp < 1) continue
+      tempo.set(team, Math.round((plays / gp) * 10) / 10)
+    } else if (plays > 40 && plays < 120) {
+      tempo.set(team, Math.round(plays * 10) / 10)
     }
   }
   return tempo
 }
 
 /**
+ * Prefer full FBS advanced season for tempo. Sparse early-year rows (e.g. 16 teams)
+ * would divide tiny play totals by prior+current game counts and junk the board.
+ * @param {string} apiKey
+ * @param {number} season
+ * @param {number} priorSeason
+ */
+async function fetchAdvancedForTempo(apiKey, season, priorSeason) {
+  const cur = await cfbdFetch(apiKey, '/stats/season/advanced', { year: season }).catch(() => [])
+  if (Array.isArray(cur) && cur.length >= 100) {
+    return { rows: cur, year: season }
+  }
+  const prior = await cfbdFetch(apiKey, '/stats/season/advanced', { year: priorSeason }).catch(
+    () => [],
+  )
+  return { rows: Array.isArray(prior) ? prior : [], year: priorSeason }
+}
+
+function countGamesPlayed(games) {
+  /** @type {Map<string, number>} */
+  const m = new Map()
+  for (const g of games) {
+    m.set(g.home, (m.get(g.home) || 0) + 1)
+    m.set(g.away, (m.get(g.away) || 0) + 1)
+  }
+  return m
+}
+
+/**
+ * Prefer current season ratings; fall back to prior if empty.
+ * @param {string} apiKey
+ * @param {string} path
+ * @param {number} season
+ * @param {number} priorSeason
+ */
+async function fetchRatingsWithFallback(apiKey, path, season, priorSeason) {
+  const current = await cfbdFetch(apiKey, path, { year: season }).catch(() => [])
+  if (Array.isArray(current) && current.length > 0) {
+    return { rows: current, year: season }
+  }
+  const prior = await cfbdFetch(apiKey, path, { year: priorSeason })
+  return { rows: prior || [], year: priorSeason }
+}
+
+/**
  * @param {object} opts
  * @param {string} opts.apiKey
- * @param {number} opts.season current season year
+ * @param {number} opts.season
  * @param {number} [opts.priorSeason]
  */
 export async function buildCfbPowerBoard({ apiKey, season, priorSeason = season - 1 }) {
-  const [priorGamesRaw, seasonGamesRaw, teamsRaw, statsRaw, priorStatsRaw] =
-    await Promise.all([
-      cfbdFetch(apiKey, '/games', {
-        year: priorSeason,
-        seasonType: 'regular',
-        classification: 'fbs',
-      }),
-      cfbdFetch(apiKey, '/games', {
-        year: season,
-        seasonType: 'regular',
-        classification: 'fbs',
-      }),
-      cfbdFetch(apiKey, '/teams', { year: season, classification: 'fbs' }),
-      cfbdFetch(apiKey, '/stats/season', { year: season }).catch(() => []),
-      cfbdFetch(apiKey, '/stats/season', { year: priorSeason }).catch(() => []),
-    ])
+  const [
+    fpiPack,
+    spPack,
+    priorGamesRaw,
+    seasonGamesRaw,
+    teamsRaw,
+    advancedPack,
+  ] = await Promise.all([
+    fetchRatingsWithFallback(apiKey, '/ratings/fpi', season, priorSeason),
+    fetchRatingsWithFallback(apiKey, '/ratings/sp', season, priorSeason),
+    cfbdFetch(apiKey, '/games', {
+      year: priorSeason,
+      seasonType: 'regular',
+      classification: 'fbs',
+    }),
+    cfbdFetch(apiKey, '/games', {
+      year: season,
+      seasonType: 'regular',
+      classification: 'fbs',
+    }),
+    cfbdFetch(apiKey, '/teams', { year: season, classification: 'fbs' }),
+    fetchAdvancedForTempo(apiKey, season, priorSeason),
+  ])
 
   const priorGames = normalizeCompletedGames(priorGamesRaw)
   const seasonGames = normalizeCompletedGames(seasonGamesRaw)
   const allGames = [...priorGames, ...seasonGames]
-  if (allGames.length < 50) {
-    throw new Error(
-      `CFBD returned too few completed games (${allGames.length}). Check API key / season.`,
-    )
-  }
-
-  const elo = computeEloRatings(allGames)
-  const srsMap = computeSrsOffDef(seasonGames.length >= 20 ? seasonGames : allGames)
-  const hfaMap = computeTeamHfa(allGames, elo)
-  const tempoMap = tempoFromSeasonStats(
-    Array.isArray(statsRaw) && statsRaw.length ? statsRaw : priorStatsRaw,
-  )
+  const seasonGp = countGamesPlayed(seasonGames)
+  const elo = computeEloRatings(allGames.length ? allGames : priorGames)
+  const hfaMap = computeTeamHfa(allGames.length ? allGames : priorGames, elo)
+  const tempoGames =
+    advancedPack.year === season ? seasonGames : priorGames.length ? priorGames : seasonGames
+  const tempoMap = tempoFromAdvancedStats(advancedPack.rows || [], countGamesPlayed(tempoGames))
 
   let eloSum = 0
   let eloN = 0
@@ -332,6 +260,28 @@ export async function buildCfbPowerBoard({ apiKey, season, priorSeason = season 
   }
   const meanElo = eloN ? eloSum / eloN : ELO_START
 
+  /** @type {Map<string, number>} */
+  const fpiByTeam = new Map()
+  for (const row of fpiPack.rows || []) {
+    if (!row.team || row.fpi == null) continue
+    fpiByTeam.set(row.team, Number(row.fpi))
+  }
+
+  /** @type {Map<string, { off: number, def: number, sp: number }>} */
+  const spByTeam = new Map()
+  for (const row of spPack.rows || []) {
+    if (!row.team) continue
+    const off = Number(row.offense?.rating)
+    const def = Number(row.defense?.rating)
+    const sp = Number(row.rating)
+    if (!Number.isFinite(off) || !Number.isFinite(def)) continue
+    spByTeam.set(row.team, {
+      off: Math.round(off * 10) / 10,
+      def: Math.round(def * 10) / 10,
+      sp: Number.isFinite(sp) ? Math.round(sp * 10) / 10 : Math.round((off - def) * 10) / 10,
+    })
+  }
+
   /** @type {Map<string, { conference: string, team_abbr: string, full_name: string }>} */
   const meta = new Map()
   for (const t of teamsRaw || []) {
@@ -340,31 +290,72 @@ export async function buildCfbPowerBoard({ apiKey, season, priorSeason = season 
     const mascot = t.mascot || ''
     const abbr = (t.abbreviation || t.alt_name1 || school.slice(0, 4)).toString().toUpperCase()
     const conference = t.conference || t.conferenceName || 'FBS'
-    const full_name = mascot ? `${school} ${mascot}` : school
-    meta.set(school, { conference, team_abbr: abbr.slice(0, 8), full_name })
+    meta.set(school, {
+      conference,
+      team_abbr: abbr.slice(0, 8),
+      full_name: mascot ? `${school} ${mascot}` : school,
+    })
   }
 
-  /** Prefer teams that appear in Elo from FBS games */
+  const schools = new Set([...fpiByTeam.keys(), ...spByTeam.keys()])
+  if (schools.size < 50) {
+    throw new Error(
+      `CFBD FPI/SP returned too few teams (${schools.size}). Check API key / year.`,
+    )
+  }
+
   const board = []
-  for (const [team_name, eloVal] of elo) {
-    const power_rating = Math.round((eloVal - meanElo) * ELO_TO_POINTS * 10) / 10
-    const srs = srsMap.get(team_name)
-    const m = meta.get(team_name) || {
-      conference: 'FBS',
-      team_abbr: team_name.replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase() || 'TEAM',
-      full_name: team_name,
+  for (const school of schools) {
+    const fpi = fpiByTeam.get(school)
+    const sp = spByTeam.get(school)
+    const eloVal = elo.get(school)
+    const eloPower =
+      eloVal != null ? Math.round((eloVal - meanElo) * ELO_TO_POINTS * 10) / 10 : null
+
+    const gp = seasonGp.get(school) || 0
+    const resultsW = Math.min(MAX_RESULTS_BLEND, gp / RESULTS_BLEND_GAMES)
+
+    let power_rating
+    if (fpi != null && Number.isFinite(fpi)) {
+      power_rating =
+        eloPower != null
+          ? Math.round(((1 - resultsW) * fpi + resultsW * eloPower) * 10) / 10
+          : Math.round(fpi * 10) / 10
+    } else if (sp != null) {
+      power_rating = sp.sp
+    } else if (eloPower != null) {
+      power_rating = eloPower
+    } else {
+      continue
     }
+
+    const off_rating =
+      sp?.off ??
+      (fpi != null ? Math.round((27 + power_rating * 0.55) * 10) / 10 : 27)
+    const def_rating =
+      sp?.def ??
+      (fpi != null ? Math.round((27 - power_rating * 0.35) * 10) / 10 : 27)
+
+    const m = meta.get(school) || {
+      conference: 'FBS',
+      team_abbr: school.replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase() || 'TEAM',
+      full_name: school,
+    }
+
     board.push({
-      team_name: m.full_name || team_name,
+      team_name: m.full_name || school,
       team_abbr: m.team_abbr,
       conference: m.conference,
       power_rating,
-      off_rating: srs?.off_rating ?? Math.round((27 + power_rating * 0.5) * 10) / 10,
-      def_rating: srs?.def_rating ?? Math.round((27 - power_rating * 0.5) * 10) / 10,
-      tempo_rating: tempoMap.get(team_name) ?? DEFAULT_TEMPO,
-      home_field_advantage: hfaMap.get(team_name) ?? DEFAULT_HFA,
-      elo: Math.round(eloVal * 10) / 10,
-      school: team_name,
+      off_rating,
+      def_rating,
+      tempo_rating: tempoMap.get(school) ?? DEFAULT_TEMPO,
+      home_field_advantage: hfaMap.get(school) ?? DEFAULT_HFA,
+      fpi: fpi != null ? Math.round(fpi * 10) / 10 : null,
+      sp: sp?.sp ?? null,
+      elo_power: eloPower,
+      season_games: gp,
+      school,
     })
   }
 
@@ -372,6 +363,8 @@ export async function buildCfbPowerBoard({ apiKey, season, priorSeason = season 
   return {
     season,
     priorSeason,
+    fpiYear: fpiPack.year,
+    spYear: spPack.year,
     gameCount: allGames.length,
     seasonGameCount: seasonGames.length,
     board,

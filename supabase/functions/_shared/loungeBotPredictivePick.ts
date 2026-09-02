@@ -592,9 +592,13 @@ export function buildNflAtsSlateCard(
     const cheddaSweetWeight = weights.get('Chedda:dog_sweet_spot_130_175') || 1.0
     const tankRestWeight = weights.get('Tank:rest_advantage') || 1.0
 
-    // Persona-specific picks with dynamic Bayesian weights, betting splits, EPA/trench & CFB Power modeling:
-    // 1. Scott (Model EV): evaluates model-projected spread vs market spread using Net EPA (NFL) or Power Index (CFB)
+    // Desk lanes (real feeds):
+    // Scott: market/EV + CFB FPI vs number (or NFL EPA)
+    // Rocco: SP+/EPA strength + short favorites / key numbers (trenches offline until PFF)
+    // Chedda: dogs, RLM/splits, golden hooks
+    // Tank: situational / rest / market flow; CFB tempo scales modelTotal in matchup projection
     const sharpSplitBonus = sharpFavorsHome ? 0.35 : sharpFavorsAway ? -0.35 : 0
+    // 1. Scott — model price vs market
     const epaBonus = trenchEpa
       ? Math.max(-1.5, Math.min(1.5, trenchEpa.epaSpreadImpactHome * 0.3))
       : cfbMatchup && cfbMatchup.isValuePlay
@@ -603,7 +607,7 @@ export function buildNflAtsSlateCard(
     const scottScoreHome = ((homePrice > awayPrice ? 1.0 : -0.5) + (homePoint < 0 ? 0.3 : 0.1) + sharpSplitBonus + epaBonus) * scottWeight
     const scottSide: 'home' | 'away' = scottScoreHome >= 0 ? 'home' : 'away'
 
-    // 2. Chedda (Dog / Points Hunter): heavily prefers taking positive points (+3.5, +7.5), capitalizes on Golden Key Hooks (+3.5, +7.5) & Sharp Money Divergence
+    // 2. Chedda — dogs / money
     const cheddaSplitBoost = (homePoint > 0 && sharpFavorsHome) ? 1.2 : (awayPoint > 0 && sharpFavorsAway) ? -1.2 : 0
     const cheddaGoldenHookBoost = (homeKeyAnalysis?.isHookGolden && homePoint > 0)
       ? 1.0
@@ -622,7 +626,7 @@ export function buildNflAtsSlateCard(
     const cheddaScoreHome = (homePoint > 0 ? (1.5 * cheddaSweetWeight) : awayPoint > 0 ? (-1.5 * cheddaSweetWeight) : (homePrice > awayPrice ? 0.5 : -0.5)) + cheddaSplitBoost + cheddaGoldenHookBoost + dogTrenchBoost
     const cheddaSide: 'home' | 'away' = cheddaScoreHome >= 0 ? 'home' : 'away'
 
-    // 3. Rocco (Trench / Favorites / Power Programs): prefers laying short points on favorites (-2.5, -3.5, -6.5), penalizes Hook Tax Traps (-3.5, -7.5)
+    // 3. Rocco — SP+/EPA strength on short favorites (CFB power gap uses FPI scale ~10+ pts)
     const isShortFavHome = homePoint < 0 && homePoint >= -7.5
     const isShortFavAway = awayPoint < 0 && awayPoint >= -7.5
     const roccoChalkTrapPenalty = (isShortFavHome && sharpFavorsAway) ? -1.5 : (isShortFavAway && sharpFavorsHome) ? 1.5 : 0
@@ -639,7 +643,7 @@ export function buildNflAtsSlateCard(
     const roccoScoreHome = (isShortFavHome ? (1.2 * roccoWeight) : isShortFavAway ? (-1.2 * roccoWeight) : (homePoint < 0 ? 0.4 : -0.4)) + roccoChalkTrapPenalty + roccoHookTaxPenalty + roccoTrenchBonus
     const roccoSide: 'home' | 'away' = roccoScoreHome >= 0 ? 'home' : 'away'
 
-    // 4. Tank (Situational / Market Flow): deterministic situational lean based on matchup hash & point spreads + market flow
+    // 4. Tank — situational / rest / flow
     const hVal = hashString(`${ev.id}_${homeTeam}_${awayTeam}`)
     const tankFlowBoost = sharpFavorsHome ? 0.15 : sharpFavorsAway ? -0.15 : 0
     const tankScoreHome = (((hVal % 100) / 100 + (homePoint > awayPoint ? 0.2 : -0.2) + tankFlowBoost)) * tankRestWeight

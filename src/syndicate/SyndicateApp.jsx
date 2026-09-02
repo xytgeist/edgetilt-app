@@ -1118,13 +1118,13 @@ export function SyndicateApp() {
           </div>
         )}
 
-        {/* CFB Power Index Tab (preview of CFBD-backed Elo/SRS board) */}
+        {/* CFB Power Index Tab (preview of CFBD FPI + SP+ board) */}
         {activeTab === 'cfb' && (
           <div className="space-y-6">
             <div className="border-b border-zinc-800 pb-4">
               <h2 className="text-2xl font-bold text-white tracking-tight">College Football Power Ratings</h2>
               <p className="text-zinc-400 text-xs sm:text-sm mt-1">
-                Elo + SRS board built from CollegeFootballData game results (points vs average FBS). Preview while we decide what stays public.
+                CFBD Football Power Index (FPI) + SP+ off/def, with a light in-season results blend. Same family of forward ratings as ESPN FPI.
               </p>
             </div>
 

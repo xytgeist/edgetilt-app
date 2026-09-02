@@ -782,7 +782,7 @@ Use **`npm run db:query:production`** / **`db:query:test`** — not parallel raw
 
 ---
 
-## NFL EPA + CFB Elo/SRS metric sync (real ingest)
+## NFL EPA + CFB FPI/SP+ metric sync (real ingest)
 
 **Problem we fixed:** `nfl_team_metrics` and `cfb_team_power_ratings` originally shipped with **hand-seeded** boards (no live feed). Trench win rates (PBWR/PRWR/RBWR/RSWR) are **PFF-class** and stay out of model math until a paid charting API is wired.
 
@@ -794,13 +794,14 @@ npm run syndicate:sync-nfl-metrics:test -- --dry-run
 npm run syndicate:sync-nfl-metrics:production   # Ryan explicit only
 ```
 
-**CFB (CFBD + owned formula):** [`scripts/sync-cfb-power-ratings.mjs`](../scripts/sync-cfb-power-ratings.mjs) uses CollegeFootballData **games results** to compute:
+**CFB (CFBD FPI + SP+ for desks):** [`scripts/sync-cfb-power-ratings.mjs`](../scripts/sync-cfb-power-ratings.mjs) pulls CollegeFootballData:
 
-1. Margin-aware **Elo** (prior season + current)
-2. `power_rating = (elo - mean_elo) * 0.04` (points vs avg FBS)
-3. Iterative **SRS** → `off_rating` / `def_rating`
-4. **HFA** from home-margin residual (min sample; else 2.5)
-5. **Tempo** from CFBD season stats when present
+1. **`power_rating`** ← CFBD **FPI** (ESPN-scale; light blend toward score Elo as season games pile up)
+2. **`off_rating` / `def_rating`** ← CFBD **SP+** offense / defense (Rocco lane)
+3. **HFA** ← home-margin residual (min 4 home games; else 2.5)
+4. **Tempo** ← advanced season `offense.plays / games` (prior year until current covers FBS; Tank lane)
+
+Desk mapping: **Scott** = FPI vs market · **Rocco** = SP+/EPA strength · **Chedda** = splits/RLM/dogs · **Tank** = tempo/totals/situational.
 
 Requires **`CFBD_API_KEY`** in `.env.supabase.{test,production}` and GitHub Actions secret `CFBD_API_KEY` ([get key](https://collegefootballdata.com/key)). Free tier is 1k calls/mo … weekly sync is fine; Patreon ~$5/mo if you need more.
 

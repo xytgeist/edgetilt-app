@@ -1,9 +1,9 @@
 /**
- * College Football (NCAAF) Power Index, Off/Def Ratings, and Model Spread Engine.
+ * College Football Power Index for Scott (FPI vs market) + Rocco (SP+ off/def) + Tank (totals/tempo).
  *
- * Runtime prefers public.cfb_team_power_ratings (filled by scripts/sync-cfb-power-ratings.mjs
- * from CollegeFootballData games via owned Elo + SRS). Static CFB_BASELINE_POWER_RATINGS
- * is fallback only when the DB board is empty.
+ * Runtime prefers public.cfb_team_power_ratings filled by scripts/sync-cfb-power-ratings.mjs
+ * from CollegeFootballData FPI + SP+ (with light in-season Elo blend). Static baselines
+ * are fallback only when the DB board is empty.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { shortDisplayName } from './loungeBotOddsCaption.ts'
@@ -28,6 +28,7 @@ export type CfbMatchupProjection = {
   homeFieldAdv: number
   modelSpreadHome: number // e.g. -7.5 (favors home by 7.5 pts)
   modelTotal: number      // e.g. 54.5
+  combinedTempo: number   // avg plays/game (Tank totals lane)
   marketSpreadHome: number | null
   spreadDelta: number     // Model spread - Market spread
   isValuePlay: boolean    // Spread delta >= 2.5 points
@@ -208,11 +209,13 @@ export function calculateCfbMatchupProjection(
   const rawSpread = (away.power_rating - home.power_rating) - home.home_field_advantage
   const modelSpreadHome = Math.round(rawSpread * 10) / 10
 
-  // 2. Projected Total:
-  // Base scoring = (Home Off vs Away Def) + (Away Off vs Home Def)
+  // 2. Projected Total (SP+ off/def, tempo-scaled vs ~68 plays/game FBS mean)
   const homeProjPts = Math.max(10, (home.off_rating + away.def_rating) / 2)
   const awayProjPts = Math.max(10, (away.off_rating + home.def_rating) / 2)
-  const modelTotal = Math.round((homeProjPts + awayProjPts) * 10) / 10
+  const tempoAvg = (home.tempo_rating + away.tempo_rating) / 2
+  const tempoScale = Math.max(0.85, Math.min(1.2, tempoAvg / 68))
+  const modelTotal = Math.round((homeProjPts + awayProjPts) * tempoScale * 10) / 10
+  const combinedTempo = Math.round(tempoAvg * 10) / 10
 
   // 3. Value calculation vs Market Spread
   let spreadDelta = 0
@@ -241,9 +244,9 @@ export function calculateCfbMatchupProjection(
 
   if (isValuePlay && valueSide) {
     const valTeam = valueSide === 'home' ? homeName : awayName
-    summaryLine = `CFB Model Edge · Projected ${homeName} ${spreadDisp} vs ${awayName} · +${spreadDelta} pt edge on ${valTeam}`
+    summaryLine = `CFB FPI Edge · Model ${homeName} ${spreadDisp} vs ${awayName} · +${spreadDelta} pt on ${valTeam}`
   } else {
-    summaryLine = `CFB Power Index · ${homeName} (PR ${home.power_rating}) vs ${awayName} (PR ${away.power_rating}) · Model Spread: ${homeName} ${spreadDisp}`
+    summaryLine = `CFB FPI · ${homeName} (${home.power_rating}) vs ${awayName} (${away.power_rating}) · Model ${homeName} ${spreadDisp}`
   }
 
   return {
@@ -254,6 +257,7 @@ export function calculateCfbMatchupProjection(
     homeFieldAdv: home.home_field_advantage,
     modelSpreadHome,
     modelTotal,
+    combinedTempo,
     marketSpreadHome,
     spreadDelta,
     isValuePlay,

@@ -671,12 +671,12 @@ export function formatWeeklySyndicateRecapCaption(recap: WeeklyRecapPayload): st
     }
     if (recap.boxscoreHighlights.biggestWin) {
       const { pickLine, matchup, narrative } = recap.boxscoreHighlights.biggestWin
-      lines.push(`- 🔨 **[gold]${pickLine}[/gold]** (${matchup}) · ${narrative}`)
+      lines.push(`- ✅ **[gold]${pickLine}[/gold]** (${matchup}) · ${narrative}`)
     }
     if (recap.boxscoreHighlights.badBeat) {
       const { pickLine, matchup, narrative, tagline } = recap.boxscoreHighlights.badBeat
       const tail = tagline ? ` *${tagline}*` : ''
-      lines.push(`- 🎲 **[gold]${pickLine}[/gold]** (${matchup}) · ${narrative}${tail}`)
+      lines.push(`- ❌ **[gold]${pickLine}[/gold]** (${matchup}) · ${narrative}${tail}`)
     }
     lines.push('')
   }

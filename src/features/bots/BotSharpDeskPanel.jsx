@@ -755,67 +755,73 @@ export function BotSharpDeskPanel({
                 </button>
               </div>
               <p className="text-[10px] text-zinc-500">
-                Dumb ATS + CLV vs close. Every row has n. No adaptive weights until sample is real.
+                Bucket × desk is the truth. CLV = your side vs locked close (not opener).
+                Trust floor n≥{monthlyBoard.trust_min_n || 25} before crowning. Do not average Hammer + Consensus into shop ATS.
               </p>
-              {monthlyBoard.by_desk?.length > 0 && (
+              {monthlyBoard.rows?.length > 0 && (
                 <div className="overflow-x-auto">
+                  <div className="text-[10px] text-violet-400/80 mb-1 font-medium">By bucket × desk</div>
                   <table className="w-full text-[11px] text-left">
                     <thead className="text-zinc-500 border-b border-zinc-800">
                       <tr>
+                        <th className="py-1 pr-2 font-medium">Bucket</th>
                         <th className="py-1 pr-2 font-medium">Desk</th>
-                        <th className="py-1 pr-2 font-medium">Lane</th>
                         <th className="py-1 pr-2 font-medium">n</th>
                         <th className="py-1 pr-2 font-medium">ATS</th>
-                        <th className="py-1 pr-2 font-medium">Win%</th>
-                        <th className="py-1 pr-2 font-medium">u</th>
                         <th className="py-1 pr-2 font-medium">CLV avg</th>
-                        <th className="py-1 font-medium">CLV beat%</th>
+                        <th className="py-1 font-medium">Trust</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {monthlyBoard.by_desk.map((d) => (
-                        <tr key={d.desk} className="border-b border-zinc-900 text-zinc-200">
-                          <td className="py-1 pr-2 font-semibold">{d.desk}</td>
-                          <td className="py-1 pr-2 text-zinc-400">{d.lane}</td>
-                          <td className="py-1 pr-2 tabular-nums">{d.n}</td>
-                          <td className="py-1 pr-2 tabular-nums">{d.wins}-{d.losses}{d.pushes ? `-${d.pushes}` : ''}</td>
-                          <td className="py-1 pr-2 tabular-nums">{d.ats_win_pct != null ? `${d.ats_win_pct}%` : 'n/a'}</td>
-                          <td className="py-1 pr-2 tabular-nums">{d.units_net > 0 ? `+${d.units_net}` : d.units_net}</td>
+                      {monthlyBoard.rows.map((r) => (
+                        <tr key={`${r.bucket}-${r.desk}`} className="border-b border-zinc-900 text-zinc-200">
+                          <td className="py-1 pr-2">{r.bucket}</td>
+                          <td className="py-1 pr-2 font-semibold">{r.desk}</td>
+                          <td className="py-1 pr-2 tabular-nums">{r.n}</td>
                           <td className="py-1 pr-2 tabular-nums">
-                            {d.clv_avg_pts != null ? `${d.clv_avg_pts > 0 ? '+' : ''}${d.clv_avg_pts}` : 'n/a'}
-                            {d.clv_n ? <span className="text-zinc-500"> (n={d.clv_n})</span> : null}
+                            {r.bucket === 'pass' ? 'pass' : `${r.wins}-${r.losses}`}
                           </td>
-                          <td className="py-1 tabular-nums">{d.clv_beat_pct != null ? `${d.clv_beat_pct}%` : 'n/a'}</td>
+                          <td className="py-1 pr-2 tabular-nums">
+                            {r.clv_avg_pts != null ? `${r.clv_avg_pts > 0 ? '+' : ''}${r.clv_avg_pts}` : 'n/a'}
+                            {r.clv_n ? <span className="text-zinc-500"> (n={r.clv_n})</span> : null}
+                          </td>
+                          <td className="py-1 text-[10px]">
+                            {r.bucket === 'pass'
+                              ? 'n only'
+                              : r.trusted
+                                ? <span className="text-emerald-400">ok</span>
+                                : <span className="text-amber-400/90">thin</span>}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               )}
-              {monthlyBoard.rows?.length > 0 && (
+              {monthlyBoard.by_desk?.length > 0 && (
                 <div className="overflow-x-auto pt-1">
-                  <div className="text-[10px] text-zinc-500 mb-1">By bucket × desk</div>
+                  <div className="text-[10px] text-zinc-500 mb-1">
+                    Desk rollup (mixed buckets ... informal only, never crown from this)
+                  </div>
                   <table className="w-full text-[10px] text-left">
                     <thead className="text-zinc-500 border-b border-zinc-800">
                       <tr>
-                        <th className="py-1 pr-2">Bucket</th>
                         <th className="py-1 pr-2">Desk</th>
+                        <th className="py-1 pr-2">Lane</th>
                         <th className="py-1 pr-2">n</th>
                         <th className="py-1 pr-2">ATS</th>
-                        <th className="py-1 pr-2">CLV avg</th>
+                        <th className="py-1">CLV avg</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {monthlyBoard.rows.map((r) => (
-                        <tr key={`${r.bucket}-${r.desk}`} className="border-b border-zinc-900 text-zinc-300">
-                          <td className="py-0.5 pr-2">{r.bucket}</td>
-                          <td className="py-0.5 pr-2">{r.desk}</td>
-                          <td className="py-0.5 pr-2 tabular-nums">{r.n}</td>
-                          <td className="py-0.5 pr-2 tabular-nums">
-                            {r.bucket === 'pass' ? 'pass' : `${r.wins}-${r.losses}`}
-                          </td>
+                      {monthlyBoard.by_desk.map((d) => (
+                        <tr key={d.desk} className="border-b border-zinc-900 text-zinc-400">
+                          <td className="py-0.5 pr-2">{d.desk}</td>
+                          <td className="py-0.5 pr-2">{d.lane}</td>
+                          <td className="py-0.5 pr-2 tabular-nums">{d.n}</td>
+                          <td className="py-0.5 pr-2 tabular-nums">{d.wins}-{d.losses}</td>
                           <td className="py-0.5 tabular-nums">
-                            {r.clv_avg_pts != null ? `${r.clv_avg_pts > 0 ? '+' : ''}${r.clv_avg_pts}` : 'n/a'}
+                            {d.clv_avg_pts != null ? `${d.clv_avg_pts > 0 ? '+' : ''}${d.clv_avg_pts}` : 'n/a'}
                           </td>
                         </tr>
                       ))}

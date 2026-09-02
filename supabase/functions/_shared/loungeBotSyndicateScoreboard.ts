@@ -2,11 +2,18 @@
  * Monthly syndicate scoreboard … dumb ATS + CLV aggregations only.
  * Buckets: hammer / consensus / divided / pass
  * Desks: Scott / Rocco / Chedda = sides; Tank = totals only
- * CLV: pick line vs lounge_market_files close (when locked)
+ * CLV: pick line vs lounge_market_files close (when locked) … YOUR SIDE vs close.
+ *   Example: dog at +7 that closes +3 → +4 CLV even if it loses ATS.
+ *
+ * Trust floor: do not crown a desk/bucket until n >= SCOREBOARD_TRUST_MIN_N.
+ * Never treat a desk rollup that mixes Hammer+Consensus as "shop ATS."
  *
  * Do NOT feed adaptive weights from this until a bucket has a real sample.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
+
+/** First look before anyone talks … do not crown a desk at n=8. */
+export const SCOREBOARD_TRUST_MIN_N = 25
 
 export type ScoreboardBucket = 'hammer' | 'consensus' | 'divided' | 'pass'
 export type ScoreboardDesk = 'Scott' | 'Rocco' | 'Chedda' | 'Tank'
@@ -26,6 +33,8 @@ export type ScoreboardRow = {
   clv_avg_pts: number | null
   clv_beat_n: number
   clv_beat_pct: number | null
+  /** True only when n >= SCOREBOARD_TRUST_MIN_N (pass rows never trusted for ATS talk). */
+  trusted: boolean
 }
 
 export type MonthlySyndicateScoreboard = {
@@ -43,7 +52,12 @@ export type MonthlySyndicateScoreboard = {
     clv_n: number
     clv_avg_pts: number | null
     clv_beat_pct: number | null
+    trusted: boolean
   }>
+  /**
+   * Desk rollup mixes Hammer+Consensus+Divided … informal only.
+   * Do not crown from this; use bucket×desk rows.
+   */
   by_desk: Array<{
     desk: ScoreboardDesk
     lane: ScoreboardLane
@@ -56,7 +70,10 @@ export type MonthlySyndicateScoreboard = {
     clv_n: number
     clv_avg_pts: number | null
     clv_beat_pct: number | null
+    mixed_buckets: true
+    trusted: false
   }>
+  trust_min_n: number
   notes: string[]
 }
 
@@ -124,8 +141,9 @@ export function deskLane(pickerName: string, marketKey?: string | null): Scorebo
 }
 
 /**
- * Points of CLV vs market-file close.
- * Spreads: pick_line − close (same side). Positive = beat the close.
+ * Points of CLV vs market-file close … your side vs the close, not vs opener.
+ * Spreads: pick_line − close_on_same_side. Positive = beat the close.
+ *   Dog +7 that closes +3 → +4 CLV (good number even if ATS loss).
  * Totals Over: pick_line − close. Totals Under: close − pick_line.
  */
 export function computePickClvPts(
@@ -186,6 +204,7 @@ function emptyCell(bucket: ScoreboardBucket, desk: ScoreboardDesk): ScoreboardRo
     clv_avg_pts: null,
     clv_beat_n: 0,
     clv_beat_pct: null,
+    trusted: false,
   }
 }
 
@@ -276,10 +295,12 @@ export async function compileMonthlySyndicateScoreboard(
   }
 
   const notes: string[] = [
-    'Dumb aggregates only … no adaptive weights until a bucket has a real sample.',
+    `Trust floor: n >= ${SCOREBOARD_TRUST_MIN_N} per bucket×desk before anyone talks. Do not crown at n=8.`,
+    'Read bucket×desk rows. Do not average Hammer + Consensus into one shop ATS.',
+    'CLV = your side vs locked close (not opener). Dog +7 that closes +3 is good CLV even on an ATS loss.',
     'Tank rows are totals-only; Scott / Rocco / Chedda are sides.',
-    'CLV vs lounge_market_files close when locked (or metadata.clv_pts from grade).',
     'Pass = desk PASS (cancelled ledger) … n only, no ATS.',
+    'No adaptive weights until a bucket has a real sample. FEI waits.',
   ]
 
   for (const pick of list) {
@@ -326,6 +347,7 @@ export async function compileMonthlySyndicateScoreboard(
       finalizeAts(row)
       finalizeClv(row)
       row.units_net = Math.round(row.units_net * 100) / 100
+      row.trusted = bucket !== 'pass' && row.n >= SCOREBOARD_TRUST_MIN_N
       rows.push(row)
     }
   }
@@ -343,6 +365,7 @@ export async function compileMonthlySyndicateScoreboard(
       clv_n: subset.reduce((s, r) => s + r.clv_n, 0),
       clv_avg_pts: null as number | null,
       clv_beat_pct: null as number | null,
+      trusted: false,
     }
     finalizeAts(agg)
     const clvSum = subset.reduce((s, r) => s + (r.clv_avg_pts != null && r.clv_n ? r.clv_avg_pts * r.clv_n : 0), 0)
@@ -351,6 +374,8 @@ export async function compileMonthlySyndicateScoreboard(
       agg.clv_avg_pts = Math.round((clvSum / agg.clv_n) * 100) / 100
       agg.clv_beat_pct = Math.round((beatN / agg.clv_n) * 1000) / 10
     }
+    // Bucket rollup across desks … still need floor before talking
+    agg.trusted = bucket !== 'pass' && agg.n >= SCOREBOARD_TRUST_MIN_N
     return agg
   })
 
@@ -369,6 +394,8 @@ export async function compileMonthlySyndicateScoreboard(
       clv_n: subset.reduce((s, r) => s + r.clv_n, 0),
       clv_avg_pts: null as number | null,
       clv_beat_pct: null as number | null,
+      mixed_buckets: true as const,
+      trusted: false as const,
     }
     finalizeAts(agg)
     const clvSum = subset.reduce((s, r) => s + (r.clv_avg_pts != null && r.clv_n ? r.clv_avg_pts * r.clv_n : 0), 0)
@@ -390,21 +417,22 @@ export async function compileMonthlySyndicateScoreboard(
     rows: rows.filter((r) => r.n > 0),
     by_bucket: by_bucket.filter((r) => r.n > 0),
     by_desk: by_desk.filter((r) => r.n > 0),
+    trust_min_n: SCOREBOARD_TRUST_MIN_N,
     notes,
   }
 }
 
 /** One-line ops summary for toast / CLI. */
 export function formatScoreboardToast(board: MonthlySyndicateScoreboard): string {
-  const desks = board.by_desk
-    .map((d) => {
-      const ats = d.ats_win_pct != null ? `${d.wins}-${d.losses}` : `${d.n} pass/n`
-      const clv = d.clv_avg_pts != null ? ` CLV ${d.clv_avg_pts > 0 ? '+' : ''}${d.clv_avg_pts}` : ''
-      return `${d.desk} ${ats} n=${d.n}${clv}`
+  const cells = (board.rows || [])
+    .filter((r) => r.bucket !== 'pass')
+    .slice(0, 6)
+    .map((r) => {
+      const flag = r.trusted ? '' : '*'
+      return `${r.bucket}/${r.desk} ${r.wins}-${r.losses} n=${r.n}${flag}`
     })
     .join(' · ')
-  const buckets = board.by_bucket
-    .map((b) => `${b.bucket} n=${b.n}`)
-    .join(', ')
-  return `Scoreboard ${board.period.label}: ${desks || 'no graded rows'}${buckets ? ` | ${buckets}` : ''}`
+  const thin = (board.rows || []).some((r) => r.bucket !== 'pass' && !r.trusted)
+  const trustNote = thin ? ` (* n<${board.trust_min_n || SCOREBOARD_TRUST_MIN_N} ... don't crown)` : ''
+  return `Scoreboard ${board.period.label}: ${cells || 'no graded rows'}${trustNote}`
 }

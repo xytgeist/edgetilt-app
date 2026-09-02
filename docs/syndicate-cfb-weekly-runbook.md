@@ -57,7 +57,7 @@ Public site shows Consensus + Off/Def/HFA/Tempo. Model A/B/C columns are **blurr
 | Betting splits / RLM | **Thin** | Chedda can lean dogs/hooks; Circa-class handle is **not** wired as a clean weekly feed |
 | Weather / rest / travel | **Modules exist** | Not yet first-class Tank totals publish lane |
 | Starting QB / injury modifiers | **Live** (`syndicate_side_modifiers` + Rundown×PVAL) | Manual CFB first; auto only on known PVAL. Scott vs **current** market; Rocco gets hurt-side strength flag (not Scott’s pts). |
-| Desk scoreboard (ATS/CLV by desk + bucket) | **Live (ops)** | Edge action `syndicate_monthly_scoreboard` + Bots portal **Monthly Board**. Buckets hammer/consensus/divided/pass; desks sides vs Tank totals; every row has **n**. CLV vs `lounge_market_files` close. **Do not turn on adaptive weights** until a bucket has a real sample. FEI still waits. |
+| Desk scoreboard (ATS/CLV by desk + bucket) | **Live (test + prod)** | Edge `syndicate_monthly_scoreboard` + portal Monthly Board. Bucket×desk is truth; desk rollup is mixed/informal. CLV = side vs locked close. Trust floor **n ≥ 25**. No adaptive weights until real sample. FEI waits. |
 
 ### Desk automation … real but uneven
 

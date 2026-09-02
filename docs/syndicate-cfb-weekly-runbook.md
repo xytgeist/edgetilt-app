@@ -154,8 +154,8 @@ Publish **Hammers + Consensus only** on the public/VIP slate unless Ryan overrid
 **Not what this means:**
 
 - Not “every Hammer needs two essays”
-- Not “ban all 4–0s” … 4–0 is fine when desks used different features
-- Not “you can’t publish a single-desk Scott lean” as a Scott play or as part of a real 3–1
+- Not “ban all 3–0s” … unanimous side desks are fine when they used different features
+- Not “you can’t publish a single-desk Scott lean” as a Scott play or as part of a real 2–1
 
 ### Sun–Mon … grade
 

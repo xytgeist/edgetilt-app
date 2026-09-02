@@ -215,3 +215,20 @@ export function calculateTrenchEpaMatchup(
     summaryLine,
   }
 }
+
+/**
+ * Crude NFL model total for Tank's O/U lane (EPA scoring environment vs ~45 pt baseline).
+ * Not as strong as CFB SP+ off/def + tempo … still better than a hash side vote.
+ */
+export function estimateNflModelTotal(
+  homeTeamName: string,
+  awayTeamName: string,
+  teamMap?: Map<string, NflTeamMetrics>,
+): number | null {
+  const home = resolveTeamMetrics(homeTeamName, teamMap)
+  const away = resolveTeamMetrics(awayTeamName, teamMap)
+  if (!home || !away) return null
+  const homeExp = 22.5 + (home.off_epa_play - away.def_epa_play) * 28
+  const awayExp = 22.5 + (away.off_epa_play - home.def_epa_play) * 28
+  return Math.round((Math.max(10, homeExp) + Math.max(10, awayExp)) * 10) / 10
+}

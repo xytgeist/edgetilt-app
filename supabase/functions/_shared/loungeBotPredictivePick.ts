@@ -19,6 +19,7 @@ import { fetchGameInjuryPval, type GameInjurySummary } from './loungeBotInjuryPv
 import { resolveGameBettingSplits, type BettingSplitSummary } from './loungeBotBettingSplits.ts'
 import {
   calculateTrenchEpaMatchup,
+  estimateNflModelTotal,
   loadDbTeamMetricsMap,
   type TrenchEpaMatchupSummary,
   type NflTeamMetrics,
@@ -36,11 +37,16 @@ const ODDS_BASE = 'https://api.the-odds-api.com/v4'
 
 export const SHARP_PICKERS = ['Scott', 'Rocco', 'Chedda', 'Tank'] as const
 export type SharpPicker = (typeof SHARP_PICKERS)[number]
+/** ATS side votes only … Tank lives on totals and does not fill fake 4-0 hammers. */
+export const ATS_SIDE_DESKS = ['Scott', 'Rocco', 'Chedda'] as const
+export type AtsSideDesk = (typeof ATS_SIDE_DESKS)[number]
 
 export type SinglePickerPick = {
   pickerName: SharpPicker
   pick: OddsPick
 }
+
+export type SlateDeskSide = 'home' | 'away' | 'over' | 'under' | 'pass'
 
 export type SlateGamePick = {
   eventId: string
@@ -49,18 +55,20 @@ export type SlateGamePick = {
   awayTeam: string
   commenceTime: string
   spreadPoint: number | null // home spread point (e.g. -3.5 or +2.5)
+  marketTotal: number | null
+  modelTotal: number | null
   splits?: BettingSplitSummary
   trenchEpa?: TrenchEpaMatchupSummary | null
   consensusPick: {
     side: 'home' | 'away'
     teamName: string
     lineDisplay: string
-    voteCount: number // e.g. 4 or 3
+    voteCount: number // e.g. 3 or 2 among ATS desks
     type: 'hammer' | 'consensus' | 'split'
-    badgeText: string // '🔥 4-0 Hammer' | '🎯 3-1 Consensus' | '⚔️ 2-2 Split'
+    badgeText: string // '🔥 3-0 Hammer' | '🎯 2-1 Consensus' | '⚔️ 1-1 Split'
   }
   pickerPicks: Record<SharpPicker, {
-    side: 'home' | 'away'
+    side: SlateDeskSide
     teamName: string
     lineDisplay: string
     pickPrice: number
@@ -240,7 +248,7 @@ function formatSlateGameMeta(g: SlateGamePick): string {
 }
 
 function pickersForLineDisplay(g: SlateGamePick, lineDisplay: string): SharpPicker[] {
-  return SHARP_PICKERS.filter((p) => g.pickerPicks[p].lineDisplay === lineDisplay)
+  return ATS_SIDE_DESKS.filter((p) => g.pickerPicks[p].lineDisplay === lineDisplay)
 }
 
 function formatSlatePickBullet(
@@ -255,11 +263,15 @@ function formatSlatePickBullet(
 /**
  * Format an NFL / Football Slate Card caption for the Lounge feed.
  * Public tease only: max 1 hammer, 2 consensus, 3 house-divided games (one row each).
+ * Side buckets are Scott/Rocco/Chedda only; Tank totals listed separately when he has a lean.
  */
 export function formatNflSlateCardCaption(card: NflSlateCard): string {
   const hammers = card.hammers.slice(0, PUBLIC_SLATE_HAMMER_CAP)
   const consensus = card.consensus.slice(0, PUBLIC_SLATE_CONSENSUS_CAP)
   const splits = card.splits.slice(0, PUBLIC_SLATE_HOUSE_DIVIDED_CAP)
+  const tankTotals = card.games
+    .filter((g) => g.pickerPicks.Tank.side === 'over' || g.pickerPicks.Tank.side === 'under')
+    .slice(0, 3)
 
   const title = card.cardTitle || '🏈 NFL Sharpe Syndicate Slate'
   const lines: string[] = [`# ${title}`]
@@ -268,7 +280,7 @@ export function formatNflSlateCardCaption(card: NflSlateCard): string {
   lines.push('')
 
   if (hammers.length > 0) {
-    lines.push('# 🔥 Unanimous 4-0 Hammers')
+    lines.push('# 🔥 Unanimous 3-0 Hammers')
     for (const g of hammers) {
       lines.push(formatSlatePickBullet(g, g.consensusPick.lineDisplay))
     }
@@ -276,7 +288,7 @@ export function formatNflSlateCardCaption(card: NflSlateCard): string {
   }
 
   if (consensus.length > 0) {
-    lines.push('# 🎯 3-1 Consensus')
+    lines.push('# 🎯 2-1 Consensus')
     for (const g of consensus) {
       const pickers = pickersForLineDisplay(g, g.consensusPick.lineDisplay)
       lines.push(formatSlatePickBullet(g, g.consensusPick.lineDisplay, pickers))
@@ -285,10 +297,10 @@ export function formatNflSlateCardCaption(card: NflSlateCard): string {
   }
 
   if (splits.length > 0) {
-    lines.push('# ⚔️ House Divided (2-2)')
+    lines.push('# ⚔️ House Divided (1-1)')
     for (const g of splits) {
       const byLine = new Map<string, SharpPicker[]>()
-      for (const p of SHARP_PICKERS) {
+      for (const p of ATS_SIDE_DESKS) {
         const lineDisplay = g.pickerPicks[p].lineDisplay
         const group = byLine.get(lineDisplay) || []
         group.push(p)
@@ -297,6 +309,14 @@ export function formatNflSlateCardCaption(card: NflSlateCard): string {
       for (const [lineDisplay, pickers] of byLine) {
         lines.push(formatSlatePickBullet(g, lineDisplay, pickers))
       }
+    }
+    lines.push('')
+  }
+
+  if (tankTotals.length > 0) {
+    lines.push('# 🛡️ Tank Totals')
+    for (const g of tankTotals) {
+      lines.push(formatSlatePickBullet(g, g.pickerPicks.Tank.lineDisplay, ['Tank']))
     }
     lines.push('')
   }
@@ -315,21 +335,24 @@ export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): 
   const icon = picker === 'Tank' ? '🛡️' : picker === 'Chedda' ? '🧀' : picker === 'Rocco' ? '🥩' : '🎯'
   const specialty =
     picker === 'Tank'
-      ? 'Situational & Weather'
+      ? 'Totals (tempo / off-def)'
       : picker === 'Chedda'
         ? 'Underdogs & Line Value'
         : picker === 'Rocco'
           ? 'Power Favorites & Key Numbers'
           : 'Pure Model EV'
 
-  const lines: string[] = [`${icon} ${picker.toUpperCase()}'S FULL ATS CARD (${specialty}):\n`]
+  const cardLabel = picker === 'Tank' ? 'TOTALS CARD' : 'ATS CARD'
+  const lines: string[] = [`${icon} ${picker.toUpperCase()}'S FULL ${cardLabel} (${specialty}):\n`]
   for (const g of card.games) {
     const pPick = g.pickerPicks[picker]
+    if (picker === 'Tank' && pPick.side === 'pass') continue
     const away = shortDisplayName(g.awayTeam)
     const home = shortDisplayName(g.homeTeam)
     const when = formatOddsCommenceTimeShort(g.commenceTime)
     lines.push(`• ${pPick.lineDisplay} (${away}/${home} · ${when})`)
   }
+  if (lines.length === 1) lines.push('• No totals leans this slate')
   return lines.join('\n')
 }
 
@@ -447,26 +470,84 @@ export function buildSyndicateCard(
   return { cardTitle: title, picks: assignedPicks }
 }
 
-/**
- * Simple hash helper for consistent deterministic pseudo-random distribution
- * across personas when evaluating subjective angles.
- */
-function hashString(str: string): number {
-  let h = 0
-  for (let i = 0; i < str.length; i++) {
-    h = (Math.imul(31, h) + str.charCodeAt(i)) | 0
+type MarketTotalQuote = {
+  total: number
+  overPrice: number
+  underPrice: number
+  bookTitle: string
+}
+
+function extractEventMarketTotal(ev: {
+  bookmakers?: Array<{
+    key: string
+    title: string
+    markets: Array<{
+      key: string
+      outcomes: Array<{ name: string; price: number; point?: number }>
+    }>
+  }>
+}): MarketTotalQuote | null {
+  const totals: number[] = []
+  const overs: number[] = []
+  const unders: number[] = []
+  let bookTitle = 'Consensus'
+
+  for (const b of ev.bookmakers || []) {
+    const tm = (b.markets || []).find((m) => m.key === 'totals')
+    if (!tm) continue
+    const over = tm.outcomes.find((o) => /^over$/i.test(String(o.name || '')))
+    const under = tm.outcomes.find((o) => /^under$/i.test(String(o.name || '')))
+    if (!over || over.point == null || !under) continue
+    totals.push(Number(over.point))
+    overs.push(Number(over.price))
+    unders.push(Number(under.price))
+    const key = String(b.key || '').toLowerCase()
+    if (key.includes('pinnacle') || key.includes('circa') || key.includes('lowvig')) {
+      return {
+        total: Math.round(Number(over.point) * 2) / 2,
+        overPrice: Number(over.price),
+        underPrice: Number(under.price),
+        bookTitle: b.title || b.key,
+      }
+    }
+    bookTitle = b.title || b.key || bookTitle
   }
-  return Math.abs(h)
+
+  if (!totals.length) return null
+  const sorted = [...totals].sort((a, b) => a - b)
+  const mid = Math.floor(sorted.length / 2)
+  const total = sorted.length % 2 === 0
+    ? (sorted[mid - 1]! + sorted[mid]!) / 2
+    : sorted[mid]!
+  const overSorted = [...overs].sort((a, b) => a - b)
+  const underSorted = [...unders].sort((a, b) => a - b)
+  const oMid = Math.floor(overSorted.length / 2)
+  const uMid = Math.floor(underSorted.length / 2)
+  return {
+    total: Math.round(total * 2) / 2,
+    overPrice: overSorted.length % 2 === 0
+      ? Math.round((overSorted[oMid - 1]! + overSorted[oMid]!) / 2)
+      : Math.round(overSorted[oMid]!),
+    underPrice: underSorted.length % 2 === 0
+      ? Math.round((underSorted[uMid - 1]! + underSorted[uMid]!) / 2)
+      : Math.round(underSorted[uMid]!),
+    bookTitle,
+  }
+}
+
+const TANK_TOTALS_EDGE_PTS = 2.5
+
+function resolveTankTotalsSide(modelTotal: number | null, marketTotal: number | null): 'over' | 'under' | 'pass' {
+  if (modelTotal == null || marketTotal == null) return 'pass'
+  const delta = modelTotal - marketTotal
+  if (delta >= TANK_TOTALS_EDGE_PTS) return 'over'
+  if (delta <= -TANK_TOTALS_EDGE_PTS) return 'under'
+  return 'pass'
 }
 
 /**
  * Build a full NFL / CFB ATS Slate Card across all games on the board.
- * Every single game gets picked by all 4 personas (Scott, Rocco, Chedda, Tank)
- * based on their distinct handicapping profiles:
- * - Scott: Model EV & power rating differential
- * - Rocco: Trench / short favorites & defensive matchups
- * - Chedda: Live dogs & taking the points
- * - Tank: Market flow, situational rest, & weather spots
+ * Side desks (Scott, Rocco, Chedda) vote ATS. Tank votes totals vs model when edge ≥ 2.5.
  */
 export function buildNflAtsSlateCard(
   events: Array<{
@@ -596,7 +677,7 @@ export function buildNflAtsSlateCard(
     // Scott: market/EV + CFB consensus vs number (or NFL EPA)
     // Rocco: SP+/EPA strength + short favorites / key numbers (trenches offline until PFF)
     // Chedda: dogs, RLM/splits, golden hooks
-    // Tank: situational / rest / market flow; CFB tempo scales modelTotal in matchup projection
+    // Tank: totals vs model (CFB SP+ off/def+tempo; NFL EPA scoring environment)
     const sharpSplitBonus = sharpFavorsHome ? 0.35 : sharpFavorsAway ? -0.35 : 0
     // 1. Scott — model price vs market
     const epaBonus = trenchEpa
@@ -643,14 +724,62 @@ export function buildNflAtsSlateCard(
     const roccoScoreHome = (isShortFavHome ? (1.2 * roccoWeight) : isShortFavAway ? (-1.2 * roccoWeight) : (homePoint < 0 ? 0.4 : -0.4)) + roccoChalkTrapPenalty + roccoHookTaxPenalty + roccoTrenchBonus
     const roccoSide: 'home' | 'away' = roccoScoreHome >= 0 ? 'home' : 'away'
 
-    // 4. Tank — situational / rest / flow
-    const hVal = hashString(`${ev.id}_${homeTeam}_${awayTeam}`)
-    const tankFlowBoost = sharpFavorsHome ? 0.15 : sharpFavorsAway ? -0.15 : 0
-    const tankScoreHome = (((hVal % 100) / 100 + (homePoint > awayPoint ? 0.2 : -0.2) + tankFlowBoost)) * tankRestWeight
-    const tankSide: 'home' | 'away' = tankScoreHome >= 0.5 ? 'home' : 'away'
+    // 4. Tank — totals desk (model vs market); pass when edge < 2.5
+    const marketTotalQuote = extractEventMarketTotal(ev)
+    const modelTotal = isCfb
+      ? (cfbMatchup?.modelTotal ?? null)
+      : estimateNflModelTotal(homeTeam, awayTeam, teamMetrics)
+    const tankTotalsSide = resolveTankTotalsSide(modelTotal, marketTotalQuote?.total ?? null)
+    void tankRestWeight // reserved for rest/travel boost once that feed is first-class
+
+    const overPickObj: OddsPick | null = marketTotalQuote
+      ? {
+          eventId: ev.id,
+          sportKey: ev.sport_key,
+          homeTeam,
+          awayTeam,
+          commenceTime: ev.commence_time,
+          marketKey: 'totals',
+          pickName: 'Over',
+          linePoint: marketTotalQuote.total,
+          pickPrice: marketTotalQuote.overPrice,
+          bookTitle: marketTotalQuote.bookTitle,
+          edgePct: 2.0,
+          bookCount: 5,
+          consensusPrice: marketTotalQuote.overPrice,
+          consensusProb: 0.5,
+        }
+      : null
+    const underPickObj: OddsPick | null = marketTotalQuote
+      ? {
+          eventId: ev.id,
+          sportKey: ev.sport_key,
+          homeTeam,
+          awayTeam,
+          commenceTime: ev.commence_time,
+          marketKey: 'totals',
+          pickName: 'Under',
+          linePoint: marketTotalQuote.total,
+          pickPrice: marketTotalQuote.underPrice,
+          bookTitle: marketTotalQuote.bookTitle,
+          edgePct: 2.0,
+          bookCount: 5,
+          consensusPrice: marketTotalQuote.underPrice,
+          consensusProb: 0.5,
+        }
+      : null
+
+    const tankPickObj = tankTotalsSide === 'over'
+      ? overPickObj
+      : tankTotalsSide === 'under'
+        ? underPickObj
+        : homePickObj
+    const tankLineDisp = tankTotalsSide === 'pass' || !tankPickObj
+      ? 'PASS (totals)'
+      : formatPickLine(tankPickObj)
 
     const pickerPicks: Record<SharpPicker, {
-      side: 'home' | 'away'
+      side: SlateDeskSide
       teamName: string
       lineDisplay: string
       pickPrice: number
@@ -678,18 +807,22 @@ export function buildNflAtsSlateCard(
         pick: cheddaSide === 'home' ? homePickObj : awayPickObj,
       },
       Tank: {
-        side: tankSide,
-        teamName: tankSide === 'home' ? homeTeam : awayTeam,
-        lineDisplay: tankSide === 'home' ? homeLineDisp : awayLineDisp,
-        pickPrice: tankSide === 'home' ? homePrice : awayPrice,
-        pick: tankSide === 'home' ? homePickObj : awayPickObj,
+        side: tankTotalsSide,
+        teamName: tankTotalsSide === 'over'
+          ? 'Over'
+          : tankTotalsSide === 'under'
+            ? 'Under'
+            : 'PASS',
+        lineDisplay: tankLineDisp,
+        pickPrice: tankPickObj?.pickPrice ?? 0,
+        pick: tankPickObj || homePickObj,
       },
     }
 
-    // Tally votes
+    // Tally ATS side votes only (Scott / Rocco / Chedda)
     let homeVotes = 0
     let awayVotes = 0
-    for (const p of SHARP_PICKERS) {
+    for (const p of ATS_SIDE_DESKS) {
       if (pickerPicks[p].side === 'home') homeVotes++
       else awayVotes++
     }
@@ -697,33 +830,33 @@ export function buildNflAtsSlateCard(
     let consensusSide: 'home' | 'away' = 'home'
     let voteCount = homeVotes
     let consensusType: 'hammer' | 'consensus' | 'split' = 'split'
-    let badgeText = '⚔️ 2-2 Split'
+    let badgeText = '⚔️ 1-1 Split'
 
-    if (homeVotes === 4) {
-      consensusSide = 'home'
-      voteCount = 4
-      consensusType = 'hammer'
-      badgeText = '🔥 4-0 Hammer'
-    } else if (awayVotes === 4) {
-      consensusSide = 'away'
-      voteCount = 4
-      consensusType = 'hammer'
-      badgeText = '🔥 4-0 Hammer'
-    } else if (homeVotes === 3) {
+    if (homeVotes === 3) {
       consensusSide = 'home'
       voteCount = 3
-      consensusType = 'consensus'
-      badgeText = '🎯 3-1 Consensus'
+      consensusType = 'hammer'
+      badgeText = '🔥 3-0 Hammer'
     } else if (awayVotes === 3) {
       consensusSide = 'away'
       voteCount = 3
-      consensusType = 'consensus'
-      badgeText = '🎯 3-1 Consensus'
-    } else {
+      consensusType = 'hammer'
+      badgeText = '🔥 3-0 Hammer'
+    } else if (homeVotes === 2) {
       consensusSide = 'home'
       voteCount = 2
+      consensusType = 'consensus'
+      badgeText = '🎯 2-1 Consensus'
+    } else if (awayVotes === 2) {
+      consensusSide = 'away'
+      voteCount = 2
+      consensusType = 'consensus'
+      badgeText = '🎯 2-1 Consensus'
+    } else {
+      consensusSide = 'home'
+      voteCount = 1
       consensusType = 'split'
-      badgeText = '⚔️ 2-2 Split'
+      badgeText = '⚔️ 1-1 Split'
     }
 
     const gamePick: SlateGamePick = {
@@ -733,6 +866,8 @@ export function buildNflAtsSlateCard(
       awayTeam,
       commenceTime: ev.commence_time,
       spreadPoint: homePoint,
+      marketTotal: marketTotalQuote?.total ?? null,
+      modelTotal,
       splits: gameSplits,
       trenchEpa,
       consensusPick: {
@@ -798,6 +933,7 @@ export async function publishAndRecordNflSlateCard(
   for (const g of input.card.games) {
     for (const pName of SHARP_PICKERS) {
       const pPick = g.pickerPicks[pName]
+      if (pName === 'Tank' && pPick.side === 'pass') continue
 
       // Situational factor tagging for Bayesian learning
       const factors: string[] = []
@@ -809,12 +945,13 @@ export async function publishAndRecordNflSlateCard(
       if (isSweetDog) factors.push('dog_sweet_spot_130_175')
       if (isKey3) factors.push('key_number_3_value')
       if (pName === 'Scott') factors.push('model_clv_high_ev')
-      if (pName === 'Tank') factors.push('rest_advantage')
+      if (pName === 'Tank') factors.push('totals_model_edge')
       if (g.splits?.isRlm) factors.push('reverse_line_movement')
       if (g.splits?.isSharpDivergence) factors.push('sharp_money_divergence')
       if (g.trenchEpa?.isTrenchMismatch) factors.push('trench_mismatch_advantage')
       if (g.trenchEpa?.isEpaMismatch) factors.push('epa_model_value')
 
+      const isTankTotals = pName === 'Tank' && (pPick.side === 'over' || pPick.side === 'under')
       rowsToInsert.push({
         bot_user_id: input.botUserId,
         picker_name: pName,
@@ -824,7 +961,7 @@ export async function publishAndRecordNflSlateCard(
         home_team: g.homeTeam,
         away_team: g.awayTeam,
         commence_time: g.commenceTime,
-        market_key: 'spreads',
+        market_key: isTankTotals ? 'totals' : 'spreads',
         pick_name: pPick.teamName,
         pick_line: pPick.pick.linePoint ?? null,
         pick_price: pPick.pickPrice,
@@ -1404,18 +1541,25 @@ export async function gradePendingPicks(
           const homeWins = homePicks.filter((p) => p.status === 'won').length
           const awayWins = awayPicks.filter((p) => p.status === 'won').length
 
-          if (homePicks.length === 4) {
+          if (homePicks.length === 3) {
+            if (homeWins > 0) hammerWins++
+            else if (homePicks[0].status === 'lost') hammerLosses++
+          } else if (awayPicks.length === 3) {
+            if (awayWins > 0) hammerWins++
+            else if (awayPicks[0].status === 'lost') hammerLosses++
+          } else if (homePicks.length === 2) {
+            if (homeWins > 0) consensusWins++
+            else if (homePicks[0].status === 'lost') consensusLosses++
+          } else if (awayPicks.length === 2) {
+            if (awayWins > 0) consensusWins++
+            else if (awayPicks[0].status === 'lost') consensusLosses++
+          } else if (homePicks.length === 4) {
+            // Legacy 4-desk side cards
             if (homeWins > 0) hammerWins++
             else if (homePicks[0].status === 'lost') hammerLosses++
           } else if (awayPicks.length === 4) {
             if (awayWins > 0) hammerWins++
             else if (awayPicks[0].status === 'lost') hammerLosses++
-          } else if (homePicks.length === 3) {
-            if (homeWins > 0) consensusWins++
-            else if (homePicks[0].status === 'lost') consensusLosses++
-          } else if (awayPicks.length === 3) {
-            if (awayWins > 0) consensusWins++
-            else if (awayPicks[0].status === 'lost') consensusLosses++
           }
         }
 
@@ -1428,10 +1572,10 @@ export async function gradePendingPicks(
         }
 
         if (hammerWins > 0 || hammerLosses > 0) {
-          lines.push(`\n🔥 Unanimous 4-0 Hammers: ${hammerWins}-${hammerLosses}`)
+          lines.push(`\n🔥 Unanimous 3-0 Hammers: ${hammerWins}-${hammerLosses}`)
         }
         if (consensusWins > 0 || consensusLosses > 0) {
-          lines.push(`🎯 3-1 Consensus: ${consensusWins}-${consensusLosses}`)
+          lines.push(`🎯 2-1 Consensus: ${consensusWins}-${consensusLosses}`)
         }
 
         // Spot-check any major fluke in the slate

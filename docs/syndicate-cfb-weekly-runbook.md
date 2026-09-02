@@ -62,7 +62,7 @@ Public site shows Consensus + Off/Def/HFA/Tempo. Model A/B/C columns are **blurr
 ### Desk automation … real but uneven
 
 Code path: `loungeBotPredictivePick.ts` (`buildNflAtsSlateCard` and related).  
-Buckets: Hammer (4–0) / Consensus (3–1) / House divided (2–2).
+Buckets: Hammer (**3–0** side desks) / Consensus (**2–1**) / House divided (**1–1**). Tank is totals-only and does not vote ATS.
 
 **Correlated-noise risk (fix this over time):** if Scott, Rocco, and Chedda all overweight the same `cfbMatchup.isValuePlay` / gap flag, hammers become one opinion × four. Desks only count when they can **disagree** for independent reasons.
 
@@ -77,9 +77,10 @@ Do **not** reshuffle Phase 1 blend weights while operating this loop.
    Filled automatically on every non-dry `loadSportOddsContext` poll (`loungeBotMarketFile.ts`).  
    Next: wire Scott / CLV grading to read close; backfill is optional (Odds API historical).
 
-2. **Tank as a totals desk**  
-   Primary publish lane = O/U from tempo + SP+ off/def matchup + weather/rest when available.  
-   Keep Tank **side** votes light until situational side factors are real.
+2. **Tank as a totals desk (shipped v1)**  
+   Tank votes **Over/Under** when `|modelTotal − marketTotal| ≥ 2.5` (CFB: SP+ off/def + tempo; NFL: EPA scoring environment). Pass otherwise.  
+   ATS Hammers/Consensus are **Scott / Rocco / Chedda only** (3-0 / 2-1 / 1-1). Tank no longer pads fake 4-0 side hammers.  
+   Weather/rest still optional boosts later.
 
 3. **QB / injury modifier**  
    Applied **after** consensus board, **before** publish. Manual/override table is fine at first (−3 to −7 style). Do not rebuild the whole board for one QB.
@@ -144,9 +145,9 @@ Run desk scoring **independently**. Preferred publish set:
 
 | Label | Meaning |
 |-------|---------|
-| **Hammer** | **Alignment + independence.** Usually 4–0 on a side, but only if there are **≥2 distinct input reasons** pointing the same way (e.g. Scott gap + Rocco off/def, or Scott gap + Chedda dog/split). If Scott/Rocco/Chedda are all just reading the same `isValuePlay` flag, that is **one** reason … do **not** brand it a Hammer. |
-| **Consensus** | **3–1.** Publish if we’d bet it. A strong Scott gap can sit here when other desks agree for *their own* reasons. |
-| **Divided** | **2–2.** Pass or small look. Do **not** force a fake united play. |
+| **Hammer** | **Alignment + independence** among **Scott / Rocco / Chedda** (3-0). Still needs ≥2 distinct input reasons … not three copies of `isValuePlay`. Tank is separate (totals). |
+| **Consensus** | **2–1** among side desks. Publish if we’d bet it. |
+| **Divided** | **1–1.** Pass or small look. Do **not** force a fake united play. |
 
 Publish **Hammers + Consensus only** on the public/VIP slate unless Ryan overrides.
 

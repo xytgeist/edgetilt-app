@@ -646,9 +646,8 @@ export function SyndicateApp() {
                 </h1>
                 <p className="text-zinc-300 text-xs sm:text-sm md:text-base leading-relaxed max-w-2xl">
                   The Sharpe Syndicate operates a 4-desk architecture across NFL, college football, and UFC
-                  ... market consensus pricing (Pinnacle/Circa weighted when those books appear), player injury
-                  spread valuation (PVAL), EPA efficiency boards, and Action bet% vs money% splits when pasted
-                  (including RLM) ... without burying human intuition under a single black-box number.
+                  ... independent models, a public graded ledger, and human intuition that isn&apos;t buried
+                  under a single black-box number.
                 </p>
 
                 <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">

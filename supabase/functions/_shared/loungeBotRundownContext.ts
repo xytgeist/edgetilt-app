@@ -51,6 +51,11 @@ type RundownPlayer = {
   last_name?: string
   status?: string
   active?: boolean
+  position?: string
+  position_abbreviation?: string
+  primary_position?: string
+  depth_chart_order?: number
+  depth?: number
 }
 export type RundownScore = {
   event_status?: string
@@ -87,7 +92,13 @@ export type ResolvedRundownEvent = {
   pitcherHome?: string
   headline?: string
   venueLocation?: string
-  inactivePlayers: Array<{ name: string; status: string; teamId: number }>
+  inactivePlayers: Array<{
+    name: string
+    status: string
+    teamId: number
+    position?: string | null
+    depthOrder?: number | null
+  }>
   liveNotes: string[]
 }
 
@@ -295,12 +306,40 @@ function pickTeamSide(
   return null
 }
 
+function playerPosition(player: RundownPlayer): string | null {
+  const raw =
+    player.position_abbreviation
+    || player.position
+    || player.primary_position
+    || null
+  const s = String(raw || '').trim()
+  return s || null
+}
+
+function playerDepthOrder(player: RundownPlayer): number | null {
+  const d = player.depth_chart_order ?? player.depth
+  const n = Number(d)
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
 async function loadInactivePlayersForTeams(
   teamIds: number[],
   sportId: number,
-): Promise<Array<{ name: string; status: string; teamId: number }>> {
+): Promise<Array<{
+  name: string
+  status: string
+  teamId: number
+  position?: string | null
+  depthOrder?: number | null
+}>> {
   if (![1, 2, 4, 5, 6, 8, 25, 26].includes(sportId)) return []
-  const out: Array<{ name: string; status: string; teamId: number }> = []
+  const out: Array<{
+    name: string
+    status: string
+    teamId: number
+    position?: string | null
+    depthOrder?: number | null
+  }> = []
   for (const teamId of teamIds) {
     const players = await loadTeamPlayers(teamId)
     for (const player of players) {
@@ -308,10 +347,17 @@ async function loadInactivePlayersForTeams(
       if (!status || !isInjuryStatus(status)) continue
       const name = playerDisplayName(player)
       if (!name) continue
-      out.push({ name, status: status.toUpperCase() === status ? status : status, teamId })
+      out.push({
+        name,
+        status: status.toUpperCase() === status ? status : status,
+        teamId,
+        position: playerPosition(player),
+        depthOrder: playerDepthOrder(player),
+      })
     }
   }
-  return out.slice(0, 6)
+  // Keep a wide injury window for PVAL (old cap of 6 dropped key OUTs).
+  return out.slice(0, 48)
 }
 
 type PlayerStatRow = {

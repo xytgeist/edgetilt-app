@@ -1,8 +1,11 @@
 /**
  * Quantitative Injury Impact & Point Spread Value (PVAL) Calculator.
  *
- * Connects TheRundown inactive/injured player lists with real PVAL weights
- * to calculate objective, mathematically grounded team and matchup injury penalties.
+ * Connects TheRundown inactive/injured player lists with PVAL weights:
+ * 1. Curated / DB overrides (stars)
+ * 2. v0 position-band Typical priors for unmatched OUTs (kill silent zeros)
+ *
+ * Soft/hard non-QB caps + QB-out shrink live in loungeBotPvalBands.ts.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import {
@@ -10,6 +13,12 @@ import {
   loadDbPlayerPvalMap,
   type PlayerValueEntry,
 } from './loungeSportsPlayerValues.ts'
+import {
+  applyTeamPvalStackRules,
+  priorPvalFromRundownPlayer,
+  scalePvalForStatus,
+  type PvalAbsencePiece,
+} from './loungeBotPvalBands.ts'
 import {
   injuryImpactPlayers,
   resolveRundownEvent,
@@ -19,6 +28,13 @@ import {
 function isHardOutStatus(status: string): boolean {
   const s = String(status || '').trim()
   return /^(out|inactive|suspended|ir|pup)$/i.test(s) || /injured reserve/i.test(s)
+}
+
+export type InactivePlayerInput = {
+  name: string
+  status: string
+  position?: string | null
+  depthOrder?: number | null
 }
 
 export type TeamInjuryReport = {
@@ -47,48 +63,54 @@ export type GameInjurySummary = {
 
 /**
  * Calculate net injury impact for a single team given their inactive player list.
+ * Curated/DB PVAL wins; otherwise v0 Typical band prior from position + depth.
  */
 export function calculateTeamInjuryImpact(
   teamName: string,
-  inactives: Array<{ name: string; status: string }>,
+  inactives: InactivePlayerInput[],
   dynamicDbMap?: Map<string, PlayerValueEntry> | null,
 ): TeamInjuryReport {
-  let totalPvalLost = 0
-  let offensePvalLost = 0
-  let defensePvalLost = 0
-  const keyAbsences: TeamInjuryReport['keyAbsences'] = []
+  const pieces: PvalAbsencePiece[] = []
 
   for (const p of inactives) {
     const valEntry = lookupPlayerPval(p.name, dynamicDbMap)
     if (valEntry && valEntry.pval > 0) {
-      totalPvalLost += valEntry.pval
-      if (valEntry.side === 'offense') offensePvalLost += valEntry.pval
-      else defensePvalLost += valEntry.pval
-
-      keyAbsences.push({
+      const scaled = scalePvalForStatus(valEntry.pval, p.status)
+      if (scaled <= 0) continue
+      pieces.push({
         name: valEntry.name,
         pos: valEntry.pos,
-        pval: valEntry.pval,
+        pval: scaled,
         status: p.status,
         side: valEntry.side,
+        isQb: valEntry.pos === 'QB',
       })
+      continue
     }
+
+    const prior = priorPvalFromRundownPlayer({
+      name: p.name,
+      status: p.status,
+      position: p.position,
+      depthOrder: p.depthOrder,
+    })
+    if (prior) pieces.push(prior)
   }
 
-  // Round to 2 decimal places
-  totalPvalLost = Math.round(totalPvalLost * 100) / 100
-  offensePvalLost = Math.round(offensePvalLost * 100) / 100
-  defensePvalLost = Math.round(defensePvalLost * 100) / 100
-
-  // Sort key absences by highest PVAL impact first
-  keyAbsences.sort((a, b) => b.pval - a.pval)
+  const stacked = applyTeamPvalStackRules(pieces)
 
   return {
     teamName,
-    totalPvalLost,
-    offensePvalLost,
-    defensePvalLost,
-    keyAbsences,
+    totalPvalLost: stacked.totalPvalLost,
+    offensePvalLost: stacked.offensePvalLost,
+    defensePvalLost: stacked.defensePvalLost,
+    keyAbsences: stacked.pieces.map((a) => ({
+      name: a.name,
+      pos: a.pos,
+      pval: a.pval,
+      status: a.status,
+      side: a.side,
+    })),
   }
 }
 

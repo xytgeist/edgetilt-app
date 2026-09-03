@@ -21,11 +21,6 @@ import { loadDbTeamMetricsMap } from './loungeBotTeamMetrics.ts'
 import { loadDbCfbPowerRatingsMap } from './loungeBotCfbPowerRatings.ts'
 import { resolveSideModifiersForSlate } from './loungeBotSideModifier.ts'
 import { loadPastedBettingSplitsForSlate } from './loungeBotBettingSplits.ts'
-import {
-  buildUfcSlateCard,
-  formatUfcCardCaption,
-  publishAndRecordUfcCard,
-} from './loungeBotUfcPredictive.ts'
 
 const FOOTBALL_SPORTS = new Set([
   'americanfootball_nfl',
@@ -124,6 +119,9 @@ export async function runPicksForToday(
   const requestedSport = String(opts.sportKey || '').trim()
 
   if (requestedSport === 'mma_mixed_martial_arts') {
+    const { buildUfcSlateCard, formatUfcCardCaption, publishAndRecordUfcCard } = await import(
+      './loungeBotUfcPredictive.ts'
+    )
     const oddsData = await fetchSportOdds('mma_mixed_martial_arts', ['us', 'us2', 'eu'], ['h2h', 'totals'])
     const rawEvents = oddsData?.events || []
     const todayEvents = filterOddsEventsKickoffPtDay(rawEvents)

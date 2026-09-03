@@ -26,10 +26,37 @@ export function todayPicksPlan(sportKey) {
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {{ slug?: string, sportKey: string, dryRun?: boolean }} opts
  */
+async function messageFromFunctionsInvokeError(error, invokeResponse) {
+  const fallback = String(error?.message || 'Run picks failed.').trim()
+  const res =
+    error?.context && typeof error.context.status === 'number'
+      ? error.context
+      : invokeResponse && typeof invokeResponse.status === 'number'
+        ? invokeResponse
+        : null
+  if (!res || typeof res.clone !== 'function') return fallback
+  try {
+    const raw = (await res.clone().text()).trim()
+    if (!raw) return fallback
+    if (raw.startsWith('{')) {
+      const body = JSON.parse(raw)
+      if (body?.error) return String(body.error)
+      if (body?.message) return String(body.message)
+    }
+    return raw.slice(0, 400)
+  } catch {
+    return fallback
+  }
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {{ slug?: string, sportKey: string, dryRun?: boolean }} opts
+ */
 export async function runTodayPicksForSport(supabaseClient, opts) {
   const plan = todayPicksPlan(opts.sportKey)
   const slug = opts.slug || 'sports-odds'
-  const { data, error } = await supabaseClient.functions.invoke('lounge-odds-poll', {
+  const { data, error, response } = await supabaseClient.functions.invoke('lounge-odds-poll', {
     body: {
       slug,
       action: 'picks_for_today',
@@ -37,7 +64,10 @@ export async function runTodayPicksForSport(supabaseClient, opts) {
       dryRun: opts.dryRun === true,
     },
   })
-  if (error) return { plan, data: null, error: new Error(error.message || 'Run picks failed') }
+  if (error) {
+    const msg = await messageFromFunctionsInvokeError(error, response)
+    return { plan, data: null, error: new Error(msg) }
+  }
   if (data?.error) return { plan, data: null, error: new Error(String(data.error)) }
   return { plan, data, error: null }
 }

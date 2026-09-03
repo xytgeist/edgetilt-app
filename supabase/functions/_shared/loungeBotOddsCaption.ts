@@ -151,7 +151,7 @@ export function computeEvDecimal(consensusProb: number, americanPrice: number, s
   return consensusProb * profit - (1 - consensusProb) * stake
 }
 
-function impliedToAmerican(prob: number): number {
+export function impliedToAmerican(prob: number): number {
   if (!Number.isFinite(prob) || prob <= 0 || prob >= 1) return 0
   if (prob >= 0.5) return Math.round(-100 * prob / (1 - prob))
   return Math.round(100 * (1 - prob) / prob)

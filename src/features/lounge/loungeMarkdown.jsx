@@ -282,7 +282,7 @@ export function renderLoungeMarkdown(raw, captionOpts = {}) {
           <h4
             key={`lmd-h3-${elemKey++}`}
             data-lounge-h3=""
-            className="my-1 text-[14px] sm:text-[15px] font-bold text-zinc-200"
+            className="my-1 ml-3 sm:ml-4 text-[14px] sm:text-[15px] font-bold text-zinc-200"
           >
             {renderInlineMarkdown(headingText, captionOpts, `lmd-h3-${elemKey}`)}
           </h4>
@@ -374,9 +374,17 @@ export function renderLoungeMarkdown(raw, captionOpts = {}) {
       continue
     }
 
-    // Non-empty line
+    // Non-empty line … middot desk-detail lines nest under H3 matchups
+    const isDeskDetailLine = /^\s*·/.test(line)
     elements.push(
-      <span key={`lmd-p-${elemKey++}`} className="block leading-relaxed">
+      <span
+        key={`lmd-p-${elemKey++}`}
+        className={
+          isDeskDetailLine
+            ? 'block leading-relaxed ml-6 sm:ml-8 text-[13px] sm:text-[14px] text-zinc-300'
+            : 'block leading-relaxed'
+        }
+      >
         {renderInlineMarkdown(line, captionOpts, `lmd-line-${elemKey}`)}
       </span>
     )

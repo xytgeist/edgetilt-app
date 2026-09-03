@@ -1326,6 +1326,19 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
               setBusy={setBusy}
               onCalendarUpdated={refreshCalendarToday}
             />
+            <div className="rounded-xl border border-emerald-500/25 bg-emerald-950/20 px-3 py-2.5 text-[11px] text-emerald-100/90">
+              <span className="font-semibold text-emerald-300">Syndicate Ops</span>
+              {' '}lives on the public site (admin login): scorecard, Chedda paste, PVALs, metrics, monthly board.{' '}
+              <a
+                href="https://sharpesyndicate.com/ops"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline decoration-emerald-500/50 hover:text-emerald-200"
+              >
+                Open sharpesyndicate.com/ops
+              </a>
+              . Keep create / pause / Odds / X / Vault here.
+            </div>
             <BotSharpDeskPanel
               supabaseClient={supabaseClient}
               botUserId={bot.user_id}

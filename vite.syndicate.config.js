@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { copyFileSync, existsSync } from 'node:fs'
+import { copyFileSync, existsSync, writeFileSync } from 'node:fs'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -16,6 +16,11 @@ export default defineConfig({
         if (existsSync(src)) {
           copyFileSync(src, dest)
         }
+        // Cloudflare Pages SPA fallback so /ops boots the same index.html
+        writeFileSync(
+          path.resolve('dist-syndicate/_redirects'),
+          ['/ops /index.html 200', '/ops/ /index.html 200', ''].join('\n'),
+        )
       },
     },
   ],

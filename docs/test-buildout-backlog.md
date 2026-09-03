@@ -166,6 +166,7 @@ Hot Windows files (first cuts): `pwaNotificationPrompt.js`, `PwaInstallBanner.js
 - [x] **Apply migrations `20260705020000`–`20260705040000` on test + prod** (manual `supabase db query -f`; `db push` blocked by test history drift)
 - [x] **Apply migration `20260705050000` on test + prod** (manual `supabase db query -f`; `db push` blocked by test history drift)
 - [x] **Syndicate GHA metrics sync → prod on Tuesday schedule + Edge Monitor heartbeat** (`syndicate_football_metrics_sync_production`, migration **`20260903210000`**, 2026-09-02)
+- [x] **Syndicate Ops on sharpesyndicate.com** (`/ops` or `?ops=1`): admin login + Sharp Desk (scorecard / Chedda paste / PVALs / metrics / monthly board). EdgeTilt `/?tab=bots` keeps create/pause/Odds/X. 2026-09-02.
 - [ ] **Syndicate collection failure monitoring (rest):** registry missing slate/grade/VIP/specialty crons + table freshness / Odds API last error banners. Spec note 2026-09-02.
 - [ ] **Chedda Action PRO paste nag emails:** day before NFL Fri 1pm PT / CFB Fri 12pm PT lock, email Ryan every **10 minutes** until `syndicate_betting_splits` has paste for that slate (or explicit skip). Stop when screenshots submitted. Spec note 2026-09-02.
 - [ ] **Create Market Edge bot** (`market-edge` / `@marketedge`) via **`/?tab=bots`** wizard or **`supabase/seed/lounge_market_edge_bot.sql`** + **`lounge_bot_seed_market_news_sources()`**
@@ -1071,6 +1072,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 ---
 
 ## Update log
+
+- 2026-09-02: **Syndicate Ops shell (Windows):** Admin-gated Sharp Desk on **sharpesyndicate.com/ops** (`?ops=1` also). Login = EdgeTilt `profiles.role=admin`. Lazy-loads `BotSharpDeskPanel` (scorecard, Chedda paste, PVALs, EPA/CFB/UFC, monthly board). Public site unchanged. EdgeTilt Scott bot card links out. Cloudflare `_redirects` for `/ops`. Redeploy syndicate Pages to go live.
 
 - 2026-09-02: **CFB on par with NFL shop skeleton (Windows):** Wed full CFB slate → VIP midweek Thu/Fri nights; Thu 3:30pm CFB night public one-lean tease + VIP deep; Sat CFB adds/kills; primetime public capped to one lean + CTA. Migration `20260902250000`. Redeploy `lounge-odds-poll`.
 

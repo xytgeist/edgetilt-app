@@ -282,22 +282,6 @@ export default function CreatorFanSubscribeModal({
                 <p className="mt-6 text-[12px] leading-snug text-zinc-600">
                   Paid fan access is billed monthly through Stripe. Alerts only is free post notifications.
                 </p>
-
-                <label className="mt-4 block">
-                  <span className="text-[12px] font-semibold text-zinc-500">Promo code (optional)</span>
-                  <input
-                    type="text"
-                    value={promoCode}
-                    disabled={busy}
-                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
-                    placeholder="Enter code"
-                    maxLength={32}
-                    autoCapitalize="characters"
-                    autoCorrect="off"
-                    spellCheck={false}
-                    className="mt-1.5 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 px-3 py-2.5 font-mono text-[14px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/70 disabled:opacity-50"
-                  />
-                </label>
               </>
             )}
 
@@ -307,6 +291,21 @@ export default function CreatorFanSubscribeModal({
           <div className="shrink-0 border-t border-zinc-800/90 bg-zinc-950 px-5 pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] pt-4">
             {!alreadySubscribed ? (
               <>
+                <label className="mb-3 block">
+                  <span className="text-[12px] font-semibold text-zinc-500">Promo code (optional)</span>
+                  <input
+                    type="text"
+                    value={promoCode}
+                    disabled={busy}
+                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                    placeholder="Enter code here or on Stripe"
+                    maxLength={32}
+                    autoCapitalize="characters"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    className="mt-1.5 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 px-3 py-2.5 font-mono text-[14px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/70 disabled:opacity-50"
+                  />
+                </label>
                 <button
                   type="button"
                   disabled={busy}

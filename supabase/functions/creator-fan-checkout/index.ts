@@ -157,8 +157,12 @@ Deno.serve(async (req) => {
       },
     }
     // Creator eats the discount; application_fee_percent applies to the final paid amount.
+    // Stripe forbids discounts + allow_promotion_codes together … pre-apply when our modal
+    // sent a code, otherwise show Stripe Checkout's "Add promotion code" field.
     if (stripePromotionCodeId) {
       sessionParams.discounts = [{ promotion_code: stripePromotionCodeId }]
+    } else {
+      sessionParams.allow_promotion_codes = true
     }
 
     const session = await stripe.checkout.sessions.create(sessionParams)

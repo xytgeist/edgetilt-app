@@ -11125,6 +11125,10 @@ html.light [data-lounge-fullscreen-composer] header {
   border-color: #e4e4e7 !important;
 }
 
+html.light [data-lounge-fullscreen-composer] [data-lounge-pro-write-chrome] {
+  background-color: #ffffff !important;
+}
+
 html.light [data-lounge-fullscreen-composer] #pro-composer-title span:first-child {
   color: #09090b !important;
 }

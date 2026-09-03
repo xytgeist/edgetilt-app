@@ -9,6 +9,9 @@ import BotReplyOnPostPanel from './BotReplyOnPostPanel.jsx'
 import BotProfileEditor from './BotProfileEditor.jsx'
 import BotSportsCalendarPanel from './BotSportsCalendarPanel.jsx'
 import {
+  SHARPE_SYNDICATE_BOT_SLUG,
+} from '../../syndicate/syndicateBotIdentity.js'
+import {
   BOT_PIPELINE_LABELS,
   BOT_REVIEW_MODE_LABELS,
   BOT_RUN_STATES,
@@ -569,6 +572,10 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
   const pipelineLabel = BOT_PIPELINE_LABELS[bot.pipeline] || bot.pipeline
   const reviewLabel = BOT_REVIEW_MODE_LABELS[bot.review_mode] || bot.review_mode
   const isAutomatic = bot.review_mode === 'automatic'
+  const botSlugLower = String(bot.slug || '').toLowerCase()
+  const isSharpeSyndicateBot = botSlugLower === SHARPE_SYNDICATE_BOT_SLUG
+  /** Coffee / edges / alert destination / Run alert now … Signal only. */
+  const isSignalOddsOpsBot = bot.pipeline === 'odds_api' && !isSharpeSyndicateBot
 
   const setRunState = async (runState) => {
     setBusy(`run-${runState}`)
@@ -583,7 +590,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
   }
 
   const saveSettings = async () => {
-    if (bot.pipeline === 'odds_api') {
+    if (isSignalOddsOpsBot) {
       const minEdgeRaw = String(draft.minEdgePct ?? '').trim()
       if (!minEdgeRaw) {
         setToast('Min +EV % is required (0.5–15).')
@@ -596,7 +603,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
       }
     }
 
-    if (bot.pipeline === 'odds_api') {
+    if (isSignalOddsOpsBot) {
       for (const row of ODDS_ALERT_AUDIENCE_ROWS) {
         if (!isValidAlertRoute(draft.alertAudience?.[row.key])) {
           setToast(`Pick at least Everyone or Sub chat for ${row.label}.`)
@@ -637,7 +644,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
     } else if (bot.pipeline === 'x') {
       patch.config = { voice_prompt: String(draft.voicePrompt || '').trim() }
     }
-    if (bot.pipeline === 'odds_api') {
+    if (isSignalOddsOpsBot) {
       patch.min_edge_pct = Number(String(draft.minEdgePct).trim())
       patch.alert_audience = draft.alertAudience
     }
@@ -1287,7 +1294,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
           </div>
         ) : null}
 
-        {isAutomatic && bot.pipeline === 'odds_api' ? (
+        {isAutomatic && isSignalOddsOpsBot ? (
           <div className="mt-3 rounded-xl border border-cyan-500/20 bg-cyan-950/20 px-3 py-3">
             <label className="block min-w-0">
               <div className="text-[11px] font-semibold uppercase tracking-wide text-cyan-300/90">
@@ -1327,7 +1334,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
             />
             <div className="rounded-xl border border-emerald-500/25 bg-emerald-950/20 px-3 py-2.5 text-[11px] text-emerald-100/90">
               <span className="font-semibold text-emerald-300">Syndicate Ops</span>
-              {' '}(scorecard, slate drops, Chedda paste, PVALs, metrics, monthly board) lives on the public site … not on Signal:{' '}
+              {' '}(scorecard, slate drops, Chedda paste, PVALs, metrics, monthly board) lives on the public site … not here:{' '}
               <a
                 href="https://sharpesyndicate.com/ops"
                 target="_blank"
@@ -1336,12 +1343,30 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
               >
                 Open sharpesyndicate.com/ops
               </a>
-              . Keep create / pause / Odds / alert destinations / X / Vault here.
+              . Keep create / pause / Odds / alert destinations / X / Vault on Signal.
             </div>
           </div>
         ) : null}
 
-        {isAutomatic ? (
+        {isAutomatic && isSharpeSyndicateBot ? (
+          <div className="mt-3 rounded-xl border border-emerald-500/25 bg-emerald-950/20 px-3 py-2.5 text-[11px] text-emerald-100/90">
+            <span className="font-semibold text-emerald-300">Desk bot</span>
+            {' '}… keep <span className="font-mono text-zinc-300">run_state: stopped</span> so Signal cron does not
+            double-poll. Alert ops (Coffee, edges, Run alert now, destinations) live on{' '}
+            <span className="font-mono text-zinc-300">@sharpesignal</span>. Slate / desk day-to-day:{' '}
+            <a
+              href="https://sharpesyndicate.com/ops"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline decoration-emerald-500/50 hover:text-emerald-200"
+            >
+              sharpesyndicate.com/ops
+            </a>
+            .
+          </div>
+        ) : null}
+
+        {isAutomatic && !isSharpeSyndicateBot ? (
           <>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
@@ -1360,7 +1385,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
             >
               {busy === 'poll' ? 'Running…' : botPollActionLabel(bot.pipeline)}
             </button>
-            {bot.pipeline === 'odds_api' ? (
+            {isSignalOddsOpsBot ? (
               <>
                 <button
                   type="button"
@@ -1373,7 +1398,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
               </>
             ) : null}
           </div>
-          {bot.pipeline === 'odds_api' ? (
+          {isSignalOddsOpsBot ? (
             <div className="mt-3 rounded-xl border border-amber-500/20 bg-amber-950/15 px-3 py-3">
               <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-200/90">
                 Run alert now
@@ -1412,7 +1437,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
               </div>
             </div>
           ) : null}
-          {bot.pipeline === 'odds_api' ? (
+          {isSignalOddsOpsBot ? (
             <div className="mt-3 rounded-xl border border-violet-500/25 bg-violet-950/20 px-3 py-3">
               <div className="text-[11px] font-semibold uppercase tracking-wide text-violet-200/90">
                 Example post pack
@@ -1432,7 +1457,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
             </div>
           ) : null}
           </>
-        ) : (
+        ) : !isAutomatic ? (
           <div className="mt-3 flex flex-wrap gap-2">
             <button
               type="button"
@@ -1447,7 +1472,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
               {(bot.pending_review ?? 0) > 0 ? ` (${bot.pending_review} pending)` : ''}
             </span>
           </div>
-        )}
+        ) : null}
       </div>
 
       <BotProfileEditor
@@ -1511,7 +1536,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
               setDraft((d) => ({ ...d, maxPostsHourUnlimited: checked }))
             }
           />
-          {isAutomatic && bot.pipeline === 'odds_api' ? (
+          {isAutomatic && isSignalOddsOpsBot ? (
             <NumberField
               label="Min +EV %"
               decimal
@@ -1532,7 +1557,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
           ) : null}
         </div>
 
-        {isAutomatic && bot.pipeline === 'odds_api' ? (
+        {isAutomatic && isSignalOddsOpsBot ? (
           <div className="mt-4 rounded-xl border border-zinc-800/80 bg-zinc-950/40 p-3">
             <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 mb-1">
               Alert destination

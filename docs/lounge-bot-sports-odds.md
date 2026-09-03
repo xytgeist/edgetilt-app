@@ -21,7 +21,7 @@
 **Create bot (test):** `node scripts/create-sharpe-syndicate-bot.mjs`  
 **Prod create:** only with Ryan explicit + `--target=production --i-mean-it`.
 
-**Syndicate Ops (desk day-to-day):** **https://sharpesyndicate.com/ops** (or `?ops=1`) … admin email/password, same `profiles.role = admin` as EdgeTilt. Hosts Sharp Desk: scorecard/drops, Chedda paste, PVALs, EPA/CFB/UFC editors, monthly board. **Not** embedded on Signal (`sports-odds`) in EdgeTilt `/?tab=bots` … that page keeps alert destinations, coffee, calendar, run/pause. Keep bot create/kill, voice, run/pause, calendar ingest, X sources, Vault keys on **`/?tab=bots`**.
+**Syndicate Ops (desk day-to-day):** **https://sharpesyndicate.com/ops** (or `?ops=1`) … admin email/password, same `profiles.role = admin` as EdgeTilt. Hosts Sharp Desk: scorecard/drops, Chedda paste, PVALs, EPA/CFB/UFC editors, monthly board. **Not** embedded on Signal (`sports-odds`) in EdgeTilt `/?tab=bots`. **`@sharpesyndicate` bot detail** also hides Signal alert ops (Run alert now, destinations, coffee calendar, example pack) … stay on Signal. Keep bot create/kill, voice, run/pause, calendar ingest, X sources, Vault keys on **`/?tab=bots`** (Signal for odds alerts).
 
 **Self-contained** — no morning editorial inbox. Roster context: **`docs/lounge-bot-editorial-queue.md`**.
 

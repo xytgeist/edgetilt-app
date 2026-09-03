@@ -34,7 +34,7 @@ import { coffeeBestLinesRankForSport } from '../_shared/loungeBotCoffeeBestLines
 import { DEFAULT_MIN_POST_GAP_MINUTES } from '../_shared/loungeBotPublishConstants.ts'
 import { type OddsPick } from '../_shared/loungeBotOddsCaption.ts'
 import type { SharpReportCandidate } from '../_shared/loungeBotSharpReport.ts'
-import { oddsPollActionOwnershipSkip } from '../_shared/loungeBotSyndicateIdentity.ts'
+import { oddsPollActionOwnershipSkip, resolveOddsPollBotSlug } from '../_shared/loungeBotSyndicateIdentity.ts'
 
 const CONTEXT_ALERT_KINDS = new Set([
   'starter_spotlight',
@@ -85,7 +85,7 @@ Deno.serve(async (req) => {
   try {
     const admin = await authorize(req)
     const body = await req.json().catch(() => ({}))
-    const slug = String(body?.slug || 'sports-odds').trim()
+    const requestedSlug = String(body?.slug || 'sports-odds').trim()
     const action = String(body?.action || 'poll_edges').trim()
     const dryRun = body?.dryRun === true
     const force = body?.force === true
@@ -98,12 +98,12 @@ Deno.serve(async (req) => {
       })
     }
 
-    const ownershipSkip = await oddsPollActionOwnershipSkip(admin, slug, action)
+    const ownershipSkip = await oddsPollActionOwnershipSkip(admin, requestedSlug, action)
     if (ownershipSkip) {
       return adminOpsJson(200, {
         ok: true,
         skipped: ownershipSkip,
-        slug,
+        slug: requestedSlug,
         action,
         note:
           ownershipSkip === 'signal_alerts_not_on_syndicate'
@@ -111,6 +111,8 @@ Deno.serve(async (req) => {
             : 'Desk / slate / VIP shop posts belong to @sharpesyndicate only.',
       })
     }
+
+    const slug = await resolveOddsPollBotSlug(admin, requestedSlug, action)
 
     if (alertKind && action === 'poll_edges') {
       const allowed = new Set([

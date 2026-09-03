@@ -103,7 +103,10 @@ export function formatTodayPicksResult(data, dryRun = false) {
     if (data.previewCaption || data.captionPreview) {
       return `[Dry run] ${stats || 'Preview ready.'}`
     }
-    return `[Dry run] ${stats || 'Ready.'}`
+    if (data.skipped) {
+      return `[Dry run] Skipped: ${data.note || data.skipped}`
+    }
+    return `[Dry run] ${stats || data.message || 'No caption (check toast / Edge response).'}`
   }
 
   if (data.ok === false) return data.message || data.error || 'Run failed.'

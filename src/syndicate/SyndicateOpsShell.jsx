@@ -49,6 +49,9 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
         return
       }
       if (runDryRun || data?.dryRun) {
+        const skipNote = data?.skipped
+          ? String(data.note || data.skipped)
+          : null
         setDryRunPreview({
           sportLabel: plan.sportLabel,
           dayKey: data?.dayKey,
@@ -62,9 +65,16 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
           solosCount: data?.solosCount,
           majoritySplitsCount: data?.majoritySplitsCount,
           passOnlyCount: data?.passOnlyCount,
-          error: data?.ok === false ? data.message || data.error : null,
+          error:
+            data?.ok === false
+              ? data.message || data.error
+              : skipNote,
         })
-        setToast(data?.previewCaption || data?.captionPreview ? 'Preview ready below.' : formatTodayPicksResult(data, true))
+        setToast(
+          data?.previewCaption || data?.captionPreview
+            ? 'Preview ready below.'
+            : formatTodayPicksResult(data, true),
+        )
         return
       }
       setDryRunPreview(null)

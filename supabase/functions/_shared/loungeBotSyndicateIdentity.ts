@@ -97,6 +97,7 @@ export async function resolveSlatePublisher(
 /**
  * Product ownership gate for lounge-odds-poll.
  * Returns null when allowed, or a skip reason string.
+ * Desk actions invoked as Signal are remounted to Syndicate by the caller (not skipped).
  */
 export async function oddsPollActionOwnershipSkip(
   admin: SupabaseClient,
@@ -110,16 +111,29 @@ export async function oddsPollActionOwnershipSkip(
     return 'signal_alerts_not_on_syndicate'
   }
 
-  if (SYNDICATE_DESK_POLL_ACTIONS.has(a) && !isSharpeSyndicateSlug(s)) {
-    const { data: synd } = await admin
-      .from('lounge_bot_accounts')
-      .select('run_state, enabled')
-      .eq('slug', SHARPE_SYNDICATE_BOT_SLUG)
-      .maybeSingle()
-    if (synd?.enabled === true && String(synd.run_state || '') === 'running') {
-      return 'desk_actions_not_on_signal'
-    }
-  }
-
   return null
+}
+
+/**
+ * Desk / slate / VIP actions should run as @sharpesyndicate when that bot is running.
+ * Remounts Signal (or other) invocations so Ops/legacy callers still publish as Syndicate.
+ */
+export async function resolveOddsPollBotSlug(
+  admin: SupabaseClient,
+  slug: string,
+  action: string,
+): Promise<string> {
+  const a = String(action || '').trim().toLowerCase()
+  const s = String(slug || '').trim().toLowerCase() || SHARPE_SIGNAL_BOT_SLUG
+  if (!SYNDICATE_DESK_POLL_ACTIONS.has(a) || isSharpeSyndicateSlug(s)) return s
+
+  const { data: synd } = await admin
+    .from('lounge_bot_accounts')
+    .select('run_state, enabled')
+    .eq('slug', SHARPE_SYNDICATE_BOT_SLUG)
+    .maybeSingle()
+  if (synd?.enabled === true && String(synd.run_state || '') === 'running') {
+    return SHARPE_SYNDICATE_BOT_SLUG
+  }
+  return s
 }

@@ -25,6 +25,7 @@ import {
   fetchUfcFighterMetrics,
   findFighterMetric,
 } from './loungeBotUfcMetrics.ts'
+import { formatColoredPickerList, formatColoredPickerName } from './loungeBotPickerColors.ts'
 import { resolveGameBettingSplits, type BettingSplitSummary } from './loungeBotBettingSplits.ts'
 import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
 
@@ -320,9 +321,9 @@ export function formatUfcCardCaption(card: UfcSlateCard): string {
   if (card.consensus.length > 0) {
     lines.push(`🎯 **3-1 SYNDICATE CONSENSUS PLAYS**`)
     for (const c of card.consensus) {
-      const agreeingDesks = SHARP_PICKERS.filter(
-        (p) => c.pickerPicks[p].side === c.consensusPick.side
-      ).join(', ')
+      const agreeingDesks = formatColoredPickerList(
+        SHARP_PICKERS.filter((p) => c.pickerPicks[p].side === c.consensusPick.side),
+      )
       lines.push(`• **${c.consensusPick.lineDisplay}** (${agreeingDesks}) vs ${c.consensusPick.side === 'A' ? c.fighterB : c.fighterA}`)
     }
     lines.push('')
@@ -403,10 +404,10 @@ export async function publishAndRecordUfcCard(
 
   for (const fight of card.fights) {
     vipLines.push(`**${fight.fighterA} vs ${fight.fighterB}** (${fight.matchup?.division || 'UFC'})`)
-    vipLines.push(`• **Scott**: ${fight.pickerPicks.Scott.pickName} ... ${fight.pickerPicks.Scott.rationale}`)
-    vipLines.push(`• **Rocco**: ${fight.pickerPicks.Rocco.pickName} ... ${fight.pickerPicks.Rocco.rationale}`)
-    vipLines.push(`• **Chedda**: ${fight.pickerPicks.Chedda.pickName} ... ${fight.pickerPicks.Chedda.rationale}`)
-    vipLines.push(`• **Tank**: ${fight.pickerPicks.Tank.pickName} ... ${fight.pickerPicks.Tank.rationale}`)
+    vipLines.push(`• ${formatColoredPickerName('Scott')}: ${fight.pickerPicks.Scott.pickName} ... ${fight.pickerPicks.Scott.rationale}`)
+    vipLines.push(`• ${formatColoredPickerName('Rocco')}: ${fight.pickerPicks.Rocco.pickName} ... ${fight.pickerPicks.Rocco.rationale}`)
+    vipLines.push(`• ${formatColoredPickerName('Chedda')}: ${fight.pickerPicks.Chedda.pickName} ... ${fight.pickerPicks.Chedda.rationale}`)
+    vipLines.push(`• ${formatColoredPickerName('Tank')}: ${fight.pickerPicks.Tank.pickName} ... ${fight.pickerPicks.Tank.rationale}`)
     vipLines.push(`• *Consensus Signal: ${fight.consensusPick.badgeText}*\n`)
   }
 

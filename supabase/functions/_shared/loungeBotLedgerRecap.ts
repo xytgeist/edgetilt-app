@@ -10,6 +10,7 @@ import { publishLoungeBotPost } from './loungeBotPublish.ts'
 import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
 import { fetchEspnGameSummary, type EspnGameSummary } from './loungeBotEspnSummary.ts'
 import { shortDisplayName } from './loungeBotOddsCaption.ts'
+import { formatColoredPickerName } from './loungeBotPickerColors.ts'
 
 export type PersonaWeeklyTally = {
   pickerName: 'Scott' | 'Rocco' | 'Chedda' | 'Tank'
@@ -688,7 +689,7 @@ export function formatWeeklySyndicateRecapCaption(recap: WeeklyRecapPayload): st
     const pUnits = formatColoredUnits(p.unitsNet)
     const record = `${p.wins}-${p.losses}${p.pushes > 0 ? `-${p.pushes}` : ''}`
     const top = recap.topPerformer?.pickerName === p.pickerName ? ' ==🏆 Top Earner==' : ''
-    lines.push(`- **${p.pickerName} (${p.roleTitle}):** ${record} (${pUnits}, ${p.winRatePct}%)${top}`)
+    lines.push(`- ${formatColoredPickerName(p.pickerName)} (${p.roleTitle}): ${record} (${pUnits}, ${p.winRatePct}%)${top}`)
   }
 
   lines.push('')

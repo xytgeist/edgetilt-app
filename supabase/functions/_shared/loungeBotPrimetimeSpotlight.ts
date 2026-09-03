@@ -15,6 +15,7 @@ import {
   shortDisplayName,
   type OddsPick,
 } from './loungeBotOddsCaption.ts'
+import { formatColoredPickerName } from './loungeBotPickerColors.ts'
 import { publishLoungeBotPost } from './loungeBotPublish.ts'
 import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
 import { fetchGameWeather, type GameWeatherSummary } from './loungeBotWeather.ts'
@@ -405,13 +406,13 @@ export function formatPrimetimeVipDeepDive(spotlight: PrimetimeSpotlightGame): s
     `🔦 **Sharpe VIP Primetime Spotlight · ${awayShort} @ ${homeShort}**`,
     `Spotlight lean (not Friday house card): **${spotlight.consensusPick.lineDisplay}**`,
     '',
-    `• Scott: ${spotlight.personaLeans.Scott.lineDisplay}`,
+    `• ${formatColoredPickerName('Scott')}: ${spotlight.personaLeans.Scott.lineDisplay}`,
     `  └ *${spotlight.personaLeans.Scott.bulletRationale}*`,
-    `• Rocco: ${spotlight.personaLeans.Rocco.lineDisplay}`,
+    `• ${formatColoredPickerName('Rocco')}: ${spotlight.personaLeans.Rocco.lineDisplay}`,
     `  └ *${spotlight.personaLeans.Rocco.bulletRationale}*`,
-    `• Tank: ${spotlight.personaLeans.Tank.lineDisplay}`,
+    `• ${formatColoredPickerName('Tank')}: ${spotlight.personaLeans.Tank.lineDisplay}`,
     `  └ *${spotlight.personaLeans.Tank.bulletRationale}*`,
-    `• Chedda: ${spotlight.personaLeans.Chedda.lineDisplay}`,
+    `• ${formatColoredPickerName('Chedda')}: ${spotlight.personaLeans.Chedda.lineDisplay}`,
     `  └ *${spotlight.personaLeans.Chedda.bulletRationale}*`,
   ]
   if (spotlight.weather?.summaryLine || spotlight.injuries?.summaryLine || spotlight.splits?.summaryLine) {

@@ -10,6 +10,7 @@ import {
   shortDisplayName,
   type OddsPick,
 } from './loungeBotOddsCaption.ts'
+import { formatColoredPickerList, formatColoredPickerName } from './loungeBotPickerColors.ts'
 import { publishLoungeBotPost } from './loungeBotPublish.ts'
 import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
 import { fetchGameWeather, type GameWeatherSummary } from './loungeBotWeather.ts'
@@ -158,7 +159,7 @@ export function formatSoloPredictiveCaption(
   const when = formatOddsCommenceTimeShort(pick.commenceTime)
   const matchup = `${away} vs ${home} (${when})`
 
-  const lines = [`🎯 ${pickerName}'s Pick\n\n${line}\n${matchup}`]
+  const lines = [`🎯 ${formatColoredPickerName(pickerName)}'s Pick\n\n${line}\n${matchup}`]
   if (weather && !weather.isDome && (weather.isHighWind || weather.isExtremeCold || weather.isPrecipAlert)) {
     lines.push(`\n📍 ${weather.summaryLine}`)
   }
@@ -203,7 +204,7 @@ export function formatSyndicateCardCaption(title: string, picks: SinglePickerPic
     const pLine = formatPickLine(item.pick)
     const away = shortDisplayName(item.pick.awayTeam)
     const home = shortDisplayName(item.pick.homeTeam)
-    lines.push(`🎯 ${item.pickerName}: ${pLine} (${away}/${home})`)
+    lines.push(`🎯 ${formatColoredPickerName(item.pickerName)}: ${pLine} (${away}/${home})`)
   }
   return lines.join('\n')
 }
@@ -275,7 +276,7 @@ function formatSlatePickBullet(
   lineDisplay: string,
   pickers?: SharpPicker[],
 ): string {
-  const desks = pickers?.length ? ` · ${pickers.join(', ')}` : ''
+  const desks = pickers?.length ? ` · ${formatColoredPickerList(pickers)}` : ''
   return `- **[gold]${lineDisplay}[/gold]** ${formatSlateGameMeta(g)}${desks}`
 }
 
@@ -373,7 +374,9 @@ export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): 
           : 'Pure Model EV'
 
   const cardLabel = picker === 'Tank' ? 'TOTALS CARD' : 'ATS CARD'
-  const lines: string[] = [`${icon} ${picker.toUpperCase()}'S FULL ${cardLabel} (${specialty}):\n`]
+  const lines: string[] = [
+    `${icon} ${formatColoredPickerName(picker, picker.toUpperCase())}'S FULL ${cardLabel} (${specialty}):\n`,
+  ]
   for (const g of card.games) {
     const pPick = g.pickerPicks[picker]
     if (picker === 'Tank' && pPick.side === 'pass') continue

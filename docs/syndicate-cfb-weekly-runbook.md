@@ -54,7 +54,7 @@ Public site shows Consensus + Off/Def/HFA/Tempo. Model A/B/C columns are **blurr
 | Current spreads / juice from books | **Live** via odds poll / ingest | — |
 | **Market file** (`lounge_market_files`) | **Live on poll** (test after `20260902200000` + Edge redeploy) | Open = first seen; current = each poll; close locks ≤5 min before kickoff (or after start). Prefers Pinnacle/Circa/LowVig else consensus. Football uses next-slate cluster (not just “today PT”). |
 | Key numbers / hooks | **Partial** | Useful; not a full steam desk |
-| Betting splits / RLM | **Paste path live** | Table `syndicate_betting_splits` + portal **Chedda Splits Paste**. Action PRO / VSiN human paste before slate. Synthetic splits never vote. Real API still five-figure fork. |
+| Betting splits / RLM | **Paste path live** | Table `syndicate_betting_splits` + portal **Chedda Splits Paste**. Paste/drop Action PRO screenshots (multi + Ctrl+V) or manual row; vision extracts ticket%/handle%. Synthetic never votes. Real API still five-figure fork. |
 | Weather / rest / travel | **Modules exist** | Not yet first-class Tank totals publish lane |
 | Starting QB / injury modifiers | **Live** (`syndicate_side_modifiers` + Rundown×PVAL) | Manual CFB first; auto only on known PVAL. Scott vs **current** market; Rocco gets hurt-side strength flag (not Scott’s pts). |
 | Desk scoreboard (ATS/CLV by desk + bucket) | **Live (test + prod)** | Edge `syndicate_monthly_scoreboard` + portal Monthly Board. Bucket×desk is truth; desk rollup is mixed/informal. CLV = side vs locked close. Trust floor **n ≥ 25**. No adaptive weights until real sample. FEI waits. |

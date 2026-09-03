@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { compressImageFileUnderMaxBytes } from '../../utils/compressImageForUpload.js'
+import {
+  imageFilesFromClipboardEvent,
+  imageFilesFromNavigatorClipboardRead,
+} from '../../utils/clipboardImagePaste.js'
 
 const SPORT_OPTIONS = [
   { id: 'americanfootball_ncaaf', label: 'CFB' },
@@ -31,6 +35,31 @@ function clampPct(n) {
   return Math.max(0, Math.min(100, Math.round(n * 10) / 10))
 }
 
+function sportLabel(sportKey) {
+  return sportKey?.includes('ncaaf') ? 'CFB' : 'NFL'
+}
+
+function gameMatchKey(sportKey, away, home) {
+  return `${sportKey || 'unknown'}::${String(away || '').trim().toLowerCase()}@${String(home || '').trim().toLowerCase()}`
+}
+
+/** Later screenshot wins on same sport + matchup (re-shot refresh). */
+function mergePreviewGames(existing, incoming) {
+  const map = new Map()
+  for (const g of existing) {
+    map.set(gameMatchKey(g.sport_key, g.away_team, g.home_team), g)
+  }
+  for (const g of incoming) {
+    map.set(gameMatchKey(g.sport_key, g.away_team, g.home_team), g)
+  }
+  return [...map.values()]
+}
+
+function collectImageFiles(fileList) {
+  if (!fileList?.length) return []
+  return Array.from(fileList).filter((f) => f && String(f.type || '').startsWith('image/'))
+}
+
 async function blobToBase64(blob) {
   const buf = await blob.arrayBuffer()
   const bytes = new Uint8Array(buf)
@@ -44,7 +73,7 @@ async function blobToBase64(blob) {
 
 /**
  * Paste ticket% / handle% from Action PRO or VSiN before slate lock.
- * Preferred: drop a board screenshot … vision extracts the slate.
+ * Preferred: drop board screenshots (multi OK) … vision extracts the slate.
  * Chedda reads these; no scraping.
  */
 export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
@@ -53,8 +82,9 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState(emptyForm)
   const [scanning, setScanning] = useState(false)
+  const [scanProgress, setScanProgress] = useState(null)
   const [previewGames, setPreviewGames] = useState([])
-  const [previewSport, setPreviewSport] = useState('americanfootball_nfl')
+  const [bulkSport, setBulkSport] = useState('americanfootball_nfl')
   const [previewSource, setPreviewSource] = useState('action_pro')
   const [previewConfidence, setPreviewConfidence] = useState(null)
   const fileRef = useRef(null)
@@ -78,7 +108,7 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
         .select('*')
         .eq('active', true)
         .order('updated_at', { ascending: false })
-        .limit(80)
+        .limit(200)
       if (error) throw error
       setRows(data || [])
     } catch (err) {
@@ -97,55 +127,133 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
-  const handleScreenshot = async (file) => {
-    if (!supabaseClient || !file) return
+  const parseOneScreenshot = useCallback(async (file) => {
+    const { file: prepared, error: compressErr } = await compressImageFileUnderMaxBytes(
+      file,
+      3.5 * 1024 * 1024,
+    )
+    if (compressErr || !prepared) throw compressErr || new Error('Could not prepare image.')
+
+    const imageBase64 = await blobToBase64(prepared)
+    const mimeType = prepared.type || 'image/jpeg'
+    const { data, error } = await supabaseClient.functions.invoke('syndicate-splits-vision', {
+      body: { imageBase64, mimeType },
+    })
+    if (error) throw new Error(error.message || 'Vision extract failed')
+    if (data?.error) throw new Error(String(data.error))
+
+    const sport_key = data?.sport_key || bulkSport || 'americanfootball_nfl'
+    const games = Array.isArray(data?.games) ? data.games : []
+    const confidence =
+      typeof data?.confidence === 'number' ? Math.round(data.confidence * 100) : null
+    const stamp = Date.now()
+    const mapped = games.map((g, idx) => ({
+      key: `${sport_key}-${g.away_team}-${g.home_team}-${stamp}-${idx}`,
+      selected: true,
+      sport_key,
+      away_team: g.away_team,
+      home_team: g.home_team,
+      away_ticket_pct: g.away_ticket_pct,
+      away_handle_pct: g.away_handle_pct,
+      home_ticket_pct: g.home_ticket_pct,
+      home_handle_pct: g.home_handle_pct,
+      commence_hint: g.commence_hint || '',
+      from_file: file?.name || 'paste',
+    }))
+    return { mapped, confidence, sport_key }
+  }, [supabaseClient, bulkSport])
+
+  /** Multi-file / paste / drop … sequential vision, merge into one review table. */
+  const handleScreenshots = useCallback(async (files) => {
+    const list = collectImageFiles(files)
+    if (!supabaseClient || !list.length) {
+      if (files?.length) setToast?.('No image files found in that paste/drop.')
+      return
+    }
+
     setScanning(true)
-    setPreviewGames([])
+    setScanProgress({ done: 0, total: list.length, label: list[0]?.name || 'image' })
+    let merged = previewGames
+    let confidences = previewConfidence != null ? [previewConfidence] : []
+    let okFiles = 0
+    let failFiles = 0
+    let lastSport = null
+
     try {
-      const { file: prepared, error: compressErr } = await compressImageFileUnderMaxBytes(
-        file,
-        3.5 * 1024 * 1024,
-      )
-      if (compressErr || !prepared) throw compressErr || new Error('Could not prepare image.')
+      for (let i = 0; i < list.length; i += 1) {
+        const file = list[i]
+        setScanProgress({
+          done: i,
+          total: list.length,
+          label: file?.name || `image ${i + 1}`,
+        })
+        try {
+          const { mapped, confidence, sport_key } = await parseOneScreenshot(file)
+          if (mapped.length) {
+            merged = mergePreviewGames(merged, mapped)
+            okFiles += 1
+            if (confidence != null) confidences.push(confidence)
+            if (sport_key) lastSport = sport_key
+          } else {
+            failFiles += 1
+          }
+        } catch (err) {
+          console.error('Splits vision failed for file:', file?.name, err)
+          failFiles += 1
+        }
+      }
 
-      const imageBase64 = await blobToBase64(prepared)
-      const mimeType = prepared.type || 'image/jpeg'
-      const { data, error } = await supabaseClient.functions.invoke('syndicate-splits-vision', {
-        body: { imageBase64, mimeType },
-      })
-      if (error) throw new Error(error.message || 'Vision extract failed')
-      if (data?.error) throw new Error(String(data.error))
-
-      const games = Array.isArray(data?.games) ? data.games : []
-      if (!games.length) {
-        setToast?.('No games read from screenshot. Try a tighter crop of the table.')
+      setScanProgress({ done: list.length, total: list.length, label: 'done' })
+      if (!merged.length || !okFiles) {
+        setToast?.('No games read from screenshot(s). Try a tighter crop of the table.')
         return
       }
-      if (data.sport_key) setPreviewSport(data.sport_key)
+
+      if (lastSport) setBulkSport(lastSport)
       setPreviewConfidence(
-        typeof data.confidence === 'number' ? Math.round(data.confidence * 100) : null,
+        confidences.length
+          ? Math.round(confidences.reduce((a, b) => a + b, 0) / confidences.length)
+          : null,
       )
-      setPreviewGames(
-        games.map((g, idx) => ({
-          key: `${g.away_team}-${g.home_team}-${idx}`,
-          selected: true,
-          away_team: g.away_team,
-          home_team: g.home_team,
-          away_ticket_pct: g.away_ticket_pct,
-          away_handle_pct: g.away_handle_pct,
-          home_ticket_pct: g.home_ticket_pct,
-          home_handle_pct: g.home_handle_pct,
-          commence_hint: g.commence_hint || '',
-        })),
-      )
-      setToast?.(`Read ${games.length} game${games.length === 1 ? '' : 's'} from screenshot. Review + save.`)
-    } catch (err) {
-      console.error('Splits vision failed:', err)
-      setToast?.(`Screenshot parse failed: ${err.message}`)
+      setPreviewGames(merged)
+      const parts = [
+        `Added from ${okFiles} screenshot${okFiles === 1 ? '' : 's'}`,
+        `· ${merged.length} game${merged.length === 1 ? '' : 's'} in review`,
+      ]
+      if (failFiles) parts.push(`(${failFiles} image${failFiles === 1 ? '' : 's'} empty/failed)`)
+      setToast?.(`${parts.join(' ')}. Review + save.`)
     } finally {
       setScanning(false)
+      setScanProgress(null)
       if (fileRef.current) fileRef.current.value = ''
     }
+  }, [supabaseClient, parseOneScreenshot, setToast, previewGames, previewConfidence])
+
+  const handleDropZonePaste = useCallback(async (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    let files = imageFilesFromClipboardEvent(e)
+    if (!files.length) {
+      files = await imageFilesFromNavigatorClipboardRead()
+    }
+    if (!files.length) {
+      setToast?.('Clipboard has no image. Copy a screenshot first (Win+Shift+S), then Ctrl+V here.')
+      return
+    }
+    await handleScreenshots(files)
+  }, [handleScreenshots, setToast])
+
+  const handlePasteFromClipboardButton = useCallback(async () => {
+    const files = await imageFilesFromNavigatorClipboardRead()
+    if (!files.length) {
+      setToast?.('No image on clipboard. Screenshot first, click the drop zone, then Ctrl+V … or grant clipboard permission for Paste clipboard.')
+      return
+    }
+    await handleScreenshots(files)
+  }, [handleScreenshots, setToast])
+
+  const applyBulkSport = () => {
+    setPreviewGames((prev) => prev.map((g) => (g.selected ? { ...g, sport_key: bulkSport } : g)))
   }
 
   const handleSavePreview = async () => {
@@ -158,7 +266,7 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
     setSaving(true)
     try {
       const payloads = selected.map((g) => ({
-        sport_key: previewSport,
+        sport_key: g.sport_key || bulkSport,
         home_team: String(g.home_team || '').trim(),
         away_team: String(g.away_team || '').trim(),
         commence_time: null,
@@ -177,6 +285,7 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
         updated_at: new Date().toISOString(),
       }))
 
+      let saved = 0
       for (const p of payloads) {
         if (!p.home_team || !p.away_team) continue
         if (
@@ -197,10 +306,12 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
 
         const { error } = await supabaseClient.from('syndicate_betting_splits').insert(p)
         if (error) throw error
+        saved += 1
       }
 
-      setToast?.(`Saved ${payloads.length} split row${payloads.length === 1 ? '' : 's'} for Chedda.`)
+      setToast?.(`Saved ${saved} split row${saved === 1 ? '' : 's'} for Chedda.`)
       setPreviewGames([])
+      setPreviewConfidence(null)
       await loadRows()
     } catch (err) {
       console.error('Bulk save splits failed:', err)
@@ -311,8 +422,8 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
             </span>
           </div>
           <p className="mt-0.5 text-xs text-zinc-400 max-w-2xl">
-            Drop an Action PRO board screenshot (NFL/CFB · Spread · % bets / % money). We read it with vision,
-            you confirm, then Chedda uses it. Manual single-game form still available below.
+            Paste or drop Action PRO board screenshots (multi OK … NFL + CFB). We read % bets / % money
+            with vision, you confirm, then Chedda uses it. Manual single-game form still below.
           </p>
         </div>
         <button
@@ -326,7 +437,10 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
       </div>
 
       <div
-        className="rounded-lg border border-dashed border-amber-700/50 bg-amber-950/20 px-4 py-5 text-center"
+        tabIndex={0}
+        role="button"
+        aria-label="Paste or drop Action PRO screenshots"
+        className="rounded-lg border border-dashed border-amber-700/50 bg-amber-950/20 px-4 py-5 text-center focus:border-amber-400/70 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
         onDragOver={(e) => {
           e.preventDefault()
           e.stopPropagation()
@@ -334,55 +448,80 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
         onDrop={(e) => {
           e.preventDefault()
           e.stopPropagation()
-          const f = e.dataTransfer?.files?.[0]
-          if (f) handleScreenshot(f)
+          void handleScreenshots(e.dataTransfer?.files)
+        }}
+        onPaste={(e) => {
+          void handleDropZonePaste(e)
         }}
       >
         <input
           ref={fileRef}
           type="file"
           accept="image/*"
+          multiple
           className="hidden"
           onChange={(e) => {
-            const f = e.target.files?.[0]
-            if (f) handleScreenshot(f)
+            void handleScreenshots(e.target.files)
           }}
         />
         <p className="text-sm font-semibold text-amber-200">
-          {scanning ? 'Reading screenshot…' : 'Drop Action PRO screenshot here'}
+          {scanning
+            ? (scanProgress
+              ? `Reading ${scanProgress.done + 1}/${scanProgress.total}… ${scanProgress.label}`
+              : 'Reading screenshot…')
+            : 'Click here → Ctrl+V paste · or drop screenshots'}
         </p>
         <p className="mt-1 text-[11px] text-zinc-500">
-          Full week board is fine (like the NFL Week 1 spread table). PNG/JPG.
+          Win+Shift+S (or any screenshot) → click this box → Ctrl+V. Multi-select upload also works.
+          Same matchup on a later shot replaces the earlier row.
         </p>
-        <button
-          type="button"
-          disabled={scanning}
-          onClick={() => fileRef.current?.click()}
-          className="mt-3 rounded-lg bg-amber-600 hover:bg-amber-500 px-4 py-2 text-xs font-bold text-black transition disabled:opacity-50"
-        >
-          {scanning ? 'Parsing…' : 'Choose screenshot'}
-        </button>
+        <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+          <button
+            type="button"
+            disabled={scanning}
+            onClick={() => void handlePasteFromClipboardButton()}
+            className="rounded-lg bg-amber-600 hover:bg-amber-500 px-4 py-2 text-xs font-bold text-black transition disabled:opacity-50"
+          >
+            {scanning ? 'Parsing…' : 'Paste clipboard'}
+          </button>
+          <button
+            type="button"
+            disabled={scanning}
+            onClick={() => fileRef.current?.click()}
+            className="rounded-lg border border-amber-700/60 bg-zinc-950/60 hover:bg-zinc-900 px-4 py-2 text-xs font-bold text-amber-100 transition disabled:opacity-50"
+          >
+            Choose screenshots
+          </button>
+        </div>
       </div>
 
       {previewGames.length > 0 && (
         <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 space-y-2">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="text-xs font-semibold text-amber-200">
-              Review parsed games
+              Review parsed games ({previewGames.length})
               {previewConfidence != null ? (
                 <span className="ml-2 text-zinc-500 font-normal">confidence ~{previewConfidence}%</span>
               ) : null}
             </div>
             <div className="flex flex-wrap items-center gap-2 text-[11px]">
               <select
-                value={previewSport}
-                onChange={(e) => setPreviewSport(e.target.value)}
+                value={bulkSport}
+                onChange={(e) => setBulkSport(e.target.value)}
                 className="rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-white"
+                title="Sport to apply to checked rows"
               >
                 {SPORT_OPTIONS.map((s) => (
                   <option key={s.id} value={s.id}>{s.label}</option>
                 ))}
               </select>
+              <button
+                type="button"
+                onClick={applyBulkSport}
+                className="rounded bg-zinc-800 px-2 py-1 text-zinc-300 hover:text-white"
+              >
+                Apply sport to checked
+              </button>
               <select
                 value={previewSource}
                 onChange={(e) => setPreviewSource(e.target.value)}
@@ -402,18 +541,22 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
               </button>
               <button
                 type="button"
-                onClick={() => setPreviewGames([])}
+                onClick={() => {
+                  setPreviewGames([])
+                  setPreviewConfidence(null)
+                }}
                 className="rounded bg-zinc-800 px-2 py-1 text-zinc-300"
               >
                 Clear
               </button>
             </div>
           </div>
-          <div className="overflow-x-auto max-h-72 overflow-y-auto">
+          <div className="overflow-x-auto max-h-80 overflow-y-auto">
             <table className="w-full text-[10px] text-left">
               <thead className="text-zinc-500 border-b border-zinc-800 sticky top-0 bg-zinc-900">
                 <tr>
                   <th className="py-1 pr-1"> </th>
+                  <th className="py-1 pr-2">Sport</th>
                   <th className="py-1 pr-2">Away @ Home</th>
                   <th className="py-1 pr-2">Tickets A/H</th>
                   <th className="py-1 pr-2">Handle A/H</th>
@@ -433,6 +576,22 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
                           )
                         }}
                       />
+                    </td>
+                    <td className="py-1 pr-2">
+                      <select
+                        value={g.sport_key || bulkSport}
+                        onChange={(e) => {
+                          const sport_key = e.target.value
+                          setPreviewGames((prev) =>
+                            prev.map((row, i) => (i === idx ? { ...row, sport_key } : row)),
+                          )
+                        }}
+                        className="rounded border border-zinc-700 bg-zinc-950 px-1 py-0.5 text-white"
+                      >
+                        {SPORT_OPTIONS.map((s) => (
+                          <option key={s.id} value={s.id}>{s.label}</option>
+                        ))}
+                      </select>
                     </td>
                     <td className="py-1 pr-2">
                       {g.away_team} @ {g.home_team}
@@ -587,7 +746,7 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
             {rows.map((r) => (
               <tr key={r.id} className="border-b border-zinc-900 text-zinc-300">
                 <td className="py-1 pr-2">{r.away_team} @ {r.home_team}</td>
-                <td className="py-1 pr-2 text-zinc-500">{r.sport_key?.includes('ncaaf') ? 'CFB' : 'NFL'}</td>
+                <td className="py-1 pr-2 text-zinc-500">{sportLabel(r.sport_key)}</td>
                 <td className="py-1 pr-2 tabular-nums">{r.home_ticket_pct}/{r.away_ticket_pct}</td>
                 <td className="py-1 pr-2 tabular-nums">{r.home_handle_pct}/{r.away_handle_pct}</td>
                 <td className="py-1 pr-2">{r.source}</td>
@@ -605,7 +764,7 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
             {!rows.length && !loading && (
               <tr>
                 <td colSpan={6} className="py-3 text-zinc-500">
-                  No pastes yet. Drop an Action PRO board screenshot above before slate publish.
+                  No pastes yet. Paste or drop Action PRO board screenshots above before slate publish.
                 </td>
               </tr>
             )}

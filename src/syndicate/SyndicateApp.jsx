@@ -1089,17 +1089,17 @@ export function SyndicateApp() {
 
                       const isMma = pick.sport_key?.includes('mma') || pick.sport_key?.includes('ufc')
                       const consensusType = pick.metadata?.consensus_type || pick.metadata?.consensus_signal || 'solo'
+                      // Prefer type→label over stored consensus_badge (old NFL rows still say 4-0 / 3-1).
                       const consensusBadge =
-                        pick.metadata?.consensus_badge ||
-                        (consensusType === 'hammer'
+                        consensusType === 'hammer'
                           ? isMma
                             ? '🔥 4-0 Fight Hammer'
                             : '🔥 3-0 Hammer'
                           : consensusType === 'consensus'
-                          ? isMma
-                            ? '🎯 3-1 Consensus'
-                            : '🎯 2-1 Consensus'
-                          : 'Solo Spot')
+                            ? isMma
+                              ? '🎯 3-1 Consensus'
+                              : '🎯 2-1 Consensus'
+                            : pick.metadata?.consensus_badge || 'Solo Spot'
                       const eventLabel =
                         pick.away_team && pick.home_team
                           ? isMma

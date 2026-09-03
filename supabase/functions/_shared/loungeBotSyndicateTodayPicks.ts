@@ -6,7 +6,7 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import {
   filterOddsEventsKickoffPtDay,
   ptDateKey,
-  shortDisplayName,
+  sportTeamDisplayName,
   formatOddsCommenceTimeShort,
   type OddsEvent,
 } from './loungeBotOddsCaption.ts'
@@ -263,8 +263,8 @@ export async function runPicksForToday(
       previewCaption,
       captionPreview: previewCaption,
       gamesSummary: card.games.map((g) => ({
-        away: shortDisplayName(g.awayTeam),
-        home: shortDisplayName(g.homeTeam),
+        away: sportTeamDisplayName(g.awayTeam, g.sportKey || card.sportKey),
+        home: sportTeamDisplayName(g.homeTeam, g.sportKey || card.sportKey),
         when: formatOddsCommenceTimeShort(g.commenceTime),
         lineDisplay: g.consensusPick.lineDisplay,
         badge: g.consensusPick.badgeText,

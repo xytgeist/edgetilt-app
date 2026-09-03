@@ -8,6 +8,7 @@ import {
   formatAmericanOdds,
   formatOddsCommenceTimeShort,
   shortDisplayName,
+  sportTeamDisplayName,
   type OddsPick,
 } from './loungeBotOddsCaption.ts'
 import { formatColoredPickerName } from './loungeBotPickerColors.ts'
@@ -124,12 +125,13 @@ export type ScoreEvent = {
  */
 export function formatPickLine(pick: OddsPick): string {
   const odds = formatAmericanOdds(pick.pickPrice)
+  const team = sportTeamDisplayName(pick.pickName, pick.sportKey)
   if (pick.marketKey === 'h2h') {
-    return `${shortDisplayName(pick.pickName)} ML (${odds})`
+    return `${team} ML (${odds})`
   }
   if (pick.marketKey === 'spreads' && pick.linePoint != null) {
     const pt = pick.linePoint > 0 ? `+${pick.linePoint}` : String(pick.linePoint)
-    return `${shortDisplayName(pick.pickName)} ${pt} (${odds})`
+    return `${team} ${pt} (${odds})`
   }
   if (pick.marketKey === 'totals' && pick.linePoint != null) {
     const side = /^over$/i.test(pick.pickName) ? 'Over' : /^under$/i.test(pick.pickName) ? 'Under' : pick.pickName
@@ -158,8 +160,8 @@ export function formatSoloPredictiveCaption(
   cfbMatchup?: CfbMatchupProjection | null,
 ): string {
   const line = formatPickLine(pick)
-  const away = shortDisplayName(pick.awayTeam)
-  const home = shortDisplayName(pick.homeTeam)
+  const away = sportTeamDisplayName(pick.awayTeam, pick.sportKey)
+  const home = sportTeamDisplayName(pick.homeTeam, pick.sportKey)
   const when = formatOddsCommenceTimeShort(pick.commenceTime)
   const matchup = `${away} vs ${home} (${when})`
 
@@ -206,8 +208,8 @@ export function formatSyndicateCardCaption(title: string, picks: SinglePickerPic
   const lines: string[] = [`${title || '🎯 Sharpe Syndicate Card'}\n`]
   for (const item of picks) {
     const pLine = formatPickLine(item.pick)
-    const away = shortDisplayName(item.pick.awayTeam)
-    const home = shortDisplayName(item.pick.homeTeam)
+    const away = sportTeamDisplayName(item.pick.awayTeam, item.pick.sportKey)
+    const home = sportTeamDisplayName(item.pick.homeTeam, item.pick.sportKey)
     lines.push(`🎯 ${formatColoredPickerName(item.pickerName)}: ${pLine} (${away}/${home})`)
   }
   return lines.join('\n')
@@ -268,8 +270,8 @@ function formatSlateWeekLine(games: SlateGamePick[]): string | null {
 }
 
 function formatMatchupWhen(g: SlateGamePick): string {
-  const away = shortDisplayName(g.awayTeam)
-  const home = shortDisplayName(g.homeTeam)
+  const away = sportTeamDisplayName(g.awayTeam, g.sportKey)
+  const home = sportTeamDisplayName(g.homeTeam, g.sportKey)
   const when = formatOddsCommenceTimeShort(g.commenceTime)
   return `${away}/${home} · ${when}`
 }
@@ -460,8 +462,8 @@ export function formatNflSlateCardCaption(card: NflSlateCard): string {
   if (injuryNotes.length > 0) {
     lines.push('## 🚑 Side modifiers (post-board)')
     for (const g of injuryNotes) {
-      const away = shortDisplayName(g.awayTeam)
-      const home = shortDisplayName(g.homeTeam)
+      const away = sportTeamDisplayName(g.awayTeam, g.sportKey || card.sportKey)
+      const home = sportTeamDisplayName(g.homeTeam, g.sportKey || card.sportKey)
       lines.push(`- ${away}/${home}: ${g.sideModifier!.reason}`)
     }
     lines.push('')
@@ -495,8 +497,8 @@ export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): 
   for (const g of card.games) {
     const pPick = g.pickerPicks[picker]
     if (pPick.side === 'pass') continue
-    const away = shortDisplayName(g.awayTeam)
-    const home = shortDisplayName(g.homeTeam)
+    const away = sportTeamDisplayName(g.awayTeam, g.sportKey || card.sportKey)
+    const home = sportTeamDisplayName(g.homeTeam, g.sportKey || card.sportKey)
     const when = formatOddsCommenceTimeShort(g.commenceTime)
     lines.push(`· ${pPick.lineDisplay} (${away}/${home} · ${when})`)
   }

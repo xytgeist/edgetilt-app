@@ -488,6 +488,60 @@ export function shortDisplayName(name: string): string {
 }
 
 /**
+ * CFB multi-word nicknames (longest first). Stripping only the last token would leave
+ * "Alabama Crimson" / "Penn State Nittany" … these keep the school.
+ */
+const CFB_MULTI_WORD_NICKNAMES = [
+  'fighting irish',
+  'crimson tide',
+  'nittany lions',
+  'fighting illini',
+  'scarlet knights',
+  'golden gophers',
+  'red raiders',
+  'horned frogs',
+  'sun devils',
+  'yellow jackets',
+  'tar heels',
+  'golden bears',
+  'blue devils',
+  'demon deacons',
+  'green wave',
+  'black knights',
+].sort((a, b) => b.length - a.length)
+
+/**
+ * College football display: school name (Ohio State, Alabama), not mascot-only (Buckeyes, Tide).
+ */
+export function cfbSchoolDisplayName(name: string): string {
+  const raw = String(name || '').trim()
+  if (!raw) return ''
+  const lower = raw.toLowerCase()
+
+  for (const nick of CFB_MULTI_WORD_NICKNAMES) {
+    const suffix = ` ${nick}`
+    if (lower.endsWith(suffix)) {
+      const school = raw.slice(0, raw.length - suffix.length).trim()
+      if (school) return school
+    }
+  }
+
+  const parts = raw.split(/\s+/).filter(Boolean)
+  if (parts.length <= 1) return parts[0] || ''
+  // Drop trailing single-word nickname (Buckeyes, Wolverines, Trojans, …)
+  return parts.slice(0, -1).join(' ')
+}
+
+/** Sport-aware short label: CFB → school; NFL/other → mascot / club helper. */
+export function sportTeamDisplayName(name: string, sportKey?: string | null): string {
+  const key = String(sportKey || '').toLowerCase()
+  if (key.includes('ncaaf') || key.includes('cfb')) {
+    return cfbSchoolDisplayName(name)
+  }
+  return shortDisplayName(name)
+}
+
+/**
  * Find +EV opportunities: devig per book, consensus fair prob, EV on best line.
  * Default markets are sport-weighted (h2h / spreads / totals); close EV ties prefer spread- vs ML-heavy sports.
  */

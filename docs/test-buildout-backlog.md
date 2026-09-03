@@ -2842,6 +2842,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-03:** **CFB school names in slate headers:** CFB pick/matchup labels use school (Ohio State, Alabama) instead of mascot-only (Buckeyes, Tide) via `cfbSchoolDisplayName` / `sportTeamDisplayName`. NFL unchanged. Redeploy **`lounge-odds-poll`**.
 - **2026-09-03:** **Specialty Preview · subscriber full cards:** dry runs return `vipPreviewCaption` (+ NFL/CFB `subscriberThreadParts` desk lists). Ops Preview tabs Public Lounge vs Subscriber full card. **v1.4.10**. Redeploy **`lounge-odds-poll`** test+prod; Ops needs **`main`**.
 - **2026-09-03:** **Specialty Drops Preview:** Ops Preview buttons open full post caption panel (`SyndicateDryRunPreview`) instead of toast-only. Edge **`lounge-odds-poll`** dry runs return `previewCaption` for slate / Wong / primetime / weekly / UFC / TD / pivot / middle-arb / monthly. **v1.4.9**. Redeploy **`lounge-odds-poll`** test+prod; Ops UI needs **`main`**.
 - **2026-09-03:** **Signal vs Syndicate poll ownership:** Steam / edges / coffee / BBH / VBR never run as `@sharpesyndicate`; desk / slate / VIP shop never queue as Signal while Syndicate is running. Migration **`20260903150000`** + Edge **`lounge-odds-poll`**. Ops site queues as **`sharpe-syndicate`**.

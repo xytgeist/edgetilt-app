@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { compressImageFileUnderMaxBytes } from '../../utils/compressImageForUpload.js'
 
 const SPORT_OPTIONS = [
   { id: 'americanfootball_ncaaf', label: 'CFB' },
@@ -30,8 +31,20 @@ function clampPct(n) {
   return Math.max(0, Math.min(100, Math.round(n * 10) / 10))
 }
 
+async function blobToBase64(blob) {
+  const buf = await blob.arrayBuffer()
+  const bytes = new Uint8Array(buf)
+  let binary = ''
+  const chunk = 0x8000
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk))
+  }
+  return btoa(binary)
+}
+
 /**
  * Paste ticket% / handle% from Action PRO or VSiN before slate lock.
+ * Preferred: drop a board screenshot … vision extracts the slate.
  * Chedda reads these; no scraping.
  */
 export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
@@ -39,6 +52,12 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState(emptyForm)
+  const [scanning, setScanning] = useState(false)
+  const [previewGames, setPreviewGames] = useState([])
+  const [previewSport, setPreviewSport] = useState('americanfootball_nfl')
+  const [previewSource, setPreviewSource] = useState('action_pro')
+  const [previewConfidence, setPreviewConfidence] = useState(null)
+  const fileRef = useRef(null)
 
   const awayTicket = useMemo(() => {
     const home = clampPct(Number(form.home_ticket_pct))
@@ -76,6 +95,119 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
 
   const setField = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const handleScreenshot = async (file) => {
+    if (!supabaseClient || !file) return
+    setScanning(true)
+    setPreviewGames([])
+    try {
+      const { file: prepared, error: compressErr } = await compressImageFileUnderMaxBytes(
+        file,
+        3.5 * 1024 * 1024,
+      )
+      if (compressErr || !prepared) throw compressErr || new Error('Could not prepare image.')
+
+      const imageBase64 = await blobToBase64(prepared)
+      const mimeType = prepared.type || 'image/jpeg'
+      const { data, error } = await supabaseClient.functions.invoke('syndicate-splits-vision', {
+        body: { imageBase64, mimeType },
+      })
+      if (error) throw new Error(error.message || 'Vision extract failed')
+      if (data?.error) throw new Error(String(data.error))
+
+      const games = Array.isArray(data?.games) ? data.games : []
+      if (!games.length) {
+        setToast?.('No games read from screenshot. Try a tighter crop of the table.')
+        return
+      }
+      if (data.sport_key) setPreviewSport(data.sport_key)
+      setPreviewConfidence(
+        typeof data.confidence === 'number' ? Math.round(data.confidence * 100) : null,
+      )
+      setPreviewGames(
+        games.map((g, idx) => ({
+          key: `${g.away_team}-${g.home_team}-${idx}`,
+          selected: true,
+          away_team: g.away_team,
+          home_team: g.home_team,
+          away_ticket_pct: g.away_ticket_pct,
+          away_handle_pct: g.away_handle_pct,
+          home_ticket_pct: g.home_ticket_pct,
+          home_handle_pct: g.home_handle_pct,
+          commence_hint: g.commence_hint || '',
+        })),
+      )
+      setToast?.(`Read ${games.length} game${games.length === 1 ? '' : 's'} from screenshot. Review + save.`)
+    } catch (err) {
+      console.error('Splits vision failed:', err)
+      setToast?.(`Screenshot parse failed: ${err.message}`)
+    } finally {
+      setScanning(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  const handleSavePreview = async () => {
+    if (!supabaseClient) return
+    const selected = previewGames.filter((g) => g.selected)
+    if (!selected.length) {
+      setToast?.('Select at least one game to save.')
+      return
+    }
+    setSaving(true)
+    try {
+      const payloads = selected.map((g) => ({
+        sport_key: previewSport,
+        home_team: String(g.home_team || '').trim(),
+        away_team: String(g.away_team || '').trim(),
+        commence_time: null,
+        event_id: null,
+        home_ticket_pct: clampPct(Number(g.home_ticket_pct)),
+        home_handle_pct: clampPct(Number(g.home_handle_pct)),
+        away_ticket_pct: clampPct(Number(g.away_ticket_pct)),
+        away_handle_pct: clampPct(Number(g.away_handle_pct)),
+        over_ticket_pct: null,
+        over_handle_pct: null,
+        source: previewSource,
+        notes: g.commence_hint
+          ? `screenshot · ${g.commence_hint}`
+          : 'screenshot board parse',
+        active: true,
+        updated_at: new Date().toISOString(),
+      }))
+
+      for (const p of payloads) {
+        if (!p.home_team || !p.away_team) continue
+        if (
+          p.home_ticket_pct == null
+          || p.home_handle_pct == null
+          || p.away_ticket_pct == null
+          || p.away_handle_pct == null
+        ) {
+          continue
+        }
+        await supabaseClient
+          .from('syndicate_betting_splits')
+          .update({ active: false, updated_at: new Date().toISOString() })
+          .eq('sport_key', p.sport_key)
+          .eq('home_team', p.home_team)
+          .eq('away_team', p.away_team)
+          .eq('active', true)
+
+        const { error } = await supabaseClient.from('syndicate_betting_splits').insert(p)
+        if (error) throw error
+      }
+
+      setToast?.(`Saved ${payloads.length} split row${payloads.length === 1 ? '' : 's'} for Chedda.`)
+      setPreviewGames([])
+      await loadRows()
+    } catch (err) {
+      console.error('Bulk save splits failed:', err)
+      setToast?.(`Save failed: ${err.message}`)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleSave = async (e) => {
@@ -118,7 +250,6 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
         updated_at: new Date().toISOString(),
       }
 
-      // Prefer update by event_id; else insert new active row
       if (payload.event_id) {
         const { data: existing } = await supabaseClient
           .from('syndicate_betting_splits')
@@ -180,8 +311,8 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
             </span>
           </div>
           <p className="mt-0.5 text-xs text-zinc-400 max-w-2xl">
-            Once per slate before publish: open Action PRO (or VSiN), copy home bet% and money%, paste here.
-            Away auto-fills to 100. Chedda votes on real divergence; we do not scrape.
+            Drop an Action PRO board screenshot (NFL/CFB · Spread · % bets / % money). We read it with vision,
+            you confirm, then Chedda uses it. Manual single-game form still available below.
           </p>
         </div>
         <button
@@ -194,144 +325,250 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
         </button>
       </div>
 
-      <form onSubmit={handleSave} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-xs">
-        <label className="space-y-1">
-          <span className="text-zinc-500">Sport</span>
-          <select
-            value={form.sport_key}
-            onChange={(e) => setField('sport_key', e.target.value)}
-            className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-white"
-          >
-            {SPORT_OPTIONS.map((s) => (
-              <option key={s.id} value={s.id}>{s.label}</option>
-            ))}
-          </select>
-        </label>
-        <label className="space-y-1">
-          <span className="text-zinc-500">Source</span>
-          <select
-            value={form.source}
-            onChange={(e) => setField('source', e.target.value)}
-            className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-white"
-          >
-            {SOURCE_OPTIONS.map((s) => (
-              <option key={s.id} value={s.id}>{s.label}</option>
-            ))}
-          </select>
-        </label>
-        <label className="space-y-1">
-          <span className="text-zinc-500">Kickoff (optional)</span>
-          <input
-            type="datetime-local"
-            value={form.commence_time}
-            onChange={(e) => setField('commence_time', e.target.value)}
-            className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-white"
-          />
-        </label>
-        <label className="space-y-1">
-          <span className="text-zinc-500">Away team</span>
-          <input
-            value={form.away_team}
-            onChange={(e) => setField('away_team', e.target.value)}
-            placeholder="Ohio State"
-            className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-white"
-            required
-          />
-        </label>
-        <label className="space-y-1">
-          <span className="text-zinc-500">Home team</span>
-          <input
-            value={form.home_team}
-            onChange={(e) => setField('home_team', e.target.value)}
-            placeholder="Texas"
-            className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-white"
-            required
-          />
-        </label>
-        <label className="space-y-1">
-          <span className="text-zinc-500">Odds event id (optional)</span>
-          <input
-            value={form.event_id}
-            onChange={(e) => setField('event_id', e.target.value)}
-            placeholder="from Odds API if you have it"
-            className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-white"
-          />
-        </label>
-        <label className="space-y-1">
-          <span className="text-zinc-500">Home ticket % (bets)</span>
-          <input
-            type="number"
-            min={0}
-            max={100}
-            step={0.1}
-            value={form.home_ticket_pct}
-            onChange={(e) => setField('home_ticket_pct', e.target.value)}
-            className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-white"
-            required
-          />
-        </label>
-        <label className="space-y-1">
-          <span className="text-zinc-500">Home handle % (money)</span>
-          <input
-            type="number"
-            min={0}
-            max={100}
-            step={0.1}
-            value={form.home_handle_pct}
-            onChange={(e) => setField('home_handle_pct', e.target.value)}
-            className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-white"
-            required
-          />
-        </label>
-        <div className="rounded-md border border-zinc-800 bg-zinc-900/50 px-2 py-1.5 space-y-0.5">
-          <div className="text-zinc-500">Away auto</div>
-          <div className="tabular-nums text-zinc-200">
-            tickets {awayTicket != null ? awayTicket : 'n/a'}% · handle {awayHandle != null ? awayHandle : 'n/a'}%
+      <div
+        className="rounded-lg border border-dashed border-amber-700/50 bg-amber-950/20 px-4 py-5 text-center"
+        onDragOver={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+        }}
+        onDrop={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          const f = e.dataTransfer?.files?.[0]
+          if (f) handleScreenshot(f)
+        }}
+      >
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) handleScreenshot(f)
+          }}
+        />
+        <p className="text-sm font-semibold text-amber-200">
+          {scanning ? 'Reading screenshot…' : 'Drop Action PRO screenshot here'}
+        </p>
+        <p className="mt-1 text-[11px] text-zinc-500">
+          Full week board is fine (like the NFL Week 1 spread table). PNG/JPG.
+        </p>
+        <button
+          type="button"
+          disabled={scanning}
+          onClick={() => fileRef.current?.click()}
+          className="mt-3 rounded-lg bg-amber-600 hover:bg-amber-500 px-4 py-2 text-xs font-bold text-black transition disabled:opacity-50"
+        >
+          {scanning ? 'Parsing…' : 'Choose screenshot'}
+        </button>
+      </div>
+
+      {previewGames.length > 0 && (
+        <div className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-3 space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-xs font-semibold text-amber-200">
+              Review parsed games
+              {previewConfidence != null ? (
+                <span className="ml-2 text-zinc-500 font-normal">confidence ~{previewConfidence}%</span>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-[11px]">
+              <select
+                value={previewSport}
+                onChange={(e) => setPreviewSport(e.target.value)}
+                className="rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-white"
+              >
+                {SPORT_OPTIONS.map((s) => (
+                  <option key={s.id} value={s.id}>{s.label}</option>
+                ))}
+              </select>
+              <select
+                value={previewSource}
+                onChange={(e) => setPreviewSource(e.target.value)}
+                className="rounded border border-zinc-700 bg-zinc-950 px-2 py-1 text-white"
+              >
+                {SOURCE_OPTIONS.map((s) => (
+                  <option key={s.id} value={s.id}>{s.label}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={handleSavePreview}
+                className="rounded bg-emerald-600 hover:bg-emerald-500 px-3 py-1 font-bold text-white disabled:opacity-50"
+              >
+                {saving ? 'Saving…' : `Save ${previewGames.filter((g) => g.selected).length} to Chedda`}
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewGames([])}
+                className="rounded bg-zinc-800 px-2 py-1 text-zinc-300"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+          <div className="overflow-x-auto max-h-72 overflow-y-auto">
+            <table className="w-full text-[10px] text-left">
+              <thead className="text-zinc-500 border-b border-zinc-800 sticky top-0 bg-zinc-900">
+                <tr>
+                  <th className="py-1 pr-1"> </th>
+                  <th className="py-1 pr-2">Away @ Home</th>
+                  <th className="py-1 pr-2">Tickets A/H</th>
+                  <th className="py-1 pr-2">Handle A/H</th>
+                </tr>
+              </thead>
+              <tbody>
+                {previewGames.map((g, idx) => (
+                  <tr key={g.key} className="border-b border-zinc-900 text-zinc-300">
+                    <td className="py-1 pr-1">
+                      <input
+                        type="checkbox"
+                        checked={g.selected}
+                        onChange={(e) => {
+                          const checked = e.target.checked
+                          setPreviewGames((prev) =>
+                            prev.map((row, i) => (i === idx ? { ...row, selected: checked } : row)),
+                          )
+                        }}
+                      />
+                    </td>
+                    <td className="py-1 pr-2">
+                      {g.away_team} @ {g.home_team}
+                      {g.commence_hint ? (
+                        <span className="block text-zinc-600">{g.commence_hint}</span>
+                      ) : null}
+                    </td>
+                    <td className="py-1 pr-2 tabular-nums">{g.away_ticket_pct}/{g.home_ticket_pct}</td>
+                    <td className="py-1 pr-2 tabular-nums">{g.away_handle_pct}/{g.home_handle_pct}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
-        <label className="space-y-1">
-          <span className="text-zinc-500">Over ticket % (optional)</span>
-          <input
-            type="number"
-            min={0}
-            max={100}
-            step={0.1}
-            value={form.over_ticket_pct}
-            onChange={(e) => setField('over_ticket_pct', e.target.value)}
-            className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-white"
-          />
-        </label>
-        <label className="space-y-1">
-          <span className="text-zinc-500">Over handle % (optional)</span>
-          <input
-            type="number"
-            min={0}
-            max={100}
-            step={0.1}
-            value={form.over_handle_pct}
-            onChange={(e) => setField('over_handle_pct', e.target.value)}
-            className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-white"
-          />
-        </label>
-        <label className="space-y-1 sm:col-span-2 lg:col-span-3">
-          <span className="text-zinc-500">Notes</span>
-          <input
-            value={form.notes}
-            onChange={(e) => setField('notes', e.target.value)}
-            placeholder="e.g. Action PRO · Fri 6pm PT"
-            className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-white"
-          />
-        </label>
-        <div className="sm:col-span-2 lg:col-span-3">
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-lg bg-amber-600 hover:bg-amber-500 px-4 py-2 text-xs font-bold text-black transition disabled:opacity-50"
-          >
-            {saving ? 'Saving…' : 'Save splits for Chedda'}
-          </button>
-        </div>
-      </form>
+      )}
+
+      <details className="rounded-lg border border-zinc-800/80 bg-zinc-950/40 open:pb-2">
+        <summary className="cursor-pointer px-3 py-2 text-xs font-semibold text-zinc-400 hover:text-zinc-200">
+          Manual single-game entry (fallback)
+        </summary>
+        <form onSubmit={handleSave} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 text-xs px-3 pb-3">
+          <label className="space-y-1">
+            <span className="text-zinc-500">Sport</span>
+            <select
+              value={form.sport_key}
+              onChange={(e) => setField('sport_key', e.target.value)}
+              className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-white"
+            >
+              {SPORT_OPTIONS.map((s) => (
+                <option key={s.id} value={s.id}>{s.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1">
+            <span className="text-zinc-500">Source</span>
+            <select
+              value={form.source}
+              onChange={(e) => setField('source', e.target.value)}
+              className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-white"
+            >
+              {SOURCE_OPTIONS.map((s) => (
+                <option key={s.id} value={s.id}>{s.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="space-y-1">
+            <span className="text-zinc-500">Kickoff (optional)</span>
+            <input
+              type="datetime-local"
+              value={form.commence_time}
+              onChange={(e) => setField('commence_time', e.target.value)}
+              className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-white"
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-zinc-500">Away team</span>
+            <input
+              value={form.away_team}
+              onChange={(e) => setField('away_team', e.target.value)}
+              placeholder="Ohio State"
+              className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-white"
+              required
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-zinc-500">Home team</span>
+            <input
+              value={form.home_team}
+              onChange={(e) => setField('home_team', e.target.value)}
+              placeholder="Texas"
+              className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-white"
+              required
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-zinc-500">Odds event id (optional)</span>
+            <input
+              value={form.event_id}
+              onChange={(e) => setField('event_id', e.target.value)}
+              placeholder="from Odds API if you have it"
+              className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-white"
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-zinc-500">Home ticket % (bets)</span>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={0.1}
+              value={form.home_ticket_pct}
+              onChange={(e) => setField('home_ticket_pct', e.target.value)}
+              className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-white"
+              required
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-zinc-500">Home handle % (money)</span>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              step={0.1}
+              value={form.home_handle_pct}
+              onChange={(e) => setField('home_handle_pct', e.target.value)}
+              className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-white"
+              required
+            />
+          </label>
+          <div className="rounded-md border border-zinc-800 bg-zinc-900/50 px-2 py-1.5 space-y-0.5">
+            <div className="text-zinc-500">Away auto</div>
+            <div className="tabular-nums text-zinc-200">
+              tickets {awayTicket != null ? awayTicket : 'n/a'}% · handle {awayHandle != null ? awayHandle : 'n/a'}%
+            </div>
+          </div>
+          <label className="space-y-1 sm:col-span-2 lg:col-span-3">
+            <span className="text-zinc-500">Notes</span>
+            <input
+              value={form.notes}
+              onChange={(e) => setField('notes', e.target.value)}
+              placeholder="e.g. Action PRO · Fri 6pm PT"
+              className="w-full rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-white"
+            />
+          </label>
+          <div className="sm:col-span-2 lg:col-span-3">
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-lg bg-amber-600 hover:bg-amber-500 px-4 py-2 text-xs font-bold text-black transition disabled:opacity-50"
+            >
+              {saving ? 'Saving…' : 'Save single game'}
+            </button>
+          </div>
+        </form>
+      </details>
 
       <div className="overflow-x-auto">
         <div className="text-[10px] text-zinc-500 mb-1">Active pastes</div>
@@ -368,7 +605,7 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
             {!rows.length && !loading && (
               <tr>
                 <td colSpan={6} className="py-3 text-zinc-500">
-                  No pastes yet. After Action PRO is live, drop Friday/Saturday numbers here before slate publish.
+                  No pastes yet. Drop an Action PRO board screenshot above before slate publish.
                 </td>
               </tr>
             )}

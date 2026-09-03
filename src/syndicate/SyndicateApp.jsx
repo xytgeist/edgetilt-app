@@ -645,8 +645,10 @@ export function SyndicateApp() {
                   </span>
                 </h1>
                 <p className="text-zinc-300 text-xs sm:text-sm md:text-base leading-relaxed max-w-2xl">
-                  Independent desks. Public graded ledger. NFL, college football, and UFC ... hammers when
-                  they agree, splits when they don&apos;t. No averaged mush.
+                  The Sharpe Syndicate operates a 4-desk architecture across NFL, college football, and UFC
+                  ... market consensus pricing (Pinnacle/Circa weighted when those books appear), player injury
+                  spread valuation (PVAL), EPA efficiency boards, and Action bet% vs money% splits when pasted
+                  (including RLM).
                 </p>
 
                 <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">

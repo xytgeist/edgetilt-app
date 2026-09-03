@@ -295,6 +295,15 @@ function formatTankGameBlock(g: SlateGamePick): string[] {
   ]
 }
 
+/** Public tease footer … game count when the slate has 2+ games, else generic VIP CTA. */
+export function formatSlateVipCtaLine(card: NflSlateCard): string {
+  const gameCount = Array.isArray(card.games) ? card.games.length : 0
+  if (gameCount >= 2) {
+    return `📊 Full ${gameCount}-game desk grid + live in-game edges in **Sharpe VIP Syndicate**`
+  }
+  return '📊 Uncut 4-desk cards + live in-game edges in **Sharpe VIP Syndicate**'
+}
+
 /**
  * Format an NFL / Football Slate Card caption for the Lounge feed.
  * Game-first blocks under each section; public tease caps per bucket.
@@ -381,7 +390,7 @@ export function formatNflSlateCardCaption(card: NflSlateCard): string {
 
   lines.push('---')
   lines.push('')
-  lines.push('📊 Full 16-game grid + in-game edges in **Sharpe VIP Syndicate**')
+  lines.push(formatSlateVipCtaLine(card))
   return lines.join('\n').trim()
 }
 

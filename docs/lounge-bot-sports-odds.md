@@ -825,7 +825,7 @@ npm run syndicate:sync-nfl-metrics:production   # Ryan explicit only
 
 Sagarin is scraped from the public Predictor board (`scripts/lib/cfbSagarinPredictor.mjs`). Phase 2 candidates: FEI, TeamRankings, market-implied, Powers/Makinen.
 
-Desk mapping: **Scott** = PASS unless model−market ≥ 2.5 after PVAL (1.5 only on true 3/7 keys) · **Rocco** = PASS unless short-fav / hurtSide / hook-tax / pasted chalk-trap (short-fav alone ≠ hammer strength; no trench truth) · **Chedda** = PASS unless dog+hook / dog+PVAL / pasted money (no dog+raw-EPA; no synthetic) · **Tank** = totals first-pass (formula frozen). Hammer = all three side desks active + Scott + independent second reason. Synthetic splits never score. Primetime = spotlight lean, not house card.
+Desk mapping: **Scott** = PASS unless model−market ≥ 2.5 after PVAL (1.5 only on true 3/7 keys) · **Rocco** = PASS unless short-fav / hurtSide / hook-tax / pasted chalk-trap (short-fav alone ≠ house vote / hammer strength; juice worse than **-115** → PASS unless Scott/Chedda already on that side; no trench truth) · **Chedda** = PASS unless dog+hook / dog+PVAL / pasted money (no dog+raw-EPA; no synthetic) · **Tank** = totals first-pass (formula frozen). Hammer = all three side desks active + Scott + independent second reason. Synthetic splits never score. Primetime = spotlight lean, not house card.
 
 **ATS slate auto-publish (pg_cron):** CFB Fri **12pm PT** house (`cfb_slate_card`); Wed **2pm** VIP midweek Thu/Fri nights (`cfb_wed_midweek_vip`); Thu **3:30pm** CFB night tease (`cfb_thu_night_spotlight`); Sat **10am** CFB adds/kills. NFL Fri **1pm** house; Wed TNF VIP; Sat adds/kills. Primetime public = one lean + CTA. Migration `20260902250000`.
 

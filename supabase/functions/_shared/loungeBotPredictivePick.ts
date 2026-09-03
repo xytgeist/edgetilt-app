@@ -96,6 +96,13 @@ export type SlateGamePick = {
     lineDisplay: string
     pickPrice: number
     pick: OddsPick
+    /**
+     * When false, desk still shows the lean on VIP cards but the vote does not
+     * count toward house hammer / consensus / split buckets (Rocco short-fav alone).
+     */
+    countsForHouse?: boolean
+    /** Rocco kept a side worse than {@link ROCCO_UGLY_JUICE_WORSE_THAN} because Scott/Chedda backed it. */
+    uglyJuice?: boolean
   }>
 }
 
@@ -225,6 +232,12 @@ export const PUBLIC_SLATE_HOUSE_DIVIDED_CAP = 3
 export const PUBLIC_SLATE_PASS_CAP = 3
 
 /**
+ * Rocco American-odds floor for slate sides (exclusive).
+ * Worse than this (e.g. -118) → PASS unless Scott or Chedda already on that side.
+ */
+export const ROCCO_UGLY_JUICE_WORSE_THAN = -115
+
+/**
  * Locked public slate markdown dialect (v9):
  * - No nested indent (mobile wrap room)
  * - Consensus: pick + agreeing desks only (no PASS callouts)
@@ -286,11 +299,17 @@ function formatDeskJoin(names: readonly SharpPicker[]): string {
 }
 
 function desksOnSide(g: SlateGamePick, side: 'home' | 'away'): SharpPicker[] {
-  return ATS_SIDE_DESKS.filter((p) => g.pickerPicks[p].side === side)
+  return ATS_SIDE_DESKS.filter((p) => {
+    const pp = g.pickerPicks[p]
+    return pp.side === side && pp.countsForHouse !== false
+  })
 }
 
 function soloPickerForGame(g: SlateGamePick): SharpPicker | null {
-  const active = ATS_SIDE_DESKS.filter((p) => g.pickerPicks[p].side !== 'pass')
+  const active = ATS_SIDE_DESKS.filter((p) => {
+    const pp = g.pickerPicks[p]
+    return pp.side !== 'pass' && pp.countsForHouse !== false
+  })
   return active.length === 1 ? active[0]! : null
 }
 
@@ -562,7 +581,15 @@ export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): 
     const matchup = `${away}/${home} · ${when}`
     const isPass = pPick.side === 'pass' || !String(pPick.lineDisplay || '').trim()
     lines.push(`### ${matchup}`)
-    lines.push(isPass ? '· PASS' : `· ${formatGoldPick(String(pPick.lineDisplay).trim())}`)
+    if (isPass) {
+      const uglyPass = pPick.uglyJuice === true || /ugly juice/i.test(String(pPick.lineDisplay || ''))
+      lines.push(uglyPass ? '· PASS · [red]ugly juice[/red]' : '· PASS')
+    } else {
+      const raw = String(pPick.lineDisplay || '').trim()
+      const base = raw.replace(/\s·\s\[red\]ugly juice\[\/red\]\s*$/i, '').trim() || raw
+      const ugly = pPick.uglyJuice === true || /\[red\]ugly juice\[\/red\]/i.test(raw)
+      lines.push(ugly ? `· ${formatGoldPick(base)} · [red]ugly juice[/red]` : `· ${formatGoldPick(base)}`)
+    }
   }
   if (card.games.length === 0) {
     lines.push(picker === 'Tank' ? '· No totals leans this slate' : '· No ATS leans this slate')
@@ -783,7 +810,10 @@ function resolveTankTotalsSide(modelTotal: number | null, marketTotal: number | 
 /**
  * Build a full NFL / CFB ATS Slate Card across all games on the board.
  * Side desks (Scott, Rocco, Chedda) vote ATS. Tank votes totals (PASS default; ≥3.5 or key-cross).
- * Scott PASSes under |model−market| 2.5 (1.5 only on true 3/7 keys). Rocco may PASS. Synthetic splits never score.
+ * Scott PASSes under |model−market| 2.5 (1.5 only on true 3/7 keys). Rocco may PASS.
+ * Rocco short-fav alone stays on his VIP desk card but does not count for house buckets.
+ * Rocco juice worse than {@link ROCCO_UGLY_JUICE_WORSE_THAN} → PASS unless Scott/Chedda on that side.
+ * Synthetic splits never score.
  */
 export function buildNflAtsSlateCard(
   events: Array<{
@@ -1028,15 +1058,36 @@ export function buildNflAtsSlateCard(
       + roccoHookTaxPenalty
       + roccoPowerBonus
       + roccoStarterOutPenalty
-    const roccoSide: SlateDeskSide = roccoHasVoteFeature
+    let roccoSide: SlateDeskSide = roccoHasVoteFeature
       ? (roccoScoreHome >= 0 ? 'home' : 'away')
       : 'pass'
-    /** Hammer strength only … short-fav alone is NOT enough (consensus max). */
+    /** House / hammer strength only … short-fav alone is NOT enough. */
     const roccoHasStrengthReason =
       hurtSide != null
       || Math.abs(roccoHookTaxPenalty) >= 0.8
       || pastedChalkTrap
       || (isCfb && Math.abs(roccoPowerBonus) >= 1.0)
+
+    // Ugly juice gate: worse than -115 → PASS unless Scott or Chedda already on that side.
+    // Do not bake American odds into Rocco's strength score … gate at publish / house layer.
+    const roccoPriceIfPlay =
+      roccoSide === 'home' ? homePrice : roccoSide === 'away' ? awayPrice : null
+    const roccoUglyJuice =
+      roccoPriceIfPlay != null
+      && Number.isFinite(roccoPriceIfPlay)
+      && roccoPriceIfPlay < ROCCO_UGLY_JUICE_WORSE_THAN
+    let roccoPassedUglyJuice = false
+    if (roccoSide !== 'pass' && roccoUglyJuice) {
+      const backedByScottOrChedda =
+        (roccoSide === 'home' && (scottSide === 'home' || cheddaSide === 'home'))
+        || (roccoSide === 'away' && (scottSide === 'away' || cheddaSide === 'away'))
+      if (!backedByScottOrChedda) {
+        roccoSide = 'pass'
+        roccoPassedUglyJuice = true
+      }
+    }
+    const roccoKeptUglyJuice = roccoSide !== 'pass' && roccoUglyJuice
+    const roccoCountsForHouse = roccoSide !== 'pass' && roccoHasStrengthReason
 
     // 4. Tank — totals desk (PASS default; play at ≥3.5 or ≥2.5 into key 48/51/54)
     const marketTotalQuote = extractEventMarketTotal(ev)
@@ -1098,6 +1149,8 @@ export function buildNflAtsSlateCard(
       lineDisplay: string
       pickPrice: number
       pick: OddsPick
+      countsForHouse?: boolean
+      uglyJuice?: boolean
     }> = {
       Scott: {
         side: scottSide,
@@ -1105,17 +1158,22 @@ export function buildNflAtsSlateCard(
         lineDisplay: scottSide === 'home' ? homeLineDisp : scottSide === 'away' ? awayLineDisp : 'PASS (gap < 2.5 vs current)',
         pickPrice: scottSide === 'home' ? homePrice : scottSide === 'away' ? awayPrice : 0,
         pick: scottSide === 'home' ? homePickObj : scottSide === 'away' ? awayPickObj : homePickObj,
+        countsForHouse: scottSide !== 'pass',
       },
       Rocco: {
         side: roccoSide,
         teamName: roccoSide === 'home' ? homeTeam : roccoSide === 'away' ? awayTeam : 'PASS',
         lineDisplay: roccoSide === 'home'
-          ? homeLineDisp
+          ? (roccoKeptUglyJuice ? `${homeLineDisp} · [red]ugly juice[/red]` : homeLineDisp)
           : roccoSide === 'away'
-            ? awayLineDisp
-            : 'PASS (no short-fav / hurt / hook / pasted chalk-trap)',
+            ? (roccoKeptUglyJuice ? `${awayLineDisp} · [red]ugly juice[/red]` : awayLineDisp)
+            : roccoPassedUglyJuice
+              ? `PASS (ugly juice worse than ${ROCCO_UGLY_JUICE_WORSE_THAN})`
+              : 'PASS (no short-fav / hurt / hook / pasted chalk-trap)',
         pickPrice: roccoSide === 'home' ? homePrice : roccoSide === 'away' ? awayPrice : 0,
         pick: roccoSide === 'home' ? homePickObj : roccoSide === 'away' ? awayPickObj : homePickObj,
+        countsForHouse: roccoCountsForHouse,
+        uglyJuice: roccoKeptUglyJuice || roccoPassedUglyJuice,
       },
       Chedda: {
         side: cheddaSide,
@@ -1127,6 +1185,7 @@ export function buildNflAtsSlateCard(
             : 'PASS (no dog+hook / dog+PVAL / pasted money)',
         pickPrice: cheddaSide === 'home' ? homePrice : cheddaSide === 'away' ? awayPrice : 0,
         pick: cheddaSide === 'home' ? homePickObj : cheddaSide === 'away' ? awayPickObj : homePickObj,
+        countsForHouse: cheddaSide !== 'pass',
       },
       Tank: {
         side: tankTotalsSide,
@@ -1138,15 +1197,18 @@ export function buildNflAtsSlateCard(
         lineDisplay: tankLineDisp,
         pickPrice: tankPickObj?.pickPrice ?? 0,
         pick: tankPickObj || homePickObj,
+        countsForHouse: false, // totals desk … never fills ATS house buckets
       },
     }
 
-    // Tally ATS side votes only (Scott / Rocco / Chedda) … skip PASS (e.g. Scott when market already priced injury)
+    // House tally: ATS desks only, and Rocco only when he has an independent strength reason.
     let homeVotes = 0
     let awayVotes = 0
     let activeSideVotes = 0
     for (const p of ATS_SIDE_DESKS) {
-      const side = pickerPicks[p].side
+      const pp = pickerPicks[p]
+      if (pp.countsForHouse === false) continue
+      const side = pp.side
       if (side === 'home') {
         homeVotes++
         activeSideVotes++

@@ -320,6 +320,8 @@ Deno.serve(async (req) => {
       }
 
       if (dryRun) {
+        const { formatNflSlateCardCaption } = await import('../_shared/loungeBotPredictivePick.ts')
+        const previewCaption = formatNflSlateCardCaption(card)
         return adminOpsJson(200, {
           ok: true,
           dryRun: true,
@@ -333,6 +335,8 @@ Deno.serve(async (req) => {
           totalEventsInWindow: events.length,
           clusterDays: FOOTBALL_SLATE_CLUSTER_DAYS,
           maxLookaheadDays: FOOTBALL_SLATE_MAX_LOOKAHEAD_DAYS,
+          previewCaption,
+          captionPreview: previewCaption,
           card,
         })
       }
@@ -379,11 +383,15 @@ Deno.serve(async (req) => {
       }
 
       if (dryRun) {
+        const { formatWongTeaserCaption } = await import('../_shared/loungeBotWongTeaser.ts')
+        const previewCaption = pair.caption || formatWongTeaserCaption(pair)
         return adminOpsJson(200, {
           ok: true,
           dryRun: true,
           action: 'nfl_wong_teaser',
           pair,
+          previewCaption,
+          captionPreview: previewCaption,
         })
       }
 
@@ -426,11 +434,15 @@ Deno.serve(async (req) => {
       }
 
       if (dryRun) {
+        const { formatPrimetimeSpotlightCaption } = await import('../_shared/loungeBotPrimetimeSpotlight.ts')
+        const previewCaption = formatPrimetimeSpotlightCaption(spotlight)
         return adminOpsJson(200, {
           ok: true,
           dryRun: true,
           action: 'nfl_primetime_spotlight',
           spotlight,
+          previewCaption,
+          captionPreview: previewCaption,
         })
       }
 
@@ -465,11 +477,14 @@ Deno.serve(async (req) => {
       }
 
       if (dryRun) {
+        const previewCaption = String(pivot.vipCaption || '').trim()
         return adminOpsJson(200, {
           ok: true,
           dryRun: true,
           action: 'nfl_halftime_pivot',
           pivot,
+          previewCaption,
+          captionPreview: previewCaption,
         })
       }
 
@@ -504,12 +519,15 @@ Deno.serve(async (req) => {
       }
 
       if (dryRun) {
+        const previewCaption = String(opportunities[0]?.vipCaption || '').trim()
         return adminOpsJson(200, {
           ok: true,
           dryRun: true,
           action: 'nfl_live_middle_arb',
           totalOpportunities: opportunities.length,
           opportunities,
+          previewCaption,
+          captionPreview: previewCaption,
         })
       }
 
@@ -547,11 +565,14 @@ Deno.serve(async (req) => {
       }
 
       if (dryRun) {
+        const previewCaption = String(card.publicCaption || card.vipCaption || '').trim()
         return adminOpsJson(200, {
           ok: true,
           dryRun: true,
           action: 'nfl_anytime_td',
           card,
+          previewCaption,
+          captionPreview: previewCaption,
         })
       }
 
@@ -653,11 +674,15 @@ Deno.serve(async (req) => {
       }
 
       if (dryRun) {
+        const { formatWeeklySyndicateRecapCaption } = await import('../_shared/loungeBotLedgerRecap.ts')
+        const previewCaption = formatWeeklySyndicateRecapCaption(recap)
         return adminOpsJson(200, {
           ok: true,
           dryRun: true,
           action: 'weekly_syndicate_recap',
           recap,
+          previewCaption,
+          captionPreview: previewCaption,
         })
       }
 
@@ -692,6 +717,8 @@ Deno.serve(async (req) => {
         ok: true,
         action: 'syndicate_monthly_scoreboard',
         summary: formatScoreboardToast(scoreboard),
+        previewCaption: formatScoreboardToast(scoreboard),
+        captionPreview: formatScoreboardToast(scoreboard),
         scoreboard,
       })
     }
@@ -740,7 +767,18 @@ Deno.serve(async (req) => {
           return adminOpsJson(200, { ok: false, message: 'Not enough distinct picks to build syndicate card.', candidates: allCandidates.length })
         }
         if (dryRun) {
-          return adminOpsJson(200, { ok: true, dryRun: true, card })
+          const { formatSyndicateCardCaption } = await import('../_shared/loungeBotPredictivePick.ts')
+          const previewCaption = formatSyndicateCardCaption(
+            card.cardTitle || '🎯 Sharp Syndicate Card',
+            card.picks,
+          )
+          return adminOpsJson(200, {
+            ok: true,
+            dryRun: true,
+            card,
+            previewCaption,
+            captionPreview: previewCaption,
+          })
         }
         const result = await publishAndRecordPicks(admin, {
           botUserId: bot.user_id,
@@ -756,7 +794,16 @@ Deno.serve(async (req) => {
         const topPick = allCandidates[0]
         const persona = body?.pickerName || classifyPickPersona(topPick)
         if (dryRun) {
-          return adminOpsJson(200, { ok: true, dryRun: true, pickerName: persona, pick: topPick })
+          const { formatSoloPredictiveCaption } = await import('../_shared/loungeBotPredictivePick.ts')
+          const previewCaption = formatSoloPredictiveCaption(persona, topPick)
+          return adminOpsJson(200, {
+            ok: true,
+            dryRun: true,
+            pickerName: persona,
+            pick: topPick,
+            previewCaption,
+            captionPreview: previewCaption,
+          })
         }
         const result = await publishAndRecordPicks(admin, {
           botUserId: bot.user_id,

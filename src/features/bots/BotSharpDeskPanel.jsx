@@ -19,6 +19,7 @@ import BotTeamMetricsEditor from './BotTeamMetricsEditor.jsx'
 import BotCfbPowerRatingsEditor from './BotCfbPowerRatingsEditor.jsx'
 import BotUfcMetricsEditor from './BotUfcMetricsEditor.jsx'
 import BotBettingSplitsPaste from './BotBettingSplitsPaste.jsx'
+import { SyndicateDryRunPreview } from '../../syndicate/SyndicateDryRunPreview.jsx'
 
 const PICKER_METAS = {
   Scott: {
@@ -75,6 +76,43 @@ export function BotSharpDeskPanel({
   const [timeframe, setTimeframe] = useState('all_time')
   const [portalSportKey, setPortalSportKey] = useState('all')
   const [monthlyBoard, setMonthlyBoard] = useState(null)
+  /** @type {[null | Record<string, unknown>, Function]} */
+  const [dropPreview, setDropPreview] = useState(null)
+
+  /**
+   * @param {string} title
+   * @param {Record<string, unknown> | null | undefined} data
+   * @param {string | null} [fallbackError]
+   */
+  const showDropDryRunPreview = (title, data, fallbackError = null) => {
+    const caption = String(
+      data?.previewCaption || data?.captionPreview || data?.summary || '',
+    ).trim()
+    const err =
+      data?.ok === false
+        ? String(data.message || data.error || fallbackError || 'No preview.')
+        : data?.skipped
+          ? String(data.note || data.skipped)
+          : !caption
+            ? fallbackError || 'No caption returned for this dry run.'
+            : null
+    setDropPreview({
+      sportLabel: title,
+      dayKey: data?.dayKey || data?.sportKey || null,
+      previewCaption: caption || null,
+      gamesSummary: data?.gamesSummary || null,
+      gamesToday: data?.gamesToday ?? data?.totalGames ?? data?.totalFights ?? null,
+      totalGames: data?.totalGames ?? data?.totalFights ?? null,
+      hammersCount: data?.hammersCount ?? null,
+      consensusCount: data?.consensusCount ?? null,
+      splitsCount: data?.splitsCount ?? null,
+      solosCount: data?.solosCount ?? null,
+      majoritySplitsCount: data?.majoritySplitsCount ?? null,
+      passOnlyCount: data?.passOnlyCount ?? null,
+      error: err,
+    })
+    setToast?.(caption ? 'Full post preview ready below.' : err || 'Preview ready below.')
+  }
 
   const loadData = useCallback(async () => {
     if (!supabaseClient || !botUserId) return
@@ -134,19 +172,15 @@ export function BotSharpDeskPanel({
       if (error) {
         setToast?.(`Drop failed: ${error.message}`)
       } else if (data?.dryRun) {
-        if (data.card) {
-          setToast?.(`[Dry Run] Syndicate Card with ${data.card.picks.length} picks ready.`)
-        } else if (data.pick) {
-          setToast?.(`[Dry Run] Solo Pick: ${data.pickerName} on ${data.pick.pickName}`)
-        } else {
-          setToast?.(`[Dry Run] ${data.message || 'No candidates found.'}`)
-        }
+        showDropDryRunPreview('Solo / Spot Drop', data)
       } else if (data?.ok) {
         const msg = data.isSyndicate
           ? `Published Syndicate Card (${data.pickIds?.length || 0} picks)`
           : `Published Solo Pick for ${data.pickerName}`
         setToast?.(msg)
         await loadData()
+      } else if (dryRun) {
+        showDropDryRunPreview('Solo / Spot Drop', data, data?.message || 'No picks available.')
       } else {
         setToast?.(data?.message || 'No picks published.')
       }
@@ -171,10 +205,12 @@ export function BotSharpDeskPanel({
       if (error) {
         setToast?.(`${sportName} Slate Card failed: ${error.message}`)
       } else if (data?.dryRun) {
-        setToast?.(`[Dry Run] ${sportName} Slate Card: ${data.totalGames || 0} games (${data.hammersCount || 0} Hammers, ${data.consensusCount || 0} Consensus, ${data.splitsCount || 0} Splits)${data.totalEventsRaw != null ? ` · window ${data.totalEventsInWindow}/${data.totalEventsRaw}` : ''}.`)
+        showDropDryRunPreview(`${sportName} Slate`, data)
       } else if (data?.ok) {
         setToast?.(`Published ${sportName} Slate Card: ${data.totalGames || 0} games (${data.hammersCount || 0} Hammers, ${data.consensusCount || 0} Consensus).`)
         await loadData()
+      } else if (dryRun) {
+        showDropDryRunPreview(`${sportName} Slate`, data, data?.message || `No ${sportName} slate card candidates found.`)
       } else {
         setToast?.(data?.message || `No ${sportName} slate card candidates found.`)
       }
@@ -197,11 +233,12 @@ export function BotSharpDeskPanel({
       if (error) {
         setToast?.(`Wong Teaser drop failed: ${error.message}`)
       } else if (data?.dryRun) {
-        const pair = data?.pair
-        setToast?.(`[Dry Run] Wong Teaser: ${pair?.leg1?.picked_team || 'Leg 1'} ${pair?.leg1?.teased_disp || ''} + ${pair?.leg2?.picked_team || 'Leg 2'} ${pair?.leg2?.teased_disp || ''} (${pair?.edge_pct ? `+${pair.edge_pct}% edge` : 'ready'})`)
+        showDropDryRunPreview('Wong Teaser', data)
       } else if (data?.ok) {
         setToast?.(`Published 2-Leg Wong Teaser of the Week!`)
         await loadData()
+      } else if (dryRun) {
+        showDropDryRunPreview('Wong Teaser', data, data?.message || 'No qualifying Wong teaser legs found on current lines.')
       } else {
         setToast?.(data?.message || 'No qualifying Wong teaser legs found on current lines.')
       }
@@ -226,12 +263,13 @@ export function BotSharpDeskPanel({
       if (error) {
         setToast?.(`${label} Spotlight failed: ${error.message}`)
       } else if (data?.dryRun) {
-        const sp = data?.spotlight
-        setToast?.(`[Dry Run] ${sp?.primetimeLabel || label}: ${sp?.awayTeam} @ ${sp?.homeTeam} · Official: ${sp?.consensusPick?.lineDisplay}`)
+        showDropDryRunPreview(`${label} Spotlight`, data)
       } else if (data?.ok) {
         const sp = data?.spotlight
         setToast?.(`Published ${sp?.primetimeLabel || label} Spotlight: ${sp?.awayTeam} @ ${sp?.homeTeam}`)
         await loadData()
+      } else if (dryRun) {
+        showDropDryRunPreview(`${label} Spotlight`, data, data?.message || `No eligible ${label} game found on active board.`)
       } else {
         setToast?.(data?.message || `No eligible ${label} game found on active board.`)
       }
@@ -254,11 +292,12 @@ export function BotSharpDeskPanel({
       if (error) {
         setToast?.(`Weekly Recap failed: ${error.message}`)
       } else if (data?.dryRun) {
-        const rc = data?.recap
-        setToast?.(`[Dry Run] Weekly Recap: ${rc?.overall?.wins}-${rc?.overall?.losses} (${rc?.overall?.unitsNet > 0 ? `+${rc?.overall?.unitsNet}` : rc?.overall?.unitsNet}u) · Top: ${rc?.topPerformer?.pickerName || 'All'}`)
+        showDropDryRunPreview('Weekly Recap', data)
       } else if (data?.ok) {
         setToast?.('Published Tuesday Weekly Syndicate Ledger & Post-Mortem!')
         await loadData()
+      } else if (dryRun) {
+        showDropDryRunPreview('Weekly Recap', data, data?.message || 'No graded picks over last 7 days.')
       } else {
         setToast?.(data?.message || 'No graded picks over last 7 days.')
       }
@@ -283,10 +322,15 @@ export function BotSharpDeskPanel({
         setMonthlyBoard(null)
       } else if (data?.ok) {
         setMonthlyBoard(data.scoreboard || null)
-        setToast?.(data.summary || 'Monthly scoreboard ready.')
+        showDropDryRunPreview(monthsBack > 1 ? 'Monthly Board · 3 mo' : 'Monthly Board · This month', data)
       } else {
         setToast?.(data?.message || 'No scoreboard rows.')
         setMonthlyBoard(null)
+        showDropDryRunPreview(
+          monthsBack > 1 ? 'Monthly Board · 3 mo' : 'Monthly Board · This month',
+          data,
+          data?.message || 'No scoreboard rows.',
+        )
       }
     } catch (err) {
       setToast?.(`Monthly scoreboard error: ${err.message}`)
@@ -308,11 +352,12 @@ export function BotSharpDeskPanel({
       if (error) {
         setToast?.(`Halftime Pivot failed: ${error.message}`)
       } else if (data?.dryRun) {
-        const pv = data?.pivot
-        setToast?.(`[Dry Run] Halftime Pivot: ${pv?.awayTeam} @ ${pv?.homeTeam} (${pv?.awayScore}-${pv?.homeScore}) · Rec: ${pv?.pivotRecommendation}`)
+        showDropDryRunPreview('Halftime Pivot', data)
       } else if (data?.ok) {
         setToast?.(`Published Halftime Pivot to Sharpe VIP chat!`)
         await loadData()
+      } else if (dryRun) {
+        showDropDryRunPreview('Halftime Pivot', data, data?.message || 'No live NFL game currently at halftime.')
       } else {
         setToast?.(data?.message || 'No live NFL game currently at halftime.')
       }
@@ -335,11 +380,12 @@ export function BotSharpDeskPanel({
       if (error) {
         setToast?.(`Anytime TD drop failed: ${error.message}`)
       } else if (data?.dryRun) {
-        const feat = data?.card?.featuredPick
-        setToast?.(`[Dry Run] Chedda's TD of the Week: ${feat?.playerName} (${feat?.price > 0 ? `+${feat?.price}` : feat?.price}) · Edge: +${feat?.edgePct}%`)
+        showDropDryRunPreview('Anytime TD', data)
       } else if (data?.ok) {
         setToast?.(`Published Chedda's TD of the Week & VIP 3-player slate!`)
         await loadData()
+      } else if (dryRun) {
+        showDropDryRunPreview('Anytime TD', data, data?.message || 'No active NFL games with Anytime TD candidates.')
       } else {
         setToast?.(data?.message || 'No active NFL games with Anytime TD candidates.')
       }
@@ -362,15 +408,12 @@ export function BotSharpDeskPanel({
       if (error) {
         setToast?.(`Middle & Arb Scanner failed: ${error.message}`)
       } else if (data?.dryRun) {
-        const top = data?.opportunities?.[0]
-        if (top) {
-          setToast?.(`[Dry Run] Found ${data?.totalOpportunities || 1} opp(s)! Top: ${top?.type === 'CROSS_BOOK_ARBITRAGE' ? `Arb +${top?.arbProfitPct}%` : `Middle Corridor: ${top?.middleCorridor}`}`)
-        } else {
-          setToast?.(`[Dry Run] ${data?.message || 'No middle or arb windows currently active.'}`)
-        }
+        showDropDryRunPreview('Middle & Arb', data)
       } else if (data?.ok) {
         setToast?.(`Published Live Middle / Arb Alert to Sharpe VIP chat!`)
         await loadData()
+      } else if (dryRun) {
+        showDropDryRunPreview('Middle & Arb', data, data?.message || 'No qualifying Middle or Arb opportunities found on active boards.')
       } else {
         setToast?.(data?.message || 'No qualifying Middle or Arb opportunities found on active boards.')
       }
@@ -394,10 +437,12 @@ export function BotSharpDeskPanel({
       if (error) {
         setToast?.(`UFC Slate Card failed: ${error.message}`)
       } else if (data?.dryRun) {
-        setToast?.(`[Dry Run] UFC Slate: ${data?.totalFights || 0} fights (${data?.hammersCount || 0} Hammers, ${data?.consensusCount || 0} Consensus)`)
+        showDropDryRunPreview('UFC Slate', data)
       } else if (data?.ok) {
         setToast?.(`Published UFC Syndicate Card (${data?.totalPicksRecorded || 0} picks recorded)!`)
         await loadData()
+      } else if (dryRun) {
+        showDropDryRunPreview('UFC Slate', data, data?.message || 'No active UFC fight lines found on active boards.')
       } else {
         setToast?.(data?.message || 'No active UFC fight lines found on active boards.')
       }
@@ -474,6 +519,7 @@ export function BotSharpDeskPanel({
       {/* Tab 1: Scorecard & Syndicate Drops */}
       {activeTab === 'scorecard' && (
         <div className="space-y-3 pt-2">
+          <SyndicateDryRunPreview preview={dropPreview} onDismiss={() => setDropPreview(null)} />
           {/* Manual Drop & Specialty Engine Controls */}
           <div className="rounded-lg bg-zinc-950/60 border border-zinc-800/80 p-3 space-y-2.5">
             {/* Row 1: Solo & General Syndicate Drops */}

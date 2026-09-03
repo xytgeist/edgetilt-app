@@ -68,7 +68,7 @@ export function SyndicateDryRunPreview({ preview, onDismiss }) {
     >
       <div className="flex flex-wrap items-start justify-between gap-2 px-3 py-2.5 border-b border-zinc-800 bg-amber-950/25">
         <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-[0.16em] text-amber-400/90 font-semibold">Dry run preview</p>
+          <p className="text-[10px] uppercase tracking-[0.16em] text-amber-400/90 font-semibold">Post preview</p>
           <p className="text-sm font-semibold text-zinc-100">
             {preview.sportLabel || 'Sport'}
             {preview.dayKey ? ` · ${preview.dayKey}` : ''}
@@ -93,14 +93,16 @@ export function SyndicateDryRunPreview({ preview, onDismiss }) {
       {richCaption ? (
         <div className="px-3 py-3 border-b border-zinc-800/80">
           <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-500 font-semibold mb-2">
-            Lounge post (exact caption)
+            Post caption (exact)
           </p>
           <article className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-3 text-[13px] leading-relaxed text-zinc-100 lounge-markdown">
             {richCaption}
           </article>
-          <p className="text-[10px] text-zinc-500 mt-2">
-            Public tease caps hammers / consensus / splits. Ledger still records every scored game below.
-          </p>
+          {games.length ? (
+            <p className="text-[10px] text-zinc-500 mt-2">
+              Public tease caps hammers / consensus / splits. Ledger still records every scored game below.
+            </p>
+          ) : null}
         </div>
       ) : !preview.error ? (
         <p className="px-3 py-3 text-sm text-zinc-500">No caption generated (desk may not have voted yet).</p>

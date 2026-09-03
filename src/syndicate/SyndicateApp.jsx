@@ -89,6 +89,179 @@ function BlurredModelTease({ value }) {
   )
 }
 
+function pickMatchesSport(pick, sport) {
+  if (!sport || sport === 'all') return true
+  const key = String(pick?.sport_key || '')
+  if (sport === 'nfl') return key.includes('nfl')
+  if (sport === 'cfb') return key.includes('ncaaf')
+  if (sport === 'ufc') return key.includes('mma') || key.includes('ufc')
+  if (sport === 'mlb') return key.includes('baseball')
+  if (sport === 'nba') return key.includes('basketball')
+  return true
+}
+
+/** Per-unique-game hammer/consensus W-L from a pick list. */
+function groupConsensusGames(pickList) {
+  const gamesMap = new Map()
+  for (const p of pickList) {
+    const eventKey = p.event_id || `${p.home_team}_${p.away_team}_${p.commence_time}`
+    if (!gamesMap.has(eventKey)) {
+      if (!isPickSettled(p)) continue
+      const isWin = p.status === 'win' || p.status === 'won'
+      const isLoss = p.status === 'loss' || p.status === 'lost'
+      const isPush = p.status === 'push'
+      const units = isWin ? 1.0 : isLoss ? -1.1 : 0
+      gamesMap.set(eventKey, { isWin, isLoss, isPush, units })
+    }
+  }
+  const games = Array.from(gamesMap.values())
+  const gWins = games.filter((g) => g.isWin).length
+  const gLosses = games.filter((g) => g.isLoss).length
+  const gPushes = games.filter((g) => g.isPush).length
+  const gWinRate = gWins + gLosses > 0 ? ((gWins / (gWins + gLosses)) * 100).toFixed(1) : '—'
+  const gUnits = games.reduce((acc, g) => acc + g.units, 0)
+  const gDisplayUnits = gUnits >= 0 ? `+${gUnits.toFixed(2)}` : gUnits.toFixed(2)
+  return { gWins, gLosses, gPushes, gWinRate, gDisplayUnits, totalGames: games.length }
+}
+
+function computePerformanceStats(pickList) {
+  const gradedPicks = pickList.filter(isPickSettled)
+  const wins = gradedPicks.filter((p) => p.status === 'win' || p.status === 'won').length
+  const losses = gradedPicks.filter((p) => p.status === 'loss' || p.status === 'lost').length
+  const pushes = gradedPicks.filter((p) => p.status === 'push').length
+  const netUnits = gradedPicks.reduce((acc, p) => acc + (Number(p.units_net) || 0), 0)
+  const winRate = wins + losses > 0 ? ((wins / (wins + losses)) * 100).toFixed(1) : '—'
+  const displayUnits =
+    gradedPicks.length > 0 ? (netUnits >= 0 ? `+${netUnits.toFixed(2)}` : netUnits.toFixed(2)) : '—'
+
+  // Real CLV only ... synthetic backfill clv_beat without clv_pts does not count.
+  const withClv = gradedPicks.filter((p) => typeof p.metadata?.clv_pts === 'number')
+  const clvBeats = withClv.filter((p) => Number(p.metadata.clv_pts) > 0).length
+  const clvRate = withClv.length > 0 ? ((clvBeats / withClv.length) * 100).toFixed(1) : null
+  const clvSample = withClv.length
+
+  const hammerPicks = gradedPicks.filter(
+    (p) => p.metadata?.consensus_type === 'hammer' || p.metadata?.consensus_signal === 'hammer',
+  )
+  const consensusPicks = gradedPicks.filter(
+    (p) => p.metadata?.consensus_type === 'consensus' || p.metadata?.consensus_signal === 'consensus',
+  )
+
+  return {
+    gradedCount: gradedPicks.length,
+    wins,
+    losses,
+    pushes,
+    netUnits,
+    winRate,
+    displayUnits,
+    clvRate,
+    clvSample,
+    hammer: groupConsensusGames(hammerPicks),
+    consensus: groupConsensusGames(consensusPicks),
+  }
+}
+
+function SyndicatePerformanceTicker({
+  stats,
+  sport = 'all',
+  onHammerClick,
+  onConsensusClick,
+}) {
+  const isUfc = sport === 'ufc'
+  const recordLabel = isUfc ? 'Overall Record' : 'Overall ATS'
+  const hammerLabel = isUfc ? '🔥 4-0 Fight Hammers' : '🔥 3-0 Hammers'
+  const consensusLabel = isUfc ? '🎯 3-1 Consensus' : '🎯 2-1 Consensus'
+  const unitsFoot =
+    sport === 'all'
+      ? 'All 4 desks combined'
+      : sport === 'nfl'
+        ? 'NFL desks combined'
+        : sport === 'cfb'
+          ? 'CFB desks combined'
+          : sport === 'ufc'
+            ? 'UFC desks combined'
+            : 'Desks combined'
+
+  const unitsColor = stats.netUnits >= 0 ? 'text-emerald-400' : 'text-rose-400'
+  const hammer = stats.hammer
+  const consensus = stats.consensus
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-3.5">
+      <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur flex flex-col justify-between">
+        <div className="text-[10px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">Net Units</div>
+        <div className={`my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold ${unitsColor}`}>
+          {stats.displayUnits} <span className="text-xs sm:text-sm font-normal text-zinc-400">U</span>
+        </div>
+        <div className="text-[10px] sm:text-[11px] text-zinc-500">{unitsFoot}</div>
+      </div>
+
+      <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur flex flex-col justify-between">
+        <div className="text-[10px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">{recordLabel}</div>
+        <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-white">
+          {stats.winRate === '—' ? '—' : `${stats.winRate}%`}
+        </div>
+        <div className="text-[10px] sm:text-[11px] text-zinc-500 truncate">
+          {stats.wins > 0 || stats.losses > 0
+            ? `${stats.wins}W - ${stats.losses}L - ${stats.pushes}P`
+            : 'No graded plays yet'}
+        </div>
+      </div>
+
+      <div
+        onClick={onHammerClick}
+        className="p-4 sm:p-5 rounded-2xl border border-amber-500/30 bg-gradient-to-b from-amber-950/20 to-zinc-900/50 backdrop-blur flex flex-col justify-between cursor-pointer hover:border-amber-500/60 hover:scale-[1.02] transition-all group"
+      >
+        <div className="text-[10px] sm:text-xs font-mono text-amber-400 uppercase tracking-wider flex items-center justify-between">
+          <span>{hammerLabel}</span>
+          <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+        </div>
+        <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-amber-300">
+          {hammer.gWinRate === '—' ? '—' : `${hammer.gWinRate}%`}
+        </div>
+        <div className="text-[10px] sm:text-[11px] text-amber-400/80 truncate">
+          {hammer.gWins > 0 || hammer.gLosses > 0
+            ? `${hammer.gWins}W - ${hammer.gLosses}L · ${hammer.gDisplayUnits}U (${hammer.totalGames} Games)`
+            : isUfc
+              ? 'Unanimous fight hammers'
+              : 'Unanimous 3-0 sides'}
+        </div>
+      </div>
+
+      <div
+        onClick={onConsensusClick}
+        className="p-4 sm:p-5 rounded-2xl border border-cyan-500/30 bg-gradient-to-b from-cyan-950/20 to-zinc-900/50 backdrop-blur flex flex-col justify-between cursor-pointer hover:border-cyan-500/60 hover:scale-[1.02] transition-all group"
+      >
+        <div className="text-[10px] sm:text-xs font-mono text-cyan-400 uppercase tracking-wider flex items-center justify-between">
+          <span>{consensusLabel}</span>
+          <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+        </div>
+        <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-cyan-300">
+          {consensus.gWinRate === '—' ? '—' : `${consensus.gWinRate}%`}
+        </div>
+        <div className="text-[10px] sm:text-[11px] text-cyan-400/80 truncate">
+          {consensus.gWins > 0 || consensus.gLosses > 0
+            ? `${consensus.gWins}W - ${consensus.gLosses}L · ${consensus.gDisplayUnits}U (${consensus.totalGames} Games)`
+            : 'Majority consensus'}
+        </div>
+      </div>
+
+      <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur flex flex-col justify-between">
+        <div className="text-[10px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">CLV Beat Rate</div>
+        <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-emerald-400">
+          {stats.clvRate != null ? `${stats.clvRate}%` : '—'}
+        </div>
+        <div className="text-[10px] sm:text-[11px] text-zinc-500">
+          {stats.clvSample > 0
+            ? `vs locked close · n=${stats.clvSample}`
+            : 'Awaiting locked closes'}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function SyndicateApp() {
   const [activeTab, setActiveTab] = useState('overview')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -134,63 +307,12 @@ export function SyndicateApp() {
   }, [sportsMenuOpen])
 
   // Calculate live ledger stats (exclude future / in-progress games)
+  const overviewStats = computePerformanceStats(picks)
+  const nflStats = computePerformanceStats(picks.filter((p) => pickMatchesSport(p, 'nfl')))
+  const cfbStats = computePerformanceStats(picks.filter((p) => pickMatchesSport(p, 'cfb')))
+  const ufcStats = computePerformanceStats(picks.filter((p) => pickMatchesSport(p, 'ufc')))
+
   const gradedPicks = picks.filter(isPickSettled)
-  const wins = gradedPicks.filter((p) => p.status === 'win' || p.status === 'won').length
-  const losses = gradedPicks.filter((p) => p.status === 'loss' || p.status === 'lost').length
-  const pushes = gradedPicks.filter((p) => p.status === 'push').length
-  const netUnits = gradedPicks.reduce((acc, p) => acc + (Number(p.units_net) || 0), 0)
-  const winRate = wins + losses > 0 ? ((wins / (wins + losses)) * 100).toFixed(1) : '—'
-  const displayUnits =
-    gradedPicks.length > 0 ? (netUnits >= 0 ? `+${netUnits.toFixed(2)}` : netUnits.toFixed(2)) : '—'
-  const clvBeats = gradedPicks.filter((p) => p.metadata?.clv_beat === true || p.metadata?.clv_beat === 'true').length
-  const clvRate =
-    gradedPicks.length > 0 && clvBeats > 0 ? ((clvBeats / gradedPicks.length) * 100).toFixed(1) : '—'
-
-  // Hammer 3-0 & Consensus 2-1 metrics (ATS side desks only) calculated per unique game/event
-  const groupConsensusGames = (pickList) => {
-    const gamesMap = new Map()
-    for (const p of pickList) {
-      const eventKey = p.event_id || `${p.home_team}_${p.away_team}_${p.commence_time}`
-      if (!gamesMap.has(eventKey)) {
-        if (!isPickSettled(p)) continue
-        const isWin = p.status === 'win' || p.status === 'won'
-        const isLoss = p.status === 'loss' || p.status === 'lost'
-        const isPush = p.status === 'push'
-        const units = isWin ? 1.0 : isLoss ? -1.1 : 0
-        gamesMap.set(eventKey, { isWin, isLoss, isPush, units })
-      }
-    }
-    const games = Array.from(gamesMap.values())
-    const gWins = games.filter((g) => g.isWin).length
-    const gLosses = games.filter((g) => g.isLoss).length
-    const gPushes = games.filter((g) => g.isPush).length
-    const gWinRate = gWins + gLosses > 0 ? ((gWins / (gWins + gLosses)) * 100).toFixed(1) : '—'
-    const gUnits = games.reduce((acc, g) => acc + g.units, 0)
-    const gDisplayUnits = gUnits >= 0 ? `+${gUnits.toFixed(2)}` : gUnits.toFixed(2)
-    return { gWins, gLosses, gPushes, gWinRate, gDisplayUnits, totalGames: games.length }
-  }
-
-  const hammerPicks = gradedPicks.filter(
-    (p) => p.metadata?.consensus_type === 'hammer' || p.metadata?.consensus_signal === 'hammer'
-  )
-  const {
-    gWins: hammerWins,
-    gLosses: hammerLosses,
-    gWinRate: hammerWinRate,
-    gDisplayUnits: hammerDisplayUnits,
-    totalGames: hammerTotalGames,
-  } = groupConsensusGames(hammerPicks)
-
-  const consensusPicks = gradedPicks.filter(
-    (p) => p.metadata?.consensus_type === 'consensus' || p.metadata?.consensus_signal === 'consensus'
-  )
-  const {
-    gWins: consensusWins,
-    gLosses: consensusLosses,
-    gWinRate: consensusWinRate,
-    gDisplayUnits: consensusDisplayUnits,
-    totalGames: consensusTotalGames,
-  } = groupConsensusGames(consensusPicks)
 
   const summarizePicks = (pickList) => {
     const graded = pickList.filter(isPickSettled)
@@ -219,6 +341,13 @@ export function SyndicateApp() {
     Tank: summarizePicks(gradedPicks.filter((p) => p.picker_name === 'Tank')),
   }
 
+  const openLedgerSignal = (signal, sport = 'all') => {
+    setSignalFilter(signal)
+    setSportFilter(sport)
+    setActiveTab('ledger')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const filteredPicks = picks.filter((p) => {
     if (!isPickAuditable(p)) return false
     if (deskFilter !== 'all' && (p.picker_name || 'Scott') !== deskFilter) {
@@ -230,13 +359,7 @@ export function SyndicateApp() {
       if (signalFilter === 'consensus' && type !== 'consensus') return false
       if (signalFilter === 'solo' && type !== 'solo') return false
     }
-    if (sportFilter === 'all') return true
-    if (sportFilter === 'nfl') return p.sport_key?.includes('nfl')
-    if (sportFilter === 'cfb') return p.sport_key?.includes('ncaaf')
-    if (sportFilter === 'ufc') return p.sport_key?.includes('mma') || p.sport_key?.includes('ufc')
-    if (sportFilter === 'mlb') return p.sport_key?.includes('baseball')
-    if (sportFilter === 'nba') return p.sport_key?.includes('basketball')
-    return true
+    return pickMatchesSport(p, sportFilter)
   })
 
   const filteredStats = summarizePicks(filteredPicks)
@@ -521,71 +644,12 @@ export function SyndicateApp() {
             </div>
 
             {/* Live Syndicate Performance Ticker */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-3.5">
-              <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur flex flex-col justify-between">
-                <div className="text-[10px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">Net Units</div>
-                <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-emerald-400">
-                  {displayUnits} <span className="text-xs sm:text-sm font-normal text-zinc-400">U</span>
-                </div>
-                <div className="text-[10px] sm:text-[11px] text-zinc-500">All 4 desks combined</div>
-              </div>
-
-              <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur flex flex-col justify-between">
-                <div className="text-[10px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">Overall ATS</div>
-                <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-white">
-                  {winRate}%
-                </div>
-                <div className="text-[10px] sm:text-[11px] text-zinc-500 truncate">{wins > 0 ? `${wins}W - ${losses}L - ${pushes}P` : 'Active slate'}</div>
-              </div>
-
-              <div
-                onClick={() => {
-                  setSignalFilter('hammer')
-                  setActiveTab('ledger')
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
-                className="p-4 sm:p-5 rounded-2xl border border-amber-500/30 bg-gradient-to-b from-amber-950/20 to-zinc-900/50 backdrop-blur flex flex-col justify-between cursor-pointer hover:border-amber-500/60 hover:scale-[1.02] transition-all group"
-              >
-                <div className="text-[10px] sm:text-xs font-mono text-amber-400 uppercase tracking-wider flex items-center justify-between">
-                  <span>🔥 3-0 Hammers</span>
-                  <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">→</span>
-                </div>
-                <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-amber-300">
-                  {hammerWinRate}%
-                </div>
-                <div className="text-[10px] sm:text-[11px] text-amber-400/80 truncate">
-                  {hammerWins > 0 || hammerLosses > 0 ? `${hammerWins}W - ${hammerLosses}L · ${hammerDisplayUnits}U (${hammerTotalGames} Games)` : 'Unanimous 3-0 sides'}
-                </div>
-              </div>
-
-              <div
-                onClick={() => {
-                  setSignalFilter('consensus')
-                  setActiveTab('ledger')
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
-                className="p-4 sm:p-5 rounded-2xl border border-cyan-500/30 bg-gradient-to-b from-cyan-950/20 to-zinc-900/50 backdrop-blur flex flex-col justify-between cursor-pointer hover:border-cyan-500/60 hover:scale-[1.02] transition-all group"
-              >
-                <div className="text-[10px] sm:text-xs font-mono text-cyan-400 uppercase tracking-wider flex items-center justify-between">
-                  <span>🎯 2-1 Consensus</span>
-                  <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">→</span>
-                </div>
-                <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-cyan-300">
-                  {consensusWinRate}%
-                </div>
-                <div className="text-[10px] sm:text-[11px] text-cyan-400/80 truncate">
-                  {consensusWins > 0 || consensusLosses > 0 ? `${consensusWins}W - ${consensusLosses}L · ${consensusDisplayUnits}U (${consensusTotalGames} Games)` : 'Majority consensus'}
-                </div>
-              </div>
-
-              <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur flex flex-col justify-between">
-                <div className="text-[10px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">CLV Beat Rate</div>
-                <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-emerald-400">
-                  {clvRate}%
-                </div>
-                <div className="text-[10px] sm:text-[11px] text-zinc-500">Benchmark: Pinnacle</div>
-              </div>
-            </div>
+            <SyndicatePerformanceTicker
+              stats={overviewStats}
+              sport="all"
+              onHammerClick={() => openLedgerSignal('hammer', 'all')}
+              onConsensusClick={() => openLedgerSignal('consensus', 'all')}
+            />
 
             {/* The 4 Desks Breakdown */}
             <div className="space-y-6">
@@ -1126,6 +1190,13 @@ export function SyndicateApp() {
         {/* NFL EPA Tab */}
         {activeTab === 'nfl' && (
           <div className="space-y-6">
+            <SyndicatePerformanceTicker
+              stats={nflStats}
+              sport="nfl"
+              onHammerClick={() => openLedgerSignal('hammer', 'nfl')}
+              onConsensusClick={() => openLedgerSignal('consensus', 'nfl')}
+            />
+
             <div className="border-b border-zinc-800 pb-4">
               <h2 className="text-2xl font-bold text-white tracking-tight">NFL EPA Rankings</h2>
               <p className="text-zinc-400 text-xs sm:text-sm mt-1">
@@ -1171,6 +1242,13 @@ export function SyndicateApp() {
         {/* CFB Power Index Tab (public consensus; model stack teased/blurred) */}
         {activeTab === 'cfb' && (
           <div className="space-y-6">
+            <SyndicatePerformanceTicker
+              stats={cfbStats}
+              sport="cfb"
+              onHammerClick={() => openLedgerSignal('hammer', 'cfb')}
+              onConsensusClick={() => openLedgerSignal('consensus', 'cfb')}
+            />
+
             <div className="border-b border-zinc-800 pb-4">
               <h2 className="text-2xl font-bold text-white tracking-tight">College Football Power Ratings</h2>
               <p className="text-zinc-400 text-xs sm:text-sm mt-1">
@@ -1252,6 +1330,13 @@ export function SyndicateApp() {
         {/* UFC Stats Tab */}
         {activeTab === 'ufc' && (
           <div className="space-y-6">
+            <SyndicatePerformanceTicker
+              stats={ufcStats}
+              sport="ufc"
+              onHammerClick={() => openLedgerSignal('hammer', 'ufc')}
+              onConsensusClick={() => openLedgerSignal('consensus', 'ufc')}
+            />
+
             <div className="border-b border-zinc-800 pb-4">
               <h2 className="text-2xl font-bold text-white tracking-tight">UFC Fighter Metrics</h2>
               <p className="text-zinc-400 text-xs sm:text-sm mt-1">

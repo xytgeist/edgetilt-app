@@ -225,9 +225,10 @@ export const PUBLIC_SLATE_PASS_CAP = 3
  * - H1 title; H2 sections; H3 items
  * - Hammers: pick-first H3
  * - Consensus / House Divided / Split: matchup H3 + one desk-summary line
- * - Solo: group by desk (H3 desk name, pick bullets underneath)
+ * - Solo: group by desk (H3 desk name, pick bullets underneath) … after Tank's Totals, before All Pass
  * - All Pass last: matchup list only (no PASS desk spam)
  * - Labels: Consensus (2-0), House Divided (2-1), Split (1-1)
+ * - Order: Hammers → Consensus → House Divided → Split → Tank's Totals → Solo → All Pass
  */
 function formatSlateWeekSubtitle(games: SlateGamePick[]): string | null {
   const times = games
@@ -414,12 +415,6 @@ export function formatNflSlateCardCaption(card: NflSlateCard): string {
     lines.push('')
   }
 
-  if (solos.length > 0) {
-    lines.push('## 🎯 Solo Picks')
-    lines.push(...formatSoloSection(solos))
-    lines.push('')
-  }
-
   if (splits.length > 0) {
     lines.push('## ⚖️ Split (1-1)')
     for (const g of splits) lines.push(...formatSplitItem(g))
@@ -429,6 +424,12 @@ export function formatNflSlateCardCaption(card: NflSlateCard): string {
   if (tankTotals.length > 0) {
     lines.push("## 🛡️ Tank's Totals")
     for (const g of tankTotals) lines.push(formatTankItem(g))
+    lines.push('')
+  }
+
+  if (solos.length > 0) {
+    lines.push('## 🎯 Solo Picks')
+    lines.push(...formatSoloSection(solos))
     lines.push('')
   }
 

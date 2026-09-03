@@ -1340,7 +1340,7 @@ export function SyndicateApp() {
             <div className="border-b border-zinc-800 pb-4">
               <h2 className="text-2xl font-bold text-white tracking-tight">UFC Fighter Metrics</h2>
               <p className="text-zinc-400 text-xs sm:text-sm mt-1">
-                Career stats from UFC Stats. Synced weekly.
+                Striking, grappling, and finish rates. Updates weekly.
               </p>
             </div>
 

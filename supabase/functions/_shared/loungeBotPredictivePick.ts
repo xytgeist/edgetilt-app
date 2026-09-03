@@ -13,6 +13,7 @@ import {
 } from './loungeBotOddsCaption.ts'
 import { formatColoredPickerName } from './loungeBotPickerColors.ts'
 import { publishLoungeBotPost, publishLoungeBotPostWithThread } from './loungeBotPublish.ts'
+import { LOUNGE_BOT_CAPTION_MAX } from './loungeBotCaptionLimits.ts'
 import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
 import { resolveSlatePublisher } from './loungeBotSyndicateIdentity.ts'
 import { fetchGameWeather, type GameWeatherSummary } from './loungeBotWeather.ts'
@@ -372,43 +373,43 @@ export function formatSlateVipCtaLine(card: NflSlateCard): string {
   return '📊 Uncut 4-desk cards for **Sharpe Syndicate** subscribers'
 }
 
-/** Fan-only Lounge root … full desk lists go in thread parts (caption max). */
-export function formatNflSlatePrivateRootCaption(card: NflSlateCard): string {
-  const title = card.cardTitle || '🏈 Sharpe Syndicate · Full Uncut'
-  const weekLine = formatSlateWeekLine(card.games)
-  const n = Array.isArray(card.games) ? card.games.length : 0
-  const hammers = card.hammers?.length || 0
-  const consensus = card.consensus?.length || 0
-  const house = card.majoritySplits?.length || 0
-  const split = card.splits?.length || 0
-  const solo = card.solos?.length || 0
-  const lines: string[] = [`# ${title}`]
-  if (weekLine) lines.push(weekLine)
-  lines.push('')
-  lines.push(`**Subscribers only** · ${n}-game full desk grid`)
-  lines.push('')
-  lines.push(
-    `· Hammers: ${hammers} · Consensus: ${consensus} · House Divided: ${house} · Split: ${split} · Solo: ${solo}`,
-  )
-  lines.push('')
-  lines.push('Full Scott / Rocco / Chedda / Tank cards in this thread 👇')
-  return lines.join('\n').trim()
+function formatSlateSubscriberFooter(card: NflSlateCard): string {
+  const gameCount = Array.isArray(card.games) ? card.games.length : 0
+  const n = gameCount >= 2 ? `${gameCount}-game ` : ''
+  return `📋 Per-desk Scott / Rocco / Chedda / Tank ${n}cards in this thread 👇`
+}
+
+type SlateCaptionOpts = {
+  /** When true, no public tease caps … every hammer / consensus / etc. */
+  uncut?: boolean
+  footer?: 'public_cta' | 'subscriber_desks' | 'none'
 }
 
 /**
- * Format an NFL / Football Slate Card caption for the Lounge feed.
- * H2 sections / H3 items; public tease caps per bucket.
+ * Shared slate body (public tease + subscriber root).
+ * Public uses caps; subscriber full card uses `uncut: true`.
  */
-export function formatNflSlateCardCaption(card: NflSlateCard): string {
-  const hammers = card.hammers.slice(0, PUBLIC_SLATE_HAMMER_CAP)
-  const consensus = card.consensus.slice(0, PUBLIC_SLATE_CONSENSUS_CAP)
-  const majoritySplits = (card.majoritySplits || []).slice(0, PUBLIC_SLATE_MAJORITY_SPLIT_CAP)
-  const solos = (card.solos || []).slice(0, PUBLIC_SLATE_SOLO_CAP)
-  const splits = card.splits.slice(0, PUBLIC_SLATE_HOUSE_DIVIDED_CAP)
-  const passOnly = (card.passOnly || []).slice(0, PUBLIC_SLATE_PASS_CAP)
-  const tankTotals = card.games
-    .filter((g) => g.pickerPicks.Tank.side === 'over' || g.pickerPicks.Tank.side === 'under')
-    .slice(0, 3)
+export function formatNflSlateCardCaption(
+  card: NflSlateCard,
+  opts: SlateCaptionOpts = {},
+): string {
+  const uncut = opts.uncut === true
+  const footer = opts.footer || (uncut ? 'subscriber_desks' : 'public_cta')
+
+  const hammers = uncut ? card.hammers : card.hammers.slice(0, PUBLIC_SLATE_HAMMER_CAP)
+  const consensus = uncut ? card.consensus : card.consensus.slice(0, PUBLIC_SLATE_CONSENSUS_CAP)
+  const majoritySplits = uncut
+    ? (card.majoritySplits || [])
+    : (card.majoritySplits || []).slice(0, PUBLIC_SLATE_MAJORITY_SPLIT_CAP)
+  const solos = uncut ? (card.solos || []) : (card.solos || []).slice(0, PUBLIC_SLATE_SOLO_CAP)
+  const splits = uncut ? card.splits : card.splits.slice(0, PUBLIC_SLATE_HOUSE_DIVIDED_CAP)
+  const passOnly = uncut
+    ? (card.passOnly || [])
+    : (card.passOnly || []).slice(0, PUBLIC_SLATE_PASS_CAP)
+  const tankTotalsAll = card.games.filter(
+    (g) => g.pickerPicks.Tank.side === 'over' || g.pickerPicks.Tank.side === 'under',
+  )
+  const tankTotals = uncut ? tankTotalsAll : tankTotalsAll.slice(0, 3)
 
   const title = card.cardTitle || '🏈 NFL Sharpe Syndicate Slate'
   const lines: string[] = [`# ${title}`]
@@ -458,7 +459,9 @@ export function formatNflSlateCardCaption(card: NflSlateCard): string {
     lines.push('')
   }
 
-  const injuryNotes = card.games.filter((g) => g.sideModifier?.isSignificant).slice(0, 4)
+  const injuryNotes = uncut
+    ? card.games.filter((g) => g.sideModifier?.isSignificant)
+    : card.games.filter((g) => g.sideModifier?.isSignificant).slice(0, 4)
   if (injuryNotes.length > 0) {
     lines.push('## 🚑 Side modifiers (post-board)')
     for (const g of injuryNotes) {
@@ -469,10 +472,63 @@ export function formatNflSlateCardCaption(card: NflSlateCard): string {
     lines.push('')
   }
 
-  lines.push('---')
-  lines.push('')
-  lines.push(formatSlateVipCtaLine(card))
+  if (footer !== 'none') {
+    lines.push('---')
+    lines.push('')
+    lines.push(footer === 'subscriber_desks' ? formatSlateSubscriberFooter(card) : formatSlateVipCtaLine(card))
+  }
+
   return lines.join('\n').trim()
+}
+
+/**
+ * Fan-only Lounge root … same structure as the public tease, uncapped.
+ * Per-desk lists stay in following thread parts.
+ */
+export function formatNflSlatePrivateRootCaption(card: NflSlateCard): string {
+  return formatNflSlateCardCaption(card, { uncut: true, footer: 'subscriber_desks' })
+}
+
+/**
+ * Split a long slate caption on ## section boundaries so each chunk fits Lounge max.
+ */
+export function splitSlateCaptionToFit(caption: string, maxChars: number): string[] {
+  const text = String(caption || '').trim()
+  if (!text) return []
+  if (text.length <= maxChars) return [text]
+
+  const sections = text.split(/\n(?=## )/)
+  const chunks: string[] = []
+  let current = ''
+
+  const pushCurrent = () => {
+    if (current.trim()) chunks.push(current.trim())
+    current = ''
+  }
+
+  for (const section of sections) {
+    const piece = String(section || '')
+    if (!piece) continue
+    const next = current ? `${current}\n${piece}` : piece
+    if (next.length <= maxChars) {
+      current = next
+      continue
+    }
+    pushCurrent()
+    if (piece.length <= maxChars) {
+      current = piece
+      continue
+    }
+    // Hard-split oversized section (rare).
+    for (let i = 0; i < piece.length; i += maxChars - 3) {
+      const slice = piece.slice(i, i + maxChars - 3)
+      const more = i + maxChars - 3 < piece.length
+      chunks.push(more ? `${slice}...` : slice)
+    }
+    current = ''
+  }
+  pushCurrent()
+  return chunks.length ? chunks : [text.slice(0, maxChars - 3) + '...']
 }
 
 /**
@@ -1247,15 +1303,19 @@ export async function publishAndRecordNflSlateCard(
   let privatePostId: string | null = null
   let privatePublishNote: string | null = null
   if (publisher.mode === 'syndicate') {
+    const fullPrivateCaption = formatNflSlatePrivateRootCaption(input.card)
+    const captionChunks = splitSlateCaptionToFit(fullPrivateCaption, LOUNGE_BOT_CAPTION_MAX)
+    const rootCaption = captionChunks[0] || fullPrivateCaption
+    const overflowThread = captionChunks.slice(1).map((body) => ({ body }))
     const deskThread = SHARP_PICKERS.map((p) => ({
       body: formatPickerSlateList(input.card, p),
     }))
     const privateRes = await publishLoungeBotPostWithThread(admin, {
       botUserId,
-      caption: formatNflSlatePrivateRootCaption(input.card),
+      caption: rootCaption,
       categoryPills,
       creatorFanOnly: true,
-      threadParts: deskThread,
+      threadParts: [...overflowThread, ...deskThread],
     })
     if (privateRes.error || !privateRes.postId) {
       privatePublishNote = privateRes.error || 'Fan-only full card failed'

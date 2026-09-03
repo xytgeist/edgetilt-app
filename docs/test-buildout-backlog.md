@@ -2842,6 +2842,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-03:** **Subscriber slate root = uncut teaser structure:** fan-only main post uses same Hammers / Consensus / House Divided / … layout as public tease with **no caps**; per-desk thread parts unchanged. Long CFB roots split on `##` sections to fit 2k caption max. Redeploy **`lounge-odds-poll`**.
 - **2026-09-03:** **Run picks for today Preview:** dry run now returns subscriber full card (`vipPreviewCaption` + desk `subscriberThreadParts`); Ops shell wires those into `SyndicateDryRunPreview` tabs + scrolls preview into view. Redeploy **`lounge-odds-poll`**; Ops UI needs **`main`**.
 - **2026-09-03:** **CFB school names in slate headers:** CFB pick/matchup labels use school (Ohio State, Alabama) instead of mascot-only (Buckeyes, Tide) via `cfbSchoolDisplayName` / `sportTeamDisplayName`. NFL unchanged. Redeploy **`lounge-odds-poll`**.
 - **2026-09-03:** **Specialty Preview · subscriber full cards:** dry runs return `vipPreviewCaption` (+ NFL/CFB `subscriberThreadParts` desk lists). Ops Preview tabs Public Lounge vs Subscriber full card. **v1.4.10**. Redeploy **`lounge-odds-poll`** test+prod; Ops needs **`main`**.

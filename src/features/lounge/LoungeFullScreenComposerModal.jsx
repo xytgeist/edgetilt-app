@@ -70,6 +70,7 @@ import {
  *   videoInputId?: string,
  *   onImagePointerDown?: () => void,
  *   onVideoPointerDown?: () => void,
+ *   onStartThread?: (caption: string) => void,
  * }} props
  */
 export default function LoungeFullScreenComposerModal({
@@ -107,6 +108,7 @@ export default function LoungeFullScreenComposerModal({
   videoInputId,
   onImagePointerDown,
   onVideoPointerDown,
+  onStartThread,
 }) {
   const [activeTab, setActiveTab] = useState('write') // 'write' | 'preview'
   const [settingsModalOpen, setSettingsModalOpen] = useState(false)
@@ -831,17 +833,54 @@ export default function LoungeFullScreenComposerModal({
           style={{ paddingBottom: footerPadBottom }}
         >
           <div className="mx-auto flex max-w-3xl items-center justify-between min-h-[2.5rem]">
-            <LoungeComposerMediaToolbar
-              variant="feed"
-              size="lg"
-              className="!gap-3 sm:!gap-4"
-              imageInputId={imageInputId}
-              videoInputId={videoInputId}
-              onImagePointerDown={onImagePointerDown}
-              onVideoPointerDown={onVideoPointerDown}
-              onOpenGifPicker={onOpenGifPicker}
-              onOpenMarketPicker={onOpenMarketPicker}
-            />
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+              <LoungeComposerMediaToolbar
+                variant="feed"
+                size="lg"
+                className="!gap-3 sm:!gap-4"
+                imageInputId={imageInputId}
+                videoInputId={videoInputId}
+                onImagePointerDown={onImagePointerDown}
+                onVideoPointerDown={onVideoPointerDown}
+                onOpenGifPicker={onOpenGifPicker}
+                onOpenMarketPicker={onOpenMarketPicker}
+              />
+              {onStartThread ? (
+                <button
+                  type="button"
+                  data-lounge-start-thread-btn=""
+                  disabled={postBusy}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    flushTextToParent()
+                    onStartThread(localTextRef.current)
+                  }}
+                  className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
+                  title="Start a thread"
+                  aria-label="Start a thread"
+                >
+                  <svg className="h-8 w-8" viewBox="0 0 20 20" fill="none" aria-hidden>
+                    <rect
+                      x="3.75"
+                      y="3.75"
+                      width="12.5"
+                      height="12.5"
+                      rx="2"
+                      fill="currentColor"
+                      fillOpacity="0.14"
+                      stroke="currentColor"
+                      strokeWidth="1.35"
+                    />
+                    <path
+                      d="M10 6.75v6.5M6.75 10h6.5"
+                      stroke="currentColor"
+                      strokeWidth="1.75"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                </button>
+              ) : null}
+            </div>
 
             <div className="text-xs sm:text-sm font-semibold text-zinc-400">
               {isEdgePro || isStaff ? '✨ Markdown Enabled' : 'Edge Pro Markdown'}

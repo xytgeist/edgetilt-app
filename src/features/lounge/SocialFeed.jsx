@@ -13854,7 +13854,7 @@ export default function SocialFeed({
   }, [])
   closeThreadComposeImmediateRef.current = closeThreadComposeImmediate
 
-  const openThreadComposeSheet = useCallback(() => {
+  const openThreadComposeSheet = useCallback((opts = {}) => {
     if (loungeReadOnly) {
       requireLoungeAuth()
       return
@@ -13866,10 +13866,14 @@ export default function SocialFeed({
       appendThreadComposePart()
       return
     }
-    const seed =
+    const fromField =
       composerFieldRef.current && typeof composerFieldRef.current.value === 'string'
         ? composerFieldRef.current.value
         : postText
+    const rawSeed = typeof opts.seed === 'string' ? opts.seed : fromField
+    const seed = appendMissingMarketCashtagsToCaption(rawSeed, composerMarketSymbols, {
+      maxLen: loungeComposerCaptionMax,
+    })
     const hasSeedCaption = Boolean(normalizeFeedCaption(seed, loungeComposerCaptionMax))
     const initialFocusPartIndex = hasSeedCaption ? 1 : 0
     const applyOpen = () => {
@@ -13918,6 +13922,8 @@ export default function SocialFeed({
     composerVideoSlot,
     composerImageItems,
     composerMediaUrl,
+    composerMarketSymbols,
+    loungeComposerCaptionMax,
     postText,
     requireLoungeAuth,
     threadComposeOpen,
@@ -20142,6 +20148,10 @@ export default function SocialFeed({
         videoInputId={LOUNGE_COMPOSER_VIDEO_INPUT_ID}
         onImagePointerDown={() => beginLoungeComposerMediaPicker('composer')}
         onVideoPointerDown={() => beginLoungeComposerMediaPicker('composer')}
+        onStartThread={(caption) => {
+          setFullScreenComposerOpen(false)
+          openThreadComposeSheet({ seed: caption })
+        }}
       />
 
       <LoungeThreadComposeSheet

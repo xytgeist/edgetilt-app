@@ -2842,6 +2842,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-03:** Pro composer **Start a thread** (plus-square next to media) hands off to **`LoungeThreadComposeSheet`** with the current caption + attachments as part 1. Same seed/focus rules as the feed composer.
 - **2026-09-03:** **Desk thread parts list every game incl. PASS:** `formatPickerSlateList` no longer skips passes … each Scott/Rocco/Chedda/Tank card shows full slate decisions. Redeploy **`lounge-odds-poll`**.
 - **2026-09-03:** **Lounge caption cap 10k for Edge Pro / paid / bots / staff:** `LOUNGE_CAPTION_SUBSCRIBER_MAX` + `LOUNGE_BOT_CAPTION_MAX` → **10000**; migration **`20260903160000`**. Free stays **500**. Apply SQL test+prod; redeploy **`lounge-odds-poll`** (bot publish uses shared limit).
 - **2026-09-03:** **Subscriber slate root = uncut teaser structure:** fan-only main post uses same Hammers / Consensus / House Divided / … layout as public tease with **no caps**; per-desk thread parts unchanged. Long CFB roots split on `##` sections to fit 2k caption max. Redeploy **`lounge-odds-poll`**.

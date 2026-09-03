@@ -131,6 +131,22 @@ if (oddsErr) {
   console.warn('odds_config upsert warning:', oddsErr.message)
 }
 
+const { error: subErr } = await admin.from('user_subscriptions').upsert(
+  {
+    user_id: userId,
+    product_slug: 'edge-pro',
+    stripe_subscription_id: `admin_comp_edge_pro_${userId}`,
+    stripe_customer_id: `admin_comp_cus_${userId}`,
+    status: 'active',
+  },
+  { onConflict: 'user_id,product_slug' },
+)
+if (subErr) {
+  console.warn('edge-pro comp warning:', subErr.message)
+} else {
+  await admin.rpc('sync_profile_has_active_subscription', { p_user_id: userId }).catch(() => null)
+}
+
 console.log(
   JSON.stringify(
     {

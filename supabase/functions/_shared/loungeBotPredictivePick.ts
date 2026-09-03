@@ -559,12 +559,12 @@ export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): 
   const icon = picker === 'Tank' ? '🛡️' : picker === 'Chedda' ? '🧀' : picker === 'Rocco' ? '🥩' : '🎯'
   const specialty =
     picker === 'Tank'
-      ? 'Totals (tempo / off-def)'
+      ? 'O/U desk … tempo, off-def, and totals that actually move the number. PASS is the default.'
       : picker === 'Chedda'
-        ? 'Underdogs & Line Value'
+        ? 'Dog hunter … hooks, plus-money spots, and sharp money on the underdog. Chalk is someone else\'s problem.'
         : picker === 'Rocco'
-          ? 'Power Favorites & Key Numbers'
-          : 'Pure Model EV'
+          ? 'Short-chalk butcher … power favorites, key numbers, and the hook. Ugly juice gets a hard pass.'
+          : 'Model-first … fires when the number is wrong vs market. No fav costume, no dog costume.'
 
   const cardLabel = picker === 'Tank' ? 'Totals Card' : 'ATS Card'
   const lines: string[] = [

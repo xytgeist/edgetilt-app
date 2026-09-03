@@ -57,6 +57,8 @@ export type PicksForTodayResult = {
   consensusCount?: number
   splitsCount?: number
   solosCount?: number
+  majoritySplitsCount?: number
+  passOnlyCount?: number
   totalEventsRaw?: number
   message?: string
   captionPreview?: string
@@ -255,12 +257,12 @@ export async function runPicksForToday(
       consensusCount: card.consensus.length,
       splitsCount: card.splits.length,
       solosCount: card.solos.length,
+      majoritySplitsCount: card.majoritySplits.length,
+      passOnlyCount: card.passOnly.length,
       totalEventsRaw: rawEvents.length,
       previewCaption,
       captionPreview: previewCaption,
-      gamesSummary: card.games
-        .filter((g) => g.consensusPick.type !== 'pass_only')
-        .map((g) => ({
+      gamesSummary: card.games.map((g) => ({
         away: shortDisplayName(g.awayTeam),
         home: shortDisplayName(g.homeTeam),
         when: formatOddsCommenceTimeShort(g.commenceTime),
@@ -287,6 +289,8 @@ export async function runPicksForToday(
     consensusCount: card.consensus.length,
     splitsCount: card.splits.length,
     solosCount: card.solos.length,
+    majoritySplitsCount: card.majoritySplits.length,
+    passOnlyCount: card.passOnly.length,
     totalEventsRaw: rawEvents.length,
     postId: result.postId,
     message: result.error,

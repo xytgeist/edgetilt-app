@@ -84,8 +84,8 @@ export type SlateGamePick = {
     teamName: string
     lineDisplay: string
     voteCount: number // e.g. 3 or 2 among ATS desks
-    type: 'hammer' | 'consensus' | 'split' | 'solo' | 'pass_only'
-    badgeText: string // '🔥 3-0 Hammer' | '🎯 2-1 Consensus' | '⚔️ 1-1 Split' | '🎯 Solo' | '— All pass'
+    type: 'hammer' | 'consensus' | 'majority_split' | 'split' | 'solo' | 'pass_only'
+    badgeText: string
   }
   pickerPicks: Record<SharpPicker, {
     side: SlateDeskSide
@@ -102,8 +102,10 @@ export type NflSlateCard = {
   games: SlateGamePick[]
   hammers: SlateGamePick[]
   consensus: SlateGamePick[]
+  majoritySplits: SlateGamePick[]
   splits: SlateGamePick[]
   solos: SlateGamePick[]
+  passOnly: SlateGamePick[]
 }
 
 export type ScoreEvent = {
@@ -213,16 +215,14 @@ export function formatSyndicateCardCaption(title: string, picks: SinglePickerPic
 /** Public Lounge slate teaser caps (VIP still gets full uncut desk cards). */
 export const PUBLIC_SLATE_HAMMER_CAP = 1
 export const PUBLIC_SLATE_CONSENSUS_CAP = 2
+export const PUBLIC_SLATE_MAJORITY_SPLIT_CAP = 3
 export const PUBLIC_SLATE_SOLO_CAP = 3
 export const PUBLIC_SLATE_HOUSE_DIVIDED_CAP = 3
+export const PUBLIC_SLATE_PASS_CAP = 3
 
 /**
- * Locked public slate markdown dialect (v6):
- * - H1 title + week line; sections: Hammers / Consensus / Solo / House Divided / Tank Totals
- * - PASS is abstention … never listed as a pick row; all-pass games omitted from public card
- * - Consensus = 2+ desks on same side (3rd may pass or active dissent)
- * - Solo = exactly one desk with an active side pick
- * - House divided = active picks on both sides (true 1-1, passes ignored)
+ * Locked public slate markdown dialect (v7):
+ * Game-first ## matchup headers; Consensus (2-0) vs Majority Split (2-1) vs House Divided (1-1).
  */
 function formatSlateWeekSubtitle(games: SlateGamePick[]): string | null {
   const times = games
@@ -262,60 +262,50 @@ function formatSlateWeekLine(games: SlateGamePick[]): string | null {
   return weekNum ? `Week ${weekNum} · ${range}` : range
 }
 
-function formatSlateGameMeta(g: SlateGamePick): string {
+function formatSlateGameTitle(g: SlateGamePick): string {
   const away = shortDisplayName(g.awayTeam)
   const home = shortDisplayName(g.homeTeam)
   const when = formatOddsCommenceTimeShort(g.commenceTime)
-  return `(${away}/${home} · ${when})`
+  return `## ${away}/${home} · ${when}`
 }
 
-function pickersForLineDisplay(g: SlateGamePick, lineDisplay: string): SharpPicker[] {
-  return ATS_SIDE_DESKS.filter(
-    (p) => g.pickerPicks[p].side !== 'pass' && g.pickerPicks[p].lineDisplay === lineDisplay,
-  )
-}
-
-function activeAtsPickers(g: SlateGamePick): SharpPicker[] {
-  return ATS_SIDE_DESKS.filter((p) => g.pickerPicks[p].side !== 'pass')
-}
-
-function soloPickerForGame(g: SlateGamePick): SharpPicker | null {
-  const active = activeAtsPickers(g)
-  return active.length === 1 ? active[0]! : null
-}
-
-function formatSlateActiveDissentLines(g: SlateGamePick): string[] {
-  const lines: string[] = []
-  for (const p of ATS_SIDE_DESKS) {
-    const pick = g.pickerPicks[p]
-    if (pick.side === 'pass') continue
-    if (pick.lineDisplay === g.consensusPick.lineDisplay) continue
-    lines.push(
-      `  - ${formatColoredPickerName(p)}: **[gold]${pick.lineDisplay}[/gold]** ${formatSlateGameMeta(g)} · *active dissent*`,
-    )
+function formatAtsDeskLine(picker: SharpPicker, g: SlateGamePick): string {
+  const pick = g.pickerPicks[picker]
+  if (pick.side === 'pass') {
+    return `- ${formatColoredPickerName(picker)}: PASS`
   }
-  return lines
+  return `- ${formatColoredPickerName(picker)}: **[gold]${pick.lineDisplay}[/gold]**`
 }
 
-function formatSlatePickBullet(
-  g: SlateGamePick,
-  lineDisplay: string,
-  pickers?: SharpPicker[],
-): string {
-  const desks = pickers?.length ? ` · ${formatColoredPickerList(pickers)}` : ''
-  return `- **[gold]${lineDisplay}[/gold]** ${formatSlateGameMeta(g)}${desks}`
+function formatSlateAtsGameBlock(g: SlateGamePick): string[] {
+  return [formatSlateGameTitle(g), ...ATS_SIDE_DESKS.map((p) => formatAtsDeskLine(p, g))]
+}
+
+function appendSlateGameBlocks(lines: string[], games: SlateGamePick[]) {
+  for (let i = 0; i < games.length; i++) {
+    lines.push(...formatSlateAtsGameBlock(games[i]!))
+    if (i < games.length - 1) lines.push('')
+  }
+}
+
+function formatTankGameBlock(g: SlateGamePick): string[] {
+  return [
+    formatSlateGameTitle(g),
+    `- **[gold]${g.pickerPicks.Tank.lineDisplay}[/gold]**`,
+  ]
 }
 
 /**
  * Format an NFL / Football Slate Card caption for the Lounge feed.
- * Public tease only: max 1 hammer, 2 consensus, 3 house-divided games (one row each).
- * Side buckets are Scott/Rocco/Chedda only; Tank totals listed separately when he has a lean.
+ * Game-first blocks under each section; public tease caps per bucket.
  */
 export function formatNflSlateCardCaption(card: NflSlateCard): string {
   const hammers = card.hammers.slice(0, PUBLIC_SLATE_HAMMER_CAP)
   const consensus = card.consensus.slice(0, PUBLIC_SLATE_CONSENSUS_CAP)
+  const majoritySplits = (card.majoritySplits || []).slice(0, PUBLIC_SLATE_MAJORITY_SPLIT_CAP)
   const solos = (card.solos || []).slice(0, PUBLIC_SLATE_SOLO_CAP)
   const splits = card.splits.slice(0, PUBLIC_SLATE_HOUSE_DIVIDED_CAP)
+  const passOnly = (card.passOnly || []).slice(0, PUBLIC_SLATE_PASS_CAP)
   const tankTotals = card.games
     .filter((g) => g.pickerPicks.Tank.side === 'over' || g.pickerPicks.Tank.side === 'under')
     .slice(0, 3)
@@ -328,54 +318,52 @@ export function formatNflSlateCardCaption(card: NflSlateCard): string {
 
   if (hammers.length > 0) {
     lines.push('# 🔥 Unanimous 3-0 Hammers')
-    for (const g of hammers) {
-      lines.push(formatSlatePickBullet(g, g.consensusPick.lineDisplay))
-    }
+    lines.push('')
+    appendSlateGameBlocks(lines, hammers)
     lines.push('')
   }
 
   if (consensus.length > 0) {
-    lines.push('# 🎯 Consensus')
-    for (const g of consensus) {
-      const pickers = pickersForLineDisplay(g, g.consensusPick.lineDisplay)
-      lines.push(formatSlatePickBullet(g, g.consensusPick.lineDisplay, pickers))
-      lines.push(...formatSlateActiveDissentLines(g))
-    }
+    lines.push('# 🎯 Consensus (2-0)')
+    lines.push('')
+    appendSlateGameBlocks(lines, consensus)
+    lines.push('')
+  }
+
+  if (majoritySplits.length > 0) {
+    lines.push('# ⚖️ Majority Split (2-1)')
+    lines.push('')
+    appendSlateGameBlocks(lines, majoritySplits)
     lines.push('')
   }
 
   if (solos.length > 0) {
     lines.push('# 🎯 Solo Picks')
-    for (const g of solos) {
-      const picker = soloPickerForGame(g)
-      if (!picker) continue
-      lines.push(formatSlatePickBullet(g, g.pickerPicks[picker].lineDisplay, [picker]))
-    }
+    lines.push('')
+    appendSlateGameBlocks(lines, solos)
     lines.push('')
   }
 
   if (splits.length > 0) {
     lines.push('# ⚔️ House Divided (1-1)')
-    for (const g of splits) {
-      const byLine = new Map<string, SharpPicker[]>()
-      for (const p of ATS_SIDE_DESKS) {
-        if (g.pickerPicks[p].side === 'pass') continue
-        const lineDisplay = g.pickerPicks[p].lineDisplay
-        const group = byLine.get(lineDisplay) || []
-        group.push(p)
-        byLine.set(lineDisplay, group)
-      }
-      for (const [lineDisplay, pickers] of byLine) {
-        lines.push(formatSlatePickBullet(g, lineDisplay, pickers))
-      }
-    }
+    lines.push('')
+    appendSlateGameBlocks(lines, splits)
+    lines.push('')
+  }
+
+  if (passOnly.length > 0) {
+    lines.push('# ⏭️ All Pass')
+    lines.push('')
+    appendSlateGameBlocks(lines, passOnly)
     lines.push('')
   }
 
   if (tankTotals.length > 0) {
-    lines.push('# 🛡️ Tank Totals')
-    for (const g of tankTotals) {
-      lines.push(formatSlatePickBullet(g, g.pickerPicks.Tank.lineDisplay, ['Tank']))
+    lines.push("# 🛡️ Tank's Totals")
+    lines.push('')
+    for (let i = 0; i < tankTotals.length; i++) {
+      lines.push(...formatTankGameBlock(tankTotals[i]!))
+      if (i < tankTotals.length - 1) lines.push('')
     }
     lines.push('')
   }
@@ -682,6 +670,8 @@ export function buildNflAtsSlateCard(
   const consensus: SlateGamePick[] = []
   const splits: SlateGamePick[] = []
   const solos: SlateGamePick[] = []
+  const majoritySplits: SlateGamePick[] = []
+  const passOnlyGames: SlateGamePick[] = []
   const weights = opts.weightsMap || new Map<string, number>()
   const teamMetrics = opts.teamMetricsMap
   const cfbRatings = opts.cfbRatingsMap
@@ -1012,14 +1002,14 @@ export function buildNflAtsSlateCard(
       }
     }
 
-    let consensusType: 'hammer' | 'consensus' | 'split' | 'solo' | 'pass_only' = 'pass_only'
+    let consensusType: 'hammer' | 'consensus' | 'majority_split' | 'split' | 'solo' | 'pass_only' = 'pass_only'
     let badgeText = '— All pass'
     let consensusSide: 'home' | 'away' = 'home'
     let voteCount = 0
 
     if (activeSideVotes === 0) {
       consensusType = 'pass_only'
-      badgeText = '— All pass'
+      badgeText = '⏭️ All pass'
       consensusSide = 'home'
       voteCount = 0
     } else if (activeSideVotes === 1) {
@@ -1031,8 +1021,8 @@ export function buildNflAtsSlateCard(
       consensusSide = homeVotes >= awayVotes ? 'home' : 'away'
       voteCount = Math.max(homeVotes, awayVotes)
       if (voteCount >= 2) {
-        consensusType = 'consensus'
-        badgeText = '🎯 2-1 Consensus'
+        consensusType = 'majority_split'
+        badgeText = '⚖️ 2-1 Majority Split'
       } else {
         consensusType = 'split'
         badgeText = '⚔️ 1-1 Split'
@@ -1056,12 +1046,12 @@ export function buildNflAtsSlateCard(
           badgeText = `🔥 ${activeSideVotes}-0 Hammer`
         } else {
           consensusType = 'consensus'
-          badgeText = activeSideVotes >= 3 ? '🎯 Aligned (soft)' : '🎯 2-0 lean'
+          badgeText = activeSideVotes >= 3 ? '🎯 3-0 Aligned' : '🎯 2-0 Consensus'
           if (activeSideVotes === 2) voteCount = 2
         }
       } else {
         consensusType = 'consensus'
-        badgeText = '🎯 2-0 lean'
+        badgeText = '🎯 2-0 Consensus'
       }
     }
 
@@ -1092,12 +1082,13 @@ export function buildNflAtsSlateCard(
     games.push(gamePick)
     if (consensusType === 'hammer') hammers.push(gamePick)
     else if (consensusType === 'consensus') consensus.push(gamePick)
+    else if (consensusType === 'majority_split') majoritySplits.push(gamePick)
     else if (consensusType === 'split') splits.push(gamePick)
     else if (consensusType === 'solo') solos.push(gamePick)
+    else if (consensusType === 'pass_only') passOnlyGames.push(gamePick)
   }
 
-  const scoredGames = games.filter((g) => g.consensusPick.type !== 'pass_only')
-  if (scoredGames.length === 0) return null
+  if (games.length === 0) return null
 
   const title = opts.cardTitle || (opts.sportKey === 'americanfootball_ncaaf' ? '🏈 College Football Sharpe Syndicate Slate' : '🏈 NFL Sharpe Syndicate Slate')
 
@@ -1107,8 +1098,10 @@ export function buildNflAtsSlateCard(
     games,
     hammers,
     consensus,
+    majoritySplits,
     splits,
     solos,
+    passOnly: passOnlyGames,
   }
 }
 

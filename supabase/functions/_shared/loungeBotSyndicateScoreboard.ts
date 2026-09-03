@@ -128,11 +128,12 @@ export function normalizeScoreboardBucket(
 }
 
 export function mapConsensusTypeToBucket(
-  consensusType: 'hammer' | 'consensus' | 'split' | 'solo' | 'pass_only' | string,
+  consensusType: 'hammer' | 'consensus' | 'majority_split' | 'split' | 'solo' | 'pass_only' | string,
 ): ScoreboardBucket {
   if (consensusType === 'hammer') return 'hammer'
   if (consensusType === 'consensus' || consensusType === 'solo') return 'consensus'
   if (consensusType === 'pass_only') return 'pass'
+  if (consensusType === 'majority_split' || consensusType === 'split') return 'divided'
   return 'divided'
 }
 

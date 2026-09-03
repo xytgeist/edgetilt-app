@@ -1,5 +1,5 @@
 -- Creator-owned promo codes for fan subscriptions.
--- Policy: creator eats the discount; platform takes application_fee_percent (30%) of final price.
+-- Policy: creator eats the discount; platform takes application_fee_percent of final price.
 
 create table if not exists public.creator_fan_promo_codes (
   id uuid primary key default gen_random_uuid(),

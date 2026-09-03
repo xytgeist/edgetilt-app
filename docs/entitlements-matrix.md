@@ -19,7 +19,7 @@
 | `slots-edge` | Slots Edge Pro | EdgeTilt | 100% platform | **Shipped** |
 | `slots-edge-lifetime` | Slots Edge Lifetime | EdgeTilt | 100% platform | **Shipped** |
 | `edge-pro` | Edge Pro | EdgeTilt | 100% platform | **Shipped ($9.99/mo)** ... platform social tier (badge, reply controls, pro-only stream & comments filter, Stripe checkout) |
-| `creator-fan:{creator_user_id}` | Support @{handle} (working title) | Creator (via Connect) | **70% creator / 30% EdgeTilt** | **Planned** |
+| `creator-fan:{creator_user_id}` | Support @{handle} (working title) | Creator (via Connect) | **80% creator / 20% EdgeTilt** | **Shipped** |
 | `addon:*` | Niche tool packs (e.g. future sports/crypto vertical tools) | EdgeTilt | 100% platform (TBD) | **Planned** |
 | `affiliate` | _(not a buyer product)_ | n/a | Commission on EdgeTilt subs | **Shipped** ... see `docs/affiliates.md` |
 
@@ -130,7 +130,7 @@ get_my_entitlements(user_id) → {
 | `creator_subscriptions` | **Planned** ... fan ↔ creator Stripe sub id, status |
 | `chat_room_members.role` | **Shipped** base ... extend with `moderator` + room owner |
 
-**Webhooks:** `stripe-webhook` routes by `product_slug` / metadata to the correct grant writer. Fan subs use **Connect** + `application_fee_percent: 30` (or equivalent).
+**Webhooks:** `stripe-webhook` routes by `product_slug` / metadata to the correct grant writer. Fan subs use **Connect** + `application_fee_percent: 20` (or equivalent).
 
 ---
 
@@ -145,8 +145,8 @@ get_my_entitlements(user_id) → {
 | Benefits | Fan-only posts + one **Private Subs** fan group chat (creator-named, description + topic keywords, editable avatar) |
 | Chat | **Not E2EE**; creator-owned moderation (§5 UI after tab ships); **Private Subs** tab lists all live fan rooms with in-tab search (name, description, keywords); member rooms highlighted + top; **not** in Inbox; message access members-only |
 | Cancel | Access through **paid period end**, then remove room membership |
-| Platform fee | **30%** EdgeTilt / **70%** creator |
-| Promo codes | **Shipped 2026-09-03** ... creator self-serve codes in Settings (`creator_fan_promo_codes` + Edge `creator-fan-promo`). Fans enter optional code at checkout. **Creator eats the discount**; `application_fee_percent: 30` applies to the **final paid** amount. |
+| Platform fee | **20%** EdgeTilt / **80%** creator (locked **2026-09-03**; was 30/70) |
+| Promo codes | **Shipped 2026-09-03** ... creator self-serve codes in Settings (`creator_fan_promo_codes` + Edge `creator-fan-promo`). Fans enter optional code at checkout. **Creator eats the discount**; `application_fee_percent: 20` applies to the **final paid** amount. |
 
 ---
 
@@ -176,5 +176,6 @@ Track implementation in `docs/test-buildout-backlog.md` when Phase 1 work starts
 | 2026-07-21 | Feed teaser model for fan-only posts (visible in main feed, partial line + subscribe CTA, auto-follow on sub) added to product backlog; supersedes “hide fan-only from non-subs” for **timeline** only — full post detail policy TBD in backlog §3. |
 | 2026-08-28 | **Edge Pro Tier Phase 3 foundation landed:** `reply_gate_edge_pro` column + helper `has_edge_pro_entitlement()`, `feed_comments_insert_own` RLS reply-gate enforcement, composer reply gate picker, thread header indicator, comment footer gate message, `LoungeEdgeProBadge` on author headers & profile, expanded `get_my_entitlements()`. |
 | 2026-08-28 | **Edge Pro VIP feed & comment filter:** Global Pro preference in Lounge settings (`readLoungeProFilterEnabled` / `writeLoungeProFilterEnabled`) filters timeline to Pro authors and collapses non-Pro replies; post detail provides a one-tap override pill to reveal all comments for that thread while preserving OP continuity and staff visibility. |
-| 2026-09-03 | **Creator fan promo codes shipped:** table `creator_fan_promo_codes`, Edge `creator-fan-promo` (list/create/deactivate) + checkout `promo_code` → Stripe `discounts.promotion_code`. Policy: creator eats discount; platform fee is 30% of final price. |
+| 2026-09-03 | **Fan platform fee → 20%** EdgeTilt / **80%** creator (`CREATOR_FAN_PLATFORM_FEE_PERCENT`). Listed in Settings enable copy + go-live callout. New checkouts only … existing Stripe subs keep fee set at signup. |
+| 2026-09-03 | **Creator fan promo codes shipped:** table `creator_fan_promo_codes`, Edge `creator-fan-promo` (list/create/deactivate) + checkout `promo_code` → Stripe `discounts.promotion_code`. Policy: creator eats discount; platform fee is % of final price. |
 | 2026-08-30 | **Edge Pro $9.99/mo Stripe checkout & subscription tier live:** Added `edge-pro` to `subscription_products` (migration `20260830235000`), updated `sync_profile_has_active_subscription`, enabled direct Stripe Checkout routing via `STRIPE_PRICE_EDGE_PRO`, and wired in-app Upgrade to Edge Pro buttons in Settings and Membership management. |

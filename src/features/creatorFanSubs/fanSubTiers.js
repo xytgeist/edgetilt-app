@@ -1,5 +1,9 @@
 /** Preset creator fan sub tiers — docs/entitlements-matrix.md §5 */
 
+/** EdgeTilt Connect application_fee_percent on fan checkout (must match Edge `fanSubTiers.ts`). */
+export const CREATOR_FAN_PLATFORM_FEE_PERCENT = 20
+export const CREATOR_FAN_CREATOR_SHARE_PERCENT = 100 - CREATOR_FAN_PLATFORM_FEE_PERCENT
+
 export const CREATOR_FAN_TIER_KEYS = [
   'fan-tier-499',
   'fan-tier-999',

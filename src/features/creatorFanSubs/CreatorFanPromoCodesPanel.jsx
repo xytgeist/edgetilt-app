@@ -4,6 +4,7 @@ import {
   deactivateCreatorFanPromoCode,
   listCreatorFanPromoCodes,
 } from './creatorFanSubsApi.js'
+import { CREATOR_FAN_PLATFORM_FEE_PERCENT } from './fanSubTiers.js'
 
 /**
  * @param {{
@@ -37,7 +38,7 @@ function formatDurationLabel(row) {
 
 /**
  * Creator self-serve promo codes for fan checkout.
- * Discount comes out of creator share; platform keeps 30% of final price.
+ * Discount comes out of creator share; platform keeps CREATOR_FAN_PLATFORM_FEE_PERCENT of final price.
  *
  * @param {{
  *   supabaseClient: import('@supabase/supabase-js').SupabaseClient,
@@ -143,8 +144,7 @@ export default function CreatorFanPromoCodesPanel({ supabaseClient, connectCompl
     <div className="rounded-xl border border-zinc-800/90 bg-zinc-900/40 p-3" data-creator-fan-promo-panel>
       <span className="block text-[14px] font-semibold text-zinc-200">Promo codes</span>
       <p className="mt-1 text-[12px] leading-snug text-zinc-500">
-        Optional codes for fans at checkout. You eat the discount ... EdgeTilt still takes 30% of what they
-        actually pay.
+        {`Optional codes for fans at checkout. You eat the discount ... EdgeTilt still takes ${CREATOR_FAN_PLATFORM_FEE_PERCENT}% of what they actually pay.`}
       </p>
 
       {!connectComplete ? (

@@ -11,6 +11,10 @@ import CreatorFanOfferPreviewCard from './CreatorFanOfferPreviewCard.jsx'
 import CreatorFanPrivateSubsRoomPanel from './CreatorFanPrivateSubsRoomPanel.jsx'
 import CreatorFanPromoCodesPanel from './CreatorFanPromoCodesPanel.jsx'
 import { isCreatorFanOfferComplete } from './fanSubOffer.js'
+import {
+  CREATOR_FAN_CREATOR_SHARE_PERCENT,
+  CREATOR_FAN_PLATFORM_FEE_PERCENT,
+} from './fanSubTiers.js'
 
 function connectReturnPending() {
   if (typeof window === 'undefined') return false
@@ -407,6 +411,14 @@ export default function CreatorFanMonetizationPanel({
             <p className="text-[12px] leading-snug text-zinc-500">{goLiveBlockReason}</p>
           ) : null}
 
+          <p className="rounded-lg border border-zinc-700/80 bg-zinc-950/40 px-3 py-2 text-[12px] leading-snug text-zinc-400">
+            EdgeTilt takes{' '}
+            <span className="font-semibold text-zinc-200">{CREATOR_FAN_PLATFORM_FEE_PERCENT}%</span> of each
+            fan payment (after any promo). You keep{' '}
+            <span className="font-semibold text-zinc-200">{CREATOR_FAN_CREATOR_SHARE_PERCENT}%</span>
+            {' '}before Stripe processing fees.
+          </p>
+
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
@@ -454,7 +466,7 @@ export default function CreatorFanMonetizationPanel({
     <div className="mt-6 border-t border-zinc-800 pt-5" data-settings-fan-monetization>
       <span className="block text-[15px] font-semibold text-zinc-100">Fan subscriptions</span>
       <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
-        Preset monthly tiers, 70% to you / 30% platform. Fan-only posts and a private fan group chat.
+        {`Preset monthly tiers, ${CREATOR_FAN_CREATOR_SHARE_PERCENT}% to you / ${CREATOR_FAN_PLATFORM_FEE_PERCENT}% EdgeTilt. Fan-only posts and a private fan group chat.`}
       </span>
       <div className="mt-3">{body}</div>
       {footer}

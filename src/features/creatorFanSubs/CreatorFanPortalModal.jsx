@@ -15,7 +15,7 @@ import {
   saveCreatorFanMonetization,
   startCreatorFanConnectOnboarding,
 } from './creatorFanSubsApi.js'
-import { formatFanTierLabel } from './fanSubTiers.js'
+import { formatFanTierLabel, CREATOR_FAN_PLATFORM_FEE_PERCENT, CREATOR_FAN_CREATOR_SHARE_PERCENT } from './fanSubTiers.js'
 import { fanSubBillingStatusLine } from './fanSubBillingDates.js'
 
 function formatUsdFromCents(cents) {
@@ -251,6 +251,10 @@ export default function CreatorFanPortalModal({
                   <span className="text-[12px] text-amber-200/90">Finish Stripe Connect</span>
                 )}
               </div>
+
+              <p className="mt-2 text-[12px] leading-snug text-zinc-500">
+                {`EdgeTilt takes ${CREATOR_FAN_PLATFORM_FEE_PERCENT}% of each fan payment … you keep ${CREATOR_FAN_CREATOR_SHARE_PERCENT}% before Stripe fees.`}
+              </p>
 
               <div className="mt-3 flex flex-wrap gap-2">
                 <button

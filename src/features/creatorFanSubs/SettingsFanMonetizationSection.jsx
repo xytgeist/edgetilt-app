@@ -1,6 +1,10 @@
 import { forwardRef, useCallback, useEffect, useState } from 'react'
 import CreatorFanMonetizationPanel from './CreatorFanMonetizationPanel.jsx'
 import { fetchMyCreatorFanMonetization } from './creatorFanSubsApi.js'
+import {
+  CREATOR_FAN_CREATOR_SHARE_PERCENT,
+  CREATOR_FAN_PLATFORM_FEE_PERCENT,
+} from './fanSubTiers.js'
 
 /**
  * Settings accordion: creator fan monetization (separate from Subscriptions / Creators I support).
@@ -50,7 +54,7 @@ const SettingsFanMonetizationSection = forwardRef(function SettingsFanMonetizati
         <span className="min-w-0">
           <span className="block text-[15px] font-semibold text-zinc-100">{sectionTitle}</span>
           <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
-            Preset monthly tiers, fan-only posts, and your Private Subs chat room.
+            {`Preset tiers, fan-only posts, Private Subs chat. You keep ${CREATOR_FAN_CREATOR_SHARE_PERCENT}% … EdgeTilt ${CREATOR_FAN_PLATFORM_FEE_PERCENT}%.`}
           </span>
         </span>
         {chevron}

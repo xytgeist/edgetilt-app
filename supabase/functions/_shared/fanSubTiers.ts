@@ -1,6 +1,6 @@
 /** Preset creator fan sub tiers — docs/entitlements-matrix.md §5 */
 
-export const CREATOR_FAN_PLATFORM_FEE_PERCENT = 30
+export const CREATOR_FAN_PLATFORM_FEE_PERCENT = 20
 
 export const CREATOR_FAN_TIER_KEYS = [
   'fan-tier-499',

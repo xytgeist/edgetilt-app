@@ -1,5 +1,5 @@
 /**
- * Stripe Checkout for creator fan subs (Connect destination charge, 30% platform fee).
+ * Stripe Checkout for creator fan subs (Connect destination charge, 20% platform fee).
  */
 import Stripe from 'npm:stripe@17.7.0'
 import { billingCorsHeaders, jsonResponse } from '../_shared/billingCors.ts'

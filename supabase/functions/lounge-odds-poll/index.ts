@@ -91,9 +91,9 @@ Deno.serve(async (req) => {
     const alertKindRaw = String(body?.alertKind || '').trim().toLowerCase()
     const alertKind = alertKindRaw || null
 
-    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'cfb_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'syndicate_monthly_scoreboard', 'calibrate_persona_models', 'ufc_slate_card'].includes(action)) {
+    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'cfb_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'syndicate_monthly_scoreboard', 'calibrate_persona_models', 'ufc_slate_card', 'nfl_wed_tnf_vip', 'nfl_sat_vip_adds_kills'].includes(action)) {
       return adminOpsJson(400, {
-        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, predictive_pick, nfl_slate_card, cfb_slate_card, nfl_wong_teaser, nfl_primetime_spotlight, nfl_halftime_pivot, nfl_anytime_td, nfl_live_middle_arb, weekly_syndicate_recap, syndicate_monthly_scoreboard, calibrate_persona_models, or ufc_slate_card.',
+        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, predictive_pick, nfl_slate_card, cfb_slate_card, nfl_wong_teaser, nfl_primetime_spotlight, nfl_halftime_pivot, nfl_anytime_td, nfl_live_middle_arb, weekly_syndicate_recap, syndicate_monthly_scoreboard, calibrate_persona_models, ufc_slate_card, nfl_wed_tnf_vip, or nfl_sat_vip_adds_kills.',
       })
     }
 
@@ -164,6 +164,18 @@ Deno.serve(async (req) => {
       const { runPersonaAdaptiveCalibration } = await import('../_shared/loungeBotPersonaAdaptive.ts')
       const calibResult = await runPersonaAdaptiveCalibration(admin)
       return adminOpsJson(200, { ok: true, action: 'calibrate_persona_models', ...calibResult })
+    }
+
+    if (action === 'nfl_wed_tnf_vip') {
+      const { runNflWedTnfVipNote } = await import('../_shared/loungeBotNflVipOps.ts')
+      const result = await runNflWedTnfVipNote(admin, bot.user_id, { dryRun })
+      return adminOpsJson(200, { ok: result.ok !== false, action: 'nfl_wed_tnf_vip', ...result })
+    }
+
+    if (action === 'nfl_sat_vip_adds_kills') {
+      const { runNflSatVipAddsKills } = await import('../_shared/loungeBotNflVipOps.ts')
+      const result = await runNflSatVipAddsKills(admin, bot.user_id, { dryRun })
+      return adminOpsJson(200, { ok: result.ok !== false, action: 'nfl_sat_vip_adds_kills', ...result })
     }
 
     if (action === 'nfl_slate_card' || action === 'cfb_slate_card') {

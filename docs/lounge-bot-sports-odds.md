@@ -293,11 +293,10 @@ Alerts publish **immediately** when **`min_post_gap_minutes`** has elapsed since
 
 1. Scan every calendar sport today via fresh Odds API fetch (**`h2h`**, **`spreads`**, **`totals`**)
 2. Include **today's unplayed** kickoffs plus **live** in-progress games (same window as Best Bet)
-3. **`findPlusEvOpportunities`** slate-wide; keep **2–3** highest **+EV** plays (min **3.5%** default)
-4. **Variety:** prefer one pick per sport first, then fill remaining slots; one play per game
-5. Dedupe **`value_bet_radar:{PT half-hour bucket}`** — one post per bot per 30-min window; cap **`max_value_bet_radar_posts_per_day`** (default **12**); **≥ 4 books** per pick; min **5%** EV
+3. **`findPlusEvOpportunities`** slate-wide; keep the **single** highest **+EV** look (public crumb … not a mini-slate)
+4. Dedupe **`value_bet_radar:{PT half-hour bucket}`** — one post per bot per 30-min window; cap **`max_value_bet_radar_posts_per_day`** (default **12**); **≥ 4 books** per pick; min **5%** EV
 
-Disable via **`value_bet_radar_enabled = false`**. Default audience **`all`** (snackable feed content).
+Disable via **`value_bet_radar_enabled = false`**. Default audience **lounge** (snackable crumb). Best Bet Hour is **VIP-only**.
 
 ### Context alerts (Rundown + odds, `poll_edges`)
 
@@ -492,7 +491,7 @@ Current fetch: **`h2h` + `spreads`**, region **`us`** → **~2 credits/call**.
 | `max_arb_alerts_per_day` | Default **6** |
 | `sharp_report_enabled` | Default **true** — narrative sharp report on poll_edges |
 | `max_sharp_reports_per_day` | Default **3** |
-| `value_bet_radar_enabled` | Default **true** — 2–3 strongest +EV plays during peak hours |
+| `value_bet_radar_enabled` | Default **true** — one public +EV look during peak hours (crumb, not a second card) |
 | `min_value_bet_radar_ev_pct` | Default **5** — min +EV % per Radar pick (**≥ 4 books**) |
 | `max_value_bet_radar_posts_per_day` | Default **12** |
 | `starter_spotlight_enabled` | Default **true** — starter spotlight on **`poll_edges`** when Rundown confirms starters |
@@ -809,7 +808,7 @@ Sagarin is scraped from the public Predictor board (`scripts/lib/cfbSagarinPredi
 
 Desk mapping: **Scott** = consensus vs market (primary side) · **Rocco** = SP+/EPA short-fav confirm/fade (no trench truth yet) · **Chedda** = PASS unless dog+hook / dog+model / pasted money · **Tank** = tempo/totals first-pass. Hammer = Scott + independent second reason.
 
-**ATS slate auto-publish (pg_cron):** `cfb_slate_card` Wed **2pm PT** (Thu/Fri CFB) + Fri **12pm PT** (Sat lock); `nfl_slate_card` Fri **1pm PT** (Sun lock). Migration `20260902230000`. Portal still on-demand. Weekday `predictive_pick` Tue/Thu is +EV spots, not the ATS card.
+**ATS slate auto-publish (pg_cron):** `cfb_slate_card` Wed **2pm PT** + Fri **12pm PT**; `nfl_slate_card` Fri **1pm PT**. NFL VIP satellites: Wed **11am** TNF watch (`nfl_wed_tnf_vip`), Sat **10am** adds/kills stub (`nfl_sat_vip_adds_kills`, no empty fire). Tue/Thu public `predictive_pick` cron **muted**. Best Bet Hour forced VIP-only; Value Radar public = **one look**. Migration `20260902240000`.
 
 **Internal weekly SOP (honest inventory + publish rules):** [`docs/syndicate-cfb-weekly-runbook.md`](./syndicate-cfb-weekly-runbook.md). Keep blend weights out of public UI.
 

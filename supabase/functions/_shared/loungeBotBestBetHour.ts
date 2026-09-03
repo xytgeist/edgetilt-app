@@ -2,7 +2,6 @@
  * Best Bet of the Hour — single strongest +EV play across all calendar sports.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { resolveAlertRoute } from './loungeBotAlertAudience.ts'
 import {
   DEFAULT_MAX_EV_PCT,
   BEST_BET_MIN_BOOKS,
@@ -434,7 +433,12 @@ export async function runBestBetHourPoll(
   }
 
   const pills = bot.category_pills_default?.length ? bot.category_pills_default : ['sports']
-  const alertRoute = resolveAlertRoute('best_bet_hour', oddsCfg.alert_audience)
+  // Shop model: Best Bet of the Hour is VIP-only (never public Lounge).
+  const alertRoute = {
+    lounge: false,
+    sub_chat: true,
+    lounge_teaser_pct: 0 as const,
+  }
   const minGap = Number(oddsCfg.min_post_gap_minutes) || DEFAULT_MIN_POST_GAP_MINUTES
   const result = await submitLoungeBotAlertPost(admin, {
     botUserId: bot.user_id,

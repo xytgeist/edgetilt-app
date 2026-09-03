@@ -140,21 +140,25 @@ Do **not** reshuffle Phase 1 blend weights while operating this loop.
 
 ## 4. Weekly machine (operate what we have)
 
-### Publish calendar (auto crons … Grok / house lock windows)
+### Publish calendar (auto crons … shop model)
 
 VIP uncut cards lock when injury + splits are real enough … **not** Tue vibes, **not** Sat/Sun morning first drop.
 
-| Package | Cron (PT) | Action | Covers |
-|---------|-----------|--------|--------|
-| CFB midweek | **Wed 2:00 PM** | `cfb_slate_card` | Thu / Fri night CFB still upcoming |
-| CFB Saturday lock | **Fri 12:00 PM** | `cfb_slate_card` | Main Sat card (+ near cluster) |
-| NFL Sunday lock | **Fri 1:00 PM** | `nfl_slate_card` | Core Sunday card after Fri injury reports |
-| Weekday EV spot | **Tue & Thu 11:30 AM** | `predictive_pick` | +EV solo/mini card … **not** the ATS slate |
-| Weekly recap | **Tue 7:30 AM** | `weekly_syndicate_recap` | Ledger post-mortem |
+**Friday stays the house.** Everything else is a satellite or VIP ops.
 
-**Ops before Fri lock:** paste Action PRO splits, refresh side modifiers, sync CFB power Mon–Tue.  
-**Sat / Sun AM:** portal-only tweaks for late scratches / inactives … no auto full-card republish.  
-**Window math:** next kickoff within 21d, then games within **5 days** of that kickoff (not “Saturday-only”).
+| Package | Cron (PT) | Action | Audience |
+|---------|-----------|--------|----------|
+| CFB midweek | **Wed 2:00 PM** | `cfb_slate_card` | Public teaser + VIP full |
+| CFB Saturday lock | **Fri 12:00 PM** | `cfb_slate_card` | Public teaser + VIP full |
+| NFL Sunday lock | **Fri 1:00 PM** | `nfl_slate_card` | Public teaser + VIP full |
+| NFL Wed TNF watch | **Wed 11:00 AM** | `nfl_wed_tnf_vip` | **VIP only** |
+| NFL Sat adds/kills | **Sat 10:00 AM** | `nfl_sat_vip_adds_kills` | **VIP only** (no-op if nothing flipped) |
+| Weekly recap | **Tue 7:30 AM** | `weekly_syndicate_recap` | Public + VIP |
+| Weekday predictive | — | muted | Was public freebie … killed |
+
+Public crumbs (not a second card): Coffee & Covers · Value Radar **one look**. Best Bet Hour = VIP only.  
+**Sat / Sun AM:** portal tweaks for late scratches … no auto full-card republish.  
+**Window math:** next kickoff within 21d, then games within **5 days** of that kickoff.
 
 ### Mon–Tue … freeze the map
 

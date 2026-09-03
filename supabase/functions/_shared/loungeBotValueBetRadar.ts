@@ -1,5 +1,5 @@
 /**
- * Value Bet Radar — 2–3 strongest +EV plays across today's slate (snackable feed post).
+ * Value Bet Radar — public crumb: **one** strongest +EV look (not a mini-slate).
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { resolveAlertRoute } from './loungeBotAlertAudience.ts'
@@ -41,8 +41,9 @@ const RADAR_MARKETS: Array<'h2h' | 'spreads' | 'totals'> = ['h2h', 'spreads', 't
 const CAPTION_MAX = 2000
 const DEFAULT_MIN_RADAR_EV_PCT = 5
 const DEFAULT_MAX_RADAR_POSTS_PER_DAY = 12
-const MIN_RADAR_PICKS = 2
-const MAX_RADAR_PICKS = 3
+const MIN_RADAR_PICKS = 1
+/** Public crumb: one look only … never a mini-slate. */
+const MAX_RADAR_PICKS = 1
 const PEAK_START_MIN_PT = 8 * 60
 const PEAK_END_MIN_PT = 22 * 60
 
@@ -123,7 +124,7 @@ export function collectRadarPicksFromEvents(
   }))
 }
 
-/** Top 2–3 picks with sport variety and one play per game. */
+/** Top 1 pick (public crumb … one look, not a second card). */
 export function selectValueBetRadarPicks(
   candidates: RadarPick[],
   opts?: { minPicks?: number; maxPicks?: number },
@@ -176,7 +177,7 @@ export function buildValueBetRadarCaption(
   inlineNotes?: Map<string, string>,
 ): string {
   return joinCaptionLines([
-    '📡 Value Bet Radar',
+    '📡 Value Bet Radar · one look',
     '',
     ...picks.map((pick) => formatRadarPickLine(pick, inlineNotes?.get(radarEventKey(pick)))),
   ])

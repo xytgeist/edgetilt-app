@@ -174,18 +174,25 @@ function SyndicatePerformanceTicker({
   const consensusLabel = isUfc ? '🎯 3-1 Consensus' : '🎯 2-1 Consensus'
   const unitsFoot =
     sport === 'all'
-      ? 'All 4 desks combined'
+      ? 'Sum of 4 desk ledgers'
       : sport === 'nfl'
-        ? 'NFL desks combined'
+        ? 'Sum of NFL desk ledgers'
         : sport === 'cfb'
-          ? 'CFB desks combined'
+          ? 'Sum of CFB desk ledgers'
           : sport === 'ufc'
-            ? 'UFC desks combined'
-            : 'Desks combined'
+            ? 'Sum of UFC desk ledgers'
+            : 'Sum of desk ledgers'
 
   const unitsColor = stats.netUnits >= 0 ? 'text-emerald-400' : 'text-rose-400'
   const hammer = stats.hammer
   const consensus = stats.consensus
+  // Thin samples: lead with W-L + n, not a billboard %.
+  const THIN_N = 25
+  const hammerThin = hammer.totalGames > 0 && hammer.totalGames < THIN_N
+  const consensusThin = consensus.totalGames > 0 && consensus.totalGames < THIN_N
+  const hammerHasRecord = hammer.gWins > 0 || hammer.gLosses > 0
+  const consensusHasRecord = consensus.gWins > 0 || consensus.gLosses > 0
+  const clvReady = stats.clvRate != null && stats.clvSample > 0
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-3.5">
@@ -218,14 +225,20 @@ function SyndicatePerformanceTicker({
           <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">→</span>
         </div>
         <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-amber-300">
-          {hammer.gWinRate === '—' ? '—' : `${hammer.gWinRate}%`}
+          {!hammerHasRecord
+            ? '—'
+            : hammerThin
+              ? `${hammer.gWins}-${hammer.gLosses}`
+              : `${hammer.gWinRate}%`}
         </div>
         <div className="text-[10px] sm:text-[11px] text-amber-400/80 truncate">
-          {hammer.gWins > 0 || hammer.gLosses > 0
-            ? `${hammer.gWins}W - ${hammer.gLosses}L · ${hammer.gDisplayUnits}U (${hammer.totalGames} Games)`
-            : isUfc
+          {!hammerHasRecord
+            ? isUfc
               ? 'Unanimous fight hammers'
-              : 'Unanimous 3-0 sides'}
+              : 'Unanimous 3-0 sides'
+            : hammerThin
+              ? `${hammer.gWinRate}% · n=${hammer.totalGames} · ${hammer.gDisplayUnits}U`
+              : `${hammer.gWins}W - ${hammer.gLosses}L · ${hammer.gDisplayUnits}U (n=${hammer.totalGames})`}
         </div>
       </div>
 
@@ -238,22 +251,38 @@ function SyndicatePerformanceTicker({
           <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">→</span>
         </div>
         <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-cyan-300">
-          {consensus.gWinRate === '—' ? '—' : `${consensus.gWinRate}%`}
+          {!consensusHasRecord
+            ? '—'
+            : consensusThin
+              ? `${consensus.gWins}-${consensus.gLosses}`
+              : `${consensus.gWinRate}%`}
         </div>
         <div className="text-[10px] sm:text-[11px] text-cyan-400/80 truncate">
-          {consensus.gWins > 0 || consensus.gLosses > 0
-            ? `${consensus.gWins}W - ${consensus.gLosses}L · ${consensus.gDisplayUnits}U (${consensus.totalGames} Games)`
-            : 'Majority consensus'}
+          {!consensusHasRecord
+            ? 'Majority consensus'
+            : consensusThin
+              ? `${consensus.gWinRate}% · n=${consensus.totalGames} · ${consensus.gDisplayUnits}U`
+              : `${consensus.gWins}W - ${consensus.gLosses}L · ${consensus.gDisplayUnits}U (n=${consensus.totalGames})`}
         </div>
       </div>
 
-      <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur flex flex-col justify-between">
+      <div
+        className={`p-4 sm:p-5 rounded-2xl border backdrop-blur flex flex-col justify-between ${
+          clvReady
+            ? 'border-zinc-800/80 bg-zinc-900/50'
+            : 'border-zinc-800/50 bg-zinc-900/30 opacity-70'
+        }`}
+      >
         <div className="text-[10px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">CLV Beat Rate</div>
-        <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-emerald-400">
-          {stats.clvRate != null ? `${stats.clvRate}%` : '—'}
+        <div
+          className={`my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold ${
+            clvReady ? 'text-emerald-400' : 'text-zinc-600'
+          }`}
+        >
+          {clvReady ? `${stats.clvRate}%` : '—'}
         </div>
         <div className="text-[10px] sm:text-[11px] text-zinc-500">
-          {stats.clvSample > 0
+          {clvReady
             ? `vs locked close · n=${stats.clvSample}`
             : 'Awaiting locked closes'}
         </div>
@@ -615,13 +644,13 @@ export function SyndicateApp() {
                 <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-white leading-tight">
                   Quantitative Sports Execution. <br />
                   <span className="bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">
-                    Audited. Unbiased. Scaled.
+                    Graded. Independent. Transparent.
                   </span>
                 </h1>
                 <p className="text-zinc-300 text-xs sm:text-sm md:text-base leading-relaxed">
-                  The Sharpe Syndicate operates a 4-desk algorithmic architecture integrating real-time
-                  Pinnacle/Circa sharp-weighted consensus, player injury spread valuation (PVAL), EPA per play trench
-                  ratings, and reverse line movement detection.
+                  Model vs current number. Three independent side desks. Tank on totals. Ledger graded ATS
+                  ... CLV when the close is locked. Methodology covers what feeds what (odds poll weighting,
+                  EPA, PVAL, Action splits).
                 </p>
 
                 <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -637,7 +666,7 @@ export function SyndicateApp() {
                     rel="noopener noreferrer"
                     className="px-5 py-3 rounded-xl border border-zinc-700 hover:border-zinc-500 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-100 font-semibold text-sm transition-all text-center"
                   >
-                    Enter Sharpe VIP Syndicate on EdgeTilt →
+                    Join Sharpe VIP Syndicate →
                   </a>
                 </div>
               </div>
@@ -697,10 +726,11 @@ export function SyndicateApp() {
                       ) : null}
                     </div>
                     <p className="text-xs text-zinc-400 leading-relaxed">
-                      Syndicate founder &amp; lead quantitative trader. Synthesizes sharp offshore pricing (Pinnacle/Circa), orchestrates syndicate consensus, and manages bankroll exposure.
+                      Syndicate founder &amp; lead desk. Prices model vs current market, applies injury PVAL when
+                      players move the number, and orchestrates when desks align into a hammer.
                     </p>
                     <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
-                      <div>• Core: +EV Market Pricing</div>
+                      <div>• Core: Model vs market (+EV gap)</div>
                       <div>• Edge: Key Number Clusters (3 &amp; 7)</div>
                       <div>• Signal: Syndicate Hammer 3-0</div>
                     </div>
@@ -725,7 +755,7 @@ export function SyndicateApp() {
                       <span className="px-2.5 py-1 rounded-full text-xs font-mono font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
                         DESK 02
                       </span>
-                      <span className="text-xs font-mono text-zinc-500">TRENCHES &amp; EPA</span>
+                      <span className="text-xs font-mono text-zinc-500">EPA &amp; PVAL</span>
                     </div>
                     <h3 className="text-lg font-bold text-white group-hover:text-blue-300 transition-colors">Rocco</h3>
                     <div className="rounded-xl border border-blue-500/25 bg-blue-500/5 px-3 py-2 font-mono">
@@ -745,7 +775,8 @@ export function SyndicateApp() {
                       ) : null}
                     </div>
                     <p className="text-xs text-zinc-400 leading-relaxed">
-                      Trench &amp; offensive efficiency specialist. Breaks down net EPA per play and injury spread value (PVAL) for NFL pricing.
+                      Efficiency specialist. Prices Off/Def EPA per play and injury spread modifiers (PVAL) into
+                      favorites and key-number spots.
                     </p>
                     <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
                       <div>• Core: Offensive / Defensive EPA</div>
@@ -793,12 +824,13 @@ export function SyndicateApp() {
                       ) : null}
                     </div>
                     <p className="text-xs text-zinc-400 leading-relaxed">
-                      Underdog value and market flow specialist. Tracks handle vs. ticket splits to catch Reverse Line Movement (RLM), sharp book divergence, and red zone TD targets.
+                      Dogs, hooks, and Action bet% vs money% splits. Votes when public chalk and dollar dog disagree,
+                      or when open/current lines show RLM against ticket volume.
                     </p>
                     <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
-                      <div>• Core: Live RLM / Sharp Money %</div>
+                      <div>• Core: Action bet% vs money% / RLM</div>
                       <div>• Boost: +3.5 / +7.5 Golden Hooks</div>
-                      <div>• Specialty: Plus-Money ATD Props</div>
+                      <div>• Specialty: Plus-Money Dogs &amp; ML</div>
                     </div>
                   </div>
                   <div className="pt-3 border-t border-zinc-800/40 flex items-center justify-between text-xs font-bold text-amber-400 group-hover:translate-x-0.5 transition-transform">
@@ -841,12 +873,13 @@ export function SyndicateApp() {
                       ) : null}
                     </div>
                     <p className="text-xs text-zinc-400 leading-relaxed">
-                      Over/Under specialist. Prices pace, weather/wind, and short-week spots into his own totals plays.
+                      Totals-only desk. Model total from off/def efficiency and tempo vs the market number.
+                      Weather and rest are secondary factors when available.
                     </p>
                     <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
-                      <div>• Core: Pace &amp; Seconds Per Play</div>
-                      <div>• Factor: Wind (&gt;14mph) &amp; Cold Weather</div>
-                      <div>• Lane: Totals (O/U)</div>
+                      <div>• Core: Off/Def + tempo model total</div>
+                      <div>• Factor: Weather / rest when available</div>
+                      <div>• Lane: Totals (O/U) only</div>
                     </div>
                   </div>
                   <div className="pt-3 border-t border-zinc-800/40 flex items-center justify-between text-xs font-bold text-purple-400 group-hover:translate-x-0.5 transition-transform">
@@ -864,7 +897,7 @@ export function SyndicateApp() {
                   EXCLUSIVE VIP SYNDICATE ACCESS
                 </div>
                 <h3 className="text-xl sm:text-2xl font-extrabold text-white">
-                  Join the Sharpe VIP Syndicate on EdgeTilt
+                  Join the Sharpe VIP Syndicate
                 </h3>
                 <p className="text-zinc-400 text-xs sm:text-sm max-w-xl">
                   Get full uncut slate cards, early Friday Wong Teaser drops, live halftime pivot recommendations, and real-time live middle & arbitrage alerts.
@@ -1426,14 +1459,14 @@ export function SyndicateApp() {
                   scores and collapses the moment roster churn, officiating variance, or a weather pivot shifts the profile.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  The Sharpe Syndicate runs four independent desks ... each tuned to a narrow, high-signal lane (pure EV modeling,
-                  trench favorites &amp; key numbers, underdog value, situational totals). Every desk publishes its own thesis without
+                  The Sharpe Syndicate runs four independent desks ... each tuned to a narrow, high-signal lane (model vs market,
+                  EPA &amp; key numbers, underdog / Action splits, situational totals). Every desk publishes its own thesis without
                   copying the others. Side hammers and consensus are ATS votes among Scott, Rocco, and Chedda (3-0 Hammer / 2-1 Consensus).
                   Tank publishes totals on his own lane. A house-divided side board stays visible on the slate instead of getting averaged
                   into one buried decimal.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  That structure leaves room for calibrated human intuition. When Scott&apos;s model and Rocco&apos;s trench read
+                  That structure leaves room for calibrated human intuition. When Scott&apos;s model and Rocco&apos;s EPA read
                   diverge by half a point on a -3 hook, the tension stays auditable on the card. Desk leads can apply situational
                   overrides (short-week travel, motivational spots, late injury pivots) without retraining the entire stack.
                 </p>
@@ -1451,14 +1484,13 @@ export function SyndicateApp() {
                   Pure EV Modeling &amp; Injury PVAL
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  Scott&apos;s lane is closing-line EV: synthesize sharp offshore pricing (Pinnacle / Circa), project a fair number,
-                  and only press when the market is wrong enough to clear juice. He owns syndicate consensus orchestration and bankroll
-                  exposure when desks align into a hammer.
+                  Scott&apos;s lane is model vs current market: project a fair number from the odds poll, then only press when the
+                  gap clears juice. When Pinnacle or Circa appear in that poll, those prices get extra weight in consensus pricing
+                  ... that is book weighting, not Circa/Pinnacle handle. He orchestrates when desks align into a hammer.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  Injury edges are modeled as Point Spread Value (PVAL). Market-consensus player values (starting QB in the
-                  multi-point range, elite trench / coverage pieces in fractions of a point) net into a quantifiable spread gap versus
-                  retail boards, so a late scratch moves the fair number in a measurable way.
+                  Injury edges are modeled as Point Spread Value (PVAL). Player values net into a spread modifier versus the
+                  retail board, so a late scratch moves the fair number in a measurable way.
                 </p>
               </div>
 
@@ -1468,15 +1500,15 @@ export function SyndicateApp() {
                   <span className="text-xs font-mono font-bold text-blue-400 uppercase tracking-wider">
                     DESK 02 · ROCCO
                   </span>
-                  <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Trenches</span>
+                  <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">EPA</span>
                 </div>
                 <h3 className="text-lg font-bold text-white">
                   Key Numbers, Hook Tax &amp; Wong Structure
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  Rocco lives in favorites, trench / EPA edges, and NFL key-number reality. Roughly 15% of games land on 3 and ~9% on 7,
-                  so laying -3.5 or -7.5 carries a real hook tax unless trench dominance justifies crossing the number. Buying
-                  +3.5 / +7.5 still matters on his desk when the cushion around those keys is the edge.
+                  Rocco lives in favorites, Off/Def EPA, PVAL modifiers, and NFL key-number reality. Roughly 15% of games land on 3
+                  and ~9% on 7, so laying -3.5 or -7.5 carries a real hook tax unless efficiency dominance justifies crossing the
+                  number. Buying +3.5 / +7.5 still matters on his desk when the cushion around those keys is the edge.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   That same key-number map powers the 6-point Wong teaser engine: favorites teased from -7.5/-8.5 down through
@@ -1497,9 +1529,9 @@ export function SyndicateApp() {
                   Underdog Value &amp; Moneyline Pricing
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  Chedda hunts mispriced dogs and plus-money moneylines ... spots where public overreaction, inflated favorites, or
-                  soft retail juice leaves +EV on the underdog side. He isolates dogs whose true win probability clears the price
-                  on the board.
+                  Chedda hunts mispriced dogs and plus-money moneylines. When Action / VSiN bet% vs money% splits are pasted for
+                  the slate, he can vote on sharp divergence (public chalk vs dollar dog) or RLM when open/current lines disagree
+                  with ticket volume. Synthetic or missing splits do not unlock a money vote.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   On structured teasers, Chedda owns the dog-side Wong windows (+1.5/+2.5 up through +7.5/+8.5) when the total stays
@@ -1519,13 +1551,13 @@ export function SyndicateApp() {
                   Situational Totals &amp; Pace / Environment Edges
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  Tank&apos;s lane is totals-native: pace, play-calling tendencies, weather and wind, short weeks, and other
-                  situational levers that move scoring distribution. He prices those inputs into a standalone over/under thesis.
+                  Tank&apos;s lane is totals-native: an off/def + tempo model total versus the market number. Weather, wind, and
+                  rest can enter as secondary factors when available ... they are not the primary vote driver on every slate.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   Totals also have their own clustering (certain numbers hit more often historically). Tank prices those frequencies
                   into whether an under or over at a soft number is actually +EV, then publishes a standalone totals thesis the
-                  other desks can agree with, fade, or leave alone.
+                  other desks can agree with, fade, or leave alone. Tank does not cast an ATS side vote.
                 </p>
               </div>
             </div>

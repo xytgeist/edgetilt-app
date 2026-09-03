@@ -1,9 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  CREATOR_FAN_TIER_KEYS,
-  formatFanTierLabel,
-} from './fanSubTiers.js'
-import {
   fetchMyCreatorFanMonetization,
   refreshCreatorFanConnectStatus,
   saveCreatorFanMonetization,
@@ -208,37 +204,27 @@ export default function CreatorFanMonetizationPanel({
     }
   }
 
-  const onTierChange = async (nextTierKey) => {
-    const next = String(nextTierKey || '').trim()
-    if (!next || next === tierKey) return
-    setTierKey(next)
-    if (!supabaseClient || enabled) return
-    setError('')
-    try {
-      // Persist immediately so Connect soft-reloads cannot snap price back to default.
-      const row = await saveCreatorFanMonetization(supabaseClient, next, false)
-      applyRow(row, { preserveLocalDraft: true })
-      setTierKey(next)
-      setStatusMessage(`Monthly tier saved · ${formatFanTierLabel(next)}`)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not save monthly tier.')
-      void reload()
-    }
-  }
-
   const onSaveOffer = async () => {
     if (!supabaseClient || busy) return
     setBusy(true)
     setError('')
     setStatusMessage('')
     try {
-      const row = await saveCreatorFanOffer(supabaseClient, {
+      await saveCreatorFanOffer(supabaseClient, {
         offerHeadline,
         offerIntro,
         offerPrivatePosts,
         offerFanChat,
       })
+      // Price is part of the offer save … persist tier while paused (locked when live).
+      let row
+      if (!enabled) {
+        row = await saveCreatorFanMonetization(supabaseClient, tierKey, false)
+      } else {
+        row = await fetchMyCreatorFanMonetization(supabaseClient)
+      }
       applyRow(row)
+      setEditingOffer(false)
       setStatusMessage('Offer saved. Fans will see this before they subscribe.')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not save offer.')
@@ -308,24 +294,6 @@ export default function CreatorFanMonetizationPanel({
             </p>
           ) : null}
 
-          <label className="block">
-            <span className="text-[12px] font-semibold uppercase tracking-wide text-zinc-500">
-              Monthly tier
-            </span>
-            <select
-              value={tierKey}
-              disabled={busy || enabled}
-              onChange={(e) => void onTierChange(e.target.value)}
-              className="mt-1.5 w-full rounded-lg border border-zinc-700/90 bg-zinc-900/80 px-3 py-2.5 text-[14px] text-zinc-100"
-            >
-              {CREATOR_FAN_TIER_KEYS.map((key) => (
-                <option key={key} value={key}>
-                  {formatFanTierLabel(key)}
-                </option>
-              ))}
-            </select>
-          </label>
-
           <div className="rounded-xl border border-zinc-800/90 bg-zinc-900/40 p-3">
             <span className="block text-[14px] font-semibold text-zinc-200">What fans get</span>
             {offerComplete && !editingOffer ? (
@@ -349,11 +317,14 @@ export default function CreatorFanMonetizationPanel({
                     intro={offerIntro}
                     privatePosts={offerPrivatePosts}
                     fanChat={offerFanChat}
+                    tierKey={tierKey}
+                    tierLocked={enabled}
                     disabled={busy}
                     onHeadlineChange={setOfferHeadline}
                     onIntroChange={setOfferIntro}
                     onPrivatePostsChange={setOfferPrivatePosts}
                     onFanChatChange={setOfferFanChat}
+                    onTierChange={setTierKey}
                   />
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">

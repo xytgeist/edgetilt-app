@@ -85,7 +85,9 @@ export function formatTodayPicksResult(data, dryRun = false) {
   const voted = data.totalGames != null ? `${data.totalGames} with desk votes` : null
   const h = data.hammersCount != null ? `${data.hammersCount} hammers` : null
   const c = data.consensusCount != null ? `${data.consensusCount} consensus` : null
-  const stats = [gamesToday, voted, h, c].filter(Boolean).join(' · ')
+  const s = data.splitsCount != null ? `${data.splitsCount} splits` : null
+  const solo = data.solosCount != null ? `${data.solosCount} solos` : null
+  const stats = [gamesToday, voted, h, c, s, solo].filter(Boolean).join(' · ')
 
   if (dryRun || data.dryRun) {
     if (data.previewCaption || data.captionPreview) {

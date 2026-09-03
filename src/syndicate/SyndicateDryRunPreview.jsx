@@ -5,7 +5,8 @@ const TYPE_LABEL = {
   hammer: 'Hammer',
   consensus: 'Consensus',
   split: 'Split',
-  pass: 'Pass',
+  solo: 'Solo',
+  pass_only: 'All pass',
 }
 
 function typeBadgeClass(type) {
@@ -13,6 +14,7 @@ function typeBadgeClass(type) {
   if (t === 'hammer') return 'bg-amber-500/20 text-amber-200 border-amber-500/35'
   if (t === 'consensus') return 'bg-emerald-500/20 text-emerald-200 border-emerald-500/35'
   if (t === 'split') return 'bg-cyan-500/20 text-cyan-200 border-cyan-500/35'
+  if (t === 'solo') return 'bg-violet-500/20 text-violet-200 border-violet-500/35'
   return 'bg-zinc-800 text-zinc-400 border-zinc-700'
 }
 
@@ -48,6 +50,7 @@ export function SyndicateDryRunPreview({ preview, onDismiss }) {
     preview.hammersCount != null ? `${preview.hammersCount} hammers` : null,
     preview.consensusCount != null ? `${preview.consensusCount} consensus` : null,
     preview.splitsCount != null ? `${preview.splitsCount} splits` : null,
+    preview.solosCount != null ? `${preview.solosCount} solos` : null,
   ]
     .filter(Boolean)
     .join(' · ')

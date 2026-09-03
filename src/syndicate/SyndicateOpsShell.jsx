@@ -64,6 +64,7 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
           hammersCount: data?.hammersCount,
           consensusCount: data?.consensusCount,
           splitsCount: data?.splitsCount,
+          solosCount: data?.solosCount,
           error: data?.ok === false ? data.message || data.error : null,
         })
         setToast(data?.previewCaption || data?.captionPreview ? 'Preview ready below.' : formatTodayPicksResult(data, true))

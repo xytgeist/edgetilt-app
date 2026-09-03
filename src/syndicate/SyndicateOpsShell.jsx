@@ -5,6 +5,7 @@ import {
   todayPicksPlan,
   runTodayPicksForSport,
 } from './syndicateTodayPicks.js'
+import { SyndicateDryRunPreview } from './SyndicateDryRunPreview.jsx'
 
 const BotSharpDeskPanel = lazy(() =>
   import('../features/bots/BotSharpDeskPanel.jsx').then((m) => ({ default: m.BotSharpDeskPanel }))
@@ -34,6 +35,7 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
   const [bot, setBot] = useState(null)
   const [selectedSportKey, setSelectedSportKey] = useState('americanfootball_ncaaf')
   const [runDryRun, setRunDryRun] = useState(true)
+  const [dryRunPreview, setDryRunPreview] = useState(null)
 
   const todayPlan = useMemo(() => todayPicksPlan(selectedSportKey), [selectedSportKey])
 
@@ -47,11 +49,30 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
         dryRun: runDryRun,
       })
       if (runErr) {
+        setDryRunPreview(null)
         setToast(runErr.message || 'Run picks failed.')
         return
       }
-      setToast(formatTodayPicksResult(data, runDryRun))
+      if (runDryRun || data?.dryRun) {
+        setDryRunPreview({
+          sportLabel: plan.sportLabel,
+          dayKey: data?.dayKey,
+          previewCaption: data?.previewCaption || data?.captionPreview,
+          gamesSummary: data?.gamesSummary,
+          gamesToday: data?.gamesToday,
+          totalGames: data?.totalGames,
+          hammersCount: data?.hammersCount,
+          consensusCount: data?.consensusCount,
+          splitsCount: data?.splitsCount,
+          error: data?.ok === false ? data.message || data.error : null,
+        })
+        setToast(data?.previewCaption || data?.captionPreview ? 'Preview ready below.' : formatTodayPicksResult(data, true))
+        return
+      }
+      setDryRunPreview(null)
+      setToast(formatTodayPicksResult(data, false))
     } catch (err) {
+      setDryRunPreview(null)
       setToast(err.message || 'Run picks failed.')
     } finally {
       setBusy(false)
@@ -180,6 +201,8 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
           Scorecard, Chedda Action PRO paste, PVALs, EPA / CFB / UFC metrics, monthly board. Bot create / pause / X
           sources stay on EdgeTilt <span className="font-mono text-zinc-400">/?tab=bots</span>.
         </p>
+
+        <SyndicateDryRunPreview preview={dryRunPreview} onDismiss={() => setDryRunPreview(null)} />
 
         {loading ? <p className="text-zinc-400 text-sm">Loading Scott desk…</p> : null}
         {error ? <p className="text-red-400 text-sm mb-3">{error}</p> : null}

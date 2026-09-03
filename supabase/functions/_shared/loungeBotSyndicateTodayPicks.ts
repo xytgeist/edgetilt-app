@@ -6,11 +6,14 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import {
   filterOddsEventsKickoffPtDay,
   ptDateKey,
+  shortDisplayName,
+  formatOddsCommenceTimeShort,
   type OddsEvent,
 } from './loungeBotOddsCaption.ts'
 import { fetchSportOdds } from './loungeBotOddsRun.ts'
 import {
   buildNflAtsSlateCard,
+  formatNflSlateCardCaption,
   publishAndRecordNflSlateCard,
 } from './loungeBotPredictivePick.ts'
 import { loadPersonaWeights } from './loungeBotPersonaAdaptive.ts'
@@ -61,6 +64,15 @@ export type PicksForTodayResult = {
   totalEventsRaw?: number
   message?: string
   captionPreview?: string
+  previewCaption?: string
+  gamesSummary?: Array<{
+    away: string
+    home: string
+    when: string
+    lineDisplay: string
+    badge: string
+    type: string
+  }>
   postId?: string
 }
 
@@ -140,6 +152,7 @@ export async function runPicksForToday(
     }
 
     if (dryRun) {
+      const previewCaption = formatUfcCardCaption(card)
       return {
         ok: true,
         dryRun: true,
@@ -149,7 +162,16 @@ export async function runPicksForToday(
         totalGames: card.totalFights,
         hammersCount: card.hammers.length,
         consensusCount: card.consensus.length,
-        captionPreview: formatUfcCardCaption(card).slice(0, 280),
+        captionPreview: previewCaption,
+        previewCaption,
+        gamesSummary: card.fights.map((f) => ({
+          away: f.fighterA,
+          home: f.fighterB,
+          when: f.commenceTime || '',
+          lineDisplay: f.consensusPick.pickName,
+          badge: f.consensusPick.badgeText,
+          type: f.consensusPick.type,
+        })),
       }
     }
 
@@ -222,6 +244,7 @@ export async function runPicksForToday(
   }
 
   if (dryRun) {
+    const previewCaption = formatNflSlateCardCaption(card)
     return {
       ok: true,
       dryRun: true,
@@ -233,6 +256,16 @@ export async function runPicksForToday(
       consensusCount: card.consensus.length,
       splitsCount: card.splits.length,
       totalEventsRaw: rawEvents.length,
+      previewCaption,
+      captionPreview: previewCaption,
+      gamesSummary: card.games.map((g) => ({
+        away: shortDisplayName(g.awayTeam),
+        home: shortDisplayName(g.homeTeam),
+        when: formatOddsCommenceTimeShort(g.commenceTime),
+        lineDisplay: g.consensusPick.lineDisplay,
+        badge: g.consensusPick.badgeText,
+        type: g.consensusPick.type,
+      })),
     }
   }
 

@@ -58,8 +58,10 @@ export function formatTodayPicksResult(data, dryRun = false) {
   const stats = [gamesToday, voted, h, c].filter(Boolean).join(' · ')
 
   if (dryRun || data.dryRun) {
-    const preview = data.captionPreview ? ` ${String(data.captionPreview).slice(0, 180)}` : ''
-    return `[Dry run] ${stats || 'Ready.'}${preview}`
+    if (data.previewCaption || data.captionPreview) {
+      return `[Dry run] ${stats || 'Preview ready.'}`
+    }
+    return `[Dry run] ${stats || 'Ready.'}`
   }
 
   if (data.ok === false) return data.message || data.error || 'Run failed.'

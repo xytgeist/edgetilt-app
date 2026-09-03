@@ -807,7 +807,9 @@ npm run syndicate:sync-nfl-metrics:production   # Ryan explicit only
 
 Sagarin is scraped from the public Predictor board (`scripts/lib/cfbSagarinPredictor.mjs`). Phase 2 candidates: FEI, TeamRankings, market-implied, Powers/Makinen.
 
-Desk mapping: **Scott** = consensus vs market (primary side) · **Rocco** = SP+/EPA short-fav confirm/fade (no trench truth yet) · **Chedda** = PASS unless dog+hook or dog+model (synthetic splits do not vote) · **Tank** = tempo/totals first-pass. Hammer = Scott + independent second reason.
+Desk mapping: **Scott** = consensus vs market (primary side) · **Rocco** = SP+/EPA short-fav confirm/fade (no trench truth yet) · **Chedda** = PASS unless dog+hook / dog+model / pasted money · **Tank** = tempo/totals first-pass. Hammer = Scott + independent second reason.
+
+**ATS slate auto-publish (pg_cron):** `cfb_slate_card` Wed **2pm PT** (Thu/Fri CFB) + Fri **12pm PT** (Sat lock); `nfl_slate_card` Fri **1pm PT** (Sun lock). Migration `20260902230000`. Portal still on-demand. Weekday `predictive_pick` Tue/Thu is +EV spots, not the ATS card.
 
 **Internal weekly SOP (honest inventory + publish rules):** [`docs/syndicate-cfb-weekly-runbook.md`](./syndicate-cfb-weekly-runbook.md). Keep blend weights out of public UI.
 

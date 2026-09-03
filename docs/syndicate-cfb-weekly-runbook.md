@@ -140,6 +140,22 @@ Do **not** reshuffle Phase 1 blend weights while operating this loop.
 
 ## 4. Weekly machine (operate what we have)
 
+### Publish calendar (auto crons … Grok / house lock windows)
+
+VIP uncut cards lock when injury + splits are real enough … **not** Tue vibes, **not** Sat/Sun morning first drop.
+
+| Package | Cron (PT) | Action | Covers |
+|---------|-----------|--------|--------|
+| CFB midweek | **Wed 2:00 PM** | `cfb_slate_card` | Thu / Fri night CFB still upcoming |
+| CFB Saturday lock | **Fri 12:00 PM** | `cfb_slate_card` | Main Sat card (+ near cluster) |
+| NFL Sunday lock | **Fri 1:00 PM** | `nfl_slate_card` | Core Sunday card after Fri injury reports |
+| Weekday EV spot | **Tue & Thu 11:30 AM** | `predictive_pick` | +EV solo/mini card … **not** the ATS slate |
+| Weekly recap | **Tue 7:30 AM** | `weekly_syndicate_recap` | Ledger post-mortem |
+
+**Ops before Fri lock:** paste Action PRO splits, refresh side modifiers, sync CFB power Mon–Tue.  
+**Sat / Sun AM:** portal-only tweaks for late scratches / inactives … no auto full-card republish.  
+**Window math:** next kickoff within 21d, then games within **5 days** of that kickoff (not “Saturday-only”).
+
 ### Mon–Tue … freeze the map
 
 ```bash
@@ -171,6 +187,8 @@ Run desk scoring **independently**. Preferred publish set:
 - One sentence reason tied to **that desk’s inputs** (not an essay)
 
 ### Fri … the lock
+
+Auto publish: **CFB Fri 12:00 PM PT**, **NFL Fri 1:00 PM PT** (`cfb_slate_card` / `nfl_slate_card`). Paste Chedda splits before those times.
 
 **Locked definitions (clarified):**
 

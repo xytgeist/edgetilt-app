@@ -91,9 +91,9 @@ Deno.serve(async (req) => {
     const alertKindRaw = String(body?.alertKind || '').trim().toLowerCase()
     const alertKind = alertKindRaw || null
 
-    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'syndicate_monthly_scoreboard', 'calibrate_persona_models', 'ufc_slate_card'].includes(action)) {
+    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'cfb_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'syndicate_monthly_scoreboard', 'calibrate_persona_models', 'ufc_slate_card'].includes(action)) {
       return adminOpsJson(400, {
-        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, predictive_pick, nfl_slate_card, nfl_wong_teaser, nfl_primetime_spotlight, nfl_halftime_pivot, nfl_anytime_td, nfl_live_middle_arb, weekly_syndicate_recap, syndicate_monthly_scoreboard, calibrate_persona_models, or ufc_slate_card.',
+        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, predictive_pick, nfl_slate_card, cfb_slate_card, nfl_wong_teaser, nfl_primetime_spotlight, nfl_halftime_pivot, nfl_anytime_td, nfl_live_middle_arb, weekly_syndicate_recap, syndicate_monthly_scoreboard, calibrate_persona_models, or ufc_slate_card.',
       })
     }
 
@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
       return adminOpsJson(200, { ok: true, action: 'calibrate_persona_models', ...calibResult })
     }
 
-    if (action === 'nfl_slate_card') {
+    if (action === 'nfl_slate_card' || action === 'cfb_slate_card') {
       const {
         buildNflAtsSlateCard,
         publishAndRecordNflSlateCard,
@@ -178,7 +178,10 @@ Deno.serve(async (req) => {
         FOOTBALL_SLATE_MAX_LOOKAHEAD_DAYS,
       } = await import('../_shared/loungeBotOddsCaption.ts')
 
-      let sportKey = String(body?.sportKey || 'americanfootball_nfl').trim()
+      // cfb_slate_card always CFB (cron-safe). nfl_slate_card defaults NFL; portal may pass sportKey.
+      let sportKey = action === 'cfb_slate_card'
+        ? 'americanfootball_ncaaf'
+        : String(body?.sportKey || 'americanfootball_nfl').trim()
       let oddsData: any
       try {
         oddsData = await fetchSportOdds(sportKey, ['us'], ['spreads'])
@@ -245,6 +248,8 @@ Deno.serve(async (req) => {
         return adminOpsJson(200, {
           ok: true,
           dryRun: true,
+          action,
+          sportKey,
           totalGames: card.games.length,
           hammersCount: card.hammers.length,
           consensusCount: card.consensus.length,
@@ -265,7 +270,8 @@ Deno.serve(async (req) => {
 
       return adminOpsJson(200, {
         ok: true,
-        action: 'nfl_slate_card',
+        action,
+        sportKey,
         totalGames: card.games.length,
         hammersCount: card.hammers.length,
         consensusCount: card.consensus.length,

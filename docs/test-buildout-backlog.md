@@ -1069,6 +1069,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-09-02: **Syndicate slate lock crons (Windows):** New Edge action `cfb_slate_card` (always NCAAF). Replaced Sat/Sun 8:30 AM PT full-card crons (CFB job was miswired to NFL) with Wed 2pm PT CFB midweek, Fri 12pm PT CFB lock, Fri 1pm PT NFL lock. Migration `20260902230000`. Redeploy `lounge-odds-poll`.
+
 - 2026-09-02: **Chedda multi-screenshot + clipboard paste (Windows):** Splits paste accepts multi-file drop/choose, Ctrl+V / Paste clipboard on the drop zone, merges NFL+CFB into one review (per-row sport). Append pastes until Clear/Save.
 
 - 2026-09-02: **Action PRO screenshot → Chedda (Windows):** Edge `syndicate-splits-vision` (OpenAI vision) + portal drop zone. Paste full board screenshot, review rows, bulk save to `syndicate_betting_splits`. Deploy function test+prod.

@@ -69,20 +69,22 @@ export default function CreatorFanMonetizationPanel({
 
   /**
    * @param {Record<string, unknown>} row
-   * @param {{ preserveOfferDraft?: boolean }} [opts]
-   *   preserveOfferDraft: keep in-progress offer fields (Connect refresh / background reload).
+   * @param {{ preserveLocalDraft?: boolean }} [opts]
+   *   preserveLocalDraft: keep in-progress offer + tier (Connect refresh / background reload).
    */
   const applyRow = useCallback((row, opts = {}) => {
     if (!row) return
     onMonetizationRowAppliedRef.current?.(row)
-    if (row.fan_tier_key) setTierKey(String(row.fan_tier_key))
+    if (!opts.preserveLocalDraft && row.fan_tier_key) {
+      setTierKey(String(row.fan_tier_key))
+    }
     setEnabled(Boolean(row.enabled))
     setConnectComplete(Boolean(row.connect_onboarding_complete))
     setStripeConnectAccountId(
       typeof row.stripe_connect_account_id === 'string' ? row.stripe_connect_account_id : '',
     )
     setHandle(typeof row.handle === 'string' ? row.handle : '')
-    if (!opts.preserveOfferDraft) {
+    if (!opts.preserveLocalDraft) {
       setOfferHeadline(typeof row.offer_headline === 'string' ? row.offer_headline : '')
       setOfferIntro(typeof row.offer_intro === 'string' ? row.offer_intro : '')
       setOfferPrivatePosts(typeof row.offer_private_posts === 'string' ? row.offer_private_posts : '')
@@ -90,7 +92,7 @@ export default function CreatorFanMonetizationPanel({
     }
     const complete = isCreatorFanOfferComplete(row)
     setOfferComplete(complete)
-    if (complete && !opts.preserveOfferDraft) setEditingOffer(false)
+    if (complete && !opts.preserveLocalDraft) setEditingOffer(false)
     setFanRoomId(row.fan_room_id ? String(row.fan_room_id) : null)
     setFanRoomTitle(typeof row.fan_room_title === 'string' ? row.fan_room_title : '')
     setFanRoomDescription(typeof row.fan_room_description === 'string' ? row.fan_room_description : '')
@@ -99,7 +101,7 @@ export default function CreatorFanMonetizationPanel({
   }, [])
 
   /**
-   * @param {{ preserveOfferDraft?: boolean }} [opts]
+   * @param {{ preserveLocalDraft?: boolean }} [opts]
    */
   const reload = useCallback(async (opts = {}) => {
     if (!supabaseClient) {
@@ -134,7 +136,7 @@ export default function CreatorFanMonetizationPanel({
         if (!cancelled) {
           setStatusMessage('Stripe Connect updated. Finish your offer, then go live.')
           clearConnectQueryParams()
-          await reloadRef.current({ preserveOfferDraft: true })
+          await reloadRef.current({ preserveLocalDraft: true })
         }
       } catch (e) {
         if (!cancelled) {
@@ -149,7 +151,7 @@ export default function CreatorFanMonetizationPanel({
     }
   }, [supabaseClient])
 
-  // Soft poll Connect until complete … never wipe in-progress offer copy.
+  // Soft poll Connect until complete … never wipe in-progress offer / tier.
   useEffect(() => {
     if (!supabaseClient || loading) return
     if (connectComplete || !stripeConnectAccountId.trim()) return
@@ -157,7 +159,7 @@ export default function CreatorFanMonetizationPanel({
     ;(async () => {
       try {
         await refreshCreatorFanConnectStatus(supabaseClient)
-        if (!cancelled) await reloadRef.current({ preserveOfferDraft: true })
+        if (!cancelled) await reloadRef.current({ preserveLocalDraft: true })
       } catch {
         // ignore — user can tap Refresh status
       }
@@ -197,12 +199,30 @@ export default function CreatorFanMonetizationPanel({
     setStatusMessage('')
     try {
       await refreshCreatorFanConnectStatus(supabaseClient)
-      await reload({ preserveOfferDraft: true })
+      await reload({ preserveLocalDraft: true })
       setStatusMessage('Connect status refreshed.')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Connect refresh failed.')
     } finally {
       setBusy(false)
+    }
+  }
+
+  const onTierChange = async (nextTierKey) => {
+    const next = String(nextTierKey || '').trim()
+    if (!next || next === tierKey) return
+    setTierKey(next)
+    if (!supabaseClient || enabled) return
+    setError('')
+    try {
+      // Persist immediately so Connect soft-reloads cannot snap price back to default.
+      const row = await saveCreatorFanMonetization(supabaseClient, next, false)
+      applyRow(row, { preserveLocalDraft: true })
+      setTierKey(next)
+      setStatusMessage(`Monthly tier saved · ${formatFanTierLabel(next)}`)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not save monthly tier.')
+      void reload()
     }
   }
 
@@ -295,7 +315,7 @@ export default function CreatorFanMonetizationPanel({
             <select
               value={tierKey}
               disabled={busy || enabled}
-              onChange={(e) => setTierKey(e.target.value)}
+              onChange={(e) => void onTierChange(e.target.value)}
               className="mt-1.5 w-full rounded-lg border border-zinc-700/90 bg-zinc-900/80 px-3 py-2.5 text-[14px] text-zinc-100"
             >
               {CREATOR_FAN_TIER_KEYS.map((key) => (
@@ -374,7 +394,7 @@ export default function CreatorFanMonetizationPanel({
                 initialAvatarUrl={fanRoomAvatarUrl}
                 compact
                 onSaved={(row) => {
-                  if (row) applyRow(row, { preserveOfferDraft: true })
+                  if (row) applyRow(row, { preserveLocalDraft: true })
                 }}
               />
             </div>

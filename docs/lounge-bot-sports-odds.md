@@ -819,7 +819,7 @@ npm run syndicate:sync-cfb-power:test
 npm run syndicate:sync-cfb-power:production   # Ryan explicit only
 ```
 
-**Cron:** [`.github/workflows/syndicate-football-metrics-sync.yml`](../.github/workflows/syndicate-football-metrics-sync.yml) … Tuesdays **14:00 UTC** syncs **test**. Production only via `workflow_dispatch` with **`sync_production=true`** (Ryan explicit).
+**Cron:** [`.github/workflows/syndicate-football-metrics-sync.yml`](../.github/workflows/syndicate-football-metrics-sync.yml) … Tuesdays **14:00 UTC** syncs **test + production**. Manual dispatch can set `sync_production=false` to skip prod. Edge Monitor heartbeat **`syndicate_football_metrics_sync_production`** (migration **`20260903210000`**).
 
 **Model honesty:** [`loungeBotTeamMetrics.ts`](../supabase/functions/_shared/loungeBotTeamMetrics.ts) `calculateTrenchEpaMatchup` is **EPA-only** (trench spread impact hard-zero) until PFF/B2B. Redeploy **`lounge-odds-poll`** after pulling that change.
 

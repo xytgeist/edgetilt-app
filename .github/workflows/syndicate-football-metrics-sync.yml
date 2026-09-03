@@ -1,12 +1,11 @@
-# Weekly NFL EPA (nflverse) + CFB Elo/SRS (CollegeFootballData) + UFC Stats fighter metrics sync.
+# Weekly NFL EPA (nflverse) + CFB power board + UFC Stats fighter metrics sync.
 #
-# Schedule: Tuesdays 14:00 UTC (~7:00am PT) → test Supabase only.
-# Production upserts require workflow_dispatch with sync_production=true
-# (Ryan explicit … matches AGENTS prod ingest guard).
+# Schedule: Tuesdays 14:00 UTC (~7:00am PT) → test AND production.
+# Manual: workflow_dispatch; set sync_production=false to skip prod.
 #
 # Required GitHub repo secrets:
 #   SUPABASE_URL_TEST / SUPABASE_SERVICE_ROLE_KEY_TEST
-#   SUPABASE_URL_PRODUCTION / SUPABASE_SERVICE_ROLE_KEY_PRODUCTION (for prod dispatch)
+#   SUPABASE_URL_PRODUCTION / SUPABASE_SERVICE_ROLE_KEY_PRODUCTION
 #   CFBD_API_KEY  (https://collegefootballdata.com/key)
 
 name: Syndicate football metrics sync
@@ -17,9 +16,9 @@ on:
   workflow_dispatch:
     inputs:
       sync_production:
-        description: 'Also upsert production Supabase (Ryan explicit)'
+        description: 'Also upsert production Supabase (default true)'
         type: boolean
-        default: false
+        default: true
 
 concurrency:
   group: syndicate-football-metrics-sync
@@ -62,7 +61,7 @@ jobs:
         run: npm run syndicate:sync-ufc-metrics:test
 
   sync-production:
-    if: ${{ github.event_name == 'workflow_dispatch' && inputs.sync_production == true }}
+    if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.sync_production == true) }}
     needs: sync-test
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -97,3 +96,27 @@ jobs:
           SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
           SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
         run: npm run syndicate:sync-ufc-metrics:production
+
+      - name: Record Edge Monitor heartbeat (ok)
+        if: success()
+        env:
+          SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
+          SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
+        run: >
+          node scripts/record-ops-job-heartbeat.mjs
+          --target=production
+          --job-id=syndicate_football_metrics_sync_production
+          --status=ok
+          --message=NFL+CFB+UFC metrics sync ok
+
+      - name: Record Edge Monitor heartbeat (failed)
+        if: failure()
+        env:
+          SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
+          SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
+        run: >
+          node scripts/record-ops-job-heartbeat.mjs
+          --target=production
+          --job-id=syndicate_football_metrics_sync_production
+          --status=failed
+          --message=NFL+CFB+UFC metrics sync failed

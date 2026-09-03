@@ -165,6 +165,9 @@ Hot Windows files (first cuts): `pwaNotificationPrompt.js`, `PwaInstallBanner.js
 
 - [x] **Apply migrations `20260705020000`–`20260705040000` on test + prod** (manual `supabase db query -f`; `db push` blocked by test history drift)
 - [x] **Apply migration `20260705050000` on test + prod** (manual `supabase db query -f`; `db push` blocked by test history drift)
+- [x] **Syndicate GHA metrics sync → prod on Tuesday schedule + Edge Monitor heartbeat** (`syndicate_football_metrics_sync_production`, migration **`20260903210000`**, 2026-09-02)
+- [ ] **Syndicate collection failure monitoring (rest):** registry missing slate/grade/VIP/specialty crons + table freshness / Odds API last error banners. Spec note 2026-09-02.
+- [ ] **Chedda Action PRO paste nag emails:** day before NFL Fri 1pm PT / CFB Fri 12pm PT lock, email Ryan every **10 minutes** until `syndicate_betting_splits` has paste for that slate (or explicit skip). Stop when screenshots submitted. Spec note 2026-09-02.
 - [ ] **Create Market Edge bot** (`market-edge` / `@marketedge`) via **`/?tab=bots`** wizard or **`supabase/seed/lounge_market_edge_bot.sql`** + **`lounge_bot_seed_market_news_sources()`**
 - [ ] **Create Crypto Edge bot** (`crypto-edge` / `@cryptoedge`) via **`/?tab=bots`** wizard (**Crypto Edge** preset) or **`supabase/seed/lounge_crypto_edge_bot.sql`** + **`lounge_bot_seed_crypto_news_sources()`**
 - [x] **Deploy `lounge-news-poll` + `lounge-bot-admin` on test + prod** (requires **`FINNHUB_API_KEY`**)
@@ -2826,6 +2829,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-02:** **Syndicate metrics GHA now syncs production every Tuesday** (was test-only; prod was manual dispatch). Edge Monitor external job + heartbeat `syndicate_football_metrics_sync_production` (`20260903210000`).
 - **2026-09-02:** **UFC fighter metrics live sync:** `npm run syndicate:sync-ufc-metrics:{test,production}` scrapes **ufcstats.com** (PoW session + a–z index) into `ufc_fighter_metrics`; skips `is_custom_override`. Migrations **`20260903010000`/`0001`** add `ufcstats_url` + `source_synced_at`. Wired into weekly **Syndicate football metrics sync** GHA (test cron; prod on dispatch). Test roster synced 38/38.
 - **2026-09-02:** **sharpesyndicate.com ATS labels:** public site now matches engine ... **3-0 Hammers** / **2-1 Consensus** (Scott/Rocco/Chedda sides only); Tank card/methodology = **totals only** (not `% ATS`). UFC ledger fallback still **4-0 / 3-1** fight hammers. No model change.
 - **2026-09-01:** **Audited Ledger scope:** historical only ... **`SyndicateApp`** excludes picks whose `commence_time` is still in the future (+ 90m buffer). `backfill-ufc-picks.mjs` omits upcoming cards entirely (no pending future rows). Migration **`20260901100000`** strips wrongly pre-graded future backfill rows.

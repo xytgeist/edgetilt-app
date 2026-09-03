@@ -233,10 +233,12 @@ Treat desks at different confidence. Do not pretend Chedda has Circa handle.
 ### Close gaps later (priority … not this build sprint)
 
 1. **Chedda splits** … real ticket/handle (Action / paid steam). Until then keep his bucket weight low.
-2. **Scott juice / live CLV** … PASS when the number already moved to the model.
-3. **Rocco trenches** … SP+ line units, CFBD havoc/stuff, returning/gutted OL flags so he can disagree with raw power.
-4. **Tank situation** … weather/rest only when it moves the total (wind, short week).
-5. **FEI** … audit column later, not a driver, not first purchase.
+2. **Chedda Action PRO nag emails (planned):** day before Fri lock (NFL 1pm PT / CFB 12pm PT), email Ryan every **10 minutes** until paste is in `syndicate_betting_splits` (or skipped). Stop when screenshots submitted.
+3. **Syndicate collection failure monitoring (planned):** Edge Monitor registry for slate/grade/VIP crons + Odds API / table freshness. **Done 2026-09-02:** Tue GHA syncs **prod + test** + heartbeat `syndicate_football_metrics_sync_production`.
+4. **Scott juice / live CLV** … PASS when the number already moved to the model.
+5. **Rocco trenches** … SP+ line units, CFBD havoc/stuff, returning/gutted OL flags so he can disagree with raw power.
+6. **Tank situation** … weather/rest only when it moves the total (wind, short week).
+7. **FEI** … audit column later, not a driver, not first purchase.
 
 When in doubt this week: **run the slate**, grade it, stop feature-building.
 ### Sun–Mon … grade

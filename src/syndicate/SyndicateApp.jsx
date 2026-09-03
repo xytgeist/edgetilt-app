@@ -174,28 +174,25 @@ function SyndicatePerformanceTicker({
   const consensusLabel = isUfc ? '🎯 3-1 Consensus' : '🎯 2-1 Consensus'
   const unitsFoot =
     sport === 'all'
-      ? 'Sum of 4 desk ledgers'
+      ? 'Sum of desk books (overlapping)'
       : sport === 'nfl'
-        ? 'Sum of NFL desk ledgers'
+        ? 'NFL desk books (overlapping)'
         : sport === 'cfb'
-          ? 'Sum of CFB desk ledgers'
+          ? 'CFB desk books (overlapping)'
           : sport === 'ufc'
-            ? 'Sum of UFC desk ledgers'
-            : 'Sum of desk ledgers'
+            ? 'UFC desk books (overlapping)'
+            : 'Desk books (overlapping)'
 
   const unitsColor = stats.netUnits >= 0 ? 'text-emerald-400' : 'text-rose-400'
   const hammer = stats.hammer
   const consensus = stats.consensus
-  // Thin samples: lead with W-L + n, not a billboard %.
-  const THIN_N = 25
-  const hammerThin = hammer.totalGames > 0 && hammer.totalGames < THIN_N
-  const consensusThin = consensus.totalGames > 0 && consensus.totalGames < THIN_N
+  // Thin samples: still show n in the subtitle; headline is always W-L (not a billboard %).
   const hammerHasRecord = hammer.gWins > 0 || hammer.gLosses > 0
   const consensusHasRecord = consensus.gWins > 0 || consensus.gLosses > 0
   const clvReady = stats.clvRate != null && stats.clvSample > 0
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-3.5">
+    <div className={`grid grid-cols-2 sm:grid-cols-3 ${clvReady ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-3 sm:gap-3.5`}>
       <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur flex flex-col justify-between">
         <div className="text-[10px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">Net Units</div>
         <div className={`my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold ${unitsColor}`}>
@@ -207,12 +204,14 @@ function SyndicatePerformanceTicker({
       <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur flex flex-col justify-between">
         <div className="text-[10px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">{recordLabel}</div>
         <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-white">
-          {stats.winRate === '—' ? '—' : `${stats.winRate}%`}
+          {stats.wins > 0 || stats.losses > 0
+            ? `${stats.wins}-${stats.losses}${stats.pushes > 0 ? `-${stats.pushes}` : ''}`
+            : '—'}
         </div>
         <div className="text-[10px] sm:text-[11px] text-zinc-500 truncate">
-          {stats.wins > 0 || stats.losses > 0
-            ? `${stats.wins}W - ${stats.losses}L - ${stats.pushes}P`
-            : 'No graded plays yet'}
+          {stats.winRate === '—'
+            ? 'No graded plays yet'
+            : `${stats.winRate}% ATS · desk W-L`}
         </div>
       </div>
 
@@ -227,18 +226,14 @@ function SyndicatePerformanceTicker({
         <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-amber-300">
           {!hammerHasRecord
             ? '—'
-            : hammerThin
-              ? `${hammer.gWins}-${hammer.gLosses}`
-              : `${hammer.gWinRate}%`}
+            : `${hammer.gWins}-${hammer.gLosses}`}
         </div>
         <div className="text-[10px] sm:text-[11px] text-amber-400/80 truncate">
           {!hammerHasRecord
             ? isUfc
               ? 'Unanimous fight hammers'
               : 'Unanimous 3-0 sides'
-            : hammerThin
-              ? `${hammer.gWinRate}% · n=${hammer.totalGames} · ${hammer.gDisplayUnits}U`
-              : `${hammer.gWins}W - ${hammer.gLosses}L · ${hammer.gDisplayUnits}U (n=${hammer.totalGames})`}
+            : `${hammer.gWinRate}% · n=${hammer.totalGames} · ${hammer.gDisplayUnits}U`}
         </div>
       </div>
 
@@ -253,40 +248,26 @@ function SyndicatePerformanceTicker({
         <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-cyan-300">
           {!consensusHasRecord
             ? '—'
-            : consensusThin
-              ? `${consensus.gWins}-${consensus.gLosses}`
-              : `${consensus.gWinRate}%`}
+            : `${consensus.gWins}-${consensus.gLosses}`}
         </div>
         <div className="text-[10px] sm:text-[11px] text-cyan-400/80 truncate">
           {!consensusHasRecord
             ? 'Majority consensus'
-            : consensusThin
-              ? `${consensus.gWinRate}% · n=${consensus.totalGames} · ${consensus.gDisplayUnits}U`
-              : `${consensus.gWins}W - ${consensus.gLosses}L · ${consensus.gDisplayUnits}U (n=${consensus.totalGames})`}
+            : `${consensus.gWinRate}% · n=${consensus.totalGames} · ${consensus.gDisplayUnits}U`}
         </div>
       </div>
 
-      <div
-        className={`p-4 sm:p-5 rounded-2xl border backdrop-blur flex flex-col justify-between ${
-          clvReady
-            ? 'border-zinc-800/80 bg-zinc-900/50'
-            : 'border-zinc-800/50 bg-zinc-900/30 opacity-70'
-        }`}
-      >
-        <div className="text-[10px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">CLV Beat Rate</div>
-        <div
-          className={`my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold ${
-            clvReady ? 'text-emerald-400' : 'text-zinc-600'
-          }`}
-        >
-          {clvReady ? `${stats.clvRate}%` : '—'}
+      {clvReady ? (
+        <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur flex flex-col justify-between">
+          <div className="text-[10px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider">CLV Beat Rate</div>
+          <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-emerald-400">
+            {`${stats.clvRate}%`}
+          </div>
+          <div className="text-[10px] sm:text-[11px] text-zinc-500">
+            {`vs locked close · n=${stats.clvSample}`}
+          </div>
         </div>
-        <div className="text-[10px] sm:text-[11px] text-zinc-500">
-          {clvReady
-            ? `vs locked close · n=${stats.clvSample}`
-            : 'Awaiting locked closes'}
-        </div>
-      </div>
+      ) : null}
     </div>
   )
 }
@@ -648,9 +629,9 @@ export function SyndicateApp() {
                   </span>
                 </h1>
                 <p className="text-zinc-300 text-xs sm:text-sm md:text-base leading-relaxed">
-                  Model vs current number. Three independent side desks. Tank on totals. Ledger graded ATS
-                  ... CLV when the close is locked. Methodology covers what feeds what (odds poll weighting,
-                  EPA, PVAL, Action splits).
+                  Model vs current number. Three independent side desks. Tank on totals. Ledger graded ATS.
+                  Methodology covers what feeds what (odds poll weighting, EPA, PVAL, Action splits). CLV
+                  appears on the ticker when locked closes exist.
                 </p>
 
                 <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
@@ -874,12 +855,11 @@ export function SyndicateApp() {
                     </div>
                     <p className="text-xs text-zinc-400 leading-relaxed">
                       Totals-only desk. Model total from off/def efficiency and tempo vs the market number.
-                      Weather and rest are secondary factors when available.
                     </p>
                     <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
                       <div>• Core: Off/Def + tempo model total</div>
-                      <div>• Factor: Weather / rest when available</div>
                       <div>• Lane: Totals (O/U) only</div>
+                      <div>• Note: Weather/rest = methodology footnotes</div>
                     </div>
                   </div>
                   <div className="pt-3 border-t border-zinc-800/40 flex items-center justify-between text-xs font-bold text-purple-400 group-hover:translate-x-0.5 transition-transform">
@@ -1018,7 +998,7 @@ export function SyndicateApp() {
               <div className="py-20 text-center border border-dashed border-zinc-800 rounded-2xl p-8 space-y-3">
                 <div className="text-zinc-300 font-bold">No picks logged for this filter yet.</div>
                 <div className="text-zinc-500 text-xs max-w-md mx-auto">
-                  New slate cards, solo spot plays, and primetime spotlights are posted live during active game windows.
+                  New slate cards, solo spot plays, and primetime spotlight leans are posted live during active game windows.
                 </div>
               </div>
             ) : (
@@ -1484,9 +1464,11 @@ export function SyndicateApp() {
                   Pure EV Modeling &amp; Injury PVAL
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  Scott&apos;s lane is model vs current market: project a fair number from the odds poll, then only press when the
-                  gap clears juice. When Pinnacle or Circa appear in that poll, those prices get extra weight in consensus pricing
-                  ... that is book weighting, not Circa/Pinnacle handle. He orchestrates when desks align into a hammer.
+                  Scott&apos;s lane is model vs current market after PVAL: press only when the gap clears
+                  <strong> 2.5 points</strong>, or <strong>1.5</strong> when the pick line is on true keys
+                  (3 / 7 or the half onto those: 2.5, 3.5, 6.5, 7.5). Otherwise he PASSes. When Pinnacle or Circa
+                  appear in the odds poll, those prices get extra weight in consensus pricing ... book weighting,
+                  not Circa/Pinnacle handle. Synthetic betting splits never enter his score.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   Injury edges are modeled as Point Spread Value (PVAL). Player values net into a spread modifier versus the
@@ -1506,9 +1488,9 @@ export function SyndicateApp() {
                   Key Numbers, Hook Tax &amp; Wong Structure
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  Rocco lives in favorites, Off/Def EPA, PVAL modifiers, and NFL key-number reality. Roughly 15% of games land on 3
-                  and ~9% on 7, so laying -3.5 or -7.5 carries a real hook tax unless efficiency dominance justifies crossing the
-                  number. Buying +3.5 / +7.5 still matters on his desk when the cushion around those keys is the edge.
+                  Rocco lives in short favorites, hook tax, and hurtSide / PVAL fades. He PASSes when none of those
+                  fire. Live PBWR / trench charting is <em>not</em> in the vote yet (hard-zero until ingest) ... do not
+                  read &quot;trench&quot; language as a live feed. Short-fav alone can vote but cannot unlock a hammer by itself.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   That same key-number map powers the 6-point Wong teaser engine: favorites teased from -7.5/-8.5 down through
@@ -1529,9 +1511,9 @@ export function SyndicateApp() {
                   Underdog Value &amp; Moneyline Pricing
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  Chedda hunts mispriced dogs and plus-money moneylines. When Action / VSiN bet% vs money% splits are pasted for
-                  the slate, he can vote on sharp divergence (public chalk vs dollar dog) or RLM when open/current lines disagree
-                  with ticket volume. Synthetic or missing splits do not unlock a money vote.
+                  Chedda hunts mispriced dogs and plus-money moneylines. Votes unlock on dog+golden hook, dog+PVAL/injury
+                  model value, or pasted Action / VSiN bet% vs money% (RLM). Raw EPA alone does not unlock a vote.
+                  Synthetic or missing splits do not unlock a money vote. Quiet Chedda is intended SOP when paste is late.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   On structured teasers, Chedda owns the dog-side Wong windows (+1.5/+2.5 up through +7.5/+8.5) when the total stays
@@ -1551,13 +1533,24 @@ export function SyndicateApp() {
                   Situational Totals &amp; Pace / Environment Edges
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  Tank&apos;s lane is totals-native: an off/def + tempo model total versus the market number. Weather, wind, and
-                  rest can enter as secondary factors when available ... they are not the primary vote driver on every slate.
+                  Tank&apos;s lane is totals-native: an off/def + tempo model total versus the market number.
+                  Weather, wind, and rest are methodology footnotes for now ... not first-class Friday vote drivers.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   Totals also have their own clustering (certain numbers hit more often historically). Tank prices those frequencies
                   into whether an under or over at a soft number is actually +EV, then publishes a standalone totals thesis the
                   other desks can agree with, fade, or leave alone. Tank does not cast an ATS side vote.
+                </p>
+              </div>
+
+              <div className="p-6 rounded-2xl border border-zinc-800 bg-zinc-900/50 space-y-3">
+                <div className="text-xs font-mono font-bold text-emerald-400 uppercase tracking-wider">
+                  CLV · CLOSING LINE
+                </div>
+                <h3 className="text-lg font-bold text-white">When CLV shows up</h3>
+                <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
+                  Closing-line value appears on the performance ticker only after picks have a locked market-file close
+                  (`clv_pts`). Until then the tile stays hidden ... ledger ATS still grades from final scores.
                 </p>
               </div>
             </div>

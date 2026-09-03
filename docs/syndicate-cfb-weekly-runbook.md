@@ -129,9 +129,9 @@ Do **not** reshuffle Phase 1 blend weights while operating this loop.
 
 | Desk | Question | Inputs they are allowed to lean on | Play when… | Pass when… |
 |------|----------|--------------------------------------|------------|------------|
-| **Scott** | Is the number wrong? | Model spread vs market, juice, line move (when we have it), CLV history | Gap ≥ ~2.5 (or ~1.5–2.5 into a key number) and juice isn’t toxic | Tiny gap, already steamed to model, or no market file |
-| **Rocco** | Is the better team a short fav I want? | Power gap, SP+ off/def mismatch, short fav band (~−1 to −7.5), chalk traps | Model + strength agree on chalk **and** market isn’t a pure logo trap | Short fav is brand-only, or sharp money / model hate the chalk |
-| **Chedda** | Where are the points / the money? | Dogs, hooks, ticket vs handle when available, model gap favoring dog | Dog + (hook and/or sharp lean) and model doesn’t hate it | Blind dog with no hook/split/model support |
+| **Scott** | Is the number wrong? | Model spread vs market (+ PVAL), true key numbers | Gap ≥ **2.5** after PVAL, or ≥ **1.5** only when pick line is on 3/7 (or half onto those). Else **PASS**. No juice/fav/synthetic lean. | Gap closed, no model, or soft non-key spot |
+| **Rocco** | Is the better team a short fav I want? | Short fav band, hook tax, hurtSide, **pasted** chalk-trap | Any of those features fire → vote; else **PASS**. Short-fav alone can vote but **cannot** unlock Hammer by itself. | No feature; brand-only chalk with nothing else |
+| **Chedda** | Where are the points / the money? | Dogs, golden hooks, pasted ticket vs handle / RLM, dog+PVAL | Dog + (hook **or** pasted money **or** PVAL injury model). Raw EPA alone does **not** unlock. | Blind dog; synthetic splits; missing paste |
 | **Tank** | Does situation change the **total** (or rarely the side)? | Tempo pair, off/def for totals, rest/travel/weather when real | Totals lean with supporting tempo/weather/rest | Side-only vibes with no situational meat |
 
 **Hard rule:** a desk must be able to vote **NO PLAY** (or opposite side) using its own inputs even when Scott’s gap flag is green.
@@ -201,11 +201,11 @@ Auto publish: **CFB Fri 12:00 PM PT**, **NFL Fri 1:00 PM PT** (`cfb_slate_card` 
 
 | Label | Meaning |
 |-------|---------|
-| **Hammer** | Scott gap **plus** an independent second reason: **Rocco strength** (short fav / hurtSide / chalk trap) **or** **Chedda** real dog+hook / dog+model. Alignment alone is not enough. |
-| **Consensus** | **2–1**, or unanimous soft align where the second desk is only echoing the same gap. Publish if we’d bet it. |
-| **Divided** | **1–1.** Pass or small look. Do **not** force a fake united play. |
+| **Hammer** | All three side desks **active** (Chedda not PASS) **and** Scott agrees **and** (Rocco strength = hurtSide / hook-tax / pasted chalk-trap / CFB power **or** Chedda real feature). Short-fav alone ≠ Rocco strength. Scott+Rocco with Chedda PASS = **2-0 consensus max**, never Hammer. |
+| **Consensus** | Soft unanimous / 2-1 / 2-0 lean among active side desks without full hammer gate. Publish if we’d bet it. |
+| **House divided** | Thin or 1–1 split active board. Pass or small look. Do **not** force a fake united play. |
 
-**Not a Hammer:** Scott + Rocco both reading the same power gap, and Chedda echoing because the model likes it. That is Consensus (or Scott-only), not a Hammer.
+**Not a Hammer:** Scott + Rocco both reading the same short-fav band with Chedda silent, or desks echoing the same gap. That is Consensus (or thin board), not a Hammer.
 
 Publish **Hammers + Consensus only** on the public/VIP slate unless Ryan overrides.
 
@@ -223,10 +223,10 @@ Treat desks at different confidence. Do not pretend Chedda has Circa handle.
 
 | Desk | Role this week | Rule |
 |------|----------------|------|
-| **Scott** | Primary side vote | Full loop he has (model, current market, injury mod, market file). Weeks 0–2: prefer key number **or** gap ~**3+** (early priors soft). |
-| **Rocco** | Confirm / fade only | Short fav + power gap + hurtSide + hooks. **Capped** … no “trench truth.” Can confirm Scott or fade logo chalk. Cannot be the sole second Hammer reason if he’s only re-reading Scott’s gap. |
-| **Chedda** | Dog + hook / dog + model / **pasted money** | **PASS** unless a real feature fires. Paste Action/VSiN ticket%+handle% in portal before lock. Quiet Chedda > invented steam. Synthetic splits do **not** count. |
-| **Tank** | First-pass totals | Off/def + tempo vs number (3.5 / key-total). Ignore weather/rest until those modules matter. Few totals > many weak ones. |
+| **Scott** | Gap filter | PASS unless \|model−market\| ≥ 2.5 after PVAL (1.5 only on true 3/7 keys). No synthetic split score. |
+| **Rocco** | Confirm / fade / PASS | Short fav + hurtSide + hooks + pasted chalk-trap. Short-fav alone ≠ hammer strength. No trench truth. |
+| **Chedda** | Dog + hook / dog + PVAL / **pasted money** | **PASS** unless a real feature fires. Raw EPA alone does not unlock. Quiet Chedda > invented steam. |
+| **Tank** | First-pass totals | Off/def + tempo vs number (3.5 / key-total). Weather/rest footnotes only. Formula frozen this PR. |
 
 **Product honesty:** VIP can show all four votes. Public copy should say model-vs-number / short favorite / dog+hook … not fake steam. Scoreboard decides if Chedda is signal before we buy him better data.
 

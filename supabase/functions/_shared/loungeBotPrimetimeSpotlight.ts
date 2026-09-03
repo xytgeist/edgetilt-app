@@ -1,11 +1,11 @@
 /**
  * NFL Primetime Solo Spotlights Engine (TNF / SNF / MNF).
- * Produces deep-dive 4-man syndicate breakdown posts for standalone primetime games:
- * 1. Scott (The Model & Net EPA)
- * 2. Rocco (Trenches, PBWR/PRWR & Pressure Rates)
- * 3. Tank (Venue Climate, Weather & Totals Pace)
- * 4. Chedda (Sharp Money Divergence & Live Dog Value)
- * 5. Official Syndicate Consensus / Primary Recommendation.
+ * Spotlight lean path … not the Friday house slate (`buildNflAtsSlateCard`).
+ * 1. Scott (model / Net EPA)
+ * 2. Rocco (short-fav / hooks … no live PBWR/trench claim)
+ * 3. Tank (totals / situational)
+ * 4. Chedda (dogs / splits when present)
+ * 5. Spotlight lean recommendation (do not label as house hammer).
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import type { OddsEvent } from './loungeBotOddsCaption.ts'
@@ -217,7 +217,7 @@ export async function findPrimetimeGameCandidate(
     ? `Net EPA/play favors ${shortDisplayName(scottTeam)} by +${Math.abs(trenchEpa.netEpaDeltaHome).toFixed(3)} pts/play (Model spread: ${trenchEpa.epaSpreadImpactHome > 0 ? shortDisplayName(homeTeam) : shortDisplayName(awayTeam)} ${Math.abs(trenchEpa.epaSpreadImpactHome).toFixed(1)}).${scottKeyTag}`
     : `Model rates ${shortDisplayName(scottTeam)} with an efficiency edge in high-leverage passing situations.${scottKeyTag}`
 
-  // 2. Rocco (Trenches & Pressure Rates)
+  // 2. Rocco (short-fav / hooks … trench impact hard-zero until ingest)
   const trenchFavorsHome = (trenchEpa?.netTrenchSpreadImpactHome ?? 0) > 0
   const roccoSide = trenchFavorsHome ? 'home' : 'away'
   const roccoTeam = roccoSide === 'home' ? homeTeam : awayTeam
@@ -225,9 +225,9 @@ export async function findPrimetimeGameCandidate(
   const roccoKeyTaxTag = (roccoSide === 'home' ? homeKeyAnalysis?.isHookTax : awayKeyAnalysis?.isHookTax)
     ? ' [Hook Tax Alert]'
     : ''
-  const roccoBullet = trenchEpa?.isTrenchMismatch
-    ? `Trench Mismatch: ${shortDisplayName(roccoTeam)} holds a decisive edge in Pass Block Win Rate vs opponent pressure front.${roccoKeyTaxTag}`
-    : `Offensive line protection grades higher in short-yardage and goal-to-go situations.${roccoKeyTaxTag}`
+  const roccoBullet = (roccoSide === 'home' ? homeKeyAnalysis?.isHookTax : awayKeyAnalysis?.isHookTax)
+    ? `Short-fav / hook lane on ${shortDisplayName(roccoTeam)}.${roccoKeyTaxTag}`
+    : `Situational short-yardage lean on ${shortDisplayName(roccoTeam)} (spotlight path … not Friday house vote).${roccoKeyTaxTag}`
 
   // 3. Tank (Climate, Pace & Totals)
   const isUnderLean = (weather?.isHighWind || weather?.isExtremeCold) || (totalPoint >= 47.0 && (trenchEpa?.awayNetEpa ?? 0) < 0)
@@ -289,9 +289,9 @@ export async function findPrimetimeGameCandidate(
       pickedName: consensusTeam,
       lineDisplay: consensusLineDisp,
       marketKey: 'spreads',
-      confidenceBadge: isHammer ? '🔥 SYNDICATE HAMMER' : '🎯 SYNDICATE CONSENSUS',
-      consensusTitle: `${shortDisplayName(consensusTeam)} (${isHammer ? '3-0 Trench/Model Backed' : 'Syndicate Majority'})`,
-      summaryReason: trenchEpa?.summaryLine || splits.summaryLine || 'High-value situational alignment across all desks.',
+      confidenceBadge: isHammer ? '🔦 SPOTLIGHT LEAN (3-0)' : '🔦 SPOTLIGHT LEAN',
+      consensusTitle: `${shortDisplayName(consensusTeam)} (${isHammer ? '3-desk spotlight lean' : 'spotlight majority'})`,
+      summaryReason: trenchEpa?.summaryLine || splits.summaryLine || 'Primetime spotlight lean … not the Friday house card.',
     },
     personaLeans: {
       Scott: {
@@ -316,7 +316,7 @@ export async function findPrimetimeGameCandidate(
       },
       Rocco: {
         pickerName: 'Rocco',
-        roleTitle: 'Vegas Spreads & Trenches',
+        roleTitle: 'Short-fav / Hooks',
         pickTeamOrSide: roccoTeam,
         lineDisplay: `${roccoLineDisp} (${formatAmericanOdds(roccoSide === 'home' ? homeSpreadPrice : awaySpreadPrice)})`,
         bulletRationale: roccoBullet,
@@ -356,7 +356,7 @@ export async function findPrimetimeGameCandidate(
       },
       Chedda: {
         pickerName: 'Chedda',
-        roleTitle: 'Dogs & Sharp Money',
+        roleTitle: 'Dogs & Action Splits',
         pickTeamOrSide: cheddaTeam,
         lineDisplay: `${cheddaLineDisp} (${formatAmericanOdds(cheddaTeam === homeTeam ? homeSpreadPrice : awaySpreadPrice)})`,
         bulletRationale: cheddaBullet,
@@ -388,13 +388,13 @@ export function formatPrimetimeSpotlightCaption(spotlight: PrimetimeSpotlightGam
   const awayShort = shortDisplayName(spotlight.awayTeam)
 
   return [
-    `🏈 **${spotlight.primetimeLabel} TEASE**`,
+    `🏈 **${spotlight.primetimeLabel} SPOTLIGHT LEAN**`,
     `**${awayShort} @ ${homeShort}** · ${kickoff}`,
     '',
-    `🎯 **Lean:** **${spotlight.consensusPick.lineDisplay}**`,
+    `🔦 **Lean:** **${spotlight.consensusPick.lineDisplay}**`,
     `*${spotlight.consensusPick.confidenceBadge} · ${spotlight.consensusPick.summaryReason}*`,
     '',
-    `💬 *Full 4-desk card + live / halftime pivots in Sharpe VIP Syndicate.*`,
+    `💬 *Spotlight path (not Friday house card). Full desk notes in Sharpe VIP.*`,
   ].join('\n')
 }
 
@@ -402,8 +402,8 @@ export function formatPrimetimeVipDeepDive(spotlight: PrimetimeSpotlightGame): s
   const homeShort = shortDisplayName(spotlight.homeTeam)
   const awayShort = shortDisplayName(spotlight.awayTeam)
   const lines = [
-    `🎯 **Sharpe VIP Primetime Deep Dive · ${awayShort} @ ${homeShort}**`,
-    `Official Syndicate Pick: **${spotlight.consensusPick.lineDisplay}**`,
+    `🔦 **Sharpe VIP Primetime Spotlight · ${awayShort} @ ${homeShort}**`,
+    `Spotlight lean (not Friday house card): **${spotlight.consensusPick.lineDisplay}**`,
     '',
     `• Scott: ${spotlight.personaLeans.Scott.lineDisplay}`,
     `  └ *${spotlight.personaLeans.Scott.bulletRationale}*`,

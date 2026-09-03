@@ -3,7 +3,7 @@
  *
  * Real sources only:
  * - Manual rows in syndicate_side_modifiers (CFB-first, any sport override)
- * - NFL/CFB Rundown hard-outs × known PVAL (no invented values for unmatched players)
+ * - NFL/CFB Rundown hard-outs × curated PVAL or v0 position-band Typical priors
  *
  * Applied AFTER the consensus board, BEFORE Scott's model-vs-market value flag.
  * Does not change Tank totals unless a future totals_impact is added.
@@ -190,7 +190,7 @@ async function loadManualModifiers(
 
 /**
  * Resolve per-event side modifiers for a slate.
- * Manual DB rows win. Otherwise try Rundown × PVAL (only when real PVAL matches exist).
+ * Manual DB rows win. Otherwise try Rundown × PVAL (curated or v0 band prior).
  */
 export async function resolveSideModifiersForSlate(
   admin: SupabaseClient,

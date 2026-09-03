@@ -166,7 +166,7 @@ export function formatSoloPredictiveCaption(
   const when = formatOddsCommenceTimeShort(pick.commenceTime)
   const matchup = `${away} vs ${home} (${when})`
 
-  const lines = [`🎯 ${formatColoredPickerName(pickerName)}'s Pick\n\n${line}\n${matchup}`]
+  const lines = [`🎯 ${formatColoredPickerName(pickerName, `${pickerName}'s`)} Pick\n\n${line}\n${matchup}`]
   if (weather && !weather.isDome && (weather.isHighWind || weather.isExtremeCold || weather.isPrecipAlert)) {
     lines.push(`\n📍 ${weather.summaryLine}`)
   }
@@ -549,7 +549,7 @@ export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): 
 
   const cardLabel = picker === 'Tank' ? 'Totals Card' : 'ATS Card'
   const lines: string[] = [
-    `## ${icon} ${formatColoredPickerName(picker)}'s Full ${cardLabel}`,
+    `## ${icon} ${formatColoredPickerName(picker, `${picker}'s`)} Full ${cardLabel}`,
     specialty,
     '',
   ]

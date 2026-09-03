@@ -133,6 +133,14 @@ function computePerformanceStats(pickList) {
   const winRate = wins + losses > 0 ? ((wins / (wins + losses)) * 100).toFixed(1) : '—'
   const displayUnits =
     gradedPicks.length > 0 ? (netUnits >= 0 ? `+${netUnits.toFixed(2)}` : netUnits.toFixed(2)) : '—'
+  const avgUnitsPerPick =
+    gradedPicks.length > 0 ? netUnits / gradedPicks.length : null
+  const displayAvgUnits =
+    avgUnitsPerPick == null
+      ? null
+      : avgUnitsPerPick >= 0
+        ? `+${avgUnitsPerPick.toFixed(2)}`
+        : avgUnitsPerPick.toFixed(2)
 
   // Real CLV only ... synthetic backfill clv_beat without clv_pts does not count.
   const withClv = gradedPicks.filter((p) => typeof p.metadata?.clv_pts === 'number')
@@ -155,6 +163,7 @@ function computePerformanceStats(pickList) {
     netUnits,
     winRate,
     displayUnits,
+    displayAvgUnits,
     clvRate,
     clvSample,
     hammer: groupConsensusGames(hammerPicks),
@@ -198,7 +207,14 @@ function SyndicatePerformanceTicker({
         <div className={`my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold ${unitsColor}`}>
           {stats.displayUnits} <span className="text-xs sm:text-sm font-normal text-zinc-400">U</span>
         </div>
-        <div className="text-[10px] sm:text-[11px] text-zinc-500">{unitsFoot}</div>
+        <div className="text-[10px] sm:text-[11px] text-zinc-500">
+          {stats.displayAvgUnits != null
+            ? `avg ${stats.displayAvgUnits}U/pick · n=${stats.gradedCount}`
+            : unitsFoot}
+        </div>
+        {stats.displayAvgUnits != null ? (
+          <div className="text-[10px] sm:text-[11px] text-zinc-600 mt-0.5">{unitsFoot}</div>
+        ) : null}
       </div>
 
       <div className="p-4 sm:p-5 rounded-2xl border border-zinc-800/80 bg-zinc-900/50 backdrop-blur flex flex-col justify-between">

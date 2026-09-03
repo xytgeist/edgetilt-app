@@ -645,9 +645,9 @@ export function SyndicateApp() {
                   </span>
                 </h1>
                 <p className="text-zinc-300 text-xs sm:text-sm md:text-base leading-relaxed max-w-2xl">
-                  The Sharpe Syndicate operates a 4-desk architecture across NFL, college football, and UFC
-                  ... independent models, a public graded ledger, and human intuition that isn&apos;t buried
-                  under a single black-box number.
+                  The Sharpe Syndicate operates a 4-desk architecture built on heavy algorithmic and quantitative
+                  analysis ... with a dose of human intuition ... and a public graded ledger so every call stays
+                  auditable.
                 </p>
 
                 <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">

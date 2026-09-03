@@ -1,8 +1,8 @@
 /** Max characters per lounge post caption / feed comment body (free tier). */
 export const LOUNGE_CAPTION_MAX = 500
 
-/** Subscriber, bot, and staff lounge post/comment cap. */
-export const LOUNGE_CAPTION_SUBSCRIBER_MAX = 2000
+/** Subscriber, bot, and staff lounge post/comment cap (Edge Pro). */
+export const LOUNGE_CAPTION_SUBSCRIBER_MAX = 10000
 
 /** Max continuation parts after the root post (root + 24 = 25 posts total). */
 export const LOUNGE_POST_THREAD_MAX_PARTS = 25

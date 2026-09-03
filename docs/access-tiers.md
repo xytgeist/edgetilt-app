@@ -142,7 +142,7 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 **Lounge**
 
 - **Subscriber** badge on posts (any paid plan).
-- **2000 characters** per post and comment (free tier: **500**). Enforced in app + DB (`lounge_feed_caption_max_for_user`).
+- **10000 characters** per post and comment (free tier: **500**). Enforced in app + DB (`lounge_feed_caption_max_for_user`).
 
 ### 5.3 Slots Edge Pro (`slots-edge`)
 
@@ -159,7 +159,7 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 **Lounge**
 
 - **Subscriber** badge on posts.
-- **2000 characters** per post and comment (same as Starter).
+- **10000 characters** per post and comment (same as Starter).
 
 **Add-ons**
 

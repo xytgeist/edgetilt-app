@@ -301,7 +301,7 @@ export async function publishScottExamplePosts(
       details.push({ postKind: spec.postKind, label: spec.label, error: result.error || 'publish failed' })
       await admin.from('lounge_bot_publish_log').insert({
         bot_user_id: bot.user_id,
-        caption: spec.caption.slice(0, 2000),
+        caption: spec.caption.slice(0, 10000),
         status: 'failed',
         post_kind: spec.postKind,
         dedupe_key: dedupeKey,
@@ -317,7 +317,7 @@ export async function publishScottExamplePosts(
     await admin.from('lounge_bot_publish_log').insert({
       bot_user_id: bot.user_id,
       post_id: result.postId,
-      caption: spec.caption.slice(0, 2000),
+      caption: spec.caption.slice(0, 10000),
       status: 'published',
       post_kind: spec.postKind,
       dedupe_key: dedupeKey,

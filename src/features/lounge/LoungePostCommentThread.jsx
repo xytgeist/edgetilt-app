@@ -99,7 +99,7 @@ export function LoungeCommentCard({
   commentEditFieldRef = null,
   onCommentEditPasteImageFiles = null,
   commentEditVideoPostBlocked = false,
-  /** Same tiered cap as Lounge posts (500 free / 2000 sub+staff). */
+  /** Same tiered cap as Lounge posts (500 free / 10000 sub+staff). */
   captionMax = LOUNGE_CAPTION_MAX,
   mediaFeedVariant: mediaFeedVariantProp = 'commentInline',
   resolveMediaFeedVariant,
@@ -602,7 +602,7 @@ export default function LoungePostCommentThread({
   commentEditFieldRef = null,
   onCommentEditPasteImageFiles = null,
   commentEditVideoPostBlocked = false,
-  /** Same tiered cap as Lounge posts (500 free / 2000 sub+staff). */
+  /** Same tiered cap as Lounge posts (500 free / 10000 sub+staff). */
   captionMax = LOUNGE_CAPTION_MAX,
   /** Comment ids the signed-in viewer just posted - shown at top of their list only (chronological for others). */
   viewerPinnedCommentIds = [],

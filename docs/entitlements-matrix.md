@@ -54,7 +54,7 @@ Legend: **Y** = yes · **N** = no · **Own** = only on content you author · **G
 
 | Capability | Free | Edge Pro | Slots Edge* | Creator (monetized) | Staff |
 | --- | --- | --- | --- | --- | --- |
-| Post / thread (500 chars) | Y | Y | Y (2000 chars) | Y | Y |
+| Post / thread (500 chars) | Y | Y (10000 chars) | Y (10000 chars) | Y | Y |
 | Mark post **creator fan-only** | N | N | N | **Y** | Y |
 | **Replies on my posts** limited to Edge Pro subscribers only | N | **Y** (author setting) | N | N | Y |
 | Non‑subscribers may view/like/repost but **not reply** on gated threads | N | **Y** (when setting on) | N | N | Y |

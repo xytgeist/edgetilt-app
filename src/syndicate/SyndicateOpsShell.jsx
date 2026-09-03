@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { fetchBotPortalSnapshot } from '../features/bots/botPortalApi.js'
 import {
   formatTodayPicksResult,
@@ -30,8 +30,14 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
   const [selectedSportKey, setSelectedSportKey] = useState('americanfootball_ncaaf')
   const [runDryRun, setRunDryRun] = useState(true)
   const [dryRunPreview, setDryRunPreview] = useState(null)
+  const previewAnchorRef = useRef(null)
 
   const todayPlan = useMemo(() => todayPicksPlan(selectedSportKey), [selectedSportKey])
+
+  useEffect(() => {
+    if (!dryRunPreview) return
+    previewAnchorRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+  }, [dryRunPreview])
 
   async function handleRunPicksForToday() {
     if (!bot || busy) return
@@ -52,10 +58,17 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
         const skipNote = data?.skipped
           ? String(data.note || data.skipped)
           : null
+        const publicCaption = String(data?.previewCaption || data?.captionPreview || '').trim()
+        const vipCaption = String(data?.vipPreviewCaption || '').trim()
+        const threadParts = Array.isArray(data?.subscriberThreadParts)
+          ? data.subscriberThreadParts
+          : null
         setDryRunPreview({
           sportLabel: plan.sportLabel,
           dayKey: data?.dayKey,
-          previewCaption: data?.previewCaption || data?.captionPreview,
+          previewCaption: publicCaption || null,
+          vipPreviewCaption: vipCaption || null,
+          subscriberThreadParts: threadParts,
           gamesSummary: data?.gamesSummary,
           gamesToday: data?.gamesToday,
           totalGames: data?.totalGames,
@@ -71,8 +84,8 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
               : skipNote,
         })
         setToast(
-          data?.previewCaption || data?.captionPreview
-            ? 'Preview ready below.'
+          publicCaption || vipCaption || (threadParts && threadParts.length)
+            ? 'Preview ready below (Public + Subscriber tabs).'
             : formatTodayPicksResult(data, true),
         )
         return
@@ -210,7 +223,9 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
           sources stay on EdgeTilt <span className="font-mono text-zinc-400">/?tab=bots</span>.
         </p>
 
-        <SyndicateDryRunPreview preview={dryRunPreview} onDismiss={() => setDryRunPreview(null)} />
+        <div ref={previewAnchorRef}>
+          <SyndicateDryRunPreview preview={dryRunPreview} onDismiss={() => setDryRunPreview(null)} />
+        </div>
 
         {loading ? <p className="text-zinc-400 text-sm">Loading Scott desk…</p> : null}
         {error ? <p className="text-red-400 text-sm mb-3">{error}</p> : null}

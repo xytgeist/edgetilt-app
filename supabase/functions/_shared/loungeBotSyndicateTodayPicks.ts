@@ -14,7 +14,10 @@ import { fetchSportOdds } from './loungeBotOddsRun.ts'
 import {
   buildNflAtsSlateCard,
   formatNflSlateCardCaption,
+  formatNflSlatePrivateRootCaption,
+  formatPickerSlateList,
   publishAndRecordNflSlateCard,
+  SHARP_PICKERS,
 } from './loungeBotPredictivePick.ts'
 import { loadPersonaWeights } from './loungeBotPersonaAdaptive.ts'
 import { loadDbTeamMetricsMap } from './loungeBotTeamMetrics.ts'
@@ -63,6 +66,8 @@ export type PicksForTodayResult = {
   message?: string
   captionPreview?: string
   previewCaption?: string
+  vipPreviewCaption?: string | null
+  subscriberThreadParts?: Array<{ label: string; body: string }>
   gamesSummary?: Array<{
     away: string
     home: string
@@ -153,7 +158,9 @@ export async function runPicksForToday(
     }
 
     if (dryRun) {
+      const { formatUfcVipCardCaption } = await import('./loungeBotUfcPredictive.ts')
       const previewCaption = formatUfcCardCaption(card)
+      const vipPreviewCaption = formatUfcVipCardCaption(card)
       return {
         ok: true,
         dryRun: true,
@@ -165,6 +172,7 @@ export async function runPicksForToday(
         consensusCount: card.consensus.length,
         captionPreview: previewCaption,
         previewCaption,
+        vipPreviewCaption,
         gamesSummary: card.fights.map((f) => ({
           away: f.fighterA,
           home: f.fighterB,
@@ -246,6 +254,11 @@ export async function runPicksForToday(
 
   if (dryRun) {
     const previewCaption = formatNflSlateCardCaption(card)
+    const vipPreviewCaption = formatNflSlatePrivateRootCaption(card)
+    const subscriberThreadParts = SHARP_PICKERS.map((p) => ({
+      label: `${p} full card`,
+      body: formatPickerSlateList(card, p),
+    }))
     return {
       ok: true,
       dryRun: true,
@@ -262,6 +275,8 @@ export async function runPicksForToday(
       totalEventsRaw: rawEvents.length,
       previewCaption,
       captionPreview: previewCaption,
+      vipPreviewCaption,
+      subscriberThreadParts,
       gamesSummary: card.games.map((g) => ({
         away: sportTeamDisplayName(g.awayTeam, g.sportKey || card.sportKey),
         home: sportTeamDisplayName(g.homeTeam, g.sportKey || card.sportKey),

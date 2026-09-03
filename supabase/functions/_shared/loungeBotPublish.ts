@@ -17,8 +17,13 @@ export type BotPublishInput = {
   imageUrls?: string[]
   /** When true, skip URL + preview unless unfurl succeeds (news bots). Default false. */
   requirePreviewToAttachLink?: boolean
-  /** When true, post is hidden from anon / non-subscribers on the lounge feed. */
+  /** When true, post is hidden from anon / non-subscribers on the lounge feed (platform Edge Pro). */
   subscriberOnly?: boolean
+  /**
+   * When true, creator fan-sub only (community_feed_posts.creator_fan_only).
+   * Requires the bot's creator_monetization_profiles to be live (Connect + go live).
+   */
+  creatorFanOnly?: boolean
 }
 
 export type BotPublishResult = {
@@ -89,6 +94,7 @@ export async function publishLoungeBotPost(
     game_slug: null,
     category_pills: pills,
     subscriber_only: input.subscriberOnly === true,
+    creator_fan_only: input.creatorFanOnly === true,
     image_urls: imageUrls,
     media_url: imageUrls[0] ?? null,
     // Text/image bot posts are live immediately (NULL is reserved for staged Stream uploads).

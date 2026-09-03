@@ -11,8 +11,9 @@ import {
   type OddsPick,
 } from './loungeBotOddsCaption.ts'
 import { formatColoredPickerName } from './loungeBotPickerColors.ts'
-import { publishLoungeBotPost } from './loungeBotPublish.ts'
+import { publishLoungeBotPost, publishLoungeBotPostWithThread } from './loungeBotPublish.ts'
 import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
+import { resolveSlatePublisher } from './loungeBotSyndicateIdentity.ts'
 import { fetchGameWeather, type GameWeatherSummary } from './loungeBotWeather.ts'
 import { oddsSportKeyToRundownSportId } from './loungeBotRundownContext.ts'
 import { loadPersonaWeights } from './loungeBotPersonaAdaptive.ts'
@@ -360,13 +361,36 @@ function formatTankItem(g: SlateGamePick): string {
   return `· ${formatGoldPick(g.pickerPicks.Tank.lineDisplay)} (${formatMatchupWhen(g)})`
 }
 
-/** Public tease footer … game count when the slate has 2+ games, else generic VIP CTA. */
+/** Public tease footer … game count when the slate has 2+ games, else generic fan-sub CTA. */
 export function formatSlateVipCtaLine(card: NflSlateCard): string {
   const gameCount = Array.isArray(card.games) ? card.games.length : 0
   if (gameCount >= 2) {
-    return `📊 Full ${gameCount}-game desk grid + live in-game edges in **Sharpe VIP Syndicate**`
+    return `📊 Full ${gameCount}-game desk grid for **Sharpe Syndicate** subscribers`
   }
-  return '📊 Uncut 4-desk cards + live in-game edges in **Sharpe VIP Syndicate**'
+  return '📊 Uncut 4-desk cards for **Sharpe Syndicate** subscribers'
+}
+
+/** Fan-only Lounge root … full desk lists go in thread parts (caption max). */
+export function formatNflSlatePrivateRootCaption(card: NflSlateCard): string {
+  const title = card.cardTitle || '🏈 Sharpe Syndicate · Full Uncut'
+  const weekLine = formatSlateWeekLine(card.games)
+  const n = Array.isArray(card.games) ? card.games.length : 0
+  const hammers = card.hammers?.length || 0
+  const consensus = card.consensus?.length || 0
+  const house = card.majoritySplits?.length || 0
+  const split = card.splits?.length || 0
+  const solo = card.solos?.length || 0
+  const lines: string[] = [`# ${title}`]
+  if (weekLine) lines.push(weekLine)
+  lines.push('')
+  lines.push(`**Subscribers only** · ${n}-game full desk grid`)
+  lines.push('')
+  lines.push(
+    `· Hammers: ${hammers} · Consensus: ${consensus} · House Divided: ${house} · Split: ${split} · Solo: ${solo}`,
+  )
+  lines.push('')
+  lines.push('Full Scott / Rocco / Chedda / Tank cards in this thread 👇')
+  return lines.join('\n').trim()
 }
 
 /**
@@ -1172,7 +1196,11 @@ export function buildNflAtsSlateCard(
 }
 
 /**
- * Publish a full NFL / CFB Slate Card to the Lounge feed and record all 4xN picks in lounge_bot_picks.
+ * Publish NFL / CFB slate:
+ * - Public Lounge teaser (capped) as Syndicate when that bot exists
+ * - Fan-only Lounge full card (thread of desk lists) when monetization is live
+ * - Plain-text full desks into the publisher's fan chat (Syndicate room, never Signal VIP)
+ * Ledger rows attach to the private post when available, else the public teaser.
  */
 export async function publishAndRecordNflSlateCard(
   admin: SupabaseClient,
@@ -1181,23 +1209,61 @@ export async function publishAndRecordNflSlateCard(
     card: NflSlateCard
     categoryPills?: string[]
   },
-): Promise<{ success: boolean; postId?: string; totalPicksRecorded: number; error?: string }> {
+): Promise<{
+  success: boolean
+  postId?: string
+  publicPostId?: string
+  privatePostId?: string | null
+  publisherMode?: string
+  totalPicksRecorded: number
+  error?: string
+}> {
   if (!input.card || !input.card.games.length) {
     return { success: false, totalPicksRecorded: 0, error: 'Empty slate card.' }
   }
 
-  const caption = formatNflSlateCardCaption(input.card)
+  const publisher = await resolveSlatePublisher(admin, input.botUserId)
+  const botUserId = publisher.botUserId
   const categoryPills = input.categoryPills || ['sports']
+  const publicCaption = formatNflSlateCardCaption(input.card)
 
-  const postRes = await publishLoungeBotPost(admin, {
-    botUserId: input.botUserId,
-    caption,
+  const publicRes = await publishLoungeBotPost(admin, {
+    botUserId,
+    caption: publicCaption,
     categoryPills,
   })
 
-  if (postRes.error || !postRes.postId) {
-    return { success: false, totalPicksRecorded: 0, error: postRes.error || 'Failed to publish post' }
+  if (publicRes.error || !publicRes.postId) {
+    return {
+      success: false,
+      totalPicksRecorded: 0,
+      publisherMode: publisher.mode,
+      error: publicRes.error || 'Failed to publish public teaser',
+    }
   }
+
+  let privatePostId: string | null = null
+  let privatePublishNote: string | null = null
+  if (publisher.mode === 'syndicate') {
+    const deskThread = SHARP_PICKERS.map((p) => ({
+      body: formatPickerSlateList(input.card, p),
+    }))
+    const privateRes = await publishLoungeBotPostWithThread(admin, {
+      botUserId,
+      caption: formatNflSlatePrivateRootCaption(input.card),
+      categoryPills,
+      creatorFanOnly: true,
+      threadParts: deskThread,
+    })
+    if (privateRes.error || !privateRes.postId) {
+      privatePublishNote = privateRes.error || 'Fan-only full card failed'
+      console.error('Syndicate fan-only slate failed:', privatePublishNote)
+    } else {
+      privatePostId = privateRes.postId
+    }
+  }
+
+  const ledgerPostId = privatePostId || publicRes.postId
 
   const rowsToInsert: any[] = []
   for (const g of input.card.games) {
@@ -1208,9 +1274,9 @@ export async function publishAndRecordNflSlateCard(
       // Side/totals PASS → cancelled ledger row (Pass bucket sample size).
       if ((pName === 'Scott' || pName === 'Rocco' || pName === 'Chedda' || pName === 'Tank') && pPick.side === 'pass') {
         rowsToInsert.push({
-          bot_user_id: input.botUserId,
+          bot_user_id: botUserId,
           picker_name: pName,
-          post_id: postRes.postId,
+          post_id: ledgerPostId,
           event_id: g.eventId,
           sport_key: g.sportKey,
           home_team: g.homeTeam,
@@ -1254,9 +1320,9 @@ export async function publishAndRecordNflSlateCard(
 
       const isTankTotals = pName === 'Tank' && (pPick.side === 'over' || pPick.side === 'under')
       rowsToInsert.push({
-        bot_user_id: input.botUserId,
+        bot_user_id: botUserId,
         picker_name: pName,
-        post_id: postRes.postId,
+        post_id: ledgerPostId,
         event_id: g.eventId,
         sport_key: g.sportKey,
         home_team: g.homeTeam,
@@ -1303,31 +1369,41 @@ export async function publishAndRecordNflSlateCard(
   if (pickErr) {
     return {
       success: true,
-      postId: postRes.postId,
+      postId: ledgerPostId,
+      publicPostId: publicRes.postId,
+      privatePostId,
+      publisherMode: publisher.mode,
       totalPicksRecorded: 0,
       error: `Published post, but ledger insert failed: ${pickErr.message}`,
     }
   }
 
-  await syncBotProfileHighlight(admin, input.botUserId)
+  await syncBotProfileHighlight(admin, botUserId)
 
-  // Also deliver full uncut individual breakdowns into Scott's VIP subscriber chat room
+  // Plain-text full desks → publisher fan room (Syndicate when remounted; never Signal once Syndicate exists)
   try {
     const threadParts = SHARP_PICKERS.map((p) => formatPickerSlateList(input.card, p))
-    const vipTitle = `🏈 ${input.card.cardTitle || 'Sharpe Syndicate Slate'} ... Full Uncut Breakdown\n\nPublic feed gets the consensus & hammer teasers. Here are the uncut individual ATS cards across all 4 desks for the full slate 👇`
+    const chatTitle =
+      publisher.mode === 'syndicate'
+        ? `🏈 ${input.card.cardTitle || 'Sharpe Syndicate Slate'} ... Full Uncut Desk Cards\n\nPlain-text cards for every desk on this slate 👇`
+        : `🏈 ${input.card.cardTitle || 'Sharpe Syndicate Slate'} ... Full Uncut Breakdown\n\nPublic feed gets the consensus & hammer teasers. Here are the uncut individual ATS cards across all 4 desks for the full slate 👇`
     await publishBotSubChatMessage(admin, {
-      botUserId: input.botUserId,
-      caption: vipTitle,
+      botUserId,
+      caption: chatTitle,
       threadParts,
     })
   } catch (vipErr) {
-    console.error('Error posting slate to VIP sub chat:', vipErr)
+    console.error('Error posting slate to fan sub chat:', vipErr)
   }
 
   return {
     success: true,
-    postId: postRes.postId,
+    postId: ledgerPostId,
+    publicPostId: publicRes.postId,
+    privatePostId,
+    publisherMode: publisher.mode,
     totalPicksRecorded: insertedRows?.length || 0,
+    ...(privatePublishNote ? { fanOnlyWarning: privatePublishNote } : {}),
   }
 }
 

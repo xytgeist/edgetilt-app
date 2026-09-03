@@ -1073,6 +1073,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-09-03: **Sharpe Syndicate bot split (Windows):** Separate desk product from Signal. Slug `sharpe-syndicate` / `@sharpesyndicate` (create via `scripts/create-sharpe-syndicate-bot.mjs`, keep `stopped`). Slate publish: public teaser + `creator_fan_only` full card thread + plain fan chat on Syndicate (never Signal VIP). `publishLoungeBotPost` gains `creatorFanOnly`. Ops prefers Syndicate desk bot; Edge invoke still uses Signal runner. Redeploy `lounge-odds-poll` test (+ prod when Ryan asks). Fan Connect + go live still required for private Lounge.
+
 - 2026-09-03: **picks_for_today Edge action:** manual gap-fill card for every game kicking today (PT), not scheduled cron replay. Ops button calls this. Redeploy `lounge-odds-poll` test+prod.
 
 - 2026-09-03: **Syndicate Ops "Run picks for today":** sport dropdown + dry run (UI). Was wrongly mapped to cron packages; fixed to `picks_for_today`.

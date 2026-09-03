@@ -5,6 +5,7 @@ import {
   todayPicksPlan,
   runTodayPicksForSport,
 } from './syndicateTodayPicks.js'
+import { resolveSyndicateDeskBot, SHARPE_SIGNAL_BOT_SLUG } from './syndicateBotIdentity.js'
 import { SyndicateDryRunPreview } from './SyndicateDryRunPreview.jsx'
 
 const BotSharpDeskPanel = lazy(() =>
@@ -16,13 +17,6 @@ const SPORT_OPTIONS = [
   { id: 'americanfootball_ncaaf', label: 'CFB' },
   { id: 'mma_mixed_martial_arts', label: 'UFC' },
 ]
-
-function resolveScottBot(snapshot) {
-  const bots = Array.isArray(snapshot?.bots) ? snapshot.bots : []
-  const bySlug = bots.find((b) => String(b.slug || '').toLowerCase() === 'sports-odds')
-  if (bySlug) return bySlug
-  return bots.find((b) => b.pipeline === 'odds_api') || null
-}
 
 /**
  * Admin shell: Sharp Desk (scorecard, Chedda paste, PVALs, metrics, monthly board).
@@ -44,7 +38,8 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
     setBusy(true)
     try {
       const { plan, data, error: runErr } = await runTodayPicksForSport(supabaseClient, {
-        slug: bot.slug || 'sports-odds',
+        // Edge runner stays on Signal (running). Publish remounts to Syndicate inside Edge.
+        slug: SHARPE_SIGNAL_BOT_SLUG,
         sportKey: selectedSportKey,
         dryRun: runDryRun,
       })
@@ -95,13 +90,13 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
           setBot(null)
           return
         }
-        const scott = resolveScottBot(data)
-        if (!scott) {
-          setError('No sports-odds / odds_api bot found on this project.')
+        const deskBot = resolveSyndicateDeskBot(data)
+        if (!deskBot) {
+          setError('No Sharpe Syndicate / Signal odds bot found on this project.')
           setBot(null)
           return
         }
-        setBot(scott)
+        setBot(deskBot)
       } catch (err) {
         if (!cancelled) setError(err.message || 'Failed to load Ops.')
       } finally {
@@ -215,7 +210,7 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
             <BotSharpDeskPanel
               supabaseClient={supabaseClient}
               botUserId={bot.user_id}
-              botSlug={bot.slug || 'sports-odds'}
+              botSlug={bot.slug || SHARPE_SIGNAL_BOT_SLUG}
               setToast={setToast}
               busy={busy}
               setBusy={setBusy}

@@ -154,10 +154,27 @@ Deno.serve(async (req) => {
 
     if (action === 'grade_picks') {
       const { gradePendingPicks } = await import('../_shared/loungeBotPredictivePick.ts')
+      const { resolveSlatePublisher } = await import('../_shared/loungeBotSyndicateIdentity.ts')
       const key = oddsApiKey()
       if (!key) return adminOpsJson(500, { error: 'THE_ODDS_API_KEY not configured.' })
       const gradeResult = await gradePendingPicks(admin, key, bot.user_id)
-      return adminOpsJson(200, { ok: true, action: 'grade_picks', ...gradeResult })
+      const publisher = await resolveSlatePublisher(admin, bot.user_id)
+      let syndicateGrade = null
+      if (publisher.botUserId !== bot.user_id) {
+        syndicateGrade = await gradePendingPicks(admin, key, publisher.botUserId)
+      }
+      return adminOpsJson(200, {
+        ok: true,
+        action: 'grade_picks',
+        ...gradeResult,
+        ...(syndicateGrade
+          ? {
+              syndicateResolved: syndicateGrade.resolved,
+              syndicateErrors: syndicateGrade.errors,
+              publisherMode: publisher.mode,
+            }
+          : {}),
+      })
     }
 
     if (action === 'calibrate_persona_models') {

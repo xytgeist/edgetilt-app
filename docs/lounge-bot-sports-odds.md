@@ -2,7 +2,24 @@
 
 **Status:** **Shipped on test (code, Jul 2026)** — migrations through **`20260704230000`**, Edge fns **`lounge-odds-ingest`** + **`lounge-odds-poll`**, admin portal **`/?tab=bots`**. **Ryan smoke pending** on **`kcosfvmreeiosdjdzycb`** (apply cron migration + Vault). **Prod:** **`20260704220000`** RPC verified on **`jtjgtucumuoswnbauxry`** (**2026-07-04**, manual SQL editor apply).
 
-**Live bot (test):** **Scott Share** — `@sharpesignal`, pipeline **`odds_api`**, category pill **`sports`**.
+**Live bot (test):** **Scott Share / Sharpe Signal** — `@sharpesignal`, slug **`sports-odds`**, pipeline **`odds_api`**, category pill **`sports`**. Edges, coffee, line moves, alerts.
+
+**Desk bot (test):** **Sharpe Syndicate** — `@sharpesyndicate`, slug **`sharpe-syndicate`**, pipeline **`odds_api`**, start **`run_state: stopped`** (cron must not fan out duplicate polls). Slate / today-picks / ledger publish remount onto this bot even when Edge is invoked as Signal.
+
+### Ownership matrix (Signal vs Syndicate)
+
+| Surface | Sharpe Signal (`sports-odds`) | Sharpe Syndicate (`sharpe-syndicate`) |
+| --- | --- | --- |
+| Job | Edges, coffee, line moves, alerts | Desk cards, today picks, ledger-facing slate |
+| Fan sub | Existing Signal VIP … **unchanged** | **Separate** creator fan sub (Connect + go live) |
+| VIP / fan chat | Signal room only | Syndicate room only … plain-text full desk cards |
+| Lounge | Public Signal feed as today | Public **teaser** + **`creator_fan_only`** full card (thread of desk lists) |
+| Existing Signal subs | Stay Signal-only … **no** auto-migrate | New subs only |
+| Cron `poll_edges` / coffee | Runs (bot `running`) | Keep **stopped** so cron does not duplicate |
+| Slate / `picks_for_today` | Edge may invoke via Signal slug | Publish + ledger remount to Syndicate when row exists |
+
+**Create bot (test):** `node scripts/create-sharpe-syndicate-bot.mjs`  
+**Prod create:** only with Ryan explicit + `--target=production --i-mean-it`.
 
 **Syndicate Ops (desk day-to-day):** **https://sharpesyndicate.com/ops** (or `?ops=1`) … admin email/password, same `profiles.role = admin` as EdgeTilt. Hosts Sharp Desk: scorecard/drops, Chedda paste, PVALs, EPA/CFB/UFC editors, monthly board. Keep bot create/kill, voice, run/pause, calendar ingest, X sources, Vault keys on **`/?tab=bots`**.
 

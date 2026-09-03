@@ -8,7 +8,6 @@ import BotPostRepliesPanel from './BotPostRepliesPanel.jsx'
 import BotReplyOnPostPanel from './BotReplyOnPostPanel.jsx'
 import BotProfileEditor from './BotProfileEditor.jsx'
 import BotSportsCalendarPanel from './BotSportsCalendarPanel.jsx'
-import { BotSharpDeskPanel } from './BotSharpDeskPanel.jsx'
 import {
   BOT_PIPELINE_LABELS,
   BOT_REVIEW_MODE_LABELS,
@@ -1328,7 +1327,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
             />
             <div className="rounded-xl border border-emerald-500/25 bg-emerald-950/20 px-3 py-2.5 text-[11px] text-emerald-100/90">
               <span className="font-semibold text-emerald-300">Syndicate Ops</span>
-              {' '}lives on the public site (admin login): scorecard, Chedda paste, PVALs, metrics, monthly board.{' '}
+              {' '}(scorecard, slate drops, Chedda paste, PVALs, metrics, monthly board) lives on the public site … not on Signal:{' '}
               <a
                 href="https://sharpesyndicate.com/ops"
                 target="_blank"
@@ -1337,17 +1336,8 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
               >
                 Open sharpesyndicate.com/ops
               </a>
-              . Keep create / pause / Odds / X / Vault here.
+              . Keep create / pause / Odds / alert destinations / X / Vault here.
             </div>
-            <BotSharpDeskPanel
-              supabaseClient={supabaseClient}
-              botUserId={bot.user_id}
-              botSlug={bot.slug}
-              setToast={setToast}
-              busy={busy}
-              setBusy={setBusy}
-              selectedSportKey={selectedSportKey}
-            />
           </div>
         ) : null}
 

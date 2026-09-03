@@ -21,7 +21,7 @@
 **Create bot (test):** `node scripts/create-sharpe-syndicate-bot.mjs`  
 **Prod create:** only with Ryan explicit + `--target=production --i-mean-it`.
 
-**Syndicate Ops (desk day-to-day):** **https://sharpesyndicate.com/ops** (or `?ops=1`) … admin email/password, same `profiles.role = admin` as EdgeTilt. Hosts Sharp Desk: scorecard/drops, Chedda paste, PVALs, EPA/CFB/UFC editors, monthly board. Keep bot create/kill, voice, run/pause, calendar ingest, X sources, Vault keys on **`/?tab=bots`**.
+**Syndicate Ops (desk day-to-day):** **https://sharpesyndicate.com/ops** (or `?ops=1`) … admin email/password, same `profiles.role = admin` as EdgeTilt. Hosts Sharp Desk: scorecard/drops, Chedda paste, PVALs, EPA/CFB/UFC editors, monthly board. **Not** embedded on Signal (`sports-odds`) in EdgeTilt `/?tab=bots` … that page keeps alert destinations, coffee, calendar, run/pause. Keep bot create/kill, voice, run/pause, calendar ingest, X sources, Vault keys on **`/?tab=bots`**.
 
 **Self-contained** — no morning editorial inbox. Roster context: **`docs/lounge-bot-editorial-queue.md`**.
 
@@ -196,7 +196,7 @@ Set **`coffee_covers_enabled = false`** on **`lounge_bot_odds_config`** to fall 
 
 **Market file (durable open/current/close):** table **`lounge_market_files`** (migration **`20260902200000`**), filled on every non-dry odds fetch in `loadSportOddsContext` via **`loungeBotMarketFile.ts`**. Prefers Pinnacle → Circa → LowVig → consensus. Close locks at kickoff − 5 minutes. Distinct from short-lived **`lounge_odds_event_lines`** movement compares.
 
-**Monthly scoreboard (ops):** Edge action **`syndicate_monthly_scoreboard`** (`loungeBotSyndicateScoreboard.ts`) … ATS + CLV by desk × bucket (hammer / consensus / divided / pass). Scott/Rocco/Chedda = sides; Tank = totals only. Every row includes sample **n**. CLV = **your side vs locked close** (not opener). Trust floor **n ≥ 25** per bucket×desk before crowning. Desk rollup mixes buckets ... informal only, never "shop ATS." **Primary UI:** **https://sharpesyndicate.com/ops** (admin login) → Sharp Desk → **Monthly Board**. Same panel still on EdgeTilt `/?tab=bots` for now. **Do not trust adaptive persona weights** until a bucket has a real sample. FEI still waits.
+**Monthly scoreboard (ops):** Edge action **`syndicate_monthly_scoreboard`** (`loungeBotSyndicateScoreboard.ts`) … ATS + CLV by desk × bucket (hammer / consensus / divided / pass). Scott/Rocco/Chedda = sides; Tank = totals only. Every row includes sample **n**. CLV = **your side vs locked close** (not opener). Trust floor **n ≥ 25** per bucket×desk before crowning. Desk rollup mixes buckets ... informal only, never "shop ATS." **Primary UI:** **https://sharpesyndicate.com/ops** (admin login) → Sharp Desk → **Monthly Board**. Desk panel is **not** on EdgeTilt Signal (`sports-odds` / `/?tab=bots`). **Do not trust adaptive persona weights** until a bucket has a real sample. FEI still waits.
 
 **`loungeBotLineMovement.ts`** — runs on every **`poll_edges`** tick (15 min, 24/7):
 

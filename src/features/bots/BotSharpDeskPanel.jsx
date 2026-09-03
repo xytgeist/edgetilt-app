@@ -18,6 +18,7 @@ import BotPlayerPvalEditor from './BotPlayerPvalEditor.jsx'
 import BotTeamMetricsEditor from './BotTeamMetricsEditor.jsx'
 import BotCfbPowerRatingsEditor from './BotCfbPowerRatingsEditor.jsx'
 import BotUfcMetricsEditor from './BotUfcMetricsEditor.jsx'
+import BotBettingSplitsPaste from './BotBettingSplitsPaste.jsx'
 
 const PICKER_METAS = {
   Scott: {
@@ -47,6 +48,7 @@ const TIMEFRAME_OPTIONS = [
 
 const DESK_TABS = [
   { id: 'scorecard', label: '🎯 Scorecard & Drops', shortLabel: 'Scorecard' },
+  { id: 'splits', label: '🧀 Chedda Splits Paste', shortLabel: 'Splits' },
   { id: 'pvals', label: '🩹 NFL Injury PVALs', shortLabel: 'NFL PVALs' },
   { id: 'trench_epa', label: '🏈 NFL EPA & Trenches', shortLabel: 'NFL Trenches' },
   { id: 'cfb_power', label: '🎓 CFB Power Index', shortLabel: 'CFB Ratings' },
@@ -1030,6 +1032,16 @@ export function BotSharpDeskPanel({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* Tab: Chedda splits paste (Action / VSiN) */}
+      {activeTab === 'splits' && (
+        <div className="pt-2">
+          <BotBettingSplitsPaste
+            supabaseClient={supabaseClient}
+            setToast={setToast}
+          />
         </div>
       )}
 

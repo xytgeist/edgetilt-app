@@ -54,7 +54,7 @@ Public site shows Consensus + Off/Def/HFA/Tempo. Model A/B/C columns are **blurr
 | Current spreads / juice from books | **Live** via odds poll / ingest | — |
 | **Market file** (`lounge_market_files`) | **Live on poll** (test after `20260902200000` + Edge redeploy) | Open = first seen; current = each poll; close locks ≤5 min before kickoff (or after start). Prefers Pinnacle/Circa/LowVig else consensus. Football uses next-slate cluster (not just “today PT”). |
 | Key numbers / hooks | **Partial** | Useful; not a full steam desk |
-| Betting splits / RLM | **Thin** | Chedda can lean dogs/hooks; Circa-class handle is **not** wired as a clean weekly feed |
+| Betting splits / RLM | **Paste path live** | Table `syndicate_betting_splits` + portal **Chedda Splits Paste**. Action PRO / VSiN human paste before slate. Synthetic splits never vote. Real API still five-figure fork. |
 | Weather / rest / travel | **Modules exist** | Not yet first-class Tank totals publish lane |
 | Starting QB / injury modifiers | **Live** (`syndicate_side_modifiers` + Rundown×PVAL) | Manual CFB first; auto only on known PVAL. Scott vs **current** market; Rocco gets hurt-side strength flag (not Scott’s pts). |
 | Desk scoreboard (ATS/CLV by desk + bucket) | **Live (test + prod)** | Edge `syndicate_monthly_scoreboard` + portal Monthly Board. Bucket×desk is truth; desk rollup is mixed/informal. CLV = side vs locked close. Trust floor **n ≥ 25**. No adaptive weights until real sample. FEI waits. |
@@ -200,7 +200,7 @@ Treat desks at different confidence. Do not pretend Chedda has Circa handle.
 |------|----------------|------|
 | **Scott** | Primary side vote | Full loop he has (model, current market, injury mod, market file). Weeks 0–2: prefer key number **or** gap ~**3+** (early priors soft). |
 | **Rocco** | Confirm / fade only | Short fav + power gap + hurtSide + hooks. **Capped** … no “trench truth.” Can confirm Scott or fade logo chalk. Cannot be the sole second Hammer reason if he’s only re-reading Scott’s gap. |
-| **Chedda** | Dog + hook / dog + model only | **PASS** unless a real feature fires. Quiet Chedda > invented steam. Synthetic splits do **not** count as a vote. |
+| **Chedda** | Dog + hook / dog + model / **pasted money** | **PASS** unless a real feature fires. Paste Action/VSiN ticket%+handle% in portal before lock. Quiet Chedda > invented steam. Synthetic splits do **not** count. |
 | **Tank** | First-pass totals | Off/def + tempo vs number (3.5 / key-total). Ignore weather/rest until those modules matter. Few totals > many weak ones. |
 
 **Product honesty:** VIP can show all four votes. Public copy should say model-vs-number / short favorite / dog+hook … not fake steam. Scoreboard decides if Chedda is signal before we buy him better data.

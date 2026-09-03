@@ -1,11 +1,10 @@
 /**
- * Betting Splits & Sharp Money Divergence (Handle vs Ticket Count) Module.
+ * Betting Splits … ticket % (public) vs handle % (money).
  *
- * Evaluates:
- * 1. Ticket % (Number of public bets) vs Handle % (Total dollars / whale money).
- * 2. Sharp Money Divergence (SMD): Handle % exceeds Ticket % by >= 15%.
- * 3. Reverse Line Movement (RLM): Line moves toward the side receiving minority public tickets.
+ * Real path: human paste from Action PRO / VSiN into syndicate_betting_splits.
+ * Synthetic path: heuristic only for captions … never a Chedda vote reason.
  */
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import type { OddsEvent } from './loungeBotOddsCaption.ts'
 import { shortDisplayName } from './loungeBotOddsCaption.ts'
 
@@ -14,15 +13,31 @@ export type BettingSplitSummary = {
   homeTeam: string
   awayTeam: string
   marketKey: 'spreads' | 'totals' | 'h2h'
-  homeTicketPct: number // 0 - 100
-  homeHandlePct: number // 0 - 100
-  awayTicketPct: number // 0 - 100
-  awayHandlePct: number // 0 - 100
+  homeTicketPct: number
+  homeHandlePct: number
+  awayTicketPct: number
+  awayHandlePct: number
   sharpFavoredSide: 'home' | 'away' | null
-  divergencePts: number // Max divergence percentage (handle% - ticket%)
-  isSharpDivergence: boolean // True if divergence >= 15%
-  isRlm: boolean             // Reverse line movement
+  divergencePts: number
+  isSharpDivergence: boolean
+  isRlm: boolean
   summaryLine: string
+  /** True when sourced from syndicate_betting_splits paste (Action/VSiN/manual). */
+  isPasted?: boolean
+  source?: string | null
+}
+
+const DIVERGENCE_MIN = 15
+
+function teamsMatch(a: string, b: string): boolean {
+  const x = String(a || '').trim().toLowerCase()
+  const y = String(b || '').trim().toLowerCase()
+  if (!x || !y) return false
+  if (x === y) return true
+  if (x.includes(y) || y.includes(x)) return true
+  const xLast = x.split(/\s+/).pop() || ''
+  const yLast = y.split(/\s+/).pop() || ''
+  return Boolean(xLast && yLast && xLast === yLast)
 }
 
 function hashString(str: string): number {
@@ -34,21 +49,116 @@ function hashString(str: string): number {
   return Math.abs(hash)
 }
 
+function summarizeSides(
+  homeTeam: string,
+  awayTeam: string,
+  homeTicketPct: number,
+  homeHandlePct: number,
+  awayTicketPct: number,
+  awayHandlePct: number,
+  opts?: { isPasted?: boolean; source?: string | null; sportKey?: string },
+): BettingSplitSummary {
+  const homeDivergence = homeHandlePct - homeTicketPct
+  const awayDivergence = awayHandlePct - awayTicketPct
+
+  let sharpFavoredSide: 'home' | 'away' | null = null
+  let divergencePts = 0
+
+  if (homeDivergence >= DIVERGENCE_MIN) {
+    sharpFavoredSide = 'home'
+    divergencePts = homeDivergence
+  } else if (awayDivergence >= DIVERGENCE_MIN) {
+    sharpFavoredSide = 'away'
+    divergencePts = awayDivergence
+  }
+
+  // Soft RLM-style: public tickets heavy one way, handle the other
+  let isRlm = false
+  if (homeTicketPct >= 65 && awayHandlePct >= 55) {
+    isRlm = true
+    if (!sharpFavoredSide) {
+      sharpFavoredSide = 'away'
+      divergencePts = Math.max(divergencePts, awayHandlePct - awayTicketPct)
+    }
+  }
+  if (awayTicketPct >= 65 && homeHandlePct >= 55) {
+    isRlm = true
+    if (!sharpFavoredSide) {
+      sharpFavoredSide = 'home'
+      divergencePts = Math.max(divergencePts, homeHandlePct - homeTicketPct)
+    }
+  }
+
+  const isSharpDivergence = divergencePts >= DIVERGENCE_MIN || isRlm
+
+  let summaryLine = ''
+  if (isSharpDivergence && sharpFavoredSide) {
+    const sharpSideName = sharpFavoredSide === 'home' ? shortDisplayName(homeTeam) : shortDisplayName(awayTeam)
+    const fadeSideName = sharpFavoredSide === 'home' ? shortDisplayName(awayTeam) : shortDisplayName(homeTeam)
+    const sharpHandle = sharpFavoredSide === 'home' ? homeHandlePct : awayHandlePct
+    const publicTickets = sharpFavoredSide === 'home' ? awayTicketPct : homeTicketPct
+    const prefix = opts?.isPasted ? `Pasted (${opts.source || 'manual'})` : 'Synthetic'
+    if (isRlm) {
+      summaryLine = `${prefix} · RLM · ${Math.round(sharpHandle)}% money on ${sharpSideName} despite ${Math.round(publicTickets)}% tickets on ${fadeSideName}`
+    } else {
+      summaryLine = `${prefix} · ${Math.round(sharpHandle)}% handle on ${sharpSideName} (+${Math.round(divergencePts)} vs tickets)`
+    }
+  }
+
+  return {
+    sportKey: opts?.sportKey || '',
+    homeTeam,
+    awayTeam,
+    marketKey: 'spreads',
+    homeTicketPct,
+    homeHandlePct,
+    awayTicketPct,
+    awayHandlePct,
+    sharpFavoredSide,
+    divergencePts,
+    isSharpDivergence,
+    isRlm,
+    summaryLine,
+    isPasted: opts?.isPasted === true,
+    source: opts?.source || null,
+  }
+}
+
+/** Build summary from a pasted DB row (Action PRO / VSiN / manual). */
+export function summaryFromPastedRow(row: {
+  sport_key?: string
+  home_team: string
+  away_team: string
+  home_ticket_pct: number
+  home_handle_pct: number
+  away_ticket_pct: number
+  away_handle_pct: number
+  source?: string | null
+}): BettingSplitSummary {
+  return summarizeSides(
+    row.home_team,
+    row.away_team,
+    Number(row.home_ticket_pct),
+    Number(row.home_handle_pct),
+    Number(row.away_ticket_pct),
+    Number(row.away_handle_pct),
+    { isPasted: true, source: row.source || 'manual', sportKey: row.sport_key },
+  )
+}
+
 /**
- * Estimate or resolve consensus betting splits for a game based on market pricing disparity
- * (comparing sharp books like Circa/Pinnacle against public books like DraftKings/FanDuel)
- * or event metadata.
+ * Heuristic / costume splits from book shade.
+ * Captions only … Chedda must NOT treat these as a real vote reason.
  */
 export function resolveGameBettingSplits(
   ev: OddsEvent,
   homeSpreadPoint: number | null,
-  homePrice: number,
-  awayPrice: number,
+  _homePrice: number,
+  _awayPrice: number,
 ): BettingSplitSummary {
   const homeTeam = ev.home_team
   const awayTeam = ev.away_team
 
-  // Look for sharp book vs public retail book divergence
   let sharpSpreadPoint: number | null = null
   let retailSpreadPoint: number | null = null
 
@@ -66,18 +176,14 @@ export function resolveGameBettingSplits(
     }
   }
 
-  // Derive realistic ticket % baseline: Public loves favorites and home teams
   const isHomeFav = (homeSpreadPoint ?? 0) < 0
   const isAwayFav = (homeSpreadPoint ?? 0) > 0
 
-  // Base public ticket split: 60-75% on favorite
   const seed = hashString(`${ev.id}_${homeTeam}_${awayTeam}_splits`)
-  const favPublicBias = 60 + (seed % 18) // 60% to 77% on the favorite
+  const favPublicBias = 60 + (seed % 18)
   let homeTicketPct = isHomeFav ? favPublicBias : isAwayFav ? (100 - favPublicBias) : 50
   let awayTicketPct = 100 - homeTicketPct
 
-  // Sharp handle calculation:
-  // If sharp books shaded the line toward underdog or sharp price is lower on dog, handle shifts to dog
   let homeHandlePct = homeTicketPct
   let awayHandlePct = awayTicketPct
 
@@ -86,67 +192,73 @@ export function resolveGameBettingSplits(
     : 0
 
   if (isHomeFav) {
-    // If sharp book moved toward dog, sharp money is taking points on Away
     const sharpShift = 15 + (seed % 14) + (sharpHomeShade > 0 ? 10 : 0)
     awayHandlePct = Math.min(awayTicketPct + sharpShift, 85)
     homeHandlePct = 100 - awayHandlePct
   } else if (isAwayFav) {
-    // If sharp book moved toward dog, sharp money is taking points on Home
     const sharpShift = 15 + (seed % 14) + (sharpHomeShade < 0 ? 10 : 0)
     homeHandlePct = Math.min(homeTicketPct + sharpShift, 85)
     awayHandlePct = 100 - homeHandlePct
   }
 
-  // Divergence check: handle% - ticket%
-  const homeDivergence = homeHandlePct - homeTicketPct
-  const awayDivergence = awayHandlePct - awayTicketPct
-
-  let sharpFavoredSide: 'home' | 'away' | null = null
-  let divergencePts = 0
-
-  if (homeDivergence >= 15) {
-    sharpFavoredSide = 'home'
-    divergencePts = homeDivergence
-  } else if (awayDivergence >= 15) {
-    sharpFavoredSide = 'away'
-    divergencePts = awayDivergence
-  }
-
-  // Reverse Line Movement (RLM):
-  // If public is >= 65% on one side, but sharp books shifted line toward the other side
-  let isRlm = false
-  if (homeTicketPct >= 65 && awayHandlePct >= 55) isRlm = true
-  if (awayTicketPct >= 65 && homeHandlePct >= 55) isRlm = true
-
-  const isSharpDivergence = divergencePts >= 15 || isRlm
-
-  let summaryLine = ''
-  if (isSharpDivergence) {
-    const sharpSideName = sharpFavoredSide === 'home' ? shortDisplayName(homeTeam) : shortDisplayName(awayTeam)
-    const fadeSideName = sharpFavoredSide === 'home' ? shortDisplayName(awayTeam) : shortDisplayName(homeTeam)
-    const sharpHandle = sharpFavoredSide === 'home' ? homeHandlePct : awayHandlePct
-    const publicTickets = sharpFavoredSide === 'home' ? awayTicketPct : homeTicketPct
-
-    if (isRlm) {
-      summaryLine = `Reverse Line Movement · ${sharpHandle}% money on ${sharpSideName} despite ${publicTickets}% public bets on ${fadeSideName}`
-    } else {
-      summaryLine = `Sharp Money Split · ${sharpHandle}% handle backing ${sharpSideName} (+${divergencePts}% divergence over tickets)`
-    }
-  }
-
-  return {
-    sportKey: ev.sport_key,
+  return summarizeSides(
     homeTeam,
     awayTeam,
-    marketKey: 'spreads',
     homeTicketPct,
     homeHandlePct,
     awayTicketPct,
     awayHandlePct,
-    sharpFavoredSide,
-    divergencePts,
-    isSharpDivergence,
-    isRlm,
-    summaryLine,
+    { isPasted: false, source: 'synthetic', sportKey: ev.sport_key },
+  )
+}
+
+type SlateEventLike = {
+  id?: string
+  home_team?: string
+  away_team?: string
+}
+
+/**
+ * Load active pasted splits for a sport and map onto slate event ids.
+ */
+export async function loadPastedBettingSplitsForSlate(
+  admin: SupabaseClient,
+  sportKey: string,
+  events: Array<SlateEventLike>,
+): Promise<Map<string, BettingSplitSummary>> {
+  const out = new Map<string, BettingSplitSummary>()
+  if (!events.length) return out
+
+  const eventIds = events.map((e) => String(e.id || '').trim()).filter(Boolean)
+  const { data, error } = await admin
+    .from('syndicate_betting_splits')
+    .select('*')
+    .eq('sport_key', sportKey)
+    .eq('active', true)
+
+  if (error) {
+    console.warn('syndicate_betting_splits load:', error.message)
+    return out
   }
+
+  for (const row of data || []) {
+    const summary = summaryFromPastedRow(row)
+    const rowEventId = row.event_id != null ? String(row.event_id).trim() : ''
+    if (rowEventId && eventIds.includes(rowEventId)) {
+      out.set(rowEventId, summary)
+      continue
+    }
+    for (const ev of events) {
+      const id = String(ev.id || '').trim()
+      if (!id || out.has(id)) continue
+      if (
+        teamsMatch(String(row.home_team || ''), String(ev.home_team || '')) &&
+        teamsMatch(String(row.away_team || ''), String(ev.away_team || ''))
+      ) {
+        out.set(id, summary)
+      }
+    }
+  }
+
+  return out
 }

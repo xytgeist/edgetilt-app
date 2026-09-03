@@ -206,6 +206,10 @@ Deno.serve(async (req) => {
       const { resolveSideModifiersForSlate } = await import('../_shared/loungeBotSideModifier.ts')
       const sideModifiersByEventId = await resolveSideModifiersForSlate(admin, sportKey, events)
 
+      // Human-pasted Action/VSiN ticket% vs handle% (Chedda money vote when present)
+      const { loadPastedBettingSplitsForSlate } = await import('../_shared/loungeBotBettingSplits.ts')
+      const pastedSplitsByEventId = await loadPastedBettingSplitsForSlate(admin, sportKey, events)
+
       // Need totals for Tank's O/U lane
       let eventsWithTotals = events
       try {
@@ -223,6 +227,7 @@ Deno.serve(async (req) => {
         teamMetricsMap,
         cfbRatingsMap,
         sideModifiersByEventId,
+        pastedSplitsByEventId,
       })
 
       if (!card) {

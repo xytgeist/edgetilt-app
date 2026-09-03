@@ -1069,6 +1069,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-09-02: **Chedda splits paste (Windows):** `syndicate_betting_splits` + portal tab **Chedda Splits Paste** (Action PRO / VSiN human paste). Slate loads pasted ticket%/handle%; Chedda votes on real divergence (synthetic never votes). Apply SQL test+prod; redeploy `lounge-odds-poll`.
+
 - 2026-09-02: **Operate with incomplete data (Windows):** Chedda PASS unless dog+hook or dog+model (no synthetic steam vote). Hammer = Scott + independent Rocco strength or Chedda feature (soft gap-echo → Consensus). Runbook §4b. Redeploy `lounge-odds-poll` test+prod.
 
 - 2026-09-02: **Monthly scoreboard → prod:** trust floor n≥25, bucket×desk first (no shop ATS from mixed Hammer+Consensus), CLV = side vs locked close. Redeployed `lounge-odds-poll` test+prod; `main` FF. Next: run the actual slate loop … stop feature-building for a week; hammers need ≥2 distinct reasons.

@@ -621,6 +621,8 @@ export function buildNflAtsSlateCard(
     cfbRatingsMap?: Map<string, CfbTeamPowerRating>
     /** Post-consensus QB/injury modifiers keyed by Odds API event id. */
     sideModifiersByEventId?: Map<string, SideModifier>
+    /** Human-pasted Action/VSiN splits keyed by Odds API event id. */
+    pastedSplitsByEventId?: Map<string, BettingSplitSummary>
   } = {},
 ): NflSlateCard | null {
   if (!Array.isArray(events) || events.length === 0) return null
@@ -633,6 +635,7 @@ export function buildNflAtsSlateCard(
   const teamMetrics = opts.teamMetricsMap
   const cfbRatings = opts.cfbRatingsMap
   const sideModifiers = opts.sideModifiersByEventId || new Map<string, SideModifier>()
+  const pastedSplits = opts.pastedSplitsByEventId || new Map<string, BettingSplitSummary>()
 
   for (const ev of events) {
     const homeTeam = ev.home_team
@@ -700,10 +703,12 @@ export function buildNflAtsSlateCard(
     const homeLineDisp = formatPickLine(homePickObj)
     const awayLineDisp = formatPickLine(awayPickObj)
 
-    // Resolve live sharp money divergence & ticket splits
-    const gameSplits = resolveGameBettingSplits(ev, homePoint, homePrice, awayPrice)
+    // Prefer human-pasted Action/VSiN splits; synthetic is caption-only and never a Chedda vote reason
+    const pastedSplit = pastedSplits.get(String(ev.id || '').trim()) || null
+    const gameSplits = pastedSplit || resolveGameBettingSplits(ev, homePoint, homePrice, awayPrice)
     const sharpFavorsHome = gameSplits.sharpFavoredSide === 'home'
     const sharpFavorsAway = gameSplits.sharpFavoredSide === 'away'
+    const hasRealSplits = gameSplits.isPasted === true
 
     // Calculate EPA and Trench matchups (NFL) or Power Rating Projections (CFB)
     const isCfb = ev.sport_key === 'americanfootball_ncaaf' || (opts.sportKey && opts.sportKey.includes('ncaaf'))
@@ -755,8 +760,9 @@ export function buildNflAtsSlateCard(
           ? 'home'
           : 'away'
 
-    // 2. Chedda — dogs only on REAL features this week (no synthetic steam/splits vote).
-    // Eligible: dog + golden hook, or dog + model/EPA gap. Otherwise PASS (quiet > correlated noise).
+    // 2. Chedda — dogs / money.
+    // Real vote reasons: dog+hook, dog+model, OR pasted Action/VSiN sharp divergence.
+    // Synthetic splits never unlock a vote.
     const homeIsDog = homePoint > 0
     const awayIsDog = awayPoint > 0
     const cheddaGoldenHookHome = Boolean(homeKeyAnalysis?.isHookGolden && homeIsDog)
@@ -771,11 +777,22 @@ export function buildNflAtsSlateCard(
       || injuryValue?.valueSide === 'away'
       || (trenchEpa != null && trenchEpa.epaSpreadImpactHome < -0.5)
     )
-    const cheddaHasRealFeature = cheddaGoldenHookHome || cheddaGoldenHookAway || cheddaModelDogHome || cheddaModelDogAway
-    void cheddaSweetWeight // reserved when real ticket/handle feed arrives
+    const cheddaMoneyHome = hasRealSplits && gameSplits.isSharpDivergence && sharpFavorsHome
+    const cheddaMoneyAway = hasRealSplits && gameSplits.isSharpDivergence && sharpFavorsAway
+    const cheddaHasRealFeature =
+      cheddaGoldenHookHome
+      || cheddaGoldenHookAway
+      || cheddaModelDogHome
+      || cheddaModelDogAway
+      || cheddaMoneyHome
+      || cheddaMoneyAway
+    void cheddaSweetWeight // reserved when fully automated splits API arrives
     let cheddaSide: SlateDeskSide = 'pass'
     if (cheddaHasRealFeature) {
-      if (cheddaGoldenHookHome || cheddaModelDogHome) cheddaSide = 'home'
+      // Money desk wins when pasted splits disagree with public
+      if (cheddaMoneyHome) cheddaSide = 'home'
+      else if (cheddaMoneyAway) cheddaSide = 'away'
+      else if (cheddaGoldenHookHome || cheddaModelDogHome) cheddaSide = 'home'
       else if (cheddaGoldenHookAway || cheddaModelDogAway) cheddaSide = 'away'
     }
 
@@ -899,7 +916,7 @@ export function buildNflAtsSlateCard(
           ? homeLineDisp
           : cheddaSide === 'away'
             ? awayLineDisp
-            : 'PASS (no dog+hook / dog+model)',
+            : 'PASS (no dog+hook / dog+model / pasted money)',
         pickPrice: cheddaSide === 'home' ? homePrice : cheddaSide === 'away' ? awayPrice : 0,
         pick: cheddaSide === 'home' ? homePickObj : cheddaSide === 'away' ? awayPickObj : homePickObj,
       },
@@ -1122,6 +1139,8 @@ export async function publishAndRecordNflSlateCard(
             home_handle: g.splits.homeHandlePct,
             is_rlm: g.splits.isRlm,
             is_sharp_divergence: g.splits.isSharpDivergence,
+            is_pasted: g.splits.isPasted === true,
+            source: g.splits.source || null,
           } : undefined,
           trench_epa: g.trenchEpa ? {
             net_epa_delta: g.trenchEpa.netEpaDeltaHome,

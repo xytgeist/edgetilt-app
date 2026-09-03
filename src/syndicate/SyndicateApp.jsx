@@ -593,7 +593,7 @@ export function SyndicateApp() {
                 <div>
                   <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">The 4-Desk Syndicate Architecture</h2>
                   <p className="text-zinc-400 text-xs sm:text-sm mt-1">
-                    Three side desks (Scott, Rocco, Chedda) vote ATS hammers and consensus. Tank owns totals only and does not pad the side count. Tap any desk to view its audited ledger.
+                    Three side desks (Scott, Rocco, Chedda) each pick ATS independently ... hammers and consensus come from those three. Tank owns totals only. Tap any desk to view its audited ledger.
                   </p>
                 </div>
               </div>
@@ -777,12 +777,12 @@ export function SyndicateApp() {
                       ) : null}
                     </div>
                     <p className="text-xs text-zinc-400 leading-relaxed">
-                      Over/Under totals specialist only ... no ATS side vote. Prices pace, weather/wind, and short-week spots into standalone totals plays while side hammers stay 3-desk.
+                      Over/Under totals specialist. Prices pace, weather/wind, and short-week spots into his own totals plays ... independent of the side desks.
                     </p>
                     <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
                       <div>• Core: Pace &amp; Seconds Per Play</div>
                       <div>• Factor: Wind (&gt;14mph) &amp; Cold Weather</div>
-                      <div>• Lane: Totals only (sides = PASS)</div>
+                      <div>• Lane: Totals (O/U)</div>
                     </div>
                   </div>
                   <div className="pt-3 border-t border-zinc-800/40 flex items-center justify-between text-xs font-bold text-purple-400 group-hover:translate-x-0.5 transition-transform">
@@ -1342,9 +1342,10 @@ export function SyndicateApp() {
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   The Sharpe Syndicate runs four independent desks ... each tuned to a narrow, high-signal lane (pure EV modeling,
-                  trench favorites &amp; key numbers, underdog value, situational totals). Side hammers and consensus are ATS votes among
-                  Scott, Rocco, and Chedda only (3-0 Hammer / 2-1 Consensus). Tank publishes totals separately and never pads a fake 4-0.
-                  A house-divided side board stays visible on the slate instead of getting averaged into one buried decimal.
+                  trench favorites &amp; key numbers, underdog value, situational totals). Every desk publishes its own thesis without
+                  copying the others. Side hammers and consensus are ATS votes among Scott, Rocco, and Chedda (3-0 Hammer / 2-1 Consensus).
+                  Tank publishes totals on his own lane. A house-divided side board stays visible on the slate instead of getting averaged
+                  into one buried decimal.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   That structure leaves room for calibrated human intuition. When Scott&apos;s model and Rocco&apos;s trench read
@@ -1434,7 +1435,7 @@ export function SyndicateApp() {
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   Tank&apos;s lane is totals-native: pace, play-calling tendencies, weather and wind, short weeks, and other
-                  situational levers that move scoring distribution. He does not vote ATS sides ... that keeps 3-0 hammers honest.
+                  situational levers that move scoring distribution. He picks that lane on his own ... sides stay with Scott, Rocco, and Chedda.
                   Those totals inputs can change the over/under even when the side stays put.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   CREATOR_FAN_TIER_KEYS,
   formatFanTierLabel,
@@ -62,9 +62,17 @@ export default function CreatorFanMonetizationPanel({
   const [fanRoomTopicKeywords, setFanRoomTopicKeywords] = useState('')
   const [fanRoomAvatarUrl, setFanRoomAvatarUrl] = useState(/** @type {string | null} */ (null))
 
-  const applyRow = useCallback((row) => {
+  const onMonetizationRowAppliedRef = useRef(onMonetizationRowApplied)
+  onMonetizationRowAppliedRef.current = onMonetizationRowApplied
+
+  /**
+   * @param {Record<string, unknown>} row
+   * @param {{ preserveOfferDraft?: boolean }} [opts]
+   *   preserveOfferDraft: keep in-progress offer fields (Connect refresh / background reload).
+   */
+  const applyRow = useCallback((row, opts = {}) => {
     if (!row) return
-    onMonetizationRowApplied?.(row)
+    onMonetizationRowAppliedRef.current?.(row)
     if (row.fan_tier_key) setTierKey(String(row.fan_tier_key))
     setEnabled(Boolean(row.enabled))
     setConnectComplete(Boolean(row.connect_onboarding_complete))
@@ -72,19 +80,24 @@ export default function CreatorFanMonetizationPanel({
       typeof row.stripe_connect_account_id === 'string' ? row.stripe_connect_account_id : '',
     )
     setHandle(typeof row.handle === 'string' ? row.handle : '')
-    setOfferHeadline(typeof row.offer_headline === 'string' ? row.offer_headline : '')
-    setOfferIntro(typeof row.offer_intro === 'string' ? row.offer_intro : '')
-    setOfferPrivatePosts(typeof row.offer_private_posts === 'string' ? row.offer_private_posts : '')
-    setOfferFanChat(typeof row.offer_fan_chat === 'string' ? row.offer_fan_chat : '')
+    if (!opts.preserveOfferDraft) {
+      setOfferHeadline(typeof row.offer_headline === 'string' ? row.offer_headline : '')
+      setOfferIntro(typeof row.offer_intro === 'string' ? row.offer_intro : '')
+      setOfferPrivatePosts(typeof row.offer_private_posts === 'string' ? row.offer_private_posts : '')
+      setOfferFanChat(typeof row.offer_fan_chat === 'string' ? row.offer_fan_chat : '')
+    }
     setOfferComplete(isCreatorFanOfferComplete(row))
     setFanRoomId(row.fan_room_id ? String(row.fan_room_id) : null)
     setFanRoomTitle(typeof row.fan_room_title === 'string' ? row.fan_room_title : '')
     setFanRoomDescription(typeof row.fan_room_description === 'string' ? row.fan_room_description : '')
     setFanRoomTopicKeywords(typeof row.fan_room_topic_keywords === 'string' ? row.fan_room_topic_keywords : '')
     setFanRoomAvatarUrl(typeof row.fan_room_avatar_url === 'string' ? row.fan_room_avatar_url : null)
-  }, [onMonetizationRowApplied])
+  }, [])
 
-  const reload = useCallback(async () => {
+  /**
+   * @param {{ preserveOfferDraft?: boolean }} [opts]
+   */
+  const reload = useCallback(async (opts = {}) => {
     if (!supabaseClient) {
       setLoading(false)
       return
@@ -92,7 +105,7 @@ export default function CreatorFanMonetizationPanel({
     setError('')
     try {
       const row = await fetchMyCreatorFanMonetization(supabaseClient)
-      applyRow(row)
+      applyRow(row, opts)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load fan subscription settings.')
     } finally {
@@ -100,9 +113,12 @@ export default function CreatorFanMonetizationPanel({
     }
   }, [applyRow, supabaseClient])
 
+  const reloadRef = useRef(reload)
+  reloadRef.current = reload
+
   useEffect(() => {
-    void reload()
-  }, [reload])
+    void reloadRef.current()
+  }, [supabaseClient])
 
   useEffect(() => {
     if (!supabaseClient || !connectReturnPending()) return
@@ -114,7 +130,7 @@ export default function CreatorFanMonetizationPanel({
         if (!cancelled) {
           setStatusMessage('Stripe Connect updated. Finish your offer, then go live.')
           clearConnectQueryParams()
-          await reload()
+          await reloadRef.current({ preserveOfferDraft: true })
         }
       } catch (e) {
         if (!cancelled) {
@@ -127,16 +143,17 @@ export default function CreatorFanMonetizationPanel({
     return () => {
       cancelled = true
     }
-  }, [supabaseClient, reload])
+  }, [supabaseClient])
 
+  // Soft poll Connect until complete … never wipe in-progress offer copy.
   useEffect(() => {
-    if (!supabaseClient || loading || busy) return
+    if (!supabaseClient || loading) return
     if (connectComplete || !stripeConnectAccountId.trim()) return
     let cancelled = false
     ;(async () => {
       try {
         await refreshCreatorFanConnectStatus(supabaseClient)
-        if (!cancelled) await reload()
+        if (!cancelled) await reloadRef.current({ preserveOfferDraft: true })
       } catch {
         // ignore — user can tap Refresh status
       }
@@ -144,7 +161,7 @@ export default function CreatorFanMonetizationPanel({
     return () => {
       cancelled = true
     }
-  }, [supabaseClient, loading, busy, connectComplete, stripeConnectAccountId, reload])
+  }, [supabaseClient, loading, connectComplete, stripeConnectAccountId])
 
   const draftOfferComplete = useMemo(
     () =>
@@ -176,7 +193,7 @@ export default function CreatorFanMonetizationPanel({
     setStatusMessage('')
     try {
       await refreshCreatorFanConnectStatus(supabaseClient)
-      await reload()
+      await reload({ preserveOfferDraft: true })
       setStatusMessage('Connect status refreshed.')
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Connect refresh failed.')
@@ -314,7 +331,7 @@ export default function CreatorFanMonetizationPanel({
                 initialAvatarUrl={fanRoomAvatarUrl}
                 compact
                 onSaved={(row) => {
-                  if (row) applyRow(row)
+                  if (row) applyRow(row, { preserveOfferDraft: true })
                 }}
               />
             </div>

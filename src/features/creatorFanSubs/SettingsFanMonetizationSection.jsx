@@ -33,6 +33,10 @@ const SettingsFanMonetizationSection = forwardRef(function SettingsFanMonetizati
     void syncEnabled()
   }, [open, syncEnabled])
 
+  const onMonetizationRowApplied = useCallback((row) => {
+    setFanSubsEnabled(Boolean(row?.enabled))
+  }, [])
+
   const sectionTitle = fanSubsEnabled ? 'Fan Subscriptions Enabled' : 'Enable fan subscriptions'
 
   return (
@@ -56,7 +60,7 @@ const SettingsFanMonetizationSection = forwardRef(function SettingsFanMonetizati
           <CreatorFanMonetizationPanel
             supabaseClient={supabaseClient}
             embedded
-            onMonetizationRowApplied={(row) => setFanSubsEnabled(Boolean(row?.enabled))}
+            onMonetizationRowApplied={onMonetizationRowApplied}
           />
         </div>
       ) : null}

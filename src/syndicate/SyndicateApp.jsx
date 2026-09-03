@@ -1252,7 +1252,7 @@ export function SyndicateApp() {
             <div className="border-b border-zinc-800 pb-4">
               <h2 className="text-2xl font-bold text-white tracking-tight">College Football Power Ratings</h2>
               <p className="text-zinc-400 text-xs sm:text-sm mt-1">
-                Multi-model consensus board. Component models stay locked on the public view. Not an AP poll.
+                Multi-model consensus board. Updates weekly.
               </p>
             </div>
 

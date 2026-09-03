@@ -85,8 +85,8 @@ export function formatTodayPicksResult(data, dryRun = false) {
   const voted = data.totalGames != null ? `${data.totalGames} with desk votes` : null
   const h = data.hammersCount != null ? `${data.hammersCount} hammers` : null
   const c = data.consensusCount != null ? `${data.consensusCount} consensus` : null
-  const s = data.splitsCount != null ? `${data.splitsCount} divided` : null
-  const ms = data.majoritySplitsCount != null ? `${data.majoritySplitsCount} majority split` : null
+  const s = data.splitsCount != null ? `${data.splitsCount} split` : null
+  const ms = data.majoritySplitsCount != null ? `${data.majoritySplitsCount} house divided` : null
   const solo = data.solosCount != null ? `${data.solosCount} solos` : null
   const ap = data.passOnlyCount != null ? `${data.passOnlyCount} all pass` : null
   const stats = [gamesToday, voted, h, c, ms, solo, s, ap].filter(Boolean).join(' · ')

@@ -10,7 +10,7 @@ import {
   shortDisplayName,
   type OddsPick,
 } from './loungeBotOddsCaption.ts'
-import { formatColoredPickerList, formatColoredPickerName } from './loungeBotPickerColors.ts'
+import { formatColoredPickerName } from './loungeBotPickerColors.ts'
 import { publishLoungeBotPost } from './loungeBotPublish.ts'
 import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
 import { fetchGameWeather, type GameWeatherSummary } from './loungeBotWeather.ts'
@@ -221,8 +221,13 @@ export const PUBLIC_SLATE_HOUSE_DIVIDED_CAP = 3
 export const PUBLIC_SLATE_PASS_CAP = 3
 
 /**
- * Locked public slate markdown dialect (v7):
- * Game-first ## matchup headers; Consensus (2-0) vs Majority Split (2-1) vs House Divided (1-1).
+ * Locked public slate markdown dialect (v8):
+ * - H1 title; H2 sections; H3 items
+ * - Hammers: pick-first H3
+ * - Consensus / House Divided / Split: matchup H3 + one desk-summary line
+ * - Solo: group by desk (H3 desk name, pick bullets underneath)
+ * - All Pass last: matchup list only (no PASS desk spam)
+ * - Labels: Consensus (2-0), House Divided (2-1), Split (1-1)
  */
 function formatSlateWeekSubtitle(games: SlateGamePick[]): string | null {
   const times = games
@@ -262,37 +267,103 @@ function formatSlateWeekLine(games: SlateGamePick[]): string | null {
   return weekNum ? `Week ${weekNum} · ${range}` : range
 }
 
-function formatSlateGameTitle(g: SlateGamePick): string {
+function formatMatchupWhen(g: SlateGamePick): string {
   const away = shortDisplayName(g.awayTeam)
   const home = shortDisplayName(g.homeTeam)
   const when = formatOddsCommenceTimeShort(g.commenceTime)
-  return `## ${away}/${home} · ${when}`
+  return `${away}/${home} · ${when}`
 }
 
-function formatAtsDeskLine(picker: SharpPicker, g: SlateGamePick): string {
-  const pick = g.pickerPicks[picker]
-  if (pick.side === 'pass') {
-    return `- ${formatColoredPickerName(picker)}: PASS`
-  }
-  return `- ${formatColoredPickerName(picker)}: **[gold]${pick.lineDisplay}[/gold]**`
+function formatGoldPick(lineDisplay: string): string {
+  return `**[gold]${lineDisplay}[/gold]**`
 }
 
-function formatSlateAtsGameBlock(g: SlateGamePick): string[] {
-  return [formatSlateGameTitle(g), ...ATS_SIDE_DESKS.map((p) => formatAtsDeskLine(p, g))]
+function formatDeskJoin(names: readonly SharpPicker[]): string {
+  return names.map((n) => formatColoredPickerName(n)).join(' & ')
 }
 
-function appendSlateGameBlocks(lines: string[], games: SlateGamePick[]) {
-  for (let i = 0; i < games.length; i++) {
-    lines.push(...formatSlateAtsGameBlock(games[i]!))
-    if (i < games.length - 1) lines.push('')
-  }
+function desksOnSide(g: SlateGamePick, side: 'home' | 'away'): SharpPicker[] {
+  return ATS_SIDE_DESKS.filter((p) => g.pickerPicks[p].side === side)
 }
 
-function formatTankGameBlock(g: SlateGamePick): string[] {
+function desksPassing(g: SlateGamePick): SharpPicker[] {
+  return ATS_SIDE_DESKS.filter((p) => g.pickerPicks[p].side === 'pass')
+}
+
+function soloPickerForGame(g: SlateGamePick): SharpPicker | null {
+  const active = ATS_SIDE_DESKS.filter((p) => g.pickerPicks[p].side !== 'pass')
+  return active.length === 1 ? active[0]! : null
+}
+
+/** Hammer H3: pick first, matchup in parens. */
+function formatHammerItem(g: SlateGamePick): string {
+  return `### ${formatGoldPick(g.consensusPick.lineDisplay)} (${formatMatchupWhen(g)})`
+}
+
+/** Consensus (2-0): matchup H3 + majority pick · desks | pass desks. */
+function formatConsensusItem(g: SlateGamePick): string[] {
+  const agree = desksOnSide(g, g.consensusPick.side)
+  const passing = desksPassing(g)
+  const passBit = passing.length
+    ? ` | ${formatDeskJoin(passing)} PASS`
+    : ''
   return [
-    formatSlateGameTitle(g),
-    `- **[gold]${g.pickerPicks.Tank.lineDisplay}[/gold]**`,
+    `### ${formatMatchupWhen(g)}`,
+    `· ${formatGoldPick(g.consensusPick.lineDisplay)} · ${formatDeskJoin(agree)}${passBit}`,
   ]
+}
+
+/** House Divided (2-1): matchup H3 + majority · desks | dissenter · other pick. */
+function formatHouseDividedItem(g: SlateGamePick): string[] {
+  const majoritySide = g.consensusPick.side
+  const dissentSide = majoritySide === 'home' ? 'away' : 'home'
+  const majorityDesks = desksOnSide(g, majoritySide)
+  const dissentDesks = desksOnSide(g, dissentSide)
+  const dissentLine = dissentDesks[0]
+    ? g.pickerPicks[dissentDesks[0]].lineDisplay
+    : ''
+  return [
+    `### ${formatMatchupWhen(g)}`,
+    `· ${formatGoldPick(g.consensusPick.lineDisplay)} · ${formatDeskJoin(majorityDesks)} | ${formatDeskJoin(dissentDesks)} · ${formatGoldPick(dissentLine)}`,
+  ]
+}
+
+/** Split (1-1): matchup H3 + both active sides. */
+function formatSplitItem(g: SlateGamePick): string[] {
+  const homeDesks = desksOnSide(g, 'home')
+  const awayDesks = desksOnSide(g, 'away')
+  const homeLine = homeDesks[0] ? g.pickerPicks[homeDesks[0]].lineDisplay : ''
+  const awayLine = awayDesks[0] ? g.pickerPicks[awayDesks[0]].lineDisplay : ''
+  return [
+    `### ${formatMatchupWhen(g)}`,
+    `· ${formatGoldPick(awayLine)} · ${formatDeskJoin(awayDesks)} | ${formatGoldPick(homeLine)} · ${formatDeskJoin(homeDesks)}`,
+  ]
+}
+
+/** Solo section: group by desk as H3, pick bullets under each. */
+function formatSoloSection(solos: SlateGamePick[]): string[] {
+  const byDesk = new Map<SharpPicker, SlateGamePick[]>()
+  for (const g of solos) {
+    const picker = soloPickerForGame(g)
+    if (!picker) continue
+    const list = byDesk.get(picker) || []
+    list.push(g)
+    byDesk.set(picker, list)
+  }
+  const lines: string[] = []
+  for (const desk of ATS_SIDE_DESKS) {
+    const games = byDesk.get(desk)
+    if (!games?.length) continue
+    lines.push(`### ${formatColoredPickerName(desk)}`)
+    for (const g of games) {
+      lines.push(`· ${formatGoldPick(g.pickerPicks[desk].lineDisplay)} (${formatMatchupWhen(g)})`)
+    }
+  }
+  return lines
+}
+
+function formatTankItem(g: SlateGamePick): string {
+  return `### ${formatGoldPick(g.pickerPicks.Tank.lineDisplay)} (${formatMatchupWhen(g)})`
 }
 
 /** Public tease footer … game count when the slate has 2+ games, else generic VIP CTA. */
@@ -306,7 +377,7 @@ export function formatSlateVipCtaLine(card: NflSlateCard): string {
 
 /**
  * Format an NFL / Football Slate Card caption for the Lounge feed.
- * Game-first blocks under each section; public tease caps per bucket.
+ * H2 sections / H3 items; public tease caps per bucket.
  */
 export function formatNflSlateCardCaption(card: NflSlateCard): string {
   const hammers = card.hammers.slice(0, PUBLIC_SLATE_HAMMER_CAP)
@@ -326,60 +397,50 @@ export function formatNflSlateCardCaption(card: NflSlateCard): string {
   lines.push('')
 
   if (hammers.length > 0) {
-    lines.push('# 🔥 Unanimous 3-0 Hammers')
-    lines.push('')
-    appendSlateGameBlocks(lines, hammers)
+    lines.push('## 🔥 Hammers (3-0)')
+    for (const g of hammers) lines.push(formatHammerItem(g))
     lines.push('')
   }
 
   if (consensus.length > 0) {
-    lines.push('# 🎯 Consensus (2-0)')
-    lines.push('')
-    appendSlateGameBlocks(lines, consensus)
+    lines.push('## 🎯 Consensus (2-0)')
+    for (const g of consensus) lines.push(...formatConsensusItem(g))
     lines.push('')
   }
 
   if (majoritySplits.length > 0) {
-    lines.push('# ⚖️ Majority Split (2-1)')
-    lines.push('')
-    appendSlateGameBlocks(lines, majoritySplits)
+    lines.push('## ⚔️ House Divided (2-1)')
+    for (const g of majoritySplits) lines.push(...formatHouseDividedItem(g))
     lines.push('')
   }
 
   if (solos.length > 0) {
-    lines.push('# 🎯 Solo Picks')
-    lines.push('')
-    appendSlateGameBlocks(lines, solos)
+    lines.push('## 🎯 Solo Picks')
+    lines.push(...formatSoloSection(solos))
     lines.push('')
   }
 
   if (splits.length > 0) {
-    lines.push('# ⚔️ House Divided (1-1)')
-    lines.push('')
-    appendSlateGameBlocks(lines, splits)
-    lines.push('')
-  }
-
-  if (passOnly.length > 0) {
-    lines.push('# ⏭️ All Pass')
-    lines.push('')
-    appendSlateGameBlocks(lines, passOnly)
+    lines.push('## ⚖️ Split (1-1)')
+    for (const g of splits) lines.push(...formatSplitItem(g))
     lines.push('')
   }
 
   if (tankTotals.length > 0) {
-    lines.push("# 🛡️ Tank's Totals")
+    lines.push("## 🛡️ Tank's Totals")
+    for (const g of tankTotals) lines.push(formatTankItem(g))
     lines.push('')
-    for (let i = 0; i < tankTotals.length; i++) {
-      lines.push(...formatTankGameBlock(tankTotals[i]!))
-      if (i < tankTotals.length - 1) lines.push('')
-    }
+  }
+
+  if (passOnly.length > 0) {
+    lines.push('## ⏭️ All Pass')
+    for (const g of passOnly) lines.push(`### ${formatMatchupWhen(g)}`)
     lines.push('')
   }
 
   const injuryNotes = card.games.filter((g) => g.sideModifier?.isSignificant).slice(0, 4)
   if (injuryNotes.length > 0) {
-    lines.push('# 🚑 Side modifiers (post-board)')
+    lines.push('## 🚑 Side modifiers (post-board)')
     for (const g of injuryNotes) {
       const away = shortDisplayName(g.awayTeam)
       const home = shortDisplayName(g.homeTeam)
@@ -1031,10 +1092,10 @@ export function buildNflAtsSlateCard(
       voteCount = Math.max(homeVotes, awayVotes)
       if (voteCount >= 2) {
         consensusType = 'majority_split'
-        badgeText = '⚖️ 2-1 Majority Split'
+        badgeText = '⚔️ 2-1 House Divided'
       } else {
         consensusType = 'split'
-        badgeText = '⚔️ 1-1 Split'
+        badgeText = '⚖️ 1-1 Split'
         voteCount = 1
       }
     } else {

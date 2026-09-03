@@ -2,10 +2,10 @@ import { useMemo } from 'react'
 import { renderLoungeMarkdown } from '../features/lounge/loungeMarkdown.jsx'
 
 const TYPE_LABEL = {
-  hammer: 'Hammer',
+  hammer: 'Hammer (3-0)',
   consensus: 'Consensus (2-0)',
-  majority_split: 'Majority Split (2-1)',
-  split: 'House Divided (1-1)',
+  majority_split: 'House Divided (2-1)',
+  split: 'Split (1-1)',
   solo: 'Solo',
   pass_only: 'All pass',
 }
@@ -51,8 +51,8 @@ export function SyndicateDryRunPreview({ preview, onDismiss }) {
     preview.totalGames != null ? `${preview.totalGames} scored` : null,
     preview.hammersCount != null ? `${preview.hammersCount} hammers` : null,
     preview.consensusCount != null ? `${preview.consensusCount} consensus` : null,
-    preview.splitsCount != null ? `${preview.splitsCount} divided` : null,
-    preview.majoritySplitsCount != null ? `${preview.majoritySplitsCount} majority split` : null,
+    preview.splitsCount != null ? `${preview.splitsCount} split` : null,
+    preview.majoritySplitsCount != null ? `${preview.majoritySplitsCount} house divided` : null,
     preview.solosCount != null ? `${preview.solosCount} solos` : null,
     preview.passOnlyCount != null ? `${preview.passOnlyCount} all pass` : null,
   ]

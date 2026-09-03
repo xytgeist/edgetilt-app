@@ -557,7 +557,7 @@ export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): 
     const home = sportTeamDisplayName(g.homeTeam, g.sportKey || card.sportKey)
     const when = formatOddsCommenceTimeShort(g.commenceTime)
     const decision = pPick.side === 'pass' ? 'PASS' : String(pPick.lineDisplay || '').trim() || 'PASS'
-    lines.push(`· ${decision} (${away}/${home} · ${when})`)
+    lines.push(`${away}/${home} · ${when} | ${decision}`)
   }
   if (card.games.length === 0) {
     lines.push(picker === 'Tank' ? '· No totals leans this slate' : '· No ATS leans this slate')

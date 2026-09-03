@@ -400,14 +400,14 @@ export function SyndicateApp() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             {/* Sharpe Syndicate mark */}
-            <div className="h-10 w-10 rounded-xl bg-zinc-900 border border-zinc-700/80 p-1.5 shadow-md flex items-center justify-center relative overflow-hidden">
+            <div className="h-10 w-10 rounded-xl bg-zinc-900 border border-zinc-700/80 p-0.5 shadow-md flex items-center justify-center relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 via-transparent to-zinc-900 opacity-60 pointer-events-none" />
               <img
                 src="/syndicate/mark.png"
                 alt=""
-                width={28}
-                height={28}
-                className="relative z-10 h-7 w-7 object-contain"
+                width={36}
+                height={36}
+                className="relative z-10 h-9 w-9 object-contain"
                 decoding="async"
               />
             </div>

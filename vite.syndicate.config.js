@@ -16,15 +16,11 @@ export default defineConfig({
         if (existsSync(src)) {
           copyFileSync(src, dest)
         }
-        // Cloudflare Pages SPA fallback. Prefer /desk — bare /ops 308s to / on the live zone.
+        // SPA fallback only. Do NOT list bare paths like `/ops /index.html 200` —
+        // on this Pages project those rewrite lines 308 the path to `/`.
         writeFileSync(
           path.resolve('dist-syndicate/_redirects'),
-          [
-            '/desk /index.html 200',
-            '/desk/ /index.html 200',
-            '/ops/ /index.html 200',
-            '',
-          ].join('\n'),
+          ['/* /index.html 200', ''].join('\n'),
         )
       },
     },

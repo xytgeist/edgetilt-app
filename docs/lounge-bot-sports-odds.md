@@ -835,7 +835,7 @@ npm run syndicate:sync-cfb-power:production   # Ryan explicit only
 
 - Caps: **1** hammer, **2** consensus, **3** house-divided games (VIP still gets full desk cards)
 - H1 title + `Week N · Sep 10-15` line; H1 section headers with emojis
-- Pick line: `- **[gold]{pick}[/gold]** ({away}/{home} · {when})` plus ` · Scott, Rocco` on **consensus** and **house divided** only (not hammers ... unanimous implies all four)
+- Pick line: `- **[gold]{pick}[/gold]** ({away}/{home} · {when})` plus ` · Scott, Rocco` on **consensus** and **house divided** only (not hammers ... unanimous 3-0 among Scott/Rocco/Chedda; Tank is totals-only)
 - House divided: one gold bullet per side, desk names on each
 - Markdown dialect captions preserve middle dots (`·`) through publish sanitize
 

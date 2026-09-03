@@ -2826,6 +2826,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-02:** **sharpesyndicate.com ATS labels:** public site now matches engine ... **3-0 Hammers** / **2-1 Consensus** (Scott/Rocco/Chedda sides only); Tank card/methodology = **totals only** (not `% ATS`). UFC ledger fallback still **4-0 / 3-1** fight hammers. No model change.
 - **2026-09-01:** **Audited Ledger scope:** historical only ... **`SyndicateApp`** excludes picks whose `commence_time` is still in the future (+ 90m buffer). `backfill-ufc-picks.mjs` omits upcoming cards entirely (no pending future rows). Migration **`20260901100000`** strips wrongly pre-graded future backfill rows.
 - **2026-09-01:** **sharpesyndicate.com:** fix Benchmark Feed overflow (Pinnacle / Circa); show each desk overall W-L / net units / ATS on Overview cards; Audited Ledger shows filtered record + net units + win rate for current desk/signal/sport filters.
 - **2026-09-01:** Weekly ledger markdown v5 in `formatWeeklySyndicateRecapCaption`: comma crew lines, CLV `[green]` tag, post-mortem hook · narrative, rotating bad-beat taglines (~25% weeks omit). Fixed `publishWeeklySyndicateRecap` publish API. Redeploy **`lounge-odds-poll`**.

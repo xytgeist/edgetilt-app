@@ -146,7 +146,7 @@ export function SyndicateApp() {
   const clvRate =
     gradedPicks.length > 0 && clvBeats > 0 ? ((clvBeats / gradedPicks.length) * 100).toFixed(1) : '—'
 
-  // Hammer 4-0 & Consensus 3-1 metrics calculated per unique game/event
+  // Hammer 3-0 & Consensus 2-1 metrics (ATS side desks only) calculated per unique game/event
   const groupConsensusGames = (pickList) => {
     const gamesMap = new Map()
     for (const p of pickList) {
@@ -547,14 +547,14 @@ export function SyndicateApp() {
                 className="p-4 sm:p-5 rounded-2xl border border-amber-500/30 bg-gradient-to-b from-amber-950/20 to-zinc-900/50 backdrop-blur flex flex-col justify-between cursor-pointer hover:border-amber-500/60 hover:scale-[1.02] transition-all group"
               >
                 <div className="text-[10px] sm:text-xs font-mono text-amber-400 uppercase tracking-wider flex items-center justify-between">
-                  <span>🔥 4-0 Hammers</span>
+                  <span>🔥 3-0 Hammers</span>
                   <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">→</span>
                 </div>
                 <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-amber-300">
                   {hammerWinRate}%
                 </div>
                 <div className="text-[10px] sm:text-[11px] text-amber-400/80 truncate">
-                  {hammerWins > 0 || hammerLosses > 0 ? `${hammerWins}W - ${hammerLosses}L · ${hammerDisplayUnits}U (${hammerTotalGames} Games)` : 'Unanimous 4-0'}
+                  {hammerWins > 0 || hammerLosses > 0 ? `${hammerWins}W - ${hammerLosses}L · ${hammerDisplayUnits}U (${hammerTotalGames} Games)` : 'Unanimous 3-0 sides'}
                 </div>
               </div>
 
@@ -567,7 +567,7 @@ export function SyndicateApp() {
                 className="p-4 sm:p-5 rounded-2xl border border-cyan-500/30 bg-gradient-to-b from-cyan-950/20 to-zinc-900/50 backdrop-blur flex flex-col justify-between cursor-pointer hover:border-cyan-500/60 hover:scale-[1.02] transition-all group"
               >
                 <div className="text-[10px] sm:text-xs font-mono text-cyan-400 uppercase tracking-wider flex items-center justify-between">
-                  <span>🎯 3-1 Consensus</span>
+                  <span>🎯 2-1 Consensus</span>
                   <span className="text-[10px] opacity-0 group-hover:opacity-100 transition-opacity">→</span>
                 </div>
                 <div className="my-1.5 text-lg sm:text-2xl lg:text-3xl font-mono font-extrabold text-cyan-300">
@@ -593,7 +593,7 @@ export function SyndicateApp() {
                 <div>
                   <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">The 4-Desk Syndicate Architecture</h2>
                   <p className="text-zinc-400 text-xs sm:text-sm mt-1">
-                    Independent quantitative desks modeling across spread, totals, power ratings, and situational edges. Tap any desk to view its audited ledger.
+                    Three side desks (Scott, Rocco, Chedda) vote ATS hammers and consensus. Tank owns totals only and does not pad the side count. Tap any desk to view its audited ledger.
                   </p>
                 </div>
               </div>
@@ -638,7 +638,7 @@ export function SyndicateApp() {
                     <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
                       <div>• Core: +EV Market Pricing</div>
                       <div>• Edge: Key Number Clusters (3 &amp; 7)</div>
-                      <div>• Signal: Syndicate Hammer 4-0</div>
+                      <div>• Signal: Syndicate Hammer 3-0</div>
                     </div>
                   </div>
                   <div className="pt-3 border-t border-zinc-800/40 flex items-center justify-between text-xs font-bold text-emerald-400 group-hover:translate-x-0.5 transition-transform">
@@ -773,16 +773,16 @@ export function SyndicateApp() {
                         </span>
                       </div>
                       {deskStatsByName.Tank.winRate ? (
-                        <div className="mt-0.5 text-[10px] text-zinc-500">{deskStatsByName.Tank.winRate}% ATS</div>
+                        <div className="mt-0.5 text-[10px] text-zinc-500">{deskStatsByName.Tank.winRate}% Totals</div>
                       ) : null}
                     </div>
                     <p className="text-xs text-zinc-400 leading-relaxed">
-                      Over/Under totals and situational pace specialist. Evaluates seconds per play, atmospheric weather impacts (wind/cold), and rest/travel scheduling spots.
+                      Over/Under totals specialist only ... no ATS side vote. Prices pace, weather/wind, and short-week spots into standalone totals plays while side hammers stay 3-desk.
                     </p>
                     <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
                       <div>• Core: Pace &amp; Seconds Per Play</div>
                       <div>• Factor: Wind (&gt;14mph) &amp; Cold Weather</div>
-                      <div>• Rest: Short Weeks &amp; Cross-Country Spots</div>
+                      <div>• Lane: Totals only (sides = PASS)</div>
                     </div>
                   </div>
                   <div className="pt-3 border-t border-zinc-800/40 flex items-center justify-between text-xs font-bold text-purple-400 group-hover:translate-x-0.5 transition-transform">
@@ -869,8 +869,8 @@ export function SyndicateApp() {
                 <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
                   {[
                     { id: 'all', label: 'All Signals' },
-                    { id: 'hammer', label: '🔥 4-0 Hammers' },
-                    { id: 'consensus', label: '🎯 3-1 Consensus' },
+                    { id: 'hammer', label: '🔥 3-0 Hammers' },
+                    { id: 'consensus', label: '🎯 2-1 Consensus' },
                     { id: 'solo', label: 'Solo Spots' },
                   ].map((s) => (
                     <button
@@ -990,16 +990,19 @@ export function SyndicateApp() {
                           ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
                           : 'bg-purple-500/10 text-purple-400 border-purple-500/20'
 
+                      const isMma = pick.sport_key?.includes('mma') || pick.sport_key?.includes('ufc')
                       const consensusType = pick.metadata?.consensus_type || pick.metadata?.consensus_signal || 'solo'
                       const consensusBadge =
                         pick.metadata?.consensus_badge ||
                         (consensusType === 'hammer'
-                          ? '🔥 4-0 Hammer'
+                          ? isMma
+                            ? '🔥 4-0 Fight Hammer'
+                            : '🔥 3-0 Hammer'
                           : consensusType === 'consensus'
-                          ? '🎯 3-1 Consensus'
+                          ? isMma
+                            ? '🎯 3-1 Consensus'
+                            : '🎯 2-1 Consensus'
                           : 'Solo Spot')
-
-                      const isMma = pick.sport_key?.includes('mma') || pick.sport_key?.includes('ufc')
                       const eventLabel =
                         pick.away_team && pick.home_team
                           ? isMma
@@ -1339,9 +1342,9 @@ export function SyndicateApp() {
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   The Sharpe Syndicate runs four independent desks ... each tuned to a narrow, high-signal lane (pure EV modeling,
-                  trench favorites &amp; key numbers, underdog value, situational totals). Every desk ingests only its most robust
-                  inputs, publishes a standalone pick, and compares that thesis against the other three. Unanimous agreement surfaces
-                  as a hammer; a 2–2 split stays visible on the slate instead of getting averaged into one buried decimal.
+                  trench favorites &amp; key numbers, underdog value, situational totals). Side hammers and consensus are ATS votes among
+                  Scott, Rocco, and Chedda only (3-0 Hammer / 2-1 Consensus). Tank publishes totals separately and never pads a fake 4-0.
+                  A house-divided side board stays visible on the slate instead of getting averaged into one buried decimal.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   That structure leaves room for calibrated human intuition. When Scott&apos;s model and Rocco&apos;s trench read
@@ -1431,7 +1434,8 @@ export function SyndicateApp() {
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   Tank&apos;s lane is totals-native: pace, play-calling tendencies, weather and wind, short weeks, and other
-                  situational levers that move scoring distribution. Those inputs can change the total even when the side stays put.
+                  situational levers that move scoring distribution. He does not vote ATS sides ... that keeps 3-0 hammers honest.
+                  Those totals inputs can change the over/under even when the side stays put.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   Totals also have their own clustering (certain numbers hit more often historically). Tank prices those frequencies

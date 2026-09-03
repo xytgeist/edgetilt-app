@@ -55,7 +55,7 @@ async function messageFromFunctionsInvokeError(error, invokeResponse) {
  */
 export async function runTodayPicksForSport(supabaseClient, opts) {
   const plan = todayPicksPlan(opts.sportKey)
-  const slug = opts.slug || 'sports-odds'
+  const slug = opts.slug || 'sharpe-syndicate'
   const { data, error, response } = await supabaseClient.functions.invoke('lounge-odds-poll', {
     body: {
       slug,

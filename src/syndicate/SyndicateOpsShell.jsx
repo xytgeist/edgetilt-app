@@ -5,7 +5,7 @@ import {
   todayPicksPlan,
   runTodayPicksForSport,
 } from './syndicateTodayPicks.js'
-import { resolveSyndicateDeskBot, SHARPE_SIGNAL_BOT_SLUG } from './syndicateBotIdentity.js'
+import { resolveSyndicateDeskBot, SHARPE_SYNDICATE_BOT_SLUG } from './syndicateBotIdentity.js'
 import { SyndicateDryRunPreview } from './SyndicateDryRunPreview.jsx'
 
 const BotSharpDeskPanel = lazy(() =>
@@ -38,8 +38,8 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
     setBusy(true)
     try {
       const { plan, data, error: runErr } = await runTodayPicksForSport(supabaseClient, {
-        // Edge runner stays on Signal (running). Publish remounts to Syndicate inside Edge.
-        slug: SHARPE_SIGNAL_BOT_SLUG,
+        // Desk product … queue as Syndicate (not Signal).
+        slug: bot.slug || SHARPE_SYNDICATE_BOT_SLUG,
         sportKey: selectedSportKey,
         dryRun: runDryRun,
       })
@@ -210,7 +210,7 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
             <BotSharpDeskPanel
               supabaseClient={supabaseClient}
               botUserId={bot.user_id}
-              botSlug={bot.slug || SHARPE_SIGNAL_BOT_SLUG}
+              botSlug={bot.slug || SHARPE_SYNDICATE_BOT_SLUG}
               setToast={setToast}
               busy={busy}
               setBusy={setBusy}

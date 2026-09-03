@@ -1,6 +1,6 @@
 /**
  * Create Sharpe Syndicate desk bot on a Supabase project (default: test).
- * Keeps run_state=stopped so odds cron does not duplicate Signal polls.
+ * Odds alert toggles stay off … Signal owns Steam / edges / coffee.
  *
  * Usage:
  *   node scripts/create-sharpe-syndicate-bot.mjs
@@ -122,9 +122,29 @@ const { error: oddsErr } = await admin.from('lounge_bot_odds_config').upsert({
   min_edge_pct: 4,
   max_picks_per_run: 1,
   max_edge_alerts_per_day: 1,
+  max_line_alerts_per_day: 1,
+  max_live_alerts_per_day: 1,
+  max_period_reports_per_day: 1,
+  max_sharp_reports_per_day: 1,
+  max_value_bet_radar_posts_per_day: 1,
+  max_arb_alerts_per_day: 1,
+  max_context_alerts_per_day: 1,
   max_slate_posts_per_day: 12,
   daily_slate_enabled: false,
   coffee_covers_enabled: false,
+  line_movement_enabled: false,
+  live_edge_enabled: false,
+  period_report_enabled: false,
+  sharp_report_enabled: false,
+  value_bet_radar_enabled: false,
+  best_bet_hour_enabled: false,
+  arb_watch_enabled: false,
+  starter_spotlight_enabled: false,
+  confirmed_starters_enabled: false,
+  injury_impact_enabled: false,
+  rest_travel_edge_enabled: false,
+  fade_the_public_enabled: false,
+  alert_audience: {},
   enabled: true,
 })
 if (oddsErr) {
@@ -159,8 +179,8 @@ console.log(
       run_state: 'stopped',
       next: [
         'Staff sign-in-as-bot → Connect + go live fan sub (creates fan_room_id)',
-        'Redeploy lounge-odds-poll so slate remount + creator_fan_only ship',
-        'Do not set run_state=running (avoids duplicate Signal polls)',
+        'Redeploy lounge-odds-poll (Signal/Syndicate action ownership)',
+        'Desk crons hit sharpe-syndicate only; Signal alert crons skip it',
       ],
     },
     null,

@@ -2842,6 +2842,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-03:** **Signal vs Syndicate poll ownership:** Steam / edges / coffee / BBH / VBR never run as `@sharpesyndicate`; desk / slate / VIP shop never queue as Signal while Syndicate is running. Migration **`20260903150000`** + Edge **`lounge-odds-poll`**. Ops site queues as **`sharpe-syndicate`**.
 - **2026-09-02:** **Syndicate metrics GHA now syncs production every Tuesday** (was test-only; prod was manual dispatch). Edge Monitor external job + heartbeat `syndicate_football_metrics_sync_production` (`20260903210000`).
 - **2026-09-02:** **UFC fighter metrics live sync:** `npm run syndicate:sync-ufc-metrics:{test,production}` scrapes **ufcstats.com** (PoW session + a–z index) into `ufc_fighter_metrics`; skips `is_custom_override`. Migrations **`20260903010000`/`0001`** add `ufcstats_url` + `source_synced_at`. Wired into weekly **Syndicate football metrics sync** GHA (test cron; prod on dispatch). Test roster synced 38/38.
 - **2026-09-02:** **sharpesyndicate.com ATS labels:** public site now matches engine ... **3-0 Hammers** / **2-1 Consensus** (Scott/Rocco/Chedda sides only); Tank card/methodology = **totals only** (not `% ATS`). UFC ledger fallback still **4-0 / 3-1** fight hammers. No model change.

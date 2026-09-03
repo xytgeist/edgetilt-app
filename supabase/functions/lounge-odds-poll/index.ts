@@ -34,6 +34,7 @@ import { coffeeBestLinesRankForSport } from '../_shared/loungeBotCoffeeBestLines
 import { DEFAULT_MIN_POST_GAP_MINUTES } from '../_shared/loungeBotPublishConstants.ts'
 import { type OddsPick } from '../_shared/loungeBotOddsCaption.ts'
 import type { SharpReportCandidate } from '../_shared/loungeBotSharpReport.ts'
+import { oddsPollActionOwnershipSkip } from '../_shared/loungeBotSyndicateIdentity.ts'
 
 const CONTEXT_ALERT_KINDS = new Set([
   'starter_spotlight',
@@ -94,6 +95,20 @@ Deno.serve(async (req) => {
     if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'cfb_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'syndicate_monthly_scoreboard', 'calibrate_persona_models', 'ufc_slate_card', 'nfl_wed_tnf_vip', 'nfl_sat_vip_adds_kills', 'cfb_wed_midweek_vip', 'cfb_thu_night_spotlight', 'cfb_sat_vip_adds_kills', 'picks_for_today'].includes(action)) {
       return adminOpsJson(400, {
         error: 'action must be a valid lounge-odds-poll action (incl. picks_for_today, cfb_wed_midweek_vip, cfb_thu_night_spotlight, cfb_sat_vip_adds_kills).',
+      })
+    }
+
+    const ownershipSkip = await oddsPollActionOwnershipSkip(admin, slug, action)
+    if (ownershipSkip) {
+      return adminOpsJson(200, {
+        ok: true,
+        skipped: ownershipSkip,
+        slug,
+        action,
+        note:
+          ownershipSkip === 'signal_alerts_not_on_syndicate'
+            ? 'Steam / edges / coffee / line alerts belong to @sharpesignal only.'
+            : 'Desk / slate / VIP shop posts belong to @sharpesyndicate only.',
       })
     }
 

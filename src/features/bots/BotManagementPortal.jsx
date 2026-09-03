@@ -1343,7 +1343,8 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
               >
                 Open sharpesyndicate.com/ops
               </a>
-              . Keep create / pause / Odds / alert destinations / X / Vault on Signal.
+              . Signal cannot queue desk / slate posts … those belong to{' '}
+              <span className="font-mono text-zinc-300">@sharpesyndicate</span> / Ops only.
             </div>
           </div>
         ) : null}
@@ -1351,9 +1352,9 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
         {isAutomatic && isSharpeSyndicateBot ? (
           <div className="mt-3 rounded-xl border border-emerald-500/25 bg-emerald-950/20 px-3 py-2.5 text-[11px] text-emerald-100/90">
             <span className="font-semibold text-emerald-300">Desk bot</span>
-            {' '}… keep <span className="font-mono text-zinc-300">run_state: stopped</span> so Signal cron does not
-            double-poll. Alert ops (Coffee, edges, Run alert now, destinations) live on{' '}
-            <span className="font-mono text-zinc-300">@sharpesignal</span>. Slate / desk day-to-day:{' '}
+            {' '}… this account cannot send Signal alerts (Steam, Sharp Money, edges, Coffee, destinations).
+            Those belong to <span className="font-mono text-zinc-300">@sharpesignal</span> only.
+            Slate / desk day-to-day:{' '}
             <a
               href="https://sharpesyndicate.com/ops"
               target="_blank"

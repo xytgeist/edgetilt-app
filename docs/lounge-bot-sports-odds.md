@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | Job | Edges, coffee, line moves, alerts | Desk cards, today picks, ledger-facing slate |
 | Fan sub | Existing Signal VIP … **unchanged** | **Separate** creator fan sub (Connect + go live) |
-| VIP / fan chat | Signal room only | Syndicate room only … plain-text full desk cards |
+| VIP / fan chat | Signal room only | Syndicate room only … markdown full desk cards (colored desk + gold picks) |
 | Lounge | Public Signal feed as today | Public **teaser** + **`creator_fan_only`** full card (thread of desk lists) |
 | Existing Signal subs | Stay Signal-only … **no** auto-migrate | New subs only |
 | Cron Signal alerts (`poll_edges` / coffee / BBH / VBR) | Yes (`sports-odds` only) | **Never** … cron + Edge skip |

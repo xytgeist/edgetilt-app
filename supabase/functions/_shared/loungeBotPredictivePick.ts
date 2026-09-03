@@ -230,7 +230,7 @@ export const PUBLIC_SLATE_PASS_CAP = 3
  * - Consensus: pick + agreeing desks only (no PASS callouts)
  * - House Divided / Split: one · line per active side
  * - Order: Hammers → Consensus → House Divided → Split → Tank's Totals → Solo → All Pass
- * - VIP desk cards are plain text (no Lounge markdown tags)
+ * - VIP desk thread parts use the same Lounge markdown dialect (colored desk + gold picks)
  */
 function formatSlateWeekSubtitle(games: SlateGamePick[]): string | null {
   const times = games
@@ -532,7 +532,8 @@ export function splitSlateCaptionToFit(caption: string, maxChars: number): strin
 }
 
 /**
- * Format a clean, full ATS/totals card for one persona … VIP / fan thread.
+ * Format a full ATS/totals card for one persona … VIP / fan thread part.
+ * Same Lounge markdown dialect as the slate root (colored desk name, gold picks).
  * Every slate game is listed with that desk's decision (including PASS).
  */
 export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): string {
@@ -546,18 +547,22 @@ export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): 
           ? 'Power Favorites & Key Numbers'
           : 'Pure Model EV'
 
-  const cardLabel = picker === 'Tank' ? 'TOTALS CARD' : 'ATS CARD'
+  const cardLabel = picker === 'Tank' ? 'Totals Card' : 'ATS Card'
   const lines: string[] = [
-    `${icon} ${picker.toUpperCase()}'S FULL ${cardLabel} (${specialty}):`,
+    `## ${icon} ${formatColoredPickerName(picker)}'s Full ${cardLabel}`,
+    specialty,
     '',
   ]
   for (const g of card.games) {
     const pPick = g.pickerPicks[picker]
-    const away = sportTeamDisplayName(g.awayTeam, g.sportKey || card.sportKey)
-    const home = sportTeamDisplayName(g.homeTeam, g.sportKey || card.sportKey)
+    const sportKey = g.sportKey || card.sportKey
+    const away = sportTeamDisplayName(g.awayTeam, sportKey)
+    const home = sportTeamDisplayName(g.homeTeam, sportKey)
     const when = formatOddsCommenceTimeShort(g.commenceTime)
-    const decision = pPick.side === 'pass' ? 'PASS' : String(pPick.lineDisplay || '').trim() || 'PASS'
-    lines.push(`${away}/${home} · ${when} | ${decision}`)
+    const matchup = `${away}/${home} · ${when}`
+    const isPass = pPick.side === 'pass' || !String(pPick.lineDisplay || '').trim()
+    lines.push(`### ${matchup}`)
+    lines.push(isPass ? '· PASS' : `· ${formatGoldPick(String(pPick.lineDisplay).trim())}`)
   }
   if (card.games.length === 0) {
     lines.push(picker === 'Tank' ? '· No totals leans this slate' : '· No ATS leans this slate')

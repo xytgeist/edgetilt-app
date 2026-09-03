@@ -262,7 +262,7 @@ export function renderLoungeMarkdown(raw, captionOpts = {}) {
           <h2
             key={`lmd-h1-${elemKey++}`}
             data-lounge-h1=""
-            className="my-2 text-[18px] sm:text-[20px] font-black tracking-tight text-white"
+            className="my-2 text-[19px] sm:text-[21px] font-black tracking-tight text-white"
           >
             {renderInlineMarkdown(headingText, captionOpts, `lmd-h1-${elemKey}`)}
           </h2>
@@ -272,7 +272,7 @@ export function renderLoungeMarkdown(raw, captionOpts = {}) {
           <h3
             key={`lmd-h2-${elemKey++}`}
             data-lounge-h2=""
-            className="my-1.5 text-[16px] sm:text-[17px] font-bold tracking-tight text-zinc-100"
+            className="my-1.5 text-[18px] sm:text-[19px] font-bold tracking-tight text-zinc-100"
           >
             {renderInlineMarkdown(headingText, captionOpts, `lmd-h2-${elemKey}`)}
           </h3>
@@ -282,7 +282,7 @@ export function renderLoungeMarkdown(raw, captionOpts = {}) {
           <h4
             key={`lmd-h3-${elemKey++}`}
             data-lounge-h3=""
-            className="my-1 text-[14px] sm:text-[15px] font-bold text-zinc-200"
+            className="my-1 text-[17px] sm:text-[17px] font-bold text-zinc-200"
           >
             {renderInlineMarkdown(headingText, captionOpts, `lmd-h3-${elemKey}`)}
           </h4>

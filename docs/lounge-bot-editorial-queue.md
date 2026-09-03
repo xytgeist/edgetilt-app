@@ -86,7 +86,7 @@ X ingest + draft  →  Review / edit / skip    →   Publish due rows
 1. **`lounge-x-ingest`** (cron): poll configured timelines → filter on-topic → LLM draft in persona voice → `pending_review` with **`bot_user_id` set**.
    - **Single post:** `{ "slug": "…", "tweetUrl": "https://x.com/…/status/…" }` fetches that tweet (any age), LLM rewrite, editorial queue.
 2. **Editorial UI** (admin): inbox filterable by X bot; edit caption, pills, schedule.
-3. **`lounge-bot-publish-due`** (every ~5 min): due `scheduled` rows → post as that **`user_id`**.
+3. **`lounge-bot-publish-due`** (pg_cron **`lounge_bot_publish_due_editorial`**, every **5 min**): due `scheduled` rows → post as that **`user_id`**. Body `{ "publishDue": true }`. Migration **`20260903200000`**. (Separate from Scott odds drain `lounge_bot_publish_scheduled_odds` / `{ publishScheduledOdds: true }`.)
 
 Self-contained bots **bypass** steps 2–3 above ... they use their own ingest + publish path (see sibling docs).
 
@@ -213,14 +213,15 @@ Do **not** copy-paste tweets verbatim (ToS + reads bot).
 
 ## Publish path (X scheduled rows)
 
-Edge Function **`lounge-bot-publish-due`** (service role, cron):
+Edge Function **`lounge-bot-publish-due`** (service role):
 
-1. Select due `scheduled` rows where `review_mode = editorial`.
-2. Insert `community_feed_posts` (same fields as `communityFeedPostInsertPayload`).
-3. Call **`lounge-link-unfurl`** when needed.
-4. Set `published_post_id`, `status = published`.
+1. Cron **`lounge_bot_publish_due_editorial`** every 5 min POSTs `{ "publishDue": true }` (migration **`20260903200000`**). Portal **Publish due** / **Publish now** still work.
+2. Select due `scheduled` rows where `review_mode = editorial`.
+3. Insert `community_feed_posts` (same fields as `communityFeedPostInsertPayload`).
+4. Call **`lounge-link-unfurl`** when needed.
+5. Set `published_post_id`, `status = published`.
 
-Ingest: **`lounge-x-ingest`** only for this doc's scope.
+**Do not confuse** with **`lounge_bot_publish_scheduled_odds`** (every 1 min) … that only drains Scott odds `lounge_bot_scheduled_posts`.
 
 Optional shared **`lounge-bot-draft`** for LLM polish pass.
 

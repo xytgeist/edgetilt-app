@@ -28,6 +28,7 @@ import {
   LOUNGE_IOS,
   LOUNGE_IOS_KEYBOARD_SMOOTH_MS,
 } from './useLoungeKeyboardOverlapPx.js'
+import { LOUNGE_POST_THREAD_MAX_PARTS } from '../../utils/loungeCommentLimits.js'
 
 /**
  * Full-Screen Pro Composer with rich Markdown formatting & live 1:1 card preview.
@@ -40,7 +41,7 @@ import {
  *   onClose: () => void,
  *   postText: string,
  *   onTextChange: (text: string) => void,
- *   onSubmit: () => void,
+ *   onSubmit: (payload?: { threadCaptions?: string[] }) => void,
  *   postBusy?: boolean,
  *   isEdgePro?: boolean,
  *   isStaff?: boolean,
@@ -70,7 +71,6 @@ import {
  *   videoInputId?: string,
  *   onImagePointerDown?: () => void,
  *   onVideoPointerDown?: () => void,
- *   onStartThread?: (caption: string) => void,
  * }} props
  */
 export default function LoungeFullScreenComposerModal({
@@ -108,7 +108,6 @@ export default function LoungeFullScreenComposerModal({
   videoInputId,
   onImagePointerDown,
   onVideoPointerDown,
-  onStartThread,
 }) {
   const [activeTab, setActiveTab] = useState('write') // 'write' | 'preview'
   const [settingsModalOpen, setSettingsModalOpen] = useState(false)
@@ -123,7 +122,11 @@ export default function LoungeFullScreenComposerModal({
   const anchorRef = useRef(null)
   const scrollContainerRef = useRef(null)
   const swipeStartYRef = useRef(null)
+  const extraFieldRefs = useRef([])
+  const toolbarFieldRef = useRef(null)
   const [writeFocused, setWriteFocused] = useState(false)
+  const [extraCaptions, setExtraCaptions] = useState([])
+  const [activePartIndex, setActivePartIndex] = useState(0)
 
   // Only sync down from props when opening the modal (isolates modal typing from feed re-renders)
   useEffect(() => {
@@ -161,6 +164,50 @@ export default function LoungeFullScreenComposerModal({
     },
     [onTextChange],
   )
+
+  const threadCaptions = [localText, ...extraCaptions]
+  const isThread = extraCaptions.length > 0
+
+  const updatePartCaption = useCallback(
+    (index, val) => {
+      if (index <= 0) {
+        handleTextChange(val)
+        return
+      }
+      setExtraCaptions((prev) => prev.map((row, j) => (j === index - 1 ? val : row)))
+    },
+    [handleTextChange],
+  )
+
+  const addThreadPart = useCallback(() => {
+    if (1 + extraCaptions.length >= LOUNGE_POST_THREAD_MAX_PARTS) return
+    const nextIndex = extraCaptions.length + 1
+    setExtraCaptions((prev) => [...prev, ''])
+    setActivePartIndex(nextIndex)
+    requestAnimationFrame(() => {
+      const el = extraFieldRefs.current[nextIndex - 1]
+      if (el) {
+        toolbarFieldRef.current = el
+        try {
+          el.focus({ preventScroll: true })
+        } catch {
+          el.focus()
+        }
+        el.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      }
+    })
+  }, [extraCaptions.length])
+
+  const removeThreadPart = useCallback((index) => {
+    if (index <= 0) return
+    extraFieldRefs.current = extraFieldRefs.current.filter((_, j) => j !== index - 1)
+    setExtraCaptions((prev) => prev.filter((_, j) => j !== index - 1))
+    setActivePartIndex((prev) => {
+      if (prev === index) return Math.max(0, index - 1)
+      if (prev > index) return prev - 1
+      return prev
+    })
+  }, [])
 
   // Mobile / iOS / Android keyboard lift
   const iosSafeBottomPx = useLoungeIosSafeBottomPx(LOUNGE_IOS)
@@ -225,6 +272,7 @@ export default function LoungeFullScreenComposerModal({
           // ignore
         }
       }
+      toolbarFieldRef.current = el
       pinComposerViewport(true)
     },
     [pinComposerViewport],
@@ -344,10 +392,11 @@ export default function LoungeFullScreenComposerModal({
 
   if (!open || typeof document === 'undefined') return null
 
-  const len = (localText || '').length
-  const isOverLimit = len > captionMax
+  const activeCaption = threadCaptions[activePartIndex] ?? localText
+  const len = (activeCaption || '').length
+  const isOverLimit = threadCaptions.some((t) => (t || '').length > captionMax)
   const hasContent =
-    Boolean(localText?.trim()) ||
+    threadCaptions.some((t) => Boolean(String(t || '').trim())) ||
     composerImageItems.length > 0 ||
     Boolean(composerVideoSlot?.preview) ||
     Boolean(composerMediaUrl)
@@ -388,7 +437,13 @@ export default function LoungeFullScreenComposerModal({
       setModalMode('pre_post')
       setSettingsModalOpen(true)
     } else {
-      onSubmit()
+      onSubmit(
+        isThread
+          ? { threadCaptions: [localTextRef.current, ...extraCaptions] }
+          : undefined,
+      )
+      setExtraCaptions([])
+      setActivePartIndex(0)
       onClose()
     }
   }
@@ -397,7 +452,13 @@ export default function LoungeFullScreenComposerModal({
     blurActiveInput()
     setSettingsModalOpen(false)
     flushTextToParent()
-    onSubmit()
+    onSubmit(
+      isThread
+        ? { threadCaptions: [localTextRef.current, ...extraCaptions] }
+        : undefined,
+    )
+    setExtraCaptions([])
+    setActivePartIndex(0)
     onClose()
   }
 
@@ -556,8 +617,8 @@ export default function LoungeFullScreenComposerModal({
             {/* ── Markdown Formatting Toolbar ── */}
             <div className="w-full min-w-0 overflow-hidden">
               <LoungeMarkdownToolbar
-                textareaRef={textareaRef}
-                onTextChange={handleTextChange}
+                textareaRef={toolbarFieldRef}
+                onTextChange={(val) => updatePartCaption(activePartIndex, val)}
                 isEdgePro={isEdgePro || isStaff}
                 onUpgradeClick={onUpgradeClick}
               />
@@ -567,13 +628,21 @@ export default function LoungeFullScreenComposerModal({
             <div
               ref={anchorRef}
               onClick={() => textareaRef.current?.focus()}
-              className="relative flex flex-1 min-h-0 flex-col cursor-text"
+              className={`relative flex min-h-0 flex-col cursor-text ${isThread ? '' : 'flex-1'}`}
             >
+              {isThread ? (
+                <div
+                  data-lounge-pro-thread-label=""
+                  className="mb-1.5 flex items-center justify-between px-1"
+                >
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">Part 1</span>
+                </div>
+              ) : null}
               <textarea
                 ref={textareaRef}
                 id="pro-composer-textarea"
                 autoFocus
-                rows={8}
+                rows={isThread ? 5 : 8}
                 value={localText}
                 onChange={(e) => {
                   const val = e.target.value
@@ -584,12 +653,18 @@ export default function LoungeFullScreenComposerModal({
                 disabled={postBusy}
                 maxLength={captionMax}
                 spellCheck
-                aria-label="Full screen post caption"
+                aria-label={isThread ? 'Thread part 1 caption' : 'Full screen post caption'}
                 placeholder="Are ya winning, son?"
-                className={`flex-1 w-full resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 caret-cyan-400 placeholder-zinc-500 outline-none focus:outline-none focus:ring-0 focus:border-zinc-800/90 touch-manipulation whitespace-pre-wrap break-words overflow-y-auto ${
-                  chromeCompact ? 'min-h-[6rem]' : 'min-h-[16rem]'
-                }`}
+                className={`w-full resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 caret-cyan-400 placeholder-zinc-500 outline-none focus:outline-none focus:ring-0 focus:border-zinc-800/90 touch-manipulation whitespace-pre-wrap break-words overflow-y-auto ${
+                  isThread
+                    ? chromeCompact
+                      ? 'min-h-[5rem]'
+                      : 'min-h-[8rem]'
+                    : `flex-1 ${chromeCompact ? 'min-h-[6rem]' : 'min-h-[16rem]'}`
+                } ${isThread && activePartIndex === 0 ? 'ring-1 ring-cyan-500/30' : ''}`}
                 onFocus={() => {
+                  setActivePartIndex(0)
+                  toolbarFieldRef.current = textareaRef.current
                   setWriteFocused(true)
                   pinComposerViewport(true)
                   requestAnimationFrame(() => pinComposerViewport())
@@ -621,9 +696,15 @@ export default function LoungeFullScreenComposerModal({
                   suggestions={cashtagComposer.suggestions}
                   activeIndex={cashtagComposer.activeIndex}
                   loading={cashtagComposer.loading}
-                  onSelect={(row) => cashtagComposer.onCashtagSelect(row, handleTextChange, textareaRef.current)}
-                  anchorRef={textareaRef}
-                  caretFieldRef={textareaRef}
+                  onSelect={(row) =>
+                    cashtagComposer.onCashtagSelect(
+                      row,
+                      (val) => updatePartCaption(activePartIndex, val),
+                      toolbarFieldRef.current,
+                    )
+                  }
+                  anchorRef={toolbarFieldRef}
+                  caretFieldRef={toolbarFieldRef}
                 />
               ) : null}
 
@@ -632,12 +713,86 @@ export default function LoungeFullScreenComposerModal({
                   suggestions={mentionComposer.suggestions}
                   activeIndex={mentionComposer.activeIndex}
                   loading={mentionComposer.loading}
-                  onSelect={(p) => mentionComposer.onMentionSelect(p, handleTextChange, textareaRef.current)}
-                  anchorRef={textareaRef}
-                  caretFieldRef={textareaRef}
+                  onSelect={(p) =>
+                    mentionComposer.onMentionSelect(
+                      p,
+                      (val) => updatePartCaption(activePartIndex, val),
+                      toolbarFieldRef.current,
+                    )
+                  }
+                  anchorRef={toolbarFieldRef}
+                  caretFieldRef={toolbarFieldRef}
                 />
               ) : null}
             </div>
+
+            {extraCaptions.map((caption, extraIdx) => {
+              const partIndex = extraIdx + 1
+              return (
+                <div
+                  key={`pro-thread-part-${partIndex}`}
+                  data-lounge-pro-thread-part=""
+                  className="relative flex min-h-0 flex-col"
+                >
+                  <div className="mb-1.5 flex items-center justify-between px-1">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                      Part {partIndex + 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => removeThreadPart(partIndex)}
+                      className="rounded-md px-1.5 py-0.5 text-[12px] font-semibold text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200 touch-manipulation"
+                      aria-label={`Remove thread part ${partIndex + 1}`}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <textarea
+                    ref={(el) => {
+                      extraFieldRefs.current[extraIdx] = el
+                    }}
+                    rows={5}
+                    value={caption}
+                    onChange={(e) => {
+                      updatePartCaption(partIndex, e.target.value)
+                      cashtagComposer?.onCursorMove(e)
+                      mentionComposer?.onCursorMove(e)
+                    }}
+                    disabled={postBusy}
+                    maxLength={captionMax}
+                    spellCheck
+                    aria-label={`Thread part ${partIndex + 1} caption`}
+                    placeholder="Continue the thread..."
+                    className={`w-full resize-none rounded-2xl border border-zinc-800/90 bg-zinc-900/50 p-4 sm:p-5 text-[17px] sm:text-[18px] leading-relaxed text-zinc-100 caret-cyan-400 placeholder-zinc-500 outline-none focus:outline-none focus:ring-0 focus:border-zinc-800/90 touch-manipulation whitespace-pre-wrap break-words overflow-y-auto ${
+                      chromeCompact ? 'min-h-[5rem]' : 'min-h-[8rem]'
+                    } ${activePartIndex === partIndex ? 'ring-1 ring-cyan-500/30' : ''}`}
+                    onFocus={(e) => {
+                      setActivePartIndex(partIndex)
+                      toolbarFieldRef.current = e.currentTarget
+                      setWriteFocused(true)
+                      pinComposerViewport()
+                    }}
+                    onBlur={() => setWriteFocused(false)}
+                    onKeyDown={(e) => {
+                      const el = extraFieldRefs.current[extraIdx]
+                      const setVal = (next) => updatePartCaption(partIndex, next)
+                      if (cashtagComposer?.onCashtagKeyDown(e, setVal, el)) return
+                      mentionComposer?.onMentionKeyDown(e, setVal, el)
+                    }}
+                    onClick={(e) => {
+                      cashtagComposer?.onCursorMove(e)
+                      mentionComposer?.onCursorMove(e)
+                    }}
+                    onKeyUp={(e) => {
+                      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                        cashtagComposer?.onCursorMove(e)
+                        mentionComposer?.onCursorMove(e)
+                      }
+                    }}
+                  />
+                </div>
+              )
+            })}
 
             {/* Keyboard-up / write-focused: drop attachments from layout.
                 Keyboard-down (incl. right after a pick) shows the carousel again. */}
@@ -763,6 +918,25 @@ export default function LoungeFullScreenComposerModal({
                 </div>
               ) : null}
 
+              {extraCaptions.map((caption, extraIdx) => (
+                <div
+                  key={`pro-preview-part-${extraIdx + 2}`}
+                  data-lounge-pro-thread-part=""
+                  className="mt-4 border-t border-zinc-800/80 pt-3.5"
+                >
+                  <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+                    Part {extraIdx + 2}
+                  </div>
+                  <div className="text-[16px] sm:text-[17px] leading-relaxed text-zinc-200">
+                    {String(caption || '').trim() ? (
+                      renderLoungeMarkdown(caption)
+                    ) : (
+                      <span className="italic text-zinc-600">No caption written yet...</span>
+                    )}
+                  </div>
+                </div>
+              ))}
+
               {/* Real Post Interaction Rail Icons */}
               <div className="mt-4 flex w-full items-center justify-between border-t border-zinc-800/80 pt-3 text-zinc-500">
                 {/* Comment Icon */}
@@ -833,53 +1007,20 @@ export default function LoungeFullScreenComposerModal({
           style={{ paddingBottom: footerPadBottom }}
         >
           <div className="mx-auto flex max-w-3xl items-center justify-between min-h-[2.5rem]">
-            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <div className="flex min-w-0 items-center">
               <LoungeComposerMediaToolbar
                 variant="feed"
                 size="lg"
-                className="!gap-3 sm:!gap-4"
+                className="!gap-0.5"
                 imageInputId={imageInputId}
                 videoInputId={videoInputId}
                 onImagePointerDown={onImagePointerDown}
                 onVideoPointerDown={onVideoPointerDown}
                 onOpenGifPicker={onOpenGifPicker}
                 onOpenMarketPicker={onOpenMarketPicker}
+                onAddThreadPart={addThreadPart}
+                threadPartDisabled={postBusy || 1 + extraCaptions.length >= LOUNGE_POST_THREAD_MAX_PARTS}
               />
-              {onStartThread ? (
-                <button
-                  type="button"
-                  data-lounge-start-thread-btn=""
-                  disabled={postBusy}
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => {
-                    flushTextToParent()
-                    onStartThread(localTextRef.current)
-                  }}
-                  className="flex shrink-0 touch-manipulation items-center justify-center rounded-md p-1.5 text-sky-400 hover:text-sky-300 active:text-sky-200 disabled:opacity-45 [-webkit-tap-highlight-color:transparent]"
-                  title="Start a thread"
-                  aria-label="Start a thread"
-                >
-                  <svg className="h-8 w-8" viewBox="0 0 20 20" fill="none" aria-hidden>
-                    <rect
-                      x="3.75"
-                      y="3.75"
-                      width="12.5"
-                      height="12.5"
-                      rx="2"
-                      fill="currentColor"
-                      fillOpacity="0.14"
-                      stroke="currentColor"
-                      strokeWidth="1.35"
-                    />
-                    <path
-                      d="M10 6.75v6.5M6.75 10h6.5"
-                      stroke="currentColor"
-                      strokeWidth="1.75"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </button>
-              ) : null}
             </div>
 
             <div className="text-xs sm:text-sm font-semibold text-zinc-400">

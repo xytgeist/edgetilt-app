@@ -13854,7 +13854,7 @@ export default function SocialFeed({
   }, [])
   closeThreadComposeImmediateRef.current = closeThreadComposeImmediate
 
-  const openThreadComposeSheet = useCallback((opts = {}) => {
+  const openThreadComposeSheet = useCallback(() => {
     if (loungeReadOnly) {
       requireLoungeAuth()
       return
@@ -13866,14 +13866,10 @@ export default function SocialFeed({
       appendThreadComposePart()
       return
     }
-    const fromField =
+    const seed =
       composerFieldRef.current && typeof composerFieldRef.current.value === 'string'
         ? composerFieldRef.current.value
         : postText
-    const rawSeed = typeof opts.seed === 'string' ? opts.seed : fromField
-    const seed = appendMissingMarketCashtagsToCaption(rawSeed, composerMarketSymbols, {
-      maxLen: loungeComposerCaptionMax,
-    })
     const hasSeedCaption = Boolean(normalizeFeedCaption(seed, loungeComposerCaptionMax))
     const initialFocusPartIndex = hasSeedCaption ? 1 : 0
     const applyOpen = () => {
@@ -13922,8 +13918,6 @@ export default function SocialFeed({
     composerVideoSlot,
     composerImageItems,
     composerMediaUrl,
-    composerMarketSymbols,
-    loungeComposerCaptionMax,
     postText,
     requireLoungeAuth,
     threadComposeOpen,
@@ -13954,15 +13948,17 @@ export default function SocialFeed({
   }, [closeThreadComposeImmediate])
 
   const submitThreadComposeWithAudience = useCallback(
-    async (creatorFanOnly) => {
+    async (creatorFanOnly, override) => {
       setThreadComposeErr('')
+      const captions = override?.captions ?? threadComposeCaptions
+      const partsMedia = override?.partsMedia ?? threadComposePartMedia
       const normalizedParts = normalizeThreadComposePartsForSubmit(
-        threadComposeCaptions,
-        threadComposePartMedia,
+        captions,
+        partsMedia,
       )
       if (normalizedParts.length === 0) return
       const rootPart = normalizedParts[0]
-      const rootMedia = threadComposePartMedia[0] || emptyThreadComposePartMedia()
+      const rootMedia = partsMedia[0] || emptyThreadComposePartMedia()
       const rootSlot = rootMedia.videoSlot
       const gifCheck = validateAtMostOneGifUrl(rootPart.gifUrl)
       if (!gifCheck.ok) {
@@ -13974,7 +13970,7 @@ export default function SocialFeed({
 
       const buildThreadPartsSnapshot = () =>
         normalizedParts.map((part, i) => {
-          const media = threadComposePartMedia[i] || emptyThreadComposePartMedia()
+          const media = partsMedia[i] || emptyThreadComposePartMedia()
           const videoSnap = threadComposePartVideoSnapshotFields(
             media.videoSlot,
             threadComposeVideoPrepByPartRef.current[i] ?? null,
@@ -14062,7 +14058,7 @@ export default function SocialFeed({
           imageFiles: rootPart.imageFiles,
           existingImageUrls: rootPart.existingImageUrls,
           imagePreviewBlobUrls: threadPartImagePreviewBlobUrlsFromMedia(
-            threadComposePartMedia[0] || emptyThreadComposePartMedia(),
+            partsMedia[0] || emptyThreadComposePartMedia(),
           ),
           videoFile: rootVideoSnap.videoFile,
           streamVideoUid: uid,
@@ -14176,20 +14172,22 @@ export default function SocialFeed({
     ],
   )
 
-  const submitThreadCompose = useCallback(async () => {
+  const submitThreadCompose = useCallback(async (override) => {
     setThreadComposeErr('')
+    const captions = override?.captions ?? threadComposeCaptions
+    const partsMedia = override?.partsMedia ?? threadComposePartMedia
     const normalizedParts = normalizeThreadComposePartsForSubmit(
-      threadComposeCaptions,
-      threadComposePartMedia,
+      captions,
+      partsMedia,
     )
     if (normalizedParts.length === 0) return
-    if (!threadComposePartHasContent(normalizedParts[0].body, threadComposePartMedia[0])) {
+    if (!threadComposePartHasContent(normalizedParts[0].body, partsMedia[0])) {
       setThreadComposeErr('Add text, media, or a GIF to the first post.')
       return
     }
     for (let i = 0; i < normalizedParts.length; i += 1) {
       const part = normalizedParts[i]
-      const media = threadComposePartMedia[i] || emptyThreadComposePartMedia()
+      const media = partsMedia[i] || emptyThreadComposePartMedia()
       if (!threadComposePartHasContent(part.body, media)) {
         setThreadComposeErr(`Post ${i + 1} needs text or media.`)
         return
@@ -14213,8 +14211,8 @@ export default function SocialFeed({
       setThreadComposeErr(`Threads can have at most ${LOUNGE_POST_THREAD_MAX_PARTS} posts.`)
       return
     }
-    for (let i = 0; i < threadComposeCaptions.length; i += 1) {
-      if (String(threadComposeCaptions[i] || '').length > loungeComposerCaptionMax) {
+    for (let i = 0; i < captions.length; i += 1) {
+      if (String(captions[i] || '').length > loungeComposerCaptionMax) {
         setThreadComposeErr(`Post ${i + 1} must be ${loungeComposerCaptionMax} characters or fewer.`)
         return
       }
@@ -14226,7 +14224,7 @@ export default function SocialFeed({
       return
     }
     if (loungeComposerVideoPostBlocked) {
-      const blockedPart = threadComposePartMedia.findIndex((part) =>
+      const blockedPart = partsMedia.findIndex((part) =>
         threadComposeVideoSlotBlocksPost(part.videoSlot),
       )
       setThreadComposeErr(
@@ -14238,7 +14236,7 @@ export default function SocialFeed({
     }
 
     promptComposerAudienceIfNeeded((fanOnly) => {
-      void submitThreadComposeWithAudience(fanOnly)
+      void submitThreadComposeWithAudience(fanOnly, override)
     })
   }, [
     loungeComposerVideoPostBlocked,
@@ -20106,7 +20104,29 @@ export default function SocialFeed({
         onClose={() => setFullScreenComposerOpen(false)}
         postText={postText}
         onTextChange={handleFeedComposerCaptionChange}
-        onSubmit={() => void submitLoungePost()}
+        onSubmit={(payload) => {
+          const captions = payload?.threadCaptions
+          if (Array.isArray(captions) && captions.length > 1) {
+            const partsMedia = [
+              {
+                imageItems: [...composerImageItems],
+                gifUrl: String(composerMediaUrl || '').trim(),
+                videoSlot: composerVideoSlot ? { ...composerVideoSlot } : null,
+                videoPrepHud: null,
+              },
+              ...captions.slice(1).map(() => emptyThreadComposePartMedia()),
+            ]
+            const normalized = normalizeThreadComposePartsForSubmit(captions, partsMedia)
+            if (normalized.length > 1) {
+              void submitThreadComposeWithAudience(
+                composerAudience === LOUNGE_COMPOSER_AUDIENCE_SUBS,
+                { captions, partsMedia },
+              )
+              return
+            }
+          }
+          void submitLoungePost()
+        }}
         postBusy={postBusy}
         isEdgePro={isViewerEdgePro}
         isStaff={loungeStaffToolsEnabled}
@@ -20148,10 +20168,6 @@ export default function SocialFeed({
         videoInputId={LOUNGE_COMPOSER_VIDEO_INPUT_ID}
         onImagePointerDown={() => beginLoungeComposerMediaPicker('composer')}
         onVideoPointerDown={() => beginLoungeComposerMediaPicker('composer')}
-        onStartThread={(caption) => {
-          setFullScreenComposerOpen(false)
-          openThreadComposeSheet({ seed: caption })
-        }}
       />
 
       <LoungeThreadComposeSheet

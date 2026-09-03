@@ -11218,6 +11218,18 @@ html.light [data-lounge-fullscreen-composer] textarea::placeholder {
   color: #94a3b8 !important;
 }
 
+html.light [data-lounge-fullscreen-composer] [data-lounge-pro-thread-label] span,
+html.light [data-lounge-fullscreen-composer] [data-lounge-pro-thread-part] span {
+  color: #64748b !important;
+}
+html.light [data-lounge-fullscreen-composer] [data-lounge-pro-thread-part] button {
+  color: #64748b !important;
+}
+html.light [data-lounge-fullscreen-composer] [data-lounge-pro-thread-part] button:hover {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
 /* Markdown Toolbar */
 html.light [data-lounge-markdown-toolbar] {
   background-color: #f8fafc !important;

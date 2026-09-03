@@ -76,6 +76,30 @@ export function LoungeComposerMediaChartIcon({ className = 'h-8 w-8', filled = t
   )
 }
 
+export function LoungeComposerMediaThreadIcon({ className = 'h-8 w-8', filled = true }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" aria-hidden>
+      <rect
+        x="3.75"
+        y="3.75"
+        width="12.5"
+        height="12.5"
+        rx="2"
+        fill={filled ? 'currentColor' : 'none'}
+        fillOpacity={filled ? 0.14 : undefined}
+        stroke="currentColor"
+        strokeWidth="1.35"
+      />
+      <path
+        d="M10 6.75v6.5M6.75 10h6.5"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 export function LoungeComposerMediaGifIcon({ className = 'h-8 w-8', filled = true }) {
   return (
     <svg className={className} viewBox="0 0 20 20" fill="none" aria-hidden>
@@ -117,6 +141,8 @@ export default function LoungeComposerMediaToolbar({
   onVideoPointerDown,
   onOpenGifPicker,
   onOpenMarketPicker,
+  onAddThreadPart,
+  threadPartDisabled = false,
   showGif = true,
   showMarket = true,
   gifDisabled = false,
@@ -191,6 +217,20 @@ export default function LoungeComposerMediaToolbar({
           aria-label="Add market chart"
         >
           <LoungeComposerMediaChartIcon className={iconClass} filled={filled} />
+        </button>
+      ) : null}
+      {typeof onAddThreadPart === 'function' ? (
+        <button
+          type="button"
+          data-lounge-start-thread-btn=""
+          disabled={threadPartDisabled || disabled}
+          onMouseDown={preventFocusSteal}
+          onClick={onAddThreadPart}
+          className={gifBtnClass}
+          title="Add thread part"
+          aria-label="Add thread part"
+        >
+          <LoungeComposerMediaThreadIcon className={iconClass} filled={filled} />
         </button>
       ) : null}
     </div>

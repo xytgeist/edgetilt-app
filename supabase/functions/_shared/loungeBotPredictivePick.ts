@@ -532,7 +532,8 @@ export function splitSlateCaptionToFit(caption: string, maxChars: number): strin
 }
 
 /**
- * Format a clean, full ATS/totals card for one persona … VIP sub-chat (plain text, no Lounge markdown).
+ * Format a clean, full ATS/totals card for one persona … VIP / fan thread.
+ * Every slate game is listed with that desk's decision (including PASS).
  */
 export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): string {
   const icon = picker === 'Tank' ? '🛡️' : picker === 'Chedda' ? '🧀' : picker === 'Rocco' ? '🥩' : '🎯'
@@ -552,13 +553,13 @@ export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): 
   ]
   for (const g of card.games) {
     const pPick = g.pickerPicks[picker]
-    if (pPick.side === 'pass') continue
     const away = sportTeamDisplayName(g.awayTeam, g.sportKey || card.sportKey)
     const home = sportTeamDisplayName(g.homeTeam, g.sportKey || card.sportKey)
     const when = formatOddsCommenceTimeShort(g.commenceTime)
-    lines.push(`· ${pPick.lineDisplay} (${away}/${home} · ${when})`)
+    const decision = String(pPick.lineDisplay || (pPick.side === 'pass' ? 'PASS' : '')).trim() || 'PASS'
+    lines.push(`· ${decision} (${away}/${home} · ${when})`)
   }
-  if (lines.length === 2) {
+  if (card.games.length === 0) {
     lines.push(picker === 'Tank' ? '· No totals leans this slate' : '· No ATS leans this slate')
   }
   return lines.join('\n')

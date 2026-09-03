@@ -644,10 +644,9 @@ export function SyndicateApp() {
                     Graded. Independent. Transparent.
                   </span>
                 </h1>
-                <p className="text-zinc-300 text-xs sm:text-sm md:text-base leading-relaxed">
-                  Model vs current number. Three independent side desks. Tank on totals. Ledger graded ATS.
-                  Methodology covers what feeds what (odds poll weighting, EPA, PVAL, Action splits). CLV
-                  appears on the ticker when locked closes exist.
+                <p className="text-zinc-300 text-xs sm:text-sm md:text-base leading-relaxed max-w-2xl">
+                  A four-desk football shop with a public ledger. Every pick is graded. When the desks agree,
+                  you see a hammer. When they don&apos;t, you see the split ... no averaged mush.
                 </p>
 
                 <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">

@@ -54,7 +54,7 @@ Public site shows Consensus + Off/Def/HFA/Tempo. Model A/B/C columns are **blurr
 | Current spreads / juice from books | **Live** via odds poll / ingest | — |
 | **Market file** (`lounge_market_files`) | **Live on poll** (test after `20260902200000` + Edge redeploy) | Open = first seen; current = each poll; close locks ≤5 min before kickoff (or after start). Prefers Pinnacle/Circa/LowVig else consensus. Football uses next-slate cluster (not just “today PT”). |
 | Key numbers / hooks | **Partial** | Useful; not a full steam desk |
-| Betting splits / RLM | **Paste path live** | Table `syndicate_betting_splits` + **https://sharpesyndicate.com/ops** → Chedda Splits Paste (also still on EdgeTilt bots). Paste/drop Action PRO screenshots (multi + Ctrl+V) or manual row; vision extracts ticket%/handle%. Synthetic never votes. Real API still five-figure fork. |
+| Betting splits / RLM | **Paste path live** | Table `syndicate_betting_splits` + **https://sharpesyndicate.com/desk** → Chedda Splits Paste (also still on EdgeTilt bots). Paste/drop Action PRO screenshots (multi + Ctrl+V) or manual row; vision extracts ticket%/handle%. Synthetic never votes. Real API still five-figure fork. |
 | Weather / rest / travel | **Modules exist** | Not yet first-class Tank totals publish lane |
 | Starting QB / injury modifiers | **Live** (`syndicate_side_modifiers` + Rundown×PVAL) | Manual CFB first; auto only on known PVAL. Scott vs **current** market; Rocco gets hurt-side strength flag (not Scott’s pts). |
 | Desk scoreboard (ATS/CLV by desk + bucket) | **Live (test + prod)** | Edge `syndicate_monthly_scoreboard` + **Ops** Monthly Board (and EdgeTilt Sharp Desk). Bucket×desk is truth; desk rollup is mixed/informal. CLV = side vs locked close. Trust floor **n ≥ 25**. No adaptive weights until real sample. FEI waits. |
@@ -117,7 +117,7 @@ Do **not** reshuffle Phase 1 blend weights while operating this loop.
 
 4. **Monthly desk + bucket scoreboard** (**shipped, keep dumb**)  
    ATS + CLV by Scott / Rocco / Chedda (sides) / Tank (totals) and by Hammer / Consensus / Divided / Pass.  
-   Ops: **https://sharpesyndicate.com/ops** → Sharp Desk → **Monthly Board** (this month / 3 mo). Edge: `action: syndicate_monthly_scoreboard`.
+   Ops: **https://sharpesyndicate.com/desk** → Sharp Desk → **Monthly Board** (this month / 3 mo). Edge: `action: syndicate_monthly_scoreboard`.
    Only after real **n**: shrink cold desks / raise hot ones. **Do not chase FEI until hammers vs consensus is graded.**
 
 5. **Later audit columns (not blockers)**  

@@ -16,10 +16,15 @@ export default defineConfig({
         if (existsSync(src)) {
           copyFileSync(src, dest)
         }
-        // Cloudflare Pages SPA fallback so /ops boots the same index.html
+        // Cloudflare Pages SPA fallback. Prefer /desk — bare /ops 308s to / on the live zone.
         writeFileSync(
           path.resolve('dist-syndicate/_redirects'),
-          ['/ops /index.html 200', '/ops/ /index.html 200', ''].join('\n'),
+          [
+            '/desk /index.html 200',
+            '/desk/ /index.html 200',
+            '/ops/ /index.html 200',
+            '',
+          ].join('\n'),
         )
       },
     },

@@ -1330,12 +1330,12 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
               <span className="font-semibold text-emerald-300">Syndicate Ops</span>
               {' '}lives on the public site (admin login): scorecard, Chedda paste, PVALs, metrics, monthly board.{' '}
               <a
-                href="https://sharpesyndicate.com/ops"
+                href="https://sharpesyndicate.com/desk"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="underline decoration-emerald-500/50 hover:text-emerald-200"
               >
-                Open sharpesyndicate.com/ops
+                Open sharpesyndicate.com/desk
               </a>
               . Keep create / pause / Odds / X / Vault here.
             </div>

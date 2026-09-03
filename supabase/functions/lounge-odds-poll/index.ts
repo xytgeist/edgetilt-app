@@ -91,9 +91,9 @@ Deno.serve(async (req) => {
     const alertKindRaw = String(body?.alertKind || '').trim().toLowerCase()
     const alertKind = alertKindRaw || null
 
-    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'cfb_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'syndicate_monthly_scoreboard', 'calibrate_persona_models', 'ufc_slate_card', 'nfl_wed_tnf_vip', 'nfl_sat_vip_adds_kills'].includes(action)) {
+    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'cfb_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'syndicate_monthly_scoreboard', 'calibrate_persona_models', 'ufc_slate_card', 'nfl_wed_tnf_vip', 'nfl_sat_vip_adds_kills', 'cfb_wed_midweek_vip', 'cfb_thu_night_spotlight', 'cfb_sat_vip_adds_kills'].includes(action)) {
       return adminOpsJson(400, {
-        error: 'action must be poll_edges, poll_live, daily_slates, best_bet_hour, value_bet_radar, grade_picks, predictive_pick, nfl_slate_card, cfb_slate_card, nfl_wong_teaser, nfl_primetime_spotlight, nfl_halftime_pivot, nfl_anytime_td, nfl_live_middle_arb, weekly_syndicate_recap, syndicate_monthly_scoreboard, calibrate_persona_models, ufc_slate_card, nfl_wed_tnf_vip, or nfl_sat_vip_adds_kills.',
+        error: 'action must be a valid lounge-odds-poll action (incl. cfb_wed_midweek_vip, cfb_thu_night_spotlight, cfb_sat_vip_adds_kills).',
       })
     }
 
@@ -176,6 +176,24 @@ Deno.serve(async (req) => {
       const { runNflSatVipAddsKills } = await import('../_shared/loungeBotNflVipOps.ts')
       const result = await runNflSatVipAddsKills(admin, bot.user_id, { dryRun })
       return adminOpsJson(200, { ok: result.ok !== false, action: 'nfl_sat_vip_adds_kills', ...result })
+    }
+
+    if (action === 'cfb_wed_midweek_vip') {
+      const { runCfbWedMidweekVip } = await import('../_shared/loungeBotCfbVipOps.ts')
+      const result = await runCfbWedMidweekVip(admin, bot.user_id, { dryRun })
+      return adminOpsJson(200, { ok: result.ok !== false, action: 'cfb_wed_midweek_vip', ...result })
+    }
+
+    if (action === 'cfb_thu_night_spotlight') {
+      const { runCfbThuNightSpotlight } = await import('../_shared/loungeBotCfbVipOps.ts')
+      const result = await runCfbThuNightSpotlight(admin, bot.user_id, { dryRun })
+      return adminOpsJson(200, { ok: result.ok !== false, action: 'cfb_thu_night_spotlight', ...result })
+    }
+
+    if (action === 'cfb_sat_vip_adds_kills') {
+      const { runCfbSatVipAddsKills } = await import('../_shared/loungeBotCfbVipOps.ts')
+      const result = await runCfbSatVipAddsKills(admin, bot.user_id, { dryRun })
+      return adminOpsJson(200, { ok: result.ok !== false, action: 'cfb_sat_vip_adds_kills', ...result })
     }
 
     if (action === 'nfl_slate_card' || action === 'cfb_slate_card') {

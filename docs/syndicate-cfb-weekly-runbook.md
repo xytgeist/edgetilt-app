@@ -148,8 +148,10 @@ VIP uncut cards lock when injury + splits are real enough … **not** Tue vibes,
 
 | Package | Cron (PT) | Action | Audience |
 |---------|-----------|--------|----------|
-| CFB midweek | **Wed 2:00 PM** | `cfb_slate_card` | Public teaser + VIP full |
+| CFB Wed midweek | **Wed 2:00 PM** | `cfb_wed_midweek_vip` | **VIP only** (Thu/Fri night leans) |
+| CFB Thu night | **Thu 3:30 PM** | `cfb_thu_night_spotlight` | Public **one lean** + VIP deep |
 | CFB Saturday lock | **Fri 12:00 PM** | `cfb_slate_card` | Public teaser + VIP full |
+| CFB Sat adds/kills | **Sat 10:00 AM** | `cfb_sat_vip_adds_kills` | **VIP only** (no-op if quiet) |
 | NFL Sunday lock | **Fri 1:00 PM** | `nfl_slate_card` | Public teaser + VIP full |
 | NFL Wed TNF watch | **Wed 11:00 AM** | `nfl_wed_tnf_vip` | **VIP only** |
 | NFL Sat adds/kills | **Sat 10:00 AM** | `nfl_sat_vip_adds_kills` | **VIP only** (no-op if nothing flipped) |
@@ -157,6 +159,7 @@ VIP uncut cards lock when injury + splits are real enough … **not** Tue vibes,
 | Weekday predictive | — | muted | Was public freebie … killed |
 
 Public crumbs (not a second card): Coffee & Covers · Value Radar **one look**. Best Bet Hour = VIP only.  
+Primetime public posts = **one lean + CTA** (full desks VIP-only).  
 **Sat / Sun AM:** portal tweaks for late scratches … no auto full-card republish.  
 **Window math:** next kickoff within 21d, then games within **5 days** of that kickoff.
 

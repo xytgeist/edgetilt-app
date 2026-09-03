@@ -808,7 +808,7 @@ Sagarin is scraped from the public Predictor board (`scripts/lib/cfbSagarinPredi
 
 Desk mapping: **Scott** = consensus vs market (primary side) · **Rocco** = SP+/EPA short-fav confirm/fade (no trench truth yet) · **Chedda** = PASS unless dog+hook / dog+model / pasted money · **Tank** = tempo/totals first-pass. Hammer = Scott + independent second reason.
 
-**ATS slate auto-publish (pg_cron):** `cfb_slate_card` Wed **2pm PT** + Fri **12pm PT**; `nfl_slate_card` Fri **1pm PT**. NFL VIP satellites: Wed **11am** TNF watch (`nfl_wed_tnf_vip`), Sat **10am** adds/kills stub (`nfl_sat_vip_adds_kills`, no empty fire). Tue/Thu public `predictive_pick` cron **muted**. Best Bet Hour forced VIP-only; Value Radar public = **one look**. Migration `20260902240000`.
+**ATS slate auto-publish (pg_cron):** CFB Fri **12pm PT** house (`cfb_slate_card`); Wed **2pm** VIP midweek Thu/Fri nights (`cfb_wed_midweek_vip`); Thu **3:30pm** CFB night tease (`cfb_thu_night_spotlight`); Sat **10am** CFB adds/kills. NFL Fri **1pm** house; Wed TNF VIP; Sat adds/kills. Primetime public = one lean + CTA. Migration `20260902250000`.
 
 **Internal weekly SOP (honest inventory + publish rules):** [`docs/syndicate-cfb-weekly-runbook.md`](./syndicate-cfb-weekly-runbook.md). Keep blend weights out of public UI.
 

@@ -379,55 +379,48 @@ export async function findPrimetimeGameCandidate(
 }
 
 /**
- * Format the full markdown caption for the Primetime Solo Spotlight post.
+ * Public Lounge primetime tease: ONE lean + CTA.
+ * Full 4-desk card stays in VIP (see publishAndRecordPrimetimeSpotlight).
  */
 export function formatPrimetimeSpotlightCaption(spotlight: PrimetimeSpotlightGame): string {
   const kickoff = formatOddsCommenceTimeShort(spotlight.commenceTime)
   const homeShort = shortDisplayName(spotlight.homeTeam)
   const awayShort = shortDisplayName(spotlight.awayTeam)
 
-  const lines: string[] = []
+  return [
+    `🏈 **${spotlight.primetimeLabel} TEASE**`,
+    `**${awayShort} @ ${homeShort}** · ${kickoff}`,
+    '',
+    `🎯 **Lean:** **${spotlight.consensusPick.lineDisplay}**`,
+    `*${spotlight.consensusPick.confidenceBadge} · ${spotlight.consensusPick.summaryReason}*`,
+    '',
+    `💬 *Full 4-desk card + live / halftime pivots in Sharpe VIP Syndicate.*`,
+  ].join('\n')
+}
 
-  // Header Banner
-  lines.push(`🏈 **${spotlight.primetimeLabel} SPOTLIGHT**`)
-  lines.push(`**${awayShort} @ ${homeShort}** · Kickoff: ${kickoff}`)
-  lines.push('')
-
-  // Consensus Primary Call
-  lines.push(`🎯 **Official Syndicate Pick:** **${spotlight.consensusPick.lineDisplay}**`)
-  lines.push(`*${spotlight.consensusPick.confidenceBadge} · ${spotlight.consensusPick.summaryReason}*`)
-  lines.push('')
-
-  // 4-Man Syndicate Breakdown
-  lines.push('📋 **4-Man Crew Breakdown:**')
-  lines.push(`• 🧠 **Scott (The Model):** ${spotlight.personaLeans.Scott.lineDisplay}`)
-  lines.push(`  └ *${spotlight.personaLeans.Scott.bulletRationale}*`)
-  lines.push(`• 🔨 **Rocco (The Trenches):** ${spotlight.personaLeans.Rocco.lineDisplay}`)
-  lines.push(`  └ *${spotlight.personaLeans.Rocco.bulletRationale}*`)
-  lines.push(`• 🛡️ **Tank (Totals & Pace):** ${spotlight.personaLeans.Tank.lineDisplay}`)
-  lines.push(`  └ *${spotlight.personaLeans.Tank.bulletRationale}*`)
-  lines.push(`• 💰 **Chedda (Sharp Splits):** ${spotlight.personaLeans.Chedda.lineDisplay}`)
-  lines.push(`  └ *${spotlight.personaLeans.Chedda.bulletRationale}*`)
-  lines.push('')
-
-  // Situational Context
-  if (spotlight.weather?.summaryLine || spotlight.injuries?.summaryLine) {
-    lines.push('📊 **Situational Intelligence:**')
-    if (spotlight.weather?.summaryLine) {
-      lines.push(`• 🌤️ **Venue Weather:** ${spotlight.weather.summaryLine}`)
-    }
-    if (spotlight.injuries?.summaryLine) {
-      lines.push(`• 🩹 **Injury PVAL:** ${spotlight.injuries.summaryLine}`)
-    }
-    if (spotlight.splits?.summaryLine) {
-      lines.push(`• ⚡ **Market Splits:** ${spotlight.splits.summaryLine}`)
-    }
+export function formatPrimetimeVipDeepDive(spotlight: PrimetimeSpotlightGame): string {
+  const homeShort = shortDisplayName(spotlight.homeTeam)
+  const awayShort = shortDisplayName(spotlight.awayTeam)
+  const lines = [
+    `🎯 **Sharpe VIP Primetime Deep Dive · ${awayShort} @ ${homeShort}**`,
+    `Official Syndicate Pick: **${spotlight.consensusPick.lineDisplay}**`,
+    '',
+    `• Scott: ${spotlight.personaLeans.Scott.lineDisplay}`,
+    `  └ *${spotlight.personaLeans.Scott.bulletRationale}*`,
+    `• Rocco: ${spotlight.personaLeans.Rocco.lineDisplay}`,
+    `  └ *${spotlight.personaLeans.Rocco.bulletRationale}*`,
+    `• Tank: ${spotlight.personaLeans.Tank.lineDisplay}`,
+    `  └ *${spotlight.personaLeans.Tank.bulletRationale}*`,
+    `• Chedda: ${spotlight.personaLeans.Chedda.lineDisplay}`,
+    `  └ *${spotlight.personaLeans.Chedda.bulletRationale}*`,
+  ]
+  if (spotlight.weather?.summaryLine || spotlight.injuries?.summaryLine || spotlight.splits?.summaryLine) {
     lines.push('')
+    if (spotlight.weather?.summaryLine) lines.push(`🌤️ ${spotlight.weather.summaryLine}`)
+    if (spotlight.injuries?.summaryLine) lines.push(`🩹 ${spotlight.injuries.summaryLine}`)
+    if (spotlight.splits?.summaryLine) lines.push(`⚡ ${spotlight.splits.summaryLine}`)
   }
-
-  // Footer & CTA
-  lines.push(`💬 *Live in-game adjustments & alternate player props dropping in Sharpe VIP Syndicate chat.*`)
-
+  lines.push('', `*Halftime pivots drop here when there's a real 2H play.*`)
   return lines.join('\n')
 }
 
@@ -442,13 +435,14 @@ export async function publishAndRecordPrimetimeSpotlight(
 ): Promise<{ ok: boolean; postId?: string; pickIds: string[] }> {
   const caption = formatPrimetimeSpotlightCaption(spotlight)
 
-  // 1. Publish public post to the Lounge feed
-  const postRes = await publishLoungeBotPost(admin, botUserId, caption, {
+  // 1. Publish public tease to the Lounge feed (one lean only)
+  const postRes = await publishLoungeBotPost(admin, {
+    botUserId,
+    caption,
     categoryPills: [...new Set([...categoryPills, 'nfl', 'primetime'])],
-    dryRun: false,
   })
 
-  if (!postRes.ok || !postRes.postId) {
+  if (postRes.error || !postRes.postId) {
     return { ok: false, pickIds: [] }
   }
 
@@ -458,18 +452,17 @@ export async function publishAndRecordPrimetimeSpotlight(
   // 2. Log official consensus pick into lounge_bot_picks for grading
   const officialLean = spotlight.personaLeans.Scott.fullPick
   const isHome = spotlight.consensusPick.side === 'home'
-  const isOver = spotlight.consensusPick.side === 'over'
 
   const pickLine = spotlight.consensusPick.marketKey === 'spreads'
     ? (isHome ? spotlight.spreadPoint : (spotlight.spreadPoint != null ? -spotlight.spreadPoint : null))
     : spotlight.totalPoint
 
-  const { data: inserted, error: insErr } = await admin
+  const { data: inserted } = await admin
     .from('lounge_bot_picks')
     .insert({
       bot_user_id: botUserId,
       post_id: postId,
-      picker_name: 'Scott', // Primary syndicate representative
+      picker_name: 'Scott',
       event_id: spotlight.eventId,
       sport_key: spotlight.sportKey,
       home_team: spotlight.homeTeam,
@@ -502,20 +495,11 @@ export async function publishAndRecordPrimetimeSpotlight(
     pickIds.push(inserted.id)
   }
 
-  // 3. Drop private high-value deep-dive breakdown to Scott's VIP subscriber channel
-  const vipDrop = [
-    `🎯 **Sharpe VIP Primetime Deep Dive · ${shortDisplayName(spotlight.awayTeam)} @ ${shortDisplayName(spotlight.homeTeam)}**`,
-    `Official Syndicate Pick: **${spotlight.consensusPick.lineDisplay}**`,
-    '',
-    `• Scott: ${spotlight.personaLeans.Scott.lineDisplay}`,
-    `• Rocco: ${spotlight.personaLeans.Rocco.lineDisplay}`,
-    `• Tank: ${spotlight.personaLeans.Tank.lineDisplay}`,
-    `• Chedda: ${spotlight.personaLeans.Chedda.lineDisplay}`,
-    '',
-    `*In-game live odds hedge alerts will drop here at halftime.*`,
-  ].join('\n')
-
-  await publishBotSubChatMessage(admin, botUserId, vipDrop)
+  // 3. VIP gets the full 4-desk deep dive
+  await publishBotSubChatMessage(admin, {
+    botUserId,
+    caption: formatPrimetimeVipDeepDive(spotlight),
+  }).catch((err) => console.error('Primetime VIP deep dive failed:', err))
 
   return { ok: true, postId, pickIds }
 }

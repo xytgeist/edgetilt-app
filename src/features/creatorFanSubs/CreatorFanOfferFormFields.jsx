@@ -1,4 +1,5 @@
 import { CREATOR_FAN_OFFER_LIMITS } from './fanSubOffer.js'
+import { CREATOR_FAN_TIER_KEYS, formatFanTierLabel } from './fanSubTiers.js'
 
 const LABEL_CLASS = 'text-[12px] font-semibold uppercase tracking-wide text-zinc-500'
 const INPUT_CLASS =
@@ -10,10 +11,13 @@ const INPUT_CLASS =
  *   intro: string,
  *   privatePosts: string,
  *   fanChat: string,
+ *   tierKey?: string,
  *   onHeadlineChange: (v: string) => void,
  *   onIntroChange: (v: string) => void,
  *   onPrivatePostsChange: (v: string) => void,
  *   onFanChatChange: (v: string) => void,
+ *   onTierChange?: (v: string) => void,
+ *   tierLocked?: boolean,
  *   disabled?: boolean,
  * }} props
  */
@@ -22,10 +26,13 @@ export default function CreatorFanOfferFormFields({
   intro,
   privatePosts,
   fanChat,
+  tierKey = 'fan-tier-999',
   onHeadlineChange,
   onIntroChange,
   onPrivatePostsChange,
   onFanChatChange,
+  onTierChange,
+  tierLocked = false,
   disabled = false,
 }) {
   return (
@@ -33,6 +40,26 @@ export default function CreatorFanOfferFormFields({
       <p className="text-[13px] leading-relaxed text-zinc-500">
         Tell fans what they get. Subscribers see this before checkout. You can edit anytime.
       </p>
+      <label className="block">
+        <span className={LABEL_CLASS}>Monthly price</span>
+        <select
+          value={tierKey}
+          disabled={disabled || tierLocked || !onTierChange}
+          onChange={(e) => onTierChange?.(e.target.value)}
+          className={INPUT_CLASS}
+        >
+          {CREATOR_FAN_TIER_KEYS.map((key) => (
+            <option key={key} value={key}>
+              {formatFanTierLabel(key)}
+            </option>
+          ))}
+        </select>
+        {tierLocked ? (
+          <span className="mt-1 block text-[12px] text-zinc-600">
+            Price is locked while fan subscriptions are live.
+          </span>
+        ) : null}
+      </label>
       <label className="block">
         <span className={LABEL_CLASS}>Headline (optional)</span>
         <input

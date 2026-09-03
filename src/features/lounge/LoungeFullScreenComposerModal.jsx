@@ -596,34 +596,41 @@ export default function LoungeFullScreenComposerModal({
         </div>
       </header>
 
-      {/* ── Main Content Area ── */}
-      <div ref={scrollContainerRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-3.5 py-3 sm:px-6 sm:py-4">
-        {activeTab === 'write' ? (
-          <div className="mx-auto flex w-full max-w-3xl flex-1 min-w-0 flex-col space-y-3.5">
-            {/* ── Row 1: Tribe Pills (stay visible with the keyboard up) ── */}
-            <div className="w-full min-w-0 overflow-hidden">
-              <LoungePostCategoryPillPicker
-                value={composerCategoryPills}
-                onChange={onCategoryPillsChange}
-                disabled={postBusy}
-                size="lg"
-                hint=""
-                hideExpandCaret
-                onMaxPillsReached={() => setTribeMaxAlertOpen(true)}
-                className="!mt-0 !mb-0"
-              />
+      {/* ── Write chrome stays put; captions / preview scroll under it ── */}
+      {activeTab === 'write' ? (
+        <>
+          <div
+            data-lounge-pro-write-chrome=""
+            className="relative z-10 shrink-0 bg-zinc-950 px-3.5 pt-3 sm:px-6 sm:pt-4"
+          >
+            <div className="mx-auto w-full max-w-3xl space-y-3.5">
+              <div className="w-full min-w-0 overflow-hidden">
+                <LoungePostCategoryPillPicker
+                  value={composerCategoryPills}
+                  onChange={onCategoryPillsChange}
+                  disabled={postBusy}
+                  size="lg"
+                  hint=""
+                  hideExpandCaret
+                  onMaxPillsReached={() => setTribeMaxAlertOpen(true)}
+                  className="!mt-0 !mb-0"
+                />
+              </div>
+              <div className="w-full min-w-0">
+                <LoungeMarkdownToolbar
+                  textareaRef={toolbarFieldRef}
+                  onTextChange={(val) => updatePartCaption(activePartIndex, val)}
+                  isEdgePro={isEdgePro || isStaff}
+                  onUpgradeClick={onUpgradeClick}
+                />
+              </div>
             </div>
-
-            {/* ── Markdown Formatting Toolbar ── */}
-            <div className="w-full min-w-0 overflow-hidden">
-              <LoungeMarkdownToolbar
-                textareaRef={toolbarFieldRef}
-                onTextChange={(val) => updatePartCaption(activePartIndex, val)}
-                isEdgePro={isEdgePro || isStaff}
-                onUpgradeClick={onUpgradeClick}
-              />
-            </div>
-
+          </div>
+          <div
+            ref={scrollContainerRef}
+            className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3.5 pb-3 pt-3.5 sm:px-6 sm:pb-4"
+          >
+            <div className="mx-auto flex w-full max-w-3xl min-w-0 flex-col space-y-3.5">
             {/* ── Native Textarea with Mention/Cashtag Support ── */}
             <div
               ref={anchorRef}
@@ -846,9 +853,15 @@ export default function LoungeFullScreenComposerModal({
                 ) : null}
               </>
             ) : null}
+            </div>
           </div>
-        ) : (
-          /* ── 1:1 Live Preview Card ── */
+        </>
+      ) : (
+        <div
+          ref={scrollContainerRef}
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden px-3.5 py-3 sm:px-6 sm:py-4"
+        >
+          {/* ── 1:1 Live Preview Card ── */}
           <div className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-start pt-2">
             <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
               <Sparkles className="h-4 w-4 text-amber-400" />
@@ -997,8 +1010,8 @@ export default function LoungeFullScreenComposerModal({
               This card is a 1:1 preview of how your post with rich Markdown will render in the Lounge feed.
             </p>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* ── Bottom Bar: Clean Media Toolbar & Pro Status ── */}
       {activeTab === 'write' ? (

@@ -2842,6 +2842,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-03:** Pro composer markdown bar (and tribe pills) stay pinned above the write scroller so extra thread captions slide under the toolbar instead of taking it with them.
 - **2026-09-03:** Pro composer plus-square stays on the markdown screen and appends another caption field (parts 2+). Media stays on part 1. Post with 2+ parts uses the existing thread publish path. Feed **Start thread** still opens **`LoungeThreadComposeSheet`**.
 - **2026-09-03:** **Desk thread parts list every game incl. PASS:** `formatPickerSlateList` no longer skips passes … each Scott/Rocco/Chedda/Tank card shows full slate decisions. Redeploy **`lounge-odds-poll`**.
 - **2026-09-03:** **Lounge caption cap 10k for Edge Pro / paid / bots / staff:** `LOUNGE_CAPTION_SUBSCRIBER_MAX` + `LOUNGE_BOT_CAPTION_MAX` → **10000**; migration **`20260903160000`**. Free stays **500**. Apply SQL test+prod; redeploy **`lounge-odds-poll`** (bot publish uses shared limit).

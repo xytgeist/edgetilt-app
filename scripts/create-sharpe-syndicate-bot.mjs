@@ -16,6 +16,7 @@ const SLUG = 'sharpe-syndicate'
 const HANDLE = 'sharpesyndicate'
 const DISPLAY_NAME = 'Sharpe Syndicate'
 const BIO = 'Four-desk ATS + totals cards. Full slate for Syndicate subscribers.'
+const AVATAR_URL = 'https://sharpesyndicate.com/syndicate/mark.png'
 
 function loadEnvFile(target) {
   const path = resolve(process.cwd(), `.env.supabase.${target}`)
@@ -84,6 +85,7 @@ const { error: profileErr } = await admin.from('profiles').insert({
   handle: HANDLE,
   display_name: DISPLAY_NAME,
   bio: BIO,
+  avatar_url: AVATAR_URL,
   role: 'user',
   is_bot: true,
 })

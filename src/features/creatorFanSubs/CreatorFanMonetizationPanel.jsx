@@ -257,15 +257,22 @@ export default function CreatorFanMonetizationPanel({
   }
 
   const missingHandle = !handle?.trim()
-  const canGoLive = connectComplete && (offerComplete || draftOfferComplete)
+  const offerReady = offerComplete || draftOfferComplete
+  const stripeReady = connectComplete
+  const canGoLive = stripeReady && offerReady
   const showOfferGap = enabled && !offerComplete
-  const goLiveBlockReason = !connectComplete
+  const goLiveBlockReason = !stripeReady
     ? stripeConnectAccountId.trim()
       ? 'Stripe is still verifying Connect … tap Refresh status, or finish any steps in Stripe.'
       : 'Connect payouts (Stripe) before going live.'
-    : !(offerComplete || draftOfferComplete)
+    : !offerReady
       ? 'Save your offer (overview + at least one detail section, 20+ characters each).'
       : ''
+
+  const goLiveDisabled = busy || !canGoLive || enabled
+  const goLiveButtonClass = canGoLive && !enabled
+    ? 'min-h-10 rounded-lg bg-orange-500/90 px-4 text-[13px] font-semibold text-zinc-950 hover:bg-orange-400 disabled:opacity-50'
+    : 'min-h-10 cursor-not-allowed rounded-lg border border-zinc-700/80 bg-zinc-800/60 px-4 text-[13px] font-semibold text-zinc-500'
 
   const body = loading ? (
     <p className="text-[13px] text-zinc-500">Loading…</p>
@@ -406,9 +413,11 @@ export default function CreatorFanMonetizationPanel({
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              disabled={busy || !canGoLive || enabled}
+              disabled={goLiveDisabled}
+              aria-disabled={goLiveDisabled}
+              title={!stripeReady ? 'Finish Stripe Connect first' : !offerReady ? 'Save your offer first' : undefined}
               onClick={() => void onSave(true)}
-              className="min-h-10 rounded-lg bg-orange-500/90 px-4 text-[13px] font-semibold text-zinc-950 hover:bg-orange-400 disabled:opacity-50"
+              className={goLiveButtonClass}
             >
               Turn on fan subscriptions
             </button>

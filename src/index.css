@@ -4157,6 +4157,15 @@ html.light [data-settings-fan-monetization] .bg-zinc-900\/40 {
 html.light [data-settings-fan-monetization] .border-zinc-800\/90 {
   border-color: #e4e4e7 !important;
 }
+html.light [data-settings-fan-monetization] .bg-zinc-800\/60 {
+  background-color: #e4e4e7 !important;
+}
+html.light [data-settings-fan-monetization] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-settings-fan-monetization] .border-zinc-700\/80 {
+  border-color: #d4d4d8 !important;
+}
 html.light [data-creator-fan-offer-form] .text-zinc-600 {
   color: #71717a !important;
 }

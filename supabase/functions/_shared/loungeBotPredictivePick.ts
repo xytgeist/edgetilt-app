@@ -556,7 +556,7 @@ export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): 
     const away = sportTeamDisplayName(g.awayTeam, g.sportKey || card.sportKey)
     const home = sportTeamDisplayName(g.homeTeam, g.sportKey || card.sportKey)
     const when = formatOddsCommenceTimeShort(g.commenceTime)
-    const decision = String(pPick.lineDisplay || (pPick.side === 'pass' ? 'PASS' : '')).trim() || 'PASS'
+    const decision = pPick.side === 'pass' ? 'PASS' : String(pPick.lineDisplay || '').trim() || 'PASS'
     lines.push(`· ${decision} (${away}/${home} · ${when})`)
   }
   if (card.games.length === 0) {

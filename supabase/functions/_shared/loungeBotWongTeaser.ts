@@ -235,6 +235,27 @@ export function formatWongTeaserCaption(pair: WongTeaserPair): string {
   return lines.join('\n').trim()
 }
 
+/** Extra Wong legs for subscriber / VIP sub-chat (when more than 2 qualify). */
+export function formatWongAdditionalLegsVipCaption(pair: WongTeaserPair): string | null {
+  const legs = Array.isArray(pair?.additionalLegs) ? pair.additionalLegs : []
+  if (!legs.length) return null
+  const vipLines = [
+    '🔒 Sharpe VIP Syndicate · Additional Qualifying Wong Teaser Legs',
+    '',
+    'The following additional NFL games meet our Stanford Wong Basic Strategy criteria (crossing 3 & 7):',
+    '',
+    ...legs.map((l, idx) => {
+      const tName = shortDisplayName(l.pickedTeam)
+      const oppName = shortDisplayName(l.opposingTeam)
+      const totalStr = l.gameTotal ? ` (Total ${l.gameTotal})` : ''
+      return `${idx + 1}. ${tName} ${l.originalSpreadDisp} ➔ ${l.teasedSpreadDisp} vs ${oppName}${totalStr}`
+    }),
+    '',
+    'Mix and match any two legs for a +EV 6-point teaser.',
+  ]
+  return vipLines.join('\n')
+}
+
 /**
  * Build the top 2-leg Wong Teaser from qualifying games.
  */
@@ -367,25 +388,12 @@ export async function publishAndRecordWongTeaser(
   }
 
   // If additional qualifying legs exist, post them to Scott's VIP subscriber channel
-  if (pair.additionalLegs.length > 0) {
+  const vipExtra = formatWongAdditionalLegsVipCaption(pair)
+  if (vipExtra) {
     try {
-      const vipLines = [
-        '🔒 Sharpe VIP Syndicate · Additional Qualifying Wong Teaser Legs',
-        '',
-        'The following additional NFL games meet our Stanford Wong Basic Strategy criteria (crossing 3 & 7):',
-        '',
-        ...pair.additionalLegs.map((l, idx) => {
-          const tName = shortDisplayName(l.pickedTeam)
-          const oppName = shortDisplayName(l.opposingTeam)
-          const totalStr = l.gameTotal ? ` (Total ${l.gameTotal})` : ''
-          return `${idx + 1}. ${tName} ${l.originalSpreadDisp} ➔ ${l.teasedSpreadDisp} vs ${oppName}${totalStr}`
-        }),
-        '',
-        'Mix and match any two legs for a +EV 6-point teaser.',
-      ]
       await publishBotSubChatMessage(admin, {
         botUserId,
-        body: vipLines.join('\n'),
+        body: vipExtra,
       })
     } catch (vipErr) {
       console.warn('Failed to publish VIP sub-chat Wong teaser legs:', vipErr)

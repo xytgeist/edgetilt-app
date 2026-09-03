@@ -85,21 +85,29 @@ export function BotSharpDeskPanel({
    * @param {string | null} [fallbackError]
    */
   const showDropDryRunPreview = (title, data, fallbackError = null) => {
-    const caption = String(
-      data?.previewCaption || data?.captionPreview || data?.summary || '',
-    ).trim()
+    const vipCaption = String(data?.vipPreviewCaption || '').trim()
+    const hasExplicitPublic = Object.prototype.hasOwnProperty.call(data || {}, 'previewCaption')
+    const caption = hasExplicitPublic
+      ? String(data?.previewCaption || '').trim()
+      : String(data?.previewCaption || data?.captionPreview || data?.summary || '').trim()
+    const threadParts = Array.isArray(data?.subscriberThreadParts)
+      ? data.subscriberThreadParts
+      : null
+    const hasAnyCaption = Boolean(caption || vipCaption || (threadParts && threadParts.length))
     const err =
       data?.ok === false
         ? String(data.message || data.error || fallbackError || 'No preview.')
         : data?.skipped
           ? String(data.note || data.skipped)
-          : !caption
+          : !hasAnyCaption
             ? fallbackError || 'No caption returned for this dry run.'
             : null
     setDropPreview({
       sportLabel: title,
       dayKey: data?.dayKey || data?.sportKey || null,
       previewCaption: caption || null,
+      vipPreviewCaption: vipCaption || null,
+      subscriberThreadParts: threadParts,
       gamesSummary: data?.gamesSummary || null,
       gamesToday: data?.gamesToday ?? data?.totalGames ?? data?.totalFights ?? null,
       totalGames: data?.totalGames ?? data?.totalFights ?? null,
@@ -111,7 +119,7 @@ export function BotSharpDeskPanel({
       passOnlyCount: data?.passOnlyCount ?? null,
       error: err,
     })
-    setToast?.(caption ? 'Full post preview ready below.' : err || 'Preview ready below.')
+    setToast?.(hasAnyCaption ? 'Full post preview ready below.' : err || 'Preview ready below.')
   }
 
   const loadData = useCallback(async () => {

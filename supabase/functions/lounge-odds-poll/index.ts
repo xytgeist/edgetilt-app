@@ -320,8 +320,18 @@ Deno.serve(async (req) => {
       }
 
       if (dryRun) {
-        const { formatNflSlateCardCaption } = await import('../_shared/loungeBotPredictivePick.ts')
+        const {
+          formatNflSlateCardCaption,
+          formatNflSlatePrivateRootCaption,
+          formatPickerSlateList,
+          SHARP_PICKERS,
+        } = await import('../_shared/loungeBotPredictivePick.ts')
         const previewCaption = formatNflSlateCardCaption(card)
+        const vipPreviewCaption = formatNflSlatePrivateRootCaption(card)
+        const subscriberThreadParts = SHARP_PICKERS.map((p) => ({
+          label: `${p} full card`,
+          body: formatPickerSlateList(card, p),
+        }))
         return adminOpsJson(200, {
           ok: true,
           dryRun: true,
@@ -337,6 +347,8 @@ Deno.serve(async (req) => {
           maxLookaheadDays: FOOTBALL_SLATE_MAX_LOOKAHEAD_DAYS,
           previewCaption,
           captionPreview: previewCaption,
+          vipPreviewCaption,
+          subscriberThreadParts,
           card,
         })
       }
@@ -383,8 +395,11 @@ Deno.serve(async (req) => {
       }
 
       if (dryRun) {
-        const { formatWongTeaserCaption } = await import('../_shared/loungeBotWongTeaser.ts')
+        const { formatWongTeaserCaption, formatWongAdditionalLegsVipCaption } = await import(
+          '../_shared/loungeBotWongTeaser.ts'
+        )
         const previewCaption = pair.caption || formatWongTeaserCaption(pair)
+        const vipPreviewCaption = formatWongAdditionalLegsVipCaption(pair)
         return adminOpsJson(200, {
           ok: true,
           dryRun: true,
@@ -392,6 +407,7 @@ Deno.serve(async (req) => {
           pair,
           previewCaption,
           captionPreview: previewCaption,
+          vipPreviewCaption,
         })
       }
 
@@ -434,8 +450,11 @@ Deno.serve(async (req) => {
       }
 
       if (dryRun) {
-        const { formatPrimetimeSpotlightCaption } = await import('../_shared/loungeBotPrimetimeSpotlight.ts')
+        const { formatPrimetimeSpotlightCaption, formatPrimetimeVipDeepDive } = await import(
+          '../_shared/loungeBotPrimetimeSpotlight.ts'
+        )
         const previewCaption = formatPrimetimeSpotlightCaption(spotlight)
+        const vipPreviewCaption = formatPrimetimeVipDeepDive(spotlight)
         return adminOpsJson(200, {
           ok: true,
           dryRun: true,
@@ -443,6 +462,7 @@ Deno.serve(async (req) => {
           spotlight,
           previewCaption,
           captionPreview: previewCaption,
+          vipPreviewCaption,
         })
       }
 
@@ -483,8 +503,9 @@ Deno.serve(async (req) => {
           dryRun: true,
           action: 'nfl_halftime_pivot',
           pivot,
-          previewCaption,
+          previewCaption: null,
           captionPreview: previewCaption,
+          vipPreviewCaption: previewCaption,
         })
       }
 
@@ -526,8 +547,9 @@ Deno.serve(async (req) => {
           action: 'nfl_live_middle_arb',
           totalOpportunities: opportunities.length,
           opportunities,
-          previewCaption,
+          previewCaption: null,
           captionPreview: previewCaption,
+          vipPreviewCaption: previewCaption,
         })
       }
 
@@ -565,14 +587,16 @@ Deno.serve(async (req) => {
       }
 
       if (dryRun) {
-        const previewCaption = String(card.publicCaption || card.vipCaption || '').trim()
+        const previewCaption = String(card.publicCaption || '').trim()
+        const vipPreviewCaption = String(card.vipCaption || '').trim()
         return adminOpsJson(200, {
           ok: true,
           dryRun: true,
           action: 'nfl_anytime_td',
           card,
           previewCaption,
-          captionPreview: previewCaption,
+          captionPreview: previewCaption || vipPreviewCaption,
+          vipPreviewCaption: vipPreviewCaption || null,
         })
       }
 
@@ -596,6 +620,7 @@ Deno.serve(async (req) => {
       const {
         buildUfcSlateCard,
         formatUfcCardCaption,
+        formatUfcVipCardCaption,
         publishAndRecordUfcCard,
       } = await import('../_shared/loungeBotUfcPredictive.ts')
 
@@ -612,6 +637,8 @@ Deno.serve(async (req) => {
       }
 
       if (dryRun) {
+        const previewCaption = formatUfcCardCaption(card)
+        const vipPreviewCaption = formatUfcVipCardCaption(card)
         return adminOpsJson(200, {
           ok: true,
           dryRun: true,
@@ -620,7 +647,9 @@ Deno.serve(async (req) => {
           totalFights: card.totalFights,
           hammersCount: card.hammers.length,
           consensusCount: card.consensus.length,
-          previewCaption: formatUfcCardCaption(card),
+          previewCaption,
+          captionPreview: previewCaption,
+          vipPreviewCaption,
           card,
         })
       }

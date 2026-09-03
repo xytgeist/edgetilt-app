@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { renderLoungeMarkdown } from '../features/lounge/loungeMarkdown.jsx'
 
 const TYPE_LABEL = {
@@ -20,12 +20,32 @@ function typeBadgeClass(type) {
   return 'bg-zinc-800 text-zinc-400 border-zinc-700'
 }
 
+function CaptionArticle({ caption, emptyLabel }) {
+  const rich = useMemo(() => {
+    const text = String(caption || '').trim()
+    if (!text) return null
+    return renderLoungeMarkdown(text)
+  }, [caption])
+
+  if (!rich) {
+    return emptyLabel ? <p className="text-sm text-zinc-500">{emptyLabel}</p> : null
+  }
+
+  return (
+    <article className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-3 text-[13px] leading-relaxed text-zinc-100 lounge-markdown whitespace-pre-wrap">
+      {rich}
+    </article>
+  )
+}
+
 /**
  * @param {{
  *   preview: {
  *     sportLabel?: string
  *     dayKey?: string
  *     previewCaption?: string
+ *     vipPreviewCaption?: string
+ *     subscriberThreadParts?: Array<{ label?: string, body?: string }>
  *     gamesSummary?: Array<{ away: string, home: string, when: string, lineDisplay: string, badge: string, type: string }>
  *     gamesToday?: number
  *     totalGames?: number
@@ -38,13 +58,24 @@ function typeBadgeClass(type) {
  * }} props
  */
 export function SyndicateDryRunPreview({ preview, onDismiss }) {
-  const richCaption = useMemo(() => {
-    const caption = String(preview?.previewCaption || '').trim()
-    if (!caption) return null
-    return renderLoungeMarkdown(caption)
-  }, [preview?.previewCaption])
+  const publicCaption = String(preview?.previewCaption || '').trim()
+  const vipCaption = String(preview?.vipPreviewCaption || '').trim()
+  const threadParts = Array.isArray(preview?.subscriberThreadParts)
+    ? preview.subscriberThreadParts.filter((p) => String(p?.body || '').trim())
+    : []
+  const hasPublic = Boolean(publicCaption)
+  const hasSubscriber = Boolean(vipCaption || threadParts.length)
+  const dual = hasPublic && hasSubscriber
+
+  const [tab, setTab] = useState(hasPublic ? 'public' : 'subscriber')
+
+  useEffect(() => {
+    setTab(hasPublic ? 'public' : 'subscriber')
+  }, [preview?.sportLabel, preview?.previewCaption, preview?.vipPreviewCaption, hasPublic])
 
   if (!preview) return null
+
+  const activeTab = dual ? tab : hasPublic ? 'public' : 'subscriber'
 
   const stats = [
     preview.gamesToday != null ? `${preview.gamesToday} kickoff today` : null,
@@ -90,21 +121,68 @@ export function SyndicateDryRunPreview({ preview, onDismiss }) {
         <p className="px-3 py-3 text-sm text-red-400">{preview.error}</p>
       ) : null}
 
-      {richCaption ? (
+      {dual ? (
+        <div className="flex gap-1 px-3 pt-3">
+          <button
+            type="button"
+            onClick={() => setTab('public')}
+            className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition ${
+              activeTab === 'public'
+                ? 'bg-amber-500 text-black'
+                : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            Public Lounge
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('subscriber')}
+            className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition ${
+              activeTab === 'subscriber'
+                ? 'bg-violet-500 text-white'
+                : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            Subscriber full card
+          </button>
+        </div>
+      ) : null}
+
+      {!preview.error && activeTab === 'public' && hasPublic ? (
         <div className="px-3 py-3 border-b border-zinc-800/80">
           <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-500 font-semibold mb-2">
-            Post caption (exact)
+            {dual || hasSubscriber ? 'Public Lounge (exact)' : 'Post caption (exact)'}
           </p>
-          <article className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-3 text-[13px] leading-relaxed text-zinc-100 lounge-markdown">
-            {richCaption}
-          </article>
+          <CaptionArticle caption={publicCaption} />
           {games.length ? (
             <p className="text-[10px] text-zinc-500 mt-2">
               Public tease caps hammers / consensus / splits. Ledger still records every scored game below.
             </p>
           ) : null}
         </div>
-      ) : !preview.error ? (
+      ) : null}
+
+      {!preview.error && activeTab === 'subscriber' && hasSubscriber ? (
+        <div className="px-3 py-3 border-b border-zinc-800/80 space-y-3">
+          <p className="text-[10px] uppercase tracking-[0.14em] text-violet-300/90 font-semibold">
+            Subscriber / fan-only (exact)
+          </p>
+          {vipCaption ? <CaptionArticle caption={vipCaption} /> : null}
+          {threadParts.map((part, i) => (
+            <div key={`${part.label || 'desk'}-${i}`} className="space-y-1.5">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-500 font-semibold">
+                Thread · {part.label || `Part ${i + 1}`}
+              </p>
+              <CaptionArticle caption={part.body} />
+            </div>
+          ))}
+          <p className="text-[10px] text-zinc-500">
+            Same markdown / plain text the app posts to creator-fan Lounge + VIP chat. Use this to tune full-card formatting.
+          </p>
+        </div>
+      ) : null}
+
+      {!preview.error && !hasPublic && !hasSubscriber ? (
         <p className="px-3 py-3 text-sm text-zinc-500">No caption generated (desk may not have voted yet).</p>
       ) : null}
 

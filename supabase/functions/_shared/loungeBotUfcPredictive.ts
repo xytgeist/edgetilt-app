@@ -299,6 +299,26 @@ export async function buildUfcSlateCard(
 }
 
 /**
+ * Subscriber / VIP sub-chat: uncut 4-desk fight breakdown.
+ */
+export function formatUfcVipCardCaption(card: UfcSlateCard): string {
+  const vipLines: string[] = []
+  vipLines.push(`🥊 **${card.cardTitle.toUpperCase()} · UNCUT 4-DESK BREAKDOWN**\n`)
+  vipLines.push(`Here are the individual cards and prop values across all 4 desks for tonight's card:\n`)
+
+  for (const fight of card.fights || []) {
+    vipLines.push(`**${fight.fighterA} vs ${fight.fighterB}** (${fight.matchup?.division || 'UFC'})`)
+    vipLines.push(`• ${formatColoredPickerName('Scott')}: ${fight.pickerPicks.Scott.pickName} ... ${fight.pickerPicks.Scott.rationale}`)
+    vipLines.push(`• ${formatColoredPickerName('Rocco')}: ${fight.pickerPicks.Rocco.pickName} ... ${fight.pickerPicks.Rocco.rationale}`)
+    vipLines.push(`• ${formatColoredPickerName('Chedda')}: ${fight.pickerPicks.Chedda.pickName} ... ${fight.pickerPicks.Chedda.rationale}`)
+    vipLines.push(`• ${formatColoredPickerName('Tank')}: ${fight.pickerPicks.Tank.pickName} ... ${fight.pickerPicks.Tank.rationale}`)
+    vipLines.push(`• *Consensus Signal: ${fight.consensusPick.badgeText}*\n`)
+  }
+
+  return vipLines.join('\n').trim()
+}
+
+/**
  * Format public UFC card drop caption for the Lounge feed.
  */
 export function formatUfcCardCaption(card: UfcSlateCard): string {
@@ -398,22 +418,9 @@ export async function publishAndRecordUfcCard(
   }
 
   // 2. Drop uncut individual card into VIP Sub-chat
-  const vipLines: string[] = []
-  vipLines.push(`🥊 **${card.cardTitle.toUpperCase()} · UNCUT 4-DESK BREAKDOWN**\n`)
-  vipLines.push(`Here are the individual cards and prop values across all 4 desks for tonight's card:\n`)
-
-  for (const fight of card.fights) {
-    vipLines.push(`**${fight.fighterA} vs ${fight.fighterB}** (${fight.matchup?.division || 'UFC'})`)
-    vipLines.push(`• ${formatColoredPickerName('Scott')}: ${fight.pickerPicks.Scott.pickName} ... ${fight.pickerPicks.Scott.rationale}`)
-    vipLines.push(`• ${formatColoredPickerName('Rocco')}: ${fight.pickerPicks.Rocco.pickName} ... ${fight.pickerPicks.Rocco.rationale}`)
-    vipLines.push(`• ${formatColoredPickerName('Chedda')}: ${fight.pickerPicks.Chedda.pickName} ... ${fight.pickerPicks.Chedda.rationale}`)
-    vipLines.push(`• ${formatColoredPickerName('Tank')}: ${fight.pickerPicks.Tank.pickName} ... ${fight.pickerPicks.Tank.rationale}`)
-    vipLines.push(`• *Consensus Signal: ${fight.consensusPick.badgeText}*\n`)
-  }
-
   await publishBotSubChatMessage(supabase, {
     botUserId,
-    content: vipLines.join('\n'),
+    content: formatUfcVipCardCaption(card),
   })
 
   return { success: true, totalPicksRecorded: picksToInsert.length }

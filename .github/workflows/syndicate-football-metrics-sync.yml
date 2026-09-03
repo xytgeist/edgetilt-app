@@ -1,4 +1,4 @@
-# Weekly NFL EPA (nflverse) + CFB Elo/SRS (CollegeFootballData) sync.
+# Weekly NFL EPA (nflverse) + CFB Elo/SRS (CollegeFootballData) + UFC Stats fighter metrics sync.
 #
 # Schedule: Tuesdays 14:00 UTC (~7:00am PT) → test Supabase only.
 # Production upserts require workflow_dispatch with sync_production=true
@@ -55,6 +55,12 @@ jobs:
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
         run: npm run syndicate:sync-cfb-power:test
 
+      - name: Sync UFC fighter metrics from UFC Stats (test)
+        env:
+          SUPABASE_URL_TEST: ${{ secrets.SUPABASE_URL_TEST }}
+          SUPABASE_SERVICE_ROLE_KEY_TEST: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TEST }}
+        run: npm run syndicate:sync-ufc-metrics:test
+
   sync-production:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.sync_production == true }}
     needs: sync-test
@@ -85,3 +91,9 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
         run: npm run syndicate:sync-cfb-power:production
+
+      - name: Sync UFC fighter metrics from UFC Stats (production)
+        env:
+          SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
+          SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
+        run: npm run syndicate:sync-ufc-metrics:production

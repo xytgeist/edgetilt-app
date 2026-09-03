@@ -513,11 +513,13 @@ export async function invokeLoungeOddsGradePicks(supabaseClient, opts = {}) {
  */
 export async function invokeLoungeOddsSlateCard(supabaseClient, opts = {}) {
   const slug = opts.slug || 'sports-odds'
+  const sportKey = opts.sportKey || 'americanfootball_nfl'
+  const action = sportKey === 'americanfootball_ncaaf' ? 'cfb_slate_card' : 'nfl_slate_card'
   const { data, error } = await supabaseClient.functions.invoke('lounge-odds-poll', {
     body: {
       slug,
-      action: 'nfl_slate_card',
-      sportKey: opts.sportKey || 'americanfootball_nfl',
+      action,
+      sportKey,
       dryRun: opts.dryRun === true,
     },
   })

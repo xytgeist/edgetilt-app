@@ -1,5 +1,10 @@
-import { lazy, Suspense, useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { fetchBotPortalSnapshot } from '../features/bots/botPortalApi.js'
+import {
+  formatTodayPicksResult,
+  resolveTodayPicksPlan,
+  runTodayPicksForSport,
+} from './syndicateTodayPicks.js'
 
 const BotSharpDeskPanel = lazy(() =>
   import('../features/bots/BotSharpDeskPanel.jsx').then((m) => ({ default: m.BotSharpDeskPanel }))
@@ -27,7 +32,31 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [bot, setBot] = useState(null)
-  const [selectedSportKey, setSelectedSportKey] = useState('americanfootball_nfl')
+  const [selectedSportKey, setSelectedSportKey] = useState('americanfootball_ncaaf')
+  const [runDryRun, setRunDryRun] = useState(true)
+
+  const todayPlan = useMemo(() => resolveTodayPicksPlan(selectedSportKey), [selectedSportKey])
+
+  async function handleRunPicksForToday() {
+    if (!bot || busy) return
+    setBusy(true)
+    try {
+      const { plan, data, error: runErr } = await runTodayPicksForSport(supabaseClient, {
+        slug: bot.slug || 'sports-odds',
+        sportKey: selectedSportKey,
+        dryRun: runDryRun,
+      })
+      if (runErr) {
+        setToast(runErr.message || 'Run picks failed.')
+        return
+      }
+      setToast(formatTodayPicksResult(data, plan, runDryRun))
+    } catch (err) {
+      setToast(err.message || 'Run picks failed.')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   useEffect(() => {
     let cancelled = false
@@ -90,11 +119,12 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <label className="flex items-center gap-1.5 text-[11px] text-zinc-400">
-              Drop sport
+              Sport
               <select
                 value={selectedSportKey}
                 onChange={(e) => setSelectedSportKey(e.target.value)}
-                className="rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-200 text-[11px] px-2 py-1.5"
+                disabled={busy}
+                className="rounded-lg bg-zinc-900 border border-zinc-700 text-zinc-200 text-[11px] px-2 py-1.5 disabled:opacity-50"
               >
                 {SPORT_OPTIONS.map((o) => (
                   <option key={o.id} value={o.id}>
@@ -103,6 +133,24 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
                 ))}
               </select>
             </label>
+            <label className="flex items-center gap-1 text-[11px] text-zinc-500 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={runDryRun}
+                onChange={(e) => setRunDryRun(e.target.checked)}
+                disabled={busy}
+                className="rounded border-zinc-600"
+              />
+              Dry run
+            </label>
+            <button
+              type="button"
+              disabled={busy || !bot}
+              onClick={() => void handleRunPicksForToday()}
+              className="min-h-8 rounded-lg px-3 text-[11px] font-bold text-zinc-950 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50"
+            >
+              {busy ? 'Running…' : 'Run picks for today'}
+            </button>
             <a
               href="/"
               className="min-h-8 rounded-lg px-3 text-[11px] font-semibold text-zinc-300 bg-zinc-900 border border-zinc-700 hover:bg-zinc-800 inline-flex items-center"
@@ -121,6 +169,16 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
       </header>
 
       <main className="max-w-5xl mx-auto px-3 py-4 pb-16">
+        <div className="mb-4 rounded-xl border border-emerald-500/25 bg-emerald-950/20 px-3 py-2.5 text-[11px] text-emerald-100/90">
+          <span className="font-semibold text-emerald-300">Today&apos;s package ({todayPlan.sportLabel}):</span>{' '}
+          {todayPlan.summary}
+          {todayPlan.audience === 'vip' ? (
+            <span className="text-amber-300/90"> · VIP sub chat only (no public Lounge post).</span>
+          ) : null}
+          <span className="block text-zinc-500 mt-1">
+            Uncheck Dry run to publish. Full slate cards also live under Scorecard → Drops below.
+          </span>
+        </div>
         <p className="text-[11px] text-zinc-500 mb-4">
           Scorecard, Chedda Action PRO paste, PVALs, EPA / CFB / UFC metrics, monthly board. Bot create / pause / X
           sources stay on EdgeTilt <span className="font-mono text-zinc-400">/?tab=bots</span>.

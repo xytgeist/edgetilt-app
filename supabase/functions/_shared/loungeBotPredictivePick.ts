@@ -221,14 +221,12 @@ export const PUBLIC_SLATE_HOUSE_DIVIDED_CAP = 3
 export const PUBLIC_SLATE_PASS_CAP = 3
 
 /**
- * Locked public slate markdown dialect (v8):
- * - H1 title; H2 sections; H3 items
- * - Hammers: pick-first H3
- * - Consensus / House Divided / Split: matchup H3 + one desk-summary line
- * - Solo: group by desk (H3 desk name, pick bullets underneath) … after Tank's Totals, before All Pass
- * - All Pass last: matchup list only (no PASS desk spam)
- * - Labels: Consensus (2-0), House Divided (2-1), Split (1-1)
+ * Locked public slate markdown dialect (v9):
+ * - No nested indent (mobile wrap room)
+ * - Consensus: pick + agreeing desks only (no PASS callouts)
+ * - House Divided / Split: one · line per active side
  * - Order: Hammers → Consensus → House Divided → Split → Tank's Totals → Solo → All Pass
+ * - VIP desk cards are plain text (no Lounge markdown tags)
  */
 function formatSlateWeekSubtitle(games: SlateGamePick[]): string | null {
   const times = games
@@ -287,10 +285,6 @@ function desksOnSide(g: SlateGamePick, side: 'home' | 'away'): SharpPicker[] {
   return ATS_SIDE_DESKS.filter((p) => g.pickerPicks[p].side === side)
 }
 
-function desksPassing(g: SlateGamePick): SharpPicker[] {
-  return ATS_SIDE_DESKS.filter((p) => g.pickerPicks[p].side === 'pass')
-}
-
 function soloPickerForGame(g: SlateGamePick): SharpPicker | null {
   const active = ATS_SIDE_DESKS.filter((p) => g.pickerPicks[p].side !== 'pass')
   return active.length === 1 ? active[0]! : null
@@ -301,20 +295,16 @@ function formatHammerItem(g: SlateGamePick): string {
   return `### ${formatGoldPick(g.consensusPick.lineDisplay)} (${formatMatchupWhen(g)})`
 }
 
-/** Consensus (2-0): matchup H3 + majority pick · desks | pass desks. */
+/** Consensus (2-0): matchup H3 + pick · agreeing desks (PASS desks omitted). */
 function formatConsensusItem(g: SlateGamePick): string[] {
   const agree = desksOnSide(g, g.consensusPick.side)
-  const passing = desksPassing(g)
-  const passBit = passing.length
-    ? ` | ${formatDeskJoin(passing)} PASS`
-    : ''
   return [
     `### ${formatMatchupWhen(g)}`,
-    `· ${formatGoldPick(g.consensusPick.lineDisplay)} · ${formatDeskJoin(agree)}${passBit}`,
+    `· ${formatGoldPick(g.consensusPick.lineDisplay)} · ${formatDeskJoin(agree)}`,
   ]
 }
 
-/** House Divided (2-1): matchup H3 + majority · desks | dissenter · other pick. */
+/** House Divided (2-1): one · line per active side. */
 function formatHouseDividedItem(g: SlateGamePick): string[] {
   const majoritySide = g.consensusPick.side
   const dissentSide = majoritySide === 'home' ? 'away' : 'home'
@@ -325,11 +315,12 @@ function formatHouseDividedItem(g: SlateGamePick): string[] {
     : ''
   return [
     `### ${formatMatchupWhen(g)}`,
-    `· ${formatGoldPick(g.consensusPick.lineDisplay)} · ${formatDeskJoin(majorityDesks)} | ${formatDeskJoin(dissentDesks)} · ${formatGoldPick(dissentLine)}`,
+    `· ${formatGoldPick(g.consensusPick.lineDisplay)} · ${formatDeskJoin(majorityDesks)}`,
+    `· ${formatGoldPick(dissentLine)} · ${formatDeskJoin(dissentDesks)}`,
   ]
 }
 
-/** Split (1-1): matchup H3 + both active sides. */
+/** Split (1-1): one · line per active side. */
 function formatSplitItem(g: SlateGamePick): string[] {
   const homeDesks = desksOnSide(g, 'home')
   const awayDesks = desksOnSide(g, 'away')
@@ -337,7 +328,8 @@ function formatSplitItem(g: SlateGamePick): string[] {
   const awayLine = awayDesks[0] ? g.pickerPicks[awayDesks[0]].lineDisplay : ''
   return [
     `### ${formatMatchupWhen(g)}`,
-    `· ${formatGoldPick(awayLine)} · ${formatDeskJoin(awayDesks)} | ${formatGoldPick(homeLine)} · ${formatDeskJoin(homeDesks)}`,
+    `· ${formatGoldPick(awayLine)} · ${formatDeskJoin(awayDesks)}`,
+    `· ${formatGoldPick(homeLine)} · ${formatDeskJoin(homeDesks)}`,
   ]
 }
 
@@ -457,8 +449,7 @@ export function formatNflSlateCardCaption(card: NflSlateCard): string {
 }
 
 /**
- * Format a clean, full ATS card list for a single persona (e.g. Tank or Chedda)
- * for distribution to VIP subscriber chat rooms.
+ * Format a clean, full ATS/totals card for one persona … VIP sub-chat (plain text, no Lounge markdown).
  */
 export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): string {
   const icon = picker === 'Tank' ? '🛡️' : picker === 'Chedda' ? '🧀' : picker === 'Rocco' ? '🥩' : '🎯'
@@ -473,17 +464,20 @@ export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): 
 
   const cardLabel = picker === 'Tank' ? 'TOTALS CARD' : 'ATS CARD'
   const lines: string[] = [
-    `${icon} ${formatColoredPickerName(picker, picker.toUpperCase())}'S FULL ${cardLabel} (${specialty}):\n`,
+    `${icon} ${picker.toUpperCase()}'S FULL ${cardLabel} (${specialty}):`,
+    '',
   ]
   for (const g of card.games) {
     const pPick = g.pickerPicks[picker]
-    if (picker === 'Tank' && pPick.side === 'pass') continue
+    if (pPick.side === 'pass') continue
     const away = shortDisplayName(g.awayTeam)
     const home = shortDisplayName(g.homeTeam)
     const when = formatOddsCommenceTimeShort(g.commenceTime)
-    lines.push(`• ${pPick.lineDisplay} (${away}/${home} · ${when})`)
+    lines.push(`· ${pPick.lineDisplay} (${away}/${home} · ${when})`)
   }
-  if (lines.length === 1) lines.push('• No totals leans this slate')
+  if (lines.length === 2) {
+    lines.push(picker === 'Tank' ? '· No totals leans this slate' : '· No ATS leans this slate')
+  }
   return lines.join('\n')
 }
 

@@ -276,7 +276,8 @@ export async function runPicksForToday(
   const result = await publishAndRecordNflSlateCard(admin, {
     botUserId,
     card,
-    categoryPills: ['sports', sportKey.includes('ncaaf') ? 'cfb' : 'nfl'],
+    // Only allowlisted tribe slugs (sports). Sport-specific tags like cfb/nfl are not in the constraint.
+    categoryPills: ['sports'],
   })
 
   return {

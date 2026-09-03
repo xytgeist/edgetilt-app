@@ -69,6 +69,14 @@ export async function runTodayPicksForSport(supabaseClient, opts) {
     return { plan, data: null, error: new Error(msg) }
   }
   if (data?.error) return { plan, data: null, error: new Error(String(data.error)) }
+  // Live publish can return HTTP 200 with ok:false (e.g. DB constraint) ... surface as error.
+  if (data?.ok === false && opts.dryRun !== true && !data?.dryRun) {
+    return {
+      plan,
+      data,
+      error: new Error(String(data.message || data.error || 'Publish failed.')),
+    }
+  }
   return { plan, data, error: null }
 }
 

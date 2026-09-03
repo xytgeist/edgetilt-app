@@ -287,6 +287,38 @@ export function filterOddsEventsForNextFootballSlate(
   return upcoming.filter((ev) => Date.parse(String(ev.commence_time)) <= clusterEnd)
 }
 
+/** PT calendar date YYYY-MM-DD (America/Los_Angeles). */
+export function ptDateKey(now = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now)
+}
+
+/**
+ * Games whose kickoff falls on a PT calendar day (default today).
+ * futureOnly drops games that already started.
+ */
+export function filterOddsEventsKickoffPtDay(
+  events: OddsEvent[],
+  opts: { dayKey?: string; futureOnly?: boolean } = {},
+): OddsEvent[] {
+  const targetDay = opts.dayKey || ptDateKey()
+  const now = Date.now()
+  const futureOnly = opts.futureOnly !== false
+
+  return events
+    .filter((ev) => {
+      const t = Date.parse(String(ev.commence_time || ''))
+      if (!Number.isFinite(t)) return false
+      if (futureOnly && t <= now) return false
+      return ptDateKey(new Date(t)) === targetDay
+    })
+    .sort((a, b) => Date.parse(String(a.commence_time)) - Date.parse(String(b.commence_time)))
+}
+
 export function formatOddsCommenceTime(iso: string): string {
   const t = Date.parse(String(iso || ''))
   if (!Number.isFinite(t)) return ''

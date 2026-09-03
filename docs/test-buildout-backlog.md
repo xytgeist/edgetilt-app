@@ -1073,7 +1073,9 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-09-03: **Syndicate Ops "Run picks for today":** sport dropdown + dry run + manual invoke of the scheduled package (CFB Thu spotlight, Fri slate lock, etc.). `syndicateTodayPicks.js`. Fix CFB slate portal call to use `cfb_slate_card` action.
+- 2026-09-03: **picks_for_today Edge action:** manual gap-fill card for every game kicking today (PT), not scheduled cron replay. Ops button calls this. Redeploy `lounge-odds-poll` test+prod.
+
+- 2026-09-03: **Syndicate Ops "Run picks for today":** sport dropdown + dry run (UI). Was wrongly mapped to cron packages; fixed to `picks_for_today`.
 
 - 2026-09-02: **Syndicate Ops `/ops` redirect fix:** Root cause was our Pages `_redirects` line `/ops /index.html 200` (and later `/desk …`) which 308s bare paths to `/` on this project. Switched to catch-all `/* /index.html 200` only. Canonical URL back to **https://sharpesyndicate.com/ops**. `/desk` was never a different feature.
 

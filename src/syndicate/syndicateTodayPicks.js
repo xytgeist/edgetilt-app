@@ -1,12 +1,7 @@
 /**
- * Map sport + PT calendar day → lounge-odds-poll action for manual "Run picks for today".
+ * Manual "Run picks for today" ... gap-fill for games kicking today (PT),
+ * not a replay of scheduled cron packages.
  */
-const PT = 'America/Los_Angeles'
-
-function ptWeekdayShort(now = new Date()) {
-  return new Intl.DateTimeFormat('en-US', { timeZone: PT, weekday: 'short' }).format(now)
-}
-
 const SPORT_LABEL = {
   americanfootball_ncaaf: 'CFB',
   americanfootball_nfl: 'NFL',
@@ -15,132 +10,33 @@ const SPORT_LABEL = {
 
 /**
  * @param {string} sportKey
- * @param {Date} [now]
- * @returns {{ action: string, sportKey: string, sportLabel: string, summary: string, audience: 'public' | 'vip' | 'both' }}
+ * @returns {{ action: string, sportKey: string, sportLabel: string, summary: string }}
  */
-export function resolveTodayPicksPlan(sportKey, now = new Date()) {
+export function todayPicksPlan(sportKey) {
   const sportLabel = SPORT_LABEL[sportKey] || sportKey
-  const dow = ptWeekdayShort(now)
-
-  if (sportKey === 'americanfootball_ncaaf') {
-    if (dow === 'Thu') {
-      return {
-        action: 'cfb_thu_night_spotlight',
-        sportKey,
-        sportLabel,
-        summary: 'Thursday night public tease (1 lean) + VIP deep dive',
-        audience: 'both',
-      }
-    }
-    if (dow === 'Wed') {
-      return {
-        action: 'cfb_wed_midweek_vip',
-        sportKey,
-        sportLabel,
-        summary: 'Wed midweek Thu/Fri night leans (VIP sub chat only)',
-        audience: 'vip',
-      }
-    }
-    if (dow === 'Fri') {
-      return {
-        action: 'cfb_slate_card',
-        sportKey,
-        sportLabel,
-        summary: 'Saturday lock house card (public teaser + VIP full)',
-        audience: 'both',
-      }
-    }
-    if (dow === 'Sat') {
-      return {
-        action: 'cfb_sat_vip_adds_kills',
-        sportKey,
-        sportLabel,
-        summary: 'Saturday VIP adds/kills (only if lock flipped or starter shock)',
-        audience: 'vip',
-      }
-    }
-    return {
-      action: 'cfb_slate_card',
-      sportKey,
-      sportLabel,
-      summary: 'Next CFB slate window (full card for upcoming cluster)',
-      audience: 'both',
-    }
-  }
-
-  if (sportKey === 'americanfootball_nfl') {
-    if (dow === 'Wed') {
-      return {
-        action: 'nfl_wed_tnf_vip',
-        sportKey,
-        sportLabel,
-        summary: 'Wednesday TNF VIP watch package',
-        audience: 'vip',
-      }
-    }
-    if (dow === 'Fri') {
-      return {
-        action: 'nfl_slate_card',
-        sportKey,
-        sportLabel,
-        summary: 'Sunday lock house card (public teaser + VIP full)',
-        audience: 'both',
-      }
-    }
-    if (dow === 'Sat') {
-      return {
-        action: 'nfl_sat_vip_adds_kills',
-        sportKey,
-        sportLabel,
-        summary: 'Saturday VIP adds/kills',
-        audience: 'vip',
-      }
-    }
-    return {
-      action: 'nfl_slate_card',
-      sportKey,
-      sportLabel,
-      summary: 'Next NFL slate window (full card for upcoming cluster)',
-      audience: 'both',
-    }
-  }
-
-  if (sportKey === 'mma_mixed_martial_arts') {
-    return {
-      action: 'ufc_slate_card',
-      sportKey,
-      sportLabel,
-      summary: 'UFC fight card syndicate slate',
-      audience: 'both',
-    }
-  }
-
   return {
-    action: 'nfl_slate_card',
-    sportKey: sportKey || 'americanfootball_nfl',
+    action: 'picks_for_today',
+    sportKey,
     sportLabel,
-    summary: 'Slate card drop',
-    audience: 'both',
+    summary: `Full syndicate card for every ${sportLabel} game kicking today (PT). Fills gaps the scheduled posts do not cover.`,
   }
 }
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
- * @param {{ slug?: string, sportKey: string, dryRun?: boolean, now?: Date }} opts
+ * @param {{ slug?: string, sportKey: string, dryRun?: boolean }} opts
  */
 export async function runTodayPicksForSport(supabaseClient, opts) {
-  const plan = resolveTodayPicksPlan(opts.sportKey, opts.now)
+  const plan = todayPicksPlan(opts.sportKey)
   const slug = opts.slug || 'sports-odds'
-  const body = {
-    slug,
-    action: plan.action,
-    dryRun: opts.dryRun === true,
-  }
-  if (plan.action === 'nfl_slate_card' || plan.action === 'cfb_slate_card') {
-    body.sportKey = plan.sportKey
-  }
-
-  const { data, error } = await supabaseClient.functions.invoke('lounge-odds-poll', { body })
+  const { data, error } = await supabaseClient.functions.invoke('lounge-odds-poll', {
+    body: {
+      slug,
+      action: 'picks_for_today',
+      sportKey: opts.sportKey,
+      dryRun: opts.dryRun === true,
+    },
+  })
   if (error) return { plan, data: null, error: new Error(error.message || 'Run picks failed') }
   if (data?.error) return { plan, data: null, error: new Error(String(data.error)) }
   return { plan, data, error: null }
@@ -148,23 +44,26 @@ export async function runTodayPicksForSport(supabaseClient, opts) {
 
 /**
  * @param {Record<string, unknown> | null | undefined} data
- * @param {{ action: string, dryRun?: boolean }} plan
+ * @param {boolean} dryRun
  */
-export function formatTodayPicksResult(data, plan, dryRun = false) {
+export function formatTodayPicksResult(data, dryRun = false) {
   if (!data) return 'No response from Edge.'
+  if (data.message && data.ok === false) return String(data.message)
   if (data.skipped) return `Skipped: ${data.skipped}`
+
+  const gamesToday = data.gamesToday != null ? `${data.gamesToday} games today` : null
+  const voted = data.totalGames != null ? `${data.totalGames} with desk votes` : null
+  const h = data.hammersCount != null ? `${data.hammersCount} hammers` : null
+  const c = data.consensusCount != null ? `${data.consensusCount} consensus` : null
+  const stats = [gamesToday, voted, h, c].filter(Boolean).join(' · ')
+
   if (dryRun || data.dryRun) {
-    const preview = data.captionPreview || data.message
-    if (preview) return `[Dry run] ${String(preview).slice(0, 220)}`
-    const parts = []
-    if (data.totalGames != null) parts.push(`${data.totalGames} games`)
-    if (data.hammersCount != null) parts.push(`${data.hammersCount} hammers`)
-    if (data.consensusCount != null) parts.push(`${data.consensusCount} consensus`)
-    if (data.gameCount != null) parts.push(`${data.gameCount} games`)
-    return `[Dry run] ${parts.join(' · ') || 'Ready.'}`
+    const preview = data.captionPreview ? ` ${String(data.captionPreview).slice(0, 180)}` : ''
+    return `[Dry run] ${stats || 'Ready.'}${preview}`
   }
+
   if (data.ok === false) return data.message || data.error || 'Run failed.'
-  if (data.postId) return `Published (post ${String(data.postId).slice(0, 8)}…).`
-  if (data.ok) return 'Published.'
+  if (data.postId) return `Published ${stats || ''} (post ${String(data.postId).slice(0, 8)}…).`.trim()
+  if (data.ok) return `Published.${stats ? ` ${stats}` : ''}`
   return data.message || 'Done.'
 }

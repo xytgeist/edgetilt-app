@@ -91,9 +91,9 @@ Deno.serve(async (req) => {
     const alertKindRaw = String(body?.alertKind || '').trim().toLowerCase()
     const alertKind = alertKindRaw || null
 
-    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'cfb_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'syndicate_monthly_scoreboard', 'calibrate_persona_models', 'ufc_slate_card', 'nfl_wed_tnf_vip', 'nfl_sat_vip_adds_kills', 'cfb_wed_midweek_vip', 'cfb_thu_night_spotlight', 'cfb_sat_vip_adds_kills'].includes(action)) {
+    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'cfb_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'syndicate_monthly_scoreboard', 'calibrate_persona_models', 'ufc_slate_card', 'nfl_wed_tnf_vip', 'nfl_sat_vip_adds_kills', 'cfb_wed_midweek_vip', 'cfb_thu_night_spotlight', 'cfb_sat_vip_adds_kills', 'picks_for_today'].includes(action)) {
       return adminOpsJson(400, {
-        error: 'action must be a valid lounge-odds-poll action (incl. cfb_wed_midweek_vip, cfb_thu_night_spotlight, cfb_sat_vip_adds_kills).',
+        error: 'action must be a valid lounge-odds-poll action (incl. picks_for_today, cfb_wed_midweek_vip, cfb_thu_night_spotlight, cfb_sat_vip_adds_kills).',
       })
     }
 
@@ -194,6 +194,17 @@ Deno.serve(async (req) => {
       const { runCfbSatVipAddsKills } = await import('../_shared/loungeBotCfbVipOps.ts')
       const result = await runCfbSatVipAddsKills(admin, bot.user_id, { dryRun })
       return adminOpsJson(200, { ok: result.ok !== false, action: 'cfb_sat_vip_adds_kills', ...result })
+    }
+
+    if (action === 'picks_for_today') {
+      const { runPicksForToday } = await import('../_shared/loungeBotSyndicateTodayPicks.ts')
+      const sportKey = String(body?.sportKey || 'americanfootball_ncaaf').trim()
+      const result = await runPicksForToday(admin, bot.user_id, {
+        sportKey,
+        dryRun,
+        dayKey: body?.dayKey ? String(body.dayKey).trim() : undefined,
+      })
+      return adminOpsJson(200, { action: 'picks_for_today', ...result })
     }
 
     if (action === 'nfl_slate_card' || action === 'cfb_slate_card') {

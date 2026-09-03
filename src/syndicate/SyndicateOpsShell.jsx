@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import { fetchBotPortalSnapshot } from '../features/bots/botPortalApi.js'
 import {
   formatTodayPicksResult,
-  resolveTodayPicksPlan,
+  todayPicksPlan,
   runTodayPicksForSport,
 } from './syndicateTodayPicks.js'
 
@@ -35,7 +35,7 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
   const [selectedSportKey, setSelectedSportKey] = useState('americanfootball_ncaaf')
   const [runDryRun, setRunDryRun] = useState(true)
 
-  const todayPlan = useMemo(() => resolveTodayPicksPlan(selectedSportKey), [selectedSportKey])
+  const todayPlan = useMemo(() => todayPicksPlan(selectedSportKey), [selectedSportKey])
 
   async function handleRunPicksForToday() {
     if (!bot || busy) return
@@ -50,7 +50,7 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
         setToast(runErr.message || 'Run picks failed.')
         return
       }
-      setToast(formatTodayPicksResult(data, plan, runDryRun))
+      setToast(formatTodayPicksResult(data, runDryRun))
     } catch (err) {
       setToast(err.message || 'Run picks failed.')
     } finally {
@@ -170,13 +170,10 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
 
       <main className="max-w-5xl mx-auto px-3 py-4 pb-16">
         <div className="mb-4 rounded-xl border border-emerald-500/25 bg-emerald-950/20 px-3 py-2.5 text-[11px] text-emerald-100/90">
-          <span className="font-semibold text-emerald-300">Today&apos;s package ({todayPlan.sportLabel}):</span>{' '}
-          {todayPlan.summary}
-          {todayPlan.audience === 'vip' ? (
-            <span className="text-amber-300/90"> · VIP sub chat only (no public Lounge post).</span>
-          ) : null}
+          <span className="font-semibold text-emerald-300">Run picks for today:</span> {todayPlan.summary}
           <span className="block text-zinc-500 mt-1">
-            Uncheck Dry run to publish. Full slate cards also live under Scorecard → Drops below.
+            Does not replay scheduled crons (Thu tease, Fri lock, etc.). Dry run first, then uncheck to publish to Lounge +
+            ledger.
           </span>
         </div>
         <p className="text-[11px] text-zinc-500 mb-4">

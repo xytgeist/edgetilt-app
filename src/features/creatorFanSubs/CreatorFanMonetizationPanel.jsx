@@ -11,6 +11,7 @@ import {
   startCreatorFanConnectOnboarding,
 } from './creatorFanSubsApi.js'
 import CreatorFanOfferFormFields from './CreatorFanOfferFormFields.jsx'
+import CreatorFanOfferPreviewCard from './CreatorFanOfferPreviewCard.jsx'
 import CreatorFanPrivateSubsRoomPanel from './CreatorFanPrivateSubsRoomPanel.jsx'
 import { isCreatorFanOfferComplete } from './fanSubOffer.js'
 
@@ -55,6 +56,7 @@ export default function CreatorFanMonetizationPanel({
   const [offerPrivatePosts, setOfferPrivatePosts] = useState('')
   const [offerFanChat, setOfferFanChat] = useState('')
   const [offerComplete, setOfferComplete] = useState(false)
+  const [editingOffer, setEditingOffer] = useState(false)
   const [stripeConnectAccountId, setStripeConnectAccountId] = useState('')
   const [fanRoomId, setFanRoomId] = useState(/** @type {string | null} */ (null))
   const [fanRoomTitle, setFanRoomTitle] = useState('')
@@ -86,7 +88,9 @@ export default function CreatorFanMonetizationPanel({
       setOfferPrivatePosts(typeof row.offer_private_posts === 'string' ? row.offer_private_posts : '')
       setOfferFanChat(typeof row.offer_fan_chat === 'string' ? row.offer_fan_chat : '')
     }
-    setOfferComplete(isCreatorFanOfferComplete(row))
+    const complete = isCreatorFanOfferComplete(row)
+    setOfferComplete(complete)
+    if (complete && !opts.preserveOfferDraft) setEditingOffer(false)
     setFanRoomId(row.fan_room_id ? String(row.fan_room_id) : null)
     setFanRoomTitle(typeof row.fan_room_title === 'string' ? row.fan_room_title : '')
     setFanRoomDescription(typeof row.fan_room_description === 'string' ? row.fan_room_description : '')
@@ -297,27 +301,59 @@ export default function CreatorFanMonetizationPanel({
 
           <div className="rounded-xl border border-zinc-800/90 bg-zinc-900/40 p-3">
             <span className="block text-[14px] font-semibold text-zinc-200">What fans get</span>
-            <div className="mt-3">
-              <CreatorFanOfferFormFields
-                headline={offerHeadline}
-                intro={offerIntro}
-                privatePosts={offerPrivatePosts}
-                fanChat={offerFanChat}
-                disabled={busy}
-                onHeadlineChange={setOfferHeadline}
-                onIntroChange={setOfferIntro}
-                onPrivatePostsChange={setOfferPrivatePosts}
-                onFanChatChange={setOfferFanChat}
-              />
-            </div>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void onSaveOffer()}
-              className="mt-2 min-h-10 rounded-lg border border-zinc-600/90 bg-zinc-800/80 px-4 text-[13px] font-semibold text-zinc-100 hover:bg-zinc-700/80 disabled:opacity-50"
-            >
-              Save offer
-            </button>
+            {offerComplete && !editingOffer ? (
+              <div className="mt-3">
+                <CreatorFanOfferPreviewCard
+                  handle={handle}
+                  tierKey={tierKey}
+                  headline={offerHeadline}
+                  intro={offerIntro}
+                  privatePosts={offerPrivatePosts}
+                  fanChat={offerFanChat}
+                  editDisabled={busy}
+                  onEdit={() => setEditingOffer(true)}
+                />
+              </div>
+            ) : (
+              <>
+                <div className="mt-3">
+                  <CreatorFanOfferFormFields
+                    headline={offerHeadline}
+                    intro={offerIntro}
+                    privatePosts={offerPrivatePosts}
+                    fanChat={offerFanChat}
+                    disabled={busy}
+                    onHeadlineChange={setOfferHeadline}
+                    onIntroChange={setOfferIntro}
+                    onPrivatePostsChange={setOfferPrivatePosts}
+                    onFanChatChange={setOfferFanChat}
+                  />
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void onSaveOffer()}
+                    className="min-h-10 rounded-lg border border-zinc-600/90 bg-zinc-800/80 px-4 text-[13px] font-semibold text-zinc-100 hover:bg-zinc-700/80 disabled:opacity-50"
+                  >
+                    Save offer
+                  </button>
+                  {offerComplete && editingOffer ? (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={() => {
+                        setEditingOffer(false)
+                        void reload()
+                      }}
+                      className="min-h-10 rounded-lg border border-zinc-700/90 px-4 text-[13px] font-semibold text-zinc-300 hover:bg-zinc-800/80 disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                  ) : null}
+                </div>
+              </>
+            )}
           </div>
 
           {fanRoomId ? (

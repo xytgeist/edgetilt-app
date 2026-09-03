@@ -144,7 +144,7 @@ export default function CreatorFanPromoCodesPanel({ supabaseClient, connectCompl
     <div className="rounded-xl border border-zinc-800/90 bg-zinc-900/40 p-3" data-creator-fan-promo-panel>
       <span className="block text-[14px] font-semibold text-zinc-200">Promo codes</span>
       <p className="mt-1 text-[12px] leading-snug text-zinc-500">
-        {`Optional codes for fans at checkout. You eat the discount ... EdgeTilt still takes ${CREATOR_FAN_PLATFORM_FEE_PERCENT}% of what they actually pay.`}
+        {`Optional codes for fans at Stripe checkout ("Add promotion code"). You eat the discount ... EdgeTilt still takes ${CREATOR_FAN_PLATFORM_FEE_PERCENT}% of what they actually pay.`}
       </p>
 
       {!connectComplete ? (

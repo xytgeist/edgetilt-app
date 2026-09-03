@@ -100,17 +100,10 @@ export async function refreshCreatorFanConnectStatus(supabaseClient) {
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string} creatorUserId
- * @param {string} [promoCode]
  */
-export async function startCreatorFanCheckout(supabaseClient, creatorUserId, promoCode = '') {
-  const body = { creator_user_id: creatorUserId }
-  const code = String(promoCode || '')
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, '')
-  if (code) body.promo_code = code
+export async function startCreatorFanCheckout(supabaseClient, creatorUserId) {
   const { data, error, response } = await supabaseClient.functions.invoke('creator-fan-checkout', {
-    body,
+    body: { creator_user_id: creatorUserId },
   })
   if (error) {
     const detail = await readEdgeFunctionError(response)

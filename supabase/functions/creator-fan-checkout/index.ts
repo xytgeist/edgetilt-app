@@ -38,7 +38,7 @@ Deno.serve(async (req) => {
     const auth = await getUserFromJwt(admin, req)
     if ('error' in auth) return jsonResponse({ error: auth.error }, auth.status)
 
-    let body: { creator_user_id?: string; promo_code?: string } = {}
+    let body: { creator_user_id?: string } = {}
     try {
       body = await req.json()
     } catch {
@@ -52,11 +52,6 @@ Deno.serve(async (req) => {
     if (creatorUserId === auth.user.id) {
       return jsonResponse({ error: 'You cannot subscribe to yourself.' }, 400)
     }
-
-    const promoCodeRaw = String(body.promo_code || '')
-      .trim()
-      .toUpperCase()
-      .replace(/\s+/g, '')
 
     const { data: offer, error: offerErr } = await admin.rpc('get_creator_fan_offer', {
       p_creator_user_id: creatorUserId,
@@ -106,30 +101,6 @@ Deno.serve(async (req) => {
       if (custErr) throw new Error(`profiles.stripe_customer_id update: ${custErr.message}`)
     }
 
-    /** @type {string | null} */
-    let stripePromotionCodeId: string | null = null
-    let appliedPromoCode: string | null = null
-    if (promoCodeRaw) {
-      if (!/^[A-Z0-9_-]{3,32}$/.test(promoCodeRaw)) {
-        return jsonResponse({ error: 'Invalid promo code format.' }, 400)
-      }
-      const { data: promoRow, error: promoErr } = await admin
-        .from('creator_fan_promo_codes')
-        .select('id, code, active, expires_at, stripe_promotion_code_id')
-        .eq('creator_user_id', creatorUserId)
-        .eq('code', promoCodeRaw)
-        .maybeSingle()
-      if (promoErr) throw new Error(promoErr.message)
-      if (!promoRow?.active || !promoRow.stripe_promotion_code_id) {
-        return jsonResponse({ error: 'Promo code is not valid for this creator.' }, 400)
-      }
-      if (promoRow.expires_at && new Date(String(promoRow.expires_at)).getTime() <= Date.now()) {
-        return jsonResponse({ error: 'This promo code has expired.' }, 400)
-      }
-      stripePromotionCodeId = String(promoRow.stripe_promotion_code_id)
-      appliedPromoCode = String(promoRow.code)
-    }
-
     const meta: Record<string, string> = {
       billing_kind: CREATOR_FAN_BILLING_KIND,
       creator_user_id: creatorUserId,
@@ -137,35 +108,26 @@ Deno.serve(async (req) => {
       fan_tier_key: tierKey,
       product_slug: `creator-fan:${creatorUserId}`,
     }
-    if (appliedPromoCode) meta.fan_promo_code = appliedPromoCode
 
     const { success_url, cancel_url } = checkoutReturnUrls(req, creatorUserId)
 
-    /** @type {Stripe.Checkout.SessionCreateParams} */
-    const sessionParams: Stripe.Checkout.SessionCreateParams = {
+    // Promo codes: Stripe Checkout "Add promotion code" (creator-managed via creator-fan-promo).
+    // Creator eats the discount; application_fee_percent applies to the final paid amount.
+    const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: customerId,
       client_reference_id: auth.user.id,
       line_items: [{ price: priceId, quantity: 1 }],
       success_url,
       cancel_url,
+      allow_promotion_codes: true,
       metadata: meta,
       subscription_data: {
         application_fee_percent: CREATOR_FAN_PLATFORM_FEE_PERCENT,
         transfer_data: { destination },
         metadata: meta,
       },
-    }
-    // Creator eats the discount; application_fee_percent applies to the final paid amount.
-    // Stripe forbids discounts + allow_promotion_codes together … pre-apply when our modal
-    // sent a code, otherwise show Stripe Checkout's "Add promotion code" field.
-    if (stripePromotionCodeId) {
-      sessionParams.discounts = [{ promotion_code: stripePromotionCodeId }]
-    } else {
-      sessionParams.allow_promotion_codes = true
-    }
-
-    const session = await stripe.checkout.sessions.create(sessionParams)
+    })
 
     if (!session.url) {
       return jsonResponse({ error: 'Checkout URL missing.' }, 500)

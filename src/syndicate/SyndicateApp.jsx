@@ -777,7 +777,7 @@ export function SyndicateApp() {
                       ) : null}
                     </div>
                     <p className="text-xs text-zinc-400 leading-relaxed">
-                      Over/Under totals specialist. Prices pace, weather/wind, and short-week spots into his own totals plays ... independent of the side desks.
+                      Over/Under specialist. Prices pace, weather/wind, and short-week spots into his own totals plays.
                     </p>
                     <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
                       <div>• Core: Pace &amp; Seconds Per Play</div>
@@ -1435,8 +1435,7 @@ export function SyndicateApp() {
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   Tank&apos;s lane is totals-native: pace, play-calling tendencies, weather and wind, short weeks, and other
-                  situational levers that move scoring distribution. He picks that lane on his own ... sides stay with Scott, Rocco, and Chedda.
-                  Those totals inputs can change the over/under even when the side stays put.
+                  situational levers that move scoring distribution. He prices those inputs into a standalone over/under thesis.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   Totals also have their own clustering (certain numbers hit more often historically). Tank prices those frequencies

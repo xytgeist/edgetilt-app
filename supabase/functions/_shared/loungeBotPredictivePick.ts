@@ -356,7 +356,8 @@ function formatSoloSection(solos: SlateGamePick[]): string[] {
 }
 
 function formatTankItem(g: SlateGamePick): string {
-  return `### ${formatGoldPick(g.pickerPicks.Tank.lineDisplay)} (${formatMatchupWhen(g)})`
+  // Plain line (not ###) so only the gold pick is bold ... matchup stays regular weight.
+  return `· ${formatGoldPick(g.pickerPicks.Tank.lineDisplay)} (${formatMatchupWhen(g)})`
 }
 
 /** Public tease footer … game count when the slate has 2+ games, else generic VIP CTA. */

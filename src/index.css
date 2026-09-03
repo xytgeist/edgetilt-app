@@ -4160,6 +4160,31 @@ html.light [data-settings-fan-monetization] .border-zinc-800\/90 {
 html.light [data-creator-fan-offer-form] .text-zinc-600 {
   color: #71717a !important;
 }
+html.light [data-creator-fan-offer-preview] {
+  background-color: #ffffff !important;
+  border-color: #d4d4d8 !important;
+}
+html.light [data-creator-fan-offer-preview] .text-zinc-100 {
+  color: #18181b !important;
+}
+html.light [data-creator-fan-offer-preview] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-creator-fan-offer-preview] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-creator-fan-offer-preview] .text-zinc-600 {
+  color: #71717a !important;
+}
+html.light [data-creator-fan-offer-preview] .bg-zinc-800\/80 {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-creator-fan-offer-preview] .border-zinc-600\/90 {
+  border-color: #d4d4d8 !important;
+}
+html.light [data-creator-fan-offer-preview] .hover\:bg-zinc-700\/80:hover {
+  background-color: #e4e4e7 !important;
+}
 
 html.light [data-creator-fan-subscribe-sheet] {
   background-color: #ffffff !important;

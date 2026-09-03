@@ -100,10 +100,17 @@ export async function refreshCreatorFanConnectStatus(supabaseClient) {
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string} creatorUserId
+ * @param {string} [promoCode]
  */
-export async function startCreatorFanCheckout(supabaseClient, creatorUserId) {
+export async function startCreatorFanCheckout(supabaseClient, creatorUserId, promoCode = '') {
+  const body = { creator_user_id: creatorUserId }
+  const code = String(promoCode || '')
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, '')
+  if (code) body.promo_code = code
   const { data, error, response } = await supabaseClient.functions.invoke('creator-fan-checkout', {
-    body: { creator_user_id: creatorUserId },
+    body,
   })
   if (error) {
     const detail = await readEdgeFunctionError(response)
@@ -112,6 +119,53 @@ export async function startCreatorFanCheckout(supabaseClient, creatorUserId) {
   if (data?.error) throw new Error(String(data.error))
   if (!data?.url) throw new Error('Checkout URL missing.')
   await openExternalBillingUrl(data.url)
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ */
+export async function listCreatorFanPromoCodes(supabaseClient) {
+  const { data, error, response } = await supabaseClient.functions.invoke('creator-fan-promo', {
+    body: { action: 'list' },
+  })
+  if (error) {
+    const detail = await readEdgeFunctionError(response)
+    throw new Error(detail || error.message || 'Could not load promo codes.')
+  }
+  if (data?.error) throw new Error(String(data.error))
+  return Array.isArray(data?.codes) ? data.codes : []
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {Record<string, unknown>} fields
+ */
+export async function createCreatorFanPromoCode(supabaseClient, fields) {
+  const { data, error, response } = await supabaseClient.functions.invoke('creator-fan-promo', {
+    body: { action: 'create', ...fields },
+  })
+  if (error) {
+    const detail = await readEdgeFunctionError(response)
+    throw new Error(detail || error.message || 'Could not create promo code.')
+  }
+  if (data?.error) throw new Error(String(data.error))
+  return data?.code || null
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} id
+ */
+export async function deactivateCreatorFanPromoCode(supabaseClient, id) {
+  const { data, error, response } = await supabaseClient.functions.invoke('creator-fan-promo', {
+    body: { action: 'deactivate', id },
+  })
+  if (error) {
+    const detail = await readEdgeFunctionError(response)
+    throw new Error(detail || error.message || 'Could not deactivate promo code.')
+  }
+  if (data?.error) throw new Error(String(data.error))
+  return data?.code || null
 }
 
 /**

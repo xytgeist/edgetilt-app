@@ -146,6 +146,7 @@ get_my_entitlements(user_id) → {
 | Chat | **Not E2EE**; creator-owned moderation (§5 UI after tab ships); **Private Subs** tab lists all live fan rooms with in-tab search (name, description, keywords); member rooms highlighted + top; **not** in Inbox; message access members-only |
 | Cancel | Access through **paid period end**, then remove room membership |
 | Platform fee | **30%** EdgeTilt / **70%** creator |
+| Promo codes | **Shipped 2026-09-03** ... creator self-serve codes in Settings (`creator_fan_promo_codes` + Edge `creator-fan-promo`). Fans enter optional code at checkout. **Creator eats the discount**; `application_fee_percent: 30` applies to the **final paid** amount. |
 
 ---
 
@@ -175,4 +176,5 @@ Track implementation in `docs/test-buildout-backlog.md` when Phase 1 work starts
 | 2026-07-21 | Feed teaser model for fan-only posts (visible in main feed, partial line + subscribe CTA, auto-follow on sub) added to product backlog; supersedes “hide fan-only from non-subs” for **timeline** only — full post detail policy TBD in backlog §3. |
 | 2026-08-28 | **Edge Pro Tier Phase 3 foundation landed:** `reply_gate_edge_pro` column + helper `has_edge_pro_entitlement()`, `feed_comments_insert_own` RLS reply-gate enforcement, composer reply gate picker, thread header indicator, comment footer gate message, `LoungeEdgeProBadge` on author headers & profile, expanded `get_my_entitlements()`. |
 | 2026-08-28 | **Edge Pro VIP feed & comment filter:** Global Pro preference in Lounge settings (`readLoungeProFilterEnabled` / `writeLoungeProFilterEnabled`) filters timeline to Pro authors and collapses non-Pro replies; post detail provides a one-tap override pill to reveal all comments for that thread while preserving OP continuity and staff visibility. |
+| 2026-09-03 | **Creator fan promo codes shipped:** table `creator_fan_promo_codes`, Edge `creator-fan-promo` (list/create/deactivate) + checkout `promo_code` → Stripe `discounts.promotion_code`. Policy: creator eats discount; platform fee is 30% of final price. |
 | 2026-08-30 | **Edge Pro $9.99/mo Stripe checkout & subscription tier live:** Added `edge-pro` to `subscription_products` (migration `20260830235000`), updated `sync_profile_has_active_subscription`, enabled direct Stripe Checkout routing via `STRIPE_PRICE_EDGE_PRO`, and wired in-app Upgrade to Edge Pro buttons in Settings and Membership management. |

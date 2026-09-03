@@ -73,6 +73,9 @@ verify_jwt = true
 [functions.creator-fan-checkout]
 verify_jwt = true
 
+[functions.creator-fan-promo]
+verify_jwt = true
+
 [functions.creator-fan-resume-subscription]
 verify_jwt = true
 

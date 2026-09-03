@@ -9,6 +9,7 @@ import {
 import CreatorFanOfferFormFields from './CreatorFanOfferFormFields.jsx'
 import CreatorFanOfferPreviewCard from './CreatorFanOfferPreviewCard.jsx'
 import CreatorFanPrivateSubsRoomPanel from './CreatorFanPrivateSubsRoomPanel.jsx'
+import CreatorFanPromoCodesPanel from './CreatorFanPromoCodesPanel.jsx'
 import { isCreatorFanOfferComplete } from './fanSubOffer.js'
 
 function connectReturnPending() {
@@ -370,6 +371,11 @@ export default function CreatorFanMonetizationPanel({
               />
             </div>
           ) : null}
+
+          <CreatorFanPromoCodesPanel
+            supabaseClient={supabaseClient}
+            connectComplete={connectComplete}
+          />
 
           <div className="flex flex-wrap items-center gap-2">
             <button

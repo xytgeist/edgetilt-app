@@ -39,11 +39,13 @@ export default function CreatorFanSubscribeModal({
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [promoCode, setPromoCode] = useState('')
 
   useEffect(() => {
     if (!open) return
     setBusy(false)
     setError('')
+    setPromoCode('')
   }, [open])
 
   useEffect(() => {
@@ -99,7 +101,7 @@ export default function CreatorFanSubscribeModal({
     setBusy(true)
     setError('')
     try {
-      await startCreatorFanCheckout(supabaseClient, creatorUserId)
+      await startCreatorFanCheckout(supabaseClient, creatorUserId, promoCode)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Checkout could not start.')
       setBusy(false)
@@ -280,6 +282,22 @@ export default function CreatorFanSubscribeModal({
                 <p className="mt-6 text-[12px] leading-snug text-zinc-600">
                   Paid fan access is billed monthly through Stripe. Alerts only is free post notifications.
                 </p>
+
+                <label className="mt-4 block">
+                  <span className="text-[12px] font-semibold text-zinc-500">Promo code (optional)</span>
+                  <input
+                    type="text"
+                    value={promoCode}
+                    disabled={busy}
+                    onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                    placeholder="Enter code"
+                    maxLength={32}
+                    autoCapitalize="characters"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    className="mt-1.5 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 px-3 py-2.5 font-mono text-[14px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-orange-500/70 disabled:opacity-50"
+                  />
+                </label>
               </>
             )}
 

@@ -4166,6 +4166,27 @@ html.light [data-settings-fan-monetization] .text-zinc-500 {
 html.light [data-settings-fan-monetization] .border-zinc-700\/80 {
   border-color: #d4d4d8 !important;
 }
+html.light [data-settings-fan-monetization] .bg-zinc-950\/40 {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-settings-fan-monetization] .bg-zinc-950\/60 {
+  background-color: #ffffff !important;
+}
+html.light [data-settings-fan-monetization] .bg-zinc-800\/80 {
+  background-color: #e4e4e7 !important;
+}
+html.light [data-settings-fan-monetization] .border-zinc-600\/90 {
+  border-color: #d4d4d8 !important;
+}
+html.light [data-settings-fan-monetization] .hover\:bg-zinc-700\/80:hover {
+  background-color: #d4d4d8 !important;
+}
+html.light [data-settings-fan-monetization] .text-zinc-400 {
+  color: #71717a !important;
+}
+html.light [data-settings-fan-monetization] .text-amber-200\/90 {
+  color: #b45309 !important;
+}
 html.light [data-creator-fan-offer-form] .text-zinc-600 {
   color: #71717a !important;
 }
@@ -4210,6 +4231,14 @@ html.light [data-creator-fan-subscribe-sheet] .text-zinc-500 {
 }
 html.light [data-creator-fan-subscribe-sheet] .text-zinc-600 {
   color: #71717a !important;
+}
+html.light [data-creator-fan-subscribe-sheet] input {
+  background-color: #f4f4f5 !important;
+  border-color: #d4d4d8 !important;
+  color: #18181b !important;
+}
+html.light [data-creator-fan-subscribe-sheet] input::placeholder {
+  color: #a1a1aa !important;
 }
 html.light [data-creator-fan-subscribe-sheet] .text-zinc-200 {
   color: #3f3f46 !important;

@@ -1,7 +1,7 @@
 /**
  * Tuesday Morning Syndicate Weekly Ledger & Post-Mortem Recap Engine.
  *
- * Compiles the full performance breakdown across the 4-man crew (Scott, Rocco, Chedda, Tank)
+ * Compiles the full performance breakdown across the crew (Scott, Rocco, Chedda, Quorum, Tank)
  * over the preceding week (last 7 days), extracts boxscore dominance vs turnover flukes via ESPN,
  * and publishes a natural, swaggered syndicate recap to the Lounge feed + Scott's VIP subscriber channel.
  */
@@ -13,7 +13,7 @@ import { shortDisplayName } from './loungeBotOddsCaption.ts'
 import { formatColoredPickerName } from './loungeBotPickerColors.ts'
 
 export type PersonaWeeklyTally = {
-  pickerName: 'Scott' | 'Rocco' | 'Chedda' | 'Tank'
+  pickerName: 'Scott' | 'Rocco' | 'Chedda' | 'Quorum' | 'Tank'
   roleTitle: string
   wins: number
   losses: number
@@ -65,7 +65,7 @@ export type WeeklyRecapPayload = {
     total: number
     avgPoints: number
   } | null
-  pickers: Record<'Scott' | 'Rocco' | 'Chedda' | 'Tank', PersonaWeeklyTally>
+  pickers: Record<'Scott' | 'Rocco' | 'Chedda' | 'Quorum' | 'Tank', PersonaWeeklyTally>
   topPerformer: {
     pickerName: string
     unitsNet: number
@@ -83,6 +83,7 @@ const PICKER_TITLES: Record<string, string> = {
   Scott: 'The Model',
   Rocco: 'Trenches',
   Chedda: 'Dogs & ML',
+  Quorum: 'Blend Desk',
   Tank: 'Totals',
 }
 
@@ -568,15 +569,16 @@ export async function compileWeeklySyndicateRecap(
   let totalPushes = 0
   let totalUnits = 0
 
-  const pickerTallies: Record<'Scott' | 'Rocco' | 'Chedda' | 'Tank', PersonaWeeklyTally> = {
+  const pickerTallies: Record<'Scott' | 'Rocco' | 'Chedda' | 'Quorum' | 'Tank', PersonaWeeklyTally> = {
     Scott: { pickerName: 'Scott', roleTitle: PICKER_TITLES.Scott, wins: 0, losses: 0, pushes: 0, unitsNet: 0, winRatePct: 0 },
     Rocco: { pickerName: 'Rocco', roleTitle: PICKER_TITLES.Rocco, wins: 0, losses: 0, pushes: 0, unitsNet: 0, winRatePct: 0 },
     Chedda: { pickerName: 'Chedda', roleTitle: PICKER_TITLES.Chedda, wins: 0, losses: 0, pushes: 0, unitsNet: 0, winRatePct: 0 },
+    Quorum: { pickerName: 'Quorum', roleTitle: PICKER_TITLES.Quorum, wins: 0, losses: 0, pushes: 0, unitsNet: 0, winRatePct: 0 },
     Tank: { pickerName: 'Tank', roleTitle: PICKER_TITLES.Tank, wins: 0, losses: 0, pushes: 0, unitsNet: 0, winRatePct: 0 },
   }
 
   for (const p of picks) {
-    const pName = p.picker_name as 'Scott' | 'Rocco' | 'Chedda' | 'Tank'
+    const pName = p.picker_name as 'Scott' | 'Rocco' | 'Chedda' | 'Quorum' | 'Tank'
     const target = pickerTallies[pName] || pickerTallies.Scott
     const u = Number(p.units_net) || 0
 
@@ -595,7 +597,7 @@ export async function compileWeeklySyndicateRecap(
   }
 
   // Calculate win percentages
-  for (const key of Object.keys(pickerTallies) as Array<'Scott' | 'Rocco' | 'Chedda' | 'Tank'>) {
+  for (const key of Object.keys(pickerTallies) as Array<'Scott' | 'Rocco' | 'Chedda' | 'Quorum' | 'Tank'>) {
     const t = pickerTallies[key]
     const decided = t.wins + t.losses
     t.winRatePct = decided > 0 ? Math.round((t.wins / decided) * 1000) / 10 : 0
@@ -606,7 +608,7 @@ export async function compileWeeklySyndicateRecap(
 
   // Top Performer
   let topPicker: PersonaWeeklyTally | null = null
-  for (const key of Object.keys(pickerTallies) as Array<'Scott' | 'Rocco' | 'Chedda' | 'Tank'>) {
+  for (const key of Object.keys(pickerTallies) as Array<'Scott' | 'Rocco' | 'Chedda' | 'Quorum' | 'Tank'>) {
     const t = pickerTallies[key]
     if (!topPicker || t.unitsNet > topPicker.unitsNet) {
       topPicker = t
@@ -684,7 +686,7 @@ export function formatWeeklySyndicateRecapCaption(recap: WeeklyRecapPayload): st
   lines.push('')
 
   lines.push('# 📋 Crew Breakdown')
-  for (const key of ['Scott', 'Rocco', 'Chedda', 'Tank'] as const) {
+  for (const key of ['Scott', 'Rocco', 'Chedda', 'Quorum', 'Tank'] as const) {
     const p = recap.pickers[key]
     const pUnits = formatColoredUnits(p.unitsNet)
     const record = `${p.wins}-${p.losses}${p.pushes > 0 ? `-${p.pushes}` : ''}`

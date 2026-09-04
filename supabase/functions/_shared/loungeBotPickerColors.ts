@@ -1,13 +1,14 @@
 /**
  * Lounge markdown color tags for Sharpe Syndicate desk names.
- * Scott = green, Rocco = blue, Chedda = gold, Tank = purple.
+ * Scott = green, Rocco = blue, Chedda = gold, Quorum = red, Tank = purple.
  */
-export type PickerColorTag = 'green' | 'blue' | 'gold' | 'purple'
+export type PickerColorTag = 'green' | 'blue' | 'gold' | 'purple' | 'red'
 
 const PICKER_COLOR: Record<string, PickerColorTag> = {
   Scott: 'green',
   Rocco: 'blue',
   Chedda: 'gold',
+  Quorum: 'red',
   Tank: 'purple',
 }
 

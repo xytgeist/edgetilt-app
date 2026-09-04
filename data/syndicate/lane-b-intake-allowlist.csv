@@ -1,0 +1,35 @@
+source_id,name,sports,intake_tier,source_kind,primary_url_or_pattern,x_handle,vote_eligible,panel_composite_nfl,panel_composite_cfb,notes
+vsin_burke,Adam Burke,NFL|CFB,A_publisher,vsin_article,https://vsin.com/writers/; vsin.com/** byline Burke (hubs; opening line; best bets; power ratings),,true,,,VSiN managing editor; weekly hubs + ratings; prefer locked best-bets over considering language
+vsin_makinen,Steve Makinen,NFL|CFB,A_publisher,vsin_article,https://vsin.com/writers/; vsin.com/** Makinen (analytics report; stability systems; best bets),,true,,,Systems + power ratings; explicit Week N best bets columns
+vsin_tuley,Dave Tuley,NFL|CFB,A_publisher,vsin_article,https://vsin.com/writers/; vsin.com/** tuleys-takes OR Tuley,ViewFromVegas,true,,,Tuley's Takes recurring cards with lines; X @ViewFromVegas is secondary
+vsin_youmans,Matt Youmans,NFL|CFB,A_publisher,vsin_article,https://vsin.com/writers/; vsin.com/** Youmans best bets,MattYoumansLV,true,,,Feature best-bets articles; live radio drops = Path C unless logged
+vsin_alexander,Gill Alexander,NFL|CFB,A_publisher,vsin_article,https://vsin.com/ (A Numbers Game / BeatingTheBook columns),BeatingTheBook,true,85.0,83.7,VSiN metrics host; free picks + education
+covers_powers,Brad Powers,CFB,A_publisher,covers_article,https://www.covers.com/ncaaf/brad-powers-*; covers.com/ncaaf/** powers,BradPowers7,true,,86.0,Weekly CFB pick tables + power ratings; Hit the Books podcast secondary
+sharpfootball_site,Warren Sharp,NFL|CFB,A_publisher,publisher_site,https://www.sharpfootballanalysis.com/ (results / picks pages; not X timeline),sharpfootball,true,90.3,85.7,Site records usable; X timeline mostly promo/trivia ... do not parse X as tickets
+boydsbets_site,Jimmy Boyd,NFL|CFB,A_publisher,publisher_site,https://boydsbets.com/ (free picks / cards),boydsbets,true,76.7,75.8,Structured free-pick culture; also B_free_x when tweet is explicit ticket
+betfirms_jack,Jack Jones,NFL|CFB,A_publisher,publisher_site,BetFirms / SportsCapping free-pick writeups (resolve canonical URL when wiring),betfirmsjack,true,75.4,75.4,Daily free picks with write-ups; multi-sport noise filter required
+vi_edwards,Brian Edwards,NFL|CFB,A_publisher,publisher_site,vegasinsider.com football expert writeups,vegasbedwards,true,77.3,77.9,Classic VI cards when dated tickets present
+vi_cimini,Zack Cimini,NFL|CFB,A_publisher,publisher_site,vegasinsider.com / SportsLine expert writeups,Cimini,true,76.1,74.7,Veteran outlet cards; verify units/sample
+hunter_kyle,Kyle Hunter,CFB,A_publisher,publisher_site,https://huntersportspicks.com/ (CFB totals focus),kylehunterpicks,true,,81.5,BoydsBets-flagged CFB totals mind; SportsCapping-tracked
+janus_steve,Steve Janus,CFB,A_publisher,publisher_site,sportscapping.com Steve Janus / service cards,stevejanus,true,,78.3,Sharp CFB mind; X light ... prefer site/service card
+x_boydsbets,Jimmy Boyd (X free pick),NFL|CFB,B_free_x,x_timeline,X posts with explicit free-pick format only,boydsbets,true,76.7,75.8,Same person as boydsbets_site; dedupe tickets by game+market
+x_betfirmsjack,Jack Jones (X free pick),NFL|CFB,B_free_x,x_timeline,X posts with explicit Free Pick + line,betfirmsjack,true,75.4,75.4,Often MLB/CFB; sport filter for NFL desk
+bn_shaggy,Nate Hornung,NFL|CFB,D_scout,x_or_outlet,Betting News daily picks ... promote if reconstructible 2+ weeks,Shaggy_Bets,false,72.5,72.5,Media capper; scout before vote
+bn_colby,Colby Marchio,NFL|CFB,D_scout,x_or_outlet,Betting News host picks ... promote if reconstructible 2+ weeks,ColbyMBets,false,71.7,71.7,Entertainment-forward; scout
+stuckey_scout,George Stuckey,NFL|CFB,D_scout,x_chatter,Action market commentary; occasional embedded sides in live chat,Stuckey2,false,86.0,86.6,High reputation; noisy X ... manual extract only until format stabilizes
+fezzik_scout,Steve Fezzik,NFL|CFB,D_scout,sell_site_tease,Even Money / SuperContest teases; find free card URL before promote,FezzikSports,false,86.0,81.9,Contest pedigree; public X often promo
+scottwins_scout,Scott Spreitzer,NFL|CFB,D_scout,docsports_or_x,DocSports starred plays / X results snippets,scottwins,false,78.6,77.2,Self-reported; transparency high audit medium
+action_koerner,Sean Koerner,NFL,C_manual,paywall,Action PRO / tracked picks ... manual log if ticket known,The_Oddsmaker,false,87.8,82.5,X is fantasy/injury/promo; not free ATS feed
+action_chernoff,Adam Chernoff,NFL,C_manual,paywall_email,RAS / Simple Handicap / email ... manual only,adamchernoff,false,82.6,80.2,Picks email-only by design on public X
+unabated_rufus,Rufus Peabody,NFL|CFB,C_manual,paywall,Unabated / Massey-Peabody ... manual if ticket surfaces,RufusPeabody,false,87.1,86.2,Near-silent public ticket stream
+unabated_brand,Unabated Sports,NFL|CFB,C_manual,paywall_tools,unabated.com tools/education ... not a solo ledger,UnabatedSports,false,85.7,85.7,Brand/team; odds API != pick ledger
+action_raybon,Chris Raybon,NFL,C_manual,paywall,Action-tracked ... manual if public card appears,ChrisRaybon,false,85.5,,Company-tracked win% claims; X not full card
+pizzola_manual,Rob Pizzola,NFL|CFB,C_manual,selective,Hammer / BetStamp culture ... manual when he posts a ticket,robpizzola,false,84.5,81.2,Mostly education/analysis on X
+fuhrman_manual,Todd Fuhrman,NFL|CFB,C_manual,education,CBS SportsLine / oddsmaker theory ... manual if free card,ToddFuhrman,false,84.4,84.4,Educates more than dumps free picks
+action_collin,Collin Wilson,NFL|CFB,C_manual,paywall,Action CFB power ratings / Big Bets on Campus ... manual until public card URL is stable,Collin1,false,80.8,87.5,Handle fixed 2026-09-03 (@Collin1); public X still analysis-heavy / app-leaning
+exclude_cawright,Charlie Wright,NFL,E_exclude,dead_handle,RG writer ... need live handle,cawright95,false,77.4,,Unresolved 2026-09
+exclude_britdevine,Brit Devine,NFL,E_exclude,bad_match,Listed britdevine ... bad/ghost match on resolve,britdevine,false,79.0,,Fix handle before scout
+exclude_kmurray,Kyle Murray,NFL,E_exclude,bad_match,Listed kmurray03 ... bad match on resolve,kmurray03,false,76.2,,Fix handle before scout
+exclude_galaida,Nick Galaida,NFL,E_exclude,bad_match,Listed nickgalaida ... bad match on resolve,nickgalaida,false,75.4,,Fix handle before scout
+exclude_breese,Mike Calabrese,NFL|CFB,E_exclude,bad_match,Listed Breese ... wrong account on resolve,Breese,false,72.6,76.8,Fix handle before scout
+exclude_parlayscience,Parlay Science,NFL|CFB,E_exclude,noise,Social parlay brand,ParlayScience,false,61.7,59.5,Popularity >> sides desk signal

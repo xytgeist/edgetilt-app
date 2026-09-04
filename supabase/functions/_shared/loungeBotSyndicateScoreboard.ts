@@ -1,7 +1,7 @@
 /**
  * Monthly syndicate scoreboard … dumb ATS + CLV aggregations only.
  * Buckets: hammer / consensus / divided / pass
- * Desks: Scott / Rocco / Chedda = sides; Tank = totals only
+ * Desks: Scott / Rocco / Chedda / Quorum = sides; Tank = totals only
  * CLV: pick line vs lounge_market_files close (when locked) … YOUR SIDE vs close.
  *   Example: dog at +7 that closes +3 → +4 CLV even if it loses ATS.
  *
@@ -16,7 +16,7 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 export const SCOREBOARD_TRUST_MIN_N = 25
 
 export type ScoreboardBucket = 'hammer' | 'consensus' | 'divided' | 'pass'
-export type ScoreboardDesk = 'Scott' | 'Rocco' | 'Chedda' | 'Tank'
+export type ScoreboardDesk = 'Scott' | 'Rocco' | 'Chedda' | 'Quorum' | 'Tank'
 export type ScoreboardLane = 'sides' | 'totals'
 
 export type ScoreboardRow = {
@@ -99,7 +99,7 @@ type MarketClose = {
   close_total: number | null
 }
 
-const DESKS: ScoreboardDesk[] = ['Scott', 'Rocco', 'Chedda', 'Tank']
+const DESKS: ScoreboardDesk[] = ['Scott', 'Rocco', 'Chedda', 'Quorum', 'Tank']
 const BUCKETS: ScoreboardBucket[] = ['hammer', 'consensus', 'divided', 'pass']
 
 function isTeamMatch(targetName: string, candidateName: string): boolean {
@@ -300,7 +300,7 @@ export async function compileMonthlySyndicateScoreboard(
     `Trust floor: n >= ${SCOREBOARD_TRUST_MIN_N} per bucket×desk before anyone talks. Do not crown at n=8.`,
     'Read bucket×desk rows. Do not average Hammer + Consensus into one shop ATS.',
     'CLV = your side vs locked close (not opener). Dog +7 that closes +3 is good CLV even on an ATS loss.',
-    'Tank rows are totals-only; Scott / Rocco / Chedda are sides.',
+    'Tank rows are totals-only; Scott / Rocco / Chedda / Quorum are sides.',
     'Pass = desk PASS (cancelled ledger) … n only, no ATS.',
     'No adaptive weights until a bucket has a real sample. FEI waits.',
   ]

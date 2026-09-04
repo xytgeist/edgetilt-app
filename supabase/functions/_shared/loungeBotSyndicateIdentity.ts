@@ -41,7 +41,6 @@ export const SYNDICATE_DESK_POLL_ACTIONS = new Set([
   'cfb_thu_night_spotlight',
   'cfb_sat_vip_adds_kills',
   'picks_for_today',
-  'lane_b_refresh',
 ])
 
 export type SlatePublisherMode = 'syndicate' | 'legacy_signal'

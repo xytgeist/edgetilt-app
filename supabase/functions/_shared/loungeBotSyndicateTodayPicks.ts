@@ -24,10 +24,6 @@ import { loadDbTeamMetricsMap } from './loungeBotTeamMetrics.ts'
 import { loadDbCfbPowerRatingsMap } from './loungeBotCfbPowerRatings.ts'
 import { resolveSideModifiersForSlate } from './loungeBotSideModifier.ts'
 import { loadPastedBettingSplitsForSlate } from './loungeBotBettingSplits.ts'
-import {
-  loadLaneBTicketsForSport,
-  refreshLaneBTicketsForSlate,
-} from './loungeBotLaneBScrape.ts'
 
 const FOOTBALL_SPORTS = new Set([
   'americanfootball_nfl',
@@ -234,9 +230,6 @@ export async function runPicksForToday(
       loadPastedBettingSplitsForSlate(admin, sportKey, todayEvents),
     ])
 
-  await refreshLaneBTicketsForSlate(admin, sportKey, todayEvents).catch(() => null)
-  const laneBTickets = await loadLaneBTicketsForSport(admin, sportKey).catch(() => [])
-
   const label = sportLabel(sportKey)
   const card = buildNflAtsSlateCard(todayEvents, {
     cardTitle: `🏈 ${label} · ${ptDayTitle(dayKey)} Picks`,
@@ -246,7 +239,6 @@ export async function runPicksForToday(
     cfbRatingsMap,
     sideModifiersByEventId,
     pastedSplitsByEventId,
-    laneBTickets,
   })
 
   if (!card || !card.games.length) {

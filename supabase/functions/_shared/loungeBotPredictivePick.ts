@@ -1,6 +1,6 @@
 /**
- * Predictive sports betting calls for the Sharp Desk (Scott, Rocco, Chedda, Quorum, Tank).
- * Quorum blends Scott/Rocco/Chedda (+ optional Lane B). Tank is totals-only.
+ * Predictive sports betting calls for the Sharp Desk (Scott, Rocco, Chedda, Tank).
+ * Tank is totals-only. Lane B / Quorum fifth desk is parked (scraped HTML was unusable).
  * Supports solo calls and syndicate multi-picker cards.
  * Auto-grades against The Odds API final scores with unit tracking and consolidated card recaps.
  */
@@ -46,21 +46,14 @@ import {
   computePickClvPts,
   mapConsensusTypeToBucket,
 } from './loungeBotSyndicateScoreboard.ts'
-import {
-  laneBSideConsensusForEvent,
-  type LaneBParsedTicket,
-} from './loungeBotLaneBScrape.ts'
 
 const ODDS_BASE = 'https://api.the-odds-api.com/v4'
 
-export const SHARP_PICKERS = ['Scott', 'Rocco', 'Chedda', 'Quorum', 'Tank'] as const
+export const SHARP_PICKERS = ['Scott', 'Rocco', 'Chedda', 'Tank'] as const
 export type SharpPicker = (typeof SHARP_PICKERS)[number]
-/** ATS side votes only … Tank lives on totals and does not fill fake hammers. */
-export const ATS_SIDE_DESKS = ['Scott', 'Rocco', 'Chedda', 'Quorum'] as const
+/** ATS side votes only … Tank lives on totals and does not fill fake 4-0 hammers. */
+export const ATS_SIDE_DESKS = ['Scott', 'Rocco', 'Chedda'] as const
 export type AtsSideDesk = (typeof ATS_SIDE_DESKS)[number]
-
-/** Core three desks Quorum reads before casting its own vote. */
-export const QUORUM_INPUT_DESKS = ['Scott', 'Rocco', 'Chedda'] as const
 
 /** Scott soft gap (1.5): only when the pick line is on 3/7 or the half onto those (not "near"). */
 export function isTrueKeySpreadPoint(point: number | null | undefined): boolean {
@@ -403,7 +396,7 @@ export function formatSlateVipCtaLine(card: NflSlateCard): string {
 function formatSlateSubscriberFooter(card: NflSlateCard): string {
   const gameCount = Array.isArray(card.games) ? card.games.length : 0
   const n = gameCount >= 2 ? `${gameCount}-game ` : ''
-  return `📋 Per-desk Scott / Rocco / Chedda / Quorum / Tank ${n}cards in this thread 👇`
+  return `📋 Per-desk Scott / Rocco / Chedda / Tank ${n}cards in this thread 👇`
 }
 
 type SlateCaptionOpts = {
@@ -853,8 +846,6 @@ export function buildNflAtsSlateCard(
     sideModifiersByEventId?: Map<string, SideModifier>
     /** Human-pasted Action/VSiN splits keyed by Odds API event id. */
     pastedSplitsByEventId?: Map<string, BettingSplitSummary>
-    /** Lane B scraped tickets (optional Quorum fold-in when match quality is OK). */
-    laneBTickets?: LaneBParsedTicket[]
   } = {},
 ): NflSlateCard | null {
   if (!Array.isArray(events) || events.length === 0) return null
@@ -871,7 +862,6 @@ export function buildNflAtsSlateCard(
   const cfbRatings = opts.cfbRatingsMap
   const sideModifiers = opts.sideModifiersByEventId || new Map<string, SideModifier>()
   const pastedSplits = opts.pastedSplitsByEventId || new Map<string, BettingSplitSummary>()
-  const laneBTickets = opts.laneBTickets || []
 
   for (const ev of events) {
     const homeTeam = ev.home_team
@@ -1100,61 +1090,6 @@ export function buildNflAtsSlateCard(
     const roccoKeptUglyJuice = roccoSide !== 'pass' && roccoUglyJuice
     const roccoCountsForHouse = roccoSide !== 'pass' && roccoHasStrengthReason
 
-    // 3b. Quorum — blender over Scott/Rocco/Chedda (+ Lane B when matched tickets exist)
-    const quorumLaneB = laneBTickets.length
-      ? laneBSideConsensusForEvent(laneBTickets, ev.id, homeTeam, awayTeam)
-      : null
-    let quorumSide: SlateDeskSide = 'pass'
-    let quorumReason = 'PASS (thin three-desk signal)'
-    {
-      const scottActive = scottSide === 'home' || scottSide === 'away'
-      const cheddaActive = cheddaSide === 'home' || cheddaSide === 'away'
-      const roccoActiveForQuorum = roccoCountsForHouse
-      const inputSides: Array<'home' | 'away'> = []
-      if (scottActive) inputSides.push(scottSide as 'home' | 'away')
-      if (cheddaActive) inputSides.push(cheddaSide as 'home' | 'away')
-      if (roccoActiveForQuorum) inputSides.push(roccoSide as 'home' | 'away')
-
-      const homeIn = inputSides.filter((s) => s === 'home').length
-      const awayIn = inputSides.filter((s) => s === 'away').length
-      const activeIn = homeIn + awayIn
-      const majoritySide: 'home' | 'away' | null =
-        homeIn > awayIn ? 'home' : awayIn > homeIn ? 'away' : null
-
-      if (activeIn >= 3 && majoritySide && scottSide === majoritySide && (roccoActiveForQuorum || cheddaActive)) {
-        quorumSide = majoritySide
-        quorumReason = 'join 3-desk strength majority'
-      } else if (activeIn === 2 && majoritySide && scottSide === majoritySide) {
-        quorumSide = majoritySide
-        quorumReason = 'join Scott majority 2-1'
-      } else if (activeIn === 2 && majoritySide && scottSide !== 'pass' && scottSide !== majoritySide) {
-        quorumSide = 'pass'
-        quorumReason = 'PASS (Scott minority … no invent)'
-      } else if (activeIn <= 1) {
-        quorumSide = 'pass'
-        quorumReason = 'PASS (solo / pass-heavy / short-fav-only Rocco)'
-      }
-
-      // Lane B fold-in: strengthen when agrees with Scott majority; PASS/break weak leans when opposed.
-      if (quorumLaneB && quorumLaneB.n >= 2 && quorumLaneB.weight >= 1.0) {
-        if (scottActive && quorumLaneB.side === scottSide) {
-          if (quorumSide === 'pass' && (cheddaActive || roccoActiveForQuorum)) {
-            quorumSide = quorumLaneB.side
-            quorumReason = 'Lane B agrees with Scott + one desk'
-          } else if (quorumSide === quorumLaneB.side) {
-            quorumReason = `${quorumReason} + Lane B confirm`
-          }
-        } else if (
-          quorumSide !== 'pass'
-          && quorumLaneB.side !== quorumSide
-          && !(scottActive && scottSide === quorumSide && (cheddaActive || roccoActiveForQuorum))
-        ) {
-          quorumSide = 'pass'
-          quorumReason = 'PASS (Lane B opposes weak internal lean)'
-        }
-      }
-    }
-
     // 4. Tank — totals desk (PASS default; play at ≥3.5 or ≥2.5 into key 48/51/54)
     const marketTotalQuote = extractEventMarketTotal(ev)
     const modelTotal = isCfb
@@ -1253,18 +1188,6 @@ export function buildNflAtsSlateCard(
         pick: cheddaSide === 'home' ? homePickObj : cheddaSide === 'away' ? awayPickObj : homePickObj,
         countsForHouse: cheddaSide !== 'pass',
       },
-      Quorum: {
-        side: quorumSide,
-        teamName: quorumSide === 'home' ? homeTeam : quorumSide === 'away' ? awayTeam : 'PASS',
-        lineDisplay: quorumSide === 'home'
-          ? `${homeLineDisp} · ${quorumReason}`
-          : quorumSide === 'away'
-            ? `${awayLineDisp} · ${quorumReason}`
-            : quorumReason,
-        pickPrice: quorumSide === 'home' ? homePrice : quorumSide === 'away' ? awayPrice : 0,
-        pick: quorumSide === 'home' ? homePickObj : quorumSide === 'away' ? awayPickObj : homePickObj,
-        countsForHouse: quorumSide !== 'pass',
-      },
       Tank: {
         side: tankTotalsSide,
         teamName: tankTotalsSide === 'over'
@@ -1316,7 +1239,7 @@ export function buildNflAtsSlateCard(
       voteCount = Math.max(homeVotes, awayVotes)
       if (voteCount >= 2) {
         consensusType = 'majority_split'
-        badgeText = `⚔️ ${voteCount}-${activeSideVotes - voteCount} House Divided`
+        badgeText = '⚔️ 2-1 House Divided'
       } else {
         consensusType = 'split'
         badgeText = '⚖️ 1-1 Split'
@@ -1331,20 +1254,16 @@ export function buildNflAtsSlateCard(
         const scottAgrees = scottSide === consensusSide
         const roccoIndependent = roccoSide === consensusSide && roccoHasStrengthReason
         const cheddaIndependent = cheddaSide === consensusSide
-        const quorumAgrees = quorumSide === consensusSide
-        // Hammer: Quorum with Scott majority AND at least one of Chedda / Rocco-strength.
-        // Quorum cannot solo-create a hammer from thin air.
         const hammerOk =
-          quorumAgrees
+          activeSideVotes >= 3
           && scottAgrees
           && (roccoIndependent || cheddaIndependent)
-          && activeSideVotes >= 3
         if (hammerOk) {
           consensusType = 'hammer'
           badgeText = `🔥 ${activeSideVotes}-0 Hammer`
         } else {
           consensusType = 'consensus'
-          badgeText = activeSideVotes >= 3 ? `🎯 ${activeSideVotes}-0 Aligned` : '🎯 2-0 Consensus'
+          badgeText = activeSideVotes >= 3 ? '🎯 3-0 Aligned' : '🎯 2-0 Consensus'
           if (activeSideVotes === 2) voteCount = 2
         }
       } else {
@@ -1484,7 +1403,7 @@ export async function publishAndRecordNflSlateCard(
       const pPick = g.pickerPicks[pName]
 
       // Side/totals PASS → cancelled ledger row (Pass bucket sample size).
-      if ((pName === 'Scott' || pName === 'Rocco' || pName === 'Chedda' || pName === 'Quorum' || pName === 'Tank') && pPick.side === 'pass') {
+      if ((pName === 'Scott' || pName === 'Rocco' || pName === 'Chedda' || pName === 'Tank') && pPick.side === 'pass') {
         rowsToInsert.push({
           bot_user_id: botUserId,
           picker_name: pName,

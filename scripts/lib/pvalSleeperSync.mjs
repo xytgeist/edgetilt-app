@@ -2,13 +2,23 @@
  * Sleeper → PVAL v1 mapper (Node).
  *
  * Depth chart picks the band (must stay in sync with loungeBotPvalBands.ts).
- * Weekly fantasy pts (pts_ppr) pick the seat inside the band.
+ * Fantasy seat: multi-week pts_ppr average (lookback) with search_rank fallback.
+ * OL seats use years_exp when no fantasy signal.
  * Curated is_custom_override rows are never overwritten on apply.
  */
 import { NFL_TEAM_META } from './nflTeamMetricsFromPbp.mjs'
 
 const SLEEPER_PLAYERS = 'https://api.sleeper.app/v1/players/nfl'
 const SLEEPER_STATE = 'https://api.sleeper.app/v1/state/nfl'
+
+/** How many Sleeper projection weeks to average for seat score (incl. current). */
+export const FANTASY_SEAT_LOOKBACK_WEEKS = 4
+/** Blend weight for current week vs prior-week mean when both exist. */
+export const FANTASY_SEAT_CURRENT_WEEK_WEIGHT = 0.55
+/** search_rank below this is usable as a fantasy prior. */
+export const FANTASY_SEAT_RANK_MAX = 500
+/** When both avg pts and rank exist, blend (pts dominate). */
+export const FANTASY_SEAT_PTS_BLEND = 0.75
 
 /** Keep in sync with supabase/functions/_shared/loungeBotPvalBands.ts */
 export const PVAL_BANDS = {
@@ -150,16 +160,93 @@ async function fetchJson(url) {
 }
 
 /**
- * Build proposed PVAL rows from Sleeper players + weekly projections.
+ * Average pts_ppr across lookback weeks; overweight current week slightly.
+ * Returns { ptsAvg, weekCount, currentPts, priorAvg }.
+ */
+export function averageMultiWeekPts(playerId, weekProjections, currentWeek) {
+  const weeks = Object.keys(weekProjections)
+    .map(Number)
+    .filter((w) => Number.isFinite(w))
+    .sort((a, b) => a - b)
+  const ptsByWeek = []
+  for (const w of weeks) {
+    const pts = Number(weekProjections[w]?.[playerId]?.pts_ppr)
+    if (Number.isFinite(pts) && pts > 0) ptsByWeek.push({ w, pts })
+  }
+  if (!ptsByWeek.length) {
+    return { ptsAvg: null, weekCount: 0, currentPts: null, priorAvg: null }
+  }
+  const current = ptsByWeek.find((x) => x.w === currentWeek) || null
+  const priors = ptsByWeek.filter((x) => x.w !== currentWeek)
+  const priorAvg =
+    priors.length > 0 ? priors.reduce((s, x) => s + x.pts, 0) / priors.length : null
+  let ptsAvg
+  if (current && priorAvg != null) {
+    ptsAvg =
+      FANTASY_SEAT_CURRENT_WEEK_WEIGHT * current.pts +
+      (1 - FANTASY_SEAT_CURRENT_WEEK_WEIGHT) * priorAvg
+  } else if (current) {
+    ptsAvg = current.pts
+  } else {
+    ptsAvg = ptsByWeek.reduce((s, x) => s + x.pts, 0) / ptsByWeek.length
+  }
+  return {
+    ptsAvg: Math.round(ptsAvg * 100) / 100,
+    weekCount: ptsByWeek.length,
+    currentPts: current?.pts ?? null,
+    priorAvg: priorAvg != null ? Math.round(priorAvg * 100) / 100 : null,
+  }
+}
+
+/**
+ * Within-band seat score. Higher = better seat.
+ * Multi-week pts primary; search_rank soft-blends when both present; OL falls to years_exp.
+ */
+export function fantasySeatScore(row) {
+  const pts = row.pts_avg != null ? Number(row.pts_avg) : null
+  const rank =
+    row.search_rank != null && row.search_rank < FANTASY_SEAT_RANK_MAX
+      ? Number(row.search_rank)
+      : null
+  if (pts != null && Number.isFinite(pts)) {
+    if (rank != null) {
+      // Invert rank into a 0..~30ish pseudo-pts scale so blend stays pts-dominated.
+      const rankAsPts = Math.max(0, 40 - rank / 12.5)
+      return FANTASY_SEAT_PTS_BLEND * pts + (1 - FANTASY_SEAT_PTS_BLEND) * rankAsPts
+    }
+    return pts
+  }
+  if (rank != null) return -rank
+  if (row.years_exp != null) return Number(row.years_exp)
+  return null
+}
+
+/**
+ * Build proposed PVAL rows from Sleeper players + multi-week projections.
  */
 export async function buildSleeperPvalRows(opts = {}) {
   const state = await fetchJson(SLEEPER_STATE)
   const season = String(opts.season || state.season || '2026')
   const week = Number(opts.week || state.week || 1)
-  const [players, projections] = await Promise.all([
+  const lookback = Math.max(1, Number(opts.lookbackWeeks || FANTASY_SEAT_LOOKBACK_WEEKS))
+  const startWeek = Math.max(1, week - lookback + 1)
+  const weekList = []
+  for (let w = startWeek; w <= week; w++) weekList.push(w)
+
+  const [players, ...projResults] = await Promise.all([
     fetchJson(SLEEPER_PLAYERS),
-    fetchJson(`https://api.sleeper.app/v1/projections/nfl/regular/${season}/${week}`),
+    ...weekList.map((w) =>
+      fetchJson(`https://api.sleeper.app/v1/projections/nfl/regular/${season}/${w}`).catch(
+        () => ({}),
+      ),
+    ),
   ])
+
+  /** @type {Record<number, Record<string, any>>} */
+  const weekProjections = {}
+  weekList.forEach((w, i) => {
+    weekProjections[w] = projResults[i] || {}
+  })
 
   const candidates = []
   for (const [id, p] of Object.entries(players || {})) {
@@ -167,7 +254,7 @@ export async function buildSleeperPvalRows(opts = {}) {
     const status = String(p.status || '')
     if (/retire|inactive|cut|practice/i.test(status) && status !== 'Active') continue
     if (status && status !== 'Active' && /Injured Reserve|PUP|Non Football/i.test(status)) {
-      // still include IR names so OUT matching works; they stay on roster lists often as Inactive
+      // still include IR names so OUT matching works
     }
 
     const position = p.position || (Array.isArray(p.fantasy_positions) ? p.fantasy_positions[0] : null)
@@ -177,18 +264,19 @@ export async function buildSleeperPvalRows(opts = {}) {
     const bandKey = resolvePvalBandKey(position, depth, depthSlot, fantasyPositions)
     if (bandKey === 'special') continue
 
-    const proj = projections?.[id] || {}
-    const pts = Number(proj.pts_ppr)
+    const { ptsAvg, weekCount, currentPts, priorAvg } = averageMultiWeekPts(
+      id,
+      weekProjections,
+      week,
+    )
     const searchRank = Number(p.search_rank)
     const yearsExp = Number.isFinite(Number(p.years_exp)) ? Number(p.years_exp) : null
     const isOl = isOffensiveLinePosition(position)
 
-    // Keep injury-relevant names: depth, week proj, fantasy rank, or active OL (Sleeper OL depth is empty).
     const hasDepth = depth != null && depth > 0
-    const hasProj = Number.isFinite(pts) && pts > 0
-    const hasRank = Number.isFinite(searchRank) && searchRank < 500
+    const hasProj = ptsAvg != null && ptsAvg > 0
+    const hasRank = Number.isFinite(searchRank) && searchRank < FANTASY_SEAT_RANK_MAX
     if (!hasDepth && !hasProj && !hasRank && !isOl) continue
-    // Skip inactive/retired OL without depth signal
     if (isOl && status && status !== 'Active' && !hasDepth) continue
 
     candidates.push({
@@ -202,7 +290,10 @@ export async function buildSleeperPvalRows(opts = {}) {
       side: PVAL_BANDS[bandKey].side,
       depth_order: depth,
       depth_slot: depthSlot,
-      pts_ppr: Number.isFinite(pts) ? pts : null,
+      pts_ppr: currentPts,
+      pts_avg: ptsAvg,
+      proj_weeks: weekCount,
+      prior_avg: priorAvg,
       search_rank: Number.isFinite(searchRank) && searchRank < 999999 ? searchRank : null,
       years_exp: yearsExp,
       isOl,
@@ -233,7 +324,6 @@ export async function buildSleeperPvalRows(opts = {}) {
     pruned.push(...list.slice(0, keepN))
   }
 
-  // Percentile within each band
   const byBand = new Map()
   for (const row of pruned) {
     const list = byBand.get(row.bandKey) || []
@@ -243,13 +333,7 @@ export async function buildSleeperPvalRows(opts = {}) {
 
   const rows = []
   for (const [bandKey, list] of byBand) {
-    const scored = list.map((r) => {
-      let score = null
-      if (r.pts_ppr != null) score = r.pts_ppr
-      else if (r.search_rank != null) score = -r.search_rank // lower rank = better
-      else if (r.years_exp != null) score = r.years_exp // OL proxy when no fantasy signal
-      return { ...r, score }
-    })
+    const scored = list.map((r) => ({ ...r, score: fantasySeatScore(r) }))
     const withScore = scored.filter((r) => r.score != null).sort((a, b) => a.score - b.score)
     const noScore = scored.filter((r) => r.score == null)
 
@@ -257,16 +341,22 @@ export async function buildSleeperPvalRows(opts = {}) {
       const r = withScore[i]
       const pct = withScore.length <= 1 ? 0.5 : i / (withScore.length - 1)
       const pval = pvalFromPercentileInBand(bandKey, pct)
-      const seatNote =
-        r.isOl && r.pts_ppr == null
-          ? `years_exp=${r.years_exp ?? 'n/a'}`
-          : `week ${week} pts_ppr=${r.pts_ppr ?? 'n/a'}`
+      let seatNote
+      if (r.pts_avg != null) {
+        seatNote = `avg${r.proj_weeks}w=${r.pts_avg} cur=${r.pts_ppr ?? 'n/a'}`
+      } else if (r.isOl) {
+        seatNote = `years_exp=${r.years_exp ?? 'n/a'}`
+      } else if (r.search_rank != null) {
+        seatNote = `search_rank=${r.search_rank}`
+      } else {
+        seatNote = 'fallback'
+      }
       rows.push({
         ...r,
         percentile: Math.round(pct * 1000) / 1000,
         pval,
         tier: pct >= 0.85 ? 1 : pct >= 0.55 ? 2 : 3,
-        notes: `sleeper v1 · ${bandKey} · pct=${pct.toFixed(2)} · ${seatNote}`,
+        notes: `sleeper v1.1 · ${bandKey} · pct=${pct.toFixed(2)} · ${seatNote}`,
       })
     }
     for (const r of noScore) {
@@ -276,7 +366,7 @@ export async function buildSleeperPvalRows(opts = {}) {
         percentile: 0.5,
         pval,
         tier: 2,
-        notes: `sleeper v1 · ${bandKey} · typical (no proj/rank/years) · week ${week}`,
+        notes: `sleeper v1.1 · ${bandKey} · typical (no fantasy/years) · week ${week}`,
       })
     }
   }
@@ -286,6 +376,8 @@ export async function buildSleeperPvalRows(opts = {}) {
   return {
     season,
     week,
+    lookbackWeeks: lookback,
+    weeksUsed: weekList,
     playerCount: Object.keys(players || {}).length,
     rowCount: rows.length,
     bandCounts: Object.fromEntries(

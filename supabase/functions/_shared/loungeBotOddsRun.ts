@@ -47,6 +47,7 @@ import {
   eventsForMarketFile,
   upsertMarketFilesFromEvents,
 } from './loungeBotMarketFile.ts'
+import { syncNflPvalInjuryLedger, NFL_PVAL_LEDGER_SPORT } from './loungeBotPvalInjuryLedger.ts'
 import { fetchRundownContextNote, lineMovementMovedTeam } from './loungeBotRundownContext.ts'
 import { isNcaabCoffeeSport } from './loungeBotNcaabCoffeeFilter.ts'
 import { resolveAlertRoute } from './loungeBotAlertAudience.ts'
@@ -415,6 +416,23 @@ export async function loadSportOddsContext(
     try {
       const marketEvents = eventsForMarketFile(sportKey, raw)
       await upsertMarketFilesFromEvents(admin, sportKey, marketEvents)
+
+      // NFL PVAL calibration ledger (hard-OUT → spread residual). Scaffold only.
+      if (sportKey === NFL_PVAL_LEDGER_SPORT) {
+        try {
+          const ledger = await syncNflPvalInjuryLedger(admin, marketEvents)
+          if (ledger.inserted > 0 || ledger.residualsFilled > 0) {
+            console.log(
+              `[pval-ledger] scanned=${ledger.eventsScanned} inserted=${ledger.inserted} residuals=${ledger.residualsFilled}`,
+            )
+          }
+        } catch (ledgerErr) {
+          console.warn(
+            'nfl_pval_injury_events sync failed:',
+            ledgerErr instanceof Error ? ledgerErr.message : String(ledgerErr),
+          )
+        }
+      }
     } catch (err) {
       // Never fail the poll over market-file bookkeeping.
       console.warn(

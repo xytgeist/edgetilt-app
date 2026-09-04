@@ -249,10 +249,12 @@ async function fetchProfileRepliesPage(
     fanEntitlements,
   },
 ) {
+  // Thread parts 2+ are feed_comments with is_thread_part … not profile Replies.
   const { data: commentRows, error: ce } = await supabaseClient
     .from('feed_comments')
     .select(PROFILE_COMMENT_SELECT)
     .eq('user_id', profileUserId)
+    .eq('is_thread_part', false)
     .is('hidden_at', null)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)

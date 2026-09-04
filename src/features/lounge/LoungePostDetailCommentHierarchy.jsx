@@ -11,6 +11,53 @@ export const LOUNGE_THREAD_PART_NUMBER_BADGE_CLASS =
 export const LOUNGE_THREAD_PART_NUMBER_BADGE_LAST_CLASS =
   'flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-zinc-800 text-[10px] font-bold tabular-nums text-lv-red ring-1 ring-lv-red/85'
 
+function observeConnectorMedia(container, onChange) {
+  if (!container || typeof onChange !== 'function') return () => {}
+  const cleanups = []
+
+  const watchEl = (el) => {
+    if (!el || typeof el.addEventListener !== 'function') return
+    const run = () => onChange()
+    el.addEventListener('load', run)
+    el.addEventListener('error', run)
+    el.addEventListener('loadedmetadata', run)
+    el.addEventListener('loadeddata', run)
+    cleanups.push(() => {
+      el.removeEventListener('load', run)
+      el.removeEventListener('error', run)
+      el.removeEventListener('loadedmetadata', run)
+      el.removeEventListener('loadeddata', run)
+    })
+    if (typeof ResizeObserver !== 'undefined') {
+      const ro = new ResizeObserver(run)
+      ro.observe(el)
+      cleanups.push(() => ro.disconnect())
+    }
+  }
+
+  container.querySelectorAll('img, video').forEach(watchEl)
+
+  let mo = null
+  if (typeof MutationObserver !== 'undefined') {
+    mo = new MutationObserver((records) => {
+      for (const rec of records) {
+        for (const node of rec.addedNodes || []) {
+          if (!(node instanceof Element)) continue
+          if (node.matches?.('img, video')) watchEl(node)
+          node.querySelectorAll?.('img, video').forEach(watchEl)
+        }
+      }
+      onChange()
+    })
+    mo.observe(container, { childList: true, subtree: true })
+  }
+
+  return () => {
+    mo?.disconnect()
+    cleanups.forEach((fn) => fn())
+  }
+}
+
 export function AvatarConnectorLine({
   containerRef,
   topAvatarRef,
@@ -59,6 +106,8 @@ export function AvatarConnectorLine({
     })
     const t0 = window.setTimeout(run, 0)
     const t1 = window.setTimeout(run, 80)
+    const t2 = window.setTimeout(run, 250)
+    const t3 = window.setTimeout(run, 600)
 
     const observers = []
     if (typeof ResizeObserver !== 'undefined') {
@@ -69,20 +118,17 @@ export function AvatarConnectorLine({
       observers.push(ro)
     }
 
-    const onMedia = () => run()
-    container?.addEventListener('load', onMedia, true)
-    container?.addEventListener('loadedmetadata', onMedia, true)
-    container?.addEventListener('loadeddata', onMedia, true)
+    const stopMediaWatch = observeConnectorMedia(container, run)
     window.addEventListener('resize', run)
 
     return () => {
       cancelAnimationFrame(raf1)
       window.clearTimeout(t0)
       window.clearTimeout(t1)
+      window.clearTimeout(t2)
+      window.clearTimeout(t3)
       observers.forEach((ro) => ro.disconnect())
-      container?.removeEventListener('load', onMedia, true)
-      container?.removeEventListener('loadedmetadata', onMedia, true)
-      container?.removeEventListener('loadeddata', onMedia, true)
+      stopMediaWatch()
       window.removeEventListener('resize', run)
     }
   }, [bottomAvatarRef, containerRef, layoutKey, topAvatarRef, updateLine])
@@ -113,22 +159,24 @@ function HierarchyCommentRow({
   descendantFallback,
   connectorRootRef,
   isCommentPostDetail,
+  focusDetailLayout,
   betweenRowClassName = 'mt-1',
   connectorLayoutKey = null,
 }) {
   const rowRef = useRef(null)
-  const lineContainerRef = pathIndex === 0 && connectorRootRef ? connectorRootRef : rowRef
-  const rowGapClass =
-    pathIndex > 0 && !isCommentPostDetail
-      ? 'mt-1 border-t border-zinc-800/60 pt-1.5'
-      : pathIndex > 0
-        ? betweenRowClassName
-        : ''
+  // Prefer the shared thread root so OP media height is in the same coordinate space
+  // as segment lines (row-local containers break when the previous avatar sits above).
+  const lineContainerRef = connectorRootRef || rowRef
+  const useSharedConnectorRoot = Boolean(connectorRootRef)
+  const rowGapClass = pathIndex > 0 ? betweenRowClassName : ''
 
   const canNavigate = !isFocus && typeof onNavigateToPathIndex === 'function'
 
   return (
-    <div ref={rowRef} className={`relative min-w-0 ${rowGapClass}`}>
+    <div
+      ref={rowRef}
+      className={`min-w-0 ${useSharedConnectorRoot ? '' : 'relative'} ${rowGapClass}`}
+    >
       {!isCommentPostDetail ? (
         <AvatarConnectorLine
           containerRef={lineContainerRef}
@@ -142,12 +190,14 @@ function HierarchyCommentRow({
           comment={comment}
           avatarButtonRef={avatarRef}
           descendantFallback={descendantFallback}
-          showDetailTimestamp={isFocus}
+          showDetailTimestamp={isFocus && focusDetailLayout}
           detailTimestampLabel={
-            isFocus && comment.created_at ? formatLoungePostDetailWhen(comment.created_at) : ''
+            isFocus && focusDetailLayout && comment.created_at
+              ? formatLoungePostDetailWhen(comment.created_at)
+              : ''
           }
           {...cardProps}
-          detailFocusLayout={isFocus}
+          detailFocusLayout={isFocus && focusDetailLayout}
           captionColumnMedia={false}
           navigable={canNavigate}
           onOpenCommentThread={
@@ -172,6 +222,10 @@ export default function LoungePostDetailCommentHierarchy({
   descendantCountByCommentId,
   cardProps = {},
   isCommentPostDetail = true,
+  /** Focus row uses post-detail full-width caption (detail screens). Off for profile Replies. */
+  focusDetailLayout = true,
+  /** Skip the default non-detail top rule (profile already spaces the hierarchy). */
+  hideSectionRule = false,
   betweenRowClassName = 'mt-1',
   connectorLayoutKey = null,
 }) {
@@ -185,11 +239,14 @@ export default function LoungePostDetailCommentHierarchy({
   const focusAvatarRef = avatarRefs.current[chain.length - 1]
   const focusCommentId = chain[chain.length - 1]?.id
 
+  const sectionClass = isCommentPostDetail
+    ? 'mt-0'
+    : hideSectionRule
+      ? 'mt-0'
+      : 'mt-2 border-t border-zinc-800/70 pt-2'
+
   return (
-    <section
-      className={isCommentPostDetail ? 'mt-0' : 'mt-2 border-t border-zinc-800/70 pt-2'}
-      aria-label="Comment thread"
-    >
+    <section className={sectionClass} aria-label="Comment thread">
       {chain.map((comment, idx) => {
         const isFocus = idx === chain.length - 1
         const topAvatarRef = idx === 0 ? postAvatarRef : avatarRefs.current[idx - 1]
@@ -206,6 +263,7 @@ export default function LoungePostDetailCommentHierarchy({
             descendantFallback={descendantCountByCommentId?.get(comment.id) ?? 0}
             connectorRootRef={connectorRootRef}
             isCommentPostDetail={isCommentPostDetail}
+            focusDetailLayout={focusDetailLayout}
             betweenRowClassName={betweenRowClassName}
             connectorLayoutKey={connectorLayoutKey}
           />

@@ -249,10 +249,12 @@ async function fetchProfileRepliesPage(
     fanEntitlements,
   },
 ) {
+  // Thread parts 2+ are feed_comments with is_thread_part … not profile Replies.
   const { data: commentRows, error: ce } = await supabaseClient
     .from('feed_comments')
     .select(PROFILE_COMMENT_SELECT)
     .eq('user_id', profileUserId)
+    .eq('is_thread_part', false)
     .is('hidden_at', null)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1)
@@ -478,7 +480,6 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
   const postCaption = feedPostDisplayCaption(post)
   const postAvatarRef = useRef(null)
   const connectorRootRef = useRef(null)
-  const focusCommentId = String(comment?.id || '')
   const openReplyThread = () => {
     const openFn =
       onOpenProfileReply ||
@@ -562,7 +563,7 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
     positionScrollRootRef: profileBodyScrollRef,
     lightboxPortalClass: pp.mediaLightboxPortalClass || 'z-[103]',
     repostMenuPortalClass: pp.repostMenuPortalClass || 'z-[104]',
-    resolveMediaFeedVariant: (c) => (String(c?.id) === focusCommentId ? 'detail' : 'commentInline'),
+    resolveMediaFeedVariant: () => 'commentInline',
     onMentionClick: pp.onMentionClick,
     onHashtagClick: pp.onHashtagClick,
     onCashtagClick: pp.onCashtagClick,
@@ -664,7 +665,7 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
               {feedCommentRowHasMedia(post) ? (
                 <LoungePostFeedImagesAndGif
                   post={post}
-                  variant={pathIds.length > 0 && threadComments.length > 0 ? 'detail' : 'feed'}
+                  variant="feed"
                   captionColumnMedia={false}
                   enableLightbox
                   lightboxPortalClass={pp.mediaLightboxPortalClass || 'z-[103]'}
@@ -710,7 +711,9 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
                 comments={threadComments}
                 postAvatarRef={postAvatarRef}
                 connectorRootRef={connectorRootRef}
-                isCommentPostDetail
+                isCommentPostDetail={false}
+                focusDetailLayout={false}
+                hideSectionRule
                 betweenRowClassName="mt-3.5"
                 cardProps={hierarchyCardProps}
               />

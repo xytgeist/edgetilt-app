@@ -35,7 +35,8 @@ export const LOUNGE_COLOR_TAGS = {
   },
   gold: {
     darkClass: 'text-amber-300 font-semibold',
-    lightClass: 'text-amber-700 font-semibold',
+    // Emerald on light … amber-700 washed out / muddy on white captions.
+    lightClass: 'text-emerald-700 font-semibold',
     dataAttr: 'data-lounge-color-gold',
   },
   blue: {

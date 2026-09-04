@@ -2716,8 +2716,19 @@ export default function ChatConversation({
           )}
         </div>
 
+      </div>
+
+      <div
+        ref={composerBarRef}
+        data-chat-composer-host
+        className="relative z-20 shrink-0 px-3 pt-2.5 pb-0"
+        style={{
+          paddingBottom: composerPadBottom,
+          background: 'transparent',
+        }}
+      >
         {(newMsgCount > 0 || hasNewer || scrolledUpCount >= SCROLL_UP_MSG_THRESHOLD) && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-2 z-10 flex justify-center">
+          <div className="pointer-events-none absolute inset-x-0 bottom-full z-10 mb-2 flex justify-center">
             <button
               type="button"
               onClick={goToLatest}
@@ -2746,17 +2757,6 @@ export default function ChatConversation({
             </button>
           </div>
         )}
-      </div>
-
-      <div
-        ref={composerBarRef}
-        data-chat-composer-host
-        className="relative z-20 shrink-0 px-3 pt-2.5 pb-0"
-        style={{
-          paddingBottom: composerPadBottom,
-          background: 'transparent',
-        }}
-      >
         {showGroupCallJoinBanner ? (
           <div className="mb-2.5 flex justify-center">
             <div className="chat-header-glass flex w-[15.5rem] flex-col gap-2 rounded-2xl px-3 py-2.5 shadow-lg">

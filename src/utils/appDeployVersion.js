@@ -6,9 +6,8 @@ import { isEdgeiOSShell } from './edgeNative.js'
 export const APP_UPDATE_AVAILABLE_EVENT = 'edge-app-update-available'
 
 const APP_UPDATE_DISMISS_KEY = 'lvsp_app_update_dismissed_token'
-const DEPLOY_POLL_MS = 5 * 60 * 1000
 const BUILD_SHA_META = 'edge-build-sha'
-/** @deprecated Soft reload does not reliably apply deploys (esp. PWA). Banner asks for full close + reopen. */
+/** @deprecated Unused. Update nag retired 2026-09-03. */
 export const APP_UPDATE_VISIBILITY_RELOAD_MS = 20_000
 
 /** @type {number | null} */
@@ -135,33 +134,9 @@ export function isStandalonePwa() {
 }
 
 /**
- * Poll live deploy while the tab is open.
- * Shows **Update available** on refocus + periodic foreground checks.
- * Does **not** soft-reload ... PWA/browser caches often keep the old build until a full close + reopen.
- * (Chunk MIME failures still use `lazyImportWithChunkReload` / `installStaleChunkReloadListener`.)
+ * Retired 2026-09-03. The Update available nag was too noisy on frequent deploys.
+ * Stale hashed-chunk MIME failures still auto-reload via `installStaleChunkReloadListener`.
  */
 export function installDeployVersionWatch() {
-  if (typeof window === 'undefined' || isEdgeiOSShell()) return undefined
-
-  const runCheck = async (source) => {
-    if (document.visibilityState === 'hidden') return
-    const result = await checkForAppUpdate()
-    if (!result.updateAvailable || !result.remoteToken) return
-    if (isAppUpdateDismissed(result.remoteToken)) return
-
-    cancelScheduledAppUpdateReload()
-    dispatchAppUpdateAvailable({
-      ...result,
-      source,
-    })
-  }
-
-  const intervalId = window.setInterval(() => void runCheck('interval'), DEPLOY_POLL_MS)
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') void runCheck('visibility')
-  })
-  return () => {
-    cancelScheduledAppUpdateReload()
-    window.clearInterval(intervalId)
-  }
+  return undefined
 }

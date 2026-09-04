@@ -47,11 +47,14 @@ function normPos(raw) {
     .replace(/[^A-Z0-9]/g, '')
 }
 
-export function resolvePvalBandKey(positionRaw, depthOrder, depthSlot = null) {
+export function resolvePvalBandKey(positionRaw, depthOrder, depthSlot = null, fantasyPositions = null) {
   const p = normPos(positionRaw || '')
   const slot = normPos(depthSlot || '')
   const depth = Number.isFinite(Number(depthOrder)) ? Number(depthOrder) : null
-  if (!p && !slot) return 'unknown'
+  const fantasy = Array.isArray(fantasyPositions)
+    ? fantasyPositions.map((x) => normPos(x)).filter(Boolean)
+    : []
+  if (!p && !slot && !fantasy.length) return 'unknown'
 
   if (/^(K|PK|P|LS|KOS)$/.test(p) || p.includes('KICK') || p.includes('PUNT')) return 'special'
   if (p === 'QB' || p.includes('QUARTER')) {
@@ -70,9 +73,20 @@ export function resolvePvalBandKey(positionRaw, depthOrder, depthSlot = null) {
     if (depth != null && depth >= 2) return 'rb2'
     return 'rb2'
   }
+
+  // Offensive line … Sleeper often tags everyone OL with null depth_order.
+  if (slot === 'LT' || slot === 'RT' || slot === 'LOT' || slot === 'ROT') return 'ot'
+  if (slot === 'LG' || slot === 'RG' || slot === 'C' || slot === 'OC') return 'iol'
   if (p === 'OT' || p === 'LT' || p === 'RT' || (p.includes('TACKLE') && !p.includes('DEF'))) return 'ot'
   if (p === 'T') return 'ot'
-  if (p === 'G' || p === 'C' || p === 'OG' || p === 'OC' || p === 'IOL' || p === 'OL') return 'iol'
+  if (p === 'G' || p === 'C' || p === 'OG' || p === 'OC' || p === 'IOL') return 'iol'
+  if (p === 'OL') {
+    if (fantasy.includes('OT') && !fantasy.includes('OG') && !fantasy.includes('OC')) return 'ot'
+    if (fantasy.includes('OG') || fantasy.includes('OC') || fantasy.includes('C')) return 'iol'
+    if (fantasy.includes('OT')) return 'ot'
+    return 'iol'
+  }
+
   if (p === 'EDGE' || p === 'DE' || p === 'OLB' || p.includes('EDGE') || p === 'LBDE') {
     if (depth === 1) return 'edge1'
     if (depth != null && depth >= 2) return 'edge2'
@@ -103,6 +117,14 @@ export function resolvePvalBandKey(positionRaw, depthOrder, depthSlot = null) {
   }
   return 'unknown'
 }
+
+/** True OL roster positions (not defense / TE). */
+export function isOffensiveLinePosition(positionRaw) {
+  return /^(OL|OT|OG|OC|G|C|T|LT|RT|IOL)$/i.test(String(positionRaw || '').trim())
+}
+
+/** Keep starting OL + one swing per team (Sleeper lacks OL depth charts). */
+export const OL_KEEP_PER_TEAM = { ot: 3, iol: 4 }
 
 export function pvalFromPercentileInBand(bandKey, percentile01) {
   const band = PVAL_BANDS[bandKey]
@@ -151,18 +173,23 @@ export async function buildSleeperPvalRows(opts = {}) {
     const position = p.position || (Array.isArray(p.fantasy_positions) ? p.fantasy_positions[0] : null)
     const depth = p.depth_chart_order != null ? Number(p.depth_chart_order) : null
     const depthSlot = p.depth_chart_position || null
-    const bandKey = resolvePvalBandKey(position, depth, depthSlot)
+    const fantasyPositions = Array.isArray(p.fantasy_positions) ? p.fantasy_positions : null
+    const bandKey = resolvePvalBandKey(position, depth, depthSlot, fantasyPositions)
     if (bandKey === 'special') continue
 
     const proj = projections?.[id] || {}
     const pts = Number(proj.pts_ppr)
     const searchRank = Number(p.search_rank)
+    const yearsExp = Number.isFinite(Number(p.years_exp)) ? Number(p.years_exp) : null
+    const isOl = isOffensiveLinePosition(position)
 
-    // Keep injury-relevant names: on a depth chart, has a week proj, or searchable fantasy rank.
+    // Keep injury-relevant names: depth, week proj, fantasy rank, or active OL (Sleeper OL depth is empty).
     const hasDepth = depth != null && depth > 0
     const hasProj = Number.isFinite(pts) && pts > 0
     const hasRank = Number.isFinite(searchRank) && searchRank < 500
-    if (!hasDepth && !hasProj && !hasRank) continue
+    if (!hasDepth && !hasProj && !hasRank && !isOl) continue
+    // Skip inactive/retired OL without depth signal
+    if (isOl && status && status !== 'Active' && !hasDepth) continue
 
     candidates.push({
       sleeperId: id,
@@ -177,12 +204,38 @@ export async function buildSleeperPvalRows(opts = {}) {
       depth_slot: depthSlot,
       pts_ppr: Number.isFinite(pts) ? pts : null,
       search_rank: Number.isFinite(searchRank) && searchRank < 999999 ? searchRank : null,
+      years_exp: yearsExp,
+      isOl,
     })
+  }
+
+  // Sleeper rarely sets OL depth_order … keep starters + swing per team only.
+  const pruned = []
+  const olBuckets = new Map()
+  for (const row of candidates) {
+    if (row.bandKey !== 'ot' && row.bandKey !== 'iol') {
+      pruned.push(row)
+      continue
+    }
+    const key = `${row.team_abbr}|${row.bandKey}`
+    const list = olBuckets.get(key) || []
+    list.push(row)
+    olBuckets.set(key, list)
+  }
+  for (const [, list] of olBuckets) {
+    const keepN = OL_KEEP_PER_TEAM[list[0]?.bandKey] || 3
+    list.sort((a, b) => {
+      const da = a.depth_order != null ? a.depth_order : 99
+      const db = b.depth_order != null ? b.depth_order : 99
+      if (da !== db) return da - db
+      return (b.years_exp || 0) - (a.years_exp || 0)
+    })
+    pruned.push(...list.slice(0, keepN))
   }
 
   // Percentile within each band
   const byBand = new Map()
-  for (const row of candidates) {
+  for (const row of pruned) {
     const list = byBand.get(row.bandKey) || []
     list.push(row)
     byBand.set(row.bandKey, list)
@@ -194,6 +247,7 @@ export async function buildSleeperPvalRows(opts = {}) {
       let score = null
       if (r.pts_ppr != null) score = r.pts_ppr
       else if (r.search_rank != null) score = -r.search_rank // lower rank = better
+      else if (r.years_exp != null) score = r.years_exp // OL proxy when no fantasy signal
       return { ...r, score }
     })
     const withScore = scored.filter((r) => r.score != null).sort((a, b) => a.score - b.score)
@@ -203,12 +257,16 @@ export async function buildSleeperPvalRows(opts = {}) {
       const r = withScore[i]
       const pct = withScore.length <= 1 ? 0.5 : i / (withScore.length - 1)
       const pval = pvalFromPercentileInBand(bandKey, pct)
+      const seatNote =
+        r.isOl && r.pts_ppr == null
+          ? `years_exp=${r.years_exp ?? 'n/a'}`
+          : `week ${week} pts_ppr=${r.pts_ppr ?? 'n/a'}`
       rows.push({
         ...r,
         percentile: Math.round(pct * 1000) / 1000,
         pval,
         tier: pct >= 0.85 ? 1 : pct >= 0.55 ? 2 : 3,
-        notes: `sleeper v1 · ${bandKey} · pct=${pct.toFixed(2)} · week ${week} pts_ppr=${r.pts_ppr ?? 'n/a'}`,
+        notes: `sleeper v1 · ${bandKey} · pct=${pct.toFixed(2)} · ${seatNote}`,
       })
     }
     for (const r of noScore) {
@@ -218,7 +276,7 @@ export async function buildSleeperPvalRows(opts = {}) {
         percentile: 0.5,
         pval,
         tier: 2,
-        notes: `sleeper v1 · ${bandKey} · typical (no proj/rank) · week ${week}`,
+        notes: `sleeper v1 · ${bandKey} · typical (no proj/rank/years) · week ${week}`,
       })
     }
   }

@@ -93,12 +93,16 @@ export function resolvePvalBandKey(
   positionRaw: string | null | undefined,
   depthOrder: number | null | undefined,
   depthSlot?: string | null,
+  fantasyPositions?: string[] | null,
 ): PvalBandKey {
   const p = normPos(positionRaw || '')
   const slot = normPos(depthSlot || '')
   const depth = Number.isFinite(Number(depthOrder)) ? Number(depthOrder) : null
+  const fantasy = Array.isArray(fantasyPositions)
+    ? fantasyPositions.map((x) => normPos(x)).filter(Boolean)
+    : []
 
-  if (!p && !slot) return 'unknown'
+  if (!p && !slot && !fantasy.length) return 'unknown'
 
   if (/^(K|PK|P|LS|KOS)$/.test(p) || p.includes('KICK') || p.includes('PUNT')) return 'special'
   if (p === 'QB' || p.includes('QUARTER')) {
@@ -117,10 +121,22 @@ export function resolvePvalBandKey(
     if (depth != null && depth >= 2) return 'rb2'
     return 'rb2'
   }
-  if (p === 'OT' || p === 'T' || p === 'LT' || p === 'RT' || (p.includes('TACKLE') && !p.includes('DEF'))) {
+
+  // Offensive line … Sleeper often tags everyone OL with null depth_order.
+  if (slot === 'LT' || slot === 'RT' || slot === 'LOT' || slot === 'ROT') return 'ot'
+  if (slot === 'LG' || slot === 'RG' || slot === 'C' || slot === 'OC') return 'iol'
+  if (p === 'OT' || p === 'LT' || p === 'RT' || (p.includes('TACKLE') && !p.includes('DEF'))) {
     return 'ot'
   }
-  if (p === 'G' || p === 'C' || p === 'OG' || p === 'OC' || p === 'IOL' || p === 'OL') return 'iol'
+  if (p === 'T') return 'ot'
+  if (p === 'G' || p === 'C' || p === 'OG' || p === 'OC' || p === 'IOL') return 'iol'
+  if (p === 'OL') {
+    if (fantasy.includes('OT') && !fantasy.includes('OG') && !fantasy.includes('OC')) return 'ot'
+    if (fantasy.includes('OG') || fantasy.includes('OC') || fantasy.includes('C')) return 'iol'
+    if (fantasy.includes('OT')) return 'ot'
+    return 'iol'
+  }
+
   if (p === 'EDGE' || p === 'DE' || p === 'OLB' || p.includes('EDGE') || p === 'LBDE') {
     if (depth === 1) return 'edge1'
     if (depth != null && depth >= 2) return 'edge2'

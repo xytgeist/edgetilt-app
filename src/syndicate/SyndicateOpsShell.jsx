@@ -18,12 +18,28 @@ const SPORT_OPTIONS = [
   { id: 'mma_mixed_martial_arts', label: 'UFC' },
 ]
 
+/** Desk child panels mix string toasts and `{ message }` objects ... always store a string. */
+function normalizeOpsToast(value) {
+  if (value == null || value === false) return ''
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value)
+  if (typeof value === 'object') {
+    if (typeof value.message === 'string') return value.message
+    if (value.message != null) return String(value.message)
+  }
+  return String(value)
+}
+
 /**
  * Admin shell: Sharp Desk (scorecard, Chedda paste, PVALs, metrics, monthly board).
  */
 export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
   const [busy, setBusy] = useState(false)
-  const [toast, setToast] = useState('')
+  const [toast, setToastRaw] = useState('')
+  const setToast = useMemo(
+    () => (value) => setToastRaw(normalizeOpsToast(value)),
+    [],
+  )
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [bot, setBot] = useState(null)
@@ -133,7 +149,7 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
 
   useEffect(() => {
     if (!toast) return undefined
-    const t = setTimeout(() => setToast(''), 4500)
+    const t = setTimeout(() => setToastRaw(''), 4500)
     return () => clearTimeout(t)
   }, [toast])
 

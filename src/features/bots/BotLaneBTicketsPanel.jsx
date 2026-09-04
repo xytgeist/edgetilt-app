@@ -96,15 +96,19 @@ export default function BotLaneBTicketsPanel({
         </div>
         {refreshMeta && (
           <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] text-zinc-400">
-            <div>URLs: {refreshMeta.discovered_urls ?? '—'}</div>
-            <div>Fetched: {refreshMeta.fetched_ok ?? '—'}</div>
-            <div>Parsed: {refreshMeta.tickets_parsed ?? '—'}</div>
-            <div>Matched: {refreshMeta.matched_events ?? '—'}</div>
+            <div>URLs: {refreshMeta.discovered_urls ?? '-'}</div>
+            <div>Fetched: {refreshMeta.fetched_ok ?? '-'}</div>
+            <div>Parsed: {refreshMeta.tickets_parsed ?? '-'}</div>
+            <div>Matched: {refreshMeta.matched_events ?? '-'}</div>
           </div>
         )}
         {Array.isArray(refreshMeta?.errors) && refreshMeta.errors.length > 0 && (
           <p className="mt-2 text-[11px] text-amber-400/90">
-            Notes: {refreshMeta.errors.slice(0, 3).join(' · ')}
+            Notes:{' '}
+            {refreshMeta.errors
+              .slice(0, 3)
+              .map((e) => (typeof e === 'string' ? e : String(e?.message || e)))
+              .join(' · ')}
           </p>
         )}
       </div>
@@ -135,7 +139,7 @@ export default function BotLaneBTicketsPanel({
                 <td className="px-3 py-2 whitespace-nowrap">{t.source_id}</td>
                 <td className="px-3 py-2">{t.market}</td>
                 <td className="px-3 py-2">{t.selection}</td>
-                <td className="px-3 py-2">{t.line ?? '—'}</td>
+                <td className="px-3 py-2">{t.line ?? '-'}</td>
                 <td className="px-3 py-2 max-w-[220px] truncate" title={t.matchup_text}>
                   {t.matchup_text}
                 </td>

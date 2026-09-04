@@ -2842,7 +2842,6 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
-- **2026-09-04:** **Profile Replies excludes thread parts:** `fetchProfileRepliesPage` filters `feed_comments.is_thread_part = false` so author thread continuations do not appear as replies.
 - **2026-09-03:** Removed **`AppUpdateAvailableBanner`** / deploy-version poll. Stale hashed-chunk MIME failures still auto-reload. Soft-reload nag was too noisy on frequent test deploys.
 - **2026-09-03:** Text-thread submit no longer opens the leftover bottom **Posting your video** bar (`mediaPrep`). Same thin composer-top seam as caption/image/GIF posts. Video still uses inline tile / prep HUD.
 - **2026-09-03:** Pro composer markdown bar (and tribe pills) stay pinned above the write scroller so extra thread captions slide under the toolbar instead of taking it with them.

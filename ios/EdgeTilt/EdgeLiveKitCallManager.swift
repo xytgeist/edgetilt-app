@@ -445,7 +445,7 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     let pipHeight = pipWidth * 16 / 9
     let pipFrame = CGRect(
       x: bounds.width - pipWidth - 16,
-      y: bounds.safeAreaInsetsAwareTop + 72,
+      y: bounds.height - pipHeight - 148,
       width: pipWidth,
       height: pipHeight
     )

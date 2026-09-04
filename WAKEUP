@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-04 … video Record in the pill
+
+**I am Mac Theo.** Video dock is now Record / Video / Speaker / Mute / End. Flip moved onto the local PiP / your tile. Voice unchanged. Native PiP moved to bottom-right so Flip sits on it after the next TestFlight. Record/Stop is JS... works on the current IPA.
+
 ### Mac Theo 2026-09-04 … IPA video tiles for every participant
 
 **I am Mac Theo.** IPA video only bound local + the first remote camera. Native overlay is now one tile per LiveKit person (stream or avatar). 1:1 stays main + PiP; 3+ is a grid. Web sends names/photos via `setNativeCallChrome.participantAvatars`. **Rebuild EdgeTilt Test.** Android / Safari already used `VideoCallStage`.

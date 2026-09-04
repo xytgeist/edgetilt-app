@@ -1085,6 +1085,17 @@ function NativeIpaCallSession({
                 }
               }}
             />
+            {camOn ? (
+              <LocalFlipChip
+                className={
+                  remoteCount <= 1 && isLocalMain ? 'bottom-4 left-4' : 'bottom-4 right-4'
+                }
+                onFlip={() => {
+                  resetControlsTimer()
+                  void setNativeCallCamera({ flip: true })
+                }}
+              />
+            ) : null}
           </div>
         ) : showGroupAudioStage ? (
           <GroupAudioStage
@@ -1114,19 +1125,17 @@ function NativeIpaCallSession({
         style={{ paddingBottom: 'calc(max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)) + 1.25rem)' }}
       >
         {isVideoMode ? (
-          /* Single-line 1-row pill dock for video calls (Image 2) */
           <div
             data-chat-call-interactive=""
             className="pointer-events-auto mx-auto flex w-full max-w-[22.5rem] items-center justify-between rounded-full border border-white/10 bg-zinc-950/85 px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150"
           >
-            <CallDockItem
-              icon={<FlipCameraIcon />}
-              label="Flip"
-              disabled={!camOn}
-              onClick={() => {
-                resetControlsTimer()
-                void setNativeCallCamera({ flip: true })
-              }}
+            <VideoRecordDockItem
+              recordingActive={recordingActive}
+              recordingSaving={recordingSaving}
+              canStopRecording={canStopRecording}
+              onStart={() => onStartRecording?.(isLocalMain ? viewerUserId : pinnedIdentity)}
+              onStop={() => onStopRecording?.()}
+              onInteract={resetControlsTimer}
             />
             <CallDockItem
               icon={<VideoIcon off={!camOn} />}
@@ -1167,7 +1176,7 @@ function NativeIpaCallSession({
             />
           </div>
         ) : (
-          /* Same one-row pill as video, minus Flip. */
+          /* Same one-row pill as video, minus Record. Flip is not on voice. */
           <div
             data-chat-call-interactive=""
             className="pointer-events-auto mx-auto flex w-full max-w-[22.5rem] items-center justify-between rounded-full border border-white/10 bg-zinc-950/85 px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150"
@@ -1717,19 +1726,17 @@ function CallChrome({
   }
 
   const controlPill = showVideoStage ? (
-    /* Single-line 1-row pill dock for video call (Image 2) */
     <div
       data-chat-call-interactive=""
       className="pointer-events-auto mx-auto flex w-full max-w-[22.5rem] items-center justify-between rounded-full border border-white/10 bg-zinc-950/85 px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150"
     >
-      <CallDockItem
-        icon={<FlipCameraIcon />}
-        label="Flip"
-        disabled={!camOn || cameraBusy}
-        onClick={() => {
-          resetControlsTimer()
-          void flipCamera()
-        }}
+      <VideoRecordDockItem
+        recordingActive={recordingActive}
+        recordingSaving={recordingSaving}
+        canStopRecording={canStopRecording}
+        onStart={() => onStartRecording?.(pinnedIdentity)}
+        onStop={() => onStopRecording?.()}
+        onInteract={resetControlsTimer}
       />
       <CallDockItem
         icon={<VideoIcon off={!camOn} />}
@@ -1878,6 +1885,11 @@ function CallChrome({
             resolveAvatarForParticipant={resolveAvatarForParticipant}
             participantHasLiveCamera={participantHasLiveCamera}
             title={title}
+            showLocalFlip={Boolean(camOn && !cameraBusy)}
+            onFlipCamera={() => {
+              resetControlsTimer()
+              void flipCamera()
+            }}
           />
         ) : isGroup && !awaitingAnswer ? (
           <GroupAudioStage
@@ -2016,6 +2028,8 @@ function VideoCallStage({
   resolveAvatarForParticipant,
   participantHasLiveCamera,
   title,
+  showLocalFlip = false,
+  onFlipCamera,
 }) {
   const fullId = fullscreenParticipant?.identity || null
   const fullTrack = fullId ? cameraByIdentity.get(fullId) : null
@@ -2047,6 +2061,8 @@ function VideoCallStage({
 
   const showDuoPip = Boolean(duoPipParticipant)
   const showStrip = !showDuoPip && stripParticipants.length > 0
+  const localIsFullscreen = Boolean(localParticipant && fullId === localParticipant.identity)
+  const localIsPip = Boolean(showDuoPip && duoPipParticipant?.isLocal)
   // Explicit pin only (not auto active-speaker fullscreen)... recording uses this.
   const mainPinned = Boolean(pinnedIdentity && pinnedIdentity === fullId)
   const pipPinned = Boolean(
@@ -2098,37 +2114,46 @@ function VideoCallStage({
         </div>
       ) : null}
 
+      {showLocalFlip && localIsFullscreen && !localIsPip ? (
+        <LocalFlipChip className="bottom-4 left-4" onFlip={onFlipCamera} />
+      ) : null}
+
       {showDuoPip ? (
-        <button
-          type="button"
-          data-chat-call-round-video=""
-          data-chat-call-interactive=""
-          className={`absolute bottom-4 right-4 z-[2] h-[8rem] w-[8rem] overflow-hidden rounded-full border-2 bg-zinc-900 shadow-2xl backdrop-blur-xl touch-manipulation active:scale-95 transition-all ${
-            pipPinned ? 'border-emerald-500 shadow-[0_0_24px_rgba(16,185,129,0.4)]' : 'border-white/30'
-          }`}
-          aria-label={
-            duoPipParticipant.isLocal
-              ? 'Show your video fullscreen'
-              : `Show ${duoPipParticipant.name || title || 'caller'} fullscreen`
-          }
-          onClick={() => onPinIdentity(duoPipParticipant.identity)}
-        >
-          {participantHasLiveCamera(duoPipParticipant) &&
-          cameraByIdentity.get(duoPipParticipant.identity) ? (
-            <VideoTrack
-              trackRef={cameraByIdentity.get(duoPipParticipant.identity)}
-              className="absolute inset-0 h-full w-full object-cover"
-              style={{ objectFit: 'cover' }}
-            />
-          ) : (
-            <CallAvatarCircle
-              avatarUrl={resolveAvatarForParticipant(duoPipParticipant)}
-              title={duoPipParticipant.isLocal ? 'You' : duoPipParticipant.name || title || '?'}
-              sizeClass="h-full w-full"
-              textClass="text-[30px]"
-            />
-          )}
-        </button>
+        <div className="absolute bottom-4 right-4 z-[2] h-[8rem] w-[8rem]">
+          <button
+            type="button"
+            data-chat-call-round-video=""
+            data-chat-call-interactive=""
+            className={`relative h-full w-full overflow-hidden rounded-full border-2 bg-zinc-900 shadow-2xl backdrop-blur-xl touch-manipulation active:scale-95 transition-all ${
+              pipPinned ? 'border-emerald-500 shadow-[0_0_24px_rgba(16,185,129,0.4)]' : 'border-white/30'
+            }`}
+            aria-label={
+              duoPipParticipant.isLocal
+                ? 'Show your video fullscreen'
+                : `Show ${duoPipParticipant.name || title || 'caller'} fullscreen`
+            }
+            onClick={() => onPinIdentity(duoPipParticipant.identity)}
+          >
+            {participantHasLiveCamera(duoPipParticipant) &&
+            cameraByIdentity.get(duoPipParticipant.identity) ? (
+              <VideoTrack
+                trackRef={cameraByIdentity.get(duoPipParticipant.identity)}
+                className="absolute inset-0 h-full w-full object-cover"
+                style={{ objectFit: 'cover' }}
+              />
+            ) : (
+              <CallAvatarCircle
+                avatarUrl={resolveAvatarForParticipant(duoPipParticipant)}
+                title={duoPipParticipant.isLocal ? 'You' : duoPipParticipant.name || title || '?'}
+                sizeClass="h-full w-full"
+                textClass="text-[30px]"
+              />
+            )}
+          </button>
+          {showLocalFlip && localIsPip ? (
+            <LocalFlipChip className="-bottom-1 -right-1" size="sm" onFlip={onFlipCamera} />
+          ) : null}
+        </div>
       ) : null}
 
       {showStrip ? (
@@ -2140,32 +2165,36 @@ function VideoCallStage({
               const hasCam = participantHasLiveCamera(p)
               const label = p.isLocal ? 'You' : p.name || p.identity.slice(0, 8)
               return (
-                <button
-                  key={p.identity}
-                  type="button"
-                  data-chat-call-round-video=""
-                  data-chat-call-interactive=""
-                  className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-full border-2 bg-zinc-900 shadow-lg touch-manipulation active:scale-95 transition-all ${
-                    pinned ? 'border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.4)]' : 'border-white/25'
-                  }`}
-                  aria-label={pinned ? `${label} pinned` : `Pin ${label} fullscreen`}
-                  onClick={() => onPinIdentity(p.identity)}
-                >
-                  {hasCam && track ? (
-                    <VideoTrack
-                      trackRef={track}
-                      className="absolute inset-0 h-full w-full object-cover"
-                      style={{ objectFit: 'cover' }}
-                    />
-                  ) : (
-                    <CallAvatarCircle
-                      avatarUrl={resolveAvatarForParticipant(p)}
-                      title={label}
-                      sizeClass="h-full w-full"
-                      textClass="text-[18px]"
-                    />
-                  )}
-                </button>
+                <div key={p.identity} className="relative h-16 w-16 shrink-0">
+                  <button
+                    type="button"
+                    data-chat-call-round-video=""
+                    data-chat-call-interactive=""
+                    className={`relative h-full w-full overflow-hidden rounded-full border-2 bg-zinc-900 shadow-lg touch-manipulation active:scale-95 transition-all ${
+                      pinned ? 'border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.4)]' : 'border-white/25'
+                    }`}
+                    aria-label={pinned ? `${label} pinned` : `Pin ${label} fullscreen`}
+                    onClick={() => onPinIdentity(p.identity)}
+                  >
+                    {hasCam && track ? (
+                      <VideoTrack
+                        trackRef={track}
+                        className="absolute inset-0 h-full w-full object-cover"
+                        style={{ objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <CallAvatarCircle
+                        avatarUrl={resolveAvatarForParticipant(p)}
+                        title={label}
+                        sizeClass="h-full w-full"
+                        textClass="text-[18px]"
+                      />
+                    )}
+                  </button>
+                  {showLocalFlip && p.isLocal && hasCam ? (
+                    <LocalFlipChip className="-bottom-1 -right-1" size="sm" onFlip={onFlipCamera} />
+                  ) : null}
+                </div>
               )
             })}
           </div>
@@ -2204,6 +2233,52 @@ function CallAvatarCircle({
         )}
       </div>
     </div>
+  )
+}
+
+function LocalFlipChip({ className = '', size = 'md', onFlip }) {
+  const dim = size === 'sm' ? 'h-7 w-7' : 'h-9 w-9'
+  return (
+    <button
+      type="button"
+      data-chat-call-interactive=""
+      className={`absolute z-[4] flex ${dim} items-center justify-center rounded-full border border-white/25 bg-black/55 text-white shadow-lg backdrop-blur-md touch-manipulation active:scale-95 ${className}`}
+      aria-label="Flip camera"
+      onClick={(event) => {
+        event.stopPropagation()
+        onFlip?.()
+      }}
+    >
+      <span className={size === 'sm' ? 'scale-75' : 'scale-90'}>
+        <FlipCameraIcon />
+      </span>
+    </button>
+  )
+}
+
+function VideoRecordDockItem({
+  recordingActive,
+  recordingSaving,
+  canStopRecording,
+  onStart,
+  onStop,
+  onInteract,
+}) {
+  const dimmed = recordingActive && !canStopRecording
+  const canStop = recordingActive && canStopRecording
+  const canStart = !recordingActive && !recordingSaving
+  return (
+    <CallDockItem
+      icon={canStop ? <RecordStopIcon /> : <RecordDotIcon dimmed={dimmed || recordingSaving} />}
+      label={canStop ? 'Stop' : recordingSaving ? 'Saving' : 'Record'}
+      variant={canStop ? 'danger' : 'default'}
+      disabled={recordingSaving || dimmed || (!canStart && !canStop)}
+      onClick={() => {
+        onInteract?.()
+        if (canStop) onStop?.()
+        else if (canStart) onStart?.()
+      }}
+    />
   )
 }
 

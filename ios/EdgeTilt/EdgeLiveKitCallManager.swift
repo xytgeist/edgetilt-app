@@ -775,27 +775,28 @@ private final class EdgeOutgoingRingback {
   private static let toneData: Data = EdgeOutgoingRingback.makeToneWav(durationSeconds: 2.0)
 
   func start() {
-    let work = { [weak self] in
+    let run: () -> Void = { [weak self] in
       guard let self else { return }
       self.stopLocked()
       self.playing = true
       self.playBurst()
     }
     if Thread.isMainThread {
-      work()
+      run()
     } else {
-      DispatchQueue.main.async(execute: work)
+      DispatchQueue.main.async { run() }
     }
   }
 
   func stop() {
-    let work = { [weak self] in
-      self?.stopLocked()
+    let run: () -> Void = { [weak self] in
+      guard let self else { return }
+      self.stopLocked()
     }
     if Thread.isMainThread {
-      work()
+      run()
     } else {
-      DispatchQueue.main.async(execute: work)
+      DispatchQueue.main.async { run() }
     }
   }
 

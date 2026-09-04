@@ -624,6 +624,26 @@ export async function invokeLoungeOddsMonthlyScoreboard(supabaseClient, opts = {
 }
 
 /**
+ * Refresh Lane B external handicapper tickets (VSiN/Covers/free-play). Soft-fail.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {{ slug?: string, sportKey?: string }} [opts]
+ */
+export async function invokeLoungeOddsLaneBRefresh(supabaseClient, opts = {}) {
+  const slug = opts.slug || 'sharpe-syndicate'
+  const sportKey = opts.sportKey || 'americanfootball_ncaaf'
+  const { data, error } = await supabaseClient.functions.invoke('lounge-odds-poll', {
+    body: {
+      slug,
+      action: 'lane_b_refresh',
+      sportKey,
+    },
+  })
+  if (error) return { data: null, error: new Error(error.message || 'Lane B refresh failed') }
+  if (data?.error) return { data: null, error: new Error(String(data.error)) }
+  return { data, error: null }
+}
+
+/**
  * Trigger on-demand generation and publishing of NFL Halftime Pivot into Scott's VIP Sub-Chat.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {{ slug?: string, dryRun?: boolean }} [opts]

@@ -19,6 +19,7 @@ import BotTeamMetricsEditor from './BotTeamMetricsEditor.jsx'
 import BotCfbPowerRatingsEditor from './BotCfbPowerRatingsEditor.jsx'
 import BotUfcMetricsEditor from './BotUfcMetricsEditor.jsx'
 import BotBettingSplitsPaste from './BotBettingSplitsPaste.jsx'
+import BotLaneBTicketsPanel from './BotLaneBTicketsPanel.jsx'
 import { SyndicateDryRunPreview } from '../../syndicate/SyndicateDryRunPreview.jsx'
 
 const PICKER_METAS = {
@@ -33,6 +34,10 @@ const PICKER_METAS = {
   Chedda: {
     title: 'Moneyline & Dogs',
     badge: 'bg-amber-950/70 text-amber-300 ring-amber-500/30',
+  },
+  Quorum: {
+    title: 'Blend Desk',
+    badge: 'bg-red-950/70 text-red-300 ring-red-500/30',
   },
   Tank: {
     title: 'Totals & Primetime',
@@ -50,6 +55,7 @@ const TIMEFRAME_OPTIONS = [
 const DESK_TABS = [
   { id: 'scorecard', label: '🎯 Scorecard & Drops', shortLabel: 'Scorecard' },
   { id: 'splits', label: '🧀 Chedda Splits Paste', shortLabel: 'Splits' },
+  { id: 'lane_b', label: '📡 Lane B Tickets', shortLabel: 'Lane B' },
   { id: 'pvals', label: '🩹 NFL Injury PVALs', shortLabel: 'NFL PVALs' },
   { id: 'trench_epa', label: '🏈 NFL EPA & Trenches', shortLabel: 'NFL Trenches' },
   { id: 'cfb_power', label: '🎓 CFB Power Index', shortLabel: 'CFB Ratings' },
@@ -1095,6 +1101,17 @@ export function BotSharpDeskPanel({
           <BotBettingSplitsPaste
             supabaseClient={supabaseClient}
             setToast={setToast}
+          />
+        </div>
+      )}
+
+      {activeTab === 'lane_b' && (
+        <div className="pt-2">
+          <BotLaneBTicketsPanel
+            supabaseClient={supabaseClient}
+            setToast={setToast}
+            selectedSportKey={selectedSportKey || portalSportKey}
+            botSlug={botSlug}
           />
         </div>
       )}

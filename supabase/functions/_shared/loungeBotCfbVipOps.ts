@@ -16,6 +16,10 @@ import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
 import { publishLoungeBotPost } from './loungeBotPublish.ts'
 import { resolveSideModifiersForSlate } from './loungeBotSideModifier.ts'
 import { loadPastedBettingSplitsForSlate } from './loungeBotBettingSplits.ts'
+import {
+  loadLaneBTicketsForSport,
+  refreshLaneBTicketsForSlate,
+} from './loungeBotLaneBScrape.ts'
 import { loadPersonaWeights } from './loungeBotPersonaAdaptive.ts'
 import { loadDbTeamMetricsMap } from './loungeBotTeamMetrics.ts'
 import { loadDbCfbPowerRatingsMap } from './loungeBotCfbPowerRatings.ts'
@@ -126,6 +130,9 @@ async function loadCfbSlateCard(
       loadPastedBettingSplitsForSlate(admin, CFB_SPORT, events),
     ])
 
+  await refreshLaneBTicketsForSlate(admin, CFB_SPORT, events).catch(() => null)
+  const laneBTickets = await loadLaneBTicketsForSport(admin, CFB_SPORT).catch(() => [])
+
   return buildNflAtsSlateCard(events, {
     cardTitle,
     sportKey: CFB_SPORT,
@@ -134,6 +141,7 @@ async function loadCfbSlateCard(
     cfbRatingsMap,
     sideModifiersByEventId,
     pastedSplitsByEventId,
+    laneBTickets,
   })
 }
 
@@ -148,7 +156,7 @@ function formatPublicOneLeanTease(g: SlateGamePick, label: string): string {
     `🎯 **Lean:** **${g.consensusPick.lineDisplay}**`,
     `*${g.consensusPick.badgeText}*`,
     '',
-    `💬 *Full 4-desk card + live adjustments in Sharpe VIP Syndicate.*`,
+    `💬 *Full desk card + live adjustments in Sharpe VIP Syndicate.*`,
   ].join('\n')
 }
 
@@ -164,6 +172,7 @@ function formatVipDeepFromGame(g: SlateGamePick, label: string): string {
     `• Scott: ${g.pickerPicks.Scott.lineDisplay}`,
     `• Rocco: ${g.pickerPicks.Rocco.lineDisplay}`,
     `• Chedda: ${g.pickerPicks.Chedda.lineDisplay}`,
+    `• Quorum: ${g.pickerPicks.Quorum?.lineDisplay || 'PASS'}`,
     `• Tank: ${g.pickerPicks.Tank.lineDisplay}`,
   ]
   if (g.sideModifier?.isSignificant) {

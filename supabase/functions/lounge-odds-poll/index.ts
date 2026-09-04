@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
     const alertKindRaw = String(body?.alertKind || '').trim().toLowerCase()
     const alertKind = alertKindRaw || null
 
-    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'cfb_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'syndicate_monthly_scoreboard', 'calibrate_persona_models', 'ufc_slate_card', 'nfl_wed_tnf_vip', 'nfl_sat_vip_adds_kills', 'cfb_wed_midweek_vip', 'cfb_thu_night_spotlight', 'cfb_sat_vip_adds_kills', 'picks_for_today', 'pval_injury_ledger'].includes(action)) {
+    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'cfb_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'syndicate_monthly_scoreboard', 'calibrate_persona_models', 'ufc_slate_card', 'nfl_wed_tnf_vip', 'nfl_sat_vip_adds_kills', 'cfb_wed_midweek_vip', 'cfb_thu_night_spotlight', 'cfb_sat_vip_adds_kills', 'picks_for_today', 'pval_injury_ledger', 'lane_b_refresh'].includes(action)) {
       return adminOpsJson(400, {
         error: 'action must be a valid lounge-odds-poll action (incl. picks_for_today, pval_injury_ledger, cfb VIP ops).',
       })
@@ -188,6 +188,41 @@ Deno.serve(async (req) => {
         marketEvents: marketEvents.length,
         requestsRemaining: remaining,
         ...ledger,
+      })
+    }
+
+    // Ops-only Lane B scrape … allowed even when syndicate bot is stopped (soft-fail intake).
+    if (action === 'lane_b_refresh') {
+      const { refreshLaneBTicketsForSlate, loadLaneBTicketsForSport } = await import(
+        '../_shared/loungeBotLaneBScrape.ts'
+      )
+      const { fetchSportOdds } = await import('../_shared/loungeBotOddsRun.ts')
+      const { filterOddsEventsForNextFootballSlate } = await import('../_shared/loungeBotOddsCaption.ts')
+      let sportKey = String(body?.sportKey || 'americanfootball_ncaaf').trim()
+      if (sportKey === 'nfl') sportKey = 'americanfootball_nfl'
+      if (sportKey === 'cfb' || sportKey === 'ncaaf') sportKey = 'americanfootball_ncaaf'
+      let events: any[] = []
+      try {
+        const oddsData = await fetchSportOdds(sportKey, ['us'], ['spreads'])
+        events = filterOddsEventsForNextFootballSlate(oddsData?.events || [])
+      } catch (e) {
+        return adminOpsJson(200, {
+          ok: false,
+          soft_fail: true,
+          action: 'lane_b_refresh',
+          error: String(e),
+          tickets: [],
+        })
+      }
+      const refresh = await refreshLaneBTicketsForSlate(admin, sportKey, events)
+      const tickets = await loadLaneBTicketsForSport(admin, sportKey)
+      return adminOpsJson(200, {
+        ok: refresh.ok,
+        action: 'lane_b_refresh',
+        sportKey,
+        eventCount: events.length,
+        refresh,
+        tickets,
       })
     }
 
@@ -334,6 +369,23 @@ Deno.serve(async (req) => {
       const { loadPastedBettingSplitsForSlate } = await import('../_shared/loungeBotBettingSplits.ts')
       const pastedSplitsByEventId = await loadPastedBettingSplitsForSlate(admin, sportKey, events)
 
+      // Lane B external tickets (soft-fail) … Quorum may fold matched sides
+      const { refreshLaneBTicketsForSlate, loadLaneBTicketsForSport } = await import(
+        '../_shared/loungeBotLaneBScrape.ts'
+      )
+      const laneBRefresh = await refreshLaneBTicketsForSlate(admin, sportKey, events).catch((e) => ({
+        ok: false,
+        soft_fail: true,
+        scrape_run_id: '',
+        discovered_urls: 0,
+        fetched_ok: 0,
+        tickets_parsed: 0,
+        tickets_upserted: 0,
+        matched_events: 0,
+        errors: [String(e)],
+      }))
+      const laneBTickets = await loadLaneBTicketsForSport(admin, sportKey).catch(() => [])
+
       // Need totals for Tank's O/U lane
       let eventsWithTotals = events
       try {
@@ -352,6 +404,7 @@ Deno.serve(async (req) => {
         cfbRatingsMap,
         sideModifiersByEventId,
         pastedSplitsByEventId,
+        laneBTickets,
       })
 
       if (!card) {
@@ -362,6 +415,7 @@ Deno.serve(async (req) => {
           totalEventsInWindow: events.length,
           clusterDays: FOOTBALL_SLATE_CLUSTER_DAYS,
           maxLookaheadDays: FOOTBALL_SLATE_MAX_LOOKAHEAD_DAYS,
+          laneBRefresh,
         })
       }
 
@@ -396,6 +450,8 @@ Deno.serve(async (req) => {
           vipPreviewCaption,
           subscriberThreadParts,
           card,
+          laneBRefresh,
+          laneBTicketCount: laneBTickets.length,
         })
       }
 
@@ -415,6 +471,8 @@ Deno.serve(async (req) => {
         splitsCount: card.splits.length,
         totalEventsRaw: rawEvents.length,
         totalEventsInWindow: events.length,
+        laneBRefresh,
+        laneBTicketCount: laneBTickets.length,
         ...result,
       })
     }

@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Windows Theo 2026-09-04 … Lane B scrape + Quorum desk (test)
+
+**I am Windows Theo.** Shipped Lane B auto-discover/scrape (VSiN/Covers/Boyds) into `syndicate_lane_b_tickets`, ops Lane B tab, `lane_b_refresh`, and **Quorum** fifth ATS desk (blends Scott/Rocco/Chedda + Lane B fold-in). Migration `20260904010000` on test; `lounge-odds-poll` redeployed test. Smoke: 45 tickets / 18 matched on CFB refresh; Quorum shows on dry-run slate. **Prod SQL/Edge not done.** Watch hammer inflation (Quorum upgrades many 2-0 → 3-0).
+
 ### Windows Theo 2026-09-03 … Syndicate Lane B intake allowlist
 
 **I am Windows Theo.** Parked Action/Unabated pick-ledger API. Seeded publisher-first Lane B doctrine + CSV allowlist (VSiN Burke/Makinen/Tuley/Youmans, Covers Powers, Sharp site, free-play cappers; paywalled → manual; dead handles excluded). Docs: **`docs/syndicate-lane-b-handicappers.md`**, **`data/syndicate/lane-b-intake-allowlist.csv`**. Next: ops manual ticket log and/or VSiN/Covers HTML parse … no Edge yet.

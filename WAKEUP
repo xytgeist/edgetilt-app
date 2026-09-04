@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-04 … group voice participant grid
+
+**I am Mac Theo.** Group voice on the IPA showed one room avatar. Native LiveKit now publishes the roster + speaking flags; web chrome renders every person with a green halo while they talk. **Rebuild EdgeTilt Test** for IPA. Web/PWA already had this grid.
+
 ### Mac Theo 2026-09-04 … outgoing caller ringback
 
 **I am Mac Theo.** Callers heard silence while the other phone rang. CallKit `connectedAt` fires when the **local** LiveKit room is up, so iOS never plays PSTN ringback. Native dual-tone now plays from `startOutgoing` until the first remote joins (`EdgeOutgoingRingback`). Web/PWA starts ringback on the Start tap. **Rebuild EdgeTilt Test** to hear it in the IPA. Web/PWA is Vercel `test` only. Do not put Web Audio ringback back on `NativeIpaCallSession` (that dinged after connect).

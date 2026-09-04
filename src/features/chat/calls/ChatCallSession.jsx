@@ -642,9 +642,11 @@ function NativeIpaCallSession({
   initialMinimized = false,
   isOutgoing = false,
   avatarUrl = null,
+  viewerAvatarUrl = null,
   peerUserId = null,
   viewerUserId = null,
   callStartedBy = null,
+  supabaseClient = null,
   recordingStatus = 'idle',
   recordingStartedBy = null,
   recordingStartedAt = null,
@@ -664,6 +666,12 @@ function NativeIpaCallSession({
   const [remoteHasVideo, setRemoteHasVideo] = useState(false)
   const [speakerOn, setSpeakerOn] = useState(() => Boolean(videoEnabled))
   const [remoteCount, setRemoteCount] = useState(0)
+  const [nativeRoster, setNativeRoster] = useState(
+    () =>
+      /** @type {{ identity: string, name: string, isLocal: boolean, isSpeaking: boolean }[]} */ (
+        []
+      ),
+  )
   const [connected, setConnected] = useState(false)
   const [connectError, setConnectError] = useState('')
   const [elapsed, setElapsed] = useState(0)
@@ -737,6 +745,22 @@ function NativeIpaCallSession({
       if (!detail) return
       if (callId && detail.callId && String(detail.callId) !== String(callId)) return
       if (typeof detail.remoteCount === 'number') setRemoteCount(detail.remoteCount)
+      if (Array.isArray(detail.participants)) {
+        setNativeRoster(
+          detail.participants
+            .map((row) => {
+              const identity = String(row?.identity || '').trim()
+              if (!identity) return null
+              return {
+                identity,
+                name: String(row?.name || '').trim(),
+                isLocal: Boolean(row?.isLocal),
+                isSpeaking: Boolean(row?.isSpeaking),
+              }
+            })
+            .filter(Boolean),
+        )
+      }
       if (typeof detail.micOn === 'boolean') setMicOn(detail.micOn)
       if (typeof detail.camOn === 'boolean') setCamOn(detail.camOn)
       if (typeof detail.hasVideo === 'boolean') setHasVideo(detail.hasVideo)
@@ -835,15 +859,48 @@ function NativeIpaCallSession({
     return () => window.clearInterval(id)
   }, [recordingStatus, recordingStartedAt, recordingMaxSeconds, onStopRecording, canStopRecording])
 
+  const participantIds = useMemo(
+    () => nativeRoster.map((p) => p.identity).filter(Boolean),
+    [nativeRoster],
+  )
+  const profileById = useCallParticipantProfiles(supabaseClient, participantIds)
+  const speakingIds = useMemo(() => {
+    const set = new Set()
+    for (const p of nativeRoster) {
+      if (p.isSpeaking && p.identity) set.add(p.identity)
+    }
+    return set
+  }, [nativeRoster])
+  const resolveAvatarForParticipant = (participant) => {
+    if (!participant) return null
+    const fromProfile = profileById.get(participant.identity)?.avatarUrl || null
+    if (participant.isLocal) return viewerAvatarUrl || fromProfile
+    if (peerUserId && participant.identity === peerUserId) return avatarUrl || fromProfile
+    if (!isGroup) return avatarUrl || fromProfile
+    return fromProfile
+  }
+  const resolveNameForParticipant = (participant) => {
+    if (!participant) return 'Caller'
+    if (participant.isLocal) return 'You'
+    const fromProfile = profileById.get(participant.identity)?.title
+    if (fromProfile) return fromProfile
+    if (participant.name) return participant.name
+    if (!isGroup) return title || 'Caller'
+    return participant.identity?.slice(0, 8) || 'Caller'
+  }
+  const showGroupAudioStage =
+    isGroup && !awaitingAnswer && !isVideoMode && nativeRoster.length > 0
+
   const mm = String(Math.floor(elapsed / 60)).padStart(2, '0')
   const ss = String(elapsed % 60).padStart(2, '0')
+  const inCallCount = nativeRoster.length > 0 ? nativeRoster.length : remoteCount + 1
   const statusLabel = connectError
     ? 'Could not connect'
     : awaitingAnswer
       ? 'Ringing…'
       : !connected
         ? 'Connecting…'
-        : `${mm}:${ss}${isGroup ? ` · ${remoteCount + 1} in call` : ''}${
+        : `${mm}:${ss}${isGroup ? ` · ${inCallCount} in call` : ''}${
             recordingActive ? ' · REC' : recordingSaving ? ' · Saving recording…' : ''
           }`
 
@@ -1024,6 +1081,13 @@ function NativeIpaCallSession({
               }}
             />
           </div>
+        ) : showGroupAudioStage ? (
+          <GroupAudioStage
+            participants={nativeRoster}
+            speakingIds={speakingIds}
+            resolveAvatarForParticipant={resolveAvatarForParticipant}
+            resolveNameForParticipant={resolveNameForParticipant}
+          />
         ) : (
           <div className="flex h-full flex-col items-center justify-center pb-6">
             <CallAvatarCircle
@@ -2115,23 +2179,25 @@ function CallAvatarCircle({
   speaking = false,
 }) {
   const initial = (title || '?').trim().charAt(0).toUpperCase() || '?'
-  const ringClass = speaking
-    ? ' ring-4 ring-emerald-500/80 shadow-[0_0_40px_rgba(16,185,129,0.4)] animate-pulse'
+  const haloClass = speaking
+    ? ' ring-4 ring-emerald-400 shadow-[0_0_28px_rgba(52,211,153,0.55)]'
     : ring
       ? ' ring-2 ring-white/15 shadow-[0_20px_50px_rgba(0,0,0,0.65)]'
       : ''
   return (
     <div
-      className={`relative flex items-center justify-center overflow-hidden rounded-full bg-zinc-800/90 backdrop-blur-md transition-all duration-200 ${sizeClass}${ringClass}`}
+      className={`relative flex items-center justify-center rounded-full ${sizeClass}${haloClass} transition-shadow duration-200`}
       aria-label={speaking ? `${title || 'Caller'} speaking` : undefined}
     >
-      {avatarUrl ? (
-        <img src={avatarUrl} alt="" className="h-full w-full object-cover rounded-full" />
-      ) : (
-        <span className={`font-bold uppercase tracking-tight text-zinc-100 ${textClass}`} aria-hidden>
-          {initial}
-        </span>
-      )}
+      <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-zinc-800/90 backdrop-blur-md">
+        {avatarUrl ? (
+          <img src={avatarUrl} alt="" className="h-full w-full object-cover rounded-full" />
+        ) : (
+          <span className={`font-bold uppercase tracking-tight text-zinc-100 ${textClass}`} aria-hidden>
+            {initial}
+          </span>
+        )}
+      </div>
     </div>
   )
 }

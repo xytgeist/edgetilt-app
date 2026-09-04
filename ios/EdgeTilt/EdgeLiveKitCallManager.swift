@@ -20,6 +20,8 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     var remoteCount: Int = 0
     var error: String = ""
     var callPayload: [String: Any]? = nil
+    /// LiveKit roster for web chrome (group voice grid + speaking halo).
+    var participants: [[String: Any]] = []
 
     func dictionary() -> [String: Any] {
       var dict: [String: Any] = [
@@ -33,6 +35,7 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
         "speakerOn": speakerOn,
         "remoteCount": remoteCount,
         "error": error,
+        "participants": participants,
       ]
       if let call = callPayload { dict["call"] = call }
       return dict
@@ -64,6 +67,7 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   private var overlayMiniFrame: CGRect?
   private let outgoingRingback = EdgeOutgoingRingback()
   private var waitingForRemoteAnswer = false
+  private var speakingIdentities = Set<String>()
 
   private let remoteVideoView: VideoView = {
     let view = VideoView()
@@ -158,6 +162,7 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
 
   func hangup(leaveOnServer: Bool) {
     stopOutgoingRingback()
+    speakingIdentities.removeAll()
     let callId = state.callId
     guard !callId.isEmpty || state.connected || connectTask != nil else { return }
     chromeMinimized = false
@@ -366,7 +371,7 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
 
     try await room.connect(url: url, token: token)
     state.connected = true
-    state.remoteCount = room.remoteParticipants.count
+    refreshRoster()
     EdgeCallKitManager.shared.markMediaConnectedLocally()
     EdgeCallKitManager.shared.markOutgoingConnected(callId: callId)
     dispatchState()
@@ -635,7 +640,7 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   }
 
   func room(_ room: Room, participantDidConnect participant: RemoteParticipant) {
-    state.remoteCount = room.remoteParticipants.count
+    refreshRoster()
     if waitingForRemoteAnswer {
       stopOutgoingRingback()
     }
@@ -643,7 +648,7 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   }
 
   func room(_ room: Room, participantDidDisconnect participant: RemoteParticipant) {
-    state.remoteCount = room.remoteParticipants.count
+    refreshRoster()
     DispatchQueue.main.async { [weak self] in
       guard let self else { return }
       let remoteTrack = self.firstRemoteVideoTrack()
@@ -653,6 +658,18 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
       self.updateOverlayVisibility()
       self.dispatchState()
     }
+  }
+
+  func room(_ room: Room, didUpdateSpeakingParticipants participants: [Participant]) {
+    speakingIdentities = Set(
+      participants.compactMap { participant in
+        let id = identityString(participant)
+        guard !id.isEmpty, participant.isSpeaking else { return nil }
+        return id
+      }
+    )
+    refreshRoster()
+    dispatchState()
   }
 
   func room(_ room: Room, participant: LocalParticipant, didPublishTrack publication: LocalTrackPublication) {
@@ -711,6 +728,30 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   private func dispatchState() {
     let detail = state.dictionary()
     EdgeCallKitManager.shared.dispatchNativeCallState(detail)
+  }
+
+  private func identityString(_ participant: Participant) -> String {
+    participant.identity?.stringValue.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+  }
+
+  private func refreshRoster() {
+    state.remoteCount = room.remoteParticipants.count
+    var rows: [[String: Any]] = []
+    func append(_ participant: Participant, isLocal: Bool) {
+      let id = identityString(participant)
+      if id.isEmpty { return }
+      rows.append([
+        "identity": id,
+        "name": participant.name ?? "",
+        "isLocal": isLocal,
+        "isSpeaking": participant.isSpeaking || speakingIdentities.contains(id),
+      ])
+    }
+    append(room.localParticipant, isLocal: true)
+    for remote in room.remoteParticipants.values {
+      append(remote, isLocal: false)
+    }
+    state.participants = rows
   }
 
   private func beginOutgoingRingback() {

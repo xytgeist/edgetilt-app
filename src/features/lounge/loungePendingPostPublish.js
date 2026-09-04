@@ -705,10 +705,9 @@ export function loungeEditSnapshotHasIncomingVideoUpload(snapshot) {
   return false
 }
 
-/** Bottom upload bar: text-only multi-part threads (no video anywhere in the snapshot). */
-export function loungeSubmissionShouldUseBottomUploadBar(snapshot) {
-  if (loungeSubmissionSnapshotIncludesVideo(snapshot)) return false
-  return loungeSubmissionSnapshotThreadPartCount(snapshot) > 1
+/** Bottom upload bar is video-prep HUD only. Text / image / GIF / text-thread submit uses the composer seam. */
+export function loungeSubmissionShouldUseBottomUploadBar(_snapshot) {
+  return false
 }
 
 /** @param {string} [prefix] */

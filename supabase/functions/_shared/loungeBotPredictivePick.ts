@@ -35,6 +35,7 @@ import {
   type CfbMatchupProjection,
   type CfbTeamPowerRating,
 } from './loungeBotCfbPowerRatings.ts'
+import { loadMarketFilesByEventIds } from './loungeBotMarketFile.ts'
 import { fetchEspnGameSummary, type EspnGameSummary } from './loungeBotEspnSummary.ts'
 import { analyzeFootballKeyNumbers } from './loungeBotKeyNumbers.ts'
 import {
@@ -864,6 +865,10 @@ function extractEventMarketTotal(ev: {
 const TANK_TOTALS_LOOK_PTS = 2.5
 /** Publish lean threshold (totals are noisier than sides). */
 const TANK_TOTALS_EDGE_PTS = 3.5
+/** CFB non-conference Over bump … slightly softer edge when wind is clear. */
+const TANK_TOTALS_NONCONF_OVER_EDGE_PTS = 3.0
+/** Open→current total move that counts as "total has risen/fallen". */
+const TANK_TOTALS_OPEN_MOVE_PTS = 0.5
 /** CFB/NFL totals key numbers … allow a 2.5+ lean if model crosses one of these vs market. */
 const TANK_TOTALS_KEY_NUMBERS = [48, 51, 54] as const
 
@@ -876,19 +881,109 @@ function crossesTotalsKeyNumber(modelTotal: number, marketTotal: number): boolea
   return false
 }
 
+export type TankTotalsContext = {
+  /** Outdoor high wind (≥15 mph). Domes never set this. */
+  isHighWind?: boolean
+  openTotal?: number | null
+  /** CFB only … teams from different conferences (incl. Independent). */
+  isNonConference?: boolean
+  /** When true, non-conference Over bump is eligible. */
+  isCfb?: boolean
+}
+
 /**
  * Tank totals vote. PASS is the default.
- * Play at ≥3.5 pts, or ≥2.5 when model crosses a key total (48/51/54) vs market.
+ * Base: play at ≥3.5 pts, or ≥2.5 when model crosses a key total (48/51/54) vs market.
+ * Weather NCAAF Overs research (CFB-first; NFL gets wind + open-total only):
+ * - High wind outdoor → hard veto on Overs (windy games lean Under / leave Overs alone)
+ * - Falling total vs open → veto Overs (system is most profitable when total has risen)
+ * - CFB non-conference → soft Over bump to 3.0 when wind is clear (unfamiliarity)
  */
-function resolveTankTotalsSide(modelTotal: number | null, marketTotal: number | null): 'over' | 'under' | 'pass' {
+export function resolveTankTotalsSide(
+  modelTotal: number | null,
+  marketTotal: number | null,
+  ctx: TankTotalsContext = {},
+): 'over' | 'under' | 'pass' {
   if (modelTotal == null || marketTotal == null) return 'pass'
   const delta = modelTotal - marketTotal
   const abs = Math.abs(delta)
   const keyCross = abs >= TANK_TOTALS_LOOK_PTS && crossesTotalsKeyNumber(modelTotal, marketTotal)
-  if (abs < TANK_TOTALS_EDGE_PTS && !keyCross) return 'pass'
-  if (delta > 0) return 'over'
-  if (delta < 0) return 'under'
-  return 'pass'
+  const windBlocksOver = ctx.isHighWind === true
+  const openTotal = ctx.openTotal
+  const hasOpen = openTotal != null && Number.isFinite(openTotal)
+  const totalRose =
+    hasOpen && marketTotal - (openTotal as number) >= TANK_TOTALS_OPEN_MOVE_PTS
+  const totalFell =
+    hasOpen && (openTotal as number) - marketTotal >= TANK_TOTALS_OPEN_MOVE_PTS
+
+  let side: 'over' | 'under' | 'pass' = 'pass'
+  if (abs >= TANK_TOTALS_EDGE_PTS || keyCross) {
+    if (delta > 0) side = 'over'
+    else if (delta < 0) side = 'under'
+  } else if (
+    ctx.isCfb
+    && ctx.isNonConference
+    && !windBlocksOver
+    && delta > 0
+    && abs >= TANK_TOTALS_NONCONF_OVER_EDGE_PTS
+  ) {
+    // Soft Over path … non-conference unfamiliarity; still requires clear wind.
+    side = 'over'
+  }
+
+  if (side === 'over' && windBlocksOver) return 'pass'
+  if (side === 'over' && totalFell) return 'pass'
+  // Rising total confirms Over; missing open file does not block a hard model edge.
+  if (side === 'over' && hasOpen && !totalRose && abs < TANK_TOTALS_EDGE_PTS && !keyCross) {
+    // Soft non-conf Over without a rising total … pass (research: most profitable when total up).
+    return 'pass'
+  }
+  return side
+}
+
+/**
+ * Load open totals + kickoff weather for Tank slate modifiers.
+ * Weather is fetched in parallel (Open-Meteo); failures leave that event without wind veto.
+ */
+export async function loadTankTotalsContextForSlate(
+  admin: SupabaseClient,
+  sportKey: string,
+  events: Array<{ id?: string; home_team?: string; commence_time?: string }>,
+): Promise<{
+  weatherByEventId: Map<string, GameWeatherSummary>
+  openTotalByEventId: Map<string, number | null>
+}> {
+  const weatherByEventId = new Map<string, GameWeatherSummary>()
+  const openTotalByEventId = new Map<string, number | null>()
+  const ids = events.map((e) => String(e.id || '').trim()).filter(Boolean)
+  if (!ids.length) return { weatherByEventId, openTotalByEventId }
+
+  try {
+    const files = await loadMarketFilesByEventIds(admin, ids)
+    for (const [eid, row] of files) {
+      openTotalByEventId.set(eid, row.open_total)
+    }
+  } catch (e) {
+    console.error('Tank open_total load failed:', e)
+  }
+
+  const sportId = oddsSportKeyToRundownSportId(sportKey) || (sportKey.includes('ncaaf') ? 1 : 2)
+  await Promise.all(
+    events.map(async (ev) => {
+      const eid = String(ev.id || '').trim()
+      const home = String(ev.home_team || '').trim()
+      const commence = String(ev.commence_time || '').trim()
+      if (!eid || !home || !commence) return
+      try {
+        const weather = await fetchGameWeather(sportId, home, commence)
+        if (weather) weatherByEventId.set(eid, weather)
+      } catch {
+        // leave unset … no wind veto without a read
+      }
+    }),
+  )
+
+  return { weatherByEventId, openTotalByEventId }
 }
 
 /**
@@ -898,6 +993,7 @@ function resolveTankTotalsSide(modelTotal: number | null, marketTotal: number | 
  * Rocco short-fav alone stays on his VIP desk card but does not count for house buckets.
  * Rocco juice worse than {@link ROCCO_UGLY_JUICE_WORSE_THAN} → PASS unless Scott/Chedda on that side.
  * Synthetic splits never score.
+ * Tank: model edge + wind veto on Overs + falling-total veto + CFB non-conference Over bump.
  */
 export function buildNflAtsSlateCard(
   events: Array<{
@@ -929,6 +1025,10 @@ export function buildNflAtsSlateCard(
     sideModifiersByEventId?: Map<string, SideModifier>
     /** Human-pasted Action/VSiN splits keyed by Odds API event id. */
     pastedSplitsByEventId?: Map<string, BettingSplitSummary>
+    /** Kickoff weather for Tank Over wind veto. */
+    weatherByEventId?: Map<string, GameWeatherSummary>
+    /** Opening total from lounge_market_files for Tank rising/falling total gate. */
+    openTotalByEventId?: Map<string, number | null>
   } = {},
 ): NflSlateCard | null {
   if (!Array.isArray(events) || events.length === 0) return null
@@ -945,6 +1045,8 @@ export function buildNflAtsSlateCard(
   const cfbRatings = opts.cfbRatingsMap
   const sideModifiers = opts.sideModifiersByEventId || new Map<string, SideModifier>()
   const pastedSplits = opts.pastedSplitsByEventId || new Map<string, BettingSplitSummary>()
+  const weatherByEvent = opts.weatherByEventId || new Map<string, GameWeatherSummary>()
+  const openTotalByEvent = opts.openTotalByEventId || new Map<string, number | null>()
 
   for (const ev of events) {
     const homeTeam = ev.home_team
@@ -1054,7 +1156,7 @@ export function buildNflAtsSlateCard(
     // Scott: PASS unless |model−market| ≥ 2.5 after PVAL; 1.5 only on true 3/7 (or half onto those)
     // Rocco: PASS unless short-fav / hurtSide / hook-tax / pasted chalk-trap (no trench claim)
     // Chedda: PASS unless dog+hook / dog+PVAL / pasted money (no dog+raw-EPA; no synthetic)
-    // Tank: totals first-pass (3.5 / key); weather/rest later … formula untouched here
+    // Tank: totals first-pass (3.5 / key) + wind / open-total / CFB non-conf modifiers
 
     // 1. Scott — model vs current market only (no juice/fav/synthetic lean costume)
     let scottSide: SlateDeskSide = 'pass'
@@ -1171,12 +1273,21 @@ export function buildNflAtsSlateCard(
     const roccoKeptUglyJuice = false
     const roccoCountsForHouse = roccoSide !== 'pass' && roccoHasStrengthReason
 
-    // 4. Tank — totals desk (PASS default; play at ≥3.5 or ≥2.5 into key 48/51/54)
+    // 4. Tank — totals desk (model edge + wind / open-total / CFB non-conf modifiers)
     const marketTotalQuote = extractEventMarketTotal(ev)
     const modelTotal = isCfb
       ? (cfbMatchup?.modelTotal ?? null)
       : estimateNflModelTotal(homeTeam, awayTeam, teamMetrics)
-    const tankTotalsSide = resolveTankTotalsSide(modelTotal, marketTotalQuote?.total ?? null)
+    const weather = weatherByEvent.get(String(ev.id || '').trim()) || null
+    const openTotal = openTotalByEvent.has(String(ev.id || '').trim())
+      ? openTotalByEvent.get(String(ev.id || '').trim()) ?? null
+      : null
+    const tankTotalsSide = resolveTankTotalsSide(modelTotal, marketTotalQuote?.total ?? null, {
+      isHighWind: weather?.isHighWind === true,
+      openTotal,
+      isNonConference: cfbMatchup?.isNonConference === true,
+      isCfb: !!isCfb,
+    })
     void tankRestWeight // reserved for rest/travel boost once that feed is first-class
 
     const overPickObj: OddsPick | null = marketTotalQuote

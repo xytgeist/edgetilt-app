@@ -313,6 +313,7 @@ Deno.serve(async (req) => {
     if (action === 'nfl_slate_card' || action === 'cfb_slate_card') {
       const {
         buildNflAtsSlateCard,
+        loadTankTotalsContextForSlate,
         publishAndRecordNflSlateCard,
       } = await import('../_shared/loungeBotPredictivePick.ts')
       const { fetchSportOdds } = await import('../_shared/loungeBotOddsRun.ts')
@@ -367,6 +368,12 @@ Deno.serve(async (req) => {
         // keep spreads-only events
       }
 
+      const { weatherByEventId, openTotalByEventId } = await loadTankTotalsContextForSlate(
+        admin,
+        sportKey,
+        eventsWithTotals,
+      )
+
       const card = buildNflAtsSlateCard(eventsWithTotals, {
         cardTitle: body?.cardTitle,
         sportKey,
@@ -375,6 +382,8 @@ Deno.serve(async (req) => {
         cfbRatingsMap,
         sideModifiersByEventId,
         pastedSplitsByEventId,
+        weatherByEventId,
+        openTotalByEventId,
       })
 
       if (!card) {

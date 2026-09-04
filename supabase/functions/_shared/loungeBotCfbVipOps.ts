@@ -21,6 +21,7 @@ import { loadDbTeamMetricsMap } from './loungeBotTeamMetrics.ts'
 import { loadDbCfbPowerRatingsMap } from './loungeBotCfbPowerRatings.ts'
 import {
   buildNflAtsSlateCard,
+  loadTankTotalsContextForSlate,
   type NflSlateCard,
   type SlateGamePick,
 } from './loungeBotPredictivePick.ts'
@@ -117,13 +118,14 @@ async function loadCfbSlateCard(
   cardTitle?: string,
 ): Promise<NflSlateCard | null> {
   if (!events.length) return null
-  const [weightsMap, teamMetricsMap, cfbRatingsMap, sideModifiersByEventId, pastedSplitsByEventId] =
+  const [weightsMap, teamMetricsMap, cfbRatingsMap, sideModifiersByEventId, pastedSplitsByEventId, tankCtx] =
     await Promise.all([
       loadPersonaWeights(admin),
       loadDbTeamMetricsMap(admin),
       loadDbCfbPowerRatingsMap(admin),
       resolveSideModifiersForSlate(admin, CFB_SPORT, events),
       loadPastedBettingSplitsForSlate(admin, CFB_SPORT, events),
+      loadTankTotalsContextForSlate(admin, CFB_SPORT, events),
     ])
 
   return buildNflAtsSlateCard(events, {
@@ -134,6 +136,8 @@ async function loadCfbSlateCard(
     cfbRatingsMap,
     sideModifiersByEventId,
     pastedSplitsByEventId,
+    weatherByEventId: tankCtx.weatherByEventId,
+    openTotalByEventId: tankCtx.openTotalByEventId,
   })
 }
 

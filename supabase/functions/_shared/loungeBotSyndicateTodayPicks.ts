@@ -16,6 +16,7 @@ import {
   formatNflSlateCardCaption,
   formatNflSlatePrivateRootCaption,
   formatPickerSlateList,
+  loadTankTotalsContextForSlate,
   publishAndRecordNflSlateCard,
   VIP_ATS_THREAD_PICKERS,
 } from './loungeBotPredictivePick.ts'
@@ -221,13 +222,14 @@ export async function runPicksForToday(
     }
   }
 
-  const [weightsMap, teamMetricsMap, cfbRatingsMap, sideModifiersByEventId, pastedSplitsByEventId] =
+  const [weightsMap, teamMetricsMap, cfbRatingsMap, sideModifiersByEventId, pastedSplitsByEventId, tankCtx] =
     await Promise.all([
       loadPersonaWeights(admin),
       loadDbTeamMetricsMap(admin),
       loadDbCfbPowerRatingsMap(admin),
       resolveSideModifiersForSlate(admin, sportKey, todayEvents),
       loadPastedBettingSplitsForSlate(admin, sportKey, todayEvents),
+      loadTankTotalsContextForSlate(admin, sportKey, todayEvents),
     ])
 
   const label = sportLabel(sportKey)
@@ -239,6 +241,8 @@ export async function runPicksForToday(
     cfbRatingsMap,
     sideModifiersByEventId,
     pastedSplitsByEventId,
+    weatherByEventId: tankCtx.weatherByEventId,
+    openTotalByEventId: tankCtx.openTotalByEventId,
   })
 
   if (!card || !card.games.length) {

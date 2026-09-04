@@ -29,6 +29,8 @@ export type CfbMatchupProjection = {
   modelSpreadHome: number // e.g. -7.5 (favors home by 7.5 pts)
   modelTotal: number      // e.g. 54.5
   combinedTempo: number   // avg plays/game (Tank totals lane)
+  /** True when teams' conferences differ (incl. Independent vs league). */
+  isNonConference: boolean
   marketSpreadHome: number | null
   spreadDelta: number     // Model spread - Market spread
   isValuePlay: boolean    // Spread delta >= 2.5 points
@@ -258,6 +260,7 @@ export function calculateCfbMatchupProjection(
     modelSpreadHome,
     modelTotal,
     combinedTempo,
+    isNonConference: String(home.conference || '') !== String(away.conference || ''),
     marketSpreadHome,
     spreadDelta,
     isValuePlay,

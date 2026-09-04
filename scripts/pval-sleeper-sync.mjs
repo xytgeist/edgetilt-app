@@ -74,22 +74,26 @@ function parseArgs(argv) {
 }
 
 function printSummary(built) {
-  console.log(`Sleeper season=${built.season} week=${built.week}`)
+  console.log(`Sleeper season=${built.season} week=${built.week} lookback=${built.lookbackWeeks} weeks=${(built.weeksUsed || []).join(',')}`)
   console.log(`Players file ~${built.playerCount} · proposed PVAL rows ${built.rowCount}`)
   console.log('Band counts:', built.bandCounts)
   console.log('\nTop 15 by PVAL:')
   for (const r of built.rows.slice(0, 15)) {
     console.log(
-      `  ${r.pval.toFixed(2).padStart(4)}  ${r.bandKey.padEnd(12)}  ${r.player_name} (${r.team_abbr}) depth=${r.depth_order ?? '-'} pts=${r.pts_ppr ?? '-'}`,
+      `  ${r.pval.toFixed(2).padStart(4)}  ${r.bandKey.padEnd(12)}  ${r.player_name} (${r.team_abbr}) depth=${r.depth_order ?? '-'} avg=${r.pts_avg ?? '-'} cur=${r.pts_ppr ?? '-'}`,
     )
   }
   console.log('\nSample WR1:')
   for (const r of built.rows.filter((x) => x.bandKey === 'wr1').slice(0, 8)) {
-    console.log(`  ${r.pval.toFixed(2)}  ${r.player_name}  pts=${r.pts_ppr}  pct=${r.percentile}`)
+    console.log(
+      `  ${r.pval.toFixed(2)}  ${r.player_name}  avg=${r.pts_avg}  cur=${r.pts_ppr}  pct=${r.percentile}`,
+    )
   }
   console.log('\nSample starting_qb:')
   for (const r of built.rows.filter((x) => x.bandKey === 'starting_qb').slice(0, 8)) {
-    console.log(`  ${r.pval.toFixed(2)}  ${r.player_name}  pts=${r.pts_ppr}  pct=${r.percentile}`)
+    console.log(
+      `  ${r.pval.toFixed(2)}  ${r.player_name}  avg=${r.pts_avg}  cur=${r.pts_ppr}  pct=${r.percentile}`,
+    )
   }
 }
 

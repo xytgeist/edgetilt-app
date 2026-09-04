@@ -19,6 +19,7 @@ import {
   chatMuteRoomUntil,
   chatPinnedMessagesPage,
   chatRemoveGroupMember,
+  chatSetNewMembersSeeHistory,
   chatSetFanRoomMemberRole,
   chatStarredMessagesPage,
   chatUnmuteGroupMember,
@@ -126,6 +127,10 @@ export default function ChatGroupSettingsSheet({
   const [pinnedCount, setPinnedCount] = useState(0)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
+  const [newMembersSeeHistory, setNewMembersSeeHistory] = useState(
+    room?.new_members_see_history !== false,
+  )
+  const [historySettingBusy, setHistorySettingBusy] = useState(false)
 
   const [addExpanded, setAddExpanded] = useState(false)
   const [addSearch, setAddSearch] = useState('')
@@ -186,8 +191,28 @@ export default function ChatGroupSettingsSheet({
     setAuxView(null)
     setAddExpanded(false)
     setAddSearch('')
+    setNewMembersSeeHistory(room?.new_members_see_history !== false)
     void reload()
-  }, [open, room.title, room.description, room.topic_keywords, reload])
+  }, [open, room.title, room.description, room.topic_keywords, room?.new_members_see_history, reload])
+
+  useEffect(() => {
+    if (!open || !room?.id || !isOwner) return undefined
+    let cancelled = false
+    void (async () => {
+      const { data, error } = await supabaseClient
+        .from('chat_rooms')
+        .select('new_members_see_history')
+        .eq('id', room.id)
+        .maybeSingle()
+      if (cancelled || error || !data) return
+      if (typeof data.new_members_see_history === 'boolean') {
+        setNewMembersSeeHistory(data.new_members_see_history)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, room?.id, isOwner, supabaseClient])
 
   useEffect(() => {
     if (!open || !avatarCropFile) return undefined
@@ -714,18 +739,44 @@ export default function ChatGroupSettingsSheet({
           ) : null}
         </div>
 
-        {/* ── Privacy (classic groups only) ─────────────────────── */}
-        {!isCreatorFanRoom && !isPlatformSubRoom ? (
+        {/* ── Privacy: owner history + classic-group read receipts ── */}
+        {isOwner || (!isCreatorFanRoom && !isPlatformSubRoom) ? (
         <>
         <SectionLabel>Privacy</SectionLabel>
         <SettingsGroup>
-          <SettingsToggleRow
-            label="Read receipts"
-            hint="When off, you won't send or see read receipts."
-            enabled={viewerReadReceiptsEnabled}
-            busy={readReceiptsBusy}
-            onToggle={() => onViewerReadReceiptsEnabledChange?.(!viewerReadReceiptsEnabled)}
-          />
+          {isOwner ? (
+            <SettingsToggleRow
+              label="Show chat history to new members"
+              hint="Off = people who join later start with a blank room. Does not change what current members already see."
+              enabled={newMembersSeeHistory}
+              busy={historySettingBusy}
+              onToggle={() => {
+                const next = !newMembersSeeHistory
+                setHistorySettingBusy(true)
+                setErr('')
+                void (async () => {
+                  try {
+                    await chatSetNewMembersSeeHistory(supabaseClient, room.id, next)
+                    setNewMembersSeeHistory(next)
+                    onRoomUpdated?.({ new_members_see_history: next })
+                  } catch (ex) {
+                    setErr(ex?.message || 'Could not update history setting.')
+                  } finally {
+                    setHistorySettingBusy(false)
+                  }
+                })()
+              }}
+            />
+          ) : null}
+          {!isCreatorFanRoom && !isPlatformSubRoom ? (
+            <SettingsToggleRow
+              label="Read receipts"
+              hint="When off, you won't send or see read receipts."
+              enabled={viewerReadReceiptsEnabled}
+              busy={readReceiptsBusy}
+              onToggle={() => onViewerReadReceiptsEnabledChange?.(!viewerReadReceiptsEnabled)}
+            />
+          ) : null}
         </SettingsGroup>
         </>
         ) : null}

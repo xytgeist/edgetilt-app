@@ -46,7 +46,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Goal (Windows, parallel OK):** _Web app bugs/features + **self-hosted GitHub Actions runner** for poker catalog. Pull often; stay in web lane (`src/**`). Bridge: **`docs/ios-native-bridge.md`**._
 
-**Start by reading:** `AGENTS.md`, this **Pick up here** (esp. **Windows Theo 2026-09-04 … chat/X never get markdown**), **`docs/lounge-bot-sports-odds.md`** destination markdown rules + desk mapping, backlog Update log **2026-09-04**. Dual-agent: **`docs/ios-native-bridge.md`**.
+**Start by reading:** `AGENTS.md`, this **Pick up here** (esp. **Windows Theo 2026-09-04 … private room history for new members** + chat/X never get markdown), **`docs/lounge-bot-sports-odds.md`** destination markdown rules + desk mapping, backlog Update log **2026-09-04**. Dual-agent: **`docs/ios-native-bridge.md`**.
 
 **Optional add-ons** (delete lines you do not need)
 
@@ -74,6 +74,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 3. **Bridge:** new `window.EdgeNative.*` names go in the bridge contract **before** coding both sides. Stub one side first.
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
+
+### Windows Theo 2026-09-04 … private room history for new members
+
+**I am Windows Theo.** Private chat rooms (groups, creator fan, platform sub) have an owner Privacy toggle: **Show chat history to new members**. On (default) = joiners see the archive. Off = later joiners start blank; people already in the room keep what they already see. DMs always keep history. Enforced in SQL (`history_starts_at` + message RPCs/RLS), not UI-only. SQL **`20260904180000`** applied on **test**. **Prod SQL not applied.**
 
 ### Windows Theo 2026-09-04 … chat/X never get markdown
 

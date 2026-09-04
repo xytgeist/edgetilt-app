@@ -486,13 +486,21 @@ export function chatUnblockUser(supabase, targetUserId) {
 }
 
 /**
- * Returns the block status between the viewer and another user.
- * Queries the `blocks` table directly (RLS exposes rows where viewer is on either side).
+ * Owner toggle: later joiners see prior messages, or start from a blank room.
+ * Join-time only... flipping this does not rewrite people already in the room.
  * @param {SupabaseClient} supabase
- * @param {string} viewerUserId
- * @param {string} otherUserId
- * @returns {Promise<{ iBlockThem: boolean, theyBlockMe: boolean }>}
+ * @param {string} roomId
+ * @param {boolean} enabled
  */
+export async function chatSetNewMembersSeeHistory(supabase, roomId, enabled) {
+  const { data, error } = await supabase.rpc('chat_set_new_members_see_history', {
+    p_room_id: roomId,
+    p_enabled: enabled,
+  })
+  if (error) throw new Error(error.message || 'Could not update history setting.')
+  return data
+}
+
 export function chatUpdateGroup(supabase, { roomId, title, description, avatarUrl }) {
   const body = { action: 'update_group', room_id: roomId }
   if (title != null) body.title = title

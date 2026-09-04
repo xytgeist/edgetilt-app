@@ -10,7 +10,7 @@ export function SectionLabel({ children }) {
 
 export function SettingsGroup({ children }) {
   return (
-    <div className="mx-4 overflow-hidden rounded-2xl bg-zinc-900/60">
+    <div className="mx-4 overflow-hidden rounded-2xl bg-zinc-900/60" data-chat-settings-group>
       {children}
     </div>
   )

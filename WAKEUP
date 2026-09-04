@@ -46,7 +46,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Goal (Windows, parallel OK):** _Web app bugs/features + **self-hosted GitHub Actions runner** for poker catalog. Pull often; stay in web lane (`src/**`). Bridge: **`docs/ios-native-bridge.md`**._
 
-**Start by reading:** `AGENTS.md`, this **Pick up here** (esp. **Windows Theo 2026-09-04 … NFL/CFB VIP desk cards + Tank totals modifiers**), **`docs/lounge-bot-sports-odds.md`** desk mapping, backlog Update log **2026-09-04**. Dual-agent: **`docs/ios-native-bridge.md`**.
+**Start by reading:** `AGENTS.md`, this **Pick up here** (esp. **Windows Theo 2026-09-04 … chat/X never get markdown**), **`docs/lounge-bot-sports-odds.md`** destination markdown rules + desk mapping, backlog Update log **2026-09-04**. Dual-agent: **`docs/ios-native-bridge.md`**.
 
 **Optional add-ons** (delete lines you do not need)
 
@@ -74,6 +74,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 3. **Bridge:** new `window.EdgeNative.*` names go in the bridge contract **before** coding both sides. Stub one side first.
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
+
+### Windows Theo 2026-09-04 … chat/X never get markdown
+
+**I am Windows Theo.** Destination rule: Lounge (public + VIP) keeps markdown. **Chat rooms never get markdown.** **X.com auto-post (when built) never gets markdown.** Same caption can fan out; strip at the destination. Helper `toPlainOutboundText` in `loungeBotPlainOutbound.ts`. Chat choke point is `publishBotSubChatMessage` (every Signal/Syndicate fan-room insert). X publisher must call that helper; do not send Lounge captions raw. Redeploy **`lounge-odds-poll`** (test) for live chat copies. Existing chat messages stay until the next publish.
 
 ### Mac Theo 2026-09-04 … video Record in the pill
 
@@ -103,9 +107,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 5. **Tank modifiers** (`resolveTankTotalsSide`): outdoor wind ≥15 mph vetoes Overs; falling `open_total` vetoes Overs; CFB non-conference soft Over at 3.0 when wind clear + total risen. NFL = wind + open-total only. Context loader: `loadTankTotalsContextForSlate`. Docs: **`docs/lounge-bot-sports-odds.md`** desk mapping + backlog Update log **2026-09-04**.
 
 **Open / next (do not drop):**
-- **Light gold vs Chedda:** Ryan wants **Chedda name** muddy orange; **pick `[gold]`** should stay readable (emerald on light was the earlier intent). Do **not** paint all gold amber again. Likely: keep pick gold → emerald on light; give Chedda a dedicated orange tag or scoped CSS.
 - Existing live Tank lines will **not** recompute modifiers until the **next slate publish**.
-- Lane B / Quorum: still **test-only** migration earlier today … prod SQL/Edge not done; watch hammer inflation.
 - Local junk often dirty: `scripts/backfill-ufc-picks.mjs`, `post-scott-markdown-*.mjs`, scratch files … leave uncommitted.
 
 **Key files:** `loungeBotPredictivePick.ts`, `loungeBotOddsCaption.ts`, `loungeBotCfbPowerRatings.ts`, `loungeBotWeather.ts`, `loungeBotMarketFile.ts`, `lounge-odds-poll/index.ts`.

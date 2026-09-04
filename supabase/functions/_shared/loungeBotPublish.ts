@@ -61,6 +61,7 @@ export async function publishLoungeBotPost(
   admin: SupabaseClient,
   input: BotPublishInput,
 ): Promise<BotPublishResult> {
+  // Lounge feed keeps markdown. Chat/X must use toPlainOutboundText (loungeBotSubChatPublish / future X publisher).
   const caption = stripXTwitterUrlsFromText(sanitizeBotProse(String(input.caption || '').trim()))
   const imageUrls = normalizeBotImageUrls(input.imageUrls)
   if (!caption && !imageUrls.length) return { postId: null, error: 'Caption or image required.' }

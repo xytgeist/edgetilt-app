@@ -12,7 +12,7 @@
 | --- | --- | --- |
 | Job | Edges, coffee, line moves, alerts | Desk cards, today picks, ledger-facing slate |
 | Fan sub | Existing Signal VIP … **unchanged** | **Separate** creator fan sub (Connect + go live) |
-| VIP / fan chat | Signal room only | Syndicate room only … markdown full desk cards (colored desk + gold picks) |
+| VIP / fan chat | Signal room only | Syndicate room only … **plain text** full desk cards (markdown stripped at publish) |
 | Lounge | Public Signal feed as today | Public **teaser** + **`creator_fan_only`** full card (thread of desk lists) |
 | Existing Signal subs | Stay Signal-only … **no** auto-migrate | New subs only |
 | Cron Signal alerts (`poll_edges` / coffee / BBH / VBR) | Yes (`sports-odds` only) | **Never** … cron + Edge skip |
@@ -848,6 +848,27 @@ npm run syndicate:sync-cfb-power:production   # Ryan explicit only
 
 ---
 
+## Destination markdown rules (2026-09-04)
+
+Chat and X do **not** render Lounge markdown. Tags like `[gold]`, `**bold**`, `#` headings, and `*italic*` show as junk.
+
+| Surface | Markdown |
+| --- | --- |
+| Lounge feed (public) | Yes … dialect in this doc |
+| Lounge VIP / `creator_fan_only` posts | Yes … same dialect |
+| Chat rooms (Signal or Syndicate fan room) | **Never** |
+| X.com auto-post (when built) | **Never** |
+
+**Rule:** author once in Lounge markdown. At fan-out, strip.
+
+- Chat choke point: `publishBotSubChatMessage` → `toPlainOutboundText` (`loungeBotPlainOutbound.ts`).
+- X auto-post **must** call `toPlainOutboundText` before the tweet body. Do not send Lounge captions raw.
+- Lounge `publishLoungeBotPost` must **not** strip.
+
+Already-posted chat messages stay as they were; next publish is clean.
+
+---
+
 ## Locked major-post markdown dialect (2026-09-01)
 
 **Scope so far:** public **NFL/CFB Slate Card** + **Weekly Syndicate Ledger** only. Most alerts stay plain. More post kinds still TBD.
@@ -866,6 +887,8 @@ npm run syndicate:sync-cfb-power:production   # Ryan explicit only
 ### VIP desk thread parts (`formatPickerSlateList`)
 
 - Scott / Rocco / Chedda only (Tank totals live on root … no desk thread part)
+- Lounge markdown: colored desk H2 + gold picks / plain PASS
+- Chat copy of the same card is plain text (`toPlainOutboundText` at publish)
 - No leading `·` on lines
 - Fires: `**[gold]pick[/gold]**` (no Team/Team)
 - PASS: `{away}/{home}: PASS`

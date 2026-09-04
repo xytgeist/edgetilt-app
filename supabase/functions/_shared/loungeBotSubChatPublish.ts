@@ -1,10 +1,11 @@
 /**
  * Scott Share alerts → creator fan sub chat room.
+ *
+ * Chat never renders Lounge markdown. All bodies go through toPlainOutboundText.
  */
 
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { sanitizeBotProse } from './wireBotProse.ts'
-import { stripXTwitterUrlsFromText } from './loungeBotXTweetUrl.ts'
+import { toPlainOutboundText } from './loungeBotPlainOutbound.ts'
 
 export type BotSubChatPublishInput = {
   botUserId: string
@@ -52,7 +53,7 @@ async function insertChatMessage(
   body: string,
   imageUrls: string[],
 ): Promise<{ messageId: string | null; error: string | null }> {
-  const text = stripXTwitterUrlsFromText(sanitizeBotProse(body)).slice(0, 8000)
+  const text = toPlainOutboundText(body).slice(0, 8000)
   if (!text && !imageUrls.length) {
     return { messageId: null, error: 'Empty message.' }
   }
@@ -91,7 +92,7 @@ export async function publishBotSubChatMessage(
   const imageUrls = normalizeBotImageUrls(input.imageUrls)
   const caption = String(input.caption || '').trim()
   const parts = (input.threadParts || [])
-    .map((part) => stripXTwitterUrlsFromText(sanitizeBotProse(String(part || '').trim())))
+    .map((part) => String(part || '').trim())
     .filter(Boolean)
 
   const root = await insertChatMessage(admin, roomId, input.botUserId, caption, imageUrls)
@@ -101,9 +102,7 @@ export async function publishBotSubChatMessage(
 
   let threadMessageCount = 1
   for (const part of parts) {
-    let body = part
-    if (body.length > 8000) body = `${body.slice(0, 7997)}...`
-    const followUp = await insertChatMessage(admin, roomId, input.botUserId, body, [])
+    const followUp = await insertChatMessage(admin, roomId, input.botUserId, part, [])
     if (followUp.messageId) threadMessageCount += 1
   }
 

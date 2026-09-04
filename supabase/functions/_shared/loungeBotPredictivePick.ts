@@ -251,7 +251,7 @@ export const ROCCO_UGLY_JUICE_WORSE_THAN = -115
  * - Consensus: pick + agreeing desks only (no PASS callouts)
  * - House Divided / Split: one · line per active side
  * - Order: Hammers → Consensus → House Divided → Split → Tank's Totals → Solo → All Pass
- * - VIP desk thread parts use the same Lounge markdown dialect (colored desk + gold picks)
+ * - VIP desk thread parts use the same Lounge markdown dialect (colored desk + gold picks). Chat/X copies are stripped at publish.
  */
 function formatSlateWeekSubtitle(games: SlateGamePick[]): string | null {
   const times = games
@@ -1722,7 +1722,7 @@ export async function publishAndRecordNflSlateCard(
 
   await syncBotProfileHighlight(admin, botUserId)
 
-  // Plain-text full desks → publisher fan room (Syndicate when remounted; never Signal once Syndicate exists)
+  // Full desk cards → publisher fan room (markdown stripped at chat publish). Never Signal once Syndicate exists.
   try {
     const threadParts = VIP_ATS_THREAD_PICKERS.map((p) => formatPickerSlateList(input.card, p))
     const chatTitle =

@@ -2843,11 +2843,13 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-04:** **Chat / X never get Lounge markdown.** Lounge public + VIP keep the dialect. Fan-room inserts go through `toPlainOutboundText` (`loungeBotPlainOutbound.ts`) inside `publishBotSubChatMessage`. Future X auto-post must use the same helper. Redeploy **`lounge-odds-poll`**. Spec: **`docs/lounge-bot-sports-odds.md`** Destination markdown rules.
+- **2026-09-04:** **Dropped … Chedda orange vs pick gold.** Ryan closed this; leave Chedda on the gold desk tag. Do not paint all gold amber.
 - **2026-09-04:** Voice in-call dock collapsed to the same one-row pill as video (Video / Speaker / Mute / End). No empty grid slots.
 - **2026-09-04:** Voice call docks no longer show two dummy **Record** buttons (recording stays video-only). Group voice no longer auto-hangs ~4s after place... ghost hangup only after a remote actually joined and then everyone else left.
 - **2026-09-04:** **Chat CallChrome TDZ:** `isVideoMode = Boolean(showVideoStage)` ran before `showVideoStage` was declared… Sentry `Cannot access '$e' before initialization` in `ChatCallSession`. Moved the hide-controls hook below the stage flag.
-- **2026-09-04:** **Continuity:** WAKEUP Windows tip @ `85572993` … VIP desk formats + Tank wind/open-total/non-conf modifiers; open item = Chedda orange vs pick gold on light (do not paint all gold amber).
-- **2026-09-04:** **OPEN … Chedda name vs pick gold (light):** Chedda desk name stays muddy orange; pick `[gold]` should stay readable on light (emerald was the earlier intent). Do not revert all gold to amber. Prefer dedicated Chedda/orange tag or scoped CSS.
+- **2026-09-04:** **Continuity:** WAKEUP Windows … chat/X never get markdown (`toPlainOutboundText`); VIP desk formats + Tank modifiers still live. Chedda orange vs pick gold dropped.
+- **2026-09-04:** **Dropped … Chedda name vs pick gold (light).** Ryan closed this 2026-09-04. Chedda stays on the gold desk tag. Do not revert all gold to amber.
 - **2026-09-04:** **Tank totals modifiers (CFB-first):** wind veto on Overs, falling `open_total` veto on Overs, CFB non-conference soft Over bump (3.0) when wind clear + total risen. NFL gets wind + open-total only. Redeploy **`lounge-odds-poll`**.
 - **2026-09-04:** **Public slate captions catch-up:** applied Hammers matchup-first + Tank `Matchup - Over/Under` (NFL shorts) to live public NFL + CFB teasers (and CFB VIP hammers). Shared formatter already covered future posts.
 - **2026-09-04:** **Slate root Hammers + Tank's Totals layout:** Hammers match Consensus (`Matchup · when` then `· pick`); Tank lines are `Pats/Seahawks - Over 44.5 (-102)` (no kickoff). NFL colloquial shorts (Pats/Bucs/Cards) in `shortDisplayName`. Live Week 2 VIP root + desk parts updated. Redeploy **`lounge-odds-poll`**.

@@ -393,11 +393,11 @@ Deno.serve(async (req) => {
           formatNflSlateCardCaption,
           formatNflSlatePrivateRootCaption,
           formatPickerSlateList,
-          SHARP_PICKERS,
+          VIP_ATS_THREAD_PICKERS,
         } = await import('../_shared/loungeBotPredictivePick.ts')
         const previewCaption = formatNflSlateCardCaption(card)
         const vipPreviewCaption = formatNflSlatePrivateRootCaption(card)
-        const subscriberThreadParts = SHARP_PICKERS.map((p) => ({
+        const subscriberThreadParts = VIP_ATS_THREAD_PICKERS.map((p) => ({
           label: `${p} full card`,
           body: formatPickerSlateList(card, p),
         }))

@@ -17,7 +17,7 @@ import {
   formatNflSlatePrivateRootCaption,
   formatPickerSlateList,
   publishAndRecordNflSlateCard,
-  SHARP_PICKERS,
+  VIP_ATS_THREAD_PICKERS,
 } from './loungeBotPredictivePick.ts'
 import { loadPersonaWeights } from './loungeBotPersonaAdaptive.ts'
 import { loadDbTeamMetricsMap } from './loungeBotTeamMetrics.ts'
@@ -255,7 +255,7 @@ export async function runPicksForToday(
   if (dryRun) {
     const previewCaption = formatNflSlateCardCaption(card)
     const vipPreviewCaption = formatNflSlatePrivateRootCaption(card)
-    const subscriberThreadParts = SHARP_PICKERS.map((p) => ({
+    const subscriberThreadParts = VIP_ATS_THREAD_PICKERS.map((p) => ({
       label: `${p} full card`,
       body: formatPickerSlateList(card, p),
     }))

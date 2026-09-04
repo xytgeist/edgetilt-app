@@ -51,6 +51,10 @@ const ODDS_BASE = 'https://api.the-odds-api.com/v4'
 
 export const SHARP_PICKERS = ['Scott', 'Rocco', 'Chedda', 'Tank'] as const
 export type SharpPicker = (typeof SHARP_PICKERS)[number]
+
+/** VIP / fan desk thread parts … Tank totals already live on the slate root. */
+export const VIP_ATS_THREAD_PICKERS = ['Scott', 'Rocco', 'Chedda'] as const
+export type VipAtsThreadPicker = (typeof VIP_ATS_THREAD_PICKERS)[number]
 /** ATS side votes only … Tank lives on totals and does not fill fake 4-0 hammers. */
 export const ATS_SIDE_DESKS = ['Scott', 'Rocco', 'Chedda'] as const
 export type AtsSideDesk = (typeof ATS_SIDE_DESKS)[number]
@@ -552,7 +556,8 @@ export function splitSlateCaptionToFit(caption: string, maxChars: number): strin
 }
 
 /**
- * Format a full ATS/totals card for one persona … VIP / fan thread part.
+ * Format a full ATS card for one persona … VIP / fan thread part.
+ * Tank totals already appear on the slate root … not posted as a desk thread part.
  * Same Lounge markdown dialect as the slate root (colored desk name, gold picks).
  * Every slate game is listed with that desk's decision (including PASS).
  */
@@ -560,12 +565,12 @@ export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): 
   const icon = picker === 'Tank' ? '🛡️' : picker === 'Chedda' ? '🧀' : picker === 'Rocco' ? '🥩' : '🎯'
   const specialty =
     picker === 'Tank'
-      ? 'O/U desk … tempo, off-def, and totals that actually move the number. PASS is the default.'
+      ? 'O/U desk … tempo, off-def, and totals that actually move the number.'
       : picker === 'Chedda'
-        ? 'Dog hunter … hooks, plus-money spots, and sharp money on the underdog. Chalk is someone else\'s problem.'
+        ? 'Dog hunter … hooks, plus-money spots, and sharp money on the underdog.'
         : picker === 'Rocco'
           ? 'Short-chalk butcher … power favorites, key numbers, and the hook. Ugly juice gets a hard pass.'
-          : 'Model-first … fires when the number is wrong vs market. No fav costume, no dog costume.'
+          : 'Model-first … fires when the number is wrong vs market.'
 
   const cardLabel = picker === 'Tank' ? 'Totals Card' : 'ATS Card'
   const lines: string[] = [
@@ -578,18 +583,25 @@ export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): 
     const sportKey = g.sportKey || card.sportKey
     const away = sportTeamDisplayName(g.awayTeam, sportKey)
     const home = sportTeamDisplayName(g.homeTeam, sportKey)
-    const when = formatOddsCommenceTimeShort(g.commenceTime)
-    const matchup = `${away}/${home} · ${when}`
+    const matchup = `${away}/${home}`
     const isPass = pPick.side === 'pass' || !String(pPick.lineDisplay || '').trim()
-    lines.push(`### ${matchup}`)
     if (isPass) {
       const uglyPass = pPick.uglyJuice === true || /ugly juice/i.test(String(pPick.lineDisplay || ''))
-      lines.push(uglyPass ? '· PASS · [red]ugly juice[/red]' : '· PASS')
+      lines.push(
+        uglyPass
+          ? `### ${matchup} ... PASS ... [red]ugly juice[/red]`
+          : `### ${matchup} ... PASS`,
+      )
     } else {
       const raw = String(pPick.lineDisplay || '').trim()
       const base = raw.replace(/\s·\s\[red\]ugly juice\[\/red\]\s*$/i, '').trim() || raw
       const ugly = pPick.uglyJuice === true || /\[red\]ugly juice\[\/red\]/i.test(raw)
-      lines.push(ugly ? `· ${formatGoldPick(base)} · [red]ugly juice[/red]` : `· ${formatGoldPick(base)}`)
+      // Desk cards never keep an ugly-juice play … gate already PASSed those.
+      lines.push(
+        ugly
+          ? `### ${matchup} ... PASS ... [red]ugly juice[/red]`
+          : `### ${matchup} ... ${formatGoldPick(base)}`,
+      )
     }
   }
   if (card.games.length === 0) {
@@ -1128,8 +1140,7 @@ export function buildNflAtsSlateCard(
       || pastedChalkTrap
       || (isCfb && Math.abs(roccoPowerBonus) >= 1.0)
 
-    // Ugly juice gate: worse than -115 → PASS unless Scott or Chedda already on that side.
-    // Do not bake American odds into Rocco's strength score … gate at publish / house layer.
+    // Ugly juice gate: worse than -115 → always PASS (hard pass … no Scott/Chedda override).
     const roccoPriceIfPlay =
       roccoSide === 'home' ? homePrice : roccoSide === 'away' ? awayPrice : null
     const roccoUglyJuice =
@@ -1138,15 +1149,10 @@ export function buildNflAtsSlateCard(
       && roccoPriceIfPlay < ROCCO_UGLY_JUICE_WORSE_THAN
     let roccoPassedUglyJuice = false
     if (roccoSide !== 'pass' && roccoUglyJuice) {
-      const backedByScottOrChedda =
-        (roccoSide === 'home' && (scottSide === 'home' || cheddaSide === 'home'))
-        || (roccoSide === 'away' && (scottSide === 'away' || cheddaSide === 'away'))
-      if (!backedByScottOrChedda) {
-        roccoSide = 'pass'
-        roccoPassedUglyJuice = true
-      }
+      roccoSide = 'pass'
+      roccoPassedUglyJuice = true
     }
-    const roccoKeptUglyJuice = roccoSide !== 'pass' && roccoUglyJuice
+    const roccoKeptUglyJuice = false
     const roccoCountsForHouse = roccoSide !== 'pass' && roccoHasStrengthReason
 
     // 4. Tank — totals desk (PASS default; play at ≥3.5 or ≥2.5 into key 48/51/54)
@@ -1435,7 +1441,7 @@ export async function publishAndRecordNflSlateCard(
     const captionChunks = splitSlateCaptionToFit(fullPrivateCaption, LOUNGE_BOT_CAPTION_MAX)
     const rootCaption = captionChunks[0] || fullPrivateCaption
     const overflowThread = captionChunks.slice(1).map((body) => ({ body }))
-    const deskThread = SHARP_PICKERS.map((p) => ({
+    const deskThread = VIP_ATS_THREAD_PICKERS.map((p) => ({
       body: formatPickerSlateList(input.card, p),
     }))
     const privateRes = await publishLoungeBotPostWithThread(admin, {
@@ -1572,11 +1578,11 @@ export async function publishAndRecordNflSlateCard(
 
   // Plain-text full desks → publisher fan room (Syndicate when remounted; never Signal once Syndicate exists)
   try {
-    const threadParts = SHARP_PICKERS.map((p) => formatPickerSlateList(input.card, p))
+    const threadParts = VIP_ATS_THREAD_PICKERS.map((p) => formatPickerSlateList(input.card, p))
     const chatTitle =
       publisher.mode === 'syndicate'
-        ? `🏈 ${input.card.cardTitle || 'Sharpe Syndicate Slate'} ... Full Uncut Desk Cards\n\nPlain-text cards for every desk on this slate 👇`
-        : `🏈 ${input.card.cardTitle || 'Sharpe Syndicate Slate'} ... Full Uncut Breakdown\n\nPublic feed gets the consensus & hammer teasers. Here are the uncut individual ATS cards across all 4 desks for the full slate 👇`
+        ? `🏈 ${input.card.cardTitle || 'Sharpe Syndicate Slate'} ... Full Uncut Desk Cards\n\nPlain-text ATS cards for Scott / Rocco / Chedda 👇`
+        : `🏈 ${input.card.cardTitle || 'Sharpe Syndicate Slate'} ... Full Uncut Breakdown\n\nPublic feed gets the consensus & hammer teasers. Here are the uncut individual ATS cards across Scott / Rocco / Chedda for the full slate 👇`
     await publishBotSubChatMessage(admin, {
       botUserId,
       caption: chatTitle,

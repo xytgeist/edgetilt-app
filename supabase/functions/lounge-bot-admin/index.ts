@@ -209,9 +209,9 @@ Deno.serve(async (req) => {
       const botUserId = String(body.bot_user_id || '').trim()
       if (!botUserId) return adminOpsJson(400, { error: 'bot_user_id required.' })
 
-      const subaction = String(body.subaction || 'onboard').trim().toLowerCase() === 'refresh'
-        ? 'refresh'
-        : 'onboard'
+      const rawSub = String(body.subaction || 'onboard').trim().toLowerCase()
+      const subaction =
+        rawSub === 'refresh' ? 'refresh' : rawSub === 'reconnect' ? 'reconnect' : 'onboard'
 
       const { data: botRow, error: botErr } = await admin
         .from('lounge_bot_accounts')

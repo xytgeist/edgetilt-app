@@ -28,7 +28,13 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Invalid JSON body.' }, 400)
     }
 
-    const action = String(body.action || 'onboard').trim().toLowerCase()
+    const rawAction = String(body.action || 'onboard').trim().toLowerCase()
+    const action =
+      rawAction === 'refresh'
+        ? 'refresh'
+        : rawAction === 'reconnect'
+          ? 'reconnect'
+          : 'onboard'
     const stripe = new Stripe(requireStripeSecretKey())
     const origin = appOriginFromRequest(req)
 
@@ -52,7 +58,7 @@ Deno.serve(async (req) => {
       auth.user.email,
       origin,
       returnUrls,
-      action === 'refresh' ? 'refresh' : 'onboard',
+      action,
     )
 
     return jsonResponse(result)

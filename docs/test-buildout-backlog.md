@@ -2842,6 +2842,8 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-03:** Removed **`AppUpdateAvailableBanner`** / deploy-version poll. Stale hashed-chunk MIME failures still auto-reload. Soft-reload nag was too noisy on frequent test deploys.
+- **2026-09-03:** Text-thread submit no longer opens the leftover bottom **Posting your video** bar (`mediaPrep`). Same thin composer-top seam as caption/image/GIF posts. Video still uses inline tile / prep HUD.
 - **2026-09-03:** Pro composer markdown bar (and tribe pills) stay pinned above the write scroller so extra thread captions slide under the toolbar instead of taking it with them.
 - **2026-09-03:** Pro composer plus-square stays on the markdown screen and appends another caption field (parts 2+). Media stays on part 1. Post with 2+ parts uses the existing thread publish path. Feed **Start thread** still opens **`LoungeThreadComposeSheet`**.
 - **2026-09-03:** **Desk thread parts list every game incl. PASS:** `formatPickerSlateList` no longer skips passes … each Scott/Rocco/Chedda/Tank card shows full slate decisions. Redeploy **`lounge-odds-poll`**.
@@ -2910,6 +2912,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-08-28:** Added `ios/ci_scripts/ci_post_clone.sh` auto-versioning hook (`CI_BUILD_NUMBER + 100`) and set base build version to 100 for Xcode Cloud distribution.
 - **2026-08-28:** Switched `aps-environment` to `production` in `EdgeTilt.entitlements` for TestFlight / App Store APNs compliance; purged stale UserDefaults VoIP token cache on native init so invalid cached tokens are never re-uploaded to Supabase; bumped build version to 6.
 - **2026-08-28:** Enabled CallKit incoming call avatar pre-caching pipeline: `EdgeCallKitCallerAvatar.applyToCallUpdate` connected safely via `@try/@catch` Objective-C bridge; added `preloadAvatar` native bridge action + `preloadEdgeAvatar` JS helper + wired into `ChatConversation` on thread open and sender resolution. Bumped Build version to 5 for TestFlight/device testing.
+- **2026-09-03:** **PVAL v1 Sleeper fill (test):** `scripts/pval-sleeper-sync.mjs` … depth→band, week `pts_ppr`→seat (55/45 blend to typical). Insert-new only; curated seed **57** marked `is_custom_override`. Test table **1399** rows. `npm run syndicate:pval-sleeper` dry-run; `--apply --target=production` when Ryan OKs. Redeploy **`lounge-odds-poll`** for band resolver updates.
 - **2026-09-03:** **PVAL injury prior v0:** `loungeBotPvalBands.ts` position bands (Typical OUT column); unmatched Rundown OUTs get band defaults instead of silent 0; non-QB soft/hard caps (1.2 / 2.0) + QB-out shrink; Rundown inactives now carry position/depth when present (cap 48, was 6). No Sleeper yet. Redeploy **`lounge-odds-poll`**.
 - **2026-09-03:** **Rocco house + ugly-juice gates:** short-fav alone stays on VIP desk card but `countsForHouse=false` (no 2-0/3-0/hammer credit); American odds worse than **-115** → Rocco PASS unless Scott/Chedda already on that side (`ugly juice` tag when kept). Redeploy **`lounge-odds-poll`**.
 - **2026-09-03:** **Syndicate desk possessive color:** `'s` included inside desk color tags (`Rocco's` not white suffix). Redeploy **`lounge-odds-poll`**.

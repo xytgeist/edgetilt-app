@@ -894,7 +894,7 @@ export default function SocialFeed({
   }, [fullScreenComposerOpen])
   /** Bottom bar during background lounge post submission (`progress` 0–1, plus diagnostic copy). */
   const [loungePostUploadBar, setLoungePostUploadBar] = useState(null)
-  /** Thin composer-top seam for non-video feed posts only (caption / images / GIF). Never used for video. */
+  /** Thin composer-top seam for non-video feed posts (caption / images / GIF / text threads). Never used for video. */
   const [loungeComposerPostProgress, setLoungeComposerPostProgress] = useState(
     /** @type {{ progress: number } | null} */ (null),
   )
@@ -13183,25 +13183,11 @@ export default function SocialFeed({
           }
         } else {
           const threadTotal = loungeSubmissionSnapshotThreadPartCount(snapshot)
-          // Composer seam: caption/image/GIF only. Video never enters this lane with Stream media,
-          // but guard anyway so we never paint over video prep / inline tile progress.
-          const showComposerPostProgress =
-            !loungeSubmissionSnapshotIncludesVideo(snapshot) && threadTotal <= 1
-          if (threadTotal > 1) {
-            loungePostSnapshotRef.current = snapshot
-            loungePostJobRunningRef.current = true
-            loungePostUploadLastPhaseRef.current = ''
-            setLoungePostUploadBar({
-              mode: 'mediaPrep',
-              postSubmission: true,
-              threadPartTotal: threadTotal,
-              threadPartPublished: 0,
-              threadPartActive: 1,
-              progress: 0,
-              status: 'Starting thread…',
-              detail: '',
-            })
-          } else if (showComposerPostProgress) {
+          // Composer seam: caption/image/GIF/text threads. Video never enters this lane
+          // with Stream media, but guard anyway so we never paint the leftover bottom
+          // "Posting your video" bar over inline tile progress.
+          const showComposerPostProgress = !loungeSubmissionSnapshotIncludesVideo(snapshot)
+          if (showComposerPostProgress) {
             setLoungeComposerPostProgress({ progress: 0.04 })
           }
           await executeLoungeCommunityPostSubmission({
@@ -13209,21 +13195,14 @@ export default function SocialFeed({
             snapshot,
             signal: ac.signal,
             rateLimitMessage,
-            onProgress:
-              threadTotal > 1
-                ? (info) =>
-                    applyLoungePostSubmitUploadProgress(info, snapshot, {
-                      mode: 'mediaPrep',
-                      postSubmission: true,
-                    })
-                : showComposerPostProgress
-                  ? (info) => {
-                      const p = typeof info?.progress === 'number' ? info.progress : 0
-                      setLoungeComposerPostProgress({
-                        progress: Math.max(0.04, Math.min(1, p)),
-                      })
-                    }
-                  : undefined,
+            onProgress: showComposerPostProgress
+              ? (info) => {
+                  const p = typeof info?.progress === 'number' ? info.progress : 0
+                  setLoungeComposerPostProgress({
+                    progress: Math.max(0.04, Math.min(1, p)),
+                  })
+                }
+              : undefined,
           })
           persistLoungeComposerLastCategoryPillsFromSubmit(snapshot)
           const publishedDraftId = String(

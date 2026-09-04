@@ -84,11 +84,13 @@ function normPos(raw: string): string {
 export function resolvePvalBandKey(
   positionRaw: string | null | undefined,
   depthOrder: number | null | undefined,
+  depthSlot?: string | null,
 ): PvalBandKey {
   const p = normPos(positionRaw || '')
+  const slot = normPos(depthSlot || '')
   const depth = Number.isFinite(Number(depthOrder)) ? Number(depthOrder) : null
 
-  if (!p) return 'unknown'
+  if (!p && !slot) return 'unknown'
 
   if (/^(K|PK|P|LS|KOS)$/.test(p) || p.includes('KICK') || p.includes('PUNT')) return 'special'
   if (p === 'QB' || p.includes('QUARTER')) {
@@ -107,7 +109,7 @@ export function resolvePvalBandKey(
     if (depth != null && depth >= 2) return 'rb2'
     return 'rb2'
   }
-  if (p === 'OT' || p === 'T' || p === 'LT' || p === 'RT' || p.includes('TACKLE') && !p.includes('DEF')) {
+  if (p === 'OT' || p === 'T' || p === 'LT' || p === 'RT' || (p.includes('TACKLE') && !p.includes('DEF'))) {
     return 'ot'
   }
   if (p === 'G' || p === 'C' || p === 'OG' || p === 'OC' || p === 'IOL' || p === 'OL') return 'iol'
@@ -118,13 +120,24 @@ export function resolvePvalBandKey(
   }
   if (p === 'DT' || p === 'NT' || p === 'IDL' || p === 'DL') return 'idl'
   if (p === 'LB' || p === 'ILB' || p === 'MLB' || p === 'WILL' || p === 'MIKE') return 'lb'
-  if (p === 'CB' || p.includes('CORNER')) {
+  if (p === 'CB' || p.includes('CORNER') || slot === 'LCB' || slot === 'RCB' || slot === 'NCB') {
     if (depth === 1) return 'cb1'
     if (depth != null && depth >= 2) return 'cb2'
     return 'cb2'
   }
-  if (p === 'S' || p === 'SS' || p === 'FS' || p.includes('SAFETY')) return 's'
+  if (
+    p === 'S'
+    || p === 'SS'
+    || p === 'FS'
+    || p.includes('SAFETY')
+    || slot === 'SS'
+    || slot === 'FS'
+    || slot === 'S'
+  ) {
+    return 's'
+  }
   if (p === 'DB') {
+    if (slot === 'SS' || slot === 'FS' || slot === 'S') return 's'
     if (depth === 1) return 'cb1'
     return 'cb2'
   }
@@ -134,6 +147,21 @@ export function resolvePvalBandKey(
 
 export function typicalPvalForBand(bandKey: PvalBandKey): number {
   return PVAL_BANDS[bandKey]?.typical ?? 0
+}
+
+/**
+ * Map 0..1 percentile (0=worst in band, 1=best) into the band's min..max.
+ * Blends toward typical (55/45) so weekly fantasy leaders don't all pin the ceiling.
+ * Clamped; rounded to 0.05.
+ */
+export function pvalFromPercentileInBand(bandKey: PvalBandKey, percentile01: number): number {
+  const band = PVAL_BANDS[bandKey]
+  if (!band) return 0
+  const p = Math.max(0, Math.min(1, Number(percentile01) || 0))
+  const linear = band.min + p * (band.max - band.min)
+  const raw = 0.55 * linear + 0.45 * band.typical
+  const clamped = Math.max(band.min, Math.min(band.max, raw))
+  return Math.round(clamped * 20) / 20
 }
 
 export function isHardOutStatus(status: string): boolean {

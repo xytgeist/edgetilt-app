@@ -3416,11 +3416,6 @@ html.light [data-elevated-card='surface'] {
   border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
-/* App update banner — pale global cyan-100 remap is unreadable on inverted zinc card */
-html.light [data-app-update-banner] .text-cyan-100 {
-  color: #1d4ed8 !important;
-}
-
 /* Slots / Poker hub glass icon tiles */
 .slots-icon-tile {
   color: var(--tc);

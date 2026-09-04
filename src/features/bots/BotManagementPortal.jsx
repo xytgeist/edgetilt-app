@@ -46,6 +46,7 @@ import {
   waitForPgNetRequestResult,
   staffSignInAsBotAndReload,
   staffBotFanConnectOnboard,
+  staffBotFanConnectReconnect,
   staffBotFanConnectRefresh,
   botFanConnectReturnFromUrl,
   clearBotFanConnectQueryParams,
@@ -240,6 +241,25 @@ function BotFanSubscriptionsAdminBlock({ bot, supabaseClient, busy, setBusy, set
     }
   }
 
+  const onReconnect = async () => {
+    if (!bot?.user_id || busy) return
+    if (!bot.handle?.trim()) {
+      setToast?.('Set a profile handle first, then connect payouts.')
+      return
+    }
+    const ok = window.confirm(
+      `Switch Stripe Connect for ${bot.display_name || bot.slug}?\n\nPauses fan subs, detaches the current payout account, and opens Stripe for a new Express account.`,
+    )
+    if (!ok) return
+    setBusy('bot-fan-connect-reconnect')
+    try {
+      await staffBotFanConnectReconnect(supabaseClient, bot.user_id)
+    } catch (e) {
+      setToast?.(e instanceof Error ? e.message : 'Could not switch Connect account.')
+      setBusy('')
+    }
+  }
+
   const onRefreshConnect = async () => {
     if (!bot?.user_id || busy) return
     setBusy('bot-fan-connect-refresh')
@@ -280,6 +300,14 @@ function BotFanSubscriptionsAdminBlock({ bot, supabaseClient, busy, setBusy, set
         className="mt-2 min-h-9 rounded-lg border border-zinc-700/80 bg-zinc-950/60 px-3 text-[12px] font-semibold text-zinc-300 hover:bg-zinc-800/80 disabled:opacity-40"
       >
         {busy === 'bot-fan-connect-refresh' ? 'Refreshing…' : 'Refresh Connect status'}
+      </button>
+      <button
+        type="button"
+        disabled={Boolean(busy)}
+        onClick={() => void onReconnect()}
+        className="mt-2 min-h-9 rounded-lg border border-amber-700/50 bg-amber-950/30 px-3 text-[12px] font-semibold text-amber-100/90 hover:bg-amber-950/50 disabled:opacity-40"
+      >
+        {busy === 'bot-fan-connect-reconnect' ? 'Opening Stripe…' : 'Use a different Stripe account'}
       </button>
     </div>
   )

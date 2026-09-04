@@ -300,6 +300,23 @@ export async function staffBotFanConnectOnboard(supabaseClient, botUserId) {
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string} botUserId
  */
+export async function staffBotFanConnectReconnect(supabaseClient, botUserId) {
+  const id = String(botUserId || '').trim()
+  if (!id) throw new Error('Bot user id required.')
+  const { data, error } = await invokeAdminEdgeFunction(supabaseClient, 'lounge-bot-admin', {
+    action: 'staff_bot_fan_connect',
+    bot_user_id: id,
+    subaction: 'reconnect',
+  })
+  if (error) throw error
+  if (!data?.url) throw new Error('Connect URL missing from server.')
+  await openExternalBillingUrl(data.url)
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} botUserId
+ */
 export async function staffBotFanConnectRefresh(supabaseClient, botUserId) {
   const id = String(botUserId || '').trim()
   if (!id) throw new Error('Bot user id required.')

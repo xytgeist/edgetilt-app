@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   fetchMyCreatorFanMonetization,
+  reconnectCreatorFanConnect,
   refreshCreatorFanConnectStatus,
   saveCreatorFanMonetization,
   saveCreatorFanOffer,
@@ -189,6 +190,23 @@ export default function CreatorFanMonetizationPanel({
       await startCreatorFanConnectOnboarding(supabaseClient)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Connect failed.')
+      setBusy(false)
+    }
+  }
+
+  const onReconnect = async () => {
+    if (!supabaseClient || busy) return
+    const ok = window.confirm(
+      'Switch to a different Stripe Connect account?\n\nThis pauses fan subscriptions, detaches the current payout account, and opens Stripe to link a new one. Existing fans keep their Stripe subscriptions, but new charges go to the new account after you finish onboarding and turn subs back on.',
+    )
+    if (!ok) return
+    setBusy(true)
+    setError('')
+    setStatusMessage('')
+    try {
+      await reconnectCreatorFanConnect(supabaseClient)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not switch Connect account.')
       setBusy(false)
     }
   }
@@ -398,6 +416,16 @@ export default function CreatorFanMonetizationPanel({
                 className="min-h-10 rounded-lg border border-zinc-700/90 bg-zinc-900/80 px-3 text-[13px] font-semibold text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
               >
                 Refresh status
+              </button>
+            ) : null}
+            {stripeConnectAccountId.trim() ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void onReconnect()}
+                className="min-h-10 rounded-lg border border-amber-700/50 bg-amber-950/30 px-3 text-[13px] font-semibold text-amber-100/90 hover:bg-amber-950/50 disabled:opacity-50"
+              >
+                Use a different Stripe account
               </button>
             ) : null}
             {connectComplete ? (

@@ -17,6 +17,8 @@ export type FanConnectReturnUrls = {
   return_url: string
 }
 
+export type CreatorFanConnectAction = 'onboard' | 'refresh' | 'reconnect'
+
 /** Destination charges for fan subs; bank payouts can lag after charges are enabled. */
 export function stripeConnectReadyForFanSubs(account: Stripe.Account): boolean {
   if (!account.details_submitted) return false
@@ -25,7 +27,11 @@ export function stripeConnectReadyForFanSubs(account: Stripe.Account): boolean {
   return Boolean(account.payouts_enabled)
 }
 
-/** Stripe only allows account_update after full Express onboarding; do not tie this to fan-sub "ready". */
+/**
+ * Stripe only allows account_update after Express finishes Stripe's own onboarding
+ * checklist (not the same as our fan-sub "ready" flag). Prefer update when it looks
+ * fully live; callers must fall back to onboarding if Stripe rejects update.
+ */
 export function stripeExpressAccountLinkType(
   account: Stripe.Account,
 ): 'account_onboarding' | 'account_update' {
@@ -33,6 +39,37 @@ export function stripeExpressAccountLinkType(
     account.details_submitted && account.charges_enabled && account.payouts_enabled,
   )
   return stripeFullyOnboarded ? 'account_update' : 'account_onboarding'
+}
+
+async function createFanConnectAccountLink(
+  stripe: Stripe,
+  accountId: string,
+  returnUrls: FanConnectReturnUrls,
+  preferred: 'account_onboarding' | 'account_update',
+): Promise<Stripe.AccountLink> {
+  try {
+    return await stripe.accountLinks.create({
+      account: accountId,
+      refresh_url: returnUrls.refresh_url,
+      return_url: returnUrls.return_url,
+      type: preferred,
+    })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    // Stripe: update only valid after full Express onboarding; otherwise only onboarding.
+    if (
+      preferred === 'account_update' &&
+      /account_onboarding|account_update/i.test(msg)
+    ) {
+      return await stripe.accountLinks.create({
+        account: accountId,
+        refresh_url: returnUrls.refresh_url,
+        return_url: returnUrls.return_url,
+        type: 'account_onboarding',
+      })
+    }
+    throw err
+  }
 }
 
 export async function ensureCreatorMonetizationRow(admin: SupabaseClient, userId: string) {
@@ -66,10 +103,26 @@ export async function runCreatorFanConnectAction(
   authEmail: string | null | undefined,
   origin: string,
   returnUrls: FanConnectReturnUrls,
-  action: 'onboard' | 'refresh',
+  action: CreatorFanConnectAction,
 ) {
   if (!profile?.handle?.trim()) {
     throw new Error('Set a profile handle before fan subscriptions.')
+  }
+
+  await ensureCreatorMonetizationRow(admin, userId)
+
+  // Detach existing Express account so onboard creates a fresh one (switch bank / entity).
+  if (action === 'reconnect') {
+    const { error: clearErr } = await admin
+      .from('creator_monetization_profiles')
+      .update({
+        stripe_connect_account_id: null,
+        connect_onboarding_complete: false,
+        enabled: false,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId)
+    if (clearErr) throw new Error(clearErr.message)
   }
 
   const row = await ensureCreatorMonetizationRow(admin, userId)
@@ -126,12 +179,11 @@ export async function runCreatorFanConnectAction(
 
   const account = await stripe.accounts.retrieve(accountId)
   const linkType = stripeExpressAccountLinkType(account)
-  const link = await stripe.accountLinks.create({
-    account: accountId,
-    refresh_url: returnUrls.refresh_url,
-    return_url: returnUrls.return_url,
-    type: linkType,
-  })
+  const link = await createFanConnectAccountLink(stripe, accountId, returnUrls, linkType)
 
-  return { url: link.url, account_id: accountId }
+  return {
+    url: link.url,
+    account_id: accountId,
+    reconnected: action === 'reconnect',
+  }
 }

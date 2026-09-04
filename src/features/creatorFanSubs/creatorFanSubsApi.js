@@ -84,6 +84,24 @@ export async function startCreatorFanConnectOnboarding(supabaseClient) {
   await openExternalBillingUrl(data.url)
 }
 
+/**
+ * Detach the current Connect account and open Stripe to link a new Express account.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ */
+export async function reconnectCreatorFanConnect(supabaseClient) {
+  const { data, error, response } = await supabaseClient.functions.invoke('creator-fan-connect', {
+    body: { action: 'reconnect' },
+  })
+  if (error) {
+    const detail = await readEdgeFunctionError(response)
+    throw new Error(detail || error.message || 'Could not switch Connect account.')
+  }
+  if (data?.error) throw new Error(String(data.error))
+  if (!data?.url) throw new Error('Connect URL missing from server.')
+  stashCreatorFanConnectReturnNavigation()
+  await openExternalBillingUrl(data.url)
+}
+
 /** @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient */
 export async function refreshCreatorFanConnectStatus(supabaseClient) {
   const { data, error, response } = await supabaseClient.functions.invoke('creator-fan-connect', {

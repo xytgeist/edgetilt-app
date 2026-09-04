@@ -92,9 +92,9 @@ Deno.serve(async (req) => {
     const alertKindRaw = String(body?.alertKind || '').trim().toLowerCase()
     const alertKind = alertKindRaw || null
 
-    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'cfb_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'syndicate_monthly_scoreboard', 'calibrate_persona_models', 'ufc_slate_card', 'nfl_wed_tnf_vip', 'nfl_sat_vip_adds_kills', 'cfb_wed_midweek_vip', 'cfb_thu_night_spotlight', 'cfb_sat_vip_adds_kills', 'picks_for_today'].includes(action)) {
+    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'cfb_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'syndicate_monthly_scoreboard', 'calibrate_persona_models', 'ufc_slate_card', 'nfl_wed_tnf_vip', 'nfl_sat_vip_adds_kills', 'cfb_wed_midweek_vip', 'cfb_thu_night_spotlight', 'cfb_sat_vip_adds_kills', 'picks_for_today', 'pval_injury_ledger'].includes(action)) {
       return adminOpsJson(400, {
-        error: 'action must be a valid lounge-odds-poll action (incl. picks_for_today, cfb_wed_midweek_vip, cfb_thu_night_spotlight, cfb_sat_vip_adds_kills).',
+        error: 'action must be a valid lounge-odds-poll action (incl. picks_for_today, pval_injury_ledger, cfb VIP ops).',
       })
     }
 
@@ -145,6 +145,52 @@ Deno.serve(async (req) => {
     if (botErr) return adminOpsJson(500, { error: botErr.message })
     if (!bot?.user_id) return adminOpsJson(404, { error: 'Odds bot not configured.' })
     if (bot.pipeline !== 'odds_api') return adminOpsJson(400, { error: 'Not an odds_api bot.' })
+
+    // Bookkeeping-only: NFL hard-OUT ledger + market-file refresh. Allowed even when bot is stopped.
+    if (action === 'pval_injury_ledger') {
+      const {
+        fetchSportOdds,
+      } = await import('../_shared/loungeBotOddsRun.ts')
+      const {
+        eventsForMarketFile,
+        upsertMarketFilesFromEvents,
+      } = await import('../_shared/loungeBotMarketFile.ts')
+      const {
+        syncNflPvalInjuryLedger,
+        NFL_PVAL_LEDGER_SPORT,
+      } = await import('../_shared/loungeBotPvalInjuryLedger.ts')
+
+      const { events, remaining } = await fetchSportOdds(
+        NFL_PVAL_LEDGER_SPORT,
+        ['us', 'us2'],
+        ['spreads', 'totals'],
+      )
+      const raw = Array.isArray(events) ? events : []
+      const marketEvents = eventsForMarketFile(NFL_PVAL_LEDGER_SPORT, raw)
+
+      if (dryRun) {
+        return adminOpsJson(200, {
+          ok: true,
+          action: 'pval_injury_ledger',
+          dryRun: true,
+          rawCount: raw.length,
+          marketEvents: marketEvents.length,
+          requestsRemaining: remaining,
+        })
+      }
+
+      await upsertMarketFilesFromEvents(admin, NFL_PVAL_LEDGER_SPORT, marketEvents)
+      const ledger = await syncNflPvalInjuryLedger(admin, marketEvents)
+      return adminOpsJson(200, {
+        ok: true,
+        action: 'pval_injury_ledger',
+        rawCount: raw.length,
+        marketEvents: marketEvents.length,
+        requestsRemaining: remaining,
+        ...ledger,
+      })
+    }
+
     if (!dryRun && bot.run_state !== 'running') {
       return adminOpsJson(200, { ok: true, skipped: bot.run_state, slug })
     }

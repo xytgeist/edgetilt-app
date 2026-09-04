@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   invalidateCssSafeAreaTopPxCache,
@@ -76,7 +76,7 @@ import {
   LOUNGE_FEED_POST_INTERACTIONS_CLASS,
   loungeFeedAuthorHasStaffBadge,
 } from './loungeFeedAvatar.js'
-import LoungePostDetailCommentHierarchy from './LoungePostDetailCommentHierarchy.jsx'
+import { LoungeCommentCard } from './LoungePostCommentThread.jsx'
 import LoungeFeedAuthorMetaBadges from './LoungeFeedAuthorMetaBadges.jsx'
 import LoungeStaffRoleBadge from './LoungeStaffRoleBadge'
 import {
@@ -478,8 +478,6 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
   const handleFor = postCardProps?.handleFor
   const postAgeLabel = postCardProps?.postAgeLabel
   const postCaption = feedPostDisplayCaption(post)
-  const postAvatarRef = useRef(null)
-  const connectorRootRef = useRef(null)
   const openReplyThread = () => {
     const openFn =
       onOpenProfileReply ||
@@ -569,9 +567,83 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
     onCashtagClick: pp.onCashtagClick,
     onLinkClick: pp.onLinkClick,
     onLinkPreviewOpen: pp.onLinkPreviewOpen,
+    hideAvatar: true,
+    detailFocusLayout: false,
+    captionColumnMedia: false,
+    mediaFeedVariant: 'commentInline',
   }
 
   if (!post?.id || !comment?.id) return null
+
+  const chain =
+    pathIds.length > 0 && threadComments.length > 0
+      ? pathIds.map((id) => threadComments.find((c) => String(c?.id) === String(id))).filter(Boolean)
+      : []
+  /** Gap between line end and avatar edge. */
+  const CONNECTOR_INSET_PX = 8
+  const CONNECTOR_STEM_CLASS = 'w-0.5 rounded-full bg-zinc-500/30'
+
+  const renderAvatarButton = (entity, { ariaName }) => {
+    const profile = entity?.author_profile
+    const uid = entity?.user_id || profile?.user_id
+    return (
+      <button
+        type="button"
+        onClick={(e) => openProfileFromEntity(e, entity)}
+        className={`${LOUNGE_FEED_AVATAR_CLASS} flex items-center justify-center font-bold text-white touch-manipulation [-webkit-tap-highlight-color:transparent] ${profileAvatarToneClass(
+          uid || profile?.handle || 'member',
+        )}`}
+        aria-label={`Open profile for ${ariaName}`}
+        title="View profile"
+      >
+        {profile?.avatar_url ? (
+          <img
+            src={profile.avatar_url}
+            alt=""
+            className="h-full w-full rounded-full object-cover"
+            loading="lazy"
+            decoding="async"
+          />
+        ) : (
+          <span>{profileAvatarInitials(profile?.display_name, profile?.handle || uid)}</span>
+        )}
+      </button>
+    )
+  }
+
+  /** Avatar column cell: optional stub above, avatar, optional flex line below (not on last reply). */
+  const renderAvatarRailCell = ({
+    entity,
+    ariaName,
+    gridRow,
+    showGapStub,
+    showLineBelow,
+  }) => (
+    <div
+      className="relative z-[1] col-start-1 flex h-full min-h-0 flex-col items-center"
+      style={{ gridRow }}
+    >
+      {showGapStub ? (
+        <div
+          aria-hidden
+          className="flex h-3.5 w-0.5 shrink-0 flex-col"
+          style={{ paddingBottom: CONNECTOR_INSET_PX }}
+        >
+          <div className={`min-h-0 w-full flex-1 ${CONNECTOR_STEM_CLASS}`} />
+        </div>
+      ) : null}
+      {renderAvatarButton(entity, { ariaName })}
+      {showLineBelow ? (
+        <div
+          aria-hidden
+          className="flex min-h-[0.5rem] w-0.5 flex-1 flex-col"
+          style={{ paddingTop: CONNECTOR_INSET_PX }}
+        >
+          <div className={`min-h-0 w-full flex-1 ${CONNECTOR_STEM_CLASS}`} />
+        </div>
+      ) : null}
+    </div>
+  )
 
   return (
     <article
@@ -592,80 +664,68 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
       }}
     >
       <div className={`min-w-0 ${LOUNGE_FEED_POST_ROW_INNER_CLASS}`}>
-        <div ref={connectorRootRef} className="relative min-w-0">
-          <div className="flex items-start gap-3">
+        {/*
+          Per-row avatar rail: line only between avatars (flex-1 under non-final rows).
+          Last reply has no stub below … no dangling connector under the thread.
+        */}
+        <div
+          className="grid gap-x-3"
+          style={{ gridTemplateColumns: 'auto minmax(0, 1fr)' }}
+        >
+          {renderAvatarRailCell({
+            entity: post,
+            ariaName: typeof displayNameFor === 'function' ? displayNameFor(post) : 'member',
+            gridRow: 1,
+            showGapStub: false,
+            showLineBelow: chain.length > 0,
+          })}
+
+          <div className="min-w-0 col-start-2 row-start-1">
             <button
-              ref={postAvatarRef}
               type="button"
               onClick={(e) => openProfileFromEntity(e, post)}
-              className={`${LOUNGE_FEED_AVATAR_CLASS} flex items-center justify-center font-bold text-white touch-manipulation [-webkit-tap-highlight-color:transparent] ${profileAvatarToneClass(
-                post?.author_profile?.user_id || post?.user_id || post?.author_profile?.handle || 'member',
-              )}`}
-              aria-label={`Open profile for ${typeof displayNameFor === 'function' ? displayNameFor(post) : 'member'}`}
-              title="View profile"
+              className="block w-full min-w-0 text-left hover:text-cyan-300 touch-manipulation [-webkit-tap-highlight-color:transparent]"
             >
-              {post?.author_profile?.avatar_url ? (
-                <img
-                  src={post.author_profile.avatar_url}
-                  alt=""
-                  className="h-full w-full rounded-full object-cover"
-                  loading="lazy"
-                  decoding="async"
+              <div className={LOUNGE_FEED_META_ROW_CLASS}>
+                <LoungeFeedAuthorMetaBadges
+                  role={post?.author_profile?.role}
+                  isOg={post?.author_profile?.is_og}
+                  isEdgePro={post?.author_profile?.has_active_subscription}
+                  displayName={typeof displayNameFor === 'function' ? displayNameFor(post) : 'Member'}
+                  displayNameClassName={LOUNGE_FEED_DISPLAY_NAME_CLASS}
                 />
-              ) : (
-                <span>
-                  {profileAvatarInitials(
-                    post?.author_profile?.display_name,
-                    post?.author_profile?.handle || post?.author_profile?.user_id,
-                  )}
-                </span>
-              )}
-            </button>
-            <div className="min-w-0 flex-1">
-              <button
-                type="button"
-                onClick={(e) => openProfileFromEntity(e, post)}
-                className="block w-full min-w-0 text-left hover:text-cyan-300 touch-manipulation [-webkit-tap-highlight-color:transparent]"
-              >
-                <div className={LOUNGE_FEED_META_ROW_CLASS}>
-                  <LoungeFeedAuthorMetaBadges
-                    role={post?.author_profile?.role}
-                    isOg={post?.author_profile?.is_og}
-                    isEdgePro={post?.author_profile?.has_active_subscription}
-                    displayName={typeof displayNameFor === 'function' ? displayNameFor(post) : 'Member'}
-                    displayNameClassName={LOUNGE_FEED_DISPLAY_NAME_CLASS}
-                  />
-                  <span className={LOUNGE_FEED_META_HANDLE_TIME_CLASS}>
-                    <span className="min-w-0 truncate">
-                      {typeof handleFor === 'function' ? handleFor(post) : '@member'}
-                    </span>
+                <span className={LOUNGE_FEED_META_HANDLE_TIME_CLASS}>
+                  <span className="min-w-0 truncate">
+                    {typeof handleFor === 'function' ? handleFor(post) : '@member'}
                   </span>
-                </div>
-              </button>
-              {postCaption ? (
-                <div
-                  className={`${LOUNGE_FEED_CAPTION_TOP_CLASS} text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-200`}
-                >
-                  <LoungeExpandableRichCaption
-                    text={postCaption}
-                    captionOpts={{
-                      onMentionClick: pp.onMentionClick,
-                      onHashtagClick: pp.onHashtagClick,
-                      onCashtagClick: pp.onCashtagClick,
-                      onLinkClick: pp.onLinkClick,
-                      isEdgePro: Boolean(
-                        post?.author_profile?.has_active_subscription === true ||
-                        post?.author_profile?.role === 'admin' ||
-                        post?.author_profile?.role === 'moderator'
-                      ),
-                    }}
-                  />
-                </div>
-              ) : null}
-              {feedCommentRowHasMedia(post) ? (
+                </span>
+              </div>
+            </button>
+            {postCaption ? (
+              <div
+                className={`${LOUNGE_FEED_CAPTION_TOP_CLASS} text-left ${LOUNGE_FEED_CAPTION_TEXT_CLASS} text-zinc-200`}
+              >
+                <LoungeExpandableRichCaption
+                  text={postCaption}
+                  captionOpts={{
+                    onMentionClick: pp.onMentionClick,
+                    onHashtagClick: pp.onHashtagClick,
+                    onCashtagClick: pp.onCashtagClick,
+                    onLinkClick: pp.onLinkClick,
+                    isEdgePro: Boolean(
+                      post?.author_profile?.has_active_subscription === true ||
+                      post?.author_profile?.role === 'admin' ||
+                      post?.author_profile?.role === 'moderator'
+                    ),
+                  }}
+                />
+              </div>
+            ) : null}
+            {feedCommentRowHasMedia(post) ? (
+              <div className="min-w-0 max-w-full overflow-hidden">
                 <LoungePostFeedImagesAndGif
                   post={post}
-                  variant="feed"
+                  variant="commentInline"
                   captionColumnMedia={false}
                   enableLightbox
                   lightboxPortalClass={pp.mediaLightboxPortalClass || 'z-[103]'}
@@ -679,46 +739,51 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
                     repostMenuScrollRootRef: profileBodyScrollRef,
                   }}
                 />
-              ) : null}
-              {typeof pp.interactionStateFor === 'function' && post?.id ? (
-                <LoungePostInteractionBar
-                  post={post}
-                  variant="feed"
-                  rootClassName={LOUNGE_FEED_POST_INTERACTIONS_CLASS}
-                  repostMenuPortalClass={pp.repostMenuPortalClass || 'z-[104]'}
-                  loungeReadOnly={pp.loungeReadOnly}
-                  interactionStateFor={pp.interactionStateFor}
-                  toggleInteraction={pp.toggleInteraction}
-                  onPlainRepost={pp.onPlainRepost}
-                  onUndoPlainRepost={pp.onUndoPlainRepost}
-                  onRemoveQuoteRepost={pp.onRemoveQuoteRepost}
-                  onQuoteRepost={pp.onQuoteRepost}
-                  toggleBookmark={pp.toggleBookmark}
-                  bookmarkedByPost={pp.bookmarkedByPost}
-                  onOpenComments={pp.onOpenComments}
-                  requireLoungeAuth={pp.requireLoungeAuth}
-                  openProfileGateIfNeeded={pp.openProfileGateIfNeeded}
-                  repostMenuScrollRootRef={profileBodyScrollRef}
-                />
-              ) : null}
-            </div>
+              </div>
+            ) : null}
+            {typeof pp.interactionStateFor === 'function' && post?.id ? (
+              <LoungePostInteractionBar
+                post={post}
+                variant="feed"
+                rootClassName={LOUNGE_FEED_POST_INTERACTIONS_CLASS}
+                repostMenuPortalClass={pp.repostMenuPortalClass || 'z-[104]'}
+                loungeReadOnly={pp.loungeReadOnly}
+                interactionStateFor={pp.interactionStateFor}
+                toggleInteraction={pp.toggleInteraction}
+                onPlainRepost={pp.onPlainRepost}
+                onUndoPlainRepost={pp.onUndoPlainRepost}
+                onRemoveQuoteRepost={pp.onRemoveQuoteRepost}
+                onQuoteRepost={pp.onQuoteRepost}
+                toggleBookmark={pp.toggleBookmark}
+                bookmarkedByPost={pp.bookmarkedByPost}
+                onOpenComments={pp.onOpenComments}
+                requireLoungeAuth={pp.requireLoungeAuth}
+                openProfileGateIfNeeded={pp.openProfileGateIfNeeded}
+                repostMenuScrollRootRef={profileBodyScrollRef}
+              />
+            ) : null}
           </div>
 
-          {pathIds.length > 0 && threadComments.length > 0 ? (
-            <div className="mt-3.5">
-              <LoungePostDetailCommentHierarchy
-                pathIds={pathIds}
-                comments={threadComments}
-                postAvatarRef={postAvatarRef}
-                connectorRootRef={connectorRootRef}
-                isCommentPostDetail={false}
-                focusDetailLayout={false}
-                hideSectionRule
-                betweenRowClassName="mt-3.5"
-                cardProps={hierarchyCardProps}
-              />
-            </div>
-          ) : null}
+          {chain.map((rowComment, idx) => {
+            const gridRow = idx + 2
+            const isLast = idx === chain.length - 1
+            const name =
+              typeof displayNameFor === 'function' ? displayNameFor(rowComment) : 'member'
+            return (
+              <Fragment key={rowComment.id}>
+                {renderAvatarRailCell({
+                  entity: rowComment,
+                  ariaName: name,
+                  gridRow,
+                  showGapStub: true,
+                  showLineBelow: !isLast,
+                })}
+                <div className="min-w-0 col-start-2 pt-3.5" style={{ gridRow }}>
+                  <LoungeCommentCard comment={rowComment} {...hierarchyCardProps} />
+                </div>
+              </Fragment>
+            )
+          })}
         </div>
       </div>
     </article>

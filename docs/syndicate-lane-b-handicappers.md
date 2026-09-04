@@ -108,8 +108,9 @@ Reference reputation CSVs (not vote gates): keep under `.tmp-sx-csvs/` locally f
 
 **E_exclude** (from 2026-09 NFL X resolve)
 
-- `_Collin1`, `cawright95` (unresolved)  
-- Bad matches observed: `BritDevine`, `kmurray03`, `NickGalaida`, wrong `breese`
+- `cawright95` (unresolved)  
+- Bad matches observed: `BritDevine`, `kmurray03`, `NickGalaida`, wrong `breese`  
+- Collin Wilson handle fixed to **`@Collin1`** → re-tiered **C_manual** (Action CFB; not free-ticket X)
 
 ## Fifth desk (blend) reminder
 

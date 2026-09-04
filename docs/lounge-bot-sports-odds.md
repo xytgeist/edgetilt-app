@@ -857,10 +857,19 @@ npm run syndicate:sync-cfb-power:production   # Ryan explicit only
 ### Public slate teaser (`formatNflSlateCardCaption`)
 
 - Caps: **1** hammer, **2** consensus, **3** house-divided games (VIP still gets full desk cards)
-- H1 title + `Week N · Sep 10-15` line; H1 section headers with emojis
-- Pick line: `- **[gold]{pick}[/gold]** ({away}/{home} · {when})` plus ` · Scott, Rocco` on **consensus** and **house divided** only (not hammers ... unanimous 3-0 among Scott/Rocco/Chedda; Tank is totals-only)
-- House divided: one gold bullet per side, desk names on each
+- H1 title + `Week N · Sep 10-15` line; H2 section headers with emojis
+- **Hammers:** same layout as Consensus … `### {away}/{home} · {when}` then `· **[gold]{pick}[/gold]**` (no pick-first parens; no desk names on hammers)
+- **Consensus / House Divided / Split:** `### Matchup · when` then `· **[gold]pick[/gold]** · desks`
+- **Tank's Totals:** `{away}/{home} - **[gold]Over|Under …[/gold]**` (no kickoff; NFL shorts Pats/Bucs/Cards)
 - Markdown dialect captions preserve middle dots (`·`) through publish sanitize
+
+### VIP desk thread parts (`formatPickerSlateList`)
+
+- Scott / Rocco / Chedda only (Tank totals live on root … no desk thread part)
+- No leading `·` on lines
+- Fires: `**[gold]pick[/gold]**` (no Team/Team)
+- PASS: `{away}/{home}: PASS`
+- Rocco ugly-juice hard PASS: `{away}/{home}: **[gold]would-be lean[/gold]** · *PASS* - *ugly juice*`
 
 ### Weekly ledger (`formatWeeklySyndicateRecapCaption`)
 

@@ -33,7 +33,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
-**Branch:** `test` (CallKit avatar first-report cut; match `origin/test` before edits). `main` @ **`a0ae9241`**. Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
+**Branch:** `test` (match `origin/test` before edits). `main` @ **`85572993`**. Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
 
 **Supabase (do not swap these):**
 
@@ -46,7 +46,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Goal (Windows, parallel OK):** _Web app bugs/features + **self-hosted GitHub Actions runner** for poker catalog. Pull often; stay in web lane (`src/**`). Bridge: **`docs/ios-native-bridge.md`**._
 
-**Start by reading:** `AGENTS.md`, this **Pick up here (2026-08-22)** section (incl. **Dual-agent ruleset** + Apple Silicon handoff), **`docs/ios-native-bridge.md`**, backlog **Planned (Native shells / app stores)** + Update log **2026-08-22**.
+**Start by reading:** `AGENTS.md`, this **Pick up here** (esp. **Windows Theo 2026-09-04 … NFL/CFB VIP desk cards + Tank totals modifiers**), **`docs/lounge-bot-sports-odds.md`** desk mapping, backlog Update log **2026-09-04**. Dual-agent: **`docs/ios-native-bridge.md`**.
 
 **Optional add-ons** (delete lines you do not need)
 
@@ -82,6 +82,25 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 ### Mac Theo 2026-09-04 … outgoing caller ringback
 
 **I am Mac Theo.** Callers heard silence while the other phone rang. CallKit `connectedAt` fires when the **local** LiveKit room is up, so iOS never plays PSTN ringback. Native dual-tone now plays from `startOutgoing` until the first remote joins (`EdgeOutgoingRingback`). Web/PWA starts ringback on the Start tap. **Rebuild EdgeTilt Test** to hear it in the IPA. Web/PWA is Vercel `test` only. Do not put Web Audio ringback back on `NativeIpaCallSession` (that dinged after connect).
+
+### Windows Theo 2026-09-04 … NFL/CFB VIP desk cards + Tank totals modifiers
+
+**I am Windows Theo.** Afternoon syndicate formatting + Tank Overs research. Tip **`85572993`** on **`test` + `main`**. `lounge-odds-poll` redeployed **test + prod**.
+
+**Shipped (live captions force-edited on prod where noted):**
+1. **VIP desk ATS cards** (`formatPickerSlateList`): no leading `·`; picks-only on fires; PASS keeps `Away/Home: PASS`; Rocco ugly-juice hard PASS still shows would-be lean as `Matchup: [gold]lean[/gold] · *PASS* - *ugly juice*`.
+2. **Slate root Hammers** match Consensus layout: `### Matchup · when` then `· [gold]pick[/gold]` (no pick-first parens).
+3. **Tank's Totals** on root: `Pats/Seahawks - [gold]Over 44.5 (-102)[/gold]` (no kickoff). NFL colloquial shorts: Pats/Bucs/Cards in `shortDisplayName`.
+4. Same Hammer/Tank layout applied to **public** NFL + CFB teasers (+ CFB VIP hammers catch-up).
+5. **Tank modifiers** (`resolveTankTotalsSide`): outdoor wind ≥15 mph vetoes Overs; falling `open_total` vetoes Overs; CFB non-conference soft Over at 3.0 when wind clear + total risen. NFL = wind + open-total only. Context loader: `loadTankTotalsContextForSlate`. Docs: **`docs/lounge-bot-sports-odds.md`** desk mapping + backlog Update log **2026-09-04**.
+
+**Open / next (do not drop):**
+- **Light gold vs Chedda:** Ryan wants **Chedda name** muddy orange; **pick `[gold]`** should stay readable (emerald on light was the earlier intent). Do **not** paint all gold amber again. Likely: keep pick gold → emerald on light; give Chedda a dedicated orange tag or scoped CSS.
+- Existing live Tank lines will **not** recompute modifiers until the **next slate publish**.
+- Lane B / Quorum: still **test-only** migration earlier today … prod SQL/Edge not done; watch hammer inflation.
+- Local junk often dirty: `scripts/backfill-ufc-picks.mjs`, `post-scott-markdown-*.mjs`, scratch files … leave uncommitted.
+
+**Key files:** `loungeBotPredictivePick.ts`, `loungeBotOddsCaption.ts`, `loungeBotCfbPowerRatings.ts`, `loungeBotWeather.ts`, `loungeBotMarketFile.ts`, `lounge-odds-poll/index.ts`.
 
 ### Windows Theo 2026-09-04 … Lane B scrape + Quorum desk (test)
 

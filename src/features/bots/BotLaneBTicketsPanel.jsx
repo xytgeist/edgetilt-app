@@ -3,6 +3,7 @@ import { invokeLoungeOddsLaneBRefresh } from './botPortalApi.js'
 
 /**
  * Lane B scraped tickets viewer + refresh (Syndicate ops).
+ * Ops toast is a string (SyndicateOpsShell), not an object.
  */
 export default function BotLaneBTicketsPanel({
   supabaseClient,
@@ -10,19 +11,20 @@ export default function BotLaneBTicketsPanel({
   selectedSportKey,
   botSlug = 'sharpe-syndicate',
 }) {
+  const sportKeySafe = typeof selectedSportKey === 'string' ? selectedSportKey : ''
   const [busy, setBusy] = useState(false)
   const [tickets, setTickets] = useState([])
   const [refreshMeta, setRefreshMeta] = useState(null)
   const [sportKey, setSportKey] = useState(
-    selectedSportKey?.includes('nfl') ? 'americanfootball_nfl' : 'americanfootball_ncaaf',
+    sportKeySafe.includes('nfl') ? 'americanfootball_nfl' : 'americanfootball_ncaaf',
   )
 
   useEffect(() => {
-    if (selectedSportKey?.includes('nfl')) setSportKey('americanfootball_nfl')
-    else if (selectedSportKey?.includes('ncaaf') || selectedSportKey === 'cfb') {
+    if (sportKeySafe.includes('nfl')) setSportKey('americanfootball_nfl')
+    else if (sportKeySafe.includes('ncaaf') || sportKeySafe === 'cfb') {
       setSportKey('americanfootball_ncaaf')
     }
-  }, [selectedSportKey])
+  }, [sportKeySafe])
 
   const runRefresh = useCallback(async () => {
     if (!supabaseClient) return
@@ -33,7 +35,7 @@ export default function BotLaneBTicketsPanel({
         slug: botSlug || 'sharpe-syndicate',
       })
       if (result?.error && !result?.data) {
-        setToast?.({ type: 'error', message: String(result.error.message || result.error) })
+        setToast?.(String(result.error.message || result.error))
         return
       }
       const data = result?.data || result
@@ -41,14 +43,17 @@ export default function BotLaneBTicketsPanel({
       setRefreshMeta(data?.refresh || null)
       const matched = data?.refresh?.matched_events ?? 0
       const parsed = data?.refresh?.tickets_parsed ?? 0
-      setToast?.({
-        type: data?.ok === false ? 'error' : 'success',
-        message: data?.ok === false
-          ? `Lane B soft-fail … ${data?.refresh?.errors?.[0] || data?.error || 'see status'}`
-          : `Lane B: ${parsed} parsed, ${matched} matched events (lock still OK if zero)`,
-      })
+      if (data?.ok === false) {
+        setToast?.(
+          `Lane B soft-fail … ${data?.refresh?.errors?.[0] || data?.error || 'see status'}`,
+        )
+      } else {
+        setToast?.(
+          `Lane B: ${parsed} parsed, ${matched} matched events (lock still OK if zero)`,
+        )
+      }
     } catch (e) {
-      setToast?.({ type: 'error', message: String(e?.message || e) })
+      setToast?.(String(e?.message || e))
     } finally {
       setBusy(false)
     }

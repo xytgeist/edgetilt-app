@@ -108,6 +108,8 @@ export type SlateGamePick = {
     countsForHouse?: boolean
     /** Rocco kept a side worse than {@link ROCCO_UGLY_JUICE_WORSE_THAN} because Scott/Chedda backed it. */
     uglyJuice?: boolean
+    /** When ugly-juice hard-PASS, the side/line Rocco wanted before the gate. */
+    wouldBeLineDisplay?: string
   }>
 }
 
@@ -587,21 +589,29 @@ export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): 
     const isPass = pPick.side === 'pass' || !String(pPick.lineDisplay || '').trim()
     if (isPass) {
       const uglyPass = pPick.uglyJuice === true || /ugly juice/i.test(String(pPick.lineDisplay || ''))
-      lines.push(
-        uglyPass ? `· ${matchup}: PASS · [red]ugly juice[/red]` : `· ${matchup}: PASS`,
-      )
+      const wouldBe = String(pPick.wouldBeLineDisplay || '').trim()
+      if (uglyPass && wouldBe) {
+        lines.push(`${matchup}: PASS · ${formatGoldPick(wouldBe)} · [red]ugly juice[/red]`)
+      } else if (uglyPass) {
+        lines.push(`${matchup}: PASS · [red]ugly juice[/red]`)
+      } else {
+        lines.push(`${matchup}: PASS`)
+      }
     } else {
       const raw = String(pPick.lineDisplay || '').trim()
       const base = raw.replace(/\s·\s\[red\]ugly juice\[\/red\]\s*$/i, '').trim() || raw
       const ugly = pPick.uglyJuice === true || /\[red\]ugly juice\[\/red\]/i.test(raw)
+      const wouldBe = String(pPick.wouldBeLineDisplay || '').trim() || base
       // Desk cards never keep an ugly-juice play … gate already PASSed those.
       lines.push(
-        ugly ? `· ${matchup}: PASS · [red]ugly juice[/red]` : `· ${formatGoldPick(base)}`,
+        ugly
+          ? `${matchup}: PASS · ${formatGoldPick(wouldBe)} · [red]ugly juice[/red]`
+          : formatGoldPick(base),
       )
     }
   }
   if (card.games.length === 0) {
-    lines.push(picker === 'Tank' ? '· No totals leans this slate' : '· No ATS leans this slate')
+    lines.push(picker === 'Tank' ? 'No totals leans this slate' : 'No ATS leans this slate')
   }
   return lines.join('\n')
 }
@@ -1137,8 +1147,12 @@ export function buildNflAtsSlateCard(
       || (isCfb && Math.abs(roccoPowerBonus) >= 1.0)
 
     // Ugly juice gate: worse than -115 → always PASS (hard pass … no Scott/Chedda override).
+    // Keep the lean line so VIP desk cards can still show what he wanted.
+    const roccoLeanSide = roccoSide
+    const roccoWouldBeLine =
+      roccoLeanSide === 'home' ? homeLineDisp : roccoLeanSide === 'away' ? awayLineDisp : ''
     const roccoPriceIfPlay =
-      roccoSide === 'home' ? homePrice : roccoSide === 'away' ? awayPrice : null
+      roccoLeanSide === 'home' ? homePrice : roccoLeanSide === 'away' ? awayPrice : null
     const roccoUglyJuice =
       roccoPriceIfPlay != null
       && Number.isFinite(roccoPriceIfPlay)
@@ -1224,7 +1238,13 @@ export function buildNflAtsSlateCard(
       },
       Rocco: {
         side: roccoSide,
-        teamName: roccoSide === 'home' ? homeTeam : roccoSide === 'away' ? awayTeam : 'PASS',
+        teamName: roccoSide === 'home'
+          ? homeTeam
+          : roccoSide === 'away'
+            ? awayTeam
+            : roccoPassedUglyJuice
+              ? (roccoLeanSide === 'home' ? homeTeam : roccoLeanSide === 'away' ? awayTeam : 'PASS')
+              : 'PASS',
         lineDisplay: roccoSide === 'home'
           ? (roccoKeptUglyJuice ? `${homeLineDisp} · [red]ugly juice[/red]` : homeLineDisp)
           : roccoSide === 'away'
@@ -1232,10 +1252,23 @@ export function buildNflAtsSlateCard(
             : roccoPassedUglyJuice
               ? `PASS (ugly juice worse than ${ROCCO_UGLY_JUICE_WORSE_THAN})`
               : 'PASS (no short-fav / hurt / hook / pasted chalk-trap)',
-        pickPrice: roccoSide === 'home' ? homePrice : roccoSide === 'away' ? awayPrice : 0,
-        pick: roccoSide === 'home' ? homePickObj : roccoSide === 'away' ? awayPickObj : homePickObj,
+        pickPrice: roccoSide === 'home'
+          ? homePrice
+          : roccoSide === 'away'
+            ? awayPrice
+            : roccoPassedUglyJuice
+              ? (roccoLeanSide === 'home' ? homePrice : roccoLeanSide === 'away' ? awayPrice : 0)
+              : 0,
+        pick: roccoSide === 'home'
+          ? homePickObj
+          : roccoSide === 'away'
+            ? awayPickObj
+            : roccoPassedUglyJuice
+              ? (roccoLeanSide === 'home' ? homePickObj : roccoLeanSide === 'away' ? awayPickObj : homePickObj)
+              : homePickObj,
         countsForHouse: roccoCountsForHouse,
         uglyJuice: roccoKeptUglyJuice || roccoPassedUglyJuice,
+        wouldBeLineDisplay: roccoPassedUglyJuice && roccoWouldBeLine ? roccoWouldBeLine : undefined,
       },
       Chedda: {
         side: cheddaSide,

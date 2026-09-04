@@ -1236,36 +1236,6 @@ function CallChrome({
   const recWarn15Ref = useRef(false)
   const recAutoStopRef = useRef(false)
 
-  const isVideoMode = Boolean(showVideoStage)
-
-  const resetControlsTimer = useCallback(() => {
-    if (hideTimerRef.current) {
-      window.clearTimeout(hideTimerRef.current)
-      hideTimerRef.current = null
-    }
-    setControlsHidden(false)
-    if (isVideoMode) {
-      hideTimerRef.current = window.setTimeout(() => {
-        setControlsHidden(true)
-      }, 4500)
-    }
-  }, [isVideoMode])
-
-  useEffect(() => {
-    if (isVideoMode) {
-      resetControlsTimer()
-    } else {
-      setControlsHidden(false)
-      if (hideTimerRef.current) {
-        window.clearTimeout(hideTimerRef.current)
-        hideTimerRef.current = null
-      }
-    }
-    return () => {
-      if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current)
-    }
-  }, [isVideoMode, resetControlsTimer])
-
   const recordingActive = recordingStatus === 'recording'
   const recordingSaving = recordingStatus === 'stopping'
   const isRecordingStarter =
@@ -1439,6 +1409,35 @@ function CallChrome({
   const anyParticipantHasCamera =
     participantHasLiveCamera(localParticipant) || remotes.some(participantHasLiveCamera)
   const showVideoStage = (videoEnabled || camOn || anyParticipantHasCamera) && !awaitingAnswer
+  const isVideoMode = Boolean(showVideoStage)
+
+  const resetControlsTimer = useCallback(() => {
+    if (hideTimerRef.current) {
+      window.clearTimeout(hideTimerRef.current)
+      hideTimerRef.current = null
+    }
+    setControlsHidden(false)
+    if (isVideoMode) {
+      hideTimerRef.current = window.setTimeout(() => {
+        setControlsHidden(true)
+      }, 4500)
+    }
+  }, [isVideoMode])
+
+  useEffect(() => {
+    if (isVideoMode) {
+      resetControlsTimer()
+    } else {
+      setControlsHidden(false)
+      if (hideTimerRef.current) {
+        window.clearTimeout(hideTimerRef.current)
+        hideTimerRef.current = null
+      }
+    }
+    return () => {
+      if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current)
+    }
+  }, [isVideoMode, resetControlsTimer])
 
   const applySpeakerSink = async (nextOn, { manual = false } = {}) => {
     if (!audioRouteSupported && manual) return

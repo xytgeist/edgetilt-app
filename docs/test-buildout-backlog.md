@@ -2842,6 +2842,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-04:** **Chat CallChrome TDZ:** `isVideoMode = Boolean(showVideoStage)` ran before `showVideoStage` was declared… Sentry `Cannot access '$e' before initialization` in `ChatCallSession`. Moved the hide-controls hook below the stage flag.
 - **2026-09-04:** **Profile Replies tab:** exclude `feed_comments.is_thread_part`; CSS grid avatar rail (no measured connectors); caption beside avatar; OP/reply carousels use `commentInline` (no full-bleed under the rail).
 - **2026-09-03:** Removed **`AppUpdateAvailableBanner`** / deploy-version poll. Stale hashed-chunk MIME failures still auto-reload. Soft-reload nag was too noisy on frequent test deploys.
 - **2026-09-03:** Text-thread submit no longer opens the leftover bottom **Posting your video** bar (`mediaPrep`). Same thin composer-top seam as caption/image/GIF posts. Video still uses inline tile / prep HUD.

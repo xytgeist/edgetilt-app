@@ -579,8 +579,9 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
     pathIds.length > 0 && threadComments.length > 0
       ? pathIds.map((id) => threadComments.find((c) => String(c?.id) === String(id))).filter(Boolean)
       : []
-  const CONNECTOR_LINE_CLASS = 'w-0.5 shrink-0 bg-zinc-500/30'
-  const CONNECTOR_GAP_CLASS = `${CONNECTOR_LINE_CLASS} h-3.5`
+  /** Gap between line end and avatar edge. */
+  const CONNECTOR_INSET_PX = 3
+  const CONNECTOR_STEM_CLASS = 'w-0.5 rounded-full bg-zinc-500/30'
 
   const renderAvatarButton = (entity, { ariaName }) => {
     const profile = entity?.author_profile
@@ -622,10 +623,24 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
       className="relative z-[1] col-start-1 flex h-full min-h-0 flex-col items-center"
       style={{ gridRow }}
     >
-      {showGapStub ? <div aria-hidden className={CONNECTOR_GAP_CLASS} /> : null}
+      {showGapStub ? (
+        <div
+          aria-hidden
+          className="flex h-3.5 w-0.5 shrink-0 flex-col"
+          style={{ paddingBottom: CONNECTOR_INSET_PX }}
+        >
+          <div className={`min-h-0 w-full flex-1 ${CONNECTOR_STEM_CLASS}`} />
+        </div>
+      ) : null}
       {renderAvatarButton(entity, { ariaName })}
       {showLineBelow ? (
-        <div aria-hidden className={`${CONNECTOR_LINE_CLASS} min-h-[0.5rem] w-0.5 flex-1`} />
+        <div
+          aria-hidden
+          className="flex min-h-[0.5rem] w-0.5 flex-1 flex-col"
+          style={{ paddingTop: CONNECTOR_INSET_PX }}
+        >
+          <div className={`min-h-0 w-full flex-1 ${CONNECTOR_STEM_CLASS}`} />
+        </div>
       ) : null}
     </div>
   )

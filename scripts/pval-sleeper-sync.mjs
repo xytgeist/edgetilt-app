@@ -4,19 +4,41 @@
  *
  *   node scripts/pval-sleeper-sync.mjs --dry-run
  *   node scripts/pval-sleeper-sync.mjs --apply --target=test
- *   node scripts/pval-sleeper-sync.mjs --apply --target=production
+ *   node scripts/pval-sleeper-sync.mjs --apply --refresh --target=test
+ *   npm run syndicate:pval-sleeper:refresh:test
  *
  * Never overwrites is_custom_override = true rows.
+ * CI uses service-role upsert (same secrets as NFL metrics sync).
  */
 import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
+import { createClient } from '@supabase/supabase-js'
 import { buildSleeperPvalRows } from './lib/pvalSleeperSync.mjs'
-import { loadSupabaseEnv, repoRoot } from './lib/supabaseEnv.mjs'
-import { ensureLinked, poolerUrlWithPassword } from './lib/supabaseDbCli.mjs'
-import pg from 'pg'
+import {
+  loadSupabaseEnv,
+  createSupabaseServiceClient,
+  repoRoot,
+} from './lib/supabaseEnv.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const UPSERT_CHUNK = 200
+const PAGE = 1000
+
+/** PostgREST caps pages at ~1000; page through for full table reads. */
+async function fetchAllRows(supabase, selectCols, { filter } = {}) {
+  const out = []
+  for (let from = 0; ; from += PAGE) {
+    let q = supabase.from('nfl_player_pvals').select(selectCols).range(from, from + PAGE - 1)
+    if (typeof filter === 'function') q = filter(q)
+    const { data, error } = await q
+    if (error) throw error
+    if (!data?.length) break
+    out.push(...data)
+    if (data.length < PAGE) break
+  }
+  return out
+}
 
 function parseArgs(argv) {
   const out = {
@@ -26,14 +48,17 @@ function parseArgs(argv) {
     season: null,
     outFile: null,
     refresh: false,
-    protectExisting: true,
+    protectExisting: null,
+    noOut: false,
   }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i]
     if (a === '--dry-run') out.dryRun = true
     else if (a === '--apply') out.dryRun = false
     else if (a === '--refresh') out.refresh = true
+    else if (a === '--protect') out.protectExisting = true
     else if (a === '--no-protect') out.protectExisting = false
+    else if (a === '--no-out') out.noOut = true
     else if (a === '--target' || a === '-t') out.target = argv[++i]
     else if (a.startsWith('--target=')) out.target = a.slice('--target='.length)
     else if (a === '--week') out.week = Number(argv[++i])
@@ -43,6 +68,8 @@ function parseArgs(argv) {
   if (!['test', 'production'].includes(out.target)) {
     throw new Error(`Invalid --target ${out.target}`)
   }
+  // First fill may protect curated rows; weekly refresh skips re-protect unless --protect.
+  if (out.protectExisting == null) out.protectExisting = !out.refresh
   return out
 }
 
@@ -66,123 +93,132 @@ function printSummary(built) {
   }
 }
 
+function rowPayload(r) {
+  const now = new Date().toISOString()
+  return {
+    player_name: r.player_name,
+    normalized_name: r.normalized_name,
+    team_name: r.team_name,
+    position: r.position,
+    side: r.side,
+    pval: r.pval,
+    tier: r.tier,
+    notes: r.notes,
+    is_custom_override: false,
+    last_synced_at: now,
+    updated_at: now,
+  }
+}
+
 async function applyRows(target, rows, { refresh = false, protectExisting = true } = {}) {
   loadSupabaseEnv(target)
-  ensureLinked(target)
-  const password = process.env.SUPABASE_DB_PASSWORD?.trim()
-  if (!password) throw new Error(`SUPABASE_DB_PASSWORD missing for ${target}`)
-  const pooler = fs.readFileSync(path.join(repoRoot, 'supabase', '.temp', 'pooler-url'), 'utf8').trim()
-  const connectionString = poolerUrlWithPassword(pooler, password)
+  const supabase = createSupabaseServiceClient(createClient)
 
-  const client = new pg.Client({ connectionString, ssl: { rejectUnauthorized: false } })
-  await client.connect()
-  try {
-    if (protectExisting) {
-      const prot = await client.query(`
-        update public.nfl_player_pvals
-        set is_custom_override = true, updated_at = now()
-        where is_custom_override = false
-          and (notes is null or notes not like 'sleeper v1%')
-      `)
-      console.log(`Protected curated/seed rows as overrides: ${prot.rowCount}`)
-    }
-
-    let upserted = 0
-    let skipped = 0
-    for (const r of rows) {
-      const sql = refresh
-        ? `
-          insert into public.nfl_player_pvals (
-            player_name, normalized_name, team_name, position, side, pval, tier, notes,
-            is_custom_override, last_synced_at, updated_at
-          ) values ($1,$2,$3,$4,$5,$6,$7,$8, false, now(), now())
-          on conflict (normalized_name) do update set
-            player_name = excluded.player_name,
-            team_name = excluded.team_name,
-            position = excluded.position,
-            side = excluded.side,
-            pval = excluded.pval,
-            tier = excluded.tier,
-            notes = excluded.notes,
-            last_synced_at = now(),
-            updated_at = now()
-          where public.nfl_player_pvals.is_custom_override = false
-          `
-        : `
-          insert into public.nfl_player_pvals (
-            player_name, normalized_name, team_name, position, side, pval, tier, notes,
-            is_custom_override, last_synced_at, updated_at
-          ) values ($1,$2,$3,$4,$5,$6,$7,$8, false, now(), now())
-          on conflict (normalized_name) do nothing
-          `
-      const res = await client.query(sql, [
-        r.player_name,
-        r.normalized_name,
-        r.team_name,
-        r.position,
-        r.side,
-        r.pval,
-        r.tier,
-        r.notes,
-      ])
-      if (res.rowCount === 0) skipped++
-      else upserted++
-    }
-    const countRes = await client.query('select count(*)::int as n from public.nfl_player_pvals')
-    const ov = await client.query(
-      'select count(*)::int as n from public.nfl_player_pvals where is_custom_override',
+  if (protectExisting) {
+    const candidates = await fetchAllRows(supabase, 'id, notes, is_custom_override', {
+      filter: (q) => q.eq('is_custom_override', false),
+    })
+    const toProtect = candidates.filter(
+      (r) => !r.notes || !String(r.notes).startsWith('sleeper v1'),
     )
-    console.log(
-      `Apply ${target} (${refresh ? 'refresh non-overrides' : 'insert-new only'}): ` +
-        `wrote≈${upserted}, skipped≈${skipped}, table_n=${countRes.rows[0].n}, overrides=${ov.rows[0].n}`,
-    )
-  } finally {
-    await client.end()
+    if (toProtect.length) {
+      for (let i = 0; i < toProtect.length; i += UPSERT_CHUNK) {
+        const chunk = toProtect.slice(i, i + UPSERT_CHUNK)
+        const { error: protErr } = await supabase
+          .from('nfl_player_pvals')
+          .update({ is_custom_override: true, updated_at: new Date().toISOString() })
+          .in(
+            'id',
+            chunk.map((r) => r.id),
+          )
+        if (protErr) throw protErr
+      }
+    }
+    console.log(`Protected curated/seed rows as overrides: ${toProtect.length}`)
   }
+
+  const existing = await fetchAllRows(supabase, 'normalized_name, is_custom_override')
+
+  const overrideSet = new Set(
+    existing.filter((r) => r.is_custom_override).map((r) => r.normalized_name),
+  )
+  const existingSet = new Set(existing.map((r) => r.normalized_name))
+
+  const toWrite = []
+  let skipped = 0
+  for (const r of rows) {
+    if (overrideSet.has(r.normalized_name)) {
+      skipped++
+      continue
+    }
+    if (!refresh && existingSet.has(r.normalized_name)) {
+      skipped++
+      continue
+    }
+    toWrite.push(rowPayload(r))
+  }
+
+  let upserted = 0
+  for (let i = 0; i < toWrite.length; i += UPSERT_CHUNK) {
+    const chunk = toWrite.slice(i, i + UPSERT_CHUNK)
+    const { error: upsertErr } = await supabase.from('nfl_player_pvals').upsert(chunk, {
+      onConflict: 'normalized_name',
+    })
+    if (upsertErr) throw upsertErr
+    upserted += chunk.length
+  }
+
+  const { count: tableN, error: countErr } = await supabase
+    .from('nfl_player_pvals')
+    .select('*', { count: 'exact', head: true })
+  if (countErr) throw countErr
+  const { count: overrideN, error: ovErr } = await supabase
+    .from('nfl_player_pvals')
+    .select('*', { count: 'exact', head: true })
+    .eq('is_custom_override', true)
+  if (ovErr) throw ovErr
+
+  console.log(
+    `Apply ${target} (${refresh ? 'refresh non-overrides' : 'insert-new only'}): ` +
+      `wrote≈${upserted}, skipped≈${skipped}, table_n=${tableN ?? '?'}, overrides=${overrideN ?? '?'}`,
+  )
 }
 
 async function compareToDb(target, rows) {
   loadSupabaseEnv(target)
-  ensureLinked(target)
-  const password = process.env.SUPABASE_DB_PASSWORD?.trim()
-  if (!password) return
-  const pooler = fs.readFileSync(path.join(repoRoot, 'supabase', '.temp', 'pooler-url'), 'utf8').trim()
-  const connectionString = poolerUrlWithPassword(pooler, password)
-  const client = new pg.Client({ connectionString, ssl: { rejectUnauthorized: false } })
-  await client.connect()
-  try {
-    const { rows: dbRows } = await client.query(
-      'select player_name, normalized_name, pval, is_custom_override from public.nfl_player_pvals',
+  const supabase = createSupabaseServiceClient(createClient)
+  const dbRows = await fetchAllRows(
+    supabase,
+    'player_name, normalized_name, pval, is_custom_override',
+  )
+  if (!dbRows.length) return
+
+  const byNorm = new Map(rows.map((r) => [r.normalized_name, r]))
+  console.log(`\nCompare to existing ${target} table (${dbRows.length} rows):`)
+  let matched = 0
+  const diffs = []
+  for (const d of dbRows) {
+    const prop = byNorm.get(d.normalized_name)
+    if (!prop) continue
+    matched++
+    const delta = Math.round((prop.pval - Number(d.pval)) * 100) / 100
+    if (Math.abs(delta) >= 0.5) {
+      diffs.push({
+        name: d.player_name,
+        db: Number(d.pval),
+        prop: prop.pval,
+        delta,
+        override: d.is_custom_override,
+        band: prop.bandKey,
+      })
+    }
+  }
+  diffs.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+  console.log(`  name-matched ${matched} · |Δ|≥0.5 → ${diffs.length}`)
+  for (const d of diffs.slice(0, 12)) {
+    console.log(
+      `  ${d.name}: db ${d.db} → prop ${d.prop} (Δ${d.delta > 0 ? '+' : ''}${d.delta}) ${d.band}${d.override ? ' [OVERRIDE]' : ''}`,
     )
-    const byNorm = new Map(rows.map((r) => [r.normalized_name, r]))
-    console.log(`\nCompare to existing ${target} table (${dbRows.length} rows):`)
-    let matched = 0
-    const diffs = []
-    for (const d of dbRows) {
-      const prop = byNorm.get(d.normalized_name)
-      if (!prop) continue
-      matched++
-      const delta = Math.round((prop.pval - Number(d.pval)) * 100) / 100
-      if (Math.abs(delta) >= 0.5) {
-        diffs.push({
-          name: d.player_name,
-          db: Number(d.pval),
-          prop: prop.pval,
-          delta,
-          override: d.is_custom_override,
-          band: prop.bandKey,
-        })
-      }
-    }
-    diffs.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
-    console.log(`  name-matched ${matched} · |Δ|≥0.5 → ${diffs.length}`)
-    for (const d of diffs.slice(0, 12)) {
-      console.log(
-        `  ${d.name}: db ${d.db} → prop ${d.prop} (Δ${d.delta > 0 ? '+' : ''}${d.delta}) ${d.band}${d.override ? ' [OVERRIDE]' : ''}`,
-      )
-    }
-  } finally {
-    await client.end()
   }
 }
 
@@ -191,44 +227,47 @@ async function main() {
   const built = await buildSleeperPvalRows({ week: args.week, season: args.season })
   printSummary(built)
 
-  const outPath =
-    args.outFile ||
-    path.join(repoRoot, 'ap-guide-workspace', `_pval-sleeper-week${built.week}-${built.season}.json`)
-  fs.mkdirSync(path.dirname(outPath), { recursive: true })
-  fs.writeFileSync(
-    outPath,
-    JSON.stringify(
-      {
-        generated_at: new Date().toISOString(),
-        season: built.season,
-        week: built.week,
-        rowCount: built.rowCount,
-        bandCounts: built.bandCounts,
-        rows: built.rows.map((r) => ({
-          player_name: r.player_name,
-          normalized_name: r.normalized_name,
-          team_name: r.team_name,
-          position: r.position,
-          side: r.side,
-          bandKey: r.bandKey,
-          pval: r.pval,
-          tier: r.tier,
-          depth_order: r.depth_order,
-          pts_ppr: r.pts_ppr,
-          percentile: r.percentile,
-          notes: r.notes,
-        })),
-      },
-      null,
-      2,
-    ),
-  )
-  console.log(`\nWrote ${outPath}`)
+  const skipOut = args.noOut || process.env.CI === 'true'
+  if (!skipOut) {
+    const outPath =
+      args.outFile ||
+      path.join(repoRoot, 'ap-guide-workspace', `_pval-sleeper-week${built.week}-${built.season}.json`)
+    fs.mkdirSync(path.dirname(outPath), { recursive: true })
+    fs.writeFileSync(
+      outPath,
+      JSON.stringify(
+        {
+          generated_at: new Date().toISOString(),
+          season: built.season,
+          week: built.week,
+          rowCount: built.rowCount,
+          bandCounts: built.bandCounts,
+          rows: built.rows.map((r) => ({
+            player_name: r.player_name,
+            normalized_name: r.normalized_name,
+            team_name: r.team_name,
+            position: r.position,
+            side: r.side,
+            bandKey: r.bandKey,
+            pval: r.pval,
+            tier: r.tier,
+            depth_order: r.depth_order,
+            pts_ppr: r.pts_ppr,
+            percentile: r.percentile,
+            notes: r.notes,
+          })),
+        },
+        null,
+        2,
+      ),
+    )
+    console.log(`\nWrote ${outPath}`)
+  }
 
   await compareToDb(args.target, built.rows)
 
   if (args.dryRun) {
-    console.log('\nDry-run only. Re-run with --apply --target=test to insert new rows (curated 57 protected).')
+    console.log('\nDry-run only. Re-run with --apply --target=test to insert new rows (curated protected).')
     console.log('Add --refresh to update existing non-override sleeper rows on later weeks.')
     return
   }

@@ -827,7 +827,7 @@ Sagarin is scraped from the public Predictor board (`scripts/lib/cfbSagarinPredi
 
 Desk mapping: **Scott** = PASS unless model−market ≥ 2.5 after PVAL (1.5 only on true 3/7 keys) · **Rocco** = PASS unless short-fav / hurtSide / hook-tax / pasted chalk-trap (short-fav alone ≠ house vote / hammer strength; juice worse than **-115** → PASS unless Scott/Chedda already on that side; no trench truth) · **Chedda** = PASS unless dog+hook / dog+PVAL / pasted money (no dog+raw-EPA; no synthetic) · **Tank** = totals first-pass (formula frozen). Hammer = all three side desks active + Scott + independent second reason. Synthetic splits never score. Primetime = spotlight lean, not house card.
 
-**PVAL injury prior (v0/v1):** curated `nfl_player_pvals` overrides win. Unmatched Rundown OUTs use position-band **Typical** defaults (`loungeBotPvalBands.ts`). **v1 fill:** `npm run syndicate:pval-sleeper` (Sleeper depth → band, week fantasy → seat); `--apply` inserts new rows without clobbering overrides. Non-QB stack soft/hard caps 1.2 / 2.0; shrink non-QB when QB also out. K/P/coach = 0.
+**PVAL injury prior (v0/v1):** curated `nfl_player_pvals` overrides win. Unmatched Rundown OUTs use position-band **Typical** defaults (`loungeBotPvalBands.ts`). **v1 fill / weekly refresh:** `npm run syndicate:pval-sleeper` (Sleeper depth → band, week fantasy → seat); `--apply` inserts new; `--refresh` upserts non-override rows. Tuesday GHA cron runs `syndicate:pval-sleeper:refresh:{test,production}` with the football metrics workflow. Non-QB stack soft/hard caps 1.2 / 2.0; shrink non-QB when QB also out. K/P/coach = 0.
 
 **ATS slate auto-publish (pg_cron):** CFB Fri **12pm PT** house (`cfb_slate_card`); Wed **2pm** VIP midweek Thu/Fri nights (`cfb_wed_midweek_vip`); Thu **3:30pm** CFB night tease (`cfb_thu_night_spotlight`); Sat **10am** CFB adds/kills. NFL Fri **1pm** house; Wed TNF VIP; Sat adds/kills. Primetime public = one lean + CTA. Migration `20260902250000`.
 
@@ -840,7 +840,7 @@ npm run syndicate:sync-cfb-power:test
 npm run syndicate:sync-cfb-power:production   # Ryan explicit only
 ```
 
-**Cron:** [`.github/workflows/syndicate-football-metrics-sync.yml`](../.github/workflows/syndicate-football-metrics-sync.yml) … Tuesdays **14:00 UTC** syncs **test + production**. Manual dispatch can set `sync_production=false` to skip prod. Edge Monitor heartbeat **`syndicate_football_metrics_sync_production`** (migration **`20260903210000`**).
+**Cron:** [`.github/workflows/syndicate-football-metrics-sync.yml`](../.github/workflows/syndicate-football-metrics-sync.yml) … Tuesdays **14:00 UTC** syncs **test + production** (NFL EPA + CFB power + UFC metrics + **Sleeper PVAL refresh**). Manual dispatch can set `sync_production=false` to skip prod. Edge Monitor heartbeat **`syndicate_football_metrics_sync_production`** (migration **`20260903210000`**).
 
 **Model honesty:** [`loungeBotTeamMetrics.ts`](../supabase/functions/_shared/loungeBotTeamMetrics.ts) `calculateTrenchEpaMatchup` is **EPA-only** (trench spread impact hard-zero) until PFF/B2B. Redeploy **`lounge-odds-poll`** after pulling that change.
 

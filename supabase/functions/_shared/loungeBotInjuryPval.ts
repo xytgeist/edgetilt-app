@@ -89,6 +89,7 @@ export function calculateTeamInjuryImpact(
         status: p.status,
         side: valEntry.side,
         isQb: valEntry.pos === 'QB',
+        depthOrder: p.depthOrder ?? null,
       })
       continue
     }

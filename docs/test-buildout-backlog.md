@@ -2844,6 +2844,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-04:** **Video call layouts by count.** 2 = inset You (slides with pill); 3 = top/bottom split; 4 = quad, tap → fullscreen + right stack; 5+ = featured + 2-row grid. Double-tap focuses without waiting for the pill. Flip stays top-right on You. 5+ compact lower pill. IPA needs a new TestFlight. Spec: **`docs/chat-calling.md`**.
 - **2026-09-04:** Chat **new messages** chip hangs off the composer (`bottom-full`) so it floats just above the Message pill. It was `bottom-2` on the list, which sits under the pill because the composer uses a negative margin overlay.
 - **2026-09-04:** **Video call stage + recording.** You stay lower-right. Tap a remote → they go fullscreen; other remotes stack on the right above You. IPA: `layoutFocusedStage` + `setNativeCallStreamFocus.focusedIdentity` (**new TestFlight**). Web `VideoCallStage` matches. Egress template no longer logs `START_RECORDING` in `<head>` (that saved a blank waiting frame); waits for a camera + featured fallback. **Republish R2 call-egress template on test** for recordings to pick it up. Spec: **`docs/chat-calling.md`**.
 - **2026-09-04:** **Chat / X never get Lounge markdown.** Lounge public + VIP keep the dialect. Fan-room inserts go through `toPlainOutboundText` (`loungeBotPlainOutbound.ts`) inside `publishBotSubChatMessage`. Future X auto-post must use the same helper. Redeploy **`lounge-odds-poll`**. Spec: **`docs/lounge-bot-sports-odds.md`** Destination markdown rules.

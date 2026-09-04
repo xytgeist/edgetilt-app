@@ -208,7 +208,7 @@ export async function setNativeCallSpeaker(speaker) {
   }
 }
 
-/** @param {{ minimized?: boolean, videoVisible?: boolean, participantAvatars?: { identity: string, name?: string, avatarUrl?: string }[] }} args */
+/** @param {{ minimized?: boolean, videoVisible?: boolean, controlsHidden?: boolean, participantAvatars?: { identity: string, name?: string, avatarUrl?: string }[] }} args */
 export async function setNativeCallChrome(args = {}) {
   if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
   try {
@@ -219,7 +219,7 @@ export async function setNativeCallChrome(args = {}) {
   }
 }
 
-/** @param {{ isLocalMain?: boolean, focusedIdentity?: string | null }} args */
+/** @param {{ isLocalMain?: boolean, focusedIdentity?: string | null, quadFocus?: boolean }} args */
 export async function setNativeCallStreamFocus(args = {}) {
   if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
   try {
@@ -227,12 +227,14 @@ export async function setNativeCallStreamFocus(args = {}) {
     const result = await edgeNativeInvoke('setNativeCallStreamFocus', {
       isLocalMain: false,
       focusedIdentity,
+      quadFocus: Boolean(args.quadFocus),
     })
     return {
       ok: result?.ok !== false,
       via: 'bridge',
       isLocalMain: false,
       focusedIdentity: result?.focusedIdentity || focusedIdentity,
+      quadFocus: Boolean(result?.quadFocus ?? args.quadFocus),
     }
   } catch {
     return { ok: false, via: 'error' }

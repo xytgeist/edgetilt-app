@@ -83,6 +83,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Windows Theo.** Destination rule: Lounge (public + VIP) keeps markdown. **Chat rooms never get markdown.** **X.com auto-post (when built) never gets markdown.** Same caption can fan out; strip at the destination. Helper `toPlainOutboundText` in `loungeBotPlainOutbound.ts`. Chat choke point is `publishBotSubChatMessage` (every Signal/Syndicate fan-room insert). X publisher must call that helper; do not send Lounge captions raw. Redeploy **`lounge-odds-poll`** (test) for live chat copies. Existing chat messages stay until the next publish.
 
+### Mac Theo 2026-09-04 … video layouts by participant count
+
+**I am Mac Theo.** Video tiles now follow count: 2 inset You (slides with the pill), 3 split, 4 quad (tap → fullscreen + right stack), 5+ featured + 2-row grid. You stay bottom-right. Double-tap focuses without waiting for the pill. Flip is top-right on You. 5+ compact lower pill. Bridge: `quadFocus` + `controlsHidden`. **Rebuild EdgeTilt Test.** Web is Vercel `test`.
+
 ### Mac Theo 2026-09-04 … video You-corner + tap focus + recording
 
 **I am Mac Theo.** Video: You stay lower-right. Tap a remote → fullscreen; others stack on the right above You. IPA native layout + web `VideoCallStage`. Bridge: `setNativeCallStreamFocus.focusedIdentity`. Recording was saving a blank waiting frame because the egress HTML logged `START_RECORDING` on load. Template now waits for a camera (8s failsafe) and falls back if the featured id has no track. **Rebuild EdgeTilt Test** for tile frames. **Republish R2 call-egress on test** for the MP4 fix. Web layout is Vercel `test`.

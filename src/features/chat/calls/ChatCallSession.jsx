@@ -32,6 +32,33 @@ import {
   setNativeCallSpeaker,
   setNativeCallStreamFocus,
 } from '../../../utils/edgeCallKit.js'
+import { CALL_STREAM_DOUBLE_TAP_MS, planCallVideoLayout } from './callVideoLayout.js'
+
+const EMPTY_CAMERA_BY_IDENTITY = new Map()
+
+function useCallStreamTap({ controlsHidden, onReveal, onFocus }) {
+  const lastRef = useRef({ at: 0, id: '' })
+  return useCallback(
+    (identity, event) => {
+      event?.stopPropagation?.()
+      const now = Date.now()
+      const prev = lastRef.current
+      const isDouble =
+        Boolean(identity) && identity === prev.id && now - prev.at < CALL_STREAM_DOUBLE_TAP_MS
+      lastRef.current = { at: now, id: identity || '' }
+      if (isDouble) {
+        onFocus?.(identity)
+        return
+      }
+      if (controlsHidden) {
+        onReveal?.()
+        return
+      }
+      onFocus?.(identity)
+    },
+    [controlsHidden, onFocus, onReveal],
+  )
+}
 
 const CALL_PILL_POS_KEY = 'edge_chat_call_pill_pos_v1'
 const CALL_PILL_DRAG_THRESHOLD_PX = 8
@@ -677,6 +704,7 @@ function NativeIpaCallSession({
   const [elapsed, setElapsed] = useState(0)
   const [recCountdownLabel, setRecCountdownLabel] = useState(/** @type {string | null} */ (null))
   const [pinnedIdentity, setPinnedIdentity] = useState(/** @type {string | null} */ (null))
+  const [quadFocus, setQuadFocus] = useState(false)
   const [showVideoConfirmModal, setShowVideoConfirmModal] = useState(false)
   const [controlsHidden, setControlsHidden] = useState(false)
   const hideTimerRef = useRef(/** @type {number | null} */ (null))
@@ -721,6 +749,26 @@ function NativeIpaCallSession({
       if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current)
     }
   }, [isVideoMode, resetControlsTimer])
+
+  const focusNativeRemote = useCallback((id) => {
+    if (id === '__quad_restore__') {
+      setQuadFocus(false)
+      setPinnedIdentity(null)
+      return
+    }
+    const next = String(id || '').trim()
+    if (!next) return
+    const localId = nativeRoster.find((p) => p.isLocal)?.identity
+    if (localId && next === localId) return
+    setPinnedIdentity(next)
+    if (nativeRoster.length === 4 || remoteCount + 1 === 4) setQuadFocus(true)
+  }, [nativeRoster, remoteCount])
+
+  const onNativeStreamTap = useCallStreamTap({
+    controlsHidden,
+    onReveal: resetControlsTimer,
+    onFocus: focusNativeRemote,
+  })
 
   const recordingActive = recordingStatus === 'recording'
   const recordingSaving = recordingStatus === 'stopping'
@@ -856,14 +904,21 @@ function NativeIpaCallSession({
     }
     return nativeRemotes[0]?.identity || null
   }, [pinnedIdentity, nativeRemotes])
+  const nativePeopleCount = nativeRoster.length > 0 ? nativeRoster.length : remoteCount + 1
+  const nativeQuadFocus = quadFocus && nativePeopleCount === 4
+
+  useEffect(() => {
+    if (nativePeopleCount !== 4) setQuadFocus(false)
+  }, [nativePeopleCount])
 
   useEffect(() => {
     if (!isVideoMode) return
     void setNativeCallStreamFocus({
       isLocalMain: false,
-      focusedIdentity: focusedIdentity || '',
+      focusedIdentity: nativeQuadFocus || nativePeopleCount !== 4 ? focusedIdentity || '' : '',
+      quadFocus: nativeQuadFocus,
     })
-  }, [isVideoMode, focusedIdentity])
+  }, [isVideoMode, focusedIdentity, nativeQuadFocus, nativePeopleCount])
   const profileById = useCallParticipantProfiles(supabaseClient, participantIds)
   const speakingIds = useMemo(() => {
     const set = new Set()
@@ -896,13 +951,14 @@ function NativeIpaCallSession({
     void setNativeCallChrome({
       minimized,
       videoVisible: isVideoMode,
+      controlsHidden,
       participantAvatars: nativeRoster.map((p) => ({
         identity: p.identity,
         name: resolveNameForParticipant(p),
         avatarUrl: resolveAvatarForParticipant(p) || '',
       })),
     })
-  }, [minimized, isVideoMode, nativeRoster, profileById, viewerAvatarUrl, avatarUrl])
+  }, [minimized, isVideoMode, controlsHidden, nativeRoster, profileById, viewerAvatarUrl, avatarUrl])
 
   const mm = String(Math.floor(elapsed / 60)).padStart(2, '0')
   const ss = String(elapsed % 60).padStart(2, '0')
@@ -1079,45 +1135,34 @@ function NativeIpaCallSession({
       {/* Main Stage */}
       <div className="relative z-[1] min-h-0 flex-1 px-4">
         {showVideoHole ? (
-          <div className="relative h-full w-full">
-            <button
-              type="button"
-              className="absolute inset-0 h-full w-full cursor-pointer touch-manipulation bg-transparent border-0 outline-none"
-              aria-label={controlsHidden ? 'Show call controls' : 'Hide call controls'}
-              onClick={() => {
-                if (controlsHidden) resetControlsTimer()
-                else setControlsHidden(true)
-              }}
-            />
-            <div className="pointer-events-none absolute bottom-4 right-4 z-[2] flex flex-col-reverse items-end gap-2.5">
-              <div className="h-[8rem] w-[8rem]" aria-hidden />
-              {nativeRemotes
-                .filter((p) => p.identity !== focusedIdentity)
-                .map((p) => (
-                  <button
-                    key={p.identity}
-                    type="button"
-                    data-chat-call-interactive=""
-                    className="pointer-events-auto h-20 w-[4.75rem] cursor-pointer touch-manipulation rounded-2xl border-0 bg-transparent outline-none"
-                    aria-label={`Show ${p.name || 'caller'} fullscreen`}
-                    onClick={(event) => {
-                      event.stopPropagation()
-                      resetControlsTimer()
-                      setPinnedIdentity(p.identity)
-                    }}
-                  />
-                ))}
-            </div>
-            {camOn ? (
-              <LocalFlipChip
-                className="bottom-4 right-4"
-                onFlip={() => {
-                  resetControlsTimer()
-                  void setNativeCallCamera({ flip: true })
-                }}
-              />
-            ) : null}
-          </div>
+          <VideoCallStage
+            hitOnly
+            remotes={nativeRemotes}
+            localParticipant={nativeRoster.find((p) => p.isLocal) || { identity: viewerUserId, isLocal: true }}
+            featuredIdentity={nativeQuadFocus || nativePeopleCount !== 4 ? focusedIdentity : null}
+            quadFocus={nativeQuadFocus}
+            controlsHidden={controlsHidden}
+            cameraByIdentity={EMPTY_CAMERA_BY_IDENTITY}
+            participantHasLiveCamera={() => false}
+            resolveAvatarForParticipant={resolveAvatarForParticipant}
+            title={title}
+            showLocalFlip={Boolean(camOn)}
+            onFlipCamera={() => {
+              resetControlsTimer()
+              void setNativeCallCamera({ flip: true })
+            }}
+            onActivateRemote={onNativeStreamTap}
+            onActivateMain={(event) => {
+              if (nativeQuadFocus) onNativeStreamTap('__quad_restore__', event)
+              else if (controlsHidden) resetControlsTimer()
+              else setControlsHidden(true)
+            }}
+            onActivateYou={(event) => {
+              event?.stopPropagation?.()
+              if (controlsHidden) resetControlsTimer()
+              else setControlsHidden(true)
+            }}
+          />
         ) : showGroupAudioStage ? (
           <GroupAudioStage
             participants={nativeRoster}
@@ -1141,16 +1186,30 @@ function NativeIpaCallSession({
       {/* Bottom Controls - slides down when controlsHidden in video mode */}
       <div
         className={`relative z-[1] flex shrink-0 justify-center px-4 pt-2 transition-all duration-300 ease-in-out ${
-          controlsHidden ? 'translate-y-36 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
+          controlsHidden
+            ? nativePeopleCount >= 5
+              ? 'translate-y-24 opacity-0 pointer-events-none'
+              : 'translate-y-36 opacity-0 pointer-events-none'
+            : 'translate-y-0 opacity-100'
         }`}
-        style={{ paddingBottom: 'calc(max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)) + 1.25rem)' }}
+        style={{
+          paddingBottom:
+            nativePeopleCount >= 5
+              ? 'max(0.35rem, max(env(safe-area-inset-bottom,0px), var(--edge-sab,0px)))'
+              : 'calc(max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)) + 1.25rem)',
+        }}
       >
         {isVideoMode ? (
           <div
             data-chat-call-interactive=""
-            className="pointer-events-auto mx-auto flex w-full max-w-[22.5rem] items-center justify-between rounded-full border border-white/10 bg-zinc-950/85 px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150"
+            className={`pointer-events-auto mx-auto flex items-center justify-between rounded-full border border-white/10 bg-zinc-950/85 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150 ${
+              nativePeopleCount >= 5
+                ? 'w-auto max-w-[16rem] gap-1 px-2 py-1.5'
+                : 'w-full max-w-[22.5rem] px-4 py-3'
+            }`}
           >
             <VideoRecordDockItem
+              compact={nativePeopleCount >= 5}
               recordingActive={recordingActive}
               recordingSaving={recordingSaving}
               canStopRecording={canStopRecording}
@@ -1159,6 +1218,7 @@ function NativeIpaCallSession({
               onInteract={resetControlsTimer}
             />
             <CallDockItem
+              compact={nativePeopleCount >= 5}
               icon={<VideoIcon off={!camOn} />}
               label="Video"
               active={camOn}
@@ -1167,6 +1227,7 @@ function NativeIpaCallSession({
               onClick={handleVideoDockClick}
             />
             <CallDockItem
+              compact={nativePeopleCount >= 5}
               icon={<SpeakerIcon />}
               label="Speaker"
               active={speakerOn}
@@ -1177,6 +1238,7 @@ function NativeIpaCallSession({
               }}
             />
             <CallDockItem
+              compact={nativePeopleCount >= 5}
               icon={<MicIcon muted={!micOn} />}
               label="Mute"
               active={!micOn}
@@ -1187,6 +1249,7 @@ function NativeIpaCallSession({
               }}
             />
             <CallDockItem
+              compact={nativePeopleCount >= 5}
               icon={<HangupIcon />}
               label="End"
               variant="danger"
@@ -1283,6 +1346,7 @@ function CallChrome({
   const [elapsed, setElapsed] = useState(0)
   const [recCountdownLabel, setRecCountdownLabel] = useState(/** @type {string | null} */ (null))
   const [pinnedIdentity, setPinnedIdentity] = useState(/** @type {string | null} */ (null))
+  const [quadFocus, setQuadFocus] = useState(false)
   /** Last pinned participant object so active-speaker cannot steal if the pin blips out of the roster. */
   /** User manually toggled speaker... ignore cam-off / cam-on auto route flips. */
   const speakerManualOverrideRef = useRef(false)
@@ -1437,6 +1501,12 @@ function CallChrome({
   }
 
   const remotes = participants.filter((p) => !p.isLocal)
+  const peopleCount = remotes.length + (localParticipant ? 1 : 0)
+  const webQuadFocus = quadFocus && peopleCount === 4
+
+  useEffect(() => {
+    if (peopleCount !== 4) setQuadFocus(false)
+  }, [peopleCount])
 
   const fullscreenParticipant = useMemo(() => {
     if (pinnedIdentity) {
@@ -1479,6 +1549,24 @@ function CallChrome({
       if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current)
     }
   }, [isVideoMode, resetControlsTimer])
+
+  const focusWebRemote = useCallback((id) => {
+    if (id === '__quad_restore__') {
+      setQuadFocus(false)
+      setPinnedIdentity(null)
+      return
+    }
+    const next = String(id || '').trim()
+    if (!next || (localParticipant && next === localParticipant.identity)) return
+    setPinnedIdentity(next)
+    if (peopleCount === 4) setQuadFocus(true)
+  }, [localParticipant, peopleCount])
+
+  const onWebStreamTap = useCallStreamTap({
+    controlsHidden,
+    onReveal: resetControlsTimer,
+    onFocus: focusWebRemote,
+  })
 
   const applySpeakerSink = async (nextOn, { manual = false } = {}) => {
     if (!audioRouteSupported && manual) return
@@ -1731,9 +1819,12 @@ function CallChrome({
   const controlPill = showVideoStage ? (
     <div
       data-chat-call-interactive=""
-      className="pointer-events-auto mx-auto flex w-full max-w-[22.5rem] items-center justify-between rounded-full border border-white/10 bg-zinc-950/85 px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150"
+      className={`pointer-events-auto mx-auto flex items-center justify-between rounded-full border border-white/10 bg-zinc-950/85 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150 ${
+        peopleCount >= 5 ? 'w-auto max-w-[16rem] gap-1 px-2 py-1.5' : 'w-full max-w-[22.5rem] px-4 py-3'
+      }`}
     >
       <VideoRecordDockItem
+        compact={peopleCount >= 5}
         recordingActive={recordingActive}
         recordingSaving={recordingSaving}
         canStopRecording={canStopRecording}
@@ -1748,6 +1839,7 @@ function CallChrome({
         onInteract={resetControlsTimer}
       />
       <CallDockItem
+        compact={peopleCount >= 5}
         icon={<VideoIcon off={!camOn} />}
         label="Video"
         active={camOn}
@@ -1755,6 +1847,7 @@ function CallChrome({
         onClick={handleVideoDockClick}
       />
       <CallDockItem
+        compact={peopleCount >= 5}
         icon={<SpeakerIcon />}
         label="Speaker"
         active={speakerOn}
@@ -1766,6 +1859,7 @@ function CallChrome({
         }}
       />
       <CallDockItem
+        compact={peopleCount >= 5}
         icon={<MicIcon muted={!micOn} />}
         label="Mute"
         active={!micOn}
@@ -1776,6 +1870,7 @@ function CallChrome({
         }}
       />
       <CallDockItem
+        compact={peopleCount >= 5}
         icon={<HangupIcon />}
         label="End"
         variant="danger"
@@ -1871,26 +1966,15 @@ function CallChrome({
         <div className="h-11 w-11 shrink-0" aria-hidden />
       </div>
 
-      <div
-        className="relative z-[1] min-h-0 flex-1 px-4 cursor-pointer"
-        onClick={() => {
-          if (showVideoStage) {
-            if (controlsHidden) resetControlsTimer()
-            else setControlsHidden(true)
-          }
-        }}
-      >
+      <div className="relative z-[1] min-h-0 flex-1 px-4">
         {showVideoStage ? (
           <VideoCallStage
-            fullscreenParticipant={fullscreenParticipant}
-            localParticipant={localParticipant}
             remotes={remotes}
+            localParticipant={localParticipant}
+            featuredIdentity={webQuadFocus || peopleCount !== 4 ? fullscreenParticipant?.identity : null}
+            quadFocus={webQuadFocus}
+            controlsHidden={controlsHidden}
             cameraByIdentity={cameraByIdentity}
-            onPinIdentity={(id) => {
-              resetControlsTimer()
-              if (localParticipant && id === localParticipant.identity) return
-              setPinnedIdentity(id)
-            }}
             resolveAvatarForParticipant={resolveAvatarForParticipant}
             participantHasLiveCamera={participantHasLiveCamera}
             title={title}
@@ -1898,6 +1982,17 @@ function CallChrome({
             onFlipCamera={() => {
               resetControlsTimer()
               void flipCamera()
+            }}
+            onActivateRemote={onWebStreamTap}
+            onActivateMain={(event) => {
+              if (webQuadFocus) onWebStreamTap('__quad_restore__', event)
+              else if (controlsHidden) resetControlsTimer()
+              else setControlsHidden(true)
+            }}
+            onActivateYou={(event) => {
+              event?.stopPropagation?.()
+              if (controlsHidden) resetControlsTimer()
+              else setControlsHidden(true)
             }}
           />
         ) : isGroup && !awaitingAnswer ? (
@@ -1923,9 +2018,18 @@ function CallChrome({
       {/* Bottom Controls - slides down when controlsHidden in video mode */}
       <div
         className={`relative z-[1] flex shrink-0 justify-center px-4 pt-2 transition-all duration-300 ease-in-out ${
-          controlsHidden ? 'translate-y-36 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
+          controlsHidden
+            ? peopleCount >= 5
+              ? 'translate-y-24 opacity-0 pointer-events-none'
+              : 'translate-y-36 opacity-0 pointer-events-none'
+            : 'translate-y-0 opacity-100'
         }`}
-        style={{ paddingBottom: 'calc(max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)) + 1.25rem)' }}
+        style={{
+          paddingBottom:
+            peopleCount >= 5
+              ? 'max(0.35rem, max(env(safe-area-inset-bottom,0px), var(--edge-sab,0px)))'
+              : 'calc(max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)) + 1.25rem)',
+        }}
       >
         {controlPill}
       </div>
@@ -2028,124 +2132,225 @@ function GroupAudioStage({
 }
 
 function VideoCallStage({
-  fullscreenParticipant,
-  localParticipant,
-  remotes,
+  remotes = [],
+  localParticipant = null,
+  featuredIdentity = null,
+  quadFocus = false,
+  controlsHidden = false,
   cameraByIdentity,
-  onPinIdentity,
   resolveAvatarForParticipant,
   participantHasLiveCamera,
   title,
   showLocalFlip = false,
   onFlipCamera,
+  onActivateRemote,
+  onActivateMain,
+  onActivateYou,
+  hitOnly = false,
 }) {
-  const fullId = fullscreenParticipant?.identity || null
-  const fullTrack = fullId ? cameraByIdentity.get(fullId) : null
-  const fullHasCam = participantHasLiveCamera(fullscreenParticipant)
-  const fullAvatar = resolveAvatarForParticipant(fullscreenParticipant)
-  const fullName =
-    fullscreenParticipant?.name ||
-    (fullscreenParticipant?.isLocal ? 'You' : title) ||
-    'Call'
-  const localIsFullscreen = Boolean(
-    localParticipant && remotes.length === 0 && fullId === localParticipant.identity,
-  )
-  const sideRemotes = remotes.filter((p) => p.identity !== fullId)
-  const showLocalPip = Boolean(localParticipant && remotes.length > 0)
+  const plan = planCallVideoLayout({
+    remoteIds: remotes.map((p) => p.identity),
+    localId: localParticipant?.identity || null,
+    featuredId: featuredIdentity,
+    quadFocus,
+  })
+  const byId = new Map()
+  for (const p of remotes) byId.set(p.identity, p)
+  if (localParticipant) byId.set(localParticipant.identity, localParticipant)
 
-  const renderTile = (participant, { label, roundedClass, textClass }) => {
+  const renderFill = (participant, { label, textClass, roundedClass = '' }) => {
+    if (hitOnly || !participant) return null
     const track = cameraByIdentity.get(participant.identity)
     const hasCam = participantHasLiveCamera(participant)
-    return hasCam && track ? (
-      <VideoTrack
-        trackRef={track}
-        className={`absolute inset-0 h-full w-full object-cover ${roundedClass}`}
-        style={{ objectFit: 'cover' }}
-      />
-    ) : (
-      <CallAvatarCircle
-        avatarUrl={resolveAvatarForParticipant(participant)}
-        title={label}
-        sizeClass="h-full w-full"
-        textClass={textClass}
-      />
+    if (hasCam && track) {
+      return (
+        <VideoTrack
+          trackRef={track}
+          className={`absolute inset-0 h-full w-full object-cover ${roundedClass}`}
+          style={{ objectFit: 'cover' }}
+        />
+      )
+    }
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-gradient-to-b from-zinc-950 via-[#0a1018] to-zinc-950">
+        <CallAvatarCircle
+          avatarUrl={resolveAvatarForParticipant(participant)}
+          title={label}
+          sizeClass="h-[70%] w-[70%] max-h-40 max-w-40"
+          textClass={textClass}
+          ring
+        />
+      </div>
+    )
+  }
+
+  const youFlip =
+    showLocalFlip && localParticipant ? (
+      <LocalFlipChip className="top-1.5 right-1.5" size="sm" onFlip={onFlipCamera} />
+    ) : null
+
+  const remoteTile = (id, extraClass = '') => {
+    const p = byId.get(id)
+    const label = p?.name || title || id.slice(0, 8)
+    return (
+      <button
+        key={id}
+        type="button"
+        data-chat-call-interactive=""
+        data-chat-call-round-video=""
+        className={`relative min-h-0 min-w-0 overflow-hidden bg-zinc-950/80 touch-manipulation ${extraClass}`}
+        aria-label={`Focus ${label}`}
+        onClick={(event) => onActivateRemote?.(id, event)}
+      >
+        {renderFill(p, { label, textClass: 'text-[22px]', roundedClass: 'rounded-[10px]' })}
+      </button>
+    )
+  }
+
+  const youTile = (extraClass = '') => {
+    if (!plan.youId) return null
+    return (
+      <button
+        key={plan.youId}
+        type="button"
+        data-chat-call-interactive=""
+        data-chat-call-round-video=""
+        className={`relative min-h-0 min-w-0 overflow-hidden bg-zinc-950/80 touch-manipulation ${extraClass}`}
+        aria-label="You"
+        onClick={(event) => onActivateYou?.(event)}
+      >
+        {renderFill(localParticipant, { label: 'You', textClass: 'text-[22px]', roundedClass: 'rounded-[10px]' })}
+        {youFlip}
+      </button>
+    )
+  }
+
+  const featured = plan.featuredId ? byId.get(plan.featuredId) : null
+  const featuredLabel =
+    featured?.isLocal ? 'You' : featured?.name || title || 'Call'
+  const shellClass = hitOnly
+    ? 'relative h-full min-h-0 overflow-hidden'
+    : 'relative h-full min-h-0 overflow-hidden rounded-[32px] border border-white/10 bg-zinc-950/80 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-xl'
+
+  if (plan.mode === 'solo') {
+    return (
+      <div className={shellClass}>
+        <button
+          type="button"
+          data-chat-call-main-video=""
+          className="absolute inset-0 overflow-hidden border-0 bg-transparent"
+          aria-label="You"
+          onClick={(event) => onActivateYou?.(event)}
+        >
+          {renderFill(localParticipant, { label: 'You', textClass: 'text-[48px]' })}
+        </button>
+        {youFlip}
+      </div>
+    )
+  }
+
+  if (plan.mode === 'duo') {
+    return (
+      <div className={shellClass}>
+        <button
+          type="button"
+          data-chat-call-main-video=""
+          className="absolute inset-0 overflow-hidden border-0 bg-transparent"
+          aria-label={featuredLabel}
+          onClick={(event) => onActivateMain?.(event)}
+        >
+          {renderFill(featured, { label: featuredLabel, textClass: 'text-[48px]' })}
+        </button>
+        <div
+          className={`absolute right-4 z-[2] h-[8rem] w-[5.5rem] transition-all duration-300 ease-in-out ${
+            controlsHidden ? 'bottom-4' : 'bottom-[7.25rem]'
+          }`}
+        >
+          {youTile('h-full w-full rounded-2xl border-2 border-white/30 shadow-2xl')}
+        </div>
+      </div>
+    )
+  }
+
+  if (plan.mode === 'trio') {
+    const otherId = plan.bottomIds?.find((id) => id !== plan.youId)
+    return (
+      <div className={`${shellClass} flex flex-col gap-[3px]`}>
+        <button
+          type="button"
+          data-chat-call-main-video=""
+          className="relative min-h-0 flex-1 overflow-hidden rounded-[10px] border-0 bg-transparent"
+          aria-label={featuredLabel}
+          onClick={(event) => onActivateRemote?.(plan.featuredId, event)}
+        >
+          {renderFill(featured, { label: featuredLabel, textClass: 'text-[40px]' })}
+        </button>
+        <div className="flex min-h-0 flex-1 gap-[3px]">
+          {otherId ? remoteTile(otherId, 'flex-1 rounded-[10px]') : <div className="flex-1" />}
+          {youTile('flex-1 rounded-[10px]')}
+        </div>
+      </div>
+    )
+  }
+
+  if (plan.mode === 'quad') {
+    return (
+      <div className={`${shellClass} grid grid-cols-2 grid-rows-2 gap-[3px]`}>
+        {(plan.quadIds || []).map((id) =>
+          id === plan.youId ? youTile('rounded-[10px]') : remoteTile(id, 'rounded-[10px]'),
+        )}
+      </div>
+    )
+  }
+
+  if (plan.mode === 'quadFocus') {
+    return (
+      <div className={shellClass}>
+        <button
+          type="button"
+          data-chat-call-main-video=""
+          className="absolute inset-0 overflow-hidden border-0 bg-transparent"
+          aria-label={featuredLabel}
+          onClick={(event) => onActivateMain?.(event)}
+        >
+          {renderFill(featured, { label: featuredLabel, textClass: 'text-[48px]' })}
+        </button>
+        <div className="absolute bottom-4 right-4 z-[2] flex flex-col items-end gap-2.5">
+          {(plan.stackIds || []).map((id) =>
+            id === plan.youId
+              ? youTile('h-20 w-20 rounded-2xl border-2 border-white/30 shadow-lg')
+              : remoteTile(id, 'h-20 w-20 rounded-2xl border-2 border-white/25 shadow-lg'),
+          )}
+        </div>
+      </div>
     )
   }
 
   return (
-    <div className="relative h-full min-h-0 overflow-hidden rounded-[32px] border border-white/10 bg-zinc-950/80 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-xl">
-      <div
-        className="absolute inset-0 z-[1] overflow-hidden"
+    <div className={`${shellClass} flex flex-col gap-[3px]`}>
+      <button
+        type="button"
         data-chat-call-main-video=""
+        className="relative min-h-0 flex-1 overflow-hidden rounded-[10px] border-0 bg-transparent"
+        aria-label={featuredLabel}
+        onClick={(event) => onActivateRemote?.(plan.featuredId, event)}
       >
-        {fullHasCam && fullTrack ? (
-          <VideoTrack
-            trackRef={fullTrack}
-            className="absolute inset-0 h-full w-full object-cover"
-            style={{ objectFit: 'cover', width: '100%', height: '100%' }}
-          />
-        ) : (
-          <div className="flex h-full w-full flex-col items-center justify-center gap-3 bg-gradient-to-b from-zinc-950 via-[#0a1018] to-zinc-950">
-            <CallAvatarCircle
-              avatarUrl={fullAvatar}
-              title={fullName}
-              sizeClass="h-40 w-40"
-              textClass="text-[48px]"
-              ring
-            />
+        {renderFill(featured, { label: featuredLabel, textClass: 'text-[40px]' })}
+      </button>
+      <div className="flex min-h-0 flex-1 flex-col gap-[3px]">
+        {plan.row0?.length ? (
+          <div className="flex min-h-0 flex-1 gap-[3px]">
+            {plan.row0.map((id) => remoteTile(id, 'flex-1 rounded-[10px]'))}
           </div>
-        )}
+        ) : null}
+        {plan.row1?.length ? (
+          <div className="flex min-h-0 flex-1 gap-[3px]">
+            {plan.row1.map((id) =>
+              id === plan.youId ? youTile('flex-1 rounded-[10px]') : remoteTile(id, 'flex-1 rounded-[10px]'),
+            )}
+          </div>
+        ) : null}
       </div>
-
-      {showLocalFlip && localIsFullscreen ? (
-        <LocalFlipChip className="bottom-4 right-4" onFlip={onFlipCamera} />
-      ) : null}
-
-      {showLocalPip || sideRemotes.length > 0 ? (
-        <div className="absolute bottom-4 right-4 z-[2] flex flex-col-reverse items-end gap-2.5">
-          {showLocalPip ? (
-            <div className="relative h-[8rem] w-[5.5rem]">
-              <div
-                data-chat-call-round-video=""
-                className="relative h-full w-full overflow-hidden rounded-2xl border-2 border-white/30 bg-zinc-900 shadow-2xl"
-                aria-label="You"
-              >
-                {renderTile(localParticipant, {
-                  label: 'You',
-                  roundedClass: 'rounded-2xl',
-                  textClass: 'text-[26px]',
-                })}
-              </div>
-              {showLocalFlip ? (
-                <LocalFlipChip className="-bottom-1 -right-1" size="sm" onFlip={onFlipCamera} />
-              ) : null}
-            </div>
-          ) : null}
-          {sideRemotes.map((p) => {
-            const label = p.name || p.identity.slice(0, 8)
-            return (
-              <button
-                key={p.identity}
-                type="button"
-                data-chat-call-round-video=""
-                data-chat-call-interactive=""
-                className="relative h-20 w-[4.75rem] overflow-hidden rounded-2xl border-2 border-white/25 bg-zinc-900 shadow-lg touch-manipulation active:scale-95 transition-all"
-                aria-label={`Show ${label} fullscreen`}
-                onClick={(event) => {
-                  event.stopPropagation()
-                  onPinIdentity(p.identity)
-                }}
-              >
-                {renderTile(p, {
-                  label,
-                  roundedClass: 'rounded-2xl',
-                  textClass: 'text-[16px]',
-                })}
-              </button>
-            )
-          })}
-        </div>
-      ) : null}
     </div>
   )
 }
@@ -2209,12 +2414,14 @@ function VideoRecordDockItem({
   onStart,
   onStop,
   onInteract,
+  compact = false,
 }) {
   const dimmed = recordingActive && !canStopRecording
   const canStop = recordingActive && canStopRecording
   const canStart = !recordingActive && !recordingSaving
   return (
     <CallDockItem
+      compact={compact}
       icon={canStop ? <RecordStopIcon /> : <RecordDotIcon dimmed={dimmed || recordingSaving} />}
       label={canStop ? 'Stop' : recordingSaving ? 'Saving' : 'Record'}
       variant={canStop ? 'danger' : 'default'}
@@ -2237,9 +2444,11 @@ function CallDockItem({
   disabled = false,
   ariaLabel,
   title,
+  compact = false,
 }) {
-  const baseBtnStyle =
-    'flex h-14 w-14 shrink-0 items-center justify-center rounded-full transition-all duration-150 active:scale-95 touch-manipulation'
+  const baseBtnStyle = compact
+    ? 'flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-150 active:scale-95 touch-manipulation'
+    : 'flex h-14 w-14 shrink-0 items-center justify-center rounded-full transition-all duration-150 active:scale-95 touch-manipulation'
   let variantStyle = 'bg-white/10 hover:bg-white/15 border border-white/10 text-white shadow-md backdrop-blur-md'
 
   if (variant === 'active-white' || (active && variant === 'default')) {
@@ -2264,9 +2473,11 @@ function CallDockItem({
       >
         {icon}
       </button>
-      <span className="mt-1.5 text-[11px] font-medium tracking-tight text-zinc-300/90 text-center select-none leading-none">
-        {label}
-      </span>
+      {compact ? null : (
+        <span className="mt-1.5 text-[11px] font-medium tracking-tight text-zinc-300/90 text-center select-none leading-none">
+          {label}
+        </span>
+      )}
     </div>
   )
 }

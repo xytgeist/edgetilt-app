@@ -189,20 +189,24 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       EdgeLiveKitCallManager.shared.setChrome(
         minimized: payload?["minimized"] as? Bool,
         videoVisible: payload?["videoVisible"] as? Bool,
-        participantAvatars: payload?["participantAvatars"] as? [[String: Any]]
+        participantAvatars: payload?["participantAvatars"] as? [[String: Any]],
+        controlsHidden: payload?["controlsHidden"] as? Bool
       )
       completion(.success(["ok": true]))
     case "setNativeCallStreamFocus":
       let isLocalMain = (payload?["isLocalMain"] as? Bool) ?? false
       let focusedIdentity = payload?["focusedIdentity"] as? String
+      let quadFocus = payload?["quadFocus"] as? Bool
       EdgeLiveKitCallManager.shared.setStreamFocus(
         isLocalMain: isLocalMain,
-        focusedIdentity: focusedIdentity
+        focusedIdentity: focusedIdentity,
+        quadFocus: quadFocus
       )
       completion(.success([
         "ok": true,
         "isLocalMain": false,
         "focusedIdentity": focusedIdentity ?? "",
+        "quadFocus": quadFocus ?? false,
       ]))
     case "getNativeCallState":
       completion(.success(EdgeLiveKitCallManager.shared.currentState()))

@@ -49,6 +49,8 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   private var wantsCamera = false
   private var cameraPosition: AVCaptureDevice.Position = .front
   private var focusedRemoteIdentity = ""
+  private var quadFocusActive = false
+  private var controlsHidden = false
   private var overlayInstalled = false
   private var chromeMinimized = false
   private var videoVisible = true
@@ -223,13 +225,14 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     }
   }
 
-  func setStreamFocus(isLocalMain _: Bool, focusedIdentity: String? = nil) {
-    // You stay in the lower-right PiP. `isLocalMain` is ignored (old JS still sends it).
+  func setStreamFocus(isLocalMain _: Bool, focusedIdentity: String? = nil, quadFocus: Bool? = nil) {
+    // You stay bottom-right. `isLocalMain` is ignored (old JS still sends it).
     if let focusedIdentity {
       let trimmed = focusedIdentity.trimmingCharacters(in: .whitespacesAndNewlines)
       let localId = identityString(room.localParticipant)
       focusedRemoteIdentity = (trimmed.isEmpty || trimmed == localId) ? "" : trimmed
     }
+    if let quadFocus { quadFocusActive = quadFocus }
     DispatchQueue.main.async {
       UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseInOut]) {
         self.layoutVideoViews()
@@ -244,14 +247,33 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     dispatchState()
   }
 
-  func setChrome(minimized: Bool?, videoVisible: Bool?, participantAvatars: [[String: Any]]? = nil) {
+  func setChrome(
+    minimized: Bool?,
+    videoVisible: Bool?,
+    participantAvatars: [[String: Any]]? = nil,
+    controlsHidden: Bool? = nil
+  ) {
     if let minimized { chromeMinimized = minimized }
     if let videoVisible { self.videoVisible = videoVisible }
     if let rows = participantAvatars {
       applyParticipantAvatars(rows)
     }
+    let pillChanged: Bool
+    if let controlsHidden {
+      pillChanged = self.controlsHidden != controlsHidden
+      self.controlsHidden = controlsHidden
+    } else {
+      pillChanged = false
+    }
     updateOverlayVisibility()
     syncVideoTilesOnMain()
+    if pillChanged {
+      DispatchQueue.main.async {
+        UIView.animate(withDuration: 0.3, delay: 0, options: [.curveEaseInOut]) {
+          self.layoutVideoViews()
+        }
+      }
+    }
   }
 
   /// CallKit `didActivate` is the lock-screen win: publish the mic against the
@@ -428,72 +450,212 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
       layoutMinimizedTiles(people, bounds: bounds)
       return
     }
-    layoutFocusedStage(people, bounds: bounds)
+    layoutCountStage(people, bounds: bounds)
   }
 
-  /// Focused remote is full-bleed. Other remotes stack on the right. You stay
-  /// lower-right. Tap-to-focus is driven from web (`focusedIdentity`).
-  private func layoutFocusedStage(_ people: [(id: String, isLocal: Bool)], bounds: CGRect) {
+  /// Keep in sync with `planCallVideoLayout` in `src/features/chat/calls/callVideoLayout.js`.
+  private func layoutCountStage(_ people: [(id: String, isLocal: Bool)], bounds: CGRect) {
     let local = people.first(where: { $0.isLocal })
     let remotes = people.filter { !$0.isLocal }
-    let focusId: String? = {
-      if remotes.contains(where: { $0.id == focusedRemoteIdentity }) {
-        return focusedRemoteIdentity
+    switch people.count {
+    case 0:
+      return
+    case 1:
+      placeTile(local?.id, frame: bounds, radius: 0, pip: false)
+    case 2:
+      layoutDuo(local: local, remote: remotes.first, bounds: bounds)
+    case 3:
+      layoutTrio(local: local, remotes: remotes, bounds: bounds)
+    case 4:
+      if quadFocusActive {
+        layoutFocusStack(local: local, remotes: remotes, bounds: bounds)
+      } else {
+        layoutQuad(local: local, remotes: remotes, bounds: bounds)
       }
-      return remotes.first?.id
-    }()
+    default:
+      layoutFeaturedGrid(local: local, remotes: remotes, bounds: bounds)
+    }
+  }
 
+  private func featuredRemoteId(_ remotes: [(id: String, isLocal: Bool)]) -> String? {
+    if remotes.contains(where: { $0.id == focusedRemoteIdentity }) {
+      return focusedRemoteIdentity
+    }
+    return remotes.first?.id
+  }
+
+  private func placeTile(_ id: String?, frame: CGRect, radius: CGFloat, pip: Bool, front: Bool = false) {
+    guard let id, let tile = videoTiles[id] else { return }
+    tile.isHidden = false
+    tile.frame = frame
+    tile.applyChrome(cornerRadius: radius, pip: pip)
+    if front {
+      overlay.bringSubviewToFront(tile)
+    } else {
+      overlay.sendSubviewToBack(tile)
+    }
+  }
+
+  private func layoutDuo(
+    local: (id: String, isLocal: Bool)?,
+    remote: (id: String, isLocal: Bool)?,
+    bounds: CGRect
+  ) {
+    if let remote {
+      placeTile(remote.id, frame: bounds, radius: 0, pip: false)
+    }
+    guard let local else { return }
     let pipW = min(120, max(88, bounds.width * 0.26))
     let pipH = pipW * 16 / 9
+    let safeBottom = overlay.safeAreaInsets.bottom
+    let bottomPad: CGFloat = controlsHidden ? max(16, safeBottom + 8) : 148
+    placeTile(
+      local.id,
+      frame: CGRect(
+        x: bounds.width - 16 - pipW,
+        y: bounds.height - bottomPad - pipH,
+        width: pipW,
+        height: pipH
+      ),
+      radius: 16,
+      pip: true,
+      front: true
+    )
+  }
+
+  private func layoutTrio(
+    local: (id: String, isLocal: Bool)?,
+    remotes: [(id: String, isLocal: Bool)],
+    bounds: CGRect
+  ) {
+    let gap: CGFloat = 3
+    let featured = featuredRemoteId(remotes)
+    let other = remotes.first(where: { $0.id != featured })
+    let topH = (bounds.height - gap) / 2
+    let botH = bounds.height - topH - gap
+    let halfW = (bounds.width - gap) / 2
+    placeTile(featured, frame: CGRect(x: 0, y: 0, width: bounds.width, height: topH), radius: 10, pip: false)
+    placeTile(
+      other?.id,
+      frame: CGRect(x: 0, y: topH + gap, width: halfW, height: botH),
+      radius: 10,
+      pip: false
+    )
+    placeTile(
+      local?.id,
+      frame: CGRect(x: halfW + gap, y: topH + gap, width: halfW, height: botH),
+      radius: 10,
+      pip: false,
+      front: true
+    )
+  }
+
+  private func layoutQuad(
+    local: (id: String, isLocal: Bool)?,
+    remotes: [(id: String, isLocal: Bool)],
+    bounds: CGRect
+  ) {
+    let gap: CGFloat = 3
+    let cellW = (bounds.width - gap) / 2
+    let cellH = (bounds.height - gap) / 2
+    var ids = remotes.map(\.id)
+    if let local { ids.append(local.id) }
+    for (index, id) in ids.prefix(4).enumerated() {
+      let col = index % 2
+      let row = index / 2
+      placeTile(
+        id,
+        frame: CGRect(
+          x: CGFloat(col) * (cellW + gap),
+          y: CGFloat(row) * (cellH + gap),
+          width: cellW,
+          height: cellH
+        ),
+        radius: 10,
+        pip: false,
+        front: id == local?.id
+      )
+    }
+  }
+
+  private func layoutFocusStack(
+    local: (id: String, isLocal: Bool)?,
+    remotes: [(id: String, isLocal: Bool)],
+    bounds: CGRect
+  ) {
+    let featured = featuredRemoteId(remotes)
+    placeTile(featured, frame: bounds, radius: 0, pip: false)
+    let pipW = min(104, max(72, bounds.width * 0.22))
+    let pipH = pipW
     let rightPad: CGFloat = 16
-    let bottomPad: CGFloat = 148
+    let bottomPad: CGFloat = controlsHidden ? max(16, overlay.safeAreaInsets.bottom + 8) : 148
     let gap: CGFloat = 8
     let topMin = bounds.safeAreaInsetsAwareTop + 56
-
-    if let focusId, let main = videoTiles[focusId] {
-      main.isHidden = false
-      main.frame = bounds
-      main.applyChrome(cornerRadius: 0, pip: false)
-      overlay.sendSubviewToBack(main)
-    } else if remotes.isEmpty, let local, let tile = videoTiles[local.id] {
-      tile.isHidden = false
-      tile.frame = bounds
-      tile.applyChrome(cornerRadius: 0, pip: false)
-    }
-
+    var stackIds = remotes.map(\.id).filter { $0 != featured }
+    if let local { stackIds.append(local.id) }
     var stackY = bounds.height - bottomPad
-    if let local, !remotes.isEmpty, let tile = videoTiles[local.id] {
+    for id in stackIds.reversed() {
       stackY -= pipH
-      tile.isHidden = false
-      tile.frame = CGRect(
-        x: bounds.width - rightPad - pipW,
-        y: stackY,
-        width: pipW,
-        height: pipH
+      placeTile(
+        id,
+        frame: CGRect(
+          x: bounds.width - rightPad - pipW,
+          y: max(topMin, stackY),
+          width: pipW,
+          height: pipH
+        ),
+        radius: 16,
+        pip: true,
+        front: true
       )
-      tile.applyChrome(cornerRadius: 16, pip: true)
-      overlay.bringSubviewToFront(tile)
       stackY -= gap
     }
+  }
 
-    for person in remotes where person.id != focusId {
-      guard let tile = videoTiles[person.id] else { continue }
-      stackY -= pipH
-      tile.isHidden = false
-      tile.frame = CGRect(
-        x: bounds.width - rightPad - pipW,
-        y: max(topMin, stackY),
-        width: pipW,
-        height: pipH
-      )
-      tile.applyChrome(cornerRadius: 14, pip: true)
-      overlay.bringSubviewToFront(tile)
-      stackY -= gap
+  private func layoutFeaturedGrid(
+    local: (id: String, isLocal: Bool)?,
+    remotes: [(id: String, isLocal: Bool)],
+    bounds: CGRect
+  ) {
+    let gap: CGFloat = 3
+    let featured = featuredRemoteId(remotes)
+    var rest = remotes.map(\.id).filter { $0 != featured }
+    if let local { rest.append(local.id) }
+    let topH = (bounds.height - gap) / 2
+    placeTile(featured, frame: CGRect(x: 0, y: 0, width: bounds.width, height: topH), radius: 10, pip: false)
+    let botY = topH + gap
+    let botH = bounds.height - botY
+    let row0n = rest.count / 2
+    let row1n = rest.count - row0n
+    let rowH = rest.isEmpty ? botH : (botH - (row0n > 0 && row1n > 0 ? gap : 0)) / CGFloat(max(1, (row0n > 0 ? 1 : 0) + (row1n > 0 ? 1 : 0)))
+    func placeRow(_ ids: ArraySlice<String>, y: CGFloat) {
+      let n = max(1, ids.count)
+      let cellW = (bounds.width - gap * CGFloat(n - 1)) / CGFloat(n)
+      for (i, id) in ids.enumerated() {
+        placeTile(
+          id,
+          frame: CGRect(
+            x: CGFloat(i) * (cellW + gap),
+            y: y,
+            width: cellW,
+            height: rowH
+          ),
+          radius: 10,
+          pip: false,
+          front: id == local?.id
+        )
+      }
+    }
+    if row0n > 0 {
+      placeRow(rest.prefix(row0n), y: botY)
+    }
+    if row1n > 0 {
+      placeRow(rest.suffix(row1n), y: botY + (row0n > 0 ? rowH + gap : 0))
     }
   }
 
   private func layoutMinimizedTiles(_ people: [(id: String, isLocal: Bool)], bounds: CGRect) {
-    layoutFocusedStage(people, bounds: bounds)
+    layoutCountStage(people, bounds: bounds)
     if let local = people.first(where: { $0.isLocal }),
        people.contains(where: { !$0.isLocal }),
        let tile = videoTiles[local.id] {

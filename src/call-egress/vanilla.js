@@ -3,7 +3,8 @@
  * Layout `edge` (or anything without focus:<id>): screen share or first camera large, rest PiPs + brand.
  * Optional later: layout=focus:<userId> pins that identity as main.
  *
- * Classic <head> script already logs START_RECORDING so LiveKit can save even if this module fails.
+ * Log START_RECORDING only after a camera attaches (or an 8s failsafe).
+ * A <head> log used to start the MP4 on the empty waiting chrome.
  */
 import EgressHelperMod from '@livekit/egress-sdk'
 import { Room, RoomEvent, Track } from 'livekit-client'
@@ -92,12 +93,12 @@ function render(room, featuredId) {
   const want = String(featuredId || '').trim()
   let featured = null
   if (want) {
-    // Pin/focus is locked for the segment... never steal main for another speaker.
     featured =
       pubs.find((x) => x.identity === want && x.source === Track.Source.ScreenShare) ||
       pubs.find((x) => x.identity === want && x.source === Track.Source.Camera) ||
       null
-  } else {
+  }
+  if (!featured) {
     featured =
       pubs.find((x) => x.source === Track.Source.ScreenShare) || pubs[0] || null
   }
@@ -197,9 +198,14 @@ async function main() {
     }
   }
 
-  room.on(RoomEvent.TrackSubscribed, () => {
+  const startIfVideo = (reason) => {
+    if (videoPubs(room).length === 0) return
+    start(reason)
+  }
+
+  room.on(RoomEvent.TrackSubscribed, (track) => {
     refresh()
-    start('track_subscribed')
+    if (track?.kind === Track.Kind.Video) startIfVideo('video_subscribed')
   })
   room.on(RoomEvent.TrackUnsubscribed, refresh)
   room.on(RoomEvent.TrackMuted, refresh)
@@ -208,7 +214,7 @@ async function main() {
   room.on(RoomEvent.ParticipantDisconnected, refresh)
   room.on(RoomEvent.Connected, () => {
     refresh()
-    window.setTimeout(() => start('connected'), 300)
+    startIfVideo('connected_has_video')
   })
 
   try {
@@ -224,7 +230,10 @@ async function main() {
     console.warn('onLayoutChanged', err)
   }
 
-  window.setTimeout(() => start('failsafe'), 2000)
+  window.setTimeout(() => {
+    if (videoPubs(room).length > 0) start('failsafe_video')
+    else start('failsafe_empty')
+  }, 8000)
 
   await room.connect(url, token)
 
@@ -236,12 +245,7 @@ async function main() {
   }
 
   refresh()
-  for (const p of room.remoteParticipants.values()) {
-    if (p.trackPublications.size > 0) {
-      start('existing_pubs')
-      break
-    }
-  }
+  startIfVideo('existing_video')
 }
 
 main().catch((err) => {

@@ -219,14 +219,21 @@ export async function setNativeCallChrome(args = {}) {
   }
 }
 
-/** @param {{ isLocalMain?: boolean }} args */
+/** @param {{ isLocalMain?: boolean, focusedIdentity?: string | null }} args */
 export async function setNativeCallStreamFocus(args = {}) {
   if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
   try {
+    const focusedIdentity = String(args.focusedIdentity || '').trim()
     const result = await edgeNativeInvoke('setNativeCallStreamFocus', {
-      isLocalMain: Boolean(args.isLocalMain),
+      isLocalMain: false,
+      focusedIdentity,
     })
-    return { ok: result?.ok !== false, via: 'bridge', isLocalMain: result?.isLocalMain }
+    return {
+      ok: result?.ok !== false,
+      via: 'bridge',
+      isLocalMain: false,
+      focusedIdentity: result?.focusedIdentity || focusedIdentity,
+    }
   } catch {
     return { ok: false, via: 'error' }
   }

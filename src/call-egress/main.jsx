@@ -109,23 +109,25 @@ function FocusComposite({ featuredIdentity }) {
       }
     }
 
-    // Immediate path once Connected.
+    const startIfVideo = () => {
+      if (videoTracks.length === 0) return
+      start()
+    }
+
     if (room.state === ConnectionState.Connected) {
-      const t = window.setTimeout(start, 250)
-      return () => window.clearTimeout(t)
+      startIfVideo()
     }
 
     const onChange = (state) => {
-      if (state === ConnectionState.Connected) start()
+      if (state === ConnectionState.Connected) startIfVideo()
     }
     room.on('connectionStateChanged', onChange)
-    // Absolute failsafe... never leave LiveKit waiting forever.
-    const failsafe = window.setTimeout(start, 2500)
+    const failsafe = window.setTimeout(start, 8000)
     return () => {
       room.off('connectionStateChanged', onChange)
       window.clearTimeout(failsafe)
     }
-  }, [room])
+  }, [room, videoTracks.length])
 
   if (room.state === ConnectionState.Disconnected) {
     return <div className="ce-fallback">Disconnected</div>

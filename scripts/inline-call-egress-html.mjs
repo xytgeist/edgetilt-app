@@ -2,7 +2,7 @@
  * Prepare dist/call-egress.html for LiveKit:
  * - Keep JS as an external /assets/callEgress-*.js file (do NOT inline).
  *   Inlining broke the HTML parser (~29KB into the bundle) and painted raw JS on screen.
- * - Guarantee classic START_RECORDING is the first executable in <head>.
+ * - Do not inject START_RECORDING. vanilla.js logs it after a camera attaches.
  * - Strip crossorigin from script/link tags (unnecessary same-origin friction).
  */
 import fs from 'node:fs'
@@ -41,9 +41,7 @@ html = html.replace(
 html = html.replace(/\s*crossorigin(?:="[^"]*")?/gi, '')
 html = html.replace(/<link rel="stylesheet"[^>]*>\s*/g, '')
 
-const startTag = `<script>\n      console.log('START_RECORDING')\n    </script>`
 html = html.replace(/<script>\s*console\.log\(['"]START_RECORDING['"]\)\s*<\/script>/g, '')
-html = html.replace(/<head([^>]*)>/i, `<head$1>\n    ${startTag}`)
 
 fs.writeFileSync(htmlPath, html)
 console.log(

@@ -676,7 +676,6 @@ function NativeIpaCallSession({
   const [connectError, setConnectError] = useState('')
   const [elapsed, setElapsed] = useState(0)
   const [recCountdownLabel, setRecCountdownLabel] = useState(/** @type {string | null} */ (null))
-  const [isLocalMain, setIsLocalMain] = useState(false)
   const [pinnedIdentity, setPinnedIdentity] = useState(/** @type {string | null} */ (null))
   const [showVideoConfirmModal, setShowVideoConfirmModal] = useState(false)
   const [controlsHidden, setControlsHidden] = useState(false)
@@ -722,15 +721,6 @@ function NativeIpaCallSession({
       if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current)
     }
   }, [isVideoMode, resetControlsTimer])
-
-  const toggleStreamFocus = (forceLocal = null) => {
-    resetControlsTimer()
-    const next = forceLocal !== null ? forceLocal : !isLocalMain
-    setIsLocalMain(next)
-    const nextPinned = next ? viewerUserId : (peerUserId || null)
-    setPinnedIdentity(nextPinned)
-    void setNativeCallStreamFocus({ isLocalMain: next })
-  }
 
   const recordingActive = recordingStatus === 'recording'
   const recordingSaving = recordingStatus === 'stopping'
@@ -856,6 +846,24 @@ function NativeIpaCallSession({
     () => nativeRoster.map((p) => p.identity).filter(Boolean),
     [nativeRoster],
   )
+  const nativeRemotes = useMemo(
+    () => nativeRoster.filter((p) => !p.isLocal),
+    [nativeRoster],
+  )
+  const focusedIdentity = useMemo(() => {
+    if (pinnedIdentity && nativeRemotes.some((p) => p.identity === pinnedIdentity)) {
+      return pinnedIdentity
+    }
+    return nativeRemotes[0]?.identity || null
+  }, [pinnedIdentity, nativeRemotes])
+
+  useEffect(() => {
+    if (!isVideoMode) return
+    void setNativeCallStreamFocus({
+      isLocalMain: false,
+      focusedIdentity: focusedIdentity || '',
+    })
+  }, [isVideoMode, focusedIdentity])
   const profileById = useCallParticipantProfiles(supabaseClient, participantIds)
   const speakingIds = useMemo(() => {
     const set = new Set()
@@ -1058,7 +1066,7 @@ function NativeIpaCallSession({
           {recordingActive ? (
             <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-950/60 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider text-rose-200 backdrop-blur-md">
               <span className="h-2 w-2 animate-pulse rounded-full bg-rose-500" aria-hidden />
-              Recording{isLocalMain ? ' · Focus: You' : ''}
+              Recording
             </div>
           ) : null}
           {recCountdownLabel ? (
@@ -1072,24 +1080,37 @@ function NativeIpaCallSession({
       <div className="relative z-[1] min-h-0 flex-1 px-4">
         {showVideoHole ? (
           <div className="relative h-full w-full">
-            {/* Full stage clickable to toggle stream focus between main / inset PiP or reveal chrome */}
             <button
               type="button"
               className="absolute inset-0 h-full w-full cursor-pointer touch-manipulation bg-transparent border-0 outline-none"
-              aria-label="Toggle main video stream focus"
+              aria-label={controlsHidden ? 'Show call controls' : 'Hide call controls'}
               onClick={() => {
-                if (controlsHidden) {
-                  resetControlsTimer()
-                } else {
-                  toggleStreamFocus()
-                }
+                if (controlsHidden) resetControlsTimer()
+                else setControlsHidden(true)
               }}
             />
+            <div className="pointer-events-none absolute bottom-4 right-4 z-[2] flex flex-col-reverse items-end gap-2.5">
+              <div className="h-[8rem] w-[8rem]" aria-hidden />
+              {nativeRemotes
+                .filter((p) => p.identity !== focusedIdentity)
+                .map((p) => (
+                  <button
+                    key={p.identity}
+                    type="button"
+                    data-chat-call-interactive=""
+                    className="pointer-events-auto h-20 w-[4.75rem] cursor-pointer touch-manipulation rounded-2xl border-0 bg-transparent outline-none"
+                    aria-label={`Show ${p.name || 'caller'} fullscreen`}
+                    onClick={(event) => {
+                      event.stopPropagation()
+                      resetControlsTimer()
+                      setPinnedIdentity(p.identity)
+                    }}
+                  />
+                ))}
+            </div>
             {camOn ? (
               <LocalFlipChip
-                className={
-                  remoteCount <= 1 && isLocalMain ? 'bottom-4 left-4' : 'bottom-4 right-4'
-                }
+                className="bottom-4 right-4"
                 onFlip={() => {
                   resetControlsTimer()
                   void setNativeCallCamera({ flip: true })
@@ -1133,7 +1154,7 @@ function NativeIpaCallSession({
               recordingActive={recordingActive}
               recordingSaving={recordingSaving}
               canStopRecording={canStopRecording}
-              onStart={() => onStartRecording?.(isLocalMain ? viewerUserId : pinnedIdentity)}
+              onStart={() => onStartRecording?.(focusedIdentity)}
               onStop={() => onStopRecording?.()}
               onInteract={resetControlsTimer}
             />
@@ -1263,7 +1284,6 @@ function CallChrome({
   const [recCountdownLabel, setRecCountdownLabel] = useState(/** @type {string | null} */ (null))
   const [pinnedIdentity, setPinnedIdentity] = useState(/** @type {string | null} */ (null))
   /** Last pinned participant object so active-speaker cannot steal if the pin blips out of the roster. */
-  const pinnedParticipantRef = useRef(/** @type {any | null} */ (null))
   /** User manually toggled speaker... ignore cam-off / cam-on auto route flips. */
   const speakerManualOverrideRef = useRef(false)
   const [showVideoConfirmModal, setShowVideoConfirmModal] = useState(false)
@@ -1417,32 +1437,15 @@ function CallChrome({
   }
 
   const remotes = participants.filter((p) => !p.isLocal)
-  const speakingRemote = remotes.find((p) => p.isSpeaking) || null
-
-  if (!pinnedIdentity) {
-    pinnedParticipantRef.current = null
-  }
 
   const fullscreenParticipant = useMemo(() => {
     if (pinnedIdentity) {
-      const pinned = participants.find((p) => p.identity === pinnedIdentity)
-      if (pinned) {
-        pinnedParticipantRef.current = pinned
-        return pinned
-      }
-      // Pin is locked... never fall through to active speaker.
-      if (
-        pinnedParticipantRef.current &&
-        pinnedParticipantRef.current.identity === pinnedIdentity
-      ) {
-        return pinnedParticipantRef.current
-      }
-      return null
+      const pinnedRemote = remotes.find((p) => p.identity === pinnedIdentity)
+      if (pinnedRemote) return pinnedRemote
     }
-    if (speakingRemote) return speakingRemote
     if (remotes[0]) return remotes[0]
     return localParticipant || null
-  }, [pinnedIdentity, participants, speakingRemote, remotes, localParticipant])
+  }, [pinnedIdentity, remotes, localParticipant])
 
   const anyParticipantHasCamera =
     participantHasLiveCamera(localParticipant) || remotes.some(participantHasLiveCamera)
@@ -1734,7 +1737,13 @@ function CallChrome({
         recordingActive={recordingActive}
         recordingSaving={recordingSaving}
         canStopRecording={canStopRecording}
-        onStart={() => onStartRecording?.(pinnedIdentity)}
+        onStart={() =>
+          onStartRecording?.(
+            fullscreenParticipant && !fullscreenParticipant.isLocal
+              ? fullscreenParticipant.identity
+              : pinnedIdentity,
+          )
+        }
         onStop={() => onStopRecording?.()}
         onInteract={resetControlsTimer}
       />
@@ -1877,10 +1886,10 @@ function CallChrome({
             localParticipant={localParticipant}
             remotes={remotes}
             cameraByIdentity={cameraByIdentity}
-            pinnedIdentity={pinnedIdentity}
             onPinIdentity={(id) => {
               resetControlsTimer()
-              setPinnedIdentity((prev) => (prev === id ? null : id))
+              if (localParticipant && id === localParticipant.identity) return
+              setPinnedIdentity(id)
             }}
             resolveAvatarForParticipant={resolveAvatarForParticipant}
             participantHasLiveCamera={participantHasLiveCamera}
@@ -2023,7 +2032,6 @@ function VideoCallStage({
   localParticipant,
   remotes,
   cameraByIdentity,
-  pinnedIdentity,
   onPinIdentity,
   resolveAvatarForParticipant,
   participantHasLiveCamera,
@@ -2039,55 +2047,36 @@ function VideoCallStage({
     fullscreenParticipant?.name ||
     (fullscreenParticipant?.isLocal ? 'You' : title) ||
     'Call'
-
-  const stripParticipants = useMemo(() => {
-    const others = remotes.filter((p) => p.identity !== fullId)
-    // Keep local in strip only when not already the fullscreen subject.
-    if (localParticipant && localParticipant.identity !== fullId) {
-      return [...others, localParticipant]
-    }
-    return others
-  }, [remotes, localParticipant, fullId])
-
-  // 1:1: always show the non-fullscreen person as the round PiP so you can switch back.
-  const duoPipParticipant = useMemo(() => {
-    if (remotes.length !== 1) return null
-    const remote = remotes[0]
-    if (!fullId) return localParticipant || null
-    if (localParticipant && fullId === localParticipant.identity) return remote
-    if (fullId === remote.identity) return localParticipant || null
-    return localParticipant && localParticipant.identity !== fullId ? localParticipant : remote
-  }, [remotes, localParticipant, fullId])
-
-  const showDuoPip = Boolean(duoPipParticipant)
-  const showStrip = !showDuoPip && stripParticipants.length > 0
-  const localIsFullscreen = Boolean(localParticipant && fullId === localParticipant.identity)
-  const localIsPip = Boolean(showDuoPip && duoPipParticipant?.isLocal)
-  // Explicit pin only (not auto active-speaker fullscreen)... recording uses this.
-  const mainPinned = Boolean(pinnedIdentity && pinnedIdentity === fullId)
-  const pipPinned = Boolean(
-    showDuoPip && pinnedIdentity && pinnedIdentity === duoPipParticipant.identity,
+  const localIsFullscreen = Boolean(
+    localParticipant && remotes.length === 0 && fullId === localParticipant.identity,
   )
+  const sideRemotes = remotes.filter((p) => p.identity !== fullId)
+  const showLocalPip = Boolean(localParticipant && remotes.length > 0)
+
+  const renderTile = (participant, { label, roundedClass, textClass }) => {
+    const track = cameraByIdentity.get(participant.identity)
+    const hasCam = participantHasLiveCamera(participant)
+    return hasCam && track ? (
+      <VideoTrack
+        trackRef={track}
+        className={`absolute inset-0 h-full w-full object-cover ${roundedClass}`}
+        style={{ objectFit: 'cover' }}
+      />
+    ) : (
+      <CallAvatarCircle
+        avatarUrl={resolveAvatarForParticipant(participant)}
+        title={label}
+        sizeClass="h-full w-full"
+        textClass={textClass}
+      />
+    )
+  }
 
   return (
-    <div
-      className={`relative h-full min-h-0 overflow-hidden rounded-[32px] border border-white/10 bg-zinc-950/80 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-xl ${
-        mainPinned ? 'ring-2 ring-inset ring-emerald-500' : ''
-      }`}
-    >
-      <button
-        type="button"
-        className="absolute inset-0 z-[1] overflow-hidden touch-manipulation"
+    <div className="relative h-full min-h-0 overflow-hidden rounded-[32px] border border-white/10 bg-zinc-950/80 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-xl">
+      <div
+        className="absolute inset-0 z-[1] overflow-hidden"
         data-chat-call-main-video=""
-        data-chat-call-interactive=""
-        aria-label={
-          mainPinned
-            ? 'Unpin this video for recording'
-            : 'Pin this video for recording'
-        }
-        onClick={() => {
-          if (fullId) onPinIdentity(fullId)
-        }}
       >
         {fullHasCam && fullTrack ? (
           <VideoTrack
@@ -2106,98 +2095,55 @@ function VideoCallStage({
             />
           </div>
         )}
-      </button>
+      </div>
 
-      {mainPinned ? (
-        <div className="pointer-events-none absolute left-4 top-4 z-[3] rounded-full bg-emerald-500 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-zinc-950 shadow-lg">
-          Pinned
-        </div>
+      {showLocalFlip && localIsFullscreen ? (
+        <LocalFlipChip className="bottom-4 right-4" onFlip={onFlipCamera} />
       ) : null}
 
-      {showLocalFlip && localIsFullscreen && !localIsPip ? (
-        <LocalFlipChip className="bottom-4 left-4" onFlip={onFlipCamera} />
-      ) : null}
-
-      {showDuoPip ? (
-        <div className="absolute bottom-4 right-4 z-[2] h-[8rem] w-[8rem]">
-          <button
-            type="button"
-            data-chat-call-round-video=""
-            data-chat-call-interactive=""
-            className={`relative h-full w-full overflow-hidden rounded-full border-2 bg-zinc-900 shadow-2xl backdrop-blur-xl touch-manipulation active:scale-95 transition-all ${
-              pipPinned ? 'border-emerald-500 shadow-[0_0_24px_rgba(16,185,129,0.4)]' : 'border-white/30'
-            }`}
-            aria-label={
-              duoPipParticipant.isLocal
-                ? 'Show your video fullscreen'
-                : `Show ${duoPipParticipant.name || title || 'caller'} fullscreen`
-            }
-            onClick={() => onPinIdentity(duoPipParticipant.identity)}
-          >
-            {participantHasLiveCamera(duoPipParticipant) &&
-            cameraByIdentity.get(duoPipParticipant.identity) ? (
-              <VideoTrack
-                trackRef={cameraByIdentity.get(duoPipParticipant.identity)}
-                className="absolute inset-0 h-full w-full object-cover"
-                style={{ objectFit: 'cover' }}
-              />
-            ) : (
-              <CallAvatarCircle
-                avatarUrl={resolveAvatarForParticipant(duoPipParticipant)}
-                title={duoPipParticipant.isLocal ? 'You' : duoPipParticipant.name || title || '?'}
-                sizeClass="h-full w-full"
-                textClass="text-[30px]"
-              />
-            )}
-          </button>
-          {showLocalFlip && localIsPip ? (
-            <LocalFlipChip className="-bottom-1 -right-1" size="sm" onFlip={onFlipCamera} />
+      {showLocalPip || sideRemotes.length > 0 ? (
+        <div className="absolute bottom-4 right-4 z-[2] flex flex-col-reverse items-end gap-2.5">
+          {showLocalPip ? (
+            <div className="relative h-[8rem] w-[5.5rem]">
+              <div
+                data-chat-call-round-video=""
+                className="relative h-full w-full overflow-hidden rounded-2xl border-2 border-white/30 bg-zinc-900 shadow-2xl"
+                aria-label="You"
+              >
+                {renderTile(localParticipant, {
+                  label: 'You',
+                  roundedClass: 'rounded-2xl',
+                  textClass: 'text-[26px]',
+                })}
+              </div>
+              {showLocalFlip ? (
+                <LocalFlipChip className="-bottom-1 -right-1" size="sm" onFlip={onFlipCamera} />
+              ) : null}
+            </div>
           ) : null}
-        </div>
-      ) : null}
-
-      {showStrip ? (
-        <div className="absolute bottom-4 left-0 right-0 z-[2] flex justify-center px-4">
-          <div className="flex max-w-full gap-2.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {stripParticipants.map((p) => {
-              const pinned = pinnedIdentity === p.identity
-              const track = cameraByIdentity.get(p.identity)
-              const hasCam = participantHasLiveCamera(p)
-              const label = p.isLocal ? 'You' : p.name || p.identity.slice(0, 8)
-              return (
-                <div key={p.identity} className="relative h-16 w-16 shrink-0">
-                  <button
-                    type="button"
-                    data-chat-call-round-video=""
-                    data-chat-call-interactive=""
-                    className={`relative h-full w-full overflow-hidden rounded-full border-2 bg-zinc-900 shadow-lg touch-manipulation active:scale-95 transition-all ${
-                      pinned ? 'border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.4)]' : 'border-white/25'
-                    }`}
-                    aria-label={pinned ? `${label} pinned` : `Pin ${label} fullscreen`}
-                    onClick={() => onPinIdentity(p.identity)}
-                  >
-                    {hasCam && track ? (
-                      <VideoTrack
-                        trackRef={track}
-                        className="absolute inset-0 h-full w-full object-cover"
-                        style={{ objectFit: 'cover' }}
-                      />
-                    ) : (
-                      <CallAvatarCircle
-                        avatarUrl={resolveAvatarForParticipant(p)}
-                        title={label}
-                        sizeClass="h-full w-full"
-                        textClass="text-[18px]"
-                      />
-                    )}
-                  </button>
-                  {showLocalFlip && p.isLocal && hasCam ? (
-                    <LocalFlipChip className="-bottom-1 -right-1" size="sm" onFlip={onFlipCamera} />
-                  ) : null}
-                </div>
-              )
-            })}
-          </div>
+          {sideRemotes.map((p) => {
+            const label = p.name || p.identity.slice(0, 8)
+            return (
+              <button
+                key={p.identity}
+                type="button"
+                data-chat-call-round-video=""
+                data-chat-call-interactive=""
+                className="relative h-20 w-[4.75rem] overflow-hidden rounded-2xl border-2 border-white/25 bg-zinc-900 shadow-lg touch-manipulation active:scale-95 transition-all"
+                aria-label={`Show ${label} fullscreen`}
+                onClick={(event) => {
+                  event.stopPropagation()
+                  onPinIdentity(p.identity)
+                }}
+              >
+                {renderTile(p, {
+                  label,
+                  roundedClass: 'rounded-2xl',
+                  textClass: 'text-[16px]',
+                })}
+              </button>
+            )
+          })}
         </div>
       ) : null}
     </div>

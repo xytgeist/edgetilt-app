@@ -2843,6 +2843,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-04:** **Video call stage + recording.** You stay lower-right. Tap a remote → they go fullscreen; other remotes stack on the right above You. IPA: `layoutFocusedStage` + `setNativeCallStreamFocus.focusedIdentity` (**new TestFlight**). Web `VideoCallStage` matches. Egress template no longer logs `START_RECORDING` in `<head>` (that saved a blank waiting frame); waits for a camera + featured fallback. **Republish R2 call-egress template on test** for recordings to pick it up. Spec: **`docs/chat-calling.md`**.
 - **2026-09-04:** **Chat / X never get Lounge markdown.** Lounge public + VIP keep the dialect. Fan-room inserts go through `toPlainOutboundText` (`loungeBotPlainOutbound.ts`) inside `publishBotSubChatMessage`. Future X auto-post must use the same helper. Redeploy **`lounge-odds-poll`**. Spec: **`docs/lounge-bot-sports-odds.md`** Destination markdown rules.
 - **2026-09-04:** **Dropped … Chedda orange vs pick gold.** Ryan closed this; leave Chedda on the gold desk tag. Do not paint all gold amber.
 - **2026-09-04:** Voice in-call dock collapsed to the same one-row pill as video (Video / Speaker / Mute / End). No empty grid slots.

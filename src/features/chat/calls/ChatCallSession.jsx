@@ -1092,46 +1092,39 @@ function NativeIpaCallSession({
             />
           </div>
         ) : (
-          /* Double-line 3x2 grid dock for audio calls */
+          /* Same one-row pill as video, minus Flip. */
           <div
             data-chat-call-interactive=""
-            className="pointer-events-auto mx-auto w-full max-w-[22.5rem] rounded-[36px] border border-white/10 bg-zinc-950/80 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150"
+            className="pointer-events-auto mx-auto flex w-full max-w-[22.5rem] items-center justify-between rounded-full border border-white/10 bg-zinc-950/85 px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150"
           >
-            <div className="grid grid-cols-3 gap-y-4 gap-x-3 place-items-center">
-              {/* Row 1 */}
-              <CallDockItem
-                icon={<VideoIcon off={!camOn} />}
-                label="Video"
-                active={camOn}
-                variant={!camOn && remoteHasVideo ? 'active-white' : undefined}
-                disabled={false}
-                onClick={handleVideoDockClick}
-              />
-              <CallDockItem
-                icon={<SpeakerIcon />}
-                label="Speaker"
-                active={speakerOn}
-                variant={speakerOn ? 'active-white' : 'default'}
-                onClick={() => applySpeaker(!speakerOn)}
-              />
-              <CallDockItem
-                icon={<MicIcon muted={!micOn} />}
-                label="Mute"
-                active={!micOn}
-                variant={!micOn ? 'danger' : 'default'}
-                onClick={() => setMicEnabled(!micOn)}
-              />
-
-              {/* Row 2 ... voice has no Record (video-only). End stays centered. */}
-              <div className="h-14 w-14" aria-hidden />
-              <CallDockItem
-                icon={<HangupIcon />}
-                label="End"
-                variant="danger"
-                onClick={() => onHangup?.()}
-              />
-              <div className="h-14 w-14" aria-hidden />
-            </div>
+            <CallDockItem
+              icon={<VideoIcon off={!camOn} />}
+              label="Video"
+              active={camOn}
+              variant={!camOn && remoteHasVideo ? 'active-white' : undefined}
+              disabled={false}
+              onClick={handleVideoDockClick}
+            />
+            <CallDockItem
+              icon={<SpeakerIcon />}
+              label="Speaker"
+              active={speakerOn}
+              variant={speakerOn ? 'active-white' : 'default'}
+              onClick={() => applySpeaker(!speakerOn)}
+            />
+            <CallDockItem
+              icon={<MicIcon muted={!micOn} />}
+              label="Mute"
+              active={!micOn}
+              variant={!micOn ? 'danger' : 'default'}
+              onClick={() => setMicEnabled(!micOn)}
+            />
+            <CallDockItem
+              icon={<HangupIcon />}
+              label="End"
+              variant="danger"
+              onClick={() => onHangup?.()}
+            />
           </div>
         )}
       </div>
@@ -1701,46 +1694,39 @@ function CallChrome({
       />
     </div>
   ) : (
-    /* Double-line 3x2 grid dock for audio call */
+    /* Same one-row pill as video, minus Flip. */
     <div
       data-chat-call-interactive=""
-      className="pointer-events-auto mx-auto w-full max-w-[22.5rem] rounded-[36px] border border-white/10 bg-zinc-950/80 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150"
+      className="pointer-events-auto mx-auto flex w-full max-w-[22.5rem] items-center justify-between rounded-full border border-white/10 bg-zinc-950/85 px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150"
     >
-      <div className="grid grid-cols-3 gap-y-4 gap-x-3 place-items-center">
-        {/* Row 1 */}
-        <CallDockItem
-          icon={<VideoIcon off={!camOn} />}
-          label="Video"
-          active={camOn}
-          disabled={false}
-          onClick={handleVideoDockClick}
-        />
-        <CallDockItem
-          icon={<SpeakerIcon />}
-          label="Speaker"
-          active={speakerOn}
-          variant={speakerOn ? 'active-white' : 'default'}
-          disabled={!audioRouteSupported && isIosDevice() && !isEdgeiOSShell()}
-          onClick={() => void applySpeakerSink(!speakerOn, { manual: true })}
-        />
-        <CallDockItem
-          icon={<MicIcon muted={!micOn} />}
-          label="Mute"
-          active={!micOn}
-          variant={!micOn ? 'danger' : 'default'}
-          onClick={() => void setMicEnabled(!micOn)}
-        />
-
-        {/* Row 2 ... voice has no Record (video-only). End stays centered. */}
-        <div className="h-14 w-14" aria-hidden />
-        <CallDockItem
-          icon={<HangupIcon />}
-          label="End"
-          variant="danger"
-          onClick={hangup}
-        />
-        <div className="h-14 w-14" aria-hidden />
-      </div>
+      <CallDockItem
+        icon={<VideoIcon off={!camOn} />}
+        label="Video"
+        active={camOn}
+        disabled={false}
+        onClick={handleVideoDockClick}
+      />
+      <CallDockItem
+        icon={<SpeakerIcon />}
+        label="Speaker"
+        active={speakerOn}
+        variant={speakerOn ? 'active-white' : 'default'}
+        disabled={!audioRouteSupported && isIosDevice() && !isEdgeiOSShell()}
+        onClick={() => void applySpeakerSink(!speakerOn, { manual: true })}
+      />
+      <CallDockItem
+        icon={<MicIcon muted={!micOn} />}
+        label="Mute"
+        active={!micOn}
+        variant={!micOn ? 'danger' : 'default'}
+        onClick={() => void setMicEnabled(!micOn)}
+      />
+      <CallDockItem
+        icon={<HangupIcon />}
+        label="End"
+        variant="danger"
+        onClick={hangup}
+      />
     </div>
   )
 

@@ -2842,6 +2842,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-04:** Voice in-call dock collapsed to the same one-row pill as video (Video / Speaker / Mute / End). No empty grid slots.
 - **2026-09-04:** Voice call docks no longer show two dummy **Record** buttons (recording stays video-only). Group voice no longer auto-hangs ~4s after place... ghost hangup only after a remote actually joined and then everyone else left.
 - **2026-09-04:** **Chat CallChrome TDZ:** `isVideoMode = Boolean(showVideoStage)` ran before `showVideoStage` was declared… Sentry `Cannot access '$e' before initialization` in `ChatCallSession`. Moved the hide-controls hook below the stage flag.
 - **2026-09-04:** **Profile Replies tab:** exclude `feed_comments.is_thread_part`; CSS grid avatar rail (no measured connectors); caption beside avatar; OP/reply carousels use `commentInline` (no full-bleed under the rail).

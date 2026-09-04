@@ -591,9 +591,9 @@ export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): 
       const uglyPass = pPick.uglyJuice === true || /ugly juice/i.test(String(pPick.lineDisplay || ''))
       const wouldBe = String(pPick.wouldBeLineDisplay || '').trim()
       if (uglyPass && wouldBe) {
-        lines.push(`${matchup}: PASS · ${formatGoldPick(wouldBe)} · [red]ugly juice[/red]`)
+        lines.push(`${matchup}: ${formatGoldPick(wouldBe)} · *PASS* - *ugly juice*`)
       } else if (uglyPass) {
-        lines.push(`${matchup}: PASS · [red]ugly juice[/red]`)
+        lines.push(`${matchup}: *PASS* - *ugly juice*`)
       } else {
         lines.push(`${matchup}: PASS`)
       }
@@ -605,7 +605,7 @@ export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): 
       // Desk cards never keep an ugly-juice play … gate already PASSed those.
       lines.push(
         ugly
-          ? `${matchup}: PASS · ${formatGoldPick(wouldBe)} · [red]ugly juice[/red]`
+          ? `${matchup}: ${formatGoldPick(wouldBe)} · *PASS* - *ugly juice*`
           : formatGoldPick(base),
       )
     }

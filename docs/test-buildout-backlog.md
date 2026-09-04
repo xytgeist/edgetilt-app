@@ -2845,6 +2845,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-04:** Voice in-call dock collapsed to the same one-row pill as video (Video / Speaker / Mute / End). No empty grid slots.
 - **2026-09-04:** Voice call docks no longer show two dummy **Record** buttons (recording stays video-only). Group voice no longer auto-hangs ~4s after place... ghost hangup only after a remote actually joined and then everyone else left.
 - **2026-09-04:** **Chat CallChrome TDZ:** `isVideoMode = Boolean(showVideoStage)` ran before `showVideoStage` was declared… Sentry `Cannot access '$e' before initialization` in `ChatCallSession`. Moved the hide-controls hook below the stage flag.
+- **2026-09-04:** **Rocco ugly-juice desk line:** `Matchup: [gold]lean[/gold] · *PASS* - *ugly juice*` (italics). Live Week 2 Rocco part updated. Redeploy **`lounge-odds-poll`**.
 - **2026-09-04:** **VIP desk ATS cards:** drop leading `·`; Rocco ugly-juice PASS still shows the would-be lean (`PASS · [gold]pick[/gold] · ugly juice`). Redeploy **`lounge-odds-poll`**.
 - **2026-09-04:** **NFL VIP desk PASS matchups + Chedda gold:** PASS lines restore `Away/Home: PASS` (picks stay pick-only); light `[gold]` stays muddy amber for Chedda. Live Week 2 VIP parts updated. Redeploy **`lounge-odds-poll`**.
 - **2026-09-04:** **NFL VIP desk cards (picks-only + light gold):** desk threads drop Team/Team rows (picks/PASS only); light-mode `[gold]` → emerald-700 (was muddy amber). Live Week 2 VIP parts updated. Redeploy **`lounge-odds-poll`**; frontend needs Vercel.

@@ -191,38 +191,26 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Ops-only Lane B scrape … allowed even when syndicate bot is stopped (soft-fail intake).
+    // Lane B parked … HTML scrape never produced reconstructible tickets.
     if (action === 'lane_b_refresh') {
-      const { refreshLaneBTicketsForSlate, loadLaneBTicketsForSport } = await import(
-        '../_shared/loungeBotLaneBScrape.ts'
-      )
-      const { fetchSportOdds } = await import('../_shared/loungeBotOddsRun.ts')
-      const { filterOddsEventsForNextFootballSlate } = await import('../_shared/loungeBotOddsCaption.ts')
-      let sportKey = String(body?.sportKey || 'americanfootball_ncaaf').trim()
-      if (sportKey === 'nfl') sportKey = 'americanfootball_nfl'
-      if (sportKey === 'cfb' || sportKey === 'ncaaf') sportKey = 'americanfootball_ncaaf'
-      let events: any[] = []
-      try {
-        const oddsData = await fetchSportOdds(sportKey, ['us'], ['spreads'])
-        events = filterOddsEventsForNextFootballSlate(oddsData?.events || [])
-      } catch (e) {
-        return adminOpsJson(200, {
+      return adminOpsJson(200, {
+        ok: false,
+        parked: true,
+        action: 'lane_b_refresh',
+        message:
+          'Lane B / Quorum parked … publisher HTML scrape was unusable. No refresh.',
+        tickets: [],
+        refresh: {
           ok: false,
           soft_fail: true,
-          action: 'lane_b_refresh',
-          error: String(e),
-          tickets: [],
-        })
-      }
-      const refresh = await refreshLaneBTicketsForSlate(admin, sportKey, events)
-      const tickets = await loadLaneBTicketsForSport(admin, sportKey)
-      return adminOpsJson(200, {
-        ok: refresh.ok,
-        action: 'lane_b_refresh',
-        sportKey,
-        eventCount: events.length,
-        refresh,
-        tickets,
+          scrape_run_id: '',
+          discovered_urls: 0,
+          fetched_ok: 0,
+          tickets_parsed: 0,
+          tickets_upserted: 0,
+          matched_events: 0,
+          errors: ['lane_b_parked'],
+        },
       })
     }
 
@@ -369,23 +357,6 @@ Deno.serve(async (req) => {
       const { loadPastedBettingSplitsForSlate } = await import('../_shared/loungeBotBettingSplits.ts')
       const pastedSplitsByEventId = await loadPastedBettingSplitsForSlate(admin, sportKey, events)
 
-      // Lane B external tickets (soft-fail) … Quorum may fold matched sides
-      const { refreshLaneBTicketsForSlate, loadLaneBTicketsForSport } = await import(
-        '../_shared/loungeBotLaneBScrape.ts'
-      )
-      const laneBRefresh = await refreshLaneBTicketsForSlate(admin, sportKey, events).catch((e) => ({
-        ok: false,
-        soft_fail: true,
-        scrape_run_id: '',
-        discovered_urls: 0,
-        fetched_ok: 0,
-        tickets_parsed: 0,
-        tickets_upserted: 0,
-        matched_events: 0,
-        errors: [String(e)],
-      }))
-      const laneBTickets = await loadLaneBTicketsForSport(admin, sportKey).catch(() => [])
-
       // Need totals for Tank's O/U lane
       let eventsWithTotals = events
       try {
@@ -404,7 +375,6 @@ Deno.serve(async (req) => {
         cfbRatingsMap,
         sideModifiersByEventId,
         pastedSplitsByEventId,
-        laneBTickets,
       })
 
       if (!card) {
@@ -415,7 +385,6 @@ Deno.serve(async (req) => {
           totalEventsInWindow: events.length,
           clusterDays: FOOTBALL_SLATE_CLUSTER_DAYS,
           maxLookaheadDays: FOOTBALL_SLATE_MAX_LOOKAHEAD_DAYS,
-          laneBRefresh,
         })
       }
 
@@ -450,8 +419,6 @@ Deno.serve(async (req) => {
           vipPreviewCaption,
           subscriberThreadParts,
           card,
-          laneBRefresh,
-          laneBTicketCount: laneBTickets.length,
         })
       }
 
@@ -471,8 +438,6 @@ Deno.serve(async (req) => {
         splitsCount: card.splits.length,
         totalEventsRaw: rawEvents.length,
         totalEventsInWindow: events.length,
-        laneBRefresh,
-        laneBTicketCount: laneBTickets.length,
         ...result,
       })
     }

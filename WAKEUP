@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Windows Theo 2026-09-03 … Syndicate Lane B intake allowlist
+
+**I am Windows Theo.** Parked Action/Unabated pick-ledger API. Seeded publisher-first Lane B doctrine + CSV allowlist (VSiN Burke/Makinen/Tuley/Youmans, Covers Powers, Sharp site, free-play cappers; paywalled → manual; dead handles excluded). Docs: **`docs/syndicate-lane-b-handicappers.md`**, **`data/syndicate/lane-b-intake-allowlist.csv`**. Next: ops manual ticket log and/or VSiN/Covers HTML parse … no Edge yet.
+
 ### Windows Theo 2026-08-28 … Edge Pro Platform Tier, Gated Replies & VIP Filter
 
 **I am Windows Theo.** Landed Phase 3 Edge Pro platform tier:

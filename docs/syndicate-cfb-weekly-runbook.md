@@ -3,6 +3,8 @@
 **Audience:** Ryan + agents. **Not** public marketing copy.  
 **Do not** put blend weights, voter names, or this SOP on sharpesyndicate.com.
 
+**Lane B (external handicappers desk):** intake doctrine + allowlist seed … **`docs/syndicate-lane-b-handicappers.md`**, **`data/syndicate/lane-b-intake-allowlist.csv`**. Not wired into weekly lock yet.
+
 North star: **real ratings → four specialist desks → publish only what we’d bet → grade ATS + CLV.**  
 The board is the map. The desks are the drivers. Do not confuse them.
 

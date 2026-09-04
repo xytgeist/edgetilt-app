@@ -105,6 +105,7 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
   const [previewConfidence, setPreviewConfidence] = useState(null)
   /** @type {import('react').Dispatch<import('react').SetStateAction<Array<{ id: string, file: File, name: string, url: string }>>>} */
   const [stagedShots, setStagedShots] = useState([])
+  const [pasteArmed, setPasteArmed] = useState(false)
   const fileRef = useRef(null)
   const dropZoneRef = useRef(null)
 
@@ -117,6 +118,10 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
     const home = clampPct(Number(form.home_handle_pct))
     return home == null ? null : clampPct(100 - home)
   }, [form.home_handle_pct])
+
+  const focusPasteZone = useCallback(() => {
+    dropZoneRef.current?.focus?.({ preventScroll: true })
+  }, [])
 
   const loadRows = useCallback(async () => {
     if (!supabaseClient) return
@@ -142,6 +147,12 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
     loadRows()
   }, [loadRows])
 
+  // Arm Ctrl+V as soon as the Chedda tab mounts … click/focus keeps it armed.
+  useEffect(() => {
+    const t = window.setTimeout(() => focusPasteZone(), 50)
+    return () => window.clearTimeout(t)
+  }, [focusPasteZone])
+
   useEffect(() => {
     return () => {
       revokeStagedUrls(stagedShots)
@@ -158,7 +169,8 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
       revokeStagedUrls(prev)
       return []
     })
-  }, [])
+    queueMicrotask(() => focusPasteZone())
+  }, [focusPasteZone])
 
   const removeStaged = useCallback((id) => {
     setStagedShots((prev) => {
@@ -166,7 +178,8 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
       if (doomed?.url) URL.revokeObjectURL(doomed.url)
       return prev.filter((s) => s.id !== id)
     })
-  }, [])
+    queueMicrotask(() => focusPasteZone())
+  }, [focusPasteZone])
 
   /** Queue images only … no vision until Process. */
   const addStagedFiles = useCallback((files) => {
@@ -176,14 +189,18 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
       return 0
     }
     const next = list.map(makeStagedShot)
-    setStagedShots((prev) => [...prev, ...next])
-    setToast?.(
-      `Queued ${next.length} screenshot${next.length === 1 ? '' : 's'} … hit Process when ready.`,
-    )
-    // Refocus so the next Ctrl+V still lands in the tray.
-    queueMicrotask(() => dropZoneRef.current?.focus?.())
+    setStagedShots((prev) => {
+      const total = prev.length + next.length
+      setToast?.(
+        total === next.length
+          ? `Queued ${next.length} … keep Ctrl+V for more, or Process all.`
+          : `Queued ${total} total … keep Ctrl+V or Process all.`,
+      )
+      return [...prev, ...next]
+    })
+    queueMicrotask(() => focusPasteZone())
     return next.length
-  }, [setToast])
+  }, [setToast, focusPasteZone])
 
   const parseOneScreenshot = useCallback(async (file) => {
     const { file: prepared, error: compressErr } = await compressImageFileUnderMaxBytes(
@@ -290,32 +307,22 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
 
   const processStaged = useCallback(async () => {
     if (!stagedShots.length) {
-      setToast?.('Queue at least one screenshot first (Ctrl+V or drop).')
+      setToast?.('Click the box, Ctrl+V a screenshot first.')
+      focusPasteZone()
       return
     }
     const files = stagedShots.map((s) => s.file)
     const ok = await handleScreenshots(files)
     if (ok) clearStaged()
-  }, [stagedShots, handleScreenshots, clearStaged, setToast])
+    else queueMicrotask(() => focusPasteZone())
+  }, [stagedShots, handleScreenshots, clearStaged, setToast, focusPasteZone])
 
-  const handleDropZonePaste = useCallback(async (e) => {
+  const handleDropZonePaste = useCallback((e) => {
     e.preventDefault()
     e.stopPropagation()
-    let files = imageFilesFromClipboardEvent(e)
+    const files = imageFilesFromClipboardEvent(e)
     if (!files.length) {
-      files = await imageFilesFromNavigatorClipboardRead()
-    }
-    if (!files.length) {
-      setToast?.('Clipboard has no image. Copy a screenshot first (Win+Shift+S), then Ctrl+V here.')
-      return
-    }
-    addStagedFiles(files)
-  }, [addStagedFiles, setToast])
-
-  const handlePasteFromClipboardButton = useCallback(async () => {
-    const files = await imageFilesFromNavigatorClipboardRead()
-    if (!files.length) {
-      setToast?.('No image on clipboard. Screenshot first, click the drop zone, then Ctrl+V … or grant clipboard permission for Paste clipboard.')
+      setToast?.('Clipboard has no image. Win+Shift+S, then Ctrl+V here.')
       return
     }
     addStagedFiles(files)
@@ -491,8 +498,8 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
             </span>
           </div>
           <p className="mt-0.5 text-xs text-zinc-400 max-w-2xl">
-            Queue Action PRO screenshots (Ctrl+V one after another, or multi-drop), then Process all.
-            Review the parsed table and save … Chedda uses it. Manual single-game form still below.
+            Click the box below, then Ctrl+V screenshots one after another. Process all when ready.
+            Review + save for Chedda. Manual form still below.
           </p>
         </div>
         <button
@@ -509,8 +516,22 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
         ref={dropZoneRef}
         tabIndex={0}
         role="region"
-        aria-label="Stage Action PRO screenshots"
-        className="rounded-lg border border-dashed border-amber-700/50 bg-amber-950/20 px-4 py-5 focus:border-amber-400/70 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+        aria-label="Paste Action PRO screenshots with Control V"
+        className={`rounded-lg border border-dashed px-4 py-5 outline-none transition ${
+          pasteArmed
+            ? 'border-amber-400 bg-amber-950/35 ring-2 ring-amber-500/40'
+            : 'border-amber-700/50 bg-amber-950/20 focus:border-amber-400/70 focus:ring-2 focus:ring-amber-500/30'
+        }`}
+        onFocus={() => setPasteArmed(true)}
+        onBlur={(e) => {
+          if (e.currentTarget.contains(e.relatedTarget)) return
+          setPasteArmed(false)
+        }}
+        onMouseDown={(e) => {
+          if (e.target === e.currentTarget || e.target?.closest?.('[data-paste-surface]')) {
+            focusPasteZone()
+          }
+        }}
         onDragOver={(e) => {
           e.preventDefault()
           e.stopPropagation()
@@ -535,17 +556,21 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
             if (fileRef.current) fileRef.current.value = ''
           }}
         />
-        <p className="text-sm font-semibold text-amber-200 text-center">
-          {scanning
-            ? (scanProgress
-              ? `Reading ${scanProgress.done + 1}/${scanProgress.total}… ${scanProgress.label}`
-              : 'Reading screenshots…')
-            : 'Stage screenshots here · Ctrl+V repeatedly, then Process'}
-        </p>
-        <p className="mt-1 text-[11px] text-zinc-500 text-center max-w-xl mx-auto">
-          Win+Shift+S → click this box → Ctrl+V (repeat for each crop). Nothing is sent to vision
-          until you hit Process. Same matchup on a later shot replaces the earlier row in review.
-        </p>
+        <div data-paste-surface className="text-center cursor-text" onClick={() => focusPasteZone()}>
+          <p className="text-sm font-semibold text-amber-200">
+            {scanning
+              ? (scanProgress
+                ? `Reading ${scanProgress.done + 1}/${scanProgress.total}… ${scanProgress.label}`
+                : 'Reading screenshots…')
+              : pasteArmed
+                ? 'Ready … Ctrl+V to add (repeat), then Process all'
+                : 'Click here, then Ctrl+V'}
+          </p>
+          <p className="mt-1 text-[11px] text-zinc-500 max-w-xl mx-auto">
+            Win+Shift+S → click this section → Ctrl+V. No clipboard button … just paste.
+            Vision waits until Process. Same matchup later replaces the earlier review row.
+          </p>
+        </div>
 
         {stagedShots.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2 justify-center">
@@ -588,14 +613,6 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
               : stagedShots.length
                 ? `Process all (${stagedShots.length})`
                 : 'Process all'}
-          </button>
-          <button
-            type="button"
-            disabled={scanning}
-            onClick={() => void handlePasteFromClipboardButton()}
-            className="rounded-lg bg-amber-600 hover:bg-amber-500 px-4 py-2 text-xs font-bold text-black transition disabled:opacity-50"
-          >
-            Add clipboard
           </button>
           <button
             type="button"

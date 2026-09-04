@@ -204,7 +204,7 @@ Then `edge-native-call-reveal` opens the chat room + live chrome.
 | Sign-out | Web | `clearAuthSession` |
 | Incoming VoIP / Realtime / APNs | Native | Dedupe by `callId`, `reportNewIncomingCall` |
 | Answer (lock screen or in-app) | Native | Refresh JWT if needed → `accept_call` → `Room.connect` → mic on `didActivate` |
-| Outgoing in-app | Native | `start_call` → CallKit outgoing → same `Room` |
+| Outgoing in-app | Native | `start_call` → CallKit outgoing → same `Room`. CallKit `connectedAt` fires when the **local** room is up (mic / `didActivate`). Native dual-tone **ringback** (`EdgeOutgoingRingback`) plays until the first remote joins. No new `EdgeNative` method. |
 | Chrome | Web | Timer, mute, camera, speaker, hangup, recording. Gated on `isEdgeiOSShell()`. |
 | Video | Native | `VideoView` overlay behind WKWebView. Web stage is a transparent hole. |
 | Hangup local | Both | Web `leave_call` when it can; CallKit end also `leave_call` from native so a lock-screen hangup still ends the row. |

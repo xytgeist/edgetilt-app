@@ -58,6 +58,8 @@ export function installChatCallAudioUnlock() {
 }
 
 let activeHandles = new Set()
+/** Single outgoing ringback so Start tap + CallChrome do not stack tones. */
+let outgoingRingbackHandle = /** @type {ChatCallToneHandle | null} */ (null)
 
 /**
  * @param {'incoming' | 'ringback'} kind
@@ -77,7 +79,7 @@ export function startChatCallTone(kind) {
   const cadence =
     kind === 'incoming'
       ? { onMs: 1800, offMs: 2200, freqs: [440, 480], gain: 0.035 }
-      : { onMs: 2000, offMs: 4000, freqs: [440, 480], gain: 0.028 }
+      : { onMs: 2000, offMs: 4000, freqs: [440, 480], gain: 0.055 }
 
   const clearLive = () => {
     for (const osc of liveOsc) {
@@ -175,8 +177,21 @@ export function startChatCallTone(kind) {
   return handle
 }
 
+/** Start (or restart) the caller's waiting tone. Safe to call repeatedly. */
+export function startOutgoingRingback() {
+  stopOutgoingRingback()
+  outgoingRingbackHandle = startChatCallTone('ringback')
+  return outgoingRingbackHandle
+}
+
+export function stopOutgoingRingback() {
+  stopChatCallTone(outgoingRingbackHandle)
+  outgoingRingbackHandle = null
+}
+
 /** Stop all active ringtones globally */
 export function stopAllChatCallTones() {
+  outgoingRingbackHandle = null
   for (const h of activeHandles) {
     try {
       h.stop()

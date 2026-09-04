@@ -62,6 +62,8 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   private lazy var overlayTapGesture = UITapGestureRecognizer(target: self, action: #selector(handleOverlayTapped))
   private lazy var overlayPanGesture = UIPanGestureRecognizer(target: self, action: #selector(handleOverlayPanned(_:)))
   private var overlayMiniFrame: CGRect?
+  private let outgoingRingback = EdgeOutgoingRingback()
+  private var waitingForRemoteAnswer = false
 
   private let remoteVideoView: VideoView = {
     let view = VideoView()
@@ -123,24 +125,39 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   @discardableResult
   func startOutgoing(roomId: String, mediaMode: String, title: String) async throws -> (State, EdgeChatCallsClient.InvokeResult) {
     let hasVideo = mediaMode == "video"
-    let started = try await EdgeChatCallsClient.startCall(roomId: roomId, mediaMode: mediaMode)
-    let callId = started.callId ?? ""
-    guard !callId.isEmpty, let token = started.token, let url = started.livekitUrl else {
-      throw EdgeChatCallsClient.ClientError.badResponse("start_call did not return a LiveKit token.")
+    // CallKit does not play PSTN ringback for generic CXHandle. Play ours until
+    // the first remote joins. Start before start_call so the caller hears a tone
+    // during the network wait... restart after connect when the session settles.
+    beginOutgoingRingback()
+    do {
+      let started = try await EdgeChatCallsClient.startCall(roomId: roomId, mediaMode: mediaMode)
+      let callId = started.callId ?? ""
+      guard !callId.isEmpty, let token = started.token, let url = started.livekitUrl else {
+        throw EdgeChatCallsClient.ClientError.badResponse("start_call did not return a LiveKit token.")
+      }
+      EdgeCallKitManager.shared.reportOutgoingCall(
+        callId: callId,
+        roomId: roomId,
+        handle: title.isEmpty ? "Edge call" : title,
+        hasVideo: hasVideo
+      )
+      var next = try await connectRoom(callId: callId, roomId: roomId, hasVideo: hasVideo, url: url, token: token)
+      next.callPayload = started.call
+      await MainActor.run { self.state.callPayload = started.call }
+      if waitingForRemoteAnswer, room.remoteParticipants.isEmpty {
+        outgoingRingback.start()
+      } else {
+        stopOutgoingRingback()
+      }
+      return (next, started)
+    } catch {
+      stopOutgoingRingback()
+      throw error
     }
-    EdgeCallKitManager.shared.reportOutgoingCall(
-      callId: callId,
-      roomId: roomId,
-      handle: title.isEmpty ? "Edge call" : title,
-      hasVideo: hasVideo
-    )
-    var next = try await connectRoom(callId: callId, roomId: roomId, hasVideo: hasVideo, url: url, token: token)
-    next.callPayload = started.call
-    await MainActor.run { self.state.callPayload = started.call }
-    return (next, started)
   }
 
   func hangup(leaveOnServer: Bool) {
+    stopOutgoingRingback()
     let callId = state.callId
     guard !callId.isEmpty || state.connected || connectTask != nil else { return }
     chromeMinimized = false
@@ -244,15 +261,22 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     } catch {
       // Still try to publish; LiveKit may already be running.
     }
+    if waitingForRemoteAnswer {
+      outgoingRingback.start()
+    }
     Task {
       if state.micOn {
         try? await room.localParticipant.setMicrophone(enabled: true)
       }
       await publishCameraIfNeeded()
+      if waitingForRemoteAnswer {
+        await MainActor.run { self.outgoingRingback.start() }
+      }
     }
   }
 
   func handleAudioDeactivated() {
+    outgoingRingback.stop()
     do {
       try AudioManager.shared.setEngineAvailability(.none)
     } catch {
@@ -612,6 +636,9 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
 
   func room(_ room: Room, participantDidConnect participant: RemoteParticipant) {
     state.remoteCount = room.remoteParticipants.count
+    if waitingForRemoteAnswer {
+      stopOutgoingRingback()
+    }
     dispatchState()
   }
 
@@ -684,6 +711,120 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   private func dispatchState() {
     let detail = state.dictionary()
     EdgeCallKitManager.shared.dispatchNativeCallState(detail)
+  }
+
+  private func beginOutgoingRingback() {
+    waitingForRemoteAnswer = true
+    outgoingRingback.start()
+  }
+
+  private func stopOutgoingRingback() {
+    waitingForRemoteAnswer = false
+    outgoingRingback.stop()
+  }
+}
+
+/// Dual-tone ringback for the IPA caller. CallKit reports `connectedAt` as soon
+/// as the local LiveKit room is up (needed for `didActivate` / mic), so the OS
+/// never plays PSTN-style ringback. This tone runs until the first remote joins.
+private final class EdgeOutgoingRingback {
+  private var player: AVAudioPlayer?
+  private var timer: Timer?
+  private var playing = false
+  private static let toneData: Data = EdgeOutgoingRingback.makeToneWav(durationSeconds: 2.0)
+
+  func start() {
+    let work = { [weak self] in
+      guard let self else { return }
+      self.stopLocked()
+      self.playing = true
+      self.playBurst()
+    }
+    if Thread.isMainThread {
+      work()
+    } else {
+      DispatchQueue.main.async(execute: work)
+    }
+  }
+
+  func stop() {
+    let work = { [weak self] in
+      self?.stopLocked()
+    }
+    if Thread.isMainThread {
+      work()
+    } else {
+      DispatchQueue.main.async(execute: work)
+    }
+  }
+
+  private func stopLocked() {
+    playing = false
+    timer?.invalidate()
+    timer = nil
+    player?.stop()
+    player = nil
+  }
+
+  private func playBurst() {
+    guard playing else { return }
+    do {
+      let next = try AVAudioPlayer(data: Self.toneData)
+      next.volume = 0.45
+      next.prepareToPlay()
+      next.play()
+      player = next
+    } catch {
+      NSLog("EdgeOutgoingRingback play failed: \(error.localizedDescription)")
+    }
+    timer = Timer.scheduledTimer(withTimeInterval: 6.0, repeats: false) { [weak self] _ in
+      self?.playBurst()
+    }
+  }
+
+  private static func makeToneWav(durationSeconds: Double) -> Data {
+    let sampleRate = 44100
+    let count = max(1, Int(durationSeconds * Double(sampleRate)))
+    var samples = [Int16](repeating: 0, count: count)
+    let twoPi = 2.0 * Double.pi
+    for i in 0..<count {
+      let t = Double(i) / Double(sampleRate)
+      let fadeIn = min(1.0, Double(i) / 3500.0)
+      let fadeOut = min(1.0, Double(count - i) / 5300.0)
+      let fade = min(fadeIn, fadeOut)
+      let mix = sin(twoPi * 440.0 * t) + sin(twoPi * 480.0 * t)
+      let amp = 0.22 * fade * mix
+      let clipped = max(-1.0, min(1.0, amp))
+      samples[i] = Int16(clipped * Double(Int16.max))
+    }
+    var data = Data()
+    func appendASCII(_ value: String) {
+      data.append(contentsOf: value.utf8)
+    }
+    func appendU32(_ value: UInt32) {
+      var le = value.littleEndian
+      Swift.withUnsafeBytes(of: &le) { data.append(contentsOf: $0) }
+    }
+    func appendU16(_ value: UInt16) {
+      var le = value.littleEndian
+      Swift.withUnsafeBytes(of: &le) { data.append(contentsOf: $0) }
+    }
+    let dataSize = UInt32(count * 2)
+    appendASCII("RIFF")
+    appendU32(36 + dataSize)
+    appendASCII("WAVE")
+    appendASCII("fmt ")
+    appendU32(16)
+    appendU16(1)
+    appendU16(1)
+    appendU32(UInt32(sampleRate))
+    appendU32(UInt32(sampleRate * 2))
+    appendU16(2)
+    appendU16(16)
+    appendASCII("data")
+    appendU32(dataSize)
+    samples.withUnsafeBytes { data.append(contentsOf: $0) }
+    return data
   }
 }
 

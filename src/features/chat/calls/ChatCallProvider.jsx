@@ -31,7 +31,13 @@ import {
   peekPendingChatCallDeepLink,
 } from '../../../utils/pendingChatCallDeepLink.js'
 import { enterCallAudioSession } from './chatCallAudioSession.js'
-import { installChatCallAudioUnlock, stopAllChatCallTones, unlockChatCallAudio } from './chatCallRingTone.js'
+import {
+  installChatCallAudioUnlock,
+  startOutgoingRingback,
+  stopAllChatCallTones,
+  stopOutgoingRingback,
+  unlockChatCallAudio,
+} from './chatCallRingTone.js'
 import { acceptNativeCall, dismissEdgeCallKeyboard, endEdgeNativeCall, getEdgeVoIPPushToken, installEdgeCallKitListeners, markEdgeCallKitWebReady, preloadEdgeAvatar, reportEdgeIncomingCall, startNativeCall } from '../../../utils/edgeCallKit.js'
 import { getEdgeiOSPushToken, isEdgeiOSShell } from '../../../utils/edgeNative.js'
 import { upsertMyApnsDeviceToken } from '../../../utils/apnsDeviceTokenApi.js'
@@ -850,6 +856,9 @@ export function ChatCallProvider({
       unlockChatCallAudio()
       enterCallAudioSession()
       dismissEdgeCallKeyboard()
+      // Same-tick as the Start tap so Web Audio is not locked after await.
+      // IPA ringback is native (CallKit / LiveKit); Web Audio stays silent there.
+      if (!isEdgeiOSShell()) startOutgoingRingback()
       setBusy(true)
       setError('')
       const avatarFromOpts =
@@ -894,6 +903,7 @@ export function ChatCallProvider({
           }
         }
         stopAllChatCallTones()
+        if (!isEdgeiOSShell()) startOutgoingRingback()
         setActiveCall({
           callId: call.id,
           roomId,
@@ -930,6 +940,7 @@ export function ChatCallProvider({
             /* fall through to toast */
           }
         }
+        stopOutgoingRingback()
         showCallStatusToast(msg)
         return null
       } finally {
@@ -1092,6 +1103,7 @@ export function ChatCallProvider({
   }, [supabaseClient, viewerUserId])
 
   const hangup = useCallback(async () => {
+    stopAllChatCallTones()
     const current = activeCallRef.current
     if (!current) {
       setActiveCall(null)

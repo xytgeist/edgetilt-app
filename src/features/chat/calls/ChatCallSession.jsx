@@ -15,7 +15,11 @@ import '@livekit/components-styles'
 import { applyCallAudioOutput, canToggleCallAudioRoute } from './chatCallAudioOutput.js'
 import { enterCallAudioSession, exitCallAudioSession } from './chatCallAudioSession.js'
 import { playChatCallRecordingCue } from './chatCallRecordingTone.js'
-import { startChatCallTone, stopChatCallTone, unlockChatCallAudio } from './chatCallRingTone.js'
+import {
+  startOutgoingRingback,
+  stopOutgoingRingback,
+  unlockChatCallAudio,
+} from './chatCallRingTone.js'
 import { CHAT_CALL_RECORDING_MAX_SECONDS } from '../../../utils/chatCallsApi.js'
 import { isIosDevice } from '../../../utils/pwaNotificationPrompt.js'
 import { isEdgeiOSShell } from '../../../utils/edgeNative.js'
@@ -676,6 +680,8 @@ function NativeIpaCallSession({
   const recAutoStopRef = useRef(false)
 
   if (remoteCount > 0) hadRemoteRef.current = true
+  // IPA ringback is native (`EdgeOutgoingRingback`). Do not start Web Audio here...
+  // CallKit playAndRecord ducks it, and leftover oscillators ding after connect.
   const awaitingAnswer =
     Boolean(isOutgoing) && !hadRemoteRef.current && remoteCount === 0
 
@@ -1271,12 +1277,13 @@ function CallChrome({
     return () => window.clearInterval(id)
   }, [recordingStatus, recordingStartedAt, recordingMaxSeconds, onStopRecording, canStopRecording])
 
+  const roomState = room?.state
   useEffect(() => {
     if (!awaitingAnswer || isEdgeiOSShell()) return undefined
     unlockChatCallAudio()
-    const tone = startChatCallTone('ringback')
-    return () => stopChatCallTone(tone)
-  }, [awaitingAnswer])
+    startOutgoingRingback()
+    return () => stopOutgoingRingback()
+  }, [awaitingAnswer, roomState])
 
   const tracks = useTracks(
     [{ source: Track.Source.Camera, withPlaceholder: false }],

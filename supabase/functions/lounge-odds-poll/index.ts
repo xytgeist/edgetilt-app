@@ -824,8 +824,7 @@ Deno.serve(async (req) => {
     if (action === 'predictive_pick') {
       const {
         buildSyndicateCard,
-        classifyPickPersona,
-        filterPredictiveCandidates,
+        pickSoloForPersona,
         publishAndRecordPicks,
       } = await import('../_shared/loungeBotPredictivePick.ts')
       const { findPlusEvOpportunities } = await import('../_shared/loungeBotOddsCaption.ts')
@@ -850,8 +849,7 @@ Deno.serve(async (req) => {
         try {
           const oddsData = await fetchSportOdds(sk, ['us'], ['h2h', 'spreads', 'totals'])
           const opps = findPlusEvOpportunities(oddsData.events, sk, { minEvPct: 0.5, maxEvPct: 20.0 })
-          const filtered = filterPredictiveCandidates(opps)
-          allCandidates.push(...filtered)
+          allCandidates.push(...opps)
         } catch (e) {
           console.warn(`Predictive pick scan error for ${sk}:`, e)
         }
@@ -886,29 +884,37 @@ Deno.serve(async (req) => {
         })
         return adminOpsJson(200, { ok: true, isSyndicate: true, ...result })
       } else {
-        if (!allCandidates.length) {
-          return adminOpsJson(200, { ok: false, message: 'No viable predictive pick candidates found.' })
+        const forcedPersona = String(body?.pickerName || '').trim()
+        const solo = pickSoloForPersona(allCandidates, forcedPersona || null)
+        if (!solo) {
+          const hint = forcedPersona
+            ? `No ${forcedPersona} solo candidates on this board (desk market rules).`
+            : 'No viable predictive pick candidates found.'
+          return adminOpsJson(200, {
+            ok: false,
+            message: hint,
+            pickerName: forcedPersona || null,
+            candidates: allCandidates.length,
+          })
         }
-        const topPick = allCandidates[0]
-        const persona = body?.pickerName || classifyPickPersona(topPick)
         if (dryRun) {
           const { formatSoloPredictiveCaption } = await import('../_shared/loungeBotPredictivePick.ts')
-          const previewCaption = formatSoloPredictiveCaption(persona, topPick)
+          const previewCaption = formatSoloPredictiveCaption(solo.pickerName, solo.pick)
           return adminOpsJson(200, {
             ok: true,
             dryRun: true,
-            pickerName: persona,
-            pick: topPick,
+            pickerName: solo.pickerName,
+            pick: solo.pick,
             previewCaption,
             captionPreview: previewCaption,
           })
         }
         const result = await publishAndRecordPicks(admin, {
           botUserId: bot.user_id,
-          picks: [{ pickerName: persona, pick: topPick }],
+          picks: [{ pickerName: solo.pickerName, pick: solo.pick }],
           categoryPills: bot.category_pills_default || ['sports'],
         })
-        return adminOpsJson(200, { ok: true, isSyndicate: false, pickerName: persona, ...result })
+        return adminOpsJson(200, { ok: true, isSyndicate: false, pickerName: solo.pickerName, ...result })
       }
     }
 

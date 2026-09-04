@@ -654,6 +654,65 @@ export function classifyPickPersona(pick: OddsPick): SharpPicker {
   return 'Scott'
 }
 
+function sortByEdgeDesc(picks: OddsPick[]): OddsPick[] {
+  return [...picks].sort((a, b) => (Number(b.edgePct) || 0) - (Number(a.edgePct) || 0))
+}
+
+/**
+ * Filter +EV candidates to a forced desk's market rules.
+ * Tank never receives sides; Chedda only plus-money MLs; Rocco spreads; Scott non-totals EV.
+ */
+export function filterCandidatesForPersona(
+  candidates: OddsPick[],
+  persona: SharpPicker,
+): OddsPick[] {
+  const valid = filterPredictiveCandidates(candidates)
+  switch (persona) {
+    case 'Chedda':
+      return valid.filter(
+        (p) => p.marketKey === 'h2h' && p.pickPrice >= 110 && p.pickPrice <= 260,
+      )
+    case 'Tank':
+      return valid.filter(
+        (p) => p.marketKey === 'totals' && p.pickPrice >= -125 && p.pickPrice <= 110,
+      )
+    case 'Rocco':
+      return valid.filter(
+        (p) => p.marketKey === 'spreads' && p.pickPrice >= -135 && p.pickPrice <= 115,
+      )
+    case 'Scott':
+      // Model / EV baseline on spreads … do not costume Chedda plus-money MLs.
+      return valid.filter(
+        (p) => p.marketKey === 'spreads' && p.pickPrice >= -135 && p.pickPrice <= 115,
+      )
+    default:
+      return valid
+  }
+}
+
+/**
+ * Solo drop: honor forced persona markets, or auto-classify the top EV pick.
+ * Returns null when the forced desk has no legal candidate (do not costume a wrong market).
+ */
+export function pickSoloForPersona(
+  candidates: OddsPick[],
+  pickerName?: string | null,
+): { pickerName: SharpPicker; pick: OddsPick } | null {
+  const valid = sortByEdgeDesc(filterPredictiveCandidates(candidates))
+  if (!valid.length) return null
+
+  const forced = String(pickerName || '').trim()
+  if (forced && (SHARP_PICKERS as readonly string[]).includes(forced)) {
+    const persona = forced as SharpPicker
+    const pool = sortByEdgeDesc(filterCandidatesForPersona(valid, persona))
+    if (!pool.length) return null
+    return { pickerName: persona, pick: pool[0]! }
+  }
+
+  const top = valid[0]!
+  return { pickerName: classifyPickPersona(top), pick: top }
+}
+
 /**
  * Assemble a multi-picker syndicate card from a pool of candidate picks across today's games.
  * Tries to give 1 distinct pick to each persona (Scott, Rocco, Chedda, Tank) without duplicate events.

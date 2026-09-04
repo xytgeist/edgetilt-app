@@ -63,6 +63,8 @@
     "syndicate:pval-sleeper": "node scripts/pval-sleeper-sync.mjs --dry-run --target=test",
     "syndicate:pval-sleeper:apply:test": "node scripts/pval-sleeper-sync.mjs --apply --target=test",
     "syndicate:pval-sleeper:apply:production": "node scripts/pval-sleeper-sync.mjs --apply --target=production",
+    "syndicate:pval-sleeper:refresh:test": "node scripts/pval-sleeper-sync.mjs --apply --refresh --no-out --target=test",
+    "syndicate:pval-sleeper:refresh:production": "node scripts/pval-sleeper-sync.mjs --apply --refresh --no-out --target=production",
     "backtest:ufc": "node scripts/backtest-ufc-model.mjs",
     "backtest:ufc:odds": "node scripts/backtest-ufc-model.mjs --with-odds",
     "backtest:ufc:drivers": "node scripts/analyze-ufc-edge-drivers.mjs",

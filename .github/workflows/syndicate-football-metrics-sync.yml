@@ -1,4 +1,5 @@
-# Weekly NFL EPA (nflverse) + CFB power board + UFC Stats fighter metrics sync.
+# Weekly NFL EPA (nflverse) + CFB power board + UFC Stats fighter metrics
+# + Sleeper PVAL refresh (depth band + week fantasy seat; skips overrides).
 #
 # Schedule: Tuesdays 14:00 UTC (~7:00am PT) → test AND production.
 # Manual: workflow_dispatch; set sync_production=false to skip prod.
@@ -60,6 +61,12 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY_TEST: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TEST }}
         run: npm run syndicate:sync-ufc-metrics:test
 
+      - name: Refresh NFL PVALs from Sleeper (test)
+        env:
+          SUPABASE_URL_TEST: ${{ secrets.SUPABASE_URL_TEST }}
+          SUPABASE_SERVICE_ROLE_KEY_TEST: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TEST }}
+        run: npm run syndicate:pval-sleeper:refresh:test
+
   sync-production:
     if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.sync_production == true) }}
     needs: sync-test
@@ -97,6 +104,12 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
         run: npm run syndicate:sync-ufc-metrics:production
 
+      - name: Refresh NFL PVALs from Sleeper (production)
+        env:
+          SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
+          SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
+        run: npm run syndicate:pval-sleeper:refresh:production
+
       - name: Record Edge Monitor heartbeat (ok)
         if: success()
         env:
@@ -107,7 +120,7 @@ jobs:
           --target=production
           --job-id=syndicate_football_metrics_sync_production
           --status=ok
-          --message=NFL+CFB+UFC metrics sync ok
+          --message=NFL+CFB+UFC+PVAL sync ok
 
       - name: Record Edge Monitor heartbeat (failed)
         if: failure()
@@ -119,4 +132,4 @@ jobs:
           --target=production
           --job-id=syndicate_football_metrics_sync_production
           --status=failed
-          --message=NFL+CFB+UFC metrics sync failed
+          --message=NFL+CFB+UFC+PVAL sync failed

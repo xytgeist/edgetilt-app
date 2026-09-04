@@ -454,7 +454,7 @@ export function shortDisplayName(name: string): string {
   if (!raw) return ''
   const original = raw.split(/\s+/).filter(Boolean)
   let parts = [...original]
-  if (parts.length <= 1) return parts[0] || ''
+  if (parts.length <= 1) return applyNflColloquialShort(parts[0] || '')
 
   let strippedClub = false
   while (parts.length > 1 && isClubSuffix(parts[parts.length - 1]!)) {
@@ -466,8 +466,8 @@ export function shortDisplayName(name: string): string {
     strippedClub = true
   }
 
-  if (parts.length === 0) return original[original.length - 1]!
-  if (parts.length === 1) return parts[0]!
+  if (parts.length === 0) return applyNflColloquialShort(original[original.length - 1]!)
+  if (parts.length === 1) return applyNflColloquialShort(parts[0]!)
 
   if (strippedClub) {
     return parts.join(' ')
@@ -484,7 +484,21 @@ export function shortDisplayName(name: string): string {
     return parts.slice(-2).join(' ')
   }
 
-  return parts[parts.length - 1]!
+  return applyNflColloquialShort(parts[parts.length - 1]!)
+}
+
+/** NFL board slang where the mascot last-word is still long (Patriots → Pats). */
+const NFL_COLLOQUIAL_SHORT: Record<string, string> = {
+  patriots: 'Pats',
+  buccaneers: 'Bucs',
+  cardinals: 'Cards',
+}
+
+function applyNflColloquialShort(token: string): string {
+  const raw = String(token || '').trim()
+  if (!raw) return ''
+  const mapped = NFL_COLLOQUIAL_SHORT[normalizeClubToken(raw)]
+  return mapped || raw
 }
 
 /**

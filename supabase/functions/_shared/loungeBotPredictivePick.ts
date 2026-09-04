@@ -320,9 +320,12 @@ function soloPickerForGame(g: SlateGamePick): SharpPicker | null {
   return active.length === 1 ? active[0]! : null
 }
 
-/** Hammer H3: pick first, matchup in parens. */
-function formatHammerItem(g: SlateGamePick): string {
-  return `### ${formatGoldPick(g.consensusPick.lineDisplay)} (${formatMatchupWhen(g)})`
+/** Hammer: same layout as Consensus … matchup/when header, then pick bullet. */
+function formatHammerItem(g: SlateGamePick): string[] {
+  return [
+    `### ${formatMatchupWhen(g)}`,
+    `· ${formatGoldPick(g.consensusPick.lineDisplay)}`,
+  ]
 }
 
 /** Consensus (2-0): matchup H3 + pick · agreeing desks (PASS desks omitted). */
@@ -386,8 +389,11 @@ function formatSoloSection(solos: SlateGamePick[]): string[] {
 }
 
 function formatTankItem(g: SlateGamePick): string {
-  // Plain line (not ###) so only the gold pick is bold ... matchup stays regular weight.
-  return `· ${formatGoldPick(g.pickerPicks.Tank.lineDisplay)} (${formatMatchupWhen(g)})`
+  // Matchup first, no kickoff … e.g. Pats/Seahawks - Over 44.5 (-102)
+  const away = sportTeamDisplayName(g.awayTeam, g.sportKey)
+  const home = sportTeamDisplayName(g.homeTeam, g.sportKey)
+  const pick = String(g.pickerPicks.Tank.lineDisplay || '').trim()
+  return `${away}/${home} - ${formatGoldPick(pick)}`
 }
 
 /** Public tease footer … game count when the slate has 2+ games, else generic fan-sub CTA. */
@@ -445,7 +451,7 @@ export function formatNflSlateCardCaption(
 
   if (hammers.length > 0) {
     lines.push('## 🔥 Hammers (3-0)')
-    for (const g of hammers) lines.push(formatHammerItem(g))
+    for (const g of hammers) lines.push(...formatHammerItem(g))
     lines.push('')
   }
 

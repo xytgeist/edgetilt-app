@@ -77,7 +77,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Windows Theo 2026-09-04 … private room history for new members
 
-**I am Windows Theo.** Private chat rooms (groups, creator fan, platform sub) have an owner Privacy toggle: **Show chat history to new members**. On (default) = joiners see the archive. Off = later joiners start blank; people already in the room keep what they already see. DMs always keep history. Enforced in SQL (`history_starts_at` + message RPCs/RLS), not UI-only. SQL **`20260904180000`** applied on **test**. **Prod SQL not applied.**
+**I am Windows Theo.** Private chat rooms (groups, creator fan, platform sub) have an owner Privacy toggle: **Show chat history to new members**. On (default) = joiners see the archive. Off = later joiners start blank; people already in the room keep what they already see. DMs always keep history. Enforced in SQL (`history_starts_at` + message RPCs/RLS), not UI-only. SQL **`20260904180000`** applied on **test + prod**. Frontend on **`main`** / edgetilt.com.
 
 ### Windows Theo 2026-09-04 … chat/X never get markdown
 

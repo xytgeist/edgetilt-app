@@ -60,6 +60,22 @@ function collectImageFiles(fileList) {
   return Array.from(fileList).filter((f) => f && String(f.type || '').startsWith('image/'))
 }
 
+function makeStagedShot(file) {
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
+  return {
+    id,
+    file,
+    name: file?.name || `screenshot-${id}`,
+    url: URL.createObjectURL(file),
+  }
+}
+
+function revokeStagedUrls(shots) {
+  for (const s of shots || []) {
+    if (s?.url) URL.revokeObjectURL(s.url)
+  }
+}
+
 async function blobToBase64(blob) {
   const buf = await blob.arrayBuffer()
   const bytes = new Uint8Array(buf)
@@ -73,7 +89,7 @@ async function blobToBase64(blob) {
 
 /**
  * Paste ticket% / handle% from Action PRO or VSiN before slate lock.
- * Preferred: drop board screenshots (multi OK) … vision extracts the slate.
+ * Stage screenshots one-by-one (paste/drop), then Process all → vision extract.
  * Chedda reads these; no scraping.
  */
 export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
@@ -87,7 +103,10 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
   const [bulkSport, setBulkSport] = useState('americanfootball_nfl')
   const [previewSource, setPreviewSource] = useState('action_pro')
   const [previewConfidence, setPreviewConfidence] = useState(null)
+  /** @type {import('react').Dispatch<import('react').SetStateAction<Array<{ id: string, file: File, name: string, url: string }>>>} */
+  const [stagedShots, setStagedShots] = useState([])
   const fileRef = useRef(null)
+  const dropZoneRef = useRef(null)
 
   const awayTicket = useMemo(() => {
     const home = clampPct(Number(form.home_ticket_pct))
@@ -123,9 +142,48 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
     loadRows()
   }, [loadRows])
 
+  useEffect(() => {
+    return () => {
+      revokeStagedUrls(stagedShots)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- unmount cleanup only
+  }, [])
+
   const setField = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
+
+  const clearStaged = useCallback(() => {
+    setStagedShots((prev) => {
+      revokeStagedUrls(prev)
+      return []
+    })
+  }, [])
+
+  const removeStaged = useCallback((id) => {
+    setStagedShots((prev) => {
+      const doomed = prev.find((s) => s.id === id)
+      if (doomed?.url) URL.revokeObjectURL(doomed.url)
+      return prev.filter((s) => s.id !== id)
+    })
+  }, [])
+
+  /** Queue images only … no vision until Process. */
+  const addStagedFiles = useCallback((files) => {
+    const list = collectImageFiles(files)
+    if (!list.length) {
+      if (files?.length) setToast?.('No image files found in that paste/drop.')
+      return 0
+    }
+    const next = list.map(makeStagedShot)
+    setStagedShots((prev) => [...prev, ...next])
+    setToast?.(
+      `Queued ${next.length} screenshot${next.length === 1 ? '' : 's'} … hit Process when ready.`,
+    )
+    // Refocus so the next Ctrl+V still lands in the tray.
+    queueMicrotask(() => dropZoneRef.current?.focus?.())
+    return next.length
+  }, [setToast])
 
   const parseOneScreenshot = useCallback(async (file) => {
     const { file: prepared, error: compressErr } = await compressImageFileUnderMaxBytes(
@@ -163,12 +221,12 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
     return { mapped, confidence, sport_key }
   }, [supabaseClient, bulkSport])
 
-  /** Multi-file / paste / drop … sequential vision, merge into one review table. */
+  /** Multi-file vision pass … merge into one review table. Returns true if any games landed. */
   const handleScreenshots = useCallback(async (files) => {
     const list = collectImageFiles(files)
     if (!supabaseClient || !list.length) {
       if (files?.length) setToast?.('No image files found in that paste/drop.')
-      return
+      return false
     }
 
     setScanning(true)
@@ -206,7 +264,7 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
       setScanProgress({ done: list.length, total: list.length, label: 'done' })
       if (!merged.length || !okFiles) {
         setToast?.('No games read from screenshot(s). Try a tighter crop of the table.')
-        return
+        return false
       }
 
       if (lastSport) setBulkSport(lastSport)
@@ -222,12 +280,23 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
       ]
       if (failFiles) parts.push(`(${failFiles} image${failFiles === 1 ? '' : 's'} empty/failed)`)
       setToast?.(`${parts.join(' ')}. Review + save.`)
+      return true
     } finally {
       setScanning(false)
       setScanProgress(null)
       if (fileRef.current) fileRef.current.value = ''
     }
   }, [supabaseClient, parseOneScreenshot, setToast, previewGames, previewConfidence])
+
+  const processStaged = useCallback(async () => {
+    if (!stagedShots.length) {
+      setToast?.('Queue at least one screenshot first (Ctrl+V or drop).')
+      return
+    }
+    const files = stagedShots.map((s) => s.file)
+    const ok = await handleScreenshots(files)
+    if (ok) clearStaged()
+  }, [stagedShots, handleScreenshots, clearStaged, setToast])
 
   const handleDropZonePaste = useCallback(async (e) => {
     e.preventDefault()
@@ -240,8 +309,8 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
       setToast?.('Clipboard has no image. Copy a screenshot first (Win+Shift+S), then Ctrl+V here.')
       return
     }
-    await handleScreenshots(files)
-  }, [handleScreenshots, setToast])
+    addStagedFiles(files)
+  }, [addStagedFiles, setToast])
 
   const handlePasteFromClipboardButton = useCallback(async () => {
     const files = await imageFilesFromNavigatorClipboardRead()
@@ -249,8 +318,8 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
       setToast?.('No image on clipboard. Screenshot first, click the drop zone, then Ctrl+V … or grant clipboard permission for Paste clipboard.')
       return
     }
-    await handleScreenshots(files)
-  }, [handleScreenshots, setToast])
+    addStagedFiles(files)
+  }, [addStagedFiles, setToast])
 
   const applyBulkSport = () => {
     setPreviewGames((prev) => prev.map((g) => (g.selected ? { ...g, sport_key: bulkSport } : g)))
@@ -422,8 +491,8 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
             </span>
           </div>
           <p className="mt-0.5 text-xs text-zinc-400 max-w-2xl">
-            Paste or drop Action PRO board screenshots (multi OK … NFL + CFB). We read % bets / % money
-            with vision, you confirm, then Chedda uses it. Manual single-game form still below.
+            Queue Action PRO screenshots (Ctrl+V one after another, or multi-drop), then Process all.
+            Review the parsed table and save … Chedda uses it. Manual single-game form still below.
           </p>
         </div>
         <button
@@ -437,10 +506,11 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
       </div>
 
       <div
+        ref={dropZoneRef}
         tabIndex={0}
-        role="button"
-        aria-label="Paste or drop Action PRO screenshots"
-        className="rounded-lg border border-dashed border-amber-700/50 bg-amber-950/20 px-4 py-5 text-center focus:border-amber-400/70 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+        role="region"
+        aria-label="Stage Action PRO screenshots"
+        className="rounded-lg border border-dashed border-amber-700/50 bg-amber-950/20 px-4 py-5 focus:border-amber-400/70 focus:outline-none focus:ring-2 focus:ring-amber-500/30"
         onDragOver={(e) => {
           e.preventDefault()
           e.stopPropagation()
@@ -448,7 +518,7 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
         onDrop={(e) => {
           e.preventDefault()
           e.stopPropagation()
-          void handleScreenshots(e.dataTransfer?.files)
+          addStagedFiles(e.dataTransfer?.files)
         }}
         onPaste={(e) => {
           void handleDropZonePaste(e)
@@ -461,28 +531,71 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
           multiple
           className="hidden"
           onChange={(e) => {
-            void handleScreenshots(e.target.files)
+            addStagedFiles(e.target.files)
+            if (fileRef.current) fileRef.current.value = ''
           }}
         />
-        <p className="text-sm font-semibold text-amber-200">
+        <p className="text-sm font-semibold text-amber-200 text-center">
           {scanning
             ? (scanProgress
               ? `Reading ${scanProgress.done + 1}/${scanProgress.total}… ${scanProgress.label}`
-              : 'Reading screenshot…')
-            : 'Click here → Ctrl+V paste · or drop screenshots'}
+              : 'Reading screenshots…')
+            : 'Stage screenshots here · Ctrl+V repeatedly, then Process'}
         </p>
-        <p className="mt-1 text-[11px] text-zinc-500">
-          Win+Shift+S (or any screenshot) → click this box → Ctrl+V. Multi-select upload also works.
-          Same matchup on a later shot replaces the earlier row.
+        <p className="mt-1 text-[11px] text-zinc-500 text-center max-w-xl mx-auto">
+          Win+Shift+S → click this box → Ctrl+V (repeat for each crop). Nothing is sent to vision
+          until you hit Process. Same matchup on a later shot replaces the earlier row in review.
         </p>
+
+        {stagedShots.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2 justify-center">
+            {stagedShots.map((s, idx) => (
+              <div
+                key={s.id}
+                className="relative w-24 rounded-md border border-zinc-700 bg-zinc-950/80 overflow-hidden"
+              >
+                <img
+                  src={s.url}
+                  alt={s.name}
+                  className="h-16 w-full object-cover object-top"
+                />
+                <div className="px-1 py-0.5 text-[9px] text-zinc-400 truncate">
+                  #{idx + 1}
+                </div>
+                <button
+                  type="button"
+                  disabled={scanning}
+                  onClick={() => removeStaged(s.id)}
+                  className="absolute top-0.5 right-0.5 rounded bg-black/70 px-1 text-[10px] text-zinc-200 hover:text-white disabled:opacity-40"
+                  title="Remove"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+          <button
+            type="button"
+            disabled={scanning || !stagedShots.length}
+            onClick={() => void processStaged()}
+            className="rounded-lg bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-xs font-bold text-white transition disabled:opacity-50"
+          >
+            {scanning
+              ? 'Processing…'
+              : stagedShots.length
+                ? `Process all (${stagedShots.length})`
+                : 'Process all'}
+          </button>
           <button
             type="button"
             disabled={scanning}
             onClick={() => void handlePasteFromClipboardButton()}
             className="rounded-lg bg-amber-600 hover:bg-amber-500 px-4 py-2 text-xs font-bold text-black transition disabled:opacity-50"
           >
-            {scanning ? 'Parsing…' : 'Paste clipboard'}
+            Add clipboard
           </button>
           <button
             type="button"
@@ -490,8 +603,18 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
             onClick={() => fileRef.current?.click()}
             className="rounded-lg border border-amber-700/60 bg-zinc-950/60 hover:bg-zinc-900 px-4 py-2 text-xs font-bold text-amber-100 transition disabled:opacity-50"
           >
-            Choose screenshots
+            Choose files
           </button>
+          {stagedShots.length > 0 && (
+            <button
+              type="button"
+              disabled={scanning}
+              onClick={clearStaged}
+              className="rounded-lg border border-zinc-700 bg-zinc-950/60 hover:bg-zinc-900 px-3 py-2 text-xs font-medium text-zinc-400 transition disabled:opacity-50"
+            >
+              Clear queue
+            </button>
+          )}
         </div>
       </div>
 

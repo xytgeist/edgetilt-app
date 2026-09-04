@@ -68,28 +68,14 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   private let outgoingRingback = EdgeOutgoingRingback()
   private var waitingForRemoteAnswer = false
   private var speakingIdentities = Set<String>()
-
-  private let remoteVideoView: VideoView = {
-    let view = VideoView()
-    view.contentMode = .scaleAspectFill
-    view.isUserInteractionEnabled = false
-    return view
-  }()
-
-  private let localVideoView: VideoView = {
-    let view = VideoView()
-    view.contentMode = .scaleAspectFill
-    view.clipsToBounds = true
-    view.layer.cornerRadius = 12
-    view.isUserInteractionEnabled = false
-    return view
-  }()
+  private var videoTiles: [String: EdgeCallParticipantTile] = [:]
+  private var displayNameByIdentity: [String: String] = [:]
+  private var avatarURLByIdentity: [String: String] = [:]
+  private var avatarImageByIdentity: [String: UIImage] = [:]
 
   private override init() {
     super.init()
     room.add(delegate: self)
-    overlay.addSubview(remoteVideoView)
-    overlay.addSubview(localVideoView)
   }
 
   /// CallKit owns AVAudioSession. Disable LiveKit's automatic category swaps.
@@ -178,6 +164,9 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
       await room.disconnect()
       await MainActor.run {
         self.clearOverlayTracks()
+        self.displayNameByIdentity.removeAll()
+        self.avatarURLByIdentity.removeAll()
+        self.avatarImageByIdentity.removeAll()
         self.hideOverlay()
         self.restoreWebViewBackground()
         self.state = State()
@@ -225,10 +214,8 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
       } else {
         try? await room.localParticipant.setCamera(enabled: false)
         await MainActor.run {
-          self.localVideoView.track = nil
-          let remote = self.firstRemoteVideoTrack()
-          self.state.remoteHasVideo = remote != nil
-          self.state.hasVideo = remote != nil
+          self.refreshVideoFlags()
+          self.syncVideoTiles()
           self.updateOverlayVisibility()
         }
       }
@@ -252,10 +239,14 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     dispatchState()
   }
 
-  func setChrome(minimized: Bool?, videoVisible: Bool?) {
+  func setChrome(minimized: Bool?, videoVisible: Bool?, participantAvatars: [[String: Any]]? = nil) {
     if let minimized { chromeMinimized = minimized }
     if let videoVisible { self.videoVisible = videoVisible }
+    if let rows = participantAvatars {
+      applyParticipantAvatars(rows)
+    }
     updateOverlayVisibility()
+    syncVideoTilesOnMain()
   }
 
   /// CallKit `didActivate` is the lock-screen win: publish the mic against the
@@ -421,36 +412,35 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   }
 
   private func layoutVideoViews() {
+    let people = orderedParticipants()
     let bounds = overlay.bounds
-    let hasLocalTrack = localVideoView.track != nil
-    let hasRemoteTrack = remoteVideoView.track != nil
-    localVideoView.isHidden = !hasLocalTrack
-    remoteVideoView.isHidden = !hasRemoteTrack
+    for (id, tile) in videoTiles where !people.contains(where: { $0.id == id }) {
+      tile.isHidden = true
+    }
+    guard !people.isEmpty else { return }
 
     if chromeMinimized {
-      // Minimized mini PiP layout
-      if hasRemoteTrack {
-        remoteVideoView.frame = bounds
-        remoteVideoView.layer.cornerRadius = 0
-        remoteVideoView.layer.borderWidth = 0
-
-        if hasLocalTrack {
-          localVideoView.frame = CGRect(x: bounds.width - 32 - 6, y: bounds.height - 46 - 6, width: 32, height: 46)
-          localVideoView.layer.cornerRadius = 6
-          localVideoView.layer.masksToBounds = true
-          localVideoView.layer.borderColor = UIColor.white.withAlphaComponent(0.3).cgColor
-          localVideoView.layer.borderWidth = 1
-          overlay.bringSubviewToFront(localVideoView)
-        }
-      } else if hasLocalTrack {
-        localVideoView.frame = bounds
-        localVideoView.layer.cornerRadius = 0
-        localVideoView.layer.borderWidth = 0
-        overlay.bringSubviewToFront(localVideoView)
-      }
+      layoutMinimizedTiles(people, bounds: bounds)
       return
     }
+    if people.count <= 2 {
+      layoutDuoTiles(people, bounds: bounds)
+      return
+    }
+    layoutGridTiles(people, bounds: bounds)
+  }
 
+  private func layoutDuoTiles(_ people: [(id: String, isLocal: Bool)], bounds: CGRect) {
+    let localId = people.first(where: { $0.isLocal })?.id
+    let remoteId = people.first(where: { !$0.isLocal })?.id
+    let mainId: String
+    if people.count == 1 {
+      mainId = people[0].id
+    } else if isLocalMainStream, let localId {
+      mainId = localId
+    } else {
+      mainId = remoteId ?? people[0].id
+    }
     let pipWidth = min(128, max(96, bounds.width * 0.28))
     let pipHeight = pipWidth * 16 / 9
     let pipFrame = CGRect(
@@ -459,41 +449,71 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
       width: pipWidth,
       height: pipHeight
     )
+    for person in people {
+      guard let tile = videoTiles[person.id] else { continue }
+      tile.isHidden = false
+      if person.id == mainId {
+        tile.frame = bounds
+        tile.applyChrome(cornerRadius: 0, pip: false)
+      } else {
+        tile.frame = pipFrame
+        tile.applyChrome(cornerRadius: 14, pip: true)
+        overlay.bringSubviewToFront(tile)
+      }
+    }
+  }
 
-    if hasLocalTrack && !hasRemoteTrack {
-      localVideoView.frame = bounds
-      localVideoView.layer.cornerRadius = 0
-      localVideoView.layer.borderWidth = 0
-      overlay.bringSubviewToFront(localVideoView)
-    } else if hasRemoteTrack && !hasLocalTrack {
-      remoteVideoView.frame = bounds
-      remoteVideoView.layer.cornerRadius = 0
-      remoteVideoView.layer.borderWidth = 0
-      overlay.bringSubviewToFront(remoteVideoView)
-    } else if isLocalMainStream {
-      localVideoView.frame = bounds
-      localVideoView.layer.cornerRadius = 0
-      localVideoView.layer.borderWidth = 0
+  private func layoutMinimizedTiles(_ people: [(id: String, isLocal: Bool)], bounds: CGRect) {
+    if people.count <= 2 {
+      layoutDuoTiles(people, bounds: bounds)
+      if let localId = people.first(where: { $0.isLocal })?.id, people.count > 1 {
+        videoTiles[localId]?.frame = CGRect(
+          x: bounds.width - 32 - 6,
+          y: bounds.height - 46 - 6,
+          width: 32,
+          height: 46
+        )
+        videoTiles[localId]?.applyChrome(cornerRadius: 6, pip: true)
+        if let tile = videoTiles[localId] {
+          overlay.bringSubviewToFront(tile)
+        }
+      }
+      return
+    }
+    layoutGridTiles(people, bounds: bounds, compact: true)
+  }
 
-      remoteVideoView.frame = pipFrame
-      remoteVideoView.layer.cornerRadius = 14
-      remoteVideoView.layer.masksToBounds = true
-      remoteVideoView.layer.borderColor = UIColor.white.withAlphaComponent(0.25).cgColor
-      remoteVideoView.layer.borderWidth = 1.5
-
-      overlay.bringSubviewToFront(remoteVideoView)
-    } else {
-      remoteVideoView.frame = bounds
-      remoteVideoView.layer.cornerRadius = 0
-      remoteVideoView.layer.borderWidth = 0
-
-      localVideoView.frame = pipFrame
-      localVideoView.layer.cornerRadius = 14
-      localVideoView.layer.masksToBounds = true
-      localVideoView.layer.borderColor = UIColor.white.withAlphaComponent(0.25).cgColor
-      localVideoView.layer.borderWidth = 1.5
-
-      overlay.bringSubviewToFront(localVideoView)
+  private func layoutGridTiles(
+    _ people: [(id: String, isLocal: Bool)],
+    bounds: CGRect,
+    compact: Bool = false
+  ) {
+    let cols = people.count <= 4 ? 2 : 3
+    let rows = Int(ceil(Double(people.count) / Double(cols)))
+    let gap: CGFloat = compact ? 3 : 8
+    let inset = compact
+      ? UIEdgeInsets(top: 4, left: 4, bottom: 4, right: 4)
+      : UIEdgeInsets(
+          top: bounds.safeAreaInsetsAwareTop + 56,
+          left: 12,
+          bottom: 148,
+          right: 12
+        )
+    let area = bounds.inset(by: inset)
+    let cellW = max(48, (area.width - gap * CGFloat(cols - 1)) / CGFloat(cols))
+    let cellH = max(64, (area.height - gap * CGFloat(rows - 1)) / CGFloat(rows))
+    for (index, person) in people.enumerated() {
+      guard let tile = videoTiles[person.id] else { continue }
+      let col = index % cols
+      let row = index / cols
+      tile.isHidden = false
+      tile.frame = CGRect(
+        x: area.minX + CGFloat(col) * (cellW + gap),
+        y: area.minY + CGFloat(row) * (cellH + gap),
+        width: cellW,
+        height: cellH
+      )
+      tile.applyChrome(cornerRadius: 16, pip: false)
     }
   }
 
@@ -501,7 +521,9 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     installOverlayIfNeeded()
     guard let webView, let parent = webView.superview else { return }
 
-    let isVideoCall = state.connected && state.hasVideo && videoVisible
+    // Chrome `videoVisible` is the video-call stage. Show tiles even when every
+    // camera is off so avatars still fill the grid.
+    let isVideoCall = state.connected && videoVisible
     if !isVideoCall {
       overlay.isHidden = true
       restoreWebViewBackground()
@@ -606,21 +628,16 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   }
 
   private func clearOverlayTracks() {
-    remoteVideoView.track = nil
-    localVideoView.track = nil
+    for tile in videoTiles.values {
+      tile.videoView.track = nil
+      tile.removeFromSuperview()
+    }
+    videoTiles.removeAll()
   }
 
   private func bindExistingTracks() {
-    if let local = room.localParticipant.firstCameraPublication?.track as? VideoTrack {
-      localVideoView.track = local
-      state.camOn = true
-    }
-    if let remote = firstRemoteVideoTrack() {
-      remoteVideoView.track = remote
-      state.remoteHasVideo = true
-    }
-    state.hasVideo = state.camOn || state.remoteHasVideo
-    layoutVideoViews()
+    refreshVideoFlags()
+    syncVideoTiles()
   }
 
   private func firstRemoteVideoTrack() -> VideoTrack? {
@@ -644,6 +661,7 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     if waitingForRemoteAnswer {
       stopOutgoingRingback()
     }
+    syncVideoTilesOnMain()
     dispatchState()
   }
 
@@ -651,10 +669,8 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     refreshRoster()
     DispatchQueue.main.async { [weak self] in
       guard let self else { return }
-      let remoteTrack = self.firstRemoteVideoTrack()
-      self.remoteVideoView.track = remoteTrack
-      self.state.remoteHasVideo = remoteTrack != nil
-      self.state.hasVideo = self.state.camOn || self.state.remoteHasVideo
+      self.refreshVideoFlags()
+      self.syncVideoTiles()
       self.updateOverlayVisibility()
       self.dispatchState()
     }
@@ -669,16 +685,17 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
       }
     )
     refreshRoster()
+    syncVideoTilesOnMain()
     dispatchState()
   }
 
   func room(_ room: Room, participant: LocalParticipant, didPublishTrack publication: LocalTrackPublication) {
-    guard let track = publication.track as? VideoTrack else { return }
+    guard publication.track is VideoTrack else { return }
     DispatchQueue.main.async { [weak self] in
       guard let self else { return }
-      self.localVideoView.track = track
       self.state.camOn = true
       self.state.hasVideo = true
+      self.syncVideoTiles()
       self.updateOverlayVisibility()
       self.dispatchState()
     }
@@ -688,23 +705,23 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     guard publication.kind == .video else { return }
     DispatchQueue.main.async { [weak self] in
       guard let self else { return }
-      self.localVideoView.track = nil
       self.state.camOn = false
-      self.state.hasVideo = self.state.remoteHasVideo
+      self.refreshVideoFlags()
+      self.syncVideoTiles()
       self.updateOverlayVisibility()
       self.dispatchState()
     }
   }
 
   func room(_ room: Room, participant: RemoteParticipant, didSubscribeTrack publication: RemoteTrackPublication) {
-    guard let track = publication.track as? VideoTrack else { return }
+    guard publication.track is VideoTrack else { return }
     DispatchQueue.main.async { [weak self] in
       guard let self else { return }
-      self.remoteVideoView.track = track
       self.state.remoteHasVideo = true
       self.state.hasVideo = true
       self.state.speakerOn = true
       EdgeAudioSession.setOutputRoute(speaker: true) { _ in }
+      self.syncVideoTiles()
       self.updateOverlayVisibility()
       self.dispatchState()
     }
@@ -714,10 +731,8 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     guard publication.kind == .video else { return }
     DispatchQueue.main.async { [weak self] in
       guard let self else { return }
-      let remoteTrack = self.firstRemoteVideoTrack()
-      self.remoteVideoView.track = remoteTrack
-      self.state.remoteHasVideo = remoteTrack != nil
-      self.state.hasVideo = self.state.camOn || self.state.remoteHasVideo
+      self.refreshVideoFlags()
+      self.syncVideoTiles()
       self.updateOverlayVisibility()
       self.dispatchState()
     }
@@ -745,6 +760,7 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
         "name": participant.name ?? "",
         "isLocal": isLocal,
         "isSpeaking": participant.isSpeaking || speakingIdentities.contains(id),
+        "hasVideo": cameraTrack(for: participant) != nil,
       ])
     }
     append(room.localParticipant, isLocal: true)
@@ -752,6 +768,120 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
       append(remote, isLocal: false)
     }
     state.participants = rows
+  }
+
+  private func orderedParticipants() -> [(id: String, isLocal: Bool)] {
+    var rows: [(id: String, isLocal: Bool)] = []
+    let localId = identityString(room.localParticipant)
+    if !localId.isEmpty {
+      rows.append((localId, true))
+    }
+    for remote in room.remoteParticipants.values {
+      let id = identityString(remote)
+      if !id.isEmpty {
+        rows.append((id, false))
+      }
+    }
+    return rows
+  }
+
+  private func cameraTrack(for participant: Participant) -> VideoTrack? {
+    guard let publication = participant.firstCameraPublication else { return nil }
+    if publication.isMuted { return nil }
+    return publication.track as? VideoTrack
+  }
+
+  private func refreshVideoFlags() {
+    let localTrack = cameraTrack(for: room.localParticipant)
+    state.camOn = localTrack != nil
+    state.remoteHasVideo = room.remoteParticipants.values.contains { cameraTrack(for: $0) != nil }
+    state.hasVideo = state.camOn || state.remoteHasVideo
+  }
+
+  private func syncVideoTilesOnMain() {
+    if Thread.isMainThread {
+      syncVideoTiles()
+    } else {
+      DispatchQueue.main.async { [weak self] in
+        self?.syncVideoTiles()
+      }
+    }
+  }
+
+  private func syncVideoTiles() {
+    let people = orderedParticipants()
+    let liveIds = Set(people.map(\.id))
+    for (id, tile) in videoTiles where !liveIds.contains(id) {
+      tile.videoView.track = nil
+      tile.removeFromSuperview()
+      videoTiles.removeValue(forKey: id)
+    }
+    for person in people {
+      let tile: EdgeCallParticipantTile
+      if let existing = videoTiles[person.id] {
+        tile = existing
+      } else {
+        tile = EdgeCallParticipantTile(identity: person.id)
+        overlay.addSubview(tile)
+        videoTiles[person.id] = tile
+      }
+      let participant: Participant?
+      if person.isLocal {
+        participant = room.localParticipant
+      } else {
+        participant = room.remoteParticipants.values.first { identityString($0) == person.id }
+      }
+      guard let participant else { continue }
+      let liveName = person.isLocal ? "You" : (participant.name ?? "")
+      let name = displayNameByIdentity[person.id] ?? (liveName.isEmpty ? String(person.id.prefix(8)) : liveName)
+      if displayNameByIdentity[person.id] == nil, !liveName.isEmpty {
+        displayNameByIdentity[person.id] = liveName
+      }
+      let track = cameraTrack(for: participant)
+      tile.apply(
+        track: track,
+        name: name,
+        avatar: avatarImageByIdentity[person.id],
+        speaking: speakingIdentities.contains(person.id),
+        showName: people.count > 2 || track == nil
+      )
+    }
+    refreshVideoFlags()
+    layoutVideoViews()
+  }
+
+  private func applyParticipantAvatars(_ rows: [[String: Any]]) {
+    for row in rows {
+      let id = (row["identity"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+      if id.isEmpty { continue }
+      if let name = row["name"] as? String {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty {
+          displayNameByIdentity[id] = trimmed
+        }
+      }
+      if let url = row["avatarUrl"] as? String {
+        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { continue }
+        if avatarURLByIdentity[id] != trimmed {
+          avatarURLByIdentity[id] = trimmed
+          avatarImageByIdentity.removeValue(forKey: id)
+          loadAvatar(identity: id, urlString: trimmed)
+        }
+      }
+    }
+  }
+
+  private func loadAvatar(identity: String, urlString: String) {
+    guard let url = URL(string: urlString) else { return }
+    URLSession.shared.dataTask(with: url) { [weak self] data, _, _ in
+      guard let data, let image = UIImage(data: data) else { return }
+      DispatchQueue.main.async {
+        guard let self else { return }
+        self.avatarImageByIdentity[identity] = image
+        self.syncVideoTiles()
+      }
+    }.resume()
   }
 
   private func beginOutgoingRingback() {
@@ -867,6 +997,97 @@ private final class EdgeOutgoingRingback {
     appendU32(dataSize)
     samples.withUnsafeBytes { data.append(contentsOf: $0) }
     return data
+  }
+}
+
+/// One person on the native video overlay: LiveKit camera or avatar/initials.
+private final class EdgeCallParticipantTile: UIView {
+  let identity: String
+  let videoView: VideoView = {
+    let view = VideoView()
+    view.contentMode = .scaleAspectFill
+    view.isUserInteractionEnabled = false
+    return view
+  }()
+
+  private let avatarCircle = UIView()
+  private let avatarImageView = UIImageView()
+  private let initialLabel = UILabel()
+  private let nameLabel = UILabel()
+
+  init(identity: String) {
+    self.identity = identity
+    super.init(frame: .zero)
+    clipsToBounds = true
+    backgroundColor = UIColor(red: 0.06, green: 0.09, blue: 0.12, alpha: 1)
+    isUserInteractionEnabled = false
+    addSubview(videoView)
+    avatarCircle.backgroundColor = UIColor(white: 0.2, alpha: 0.95)
+    avatarCircle.clipsToBounds = true
+    addSubview(avatarCircle)
+    avatarImageView.contentMode = .scaleAspectFill
+    avatarImageView.clipsToBounds = true
+    avatarCircle.addSubview(avatarImageView)
+    initialLabel.textAlignment = .center
+    initialLabel.textColor = .white
+    initialLabel.font = .systemFont(ofSize: 28, weight: .bold)
+    avatarCircle.addSubview(initialLabel)
+    nameLabel.textColor = UIColor.white.withAlphaComponent(0.92)
+    nameLabel.font = .systemFont(ofSize: 12, weight: .semibold)
+    nameLabel.textAlignment = .center
+    nameLabel.lineBreakMode = .byTruncatingTail
+    addSubview(nameLabel)
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
+
+  func applyChrome(cornerRadius: CGFloat, pip: Bool) {
+    layer.cornerRadius = cornerRadius
+    layer.masksToBounds = true
+    nameLabel.font = .systemFont(ofSize: pip ? 0 : 12, weight: .semibold)
+  }
+
+  func apply(track: VideoTrack?, name: String, avatar: UIImage?, speaking: Bool, showName: Bool) {
+    videoView.track = track
+    let hasTrack = track != nil
+    videoView.isHidden = !hasTrack
+    avatarCircle.isHidden = hasTrack
+    nameLabel.text = name
+    nameLabel.isHidden = !showName || name.isEmpty
+    if let avatar {
+      avatarImageView.image = avatar
+      avatarImageView.isHidden = false
+      initialLabel.isHidden = true
+    } else {
+      avatarImageView.image = nil
+      avatarImageView.isHidden = true
+      initialLabel.isHidden = false
+      let initial = name.trimmingCharacters(in: .whitespacesAndNewlines)
+      initialLabel.text = initial.isEmpty ? "?" : String(initial.prefix(1)).uppercased()
+    }
+    layer.borderWidth = speaking ? 3 : (hasTrack ? 0 : 1)
+    layer.borderColor = speaking
+      ? UIColor.systemGreen.cgColor
+      : UIColor.white.withAlphaComponent(0.12).cgColor
+    setNeedsLayout()
+  }
+
+  override func layoutSubviews() {
+    super.layoutSubviews()
+    videoView.frame = bounds
+    let avatarSize = min(bounds.width, bounds.height) * (bounds.height < 80 ? 0.55 : 0.42)
+    avatarCircle.bounds = CGRect(x: 0, y: 0, width: avatarSize, height: avatarSize)
+    let nameOffset: CGFloat = nameLabel.isHidden ? 0 : 8
+    avatarCircle.center = CGPoint(x: bounds.midX, y: bounds.midY - nameOffset)
+    avatarCircle.layer.cornerRadius = avatarSize / 2
+    avatarImageView.frame = avatarCircle.bounds
+    avatarImageView.layer.cornerRadius = avatarSize / 2
+    initialLabel.frame = avatarCircle.bounds
+    initialLabel.font = .systemFont(ofSize: max(14, avatarSize * 0.38), weight: .bold)
+    nameLabel.frame = CGRect(x: 8, y: bounds.height - 22, width: max(0, bounds.width - 16), height: 16)
   }
 }
 

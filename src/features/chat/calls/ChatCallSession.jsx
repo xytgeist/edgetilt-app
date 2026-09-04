@@ -800,13 +800,6 @@ function NativeIpaCallSession({
   }, [callId])
 
   useEffect(() => {
-    void setNativeCallChrome({
-      minimized,
-      videoVisible: isVideoMode,
-    })
-  }, [minimized, isVideoMode])
-
-  useEffect(() => {
     return () => {
       void setNativeCallChrome({ minimized: true, videoVisible: false })
     }
@@ -890,6 +883,18 @@ function NativeIpaCallSession({
   }
   const showGroupAudioStage =
     isGroup && !awaitingAnswer && !isVideoMode && nativeRoster.length > 0
+
+  useEffect(() => {
+    void setNativeCallChrome({
+      minimized,
+      videoVisible: isVideoMode,
+      participantAvatars: nativeRoster.map((p) => ({
+        identity: p.identity,
+        name: resolveNameForParticipant(p),
+        avatarUrl: resolveAvatarForParticipant(p) || '',
+      })),
+    })
+  }, [minimized, isVideoMode, nativeRoster, profileById, viewerAvatarUrl, avatarUrl])
 
   const mm = String(Math.floor(elapsed / 60)).padStart(2, '0')
   const ss = String(elapsed % 60).padStart(2, '0')

@@ -208,7 +208,7 @@ export async function setNativeCallSpeaker(speaker) {
   }
 }
 
-/** @param {{ minimized?: boolean, videoVisible?: boolean }} args */
+/** @param {{ minimized?: boolean, videoVisible?: boolean, participantAvatars?: { identity: string, name?: string, avatarUrl?: string }[] }} args */
 export async function setNativeCallChrome(args = {}) {
   if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
   try {

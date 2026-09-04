@@ -188,7 +188,8 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     case "setNativeCallChrome":
       EdgeLiveKitCallManager.shared.setChrome(
         minimized: payload?["minimized"] as? Bool,
-        videoVisible: payload?["videoVisible"] as? Bool
+        videoVisible: payload?["videoVisible"] as? Bool,
+        participantAvatars: payload?["participantAvatars"] as? [[String: Any]]
       )
       completion(.success(["ok": true]))
     case "setNativeCallStreamFocus":

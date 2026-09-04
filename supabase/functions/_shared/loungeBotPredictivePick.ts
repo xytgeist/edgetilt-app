@@ -580,16 +580,24 @@ export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): 
   ]
   for (const g of card.games) {
     const pPick = g.pickerPicks[picker]
+    const sportKey = g.sportKey || card.sportKey
+    const away = sportTeamDisplayName(g.awayTeam, sportKey)
+    const home = sportTeamDisplayName(g.homeTeam, sportKey)
+    const matchup = `${away}/${home}`
     const isPass = pPick.side === 'pass' || !String(pPick.lineDisplay || '').trim()
     if (isPass) {
       const uglyPass = pPick.uglyJuice === true || /ugly juice/i.test(String(pPick.lineDisplay || ''))
-      lines.push(uglyPass ? '· PASS · [red]ugly juice[/red]' : '· PASS')
+      lines.push(
+        uglyPass ? `· ${matchup}: PASS · [red]ugly juice[/red]` : `· ${matchup}: PASS`,
+      )
     } else {
       const raw = String(pPick.lineDisplay || '').trim()
       const base = raw.replace(/\s·\s\[red\]ugly juice\[\/red\]\s*$/i, '').trim() || raw
       const ugly = pPick.uglyJuice === true || /\[red\]ugly juice\[\/red\]/i.test(raw)
       // Desk cards never keep an ugly-juice play … gate already PASSed those.
-      lines.push(ugly ? '· PASS · [red]ugly juice[/red]' : `· ${formatGoldPick(base)}`)
+      lines.push(
+        ugly ? `· ${matchup}: PASS · [red]ugly juice[/red]` : `· ${formatGoldPick(base)}`,
+      )
     }
   }
   if (card.games.length === 0) {

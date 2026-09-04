@@ -28,6 +28,7 @@ export const PVAL_BANDS = {
   wr2: { posLabel: 'WR', side: 'offense', min: 0.2, max: 0.7, typical: 0.4 },
   wr3: { posLabel: 'WR', side: 'offense', min: 0.1, max: 0.4, typical: 0.2 },
   te1: { posLabel: 'TE', side: 'offense', min: 0.2, max: 0.8, typical: 0.4 },
+  te2: { posLabel: 'TE', side: 'offense', min: 0.1, max: 0.4, typical: 0.2 },
   rb1: { posLabel: 'RB', side: 'offense', min: 0.3, max: 1.0, typical: 0.5 },
   rb2: { posLabel: 'RB', side: 'offense', min: 0.1, max: 0.4, typical: 0.2 },
   ot: { posLabel: 'OT', side: 'offense', min: 0.3, max: 0.9, typical: 0.5 },
@@ -77,7 +78,11 @@ export function resolvePvalBandKey(positionRaw, depthOrder, depthSlot = null, fa
     if (depth != null && depth >= 3) return 'wr3'
     return 'wr2'
   }
-  if (p === 'TE' || p.includes('TIGHT')) return 'te1'
+  if (p === 'TE' || p.includes('TIGHT')) {
+    // Missing depth → te2 (conservative). Depth 1 only → te1.
+    if (depth === 1) return 'te1'
+    return 'te2'
+  }
   if (p === 'RB' || p === 'HB' || p === 'FB' || p.includes('RUNNING')) {
     if (depth === 1) return 'rb1'
     if (depth != null && depth >= 2) return 'rb2'

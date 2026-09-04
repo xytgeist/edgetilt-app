@@ -15,6 +15,7 @@ export type PvalBandKey =
   | 'wr2'
   | 'wr3'
   | 'te1'
+  | 'te2'
   | 'rb1'
   | 'rb2'
   | 'ot'
@@ -48,6 +49,7 @@ export const PVAL_BANDS: Record<PvalBandKey, PvalBandDef> = {
   wr2: { key: 'wr2', posLabel: 'WR', side: 'offense', min: 0.2, max: 0.7, typical: 0.4 },
   wr3: { key: 'wr3', posLabel: 'WR', side: 'offense', min: 0.1, max: 0.4, typical: 0.2 },
   te1: { key: 'te1', posLabel: 'TE', side: 'offense', min: 0.2, max: 0.8, typical: 0.4 },
+  te2: { key: 'te2', posLabel: 'TE', side: 'offense', min: 0.1, max: 0.4, typical: 0.2 },
   rb1: { key: 'rb1', posLabel: 'RB', side: 'offense', min: 0.3, max: 1.0, typical: 0.5 },
   rb2: { key: 'rb2', posLabel: 'RB', side: 'offense', min: 0.1, max: 0.4, typical: 0.2 },
   ot: { key: 'ot', posLabel: 'OT', side: 'offense', min: 0.3, max: 0.9, typical: 0.5 },
@@ -66,16 +68,20 @@ export const PVAL_BANDS: Record<PvalBandKey, PvalBandDef> = {
 /** Soft shrink kicks in above this non-QB team sum; hard cap after. */
 export const PVAL_NON_QB_SOFT_CAP = 1.2
 export const PVAL_NON_QB_HARD_CAP = 2.0
-/** When starting QB is also OUT, shrink stacked non-QB impact. */
-export const PVAL_NON_QB_WITH_QB_OUT_FACTOR = 0.55
-/** Questionable / doubtful (not hard OUT) multiplier. */
-export const PVAL_QUESTIONABLE_FACTOR = 0.4
 /**
- * QB absence impact is starter − replacement, not full starter PVAL.
- * Anything above backup_qb.max is treated as a starting-QB absence (covers
- * curated bridge seats ~1.5 that sit under the starting_qb band floor).
+ * When starting QB is also OUT, shrink stacked *offensive* non-QB impact.
+ * Defense (EDGE/CB/…) is unchanged … they still play the same.
  */
-export const PVAL_STARTING_QB_THRESHOLD = PVAL_BANDS.backup_qb.max
+export const PVAL_NON_QB_WITH_QB_OUT_FACTOR = 0.55
+/** Questionable only (not doubtful / GTD). */
+export const PVAL_QUESTIONABLE_FACTOR = 0.4
+/** Doubtful … closer to OUT than to Q. */
+export const PVAL_DOUBTFUL_FACTOR = 0.8
+/**
+ * Rundown GTD is sloppier than classic NFL “leaning out” GTD …
+ * many tagged players still dress. Mid prior until we measure base rates.
+ */
+export const PVAL_GTD_FACTOR = 0.5
 /** Fallback when no healthy backup is on the team roster map. */
 export const PVAL_QB_REPLACEMENT_DEFAULT = PVAL_BANDS.backup_qb.typical
 
@@ -115,7 +121,11 @@ export function resolvePvalBandKey(
     if (depth != null && depth >= 3) return 'wr3'
     return 'wr2'
   }
-  if (p === 'TE' || p.includes('TIGHT')) return 'te1'
+  if (p === 'TE' || p.includes('TIGHT')) {
+    // Missing depth → te2 (conservative). Depth 1 only → te1.
+    if (depth === 1) return 'te1'
+    return 'te2'
+  }
   if (p === 'RB' || p === 'HB' || p === 'FB' || p.includes('RUNNING')) {
     if (depth === 1) return 'rb1'
     if (depth != null && depth >= 2) return 'rb2'
@@ -193,15 +203,38 @@ export function isHardOutStatus(status: string): boolean {
   return /^(out|inactive|suspended|ir|pup)$/i.test(s) || /injured reserve/i.test(s)
 }
 
-export function isQuestionableStatus(status: string): boolean {
+/** Doubtful only (not Q / GTD). */
+export function isDoubtfulStatus(status: string): boolean {
   const s = String(status || '').trim()
-  return /^(questionable|doubtful|gtd)$/i.test(s) || /question|doubt/i.test(s)
+  return /^(doubtful)$/i.test(s) || /\bdoubtful\b/i.test(s)
 }
 
-/** Scale raw band typical by injury status (Q/D = 0.4×; hard OUT = full). */
+/** Rundown / media game-time decision tags. */
+export function isGtdStatus(status: string): boolean {
+  const s = String(status || '').trim()
+  return /^(gtd)$/i.test(s) || /game[\s-]?time/i.test(s)
+}
+
+/** Questionable only … doubtful and GTD have their own factors. */
+export function isQuestionableStatus(status: string): boolean {
+  const s = String(status || '').trim()
+  if (isDoubtfulStatus(s) || isGtdStatus(s)) return false
+  return /^(questionable)$/i.test(s) || /\bquestion(?:able)?\b/i.test(s)
+}
+
+/**
+ * Scale raw PVAL by injury status:
+ * hard OUT = 1.0 · doubtful = 0.8 · GTD = 0.5 · Q / soft = 0.4.
+ */
 export function scalePvalForStatus(pval: number, status: string): number {
   if (!Number.isFinite(pval) || pval <= 0) return 0
   if (isHardOutStatus(status)) return pval
+  if (isDoubtfulStatus(status)) {
+    return Math.round(pval * PVAL_DOUBTFUL_FACTOR * 100) / 100
+  }
+  if (isGtdStatus(status)) {
+    return Math.round(pval * PVAL_GTD_FACTOR * 100) / 100
+  }
   if (isQuestionableStatus(status)) {
     return Math.round(pval * PVAL_QUESTIONABLE_FACTOR * 100) / 100
   }
@@ -221,6 +254,9 @@ export type PvalAbsencePiece = {
   isQb: boolean
   /** Optional caption hint after QB replacement delta. */
   note?: string
+  /** Band key when known (Rundown prior / Sleeper). Prefer over pval cutoffs. */
+  bandKey?: PvalBandKey
+  depthOrder?: number | null
 }
 
 export type QbRosterCandidate = {
@@ -242,10 +278,21 @@ export function teamsMatchLoose(a: string, b: string): boolean {
   return na === nb || na.includes(nb) || nb.includes(na)
 }
 
+function qbNameKey(name: string): string {
+  return String(name || '')
+    .toLowerCase()
+    .replace(/\b(jr|sr|ii|iii|iv|v)\b/gi, '')
+    .replace(/[^a-z0-9]/g, '')
+}
+
 /**
  * Starter OUT ≠ lose full PVAL. Convert starting-QB absences to
  * max(0, starter − healthyBackup). Backup-only outs drop to 0.
  * Extra inactive QBs (the backups themselves) are zeroed so we don't double-count.
+ *
+ * Starter identity (prefer categorical, never a raw pval > 0.5 cutoff):
+ * 1. bandKey === starting_qb or depthOrder === 1 among OUT QBs
+ * 2. else highest-PVAL OUT QB, but only if no healthier higher-PVAL QB remains on roster
  */
 export function applyQbReplacementDeltas(
   pieces: PvalAbsencePiece[],
@@ -258,70 +305,76 @@ export function applyQbReplacementDeltas(
   const nonQb = pieces.filter((p) => !p.isQb)
   if (qbPieces.length === 0) return pieces
 
-  const inactiveKeys = new Set(
-    qbPieces.map((p) =>
-      String(p.name || '')
-        .toLowerCase()
-        .replace(/\b(jr|sr|ii|iii|iv|v)\b/gi, '')
-        .replace(/[^a-z0-9]/g, ''),
-    ),
-  )
-
-  const starters = qbPieces
-    .filter((p) => p.pval > PVAL_STARTING_QB_THRESHOLD)
-    .sort((a, b) => b.pval - a.pval)
-
-  // Backup / bridge QB out while the starter is healthy → no spread hit.
-  if (starters.length === 0) {
-    return [
-      ...nonQb,
-      ...qbPieces.map((p) => ({
-        ...p,
-        pval: 0,
-        note: 'backup QB out (starter healthy) → 0',
-      })),
-    ]
-  }
-
-  const primary = starters[0]!
-  const primaryKey = String(primary.name || '')
-    .toLowerCase()
-    .replace(/\b(jr|sr|ii|iii|iv|v)\b/gi, '')
-    .replace(/[^a-z0-9]/g, '')
+  const inactiveKeys = new Set(qbPieces.map((p) => qbNameKey(p.name)))
 
   const teamQbs = (opts.rosterQbs || []).filter((q) => teamsMatchLoose(q.team, opts.teamName))
-  const healthyBackups = teamQbs
+  const healthyOnRoster = teamQbs
     .filter((q) => {
-      const key = String(q.name || '')
-        .toLowerCase()
-        .replace(/\b(jr|sr|ii|iii|iv|v)\b/gi, '')
-        .replace(/[^a-z0-9]/g, '')
-      if (!key || key === primaryKey || inactiveKeys.has(key)) return false
-      // Prefer true backups / lesser QBs; never credit someone ≥ the starter.
-      return Number(q.pval) < primary.pval
+      const key = qbNameKey(q.name)
+      return key && !inactiveKeys.has(key)
     })
     .sort((a, b) => Number(b.pval) - Number(a.pval))
 
-  const repl = healthyBackups[0]
+  const categoricalStarters = qbPieces
+    .filter((p) => p.bandKey === 'starting_qb' || p.depthOrder === 1)
+    .sort((a, b) => b.pval - a.pval)
+
+  const allOutsAreBackups =
+    qbPieces.length > 0 &&
+    qbPieces.every((p) => p.bandKey === 'backup_qb' || (p.depthOrder != null && p.depthOrder >= 2))
+
+  let primary: PvalAbsencePiece | null = categoricalStarters[0] || null
+
+  if (!primary) {
+    if (allOutsAreBackups) {
+      return [
+        ...nonQb,
+        ...qbPieces.map((p) => ({
+          ...p,
+          pval: 0,
+          note: 'backup QB out (starter healthy) → 0',
+        })),
+      ]
+    }
+
+    const bestOut = [...qbPieces].sort((a, b) => b.pval - a.pval)[0]!
+    const bestHealthy = healthyOnRoster[0]
+    // Relative roster rank: healthy teammate outranks every OUT QB → backups only.
+    if (bestHealthy && Number(bestHealthy.pval) > Number(bestOut.pval)) {
+      return [
+        ...nonQb,
+        ...qbPieces.map((p) => ({
+          ...p,
+          pval: 0,
+          note: 'backup QB out (starter healthy) → 0',
+        })),
+      ]
+    }
+    primary = bestOut
+  }
+
+  const primaryKey = qbNameKey(primary.name)
+
+  const healthyBackups = healthyOnRoster
+    .filter((q) => {
+      const key = qbNameKey(q.name)
+      if (!key || key === primaryKey) return false
+      // Prefer true backups / lesser QBs; never credit someone ≥ the starter.
+      return Number(q.pval) < primary!.pval
+    })
+    .sort((a, b) => Number(b.pval) - Number(a.pval))
+
   const otherTeamQbs = teamQbs.filter((q) => {
-    const key = String(q.name || '')
-      .toLowerCase()
-      .replace(/\b(jr|sr|ii|iii|iv|v)\b/gi, '')
-      .replace(/[^a-z0-9]/g, '')
+    const key = qbNameKey(q.name)
     return key && key !== primaryKey
   })
   const allOtherInactives =
     otherTeamQbs.length > 0 &&
-    otherTeamQbs.every((q) => {
-      const key = String(q.name || '')
-        .toLowerCase()
-        .replace(/\b(jr|sr|ii|iii|iv|v)\b/gi, '')
-        .replace(/[^a-z0-9]/g, '')
-      return inactiveKeys.has(key)
-    })
+    otherTeamQbs.every((q) => inactiveKeys.has(qbNameKey(q.name)))
 
   let replPval: number
   let replLabel: string
+  const repl = healthyBackups[0]
   if (repl) {
     replPval = Math.max(0, Number(repl.pval) || 0)
     replLabel = `${repl.name} ${replPval}`
@@ -355,7 +408,9 @@ export function applyQbReplacementDeltas(
 
 /**
  * Apply non-QB soft/hard caps and QB-out shrink.
- * QB PVALs pass through after replacement delta. Non-QB stack: soft after 1.2, hard 2.0.
+ * QB PVALs pass through after replacement delta.
+ * Non-QB stack: soft after 1.2, hard 2.0.
+ * QB-out ×0.55 applies to *offensive* non-QB only (defense unchanged).
  */
 export function applyTeamPvalStackRules(pieces: PvalAbsencePiece[]): {
   pieces: PvalAbsencePiece[]
@@ -376,15 +431,22 @@ export function applyTeamPvalStackRules(pieces: PvalAbsencePiece[]): {
   }
   nonQbEffective = Math.min(PVAL_NON_QB_HARD_CAP, nonQbEffective)
 
-  if (qbSum >= 2.0 && nonQbEffective > 0) {
-    nonQbEffective = Math.round(nonQbEffective * PVAL_NON_QB_WITH_QB_OUT_FACTOR * 100) / 100
-  }
-
   const scale = nonQbRaw > 0 ? nonQbEffective / nonQbRaw : 1
-  const scaledNonQb = nonQb.map((p) => ({
+  let scaledNonQb = nonQb.map((p) => ({
     ...p,
     pval: Math.round(p.pval * scale * 100) / 100,
   }))
+
+  if (qbSum >= 2.0) {
+    scaledNonQb = scaledNonQb.map((p) =>
+      p.side === 'offense'
+        ? {
+            ...p,
+            pval: Math.round(p.pval * PVAL_NON_QB_WITH_QB_OUT_FACTOR * 100) / 100,
+          }
+        : p,
+    )
+  }
 
   const outPieces = [...qbPieces, ...scaledNonQb].sort((a, b) => b.pval - a.pval)
   let offense = 0
@@ -429,5 +491,7 @@ export function priorPvalFromRundownPlayer(input: {
     status: input.status,
     side: band.side,
     isQb: bandKey === 'starting_qb' || bandKey === 'backup_qb',
+    bandKey,
+    depthOrder: input.depthOrder ?? null,
   }
 }

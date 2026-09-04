@@ -197,29 +197,76 @@ export function lookupPlayerPval(
 
 /**
  * Load all custom and active PVAL values from the public.nfl_player_pvals DB table.
+ * Paginates past PostgREST's default 1000-row cap.
  */
 export async function loadDbPlayerPvalMap(
   admin: SupabaseClient,
 ): Promise<Map<string, PlayerValueEntry>> {
   const map = new Map<string, PlayerValueEntry>()
+  const page = 1000
 
-  const { data, error } = await admin
-    .from('nfl_player_pvals')
-    .select('player_name, normalized_name, team_name, position, side, pval')
+  for (let from = 0; ; from += page) {
+    const { data, error } = await admin
+      .from('nfl_player_pvals')
+      .select('player_name, normalized_name, team_name, position, side, pval')
+      .range(from, from + page - 1)
 
-  if (error || !data) {
-    return map
-  }
+    if (error || !data) break
 
-  for (const row of data) {
-    map.set(row.normalized_name, {
-      name: row.player_name,
-      team: row.team_name,
-      pos: row.position as PlayerPosType,
-      pval: Number(row.pval) || 0,
-      side: row.side as 'offense' | 'defense',
-    })
+    for (const row of data) {
+      map.set(row.normalized_name, {
+        name: row.player_name,
+        team: row.team_name,
+        pos: row.position as PlayerPosType,
+        pval: Number(row.pval) || 0,
+        side: row.side as 'offense' | 'defense',
+      })
+    }
+
+    if (data.length < page) break
   }
 
   return map
+}
+
+function normalizeTeamLoose(value: string): string {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+}
+
+function teamsMatchLoose(a: string, b: string): boolean {
+  const na = normalizeTeamLoose(a)
+  const nb = normalizeTeamLoose(b)
+  if (!na || !nb) return false
+  return na === nb || na.includes(nb) || nb.includes(na)
+}
+
+/**
+ * QB roster candidates for replacement-delta (DB map + static registry).
+ */
+export function listTeamQbRoster(
+  teamName: string,
+  dynamicDbMap?: Map<string, PlayerValueEntry> | null,
+): Array<{ name: string; team: string; pval: number }> {
+  const byKey = new Map<string, { name: string; team: string; pval: number }>()
+
+  const consider = (entry: PlayerValueEntry) => {
+    if (entry.pos !== 'QB') return
+    if (!teamsMatchLoose(entry.team, teamName)) return
+    const key = normalizePlayerNameKey(entry.name)
+    if (!key) return
+    const prev = byKey.get(key)
+    // Prefer DB / higher specificity already in map order; keep max pval if dup.
+    if (!prev || entry.pval > prev.pval) {
+      byKey.set(key, { name: entry.name, team: entry.team, pval: entry.pval })
+    }
+  }
+
+  for (const entry of NFL_PLAYER_PVAL_REGISTRY) consider(entry)
+  if (dynamicDbMap) {
+    for (const entry of dynamicDbMap.values()) consider(entry)
+  }
+
+  return [...byKey.values()].sort((a, b) => b.pval - a.pval)
 }

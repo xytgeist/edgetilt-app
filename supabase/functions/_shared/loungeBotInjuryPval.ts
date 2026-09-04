@@ -4,6 +4,7 @@
  * Connects TheRundown inactive/injured player lists with PVAL weights:
  * 1. Curated / DB overrides (stars)
  * 2. v0 position-band Typical priors for unmatched OUTs (kill silent zeros)
+ * 3. QB replacement delta … starter OUT = starter − healthy backup (not full seat)
  *
  * Soft/hard non-QB caps + QB-out shrink live in loungeBotPvalBands.ts.
  */
@@ -11,9 +12,11 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import {
   lookupPlayerPval,
   loadDbPlayerPvalMap,
+  listTeamQbRoster,
   type PlayerValueEntry,
 } from './loungeSportsPlayerValues.ts'
 import {
+  applyQbReplacementDeltas,
   applyTeamPvalStackRules,
   priorPvalFromRundownPlayer,
   scalePvalForStatus,
@@ -48,6 +51,7 @@ export type TeamInjuryReport = {
     pval: number
     status: string
     side: 'offense' | 'defense'
+    note?: string
   }>
 }
 
@@ -64,6 +68,7 @@ export type GameInjurySummary = {
 /**
  * Calculate net injury impact for a single team given their inactive player list.
  * Curated/DB PVAL wins; otherwise v0 Typical band prior from position + depth.
+ * Starting QB absences are converted to replacement deltas before stack caps.
  */
 export function calculateTeamInjuryImpact(
   teamName: string,
@@ -97,20 +102,27 @@ export function calculateTeamInjuryImpact(
     if (prior) pieces.push(prior)
   }
 
-  const stacked = applyTeamPvalStackRules(pieces)
+  const withQbDelta = applyQbReplacementDeltas(pieces, {
+    teamName,
+    rosterQbs: listTeamQbRoster(teamName, dynamicDbMap),
+  })
+  const stacked = applyTeamPvalStackRules(withQbDelta)
 
   return {
     teamName,
     totalPvalLost: stacked.totalPvalLost,
     offensePvalLost: stacked.offensePvalLost,
     defensePvalLost: stacked.defensePvalLost,
-    keyAbsences: stacked.pieces.map((a) => ({
-      name: a.name,
-      pos: a.pos,
-      pval: a.pval,
-      status: a.status,
-      side: a.side,
-    })),
+    keyAbsences: stacked.pieces
+      .filter((a) => a.pval > 0)
+      .map((a) => ({
+        name: a.name,
+        pos: a.pos,
+        pval: a.pval,
+        status: a.status,
+        side: a.side,
+        note: a.note,
+      })),
   }
 }
 

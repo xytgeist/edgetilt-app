@@ -580,7 +580,7 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
       ? pathIds.map((id) => threadComments.find((c) => String(c?.id) === String(id))).filter(Boolean)
       : []
   /** Gap between line end and avatar edge. */
-  const CONNECTOR_INSET_PX = 3
+  const CONNECTOR_INSET_PX = 8
   const CONNECTOR_STEM_CLASS = 'w-0.5 rounded-full bg-zinc-500/30'
 
   const renderAvatarButton = (entity, { ariaName }) => {

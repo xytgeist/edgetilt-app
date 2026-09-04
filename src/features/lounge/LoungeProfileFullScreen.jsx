@@ -579,7 +579,8 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
     pathIds.length > 0 && threadComments.length > 0
       ? pathIds.map((id) => threadComments.find((c) => String(c?.id) === String(id))).filter(Boolean)
       : []
-  const railRowCount = 1 + chain.length
+  const CONNECTOR_LINE_CLASS = 'w-0.5 shrink-0 bg-zinc-500/30'
+  const CONNECTOR_GAP_CLASS = `${CONNECTOR_LINE_CLASS} h-3.5`
 
   const renderAvatarButton = (entity, { ariaName }) => {
     const profile = entity?.author_profile
@@ -609,6 +610,26 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
     )
   }
 
+  /** Avatar column cell: optional stub above, avatar, optional flex line below (not on last reply). */
+  const renderAvatarRailCell = ({
+    entity,
+    ariaName,
+    gridRow,
+    showGapStub,
+    showLineBelow,
+  }) => (
+    <div
+      className="relative z-[1] col-start-1 flex h-full min-h-0 flex-col items-center"
+      style={{ gridRow }}
+    >
+      {showGapStub ? <div aria-hidden className={CONNECTOR_GAP_CLASS} /> : null}
+      {renderAvatarButton(entity, { ariaName })}
+      {showLineBelow ? (
+        <div aria-hidden className={`${CONNECTOR_LINE_CLASS} min-h-[0.5rem] w-0.5 flex-1`} />
+      ) : null}
+    </div>
+  )
+
   return (
     <article
       tabIndex={0}
@@ -629,28 +650,20 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
     >
       <div className={`min-w-0 ${LOUNGE_FEED_POST_ROW_INNER_CLASS}`}>
         {/*
-          CSS grid rail: connector is a self-stretch bar in the avatar column (no getBoundingClientRect).
-          Survives tab-pane transforms, lazy media, and long reply lists.
+          Per-row avatar rail: line only between avatars (flex-1 under non-final rows).
+          Last reply has no stub below … no dangling connector under the thread.
         */}
         <div
           className="grid gap-x-3"
           style={{ gridTemplateColumns: 'auto minmax(0, 1fr)' }}
         >
-          {chain.length > 0 ? (
-            <div
-              aria-hidden
-              className="pointer-events-none col-start-1 row-start-1 z-0 flex justify-center"
-              style={{ gridRowEnd: railRowCount + 1 }}
-            >
-              <div className="w-0.5 self-stretch bg-zinc-500/30 mt-6 mb-6 sm:mt-[1.65rem] sm:mb-[1.65rem]" />
-            </div>
-          ) : null}
-
-          <div className="relative z-[1] col-start-1 row-start-1">
-            {renderAvatarButton(post, {
-              ariaName: typeof displayNameFor === 'function' ? displayNameFor(post) : 'member',
-            })}
-          </div>
+          {renderAvatarRailCell({
+            entity: post,
+            ariaName: typeof displayNameFor === 'function' ? displayNameFor(post) : 'member',
+            gridRow: 1,
+            showGapStub: false,
+            showLineBelow: chain.length > 0,
+          })}
 
           <div className="min-w-0 col-start-2 row-start-1">
             <button
@@ -738,16 +751,18 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
 
           {chain.map((rowComment, idx) => {
             const gridRow = idx + 2
+            const isLast = idx === chain.length - 1
             const name =
               typeof displayNameFor === 'function' ? displayNameFor(rowComment) : 'member'
             return (
               <Fragment key={rowComment.id}>
-                <div
-                  className="relative z-[1] col-start-1 pt-3.5"
-                  style={{ gridRow }}
-                >
-                  {renderAvatarButton(rowComment, { ariaName: name })}
-                </div>
+                {renderAvatarRailCell({
+                  entity: rowComment,
+                  ariaName: name,
+                  gridRow,
+                  showGapStub: true,
+                  showLineBelow: !isLast,
+                })}
                 <div className="min-w-0 col-start-2 pt-3.5" style={{ gridRow }}>
                   <LoungeCommentCard comment={rowComment} {...hierarchyCardProps} />
                 </div>

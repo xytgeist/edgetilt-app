@@ -677,7 +677,7 @@ function NativeIpaCallSession({
 
   if (remoteCount > 0) hadRemoteRef.current = true
   const awaitingAnswer =
-    Boolean(isOutgoing) && !hadRemoteRef.current && remoteCount === 0 && !connected
+    Boolean(isOutgoing) && !hadRemoteRef.current && remoteCount === 0
 
   const isVideoMode = (videoEnabled || camOn || hasVideo || remoteHasVideo) && !awaitingAnswer
 
@@ -841,15 +841,15 @@ function NativeIpaCallSession({
             recordingActive ? ' · REC' : recordingSaving ? ' · Saving recording…' : ''
           }`
 
-  const isAloneInGroupCall = Boolean(
-    isGroup && !awaitingAnswer && connected && remoteCount === 0 && elapsed >= 4,
-  )
-
+  // Only end a ghost group after someone else was actually in the room.
+  // Do not fire while the starter is still waiting for the first answer.
+  const onHangupRef = useRef(onHangup)
+  onHangupRef.current = onHangup
   useEffect(() => {
-    if (isAloneInGroupCall) {
-      onHangup?.()
-    }
-  }, [isAloneInGroupCall, onHangup])
+    if (!isGroup || remoteCount > 0 || !hadRemoteRef.current) return undefined
+    const t = window.setTimeout(() => onHangupRef.current?.(), 4000)
+    return () => window.clearTimeout(t)
+  }, [isGroup, remoteCount])
 
   const setMicEnabled = (next) => {
     setMicOn(next)
@@ -1122,55 +1122,15 @@ function NativeIpaCallSession({
                 onClick={() => setMicEnabled(!micOn)}
               />
 
-              {/* Row 2 */}
-              {camOn ? (
-                <CallDockItem
-                  icon={<FlipCameraIcon />}
-                  label="Flip"
-                  disabled={!camOn}
-                  onClick={() => void setNativeCallCamera({ flip: true })}
-                />
-              ) : (
-                <CallDockItem
-                  icon={<RecordDotIcon />}
-                  label="Record"
-                  disabled={true}
-                  onClick={() => {}}
-                />
-              )}
-              {recordingActive ? (
-                <CallDockItem
-                  icon={<RecordStopIcon />}
-                  label="Stop"
-                  variant="danger"
-                  disabled={!canStopRecording}
-                  onClick={() => onStopRecording?.()}
-                />
-              ) : recordingSaving ? (
-                <CallDockItem
-                  icon={<RecordStopIcon />}
-                  label="Saving…"
-                  variant="warning"
-                  disabled={true}
-                  onClick={() => {}}
-                />
-              ) : (
-                <CallDockItem
-                  icon={<RecordDotIcon />}
-                  label="Record"
-                  disabled={!isVideoMode}
-                  onClick={() => {
-                    const featured = pinnedIdentity || (isLocalMain ? viewerUserId : peerUserId) || null
-                    onStartRecording?.(featured)
-                  }}
-                />
-              )}
+              {/* Row 2 ... voice has no Record (video-only). End stays centered. */}
+              <div className="h-14 w-14" aria-hidden />
               <CallDockItem
                 icon={<HangupIcon />}
                 label="End"
                 variant="danger"
                 onClick={() => onHangup?.()}
               />
+              <div className="h-14 w-14" aria-hidden />
             </div>
           </div>
         )}
@@ -1486,15 +1446,6 @@ function CallChrome({
     }
   }, [room])
 
-  const isAloneInGroupCall = Boolean(
-    isGroup && !awaitingAnswer && room && room.remoteParticipants.size === 0 && elapsed >= 4,
-  )
-
-  useEffect(() => {
-    if (isAloneInGroupCall) {
-      hangup()
-    }
-  }, [isAloneInGroupCall])
   useEffect(() => {
     if (!room || !audioRouteSupported) return undefined
     let cancelled = false
@@ -1557,6 +1508,14 @@ function CallChrome({
     }
     onHangup()
   }
+  const hangupRef = useRef(hangup)
+  hangupRef.current = hangup
+
+  useEffect(() => {
+    if (!isGroup || remoteCount > 0 || !hadRemoteRef.current) return undefined
+    const t = window.setTimeout(() => hangupRef.current(), 4000)
+    return () => window.clearTimeout(t)
+  }, [isGroup, remoteCount])
 
   const setCameraEnabled = async (next) => {
     setCamOn(next)
@@ -1772,67 +1731,15 @@ function CallChrome({
           onClick={() => void setMicEnabled(!micOn)}
         />
 
-        {/* Row 2 */}
-        {camOn ? (
-          <CallDockItem
-            icon={<FlipCameraIcon />}
-            label="Flip"
-            disabled={!camOn || cameraBusy}
-            onClick={() => void flipCamera()}
-          />
-        ) : (
-          <CallDockItem
-            icon={<RecordDotIcon />}
-            label="Record"
-            disabled={true}
-            onClick={() => {}}
-          />
-        )}
-        {showVideoStage && !awaitingAnswer ? (
-          recordingActive ? (
-            <CallDockItem
-              icon={<RecordStopIcon />}
-              label="Stop"
-              variant="danger"
-              disabled={!canStopRecording}
-              onClick={() => onStopRecording?.()}
-            />
-          ) : recordingSaving ? (
-            <CallDockItem
-              icon={<RecordStopIcon />}
-              label="Saving…"
-              variant="warning"
-              disabled={true}
-              onClick={() => {}}
-            />
-          ) : (
-            <CallDockItem
-              icon={<RecordDotIcon />}
-              label="Record"
-              onClick={() => {
-                const featured =
-                  pinnedIdentity ||
-                  localParticipant?.identity ||
-                  viewerUserId ||
-                  null
-                onStartRecording?.(featured)
-              }}
-            />
-          )
-        ) : (
-          <CallDockItem
-            icon={<RecordDotIcon />}
-            label="Record"
-            disabled={true}
-            onClick={() => {}}
-          />
-        )}
+        {/* Row 2 ... voice has no Record (video-only). End stays centered. */}
+        <div className="h-14 w-14" aria-hidden />
         <CallDockItem
           icon={<HangupIcon />}
           label="End"
           variant="danger"
           onClick={hangup}
         />
+        <div className="h-14 w-14" aria-hidden />
       </div>
     </div>
   )

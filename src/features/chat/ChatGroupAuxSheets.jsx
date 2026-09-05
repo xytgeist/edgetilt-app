@@ -343,6 +343,10 @@ function SharedCallsList({ items, onJumpToMessage, onBack }) {
               <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-zinc-800">
                 {isRecording && poster ? (
                   <img src={poster} alt="" className="h-full w-full object-cover" loading="lazy" />
+                ) : isRecording && !poster ? (
+                  <div className="grid h-full w-full place-items-center bg-zinc-800" aria-label="Processing">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/25 border-t-white" />
+                  </div>
                 ) : (
                   <div
                     className={`grid h-full w-full place-items-center ${

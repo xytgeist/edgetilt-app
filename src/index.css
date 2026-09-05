@@ -8834,6 +8834,12 @@ html.light .reaction-pill {
   user-select: none;
 }
 
+/* Call recording card stays cinema-dark in both themes so Processing/play chrome stays white. */
+[data-chat-call-recording] .text-white,
+html.light [data-chat-call-recording] .text-white {
+  color: #fff;
+}
+
 /*
  * Expanded call UI: stay planted when the phone is against an ear/cheek.
  * Block pan/rubber-band on the stage; re-enable manipulation only on controls.

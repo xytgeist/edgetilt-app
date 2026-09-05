@@ -1,8 +1,14 @@
 import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ensureCallRecordingPosterPersisted } from '../../utils/chatCallRecordingPoster.js'
+import {
+  ensureCallRecordingPosterPersisted,
+  probeCallRecordingPlayable,
+} from '../../utils/chatCallRecordingPoster.js'
 import ChatCallTranscriptModal from './ChatCallTranscriptModal.jsx'
 import { CHAT_MESSAGE_COLUMN_WIDTH_CLASS } from './chatVideoTileLayout.js'
+
+const PROCESSING_RETRY_MS = 1600
+const PROCESSING_GIVE_UP_MS = 120000
 
 /**
  * @typedef {{
@@ -58,6 +64,7 @@ export default function ChatCallRecordingCard({
   const storedPoster = String(message.stream_poster_url || '').trim()
   const meta = parseCallRecordingMeta(message.link_preview)
   const [posterUrl, setPosterUrl] = useState(storedPoster)
+  const [mediaReady, setMediaReady] = useState(() => Boolean(storedPoster))
   const [frameSize, setFrameSize] = useState(() => ({
     w: Number(message.stream_video_width) || 0,
     h: Number(message.stream_video_height) || 0,
@@ -76,6 +83,7 @@ export default function ChatCallRecordingCard({
 
   useEffect(() => {
     setPosterUrl(storedPoster)
+    if (storedPoster) setMediaReady(true)
   }, [storedPoster])
 
   useEffect(() => {
@@ -86,18 +94,67 @@ export default function ChatCallRecordingCard({
   }, [message.stream_video_width, message.stream_video_height])
 
   useEffect(() => {
+    if (storedPoster || !videoUrl) return undefined
+    const ac = new AbortController()
+    const startedAt = Date.now()
+    const wait = (ms) =>
+      new Promise((resolve) => {
+        const t = window.setTimeout(resolve, ms)
+        ac.signal.addEventListener(
+          'abort',
+          () => {
+            window.clearTimeout(t)
+            resolve()
+          },
+          { once: true },
+        )
+      })
+
+    void (async () => {
+      while (!ac.signal.aborted) {
+        const playable = await probeCallRecordingPlayable(videoUrl, { signal: ac.signal })
+        if (ac.signal.aborted) return
+        if (playable) {
+          setMediaReady(true)
+          break
+        }
+        if (Date.now() - startedAt >= PROCESSING_GIVE_UP_MS) {
+          setMediaReady(true)
+          break
+        }
+        await wait(PROCESSING_RETRY_MS)
+      }
+    })()
+
+    return () => {
+      ac.abort()
+    }
+  }, [storedPoster, videoUrl])
+
+  useEffect(() => {
     if (storedPoster || !videoUrl || !supabaseClient || !message?.id) return undefined
     let cancelled = false
+    const startedAt = Date.now()
+    const wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms))
+
     void (async () => {
-      const saved = await ensureCallRecordingPosterPersisted(supabaseClient, {
-        id: message.id,
-        video_url: videoUrl,
-        stream_poster_url: storedPoster || null,
-      })
-      if (cancelled || !saved?.posterUrl) return
-      setPosterUrl(saved.posterUrl)
-      if (saved.width && saved.height) {
-        setFrameSize({ w: saved.width, h: saved.height })
+      while (!cancelled && !storedPoster) {
+        const saved = await ensureCallRecordingPosterPersisted(supabaseClient, {
+          id: message.id,
+          video_url: videoUrl,
+          stream_poster_url: storedPoster || null,
+        })
+        if (cancelled) return
+        if (saved?.posterUrl) {
+          setPosterUrl(saved.posterUrl)
+          setMediaReady(true)
+          if (saved.width && saved.height) {
+            setFrameSize({ w: saved.width, h: saved.height })
+          }
+          return
+        }
+        if (Date.now() - startedAt >= PROCESSING_GIVE_UP_MS) return
+        await wait(PROCESSING_RETRY_MS)
       }
     })()
     return () => {
@@ -233,14 +290,17 @@ export default function ChatCallRecordingCard({
   const overflow = Math.max(0, participants.length - shown.length)
   const canShareNative =
     typeof navigator !== 'undefined' && typeof navigator.share === 'function'
+  const processing = !mediaReady
 
   return (
     <div className={`flex ${isMine ? 'justify-end' : 'justify-start'} px-1 py-1`}>
       <div
         ref={cardRef}
+        data-chat-call-recording=""
+        data-processing={processing ? '1' : '0'}
         className={`${CHAT_MESSAGE_COLUMN_WIDTH_CLASS} overflow-hidden rounded-2xl border border-zinc-700/80 bg-gradient-to-b from-zinc-900 to-zinc-950 shadow-lg shadow-black/20`}
         onContextMenu={(e) => {
-          if (!videoUrl) return
+          if (!videoUrl || processing) return
           e.preventDefault()
           openShareMenu()
         }}
@@ -252,11 +312,13 @@ export default function ChatCallRecordingCard({
               suppressClickRef.current = false
               return
             }
+            if (processing) return
             onOpen()
           }}
-          disabled={!videoUrl}
-          className="relative block w-full aspect-[16/10] overflow-hidden touch-manipulation active:opacity-90 disabled:opacity-60"
-          aria-label="Play call recording"
+          disabled={!videoUrl || processing}
+          className="relative block w-full aspect-[16/10] overflow-hidden touch-manipulation active:opacity-90 disabled:opacity-100"
+          aria-label={processing ? 'Call recording processing' : 'Play call recording'}
+          aria-busy={processing}
         >
           {posterUrl ? (
             <img
@@ -275,11 +337,23 @@ export default function ChatCallRecordingCard({
             Rec
           </div>
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="grid h-14 w-14 place-items-center rounded-full bg-white/15 ring-1 ring-white/30 backdrop-blur-md">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="white" aria-hidden className="ml-0.5">
-                <polygon points="5 3 19 12 5 21 5 3" />
-              </svg>
-            </div>
+            {processing ? (
+              <div className="flex flex-col items-center gap-2.5">
+                <span
+                  className="h-8 w-8 animate-spin rounded-full border-2 border-white/25 border-t-white"
+                  aria-hidden
+                />
+                <span className="rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
+                  Processing
+                </span>
+              </div>
+            ) : (
+              <div className="grid h-14 w-14 place-items-center rounded-full bg-white/15 ring-1 ring-white/30 backdrop-blur-md">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="white" aria-hidden className="ml-0.5">
+                  <polygon points="5 3 19 12 5 21 5 3" />
+                </svg>
+              </div>
+            )}
           </div>
         </button>
 
@@ -288,8 +362,9 @@ export default function ChatCallRecordingCard({
             <div className="min-w-0">
               <p className="text-[14px] font-semibold text-zinc-50">Call recording</p>
               <p className="mt-0.5 text-[12px] text-zinc-400">
-                {mediaLabel}
-                {whenLabel ? ` · ${whenLabel}` : ''}
+                {processing
+                  ? 'Processing video…'
+                  : `${mediaLabel}${whenLabel ? ` · ${whenLabel}` : ''}`}
               </p>
             </div>
             {durationLabel ? (

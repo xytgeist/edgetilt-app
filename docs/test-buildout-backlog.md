@@ -2848,6 +2848,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-05:** **Call recording card Processing.** Card shows a Processing spinner and blocks play until the MP4 can decode a frame (poster attach still retries). Failsafe unlocks after ~2 min. Web only. **`1.4.54`.** Spec: **`docs/chat-calling.md`**.
 - **2026-09-04:** **Recording focus follows the recorder’s tap.** While recording, the starter can tap any stream to retarget the RoomComposite featured camera (`update_recording_focus` → LiveKit `updateLayout`). Egress template already had `onLayoutChanged`. **Redeploy `chat-calls` on test.** **`1.4.53`.** Web is Vercel `test`. Spec: **`docs/chat-calling.md`**.
 - **2026-09-04:** **Video cap 9.** At most 9 live cameras. Extra people stay on the call as audio-only (Video button disabled, no tile) until a camera turns off or that person leaves. Layout never plans 10+ tiles. Client + native. **`1.4.52`. New TestFlight.** Web is Vercel `test`. Spec: **`docs/chat-calling.md`**.
 - **2026-09-04:** **Video 5–12 cinema bank.** 5–7 keep the 3-wide 3:4 insets in two rows (5 = 2+2, 6 = 2+3, 7 = 3+3). 8–9 switch to 4-wide (8 = 3+4, 9 = 4+4). 10–12 add a third 4-wide row as a placeholder. Tap-to-feature / names / speaking ring match 3–4. Full-size pill at every count (dropped the 5+ compact dock). **`1.4.51`. New TestFlight.** Web is Vercel `test`. Spec: **`docs/chat-calling.md`**.

@@ -1,6 +1,93 @@
 import { uploadChatPosterToR2 } from './chatVideoR2Upload.js'
 import { chatAttachRecordingPoster } from './chatCallsApi.js'
 
+const READY_PROBE_TIMEOUT_MS = 9000
+
+/**
+ * True when the public MP4 exists and the browser can decode a video frame.
+ * HEAD/range can succeed while Chrome still has no picture (empty moov / 404 race).
+ *
+ * @param {string} videoUrl
+ * @param {{ signal?: AbortSignal }} [opts]
+ * @returns {Promise<boolean>}
+ */
+export async function probeCallRecordingPlayable(videoUrl, opts = {}) {
+  const url = String(videoUrl || '').trim()
+  if (!url) return false
+  const signal = opts.signal
+  if (signal?.aborted) return false
+
+  try {
+    const head = await fetch(url, { method: 'HEAD', signal, cache: 'no-store' })
+    if (head.status === 404 || head.status === 403) return false
+    if (!head.ok && head.status !== 206) {
+      const get = await fetch(url, {
+        method: 'GET',
+        headers: { Range: 'bytes=0-1' },
+        signal,
+        cache: 'no-store',
+      })
+      if (get.status === 404 || get.status === 403) return false
+    }
+  } catch {
+    // CORS on HEAD is common on R2. Decode probe is the real ready check.
+  }
+  if (signal?.aborted) return false
+  return canDecodeCallRecordingFrame(url, signal)
+}
+
+/**
+ * @param {string} url
+ * @param {AbortSignal | undefined} signal
+ * @returns {Promise<boolean>}
+ */
+function canDecodeCallRecordingFrame(url, signal) {
+  if (typeof document === 'undefined') return Promise.resolve(false)
+  return new Promise((resolve) => {
+    const video = document.createElement('video')
+    video.muted = true
+    video.defaultMuted = true
+    video.playsInline = true
+    video.setAttribute('playsinline', '')
+    video.preload = 'auto'
+    video.crossOrigin = 'anonymous'
+
+    let settled = false
+    const finish = (ok) => {
+      if (settled) return
+      settled = true
+      try {
+        signal?.removeEventListener('abort', onAbort)
+      } catch {
+        /* ignore */
+      }
+      window.clearTimeout(tm)
+      try {
+        video.pause()
+      } catch {
+        /* ignore */
+      }
+      video.removeAttribute('src')
+      try {
+        video.load()
+      } catch {
+        /* ignore */
+      }
+      resolve(Boolean(ok))
+    }
+    const onAbort = () => finish(false)
+    const tm = window.setTimeout(() => finish(false), READY_PROBE_TIMEOUT_MS)
+    signal?.addEventListener('abort', onAbort, { once: true })
+    video.addEventListener(
+      'loadeddata',
+      () => finish(video.videoWidth > 0 && video.videoHeight > 0),
+      { once: true },
+    )
+    video.addEventListener('error', () => finish(false), { once: true })
+    video.src = url.includes('#') ? url : `${url}#t=0.1`
+  })
+}
+
 /** @type {Set<string>} */
 const inFlightMessageIds = new Set()
 /** @type {Set<string>} */

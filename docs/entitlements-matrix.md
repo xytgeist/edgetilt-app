@@ -185,4 +185,5 @@ Track implementation in `docs/test-buildout-backlog.md` when Phase 1 work starts
 | 2026-09-05 | **Storefront gate:** IPA shows a cheaper web price next to IAP only when StoreKit storefront is `USA`. |
 | 2026-09-05 | **US IPA SubscribeModal:** each card shows App Store `displayPrice` plus the Stripe/web amount. Both CTAs include a dollar. Confirmed non-US hides the web dollar. |
 | 2026-09-05 | **US IPA paywall hierarchy:** web is the cyan CTA; App Store and web prices sit as peer tiles. Non-US still leads with IAP. |
+| 2026-09-05 | **IAP introductory offers:** code reads StoreKit intro price. Ryan configures ASC pay-as-you-go offers (founding web × 1.15). Lifetime excluded. |
 | 2026-08-30 | **Edge Pro $9.99/mo Stripe checkout & subscription tier live:** Added `edge-pro` to `subscription_products` (migration `20260830235000`), updated `sync_profile_has_active_subscription`, enabled direct Stripe Checkout routing via `STRIPE_PRICE_EDGE_PRO`, and wired in-app Upgrade to Edge Pro buttons in Settings and Membership management. |

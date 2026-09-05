@@ -43,8 +43,9 @@ final class EdgeStoreKitManager {
       do {
         let ids = Set(productIds.filter { !$0.isEmpty })
         let products = try await Product.products(for: ids)
-        let rows: [[String: Any]] = products.map { product in
-          [
+        var rows: [[String: Any]] = []
+        for product in products {
+          var row: [String: Any] = [
             "id": product.id,
             "displayName": product.displayName,
             "description": product.description,
@@ -52,6 +53,16 @@ final class EdgeStoreKitManager {
             "productSlug": Self.productIdToSlug[product.id] ?? "",
             "type": product.type == .nonConsumable ? "lifetime" : "subscription",
           ]
+          if let subscription = product.subscription {
+            row["introEligible"] = await subscription.isEligibleForIntroOffer
+            if let offer = subscription.introductoryOffer {
+              row["introDisplayPrice"] = offer.displayPrice
+              row["introPeriodCount"] = offer.periodCount
+              row["introPeriodUnit"] = Self.periodUnitName(offer.period.unit)
+              row["introPaymentMode"] = Self.paymentModeName(offer.paymentMode)
+            }
+          }
+          rows.append(row)
         }
         completion(.success(["products": rows]))
       } catch {
@@ -223,6 +234,25 @@ final class EdgeStoreKitManager {
       row["priceInterval"] = "monthly"
     }
     return row
+  }
+
+  private static func periodUnitName(_ unit: Product.SubscriptionPeriod.Unit) -> String {
+    switch unit {
+    case .day: return "day"
+    case .week: return "week"
+    case .month: return "month"
+    case .year: return "year"
+    @unknown default: return ""
+    }
+  }
+
+  private static func paymentModeName(_ mode: Product.SubscriptionOffer.PaymentMode) -> String {
+    switch mode {
+    case .freeTrial: return "freeTrial"
+    case .payAsYouGo: return "payAsYouGo"
+    case .payUpFront: return "payUpFront"
+    default: return ""
+    }
   }
 }
 

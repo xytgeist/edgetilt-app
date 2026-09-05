@@ -26,7 +26,10 @@ import {
   canShowIapWebComparePrice,
   fetchAppleStorefront,
   fetchEdgeStoreProducts,
+  iapCustomerDisplayPrice,
+  iapIntroStoreLabel,
   iapProductIdForPlan,
+  iapThenPriceNote,
   indexStoreProductsById,
   restoreEdgeIapPurchases,
   startEdgeIapPurchase,
@@ -173,12 +176,14 @@ function PlanComparePrices({
   webPrice,
   storeLabel = 'App Store',
   webLabel = 'Web',
+  storeNote = '',
 }) {
   return (
     <div className="subscribe-plan-compare-prices mt-3 grid grid-cols-2 gap-2">
       <div className="subscribe-plan-compare-store rounded-xl px-2.5 py-2 ring-1 ring-white/10">
         <div className="text-xl font-bold tracking-tight text-white">{storePrice}</div>
         <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">{storeLabel}</p>
+        {storeNote ? <p className="mt-0.5 text-[10px] text-zinc-500">{storeNote}</p> : null}
       </div>
       <div className="subscribe-plan-compare-web rounded-xl px-2.5 py-2 ring-1 ring-cyan-400/25">
         <div className="text-xl font-bold tracking-tight text-cyan-200">{webPrice}</div>
@@ -975,15 +980,17 @@ export default function SubscribeModal({
                       </div>
                       {starterStoreProduct?.displayPrice && showWebComparePrice ? (
                         <PlanComparePrices
-                          storePrice={starterStoreProduct.displayPrice}
+                          storePrice={iapCustomerDisplayPrice(starterStoreProduct)}
                           webPrice={starterWebPrice}
+                          storeLabel={iapIntroStoreLabel(starterStoreProduct)}
+                          storeNote={iapThenPriceNote(starterStoreProduct)}
                         />
                       ) : (
                         <>
                           <div className="mt-3 flex flex-wrap items-end gap-1.5">
                             {starterStoreProduct?.displayPrice ? (
                               <span className="text-xl font-bold tracking-tight text-white">
-                                {starterStoreProduct.displayPrice}
+                                {iapCustomerDisplayPrice(starterStoreProduct)}
                               </span>
                             ) : showWebComparePrice && starterInterval === 'annual' ? (
                               <>
@@ -999,7 +1006,10 @@ export default function SubscribeModal({
                           </div>
                           <p className="mt-0.5 text-[11px] text-zinc-500">
                             {starterStoreProduct?.displayPrice
-                              ? 'App Store price'
+                              ? [iapIntroStoreLabel(starterStoreProduct), iapThenPriceNote(starterStoreProduct)]
+                                  .filter(Boolean)
+                                  .join(' · ')
+                                  .replace(/^App Store$/, 'App Store price')
                               : !showWebComparePrice
                               ? 'App Store price'
                               : starterInterval === 'annual'
@@ -1117,15 +1127,17 @@ export default function SubscribeModal({
                       </div>
                       {fullStoreProduct?.displayPrice && showWebComparePrice ? (
                         <PlanComparePrices
-                          storePrice={fullStoreProduct.displayPrice}
+                          storePrice={iapCustomerDisplayPrice(fullStoreProduct)}
                           webPrice={fullWebPrice}
+                          storeLabel={iapIntroStoreLabel(fullStoreProduct)}
+                          storeNote={iapThenPriceNote(fullStoreProduct)}
                         />
                       ) : (
                         <>
                           <div className="mt-3 flex flex-wrap items-end gap-1.5">
                             {fullStoreProduct?.displayPrice ? (
                               <span className="text-xl font-bold tracking-tight text-white">
-                                {fullStoreProduct.displayPrice}
+                                {iapCustomerDisplayPrice(fullStoreProduct)}
                               </span>
                             ) : showWebComparePrice && fullInterval === 'annual' ? (
                               <>
@@ -1141,7 +1153,10 @@ export default function SubscribeModal({
                           </div>
                           <p className="mt-0.5 text-[11px] text-zinc-500">
                             {fullStoreProduct?.displayPrice
-                              ? 'App Store price'
+                              ? [iapIntroStoreLabel(fullStoreProduct), iapThenPriceNote(fullStoreProduct)]
+                                  .filter(Boolean)
+                                  .join(' · ')
+                                  .replace(/^App Store$/, 'App Store price')
                               : !showWebComparePrice
                               ? 'App Store price'
                               : fullInterval === 'annual'
@@ -1292,8 +1307,8 @@ export default function SubscribeModal({
                   >
                     {busy
                       ? 'Purchasing…'
-                      : selectedStoreProduct?.displayPrice
-                        ? `Subscribe on iPhone · ${selectedStoreProduct.displayPrice}`
+                      : iapCustomerDisplayPrice(selectedStoreProduct)
+                        ? `Subscribe on iPhone · ${iapCustomerDisplayPrice(selectedStoreProduct)}`
                         : checkoutLabel}
                   </button>
                 </>
@@ -1307,8 +1322,8 @@ export default function SubscribeModal({
                   >
                     {busy
                       ? 'Purchasing…'
-                      : selectedStoreProduct?.displayPrice
-                        ? `Subscribe on iPhone · ${selectedStoreProduct.displayPrice}`
+                      : iapCustomerDisplayPrice(selectedStoreProduct)
+                        ? `Subscribe on iPhone · ${iapCustomerDisplayPrice(selectedStoreProduct)}`
                         : checkoutLabel}
                   </button>
                   <button

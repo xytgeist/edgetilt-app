@@ -77,7 +77,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Mac Theo 2026-09-05 … IAP refund sheet + ASSN (test)
 
-**I am Mac Theo.** US SubscribeModal leads with web: peer App Store / Web tiles, cyan CTA is Safari, iPhone is secondary. Non-US still leads with IAP. Lifetime still hidden on the IPA carousel. **`1.4.68`.** Vercel JS is enough. Do not Add Lifetime for Review.
+**I am Mac Theo.** StoreKit now forwards intro-offer price/eligibility. Paywall prints that IAP sticker when ASC has an introductory offer. Ryan still creates the 4 Slots Edge intro offers in App Store Connect (pay as you go, founding × 1.15). Lifetime cannot. New TestFlight for the Swift payload. **`1.4.69`.**
 
 ### Mac Theo 2026-09-05 … IAP dual-path (code, not live charges)
 

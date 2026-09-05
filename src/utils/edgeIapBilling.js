@@ -15,8 +15,11 @@ import {
 export {
   EDGE_IAP_PRODUCT_IDS,
   allKnownIapProductIds,
+  iapCustomerDisplayPrice,
+  iapIntroStoreLabel,
   iapProductIdForFanTier,
   iapProductIdForPlan,
+  iapThenPriceNote,
   indexStoreProductsById,
 } from './edgeIapProducts.js'
 

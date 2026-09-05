@@ -59,7 +59,15 @@ export function allKnownIapProductIds() {
 
 /**
  * @param {Array<{ id?: string, displayPrice?: string }>} products
- * @returns {Map<string, { id: string, displayPrice: string }>}
+ * @returns {Map<string, {
+ *   id: string,
+ *   displayPrice: string,
+ *   introDisplayPrice: string,
+ *   introEligible: boolean,
+ *   introPaymentMode: string,
+ *   introPeriodUnit: string,
+ *   introPeriodCount: number,
+ * }>}
  */
 export function indexStoreProductsById(products) {
   const map = new Map()
@@ -69,7 +77,41 @@ export function indexStoreProductsById(products) {
     map.set(id, {
       id,
       displayPrice: String(row?.displayPrice || '').trim(),
+      introDisplayPrice: String(row?.introDisplayPrice || '').trim(),
+      introEligible: row?.introEligible === true,
+      introPaymentMode: String(row?.introPaymentMode || '').trim(),
+      introPeriodUnit: String(row?.introPeriodUnit || '').trim(),
+      introPeriodCount: Number(row?.introPeriodCount) || 0,
     })
   }
   return map
+}
+
+/** Price the customer pays now (intro if eligible, else list). */
+export function iapCustomerDisplayPrice(product) {
+  if (product?.introEligible && product?.introDisplayPrice) {
+    return String(product.introDisplayPrice).trim()
+  }
+  return String(product?.displayPrice || '').trim()
+}
+
+export function iapIntroStoreLabel(product) {
+  if (!(product?.introEligible && product?.introDisplayPrice)) return 'App Store'
+  const mode = String(product.introPaymentMode || '')
+  const unit = String(product.introPeriodUnit || '')
+  const count = Number(product.introPeriodCount) || 0
+  if (mode === 'freeTrial') return 'App Store · trial'
+  if (unit === 'month' && count === 12) return 'App Store · 12 mo'
+  if (unit === 'year' && count >= 1) return 'App Store · first year'
+  if (count > 0 && unit) {
+    const plural = count === 1 ? unit : `${unit}s`
+    return `App Store · ${count} ${plural}`
+  }
+  return 'App Store · intro'
+}
+
+export function iapThenPriceNote(product) {
+  if (!(product?.introEligible && product?.introDisplayPrice && product?.displayPrice)) return ''
+  if (product.introDisplayPrice === product.displayPrice) return ''
+  return `Then ${product.displayPrice}`
 }

@@ -20,6 +20,7 @@ import {
   chatStartCall,
   chatStartRecording,
   chatStopRecording,
+  chatUpdateRecordingFocus,
 } from '../../../utils/chatCallsApi.js'
 import { playChatCallRecordingCue } from './chatCallRecordingTone.js'
 import { chatSendMessage } from '../chatApi.js'
@@ -1170,6 +1171,19 @@ export function ChatCallProvider({
     }
   }, [supabaseClient, ensureBroadcast, showCallStatusToast, viewerUserId])
 
+  const updateRecordingFocus = useCallback(async (featuredIdentity) => {
+    const current = activeCallRef.current
+    const featured = String(featuredIdentity || '').trim()
+    if (!supabaseClient || !current || !featured) return null
+    if (current.recordingStatus !== 'recording') return null
+    if (current.recordingStartedBy && current.recordingStartedBy !== viewerUserId) return null
+    try {
+      return await chatUpdateRecordingFocus(supabaseClient, current.callId, featured)
+    } catch {
+      return null
+    }
+  }, [supabaseClient, viewerUserId])
+
   const stopRecording = useCallback(async () => {
     const current = activeCallRef.current
     if (!supabaseClient || !current) return null
@@ -1376,6 +1390,7 @@ export function ChatCallProvider({
             }}
             onHangup={() => void hangup()}
             onStartRecording={(featuredIdentity) => void startRecording(featuredIdentity)}
+            onUpdateRecordingFocus={(featuredIdentity) => void updateRecordingFocus(featuredIdentity)}
             onStopRecording={() => void stopRecording()}
             onCallPromoted={(patch) => {
               const nextRoom = String(patch?.roomId || '').trim()

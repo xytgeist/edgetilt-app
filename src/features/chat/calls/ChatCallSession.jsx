@@ -53,6 +53,30 @@ import ChatCallInviteModal from './ChatCallInviteModal.jsx'
 const EMPTY_CAMERA_BY_IDENTITY = new Map()
 const EMPTY_SPEAKING_IDS = new Set()
 
+function useRecorderFocusSync({
+  recordingActive,
+  isRecordingStarter,
+  featuredIdentity,
+  onUpdateRecordingFocus,
+}) {
+  const lastSentRef = useRef('')
+  useEffect(() => {
+    if (!recordingActive || !isRecordingStarter) {
+      lastSentRef.current = ''
+      return
+    }
+    const next = String(featuredIdentity || '').trim()
+    if (!next) return
+    if (!lastSentRef.current) {
+      lastSentRef.current = next
+      return
+    }
+    if (next === lastSentRef.current) return
+    lastSentRef.current = next
+    onUpdateRecordingFocus?.(next)
+  }, [recordingActive, isRecordingStarter, featuredIdentity, onUpdateRecordingFocus])
+}
+
 function hideChromeForInvite(open, { hideTimerRef, setControlsHidden, resetControlsTimer }) {
   if (open) {
     if (hideTimerRef.current) {
@@ -469,6 +493,7 @@ function SwitchToVideoConfirmModal({ onCancel, onConfirm }) {
  *   onDisconnected: () => void,
  *   onHangup: () => void,
  *   onStartRecording?: (featuredIdentity?: string | null) => void,
+ *   onUpdateRecordingFocus?: (featuredIdentity?: string | null) => void,
  *   onStopRecording?: () => void,
  *   onCallPromoted?: (patch: { roomId: string, kind?: string, title?: string }) => void,
  *   onError?: (msg: string) => void,
@@ -504,6 +529,7 @@ function WebLiveKitCallSession({
   onDisconnected,
   onHangup,
   onStartRecording,
+  onUpdateRecordingFocus,
   onStopRecording,
   onCallPromoted,
   onError,
@@ -654,6 +680,7 @@ function WebLiveKitCallSession({
               onExpand={() => setMinimized(false)}
               onHangup={onHangup}
               onStartRecording={onStartRecording}
+              onUpdateRecordingFocus={onUpdateRecordingFocus}
               onStopRecording={onStopRecording}
             />
             <RoomAudioRenderer />
@@ -718,6 +745,7 @@ function NativeIpaCallSession({
   onDisconnected,
   onHangup,
   onStartRecording,
+  onUpdateRecordingFocus,
   onStopRecording,
   onCallPromoted,
   onError,
@@ -1002,6 +1030,12 @@ function NativeIpaCallSession({
     nativeStageCount,
     nativeLocalId,
   ])
+  useRecorderFocusSync({
+    recordingActive,
+    isRecordingStarter,
+    featuredIdentity: focusedIdentity,
+    onUpdateRecordingFocus,
+  })
   const profileById = useCallParticipantProfiles(supabaseClient, participantIds)
   const speakingIds = useMemo(() => {
     const set = new Set()
@@ -1459,6 +1493,7 @@ function CallChrome({
   onExpand,
   onHangup,
   onStartRecording,
+  onUpdateRecordingFocus,
   onStopRecording,
 }) {
   const room = useRoomContext()
@@ -1656,6 +1691,13 @@ function CallChrome({
     if (stageRemotes[0]) return stageRemotes[0]
     return stageLocal || null
   }, [localIsMain, stageCount, pinnedIdentity, stageRemotes, stageLocal])
+
+  useRecorderFocusSync({
+    recordingActive,
+    isRecordingStarter,
+    featuredIdentity: fullscreenParticipant?.identity,
+    onUpdateRecordingFocus,
+  })
 
   const anyParticipantHasCamera =
     participantHasLiveCamera(localParticipant) || remotes.some(participantHasLiveCamera)

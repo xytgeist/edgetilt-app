@@ -36,6 +36,7 @@ Recording finalize webhook is a separate function: **`livekit-egress-webhook`**.
 | `leave_call` | `{ call_id }` | Leave self. Group continues if **2+** remain after leave; DM / when ≤1 would remain ends + deletes LiveKit room. Stops active egress. |
 | `end_call` | `{ call_id }` | Force-end for everyone + delete LiveKit room; stops active egress |
 | `start_recording` | `{ call_id, featured_identity? }` | Video calls only; first-starter claim; RoomComposite R2 template `focus:<identity>` (pin, else recorder); → R2; max 600s |
+| `update_recording_focus` | `{ call_id, featured_identity }` | Recorder only, while recording. LiveKit `updateLayout(focus:<id>)` so the MP4 featured stream follows their tap. |
 | `stop_recording` | `{ call_id }` | StopEgress; recording starter **or** call `started_by` (host); does **not** hang up |
 | `attach_recording_poster` | `{ message_id, poster_url, width?, height? }` | First room member to capture a frame wins; sets `stream_poster_url` on `call_recording` (R2 public host only) |
 | `token` | `{ call_id }` | Refresh for active participant |

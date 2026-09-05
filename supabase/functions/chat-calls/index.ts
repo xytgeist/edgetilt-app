@@ -1417,6 +1417,76 @@ Deno.serve(async (req) => {
       }
     }
 
+    if (action === 'update_recording_focus') {
+      const callId = String(body.call_id || '').trim()
+      const featuredIdentity = String(body.featured_identity || '').trim()
+      if (!callId) return json(400, { error: 'Missing call_id.' })
+      if (!featuredIdentity) return json(400, { error: 'Missing featured_identity.' })
+
+      const { data: call, error: callErr } = await admin
+        .from('chat_calls')
+        .select(CALL_SELECT_BASE)
+        .eq('id', callId)
+        .maybeSingle()
+      if (callErr) throw new Error(callErr.message)
+      if (!call) return json(404, { error: 'Call not found.' })
+      await assertMember(admin, call.chat_room_id, user.id)
+
+      if (call.recording_status !== 'recording') {
+        return json(409, { error: 'No recording is in progress.', ...recordingPublicFields(call) })
+      }
+      if (String(call.recording_started_by || '') !== user.id) {
+        return json(403, { error: 'Only the person recording can change the featured stream.' })
+      }
+
+      const { data: liveParts, error: liveErr } = await admin
+        .from('chat_call_participants')
+        .select('user_id')
+        .eq('call_id', callId)
+        .is('left_at', null)
+      if (liveErr) throw new Error(liveErr.message)
+      const liveIds = new Set((liveParts || []).map((p) => String(p.user_id || '').trim()).filter(Boolean))
+      if (!liveIds.has(featuredIdentity)) {
+        return json(400, { error: 'Featured participant must be on the call.' })
+      }
+
+      if (String(call.recording_featured_identity || '') === featuredIdentity) {
+        return json(200, { ok: true, unchanged: true, ...recordingPublicFields(call) })
+      }
+
+      const egressId = String(call.recording_egress_id || '').trim()
+      const customDisabled =
+        String(Deno.env.get('CHAT_CALL_EGRESS_USE_CUSTOM') || '').trim() === '0'
+      const templateBaseUrl = readEgressTemplateBaseUrl()
+      const useCustomTemplate = Boolean(templateBaseUrl) && !customDisabled
+      const egressLayout = useCustomTemplate ? `focus:${featuredIdentity}` : 'speaker'
+
+      if (egressId && useCustomTemplate) {
+        try {
+          await egressClientFor(lk).updateLayout(egressId, egressLayout)
+        } catch (err) {
+          const msg = egressErrorMessage(err)
+          console.error('chat-calls: updateLayout failed', call.id, egressId, msg)
+          return json(502, { error: `Could not retarget recording: ${msg}` })
+        }
+      }
+
+      const { data: updated, error: updErr } = await admin
+        .from('chat_calls')
+        .update({ recording_featured_identity: featuredIdentity })
+        .eq('id', callId)
+        .eq('recording_status', 'recording')
+        .select(CALL_SELECT_BASE)
+        .maybeSingle()
+      if (updErr) throw new Error(updErr.message)
+
+      return json(200, {
+        ok: true,
+        ...recordingPublicFields(updated || call),
+        featured_identity: featuredIdentity,
+      })
+    }
+
     if (action === 'stop_recording') {
       const callId = String(body.call_id || '').trim()
       if (!callId) return json(400, { error: 'Missing call_id.' })

@@ -121,6 +121,20 @@ export function chatStopRecording(supabase, callId) {
 }
 
 /**
+ * Recorder taps a stream to retarget the RoomComposite featured camera.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} callId
+ * @param {string} featuredIdentity
+ */
+export function chatUpdateRecordingFocus(supabase, callId, featuredIdentity) {
+  return chatCallsInvoke(supabase, {
+    action: 'update_recording_focus',
+    call_id: callId,
+    featured_identity: String(featuredIdentity || '').trim(),
+  })
+}
+
+/**
  * Persist a durable poster on a call_recording message (first writer wins).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {{ messageId: string, posterUrl: string, width?: number, height?: number }} args

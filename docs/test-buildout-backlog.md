@@ -2848,6 +2848,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-05:** **Egress inset pack.** Recording template keeps small chips but uses the live-call row pack (5–7 = 2+2 / 2+3 / 3+3, 8–9 = 3+4 / 4+4). No more single-row overflow / 6-pip cap. **Republish R2 call-egress template on test.** **`1.4.57`.**
 - **2026-09-05:** **Android chrome stays planted.** Pill sits under the stream, so no cinema auto-hide / tap-hide. 2-person inset does not resize or drop/rise. Add-people still hides chrome. **`1.4.56`.** Web, Vercel `test`.
 - **2026-09-05:** **Android inset row.** 3+ video chips use pixel `rowPipSize` + locked `flex-row nowrap` so Chrome cannot stack them as a right-hand column. **`1.4.55`.** Web, Vercel `test`.
 - **2026-09-05:** **Call recording card Processing.** Card shows a Processing spinner and blocks play until the MP4 can decode a frame (poster attach still retries). Failsafe unlocks after ~2 min. Web only. **`1.4.54`.** Spec: **`docs/chat-calling.md`**.

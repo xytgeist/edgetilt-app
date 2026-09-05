@@ -95,6 +95,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Windows Theo.** Destination rule: Lounge (public + VIP) keeps markdown. **Chat rooms never get markdown.** **X.com auto-post (when built) never gets markdown.** Same caption can fan out; strip at the destination. Helper `toPlainOutboundText` in `loungeBotPlainOutbound.ts`. Chat choke point is `publishBotSubChatMessage` (every Signal/Syndicate fan-room insert). X publisher must call that helper; do not send Lounge captions raw. Redeployed **`lounge-odds-poll`**, **`lounge-odds-ingest`**, **`lounge-bot-publish-due`** on **test + prod**. Existing chat messages stay until the next publish.
 
+### Mac Theo 2026-09-05 … egress inset pack
+
+**I am Mac Theo.** Recording template still uses small chips, but 5–9 now pack like the live call (2+2 / 2+3 / 3+3 / 3+4 / 4+4). **Republished R2 call-egress on test.** **`1.4.57`.**
+
 ### Mac Theo 2026-09-05 … Android chrome planted
 
 **I am Mac Theo.** Android video pill sits under the stage, so it no longer auto-hides or tap-hides. 2-person inset stays put (no drop/rise / size change). Add-people still hides chrome. **`1.4.56`.** Web is Vercel `test`.

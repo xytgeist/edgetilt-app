@@ -8,6 +8,12 @@
  */
 import EgressHelperMod from '@livekit/egress-sdk'
 import { Room, RoomEvent, Track } from 'livekit-client'
+import {
+  MAX_CALL_VIDEO_STREAMS,
+  packInsetRows,
+  rowPipSlots,
+  ROW_PIP_WIDE_AT,
+} from '../features/chat/calls/callVideoLayout.js'
 
 const EgressHelper = EgressHelperMod?.default ?? EgressHelperMod
 
@@ -109,7 +115,7 @@ function render(room, featuredId) {
       if (want && x.identity === want) return false
       return true
     })
-    .slice(0, 6)
+    .slice(0, Math.max(0, MAX_CALL_VIDEO_STREAMS - 1))
 
   if (featured) {
     featured.track.attach(mainEl)
@@ -120,17 +126,32 @@ function render(room, featuredId) {
     mainEl.style.display = 'none'
   }
 
+  const total = (featured ? 1 : 0) + others.length
+  const slots = rowPipSlots(total)
+  const rows = packInsetRows(
+    others.map((_, i) => String(i)),
+    slots,
+    { fillBottom: total >= ROW_PIP_WIDE_AT },
+  )
+
   pipEl.innerHTML = ''
-  for (const o of others) {
-    const wrap = document.createElement('div')
-    wrap.className = 'pip-tile'
-    const v = document.createElement('video')
-    v.autoplay = true
-    v.playsInline = true
-    v.muted = true
-    o.track.attach(v)
-    wrap.appendChild(v)
-    pipEl.appendChild(wrap)
+  for (const row of rows) {
+    const rowEl = document.createElement('div')
+    rowEl.className = 'pip-row'
+    for (const key of row) {
+      const o = others[Number(key)]
+      if (!o) continue
+      const wrap = document.createElement('div')
+      wrap.className = 'pip-tile'
+      const v = document.createElement('video')
+      v.autoplay = true
+      v.playsInline = true
+      v.muted = true
+      o.track.attach(v)
+      wrap.appendChild(v)
+      rowEl.appendChild(wrap)
+    }
+    pipEl.appendChild(rowEl)
   }
 
   attachRemoteAudio(room)

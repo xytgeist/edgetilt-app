@@ -9,9 +9,13 @@ import {
 } from './edgeProducts.js'
 import {
   SLOTS_EDGE_FOUNDING_PERCENT_OFF,
+  SLOTS_EDGE_FULL_ANNUAL_IAP_USD,
   SLOTS_EDGE_FULL_ANNUAL_USD,
+  SLOTS_EDGE_FULL_MONTHLY_IAP_USD,
   SLOTS_EDGE_FULL_MONTHLY_USD,
   SLOTS_EDGE_LIFETIME_USD,
+  SLOTS_EDGE_STARTER_ANNUAL_IAP_USD,
+  SLOTS_EDGE_STARTER_MONTHLY_IAP_USD,
   SLOTS_EDGE_STARTER_MONTHLY_USD,
   SLOTS_EDGE_STARTER_ANNUAL_USD,
   applyPercentOff,
@@ -595,6 +599,15 @@ export default function SubscribeModal({
   const fullAnnualEffective = formatUsdMonthly(Math.round((discounted.fullAnnualUsd / 12) * 100) / 100)
   const lifetimeList = formatUsdOneTime(SLOTS_EDGE_LIFETIME_USD)
   const lifetimeEarly = formatUsdOneTime(discounted.lifetimeUsd)
+  const showIapPrices = isEdgeiOSShell()
+  const starterIapFallback =
+    starterInterval === 'annual'
+      ? formatUsdOneTime(SLOTS_EDGE_STARTER_ANNUAL_IAP_USD)
+      : formatUsdOneTime(SLOTS_EDGE_STARTER_MONTHLY_IAP_USD)
+  const fullIapFallback =
+    fullInterval === 'annual'
+      ? formatUsdOneTime(SLOTS_EDGE_FULL_ANNUAL_IAP_USD)
+      : formatUsdOneTime(SLOTS_EDGE_FULL_MONTHLY_IAP_USD)
 
   const lifetimeSelected = selectedPlan === PRODUCT_SLOTS_EDGE_LIFETIME
   const starterSelected = selectedPlan === PRODUCT_SLOTS_EDGE_STARTER
@@ -650,6 +663,15 @@ export default function SubscribeModal({
   const lifetimeStoreProduct = storeProductsById.get(
     iapProductIdForPlan(PRODUCT_SLOTS_EDGE_LIFETIME) || '',
   )
+  const starterIapPrice = starterStoreProduct?.displayPrice || (showIapPrices ? starterIapFallback : '')
+  const fullIapPrice = fullStoreProduct?.displayPrice || (showIapPrices ? fullIapFallback : '')
+  const lifetimeIapPrice = lifetimeStoreProduct?.displayPrice || ''
+  const selectedIapPrice = selectedStoreProduct?.displayPrice
+    || (selectedPlan === PRODUCT_SLOTS_EDGE_STARTER
+      ? starterIapPrice
+      : selectedPlan === PRODUCT_SLOTS_EDGE
+        ? fullIapPrice
+        : lifetimeIapPrice)
 
   const handleCheckout = async (via = 'auto') => {
     setError('')
@@ -868,7 +890,9 @@ export default function SubscribeModal({
                       }}
                       className={planCardClass(starterSelected, busy ? 'cursor-default' : 'cursor-pointer')}
                     >
-                      <PlanPromoBadge affiliate={affiliatePromo} military={isMilitaryPromo} />
+                      {showIapPrices ? null : (
+                        <PlanPromoBadge affiliate={affiliatePromo} military={isMilitaryPromo} />
+                      )}
                       {hasSlotsEdgeStarter ? (
                         <span className="absolute right-3 top-10 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-emerald-300 ring-1 ring-emerald-500/30">
                           Current
@@ -923,9 +947,9 @@ export default function SubscribeModal({
                         </button>
                       </div>
                       <div className="mt-3 flex flex-wrap items-end gap-1.5">
-                        {starterStoreProduct?.displayPrice ? (
+                        {starterIapPrice ? (
                           <span className="text-xl font-bold tracking-tight text-white">
-                            {starterStoreProduct.displayPrice}
+                            {starterIapPrice}
                           </span>
                         ) : starterInterval === 'annual' ? (
                           <>
@@ -940,7 +964,9 @@ export default function SubscribeModal({
                         )}
                       </div>
                       <p className="mt-0.5 text-[11px] text-zinc-500">
-                        {starterStoreProduct?.displayPrice
+                        {starterIapPrice && showIapPrices
+                          ? 'App Store price'
+                          : starterStoreProduct?.displayPrice
                           ? 'App Store price'
                           : starterInterval === 'annual'
                           ? isMilitaryPromo
@@ -993,7 +1019,9 @@ export default function SubscribeModal({
                         busy ? 'cursor-default' : 'cursor-pointer',
                       ].join(' ')}
                     >
-                      <PlanPromoBadge affiliate={affiliatePromo} military={isMilitaryPromo} />
+                      {showIapPrices ? null : (
+                        <PlanPromoBadge affiliate={affiliatePromo} military={isMilitaryPromo} />
+                      )}
                       {fullSubscriber ? (
                         <span className="absolute right-3 top-10 rounded-full bg-cyan-500/15 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-cyan-200 ring-1 ring-cyan-500/30">
                           Current
@@ -1052,9 +1080,9 @@ export default function SubscribeModal({
                         </button>
                       </div>
                       <div className="mt-3 flex flex-wrap items-end gap-1.5">
-                        {fullStoreProduct?.displayPrice ? (
+                        {fullIapPrice ? (
                           <span className="text-xl font-bold tracking-tight text-white">
-                            {fullStoreProduct.displayPrice}
+                            {fullIapPrice}
                           </span>
                         ) : fullInterval === 'annual' ? (
                           <>
@@ -1069,7 +1097,9 @@ export default function SubscribeModal({
                         )}
                       </div>
                       <p className="mt-0.5 text-[11px] text-zinc-500">
-                        {fullStoreProduct?.displayPrice
+                        {fullIapPrice && showIapPrices
+                          ? 'App Store price'
+                          : fullStoreProduct?.displayPrice
                           ? 'App Store price'
                           : fullInterval === 'annual'
                           ? isMilitaryPromo
@@ -1122,22 +1152,26 @@ export default function SubscribeModal({
                         busy ? 'cursor-default' : 'cursor-pointer',
                       ].join(' ')}
                     >
-                      <PlanPromoBadge affiliate={affiliatePromo} military={isMilitaryPromo} />
+                      {showIapPrices ? null : (
+                        <PlanPromoBadge affiliate={affiliatePromo} military={isMilitaryPromo} />
+                      )}
                       <span className="inline-flex w-fit rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-200 ring-1 ring-amber-500/30">
-                        {isMilitaryPromo
-                          ? 'Military lifetime pass'
-                          : isAffiliatePromo
-                            ? 'Partner lifetime pass'
-                            : 'Founding lifetime pass'}
+                        {showIapPrices
+                          ? 'One-time unlock'
+                          : isMilitaryPromo
+                            ? 'Military lifetime pass'
+                            : isAffiliatePromo
+                              ? 'Partner lifetime pass'
+                              : 'Founding lifetime pass'}
                       </span>
                       <div className="mt-1.5 text-lg font-bold text-white">{productDisplayName(PRODUCT_SLOTS_EDGE_LIFETIME)}</div>
                       <p className="mt-0.5 text-xs text-zinc-400">Pay once. Never worry about renewals or new-tool add-ons.</p>
                       <div className="mt-3 flex flex-wrap items-end gap-1.5">
-                        {lifetimeStoreProduct?.displayPrice ? (
+                        {lifetimeIapPrice ? (
                           <span className="text-xl font-bold tracking-tight text-white">
-                            {lifetimeStoreProduct.displayPrice}
+                            {lifetimeIapPrice}
                           </span>
-                        ) : (
+                        ) : showIapPrices ? null : (
                           <>
                             <span className="text-xl font-bold tracking-tight text-white">{lifetimeEarly}</span>
                             <span className="pb-0.5 text-xs text-zinc-500 line-through">{lifetimeList}</span>
@@ -1145,7 +1179,7 @@ export default function SubscribeModal({
                         )}
                       </div>
                       <p className="mt-0.5 text-[11px] text-zinc-500">
-                        {lifetimeStoreProduct?.displayPrice
+                        {showIapPrices || lifetimeStoreProduct?.displayPrice
                           ? 'App Store price · one-time'
                           : isMilitaryPromo
                           ? `${militaryRateCaption} · one-time`
@@ -1192,8 +1226,8 @@ export default function SubscribeModal({
                   >
                     {busy
                       ? 'Purchasing…'
-                      : selectedStoreProduct?.displayPrice
-                        ? `Subscribe on iPhone · ${selectedStoreProduct.displayPrice}`
+                      : selectedIapPrice
+                        ? `Subscribe on iPhone · ${selectedIapPrice}`
                         : checkoutLabel}
                   </button>
                   <button

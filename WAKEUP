@@ -95,6 +95,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Windows Theo.** Destination rule: Lounge (public + VIP) keeps markdown. **Chat rooms never get markdown.** **X.com auto-post (when built) never gets markdown.** Same caption can fan out; strip at the destination. Helper `toPlainOutboundText` in `loungeBotPlainOutbound.ts`. Chat choke point is `publishBotSubChatMessage` (every Signal/Syndicate fan-room insert). X publisher must call that helper; do not send Lounge captions raw. Redeployed **`lounge-odds-poll`**, **`lounge-odds-ingest`**, **`lounge-bot-publish-due`** on **test + prod**. Existing chat messages stay until the next publish.
 
+### Mac Theo 2026-09-04 … video 5–12 cinema bank
+
+**I am Mac Theo.** 5–7 keep the 3-wide inset chips in two rows. 8–9 go 4-wide (3+4, then 4+4). 10–12 add a third 4-wide row for now. Same tap / names / speaking as 3–4. Full pill at every count. **`1.4.51`. Rebuild EdgeTilt Test.** Web is Vercel `test`.
+
 ### Mac Theo 2026-09-04 … video 3–4 inset row
 
 **I am Mac Theo.** 3 and 4 people are featured full-bleed + a bottom inset row (You rightmost). Chip size is three equal 3:4 slots even when only two show. Tap an inset to feature that person; header name follows. Chrome hide moves the row down (same size). Names top-left on insets. Green speaking ring on insets only, not the featured stream. **`1.4.50`. Rebuild EdgeTilt Test.** Web is Vercel `test`.

@@ -1255,30 +1255,19 @@ function NativeIpaCallSession({
       {/* Bottom Controls - slides down when controlsHidden in video mode */}
       <div
         className={`relative z-[1] flex shrink-0 justify-center px-4 pt-2 transition-all duration-300 ease-in-out ${
-          controlsHidden
-            ? nativePeopleCount >= 5
-              ? 'translate-y-24 opacity-0 pointer-events-none'
-              : 'translate-y-36 opacity-0 pointer-events-none'
-            : 'translate-y-0 opacity-100'
+          controlsHidden ? 'translate-y-36 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
         }`}
         style={{
-          paddingBottom:
-            nativePeopleCount >= 5
-              ? 'max(0.35rem, max(env(safe-area-inset-bottom,0px), var(--edge-sab,0px)))'
-              : 'calc(max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)) + 1.25rem)',
+          paddingBottom: 'calc(max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)) + 1.25rem)',
         }}
       >
         {isVideoMode ? (
           <div
             data-chat-call-interactive=""
-            className={`pointer-events-auto mx-auto flex items-center justify-between rounded-full border border-white/10 bg-zinc-950/85 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150 ${
-              nativePeopleCount >= 5
-                ? 'w-auto max-w-[16rem] gap-1 px-2 py-1.5'
-                : 'w-full max-w-[22.5rem] px-4 py-3'
-            }`}
+            className="pointer-events-auto mx-auto flex w-full max-w-[22.5rem] items-center justify-between rounded-full border border-white/10 bg-zinc-950/85 px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150"
           >
             <VideoRecordDockItem
-              compact={nativePeopleCount >= 5}
+              compact={false}
               recordingActive={recordingActive}
               recordingSaving={recordingSaving}
               canStopRecording={canStopRecording}
@@ -1287,7 +1276,7 @@ function NativeIpaCallSession({
               onInteract={resetControlsTimer}
             />
             <CallDockItem
-              compact={nativePeopleCount >= 5}
+              compact={false}
               icon={<VideoIcon off={!camOn} />}
               label="Video"
               active={camOn}
@@ -1296,7 +1285,7 @@ function NativeIpaCallSession({
               onClick={handleVideoDockClick}
             />
             <CallDockItem
-              compact={nativePeopleCount >= 5}
+              compact={false}
               icon={<SpeakerIcon />}
               label="Speaker"
               active={speakerOn}
@@ -1307,7 +1296,7 @@ function NativeIpaCallSession({
               }}
             />
             <CallDockItem
-              compact={nativePeopleCount >= 5}
+              compact={false}
               icon={<MicIcon muted={!micOn} />}
               label="Mute"
               active={!micOn}
@@ -1318,7 +1307,7 @@ function NativeIpaCallSession({
               }}
             />
             <CallDockItem
-              compact={nativePeopleCount >= 5}
+              compact={false}
               icon={<HangupIcon />}
               label="End"
               variant="danger"
@@ -1890,12 +1879,10 @@ function CallChrome({
   const controlPill = showVideoStage ? (
     <div
       data-chat-call-interactive=""
-      className={`pointer-events-auto mx-auto flex items-center justify-between rounded-full border border-white/10 bg-zinc-950/85 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150 ${
-        peopleCount >= 5 ? 'w-auto max-w-[16rem] gap-1 px-2 py-1.5' : 'w-full max-w-[22.5rem] px-4 py-3'
-      }`}
+      className="pointer-events-auto mx-auto flex w-full max-w-[22.5rem] items-center justify-between rounded-full border border-white/10 bg-zinc-950/85 px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150"
     >
       <VideoRecordDockItem
-        compact={peopleCount >= 5}
+        compact={false}
         recordingActive={recordingActive}
         recordingSaving={recordingSaving}
         canStopRecording={canStopRecording}
@@ -1910,7 +1897,7 @@ function CallChrome({
         onInteract={resetControlsTimer}
       />
       <CallDockItem
-        compact={peopleCount >= 5}
+        compact={false}
         icon={<VideoIcon off={!camOn} />}
         label="Video"
         active={camOn}
@@ -1918,7 +1905,7 @@ function CallChrome({
         onClick={handleVideoDockClick}
       />
       <CallDockItem
-        compact={peopleCount >= 5}
+        compact={false}
         icon={<SpeakerIcon />}
         label="Speaker"
         active={speakerOn}
@@ -1930,7 +1917,7 @@ function CallChrome({
         }}
       />
       <CallDockItem
-        compact={peopleCount >= 5}
+        compact={false}
         icon={<MicIcon muted={!micOn} />}
         label="Mute"
         active={!micOn}
@@ -1941,7 +1928,7 @@ function CallChrome({
         }}
       />
       <CallDockItem
-        compact={peopleCount >= 5}
+        compact={false}
         icon={<HangupIcon />}
         label="End"
         variant="danger"
@@ -2111,17 +2098,10 @@ function CallChrome({
       {/* Bottom Controls - slides down when controlsHidden in video mode */}
       <div
         className={`relative z-[1] flex shrink-0 justify-center px-4 pt-2 transition-all duration-300 ease-in-out ${
-          controlsHidden
-            ? peopleCount >= 5
-              ? 'translate-y-24 opacity-0 pointer-events-none'
-              : 'translate-y-36 opacity-0 pointer-events-none'
-            : 'translate-y-0 opacity-100'
+          controlsHidden ? 'translate-y-36 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
         }`}
         style={{
-          paddingBottom:
-            peopleCount >= 5
-              ? 'max(0.35rem, max(env(safe-area-inset-bottom,0px), var(--edge-sab,0px)))'
-              : 'calc(max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)) + 1.25rem)',
+          paddingBottom: 'calc(max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)) + 1.25rem)',
         }}
       >
         {controlPill}
@@ -2440,7 +2420,9 @@ function VideoCallStage({
   }
 
   if (plan.mode === 'row') {
-    const chipW = `calc((100% - ${ROW_PIP_GAP_PX * (ROW_PIP_SLOTS - 1)}px) / ${ROW_PIP_SLOTS})`
+    const slots = plan.slots || ROW_PIP_SLOTS
+    const chipW = `calc((100% - ${ROW_PIP_GAP_PX * (slots - 1)}px) / ${slots})`
+    const rows = plan.insetRows?.length ? plan.insetRows : [plan.insetIds || []]
     const rowBottom = controlsHidden
       ? hitOnly
         ? 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 12px))'
@@ -2449,8 +2431,8 @@ function VideoCallStage({
         ? ROW_PIP_CHROME_BOTTOM_PX
         : 40
     const wrapClass = hitOnly
-      ? 'fixed z-[2] flex flex-row justify-end transition-[bottom] duration-300 ease-in-out'
-      : 'absolute z-[2] flex flex-row justify-end transition-[bottom] duration-300 ease-in-out'
+      ? 'fixed z-[2] flex flex-col items-stretch transition-[bottom] duration-300 ease-in-out'
+      : 'absolute z-[2] flex flex-col items-stretch transition-[bottom] duration-300 ease-in-out'
     return (
       <div className={shellClass}>
         <button
@@ -2471,23 +2453,26 @@ function VideoCallStage({
             gap: ROW_PIP_GAP_PX,
           }}
         >
-          {(plan.insetIds || []).map((id) => {
-            const p = id === plan.youId ? localParticipant : byId.get(id)
-            const hasCam = participantHasLiveCamera(p)
-            const chipClass = hitOnly
-              ? 'h-full w-full'
-              : `h-full w-full rounded-2xl shadow-lg ${
-                  liveSpeakingIds.has(id) ? 'border-[3px] border-emerald-400' : 'border-2 border-white/30'
-                }`
-            const chip = (
-              <div key={id} className="relative shrink-0" style={{ width: chipW, aspectRatio: '3 / 4' }}>
-                {id === plan.youId
-                  ? youTile(chipClass, { pip: !hasCam, withFlip: true, nameOverlay: true })
-                  : remoteTile(id, chipClass, { pip: !hasCam, nameOverlay: true })}
-              </div>
-            )
-            return chip
-          })}
+          {rows.map((row, rowIndex) => (
+            <div key={`row-${rowIndex}`} className="flex flex-row justify-end" style={{ gap: ROW_PIP_GAP_PX }}>
+              {row.map((id) => {
+                const p = id === plan.youId ? localParticipant : byId.get(id)
+                const hasCam = participantHasLiveCamera(p)
+                const chipClass = hitOnly
+                  ? 'h-full w-full'
+                  : `h-full w-full rounded-2xl shadow-lg ${
+                      liveSpeakingIds.has(id) ? 'border-[3px] border-emerald-400' : 'border-2 border-white/30'
+                    }`
+                return (
+                  <div key={id} className="relative shrink-0" style={{ width: chipW, aspectRatio: '3 / 4' }}>
+                    {id === plan.youId
+                      ? youTile(chipClass, { pip: !hasCam, withFlip: true, nameOverlay: true })
+                      : remoteTile(id, chipClass, { pip: !hasCam, nameOverlay: true })}
+                  </div>
+                )
+              })}
+            </div>
+          ))}
         </div>
         {screenFlip}
       </div>

@@ -4,9 +4,12 @@
  *
  * 1: You fill the stage
  * 2: featured full-bleed + other as inset (tap inset to swap). You can be featured.
- * 3–4: featured full-bleed + bottom inset row (You rightmost). Same chip size as if
- *      three insets fit. Tap an inset to feature that person. You can be featured.
- * 5+: featured top half, rest in 2 rows (floor/ceil) with You last on the bottom row
+ * 3–7: featured full-bleed + 3-wide 3:4 inset chips (You rightmost / bottom-right).
+ *      3–4 = one row. 5–7 = two rows, extras on the bottom (5 = 2+2, 6 = 2+3, 7 = 3+3).
+ * 8–12: same cinema, 4-wide chips. Fill bottom row first (8 = 3+4, 9 = 4+4,
+ *      10 = 1+4+4, 11 = 2+4+4, 12 = 3+4+4). 10–12 is a placeholder third row.
+ * Tap an inset to feature that person. You can be featured. Chrome hide moves
+ * chips down without shrinking. Speaking ring on insets only.
  */
 
 /** Duo pip gap above the pill. Native `layoutDuo` uses the same point value. */
@@ -16,15 +19,60 @@ export const DUO_PIP_RIGHT_PX = 16
 export const SCREEN_FLIP_CLASS =
   'top-[calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px))+0.75rem+2.75rem+0.5rem)] right-4'
 
-/** 3–4 person inset row. Sized as three equal chips even when only two show. */
+/** Inset bank. 3–7 use 3 slots; 8+ use 4. */
 export const ROW_PIP_GAP_PX = 8
 export const ROW_PIP_SIDE_PX = 16
 export const ROW_PIP_SLOTS = 3
+export const ROW_PIP_SLOTS_WIDE = 4
 export const ROW_PIP_CHROME_BOTTOM_PX = DUO_PIP_CHROME_BOTTOM_PX
+export const ROW_PIP_WIDE_AT = 8
 
-/** Tap-to-feature You is 2–4 people. 5+ stays featured-remote. */
+export function rowPipSlots(count) {
+  return count >= ROW_PIP_WIDE_AT ? ROW_PIP_SLOTS_WIDE : ROW_PIP_SLOTS
+}
+
+/** Tap-to-feature You on any cinema layout (2+). */
 export function canFeatureLocal(count) {
-  return count >= 2 && count <= 4
+  return count >= 2
+}
+
+/**
+ * Pack inset ids into rows (top → bottom). You should already be last in `insetIds`.
+ * Balanced (5–7): extras go to the bottom row so 4 chips become 2+2, not 1+3.
+ * Fill-bottom (8+): complete `slots`-wide rows from the bottom up.
+ * @param {string[]} insetIds
+ * @param {number} slots
+ * @param {{ fillBottom?: boolean }} [opts]
+ */
+export function packInsetRows(insetIds = [], slots = ROW_PIP_SLOTS, { fillBottom = false } = {}) {
+  const ids = insetIds.map((id) => String(id || '').trim()).filter(Boolean)
+  const n = ids.length
+  const cap = Math.max(1, slots)
+  if (n === 0) return []
+  const rowCount = Math.ceil(n / cap)
+  /** @type {number[]} */
+  const counts = []
+  if (fillBottom) {
+    let left = n
+    for (let i = 0; i < rowCount; i += 1) {
+      const take = Math.min(cap, left)
+      counts.unshift(take)
+      left -= take
+    }
+  } else {
+    const base = Math.floor(n / rowCount)
+    const extra = n % rowCount
+    for (let i = 0; i < rowCount; i += 1) {
+      const fromBottom = rowCount - 1 - i
+      counts.push(base + (fromBottom < extra ? 1 : 0))
+    }
+  }
+  let offset = 0
+  return counts.map((c) => {
+    const row = ids.slice(offset, offset + c)
+    offset += c
+    return row
+  })
 }
 
 /**
@@ -44,8 +92,6 @@ export function planCallVideoLayout({
   const count = remotes.length + (you ? 1 : 0)
   const want = String(featuredId || '').trim()
   const featuredRemote = remotes.includes(want) ? want : remotes[0] || null
-  const otherRemotes = remotes.filter((id) => id !== featuredRemote)
-  const restWithYou = you ? [...otherRemotes, you] : otherRemotes
 
   if (count <= 1) {
     return { mode: 'solo', count, featuredId: you, pipId: null, youId: you, localIsFeatured: true }
@@ -62,31 +108,34 @@ export function planCallVideoLayout({
       localIsFeatured,
     }
   }
-  if (count <= 4) {
-    const localIsFeatured = Boolean(you && want === you)
-    const featuredId = localIsFeatured ? you : featuredRemote
-    const insetIds = remotes.filter((id) => id !== featuredId)
-    if (you && featuredId !== you) insetIds.push(you)
-    return {
-      mode: 'row',
-      count,
-      featuredId,
-      insetIds,
-      youId: you,
-      localIsFeatured,
-    }
-  }
 
-  const row0n = Math.floor(restWithYou.length / 2)
+  const localIsFeatured = Boolean(you && want === you)
+  const nextFeatured = localIsFeatured ? you : featuredRemote
+  const insetIds = remotes.filter((id) => id !== nextFeatured)
+  if (you && nextFeatured !== you) insetIds.push(you)
+  const slots = rowPipSlots(count)
+  const fillBottom = count >= ROW_PIP_WIDE_AT
   return {
-    mode: 'grid',
+    mode: 'row',
     count,
-    featuredId: featuredRemote,
-    row0: restWithYou.slice(0, row0n),
-    row1: restWithYou.slice(row0n),
+    featuredId: nextFeatured,
+    insetIds,
+    insetRows: packInsetRows(insetIds, slots, { fillBottom }),
+    slots,
     youId: you,
-    localIsFeatured: false,
+    localIsFeatured,
   }
+}
+
+/**
+ * Inset chip size. Always 3:4. Does not change when chrome hides.
+ * Keep in sync with `rowPipSize` in `EdgeLiveKitCallManager.swift`.
+ * @param {{ viewportWidth?: number, slots?: number }} args
+ */
+export function rowPipSize({ viewportWidth = 390, slots = ROW_PIP_SLOTS } = {}) {
+  const cap = Math.max(1, slots)
+  const width = (viewportWidth - ROW_PIP_SIDE_PX * 2 - ROW_PIP_GAP_PX * (cap - 1)) / cap
+  return { width, height: (width * 4) / 3 }
 }
 
 /**
@@ -94,17 +143,6 @@ export function planCallVideoLayout({
  * Keep in sync with `duoPipFrame` in `EdgeLiveKitCallManager.swift`.
  * @param {{ hasCamera?: boolean, controlsHidden?: boolean, viewportWidth?: number }} args
  */
-/**
- * 3–4 inset chip size. Always 3:4. Does not change when chrome hides.
- * Keep in sync with `rowPipSize` in `EdgeLiveKitCallManager.swift`.
- * @param {{ viewportWidth?: number }} args
- */
-export function rowPipSize({ viewportWidth = 390 } = {}) {
-  const width =
-    (viewportWidth - ROW_PIP_SIDE_PX * 2 - ROW_PIP_GAP_PX * (ROW_PIP_SLOTS - 1)) / ROW_PIP_SLOTS
-  return { width, height: (width * 4) / 3 }
-}
-
 export function duoPipSize({ hasCamera = true, controlsHidden = false, viewportWidth = 390 } = {}) {
   const baseW = Math.min(120, Math.max(88, viewportWidth * 0.26))
   const hiddenH = (baseW * 16) / 9

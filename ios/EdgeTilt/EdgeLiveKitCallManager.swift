@@ -473,7 +473,7 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   private func layoutCountStage(_ people: [(id: String, isLocal: Bool)], bounds: CGRect) {
     let local = people.first(where: { $0.isLocal })
     let remotes = people.filter { !$0.isLocal }
-    if people.count < 2 || people.count > 4 {
+    if people.count < 2 {
       localIsFeatured = false
     }
     switch people.count {
@@ -483,10 +483,8 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
       placeTile(local?.id, frame: bounds, radius: 0, pip: false)
     case 2:
       layoutDuo(local: local, remote: remotes.first, bounds: bounds)
-    case 3, 4:
-      layoutInsetRow(local: local, remotes: remotes, bounds: bounds)
     default:
-      layoutFeaturedGrid(local: local, remotes: remotes, bounds: bounds)
+      layoutInsetRow(local: local, remotes: remotes, bounds: bounds)
     }
   }
 
@@ -502,7 +500,7 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     remotes: [(id: String, isLocal: Bool)],
     count: Int
   ) -> String? {
-    if count >= 2 && count <= 4 && localIsFeatured, let local {
+    if count >= 2 && localIsFeatured, let local {
       return local.id
     }
     return featuredRemoteId(remotes) ?? local?.id
@@ -587,12 +585,42 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   }
 
   /// Keep in sync with `rowPipSize` / `ROW_PIP_*` in `callVideoLayout.js`.
-  private func rowPipSize(bounds: CGRect) -> CGSize {
+  private func rowPipSize(bounds: CGRect, slots: Int) -> CGSize {
     let side: CGFloat = 16
     let gap: CGFloat = 8
-    let slots: CGFloat = 3
-    let width = (bounds.width - side * 2 - gap * (slots - 1)) / slots
+    let cap = CGFloat(max(1, slots))
+    let width = (bounds.width - side * 2 - gap * (cap - 1)) / cap
     return CGSize(width: width, height: width * 4 / 3)
+  }
+
+  /// Keep in sync with `packInsetRows` in `callVideoLayout.js`.
+  private func packInsetRows(_ insetIds: [String], slots: Int, fillBottom: Bool) -> [[String]] {
+    let n = insetIds.count
+    let cap = max(1, slots)
+    guard n > 0 else { return [] }
+    let rowCount = Int(ceil(Double(n) / Double(cap)))
+    var counts: [Int] = []
+    if fillBottom {
+      var left = n
+      for _ in 0..<rowCount {
+        let take = min(cap, left)
+        counts.insert(take, at: 0)
+        left -= take
+      }
+    } else {
+      let base = n / rowCount
+      let extra = n % rowCount
+      for i in 0..<rowCount {
+        let fromBottom = rowCount - 1 - i
+        counts.append(base + (fromBottom < extra ? 1 : 0))
+      }
+    }
+    var offset = 0
+    return counts.map { count in
+      let row = Array(insetIds[offset..<(offset + count)])
+      offset += count
+      return row
+    }
   }
 
   private func layoutInsetRow(
@@ -600,71 +628,36 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     remotes: [(id: String, isLocal: Bool)],
     bounds: CGRect
   ) {
-    let featured = featuredIdentity(local: local, remotes: remotes, count: remotes.count + (local == nil ? 0 : 1))
+    let count = remotes.count + (local == nil ? 0 : 1)
+    let featured = featuredIdentity(local: local, remotes: remotes, count: count)
     placeTile(featured, frame: bounds, radius: 0, pip: false)
     var insetIds = remotes.map(\.id).filter { $0 != featured }
     if let local, local.id != featured {
       insetIds.append(local.id)
     }
-    let size = rowPipSize(bounds: bounds)
+    let slots = count >= 8 ? 4 : 3
+    let rows = packInsetRows(insetIds, slots: slots, fillBottom: count >= 8)
+    let size = rowPipSize(bounds: bounds, slots: slots)
     let bottomPad: CGFloat = controlsHidden
       ? max(20, overlay.safeAreaInsets.bottom + 12)
       : 184
     let gap: CGFloat = 8
     let side: CGFloat = 16
-    let y = bounds.height - bottomPad - size.height
-    var x = bounds.width - side - size.width
-    for id in insetIds.reversed() {
-      placeTile(
-        id,
-        frame: CGRect(x: x, y: y, width: size.width, height: size.height),
-        radius: 14,
-        pip: true,
-        front: true
-      )
-      x -= size.width + gap
-    }
-  }
-
-  private func layoutFeaturedGrid(
-    local: (id: String, isLocal: Bool)?,
-    remotes: [(id: String, isLocal: Bool)],
-    bounds: CGRect
-  ) {
-    let gap: CGFloat = 3
-    let featured = featuredRemoteId(remotes)
-    var rest = remotes.map(\.id).filter { $0 != featured }
-    if let local { rest.append(local.id) }
-    let topH = (bounds.height - gap) / 2
-    placeTile(featured, frame: CGRect(x: 0, y: 0, width: bounds.width, height: topH), radius: 10, pip: false)
-    let botY = topH + gap
-    let botH = bounds.height - botY
-    let row0n = rest.count / 2
-    let row1n = rest.count - row0n
-    let rowH = rest.isEmpty ? botH : (botH - (row0n > 0 && row1n > 0 ? gap : 0)) / CGFloat(max(1, (row0n > 0 ? 1 : 0) + (row1n > 0 ? 1 : 0)))
-    func placeRow(_ ids: ArraySlice<String>, y: CGFloat) {
-      let n = max(1, ids.count)
-      let cellW = (bounds.width - gap * CGFloat(n - 1)) / CGFloat(n)
-      for (i, id) in ids.enumerated() {
+    var y = bounds.height - bottomPad
+    for row in rows.reversed() {
+      y -= size.height
+      var x = bounds.width - side - size.width
+      for id in row.reversed() {
         placeTile(
           id,
-          frame: CGRect(
-            x: CGFloat(i) * (cellW + gap),
-            y: y,
-            width: cellW,
-            height: rowH
-          ),
-          radius: 10,
-          pip: false,
-          front: id == local?.id
+          frame: CGRect(x: x, y: y, width: size.width, height: size.height),
+          radius: 14,
+          pip: true,
+          front: true
         )
+        x -= size.width + gap
       }
-    }
-    if row0n > 0 {
-      placeRow(rest.prefix(row0n), y: botY)
-    }
-    if row1n > 0 {
-      placeRow(rest.suffix(row1n), y: botY + (row0n > 0 ? rowH + gap : 0))
+      y -= gap
     }
   }
 
@@ -1025,22 +1018,8 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
       }
       let track = cameraTrack(for: participant)
       let isFeatured = person.id == featuredId
-      let speaking: Bool
-      if people.count <= 2 {
-        speaking = false
-      } else if people.count <= 4 && isFeatured {
-        speaking = false
-      } else {
-        speaking = speakingIdentities.contains(person.id)
-      }
-      let showName: Bool
-      if people.count >= 5 {
-        showName = true
-      } else if people.count >= 3 {
-        showName = !isFeatured
-      } else {
-        showName = false
-      }
+      let speaking = people.count > 2 && !isFeatured && speakingIdentities.contains(person.id)
+      let showName = people.count >= 3 && !isFeatured
       tile.apply(
         track: track,
         name: name,

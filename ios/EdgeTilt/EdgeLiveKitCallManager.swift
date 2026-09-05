@@ -227,30 +227,35 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   }
 
   func setStreamFocus(isLocalMain: Bool = false, focusedIdentity: String? = nil, quadFocus _: Bool? = nil) {
-    // `quadFocus` is ignored. 2-person swap: honor `isLocalMain` first so a JS/LiveKit
-    // identity mismatch cannot leave You stuck in the inset.
-    let localId = identityString(room.localParticipant)
-    if isLocalMain {
-      localIsFeatured = true
-      focusedRemoteIdentity = ""
-    } else if let focusedIdentity {
-      let trimmed = focusedIdentity.trimmingCharacters(in: .whitespacesAndNewlines)
-      if !trimmed.isEmpty, trimmed == localId {
-        localIsFeatured = true
-        focusedRemoteIdentity = ""
+    let apply = {
+      // `quadFocus` is ignored. 2-person swap: honor `isLocalMain` first so a JS/LiveKit
+      // identity mismatch cannot leave You stuck in the inset.
+      let localId = self.identityString(self.room.localParticipant)
+      if isLocalMain {
+        self.localIsFeatured = true
+        self.focusedRemoteIdentity = ""
+      } else if let focusedIdentity {
+        let trimmed = focusedIdentity.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !trimmed.isEmpty, trimmed == localId {
+          self.localIsFeatured = true
+          self.focusedRemoteIdentity = ""
+        } else {
+          self.localIsFeatured = false
+          self.focusedRemoteIdentity = trimmed
+        }
       } else {
-        localIsFeatured = false
-        focusedRemoteIdentity = trimmed
+        self.localIsFeatured = false
       }
-    } else {
-      localIsFeatured = false
-    }
-    DispatchQueue.main.async {
       UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseInOut]) {
         self.layoutVideoViews()
       }
+      self.dispatchState()
     }
-    dispatchState()
+    if Thread.isMainThread {
+      apply()
+    } else {
+      DispatchQueue.main.async(execute: apply)
+    }
   }
 
   func setSpeaker(_ speaker: Bool) {
@@ -988,7 +993,7 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
         track: track,
         name: name,
         avatar: avatarImageByIdentity[person.id],
-        speaking: speakingIdentities.contains(person.id),
+        speaking: people.count > 2 && speakingIdentities.contains(person.id),
         showName: people.count > 2
       )
     }

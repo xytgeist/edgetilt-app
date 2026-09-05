@@ -11,6 +11,9 @@
 /** Duo pip gap above the pill. Native `layoutDuo` uses the same point value. */
 export const DUO_PIP_CHROME_BOTTOM_PX = 184
 export const DUO_PIP_RIGHT_PX = 16
+/** Screen Flip when You is featured: under the header Add-people chip (`right-4` + `h-11`). */
+export const SCREEN_FLIP_CLASS =
+  'top-[calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px))+0.75rem+2.75rem+0.5rem)] right-4'
 
 /**
  * @param {{

@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { fetchProfileFollowListProfiles } from '../../lounge/loungeProfileFollowList.js'
 import { chatInviteToCall } from '../../../utils/chatCallsApi.js'
+import { dismissEdgeCallKeyboard } from '../../../utils/edgeCallKit.js'
 
 /**
  * @param {string} query
@@ -55,6 +56,7 @@ export default function ChatCallInviteModal({
   const [loading, setLoading] = useState(false)
   const [invitingId, setInvitingId] = useState(/** @type {string | null} */ (null))
   const [error, setError] = useState('')
+  const listsReadyRef = useRef(false)
 
   useEffect(() => {
     if (!open) {
@@ -64,8 +66,9 @@ export default function ChatCallInviteModal({
       setInvitingId(null)
       return undefined
     }
+    dismissEdgeCallKeyboard()
     let cancelled = false
-    setLoading(true)
+    if (!listsReadyRef.current) setLoading(true)
     void (async () => {
       try {
         const [followingRes, followersRes] = await Promise.all([
@@ -75,8 +78,9 @@ export default function ChatCallInviteModal({
         if (cancelled) return
         if (followingRes.error) throw followingRes.error
         if (followersRes.error) throw followersRes.error
-        setFollowing((followingRes.profiles || []).filter((p) => p?.user_id && !exclude.has(p.user_id)))
-        setFollowers((followersRes.profiles || []).filter((p) => p?.user_id && !exclude.has(p.user_id)))
+        setFollowing(followingRes.profiles || [])
+        setFollowers(followersRes.profiles || [])
+        listsReadyRef.current = true
       } catch (ex) {
         if (!cancelled) setError(ex?.message || 'Could not load people.')
       } finally {
@@ -86,7 +90,7 @@ export default function ChatCallInviteModal({
     return () => {
       cancelled = true
     }
-  }, [open, supabaseClient, viewerUserId, exclude])
+  }, [open, supabaseClient, viewerUserId])
 
   useEffect(() => {
     if (!open) return undefined
@@ -118,15 +122,19 @@ export default function ChatCallInviteModal({
 
   const followingIds = useMemo(() => new Set(following.map((p) => p.user_id)), [following])
   const filteredFollowing = useMemo(
-    () => following.filter((p) => profileMatchesQuery(search, p)),
-    [following, search],
+    () => following.filter((p) => p?.user_id && !exclude.has(p.user_id) && profileMatchesQuery(search, p)),
+    [following, search, exclude],
   )
   const filteredFollowers = useMemo(
     () =>
       followers.filter(
-        (p) => profileMatchesQuery(search, p) && !followingIds.has(p.user_id),
+        (p) =>
+          p?.user_id &&
+          !exclude.has(p.user_id) &&
+          profileMatchesQuery(search, p) &&
+          !followingIds.has(p.user_id),
       ),
-    [followers, followingIds, search],
+    [followers, followingIds, search, exclude],
   )
   const extraSearch = useMemo(() => {
     const known = new Set([...followingIds, ...followers.map((p) => p.user_id)])
@@ -214,10 +222,13 @@ export default function ChatCallInviteModal({
         </div>
         <div className="shrink-0 px-5 pb-3">
           <input
-            autoFocus
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search name or handle…"
+            autoComplete="off"
+            autoCorrect="off"
+            spellCheck={false}
+            enterKeyHint="search"
             className="w-full rounded-2xl border border-white/10 bg-zinc-950 px-4 py-3 text-[15px] text-white placeholder:text-zinc-500 focus:border-cyan-500/50 focus:outline-none"
           />
         </div>

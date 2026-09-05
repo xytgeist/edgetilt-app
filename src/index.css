@@ -8876,6 +8876,29 @@ html.light .reaction-pill {
   background: #111b21;
 }
 
+/* Call invite sheet stays dark in both modes... it sits on the always-dark call stage. */
+html.light [data-call-invite-modal] .text-white {
+  color: #fafafa !important;
+}
+html.light [data-call-invite-modal] .text-zinc-300 {
+  color: #d4d4d8 !important;
+}
+html.light [data-call-invite-modal] .text-zinc-400,
+html.light [data-call-invite-modal] .text-zinc-500,
+html.light [data-call-invite-modal] .placeholder\:text-zinc-500::placeholder {
+  color: #a1a1aa !important;
+}
+html.light [data-call-invite-modal] .text-cyan-300 {
+  color: #67e8f9 !important;
+}
+html.light [data-call-invite-modal] .text-rose-300 {
+  color: #fda4af !important;
+}
+html.light [data-call-invite-modal] input {
+  color: #fafafa !important;
+  -webkit-text-fill-color: #fafafa;
+}
+
 /* Native iOS IPA video hole: make HTML, body, #root, and background shell transparent so native VideoView shows through */
 html[data-edge-video-active='1'],
 html[data-edge-video-active='1'] body,

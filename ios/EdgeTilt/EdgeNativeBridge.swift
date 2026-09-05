@@ -194,7 +194,10 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       )
       completion(.success(["ok": true]))
     case "setNativeCallStreamFocus":
-      let isLocalMain = (payload?["isLocalMain"] as? Bool) ?? false
+      // WKWebView postMessage turns JS true into NSNumber. `as? Bool` misses it
+      // and the 2-person swap stays stuck on the remote.
+      let isLocalMain =
+        Self.payloadFlag(payload, "isLocalMain") || Self.payloadFlag(payload, "localMain")
       let focusedIdentity = payload?["focusedIdentity"] as? String
       let quadFocus = payload?["quadFocus"] as? Bool
       EdgeLiveKitCallManager.shared.setStreamFocus(
@@ -445,6 +448,18 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     }
   }
 
+  /// JS `true` arrives as NSNumber via `postMessage`. `as? Bool` returns nil.
+  private static func payloadFlag(_ payload: [String: Any]?, _ key: String) -> Bool {
+    guard let raw = payload?[key] else { return false }
+    if let flag = raw as? Bool { return flag }
+    if let number = raw as? NSNumber { return number.boolValue }
+    if let text = raw as? String {
+      let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+      return trimmed == "true" || trimmed == "1" || trimmed == "yes"
+    }
+    return false
+  }
+
   // MARK: - Bootstrap script
 
   private static let bridgeBootstrapScript = """
@@ -530,6 +545,9 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       },
       setNativeCallChrome: function (payload) {
         return call('setNativeCallChrome', payload || {});
+      },
+      setNativeCallStreamFocus: function (payload) {
+        return call('setNativeCallStreamFocus', payload || {});
       },
       getNativeCallState: function () {
         return call('getNativeCallState', null);

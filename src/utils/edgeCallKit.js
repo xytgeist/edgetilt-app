@@ -227,6 +227,8 @@ export async function setNativeCallStreamFocus(args = {}) {
     const isLocalMain = Boolean(args.isLocalMain)
     const result = await edgeNativeInvoke('setNativeCallStreamFocus', {
       isLocalMain,
+      // NSNumber fallback if WKWebView drops the Bool.
+      localMain: isLocalMain ? 1 : 0,
       focusedIdentity,
       quadFocus: Boolean(args.quadFocus),
     })

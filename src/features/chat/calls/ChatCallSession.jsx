@@ -31,11 +31,13 @@ import {
   setNativeCallMute,
   setNativeCallSpeaker,
   setNativeCallStreamFocus,
+  dismissEdgeCallKeyboard,
 } from '../../../utils/edgeCallKit.js'
 import {
   CALL_STREAM_DOUBLE_TAP_MS,
   DUO_PIP_CHROME_BOTTOM_PX,
   DUO_PIP_RIGHT_PX,
+  SCREEN_FLIP_CLASS,
   duoPipSize,
   planCallVideoLayout,
 } from './callVideoLayout.js'
@@ -43,6 +45,19 @@ import ChatCallInviteModal from './ChatCallInviteModal.jsx'
 
 const EMPTY_CAMERA_BY_IDENTITY = new Map()
 const EMPTY_SPEAKING_IDS = new Set()
+
+function hideChromeForInvite(open, { hideTimerRef, setControlsHidden, resetControlsTimer }) {
+  if (open) {
+    if (hideTimerRef.current) {
+      window.clearTimeout(hideTimerRef.current)
+      hideTimerRef.current = null
+    }
+    setControlsHidden(true)
+    dismissEdgeCallKeyboard()
+  } else {
+    resetControlsTimer()
+  }
+}
 
 function useCallStreamTap({ controlsHidden, onReveal, onFocus }) {
   const lastRef = useRef({ at: 0, id: '' })
@@ -1158,6 +1173,9 @@ function NativeIpaCallSession({
             ...nativeRoster.map((p) => p.identity),
           ]}
           onCallPromoted={onCallPromoted}
+          onOpenChange={(next) =>
+            hideChromeForInvite(next, { hideTimerRef, setControlsHidden, resetControlsTimer })
+          }
         />
       </div>
 
@@ -2012,6 +2030,9 @@ function CallChrome({
             ...participants.map((p) => p.identity),
           ]}
           onCallPromoted={onCallPromoted}
+          onOpenChange={(next) =>
+            hideChromeForInvite(next, { hideTimerRef, setControlsHidden, resetControlsTimer })
+          }
         />
       </div>
 
@@ -2206,6 +2227,7 @@ function VideoCallStage({
     localId: localParticipant?.identity || null,
     featuredId: featuredIdentity,
   })
+  const liveSpeakingIds = plan.mode === 'duo' ? EMPTY_SPEAKING_IDS : speakingIds
   const byId = new Map()
   for (const p of remotes) byId.set(p.identity, p)
   if (localParticipant) byId.set(localParticipant.identity, localParticipant)
@@ -2233,7 +2255,7 @@ function VideoCallStage({
             sizeClass="h-[52%] w-[52%] max-h-16 max-w-16"
             textClass="text-[18px]"
           />
-          <SpeakingDots active={speakingIds.has(participant.identity)} />
+          <SpeakingDots active={liveSpeakingIds.has(participant.identity)} />
         </div>
       )
     }
@@ -2259,7 +2281,7 @@ function VideoCallStage({
     showLocalFlip && localParticipant && (plan.localIsFeatured || plan.mode === 'solo') ? (
       <LocalFlipChip
         positionClass="fixed"
-        className={`top-[calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px))+0.75rem)] right-[4.75rem] transition-opacity duration-300 ${flipFade}`}
+        className={`${SCREEN_FLIP_CLASS} transition-opacity duration-300 ${flipFade}`}
         size="header"
         onFlip={onFlipCamera}
       />
@@ -2625,8 +2647,13 @@ function CallInviteHeaderButton({
   viewerUserId,
   excludeUserIds = [],
   onCallPromoted,
+  onOpenChange,
 }) {
   const [open, setOpen] = useState(false)
+  const setInviteOpen = (next) => {
+    setOpen(next)
+    onOpenChange?.(next)
+  }
   if (!supabaseClient || !callId || !roomId || !viewerUserId) {
     return <div className="h-11 w-11 shrink-0" aria-hidden />
   }
@@ -2637,13 +2664,13 @@ function CallInviteHeaderButton({
         data-chat-call-interactive=""
         className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/10 text-white shadow-lg backdrop-blur-xl transition active:scale-95 touch-manipulation hover:bg-white/15"
         aria-label="Add people to this call"
-        onClick={() => setOpen(true)}
+        onClick={() => setInviteOpen(true)}
       >
         <PersonPlusIcon />
       </button>
       <ChatCallInviteModal
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={() => setInviteOpen(false)}
         supabaseClient={supabaseClient}
         callId={callId}
         viewerUserId={viewerUserId}

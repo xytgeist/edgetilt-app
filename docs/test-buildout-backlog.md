@@ -2850,6 +2850,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-05:** **US IPA paywall leads with web.** Card shows App Store and web as peer tiles. Cyan CTA is Safari/Stripe; iPhone is the outline button. Confirmed non-US still leads with IAP and omits the cheaper web dollar. **`1.4.68`.**
 - **2026-09-05:** **US IPA paywall shows both stickers.** Card: App Store `displayPrice` + web (founding/military/affiliate) amount. iPhone button and web button both include a dollar. Unknown storefront still shows the web dollar; confirmed non-US hides it. Also fixed SubscribeModal reading `usStorefront` before `useState` (would crash the sheet). **`1.4.67`.**
 - **2026-09-05:** **App Store storefront gate.** `getStorefront` (`Storefront.current`, `USA`). IPA prints cheaper web dollars (founding chip, Edge Pro `$9.99` web CTA, fan web sticker) only in the US. Both CTAs stay. Old binaries / unknown → no web dollar. **`1.4.66`.** New TestFlight for the native method.
 - **2026-09-05:** **IPA Subscribe carousel drops Lifetime.** Starter + Pro only on the shell so Review cannot swipe onto the `$1,000` placeholder. Web carousel unchanged. **`1.4.65`.**

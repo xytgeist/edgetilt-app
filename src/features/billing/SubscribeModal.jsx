@@ -168,6 +168,26 @@ function PlanFeature({ children }) {
   )
 }
 
+function PlanComparePrices({
+  storePrice,
+  webPrice,
+  storeLabel = 'App Store',
+  webLabel = 'Web',
+}) {
+  return (
+    <div className="subscribe-plan-compare-prices mt-3 grid grid-cols-2 gap-2">
+      <div className="subscribe-plan-compare-store rounded-xl px-2.5 py-2 ring-1 ring-white/10">
+        <div className="text-xl font-bold tracking-tight text-white">{storePrice}</div>
+        <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">{storeLabel}</p>
+      </div>
+      <div className="subscribe-plan-compare-web rounded-xl px-2.5 py-2 ring-1 ring-cyan-400/25">
+        <div className="text-xl font-bold tracking-tight text-cyan-200">{webPrice}</div>
+        <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-cyan-300/80">{webLabel}</p>
+      </div>
+    </div>
+  )
+}
+
 function planCardClass(selected, extra = '') {
   return [
     'subscribe-plan-card subscribe-plan-card--starter group relative flex h-full min-h-[19rem] w-full flex-col rounded-[1.25rem] border px-3.5 pb-3.5 pt-9 text-left touch-manipulation transition-[border-color,box-shadow,filter] sm:min-h-[23.5rem] sm:rounded-[1.35rem] sm:px-4 sm:pb-4 sm:pt-10',
@@ -953,43 +973,49 @@ export default function SubscribeModal({
                           Annual
                         </button>
                       </div>
-                      <div className="mt-3 flex flex-wrap items-end gap-1.5">
-                        {starterStoreProduct?.displayPrice ? (
-                          <span className="text-xl font-bold tracking-tight text-white">
-                            {starterStoreProduct.displayPrice}
-                          </span>
-                        ) : showWebComparePrice && starterInterval === 'annual' ? (
-                          <>
-                            <span className="text-xl font-bold tracking-tight text-white">{starterAnnualEarly}</span>
-                            <span className="pb-0.5 text-xs text-zinc-500 line-through">{starterAnnualList}</span>
-                          </>
-                        ) : showWebComparePrice ? (
-                          <>
-                            <span className="text-xl font-bold tracking-tight text-white">{starterEarly}</span>
-                            <span className="pb-0.5 text-xs text-zinc-500 line-through">{starterList}</span>
-                          </>
-                        ) : null}
-                      </div>
-                      <p className="mt-0.5 text-[11px] text-zinc-500">
-                        {starterStoreProduct?.displayPrice
-                          ? 'App Store price'
-                          : !showWebComparePrice
-                          ? 'App Store price'
-                          : starterInterval === 'annual'
-                          ? isMilitaryPromo
-                            ? `${starterAnnualEffective} effective · ${militaryRateCaption}`
-                            : isAffiliatePromo
-                            ? `${starterAnnualEffective} effective · ${affiliateRateCaption}`
-                            : `${starterAnnualEffective} effective · founding rate`
-                          : isMilitaryPromo
-                            ? militaryRateCaption
-                            : isAffiliatePromo
-                            ? affiliateRateCaption
-                            : 'Founding rate on monthly checkout'}
-                      </p>
                       {starterStoreProduct?.displayPrice && showWebComparePrice ? (
-                        <p className="mt-0.5 text-[11px] text-zinc-400">{starterWebPrice} on the web</p>
-                      ) : null}
+                        <PlanComparePrices
+                          storePrice={starterStoreProduct.displayPrice}
+                          webPrice={starterWebPrice}
+                        />
+                      ) : (
+                        <>
+                          <div className="mt-3 flex flex-wrap items-end gap-1.5">
+                            {starterStoreProduct?.displayPrice ? (
+                              <span className="text-xl font-bold tracking-tight text-white">
+                                {starterStoreProduct.displayPrice}
+                              </span>
+                            ) : showWebComparePrice && starterInterval === 'annual' ? (
+                              <>
+                                <span className="text-xl font-bold tracking-tight text-white">{starterAnnualEarly}</span>
+                                <span className="pb-0.5 text-xs text-zinc-500 line-through">{starterAnnualList}</span>
+                              </>
+                            ) : showWebComparePrice ? (
+                              <>
+                                <span className="text-xl font-bold tracking-tight text-white">{starterEarly}</span>
+                                <span className="pb-0.5 text-xs text-zinc-500 line-through">{starterList}</span>
+                              </>
+                            ) : null}
+                          </div>
+                          <p className="mt-0.5 text-[11px] text-zinc-500">
+                            {starterStoreProduct?.displayPrice
+                              ? 'App Store price'
+                              : !showWebComparePrice
+                              ? 'App Store price'
+                              : starterInterval === 'annual'
+                              ? isMilitaryPromo
+                                ? `${starterAnnualEffective} effective · ${militaryRateCaption}`
+                                : isAffiliatePromo
+                                ? `${starterAnnualEffective} effective · ${affiliateRateCaption}`
+                                : `${starterAnnualEffective} effective · founding rate`
+                              : isMilitaryPromo
+                                ? militaryRateCaption
+                                : isAffiliatePromo
+                                ? affiliateRateCaption
+                                : 'Founding rate on monthly checkout'}
+                          </p>
+                        </>
+                      )}
                       <ul className="mt-3 flex-1 space-y-1.5">
                         {STARTER_FEATURES.map((line) => (
                           <PlanFeature key={line}>{line}</PlanFeature>
@@ -1089,43 +1115,49 @@ export default function SubscribeModal({
                           Annual
                         </button>
                       </div>
-                      <div className="mt-3 flex flex-wrap items-end gap-1.5">
-                        {fullStoreProduct?.displayPrice ? (
-                          <span className="text-xl font-bold tracking-tight text-white">
-                            {fullStoreProduct.displayPrice}
-                          </span>
-                        ) : showWebComparePrice && fullInterval === 'annual' ? (
-                          <>
-                            <span className="text-xl font-bold tracking-tight text-white">{fullAnnualEarly}</span>
-                            <span className="pb-0.5 text-xs text-zinc-500 line-through">{fullAnnualList}</span>
-                          </>
-                        ) : showWebComparePrice ? (
-                          <>
-                            <span className="text-xl font-bold tracking-tight text-white">{fullMonthlyEarly}</span>
-                            <span className="pb-0.5 text-xs text-zinc-500 line-through">{fullMonthlyList}</span>
-                          </>
-                        ) : null}
-                      </div>
-                      <p className="mt-0.5 text-[11px] text-zinc-500">
-                        {fullStoreProduct?.displayPrice
-                          ? 'App Store price'
-                          : !showWebComparePrice
-                          ? 'App Store price'
-                          : fullInterval === 'annual'
-                          ? isMilitaryPromo
-                            ? `${fullAnnualEffective} effective · ${militaryRateCaption}`
-                            : isAffiliatePromo
-                            ? `${fullAnnualEffective} effective · ${affiliateRateCaption}`
-                            : `${fullAnnualEffective} effective · one month free`
-                          : isMilitaryPromo
-                            ? militaryRateCaption
-                            : isAffiliatePromo
-                            ? affiliateRateCaption
-                            : 'Founding rate on monthly checkout'}
-                      </p>
                       {fullStoreProduct?.displayPrice && showWebComparePrice ? (
-                        <p className="mt-0.5 text-[11px] text-zinc-400">{fullWebPrice} on the web</p>
-                      ) : null}
+                        <PlanComparePrices
+                          storePrice={fullStoreProduct.displayPrice}
+                          webPrice={fullWebPrice}
+                        />
+                      ) : (
+                        <>
+                          <div className="mt-3 flex flex-wrap items-end gap-1.5">
+                            {fullStoreProduct?.displayPrice ? (
+                              <span className="text-xl font-bold tracking-tight text-white">
+                                {fullStoreProduct.displayPrice}
+                              </span>
+                            ) : showWebComparePrice && fullInterval === 'annual' ? (
+                              <>
+                                <span className="text-xl font-bold tracking-tight text-white">{fullAnnualEarly}</span>
+                                <span className="pb-0.5 text-xs text-zinc-500 line-through">{fullAnnualList}</span>
+                              </>
+                            ) : showWebComparePrice ? (
+                              <>
+                                <span className="text-xl font-bold tracking-tight text-white">{fullMonthlyEarly}</span>
+                                <span className="pb-0.5 text-xs text-zinc-500 line-through">{fullMonthlyList}</span>
+                              </>
+                            ) : null}
+                          </div>
+                          <p className="mt-0.5 text-[11px] text-zinc-500">
+                            {fullStoreProduct?.displayPrice
+                              ? 'App Store price'
+                              : !showWebComparePrice
+                              ? 'App Store price'
+                              : fullInterval === 'annual'
+                              ? isMilitaryPromo
+                                ? `${fullAnnualEffective} effective · ${militaryRateCaption}`
+                                : isAffiliatePromo
+                                ? `${fullAnnualEffective} effective · ${affiliateRateCaption}`
+                                : `${fullAnnualEffective} effective · one month free`
+                              : isMilitaryPromo
+                                ? militaryRateCaption
+                                : isAffiliatePromo
+                                ? affiliateRateCaption
+                                : 'Founding rate on monthly checkout'}
+                          </p>
+                        </>
+                      )}
                       <ul className="mt-3 flex-1 space-y-1.5">
                         {FULL_FEATURES.map((line) => (
                           <PlanFeature key={line}>{line}</PlanFeature>
@@ -1178,30 +1210,39 @@ export default function SubscribeModal({
                       </span>
                       <div className="mt-1.5 text-lg font-bold text-white">{productDisplayName(PRODUCT_SLOTS_EDGE_LIFETIME)}</div>
                       <p className="mt-0.5 text-xs text-zinc-400">Pay once. Never worry about renewals or new-tool add-ons.</p>
-                      <div className="mt-3 flex flex-wrap items-end gap-1.5">
-                        {lifetimeStoreProduct?.displayPrice ? (
-                          <span className="text-xl font-bold tracking-tight text-white">
-                            {lifetimeStoreProduct.displayPrice}
-                          </span>
-                        ) : (
-                          <>
-                            <span className="text-xl font-bold tracking-tight text-white">{lifetimeEarly}</span>
-                            <span className="pb-0.5 text-xs text-zinc-500 line-through">{lifetimeList}</span>
-                          </>
-                        )}
-                      </div>
-                      <p className="mt-0.5 text-[11px] text-zinc-500">
-                        {lifetimeStoreProduct?.displayPrice
-                          ? 'App Store price · one-time'
-                          : isMilitaryPromo
-                          ? `${militaryRateCaption} · one-time`
-                          : isAffiliatePromo
-                          ? `${affiliateRateCaption} · one-time`
-                          : 'Founding rate · one-time checkout'}
-                      </p>
                       {lifetimeStoreProduct?.displayPrice && showWebComparePrice ? (
-                        <p className="mt-0.5 text-[11px] text-zinc-400">{lifetimeWebPrice} on the web · one-time</p>
-                      ) : null}
+                        <>
+                          <PlanComparePrices
+                            storePrice={lifetimeStoreProduct.displayPrice}
+                            webPrice={lifetimeWebPrice}
+                          />
+                          <p className="mt-1 text-[11px] text-zinc-500">One-time</p>
+                        </>
+                      ) : (
+                        <>
+                          <div className="mt-3 flex flex-wrap items-end gap-1.5">
+                            {lifetimeStoreProduct?.displayPrice ? (
+                              <span className="text-xl font-bold tracking-tight text-white">
+                                {lifetimeStoreProduct.displayPrice}
+                              </span>
+                            ) : (
+                              <>
+                                <span className="text-xl font-bold tracking-tight text-white">{lifetimeEarly}</span>
+                                <span className="pb-0.5 text-xs text-zinc-500 line-through">{lifetimeList}</span>
+                              </>
+                            )}
+                          </div>
+                          <p className="mt-0.5 text-[11px] text-zinc-500">
+                            {lifetimeStoreProduct?.displayPrice
+                              ? 'App Store price · one-time'
+                              : isMilitaryPromo
+                              ? `${militaryRateCaption} · one-time`
+                              : isAffiliatePromo
+                              ? `${affiliateRateCaption} · one-time`
+                              : 'Founding rate · one-time checkout'}
+                          </p>
+                        </>
+                      )}
                       <ul className="mt-3 flex-1 space-y-1.5">
                         {LIFETIME_FEATURES.map((line) => (
                           <PlanFeature key={line}>{line}</PlanFeature>
@@ -1233,6 +1274,30 @@ export default function SubscribeModal({
               {error ? <p className="mt-2 text-center text-sm text-red-400">{error}</p> : null}
 
               {canIapSelected ? (
+                showWebComparePrice ? (
+                <>
+                  <button
+                    type="button"
+                    disabled={checkoutDisabled}
+                    onClick={() => void handleCheckout('web')}
+                    className="subscribe-modal-checkout-btn mt-4 w-full min-h-12 shrink-0 rounded-2xl bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 disabled:opacity-50 font-bold text-white touch-manipulation shadow-[0_8px_28px_rgba(6,182,212,0.28)]"
+                  >
+                    {busy ? 'Opening Safari…' : `Subscribe on the web · ${selectedWebPrice}`}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={checkoutDisabled}
+                    onClick={() => void handleCheckout('iap')}
+                    className="mt-2 w-full min-h-11 shrink-0 rounded-2xl border border-zinc-700/80 bg-zinc-900 px-4 text-sm font-semibold text-zinc-100 touch-manipulation hover:bg-zinc-800 disabled:opacity-50"
+                  >
+                    {busy
+                      ? 'Purchasing…'
+                      : selectedStoreProduct?.displayPrice
+                        ? `Subscribe on iPhone · ${selectedStoreProduct.displayPrice}`
+                        : checkoutLabel}
+                  </button>
+                </>
+                ) : (
                 <>
                   <button
                     type="button"
@@ -1252,13 +1317,10 @@ export default function SubscribeModal({
                     onClick={() => void handleCheckout('web')}
                     className="mt-2 w-full min-h-11 shrink-0 rounded-2xl border border-zinc-700/80 bg-zinc-900 px-4 text-sm font-semibold text-zinc-100 touch-manipulation hover:bg-zinc-800 disabled:opacity-50"
                   >
-                    {busy
-                      ? 'Opening Safari…'
-                      : showWebComparePrice
-                        ? `Subscribe on the web · ${selectedWebPrice}`
-                        : 'Subscribe on the web'}
+                    {busy ? 'Opening Safari…' : 'Subscribe on the web'}
                   </button>
                 </>
+                )
               ) : (
                 <button
                   type="button"

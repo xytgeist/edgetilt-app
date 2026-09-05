@@ -77,7 +77,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Mac Theo 2026-09-05 … IAP refund sheet + ASSN (test)
 
-**I am Mac Theo.** SubscribeModal cards now print App Store + web dollars, and both CTAs include a price. Non-US storefront still omits the cheaper web sticker. Lifetime still hidden on the IPA carousel. **`1.4.67`.** Vercel JS is enough for the sticker copy. Do not Add Lifetime for Review.
+**I am Mac Theo.** US SubscribeModal leads with web: peer App Store / Web tiles, cyan CTA is Safari, iPhone is secondary. Non-US still leads with IAP. Lifetime still hidden on the IPA carousel. **`1.4.68`.** Vercel JS is enough. Do not Add Lifetime for Review.
 
 ### Mac Theo 2026-09-05 … IAP dual-path (code, not live charges)
 

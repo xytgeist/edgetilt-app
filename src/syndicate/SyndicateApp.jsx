@@ -307,7 +307,7 @@ export function SyndicateApp() {
     async function loadData() {
       setLoading(true)
       const [ledgerRes, trenchRes, cfbRes, ufcRes] = await Promise.all([
-        fetchSyndicateLedger(250),
+        fetchSyndicateLedger(),
         fetchTrenchMetrics(),
         fetchCfbPowerRatings(),
         fetchUfcFighterMetrics(),
@@ -332,7 +332,7 @@ export function SyndicateApp() {
     return () => document.removeEventListener('mousedown', onPointerDown)
   }, [sportsMenuOpen])
 
-  // Calculate live ledger stats (exclude future / in-progress games)
+  // Record tiles use settled Syndicate rows only (pending/future never have a winner).
   const overviewStats = computePerformanceStats(picks)
   const nflStats = computePerformanceStats(picks.filter((p) => pickMatchesSport(p, 'nfl')))
   const cfbStats = computePerformanceStats(picks.filter((p) => pickMatchesSport(p, 'cfb')))

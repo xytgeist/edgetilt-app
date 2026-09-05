@@ -24,6 +24,8 @@
 
 **Syndicate Ops (desk day-to-day):** **https://sharpesyndicate.com/ops** (or `?ops=1`) … admin email/password, same `profiles.role = admin` as EdgeTilt. Hosts Sharp Desk: scorecard/drops, Chedda paste, PVALs, EPA/CFB/UFC editors, monthly board. Queues as **`sharpe-syndicate`**. **Not** embedded on Signal (`sports-odds` / `/?tab=bots`). Signal portal has **no** desk send controls; Syndicate portal has **no** Signal alert controls.
 
+**Public site ledger (`sharpesyndicate.com` Overview / Audited Ledger):** `fetchSyndicateLedger` loads **Syndicate** `won` / `lost` / `push` only (resolve `@sharpesyndicate` then paginate). Do **not** take the newest-kickoff slice … Saturday pending fills that cap and finished grades fall off. Pending/future games cannot be in the W-L tiles. Client pins **production** Supabase (`VITE_SYNDICATE_SUPABASE_*` override only … not EdgeTilt test `.env`). Hosted on **Cloudflare Pages** (`npm run build:syndicate`); git `test` does not publish that domain by itself.
+
 **Self-contained** — no morning editorial inbox. Roster context: **`docs/lounge-bot-editorial-queue.md`**.
 
 ---

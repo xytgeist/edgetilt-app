@@ -1,10 +1,10 @@
 import { createClient } from '@supabase/supabase-js'
 
 const SUPABASE_URL = String(
-  import.meta.env.VITE_SUPABASE_URL || 'https://jtjgtucumuoswnbauxry.supabase.co'
+  import.meta.env.VITE_SYNDICATE_SUPABASE_URL || 'https://jtjgtucumuoswnbauxry.supabase.co'
 ).trim()
 const SUPABASE_ANON_KEY = String(
-  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  import.meta.env.VITE_SYNDICATE_SUPABASE_ANON_KEY ||
     'sb_publishable_u3-GQGrZ_hswapkiWiPyLA_Ah3mxU8B'
 ).trim()
 

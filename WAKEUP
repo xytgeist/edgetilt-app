@@ -79,6 +79,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Mac Theo.** Platform SubscribeModal + fan SUB + Edge Pro Settings can offer **IAP and Safari** for the same unlock. Fan IAP is one SKU per tier (`com.edgetilt.app.fan_tier_499.monthly` …), bound to a creator via `apple_iap_intents`. SQL **`20260905120000`**. Redeploy **`apple-iap-verify`** on **test**. New TestFlight for `manageStoreSubscriptions` + JWS. **Ryan still creates ASC products.** Do not take a real charge until sandbox + ASSN. **`1.4.60`.**
 
+### Windows Theo 2026-09-05 … public syndicate Overview was empty
+
+**I am Windows Theo.** sharpesyndicate.com Overview dashed because the site fetched the newest 250 kickoffs, not finished W-L. Saturday pending cannot be won/lost, but those rows still crowded the graded book off the page. Fetch is now Syndicate `won`/`lost`/`push` only. **`1.4.62`.** Cloudflare Pages still needs a rebuild for the live domain.
+
 ### Windows Theo 2026-09-05 … grade-picks ledger was stuck pending
 
 **I am Windows Theo.** Auto-grade was 500ing: `oddsApiKey` was never imported in `lounge-odds-poll` (poll_edges swallowed it). Cron still looked green. Also one Edge call, 150s timeout, cron **:22**. SQL **`20260905130000`**. Redeploy **`lounge-odds-poll`** + **`lounge-odds-ingest`**. Prod invoke settled **158** rows. **`1.4.61`.**

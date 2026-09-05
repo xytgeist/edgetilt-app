@@ -63,10 +63,13 @@ export async function fetchEspnGameSummary(
   if (!isNfl && !isCfb && !isMma) return null
 
   // MMA / UFC scoreboard parsing
+  const espnAbort = new AbortController()
+  const espnTimer = setTimeout(() => espnAbort.abort(), 8000)
+
   if (isMma) {
     try {
       const ufcUrl = 'https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard'
-      const res = await fetch(ufcUrl, { headers: { Accept: 'application/json' } })
+      const res = await fetch(ufcUrl, { headers: { Accept: 'application/json' }, signal: espnAbort.signal })
       if (!res.ok) return null
       const data = await res.json()
       const events: any[] = data?.events || []
@@ -103,6 +106,8 @@ export async function fetchEspnGameSummary(
     } catch (err) {
       console.warn(`ESPN MMA summary fetch failed for ${homeTeam} vs ${awayTeam}:`, err)
       return null
+    } finally {
+      clearTimeout(espnTimer)
     }
   }
 
@@ -112,6 +117,7 @@ export async function fetchEspnGameSummary(
   try {
     const res = await fetch(scoreboardUrl, {
       headers: { Accept: 'application/json' },
+      signal: espnAbort.signal,
     })
     if (!res.ok) return null
 
@@ -149,6 +155,7 @@ export async function fetchEspnGameSummary(
     const summaryUrl = `https://site.api.espn.com/apis/site/v2/sports/${league}/summary?event=${espnGameId}`
     const sumRes = await fetch(summaryUrl, {
       headers: { Accept: 'application/json' },
+      signal: espnAbort.signal,
     })
 
     let homeTotalYards = 0
@@ -226,5 +233,7 @@ export async function fetchEspnGameSummary(
   } catch (err) {
     console.warn(`ESPN game summary fetch failed for ${homeTeam} vs ${awayTeam}:`, err)
     return null
+  } finally {
+    clearTimeout(espnTimer)
   }
 }

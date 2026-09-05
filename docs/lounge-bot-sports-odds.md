@@ -17,6 +17,7 @@
 | Existing Signal subs | Stay Signal-only … **no** auto-migrate | New subs only |
 | Cron Signal alerts (`poll_edges` / coffee / BBH / VBR) | Yes (`sports-odds` only) | **Never** … cron + Edge skip |
 | Desk / slate / VIP shop crons | **Never** once Syndicate is running | Yes (`sharpe-syndicate` only) |
+| `grade_picks` / calibrate | Shared … **one** Edge call grades every running odds bot’s pending ledger | Same call (not a second http_post) |
 
 **Create bot (test):** `node scripts/create-sharpe-syndicate-bot.mjs`  
 **Prod create:** only with Ryan explicit + `--target=production --i-mean-it`.

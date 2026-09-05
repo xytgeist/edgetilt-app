@@ -79,6 +79,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Mac Theo.** Platform SubscribeModal + fan SUB + Edge Pro Settings can offer **IAP and Safari** for the same unlock. Fan IAP is one SKU per tier (`com.edgetilt.app.fan_tier_499.monthly` …), bound to a creator via `apple_iap_intents`. SQL **`20260905120000`**. Redeploy **`apple-iap-verify`** on **test**. New TestFlight for `manageStoreSubscriptions` + JWS. **Ryan still creates ASC products.** Do not take a real charge until sandbox + ASSN. **`1.4.60`.**
 
+### Windows Theo 2026-09-05 … grade-picks ledger was stuck pending
+
+**I am Windows Theo.** Auto-grade was 500ing: `oddsApiKey` was never imported in `lounge-odds-poll` (poll_edges swallowed it). Cron still looked green. Also one Edge call, 150s timeout, cron **:22**. SQL **`20260905130000`**. Redeploy **`lounge-odds-poll`** + **`lounge-odds-ingest`**. Prod invoke settled **158** rows. **`1.4.61`.**
+
 ### Windows Theo 2026-09-04 … chat image lightbox frost bar
 
 **I am Windows Theo.** Chat image lightbox no longer paints a full-width blur title bar. Circular back chip stays. Lounge image lightbox unchanged.

@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
     if (action === 'grade_picks') {
       const key = oddsApiKey()
       if (!key) return adminOpsJson(500, { error: 'THE_ODDS_API_KEY not configured.' })
-      const result = await gradePendingPicks(admin, key, bot.user_id)
+      const result = await gradePendingPicks(admin, key)
       return adminOpsJson(200, {
         ok: true,
         slug,

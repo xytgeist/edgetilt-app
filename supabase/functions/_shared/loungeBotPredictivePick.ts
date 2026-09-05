@@ -1996,7 +1996,97 @@ export function gradePickOutcome(
 /**
  * Poll The Odds API scores endpoint for all sports with pending picks,
  * resolve game outcomes, grade each pick, record units, and post auto-reply comments.
+ *
+ * Ledger writes happen first and must finish even if recap comments / ESPN time out.
+ * Cron used to fire this twice (Signal + Syndicate) on the same :15 as poll_live + poll_edges,
+ * then die at pg_net's 60s cap before any row flipped off pending.
  */
+const GRADE_SCORES_FETCH_MS = 12_000
+const GRADE_UPDATE_CHUNK = 8
+const GRADE_PENDING_PAGE = 500
+const GRADE_PENDING_CAP = 400
+
+async function fetchWithTimeout(
+  url: string,
+  ms: number,
+): Promise<Response> {
+  const ac = new AbortController()
+  const timer = setTimeout(() => ac.abort(), ms)
+  try {
+    return await fetch(url, { headers: { Accept: 'application/json' }, signal: ac.signal })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+async function fetchPendingPicksForGrade(
+  admin: SupabaseClient,
+  botUserId?: string,
+) {
+  const cutoff = new Date(Date.now() - 90 * 60 * 1000).toISOString()
+  const picks: Array<Record<string, unknown> & {
+    id: string
+    event_id: string
+    sport_key: string
+    status: string
+    market_key: string
+    post_id: string | null
+    bot_user_id: string
+    picker_name?: string
+    pick_name: string
+    pick_line: number | null
+    pick_price: number
+    home_team: string
+    away_team: string
+    metadata?: Record<string, unknown> | null
+  }> = []
+  let from = 0
+  while (picks.length < GRADE_PENDING_CAP) {
+    const to = Math.min(from + GRADE_PENDING_PAGE - 1, from + (GRADE_PENDING_CAP - picks.length) - 1)
+    let query = admin
+      .from('lounge_bot_picks')
+      .select('*')
+      .eq('status', 'pending')
+      .lte('commence_time', cutoff)
+      .order('commence_time', { ascending: true })
+      .range(from, to)
+    if (botUserId) query = query.eq('bot_user_id', botUserId)
+    const { data, error } = await query
+    if (error) return { picks, error: error.message }
+    const rows = data || []
+    picks.push(...rows)
+    if (rows.length < GRADE_PENDING_PAGE) break
+    from += GRADE_PENDING_PAGE
+  }
+  return { picks, error: null as string | null }
+}
+
+async function flushPickUpdates(
+  admin: SupabaseClient,
+  rows: Array<{ id: string; payload: Record<string, unknown> }>,
+  errors: string[],
+): Promise<number> {
+  let ok = 0
+  for (let i = 0; i < rows.length; i += GRADE_UPDATE_CHUNK) {
+    const chunk = rows.slice(i, i + GRADE_UPDATE_CHUNK)
+    const results = await Promise.all(
+      chunk.map((row) =>
+        admin.from('lounge_bot_picks').update(row.payload).eq('id', row.id),
+      ),
+    )
+    const okIds: string[] = []
+    results.forEach((res, idx) => {
+      if (res.error) {
+        errors.push(`Update ${chunk[idx].id}: ${res.error.message}`)
+        return
+      }
+      okIds.push(chunk[idx].id)
+    })
+    ok += okIds.length
+  }
+  return ok
+}
+
 export async function gradePendingPicks(
   admin: SupabaseClient,
   apiKey: string,
@@ -2005,22 +2095,12 @@ export async function gradePendingPicks(
   const errors: string[] = []
   let resolvedCount = 0
 
-  let query = admin
-    .from('lounge_bot_picks')
-    .select('*')
-    .eq('status', 'pending')
-    .lte('commence_time', new Date(Date.now() - 90 * 60 * 1000).toISOString()) // started >90m ago
-
-  if (botUserId) {
-    query = query.eq('bot_user_id', botUserId)
+  const { picks: pendingPicks, error: fetchErr } = await fetchPendingPicksForGrade(admin, botUserId)
+  if (fetchErr) return { resolved: 0, errors: [fetchErr] }
+  if (!pendingPicks.length) {
+    return { resolved: 0, errors: [] }
   }
 
-  const { data: pendingPicks, error: fetchErr } = await query
-  if (fetchErr || !pendingPicks || pendingPicks.length === 0) {
-    return { resolved: 0, errors: fetchErr ? [fetchErr.message] : [] }
-  }
-
-  // Group pending picks by sport_key
   const bySport = new Map<string, typeof pendingPicks>()
   for (const p of pendingPicks) {
     const list = bySport.get(p.sport_key) || []
@@ -2029,9 +2109,9 @@ export async function gradePendingPicks(
   }
 
   const updatedPickIds = new Set<string>()
+  const pendingUpdates: Array<{ id: string; payload: Record<string, unknown> }> = []
 
-  // Prefetch market-file closes for CLV on this grade batch
-  const pendingEventIds = [...new Set(pendingPicks.map((p: { event_id: string }) => p.event_id).filter(Boolean))]
+  const pendingEventIds = [...new Set(pendingPicks.map((p) => p.event_id).filter(Boolean))]
   const closeByEvent = new Map<string, { close_locked: boolean; close_spread_home: number | null; close_total: number | null }>()
   if (pendingEventIds.length > 0) {
     const chunkSize = 80
@@ -2050,7 +2130,7 @@ export async function gradePendingPicks(
   for (const [sportKey, picks] of bySport.entries()) {
     try {
       const url = `${ODDS_BASE}/sports/${encodeURIComponent(sportKey)}/scores/?apiKey=${encodeURIComponent(apiKey)}&daysFrom=3`
-      const res = await fetch(url, { headers: { Accept: 'application/json' } })
+      const res = await fetchWithTimeout(url, GRADE_SCORES_FETCH_MS)
       if (!res.ok) {
         errors.push(`Scores API ${sportKey}: HTTP ${res.status}`)
         continue
@@ -2062,17 +2142,27 @@ export async function gradePendingPicks(
       }
 
       for (const pick of picks) {
-        // Handle 2-game Teaser picks
         if (pick.market_key === 'teasers') {
           const legs = Array.isArray(pick.metadata?.legs) ? pick.metadata.legs : []
           if (legs.length >= 2) {
-            const leg1 = legs[0]
-            const leg2 = legs[1]
+            const leg1 = legs[0] as {
+              event_id: string
+              home_team: string
+              picked_team: string
+              teased_spread: number
+              teased_disp: string
+            }
+            const leg2 = legs[1] as {
+              event_id: string
+              home_team: string
+              picked_team: string
+              teased_spread: number
+              teased_disp: string
+            }
             const ev1 = eventById.get(leg1.event_id)
             const ev2 = eventById.get(leg2.event_id)
 
             if (ev1?.completed && ev2?.completed && Array.isArray(ev1.scores) && Array.isArray(ev2.scores)) {
-              // Parse Leg 1
               const s1_1 = parseInt(ev1.scores[0]?.score, 10)
               const s1_2 = parseInt(ev1.scores[1]?.score, 10)
               let hScore1 = 0, aScore1 = 0
@@ -2088,7 +2178,6 @@ export async function gradePendingPicks(
               const leg1Push = diff1 === 0
               const leg1Lost = diff1 < 0
 
-              // Parse Leg 2
               const s2_1 = parseInt(ev2.scores[0]?.score, 10)
               const s2_2 = parseInt(ev2.scores[1]?.score, 10)
               let hScore2 = 0, aScore2 = 0
@@ -2120,9 +2209,9 @@ export async function gradePendingPicks(
               const leg1Summary = `${shortDisplayName(leg1.picked_team)} ${leg1.teased_disp} (${leg1Won ? '✅ Win' : leg1Push ? '🔄 Push' : '❌ Loss'})`
               const leg2Summary = `${shortDisplayName(leg2.picked_team)} ${leg2.teased_disp} (${leg2Won ? '✅ Win' : leg2Push ? '🔄 Push' : '❌ Loss'})`
 
-              await admin
-                .from('lounge_bot_picks')
-                .update({
+              pendingUpdates.push({
+                id: pick.id,
+                payload: {
                   status,
                   home_score: hScore1,
                   away_score: aScore1,
@@ -2133,11 +2222,9 @@ export async function gradePendingPicks(
                     leg1_result: leg1Summary,
                     leg2_result: leg2Summary,
                   },
-                })
-                .eq('id', pick.id)
-
+                },
+              })
               updatedPickIds.add(pick.id)
-              resolvedCount++
             }
           }
           continue
@@ -2148,7 +2235,6 @@ export async function gradePendingPicks(
           continue
         }
 
-        // Parse scores
         const s1 = ev.scores[0]
         const s2 = ev.scores[1]
         const score1 = parseInt(s1.score, 10)
@@ -2167,7 +2253,6 @@ export async function gradePendingPicks(
 
         const grade = gradePickOutcome(pick, homeScore, awayScore)
 
-        // CLV vs market-file close (when locked) … persist for monthly scoreboard
         const mfile = closeByEvent.get(pick.event_id) || null
         const clvPts = computePickClvPts(pick, mfile)
         const clvMeta = clvPts != null
@@ -2180,9 +2265,9 @@ export async function gradePendingPicks(
             }
           : {}
 
-        await admin
-          .from('lounge_bot_picks')
-          .update({
+        pendingUpdates.push({
+          id: pick.id,
+          payload: {
             status: grade.status,
             home_score: homeScore,
             away_score: awayScore,
@@ -2192,220 +2277,232 @@ export async function gradePendingPicks(
               ...(pick.metadata || {}),
               ...clvMeta,
             },
-          })
-          .eq('id', pick.id)
-
+          },
+        })
         updatedPickIds.add(pick.id)
-        resolvedCount++
       }
     } catch (err: unknown) {
-      errors.push(`Error grading ${sportKey}: ${err instanceof Error ? err.message : String(err)}`)
+      const msg = err instanceof Error ? err.message : String(err)
+      errors.push(`Error grading ${sportKey}: ${msg}`)
     }
   }
 
-  // Now handle comment replies for posts where all picks are now resolved
+  resolvedCount = await flushPickUpdates(admin, pendingUpdates, errors)
+  if (resolvedCount < pendingUpdates.length) {
+    for (const row of pendingUpdates) {
+      if (!errors.some((e) => e.includes(row.id))) continue
+      updatedPickIds.delete(row.id)
+    }
+  }
+
   if (updatedPickIds.size > 0) {
-    // Find unique posts affected
-    const affectedPostIds = new Set<string>()
-    for (const p of pendingPicks) {
-      if (updatedPickIds.has(p.id) && p.post_id) {
-        affectedPostIds.add(p.post_id)
-      }
-    }
-
-    for (const postId of affectedPostIds) {
-      // Check if ALL picks for this post are now resolved
-      const { data: postPicks } = await admin
-        .from('lounge_bot_picks')
-        .select('*')
-        .eq('post_id', postId)
-
-      if (!postPicks || postPicks.length === 0) continue
-      const hasPending = postPicks.some((p) => p.status === 'pending')
-      if (hasPending) continue // wait until all picks in the card are finished
-
-      // Check if we already posted a comment
-      const alreadyCommented = postPicks.some((p) => p.comment_id != null)
-      if (alreadyCommented) continue
-
-      let commentText = ''
-      const botUserId = postPicks[0].bot_user_id
-
-      if (postPicks.length === 1) {
-        const p = postPicks[0]
-        if (p.market_key === 'teasers') {
-          const isWon = p.status === 'won'
-          const isPush = p.status === 'push'
-          const uStr = Number(p.units_net) > 0 ? `+${Number(p.units_net).toFixed(2)}u` : `${Number(p.units_net).toFixed(2)}u`
-          const leg1 = p.metadata?.leg1_result || 'Leg 1'
-          const leg2 = p.metadata?.leg2_result || 'Leg 2'
-          commentText = isWon
-            ? `✅ WIN: Sharpe 2-Leg Wong Teaser Cashes (${uStr})\n• ${leg1}\n• ${leg2}\n\nKey numbers 3 & 7 deliver again for Basic Strategy.`
-            : isPush
-              ? `🔄 PUSH: Sharpe 2-Leg Wong Teaser Refunded (0.0u)\n• ${leg1}\n• ${leg2}`
-              : `❌ LOSS: Sharpe 2-Leg Wong Teaser Misses (${uStr})\n• ${leg1}\n• ${leg2}`
-        } else {
-          // Solo pick comment with ESPN post-mortem boxscore hook
-          const grade = gradePickOutcome(p, p.home_score ?? 0, p.away_score ?? 0)
-          let note = ''
-
-          if (p.sport_key?.startsWith('americanfootball_')) {
-            try {
-              const espnSum = await fetchEspnGameSummary(p.sport_key, p.home_team, p.away_team)
-              if (espnSum?.postMortemNote) {
-                note = `\n\n📌 Post-Mortem: ${espnSum.postMortemNote}`
-              }
-            } catch (e) {
-              console.warn('ESPN summary hook error:', e)
-            }
-          }
-
-          commentText = `${grade.summary}${note}`
-        }
-      } else if (postPicks.length > 8) {
-        // Full Slate Card recap (e.g. 16 games = 64 picks)
-        // Break down records by picker and consensus hammer/consensus/split
-        const pickerTotals: Record<string, { wins: number; losses: number; pushes: number; units: number }> = {}
-        for (const p of SHARP_PICKERS) {
-          pickerTotals[p] = { wins: 0, losses: 0, pushes: 0, units: 0 }
-        }
-
-        // Group picks by event_id to compute consensus outcomes
-        const eventPicksMap = new Map<string, typeof postPicks>()
-        for (const p of postPicks) {
-          const list = eventPicksMap.get(p.event_id) || []
-          list.push(p)
-          eventPicksMap.set(p.event_id, list)
-
-          const rec = pickerTotals[p.picker_name]
-          if (rec) {
-            if (p.status === 'won') rec.wins++
-            else if (p.status === 'lost') rec.losses++
-            else if (p.status === 'push') rec.pushes++
-            rec.units += Number(p.units_net) || 0
-          }
-        }
-
-        let hammerWins = 0
-        let hammerLosses = 0
-        let consensusWins = 0
-        let consensusLosses = 0
-
-        for (const [, eList] of eventPicksMap) {
-          const homePicks = eList.filter((p) => isTeamMatch(p.pick_name, p.home_team))
-          const awayPicks = eList.filter((p) => isTeamMatch(p.pick_name, p.away_team))
-          const homeWins = homePicks.filter((p) => p.status === 'won').length
-          const awayWins = awayPicks.filter((p) => p.status === 'won').length
-
-          if (homePicks.length === 3) {
-            if (homeWins > 0) hammerWins++
-            else if (homePicks[0].status === 'lost') hammerLosses++
-          } else if (awayPicks.length === 3) {
-            if (awayWins > 0) hammerWins++
-            else if (awayPicks[0].status === 'lost') hammerLosses++
-          } else if (homePicks.length === 2) {
-            if (homeWins > 0) consensusWins++
-            else if (homePicks[0].status === 'lost') consensusLosses++
-          } else if (awayPicks.length === 2) {
-            if (awayWins > 0) consensusWins++
-            else if (awayPicks[0].status === 'lost') consensusLosses++
-          } else if (homePicks.length === 4) {
-            // Legacy 4-desk side cards
-            if (homeWins > 0) hammerWins++
-            else if (homePicks[0].status === 'lost') hammerLosses++
-          } else if (awayPicks.length === 4) {
-            if (awayWins > 0) hammerWins++
-            else if (awayPicks[0].status === 'lost') hammerLosses++
-          }
-        }
-
-        const lines: string[] = ['📊 Final Slate Card Standings:\n']
-        for (const pName of SHARP_PICKERS) {
-          const rec = pickerTotals[pName]
-          const pNote = rec.pushes > 0 ? `-${rec.pushes}` : ''
-          const uStr = rec.units > 0 ? `+${rec.units.toFixed(2)}u` : `${rec.units.toFixed(2)}u`
-          lines.push(`• ${pName}: ${rec.wins}-${rec.losses}${pNote} (${uStr})`)
-        }
-
-        if (hammerWins > 0 || hammerLosses > 0) {
-          lines.push(`\n🔥 Unanimous 3-0 Hammers: ${hammerWins}-${hammerLosses}`)
-        }
-        if (consensusWins > 0 || consensusLosses > 0) {
-          lines.push(`🎯 2-1 Consensus: ${consensusWins}-${consensusLosses}`)
-        }
-
-        // Spot-check any major fluke in the slate
-        for (const [, eList] of eventPicksMap) {
-          const sample = eList[0]
-          if (sample?.sport_key?.startsWith('americanfootball_')) {
-            try {
-              const espnSum = await fetchEspnGameSummary(sample.sport_key, sample.home_team, sample.away_team)
-              if (espnSum?.isFlukeLossForHome || espnSum?.isFlukeLossForAway) {
-                lines.push(`\n📌 Slate Post-Mortem: ${espnSum.postMortemNote}`)
-                break // show top standout fluke note
-              }
-            } catch (e) {
-              console.warn('ESPN slate hook error:', e)
-            }
-          }
-        }
-
-        lines.push('\n🌐 Audited ledger, whitepapers & live models: sharpesyndicate.com')
-        lines.push('Next slate & in-game alerts drop in the Sharpe VIP Syndicate.')
-
-        commentText = lines.join('\n')
-      } else {
-        // Syndicate multi-picker card comment recap (2-4 picks)
-        let cardWins = 0
-        let cardLosses = 0
-        let cardPushes = 0
-        let cardUnits = 0
-
-        const lines: string[] = ['📊 Final Card Results:\n']
-        for (const p of postPicks) {
-          const icon = p.status === 'won' ? '✅' : p.status === 'lost' ? '❌' : '🔄'
-          const unitsStr = Number(p.units_net) > 0 ? `+${p.units_net}u` : `${p.units_net}u`
-          const grade = gradePickOutcome(p, p.home_score ?? 0, p.away_score ?? 0)
-          lines.push(`${icon} ${p.picker_name}: ${grade.lineDisplay} (${unitsStr})`)
-
-          if (p.status === 'won') cardWins++
-          else if (p.status === 'lost') cardLosses++
-          else if (p.status === 'push') cardPushes++
-          cardUnits += Number(p.units_net) || 0
-        }
-
-        const pushNote = cardPushes > 0 ? `-${cardPushes}` : ''
-        const unitsFormatted = cardUnits > 0 ? `+${cardUnits.toFixed(2)}` : cardUnits.toFixed(2)
-        lines.push(`\nCard Total: ${cardWins}-${cardLosses}${pushNote} (${unitsFormatted}u)`)
-        commentText = lines.join('\n')
-      }
-
-      // Post the comment
-      const { data: commentRow } = await admin
-        .from('feed_comments')
-        .insert({
-          post_id: postId,
-          user_id: botUserId,
-          comment_text: commentText,
-        })
-        .select('id')
-        .single()
-
-      if (commentRow?.id) {
-        await admin
-          .from('lounge_bot_picks')
-          .update({ comment_id: commentRow.id })
-          .eq('post_id', postId)
-      }
+    try {
+      await postGradeRecapComments(admin, pendingPicks, updatedPickIds)
+    } catch (err: unknown) {
+      errors.push(`Recap comments: ${err instanceof Error ? err.message : String(err)}`)
     }
   }
 
-  // Update profile highlight text if any bot user ID is provided or involved
-  if (botUserId) {
-    await syncBotProfileHighlight(admin, botUserId)
+  const highlightBots = new Set<string>()
+  if (botUserId) highlightBots.add(botUserId)
+  for (const p of pendingPicks) {
+    if (updatedPickIds.has(p.id) && p.bot_user_id) highlightBots.add(p.bot_user_id)
+  }
+  for (const uid of highlightBots) {
+    await syncBotProfileHighlight(admin, uid)
   }
 
   return { resolved: resolvedCount, errors }
+}
+
+async function postGradeRecapComments(
+  admin: SupabaseClient,
+  pendingPicks: Awaited<ReturnType<typeof fetchPendingPicksForGrade>>['picks'],
+  updatedPickIds: Set<string>,
+): Promise<void> {
+  const affectedPostIds = new Set<string>()
+  for (const p of pendingPicks) {
+    if (updatedPickIds.has(p.id) && p.post_id) {
+      affectedPostIds.add(p.post_id)
+    }
+  }
+
+  for (const postId of affectedPostIds) {
+    const { data: postPicks } = await admin
+      .from('lounge_bot_picks')
+      .select('*')
+      .eq('post_id', postId)
+      .limit(1000)
+
+    if (!postPicks || postPicks.length === 0) continue
+    const hasPending = postPicks.some((p) => p.status === 'pending')
+    if (hasPending) continue
+
+    const alreadyCommented = postPicks.some((p) => p.comment_id != null)
+    if (alreadyCommented) continue
+
+    let commentText = ''
+    const recapBotUserId = postPicks[0].bot_user_id
+
+    if (postPicks.length === 1) {
+      const p = postPicks[0]
+      if (p.market_key === 'teasers') {
+        const isWon = p.status === 'won'
+        const isPush = p.status === 'push'
+        const uStr = Number(p.units_net) > 0 ? `+${Number(p.units_net).toFixed(2)}u` : `${Number(p.units_net).toFixed(2)}u`
+        const leg1 = p.metadata?.leg1_result || 'Leg 1'
+        const leg2 = p.metadata?.leg2_result || 'Leg 2'
+        commentText = isWon
+          ? `✅ WIN: Sharpe 2-Leg Wong Teaser Cashes (${uStr})\n• ${leg1}\n• ${leg2}\n\nKey numbers 3 & 7 deliver again for Basic Strategy.`
+          : isPush
+            ? `🔄 PUSH: Sharpe 2-Leg Wong Teaser Refunded (0.0u)\n• ${leg1}\n• ${leg2}`
+            : `❌ LOSS: Sharpe 2-Leg Wong Teaser Misses (${uStr})\n• ${leg1}\n• ${leg2}`
+      } else {
+        const grade = gradePickOutcome(p, p.home_score ?? 0, p.away_score ?? 0)
+        let note = ''
+
+        if (p.sport_key?.startsWith('americanfootball_')) {
+          try {
+            const espnSum = await fetchEspnGameSummary(p.sport_key, p.home_team, p.away_team)
+            if (espnSum?.postMortemNote) {
+              note = `\n\n📌 Post-Mortem: ${espnSum.postMortemNote}`
+            }
+          } catch (e) {
+            console.warn('ESPN summary hook error:', e)
+          }
+        }
+
+        commentText = `${grade.summary}${note}`
+      }
+    } else if (postPicks.length > 8) {
+      const pickerTotals: Record<string, { wins: number; losses: number; pushes: number; units: number }> = {}
+      for (const p of SHARP_PICKERS) {
+        pickerTotals[p] = { wins: 0, losses: 0, pushes: 0, units: 0 }
+      }
+
+      const eventPicksMap = new Map<string, typeof postPicks>()
+      for (const p of postPicks) {
+        const list = eventPicksMap.get(p.event_id) || []
+        list.push(p)
+        eventPicksMap.set(p.event_id, list)
+
+        const rec = pickerTotals[p.picker_name]
+        if (rec) {
+          if (p.status === 'won') rec.wins++
+          else if (p.status === 'lost') rec.losses++
+          else if (p.status === 'push') rec.pushes++
+          rec.units += Number(p.units_net) || 0
+        }
+      }
+
+      let hammerWins = 0
+      let hammerLosses = 0
+      let consensusWins = 0
+      let consensusLosses = 0
+
+      for (const [, eList] of eventPicksMap) {
+        const homePicks = eList.filter((p) => isTeamMatch(p.pick_name, p.home_team))
+        const awayPicks = eList.filter((p) => isTeamMatch(p.pick_name, p.away_team))
+        const homeWins = homePicks.filter((p) => p.status === 'won').length
+        const awayWins = awayPicks.filter((p) => p.status === 'won').length
+
+        if (homePicks.length === 3) {
+          if (homeWins > 0) hammerWins++
+          else if (homePicks[0].status === 'lost') hammerLosses++
+        } else if (awayPicks.length === 3) {
+          if (awayWins > 0) hammerWins++
+          else if (awayPicks[0].status === 'lost') hammerLosses++
+        } else if (homePicks.length === 2) {
+          if (homeWins > 0) consensusWins++
+          else if (homePicks[0].status === 'lost') consensusLosses++
+        } else if (awayPicks.length === 2) {
+          if (awayWins > 0) consensusWins++
+          else if (awayPicks[0].status === 'lost') consensusLosses++
+        } else if (homePicks.length === 4) {
+          if (homeWins > 0) hammerWins++
+          else if (homePicks[0].status === 'lost') hammerLosses++
+        } else if (awayPicks.length === 4) {
+          if (awayWins > 0) hammerWins++
+          else if (awayPicks[0].status === 'lost') hammerLosses++
+        }
+      }
+
+      const lines: string[] = ['📊 Final Slate Card Standings:\n']
+      for (const pName of SHARP_PICKERS) {
+        const rec = pickerTotals[pName]
+        const pNote = rec.pushes > 0 ? `-${rec.pushes}` : ''
+        const uStr = rec.units > 0 ? `+${rec.units.toFixed(2)}u` : `${rec.units.toFixed(2)}u`
+        lines.push(`• ${pName}: ${rec.wins}-${rec.losses}${pNote} (${uStr})`)
+      }
+
+      if (hammerWins > 0 || hammerLosses > 0) {
+        lines.push(`\n🔥 Unanimous 3-0 Hammers: ${hammerWins}-${hammerLosses}`)
+      }
+      if (consensusWins > 0 || consensusLosses > 0) {
+        lines.push(`🎯 2-1 Consensus: ${consensusWins}-${consensusLosses}`)
+      }
+
+      for (const [, eList] of eventPicksMap) {
+        const sample = eList[0]
+        if (sample?.sport_key?.startsWith('americanfootball_')) {
+          try {
+            const espnSum = await fetchEspnGameSummary(sample.sport_key, sample.home_team, sample.away_team)
+            if (espnSum?.isFlukeLossForHome || espnSum?.isFlukeLossForAway) {
+              lines.push(`\n📌 Slate Post-Mortem: ${espnSum.postMortemNote}`)
+              break
+            }
+          } catch (e) {
+            console.warn('ESPN slate hook error:', e)
+          }
+        }
+      }
+
+      lines.push('\n🌐 Audited ledger, whitepapers & live models: sharpesyndicate.com')
+      lines.push('Next slate & in-game alerts drop in the Sharpe VIP Syndicate.')
+
+      commentText = lines.join('\n')
+    } else {
+      let cardWins = 0
+      let cardLosses = 0
+      let cardPushes = 0
+      let cardUnits = 0
+
+      const lines: string[] = ['📊 Final Card Results:\n']
+      for (const p of postPicks) {
+        const icon = p.status === 'won' ? '✅' : p.status === 'lost' ? '❌' : '🔄'
+        const unitsStr = Number(p.units_net) > 0 ? `+${p.units_net}u` : `${p.units_net}u`
+        const grade = gradePickOutcome(p, p.home_score ?? 0, p.away_score ?? 0)
+        lines.push(`${icon} ${p.picker_name}: ${grade.lineDisplay} (${unitsStr})`)
+
+        if (p.status === 'won') cardWins++
+        else if (p.status === 'lost') cardLosses++
+        else if (p.status === 'push') cardPushes++
+        cardUnits += Number(p.units_net) || 0
+      }
+
+      const pushNote = cardPushes > 0 ? `-${cardPushes}` : ''
+      const unitsFormatted = cardUnits > 0 ? `+${cardUnits.toFixed(2)}` : cardUnits.toFixed(2)
+      lines.push(`\nCard Total: ${cardWins}-${cardLosses}${pushNote} (${unitsFormatted}u)`)
+      commentText = lines.join('\n')
+    }
+
+    const { data: commentRow } = await admin
+      .from('feed_comments')
+      .insert({
+        post_id: postId,
+        user_id: recapBotUserId,
+        comment_text: commentText,
+      })
+      .select('id')
+      .single()
+
+    if (commentRow?.id) {
+      await admin
+        .from('lounge_bot_picks')
+        .update({ comment_id: commentRow.id })
+        .eq('post_id', postId)
+    }
+  }
 }
 
 /**

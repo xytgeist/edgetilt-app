@@ -158,6 +158,7 @@ VIP uncut cards lock when injury + splits are real enough … **not** Tue vibes,
 | NFL Wed TNF watch | **Wed 11:00 AM** | `nfl_wed_tnf_vip` | **VIP only** |
 | NFL Sat adds/kills | **Sat 10:00 AM** | `nfl_sat_vip_adds_kills` | **VIP only** (no-op if nothing flipped) |
 | Weekly recap | **Tue 7:30 AM** | `weekly_syndicate_recap` | Public + VIP |
+| Auto-grade | **:22** 10am–11pm PT | `grade_picks` | Ledger ATS + CLV (not a shop post) |
 | Weekday predictive | — | muted | Was public freebie … killed |
 
 Public crumbs (not a second card): Coffee & Covers · Value Radar **one look**. Best Bet Hour = VIP only.  
@@ -252,6 +253,8 @@ For every published (and ideally every voted) game:
 - Desk + bucket tags  
 
 After ~6–8 weeks: if Hammers do not beat Consensus, the desks are correlated noise … fix inputs before touching blend weights.
+
+Auto-grade (`grade_picks`) writes ATS + CLV on the ledger when Odds API marks the event **completed** (not at kickoff). Cron is **:22** PT during the day, one Edge call for Signal + Syndicate. Recap comments wait until every pick on that post is done … Friday’s full card stays uncommented until the last Saturday night game.
 
 ---
 

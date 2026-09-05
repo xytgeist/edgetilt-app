@@ -2848,6 +2848,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-05:** **Grade-picks actually settles.** Cron looked green while Edge 500ed: `oddsApiKey` was never imported in `lounge-odds-poll` (poll_edges auto-grade swallowed it). Also one invoke (not two), 150s budget, cron **:22** off the :15 live/edges pile-up, scores timeout + batched ledger writes before ESPN. SQL **`20260905130000`**. Redeploy **`lounge-odds-poll`** + **`lounge-odds-ingest`**. **`1.4.61`.**
 - **2026-09-05:** **IAP dual-path (code).** Platform SubscribeModal: StoreKit price + IAP / web / restore / Terms+Privacy; no pending→Stripe. Fan SUB: web primary, iPhone IAP optional (tier SKU, not per creator). Edge Pro Settings same split. Manage membership opens Apple subscriptions when `billing_provider=apple`. Native sends JWS; verify writes `expires_at`. SQL **`20260905120000`**. Redeploy **`apple-iap-verify`** on test. ASC products + sandbox still owed. **`1.4.60`. New TestFlight** for StoreKit / `manageStoreSubscriptions`.
 - **2026-09-05:** **iOS chat swipe-down keyboard dismiss.** Capture swipe on the whole composer host (including Message…) plus the thread so the gesture does not select text or hit the suggestion bar. **`1.4.59`.**
 - **2026-09-05:** **iOS chat composer keyboard gap.** Composer was flush on the keys; add 10px pad while the keyboard is up. iOS only. **`1.4.58`.** Web / TestFlight.

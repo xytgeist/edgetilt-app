@@ -21,7 +21,7 @@ import {
   unlockChatCallAudio,
 } from './chatCallRingTone.js'
 import { CHAT_CALL_RECORDING_MAX_SECONDS } from '../../../utils/chatCallsApi.js'
-import { isIosDevice } from '../../../utils/pwaNotificationPrompt.js'
+import { isAndroidDevice, isIosDevice } from '../../../utils/pwaNotificationPrompt.js'
 import { isEdgeiOSShell } from '../../../utils/edgeNative.js'
 import {
   getNativeCallState,
@@ -89,6 +89,26 @@ function hideChromeForInvite(open, { hideTimerRef, setControlsHidden, resetContr
   } else {
     resetControlsTimer()
   }
+}
+
+/** Android web: the pill already sits under the stage, so cinema-hide only moves the inset. */
+function armCallChromeHide(hideTimerRef, setControlsHidden, isVideoMode) {
+  if (hideTimerRef.current) {
+    window.clearTimeout(hideTimerRef.current)
+    hideTimerRef.current = null
+  }
+  setControlsHidden(false)
+  if (!isVideoMode || isAndroidDevice()) return
+  hideTimerRef.current = window.setTimeout(() => {
+    setControlsHidden(true)
+  }, 4500)
+}
+
+function onActivateFeaturedChrome(event, controlsHidden, resetControlsTimer, setControlsHidden) {
+  event?.stopPropagation?.()
+  if (isAndroidDevice()) return
+  if (controlsHidden) resetControlsTimer()
+  else setControlsHidden(true)
 }
 
 function useCallStreamTap({ controlsHidden, onReveal, onFocus }) {
@@ -790,16 +810,7 @@ function NativeIpaCallSession({
   const isVideoMode = (videoEnabled || camOn || hasVideo || remoteHasVideo) && !awaitingAnswer
 
   const resetControlsTimer = useCallback(() => {
-    if (hideTimerRef.current) {
-      window.clearTimeout(hideTimerRef.current)
-      hideTimerRef.current = null
-    }
-    setControlsHidden(false)
-    if (isVideoMode) {
-      hideTimerRef.current = window.setTimeout(() => {
-        setControlsHidden(true)
-      }, 4500)
-    }
+    armCallChromeHide(hideTimerRef, setControlsHidden, isVideoMode)
   }, [isVideoMode])
 
   useEffect(() => {
@@ -1319,18 +1330,14 @@ function NativeIpaCallSession({
             }}
             onActivateRemote={onNativeStreamTap}
             onActivateMain={(event) => {
-              event?.stopPropagation?.()
-              if (controlsHidden) resetControlsTimer()
-              else setControlsHidden(true)
+              onActivateFeaturedChrome(event, controlsHidden, resetControlsTimer, setControlsHidden)
             }}
             onActivateYou={(event) => {
               if (nativeLocalOnStage && canFeatureLocal(nativeStageCount)) {
                 onNativeStreamTap(nativeLocalId, event)
                 return
               }
-              event?.stopPropagation?.()
-              if (controlsHidden) resetControlsTimer()
-              else setControlsHidden(true)
+              onActivateFeaturedChrome(event, controlsHidden, resetControlsTimer, setControlsHidden)
             }}
           />
         ) : showGroupAudioStage ? (
@@ -1706,16 +1713,7 @@ function CallChrome({
   const isVideoMode = Boolean(showVideoStage)
 
   const resetControlsTimer = useCallback(() => {
-    if (hideTimerRef.current) {
-      window.clearTimeout(hideTimerRef.current)
-      hideTimerRef.current = null
-    }
-    setControlsHidden(false)
-    if (isVideoMode) {
-      hideTimerRef.current = window.setTimeout(() => {
-        setControlsHidden(true)
-      }, 4500)
-    }
+    armCallChromeHide(hideTimerRef, setControlsHidden, isVideoMode)
   }, [isVideoMode])
 
   useEffect(() => {
@@ -2196,18 +2194,14 @@ function CallChrome({
             }}
             onActivateRemote={onWebStreamTap}
             onActivateMain={(event) => {
-              event?.stopPropagation?.()
-              if (controlsHidden) resetControlsTimer()
-              else setControlsHidden(true)
+              onActivateFeaturedChrome(event, controlsHidden, resetControlsTimer, setControlsHidden)
             }}
             onActivateYou={(event) => {
               if (stageLocal && canFeatureLocal(stageCount) && localParticipant?.identity) {
                 onWebStreamTap(localParticipant.identity, event)
                 return
               }
-              event?.stopPropagation?.()
-              if (controlsHidden) resetControlsTimer()
-              else setControlsHidden(true)
+              onActivateFeaturedChrome(event, controlsHidden, resetControlsTimer, setControlsHidden)
             }}
           />
         ) : isGroup && !awaitingAnswer ? (
@@ -2520,9 +2514,10 @@ function VideoCallStage({
   if (plan.mode === 'duo') {
     const pipParticipant = plan.pipId ? byId.get(plan.pipId) : null
     const pipHasCam = participantHasLiveCamera(pipParticipant)
+    const pipChromeHidden = isAndroidDevice() ? false : controlsHidden
     const pipSize = duoPipSize({
       hasCamera: pipHasCam,
-      controlsHidden,
+      controlsHidden: pipChromeHidden,
       viewportWidth: typeof window !== 'undefined' ? window.innerWidth : 390,
     })
     const pipIsYou = plan.pipId === plan.youId
@@ -2548,7 +2543,7 @@ function VideoCallStage({
             className="fixed z-[2] transition-[width,height,bottom] duration-300 ease-in-out"
             style={{
               right: DUO_PIP_RIGHT_PX,
-              bottom: controlsHidden
+              bottom: pipChromeHidden
                 ? 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 12px))'
                 : DUO_PIP_CHROME_BOTTOM_PX,
               width: pipSize.width,
@@ -2560,7 +2555,7 @@ function VideoCallStage({
         ) : (
           <div
             className={`absolute right-4 z-[2] transition-all duration-300 ease-in-out ${
-              controlsHidden ? 'bottom-4 translate-y-16' : 'bottom-10'
+              pipChromeHidden ? 'bottom-4 translate-y-16' : 'bottom-10'
             }`}
             style={{ width: pipSize.width, height: pipSize.height }}
           >

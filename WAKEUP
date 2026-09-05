@@ -95,6 +95,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Windows Theo.** Destination rule: Lounge (public + VIP) keeps markdown. **Chat rooms never get markdown.** **X.com auto-post (when built) never gets markdown.** Same caption can fan out; strip at the destination. Helper `toPlainOutboundText` in `loungeBotPlainOutbound.ts`. Chat choke point is `publishBotSubChatMessage` (every Signal/Syndicate fan-room insert). X publisher must call that helper; do not send Lounge captions raw. Redeployed **`lounge-odds-poll`**, **`lounge-odds-ingest`**, **`lounge-bot-publish-due`** on **test + prod**. Existing chat messages stay until the next publish.
 
+### Mac Theo 2026-09-05 … Android chrome planted
+
+**I am Mac Theo.** Android video pill sits under the stage, so it no longer auto-hides or tap-hides. 2-person inset stays put (no drop/rise / size change). Add-people still hides chrome. **`1.4.56`.** Web is Vercel `test`.
+
 ### Mac Theo 2026-09-05 … Android inset row
 
 **I am Mac Theo.** 3+ call insets were stacking as a right-hand column on Android Chrome (`%` width inside an absolute flex row). Pixel `rowPipSize` + locked row nowrap. **`1.4.55`.** Web is Vercel `test`.

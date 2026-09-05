@@ -2513,19 +2513,23 @@ function SpeakingDots({ active = false }) {
 }
 
 function LocalFlipChip({ className = '', size = 'md', onFlip, positionClass = 'absolute' }) {
-  const dim = size === 'sm' ? 'h-7 w-7' : size === 'header' ? 'h-11 w-11' : 'h-9 w-9'
+  const isHeader = size === 'header'
+  const dim = size === 'sm' ? 'h-7 w-7' : isHeader ? 'h-11 w-11' : 'h-9 w-9'
+  const chrome = isHeader
+    ? 'rounded-full border border-white/10 bg-white/10 text-white shadow-lg backdrop-blur-xl transition active:scale-95 touch-manipulation hover:bg-white/15'
+    : 'rounded-full border border-white/25 bg-black/55 text-white shadow-lg backdrop-blur-md touch-manipulation active:scale-95'
   return (
     <button
       type="button"
       data-chat-call-interactive=""
-      className={`${positionClass} z-[4] flex ${dim} items-center justify-center rounded-full border border-white/25 bg-black/55 text-white shadow-lg backdrop-blur-md touch-manipulation active:scale-95 ${className}`}
+      className={`${positionClass} z-[4] flex ${dim} shrink-0 items-center justify-center ${chrome} ${className}`}
       aria-label="Flip camera"
       onClick={(event) => {
         event.stopPropagation()
         onFlip?.()
       }}
     >
-      <span className={size === 'sm' ? 'scale-75' : size === 'header' ? 'scale-100' : 'scale-90'}>
+      <span className={size === 'sm' ? 'scale-75' : isHeader ? 'scale-[0.9]' : 'scale-90'}>
         <FlipCameraIcon />
       </span>
     </button>

@@ -652,18 +652,28 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   }
 
   private func layoutMinimizedTiles(_ people: [(id: String, isLocal: Bool)], bounds: CGRect) {
-    layoutCountStage(people, bounds: bounds)
-    if let local = people.first(where: { $0.isLocal }),
-       people.contains(where: { !$0.isLocal }),
-       let tile = videoTiles[local.id] {
-      tile.frame = CGRect(
-        x: bounds.width - 32 - 6,
-        y: bounds.height - 46 - 6,
-        width: 32,
-        height: 46
+    // Do not reuse layoutCountStage here. Duo pip math is for the full stage and
+    // leaves the featured stream sitting in a padded, off-center frame.
+    let local = people.first(where: { $0.isLocal })
+    let remotes = people.filter { !$0.isLocal }
+    let mainId = featuredRemoteId(remotes) ?? remotes.first?.id ?? local?.id
+    for (id, tile) in videoTiles {
+      tile.isHidden = id != mainId && id != local?.id
+    }
+    placeTile(mainId, frame: bounds, radius: 16, pip: false)
+    if let local, local.id != mainId {
+      placeTile(
+        local.id,
+        frame: CGRect(
+          x: bounds.width - 36 - 6,
+          y: bounds.height - 52 - 6,
+          width: 36,
+          height: 52
+        ),
+        radius: 8,
+        pip: true,
+        front: true
       )
-      tile.applyChrome(cornerRadius: 6, pip: true)
-      overlay.bringSubviewToFront(tile)
     }
   }
 
@@ -686,6 +696,8 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
       parent.bringSubviewToFront(overlay)
       overlay.isHidden = false
       overlay.isUserInteractionEnabled = true
+      overlay.autoresizingMask = []
+      overlay.insetsLayoutMarginsFromSafeArea = false
       overlay.layer.cornerRadius = 16
       overlay.layer.masksToBounds = true
       overlay.layer.borderColor = UIColor.white.withAlphaComponent(0.25).cgColor
@@ -698,13 +710,15 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
       let width: CGFloat = 112
       let height: CGFloat = 160
       let bottomInset = parent.safeAreaInsets.bottom + 68 // comfortably above tab bar
-      let defaultFrame = CGRect(
+      var mini = overlayMiniFrame ?? CGRect(
         x: 16,
         y: parent.bounds.height - height - bottomInset,
         width: width,
         height: height
       )
-      overlay.frame = overlayMiniFrame ?? defaultFrame
+      mini.size = CGSize(width: width, height: height)
+      overlay.frame = mini
+      overlayMiniFrame = mini
       layoutVideoViews()
     } else {
       // Fullscreen video behind transparent web view hole
@@ -1156,7 +1170,10 @@ private final class EdgeCallParticipantTile: UIView {
   let videoView: VideoView = {
     let view = VideoView()
     view.contentMode = .scaleAspectFill
+    view.layoutMode = .fill
+    view.clipsToBounds = true
     view.isUserInteractionEnabled = false
+    view.insetsLayoutMarginsFromSafeArea = false
     return view
   }()
 
@@ -1180,6 +1197,7 @@ private final class EdgeCallParticipantTile: UIView {
     }
     super.init(frame: .zero)
     clipsToBounds = true
+    insetsLayoutMarginsFromSafeArea = false
     backgroundColor = UIColor(red: 0.06, green: 0.09, blue: 0.12, alpha: 1)
     isUserInteractionEnabled = false
     addSubview(videoView)

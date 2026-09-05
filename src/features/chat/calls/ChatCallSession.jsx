@@ -37,7 +37,12 @@ import {
   CALL_STREAM_DOUBLE_TAP_MS,
   DUO_PIP_CHROME_BOTTOM_PX,
   DUO_PIP_RIGHT_PX,
+  ROW_PIP_CHROME_BOTTOM_PX,
+  ROW_PIP_GAP_PX,
+  ROW_PIP_SIDE_PX,
+  ROW_PIP_SLOTS,
   SCREEN_FLIP_CLASS,
+  canFeatureLocal,
   duoPipSize,
   planCallVideoLayout,
 } from './callVideoLayout.js'
@@ -785,9 +790,9 @@ function NativeIpaCallSession({
     const next = String(id || '').trim()
     if (!next) return
     const localId = nativeRoster.find((p) => p.isLocal)?.identity
-    const duo = (nativeRoster.length || remoteCount + 1) === 2
+    const count = nativeRoster.length || remoteCount + 1
     if (localId && next === localId) {
-      if (duo) setLocalIsMain(true)
+      if (canFeatureLocal(count)) setLocalIsMain(true)
       return
     }
     setLocalIsMain(false)
@@ -932,7 +937,7 @@ function NativeIpaCallSession({
   const nativePeopleCount = nativeRoster.length > 0 ? nativeRoster.length : remoteCount + 1
   const nativeLocalId = nativeRoster.find((p) => p.isLocal)?.identity || viewerUserId || ''
   const focusedIdentity = useMemo(() => {
-    if (localIsMain && nativePeopleCount === 2) {
+    if (localIsMain && canFeatureLocal(nativePeopleCount)) {
       return nativeLocalId || null
     }
     if (pinnedIdentity && nativeRemotes.some((p) => p.identity === pinnedIdentity)) {
@@ -942,12 +947,12 @@ function NativeIpaCallSession({
   }, [localIsMain, nativePeopleCount, nativeLocalId, pinnedIdentity, nativeRemotes])
 
   useEffect(() => {
-    if (nativePeopleCount !== 2) setLocalIsMain(false)
+    if (!canFeatureLocal(nativePeopleCount)) setLocalIsMain(false)
   }, [nativePeopleCount])
 
   useEffect(() => {
     if (!isVideoMode) return
-    const youFeatured = Boolean(localIsMain && nativePeopleCount === 2)
+    const youFeatured = Boolean(localIsMain && canFeatureLocal(nativePeopleCount))
     void setNativeCallStreamFocus({
       isLocalMain: youFeatured,
       focusedIdentity: youFeatured ? nativeLocalId : focusedIdentity || '',
@@ -1142,7 +1147,15 @@ function NativeIpaCallSession({
           <MinimizeIcon />
         </button>
         <div className="min-w-0 flex-1 px-3 text-center">
-          <p className="truncate text-[20px] font-bold tracking-tight text-white drop-shadow-sm">{title}</p>
+          <p className="truncate text-[20px] font-bold tracking-tight text-white drop-shadow-sm">
+            {nativePeopleCount >= 3
+              ? localIsMain && canFeatureLocal(nativePeopleCount)
+                ? 'You'
+                : resolveNameForParticipant(
+                    nativeRoster.find((p) => p.identity === focusedIdentity) || nativeRemotes[0],
+                  )
+              : title}
+          </p>
           <p className="mt-1 font-mono text-[13px] font-medium tracking-wide text-zinc-300/90">{statusLabel}</p>
           {connectError ? (
             <p className="mt-1.5 text-[12px] font-semibold text-rose-300">{connectError}</p>
@@ -1196,6 +1209,7 @@ function NativeIpaCallSession({
             }}
             speakingIds={speakingIds}
             resolveAvatarForParticipant={resolveAvatarForParticipant}
+            resolveNameForParticipant={resolveNameForParticipant}
             title={title}
             showLocalFlip={Boolean(camOn)}
             onFlipCamera={() => {
@@ -1209,7 +1223,7 @@ function NativeIpaCallSession({
               else setControlsHidden(true)
             }}
             onActivateYou={(event) => {
-              if (nativePeopleCount === 2) {
+              if (canFeatureLocal(nativePeopleCount)) {
                 onNativeStreamTap(nativeLocalId, event)
                 return
               }
@@ -1562,11 +1576,11 @@ function CallChrome({
   const peopleCount = remotes.length + (localParticipant ? 1 : 0)
 
   useEffect(() => {
-    if (peopleCount !== 2) setLocalIsMain(false)
+    if (!canFeatureLocal(peopleCount)) setLocalIsMain(false)
   }, [peopleCount])
 
   const fullscreenParticipant = useMemo(() => {
-    if (localIsMain && peopleCount === 2) return localParticipant || null
+    if (localIsMain && canFeatureLocal(peopleCount)) return localParticipant || null
     if (pinnedIdentity) {
       const pinnedRemote = remotes.find((p) => p.identity === pinnedIdentity)
       if (pinnedRemote) return pinnedRemote
@@ -1612,7 +1626,7 @@ function CallChrome({
     const next = String(id || '').trim()
     if (!next) return
     if (localParticipant && next === localParticipant.identity) {
-      if (peopleCount === 2) setLocalIsMain(true)
+      if (canFeatureLocal(peopleCount)) setLocalIsMain(true)
       return
     }
     setLocalIsMain(false)
@@ -2003,7 +2017,11 @@ function CallChrome({
           <MinimizeIcon />
         </button>
         <div className="min-w-0 flex-1 px-3 text-center">
-          <p className="truncate text-[20px] font-bold tracking-tight text-white drop-shadow-sm">{title}</p>
+          <p className="truncate text-[20px] font-bold tracking-tight text-white drop-shadow-sm">
+            {peopleCount >= 3 && fullscreenParticipant
+              ? resolveNameForParticipant(fullscreenParticipant)
+              : title}
+          </p>
           <p className="mt-1 font-mono text-[13px] font-medium tracking-wide text-zinc-300/90">{statusLabel}</p>
           {recordingActive ? (
             <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-rose-500/30 bg-rose-950/60 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider text-rose-200 backdrop-blur-md">
@@ -2045,6 +2063,7 @@ function CallChrome({
             controlsHidden={controlsHidden}
             cameraByIdentity={cameraByIdentity}
             resolveAvatarForParticipant={resolveAvatarForParticipant}
+            resolveNameForParticipant={resolveNameForParticipant}
             participantHasLiveCamera={participantHasLiveCamera}
             speakingIds={speakingIds}
             title={title}
@@ -2060,7 +2079,7 @@ function CallChrome({
               else setControlsHidden(true)
             }}
             onActivateYou={(event) => {
-              if (peopleCount === 2 && localParticipant?.identity) {
+              if (canFeatureLocal(peopleCount) && localParticipant?.identity) {
                 onWebStreamTap(localParticipant.identity, event)
                 return
               }
@@ -2212,6 +2231,7 @@ function VideoCallStage({
   controlsHidden = false,
   cameraByIdentity,
   resolveAvatarForParticipant,
+  resolveNameForParticipant,
   participantHasLiveCamera,
   speakingIds = EMPTY_SPEAKING_IDS,
   title,
@@ -2227,11 +2247,20 @@ function VideoCallStage({
     localId: localParticipant?.identity || null,
     featuredId: featuredIdentity,
   })
-  const liveSpeakingIds = plan.mode === 'duo' ? EMPTY_SPEAKING_IDS : speakingIds
+  const liveSpeakingIds =
+    plan.mode === 'duo'
+      ? EMPTY_SPEAKING_IDS
+      : plan.mode === 'row'
+        ? new Set((plan.insetIds || []).filter((id) => speakingIds.has(id)))
+        : speakingIds
   const byId = new Map()
   for (const p of remotes) byId.set(p.identity, p)
   if (localParticipant) byId.set(localParticipant.identity, localParticipant)
   const tileChrome = hitOnly ? 'bg-transparent border-0 shadow-none' : 'overflow-hidden bg-zinc-950/80'
+  const nameFor = (participant, fallback) => {
+    if (resolveNameForParticipant && participant) return resolveNameForParticipant(participant)
+    return fallback
+  }
 
   const renderFill = (participant, { label, textClass, roundedClass = '', pip = false }) => {
     if (hitOnly || !participant) return null
@@ -2287,9 +2316,16 @@ function VideoCallStage({
       />
     ) : null
 
-  const remoteTile = (id, extraClass = '', { pip = false } = {}) => {
+  const insetName = (label) =>
+    hitOnly || !label ? null : (
+      <span className="pointer-events-none absolute left-2 top-1.5 z-[1] max-w-[calc(100%-2.75rem)] truncate text-left text-[11px] font-semibold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.85)]">
+        {label}
+      </span>
+    )
+
+  const remoteTile = (id, extraClass = '', { pip = false, nameOverlay = false } = {}) => {
     const p = byId.get(id)
-    const label = p?.name || title || id.slice(0, 8)
+    const label = nameFor(p, p?.name || title || id.slice(0, 8))
     return (
       <button
         key={id}
@@ -2301,11 +2337,12 @@ function VideoCallStage({
         onClick={(event) => onActivateRemote?.(id, event)}
       >
         {renderFill(p, { label, textClass: 'text-[22px]', roundedClass: 'rounded-[10px]', pip })}
+        {nameOverlay ? insetName(label) : null}
       </button>
     )
   }
 
-  const youTile = (extraClass = '', { pip = false, withFlip = false } = {}) => {
+  const youTile = (extraClass = '', { pip = false, withFlip = false, nameOverlay = false } = {}) => {
     if (!plan.youId) return null
     return (
       <button
@@ -2318,14 +2355,14 @@ function VideoCallStage({
         onClick={(event) => onActivateYou?.(event)}
       >
         {renderFill(localParticipant, { label: 'You', textClass: 'text-[22px]', roundedClass: 'rounded-[10px]', pip })}
+        {nameOverlay ? insetName('You') : null}
         {withFlip ? insetFlip : null}
       </button>
     )
   }
 
   const featured = plan.featuredId ? byId.get(plan.featuredId) : null
-  const featuredLabel =
-    featured?.isLocal ? 'You' : featured?.name || title || 'Call'
+  const featuredLabel = nameFor(featured, featured?.isLocal ? 'You' : featured?.name || title || 'Call')
   const shellClass = hitOnly
     ? 'relative h-full min-h-0 overflow-hidden'
     : 'relative h-full min-h-0 overflow-hidden rounded-[32px] border border-white/10 bg-zinc-950/80 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-xl'
@@ -2346,8 +2383,6 @@ function VideoCallStage({
       </div>
     )
   }
-
-  const pipSlide = controlsHidden ? 'translate-y-16' : ''
 
   if (plan.mode === 'duo') {
     const pipParticipant = plan.pipId ? byId.get(plan.pipId) : null
@@ -2404,10 +2439,18 @@ function VideoCallStage({
     )
   }
 
-  if (plan.mode === 'stack') {
-    const stackTile = hitOnly
-      ? 'h-[min(6.5rem,22vw)] w-[min(6.5rem,22vw)] min-h-[4.5rem] min-w-[4.5rem]'
-      : null
+  if (plan.mode === 'row') {
+    const chipW = `calc((100% - ${ROW_PIP_GAP_PX * (ROW_PIP_SLOTS - 1)}px) / ${ROW_PIP_SLOTS})`
+    const rowBottom = controlsHidden
+      ? hitOnly
+        ? 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 12px))'
+        : 16
+      : hitOnly
+        ? ROW_PIP_CHROME_BOTTOM_PX
+        : 40
+    const wrapClass = hitOnly
+      ? 'fixed z-[2] flex flex-row justify-end transition-[bottom] duration-300 ease-in-out'
+      : 'absolute z-[2] flex flex-row justify-end transition-[bottom] duration-300 ease-in-out'
     return (
       <div className={shellClass}>
         <button
@@ -2420,16 +2463,33 @@ function VideoCallStage({
           {renderFill(featured, { label: featuredLabel, textClass: 'text-[48px]' })}
         </button>
         <div
-          className={`absolute bottom-4 right-4 z-[2] flex flex-col items-end gap-2.5 transition-transform duration-300 ease-in-out ${pipSlide}`}
+          className={wrapClass}
+          style={{
+            left: ROW_PIP_SIDE_PX,
+            right: ROW_PIP_SIDE_PX,
+            bottom: rowBottom,
+            gap: ROW_PIP_GAP_PX,
+          }}
         >
-          {(plan.stackIds || []).map((id) =>
-            id === plan.youId
-              ? youTile(stackTile || 'h-20 w-20 rounded-2xl border-2 border-white/30 shadow-lg', {
-                  withFlip: true,
-                })
-              : remoteTile(id, stackTile || 'h-20 w-20 rounded-2xl border-2 border-white/25 shadow-lg'),
-          )}
+          {(plan.insetIds || []).map((id) => {
+            const p = id === plan.youId ? localParticipant : byId.get(id)
+            const hasCam = participantHasLiveCamera(p)
+            const chipClass = hitOnly
+              ? 'h-full w-full'
+              : `h-full w-full rounded-2xl shadow-lg ${
+                  liveSpeakingIds.has(id) ? 'border-[3px] border-emerald-400' : 'border-2 border-white/30'
+                }`
+            const chip = (
+              <div key={id} className="relative shrink-0" style={{ width: chipW, aspectRatio: '3 / 4' }}>
+                {id === plan.youId
+                  ? youTile(chipClass, { pip: !hasCam, withFlip: true, nameOverlay: true })
+                  : remoteTile(id, chipClass, { pip: !hasCam, nameOverlay: true })}
+              </div>
+            )
+            return chip
+          })}
         </div>
+        {screenFlip}
       </div>
     )
   }

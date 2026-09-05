@@ -4,7 +4,8 @@
  *
  * 1: You fill the stage
  * 2: featured full-bleed + other as inset (tap inset to swap). You can be featured.
- * 3–4: featured remote full-bleed, others + You stacked on the right (You bottom)
+ * 3–4: featured full-bleed + bottom inset row (You rightmost). Same chip size as if
+ *      three insets fit. Tap an inset to feature that person. You can be featured.
  * 5+: featured top half, rest in 2 rows (floor/ceil) with You last on the bottom row
  */
 
@@ -14,6 +15,17 @@ export const DUO_PIP_RIGHT_PX = 16
 /** Screen Flip when You is featured: under the header Add-people chip (`right-4` + `h-11`). */
 export const SCREEN_FLIP_CLASS =
   'top-[calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px))+0.75rem+2.75rem+0.5rem)] right-4'
+
+/** 3–4 person inset row. Sized as three equal chips even when only two show. */
+export const ROW_PIP_GAP_PX = 8
+export const ROW_PIP_SIDE_PX = 16
+export const ROW_PIP_SLOTS = 3
+export const ROW_PIP_CHROME_BOTTOM_PX = DUO_PIP_CHROME_BOTTOM_PX
+
+/** Tap-to-feature You is 2–4 people. 5+ stays featured-remote. */
+export function canFeatureLocal(count) {
+  return count >= 2 && count <= 4
+}
 
 /**
  * @param {{
@@ -51,13 +63,17 @@ export function planCallVideoLayout({
     }
   }
   if (count <= 4) {
+    const localIsFeatured = Boolean(you && want === you)
+    const featuredId = localIsFeatured ? you : featuredRemote
+    const insetIds = remotes.filter((id) => id !== featuredId)
+    if (you && featuredId !== you) insetIds.push(you)
     return {
-      mode: 'stack',
+      mode: 'row',
       count,
-      featuredId: featuredRemote,
-      stackIds: restWithYou,
+      featuredId,
+      insetIds,
       youId: you,
-      localIsFeatured: false,
+      localIsFeatured,
     }
   }
 
@@ -78,6 +94,17 @@ export function planCallVideoLayout({
  * Keep in sync with `duoPipFrame` in `EdgeLiveKitCallManager.swift`.
  * @param {{ hasCamera?: boolean, controlsHidden?: boolean, viewportWidth?: number }} args
  */
+/**
+ * 3–4 inset chip size. Always 3:4. Does not change when chrome hides.
+ * Keep in sync with `rowPipSize` in `EdgeLiveKitCallManager.swift`.
+ * @param {{ viewportWidth?: number }} args
+ */
+export function rowPipSize({ viewportWidth = 390 } = {}) {
+  const width =
+    (viewportWidth - ROW_PIP_SIDE_PX * 2 - ROW_PIP_GAP_PX * (ROW_PIP_SLOTS - 1)) / ROW_PIP_SLOTS
+  return { width, height: (width * 4) / 3 }
+}
+
 export function duoPipSize({ hasCamera = true, controlsHidden = false, viewportWidth = 390 } = {}) {
   const baseW = Math.min(120, Math.max(88, viewportWidth * 0.26))
   const hiddenH = (baseW * 16) / 9

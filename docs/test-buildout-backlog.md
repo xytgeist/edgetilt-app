@@ -2848,6 +2848,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-04:** **Video 3–4 inset row.** 3 and 4 people use featured full-bleed + a bottom row of equal 3:4 insets (sized as three chips; 3-person leaves the left slot empty). You stay rightmost. Tap an inset to feature that person; header title follows. Chrome hide moves the row down without shrinking. Names top-left on insets. Green speaking border on insets only. **`1.4.50`. New TestFlight** for native frames / names / speaking. Web is Vercel `test`. Spec: **`docs/chat-calling.md`**.
 - **2026-09-04:** **Muted mic chip.** Mute no longer fills rose. White background, rose icon. End stays full red. **`1.4.49`.** Web chrome, Vercel `test`.
 - **2026-09-04:** **Flip header chrome + minimized pip fill.** Screen Flip matches Minimize / Add people (`h-11`, `bg-white/10`). Minimized native overlay no longer runs fullscreen duo layout inside 112×160 (that left the featured stream off-center). **`1.4.48`. New TestFlight** for the pip. Flip chrome is Vercel `test`.
 - **2026-09-04:** **Parked … in-call phone contacts / Invite to EdgeTilt.** IPA address book under follows/followers after Twilio SMS is actually approved (carrier gambling denial). Matched verified phones → `invite_to_call`; unmatched → SMS download invite. Filter-first. Not started. Checkbox under Chat calling + Account & identity.

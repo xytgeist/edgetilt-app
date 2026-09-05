@@ -246,9 +246,8 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
       } else {
         self.localIsFeatured = false
       }
-      UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseInOut]) {
-        self.layoutVideoViews()
-      }
+      // Instant swap. Tweening full-bleed ↔ pip looks like the streams smear.
+      self.layoutVideoViews()
       self.dispatchState()
     }
     if Thread.isMainThread {

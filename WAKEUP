@@ -95,6 +95,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Windows Theo.** Destination rule: Lounge (public + VIP) keeps markdown. **Chat rooms never get markdown.** **X.com auto-post (when built) never gets markdown.** Same caption can fan out; strip at the destination. Helper `toPlainOutboundText` in `loungeBotPlainOutbound.ts`. Chat choke point is `publishBotSubChatMessage` (every Signal/Syndicate fan-room insert). X publisher must call that helper; do not send Lounge captions raw. Redeployed **`lounge-odds-poll`**, **`lounge-odds-ingest`**, **`lounge-bot-publish-due`** on **test + prod**. Existing chat messages stay until the next publish.
 
+### Mac Theo 2026-09-04 … invite sheet height + instant swap
+
+**I am Mac Theo.** Add-people sheet is a fixed height so search does not collapse it behind the keyboard. 2-person inset swap is instant (no tile tween). **`1.4.47`. Rebuild EdgeTilt Test** for the swap. Modal is Vercel `test`.
+
 ### Mac Theo 2026-09-04 … in-call chrome polish
 
 **I am Mac Theo.** Add-people hides chrome and does not autofocus search. Follow list no longer flips Loading ↔ people when someone speaks. Flip (You featured) sits under Add people. No green speaking outline on 2-person video. IPA swap was a no-op: `setNativeCallStreamFocus` was not on the injected `EdgeNative` object. Also parse JS `true` as NSNumber. **`1.4.46`. Rebuild EdgeTilt Test.** Web is Vercel `test`.

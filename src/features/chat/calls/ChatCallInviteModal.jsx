@@ -203,11 +203,11 @@ export default function ChatCallInviteModal({
     <div
       data-chat-call-interactive=""
       data-call-invite-modal=""
-      className="fixed inset-0 z-[132] flex items-end justify-center bg-black/65 px-3 pb-[max(1rem,env(safe-area-inset-bottom,0px))] pt-[max(1.5rem,env(safe-area-inset-top,0px))] sm:items-center"
+      className="fixed inset-0 z-[132] flex items-end justify-center bg-black/65 px-3 pb-[max(1rem,env(safe-area-inset-bottom,0px),env(keyboard-inset-height,0px))] pt-[max(1.5rem,env(safe-area-inset-top,0px))] sm:items-center"
       onClick={onClose}
     >
       <div
-        className="flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[#121214] shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
+        className="flex h-[min(36rem,calc(100dvh-2.75rem))] w-full max-w-md shrink-0 flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[#121214] shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="flex shrink-0 items-center justify-between px-5 pt-4 pb-2">

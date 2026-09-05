@@ -4,6 +4,8 @@
  */
 
 export const EDGE_PRO_MONTHLY_USD = 9.99
+/** App Store US list (web × 1.15, next Apple point). */
+export const EDGE_PRO_MONTHLY_IAP_USD = 11.49
 export const SLOTS_EDGE_STARTER_MONTHLY_USD = 19.99
 export const SLOTS_EDGE_STARTER_ANNUAL_USD = 219.99
 export const SLOTS_EDGE_FULL_MONTHLY_USD = 59.99

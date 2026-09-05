@@ -32,6 +32,7 @@ import SettingsMembershipPanel from '../features/creatorFanSubs/SettingsMembersh
 import SettingsAccountInfoScreen from '../features/profiles/SettingsAccountInfoScreen.jsx'
 import { startEdgeCheckout } from '../features/billing/stripeBillingApi.js'
 import { PRODUCT_EDGE_PRO } from '../features/billing/edgeProducts.js'
+import { EDGE_PRO_MONTHLY_IAP_USD, formatUsdMonthly } from '../features/billing/edgePricing.js'
 import {
   fetchEdgeStoreProducts,
   iapProductIdForPlan,
@@ -1650,7 +1651,9 @@ export default function LoungeDockSlidePanels({
                           Unlock Edge Pro VIP Filtering
                         </div>
                         <span className="rounded-full border border-amber-500/40 bg-amber-500/20 px-2 py-0.5 text-[11px] font-black text-amber-400">
-                          $9.99/mo
+                          {isEdgeiOSShell()
+                            ? edgeProIapPrice || formatUsdMonthly(EDGE_PRO_MONTHLY_IAP_USD)
+                            : '$9.99/mo'}
                         </span>
                       </div>
                       <p className="mt-1.5 text-[12px] leading-relaxed text-zinc-400">
@@ -1659,39 +1662,7 @@ export default function LoungeDockSlidePanels({
                       {edgeProCheckoutError ? (
                         <p className="mt-1.5 text-[11px] text-rose-400">{edgeProCheckoutError}</p>
                       ) : null}
-                      <button
-                        type="button"
-                        disabled={edgeProCheckoutBusy}
-                        onClick={async () => {
-                          if (!settingsSupabaseClient) {
-                            if (typeof settingsOnOpenBillingManage === 'function') settingsOnOpenBillingManage()
-                            return
-                          }
-                          setEdgeProCheckoutBusy(true)
-                          setEdgeProCheckoutError('')
-                          try {
-                            await startEdgeCheckout(settingsSupabaseClient, PRODUCT_EDGE_PRO, {
-                              priceInterval: 'monthly',
-                              applyEarlyBird: false,
-                            })
-                          } catch (err) {
-                            const msg = err instanceof Error ? err.message : String(err || '')
-                            setEdgeProCheckoutError(msg || 'Could not start checkout.')
-                          } finally {
-                            setEdgeProCheckoutBusy(false)
-                          }
-                        }}
-                        className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-3.5 py-2 text-[12px] font-bold text-zinc-950 shadow touch-manipulation hover:brightness-110 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
-                      >
-                        <span>
-                          {edgeProCheckoutBusy
-                            ? 'Connecting to Stripe…'
-                            : isEdgeiOSShell()
-                              ? 'Subscribe on the web ($9.99/mo)'
-                              : '⚡ Upgrade to Edge Pro ($9.99/mo)'}
-                        </span>
-                      </button>
-                      {edgeProIapPrice ? (
+                      {isEdgeiOSShell() ? (
                         <button
                           type="button"
                           disabled={edgeProCheckoutBusy}
@@ -1717,11 +1688,44 @@ export default function LoungeDockSlidePanels({
                               setEdgeProCheckoutBusy(false)
                             }
                           }}
-                          className="mt-2 inline-flex w-full items-center justify-center rounded-lg border border-amber-500/40 bg-zinc-950/60 px-3.5 py-2 text-[12px] font-semibold text-amber-200 touch-manipulation hover:bg-zinc-900 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
+                          className="mt-2.5 inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-3.5 py-2 text-[12px] font-bold text-zinc-950 shadow touch-manipulation hover:brightness-110 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
                         >
-                          Subscribe on iPhone · {edgeProIapPrice}
+                          {edgeProCheckoutBusy
+                            ? 'Purchasing…'
+                            : `Subscribe on iPhone · ${edgeProIapPrice || formatUsdMonthly(EDGE_PRO_MONTHLY_IAP_USD)}`}
                         </button>
-                      ) : null}
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={edgeProCheckoutBusy}
+                          onClick={async () => {
+                            if (!settingsSupabaseClient) {
+                              if (typeof settingsOnOpenBillingManage === 'function') settingsOnOpenBillingManage()
+                              return
+                            }
+                            setEdgeProCheckoutBusy(true)
+                            setEdgeProCheckoutError('')
+                            try {
+                              await startEdgeCheckout(settingsSupabaseClient, PRODUCT_EDGE_PRO, {
+                                priceInterval: 'monthly',
+                                applyEarlyBird: false,
+                              })
+                            } catch (err) {
+                              const msg = err instanceof Error ? err.message : String(err || '')
+                              setEdgeProCheckoutError(msg || 'Could not start checkout.')
+                            } finally {
+                              setEdgeProCheckoutBusy(false)
+                            }
+                          }}
+                          className="mt-2.5 inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-3.5 py-2 text-[12px] font-bold text-zinc-950 shadow touch-manipulation hover:brightness-110 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
+                        >
+                          <span>
+                            {edgeProCheckoutBusy
+                              ? 'Connecting to Stripe…'
+                              : '⚡ Upgrade to Edge Pro ($9.99/mo)'}
+                          </span>
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

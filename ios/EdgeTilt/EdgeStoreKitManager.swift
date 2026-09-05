@@ -1,7 +1,8 @@
 import Foundation
 import StoreKit
+import UIKit
 
-/// StoreKit 2 in-app purchases for Edge platform subs. Grants via Edge `apple-iap-verify`.
+/// StoreKit 2 in-app purchases for Edge platform + fan-tier subs. Grants via Edge `apple-iap-verify`.
 @available(iOS 15.0, *)
 final class EdgeStoreKitManager {
   static let shared = EdgeStoreKitManager()
@@ -13,6 +14,14 @@ final class EdgeStoreKitManager {
     "com.edgetilt.app.slots_edge.monthly": "slots-edge",
     "com.edgetilt.app.slots_edge.annual": "slots-edge",
     "com.edgetilt.app.slots_edge_lifetime": "slots-edge-lifetime",
+    "com.edgetilt.app.edge_pro.monthly": "edge-pro",
+    "com.edgetilt.app.fan_tier_499.monthly": "fan-tier-499",
+    "com.edgetilt.app.fan_tier_999.monthly": "fan-tier-999",
+    "com.edgetilt.app.fan_tier_1999.monthly": "fan-tier-1999",
+    "com.edgetilt.app.fan_tier_4999.monthly": "fan-tier-4999",
+    "com.edgetilt.app.fan_tier_9999.monthly": "fan-tier-9999",
+    "com.edgetilt.app.fan_tier_14999.monthly": "fan-tier-14999",
+    "com.edgetilt.app.fan_tier_24999.monthly": "fan-tier-24999",
   ]
 
   private init() {}
@@ -62,7 +71,8 @@ final class EdgeStoreKitManager {
         switch result {
         case .success(let verification):
           let transaction = try Self.checkVerified(verification)
-          let payload = Self.transactionPayload(transaction)
+          var payload = Self.transactionPayload(transaction)
+          payload["signedTransactionInfo"] = verification.jwsRepresentation
           await transaction.finish()
           completion(.success(payload))
         case .userCancelled:
@@ -84,9 +94,26 @@ final class EdgeStoreKitManager {
         var rows: [[String: Any]] = []
         for await result in Transaction.currentEntitlements {
           let transaction = try Self.checkVerified(result)
-          rows.append(Self.transactionPayload(transaction))
+          var row = Self.transactionPayload(transaction)
+          row["signedTransactionInfo"] = result.jwsRepresentation
+          rows.append(row)
         }
         completion(.success(["transactions": rows]))
+      } catch {
+        completion(.failure(error))
+      }
+    }
+  }
+
+  func showManageSubscriptions(completion: @escaping (Result<[String: Any], Error>) -> Void) {
+    Task { @MainActor in
+      guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first else {
+        completion(.failure(EdgeStoreKitError.unavailable))
+        return
+      }
+      do {
+        try await AppStore.showManageSubscriptions(in: scene)
+        completion(.success(["ok": true]))
       } catch {
         completion(.failure(error))
       }
@@ -111,9 +138,6 @@ final class EdgeStoreKitManager {
       "transactionId": String(transaction.id),
       "originalTransactionId": String(transaction.originalID),
     ]
-    if #available(iOS 15.4, *) {
-      row["signedTransactionInfo"] = transaction.jsonRepresentation.base64EncodedString()
-    }
     if let expiration = transaction.expirationDate {
       row["expiresAt"] = ISO8601DateFormatter().string(from: expiration)
     }

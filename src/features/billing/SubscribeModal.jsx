@@ -21,7 +21,14 @@ import {
 } from './edgePricing.js'
 import { isCheckoutAuthRequiredError, startEdgeCheckout } from './stripeBillingApi.js'
 import { isEdgeiOSShell } from '../../utils/edgeNative.js'
-import { iapProductIdForPlan, startEdgeIapPurchase } from '../../utils/edgeIapBilling.js'
+import {
+  allKnownIapProductIds,
+  fetchEdgeStoreProducts,
+  iapProductIdForPlan,
+  indexStoreProductsById,
+  restoreEdgeIapPurchases,
+  startEdgeIapPurchase,
+} from '../../utils/edgeIapBilling.js'
 import {
   getAffiliateCodeForCheckout,
   getAffiliateStampForSubscribeUi,
@@ -314,6 +321,8 @@ export default function SubscribeModal({
 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [storeProductsById, setStoreProductsById] = useState(() => new Map())
+  const [restoreBusy, setRestoreBusy] = useState(false)
   const [affiliatePromo, setAffiliatePromo] = useState(() => getAffiliateStampForSubscribeUi())
   const [militaryPromo, setMilitaryPromo] = useState(() => Boolean(readMilitaryPromoStamp()?.code))
   const [selectedPlan, setSelectedPlan] = useState(defaultPlan)
@@ -352,6 +361,8 @@ export default function SubscribeModal({
     setMilitaryPromo(Boolean(readMilitaryPromoStamp()?.code))
     setError('')
     setBusy(false)
+    setRestoreBusy(false)
+    setStoreProductsById(new Map())
     setInstantSlideIndexes(new Set())
     setDragPx(0)
     setIsDragging(false)
@@ -368,6 +379,17 @@ export default function SubscribeModal({
         refreshed?.buyerDiscountPct ? refreshed : getAffiliateStampForSubscribeUi(),
       )
     })()
+    if (isEdgeiOSShell()) {
+      void (async () => {
+        try {
+          const { products } = await fetchEdgeStoreProducts(supabaseClient, allKnownIapProductIds())
+          if (cancelled) return
+          setStoreProductsById(indexStoreProductsById(products))
+        } catch {
+          if (!cancelled) setStoreProductsById(new Map())
+        }
+      })()
+    }
     return () => {
       cancelled = true
     }
@@ -614,7 +636,22 @@ export default function SubscribeModal({
               ? `Continue with ${productDisplayName(PRODUCT_SLOTS_EDGE)} Annual`
               : `Continue with ${productDisplayName(PRODUCT_SLOTS_EDGE)}`
 
-  const handleCheckout = async () => {
+  const selectedIapProductId = iapProductIdForPlan(selectedPlan, selectedInterval)
+  const selectedStoreProduct = selectedIapProductId
+    ? storeProductsById.get(selectedIapProductId)
+    : null
+  const canIapSelected = Boolean(isEdgeiOSShell() && selectedStoreProduct)
+  const starterStoreProduct = storeProductsById.get(
+    iapProductIdForPlan(PRODUCT_SLOTS_EDGE_STARTER, starterInterval) || '',
+  )
+  const fullStoreProduct = storeProductsById.get(
+    iapProductIdForPlan(PRODUCT_SLOTS_EDGE, fullInterval) || '',
+  )
+  const lifetimeStoreProduct = storeProductsById.get(
+    iapProductIdForPlan(PRODUCT_SLOTS_EDGE_LIFETIME) || '',
+  )
+
+  const handleCheckout = async (via = 'auto') => {
     setError('')
     setBusy(true)
     try {
@@ -626,17 +663,32 @@ export default function SubscribeModal({
             ? starterInterval
             : 'monthly'
 
-      if (isEdgeiOSShell() && iapProductIdForPlan(selectedPlan, priceInterval)) {
+      const wantIap = via === 'iap' || (via === 'auto' && canIapSelected)
+      if (wantIap) {
+        if (!canIapSelected) {
+          setBusy(false)
+          setError('This App Store product is not available yet.')
+          return
+        }
         const iapResult = await startEdgeIapPurchase(supabaseClient, selectedPlan, { priceInterval })
         if (iapResult?.cancelled) {
           setBusy(false)
           return
         }
+        if (iapResult?.pending) {
+          setBusy(false)
+          setError('Purchase is waiting for approval on this Apple ID.')
+          return
+        }
         if (iapResult?.ok) {
+          await onCheckoutStarted?.()
           setBusy(false)
           onClose?.()
           return
         }
+        setBusy(false)
+        setError('Purchase did not complete.')
+        return
       }
 
       await startEdgeCheckout(supabaseClient, selectedPlan, {
@@ -656,6 +708,32 @@ export default function SubscribeModal({
         return
       }
       setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  const handleRestorePurchases = async () => {
+    setError('')
+    setRestoreBusy(true)
+    try {
+      const result = await restoreEdgeIapPurchases(supabaseClient)
+      await onCheckoutStarted?.()
+      if (result?.count) {
+        onClose?.()
+        return
+      }
+      setError('No App Store purchases found for this Apple ID.')
+    } catch (e) {
+      if (isCheckoutAuthRequiredError(e)) {
+        if (onAuthRequiredForCheckout) {
+          onAuthRequiredForCheckout()
+          return
+        }
+        setError('Sign in to restore purchases.')
+        return
+      }
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setRestoreBusy(false)
     }
   }
 
@@ -845,7 +923,11 @@ export default function SubscribeModal({
                         </button>
                       </div>
                       <div className="mt-3 flex flex-wrap items-end gap-1.5">
-                        {starterInterval === 'annual' ? (
+                        {starterStoreProduct?.displayPrice ? (
+                          <span className="text-xl font-bold tracking-tight text-white">
+                            {starterStoreProduct.displayPrice}
+                          </span>
+                        ) : starterInterval === 'annual' ? (
                           <>
                             <span className="text-xl font-bold tracking-tight text-white">{starterAnnualEarly}</span>
                             <span className="pb-0.5 text-xs text-zinc-500 line-through">{starterAnnualList}</span>
@@ -858,7 +940,9 @@ export default function SubscribeModal({
                         )}
                       </div>
                       <p className="mt-0.5 text-[11px] text-zinc-500">
-                        {starterInterval === 'annual'
+                        {starterStoreProduct?.displayPrice
+                          ? 'App Store price'
+                          : starterInterval === 'annual'
                           ? isMilitaryPromo
                             ? `${starterAnnualEffective} effective · ${militaryRateCaption}`
                             : isAffiliatePromo
@@ -968,7 +1052,11 @@ export default function SubscribeModal({
                         </button>
                       </div>
                       <div className="mt-3 flex flex-wrap items-end gap-1.5">
-                        {fullInterval === 'annual' ? (
+                        {fullStoreProduct?.displayPrice ? (
+                          <span className="text-xl font-bold tracking-tight text-white">
+                            {fullStoreProduct.displayPrice}
+                          </span>
+                        ) : fullInterval === 'annual' ? (
                           <>
                             <span className="text-xl font-bold tracking-tight text-white">{fullAnnualEarly}</span>
                             <span className="pb-0.5 text-xs text-zinc-500 line-through">{fullAnnualList}</span>
@@ -981,7 +1069,9 @@ export default function SubscribeModal({
                         )}
                       </div>
                       <p className="mt-0.5 text-[11px] text-zinc-500">
-                        {fullInterval === 'annual'
+                        {fullStoreProduct?.displayPrice
+                          ? 'App Store price'
+                          : fullInterval === 'annual'
                           ? isMilitaryPromo
                             ? `${fullAnnualEffective} effective · ${militaryRateCaption}`
                             : isAffiliatePromo
@@ -1043,11 +1133,21 @@ export default function SubscribeModal({
                       <div className="mt-1.5 text-lg font-bold text-white">{productDisplayName(PRODUCT_SLOTS_EDGE_LIFETIME)}</div>
                       <p className="mt-0.5 text-xs text-zinc-400">Pay once. Never worry about renewals or new-tool add-ons.</p>
                       <div className="mt-3 flex flex-wrap items-end gap-1.5">
-                        <span className="text-xl font-bold tracking-tight text-white">{lifetimeEarly}</span>
-                        <span className="pb-0.5 text-xs text-zinc-500 line-through">{lifetimeList}</span>
+                        {lifetimeStoreProduct?.displayPrice ? (
+                          <span className="text-xl font-bold tracking-tight text-white">
+                            {lifetimeStoreProduct.displayPrice}
+                          </span>
+                        ) : (
+                          <>
+                            <span className="text-xl font-bold tracking-tight text-white">{lifetimeEarly}</span>
+                            <span className="pb-0.5 text-xs text-zinc-500 line-through">{lifetimeList}</span>
+                          </>
+                        )}
                       </div>
                       <p className="mt-0.5 text-[11px] text-zinc-500">
-                        {isMilitaryPromo
+                        {lifetimeStoreProduct?.displayPrice
+                          ? 'App Store price · one-time'
+                          : isMilitaryPromo
                           ? `${militaryRateCaption} · one-time`
                           : isAffiliatePromo
                           ? `${affiliateRateCaption} · one-time`
@@ -1066,19 +1166,65 @@ export default function SubscribeModal({
 
               <div className="subscribe-modal-footer shrink-0 pt-2">
               <p className="text-center text-xs leading-relaxed text-zinc-500">
-                Secure checkout powered by Stripe.
+                {canIapSelected
+                  ? 'In-app purchase uses your Apple ID. Web checkout uses Stripe.'
+                  : 'Secure checkout powered by Stripe.'}
+              </p>
+              <p className="mt-1 text-center text-[11px] leading-relaxed text-zinc-600">
+                <a href="/terms?from=settings" className="underline underline-offset-2 hover:text-zinc-400">
+                  Terms
+                </a>
+                {' · '}
+                <a href="/privacy?from=settings" className="underline underline-offset-2 hover:text-zinc-400">
+                  Privacy
+                </a>
               </p>
 
               {error ? <p className="mt-2 text-center text-sm text-red-400">{error}</p> : null}
 
-              <button
-                type="button"
-                disabled={checkoutDisabled}
-                onClick={() => void handleCheckout()}
-                className="subscribe-modal-checkout-btn mt-4 w-full min-h-12 shrink-0 rounded-2xl bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 disabled:opacity-50 font-bold text-white touch-manipulation shadow-[0_8px_28px_rgba(6,182,212,0.28)]"
-              >
-                {busy ? 'Redirecting to Stripe…' : checkoutLabel}
-              </button>
+              {canIapSelected ? (
+                <>
+                  <button
+                    type="button"
+                    disabled={checkoutDisabled}
+                    onClick={() => void handleCheckout('iap')}
+                    className="subscribe-modal-checkout-btn mt-4 w-full min-h-12 shrink-0 rounded-2xl bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 disabled:opacity-50 font-bold text-white touch-manipulation shadow-[0_8px_28px_rgba(6,182,212,0.28)]"
+                  >
+                    {busy
+                      ? 'Purchasing…'
+                      : selectedStoreProduct?.displayPrice
+                        ? `Subscribe on iPhone · ${selectedStoreProduct.displayPrice}`
+                        : checkoutLabel}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={checkoutDisabled}
+                    onClick={() => void handleCheckout('web')}
+                    className="mt-2 w-full min-h-11 shrink-0 rounded-2xl border border-zinc-700/80 bg-zinc-900 px-4 text-sm font-semibold text-zinc-100 touch-manipulation hover:bg-zinc-800 disabled:opacity-50"
+                  >
+                    {busy ? 'Opening Safari…' : 'Subscribe on the web'}
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  disabled={checkoutDisabled}
+                  onClick={() => void handleCheckout('web')}
+                  className="subscribe-modal-checkout-btn mt-4 w-full min-h-12 shrink-0 rounded-2xl bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 disabled:opacity-50 font-bold text-white touch-manipulation shadow-[0_8px_28px_rgba(6,182,212,0.28)]"
+                >
+                  {busy ? 'Redirecting to Stripe…' : checkoutLabel}
+                </button>
+              )}
+              {isEdgeiOSShell() ? (
+                <button
+                  type="button"
+                  disabled={busy || restoreBusy}
+                  onClick={() => void handleRestorePurchases()}
+                  className="mt-2 w-full min-h-10 text-center text-[13px] font-semibold text-zinc-400 touch-manipulation hover:text-zinc-200 disabled:opacity-50"
+                >
+                  {restoreBusy ? 'Restoring…' : 'Restore purchases'}
+                </button>
+              ) : null}
               </div>
             </>
           )}

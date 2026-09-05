@@ -4345,6 +4345,7 @@ export default function LoungeProfileFullScreen({
         postAlertsEnabled={isSubscribed}
         onEnablePostAlerts={enableProfilePostAlertsOnly}
         onDisablePostAlerts={toggleSubscribe}
+        onSubscribed={reloadCreatorFanSubState}
       />
 
       {isOwnProfile && supabaseClient ? (

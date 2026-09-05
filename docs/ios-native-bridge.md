@@ -82,9 +82,10 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | `setNativeCallStreamFocus` | JS→native | `{ isLocalMain?: boolean, localMain?: 0\|1, focusedIdentity?: string, quadFocus?: boolean }` | `{ ok: boolean, isLocalMain: boolean, focusedIdentity?: string, quadFocus?: boolean }` | Mac | **native** (2026-08-29, **2026-09-04**). Count-based tiles: 2 = featured full-bleed + inset (tap inset to swap). **3–7 = 3-wide inset bank** (two rows at 5–7). **8–9 = 4-wide inset bank.** Max 9 live cameras; extras are audio-only. **`isLocalMain` is required when You is featured** (2+). WKWebView turns JS `true` into `NSNumber` … parse with `payloadFlag`, not `as? Bool`. JS also sends `localMain: 1\|0`. Local `focusedIdentity` also features You. `quadFocus` is ignored. No green speaking border on 2-person tiles or the featured stream (insets keep it). |
 | `getNativeCallState` | JS→native | none | `{ callId, connected, remoteCount, micOn, camOn, speakerOn, hasVideo, participants?: [{ identity, name, isLocal, isSpeaking, hasVideo }] }` | Mac | **native** (2026-08-27). Chrome hydrates from this + `edge-native-call-state` events. **2026-09-04:** `participants` roster + speaking flags. `hasVideo` per person drives the camera-off square pip. |
 | `dismissKeyboard` | JS→native | none | `{ ok: boolean }` | Mac | **native** (2026-08-27). Answer / start call drops the WKWebView keyboard. CallKit answer also resigns first responder without waiting for JS. |
-| `getStoreProducts` | JS→native | `{ productIds: string[] }` | `{ products: Array<{ id, title, price, priceLocale }> }` | Mac | **native** (StoreKit 2, 2026-08-26). **Device smoke pending** (needs App Store Connect products). |
-| `purchaseStoreProduct` | JS→native | `{ productId, appAccountToken? }` | `{ ok, state, transactionId?, jws? }` | Mac | **native** (2026-08-26) + **web** SubscribeModal shell path. JWS verified server-side by Edge `apple-iap-verify`. **Device smoke pending.** |
-| `restoreStorePurchases` | JS→native | none | `{ ok, entitlements: string[] }` | Mac | **native** (2026-08-26). **Device smoke pending.** |
+| `getStoreProducts` | JS→native | `{ productIds: string[] }` | `{ products: Array<{ id, displayName, displayPrice, productSlug }> }` | Mac | **native** (StoreKit 2). Paywall uses `displayPrice` when the product exists in ASC. **Device smoke pending.** |
+| `purchaseStoreProduct` | JS→native | `{ productId, appAccountToken? }` | `{ ok, status, transactionId?, originalTransactionId?, signedTransactionInfo? (JWS), expiresAt? }` | Mac | **native** + web SubscribeModal / fan SUB / Edge Pro. Confirm via Edge `apple-iap-verify`. **Device smoke pending.** |
+| `restoreStorePurchases` | JS→native | none | `{ ok, transactions: [...] }` | Mac | **native** + Restore on Subscribe + Manage membership. **Device smoke pending.** |
+| `manageStoreSubscriptions` | JS→native | none | `{ ok: boolean }` | Mac | **native** (2026-09-05). `AppStore.showManageSubscriptions`. Apple-billed users only. |
 
 **Web-owned (no Swift required for first cut):**
 
@@ -99,11 +100,14 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 
 **v1.1 (do not stub-implement yet):** CallKit, StoreKit IAP, background ring.
 
-### StoreKit IAP (v1.1 note)
+### StoreKit IAP (dual-path, 2026-09-05)
 
-v1 ships **Safari link-out only** for digital subs (Slots Edge, fan subs, Connect onboarding). That is enough for a clean US App Review story if CTAs never open Stripe inside WKWebView.
+IPA can offer **IAP + Safari** for the same unlock. Web / PWA / Android stay Stripe / Connect only.
 
-**v1.1 (optional, safer dual-path):** StoreKit 2 products that grant the **same** `get_my_entitlements()` / fan-sub rows as Stripe webhooks. Web keeps Stripe; shell can offer IAP beside “Continue in Safari.” May **upcharge IAP** for Apple’s cut. Do not invent a second entitlement system. Counsel + App Review notes before submit.
+- **Platform Slots Edge + Edge Pro:** IAP primary when StoreKit returns the product; **Subscribe on the web** is secondary. Restore + Terms/Privacy on the paywall. Apple-billed manage → `manageStoreSubscriptions`.
+- **Creator fan subs:** **Subscribe on the web** is primary (guide to Connect). **Subscribe on iPhone** is the IAP option when that tier SKU exists. One ASC product per price tier, not per creator. `apple_iap_intents` binds buyer + tier + creator before StoreKit so a `$4.99` receipt cannot attach to a `$249` room.
+- Same tables: `user_subscriptions` / `creator_subscriptions` + `billing_provider`. Do not invent a second entitlement system.
+- **Still owed before real charges:** ASC products, sandbox smoke, App Store Server Notifications (renew/refund), full JWS cert verify, counsel + Review notes (US link-out ≠ other storefronts). May upcharge IAP for Apple’s cut.
 
 ### ⚠️ CallKit: one invite arrives three ways … dedupe by `callId` (2026-08-27)
 

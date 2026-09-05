@@ -502,3 +502,134 @@ export async function upsertAppleIapSubscription(
   void transactionId
   await syncProfileHasActiveSubscription(admin, userId)
 }
+
+export async function insertAppleIapIntent(
+  admin: SupabaseClient,
+  args: {
+    userId: string
+    productId: string
+    kind: 'platform' | 'creator_fan'
+    productSlug?: string | null
+    creatorUserId?: string | null
+    fanTierKey?: string | null
+  },
+) {
+  const { error } = await admin.from('apple_iap_intents').insert({
+    user_id: args.userId,
+    product_id: args.productId,
+    kind: args.kind,
+    product_slug: args.productSlug || null,
+    creator_user_id: args.creatorUserId || null,
+    fan_tier_key: args.fanTierKey || null,
+  })
+  if (error) throw new Error(`apple_iap_intents insert: ${error.message}`)
+}
+
+export async function consumeAppleIapIntent(
+  admin: SupabaseClient,
+  args: { userId: string; productId: string },
+) {
+  const { data, error } = await admin
+    .from('apple_iap_intents')
+    .select('id, kind, product_slug, creator_user_id, fan_tier_key, created_at')
+    .eq('user_id', args.userId)
+    .eq('product_id', args.productId)
+    .is('consumed_at', null)
+    .gte('created_at', new Date(Date.now() - 30 * 60 * 1000).toISOString())
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw new Error(`apple_iap_intents lookup: ${error.message}`)
+  if (!data?.id) return null
+
+  const { error: consumeErr } = await admin
+    .from('apple_iap_intents')
+    .update({ consumed_at: new Date().toISOString() })
+    .eq('id', data.id)
+  if (consumeErr) throw new Error(`apple_iap_intents consume: ${consumeErr.message}`)
+  return data
+}
+
+export async function upsertAppleIapCreatorFanSubscription(
+  admin: SupabaseClient,
+  args: {
+    subscriberUserId: string
+    creatorUserId: string
+    fanTierKey: string
+    appleProductId: string
+    originalTransactionId: string
+    transactionId: string
+    expiresAt?: string | null
+  },
+) {
+  const {
+    subscriberUserId,
+    creatorUserId,
+    fanTierKey,
+    appleProductId,
+    originalTransactionId,
+    expiresAt = null,
+  } = args
+
+  const { data: existingStripe, error: existingErr } = await admin
+    .from('creator_subscriptions')
+    .select('id, billing_provider, apple_original_transaction_id')
+    .eq('subscriber_user_id', subscriberUserId)
+    .eq('creator_user_id', creatorUserId)
+    .maybeSingle()
+  if (existingErr) throw new Error(`creator_subscriptions lookup: ${existingErr.message}`)
+  if (
+    existingStripe?.id &&
+    existingStripe.billing_provider !== 'apple' &&
+    !existingStripe.apple_original_transaction_id
+  ) {
+    throw new Error('You already subscribe to this creator on the web.')
+  }
+
+  const row = {
+    subscriber_user_id: subscriberUserId,
+    creator_user_id: creatorUserId,
+    fan_tier_key: fanTierKey,
+    stripe_subscription_id: `apple_${originalTransactionId}`,
+    stripe_customer_id: `apple_user_${subscriberUserId}`,
+    status: 'active',
+    current_period_end: expiresAt,
+    cancel_at_period_end: false,
+    billing_provider: 'apple',
+    apple_original_transaction_id: originalTransactionId,
+    apple_product_id: appleProductId,
+    updated_at: new Date().toISOString(),
+  }
+
+  const { data: existingByApple, error: appleLookupErr } = await admin
+    .from('creator_subscriptions')
+    .select('id, status')
+    .eq('apple_original_transaction_id', originalTransactionId)
+    .maybeSingle()
+  if (appleLookupErr) {
+    throw new Error(`creator_subscriptions apple lookup: ${appleLookupErr.message}`)
+  }
+
+  const wasActive = existingByApple?.status === 'active' || existingByApple?.status === 'trialing'
+
+  if (existingByApple?.id) {
+    const { error } = await admin.from('creator_subscriptions').update(row).eq('id', existingByApple.id)
+    if (error) throw new Error(`creator_subscriptions apple update: ${error.message}`)
+  } else {
+    const { error } = await admin.from('creator_subscriptions').upsert(row, {
+      onConflict: 'subscriber_user_id,creator_user_id',
+    })
+    if (error) throw new Error(`creator_subscriptions apple upsert: ${error.message}`)
+  }
+
+  await syncCreatorFanChatMemberWarnOnly(admin, subscriberUserId, creatorUserId, true)
+  if (!wasActive) {
+    const { error: notifyErr } = await admin.rpc('creator_fan_notify_new_subscriber', {
+      p_creator_user_id: creatorUserId,
+      p_subscriber_user_id: subscriberUserId,
+    })
+    if (notifyErr) {
+      console.warn('creator_fan_notify_new_subscriber:', notifyErr.message)
+    }
+  }
+}

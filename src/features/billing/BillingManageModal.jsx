@@ -9,6 +9,8 @@ import {
   resolvedEntitlementBillingInterval,
 } from './edgeProducts.js'
 import { openBillingPortal, startEdgeCheckout } from './stripeBillingApi.js'
+import { isEdgeiOSShell } from '../../utils/edgeNative.js'
+import { openAppleSubscriptionManagement, restoreEdgeIapPurchases } from '../../utils/edgeIapBilling.js'
 import { getAffiliateCodeForCheckout } from '../affiliates/affiliateRefApi.js'
 import { getMilitaryPromoCodeForCheckout } from './militaryPromoStamp.js'
 
@@ -143,16 +145,36 @@ export default function BillingManageModal({
     [onCheckoutStarted, supabaseClient],
   )
 
+  const billingProvider = String(activeEntitlement?.billing_provider || 'stripe')
+  const isAppleBilled = billingProvider === 'apple'
+
   const runPortal = useCallback(async () => {
     setError('')
     setBusyKey('portal')
     try {
-      await openBillingPortal(supabaseClient)
+      if (isAppleBilled) {
+        await openAppleSubscriptionManagement(supabaseClient)
+      } else {
+        await openBillingPortal(supabaseClient)
+      }
     } catch (e) {
       setBusyKey('')
       setError(e instanceof Error ? e.message : String(e))
     }
-  }, [supabaseClient])
+  }, [isAppleBilled, supabaseClient])
+
+  const runRestore = useCallback(async () => {
+    setError('')
+    setBusyKey('restore')
+    try {
+      await restoreEdgeIapPurchases(supabaseClient)
+      await onRefreshEntitlements?.()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusyKey('')
+    }
+  }, [onRefreshEntitlements, supabaseClient])
 
   if (!open || typeof document === 'undefined') return null
 
@@ -198,7 +220,11 @@ export default function BillingManageModal({
               <h2 id="billing-manage-title" className="text-lg font-bold tracking-tight text-white">
                 Manage membership
               </h2>
-              <p className="mt-1 text-sm text-zinc-400">Upgrade, change billing, or cancel in Stripe.</p>
+              <p className="mt-1 text-sm text-zinc-400">
+                {isAppleBilled
+                  ? 'Upgrade, change billing, or cancel in App Store subscriptions.'
+                  : 'Upgrade, change billing, or cancel in Stripe.'}
+              </p>
             </div>
             <button
               type="button"
@@ -256,6 +282,7 @@ export default function BillingManageModal({
             !hasSlotsEdgePro &&
             !hasSlotsEdgeLifetime &&
             !isPendingCancel &&
+            !isAppleBilled &&
             starterCurrentInterval ? (
               <button
                 type="button"
@@ -288,7 +315,7 @@ export default function BillingManageModal({
               </button>
             ) : null}
 
-            {hasSlotsEdgePro && !hasSlotsEdgeLifetime && !isPendingCancel && fullCurrentInterval ? (
+            {hasSlotsEdgePro && !hasSlotsEdgeLifetime && !isPendingCancel && !isAppleBilled && fullCurrentInterval ? (
               <button
                 type="button"
                 disabled={Boolean(busyKey)}
@@ -310,7 +337,24 @@ export default function BillingManageModal({
                 onClick={() => void runPortal()}
                 className="billing-manage-action-btn w-full min-h-11 rounded-xl border border-zinc-700/80 bg-zinc-900 px-4 text-sm font-semibold text-zinc-100 touch-manipulation disabled:opacity-50"
               >
-                {busyKey === 'portal' ? 'Opening Stripe…' : 'Cancel or update payment in Stripe'}
+                {busyKey === 'portal'
+                  ? isAppleBilled
+                    ? 'Opening App Store…'
+                    : 'Opening Stripe…'
+                  : isAppleBilled
+                    ? 'Cancel or update in App Store'
+                    : 'Cancel or update payment in Stripe'}
+              </button>
+            ) : null}
+
+            {isEdgeiOSShell() ? (
+              <button
+                type="button"
+                disabled={Boolean(busyKey)}
+                onClick={() => void runRestore()}
+                className="billing-manage-action-btn w-full min-h-11 rounded-xl border border-zinc-800 bg-zinc-950/60 px-4 text-sm font-semibold text-zinc-300 touch-manipulation disabled:opacity-50"
+              >
+                {busyKey === 'restore' ? 'Restoring…' : 'Restore purchases'}
               </button>
             ) : null}
 

@@ -244,6 +244,12 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
         return
       }
       EdgeStoreKitManager.shared.restore(completion: completion)
+    case "manageStoreSubscriptions":
+      guard #available(iOS 15.0, *) else {
+        completion(.failure(EdgeStoreKitError.unavailable))
+        return
+      }
+      EdgeStoreKitManager.shared.showManageSubscriptions(completion: completion)
     default:
       completion(.failure(BridgeError.unknownMethod(method)))
     }
@@ -563,6 +569,9 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       },
       restoreStorePurchases: function () {
         return call('restoreStorePurchases', null);
+      },
+      manageStoreSubscriptions: function () {
+        return call('manageStoreSubscriptions', null);
       },
       bustServiceWorker: function () {
         return call('bustServiceWorker', null);

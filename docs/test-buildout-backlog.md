@@ -137,7 +137,7 @@ Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows**
 
 **Later (v1.1+)**
 - [ ] CallKit / background ring; native haptics; Android TWA
-- [ ] **StoreKit IAP (optional dual-path):** same entitlements as Stripe; shell can offer IAP + Safari; may upcharge for Apple cut. See **`docs/ios-native-bridge.md`** § StoreKit IAP. Not required for v1 if Safari link-out stays clean.
+- [ ] **StoreKit IAP (optional dual-path):** code path landed 2026-09-05 (`1.4.60`) … IAP + Safari, restore, Apple manage-sub, fan-tier SKUs, `apple_iap_intents`. **Still owed:** ASC products, sandbox smoke, ASSN renew/refund, full JWS cert verify, counsel + Review notes. See **`docs/ios-native-bridge.md`** § StoreKit IAP.
 
 Hot Windows files (first cuts): `pwaNotificationPrompt.js`, `PwaInstallBanner.jsx`, `useWebPushNotifications.js`, `OffersCalendar.jsx`, `stripeBillingApi.js`, `creatorFanSubsApi.js`, `affiliatePortalApi.js`, Lounge Stream / autoplay stack.
 
@@ -2848,6 +2848,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-05:** **IAP dual-path (code).** Platform SubscribeModal: StoreKit price + IAP / web / restore / Terms+Privacy; no pending→Stripe. Fan SUB: web primary, iPhone IAP optional (tier SKU, not per creator). Edge Pro Settings same split. Manage membership opens Apple subscriptions when `billing_provider=apple`. Native sends JWS; verify writes `expires_at`. SQL **`20260905120000`**. Redeploy **`apple-iap-verify`** on test. ASC products + sandbox still owed. **`1.4.60`. New TestFlight** for StoreKit / `manageStoreSubscriptions`.
 - **2026-09-05:** **iOS chat swipe-down keyboard dismiss.** Capture swipe on the whole composer host (including Message…) plus the thread so the gesture does not select text or hit the suggestion bar. **`1.4.59`.**
 - **2026-09-05:** **iOS chat composer keyboard gap.** Composer was flush on the keys; add 10px pad while the keyboard is up. iOS only. **`1.4.58`.** Web / TestFlight.
 - **2026-09-05:** **Egress inset pack.** Recording template keeps small chips but uses the live-call row pack (5–7 = 2+2 / 2+3 / 3+3, 8–9 = 3+4 / 4+4). No more single-row overflow / 6-pip cap. **Republish R2 call-egress template on test.** **`1.4.57`.**

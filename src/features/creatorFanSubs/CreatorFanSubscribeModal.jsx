@@ -4,6 +4,14 @@ import { X } from 'lucide-react'
 import { formatFanTierLabel } from './fanSubTiers.js'
 import { creatorFanOfferHeadline } from './fanSubOffer.js'
 import { startCreatorFanCheckout, openCreatorFanBillingPortal, resumeCreatorFanSubscription } from './creatorFanSubsApi.js'
+import { isEdgeiOSShell } from '../../utils/edgeNative.js'
+import {
+  fetchEdgeStoreProducts,
+  iapProductIdForFanTier,
+  indexStoreProductsById,
+  openAppleSubscriptionManagement,
+  startCreatorFanIapPurchase,
+} from '../../utils/edgeIapBilling.js'
 import { formatFanSubAccessThrough } from './fanSubBillingDates.js'
 import {
   profileAvatarInitials,
@@ -23,6 +31,7 @@ import { Z_APP_MODAL } from '../../constants/appZIndex.js'
  *   postAlertsEnabled?: boolean,
  *   onEnablePostAlerts?: () => void | Promise<void>,
  *   onDisablePostAlerts?: () => void | Promise<void>,
+ *   onSubscribed?: () => void | Promise<void>,
  * }} props
  */
 export default function CreatorFanSubscribeModal({
@@ -36,15 +45,58 @@ export default function CreatorFanSubscribeModal({
   postAlertsEnabled = false,
   onEnablePostAlerts,
   onDisablePostAlerts,
+  onSubscribed,
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [storePrice, setStorePrice] = useState('')
+  const [canIap, setCanIap] = useState(false)
+  const [billingProvider, setBillingProvider] = useState('stripe')
 
   useEffect(() => {
     if (!open) return
     setBusy(false)
     setError('')
+    setStorePrice('')
+    setCanIap(false)
+    setBillingProvider('stripe')
   }, [open])
+
+  useEffect(() => {
+    if (!open || !supabaseClient) return
+    const creatorId = String(offer?.creator_user_id || '').trim()
+    const tierKey = String(offer?.fan_tier_key || '').trim()
+    let cancelled = false
+    void (async () => {
+      if (alreadySubscribed && creatorId) {
+        try {
+          const { data } = await supabaseClient.rpc('get_my_creator_fan_entitlements')
+          const grant = data?.[`creator-fan:${creatorId}`]
+          if (!cancelled && grant?.billing_provider === 'apple') setBillingProvider('apple')
+        } catch {
+          // keep stripe
+        }
+      }
+      if (!isEdgeiOSShell() || !tierKey) return
+      const productId = iapProductIdForFanTier(tierKey)
+      if (!productId) return
+      try {
+        const { products } = await fetchEdgeStoreProducts(supabaseClient, [productId])
+        const row = indexStoreProductsById(products).get(productId)
+        if (cancelled) return
+        setCanIap(Boolean(row))
+        setStorePrice(row?.displayPrice || '')
+      } catch {
+        if (!cancelled) {
+          setCanIap(false)
+          setStorePrice('')
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, supabaseClient, offer?.creator_user_id, offer?.fan_tier_key, alreadySubscribed])
 
   useEffect(() => {
     if (!open) return undefined
@@ -94,11 +146,36 @@ export default function CreatorFanSubscribeModal({
   const fanAccessThroughLabel = formatFanSubAccessThrough(fanCurrentPeriodEnd)
   const fanPendingCancel = alreadySubscribed && fanCancelAtPeriodEnd
 
-  const onSubscribe = async () => {
+  const onSubscribe = async (via = 'web') => {
     if (!supabaseClient || !creatorUserId || busy || alreadySubscribed) return
     setBusy(true)
     setError('')
     try {
+      if (via === 'iap') {
+        const iapResult = await startCreatorFanIapPurchase(
+          supabaseClient,
+          creatorUserId,
+          String(offer.fan_tier_key || ''),
+        )
+        if (iapResult?.cancelled) {
+          setBusy(false)
+          return
+        }
+        if (iapResult?.pending) {
+          setError('Purchase is waiting for approval on this Apple ID.')
+          setBusy(false)
+          return
+        }
+        if (iapResult?.ok) {
+          await onSubscribed?.()
+          setBusy(false)
+          onClose()
+          return
+        }
+        setError('Purchase did not complete.')
+        setBusy(false)
+        return
+      }
       await startCreatorFanCheckout(supabaseClient, creatorUserId)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Checkout could not start.')
@@ -140,7 +217,11 @@ export default function CreatorFanSubscribeModal({
     setBusy(true)
     setError('')
     try {
-      await openCreatorFanBillingPortal(supabaseClient, creatorUserId)
+      if (billingProvider === 'apple') {
+        await openAppleSubscriptionManagement(supabaseClient)
+      } else {
+        await openCreatorFanBillingPortal(supabaseClient, creatorUserId)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not open billing portal.')
       setBusy(false)
@@ -152,7 +233,11 @@ export default function CreatorFanSubscribeModal({
     setBusy(true)
     setError('')
     try {
-      await resumeCreatorFanSubscription(supabaseClient, creatorUserId)
+      if (billingProvider === 'apple') {
+        await openAppleSubscriptionManagement(supabaseClient)
+      } else {
+        await resumeCreatorFanSubscription(supabaseClient, creatorUserId)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not resume subscription.')
     } finally {
@@ -278,7 +363,18 @@ export default function CreatorFanSubscribeModal({
                 ) : null}
 
                 <p className="mt-6 text-[12px] leading-snug text-zinc-600">
-                  Paid fan access is billed monthly through Stripe. Alerts only is free post notifications.
+                  {canIap
+                    ? 'Web checkout uses Stripe. iPhone checkout uses your Apple ID. Alerts only is free.'
+                    : 'Paid fan access is billed monthly through Stripe. Alerts only is free post notifications.'}
+                </p>
+                <p className="mt-2 text-[11px] leading-snug text-zinc-600">
+                  <a href="/terms?from=settings" className="underline underline-offset-2 hover:text-zinc-400">
+                    Terms
+                  </a>
+                  {' · '}
+                  <a href="/privacy?from=settings" className="underline underline-offset-2 hover:text-zinc-400">
+                    Privacy
+                  </a>
                 </p>
               </>
             )}
@@ -292,11 +388,21 @@ export default function CreatorFanSubscribeModal({
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={() => void onSubscribe()}
+                  onClick={() => void onSubscribe('web')}
                   className="flex min-h-[3.25rem] w-full items-center justify-center rounded-full bg-orange-500 px-5 text-[16px] font-bold text-zinc-950 touch-manipulation hover:bg-orange-400 disabled:opacity-50"
                 >
-                  {busy ? '…' : `Subscribe · ${tierLabel}`}
+                  {busy ? '…' : canIap ? `Subscribe on the web · ${tierLabel}` : `Subscribe · ${tierLabel}`}
                 </button>
+                {canIap ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void onSubscribe('iap')}
+                    className="mt-3 flex min-h-11 w-full items-center justify-center rounded-full border border-zinc-700/90 px-4 text-[15px] font-semibold text-zinc-200 touch-manipulation hover:bg-zinc-900/80 disabled:opacity-50"
+                  >
+                    {busy ? '…' : `Subscribe on iPhone${storePrice ? ` · ${storePrice}` : ''}`}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   disabled={busy}

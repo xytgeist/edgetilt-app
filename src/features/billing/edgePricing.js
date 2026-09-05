@@ -10,16 +10,6 @@ export const SLOTS_EDGE_FULL_MONTHLY_USD = 59.99
 export const SLOTS_EDGE_FULL_ANNUAL_USD = 660
 export const SLOTS_EDGE_LIFETIME_USD = 1699
 
-/**
- * App Store US list points. web × 1.15, then the next Apple point up.
- * Lifetime is omitted until higher price points unlock the real sticker.
- */
-export const EDGE_PRO_MONTHLY_IAP_USD = 11.49
-export const SLOTS_EDGE_STARTER_MONTHLY_IAP_USD = 22.99
-export const SLOTS_EDGE_STARTER_ANNUAL_IAP_USD = 254.99
-export const SLOTS_EDGE_FULL_MONTHLY_IAP_USD = 68.99
-export const SLOTS_EDGE_FULL_ANNUAL_IAP_USD = 759.99
-
 /** Founding member promo: 25% off (monthly subs × 12 months; annual + lifetime once at checkout). */
 export const SLOTS_EDGE_FOUNDING_PERCENT_OFF = 25
 export const SLOTS_EDGE_FOUNDING_MONTHLY_DURATION_MONTHS = 12

@@ -105,7 +105,7 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 
 IPA can offer **IAP + Safari** for the same unlock. Web / PWA / Android stay Stripe / Connect only.
 
-- **Platform Slots Edge + Edge Pro:** IAP primary when StoreKit returns the product; **Subscribe on the web** is secondary. IPA cards show **App Store price only** (StoreKit `displayPrice`, else ASC list: Starter `$22.99`/`$254.99`, Pro `$68.99`/`$759.99`, Edge Pro `$11.49`). No founding / military / affiliate % on those cards. Restore + Terms/Privacy on the paywall. Apple-billed manage → `manageStoreSubscriptions`.
+- **Platform Slots Edge + Edge Pro:** IAP primary when StoreKit returns the product; **Subscribe on the web** is secondary. Restore + Terms/Privacy on the paywall. Apple-billed manage → `manageStoreSubscriptions`.
 - **Creator fan subs:** **Subscribe on the web** is primary (guide to Connect). **Subscribe on iPhone** is the IAP option when that tier SKU exists. One ASC product per price tier, not per creator. `apple_iap_intents` binds buyer + tier + creator before StoreKit so a `$4.99` receipt cannot attach to a `$249` room.
 - Same tables: `user_subscriptions` / `creator_subscriptions` + `billing_provider`. Do not invent a second entitlement system.
 - **Still owed before real charges:** sandbox smoke, ASC Server Notification URL paste, full x5c chain to Apple Root, counsel + Review notes (US link-out ≠ other storefronts). Refund sheet + ASSN V2 (`apple-iap-notify`) landed 2026-09-05. May upcharge IAP for Apple’s cut.

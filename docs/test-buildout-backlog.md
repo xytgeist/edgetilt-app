@@ -2850,7 +2850,6 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
-- **2026-09-05:** **IPA paywall IAP prices only.** SubscribeModal + Edge Pro Settings hide founding 25% and web strikethrough on the shell. Cards use StoreKit `displayPrice` or ASC list (`$22.99` / `$254.99` / `$68.99` / `$759.99` / `$11.49`). Web checkout unchanged. **`1.4.64`.**
 - **2026-09-05:** **IAP refund sheet + ASSN V2 (test).** `beginRefundRequest` on Manage membership / fan Cancel. Edge **`apple-iap-notify`** verifies JWS `x5c` leaf and revokes / renews `user_subscriptions` + `creator_subscriptions` by `apple_original_transaction_id`. SQL **`20260905140000`**. Paste ASC sandbox URL. New TestFlight for the refund sheet. **`1.4.63`.**
 - **2026-09-05:** **sharpesyndicate.com Overview reads settled W-L.** Public fetch was newest 250 kickoffs (`select *`), so Saturday pending replaced Thursday/Friday grades and every tile dashed. Now paginate Syndicate `won`/`lost`/`push` only. Pending cannot be in the record. Cloudflare Pages still has to rebuild for the live domain. **`1.4.62`.**
 - **2026-09-05:** **Grade-picks actually settles.** Cron looked green while Edge 500ed: `oddsApiKey` was never imported in `lounge-odds-poll` (poll_edges auto-grade swallowed it). Also one invoke (not two), 150s budget, cron **:22** off the :15 live/edges pile-up, scores timeout + batched ledger writes before ESPN. SQL **`20260905130000`**. Redeploy **`lounge-odds-poll`** + **`lounge-odds-ingest`**. **`1.4.61`.**

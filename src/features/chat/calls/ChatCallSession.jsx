@@ -32,9 +32,16 @@ import {
   setNativeCallSpeaker,
   setNativeCallStreamFocus,
 } from '../../../utils/edgeCallKit.js'
-import { CALL_STREAM_DOUBLE_TAP_MS, planCallVideoLayout } from './callVideoLayout.js'
+import {
+  CALL_STREAM_DOUBLE_TAP_MS,
+  DUO_PIP_CHROME_BOTTOM_PX,
+  DUO_PIP_RIGHT_PX,
+  duoPipSize,
+  planCallVideoLayout,
+} from './callVideoLayout.js'
 
 const EMPTY_CAMERA_BY_IDENTITY = new Map()
+const EMPTY_SPEAKING_IDS = new Set()
 
 function useCallStreamTap({ controlsHidden, onReveal, onFocus }) {
   const lastRef = useRef({ at: 0, id: '' })
@@ -695,7 +702,7 @@ function NativeIpaCallSession({
   const [remoteCount, setRemoteCount] = useState(0)
   const [nativeRoster, setNativeRoster] = useState(
     () =>
-      /** @type {{ identity: string, name: string, isLocal: boolean, isSpeaking: boolean }[]} */ (
+      /** @type {{ identity: string, name: string, isLocal: boolean, isSpeaking: boolean, hasVideo: boolean }[]} */ (
         []
       ),
   )
@@ -704,6 +711,7 @@ function NativeIpaCallSession({
   const [elapsed, setElapsed] = useState(0)
   const [recCountdownLabel, setRecCountdownLabel] = useState(/** @type {string | null} */ (null))
   const [pinnedIdentity, setPinnedIdentity] = useState(/** @type {string | null} */ (null))
+  const [localIsMain, setLocalIsMain] = useState(false)
   const [showVideoConfirmModal, setShowVideoConfirmModal] = useState(false)
   const [controlsHidden, setControlsHidden] = useState(false)
   const hideTimerRef = useRef(/** @type {number | null} */ (null))
@@ -753,9 +761,14 @@ function NativeIpaCallSession({
     const next = String(id || '').trim()
     if (!next) return
     const localId = nativeRoster.find((p) => p.isLocal)?.identity
-    if (localId && next === localId) return
+    const duo = (nativeRoster.length || remoteCount + 1) === 2
+    if (localId && next === localId) {
+      if (duo) setLocalIsMain(true)
+      return
+    }
+    setLocalIsMain(false)
     setPinnedIdentity(next)
-  }, [nativeRoster])
+  }, [nativeRoster, remoteCount])
 
   const onNativeStreamTap = useCallStreamTap({
     controlsHidden,
@@ -787,6 +800,7 @@ function NativeIpaCallSession({
                 name: String(row?.name || '').trim(),
                 isLocal: Boolean(row?.isLocal),
                 isSpeaking: Boolean(row?.isSpeaking),
+                hasVideo: Boolean(row?.hasVideo),
               }
             })
             .filter(Boolean),
@@ -891,21 +905,30 @@ function NativeIpaCallSession({
     () => nativeRoster.filter((p) => !p.isLocal),
     [nativeRoster],
   )
+  const nativePeopleCount = nativeRoster.length > 0 ? nativeRoster.length : remoteCount + 1
+  const nativeLocalId = nativeRoster.find((p) => p.isLocal)?.identity || viewerUserId || ''
   const focusedIdentity = useMemo(() => {
+    if (localIsMain && nativePeopleCount === 2) {
+      return nativeLocalId || null
+    }
     if (pinnedIdentity && nativeRemotes.some((p) => p.identity === pinnedIdentity)) {
       return pinnedIdentity
     }
     return nativeRemotes[0]?.identity || null
-  }, [pinnedIdentity, nativeRemotes])
-  const nativePeopleCount = nativeRoster.length > 0 ? nativeRoster.length : remoteCount + 1
+  }, [localIsMain, nativePeopleCount, nativeLocalId, pinnedIdentity, nativeRemotes])
+
+  useEffect(() => {
+    if (nativePeopleCount !== 2) setLocalIsMain(false)
+  }, [nativePeopleCount])
 
   useEffect(() => {
     if (!isVideoMode) return
+    const youFeatured = Boolean(localIsMain && nativePeopleCount === 2)
     void setNativeCallStreamFocus({
-      isLocalMain: false,
-      focusedIdentity: focusedIdentity || '',
+      isLocalMain: youFeatured,
+      focusedIdentity: youFeatured ? nativeLocalId : focusedIdentity || '',
     })
-  }, [isVideoMode, focusedIdentity])
+  }, [isVideoMode, focusedIdentity, localIsMain, nativePeopleCount, nativeLocalId])
   const profileById = useCallParticipantProfiles(supabaseClient, participantIds)
   const speakingIds = useMemo(() => {
     const set = new Set()
@@ -1129,7 +1152,12 @@ function NativeIpaCallSession({
             featuredIdentity={focusedIdentity}
             controlsHidden={controlsHidden}
             cameraByIdentity={EMPTY_CAMERA_BY_IDENTITY}
-            participantHasLiveCamera={() => false}
+            participantHasLiveCamera={(p) => {
+              if (!p) return false
+              if (p.hasVideo) return true
+              return p.isLocal ? camOn : remoteHasVideo
+            }}
+            speakingIds={speakingIds}
             resolveAvatarForParticipant={resolveAvatarForParticipant}
             title={title}
             showLocalFlip={Boolean(camOn)}
@@ -1144,6 +1172,10 @@ function NativeIpaCallSession({
               else setControlsHidden(true)
             }}
             onActivateYou={(event) => {
+              if (nativePeopleCount === 2) {
+                onNativeStreamTap(nativeLocalId, event)
+                return
+              }
               event?.stopPropagation?.()
               if (controlsHidden) resetControlsTimer()
               else setControlsHidden(true)
@@ -1332,6 +1364,7 @@ function CallChrome({
   const [elapsed, setElapsed] = useState(0)
   const [recCountdownLabel, setRecCountdownLabel] = useState(/** @type {string | null} */ (null))
   const [pinnedIdentity, setPinnedIdentity] = useState(/** @type {string | null} */ (null))
+  const [localIsMain, setLocalIsMain] = useState(false)
   /** Last pinned participant object so active-speaker cannot steal if the pin blips out of the roster. */
   /** User manually toggled speaker... ignore cam-off / cam-on auto route flips. */
   const speakerManualOverrideRef = useRef(false)
@@ -1488,14 +1521,19 @@ function CallChrome({
   const remotes = participants.filter((p) => !p.isLocal)
   const peopleCount = remotes.length + (localParticipant ? 1 : 0)
 
+  useEffect(() => {
+    if (peopleCount !== 2) setLocalIsMain(false)
+  }, [peopleCount])
+
   const fullscreenParticipant = useMemo(() => {
+    if (localIsMain && peopleCount === 2) return localParticipant || null
     if (pinnedIdentity) {
       const pinnedRemote = remotes.find((p) => p.identity === pinnedIdentity)
       if (pinnedRemote) return pinnedRemote
     }
     if (remotes[0]) return remotes[0]
     return localParticipant || null
-  }, [pinnedIdentity, remotes, localParticipant])
+  }, [localIsMain, peopleCount, pinnedIdentity, remotes, localParticipant])
 
   const anyParticipantHasCamera =
     participantHasLiveCamera(localParticipant) || remotes.some(participantHasLiveCamera)
@@ -1532,9 +1570,14 @@ function CallChrome({
 
   const focusWebRemote = useCallback((id) => {
     const next = String(id || '').trim()
-    if (!next || (localParticipant && next === localParticipant.identity)) return
+    if (!next) return
+    if (localParticipant && next === localParticipant.identity) {
+      if (peopleCount === 2) setLocalIsMain(true)
+      return
+    }
+    setLocalIsMain(false)
     setPinnedIdentity(next)
-  }, [localParticipant])
+  }, [localParticipant, peopleCount])
 
   const onWebStreamTap = useCallStreamTap({
     controlsHidden,
@@ -1950,6 +1993,7 @@ function CallChrome({
             cameraByIdentity={cameraByIdentity}
             resolveAvatarForParticipant={resolveAvatarForParticipant}
             participantHasLiveCamera={participantHasLiveCamera}
+            speakingIds={speakingIds}
             title={title}
             showLocalFlip={Boolean(camOn && !cameraBusy)}
             onFlipCamera={() => {
@@ -1963,6 +2007,10 @@ function CallChrome({
               else setControlsHidden(true)
             }}
             onActivateYou={(event) => {
+              if (peopleCount === 2 && localParticipant?.identity) {
+                onWebStreamTap(localParticipant.identity, event)
+                return
+              }
               event?.stopPropagation?.()
               if (controlsHidden) resetControlsTimer()
               else setControlsHidden(true)
@@ -2112,6 +2160,7 @@ function VideoCallStage({
   cameraByIdentity,
   resolveAvatarForParticipant,
   participantHasLiveCamera,
+  speakingIds = EMPTY_SPEAKING_IDS,
   title,
   showLocalFlip = false,
   onFlipCamera,
@@ -2130,7 +2179,7 @@ function VideoCallStage({
   if (localParticipant) byId.set(localParticipant.identity, localParticipant)
   const tileChrome = hitOnly ? 'bg-transparent border-0 shadow-none' : 'overflow-hidden bg-zinc-950/80'
 
-  const renderFill = (participant, { label, textClass, roundedClass = '' }) => {
+  const renderFill = (participant, { label, textClass, roundedClass = '', pip = false }) => {
     if (hitOnly || !participant) return null
     const track = cameraByIdentity.get(participant.identity)
     const hasCam = participantHasLiveCamera(participant)
@@ -2141,6 +2190,19 @@ function VideoCallStage({
           className={`absolute inset-0 h-full w-full object-cover ${roundedClass}`}
           style={{ objectFit: 'cover' }}
         />
+      )
+    }
+    if (pip) {
+      return (
+        <div className="flex h-full w-full flex-col items-center justify-center gap-1.5 bg-[#141414]">
+          <CallAvatarCircle
+            avatarUrl={resolveAvatarForParticipant(participant)}
+            title={label}
+            sizeClass="h-[52%] w-[52%] max-h-16 max-w-16"
+            textClass="text-[18px]"
+          />
+          <SpeakingDots active={speakingIds.has(participant.identity)} />
+        </div>
       )
     }
     return (
@@ -2156,12 +2218,22 @@ function VideoCallStage({
     )
   }
 
-  const youFlip =
-    showLocalFlip && localParticipant ? (
-      <LocalFlipChip className="top-1.5 right-1.5" size="sm" onFlip={onFlipCamera} />
+  const flipFade = controlsHidden ? 'opacity-0 pointer-events-none' : 'opacity-100'
+  const insetFlip =
+    showLocalFlip && localParticipant && !plan.localIsFeatured ? (
+      <LocalFlipChip className={`top-1.5 right-1.5 transition-opacity duration-300 ${flipFade}`} size="sm" onFlip={onFlipCamera} />
+    ) : null
+  const screenFlip =
+    showLocalFlip && localParticipant && (plan.localIsFeatured || plan.mode === 'solo') ? (
+      <LocalFlipChip
+        positionClass="fixed"
+        className={`top-[calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px))+0.75rem)] right-4 transition-opacity duration-300 ${flipFade}`}
+        size="md"
+        onFlip={onFlipCamera}
+      />
     ) : null
 
-  const remoteTile = (id, extraClass = '') => {
+  const remoteTile = (id, extraClass = '', { pip = false } = {}) => {
     const p = byId.get(id)
     const label = p?.name || title || id.slice(0, 8)
     return (
@@ -2174,12 +2246,12 @@ function VideoCallStage({
         aria-label={`Focus ${label}`}
         onClick={(event) => onActivateRemote?.(id, event)}
       >
-        {renderFill(p, { label, textClass: 'text-[22px]', roundedClass: 'rounded-[10px]' })}
+        {renderFill(p, { label, textClass: 'text-[22px]', roundedClass: 'rounded-[10px]', pip })}
       </button>
     )
   }
 
-  const youTile = (extraClass = '') => {
+  const youTile = (extraClass = '', { pip = false, withFlip = false } = {}) => {
     if (!plan.youId) return null
     return (
       <button
@@ -2191,8 +2263,8 @@ function VideoCallStage({
         aria-label="You"
         onClick={(event) => onActivateYou?.(event)}
       >
-        {renderFill(localParticipant, { label: 'You', textClass: 'text-[22px]', roundedClass: 'rounded-[10px]' })}
-        {youFlip}
+        {renderFill(localParticipant, { label: 'You', textClass: 'text-[22px]', roundedClass: 'rounded-[10px]', pip })}
+        {withFlip ? insetFlip : null}
       </button>
     )
   }
@@ -2216,7 +2288,7 @@ function VideoCallStage({
         >
           {renderFill(localParticipant, { label: 'You', textClass: 'text-[48px]' })}
         </button>
-        {youFlip}
+        {screenFlip}
       </div>
     )
   }
@@ -2224,6 +2296,16 @@ function VideoCallStage({
   const pipSlide = controlsHidden ? 'translate-y-16' : ''
 
   if (plan.mode === 'duo') {
+    const pipParticipant = plan.pipId ? byId.get(plan.pipId) : null
+    const pipHasCam = participantHasLiveCamera(pipParticipant)
+    const pipSize = duoPipSize({ hasCamera: pipHasCam, controlsHidden })
+    const pipIsYou = plan.pipId === plan.youId
+    const pipBoxClass = hitOnly
+      ? 'h-full w-full'
+      : `h-full w-full ${pipHasCam ? 'rounded-2xl border-2 border-white/30 shadow-2xl' : 'rounded-[20px] border border-white/15 shadow-2xl'}`
+    const pipTile = pipIsYou
+      ? youTile(pipBoxClass, { pip: !pipHasCam, withFlip: true })
+      : remoteTile(plan.pipId, pipBoxClass, { pip: !pipHasCam })
     return (
       <div className={shellClass}>
         <button
@@ -2235,17 +2317,31 @@ function VideoCallStage({
         >
           {renderFill(featured, { label: featuredLabel, textClass: 'text-[48px]' })}
         </button>
-        <div
-          className={`absolute right-4 bottom-4 z-[2] transition-transform duration-300 ease-in-out ${pipSlide} ${
-            hitOnly ? 'aspect-[9/16] w-[min(7.5rem,26vw)] min-w-[5.5rem]' : 'h-[8rem] w-[5.5rem]'
-          }`}
-        >
-          {youTile(
-            hitOnly
-              ? 'h-full w-full'
-              : 'h-full w-full rounded-2xl border-2 border-white/30 shadow-2xl',
-          )}
-        </div>
+        {hitOnly ? (
+          <div
+            className="fixed z-[2] transition-[width,height,bottom] duration-300 ease-in-out"
+            style={{
+              right: DUO_PIP_RIGHT_PX,
+              bottom: controlsHidden
+                ? 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 12px))'
+                : DUO_PIP_CHROME_BOTTOM_PX,
+              width: pipSize.width,
+              height: pipSize.height,
+            }}
+          >
+            {pipTile}
+          </div>
+        ) : (
+          <div
+            className={`absolute right-4 z-[2] transition-all duration-300 ease-in-out ${
+              controlsHidden ? 'bottom-4 translate-y-16' : 'bottom-10'
+            }`}
+            style={{ width: pipSize.width, height: pipSize.height }}
+          >
+            {pipTile}
+          </div>
+        )}
+        {screenFlip}
       </div>
     )
   }
@@ -2270,7 +2366,9 @@ function VideoCallStage({
         >
           {(plan.stackIds || []).map((id) =>
             id === plan.youId
-              ? youTile(stackTile || 'h-20 w-20 rounded-2xl border-2 border-white/30 shadow-lg')
+              ? youTile(stackTile || 'h-20 w-20 rounded-2xl border-2 border-white/30 shadow-lg', {
+                  withFlip: true,
+                })
               : remoteTile(id, stackTile || 'h-20 w-20 rounded-2xl border-2 border-white/25 shadow-lg'),
           )}
         </div>
@@ -2298,7 +2396,9 @@ function VideoCallStage({
         {plan.row1?.length ? (
           <div className="flex min-h-0 flex-1 gap-[3px]">
             {plan.row1.map((id) =>
-              id === plan.youId ? youTile('flex-1 rounded-[10px]') : remoteTile(id, 'flex-1 rounded-[10px]'),
+              id === plan.youId
+                ? youTile('flex-1 rounded-[10px]', { withFlip: true })
+                : remoteTile(id, 'flex-1 rounded-[10px]'),
             )}
           </div>
         ) : null}
@@ -2339,13 +2439,28 @@ function CallAvatarCircle({
   )
 }
 
-function LocalFlipChip({ className = '', size = 'md', onFlip }) {
+function SpeakingDots({ active = false }) {
+  const heights = active ? [4, 7, 8, 8, 6, 4] : [3, 5, 7, 6, 4, 3]
+  return (
+    <div className="flex h-2 items-end justify-center gap-[2px]" aria-hidden>
+      {heights.map((h, i) => (
+        <span
+          key={i}
+          className="w-[2.5px] rounded-full bg-white/90"
+          style={{ height: h }}
+        />
+      ))}
+    </div>
+  )
+}
+
+function LocalFlipChip({ className = '', size = 'md', onFlip, positionClass = 'absolute' }) {
   const dim = size === 'sm' ? 'h-7 w-7' : 'h-9 w-9'
   return (
     <button
       type="button"
       data-chat-call-interactive=""
-      className={`absolute z-[4] flex ${dim} items-center justify-center rounded-full border border-white/25 bg-black/55 text-white shadow-lg backdrop-blur-md touch-manipulation active:scale-95 ${className}`}
+      className={`${positionClass} z-[4] flex ${dim} items-center justify-center rounded-full border border-white/25 bg-black/55 text-white shadow-lg backdrop-blur-md touch-manipulation active:scale-95 ${className}`}
       aria-label="Flip camera"
       onClick={(event) => {
         event.stopPropagation()

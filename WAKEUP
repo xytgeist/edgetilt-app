@@ -95,6 +95,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Windows Theo.** Destination rule: Lounge (public + VIP) keeps markdown. **Chat rooms never get markdown.** **X.com auto-post (when built) never gets markdown.** Same caption can fan out; strip at the destination. Helper `toPlainOutboundText` in `loungeBotPlainOutbound.ts`. Chat choke point is `publishBotSubChatMessage` (every Signal/Syndicate fan-room insert). X publisher must call that helper; do not send Lounge captions raw. Redeployed **`lounge-odds-poll`**, **`lounge-odds-ingest`**, **`lounge-bot-publish-due`** on **test + prod**. Existing chat messages stay until the next publish.
 
+### Mac Theo 2026-09-04 … video 2-person polish
+
+**I am Mac Theo.** 2-person: Flip fades with the pill. Camera-off inset = rounded square + avatar + speaking bars. Chrome-up inset is 3:4 and higher over the pill; hidden is 9:16. Tap inset (pill up) swaps You to full-bleed and Flip to screen top-right. **Rebuild EdgeTilt Test.** Web is Vercel `test`.
+
 ### Mac Theo 2026-09-04 … video 3–4 stack + overlay / session
 
 **I am Mac Theo.** 3 and 4 people are always featured full-bleed + right stack (You bottom-right). No more 3-split or 4-quad. IPA grey boxes were the web `hitOnly` layer painting over native tiles... hits are transparent now. Last-to-answer `Invalid or expired session` is `chat-calls` 401 on a stale Keychain JWT; accept now refreshes and retries once. **Rebuild EdgeTilt Test.** Web layout is Vercel `test`.

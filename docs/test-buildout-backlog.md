@@ -2846,6 +2846,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-04:** **Video 2-person polish.** Flip fades with the pill. Camera-off inset is a rounded square + avatar + speaking bars. Chrome-up inset is 3:4 and sits higher over the pill; hidden is 9:16. Tap inset (pill visible) swaps You into full-bleed and parks Flip top-right. IPA + web. **New TestFlight required.** Spec: **`docs/chat-calling.md`**.
 - **2026-09-04:** **Video 3–4 always stack + IPA overlay / session fix.** 3 and 4 people now match: featured remote full-bleed, others + You stacked on the right (You bottom). Dropped the 3-split and 4-person 2×2. IPA `hitOnly` tiles are transparent (the grey boxes were the web hit layer). Lock-screen `chat-calls` 401 (`Invalid or expired session`) refreshes the Keychain JWT and retries once. **New TestFlight required.** Spec: **`docs/chat-calling.md`**.
 - **2026-09-04:** **Video call layouts by count.** 2 = inset You (slides with pill); 3 = top/bottom split; 4 = quad, tap → fullscreen + right stack; 5+ = featured + 2-row grid. Double-tap focuses without waiting for the pill. Flip stays top-right on You. 5+ compact lower pill. IPA needs a new TestFlight. Spec: **`docs/chat-calling.md`**.
 - **2026-09-04:** Chat **new messages** chip hangs off the composer (`bottom-full`) so it floats just above the Message pill. It was `bottom-2` on the list, which sits under the pill because the composer uses a negative margin overlay.

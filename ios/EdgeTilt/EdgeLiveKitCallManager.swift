@@ -49,6 +49,8 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   private var wantsCamera = false
   private var cameraPosition: AVCaptureDevice.Position = .front
   private var focusedRemoteIdentity = ""
+  /// 2-person only: You is the full-bleed stream and the remote sits in the inset.
+  private var localIsFeatured = false
   private var controlsHidden = false
   private var overlayInstalled = false
   private var chromeMinimized = false
@@ -224,12 +226,20 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     }
   }
 
-  func setStreamFocus(isLocalMain _: Bool, focusedIdentity: String? = nil, quadFocus _: Bool? = nil) {
-    // You stay bottom-right. `isLocalMain` / `quadFocus` are ignored (old JS still sends them).
+  func setStreamFocus(isLocalMain: Bool = false, focusedIdentity: String? = nil, quadFocus _: Bool? = nil) {
+    // `quadFocus` is ignored. 2-person can feature You (`isLocalMain` or focusedIdentity == local).
+    let localId = identityString(room.localParticipant)
     if let focusedIdentity {
       let trimmed = focusedIdentity.trimmingCharacters(in: .whitespacesAndNewlines)
-      let localId = identityString(room.localParticipant)
-      focusedRemoteIdentity = (trimmed.isEmpty || trimmed == localId) ? "" : trimmed
+      if !trimmed.isEmpty, trimmed == localId {
+        localIsFeatured = true
+        focusedRemoteIdentity = ""
+      } else {
+        localIsFeatured = false
+        focusedRemoteIdentity = trimmed
+      }
+    } else {
+      localIsFeatured = isLocalMain
     }
     DispatchQueue.main.async {
       UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseInOut]) {
@@ -455,6 +465,9 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   private func layoutCountStage(_ people: [(id: String, isLocal: Bool)], bounds: CGRect) {
     let local = people.first(where: { $0.isLocal })
     let remotes = people.filter { !$0.isLocal }
+    if people.count != 2 {
+      localIsFeatured = false
+    }
     switch people.count {
     case 0:
       return
@@ -493,26 +506,59 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     remote: (id: String, isLocal: Bool)?,
     bounds: CGRect
   ) {
-    if let remote {
-      placeTile(remote.id, frame: bounds, radius: 0, pip: false)
+    guard let local, let remote else {
+      if let local { placeTile(local.id, frame: bounds, radius: 0, pip: false) }
+      else if let remote { placeTile(remote.id, frame: bounds, radius: 0, pip: false) }
+      return
     }
-    guard let local else { return }
-    let pipW = min(120, max(88, bounds.width * 0.26))
-    let pipH = pipW * 16 / 9
-    let safeBottom = overlay.safeAreaInsets.bottom
-    let bottomPad: CGFloat = controlsHidden ? max(16, safeBottom + 8) : 148
+    let featuredId = localIsFeatured ? local.id : remote.id
+    let pipId = localIsFeatured ? remote.id : local.id
+    placeTile(featuredId, frame: bounds, radius: 0, pip: false)
+    let pipHasCam = tileHasLiveCamera(pipId)
     placeTile(
-      local.id,
-      frame: CGRect(
-        x: bounds.width - 16 - pipW,
-        y: bounds.height - bottomPad - pipH,
-        width: pipW,
-        height: pipH
-      ),
-      radius: 16,
+      pipId,
+      frame: duoPipFrame(hasCamera: pipHasCam, bounds: bounds),
+      radius: pipHasCam ? 16 : 20,
       pip: true,
       front: true
     )
+  }
+
+  /// Keep in sync with `duoPipSize` / `DUO_PIP_CHROME_BOTTOM_PX` in `callVideoLayout.js`.
+  private func duoPipFrame(hasCamera: Bool, bounds: CGRect) -> CGRect {
+    let pipW = min(120, max(88, bounds.width * 0.26))
+    let pipH: CGFloat
+    if !hasCamera {
+      pipH = pipW
+    } else if controlsHidden {
+      pipH = pipW * 16 / 9
+    } else {
+      pipH = pipW * 4 / 3
+    }
+    let bottomPad: CGFloat = controlsHidden
+      ? max(20, overlay.safeAreaInsets.bottom + 12)
+      : 184
+    return CGRect(
+      x: bounds.width - 16 - pipW,
+      y: bounds.height - bottomPad - pipH,
+      width: pipW,
+      height: pipH
+    )
+  }
+
+  private func tileHasLiveCamera(_ id: String) -> Bool {
+    if let tile = videoTiles[id], tile.videoView.track != nil {
+      return true
+    }
+    let people = orderedParticipants()
+    guard let person = people.first(where: { $0.id == id }) else { return false }
+    if person.isLocal {
+      return cameraTrack(for: room.localParticipant) != nil
+    }
+    if let remote = room.remoteParticipants.values.first(where: { identityString($0) == id }) {
+      return cameraTrack(for: remote) != nil
+    }
+    return false
   }
 
   private func layoutFocusStack(
@@ -933,7 +979,7 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
         name: name,
         avatar: avatarImageByIdentity[person.id],
         speaking: speakingIdentities.contains(person.id),
-        showName: people.count > 2 || track == nil
+        showName: people.count > 2
       )
     }
     refreshVideoFlags()
@@ -1104,9 +1150,20 @@ private final class EdgeCallParticipantTile: UIView {
   private let avatarImageView = UIImageView()
   private let initialLabel = UILabel()
   private let nameLabel = UILabel()
+  private let speakingBars = UIView()
+  private let speakingBarViews: [UIView]
+  private var isPip = false
+  private var isSpeaking = false
+  private var hasCamera = false
 
   init(identity: String) {
     self.identity = identity
+    speakingBarViews = (0..<6).map { _ in
+      let bar = UIView()
+      bar.backgroundColor = UIColor.white.withAlphaComponent(0.92)
+      bar.layer.cornerRadius = 1
+      return bar
+    }
     super.init(frame: .zero)
     clipsToBounds = true
     backgroundColor = UIColor(red: 0.06, green: 0.09, blue: 0.12, alpha: 1)
@@ -1127,6 +1184,12 @@ private final class EdgeCallParticipantTile: UIView {
     nameLabel.textAlignment = .center
     nameLabel.lineBreakMode = .byTruncatingTail
     addSubview(nameLabel)
+    speakingBars.isHidden = true
+    speakingBars.isUserInteractionEnabled = false
+    addSubview(speakingBars)
+    for bar in speakingBarViews {
+      speakingBars.addSubview(bar)
+    }
   }
 
   @available(*, unavailable)
@@ -1135,16 +1198,21 @@ private final class EdgeCallParticipantTile: UIView {
   }
 
   func applyChrome(cornerRadius: CGFloat, pip: Bool) {
+    isPip = pip
     layer.cornerRadius = cornerRadius
     layer.masksToBounds = true
     nameLabel.font = .systemFont(ofSize: pip ? 0 : 12, weight: .semibold)
+    speakingBars.isHidden = !pip || hasCamera
   }
 
   func apply(track: VideoTrack?, name: String, avatar: UIImage?, speaking: Bool, showName: Bool) {
     videoView.track = track
     let hasTrack = track != nil
+    hasCamera = hasTrack
+    isSpeaking = speaking
     videoView.isHidden = !hasTrack
     avatarCircle.isHidden = hasTrack
+    speakingBars.isHidden = !isPip || hasTrack
     nameLabel.text = name
     nameLabel.isHidden = !showName || name.isEmpty
     if let avatar {
@@ -1168,16 +1236,37 @@ private final class EdgeCallParticipantTile: UIView {
   override func layoutSubviews() {
     super.layoutSubviews()
     videoView.frame = bounds
-    let avatarSize = min(bounds.width, bounds.height) * (bounds.height < 80 ? 0.55 : 0.42)
+    let showBars = isPip && !hasCamera
+    let avatarSize = min(bounds.width, bounds.height) * (showBars ? 0.52 : bounds.height < 80 ? 0.55 : 0.42)
     avatarCircle.bounds = CGRect(x: 0, y: 0, width: avatarSize, height: avatarSize)
     let nameOffset: CGFloat = nameLabel.isHidden ? 0 : 8
-    avatarCircle.center = CGPoint(x: bounds.midX, y: bounds.midY - nameOffset)
+    let barOffset: CGFloat = showBars ? 7 : 0
+    avatarCircle.center = CGPoint(x: bounds.midX, y: bounds.midY - nameOffset - barOffset)
     avatarCircle.layer.cornerRadius = avatarSize / 2
     avatarImageView.frame = avatarCircle.bounds
     avatarImageView.layer.cornerRadius = avatarSize / 2
     initialLabel.frame = avatarCircle.bounds
     initialLabel.font = .systemFont(ofSize: max(14, avatarSize * 0.38), weight: .bold)
     nameLabel.frame = CGRect(x: 8, y: bounds.height - 22, width: max(0, bounds.width - 16), height: 16)
+    let barWidth = min(36, bounds.width * 0.42)
+    speakingBars.frame = CGRect(
+      x: (bounds.width - barWidth) / 2,
+      y: avatarCircle.frame.maxY + 6,
+      width: barWidth,
+      height: 8
+    )
+    let idle: [CGFloat] = [3, 5, 7, 6, 4, 3]
+    let live: [CGFloat] = [4, 7, 8, 8, 6, 4]
+    let heights = isSpeaking ? live : idle
+    let barW: CGFloat = 2.5
+    let gap: CGFloat = 2
+    let totalW = barW * 6 + gap * 5
+    var x = (speakingBars.bounds.width - totalW) / 2
+    for (index, bar) in speakingBarViews.enumerated() {
+      let h = heights[min(index, heights.count - 1)]
+      bar.frame = CGRect(x: x, y: speakingBars.bounds.height - h, width: barW, height: h)
+      x += barW + gap
+    }
   }
 }
 

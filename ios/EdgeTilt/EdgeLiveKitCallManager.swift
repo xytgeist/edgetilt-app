@@ -191,6 +191,9 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   }
 
   func setCamera(enabled: Bool?, flip: Bool) {
+    if enabled == true, roomIsVideoFullForLocalEnable() {
+      return
+    }
     if let enabled {
       wantsCamera = enabled
       state.camOn = enabled
@@ -426,11 +429,25 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   private func publishCameraIfNeeded() async {
     guard wantsCamera, state.connected else { return }
     guard UIApplication.shared.applicationState == .active else { return }
+    if roomIsVideoFullForLocalEnable() {
+      wantsCamera = false
+      state.camOn = false
+      dispatchState()
+      return
+    }
     do {
       try await room.localParticipant.setCamera(
         enabled: true,
         captureOptions: CameraCaptureOptions(position: cameraPosition)
       )
+      if liveCameraCount() > 9 {
+        try? await room.localParticipant.setCamera(enabled: false)
+        wantsCamera = false
+        state.camOn = false
+        refreshVideoFlags()
+        dispatchState()
+        return
+      }
       state.camOn = true
       state.hasVideo = true
       bindExistingTracks()
@@ -944,6 +961,53 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     state.participants = rows
   }
 
+  private func liveCameraCount() -> Int {
+    var n = 0
+    if cameraTrack(for: room.localParticipant) != nil { n += 1 }
+    for remote in room.remoteParticipants.values {
+      if cameraTrack(for: remote) != nil { n += 1 }
+    }
+    return n
+  }
+
+  private func roomIsVideoFullForLocalEnable() -> Bool {
+    if cameraTrack(for: room.localParticipant) != nil { return false }
+    return liveCameraCount() >= 9
+  }
+
+  /// Keep in sync with `pickCallVideoStageIds` in `callVideoLayout.js`.
+  private func pickStagePeople(_ people: [(id: String, isLocal: Bool)]) -> [(id: String, isLocal: Bool)] {
+    let limit = 9
+    let local = people.first(where: { $0.isLocal })
+    let remotes = people.filter { !$0.isLocal }
+    let cameraIds = Set(people.compactMap { person -> String? in
+      if person.isLocal {
+        return cameraTrack(for: room.localParticipant) != nil ? person.id : nil
+      }
+      guard let remote = room.remoteParticipants.values.first(where: { identityString($0) == person.id }) else {
+        return nil
+      }
+      return cameraTrack(for: remote) != nil ? person.id : nil
+    })
+    let youHasCam = local.map { cameraIds.contains($0.id) } ?? false
+    let remoteCams = remotes.filter { cameraIds.contains($0.id) }
+    let remoteAvatars = remotes.filter { !cameraIds.contains($0.id) }
+    let cameraCount = (youHasCam ? 1 : 0) + remoteCams.count
+    if cameraCount >= limit {
+      let picked = youHasCam ? ([local].compactMap { $0 } + remoteCams) : remoteCams
+      return Array(picked.prefix(limit))
+    }
+    var rows: [(id: String, isLocal: Bool)] = []
+    if let local { rows.append(local) }
+    for person in remoteCams + remoteAvatars {
+      if rows.count >= limit { break }
+      if !rows.contains(where: { $0.id == person.id }) {
+        rows.append(person)
+      }
+    }
+    return rows
+  }
+
   private func orderedParticipants() -> [(id: String, isLocal: Bool)] {
     var rows: [(id: String, isLocal: Bool)] = []
     let localId = identityString(room.localParticipant)
@@ -956,7 +1020,7 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
         rows.append((id, false))
       }
     }
-    return rows
+    return pickStagePeople(rows)
   }
 
   private func cameraTrack(for participant: Participant) -> VideoTrack? {

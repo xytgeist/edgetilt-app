@@ -6,10 +6,12 @@
  * 2: featured full-bleed + other as inset (tap inset to swap). You can be featured.
  * 3–7: featured full-bleed + 3-wide 3:4 inset chips (You rightmost / bottom-right).
  *      3–4 = one row. 5–7 = two rows, extras on the bottom (5 = 2+2, 6 = 2+3, 7 = 3+3).
- * 8–12: same cinema, 4-wide chips. Fill bottom row first (8 = 3+4, 9 = 4+4,
- *      10 = 1+4+4, 11 = 2+4+4, 12 = 3+4+4). 10–12 is a placeholder third row.
+ * 8–9: same cinema, 4-wide chips. Fill bottom row first (8 = 3+4, 9 = 4+4).
  * Tap an inset to feature that person. You can be featured. Chrome hide moves
  * chips down without shrinking. Speaking ring on insets only.
+ *
+ * Hard cap: 9 live cameras. Extra people stay on the call as audio-only and
+ * do not get a tile until a camera turns off or that person leaves.
  */
 
 /** Duo pip gap above the pill. Native `layoutDuo` uses the same point value. */
@@ -26,6 +28,53 @@ export const ROW_PIP_SLOTS = 3
 export const ROW_PIP_SLOTS_WIDE = 4
 export const ROW_PIP_CHROME_BOTTOM_PX = DUO_PIP_CHROME_BOTTOM_PX
 export const ROW_PIP_WIDE_AT = 8
+
+/** Live cameras on the call. Extra joiners stay audio-only until a slot opens. */
+export const MAX_CALL_VIDEO_STREAMS = 9
+
+export function canEnableCallCamera({ localCamOn = false, liveCameraCount = 0 } = {}) {
+  return Boolean(localCamOn) || liveCameraCount < MAX_CALL_VIDEO_STREAMS
+}
+
+/**
+ * Who appears on the video stage (max 9). Prefer live cameras. You stay on
+ * stage unless 9 other cameras are already up and yours is off.
+ * @param {{
+ *   localId?: string | null,
+ *   remoteIds?: string[],
+ *   cameraIds?: string[],
+ *   limit?: number,
+ * }} args
+ */
+export function pickCallVideoStageIds({
+  localId = null,
+  remoteIds = [],
+  cameraIds = [],
+  limit = MAX_CALL_VIDEO_STREAMS,
+} = {}) {
+  const you = String(localId || '').trim()
+  const remotes = remoteIds.map((id) => String(id || '').trim()).filter((id) => id && id !== you)
+  const cams = new Set(cameraIds.map((id) => String(id || '').trim()).filter(Boolean))
+  const youHasCam = Boolean(you && cams.has(you))
+  const remoteCams = remotes.filter((id) => cams.has(id))
+  const remoteAvatars = remotes.filter((id) => !cams.has(id))
+  const cameraCount = (youHasCam ? 1 : 0) + remoteCams.length
+  if (cameraCount >= limit) {
+    const ids = youHasCam ? [you, ...remoteCams] : [...remoteCams]
+    return ids.slice(0, limit)
+  }
+  const ids = []
+  if (you) ids.push(you)
+  for (const id of remoteCams) {
+    if (ids.length >= limit) break
+    if (!ids.includes(id)) ids.push(id)
+  }
+  for (const id of remoteAvatars) {
+    if (ids.length >= limit) break
+    ids.push(id)
+  }
+  return ids
+}
 
 export function rowPipSlots(count) {
   return count >= ROW_PIP_WIDE_AT ? ROW_PIP_SLOTS_WIDE : ROW_PIP_SLOTS

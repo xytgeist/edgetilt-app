@@ -42,8 +42,10 @@ import {
   ROW_PIP_SIDE_PX,
   ROW_PIP_SLOTS,
   SCREEN_FLIP_CLASS,
+  canEnableCallCamera,
   canFeatureLocal,
   duoPipSize,
+  pickCallVideoStageIds,
   planCallVideoLayout,
 } from './callVideoLayout.js'
 import ChatCallInviteModal from './ChatCallInviteModal.jsx'
@@ -936,28 +938,70 @@ function NativeIpaCallSession({
   )
   const nativePeopleCount = nativeRoster.length > 0 ? nativeRoster.length : remoteCount + 1
   const nativeLocalId = nativeRoster.find((p) => p.isLocal)?.identity || viewerUserId || ''
+  const nativeLiveCameraCount = useMemo(() => {
+    if (nativeRoster.length === 0) return Number(camOn) + Number(remoteHasVideo)
+    return nativeRoster.filter((p) => {
+      if (p.isLocal) return Boolean(p.hasVideo || camOn)
+      return Boolean(p.hasVideo)
+    }).length
+  }, [nativeRoster, camOn, remoteHasVideo])
+  const nativeVideoFull = !canEnableCallCamera({
+    localCamOn: camOn,
+    liveCameraCount: nativeLiveCameraCount,
+  })
+  const nativeStageIds = useMemo(
+    () =>
+      pickCallVideoStageIds({
+        localId: nativeLocalId,
+        remoteIds: nativeRemotes.map((p) => p.identity),
+        cameraIds: nativeRoster
+          .filter((p) => (p.isLocal ? p.hasVideo || camOn : p.hasVideo))
+          .map((p) => p.identity),
+      }),
+    [nativeLocalId, nativeRemotes, nativeRoster, camOn],
+  )
+  const nativeStageRemotes = useMemo(
+    () => nativeRemotes.filter((p) => nativeStageIds.includes(p.identity)),
+    [nativeRemotes, nativeStageIds],
+  )
+  const nativeStageCount = nativeStageIds.length || nativePeopleCount
+  const nativeLocalOnStage = Boolean(nativeLocalId && nativeStageIds.includes(nativeLocalId))
   const focusedIdentity = useMemo(() => {
-    if (localIsMain && canFeatureLocal(nativePeopleCount)) {
+    if (localIsMain && nativeLocalOnStage && canFeatureLocal(nativeStageCount)) {
       return nativeLocalId || null
     }
-    if (pinnedIdentity && nativeRemotes.some((p) => p.identity === pinnedIdentity)) {
+    if (pinnedIdentity && nativeStageRemotes.some((p) => p.identity === pinnedIdentity)) {
       return pinnedIdentity
     }
-    return nativeRemotes[0]?.identity || null
-  }, [localIsMain, nativePeopleCount, nativeLocalId, pinnedIdentity, nativeRemotes])
+    return nativeStageRemotes[0]?.identity || null
+  }, [
+    localIsMain,
+    nativeLocalOnStage,
+    nativeStageCount,
+    nativeLocalId,
+    pinnedIdentity,
+    nativeStageRemotes,
+  ])
 
   useEffect(() => {
-    if (!canFeatureLocal(nativePeopleCount)) setLocalIsMain(false)
-  }, [nativePeopleCount])
+    if (!canFeatureLocal(nativeStageCount) || !nativeLocalOnStage) setLocalIsMain(false)
+  }, [nativeStageCount, nativeLocalOnStage])
 
   useEffect(() => {
     if (!isVideoMode) return
-    const youFeatured = Boolean(localIsMain && canFeatureLocal(nativePeopleCount))
+    const youFeatured = Boolean(localIsMain && nativeLocalOnStage && canFeatureLocal(nativeStageCount))
     void setNativeCallStreamFocus({
       isLocalMain: youFeatured,
       focusedIdentity: youFeatured ? nativeLocalId : focusedIdentity || '',
     })
-  }, [isVideoMode, focusedIdentity, localIsMain, nativePeopleCount, nativeLocalId])
+  }, [
+    isVideoMode,
+    focusedIdentity,
+    localIsMain,
+    nativeLocalOnStage,
+    nativeStageCount,
+    nativeLocalId,
+  ])
   const profileById = useCallParticipantProfiles(supabaseClient, participantIds)
   const speakingIds = useMemo(() => {
     const set = new Set()
@@ -1027,6 +1071,7 @@ function NativeIpaCallSession({
     void setNativeCallMute(!next)
   }
   const setCameraEnabled = (next) => {
+    if (next && nativeVideoFull) return
     setCamOn(next)
     setHasVideo(next || remoteHasVideo)
     void setNativeCallCamera({ enabled: next })
@@ -1034,6 +1079,10 @@ function NativeIpaCallSession({
       applySpeaker(true)
     }
   }
+  useEffect(() => {
+    if (camOn && nativeLiveCameraCount > 9) setCameraEnabled(false)
+  }, [camOn, nativeLiveCameraCount])
+
   const applySpeaker = (next) => {
     setSpeakerOn(next)
     void setNativeCallSpeaker(next)
@@ -1041,6 +1090,7 @@ function NativeIpaCallSession({
 
   const handleVideoDockClick = () => {
     resetControlsTimer()
+    if (nativeVideoFull) return
     if (!camOn && !isVideoMode) {
       setShowVideoConfirmModal(true)
     } else {
@@ -1079,7 +1129,9 @@ function NativeIpaCallSession({
           icon={<VideoIcon off={!camOn} />}
           active={camOn}
           variant={!camOn && remoteHasVideo ? 'active-white' : undefined}
+          disabled={nativeVideoFull}
           onClick={() => {
+            if (nativeVideoFull) return
             setMinimized(false)
             if (!camOn && !isVideoMode) {
               setShowVideoConfirmModal(true)
@@ -1087,7 +1139,13 @@ function NativeIpaCallSession({
               setCameraEnabled(!camOn)
             }
           }}
-          ariaLabel={camOn ? 'Turn camera off' : 'Turn camera on'}
+          ariaLabel={
+            nativeVideoFull
+              ? 'Video is full'
+              : camOn
+                ? 'Turn camera off'
+                : 'Turn camera on'
+          }
         />
         <CallPillButton
           icon={<SpeakerIcon />}
@@ -1148,17 +1206,21 @@ function NativeIpaCallSession({
         </button>
         <div className="min-w-0 flex-1 px-3 text-center">
           <p className="truncate text-[20px] font-bold tracking-tight text-white drop-shadow-sm">
-            {nativePeopleCount >= 3
-              ? localIsMain && canFeatureLocal(nativePeopleCount)
+            {nativeStageCount >= 3
+              ? localIsMain && canFeatureLocal(nativeStageCount)
                 ? 'You'
                 : resolveNameForParticipant(
-                    nativeRoster.find((p) => p.identity === focusedIdentity) || nativeRemotes[0],
+                    nativeRoster.find((p) => p.identity === focusedIdentity) ||
+                      nativeStageRemotes[0],
                   )
               : title}
           </p>
           <p className="mt-1 font-mono text-[13px] font-medium tracking-wide text-zinc-300/90">{statusLabel}</p>
           {connectError ? (
             <p className="mt-1.5 text-[12px] font-semibold text-rose-300">{connectError}</p>
+          ) : null}
+          {nativeVideoFull ? (
+            <p className="mt-1.5 text-[12px] font-semibold text-zinc-400">Video is full · 9 cameras</p>
           ) : null}
           {!camOn && remoteHasVideo ? (
             <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-950/70 px-3 py-0.5 text-[11px] font-bold tracking-wide text-emerald-200 backdrop-blur-md">
@@ -1197,8 +1259,12 @@ function NativeIpaCallSession({
         {showVideoHole ? (
           <VideoCallStage
             hitOnly
-            remotes={nativeRemotes}
-            localParticipant={nativeRoster.find((p) => p.isLocal) || { identity: viewerUserId, isLocal: true }}
+            remotes={nativeStageRemotes}
+            localParticipant={
+              nativeLocalOnStage
+                ? nativeRoster.find((p) => p.isLocal) || { identity: viewerUserId, isLocal: true }
+                : null
+            }
             featuredIdentity={focusedIdentity}
             controlsHidden={controlsHidden}
             cameraByIdentity={EMPTY_CAMERA_BY_IDENTITY}
@@ -1223,7 +1289,7 @@ function NativeIpaCallSession({
               else setControlsHidden(true)
             }}
             onActivateYou={(event) => {
-              if (canFeatureLocal(nativePeopleCount)) {
+              if (nativeLocalOnStage && canFeatureLocal(nativeStageCount)) {
                 onNativeStreamTap(nativeLocalId, event)
                 return
               }
@@ -1281,7 +1347,9 @@ function NativeIpaCallSession({
               label="Video"
               active={camOn}
               variant={!camOn && remoteHasVideo ? 'active-white' : undefined}
-              disabled={false}
+              disabled={nativeVideoFull}
+              title={nativeVideoFull ? 'Video is full' : 'Video'}
+              ariaLabel={nativeVideoFull ? 'Video is full' : undefined}
               onClick={handleVideoDockClick}
             />
             <CallDockItem
@@ -1563,20 +1631,31 @@ function CallChrome({
 
   const remotes = participants.filter((p) => !p.isLocal)
   const peopleCount = remotes.length + (localParticipant ? 1 : 0)
+  const liveCameraCount = participants.filter((p) => participantHasLiveCamera(p)).length
+  const videoFull = !canEnableCallCamera({ localCamOn: camOn, liveCameraCount })
+  const stageIds = pickCallVideoStageIds({
+    localId: localParticipant?.identity || null,
+    remoteIds: remotes.map((p) => p.identity),
+    cameraIds: participants.filter((p) => participantHasLiveCamera(p)).map((p) => p.identity),
+  })
+  const stageRemotes = remotes.filter((p) => stageIds.includes(p.identity))
+  const stageLocal =
+    localParticipant && stageIds.includes(localParticipant.identity) ? localParticipant : null
+  const stageCount = stageIds.length || peopleCount
 
   useEffect(() => {
-    if (!canFeatureLocal(peopleCount)) setLocalIsMain(false)
-  }, [peopleCount])
+    if (!canFeatureLocal(stageCount) || !stageLocal) setLocalIsMain(false)
+  }, [stageCount, stageLocal])
 
   const fullscreenParticipant = useMemo(() => {
-    if (localIsMain && canFeatureLocal(peopleCount)) return localParticipant || null
+    if (localIsMain && stageLocal && canFeatureLocal(stageCount)) return stageLocal
     if (pinnedIdentity) {
-      const pinnedRemote = remotes.find((p) => p.identity === pinnedIdentity)
+      const pinnedRemote = stageRemotes.find((p) => p.identity === pinnedIdentity)
       if (pinnedRemote) return pinnedRemote
     }
-    if (remotes[0]) return remotes[0]
-    return localParticipant || null
-  }, [localIsMain, peopleCount, pinnedIdentity, remotes, localParticipant])
+    if (stageRemotes[0]) return stageRemotes[0]
+    return stageLocal || null
+  }, [localIsMain, stageCount, pinnedIdentity, stageRemotes, stageLocal])
 
   const anyParticipantHasCamera =
     participantHasLiveCamera(localParticipant) || remotes.some(participantHasLiveCamera)
@@ -1615,12 +1694,12 @@ function CallChrome({
     const next = String(id || '').trim()
     if (!next) return
     if (localParticipant && next === localParticipant.identity) {
-      if (canFeatureLocal(peopleCount)) setLocalIsMain(true)
+      if (stageLocal && canFeatureLocal(stageCount)) setLocalIsMain(true)
       return
     }
     setLocalIsMain(false)
     setPinnedIdentity(next)
-  }, [localParticipant, peopleCount])
+  }, [localParticipant, stageLocal, stageCount])
 
   const onWebStreamTap = useCallStreamTap({
     controlsHidden,
@@ -1747,6 +1826,7 @@ function CallChrome({
   }, [isGroup, remoteCount])
 
   const setCameraEnabled = async (next) => {
+    if (next && videoFull) return
     setCamOn(next)
     if (!localParticipant) return
     try {
@@ -1796,8 +1876,13 @@ function CallChrome({
     }
   }
 
+  useEffect(() => {
+    if (camOn && liveCameraCount > 9) void setCameraEnabled(false)
+  }, [camOn, liveCameraCount])
+
   const handleVideoDockClick = () => {
     resetControlsTimer()
+    if (videoFull) return
     if (!camOn && !showVideoStage) {
       setShowVideoConfirmModal(true)
     } else {
@@ -1848,7 +1933,9 @@ function CallChrome({
         <CallPillButton
           icon={<VideoIcon off={!camOn} />}
           active={camOn}
+          disabled={videoFull}
           onClick={() => {
+            if (videoFull) return
             onExpand?.()
             if (!camOn && !showVideoStage) {
               setShowVideoConfirmModal(true)
@@ -1856,7 +1943,7 @@ function CallChrome({
               void setCameraEnabled(!camOn)
             }
           }}
-          ariaLabel={camOn ? 'Turn camera off' : 'Turn camera on'}
+          ariaLabel={videoFull ? 'Video is full' : camOn ? 'Turn camera off' : 'Turn camera on'}
         />
         {audioRouteSupported && (!isIosDevice() || isEdgeiOSShell()) ? (
           <CallPillButton
@@ -1901,7 +1988,9 @@ function CallChrome({
         icon={<VideoIcon off={!camOn} />}
         label="Video"
         active={camOn}
-        disabled={false}
+        disabled={videoFull}
+        title={videoFull ? 'Video is full' : 'Video'}
+        ariaLabel={videoFull ? 'Video is full' : undefined}
         onClick={handleVideoDockClick}
       />
       <CallDockItem
@@ -2005,7 +2094,7 @@ function CallChrome({
         </button>
         <div className="min-w-0 flex-1 px-3 text-center">
           <p className="truncate text-[20px] font-bold tracking-tight text-white drop-shadow-sm">
-            {peopleCount >= 3 && fullscreenParticipant
+            {stageCount >= 3 && fullscreenParticipant
               ? resolveNameForParticipant(fullscreenParticipant)
               : title}
           </p>
@@ -2023,6 +2112,9 @@ function CallChrome({
           ) : null}
           {recCountdownLabel ? (
             <p className="mt-1.5 text-[12px] font-semibold text-amber-300">{recCountdownLabel}</p>
+          ) : null}
+          {videoFull ? (
+            <p className="mt-1.5 text-[12px] font-semibold text-zinc-400">Video is full · 9 cameras</p>
           ) : null}
         </div>
         <CallInviteHeaderButton
@@ -2044,8 +2136,8 @@ function CallChrome({
       <div className="relative z-[1] min-h-0 flex-1 px-4">
         {showVideoStage ? (
           <VideoCallStage
-            remotes={remotes}
-            localParticipant={localParticipant}
+            remotes={stageRemotes}
+            localParticipant={stageLocal}
             featuredIdentity={fullscreenParticipant?.identity}
             controlsHidden={controlsHidden}
             cameraByIdentity={cameraByIdentity}
@@ -2066,7 +2158,7 @@ function CallChrome({
               else setControlsHidden(true)
             }}
             onActivateYou={(event) => {
-              if (canFeatureLocal(peopleCount) && localParticipant?.identity) {
+              if (stageLocal && canFeatureLocal(stageCount) && localParticipant?.identity) {
                 onWebStreamTap(localParticipant.identity, event)
                 return
               }

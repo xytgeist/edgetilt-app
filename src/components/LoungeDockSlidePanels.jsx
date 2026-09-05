@@ -32,7 +32,6 @@ import SettingsMembershipPanel from '../features/creatorFanSubs/SettingsMembersh
 import SettingsAccountInfoScreen from '../features/profiles/SettingsAccountInfoScreen.jsx'
 import { startEdgeCheckout } from '../features/billing/stripeBillingApi.js'
 import { PRODUCT_EDGE_PRO } from '../features/billing/edgeProducts.js'
-import { isEdgeiOSShell } from '../utils/edgeNative.js'
 import {
   fetchEdgeStoreProducts,
   iapProductIdForPlan,

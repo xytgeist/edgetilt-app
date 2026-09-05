@@ -2848,6 +2848,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-05:** **iOS chat swipe-down keyboard dismiss.** Capture swipe on the whole composer host (including Message…) plus the thread so the gesture does not select text or hit the suggestion bar. **`1.4.59`.**
 - **2026-09-05:** **iOS chat composer keyboard gap.** Composer was flush on the keys; add 10px pad while the keyboard is up. iOS only. **`1.4.58`.** Web / TestFlight.
 - **2026-09-05:** **Egress inset pack.** Recording template keeps small chips but uses the live-call row pack (5–7 = 2+2 / 2+3 / 3+3, 8–9 = 3+4 / 4+4). No more single-row overflow / 6-pip cap. **Republish R2 call-egress template on test.** **`1.4.57`.**
 - **2026-09-05:** **Android chrome stays planted.** Pill sits under the stream, so no cinema auto-hide / tap-hide. 2-person inset does not resize or drop/rise. Add-people still hides chrome. **`1.4.56`.** Web, Vercel `test`.

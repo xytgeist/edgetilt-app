@@ -80,6 +80,9 @@ const REACTION_LIMIT = 3
 const COMPOSER_SCROLL_GAP_PX = 8
 /** iOS: extra air between the composer and the software keyboard (overlap is flush otherwise). */
 const IOS_CHAT_COMPOSER_KB_GAP_PX = 10
+/** iOS list swipe-down to dismiss keys (composer uses a shorter trip). */
+const IOS_CHAT_LIST_KB_DISMISS_DY_PX = 28
+const IOS_CHAT_COMPOSER_KB_DISMISS_DY_PX = 8
 /** Message stack shorter than this gap under the composer viewport → treat as "fits" (no push). */
 const LIST_CONTENT_FITS_GAP_PX = 24
 /** iOS keyboard dismiss: wait for viewport settle, then one smooth list scroll. */
@@ -2182,17 +2185,18 @@ export default function ChatConversation({
   }, [contentExtendsBelowComposer, pinListToTail, pinIosKeyboardFrame])
 
   // Android: swipe-down dismiss on message list - lock scroll at tail + preserve position.
-  // iOS: messages scroll freely; dismiss only from composer strip (see below).
+  // iOS: also dismiss from the thread (iMessage-style) so the swipe does not land on suggestions.
   useEffect(() => {
-    if (!IS_ANDROID) return
+    if (!IS_ANDROID && !IS_IOS) return
     const el = listRef.current
     if (!el) return
-    const dismissDyPx = 50
+    const dismissDyPx = IS_IOS ? IOS_CHAT_LIST_KB_DISMISS_DY_PX : 50
     let startY = 0
     let startX = 0
     let startScrollTop = 0
     let keyboardWasOpen = false
     let dismissActive = false
+    let dismissedThisGesture = false
 
     const bottomGap = () => el.scrollHeight - el.scrollTop - el.clientHeight
     const nearBottom = () => bottomGap() < 80
@@ -2224,8 +2228,15 @@ export default function ChatConversation({
       }
     }
 
+    const blurComposer = () => {
+      const ae = document.activeElement
+      if (ae instanceof HTMLElement && composerBarRef.current?.contains(ae)) ae.blur()
+      else document.activeElement?.blur?.()
+    }
+
     const onStart = (e) => {
       dismissActive = false
+      dismissedThisGesture = false
       startScrollTop = el.scrollTop
       startY = e.touches[0]?.clientY ?? 0
       startX = e.touches[0]?.clientX ?? 0
@@ -2238,6 +2249,14 @@ export default function ChatConversation({
       if (!t) return
       const dy = t.clientY - startY
       const dx = t.clientX - startX
+      if (IS_IOS) {
+        if (dy <= 12 || dy <= Math.abs(dx)) return
+        if (!dismissedThisGesture) {
+          dismissedThisGesture = true
+          blurComposer()
+        }
+        return
+      }
       if (!dismissActive) {
         if (dy > 10 && dy > Math.abs(dx) && nearBottom()) {
           dismissActive = true
@@ -2251,6 +2270,15 @@ export default function ChatConversation({
 
     const onEnd = (e) => {
       const dy = (e.changedTouches[0]?.clientY ?? 0) - startY
+      const dx = (e.changedTouches[0]?.clientX ?? 0) - startX
+      if (IS_IOS) {
+        if (dy > dismissDyPx && dy > Math.abs(dx) && keyboardWasOpen && !dismissedThisGesture) {
+          blurComposer()
+        }
+        dismissedThisGesture = false
+        keyboardWasOpen = false
+        return
+      }
       if (dy > dismissDyPx && keyboardWasOpen) {
         document.activeElement?.blur?.()
         keyboardDismissPreserveRef.current = bottomGap()
@@ -2272,12 +2300,13 @@ export default function ChatConversation({
     }
   }, [])
 
-  // Composer (+ optional strip above): iOS keyboard dismiss; Android also uses message list.
+  // Composer host (pills + gap above the keys): swipe-down dismiss.
+  // iOS uses capture so a drag from Message… blurs before text-select / suggestions eat it.
   useEffect(() => {
-    const composer = composerTouchRef.current
+    const composer = composerBarRef.current
     const listEl = listRef.current
     if (!composer || !listEl) return
-    const dismissDyPx = IS_ANDROID ? 50 : 18
+    const dismissDyPx = IS_ANDROID ? 50 : IOS_CHAT_COMPOSER_KB_DISMISS_DY_PX
     let startY = 0
     let startX = 0
     let startScrollTop = 0
@@ -2368,13 +2397,15 @@ export default function ChatConversation({
       if (!t) return
       const dy = t.clientY - startY
       const dx = t.clientX - startX
-      if (dy <= 8 || dy <= Math.abs(dx)) return
-      e.preventDefault()
+      if (dy <= dismissDyPx || dy <= Math.abs(dx)) return
+      const ce = e.target instanceof Element ? e.target.closest('.chat-composer-ce') : null
+      const ceScrolls = Boolean(ce && ce.scrollHeight > ce.clientHeight + 2 && ce.scrollTop > 0)
+      if (!ceScrolls) e.preventDefault()
       if (IS_ANDROID) listEl.scrollTop = startScrollTop
-      if (!dismissedThisGesture && dy > 10) {
+      if (!dismissedThisGesture && !ceScrolls) {
         dismissedThisGesture = true
         blurComposer()
-        if (!IS_ANDROID) snapBottomAfterKeyboardCloseIOS()
+        if (IS_IOS) snapBottomAfterKeyboardCloseIOS()
       }
     }
 
@@ -2386,22 +2417,23 @@ export default function ChatConversation({
         : dy > dismissDyPx && dy > Math.abs(dx)
       if (downwardDismiss && keyboardWasOpen && !dismissedThisGesture) {
         blurComposer()
-        if (!IS_ANDROID) snapBottomAfterKeyboardCloseIOS()
+        if (IS_IOS) snapBottomAfterKeyboardCloseIOS()
       }
       dismissedThisGesture = false
       keyboardWasOpen = false
     }
 
-    composer.addEventListener('touchstart', onStart, { passive: true })
-    composer.addEventListener('touchmove', onMove, { passive: false })
-    composer.addEventListener('touchend', onEnd, { passive: true })
-    composer.addEventListener('touchcancel', onEnd, { passive: true })
+    const opts = IS_IOS ? { capture: true } : undefined
+    composer.addEventListener('touchstart', onStart, { passive: true, ...opts })
+    composer.addEventListener('touchmove', onMove, { passive: false, ...opts })
+    composer.addEventListener('touchend', onEnd, { passive: true, ...opts })
+    composer.addEventListener('touchcancel', onEnd, { passive: true, ...opts })
     return () => {
       clearIosKeyboardDismissScroll()
-      composer.removeEventListener('touchstart', onStart)
-      composer.removeEventListener('touchmove', onMove)
-      composer.removeEventListener('touchend', onEnd)
-      composer.removeEventListener('touchcancel', onEnd)
+      composer.removeEventListener('touchstart', onStart, opts)
+      composer.removeEventListener('touchmove', onMove, opts)
+      composer.removeEventListener('touchend', onEnd, opts)
+      composer.removeEventListener('touchcancel', onEnd, opts)
     }
   }, [contentExtendsBelowComposer, listContentFitsInView])
 

@@ -76,10 +76,11 @@ export function planCallVideoLayout({
  * @param {{ hasCamera?: boolean, controlsHidden?: boolean, viewportWidth?: number }} args
  */
 export function duoPipSize({ hasCamera = true, controlsHidden = false, viewportWidth = 390 } = {}) {
-  const pipW = Math.min(120, Math.max(88, viewportWidth * 0.26))
-  if (!hasCamera) return { width: pipW, height: pipW }
-  if (controlsHidden) return { width: pipW, height: (pipW * 16) / 9 }
-  return { width: pipW, height: (pipW * 4) / 3 }
+  const baseW = Math.min(120, Math.max(88, viewportWidth * 0.26))
+  const hiddenH = (baseW * 16) / 9
+  if (!hasCamera) return { width: baseW, height: baseW }
+  if (controlsHidden) return { width: baseW, height: hiddenH }
+  return { width: (hiddenH * 3) / 4, height: hiddenH }
 }
 
 export const CALL_STREAM_DOUBLE_TAP_MS = 320

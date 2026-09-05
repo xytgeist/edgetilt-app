@@ -204,7 +204,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       )
       completion(.success([
         "ok": true,
-        "isLocalMain": false,
+        "isLocalMain": isLocalMain,
         "focusedIdentity": focusedIdentity ?? "",
         "quadFocus": quadFocus ?? false,
       ]))

@@ -224,15 +224,16 @@ export async function setNativeCallStreamFocus(args = {}) {
   if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
   try {
     const focusedIdentity = String(args.focusedIdentity || '').trim()
+    const isLocalMain = Boolean(args.isLocalMain)
     const result = await edgeNativeInvoke('setNativeCallStreamFocus', {
-      isLocalMain: false,
+      isLocalMain,
       focusedIdentity,
       quadFocus: Boolean(args.quadFocus),
     })
     return {
       ok: result?.ok !== false,
       via: 'bridge',
-      isLocalMain: false,
+      isLocalMain: Boolean(result?.isLocalMain ?? isLocalMain),
       focusedIdentity: result?.focusedIdentity || focusedIdentity,
       quadFocus: Boolean(result?.quadFocus ?? args.quadFocus),
     }

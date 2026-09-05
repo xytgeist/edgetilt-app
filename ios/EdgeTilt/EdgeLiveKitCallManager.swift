@@ -227,9 +227,13 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   }
 
   func setStreamFocus(isLocalMain: Bool = false, focusedIdentity: String? = nil, quadFocus _: Bool? = nil) {
-    // `quadFocus` is ignored. 2-person can feature You (`isLocalMain` or focusedIdentity == local).
+    // `quadFocus` is ignored. 2-person swap: honor `isLocalMain` first so a JS/LiveKit
+    // identity mismatch cannot leave You stuck in the inset.
     let localId = identityString(room.localParticipant)
-    if let focusedIdentity {
+    if isLocalMain {
+      localIsFeatured = true
+      focusedRemoteIdentity = ""
+    } else if let focusedIdentity {
       let trimmed = focusedIdentity.trimmingCharacters(in: .whitespacesAndNewlines)
       if !trimmed.isEmpty, trimmed == localId {
         localIsFeatured = true
@@ -239,7 +243,7 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
         focusedRemoteIdentity = trimmed
       }
     } else {
-      localIsFeatured = isLocalMain
+      localIsFeatured = false
     }
     DispatchQueue.main.async {
       UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseInOut]) {
@@ -526,14 +530,20 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
 
   /// Keep in sync with `duoPipSize` / `DUO_PIP_CHROME_BOTTOM_PX` in `callVideoLayout.js`.
   private func duoPipFrame(hasCamera: Bool, bounds: CGRect) -> CGRect {
-    let pipW = min(120, max(88, bounds.width * 0.26))
+    let baseW = min(120, max(88, bounds.width * 0.26))
+    let hiddenH = baseW * 16 / 9
+    let pipW: CGFloat
     let pipH: CGFloat
     if !hasCamera {
-      pipH = pipW
+      pipW = baseW
+      pipH = baseW
     } else if controlsHidden {
-      pipH = pipW * 16 / 9
+      pipW = baseW
+      pipH = hiddenH
     } else {
-      pipH = pipW * 4 / 3
+      // Same height as the hidden 9:16 pip, wider 3:4.
+      pipH = hiddenH
+      pipW = hiddenH * 3 / 4
     }
     let bottomPad: CGFloat = controlsHidden
       ? max(20, overlay.safeAreaInsets.bottom + 12)

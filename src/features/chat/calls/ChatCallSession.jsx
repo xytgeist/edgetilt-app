@@ -2228,7 +2228,7 @@ function VideoCallStage({
       <LocalFlipChip
         positionClass="fixed"
         className={`top-[calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px))+0.75rem)] right-4 transition-opacity duration-300 ${flipFade}`}
-        size="md"
+        size="header"
         onFlip={onFlipCamera}
       />
     ) : null
@@ -2298,7 +2298,11 @@ function VideoCallStage({
   if (plan.mode === 'duo') {
     const pipParticipant = plan.pipId ? byId.get(plan.pipId) : null
     const pipHasCam = participantHasLiveCamera(pipParticipant)
-    const pipSize = duoPipSize({ hasCamera: pipHasCam, controlsHidden })
+    const pipSize = duoPipSize({
+      hasCamera: pipHasCam,
+      controlsHidden,
+      viewportWidth: typeof window !== 'undefined' ? window.innerWidth : 390,
+    })
     const pipIsYou = plan.pipId === plan.youId
     const pipBoxClass = hitOnly
       ? 'h-full w-full'
@@ -2455,7 +2459,7 @@ function SpeakingDots({ active = false }) {
 }
 
 function LocalFlipChip({ className = '', size = 'md', onFlip, positionClass = 'absolute' }) {
-  const dim = size === 'sm' ? 'h-7 w-7' : 'h-9 w-9'
+  const dim = size === 'sm' ? 'h-7 w-7' : size === 'header' ? 'h-11 w-11' : 'h-9 w-9'
   return (
     <button
       type="button"
@@ -2467,7 +2471,7 @@ function LocalFlipChip({ className = '', size = 'md', onFlip, positionClass = 'a
         onFlip?.()
       }}
     >
-      <span className={size === 'sm' ? 'scale-75' : 'scale-90'}>
+      <span className={size === 'sm' ? 'scale-75' : size === 'header' ? 'scale-100' : 'scale-90'}>
         <FlipCameraIcon />
       </span>
     </button>

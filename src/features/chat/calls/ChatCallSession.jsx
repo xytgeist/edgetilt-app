@@ -704,7 +704,6 @@ function NativeIpaCallSession({
   const [elapsed, setElapsed] = useState(0)
   const [recCountdownLabel, setRecCountdownLabel] = useState(/** @type {string | null} */ (null))
   const [pinnedIdentity, setPinnedIdentity] = useState(/** @type {string | null} */ (null))
-  const [quadFocus, setQuadFocus] = useState(false)
   const [showVideoConfirmModal, setShowVideoConfirmModal] = useState(false)
   const [controlsHidden, setControlsHidden] = useState(false)
   const hideTimerRef = useRef(/** @type {number | null} */ (null))
@@ -751,18 +750,12 @@ function NativeIpaCallSession({
   }, [isVideoMode, resetControlsTimer])
 
   const focusNativeRemote = useCallback((id) => {
-    if (id === '__quad_restore__') {
-      setQuadFocus(false)
-      setPinnedIdentity(null)
-      return
-    }
     const next = String(id || '').trim()
     if (!next) return
     const localId = nativeRoster.find((p) => p.isLocal)?.identity
     if (localId && next === localId) return
     setPinnedIdentity(next)
-    if (nativeRoster.length === 4 || remoteCount + 1 === 4) setQuadFocus(true)
-  }, [nativeRoster, remoteCount])
+  }, [nativeRoster])
 
   const onNativeStreamTap = useCallStreamTap({
     controlsHidden,
@@ -905,20 +898,14 @@ function NativeIpaCallSession({
     return nativeRemotes[0]?.identity || null
   }, [pinnedIdentity, nativeRemotes])
   const nativePeopleCount = nativeRoster.length > 0 ? nativeRoster.length : remoteCount + 1
-  const nativeQuadFocus = quadFocus && nativePeopleCount === 4
-
-  useEffect(() => {
-    if (nativePeopleCount !== 4) setQuadFocus(false)
-  }, [nativePeopleCount])
 
   useEffect(() => {
     if (!isVideoMode) return
     void setNativeCallStreamFocus({
       isLocalMain: false,
-      focusedIdentity: nativeQuadFocus || nativePeopleCount !== 4 ? focusedIdentity || '' : '',
-      quadFocus: nativeQuadFocus,
+      focusedIdentity: focusedIdentity || '',
     })
-  }, [isVideoMode, focusedIdentity, nativeQuadFocus, nativePeopleCount])
+  }, [isVideoMode, focusedIdentity])
   const profileById = useCallParticipantProfiles(supabaseClient, participantIds)
   const speakingIds = useMemo(() => {
     const set = new Set()
@@ -1139,8 +1126,7 @@ function NativeIpaCallSession({
             hitOnly
             remotes={nativeRemotes}
             localParticipant={nativeRoster.find((p) => p.isLocal) || { identity: viewerUserId, isLocal: true }}
-            featuredIdentity={nativeQuadFocus || nativePeopleCount !== 4 ? focusedIdentity : null}
-            quadFocus={nativeQuadFocus}
+            featuredIdentity={focusedIdentity}
             controlsHidden={controlsHidden}
             cameraByIdentity={EMPTY_CAMERA_BY_IDENTITY}
             participantHasLiveCamera={() => false}
@@ -1153,8 +1139,8 @@ function NativeIpaCallSession({
             }}
             onActivateRemote={onNativeStreamTap}
             onActivateMain={(event) => {
-              if (nativeQuadFocus) onNativeStreamTap('__quad_restore__', event)
-              else if (controlsHidden) resetControlsTimer()
+              event?.stopPropagation?.()
+              if (controlsHidden) resetControlsTimer()
               else setControlsHidden(true)
             }}
             onActivateYou={(event) => {
@@ -1346,7 +1332,6 @@ function CallChrome({
   const [elapsed, setElapsed] = useState(0)
   const [recCountdownLabel, setRecCountdownLabel] = useState(/** @type {string | null} */ (null))
   const [pinnedIdentity, setPinnedIdentity] = useState(/** @type {string | null} */ (null))
-  const [quadFocus, setQuadFocus] = useState(false)
   /** Last pinned participant object so active-speaker cannot steal if the pin blips out of the roster. */
   /** User manually toggled speaker... ignore cam-off / cam-on auto route flips. */
   const speakerManualOverrideRef = useRef(false)
@@ -1502,11 +1487,6 @@ function CallChrome({
 
   const remotes = participants.filter((p) => !p.isLocal)
   const peopleCount = remotes.length + (localParticipant ? 1 : 0)
-  const webQuadFocus = quadFocus && peopleCount === 4
-
-  useEffect(() => {
-    if (peopleCount !== 4) setQuadFocus(false)
-  }, [peopleCount])
 
   const fullscreenParticipant = useMemo(() => {
     if (pinnedIdentity) {
@@ -1551,16 +1531,10 @@ function CallChrome({
   }, [isVideoMode, resetControlsTimer])
 
   const focusWebRemote = useCallback((id) => {
-    if (id === '__quad_restore__') {
-      setQuadFocus(false)
-      setPinnedIdentity(null)
-      return
-    }
     const next = String(id || '').trim()
     if (!next || (localParticipant && next === localParticipant.identity)) return
     setPinnedIdentity(next)
-    if (peopleCount === 4) setQuadFocus(true)
-  }, [localParticipant, peopleCount])
+  }, [localParticipant])
 
   const onWebStreamTap = useCallStreamTap({
     controlsHidden,
@@ -1971,8 +1945,7 @@ function CallChrome({
           <VideoCallStage
             remotes={remotes}
             localParticipant={localParticipant}
-            featuredIdentity={webQuadFocus || peopleCount !== 4 ? fullscreenParticipant?.identity : null}
-            quadFocus={webQuadFocus}
+            featuredIdentity={fullscreenParticipant?.identity}
             controlsHidden={controlsHidden}
             cameraByIdentity={cameraByIdentity}
             resolveAvatarForParticipant={resolveAvatarForParticipant}
@@ -1985,8 +1958,8 @@ function CallChrome({
             }}
             onActivateRemote={onWebStreamTap}
             onActivateMain={(event) => {
-              if (webQuadFocus) onWebStreamTap('__quad_restore__', event)
-              else if (controlsHidden) resetControlsTimer()
+              event?.stopPropagation?.()
+              if (controlsHidden) resetControlsTimer()
               else setControlsHidden(true)
             }}
             onActivateYou={(event) => {
@@ -2135,7 +2108,6 @@ function VideoCallStage({
   remotes = [],
   localParticipant = null,
   featuredIdentity = null,
-  quadFocus = false,
   controlsHidden = false,
   cameraByIdentity,
   resolveAvatarForParticipant,
@@ -2152,11 +2124,11 @@ function VideoCallStage({
     remoteIds: remotes.map((p) => p.identity),
     localId: localParticipant?.identity || null,
     featuredId: featuredIdentity,
-    quadFocus,
   })
   const byId = new Map()
   for (const p of remotes) byId.set(p.identity, p)
   if (localParticipant) byId.set(localParticipant.identity, localParticipant)
+  const tileChrome = hitOnly ? 'bg-transparent border-0 shadow-none' : 'overflow-hidden bg-zinc-950/80'
 
   const renderFill = (participant, { label, textClass, roundedClass = '' }) => {
     if (hitOnly || !participant) return null
@@ -2198,7 +2170,7 @@ function VideoCallStage({
         type="button"
         data-chat-call-interactive=""
         data-chat-call-round-video=""
-        className={`relative min-h-0 min-w-0 overflow-hidden bg-zinc-950/80 touch-manipulation ${extraClass}`}
+        className={`relative min-h-0 min-w-0 touch-manipulation ${tileChrome} ${extraClass}`}
         aria-label={`Focus ${label}`}
         onClick={(event) => onActivateRemote?.(id, event)}
       >
@@ -2215,7 +2187,7 @@ function VideoCallStage({
         type="button"
         data-chat-call-interactive=""
         data-chat-call-round-video=""
-        className={`relative min-h-0 min-w-0 overflow-hidden bg-zinc-950/80 touch-manipulation ${extraClass}`}
+        className={`relative min-h-0 min-w-0 touch-manipulation ${tileChrome} ${extraClass}`}
         aria-label="You"
         onClick={(event) => onActivateYou?.(event)}
       >
@@ -2249,6 +2221,8 @@ function VideoCallStage({
     )
   }
 
+  const pipSlide = controlsHidden ? 'translate-y-16' : ''
+
   if (plan.mode === 'duo') {
     return (
       <div className={shellClass}>
@@ -2262,48 +2236,24 @@ function VideoCallStage({
           {renderFill(featured, { label: featuredLabel, textClass: 'text-[48px]' })}
         </button>
         <div
-          className={`absolute right-4 z-[2] h-[8rem] w-[5.5rem] transition-all duration-300 ease-in-out ${
-            controlsHidden ? 'bottom-4' : 'bottom-[7.25rem]'
+          className={`absolute right-4 bottom-4 z-[2] transition-transform duration-300 ease-in-out ${pipSlide} ${
+            hitOnly ? 'aspect-[9/16] w-[min(7.5rem,26vw)] min-w-[5.5rem]' : 'h-[8rem] w-[5.5rem]'
           }`}
         >
-          {youTile('h-full w-full rounded-2xl border-2 border-white/30 shadow-2xl')}
+          {youTile(
+            hitOnly
+              ? 'h-full w-full'
+              : 'h-full w-full rounded-2xl border-2 border-white/30 shadow-2xl',
+          )}
         </div>
       </div>
     )
   }
 
-  if (plan.mode === 'trio') {
-    const otherId = plan.bottomIds?.find((id) => id !== plan.youId)
-    return (
-      <div className={`${shellClass} flex flex-col gap-[3px]`}>
-        <button
-          type="button"
-          data-chat-call-main-video=""
-          className="relative min-h-0 flex-1 overflow-hidden rounded-[10px] border-0 bg-transparent"
-          aria-label={featuredLabel}
-          onClick={(event) => onActivateRemote?.(plan.featuredId, event)}
-        >
-          {renderFill(featured, { label: featuredLabel, textClass: 'text-[40px]' })}
-        </button>
-        <div className="flex min-h-0 flex-1 gap-[3px]">
-          {otherId ? remoteTile(otherId, 'flex-1 rounded-[10px]') : <div className="flex-1" />}
-          {youTile('flex-1 rounded-[10px]')}
-        </div>
-      </div>
-    )
-  }
-
-  if (plan.mode === 'quad') {
-    return (
-      <div className={`${shellClass} grid grid-cols-2 grid-rows-2 gap-[3px]`}>
-        {(plan.quadIds || []).map((id) =>
-          id === plan.youId ? youTile('rounded-[10px]') : remoteTile(id, 'rounded-[10px]'),
-        )}
-      </div>
-    )
-  }
-
-  if (plan.mode === 'quadFocus') {
+  if (plan.mode === 'stack') {
+    const stackTile = hitOnly
+      ? 'h-[min(6.5rem,22vw)] w-[min(6.5rem,22vw)] min-h-[4.5rem] min-w-[4.5rem]'
+      : null
     return (
       <div className={shellClass}>
         <button
@@ -2315,11 +2265,13 @@ function VideoCallStage({
         >
           {renderFill(featured, { label: featuredLabel, textClass: 'text-[48px]' })}
         </button>
-        <div className="absolute bottom-4 right-4 z-[2] flex flex-col items-end gap-2.5">
+        <div
+          className={`absolute bottom-4 right-4 z-[2] flex flex-col items-end gap-2.5 transition-transform duration-300 ease-in-out ${pipSlide}`}
+        >
           {(plan.stackIds || []).map((id) =>
             id === plan.youId
-              ? youTile('h-20 w-20 rounded-2xl border-2 border-white/30 shadow-lg')
-              : remoteTile(id, 'h-20 w-20 rounded-2xl border-2 border-white/25 shadow-lg'),
+              ? youTile(stackTile || 'h-20 w-20 rounded-2xl border-2 border-white/30 shadow-lg')
+              : remoteTile(id, stackTile || 'h-20 w-20 rounded-2xl border-2 border-white/25 shadow-lg'),
           )}
         </div>
       </div>

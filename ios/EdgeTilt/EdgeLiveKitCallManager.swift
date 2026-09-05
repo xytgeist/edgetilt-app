@@ -49,7 +49,6 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
   private var wantsCamera = false
   private var cameraPosition: AVCaptureDevice.Position = .front
   private var focusedRemoteIdentity = ""
-  private var quadFocusActive = false
   private var controlsHidden = false
   private var overlayInstalled = false
   private var chromeMinimized = false
@@ -225,14 +224,13 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     }
   }
 
-  func setStreamFocus(isLocalMain _: Bool, focusedIdentity: String? = nil, quadFocus: Bool? = nil) {
-    // You stay bottom-right. `isLocalMain` is ignored (old JS still sends it).
+  func setStreamFocus(isLocalMain _: Bool, focusedIdentity: String? = nil, quadFocus _: Bool? = nil) {
+    // You stay bottom-right. `isLocalMain` / `quadFocus` are ignored (old JS still sends them).
     if let focusedIdentity {
       let trimmed = focusedIdentity.trimmingCharacters(in: .whitespacesAndNewlines)
       let localId = identityString(room.localParticipant)
       focusedRemoteIdentity = (trimmed.isEmpty || trimmed == localId) ? "" : trimmed
     }
-    if let quadFocus { quadFocusActive = quadFocus }
     DispatchQueue.main.async {
       UIView.animate(withDuration: 0.25, delay: 0, options: [.curveEaseInOut]) {
         self.layoutVideoViews()
@@ -464,14 +462,8 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
       placeTile(local?.id, frame: bounds, radius: 0, pip: false)
     case 2:
       layoutDuo(local: local, remote: remotes.first, bounds: bounds)
-    case 3:
-      layoutTrio(local: local, remotes: remotes, bounds: bounds)
-    case 4:
-      if quadFocusActive {
-        layoutFocusStack(local: local, remotes: remotes, bounds: bounds)
-      } else {
-        layoutQuad(local: local, remotes: remotes, bounds: bounds)
-      }
+    case 3, 4:
+      layoutFocusStack(local: local, remotes: remotes, bounds: bounds)
     default:
       layoutFeaturedGrid(local: local, remotes: remotes, bounds: bounds)
     }
@@ -521,61 +513,6 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
       pip: true,
       front: true
     )
-  }
-
-  private func layoutTrio(
-    local: (id: String, isLocal: Bool)?,
-    remotes: [(id: String, isLocal: Bool)],
-    bounds: CGRect
-  ) {
-    let gap: CGFloat = 3
-    let featured = featuredRemoteId(remotes)
-    let other = remotes.first(where: { $0.id != featured })
-    let topH = (bounds.height - gap) / 2
-    let botH = bounds.height - topH - gap
-    let halfW = (bounds.width - gap) / 2
-    placeTile(featured, frame: CGRect(x: 0, y: 0, width: bounds.width, height: topH), radius: 10, pip: false)
-    placeTile(
-      other?.id,
-      frame: CGRect(x: 0, y: topH + gap, width: halfW, height: botH),
-      radius: 10,
-      pip: false
-    )
-    placeTile(
-      local?.id,
-      frame: CGRect(x: halfW + gap, y: topH + gap, width: halfW, height: botH),
-      radius: 10,
-      pip: false,
-      front: true
-    )
-  }
-
-  private func layoutQuad(
-    local: (id: String, isLocal: Bool)?,
-    remotes: [(id: String, isLocal: Bool)],
-    bounds: CGRect
-  ) {
-    let gap: CGFloat = 3
-    let cellW = (bounds.width - gap) / 2
-    let cellH = (bounds.height - gap) / 2
-    var ids = remotes.map(\.id)
-    if let local { ids.append(local.id) }
-    for (index, id) in ids.prefix(4).enumerated() {
-      let col = index % 2
-      let row = index / 2
-      placeTile(
-        id,
-        frame: CGRect(
-          x: CGFloat(col) * (cellW + gap),
-          y: CGFloat(row) * (cellH + gap),
-          width: cellW,
-          height: cellH
-        ),
-        radius: 10,
-        pip: false,
-        front: id == local?.id
-      )
-    }
   }
 
   private func layoutFocusStack(

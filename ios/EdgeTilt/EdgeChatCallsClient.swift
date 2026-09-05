@@ -32,7 +32,15 @@ enum EdgeChatCallsClient {
   }
 
   static func invoke(action: String, body: [String: Any] = [:]) async throws -> InvokeResult {
-    let session = try await EdgeAuthSessionStore.validAccessToken()
+    try await invokeOnce(action: action, body: body, forceRefresh: false)
+  }
+
+  private static func invokeOnce(
+    action: String,
+    body: [String: Any],
+    forceRefresh: Bool
+  ) async throws -> InvokeResult {
+    let session = try await EdgeAuthSessionStore.validAccessToken(forceRefresh: forceRefresh)
     let base = session.supabaseUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
     guard let url = URL(string: "\(base)/functions/v1/chat-calls") else {
       throw ClientError.badResponse("Invalid supabaseUrl.")
@@ -51,6 +59,9 @@ enum EdgeChatCallsClient {
     let (data, response) = try await URLSession.shared.data(for: request)
     let status = (response as? HTTPURLResponse)?.statusCode ?? 0
     let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
+    if status == 401, !forceRefresh {
+      return try await invokeOnce(action: action, body: body, forceRefresh: true)
+    }
     if status < 200 || status >= 300 {
       let message = (json["error"] as? String) ?? String(data: data, encoding: .utf8) ?? "Call request failed."
       throw ClientError.badResponse(message)

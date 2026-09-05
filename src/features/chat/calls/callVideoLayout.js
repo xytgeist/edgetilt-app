@@ -4,8 +4,7 @@
  *
  * 1: You fill the stage
  * 2: remote full-bleed, You inset
- * 3: featured top half, other + You split the bottom
- * 4: 2×2 quad (You bottom-right) until quadFocus, then featured full + right stack
+ * 3–4: featured full-bleed, others + You stacked on the right (You bottom)
  * 5+: featured top half, rest in 2 rows (floor/ceil) with You last on the bottom row
  */
 
@@ -14,14 +13,12 @@
  *   remoteIds?: string[],
  *   localId?: string | null,
  *   featuredId?: string | null,
- *   quadFocus?: boolean,
  * }} args
  */
 export function planCallVideoLayout({
   remoteIds = [],
   localId = null,
   featuredId = null,
-  quadFocus = false,
 } = {}) {
   const remotes = remoteIds.map((id) => String(id || '').trim()).filter(Boolean)
   const you = String(localId || '').trim() || null
@@ -39,27 +36,9 @@ export function planCallVideoLayout({
   if (count === 2) {
     return { mode: 'duo', count, featuredId: remotes[0] || null, youId: you }
   }
-  if (count === 3) {
+  if (count <= 4) {
     return {
-      mode: 'trio',
-      count,
-      featuredId: featured,
-      bottomIds: restWithYou,
-      youId: you,
-    }
-  }
-  if (count === 4 && !quadFocus) {
-    return {
-      mode: 'quad',
-      count,
-      featuredId: null,
-      quadIds: you ? [...remotes, you] : remotes,
-      youId: you,
-    }
-  }
-  if (count === 4 && quadFocus) {
-    return {
-      mode: 'quadFocus',
+      mode: 'stack',
       count,
       featuredId: featured,
       stackIds: restWithYou,

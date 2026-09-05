@@ -87,9 +87,13 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Windows Theo.** Destination rule: Lounge (public + VIP) keeps markdown. **Chat rooms never get markdown.** **X.com auto-post (when built) never gets markdown.** Same caption can fan out; strip at the destination. Helper `toPlainOutboundText` in `loungeBotPlainOutbound.ts`. Chat choke point is `publishBotSubChatMessage` (every Signal/Syndicate fan-room insert). X publisher must call that helper; do not send Lounge captions raw. Redeployed **`lounge-odds-poll`**, **`lounge-odds-ingest`**, **`lounge-bot-publish-due`** on **test + prod**. Existing chat messages stay until the next publish.
 
+### Mac Theo 2026-09-04 … video 3–4 stack + overlay / session
+
+**I am Mac Theo.** 3 and 4 people are always featured full-bleed + right stack (You bottom-right). No more 3-split or 4-quad. IPA grey boxes were the web `hitOnly` layer painting over native tiles... hits are transparent now. Last-to-answer `Invalid or expired session` is `chat-calls` 401 on a stale Keychain JWT; accept now refreshes and retries once. **Rebuild EdgeTilt Test.** Web layout is Vercel `test`.
+
 ### Mac Theo 2026-09-04 … video layouts by participant count
 
-**I am Mac Theo.** Video tiles now follow count: 2 inset You (slides with the pill), 3 split, 4 quad (tap → fullscreen + right stack), 5+ featured + 2-row grid. You stay bottom-right. Double-tap focuses without waiting for the pill. Flip is top-right on You. 5+ compact lower pill. Bridge: `quadFocus` + `controlsHidden`. **Rebuild EdgeTilt Test.** Web is Vercel `test`.
+**I am Mac Theo.** Video tiles now follow count: 2 inset You (slides with the pill), 3–4 featured + right stack, 5+ featured + 2-row grid. You stay bottom-right. Double-tap focuses without waiting for the pill. Flip is top-right on You. 5+ compact lower pill. Bridge: `focusedIdentity` + `controlsHidden` (`quadFocus` ignored). **Rebuild EdgeTilt Test.** Web is Vercel `test`.
 
 ### Mac Theo 2026-09-04 … video You-corner + tap focus + recording
 

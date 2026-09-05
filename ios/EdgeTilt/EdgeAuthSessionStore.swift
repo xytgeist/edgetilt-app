@@ -70,10 +70,10 @@ enum EdgeAuthSessionStore {
   }
 
   /// Returns a usable access token, refreshing via Supabase when `expiresAt` is close.
-  static func validAccessToken() async throws -> Session {
+  static func validAccessToken(forceRefresh: Bool = false) async throws -> Session {
     guard var session = load() else { throw StoreError.missing }
     let now = Date().timeIntervalSince1970
-    if session.expiresAt - now > 60, !session.accessToken.isEmpty {
+    if !forceRefresh, session.expiresAt - now > 60, !session.accessToken.isEmpty {
       return session
     }
     session = try await refresh(session)

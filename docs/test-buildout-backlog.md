@@ -2850,6 +2850,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-05:** **IPA Subscribe carousel drops Lifetime.** Starter + Pro only on the shell so Review cannot swipe onto the `$1,000` placeholder. Web carousel unchanged. **`1.4.65`.**
 - **2026-09-05:** **Edge Pro Settings IPA card is IAP-only.** Chip + single **Subscribe on iPhone** CTA at `$11.49` (StoreKit or ASC list). Web `$9.99` CTA stays on Safari/PWA. Slots Edge SubscribeModal unchanged. **`1.4.64`.**
 - **2026-09-05:** **IAP refund sheet + ASSN V2 (test).** `beginRefundRequest` on Manage membership / fan Cancel. Edge **`apple-iap-notify`** verifies JWS `x5c` leaf and revokes / renews `user_subscriptions` + `creator_subscriptions` by `apple_original_transaction_id`. SQL **`20260905140000`**. Paste ASC sandbox URL. New TestFlight for the refund sheet. **`1.4.63`.**
 - **2026-09-05:** **sharpesyndicate.com Overview reads settled W-L.** Public fetch was newest 250 kickoffs (`select *`), so Saturday pending replaced Thursday/Friday grades and every tile dashed. Now paginate Syndicate `won`/`lost`/`push` only. Pending cannot be in the record. Cloudflare Pages still has to rebuild for the live domain. **`1.4.62`.**

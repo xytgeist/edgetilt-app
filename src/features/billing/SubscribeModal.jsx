@@ -41,20 +41,21 @@ import {
 } from './militaryPromoStamp.js'
 import { profileAvatarInitials, profileAvatarToneClass } from '../profiles/profileGate.js'
 
-const PLAN_SLUGS = [PRODUCT_SLOTS_EDGE_STARTER, PRODUCT_SLOTS_EDGE, PRODUCT_SLOTS_EDGE_LIFETIME]
+const ALL_PLAN_SLUGS = [PRODUCT_SLOTS_EDGE_STARTER, PRODUCT_SLOTS_EDGE, PRODUCT_SLOTS_EDGE_LIFETIME]
+const IPA_PLAN_SLUGS = [PRODUCT_SLOTS_EDGE_STARTER, PRODUCT_SLOTS_EDGE]
 
-/** @param {number} index @param {number} activeIndex */
-function getSlideOffset(index, activeIndex) {
+/** @param {number} index @param {number} activeIndex @param {number} slideCount */
+function getSlideOffset(index, activeIndex, slideCount) {
   let offset = index - activeIndex
-  if (offset > 1) offset -= PLAN_SLUGS.length
-  if (offset < -1) offset += PLAN_SLUGS.length
+  if (offset > 1) offset -= slideCount
+  if (offset < -1) offset += slideCount
   return offset
 }
 
-/** @param {number} prevActive @param {number} nextActive @param {number} slideIndex */
-function isCarouselWrapJump(prevActive, nextActive, slideIndex) {
-  const prevOffset = getSlideOffset(slideIndex, prevActive)
-  const nextOffset = getSlideOffset(slideIndex, nextActive)
+/** @param {number} prevActive @param {number} nextActive @param {number} slideIndex @param {number} slideCount */
+function isCarouselWrapJump(prevActive, nextActive, slideIndex, slideCount) {
+  const prevOffset = getSlideOffset(slideIndex, prevActive, slideCount)
+  const nextOffset = getSlideOffset(slideIndex, nextActive, slideCount)
   return Math.abs(prevOffset - nextOffset) > 1
 }
 
@@ -113,8 +114,8 @@ function poseToSlideStyle(pose) {
  * @param {number} activeIndex
  * @param {number} dragProgress Fraction of one slide (-1..1) from horizontal drag.
  */
-function getSlide3DStyle(slideIndex, activeIndex, dragProgress = 0) {
-  const baseOffset = getSlideOffset(slideIndex, activeIndex)
+function getSlide3DStyle(slideIndex, activeIndex, dragProgress = 0, slideCount = ALL_PLAN_SLUGS.length) {
+  const baseOffset = getSlideOffset(slideIndex, activeIndex, slideCount)
   const effectiveOffset = baseOffset - dragProgress
   return poseToSlideStyle(poseFromEffectiveOffset(effectiveOffset))
 }
@@ -310,14 +311,20 @@ export default function SubscribeModal({
   starterPriceInterval = null,
   fullPriceInterval = null,
 }) {
+  const hideLifetimeCard = isEdgeiOSShell()
+  const planSlugs = hideLifetimeCard ? IPA_PLAN_SLUGS : ALL_PLAN_SLUGS
+  const slideCount = planSlugs.length
+
   const defaultPlan = useMemo(() => {
-    if (initialProductSlug === PRODUCT_SLOTS_EDGE_LIFETIME) return PRODUCT_SLOTS_EDGE_LIFETIME
+    if (initialProductSlug === PRODUCT_SLOTS_EDGE_LIFETIME && !hideLifetimeCard) {
+      return PRODUCT_SLOTS_EDGE_LIFETIME
+    }
     if (initialProductSlug === PRODUCT_SLOTS_EDGE_STARTER) return PRODUCT_SLOTS_EDGE_STARTER
     if (initialProductSlug === PRODUCT_SLOTS_EDGE) return PRODUCT_SLOTS_EDGE
     if (hasSlotsEdgeStarter && !hasSlotsEdgePro && !hasSlotsEdgeLifetime) return PRODUCT_SLOTS_EDGE_STARTER
     if (hasSlotsEdgePro && !hasSlotsEdgeLifetime) return PRODUCT_SLOTS_EDGE
     return PRODUCT_SLOTS_EDGE
-  }, [hasSlotsEdgeLifetime, hasSlotsEdgePro, hasSlotsEdgeStarter, initialProductSlug])
+  }, [hasSlotsEdgeLifetime, hasSlotsEdgePro, hasSlotsEdgeStarter, hideLifetimeCard, initialProductSlug])
 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -368,7 +375,7 @@ export default function SubscribeModal({
     setIsDragging(false)
     dragArmedRef.current = false
     isDraggingRef.current = false
-    const idx = Math.max(0, PLAN_SLUGS.indexOf(defaultPlan))
+    const idx = Math.max(0, planSlugs.indexOf(defaultPlan))
     setActiveSlide(idx >= 0 ? idx : 1)
 
     let cancelled = false
@@ -393,7 +400,7 @@ export default function SubscribeModal({
     return () => {
       cancelled = true
     }
-  }, [open, defaultPlan, fullCurrentInterval, starterCurrentInterval, supabaseClient])
+  }, [open, defaultPlan, fullCurrentInterval, planSlugs, starterCurrentInterval, supabaseClient])
 
   useEffect(() => {
     return () => {
@@ -428,8 +435,8 @@ export default function SubscribeModal({
 
   const selectPlan = useCallback((slug, slideIndex) => {
     const instant = new Set()
-    for (let i = 0; i < PLAN_SLUGS.length; i += 1) {
-      if (isCarouselWrapJump(activeSlide, slideIndex, i)) instant.add(i)
+    for (let i = 0; i < slideCount; i += 1) {
+      if (isCarouselWrapJump(activeSlide, slideIndex, i, slideCount)) instant.add(i)
     }
 
     if (instantSlideResetRef.current) {
@@ -449,14 +456,14 @@ export default function SubscribeModal({
 
     setSelectedPlan(slug)
     setActiveSlide(slideIndex)
-  }, [activeSlide])
+  }, [activeSlide, slideCount])
 
   const shiftFocus = useCallback(
     (delta) => {
-      const next = (activeSlide + delta + PLAN_SLUGS.length) % PLAN_SLUGS.length
-      selectPlan(PLAN_SLUGS[next], next)
+      const next = (activeSlide + delta + slideCount) % slideCount
+      selectPlan(planSlugs[next], next)
     },
-    [activeSlide, selectPlan],
+    [activeSlide, planSlugs, selectPlan, slideCount],
   )
 
   const dragProgress = useMemo(() => {
@@ -844,11 +851,11 @@ export default function SubscribeModal({
                     <div
                       className={[
                         'subscribe-plan-slide-3d',
-                        getSlideOffset(0, activeSlide) === 0 ? 'subscribe-plan-slide-3d--active' : 'subscribe-plan-slide-3d--side',
+                        getSlideOffset(0, activeSlide, slideCount) === 0 ? 'subscribe-plan-slide-3d--active' : 'subscribe-plan-slide-3d--side',
                         instantSlideIndexes.has(0) ? 'subscribe-plan-slide-3d--instant' : '',
                         isDragging ? 'subscribe-plan-slide-3d--dragging' : '',
                       ].join(' ')}
-                      style={getSlide3DStyle(0, activeSlide, dragProgress)}
+                      style={getSlide3DStyle(0, activeSlide, dragProgress, slideCount)}
                     >
                     <div
                       role="button"
@@ -965,11 +972,11 @@ export default function SubscribeModal({
                     <div
                       className={[
                         'subscribe-plan-slide-3d',
-                        getSlideOffset(1, activeSlide) === 0 ? 'subscribe-plan-slide-3d--active' : 'subscribe-plan-slide-3d--side',
+                        getSlideOffset(1, activeSlide, slideCount) === 0 ? 'subscribe-plan-slide-3d--active' : 'subscribe-plan-slide-3d--side',
                         instantSlideIndexes.has(1) ? 'subscribe-plan-slide-3d--instant' : '',
                         isDragging ? 'subscribe-plan-slide-3d--dragging' : '',
                       ].join(' ')}
-                      style={getSlide3DStyle(1, activeSlide, dragProgress)}
+                      style={getSlide3DStyle(1, activeSlide, dragProgress, slideCount)}
                     >
                     <div
                       role="button"
@@ -1091,14 +1098,15 @@ export default function SubscribeModal({
                     </div>
                     </div>
 
+                    {hideLifetimeCard ? null : (
                     <div
                       className={[
                         'subscribe-plan-slide-3d',
-                        getSlideOffset(2, activeSlide) === 0 ? 'subscribe-plan-slide-3d--active' : 'subscribe-plan-slide-3d--side',
+                        getSlideOffset(2, activeSlide, slideCount) === 0 ? 'subscribe-plan-slide-3d--active' : 'subscribe-plan-slide-3d--side',
                         instantSlideIndexes.has(2) ? 'subscribe-plan-slide-3d--instant' : '',
                         isDragging ? 'subscribe-plan-slide-3d--dragging' : '',
                       ].join(' ')}
-                      style={getSlide3DStyle(2, activeSlide, dragProgress)}
+                      style={getSlide3DStyle(2, activeSlide, dragProgress, slideCount)}
                     >
                     <div
                       role="button"
@@ -1160,6 +1168,7 @@ export default function SubscribeModal({
                       </ul>
                     </div>
                     </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -78,6 +78,8 @@ const SCROLL_UP_MSG_THRESHOLD = 20
 const REACTION_LIMIT = 3
 /** Last message must sit this far below the composer top before we auto-scroll. */
 const COMPOSER_SCROLL_GAP_PX = 8
+/** iOS: extra air between the composer and the software keyboard (overlap is flush otherwise). */
+const IOS_CHAT_COMPOSER_KB_GAP_PX = 10
 /** Message stack shorter than this gap under the composer viewport → treat as "fits" (no push). */
 const LIST_CONTENT_FITS_GAP_PX = 24
 /** iOS keyboard dismiss: wait for viewport settle, then one smooth list scroll. */
@@ -2413,7 +2415,12 @@ export default function ChatConversation({
   const listPaddingTop = useRichHeader
     ? 'calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 12.5rem)'
     : 'calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 4.5rem)'
-  const composerPadBottom = loungeComposerFooterPaddingBottom(kbOverlapPx, iosSafeBottomPx)
+  const composerPadBottom = (() => {
+    const base = loungeComposerFooterPaddingBottom(kbOverlapPx, iosSafeBottomPx)
+    if (!IS_IOS) return base
+    if (kbOverlapPx <= iosSafeBottomPx + 2) return base
+    return `${Math.round(Math.max(kbOverlapPx, iosSafeBottomPx) + IOS_CHAT_COMPOSER_KB_GAP_PX)}px`
+  })()
   const roomCallStatusLabel =
     roomOpenCall?.status === 'ringing'
       ? 'Ringing…'

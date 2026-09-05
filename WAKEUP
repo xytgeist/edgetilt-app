@@ -95,6 +95,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Windows Theo.** Destination rule: Lounge (public + VIP) keeps markdown. **Chat rooms never get markdown.** **X.com auto-post (when built) never gets markdown.** Same caption can fan out; strip at the destination. Helper `toPlainOutboundText` in `loungeBotPlainOutbound.ts`. Chat choke point is `publishBotSubChatMessage` (every Signal/Syndicate fan-room insert). X publisher must call that helper; do not send Lounge captions raw. Redeployed **`lounge-odds-poll`**, **`lounge-odds-ingest`**, **`lounge-bot-publish-due`** on **test + prod**. Existing chat messages stay until the next publish.
 
+### Mac Theo 2026-09-05 … iOS chat composer keyboard gap
+
+**I am Mac Theo.** iOS chat composer was flush on the keyboard. +10px pad while keys are up. Android unchanged. **`1.4.58`.** Web / TestFlight.
+
 ### Mac Theo 2026-09-05 … egress inset pack
 
 **I am Mac Theo.** Recording template still uses small chips, but 5–9 now pack like the live call (2+2 / 2+3 / 3+3 / 3+4 / 4+4). **Republished R2 call-egress on test.** **`1.4.57`.**

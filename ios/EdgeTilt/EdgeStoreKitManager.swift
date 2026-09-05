@@ -26,6 +26,18 @@ final class EdgeStoreKitManager {
 
   private init() {}
 
+  func storefront(completion: @escaping (Result<[String: Any], Error>) -> Void) {
+    Task {
+      let storefront = await Storefront.current
+      let code = storefront?.countryCode ?? ""
+      let isUnitedStates = code.caseInsensitiveCompare("USA") == .orderedSame
+      completion(.success([
+        "countryCode": code,
+        "isUnitedStates": isUnitedStates,
+      ]))
+    }
+  }
+
   func fetchProducts(productIds: [String], completion: @escaping (Result<[String: Any], Error>) -> Void) {
     Task {
       do {

@@ -182,4 +182,5 @@ Track implementation in `docs/test-buildout-backlog.md` when Phase 1 work starts
 | 2026-09-05 | **IAP refund + ASSN (test):** `beginRefundRequest` + Edge `apple-iap-notify` revoke on REFUND/REVOKE/EXPIRED. SQL `20260905140000`. Prod URL + SQL when Ryan promotes. |
 | 2026-09-05 | **Edge Pro Settings IPA unlock card:** IAP `$11.49` only. No web `$9.99` on that card. |
 | 2026-09-05 | **IPA Subscribe carousel hides Lifetime** until higher App Store price points. Web still shows the card. |
+| 2026-09-05 | **Storefront gate:** IPA shows a cheaper web price next to IAP only when StoreKit storefront is `USA`. |
 | 2026-08-30 | **Edge Pro $9.99/mo Stripe checkout & subscription tier live:** Added `edge-pro` to `subscription_products` (migration `20260830235000`), updated `sync_profile_has_active_subscription`, enabled direct Stripe Checkout routing via `STRIPE_PRICE_EDGE_PRO`, and wired in-app Upgrade to Edge Pro buttons in Settings and Membership management. |

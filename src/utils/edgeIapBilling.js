@@ -23,6 +23,45 @@ export {
 /** @typedef {'monthly' | 'annual'} IapPriceInterval */
 
 /**
+ * StoreKit storefront is ISO 3166-1 alpha-3 (`USA`). Also accept `US`.
+ * @param {string} [countryCode]
+ */
+export function isUsAppleStorefront(countryCode) {
+  const code = String(countryCode || '').trim().toUpperCase()
+  return code === 'USA' || code === 'US'
+}
+
+/**
+ * IPA only. Unknown / old binary / error → not US (do not print a cheaper web dollar).
+ * @returns {Promise<{ countryCode: string, isUnitedStates: boolean, via: 'bridge' | 'noop' | 'error' }>}
+ */
+export async function fetchAppleStorefront() {
+  if (!isEdgeiOSShell()) {
+    return { countryCode: '', isUnitedStates: false, via: 'noop' }
+  }
+  try {
+    const result = await edgeNativeInvoke('getStorefront')
+    const countryCode = String(result?.countryCode || '').trim().toUpperCase()
+    return {
+      countryCode,
+      isUnitedStates: result?.isUnitedStates === true || isUsAppleStorefront(countryCode),
+      via: 'bridge',
+    }
+  } catch {
+    return { countryCode: '', isUnitedStates: false, via: 'error' }
+  }
+}
+
+/**
+ * Print a cheaper Safari/Stripe sticker next to IAP only in the US shell.
+ * Web / PWA / Android are not the App Store binary … always show web prices there.
+ */
+export function canShowIapWebComparePrice(isUnitedStates) {
+  if (!isEdgeiOSShell()) return true
+  return Boolean(isUnitedStates)
+}
+
+/**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string[]} productIds
  */

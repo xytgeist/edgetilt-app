@@ -2850,6 +2850,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-05:** **App Store storefront gate.** `getStorefront` (`Storefront.current`, `USA`). IPA prints cheaper web dollars (founding chip, Edge Pro `$9.99` web CTA, fan web sticker) only in the US. Both CTAs stay. Old binaries / unknown → no web dollar. **`1.4.66`.** New TestFlight for the native method.
 - **2026-09-05:** **IPA Subscribe carousel drops Lifetime.** Starter + Pro only on the shell so Review cannot swipe onto the `$1,000` placeholder. Web carousel unchanged. **`1.4.65`.**
 - **2026-09-05:** **Edge Pro Settings IPA card is IAP-only.** Chip + single **Subscribe on iPhone** CTA at `$11.49` (StoreKit or ASC list). Web `$9.99` CTA stays on Safari/PWA. Slots Edge SubscribeModal unchanged. **`1.4.64`.**
 - **2026-09-05:** **IAP refund sheet + ASSN V2 (test).** `beginRefundRequest` on Manage membership / fan Cancel. Edge **`apple-iap-notify`** verifies JWS `x5c` leaf and revokes / renews `user_subscriptions` + `creator_subscriptions` by `apple_original_transaction_id`. SQL **`20260905140000`**. Paste ASC sandbox URL. New TestFlight for the refund sheet. **`1.4.63`.**

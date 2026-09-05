@@ -216,6 +216,12 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     case "dismissKeyboard":
       EdgeCallKitManager.shared.dismissWebKeyboard()
       completion(.success(["ok": true]))
+    case "getStorefront":
+      guard #available(iOS 15.0, *) else {
+        completion(.success(["countryCode": "", "isUnitedStates": false]))
+        return
+      }
+      EdgeStoreKitManager.shared.storefront(completion: completion)
     case "getStoreProducts":
       guard #available(iOS 15.0, *) else {
         completion(.failure(EdgeStoreKitError.unavailable))
@@ -570,6 +576,9 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       },
       dismissKeyboard: function () {
         return call('dismissKeyboard', null);
+      },
+      getStorefront: function () {
+        return call('getStorefront', null);
       },
       getStoreProducts: function (payload) {
         return call('getStoreProducts', payload || {});

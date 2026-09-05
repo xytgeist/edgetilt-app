@@ -23,6 +23,8 @@ import { isCheckoutAuthRequiredError, startEdgeCheckout } from './stripeBillingA
 import { isEdgeiOSShell } from '../../utils/edgeNative.js'
 import {
   allKnownIapProductIds,
+  canShowIapWebComparePrice,
+  fetchAppleStorefront,
   fetchEdgeStoreProducts,
   iapProductIdForPlan,
   indexStoreProductsById,
@@ -314,6 +316,7 @@ export default function SubscribeModal({
   const hideLifetimeCard = isEdgeiOSShell()
   const planSlugs = hideLifetimeCard ? IPA_PLAN_SLUGS : ALL_PLAN_SLUGS
   const slideCount = planSlugs.length
+  const showWebComparePrice = canShowIapWebComparePrice(usStorefront)
 
   const defaultPlan = useMemo(() => {
     if (initialProductSlug === PRODUCT_SLOTS_EDGE_LIFETIME && !hideLifetimeCard) {
@@ -329,6 +332,7 @@ export default function SubscribeModal({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [storeProductsById, setStoreProductsById] = useState(() => new Map())
+  const [usStorefront, setUsStorefront] = useState(false)
   const [restoreBusy, setRestoreBusy] = useState(false)
   const [affiliatePromo, setAffiliatePromo] = useState(() => getAffiliateStampForSubscribeUi())
   const [militaryPromo, setMilitaryPromo] = useState(() => Boolean(readMilitaryPromoStamp()?.code))
@@ -370,6 +374,7 @@ export default function SubscribeModal({
     setBusy(false)
     setRestoreBusy(false)
     setStoreProductsById(new Map())
+    setUsStorefront(false)
     setInstantSlideIndexes(new Set())
     setDragPx(0)
     setIsDragging(false)
@@ -388,6 +393,12 @@ export default function SubscribeModal({
     })()
     if (isEdgeiOSShell()) {
       void (async () => {
+        try {
+          const storefront = await fetchAppleStorefront()
+          if (!cancelled) setUsStorefront(storefront.isUnitedStates)
+        } catch {
+          if (!cancelled) setUsStorefront(false)
+        }
         try {
           const { products } = await fetchEdgeStoreProducts(supabaseClient, allKnownIapProductIds())
           if (cancelled) return
@@ -875,7 +886,9 @@ export default function SubscribeModal({
                       }}
                       className={planCardClass(starterSelected, busy ? 'cursor-default' : 'cursor-pointer')}
                     >
-                      <PlanPromoBadge affiliate={affiliatePromo} military={isMilitaryPromo} />
+                      {showWebComparePrice ? (
+                        <PlanPromoBadge affiliate={affiliatePromo} military={isMilitaryPromo} />
+                      ) : null}
                       {hasSlotsEdgeStarter ? (
                         <span className="absolute right-3 top-10 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-emerald-300 ring-1 ring-emerald-500/30">
                           Current
@@ -934,20 +947,20 @@ export default function SubscribeModal({
                           <span className="text-xl font-bold tracking-tight text-white">
                             {starterStoreProduct.displayPrice}
                           </span>
-                        ) : starterInterval === 'annual' ? (
+                        ) : showWebComparePrice && starterInterval === 'annual' ? (
                           <>
                             <span className="text-xl font-bold tracking-tight text-white">{starterAnnualEarly}</span>
                             <span className="pb-0.5 text-xs text-zinc-500 line-through">{starterAnnualList}</span>
                           </>
-                        ) : (
+                        ) : showWebComparePrice ? (
                           <>
                             <span className="text-xl font-bold tracking-tight text-white">{starterEarly}</span>
                             <span className="pb-0.5 text-xs text-zinc-500 line-through">{starterList}</span>
                           </>
-                        )}
+                        ) : null}
                       </div>
                       <p className="mt-0.5 text-[11px] text-zinc-500">
-                        {starterStoreProduct?.displayPrice
+                        {starterStoreProduct?.displayPrice || !showWebComparePrice
                           ? 'App Store price'
                           : starterInterval === 'annual'
                           ? isMilitaryPromo
@@ -1000,7 +1013,9 @@ export default function SubscribeModal({
                         busy ? 'cursor-default' : 'cursor-pointer',
                       ].join(' ')}
                     >
-                      <PlanPromoBadge affiliate={affiliatePromo} military={isMilitaryPromo} />
+                      {showWebComparePrice ? (
+                        <PlanPromoBadge affiliate={affiliatePromo} military={isMilitaryPromo} />
+                      ) : null}
                       {fullSubscriber ? (
                         <span className="absolute right-3 top-10 rounded-full bg-cyan-500/15 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-cyan-200 ring-1 ring-cyan-500/30">
                           Current
@@ -1063,20 +1078,20 @@ export default function SubscribeModal({
                           <span className="text-xl font-bold tracking-tight text-white">
                             {fullStoreProduct.displayPrice}
                           </span>
-                        ) : fullInterval === 'annual' ? (
+                        ) : showWebComparePrice && fullInterval === 'annual' ? (
                           <>
                             <span className="text-xl font-bold tracking-tight text-white">{fullAnnualEarly}</span>
                             <span className="pb-0.5 text-xs text-zinc-500 line-through">{fullAnnualList}</span>
                           </>
-                        ) : (
+                        ) : showWebComparePrice ? (
                           <>
                             <span className="text-xl font-bold tracking-tight text-white">{fullMonthlyEarly}</span>
                             <span className="pb-0.5 text-xs text-zinc-500 line-through">{fullMonthlyList}</span>
                           </>
-                        )}
+                        ) : null}
                       </div>
                       <p className="mt-0.5 text-[11px] text-zinc-500">
-                        {fullStoreProduct?.displayPrice
+                        {fullStoreProduct?.displayPrice || !showWebComparePrice
                           ? 'App Store price'
                           : fullInterval === 'annual'
                           ? isMilitaryPromo
@@ -1130,7 +1145,9 @@ export default function SubscribeModal({
                         busy ? 'cursor-default' : 'cursor-pointer',
                       ].join(' ')}
                     >
-                      <PlanPromoBadge affiliate={affiliatePromo} military={isMilitaryPromo} />
+                      {showWebComparePrice ? (
+                        <PlanPromoBadge affiliate={affiliatePromo} military={isMilitaryPromo} />
+                      ) : null}
                       <span className="inline-flex w-fit rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-200 ring-1 ring-amber-500/30">
                         {isMilitaryPromo
                           ? 'Military lifetime pass'

@@ -34,6 +34,8 @@ import { startEdgeCheckout } from '../features/billing/stripeBillingApi.js'
 import { PRODUCT_EDGE_PRO } from '../features/billing/edgeProducts.js'
 import { EDGE_PRO_MONTHLY_IAP_USD, formatUsdMonthly } from '../features/billing/edgePricing.js'
 import {
+  canShowIapWebComparePrice,
+  fetchAppleStorefront,
   fetchEdgeStoreProducts,
   iapProductIdForPlan,
   indexStoreProductsById,
@@ -287,6 +289,7 @@ export default function LoungeDockSlidePanels({
   const [edgeProCheckoutBusy, setEdgeProCheckoutBusy] = useState(false)
   const [edgeProCheckoutError, setEdgeProCheckoutError] = useState('')
   const [edgeProIapPrice, setEdgeProIapPrice] = useState('')
+  const [edgeProUsStorefront, setEdgeProUsStorefront] = useState(false)
   const [subscriptionsSettingsOpen, setSubscriptionsSettingsOpen] = useState(false)
   const [fanMonetizationSettingsOpen, setFanMonetizationSettingsOpen] = useState(false)
   const [menuLayoutSettingsOpen, setMenuLayoutSettingsOpen] = useState(false)
@@ -340,12 +343,19 @@ export default function LoungeDockSlidePanels({
   useEffect(() => {
     if (!proSettingsOpen || !isEdgeiOSShell() || !settingsSupabaseClient) {
       setEdgeProIapPrice('')
+      setEdgeProUsStorefront(false)
       return
     }
     const productId = iapProductIdForPlan(PRODUCT_EDGE_PRO, 'monthly')
     if (!productId) return
     let cancelled = false
     void (async () => {
+      try {
+        const storefront = await fetchAppleStorefront()
+        if (!cancelled) setEdgeProUsStorefront(storefront.isUnitedStates)
+      } catch {
+        if (!cancelled) setEdgeProUsStorefront(false)
+      }
       try {
         const { products } = await fetchEdgeStoreProducts(settingsSupabaseClient, [productId])
         const row = indexStoreProductsById(products).get(productId)
@@ -1663,37 +1673,69 @@ export default function LoungeDockSlidePanels({
                         <p className="mt-1.5 text-[11px] text-rose-400">{edgeProCheckoutError}</p>
                       ) : null}
                       {isEdgeiOSShell() ? (
-                        <button
-                          type="button"
-                          disabled={edgeProCheckoutBusy}
-                          onClick={async () => {
-                            if (!settingsSupabaseClient) return
-                            setEdgeProCheckoutBusy(true)
-                            setEdgeProCheckoutError('')
-                            try {
-                              const iapResult = await startEdgeIapPurchase(
-                                settingsSupabaseClient,
-                                PRODUCT_EDGE_PRO,
-                                { priceInterval: 'monthly' },
-                              )
-                              if (iapResult?.pending) {
-                                setEdgeProCheckoutError('Purchase is waiting for approval on this Apple ID.')
-                              } else if (iapResult?.ok) {
-                                setEdgeProCheckoutError('')
+                        <>
+                          <button
+                            type="button"
+                            disabled={edgeProCheckoutBusy}
+                            onClick={async () => {
+                              if (!settingsSupabaseClient) return
+                              setEdgeProCheckoutBusy(true)
+                              setEdgeProCheckoutError('')
+                              try {
+                                const iapResult = await startEdgeIapPurchase(
+                                  settingsSupabaseClient,
+                                  PRODUCT_EDGE_PRO,
+                                  { priceInterval: 'monthly' },
+                                )
+                                if (iapResult?.pending) {
+                                  setEdgeProCheckoutError('Purchase is waiting for approval on this Apple ID.')
+                                } else if (iapResult?.ok) {
+                                  setEdgeProCheckoutError('')
+                                }
+                              } catch (err) {
+                                const msg = err instanceof Error ? err.message : String(err || '')
+                                setEdgeProCheckoutError(msg || 'Could not start checkout.')
+                              } finally {
+                                setEdgeProCheckoutBusy(false)
                               }
-                            } catch (err) {
-                              const msg = err instanceof Error ? err.message : String(err || '')
-                              setEdgeProCheckoutError(msg || 'Could not start checkout.')
-                            } finally {
-                              setEdgeProCheckoutBusy(false)
-                            }
-                          }}
-                          className="mt-2.5 inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-3.5 py-2 text-[12px] font-bold text-zinc-950 shadow touch-manipulation hover:brightness-110 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
-                        >
-                          {edgeProCheckoutBusy
-                            ? 'Purchasing…'
-                            : `Subscribe on iPhone · ${edgeProIapPrice || formatUsdMonthly(EDGE_PRO_MONTHLY_IAP_USD)}`}
-                        </button>
+                            }}
+                            className="mt-2.5 inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-3.5 py-2 text-[12px] font-bold text-zinc-950 shadow touch-manipulation hover:brightness-110 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
+                          >
+                            {edgeProCheckoutBusy
+                              ? 'Purchasing…'
+                              : `Subscribe on iPhone · ${edgeProIapPrice || formatUsdMonthly(EDGE_PRO_MONTHLY_IAP_USD)}`}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={edgeProCheckoutBusy}
+                            onClick={async () => {
+                              if (!settingsSupabaseClient) {
+                                if (typeof settingsOnOpenBillingManage === 'function') settingsOnOpenBillingManage()
+                                return
+                              }
+                              setEdgeProCheckoutBusy(true)
+                              setEdgeProCheckoutError('')
+                              try {
+                                await startEdgeCheckout(settingsSupabaseClient, PRODUCT_EDGE_PRO, {
+                                  priceInterval: 'monthly',
+                                  applyEarlyBird: false,
+                                })
+                              } catch (err) {
+                                const msg = err instanceof Error ? err.message : String(err || '')
+                                setEdgeProCheckoutError(msg || 'Could not start checkout.')
+                              } finally {
+                                setEdgeProCheckoutBusy(false)
+                              }
+                            }}
+                            className="mt-2 inline-flex w-full items-center justify-center rounded-lg border border-amber-500/40 bg-zinc-950/60 px-3.5 py-2 text-[12px] font-semibold text-amber-200 touch-manipulation hover:bg-zinc-900 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
+                          >
+                            {edgeProCheckoutBusy
+                              ? 'Opening Safari…'
+                              : canShowIapWebComparePrice(edgeProUsStorefront)
+                                ? 'Subscribe on the web ($9.99/mo)'
+                                : 'Subscribe on the web'}
+                          </button>
+                        </>
                       ) : (
                         <button
                           type="button"

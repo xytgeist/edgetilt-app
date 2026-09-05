@@ -6,6 +6,8 @@ import { creatorFanOfferHeadline } from './fanSubOffer.js'
 import { startCreatorFanCheckout, openCreatorFanBillingPortal, resumeCreatorFanSubscription } from './creatorFanSubsApi.js'
 import { isEdgeiOSShell } from '../../utils/edgeNative.js'
 import {
+  canShowIapWebComparePrice,
+  fetchAppleStorefront,
   fetchEdgeStoreProducts,
   iapProductIdForFanTier,
   indexStoreProductsById,
@@ -52,6 +54,7 @@ export default function CreatorFanSubscribeModal({
   const [error, setError] = useState('')
   const [storePrice, setStorePrice] = useState('')
   const [canIap, setCanIap] = useState(false)
+  const [showWebComparePrice, setShowWebComparePrice] = useState(true)
   const [billingProvider, setBillingProvider] = useState('stripe')
 
   useEffect(() => {
@@ -60,6 +63,7 @@ export default function CreatorFanSubscribeModal({
     setError('')
     setStorePrice('')
     setCanIap(false)
+    setShowWebComparePrice(!isEdgeiOSShell())
     setBillingProvider('stripe')
   }, [open])
 
@@ -79,6 +83,12 @@ export default function CreatorFanSubscribeModal({
         }
       }
       if (!isEdgeiOSShell() || !tierKey) return
+      try {
+        const storefront = await fetchAppleStorefront()
+        if (!cancelled) setShowWebComparePrice(canShowIapWebComparePrice(storefront.isUnitedStates))
+      } catch {
+        if (!cancelled) setShowWebComparePrice(false)
+      }
       const productId = iapProductIdForFanTier(tierKey)
       if (!productId) return
       try {
@@ -356,7 +366,11 @@ export default function CreatorFanSubscribeModal({
             ) : (
               <>
                 <p className="text-[17px] font-bold text-zinc-100">{headline}</p>
-                <p className="mt-1 text-[14px] font-semibold text-orange-400">{tierLabel}</p>
+                {storePrice || showWebComparePrice ? (
+                  <p className="mt-1 text-[14px] font-semibold text-orange-400">
+                    {storePrice || tierLabel}
+                  </p>
+                ) : null}
 
                 {intro ? (
                   <p className="mt-4 text-[15px] leading-relaxed text-zinc-300 whitespace-pre-wrap">{intro}</p>
@@ -408,7 +422,13 @@ export default function CreatorFanSubscribeModal({
                   onClick={() => void onSubscribe('web')}
                   className="flex min-h-[3.25rem] w-full items-center justify-center rounded-full bg-orange-500 px-5 text-[16px] font-bold text-zinc-950 touch-manipulation hover:bg-orange-400 disabled:opacity-50"
                 >
-                  {busy ? '…' : canIap ? `Subscribe on the web · ${tierLabel}` : `Subscribe · ${tierLabel}`}
+                  {busy
+                    ? '…'
+                    : canIap
+                      ? showWebComparePrice
+                        ? `Subscribe on the web · ${tierLabel}`
+                        : 'Subscribe on the web'
+                      : `Subscribe · ${tierLabel}`}
                 </button>
                 {canIap ? (
                   <button

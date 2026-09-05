@@ -81,11 +81,11 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Windows Theo 2026-09-04 … members can post + history switch bounce
 
-**I am Windows Theo.** Owner Privacy now has **Allow members to post** (off = only owner/admins/bots send; members still read). History switch no longer bounce-resets after save. SQL **`20260904200000`** + **`lounge-chat`** on **test + prod**. `main` / edgetilt.com.
+**I am Windows Theo.** Owner Privacy now has **Allow members to post** (off = only owner/admins/bots send; members still read). History switch no longer bounce-resets after save. SQL **`20260904200000`** + **`lounge-chat`** on **test + prod**. `main` / edgetilt.com. **Ryan smoke PASSED 2026-09-04.**
 
 ### Windows Theo 2026-09-04 … private room history for new members
 
-**I am Windows Theo.** Private chat rooms (groups, creator fan, platform sub) have an owner Privacy toggle: **Show chat history to new members**. On (default) = joiners see the archive. Off = later joiners start blank; people already in the room keep what they already see. DMs always keep history. Enforced in SQL (`history_starts_at` + message RPCs/RLS), not UI-only. SQL **`20260904180000`** applied on **test + prod**. Frontend on **`main`** / edgetilt.com.
+**I am Windows Theo.** Private chat rooms (groups, creator fan, platform sub) have an owner Privacy toggle: **Show chat history to new members**. On (default) = joiners see the archive. Off = later joiners start blank; people already in the room keep what they already see. DMs always keep history. Enforced in SQL (`history_starts_at` + message RPCs/RLS), not UI-only. SQL **`20260904180000`** applied on **test + prod**. Frontend on **`main`** / edgetilt.com. **Ryan smoke PASSED 2026-09-04.**
 
 ### Windows Theo 2026-09-04 … chat/X never get markdown
 

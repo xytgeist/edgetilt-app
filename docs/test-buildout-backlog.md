@@ -264,6 +264,7 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 - [x] **Call summary cards** in thread (`content_encoding = call_summary` + rich `link_preview`; was chips).
 - [x] **Test apply SQL + set `LIVEKIT_*` secrets + deploy Edge** (Ryan; DM voice connect smoked).
 - [ ] **Out of v1 (still planned):** topic/channel calls; creator_fan Spaces (raise-hand); CallKit; screen share; auto-record; audio-only **playable** recording (voice uses live STT → summary transcript instead).
+- [ ] **In-call Add people → phone contacts (blocked on Twilio).** IPA only. After Contacts permission, search keeps Following / Followers first; unmatched address-book rows sit under **Invite to EdgeTilt** (SMS / iMessage with download + handle). Matched verified `profiles.phone_number` promote into the Edge Invite row (`invite_to_call`). Filter-first (do not dump the whole book on open). Bridge row in **`docs/ios-native-bridge.md`** before Mac + Windows both code. **Do not start until Twilio SMS is approved** (carrier keeps rejecting on gambling). Same vendor gate as **Planned (Account & identity verification)**. Web/PWA stays follow-list only (no address-book dump).
 
 ### Planned (Spaces / fan hangouts — later)
 
@@ -293,6 +294,7 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 - [ ] **Product rules:** badge = phone verified only; optional gate on post/comment until verified; prompt existing email-only users (no hard block v1 TBD).
 - [ ] **Abuse:** rate-limit OTP sends per user/IP; cap resends.
 - [ ] **Smoke (test):** complete OTP → badge visible; change phone → re-verify; unverified user has no badge.
+- [ ] **Unblocks:** in-call **Invite to EdgeTilt** from phone contacts (Chat calling planned item). Do not build that SMS path until this vendor setup is actually sending.
 
 **Rough effort:** ~3–5 focused days after Verify service setup (see chat 2026-07-26 / 2026-08-10).
 
@@ -2846,6 +2848,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-04:** **Parked … in-call phone contacts / Invite to EdgeTilt.** IPA address book under follows/followers after Twilio SMS is actually approved (carrier gambling denial). Matched verified phones → `invite_to_call`; unmatched → SMS download invite. Filter-first. Not started. Checkbox under Chat calling + Account & identity.
 - **2026-09-04:** **Add-people sheet height + instant swap.** Invite modal is a fixed height (`min(36rem, 100dvh-2.75rem)`); search filters rows inside instead of collapsing the sheet behind the keyboard. 2-person inset swap is an instant layout (no 250ms tile tween). **`1.4.47`. New TestFlight** for the swap. Modal is Vercel `test`.
 - **2026-09-04:** **In-call chrome polish (Add people + 2-person).** Add-people hides the pill/header and does not autofocus search (no keyboard until tap). Follow lists no longer refetch when someone speaks (that flipped Loading ↔ list). Flip when You is featured sits under the Add-people chip. No green speaking outline on 2-person video. IPA swap was a no-op because `setNativeCallStreamFocus` was missing from the injected `EdgeNative` object (Swift handled it, JS could not call it). Also parse JS `true` as NSNumber (`payloadFlag` + `localMain: 1|0`). **`1.4.46`. New TestFlight required.** Spec: **`docs/chat-calling.md`**.
 - **2026-09-04:** **In-call Add people.** Header person+ → follow/follower + search modal → `invite_to_call`. DM call is promoted to a group so the invitee can accept. **Redeploy `chat-calls` on test.** Spec: **`docs/chat-calling.md`**.

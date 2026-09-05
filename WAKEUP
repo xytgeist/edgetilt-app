@@ -95,6 +95,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Windows Theo.** Destination rule: Lounge (public + VIP) keeps markdown. **Chat rooms never get markdown.** **X.com auto-post (when built) never gets markdown.** Same caption can fan out; strip at the destination. Helper `toPlainOutboundText` in `loungeBotPlainOutbound.ts`. Chat choke point is `publishBotSubChatMessage` (every Signal/Syndicate fan-room insert). X publisher must call that helper; do not send Lounge captions raw. Redeployed **`lounge-odds-poll`**, **`lounge-odds-ingest`**, **`lounge-bot-publish-due`** on **test + prod**. Existing chat messages stay until the next publish.
 
+### Mac Theo 2026-09-04 … parked: contacts Invite to EdgeTilt
+
+**I am Mac Theo.** In-call Add people → phone contacts is on the gotta-do list. **Blocked on Twilio** (carrier gambling denial). IPA only, follows first, unmatched = SMS Invite to EdgeTilt, matched verified phone = call invite. Do not start until SMS actually sends. Backlog Chat calling + Account & identity.
+
 ### Mac Theo 2026-09-04 … invite sheet height + instant swap
 
 **I am Mac Theo.** Add-people sheet is a fixed height so search does not collapse it behind the keyboard. 2-person inset swap is instant (no tile tween). **`1.4.47`. Rebuild EdgeTilt Test** for the swap. Modal is Vercel `test`.

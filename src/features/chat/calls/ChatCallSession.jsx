@@ -1066,7 +1066,7 @@ function NativeIpaCallSession({
       <DraggableMinimizedCallPill avatarUrl={avatarUrl} title={title} onExpand={() => setMinimized(false)}>
         <CallPillButton
           icon={<MicIcon muted={!micOn} />}
-          variant={!micOn ? 'danger' : 'default'}
+          variant={!micOn ? 'muted' : 'default'}
           onClick={() => setMicEnabled(!micOn)}
           ariaLabel={micOn ? 'Mute microphone' : 'Unmute microphone'}
         />
@@ -1297,7 +1297,7 @@ function NativeIpaCallSession({
               icon={<MicIcon muted={!micOn} />}
               label="Mute"
               active={!micOn}
-              variant={!micOn ? 'danger' : 'default'}
+              variant={!micOn ? 'muted' : 'default'}
               onClick={() => {
                 resetControlsTimer()
                 setMicEnabled(!micOn)
@@ -1339,7 +1339,7 @@ function NativeIpaCallSession({
               icon={<MicIcon muted={!micOn} />}
               label="Mute"
               active={!micOn}
-              variant={!micOn ? 'danger' : 'default'}
+              variant={!micOn ? 'muted' : 'default'}
               onClick={() => setMicEnabled(!micOn)}
             />
             <CallDockItem
@@ -1838,7 +1838,7 @@ function CallChrome({
       >
         <CallPillButton
           icon={<MicIcon muted={!micOn} />}
-          variant={!micOn ? 'danger' : 'default'}
+          variant={!micOn ? 'muted' : 'default'}
           onClick={() => void setMicEnabled(!micOn)}
           ariaLabel={micOn ? 'Mute microphone' : 'Unmute microphone'}
         />
@@ -1920,7 +1920,7 @@ function CallChrome({
         icon={<MicIcon muted={!micOn} />}
         label="Mute"
         active={!micOn}
-        variant={!micOn ? 'danger' : 'default'}
+        variant={!micOn ? 'muted' : 'default'}
         onClick={() => {
           resetControlsTimer()
           void setMicEnabled(!micOn)
@@ -1962,7 +1962,7 @@ function CallChrome({
         icon={<MicIcon muted={!micOn} />}
         label="Mute"
         active={!micOn}
-        variant={!micOn ? 'danger' : 'default'}
+        variant={!micOn ? 'muted' : 'default'}
         onClick={() => void setMicEnabled(!micOn)}
       />
       <CallDockItem
@@ -2580,7 +2580,9 @@ function CallDockItem({
     : 'flex h-14 w-14 shrink-0 items-center justify-center rounded-full transition-all duration-150 active:scale-95 touch-manipulation'
   let variantStyle = 'bg-white/10 hover:bg-white/15 border border-white/10 text-white shadow-md backdrop-blur-md'
 
-  if (variant === 'active-white' || (active && variant === 'default')) {
+  if (variant === 'muted') {
+    variantStyle = 'bg-white text-rose-600 shadow-[0_0_24px_rgba(255,255,255,0.35)]'
+  } else if (variant === 'active-white' || (active && variant === 'default')) {
     variantStyle = 'bg-white text-zinc-950 shadow-[0_0_24px_rgba(255,255,255,0.35)] font-bold'
   } else if (variant === 'danger') {
     variantStyle = 'bg-rose-600 hover:bg-rose-500 text-white shadow-[0_8px_24px_rgba(225,29,72,0.45)]'
@@ -2623,7 +2625,9 @@ function CallPillButton({
     'flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-all duration-150 active:scale-95 touch-manipulation'
   let variantStyle = 'bg-white/10 hover:bg-white/15 border border-white/10 text-white shadow-sm'
 
-  if (variant === 'active-white' || (active && variant === 'default')) {
+  if (variant === 'muted') {
+    variantStyle = 'bg-white text-rose-600 shadow-md'
+  } else if (variant === 'active-white' || (active && variant === 'default')) {
     variantStyle = 'bg-white text-zinc-950 font-bold shadow-md'
   } else if (variant === 'danger') {
     variantStyle = 'bg-rose-600 hover:bg-rose-500 text-white shadow-md'

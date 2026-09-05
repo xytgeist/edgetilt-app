@@ -2848,6 +2848,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-04:** **Muted mic chip.** Mute no longer fills rose. White background, rose icon. End stays full red. **`1.4.49`.** Web chrome, Vercel `test`.
 - **2026-09-04:** **Flip header chrome + minimized pip fill.** Screen Flip matches Minimize / Add people (`h-11`, `bg-white/10`). Minimized native overlay no longer runs fullscreen duo layout inside 112×160 (that left the featured stream off-center). **`1.4.48`. New TestFlight** for the pip. Flip chrome is Vercel `test`.
 - **2026-09-04:** **Parked … in-call phone contacts / Invite to EdgeTilt.** IPA address book under follows/followers after Twilio SMS is actually approved (carrier gambling denial). Matched verified phones → `invite_to_call`; unmatched → SMS download invite. Filter-first. Not started. Checkbox under Chat calling + Account & identity.
 - **2026-09-04:** **Add-people sheet height + instant swap.** Invite modal is a fixed height (`min(36rem, 100dvh-2.75rem)`); search filters rows inside instead of collapsing the sheet behind the keyboard. 2-person inset swap is an instant layout (no 250ms tile tween). **`1.4.47`. New TestFlight** for the swap. Modal is Vercel `test`.

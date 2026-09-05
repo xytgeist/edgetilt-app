@@ -24,6 +24,7 @@ import {
   chatMessagesWindow,
   chatCanPinMessages,
   chatCanDeleteCallRecording,
+  chatViewerCanPostInRoom,
   chatRoomReadReceipts,
 } from './chatApi.js'
 import { findLastOwnMessageId, getMessageReceiptStatus } from './chatReceiptStatus.js'
@@ -335,6 +336,13 @@ export default function ChatConversation({
   const isGroupRoom = activeRoom.kind === 'group' || isPrivateSubsGroupRoom
   const isClassicGroupRoom = activeRoom.kind === 'group'
   const isDmRoom = activeRoom.kind === 'dm'
+  const viewerCanPost = chatViewerCanPostInRoom(
+    activeRoom,
+    viewerUserId,
+    viewerProfile?.role || null,
+  )
+  const viewerCanPostRef = useRef(viewerCanPost)
+  viewerCanPostRef.current = viewerCanPost
   const chatCall = useChatCallOptional()
   /** @type {[{ id: string, kind?: string, status?: string, media_mode?: string, started_at?: string, active_participant_count?: number, active_participant_ids?: string[] } | null, Function]} */
   const [roomOpenCall, setRoomOpenCall] = useState(
@@ -481,8 +489,42 @@ export default function ChatConversation({
   }, [showReadReceipts, refreshReadReceipts])
 
   useEffect(() => {
-    setRoomMeta({ ...room })
+    setRoomMeta((prev) => {
+      if (!prev?.id || prev.id !== room.id) return { ...room }
+      return {
+        ...room,
+        new_members_see_history: room.new_members_see_history ?? prev.new_members_see_history,
+        members_can_post: room.members_can_post ?? prev.members_can_post,
+      }
+    })
   }, [room])
+
+  useEffect(() => {
+    if (!room.id || room.kind === 'dm') return undefined
+    let cancelled = false
+    void (async () => {
+      const { data, error } = await supabaseClient
+        .from('chat_rooms')
+        .select('members_can_post, new_members_see_history')
+        .eq('id', room.id)
+        .maybeSingle()
+      if (cancelled || error || !data) return
+      setRoomMeta((prev) => ({
+        ...prev,
+        members_can_post:
+          typeof room.members_can_post === 'boolean'
+            ? room.members_can_post
+            : data.members_can_post,
+        new_members_see_history:
+          typeof room.new_members_see_history === 'boolean'
+            ? room.new_members_see_history
+            : data.new_members_see_history,
+      }))
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [room.id, room.kind, room.members_can_post, room.new_members_see_history, supabaseClient])
 
   useEffect(() => {
     if (!isGroupRoom || !room.id) {
@@ -1519,6 +1561,7 @@ export default function ChatConversation({
   }, [openedFromArchived, onInboxRestored])
 
   const handleSend = useCallback(async ({ body, imageUrls, previewUrls, pendingUploads, videoUrl = null, streamVideoUid = null, streamPosterUrl = null, streamVideoWidth = null, streamVideoHeight = null, replyToMessageId }) => {
+    if (!viewerCanPostRef.current) return
     // If user is viewing history, jump to live end before sending
     if (hasNewerRef.current) {
       await new Promise((resolve) => {
@@ -1729,6 +1772,7 @@ export default function ChatConversation({
    * next job's encoding.
    */
   const handleVideoConfirmed = useCallback((spec) => {
+    if (!viewerCanPostRef.current) return
     const jobId = (() => { try { return crypto.randomUUID() } catch { return `${Date.now()}-${Math.random().toString(36).slice(2)}` } })()
     const abortCtrl = new AbortController()
     const isTrimJob = spec?.type === 'composerTrimJob'
@@ -2835,6 +2879,7 @@ export default function ChatConversation({
                 : `${typingUsers.map((u) => u.displayName).join(', ')} are typing…`
               : '\u00A0'}
           </div>
+          {viewerCanPost ? (
           <ChatComposer
             supabaseClient={supabaseClient}
             viewerUserId={viewerUserId}
@@ -2848,6 +2893,14 @@ export default function ChatConversation({
             onComposerChromeLayout={syncComposerInsetFromDom}
             mentionCandidates={mentionCandidates}
           />
+          ) : (
+            <div
+              data-chat-posting-locked
+              className="rounded-2xl px-4 py-3 text-center text-[13px] leading-snug text-zinc-400"
+            >
+              Only the owner can post in this room.
+            </div>
+          )}
         </div>
       </div>
       </div>

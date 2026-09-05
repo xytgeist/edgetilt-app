@@ -501,6 +501,21 @@ export async function chatSetNewMembersSeeHistory(supabase, roomId, enabled) {
   return data
 }
 
+/**
+ * Owner toggle: members may send messages, or only the owner / room admins.
+ * @param {SupabaseClient} supabase
+ * @param {string} roomId
+ * @param {boolean} enabled
+ */
+export async function chatSetMembersCanPost(supabase, roomId, enabled) {
+  const { data, error } = await supabase.rpc('chat_set_members_can_post', {
+    p_room_id: roomId,
+    p_enabled: enabled,
+  })
+  if (error) throw new Error(error.message || 'Could not update posting setting.')
+  return data
+}
+
 export function chatUpdateGroup(supabase, { roomId, title, description, avatarUrl }) {
   const body = { action: 'update_group', room_id: roomId }
   if (title != null) body.title = title
@@ -722,6 +737,17 @@ export function chatCanDeleteCallRecording(room, viewerUserId, message, viewerRo
     return chatCanModerateFanRoom(room, viewerUserId, viewerRole)
   }
   return chatIsGroupOwner(room, viewerUserId)
+}
+
+/** DMs always. Locked rooms: owner / room admin / platform staff only. */
+export function chatViewerCanPostInRoom(room, viewerUserId, viewerRole = null) {
+  if (!room || !viewerUserId) return false
+  if (room.kind === 'dm') return true
+  if (room.members_can_post !== false) return true
+  if (room.kind === 'group') return chatIsGroupOwner(room, viewerUserId)
+  if (room.kind === 'creator_fan') return chatIsFanRoomOwner(room, viewerUserId)
+  if (room.kind === 'platform_sub') return chatCanEditPlatformSubRoomMeta(room, viewerUserId, viewerRole)
+  return true
 }
 
 export async function chatSearchMessages(supabase, roomId, query, limit = 30) {

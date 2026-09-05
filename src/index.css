@@ -8978,6 +8978,12 @@ html.light [data-chat-feature] [data-chat-settings-group] .bg-zinc-600 {
   background-color: #d4d4d8;
 }
 
+html.light [data-chat-feature] [data-chat-posting-locked] {
+  color: #52525b !important;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
 .chat-header-glass {
   background: rgba(24, 24, 27, 0.25);
   backdrop-filter: blur(20px) saturate(160%);

@@ -20,6 +20,7 @@ import {
   chatPinnedMessagesPage,
   chatRemoveGroupMember,
   chatSetNewMembersSeeHistory,
+  chatSetMembersCanPost,
   chatSetFanRoomMemberRole,
   chatStarredMessagesPage,
   chatUnmuteGroupMember,
@@ -131,6 +132,12 @@ export default function ChatGroupSettingsSheet({
     room?.new_members_see_history !== false,
   )
   const [historySettingBusy, setHistorySettingBusy] = useState(false)
+  const [membersCanPost, setMembersCanPost] = useState(room?.members_can_post !== false)
+  const [postingSettingBusy, setPostingSettingBusy] = useState(false)
+  const historySettingBusyRef = useRef(false)
+  const postingSettingBusyRef = useRef(false)
+  historySettingBusyRef.current = historySettingBusy
+  postingSettingBusyRef.current = postingSettingBusy
 
   const [addExpanded, setAddExpanded] = useState(false)
   const [addSearch, setAddSearch] = useState('')
@@ -191,9 +198,8 @@ export default function ChatGroupSettingsSheet({
     setAuxView(null)
     setAddExpanded(false)
     setAddSearch('')
-    setNewMembersSeeHistory(room?.new_members_see_history !== false)
     void reload()
-  }, [open, room.title, room.description, room.topic_keywords, room?.new_members_see_history, reload])
+  }, [open, room.id, room.title, room.description, room.topic_keywords, reload])
 
   useEffect(() => {
     if (!open || !room?.id || !isOwner) return undefined
@@ -201,12 +207,16 @@ export default function ChatGroupSettingsSheet({
     void (async () => {
       const { data, error } = await supabaseClient
         .from('chat_rooms')
-        .select('new_members_see_history')
+        .select('new_members_see_history, members_can_post')
         .eq('id', room.id)
         .maybeSingle()
       if (cancelled || error || !data) return
+      if (historySettingBusyRef.current || postingSettingBusyRef.current) return
       if (typeof data.new_members_see_history === 'boolean') {
         setNewMembersSeeHistory(data.new_members_see_history)
+      }
+      if (typeof data.members_can_post === 'boolean') {
+        setMembersCanPost(data.members_can_post)
       }
     })()
     return () => {
@@ -745,6 +755,7 @@ export default function ChatGroupSettingsSheet({
         <SectionLabel>Privacy</SectionLabel>
         <SettingsGroup>
           {isOwner ? (
+            <>
             <SettingsToggleRow
               label="Show chat history to new members"
               hint="Off = people who join later start with a blank room. Does not change what current members already see."
@@ -752,14 +763,15 @@ export default function ChatGroupSettingsSheet({
               busy={historySettingBusy}
               onToggle={() => {
                 const next = !newMembersSeeHistory
+                setNewMembersSeeHistory(next)
                 setHistorySettingBusy(true)
                 setErr('')
                 void (async () => {
                   try {
                     await chatSetNewMembersSeeHistory(supabaseClient, room.id, next)
-                    setNewMembersSeeHistory(next)
                     onRoomUpdated?.({ new_members_see_history: next })
                   } catch (ex) {
+                    setNewMembersSeeHistory(!next)
                     setErr(ex?.message || 'Could not update history setting.')
                   } finally {
                     setHistorySettingBusy(false)
@@ -767,6 +779,30 @@ export default function ChatGroupSettingsSheet({
                 })()
               }}
             />
+            <SettingsToggleRow
+              label="Allow members to post"
+              hint="Off = only you can send messages. Everyone in the room can still read."
+              enabled={membersCanPost}
+              busy={postingSettingBusy}
+              onToggle={() => {
+                const next = !membersCanPost
+                setMembersCanPost(next)
+                setPostingSettingBusy(true)
+                setErr('')
+                void (async () => {
+                  try {
+                    await chatSetMembersCanPost(supabaseClient, room.id, next)
+                    onRoomUpdated?.({ members_can_post: next })
+                  } catch (ex) {
+                    setMembersCanPost(!next)
+                    setErr(ex?.message || 'Could not update posting setting.')
+                  } finally {
+                    setPostingSettingBusy(false)
+                  }
+                })()
+              }}
+            />
+            </>
           ) : null}
           {!isCreatorFanRoom && !isPlatformSubRoom ? (
             <SettingsToggleRow

@@ -29,6 +29,28 @@ function subscriberOrStaff(p: { has_active_subscription?: boolean | null; role?:
   return r === 'moderator' || r === 'admin'
 }
 
+function senderMayPostInRoom(
+  room: {
+    kind?: string | null
+    members_can_post?: boolean | null
+    created_by?: string | null
+    creator_user_id?: string | null
+  },
+  userId: string,
+  memberRole: string | null,
+  actorProfile: { role?: string | null } | null,
+) {
+  if (room.kind === 'dm') return true
+  if (room.members_can_post !== false) return true
+  if (userId && (userId === room.created_by || userId === room.creator_user_id)) return true
+  if (memberRole === 'admin') return true
+  if (room.kind === 'platform_sub') {
+    const r = String(actorProfile?.role || '').toLowerCase()
+    if (r === 'admin' || r === 'moderator') return true
+  }
+  return false
+}
+
 function dmKey(a: string, b: string) {
   return a < b ? `${a}::${b}` : `${b}::${a}`
 }
@@ -356,7 +378,7 @@ Deno.serve(async (req) => {
 
     const { data: mem, error: memErr } = await admin
       .from('chat_room_members')
-      .select('room_id, moderation_muted_until')
+      .select('room_id, moderation_muted_until, role')
       .eq('room_id', roomId)
       .eq('user_id', user.id)
       .maybeSingle()
@@ -382,7 +404,7 @@ Deno.serve(async (req) => {
 
     const { data: room, error: rErr } = await admin
       .from('chat_rooms')
-      .select('subscriber_only, kind, dm_key')
+      .select('subscriber_only, kind, dm_key, members_can_post, created_by, creator_user_id')
       .eq('id', roomId)
       .maybeSingle()
     if (rErr || !room) {
@@ -390,6 +412,9 @@ Deno.serve(async (req) => {
     }
     if (room.subscriber_only && !subscriberOrStaff(actorProfile)) {
       return json(403, { error: 'Subscriber required to post in this room.' })
+    }
+    if (!senderMayPostInRoom(room, user.id, mem.role ? String(mem.role) : null, actorProfile)) {
+      return json(403, { error: 'Only the owner can post in this room.' })
     }
 
     // Resolve reply preview + sender if replying to a message in the same room.

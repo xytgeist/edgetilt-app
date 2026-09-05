@@ -30,6 +30,7 @@ Recording finalize webhook is a separate function: **`livekit-egress-webhook`**.
 | Action | Body | Notes |
 | --- | --- | --- |
 | `start_call` | `{ room_id, media_mode: 'audio'\|'video' }` | DM or classic group. Group kind stays `group_audio`; `media_mode` persisted. |
+| `invite_to_call` | `{ call_id, user_id }` | Ring another Edge user into a live call. Adds them to a group room (promotes a DM call to a new group). Same VoIP + `chat_call_invite` path as `start_call`. |
 | `accept_call` / `join_call` | `{ call_id }` | Mints LiveKit token (camera when `media_mode = video`) |
 | `decline_call` | `{ call_id }` | DM ringing only; stops active egress if any |
 | `leave_call` | `{ call_id }` | Leave self. Group continues if **2+** remain after leave; DM / when ≤1 would remain ends + deletes LiveKit room. Stops active egress. |

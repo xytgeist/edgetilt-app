@@ -310,6 +310,42 @@ async function listMemberIds(admin: Admin, roomId: string, excludeUserId: string
   return (data || []).map((r) => r.user_id).filter((id) => id && id !== excludeUserId)
 }
 
+async function listAllMemberIds(admin: Admin, roomId: string) {
+  const { data } = await admin.from('chat_room_members').select('user_id').eq('room_id', roomId)
+  return (data || []).map((r) => String(r.user_id || '').trim()).filter(Boolean)
+}
+
+async function ensureRoomMember(admin: Admin, roomId: string, userId: string, role = 'member') {
+  const { data: existing } = await admin
+    .from('chat_room_members')
+    .select('user_id')
+    .eq('room_id', roomId)
+    .eq('user_id', userId)
+    .maybeSingle()
+  if (existing?.user_id) return
+  const { error } = await admin.from('chat_room_members').insert({
+    room_id: roomId,
+    user_id: userId,
+    role,
+  })
+  if (error && error.code !== '23505') throw new Error(error.message)
+}
+
+async function groupTitleForUsers(admin: Admin, userIds: string[]) {
+  const ids = [...new Set(userIds.filter(Boolean))].slice(0, 6)
+  if (ids.length === 0) return 'Group call'
+  const { data } = await admin
+    .from('profiles')
+    .select('user_id, display_name, handle')
+    .in('user_id', ids)
+  const labels = ids.map((id) => {
+    const row = (data || []).find((p) => p.user_id === id)
+    return String(row?.display_name || row?.handle || 'Member').trim() || 'Member'
+  })
+  const title = labels.join(', ')
+  return title.slice(0, 80) || 'Group call'
+}
+
 async function rateLimitStart(admin: Admin, userId: string) {
   const since = new Date(Date.now() - START_CALL_RATE_WINDOW_MS).toISOString()
   const { count, error } = await admin
@@ -822,6 +858,158 @@ Deno.serve(async (req) => {
     roomId,
   })
       return json(200, started)
+    }
+
+    if (action === 'invite_to_call') {
+      const callId = String(body.call_id || '').trim()
+      const targetUserId = String(body.user_id || body.target_user_id || '').trim()
+      if (!callId) return json(400, { error: 'Missing call_id.' })
+      if (!targetUserId) return json(400, { error: 'Missing user_id.' })
+      if (targetUserId === user.id) return json(400, { error: 'You are already in this call.' })
+
+      const { data: targetProfile } = await admin
+        .from('profiles')
+        .select('handle, display_name, avatar_url')
+        .eq('user_id', targetUserId)
+        .maybeSingle()
+      if (!minProfile(targetProfile)) {
+        return json(403, { error: 'That person needs a completed profile before they can join a call.' })
+      }
+
+      const { data: call, error: callErr } = await admin
+        .from('chat_calls')
+        .select(CALL_SELECT_BASE)
+        .eq('id', callId)
+        .maybeSingle()
+      if (callErr) throw new Error(callErr.message)
+      if (!call) return json(404, { error: 'Call not found.' })
+      if (!['ringing', 'active'].includes(call.status)) {
+        return json(409, { error: 'This call is no longer available.' })
+      }
+      if (callTimedOut(call.started_at)) {
+        return json(410, { error: 'This call has expired.' })
+      }
+
+      await assertMember(admin, call.chat_room_id, user.id)
+      const { data: actorInCall } = await admin
+        .from('chat_call_participants')
+        .select('user_id')
+        .eq('call_id', callId)
+        .eq('user_id', user.id)
+        .is('left_at', null)
+        .maybeSingle()
+      if (!actorInCall?.user_id) {
+        return json(403, { error: 'Join the call before inviting someone.' })
+      }
+
+      await assertDmNotBlocked(admin, user.id, targetUserId)
+
+      const { data: alreadyIn } = await admin
+        .from('chat_call_participants')
+        .select('user_id')
+        .eq('call_id', callId)
+        .eq('user_id', targetUserId)
+        .is('left_at', null)
+        .maybeSingle()
+      if (alreadyIn?.user_id) {
+        return json(409, { error: 'That person is already in this call.' })
+      }
+
+      const { count: liveCount } = await admin
+        .from('chat_call_participants')
+        .select('user_id', { count: 'exact', head: true })
+        .eq('call_id', callId)
+        .is('left_at', null)
+      if ((liveCount ?? 0) >= MAX_GROUP_PARTICIPANTS) {
+        return json(403, { error: `This call is full (max ${MAX_GROUP_PARTICIPANTS}).` })
+      }
+
+      const room = await loadRoom(admin, call.chat_room_id)
+      if (room.kind === 'channel' || room.kind === 'creator_fan') {
+        return json(400, { error: 'Calling is not available in this room type yet.' })
+      }
+
+      let roomId = room.id
+      let promoted = false
+      if (room.kind === 'dm') {
+        const currentMembers = await listAllMemberIds(admin, room.id)
+        const unique = [...new Set([...currentMembers, user.id, targetUserId])]
+        const title = await groupTitleForUsers(admin, unique)
+        const { data: group, error: gErr } = await admin
+          .from('chat_rooms')
+          .insert({
+            kind: 'group',
+            title,
+            max_members: MAX_GROUP_PARTICIPANTS,
+            subscriber_only: false,
+            created_by: user.id,
+          })
+          .select('id')
+          .maybeSingle()
+        if (gErr || !group?.id) {
+          return json(400, { error: gErr?.message || 'Could not start a group call.' })
+        }
+        const rows = unique.map((uid) => ({
+          room_id: group.id,
+          user_id: uid,
+          role: uid === user.id ? 'admin' : 'member',
+        }))
+        const { error: mErr } = await admin.from('chat_room_members').insert(rows)
+        if (mErr) {
+          await admin.from('chat_rooms').delete().eq('id', group.id)
+          return json(400, { error: mErr.message })
+        }
+        const { error: moveErr } = await admin
+          .from('chat_calls')
+          .update({ chat_room_id: group.id, kind: 'group_audio' })
+          .eq('id', callId)
+        if (moveErr) {
+          await admin.from('chat_rooms').delete().eq('id', group.id)
+          throw new Error(moveErr.message)
+        }
+        roomId = group.id
+        promoted = true
+      } else if (room.kind === 'group') {
+        await ensureRoomMember(admin, room.id, targetUserId, 'member')
+        await admin
+          .from('chat_rooms')
+          .update({ max_members: MAX_GROUP_PARTICIPANTS })
+          .eq('id', room.id)
+          .lt('max_members', MAX_GROUP_PARTICIPANTS)
+      } else {
+        return json(400, { error: 'Unsupported chat room kind for calls.' })
+      }
+
+      const groupName = promoted
+        ? (await loadRoom(admin, roomId)).title
+        : room.title
+      const inviteCallerTitle = groupName
+        ? `${displayName} in ${String(groupName).trim() || 'Group Chat'}`
+        : displayName
+      await enqueueCallInvitePush(
+        admin,
+        roomId,
+        callId,
+        user.id,
+        [targetUserId],
+        inviteCallerTitle,
+        call.media_mode === 'video',
+        avatarUrl,
+      )
+
+      const { data: fresh } = await admin
+        .from('chat_calls')
+        .select(CALL_SELECT_BASE)
+        .eq('id', callId)
+        .single()
+
+      return json(200, {
+        ok: true,
+        call: fresh || { ...call, chat_room_id: roomId, kind: promoted ? 'group_audio' : call.kind },
+        room_id: roomId,
+        promoted,
+        invited_user_id: targetUserId,
+      })
     }
 
     if (action === 'accept_call' || action === 'join_call') {

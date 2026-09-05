@@ -39,6 +39,7 @@ import {
   duoPipSize,
   planCallVideoLayout,
 } from './callVideoLayout.js'
+import ChatCallInviteModal from './ChatCallInviteModal.jsx'
 
 const EMPTY_CAMERA_BY_IDENTITY = new Map()
 const EMPTY_SPEAKING_IDS = new Set()
@@ -429,6 +430,7 @@ function SwitchToVideoConfirmModal({ onCancel, onConfirm }) {
  *   mediaMode: 'audio' | 'video',
  *   kind: 'dm_av' | 'group_audio',
  *   callId?: string | null,
+ *   roomId?: string | null,
  *   title: string,
  *   initialMinimized?: boolean,
  *   isOutgoing?: boolean,
@@ -446,6 +448,7 @@ function SwitchToVideoConfirmModal({ onCancel, onConfirm }) {
  *   onHangup: () => void,
  *   onStartRecording?: (featuredIdentity?: string | null) => void,
  *   onStopRecording?: () => void,
+ *   onCallPromoted?: (patch: { roomId: string, kind?: string, title?: string }) => void,
  *   onError?: (msg: string) => void,
  * }} props
  */
@@ -462,6 +465,7 @@ function WebLiveKitCallSession({
   mediaMode,
   kind,
   callId = null,
+  roomId = null,
   title,
   initialMinimized = false,
   isOutgoing = false,
@@ -479,6 +483,7 @@ function WebLiveKitCallSession({
   onHangup,
   onStartRecording,
   onStopRecording,
+  onCallPromoted,
   onError,
 }) {
   const videoEnabled = mediaMode === 'video'
@@ -607,6 +612,8 @@ function WebLiveKitCallSession({
             <CallChrome
               title={title}
               callId={callId}
+              roomId={roomId}
+              onCallPromoted={onCallPromoted}
               videoEnabled={videoEnabled}
               isGroup={isGroup}
               isOutgoing={isOutgoing}
@@ -672,6 +679,7 @@ function NativeIpaCallSession({
   mediaMode,
   kind,
   callId = null,
+  roomId = null,
   title,
   initialMinimized = false,
   isOutgoing = false,
@@ -689,6 +697,7 @@ function NativeIpaCallSession({
   onHangup,
   onStartRecording,
   onStopRecording,
+  onCallPromoted,
   onError,
 }) {
   const videoEnabled = mediaMode === 'video'
@@ -1139,7 +1148,17 @@ function NativeIpaCallSession({
             <p className="mt-1.5 text-[12px] font-semibold text-amber-300">{recCountdownLabel}</p>
           ) : null}
         </div>
-        <div className="h-11 w-11 shrink-0" aria-hidden />
+        <CallInviteHeaderButton
+          supabaseClient={supabaseClient}
+          callId={callId}
+          roomId={roomId}
+          viewerUserId={viewerUserId}
+          excludeUserIds={[
+            viewerUserId,
+            ...nativeRoster.map((p) => p.identity),
+          ]}
+          onCallPromoted={onCallPromoted}
+        />
       </div>
 
       {/* Main Stage */}
@@ -1330,6 +1349,9 @@ function NativeIpaCallSession({
 
 function CallChrome({
   title,
+  callId = null,
+  roomId = null,
+  onCallPromoted,
   videoEnabled,
   isGroup,
   isOutgoing,
@@ -1980,7 +2002,17 @@ function CallChrome({
             <p className="mt-1.5 text-[12px] font-semibold text-amber-300">{recCountdownLabel}</p>
           ) : null}
         </div>
-        <div className="h-11 w-11 shrink-0" aria-hidden />
+        <CallInviteHeaderButton
+          supabaseClient={supabaseClient}
+          callId={callId}
+          roomId={roomId}
+          viewerUserId={viewerUserId}
+          excludeUserIds={[
+            viewerUserId,
+            ...participants.map((p) => p.identity),
+          ]}
+          onCallPromoted={onCallPromoted}
+        />
       </div>
 
       <div className="relative z-[1] min-h-0 flex-1 px-4">
@@ -2227,7 +2259,7 @@ function VideoCallStage({
     showLocalFlip && localParticipant && (plan.localIsFeatured || plan.mode === 'solo') ? (
       <LocalFlipChip
         positionClass="fixed"
-        className={`top-[calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px))+0.75rem)] right-4 transition-opacity duration-300 ${flipFade}`}
+        className={`top-[calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px))+0.75rem)] right-[4.75rem] transition-opacity duration-300 ${flipFade}`}
         size="header"
         onFlip={onFlipCamera}
       />
@@ -2583,6 +2615,60 @@ function CallPillButton({
     >
       {icon}
     </button>
+  )
+}
+
+function CallInviteHeaderButton({
+  supabaseClient,
+  callId,
+  roomId,
+  viewerUserId,
+  excludeUserIds = [],
+  onCallPromoted,
+}) {
+  const [open, setOpen] = useState(false)
+  if (!supabaseClient || !callId || !roomId || !viewerUserId) {
+    return <div className="h-11 w-11 shrink-0" aria-hidden />
+  }
+  return (
+    <>
+      <button
+        type="button"
+        data-chat-call-interactive=""
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/10 text-white shadow-lg backdrop-blur-xl transition active:scale-95 touch-manipulation hover:bg-white/15"
+        aria-label="Add people to this call"
+        onClick={() => setOpen(true)}
+      >
+        <PersonPlusIcon />
+      </button>
+      <ChatCallInviteModal
+        open={open}
+        onClose={() => setOpen(false)}
+        supabaseClient={supabaseClient}
+        callId={callId}
+        viewerUserId={viewerUserId}
+        excludeUserIds={excludeUserIds}
+        onInvited={(result) => {
+          if (result?.promoted && result.roomId) {
+            onCallPromoted?.({
+              roomId: result.roomId,
+              kind: 'group_audio',
+              title: result.call?.title || undefined,
+            })
+          }
+        }}
+      />
+    </>
+  )
+}
+
+function PersonPlusIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M19 8v6M22 11h-6" strokeLinecap="round" />
+    </svg>
   )
 }
 

@@ -88,6 +88,20 @@ export function chatGetCall(supabase, callId) {
 }
 
 /**
+ * Ring another Edge user into the live call. DM calls are promoted to a group.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} callId
+ * @param {string} userId
+ */
+export function chatInviteToCall(supabase, callId, userId) {
+  return chatCallsInvoke(supabase, {
+    action: 'invite_to_call',
+    call_id: callId,
+    user_id: userId,
+  })
+}
+
+/**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} callId
  * @param {{ featuredIdentity?: string | null }} [opts]

@@ -95,6 +95,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Windows Theo.** Destination rule: Lounge (public + VIP) keeps markdown. **Chat rooms never get markdown.** **X.com auto-post (when built) never gets markdown.** Same caption can fan out; strip at the destination. Helper `toPlainOutboundText` in `loungeBotPlainOutbound.ts`. Chat choke point is `publishBotSubChatMessage` (every Signal/Syndicate fan-room insert). X publisher must call that helper; do not send Lounge captions raw. Redeployed **`lounge-odds-poll`**, **`lounge-odds-ingest`**, **`lounge-bot-publish-due`** on **test + prod**. Existing chat messages stay until the next publish.
 
+### Mac Theo 2026-09-04 … in-call add people
+
+**I am Mac Theo.** Call chrome top-right person+ opens follow/follower search and rings them via `chat-calls` `invite_to_call`. DM calls promote to a new group. **Redeploy `chat-calls` on test** (web button is Vercel `test`). No IPA rebuild for the button.
+
 ### Mac Theo 2026-09-04 … video 2-person polish
 
 **I am Mac Theo.** 2-person: Flip fades with the pill. Camera-off inset = rounded square + avatar + speaking bars. Chrome-up inset keeps hidden 9:16 height and goes 3:4 (wider). Tap inset swaps streams (`isLocalMain` now actually crosses the bridge). Screen Flip is h-11 like Minimize. **Rebuild EdgeTilt Test.** Web is Vercel `test`.

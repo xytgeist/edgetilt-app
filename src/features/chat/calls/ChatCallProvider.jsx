@@ -1352,6 +1352,7 @@ export function ChatCallProvider({
             key={`${activeCall.callId}:${activeCall.connectNonce || 0}`}
             initialMinimized={Boolean(activeCall.startMinimized)}
             callId={activeCall.callId}
+            roomId={activeCall.roomId}
             token={activeCall.token}
             serverUrl={activeCall.livekitUrl}
             mediaMode={activeCall.mediaMode}
@@ -1376,6 +1377,20 @@ export function ChatCallProvider({
             onHangup={() => void hangup()}
             onStartRecording={(featuredIdentity) => void startRecording(featuredIdentity)}
             onStopRecording={() => void stopRecording()}
+            onCallPromoted={(patch) => {
+              const nextRoom = String(patch?.roomId || '').trim()
+              if (!nextRoom) return
+              setActiveCall((prev) =>
+                prev
+                  ? {
+                      ...prev,
+                      roomId: nextRoom,
+                      kind: patch.kind === 'group_audio' ? 'group_audio' : prev.kind,
+                      title: patch.title || prev.title,
+                    }
+                  : prev,
+              )
+            }}
           />
         </Suspense>
       ) : null}

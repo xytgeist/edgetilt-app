@@ -10,7 +10,12 @@ import {
 } from './edgeProducts.js'
 import { openBillingPortal, startEdgeCheckout } from './stripeBillingApi.js'
 import { isEdgeiOSShell } from '../../utils/edgeNative.js'
-import { openAppleSubscriptionManagement, restoreEdgeIapPurchases } from '../../utils/edgeIapBilling.js'
+import {
+  iapProductIdForPlan,
+  openAppleSubscriptionManagement,
+  requestAppleIapRefund,
+  restoreEdgeIapPurchases,
+} from '../../utils/edgeIapBilling.js'
 import { getAffiliateCodeForCheckout } from '../affiliates/affiliateRefApi.js'
 import { getMilitaryPromoCodeForCheckout } from './militaryPromoStamp.js'
 
@@ -175,6 +180,37 @@ export default function BillingManageModal({
       setBusyKey('')
     }
   }, [onRefreshEntitlements, supabaseClient])
+
+  const refundProductId = useMemo(() => {
+    if (hasSlotsEdgeLifetime) return iapProductIdForPlan(PRODUCT_SLOTS_EDGE_LIFETIME)
+    if (hasSlotsEdgePro) return iapProductIdForPlan(PRODUCT_SLOTS_EDGE, fullCurrentInterval || 'monthly')
+    if (hasSlotsEdgeStarter) {
+      return iapProductIdForPlan(PRODUCT_SLOTS_EDGE_STARTER, starterCurrentInterval || 'monthly')
+    }
+    if (hasEdgePro) return iapProductIdForPlan(PRODUCT_EDGE_PRO, 'monthly')
+    return null
+  }, [
+    fullCurrentInterval,
+    hasEdgePro,
+    hasSlotsEdgeLifetime,
+    hasSlotsEdgePro,
+    hasSlotsEdgeStarter,
+    starterCurrentInterval,
+  ])
+
+  const runRefund = useCallback(async () => {
+    setError('')
+    setBusyKey('refund')
+    try {
+      const result = await requestAppleIapRefund({ productId: refundProductId })
+      if (result?.cancelled) return
+      await onRefreshEntitlements?.()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusyKey('')
+    }
+  }, [onRefreshEntitlements, refundProductId])
 
   if (!open || typeof document === 'undefined') return null
 
@@ -355,6 +391,17 @@ export default function BillingManageModal({
                 className="billing-manage-action-btn w-full min-h-11 rounded-xl border border-zinc-800 bg-zinc-950/60 px-4 text-sm font-semibold text-zinc-300 touch-manipulation disabled:opacity-50"
               >
                 {busyKey === 'restore' ? 'Restoring…' : 'Restore purchases'}
+              </button>
+            ) : null}
+
+            {isEdgeiOSShell() && isAppleBilled && hasPaidPlan ? (
+              <button
+                type="button"
+                disabled={Boolean(busyKey)}
+                onClick={() => void runRefund()}
+                className="billing-manage-action-btn w-full min-h-11 rounded-xl border border-zinc-800 bg-zinc-950/60 px-4 text-sm font-semibold text-zinc-300 touch-manipulation disabled:opacity-50"
+              >
+                {busyKey === 'refund' ? 'Opening App Store…' : 'Request a refund'}
               </button>
             ) : null}
 

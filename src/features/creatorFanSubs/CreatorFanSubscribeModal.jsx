@@ -10,6 +10,7 @@ import {
   iapProductIdForFanTier,
   indexStoreProductsById,
   openAppleSubscriptionManagement,
+  requestAppleIapRefund,
   startCreatorFanIapPurchase,
 } from '../../utils/edgeIapBilling.js'
 import { formatFanSubAccessThrough } from './fanSubBillingDates.js'
@@ -245,6 +246,22 @@ export default function CreatorFanSubscribeModal({
     }
   }
 
+  const onRequestRefund = async () => {
+    if (busy) return
+    setBusy(true)
+    setError('')
+    try {
+      const result = await requestAppleIapRefund({
+        productId: iapProductIdForFanTier(String(offer.fan_tier_key || '')),
+      })
+      if (result?.cancelled) return
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not open the App Store refund sheet.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const requestClose = () => {
     if (busy) return
     onClose()
@@ -443,6 +460,16 @@ export default function CreatorFanSubscribeModal({
                     {busy ? '…' : 'Resume subscription'}
                   </button>
                 )}
+                {isEdgeiOSShell() && billingProvider === 'apple' ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void onRequestRefund()}
+                    className="mb-3 flex min-h-11 w-full items-center justify-center rounded-full border border-zinc-700/90 px-4 text-[15px] font-semibold text-zinc-200 touch-manipulation hover:bg-zinc-900/80 disabled:opacity-50"
+                  >
+                    {busy ? '…' : 'Request a refund'}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   disabled={busy}

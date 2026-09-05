@@ -137,7 +137,7 @@ Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows**
 
 **Later (v1.1+)**
 - [ ] CallKit / background ring; native haptics; Android TWA
-- [ ] **StoreKit IAP (optional dual-path):** code path landed 2026-09-05 (`1.4.60`) … IAP + Safari, restore, Apple manage-sub, fan-tier SKUs, `apple_iap_intents`. **Still owed:** ASC products, sandbox smoke, ASSN renew/refund, full JWS cert verify, counsel + Review notes. See **`docs/ios-native-bridge.md`** § StoreKit IAP.
+- [ ] **StoreKit IAP (optional dual-path):** code path landed 2026-09-05 (`1.4.60`) … IAP + Safari, restore, Apple manage-sub, fan-tier SKUs, `apple_iap_intents`. **2026-09-05:** `beginRefundRequest` + ASSN V2 (`apple-iap-notify`) on test. **Still owed:** sandbox smoke, paste ASC Server Notification URL, full x5c chain to Apple Root, counsel + Review notes. See **`docs/ios-native-bridge.md`** § StoreKit IAP.
 
 Hot Windows files (first cuts): `pwaNotificationPrompt.js`, `PwaInstallBanner.jsx`, `useWebPushNotifications.js`, `OffersCalendar.jsx`, `stripeBillingApi.js`, `creatorFanSubsApi.js`, `affiliatePortalApi.js`, Lounge Stream / autoplay stack.
 
@@ -840,6 +840,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 - [x] **`chat-calls`** + **`livekit-egress-webhook`** (group video + RoomComposite recording) — SQL **`20260728050000`** / **`20260728060000`** on **test**; both functions deployed test (`verify_jwt = false` on webhook). **Open:** configure LiveKit Cloud webhook → `https://kcosfvmreeiosdjdzycb.supabase.co/functions/v1/livekit-egress-webhook` (`egress_ended`). Source: `docs/chat-calling.md`, function READMEs. Smoke under **Chat calling**.
 
 - [ ] **`lounge-news-poll`** (Market Edge — Finnhub allowlist → score → auto-publish) — deploy on **test** with **`FINNHUB_API_KEY`**; migrations **`20260703140000`** + **`20260705020000`**; cron **`lounge_news_poll_market_edge`** every 3 min or Bot Portal **Poll now**. Source: `supabase/functions/lounge-news-poll/README.md`.
+
+- [x] **`apple-iap-notify`** (App Store Server Notifications V2) — deployed **test** (2026-09-05). SQL **`20260905140000`**. Paste ASC sandbox URL. Prod when Ryan asks. Source: `supabase/functions/apple-iap-notify/README.md`.
 
 - [x] **Creator fan promo codes** — migration **`20260903120000`**, Edge **`creator-fan-promo`** + **`creator-fan-checkout`** promo support. Settings manage codes; subscribe modal optional field. Creator eats discount; platform **20%** of final paid amount (was 30%). Deployed **test + prod** with frontend **`main`**.
 
@@ -2848,6 +2850,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-05:** **IAP refund sheet + ASSN V2 (test).** `beginRefundRequest` on Manage membership / fan Cancel. Edge **`apple-iap-notify`** verifies JWS `x5c` leaf and revokes / renews `user_subscriptions` + `creator_subscriptions` by `apple_original_transaction_id`. SQL **`20260905140000`**. Paste ASC sandbox URL. New TestFlight for the refund sheet. **`1.4.63`.**
 - **2026-09-05:** **sharpesyndicate.com Overview reads settled W-L.** Public fetch was newest 250 kickoffs (`select *`), so Saturday pending replaced Thursday/Friday grades and every tile dashed. Now paginate Syndicate `won`/`lost`/`push` only. Pending cannot be in the record. Cloudflare Pages still has to rebuild for the live domain. **`1.4.62`.**
 - **2026-09-05:** **Grade-picks actually settles.** Cron looked green while Edge 500ed: `oddsApiKey` was never imported in `lounge-odds-poll` (poll_edges auto-grade swallowed it). Also one invoke (not two), 150s budget, cron **:22** off the :15 live/edges pile-up, scores timeout + batched ledger writes before ESPN. SQL **`20260905130000`**. Redeploy **`lounge-odds-poll`** + **`lounge-odds-ingest`**. **`1.4.61`.**
 - **2026-09-05:** **IAP dual-path (code).** Platform SubscribeModal: StoreKit price + IAP / web / restore / Terms+Privacy; no pending→Stripe. Fan SUB: web primary, iPhone IAP optional (tier SKU, not per creator). Edge Pro Settings same split. Manage membership opens Apple subscriptions when `billing_provider=apple`. Native sends JWS; verify writes `expires_at`. SQL **`20260905120000`**. Redeploy **`apple-iap-verify`** on test. ASC products + sandbox still owed. **`1.4.60`. New TestFlight** for StoreKit / `manageStoreSubscriptions`.

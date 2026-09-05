@@ -250,6 +250,16 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
         return
       }
       EdgeStoreKitManager.shared.showManageSubscriptions(completion: completion)
+    case "beginRefundRequest":
+      guard #available(iOS 15.0, *) else {
+        completion(.failure(EdgeStoreKitError.unavailable))
+        return
+      }
+      EdgeStoreKitManager.shared.beginRefundRequest(
+        transactionId: payload?["transactionId"] as? String,
+        productId: payload?["productId"] as? String,
+        completion: completion
+      )
     default:
       completion(.failure(BridgeError.unknownMethod(method)))
     }
@@ -572,6 +582,9 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       },
       manageStoreSubscriptions: function () {
         return call('manageStoreSubscriptions', null);
+      },
+      beginRefundRequest: function (payload) {
+        return call('beginRefundRequest', payload || {});
       },
       bustServiceWorker: function () {
         return call('bustServiceWorker', null);

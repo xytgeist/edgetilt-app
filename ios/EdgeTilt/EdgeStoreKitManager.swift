@@ -120,6 +120,70 @@ final class EdgeStoreKitManager {
     }
   }
 
+  /// Apple's in-app refund sheet. Higher price points require this StoreKit API.
+  func beginRefundRequest(
+    transactionId: String?,
+    productId: String?,
+    completion: @escaping (Result<[String: Any], Error>) -> Void
+  ) {
+    Task { @MainActor in
+      guard let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first else {
+        completion(.failure(EdgeStoreKitError.unavailable))
+        return
+      }
+      do {
+        guard let id = try await Self.resolveRefundTransactionId(
+          transactionId: transactionId,
+          productId: productId
+        ) else {
+          completion(.success(["ok": false, "status": "no_transaction"]))
+          return
+        }
+        let status = try await Transaction.beginRefundRequest(for: id, in: scene)
+        switch status {
+        case .success:
+          completion(.success(["ok": true, "status": "requested"]))
+        case .userCancelled:
+          completion(.success(["ok": true, "status": "cancelled"]))
+        @unknown default:
+          completion(.success(["ok": false, "status": "unknown"]))
+        }
+      } catch {
+        completion(.failure(error))
+      }
+    }
+  }
+
+  private static func resolveRefundTransactionId(
+    transactionId: String?,
+    productId: String?
+  ) async throws -> UInt64? {
+    let requestedId = transactionId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    if let parsed = UInt64(requestedId), parsed > 0 {
+      return parsed
+    }
+
+    let wantedProduct = productId?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    var lifetimeMatch: UInt64?
+    var productMatch: UInt64?
+    var anyMatch: UInt64?
+
+    for await result in Transaction.currentEntitlements {
+      let transaction = try checkVerified(result)
+      if anyMatch == nil {
+        anyMatch = transaction.id
+      }
+      if transaction.productID == "com.edgetilt.app.slots_edge_lifetime" {
+        lifetimeMatch = transaction.id
+      }
+      if !wantedProduct.isEmpty, transaction.productID == wantedProduct {
+        productMatch = transaction.id
+      }
+    }
+
+    return productMatch ?? lifetimeMatch ?? anyMatch
+  }
+
   private static func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
     switch result {
     case .unverified:

@@ -86,6 +86,7 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | `purchaseStoreProduct` | JS→native | `{ productId, appAccountToken? }` | `{ ok, status, transactionId?, originalTransactionId?, signedTransactionInfo? (JWS), expiresAt? }` | Mac | **native** + web SubscribeModal / fan SUB / Edge Pro. Confirm via Edge `apple-iap-verify`. **Device smoke pending.** |
 | `restoreStorePurchases` | JS→native | none | `{ ok, transactions: [...] }` | Mac | **native** + Restore on Subscribe + Manage membership. **Device smoke pending.** |
 | `manageStoreSubscriptions` | JS→native | none | `{ ok: boolean }` | Mac | **native** (2026-09-05). `AppStore.showManageSubscriptions`. Apple-billed users only. |
+| `beginRefundRequest` | JS→native | `{ productId?, transactionId? }` | `{ ok, status: 'requested'\|'cancelled'\|'no_transaction' }` | Mac | **native** (2026-09-05). `Transaction.beginRefundRequest`. Manage membership + fan Cancel sheet. |
 
 **Web-owned (no Swift required for first cut):**
 
@@ -107,7 +108,7 @@ IPA can offer **IAP + Safari** for the same unlock. Web / PWA / Android stay Str
 - **Platform Slots Edge + Edge Pro:** IAP primary when StoreKit returns the product; **Subscribe on the web** is secondary. Restore + Terms/Privacy on the paywall. Apple-billed manage → `manageStoreSubscriptions`.
 - **Creator fan subs:** **Subscribe on the web** is primary (guide to Connect). **Subscribe on iPhone** is the IAP option when that tier SKU exists. One ASC product per price tier, not per creator. `apple_iap_intents` binds buyer + tier + creator before StoreKit so a `$4.99` receipt cannot attach to a `$249` room.
 - Same tables: `user_subscriptions` / `creator_subscriptions` + `billing_provider`. Do not invent a second entitlement system.
-- **Still owed before real charges:** ASC products, sandbox smoke, App Store Server Notifications (renew/refund), full JWS cert verify, counsel + Review notes (US link-out ≠ other storefronts). May upcharge IAP for Apple’s cut.
+- **Still owed before real charges:** sandbox smoke, ASC Server Notification URL paste, full x5c chain to Apple Root, counsel + Review notes (US link-out ≠ other storefronts). Refund sheet + ASSN V2 (`apple-iap-notify`) landed 2026-09-05. May upcharge IAP for Apple’s cut.
 
 ### ⚠️ CallKit: one invite arrives three ways … dedupe by `callId` (2026-08-27)
 

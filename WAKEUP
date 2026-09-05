@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-05 … IAP refund sheet + ASSN (test)
+
+**I am Mac Theo.** `beginRefundRequest` + Edge **`apple-iap-notify`** on test. SQL **`20260905140000`**. Ryan pastes ASC sandbox URL, then Send Test Notification. New TestFlight for the refund button. Lifetime still `$1,000` until higher price points. Do not Add for Review. **`1.4.63`.**
+
 ### Mac Theo 2026-09-05 … IAP dual-path (code, not live charges)
 
 **I am Mac Theo.** Platform SubscribeModal + fan SUB + Edge Pro Settings can offer **IAP and Safari** for the same unlock. Fan IAP is one SKU per tier (`com.edgetilt.app.fan_tier_499.monthly` …), bound to a creator via `apple_iap_intents`. SQL **`20260905120000`**. Redeploy **`apple-iap-verify`** on **test**. New TestFlight for `manageStoreSubscriptions` + JWS. **Ryan still creates ASC products.** Do not take a real charge until sandbox + ASSN. **`1.4.60`.**

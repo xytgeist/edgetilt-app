@@ -207,6 +207,9 @@ supabase functions deploy w2g-vision-extract
 supabase functions deploy stripe-create-checkout-session
 supabase functions deploy stripe-create-portal-session
 supabase functions deploy stripe-webhook
+# Apple IAP (after 20260905120000 + 20260905140000; sandbox/prod Server Notification URLs in ASC):
+supabase functions deploy apple-iap-verify
+supabase functions deploy apple-iap-notify
 # Creator fan subs (after migrations 20260720180000–195000 + live fan tier price secrets):
 supabase functions deploy creator-fan-connect
 supabase functions deploy creator-fan-checkout

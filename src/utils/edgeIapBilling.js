@@ -235,3 +235,25 @@ export async function openAppleSubscriptionManagement(supabaseClient) {
     return { ok: true, via: 'settings' }
   }
 }
+
+/**
+ * Present Apple's in-app refund sheet (`Transaction.beginRefundRequest`).
+ * @param {{ productId?: string | null, transactionId?: string | null }} [options]
+ */
+export async function requestAppleIapRefund(options = {}) {
+  if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
+  const result = await edgeNativeInvoke('beginRefundRequest', {
+    productId: options.productId || null,
+    transactionId: options.transactionId || null,
+  })
+  if (result?.status === 'no_transaction') {
+    throw new Error('No App Store purchase found on this Apple ID to refund.')
+  }
+  if (result?.status === 'cancelled') {
+    return { ok: true, cancelled: true, via: 'bridge' }
+  }
+  if (result?.ok === false) {
+    throw new Error('Could not open the App Store refund sheet.')
+  }
+  return { ok: true, via: 'bridge' }
+}

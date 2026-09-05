@@ -19,4 +19,4 @@ Prod only when Ryan asks. SQL **`20260905120000`** must be applied first.
 
 ## Still owed
 
-App Store Server Notifications V2 for renew / refund / revoke. Full x5c JWS signature verify (device StoreKit already checks; server currently decodes claims).
+Full x5c chain to Apple Root CA G3 on purchase confirm (device StoreKit already checks; server currently decodes claims). Refund / renew / revoke notifications are **`apple-iap-notify`**.

@@ -395,6 +395,148 @@ export async function syncPlatformSlotsProLoungeMemberWarnOnly(
   }
 }
 
+export async function recordAppleNotificationEvent(
+  admin: SupabaseClient,
+  args: { notificationUuid: string; notificationType: string; subtype?: string | null },
+) {
+  const { data: existing, error: existingErr } = await admin
+    .from('apple_iap_notification_events')
+    .select('processing_status')
+    .eq('notification_uuid', args.notificationUuid)
+    .maybeSingle()
+  if (existingErr) throw new Error(`apple_iap_notification_events lookup: ${existingErr.message}`)
+  if (existing?.processing_status === 'processed') return false
+  if (existing?.processing_status === 'failed') {
+    const { error: retryErr } = await admin
+      .from('apple_iap_notification_events')
+      .update({
+        processing_status: 'processed',
+        error_message: null,
+        notification_type: args.notificationType,
+        subtype: args.subtype || null,
+      })
+      .eq('notification_uuid', args.notificationUuid)
+    if (retryErr) throw new Error(`apple_iap_notification_events retry: ${retryErr.message}`)
+    return true
+  }
+
+  const { error } = await admin.from('apple_iap_notification_events').insert({
+    notification_uuid: args.notificationUuid,
+    notification_type: args.notificationType,
+    subtype: args.subtype || null,
+    processing_status: 'processed',
+  })
+  if (error?.code === '23505') return false
+  if (error) throw new Error(`apple_iap_notification_events insert: ${error.message}`)
+  return true
+}
+
+export async function markAppleNotificationEventFailed(
+  admin: SupabaseClient,
+  notificationUuid: string,
+  errorMessage: string,
+) {
+  const msg = String(errorMessage || 'Apple notification failed').trim().slice(0, 500)
+  const { error } = await admin
+    .from('apple_iap_notification_events')
+    .update({
+      processing_status: 'failed',
+      error_message: msg || null,
+    })
+    .eq('notification_uuid', notificationUuid)
+  if (error) {
+    console.warn('markAppleNotificationEventFailed:', error.message)
+  }
+}
+
+export async function applyAppleIapNotification(
+  admin: SupabaseClient,
+  args: {
+    originalTransactionId: string
+    notificationType: string
+    subtype?: string | null
+    expiresAt?: string | null
+  },
+) {
+  const originalTx = String(args.originalTransactionId || '').trim()
+  if (!originalTx) return { updated: 0 }
+
+  const type = String(args.notificationType || '').trim().toUpperCase()
+  const subtype = String(args.subtype || '').trim().toUpperCase()
+  const revokeNow = type === 'REFUND' || type === 'REVOKE' || type === 'EXPIRED' ||
+    type === 'GRACE_PERIOD_EXPIRED'
+  const restoreNow = type === 'REFUND_REVERSED'
+  const renewNow = type === 'DID_RENEW' || type === 'SUBSCRIBED' || type === 'OFFER_REDEEMED'
+  const renewalDisabled = type === 'DID_CHANGE_RENEWAL_STATUS' && subtype === 'AUTO_RENEW_DISABLED'
+  const renewalEnabled = type === 'DID_CHANGE_RENEWAL_STATUS' && subtype === 'AUTO_RENEW_ENABLED'
+
+  const nextStatus = revokeNow ? (type === 'EXPIRED' || type === 'GRACE_PERIOD_EXPIRED' ? 'expired' : 'canceled')
+    : restoreNow || renewNow
+      ? 'active'
+      : null
+
+  const { data: platformRows, error: platformErr } = await admin
+    .from('user_subscriptions')
+    .select('id, user_id, status')
+    .eq('apple_original_transaction_id', originalTx)
+  if (platformErr) throw new Error(`user_subscriptions apple notify lookup: ${platformErr.message}`)
+
+  const { data: fanRows, error: fanErr } = await admin
+    .from('creator_subscriptions')
+    .select('id, subscriber_user_id, creator_user_id, status')
+    .eq('apple_original_transaction_id', originalTx)
+  if (fanErr) throw new Error(`creator_subscriptions apple notify lookup: ${fanErr.message}`)
+
+  const now = new Date().toISOString()
+  let updated = 0
+
+  for (const row of platformRows || []) {
+    const patch: Record<string, unknown> = { updated_at: now }
+    if (nextStatus) patch.status = nextStatus
+    if (args.expiresAt && (renewNow || restoreNow || type === 'DID_CHANGE_RENEWAL_STATUS')) {
+      patch.current_period_end = args.expiresAt
+    }
+    if (renewalDisabled) patch.cancel_at_period_end = true
+    if (renewalEnabled || restoreNow || renewNow) patch.cancel_at_period_end = false
+    if (revokeNow) {
+      patch.cancel_at_period_end = false
+      if (type === 'REFUND' || type === 'REVOKE') patch.current_period_end = now
+    }
+    if (Object.keys(patch).length <= 1) continue
+    const { error } = await admin.from('user_subscriptions').update(patch).eq('id', row.id)
+    if (error) throw new Error(`user_subscriptions apple notify update: ${error.message}`)
+    updated += 1
+    await syncProfileHasActiveSubscription(admin, String(row.user_id))
+  }
+
+  for (const row of fanRows || []) {
+    const patch: Record<string, unknown> = { updated_at: now }
+    if (nextStatus) patch.status = nextStatus
+    if (args.expiresAt && (renewNow || restoreNow || type === 'DID_CHANGE_RENEWAL_STATUS')) {
+      patch.current_period_end = args.expiresAt
+    }
+    if (renewalDisabled) patch.cancel_at_period_end = true
+    if (renewalEnabled || restoreNow || renewNow) patch.cancel_at_period_end = false
+    if (revokeNow) {
+      patch.cancel_at_period_end = false
+      if (type === 'REFUND' || type === 'REVOKE') patch.current_period_end = now
+    }
+    if (Object.keys(patch).length <= 1) continue
+    const { error } = await admin.from('creator_subscriptions').update(patch).eq('id', row.id)
+    if (error) throw new Error(`creator_subscriptions apple notify update: ${error.message}`)
+    updated += 1
+    const grant = nextStatus ? nextStatus === 'active' || nextStatus === 'trialing' : row.status === 'active'
+    await syncCreatorFanChatMemberWarnOnly(
+      admin,
+      String(row.subscriber_user_id),
+      String(row.creator_user_id),
+      grant,
+    )
+  }
+
+  return { updated }
+}
+
 export async function syncProfileHasActiveSubscription(admin: SupabaseClient, userId: string) {
   const { error: syncErr } = await admin.rpc('sync_profile_has_active_subscription', {
     p_user_id: userId,

@@ -316,6 +316,7 @@ export default function SubscribeModal({
   const hideLifetimeCard = isEdgeiOSShell()
   const planSlugs = hideLifetimeCard ? IPA_PLAN_SLUGS : ALL_PLAN_SLUGS
   const slideCount = planSlugs.length
+  const [usStorefront, setUsStorefront] = useState(/** @type {boolean | null} */ (null))
   const showWebComparePrice = canShowIapWebComparePrice(usStorefront)
 
   const defaultPlan = useMemo(() => {
@@ -332,7 +333,6 @@ export default function SubscribeModal({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [storeProductsById, setStoreProductsById] = useState(() => new Map())
-  const [usStorefront, setUsStorefront] = useState(false)
   const [restoreBusy, setRestoreBusy] = useState(false)
   const [affiliatePromo, setAffiliatePromo] = useState(() => getAffiliateStampForSubscribeUi())
   const [militaryPromo, setMilitaryPromo] = useState(() => Boolean(readMilitaryPromoStamp()?.code))
@@ -374,7 +374,7 @@ export default function SubscribeModal({
     setBusy(false)
     setRestoreBusy(false)
     setStoreProductsById(new Map())
-    setUsStorefront(false)
+    setUsStorefront(null)
     setInstantSlideIndexes(new Set())
     setDragPx(0)
     setIsDragging(false)
@@ -395,9 +395,12 @@ export default function SubscribeModal({
       void (async () => {
         try {
           const storefront = await fetchAppleStorefront()
-          if (!cancelled) setUsStorefront(storefront.isUnitedStates)
+          if (cancelled) return
+          if (storefront.isUnitedStates) setUsStorefront(true)
+          else if (storefront.countryCode) setUsStorefront(false)
+          else setUsStorefront(null)
         } catch {
-          if (!cancelled) setUsStorefront(false)
+          if (!cancelled) setUsStorefront(null)
         }
         try {
           const { products } = await fetchEdgeStoreProducts(supabaseClient, allKnownIapProductIds())
@@ -613,6 +616,9 @@ export default function SubscribeModal({
   const fullAnnualEffective = formatUsdMonthly(Math.round((discounted.fullAnnualUsd / 12) * 100) / 100)
   const lifetimeList = formatUsdOneTime(SLOTS_EDGE_LIFETIME_USD)
   const lifetimeEarly = formatUsdOneTime(discounted.lifetimeUsd)
+  const starterWebPrice = starterInterval === 'annual' ? starterAnnualEarly : starterEarly
+  const fullWebPrice = fullInterval === 'annual' ? fullAnnualEarly : fullMonthlyEarly
+  const lifetimeWebPrice = lifetimeEarly
 
   const lifetimeSelected = selectedPlan === PRODUCT_SLOTS_EDGE_LIFETIME
   const starterSelected = selectedPlan === PRODUCT_SLOTS_EDGE_STARTER
@@ -668,6 +674,11 @@ export default function SubscribeModal({
   const lifetimeStoreProduct = storeProductsById.get(
     iapProductIdForPlan(PRODUCT_SLOTS_EDGE_LIFETIME) || '',
   )
+  const selectedWebPrice = lifetimeSelected
+    ? lifetimeWebPrice
+    : starterSelected
+      ? starterWebPrice
+      : fullWebPrice
 
   const handleCheckout = async (via = 'auto') => {
     setError('')
@@ -960,7 +971,9 @@ export default function SubscribeModal({
                         ) : null}
                       </div>
                       <p className="mt-0.5 text-[11px] text-zinc-500">
-                        {starterStoreProduct?.displayPrice || !showWebComparePrice
+                        {starterStoreProduct?.displayPrice
+                          ? 'App Store price'
+                          : !showWebComparePrice
                           ? 'App Store price'
                           : starterInterval === 'annual'
                           ? isMilitaryPromo
@@ -974,6 +987,9 @@ export default function SubscribeModal({
                             ? affiliateRateCaption
                             : 'Founding rate on monthly checkout'}
                       </p>
+                      {starterStoreProduct?.displayPrice && showWebComparePrice ? (
+                        <p className="mt-0.5 text-[11px] text-zinc-400">{starterWebPrice} on the web</p>
+                      ) : null}
                       <ul className="mt-3 flex-1 space-y-1.5">
                         {STARTER_FEATURES.map((line) => (
                           <PlanFeature key={line}>{line}</PlanFeature>
@@ -1091,7 +1107,9 @@ export default function SubscribeModal({
                         ) : null}
                       </div>
                       <p className="mt-0.5 text-[11px] text-zinc-500">
-                        {fullStoreProduct?.displayPrice || !showWebComparePrice
+                        {fullStoreProduct?.displayPrice
+                          ? 'App Store price'
+                          : !showWebComparePrice
                           ? 'App Store price'
                           : fullInterval === 'annual'
                           ? isMilitaryPromo
@@ -1105,6 +1123,9 @@ export default function SubscribeModal({
                             ? affiliateRateCaption
                             : 'Founding rate on monthly checkout'}
                       </p>
+                      {fullStoreProduct?.displayPrice && showWebComparePrice ? (
+                        <p className="mt-0.5 text-[11px] text-zinc-400">{fullWebPrice} on the web</p>
+                      ) : null}
                       <ul className="mt-3 flex-1 space-y-1.5">
                         {FULL_FEATURES.map((line) => (
                           <PlanFeature key={line}>{line}</PlanFeature>
@@ -1178,6 +1199,9 @@ export default function SubscribeModal({
                           ? `${affiliateRateCaption} · one-time`
                           : 'Founding rate · one-time checkout'}
                       </p>
+                      {lifetimeStoreProduct?.displayPrice && showWebComparePrice ? (
+                        <p className="mt-0.5 text-[11px] text-zinc-400">{lifetimeWebPrice} on the web · one-time</p>
+                      ) : null}
                       <ul className="mt-3 flex-1 space-y-1.5">
                         {LIFETIME_FEATURES.map((line) => (
                           <PlanFeature key={line}>{line}</PlanFeature>
@@ -1228,7 +1252,11 @@ export default function SubscribeModal({
                     onClick={() => void handleCheckout('web')}
                     className="mt-2 w-full min-h-11 shrink-0 rounded-2xl border border-zinc-700/80 bg-zinc-900 px-4 text-sm font-semibold text-zinc-100 touch-manipulation hover:bg-zinc-800 disabled:opacity-50"
                   >
-                    {busy ? 'Opening Safari…' : 'Subscribe on the web'}
+                    {busy
+                      ? 'Opening Safari…'
+                      : showWebComparePrice
+                        ? `Subscribe on the web · ${selectedWebPrice}`
+                        : 'Subscribe on the web'}
                   </button>
                 </>
               ) : (

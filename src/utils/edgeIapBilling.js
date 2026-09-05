@@ -54,11 +54,13 @@ export async function fetchAppleStorefront() {
 
 /**
  * Print a cheaper Safari/Stripe sticker next to IAP only in the US shell.
- * Web / PWA / Android are not the App Store binary … always show web prices there.
+ * Web / PWA / Android always show web prices. Unknown / old IPA / US → show.
+ * Confirmed non-US storefront → hide the cheaper web dollar.
+ * @param {boolean | null | undefined} isUnitedStates
  */
 export function canShowIapWebComparePrice(isUnitedStates) {
   if (!isEdgeiOSShell()) return true
-  return Boolean(isUnitedStates)
+  return isUnitedStates !== false
 }
 
 /**

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -47,6 +47,7 @@ import {
   duoPipSize,
   pickCallVideoStageIds,
   planCallVideoLayout,
+  rowPipSize,
 } from './callVideoLayout.js'
 import ChatCallInviteModal from './ChatCallInviteModal.jsx'
 
@@ -2477,13 +2478,31 @@ function VideoCallStage({
 
   const featured = plan.featuredId ? byId.get(plan.featuredId) : null
   const featuredLabel = nameFor(featured, featured?.isLocal ? 'You' : featured?.name || title || 'Call')
+  const shellRef = useRef(/** @type {HTMLDivElement | null} */ (null))
+  const [shellWidth, setShellWidth] = useState(0)
+  useLayoutEffect(() => {
+    const el = shellRef.current
+    if (!el) return undefined
+    const apply = () => {
+      const next = Math.round(el.getBoundingClientRect().width)
+      setShellWidth((prev) => (prev === next ? prev : next))
+    }
+    apply()
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(apply) : null
+    ro?.observe(el)
+    window.addEventListener('resize', apply)
+    return () => {
+      ro?.disconnect()
+      window.removeEventListener('resize', apply)
+    }
+  }, [plan.mode, remotes.length])
   const shellClass = hitOnly
     ? 'relative h-full min-h-0 overflow-hidden'
     : 'relative h-full min-h-0 overflow-hidden rounded-[32px] border border-white/10 bg-zinc-950/80 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-xl'
 
   if (plan.mode === 'solo') {
     return (
-      <div className={shellClass}>
+      <div ref={shellRef} className={shellClass}>
         <button
           type="button"
           data-chat-call-main-video=""
@@ -2514,7 +2533,7 @@ function VideoCallStage({
       ? youTile(pipBoxClass, { pip: !pipHasCam, withFlip: true })
       : remoteTile(plan.pipId, pipBoxClass, { pip: !pipHasCam })
     return (
-      <div className={shellClass}>
+      <div ref={shellRef} className={shellClass}>
         <button
           type="button"
           data-chat-call-main-video=""
@@ -2555,7 +2574,12 @@ function VideoCallStage({
 
   if (plan.mode === 'row') {
     const slots = plan.slots || ROW_PIP_SLOTS
-    const chipW = `calc((100% - ${ROW_PIP_GAP_PX * (slots - 1)}px) / ${slots})`
+    const bankWidth = hitOnly
+      ? typeof window !== 'undefined'
+        ? window.innerWidth
+        : 390
+      : shellWidth || (typeof window !== 'undefined' ? window.innerWidth : 390)
+    const chip = rowPipSize({ viewportWidth: bankWidth, slots })
     const rows = plan.insetRows?.length ? plan.insetRows : [plan.insetIds || []]
     const rowBottom = controlsHidden
       ? hitOnly
@@ -2568,7 +2592,7 @@ function VideoCallStage({
       ? 'fixed z-[2] flex flex-col items-stretch transition-[bottom] duration-300 ease-in-out'
       : 'absolute z-[2] flex flex-col items-stretch transition-[bottom] duration-300 ease-in-out'
     return (
-      <div className={shellClass}>
+      <div ref={shellRef} className={shellClass}>
         <button
           type="button"
           data-chat-call-main-video=""
@@ -2579,16 +2603,22 @@ function VideoCallStage({
           {renderFill(featured, { label: featuredLabel, textClass: 'text-[48px]' })}
         </button>
         <div
+          data-chat-call-inset-bank=""
           className={wrapClass}
           style={{
             left: ROW_PIP_SIDE_PX,
-            right: ROW_PIP_SIDE_PX,
+            width: Math.max(0, bankWidth - ROW_PIP_SIDE_PX * 2),
             bottom: rowBottom,
             gap: ROW_PIP_GAP_PX,
           }}
         >
           {rows.map((row, rowIndex) => (
-            <div key={`row-${rowIndex}`} className="flex flex-row justify-end" style={{ gap: ROW_PIP_GAP_PX }}>
+            <div
+              key={`row-${rowIndex}`}
+              data-chat-call-inset-row=""
+              className="flex w-full flex-row flex-nowrap justify-end"
+              style={{ gap: ROW_PIP_GAP_PX }}
+            >
               {row.map((id) => {
                 const p = id === plan.youId ? localParticipant : byId.get(id)
                 const hasCam = participantHasLiveCamera(p)
@@ -2598,7 +2628,12 @@ function VideoCallStage({
                       liveSpeakingIds.has(id) ? 'border-[3px] border-emerald-400' : 'border-2 border-white/30'
                     }`
                 return (
-                  <div key={id} className="relative shrink-0" style={{ width: chipW, aspectRatio: '3 / 4' }}>
+                  <div
+                    key={id}
+                    data-chat-call-inset-chip=""
+                    className="relative shrink-0 grow-0"
+                    style={{ width: chip.width, height: chip.height }}
+                  >
                     {id === plan.youId
                       ? youTile(chipClass, { pip: !hasCam, withFlip: true, nameOverlay: true })
                       : remoteTile(id, chipClass, { pip: !hasCam, nameOverlay: true })}

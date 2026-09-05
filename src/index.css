@@ -8870,6 +8870,18 @@ html.light [data-chat-call-recording] .text-white {
   background: #1f2c34;
 }
 
+/* Inset bank: Android Chrome drops % widths in an absolute flex row and stacks chips. */
+[data-chat-call-session] [data-chat-call-inset-row] {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  justify-content: flex-end;
+  width: 100%;
+}
+[data-chat-call-session] [data-chat-call-inset-chip] {
+  flex: 0 0 auto !important;
+}
+
 /* Call main / fullscreen stage: same cover crop (no letterbox). */
 [data-chat-call-session] [data-chat-call-main-video] video {
   position: absolute;

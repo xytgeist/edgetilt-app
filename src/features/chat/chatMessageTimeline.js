@@ -40,3 +40,26 @@ export function formatChatHeaderDatePillLabel(iso, now = new Date()) {
     year: 'numeric',
   })
 }
+
+/**
+ * ISO to feed `formatChatHeaderDatePillLabel` for the header pill.
+ * `createdAts` is oldest → newest (DOM / timeline order).
+ *
+ * At the tail (including chats too short to scroll), a today reply would hide
+ * the pill even when an older on-screen message is from a previous day.
+ * Walk back to that previous day so the date still shows.
+ */
+export function resolveChatHeaderDatePillIso(createdAts, { atBottom = false, now = new Date() } = {}) {
+  const stamps = (createdAts || []).filter((iso) => {
+    if (!iso) return false
+    return !Number.isNaN(new Date(iso).getTime())
+  })
+  if (stamps.length === 0) return ''
+  if (!atBottom) return stamps[0]
+  const last = stamps[stamps.length - 1]
+  if (formatChatHeaderDatePillLabel(last, now)) return last
+  for (let i = stamps.length - 2; i >= 0; i--) {
+    if (formatChatHeaderDatePillLabel(stamps[i], now)) return stamps[i]
+  }
+  return last
+}

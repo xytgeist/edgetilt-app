@@ -30,6 +30,7 @@ import {
 import { findLastOwnMessageId, getMessageReceiptStatus } from './chatReceiptStatus.js'
 import {
   formatChatHeaderDatePillLabel,
+  resolveChatHeaderDatePillIso,
   sortChatMessagesChronological,
 } from './chatMessageTimeline.js'
 import {
@@ -1490,21 +1491,24 @@ export default function ChatConversation({
       ? nameBottom + 8
       : list.getBoundingClientRect().top + 80
     const nodes = list.querySelectorAll('[data-chat-message-created]')
+    const fromDom = Array.from(nodes, (node) => node.getAttribute('data-chat-message-created') || '')
+    const createdAts = fromDom.some(Boolean)
+      ? fromDom
+      : messagesRef.current.map((m) => m.created_at || '')
+    const isAtBottom =
+      atBottomRef.current || list.scrollHeight - list.scrollTop - list.clientHeight < 80
     let iso = ''
-    if (nodes.length > 0) {
-      const isAtBottom =
-        atBottomRef.current || list.scrollHeight - list.scrollTop - list.clientHeight < 80
-      if (isAtBottom) {
-        const lastNode = nodes[nodes.length - 1]
-        iso = lastNode?.getAttribute('data-chat-message-created') || ''
-      } else {
-        for (const node of nodes) {
-          if (node.getBoundingClientRect().bottom > probeY) {
-            iso = node.getAttribute('data-chat-message-created') || ''
-            break
-          }
+    if (isAtBottom) {
+      iso = resolveChatHeaderDatePillIso(createdAts, { atBottom: true })
+    } else if (nodes.length > 0) {
+      for (const node of nodes) {
+        if (node.getBoundingClientRect().bottom > probeY) {
+          iso = node.getAttribute('data-chat-message-created') || ''
+          break
         }
       }
+    } else {
+      iso = resolveChatHeaderDatePillIso(createdAts, { atBottom: false })
     }
     const next = formatChatHeaderDatePillLabel(iso)
     setInViewDateLabel((prev) => (prev === next ? prev : next))

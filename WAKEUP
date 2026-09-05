@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Windows Theo 2026-09-04 … chat image lightbox frost bar
+
+**I am Windows Theo.** Chat image lightbox no longer paints a full-width blur title bar. Circular back chip stays. Lounge image lightbox unchanged.
+
 ### Windows Theo 2026-09-04 … chat date pill on short threads
 
 **I am Windows Theo.** Short chats that do not scroll still show the header day/date pill when an older on-screen message is from a previous day. A today reply no longer wipes that date. All-today threads stay pill-less.

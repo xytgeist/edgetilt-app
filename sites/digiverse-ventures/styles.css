@@ -18,6 +18,10 @@ html, body {
   font-family: "Share Tech Mono", ui-monospace, monospace;
 }
 html { color-scheme: dark; }
+body.is-locked { overflow: hidden; }
+body.is-glitch {
+  filter: contrast(1.45) saturate(1.7) hue-rotate(-12deg);
+}
 a { color: inherit; }
 
 #stage {
@@ -407,13 +411,14 @@ footer a { color: var(--cyan); text-decoration: none; }
   z-index: 40;
   background: #000;
   color: var(--cyan);
-  display: grid;
+  display: none;
   place-items: center;
   font-size: 0.86rem;
   letter-spacing: 0.08em;
   line-height: 1.8;
   text-transform: uppercase;
 }
+.boot.is-on { display: grid; }
 .boot pre {
   margin: 0;
   font: inherit;
@@ -428,13 +433,108 @@ footer a { color: var(--cyan); text-decoration: none; }
   to { opacity: 0; visibility: hidden; }
 }
 
+.gate {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.35);
+  text-align: center;
+}
+.gate.is-out {
+  animation: bootOut 0.4s var(--ease) forwards;
+  pointer-events: none;
+}
+.jack {
+  appearance: none;
+  border: 2px solid var(--red);
+  background: transparent;
+  color: #fff;
+  font: 800 clamp(2.4rem, 9vw, 7.5rem)/0.9 Orbitron, sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.35em 0.4em 0.2em;
+  text-shadow:
+    0 0 18px var(--cyan),
+    3px 0 var(--red),
+    -3px 0 var(--cyan);
+  box-shadow: 0 0 40px rgba(255, 42, 109, 0.45), inset 0 0 30px rgba(5, 242, 255, 0.12);
+  animation: jackPulse 1.1s steps(2) infinite;
+}
+.jack:hover { background: rgba(255, 42, 109, 0.15); }
+.gate p {
+  margin: 1rem 0 0;
+  letter-spacing: 0.42em;
+  text-transform: uppercase;
+  color: var(--gold);
+  font-size: 0.72rem;
+}
+@keyframes jackPulse {
+  50% { filter: brightness(1.4); transform: translateX(2px); }
+}
+
+.vhs {
+  position: fixed;
+  left: 0;
+  right: 0;
+  height: 18px;
+  z-index: 6;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(5, 242, 255, 0.18), rgba(255, 42, 109, 0.25), transparent);
+  mix-blend-mode: screen;
+  animation: vhs 2.8s linear infinite;
+}
+@keyframes vhs {
+  from { top: -20px; }
+  to { top: 110%; }
+}
+
+.telemetry {
+  position: fixed;
+  left: 1.2rem;
+  bottom: 3.1rem;
+  z-index: 8;
+  font-size: 0.62rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--cyan);
+  text-shadow: 0 0 8px var(--cyan);
+  line-height: 1.7;
+  opacity: 0.8;
+  pointer-events: none;
+}
+.mute {
+  position: fixed;
+  right: 1.2rem;
+  bottom: 3.1rem;
+  z-index: 10;
+  appearance: none;
+  border: 1px solid var(--cyan);
+  background: rgba(0, 0, 0, 0.45);
+  color: var(--gold);
+  font: 0.62rem/1 "Share Tech Mono", monospace;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: 0.45rem 0.6rem;
+}
+
+.shake { animation: shake 0.45s linear; }
+@keyframes shake {
+  0%, 100% { transform: none; }
+  20% { transform: translate(-6px, 3px) skewX(-1deg); }
+  40% { transform: translate(7px, -2px); }
+  60% { transform: translate(-4px, -3px) skewX(1deg); }
+  80% { transform: translate(5px, 2px); }
+}
+
 .reveal { opacity: 0; transform: translateY(24px); }
 .reveal.in { animation: up 0.8s var(--ease) both; }
 @keyframes up { to { opacity: 1; transform: none; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .glitch::before, .glitch::after, .scan, .ticker span, .scroll-cue, .reveal { animation: none !important; }
+  .glitch::before, .glitch::after, .scan, .ticker span, .scroll-cue, .reveal, .vhs, .jack { animation: none !important; }
   .reveal { opacity: 1; transform: none; }
-  #stage, .boot, .cursor { display: none; }
+  #stage, .boot, .cursor, .gate, .vhs { display: none; }
   body, a { cursor: auto; }
 }

@@ -26,7 +26,6 @@ import {
   canShowIapWebComparePrice,
   fetchAppleStorefront,
   fetchEdgeStoreProducts,
-  iapCustomerDisplayPrice,
   iapIntroStoreLabel,
   iapMarketingStorePrice,
   iapProductIdForPlan,
@@ -170,6 +169,11 @@ function PlanFeature({ children }) {
       <span>{children}</span>
     </li>
   )
+}
+
+/** CTA copy. Interval lives on the Monthly / Annual tab, not the button. */
+function ctaPriceLabel(price) {
+  return String(price || '').replace(/\/(?:mo|yr)$/i, '')
 }
 
 function PlanComparePrices({
@@ -705,6 +709,8 @@ export default function SubscribeModal({
     : starterSelected
       ? starterWebPrice
       : fullWebPrice
+  const selectedWebCtaPrice = ctaPriceLabel(selectedWebPrice)
+  const selectedIapCtaPrice = ctaPriceLabel(iapMarketingStorePrice(selectedStoreProduct))
 
   const handleCheckout = async (via = 'auto') => {
     setError('')
@@ -1298,7 +1304,7 @@ export default function SubscribeModal({
                     onClick={() => void handleCheckout('web')}
                     className="subscribe-modal-checkout-btn mt-4 w-full min-h-12 shrink-0 rounded-2xl bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 disabled:opacity-50 font-bold text-white touch-manipulation shadow-[0_8px_28px_rgba(6,182,212,0.28)]"
                   >
-                    {busy ? 'Opening Safari…' : `Subscribe on the web · ${selectedWebPrice}`}
+                    {busy ? 'Opening Safari…' : `Subscribe on the web · ${selectedWebCtaPrice}`}
                   </button>
                   <button
                     type="button"
@@ -1308,8 +1314,8 @@ export default function SubscribeModal({
                   >
                     {busy
                       ? 'Purchasing…'
-                      : iapCustomerDisplayPrice(selectedStoreProduct)
-                        ? `Subscribe on iPhone · ${iapCustomerDisplayPrice(selectedStoreProduct)}`
+                      : selectedIapCtaPrice
+                        ? `Subscribe on iPhone · ${selectedIapCtaPrice}`
                         : checkoutLabel}
                   </button>
                 </>
@@ -1323,8 +1329,8 @@ export default function SubscribeModal({
                   >
                     {busy
                       ? 'Purchasing…'
-                      : iapCustomerDisplayPrice(selectedStoreProduct)
-                        ? `Subscribe on iPhone · ${iapCustomerDisplayPrice(selectedStoreProduct)}`
+                      : selectedIapCtaPrice
+                        ? `Subscribe on iPhone · ${selectedIapCtaPrice}`
                         : checkoutLabel}
                   </button>
                   <button

@@ -59,9 +59,9 @@ export function allKnownIapProductIds() {
 
 /**
  * Founding IAP points (web founding × 1.15, next Apple price).
- * Used on the card when StoreKit hides the offer for an ineligible Apple ID.
- * The iPhone button still uses StoreKit eligibility so we do not promise a price
- * this Apple ID cannot redeem.
+ * Used on the card and iPhone CTA when StoreKit hides the offer for an
+ * ineligible Apple ID. Apple still charges list at the sheet if this ID
+ * already used the group intro.
  */
 export const SLOTS_EDGE_FOUNDING_IAP_INTROS = {
   'com.edgetilt.app.slots_edge_starter.monthly': {

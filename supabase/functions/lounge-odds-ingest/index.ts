@@ -92,6 +92,7 @@ Deno.serve(async (req) => {
         slug,
         action: 'grade_picks',
         resolved: result.resolved,
+        espnResolved: result.espnResolved,
         errors: result.errors,
       })
     }

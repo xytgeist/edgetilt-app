@@ -26,6 +26,8 @@
 
 **Public site ledger (`sharpesyndicate.com` Overview / Audited Ledger):** `fetchSyndicateLedger` loads **Syndicate** `won` / `lost` / `push` only (resolve `@sharpesyndicate` then paginate). Do **not** take the newest-kickoff slice … Saturday pending fills that cap and finished grades fall off. Pending/future games cannot be in the W-L tiles. Client pins **production** Supabase (`VITE_SYNDICATE_SUPABASE_*` override only … not EdgeTilt test `.env`). Hosted on **Cloudflare Pages** (`npm run build:syndicate`); git `test` does not publish that domain by itself.
 
+**Settlement (`grade_picks`):** Odds API `/scores?daysFrom=3` first (kickoff + 90m **and** `completed`). If that row is missing, ESPN public scoreboards (NFL, CFB, NBA, NCAAB, MLB, NHL, UFC). MMA `/scores` drops finished fights, so UFC grades from ESPN winner → 1-0 (moneyline only). Still never grades live events. Metadata `grade_source` is `odds_api` or `espn`.
+
 **Self-contained** — no morning editorial inbox. Roster context: **`docs/lounge-bot-editorial-queue.md`**.
 
 ---

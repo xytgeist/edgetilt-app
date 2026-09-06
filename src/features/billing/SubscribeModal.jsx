@@ -28,6 +28,7 @@ import {
   fetchEdgeStoreProducts,
   iapCustomerDisplayPrice,
   iapIntroStoreLabel,
+  iapMarketingStorePrice,
   iapProductIdForPlan,
   iapThenPriceNote,
   indexStoreProductsById,
@@ -980,7 +981,7 @@ export default function SubscribeModal({
                       </div>
                       {starterStoreProduct?.displayPrice && showWebComparePrice ? (
                         <PlanComparePrices
-                          storePrice={iapCustomerDisplayPrice(starterStoreProduct)}
+                          storePrice={iapMarketingStorePrice(starterStoreProduct)}
                           webPrice={starterWebPrice}
                           storeLabel={iapIntroStoreLabel(starterStoreProduct)}
                           storeNote={iapThenPriceNote(starterStoreProduct)}
@@ -990,7 +991,7 @@ export default function SubscribeModal({
                           <div className="mt-3 flex flex-wrap items-end gap-1.5">
                             {starterStoreProduct?.displayPrice ? (
                               <span className="text-xl font-bold tracking-tight text-white">
-                                {iapCustomerDisplayPrice(starterStoreProduct)}
+                                {iapMarketingStorePrice(starterStoreProduct)}
                               </span>
                             ) : showWebComparePrice && starterInterval === 'annual' ? (
                               <>
@@ -1127,7 +1128,7 @@ export default function SubscribeModal({
                       </div>
                       {fullStoreProduct?.displayPrice && showWebComparePrice ? (
                         <PlanComparePrices
-                          storePrice={iapCustomerDisplayPrice(fullStoreProduct)}
+                          storePrice={iapMarketingStorePrice(fullStoreProduct)}
                           webPrice={fullWebPrice}
                           storeLabel={iapIntroStoreLabel(fullStoreProduct)}
                           storeNote={iapThenPriceNote(fullStoreProduct)}
@@ -1137,7 +1138,7 @@ export default function SubscribeModal({
                           <div className="mt-3 flex flex-wrap items-end gap-1.5">
                             {fullStoreProduct?.displayPrice ? (
                               <span className="text-xl font-bold tracking-tight text-white">
-                                {iapCustomerDisplayPrice(fullStoreProduct)}
+                                {iapMarketingStorePrice(fullStoreProduct)}
                               </span>
                             ) : showWebComparePrice && fullInterval === 'annual' ? (
                               <>

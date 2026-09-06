@@ -2850,6 +2850,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-05:** **IAP intro on the card vs this Apple ID.** ASC Slots Edge intros are live (pay as you go, founding × 1.15, no end date). Card shows that founding IAP sticker even when StoreKit says the signed-in Apple ID already used the group intro. iPhone CTA stays at list if ineligible. Lifetime has no intro. **`1.4.70`.** Vercel JS is enough... no new IPA.
 - **2026-09-05:** **IAP intro offer sticker.** `getStoreProducts` returns StoreKit introductory offer + eligibility. SubscribeModal uses that price when Apple says the Apple ID qualifies. ASC intro offers still owed (founding web × 1.15). Lifetime has no intro. **`1.4.69`.** New TestFlight.
 - **2026-09-05:** **US IPA paywall leads with web.** Card shows App Store and web as peer tiles. Cyan CTA is Safari/Stripe; iPhone is the outline button. Confirmed non-US still leads with IAP and omits the cheaper web dollar. **`1.4.68`.**
 - **2026-09-05:** **US IPA paywall shows both stickers.** Card: App Store `displayPrice` + web (founding/military/affiliate) amount. iPhone button and web button both include a dollar. Unknown storefront still shows the web dollar; confirmed non-US hides it. Also fixed SubscribeModal reading `usStorefront` before `useState` (would crash the sheet). **`1.4.67`.**

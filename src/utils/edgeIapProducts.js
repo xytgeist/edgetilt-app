@@ -58,11 +58,56 @@ export function allKnownIapProductIds() {
 }
 
 /**
+ * Founding IAP points (web founding × 1.15, next Apple price).
+ * Used on the card when StoreKit hides the offer for an ineligible Apple ID.
+ * The iPhone button still uses StoreKit eligibility so we do not promise a price
+ * this Apple ID cannot redeem.
+ */
+export const SLOTS_EDGE_FOUNDING_IAP_INTROS = {
+  'com.edgetilt.app.slots_edge_starter.monthly': {
+    introDisplayPrice: '$16.99',
+    introPeriodCount: 12,
+    introPeriodUnit: 'month',
+    introPaymentMode: 'payAsYouGo',
+  },
+  'com.edgetilt.app.slots_edge_starter.annual': {
+    introDisplayPrice: '$189.99',
+    introPeriodCount: 1,
+    introPeriodUnit: 'year',
+    introPaymentMode: 'payAsYouGo',
+  },
+  'com.edgetilt.app.slots_edge.monthly': {
+    introDisplayPrice: '$51.99',
+    introPeriodCount: 12,
+    introPeriodUnit: 'month',
+    introPaymentMode: 'payAsYouGo',
+  },
+  'com.edgetilt.app.slots_edge.annual': {
+    introDisplayPrice: '$569.99',
+    introPeriodCount: 1,
+    introPeriodUnit: 'year',
+    introPaymentMode: 'payAsYouGo',
+  },
+}
+
+function isTruthyFlag(value) {
+  if (value === true) return true
+  if (value === 1 || value === '1') return true
+  if (typeof value === 'string' && value.trim().toLowerCase() === 'true') return true
+  return false
+}
+
+function foundingIntroFallback(productId) {
+  return SLOTS_EDGE_FOUNDING_IAP_INTROS[String(productId || '').trim()] || null
+}
+
+/**
  * @param {Array<{ id?: string, displayPrice?: string }>} products
  * @returns {Map<string, {
  *   id: string,
  *   displayPrice: string,
  *   introDisplayPrice: string,
+ *   introFromStoreKit: boolean,
  *   introEligible: boolean,
  *   introPaymentMode: string,
  *   introPeriodUnit: string,
@@ -74,29 +119,41 @@ export function indexStoreProductsById(products) {
   for (const row of products || []) {
     const id = String(row?.id || '').trim()
     if (!id) continue
+    const storeKitIntro = String(row?.introDisplayPrice || '').trim()
+    const fallback = storeKitIntro ? null : foundingIntroFallback(id)
     map.set(id, {
       id,
       displayPrice: String(row?.displayPrice || '').trim(),
-      introDisplayPrice: String(row?.introDisplayPrice || '').trim(),
-      introEligible: row?.introEligible === true,
-      introPaymentMode: String(row?.introPaymentMode || '').trim(),
-      introPeriodUnit: String(row?.introPeriodUnit || '').trim(),
-      introPeriodCount: Number(row?.introPeriodCount) || 0,
+      introDisplayPrice: storeKitIntro || fallback?.introDisplayPrice || '',
+      introFromStoreKit: Boolean(storeKitIntro),
+      introEligible: isTruthyFlag(row?.introEligible),
+      introPaymentMode: String(row?.introPaymentMode || fallback?.introPaymentMode || '').trim(),
+      introPeriodUnit: String(row?.introPeriodUnit || fallback?.introPeriodUnit || '').trim(),
+      introPeriodCount: Number(row?.introPeriodCount) || fallback?.introPeriodCount || 0,
     })
   }
   return map
 }
 
-/** Price the customer pays now (intro if eligible, else list). */
+function introPrice(product) {
+  return String(product?.introDisplayPrice || '').trim()
+}
+
+/** Price new subscribers see on the card (StoreKit intro, else founding fallback, else list). */
+export function iapMarketingStorePrice(product) {
+  return introPrice(product) || String(product?.displayPrice || '').trim()
+}
+
+/** Price this Apple ID pays now (intro only when StoreKit says eligible). */
 export function iapCustomerDisplayPrice(product) {
-  if (product?.introEligible && product?.introDisplayPrice) {
-    return String(product.introDisplayPrice).trim()
+  if (product?.introEligible && introPrice(product)) {
+    return introPrice(product)
   }
   return String(product?.displayPrice || '').trim()
 }
 
 export function iapIntroStoreLabel(product) {
-  if (!(product?.introEligible && product?.introDisplayPrice)) return 'App Store'
+  if (!introPrice(product)) return 'App Store'
   const mode = String(product.introPaymentMode || '')
   const unit = String(product.introPeriodUnit || '')
   const count = Number(product.introPeriodCount) || 0
@@ -111,7 +168,8 @@ export function iapIntroStoreLabel(product) {
 }
 
 export function iapThenPriceNote(product) {
-  if (!(product?.introEligible && product?.introDisplayPrice && product?.displayPrice)) return ''
-  if (product.introDisplayPrice === product.displayPrice) return ''
-  return `Then ${product.displayPrice}`
+  const intro = introPrice(product)
+  const list = String(product?.displayPrice || '').trim()
+  if (!intro || !list || intro === list) return ''
+  return `Then ${list}`
 }

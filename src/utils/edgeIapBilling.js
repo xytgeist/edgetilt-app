@@ -17,6 +17,7 @@ export {
   allKnownIapProductIds,
   iapCustomerDisplayPrice,
   iapIntroStoreLabel,
+  iapMarketingStorePrice,
   iapProductIdForFanTier,
   iapProductIdForPlan,
   iapThenPriceNote,

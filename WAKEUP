@@ -75,9 +75,9 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
-### Mac Theo 2026-09-05 … subscribe sheet +5% again
+### Mac Theo 2026-09-05 … subscribe sheet height locked
 
-**I am Mac Theo.** Slots SubscribeModal shell is `89.96dvh` (was `85.68dvh`). Same layout. **`1.4.89`.** Vercel JS.
+**I am Mac Theo.** Ryan signed off on Slots SubscribeModal at `89.96dvh`. **`1.4.89`.** Do not keep resizing it.
 
 ### Mac Theo 2026-09-05 … StoreKit intro still list
 

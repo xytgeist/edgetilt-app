@@ -83,6 +83,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Mac Theo.** Platform SubscribeModal + fan SUB + Edge Pro Settings can offer **IAP and Safari** for the same unlock. Fan IAP is one SKU per tier (`com.edgetilt.app.fan_tier_499.monthly` …), bound to a creator via `apple_iap_intents`. SQL **`20260905120000`**. Redeploy **`apple-iap-verify`** on **test**. New TestFlight for `manageStoreSubscriptions` + JWS. **Ryan still creates ASC products.** Do not take a real charge until sandbox + ASSN. **`1.4.60`.**
 
+### Windows Theo 2026-09-05 … CFB trial wiped on prod
+
+**I am Windows Theo.** Prod CFB reset after the week-1 trial. Deleted 841 `americanfootball_ncaaf` ledger rows (Syndicate + leftover Signal), 17 Lounge CFB posts (public + fan-only), 16 Syndicate fan-chat messages. NFL + UFC rows kept. Hard-refresh sharpesyndicate.com CFB. Snapshot is local `.tmp-cfb-trial-wipe-backup-*` (gitignored).
+
 ### Windows Theo 2026-09-05 … Paris UFC actually settled
 
 **I am Windows Theo.** Edge cannot grade UFC tonight: Odds API drops finished fights, Rundown MMA sport 7 returned 0 events, ESPN 403s from Supabase. 40 Paris moneyline rows graded from this PC (`espn_local`). 0 pending MMA. Scott/Rocco/Tank 5-5, Chedda 4-6. Hard-refresh sharpesyndicate.com UFC. **`1.4.76`.**

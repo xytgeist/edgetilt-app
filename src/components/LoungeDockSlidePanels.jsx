@@ -298,6 +298,7 @@ export default function LoungeDockSlidePanels({
   const [edgeProCheckoutBusy, setEdgeProCheckoutBusy] = useState(false)
   const [edgeProCheckoutError, setEdgeProCheckoutError] = useState('')
   const [edgeProIapPrice, setEdgeProIapPrice] = useState('')
+  const [edgeProPayVia, setEdgeProPayVia] = useState(/** @type {'iap' | 'web'} */ ('web'))
   const [subscriptionsSettingsOpen, setSubscriptionsSettingsOpen] = useState(false)
   const [fanMonetizationSettingsOpen, setFanMonetizationSettingsOpen] = useState(false)
   const [menuLayoutSettingsOpen, setMenuLayoutSettingsOpen] = useState(false)
@@ -369,6 +370,12 @@ export default function LoungeDockSlidePanels({
       cancelled = true
     }
   }, [proSettingsOpen, settingsSupabaseClient])
+
+  const edgeProIapDollar = (edgeProIapPrice || formatUsdMonthly(EDGE_PRO_MONTHLY_IAP_USD)).replace(
+    /\/(?:mo|yr)$/i,
+    '',
+  )
+  const edgeProWebDollar = formatUsdMonthly(EDGE_PRO_MONTHLY_USD).replace(/\/(?:mo|yr)$/i, '')
 
   useEffect(() => {
     if (panelScrollRefOut) panelScrollRefOut.current = panelScrollRef.current
@@ -1680,42 +1687,70 @@ export default function LoungeDockSlidePanels({
                         <p className="mt-1.5 text-[11px] text-rose-400">{edgeProCheckoutError}</p>
                       ) : null}
                       {isEdgeiOSShell() ? (
-                        <div className="edge-pro-dual-cta mt-2.5 grid grid-cols-2 gap-2">
-                          <button
-                            type="button"
-                            disabled={edgeProCheckoutBusy}
-                            onClick={async () => {
-                              if (!settingsSupabaseClient) return
-                              setEdgeProCheckoutBusy(true)
-                              setEdgeProCheckoutError('')
-                              try {
-                                const iapResult = await startEdgeIapPurchase(
-                                  settingsSupabaseClient,
-                                  PRODUCT_EDGE_PRO,
-                                  { priceInterval: 'monthly' },
-                                )
-                                if (iapResult?.pending) {
-                                  setEdgeProCheckoutError('Purchase is waiting for approval on this Apple ID.')
-                                } else if (iapResult?.ok) {
-                                  setEdgeProCheckoutError('')
-                                }
-                              } catch (err) {
-                                const msg = err instanceof Error ? err.message : String(err || '')
-                                setEdgeProCheckoutError(msg || 'Could not start checkout.')
-                              } finally {
-                                setEdgeProCheckoutBusy(false)
-                              }
-                            }}
-                            className="edge-pro-iap-btn inline-flex min-h-11 items-center justify-center rounded-lg border border-amber-400/45 bg-zinc-950/60 px-2 py-2 text-center text-[12px] font-bold leading-snug text-amber-200 touch-manipulation hover:bg-zinc-900 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
+                        <div className="mt-2.5 space-y-2">
+                          <div
+                            className="edge-pro-pay-switch flex rounded-xl border border-amber-500/25 bg-zinc-950/70 p-1"
+                            role="tablist"
+                            aria-label="Edge Pro checkout"
                           >
-                            {edgeProCheckoutBusy
-                              ? 'Purchasing…'
-                              : `Subscribe on iPhone · ${(edgeProIapPrice || formatUsdMonthly(EDGE_PRO_MONTHLY_IAP_USD)).replace(/\/(?:mo|yr)$/i, '')}`}
-                          </button>
+                            <button
+                              type="button"
+                              role="tab"
+                              aria-selected={edgeProPayVia === 'iap'}
+                              disabled={edgeProCheckoutBusy}
+                              onClick={() => setEdgeProPayVia('iap')}
+                              className={[
+                                'edge-pro-pay-switch-tab flex-1 min-h-8 rounded-lg px-1 text-[11px] font-bold leading-tight touch-manipulation transition-colors disabled:opacity-50',
+                                edgeProPayVia === 'iap'
+                                  ? 'edge-pro-pay-switch-tab--on bg-amber-500 text-zinc-950 shadow-sm'
+                                  : 'text-amber-200/80 hover:text-amber-100',
+                              ].join(' ')}
+                            >
+                              {`iPhone · ${edgeProIapDollar}`}
+                            </button>
+                            <button
+                              type="button"
+                              role="tab"
+                              aria-selected={edgeProPayVia === 'web'}
+                              disabled={edgeProCheckoutBusy}
+                              onClick={() => setEdgeProPayVia('web')}
+                              className={[
+                                'edge-pro-pay-switch-tab flex-1 min-h-8 rounded-lg px-1 text-[11px] font-bold leading-tight touch-manipulation transition-colors disabled:opacity-50',
+                                edgeProPayVia === 'web'
+                                  ? 'edge-pro-pay-switch-tab--on bg-amber-500 text-zinc-950 shadow-sm'
+                                  : 'text-amber-200/80 hover:text-amber-100',
+                              ].join(' ')}
+                            >
+                              {`Web · ${edgeProWebDollar}`}
+                            </button>
+                          </div>
                           <button
                             type="button"
                             disabled={edgeProCheckoutBusy}
                             onClick={async () => {
+                              if (edgeProPayVia === 'iap') {
+                                if (!settingsSupabaseClient) return
+                                setEdgeProCheckoutBusy(true)
+                                setEdgeProCheckoutError('')
+                                try {
+                                  const iapResult = await startEdgeIapPurchase(
+                                    settingsSupabaseClient,
+                                    PRODUCT_EDGE_PRO,
+                                    { priceInterval: 'monthly' },
+                                  )
+                                  if (iapResult?.pending) {
+                                    setEdgeProCheckoutError('Purchase is waiting for approval on this Apple ID.')
+                                  } else if (iapResult?.ok) {
+                                    setEdgeProCheckoutError('')
+                                  }
+                                } catch (err) {
+                                  const msg = err instanceof Error ? err.message : String(err || '')
+                                  setEdgeProCheckoutError(msg || 'Could not start checkout.')
+                                } finally {
+                                  setEdgeProCheckoutBusy(false)
+                                }
+                                return
+                              }
                               if (!settingsSupabaseClient) {
                                 if (typeof settingsOnOpenBillingManage === 'function') settingsOnOpenBillingManage()
                                 return
@@ -1734,11 +1769,15 @@ export default function LoungeDockSlidePanels({
                                 setEdgeProCheckoutBusy(false)
                               }
                             }}
-                            className="edge-pro-iap-btn inline-flex min-h-11 items-center justify-center rounded-lg border border-amber-400/45 bg-zinc-950/60 px-2 py-2 text-center text-[12px] font-bold leading-snug text-amber-200 touch-manipulation hover:bg-zinc-900 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
+                            className="edge-pro-cta-btn inline-flex w-full min-h-11 items-center justify-center rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-3 py-2 text-center text-[13px] font-bold leading-snug text-zinc-950 shadow touch-manipulation hover:brightness-110 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
                           >
                             {edgeProCheckoutBusy
-                              ? 'Opening Safari…'
-                              : `Subscribe on the web · ${formatUsdMonthly(EDGE_PRO_MONTHLY_USD).replace(/\/(?:mo|yr)$/i, '')}`}
+                              ? edgeProPayVia === 'iap'
+                                ? 'Purchasing…'
+                                : 'Opening Safari…'
+                              : edgeProPayVia === 'iap'
+                                ? `Subscribe on iPhone · ${edgeProIapDollar}`
+                                : `Subscribe on the web · ${edgeProWebDollar}`}
                           </button>
                         </div>
                       ) : (

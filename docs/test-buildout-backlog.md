@@ -2851,6 +2851,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 ## Update log
 
 - **2026-09-05:** **Prod CFB trial wiped.** Deleted 841 `americanfootball_ncaaf` `lounge_bot_picks` (Syndicate ledger + leftover Signal), 17 Lounge CFB posts (public teasers + `creator_fan_only`), Syndicate fan chat (16 messages). NFL + UFC kept. Chedda `syndicate_betting_splits` / market files not touched. Hard-refresh sharpesyndicate.com CFB.
+- **2026-09-05:** **Edge Pro Settings: one orange CTA.** iPhone `$11.49` / web `$9.99` pill switch. Button copy follows the pill. Defaults to web. **`1.4.81`.**
 - **2026-09-05:** **Edge Pro Settings unlock is a perk list.** Filters, ad free, reply boost, markdown studio, 25k posts, 1h edit, longer video, creator subs. Copy only. Shipped caps still 10k / 30 min. **`1.4.80`.**
 - **2026-09-05:** **IPA subscribe CTAs are peers.** No filled “please pick web” button. Edge Pro Settings drops the App Store / Web tiles. Buttons already have `$11.49` / `$9.99`. Slots paywall same peer CTAs. **`1.4.79`.**
 - **2026-09-05:** **Edge Pro Settings always shows web `$9.99`.** Storefront gate was dropping the cheaper dollar and leaving the `$11.49` pill. App Store + web tiles + both CTAs. **`1.4.78`.**

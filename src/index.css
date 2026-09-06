@@ -11145,13 +11145,20 @@ html.light [data-settings-edge-pro] .edge-pro-unlock-card {
   background-color: #fff7ed !important;
   border-color: rgba(245, 158, 11, 0.35) !important;
 }
-html.light [data-settings-edge-pro] .edge-pro-iap-btn {
-  color: #c2410c !important;
+html.light [data-settings-edge-pro] .edge-pro-pay-switch {
   background-color: #fff7ed !important;
-  border-color: rgba(217, 119, 6, 0.4) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
 }
-html.light [data-settings-edge-pro] .edge-pro-iap-btn:hover {
-  background-color: #ffedd5 !important;
+html.light [data-settings-edge-pro] .edge-pro-pay-switch-tab {
+  color: #9a3412 !important;
+}
+html.light [data-settings-edge-pro] .edge-pro-pay-switch-tab--on {
+  background-color: #f59e0b !important;
+  color: #18181b !important;
+}
+html.light [data-settings-edge-pro] .edge-pro-cta-btn {
+  background-image: linear-gradient(to right, #f59e0b, #f97316) !important;
+  color: #18181b !important;
 }
 html.light [data-settings-edge-pro] .edge-pro-unlock-perks {
   color: #52525b !important;

@@ -245,7 +245,7 @@ function PlanComparePrices({
 
 function planCardClass(selected, extra = '') {
   return [
-    'subscribe-plan-card subscribe-plan-card--starter group relative flex h-auto min-h-[19rem] w-full flex-col rounded-[1.25rem] border px-3.5 pb-3.5 pt-9 text-left touch-manipulation transition-[border-color,box-shadow,filter] sm:min-h-[22rem] sm:rounded-[1.35rem] sm:px-4 sm:pb-4 sm:pt-10',
+    'subscribe-plan-card subscribe-plan-card--starter group relative flex h-full min-h-[19rem] w-full flex-col rounded-[1.25rem] border px-3.5 pb-3.5 pt-9 text-left touch-manipulation transition-[border-color,box-shadow,filter] sm:min-h-[23.5rem] sm:rounded-[1.35rem] sm:px-4 sm:pb-4 sm:pt-10',
     selected ? 'subscribe-plan-card--selected ring-1 ring-emerald-400/35 shadow-[0_0_40px_rgba(16,185,129,0.12)]' : '',
     extra,
   ]
@@ -863,7 +863,7 @@ export default function SubscribeModal({
         aria-modal="true"
         aria-labelledby="subscribe-modal-title"
         data-subscribe-modal
-        className="subscribe-modal-shell relative z-10 flex h-auto max-h-[96dvh] w-full max-w-lg flex-col overflow-x-hidden overflow-y-auto rounded-t-[1.75rem] border border-zinc-700/70 bg-zinc-950 shadow-[0_24px_80px_rgba(0,0,0,0.55)] sm:max-h-[94dvh] sm:max-w-2xl sm:rounded-[1.75rem]"
+        className="subscribe-modal-shell relative z-10 flex h-[96dvh] max-h-[96dvh] min-h-[96dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[1.75rem] border border-zinc-700/70 bg-zinc-950 shadow-[0_24px_80px_rgba(0,0,0,0.55)] sm:h-[94dvh] sm:max-h-[94dvh] sm:min-h-[94dvh] sm:max-w-2xl sm:rounded-[1.75rem]"
       >
         <button
           type="button"
@@ -907,7 +907,7 @@ export default function SubscribeModal({
           </div>
         </div>
 
-        <div className="relative z-20 flex min-h-0 shrink-0 flex-col px-6 pb-[max(1.25rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] sm:px-7 sm:pb-6">
+        <div className="relative z-20 flex min-h-0 flex-1 flex-col overflow-hidden px-6 pb-[max(1.25rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] sm:px-7 sm:pb-6">
           {hasSlotsEdgeLifetime ? (
             <div className="rounded-2xl border border-amber-500/30 bg-amber-950/20 p-5">
               <p className="text-sm leading-relaxed text-zinc-300">
@@ -917,7 +917,7 @@ export default function SubscribeModal({
             </div>
           ) : (
             <>
-              <div className="relative z-20 flex shrink-0 items-start justify-center overflow-visible px-1 pb-1 pt-7 sm:pt-8 sm:pb-2">
+              <div className="relative z-20 flex min-h-0 flex-1 items-start justify-center overflow-visible px-1 pb-1 pt-8 sm:items-center sm:pt-10 sm:pb-2">
                 <button
                   type="button"
                   aria-label="Previous plan"
@@ -940,7 +940,7 @@ export default function SubscribeModal({
                 <div
                   ref={carouselRef}
                   className={[
-                    'subscribe-plan-carousel-3d w-full touch-pan-y select-none',
+                    'subscribe-plan-carousel-3d h-full w-full touch-pan-y select-none',
                     isDragging ? 'subscribe-plan-carousel-3d--dragging' : '',
                   ].join(' ')}
                   aria-label="Subscription plan options"
@@ -1091,7 +1091,7 @@ export default function SubscribeModal({
                           </p>
                         </>
                       )}
-                      <ul className="mt-3 space-y-1.5">
+                      <ul className="mt-3 flex-1 space-y-1.5">
                         {STARTER_FEATURES.map((line) => (
                           <PlanFeature key={line}>{line}</PlanFeature>
                         ))}
@@ -1125,7 +1125,7 @@ export default function SubscribeModal({
                         selectPlan(PRODUCT_SLOTS_EDGE, 1)
                       }}
                       className={[
-                        'subscribe-plan-card subscribe-plan-card--featured group relative flex h-auto min-h-[19rem] w-full flex-col rounded-[1.25rem] border px-3.5 pb-3.5 pt-9 text-left touch-manipulation transition-[border-color,box-shadow,filter] sm:min-h-[22rem] sm:rounded-[1.35rem] sm:px-4 sm:pb-4 sm:pt-10',
+                        'subscribe-plan-card subscribe-plan-card--featured group relative flex h-full min-h-[19rem] w-full flex-col rounded-[1.25rem] border px-3.5 pb-3.5 pt-9 text-left touch-manipulation transition-[border-color,box-shadow,filter] sm:min-h-[23.5rem] sm:rounded-[1.35rem] sm:px-4 sm:pb-4 sm:pt-10',
                         fullSelected ? 'subscribe-plan-card--selected ring-1 ring-cyan-400/40 shadow-[0_0_40px_rgba(6,182,212,0.16)]' : '',
                         busy ? 'cursor-default' : 'cursor-pointer',
                       ].join(' ')}
@@ -1245,7 +1245,7 @@ export default function SubscribeModal({
                           </p>
                         </>
                       )}
-                      <ul className="mt-3 space-y-1.5">
+                      <ul className="mt-3 flex-1 space-y-1.5">
                         {FULL_FEATURES.map((line) => (
                           <PlanFeature key={line}>{line}</PlanFeature>
                         ))}
@@ -1280,7 +1280,7 @@ export default function SubscribeModal({
                         selectPlan(PRODUCT_SLOTS_EDGE_LIFETIME, 2)
                       }}
                       className={[
-                        'subscribe-plan-card subscribe-plan-card--lifetime group relative flex h-auto min-h-[19rem] w-full flex-col rounded-[1.25rem] border px-3.5 pb-3.5 pt-9 text-left touch-manipulation transition-[border-color,box-shadow,filter] sm:min-h-[22rem] sm:rounded-[1.35rem] sm:px-4 sm:pb-4 sm:pt-10',
+                        'subscribe-plan-card subscribe-plan-card--lifetime group relative flex h-full min-h-[19rem] w-full flex-col rounded-[1.25rem] border px-3.5 pb-3.5 pt-9 text-left touch-manipulation transition-[border-color,box-shadow,filter] sm:min-h-[23.5rem] sm:rounded-[1.35rem] sm:px-4 sm:pb-4 sm:pt-10',
                         lifetimeSelected ? 'subscribe-plan-card--selected ring-1 ring-amber-400/35 shadow-[0_0_40px_rgba(245,158,11,0.12)]' : '',
                         busy ? 'cursor-default' : 'cursor-pointer',
                       ].join(' ')}
@@ -1333,7 +1333,7 @@ export default function SubscribeModal({
                           </p>
                         </>
                       )}
-                      <ul className="mt-3 space-y-1.5">
+                      <ul className="mt-3 flex-1 space-y-1.5">
                         {LIFETIME_FEATURES.map((line) => (
                           <PlanFeature key={line}>{line}</PlanFeature>
                         ))}
@@ -1368,7 +1368,7 @@ export default function SubscribeModal({
                   type="button"
                   disabled={checkoutDisabled}
                   onClick={() => void handleCheckout(payVia)}
-                  className="subscribe-modal-checkout-btn mt-3 w-full min-h-12 shrink-0 rounded-2xl bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 disabled:opacity-50 font-bold text-white touch-manipulation shadow-[0_8px_28px_rgba(6,182,212,0.28)]"
+                  className="subscribe-modal-checkout-btn mt-4 w-full min-h-12 shrink-0 rounded-2xl bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 disabled:opacity-50 font-bold text-white touch-manipulation shadow-[0_8px_28px_rgba(6,182,212,0.28)]"
                 >
                   {busy
                     ? payVia === 'iap'
@@ -1387,7 +1387,7 @@ export default function SubscribeModal({
                   type="button"
                   disabled={checkoutDisabled}
                   onClick={() => void handleCheckout('web')}
-                  className="subscribe-modal-checkout-btn mt-3 w-full min-h-12 shrink-0 rounded-2xl bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 disabled:opacity-50 font-bold text-white touch-manipulation shadow-[0_8px_28px_rgba(6,182,212,0.28)]"
+                  className="subscribe-modal-checkout-btn mt-4 w-full min-h-12 shrink-0 rounded-2xl bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 disabled:opacity-50 font-bold text-white touch-manipulation shadow-[0_8px_28px_rgba(6,182,212,0.28)]"
                 >
                   {busy ? 'Redirecting to Stripe…' : checkoutLabel}
                 </button>

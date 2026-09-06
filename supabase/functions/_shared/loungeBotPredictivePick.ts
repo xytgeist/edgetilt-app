@@ -19,7 +19,7 @@ import { LOUNGE_BOT_CAPTION_MAX } from './loungeBotCaptionLimits.ts'
 import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
 import { resolveSlatePublisher } from './loungeBotSyndicateIdentity.ts'
 import { fetchGameWeather, type GameWeatherSummary } from './loungeBotWeather.ts'
-import { matchRundownFinalScore, oddsSportKeyToRundownSportId } from './loungeBotRundownContext.ts'
+import { consumeRundownGradeTrace, matchRundownFinalScore, oddsSportKeyToRundownSportId } from './loungeBotRundownContext.ts'
 import { loadPersonaWeights } from './loungeBotPersonaAdaptive.ts'
 import { fetchGameInjuryPval, type GameInjurySummary } from './loungeBotInjuryPval.ts'
 import { resolveGameBettingSplits, type BettingSplitSummary } from './loungeBotBettingSplits.ts'
@@ -2194,6 +2194,10 @@ export async function gradePendingPicks(
           commenceTime,
         })
         if (fromRundown) return { ...fromRundown, source: 'rundown' }
+        const trace = consumeRundownGradeTrace()
+        if (trace && /mma|ufc/i.test(sportKey) && !errors.some((e) => e.startsWith('Rundown '))) {
+          errors.push(trace)
+        }
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err)
         errors.push(`Rundown ${sportKey}: ${msg}`)

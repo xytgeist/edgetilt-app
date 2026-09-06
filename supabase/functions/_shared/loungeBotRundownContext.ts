@@ -418,6 +418,19 @@ function isRundownFinalStatus(status: string): boolean {
   return /FINAL|COMPLETE/i.test(String(status || ''))
 }
 
+let rundownGradeTrace = ''
+
+export function consumeRundownGradeTrace(): string {
+  const note = rundownGradeTrace
+  rundownGradeTrace = ''
+  return note
+}
+
+function teamLooksWinner(team: RundownTeam): boolean {
+  const extra = team as RundownTeam & { winner?: boolean; is_winner?: boolean }
+  return extra.winner === true || extra.is_winner === true
+}
+
 /**
  * Final scores from TheRundown when Odds API `/scores` has no row.
  * Uses the live cache so a just-finished fight is not stuck on the 45m publish cache.
@@ -428,22 +441,38 @@ export async function matchRundownFinalScore(input: {
   awayTeam: string
   commenceTime: string
 }): Promise<{ homeScore: number; awayScore: number } | null> {
-  if (!isRundownEnabled()) return null
+  if (!isRundownEnabled()) {
+    rundownGradeTrace = 'Rundown key missing'
+    return null
+  }
   const sportId = oddsSportKeyToRundownSportId(input.sportKey)
   if (!sportId || !input.commenceTime) return null
   const person = String(input.sportKey || '').toLowerCase().includes('mma')
     || String(input.sportKey || '').toLowerCase().includes('ufc')
   const ptDate = ptDateFromIso(input.commenceTime)
-  const dayEvents = await loadDayEvents(sportId, ptDate, RUNDOWN_LIVE_CACHE_MS)
+  const utcDate = String(input.commenceTime || '').slice(0, 10)
+  const dates = [...new Set([ptDate, utcDate].filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d)))]
+  const seen = new Set<string>()
+  const dayEvents: RundownEvent[] = []
+  for (const d of dates) {
+    const rows = await loadDayEvents(sportId, d, RUNDOWN_LIVE_CACHE_MS)
+    for (const ev of rows) {
+      const id = String(ev.event_id || '')
+      if (!id || seen.has(id)) continue
+      seen.add(id)
+      dayEvents.push(ev)
+    }
+  }
+  const statuses = [...new Set(dayEvents.map((e) => String(e.score?.event_status || '')).filter(Boolean))]
+  const finals = dayEvents.filter((e) => isRundownFinalStatus(String(e.score?.event_status || '')))
+  rundownGradeTrace = `Rundown sport ${sportId} dates ${dates.join(',')}: events=${dayEvents.length} finals=${finals.length} statuses=${statuses.slice(0, 6).join('|') || 'none'}`
+
   const hits: Array<{ homeScore: number; awayScore: number }> = []
 
   for (const ev of dayEvents) {
     if (!isRundownFinalStatus(String(ev.score?.event_status || ''))) continue
-    const homeScore = Number(ev.score?.score_home)
-    const awayScore = Number(ev.score?.score_away)
-    if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) continue
-    if (person && homeScore === 0 && awayScore === 0) continue
-
+    let homeScore = Number(ev.score?.score_home)
+    let awayScore = Number(ev.score?.score_away)
     const teams = ev.teams || []
     const rdHome = teams.find((t) => t.is_home) || teams[1]
     const rdAway = teams.find((t) => t.is_away) || teams[0]
@@ -455,6 +484,21 @@ export async function matchRundownFinalScore(input: {
       && rundownParticipantMatch(input.awayTeam, rdHome, person)
     if (!aligned && !swapped) continue
 
+    if ((!Number.isFinite(homeScore) || !Number.isFinite(awayScore) || (person && homeScore === 0 && awayScore === 0))) {
+      const winnerTeam = teams.find((t) => teamLooksWinner(t))
+      if (winnerTeam) {
+        const homeWon = rundownParticipantMatch(input.homeTeam, winnerTeam, person)
+        const awayWon = rundownParticipantMatch(input.awayTeam, winnerTeam, person)
+        if (homeWon === awayWon) continue
+        homeScore = homeWon ? 1 : 0
+        awayScore = awayWon ? 1 : 0
+      } else if (person) {
+        continue
+      } else if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) {
+        continue
+      }
+    }
+
     hits.push(
       aligned
         ? { homeScore, awayScore }
@@ -462,7 +506,13 @@ export async function matchRundownFinalScore(input: {
     )
   }
 
-  return hits.length === 1 ? hits[0] : null
+  if (hits.length !== 1) {
+    if (person && hits.length === 0) {
+      rundownGradeTrace += ` match=0 for ${input.awayTeam} @ ${input.homeTeam}`
+    }
+    return null
+  }
+  return hits[0]
 }
 
 export async function resolveRundownEvent(input: RundownMatchInput): Promise<ResolvedRundownEvent | null> {

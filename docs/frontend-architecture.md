@@ -13,7 +13,7 @@ Keeping auth in **`App.jsx`** and product chrome in **`AppShell`** avoids a circ
 
 ## Sibling static sites (not the Edge app)
 
-- **`sites/digiverse-ventures/`** — **Digiverse Ventures, LLC** holding page for **[digiverse.ventures](https://digiverse.ventures)** (Apple / D&B business website). Plain HTML/CSS. Host on **Cloudflare Pages**, not Vercel with the Edge app. Do not put a street address on it unless Ryan supplies the registered office. Contact: **`support@edgetilt.com`**.
+- **`sites/digiverse-ventures/`** — **Digiverse Ventures, LLC** holding page for **[digiverse.ventures](https://digiverse.ventures)** (Apple / D&B business website). Plain HTML/CSS. Host on **Cloudflare Pages**, not Vercel with the Edge app. Do not put a street address on it unless Ryan supplies the registered office. Contact: **`contact@digiverse.ventures`**.
 - **Sharpe Syndicate** (`syndicate.html` / `vite.syndicate.config.js`) stays its own Cloudflare Pages site at **sharpesyndicate.com**.
 
 ## Planned: iOS store shell (live site in WKWebView)

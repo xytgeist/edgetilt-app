@@ -2,7 +2,7 @@
 
 Static holding-company site for **Digiverse Ventures, LLC** (Wyoming). Apple Individual → Org and D&B need a real business website on this domain. Not an Edge product surface.
 
-**Do not invent** a street address, phone, or a Digiverse mailbox here. Canonical contact until company mail is live: **`support@edgetilt.com`** (same as in-app legal).
+**Do not invent** a street address or phone. Canonical contact: **`contact@digiverse.ventures`**. Product legal on EdgeTilt stays **`support@edgetilt.com`**.
 
 ## Publish (Cloudflare Pages)
 

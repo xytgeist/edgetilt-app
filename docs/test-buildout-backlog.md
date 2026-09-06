@@ -105,7 +105,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 Do **not** Add for Review until these are done. Age Ratings / Content Rights / encryption plist are already in. Same Apple team … do not open a second developer account.
 
 - [ ] **App Store account changeover to Digiverse Ventures LLC.** Convert submitted 2026-09-06. Apple: one business day. DSA trader as the LLC after this lands.
-- [ ] **[digiverse.ventures](https://digiverse.ventures)** LLC site. Static files in **`sites/digiverse-ventures/`**. Ryan owns the domain. Still **upload to Cloudflare Pages** + custom domain so Apple / D&B see a real page (not parked / 403). No street address on the page (do not invent). Contact **`support@edgetilt.com`**. Not an Edge product surface.
+- [ ] **[digiverse.ventures](https://digiverse.ventures)** LLC site. Static files in **`sites/digiverse-ventures/`**. Ryan owns the domain. Still **upload to Cloudflare Pages** + custom domain so Apple / D&B see a real page (not parked / 403). No street address on the page (do not invent). Contact **`contact@digiverse.ventures`**. Not an Edge product surface.
 - [ ] **Cloudflare email** for **edgetilt** and **digiverse** … mailboxes + a real reply-from address (not a personal Gmail on the EU / seller listing).
 - [ ] **Increased price request approval** from App Store Connect (Lifetime / price points above Apple’s `$1,000` cap). IPA carousel stays Starter + Pro until this clears.
 
@@ -2863,7 +2863,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
-- **2026-09-06:** **digiverse.ventures site files in repo.** Holding-company static site at **`sites/digiverse-ventures/`** (Wyoming LLC, EdgeTilt product link, `support@edgetilt.com`). Not live until Cloudflare Pages + custom domain. Do not invent a street address. Cloudflare email stays on the Windows PC.
+- **2026-09-06:** **digiverse.ventures contact is `contact@digiverse.ventures`.** Holding-company page no longer uses `support@edgetilt.com` (that stays product legal). Still upload Cloudflare Pages + custom domain.
 - **2026-09-06:** **Before IAP / App Store submit list (Ryan).** Org changeover to Digiverse Ventures LLC, build digiverse.ventures, Cloudflare email for edgetilt + digiverse / reply-from, Apple increased price request. Do not Add for Review until those clear. Backlog section under Planned (Native shells).
 - **2026-09-06:** **Apple Individual → Org convert submitted.** Ryan asked Apple to switch the EdgeTilt team to **Digiverse Ventures LLC**. Reply owed within one business day. Same app / IAP / Age Ratings. DSA trader waits on that flip. Do not Add for Review.
 - **2026-09-06:** **ASC App Information leftovers (Mac).** EdgeTilt `6806401093`: Age Ratings questionnaire saved (UGC / social / chat / ads / unrestricted web; gambling and simulated gambling None). Calculated 16+, override **18+**. Content Rights already Yes. Encryption Upload left empty. DSA still **non-trader** until Ryan supplies trader compliance details. Do not Add for Review.

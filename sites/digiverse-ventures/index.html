@@ -18,172 +18,97 @@
       content="Wyoming limited liability company. Parent of EDGE / EdgeTilt and Sharpe Syndicate."
     />
     <meta name="twitter:card" content="summary" />
-    <meta name="theme-color" content="#02010a" />
+    <meta name="theme-color" content="#f3efe6" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800&family=Share+Tech+Mono&display=swap"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/styles.css" />
-    <script type="importmap">
-      {
-        "imports": {
-          "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
-          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"
-        }
-      }
-    </script>
   </head>
   <body>
-    <canvas id="stage" aria-hidden="true"></canvas>
-    <div class="scan" aria-hidden="true"></div>
-    <div class="crt" aria-hidden="true"></div>
-    <div class="vignette" aria-hidden="true"></div>
-    <div class="hud-corner tl" aria-hidden="true"></div>
-    <div class="hud-corner tr" aria-hidden="true"></div>
-    <div class="hud-corner bl" aria-hidden="true"></div>
-    <div class="hud-corner br" aria-hidden="true"></div>
-    <div class="vhs" aria-hidden="true"></div>
-    <div class="cursor" aria-hidden="true"></div>
-
-    <div class="gate">
-      <div>
-        <button type="button" class="jack" id="jack">JACK IN</button>
-        <p>Click to enter the house</p>
-      </div>
-    </div>
-
-    <div class="boot" aria-hidden="true">
-      <pre>
-DIGIVERSE OS  ·  WYOMING
-&gt; mount entity.dll
-&gt; link edgetilt.com
-&gt; link sharpesyndicate.com
-&gt; bind contact@digiverse.ventures
-HOUSE ONLINE</pre>
-    </div>
-
-    <div class="site">
-      <header class="top">
-        <a class="brand" href="/">
-          <span class="brand-d" aria-hidden="true">D</span>
-          Digiverse
-        </a>
-        <nav>
-          <a href="/" aria-current="page">House</a>
+    <div class="bar" aria-hidden="true"></div>
+    <div class="shell">
+      <header class="nav">
+        <a href="/">Digiverse Ventures, LLC</a>
+        <nav class="nav-links">
+          <a href="/" aria-current="page">Index</a>
           <a href="/privacy">Privacy</a>
           <a href="https://edgetilt.com">EdgeTilt</a>
           <a href="https://sharpesyndicate.com">Syndicate</a>
         </nav>
       </header>
 
-      <section class="hero">
-        <div>
-          <p class="kicker">Wyoming LLC  //  Operating company</p>
-          <h1 class="glitch" data-text="DIGIVERSE">DIGIVERSE</h1>
-          <p class="llc">Ventures</p>
+      <section class="mast">
+        <h1 class="word">Digiverse</h1>
+        <div class="sub">
+          <span>Ventures, LLC</span>
+          <span>Wyoming, United States</span>
+        </div>
+      </section>
+
+      <div class="grid">
+        <div class="span-4">
+          <p class="k">01 / Statement</p>
           <p class="lede">
-            Software for people who take risk for a living. We do not sand the
-            edges off. We own the worlds those people live in.
+            We build and operate software for people who take risk for a living.
           </p>
         </div>
-        <p class="scroll-cue">Initialize scroll</p>
-      </section>
-
-      <section class="section">
-        <h2 class="reveal">Manifesto</h2>
-        <p class="manifesto reveal">
-          The house is quiet. The products are not.
-          <em>EDGE</em> and <em>Sharpe Syndicate</em> are the worlds.
-          Digiverse is the entity that owns them.
-        </p>
-      </section>
-
-      <section class="section">
-        <h2 class="reveal">Linked worlds</h2>
-        <div class="worlds">
-          <a class="world reveal" href="https://edgetilt.com">
-            <span class="tag">Social · tools</span>
-            <h3>EDGE / EdgeTilt</h3>
+        <div class="span-8">
+          <p class="k">02 / Holdings</p>
+          <a class="item" href="https://edgetilt.com">
+            <span class="num">01</span>
+            <h2>EDGE / EdgeTilt</h2>
             <p>
               Social platform and tools for advantage play, poker, markets, and the
-              rest of the risk stack. Find your people. Hunt the edge.
+              rest of the risk stack.
             </p>
-            <span class="go">edgetilt.com →</span>
           </a>
-          <a class="world is-syndicate reveal" href="https://sharpesyndicate.com">
-            <span class="tag">Sports · models</span>
-            <h3>Sharpe Syndicate</h3>
+          <a class="item" href="https://sharpesyndicate.com" style="margin-top: 1.5rem">
+            <span class="num">02</span>
+            <h2>Sharpe Syndicate</h2>
             <p>
-              Quantitative sports analytics. Four desks, an audited ledger, and
-              models that keep the receipt.
+              Quantitative sports analytics. Four desks, an audited ledger, models
+              that keep the receipt.
             </p>
-            <span class="go">sharpesyndicate.com →</span>
           </a>
         </div>
-      </section>
 
-      <section class="section">
-        <h2 class="reveal">Dossier</h2>
-        <dl class="dossier reveal">
-          <div>
-            <dt>Legal name</dt>
-            <dd>Digiverse Ventures, LLC</dd>
-          </div>
-          <div>
-            <dt>Jurisdiction</dt>
-            <dd>Wyoming, United States</dd>
-          </div>
-          <div>
-            <dt>Contact</dt>
-            <dd><a href="mailto:contact@digiverse.ventures">contact@digiverse.ventures</a></dd>
-          </div>
-          <div>
-            <dt>Product legal</dt>
-            <dd>
-              <a href="https://edgetilt.com/terms">Terms</a>
-              ·
-              <a href="https://edgetilt.com/privacy">Privacy</a>
-              ·
-              <a href="https://edgetilt.com/guidelines">Guidelines</a>
-            </dd>
-          </div>
-        </dl>
-      </section>
-
-      <section class="section">
-        <h2 class="reveal">Transmit</h2>
-        <a class="mail reveal" href="mailto:contact@digiverse.ventures">contact@digiverse.ventures</a>
-      </section>
+        <div class="span-12">
+          <p class="k">03 / Dossier</p>
+          <table>
+            <tr>
+              <th>Legal name</th>
+              <td>Digiverse Ventures, LLC</td>
+            </tr>
+            <tr>
+              <th>Jurisdiction</th>
+              <td>Wyoming, United States</td>
+            </tr>
+            <tr>
+              <th>Contact</th>
+              <td><a href="mailto:contact@digiverse.ventures">contact@digiverse.ventures</a></td>
+            </tr>
+            <tr>
+              <th>Product legal</th>
+              <td>
+                <a href="https://edgetilt.com/terms">Terms</a>
+                ·
+                <a href="https://edgetilt.com/privacy">Privacy</a>
+                ·
+                <a href="https://edgetilt.com/guidelines">Guidelines</a>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </div>
 
       <footer>
         <span>© 2026 Digiverse Ventures, LLC</span>
-        <span>
-          <a href="https://edgetilt.com">edgetilt.com</a>
-          ·
-          <a href="https://sharpesyndicate.com">sharpesyndicate.com</a>
-        </span>
+        <a class="mail" href="mailto:contact@digiverse.ventures">contact@digiverse.ventures</a>
       </footer>
     </div>
-
-    <p class="telemetry" aria-hidden="true">
-      SYS OK<br />
-      JUR WY<br />
-      EDGE LINKED<br />
-      SYNDICATE LINKED
-    </p>
-    <button type="button" class="mute" id="mute" hidden>AUDIO ON</button>
-
-    <div class="ticker" aria-hidden="true">
-      <span>
-        Digiverse Ventures LLC · Wyoming · EDGE / EdgeTilt · Sharpe Syndicate ·
-        contact@digiverse.ventures · Digiverse Ventures LLC · Wyoming · EDGE / EdgeTilt · Sharpe Syndicate ·
-        contact@digiverse.ventures ·
-      </span>
-    </div>
-
     <script src="/main.js" defer></script>
-    <script type="module" src="/world.js"></script>
   </body>
 </html>

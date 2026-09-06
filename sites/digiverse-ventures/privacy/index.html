@@ -10,75 +10,56 @@
     />
     <link rel="canonical" href="https://digiverse.ventures/privacy" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="theme-color" content="#02010a" />
+    <meta name="theme-color" content="#f3efe6" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800&family=Share+Tech+Mono&display=swap"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/styles.css" />
-    <script type="importmap">
-      {
-        "imports": {
-          "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
-          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"
-        }
-      }
-    </script>
   </head>
   <body>
-    <canvas id="stage" aria-hidden="true"></canvas>
-    <div class="scan" aria-hidden="true"></div>
-    <div class="crt" aria-hidden="true"></div>
-    <div class="vignette" aria-hidden="true"></div>
-    <div class="hud-corner tl" aria-hidden="true"></div>
-    <div class="hud-corner tr" aria-hidden="true"></div>
-    <div class="hud-corner bl" aria-hidden="true"></div>
-    <div class="hud-corner br" aria-hidden="true"></div>
-    <div class="cursor" aria-hidden="true"></div>
-
-    <div class="site">
-      <header class="top">
-        <a class="brand" href="/">
-          <span class="brand-d" aria-hidden="true">D</span>
-          Digiverse
-        </a>
-        <nav>
-          <a href="/">House</a>
+    <div class="bar" aria-hidden="true"></div>
+    <div class="shell">
+      <header class="nav">
+        <a href="/">Digiverse Ventures, LLC</a>
+        <nav class="nav-links">
+          <a href="/">Index</a>
           <a href="/privacy" aria-current="page">Privacy</a>
           <a href="https://edgetilt.com">EdgeTilt</a>
           <a href="https://sharpesyndicate.com">Syndicate</a>
         </nav>
       </header>
 
-      <section class="hero">
-        <div>
-          <p class="kicker">Legal  //  Company site</p>
-          <h1 class="glitch" data-text="PRIVACY">PRIVACY</h1>
-          <p class="llc">Policy on the product</p>
+      <section class="mast">
+        <h1 class="word">Privacy</h1>
+        <div class="sub">
+          <span>Company site</span>
+          <span>Product policy lives on the product</span>
         </div>
       </section>
 
-      <section class="section">
-        <p class="legal-copy reveal">
-          Digiverse Ventures, LLC is the operating company behind EDGE / EdgeTilt
-          and Sharpe Syndicate. This domain is the company site.
-          Counsel-reviewed EdgeTilt privacy is at
-          <a href="https://edgetilt.com/privacy">edgetilt.com/privacy</a>.
-        </p>
-        <p class="legal-copy reveal" style="margin-top: 1.2rem">
-          Questions:
-          <a href="mailto:contact@digiverse.ventures">contact@digiverse.ventures</a>.
-        </p>
-      </section>
+      <div class="grid legal">
+        <div class="span-8">
+          <p>
+            Digiverse Ventures, LLC is the operating company behind EDGE / EdgeTilt
+            and Sharpe Syndicate. This domain is the company site.
+            Counsel-reviewed EdgeTilt privacy is at
+            <a href="https://edgetilt.com/privacy">edgetilt.com/privacy</a>.
+          </p>
+          <p>
+            Questions:
+            <a href="mailto:contact@digiverse.ventures">contact@digiverse.ventures</a>.
+          </p>
+        </div>
+      </div>
 
       <footer>
         <span>© 2026 Digiverse Ventures, LLC</span>
-        <a href="/">digiverse.ventures</a>
+        <a href="/">Index</a>
       </footer>
     </div>
     <script src="/main.js" defer></script>
-    <script type="module" src="/world.js"></script>
   </body>
 </html>

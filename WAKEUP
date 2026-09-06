@@ -83,9 +83,9 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Mac Theo.** Platform SubscribeModal + fan SUB + Edge Pro Settings can offer **IAP and Safari** for the same unlock. Fan IAP is one SKU per tier (`com.edgetilt.app.fan_tier_499.monthly` …), bound to a creator via `apple_iap_intents`. SQL **`20260905120000`**. Redeploy **`apple-iap-verify`** on **test**. New TestFlight for `manageStoreSubscriptions` + JWS. **Ryan still creates ASC products.** Do not take a real charge until sandbox + ASSN. **`1.4.60`.**
 
-### Windows Theo 2026-09-05 … ESPN grades UFC when Odds API ghosts
+### Windows Theo 2026-09-05 … Paris UFC actually settled
 
-**I am Windows Theo.** Odds API MMA `/scores` does not keep finished fights. `gradePendingPicks` falls back to ESPN completed scoreboards (UFC winner → 1-0 ML; also NFL/CFB/NBA/NCAAB/MLB/NHL). Live stays pending. **`1.4.76`.** Redeploy **`lounge-odds-poll`** + **`lounge-odds-ingest`** test+prod.
+**I am Windows Theo.** Edge cannot grade UFC tonight: Odds API drops finished fights, Rundown MMA sport 7 returned 0 events, ESPN 403s from Supabase. 40 Paris moneyline rows graded from this PC (`espn_local`). 0 pending MMA. Scott/Rocco/Tank 5-5, Chedda 4-6. Hard-refresh sharpesyndicate.com UFC. **`1.4.76`.**
 
 ### Windows Theo 2026-09-05 … public syndicate Overview was empty
 

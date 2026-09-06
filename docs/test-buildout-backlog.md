@@ -2851,7 +2851,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
-- **2026-09-05:** **`apple-iap-verify` was missing on test.** Sandbox Pro IAP charged, confirm 404'd as a fetch error. Deployed to `kcosfvmreeiosdjdzycb`. Client no longer opens StoreKit if begin fails. **`1.4.92`.** Restore purchases to grant the already-paid sandbox sub.
+- **2026-09-05:** **`apple-iap-verify` was missing on test.** Sandbox Pro IAP charged, confirm 404'd as a fetch error. Deployed to `kcosfvmreeiosdjdzycb`. Client no longer opens StoreKit if begin fails. **`1.4.92`.** **Ryan signed off:** Restore purchases granted the already-paid sandbox Pro.
 - **2026-09-05:** **IPA Subscribe carousel hides Lifetime again.** Apple IAP list + offer wizard still cap at `$1,000`. Web still shows the card. **`1.4.91`.**
 - **2026-09-05:** **IPA Subscribe carousel shows Lifetime again.** Starter + Pro + Lifetime, same as web. **`1.4.90`.** Superseded same night.
 - **2026-09-05:** **Ryan signed off** Slots subscribe sheet height at `89.96dvh`. **`1.4.89`.**

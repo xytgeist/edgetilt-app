@@ -77,7 +77,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Mac Theo 2026-09-05 … apple-iap-verify was 404 on test
 
-**I am Mac Theo.** Sandbox Slots Edge Pro IAP showed Apple "You're all set," then `Failed to send a request to the Edge Function`. Function was **not deployed** on `kcosfvmreeiosdjdzycb` (404, no CORS → fetch error). Deployed. Client now fails closed before StoreKit and retries confirm. **`1.4.92`.** Ryan: tap **Restore purchases** … do not buy again. Prod function still not deployed unless he asks.
+**I am Mac Theo.** Sandbox Slots Edge Pro IAP showed Apple "You're all set," then `Failed to send a request to the Edge Function`. Function was **not deployed** on `kcosfvmreeiosdjdzycb` (404, no CORS → fetch error). Deployed. Client now fails closed before StoreKit and retries confirm. **`1.4.92`.** **Ryan signed off:** Restore granted the sandbox Pro. Prod function still not deployed unless he asks.
 
 ### Mac Theo 2026-09-05 … Lifetime card off IPA carousel
 

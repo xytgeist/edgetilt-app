@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-06 … ASC App Information leftovers
+
+**I am Mac Theo.** EdgeTilt (`6806401093`) App Information: Age Ratings saved (calculated 16+, override **18+** for ToS). Content Rights Yes. Encryption Upload left empty (`ITSAppUsesNonExemptEncryption = NO`). DSA still **non-trader** … trader flip needs Ryan's legal address / phone / email. Do not Add for Review.
+
 ### Mac Theo 2026-09-06 … Pro-only stream is Edge Pro only
 
 **I am Mac Theo.** Pro-only feed / comment filter now reads `profiles.has_edge_pro` (Edge Pro, Lifetime, staff). Slots Edge Pro stays visible on the Verified Subscriber checkmark via `has_active_subscription`. SQL **`20260906120000`** on test. **`1.4.94`.**

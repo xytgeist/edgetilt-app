@@ -1278,12 +1278,12 @@ export default function SubscribeModal({
               </div>
 
               <div className="subscribe-modal-footer shrink-0 pt-2">
-              <p className="text-center text-xs leading-relaxed text-zinc-500">
-                {canIapSelected
-                  ? 'In-app purchase uses your Apple ID. Web checkout uses Stripe.'
-                  : 'Secure checkout powered by Stripe.'}
-              </p>
-              <p className="mt-1 text-center text-[11px] leading-relaxed text-zinc-600">
+              {canIapSelected ? null : (
+                <p className="text-center text-xs leading-relaxed text-zinc-500">
+                  Secure checkout powered by Stripe.
+                </p>
+              )}
+              <p className={`${canIapSelected ? '' : 'mt-1'} text-center text-[11px] leading-relaxed text-zinc-600`}>
                 <a href="/terms?from=settings" className="underline underline-offset-2 hover:text-zinc-400">
                   Terms
                 </a>

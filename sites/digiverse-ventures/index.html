@@ -6,7 +6,7 @@
     <title>Digiverse Ventures, LLC</title>
     <meta
       name="description"
-      content="Digiverse Ventures, LLC is a Wyoming limited liability company that owns and operates EDGE / EdgeTilt."
+      content="Digiverse Ventures, LLC is a Wyoming limited liability company that owns EDGE / EdgeTilt and Sharpe Syndicate."
     />
     <link rel="canonical" href="https://digiverse.ventures/" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -15,61 +15,103 @@
     <meta property="og:title" content="Digiverse Ventures, LLC" />
     <meta
       property="og:description"
-      content="Wyoming limited liability company. Parent of EDGE / EdgeTilt."
+      content="Wyoming limited liability company. Parent of EDGE / EdgeTilt and Sharpe Syndicate."
     />
     <meta name="twitter:card" content="summary" />
+    <meta name="theme-color" content="#07060a" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital@0;1&family=Source+Sans+3:wght@400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Syne:wght@500;700;800&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="wrap">
-      <header>
-        <a class="mark" href="/">
-          <span class="mark-d" aria-hidden="true">D</span>
+    <canvas id="void" aria-hidden="true"></canvas>
+    <div class="grain" aria-hidden="true"></div>
+    <div class="vignette" aria-hidden="true"></div>
+    <div class="cursor" aria-hidden="true"></div>
+
+    <div class="site">
+      <header class="top">
+        <a class="brand" href="/">
+          <span class="brand-d" aria-hidden="true">D</span>
           Digiverse
         </a>
         <nav>
-          <a href="/" aria-current="page">Home</a>
+          <a href="/" aria-current="page">House</a>
           <a href="/privacy">Privacy</a>
           <a href="https://edgetilt.com">EdgeTilt</a>
+          <a href="https://sharpesyndicate.com">Syndicate</a>
         </nav>
       </header>
 
       <section class="hero">
-        <p class="kicker">Operating company</p>
-        <h1>Digiverse Ventures, LLC</h1>
-        <p class="lede">
-          A Wyoming limited liability company. We build and operate software for
-          people who take risk for a living.
+        <div>
+          <p class="kicker">Wyoming · Limited liability company</p>
+          <h1 class="mega" aria-label="Digiverse">
+            <span>D</span><span>I</span><span>G</span><span>I</span><span>V</span><span>E</span><span>R</span><span>S</span><span>E</span>
+          </h1>
+          <p class="llc">Ventures, LLC</p>
+          <div class="rule" aria-hidden="true"></div>
+          <p class="lede">
+            We build and operate software for people who take risk for a living.
+            The house is quiet. The products are not.
+          </p>
+        </div>
+        <p class="scroll-cue">Descend</p>
+      </section>
+
+      <section class="section">
+        <h2 class="reveal">Manifesto</h2>
+        <p class="manifesto reveal">
+          Most companies sand the edges off. We keep them sharp.
+          <em>EDGE</em> and <em>Sharpe Syndicate</em> are the worlds.
+          Digiverse is the entity that owns them.
         </p>
       </section>
 
-      <div class="grid">
-        <article class="card">
-          <h2>What we own</h2>
-          <a class="product" href="https://edgetilt.com">
-            <div>
-              <strong>EDGE / EdgeTilt</strong>
-              <span>Social platform and tools for advantage play, poker, markets, and more.</span>
-            </div>
-            <span class="arrow" aria-hidden="true">→</span>
+      <section class="section">
+        <h2 class="reveal">What we own</h2>
+        <div class="worlds">
+          <a class="world reveal" href="https://edgetilt.com">
+            <span class="tag">Social · tools</span>
+            <h3>EDGE / EdgeTilt</h3>
+            <p>
+              Social platform and tools for advantage play, poker, markets, and the
+              rest of the risk stack. Find your people. Hunt the edge.
+            </p>
+            <span class="go">edgetilt.com →</span>
           </a>
-        </article>
+          <a class="world is-syndicate reveal" href="https://sharpesyndicate.com">
+            <span class="tag">Sports · models</span>
+            <h3>Sharpe Syndicate</h3>
+            <p>
+              Quantitative sports analytics. Four desks, an audited ledger, and
+              models that keep the receipt.
+            </p>
+            <span class="go">sharpesyndicate.com →</span>
+          </a>
+        </div>
+      </section>
 
-        <aside class="card">
-          <h2>Company</h2>
-          <dl>
+      <section class="section">
+        <h2 class="reveal">Dossier</h2>
+        <dl class="dossier reveal">
+          <div>
             <dt>Legal name</dt>
             <dd>Digiverse Ventures, LLC</dd>
+          </div>
+          <div>
             <dt>Jurisdiction</dt>
             <dd>Wyoming, United States</dd>
+          </div>
+          <div>
             <dt>Contact</dt>
             <dd><a href="mailto:contact@digiverse.ventures">contact@digiverse.ventures</a></dd>
+          </div>
+          <div>
             <dt>Product legal</dt>
             <dd>
               <a href="https://edgetilt.com/terms">Terms</a>
@@ -78,14 +120,24 @@
               ·
               <a href="https://edgetilt.com/guidelines">Guidelines</a>
             </dd>
-          </dl>
-        </aside>
-      </div>
+          </div>
+        </dl>
+      </section>
+
+      <section class="section contact-block">
+        <h2 class="reveal">Write the house</h2>
+        <a class="mail reveal" href="mailto:contact@digiverse.ventures">contact@digiverse.ventures</a>
+      </section>
 
       <footer>
         <span>© 2026 Digiverse Ventures, LLC</span>
-        <a href="https://edgetilt.com">edgetilt.com</a>
+        <span>
+          <a href="https://edgetilt.com">edgetilt.com</a>
+          ·
+          <a href="https://sharpesyndicate.com">sharpesyndicate.com</a>
+        </span>
       </footer>
     </div>
+    <script src="/main.js" defer></script>
   </body>
 </html>

@@ -6,57 +6,66 @@
     <title>Privacy | Digiverse Ventures, LLC</title>
     <meta
       name="description"
-      content="Privacy information for Digiverse Ventures, LLC and its consumer product EDGE / EdgeTilt."
+      content="Privacy information for Digiverse Ventures, LLC and its products EDGE / EdgeTilt and Sharpe Syndicate."
     />
     <link rel="canonical" href="https://digiverse.ventures/privacy" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital@0;1&family=Source+Sans+3:wght@400;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Syne:wght@500;700;800&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="wrap">
-      <header>
-        <a class="mark" href="/">
-          <span class="mark-d" aria-hidden="true">D</span>
+    <canvas id="void" aria-hidden="true"></canvas>
+    <div class="grain" aria-hidden="true"></div>
+    <div class="vignette" aria-hidden="true"></div>
+    <div class="cursor" aria-hidden="true"></div>
+
+    <div class="site">
+      <header class="top">
+        <a class="brand" href="/">
+          <span class="brand-d" aria-hidden="true">D</span>
           Digiverse
         </a>
         <nav>
-          <a href="/">Home</a>
+          <a href="/">House</a>
           <a href="/privacy" aria-current="page">Privacy</a>
           <a href="https://edgetilt.com">EdgeTilt</a>
+          <a href="https://sharpesyndicate.com">Syndicate</a>
         </nav>
       </header>
 
       <section class="hero">
-        <p class="kicker">Legal</p>
-        <h1>Privacy</h1>
-        <p class="lede">
-          Digiverse Ventures, LLC is the operating company behind EDGE / EdgeTilt.
-          This domain is a company site. Product privacy lives on the product.
-        </p>
+        <div>
+          <p class="kicker">Legal</p>
+          <h1 class="mega" aria-label="Privacy" style="font-size: clamp(3rem, 10vw, 8rem)">
+            <span>P</span><span>R</span><span>I</span><span>V</span><span>A</span><span>C</span><span>Y</span>
+          </h1>
+          <p class="llc">The product policy lives on the product.</p>
+        </div>
       </section>
 
-      <article class="card">
-        <h2>Where the policy is</h2>
-        <p>
-          The counsel-reviewed privacy policy for EDGE / EdgeTilt is at
+      <section class="section">
+        <p class="legal-copy reveal">
+          Digiverse Ventures, LLC is the operating company behind EDGE / EdgeTilt
+          and Sharpe Syndicate. This domain is the company site.
+          Counsel-reviewed EdgeTilt privacy is at
           <a href="https://edgetilt.com/privacy">edgetilt.com/privacy</a>.
         </p>
-        <p>
+        <p class="legal-copy reveal" style="margin-top: 1.2rem">
           Questions:
           <a href="mailto:contact@digiverse.ventures">contact@digiverse.ventures</a>.
         </p>
-      </article>
+      </section>
 
       <footer>
         <span>© 2026 Digiverse Ventures, LLC</span>
         <a href="/">digiverse.ventures</a>
       </footer>
     </div>
+    <script src="/main.js" defer></script>
   </body>
 </html>

@@ -181,6 +181,7 @@ Track implementation in `docs/test-buildout-backlog.md` when Phase 1 work starts
 | 2026-09-05 | **IAP dual-path (code):** same `user_subscriptions` / `creator_subscriptions` rows for Stripe or Apple (`billing_provider`). Fan IAP is one StoreKit SKU per tier, bound to a creator via `apple_iap_intents`. IPA: web/Safari still offered. ASC products + ASSN still owed. |
 | 2026-09-05 | **IAP refund + ASSN (test):** `beginRefundRequest` + Edge `apple-iap-notify` revoke on REFUND/REVOKE/EXPIRED. SQL `20260905140000`. Prod URL + SQL when Ryan promotes. |
 | 2026-09-05 | **Edge Pro Settings IPA unlock card:** IAP `$11.49` only. No web `$9.99` on that card. |
+| 2026-09-05 | **Edge Pro Settings unlock card (US IPA):** App Store `$11.49` + web `$9.99`. CTAs side by side (iPhone outline, web filled). Copy: markdown, no ads, 10k posts. Badge dropped. |
 | 2026-09-05 | **IPA Subscribe carousel hides Lifetime** until higher App Store price points. Web still shows the card. |
 | 2026-09-05 | **Storefront gate:** IPA shows a cheaper web price next to IAP only when StoreKit storefront is `USA`. |
 | 2026-09-05 | **US IPA SubscribeModal:** each card shows App Store `displayPrice` plus the Stripe/web amount. Both CTAs include a dollar. Confirmed non-US hides the web dollar. |

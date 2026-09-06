@@ -15,7 +15,7 @@ export const EDGE_PRODUCTS = [
   {
     slug: PRODUCT_EDGE_PRO,
     displayName: 'Edge Pro',
-    description: 'Platform social tier: verified Pro badge, reply gating, and pro-only stream & comment filtering.',
+    description: 'Platform social tier: markdown, no ads, 10k-character posts, reply gating, and pro-only stream & comment filtering.',
     billingRole: 'social',
   },
   {

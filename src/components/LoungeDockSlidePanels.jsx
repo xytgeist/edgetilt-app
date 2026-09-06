@@ -32,7 +32,7 @@ import SettingsMembershipPanel from '../features/creatorFanSubs/SettingsMembersh
 import SettingsAccountInfoScreen from '../features/profiles/SettingsAccountInfoScreen.jsx'
 import { startEdgeCheckout } from '../features/billing/stripeBillingApi.js'
 import { PRODUCT_EDGE_PRO } from '../features/billing/edgeProducts.js'
-import { EDGE_PRO_MONTHLY_IAP_USD, formatUsdMonthly } from '../features/billing/edgePricing.js'
+import { EDGE_PRO_MONTHLY_IAP_USD, EDGE_PRO_MONTHLY_USD, formatUsdMonthly } from '../features/billing/edgePricing.js'
 import {
   canShowIapWebComparePrice,
   fetchAppleStorefront,
@@ -289,7 +289,7 @@ export default function LoungeDockSlidePanels({
   const [edgeProCheckoutBusy, setEdgeProCheckoutBusy] = useState(false)
   const [edgeProCheckoutError, setEdgeProCheckoutError] = useState('')
   const [edgeProIapPrice, setEdgeProIapPrice] = useState('')
-  const [edgeProUsStorefront, setEdgeProUsStorefront] = useState(false)
+  const [edgeProUsStorefront, setEdgeProUsStorefront] = useState(/** @type {boolean | null} */ (null))
   const [subscriptionsSettingsOpen, setSubscriptionsSettingsOpen] = useState(false)
   const [fanMonetizationSettingsOpen, setFanMonetizationSettingsOpen] = useState(false)
   const [menuLayoutSettingsOpen, setMenuLayoutSettingsOpen] = useState(false)
@@ -343,7 +343,7 @@ export default function LoungeDockSlidePanels({
   useEffect(() => {
     if (!proSettingsOpen || !isEdgeiOSShell() || !settingsSupabaseClient) {
       setEdgeProIapPrice('')
-      setEdgeProUsStorefront(false)
+      setEdgeProUsStorefront(null)
       return
     }
     const productId = iapProductIdForPlan(PRODUCT_EDGE_PRO, 'monthly')
@@ -1655,25 +1655,40 @@ export default function LoungeDockSlidePanels({
                       </span>
                     </button>
                   ) : (
-                    <div className="rounded-lg border border-amber-500/30 bg-amber-950/20 p-3 text-left">
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-[13px] font-semibold text-amber-300">
-                          Unlock Edge Pro VIP Filtering
-                        </div>
-                        <span className="rounded-full border border-amber-500/40 bg-amber-500/20 px-2 py-0.5 text-[11px] font-black text-amber-400">
-                          {isEdgeiOSShell()
-                            ? edgeProIapPrice || formatUsdMonthly(EDGE_PRO_MONTHLY_IAP_USD)
-                            : '$9.99/mo'}
-                        </span>
+                    <div className="edge-pro-unlock-card rounded-lg border border-amber-500/30 bg-amber-950/20 p-3 text-left">
+                      <div className="text-[13px] font-semibold text-amber-300">
+                        Unlock Edge Pro
                       </div>
+                      {isEdgeiOSShell() && canShowIapWebComparePrice(edgeProUsStorefront) ? (
+                        <div className="mt-2 grid grid-cols-2 gap-2">
+                          <div className="edge-pro-compare-store rounded-lg px-2 py-1.5 ring-1 ring-white/10">
+                            <div className="text-base font-bold tracking-tight text-zinc-100">
+                              {(edgeProIapPrice || formatUsdMonthly(EDGE_PRO_MONTHLY_IAP_USD)).replace(/\/(?:mo|yr)$/i, '')}
+                            </div>
+                            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">App Store</p>
+                          </div>
+                          <div className="edge-pro-compare-web rounded-lg px-2 py-1.5 ring-1 ring-amber-400/30">
+                            <div className="text-base font-bold tracking-tight text-amber-300">
+                              {formatUsdMonthly(EDGE_PRO_MONTHLY_USD).replace(/\/(?:mo|yr)$/i, '')}
+                            </div>
+                            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-200/80">Web</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="mt-1.5 inline-flex rounded-full border border-amber-500/40 bg-amber-500/20 px-2 py-0.5 text-[11px] font-black text-amber-400">
+                          {isEdgeiOSShell()
+                            ? (edgeProIapPrice || formatUsdMonthly(EDGE_PRO_MONTHLY_IAP_USD)).replace(/\/(?:mo|yr)$/i, '')
+                            : formatUsdMonthly(EDGE_PRO_MONTHLY_USD).replace(/\/(?:mo|yr)$/i, '')}
+                        </span>
+                      )}
                       <p className="mt-1.5 text-[12px] leading-relaxed text-zinc-400">
-                        Edge Pro subscribers get a verified Pro badge, can reply on author-gated threads, and can filter the feed and comment threads to show only verified Pro subscribers and staff.
+                        Markdown, no ads, and 10k-character posts. Reply on author-gated threads, and filter the feed and comments to Pro subscribers and staff.
                       </p>
                       {edgeProCheckoutError ? (
                         <p className="mt-1.5 text-[11px] text-rose-400">{edgeProCheckoutError}</p>
                       ) : null}
                       {isEdgeiOSShell() ? (
-                        <>
+                        <div className="edge-pro-dual-cta mt-2.5 grid grid-cols-2 gap-2">
                           <button
                             type="button"
                             disabled={edgeProCheckoutBusy}
@@ -1699,11 +1714,11 @@ export default function LoungeDockSlidePanels({
                                 setEdgeProCheckoutBusy(false)
                               }
                             }}
-                            className="mt-2.5 inline-flex w-full items-center justify-center rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-3.5 py-2 text-[12px] font-bold text-zinc-950 shadow touch-manipulation hover:brightness-110 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
+                            className="edge-pro-iap-btn inline-flex min-h-11 items-center justify-center rounded-lg border border-amber-400/45 bg-zinc-950/60 px-2 py-2 text-center text-[12px] font-bold leading-snug text-amber-200 touch-manipulation hover:bg-zinc-900 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
                           >
                             {edgeProCheckoutBusy
                               ? 'Purchasing…'
-                              : `Subscribe on iPhone · ${edgeProIapPrice || formatUsdMonthly(EDGE_PRO_MONTHLY_IAP_USD)}`}
+                              : `Subscribe on iPhone · ${(edgeProIapPrice || formatUsdMonthly(EDGE_PRO_MONTHLY_IAP_USD)).replace(/\/(?:mo|yr)$/i, '')}`}
                           </button>
                           <button
                             type="button"
@@ -1727,15 +1742,15 @@ export default function LoungeDockSlidePanels({
                                 setEdgeProCheckoutBusy(false)
                               }
                             }}
-                            className="mt-2 inline-flex w-full items-center justify-center rounded-lg border border-amber-500/40 bg-zinc-950/60 px-3.5 py-2 text-[12px] font-semibold text-amber-200 touch-manipulation hover:bg-zinc-900 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
+                            className="edge-pro-web-btn inline-flex min-h-11 items-center justify-center rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-2 text-center text-[12px] font-bold leading-snug text-zinc-950 shadow touch-manipulation hover:brightness-110 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
                           >
                             {edgeProCheckoutBusy
                               ? 'Opening Safari…'
                               : canShowIapWebComparePrice(edgeProUsStorefront)
-                                ? 'Subscribe on the web ($9.99/mo)'
+                                ? `Subscribe on the web · ${formatUsdMonthly(EDGE_PRO_MONTHLY_USD).replace(/\/(?:mo|yr)$/i, '')}`
                                 : 'Subscribe on the web'}
                           </button>
-                        </>
+                        </div>
                       ) : (
                         <button
                           type="button"

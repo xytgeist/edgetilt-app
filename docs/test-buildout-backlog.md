@@ -2850,6 +2850,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-05:** **Edge Pro Settings unlock card.** Markdown, no ads, 10k posts. Badge copy gone. US IPA: App Store `$11.49` + web `$9.99`, CTAs side by side (iPhone outline, web filled). **`1.4.77`.**
 - **2026-09-05:** **IPA compare tiles match.** App Store + web: dollar only (no `/mo`). Duration + then-price on the bottom line (`12 mo then $22.99` / `12 mo then $19.99`). **`1.4.75`.**
 - **2026-09-05:** **IPA Subscribe drops the Apple ID / Stripe footer line.** Buttons already say iPhone vs web. Terms + Privacy stay. **`1.4.74`.**
 - **2026-09-05:** **Paris UFC ledger graded (40 rows, 0 pending).** Edge waterfall is Odds API → Rundown → ESPN. Odds API MMA `/scores` was empty. Rundown sport 7 for 2026-09-05 returned `events=0`. ESPN scoreboards **403 from Edge**. Graded from Windows against ESPN UFC scoreboard (`metadata.grade_source=espn_local`). Desks: Scott/Rocco/Tank 5-5 (+1.46u), Chedda 4-6 (-0.03u). Hard-refresh sharpesyndicate.com UFC. Redeploy **`lounge-odds-poll`** + **`lounge-odds-ingest`**. **`1.4.76`.**

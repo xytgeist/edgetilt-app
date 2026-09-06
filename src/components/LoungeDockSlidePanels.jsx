@@ -1667,7 +1667,44 @@ export default function LoungeDockSlidePanels({
                       <div className="text-[13px] font-semibold text-amber-300">
                         Unlock Edge Pro
                       </div>
-                      {isEdgeiOSShell() ? null : (
+                      {isEdgeiOSShell() ? (
+                        <div
+                          className="edge-pro-pay-switch mt-1.5 inline-flex w-fit rounded-full border border-amber-500/25 bg-zinc-950/70 p-0.5"
+                          role="tablist"
+                          aria-label="Edge Pro checkout"
+                        >
+                          <button
+                            type="button"
+                            role="tab"
+                            aria-selected={edgeProPayVia === 'iap'}
+                            disabled={edgeProCheckoutBusy}
+                            onClick={() => setEdgeProPayVia('iap')}
+                            className={[
+                              'edge-pro-pay-switch-tab min-h-6 rounded-full px-2 text-[10px] font-bold leading-none touch-manipulation transition-colors disabled:opacity-50',
+                              edgeProPayVia === 'iap'
+                                ? 'edge-pro-pay-switch-tab--on bg-amber-500 text-zinc-950 shadow-sm'
+                                : 'text-amber-200/80 hover:text-amber-100',
+                            ].join(' ')}
+                          >
+                            {`iPhone · ${edgeProIapDollar}`}
+                          </button>
+                          <button
+                            type="button"
+                            role="tab"
+                            aria-selected={edgeProPayVia === 'web'}
+                            disabled={edgeProCheckoutBusy}
+                            onClick={() => setEdgeProPayVia('web')}
+                            className={[
+                              'edge-pro-pay-switch-tab min-h-6 rounded-full px-2 text-[10px] font-bold leading-none touch-manipulation transition-colors disabled:opacity-50',
+                              edgeProPayVia === 'web'
+                                ? 'edge-pro-pay-switch-tab--on bg-amber-500 text-zinc-950 shadow-sm'
+                                : 'text-amber-200/80 hover:text-amber-100',
+                            ].join(' ')}
+                          >
+                            {`Web · ${edgeProWebDollar}`}
+                          </button>
+                        </div>
+                      ) : (
                         <span className="mt-1.5 inline-flex rounded-full border border-amber-500/40 bg-amber-500/20 px-2 py-0.5 text-[11px] font-black text-amber-400">
                           {formatUsdMonthly(EDGE_PRO_MONTHLY_USD).replace(/\/(?:mo|yr)$/i, '')}
                         </span>
@@ -1687,43 +1724,7 @@ export default function LoungeDockSlidePanels({
                         <p className="mt-1.5 text-[11px] text-rose-400">{edgeProCheckoutError}</p>
                       ) : null}
                       {isEdgeiOSShell() ? (
-                        <div className="mt-2.5 space-y-2">
-                          <div
-                            className="edge-pro-pay-switch flex rounded-xl border border-amber-500/25 bg-zinc-950/70 p-1"
-                            role="tablist"
-                            aria-label="Edge Pro checkout"
-                          >
-                            <button
-                              type="button"
-                              role="tab"
-                              aria-selected={edgeProPayVia === 'iap'}
-                              disabled={edgeProCheckoutBusy}
-                              onClick={() => setEdgeProPayVia('iap')}
-                              className={[
-                                'edge-pro-pay-switch-tab flex-1 min-h-8 rounded-lg px-1 text-[11px] font-bold leading-tight touch-manipulation transition-colors disabled:opacity-50',
-                                edgeProPayVia === 'iap'
-                                  ? 'edge-pro-pay-switch-tab--on bg-amber-500 text-zinc-950 shadow-sm'
-                                  : 'text-amber-200/80 hover:text-amber-100',
-                              ].join(' ')}
-                            >
-                              {`iPhone · ${edgeProIapDollar}`}
-                            </button>
-                            <button
-                              type="button"
-                              role="tab"
-                              aria-selected={edgeProPayVia === 'web'}
-                              disabled={edgeProCheckoutBusy}
-                              onClick={() => setEdgeProPayVia('web')}
-                              className={[
-                                'edge-pro-pay-switch-tab flex-1 min-h-8 rounded-lg px-1 text-[11px] font-bold leading-tight touch-manipulation transition-colors disabled:opacity-50',
-                                edgeProPayVia === 'web'
-                                  ? 'edge-pro-pay-switch-tab--on bg-amber-500 text-zinc-950 shadow-sm'
-                                  : 'text-amber-200/80 hover:text-amber-100',
-                              ].join(' ')}
-                            >
-                              {`Web · ${edgeProWebDollar}`}
-                            </button>
-                          </div>
+                        <div className="mt-2.5">
                           <button
                             type="button"
                             disabled={edgeProCheckoutBusy}

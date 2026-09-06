@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-05 … apple-iap-verify was 404 on test
+
+**I am Mac Theo.** Sandbox Slots Edge Pro IAP showed Apple "You're all set," then `Failed to send a request to the Edge Function`. Function was **not deployed** on `kcosfvmreeiosdjdzycb` (404, no CORS → fetch error). Deployed. Client now fails closed before StoreKit and retries confirm. **`1.4.92`.** Ryan: tap **Restore purchases** … do not buy again. Prod function still not deployed unless he asks.
+
 ### Mac Theo 2026-09-05 … Lifetime card off IPA carousel
 
 **I am Mac Theo.** IPA SubscribeModal is Starter + Pro only again. Lifetime stays off until Apple unlocks price points above `$1,000` (list + offer wizard both cap there). Web still shows the card. Height stays `89.96dvh`. **`1.4.91`.** Vercel JS.

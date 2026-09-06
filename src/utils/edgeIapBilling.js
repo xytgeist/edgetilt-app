@@ -81,6 +81,41 @@ export async function fetchEdgeStoreProducts(supabaseClient, productIds) {
   return { products, via: 'bridge' }
 }
 
+function appleIapVerifyUserMessage(error, fallback) {
+  const msg = String(error?.message || '').trim()
+  if (
+    error?.name === 'FunctionsFetchError' ||
+    /failed to send a request|requested function was not found|not_found/i.test(msg)
+  ) {
+    return 'Could not verify the App Store purchase. Tap Restore purchases.'
+  }
+  return msg || fallback
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {{ access_token: string }} session
+ * @param {Record<string, unknown>} body
+ */
+async function invokeAppleIapVerify(supabaseClient, session, body) {
+  const delays = [0, 300, 800]
+  let lastError = null
+  for (const delay of delays) {
+    if (delay) await new Promise((resolve) => setTimeout(resolve, delay))
+    const { error } = await supabaseClient.functions.invoke('apple-iap-verify', {
+      body,
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+    if (!error) return
+    lastError = error
+    const retryable =
+      error.name === 'FunctionsFetchError' ||
+      /failed to send a request/i.test(String(error.message || ''))
+    if (!retryable) break
+  }
+  throw new Error(appleIapVerifyUserMessage(lastError, 'Could not verify App Store purchase.'))
+}
+
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {{
@@ -98,18 +133,14 @@ async function beginAppleIapIntent(supabaseClient, intent) {
     err.code = 'CHECKOUT_AUTH_REQUIRED'
     throw err
   }
-  const { error } = await supabaseClient.functions.invoke('apple-iap-verify', {
-    body: {
-      action: 'begin',
-      product_id: intent.productId,
-      kind: intent.kind,
-      product_slug: intent.productSlug || null,
-      creator_user_id: intent.creatorUserId || null,
-      fan_tier_key: intent.fanTierKey || null,
-    },
-    headers: { Authorization: `Bearer ${session.access_token}` },
+  await invokeAppleIapVerify(supabaseClient, session, {
+    action: 'begin',
+    product_id: intent.productId,
+    kind: intent.kind,
+    product_slug: intent.productSlug || null,
+    creator_user_id: intent.creatorUserId || null,
+    fan_tier_key: intent.fanTierKey || null,
   })
-  if (error) throw new Error(error.message || 'Could not start App Store purchase.')
   return session
 }
 
@@ -139,21 +170,11 @@ export async function startEdgeIapPurchase(supabaseClient, productSlug, options 
   const productId = iapProductIdForPlan(productSlug, options.priceInterval || 'monthly')
   if (!productId) throw new Error('This plan is not available for in-app purchase.')
 
-  let session
-  try {
-    session = await beginAppleIapIntent(supabaseClient, {
-      productId,
-      kind: 'platform',
-      productSlug,
-    })
-  } catch {
-    session = await restoreSupabaseSession(supabaseClient)
-    if (!session?.user?.id) {
-      const err = new Error('Sign in to continue to checkout.')
-      err.code = 'CHECKOUT_AUTH_REQUIRED'
-      throw err
-    }
-  }
+  const session = await beginAppleIapIntent(supabaseClient, {
+    productId,
+    kind: 'platform',
+    productSlug,
+  })
 
   const purchase = await edgeNativeInvoke('purchaseStoreProduct', {
     productId,
@@ -163,20 +184,16 @@ export async function startEdgeIapPurchase(supabaseClient, productSlug, options 
   const outcome = purchaseOutcome(purchase)
   if (!outcome.ok) return outcome
 
-  const { error } = await supabaseClient.functions.invoke('apple-iap-verify', {
-    body: {
-      action: 'confirm',
-      product_slug: productSlug,
-      product_id: productId,
-      price_interval: purchase?.priceInterval || options.priceInterval || null,
-      transaction_id: purchase?.transactionId || null,
-      original_transaction_id: purchase?.originalTransactionId || null,
-      signed_transaction_info: purchase?.signedTransactionInfo || null,
-      expires_at: purchase?.expiresAt || null,
-    },
-    headers: { Authorization: `Bearer ${session.access_token}` },
+  await invokeAppleIapVerify(supabaseClient, session, {
+    action: 'confirm',
+    product_slug: productSlug,
+    product_id: productId,
+    price_interval: purchase?.priceInterval || options.priceInterval || null,
+    transaction_id: purchase?.transactionId || null,
+    original_transaction_id: purchase?.originalTransactionId || null,
+    signed_transaction_info: purchase?.signedTransactionInfo || null,
+    expires_at: purchase?.expiresAt || null,
   })
-  if (error) throw new Error(error.message || 'Could not verify App Store purchase.')
 
   return { ok: true, via: 'iap' }
 }
@@ -210,22 +227,18 @@ export async function startCreatorFanIapPurchase(supabaseClient, creatorUserId, 
   const outcome = purchaseOutcome(purchase)
   if (!outcome.ok) return outcome
 
-  const { error } = await supabaseClient.functions.invoke('apple-iap-verify', {
-    body: {
-      action: 'confirm',
-      kind: 'creator_fan',
-      creator_user_id: creatorId,
-      fan_tier_key: fanTierKey,
-      product_id: productId,
-      price_interval: purchase?.priceInterval || 'monthly',
-      transaction_id: purchase?.transactionId || null,
-      original_transaction_id: purchase?.originalTransactionId || null,
-      signed_transaction_info: purchase?.signedTransactionInfo || null,
-      expires_at: purchase?.expiresAt || null,
-    },
-    headers: { Authorization: `Bearer ${session.access_token}` },
+  await invokeAppleIapVerify(supabaseClient, session, {
+    action: 'confirm',
+    kind: 'creator_fan',
+    creator_user_id: creatorId,
+    fan_tier_key: fanTierKey,
+    product_id: productId,
+    price_interval: purchase?.priceInterval || 'monthly',
+    transaction_id: purchase?.transactionId || null,
+    original_transaction_id: purchase?.originalTransactionId || null,
+    signed_transaction_info: purchase?.signedTransactionInfo || null,
+    expires_at: purchase?.expiresAt || null,
   })
-  if (error) throw new Error(error.message || 'Could not verify App Store purchase.')
 
   return { ok: true, via: 'iap' }
 }
@@ -247,8 +260,8 @@ export async function restoreEdgeIapPurchases(supabaseClient) {
   let restored = 0
   for (const tx of transactions) {
     if (!tx?.signedTransactionInfo && !tx?.originalTransactionId) continue
-    const { error } = await supabaseClient.functions.invoke('apple-iap-verify', {
-      body: {
+    try {
+      await invokeAppleIapVerify(supabaseClient, session, {
         action: 'confirm',
         restore: true,
         product_slug: tx.productSlug || null,
@@ -258,10 +271,11 @@ export async function restoreEdgeIapPurchases(supabaseClient) {
         original_transaction_id: tx.originalTransactionId || null,
         signed_transaction_info: tx.signedTransactionInfo || null,
         expires_at: tx.expiresAt || null,
-      },
-      headers: { Authorization: `Bearer ${session.access_token}` },
-    })
-    if (!error) restored += 1
+      })
+      restored += 1
+    } catch {
+      // Keep walking other transactions. Caller shows a generic miss if none land.
+    }
   }
   return { ok: true, count: restored, via: 'iap' }
 }

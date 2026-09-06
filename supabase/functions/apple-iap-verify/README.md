@@ -17,6 +17,8 @@ supabase functions deploy apple-iap-verify --project-ref kcosfvmreeiosdjdzycb
 
 Prod only when Ryan asks. SQL **`20260905120000`** must be applied first.
 
+Deployed on **test** 2026-09-05 after a sandbox purchase 404'd. Prod only when Ryan asks.
+
 ## Still owed
 
 Full x5c chain to Apple Root CA G3 on purchase confirm (device StoreKit already checks; server currently decodes claims). Refund / renew / revoke notifications are **`apple-iap-notify`**.

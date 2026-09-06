@@ -841,6 +841,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 - [ ] **`lounge-news-poll`** (Market Edge — Finnhub allowlist → score → auto-publish) — deploy on **test** with **`FINNHUB_API_KEY`**; migrations **`20260703140000`** + **`20260705020000`**; cron **`lounge_news_poll_market_edge`** every 3 min or Bot Portal **Poll now**. Source: `supabase/functions/lounge-news-poll/README.md`.
 
+- [x] **`apple-iap-verify`** (StoreKit begin + confirm) — deployed **test** (2026-09-05 night). Was **404** … sandbox Pro purchase succeeded on Apple, then the IPA showed `Failed to send a request to the Edge Function`. SQL **`20260905120000`** recorded. Prod when Ryan asks. Source: `supabase/functions/apple-iap-verify/README.md`.
 - [x] **`apple-iap-notify`** (App Store Server Notifications V2) — deployed **test** (2026-09-05). SQL **`20260905140000`**. Paste ASC sandbox URL. Prod when Ryan asks. Source: `supabase/functions/apple-iap-notify/README.md`.
 
 - [x] **Creator fan promo codes** — migration **`20260903120000`**, Edge **`creator-fan-promo`** + **`creator-fan-checkout`** promo support. Settings manage codes; subscribe modal optional field. Creator eats discount; platform **20%** of final paid amount (was 30%). Deployed **test + prod** with frontend **`main`**.
@@ -2850,6 +2851,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-05:** **`apple-iap-verify` was missing on test.** Sandbox Pro IAP charged, confirm 404'd as a fetch error. Deployed to `kcosfvmreeiosdjdzycb`. Client no longer opens StoreKit if begin fails. **`1.4.92`.** Restore purchases to grant the already-paid sandbox sub.
 - **2026-09-05:** **IPA Subscribe carousel hides Lifetime again.** Apple IAP list + offer wizard still cap at `$1,000`. Web still shows the card. **`1.4.91`.**
 - **2026-09-05:** **IPA Subscribe carousel shows Lifetime again.** Starter + Pro + Lifetime, same as web. **`1.4.90`.** Superseded same night.
 - **2026-09-05:** **Ryan signed off** Slots subscribe sheet height at `89.96dvh`. **`1.4.89`.**

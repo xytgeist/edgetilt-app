@@ -3662,6 +3662,12 @@ html.light [data-subscribe-modal] .subscribe-plan-compare-web .text-cyan-200 {
 html.light [data-subscribe-modal] .subscribe-plan-compare-web-note {
   color: #3b82f6 !important;
 }
+html.light [data-subscribe-modal] .subscribe-plan-compare-store.subscribe-plan-compare--on {
+  box-shadow: inset 0 0 0 2px #a1a1aa !important;
+}
+html.light [data-subscribe-modal] .subscribe-plan-compare-web.subscribe-plan-compare--on {
+  box-shadow: inset 0 0 0 2px rgba(37, 99, 235, 0.55) !important;
+}
 
 /* Starter weekly drop scratch modal - light mode */
 html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog {

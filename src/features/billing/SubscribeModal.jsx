@@ -191,21 +191,54 @@ function PlanComparePrices({
   webLabel = 'Web',
   storeNote = '',
   webNote = '',
+  selectedVia = 'web',
+  onSelect,
+  disabled = false,
 }) {
   return (
-    <div className="subscribe-plan-compare-prices mt-3 grid grid-cols-2 gap-2">
-      <div className="subscribe-plan-compare-store rounded-xl px-2.5 py-2 ring-1 ring-white/10">
+    <div className="subscribe-plan-compare-prices mt-3 grid grid-cols-2 gap-2" role="tablist" aria-label="Checkout">
+      <button
+        type="button"
+        role="tab"
+        aria-selected={selectedVia === 'iap'}
+        disabled={disabled}
+        onClick={(event) => {
+          event.stopPropagation()
+          onSelect?.('iap')
+        }}
+        className={[
+          'subscribe-plan-compare-store rounded-xl px-2.5 py-2 text-left touch-manipulation transition-[box-shadow,opacity] disabled:opacity-50',
+          selectedVia === 'iap'
+            ? 'subscribe-plan-compare--on ring-2 ring-white/45'
+            : 'ring-1 ring-white/10 opacity-55',
+        ].join(' ')}
+      >
         <div className="text-xl font-bold tracking-tight text-white">{ctaPriceLabel(storePrice)}</div>
         <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">{storeLabel}</p>
         {storeNote ? <p className="mt-0.5 text-[10px] leading-snug text-zinc-500">{storeNote}</p> : null}
-      </div>
-      <div className="subscribe-plan-compare-web rounded-xl px-2.5 py-2 ring-1 ring-cyan-400/25">
+      </button>
+      <button
+        type="button"
+        role="tab"
+        aria-selected={selectedVia === 'web'}
+        disabled={disabled}
+        onClick={(event) => {
+          event.stopPropagation()
+          onSelect?.('web')
+        }}
+        className={[
+          'subscribe-plan-compare-web rounded-xl px-2.5 py-2 text-left touch-manipulation transition-[box-shadow,opacity] disabled:opacity-50',
+          selectedVia === 'web'
+            ? 'subscribe-plan-compare--on ring-2 ring-cyan-400/70'
+            : 'ring-1 ring-cyan-400/25 opacity-55',
+        ].join(' ')}
+      >
         <div className="text-xl font-bold tracking-tight text-cyan-200">{ctaPriceLabel(webPrice)}</div>
         <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wide text-cyan-300/80">{webLabel}</p>
         {webNote ? (
           <p className="subscribe-plan-compare-web-note mt-0.5 text-[10px] leading-snug text-cyan-300/70">{webNote}</p>
         ) : null}
-      </div>
+      </button>
     </div>
   )
 }
@@ -381,6 +414,7 @@ export default function SubscribeModal({
   const [selectedPlan, setSelectedPlan] = useState(defaultPlan)
   const [fullInterval, setFullInterval] = useState(/** @type {'monthly' | 'annual'} */ ('monthly'))
   const [starterInterval, setStarterInterval] = useState(/** @type {'monthly' | 'annual'} */ ('monthly'))
+  const [payVia, setPayVia] = useState(/** @type {'iap' | 'web'} */ ('web'))
   const [activeSlide, setActiveSlide] = useState(1)
   /** Slides that reposition instantly on wrap (avoids flying across the deck). */
   const [instantSlideIndexes, setInstantSlideIndexes] = useState(() => new Set())
@@ -417,6 +451,7 @@ export default function SubscribeModal({
     setRestoreBusy(false)
     setStoreProductsById(new Map())
     setUsStorefront(null)
+    setPayVia('web')
     setInstantSlideIndexes(new Set())
     setDragPx(0)
     setIsDragging(false)
@@ -623,6 +658,10 @@ export default function SubscribeModal({
       // ignore
     }
   }, [])
+
+  useEffect(() => {
+    if (!showWebComparePrice) setPayVia('iap')
+  }, [showWebComparePrice])
 
   if (!open || typeof document === 'undefined') return null
 
@@ -1007,6 +1046,9 @@ export default function SubscribeModal({
                             starterInterval,
                             starterInterval === 'annual' ? starterAnnualList : starterList,
                           )}
+                          selectedVia={payVia}
+                          onSelect={setPayVia}
+                          disabled={busy}
                         />
                       ) : (
                         <>
@@ -1158,6 +1200,9 @@ export default function SubscribeModal({
                             fullInterval,
                             fullInterval === 'annual' ? fullAnnualList : fullMonthlyList,
                           )}
+                          selectedVia={payVia}
+                          onSelect={setPayVia}
+                          disabled={busy}
                         />
                       ) : (
                         <>
@@ -1257,6 +1302,9 @@ export default function SubscribeModal({
                           <PlanComparePrices
                             storePrice={lifetimeStoreProduct.displayPrice}
                             webPrice={lifetimeWebPrice}
+                            selectedVia={payVia}
+                            onSelect={setPayVia}
+                            disabled={busy}
                           />
                           <p className="mt-1 text-[11px] text-zinc-500">One-time</p>
                         </>
@@ -1316,32 +1364,24 @@ export default function SubscribeModal({
               {error ? <p className="mt-2 text-center text-sm text-red-400">{error}</p> : null}
 
               {canIapSelected ? (
-                <div className="subscribe-modal-dual-cta mt-4 grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    disabled={checkoutDisabled}
-                    onClick={() => void handleCheckout('iap')}
-                    className="subscribe-modal-iap-btn min-h-12 shrink-0 rounded-2xl border border-cyan-400/50 bg-zinc-900/80 px-2 py-2 text-center text-[13px] font-bold leading-snug text-cyan-300 touch-manipulation hover:bg-zinc-800 hover:text-cyan-200 disabled:opacity-50"
-                  >
-                    {busy
+                <button
+                  type="button"
+                  disabled={checkoutDisabled}
+                  onClick={() => void handleCheckout(payVia)}
+                  className="subscribe-modal-checkout-btn mt-4 w-full min-h-12 shrink-0 rounded-2xl bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 disabled:opacity-50 font-bold text-white touch-manipulation shadow-[0_8px_28px_rgba(6,182,212,0.28)]"
+                >
+                  {busy
+                    ? payVia === 'iap'
                       ? 'Purchasing…'
-                      : selectedIapCtaPrice
+                      : 'Opening Safari…'
+                    : payVia === 'iap'
+                      ? selectedIapCtaPrice
                         ? `Subscribe on iPhone · ${selectedIapCtaPrice}`
-                        : checkoutLabel}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={checkoutDisabled}
-                    onClick={() => void handleCheckout('web')}
-                    className="subscribe-modal-iap-btn min-h-12 shrink-0 rounded-2xl border border-cyan-400/50 bg-zinc-900/80 px-2 py-2 text-center text-[13px] font-bold leading-snug text-cyan-300 touch-manipulation hover:bg-zinc-800 hover:text-cyan-200 disabled:opacity-50"
-                  >
-                    {busy
-                      ? 'Opening Safari…'
+                        : checkoutLabel
                       : selectedWebCtaPrice
                         ? `Subscribe on the web · ${selectedWebCtaPrice}`
                         : 'Subscribe on the web'}
-                  </button>
-                </div>
+                </button>
               ) : (
                 <button
                   type="button"

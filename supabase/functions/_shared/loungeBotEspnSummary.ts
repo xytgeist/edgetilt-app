@@ -15,6 +15,10 @@ import { shortDisplayName } from './loungeBotOddsCaption.ts'
 
 const ESPN_SCOREBOARD_MS = 8_000
 const ESPN_SITE = 'https://site.api.espn.com/apis/site/v2/sports'
+const ESPN_HEADERS = {
+  Accept: 'application/json',
+  'User-Agent': 'Mozilla/5.0 (compatible; EdgeTiltGrade/1.4.76; +https://edgetilt.com)',
+}
 
 export type EspnCompletedEvent = {
   kind: 'team' | 'person'
@@ -138,8 +142,10 @@ export async function fetchEspnCompletedScoreboard(sportKey: string): Promise<Es
   const ac = new AbortController()
   const timer = setTimeout(() => ac.abort(), ESPN_SCOREBOARD_MS)
   try {
-    const res = await fetch(spec.url, { headers: { Accept: 'application/json' }, signal: ac.signal })
-    if (!res.ok) return []
+    const res = await fetch(spec.url, { headers: ESPN_HEADERS, signal: ac.signal })
+    if (!res.ok) {
+      throw new Error(`ESPN scoreboard ${sportKey}: HTTP ${res.status}`)
+    }
     const data = await res.json() as { events?: unknown[] }
     const events = Array.isArray(data?.events) ? data.events : []
     const out: EspnCompletedEvent[] = []
@@ -198,7 +204,7 @@ export async function fetchEspnCompletedScoreboard(sportKey: string): Promise<Es
     return out
   } catch (err) {
     console.warn(`ESPN completed scoreboard failed for ${sportKey}:`, err)
-    return []
+    throw err
   } finally {
     clearTimeout(timer)
   }
@@ -273,7 +279,7 @@ export async function fetchEspnGameSummary(
   if (isMma) {
     try {
       const ufcUrl = 'https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard'
-      const res = await fetch(ufcUrl, { headers: { Accept: 'application/json' }, signal: espnAbort.signal })
+      const res = await fetch(ufcUrl, { headers: ESPN_HEADERS, signal: espnAbort.signal })
       if (!res.ok) return null
       const data = await res.json()
       const events: any[] = data?.events || []
@@ -326,7 +332,7 @@ export async function fetchEspnGameSummary(
 
   try {
     const res = await fetch(scoreboardUrl, {
-      headers: { Accept: 'application/json' },
+      headers: ESPN_HEADERS,
       signal: espnAbort.signal,
     })
     if (!res.ok) return null
@@ -364,7 +370,7 @@ export async function fetchEspnGameSummary(
     // Now fetch detailed game summary / boxscore
     const summaryUrl = `https://site.api.espn.com/apis/site/v2/sports/${league}/summary?event=${espnGameId}`
     const sumRes = await fetch(summaryUrl, {
-      headers: { Accept: 'application/json' },
+      headers: ESPN_HEADERS,
       signal: espnAbort.signal,
     })
 

@@ -2156,9 +2156,19 @@ export async function gradePendingPicks(
   const espnBoards = new Map<string, EspnCompletedEvent[]>()
   const loadEspnBoard = async (sportKey: string): Promise<EspnCompletedEvent[]> => {
     if (espnBoards.has(sportKey)) return espnBoards.get(sportKey) || []
-    const board = await fetchEspnCompletedScoreboard(sportKey)
-    espnBoards.set(sportKey, board)
-    return board
+    try {
+      const board = await fetchEspnCompletedScoreboard(sportKey)
+      espnBoards.set(sportKey, board)
+      if (!board.length && /mma|ufc/i.test(sportKey)) {
+        errors.push(`ESPN ${sportKey}: empty completed scoreboard`)
+      }
+      return board
+    } catch (err: unknown) {
+      espnBoards.set(sportKey, [])
+      const msg = err instanceof Error ? err.message : String(err)
+      errors.push(msg)
+      return []
+    }
   }
 
   const resolveEventScores = async (

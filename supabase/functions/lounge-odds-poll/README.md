@@ -11,7 +11,7 @@ Background odds poller for sports bots.
 | `daily_slates` | Post **one Coffee & Covers thread** per bot/day (covers in root, best lines in thread parts per sport). Legacy slate check-ins when `coffee_covers_enabled = false`. |
 | `best_bet_hour` | Post **one Best Bet of the Hour** per bot per PT hour — strongest +EV across ML, spreads, and totals (min **6%** default, **≥ 5 books**). Tie-break NFL > NBA > MLB. |
 | `value_bet_radar` | Post **2–3 strongest +EV plays** per PT half-hour during **8am–10pm PT** (min **5%** default, **≥ 4 books**). Sport variety when possible. Silent if fewer than 2 qualify. |
-| `grade_picks` | Settle pending `lounge_bot_picks` vs Odds API scores (`completed` + kickoff ≥90m). One invoke grades **all** running odds bots. Cron **`lounge_odds_grade_picks_poll`** at **:22** (not :15) 10am–11pm PT, 150s pg_net budget. |
+| `grade_picks` | Settle pending `lounge_bot_picks` vs Odds API scores (`completed` + kickoff ≥90m), then ESPN completed scoreboards when Odds API has no row (UFC). One invoke grades **all** running odds bots. Cron **`lounge_odds_grade_picks_poll`** at **:22** (not :15) 10am–11pm PT, 150s pg_net budget. |
 
 ### Coffee & Covers (morning cron)
 

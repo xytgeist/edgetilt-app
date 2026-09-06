@@ -179,7 +179,8 @@ Track implementation in `docs/test-buildout-backlog.md` when Phase 1 work starts
 | 2026-09-03 | **Fan platform fee → 20%** EdgeTilt / **80%** creator (`CREATOR_FAN_PLATFORM_FEE_PERCENT`). Listed in Settings enable copy + go-live callout. New checkouts only … existing Stripe subs keep fee set at signup. |
 | 2026-09-03 | **Creator fan promo codes shipped:** table `creator_fan_promo_codes`, Edge `creator-fan-promo` (list/create/deactivate) + checkout `promo_code` → Stripe `discounts.promotion_code`. Policy: creator eats discount; platform fee is % of final price. |
 | 2026-09-05 | **IAP dual-path (code):** same `user_subscriptions` / `creator_subscriptions` rows for Stripe or Apple (`billing_provider`). Fan IAP is one StoreKit SKU per tier, bound to a creator via `apple_iap_intents`. IPA: web/Safari still offered. ASC products + ASSN still owed. |
-| 2026-09-05 | **IAP refund + ASSN (test):** `beginRefundRequest` + Edge `apple-iap-notify` revoke on REFUND/REVOKE/EXPIRED. SQL `20260905140000`. Prod URL + SQL when Ryan promotes. |
+| 2026-09-05 | **IAP dual-path + ASSN on prod:** SQL `20260905120000` + `20260905140000`, Edge `apple-iap-verify` + `apple-iap-notify` on `jtjgtucumuoswnbauxry`. Ryan pastes the Production ASSN URL. |
+| 2026-09-05 | **IAP refund + ASSN (test):** `beginRefundRequest` + Edge `apple-iap-notify` revoke on REFUND/REVOKE/EXPIRED. SQL `20260905140000`. |
 | 2026-09-05 | **Edge Pro Settings IPA unlock card:** IAP `$11.49` only. No web `$9.99` on that card. |
 | 2026-09-05 | **Edge Pro Settings unlock card (US IPA):** App Store `$11.49` + web `$9.99`. CTAs side by side (iPhone outline, web filled). Copy: markdown, no ads, 10k posts. Badge dropped. |
 | 2026-09-05 | **Edge Pro Settings always prints web `$9.99`.** Storefront gate had hidden it. |

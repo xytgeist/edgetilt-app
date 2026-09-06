@@ -75,9 +75,13 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-05 … IAP dual-path on prod
+
+**I am Mac Theo.** Promoted IAP to **`jtjgtucumuoswnbauxry`**: SQL **`20260905120000`** + **`20260905140000`**, redeployed **`apple-iap-verify`** + **`apple-iap-notify`**, then **`test` → `main`**. Verify probe 401. Ryan pastes Production ASSN V2 URL `https://jtjgtucumuoswnbauxry.supabase.co/functions/v1/apple-iap-notify`. Do not Add for Review. **`1.4.92`.**
+
 ### Mac Theo 2026-09-05 … apple-iap-verify was 404 on test
 
-**I am Mac Theo.** Sandbox Slots Edge Pro IAP showed Apple "You're all set," then `Failed to send a request to the Edge Function`. Function was **not deployed** on `kcosfvmreeiosdjdzycb` (404, no CORS → fetch error). Deployed. Client now fails closed before StoreKit and retries confirm. **`1.4.92`.** **Ryan signed off:** Restore granted the sandbox Pro. Prod function still not deployed unless he asks.
+**I am Mac Theo.** Sandbox Slots Edge Pro IAP showed Apple "You're all set," then `Failed to send a request to the Edge Function`. Function was **not deployed** on `kcosfvmreeiosdjdzycb` (404, no CORS → fetch error). Deployed. Client now fails closed before StoreKit and retries confirm. **`1.4.92`.** **Ryan signed off:** Restore granted the sandbox Pro. Promoted to prod same night.
 
 ### Mac Theo 2026-09-05 … Lifetime card off IPA carousel
 

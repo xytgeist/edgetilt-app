@@ -9,15 +9,16 @@ StoreKit purchase confirm + short-lived intent for EdgeiOS.
 
 Fan SKUs are one App Store product per tier (`com.edgetilt.app.fan_tier_499.monthly` …). The creator is **not** in the receipt. The begin intent is what stops a cheap tier attaching to an expensive room.
 
-## Deploy (test)
+## Deploy
 
 ```bash
 supabase functions deploy apple-iap-verify --project-ref kcosfvmreeiosdjdzycb
+supabase functions deploy apple-iap-verify --project-ref jtjgtucumuoswnbauxry
 ```
 
-Prod only when Ryan asks. SQL **`20260905120000`** must be applied first.
+SQL **`20260905120000`** must be applied first.
 
-Deployed on **test** 2026-09-05 after a sandbox purchase 404'd. Prod only when Ryan asks.
+Deployed **test** 2026-09-05 after a sandbox purchase 404'd. Deployed **prod** 2026-09-05 (Ryan promote).
 
 ## Still owed
 

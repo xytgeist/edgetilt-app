@@ -4,24 +4,29 @@ App Store Server Notifications V2. Apple POSTs `{ signedPayload }` when a purcha
 
 `verify_jwt = false` in `supabase/config.toml`. Auth is Apple's signature, not a Supabase JWT.
 
-## Deploy (test)
+## Deploy
 
 ```bash
 supabase functions deploy apple-iap-notify --project-ref kcosfvmreeiosdjdzycb
+supabase functions deploy apple-iap-notify --project-ref jtjgtucumuoswnbauxry
 ```
 
-Prod only when Ryan asks.
+Deployed **test + prod** 2026-09-05.
 
 ## App Store Connect
 
 App → General → App Information → App Store Server Notifications.
 
-Sandbox URL (test app):
+Sandbox URL:
 
 `https://kcosfvmreeiosdjdzycb.supabase.co/functions/v1/apple-iap-notify`
+
+Production URL (paste this):
+
+`https://jtjgtucumuoswnbauxry.supabase.co/functions/v1/apple-iap-notify`
 
 Version 2. Send Test Notification after the URL is saved.
 
 ## Still owed
 
-Full x5c chain to Apple Root CA G3 (leaf signature + bundle id is live). Production URL on `jtjgtucumuoswnbauxry` when Ryan promotes.
+Full x5c chain to Apple Root CA G3 (leaf signature + bundle id is live). Ryan still pastes the Production URL in ASC.

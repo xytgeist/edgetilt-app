@@ -98,7 +98,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [x] **Billing v1 (US) Safari link-out:** Stripe Checkout / portal / Connect never `location.assign` inside EdgeiOS … `openExternalBillingUrl` → `openInSafari`. StoreKit IAP deferred to v1.1. Counsel + App Review notes still before submit.
 - [ ] **Store listing:** icon, splash, privacy nutrition, permission copy.
 - [x] **App Information leftovers (2026-09-06):** Age Ratings saved (calculated 16+, override **18+** for ToS 18+; Brazil 19+). Content Rights Yes (third-party / UGC). Encryption: do not upload docs … Xcode `ITSAppUsesNonExemptEncryption = NO`. Vietnam Game License / Medical Device N/A.
-- [ ] **DSA trader (still owed):** ASC still says **non-trader**. Flipping to trader needs Ryan's legal business name, address, phone, email, and payment-account verification. Do not invent those.
+- [ ] **DSA trader (still owed):** ASC still says **non-trader**. Ryan submitted Individual → **Digiverse Ventures LLC** (Apple: one business day). After the org flip, trader as the LLC (company address / phone / email). Do not invent those. Do not open a second developer account.
 
 ### Native gap checklist (audit 2026-08-23)
 
@@ -2854,6 +2854,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-06:** **Apple Individual → Org convert submitted.** Ryan asked Apple to switch the EdgeTilt team to **Digiverse Ventures LLC**. Reply owed within one business day. Same app / IAP / Age Ratings. DSA trader waits on that flip. Do not Add for Review.
 - **2026-09-06:** **ASC App Information leftovers (Mac).** EdgeTilt `6806401093`: Age Ratings questionnaire saved (UGC / social / chat / ads / unrestricted web; gambling and simulated gambling None). Calculated 16+, override **18+**. Content Rights already Yes. Encryption Upload left empty. DSA still **non-trader** until Ryan supplies trader compliance details. Do not Add for Review.
 - **2026-09-05:** **Apple IAP dual-path promoted to prod.** SQL **`20260905120000`** + **`20260905140000`** on **`jtjgtucumuoswnbauxry`**. Redeployed **`apple-iap-verify`** + **`apple-iap-notify`**. Probe 401 / handler-alive. Frontend via **`test` → `main`**. Ryan still pastes the Production ASSN URL. **`1.4.92`.**
 - **2026-09-05:** **`apple-iap-verify` was missing on test.** Sandbox Pro IAP charged, confirm 404'd as a fetch error. Deployed to `kcosfvmreeiosdjdzycb`. Client no longer opens StoreKit if begin fails. **`1.4.92`.** **Ryan signed off:** Restore purchases granted the already-paid sandbox Pro.

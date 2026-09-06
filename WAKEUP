@@ -75,9 +75,13 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-06 … Individual → Org convert submitted
+
+**I am Mac Theo.** Ryan submitted the Apple membership convert: Individual → **Digiverse Ventures LLC**. Apple said they will reply within **one business day**. Same team / same app. Do not open a second developer account. Do not redo Age Ratings or IAP. DSA stays **non-trader** until the org flip lands, then trader as the LLC. Do not Add for Review.
+
 ### Mac Theo 2026-09-06 … ASC App Information leftovers
 
-**I am Mac Theo.** EdgeTilt (`6806401093`) App Information: Age Ratings saved (calculated 16+, override **18+** for ToS). Content Rights Yes. Encryption Upload left empty (`ITSAppUsesNonExemptEncryption = NO`). DSA still **non-trader** … trader flip needs Ryan's legal address / phone / email. Do not Add for Review.
+**I am Mac Theo.** EdgeTilt (`6806401093`) App Information: Age Ratings saved (calculated 16+, override **18+** for ToS). Content Rights Yes. Encryption Upload left empty (`ITSAppUsesNonExemptEncryption = NO`). DSA still **non-trader** until the org convert lands. Do not Add for Review.
 
 ### Mac Theo 2026-09-06 … Pro-only stream is Edge Pro only
 

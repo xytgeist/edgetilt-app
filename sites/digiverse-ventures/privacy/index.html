@@ -10,22 +10,29 @@
     />
     <link rel="canonical" href="https://digiverse.ventures/privacy" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="theme-color" content="#030704" />
+    <meta name="theme-color" content="#07040c" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Teko:wght@500&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"
+        }
+      }
+    </script>
   </head>
   <body>
-    <canvas id="rain" aria-hidden="true"></canvas>
-    <div class="crt" aria-hidden="true"></div>
-    <div class="vignette" aria-hidden="true"></div>
+    <canvas id="stage" aria-hidden="true"></canvas>
+    <div class="haze" aria-hidden="true"></div>
     <div class="site">
       <header class="top">
-        <a href="/">Digiverse // Ventures</a>
+        <a href="/">Digiverse Ventures</a>
         <nav class="links">
           <a href="/">Verse</a>
           <a href="/privacy" aria-current="page">Privacy</a>
@@ -36,24 +43,24 @@
       <section class="hero">
         <p class="sig">legal</p>
         <h1>Privacy</h1>
-        <p class="meaning">
-          This domain is the company site. Product privacy lives on the product.
-        </p>
+        <p class="lede">Product policy lives on the product. This domain is the company site.</p>
       </section>
-      <section class="panel">
-        <p style="margin:0;color:var(--phos-dim)">
+    </div>
+    <div class="sheet">
+      <div class="wrap">
+        <p style="margin:0;color:var(--mute);max-width:38rem">
           Digiverse Ventures, LLC is the operating company behind EDGE / EdgeTilt
           and Sharpe Syndicate. Counsel-reviewed EdgeTilt privacy:
           <a href="https://edgetilt.com/privacy">edgetilt.com/privacy</a>.
           Questions:
           <a href="mailto:contact@digiverse.ventures">contact@digiverse.ventures</a>.
         </p>
-      </section>
-      <footer>
-        <span>© 2026 Digiverse Ventures, LLC</span>
-        <a href="/">Verse</a>
-      </footer>
+        <footer>
+          <span>© 2026 Digiverse Ventures, LLC</span>
+          <a href="/">Verse</a>
+        </footer>
+      </div>
     </div>
-    <script src="/main.js" defer></script>
+    <script type="module" src="/world.js"></script>
   </body>
 </html>

@@ -18,23 +18,31 @@
       content="Digital universe. Wyoming LLC. EDGE and Sharpe Syndicate."
     />
     <meta name="twitter:card" content="summary" />
-    <meta name="theme-color" content="#030704" />
+    <meta name="theme-color" content="#07040c" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Teko:wght@500&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"
+        }
+      }
+    </script>
   </head>
   <body>
-    <canvas id="rain" aria-hidden="true"></canvas>
-    <div class="crt" aria-hidden="true"></div>
-    <div class="vignette" aria-hidden="true"></div>
+    <canvas id="stage" aria-hidden="true"></canvas>
+    <div class="haze" aria-hidden="true"></div>
+    <div class="glass-rain" aria-hidden="true"></div>
 
     <div class="site">
       <header class="top">
-        <a href="/">Digiverse // Ventures</a>
+        <a href="/">Digiverse Ventures</a>
         <nav class="links">
           <a href="/" aria-current="page">Verse</a>
           <a href="/privacy">Privacy</a>
@@ -44,28 +52,30 @@
       </header>
 
       <section class="hero">
-        <p class="sig">portmanteau · digital + universe</p>
+        <p class="sig">digital universe</p>
         <h1>Digiverse</h1>
-        <p class="meaning">
-          A <strong>digital universe</strong>. The neo-techno age: life runs on a
-          construct of code, markets, and risk. We do not sell a token. We own
-          worlds inside the verse.
+        <p class="lede">
+          The analog world is running out of sky. What remains is a verse of
+          markets, models, and people who still take the bet. We own worlds
+          inside it.
         </p>
       </section>
+    </div>
 
-      <section class="panel">
-        <h2>Nodes</h2>
-        <div class="nodes">
-          <a class="node" href="https://edgetilt.com">
-            <span class="id">01 · social / tools</span>
+    <div class="sheet">
+      <div class="wrap">
+        <h2>Holdings</h2>
+        <div class="hold">
+          <a class="card" href="https://edgetilt.com">
+            <span>01 · social / tools</span>
             <h3>EDGE / EdgeTilt</h3>
             <p>
               Platform for people who take risk for a living. Advantage play, poker,
               markets, lounge.
             </p>
           </a>
-          <a class="node" href="https://sharpesyndicate.com">
-            <span class="id">02 · sports / models</span>
+          <a class="card" href="https://sharpesyndicate.com">
+            <span>02 · sports / models</span>
             <h3>Sharpe Syndicate</h3>
             <p>
               Quantitative sports analytics. Four desks. An audited ledger. Models
@@ -73,10 +83,8 @@
             </p>
           </a>
         </div>
-      </section>
 
-      <section class="panel">
-        <h2>Entity</h2>
+        <h2 style="margin-top: 2rem">Entity</h2>
         <dl>
           <dt>Legal name</dt>
           <dd>Digiverse Ventures, LLC</dd>
@@ -93,13 +101,14 @@
             <a href="https://edgetilt.com/guidelines">Guidelines</a>
           </dd>
         </dl>
-      </section>
 
-      <footer>
-        <span>© 2026 Digiverse Ventures, LLC</span>
-        <a href="mailto:contact@digiverse.ventures">contact@digiverse.ventures</a>
-      </footer>
+        <footer>
+          <span>© 2026 Digiverse Ventures, LLC</span>
+          <a href="mailto:contact@digiverse.ventures">contact@digiverse.ventures</a>
+        </footer>
+      </div>
     </div>
-    <script src="/main.js" defer></script>
+
+    <script type="module" src="/world.js"></script>
   </body>
 </html>

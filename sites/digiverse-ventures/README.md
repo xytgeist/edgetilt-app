@@ -1,6 +1,6 @@
 # digiverse.ventures
 
-**Digiverse** = digital + universe. The operating company for a neo-techno age: software worlds inside a matrix of risk (EDGE, Sharpe Syndicate).
+**Digiverse** = digital + universe. Live site is neo-techno / end-of-analog: wet city, not Matrix rain. Swiss paper backup: **`sites/digiverse-ventures-swiss/`**.
 
 Live experiment lives here. Swiss paper backup: **`sites/digiverse-ventures-swiss/`**.
 

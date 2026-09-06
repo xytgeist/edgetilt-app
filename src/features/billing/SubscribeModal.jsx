@@ -1296,36 +1296,16 @@ export default function SubscribeModal({
               {error ? <p className="mt-2 text-center text-sm text-red-400">{error}</p> : null}
 
               {canIapSelected ? (
-                showWebComparePrice ? (
-                <>
-                  <button
-                    type="button"
-                    disabled={checkoutDisabled}
-                    onClick={() => void handleCheckout('web')}
-                    className="subscribe-modal-checkout-btn mt-4 w-full min-h-12 shrink-0 rounded-2xl bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 disabled:opacity-50 font-bold text-white touch-manipulation shadow-[0_8px_28px_rgba(6,182,212,0.28)]"
-                  >
-                    {busy ? 'Opening Safari…' : `Subscribe on the web · ${selectedWebCtaPrice}`}
-                  </button>
+                <div className="subscribe-modal-dual-cta mt-4 grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     disabled={checkoutDisabled}
                     onClick={() => void handleCheckout('iap')}
-                    className="mt-2 w-full min-h-11 shrink-0 rounded-2xl border border-zinc-700/80 bg-zinc-900 px-4 text-sm font-semibold text-zinc-100 touch-manipulation hover:bg-zinc-800 disabled:opacity-50"
-                  >
-                    {busy
-                      ? 'Purchasing…'
-                      : selectedIapCtaPrice
-                        ? `Subscribe on iPhone · ${selectedIapCtaPrice}`
-                        : checkoutLabel}
-                  </button>
-                </>
-                ) : (
-                <>
-                  <button
-                    type="button"
-                    disabled={checkoutDisabled}
-                    onClick={() => void handleCheckout('iap')}
-                    className="subscribe-modal-checkout-btn mt-4 w-full min-h-12 shrink-0 rounded-2xl bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 disabled:opacity-50 font-bold text-white touch-manipulation shadow-[0_8px_28px_rgba(6,182,212,0.28)]"
+                    className={
+                      showWebComparePrice
+                        ? 'subscribe-modal-iap-btn min-h-12 shrink-0 rounded-2xl border border-cyan-400/50 bg-zinc-900/80 px-2 py-2 text-center text-[13px] font-bold leading-snug text-cyan-300 touch-manipulation hover:bg-zinc-800 hover:text-cyan-200 disabled:opacity-50'
+                        : 'subscribe-modal-checkout-btn min-h-12 shrink-0 rounded-2xl bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 disabled:opacity-50 px-2 py-2 text-center text-[13px] font-bold leading-snug text-white touch-manipulation shadow-[0_8px_28px_rgba(6,182,212,0.28)]'
+                    }
                   >
                     {busy
                       ? 'Purchasing…'
@@ -1337,12 +1317,19 @@ export default function SubscribeModal({
                     type="button"
                     disabled={checkoutDisabled}
                     onClick={() => void handleCheckout('web')}
-                    className="mt-2 w-full min-h-11 shrink-0 rounded-2xl border border-zinc-700/80 bg-zinc-900 px-4 text-sm font-semibold text-zinc-100 touch-manipulation hover:bg-zinc-800 disabled:opacity-50"
+                    className={
+                      showWebComparePrice
+                        ? 'subscribe-modal-checkout-btn min-h-12 shrink-0 rounded-2xl bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 disabled:opacity-50 px-2 py-2 text-center text-[13px] font-bold leading-snug text-white touch-manipulation shadow-[0_8px_28px_rgba(6,182,212,0.28)]'
+                        : 'subscribe-modal-iap-btn min-h-12 shrink-0 rounded-2xl border border-cyan-400/50 bg-zinc-900/80 px-2 py-2 text-center text-[13px] font-bold leading-snug text-cyan-300 touch-manipulation hover:bg-zinc-800 hover:text-cyan-200 disabled:opacity-50'
+                    }
                   >
-                    {busy ? 'Opening Safari…' : 'Subscribe on the web'}
+                    {busy
+                      ? 'Opening Safari…'
+                      : showWebComparePrice
+                        ? `Subscribe on the web · ${selectedWebCtaPrice}`
+                        : 'Subscribe on the web'}
                   </button>
-                </>
-                )
+                </div>
               ) : (
                 <button
                   type="button"

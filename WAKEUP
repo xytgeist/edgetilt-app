@@ -75,9 +75,9 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
-### Mac Theo 2026-09-05 … IAP refund sheet + ASSN (test)
+### Mac Theo 2026-09-05 … StoreKit intro still list
 
-**I am Mac Theo.** StoreKit is attaching Slots Edge intros. Dropped the hardcoded founding IAP fallback. Card + iPhone CTA use `introDisplayPrice` from StoreKit only. **`1.4.72`.** Vercel JS... Build 91 Swift is fine.
+**I am Mac Theo.** ASC intros exist. SK2 `introductoryOffer` stayed nil ~2h later (card `$22.99`). **`1.4.73`:** SK1 `introductoryPrice` on `getStoreProducts`, JS founding fallback back, US CTAs side by side (iPhone left cyan text, web right filled). Vercel JS is enough for the buttons + fallback. New IPA for SK1. Do not Add for Review. Do not touch Lifetime.
 
 ### Mac Theo 2026-09-05 … IAP dual-path (code, not live charges)
 

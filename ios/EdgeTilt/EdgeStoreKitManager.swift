@@ -42,7 +42,9 @@ final class EdgeStoreKitManager {
     Task {
       do {
         let ids = Set(productIds.filter { !$0.isEmpty })
+        async let sk1Task = SK1IntroLookup.fetch(ids: ids)
         let products = try await Product.products(for: ids)
+        let sk1ById = await sk1Task
         var rows: [[String: Any]] = []
         for product in products {
           var row: [String: Any] = [
@@ -60,6 +62,9 @@ final class EdgeStoreKitManager {
               row["introPeriodCount"] = offer.periodCount
               row["introPeriodUnit"] = Self.periodUnitName(offer.period.unit)
               row["introPaymentMode"] = Self.paymentModeName(offer.paymentMode)
+              row["introSource"] = "storekit2"
+            } else if let sk1 = sk1ById[product.id] {
+              Self.applySK1Intro(to: &row, product: sk1)
             }
           }
           rows.append(row)
@@ -253,6 +258,83 @@ final class EdgeStoreKitManager {
     case .payUpFront: return "payUpFront"
     default: return ""
     }
+  }
+
+  /// SK2 `introductoryOffer` is often still nil after an ASC save. SK1
+  /// `introductoryPrice` is the discount on the product itself, not eligibility.
+  private static func applySK1Intro(to row: inout [String: Any], product: SKProduct) {
+    guard let discount = product.introductoryPrice else { return }
+    let formatter = NumberFormatter()
+    formatter.numberStyle = .currency
+    formatter.locale = product.priceLocale
+    if let display = formatter.string(from: discount.price), !display.isEmpty {
+      row["introDisplayPrice"] = display
+    }
+    row["introPeriodCount"] = discount.numberOfPeriods
+    row["introPeriodUnit"] = sk1PeriodUnitName(discount.subscriptionPeriod.unit)
+    row["introPaymentMode"] = sk1PaymentModeName(discount.paymentMode)
+    row["introSource"] = "storekit1"
+  }
+
+  private static func sk1PeriodUnitName(_ unit: SKProduct.PeriodUnit) -> String {
+    switch unit {
+    case .day: return "day"
+    case .week: return "week"
+    case .month: return "month"
+    case .year: return "year"
+    @unknown default: return ""
+    }
+  }
+
+  private static func sk1PaymentModeName(_ mode: SKProductDiscount.PaymentMode) -> String {
+    switch mode {
+    case .freeTrial: return "freeTrial"
+    case .payAsYouGo: return "payAsYouGo"
+    case .payUpFront: return "payUpFront"
+    @unknown default: return ""
+    }
+  }
+}
+
+/// StoreKit 1 product request so we can read `introductoryPrice` when SK2
+/// has not attached `introductoryOffer` yet.
+private final class SK1IntroLookup: NSObject, SKProductsRequestDelegate {
+  private var continuation: CheckedContinuation<[String: SKProduct], Never>?
+  private var request: SKProductsRequest?
+  private var retainCycle: SK1IntroLookup?
+
+  static func fetch(ids: Set<String>) async -> [String: SKProduct] {
+    guard !ids.isEmpty else { return [:] }
+    return await withCheckedContinuation { continuation in
+      let lookup = SK1IntroLookup()
+      lookup.continuation = continuation
+      lookup.retainCycle = lookup
+      let req = SKProductsRequest(productIdentifiers: ids)
+      req.delegate = lookup
+      lookup.request = req
+      DispatchQueue.main.async {
+        req.start()
+      }
+    }
+  }
+
+  func productsRequest(_ request: SKProductsRequest, didReceive response: SKProductsResponse) {
+    var map: [String: SKProduct] = [:]
+    for product in response.products {
+      map[product.productIdentifier] = product
+    }
+    finish(map)
+  }
+
+  func request(_ request: SKRequest, didFailWithError error: Error) {
+    finish([:])
+  }
+
+  private func finish(_ map: [String: SKProduct]) {
+    continuation?.resume(returning: map)
+    continuation = nil
+    request = nil
+    retainCycle = nil
   }
 }
 

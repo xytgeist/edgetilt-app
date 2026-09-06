@@ -3636,6 +3636,15 @@ html.light [data-subscribe-modal] .subscribe-modal-checkout-btn {
 html.light [data-subscribe-modal] .subscribe-modal-checkout-btn:hover {
   background-image: linear-gradient(to right, #3b82f6, #60a5fa) !important;
 }
+html.light [data-subscribe-modal] .subscribe-modal-iap-btn {
+  color: #2563eb !important;
+  background-color: #eff6ff !important;
+  border-color: rgba(37, 99, 235, 0.4) !important;
+}
+html.light [data-subscribe-modal] .subscribe-modal-iap-btn:hover {
+  color: #1d4ed8 !important;
+  background-color: #dbeafe !important;
+}
 html.light [data-subscribe-modal] button.border-zinc-700 {
   background-color: #f4f4f5 !important;
 }

@@ -863,7 +863,7 @@ export default function SubscribeModal({
         aria-modal="true"
         aria-labelledby="subscribe-modal-title"
         data-subscribe-modal
-        className="subscribe-modal-shell relative z-10 flex h-[81.6dvh] max-h-[81.6dvh] min-h-[81.6dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[1.75rem] border border-zinc-700/70 bg-zinc-950 shadow-[0_24px_80px_rgba(0,0,0,0.55)] sm:h-[79.9dvh] sm:max-h-[79.9dvh] sm:min-h-[79.9dvh] sm:max-w-2xl sm:rounded-[1.75rem]"
+        className="subscribe-modal-shell relative z-10 flex h-[85.68dvh] max-h-[85.68dvh] min-h-[85.68dvh] w-full max-w-lg flex-col overflow-hidden rounded-t-[1.75rem] border border-zinc-700/70 bg-zinc-950 shadow-[0_24px_80px_rgba(0,0,0,0.55)] sm:h-[83.9dvh] sm:max-h-[83.9dvh] sm:min-h-[83.9dvh] sm:max-w-2xl sm:rounded-[1.75rem]"
       >
         <button
           type="button"

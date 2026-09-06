@@ -92,6 +92,18 @@ export function hasAnySlotsEdgePlan(entitlements) {
   return hasSlotsEdgeStarter(entitlements) || hasSlotsEdge(entitlements)
 }
 
+/**
+ * Author may stay in the Edge Pro-only stream / comment filter.
+ * Slots Edge Pro is not enough. Lifetime + staff match `has_edge_pro_entitlement()`.
+ * @param {{ has_edge_pro?: boolean, role?: string } | null | undefined} profile
+ */
+export function profileHasEdgeProGrant(profile) {
+  if (!profile) return false
+  if (profile.has_edge_pro === true) return true
+  const role = String(profile.role || '').toLowerCase()
+  return role === 'admin' || role === 'moderator'
+}
+
 /** @param {Record<string, { price_interval?: string }> | null | undefined} entitlements @param {string} productSlug @returns {'monthly' | 'annual' | null} */
 export function entitlementPriceInterval(entitlements, productSlug) {
   const raw = entitlements?.[productSlug]?.price_interval

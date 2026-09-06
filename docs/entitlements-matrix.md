@@ -50,6 +50,8 @@ Legend: **Y** = yes · **N** = no · **Own** = only on content you author · **G
 
 ‡ Unless also subscribed to Edge Pro; products stack independently.
 
+Pro-only stream / comment filter uses **`profiles.has_edge_pro`** (`edge-pro`, Slots Edge Lifetime, or staff). The cyan Verified Subscriber checkmark still uses **`has_active_subscription`** (Slots Pro counts).
+
 ### 2.2 Lounge ... author controls (your posts)
 
 | Capability | Free | Edge Pro | Slots Edge* | Creator (monetized) | Staff |
@@ -184,6 +186,7 @@ Track implementation in `docs/test-buildout-backlog.md` when Phase 1 work starts
 | 2026-09-05 | **Edge Pro Settings IPA unlock card:** IAP `$11.49` only. No web `$9.99` on that card. |
 | 2026-09-05 | **Edge Pro Settings unlock card (US IPA):** App Store `$11.49` + web `$9.99`. CTAs side by side (iPhone outline, web filled). Copy: markdown, no ads, 10k posts. Badge dropped. |
 | 2026-09-05 | **Edge Pro Settings always prints web `$9.99`.** Storefront gate had hidden it. |
+| 2026-09-06 | **Pro-only stream is Edge Pro only.** `profiles.has_edge_pro` + migration **`20260906120000`**. Slots Edge Pro authors drop out of the filtered feed / comments. Verified Subscriber checkmark still uses `has_active_subscription`. Lifetime still counts as Edge Pro. **`1.4.94`.** |
 | 2026-09-06 | **Slots Edge Pro does not grant Edge Pro.** Lounge Settings unlock card + viewer Pro gates (`isViewerEdgePro`, reply-gate composer) no longer treat `has_active_subscription` / Slots Pro as Edge Pro. Lifetime + staff still included via `hasEdgePro()`. Author badges still use the legacy profile flag. **`1.4.93`.** |
 | 2026-09-05 | **`apple-iap-verify` deployed on test** after sandbox confirm 404. Client fails closed before StoreKit if begin cannot reach the function. **`1.4.92`.** |
 | 2026-09-05 | **IPA Subscribe carousel hides Lifetime again** until Apple unlocks price points above `$1,000`. Web still shows the card. **`1.4.91`.** |

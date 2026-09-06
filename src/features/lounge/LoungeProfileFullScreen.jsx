@@ -189,7 +189,7 @@ async function hydrateFeedCommentsWithProfiles(supabaseClient, rows) {
   if (authorIds.length > 0) {
     const pr = await supabaseClient
       .from('profiles')
-      .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription')
+      .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription,has_edge_pro')
       .in('user_id', authorIds)
     if (!pr.error && pr.data) {
       profileBy = Object.fromEntries(pr.data.map((p) => [p.user_id, p]))

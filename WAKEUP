@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-06 … Pro-only stream is Edge Pro only
+
+**I am Mac Theo.** Pro-only feed / comment filter now reads `profiles.has_edge_pro` (Edge Pro, Lifetime, staff). Slots Edge Pro stays visible on the Verified Subscriber checkmark via `has_active_subscription`. SQL **`20260906120000`** on test. **`1.4.94`.**
+
 ### Mac Theo 2026-09-06 … Slots Pro leaked Edge Pro + web price missing
 
 **I am Mac Theo.** TestFlight web Edge Pro checkout: `No such price: 'price_1UALrKHy8VbdXOQulyD9ZOkd'` … that Price was not in test-mode Stripe. Created `price_1UCj2NHSxykzMEuFEn1txoxa` and set **`STRIPE_PRICE_EDGE_PRO`** on `kcosfvmreeiosdjdzycb`. Slots Edge Pro IAP (`@investigence`, slug `slots-edge`) wrote Apple billing correctly; Lounge treated `has_active_subscription` as Edge Pro. Client leak fixed. **`1.4.93`.** Web subscribe can retry on the current TestFlight after Vercel picks up `test`. No new IPA required for this JS fix.

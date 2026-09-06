@@ -401,6 +401,70 @@ export async function findRundownEventForMatch(
   ) ?? null
 }
 
+function lastNameToken(name: string): string {
+  const parts = String(name || '').trim().split(/\s+/).filter(Boolean)
+  return (parts[parts.length - 1] || '').toLowerCase().replace(/[^a-z0-9]/g, '')
+}
+
+function rundownParticipantMatch(oddsName: string, team: RundownTeam, person: boolean): boolean {
+  if (teamNamesMatch(oddsName, team)) return true
+  if (!person) return false
+  const last1 = lastNameToken(oddsName)
+  const last2 = lastNameToken(rundownTeamLabel(team) || String(team.name || ''))
+  return last1.length >= 4 && last1 === last2
+}
+
+function isRundownFinalStatus(status: string): boolean {
+  return /FINAL|COMPLETE/i.test(String(status || ''))
+}
+
+/**
+ * Final scores from TheRundown when Odds API `/scores` has no row.
+ * Uses the live cache so a just-finished fight is not stuck on the 45m publish cache.
+ */
+export async function matchRundownFinalScore(input: {
+  sportKey: string
+  homeTeam: string
+  awayTeam: string
+  commenceTime: string
+}): Promise<{ homeScore: number; awayScore: number } | null> {
+  if (!isRundownEnabled()) return null
+  const sportId = oddsSportKeyToRundownSportId(input.sportKey)
+  if (!sportId || !input.commenceTime) return null
+  const person = String(input.sportKey || '').toLowerCase().includes('mma')
+    || String(input.sportKey || '').toLowerCase().includes('ufc')
+  const ptDate = ptDateFromIso(input.commenceTime)
+  const dayEvents = await loadDayEvents(sportId, ptDate, RUNDOWN_LIVE_CACHE_MS)
+  const hits: Array<{ homeScore: number; awayScore: number }> = []
+
+  for (const ev of dayEvents) {
+    if (!isRundownFinalStatus(String(ev.score?.event_status || ''))) continue
+    const homeScore = Number(ev.score?.score_home)
+    const awayScore = Number(ev.score?.score_away)
+    if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) continue
+    if (person && homeScore === 0 && awayScore === 0) continue
+
+    const teams = ev.teams || []
+    const rdHome = teams.find((t) => t.is_home) || teams[1]
+    const rdAway = teams.find((t) => t.is_away) || teams[0]
+    if (!rdHome || !rdAway) continue
+
+    const aligned = rundownParticipantMatch(input.homeTeam, rdHome, person)
+      && rundownParticipantMatch(input.awayTeam, rdAway, person)
+    const swapped = rundownParticipantMatch(input.homeTeam, rdAway, person)
+      && rundownParticipantMatch(input.awayTeam, rdHome, person)
+    if (!aligned && !swapped) continue
+
+    hits.push(
+      aligned
+        ? { homeScore, awayScore }
+        : { homeScore: awayScore, awayScore: homeScore },
+    )
+  }
+
+  return hits.length === 1 ? hits[0] : null
+}
+
 export async function resolveRundownEvent(input: RundownMatchInput): Promise<ResolvedRundownEvent | null> {
   const sportId = oddsSportKeyToRundownSportId(input.sportKey)
   if (!sportId || !isRundownEnabled()) return null

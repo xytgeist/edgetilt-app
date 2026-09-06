@@ -93,6 +93,7 @@ Deno.serve(async (req) => {
         action: 'grade_picks',
         resolved: result.resolved,
         espnResolved: result.espnResolved,
+        rundownResolved: result.rundownResolved,
         errors: result.errors,
       })
     }

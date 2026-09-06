@@ -16,8 +16,11 @@ import { shortDisplayName } from './loungeBotOddsCaption.ts'
 const ESPN_SCOREBOARD_MS = 8_000
 const ESPN_SITE = 'https://site.api.espn.com/apis/site/v2/sports'
 const ESPN_HEADERS = {
-  Accept: 'application/json',
-  'User-Agent': 'Mozilla/5.0 (compatible; EdgeTiltGrade/1.4.76; +https://edgetilt.com)',
+  Accept: 'application/json, text/plain, */*',
+  'Accept-Language': 'en-US,en;q=0.9',
+  Referer: 'https://www.espn.com/',
+  'User-Agent':
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
 }
 
 export type EspnCompletedEvent = {

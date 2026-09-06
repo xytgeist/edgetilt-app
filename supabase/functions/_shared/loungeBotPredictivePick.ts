@@ -19,7 +19,7 @@ import { LOUNGE_BOT_CAPTION_MAX } from './loungeBotCaptionLimits.ts'
 import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
 import { resolveSlatePublisher } from './loungeBotSyndicateIdentity.ts'
 import { fetchGameWeather, type GameWeatherSummary } from './loungeBotWeather.ts'
-import { oddsSportKeyToRundownSportId } from './loungeBotRundownContext.ts'
+import { matchRundownFinalScore, oddsSportKeyToRundownSportId } from './loungeBotRundownContext.ts'
 import { loadPersonaWeights } from './loungeBotPersonaAdaptive.ts'
 import { fetchGameInjuryPval, type GameInjurySummary } from './loungeBotInjuryPval.ts'
 import { resolveGameBettingSplits, type BettingSplitSummary } from './loungeBotBettingSplits.ts'
@@ -2063,6 +2063,7 @@ async function fetchPendingPicksForGrade(
     pick_price: number
     home_team: string
     away_team: string
+    commence_time?: string
     metadata?: Record<string, unknown> | null
   }> = []
   let from = 0
@@ -2116,15 +2117,16 @@ export async function gradePendingPicks(
   admin: SupabaseClient,
   apiKey: string,
   botUserId?: string,
-): Promise<{ resolved: number; espnResolved: number; errors: string[] }> {
+): Promise<{ resolved: number; espnResolved: number; rundownResolved: number; errors: string[] }> {
   const errors: string[] = []
   let resolvedCount = 0
   let espnResolved = 0
+  let rundownResolved = 0
 
   const { picks: pendingPicks, error: fetchErr } = await fetchPendingPicksForGrade(admin, botUserId)
-  if (fetchErr) return { resolved: 0, espnResolved: 0, errors: [fetchErr] }
+  if (fetchErr) return { resolved: 0, espnResolved: 0, rundownResolved: 0, errors: [fetchErr] }
   if (!pendingPicks.length) {
-    return { resolved: 0, espnResolved: 0, errors: [] }
+    return { resolved: 0, espnResolved: 0, rundownResolved: 0, errors: [] }
   }
 
   const bySport = new Map<string, typeof pendingPicks>()
@@ -2176,12 +2178,27 @@ export async function gradePendingPicks(
     eventId: string,
     homeTeam: string,
     awayTeam: string,
+    commenceTime: string,
     eventById: Map<string, ScoreEvent>,
-    allowEspn: boolean,
-  ): Promise<{ homeScore: number; awayScore: number; source: 'odds_api' | 'espn' } | null> => {
+    allowAlt: boolean,
+  ): Promise<{ homeScore: number; awayScore: number; source: 'odds_api' | 'espn' | 'rundown' } | null> => {
     const fromOdds = scoresFromOddsEvent(eventById.get(eventId), homeTeam, awayTeam)
     if (fromOdds) return { ...fromOdds, source: 'odds_api' }
-    if (!allowEspn) return null
+    if (!allowAlt) return null
+    if (commenceTime) {
+      try {
+        const fromRundown = await matchRundownFinalScore({
+          sportKey,
+          homeTeam,
+          awayTeam,
+          commenceTime,
+        })
+        if (fromRundown) return { ...fromRundown, source: 'rundown' }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err)
+        errors.push(`Rundown ${sportKey}: ${msg}`)
+      }
+    }
     const board = await loadEspnBoard(sportKey)
     const fromEspn = matchEspnFinalScore(board, homeTeam, awayTeam)
     if (!fromEspn) return null
@@ -2229,22 +2246,25 @@ export async function gradePendingPicks(
               teased_spread: number
               teased_disp: string
             }
-            const allowEspn = espnFallbackCoversMarket(sportKey, 'teasers')
+            const allowAlt = espnFallbackCoversMarket(sportKey, 'teasers')
+            const commenceTime = String(pick.commence_time || '')
             const scores1 = await resolveEventScores(
               sportKey,
               leg1.event_id,
               leg1.home_team,
               leg1.away_team || '',
+              commenceTime,
               eventById,
-              allowEspn && Boolean(leg1.away_team),
+              allowAlt && Boolean(leg1.away_team),
             )
             const scores2 = await resolveEventScores(
               sportKey,
               leg2.event_id,
               leg2.home_team,
               leg2.away_team || '',
+              commenceTime,
               eventById,
-              allowEspn && Boolean(leg2.away_team),
+              allowAlt && Boolean(leg2.away_team),
             )
 
             if (scores1 && scores2) {
@@ -2279,8 +2299,14 @@ export async function gradePendingPicks(
                 unitsNet = 0.0
               }
 
-              const usedEspn = scores1.source === 'espn' || scores2.source === 'espn'
-              if (usedEspn) espnResolved += 1
+              const srcs = [scores1.source, scores2.source]
+              if (srcs.includes('espn')) espnResolved += 1
+              else if (srcs.includes('rundown')) rundownResolved += 1
+              const gradeSource = srcs.includes('espn')
+                ? 'espn'
+                : srcs.includes('rundown')
+                  ? 'rundown'
+                  : 'odds_api'
 
               const leg1Summary = `${shortDisplayName(leg1.picked_team)} ${leg1.teased_disp} (${leg1Won ? '✅ Win' : leg1Push ? '🔄 Push' : '❌ Loss'})`
               const leg2Summary = `${shortDisplayName(leg2.picked_team)} ${leg2.teased_disp} (${leg2Won ? '✅ Win' : leg2Push ? '🔄 Push' : '❌ Loss'})`
@@ -2297,7 +2323,7 @@ export async function gradePendingPicks(
                     ...(pick.metadata || {}),
                     leg1_result: leg1Summary,
                     leg2_result: leg2Summary,
-                    grade_source: usedEspn ? 'espn' : 'odds_api',
+                    grade_source: gradeSource,
                   },
                 },
               })
@@ -2307,18 +2333,20 @@ export async function gradePendingPicks(
           continue
         }
 
-        const allowEspn = espnFallbackCoversMarket(sportKey, pick.market_key)
+        const allowAlt = espnFallbackCoversMarket(sportKey, pick.market_key)
         const scores = await resolveEventScores(
           sportKey,
           pick.event_id,
           pick.home_team,
           pick.away_team,
+          String(pick.commence_time || ''),
           eventById,
-          allowEspn,
+          allowAlt,
         )
         if (!scores) continue
 
         if (scores.source === 'espn') espnResolved += 1
+        if (scores.source === 'rundown') rundownResolved += 1
 
         const { homeScore, awayScore } = scores
         const grade = gradePickOutcome(pick, homeScore, awayScore)
@@ -2383,7 +2411,7 @@ export async function gradePendingPicks(
     await syncBotProfileHighlight(admin, uid)
   }
 
-  return { resolved: resolvedCount, espnResolved, errors }
+  return { resolved: resolvedCount, espnResolved, rundownResolved, errors }
 }
 
 async function postGradeRecapComments(

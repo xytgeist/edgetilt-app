@@ -414,7 +414,7 @@ export default function SubscribeModal({
   const [selectedPlan, setSelectedPlan] = useState(defaultPlan)
   const [fullInterval, setFullInterval] = useState(/** @type {'monthly' | 'annual'} */ ('monthly'))
   const [starterInterval, setStarterInterval] = useState(/** @type {'monthly' | 'annual'} */ ('monthly'))
-  const [payVia, setPayVia] = useState(/** @type {'iap' | 'web'} */ ('web'))
+  const [payVia, setPayVia] = useState(/** @type {'iap' | 'web'} */ ('iap'))
   const [activeSlide, setActiveSlide] = useState(1)
   /** Slides that reposition instantly on wrap (avoids flying across the deck). */
   const [instantSlideIndexes, setInstantSlideIndexes] = useState(() => new Set())
@@ -451,7 +451,7 @@ export default function SubscribeModal({
     setRestoreBusy(false)
     setStoreProductsById(new Map())
     setUsStorefront(null)
-    setPayVia('web')
+    setPayVia('iap')
     setInstantSlideIndexes(new Set())
     setDragPx(0)
     setIsDragging(false)

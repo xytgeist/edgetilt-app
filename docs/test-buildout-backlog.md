@@ -2851,6 +2851,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 ## Update log
 
 - **2026-09-05:** **Prod CFB trial wiped.** Deleted 841 `americanfootball_ncaaf` `lounge_bot_picks` (Syndicate ledger + leftover Signal), 17 Lounge CFB posts (public teasers + `creator_fan_only`), Syndicate fan chat (16 messages). NFL + UFC kept. Chedda `syndicate_betting_splits` / market files not touched. Hard-refresh sharpesyndicate.com CFB.
+- **2026-09-05:** **IPA checkout defaults to iPhone.** Slots tiles + Edge Pro pill. Web still one tap. **`1.4.84`.**
 - **2026-09-05:** **Slots IPA paywall: one subscribe button.** App Store / Web tiles are selectable. CTA follows (`Subscribe on iPhone` / `Subscribe on the web`). Defaults to web. **`1.4.83`.**
 - **2026-09-05:** **Edge Pro price pill is smaller and under the title.** Orange subscribe button stays at the bottom. **`1.4.82`.**
 - **2026-09-05:** **Edge Pro Settings: one orange CTA.** iPhone `$11.49` / web `$9.99` pill switch. Button copy follows the pill. Defaults to web. **`1.4.81`.**

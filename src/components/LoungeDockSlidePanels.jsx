@@ -298,7 +298,7 @@ export default function LoungeDockSlidePanels({
   const [edgeProCheckoutBusy, setEdgeProCheckoutBusy] = useState(false)
   const [edgeProCheckoutError, setEdgeProCheckoutError] = useState('')
   const [edgeProIapPrice, setEdgeProIapPrice] = useState('')
-  const [edgeProPayVia, setEdgeProPayVia] = useState(/** @type {'iap' | 'web'} */ ('web'))
+  const [edgeProPayVia, setEdgeProPayVia] = useState(/** @type {'iap' | 'web'} */ ('iap'))
   const [subscriptionsSettingsOpen, setSubscriptionsSettingsOpen] = useState(false)
   const [fanMonetizationSettingsOpen, setFanMonetizationSettingsOpen] = useState(false)
   const [menuLayoutSettingsOpen, setMenuLayoutSettingsOpen] = useState(false)

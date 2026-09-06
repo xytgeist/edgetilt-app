@@ -3790,7 +3790,7 @@ html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-hero-title {
 }
 [data-subscribe-modal] .subscribe-plan-carousel-3d {
   perspective: 1600px;
-  perspective-origin: 50% 18%;
+  perspective-origin: 50% 42%;
   overflow: visible;
   min-height: 0;
   height: auto;
@@ -3799,28 +3799,27 @@ html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-hero-title {
 [data-subscribe-modal] .subscribe-plan-carousel-stage {
   position: relative;
   width: 100%;
-  height: var(--subscribe-carousel-stage-h, 24.5rem);
-  min-height: var(--subscribe-carousel-stage-h, 24.5rem);
+  height: auto;
+  min-height: 22rem;
   transform-style: preserve-3d;
   transform: translateZ(0);
 }
 @media (max-width: 639px) {
   [data-subscribe-modal] .subscribe-plan-carousel-stage {
-    height: var(--subscribe-carousel-stage-h, 26rem);
-    min-height: var(--subscribe-carousel-stage-h, 26rem);
+    min-height: 19rem;
+    padding-top: 0.35rem;
   }
   [data-subscribe-modal] .subscribe-plan-slide-3d {
-    width: min(17rem, 74vw);
-    top: 0;
+    width: min(15.25rem, 66vw);
+    top: 52%;
   }
   [data-subscribe-modal] .subscribe-plan-carousel-3d {
-    perspective-origin: 50% 12%;
+    perspective-origin: 50% 46%;
   }
 }
 @media (min-width: 640px) {
   [data-subscribe-modal] .subscribe-plan-carousel-stage {
-    height: var(--subscribe-carousel-stage-h, 24.5rem);
-    min-height: var(--subscribe-carousel-stage-h, 24.5rem);
+    min-height: 22rem;
   }
 }
 [data-subscribe-modal] .subscribe-plan-carousel-floor {
@@ -3829,8 +3828,8 @@ html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-hero-title {
 [data-subscribe-modal] .subscribe-plan-slide-3d {
   position: absolute;
   left: 50%;
-  top: 0;
-  width: min(17.5rem, 72vw);
+  top: 50%;
+  width: min(16.75rem, 70vw);
   transform-style: preserve-3d;
   overflow: visible;
   backface-visibility: hidden;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   PRODUCT_SLOTS_EDGE,
@@ -107,7 +107,7 @@ function poseFromEffectiveOffset(offset) {
 
 /** @param {typeof SLIDE_POSES.center} pose */
 function poseToSlideStyle(pose) {
-  const base = 'translate(-50%, 0)'
+  const base = 'translate(-50%, -50%)'
   return {
     transform: `${base} translate3d(${pose.tx}%, 0, ${pose.tz}px) rotateY(${pose.ry}deg) scale(${pose.scale})`,
     zIndex: pose.z,
@@ -245,7 +245,7 @@ function PlanComparePrices({
 
 function planCardClass(selected, extra = '') {
   return [
-    'subscribe-plan-card subscribe-plan-card--starter group relative flex h-auto w-full flex-col rounded-[1.25rem] border px-3.5 pb-4 pt-4 text-left touch-manipulation transition-[border-color,box-shadow,filter] sm:rounded-[1.35rem] sm:px-4 sm:pb-4 sm:pt-5',
+    'subscribe-plan-card subscribe-plan-card--starter group relative flex h-auto min-h-[19rem] w-full flex-col rounded-[1.25rem] border px-3.5 pb-3.5 pt-9 text-left touch-manipulation transition-[border-color,box-shadow,filter] sm:min-h-[22rem] sm:rounded-[1.35rem] sm:px-4 sm:pb-4 sm:pt-10',
     selected ? 'subscribe-plan-card--selected ring-1 ring-emerald-400/35 shadow-[0_0_40px_rgba(16,185,129,0.12)]' : '',
     extra,
   ]
@@ -275,13 +275,13 @@ function affiliateHandleLabel(affiliate) {
 function PlanPromoBadge({ affiliate = null, military = false }) {
   if (military) {
     return (
-      <div className="subscribe-plan-founding-badge subscribe-plan-military-badge pointer-events-none mt-1.5">
-        <div className="subscribe-plan-military-badge-inner inline-flex items-center gap-1.5 rounded-full border border-emerald-400/45 bg-zinc-900 px-2.5 py-0.5 ring-1 ring-emerald-400/30">
-          <span className="subscribe-plan-military-badge-label text-[9px] font-bold uppercase tracking-[0.1em] text-emerald-100">
+      <div className="subscribe-plan-founding-badge subscribe-plan-military-badge pointer-events-none absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-1/2">
+        <div className="subscribe-plan-military-badge-inner flex items-center gap-2.5 rounded-full border border-emerald-400/45 bg-zinc-900 px-4 py-1 shadow-[0_8px_24px_rgba(0,0,0,0.45)] ring-1 ring-emerald-400/30">
+          <span className="subscribe-plan-military-badge-label text-[10px] font-bold uppercase tracking-[0.12em] text-emerald-100">
             Military
           </span>
-          <span className="subscribe-plan-military-badge-divider h-2.5 w-px shrink-0 bg-emerald-400/40" aria-hidden />
-          <span className="subscribe-plan-military-badge-value text-[10px] font-semibold text-emerald-50">
+          <span className="subscribe-plan-military-badge-divider h-3 w-px shrink-0 bg-emerald-400/40" aria-hidden />
+          <span className="subscribe-plan-military-badge-value text-[11px] font-semibold text-emerald-50">
             {MILITARY_PROMO_PERCENT_OFF}% off
           </span>
         </div>
@@ -299,9 +299,9 @@ function PlanPromoBadge({ affiliate = null, military = false }) {
     const initials = profileAvatarInitials(affiliate.displayName, affiliate.handle || affiliate.code)
     const tone = profileAvatarToneClass(affiliate.handle || affiliate.code || promoLabel || 'creator')
     return (
-      <div className="subscribe-plan-founding-badge subscribe-plan-affiliate-badge pointer-events-none mt-1.5 w-max max-w-full">
+      <div className="subscribe-plan-founding-badge subscribe-plan-affiliate-badge pointer-events-none absolute left-1/2 top-0 z-30 w-max max-w-[90%] -translate-x-1/2 -translate-y-1/2">
         <div
-          className="subscribe-plan-affiliate-badge-inner inline-flex min-w-0 max-w-full items-center gap-1.5 rounded-full border border-cyan-400/40 bg-zinc-900 py-0.5 pl-0.5 pr-2.5 ring-1 ring-cyan-400/25"
+          className="subscribe-plan-affiliate-badge-inner flex min-w-0 max-w-full items-center gap-2.5 rounded-full border border-cyan-400/40 bg-zinc-900 py-1 pl-1 pr-3.5 shadow-[0_8px_24px_rgba(0,0,0,0.45)] ring-1 ring-cyan-400/25"
           aria-label={
             promoLabel
               ? `${promoLabel} · ${affiliate.buyerDiscountPct}% off`
@@ -314,11 +314,11 @@ function PlanPromoBadge({ affiliate = null, military = false }) {
             <img
               src={affiliate.avatarUrl}
               alt=""
-              className="subscribe-plan-affiliate-avatar h-5 w-5 shrink-0 rounded-full object-cover"
+              className="subscribe-plan-affiliate-avatar h-7 w-7 shrink-0 rounded-full object-cover"
             />
           ) : (
             <span
-              className={`subscribe-plan-affiliate-avatar flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white ${tone}`}
+              className={`subscribe-plan-affiliate-avatar flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white ${tone}`}
               aria-hidden
             >
               {initials}
@@ -326,13 +326,13 @@ function PlanPromoBadge({ affiliate = null, military = false }) {
           )}
           {promoLabel ? (
             <>
-              <span className="subscribe-plan-affiliate-badge-label min-w-0 truncate text-[10px] font-semibold tracking-wide text-cyan-50">
+              <span className="subscribe-plan-affiliate-badge-label min-w-0 truncate text-[11px] font-semibold tracking-wide text-cyan-50">
                 {promoLabel}
               </span>
-              <span className="subscribe-plan-affiliate-badge-divider h-2.5 w-px shrink-0 bg-cyan-400/35" aria-hidden />
+              <span className="subscribe-plan-affiliate-badge-divider h-3 w-px shrink-0 bg-cyan-400/35" aria-hidden />
             </>
           ) : null}
-          <span className="subscribe-plan-affiliate-badge-value shrink-0 text-[10px] font-semibold text-cyan-50">
+          <span className="subscribe-plan-affiliate-badge-value shrink-0 text-[11px] font-semibold text-cyan-50">
             {affiliate.buyerDiscountPct}% off
           </span>
         </div>
@@ -341,13 +341,13 @@ function PlanPromoBadge({ affiliate = null, military = false }) {
   }
 
   return (
-    <div className="subscribe-plan-founding-badge pointer-events-none mt-1.5">
-      <div className="subscribe-plan-founding-badge-inner inline-flex items-center gap-1.5 rounded-full border border-yellow-400/45 bg-zinc-900 px-2.5 py-0.5 ring-1 ring-yellow-400/30">
-        <span className="subscribe-plan-founding-badge-label text-[9px] font-bold uppercase tracking-[0.1em] text-yellow-100">
+    <div className="subscribe-plan-founding-badge pointer-events-none absolute left-1/2 top-0 z-30 -translate-x-1/2 -translate-y-1/2">
+      <div className="subscribe-plan-founding-badge-inner flex items-center gap-2.5 rounded-full border border-yellow-400/45 bg-zinc-900 px-4 py-1 shadow-[0_8px_24px_rgba(0,0,0,0.45)] ring-1 ring-yellow-400/30">
+        <span className="subscribe-plan-founding-badge-label text-[10px] font-bold uppercase tracking-[0.12em] text-yellow-100">
           Founding member
         </span>
-        <span className="subscribe-plan-founding-badge-divider h-2.5 w-px shrink-0 bg-yellow-400/40" aria-hidden />
-        <span className="subscribe-plan-founding-badge-value text-[10px] font-semibold text-yellow-50">
+        <span className="subscribe-plan-founding-badge-divider h-3 w-px shrink-0 bg-yellow-400/40" aria-hidden />
+        <span className="subscribe-plan-founding-badge-value text-[11px] font-semibold text-yellow-50">
           {SLOTS_EDGE_FOUNDING_PERCENT_OFF}% off
         </span>
       </div>
@@ -492,27 +492,6 @@ export default function SubscribeModal({
       cancelled = true
     }
   }, [open, defaultPlan, fullCurrentInterval, planSlugs, starterCurrentInterval, supabaseClient])
-
-  useLayoutEffect(() => {
-    if (!open) return undefined
-    const root = carouselRef.current
-    if (!root) return undefined
-
-    const apply = () => {
-      let max = 0
-      root.querySelectorAll('.subscribe-plan-card').forEach((el) => {
-        max = Math.max(max, el.offsetHeight)
-      })
-      if (max > 0) {
-        root.style.setProperty('--subscribe-carousel-stage-h', `${max + 16}px`)
-      }
-    }
-
-    apply()
-    const ro = new ResizeObserver(apply)
-    root.querySelectorAll('.subscribe-plan-card').forEach((el) => ro.observe(el))
-    return () => ro.disconnect()
-  }, [open, hideLifetimeCard, showWebComparePrice, storeProductsById, starterInterval, fullInterval])
 
   useEffect(() => {
     return () => {
@@ -938,7 +917,7 @@ export default function SubscribeModal({
             </div>
           ) : (
             <>
-              <div className="relative z-20 flex shrink-0 items-start justify-center overflow-visible px-1 pb-1 pt-1 sm:pt-2 sm:pb-1">
+              <div className="relative z-20 flex shrink-0 items-start justify-center overflow-visible px-1 pb-1 pt-7 sm:pt-8 sm:pb-2">
                 <button
                   type="button"
                   aria-label="Previous plan"
@@ -1001,18 +980,16 @@ export default function SubscribeModal({
                       }}
                       className={planCardClass(starterSelected, busy ? 'cursor-default' : 'cursor-pointer')}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300/80">Starter Pack</div>
-                        {hasSlotsEdgeStarter ? (
-                          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-300 ring-1 ring-emerald-500/30">
-                            Current
-                          </span>
-                        ) : null}
-                      </div>
-                      <div className="mt-0.5 text-lg font-bold text-white">{productDisplayName(PRODUCT_SLOTS_EDGE_STARTER)}</div>
                       {showWebComparePrice ? (
                         <PlanPromoBadge affiliate={affiliatePromo} military={isMilitaryPromo} />
                       ) : null}
+                      {hasSlotsEdgeStarter ? (
+                        <span className="absolute right-3 top-10 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-emerald-300 ring-1 ring-emerald-500/30">
+                          Current
+                        </span>
+                      ) : null}
+                      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300/80">Starter Pack</div>
+                      <div className="mt-0.5 text-lg font-bold text-white">{productDisplayName(PRODUCT_SLOTS_EDGE_STARTER)}</div>
                       <p className="mt-0.5 text-xs text-zinc-400">Build your library week by week.</p>
                       <div
                         className="mt-2 flex rounded-xl border border-zinc-700/80 bg-zinc-900 p-1"
@@ -1114,7 +1091,7 @@ export default function SubscribeModal({
                           </p>
                         </>
                       )}
-                      <ul className="mt-3 space-y-2">
+                      <ul className="mt-3 space-y-1.5">
                         {STARTER_FEATURES.map((line) => (
                           <PlanFeature key={line}>{line}</PlanFeature>
                         ))}
@@ -1148,27 +1125,25 @@ export default function SubscribeModal({
                         selectPlan(PRODUCT_SLOTS_EDGE, 1)
                       }}
                       className={[
-                        'subscribe-plan-card subscribe-plan-card--featured group relative flex h-auto w-full flex-col rounded-[1.25rem] border px-3.5 pb-4 pt-4 text-left touch-manipulation transition-[border-color,box-shadow,filter] sm:rounded-[1.35rem] sm:px-4 sm:pb-4 sm:pt-5',
+                        'subscribe-plan-card subscribe-plan-card--featured group relative flex h-auto min-h-[19rem] w-full flex-col rounded-[1.25rem] border px-3.5 pb-3.5 pt-9 text-left touch-manipulation transition-[border-color,box-shadow,filter] sm:min-h-[22rem] sm:rounded-[1.35rem] sm:px-4 sm:pb-4 sm:pt-10',
                         fullSelected ? 'subscribe-plan-card--selected ring-1 ring-cyan-400/40 shadow-[0_0_40px_rgba(6,182,212,0.16)]' : '',
                         busy ? 'cursor-default' : 'cursor-pointer',
                       ].join(' ')}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-300/80">Everything now</div>
-                        {fullSubscriber ? (
-                          <span className="rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-200 ring-1 ring-cyan-500/30">
-                            Current
-                          </span>
-                        ) : (
-                          <span className="rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-200 ring-1 ring-cyan-500/30">
-                            Most popular
-                          </span>
-                        )}
-                      </div>
-                      <div className="mt-0.5 text-lg font-bold text-white">{productDisplayName(PRODUCT_SLOTS_EDGE)}</div>
                       {showWebComparePrice ? (
                         <PlanPromoBadge affiliate={affiliatePromo} military={isMilitaryPromo} />
                       ) : null}
+                      {fullSubscriber ? (
+                        <span className="absolute right-3 top-10 rounded-full bg-cyan-500/15 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-cyan-200 ring-1 ring-cyan-500/30">
+                          Current
+                        </span>
+                      ) : (
+                        <span className="absolute right-3 top-10 rounded-full bg-cyan-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-cyan-200 ring-1 ring-cyan-500/30">
+                          Most popular
+                        </span>
+                      )}
+                      <div className="text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-300/80">Everything now</div>
+                      <div className="mt-0.5 text-lg font-bold text-white">{productDisplayName(PRODUCT_SLOTS_EDGE)}</div>
                       <p className="mt-0.5 text-xs text-zinc-400">The complete AP slots toolkit.</p>
                       <div
                         className="mt-2 flex rounded-xl border border-zinc-700/80 bg-zinc-900 p-1"
@@ -1270,7 +1245,7 @@ export default function SubscribeModal({
                           </p>
                         </>
                       )}
-                      <ul className="mt-3 space-y-2">
+                      <ul className="mt-3 space-y-1.5">
                         {FULL_FEATURES.map((line) => (
                           <PlanFeature key={line}>{line}</PlanFeature>
                         ))}
@@ -1305,11 +1280,14 @@ export default function SubscribeModal({
                         selectPlan(PRODUCT_SLOTS_EDGE_LIFETIME, 2)
                       }}
                       className={[
-                        'subscribe-plan-card subscribe-plan-card--lifetime group relative flex h-auto w-full flex-col rounded-[1.25rem] border px-3.5 pb-4 pt-4 text-left touch-manipulation transition-[border-color,box-shadow,filter] sm:rounded-[1.35rem] sm:px-4 sm:pb-4 sm:pt-5',
+                        'subscribe-plan-card subscribe-plan-card--lifetime group relative flex h-auto min-h-[19rem] w-full flex-col rounded-[1.25rem] border px-3.5 pb-3.5 pt-9 text-left touch-manipulation transition-[border-color,box-shadow,filter] sm:min-h-[22rem] sm:rounded-[1.35rem] sm:px-4 sm:pb-4 sm:pt-10',
                         lifetimeSelected ? 'subscribe-plan-card--selected ring-1 ring-amber-400/35 shadow-[0_0_40px_rgba(245,158,11,0.12)]' : '',
                         busy ? 'cursor-default' : 'cursor-pointer',
                       ].join(' ')}
                     >
+                      {showWebComparePrice ? (
+                        <PlanPromoBadge affiliate={affiliatePromo} military={isMilitaryPromo} />
+                      ) : null}
                       <span className="inline-flex w-fit rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-200 ring-1 ring-amber-500/30">
                         {isMilitaryPromo
                           ? 'Military lifetime pass'
@@ -1318,9 +1296,6 @@ export default function SubscribeModal({
                             : 'Founding lifetime pass'}
                       </span>
                       <div className="mt-1.5 text-lg font-bold text-white">{productDisplayName(PRODUCT_SLOTS_EDGE_LIFETIME)}</div>
-                      {showWebComparePrice ? (
-                        <PlanPromoBadge affiliate={affiliatePromo} military={isMilitaryPromo} />
-                      ) : null}
                       <p className="mt-0.5 text-xs text-zinc-400">Pay once. Never worry about renewals or new-tool add-ons.</p>
                       {lifetimeStoreProduct?.displayPrice && showWebComparePrice ? (
                         <>
@@ -1358,7 +1333,7 @@ export default function SubscribeModal({
                           </p>
                         </>
                       )}
-                      <ul className="mt-3 space-y-2">
+                      <ul className="mt-3 space-y-1.5">
                         {LIFETIME_FEATURES.map((line) => (
                           <PlanFeature key={line}>{line}</PlanFeature>
                         ))}

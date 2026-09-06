@@ -75,10 +75,6 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
-### Mac Theo 2026-09-05 … subscribe sheet sized to the card
-
-**I am Mac Theo.** Carousel slides sit at the top. Stage height follows the real card (ResizeObserver). Founding badge is in-flow under the title, not hanging off the rim. Sheet hugs that stack. **`1.4.86`.** Vercel JS.
-
 ### Mac Theo 2026-09-05 … subscribe sheet hugs content
 
 **I am Mac Theo.** Slots SubscribeModal is no longer locked to `96dvh`. One CTA already; the leftover height was a full-viewport flex stretch. **`1.4.85`.** Vercel JS.

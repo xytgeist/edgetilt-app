@@ -48,6 +48,7 @@ import {
 import { profileAvatarInitials, profileAvatarToneClass } from '../profiles/profileGate.js'
 
 const ALL_PLAN_SLUGS = [PRODUCT_SLOTS_EDGE_STARTER, PRODUCT_SLOTS_EDGE, PRODUCT_SLOTS_EDGE_LIFETIME]
+const IPA_PLAN_SLUGS = [PRODUCT_SLOTS_EDGE_STARTER, PRODUCT_SLOTS_EDGE]
 
 /** @param {number} index @param {number} activeIndex @param {number} slideCount */
 function getSlideOffset(index, activeIndex, slideCount) {
@@ -387,13 +388,15 @@ export default function SubscribeModal({
   starterPriceInterval = null,
   fullPriceInterval = null,
 }) {
-  const planSlugs = ALL_PLAN_SLUGS
+  // IPA hides Lifetime until Apple unlocks price points above $1,000.
+  const hideLifetimeCard = isEdgeiOSShell()
+  const planSlugs = hideLifetimeCard ? IPA_PLAN_SLUGS : ALL_PLAN_SLUGS
   const slideCount = planSlugs.length
   const [usStorefront, setUsStorefront] = useState(/** @type {boolean | null} */ (null))
   const showWebComparePrice = canShowIapWebComparePrice(usStorefront)
 
   const defaultPlan = useMemo(() => {
-    if (initialProductSlug === PRODUCT_SLOTS_EDGE_LIFETIME) {
+    if (initialProductSlug === PRODUCT_SLOTS_EDGE_LIFETIME && !hideLifetimeCard) {
       return PRODUCT_SLOTS_EDGE_LIFETIME
     }
     if (initialProductSlug === PRODUCT_SLOTS_EDGE_STARTER) return PRODUCT_SLOTS_EDGE_STARTER
@@ -401,7 +404,7 @@ export default function SubscribeModal({
     if (hasSlotsEdgeStarter && !hasSlotsEdgePro && !hasSlotsEdgeLifetime) return PRODUCT_SLOTS_EDGE_STARTER
     if (hasSlotsEdgePro && !hasSlotsEdgeLifetime) return PRODUCT_SLOTS_EDGE
     return PRODUCT_SLOTS_EDGE
-  }, [hasSlotsEdgeLifetime, hasSlotsEdgePro, hasSlotsEdgeStarter, initialProductSlug])
+  }, [hasSlotsEdgeLifetime, hasSlotsEdgePro, hasSlotsEdgeStarter, hideLifetimeCard, initialProductSlug])
 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -1251,6 +1254,7 @@ export default function SubscribeModal({
                     </div>
                     </div>
 
+                    {hideLifetimeCard ? null : (
                     <div
                       className={[
                         'subscribe-plan-slide-3d',
@@ -1337,6 +1341,7 @@ export default function SubscribeModal({
                       </ul>
                     </div>
                     </div>
+                    )}
                   </div>
                 </div>
               </div>

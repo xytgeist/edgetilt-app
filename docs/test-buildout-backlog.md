@@ -2850,7 +2850,8 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
-- **2026-09-05:** **IPA Subscribe carousel shows Lifetime again.** Starter + Pro + Lifetime, same as web. **`1.4.90`.**
+- **2026-09-05:** **IPA Subscribe carousel hides Lifetime again.** Apple IAP list + offer wizard still cap at `$1,000`. Web still shows the card. **`1.4.91`.**
+- **2026-09-05:** **IPA Subscribe carousel shows Lifetime again.** Starter + Pro + Lifetime, same as web. **`1.4.90`.** Superseded same night.
 - **2026-09-05:** **Ryan signed off** Slots subscribe sheet height at `89.96dvh`. **`1.4.89`.**
 - **2026-09-05:** **Prod NFL trial wiped.** Deleted 65 Syndicate `americanfootball_nfl` `lounge_bot_picks`, 3 Lounge posts (public slate + `creator_fan_only` + Wong teaser). UFC kept. Signal Aug preseason NFL book (88W-60L) not touched... not on sharpesyndicate.com. Hard-refresh NFL filter.
 - **2026-09-05:** **Slots subscribe sheet +5% again.** Shell `85.68dvh` → `89.96dvh`. **`1.4.89`.**

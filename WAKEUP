@@ -75,9 +75,13 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-05 … Lifetime card off IPA carousel
+
+**I am Mac Theo.** IPA SubscribeModal is Starter + Pro only again. Lifetime stays off until Apple unlocks price points above `$1,000` (list + offer wizard both cap there). Web still shows the card. Height stays `89.96dvh`. **`1.4.91`.** Vercel JS.
+
 ### Mac Theo 2026-09-05 … Lifetime card back on IPA carousel
 
-**I am Mac Theo.** Slots SubscribeModal on the shell is Starter + Pro + Lifetime again. Same 3-card deck as web. Height stays `89.96dvh`. **`1.4.90`.** Vercel JS.
+**I am Mac Theo.** Slots SubscribeModal on the shell is Starter + Pro + Lifetime again. Same 3-card deck as web. Height stays `89.96dvh`. **`1.4.90`.** Superseded same night by **`1.4.91`.**
 
 ### Mac Theo 2026-09-05 … subscribe sheet height locked
 

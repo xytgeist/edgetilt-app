@@ -34,8 +34,6 @@ import { startEdgeCheckout } from '../features/billing/stripeBillingApi.js'
 import { PRODUCT_EDGE_PRO } from '../features/billing/edgeProducts.js'
 import { EDGE_PRO_MONTHLY_IAP_USD, EDGE_PRO_MONTHLY_USD, formatUsdMonthly } from '../features/billing/edgePricing.js'
 import {
-  canShowIapWebComparePrice,
-  fetchAppleStorefront,
   fetchEdgeStoreProducts,
   iapProductIdForPlan,
   indexStoreProductsById,
@@ -289,7 +287,6 @@ export default function LoungeDockSlidePanels({
   const [edgeProCheckoutBusy, setEdgeProCheckoutBusy] = useState(false)
   const [edgeProCheckoutError, setEdgeProCheckoutError] = useState('')
   const [edgeProIapPrice, setEdgeProIapPrice] = useState('')
-  const [edgeProUsStorefront, setEdgeProUsStorefront] = useState(/** @type {boolean | null} */ (null))
   const [subscriptionsSettingsOpen, setSubscriptionsSettingsOpen] = useState(false)
   const [fanMonetizationSettingsOpen, setFanMonetizationSettingsOpen] = useState(false)
   const [menuLayoutSettingsOpen, setMenuLayoutSettingsOpen] = useState(false)
@@ -343,19 +340,12 @@ export default function LoungeDockSlidePanels({
   useEffect(() => {
     if (!proSettingsOpen || !isEdgeiOSShell() || !settingsSupabaseClient) {
       setEdgeProIapPrice('')
-      setEdgeProUsStorefront(null)
       return
     }
     const productId = iapProductIdForPlan(PRODUCT_EDGE_PRO, 'monthly')
     if (!productId) return
     let cancelled = false
     void (async () => {
-      try {
-        const storefront = await fetchAppleStorefront()
-        if (!cancelled) setEdgeProUsStorefront(storefront.isUnitedStates)
-      } catch {
-        if (!cancelled) setEdgeProUsStorefront(false)
-      }
       try {
         const { products } = await fetchEdgeStoreProducts(settingsSupabaseClient, [productId])
         const row = indexStoreProductsById(products).get(productId)
@@ -1659,7 +1649,7 @@ export default function LoungeDockSlidePanels({
                       <div className="text-[13px] font-semibold text-amber-300">
                         Unlock Edge Pro
                       </div>
-                      {isEdgeiOSShell() && canShowIapWebComparePrice(edgeProUsStorefront) ? (
+                      {isEdgeiOSShell() ? (
                         <div className="mt-2 grid grid-cols-2 gap-2">
                           <div className="edge-pro-compare-store rounded-lg px-2 py-1.5 ring-1 ring-white/10">
                             <div className="text-base font-bold tracking-tight text-zinc-100">
@@ -1676,9 +1666,7 @@ export default function LoungeDockSlidePanels({
                         </div>
                       ) : (
                         <span className="mt-1.5 inline-flex rounded-full border border-amber-500/40 bg-amber-500/20 px-2 py-0.5 text-[11px] font-black text-amber-400">
-                          {isEdgeiOSShell()
-                            ? (edgeProIapPrice || formatUsdMonthly(EDGE_PRO_MONTHLY_IAP_USD)).replace(/\/(?:mo|yr)$/i, '')
-                            : formatUsdMonthly(EDGE_PRO_MONTHLY_USD).replace(/\/(?:mo|yr)$/i, '')}
+                          {formatUsdMonthly(EDGE_PRO_MONTHLY_USD).replace(/\/(?:mo|yr)$/i, '')}
                         </span>
                       )}
                       <p className="mt-1.5 text-[12px] leading-relaxed text-zinc-400">
@@ -1746,9 +1734,7 @@ export default function LoungeDockSlidePanels({
                           >
                             {edgeProCheckoutBusy
                               ? 'Opening Safari…'
-                              : canShowIapWebComparePrice(edgeProUsStorefront)
-                                ? `Subscribe on the web · ${formatUsdMonthly(EDGE_PRO_MONTHLY_USD).replace(/\/(?:mo|yr)$/i, '')}`
-                                : 'Subscribe on the web'}
+                              : `Subscribe on the web · ${formatUsdMonthly(EDGE_PRO_MONTHLY_USD).replace(/\/(?:mo|yr)$/i, '')}`}
                           </button>
                         </div>
                       ) : (
@@ -1779,7 +1765,7 @@ export default function LoungeDockSlidePanels({
                           <span>
                             {edgeProCheckoutBusy
                               ? 'Connecting to Stripe…'
-                              : '⚡ Upgrade to Edge Pro ($9.99/mo)'}
+                              : `⚡ Upgrade to Edge Pro · ${formatUsdMonthly(EDGE_PRO_MONTHLY_USD).replace(/\/(?:mo|yr)$/i, '')}`}
                           </span>
                         </button>
                       )}

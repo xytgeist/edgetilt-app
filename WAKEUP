@@ -77,7 +77,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Mac Theo 2026-09-05 … IAP refund sheet + ASSN (test)
 
-**I am Mac Theo.** Slots Edge IPA CTAs print founding IAP + web dollars without `/mo` (interval is the Monthly/Annual tab). iPhone button matches the card intro, even if this Apple ID is ineligible at the sheet. **`1.4.71`.** Vercel JS... Build 91 Swift is fine.
+**I am Mac Theo.** StoreKit is attaching Slots Edge intros. Dropped the hardcoded founding IAP fallback. Card + iPhone CTA use `introDisplayPrice` from StoreKit only. **`1.4.72`.** Vercel JS... Build 91 Swift is fine.
 
 ### Mac Theo 2026-09-05 … IAP dual-path (code, not live charges)
 

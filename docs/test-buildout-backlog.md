@@ -2850,6 +2850,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-05:** **Dropped hardcoded IAP intro fallback.** Ryan confirmed StoreKit attached the ASC intros. Card + iPhone CTA use StoreKit `introDisplayPrice` only. **`1.4.72`.**
 - **2026-09-05:** **IPA Subscribe CTAs match the card.** iPhone button uses founding / intro IAP (`$16.99` Starter monthly), not list. Web + iPhone buttons drop `/mo` and `/yr` because Monthly/Annual is already on the tab. Apple may still charge list on an ineligible Apple ID. **`1.4.71`.**
 - **2026-09-05:** **IAP intro on the card vs this Apple ID.** ASC Slots Edge intros are live (pay as you go, founding × 1.15, no end date). Card shows that founding IAP sticker even when StoreKit says the signed-in Apple ID already used the group intro. iPhone CTA stays at list if ineligible. Lifetime has no intro. **`1.4.70`.** Vercel JS is enough... no new IPA.
 - **2026-09-05:** **IAP intro offer sticker.** `getStoreProducts` returns StoreKit introductory offer + eligibility. SubscribeModal uses that price when Apple says the Apple ID qualifies. ASC intro offers still owed (founding web × 1.15). Lifetime has no intro. **`1.4.69`.** New TestFlight.

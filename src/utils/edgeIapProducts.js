@@ -57,48 +57,11 @@ export function allKnownIapProductIds() {
   ]
 }
 
-/**
- * Founding IAP points (web founding × 1.15, next Apple price).
- * Used on the card and iPhone CTA when StoreKit hides the offer for an
- * ineligible Apple ID. Apple still charges list at the sheet if this ID
- * already used the group intro.
- */
-export const SLOTS_EDGE_FOUNDING_IAP_INTROS = {
-  'com.edgetilt.app.slots_edge_starter.monthly': {
-    introDisplayPrice: '$16.99',
-    introPeriodCount: 12,
-    introPeriodUnit: 'month',
-    introPaymentMode: 'payAsYouGo',
-  },
-  'com.edgetilt.app.slots_edge_starter.annual': {
-    introDisplayPrice: '$189.99',
-    introPeriodCount: 1,
-    introPeriodUnit: 'year',
-    introPaymentMode: 'payAsYouGo',
-  },
-  'com.edgetilt.app.slots_edge.monthly': {
-    introDisplayPrice: '$51.99',
-    introPeriodCount: 12,
-    introPeriodUnit: 'month',
-    introPaymentMode: 'payAsYouGo',
-  },
-  'com.edgetilt.app.slots_edge.annual': {
-    introDisplayPrice: '$569.99',
-    introPeriodCount: 1,
-    introPeriodUnit: 'year',
-    introPaymentMode: 'payAsYouGo',
-  },
-}
-
 function isTruthyFlag(value) {
   if (value === true) return true
   if (value === 1 || value === '1') return true
   if (typeof value === 'string' && value.trim().toLowerCase() === 'true') return true
   return false
-}
-
-function foundingIntroFallback(productId) {
-  return SLOTS_EDGE_FOUNDING_IAP_INTROS[String(productId || '').trim()] || null
 }
 
 /**
@@ -107,7 +70,6 @@ function foundingIntroFallback(productId) {
  *   id: string,
  *   displayPrice: string,
  *   introDisplayPrice: string,
- *   introFromStoreKit: boolean,
  *   introEligible: boolean,
  *   introPaymentMode: string,
  *   introPeriodUnit: string,
@@ -119,17 +81,14 @@ export function indexStoreProductsById(products) {
   for (const row of products || []) {
     const id = String(row?.id || '').trim()
     if (!id) continue
-    const storeKitIntro = String(row?.introDisplayPrice || '').trim()
-    const fallback = storeKitIntro ? null : foundingIntroFallback(id)
     map.set(id, {
       id,
       displayPrice: String(row?.displayPrice || '').trim(),
-      introDisplayPrice: storeKitIntro || fallback?.introDisplayPrice || '',
-      introFromStoreKit: Boolean(storeKitIntro),
+      introDisplayPrice: String(row?.introDisplayPrice || '').trim(),
       introEligible: isTruthyFlag(row?.introEligible),
-      introPaymentMode: String(row?.introPaymentMode || fallback?.introPaymentMode || '').trim(),
-      introPeriodUnit: String(row?.introPeriodUnit || fallback?.introPeriodUnit || '').trim(),
-      introPeriodCount: Number(row?.introPeriodCount) || fallback?.introPeriodCount || 0,
+      introPaymentMode: String(row?.introPaymentMode || '').trim(),
+      introPeriodUnit: String(row?.introPeriodUnit || '').trim(),
+      introPeriodCount: Number(row?.introPeriodCount) || 0,
     })
   }
   return map
@@ -139,17 +98,14 @@ function introPrice(product) {
   return String(product?.introDisplayPrice || '').trim()
 }
 
-/** Price new subscribers see on the card (StoreKit intro, else founding fallback, else list). */
+/** StoreKit intro if attached, else list. Card + iPhone CTA. */
 export function iapMarketingStorePrice(product) {
   return introPrice(product) || String(product?.displayPrice || '').trim()
 }
 
-/** Price this Apple ID pays now (intro only when StoreKit says eligible). */
+/** Same as marketing. Eligibility is Apple's sheet, not our fallback. */
 export function iapCustomerDisplayPrice(product) {
-  if (product?.introEligible && introPrice(product)) {
-    return introPrice(product)
-  }
-  return String(product?.displayPrice || '').trim()
+  return iapMarketingStorePrice(product)
 }
 
 export function iapIntroStoreLabel(product) {

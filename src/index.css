@@ -3659,6 +3659,9 @@ html.light [data-subscribe-modal] .subscribe-plan-compare-web {
 html.light [data-subscribe-modal] .subscribe-plan-compare-web .text-cyan-200 {
   color: #1d4ed8 !important;
 }
+html.light [data-subscribe-modal] .subscribe-plan-compare-web-note {
+  color: #3b82f6 !important;
+}
 
 /* Starter weekly drop scratch modal - light mode */
 html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-dialog {

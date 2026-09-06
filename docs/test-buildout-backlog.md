@@ -2850,6 +2850,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-05:** **IPA compare tiles match.** App Store + web: dollar only (no `/mo`). Duration + then-price on the bottom line (`12 mo then $22.99` / `12 mo then $19.99`). **`1.4.75`.**
 - **2026-09-05:** **IPA Subscribe drops the Apple ID / Stripe footer line.** Buttons already say iPhone vs web. Terms + Privacy stay. **`1.4.74`.**
 - **2026-09-05:** **StoreKit intro still list after 2h.** SK2 `introductoryOffer` stayed nil on Build 91 (list `$22.99`). Native now also reads SK1 `introductoryPrice`. JS founding fallback is back so Vercel shows `$16.99` / `$51.99` tonight. US Subscribe CTAs sit side by side (iPhone left, cyan text; web right, filled). New IPA for SK1. **`1.4.73`.**
 - **2026-09-05:** **Dropped hardcoded IAP intro fallback.** Ryan confirmed StoreKit attached the ASC intros. Card + iPhone CTA use StoreKit `introDisplayPrice` only. **`1.4.72`.** (Reverted the fallback in **`1.4.73`** after StoreKit stayed on list.)

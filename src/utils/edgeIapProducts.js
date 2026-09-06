@@ -151,24 +151,32 @@ export function iapCustomerDisplayPrice(product) {
   return iapMarketingStorePrice(product)
 }
 
-export function iapIntroStoreLabel(product) {
-  if (!introPrice(product)) return 'App Store'
+function iapIntroDurationLabel(product) {
+  if (!introPrice(product)) return ''
   const mode = String(product.introPaymentMode || '')
   const unit = String(product.introPeriodUnit || '')
   const count = Number(product.introPeriodCount) || 0
-  if (mode === 'freeTrial') return 'App Store · trial'
-  if (unit === 'month' && count === 12) return 'App Store · 12 mo'
-  if (unit === 'year' && count >= 1) return 'App Store · first year'
+  if (mode === 'freeTrial') return 'trial'
+  if (unit === 'month') return count > 0 ? `${count} mo` : ''
+  if (unit === 'year') return count > 1 ? `${count} yr` : '1 yr'
   if (count > 0 && unit) {
     const plural = count === 1 ? unit : `${unit}s`
-    return `App Store · ${count} ${plural}`
+    return `${count} ${plural}`
   }
-  return 'App Store · intro'
+  return ''
+}
+
+export function iapIntroStoreLabel(product) {
+  if (introPrice(product) && String(product.introPaymentMode || '') === 'freeTrial') {
+    return 'App Store · trial'
+  }
+  return 'App Store'
 }
 
 export function iapThenPriceNote(product) {
   const intro = introPrice(product)
   const list = String(product?.displayPrice || '').trim()
   if (!intro || !list || intro === list) return ''
-  return `Then ${list}`
+  const duration = iapIntroDurationLabel(product)
+  return duration ? `${duration} then ${list}` : `Then ${list}`
 }

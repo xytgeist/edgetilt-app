@@ -77,7 +77,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Mac Theo 2026-09-05 … StoreKit intro still list
 
-**I am Mac Theo.** IPA Subscribe footer no longer says Apple ID / Stripe. Terms + Privacy stay. **`1.4.74`.** Vercel JS. IAP still **Prepare for Submission**... StoreKit will keep list until a version review. Do not Add for Review unless Ryan wants that.
+**I am Mac Theo.** Compare tiles: `$16.99` / `$14.99` (no `/mo`). Bottom notes `12 mo then $22.99` and `12 mo then $19.99`. **`1.4.75`.** Vercel JS. IAP still Prepare for Submission.
 
 ### Mac Theo 2026-09-05 … IAP dual-path (code, not live charges)
 

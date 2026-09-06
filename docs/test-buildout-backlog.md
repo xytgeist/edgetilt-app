@@ -843,6 +843,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 - [x] **`apple-iap-verify`** (StoreKit begin + confirm) — deployed **test + prod** (2026-09-05). Was **404** on test … sandbox Pro purchase succeeded on Apple, then the IPA showed `Failed to send a request to the Edge Function`. SQL **`20260905120000`** on both. Source: `supabase/functions/apple-iap-verify/README.md`.
 - [x] **`apple-iap-notify`** (App Store Server Notifications V2) — deployed **test + prod** (2026-09-05). SQL **`20260905140000`**. Ryan pastes ASC Production URL. Source: `supabase/functions/apple-iap-notify/README.md`.
+- [x] **`stripe-ensure-edge-pro-price`** (ops, service role) — deployed **test** 2026-09-06. Created test-mode Edge Pro **$9.99/mo** `price_1UCj2NHSxykzMEuFEn1txoxa` and set **`STRIPE_PRICE_EDGE_PRO`**. Old id `price_1UALrKHy8VbdXOQulyD9ZOkd` was not in that Stripe account. Source: `supabase/functions/stripe-ensure-edge-pro-price/README.md`.
 
 - [x] **Creator fan promo codes** — migration **`20260903120000`**, Edge **`creator-fan-promo`** + **`creator-fan-checkout`** promo support. Settings manage codes; subscribe modal optional field. Creator eats discount; platform **20%** of final paid amount (was 30%). Deployed **test + prod** with frontend **`main`**.
 
@@ -2857,6 +2858,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-05:** **IPA Subscribe carousel shows Lifetime again.** Starter + Pro + Lifetime, same as web. **`1.4.90`.** Superseded same night.
 - **2026-09-05:** **Ryan signed off** Slots subscribe sheet height at `89.96dvh`. **`1.4.89`.**
 - **2026-09-05:** **Prod NFL trial wiped.** Deleted 65 Syndicate `americanfootball_nfl` `lounge_bot_picks`, 3 Lounge posts (public slate + `creator_fan_only` + Wong teaser). UFC kept. Signal Aug preseason NFL book (88W-60L) not touched... not on sharpesyndicate.com. Hard-refresh NFL filter.
+- **2026-09-06:** **Slots Edge Pro no longer unlocks Edge Pro.** Settings showed the Pro filter instead of **Unlock Edge Pro** whenever `has_active_subscription` was true (Apple Slots Pro IAP on `@investigence`). Viewer Pro composer / reply-gate UI used the same leak. Web Edge Pro checkout failed because `STRIPE_PRICE_EDGE_PRO` is a Price that does not exist on that Stripe account/mode (`price_1UALrKHy8VbdXOQulyD9ZOkd`). Checkout now says so in plain language. Ops: `stripe-ensure-edge-pro-price` + set the secret. **`1.4.93`.**
 - **2026-09-05:** **Slots subscribe sheet +5% again.** Shell `85.68dvh` → `89.96dvh`. **`1.4.89`.**
 - **2026-09-05:** **Slots subscribe sheet +5%.** Shell `81.6dvh` → `85.68dvh`. **`1.4.88`.**
 - **2026-09-05:** **Slots subscribe sheet 15% shorter.** Shell `96dvh` → `81.6dvh`. Layout unchanged. **`1.4.87`.**

@@ -184,6 +184,7 @@ Track implementation in `docs/test-buildout-backlog.md` when Phase 1 work starts
 | 2026-09-05 | **Edge Pro Settings IPA unlock card:** IAP `$11.49` only. No web `$9.99` on that card. |
 | 2026-09-05 | **Edge Pro Settings unlock card (US IPA):** App Store `$11.49` + web `$9.99`. CTAs side by side (iPhone outline, web filled). Copy: markdown, no ads, 10k posts. Badge dropped. |
 | 2026-09-05 | **Edge Pro Settings always prints web `$9.99`.** Storefront gate had hidden it. |
+| 2026-09-06 | **Slots Edge Pro does not grant Edge Pro.** Lounge Settings unlock card + viewer Pro gates (`isViewerEdgePro`, reply-gate composer) no longer treat `has_active_subscription` / Slots Pro as Edge Pro. Lifetime + staff still included via `hasEdgePro()`. Author badges still use the legacy profile flag. **`1.4.93`.** |
 | 2026-09-05 | **`apple-iap-verify` deployed on test** after sandbox confirm 404. Client fails closed before StoreKit if begin cannot reach the function. **`1.4.92`.** |
 | 2026-09-05 | **IPA Subscribe carousel hides Lifetime again** until Apple unlocks price points above `$1,000`. Web still shows the card. **`1.4.91`.** |
 | 2026-09-05 | **IPA Subscribe carousel shows Lifetime again** (Starter + Pro + Lifetime, same as web). **Superseded same night** (`1.4.91`). |

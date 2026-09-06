@@ -407,6 +407,20 @@ Deno.serve(async (req) => {
 
     const priceId = stripePriceSecretForProduct(productSlug, priceInterval)
     const stripe = new Stripe(requireStripeSecretKey())
+    try {
+      await stripe.prices.retrieve(priceId)
+    } catch (priceErr) {
+      const code = priceErr && typeof priceErr === 'object' && 'code' in priceErr
+        ? String(priceErr.code)
+        : ''
+      if (code === 'resource_missing' || /No such price/i.test(String(priceErr))) {
+        const envKey = `STRIPE_PRICE_${productSlug.toUpperCase().replace(/-/g, '_')}`
+        return jsonResponse({
+          error: `Stripe ${envKey} (${priceId}) is not in this Stripe account or mode. Set that secret to a Price that exists for this STRIPE_SECRET_KEY (test vs live).`,
+        }, 400)
+      }
+      throw priceErr
+    }
 
     const { data: profile, error: profileErr } = await admin
       .from('profiles')

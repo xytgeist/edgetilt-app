@@ -1685,13 +1685,9 @@ export default function SocialFeed({
     [composerUserProfile, hasActiveSubscription, loungeStaffToolsEnabled],
   )
 
-  const isViewerEdgePro = Boolean(
-    hasEdgePro ||
-    hasActiveSubscription ||
-    hasSlotsEdgePro ||
-    hasSlotsEdgeLifetime ||
-    loungeStaffToolsEnabled
-  )
+  // Slots Edge Pro must not inherit Edge Pro. Lifetime + staff are already
+  // folded into hasEdgePro by App.jsx / hasEdgePro().
+  const isViewerEdgePro = Boolean(hasEdgePro)
   const loungeProFilterActive = isViewerEdgePro && proFilterEnabled
 
   const isProOrStaffComment = useCallback(
@@ -16122,7 +16118,7 @@ export default function SocialFeed({
       settingsHasSlotsEdgeStarter={hasSlotsEdgeStarter}
       settingsHasSlotsEdgePro={hasSlotsEdgePro}
       settingsHasSlotsEdgeLifetime={hasSlotsEdgeLifetime}
-      settingsHasEdgePro={hasEdgePro || isViewerEdgePro}
+      settingsHasEdgePro={hasEdgePro}
       settingsProFilterEnabled={proFilterEnabled}
       onSettingsProFilterChange={onProFilterChange}
       settingsOnOpenBillingManage={onOpenBillingManage}
@@ -18585,7 +18581,7 @@ export default function SocialFeed({
               (() => {
                 const isAuthor = Boolean(composerUserId && loungePostDetail?.user_id === composerUserId)
                 const isStaff = Boolean(composerUserProfile?.role === 'admin' || composerUserProfile?.role === 'moderator')
-                const isEdgePro = Boolean(composerUserProfile?.has_active_subscription)
+                const isEdgePro = Boolean(hasEdgePro)
                 const isReplyGated = Boolean(loungePostDetail?.reply_gate_edge_pro)
                 const isBlockedByReplyGate = isReplyGated && !isAuthor && !isStaff && !isEdgePro
 

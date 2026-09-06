@@ -11,6 +11,11 @@ How the React app is organized after the **feature-module split** (2026). Use th
 
 Keeping auth in **`App.jsx`** and product chrome in **`AppShell`** avoids a circular dependency story and keeps the entry file small (~hundreds of lines instead of thousands).
 
+## Sibling static sites (not the Edge app)
+
+- **`sites/digiverse-ventures/`** — **Digiverse Ventures, LLC** holding page for **[digiverse.ventures](https://digiverse.ventures)** (Apple / D&B business website). Plain HTML/CSS. Host on **Cloudflare Pages**, not Vercel with the Edge app. Do not put a street address on it unless Ryan supplies the registered office. Contact: **`support@edgetilt.com`**.
+- **Sharpe Syndicate** (`syndicate.html` / `vite.syndicate.config.js`) stays its own Cloudflare Pages site at **sharpesyndicate.com**.
+
 ## Planned: iOS store shell (live site in WKWebView)
 
 Thin native shell under **`ios/`** loads **`lvslotpro.com`** / **`edgetilt.com`** (no baked `dist/`). Open **`ios/EdgeTilt.xcodeproj`** (scheme **EdgeTilt Test**). **Bridge contract + dual-machine rules:** **`docs/ios-native-bridge.md`**. Web feature work stays under **`src/features/`**; do not edit `ios/` from the Windows lane.

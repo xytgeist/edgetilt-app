@@ -75,9 +75,13 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-06 … digiverse.ventures static site in repo
+
+**I am Mac Theo.** Built the LLC holding site in **`sites/digiverse-ventures/`**. Domain is owned; **it is not live until Ryan uploads that folder to Cloudflare Pages and attaches `digiverse.ventures`**. No street address invented. Contact is **`support@edgetilt.com`** until Windows finishes Digiverse mailboxes. Do not Add for Review.
+
 ### Mac Theo 2026-09-06 … Before IAP / App Store submit
 
-**I am Mac Theo.** Ryan's pre-submit list (do not Add for Review until done): (1) App Store account → **Digiverse Ventures LLC**, (2) build **digiverse.ventures**, (3) Cloudflare email for edgetilt + digiverse / reply-from, (4) Apple increased price request (Lifetime above `$1,000`). Canonical checkboxes: **`docs/test-buildout-backlog.md`** → Before IAP / App Store submit.
+**I am Mac Theo.** Ryan's pre-submit list (do not Add for Review until done): (1) App Store account → **Digiverse Ventures LLC**, (2) **digiverse.ventures** site files in repo … still attach Cloudflare Pages custom domain, (3) Cloudflare email (Windows PC), (4) Apple increased price request (Lifetime above `$1,000`). Canonical checkboxes: **`docs/test-buildout-backlog.md`** → Before IAP / App Store submit.
 
 ### Mac Theo 2026-09-06 … Individual → Org convert submitted
 

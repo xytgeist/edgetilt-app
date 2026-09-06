@@ -6,107 +6,200 @@ import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js"
 const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 const canvas = document.getElementById("stage");
 if (!canvas || reduced) {
-  /* skyline off */
+  /* canyon off */
 } else {
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: false,
     powerPreference: "high-performance",
   });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.5));
-  renderer.setClearColor(0x0b0614, 1);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.6));
+  renderer.setClearColor(0x010308, 1);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 0.78;
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x14081c, 0.028);
+  scene.fog = new THREE.FogExp2(0x050a10, 0.018);
 
-  const camera = new THREE.PerspectiveCamera(62, 1, 0.1, 240);
-  camera.position.set(0, 5.2, 22);
+  const camera = new THREE.PerspectiveCamera(46, 1, 0.1, 320);
+  camera.position.set(0, 34, 11);
 
-  scene.add(new THREE.AmbientLight(0x2a1028, 0.55));
-  const sun = new THREE.PointLight(0xff6a22, 40, 80);
-  sun.position.set(0, 8, -40);
-  scene.add(sun);
-  const mag = new THREE.PointLight(0xff2d9b, 22, 36);
-  mag.position.set(-8, 4, 6);
-  scene.add(mag);
-  const cyan = new THREE.PointLight(0x3df0ff, 16, 32);
-  cyan.position.set(9, 3.5, 4);
-  scene.add(cyan);
+  scene.add(new THREE.AmbientLight(0x142028, 0.55));
+  const fill = new THREE.PointLight(0x8eb8c4, 12, 55);
+  fill.position.set(0, 10, 4);
+  scene.add(fill);
+  const moonLight = new THREE.PointLight(0xcdd6dc, 36, 110);
+  moonLight.position.set(0, 52, -20);
+  scene.add(moonLight);
 
   const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(220, 220),
-    new THREE.MeshStandardMaterial({ color: 0x0a0710, metalness: 0.7, roughness: 0.35 })
+    new THREE.PlaneGeometry(24, 180),
+    new THREE.MeshStandardMaterial({
+      color: 0x070c10,
+      metalness: 0.62,
+      roughness: 0.38,
+    })
   );
   ground.rotation.x = -Math.PI / 2;
   scene.add(ground);
 
-  const makeBuilding = (x, z, w, d, h, neon) => {
-    const body = new THREE.Mesh(
-      new THREE.BoxGeometry(w, h, d),
-      new THREE.MeshStandardMaterial({
-        color: 0x121018,
-        metalness: 0.45,
-        roughness: 0.62,
-        emissive: 0x1a0a22,
-        emissiveIntensity: 0.25,
-      })
-    );
-    body.position.set(x, h / 2, z);
-    scene.add(body);
-    if (neon) {
+  const winTex = (() => {
+    const c = document.createElement("canvas");
+    c.width = 96;
+    c.height = 384;
+    const g = c.getContext("2d");
+    g.fillStyle = "#081016";
+    g.fillRect(0, 0, 96, 384);
+    g.strokeStyle = "rgba(18, 32, 40, 0.9)";
+    g.lineWidth = 2;
+    for (let y = 0; y < 384; y += 16) {
+      g.beginPath();
+      g.moveTo(0, y);
+      g.lineTo(96, y);
+      g.stroke();
+    }
+    for (let y = 4; y < 380; y += 16) {
+      for (let x = 6; x < 90; x += 14) {
+        if (Math.random() > 0.22) {
+          const lit = Math.random() > 0.18;
+          g.fillStyle = lit ? "#7eacb8" : "#121c24";
+          g.globalAlpha = lit ? 0.28 + Math.random() * 0.5 : 0.9;
+          g.fillRect(x, y, 9, 10);
+        }
+      }
+    }
+    g.globalAlpha = 1;
+    const t = new THREE.CanvasTexture(c);
+    t.wrapS = THREE.RepeatWrapping;
+    t.wrapT = THREE.RepeatWrapping;
+    t.anisotropy = 4;
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  })();
+
+  const signTex = (() => {
+    const sheets = [];
+    const bgs = ["#d4e8ee", "#b7d6de", "#9ec8d2", "#e6f2f4", "#88b4c0"];
+    for (let n = 0; n < 8; n += 1) {
+      const c = document.createElement("canvas");
+      c.width = 48;
+      c.height = 256;
+      const g = c.getContext("2d");
+      g.fillStyle = bgs[n % bgs.length];
+      g.fillRect(0, 0, 48, 256);
+      g.fillStyle = n === 6 ? "#6a1c22" : "#0b1418";
+      g.fillRect(6, 8, 36, 18);
+      for (let y = 34; y < 244; y += 11 + (n % 3)) {
+        const w = 10 + ((n * 7 + y) % 22);
+        g.fillRect(24 - w / 2, y, w, 5 + (y % 5));
+      }
+      const t = new THREE.CanvasTexture(c);
+      t.colorSpace = THREE.SRGBColorSpace;
+      sheets.push(t);
+    }
+    return sheets;
+  })();
+
+  const moonTex = (() => {
+    const c = document.createElement("canvas");
+    c.width = 512;
+    c.height = 512;
+    const g = c.getContext("2d");
+    const grd = g.createRadialGradient(240, 220, 40, 256, 256, 260);
+    grd.addColorStop(0, "#e4e8ea");
+    grd.addColorStop(0.45, "#c5cbd0");
+    grd.addColorStop(1, "#8d969e");
+    g.fillStyle = grd;
+    g.fillRect(0, 0, 512, 512);
+    for (let i = 0; i < 90; i += 1) {
+      const x = Math.random() * 512;
+      const y = Math.random() * 512;
+      const r = 3 + Math.random() * 28;
+      g.beginPath();
+      g.arc(x, y, r, 0, Math.PI * 2);
+      g.fillStyle = `rgba(70, 78, 86, ${0.08 + Math.random() * 0.22})`;
+      g.fill();
+      g.beginPath();
+      g.arc(x - r * 0.18, y - r * 0.18, r * 0.7, 0, Math.PI * 2);
+      g.fillStyle = `rgba(210, 216, 220, ${0.04 + Math.random() * 0.08})`;
+      g.fill();
+    }
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  })();
+
+  const addSigns = (x, z, w, h, d, facing) => {
+    const face = facing < 0 ? -1 : 1;
+    let y = 1.1;
+    let n = 0;
+    while (y < h - 1.2 && n < 16) {
+      const sh = 1.15 + Math.random() * 2.4;
+      const sw = 0.42 + Math.random() * 0.5;
+      if (y + sh > h - 0.5) break;
       const sign = new THREE.Mesh(
-        new THREE.BoxGeometry(w * 0.08, h * 0.22, 0.08),
-        new THREE.MeshBasicMaterial({ color: neon })
+        new THREE.BoxGeometry(0.07, sh, sw),
+        new THREE.MeshBasicMaterial({
+          map: signTex[n % signTex.length],
+          color: 0xffffff,
+        })
       );
-      sign.position.set(x + (x < 0 ? w / 2 : -w / 2), h * 0.55, z);
+      sign.position.set(
+        x + face * (w / 2 + 0.045),
+        y + sh / 2,
+        z + (Math.random() - 0.5) * Math.min(d * 0.55, 1.1)
+      );
       scene.add(sign);
+      y += sh + 0.08 + Math.random() * 0.18;
+      n += 1;
     }
   };
 
   for (let i = 0; i < 28; i += 1) {
     const side = i % 2 === 0 ? -1 : 1;
-    const z = -6 - i * 4.2 - Math.random() * 2;
-    const x = side * (7 + Math.random() * 9);
-    const h = 6 + Math.random() * 22;
-    const w = 2.2 + Math.random() * 3.4;
-    const d = 2.4 + Math.random() * 3;
-    const neon = i % 3 === 0 ? 0xff2d9b : i % 3 === 1 ? 0x3df0ff : 0xff6a22;
-    makeBuilding(x, z, w, d, h, neon);
+    const row = Math.floor(i / 2);
+    const z = 6 - row * 3.05;
+    const x = side * (2.55 + (row % 4) * 0.12 + (row > 10 ? 0.35 : 0));
+    const h = 28 + (row % 7) * 4.5 + Math.random() * 10;
+    const w = 2.15 + Math.random() * 1.15;
+    const d = 2.4 + Math.random() * 1.5;
+    const map = winTex.clone();
+    map.wrapS = THREE.RepeatWrapping;
+    map.wrapT = THREE.RepeatWrapping;
+    map.repeat = new THREE.Vector2(1, Math.max(3, Math.floor(h / 7)));
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(w, h, d),
+      new THREE.MeshStandardMaterial({
+        map,
+        color: 0x6e7d86,
+        metalness: 0.42,
+        roughness: 0.52,
+        emissive: 0x0a1820,
+        emissiveIntensity: 0.28,
+      })
+    );
+    body.position.set(x, h / 2, z);
+    scene.add(body);
+    addSigns(x, z, w, h, d, -side);
   }
 
-  const rainCount = window.innerWidth < 700 ? 900 : 2200;
-  const rainPos = new Float32Array(rainCount * 6);
-  const rainSpeed = new Float32Array(rainCount);
-  for (let i = 0; i < rainCount; i += 1) {
-    const x = (Math.random() - 0.5) * 70;
-    const y = Math.random() * 40;
-    const z = (Math.random() - 0.5) * 80 - 10;
-    const len = 0.35 + Math.random() * 0.7;
-    rainPos[i * 6] = x;
-    rainPos[i * 6 + 1] = y;
-    rainPos[i * 6 + 2] = z;
-    rainPos[i * 6 + 3] = x - 0.08;
-    rainPos[i * 6 + 4] = y - len;
-    rainPos[i * 6 + 5] = z;
-    rainSpeed[i] = 0.35 + Math.random() * 0.55;
-  }
-  const rainGeo = new THREE.BufferGeometry();
-  rainGeo.setAttribute("position", new THREE.BufferAttribute(rainPos, 3));
-  const rain = new THREE.LineSegments(
-    rainGeo,
-    new THREE.LineBasicMaterial({
-      color: 0xaad8ff,
-      transparent: true,
-      opacity: 0.28,
+  const moon = new THREE.Mesh(
+    new THREE.SphereGeometry(11.5, 56, 56),
+    new THREE.MeshStandardMaterial({
+      map: moonTex,
+      color: 0xffffff,
+      emissive: 0x9aa4ac,
+      emissiveIntensity: 0.22,
+      roughness: 1,
+      metalness: 0,
     })
   );
-  scene.add(rain);
+  moon.position.set(0.15, 49, -26);
+  scene.add(moon);
 
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.72, 0.5, 0.2);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.28, 0.55, 0.42);
   composer.addPass(bloom);
 
   const mouse = { x: 0, y: 0 };
@@ -141,22 +234,10 @@ if (!canvas || reduced) {
     requestAnimationFrame(loop);
     if (!live) return;
     const t = clock.getElapsedTime();
-    const pos = rainGeo.attributes.position.array;
-    for (let i = 0; i < rainCount; i += 1) {
-      const s = rainSpeed[i];
-      pos[i * 6 + 1] -= s;
-      pos[i * 6 + 4] -= s;
-      if (pos[i * 6 + 1] < 0) {
-        pos[i * 6 + 1] += 40;
-        pos[i * 6 + 4] += 40;
-      }
-    }
-    rainGeo.attributes.position.needsUpdate = true;
-    camera.position.x += (mouse.x * 1.8 - camera.position.x) * 0.04;
-    camera.position.y += (5.1 + mouse.y * 0.6 - camera.position.y) * 0.04;
-    camera.position.z = 21 + Math.sin(t * 0.12) * 0.8;
-    camera.lookAt(0, 3.2, -18);
-    sun.intensity = 34 + Math.sin(t * 0.7) * 8;
+    camera.position.x += (mouse.x * 0.55 - camera.position.x) * 0.03;
+    camera.position.y += (34 + mouse.y * 0.9 - camera.position.y) * 0.03;
+    camera.lookAt(0.05, 14, -16);
+    moon.rotation.y = t * 0.012;
     composer.render();
   };
   loop();

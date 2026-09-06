@@ -110,6 +110,17 @@ const VERTICAL_BEATS_HORIZONTAL = 1.52
  * `repostMenuScrollRootRef`); this component injects `repostMenuScrollRootRef={panelScrollRef}`.
  */
 
+const EDGE_PRO_UNLOCK_PERKS = [
+  'Non-subscriber filters (feed / posts)',
+  'Ad free',
+  'Larger reply boost',
+  'Markdown studio composer',
+  'Longer posts (25k)',
+  'Edit posts (up to 1 hour)',
+  'Longer video uploads',
+  'Enable creator subs',
+]
+
 function SettingsSectionChevron({ open }) {
   return (
     <span
@@ -1654,9 +1665,17 @@ export default function LoungeDockSlidePanels({
                           {formatUsdMonthly(EDGE_PRO_MONTHLY_USD).replace(/\/(?:mo|yr)$/i, '')}
                         </span>
                       )}
-                      <p className="mt-1.5 text-[12px] leading-relaxed text-zinc-400">
-                        Markdown, no ads, and 10k-character posts. Reply on author-gated threads, and filter the feed and comments to Pro subscribers and staff.
-                      </p>
+                      <ul className="edge-pro-unlock-perks mt-2 space-y-1">
+                        {EDGE_PRO_UNLOCK_PERKS.map((line) => (
+                          <li key={line} className="flex gap-2 text-[12px] leading-snug text-zinc-400">
+                            <span
+                              aria-hidden
+                              className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-amber-400"
+                            />
+                            <span>{line}</span>
+                          </li>
+                        ))}
+                      </ul>
                       {edgeProCheckoutError ? (
                         <p className="mt-1.5 text-[11px] text-rose-400">{edgeProCheckoutError}</p>
                       ) : null}

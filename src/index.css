@@ -11153,6 +11153,9 @@ html.light [data-settings-edge-pro] .edge-pro-iap-btn {
 html.light [data-settings-edge-pro] .edge-pro-iap-btn:hover {
   background-color: #ffedd5 !important;
 }
+html.light [data-settings-edge-pro] .edge-pro-unlock-perks {
+  color: #52525b !important;
+}
 
 /* Edge Pro Post Detail Comment Filter Override Pill light mode styling */
 html.light [data-lounge-detail-pro-comment-toggle] {

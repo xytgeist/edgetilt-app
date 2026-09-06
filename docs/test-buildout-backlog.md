@@ -2850,6 +2850,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-05:** **Slots subscribe sheet sized to the card.** 3D slides pin to the top; stage height is the measured card. Founding badge sits under the title. No 96dvh stretch, no overlap on the hero. **`1.4.86`.**
 - **2026-09-05:** **Slots subscribe sheet hugs content.** Dropped the `96dvh` min/height lock + carousel `flex-1` stretch. One CTA already; leftover empty space was the forced full-viewport shell. **`1.4.85`.**
 - **2026-09-05:** **Prod CFB trial wiped.** Deleted 841 `americanfootball_ncaaf` `lounge_bot_picks` (Syndicate ledger + leftover Signal), 17 Lounge CFB posts (public teasers + `creator_fan_only`), Syndicate fan chat (16 messages). NFL + UFC kept. Chedda `syndicate_betting_splits` / market files not touched. Hard-refresh sharpesyndicate.com CFB.
 - **2026-09-05:** **IPA checkout defaults to iPhone.** Slots tiles + Edge Pro pill. Web still one tap. **`1.4.84`.**

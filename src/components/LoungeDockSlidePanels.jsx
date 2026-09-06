@@ -1649,22 +1649,7 @@ export default function LoungeDockSlidePanels({
                       <div className="text-[13px] font-semibold text-amber-300">
                         Unlock Edge Pro
                       </div>
-                      {isEdgeiOSShell() ? (
-                        <div className="mt-2 grid grid-cols-2 gap-2">
-                          <div className="edge-pro-compare-store rounded-lg px-2 py-1.5 ring-1 ring-white/10">
-                            <div className="text-base font-bold tracking-tight text-zinc-100">
-                              {(edgeProIapPrice || formatUsdMonthly(EDGE_PRO_MONTHLY_IAP_USD)).replace(/\/(?:mo|yr)$/i, '')}
-                            </div>
-                            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">App Store</p>
-                          </div>
-                          <div className="edge-pro-compare-web rounded-lg px-2 py-1.5 ring-1 ring-amber-400/30">
-                            <div className="text-base font-bold tracking-tight text-amber-300">
-                              {formatUsdMonthly(EDGE_PRO_MONTHLY_USD).replace(/\/(?:mo|yr)$/i, '')}
-                            </div>
-                            <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-200/80">Web</p>
-                          </div>
-                        </div>
-                      ) : (
+                      {isEdgeiOSShell() ? null : (
                         <span className="mt-1.5 inline-flex rounded-full border border-amber-500/40 bg-amber-500/20 px-2 py-0.5 text-[11px] font-black text-amber-400">
                           {formatUsdMonthly(EDGE_PRO_MONTHLY_USD).replace(/\/(?:mo|yr)$/i, '')}
                         </span>
@@ -1730,7 +1715,7 @@ export default function LoungeDockSlidePanels({
                                 setEdgeProCheckoutBusy(false)
                               }
                             }}
-                            className="edge-pro-web-btn inline-flex min-h-11 items-center justify-center rounded-lg bg-gradient-to-r from-amber-500 to-orange-500 px-2 py-2 text-center text-[12px] font-bold leading-snug text-zinc-950 shadow touch-manipulation hover:brightness-110 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
+                            className="edge-pro-iap-btn inline-flex min-h-11 items-center justify-center rounded-lg border border-amber-400/45 bg-zinc-950/60 px-2 py-2 text-center text-[12px] font-bold leading-snug text-amber-200 touch-manipulation hover:bg-zinc-900 disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
                           >
                             {edgeProCheckoutBusy
                               ? 'Opening Safari…'

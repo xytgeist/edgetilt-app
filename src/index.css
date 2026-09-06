@@ -11145,14 +11145,6 @@ html.light [data-settings-edge-pro] .edge-pro-unlock-card {
   background-color: #fff7ed !important;
   border-color: rgba(245, 158, 11, 0.35) !important;
 }
-html.light [data-settings-edge-pro] .edge-pro-compare-store {
-  background: #f4f4f5 !important;
-  box-shadow: inset 0 0 0 1px #e4e4e7;
-}
-html.light [data-settings-edge-pro] .edge-pro-compare-web {
-  background: #fff7ed !important;
-  box-shadow: inset 0 0 0 1px rgba(217, 119, 6, 0.28);
-}
 html.light [data-settings-edge-pro] .edge-pro-iap-btn {
   color: #c2410c !important;
   background-color: #fff7ed !important;
@@ -11160,10 +11152,6 @@ html.light [data-settings-edge-pro] .edge-pro-iap-btn {
 }
 html.light [data-settings-edge-pro] .edge-pro-iap-btn:hover {
   background-color: #ffedd5 !important;
-}
-html.light [data-settings-edge-pro] .edge-pro-web-btn {
-  background-image: linear-gradient(to right, #f59e0b, #f97316) !important;
-  color: #18181b !important;
 }
 
 /* Edge Pro Post Detail Comment Filter Override Pill light mode styling */

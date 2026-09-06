@@ -2850,6 +2850,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-05:** **IPA subscribe CTAs are peers.** No filled “please pick web” button. Edge Pro Settings drops the App Store / Web tiles. Buttons already have `$11.49` / `$9.99`. Slots paywall same peer CTAs. **`1.4.79`.**
 - **2026-09-05:** **Edge Pro Settings always shows web `$9.99`.** Storefront gate was dropping the cheaper dollar and leaving the `$11.49` pill. App Store + web tiles + both CTAs. **`1.4.78`.**
 - **2026-09-05:** **Edge Pro Settings unlock card.** Markdown, no ads, 10k posts. Badge copy gone. US IPA: App Store `$11.49` + web `$9.99`, CTAs side by side (iPhone outline, web filled). **`1.4.77`.**
 - **2026-09-05:** **IPA compare tiles match.** App Store + web: dollar only (no `/mo`). Duration + then-price on the bottom line (`12 mo then $22.99` / `12 mo then $19.99`). **`1.4.75`.**

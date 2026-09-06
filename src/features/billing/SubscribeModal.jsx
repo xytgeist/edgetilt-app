@@ -1321,11 +1321,7 @@ export default function SubscribeModal({
                     type="button"
                     disabled={checkoutDisabled}
                     onClick={() => void handleCheckout('iap')}
-                    className={
-                      showWebComparePrice
-                        ? 'subscribe-modal-iap-btn min-h-12 shrink-0 rounded-2xl border border-cyan-400/50 bg-zinc-900/80 px-2 py-2 text-center text-[13px] font-bold leading-snug text-cyan-300 touch-manipulation hover:bg-zinc-800 hover:text-cyan-200 disabled:opacity-50'
-                        : 'subscribe-modal-checkout-btn min-h-12 shrink-0 rounded-2xl bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 disabled:opacity-50 px-2 py-2 text-center text-[13px] font-bold leading-snug text-white touch-manipulation shadow-[0_8px_28px_rgba(6,182,212,0.28)]'
-                    }
+                    className="subscribe-modal-iap-btn min-h-12 shrink-0 rounded-2xl border border-cyan-400/50 bg-zinc-900/80 px-2 py-2 text-center text-[13px] font-bold leading-snug text-cyan-300 touch-manipulation hover:bg-zinc-800 hover:text-cyan-200 disabled:opacity-50"
                   >
                     {busy
                       ? 'Purchasing…'
@@ -1337,15 +1333,11 @@ export default function SubscribeModal({
                     type="button"
                     disabled={checkoutDisabled}
                     onClick={() => void handleCheckout('web')}
-                    className={
-                      showWebComparePrice
-                        ? 'subscribe-modal-checkout-btn min-h-12 shrink-0 rounded-2xl bg-gradient-to-r from-cyan-600 to-cyan-500 hover:from-cyan-500 hover:to-cyan-400 disabled:opacity-50 px-2 py-2 text-center text-[13px] font-bold leading-snug text-white touch-manipulation shadow-[0_8px_28px_rgba(6,182,212,0.28)]'
-                        : 'subscribe-modal-iap-btn min-h-12 shrink-0 rounded-2xl border border-cyan-400/50 bg-zinc-900/80 px-2 py-2 text-center text-[13px] font-bold leading-snug text-cyan-300 touch-manipulation hover:bg-zinc-800 hover:text-cyan-200 disabled:opacity-50'
-                    }
+                    className="subscribe-modal-iap-btn min-h-12 shrink-0 rounded-2xl border border-cyan-400/50 bg-zinc-900/80 px-2 py-2 text-center text-[13px] font-bold leading-snug text-cyan-300 touch-manipulation hover:bg-zinc-800 hover:text-cyan-200 disabled:opacity-50"
                   >
                     {busy
                       ? 'Opening Safari…'
-                      : showWebComparePrice
+                      : selectedWebCtaPrice
                         ? `Subscribe on the web · ${selectedWebCtaPrice}`
                         : 'Subscribe on the web'}
                   </button>

@@ -314,7 +314,7 @@ if (!canvas || reduced) {
     { title: "EDGE", color: "#3df0ff", sub: "SHARP SOCIAL  //  EV TOOLS", x: -15.5, y: 22, z: 18, ry: 0.55 },
     { title: "SYNDICATE", color: "#ffb14a", sub: "MODELS  //  LEDGER", x: 16, y: 20, z: 6, ry: -0.55 },
     { title: "LIVE", color: "#7cff5b", sub: "SECTOR 00  //  WET GRID", x: -14, y: 34, z: -44, ry: 0.28 },
-    { title: "VERSE", color: "#c77dff", sub: "NO ANALOG SKY", x: 15, y: 30, z: -58, ry: -0.32 },
+    { title: "+EV", color: "#c77dff", sub: "FIND YOUR EDGE", x: 15, y: 30, z: -58, ry: -0.32 },
   ];
   boards.forEach((b) => {
     const mesh = new THREE.Mesh(

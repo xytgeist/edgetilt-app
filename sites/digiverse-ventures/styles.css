@@ -98,8 +98,8 @@ a:hover { color: #fff; }
   color: var(--cyan);
   text-shadow: 0 0 12px rgba(61, 240, 255, 0.55);
 }
-.hud-tl { top: 10px; left: 12px; }
-.hud-tr { top: 10px; right: 12px; color: var(--mag); }
+.hud-tl { top: 8px; left: 14px; }
+.hud-tr { top: 8px; right: 14px; color: var(--mag); }
 .hud-bl { bottom: 10px; left: 12px; }
 .hud-br { bottom: 10px; right: 12px; color: var(--sun); }
 
@@ -115,7 +115,7 @@ a:hover { color: #fff; }
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1.6rem 2.4rem 1.35rem;
+  padding: 3.15rem 2.6rem 1.2rem;
   font-size: 0.72rem;
   letter-spacing: 0.22em;
   text-transform: uppercase;

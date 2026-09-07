@@ -88,6 +88,10 @@ verify_jwt = false
 [functions.stripe-webhook]
 verify_jwt = false
 
+# Ops: find or create Edge Pro $9.99/mo Price. Service role checked in function.
+[functions.stripe-ensure-edge-pro-price]
+verify_jwt = false
+
 # Guide image upload to R2: handles own auth (user JWT admin check OR service-role bearer).
 [functions.guide-cf-r2-upload]
 verify_jwt = false

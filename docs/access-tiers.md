@@ -13,7 +13,7 @@
 | **No account** | `anonymous` | Lounge only: **read-only** feed (no post cap — same feed depth as public RLS + app pagination allow). No search/filter/post detail/navigation; **create account** modal on forbidden actions. |
 | **Free (verified user)** | `free` | Full **Lounge** (post, lounge search, filter, comment, like, repost, bookmark, etc.). **Verified user** badge by display name. Rest of app reachable from menu; **subscribe** gates on bankroll, offer alerts/OCR, locked calcs/guides. |
 | **Paid — Slots Edge** | `starter` / `slots-edge-starter` | **Verified** + **subscriber** badges. **AP guide cards** are the primary product: fixed **starter pack** on subscribe + **one random premium guide drop per week** (engagement + upgrade funnel). Tools mostly gated. See **§5**. |
-| **Paid — Slots Edge Pro** | `full` / `slots-edge` | **Verified** + **subscriber** badges. **Instant full AP guide library** + all calculators + unlimited bankroll/logbook + calendar alerts/OCR. **New** game packs may add **subscriber-only** add-on paywalls. See **§5**. |
+| **Paid — Slots Edge Pro** | `full` / `slots-edge` | **Verified** + **subscriber** badges. **Instant full AP guide library** + all calculators + unlimited bankroll/logbook + calendar alerts/OCR. Includes the **Edge Pro** social tier. **New** game packs may add **subscriber-only** add-on paywalls. See **§5**. |
 | **Moderator / admin** | `staff` (`role` on profile) | **Full access** to everything, including new calcs/guides before/during any add-on rollout. **Special badges** distinct from verified/subscriber. |
 
 ---
@@ -160,6 +160,7 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 
 - **Subscriber** badge on posts.
 - **10000 characters** per post and comment (same as Starter).
+- Includes the **Edge Pro** social tier (no ads, Pro-only stream / comment filter, reply gates). **Slots Edge** (Starter) does not.
 
 **Add-ons**
 
@@ -239,4 +240,5 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 | 2026-07-01 | **Starter weekly drop rules locked:** per-user uniform random from **remaining** published **2020+** slugs (excludes free list + prior grants). Migration **`20260701130000_starter_weekly_guide_unlocks.sql`**, pool helpers **`starterWeeklyDropPool.js`**, client **`useStarterWeeklyDropGuideSlugs`**. |
 | 2026-07-01 | **Public tier names:** **Slots Edge** (`slots-edge-starter`), **Slots Edge Pro** (`slots-edge`), **Slots Edge Lifetime** (`slots-edge-lifetime`). Migration **`20260701150000_subscription_product_tier_display_names.sql`**. Subscribe modal + **`edgeProducts.js`** display names. |
 | 2026-07-02 | **Buffalo Diamond → Pro only:** **`SLOTS_EDGE_PRO_ONLY_GUIDE_SLUGS`** + **`SLOTS_EDGE_PRO_ONLY_CALCULATOR_KEYS`** in **`guideAccess.js`** / **`calculatorAccess.js`**. Starter keeps WoF 4D CE guide + calc when guide is unlocked. |
+| 2026-09-07 | **Slots Edge Pro + Lifetime include Edge Pro social.** Starter does not. SQL **`20260907120000`**. **`1.4.95`.** |
 | 2026-07-18 | **Multi-product entitlements (planned):** creator fan subs, Edge Pro platform tier, add-ons ... capability matrix and stacking rules in **`docs/entitlements-matrix.md`**. This file remains source of truth for **shipped** anon / free / Slots Edge / staff behavior. |

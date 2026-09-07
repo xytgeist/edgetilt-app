@@ -96,7 +96,18 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [x] **Bridges v1 remaining:** ~~push (`requestPushPermission` / `getPushToken`)~~ **native signed 2026-08-25** + Windows token upload 2026-08-25; call audio session (`setAudioSession` foreground-solid; CallKit → v1.1), ~~unmuted media autoplay **web unlock** under shell~~ **done (Windows 2026-08-24)** … ~~device smoke~~ **Ryan sign-off 2026-08-25** (Tap for sound → next clips stay audible). ~~APNs **send**~~ **Ryan device banner 2026-08-25** (test Edge `APNS_*`). ~~Tap deep links~~ **Ryan smoke PASSED 2026-08-25** (`b66986cf`).
 - [ ] **Native UA web gates (Windows):** ~~hide in-WebView Stripe / subscribe CTAs → `openInSafari`~~ **done** (`openExternalBillingUrl`); ~~skip `push-sw` register~~ **done**; ~~hide A2HS / install-for-push chrome~~ (How to Install chip + `iosPwaInstallRequired` + web push hook). UA token **`EdgeiOS/0.1.0`**; **`src/utils/edgeNative.js`** landed.
 - [x] **Billing v1 (US) Safari link-out:** Stripe Checkout / portal / Connect never `location.assign` inside EdgeiOS … `openExternalBillingUrl` → `openInSafari`. StoreKit IAP deferred to v1.1. Counsel + App Review notes still before submit.
-- [ ] **Store listing:** icon, splash, privacy nutrition, permission copy.
+- [ ] **Store listing leftovers:** iPhone 6.5" screenshots (need ≥1, first 3 show on install), Add Build, Review phone + demo login. Listing **text** saved 2026-09-07. Privacy URL + nutrition **published** 2026-09-07. App Accessibility optional (left empty). Icon / splash still owed.
+- [x] **App Information leftovers (2026-09-06):** Age Ratings saved (calculated 16+, override **18+** for ToS 18+; Brazil 19+). Content Rights Yes (third-party / UGC). Encryption: do not upload docs … Xcode `ITSAppUsesNonExemptEncryption = NO`. Vietnam Game License / Medical Device N/A.
+- [ ] **DSA trader (still owed):** Org changeover to **Digiverse Ventures LLC** is done (Ryan 2026-09-07). Trader as the LLC is now unblocked (company address / phone / email). Do not invent those. Do not open a second developer account.
+
+### Before IAP / App Store submit (Ryan 2026-09-06)
+
+Do **not** Add for Review until the open items are done. Age Ratings / Content Rights / encryption plist are already in. Same Apple team … do not open a second developer account.
+
+- [x] **App Store account changeover to Digiverse Ventures LLC.** Ryan signed off 2026-09-07. DSA trader as the LLC is now unblocked.
+- [x] **[digiverse.ventures](https://digiverse.ventures)** LLC site live. Static files in **`sites/digiverse-ventures/`**. Ryan signed off 2026-09-07 (Pages + custom domain). Contact **`contact@digiverse.ventures`**. Not an Edge product surface.
+- [x] **Cloudflare email** for **edgetilt** and **digiverse** … mailboxes + reply-from. Ryan signed off 2026-09-07.
+- [ ] **Increased price request approval** from App Store Connect (Lifetime / price points above Apple’s `$1,000` cap). IPA carousel stays Starter + Pro until this clears. **Last open item on this list.**
 
 ### Native gap checklist (audit 2026-08-23)
 
@@ -843,6 +854,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 - [x] **`apple-iap-verify`** (StoreKit begin + confirm) — deployed **test + prod** (2026-09-05). Was **404** on test … sandbox Pro purchase succeeded on Apple, then the IPA showed `Failed to send a request to the Edge Function`. SQL **`20260905120000`** on both. Source: `supabase/functions/apple-iap-verify/README.md`.
 - [x] **`apple-iap-notify`** (App Store Server Notifications V2) — deployed **test + prod** (2026-09-05). SQL **`20260905140000`**. Ryan pastes ASC Production URL. Source: `supabase/functions/apple-iap-notify/README.md`.
+- [x] **`stripe-ensure-edge-pro-price`** (ops, service role) — deployed **test** 2026-09-06. Created test-mode Edge Pro **$9.99/mo** `price_1UCj2NHSxykzMEuFEn1txoxa` and set **`STRIPE_PRICE_EDGE_PRO`**. Old id `price_1UALrKHy8VbdXOQulyD9ZOkd` was not in that Stripe account. Source: `supabase/functions/stripe-ensure-edge-pro-price/README.md`.
 
 - [x] **Creator fan promo codes** — migration **`20260903120000`**, Edge **`creator-fan-promo`** + **`creator-fan-checkout`** promo support. Settings manage codes; subscribe modal optional field. Creator eats discount; platform **20%** of final paid amount (was 30%). Deployed **test + prod** with frontend **`main`**.
 
@@ -2851,13 +2863,23 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
-- **2026-09-07:** **Store-screenshot hide cherry-picked to `main`.** AP Guide card Delete + Slots Edge lock, Play Logbook **Primary game templates** gated off. Not a full `test` FF ... **`20260906120000`** `has_edge_pro` is still test-only. Flip `SHOW_GUIDE_CARD_ADMIN_LOCK_AND_DELETE` / `SHOW_PRIMARY_GAME_TEMPLATES_BUTTON`.
+- **2026-09-07:** **Slots Edge Pro + Lifetime grant Edge Pro (Mac).** Ryan: Pro and Lifetime include the Edge Pro social tier. Starter does not. SQL **`20260906120000`** + **`20260907120000`** on test + prod. Frontend **`test` → `main`**. **`1.4.95`.**
+- **2026-09-07:** **Store-screenshot hide on `main` (Mac).** Cherry-pick **`51561730`**, then later **`test` → `main`** merge after prod SQL. AP Guide card Delete + Slots Edge lock, Play Logbook **Primary game templates** gated off. Flip `SHOW_GUIDE_CARD_ADMIN_LOCK_AND_DELETE` / `SHOW_PRIMARY_GAME_TEMPLATES_BUTTON`. Favorites + Custom game templates stay.
+- **2026-09-07:** **App Privacy nutrition published (Mac).** URL `https://edgetilt.com/privacy`. 16 collected types, linked, not tracked. Accessibility not claimed. Still owed: screenshots, build, Review phone + demo login, DSA trader, price request.
+- **2026-09-07:** **ASC 1.0 listing text saved (Mac).** Promo, description, keywords, `https://edgetilt.com` support + marketing, copyright Digiverse Ventures, LLC, Review notes + Ryan / support@edgetilt.com, subtitle **Play with an edge**, manual release. Still owed: screenshots, build, Review phone + demo login, privacy URL / nutrition, DSA trader, price request. Do not Add for Review.
+- **2026-09-07:** **Pre-IAP submit 1–3 done (Ryan).** Org is **Digiverse Ventures LLC**, **digiverse.ventures** live, Cloudflare email for edgetilt + digiverse / reply-from. Still open: Apple increased price request (Lifetime above `$1,000`). DSA trader unblocked.
+- **2026-09-06:** **digiverse.ventures lists Sharpe Syndicate.** LLC holding site names EDGE / EdgeTilt and Sharpe Syndicate as properties. Contact `contact@digiverse.ventures`. Still needs Cloudflare Pages + custom domain.
+- **2026-09-06:** **Before IAP / App Store submit list (Ryan).** Org changeover to Digiverse Ventures LLC, build digiverse.ventures, Cloudflare email for edgetilt + digiverse / reply-from, Apple increased price request. Do not Add for Review until those clear. Backlog section under Planned (Native shells).
+- **2026-09-06:** **Apple Individual → Org convert submitted.** Ryan asked Apple to switch the EdgeTilt team to **Digiverse Ventures LLC**. Reply owed within one business day. Same app / IAP / Age Ratings. DSA trader waits on that flip. Do not Add for Review.
+- **2026-09-06:** **ASC App Information leftovers (Mac).** EdgeTilt `6806401093`: Age Ratings questionnaire saved (UGC / social / chat / ads / unrestricted web; gambling and simulated gambling None). Calculated 16+, override **18+**. Content Rights already Yes. Encryption Upload left empty. DSA still **non-trader** until Ryan supplies trader compliance details. Do not Add for Review.
 - **2026-09-05:** **Apple IAP dual-path promoted to prod.** SQL **`20260905120000`** + **`20260905140000`** on **`jtjgtucumuoswnbauxry`**. Redeployed **`apple-iap-verify`** + **`apple-iap-notify`**. Probe 401 / handler-alive. Frontend via **`test` → `main`**. Ryan still pastes the Production ASSN URL. **`1.4.92`.**
 - **2026-09-05:** **`apple-iap-verify` was missing on test.** Sandbox Pro IAP charged, confirm 404'd as a fetch error. Deployed to `kcosfvmreeiosdjdzycb`. Client no longer opens StoreKit if begin fails. **`1.4.92`.** **Ryan signed off:** Restore purchases granted the already-paid sandbox Pro.
 - **2026-09-05:** **IPA Subscribe carousel hides Lifetime again.** Apple IAP list + offer wizard still cap at `$1,000`. Web still shows the card. **`1.4.91`.**
 - **2026-09-05:** **IPA Subscribe carousel shows Lifetime again.** Starter + Pro + Lifetime, same as web. **`1.4.90`.** Superseded same night.
 - **2026-09-05:** **Ryan signed off** Slots subscribe sheet height at `89.96dvh`. **`1.4.89`.**
 - **2026-09-05:** **Prod NFL trial wiped.** Deleted 65 Syndicate `americanfootball_nfl` `lounge_bot_picks`, 3 Lounge posts (public slate + `creator_fan_only` + Wong teaser). UFC kept. Signal Aug preseason NFL book (88W-60L) not touched... not on sharpesyndicate.com. Hard-refresh NFL filter.
+- **2026-09-06:** **Pro-only stream ignores Slots Edge Pro.** New `profiles.has_edge_pro` (Edge Pro, Lifetime, staff). Filter no longer uses `has_active_subscription`. Cyan Verified Subscriber checkmark unchanged. SQL **`20260906120000`** on test. **`1.4.94`.**
+- **2026-09-06:** **Slots Edge Pro no longer unlocks Edge Pro.** Settings showed the Pro filter instead of **Unlock Edge Pro** whenever `has_active_subscription` was true (Apple Slots Pro IAP on `@investigence`). Viewer Pro composer / reply-gate UI used the same leak. Web Edge Pro checkout failed because `STRIPE_PRICE_EDGE_PRO` is a Price that does not exist on that Stripe account/mode (`price_1UALrKHy8VbdXOQulyD9ZOkd`). Checkout now says so in plain language. Ops: `stripe-ensure-edge-pro-price` + set the secret. **`1.4.93`.**
 - **2026-09-05:** **Slots subscribe sheet +5% again.** Shell `85.68dvh` → `89.96dvh`. **`1.4.89`.**
 - **2026-09-05:** **Slots subscribe sheet +5%.** Shell `81.6dvh` → `85.68dvh`. **`1.4.88`.**
 - **2026-09-05:** **Slots subscribe sheet 15% shorter.** Shell `96dvh` → `81.6dvh`. Layout unchanged. **`1.4.87`.**

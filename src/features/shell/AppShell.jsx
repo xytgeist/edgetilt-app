@@ -784,10 +784,14 @@ export default function AppShell({
       let profileByUserId = {}
       if (userIds.length > 0) {
         const coreFields = 'user_id,handle,display_name,avatar_url,bio,role,is_og,has_active_subscription'
+        const withEdgePro = `${coreFields},has_edge_pro`
         let res = await supabaseClient
           .from('profiles')
-          .select(`${coreFields},about_me,banner_url,location`)
+          .select(`${withEdgePro},about_me,banner_url,location`)
           .in('user_id', userIds)
+        if (res.error) {
+          res = await supabaseClient.from('profiles').select(withEdgePro).in('user_id', userIds)
+        }
         if (res.error) {
           res = await supabaseClient.from('profiles').select(coreFields).in('user_id', userIds)
         }

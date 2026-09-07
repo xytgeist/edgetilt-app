@@ -75,9 +75,53 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
-### Mac Theo 2026-09-07 … hide guide admin + primary templates on main
+### Mac Theo 2026-09-06 … digiverse.ventures static site in repo
 
-**I am Mac Theo.** Cherry-picked the screenshot hide onto **`main`** (not a full `test` FF). AP Guide card Delete + lock, Play Logbook Primary game templates stay off. Flip flags in `GuidesScreen.jsx` / `PlayLogbook.jsx`. Full FF still blocked: **`20260906120000`** `has_edge_pro` is test-only. Do not Add for Review.
+**I am Mac Theo.** Built the LLC holding site in **`sites/digiverse-ventures/`**. Properties: EDGE / EdgeTilt + Sharpe Syndicate. Contact **`contact@digiverse.ventures`**. Pages project **`digiverse-ventures`**. Custom domain still needs attaching. Do not Add for Review.
+
+### Mac Theo 2026-09-06 … Digiverse canyon-moon look
+
+**I am Mac Theo.** Live look is a cold Tokyo alley canyon (high camera, stacked teal signs, huge moon). Swiss paper backup stays in **`sites/digiverse-ventures-swiss/`**. Do not use the reference street photo as a background.
+
+### Mac Theo 2026-09-07 … Slots Edge Pro + Lifetime grant Edge Pro
+
+**I am Mac Theo.** Ryan: Slots Edge Pro and Lifetime include the Edge Pro social tier. Starter does not. SQL **`20260906120000`** + **`20260907120000`** on test + prod. Frontend **`test` → `main`**. **`1.4.95`.** Do not Add for Review.
+
+### Mac Theo 2026-09-07 … hide guide admin + primary templates (screenshots)
+
+**I am Mac Theo.** Hide is on **`main`**. Flip `SHOW_GUIDE_CARD_ADMIN_LOCK_AND_DELETE` in `GuidesScreen.jsx` and `SHOW_PRIMARY_GAME_TEMPLATES_BUTTON` in `PlayLogbook.jsx`. Prod SQL + **`test` → `main`** merge landed. Do not Add for Review.
+
+### Mac Theo 2026-09-07 … App Privacy nutrition published
+
+**I am Mac Theo.** Privacy URL `https://edgetilt.com/privacy` saved (Ryan). Nutrition labels published: 16 types, app functionality / analytics / personalization as they apply, linked to identity, **not used for tracking**. Accessibility left empty (optional, do not claim VoiceOver). **Still Ryan:** screenshots, Add Build, Review phone + demo login, DSA trader, Apple price request. Do not Add for Review.
+
+### Mac Theo 2026-09-07 … ASC 1.0 listing text saved
+
+**I am Mac Theo.** Version 1.0 listing is filled: promo, description, keywords, support + marketing `https://edgetilt.com`, copyright **2026 Digiverse Ventures, LLC**, Review contact Ryan Franklin / `support@edgetilt.com`, notes (WKWebView, 18+, no wagers, IAP + Safari), manual release. Subtitle **Play with an edge**. Do not Add for Review.
+
+### Mac Theo 2026-09-07 … pre-IAP list 1–3 done
+
+**I am Mac Theo.** Ryan signed off: (1) App Store account is **Digiverse Ventures LLC**, (2) **digiverse.ventures** live, (3) Cloudflare email for edgetilt + digiverse / reply-from. **Still open:** Apple increased price request (Lifetime above `$1,000`). DSA trader is unblocked now that the org flip landed. Do not Add for Review.
+
+### Mac Theo 2026-09-06 … Before IAP / App Store submit
+
+**I am Mac Theo.** Pre-submit list: 1–3 done 2026-09-07. Last open: Apple increased price request (Lifetime above `$1,000`). Canonical: **`docs/test-buildout-backlog.md`** → Before IAP / App Store submit.
+
+### Mac Theo 2026-09-06 … Individual → Org convert submitted
+
+**I am Mac Theo.** Convert landed. Seller is **Digiverse Ventures LLC**. Same team / same app. DSA trader as the LLC is now the leftover. Do not Add for Review.
+
+### Mac Theo 2026-09-06 … ASC App Information leftovers
+
+**I am Mac Theo.** EdgeTilt (`6806401093`) App Information: Age Ratings saved (calculated 16+, override **18+** for ToS). Content Rights Yes. Encryption Upload left empty (`ITSAppUsesNonExemptEncryption = NO`). DSA still **non-trader** until the org convert lands. Do not Add for Review.
+
+### Mac Theo 2026-09-06 … Pro-only stream is Edge Pro only
+
+**I am Mac Theo.** Pro-only feed / comment filter now reads `profiles.has_edge_pro` (Edge Pro, Lifetime, staff). Slots Edge Pro stays visible on the Verified Subscriber checkmark via `has_active_subscription`. SQL **`20260906120000`** on test. **`1.4.94`.**
+
+### Mac Theo 2026-09-06 … Slots Pro leaked Edge Pro + web price missing
+
+**I am Mac Theo.** TestFlight web Edge Pro checkout: `No such price: 'price_1UALrKHy8VbdXOQulyD9ZOkd'` … that Price was not in test-mode Stripe. Created `price_1UCj2NHSxykzMEuFEn1txoxa` and set **`STRIPE_PRICE_EDGE_PRO`** on `kcosfvmreeiosdjdzycb`. Slots Edge Pro IAP (`@investigence`, slug `slots-edge`) wrote Apple billing correctly; Lounge treated `has_active_subscription` as Edge Pro. Client leak fixed. **`1.4.93`.** Web subscribe can retry on the current TestFlight after Vercel picks up `test`. No new IPA required for this JS fix.
 
 ### Mac Theo 2026-09-05 … IAP dual-path on prod
 

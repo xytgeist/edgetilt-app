@@ -94,6 +94,7 @@ Future vertical slugs: **`sports-edge`**, **`crypto-edge`**.
 | **`STRIPE_PRICE_SLOTS_EDGE_ANNUAL`** | `price_…` for **$660/yr** full |
 
 | **`STRIPE_PRICE_SLOTS_EDGE_LIFETIME`** | `price_…` for **$1,699 one-time** Lifetime |
+| **`STRIPE_PRICE_EDGE_PRO`** | `price_…` for **$9.99/mo** Edge Pro. Must exist in the same Stripe account **and** mode as **`STRIPE_SECRET_KEY`**. |
 
 | **`STRIPE_COUPON_FOUNDING_MONTHLY`** | 25% × 12 months on monthly Starter / Full |
 

@@ -119,6 +119,7 @@ import {
   dispatchStarterWeeklyDropOpen,
   stripStarterDropQueryParam,
 } from '../billing/starterWeeklyDropApi.js'
+import { profileHasEdgeProGrant } from '../billing/edgeProducts.js'
 import {
   readLoungeProfileCache,
   writeLoungeProfileCache,
@@ -558,7 +559,7 @@ async function fetchHydratedFeedCommentsForPost(supabaseClient, postId) {
   if (authorIds.length) {
     const pr = await supabaseClient
       .from('profiles')
-      .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription')
+      .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription,has_edge_pro')
       .in('user_id', authorIds)
     if (!pr.error && pr.data) profileBy = Object.fromEntries(pr.data.map((p) => [p.user_id, p]))
   }
@@ -1685,13 +1686,8 @@ export default function SocialFeed({
     [composerUserProfile, hasActiveSubscription, loungeStaffToolsEnabled],
   )
 
-  const isViewerEdgePro = Boolean(
-    hasEdgePro ||
-    hasActiveSubscription ||
-    hasSlotsEdgePro ||
-    hasSlotsEdgeLifetime ||
-    loungeStaffToolsEnabled
-  )
+  // Slots Edge Pro + Lifetime inherit Edge Pro via App.jsx / hasEdgePro().
+  const isViewerEdgePro = Boolean(hasEdgePro)
   const loungeProFilterActive = isViewerEdgePro && proFilterEnabled
 
   const isProOrStaffComment = useCallback(
@@ -1699,8 +1695,7 @@ export default function SocialFeed({
       if (!comment) return false
       if (comment.user_id === composerUserId) return true
       if (comment.user_id === loungePostDetail?.user_id) return true
-      if (comment.author_profile?.has_active_subscription === true) return true
-      if (comment.author_profile?.role === 'admin' || comment.author_profile?.role === 'moderator') return true
+      if (profileHasEdgeProGrant(comment.author_profile)) return true
       return false
     },
     [composerUserId, loungePostDetail?.user_id],
@@ -1731,8 +1726,7 @@ export default function SocialFeed({
     if (!loungeProFilterActive) return communityPosts
     return communityPosts.filter((post) => {
       if (post.user_id === composerUserId) return true
-      if (post.author_profile?.has_active_subscription === true) return true
-      if (post.author_profile?.role === 'admin' || post.author_profile?.role === 'moderator') return true
+      if (profileHasEdgeProGrant(post.author_profile)) return true
       return false
     })
   }, [communityPosts, composerUserId, loungeProFilterActive])
@@ -7731,7 +7725,7 @@ export default function SocialFeed({
         if (authorIds.length) {
           const pr = await supabaseClient
             .from('profiles')
-            .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription')
+            .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription,has_edge_pro')
             .in('user_id', authorIds)
           if (!pr.error && pr.data) profileBy = Object.fromEntries(pr.data.map((p) => [p.user_id, p]))
         }
@@ -10140,7 +10134,7 @@ export default function SocialFeed({
         const { data } = await supabaseClient
           .from('profiles')
           .select(
-            'user_id,handle,display_name,avatar_url,bio,about_me,banner_url,location,website_url,category_pills,created_at,role,handle_changed_at,is_og,has_active_subscription,is_bot',
+            'user_id,handle,display_name,avatar_url,bio,about_me,banner_url,location,website_url,category_pills,created_at,role,handle_changed_at,is_og,has_active_subscription,has_edge_pro,is_bot',
           )
           .eq('user_id', uid)
           .maybeSingle()
@@ -12320,7 +12314,7 @@ export default function SocialFeed({
         loungeDetailCommentSnapshotRef.current = null
         const pr = await supabaseClient
           .from('profiles')
-          .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription')
+          .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription,has_edge_pro')
           .eq('user_id', snap.userId)
           .maybeSingle()
         const row = { ...data, author_profile: pr.data || composerUserProfile || null }
@@ -13120,7 +13114,7 @@ export default function SocialFeed({
           })
           const pr = await supabaseClient
             .from('profiles')
-            .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription')
+            .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription,has_edge_pro')
             .eq('user_id', snap.userId)
             .maybeSingle()
           const row = { ...data, author_profile: pr.data || composerUserProfile || null }
@@ -16122,7 +16116,7 @@ export default function SocialFeed({
       settingsHasSlotsEdgeStarter={hasSlotsEdgeStarter}
       settingsHasSlotsEdgePro={hasSlotsEdgePro}
       settingsHasSlotsEdgeLifetime={hasSlotsEdgeLifetime}
-      settingsHasEdgePro={hasEdgePro || isViewerEdgePro}
+      settingsHasEdgePro={hasEdgePro}
       settingsProFilterEnabled={proFilterEnabled}
       onSettingsProFilterChange={onProFilterChange}
       settingsOnOpenBillingManage={onOpenBillingManage}
@@ -18585,7 +18579,7 @@ export default function SocialFeed({
               (() => {
                 const isAuthor = Boolean(composerUserId && loungePostDetail?.user_id === composerUserId)
                 const isStaff = Boolean(composerUserProfile?.role === 'admin' || composerUserProfile?.role === 'moderator')
-                const isEdgePro = Boolean(composerUserProfile?.has_active_subscription)
+                const isEdgePro = Boolean(hasEdgePro)
                 const isReplyGated = Boolean(loungePostDetail?.reply_gate_edge_pro)
                 const isBlockedByReplyGate = isReplyGated && !isAuthor && !isStaff && !isEdgePro
 

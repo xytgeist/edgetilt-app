@@ -1635,7 +1635,7 @@ export default function LoungeDockSlidePanels({
 
               {proSettingsOpen ? (
                 <div data-settings-edge-pro className="mt-2 space-y-2 rounded-xl border border-zinc-800/90 bg-zinc-950/40 p-2">
-                  {settingsHasEdgePro || settingsHasSlotsEdgeLifetime || settingsHasActiveSubscription || settingsViewerIsStaff ? (
+                  {settingsHasEdgePro || settingsHasSlotsEdgeLifetime || settingsViewerIsStaff ? (
                     <button
                       type="button"
                       role="switch"

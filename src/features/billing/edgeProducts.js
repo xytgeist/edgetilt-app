@@ -60,7 +60,7 @@ export function hasEdgePro(entitlements) {
   return (
     hasEntitlement(entitlements, PRODUCT_EDGE_PRO) ||
     Boolean(entitlements?.platform?.edge_pro) ||
-    hasSlotsEdgeLifetime(entitlements)
+    hasSlotsEdge(entitlements)
   )
 }
 
@@ -90,6 +90,18 @@ export function hasSlotsEdgePro(entitlements) {
 /** Any paid Slots Edge plan (Starter, Pro, or Lifetime). */
 export function hasAnySlotsEdgePlan(entitlements) {
   return hasSlotsEdgeStarter(entitlements) || hasSlotsEdge(entitlements)
+}
+
+/**
+ * Author may stay in the Edge Pro-only stream / comment filter.
+ * Edge Pro, Slots Edge Pro, Lifetime, and staff. Starter is not enough.
+ * @param {{ has_edge_pro?: boolean, role?: string } | null | undefined} profile
+ */
+export function profileHasEdgeProGrant(profile) {
+  if (!profile) return false
+  if (profile.has_edge_pro === true) return true
+  const role = String(profile.role || '').toLowerCase()
+  return role === 'admin' || role === 'moderator'
 }
 
 /** @param {Record<string, { price_interval?: string }> | null | undefined} entitlements @param {string} productSlug @returns {'monthly' | 'annual' | null} */

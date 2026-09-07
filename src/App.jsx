@@ -1567,7 +1567,8 @@ function App() {
   const hasSlotsEdgeStarterAccess = isStaffRole || hasSlotsEdgeStarterFromRpc
   const hasSlotsEdgeLifetimeAccess = isStaffRole || hasSlotsEdgeLifetimeFromRpc
   const hasSlotsEdgeProAccess = isStaffRole || hasSlotsEdgeProFromRpc
-  const hasEdgeProAccess = isStaffRole || hasEdgeProFromRpc || hasSlotsEdgeLifetimeAccess
+  const hasEdgeProAccess =
+    isStaffRole || hasEdgeProFromRpc || hasSlotsEdgeProAccess || hasSlotsEdgeLifetimeAccess
 
   // App shell (Lounge and tabs); sign-in / create-account open as a modal on top
   if (currentView === 'app') {

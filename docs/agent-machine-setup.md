@@ -34,3 +34,5 @@ npm run digiverse:deploy
 ```
 
 If `syndicate:deploy` 404s the project name, run `npm run cf:ops -- pages project list` and fix `--project-name`.
+
+**Syndicate live domain:** Pages project **`sharpe-syndicate`** is git-connected. **Production branch is `test`**, not `main`. Pushing **`origin/test`** publishes **https://sharpesyndicate.com**. `main` builds are Preview. `npm run syndicate:deploy` is Direct Upload when you need a local `dist-syndicate` without waiting on Git.

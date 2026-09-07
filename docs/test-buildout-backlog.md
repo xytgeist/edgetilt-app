@@ -1096,7 +1096,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-09-07: **UFC Slate preview 500:** `analyzeUfcMatchup` returned `{ takedownControlA }` but locals are `tdControlA` / `tdControlB` (ReferenceError). Ops toast was the generic supabase-js non-2xx. Fix in `loungeBotUfcMetrics.ts`; UFC invoke now uses `invokeAdminEdgeFunction` so the real Edge message surfaces. Redeploy **`lounge-odds-poll`** test (+ prod when Ryan asks).
+- 2026-09-07: **UFC Slate preview 500:** `analyzeUfcMatchup` returned `{ takedownControlA }` but locals are `tdControlA` / `tdControlB` (ReferenceError). Ops toast was the generic supabase-js non-2xx. Fix in `loungeBotUfcMetrics.ts`; UFC invoke now uses `invokeAdminEdgeFunction` so the real Edge message surfaces. Redeployed **`lounge-odds-poll`** test + **prod**. Prod dry-run HTTP 200, 50 fights.
 
 - 2026-09-07: **Syndicate Pages production is `test`:** Cloudflare project **`sharpe-syndicate`** (Operations) is git-connected. Production deployments are branch **`test`**; `main` is Preview. Live Overview after `b0efcabb`: CLV **40.0%** beats vs misses **n=5**. Direct Upload still via `npm run syndicate:deploy`.
 

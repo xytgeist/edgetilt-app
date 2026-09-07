@@ -313,7 +313,7 @@ if (!canvas || reduced) {
     { title: "DIGIVERSE", color: "#ff2d9b", sub: "LIVE  //  ALWAYS ON", x: 0, y: 26, z: -6, ry: 0 },
     { title: "EDGE", color: "#3df0ff", sub: "SHARP SOCIAL  //  EV TOOLS", x: -15.5, y: 22, z: 18, ry: 0.55 },
     { title: "SYNDICATE", color: "#ffb14a", sub: "MODELS  //  LEDGER", x: 16, y: 20, z: 6, ry: -0.55 },
-    { title: "LIVE", color: "#7cff5b", sub: "SECTOR 00  //  WET GRID", x: 0, y: 34, z: 24, ry: 0 },
+    { title: "LIVE", color: "#7cff5b", sub: "SECTOR 00  //  WET GRID", x: 30, y: 27, z: -66, ry: -0.42 },
     { title: "+EV", color: "#c77dff", sub: "FIND YOUR EDGE", x: 15, y: 30, z: -58, ry: -0.32 },
   ];
   boards.forEach((b) => {

@@ -2863,7 +2863,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
-- **2026-09-07:** **Store-screenshot hide (Mac, test).** AP Guide card Delete + Slots Edge lock, and Play Logbook **Primary game templates**, gated off. Flip `SHOW_GUIDE_CARD_ADMIN_LOCK_AND_DELETE` / `SHOW_PRIMARY_GAME_TEMPLATES_BUTTON`. Needs `main` before Prod-scheme shots on edgetilt.com. Favorites + Custom game templates stay.
+- **2026-09-07:** **Store-screenshot hide on `main` (Mac).** Cherry-pick **`51561730`**, not a full `test` FF. AP Guide card Delete + Slots Edge lock, Play Logbook **Primary game templates** gated off. Flip `SHOW_GUIDE_CARD_ADMIN_LOCK_AND_DELETE` / `SHOW_PRIMARY_GAME_TEMPLATES_BUTTON`. Full FF blocked: **`20260906120000`** `has_edge_pro` is still test-only. Favorites + Custom game templates stay.
 - **2026-09-07:** **App Privacy nutrition published (Mac).** URL `https://edgetilt.com/privacy`. 16 collected types, linked, not tracked. Accessibility not claimed. Still owed: screenshots, build, Review phone + demo login, DSA trader, price request.
 - **2026-09-07:** **ASC 1.0 listing text saved (Mac).** Promo, description, keywords, `https://edgetilt.com` support + marketing, copyright Digiverse Ventures, LLC, Review notes + Ryan / support@edgetilt.com, subtitle **Play with an edge**, manual release. Still owed: screenshots, build, Review phone + demo login, privacy URL / nutrition, DSA trader, price request. Do not Add for Review.
 - **2026-09-07:** **Pre-IAP submit 1–3 done (Ryan).** Org is **Digiverse Ventures LLC**, **digiverse.ventures** live, Cloudflare email for edgetilt + digiverse / reply-from. Still open: Apple increased price request (Lifetime above `$1,000`). DSA trader unblocked.

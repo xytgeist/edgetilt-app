@@ -85,7 +85,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Mac Theo 2026-09-07 … hide guide admin + primary templates (screenshots)
 
-**I am Mac Theo.** Ryan asked to temporarily hide AP Guide card **Delete** + Slots Edge **lock**, and Play Logbook **Primary game templates**. Flip `SHOW_GUIDE_CARD_ADMIN_LOCK_AND_DELETE` in `GuidesScreen.jsx` and `SHOW_PRIMARY_GAME_TEMPLATES_BUTTON` in `PlayLogbook.jsx`. Test only until Ryan asks for `main`. Do not Add for Review.
+**I am Mac Theo.** Hide is on **`main`** via cherry-pick **`51561730`** (not a full `test` FF). Flip `SHOW_GUIDE_CARD_ADMIN_LOCK_AND_DELETE` in `GuidesScreen.jsx` and `SHOW_PRIMARY_GAME_TEMPLATES_BUTTON` in `PlayLogbook.jsx`. Full FF still blocked: **`20260906120000`** `has_edge_pro` is test-only. Wait for Vercel **edgetilt.com** then Prod-scheme shots. Do not Add for Review.
 
 ### Mac Theo 2026-09-07 … App Privacy nutrition published
 

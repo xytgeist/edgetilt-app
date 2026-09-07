@@ -1686,8 +1686,7 @@ export default function SocialFeed({
     [composerUserProfile, hasActiveSubscription, loungeStaffToolsEnabled],
   )
 
-  // Slots Edge Pro must not inherit Edge Pro. Lifetime + staff are already
-  // folded into hasEdgePro by App.jsx / hasEdgePro().
+  // Slots Edge Pro + Lifetime inherit Edge Pro via App.jsx / hasEdgePro().
   const isViewerEdgePro = Boolean(hasEdgePro)
   const loungeProFilterActive = isViewerEdgePro && proFilterEnabled
 

@@ -83,6 +83,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Mac Theo.** Live look is a cold Tokyo alley canyon (high camera, stacked teal signs, huge moon). Swiss paper backup stays in **`sites/digiverse-ventures-swiss/`**. Do not use the reference street photo as a background.
 
+### Mac Theo 2026-09-07 … Slots Edge Pro + Lifetime grant Edge Pro
+
+**I am Mac Theo.** Ryan: Slots Edge Pro and Lifetime include the Edge Pro social tier. Starter does not. SQL **`20260907120000`** on test. **`1.4.95`.** Prod SQL + `main` still owed. Do not Add for Review.
+
 ### Mac Theo 2026-09-07 … hide guide admin + primary templates (screenshots)
 
 **I am Mac Theo.** Hide is on **`main`** via cherry-pick **`51561730`** (not a full `test` FF). Flip `SHOW_GUIDE_CARD_ADMIN_LOCK_AND_DELETE` in `GuidesScreen.jsx` and `SHOW_PRIMARY_GAME_TEMPLATES_BUTTON` in `PlayLogbook.jsx`. Full FF still blocked: **`20260906120000`** `has_edge_pro` is test-only. Wait for Vercel **edgetilt.com** then Prod-scheme shots. Do not Add for Review.

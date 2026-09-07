@@ -60,7 +60,7 @@ export function hasEdgePro(entitlements) {
   return (
     hasEntitlement(entitlements, PRODUCT_EDGE_PRO) ||
     Boolean(entitlements?.platform?.edge_pro) ||
-    hasSlotsEdgeLifetime(entitlements)
+    hasSlotsEdge(entitlements)
   )
 }
 
@@ -94,7 +94,7 @@ export function hasAnySlotsEdgePlan(entitlements) {
 
 /**
  * Author may stay in the Edge Pro-only stream / comment filter.
- * Slots Edge Pro is not enough. Lifetime + staff match `has_edge_pro_entitlement()`.
+ * Edge Pro, Slots Edge Pro, Lifetime, and staff. Starter is not enough.
  * @param {{ has_edge_pro?: boolean, role?: string } | null | undefined} profile
  */
 export function profileHasEdgeProGrant(profile) {

@@ -85,7 +85,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Mac Theo 2026-09-07 … Slots Edge Pro + Lifetime grant Edge Pro
 
-**I am Mac Theo.** Ryan: Slots Edge Pro and Lifetime include the Edge Pro social tier. Starter does not. SQL **`20260907120000`** on test. **`1.4.95`.** Prod SQL + `main` still owed. Do not Add for Review.
+**I am Mac Theo.** Ryan: Slots Edge Pro and Lifetime include the Edge Pro social tier. Starter does not. SQL **`20260906120000`** + **`20260907120000`** on test + prod. Frontend **`test` → `main`**. **`1.4.95`.** Do not Add for Review.
 
 ### Mac Theo 2026-09-07 … hide guide admin + primary templates (screenshots)
 

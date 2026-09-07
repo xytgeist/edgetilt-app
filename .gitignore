@@ -17,6 +17,8 @@ dist-ssr
 # Supabase CLI / slot sync — keep test & prod service keys out of git
 .env.supabase.test
 .env.supabase.production
+.env.cloudflare.operations
+.env.cloudflare.investigence
 
 # Machine Pro local export (member content — never commit)
 .machinepro-auth.json

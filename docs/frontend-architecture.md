@@ -15,7 +15,7 @@ Keeping auth in **`App.jsx`** and product chrome in **`AppShell`** avoids a circ
 
 - **`sites/digiverse-ventures/`** — live **Digiverse** holding page (neon megalopolis / Vice sunset / Matrix weather) at **https://digiverse.ventures**. Contact **`contact@digiverse.ventures`**.
 - **`sites/digiverse-ventures-swiss/`** — paper/Swiss backup of the LLC page (do not overwrite with experiments).
-- **Sharpe Syndicate** (`syndicate.html` / `vite.syndicate.config.js`) stays its own Cloudflare Pages site at **sharpesyndicate.com**. Overview **CLV Beat Rate** is beats vs misses only (even CLV is off the board).
+- **Sharpe Syndicate** (`syndicate.html` / `vite.syndicate.config.js`) stays its own Cloudflare Pages site at **sharpesyndicate.com**. Overview **CLV Beat Rate** is beats vs misses only (even CLV is off the board). Deploy with **`npm run syndicate:deploy`** (Operations Cloudflare … see **`docs/agent-machine-setup.md`**).
 
 ## Planned: iOS store shell (live site in WKWebView)
 

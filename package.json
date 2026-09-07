@@ -1,7 +1,7 @@
 {
   "name": "phoenixlinkcalc",
   "private": true,
-    "version": "1.4.96",
+    "version": "1.4.97",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -47,6 +47,10 @@
     "ap-guide:restore": "node scripts/ap-guide-restore-test-guides.mjs --latest",
     "db:query:test": "node scripts/supabase-db-query.mjs --target=test",
     "db:query:production": "node scripts/supabase-db-query.mjs --target=production",
+    "cf:ops": "node scripts/wrangler-as.mjs operations",
+    "cf:digiverse": "node scripts/wrangler-as.mjs investigence",
+    "syndicate:deploy": "npm run build:syndicate && node scripts/wrangler-as.mjs operations pages deploy dist-syndicate --project-name=sharpe-syndicate --commit-dirty=true",
+    "digiverse:deploy": "node scripts/wrangler-as.mjs investigence pages deploy sites/digiverse-ventures --project-name=digiverse-ventures --commit-dirty=true",
     "backfill:nfl": "node scripts/backfill-nfl-preseason-picks.mjs --target=test",
     "backfill:nfl:production": "node scripts/backfill-nfl-preseason-picks.mjs --target=production",
     "backfill:ufc": "node scripts/backfill-ufc-picks.mjs --target=test",

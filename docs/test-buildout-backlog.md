@@ -2861,6 +2861,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ---
 
+- **2026-09-07:** **Syndicate CFB ghost dupes collapsed (Windows).** Deleted 8 `post_id` null twin rows (ND / Ole Miss sides + Tank PASS) that were doubling ATS/CLV. Unique index **`lounge_bot_picks_desk_event_uidx`**. After collapse: 2 CLV beats / 3 misses / 3 evens … **40%** beat rate on n=5. Live Pages still needs Operations deploy. **`1.4.97`.**
 - **2026-09-07:** **Syndicate CLV beat % ignores even numbers (Windows).** Public **sharpesyndicate.com** tile + monthly scoreboard: beats / (beats + misses) only. Called -3 / close -3 is off the board, not a miss. **`1.4.96`.** Pages rebuild still required for the live domain.
  Ryan: Pro and Lifetime include the Edge Pro social tier. Starter does not. SQL **`20260906120000`** + **`20260907120000`** on test + prod. Frontend **`test` → `main`**. **`1.4.95`.**
 - **2026-09-07:** **Store-screenshot hide on `main` (Mac).** Cherry-pick **`51561730`**, then later **`test` → `main`** merge after prod SQL. AP Guide card Delete + Slots Edge lock, Play Logbook **Primary game templates** gated off. Flip `SHOW_GUIDE_CARD_ADMIN_LOCK_AND_DELETE` / `SHOW_PRIMARY_GAME_TEMPLATES_BUTTON`. Favorites + Custom game templates stay.

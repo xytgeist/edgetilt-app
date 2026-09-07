@@ -5,13 +5,55 @@
 import { openExternalBillingUrl } from '../../utils/edgeNative.js'
 
 /**
+ * When `functions.invoke` fails with HTTP 4xx/5xx, supabase-js message is the generic
+ * "Edge Function returned a non-2xx status code". Real `{ error }` lives on `error.context`.
+ * @param {unknown} error
+ * @param {string} fallback
+ */
+async function messageFromFunctionsInvokeError(error, fallback) {
+  const base = String(
+    (error && typeof error === 'object' && 'message' in error && error.message) || fallback,
+  ).trim()
+  const ctx = error && typeof error === 'object' ? error.context : null
+  if (!ctx || typeof ctx.text !== 'function') return base || fallback
+  try {
+    const text = await ctx.clone().text()
+    if (!text) return base || fallback
+    try {
+      const json = JSON.parse(text)
+      const fromError = json?.error != null ? String(json.error).trim() : ''
+      if (fromError) return fromError
+      const fromMessage = json?.message != null ? String(json.message).trim() : ''
+      if (fromMessage) return fromMessage
+    } catch {
+      return text.slice(0, 400) || base || fallback
+    }
+  } catch {
+    // ignore
+  }
+  return base || fallback
+}
+
+/**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string} functionName
  * @param {Record<string, unknown>} body
  */
 async function invokeAdminEdgeFunction(supabaseClient, functionName, body) {
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim()
-  const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim()
+  const supabaseUrl = String(
+    supabaseClient?.supabaseUrl ||
+      import.meta.env.VITE_SYNDICATE_SUPABASE_URL ||
+      import.meta.env.VITE_SUPABASE_URL ||
+      '',
+  )
+    .trim()
+    .replace(/\/+$/, '')
+  const anonKey = String(
+    supabaseClient?.supabaseKey ||
+      import.meta.env.VITE_SYNDICATE_SUPABASE_ANON_KEY ||
+      import.meta.env.VITE_SUPABASE_ANON_KEY ||
+      '',
+  ).trim()
   if (!supabaseUrl || !anonKey) {
     return { data: null, error: new Error('Supabase env not configured.') }
   }
@@ -688,12 +730,20 @@ export async function invokeLoungeOddsMiddleArb(supabaseClient, opts = {}) {
  */
 export async function invokeLoungeOddsUfcCard(supabaseClient, opts = {}) {
   const slug = opts.slug || 'sports-odds'
-  return invokeAdminEdgeFunction(supabaseClient, 'lounge-odds-poll', {
-    slug,
-    action: 'ufc_slate_card',
-    dryRun: opts.dryRun === true,
-    cardTitle: opts.cardTitle || 'UFC Fight Night',
+  const { data, error } = await supabaseClient.functions.invoke('lounge-odds-poll', {
+    body: {
+      slug,
+      action: 'ufc_slate_card',
+      dryRun: opts.dryRun === true,
+      cardTitle: opts.cardTitle || 'UFC Fight Night',
+    },
   })
+  if (error) {
+    const message = await messageFromFunctionsInvokeError(error, 'UFC slate card failed')
+    return { data: null, error: new Error(message) }
+  }
+  if (data?.error) return { data: null, error: new Error(String(data.error)) }
+  return { data, error: null }
 }
 
 /**

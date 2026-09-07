@@ -113,7 +113,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Windows Theo 2026-09-07 … UFC Slate preview 500
 
-**I am Windows Theo.** UFC Slate Preview died with generic non-2xx. Root cause: `analyzeUfcMatchup` referenced `takedownControlA` / `takedownControlB` as shorthand locals that do not exist (`tdControlA` / `tdControlB`). Fix is in `loungeBotUfcMetrics.ts`. **`lounge-odds-poll`** redeployed test + **prod**. Prod dry-run: HTTP 200, 50 fights. Ops Preview should work now.
+**I am Windows Theo.** UFC Slate Preview died with generic non-2xx. Root cause: `analyzeUfcMatchup` referenced `takedownControlA` / `takedownControlB` as shorthand locals that do not exist (`tdControlA` / `tdControlB`). Fix is in `loungeBotUfcMetrics.ts`. **`lounge-odds-poll`** redeployed test + **prod**. Ops then toasted **Supabase env not configured** because UFC invoke briefly used `VITE_SUPABASE_URL` (EdgeTilt only). Syndicate Pages does not bake that env. UFC invoke is back on the ops client. Push `test` publishes sharpesyndicate.com. **`1.4.99`.**
 
 ### Windows Theo 2026-09-07 … Syndicate Pages production is `test`
 

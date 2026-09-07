@@ -1101,7 +1101,9 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 - 2026-09-07: **Farm ingest door (code):** `pipeline=farm` + Edge **`lounge-bot-ingest`** (secret **`LOUNGE_BOT_FARM_INGEST_SECRET`**). Portal wizard **Farm ingest**. Brains stay off-app. Spec **`docs/lounge-bot-farm-ingest.md`**. Apply **`20260907190000`** on test; deploy ingest + **`lounge-bot-admin`**; set secret before smoke. No YouTube/X worker yet.
 
-- 2026-09-07: **UFC Slate preview 500:** `analyzeUfcMatchup` returned `{ takedownControlA }` but locals are `tdControlA` / `tdControlB` (ReferenceError). Ops toast was the generic supabase-js non-2xx. Fix in `loungeBotUfcMetrics.ts`; UFC invoke now uses `invokeAdminEdgeFunction` so the real Edge message surfaces. Redeployed **`lounge-odds-poll`** test + **prod**. Prod dry-run HTTP 200, 50 fights.
+- 2026-09-07: **UFC Slate ops toast "Supabase env not configured":** Syndicate Pages has no `VITE_SUPABASE_URL`. UFC invoke must use the ops `supabaseClient` (`functions.invoke`), not `invokeAdminEdgeFunction`. Parse Edge `{ error }` off `error.context`. **`1.4.99`.** Push `test` publishes sharpesyndicate.com.
+
+- 2026-09-07: **UFC Slate preview 500:** `analyzeUfcMatchup` returned `{ takedownControlA }` but locals are `tdControlA` / `tdControlB` (ReferenceError). Ops toast was the generic supabase-js non-2xx. Fix in `loungeBotUfcMetrics.ts`. Redeployed **`lounge-odds-poll`** test + **prod**. Prod dry-run HTTP 200, 50 fights.
 
 - 2026-09-07: **Syndicate Pages production is `test`:** Cloudflare project **`sharpe-syndicate`** (Operations) is git-connected. Production deployments are branch **`test`**; `main` is Preview. Live Overview after `b0efcabb`: CLV **40.0%** beats vs misses **n=5**. Direct Upload still via `npm run syndicate:deploy`.
 

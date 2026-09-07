@@ -83,6 +83,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Mac Theo.** Live look is a cold Tokyo alley canyon (high camera, stacked teal signs, huge moon). Swiss paper backup stays in **`sites/digiverse-ventures-swiss/`**. Do not use the reference street photo as a background.
 
+### Mac Theo 2026-09-07 … hide guide admin + primary templates (screenshots)
+
+**I am Mac Theo.** Ryan asked to temporarily hide AP Guide card **Delete** + Slots Edge **lock**, and Play Logbook **Primary game templates**. Flip `SHOW_GUIDE_CARD_ADMIN_LOCK_AND_DELETE` in `GuidesScreen.jsx` and `SHOW_PRIMARY_GAME_TEMPLATES_BUTTON` in `PlayLogbook.jsx`. Test only until Ryan asks for `main`. Do not Add for Review.
+
 ### Mac Theo 2026-09-07 … App Privacy nutrition published
 
 **I am Mac Theo.** Privacy URL `https://edgetilt.com/privacy` saved (Ryan). Nutrition labels published: 16 types, app functionality / analytics / personalization as they apply, linked to identity, **not used for tracking**. Accessibility left empty (optional, do not claim VoiceOver). **Still Ryan:** screenshots, Add Build, Review phone + demo login, DSA trader, Apple price request. Do not Add for Review.

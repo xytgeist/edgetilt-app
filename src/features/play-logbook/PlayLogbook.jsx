@@ -89,6 +89,9 @@ const PlayLogAnalyzeTrendChart = lazyRoute(() => import('./PlayLogAnalyzeTrendCh
 /** Max entries loaded for Log + Analyze (service returns newest first). */
 const PLAY_LOG_ENTRIES_FETCH_LIMIT = 500
 
+/** Flip true to restore the admin Primary game templates button on the Log tab. */
+const SHOW_PRIMARY_GAME_TEMPLATES_BUTTON = false
+
 function localYmd(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
@@ -1043,7 +1046,7 @@ export default function PlayLogbook({
               >
                 Custom game templates
               </button>
-              {viewerIsAdmin ? (
+              {SHOW_PRIMARY_GAME_TEMPLATES_BUTTON && viewerIsAdmin ? (
                 <button
                   type="button"
                   onClick={openManageSystemTemplates}

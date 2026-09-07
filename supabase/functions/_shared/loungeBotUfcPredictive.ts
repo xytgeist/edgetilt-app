@@ -116,7 +116,7 @@ export async function buildUfcSlateCard(
 
     // Quantitative matchup model
     const matchup = analyzeUfcMatchup(fighterA, fighterB, metricsList, isApex)
-    const splits = resolveGameBettingSplits(ev)
+    const splits = resolveGameBettingSplits(ev, null, oddsA, oddsB)
 
     // 1. Desk 1: Scott Sharpe (Offshore Devig & +EV)
     let scottSide: 'A' | 'B' = 'A'

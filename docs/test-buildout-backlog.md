@@ -1096,6 +1096,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-09-07: **UFC Slate preview 500:** `analyzeUfcMatchup` returned `{ takedownControlA }` but locals are `tdControlA` / `tdControlB` (ReferenceError). Ops toast was the generic supabase-js non-2xx. Fix in `loungeBotUfcMetrics.ts`; UFC invoke now uses `invokeAdminEdgeFunction` so the real Edge message surfaces. Redeploy **`lounge-odds-poll`** test (+ prod when Ryan asks).
+
 - 2026-09-07: **Syndicate Pages production is `test`:** Cloudflare project **`sharpe-syndicate`** (Operations) is git-connected. Production deployments are branch **`test`**; `main` is Preview. Live Overview after `b0efcabb`: CLV **40.0%** beats vs misses **n=5**. Direct Upload still via `npm run syndicate:deploy`.
 
 - 2026-09-03: **Sharpe Syndicate bot split (Windows):** Separate desk product from Signal. Slug `sharpe-syndicate` / `@sharpesyndicate` (create via `scripts/create-sharpe-syndicate-bot.mjs`, keep `stopped`). Slate publish: public teaser + `creator_fan_only` full card thread + plain fan chat on Syndicate (never Signal VIP). `publishLoungeBotPost` gains `creatorFanOnly`. Ops prefers Syndicate desk bot; Edge invoke still uses Signal runner. Redeploy `lounge-odds-poll` test (+ prod when Ryan asks). Fan Connect + go live still required for private Lounge.

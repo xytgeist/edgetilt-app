@@ -688,17 +688,12 @@ export async function invokeLoungeOddsMiddleArb(supabaseClient, opts = {}) {
  */
 export async function invokeLoungeOddsUfcCard(supabaseClient, opts = {}) {
   const slug = opts.slug || 'sports-odds'
-  const { data, error } = await supabaseClient.functions.invoke('lounge-odds-poll', {
-    body: {
-      slug,
-      action: 'ufc_slate_card',
-      dryRun: opts.dryRun === true,
-      cardTitle: opts.cardTitle || 'UFC Fight Night',
-    },
+  return invokeAdminEdgeFunction(supabaseClient, 'lounge-odds-poll', {
+    slug,
+    action: 'ufc_slate_card',
+    dryRun: opts.dryRun === true,
+    cardTitle: opts.cardTitle || 'UFC Fight Night',
   })
-  if (error) return { data: null, error: new Error(error.message || 'UFC slate card failed') }
-  if (data?.error) return { data: null, error: new Error(String(data.error)) }
-  return { data, error: null }
 }
 
 /**

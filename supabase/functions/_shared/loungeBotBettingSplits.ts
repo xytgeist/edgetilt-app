@@ -163,10 +163,10 @@ export function resolveGameBettingSplits(
   let retailSpreadPoint: number | null = null
 
   for (const b of ev.bookmakers || []) {
-    const key = b.key.toLowerCase()
-    const sm = b.markets.find((m) => m.key === 'spreads')
+    const key = String(b.key || '').toLowerCase()
+    const sm = b.markets?.find((m) => m.key === 'spreads')
     if (!sm) continue
-    const homeOut = sm.outcomes.find((o) => o.name === homeTeam)
+    const homeOut = sm.outcomes?.find((o) => o.name === homeTeam)
     if (!homeOut || homeOut.point == null) continue
 
     if (key.includes('circa') || key.includes('pinnacle') || key.includes('lowvig')) {

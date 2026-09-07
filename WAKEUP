@@ -107,6 +107,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Windows Theo.** GitHub GH007 was commits as `investigence@gmail.com` while that address is private + blocked on **xytgeist**. This repo now uses `5695681+xytgeist@users.noreply.github.com`. Dual CF: **`npm run syndicate:deploy`** (Operations) vs **`npm run digiverse:deploy`** (Investigence). Tokens in gitignored `.env.cloudflare.*`. Spec: **`docs/agent-machine-setup.md`**.
 
+### Windows Theo 2026-09-07 … UFC Slate preview 500
+
+**I am Windows Theo.** UFC Slate Preview died with generic non-2xx. Root cause: `analyzeUfcMatchup` referenced `takedownControlA` / `takedownControlB` as shorthand locals that do not exist (`tdControlA` / `tdControlB`). Confirmed on test + prod Edge. Fix is in `loungeBotUfcMetrics.ts`. Redeploy **`lounge-odds-poll`** on **prod** before ops Preview works. Test Edge redeployed this session.
+
 ### Windows Theo 2026-09-07 … Syndicate Pages production is `test`
 
 **I am Windows Theo.** Operations Cloudflare is logged in. **`sharpe-syndicate`** Pages production branch is **`test`** (`main` is Preview). Pushing `origin/test` publishes sharpesyndicate.com. Live Overview after `b0efcabb`: **CLV 40.0% · beats vs misses · n=5**, net **+4.24 U · n=48**. Operations API token saved locally in gitignored `.env.cloudflare.operations` (do not commit). `npm run cf:ops` works.

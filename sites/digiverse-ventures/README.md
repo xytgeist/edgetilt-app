@@ -4,4 +4,4 @@
 
 Canonical contact: **`contact@digiverse.ventures`**. Do not invent a street address.
 
-Live Pages URL: **https://digiverse-ventures.pages.dev** (custom domain `digiverse.ventures` still needs attaching).
+Live: **https://digiverse.ventures** (also `www` + **https://digiverse-ventures.pages.dev**). Apex MX stays Cloudflare Email Routing. Do not add Resend inbound MX on the apex.

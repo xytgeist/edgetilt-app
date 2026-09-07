@@ -105,7 +105,11 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Windows Theo 2026-09-06 … Digiverse verse is now megalopolis
 
-**I am Windows Theo.** Ryan hated the alley canyon. Live **`sites/digiverse-ventures/`** is a GTA Vice / Ready Player One neon-city flythrough (magenta/cyan/orange, Matrix rain as weather, visor HUD). Swiss backup untouched. Contact still `contact@digiverse.ventures`. View: **https://digiverse-ventures.pages.dev**. Custom domain still needs attaching.
+**I am Windows Theo.** Ryan hated the alley canyon. Live **`sites/digiverse-ventures/`** is a GTA Vice / Ready Player One neon-city flythrough (magenta/cyan/orange, Matrix rain as weather, visor HUD). Swiss backup untouched. Contact still `contact@digiverse.ventures`. **https://digiverse.ventures** is attached (plus www). Do not Add for Review.
+
+### Windows Theo 2026-09-06 … digiverse.ventures custom domain live
+
+**I am Windows Theo.** Custom domain attached on Investigence Pages: **https://digiverse.ventures** and `www` → `digiverse-ventures.pages.dev` (proxied CNAME). Apex MX still Cloudflare Routing. Do not add Resend inbound MX on the apex.
 
 ### Mac Theo 2026-09-06 … Before IAP / App Store submit
 

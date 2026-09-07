@@ -13,7 +13,7 @@ Keeping auth in **`App.jsx`** and product chrome in **`AppShell`** avoids a circ
 
 ## Sibling static sites (not the Edge app)
 
-- **`sites/digiverse-ventures/`** — live **Digiverse** holding page (neon megalopolis / Vice sunset / Matrix weather). Contact **`contact@digiverse.ventures`**.
+- **`sites/digiverse-ventures/`** — live **Digiverse** holding page (neon megalopolis / Vice sunset / Matrix weather) at **https://digiverse.ventures**. Contact **`contact@digiverse.ventures`**.
 - **`sites/digiverse-ventures-swiss/`** — paper/Swiss backup of the LLC page (do not overwrite with experiments).
 - **Sharpe Syndicate** (`syndicate.html` / `vite.syndicate.config.js`) stays its own Cloudflare Pages site at **sharpesyndicate.com**.
 

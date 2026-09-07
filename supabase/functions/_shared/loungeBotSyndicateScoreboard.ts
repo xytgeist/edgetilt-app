@@ -4,6 +4,7 @@
  * Desks: Scott / Rocco / Chedda / Quorum = sides; Tank = totals only
  * CLV: pick line vs lounge_market_files close (when locked) … YOUR SIDE vs close.
  *   Example: dog at +7 that closes +3 → +4 CLV even if it loses ATS.
+ * Beat % = beats / (beats + misses). Even CLV (pick = close) is off the board.
  *
  * Trust floor: do not crown a desk/bucket until n >= SCOREBOARD_TRUST_MIN_N.
  * Never treat a desk rollup that mixes Hammer+Consensus as "shop ATS."
@@ -14,6 +15,12 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 
 /** First look before anyone talks … do not crown a desk at n=8. */
 export const SCOREBOARD_TRUST_MIN_N = 25
+
+/** Beat % = beats / (beats + misses). Even CLV is excluded, same idea as ATS pushes. */
+export function clvBeatPct(beatN: number, decidedN: number): number | null {
+  if (!(decidedN > 0)) return null
+  return Math.round((beatN / decidedN) * 1000) / 10
+}
 
 export type ScoreboardBucket = 'hammer' | 'consensus' | 'divided' | 'pass'
 export type ScoreboardDesk = 'Scott' | 'Rocco' | 'Chedda' | 'Quorum' | 'Tank'
@@ -32,6 +39,8 @@ export type ScoreboardRow = {
   clv_n: number
   clv_avg_pts: number | null
   clv_beat_n: number
+  /** Beats + misses. Even CLV (0 pts) is excluded from beat %. */
+  clv_decided_n: number
   clv_beat_pct: number | null
   /** True only when n >= SCOREBOARD_TRUST_MIN_N (pass rows never trusted for ATS talk). */
   trusted: boolean
@@ -51,6 +60,7 @@ export type MonthlySyndicateScoreboard = {
     units_net: number
     clv_n: number
     clv_avg_pts: number | null
+    clv_decided_n: number
     clv_beat_pct: number | null
     trusted: boolean
   }>
@@ -69,6 +79,7 @@ export type MonthlySyndicateScoreboard = {
     units_net: number
     clv_n: number
     clv_avg_pts: number | null
+    clv_decided_n: number
     clv_beat_pct: number | null
     mixed_buckets: true
     trusted: false
@@ -205,6 +216,7 @@ function emptyCell(bucket: ScoreboardBucket, desk: ScoreboardDesk): ScoreboardRo
     clv_n: 0,
     clv_avg_pts: null,
     clv_beat_n: 0,
+    clv_decided_n: 0,
     clv_beat_pct: null,
     trusted: false,
   }
@@ -219,13 +231,14 @@ function finalizeClv(row: {
   clv_n: number
   clv_avg_pts: number | null
   clv_beat_n: number
+  clv_decided_n: number
   clv_beat_pct: number | null
   _clvSum?: number
 }) {
   if (row.clv_n > 0 && typeof row._clvSum === 'number') {
     row.clv_avg_pts = Math.round((row._clvSum / row.clv_n) * 100) / 100
-    row.clv_beat_pct = Math.round((row.clv_beat_n / row.clv_n) * 1000) / 10
   }
+  row.clv_beat_pct = clvBeatPct(row.clv_beat_n, row.clv_decided_n)
   delete row._clvSum
 }
 
@@ -300,6 +313,7 @@ export async function compileMonthlySyndicateScoreboard(
     `Trust floor: n >= ${SCOREBOARD_TRUST_MIN_N} per bucket×desk before anyone talks. Do not crown at n=8.`,
     'Read bucket×desk rows. Do not average Hammer + Consensus into one shop ATS.',
     'CLV = your side vs locked close (not opener). Dog +7 that closes +3 is good CLV even on an ATS loss.',
+    'CLV beat % = beats / (beats + misses). Calling the same number as the close is off the board.',
     'Tank rows are totals-only; Scott / Rocco / Chedda / Quorum are sides.',
     'Pass = desk PASS (cancelled ledger) … n only, no ATS.',
     'No adaptive weights until a bucket has a real sample. FEI waits.',
@@ -339,6 +353,7 @@ export async function compileMonthlySyndicateScoreboard(
       row.clv_n += 1
       row._clvSum = (row._clvSum || 0) + clv
       if (clv > 0) row.clv_beat_n += 1
+      if (clv !== 0) row.clv_decided_n += 1
     }
   }
 
@@ -366,6 +381,7 @@ export async function compileMonthlySyndicateScoreboard(
       units_net: Math.round(subset.reduce((s, r) => s + r.units_net, 0) * 100) / 100,
       clv_n: subset.reduce((s, r) => s + r.clv_n, 0),
       clv_avg_pts: null as number | null,
+      clv_decided_n: subset.reduce((s, r) => s + r.clv_decided_n, 0),
       clv_beat_pct: null as number | null,
       trusted: false,
     }
@@ -374,8 +390,8 @@ export async function compileMonthlySyndicateScoreboard(
     const beatN = subset.reduce((s, r) => s + r.clv_beat_n, 0)
     if (agg.clv_n > 0) {
       agg.clv_avg_pts = Math.round((clvSum / agg.clv_n) * 100) / 100
-      agg.clv_beat_pct = Math.round((beatN / agg.clv_n) * 1000) / 10
     }
+    agg.clv_beat_pct = clvBeatPct(beatN, agg.clv_decided_n)
     // Bucket rollup across desks … still need floor before talking
     agg.trusted = bucket !== 'pass' && agg.n >= SCOREBOARD_TRUST_MIN_N
     return agg
@@ -395,6 +411,7 @@ export async function compileMonthlySyndicateScoreboard(
       units_net: Math.round(subset.reduce((s, r) => s + r.units_net, 0) * 100) / 100,
       clv_n: subset.reduce((s, r) => s + r.clv_n, 0),
       clv_avg_pts: null as number | null,
+      clv_decided_n: subset.reduce((s, r) => s + r.clv_decided_n, 0),
       clv_beat_pct: null as number | null,
       mixed_buckets: true as const,
       trusted: false as const,
@@ -404,8 +421,8 @@ export async function compileMonthlySyndicateScoreboard(
     const beatN = subset.reduce((s, r) => s + r.clv_beat_n, 0)
     if (agg.clv_n > 0) {
       agg.clv_avg_pts = Math.round((clvSum / agg.clv_n) * 100) / 100
-      agg.clv_beat_pct = Math.round((beatN / agg.clv_n) * 1000) / 10
     }
+    agg.clv_beat_pct = clvBeatPct(beatN, agg.clv_decided_n)
     return agg
   })
 

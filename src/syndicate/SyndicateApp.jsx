@@ -143,10 +143,13 @@ function computePerformanceStats(pickList) {
         : avgUnitsPerPick.toFixed(2)
 
   // Real CLV only ... synthetic backfill clv_beat without clv_pts does not count.
+  // Beat % is beats vs misses. Even CLV (called -3, close -3) is off the board.
   const withClv = gradedPicks.filter((p) => typeof p.metadata?.clv_pts === 'number')
   const clvBeats = withClv.filter((p) => Number(p.metadata.clv_pts) > 0).length
-  const clvRate = withClv.length > 0 ? ((clvBeats / withClv.length) * 100).toFixed(1) : null
-  const clvSample = withClv.length
+  const clvMisses = withClv.filter((p) => Number(p.metadata.clv_pts) < 0).length
+  const clvDecided = clvBeats + clvMisses
+  const clvRate = clvDecided > 0 ? ((clvBeats / clvDecided) * 100).toFixed(1) : null
+  const clvSample = clvDecided
 
   const hammerPicks = gradedPicks.filter(
     (p) => p.metadata?.consensus_type === 'hammer' || p.metadata?.consensus_signal === 'hammer',
@@ -280,7 +283,7 @@ function SyndicatePerformanceTicker({
             {`${stats.clvRate}%`}
           </div>
           <div className="text-[10px] sm:text-[11px] text-zinc-500">
-            {`vs locked close · n=${stats.clvSample}`}
+            {`beats vs misses · n=${stats.clvSample}`}
           </div>
         </div>
       ) : null}
@@ -1567,7 +1570,8 @@ export function SyndicateApp() {
                 <h3 className="text-lg font-bold text-white">When CLV shows up</h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   Closing-line value appears on the performance ticker only after picks have a locked market-file close
-                  (`clv_pts`). Until then the tile stays hidden ... ledger ATS still grades from final scores.
+                  (`clv_pts`). Beat rate is beats vs misses only ... calling the same number as the close does not count
+                  against the desk. Until then the tile stays hidden ... ledger ATS still grades from final scores.
                 </p>
               </div>
             </div>

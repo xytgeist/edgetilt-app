@@ -2360,7 +2360,7 @@ export async function gradePendingPicks(
         const clvMeta = clvPts != null
           ? {
               clv_pts: Math.round(clvPts * 100) / 100,
-              clv_beat: clvPts > 0,
+              clv_beat: clvPts > 0 ? true : clvPts < 0 ? false : null,
               close_spread_home: mfile?.close_spread_home ?? null,
               close_total: mfile?.close_total ?? null,
               close_locked: mfile?.close_locked ?? false,

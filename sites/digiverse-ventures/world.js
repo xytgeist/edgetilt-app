@@ -9,41 +9,37 @@ if (!canvas || reduced) {
   document.documentElement.classList.add("no-verse");
 } else {
   const mobile = window.innerWidth < 720 || /Mobi|Android/i.test(navigator.userAgent);
-  const COUNT = mobile ? 400 : 820;
-  const GROUND_N = mobile ? 28 : 48;
-  const FLY_N = mobile ? 56 : 110;
-  const RAIN = mobile ? 900 : 2200;
-  const LAMP_N = mobile ? 56 : 96;
-  const SIGN_N = mobile ? 36 : 72;
-  const LEG = 100;
-  const STREET = 5.4;
+  const COUNT = mobile ? 160 : 320;
+  const CAR_N = mobile ? 52 : 96;
+  const RAIN = mobile ? 1200 : 3200;
+  const LAMP_N = mobile ? 48 : 80;
 
   const renderer = new THREE.WebGLRenderer({
     canvas,
     antialias: false,
     powerPreference: "high-performance",
   });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.15 : 1.5));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.15 : 1.55));
   renderer.setClearColor(0x090014, 1);
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.14;
+  renderer.toneMappingExposure = 1.18;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.FogExp2(0x140018, 0.0072);
+  scene.fog = new THREE.FogExp2(0x16001c, 0.0058);
 
-  const camera = new THREE.PerspectiveCamera(62, 1, 0.15, 780);
-  camera.position.set(0, 9.5, 96);
+  const camera = new THREE.PerspectiveCamera(64, 1, 0.15, 920);
+  camera.position.set(0, 8.5, 52);
 
-  scene.add(new THREE.AmbientLight(0xff4d8a, 0.24));
-  scene.add(new THREE.HemisphereLight(0xff8ab0, 0x0a0618, 0.58));
-  const sunLight = new THREE.PointLight(0xff7a3c, 110, 300);
+  scene.add(new THREE.AmbientLight(0xff4d8a, 0.22));
+  scene.add(new THREE.HemisphereLight(0xff8ab0, 0x0a0618, 0.62));
+  const sunLight = new THREE.PointLight(0xff7a3c, 120, 320);
   sunLight.position.set(-36, 32, -110);
   scene.add(sunLight);
-  const neonFill = new THREE.PointLight(0xff2d9b, 34, 90);
+  const neonFill = new THREE.PointLight(0xff2d9b, 36, 110);
   neonFill.position.set(6, 14, 8);
   scene.add(neonFill);
-  const cyanFill = new THREE.PointLight(0x3df0ff, 28, 80);
+  const cyanFill = new THREE.PointLight(0x3df0ff, 30, 100);
   cyanFill.position.set(-8, 12, 4);
   scene.add(cyanFill);
 
@@ -66,7 +62,7 @@ if (!canvas || reduced) {
   })();
   scene.add(
     new THREE.Mesh(
-      new THREE.SphereGeometry(420, 24, 16),
+      new THREE.SphereGeometry(300, 24, 16),
       new THREE.MeshBasicMaterial({ map: skyTex, side: THREE.BackSide, fog: false })
     )
   );
@@ -91,34 +87,22 @@ if (!canvas || reduced) {
 
   const winTex = (() => {
     const c = document.createElement("canvas");
-    c.width = 128;
-    c.height = 512;
+    c.width = 64;
+    c.height = 256;
     const g = c.getContext("2d");
-    g.fillStyle = "#0a0714";
-    g.fillRect(0, 0, 128, 512);
-    g.fillStyle = "#16101f";
-    g.fillRect(0, 0, 128, 18);
-    g.fillRect(0, 494, 128, 18);
-    const pal = ["#ff2d9b", "#3df0ff", "#ffb14a", "#7cff5b", "#c77dff", "#ff6a32"];
-    for (let y = 22; y < 488; y += 9) {
-      g.fillStyle = "#05030a";
-      g.fillRect(0, y + 6, 128, 1);
-      for (let x = 5; x < 122; x += 9) {
-        if (Math.random() < 0.12) continue;
-        const lit = Math.random() > 0.2;
-        g.globalAlpha = lit ? 0.55 + Math.random() * 0.45 : 0.16;
-        g.fillStyle = lit ? pal[(x + y * 3) % pal.length] : "#1c1528";
-        g.fillRect(x, y, 6, 6);
-        if (lit && Math.random() > 0.82) {
-          g.globalAlpha = 0.9;
-          g.fillRect(x + 1, y + 1, 2, 2);
+    g.fillStyle = "#070510";
+    g.fillRect(0, 0, 64, 256);
+    const pal = ["#ff2d9b", "#3df0ff", "#ffb14a", "#7cff5b", "#c77dff"];
+    for (let y = 3; y < 252; y += 7) {
+      for (let x = 3; x < 61; x += 6) {
+        if (Math.random() > 0.24) {
+          const lit = Math.random() > 0.18;
+          g.globalAlpha = lit ? 0.5 + Math.random() * 0.5 : 0.14;
+          g.fillStyle = lit ? pal[(x + y) % pal.length] : "#161022";
+          g.fillRect(x, y, 4, 5);
         }
       }
     }
-    g.globalAlpha = 0.85;
-    g.fillStyle = pal[Math.floor(Math.random() * pal.length)];
-    g.fillRect(2, 20, 3, 470);
-    g.fillRect(123, 20, 3, 470);
     g.globalAlpha = 1;
     const t = new THREE.CanvasTexture(c);
     t.wrapS = THREE.RepeatWrapping;
@@ -184,42 +168,26 @@ if (!canvas || reduced) {
     return t;
   };
 
-  const signTexs = ["EDGE", "LIVE", "88", "DV", "PRO"].map((label, i) => {
-    const pal = ["#ff2d9b", "#3df0ff", "#ffb14a", "#7cff5b", "#c77dff"];
-    return boardTex(label, pal[i], "SECTOR 00");
-  });
-
-  const isStreet = (x, z) =>
-    Math.abs(x) < STREET ||
-    Math.abs(x - LEG) < STREET ||
-    Math.abs(z - (70 - LEG)) < STREET ||
-    Math.abs(z - 70) < STREET;
-
-  const isPlaza = (x, z) => z > 82 && Math.abs(x) < 18;
-
   const roadMat = new THREE.MeshStandardMaterial({
     map: roadTex,
     color: 0xffffff,
     metalness: 0.96,
     roughness: 0.12,
   });
-  const roadNS = new THREE.Mesh(new THREE.PlaneGeometry(12, 420), roadMat);
+  const roadNS = new THREE.Mesh(new THREE.PlaneGeometry(18, 720), roadMat);
   roadNS.rotation.x = -Math.PI / 2;
-  roadNS.position.set(0, 0.03, 10);
+  roadNS.position.y = 0.03;
   scene.add(roadNS);
-  const roadNS2 = roadNS.clone();
-  roadNS2.position.set(LEG, 0.03, 10);
-  scene.add(roadNS2);
-  const roadEW = new THREE.Mesh(new THREE.PlaneGeometry(220, 12), roadMat.clone());
+  const roadEW = new THREE.Mesh(new THREE.PlaneGeometry(720, 18), roadMat.clone());
   roadEW.rotation.x = -Math.PI / 2;
-  roadEW.position.set(LEG / 2, 0.04, 70 - LEG);
+  roadEW.position.set(0, 0.04, -40);
   scene.add(roadEW);
   const roadEW2 = roadEW.clone();
-  roadEW2.position.set(LEG / 2, 0.04, 70);
+  roadEW2.position.set(0, 0.04, 50);
   scene.add(roadEW2);
 
   const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(520, 520),
+    new THREE.PlaneGeometry(720, 780),
     new THREE.MeshStandardMaterial({
       color: 0x090612,
       metalness: 0.88,
@@ -227,168 +195,130 @@ if (!canvas || reduced) {
     })
   );
   ground.rotation.x = -Math.PI / 2;
-  ground.position.set(LEG / 2, 0, 10);
   scene.add(ground);
 
-  const grid = new THREE.GridHelper(520, 104, 0xff2d9b, 0x3df0ff);
-  grid.material.opacity = 0.12;
+  const grid = new THREE.GridHelper(720, 120, 0xff2d9b, 0x3df0ff);
+  grid.material.opacity = 0.16;
   grid.material.transparent = true;
-  grid.position.set(LEG / 2, 0.05, 10);
+  grid.position.y = 0.05;
   scene.add(grid);
 
   const bodyMat = new THREE.MeshStandardMaterial({
     map: winTex,
     color: 0xffffff,
-    metalness: 0.32,
-    roughness: 0.38,
+    metalness: 0.38,
+    roughness: 0.4,
     emissive: 0x1a0824,
     emissiveMap: winTex,
-    emissiveIntensity: 1.05,
+    emissiveIntensity: 0.95,
   });
   const bodies = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), bodyMat, COUNT);
   scene.add(bodies);
-  const neons = new THREE.InstancedMesh(
-    new THREE.BoxGeometry(1, 1, 1),
-    new THREE.MeshBasicMaterial({ color: 0xffffff }),
-    COUNT
-  );
+
+  const neonMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const neons = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), neonMat, COUNT);
   scene.add(neons);
-  const ledges = new THREE.InstancedMesh(
-    new THREE.BoxGeometry(1, 1, 1),
-    new THREE.MeshBasicMaterial({ color: 0xffffff }),
-    COUNT
-  );
-  scene.add(ledges);
-  const ants = new THREE.InstancedMesh(
-    new THREE.BoxGeometry(1, 1, 1),
-    new THREE.MeshBasicMaterial({ color: 0x9aa4b0 }),
-    COUNT
-  );
-  scene.add(ants);
-  const pods = new THREE.InstancedMesh(
-    new THREE.BoxGeometry(1, 1, 1),
-    bodyMat,
-    COUNT
-  );
-  scene.add(pods);
+
+  const stripMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const strips = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), stripMat, COUNT);
+  scene.add(strips);
 
   const dummy = new THREE.Object3D();
   const tint = new THREE.Color();
   const neonPal = [0xff2d9b, 0x3df0ff, 0xff6a00, 0x7cff5b, 0xc77dff];
   const spots = [];
-  const pushSpot = (x, z, extraH = 0) => {
-    if (spots.length >= COUNT) return;
-    if (isStreet(x, z) || isPlaza(x, z)) return;
-    const h = 20 + extraH + ((spots.length * 23) % 70);
-    spots.push({
-      x,
-      z,
-      h,
-      w: 4.4 + (spots.length % 4) * 0.28,
-      d: 4.6 + (spots.length % 3) * 0.32,
-      podium: spots.length % 3 === 0,
-    });
-  };
-  for (let z = 80; z > 70 - LEG - 10; z -= 5) {
-    pushSpot(-6.7, z, 22);
-    pushSpot(6.7, z, 22);
-    pushSpot(LEG - 6.7, z, 18);
-    pushSpot(LEG + 6.7, z, 18);
-  }
-  for (let x = 8; x < LEG - 8; x += 5) {
-    pushSpot(x, 70 + 6.7, 16);
-    pushSpot(x, 70 - 6.7, 16);
-    pushSpot(x, 70 - LEG + 6.7, 16);
-    pushSpot(x, 70 - LEG - 6.7, 16);
-  }
-  for (let z = 86; z >= -150 && spots.length < COUNT; z -= 5.1) {
-    for (let x = -70; x <= 180 && spots.length < COUNT; x += 4.8) {
-      pushSpot(x, z, Math.abs(x) < 14 || Math.abs(x - LEG) < 14 ? 14 : 0);
+  for (let gz = -22; gz <= 22 && spots.length < COUNT; gz += 1) {
+    for (let gx = -12; gx <= 12 && spots.length < COUNT; gx += 1) {
+      const onNS = Math.abs(gx) <= 1;
+      const onEW = gz === -6 || gz === 7 || gz % 8 === 0;
+      if (onNS || onEW) continue;
+      spots.push({
+        x: gx * 7.4,
+        z: gz * 8.2,
+        h: 16 + ((spots.length * 19) % 68) + (Math.abs(gx) === 2 ? 12 : 0),
+        w: 3.1 + (spots.length % 5) * 0.5,
+        d: 3.6 + (spots.length % 4) * 0.55,
+      });
     }
   }
   const BUILD = Math.min(COUNT, spots.length);
   bodies.count = BUILD;
   neons.count = BUILD;
-  ledges.count = BUILD;
-  ants.count = BUILD;
-  pods.count = BUILD;
+  strips.count = BUILD;
 
   for (let i = 0; i < BUILD; i += 1) {
     const b = spots[i];
-    dummy.position.set(b.x, b.h / 2, b.z);
-    dummy.scale.set(b.w, b.h, b.d);
+    const x = b.x;
+    const z = b.z;
+    const h = b.h;
+    const w = b.w;
+    const d = b.d;
+    const side = x >= 0 ? 1 : -1;
+
+    dummy.position.set(x, h / 2, z);
+    dummy.scale.set(w, h, d);
     dummy.rotation.set(0, 0, 0);
     dummy.updateMatrix();
     bodies.setMatrixAt(i, dummy.matrix);
-    tint.setHex(0xffffff);
-    if (bodies.setColorAt) bodies.setColorAt(i, tint.setHSL(0.85 + (i % 7) * 0.02, 0.15, 0.92));
 
-    dummy.position.set(b.x, b.h + 0.22, b.z);
-    dummy.scale.set(b.w * 1.06, 0.2, b.d * 1.06);
+    dummy.position.set(x, h + 0.28, z);
+    dummy.scale.set(w * 1.04, 0.16, d * 1.04);
     dummy.updateMatrix();
     neons.setMatrixAt(i, dummy.matrix);
     tint.setHex(neonPal[i % neonPal.length]);
     neons.setColorAt(i, tint);
 
-    dummy.position.set(b.x, b.h * 0.42, b.z);
-    dummy.scale.set(b.w * 1.12, 0.28, b.d * 1.12);
+    dummy.position.set(x + side * (w * 0.52), h * 0.55, z);
+    dummy.scale.set(0.12, h * 0.92, 0.12);
     dummy.updateMatrix();
-    ledges.setMatrixAt(i, dummy.matrix);
-    ledges.setColorAt(i, tint);
-
-    dummy.position.set(b.x + (i % 2 ? 0.6 : -0.6), b.h + 2.2, b.z);
-    dummy.scale.set(0.12, 4.2 + (i % 5), 0.12);
-    dummy.updateMatrix();
-    ants.setMatrixAt(i, dummy.matrix);
-
-    if (b.podium) {
-      dummy.position.set(b.x, 3.2, b.z);
-      dummy.scale.set(b.w * 1.35, 6.4, b.d * 1.35);
-    } else {
-      dummy.position.set(b.x, 0.4, b.z);
-      dummy.scale.set(0.01, 0.01, 0.01);
-    }
-    dummy.updateMatrix();
-    pods.setMatrixAt(i, dummy.matrix);
+    strips.setMatrixAt(i, dummy.matrix);
+    strips.setColorAt(i, tint);
   }
   bodies.instanceMatrix.needsUpdate = true;
   neons.instanceMatrix.needsUpdate = true;
-  ledges.instanceMatrix.needsUpdate = true;
-  ants.instanceMatrix.needsUpdate = true;
-  pods.instanceMatrix.needsUpdate = true;
+  strips.instanceMatrix.needsUpdate = true;
   if (neons.instanceColor) neons.instanceColor.needsUpdate = true;
-  if (ledges.instanceColor) ledges.instanceColor.needsUpdate = true;
+  if (strips.instanceColor) strips.instanceColor.needsUpdate = true;
 
-  const signMesh = [];
-  for (let i = 0; i < SIGN_N; i += 1) {
-    const b = spots[(i * 7) % BUILD];
-    if (!b) continue;
-    const side = b.x < LEG / 2 ? 1 : -1;
+  const landmarks = [
+    { x: -11, z: -24, h: 92, w: 6, d: 6, hex: 0xff2d9b },
+    { x: 12, z: -38, h: 78, w: 5.2, d: 5.2, hex: 0x3df0ff },
+    { x: -13, z: 8, h: 70, w: 5.6, d: 5, hex: 0xff6a00 },
+    { x: 11, z: -72, h: 86, w: 6.4, d: 5.8, hex: 0x7cff5b },
+  ];
+  landmarks.forEach((t) => {
+    const geo = new THREE.BoxGeometry(t.w, t.h, t.d);
     const mesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(7.2, 3.4),
-      new THREE.MeshBasicMaterial({
-        map: signTexs[i % signTexs.length],
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.95,
+      geo,
+      new THREE.MeshStandardMaterial({
+        map: winTex,
+        metalness: 0.45,
+        roughness: 0.32,
+        emissive: 0x140818,
+        emissiveMap: winTex,
+        emissiveIntensity: 1.05,
       })
     );
-    mesh.position.set(b.x + side * (b.w * 0.52 + 0.05), 10 + (i % 9) * 2.2, b.z);
-    mesh.rotation.y = side > 0 ? Math.PI / 2 : -Math.PI / 2;
+    mesh.position.set(t.x, t.h / 2, t.z);
     scene.add(mesh);
-    signMesh.push(mesh);
-  }
+    const edges = new THREE.LineSegments(
+      new THREE.EdgesGeometry(geo),
+      new THREE.LineBasicMaterial({ color: t.hex })
+    );
+    edges.position.copy(mesh.position);
+    scene.add(edges);
+  });
 
   const boards = [
-    { title: "DIGIVERSE", color: "#ff2d9b", sub: "LIVE  //  ALWAYS ON", x: 0, y: 28, z: 62, ry: 0 },
-    { title: "EDGE", color: "#3df0ff", sub: "SOCIAL  //  TOOLS", x: -11, y: 22, z: 18, ry: 0.55 },
-    { title: "SYNDICATE", color: "#ffb14a", sub: "MODELS  //  LEDGER", x: 12, y: 20, z: 8, ry: -0.55 },
-    { title: "LIVE", color: "#7cff5b", sub: "SECTOR 00  //  WET GRID", x: LEG - 12, y: 26, z: 8, ry: -0.4 },
-    { title: "VERSE", color: "#c77dff", sub: "NO ANALOG SKY", x: 18, y: 24, z: 70 - LEG + 8, ry: 0.2 },
+    { title: "DIGIVERSE", color: "#ff2d9b", sub: "LIVE  //  ALWAYS ON", x: 0, y: 26, z: -6, ry: 0 },
+    { title: "EDGE", color: "#3df0ff", sub: "SOCIAL  //  TOOLS", x: -15.5, y: 22, z: 18, ry: 0.55 },
+    { title: "SYNDICATE", color: "#ffb14a", sub: "MODELS  //  LEDGER", x: 16, y: 20, z: 6, ry: -0.55 },
+    { title: "LIVE", color: "#7cff5b", sub: "SECTOR 00  //  WET GRID", x: -14, y: 34, z: -44, ry: 0.28 },
+    { title: "VERSE", color: "#c77dff", sub: "NO ANALOG SKY", x: 15, y: 30, z: -58, ry: -0.32 },
   ];
   boards.forEach((b) => {
     const mesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(22, 11),
+      new THREE.PlaneGeometry(26, 13),
       new THREE.MeshBasicMaterial({
         map: boardTex(b.title, b.color, b.sub),
         transparent: true,
@@ -402,34 +332,34 @@ if (!canvas || reduced) {
   });
 
   const ring = new THREE.Mesh(
-    new THREE.TorusGeometry(22, 0.28, 10, 80),
+    new THREE.TorusGeometry(26, 0.32, 10, 96),
     new THREE.MeshBasicMaterial({ color: 0x3df0ff })
   );
-  ring.position.set(LEG / 2, 62, 20);
+  ring.position.set(0, 52, -86);
   ring.rotation.x = Math.PI / 2.35;
   scene.add(ring);
   const ring2 = new THREE.Mesh(
-    new THREE.TorusGeometry(30, 0.2, 10, 80),
+    new THREE.TorusGeometry(34, 0.22, 10, 96),
     new THREE.MeshBasicMaterial({ color: 0xff2d9b })
   );
   ring2.position.copy(ring.position);
   ring2.rotation.x = ring.rotation.x;
   scene.add(ring2);
 
-  const lamps = new THREE.InstancedMesh(
-    new THREE.BoxGeometry(1, 1, 1),
-    new THREE.MeshBasicMaterial({ color: 0xffffff }),
-    LAMP_N
-  );
+  const lampMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const lamps = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), lampMat, LAMP_N);
   scene.add(lamps);
   for (let i = 0; i < LAMP_N; i += 1) {
-    const leg = i % 4;
-    const k = Math.floor(i / 4);
-    if (leg === 0) dummy.position.set(-4.6, 3.2, 88 - k * 9);
-    if (leg === 1) dummy.position.set(4.6, 3.2, 88 - k * 9);
-    if (leg === 2) dummy.position.set(LEG - 4.6, 3.2, 88 - k * 9);
-    if (leg === 3) dummy.position.set(4.6 + k * 9, 3.2, 70 - LEG + (k % 2 ? 4.6 : -4.6));
-    dummy.scale.set(0.12, 6.4, 0.12);
+    const ns = i < LAMP_N / 2;
+    if (ns) {
+      const side = i % 2 === 0 ? -1 : 1;
+      dummy.position.set(side * 7.6, 3.4, 120 - Math.floor(i / 2) * 12);
+    } else {
+      const j = i - Math.floor(LAMP_N / 2);
+      const side = j % 2 === 0 ? -1 : 1;
+      dummy.position.set(-140 + Math.floor(j / 2) * 14, 3.4, side * 7.6 - 40);
+    }
+    dummy.scale.set(0.14, 6.8, 0.14);
     dummy.updateMatrix();
     lamps.setMatrixAt(i, dummy.matrix);
     tint.setHex(i % 2 ? 0x3df0ff : 0xff2d9b);
@@ -438,54 +368,38 @@ if (!canvas || reduced) {
   lamps.instanceMatrix.needsUpdate = true;
   if (lamps.instanceColor) lamps.instanceColor.needsUpdate = true;
 
-  const groundCars = new THREE.InstancedMesh(
+  const cars = new THREE.InstancedMesh(
     new THREE.BoxGeometry(1, 1, 1),
     new THREE.MeshBasicMaterial({ color: 0xffffff }),
-    GROUND_N
+    CAR_N
   );
-  scene.add(groundCars);
-  const gState = [];
-  for (let i = 0; i < GROUND_N; i += 1) {
-    const ns = i % 2 === 0;
-    gState.push({
-      x: ns ? (i % 4 < 2 ? -2.2 : 2.2) : Math.random() * LEG,
-      z: ns ? 80 - Math.random() * 160 : i % 4 < 2 ? 70 : 70 - LEG,
-      v: 12 + (i % 9) * 1.6,
-      dir: i % 2 === 0 ? -1 : 1,
-      ns,
+  scene.add(cars);
+  const trails = new THREE.InstancedMesh(
+    new THREE.BoxGeometry(1, 1, 1),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55 }),
+    CAR_N
+  );
+  scene.add(trails);
+  const carState = [];
+  for (let i = 0; i < CAR_N; i += 1) {
+    const flying = i % 3 !== 0;
+    const dir = i % 2 === 0 ? -1 : 1;
+    carState.push({
+      x: flying
+        ? i % 2 === 0
+          ? -3.2 + (i % 5) * 0.15
+          : 3.2
+        : i % 4 < 2
+          ? i % 2 === 0
+            ? -2.4
+            : 2.4
+          : -80 + (i % 17) * 8,
+      y: flying ? 9 + (i % 11) * 2.8 : 0.55,
+      z: i % 4 < 2 ? 90 - Math.random() * 220 : i % 2 === 0 ? -36 : -44,
+      v: (14 + (i % 13) * 2.1) * dir,
+      axis: i % 4 < 2 ? "z" : "x",
       hex: neonPal[i % neonPal.length],
-    });
-  }
-
-  const flyCars = new THREE.InstancedMesh(
-    new THREE.BoxGeometry(1, 1, 1),
-    new THREE.MeshBasicMaterial({ color: 0xffffff }),
-    FLY_N
-  );
-  scene.add(flyCars);
-  const flyGlow = new THREE.InstancedMesh(
-    new THREE.BoxGeometry(1, 1, 1),
-    new THREE.MeshBasicMaterial({ color: 0xffffff }),
-    FLY_N
-  );
-  scene.add(flyGlow);
-  const flyTrails = new THREE.InstancedMesh(
-    new THREE.BoxGeometry(1, 1, 1),
-    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.7 }),
-    FLY_N
-  );
-  scene.add(flyTrails);
-  const fState = [];
-  for (let i = 0; i < FLY_N; i += 1) {
-    const ns = i % 3 !== 1;
-    fState.push({
-      x: ns ? (i % 2 ? -3.1 : 3.1) : Math.random() * LEG,
-      y: 9.5 + (i % 7) * 2.4,
-      z: ns ? 55 - Math.random() * 90 : i % 2 ? 70 : 70 - LEG,
-      v: 26 + (i % 11) * 2.8,
-      dir: i % 2 === 0 ? -1 : 1,
-      ns,
-      hex: neonPal[i % neonPal.length],
+      flying,
     });
   }
 
@@ -497,9 +411,9 @@ if (!canvas || reduced) {
   const mCol = new THREE.Color(0xff2d9b);
   const cCol = new THREE.Color(0x3df0ff);
   for (let i = 0; i < RAIN; i += 1) {
-    rainPos[i * 3] = (Math.random() - 0.2) * 180;
-    rainPos[i * 3 + 1] = Math.random() * 90;
-    rainPos[i * 3 + 2] = (Math.random() - 0.4) * 240;
+    rainPos[i * 3] = (Math.random() - 0.5) * 160;
+    rainPos[i * 3 + 1] = Math.random() * 88;
+    rainPos[i * 3 + 2] = (Math.random() - 0.5) * 280;
     rainSpd[i] = 22 + Math.random() * 42;
     const pick = i % 5 === 0 ? mCol : i % 3 === 0 ? cCol : gCol;
     rainCol[i * 3] = pick.r;
@@ -515,7 +429,7 @@ if (!canvas || reduced) {
         size: 0.16,
         vertexColors: true,
         transparent: true,
-        opacity: 0.72,
+        opacity: 0.78,
         depthWrite: false,
       })
     )
@@ -523,7 +437,7 @@ if (!canvas || reduced) {
 
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), mobile ? 0.58 : 0.82, 0.68, 0.18);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), mobile ? 0.62 : 0.92, 0.72, 0.16);
   composer.addPass(bloom);
 
   const mouse = { x: 0, y: 0 };
@@ -536,13 +450,9 @@ if (!canvas || reduced) {
     { passive: true }
   );
 
-  const START = 5.2;
+  const LEG = 110;
   const pathAt = (t) => {
-    if (t < START) {
-      const u = t / START;
-      return { x: 0, z: 96 - u * 26, yaw: 0 };
-    }
-    const s = ((t - START) * 15) % (LEG * 4);
+    const s = (t * 16) % (LEG * 4);
     if (s < LEG) return { x: 0, z: 70 - s, yaw: 0 };
     if (s < LEG * 2) return { x: s - LEG, z: 70 - LEG, yaw: Math.PI / 2 };
     if (s < LEG * 3) return { x: LEG, z: 70 - LEG + (s - LEG * 2), yaw: Math.PI };
@@ -583,101 +493,62 @@ if (!canvas || reduced) {
 
     const path = pathAt(t);
     const turn = Math.atan2(Math.sin(path.yaw - yawSmooth), Math.cos(path.yaw - yawSmooth));
-    yawSmooth += turn * Math.min(1, dt * 2.05);
-    const yaw = yawSmooth + mouse.x * 0.9;
+    yawSmooth += turn * Math.min(1, dt * 2.2);
+    const yaw = yawSmooth + mouse.x * 0.95;
     camera.position.x += (path.x - camera.position.x) * 0.08;
-    camera.position.y += (8.2 + Math.sin(t * 0.4) * 0.7 + mouse.y * 2.8 - camera.position.y) * 0.07;
+    camera.position.y += (7.4 + Math.sin(t * 0.42) * 0.9 + mouse.y * 3.4 - camera.position.y) * 0.07;
     camera.position.z += (path.z - camera.position.z) * 0.08;
     camera.lookAt(
-      camera.position.x + Math.sin(yaw) * 36,
-      11 + mouse.y * 6,
-      camera.position.z - Math.cos(yaw) * 36
+      camera.position.x + Math.sin(yaw) * 42,
+      10 + mouse.y * 7,
+      camera.position.z - Math.cos(yaw) * 42
     );
 
     ring.rotation.z = t * 0.22;
     ring2.rotation.z = -t * 0.14;
-    neonFill.intensity = 26 + Math.sin(t * 3.2) * 7;
-    cyanFill.intensity = 22 + Math.cos(t * 2.4) * 6;
-    neonFill.position.set(camera.position.x + 6, 14, camera.position.z - 8);
-    cyanFill.position.set(camera.position.x - 7, 12, camera.position.z - 4);
+    neonFill.intensity = 28 + Math.sin(t * 3.2) * 8;
+    cyanFill.intensity = 24 + Math.cos(t * 2.4) * 7;
 
-    for (let i = 0; i < GROUND_N; i += 1) {
-      const c = gState[i];
-      if (c.ns) {
-        c.z += c.v * c.dir * dt;
-        if (c.z < 70 - LEG - 20) c.z = 88;
-        if (c.z > 90) c.z = 70 - LEG - 16;
+    for (let i = 0; i < CAR_N; i += 1) {
+      const c = carState[i];
+      if (c.axis === "x") {
+        c.x += c.v * dt;
+        if (c.x < -150) c.x = 150;
+        if (c.x > 150) c.x = -150;
       } else {
-        c.x += c.v * c.dir * dt;
-        if (c.x < -8) c.x = LEG + 8;
-        if (c.x > LEG + 8) c.x = -8;
-      }
-      dummy.position.set(c.x, 0.48, c.z);
-      dummy.scale.set(0.9, 0.34, 2.2);
-      dummy.rotation.set(0, c.ns ? 0 : Math.PI / 2, 0);
-      dummy.updateMatrix();
-      groundCars.setMatrixAt(i, dummy.matrix);
-      tint.setHex(c.hex);
-      groundCars.setColorAt(i, tint);
-    }
-    groundCars.instanceMatrix.needsUpdate = true;
-    if (groundCars.instanceColor) groundCars.instanceColor.needsUpdate = true;
-
-    for (let i = 0; i < FLY_N; i += 1) {
-      const c = fState[i];
-      if (c.ns) {
-        c.z += c.v * c.dir * dt;
-        if (c.z < 70 - LEG - 30) c.z = 92;
-        if (c.z > 94) c.z = 70 - LEG - 24;
-      } else {
-        c.x += c.v * c.dir * dt;
-        if (c.x < -16) c.x = LEG + 16;
-        if (c.x > LEG + 16) c.x = -16;
+        c.z += c.v * dt;
+        if (c.z < -160) c.z = 120;
+        if (c.z > 122) c.z = -158;
       }
       dummy.position.set(c.x, c.y, c.z);
-      dummy.scale.set(2.05, 0.42, 4.4);
-      dummy.rotation.set(0, c.ns ? 0 : Math.PI / 2, 0);
+      dummy.scale.set(c.flying ? 0.55 : 0.85, c.flying ? 0.2 : 0.32, c.flying ? 1.6 : 2.1);
+      dummy.rotation.set(0, c.axis === "x" ? Math.PI / 2 : 0, 0);
       dummy.updateMatrix();
-      flyCars.setMatrixAt(i, dummy.matrix);
+      cars.setMatrixAt(i, dummy.matrix);
       tint.setHex(c.hex);
-      flyCars.setColorAt(i, tint);
+      cars.setColorAt(i, tint);
 
       dummy.position.set(
-        c.x + (c.ns ? 0 : c.dir * 2.2),
+        c.x - (c.axis === "x" ? Math.sign(c.v) * 1.6 : 0),
         c.y,
-        c.z + (c.ns ? c.dir * 2.2 : 0)
+        c.z - (c.axis === "z" ? Math.sign(c.v) * 1.6 : 0)
       );
-      dummy.scale.set(0.38, 0.28, 0.38);
+      dummy.scale.set(0.12, 0.08, 3.4);
       dummy.updateMatrix();
-      flyGlow.setMatrixAt(i, dummy.matrix);
-      tint.setHex(0xffffff);
-      flyGlow.setColorAt(i, tint);
-
-      dummy.position.set(
-        c.x - (c.ns ? 0 : c.dir * 3.6),
-        c.y,
-        c.z - (c.ns ? c.dir * 3.6 : 0)
-      );
-      dummy.scale.set(0.22, 0.1, 8.5);
-      dummy.updateMatrix();
-      flyTrails.setMatrixAt(i, dummy.matrix);
-      tint.setHex(c.hex);
-      flyTrails.setColorAt(i, tint);
+      trails.setMatrixAt(i, dummy.matrix);
+      trails.setColorAt(i, tint);
     }
-    flyCars.instanceMatrix.needsUpdate = true;
-    flyGlow.instanceMatrix.needsUpdate = true;
-    flyTrails.instanceMatrix.needsUpdate = true;
-    if (flyCars.instanceColor) flyCars.instanceColor.needsUpdate = true;
-    if (flyGlow.instanceColor) flyGlow.instanceColor.needsUpdate = true;
-    if (flyTrails.instanceColor) flyTrails.instanceColor.needsUpdate = true;
+    cars.instanceMatrix.needsUpdate = true;
+    trails.instanceMatrix.needsUpdate = true;
+    if (cars.instanceColor) cars.instanceColor.needsUpdate = true;
+    if (trails.instanceColor) trails.instanceColor.needsUpdate = true;
 
     const pos = rainGeo.attributes.position.array;
     for (let i = 0; i < RAIN; i += 1) {
       pos[i * 3 + 1] -= rainSpd[i] * dt;
       if (pos[i * 3 + 1] < 0) {
-        pos[i * 3 + 1] = 88;
-        pos[i * 3] = camera.position.x + (Math.random() - 0.5) * 70;
-        pos[i * 3 + 2] = camera.position.z + (Math.random() - 0.5) * 70;
+        pos[i * 3 + 1] = 86;
+        pos[i * 3] = (Math.random() - 0.5) * 160;
       }
     }
     rainGeo.attributes.position.needsUpdate = true;

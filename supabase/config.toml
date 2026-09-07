@@ -63,6 +63,10 @@ verify_jwt = false
 [functions.lounge-bot-admin]
 verify_jwt = false
 
+# Farm worker door: shared secret checked in function (see lounge-bot-ingest/README.md).
+[functions.lounge-bot-ingest]
+verify_jwt = false
+
 # Stripe billing webhook (signed by Stripe, not Supabase JWT).
 [functions.affiliate-connect]
 verify_jwt = true

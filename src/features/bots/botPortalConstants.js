@@ -11,6 +11,7 @@ export const BOT_PIPELINE_LABELS = Object.freeze({
   odds_api: 'Sports odds',
   x: 'X tracker',
   manual: 'Manual',
+  farm: 'Farm ingest',
 })
 
 export const BOT_REVIEW_MODE_LABELS = Object.freeze({

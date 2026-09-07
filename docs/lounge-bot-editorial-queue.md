@@ -4,7 +4,7 @@
 
 **Decision (2026-07-03):** The **morning editorial inbox** is **only** for **X-tracker bots** ... human-imitating Edge accounts that follow configured `@handles`, rewrite tweets in persona voice, and need Ryan's review before publish.
 
-**Not in this workflow:** sports odds bot and financial news bot are **self-contained** (automated ingest → caption → publish). See **`docs/lounge-bot-sports-odds.md`** and **`docs/lounge-bot-market-news.md`**.
+**Not in this workflow:** sports odds bot, financial news bot, and **farm ingest** personas (`pipeline=farm` … external worker via **`lounge-bot-ingest`**). See **`docs/lounge-bot-sports-odds.md`**, **`docs/lounge-bot-market-news.md`**, **`docs/lounge-bot-farm-ingest.md`**.
 
 **Related:** `docs/social-feed-roadmap.md`, `docs/test-buildout-backlog.md`, Offers AI review pattern in `supabase/offer_ai_import.sql`.
 
@@ -16,8 +16,9 @@
 | --- | --- | --- |
 | **Editorial (this doc)** | X-tracker niche accounts (crypto, smart money, poker, slots/AP, ...) | Morning inbox: edit, skip, schedule |
 | **Self-contained** | Sports odds (Odds API), financial wire (RSS/API/EDGAR) | None required ... tune config, audit log, kill switch only |
+| **Farm ingest** | External worker personas (`pipeline=farm`) | Kill switch + caps ... worker writes, door publishes |
 
-Both modes use **one Edge profile per niche** and **`lounge_bot_accounts`** registry. Only **X** pipelines use **`lounge_bot_queue`** with `pending_review`.
+Both modes (plus farm) use **one Edge profile per niche** and **`lounge_bot_accounts`** registry. Only **X** pipelines use **`lounge_bot_queue`** with `pending_review`.
 
 ---
 
@@ -56,7 +57,7 @@ Each bot = **one** `auth.users` + **`profiles`** row + **one ingest pipeline** +
 | --- | --- |
 | `user_id` | PK → `profiles` |
 | `slug` | `sports-odds`, `financial-wire`, `x-crypto`, ... |
-| `pipeline` | `odds_api` \| `market_news` \| `x` \| `manual` |
+| **`pipeline`** | `odds_api` \| `market_news` \| `x` \| `manual` \| **`farm`** |
 | `review_mode` | `automatic` \| `editorial` ... **`editorial` only when `pipeline = x`** |
 | `display_name`, `bio`, `avatar` | Public persona |
 | `voice_prompt_id` | LLM system prompt key (X bots; optional for self-contained templates) |

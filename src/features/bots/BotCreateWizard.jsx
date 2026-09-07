@@ -50,6 +50,17 @@ const PIPELINE_OPTIONS = [
     defaultPills: ['crypto'],
     maxDay: 6,
   },
+  {
+    id: 'farm',
+    label: 'Farm ingest (external worker)',
+    hint: 'Nametag only · worker POSTs lounge-bot-ingest · no in-app poller',
+    defaultSlug: 'farm-persona',
+    defaultHandle: 'farm_persona',
+    defaultDisplayName: 'Farm persona',
+    defaultBio: 'External farm ingest. Voice and sources live on the worker.',
+    defaultPills: ['trading'],
+    maxDay: 8,
+  },
 ]
 
 function slugify(raw) {
@@ -104,7 +115,7 @@ export default function BotCreateWizard({ supabaseClient, open, onClose, onCreat
     setBio(meta.defaultBio || '')
     setPills([...meta.defaultPills])
     setMaxDay(meta.maxDay)
-    setMaxHour(id === 'odds_api' ? 1 : 4)
+    setMaxHour(id === 'odds_api' ? 1 : id === 'farm' ? 3 : 4)
     setMaxDayUnlimited(false)
     setMaxHourUnlimited(false)
     if (isMarketNewsWire(meta)) setWatchlist(DEFAULT_WATCHLIST_TEXT)
@@ -312,7 +323,7 @@ export default function BotCreateWizard({ supabaseClient, open, onClose, onCreat
                 </div>
               </div>
             </div>
-            {pipeline !== 'x' ? (
+            {pipeline !== 'x' && pipeline !== 'farm' ? (
               <label className="block">
                 <div className="text-[11px] font-semibold uppercase text-zinc-500">Score threshold</div>
                 <input

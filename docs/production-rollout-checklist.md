@@ -218,6 +218,9 @@ supabase functions deploy creator-fan-connect
 supabase functions deploy creator-fan-checkout
 supabase functions deploy creator-fan-resume-subscription
 supabase functions deploy creator-fan-reconcile-stripe
+# Farm ingest door (after 20260907190000 + LOUNGE_BOT_FARM_INGEST_SECRET):
+supabase functions deploy lounge-bot-ingest
+supabase functions deploy lounge-bot-admin
 ```
 
 Deploy **`lounge-cf-stream-purge-pending-uploads`** from a repo copy that includes **`supabase/config.toml`** (`verify_jwt = false` for that function) so **`sb_*`** gateway keys work when used from Vault.

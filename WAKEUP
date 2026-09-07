@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-07 … farm ingest door
+
+**I am Mac Theo.** Lounge farm bots: **`pipeline=farm`** + Edge **`lounge-bot-ingest`**. Portal wizard **Farm ingest**. Secret **`LOUNGE_BOT_FARM_INGEST_SECRET`**. Spec **`docs/lounge-bot-farm-ingest.md`**. No YouTube worker yet. Apply SQL + deploy on test; do not prod until Ryan asks.
+
 ### Mac Theo 2026-09-06 … digiverse.ventures static site in repo
 
 **I am Mac Theo.** Built the LLC holding site in **`sites/digiverse-ventures/`**. Properties: EDGE / EdgeTilt + Sharpe Syndicate. Contact **`contact@digiverse.ventures`**. Pages project **`digiverse-ventures`**. Custom domain still needs attaching. Do not Add for Review.

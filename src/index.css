@@ -10559,6 +10559,15 @@ html.light [data-bot-portal] .text-red-400 {
 html.light [data-bot-portal] .bg-cyan-950\/30 {
   background-color: rgba(236, 254, 255, 0.75) !important;
 }
+html.light [data-bot-portal] .bg-cyan-950\/20 {
+  background-color: rgba(236, 254, 255, 0.7) !important;
+}
+html.light [data-bot-portal] .border-cyan-500\/25 {
+  border-color: rgba(6, 182, 212, 0.35) !important;
+}
+html.light [data-bot-portal] .text-cyan-100\/90 {
+  color: #155e75 !important;
+}
 html.light [data-bot-portal] .bg-cyan-950\/60 {
   background-color: rgba(207, 250, 254, 0.9) !important;
 }

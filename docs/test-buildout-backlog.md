@@ -170,7 +170,7 @@ Hot Windows files (first cuts): `pwaNotificationPrompt.js`, `PwaInstallBanner.js
 | **Self-contained** | Sports odds, financial wire | Tune config, audit log, kill switch ... **no daily inbox** |
 | **Editorial (X only)** | Crypto, smart money, poker, slots/AP, ... | **Morning inbox:** edit, skip, schedule |
 
-**Roster:** one Edge profile per niche. Spec: **`docs/lounge-bot-editorial-queue.md`** (X editorial), **`docs/lounge-bot-sports-odds.md`**, **`docs/lounge-bot-market-news.md`**.
+**Roster:** one Edge profile per niche. Spec: **`docs/lounge-bot-editorial-queue.md`** (X editorial), **`docs/lounge-bot-sports-odds.md`**, **`docs/lounge-bot-market-news.md`**, **`docs/lounge-bot-farm-ingest.md`** (external worker door).
 
 ### Self-contained (parallel)
 
@@ -181,6 +181,7 @@ Hot Windows files (first cuts): `pwaNotificationPrompt.js`, `PwaInstallBanner.js
 - [ ] **Syndicate collection failure monitoring (rest):** registry missing slate/grade/VIP/specialty crons + table freshness / Odds API last error banners. Spec note 2026-09-02.
 - [ ] **Chedda name vs pick gold (light):** Chedda stays muddy orange; pick `[gold]` readable on light (emerald). Do not paint all gold amber. See Update log **2026-09-04** OPEN.
 - [ ] **Chedda Action PRO paste nag emails:** day before NFL Fri 1pm PT / CFB Fri 12pm PT lock, email Ryan every **10 minutes** until `syndicate_betting_splits` has paste for that slate (or explicit skip). Stop when screenshots submitted. Spec note 2026-09-02.
+- [ ] **Farm ingest door smoke (test):** apply **`20260907190000`**; deploy **`lounge-bot-ingest`** + **`lounge-bot-admin`**; set Edge **`LOUNGE_BOT_FARM_INGEST_SECRET`**; create **Farm ingest** persona in **`/?tab=bots`**; set **Running**; curl `dry_run` then a real caption. Spec: **`docs/lounge-bot-farm-ingest.md`**. No YouTube/X worker yet.
 - [ ] **Create Market Edge bot** (`market-edge` / `@marketedge`) via **`/?tab=bots`** wizard or **`supabase/seed/lounge_market_edge_bot.sql`** + **`lounge_bot_seed_market_news_sources()`**
 - [ ] **Create Crypto Edge bot** (`crypto-edge` / `@cryptoedge`) via **`/?tab=bots`** wizard (**Crypto Edge** preset) or **`supabase/seed/lounge_crypto_edge_bot.sql`** + **`lounge_bot_seed_crypto_news_sources()`**
 - [x] **Deploy `lounge-news-poll` + `lounge-bot-admin` on test + prod** (requires **`FINNHUB_API_KEY`**)
@@ -852,6 +853,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 - [ ] **`lounge-news-poll`** (Market Edge — Finnhub allowlist → score → auto-publish) — deploy on **test** with **`FINNHUB_API_KEY`**; migrations **`20260703140000`** + **`20260705020000`**; cron **`lounge_news_poll_market_edge`** every 3 min or Bot Portal **Poll now**. Source: `supabase/functions/lounge-news-poll/README.md`.
 
+- [ ] **`lounge-bot-ingest`** (farm worker door) — deploy on **test** with **`LOUNGE_BOT_FARM_INGEST_SECRET`**; migration **`20260907190000`**; redeploy **`lounge-bot-admin`**. Source: `supabase/functions/lounge-bot-ingest/README.md`, `docs/lounge-bot-farm-ingest.md`.
+
 - [x] **`apple-iap-verify`** (StoreKit begin + confirm) — deployed **test + prod** (2026-09-05). Was **404** on test … sandbox Pro purchase succeeded on Apple, then the IPA showed `Failed to send a request to the Edge Function`. SQL **`20260905120000`** on both. Source: `supabase/functions/apple-iap-verify/README.md`.
 - [x] **`apple-iap-notify`** (App Store Server Notifications V2) — deployed **test + prod** (2026-09-05). SQL **`20260905140000`**. Ryan pastes ASC Production URL. Source: `supabase/functions/apple-iap-notify/README.md`.
 - [x] **`stripe-ensure-edge-pro-price`** (ops, service role) — deployed **test** 2026-09-06. Created test-mode Edge Pro **$9.99/mo** `price_1UCj2NHSxykzMEuFEn1txoxa` and set **`STRIPE_PRICE_EDGE_PRO`**. Old id `price_1UALrKHy8VbdXOQulyD9ZOkd` was not in that Stripe account. Source: `supabase/functions/stripe-ensure-edge-pro-price/README.md`.
@@ -1095,6 +1098,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 ---
 
 ## Update log
+
+- 2026-09-07: **Farm ingest door (code):** `pipeline=farm` + Edge **`lounge-bot-ingest`** (secret **`LOUNGE_BOT_FARM_INGEST_SECRET`**). Portal wizard **Farm ingest**. Brains stay off-app. Spec **`docs/lounge-bot-farm-ingest.md`**. Apply **`20260907190000`** on test; deploy ingest + **`lounge-bot-admin`**; set secret before smoke. No YouTube/X worker yet.
 
 - 2026-09-07: **UFC Slate preview 500:** `analyzeUfcMatchup` returned `{ takedownControlA }` but locals are `tdControlA` / `tdControlB` (ReferenceError). Ops toast was the generic supabase-js non-2xx. Fix in `loungeBotUfcMetrics.ts`; UFC invoke now uses `invokeAdminEdgeFunction` so the real Edge message surfaces. Redeployed **`lounge-odds-poll`** test + **prod**. Prod dry-run HTTP 200, 50 fights.
 

@@ -604,6 +604,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
   const isSharpeSyndicateBot = botSlugLower === SHARPE_SYNDICATE_BOT_SLUG
   /** Coffee / edges / alert destination / Run alert now … Signal only. */
   const isSignalOddsOpsBot = bot.pipeline === 'odds_api' && !isSharpeSyndicateBot
+  const isFarmBot = bot.pipeline === 'farm'
 
   const setRunState = async (runState) => {
     setBusy(`run-${runState}`)
@@ -1395,7 +1396,16 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
           </div>
         ) : null}
 
-        {isAutomatic && !isSharpeSyndicateBot ? (
+        {isFarmBot ? (
+          <div className="mt-3 rounded-xl border border-cyan-500/25 bg-cyan-950/20 px-3 py-2.5 text-[11px] text-cyan-100/90">
+            <span className="font-semibold text-cyan-300">Farm door</span>
+            {' '}… this persona has no in-app poller. An external worker POSTs
+            {' '}<span className="font-mono text-zinc-300">lounge-bot-ingest</span>
+            {' '}with the farm secret. Set Running, then keep caps tight.
+          </div>
+        ) : null}
+
+        {isAutomatic && !isSharpeSyndicateBot && !isFarmBot ? (
           <>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
@@ -1574,7 +1584,7 @@ function BotDetailPanel({ bot, supabaseClient, onReload, setToast }) {
               onChange={(v) => setDraft((d) => ({ ...d, minEdgePct: v }))}
             />
           ) : null}
-          {isAutomatic && bot.pipeline !== 'odds_api' ? (
+          {isAutomatic && bot.pipeline !== 'odds_api' && bot.pipeline !== 'farm' ? (
             <NumberField
               label="Publish score min"
               value={draft.scoreThreshold}

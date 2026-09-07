@@ -15,7 +15,7 @@ import { defaultNewsSourcesForProfile, newsProfileFromAccount } from '../_shared
 type CreateBotBody = {
   action: 'create_bot'
   slug: string
-  pipeline: 'market_news' | 'odds_api' | 'x' | 'manual'
+  pipeline: 'market_news' | 'odds_api' | 'x' | 'manual' | 'farm'
   handle: string
   display_name: string
   bio?: string
@@ -272,7 +272,7 @@ Deno.serve(async (req) => {
     if (!slug || slug.length < 2) return adminOpsJson(400, { error: 'Invalid slug.' })
     if (!handle.match(/^[a-z0-9_]{2,30}$/)) return adminOpsJson(400, { error: 'Invalid handle.' })
     if (!displayName) return adminOpsJson(400, { error: 'display_name required.' })
-    if (!pipeline || !['market_news', 'odds_api', 'x', 'manual'].includes(pipeline)) {
+    if (!pipeline || !['market_news', 'odds_api', 'x', 'manual', 'farm'].includes(pipeline)) {
       return adminOpsJson(400, { error: 'Invalid pipeline.' })
     }
 

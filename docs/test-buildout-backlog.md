@@ -98,16 +98,16 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [x] **Billing v1 (US) Safari link-out:** Stripe Checkout / portal / Connect never `location.assign` inside EdgeiOS … `openExternalBillingUrl` → `openInSafari`. StoreKit IAP deferred to v1.1. Counsel + App Review notes still before submit.
 - [ ] **Store listing:** icon, splash, privacy nutrition, permission copy.
 - [x] **App Information leftovers (2026-09-06):** Age Ratings saved (calculated 16+, override **18+** for ToS 18+; Brazil 19+). Content Rights Yes (third-party / UGC). Encryption: do not upload docs … Xcode `ITSAppUsesNonExemptEncryption = NO`. Vietnam Game License / Medical Device N/A.
-- [ ] **DSA trader (still owed):** ASC still says **non-trader**. Ryan submitted Individual → **Digiverse Ventures LLC** (Apple: one business day). After the org flip, trader as the LLC (company address / phone / email). Do not invent those. Do not open a second developer account.
+- [ ] **DSA trader (still owed):** Org changeover to **Digiverse Ventures LLC** is done (Ryan 2026-09-07). Trader as the LLC is now unblocked (company address / phone / email). Do not invent those. Do not open a second developer account.
 
 ### Before IAP / App Store submit (Ryan 2026-09-06)
 
-Do **not** Add for Review until these are done. Age Ratings / Content Rights / encryption plist are already in. Same Apple team … do not open a second developer account.
+Do **not** Add for Review until the open items are done. Age Ratings / Content Rights / encryption plist are already in. Same Apple team … do not open a second developer account.
 
-- [ ] **App Store account changeover to Digiverse Ventures LLC.** Convert submitted 2026-09-06. Apple: one business day. DSA trader as the LLC after this lands.
-- [ ] **[digiverse.ventures](https://digiverse.ventures)** LLC site. Static files in **`sites/digiverse-ventures/`**. Ryan owns the domain. Still **upload to Cloudflare Pages** + custom domain so Apple / D&B see a real page (not parked / 403). No street address on the page (do not invent). Contact **`contact@digiverse.ventures`**. Not an Edge product surface.
-- [ ] **Cloudflare email** for **edgetilt** and **digiverse** … mailboxes + a real reply-from address (not a personal Gmail on the EU / seller listing).
-- [ ] **Increased price request approval** from App Store Connect (Lifetime / price points above Apple’s `$1,000` cap). IPA carousel stays Starter + Pro until this clears.
+- [x] **App Store account changeover to Digiverse Ventures LLC.** Ryan signed off 2026-09-07. DSA trader as the LLC is now unblocked.
+- [x] **[digiverse.ventures](https://digiverse.ventures)** LLC site live. Static files in **`sites/digiverse-ventures/`**. Ryan signed off 2026-09-07 (Pages + custom domain). Contact **`contact@digiverse.ventures`**. Not an Edge product surface.
+- [x] **Cloudflare email** for **edgetilt** and **digiverse** … mailboxes + reply-from. Ryan signed off 2026-09-07.
+- [ ] **Increased price request approval** from App Store Connect (Lifetime / price points above Apple’s `$1,000` cap). IPA carousel stays Starter + Pro until this clears. **Last open item on this list.**
 
 ### Native gap checklist (audit 2026-08-23)
 
@@ -2863,6 +2863,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-07:** **Pre-IAP submit 1–3 done (Ryan).** Org is **Digiverse Ventures LLC**, **digiverse.ventures** live, Cloudflare email for edgetilt + digiverse / reply-from. Still open: Apple increased price request (Lifetime above `$1,000`). DSA trader unblocked.
 - **2026-09-06:** **digiverse.ventures lists Sharpe Syndicate.** LLC holding site names EDGE / EdgeTilt and Sharpe Syndicate as properties. Contact `contact@digiverse.ventures`. Still needs Cloudflare Pages + custom domain.
 - **2026-09-06:** **Before IAP / App Store submit list (Ryan).** Org changeover to Digiverse Ventures LLC, build digiverse.ventures, Cloudflare email for edgetilt + digiverse / reply-from, Apple increased price request. Do not Add for Review until those clear. Backlog section under Planned (Native shells).
 - **2026-09-06:** **Apple Individual → Org convert submitted.** Ryan asked Apple to switch the EdgeTilt team to **Digiverse Ventures LLC**. Reply owed within one business day. Same app / IAP / Age Ratings. DSA trader waits on that flip. Do not Add for Review.

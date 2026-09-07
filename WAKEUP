@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-07 … hide guide admin + primary templates on main
+
+**I am Mac Theo.** Cherry-picked the screenshot hide onto **`main`** (not a full `test` FF). AP Guide card Delete + lock, Play Logbook Primary game templates stay off. Flip flags in `GuidesScreen.jsx` / `PlayLogbook.jsx`. Full FF still blocked: **`20260906120000`** `has_edge_pro` is test-only. Do not Add for Review.
+
 ### Mac Theo 2026-09-05 … IAP dual-path on prod
 
 **I am Mac Theo.** Promoted IAP to **`jtjgtucumuoswnbauxry`**: SQL **`20260905120000`** + **`20260905140000`**, redeployed **`apple-iap-verify`** + **`apple-iap-notify`**, then **`test` → `main`**. Verify probe 401. Ryan pastes Production ASSN V2 URL `https://jtjgtucumuoswnbauxry.supabase.co/functions/v1/apple-iap-notify`. Do not Add for Review. **`1.4.92`.**

@@ -88,6 +88,9 @@ import { LOUNGE_CAPTION_MAX, loungeCaptionMaxForProfile } from '../../utils/loun
 /** Collapsed cards rendered at once; more load via scroll sentinel. */
 const GUIDES_LIST_PAGE_SIZE = 24
 
+/** Flip true to restore Delete + Slots Edge lock on expanded/collapsed guide cards. */
+const SHOW_GUIDE_CARD_ADMIN_LOCK_AND_DELETE = false
+
 const GUIDE_LIST_SELECT = `
           id,
           slug,
@@ -1998,7 +2001,7 @@ export default function GuidesScreen({
         contentClassName="px-3 pt-3 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
       >
         <h1 className="sr-only">AP Guides</h1>
-        {isAdmin && !gatesDbReady ? (
+        {SHOW_GUIDE_CARD_ADMIN_LOCK_AND_DELETE && isAdmin && !gatesDbReady ? (
           <p className="mb-4 text-xs text-fuchsia-300/90">
             Apply migration `20260526150000_content_access_gates.sql` to enable admin lock switches.
           </p>
@@ -2104,7 +2107,7 @@ export default function GuidesScreen({
                   ].join(' ')}
                 >
                   <div className="relative">
-                    {isAdmin ? (
+                    {SHOW_GUIDE_CARD_ADMIN_LOCK_AND_DELETE && isAdmin ? (
                       <div className="absolute inset-x-3 top-3 z-20 flex items-start justify-between gap-2 pointer-events-none">
                         <div className="flex items-start gap-2">
                           {favoriteBtn}

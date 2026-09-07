@@ -2851,6 +2851,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ## Update log
 
+- **2026-09-07:** **Store-screenshot hide cherry-picked to `main`.** AP Guide card Delete + Slots Edge lock, Play Logbook **Primary game templates** gated off. Not a full `test` FF ... **`20260906120000`** `has_edge_pro` is still test-only. Flip `SHOW_GUIDE_CARD_ADMIN_LOCK_AND_DELETE` / `SHOW_PRIMARY_GAME_TEMPLATES_BUTTON`.
 - **2026-09-05:** **Apple IAP dual-path promoted to prod.** SQL **`20260905120000`** + **`20260905140000`** on **`jtjgtucumuoswnbauxry`**. Redeployed **`apple-iap-verify`** + **`apple-iap-notify`**. Probe 401 / handler-alive. Frontend via **`test` → `main`**. Ryan still pastes the Production ASSN URL. **`1.4.92`.**
 - **2026-09-05:** **`apple-iap-verify` was missing on test.** Sandbox Pro IAP charged, confirm 404'd as a fetch error. Deployed to `kcosfvmreeiosdjdzycb`. Client no longer opens StoreKit if begin fails. **`1.4.92`.** **Ryan signed off:** Restore purchases granted the already-paid sandbox Pro.
 - **2026-09-05:** **IPA Subscribe carousel hides Lifetime again.** Apple IAP list + offer wizard still cap at `$1,000`. Web still shows the card. **`1.4.91`.**

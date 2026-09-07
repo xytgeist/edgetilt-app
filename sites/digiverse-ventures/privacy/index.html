@@ -10,14 +10,14 @@
     />
     <link rel="canonical" href="https://digiverse.ventures/privacy" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="theme-color" content="#05090c" />
+    <meta name="theme-color" content="#090014" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600&family=Teko:wght@500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800&family=Rajdhani:wght@500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles.css?v=verse5" />
     <script type="importmap">
       {
         "imports": {
@@ -30,6 +30,13 @@
   <body>
     <canvas id="stage" aria-hidden="true"></canvas>
     <div class="haze" aria-hidden="true"></div>
+    <div class="scan" aria-hidden="true"></div>
+    <div class="visor" aria-hidden="true">
+      <span class="hud hud-tl">DV // LIVE</span>
+      <span class="hud hud-tr" id="hud-clock">00:00:00Z</span>
+      <span class="hud hud-bl">CAM 01 · LEGAL</span>
+      <span class="hud hud-br">SECTOR 00</span>
+    </div>
     <div class="site">
       <header class="top">
         <a href="/">Digiverse Ventures</a>
@@ -61,6 +68,6 @@
         </footer>
       </div>
     </div>
-    <script type="module" src="/world.js"></script>
+    <script type="module" src="/world.js?v=verse5"></script>
   </body>
 </html>

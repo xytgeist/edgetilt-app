@@ -422,6 +422,8 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 
 - [x] **Ledger tab (unpaid combined):** LOG / ANALYZE / LEDGER. One row per counterpart (Edge user or guest) from the viewer’s seat. Paid drops out. Guests only on sessions the viewer managed. Two non-managers on the same play do **not** get a direct tab... settlement still through that play’s manager. LOG chip `Open $X · N people`. **Settle all** on the ledger and inside each person (manager/owner). Tap person → unpaid plays → entry Paid switch (same Partners table). No new SQL. **`1.4.105`.** Ryan smoke on test.
 
+- [x] **Ledger history + closed plays:** Partners stay on the book after $0. Play cards show **Paid** / settled amounts. Master ledger lists Settle All text rows below partner cards; tap a partner → open plays, then that pair’s Settle All rows, then closed plays. Individual Paid checkboxes do not write a text row. SQL **`20260907220000_play_log_ledger_settlements.sql`** on **test**. **`1.4.106`.** Ryan smoke on test. Prod SQL when promoting.
+
 ---
 
 ## AP Guide editor (`/slot-guide-form`)
@@ -1100,6 +1102,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 ---
 
 ## Update log
+
+- 2026-09-07: **Play Logbook Ledger history + closed plays:** Partners stay after $0. Closed play cards show Paid. Settle All writes a pairwise text row (`play_log_ledger_settlements`, **`20260907220000`** on test). Master list + per-partner book. Individual Paid still silent. **`1.4.106`.**
 
 - 2026-09-07: **Play Logbook Ledger Settle all + tab order:** Tabs are **LOG / ANALYZE / LEDGER**. **Settle all** on the ledger and inside each person marks unpaid shares Paid (manager/owner; one RPC per session). **`1.4.105`.**
 

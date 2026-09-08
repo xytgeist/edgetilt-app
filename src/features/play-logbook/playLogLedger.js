@@ -10,8 +10,9 @@ import {
  * Combined shared-play ledger from the viewer's seat.
  *
  * Each play still clears through that play's manager. Two non-managers on the
- * same play do not get a direct tab. Paid partner rows drop out. Guests only
- * appear when the viewer is the manager of that play (they have no Logbook).
+ * same play do not get a direct tab. Paid partners and closed plays stay on the
+ * book. Open totals only sum unpaid lines. Guests only appear when the viewer
+ * is the manager of that play (they have no Logbook).
  */
 
 /** @param {import('./playLogPartners.js').PlayLogPartnerRow} row */
@@ -159,20 +160,19 @@ export function buildPlayLogLedger({
       ownerId,
     }
 
-    /** @param {import('./playLogPartners.js').PlayLogPartnerRow} counterpart @param {import('./playLogPartners.js').PlayLogPartnerRow} shareRow */
-    const addLine = (counterpart, shareRow) => {
+    /** @param {import('./playLogPartners.js').PlayLogPartnerRow} counterpart @param {import('./playLogPartners.js').PlayLogPartnerRow} shareRow @param {boolean} paid */
+    const addLine = (counterpart, shareRow, paid) => {
       const key = playLogLedgerCounterpartKey(counterpart)
       if (!key) return
       const shareUsd = playLogPartnerOutcomeShareUsdRounded(
         netOutcome,
         shareRow.sharePercent,
       )
-      if (shareUsd == null || shareUsd === 0) return
+      if (shareUsd == null) return
 
       const shareIsViewer =
         shareRow.kind === 'user' && String(shareRow.userId || '') === uid
       const { theyOweYou, youOweThem } = settlementFromShare(shareUsd, shareIsViewer)
-      if (!theyOweYou && !youOweThem) return
 
       const prev = byKey.get(key) || {
         key,
@@ -187,12 +187,16 @@ export function buildPlayLogLedger({
         plays: [],
       }
       const next = mergeCounterpartProfile(prev, counterpart)
-      next.theyOweYou += theyOweYou
-      next.youOweThem += youOweThem
+      if (!paid) {
+        next.theyOweYou += theyOweYou
+        next.youOweThem += youOweThem
+      }
       next.plays.push({
         ...playMeta,
         theyOweYou,
         youOweThem,
+        paid: Boolean(paid),
+        canSettle: Boolean(playMeta.canSettle) && !paid,
       })
       byKey.set(key, next)
     }
@@ -200,37 +204,40 @@ export function buildPlayLogLedger({
     if (viewerRow.isManager) {
       for (const partner of partners) {
         if (partner.kind === 'user' && String(partner.userId || '') === uid) continue
-        if (partner.paid) continue
-        addLine(partner, partner)
+        addLine(partner, partner, Boolean(partner.paid))
       }
       continue
     }
 
-    if (viewerRow.paid) continue
     if (managerRow.kind === 'user' && String(managerRow.userId || '') === uid) continue
-    addLine(managerRow, viewerRow)
+    addLine(managerRow, viewerRow, Boolean(viewerRow.paid))
   }
 
   const counterparts = [...byKey.values()]
     .map(row => {
-      const net = row.theyOweYou - row.youOweThem
+      const openPlays = row.plays.filter(play => !play.paid)
+      const closedPlays = row.plays.filter(play => play.paid)
       const plays = [...row.plays].sort((a, b) => {
+        if (Boolean(a.paid) !== Boolean(b.paid)) return a.paid ? 1 : -1
         const ta = a.capturedAt ? new Date(a.capturedAt).getTime() : 0
         const tb = b.capturedAt ? new Date(b.capturedAt).getTime() : 0
         return tb - ta
       })
+      const net = row.theyOweYou - row.youOweThem
       return {
         ...row,
         net,
         label: counterpartLabel(row),
         plays,
+        openPlays,
+        closedPlays,
         settleablePlayCount: plays.filter(play => play.canSettle).length,
       }
     })
-    .filter(row => row.net !== 0)
     .sort((a, b) => {
-      const absDiff = Math.abs(b.net) - Math.abs(a.net)
-      if (absDiff) return absDiff
+      const aOpen = Math.abs(a.net)
+      const bOpen = Math.abs(b.net)
+      if (bOpen !== aOpen) return bOpen - aOpen
       return String(a.label).localeCompare(String(b.label), undefined, {
         sensitivity: 'base',
       })
@@ -243,13 +250,14 @@ export function buildPlayLogLedger({
     (acc, row) => acc + row.settleablePlayCount,
     0,
   )
+  const peopleCount = counterparts.filter(row => row.net !== 0).length
 
   return {
     counterparts,
     theyOweYouTotal,
     youOweThemTotal,
     openUsd,
-    peopleCount: counterparts.length,
+    peopleCount,
     settleablePlayCount,
     hasSharedPlays,
     partnersLoaded: true,
@@ -334,4 +342,105 @@ export function buildPlayLogLedgerSettlePatches({
     patches.push({ sessionId, partners: next })
   }
   return patches
+}
+
+export function formatPlayLogLedgerSettlementCopy({
+  otherLabel,
+  theyOweYou = 0,
+  youOweThem = 0,
+  playCount = 0,
+}) {
+  const net = theyOweYou - youOweThem
+  const plays = playCount === 1 ? '1 play' : `${playCount} plays`
+  let netBit = 'even'
+  if (net > 0) netBit = `net ${formatPlayLogLedgerUsd(net)} to you`
+  else if (net < 0) netBit = `net ${formatPlayLogLedgerUsd(-net)} to them`
+  const detail = `They owed you ${formatPlayLogLedgerUsd(theyOweYou)} · You owed them ${formatPlayLogLedgerUsd(youOweThem)} · ${netBit} · ${plays}`
+  const title = `Settled with ${otherLabel}`
+  return { title, detail, message: `${title} · ${detail}` }
+}
+
+/** Counterpart key for the other person on a stored Settle All row. */
+export function playLogLedgerSettlementOtherKey(row, viewerUserId) {
+  const uid = String(viewerUserId || '').trim()
+  if (String(row?.actor_user_id || '') === uid) {
+    if (row.counterpart_kind === 'guest') {
+      return `guest:${String(row.counterpart_guest_label || '').trim().toLowerCase()}`
+    }
+    const id = String(row.counterpart_user_id || '').trim()
+    return id ? `user:${id}` : ''
+  }
+  const actor = String(row?.actor_user_id || '').trim()
+  return actor ? `user:${actor}` : ''
+}
+
+/** Flip they/you when the viewer is the counterpart, not the person who tapped Settle All. */
+export function playLogLedgerSettlementView(row, viewerUserId) {
+  const uid = String(viewerUserId || '').trim()
+  const viewerIsActor = String(row?.actor_user_id || '') === uid
+  const theyOweYou = viewerIsActor
+    ? Number(row.they_owe_you) || 0
+    : Number(row.you_owe_them) || 0
+  const youOweThem = viewerIsActor
+    ? Number(row.you_owe_them) || 0
+    : Number(row.they_owe_you) || 0
+  const otherLabel = viewerIsActor
+    ? counterpartLabel({
+        kind: row.counterpart_kind,
+        guestLabel: row.counterpart_guest_label,
+        displayName: row.counterpartDisplayName,
+        handle: row.counterpartHandle,
+      })
+    : playLogPartnerLabel({
+        display_name: row.actorDisplayName,
+        handle: row.actorHandle,
+      })
+  const copy = formatPlayLogLedgerSettlementCopy({
+    otherLabel,
+    theyOweYou,
+    youOweThem,
+    playCount: Number(row.play_count) || 0,
+  })
+  return {
+    id: row.id,
+    createdAt: row.created_at,
+    counterpartKey: playLogLedgerSettlementOtherKey(row, uid),
+    otherLabel,
+    theyOweYou,
+    youOweThem,
+    ...copy,
+  }
+}
+
+/** Snapshot of each pair about to be squared (one insert per counterpart). */
+export function buildPlayLogLedgerSettlementInserts({ ledger, counterpartKey = null } = {}) {
+  const counterparts = (ledger?.counterparts || []).filter(
+    row => !counterpartKey || row.key === counterpartKey,
+  )
+  return counterparts
+    .filter(row => row.settleablePlayCount > 0)
+    .map(row => {
+      const settlePlays = (row.plays || []).filter(play => play.canSettle)
+      const theyOweYou = settlePlays.reduce((acc, play) => acc + (play.theyOweYou || 0), 0)
+      const youOweThem = settlePlays.reduce((acc, play) => acc + (play.youOweThem || 0), 0)
+      const net = theyOweYou - youOweThem
+      const copy = formatPlayLogLedgerSettlementCopy({
+        otherLabel: row.label,
+        theyOweYou,
+        youOweThem,
+        playCount: settlePlays.length,
+      })
+      return {
+        counterpart_kind: row.kind,
+        counterpart_user_id: row.kind === 'user' ? row.userId || null : null,
+        counterpart_guest_label:
+          row.kind === 'guest' ? String(row.guestLabel || '').trim() || null : null,
+        they_owe_you: theyOweYou,
+        you_owe_them: youOweThem,
+        net,
+        play_count: settlePlays.length,
+        session_ids: [...new Set(settlePlays.map(play => play.sessionId).filter(Boolean))],
+        message: copy.message,
+      }
+    })
 }

@@ -435,3 +435,94 @@ export async function fetchPlayLogSessionsMeta(supabaseClient, sessionIds) {
   if (error) throw error
   return new Map((data || []).map(row => [String(row.id), row]))
 }
+
+function isPlayLogLedgerSettlementsMissingError(error) {
+  if (!error) return false
+  const code = String(error.code || '')
+  const msg = String(error.message || '').toLowerCase()
+  if (code === '42P01' || code === 'PGRST205') return true
+  if (msg.includes('play_log_ledger_settlements')) return true
+  return false
+}
+
+/**
+ * Pairwise Settle All history visible to actor and counterpart.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ */
+export async function fetchPlayLogLedgerSettlements(supabaseClient) {
+  const { data, error } = await supabaseClient
+    .from('play_log_ledger_settlements')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(200)
+  if (error) {
+    if (isPlayLogLedgerSettlementsMissingError(error)) return []
+    throw error
+  }
+  const rows = data || []
+  const userIds = [
+    ...new Set(
+      rows.flatMap(row =>
+        [row.actor_user_id, row.counterpart_user_id].map(id => String(id || '').trim()).filter(Boolean),
+      ),
+    ),
+  ]
+  /** @type {Map<string, { handle?: string, display_name?: string, avatar_url?: string }>} */
+  const profilesById = new Map()
+  if (userIds.length) {
+    const { data: profiles, error: profErr } = await supabaseClient
+      .from('profiles')
+      .select('user_id, handle, display_name, avatar_url')
+      .in('user_id', userIds)
+    if (!profErr) {
+      for (const profile of profiles || []) {
+        profilesById.set(String(profile.user_id), profile)
+      }
+    }
+  }
+  return rows.map(row => {
+    const actor = profilesById.get(String(row.actor_user_id || '')) || {}
+    const counterpart = profilesById.get(String(row.counterpart_user_id || '')) || {}
+    return {
+      ...row,
+      actorHandle: actor.handle || '',
+      actorDisplayName: actor.display_name || '',
+      counterpartHandle: counterpart.handle || '',
+      counterpartDisplayName: counterpart.display_name || '',
+    }
+  })
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} actorUserId
+ * @param {object[]} records
+ */
+export async function insertPlayLogLedgerSettlements(supabaseClient, actorUserId, records) {
+  const uid = String(actorUserId || '').trim()
+  const payload = (records || [])
+    .filter(Boolean)
+    .map(row => ({
+      actor_user_id: uid,
+      counterpart_kind: row.counterpart_kind,
+      counterpart_user_id: row.counterpart_kind === 'user' ? row.counterpart_user_id : null,
+      counterpart_guest_label:
+        row.counterpart_kind === 'guest' ? row.counterpart_guest_label : null,
+      they_owe_you: row.they_owe_you,
+      you_owe_them: row.you_owe_them,
+      net: row.net,
+      play_count: row.play_count,
+      session_ids: row.session_ids || [],
+      message: row.message,
+    }))
+  if (!payload.length) return []
+  const { data, error } = await supabaseClient
+    .from('play_log_ledger_settlements')
+    .insert(payload)
+    .select('*')
+  if (error) {
+    if (isPlayLogLedgerSettlementsMissingError(error)) return []
+    throw error
+  }
+  return data || []
+}

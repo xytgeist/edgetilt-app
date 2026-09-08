@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   formatPlayLogLedgerUsd,
+  playLogLedgerSettlementView,
 } from './playLogLedger.js'
 
 /**
  * @param {{
  *   ledger: ReturnType<import('./playLogLedger.js').buildPlayLogLedger>,
+ *   settlements?: object[],
+ *   viewerUserId?: string | null,
  *   onOpenEntry: (entryId: string) => void,
  *   onSettleAll?: (counterpartKey?: string | null) => void | Promise<void>,
  *   settling?: boolean,
@@ -13,20 +16,70 @@ import {
  */
 export default function PlayLogLedgerTab({
   ledger,
+  settlements = [],
+  viewerUserId,
   onOpenEntry,
   onSettleAll,
   settling = false,
 }) {
   const [selectedKey, setSelectedKey] = useState(/** @type {string | null} */ (null))
   const counterparts = ledger?.counterparts || []
-  const selected = counterparts.find(row => row.key === selectedKey) || null
+
+  const settlementViews = useMemo(
+    () =>
+      (settlements || [])
+        .map(row => playLogLedgerSettlementView(row, viewerUserId))
+        .filter(row => row.counterpartKey),
+    [settlements, viewerUserId],
+  )
+
+  const partnerRows = useMemo(() => {
+    const byKey = new Map()
+    for (const row of counterparts) byKey.set(row.key, row)
+    for (const row of settlementViews) {
+      if (!row.counterpartKey || byKey.has(row.counterpartKey)) continue
+      const isGuest = row.counterpartKey.startsWith('guest:')
+      byKey.set(row.counterpartKey, {
+        key: row.counterpartKey,
+        kind: isGuest ? 'guest' : 'user',
+        userId: isGuest ? '' : row.counterpartKey.slice('user:'.length),
+        guestLabel: isGuest ? row.otherLabel : '',
+        handle: '',
+        label: row.otherLabel,
+        theyOweYou: 0,
+        youOweThem: 0,
+        net: 0,
+        plays: [],
+        openPlays: [],
+        closedPlays: [],
+        settleablePlayCount: 0,
+      })
+    }
+    return [...byKey.values()].sort((a, b) => {
+      const aOpen = Math.abs(a.net)
+      const bOpen = Math.abs(b.net)
+      if (bOpen !== aOpen) return bOpen - aOpen
+      return String(a.label).localeCompare(String(b.label), undefined, {
+        sensitivity: 'base',
+      })
+    })
+  }, [counterparts, settlementViews])
+
+  const selected = partnerRows.find(row => row.key === selectedKey) || null
+
+  const selectedSettlements = useMemo(
+    () => settlementViews.filter(row => row.counterpartKey === selectedKey),
+    [settlementViews, selectedKey],
+  )
 
   useEffect(() => {
     if (!selectedKey) return
-    if (!counterparts.some(row => row.key === selectedKey)) setSelectedKey(null)
-  }, [counterparts, selectedKey])
+    if (!partnerRows.some(row => row.key === selectedKey)) setSelectedKey(null)
+  }, [partnerRows, selectedKey])
 
   if (selected) {
+        const openPlays = selected.openPlays || selected.plays?.filter(play => !play.paid) || []
+        const closedPlays = selected.closedPlays || selected.plays?.filter(play => play.paid) || []
     return (
       <div data-play-logbook-ledger>
         <button
@@ -57,90 +110,76 @@ export default function PlayLogLedgerTab({
             />
           ) : null}
         </div>
-        <div className="text-zinc-500 text-xs font-semibold uppercase tracking-wide px-1 mb-1">
-          Unpaid plays
-        </div>
-        <div className="space-y-2">
-          {selected.plays.map(play => {
-            const they = play.theyOweYou > 0
-            const amount = they ? play.theyOweYou : play.youOweThem
-            return (
-              <button
+
+        <LedgerSectionLabel>Open plays</LedgerSectionLabel>
+        {openPlays.length ? (
+          <div className="space-y-2 mb-5">
+            {openPlays.map(play => (
+              <LedgerPlayCard
                 key={`${play.sessionId}:${play.entryId}`}
-                type="button"
-                onClick={() => {
-                  if (!settling) onOpenEntry(play.entryId)
-                }}
-                disabled={settling}
-                className="w-full text-left rounded-2xl bg-zinc-900 border border-zinc-800/60 p-4 touch-manipulation cursor-pointer active:bg-zinc-800/90 disabled:opacity-60"
-                data-play-logbook-card
-                data-play-logbook-entry
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="text-white font-bold truncate">{play.gameLabel}</div>
-                    <div className="text-zinc-500 text-xs mt-0.5">
-                      {fmtLedgerCapturedAt(play.capturedAt)}
-                    </div>
-                    {play.casinoName ? (
-                      <div className="text-zinc-400 text-xs mt-0.5 truncate">{play.casinoName}</div>
-                    ) : null}
-                  </div>
-                  <div className="shrink-0 text-right">
-                    <div
-                      className={`text-sm font-bold tabular-nums ${
-                        they ? 'text-emerald-300' : 'text-red-300'
-                      }`}
-                    >
-                      {formatPlayLogLedgerUsd(amount)}
-                    </div>
-                    <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 mt-0.5">
-                      {they ? 'They owe you' : 'You owe them'}
-                    </div>
-                  </div>
-                </div>
-              </button>
-            )
-          })}
-        </div>
+                play={play}
+                settling={settling}
+                onOpen={() => onOpenEntry(play.entryId)}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="text-zinc-500 text-xs mb-5 px-1">No open plays with this partner.</p>
+        )}
+
+        <LedgerSettlementList rows={selectedSettlements} emptyHint="Settle All with this partner shows up here." />
+
+        {closedPlays.length ? (
+          <>
+            <LedgerSectionLabel className="mt-5">Closed plays</LedgerSectionLabel>
+            <div className="space-y-2">
+              {closedPlays.map(play => (
+                <LedgerPlayCard
+                  key={`${play.sessionId}:${play.entryId}`}
+                  play={play}
+                  settling={settling}
+                  onOpen={() => onOpenEntry(play.entryId)}
+                />
+              ))}
+            </div>
+          </>
+        ) : null}
+
         <p className="text-zinc-500 text-xs mt-4 px-1">
           {selected.settleablePlayCount > 0
-            ? 'Settle All marks these Paid. Tap a play to open it.'
-            : "Only that play's manager can mark Paid. Tap a play to open it."}
+            ? 'Settle All only squares this person. Tap a play to open it.'
+            : 'Tap a play to open it. Closed plays stay on this book.'}
         </p>
       </div>
     )
   }
 
-  if (!counterparts.length) {
+  if (ledger?.hasSharedPlays && !ledger?.partnersLoaded) {
     return (
       <div
         className="rounded-2xl bg-zinc-900 border border-zinc-800/60 p-6 text-center"
         data-play-logbook-card
         data-play-logbook-ledger
       >
-        {ledger?.hasSharedPlays && !ledger?.partnersLoaded ? (
-          <>
-            <div className="text-zinc-400 text-sm">Could not load partner balances.</div>
-            <div className="text-zinc-500 text-xs mt-1">
-              Open Logbook again in a moment. Shared plays are still on LOG.
-            </div>
-          </>
-        ) : ledger?.hasSharedPlays ? (
-          <>
-            <div className="text-zinc-400 text-sm">All squared.</div>
-            <div className="text-zinc-500 text-xs mt-1">
-              Unpaid shared plays land here. Mark Paid on a play to drop it from the ledger.
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="text-zinc-400 text-sm">No open balances.</div>
-            <div className="text-zinc-500 text-xs mt-1">
-              Add a partner when you log a play. Unpaid shares show up here, combined across plays.
-            </div>
-          </>
-        )}
+        <div className="text-zinc-400 text-sm">Could not load partner balances.</div>
+        <div className="text-zinc-500 text-xs mt-1">
+          Open Logbook again in a moment. Shared plays are still on LOG.
+        </div>
+      </div>
+    )
+  }
+
+  if (!partnerRows.length) {
+    return (
+      <div
+        className="rounded-2xl bg-zinc-900 border border-zinc-800/60 p-6 text-center"
+        data-play-logbook-card
+        data-play-logbook-ledger
+      >
+        <div className="text-zinc-400 text-sm">No shared partners yet.</div>
+        <div className="text-zinc-500 text-xs mt-1">
+          Add a partner when you log a play. That person stays on this book.
+        </div>
       </div>
     )
   }
@@ -171,7 +210,7 @@ export default function PlayLogLedgerTab({
         </span>
       </div>
       <div className="space-y-2">
-        {counterparts.map(row => (
+        {partnerRows.map(row => (
           <button
             key={row.key}
             type="button"
@@ -191,7 +230,10 @@ export default function PlayLogLedgerTab({
                   ) : null}
                 </div>
                 <div className="text-zinc-500 text-xs mt-0.5">
-                  {row.plays.length === 1 ? '1 play' : `${row.plays.length} plays`}
+                  {row.openPlays?.length
+                    ? `${row.openPlays.length} open`
+                    : 'Squared'}
+                  {` · ${row.plays.length === 1 ? '1 play' : `${row.plays.length} plays`}`}
                   {row.handle && row.kind === 'user'
                     ? ` · @${String(row.handle).trim().replace(/^@/, '')}`
                     : ''}
@@ -215,6 +257,132 @@ export default function PlayLogLedgerTab({
           </button>
         ))}
       </div>
+
+      <LedgerSettlementList
+        className="mt-5"
+        rows={settlementViews}
+        emptyHint="Settle All between you and a partner shows up here."
+      />
+    </div>
+  )
+}
+
+/** @param {{ children: import('react').ReactNode, className?: string }} props */
+function LedgerSectionLabel({ children, className = '' }) {
+  return (
+    <div
+      className={`text-zinc-500 text-xs font-semibold uppercase tracking-wide px-1 mb-1 ${className}`}
+    >
+      {children}
+    </div>
+  )
+}
+
+/**
+ * @param {{
+ *   play: object,
+ *   settling?: boolean,
+ *   onOpen: () => void,
+ * }} props
+ */
+function LedgerPlayCard({ play, settling = false, onOpen }) {
+  const paid = Boolean(play.paid)
+  const they = play.theyOweYou > 0
+  const you = play.youOweThem > 0
+  const amount = they ? play.theyOweYou : play.youOweThem
+  const even = !they && !you
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (!settling) onOpen()
+      }}
+      disabled={settling}
+      className={`w-full text-left rounded-2xl bg-zinc-900 border p-4 touch-manipulation cursor-pointer active:bg-zinc-800/90 disabled:opacity-60 ${
+        paid ? 'border-zinc-800/40' : 'border-zinc-800/60'
+      }`}
+      data-play-logbook-card
+      data-play-logbook-entry
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            <span className={`min-w-0 truncate font-bold ${paid ? 'text-zinc-300' : 'text-white'}`}>
+              {play.gameLabel}
+            </span>
+            {paid ? (
+              <span className="shrink-0 rounded-md bg-emerald-600/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-300">
+                Paid
+              </span>
+            ) : null}
+          </div>
+          <div className="text-zinc-500 text-xs mt-0.5">{fmtLedgerCapturedAt(play.capturedAt)}</div>
+          {play.casinoName ? (
+            <div className="text-zinc-400 text-xs mt-0.5 truncate">{play.casinoName}</div>
+          ) : null}
+        </div>
+        <div className="shrink-0 text-right">
+          <div
+            className={`text-sm font-bold tabular-nums ${
+              paid
+                ? 'text-zinc-400'
+                : even
+                  ? 'text-zinc-500'
+                  : they
+                    ? 'text-emerald-300'
+                    : 'text-red-300'
+            }`}
+          >
+            {even ? '$0' : formatPlayLogLedgerUsd(amount)}
+          </div>
+          <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 mt-0.5">
+            {paid
+              ? even
+                ? 'Settled even'
+                : they
+                  ? 'Settled · they owed you'
+                  : 'Settled · you owed them'
+              : even
+                ? 'Even'
+                : they
+                  ? 'They owe you'
+                  : 'You owe them'}
+          </div>
+        </div>
+      </div>
+    </button>
+  )
+}
+
+/**
+ * @param {{
+ *   rows: ReturnType<typeof playLogLedgerSettlementView>[],
+ *   emptyHint?: string,
+ *   className?: string,
+ * }} props
+ */
+function LedgerSettlementList({ rows, emptyHint = '', className = '' }) {
+  return (
+    <div className={className}>
+      <LedgerSectionLabel>Ledger</LedgerSectionLabel>
+      {rows.length ? (
+        <div className="space-y-2">
+          {rows.map(row => (
+            <div
+              key={row.id}
+              className="rounded-2xl border border-zinc-800/60 bg-zinc-900/60 px-4 py-3"
+              data-play-logbook-card
+              data-play-logbook-ledger-settlement
+            >
+              <div className="text-sm font-semibold text-zinc-100">{row.title}</div>
+              <div className="text-xs leading-relaxed text-zinc-400 mt-1">{row.detail}</div>
+              <div className="text-[11px] text-zinc-500 mt-1.5">{fmtLedgerCapturedAt(row.createdAt)}</div>
+            </div>
+          ))}
+        </div>
+      ) : emptyHint ? (
+        <p className="text-zinc-500 text-xs px-1">{emptyHint}</p>
+      ) : null}
     </div>
   )
 }
@@ -270,7 +438,12 @@ function LedgerPairTotals({ theyOweYou, youOweThem }) {
               : `${formatPlayLogLedgerUsd(-net)} to them`}
           </span>
         </div>
-      ) : null}
+      ) : (
+        <div className="flex items-baseline justify-between gap-3 text-xs pt-1">
+          <span className="text-zinc-600">Net</span>
+          <span className="font-semibold tabular-nums text-zinc-400">Squared</span>
+        </div>
+      )}
     </div>
   )
 }

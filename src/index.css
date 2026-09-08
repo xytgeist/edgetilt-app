@@ -8796,6 +8796,16 @@ html.light [data-play-logbook-ledger-chip] {
   border-color: rgba(8, 145, 178, 0.35) !important;
 }
 
+html.light [data-play-logbook-ledger] .text-cyan-300 {
+  color: #0e7490 !important;
+}
+html.light [data-play-logbook-ledger-settlement] .text-zinc-100 {
+  color: #18181b !important;
+}
+html.light [data-play-logbook-ledger] .bg-emerald-600\/20 {
+  background-color: rgba(5, 150, 105, 0.12) !important;
+}
+
 /* Quick links - page toggle + at-cap modal (light mode) */
 /* Pill only … bare/pin must stay chrome-free (pin was picking up this #fafafa box). */
 html.light [data-quick-link-toggle]:not([data-quick-link-toggle='bare']):not([data-quick-link-toggle='pin']) {

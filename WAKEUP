@@ -109,7 +109,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Windows Theo 2026-09-07 … @mention picker stays closed after pick
 
-**I am Windows Theo.** After tapping a mention, caret stayed inside `@handle` so typeahead refetched. Insert now adds a trailing space (cashtag-style) and ignores that committed token until the query changes. **`1.4.103`.**
+**I am Windows Theo.** After tapping a mention, caret stayed inside `@handle` so typeahead refetched. Insert now adds a trailing space (cashtag-style) and ignores that committed token until the query changes. **`1.4.103`.** Promoted **`test` → `main`**.
 
 ### Windows Theo 2026-09-07 … @mention matches display name
 

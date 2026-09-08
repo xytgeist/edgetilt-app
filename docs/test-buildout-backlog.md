@@ -428,6 +428,8 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 
 - [x] **Ledger independent books + settle Alert:** Settle All no longer flips shared `paid`. Actor overlay closes those plays immediately. Edge counterpart gets `play_log_ledger_settled` Alert/push → Logbook LEDGER (`playLogLedger=1&playLogPartner=user:{actor}`) → **Update my books** (`play_log_ledger_accept_settlement`). Guests get no Alert. SQL **`20260907230000_play_log_ledger_settled_notify.sql`** on **test**. Redeploy **`lounge-send-activity-push`** on **test**. **`1.4.110`.** Ryan smoke on test. Prod SQL + Edge when promoting.
 
+- [x] **Ledger settle Alert lands on the decision:** Notification opens that partner’s pending settlement card (not the partner book with Settle All). **Update my books** or **Remain Unsettled** (`play_log_ledger_decline_settlement`). Settle All hides while a pending incoming settlement is open. SQL **`20260907240000_play_log_ledger_decline_settlement.sql`** on **test**. **`1.4.112`.** Ryan smoke on test. Prod SQL when promoting.
+
 - [x] **Cash return vs RTP (no SQL):** LOG chips **Return** (cash out vs cash in) + **Bets** (`+18.4` / `-6.2`). ANALYZE **Cash return %** is total out ÷ total in (not slot RTP). **Avg bets won/lost** / **Total bets won/lost** = cash P/L ÷ bet (mean + sum; no cash-weighted bets average). True **RTP (from spins)** only when `# Spins` is filled: `(bet × spins + cash P/L) ÷ coin-in`; hint how many plays were skipped. Cash return/bets/RTP ignore acquisition fee; Profit/loss chip still uses `playLogWinLoss`. Calculator **Current EV (RTP %)** unchanged. **`1.4.111`.** Ryan smoke on test.
 
 ---
@@ -1108,6 +1110,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 ---
 
 ## Update log
+
+- 2026-09-07: **Play Logbook settle Alert lands on the decision:** Notification opens that partner’s settlement card with **Update my books** / **Remain Unsettled**, not the full book with Settle All. SQL **`20260907240000`** on **test**. **`1.4.112`.**
 
 - 2026-09-07: **Play Logbook cash return vs RTP:** LOG **Return** + **Bets**. ANALYZE **Cash return %** is out ÷ in (not slot RTP). True **RTP (from spins)** only with `# Spins`. **`1.4.111`.**
 

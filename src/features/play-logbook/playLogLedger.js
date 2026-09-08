@@ -403,6 +403,8 @@ export function playLogLedgerSettlementView(row, viewerUserId) {
     playCount: Number(row.play_count) || 0,
   })
   const viewerIsCounterpart = String(row?.counterpart_user_id || '') === uid
+  const acceptedAt = row.counterpart_accepted_at || null
+  const declinedAt = row.counterpart_declined_at || null
   return {
     id: row.id,
     createdAt: row.created_at,
@@ -414,10 +416,13 @@ export function playLogLedgerSettlementView(row, viewerUserId) {
     sessionIds: Array.isArray(row.session_ids) ? row.session_ids.map(String) : [],
     viewerIsActor,
     viewerIsCounterpart,
-    needsAccept: viewerIsCounterpart && !row.counterpart_accepted_at,
+    needsAccept: viewerIsCounterpart && !acceptedAt && !declinedAt,
     waitingOnThem:
-      viewerIsActor && row.counterpart_kind === 'user' && !row.counterpart_accepted_at,
-    counterpartAcceptedAt: row.counterpart_accepted_at || null,
+      viewerIsActor && row.counterpart_kind === 'user' && !acceptedAt && !declinedAt,
+    leftOpenByYou: viewerIsCounterpart && !acceptedAt && Boolean(declinedAt),
+    leftOpenByThem: viewerIsActor && !acceptedAt && Boolean(declinedAt),
+    counterpartAcceptedAt: acceptedAt,
+    counterpartDeclinedAt: declinedAt,
     ...copy,
   }
 }

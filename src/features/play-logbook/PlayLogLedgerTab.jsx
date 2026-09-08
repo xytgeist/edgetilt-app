@@ -12,8 +12,11 @@ import {
  *   onOpenEntry: (entryId: string) => void,
  *   onSettleAll?: (counterpartKey?: string | null) => void | Promise<void>,
  *   onAcceptSettlement?: (settlementId: string) => void | Promise<void>,
+ *   onDeclineSettlement?: (settlementId: string) => void | Promise<void>,
  *   settling?: boolean,
  *   initialCounterpartKey?: string | null,
+ *   focusIncomingSettlement?: boolean,
+ *   onFocusIncomingConsumed?: () => void,
  * }} props
  */
 export default function PlayLogLedgerTab({
@@ -23,10 +26,14 @@ export default function PlayLogLedgerTab({
   onOpenEntry,
   onSettleAll,
   onAcceptSettlement,
+  onDeclineSettlement,
   settling = false,
   initialCounterpartKey = null,
+  focusIncomingSettlement = false,
+  onFocusIncomingConsumed,
 }) {
   const [selectedKey, setSelectedKey] = useState(/** @type {string | null} */ (null))
+  const [focusedSettlementId, setFocusedSettlementId] = useState(/** @type {string | null} */ (null))
   const counterparts = ledger?.counterparts || []
 
   const settlementViews = useMemo(
@@ -76,6 +83,14 @@ export default function PlayLogLedgerTab({
     [settlementViews, selectedKey],
   )
 
+  const pendingIncoming = useMemo(
+    () => selectedSettlements.filter(row => settlementAcceptVisible(row, partnerRows)),
+    [selectedSettlements, partnerRows],
+  )
+
+  const focusedSettlement =
+    selectedSettlements.find(row => String(row.id) === String(focusedSettlementId)) || null
+
   useEffect(() => {
     if (initialCounterpartKey) setSelectedKey(initialCounterpartKey)
   }, [initialCounterpartKey])
@@ -87,14 +102,72 @@ export default function PlayLogLedgerTab({
     if (!partnerRows.some(row => row.key === selectedKey)) setSelectedKey(null)
   }, [partnerRows, selectedKey, initialCounterpartKey])
 
-  if (selected) {
-        const openPlays = selected.openPlays || selected.plays?.filter(play => !play.paid) || []
-        const closedPlays = selected.closedPlays || selected.plays?.filter(play => play.paid) || []
+  useEffect(() => {
+    if (!focusIncomingSettlement || !selectedKey) return
+    const pending = pendingIncoming[0]
+    if (pending?.id) {
+      setFocusedSettlementId(String(pending.id))
+      onFocusIncomingConsumed?.()
+      return
+    }
+    if (settlementViews.length || partnerRows.length) onFocusIncomingConsumed?.()
+  }, [
+    focusIncomingSettlement,
+    selectedKey,
+    pendingIncoming,
+    settlementViews.length,
+    partnerRows.length,
+    onFocusIncomingConsumed,
+  ])
+
+  useEffect(() => {
+    if (!focusedSettlementId) return
+    if (!selectedSettlements.some(row => String(row.id) === String(focusedSettlementId))) {
+      setFocusedSettlementId(null)
+    }
+  }, [focusedSettlementId, selectedSettlements])
+
+  if (selected && focusedSettlement && (settlementAcceptVisible(focusedSettlement, partnerRows) || focusedSettlement.leftOpenByYou)) {
     return (
       <div data-play-logbook-ledger>
         <button
           type="button"
-          onClick={() => setSelectedKey(null)}
+          onClick={() => setFocusedSettlementId(null)}
+          className="mb-4 flex min-h-11 items-center gap-1.5 text-sm font-semibold text-cyan-300 touch-manipulation active:opacity-80"
+        >
+          ← {selected.label}
+        </button>
+        <div className="mb-4">
+          <h2 className="text-white text-lg font-bold">They settled their books</h2>
+          <p className="text-zinc-500 text-xs mt-1 leading-snug">
+            This closed {selected.label} on their side. Yours stay open until you update, or remain
+            unsettled.
+          </p>
+        </div>
+        <LedgerSettlementCard
+          row={focusedSettlement}
+          showActions
+          showRemain={Boolean(focusedSettlement.needsAccept)}
+          settling={settling}
+          onAccept={() => void onAcceptSettlement?.(focusedSettlement.id)}
+          onDecline={() => void onDeclineSettlement?.(focusedSettlement.id)}
+        />
+      </div>
+    )
+  }
+
+  if (selected) {
+        const openPlays = selected.openPlays || selected.plays?.filter(play => !play.paid) || []
+        const closedPlays = selected.closedPlays || selected.plays?.filter(play => play.paid) || []
+        const hideSettleAll = pendingIncoming.length > 0
+    return (
+      <div data-play-logbook-ledger>
+        <button
+          type="button"
+          onClick={() => {
+            setFocusedSettlementId(null)
+            setSelectedKey(null)
+          }}
           className="mb-4 flex min-h-11 items-center gap-1.5 text-sm font-semibold text-cyan-300 touch-manipulation active:opacity-80"
         >
           ← All
@@ -113,7 +186,7 @@ export default function PlayLogLedgerTab({
             ) : null}
           </div>
           <LedgerPairTotals theyOweYou={selected.theyOweYou} youOweThem={selected.youOweThem} />
-          {selected.settleablePlayCount > 0 ? (
+          {!hideSettleAll && selected.settleablePlayCount > 0 ? (
             <LedgerSettleAllButton
               settling={settling}
               onClick={() => void onSettleAll?.(selected.key)}
@@ -142,6 +215,8 @@ export default function PlayLogLedgerTab({
           partnerRows={partnerRows}
           settling={settling}
           onAcceptSettlement={onAcceptSettlement}
+          onDeclineSettlement={onDeclineSettlement}
+          onOpenSettlement={row => setFocusedSettlementId(String(row.id))}
           emptyHint="Settle All with this partner shows up here."
         />
 
@@ -162,9 +237,11 @@ export default function PlayLogLedgerTab({
         ) : null}
 
         <p className="text-zinc-500 text-xs mt-4 px-1">
-          {selected.settleablePlayCount > 0
-            ? 'Settle All only squares this person on your books. They get an alert to update theirs.'
-            : 'Tap a play to open it. Closed plays stay on this book.'}
+          {hideSettleAll
+            ? 'They already settled. Update your books or remain unsettled.'
+            : selected.settleablePlayCount > 0
+              ? 'Settle All only squares this person on your books. They get an alert to update theirs.'
+              : 'Tap a play to open it. Closed plays stay on this book.'}
         </p>
       </div>
     )
@@ -291,6 +368,11 @@ export default function PlayLogLedgerTab({
         partnerRows={partnerRows}
         settling={settling}
         onAcceptSettlement={onAcceptSettlement}
+        onDeclineSettlement={onDeclineSettlement}
+        onOpenSettlement={row => {
+          if (row.counterpartKey) setSelectedKey(row.counterpartKey)
+          setFocusedSettlementId(String(row.id))
+        }}
         emptyHint="Settle All between you and a partner shows up here."
       />
     </div>
@@ -392,6 +474,8 @@ function LedgerPlayCard({ play, settling = false, onOpen }) {
  *   className?: string,
  *   settling?: boolean,
  *   onAcceptSettlement?: (settlementId: string) => void | Promise<void>,
+ *   onDeclineSettlement?: (settlementId: string) => void | Promise<void>,
+ *   onOpenSettlement?: (row: ReturnType<typeof playLogLedgerSettlementView>) => void,
  * }} props
  */
 function LedgerSettlementList({
@@ -401,21 +485,31 @@ function LedgerSettlementList({
   className = '',
   settling = false,
   onAcceptSettlement,
+  onDeclineSettlement,
+  onOpenSettlement,
 }) {
   return (
     <div className={className}>
       <LedgerSectionLabel>Ledger</LedgerSectionLabel>
       {rows.length ? (
         <div className="space-y-2">
-          {rows.map(row => (
-            <LedgerSettlementCard
-              key={row.id}
-              row={row}
-              showAccept={settlementAcceptVisible(row, partnerRows)}
-              settling={settling}
-              onAccept={() => void onAcceptSettlement?.(row.id)}
-            />
-          ))}
+          {rows.map(row => {
+            const showAccept = settlementAcceptVisible(row, partnerRows)
+            const canOpen =
+              Boolean(onOpenSettlement) && (showAccept || Boolean(row.leftOpenByYou))
+            return (
+              <LedgerSettlementCard
+                key={row.id}
+                row={row}
+                showActions={false}
+                canOpen={canOpen}
+                settling={settling}
+                onOpen={() => onOpenSettlement?.(row)}
+                onAccept={() => void onAcceptSettlement?.(row.id)}
+                onDecline={() => void onDeclineSettlement?.(row.id)}
+              />
+            )
+          })}
         </div>
       ) : emptyHint ? (
         <p className="text-zinc-500 text-xs px-1">{emptyHint}</p>
@@ -427,27 +521,40 @@ function LedgerSettlementList({
 /**
  * @param {{
  *   row: ReturnType<typeof playLogLedgerSettlementView>,
- *   showAccept?: boolean,
+ *   showActions?: boolean,
+ *   showRemain?: boolean,
+ *   canOpen?: boolean,
  *   settling?: boolean,
+ *   onOpen?: () => void,
  *   onAccept?: () => void,
+ *   onDecline?: () => void,
  * }} props
  */
-function LedgerSettlementCard({ row, showAccept = false, settling = false, onAccept }) {
+function LedgerSettlementCard({
+  row,
+  showActions = false,
+  showRemain = true,
+  canOpen = false,
+  settling = false,
+  onOpen,
+  onAccept,
+  onDecline,
+}) {
   const net = (row.theyOweYou || 0) - (row.youOweThem || 0)
   const plays = row.playCount === 1 ? '1 play' : `${row.playCount || 0} plays`
-  const statusHint = showAccept
-    ? 'Settled · update your books'
-    : row.waitingOnThem
-      ? 'Settled · waiting on them'
-      : row.counterpartAcceptedAt
-        ? 'Settled · both books updated'
-        : 'Settled'
-  return (
-    <div
-      className="rounded-2xl border border-zinc-800/60 bg-zinc-900/60 px-4 py-3"
-      data-play-logbook-card
-      data-play-logbook-ledger-settlement
-    >
+  const statusHint = row.leftOpenByYou
+    ? 'You left this open'
+    : row.leftOpenByThem
+      ? 'They left this open'
+      : showActions || canOpen
+        ? 'Settled · update your books'
+        : row.waitingOnThem
+          ? 'Settled · waiting on them'
+          : row.counterpartAcceptedAt
+            ? 'Settled · both books updated'
+            : 'Settled'
+  const body = (
+    <>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-white">{row.otherLabel}</div>
@@ -483,26 +590,78 @@ function LedgerSettlementCard({ row, showAccept = false, settling = false, onAcc
           </span>
         </div>
       </div>
-      {showAccept ? (
-        <button
-          type="button"
-          onClick={e => {
-            e.stopPropagation()
-            if (!settling) onAccept?.()
-          }}
-          disabled={settling}
-          className="mt-3 w-full min-h-11 rounded-2xl bg-cyan-600 text-white text-sm font-bold touch-manipulation active:bg-cyan-700 disabled:opacity-50"
-        >
-          {settling ? 'Updating…' : 'Update my books'}
-        </button>
+      {showActions ? (
+        <div className="mt-3 space-y-2">
+          <button
+            type="button"
+            onClick={e => {
+              e.stopPropagation()
+              if (!settling) onAccept?.()
+            }}
+            disabled={settling}
+            className="w-full min-h-11 rounded-2xl bg-cyan-600 text-white text-sm font-bold touch-manipulation active:bg-cyan-700 disabled:opacity-50"
+          >
+            {settling ? 'Updating…' : 'Update my books'}
+          </button>
+          {showRemain ? (
+            <button
+              type="button"
+              data-play-logbook-ledger-remain
+              onClick={e => {
+                e.stopPropagation()
+                if (!settling) onDecline?.()
+              }}
+              disabled={settling}
+              className="w-full min-h-11 rounded-2xl bg-zinc-800 border border-zinc-700 text-zinc-200 text-sm font-bold touch-manipulation active:bg-zinc-700 disabled:opacity-50"
+            >
+              Remain Unsettled
+            </button>
+          ) : null}
+        </div>
       ) : row.waitingOnThem ? (
         <p className="mt-3 text-xs text-zinc-500 px-0.5">
           Waiting for them to update their books. We are not a bank… this only closed yours.
         </p>
+      ) : row.leftOpenByThem ? (
+        <p className="mt-3 text-xs text-zinc-500 px-0.5">
+          They left this open on their books. Yours stay closed.
+        </p>
+      ) : row.leftOpenByYou ? (
+        <p className="mt-3 text-xs text-zinc-500 px-0.5">
+          You left this open. Tap to update your books later.
+        </p>
+      ) : canOpen ? (
+        <p className="mt-3 text-xs text-zinc-500 px-0.5">Tap to update your books or remain unsettled.</p>
       ) : null}
       {row.createdAt ? (
         <div className="mt-1.5 text-[11px] text-zinc-500">{fmtLedgerCapturedAt(row.createdAt)}</div>
       ) : null}
+    </>
+  )
+
+  const cardClass =
+    'rounded-2xl border border-zinc-800/60 bg-zinc-900/60 px-4 py-3 text-left w-full'
+
+  if (canOpen && !showActions) {
+    return (
+      <button
+        type="button"
+        onClick={() => {
+          if (!settling) onOpen?.()
+        }}
+        disabled={settling}
+        className={`${cardClass} touch-manipulation cursor-pointer active:bg-zinc-800/90 disabled:opacity-60`}
+        data-play-logbook-card
+        data-play-logbook-ledger-settlement
+      >
+        {body}
+      </button>
+    )
+  }
+
+  return (
+    <div className={cardClass} data-play-logbook-card data-play-logbook-ledger-settlement>
+      {body}
     </div>
   )
 }

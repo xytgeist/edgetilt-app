@@ -555,3 +555,32 @@ export async function acceptPlayLogLedgerSettlement(supabaseClient, settlementId
   if (!row?.id) throw new Error('Settlement not found or already updated')
   return row
 }
+
+/**
+ * Counterpart remains unsettled for a Settle All row (plays stay open on their books).
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} settlementId
+ */
+export async function declinePlayLogLedgerSettlement(supabaseClient, settlementId) {
+  const id = String(settlementId || '').trim()
+  if (!id) throw new Error('Settlement required')
+  const { data, error } = await supabaseClient.rpc('play_log_ledger_decline_settlement', {
+    p_id: id,
+  })
+  if (error) {
+    const code = String(error.code || '')
+    if (
+      code === 'PGRST202' ||
+      code === '42883' ||
+      isPlayLogLedgerSettlementsMissingError(error)
+    ) {
+      throw new Error(
+        'Remain Unsettled needs SQL 20260907240000_play_log_ledger_decline_settlement.sql on this project.',
+      )
+    }
+    throw error
+  }
+  const row = Array.isArray(data) ? data[0] : data
+  if (!row?.id) throw new Error('Settlement not found or already updated')
+  return row
+}

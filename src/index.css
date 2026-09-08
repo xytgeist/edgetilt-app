@@ -8800,6 +8800,11 @@ html.light [data-play-logbook-ledger-settlement] .text-rose-400 {
 html.light [data-play-logbook-ledger] .bg-emerald-600\/20 {
   background-color: rgba(5, 150, 105, 0.12) !important;
 }
+html.light [data-play-logbook-ledger-remain] {
+  background-color: #f4f4f5 !important;
+  border-color: #d4d4d8 !important;
+  color: #3f3f46 !important;
+}
 
 /* Quick links - page toggle + at-cap modal (light mode) */
 /* Pill only … bare/pin must stay chrome-free (pin was picking up this #fafafa box). */

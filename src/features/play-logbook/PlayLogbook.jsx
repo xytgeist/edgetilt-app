@@ -88,6 +88,7 @@ import {
   fetchPlayLogSessionsMeta,
   insertPlayLogLedgerSettlements,
   acceptPlayLogLedgerSettlement,
+  declinePlayLogLedgerSettlement,
   isPlayLogPartnersPaidRpcMissingError,
   savePlayLogSharedSession,
   updatePlayLogSessionPartnersPaid,
@@ -245,6 +246,7 @@ export default function PlayLogbook({
   const [ledgerSettlements, setLedgerSettlements] = useState([])
   const [ledgerSettling, setLedgerSettling] = useState(false)
   const [pinnedLedgerPartnerKey, setPinnedLedgerPartnerKey] = useState(null)
+  const [focusIncomingSettlement, setFocusIncomingSettlement] = useState(false)
   const [viewerProfile, setViewerProfile] = useState(null)
   const [partners, setPartners] = useState([])
   const [editingSessionId, setEditingSessionId] = useState(null)
@@ -582,13 +584,48 @@ export default function PlayLogbook({
           setLedgerSettlements(prev =>
             prev.map(item =>
               String(item.id) === String(row.id)
-                ? { ...item, ...row, counterpart_accepted_at: row.counterpart_accepted_at }
+                ? {
+                    ...item,
+                    ...row,
+                    counterpart_accepted_at: row.counterpart_accepted_at,
+                    counterpart_declined_at: row.counterpart_declined_at,
+                  }
                 : item,
             ),
           )
         }
       } catch (err) {
         setError(err?.message || 'Could not update your books.')
+      } finally {
+        setLedgerSettling(false)
+      }
+    },
+    [ledgerSettling, supabaseClient],
+  )
+
+  const declineLedgerSettlement = useCallback(
+    async settlementId => {
+      if (ledgerSettling || !settlementId) return
+      setLedgerSettling(true)
+      setError('')
+      try {
+        const row = await declinePlayLogLedgerSettlement(supabaseClient, settlementId)
+        if (row?.id) {
+          setLedgerSettlements(prev =>
+            prev.map(item =>
+              String(item.id) === String(row.id)
+                ? {
+                    ...item,
+                    ...row,
+                    counterpart_accepted_at: row.counterpart_accepted_at,
+                    counterpart_declined_at: row.counterpart_declined_at,
+                  }
+                : item,
+            ),
+          )
+        }
+      } catch (err) {
+        setError(err?.message || 'Could not remain unsettled.')
       } finally {
         setLedgerSettling(false)
       }
@@ -688,7 +725,9 @@ export default function PlayLogbook({
   )
 
   useEffect(() => {
-    if (ledgerPartnerKey) setPinnedLedgerPartnerKey(ledgerPartnerKey)
+    if (!ledgerPartnerKey) return
+    setPinnedLedgerPartnerKey(ledgerPartnerKey)
+    setFocusIncomingSettlement(true)
   }, [ledgerPartnerKey])
 
   useEffect(() => {
@@ -1358,8 +1397,11 @@ export default function PlayLogbook({
             viewerUserId={userId}
             settling={ledgerSettling}
             initialCounterpartKey={pinnedLedgerPartnerKey || ledgerPartnerKey}
+            focusIncomingSettlement={focusIncomingSettlement}
+            onFocusIncomingConsumed={() => setFocusIncomingSettlement(false)}
             onSettleAll={counterpartKey => void settleLedgerPlays(counterpartKey)}
             onAcceptSettlement={settlementId => void acceptLedgerSettlement(settlementId)}
+            onDeclineSettlement={settlementId => void declineLedgerSettlement(settlementId)}
             onOpenEntry={entryId => {
               const entry = entries.find(e => String(e.id) === String(entryId))
               if (entry) void openEntryDetail(entry)

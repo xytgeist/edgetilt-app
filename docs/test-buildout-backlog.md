@@ -1099,7 +1099,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-09-07: **Play Logbook Edit Play game + Cancel:** Changing game swaps the form to that template’s fields and keeps filled overlapping values (switch-back restores the rest). Footer **Cancel** left of Save (same as X). **`1.4.101`.**
+- 2026-09-07: **Play Logbook Edit Play game + Cancel:** Changing game swaps the form to that template’s fields and keeps filled overlapping values (switch-back restores the rest). Footer **Cancel** left of Save (same as X). **`1.4.101`.** Promoted **`test` → `main`**; **`20260907210000`** applied on prod.
 
 - 2026-09-07: **Play Logbook Edit Play game picker:** Edit Play was a static game label. Same picker as Log Play now. Solo save already wrote `template_id`. Shared game change uses **`play_log_set_shared_session_template`** (`20260907210000`, applied test). **`1.4.100`.** Prod SQL when promoting.
 

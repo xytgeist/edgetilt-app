@@ -111,6 +111,8 @@ export default function LoungeNotificationsPanel({
   onOpenProfile,
   /** Grouped follow row: open viewer's own profile on Followers tab with glow on new followers. */
   onOpenOwnProfileFollowers,
+  /** Close the dock panel and show Lounge (or let AppShell switch tabs) before row navigation. */
+  onBeforeRowNavigate,
   onUnreadChange,
   onOpenNotificationSettings,
   /** Same handlers as feed `LoungePostArticle` for inline like/repost/bookmark/comment. */
@@ -392,6 +394,7 @@ export default function LoungeNotificationsPanel({
       if (!event) return
       markSessionNewSeen()
       void markNotificationEventsRead(readEventIds || (event.id ? [event.id] : []))
+      onBeforeRowNavigate?.()
 
       if (
         event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.FOLLOW &&
@@ -621,6 +624,7 @@ export default function LoungeNotificationsPanel({
       markNotificationEventsRead,
       markSessionNewSeen,
       onOpenOwnProfileFollowers,
+      onBeforeRowNavigate,
       onOpenPost,
       onOpenProfile,
       supabaseClient,
@@ -662,6 +666,7 @@ export default function LoungeNotificationsPanel({
             onOpenPost={({ postId, commentId, focusComposer = false }) => {
               if (!postId) return
               void markNotificationEventsRead(event.id ? [event.id] : [])
+              onBeforeRowNavigate?.()
               onOpenPost?.({ postId, commentId: commentId || null, focusComposer })
             }}
             onEntityCountsChange={patchNotificationInteractionEntity}
@@ -672,6 +677,7 @@ export default function LoungeNotificationsPanel({
     [
       markNotificationEventsRead,
       notificationPostCardProps,
+      onBeforeRowNavigate,
       onOpenPost,
       patchNotificationInteractionEntity,
       repostMenuScrollRootRef,

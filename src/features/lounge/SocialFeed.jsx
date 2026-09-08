@@ -8712,10 +8712,19 @@ export default function SocialFeed({
     setLoungeNotificationsUnread(Number.isFinite(n) && n > 0 ? Math.floor(n) : 0)
   }, [])
 
+  const revealLoungeFromDockPanel = useCallback(() => {
+    setLoungeDockPanel(null)
+    setChatDockInitialPeerUserId(null)
+    setLoungeSettingsFocusSection(null)
+    loungeDockOverlayReturnRef.current = null
+    setLoungeDockOverlayOnSheet(false)
+    ensureLoungeFeedVisible()
+  }, [ensureLoungeFeedVisible])
+
   const onLoungeOpenPostFromNotifications = useCallback(
     async ({ postId, commentId, focusComposer = false, captureNavReturn = true }) => {
       if (!postId) return
-      setLoungeDockOverlayOnSheet(false)
+      revealLoungeFromDockPanel()
       let postRow = communityPosts.find((p) => p.id === postId)
       if (!postRow) {
         const { data, error } = await supabaseClient
@@ -8772,6 +8781,7 @@ export default function SocialFeed({
       openDirectCommentPostDetail,
       openLoungePostDetail,
       reloadLoungeDetailCommentsForPost,
+      revealLoungeFromDockPanel,
       setCommunityPosts,
       supabaseClient,
     ],
@@ -8955,11 +8965,11 @@ export default function SocialFeed({
   const onLoungeDockOpenPostFromSearch = useCallback(
     (post) => {
       if (!post?.id) return
-      setLoungeDockOverlayOnSheet(false)
+      revealLoungeFromDockPanel()
       pushLoungeNavReturnContextRef.current()
       openLoungePostDetail(post, { skipNavCapture: true })
     },
-    [openLoungePostDetail],
+    [openLoungePostDetail, revealLoungeFromDockPanel],
   )
 
   useEffect(() => {
@@ -15206,22 +15216,25 @@ export default function SocialFeed({
   const onLoungeDockOpenProfileFromSearch = useCallback(
     (entity) => {
       if (!entity?.user_id) return
+      revealLoungeFromDockPanel()
       openAuthorProfile(entity)
     },
-    [openAuthorProfile],
+    [openAuthorProfile, revealLoungeFromDockPanel],
   )
 
   const onLoungeOpenProfileFromNotifications = useCallback(
     (entity) => {
       if (!entity?.user_id) return
+      revealLoungeFromDockPanel()
       openAuthorProfile(entity)
     },
-    [openAuthorProfile],
+    [openAuthorProfile, revealLoungeFromDockPanel],
   )
 
   const onLoungeOpenOwnProfileFollowers = useCallback(
     ({ highlightUserIds = [] } = {}) => {
       if (!composerUserId) return
+      revealLoungeFromDockPanel()
       if (openProfileGateIfNeeded()) return
       pushLoungeNavReturnContext()
       void openProfileModal(
@@ -15242,6 +15255,7 @@ export default function SocialFeed({
       openProfileGateIfNeeded,
       openProfileModal,
       pushLoungeNavReturnContext,
+      revealLoungeFromDockPanel,
     ],
   )
 
@@ -16081,6 +16095,7 @@ export default function SocialFeed({
       onOpenProfileFromNotifications={onLoungeOpenProfileFromNotifications}
       onOpenProfileFromSettings={onLoungeOpenProfileFromNotifications}
       onOpenOwnProfileFollowers={onLoungeOpenOwnProfileFollowers}
+      onNotificationsBeforeRowNavigate={revealLoungeFromDockPanel}
       onNotificationsUnreadChange={onLoungeNotificationsUnreadChange}
       notificationInteractionProps={notificationInteractionProps}
       notificationInteractionCountsRefreshKey={notificationInteractionCountsRefreshKey}

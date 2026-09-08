@@ -708,17 +708,12 @@ export default function LoungeDockArcCarouselPrototype({
   }, [disarmPointerGuard])
 
   // Live slide panel must stay tappable ... never leave clickShield over Notifications/etc.
-  // Overlaying a still-mounted sheet keeps the guard so the leftover tap cannot hit the sheet.
+  // Keep-alive Lounge can still have post/profile mounted while the FAB is on Slots/Poker.
+  // Skipping disarm in that case left z-200 shield over the panel so row taps did nothing.
   useEffect(() => {
     if (!panelChrome || !SLIDE_PANEL_CHROME.has(panelChrome)) return
-    if (
-      stackAboveDetailOrProfile &&
-      (panelChrome === 'settings' || panelChrome === 'search' || panelChrome === 'notifications')
-    ) {
-      return
-    }
     disarmPointerGuard()
-  }, [panelChrome, disarmPointerGuard, stackAboveDetailOrProfile])
+  }, [panelChrome, disarmPointerGuard])
 
   const clearRepositionCapture = useCallback(() => {
     repositionCaptureCleanupRef.current?.()

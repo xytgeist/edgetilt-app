@@ -178,6 +178,8 @@ export default function LoungeDockSlidePanels({
   /** Open a creator profile from Settings → Subscriptions → Creators I support. */
   onOpenProfileFromSettings,
   onOpenOwnProfileFollowers,
+  /** Close dock + show Lounge before an Alerts row navigates (needed when FAB is on Slots/Poker). */
+  onNotificationsBeforeRowNavigate,
   onNotificationsUnreadChange,
   notificationInteractionProps = null,
   /** Bumped when post detail closes over notifications - refresh interaction bar counts. */
@@ -1486,6 +1488,7 @@ export default function LoungeDockSlidePanels({
               onOpenPost={onOpenPostFromNotifications}
               onOpenProfile={onOpenProfileFromNotifications}
               onOpenOwnProfileFollowers={onOpenOwnProfileFollowers}
+              onBeforeRowNavigate={onNotificationsBeforeRowNavigate}
               onUnreadChange={onNotificationsUnreadChange}
               onOpenNotificationSettings={onOpenNotificationSettings}
               notificationPostCardProps={notificationInteractionProps}

@@ -92,4 +92,4 @@ Structural or bundling changes here should land in the **same PR** as the code. 
 
 ---
 
-_Last aligned with the modular `App` + `AppShell` + `features/*` layout; Lounge row expanded 2026-05-14 for FAB wheel nav, chip-heart likes, and dock compose focus; 2026-05-15 adds Settings **`loungeDockMenuLayout:v1`** (wheel vs Edge L)._
+_Last aligned with the modular `App` + `AppShell` + `features/*` layout; Lounge row expanded 2026-05-14 for FAB wheel nav, chip-heart likes, and dock compose focus; 2026-05-15 adds Settings **`loungeDockMenuLayout:v1`** (wheel vs Edge L). **2026-09-08:** FAB Alerts (and Search) from Slots/Poker close the dock panel and switch back to Lounge before opening the post/profile ... keep-alive Lounge is `hidden`/`inert` off-tab so in-tree sheets were invisible.

@@ -1,4 +1,4 @@
-import { playLogRealRtpPct, playLogWinLoss } from './playLogMetrics.js'
+import { playLogCashReturnPct, playLogWinLoss } from './playLogMetrics.js'
 
 /** @typedef {import('./playLogMetrics.js').PlayLogEntry} PlayLogEntry */
 
@@ -6,7 +6,7 @@ import { playLogRealRtpPct, playLogWinLoss } from './playLogMetrics.js'
  * @typedef {{
  *   label: string,
  *   capturedAt: string,
- *   realizedCumulativePct: number | null,
+ *   cashReturnCumulativePct: number | null,
  *   cumulativeNetUsd: number | null,
  * }} PlayLogAnalyzeTrendPoint
  */
@@ -22,7 +22,7 @@ import { playLogRealRtpPct, playLogWinLoss } from './playLogMetrics.js'
  */
 
 /**
- * Chronological trend: cumulative wager-weighted realized RTP and cumulative net P/L after each play.
+ * Chronological trend: cumulative cash return % and cumulative net P/L after each play.
  *
  * @param {PlayLogEntry[]} entries
  * @returns {PlayLogAnalyzeTrendSeries}
@@ -68,14 +68,14 @@ export function buildPlayLogAnalyzeTrendSeries(entries) {
     points.push({
       label: String(index + 1),
       capturedAt: entry.captured_at || '',
-      realizedCumulativePct: playLogRealRtpPct(sumIn, sumOut),
+      cashReturnCumulativePct: playLogCashReturnPct(sumIn, sumOut),
       cumulativeNetUsd: netPlayCount > 0 ? cumulativeNet : null,
     })
   })
 
-  const withRealized = points.filter(p => p.realizedCumulativePct != null)
+  const withReturn = points.filter(p => p.cashReturnCumulativePct != null)
   const hasPnlTrend = points.filter(p => p.cumulativeNetUsd != null).length >= 2
-  const chartable = withRealized.length >= 2
+  const chartable = withReturn.length >= 2
 
   return {
     chartable,
@@ -84,8 +84,8 @@ export function buildPlayLogAnalyzeTrendSeries(entries) {
     hasPnlTrend,
     minPlaysHint: chartable
       ? null
-      : withRealized.length === 0
-        ? 'Log cash in and cash out to see RTP trend.'
+      : withReturn.length === 0
+        ? 'Log cash in and cash out to see the return trend.'
         : 'Log at least 2 plays with cash in/out to see the trend.',
   }
 }

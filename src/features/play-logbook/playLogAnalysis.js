@@ -1,8 +1,11 @@
 import {
-  aggregateRealizedRtpPct,
+  aggregateCashReturnPct,
+  aggregateCoinInRtpPct,
+  formatPlayLogBetsWonLost,
+  formatPlayLogPercent,
   avg,
-  formatPlayLogRealRtp,
   numericSamples,
+  playLogBetsWonLostStats,
   sum,
 } from './playLogMetrics.js'
 
@@ -27,15 +30,46 @@ export function analyzePlayLogEntries(entries, metricSlugs, opts = {}) {
     stats.push({ key: 'games_played', label: 'Games played', value: String(gameCount) })
   }
 
-  const realizedRtp = aggregateRealizedRtpPct(entries)
-  if (realizedRtp != null) {
+  const cashReturn = aggregateCashReturnPct(entries)
+  if (cashReturn != null) {
     stats.push({
-      key: 'realized_rtp',
-      label: 'Realized RTP %',
-      value: formatPlayLogRealRtp(realizedRtp) ?? '-',
+      key: 'cash_return',
+      label: 'Cash return %',
+      value: formatPlayLogPercent(cashReturn) ?? '-',
       hint: allPlays
-        ? 'Wager-weighted across all logged plays (total out ÷ total in).'
-        : 'Wager-weighted across all logged plays for this game (total out ÷ total in).',
+        ? 'Cash out vs cash in across all logged plays (total out ÷ total in). Not slot RTP.'
+        : 'Cash out vs cash in for this game (total out ÷ total in). Not slot RTP.',
+    })
+  }
+
+  const coinInRtp = aggregateCoinInRtpPct(entries)
+  if (coinInRtp.pct != null) {
+    const skipped = coinInRtp.skippedCount
+    stats.push({
+      key: 'coin_in_rtp',
+      label: 'RTP (from spins)',
+      value: formatPlayLogPercent(coinInRtp.pct) ?? '-',
+      hint: skipped
+        ? `From ${coinInRtp.playCount} play${coinInRtp.playCount === 1 ? '' : 's'} with # spins logged (${skipped} skipped). (bet × spins + P/L) ÷ coin-in.`
+        : `From ${coinInRtp.playCount} play${coinInRtp.playCount === 1 ? '' : 's'} with # spins. (bet × spins + P/L) ÷ coin-in.`,
+    })
+  }
+
+  const betsStats = playLogBetsWonLostStats(entries)
+  if (betsStats.avg != null) {
+    stats.push({
+      key: 'avg_bets',
+      label: 'Avg bets won/lost',
+      value: formatPlayLogBetsWonLost(betsStats.avg) ?? '-',
+      hint: 'Mean of cash P/L ÷ bet size per logged play. Acquisition fees are not included.',
+    })
+  }
+  if (betsStats.total != null) {
+    stats.push({
+      key: 'total_bets',
+      label: 'Total bets won/lost',
+      value: formatPlayLogBetsWonLost(betsStats.total) ?? '-',
+      hint: 'Sum of cash P/L ÷ bet size across these plays.',
     })
   }
 

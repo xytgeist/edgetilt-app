@@ -815,22 +815,37 @@ export function defaultLogPlayTemplateId(templates) {
 }
 
 /**
- * Real (wager-weighted) RTP % = (Σ money out ÷ Σ money in) × 100.
- * Same as weighting each play's RTP by its wager-not averaging play RTP % in arithmetic mean.
+ * Cash P/L for a play (cash out − cash in). Acquisition fee is not included.
+ * @param {unknown} moneyIn
+ * @param {unknown} moneyOut
  */
-export function playLogRealRtpPct(totalMoneyIn, totalMoneyOut) {
+export function playLogCashPnl(moneyIn, moneyOut) {
+  const inn = Number(moneyIn)
+  const out = Number(moneyOut)
+  if (!Number.isFinite(inn) || !Number.isFinite(out)) return null
+  return out - inn
+}
+
+/**
+ * Cash return % = (Σ money out ÷ Σ money in) × 100.
+ * This is buy-in conversion, not slot RTP.
+ */
+export function playLogCashReturnPct(totalMoneyIn, totalMoneyOut) {
   const inn = Number(totalMoneyIn)
   const out = Number(totalMoneyOut)
   if (!Number.isFinite(inn) || !Number.isFinite(out) || inn <= 0) return null
   return (out / inn) * 100
 }
 
+/** @deprecated alias … use playLogCashReturnPct */
+export const playLogRealRtpPct = playLogCashReturnPct
+
 /**
- * Wager-weighted realized RTP % across a set of entries (e.g. Analyze tab for one game).
+ * Cash-in-weighted cash return % across entries (total out ÷ total in).
  * @param {PlayLogEntry[]} entries
  * @returns {number | null}
  */
-export function aggregateRealizedRtpPct(entries) {
+export function aggregateCashReturnPct(entries) {
   let sumIn = 0
   let sumOut = 0
   for (const entry of entries || []) {
@@ -839,43 +854,146 @@ export function aggregateRealizedRtpPct(entries) {
     if (Number.isFinite(inn)) sumIn += inn
     if (Number.isFinite(outVal)) sumOut += outVal
   }
-  return playLogRealRtpPct(sumIn, sumOut)
+  return playLogCashReturnPct(sumIn, sumOut)
 }
 
-/** @deprecated alias */
-export const playLogRunningRtpPct = playLogRealRtpPct
+/** @deprecated alias … use aggregateCashReturnPct */
+export const aggregateRealizedRtpPct = aggregateCashReturnPct
 
-/** @param {number | null} rtpPct */
-export function formatPlayLogRealRtp(rtpPct) {
-  if (rtpPct == null || !Number.isFinite(rtpPct)) return null
-  return `${rtpPct.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
+/** @deprecated alias */
+export const playLogRunningRtpPct = playLogCashReturnPct
+
+/** @param {number | null} pct */
+export function formatPlayLogPercent(pct) {
+  if (pct == null || !Number.isFinite(pct)) return null
+  return `${pct.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}%`
 }
 
+/** @deprecated alias … use formatPlayLogPercent */
+export const formatPlayLogRealRtp = formatPlayLogPercent
+
 /** @deprecated alias */
-export const formatPlayLogRunningRtp = formatPlayLogRealRtp
+export const formatPlayLogRunningRtp = formatPlayLogPercent
+
+/**
+ * Bets won/lost = cash P/L ÷ bet size.
+ * @param {unknown} moneyIn
+ * @param {unknown} moneyOut
+ * @param {unknown} betSize
+ */
+export function playLogBetsWonLost(moneyIn, moneyOut, betSize) {
+  const pnl = playLogCashPnl(moneyIn, moneyOut)
+  const bet = Number(betSize)
+  if (pnl == null || !Number.isFinite(bet) || bet <= 0) return null
+  return pnl / bet
+}
+
+/** @param {number | null} bets */
+export function formatPlayLogBetsWonLost(bets) {
+  if (bets == null || !Number.isFinite(bets)) return null
+  const abs = Math.abs(bets)
+  const str = abs.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+  if (bets > 0) return `+${str}`
+  if (bets < 0) return `-${str}`
+  return str
+}
+
+/**
+ * @param {PlayLogEntry[]} entries
+ * @returns {{ avg: number | null, total: number | null, count: number }}
+ */
+export function playLogBetsWonLostStats(entries) {
+  /** @type {number[]} */
+  const samples = []
+  for (const entry of entries || []) {
+    const bets = playLogBetsWonLost(
+      entry?.values?.money_in,
+      entry?.values?.money_out,
+      entry?.values?.bet_size,
+    )
+    if (bets != null) samples.push(bets)
+  }
+  if (!samples.length) return { avg: null, total: null, count: 0 }
+  const total = samples.reduce((a, b) => a + b, 0)
+  return { avg: total / samples.length, total, count: samples.length }
+}
+
+/** Coin-in estimate = bet × spins. Null when spins were not logged. */
+export function playLogCoinInUsd(betSize, spinCount) {
+  const bet = Number(betSize)
+  const spins = Number(spinCount)
+  if (!Number.isFinite(bet) || bet <= 0 || !Number.isFinite(spins) || spins <= 0) return null
+  return bet * spins
+}
+
+/**
+ * Estimated slot RTP when spins are logged: (coin-in + cash P/L) ÷ coin-in.
+ * @param {unknown} moneyIn
+ * @param {unknown} moneyOut
+ * @param {unknown} betSize
+ * @param {unknown} spinCount
+ */
+export function playLogCoinInRtpPct(moneyIn, moneyOut, betSize, spinCount) {
+  const coinIn = playLogCoinInUsd(betSize, spinCount)
+  const pnl = playLogCashPnl(moneyIn, moneyOut)
+  if (coinIn == null || pnl == null || coinIn <= 0) return null
+  return ((coinIn + pnl) / coinIn) * 100
+}
+
+/**
+ * Coin-in RTP across plays that logged # spins. Ignores plays without spins.
+ * @param {PlayLogEntry[]} entries
+ * @returns {{ pct: number | null, playCount: number, skippedCount: number }}
+ */
+export function aggregateCoinInRtpPct(entries) {
+  let coinIn = 0
+  let pnl = 0
+  let playCount = 0
+  let skippedCount = 0
+  for (const entry of entries || []) {
+    const c = playLogCoinInUsd(entry?.values?.bet_size, entry?.values?.spin_count)
+    const p = playLogCashPnl(entry?.values?.money_in, entry?.values?.money_out)
+    if (c == null || p == null) {
+      skippedCount += 1
+      continue
+    }
+    coinIn += c
+    pnl += p
+    playCount += 1
+  }
+  if (!playCount || coinIn <= 0) return { pct: null, playCount: 0, skippedCount }
+  return { pct: ((coinIn + pnl) / coinIn) * 100, playCount, skippedCount }
+}
 
 /**
  * @typedef {{
  *   label: string | null,
  *   totalMoneyIn: number,
  *   totalMoneyOut: number,
+ *   unweightedAvgReturnPct: number | null,
  *   wagerAgnosticRtpPct: number | null,
- * }} PlayLogRealRtpSnapshot
+ *   avgBetsWonLost: number | null,
+ *   coinInRtpPct: number | null,
+ *   coinInPlayCount: number,
+ * }} PlayLogCashReturnSnapshot
  */
 
-/** Arithmetic mean of each play's RTP % (sessions weighted equally). */
-export function playLogWagerAgnosticRtpPct(playRtpPercents) {
-  const vals = (playRtpPercents || []).filter(n => Number.isFinite(n))
+/** Arithmetic mean of each play's cash-return % (sessions weighted equally). */
+export function playLogMeanPct(percents) {
+  const vals = (percents || []).filter(n => Number.isFinite(n))
   if (!vals.length) return null
   return vals.reduce((a, b) => a + b, 0) / vals.length
 }
 
+/** @deprecated alias */
+export const playLogWagerAgnosticRtpPct = playLogMeanPct
+
 /**
- * Per-entry Real RTP for each game (cumulative through that play, oldest → newest).
+ * Per-entry running cash return for each game (cumulative through that play, oldest → newest).
  * @param {PlayLogEntry[]} entries
- * @returns {Record<string, PlayLogRealRtpSnapshot>}
+ * @returns {Record<string, PlayLogCashReturnSnapshot>}
  */
-export function runningRealRtpByEntryId(entries) {
+export function runningCashReturnByEntryId(entries) {
   /** @type {Map<string, PlayLogEntry[]>} */
   const byTemplate = new Map()
   for (const entry of entries || []) {
@@ -885,50 +1003,79 @@ export function runningRealRtpByEntryId(entries) {
     byTemplate.get(tid).push(entry)
   }
 
-  /** @type {Record<string, PlayLogRealRtpSnapshot>} */
+  /** @type {Record<string, PlayLogCashReturnSnapshot>} */
   const out = {}
   for (const list of byTemplate.values()) {
     list.sort((a, b) => new Date(a.captured_at).getTime() - new Date(b.captured_at).getTime())
     let sumIn = 0
     let sumOut = 0
+    let coinIn = 0
+    let coinPnl = 0
+    let coinInPlayCount = 0
     /** @type {number[]} */
-    const playRtpPercents = []
+    const playReturnPercents = []
+    /** @type {number[]} */
+    const playBets = []
     for (const entry of list) {
       const inn = Number(entry.values?.money_in)
       const outVal = Number(entry.values?.money_out)
       if (Number.isFinite(inn)) sumIn += inn
       if (Number.isFinite(outVal)) sumOut += outVal
-      const playRtp = playLogRealRtpPct(inn, outVal)
-      if (playRtp != null) playRtpPercents.push(playRtp)
+      const playReturn = playLogCashReturnPct(inn, outVal)
+      if (playReturn != null) playReturnPercents.push(playReturn)
+      const bets = playLogBetsWonLost(inn, outVal, entry.values?.bet_size)
+      if (bets != null) playBets.push(bets)
+      const playCoinIn = playLogCoinInUsd(entry.values?.bet_size, entry.values?.spin_count)
+      const playPnl = playLogCashPnl(inn, outVal)
+      if (playCoinIn != null && playPnl != null) {
+        coinIn += playCoinIn
+        coinPnl += playPnl
+        coinInPlayCount += 1
+      }
+      const unweightedAvgReturnPct = playLogMeanPct(playReturnPercents)
       out[entry.id] = {
-        label: formatPlayLogRealRtp(playLogRealRtpPct(sumIn, sumOut)),
+        label: formatPlayLogPercent(playLogCashReturnPct(sumIn, sumOut)),
         totalMoneyIn: sumIn,
         totalMoneyOut: sumOut,
-        wagerAgnosticRtpPct: playLogWagerAgnosticRtpPct(playRtpPercents),
+        unweightedAvgReturnPct,
+        wagerAgnosticRtpPct: unweightedAvgReturnPct,
+        avgBetsWonLost: playBets.length ? playBets.reduce((a, b) => a + b, 0) / playBets.length : null,
+        coinInRtpPct:
+          coinInPlayCount && coinIn > 0 ? ((coinIn + coinPnl) / coinIn) * 100 : null,
+        coinInPlayCount,
       }
     }
   }
   return out
 }
 
-/** @deprecated alias - use runningRealRtpByEntryId */
+/** @deprecated alias … use runningCashReturnByEntryId */
+export const runningRealRtpByEntryId = runningCashReturnByEntryId
+
+/** @deprecated alias */
 export function runningRtpLabelByEntryId(entries) {
-  const snaps = runningRealRtpByEntryId(entries)
+  const snaps = runningCashReturnByEntryId(entries)
   /** @type {Record<string, string | null>} */
   const labels = {}
   for (const [id, snap] of Object.entries(snaps)) labels[id] = snap.label
   return labels
 }
 
-/** Tap explainer beside aggregate weighted RTP on recent-entry cards (intro only). */
-export const PLAY_LOG_REAL_RTP_INFO_INTRO =
-  'Aggregate Weighted RTP: This is your "Real" experienced wager-weighted return on this game for all your plays up to this point. It is NOT a simple average of each session\'s RTP %.'
+/** Tap explainer beside aggregate cash return on recent-entry cards. */
+export const PLAY_LOG_CASH_RETURN_INFO_INTRO =
+  'Cash return is cash out vs cash in for this game through this play (weighted by cash in). It is not slot RTP. RTP needs # spins × bet (coin-in).'
 
-/** RTP % for a single logged play. */
-export function playRtpLabelForEntry(entry) {
+/** @deprecated alias */
+export const PLAY_LOG_REAL_RTP_INFO_INTRO = PLAY_LOG_CASH_RETURN_INFO_INTRO
+
+/** Cash return % for a single logged play. */
+export function playCashReturnLabelForEntry(entry) {
   const values = entry?.values || {}
-  return formatPlayLogRealRtp(playLogRealRtpPct(values.money_in, values.money_out))
+  return formatPlayLogPercent(playLogCashReturnPct(values.money_in, values.money_out))
 }
+
+/** @deprecated alias */
+export const playRtpLabelForEntry = playCashReturnLabelForEntry
 
 /** @param {string | null | undefined} label e.g. "94.32%" */
 export function rtpToneFromPercentLabel(label) {
@@ -938,7 +1085,7 @@ export function rtpToneFromPercentLabel(label) {
 }
 
 /**
- * Chips for LOG tab recent-entry cards - bet size, denom, profit/loss, play RTP.
+ * Chips for LOG tab recent-entry cards - bet size, denom, profit/loss, cash return, bets.
  * @param {PlayLogEntry} entry
  * @param {Record<string, PlayLogMetricDef>} defsMap
  * @returns {{ key: string, label: string, value: string, tone?: 'win' | 'loss' | 'neutral' }[]}
@@ -948,7 +1095,9 @@ export function recentEntryDisplayChips(entry, defsMap) {
   const betDef = defsMap.bet_size
   const denomDef = defsMap.denom
   const pnl = playLogWinLoss(values.money_in, values.money_out, values.acquisition_fee)
-  const playRtpLabel = playRtpLabelForEntry(entry)
+  const returnLabel = playCashReturnLabelForEntry(entry)
+  const bets = playLogBetsWonLost(values.money_in, values.money_out, values.bet_size)
+  const betsLabel = formatPlayLogBetsWonLost(bets)
   const hasAcquisitionFee = parseAcquisitionFee(values.acquisition_fee) != null
 
   /** @type {{ key: string, label: string, value: string, tone?: 'win' | 'loss' | 'neutral' }[]} */
@@ -972,10 +1121,16 @@ export function recentEntryDisplayChips(entry, defsMap) {
       tone: pnl == null ? 'neutral' : pnl >= 0 ? 'win' : 'loss',
     },
     {
-      key: 'rtp',
-      label: 'RTP',
-      value: playRtpLabel || '-',
-      tone: rtpToneFromPercentLabel(playRtpLabel),
+      key: 'return',
+      label: 'Return',
+      value: returnLabel || '-',
+      tone: rtpToneFromPercentLabel(returnLabel),
+    },
+    {
+      key: 'bets',
+      label: 'Bets',
+      value: betsLabel || '-',
+      tone: bets == null ? 'neutral' : bets >= 0 ? 'win' : 'loss',
     },
   ]
 

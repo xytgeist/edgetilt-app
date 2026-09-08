@@ -26,11 +26,12 @@ import {
   parseAcquisitionFee,
   playLogWinLoss,
   LOG_PLAY_TAIL_FIELD_SLUGS,
-  PLAY_LOG_REAL_RTP_INFO_INTRO,
-  formatPlayLogRealRtp,
+  PLAY_LOG_CASH_RETURN_INFO_INTRO,
+  formatPlayLogBetsWonLost,
+  formatPlayLogPercent,
   recentEntryDisplayChips,
   entryDetailFieldsForEntry,
-  runningRealRtpByEntryId,
+  runningCashReturnByEntryId,
   rtpToneFromPercentLabel,
   targetBonusPaidInBets,
   templatesSorted,
@@ -360,7 +361,7 @@ export default function PlayLogbook({
     [formFields.money_in, formFields.money_out, formFields.acquisition_fee],
   )
 
-  const realRtpSnapByEntryId = useMemo(() => runningRealRtpByEntryId(entries), [entries])
+  const cashReturnSnapByEntryId = useMemo(() => runningCashReturnByEntryId(entries), [entries])
   const viewerIsAdmin = isAdmin || viewerProfile?.role === 'admin'
   const isSystemTemplateSheet = templateSheetMode === 'system'
 
@@ -1261,9 +1262,9 @@ export default function PlayLogbook({
                 {entries.map(entry => {
                   const tpl = templateById[entry.template_id]
                   const chips = recentEntryDisplayChips(entry, defsMapForTemplate(defsMap, tpl))
-                  const realRtpSnap = realRtpSnapByEntryId[entry.id]
-                  const runningRtpLabel = realRtpSnap?.label
-                  const runningRtpTone = rtpToneFromPercentLabel(runningRtpLabel)
+                  const cashReturnSnap = cashReturnSnapByEntryId[entry.id]
+                  const runningReturnLabel = cashReturnSnap?.label
+                  const runningReturnTone = rtpToneFromPercentLabel(runningReturnLabel)
                   const shared = Boolean(entry.session_id)
                   const highlight =
                     highlightEntryId && String(highlightEntryId) === String(entry.id)
@@ -1300,14 +1301,17 @@ export default function PlayLogbook({
                               Shared
                             </span>
                           ) : null}
-                          {runningRtpLabel ? (
-                            <RunningRtpLabelButton
-                              label={runningRtpLabel}
-                              wagerAgnosticRtpPct={realRtpSnap?.wagerAgnosticRtpPct ?? null}
+                          {runningReturnLabel ? (
+                            <RunningReturnLabelButton
+                              label={runningReturnLabel}
+                              unweightedAvgReturnPct={cashReturnSnap?.unweightedAvgReturnPct ?? null}
+                              avgBetsWonLost={cashReturnSnap?.avgBetsWonLost ?? null}
+                              coinInRtpPct={cashReturnSnap?.coinInRtpPct ?? null}
+                              coinInPlayCount={cashReturnSnap?.coinInPlayCount ?? 0}
                               toneClass={
-                                runningRtpTone === 'win'
+                                runningReturnTone === 'win'
                                   ? 'text-emerald-300'
-                                  : runningRtpTone === 'loss'
+                                  : runningReturnTone === 'loss'
                                     ? 'text-red-300'
                                     : 'text-zinc-400'
                               }
@@ -1414,11 +1418,12 @@ export default function PlayLogbook({
                   data-play-logbook-chart
                 >
                   <div className="text-zinc-500 text-xs font-semibold uppercase tracking-wide">
-                    RTP &amp; P/L trend
+                    Return &amp; P/L trend
                   </div>
                   <p className="text-zinc-500 text-xs mt-1 leading-snug">
-                    Cumulative net profit/loss in dollars (left axis) and wager-weighted RTP % (right axis),
-                    oldest → newest. P/L includes acquisition fees when logged.
+                    Cumulative net profit/loss in dollars (left axis) and cash return % (right axis),
+                    oldest → newest. Cash return is out ÷ in, not slot RTP. P/L includes acquisition fees when
+                    logged.
                   </p>
                   {analyzeTrendSeries.chartable ? (
                     <div className="mt-3">
@@ -1625,9 +1630,9 @@ export default function PlayLogbook({
               const shared = Boolean(viewingEntry.session_id)
               const isOwner = playLogEntryIsSessionOwner(viewingEntry, userId, sessionMetaById)
               const canEdit = !shared || isOwner
-              const realRtpSnap = realRtpSnapByEntryId[viewingEntry.id]
-              const runningRtpLabel = realRtpSnap?.label
-              const runningRtpTone = rtpToneFromPercentLabel(runningRtpLabel)
+              const cashReturnSnap = cashReturnSnapByEntryId[viewingEntry.id]
+              const runningReturnLabel = cashReturnSnap?.label
+              const runningReturnTone = rtpToneFromPercentLabel(runningReturnLabel)
               const detailNetOutcome = playLogWinLoss(
                 viewingEntry.values?.money_in,
                 viewingEntry.values?.money_out,
@@ -1654,14 +1659,17 @@ export default function PlayLogbook({
                               Shared
                             </span>
                           ) : null}
-                          {runningRtpLabel ? (
-                            <RunningRtpLabelButton
-                              label={runningRtpLabel}
-                              wagerAgnosticRtpPct={realRtpSnap?.wagerAgnosticRtpPct ?? null}
+                          {runningReturnLabel ? (
+                            <RunningReturnLabelButton
+                              label={runningReturnLabel}
+                              unweightedAvgReturnPct={cashReturnSnap?.unweightedAvgReturnPct ?? null}
+                              avgBetsWonLost={cashReturnSnap?.avgBetsWonLost ?? null}
+                              coinInRtpPct={cashReturnSnap?.coinInRtpPct ?? null}
+                              coinInPlayCount={cashReturnSnap?.coinInPlayCount ?? 0}
                               toneClass={
-                                runningRtpTone === 'win'
+                                runningReturnTone === 'win'
                                   ? 'text-emerald-300'
-                                  : runningRtpTone === 'loss'
+                                  : runningReturnTone === 'loss'
                                     ? 'text-red-300'
                                     : 'text-zinc-400'
                               }
@@ -2503,17 +2511,24 @@ function MetricFieldInput({ value, onChange, valueType, trailingHint = null }) {
   )
 }
 
-function wagerAgnosticRtpPctToneClass(wagerAgnosticRtpPct) {
-  const tone = rtpToneFromPercentLabel(formatPlayLogRealRtp(wagerAgnosticRtpPct))
+function percentToneClass(pct) {
+  const tone = rtpToneFromPercentLabel(formatPlayLogPercent(pct))
   if (tone === 'win') return 'text-emerald-300'
   if (tone === 'loss') return 'text-red-300'
+  return 'text-zinc-300'
+}
+
+function betsToneClass(bets) {
+  if (bets == null || !Number.isFinite(bets)) return 'text-zinc-300'
+  if (bets > 0) return 'text-emerald-300'
+  if (bets < 0) return 'text-red-300'
   return 'text-zinc-300'
 }
 
 const RTP_POPOVER_VIEWPORT_MARGIN = 12
 const RTP_POPOVER_ANCHOR_GAP = 6
 
-/** After RTP popover dismiss, block entry-card open (avoids click-through on touch). */
+/** After return popover dismiss, block entry-card open (avoids click-through on touch). */
 let playLogEntryOpenSuppressUntil = 0
 
 function suppressPlayLogEntryOpenBriefly(ms = 450) {
@@ -2551,12 +2566,21 @@ function layoutRtpPopoverPosition(anchorEl, panelEl) {
   return { left, top }
 }
 
-function RunningRtpLabelButton({ label, toneClass, wagerAgnosticRtpPct }) {
+function RunningReturnLabelButton({
+  label,
+  toneClass,
+  unweightedAvgReturnPct,
+  avgBetsWonLost,
+  coinInRtpPct,
+  coinInPlayCount = 0,
+}) {
   const [open, setOpen] = useState(false)
   const [popoverPos, setPopoverPos] = useState(/** @type {{ left: number, top: number } | null} */ (null))
   const anchorRef = useRef(/** @type {HTMLButtonElement | null} */ (null))
   const popoverRef = useRef(/** @type {HTMLDivElement | null} */ (null))
-  const wagerAgnosticLabel = formatPlayLogRealRtp(wagerAgnosticRtpPct)
+  const unweightedLabel = formatPlayLogPercent(unweightedAvgReturnPct)
+  const avgBetsLabel = formatPlayLogBetsWonLost(avgBetsWonLost)
+  const coinInRtpLabel = formatPlayLogPercent(coinInRtpPct)
 
   const repositionPopover = useCallback(() => {
     const anchor = anchorRef.current
@@ -2583,7 +2607,7 @@ function RunningRtpLabelButton({ label, toneClass, wagerAgnosticRtpPct }) {
       window.removeEventListener('resize', onReflow)
       window.removeEventListener('scroll', onReflow, true)
     }
-  }, [open, repositionPopover, wagerAgnosticLabel])
+  }, [open, repositionPopover, unweightedLabel, avgBetsLabel, coinInRtpLabel])
 
   const popoverLayer =
     open && typeof document !== 'undefined'
@@ -2593,7 +2617,7 @@ function RunningRtpLabelButton({ label, toneClass, wagerAgnosticRtpPct }) {
               type="button"
               className="fixed inset-0 cursor-default bg-transparent touch-none"
               style={{ zIndex: Z_APP_ALERT - 1 }}
-              aria-label="Close RTP info"
+              aria-label="Close cash return info"
               onPointerDown={e => {
                 e.preventDefault()
                 e.stopPropagation()
@@ -2617,19 +2641,42 @@ function RunningRtpLabelButton({ label, toneClass, wagerAgnosticRtpPct }) {
                 visibility: popoverPos ? 'visible' : 'hidden',
                 maxHeight: `calc(100dvh - ${RTP_POPOVER_VIEWPORT_MARGIN * 2}px)`,
               }}
-              className="w-[min(17rem,calc(100vw-2.5rem))] overflow-y-auto rounded-xl border border-zinc-600/80 bg-zinc-800 px-3 py-2.5 text-left text-[11px] leading-snug text-zinc-200 shadow-lg"
+              className="w-[min(18rem,calc(100vw-2.5rem))] overflow-y-auto rounded-xl border border-zinc-600/80 bg-zinc-800 px-3 py-2.5 text-left text-[11px] leading-snug text-zinc-200 shadow-lg"
             >
-              <p>{PLAY_LOG_REAL_RTP_INFO_INTRO}</p>
-              {wagerAgnosticLabel ? (
+              <p>{PLAY_LOG_CASH_RETURN_INFO_INTRO}</p>
+              {unweightedLabel ? (
                 <>
                   <hr className="my-2 border-zinc-600/60" />
-                  <p className="font-bold leading-snug text-zinc-200">
-                    Your wager-agnostic total RTP is{' '}
-                    <span
-                      className={`font-bold tabular-nums ${wagerAgnosticRtpPctToneClass(wagerAgnosticRtpPct)}`}
-                    >
-                      {wagerAgnosticLabel}
+                  <p className="leading-snug text-zinc-200">
+                    Unweighted average cash return (each play equal) is{' '}
+                    <span className={`font-bold tabular-nums ${percentToneClass(unweightedAvgReturnPct)}`}>
+                      {unweightedLabel}
                     </span>
+                    .
+                  </p>
+                </>
+              ) : null}
+              {avgBetsLabel ? (
+                <>
+                  <hr className="my-2 border-zinc-600/60" />
+                  <p className="leading-snug text-zinc-200">
+                    Avg bets won/lost through this play is{' '}
+                    <span className={`font-bold tabular-nums ${betsToneClass(avgBetsWonLost)}`}>
+                      {avgBetsLabel}
+                    </span>
+                    .
+                  </p>
+                </>
+              ) : null}
+              {coinInRtpLabel ? (
+                <>
+                  <hr className="my-2 border-zinc-600/60" />
+                  <p className="leading-snug text-zinc-200">
+                    RTP from {coinInPlayCount} play{coinInPlayCount === 1 ? '' : 's'} with # spins is{' '}
+                    <span className={`font-bold tabular-nums ${percentToneClass(coinInRtpPct)}`}>
+                      {coinInRtpLabel}
+                    </span>
+                    .
                   </p>
                 </>
               ) : null}
@@ -2645,7 +2692,7 @@ function RunningRtpLabelButton({ label, toneClass, wagerAgnosticRtpPct }) {
         ref={anchorRef}
         type="button"
         aria-expanded={open}
-        aria-label={`Aggregate weighted RTP ${label}. Tap for details.`}
+        aria-label={`Cash return ${label}. Tap for details.`}
         onPointerDown={e => e.stopPropagation()}
         onClick={e => {
           e.stopPropagation()

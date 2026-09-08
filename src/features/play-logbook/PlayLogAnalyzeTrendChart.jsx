@@ -108,7 +108,7 @@ export default function PlayLogAnalyzeTrendChart({ series }) {
     : []
 
   const chartData = useMemo(() => {
-    const realized = series.points.map(p => p.realizedCumulativePct)
+    const cashReturn = series.points.map(p => p.cashReturnCumulativePct)
     /** @type {import('chart.js').ChartDataset<'line'>[]} */
     const datasets = []
 
@@ -130,8 +130,8 @@ export default function PlayLogAnalyzeTrendChart({ series }) {
     }
 
     datasets.push({
-      label: 'Realized RTP (cumulative)',
-      data: realized,
+      label: 'Cash return (cumulative)',
+      data: cashReturn,
       yAxisID: 'yRtp',
       borderColor: isLight ? '#0891b2' : '#22d3ee',
       backgroundColor: isLight ? 'rgba(8, 145, 178, 0.12)' : 'rgba(34, 211, 238, 0.12)',
@@ -169,7 +169,7 @@ export default function PlayLogAnalyzeTrendChart({ series }) {
   )
 
   const rtpYBounds = useMemo(() => {
-    const vals = series.points.map(p => p.realizedCumulativePct).filter(
+    const vals = series.points.map(p => p.cashReturnCumulativePct).filter(
       v => v != null && Number.isFinite(v),
     )
     if (!vals.length) return { min: 0, max: 120 }
@@ -218,7 +218,7 @@ export default function PlayLogAnalyzeTrendChart({ series }) {
         yRtp: {
           type: 'linear',
           position: 'right',
-          title: { display: true, text: 'RTP %', color: chartAxisColor },
+          title: { display: true, text: 'Cash return %', color: chartAxisColor },
           grid: { drawOnChartArea: !series.hasPnlTrend, color: chartGridColor },
           ticks: { color: chartAxisColor },
           border: { color: chartGridColor },

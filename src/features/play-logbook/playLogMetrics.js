@@ -744,6 +744,21 @@ export function resolvePlayLogPrefillTemplate(templates, pre) {
 }
 
 /**
+ * Templates that already have at least one logged play.
+ * @param {PlayLogTemplate[]} templates
+ * @param {PlayLogEntry[]} entries
+ */
+export function playLogTemplatesWithLoggedSessions(templates, entries) {
+  const ids = new Set()
+  for (const entry of entries || []) {
+    const id = String(entry?.template_id || '').trim()
+    if (id) ids.add(id)
+  }
+  if (!ids.size) return []
+  return (templates || []).filter(t => ids.has(String(t.id)))
+}
+
+/**
  * @param {PlayLogTemplate[]} templates
  * @param {PlayLogEntry[]} entries
  * @param {string} [searchQuery]
@@ -751,13 +766,16 @@ export function resolvePlayLogPrefillTemplate(templates, pre) {
  */
 export function buildLogPlayGamePickerSections(templates, entries, searchQuery = '', opts = {}) {
   const { includeAllPlaysOption = false } = opts
+  const catalog = includeAllPlaysOption
+    ? playLogTemplatesWithLoggedSessions(templates, entries)
+    : templates || []
   const q = normalizeGameSearchQuery(searchQuery)
-  const system = (templates || []).filter(t => t.is_system)
-  const custom = (templates || []).filter(t => !t.is_system)
+  const system = catalog.filter(t => t.is_system)
+  const custom = catalog.filter(t => !t.is_system)
   const sortAlpha = list => templatesSortedAlphabetically(list)
   const filterList = list => (q ? list.filter(t => gameTemplateMatchesSearch(t, q)) : list)
 
-  const recent = q ? [] : recentPlayLogTemplates(templates, entries, LOG_PLAY_RECENT_GAMES_LIMIT)
+  const recent = q ? [] : recentPlayLogTemplates(catalog, entries, LOG_PLAY_RECENT_GAMES_LIMIT)
   const systemFiltered = sortAlpha(filterList(system))
   const customFiltered = sortAlpha(filterList(custom))
   const matchCount = systemFiltered.length + customFiltered.length
@@ -785,7 +803,7 @@ export function buildLogPlayGamePickerSections(templates, entries, searchQuery =
   }
 
   if (systemFiltered.length > 0) {
-    options.push({ type: 'label', label: q ? 'Matching games' : 'All games (A–Z)' })
+    options.push({ type: 'label', label: q ? 'Matching games' : includeAllPlaysOption ? 'Logged games (A–Z)' : 'All games (A–Z)' })
     for (const t of systemFiltered) {
       options.push({ value: t.id, label: t.display_name })
     }

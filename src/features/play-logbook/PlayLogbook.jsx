@@ -54,6 +54,7 @@ import {
   PLAY_LOG_ANALYZE_ALL_PLAYS_METRIC_SLUGS,
   isPlayLogAnalyzeAllPlays,
   playLogTemplateDisplayLabel,
+  playLogTemplatesWithLoggedSessions,
 } from './playLogMetrics.js'
 import { analyzePlayLogEntries } from './playLogAnalysis.js'
 import { buildPlayLogAnalyzeTrendSeries } from './playLogAnalyzeChart.js'
@@ -495,6 +496,14 @@ export default function PlayLogbook({
   useEffect(() => {
     loadAll()
   }, [loadAll])
+
+  useEffect(() => {
+    if (isPlayLogAnalyzeAllPlays(analyzeTemplateId)) return
+    const logged = playLogTemplatesWithLoggedSessions(templates, entries)
+    if (!logged.some(t => String(t.id) === String(analyzeTemplateId))) {
+      setAnalyzeTemplateId(PLAY_LOG_ANALYZE_ALL_PLAYS_ID)
+    }
+  }, [analyzeTemplateId, templates, entries])
 
   const openAnalyzeTab = useCallback(() => {
     setActiveTab('analyze')

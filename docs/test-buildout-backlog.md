@@ -1119,6 +1119,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-09-08: **Play Logbook ANALYZE Scope:** Dropdown is **All plays** plus games with a logged session, not the full template catalog. Log Play picker unchanged. **`1.4.122`.**
+
 - 2026-09-08: **Play Logbook Partners info light contrast:** Portaled (i) popover owner/manager labels darker in light mode only. **`1.4.121`.**
 
 - 2026-09-08: **Play Logbook partner self-Paid:** Any Edge partner can check their own Paid box. Same 1-play independent settlement as Settle this play; manager gets Update my books / Remain Unsettled. No SQL. **`1.4.120`.**

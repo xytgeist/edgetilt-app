@@ -401,6 +401,7 @@ export function playLogLedgerSettlementView(row, viewerUserId) {
     otherLabel,
     theyOweYou,
     youOweThem,
+    playCount: Number(row.play_count) || 0,
     ...copy,
   }
 }

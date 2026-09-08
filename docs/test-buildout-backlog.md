@@ -1105,6 +1105,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-09-07: **Play Logbook Settle All cards match swap settlements:** name + colored net at `text-sm`, they/you labeled rows, date 11px. **`1.4.109`.**
+
 - 2026-09-07: **Play Logbook ledger totals type:** They owe you / You owe them on the summary card match partner display-name size. **`1.4.108`.**
 
 - 2026-09-07: **Play Logbook LOG open pill removed:** Open unpaid is the cyan/white dot on **LEDGER** only. **`1.4.107`.**

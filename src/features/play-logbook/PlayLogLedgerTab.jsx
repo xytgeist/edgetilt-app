@@ -368,16 +368,7 @@ function LedgerSettlementList({ rows, emptyHint = '', className = '' }) {
       {rows.length ? (
         <div className="space-y-2">
           {rows.map(row => (
-            <div
-              key={row.id}
-              className="rounded-2xl border border-zinc-800/60 bg-zinc-900/60 px-4 py-3"
-              data-play-logbook-card
-              data-play-logbook-ledger-settlement
-            >
-              <div className="text-sm font-semibold text-zinc-100">{row.title}</div>
-              <div className="text-xs leading-relaxed text-zinc-400 mt-1">{row.detail}</div>
-              <div className="text-[11px] text-zinc-500 mt-1.5">{fmtLedgerCapturedAt(row.createdAt)}</div>
-            </div>
+            <LedgerSettlementCard key={row.id} row={row} />
           ))}
         </div>
       ) : emptyHint ? (
@@ -385,6 +376,65 @@ function LedgerSettlementList({ rows, emptyHint = '', className = '' }) {
       ) : null}
     </div>
   )
+}
+
+/** @param {{ row: ReturnType<typeof playLogLedgerSettlementView> }} props */
+function LedgerSettlementCard({ row }) {
+  const net = (row.theyOweYou || 0) - (row.youOweThem || 0)
+  const plays = row.playCount === 1 ? '1 play' : `${row.playCount || 0} plays`
+  return (
+    <div
+      className="rounded-2xl border border-zinc-800/60 bg-zinc-900/60 px-4 py-3"
+      data-play-logbook-card
+      data-play-logbook-ledger-settlement
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-white">{row.otherLabel}</div>
+          <div className="mt-0.5 text-[11px] text-zinc-500">Settled · {plays}</div>
+        </div>
+        <span
+          className={`shrink-0 text-sm font-bold tabular-nums ${
+            net > 0 ? 'text-emerald-300' : net < 0 ? 'text-rose-400' : 'text-zinc-400'
+          }`}
+        >
+          {formatLedgerSettledNet(net)}
+        </span>
+      </div>
+      <div className="mt-2 space-y-1 border-t border-zinc-800/80 pt-2">
+        <div className="flex items-baseline justify-between gap-3 text-sm">
+          <span className="text-zinc-400">They owed you</span>
+          <span
+            className={`font-bold tabular-nums ${
+              row.theyOweYou > 0 ? 'text-emerald-300' : 'text-zinc-400'
+            }`}
+          >
+            {formatPlayLogLedgerUsd(row.theyOweYou)}
+          </span>
+        </div>
+        <div className="flex items-baseline justify-between gap-3 text-sm">
+          <span className="text-zinc-400">You owed them</span>
+          <span
+            className={`font-bold tabular-nums ${
+              row.youOweThem > 0 ? 'text-red-300' : 'text-zinc-400'
+            }`}
+          >
+            {formatPlayLogLedgerUsd(row.youOweThem)}
+          </span>
+        </div>
+      </div>
+      {row.createdAt ? (
+        <div className="mt-1.5 text-[11px] text-zinc-500">{fmtLedgerCapturedAt(row.createdAt)}</div>
+      ) : null}
+    </div>
+  )
+}
+
+/** Swap-settlement paren style: gain plain, loss in ( ). */
+function formatLedgerSettledNet(net) {
+  if (!net) return formatPlayLogLedgerUsd(0)
+  if (net > 0) return formatPlayLogLedgerUsd(net)
+  return `(${formatPlayLogLedgerUsd(-net)})`
 }
 
 /** @param {{ settling?: boolean, onClick: () => void }} props */

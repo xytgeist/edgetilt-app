@@ -569,6 +569,7 @@ function PlayLogPartnersInfoButton({ hasExtraPartner }) {
                 visibility: popoverPos ? 'visible' : 'hidden',
                 maxHeight: `calc(100dvh - ${PARTNERS_INFO_POPOVER_MARGIN * 2}px)`,
               }}
+              data-play-logbook-partners-info
               className="w-[min(18rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-zinc-600/80 bg-zinc-800 px-3 py-2.5 text-left text-xs leading-snug text-zinc-300 shadow-lg"
             >
               {hasExtraPartner ? (

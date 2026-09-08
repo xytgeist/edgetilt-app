@@ -8797,6 +8797,12 @@ html.light [data-play-logbook-ledger-dot].bg-cyan-300 {
 html.light [data-play-logbook-paid-check] {
   accent-color: #2563eb;
 }
+html.light [data-play-logbook-partners-info] .text-cyan-300\/90 {
+  color: #0e7490 !important;
+}
+html.light [data-play-logbook-partners-info] .text-amber-300\/90 {
+  color: #b45309 !important;
+}
 html.light [data-play-logbook-ledger-nudge] {
   background-color: rgba(37, 99, 235, 0.12) !important;
   border-color: rgba(37, 99, 235, 0.35) !important;

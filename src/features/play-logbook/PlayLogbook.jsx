@@ -75,7 +75,7 @@ import {
   playLogPartnersValidationError,
   playLogPartnersViewerCanMarkPaid,
 } from './playLogPartners.js'
-import { buildPlayLogLedger, formatPlayLogLedgerOpenChip } from './playLogLedger.js'
+import { buildPlayLogLedger, buildPlayLogLedgerSettlePatches, formatPlayLogLedgerOpenChip } from './playLogLedger.js'
 import {
   deletePlayLogSharedSession,
   fetchPlayLogSessionPartners,
@@ -210,6 +210,7 @@ export default function PlayLogbook({
   const [entries, setEntries] = useState([])
   const [sessionMetaById, setSessionMetaById] = useState(() => new Map())
   const [partnersBySessionId, setPartnersBySessionId] = useState(() => new Map())
+  const [ledgerSettling, setLedgerSettling] = useState(false)
   const [viewerProfile, setViewerProfile] = useState(null)
   const [partners, setPartners] = useState([])
   const [editingSessionId, setEditingSessionId] = useState(null)
@@ -338,8 +339,9 @@ export default function PlayLogbook({
         partnersBySessionId,
         templateById,
         templates,
+        sessionMetaById,
       }),
-    [userId, entries, partnersBySessionId, templateById, templates],
+    [userId, entries, partnersBySessionId, templateById, templates, sessionMetaById],
   )
 
   const viewingEntry = useMemo(() => {
@@ -489,6 +491,59 @@ export default function PlayLogbook({
       return next
     })
   }, [])
+
+  const settleLedgerPlays = useCallback(
+    async (counterpartKey = null) => {
+      if (ledgerSettling) return
+      const patches = buildPlayLogLedgerSettlePatches({
+        ledger: playLogLedger,
+        viewerUserId: userId,
+        partnersBySessionId,
+        sessionMetaById,
+        counterpartKey,
+      })
+      if (!patches.length) return
+      setLedgerSettling(true)
+      setError('')
+      setPartnersBySessionId(current => {
+        const next = new Map(current)
+        for (const patch of patches) next.set(String(patch.sessionId), patch.partners)
+        return next
+      })
+      const viewingSid = viewingEntryId
+        ? String(entries.find(e => String(e.id) === String(viewingEntryId))?.session_id || '')
+        : ''
+      if (viewingSid) {
+        const viewingPatch = patches.find(p => String(p.sessionId) === viewingSid)
+        if (viewingPatch) setDetailPartners(viewingPatch.partners)
+      }
+      try {
+        for (const patch of patches) {
+          await updatePlayLogSessionPartnersPaid(supabaseClient, {
+            sessionId: patch.sessionId,
+            partners: playLogPartnersToRpcPayload(patch.partners),
+          })
+        }
+      } catch (err) {
+        handlePaidPersistError(err)
+        await loadAll()
+      } finally {
+        setLedgerSettling(false)
+      }
+    },
+    [
+      ledgerSettling,
+      playLogLedger,
+      userId,
+      partnersBySessionId,
+      sessionMetaById,
+      viewingEntryId,
+      entries,
+      supabaseClient,
+      handlePaidPersistError,
+      loadAll,
+    ],
+  )
 
   const openEntryDetail = useCallback(
     async entry => {
@@ -1051,8 +1106,8 @@ export default function PlayLogbook({
         <div className="flex rounded-2xl bg-zinc-900 p-1 gap-1 mb-5" data-play-logbook-card>
           {[
             { id: 'log', label: 'LOG' },
-            { id: 'ledger', label: 'LEDGER' },
             { id: 'analyze', label: 'ANALYZE' },
+            { id: 'ledger', label: 'LEDGER' },
           ].map(tab => (
             <button
               key={tab.id}
@@ -1245,6 +1300,8 @@ export default function PlayLogbook({
         ) : activeTab === 'ledger' ? (
           <PlayLogLedgerTab
             ledger={playLogLedger}
+            settling={ledgerSettling}
+            onSettleAll={counterpartKey => void settleLedgerPlays(counterpartKey)}
             onOpenEntry={entryId => {
               const entry = entries.find(e => String(e.id) === String(entryId))
               if (entry) void openEntryDetail(entry)

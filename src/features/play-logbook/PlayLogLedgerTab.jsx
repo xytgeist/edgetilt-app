@@ -7,9 +7,16 @@ import {
  * @param {{
  *   ledger: ReturnType<import('./playLogLedger.js').buildPlayLogLedger>,
  *   onOpenEntry: (entryId: string) => void,
+ *   onSettleAll?: (counterpartKey?: string | null) => void | Promise<void>,
+ *   settling?: boolean,
  * }} props
  */
-export default function PlayLogLedgerTab({ ledger, onOpenEntry }) {
+export default function PlayLogLedgerTab({
+  ledger,
+  onOpenEntry,
+  onSettleAll,
+  settling = false,
+}) {
   const [selectedKey, setSelectedKey] = useState(/** @type {string | null} */ (null))
   const counterparts = ledger?.counterparts || []
   const selected = counterparts.find(row => row.key === selectedKey) || null
@@ -43,6 +50,12 @@ export default function PlayLogLedgerTab({ ledger, onOpenEntry }) {
             ) : null}
           </div>
           <LedgerPairTotals theyOweYou={selected.theyOweYou} youOweThem={selected.youOweThem} />
+          {selected.settleablePlayCount > 0 ? (
+            <LedgerSettleAllButton
+              settling={settling}
+              onClick={() => void onSettleAll?.(selected.key)}
+            />
+          ) : null}
         </div>
         <div className="text-zinc-500 text-xs font-semibold uppercase tracking-wide px-1 mb-1">
           Unpaid plays
@@ -55,8 +68,11 @@ export default function PlayLogLedgerTab({ ledger, onOpenEntry }) {
               <button
                 key={`${play.sessionId}:${play.entryId}`}
                 type="button"
-                onClick={() => onOpenEntry(play.entryId)}
-                className="w-full text-left rounded-2xl bg-zinc-900 border border-zinc-800/60 p-4 touch-manipulation cursor-pointer active:bg-zinc-800/90"
+                onClick={() => {
+                  if (!settling) onOpenEntry(play.entryId)
+                }}
+                disabled={settling}
+                className="w-full text-left rounded-2xl bg-zinc-900 border border-zinc-800/60 p-4 touch-manipulation cursor-pointer active:bg-zinc-800/90 disabled:opacity-60"
                 data-play-logbook-card
                 data-play-logbook-entry
               >
@@ -88,7 +104,9 @@ export default function PlayLogLedgerTab({ ledger, onOpenEntry }) {
           })}
         </div>
         <p className="text-zinc-500 text-xs mt-4 px-1">
-          Tap a play to mark Paid. Settlement still goes through that play&apos;s manager.
+          {selected.settleablePlayCount > 0
+            ? 'Settle All marks these Paid. Tap a play to open it.'
+            : "Only that play's manager can mark Paid. Tap a play to open it."}
         </p>
       </div>
     )
@@ -134,6 +152,12 @@ export default function PlayLogLedgerTab({ ledger, onOpenEntry }) {
         data-play-logbook-card
       >
         <LedgerPairTotals theyOweYou={ledger.theyOweYouTotal} youOweThem={ledger.youOweThemTotal} />
+        {ledger.settleablePlayCount > 0 ? (
+          <LedgerSettleAllButton
+            settling={settling}
+            onClick={() => void onSettleAll?.(null)}
+          />
+        ) : null}
       </div>
       <div className="flex items-center gap-1.5 mb-1 px-1">
         <span className="min-w-0 flex-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
@@ -192,6 +216,23 @@ export default function PlayLogLedgerTab({ ledger, onOpenEntry }) {
         ))}
       </div>
     </div>
+  )
+}
+
+/** @param {{ settling?: boolean, onClick: () => void }} props */
+function LedgerSettleAllButton({ settling = false, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={e => {
+        e.stopPropagation()
+        if (!settling) onClick()
+      }}
+      disabled={settling}
+      className="mt-3 w-full min-h-11 rounded-2xl bg-cyan-600 text-white text-sm font-bold touch-manipulation active:bg-cyan-700 disabled:opacity-50"
+    >
+      {settling ? 'Settling…' : 'Settle All'}
+    </button>
   )
 }
 

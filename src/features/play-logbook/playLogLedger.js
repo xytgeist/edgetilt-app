@@ -1,7 +1,9 @@
 import { playLogWinLoss, playLogTemplateDisplayLabel } from './playLogMetrics.js'
 import {
+  playLogEntrySessionOwnerId,
   playLogPartnerLabel,
   playLogPartnerOutcomeShareUsdRounded,
+  playLogPartnersViewerCanMarkPaid,
 } from './playLogPartners.js'
 
 /**
@@ -44,6 +46,7 @@ function emptyLedger(hasSharedPlays = false, partnersLoaded = false) {
     youOweThemTotal: 0,
     openUsd: 0,
     peopleCount: 0,
+    settleablePlayCount: 0,
     hasSharedPlays,
     partnersLoaded,
   }
@@ -102,6 +105,7 @@ function settlementFromShare(shareUsd, shareIsViewer) {
  *   partnersBySessionId?: Map<string, import('./playLogPartners.js').PlayLogPartnerRow[]>,
  *   templateById?: Record<string, object>,
  *   templates?: object[],
+ *   sessionMetaById?: Map<string, { created_by_user_id?: string }>,
  * }} args
  */
 export function buildPlayLogLedger({
@@ -110,6 +114,7 @@ export function buildPlayLogLedger({
   partnersBySessionId,
   templateById = {},
   templates = [],
+  sessionMetaById,
 } = {}) {
   const uid = String(viewerUserId || '').trim()
   const hasSharedPlays = (entries || []).some(entry => Boolean(entry?.session_id))
@@ -142,12 +147,16 @@ export function buildPlayLogLedger({
 
     const tpl = templateById[entry.template_id]
     const gameLabel = playLogTemplateDisplayLabel(tpl, templates) || 'Unknown game'
+    const ownerId = playLogEntrySessionOwnerId(entry, sessionMetaById)
+    const canSettle = playLogPartnersViewerCanMarkPaid(partners, uid, ownerId)
     const playMeta = {
       sessionId,
       entryId: String(entry.id),
       capturedAt: entry.captured_at || null,
       casinoName: String(entry.casino_name || '').trim(),
       gameLabel,
+      canSettle,
+      ownerId,
     }
 
     /** @param {import('./playLogPartners.js').PlayLogPartnerRow} counterpart @param {import('./playLogPartners.js').PlayLogPartnerRow} shareRow */
@@ -205,15 +214,17 @@ export function buildPlayLogLedger({
   const counterparts = [...byKey.values()]
     .map(row => {
       const net = row.theyOweYou - row.youOweThem
+      const plays = [...row.plays].sort((a, b) => {
+        const ta = a.capturedAt ? new Date(a.capturedAt).getTime() : 0
+        const tb = b.capturedAt ? new Date(b.capturedAt).getTime() : 0
+        return tb - ta
+      })
       return {
         ...row,
         net,
         label: counterpartLabel(row),
-        plays: [...row.plays].sort((a, b) => {
-          const ta = a.capturedAt ? new Date(a.capturedAt).getTime() : 0
-          const tb = b.capturedAt ? new Date(b.capturedAt).getTime() : 0
-          return tb - ta
-        }),
+        plays,
+        settleablePlayCount: plays.filter(play => play.canSettle).length,
       }
     })
     .filter(row => row.net !== 0)
@@ -228,6 +239,10 @@ export function buildPlayLogLedger({
   const theyOweYouTotal = counterparts.reduce((acc, row) => acc + row.theyOweYou, 0)
   const youOweThemTotal = counterparts.reduce((acc, row) => acc + row.youOweThem, 0)
   const openUsd = counterparts.reduce((acc, row) => acc + Math.abs(row.net), 0)
+  const settleablePlayCount = counterparts.reduce(
+    (acc, row) => acc + row.settleablePlayCount,
+    0,
+  )
 
   return {
     counterparts,
@@ -235,7 +250,88 @@ export function buildPlayLogLedger({
     youOweThemTotal,
     openUsd,
     peopleCount: counterparts.length,
+    settleablePlayCount,
     hasSharedPlays,
     partnersLoaded: true,
   }
+}
+
+/**
+ * Mark unpaid ledger counterpart rows Paid on one session.
+ * Manager/owner: the selected counterparts. Partner who can mark Paid: their own row.
+ * @param {import('./playLogPartners.js').PlayLogPartnerRow[]} partners
+ * @param {string} viewerUserId
+ * @param {Set<string>} counterpartKeys
+ */
+export function playLogLedgerPartnersMarkedPaid(partners, viewerUserId, counterpartKeys) {
+  const uid = String(viewerUserId || '').trim()
+  const viewerRow = (partners || []).find(
+    row => row.kind === 'user' && String(row.userId || '') === uid,
+  )
+  if (!viewerRow) return null
+  let changed = false
+  const next = partners.map(row => {
+    if (viewerRow.isManager) {
+      if (row.kind === 'user' && String(row.userId || '') === uid) return row
+      if (row.paid) return row
+      if (!counterpartKeys?.has(playLogLedgerCounterpartKey(row))) return row
+      changed = true
+      return { ...row, paid: true }
+    }
+    if (row.key !== viewerRow.key || row.paid) return row
+    changed = true
+    return { ...row, paid: true }
+  })
+  return changed ? next : null
+}
+
+/**
+ * One paid-RPC patch per session for Settle All (whole ledger or one person).
+ * @param {{
+ *   ledger: ReturnType<typeof buildPlayLogLedger>,
+ *   viewerUserId?: string | null,
+ *   partnersBySessionId?: Map<string, import('./playLogPartners.js').PlayLogPartnerRow[]>,
+ *   sessionMetaById?: Map<string, { created_by_user_id?: string }>,
+ *   counterpartKey?: string | null,
+ * }} args
+ */
+export function buildPlayLogLedgerSettlePatches({
+  ledger,
+  viewerUserId,
+  partnersBySessionId,
+  sessionMetaById,
+  counterpartKey = null,
+} = {}) {
+  const uid = String(viewerUserId || '').trim()
+  const counterparts = (ledger?.counterparts || []).filter(
+    row => !counterpartKey || row.key === counterpartKey,
+  )
+  /** @type {Map<string, Set<string>>} */
+  const keysBySession = new Map()
+  for (const row of counterparts) {
+    for (const play of row.plays || []) {
+      if (!play.canSettle) continue
+      const sid = String(play.sessionId || '')
+      if (!sid) continue
+      const set = keysBySession.get(sid) || new Set()
+      set.add(row.key)
+      keysBySession.set(sid, set)
+    }
+  }
+
+  /** @type {{ sessionId: string, partners: import('./playLogPartners.js').PlayLogPartnerRow[] }[]} */
+  const patches = []
+  for (const [sessionId, keys] of keysBySession) {
+    const partners = partnersBySessionId?.get(sessionId)
+    if (!partners?.length) continue
+    const firstPlayOwner = (ledger?.counterparts || [])
+      .flatMap(row => row.plays || [])
+      .find(play => String(play.sessionId) === sessionId)?.ownerId
+    const ownerId = sessionMetaById?.get(sessionId)?.created_by_user_id || firstPlayOwner
+    if (!playLogPartnersViewerCanMarkPaid(partners, uid, ownerId)) continue
+    const next = playLogLedgerPartnersMarkedPaid(partners, uid, keys)
+    if (!next) continue
+    patches.push({ sessionId, partners: next })
+  }
+  return patches
 }

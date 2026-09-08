@@ -109,7 +109,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Windows Theo 2026-09-07 … Play Logbook Ledger
 
-**I am Windows Theo.** Logbook has a **LEDGER** tab: unpaid shared-play P/L combined per person (Edge user or guest), from the viewer’s seat. Paid drops out. Settlement still through each play’s manager. LOG chip `Open $X · N people`. **`1.4.104`.** No SQL.
+**I am Windows Theo.** Logbook tabs are **LOG / ANALYZE / LEDGER**. Unpaid shared-play P/L combined per person. **Settle all** on the book and inside each person. Paid drops out. Settlement still through each play’s manager. LOG chip `Open $X · N people`. **`1.4.105`.** No SQL.
 
 ### Windows Theo 2026-09-07 … @mention picker stays closed after pick
 

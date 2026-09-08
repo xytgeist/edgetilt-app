@@ -1105,6 +1105,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-09-07: **Play Logbook ledger totals type:** They owe you / You owe them on the summary card match partner display-name size. **`1.4.108`.**
+
 - 2026-09-07: **Play Logbook LOG open pill removed:** Open unpaid is the cyan/white dot on **LEDGER** only. **`1.4.107`.**
 
 - 2026-09-07: **Play Logbook Ledger history + closed plays:** Partners stay after $0. Closed play cards show Paid. Settle All writes a pairwise text row (`play_log_ledger_settlements`, **`20260907220000`** on test). Master list + per-partner book. Individual Paid still silent. **`1.4.106`.**

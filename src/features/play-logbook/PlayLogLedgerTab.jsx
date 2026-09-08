@@ -408,17 +408,17 @@ function LedgerSettleAllButton({ settling = false, onClick }) {
 function LedgerPairTotals({ theyOweYou, youOweThem }) {
   const net = theyOweYou - youOweThem
   return (
-    <div className="mt-1.5 space-y-0.5">
-      <div className="flex items-baseline justify-between gap-3 text-sm">
-        <span className="text-zinc-500">They owe you</span>
+    <div className="mt-1.5 space-y-1">
+      <div className="flex items-baseline justify-between gap-3 text-base">
+        <span className="font-bold text-white">They owe you</span>
         <span
           className={`font-bold tabular-nums ${theyOweYou > 0 ? 'text-emerald-300' : 'text-zinc-400'}`}
         >
           {formatPlayLogLedgerUsd(theyOweYou)}
         </span>
       </div>
-      <div className="flex items-baseline justify-between gap-3 text-sm">
-        <span className="text-zinc-500">You owe them</span>
+      <div className="flex items-baseline justify-between gap-3 text-base">
+        <span className="font-bold text-white">You owe them</span>
         <span
           className={`font-bold tabular-nums ${youOweThem > 0 ? 'text-red-300' : 'text-zinc-400'}`}
         >

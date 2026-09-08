@@ -707,6 +707,7 @@ export default function PlayLogbook({
       )
 
       if (sharedOnEdit && editingSessionId) {
+        const originalTemplateId = entries.find(e => e.id === editingEntryId)?.template_id
         await updatePlayLogSharedSession(supabaseClient, {
           sessionId: editingSessionId,
           capturedAt,
@@ -714,6 +715,10 @@ export default function PlayLogbook({
           notes,
           values: stored,
           partners: sharedPartnersPayload,
+          templateId:
+            selectedTemplate.id && selectedTemplate.id !== originalTemplateId
+              ? selectedTemplate.id
+              : undefined,
         })
       } else if (useShared) {
         await savePlayLogSharedSession(supabaseClient, {
@@ -1298,20 +1303,14 @@ export default function PlayLogbook({
                   <div className="space-y-3 pb-3">
                     <div>
                       <label className="block text-zinc-400 text-xs mb-1.5">Game</label>
-                      {editingEntryId ? (
-                        <div className="flex min-h-12 items-center rounded-2xl bg-zinc-800/90 px-4 text-sm font-semibold text-white">
-                          {playLogTemplateDisplayLabel(selectedTemplate, templates)}
-                        </div>
-                      ) : (
-                        <LogPlayGamePicker
-                          value={selectedTemplateId}
-                          onChange={onTemplateChange}
-                          templates={templates}
-                          entries={entries}
-                          ariaLabel="Game"
-                          placeholder="Select game"
-                        />
-                      )}
+                      <LogPlayGamePicker
+                        value={selectedTemplateId}
+                        onChange={onTemplateChange}
+                        templates={templates}
+                        entries={entries}
+                        ariaLabel="Game"
+                        placeholder="Select game"
+                      />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>

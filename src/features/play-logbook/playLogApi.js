@@ -295,9 +295,20 @@ export async function savePlayLogSharedSession(supabaseClient, args) {
  *   notes: string | null,
  *   values: Record<string, unknown>,
  *   partners: unknown[],
+ *   templateId?: string | null,
  * }} args
  */
 export async function updatePlayLogSharedSession(supabaseClient, args) {
+  if (args.templateId) {
+    const { error: templateError } = await supabaseClient.rpc(
+      'play_log_set_shared_session_template',
+      {
+        p_session_id: args.sessionId,
+        p_template_id: args.templateId,
+      },
+    )
+    if (templateError) throw templateError
+  }
   const { error } = await supabaseClient.rpc('play_log_update_shared_session', {
     p_session_id: args.sessionId,
     p_captured_at: args.capturedAt,

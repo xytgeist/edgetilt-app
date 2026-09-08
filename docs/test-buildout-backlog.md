@@ -1099,6 +1099,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-09-07: **Play Logbook Edit Play game picker:** Edit Play was a static game label. Same picker as Log Play now. Solo save already wrote `template_id`. Shared game change uses **`play_log_set_shared_session_template`** (`20260907210000`, applied test). **`1.4.100`.** Prod SQL when promoting.
+
 - 2026-09-07: **Downtown Fremont casino GPS:** Circa (existing nameless-geo row) + Plaza, The D, Four Queens, Golden Gate lat/lng. Migration **`20260907200000`**. Applied **test** + **prod**. Near you / GPS autofill / poker catalog nearby can rank them. No Edge / frontend.
 
 - 2026-09-07: **Farm ingest door (code):** `pipeline=farm` + Edge **`lounge-bot-ingest`** (secret **`LOUNGE_BOT_FARM_INGEST_SECRET`**). Portal wizard **Farm ingest**. Brains stay off-app. Spec **`docs/lounge-bot-farm-ingest.md`**. Apply **`20260907190000`** on test; deploy ingest + **`lounge-bot-admin`**; set secret before smoke. No YouTube/X worker yet.

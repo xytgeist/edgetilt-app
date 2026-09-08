@@ -11,7 +11,9 @@ import {
  *   viewerUserId?: string | null,
  *   onOpenEntry: (entryId: string) => void,
  *   onSettleAll?: (counterpartKey?: string | null) => void | Promise<void>,
+ *   onAcceptSettlement?: (settlementId: string) => void | Promise<void>,
  *   settling?: boolean,
+ *   initialCounterpartKey?: string | null,
  * }} props
  */
 export default function PlayLogLedgerTab({
@@ -20,7 +22,9 @@ export default function PlayLogLedgerTab({
   viewerUserId,
   onOpenEntry,
   onSettleAll,
+  onAcceptSettlement,
   settling = false,
+  initialCounterpartKey = null,
 }) {
   const [selectedKey, setSelectedKey] = useState(/** @type {string | null} */ (null))
   const counterparts = ledger?.counterparts || []
@@ -73,9 +77,15 @@ export default function PlayLogLedgerTab({
   )
 
   useEffect(() => {
+    if (initialCounterpartKey) setSelectedKey(initialCounterpartKey)
+  }, [initialCounterpartKey])
+
+  useEffect(() => {
     if (!selectedKey) return
+    if (initialCounterpartKey && selectedKey === initialCounterpartKey) return
+    if (!partnerRows.length) return
     if (!partnerRows.some(row => row.key === selectedKey)) setSelectedKey(null)
-  }, [partnerRows, selectedKey])
+  }, [partnerRows, selectedKey, initialCounterpartKey])
 
   if (selected) {
         const openPlays = selected.openPlays || selected.plays?.filter(play => !play.paid) || []
@@ -127,7 +137,13 @@ export default function PlayLogLedgerTab({
           <p className="text-zinc-500 text-xs mb-5 px-1">No open plays with this partner.</p>
         )}
 
-        <LedgerSettlementList rows={selectedSettlements} emptyHint="Settle All with this partner shows up here." />
+        <LedgerSettlementList
+          rows={selectedSettlements}
+          partnerRows={partnerRows}
+          settling={settling}
+          onAcceptSettlement={onAcceptSettlement}
+          emptyHint="Settle All with this partner shows up here."
+        />
 
         {closedPlays.length ? (
           <>
@@ -147,7 +163,7 @@ export default function PlayLogLedgerTab({
 
         <p className="text-zinc-500 text-xs mt-4 px-1">
           {selected.settleablePlayCount > 0
-            ? 'Settle All only squares this person. Tap a play to open it.'
+            ? 'Settle All only squares this person on your books. They get an alert to update theirs.'
             : 'Tap a play to open it. Closed plays stay on this book.'}
         </p>
       </div>
@@ -234,6 +250,17 @@ export default function PlayLogLedgerTab({
                     ? `${row.openPlays.length} open`
                     : 'Squared'}
                   {` · ${row.plays.length === 1 ? '1 play' : `${row.plays.length} plays`}`}
+                  {settlementViews.some(
+                    s =>
+                      s.counterpartKey === row.key &&
+                      settlementAcceptVisible(s, partnerRows),
+                  )
+                    ? ' · Update your books'
+                    : settlementViews.some(
+                          s => s.counterpartKey === row.key && s.waitingOnThem,
+                        )
+                      ? ' · Waiting on them'
+                      : ''}
                   {row.handle && row.kind === 'user'
                     ? ` · @${String(row.handle).trim().replace(/^@/, '')}`
                     : ''}
@@ -261,6 +288,9 @@ export default function PlayLogLedgerTab({
       <LedgerSettlementList
         className="mt-5"
         rows={settlementViews}
+        partnerRows={partnerRows}
+        settling={settling}
+        onAcceptSettlement={onAcceptSettlement}
         emptyHint="Settle All between you and a partner shows up here."
       />
     </div>
@@ -357,18 +387,34 @@ function LedgerPlayCard({ play, settling = false, onOpen }) {
 /**
  * @param {{
  *   rows: ReturnType<typeof playLogLedgerSettlementView>[],
+ *   partnerRows?: object[],
  *   emptyHint?: string,
  *   className?: string,
+ *   settling?: boolean,
+ *   onAcceptSettlement?: (settlementId: string) => void | Promise<void>,
  * }} props
  */
-function LedgerSettlementList({ rows, emptyHint = '', className = '' }) {
+function LedgerSettlementList({
+  rows,
+  partnerRows = [],
+  emptyHint = '',
+  className = '',
+  settling = false,
+  onAcceptSettlement,
+}) {
   return (
     <div className={className}>
       <LedgerSectionLabel>Ledger</LedgerSectionLabel>
       {rows.length ? (
         <div className="space-y-2">
           {rows.map(row => (
-            <LedgerSettlementCard key={row.id} row={row} />
+            <LedgerSettlementCard
+              key={row.id}
+              row={row}
+              showAccept={settlementAcceptVisible(row, partnerRows)}
+              settling={settling}
+              onAccept={() => void onAcceptSettlement?.(row.id)}
+            />
           ))}
         </div>
       ) : emptyHint ? (
@@ -378,10 +424,24 @@ function LedgerSettlementList({ rows, emptyHint = '', className = '' }) {
   )
 }
 
-/** @param {{ row: ReturnType<typeof playLogLedgerSettlementView> }} props */
-function LedgerSettlementCard({ row }) {
+/**
+ * @param {{
+ *   row: ReturnType<typeof playLogLedgerSettlementView>,
+ *   showAccept?: boolean,
+ *   settling?: boolean,
+ *   onAccept?: () => void,
+ * }} props
+ */
+function LedgerSettlementCard({ row, showAccept = false, settling = false, onAccept }) {
   const net = (row.theyOweYou || 0) - (row.youOweThem || 0)
   const plays = row.playCount === 1 ? '1 play' : `${row.playCount || 0} plays`
+  const statusHint = showAccept
+    ? 'Settled · update your books'
+    : row.waitingOnThem
+      ? 'Settled · waiting on them'
+      : row.counterpartAcceptedAt
+        ? 'Settled · both books updated'
+        : 'Settled'
   return (
     <div
       className="rounded-2xl border border-zinc-800/60 bg-zinc-900/60 px-4 py-3"
@@ -391,7 +451,7 @@ function LedgerSettlementCard({ row }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-white">{row.otherLabel}</div>
-          <div className="mt-0.5 text-[11px] text-zinc-500">Settled · {plays}</div>
+          <div className="mt-0.5 text-[11px] text-zinc-500">{statusHint} · {plays}</div>
         </div>
         <span
           className={`shrink-0 text-sm font-bold tabular-nums ${
@@ -423,11 +483,39 @@ function LedgerSettlementCard({ row }) {
           </span>
         </div>
       </div>
+      {showAccept ? (
+        <button
+          type="button"
+          onClick={e => {
+            e.stopPropagation()
+            if (!settling) onAccept?.()
+          }}
+          disabled={settling}
+          className="mt-3 w-full min-h-11 rounded-2xl bg-cyan-600 text-white text-sm font-bold touch-manipulation active:bg-cyan-700 disabled:opacity-50"
+        >
+          {settling ? 'Updating…' : 'Update my books'}
+        </button>
+      ) : row.waitingOnThem ? (
+        <p className="mt-3 text-xs text-zinc-500 px-0.5">
+          Waiting for them to update their books. We are not a bank… this only closed yours.
+        </p>
+      ) : null}
       {row.createdAt ? (
         <div className="mt-1.5 text-[11px] text-zinc-500">{fmtLedgerCapturedAt(row.createdAt)}</div>
       ) : null}
     </div>
   )
+}
+
+/** Show accept only if those sessions are still open on the viewer’s books. */
+function settlementAcceptVisible(row, partnerRows) {
+  if (!row?.needsAccept) return false
+  const partner = (partnerRows || []).find(p => p.key === row.counterpartKey)
+  if (!partner) return true
+  const openIds = new Set((partner.openPlays || []).map(play => String(play.sessionId)))
+  const sessionIds = row.sessionIds || []
+  if (!sessionIds.length) return true
+  return sessionIds.some(sid => openIds.has(String(sid)))
 }
 
 /** Swap-settlement paren style: gain plain, loss in ( ). */

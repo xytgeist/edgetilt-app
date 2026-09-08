@@ -417,6 +417,22 @@ export default function LoungeNotificationsPanel({
       }
 
       if (
+        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.PLAY_LOG_LEDGER_SETTLED
+      ) {
+        const params = new URLSearchParams()
+        params.set('tab', 'logbook')
+        params.set('playLogLedger', '1')
+        const actorId = String(event.actor_user_id || '').trim()
+        if (actorId) params.set('playLogPartner', `user:${actorId}`)
+        const nextPath = `/?${params.toString()}`
+        if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== nextPath) {
+          window.history.pushState({}, '', nextPath)
+          window.dispatchEvent(new PopStateEvent('popstate'))
+        }
+        return
+      }
+
+      if (
         (event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.PLAY_LOG_SHARED ||
           event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.PLAY_LOG_PARTNER_PAID ||
           event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.PLAY_LOG_PARTNER_UNPAID) &&

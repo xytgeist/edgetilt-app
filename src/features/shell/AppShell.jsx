@@ -349,6 +349,8 @@ export default function AppShell({
       : 28
   const [tab, setTab] = useState('home')
   const [pendingPlayLogEntryId, setPendingPlayLogEntryId] = useState(null)
+  const [pendingPlayLogLedger, setPendingPlayLogLedger] = useState(false)
+  const [pendingPlayLogPartner, setPendingPlayLogPartner] = useState(null)
   const [pendingPokerSessionId, setPendingPokerSessionId] = useState(null)
   const [pendingPokerStableDealId, setPendingPokerStableDealId] = useState(null)
   const [pendingTournamentSwapId, setPendingTournamentSwapId] = useState(null)
@@ -601,6 +603,8 @@ export default function AppShell({
         callId,
         missedCallId,
         playLogEntryId,
+        playLogLedger,
+        playLogPartner,
         pokerSessionId,
         postId,
         commentId,
@@ -649,6 +653,8 @@ export default function AppShell({
           setTab('logbook')
           setMenuOpen(false)
           if (playLogEntryId) setPendingPlayLogEntryId(playLogEntryId)
+          if (playLogLedger) setPendingPlayLogLedger(true)
+          if (playLogPartner) setPendingPlayLogPartner(playLogPartner)
         }
       } else if (targetTab === 'poker-stable') {
         if (browseMode === 'anonymous') {
@@ -1220,6 +1226,10 @@ export default function AppShell({
           setMenuOpen(false)
           const playLogEntry = (params.get('playLogEntry') || '').trim()
           if (playLogEntry) setPendingPlayLogEntryId(playLogEntry)
+          const playLogLedger = (params.get('playLogLedger') || '').trim().toLowerCase()
+          if (playLogLedger === '1' || playLogLedger === 'true') setPendingPlayLogLedger(true)
+          const playLogPartner = (params.get('playLogPartner') || '').trim()
+          if (playLogPartner) setPendingPlayLogPartner(playLogPartner)
         }
       }
       if (targetTab === 'w2g-scanner') {
@@ -2882,6 +2892,12 @@ export default function AppShell({
           titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
           highlightEntryId={pendingPlayLogEntryId}
           onHighlightEntryConsumed={() => setPendingPlayLogEntryId(null)}
+          openLedger={pendingPlayLogLedger}
+          ledgerPartnerKey={pendingPlayLogPartner}
+          onLedgerDeepLinkConsumed={() => {
+            setPendingPlayLogLedger(false)
+            setPendingPlayLogPartner(null)
+          }}
         />
       )
     } else if (tab === 'w2g-scanner') {

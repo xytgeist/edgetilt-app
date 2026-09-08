@@ -107,6 +107,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Mac Theo.** Ryan signed off: (1) App Store account is **Digiverse Ventures LLC**, (2) **digiverse.ventures** live, (3) Cloudflare email for edgetilt + digiverse / reply-from. **Still open:** Apple increased price request (Lifetime above `$1,000`). DSA trader is unblocked now that the org flip landed. Do not Add for Review.
 
+### Windows Theo 2026-09-07 … Ledger independent books Alert
+
+**I am Windows Theo.** Settle All is independent books (not a bank). Actor overlay closes immediately. Edge counterpart gets Alert/push **`play_log_ledger_settled`** and **Update my books**. SQL **`20260907230000`** + **`lounge-send-activity-push`** on **test**. **`1.4.110`.** Per-play Paid still shared. Prod SQL/Edge when Ryan asks.
+
 ### Windows Theo 2026-09-07 … Ledger settle notes like swaps
 
 **I am Windows Theo.** Settle All history cards match poker swap settlements: name + colored net at `text-sm`, they/you as labeled amount rows, date at 11px. **`1.4.109`.**

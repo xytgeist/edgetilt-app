@@ -526,3 +526,32 @@ export async function insertPlayLogLedgerSettlements(supabaseClient, actorUserId
   }
   return data || []
 }
+
+/**
+ * Counterpart updates their own books for a Settle All row.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} settlementId
+ */
+export async function acceptPlayLogLedgerSettlement(supabaseClient, settlementId) {
+  const id = String(settlementId || '').trim()
+  if (!id) throw new Error('Settlement required')
+  const { data, error } = await supabaseClient.rpc('play_log_ledger_accept_settlement', {
+    p_id: id,
+  })
+  if (error) {
+    const code = String(error.code || '')
+    if (
+      code === 'PGRST202' ||
+      code === '42883' ||
+      isPlayLogLedgerSettlementsMissingError(error)
+    ) {
+      throw new Error(
+        'Ledger accept needs SQL 20260907230000_play_log_ledger_settled_notify.sql on this project.',
+      )
+    }
+    throw error
+  }
+  const row = Array.isArray(data) ? data[0] : data
+  if (!row?.id) throw new Error('Settlement not found or already updated')
+  return row
+}

@@ -426,6 +426,8 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 
 - [x] **Ledger open cue is the tab dot:** LOG tab `Open $X · N people` pill removed. Cyan/white dot on **LEDGER** when `peopleCount > 0`. **`1.4.107`.**
 
+- [x] **Ledger independent books + settle Alert:** Settle All no longer flips shared `paid`. Actor overlay closes those plays immediately. Edge counterpart gets `play_log_ledger_settled` Alert/push → Logbook LEDGER (`playLogLedger=1&playLogPartner=user:{actor}`) → **Update my books** (`play_log_ledger_accept_settlement`). Guests get no Alert. SQL **`20260907230000_play_log_ledger_settled_notify.sql`** on **test**. Redeploy **`lounge-send-activity-push`** on **test**. **`1.4.110`.** Ryan smoke on test. Prod SQL + Edge when promoting.
+
 ---
 
 ## AP Guide editor (`/slot-guide-form`)
@@ -1104,6 +1106,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 ---
 
 ## Update log
+
+- 2026-09-07: **Play Logbook ledger independent books:** Settle All closes the actor’s books only and Alerts the Edge counterpart (`play_log_ledger_settled`) to **Update my books**. SQL **`20260907230000`** + **`lounge-send-activity-push`** on **test**. **`1.4.110`.**
 
 - 2026-09-07: **Play Logbook Settle All cards match swap settlements:** name + colored net at `text-sm`, they/you labeled rows, date 11px. **`1.4.109`.**
 

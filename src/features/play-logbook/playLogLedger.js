@@ -13,6 +13,9 @@ import {
  * same play do not get a direct tab. Paid partners and closed plays stay on the
  * book. Open totals only sum unpaid lines. Guests only appear when the viewer
  * is the manager of that play (they have no Logbook).
+ *
+ * Settle All is independent books (not a bank). It writes a pairwise settlement
+ * on the actor's ledger and alerts the other Edge user to update theirs.
  */
 
 /** @param {import('./playLogPartners.js').PlayLogPartnerRow} row */
@@ -100,6 +103,7 @@ function settlementFromShare(shareUsd, shareIsViewer) {
  *   templateById?: Record<string, object>,
  *   templates?: object[],
  *   sessionMetaById?: Map<string, { created_by_user_id?: string }>,
+ *   settlements?: object[],
  * }} args
  */
 export function buildPlayLogLedger({
@@ -109,11 +113,13 @@ export function buildPlayLogLedger({
   templateById = {},
   templates = [],
   sessionMetaById,
+  settlements = [],
 } = {}) {
   const uid = String(viewerUserId || '').trim()
   const hasSharedPlays = (entries || []).some(entry => Boolean(entry?.session_id))
   const partnersLoaded = Boolean(partnersBySessionId?.size)
   if (!uid || !partnersLoaded) return emptyLedger(hasSharedPlays, partnersLoaded)
+  const overlayClosed = playLogLedgerOverlayClosedSet(settlements, uid)
 
   /** @type {Map<string, object>} */
   const byKey = new Map()
@@ -179,8 +185,10 @@ export function buildPlayLogLedger({
         youOweThem: 0,
         plays: [],
       }
+      const overlay = overlayClosed.has(`${key}::${sessionId}`)
+      const closedOnMyBooks = Boolean(paid) || overlay
       const next = mergeCounterpartProfile(prev, counterpart)
-      if (!paid) {
+      if (!closedOnMyBooks) {
         next.theyOweYou += theyOweYou
         next.youOweThem += youOweThem
       }
@@ -188,8 +196,8 @@ export function buildPlayLogLedger({
         ...playMeta,
         theyOweYou,
         youOweThem,
-        paid: Boolean(paid),
-        canSettle: Boolean(playMeta.canSettle) && !paid,
+        paid: closedOnMyBooks,
+        canSettle: !closedOnMyBooks,
       })
       byKey.set(key, next)
     }
@@ -394,6 +402,7 @@ export function playLogLedgerSettlementView(row, viewerUserId) {
     youOweThem,
     playCount: Number(row.play_count) || 0,
   })
+  const viewerIsCounterpart = String(row?.counterpart_user_id || '') === uid
   return {
     id: row.id,
     createdAt: row.created_at,
@@ -402,8 +411,39 @@ export function playLogLedgerSettlementView(row, viewerUserId) {
     theyOweYou,
     youOweThem,
     playCount: Number(row.play_count) || 0,
+    sessionIds: Array.isArray(row.session_ids) ? row.session_ids.map(String) : [],
+    viewerIsActor,
+    viewerIsCounterpart,
+    needsAccept: viewerIsCounterpart && !row.counterpart_accepted_at,
+    waitingOnThem:
+      viewerIsActor && row.counterpart_kind === 'user' && !row.counterpart_accepted_at,
+    counterpartAcceptedAt: row.counterpart_accepted_at || null,
     ...copy,
   }
+}
+
+/**
+ * Session ids closed on the viewer's books via Settle All (actor immediately,
+ * counterpart only after they update their books).
+ * @param {object[]} settlements
+ * @param {string} viewerUserId
+ */
+export function playLogLedgerOverlayClosedSet(settlements, viewerUserId) {
+  const uid = String(viewerUserId || '').trim()
+  const closed = new Set()
+  for (const row of settlements || []) {
+    const otherKey = playLogLedgerSettlementOtherKey(row, uid)
+    if (!otherKey) continue
+    const isActor = String(row.actor_user_id || '') === uid
+    const isCounterpartAccepted =
+      String(row.counterpart_user_id || '') === uid && Boolean(row.counterpart_accepted_at)
+    if (!isActor && !isCounterpartAccepted) continue
+    for (const sid of row.session_ids || []) {
+      const sessionId = String(sid || '').trim()
+      if (sessionId) closed.add(`${otherKey}::${sessionId}`)
+    }
+  }
+  return closed
 }
 
 /** Snapshot of each pair about to be squared (one insert per counterpart). */

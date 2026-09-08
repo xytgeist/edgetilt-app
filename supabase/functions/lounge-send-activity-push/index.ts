@@ -251,6 +251,8 @@ function actionPhrase(eventType: string, commentId: string | null, isReply = fal
       return 'marked your play log share as paid'
     case 'play_log_partner_unpaid':
       return 'marked your play log share as unpaid'
+    case 'play_log_ledger_settled':
+      return 'marked your play log ledger settled ... update your books'
     case 'chat_dm':
       return 'sent you a message'
     case 'chat_group_invite':
@@ -405,6 +407,7 @@ function buildTargetUrl(
     | 'post_id'
     | 'comment_id'
     | 'play_log_entry_id'
+    | 'actor_user_id'
     | 'chat_room_id'
     | 'chat_call_id'
     | 'starter_weekly_unlock_id'
@@ -445,6 +448,11 @@ function buildTargetUrl(
   ) {
     params.set('tab', 'logbook')
     params.set('playLogEntry', event.play_log_entry_id)
+  } else if (event.event_type === 'play_log_ledger_settled') {
+    params.set('tab', 'logbook')
+    params.set('playLogLedger', '1')
+    const actorId = String(event.actor_user_id || '').trim()
+    if (actorId) params.set('playLogPartner', `user:${actorId}`)
   } else if (event.event_type === 'follow' || event.event_type === 'creator_fan_sub') {
     const handle = String(actor?.handle || '').trim().replace(/^@/, '').toLowerCase()
     if (handle) {
@@ -881,6 +889,18 @@ async function handleImmediatePush(
       title: pushTitleForEventType(event.event_type),
       body: `${who} ${detail}`,
       url: `/?${params.toString()}`,
+      activityEventId: event.id,
+    }
+  }
+
+  if (event.event_type === 'play_log_ledger_settled') {
+    const who = actorDisplayName((actorProfile as ActorProfile | null) || null)
+    notification = {
+      title: pushTitleForEventType(event.event_type),
+      body: `${who} marked your play log ledger settled ... update your books`,
+      url: buildTargetUrl(event, (actorProfile as ActorProfile | null) || null, {
+        activityEventId: event.id,
+      }),
       activityEventId: event.id,
     }
   }

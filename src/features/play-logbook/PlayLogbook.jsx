@@ -79,7 +79,6 @@ import {
   buildPlayLogLedger,
   buildPlayLogLedgerSettlePatches,
   buildPlayLogLedgerSettlementInserts,
-  formatPlayLogLedgerOpenChip,
 } from './playLogLedger.js'
 import {
   deletePlayLogSharedSession,
@@ -1249,16 +1248,6 @@ export default function PlayLogbook({
                   className="w-full rounded-2xl py-3 text-amber-300/90 text-sm font-semibold touch-manipulation active:text-amber-200 disabled:opacity-40 border border-amber-500/30"
                 >
                   Primary game templates
-                </button>
-              ) : null}
-              {playLogLedger.peopleCount > 0 ? (
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('ledger')}
-                  className="w-full rounded-2xl border border-cyan-500/40 bg-cyan-600/15 px-3 py-3 text-sm font-semibold text-cyan-300 touch-manipulation active:bg-cyan-600/25"
-                  data-play-logbook-ledger-chip
-                >
-                  {formatPlayLogLedgerOpenChip(playLogLedger)}
                 </button>
               ) : null}
             </div>

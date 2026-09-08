@@ -33,13 +33,6 @@ export function formatPlayLogLedgerUsd(n) {
   return rounded < 0 ? `-${str}` : str
 }
 
-/** @param {{ openUsd: number, peopleCount: number }} args */
-export function formatPlayLogLedgerOpenChip({ openUsd, peopleCount }) {
-  const money = formatPlayLogLedgerUsd(Math.abs(openUsd || 0))
-  const people = peopleCount === 1 ? '1 person' : `${peopleCount} people`
-  return `Open ${money} · ${people}`
-}
-
 function emptyLedger(hasSharedPlays = false, partnersLoaded = false) {
   return {
     counterparts: [],

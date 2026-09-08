@@ -75,12 +75,13 @@ import {
   playLogPartnersToRpcPayload,
   playLogPartnersValidationError,
   playLogPartnersViewerCanMarkPaid,
+  playLogPartnersViewerCanSettleOwnShare,
 } from './playLogPartners.js'
 import {
   buildPlayLogLedger,
   buildPlayLogLedgerSettlementInserts,
   playLogLedgerClosedKeysForSession,
-  playLogLedgerCounterpartKey,
+  playLogLedgerSettleKeyForPaidToggle,
 } from './playLogLedger.js'
 import {
   deletePlayLogSharedSession,
@@ -595,6 +596,28 @@ export default function PlayLogbook({
       }
     },
     [ledgerSettling, playLogLedger, userId, supabaseClient, viewerProfile],
+  )
+
+  const viewerCanEditPaid = useCallback(
+    (partnerRows, ownerId) =>
+      playLogPartnersViewerCanMarkPaid(partnerRows, userId, ownerId) ||
+      playLogPartnersViewerCanSettleOwnShare(partnerRows, userId),
+    [userId],
+  )
+
+  const settlePaidToggle = useCallback(
+    async (partnerRows, sessionId, ownerId, rowKey) => {
+      const row = (partnerRows || []).find(p => p.key === rowKey)
+      const ledgerKey = playLogLedgerSettleKeyForPaidToggle(
+        partnerRows,
+        userId,
+        ownerId,
+        row,
+      )
+      if (!ledgerKey) return
+      await settleLedgerPlays(ledgerKey, sessionId)
+    },
+    [userId, settleLedgerPlays],
   )
 
   const acceptLedgerSettlement = useCallback(
@@ -1676,9 +1699,8 @@ export default function PlayLogbook({
                         }}
                         netOutcome={logPlayNetOutcome}
                         playBetSize={formFields.bet_size}
-                        canEditPaid={playLogPartnersViewerCanMarkPaid(
+                        canEditPaid={viewerCanEditPaid(
                           partners,
-                          userId,
                           sessionOwnerId(editingSessionId) ?? userId,
                         )}
                         closedPartnerKeys={
@@ -1692,15 +1714,17 @@ export default function PlayLogbook({
                         }
                         onSettlePartnerPlay={
                           editingSessionId &&
-                          playLogPartnersViewerCanMarkPaid(
+                          viewerCanEditPaid(
                             partners,
-                            userId,
                             sessionOwnerId(editingSessionId) ?? userId,
                           )
                             ? async key => {
-                                const row = partners.find(p => p.key === key)
-                                const ledgerKey = row ? playLogLedgerCounterpartKey(row) : key
-                                await settleLedgerPlays(ledgerKey, editingSessionId)
+                                await settlePaidToggle(
+                                  partners,
+                                  editingSessionId,
+                                  sessionOwnerId(editingSessionId) ?? userId,
+                                  key,
+                                )
                               }
                             : undefined
                         }
@@ -1788,6 +1812,7 @@ export default function PlayLogbook({
                 userId,
                 detailCreatorId,
               )
+              const detailCanEditPaid = viewerCanEditPaid(detailPartners, detailCreatorId)
               return (
                 <>
                   <SheetHeader
@@ -1854,7 +1879,7 @@ export default function PlayLogbook({
                           }}
                           readOnly
                           canEditManager={false}
-                          canEditPaid={detailCanMarkPaid}
+                          canEditPaid={detailCanEditPaid}
                           netOutcome={detailNetOutcome}
                           playBetSize={viewingEntry.values?.bet_size}
                           closedPartnerKeys={
@@ -1867,11 +1892,14 @@ export default function PlayLogbook({
                               : undefined
                           }
                           onSettlePartnerPlay={
-                            detailCanMarkPaid && viewingEntry.session_id
+                            detailCanEditPaid && viewingEntry.session_id
                               ? async key => {
-                                const row = detailPartners.find(p => p.key === key)
-                                const ledgerKey = row ? playLogLedgerCounterpartKey(row) : key
-                                await settleLedgerPlays(ledgerKey, viewingEntry.session_id)
+                                await settlePaidToggle(
+                                  detailPartners,
+                                  viewingEntry.session_id,
+                                  detailCreatorId,
+                                  key,
+                                )
                               }
                               : undefined
                           }

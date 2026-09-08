@@ -432,6 +432,8 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 
 - [x] **Per-play settle Alert lands on that play:** Paid checkbox / **Settle this play** writes a 1-play independent settlement. Counterpart Alert copy stays **marked your share as paid on {game}** (`play_log_partner_paid`) and opens that play’s Update my books / Remain Unsettled card, not LOG and not dual Settle All. Multi-play Settle All still emits `play_log_ledger_settled`. SQL **`20260907250000_play_log_one_play_paid_alert.sql`** on **test**. Redeploy **`lounge-send-activity-push`** on **test**. **`1.4.113`.** Ryan smoke on test. Prod SQL + Edge when promoting.
 
+- [x] **Partner self-Paid:** Any Edge partner can check their own Paid box (manager/owner still mark others). Same 1-play independent settlement as Settle this play, so the manager gets Update my books / Remain Unsettled. No SQL. **`1.4.120`.** Ryan smoke on test.
+
 - [x] **Cash return vs RTP (no SQL):** LOG chips **Return** (cash out vs cash in) + **Bets** (`+18.4` / `-6.2`). ANALYZE **Cash return %** is total out ÷ total in (not slot RTP). **Avg bets won/lost** / **Total bets won/lost** = cash P/L ÷ bet (mean + sum; no cash-weighted bets average). True **RTP (from spins)** only when `# Spins` is filled: `(bet × spins + cash P/L) ÷ coin-in`; hint how many plays were skipped. Cash return/bets/RTP ignore acquisition fee; Profit/loss chip still uses `playLogWinLoss`. Calculator **Current EV (RTP %)** unchanged. **`1.4.111`.** Ryan smoke on test.
 
 - [x] **Ledger PARTNER (open) vs (settled):** Master list **PARTNER (open)** is only counterparts with unsettled plays. Fully settled people sit in collapsed **PARTNER (settled)** (tap to expand, same partner book). No SQL. **`1.4.115`.** Ryan smoke on test.
@@ -1116,6 +1118,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 ---
 
 ## Update log
+
+- 2026-09-08: **Play Logbook partner self-Paid:** Any Edge partner can check their own Paid box. Same 1-play independent settlement as Settle this play; manager gets Update my books / Remain Unsettled. No SQL. **`1.4.120`.**
 
 - 2026-09-08: **Play Logbook LEDGER prod promote:** SQL **`20260907220000`–`20260907260000`** + **`lounge-send-activity-push`** on **`jtjgtucumuoswnbauxry`**. Frontend **`test` → `main`**. **`1.4.119`.**
 

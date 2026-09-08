@@ -16,10 +16,13 @@ import {
   playLogPartnerOutcomeShareUsdRounded,
   playLogPartnersEnsureManager,
   playLogPartnersPercentSum,
+  playLogPartnersViewerCanTogglePaid,
   playLogPartnersWithManager,
 } from './playLogPartners.js'
 import { addSavedGuestLabel } from './playLogSavedGuests.js'
-import { playLogLedgerCounterpartKey } from './playLogLedger.js'
+import {
+  playLogPartnerLedgerOverlayClosed,
+} from './playLogLedger.js'
 
 /** Partner row numeric columns — P/L fits seven-digit dollars; Share $ stays tighter (bet-size slice). */
 const PARTNER_NUMERIC_GRID =
@@ -136,6 +139,7 @@ export default function PlayLogPartnersSection({
   }
 
   const togglePaid = async (key, nextPaid) => {
+    if (!nextPaid && onSettlePartnerPlay && !onPaidPersist) return
     if (nextPaid && onSettlePartnerPlay) {
       setPaidSaving(true)
       try {
@@ -378,14 +382,20 @@ export default function PlayLogPartnersSection({
           <PaidCheckbox
             checked={
               Boolean(row.paid) ||
-              Boolean(closedPartnerKeys?.has(playLogLedgerCounterpartKey(row))) ||
-              Boolean(closedPartnerKeys?.has(row.key))
+              playLogPartnerLedgerOverlayClosed(row, {
+                viewerUserId: userId,
+                partners,
+                closedPartnerKeys,
+              })
             }
             disabled={
-              !canEditPaid ||
               paidSaving ||
-              Boolean(closedPartnerKeys?.has(playLogLedgerCounterpartKey(row))) ||
-              Boolean(closedPartnerKeys?.has(row.key))
+              playLogPartnerLedgerOverlayClosed(row, {
+                viewerUserId: userId,
+                partners,
+                closedPartnerKeys,
+              }) ||
+              !playLogPartnersViewerCanTogglePaid(partners, userId, ownerUserId, row)
             }
             onChange={next => void togglePaid(row.key, next)}
           />
@@ -566,7 +576,8 @@ function PlayLogPartnersInfoButton({ hasExtraPartner }) {
                   The <span className="text-cyan-300/90">owner</span> is the{' '}
                   <span className="text-amber-300/90">manager</span> by default. Tap a partner&apos;s name to transfer
                   management. <span className="text-amber-300/90">Managers</span> are considered &quot;paid&quot; by
-                  default. Edge registered partners receive this play in their logbook. Guests are attribution only.
+                  default. Any Edge partner can mark themselves Paid to close their books; the manager gets Update my
+                  books. Edge registered partners receive this play in their logbook. Guests are attribution only.
                 </p>
               ) : (
                 <p>

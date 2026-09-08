@@ -146,12 +146,32 @@ export function playLogPartnersViewerIsManager(rows, userId) {
   )
 }
 
-/** Creator (session owner) or designated manager may mark partners paid. */
+/** Creator (session owner) or designated manager may mark other partners paid. */
 export function playLogPartnersViewerCanMarkPaid(rows, userId, creatorUserId) {
   const uid = String(userId || '').trim()
   if (!uid) return false
   if (String(creatorUserId || '').trim() === uid) return true
   return playLogPartnersViewerIsManager(rows, uid)
+}
+
+/** Viewer is an Edge partner on this play (can close their own books). */
+export function playLogPartnersViewerCanSettleOwnShare(rows, userId) {
+  const uid = String(userId || '').trim()
+  if (!uid) return false
+  return (rows || []).some(row => row.kind === 'user' && String(row.userId || '') === uid)
+}
+
+/**
+ * Manager/owner: other people's Paid boxes. Partner: only their own row.
+ * Managers stay auto-paid and cannot toggle themselves.
+ */
+export function playLogPartnersViewerCanTogglePaid(rows, userId, creatorUserId, row) {
+  const uid = String(userId || '').trim()
+  if (!uid || !row) return false
+  const isSelf = row.kind === 'user' && String(row.userId || '') === uid
+  if (isSelf) return !playLogPartnersViewerIsManager(rows, uid)
+  if (row.kind === 'guest') return playLogPartnersViewerCanMarkPaid(rows, uid, creatorUserId)
+  return playLogPartnersViewerCanMarkPaid(rows, uid, creatorUserId)
 }
 
 /** @param {string} userId @param {{ handle?: string, display_name?: string } | null} [profile] */

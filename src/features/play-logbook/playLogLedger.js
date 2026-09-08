@@ -509,6 +509,55 @@ export function playLogLedgerClosedKeysForSession(settlements, viewerUserId, ses
   return keys
 }
 
+/**
+ * Paid checkbox → ledger counterpart. Manager/owner marking someone else uses that row.
+ * A partner checking themselves settles vs the play manager.
+ */
+export function playLogLedgerSettleKeyForPaidToggle(
+  partners,
+  viewerUserId,
+  creatorUserId,
+  toggledRow,
+) {
+  const uid = String(viewerUserId || '').trim()
+  if (!toggledRow) return ''
+  const togglingSelf =
+    toggledRow.kind === 'user' && String(toggledRow.userId || '') === uid
+  if (!togglingSelf && playLogPartnersViewerCanMarkPaid(partners, uid, creatorUserId)) {
+    return playLogLedgerCounterpartKey(toggledRow)
+  }
+  const manager = (partners || []).find(p => p.isManager)
+  return manager ? playLogLedgerCounterpartKey(manager) : ''
+}
+
+/**
+ * Ledger overlay is keyed by the other person. A partner who closed their books
+ * vs the manager still needs their own Paid box to look closed.
+ */
+export function playLogPartnerLedgerOverlayClosed(
+  row,
+  { viewerUserId, partners, closedPartnerKeys } = {},
+) {
+  if (!row || !closedPartnerKeys?.size) return false
+  const rowKey = playLogLedgerCounterpartKey(row)
+  if (
+    (rowKey && closedPartnerKeys.has(rowKey)) ||
+    (row.key && closedPartnerKeys.has(row.key))
+  ) {
+    return true
+  }
+  const uid = String(viewerUserId || '').trim()
+  const isSelf = row.kind === 'user' && String(row.userId || '') === uid
+  if (!isSelf) return false
+  const manager = (partners || []).find(p => p.isManager)
+  if (!manager) return false
+  const managerKey = playLogLedgerCounterpartKey(manager)
+  return (
+    Boolean(managerKey && closedPartnerKeys.has(managerKey)) ||
+    Boolean(manager.key && closedPartnerKeys.has(manager.key))
+  )
+}
+
 export function playLogPaidSettleSearch({ actorUserId, entryId, sessionId } = {}) {
   const params = new URLSearchParams()
   params.set('tab', 'logbook')

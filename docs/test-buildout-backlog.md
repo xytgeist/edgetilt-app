@@ -1099,6 +1099,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-09-07: **Downtown Fremont casino GPS:** Circa (existing nameless-geo row) + Plaza, The D, Four Queens, Golden Gate lat/lng. Migration **`20260907200000`**. Applied **test** + **prod**. Near you / GPS autofill / poker catalog nearby can rank them. No Edge / frontend.
+
 - 2026-09-07: **Farm ingest door (code):** `pipeline=farm` + Edge **`lounge-bot-ingest`** (secret **`LOUNGE_BOT_FARM_INGEST_SECRET`**). Portal wizard **Farm ingest**. Brains stay off-app. Spec **`docs/lounge-bot-farm-ingest.md`**. Apply **`20260907190000`** on test; deploy ingest + **`lounge-bot-admin`**; set secret before smoke. No YouTube/X worker yet.
 
 - 2026-09-07: **UFC Slate ops toast "Supabase env not configured":** Syndicate Pages has no `VITE_SUPABASE_URL`. UFC invoke must use the ops `supabaseClient` (`functions.invoke`), not `invokeAdminEdgeFunction`. Parse Edge `{ error }` off `error.context`. **`1.4.99`.** Push `test` publishes sharpesyndicate.com.

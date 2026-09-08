@@ -420,6 +420,8 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 
 - [x] **Manager default + owner rules:** migration **`20260531210000_play_log_manager_owner_default.sql`** — creator default manager; owner-only session delete; partner row delete unchanged.
 
+- [x] **Ledger tab (unpaid combined):** LOG / LEDGER / ANALYZE. One row per counterpart (Edge user or guest) from the viewer’s seat. Paid drops out. Guests only on sessions the viewer managed. Two non-managers on the same play do **not** get a direct tab... settlement still through that play’s manager. LOG chip `Open $X · N people`. Tap person → unpaid plays → entry Paid switch (same Partners table). No new SQL. **`1.4.104`.** Ryan smoke on test.
+
 ---
 
 ## AP Guide editor (`/slot-guide-form`)
@@ -1099,7 +1101,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- 2026-09-07: **@mention typeahead stays closed after pick:** Selecting a person inserts `@handle ` (same commit space as cashtags) and ignores that token until you edit it. Stops the `@ken` → tap → picker-reopens loop. **`1.4.103`.** Promoted **`test` → `main`**.
+- 2026-09-07: **Play Logbook Ledger tab:** Combined unpaid shared-play balances on **LEDGER** (next to LOG / ANALYZE). One row per counterpart from the viewer’s seat; Paid drops out; each play still clears through that play’s manager. LOG chip `Open $X · N people`. Tap person → unpaid plays → mark Paid on the entry. No new SQL. **`1.4.104`.**
 
 - 2026-09-07: **@mention typeahead display name:** Lounge + Chat composers match **`display_name`** as well as handle (`@MeSoSl` finds MeSoSlotty / `@KennyNorman`). Handle prefix still ranks first. **`1.4.102`.** Promoted **`test` → `main`**.
 

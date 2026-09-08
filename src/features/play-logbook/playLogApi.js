@@ -262,6 +262,69 @@ export async function fetchPlayLogSessionPartners(supabaseClient, sessionId) {
   return Array.isArray(data) ? data : []
 }
 
+const PLAY_LOG_PARTNER_SESSION_CHUNK = 80
+
+/**
+ * Partners for every shared session the viewer can see (RLS). Used by Ledger.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string[]} sessionIds
+ * @returns {Promise<Map<string, object[]>>}
+ */
+export async function fetchPlayLogSessionPartnersBySessionIds(supabaseClient, sessionIds) {
+  const ids = [...new Set((sessionIds || []).filter(Boolean).map(id => String(id)))]
+  /** @type {Map<string, object[]>} */
+  const bySession = new Map()
+  if (!ids.length) return bySession
+
+  /** @type {object[]} */
+  const rows = []
+  for (let i = 0; i < ids.length; i += PLAY_LOG_PARTNER_SESSION_CHUNK) {
+    const chunk = ids.slice(i, i + PLAY_LOG_PARTNER_SESSION_CHUNK)
+    const { data, error } = await supabaseClient
+      .from('play_log_session_partners')
+      .select('id, session_id, participant_kind, user_id, guest_label, share_percent, is_manager, paid')
+      .in('session_id', chunk)
+    if (error) throw error
+    rows.push(...(data || []))
+  }
+
+  const userIds = [
+    ...new Set(
+      rows
+        .map(row => (row.user_id ? String(row.user_id) : ''))
+        .filter(Boolean),
+    ),
+  ]
+  /** @type {Map<string, { handle?: string, display_name?: string, avatar_url?: string }>} */
+  const profilesById = new Map()
+  for (let i = 0; i < userIds.length; i += PLAY_LOG_PARTNER_SESSION_CHUNK) {
+    const chunk = userIds.slice(i, i + PLAY_LOG_PARTNER_SESSION_CHUNK)
+    const { data, error } = await supabaseClient
+      .from('profiles')
+      .select('user_id, handle, display_name, avatar_url')
+      .in('user_id', chunk)
+    if (error) throw error
+    for (const profile of data || []) {
+      profilesById.set(String(profile.user_id), profile)
+    }
+  }
+
+  for (const row of rows) {
+    const sid = String(row.session_id || '')
+    if (!sid) continue
+    const profile = row.user_id ? profilesById.get(String(row.user_id)) : null
+    const list = bySession.get(sid) || []
+    list.push({
+      ...row,
+      handle: profile?.handle || '',
+      display_name: profile?.display_name || '',
+      avatar_url: profile?.avatar_url || '',
+    })
+    bySession.set(sid, list)
+  }
+  return bySession
+}
+
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {{

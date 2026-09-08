@@ -64,6 +64,7 @@ import {
 } from './playLogAnalyzePeriod.js'
 import { buildPlayLogAllPlaysCsv, buildPlayLogCsv, downloadPlayLogCsv } from './playLogExport.js'
 import PlayLogPartnersSection from './PlayLogPartnersSection.jsx'
+import PlayLogLedgerTab from './PlayLogLedgerTab.jsx'
 import {
   playLogEntryIsSessionOwner,
   playLogEntrySessionOwnerId,
@@ -74,9 +75,11 @@ import {
   playLogPartnersValidationError,
   playLogPartnersViewerCanMarkPaid,
 } from './playLogPartners.js'
+import { buildPlayLogLedger, formatPlayLogLedgerOpenChip } from './playLogLedger.js'
 import {
   deletePlayLogSharedSession,
   fetchPlayLogSessionPartners,
+  fetchPlayLogSessionPartnersBySessionIds,
   fetchPlayLogSessionsMeta,
   isPlayLogPartnersPaidRpcMissingError,
   savePlayLogSharedSession,
@@ -206,6 +209,7 @@ export default function PlayLogbook({
   const [templates, setTemplates] = useState([])
   const [entries, setEntries] = useState([])
   const [sessionMetaById, setSessionMetaById] = useState(() => new Map())
+  const [partnersBySessionId, setPartnersBySessionId] = useState(() => new Map())
   const [viewerProfile, setViewerProfile] = useState(null)
   const [partners, setPartners] = useState([])
   const [editingSessionId, setEditingSessionId] = useState(null)
@@ -326,6 +330,18 @@ export default function PlayLogbook({
   const viewerIsAdmin = isAdmin || viewerProfile?.role === 'admin'
   const isSystemTemplateSheet = templateSheetMode === 'system'
 
+  const playLogLedger = useMemo(
+    () =>
+      buildPlayLogLedger({
+        viewerUserId: userId,
+        entries,
+        partnersBySessionId,
+        templateById,
+        templates,
+      }),
+    [userId, entries, partnersBySessionId, templateById, templates],
+  )
+
   const viewingEntry = useMemo(() => {
     if (!viewingEntryId) return null
     return entries.find(e => String(e.id) === String(viewingEntryId)) || null
@@ -343,6 +359,7 @@ export default function PlayLogbook({
         setMetricDefs([])
         setTemplates([])
         setEntries([])
+        setPartnersBySessionId(new Map())
         return
       }
 
@@ -377,11 +394,25 @@ export default function PlayLogbook({
       } catch {
         metaMap = new Map()
       }
+      let partnersMap = new Map()
+      try {
+        const rawBySession = await fetchPlayLogSessionPartnersBySessionIds(
+          supabaseClient,
+          sessionIds,
+        )
+        for (const [sid, rows] of rawBySession) {
+          const owner = metaMap.get(String(sid))?.created_by_user_id
+          partnersMap.set(String(sid), playLogPartnersFromSessionList(rows, owner))
+        }
+      } catch {
+        partnersMap = new Map()
+      }
 
       setMetricDefs(defsRes.data || [])
       setTemplates(tplRes.data || [])
       setEntries(entList)
       setSessionMetaById(metaMap)
+      setPartnersBySessionId(partnersMap)
       setViewerProfile(profRes.data || null)
     } catch (e) {
       setError(e?.message || 'Failed to load logbook')
@@ -450,6 +481,15 @@ export default function PlayLogbook({
     setError(err?.message || 'Could not update paid status')
   }, [])
 
+  const rememberSessionPartners = useCallback((sessionId, rows) => {
+    if (!sessionId) return
+    setPartnersBySessionId(prev => {
+      const next = new Map(prev)
+      next.set(String(sessionId), rows)
+      return next
+    })
+  }, [])
+
   const openEntryDetail = useCallback(
     async entry => {
       if (!entry?.id) return
@@ -460,15 +500,15 @@ export default function PlayLogbook({
       if (entry.session_id) {
         try {
           const rows = await fetchPlayLogSessionPartners(supabaseClient, entry.session_id)
-          setDetailPartners(
-            playLogPartnersFromSessionList(rows, sessionOwnerId(entry.session_id)),
-          )
+          const mapped = playLogPartnersFromSessionList(rows, sessionOwnerId(entry.session_id))
+          setDetailPartners(mapped)
+          rememberSessionPartners(entry.session_id, mapped)
         } catch {
           setDetailPartners([])
         }
       }
     },
-    [supabaseClient, sessionOwnerId],
+    [supabaseClient, sessionOwnerId, rememberSessionPartners],
   )
 
   const openLogPlay = useCallback(
@@ -1011,17 +1051,28 @@ export default function PlayLogbook({
         <div className="flex rounded-2xl bg-zinc-900 p-1 gap-1 mb-5" data-play-logbook-card>
           {[
             { id: 'log', label: 'LOG' },
+            { id: 'ledger', label: 'LEDGER' },
             { id: 'analyze', label: 'ANALYZE' },
           ].map(tab => (
             <button
               key={tab.id}
               type="button"
               onClick={() => (tab.id === 'analyze' ? openAnalyzeTab() : setActiveTab(tab.id))}
-              className={`flex-1 py-2.5 rounded-xl text-sm font-bold touch-manipulation transition-colors ${
+              className={`flex-1 py-2.5 px-1 rounded-xl text-[13px] font-bold whitespace-nowrap touch-manipulation transition-colors ${
                 activeTab === tab.id ? 'bg-cyan-600 text-white' : 'text-zinc-400 active:bg-zinc-800'
               }`}
             >
-              {tab.label}
+              <span className="inline-flex items-center justify-center gap-1">
+                {tab.label}
+                {tab.id === 'ledger' && playLogLedger.peopleCount > 0 ? (
+                  <span
+                    className={`inline-block h-1.5 w-1.5 rounded-full ${
+                      activeTab === 'ledger' ? 'bg-white' : 'bg-cyan-300'
+                    }`}
+                    aria-hidden
+                  />
+                ) : null}
+              </span>
             </button>
           ))}
         </div>
@@ -1078,6 +1129,16 @@ export default function PlayLogbook({
                   className="w-full rounded-2xl py-3 text-amber-300/90 text-sm font-semibold touch-manipulation active:text-amber-200 disabled:opacity-40 border border-amber-500/30"
                 >
                   Primary game templates
+                </button>
+              ) : null}
+              {playLogLedger.peopleCount > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('ledger')}
+                  className="w-full rounded-2xl border border-cyan-500/40 bg-cyan-600/15 px-3 py-3 text-sm font-semibold text-cyan-300 touch-manipulation active:bg-cyan-600/25"
+                  data-play-logbook-ledger-chip
+                >
+                  {formatPlayLogLedgerOpenChip(playLogLedger)}
                 </button>
               ) : null}
             </div>
@@ -1181,6 +1242,14 @@ export default function PlayLogbook({
             )}
 
           </>
+        ) : activeTab === 'ledger' ? (
+          <PlayLogLedgerTab
+            ledger={playLogLedger}
+            onOpenEntry={entryId => {
+              const entry = entries.find(e => String(e.id) === String(entryId))
+              if (entry) void openEntryDetail(entry)
+            }}
+          />
         ) : (
           <>
             <div className="mb-4">
@@ -1364,7 +1433,10 @@ export default function PlayLogbook({
                         ownerUserId={sessionOwnerId(editingSessionId) ?? userId}
                         viewerProfile={viewerProfile}
                         partners={partners}
-                        onPartnersChange={setPartners}
+                        onPartnersChange={rows => {
+                          setPartners(rows)
+                          if (editingSessionId) rememberSessionPartners(editingSessionId, rows)
+                        }}
                         netOutcome={logPlayNetOutcome}
                         playBetSize={formFields.bet_size}
                         canEditPaid={playLogPartnersViewerCanMarkPaid(
@@ -1513,7 +1585,10 @@ export default function PlayLogbook({
                           ownerUserId={sessionOwnerId(viewingEntry.session_id, viewingEntry)}
                           viewerProfile={viewerProfile}
                           partners={detailPartners}
-                          onPartnersChange={setDetailPartners}
+                          onPartnersChange={rows => {
+                            setDetailPartners(rows)
+                            rememberSessionPartners(viewingEntry.session_id, rows)
+                          }}
                           readOnly
                           canEditManager={false}
                           canEditPaid={detailCanMarkPaid}

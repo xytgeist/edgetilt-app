@@ -107,6 +107,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Mac Theo.** Ryan signed off: (1) App Store account is **Digiverse Ventures LLC**, (2) **digiverse.ventures** live, (3) Cloudflare email for edgetilt + digiverse / reply-from. **Still open:** Apple increased price request (Lifetime above `$1,000`). DSA trader is unblocked now that the org flip landed. Do not Add for Review.
 
+### Windows Theo 2026-09-07 … Play Logbook Ledger
+
+**I am Windows Theo.** Logbook has a **LEDGER** tab: unpaid shared-play P/L combined per person (Edge user or guest), from the viewer’s seat. Paid drops out. Settlement still through each play’s manager. LOG chip `Open $X · N people`. **`1.4.104`.** No SQL.
+
 ### Windows Theo 2026-09-07 … @mention picker stays closed after pick
 
 **I am Windows Theo.** After tapping a mention, caret stayed inside `@handle` so typeahead refetched. Insert now adds a trailing space (cashtag-style) and ignores that committed token until the query changes. **`1.4.103`.** Promoted **`test` → `main`**.

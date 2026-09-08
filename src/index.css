@@ -8791,6 +8791,11 @@ html.light [data-play-logbook] [data-play-logbook-analyze-period] .text-zinc-400
   color: #52525b !important;
 }
 
+html.light [data-play-logbook-ledger-chip] {
+  background-color: rgba(8, 145, 178, 0.1) !important;
+  border-color: rgba(8, 145, 178, 0.35) !important;
+}
+
 /* Quick links - page toggle + at-cap modal (light mode) */
 /* Pill only … bare/pin must stay chrome-free (pin was picking up this #fafafa box). */
 html.light [data-quick-link-toggle]:not([data-quick-link-toggle='bare']):not([data-quick-link-toggle='pin']) {

@@ -107,6 +107,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Mac Theo.** Ryan signed off: (1) App Store account is **Digiverse Ventures LLC**, (2) **digiverse.ventures** live, (3) Cloudflare email for edgetilt + digiverse / reply-from. **Still open:** Apple increased price request (Lifetime above `$1,000`). DSA trader is unblocked now that the org flip landed. Do not Add for Review.
 
+### Windows Theo 2026-09-07 … Alerts list tap closes dock for Logbook
+
+**I am Windows Theo.** Paid / Settle All / shared play Alerts from the notifications screen now use `dispatchLoungeActivityNavigate` so the Alerts overlay closes and Logbook actually opens. **`1.4.114`.**
+
 ### Windows Theo 2026-09-07 … Per-play settle Alert lands on that play
 
 **I am Windows Theo.** Marking one shared play Paid / Settle this play writes a 1-play independent settlement. The paid Alert opens that play’s Update my books / Remain Unsettled card. SQL **`20260907250000`** on **test**. Redeploy **`lounge-send-activity-push`** on **test**. **`1.4.113`.**

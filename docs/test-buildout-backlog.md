@@ -1113,6 +1113,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-09-07: **Play Logbook Alerts list tap:** Paid / Settle All / shared rows use `dispatchLoungeActivityNavigate` so the notifications overlay closes and Logbook opens. **`1.4.114`.**
+
 - 2026-09-07: **Play Logbook per-play settle Alert:** One shared play Paid / Settle this play writes a 1-play independent settlement. Paid Alert opens that play’s **Update my books** / **Remain Unsettled**. SQL **`20260907250000`** + **`lounge-send-activity-push`** on **test**. **`1.4.113`.**
 
 - 2026-09-07: **Play Logbook settle Alert lands on the decision:** Notification opens that partner’s settlement card with **Update my books** / **Remain Unsettled**, not the full book with Settle All. SQL **`20260907240000`** on **test**. **`1.4.112`.**

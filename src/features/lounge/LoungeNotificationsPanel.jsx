@@ -424,11 +424,11 @@ export default function LoungeNotificationsPanel({
         params.set('playLogLedger', '1')
         const actorId = String(event.actor_user_id || '').trim()
         if (actorId) params.set('playLogPartner', `user:${actorId}`)
-        const nextPath = `/?${params.toString()}`
-        if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== nextPath) {
-          window.history.pushState({}, '', nextPath)
-          window.dispatchEvent(new PopStateEvent('popstate'))
-        }
+        dispatchLoungeActivityNavigate({
+          url: `/?${params.toString()}`,
+          activityEventId: event.id,
+          markActivityRead: false,
+        })
         return
       }
 
@@ -437,11 +437,11 @@ export default function LoungeNotificationsPanel({
           actorUserId: event.actor_user_id,
           entryId: event.play_log_entry_id,
         })
-        const nextPath = `/?${params.toString()}`
-        if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== nextPath) {
-          window.history.pushState({}, '', nextPath)
-          window.dispatchEvent(new PopStateEvent('popstate'))
-        }
+        dispatchLoungeActivityNavigate({
+          url: `/?${params.toString()}`,
+          activityEventId: event.id,
+          markActivityRead: false,
+        })
         return
       }
 
@@ -453,11 +453,11 @@ export default function LoungeNotificationsPanel({
         const params = new URLSearchParams()
         params.set('tab', 'logbook')
         params.set('playLogEntry', String(event.play_log_entry_id))
-        const nextPath = `/?${params.toString()}`
-        if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== nextPath) {
-          window.history.pushState({}, '', nextPath)
-          window.dispatchEvent(new PopStateEvent('popstate'))
-        }
+        dispatchLoungeActivityNavigate({
+          url: `/?${params.toString()}`,
+          activityEventId: event.id,
+          markActivityRead: false,
+        })
         return
       }
 

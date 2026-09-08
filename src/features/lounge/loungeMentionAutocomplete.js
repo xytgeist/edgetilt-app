@@ -9,6 +9,54 @@ import {
 
 const DEBOUNCE_MS = 120
 const MAX_RESULTS = 6
+const FETCH_LIMIT = 40
+
+/** Strip PostgREST `or()` / ilike metachars. */
+export function sanitizeMentionSearchQuery(query) {
+  return String(query || '').trim().replace(/[%(),]/g, '').slice(0, 40)
+}
+
+function mentionSearchHaystack(row) {
+  const handle = String(row?.handle || '').trim().toLowerCase()
+  const name = String(row?.display_name || '').trim().toLowerCase()
+  const nameCompact = name.replace(/[^a-z0-9]/g, '')
+  return { handle, name, nameCompact }
+}
+
+/** Lower is better. 9 = no match. */
+export function mentionProfileRank(row, needle) {
+  const q = String(needle || '').trim().toLowerCase()
+  if (!q) return 0
+  const { handle, name, nameCompact } = mentionSearchHaystack(row)
+  if (!handle) return 9
+  if (handle.startsWith(q)) return 0
+  if (name.startsWith(q) || nameCompact.startsWith(q)) return 1
+  if (name.includes(q) || nameCompact.includes(q)) return 2
+  if (handle.includes(q)) return 3
+  return 9
+}
+
+export function profileMatchesMentionQuery(row, query) {
+  const handle = String(row?.handle || '').trim()
+  if (!handle) return false
+  const needle = sanitizeMentionSearchQuery(query).toLowerCase()
+  if (!needle) return true
+  return mentionProfileRank(row, needle) < 9
+}
+
+export function rankMentionSuggestionRows(rows, query) {
+  const list = Array.isArray(rows) ? rows.filter((r) => r?.handle) : []
+  const needle = sanitizeMentionSearchQuery(query).toLowerCase()
+  if (!needle) return list.slice(0, MAX_RESULTS)
+  return [...list]
+    .filter((r) => mentionProfileRank(r, needle) < 9)
+    .sort((a, b) => {
+      const d = mentionProfileRank(a, needle) - mentionProfileRank(b, needle)
+      if (d !== 0) return d
+      return String(a.handle || '').localeCompare(String(b.handle || ''))
+    })
+    .slice(0, MAX_RESULTS)
+}
 
 /**
  * Detects an active @mention at the cursor position in a textarea value.
@@ -30,15 +78,19 @@ export function detectMentionAtCursor(value, cursorPos) {
 
 async function fetchMentionSuggestions(supabaseClient, query) {
   if (!supabaseClient) return []
+  const safe = sanitizeMentionSearchQuery(query)
   let req = supabaseClient
     .from('profiles')
     .select('user_id,handle,display_name,avatar_url,role,is_og')
     .not('handle', 'is', null)
-    .order('handle', { ascending: true })
-    .limit(MAX_RESULTS)
-  if (query) req = req.ilike('handle', `${query}%`)
+  if (!safe) {
+    const { data } = await req.order('handle', { ascending: true }).limit(MAX_RESULTS)
+    return data || []
+  }
   const { data } = await req
-  return data || []
+    .or(`handle.ilike.%${safe}%,display_name.ilike.%${safe}%`)
+    .limit(FETCH_LIMIT)
+  return rankMentionSuggestionRows(data || [], safe)
 }
 
 /**

@@ -107,6 +107,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Mac Theo.** Ryan signed off: (1) App Store account is **Digiverse Ventures LLC**, (2) **digiverse.ventures** live, (3) Cloudflare email for edgetilt + digiverse / reply-from. **Still open:** Apple increased price request (Lifetime above `$1,000`). DSA trader is unblocked now that the org flip landed. Do not Add for Review.
 
+### Windows Theo 2026-09-07 … @mention matches display name
+
+**I am Windows Theo.** Composer @ typeahead was handle-prefix only. **`loungeMentionAutocomplete.js`** + chat now match **`display_name`** too (`@MeSoSl` → MeSoSlotty / `@KennyNorman`). **`1.4.102`.**
+
 ### Windows Theo 2026-09-07 … Edit Play form follows the game
 
 **I am Windows Theo.** Edit Play game change swaps metric fields to the new template and keeps filled overlapping values (hidden fields stay in memory if you switch back). Cancel is left of Save, same as the X. **`1.4.101`.** Promoted **`test` → `main`**. Shared RPC **`20260907210000`** is on **prod**.

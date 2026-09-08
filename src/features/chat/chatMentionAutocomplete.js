@@ -9,21 +9,8 @@ import {
 import {
   applyMentionSuggestion,
   detectMentionAtCursor,
+  rankMentionSuggestionRows,
 } from '../lounge/loungeMentionAutocomplete.js'
-
-const MAX_RESULTS = 6
-
-function filterChatMentionCandidates(candidates, query) {
-  const rows = Array.isArray(candidates) ? candidates : []
-  const q = String(query || '').trim().toLowerCase()
-  const filtered = rows.filter((row) => {
-    const handle = String(row?.handle || '').trim().toLowerCase()
-    if (!handle) return false
-    if (!q) return true
-    return handle.startsWith(q)
-  })
-  return filtered.slice(0, MAX_RESULTS)
-}
 
 /**
  * Room-member-scoped @mention autocomplete for chat composers.
@@ -64,7 +51,7 @@ export function useChatMentionState(value, candidates, enabled = true) {
         return
       }
       setMention(active)
-      setSuggestions(filterChatMentionCandidates(candidateRows, active.query))
+      setSuggestions(rankMentionSuggestionRows(candidateRows, active.query))
       setActiveIndex(0)
     },
     [candidateRows, clearMention, enabled],

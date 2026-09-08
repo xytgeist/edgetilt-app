@@ -1267,6 +1267,7 @@ export default function PlayLogbook({
                 {tab.label}
                 {tab.id === 'ledger' && playLogLedger.peopleCount > 0 ? (
                   <span
+                    data-play-logbook-ledger-dot
                     className={`inline-block h-1.5 w-1.5 rounded-full ${
                       activeTab === 'ledger' ? 'bg-white' : 'bg-cyan-300'
                     }`}

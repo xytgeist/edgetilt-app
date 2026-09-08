@@ -436,7 +436,7 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 
 - [x] **Ledger PARTNER (open) vs (settled):** Master list **PARTNER (open)** is only counterparts with unsettled plays. Fully settled people sit in collapsed **PARTNER (settled)** (tap to expand, same partner book). No SQL. **`1.4.115`.** Ryan smoke on test.
 
-- [x] **Ledger nudge:** Waiting settle cards drop the “we are not a bank” line. Actor **Nudge** sends `play_log_ledger_nudge` Alert/push (1 hour cooldown). SQL **`20260907260000_play_log_ledger_nudge.sql`** on **test**. Redeploy **`lounge-send-activity-push`** on **test**. **`1.4.118`.** Ryan smoke on test. Prod SQL + Edge when promoting.
+- [x] **Ledger nudge:** Waiting settle cards drop the “we are not a bank” line. Actor **Nudge** sends `play_log_ledger_nudge` Alert/push (1 hour cooldown). SQL **`20260907260000_play_log_ledger_nudge.sql`** on **test + prod**. Redeploy **`lounge-send-activity-push`** on **test + prod**. **`1.4.118`–`1.4.119`.** Ryan smoke on test. Promoted **2026-09-08**.
 
 ---
 
@@ -1116,6 +1116,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 ---
 
 ## Update log
+
+- 2026-09-08: **Play Logbook LEDGER prod promote:** SQL **`20260907220000`–`20260907260000`** + **`lounge-send-activity-push`** on **`jtjgtucumuoswnbauxry`**. Frontend **`test` → `main`**. **`1.4.119`.**
 
 - 2026-09-08: **Play Logbook ledger Nudge placement:** Smaller **Nudge** on the **Settled · waiting on them** row. Date stays below. **`1.4.119`.**
 

@@ -1119,6 +1119,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-09-08: **Alerts navigateToGuideSlug:** Restored missing imports in `LoungeNotificationsPanel` (AP guide tap + weekly drop tap). Prod Sentry. **`1.4.123`.** **`test` → `main`.**
+
 - 2026-09-08: **Play Logbook follow-up prod promote:** frontend **`test` → `main`**. Partner self-Paid, Partners (i) light contrast, ANALYZE Scope logged games. **No SQL / Edge.** **`1.4.122`.**
 
 - 2026-09-08: **Play Logbook ANALYZE Scope:** Dropdown is **All plays** plus games with a logged session, not the full template catalog. Log Play picker unchanged. **`1.4.122`.**

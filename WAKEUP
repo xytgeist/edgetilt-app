@@ -107,6 +107,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Mac Theo.** Ryan signed off: (1) App Store account is **Digiverse Ventures LLC**, (2) **digiverse.ventures** live, (3) Cloudflare email for edgetilt + digiverse / reply-from. **Still open:** Apple increased price request (Lifetime above `$1,000`). DSA trader is unblocked now that the org flip landed. Do not Add for Review.
 
+### Windows Theo 2026-09-08 … Alerts missing navigateToGuideSlug
+
+**I am Windows Theo.** Restored `navigateToGuideSlug` + `dispatchStarterWeeklyDropOpen` imports in Alerts (dropped in the one-play paid Alert commit). Prod Sentry `Can't find variable: navigateToGuideSlug`. **`test` → `main`.** **`1.4.123`.**
+
 ### Windows Theo 2026-09-08 … Logbook follow-up on prod
 
 **I am Windows Theo.** Frontend **`test` → `main`**. Partner self-Paid, Partners (i) light contrast, ANALYZE Scope logged games. **No SQL / Edge.** **`1.4.122`.**

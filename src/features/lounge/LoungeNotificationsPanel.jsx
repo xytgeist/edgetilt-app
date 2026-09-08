@@ -38,6 +38,10 @@ import {
 } from '../../utils/loungeActivityApi.js'
 import { playLogPaidSettleSearch } from '../play-logbook/playLogLedger.js'
 import {
+  dispatchStarterWeeklyDropOpen,
+  navigateToGuideSlug,
+} from '../billing/starterWeeklyDropApi.js'
+import {
   buildPokerStableActivityNavigateUrl,
   dispatchLoungeActivityNavigate,
   pokerStableActivityNeedsStakeeLookup,

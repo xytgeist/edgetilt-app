@@ -440,9 +440,14 @@ function buildTargetUrl(
     if (event.event_type === 'chat_call_missed' && event.chat_call_id) {
       params.set('missedCall', event.chat_call_id)
     }
+  } else if (event.event_type === 'play_log_partner_paid' && event.play_log_entry_id) {
+    params.set('tab', 'logbook')
+    params.set('playLogLedger', '1')
+    params.set('playLogEntry', event.play_log_entry_id)
+    const actorId = String(event.actor_user_id || '').trim()
+    if (actorId) params.set('playLogPartner', `user:${actorId}`)
   } else if (
     (event.event_type === 'play_log_shared' ||
-      event.event_type === 'play_log_partner_paid' ||
       event.event_type === 'play_log_partner_unpaid') &&
     event.play_log_entry_id
   ) {

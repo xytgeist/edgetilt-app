@@ -452,14 +452,23 @@ export function playLogLedgerOverlayClosedSet(settlements, viewerUserId) {
 }
 
 /** Snapshot of each pair about to be squared (one insert per counterpart). */
-export function buildPlayLogLedgerSettlementInserts({ ledger, counterpartKey = null } = {}) {
+export function buildPlayLogLedgerSettlementInserts({
+  ledger,
+  counterpartKey = null,
+  sessionId = null,
+} = {}) {
+  const sessionFilter = String(sessionId || '').trim()
   const counterparts = (ledger?.counterparts || []).filter(
     row => !counterpartKey || row.key === counterpartKey,
   )
   return counterparts
-    .filter(row => row.settleablePlayCount > 0)
     .map(row => {
-      const settlePlays = (row.plays || []).filter(play => play.canSettle)
+      const settlePlays = (row.plays || []).filter(play => {
+        if (!play.canSettle) return false
+        if (sessionFilter && String(play.sessionId) !== sessionFilter) return false
+        return true
+      })
+      if (!settlePlays.length) return null
       const theyOweYou = settlePlays.reduce((acc, play) => acc + (play.theyOweYou || 0), 0)
       const youOweThem = settlePlays.reduce((acc, play) => acc + (play.youOweThem || 0), 0)
       const net = theyOweYou - youOweThem
@@ -482,4 +491,32 @@ export function buildPlayLogLedgerSettlementInserts({ ledger, counterpartKey = n
         message: copy.message,
       }
     })
+    .filter(Boolean)
+}
+
+/** Counterpart keys closed on the viewer's books for one session. */
+export function playLogLedgerClosedKeysForSession(settlements, viewerUserId, sessionId) {
+  const sid = String(sessionId || '').trim()
+  /** @type {Set<string>} */
+  const keys = new Set()
+  if (!sid) return keys
+  const overlay = playLogLedgerOverlayClosedSet(settlements, viewerUserId)
+  const suffix = `::${sid}`
+  for (const token of overlay) {
+    if (String(token).endsWith(suffix)) keys.add(String(token).slice(0, -suffix.length))
+  }
+  return keys
+}
+
+export function playLogPaidSettleSearch({ actorUserId, entryId, sessionId } = {}) {
+  const params = new URLSearchParams()
+  params.set('tab', 'logbook')
+  params.set('playLogLedger', '1')
+  const actor = String(actorUserId || '').trim()
+  if (actor) params.set('playLogPartner', `user:${actor}`)
+  const session = String(sessionId || '').trim()
+  if (session) params.set('playLogSession', session)
+  const entry = String(entryId || '').trim()
+  if (entry) params.set('playLogEntry', entry)
+  return params
 }

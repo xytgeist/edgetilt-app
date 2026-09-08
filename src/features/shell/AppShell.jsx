@@ -351,6 +351,7 @@ export default function AppShell({
   const [pendingPlayLogEntryId, setPendingPlayLogEntryId] = useState(null)
   const [pendingPlayLogLedger, setPendingPlayLogLedger] = useState(false)
   const [pendingPlayLogPartner, setPendingPlayLogPartner] = useState(null)
+  const [pendingPlayLogSessionId, setPendingPlayLogSessionId] = useState(null)
   const [pendingPokerSessionId, setPendingPokerSessionId] = useState(null)
   const [pendingPokerStableDealId, setPendingPokerStableDealId] = useState(null)
   const [pendingTournamentSwapId, setPendingTournamentSwapId] = useState(null)
@@ -605,6 +606,7 @@ export default function AppShell({
         playLogEntryId,
         playLogLedger,
         playLogPartner,
+        playLogSessionId,
         pokerSessionId,
         postId,
         commentId,
@@ -655,6 +657,7 @@ export default function AppShell({
           if (playLogEntryId) setPendingPlayLogEntryId(playLogEntryId)
           if (playLogLedger) setPendingPlayLogLedger(true)
           if (playLogPartner) setPendingPlayLogPartner(playLogPartner)
+          if (playLogSessionId) setPendingPlayLogSessionId(playLogSessionId)
         }
       } else if (targetTab === 'poker-stable') {
         if (browseMode === 'anonymous') {
@@ -1230,6 +1233,8 @@ export default function AppShell({
           if (playLogLedger === '1' || playLogLedger === 'true') setPendingPlayLogLedger(true)
           const playLogPartner = (params.get('playLogPartner') || '').trim()
           if (playLogPartner) setPendingPlayLogPartner(playLogPartner)
+          const playLogSession = (params.get('playLogSession') || '').trim()
+          if (playLogSession) setPendingPlayLogSessionId(playLogSession)
         }
       }
       if (targetTab === 'w2g-scanner') {
@@ -2894,9 +2899,11 @@ export default function AppShell({
           onHighlightEntryConsumed={() => setPendingPlayLogEntryId(null)}
           openLedger={pendingPlayLogLedger}
           ledgerPartnerKey={pendingPlayLogPartner}
+          ledgerSessionId={pendingPlayLogSessionId}
           onLedgerDeepLinkConsumed={() => {
             setPendingPlayLogLedger(false)
             setPendingPlayLogPartner(null)
+            setPendingPlayLogSessionId(null)
           }}
         />
       )

@@ -11,10 +11,12 @@ import {
  *   viewerUserId?: string | null,
  *   onOpenEntry: (entryId: string) => void,
  *   onSettleAll?: (counterpartKey?: string | null) => void | Promise<void>,
+ *   onSettlePlay?: (counterpartKey: string, sessionId: string) => void | Promise<void>,
  *   onAcceptSettlement?: (settlementId: string) => void | Promise<void>,
  *   onDeclineSettlement?: (settlementId: string) => void | Promise<void>,
  *   settling?: boolean,
  *   initialCounterpartKey?: string | null,
+ *   initialSessionId?: string | null,
  *   focusIncomingSettlement?: boolean,
  *   onFocusIncomingConsumed?: () => void,
  * }} props
@@ -25,10 +27,12 @@ export default function PlayLogLedgerTab({
   viewerUserId,
   onOpenEntry,
   onSettleAll,
+  onSettlePlay,
   onAcceptSettlement,
   onDeclineSettlement,
   settling = false,
   initialCounterpartKey = null,
+  initialSessionId = null,
   focusIncomingSettlement = false,
   onFocusIncomingConsumed,
 }) {
@@ -104,17 +108,24 @@ export default function PlayLogLedgerTab({
 
   useEffect(() => {
     if (!focusIncomingSettlement || !selectedKey) return
-    const pending = pendingIncoming[0]
+    const sessionFilter = String(initialSessionId || '').trim()
+    const pending = sessionFilter
+      ? pendingIncoming.find(row =>
+          (row.sessionIds || []).some(sid => String(sid) === sessionFilter),
+        )
+      : pendingIncoming[0]
     if (pending?.id) {
       setFocusedSettlementId(String(pending.id))
       onFocusIncomingConsumed?.()
       return
     }
+    if (sessionFilter) return
     if (settlementViews.length || partnerRows.length) onFocusIncomingConsumed?.()
   }, [
     focusIncomingSettlement,
     selectedKey,
     pendingIncoming,
+    initialSessionId,
     settlementViews.length,
     partnerRows.length,
     onFocusIncomingConsumed,
@@ -128,6 +139,11 @@ export default function PlayLogLedgerTab({
   }, [focusedSettlementId, selectedSettlements])
 
   if (selected && focusedSettlement && (settlementAcceptVisible(focusedSettlement, partnerRows) || focusedSettlement.leftOpenByYou)) {
+    const focusedPlay = (selected.plays || []).find(play =>
+      (focusedSettlement.sessionIds || []).some(sid => String(sid) === String(play.sessionId)),
+    )
+    const focusedGame = String(focusedPlay?.gameLabel || '').trim()
+    const onePlay = Number(focusedSettlement.playCount) === 1
     return (
       <div data-play-logbook-ledger>
         <button
@@ -138,10 +154,13 @@ export default function PlayLogLedgerTab({
           ← {selected.label}
         </button>
         <div className="mb-4">
-          <h2 className="text-white text-lg font-bold">They settled their books</h2>
+          <h2 className="text-white text-lg font-bold">
+            {onePlay && focusedGame ? `They settled ${focusedGame}` : 'They settled their books'}
+          </h2>
           <p className="text-zinc-500 text-xs mt-1 leading-snug">
-            This closed {selected.label} on their side. Yours stay open until you update, or remain
-            unsettled.
+            {onePlay
+              ? `This closed ${selected.label} on their side for this play. Yours stay open until you update, or remain unsettled.`
+              : `This closed ${selected.label} on their side. Yours stay open until you update, or remain unsettled.`}
           </p>
         </div>
         <LedgerSettlementCard
@@ -202,6 +221,14 @@ export default function PlayLogLedgerTab({
                 key={`${play.sessionId}:${play.entryId}`}
                 play={play}
                 settling={settling}
+                showSettle={
+                  Boolean(onSettlePlay) &&
+                  Boolean(play.canSettle) &&
+                  !pendingIncoming.some(row =>
+                    (row.sessionIds || []).some(sid => String(sid) === String(play.sessionId)),
+                  )
+                }
+                onSettle={() => void onSettlePlay?.(selected.key, play.sessionId)}
                 onOpen={() => onOpenEntry(play.entryId)}
               />
             ))}
@@ -394,75 +421,94 @@ function LedgerSectionLabel({ children, className = '' }) {
  * @param {{
  *   play: object,
  *   settling?: boolean,
+ *   showSettle?: boolean,
+ *   onSettle?: () => void,
  *   onOpen: () => void,
  * }} props
  */
-function LedgerPlayCard({ play, settling = false, onOpen }) {
+function LedgerPlayCard({ play, settling = false, showSettle = false, onSettle, onOpen }) {
   const paid = Boolean(play.paid)
   const they = play.theyOweYou > 0
   const you = play.youOweThem > 0
   const amount = they ? play.theyOweYou : play.youOweThem
   const even = !they && !you
   return (
-    <button
-      type="button"
-      onClick={() => {
-        if (!settling) onOpen()
-      }}
-      disabled={settling}
-      className={`w-full text-left rounded-2xl bg-zinc-900 border p-4 touch-manipulation cursor-pointer active:bg-zinc-800/90 disabled:opacity-60 ${
+    <div
+      className={`rounded-2xl bg-zinc-900 border p-4 ${
         paid ? 'border-zinc-800/40' : 'border-zinc-800/60'
       }`}
       data-play-logbook-card
       data-play-logbook-entry
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-            <span className={`min-w-0 truncate font-bold ${paid ? 'text-zinc-300' : 'text-white'}`}>
-              {play.gameLabel}
-            </span>
-            {paid ? (
-              <span className="shrink-0 rounded-md bg-emerald-600/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-300">
-                Paid
+      <button
+        type="button"
+        onClick={() => {
+          if (!settling) onOpen()
+        }}
+        disabled={settling}
+        className="w-full text-left touch-manipulation cursor-pointer active:opacity-80 disabled:opacity-60"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+              <span className={`min-w-0 truncate font-bold ${paid ? 'text-zinc-300' : 'text-white'}`}>
+                {play.gameLabel}
               </span>
+              {paid ? (
+                <span className="shrink-0 rounded-md bg-emerald-600/20 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-300">
+                  Paid
+                </span>
+              ) : null}
+            </div>
+            <div className="text-zinc-500 text-xs mt-0.5">{fmtLedgerCapturedAt(play.capturedAt)}</div>
+            {play.casinoName ? (
+              <div className="text-zinc-400 text-xs mt-0.5 truncate">{play.casinoName}</div>
             ) : null}
           </div>
-          <div className="text-zinc-500 text-xs mt-0.5">{fmtLedgerCapturedAt(play.capturedAt)}</div>
-          {play.casinoName ? (
-            <div className="text-zinc-400 text-xs mt-0.5 truncate">{play.casinoName}</div>
-          ) : null}
-        </div>
-        <div className="shrink-0 text-right">
-          <div
-            className={`text-sm font-bold tabular-nums ${
-              paid
-                ? 'text-zinc-400'
-                : even
-                  ? 'text-zinc-500'
+          <div className="shrink-0 text-right">
+            <div
+              className={`text-sm font-bold tabular-nums ${
+                paid
+                  ? 'text-zinc-400'
+                  : even
+                    ? 'text-zinc-500'
+                    : they
+                      ? 'text-emerald-300'
+                      : 'text-red-300'
+              }`}
+            >
+              {even ? '$0' : formatPlayLogLedgerUsd(amount)}
+            </div>
+            <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 mt-0.5">
+              {paid
+                ? even
+                  ? 'Settled even'
                   : they
-                    ? 'text-emerald-300'
-                    : 'text-red-300'
-            }`}
-          >
-            {even ? '$0' : formatPlayLogLedgerUsd(amount)}
-          </div>
-          <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 mt-0.5">
-            {paid
-              ? even
-                ? 'Settled even'
-                : they
-                  ? 'Settled · they owed you'
-                  : 'Settled · you owed them'
-              : even
-                ? 'Even'
-                : they
-                  ? 'They owe you'
-                  : 'You owe them'}
+                    ? 'Settled · they owed you'
+                    : 'Settled · you owed them'
+                : even
+                  ? 'Even'
+                  : they
+                    ? 'They owe you'
+                    : 'You owe them'}
+            </div>
           </div>
         </div>
-      </div>
-    </button>
+      </button>
+      {showSettle ? (
+        <button
+          type="button"
+          onClick={e => {
+            e.stopPropagation()
+            if (!settling) onSettle?.()
+          }}
+          disabled={settling}
+          className="mt-3 w-full min-h-11 rounded-2xl bg-cyan-600 text-white text-sm font-bold touch-manipulation active:bg-cyan-700 disabled:opacity-50"
+        >
+          {settling ? 'Settling…' : 'Settle this play'}
+        </button>
+      ) : null}
+    </div>
   )
 }
 

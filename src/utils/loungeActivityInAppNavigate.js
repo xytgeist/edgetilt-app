@@ -174,6 +174,7 @@ export function navigateFromLoungeActivityPayload(payload) {
     playLogEntryId: null,
     playLogLedger: false,
     playLogPartner: null,
+    playLogSessionId: null,
     pokerSessionId: null,
     postId: null,
     commentId: null,
@@ -215,6 +216,7 @@ export function navigateFromLoungeActivityPayload(payload) {
       return raw === '1' || raw === 'true'
     })(),
     playLogPartner: (parsed.searchParams.get('playLogPartner') || '').trim() || null,
+    playLogSessionId: (parsed.searchParams.get('playLogSession') || '').trim() || null,
     pokerSessionId: (parsed.searchParams.get('pokerSession') || '').trim() || null,
     postId: (parsed.searchParams.get('post') || '').trim() || null,
     commentId: (parsed.searchParams.get('comment') || '').trim() || null,

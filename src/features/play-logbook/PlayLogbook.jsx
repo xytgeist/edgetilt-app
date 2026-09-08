@@ -79,6 +79,8 @@ import {
 import {
   buildPlayLogLedger,
   buildPlayLogLedgerSettlementInserts,
+  playLogLedgerClosedKeysForSession,
+  playLogLedgerCounterpartKey,
 } from './playLogLedger.js'
 import {
   deletePlayLogSharedSession,
@@ -223,6 +225,7 @@ export default function PlayLogbook({
   onHighlightEntryConsumed = null,
   openLedger = false,
   ledgerPartnerKey = null,
+  ledgerSessionId = null,
   onLedgerDeepLinkConsumed = null,
   canCreatePlayLog = true,
   playLogsRemaining = null,
@@ -246,6 +249,7 @@ export default function PlayLogbook({
   const [ledgerSettlements, setLedgerSettlements] = useState([])
   const [ledgerSettling, setLedgerSettling] = useState(false)
   const [pinnedLedgerPartnerKey, setPinnedLedgerPartnerKey] = useState(null)
+  const [pinnedLedgerSessionId, setPinnedLedgerSessionId] = useState(null)
   const [focusIncomingSettlement, setFocusIncomingSettlement] = useState(false)
   const [viewerProfile, setViewerProfile] = useState(null)
   const [partners, setPartners] = useState([])
@@ -364,6 +368,24 @@ export default function PlayLogbook({
   )
 
   const cashReturnSnapByEntryId = useMemo(() => runningCashReturnByEntryId(entries), [entries])
+  const settleFocusSessionId = useMemo(() => {
+    if (pinnedLedgerSessionId || ledgerSessionId) {
+      return String(pinnedLedgerSessionId || ledgerSessionId)
+    }
+    if (!(openLedger || ledgerPartnerKey || pinnedLedgerPartnerKey) || !highlightEntryId) {
+      return null
+    }
+    const entry = entries.find(e => String(e.id) === String(highlightEntryId))
+    return entry?.session_id ? String(entry.session_id) : null
+  }, [
+    pinnedLedgerSessionId,
+    ledgerSessionId,
+    openLedger,
+    ledgerPartnerKey,
+    pinnedLedgerPartnerKey,
+    highlightEntryId,
+    entries,
+  ])
   const viewerIsAdmin = isAdmin || viewerProfile?.role === 'admin'
   const isSystemTemplateSheet = templateSheetMode === 'system'
 
@@ -538,11 +560,12 @@ export default function PlayLogbook({
   }, [])
 
   const settleLedgerPlays = useCallback(
-    async (counterpartKey = null) => {
+    async (counterpartKey = null, sessionId = null) => {
       if (ledgerSettling) return
       const settlementInserts = buildPlayLogLedgerSettlementInserts({
         ledger: playLogLedger,
         counterpartKey,
+        sessionId,
       })
       if (!settlementInserts.length) return
       setLedgerSettling(true)
@@ -731,7 +754,20 @@ export default function PlayLogbook({
   }, [ledgerPartnerKey])
 
   useEffect(() => {
+    if (ledgerSessionId) setPinnedLedgerSessionId(ledgerSessionId)
+  }, [ledgerSessionId])
+
+  useEffect(() => {
+    if (!settleFocusSessionId) return
+    setPinnedLedgerSessionId(prev => prev || settleFocusSessionId)
+  }, [settleFocusSessionId])
+
+  useEffect(() => {
     if (!highlightEntryId || loading) return
+    if (openLedger || ledgerPartnerKey || pinnedLedgerPartnerKey) {
+      if (settleFocusSessionId) onHighlightEntryConsumed?.()
+      return
+    }
     const entry = entries.find(e => String(e.id) === String(highlightEntryId))
     const el = document.querySelector(`[data-play-log-entry-id="${highlightEntryId}"]`)
     if (el && typeof el.scrollIntoView === 'function') {
@@ -741,7 +777,17 @@ export default function PlayLogbook({
       void openEntryDetail(entry)
       onHighlightEntryConsumed?.()
     }
-  }, [highlightEntryId, loading, entries, onHighlightEntryConsumed, openEntryDetail])
+  }, [
+    highlightEntryId,
+    loading,
+    entries,
+    onHighlightEntryConsumed,
+    openEntryDetail,
+    openLedger,
+    ledgerPartnerKey,
+    pinnedLedgerPartnerKey,
+    settleFocusSessionId,
+  ])
 
   useEffect(() => {
     if (!openLedger || loading) return
@@ -1397,9 +1443,13 @@ export default function PlayLogbook({
             viewerUserId={userId}
             settling={ledgerSettling}
             initialCounterpartKey={pinnedLedgerPartnerKey || ledgerPartnerKey}
+            initialSessionId={settleFocusSessionId}
             focusIncomingSettlement={focusIncomingSettlement}
             onFocusIncomingConsumed={() => setFocusIncomingSettlement(false)}
             onSettleAll={counterpartKey => void settleLedgerPlays(counterpartKey)}
+            onSettlePlay={(counterpartKey, sessionId) =>
+              void settleLedgerPlays(counterpartKey, sessionId)
+            }
             onAcceptSettlement={settlementId => void acceptLedgerSettlement(settlementId)}
             onDeclineSettlement={settlementId => void declineLedgerSettlement(settlementId)}
             onOpenEntry={entryId => {
@@ -1602,6 +1652,29 @@ export default function PlayLogbook({
                           userId,
                           sessionOwnerId(editingSessionId) ?? userId,
                         )}
+                        closedPartnerKeys={
+                          editingSessionId
+                            ? playLogLedgerClosedKeysForSession(
+                                ledgerSettlements,
+                                userId,
+                                editingSessionId,
+                              )
+                            : undefined
+                        }
+                        onSettlePartnerPlay={
+                          editingSessionId &&
+                          playLogPartnersViewerCanMarkPaid(
+                            partners,
+                            userId,
+                            sessionOwnerId(editingSessionId) ?? userId,
+                          )
+                            ? async key => {
+                                const row = partners.find(p => p.key === key)
+                                const ledgerKey = row ? playLogLedgerCounterpartKey(row) : key
+                                await settleLedgerPlays(ledgerKey, editingSessionId)
+                              }
+                            : undefined
+                        }
                         onPaidPersist={
                           editingSessionId &&
                           playLogPartnersViewerCanMarkPaid(
@@ -1755,6 +1828,24 @@ export default function PlayLogbook({
                           canEditPaid={detailCanMarkPaid}
                           netOutcome={detailNetOutcome}
                           playBetSize={viewingEntry.values?.bet_size}
+                          closedPartnerKeys={
+                            viewingEntry.session_id
+                              ? playLogLedgerClosedKeysForSession(
+                                  ledgerSettlements,
+                                  userId,
+                                  viewingEntry.session_id,
+                                )
+                              : undefined
+                          }
+                          onSettlePartnerPlay={
+                            detailCanMarkPaid && viewingEntry.session_id
+                              ? async key => {
+                                const row = detailPartners.find(p => p.key === key)
+                                const ledgerKey = row ? playLogLedgerCounterpartKey(row) : key
+                                await settleLedgerPlays(ledgerKey, viewingEntry.session_id)
+                              }
+                              : undefined
+                          }
                           onPaidPersist={
                             detailCanMarkPaid && viewingEntry.session_id
                               ? async rows => {

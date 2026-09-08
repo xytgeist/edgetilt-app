@@ -19,6 +19,7 @@ import {
   playLogPartnersWithManager,
 } from './playLogPartners.js'
 import { addSavedGuestLabel } from './playLogSavedGuests.js'
+import { playLogLedgerCounterpartKey } from './playLogLedger.js'
 
 /** Partner row numeric columns — P/L fits seven-digit dollars; Share $ stays tighter (bet-size slice). */
 const PARTNER_NUMERIC_GRID =
@@ -44,6 +45,8 @@ const PARTNER_COL_PL = 'min-w-0 text-right'
  *   playBetSize?: unknown,
  *   onPaidPersist?: (rows: import('./playLogPartners.js').PlayLogPartnerRow[]) => void | Promise<void>,
  *   onPaidPersistError?: (error: unknown) => void,
+ *   onSettlePartnerPlay?: (counterpartKey: string) => void | Promise<void>,
+ *   closedPartnerKeys?: Set<string>,
  * }} props
  */
 export default function PlayLogPartnersSection({
@@ -60,6 +63,8 @@ export default function PlayLogPartnersSection({
   playBetSize = null,
   onPaidPersist = null,
   onPaidPersistError = null,
+  onSettlePartnerPlay = null,
+  closedPartnerKeys = null,
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [paidSaving, setPaidSaving] = useState(false)
@@ -82,7 +87,11 @@ export default function PlayLogPartnersSection({
   const percentSum = useMemo(() => playLogPartnersPercentSum(partners), [partners])
   const sumOk = Math.abs(percentSum - 100) < 0.02
   const showPaidColumn =
-    canEditPaid || partners.some(p => p.paid) || partners.some(p => p.isManager)
+    canEditPaid ||
+    Boolean(onSettlePartnerPlay) ||
+    partners.some(p => p.paid) ||
+    partners.some(p => p.isManager) ||
+    Boolean(closedPartnerKeys?.size)
 
   const usedUserIds = useMemo(
     () => new Set(partners.filter(p => p.kind === 'user').map(p => String(p.userId))),
@@ -127,6 +136,17 @@ export default function PlayLogPartnersSection({
   }
 
   const togglePaid = async (key, nextPaid) => {
+    if (nextPaid && onSettlePartnerPlay) {
+      setPaidSaving(true)
+      try {
+        await onSettlePartnerPlay(key)
+      } catch (e) {
+        onPaidPersistError?.(e)
+      } finally {
+        setPaidSaving(false)
+      }
+      return
+    }
     const prior = partners
     const next = prior.map(row => (row.key === key ? { ...row, paid: nextPaid } : row))
     onPartnersChange(next)
@@ -356,8 +376,17 @@ export default function PlayLogPartnersSection({
       {showPaidColumn ? (
         <div className={`flex w-5 shrink-0 items-center justify-center ${readOnly ? 'h-4' : 'min-h-8'}`}>
           <PaidCheckbox
-            checked={Boolean(row.paid)}
-            disabled={!canEditPaid || paidSaving}
+            checked={
+              Boolean(row.paid) ||
+              Boolean(closedPartnerKeys?.has(playLogLedgerCounterpartKey(row))) ||
+              Boolean(closedPartnerKeys?.has(row.key))
+            }
+            disabled={
+              !canEditPaid ||
+              paidSaving ||
+              Boolean(closedPartnerKeys?.has(playLogLedgerCounterpartKey(row))) ||
+              Boolean(closedPartnerKeys?.has(row.key))
+            }
             onChange={next => void togglePaid(row.key, next)}
           />
         </div>

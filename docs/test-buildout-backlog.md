@@ -430,6 +430,8 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 
 - [x] **Ledger settle Alert lands on the decision:** Notification opens that partner’s pending settlement card (not the partner book with Settle All). **Update my books** or **Remain Unsettled** (`play_log_ledger_decline_settlement`). Settle All hides while a pending incoming settlement is open. SQL **`20260907240000_play_log_ledger_decline_settlement.sql`** on **test**. **`1.4.112`.** Ryan smoke on test. Prod SQL when promoting.
 
+- [x] **Per-play settle Alert lands on that play:** Paid checkbox / **Settle this play** writes a 1-play independent settlement. Counterpart Alert copy stays **marked your share as paid on {game}** (`play_log_partner_paid`) and opens that play’s Update my books / Remain Unsettled card, not LOG and not dual Settle All. Multi-play Settle All still emits `play_log_ledger_settled`. SQL **`20260907250000_play_log_one_play_paid_alert.sql`** on **test**. Redeploy **`lounge-send-activity-push`** on **test**. **`1.4.113`.** Ryan smoke on test. Prod SQL + Edge when promoting.
+
 - [x] **Cash return vs RTP (no SQL):** LOG chips **Return** (cash out vs cash in) + **Bets** (`+18.4` / `-6.2`). ANALYZE **Cash return %** is total out ÷ total in (not slot RTP). **Avg bets won/lost** / **Total bets won/lost** = cash P/L ÷ bet (mean + sum; no cash-weighted bets average). True **RTP (from spins)** only when `# Spins` is filled: `(bet × spins + cash P/L) ÷ coin-in`; hint how many plays were skipped. Cash return/bets/RTP ignore acquisition fee; Profit/loss chip still uses `playLogWinLoss`. Calculator **Current EV (RTP %)** unchanged. **`1.4.111`.** Ryan smoke on test.
 
 ---
@@ -1110,6 +1112,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 ---
 
 ## Update log
+
+- 2026-09-07: **Play Logbook per-play settle Alert:** One shared play Paid / Settle this play writes a 1-play independent settlement. Paid Alert opens that play’s **Update my books** / **Remain Unsettled**. SQL **`20260907250000`** + **`lounge-send-activity-push`** on **test**. **`1.4.113`.**
 
 - 2026-09-07: **Play Logbook settle Alert lands on the decision:** Notification opens that partner’s settlement card with **Update my books** / **Remain Unsettled**, not the full book with Settle All. SQL **`20260907240000`** on **test**. **`1.4.112`.**
 

@@ -36,7 +36,7 @@ import {
   LOUNGE_ACTIVITY_EVENT_TYPES,
   LOUNGE_ACTIVITY_PAGE_SIZE,
 } from '../../utils/loungeActivityApi.js'
-import { dispatchStarterWeeklyDropOpen, navigateToGuideSlug } from '../billing/starterWeeklyDropApi.js'
+import { playLogPaidSettleSearch } from '../play-logbook/playLogLedger.js'
 import {
   buildPokerStableActivityNavigateUrl,
   dispatchLoungeActivityNavigate,
@@ -432,9 +432,21 @@ export default function LoungeNotificationsPanel({
         return
       }
 
+      if (event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.PLAY_LOG_PARTNER_PAID) {
+        const params = playLogPaidSettleSearch({
+          actorUserId: event.actor_user_id,
+          entryId: event.play_log_entry_id,
+        })
+        const nextPath = `/?${params.toString()}`
+        if (typeof window !== 'undefined' && window.location.pathname + window.location.search !== nextPath) {
+          window.history.pushState({}, '', nextPath)
+          window.dispatchEvent(new PopStateEvent('popstate'))
+        }
+        return
+      }
+
       if (
         (event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.PLAY_LOG_SHARED ||
-          event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.PLAY_LOG_PARTNER_PAID ||
           event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.PLAY_LOG_PARTNER_UNPAID) &&
         event.play_log_entry_id
       ) {

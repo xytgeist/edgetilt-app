@@ -434,6 +434,8 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 
 - [x] **Cash return vs RTP (no SQL):** LOG chips **Return** (cash out vs cash in) + **Bets** (`+18.4` / `-6.2`). ANALYZE **Cash return %** is total out ÷ total in (not slot RTP). **Avg bets won/lost** / **Total bets won/lost** = cash P/L ÷ bet (mean + sum; no cash-weighted bets average). True **RTP (from spins)** only when `# Spins` is filled: `(bet × spins + cash P/L) ÷ coin-in`; hint how many plays were skipped. Cash return/bets/RTP ignore acquisition fee; Profit/loss chip still uses `playLogWinLoss`. Calculator **Current EV (RTP %)** unchanged. **`1.4.111`.** Ryan smoke on test.
 
+- [x] **Ledger PARTNER (open) vs (settled):** Master list **PARTNER (open)** is only counterparts with unsettled plays. Fully settled people sit in collapsed **PARTNER (settled)** (tap to expand, same partner book). No SQL. **`1.4.115`.** Ryan smoke on test.
+
 ---
 
 ## AP Guide editor (`/slot-guide-form`)
@@ -1112,6 +1114,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 ---
 
 ## Update log
+
+- 2026-09-07: **Play Logbook PARTNER (open) vs (settled):** Master ledger lists only unsettled counterparts under **PARTNER (open)**. Fully settled people are collapsed **PARTNER (settled)**. **`1.4.115`.**
 
 - 2026-09-07: **Play Logbook Alerts list tap:** Paid / Settle All / shared rows use `dispatchLoungeActivityNavigate` so the notifications overlay closes and Logbook opens. **`1.4.114`.**
 

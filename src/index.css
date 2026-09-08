@@ -8805,6 +8805,9 @@ html.light [data-play-logbook-ledger-remain] {
   border-color: #d4d4d8 !important;
   color: #3f3f46 !important;
 }
+html.light [data-play-logbook-ledger-settled] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
 
 /* Quick links - page toggle + at-cap modal (light mode) */
 /* Pill only … bare/pin must stay chrome-free (pin was picking up this #fafafa box). */

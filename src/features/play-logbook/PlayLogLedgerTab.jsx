@@ -38,6 +38,7 @@ export default function PlayLogLedgerTab({
 }) {
   const [selectedKey, setSelectedKey] = useState(/** @type {string | null} */ (null))
   const [focusedSettlementId, setFocusedSettlementId] = useState(/** @type {string | null} */ (null))
+  const [settledPartnersOpen, setSettledPartnersOpen] = useState(false)
   const counterparts = ledger?.counterparts || []
 
   const settlementViews = useMemo(
@@ -79,6 +80,15 @@ export default function PlayLogLedgerTab({
       })
     })
   }, [counterparts, settlementViews])
+
+  const openPartnerRows = useMemo(
+    () => partnerRows.filter(row => ledgerPartnerHasUnsettledPlays(row)),
+    [partnerRows],
+  )
+  const settledPartnerRows = useMemo(
+    () => partnerRows.filter(row => !ledgerPartnerHasUnsettledPlays(row)),
+    [partnerRows],
+  )
 
   const selected = partnerRows.find(row => row.key === selectedKey) || null
 
@@ -319,75 +329,68 @@ export default function PlayLogLedgerTab({
         ) : null}
       </div>
       <div className="flex items-center gap-1.5 mb-1 px-1">
-        <span className="min-w-0 flex-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-          Partner
+        <span className="min-w-0 flex-1 text-[10px] font-semibold tracking-wide text-zinc-500">
+          <span className="uppercase">Partner</span> (open)
         </span>
-        <span className="w-[4.75rem] shrink-0 text-right text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-          They owe you
-        </span>
-        <span className="w-[4.75rem] shrink-0 text-right text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-          You owe them
-        </span>
+        {openPartnerRows.length ? (
+          <>
+            <span className="w-[4.75rem] shrink-0 text-right text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+              They owe you
+            </span>
+            <span className="w-[4.75rem] shrink-0 text-right text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+              You owe them
+            </span>
+          </>
+        ) : null}
       </div>
-      <div className="space-y-2">
-        {partnerRows.map(row => (
+      {openPartnerRows.length ? (
+        <div className="space-y-2">
+          {openPartnerRows.map(row => (
+            <LedgerPartnerCard
+              key={row.key}
+              row={row}
+              settlementViews={settlementViews}
+              partnerRows={partnerRows}
+              onOpen={() => setSelectedKey(row.key)}
+            />
+          ))}
+        </div>
+      ) : (
+        <p className="text-zinc-500 text-xs px-1 mb-1">No open partners.</p>
+      )}
+
+      {settledPartnerRows.length ? (
+        <div className="mt-5" data-play-logbook-ledger-settled>
           <button
-            key={row.key}
             type="button"
-            onClick={() => setSelectedKey(row.key)}
-            className="w-full text-left rounded-2xl bg-zinc-900 border border-zinc-800/60 p-4 touch-manipulation cursor-pointer active:bg-zinc-800/90"
-            data-play-logbook-card
-            data-play-logbook-entry
+            aria-expanded={settledPartnersOpen}
+            onClick={() => setSettledPartnersOpen(open => !open)}
+            className="mb-1 flex w-full min-h-11 items-center gap-1.5 px-1 text-left touch-manipulation active:opacity-80"
           >
-            <div className="flex items-center gap-1.5">
-              <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <span className="min-w-0 truncate text-white font-bold">{row.label}</span>
-                  {row.kind === 'guest' ? (
-                    <span className="shrink-0 rounded-md bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-400">
-                      Guest
-                    </span>
-                  ) : null}
-                </div>
-                <div className="text-zinc-500 text-xs mt-0.5">
-                  {row.openPlays?.length
-                    ? `${row.openPlays.length} open`
-                    : 'Squared'}
-                  {` · ${row.plays.length === 1 ? '1 play' : `${row.plays.length} plays`}`}
-                  {settlementViews.some(
-                    s =>
-                      s.counterpartKey === row.key &&
-                      settlementAcceptVisible(s, partnerRows),
-                  )
-                    ? ' · Update your books'
-                    : settlementViews.some(
-                          s => s.counterpartKey === row.key && s.waitingOnThem,
-                        )
-                      ? ' · Waiting on them'
-                      : ''}
-                  {row.handle && row.kind === 'user'
-                    ? ` · @${String(row.handle).trim().replace(/^@/, '')}`
-                    : ''}
-                </div>
-              </div>
-              <span
-                className={`w-[4.75rem] shrink-0 text-right text-sm font-bold tabular-nums ${
-                  row.theyOweYou > 0 ? 'text-emerald-300' : 'text-zinc-500'
-                }`}
-              >
-                {row.theyOweYou > 0 ? formatPlayLogLedgerUsd(row.theyOweYou) : '$0'}
-              </span>
-              <span
-                className={`w-[4.75rem] shrink-0 text-right text-sm font-bold tabular-nums ${
-                  row.youOweThem > 0 ? 'text-red-300' : 'text-zinc-500'
-                }`}
-              >
-                {row.youOweThem > 0 ? formatPlayLogLedgerUsd(row.youOweThem) : '$0'}
-              </span>
-            </div>
+            <span className="min-w-0 flex-1 text-[10px] font-semibold tracking-wide text-zinc-500">
+              <span className="uppercase">Partner</span> (settled)
+            </span>
+            <span className="shrink-0 text-[10px] font-semibold tabular-nums text-zinc-500">
+              {settledPartnerRows.length}
+            </span>
+            <LedgerSettledChevron open={settledPartnersOpen} />
           </button>
-        ))}
-      </div>
+          {settledPartnersOpen ? (
+            <div className="space-y-2">
+              {settledPartnerRows.map(row => (
+                <LedgerPartnerCard
+                  key={row.key}
+                  row={row}
+                  settled
+                  settlementViews={settlementViews}
+                  partnerRows={partnerRows}
+                  onOpen={() => setSelectedKey(row.key)}
+                />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <LedgerSettlementList
         className="mt-5"
@@ -414,6 +417,119 @@ function LedgerSectionLabel({ children, className = '' }) {
     >
       {children}
     </div>
+  )
+}
+
+function ledgerPartnerHasUnsettledPlays(row) {
+  return (row?.openPlays?.length || 0) > 0
+}
+
+function ledgerPartnerSubtitle(row, settlementViews, partnerRows) {
+  const openCount = row?.openPlays?.length || 0
+  const playCount = row?.plays?.length || 0
+  const bits = [
+    openCount ? `${openCount} open` : 'Settled',
+    playCount === 1 ? '1 play' : `${playCount} plays`,
+  ]
+  if (
+    settlementViews.some(
+      s => s.counterpartKey === row.key && settlementAcceptVisible(s, partnerRows),
+    )
+  ) {
+    bits.push('Update your books')
+  } else if (settlementViews.some(s => s.counterpartKey === row.key && s.waitingOnThem)) {
+    bits.push('Waiting on them')
+  }
+  if (row.handle && row.kind === 'user') {
+    bits.push(`@${String(row.handle).trim().replace(/^@/, '')}`)
+  }
+  return bits.join(' · ')
+}
+
+function LedgerSettledChevron({ open }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      aria-hidden
+      className={`h-4 w-4 shrink-0 text-zinc-500 transition-transform duration-200 ${
+        open ? 'rotate-180' : 'rotate-0'
+      }`}
+      fill="none"
+    >
+      <path
+        d="M6 9l6 6 6-6"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  )
+}
+
+/**
+ * @param {{
+ *   row: object,
+ *   settled?: boolean,
+ *   settlementViews: object[],
+ *   partnerRows: object[],
+ *   onOpen: () => void,
+ * }} props
+ */
+function LedgerPartnerCard({
+  row,
+  settled = false,
+  settlementViews,
+  partnerRows,
+  onOpen,
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className={`w-full text-left rounded-2xl bg-zinc-900 border p-4 touch-manipulation cursor-pointer active:bg-zinc-800/90 ${
+        settled ? 'border-zinc-800/40' : 'border-zinc-800/60'
+      }`}
+      data-play-logbook-card
+      data-play-logbook-entry
+    >
+      <div className="flex items-center gap-1.5">
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <span className={`min-w-0 truncate font-bold ${settled ? 'text-zinc-300' : 'text-white'}`}>
+              {row.label}
+            </span>
+            {row.kind === 'guest' ? (
+              <span className="shrink-0 rounded-md bg-zinc-800 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-zinc-400">
+                Guest
+              </span>
+            ) : null}
+          </div>
+          <div className="text-zinc-500 text-xs mt-0.5">
+            {ledgerPartnerSubtitle(row, settlementViews, partnerRows)}
+          </div>
+        </div>
+        {settled ? null : (
+          <>
+            <span
+              className={`w-[4.75rem] shrink-0 text-right text-sm font-bold tabular-nums ${
+                row.theyOweYou > 0 ? 'text-emerald-300' : 'text-zinc-500'
+              }`}
+            >
+              {row.theyOweYou > 0 ? formatPlayLogLedgerUsd(row.theyOweYou) : '$0'}
+            </span>
+            <span
+              className={`w-[4.75rem] shrink-0 text-right text-sm font-bold tabular-nums ${
+                row.youOweThem > 0 ? 'text-red-300' : 'text-zinc-500'
+              }`}
+            >
+              {row.youOweThem > 0 ? formatPlayLogLedgerUsd(row.youOweThem) : '$0'}
+            </span>
+          </>
+        )}
+      </div>
+    </button>
   )
 }
 

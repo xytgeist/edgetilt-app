@@ -5346,6 +5346,9 @@ html.light [data-bankroll-sheet] .text-zinc-400 {
 html.light [data-bankroll-sheet] .bg-cyan-600 {
   background-color: #0891b2 !important;
 }
+html.light [data-bankroll-sheet] [data-log-play-cancel-btn].active\:bg-zinc-700:active {
+  background-color: #e4e4e7 !important;
+}
 
 /* Slots Bankroll — money green palette (light mode only) */
 html.light [data-slots-bankroll] {

@@ -39,6 +39,7 @@ import {
   valuesForStorage,
   getLogPlaySaveValidationError,
   defsMapForTemplate,
+  parseMetricInput,
   buildCustomMetricDefsForTemplate,
   customTemplateFormStateFromTemplate,
   isValidGameTemplateSlug,
@@ -137,6 +138,32 @@ function emptyFormFields(metricSlugs) {
     o[s] = s === 'denom' ? LOG_PLAY_DENOM_DEFAULT : ''
   }
   return o
+}
+
+/**
+ * Swap the visible metric set to `nextSlugs`. Keep filled values that exist on
+ * the new game (same slug + parseable for that field). Extra keys stay in state
+ * so switching back to the previous game restores those fields.
+ * @param {Record<string, unknown> | null | undefined} prev
+ * @param {string[]} nextSlugs
+ * @param {Record<string, { value_type?: string }>} defsMap
+ */
+function carryFormFieldsToTemplate(prev, nextSlugs, defsMap) {
+  const next = { ...(prev || {}) }
+  for (const slug of nextSlugs) {
+    const raw = next[slug]
+    const filled = raw != null && raw !== ''
+    const type = defsMap?.[slug]?.value_type
+    if (filled && (!type || parseMetricInput(raw, type) != null)) {
+      next[slug] = String(raw)
+      continue
+    }
+    next[slug] = slug === 'denom' ? LOG_PLAY_DENOM_DEFAULT : ''
+  }
+  if (nextSlugs.includes('denom')) {
+    next.denom = normalizeDenomFormValue(next.denom)
+  }
+  return next
 }
 
 /** @param {Record<string, number | string> | null | undefined} values @param {string[]} metricSlugs */
@@ -644,20 +671,12 @@ export default function PlayLogbook({
   }
 
   const onTemplateChange = (tid) => {
+    if (String(tid) === String(selectedTemplateId)) return
     setSelectedTemplateId(tid)
     const tpl = templateById[tid]
     const nextSlugs = tpl?.metric_slugs || []
-    setFormFields(prev => {
-      const next = emptyFormFields(nextSlugs)
-      for (const slug of nextSlugs) {
-        const v = prev[slug]
-        if (v != null && v !== '') next[slug] = v
-      }
-      if (nextSlugs.includes('denom')) {
-        next.denom = normalizeDenomFormValue(next.denom)
-      }
-      return next
-    })
+    const nextDefs = defsMapForTemplate(defsMap, tpl)
+    setFormFields(prev => carryFormFieldsToTemplate(prev, nextSlugs, nextDefs))
   }
 
   const saveEntry = async () => {
@@ -1390,14 +1409,25 @@ export default function PlayLogbook({
                   {error ? <p className="text-red-400 text-sm pb-3">{error}</p> : null}
                 </div>
                 <div className="shrink-0 pt-3 pb-[calc(1rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
-                  <button
-                    type="button"
-                    onClick={saveEntry}
-                    disabled={saving}
-                    className="w-full min-h-12 rounded-2xl bg-cyan-600 text-white font-bold touch-manipulation active:bg-cyan-700 disabled:opacity-50"
-                  >
-                    {saving ? 'Saving…' : editingEntryId ? 'Save changes' : 'Save Entry'}
-                  </button>
+                  <div className="flex gap-3">
+                    <button
+                      type="button"
+                      data-log-play-cancel-btn
+                      onClick={closeSheet}
+                      disabled={saving}
+                      className="flex-1 min-h-12 rounded-2xl bg-zinc-800 text-white font-semibold touch-manipulation active:bg-zinc-700 disabled:opacity-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={saveEntry}
+                      disabled={saving}
+                      className="flex-1 min-h-12 rounded-2xl bg-cyan-600 text-white font-bold touch-manipulation active:bg-cyan-700 disabled:opacity-50"
+                    >
+                      {saving ? 'Saving…' : editingEntryId ? 'Save changes' : 'Save Entry'}
+                    </button>
+                  </div>
                 </div>
               </>
             )}

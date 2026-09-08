@@ -2944,6 +2944,7 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 
 ---
 
+- **2026-09-08:** **FAB Alerts from Slots/Poker promoted to prod (Windows).** Frontend **`test` → `main`**. **No SQL / Edge.** **`1.4.124`.**
 - **2026-09-08:** **FAB Alerts from Slots/Poker were dead (Windows).** Keep-alive Lounge is `hidden`/`inert` off-tab, so like/comment/follow taps opened post/profile behind Slots. FAB clickShield also stayed over Notifications if a sheet was still mounted. Row activate now closes the panel + `ensureLoungeFeedVisible`; slide-panel chrome always disarms the pointer guard. **`1.4.124`.**
 - **2026-09-07:** **Syndicate CFB ghost dupes collapsed (Windows).** Deleted 8 `post_id` null twin rows (ND / Ole Miss sides + Tank PASS) that were doubling ATS/CLV. Unique index **`lounge_bot_picks_desk_event_uidx`**. After collapse: 2 CLV beats / 3 misses / 3 evens … **40%** beat rate on n=5. Live Pages still needs Operations deploy. **`1.4.97`.**
 - **2026-09-07:** **Syndicate CLV beat % ignores even numbers (Windows).** Public **sharpesyndicate.com** tile + monthly scoreboard: beats / (beats + misses) only. Called -3 / close -3 is off the board, not a miss. **`1.4.96`.** Pages rebuild still required for the live domain.

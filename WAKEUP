@@ -109,7 +109,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Windows Theo 2026-09-08 … FAB Alerts from Slots
 
-**I am Windows Theo.** Lounge → Slots → FAB → Notifications taps were no-ops: keep-alive Lounge is `hidden`/`inert`, and clickShield could sit over the panel. Close dock + switch to Lounge on row activate. **`1.4.124`.** Push `test`.
+**I am Windows Theo.** Lounge → Slots → FAB → Notifications taps were no-ops: keep-alive Lounge is `hidden`/`inert`, and clickShield could sit over the panel. Close dock + switch to Lounge on row activate. **`test` → `main`.** **`1.4.124`.**
 
 ### Windows Theo 2026-09-08 … Alerts missing navigateToGuideSlug
 

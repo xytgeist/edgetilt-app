@@ -112,6 +112,7 @@ export function useMentionState(value, supabaseClient, enabled = true) {
   const debounceRef = useRef(null)
   const fetchGenRef = useRef(0)
   const lastQueryRef = useRef(null)
+  const committedMentionRef = useRef(null)
   const suggestionsRef = useRef([])
   const mentionRef = useRef(null)
   const loadingRef = useRef(false)
@@ -163,6 +164,11 @@ export function useMentionState(value, supabaseClient, enabled = true) {
         clearMention()
         return
       }
+      if (isCommittedMentionStillActive(active, committedMentionRef.current)) {
+        clearMention()
+        return
+      }
+      committedMentionRef.current = null
 
       const prev = mentionRef.current
       const same =
@@ -261,6 +267,10 @@ export function useMentionState(value, supabaseClient, enabled = true) {
         e.preventDefault()
         const result = applyMentionSuggestion(liveValueRef.current, mention, profile.handle)
         pendingCursorRef.current = result.cursorPos
+        committedMentionRef.current = {
+          start: mention.start,
+          handle: String(profile.handle).trim().replace(/^@/, '').toLowerCase(),
+        }
         if (isRichComposerElement(textareaEl)) {
           syncComposerHtml(textareaEl, result.value, result.cursorPos)
         }
@@ -285,6 +295,12 @@ export function useMentionState(value, supabaseClient, enabled = true) {
       if (!profile?.handle) return
       const result = applyMentionSuggestion(liveValueRef.current, mention, profile.handle)
       pendingCursorRef.current = result.cursorPos
+      if (mention) {
+        committedMentionRef.current = {
+          start: mention.start,
+          handle: String(profile.handle).trim().replace(/^@/, '').toLowerCase(),
+        }
+      }
       if (isRichComposerElement(textareaEl)) {
         syncComposerHtml(textareaEl, result.value, result.cursorPos)
       }
@@ -314,15 +330,27 @@ export function useMentionState(value, supabaseClient, enabled = true) {
 /**
  * Given the current textarea value and an active mention `{ start, end }`,
  * returns the new value with the handle inserted and the new cursor position.
+ * Trailing space commits the token (same as cashtags) so typeahead does not reopen.
  */
 export function applyMentionSuggestion(value, mention, handle) {
   if (!mention) return { value, cursorPos: value.length }
   const before = value.slice(0, mention.start)
   const after = value.slice(mention.end)
-  const inserted = `@${handle}`
+  const token = `@${String(handle || '').trim().replace(/^@/, '')}`
+  if (!token || token === '@') return { value, cursorPos: mention.start }
+  const needsSpace = !/^\s/.test(after)
+  const inserted = needsSpace ? `${token} ` : token
   const newValue = before + inserted + after
-  const newCursor = mention.start + inserted.length
-  return { value: newValue, cursorPos: newCursor }
+  return { value: newValue, cursorPos: mention.start + inserted.length }
+}
+
+/** True when the caret is still on a handle we just inserted (do not reopen typeahead). */
+export function isCommittedMentionStillActive(active, committed) {
+  if (!active || !committed) return false
+  return (
+    active.start === committed.start &&
+    String(active.query || '').toLowerCase() === String(committed.handle || '').toLowerCase()
+  )
 }
 
 /** @deprecated internal - kept for tests/import stability if referenced elsewhere */

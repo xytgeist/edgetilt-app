@@ -9,6 +9,7 @@ import {
 import {
   applyMentionSuggestion,
   detectMentionAtCursor,
+  isCommittedMentionStillActive,
   rankMentionSuggestionRows,
 } from '../lounge/loungeMentionAutocomplete.js'
 
@@ -25,6 +26,7 @@ export function useChatMentionState(value, candidates, enabled = true) {
   const [suggestions, setSuggestions] = useState([])
   const pendingCursorRef = useRef(null)
   const liveValueRef = useRef(value)
+  const committedMentionRef = useRef(null)
   const candidateRows = useMemo(
     () => (Array.isArray(candidates) ? candidates : []).filter((row) => row?.handle),
     [candidates],
@@ -50,6 +52,11 @@ export function useChatMentionState(value, candidates, enabled = true) {
         clearMention()
         return
       }
+      if (isCommittedMentionStillActive(active, committedMentionRef.current)) {
+        clearMention()
+        return
+      }
+      committedMentionRef.current = null
       setMention(active)
       setSuggestions(rankMentionSuggestionRows(candidateRows, active.query))
       setActiveIndex(0)
@@ -113,6 +120,10 @@ export function useChatMentionState(value, candidates, enabled = true) {
         e.preventDefault()
         const result = applyMentionSuggestion(liveValueRef.current, mention, profile.handle)
         pendingCursorRef.current = result.cursorPos
+        committedMentionRef.current = {
+          start: mention.start,
+          handle: String(profile.handle).trim().replace(/^@/, '').toLowerCase(),
+        }
         if (isRichComposerElement(textareaEl)) {
           syncComposerHtml(textareaEl, result.value, result.cursorPos)
         }
@@ -136,6 +147,12 @@ export function useChatMentionState(value, candidates, enabled = true) {
       if (!profile?.handle) return
       const result = applyMentionSuggestion(liveValueRef.current, mention, profile.handle)
       pendingCursorRef.current = result.cursorPos
+      if (mention) {
+        committedMentionRef.current = {
+          start: mention.start,
+          handle: String(profile.handle).trim().replace(/^@/, '').toLowerCase(),
+        }
+      }
       if (isRichComposerElement(textareaEl)) {
         syncComposerHtml(textareaEl, result.value, result.cursorPos)
       }

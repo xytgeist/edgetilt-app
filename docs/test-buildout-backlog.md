@@ -1099,6 +1099,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-09-07: **@mention typeahead stays closed after pick:** Selecting a person inserts `@handle ` (same commit space as cashtags) and ignores that token until you edit it. Stops the `@ken` → tap → picker-reopens loop. **`1.4.103`.**
+
 - 2026-09-07: **@mention typeahead display name:** Lounge + Chat composers match **`display_name`** as well as handle (`@MeSoSl` finds MeSoSlotty / `@KennyNorman`). Handle prefix still ranks first. **`1.4.102`.**
 
 - 2026-09-07: **Play Logbook Edit Play game + Cancel:** Changing game swaps the form to that template’s fields and keeps filled overlapping values (switch-back restores the rest). Footer **Cancel** left of Save (same as X). **`1.4.101`.** Promoted **`test` → `main`**; **`20260907210000`** applied on prod.

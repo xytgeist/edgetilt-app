@@ -623,6 +623,7 @@ function PaidCheckbox({ checked, disabled = false, onChange }) {
       disabled={disabled}
       onChange={e => onChange(e.target.checked)}
       aria-label="Paid"
+      data-play-logbook-paid-check
       className="block h-3.5 w-3.5 shrink-0 rounded border-zinc-600 bg-zinc-900 accent-cyan-500 disabled:opacity-40"
     />
   )

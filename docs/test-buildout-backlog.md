@@ -1115,6 +1115,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-09-07: **Play Logbook Paid checkbox light-mode blue:** Paid ticks match primary blue in light mode only. **`1.4.117`.**
+
 - 2026-09-07: **Play Logbook LEDGER light-mode dot:** Open-cue next to LEDGER is primary blue in light mode only. **`1.4.116`.**
 
 - 2026-09-07: **Play Logbook PARTNER (open) vs (settled):** Master ledger lists only unsettled counterparts under **PARTNER (open)**. Fully settled people are collapsed **PARTNER (settled)**. **`1.4.115`.**

@@ -107,6 +107,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Mac Theo.** Ryan signed off: (1) App Store account is **Digiverse Ventures LLC**, (2) **digiverse.ventures** live, (3) Cloudflare email for edgetilt + digiverse / reply-from. **Still open:** Apple increased price request (Lifetime above `$1,000`). DSA trader is unblocked now that the org flip landed. Do not Add for Review.
 
+### Windows Theo 2026-09-07 … Paid checkbox is blue in light mode
+
+**I am Windows Theo.** Play Logbook Paid checkboxes use primary blue in light mode. Dark mode stays cyan. **`1.4.117`.**
+
 ### Windows Theo 2026-09-07 … Ledger tab dot is blue in light mode
 
 **I am Windows Theo.** LEDGER open-cue dot matches the light-mode primary blue (`#2563eb`). Dark mode stays cyan. **`1.4.116`.**

@@ -747,10 +747,7 @@ function LedgerSettlementCard({
   const body = (
     <>
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-white">{row.otherLabel}</div>
-          <div className="mt-0.5 text-[11px] text-zinc-500">{statusHint} · {plays}</div>
-        </div>
+        <div className="min-w-0 truncate text-sm font-semibold text-white">{row.otherLabel}</div>
         <span
           className={`shrink-0 text-sm font-bold tabular-nums ${
             net > 0 ? 'text-emerald-300' : net < 0 ? 'text-rose-400' : 'text-zinc-400'
@@ -758,6 +755,25 @@ function LedgerSettlementCard({
         >
           {formatLedgerSettledNet(net)}
         </span>
+      </div>
+      <div className="mt-0.5 flex items-center gap-1.5">
+        <div className="min-w-0 flex-1 truncate text-[11px] text-zinc-500">
+          {statusHint} · {plays}
+        </div>
+        {showNudge ? (
+          <button
+            type="button"
+            data-play-logbook-ledger-nudge
+            onClick={e => {
+              e.stopPropagation()
+              if (!settling && !nudging && !nudgeCooling) onNudge?.()
+            }}
+            disabled={settling || nudging || nudgeCooling}
+            className="shrink-0 rounded-md border border-cyan-500/40 bg-cyan-600/15 px-1.5 py-0.5 text-[10px] leading-4 font-semibold text-cyan-300 touch-manipulation active:bg-cyan-600/25 disabled:opacity-50"
+          >
+            {nudging ? 'Sending…' : nudgeCooling ? 'Nudged' : 'Nudge'}
+          </button>
+        ) : null}
       </div>
       <div className="mt-2 space-y-1 border-t border-zinc-800/80 pt-2">
         <div className="flex items-baseline justify-between gap-3 text-sm">
@@ -820,25 +836,9 @@ function LedgerSettlementCard({
       ) : canOpen ? (
         <p className="mt-3 text-xs text-zinc-500 px-0.5">Tap to update your books or remain unsettled.</p>
       ) : null}
-      {row.createdAt || showNudge ? (
-        <div className="mt-3 flex items-center justify-between gap-2">
-          <span className="min-w-0 text-[11px] text-zinc-500">
-            {row.createdAt ? fmtLedgerCapturedAt(row.createdAt) : ''}
-          </span>
-          {showNudge ? (
-            <button
-              type="button"
-              data-play-logbook-ledger-nudge
-              onClick={e => {
-                e.stopPropagation()
-                if (!settling && !nudging && !nudgeCooling) onNudge?.()
-              }}
-              disabled={settling || nudging || nudgeCooling}
-              className="shrink-0 min-h-8 rounded-lg border border-cyan-500/40 bg-cyan-600/15 px-2.5 text-[11px] font-semibold text-cyan-300 touch-manipulation active:bg-cyan-600/25 disabled:opacity-50"
-            >
-              {nudging ? 'Sending…' : nudgeCooling ? 'Nudged' : 'Nudge'}
-            </button>
-          ) : null}
+      {row.createdAt ? (
+        <div className="mt-3 text-[11px] text-zinc-500">
+          {fmtLedgerCapturedAt(row.createdAt)}
         </div>
       ) : null}
     </>

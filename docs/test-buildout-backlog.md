@@ -1117,6 +1117,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- 2026-09-08: **Play Logbook ledger Nudge placement:** Smaller **Nudge** on the **Settled · waiting on them** row. Date stays below. **`1.4.119`.**
+
 - 2026-09-07: **Play Logbook ledger nudge:** Dropped “we are not a bank…” on waiting settle cards. **Nudge** sends `play_log_ledger_nudge` Alert (1h cooldown). SQL **`20260907260000`** + **`lounge-send-activity-push`** on **test**. **`1.4.118`.**
 
 - 2026-09-07: **Play Logbook Paid checkbox light-mode blue:** Paid ticks match primary blue in light mode only. **`1.4.117`.**

@@ -253,6 +253,8 @@ function actionPhrase(eventType: string, commentId: string | null, isReply = fal
       return 'marked your play log share as unpaid'
     case 'play_log_ledger_settled':
       return 'marked your play log ledger settled ... update your books'
+    case 'play_log_ledger_nudge':
+      return 'reminded you to update your play log books'
     case 'chat_dm':
       return 'sent you a message'
     case 'chat_group_invite':
@@ -453,7 +455,10 @@ function buildTargetUrl(
   ) {
     params.set('tab', 'logbook')
     params.set('playLogEntry', event.play_log_entry_id)
-  } else if (event.event_type === 'play_log_ledger_settled') {
+  } else if (
+    event.event_type === 'play_log_ledger_settled' ||
+    event.event_type === 'play_log_ledger_nudge'
+  ) {
     params.set('tab', 'logbook')
     params.set('playLogLedger', '1')
     const actorId = String(event.actor_user_id || '').trim()
@@ -903,6 +908,18 @@ async function handleImmediatePush(
     notification = {
       title: pushTitleForEventType(event.event_type),
       body: `${who} marked your play log ledger settled ... update your books`,
+      url: buildTargetUrl(event, (actorProfile as ActorProfile | null) || null, {
+        activityEventId: event.id,
+      }),
+      activityEventId: event.id,
+    }
+  }
+
+  if (event.event_type === 'play_log_ledger_nudge') {
+    const who = actorDisplayName((actorProfile as ActorProfile | null) || null)
+    notification = {
+      title: pushTitleForEventType(event.event_type),
+      body: `${who} reminded you to update your play log books`,
       url: buildTargetUrl(event, (actorProfile as ActorProfile | null) || null, {
         activityEventId: event.id,
       }),

@@ -584,3 +584,36 @@ export async function declinePlayLogLedgerSettlement(supabaseClient, settlementI
   if (!row?.id) throw new Error('Settlement not found or already updated')
   return row
 }
+
+/**
+ * Actor reminds the Edge counterpart to update their books.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} settlementId
+ */
+export async function nudgePlayLogLedgerSettlement(supabaseClient, settlementId) {
+  const id = String(settlementId || '').trim()
+  if (!id) throw new Error('Settlement required')
+  const { data, error } = await supabaseClient.rpc('play_log_ledger_nudge_settlement', {
+    p_id: id,
+  })
+  if (error) {
+    const code = String(error.code || '')
+    const message = String(error.message || '')
+    if (
+      code === 'PGRST202' ||
+      code === '42883' ||
+      isPlayLogLedgerSettlementsMissingError(error)
+    ) {
+      throw new Error(
+        'Ledger nudge needs SQL 20260907260000_play_log_ledger_nudge.sql on this project.',
+      )
+    }
+    if (/wait before nudging/i.test(message)) {
+      throw new Error('Wait a bit before nudging again.')
+    }
+    throw error
+  }
+  const row = Array.isArray(data) ? data[0] : data
+  if (!row?.id) throw new Error('Could not send nudge')
+  return row
+}

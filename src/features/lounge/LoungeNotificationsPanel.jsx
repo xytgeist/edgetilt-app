@@ -417,7 +417,8 @@ export default function LoungeNotificationsPanel({
       }
 
       if (
-        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.PLAY_LOG_LEDGER_SETTLED
+        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.PLAY_LOG_LEDGER_SETTLED ||
+        event.event_type === LOUNGE_ACTIVITY_EVENT_TYPES.PLAY_LOG_LEDGER_NUDGE
       ) {
         const params = new URLSearchParams()
         params.set('tab', 'logbook')

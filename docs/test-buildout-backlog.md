@@ -436,6 +436,8 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 
 - [x] **Ledger PARTNER (open) vs (settled):** Master list **PARTNER (open)** is only counterparts with unsettled plays. Fully settled people sit in collapsed **PARTNER (settled)** (tap to expand, same partner book). No SQL. **`1.4.115`.** Ryan smoke on test.
 
+- [x] **Ledger nudge:** Waiting settle cards drop the “we are not a bank” line. Actor **Nudge** sends `play_log_ledger_nudge` Alert/push (1 hour cooldown). SQL **`20260907260000_play_log_ledger_nudge.sql`** on **test**. Redeploy **`lounge-send-activity-push`** on **test**. **`1.4.118`.** Ryan smoke on test. Prod SQL + Edge when promoting.
+
 ---
 
 ## AP Guide editor (`/slot-guide-form`)
@@ -1114,6 +1116,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 ---
 
 ## Update log
+
+- 2026-09-07: **Play Logbook ledger nudge:** Dropped “we are not a bank…” on waiting settle cards. **Nudge** sends `play_log_ledger_nudge` Alert (1h cooldown). SQL **`20260907260000`** + **`lounge-send-activity-push`** on **test**. **`1.4.118`.**
 
 - 2026-09-07: **Play Logbook Paid checkbox light-mode blue:** Paid ticks match primary blue in light mode only. **`1.4.117`.**
 

@@ -91,6 +91,7 @@ import {
   insertPlayLogLedgerSettlements,
   acceptPlayLogLedgerSettlement,
   declinePlayLogLedgerSettlement,
+  nudgePlayLogLedgerSettlement,
   isPlayLogPartnersPaidRpcMissingError,
   savePlayLogSharedSession,
   updatePlayLogSessionPartnersPaid,
@@ -654,6 +655,32 @@ export default function PlayLogbook({
       }
     },
     [ledgerSettling, supabaseClient],
+  )
+
+  const nudgeLedgerSettlement = useCallback(
+    async settlementId => {
+      if (!settlementId) return
+      setError('')
+      try {
+        const row = await nudgePlayLogLedgerSettlement(supabaseClient, settlementId)
+        if (row?.id) {
+          setLedgerSettlements(prev =>
+            prev.map(item =>
+              String(item.id) === String(row.id)
+                ? {
+                    ...item,
+                    ...row,
+                    counterpart_nudged_at: row.counterpart_nudged_at,
+                  }
+                : item,
+            ),
+          )
+        }
+      } catch (err) {
+        setError(err?.message || 'Could not send nudge.')
+      }
+    },
+    [supabaseClient],
   )
 
   const openEntryDetail = useCallback(
@@ -1453,6 +1480,7 @@ export default function PlayLogbook({
             }
             onAcceptSettlement={settlementId => void acceptLedgerSettlement(settlementId)}
             onDeclineSettlement={settlementId => void declineLedgerSettlement(settlementId)}
+            onNudgeSettlement={settlementId => void nudgeLedgerSettlement(settlementId)}
             onOpenEntry={entryId => {
               const entry = entries.find(e => String(e.id) === String(entryId))
               if (entry) void openEntryDetail(entry)

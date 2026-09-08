@@ -423,6 +423,7 @@ export function playLogLedgerSettlementView(row, viewerUserId) {
     leftOpenByThem: viewerIsActor && !acceptedAt && Boolean(declinedAt),
     counterpartAcceptedAt: acceptedAt,
     counterpartDeclinedAt: declinedAt,
+    counterpartNudgedAt: row.counterpart_nudged_at || null,
     ...copy,
   }
 }

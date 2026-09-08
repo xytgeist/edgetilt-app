@@ -15,6 +15,7 @@ export const OPS_ACTIVITY_EVENT_LABELS = {
   play_log_partner_paid: 'Play log partner paid',
   play_log_partner_unpaid: 'Play log partner unpaid',
   play_log_ledger_settled: 'Play log ledger settled',
+  play_log_ledger_nudge: 'Play log ledger nudge',
   chat_dm: 'Chat DM alert',
   chat_group_invite: 'Chat group invite',
   starter_weekly_guide_drop: 'Starter weekly drop',

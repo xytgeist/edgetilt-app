@@ -14,6 +14,7 @@ import {
  *   onSettlePlay?: (counterpartKey: string, sessionId: string) => void | Promise<void>,
  *   onAcceptSettlement?: (settlementId: string) => void | Promise<void>,
  *   onDeclineSettlement?: (settlementId: string) => void | Promise<void>,
+ *   onNudgeSettlement?: (settlementId: string) => void | Promise<void>,
  *   settling?: boolean,
  *   initialCounterpartKey?: string | null,
  *   initialSessionId?: string | null,
@@ -30,6 +31,7 @@ export default function PlayLogLedgerTab({
   onSettlePlay,
   onAcceptSettlement,
   onDeclineSettlement,
+  onNudgeSettlement,
   settling = false,
   initialCounterpartKey = null,
   initialSessionId = null,
@@ -39,7 +41,18 @@ export default function PlayLogLedgerTab({
   const [selectedKey, setSelectedKey] = useState(/** @type {string | null} */ (null))
   const [focusedSettlementId, setFocusedSettlementId] = useState(/** @type {string | null} */ (null))
   const [settledPartnersOpen, setSettledPartnersOpen] = useState(false)
+  const [nudgingSettlementId, setNudgingSettlementId] = useState(/** @type {string | null} */ (null))
   const counterparts = ledger?.counterparts || []
+
+  const handleNudgeSettlement = async settlementId => {
+    if (!onNudgeSettlement || nudgingSettlementId) return
+    setNudgingSettlementId(String(settlementId))
+    try {
+      await onNudgeSettlement(settlementId)
+    } finally {
+      setNudgingSettlementId(null)
+    }
+  }
 
   const settlementViews = useMemo(
     () =>
@@ -251,8 +264,10 @@ export default function PlayLogLedgerTab({
           rows={selectedSettlements}
           partnerRows={partnerRows}
           settling={settling}
+          nudgingSettlementId={nudgingSettlementId}
           onAcceptSettlement={onAcceptSettlement}
           onDeclineSettlement={onDeclineSettlement}
+          onNudgeSettlement={handleNudgeSettlement}
           onOpenSettlement={row => setFocusedSettlementId(String(row.id))}
           emptyHint="Settle All with this partner shows up here."
         />
@@ -397,8 +412,10 @@ export default function PlayLogLedgerTab({
         rows={settlementViews}
         partnerRows={partnerRows}
         settling={settling}
+        nudgingSettlementId={nudgingSettlementId}
         onAcceptSettlement={onAcceptSettlement}
         onDeclineSettlement={onDeclineSettlement}
+        onNudgeSettlement={handleNudgeSettlement}
         onOpenSettlement={row => {
           if (row.counterpartKey) setSelectedKey(row.counterpartKey)
           setFocusedSettlementId(String(row.id))
@@ -635,8 +652,10 @@ function LedgerPlayCard({ play, settling = false, showSettle = false, onSettle, 
  *   emptyHint?: string,
  *   className?: string,
  *   settling?: boolean,
+ *   nudgingSettlementId?: string | null,
  *   onAcceptSettlement?: (settlementId: string) => void | Promise<void>,
  *   onDeclineSettlement?: (settlementId: string) => void | Promise<void>,
+ *   onNudgeSettlement?: (settlementId: string) => void | Promise<void>,
  *   onOpenSettlement?: (row: ReturnType<typeof playLogLedgerSettlementView>) => void,
  * }} props
  */
@@ -646,8 +665,10 @@ function LedgerSettlementList({
   emptyHint = '',
   className = '',
   settling = false,
+  nudgingSettlementId = null,
   onAcceptSettlement,
   onDeclineSettlement,
+  onNudgeSettlement,
   onOpenSettlement,
 }) {
   return (
@@ -666,9 +687,11 @@ function LedgerSettlementList({
                 showActions={false}
                 canOpen={canOpen}
                 settling={settling}
+                nudging={String(nudgingSettlementId) === String(row.id)}
                 onOpen={() => onOpenSettlement?.(row)}
                 onAccept={() => void onAcceptSettlement?.(row.id)}
                 onDecline={() => void onDeclineSettlement?.(row.id)}
+                onNudge={() => void onNudgeSettlement?.(row.id)}
               />
             )
           })}
@@ -687,9 +710,11 @@ function LedgerSettlementList({
  *   showRemain?: boolean,
  *   canOpen?: boolean,
  *   settling?: boolean,
+ *   nudging?: boolean,
  *   onOpen?: () => void,
  *   onAccept?: () => void,
  *   onDecline?: () => void,
+ *   onNudge?: () => void,
  * }} props
  */
 function LedgerSettlementCard({
@@ -698,9 +723,11 @@ function LedgerSettlementCard({
   showRemain = true,
   canOpen = false,
   settling = false,
+  nudging = false,
   onOpen,
   onAccept,
   onDecline,
+  onNudge,
 }) {
   const net = (row.theyOweYou || 0) - (row.youOweThem || 0)
   const plays = row.playCount === 1 ? '1 play' : `${row.playCount || 0} plays`
@@ -715,6 +742,8 @@ function LedgerSettlementCard({
           : row.counterpartAcceptedAt
             ? 'Settled · both books updated'
             : 'Settled'
+  const showNudge = Boolean(row.waitingOnThem && onNudge && !showActions)
+  const nudgeCooling = ledgerNudgeOnCooldown(row.counterpartNudgedAt)
   const body = (
     <>
       <div className="flex items-start justify-between gap-3">
@@ -780,10 +809,6 @@ function LedgerSettlementCard({
             </button>
           ) : null}
         </div>
-      ) : row.waitingOnThem ? (
-        <p className="mt-3 text-xs text-zinc-500 px-0.5">
-          Waiting for them to update their books. We are not a bank… this only closed yours.
-        </p>
       ) : row.leftOpenByThem ? (
         <p className="mt-3 text-xs text-zinc-500 px-0.5">
           They left this open on their books. Yours stay closed.
@@ -795,8 +820,26 @@ function LedgerSettlementCard({
       ) : canOpen ? (
         <p className="mt-3 text-xs text-zinc-500 px-0.5">Tap to update your books or remain unsettled.</p>
       ) : null}
-      {row.createdAt ? (
-        <div className="mt-1.5 text-[11px] text-zinc-500">{fmtLedgerCapturedAt(row.createdAt)}</div>
+      {row.createdAt || showNudge ? (
+        <div className="mt-3 flex items-center justify-between gap-2">
+          <span className="min-w-0 text-[11px] text-zinc-500">
+            {row.createdAt ? fmtLedgerCapturedAt(row.createdAt) : ''}
+          </span>
+          {showNudge ? (
+            <button
+              type="button"
+              data-play-logbook-ledger-nudge
+              onClick={e => {
+                e.stopPropagation()
+                if (!settling && !nudging && !nudgeCooling) onNudge?.()
+              }}
+              disabled={settling || nudging || nudgeCooling}
+              className="shrink-0 min-h-8 rounded-lg border border-cyan-500/40 bg-cyan-600/15 px-2.5 text-[11px] font-semibold text-cyan-300 touch-manipulation active:bg-cyan-600/25 disabled:opacity-50"
+            >
+              {nudging ? 'Sending…' : nudgeCooling ? 'Nudged' : 'Nudge'}
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </>
   )
@@ -826,6 +869,15 @@ function LedgerSettlementCard({
       {body}
     </div>
   )
+}
+
+const PLAY_LOG_LEDGER_NUDGE_COOLDOWN_MS = 60 * 60 * 1000
+
+function ledgerNudgeOnCooldown(nudgedAt) {
+  if (!nudgedAt) return false
+  const t = new Date(nudgedAt).getTime()
+  if (!Number.isFinite(t)) return false
+  return Date.now() - t < PLAY_LOG_LEDGER_NUDGE_COOLDOWN_MS
 }
 
 /** Show accept only if those sessions are still open on the viewer’s books. */

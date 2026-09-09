@@ -18,6 +18,7 @@ import {
 import { formatColoredPickerName } from './loungeBotPickerColors.ts'
 import { publishLoungeBotPost } from './loungeBotPublish.ts'
 import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
+import { resolveSlatePublisher } from './loungeBotSyndicateIdentity.ts'
 import { fetchGameWeather, type GameWeatherSummary } from './loungeBotWeather.ts'
 import { oddsSportKeyToRundownSportId } from './loungeBotRundownContext.ts'
 import { fetchGameInjuryPval, type GameInjurySummary } from './loungeBotInjuryPval.ts'
@@ -381,7 +382,8 @@ export async function findPrimetimeGameCandidate(
 
 /**
  * Public Lounge primetime tease: ONE lean + CTA.
- * Full 4-desk card stays in VIP (see publishAndRecordPrimetimeSpotlight).
+ * Full 4-desk card is the fan-only Lounge post + VIP chat
+ * (see publishAndRecordPrimetimeSpotlight).
  */
 export function formatPrimetimeSpotlightCaption(spotlight: PrimetimeSpotlightGame): string {
   const kickoff = formatOddsCommenceTimeShort(spotlight.commenceTime)
@@ -425,34 +427,74 @@ export function formatPrimetimeVipDeepDive(spotlight: PrimetimeSpotlightGame): s
   return lines.join('\n')
 }
 
+export type PrimetimePublishResult = {
+  ok: boolean
+  postId?: string
+  publicPostId?: string
+  privatePostId?: string | null
+  publisherMode?: string
+  pickIds: string[]
+  error?: string
+  fanOnlyWarning?: string
+  vipChatWarning?: string
+}
+
 /**
- * Publish the Primetime Solo Spotlight post and log picks to the ledger.
+ * Publish the Primetime Solo Spotlight: public Lounge tease + fan-only 4-desk card
+ * (same dual-post model as slate) + VIP chat, then log the lean to the ledger.
  */
 export async function publishAndRecordPrimetimeSpotlight(
   admin: SupabaseClient,
   botUserId: string,
   spotlight: PrimetimeSpotlightGame,
   categoryPills: string[] = ['sports'],
-): Promise<{ ok: boolean; postId?: string; pickIds: string[]; error?: string }> {
-  const caption = formatPrimetimeSpotlightCaption(spotlight)
+): Promise<PrimetimePublishResult> {
+  const publisher = await resolveSlatePublisher(admin, botUserId)
+  const publishAs = publisher.botUserId
+  const pills = categoryPills.length ? categoryPills : ['sports']
+  const publicCaption = formatPrimetimeSpotlightCaption(spotlight)
+  const vipCaption = formatPrimetimeVipDeepDive(spotlight)
 
-  // 1. Publish public tease to the Lounge feed (one lean only).
+  // 1. Public Lounge tease (one lean only).
   // Tribe pills are `sports` only … `nfl` / `primetime` are not in the Lounge allowlist
   // and used to fail the insert, which Ops then toasted as "no game".
   const postRes = await publishLoungeBotPost(admin, {
-    botUserId,
-    caption,
-    categoryPills: categoryPills.length ? categoryPills : ['sports'],
+    botUserId: publishAs,
+    caption: publicCaption,
+    categoryPills: pills,
   })
 
   if (postRes.error || !postRes.postId) {
-    return { ok: false, pickIds: [], error: postRes.error || 'Lounge publish failed.' }
+    return {
+      ok: false,
+      pickIds: [],
+      publisherMode: publisher.mode,
+      error: postRes.error || 'Lounge publish failed.',
+    }
   }
 
-  const postId = postRes.postId
+  // 2. Fan-only Lounge card … Preview already shows this as the subscriber post.
+  let privatePostId: string | null = null
+  let fanOnlyWarning: string | undefined
+  if (publisher.mode === 'syndicate') {
+    const privateRes = await publishLoungeBotPost(admin, {
+      botUserId: publishAs,
+      caption: vipCaption,
+      categoryPills: pills,
+      creatorFanOnly: true,
+    })
+    if (privateRes.error || !privateRes.postId) {
+      fanOnlyWarning = privateRes.error || 'Fan-only primetime card failed'
+      console.error('Syndicate fan-only primetime failed:', fanOnlyWarning)
+    } else {
+      privatePostId = privateRes.postId
+    }
+  }
+
+  const postId = privatePostId || postRes.postId
   const pickIds: string[] = []
 
-  // 2. Log official consensus pick into lounge_bot_picks for grading
+  // 3. Log official consensus pick into lounge_bot_picks for grading
   const officialLean = spotlight.personaLeans.Scott.fullPick
   const isHome = spotlight.consensusPick.side === 'home'
 
@@ -463,7 +505,7 @@ export async function publishAndRecordPrimetimeSpotlight(
   const { data: inserted } = await admin
     .from('lounge_bot_picks')
     .insert({
-      bot_user_id: botUserId,
+      bot_user_id: publishAs,
       post_id: postId,
       picker_name: 'Scott',
       event_id: spotlight.eventId,
@@ -498,11 +540,24 @@ export async function publishAndRecordPrimetimeSpotlight(
     pickIds.push(inserted.id)
   }
 
-  // 3. VIP gets the full 4-desk deep dive
-  await publishBotSubChatMessage(admin, {
-    botUserId,
-    caption: formatPrimetimeVipDeepDive(spotlight),
-  }).catch((err) => console.error('Primetime VIP deep dive failed:', err))
+  // 4. VIP chat gets the same 4-desk card (plain text). Do not swallow the miss.
+  const vipChat = await publishBotSubChatMessage(admin, {
+    botUserId: publishAs,
+    caption: vipCaption,
+  })
+  const vipChatWarning = vipChat.error || undefined
+  if (vipChatWarning) {
+    console.error('Primetime VIP chat failed:', vipChatWarning)
+  }
 
-  return { ok: true, postId, pickIds }
+  return {
+    ok: true,
+    postId,
+    publicPostId: postRes.postId,
+    privatePostId,
+    publisherMode: publisher.mode,
+    pickIds,
+    ...(fanOnlyWarning ? { fanOnlyWarning } : {}),
+    ...(vipChatWarning ? { vipChatWarning } : {}),
+  }
 }

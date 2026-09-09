@@ -554,6 +554,14 @@ Deno.serve(async (req) => {
         action: 'nfl_primetime_spotlight',
         spotlight,
         ...result,
+        ...(result.fanOnlyWarning || result.vipChatWarning
+          ? {
+            message: [
+              result.fanOnlyWarning ? `Fan-only Lounge failed: ${result.fanOnlyWarning}` : null,
+              result.vipChatWarning ? `VIP chat failed: ${result.vipChatWarning}` : null,
+            ].filter(Boolean).join(' '),
+          }
+          : {}),
       })
     }
 

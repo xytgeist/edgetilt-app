@@ -274,7 +274,14 @@ export function BotSharpDeskPanel({
         showDropDryRunPreview(`${label} Spotlight`, data)
       } else if (data?.ok) {
         const sp = data?.spotlight
-        setToast?.(`Published ${sp?.primetimeLabel || label} Spotlight: ${sp?.awayTeam} @ ${sp?.homeTeam}`)
+        const extras = [
+          data?.fanOnlyWarning && `Fan-only Lounge failed: ${data.fanOnlyWarning}`,
+          data?.vipChatWarning && `VIP chat failed: ${data.vipChatWarning}`,
+        ].filter(Boolean)
+        const dest = extras.length
+          ? `public: ${sp?.awayTeam} @ ${sp?.homeTeam}. ${extras.join(' ')}`
+          : `${sp?.awayTeam} @ ${sp?.homeTeam}${data?.privatePostId ? ' (public + fan-only)' : ''}`
+        setToast?.(`Published ${sp?.primetimeLabel || label} Spotlight ${dest}`)
         await loadData()
       } else if (dryRun) {
         showDropDryRunPreview(`${label} Spotlight`, data, data?.message || `No eligible ${label} game found on active board.`)

@@ -274,7 +274,7 @@ export const ROCCO_UGLY_JUICE_WORSE_THAN = -115
  * - No nested indent (mobile wrap room)
  * - Consensus: pick + agreeing desks only (no PASS callouts)
  * - House Divided / Split: one · line per active side
- * - Order: Hammers → Consensus → House Divided → Split → Tank's Totals → Solo → All Pass
+ * - Order: Hammers → Consensus → House Divided → Split → Tank's Totals (always) → Tank's Spots → Solo → All Pass
  * - VIP desk thread parts use the same Lounge markdown dialect (colored desk + gold picks). Chat/X copies are stripped at publish.
  */
 function formatSlateWeekSubtitle(games: SlateGamePick[]): string | null {
@@ -409,8 +409,14 @@ function formatTankItem(g: SlateGamePick): string {
   // Matchup first, no kickoff … e.g. Pats/Seahawks - Over 44.5 (-102)
   const away = sportTeamDisplayName(g.awayTeam, g.sportKey)
   const home = sportTeamDisplayName(g.homeTeam, g.sportKey)
-  const pick = String(g.pickerPicks.Tank.lineDisplay || '').trim()
+  const pick = String(g.pickerPicks.Tank.lineDisplay || '').trim() || 'PASS (totals)'
   return `${away}/${home} - ${formatGoldPick(pick)}`
+}
+
+function tankTotalsLeanDisplay(g: SlateGamePick): string {
+  const side = g.pickerPicks.Tank?.side
+  if (side !== 'over' && side !== 'under') return ''
+  return String(g.pickerPicks.Tank.lineDisplay || '').trim()
 }
 
 function formatTankAtsItem(g: SlateGamePick): string {
@@ -418,9 +424,11 @@ function formatTankAtsItem(g: SlateGamePick): string {
   const home = sportTeamDisplayName(g.homeTeam, g.sportKey)
   const pick = String(g.tankAts?.lineDisplay || g.tankAts?.teamName || '').trim()
   const why = formatTankAtsWhy(g.tankAts)
-  return why
-    ? `${away}/${home} - ${formatGoldPick(pick)} · ${why}`
-    : `${away}/${home} - ${formatGoldPick(pick)}`
+  const total = tankTotalsLeanDisplay(g)
+  const bits = [`${away}/${home} - ${formatGoldPick(pick)}`]
+  if (total) bits.push(formatGoldPick(total))
+  if (why) bits.push(why)
+  return bits.join(' · ')
 }
 
 /** Public tease footer … game count when the slate has 2+ games, else generic fan-sub CTA. */
@@ -470,10 +478,11 @@ export function formatNflSlateCardCaption(
   const passOnly = uncut
     ? (card.passOnly || [])
     : (card.passOnly || []).slice(0, PUBLIC_SLATE_PASS_CAP)
-  const tankTotalsAll = card.games.filter(
+  const tankTotalsFired = card.games.filter(
     (g) => g.pickerPicks.Tank.side === 'over' || g.pickerPicks.Tank.side === 'under',
   )
-  const tankTotals = uncut ? tankTotalsAll : tankTotalsAll.slice(0, 3)
+  // O/U stays on every card. Uncut lists every game (incl. PASS). Public tease is fires only.
+  const tankTotals = uncut ? card.games : tankTotalsFired.slice(0, 3)
 
   const title = card.cardTitle || '🏈 NFL Sharpe Syndicate Slate'
   const lines: string[] = [`# ${title}`]
@@ -505,11 +514,13 @@ export function formatNflSlateCardCaption(
     lines.push('')
   }
 
+  lines.push("## 🛡️ Tank's Totals")
   if (tankTotals.length > 0) {
-    lines.push("## 🛡️ Tank's Totals")
     for (const g of tankTotals) lines.push(formatTankItem(g))
-    lines.push('')
+  } else {
+    lines.push('No O/U lean this slate')
   }
+  lines.push('')
 
   const tankSpotsAll = card.games.filter((g) => g.tankAts?.published === true)
   const tankSpots = uncut ? tankSpotsAll : tankSpotsAll.slice(0, 3)
@@ -627,7 +638,7 @@ export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): 
   const icon = picker === 'Tank' ? '🛡️' : picker === 'Chedda' ? '🧀' : picker === 'Rocco' ? '🥩' : '🎯'
   const specialty =
     picker === 'Tank'
-      ? 'O/U desk … tempo, off-def, and totals that actually move the number.'
+      ? 'O/U desk first … tempo, off-def, and totals that actually move the number. Spots are extra.'
       : picker === 'Chedda'
         ? 'Dog hunter … hooks, plus-money spots, and sharp money on the underdog.'
         : picker === 'Rocco'

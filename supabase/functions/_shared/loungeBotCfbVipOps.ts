@@ -174,7 +174,7 @@ function formatVipDeepFromGame(g: SlateGamePick, label: string): string {
     `• Scott: ${g.pickerPicks.Scott.lineDisplay}`,
     `• Rocco: ${g.pickerPicks.Rocco.lineDisplay}`,
     `• Chedda: ${g.pickerPicks.Chedda.lineDisplay}`,
-    `• Tank: ${g.pickerPicks.Tank.lineDisplay}`,
+    `• Tank O/U: ${g.pickerPicks.Tank.lineDisplay}`,
   ]
   if (g.tankAts?.published) {
     lines.push(`• Tank spot: ${g.tankAts.lineDisplay || g.tankAts.teamName} (${g.tankAts.reasons.join(' + ')})`)

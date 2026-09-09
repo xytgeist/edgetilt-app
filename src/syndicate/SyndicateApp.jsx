@@ -1553,8 +1553,9 @@ export function SyndicateApp() {
                   Situational Totals &amp; Pace / Environment Edges
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  Tank&apos;s lane is totals-native: an off/def + tempo model total versus the market number.
-                  Weather, wind, rest, and pace can also print a sidecar spot when two independent Tank reasons agree.
+                  Tank&apos;s primary vote is still Over / Under. Off/def + tempo model total versus the market number,
+                  with wind and falling-total vetoes on Overs. Weather, rest, and pace can also print a sidecar spot
+                  when two independent Tank reasons agree. That spot never replaces the O/U card.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   Totals also have their own clustering (certain numbers hit more often historically). Tank prices those frequencies

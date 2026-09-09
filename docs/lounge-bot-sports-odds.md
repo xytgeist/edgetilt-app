@@ -907,8 +907,8 @@ Already-posted chat messages stay as they were; next publish is clean.
 - H1 title + `Week N · Sep 10-15` line (NFL only … Week 1 pinned to the real regular-season open in `NFL_REGULAR_SEASON_OPEN_PT`, 2026 = Sep 9; CFB is the date range only); H2 section headers with emojis
 - **Hammers:** same layout as Consensus … `### {away}/{home} · {when}` then `· **[gold]{pick}[/gold]**` (no pick-first parens; no desk names on hammers)
 - **Consensus / House Divided / Split:** `### Matchup · when` then `· **[gold]pick[/gold]** · desks`
-- **Tank's Totals:** `{away}/{home} - **[gold]Over|Under …[/gold]**` (no kickoff; NFL shorts Pats/Bucs/Cards)
-- **Tank's Spots:** `{away}/{home} - **[gold]{side line}[/gold]** · rest + weather` (only published 2-reason spots; public cap 3)
+- **Tank's Totals:** always on the card. `{away}/{home} - **[gold]Over|Under|PASS (totals)[/gold]**` (no kickoff; NFL shorts Pats/Bucs/Cards). Uncut lists every game. Public tease is fires only (cap 3), or `No O/U lean this slate`.
+- **Tank's Spots:** `{away}/{home} - **[gold]{side line}[/gold]** · **[gold]Over|Under[/gold]** · rest + weather` (only published 2-reason spots; public cap 3). His O/U hangs on the spot line when he has a totals lean.
 - Markdown dialect captions preserve middle dots (`·`) through publish sanitize
 
 ### VIP desk thread parts (`formatPickerSlateList`)

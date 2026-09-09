@@ -423,6 +423,11 @@ function formatSlateSubscriberFooter(card: NflSlateCard): string {
   return `📋 Per-desk Scott / Rocco / Chedda / Tank ${n}cards in this thread 👇`
 }
 
+/** One-game boards already list every desk on the root. Do not explode into a thread. */
+export function slateShouldThreadDeskCards(card: NflSlateCard | null | undefined): boolean {
+  return Boolean(card && Array.isArray(card.games) && card.games.length >= 2)
+}
+
 type SlateCaptionOpts = {
   /** When true, no public tease caps … every hammer / consensus / etc. */
   uncut?: boolean
@@ -527,10 +532,24 @@ export function formatNflSlateCardCaption(
 
 /**
  * Fan-only Lounge root … same structure as the public tease, uncapped.
- * Per-desk lists stay in following thread parts.
+ * Per-desk lists stay in following thread parts when the slate has 2+ games.
  */
 export function formatNflSlatePrivateRootCaption(card: NflSlateCard): string {
-  return formatNflSlateCardCaption(card, { uncut: true, footer: 'subscriber_desks' })
+  return formatNflSlateCardCaption(card, {
+    uncut: true,
+    footer: slateShouldThreadDeskCards(card) ? 'subscriber_desks' : 'none',
+  })
+}
+
+/** Scott / Rocco / Chedda thread parts … empty when the board is a single game. */
+export function slateDeskThreadPreviewParts(
+  card: NflSlateCard,
+): Array<{ label: string; body: string }> {
+  if (!slateShouldThreadDeskCards(card)) return []
+  return VIP_ATS_THREAD_PICKERS.map((p) => ({
+    label: `${p} full card`,
+    body: formatPickerSlateList(card, p),
+  }))
 }
 
 /**
@@ -1589,14 +1608,18 @@ export async function publishAndRecordNflSlateCard(
 
   const fullPrivateCaption = formatNflSlatePrivateRootCaption(input.card)
   const captionChunks = splitSlateCaptionToFit(fullPrivateCaption, LOUNGE_BOT_CAPTION_MAX)
-  const deskThread = VIP_ATS_THREAD_PICKERS.map((p) => ({
-    body: formatPickerSlateList(input.card, p),
-  }))
+  const threadDesks = slateShouldThreadDeskCards(input.card)
+  const deskThread = threadDesks
+    ? VIP_ATS_THREAD_PICKERS.map((p) => ({
+        body: formatPickerSlateList(input.card, p),
+      }))
+    : []
   const overflowThread = captionChunks.slice(1).map((body) => ({ body }))
-  const chatTitle =
-    publisher.mode === 'syndicate'
+  const chatTitle = threadDesks
+    ? publisher.mode === 'syndicate'
       ? `🏈 ${input.card.cardTitle || 'Sharpe Syndicate Slate'} ... Full Uncut Desk Cards\n\nPlain-text ATS cards for Scott / Rocco / Chedda 👇`
       : `🏈 ${input.card.cardTitle || 'Sharpe Syndicate Slate'} ... Full Uncut Breakdown\n\nPublic feed gets the consensus & hammer teasers. Here are the uncut individual ATS cards across Scott / Rocco / Chedda for the full slate 👇`
+    : fullPrivateCaption
 
   const fan = await fanOutSyndicatePublish({
     admin,
@@ -1606,7 +1629,9 @@ export async function publishAndRecordNflSlateCard(
     fanOnlyCaption: captionChunks[0] || fullPrivateCaption,
     fanOnlyThreadParts: [...overflowThread, ...deskThread],
     vipCaption: chatTitle,
-    vipThreadParts: VIP_ATS_THREAD_PICKERS.map((p) => formatPickerSlateList(input.card, p)),
+    vipThreadParts: threadDesks
+      ? VIP_ATS_THREAD_PICKERS.map((p) => formatPickerSlateList(input.card, p))
+      : [],
     categoryPills,
   })
 

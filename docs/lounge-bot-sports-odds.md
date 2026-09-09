@@ -910,7 +910,7 @@ Already-posted chat messages stay as they were; next publish is clean.
 
 ### VIP desk thread parts (`formatPickerSlateList`)
 
-- **Skip the thread on a 1-game board.** The root already has the split / hammer / Tank total. Scott / Rocco / Chedda replies would just repeat that one pick. Same for VIP chat (one message, no desk parts). Helper: `slateShouldThreadDeskCards`.
+- **Skip the thread on a 1-game board.** The root already has the split / hammer / Tank total. Scott / Rocco / Chedda replies would just repeat that one pick. Same for VIP chat (one message, no desk parts). Helper: `slateShouldThreadDeskCards`. **`lounge-odds-poll` redeployed prod** (`jtjgtucumuoswnbauxry`) 2026-09-09 from `1e287dac`.
 - Scott / Rocco / Chedda only (Tank totals live on root … no desk thread part)
 - Lounge markdown: colored desk H2 + gold picks / plain PASS
 - Chat copy of the same card is plain text (`toPlainOutboundText` at publish)

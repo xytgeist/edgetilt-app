@@ -687,7 +687,7 @@ export function SyndicateApp() {
                 <div>
                   <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">The 4-Desk Syndicate Architecture</h2>
                   <p className="text-zinc-400 text-xs sm:text-sm mt-1">
-                    Three side desks (Scott, Rocco, Chedda) each pick ATS independently ... hammers and consensus come from those three. Tank owns totals only. Tap any desk to view its audited ledger.
+                    Three side desks (Scott, Rocco, Chedda) each pick ATS independently ... hammers and consensus come from those three. Tank owns totals, plus occasional sidecar spots that never count as a 4th hammer. Tap any desk to view its audited ledger.
                   </p>
                 </div>
               </div>
@@ -1554,12 +1554,13 @@ export function SyndicateApp() {
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   Tank&apos;s lane is totals-native: an off/def + tempo model total versus the market number.
-                  Weather, wind, and rest are methodology footnotes for now ... not first-class Friday vote drivers.
+                  Weather, wind, rest, and pace can also print a sidecar spot when two independent Tank reasons agree.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   Totals also have their own clustering (certain numbers hit more often historically). Tank prices those frequencies
                   into whether an under or over at a soft number is actually +EV, then publishes a standalone totals thesis the
-                  other desks can agree with, fade, or leave alone. Tank does not cast an ATS side vote.
+                  other desks can agree with, fade, or leave alone. A Tank spot never fills a house hammer. Pasted Action / VSiN
+                  boards can only confirm or veto that spot, never fire it alone.
                 </p>
               </div>
 

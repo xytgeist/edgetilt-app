@@ -22,7 +22,7 @@ import { loadPersonaWeights } from './loungeBotPersonaAdaptive.ts'
 import { loadDbTeamMetricsMap } from './loungeBotTeamMetrics.ts'
 import { loadDbCfbPowerRatingsMap } from './loungeBotCfbPowerRatings.ts'
 import { resolveSideModifiersForSlate } from './loungeBotSideModifier.ts'
-import { loadPastedBettingSplitsForSlate } from './loungeBotBettingSplits.ts'
+import { loadPastedBettingSplitsBoardForSlate } from './loungeBotBettingSplits.ts'
 
 const FOOTBALL_SPORTS = new Set([
   'americanfootball_nfl',
@@ -226,13 +226,13 @@ export async function runPicksForToday(
     }
   }
 
-  const [weightsMap, teamMetricsMap, cfbRatingsMap, sideModifiersByEventId, pastedSplitsByEventId, tankCtx] =
+  const [weightsMap, teamMetricsMap, cfbRatingsMap, sideModifiersByEventId, pastedSplitsBoard, tankCtx] =
     await Promise.all([
       loadPersonaWeights(admin),
       loadDbTeamMetricsMap(admin),
       loadDbCfbPowerRatingsMap(admin),
       resolveSideModifiersForSlate(admin, sportKey, todayEvents),
-      loadPastedBettingSplitsForSlate(admin, sportKey, todayEvents),
+      loadPastedBettingSplitsBoardForSlate(admin, sportKey, todayEvents),
       loadTankTotalsContextForSlate(admin, sportKey, todayEvents),
     ])
 
@@ -244,9 +244,11 @@ export async function runPicksForToday(
     teamMetricsMap,
     cfbRatingsMap,
     sideModifiersByEventId,
-    pastedSplitsByEventId,
+    pastedSplitsByEventId: pastedSplitsBoard.primaryByEventId,
+    pastedSplitsAllByEventId: pastedSplitsBoard.allByEventId,
     weatherByEventId: tankCtx.weatherByEventId,
     openTotalByEventId: tankCtx.openTotalByEventId,
+    restTravelByEventId: tankCtx.restTravelByEventId,
   })
 
   if (!card || !card.games.length) {

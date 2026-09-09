@@ -1,6 +1,7 @@
 /**
  * Predictive sports betting calls for the Sharp Desk (Scott, Rocco, Chedda, Tank).
- * Tank is totals-only. Lane B / Quorum fifth desk is parked (scraped HTML was unusable).
+ * Tank votes totals on the house card. ATS spots are a sidecar (never a 4th hammer).
+ * Lane B / Quorum fifth desk is parked (scraped HTML was unusable).
  * Supports solo calls and syndicate multi-picker cards.
  * Auto-grades against The Odds API final scores, then ESPN completed scoreboards
  * when Odds API has no result (MMA drops finished fights). Unit tracking + card recaps.
@@ -28,6 +29,14 @@ import { consumeRundownGradeTrace, matchRundownFinalScore, oddsSportKeyToRundown
 import { loadPersonaWeights } from './loungeBotPersonaAdaptive.ts'
 import { fetchGameInjuryPval, type GameInjurySummary } from './loungeBotInjuryPval.ts'
 import { resolveGameBettingSplits, type BettingSplitSummary } from './loungeBotBettingSplits.ts'
+import {
+  formatTankAtsWhy,
+  loadRestTravelByEventId,
+  resolveTankSituationalAts,
+  TANK_ATS_LANE,
+  type TankAtsSpot,
+} from './loungeBotTankAts.ts'
+import type { RestTravelMatchup } from './loungeBotRestTravel.ts'
 import {
   calculateTrenchEpaMatchup,
   estimateNflModelTotal,
@@ -109,6 +118,8 @@ export type SlateGamePick = {
     type: 'hammer' | 'consensus' | 'majority_split' | 'split' | 'solo' | 'pass_only'
     badgeText: string
   }
+  /** Tank ATS sidecar … never counts for house hammers. */
+  tankAts?: TankAtsSpot | null
   pickerPicks: Record<SharpPicker, {
     side: SlateDeskSide
     teamName: string
@@ -402,6 +413,16 @@ function formatTankItem(g: SlateGamePick): string {
   return `${away}/${home} - ${formatGoldPick(pick)}`
 }
 
+function formatTankAtsItem(g: SlateGamePick): string {
+  const away = sportTeamDisplayName(g.awayTeam, g.sportKey)
+  const home = sportTeamDisplayName(g.homeTeam, g.sportKey)
+  const pick = String(g.tankAts?.lineDisplay || g.tankAts?.teamName || '').trim()
+  const why = formatTankAtsWhy(g.tankAts)
+  return why
+    ? `${away}/${home} - ${formatGoldPick(pick)} · ${why}`
+    : `${away}/${home} - ${formatGoldPick(pick)}`
+}
+
 /** Public tease footer … game count when the slate has 2+ games, else generic fan-sub CTA. */
 export function formatSlateVipCtaLine(card: NflSlateCard): string {
   const gameCount = Array.isArray(card.games) ? card.games.length : 0
@@ -487,6 +508,14 @@ export function formatNflSlateCardCaption(
   if (tankTotals.length > 0) {
     lines.push("## 🛡️ Tank's Totals")
     for (const g of tankTotals) lines.push(formatTankItem(g))
+    lines.push('')
+  }
+
+  const tankSpotsAll = card.games.filter((g) => g.tankAts?.published === true)
+  const tankSpots = uncut ? tankSpotsAll : tankSpotsAll.slice(0, 3)
+  if (tankSpots.length > 0) {
+    lines.push("## 🛡️ Tank's Spots")
+    for (const g of tankSpots) lines.push(formatTankAtsItem(g))
     lines.push('')
   }
 
@@ -972,15 +1001,17 @@ export function resolveTankTotalsSide(
 export async function loadTankTotalsContextForSlate(
   admin: SupabaseClient,
   sportKey: string,
-  events: Array<{ id?: string; home_team?: string; commence_time?: string }>,
+  events: Array<{ id?: string; home_team?: string; away_team?: string; commence_time?: string }>,
 ): Promise<{
   weatherByEventId: Map<string, GameWeatherSummary>
   openTotalByEventId: Map<string, number | null>
+  restTravelByEventId: Map<string, RestTravelMatchup>
 }> {
   const weatherByEventId = new Map<string, GameWeatherSummary>()
   const openTotalByEventId = new Map<string, number | null>()
+  const restTravelByEventId = new Map<string, RestTravelMatchup>()
   const ids = events.map((e) => String(e.id || '').trim()).filter(Boolean)
-  if (!ids.length) return { weatherByEventId, openTotalByEventId }
+  if (!ids.length) return { weatherByEventId, openTotalByEventId, restTravelByEventId }
 
   try {
     const files = await loadMarketFilesByEventIds(admin, ids)
@@ -1007,17 +1038,25 @@ export async function loadTankTotalsContextForSlate(
     }),
   )
 
-  return { weatherByEventId, openTotalByEventId }
+  try {
+    const restMap = await loadRestTravelByEventId(sportKey, events)
+    for (const [eid, row] of restMap) restTravelByEventId.set(eid, row)
+  } catch (e) {
+    console.error('Tank rest/travel load failed:', e)
+  }
+
+  return { weatherByEventId, openTotalByEventId, restTravelByEventId }
 }
 
 /**
  * Build a full NFL / CFB ATS Slate Card across all games on the board.
  * Side desks (Scott, Rocco, Chedda) vote ATS. Tank votes totals (PASS default; ≥3.5 or key-cross).
+ * Tank ATS spots are a sidecar: two independent reasons, street board can only veto.
  * Scott PASSes under |model−market| 2.5 (1.5 only on true 3/7 keys). Rocco may PASS.
  * Rocco short-fav alone stays on his VIP desk card but does not count for house buckets.
  * Rocco juice worse than {@link ROCCO_UGLY_JUICE_WORSE_THAN} → PASS unless Scott/Chedda on that side.
  * Synthetic splits never score.
- * Tank: model edge + wind veto on Overs + falling-total veto + CFB non-conference Over bump.
+ * Tank totals: model edge + wind veto on Overs + falling-total veto + CFB non-conference Over bump.
  */
 export function buildNflAtsSlateCard(
   events: Array<{
@@ -1047,12 +1086,16 @@ export function buildNflAtsSlateCard(
     cfbRatingsMap?: Map<string, CfbTeamPowerRating>
     /** Post-consensus QB/injury modifiers keyed by Odds API event id. */
     sideModifiersByEventId?: Map<string, SideModifier>
-    /** Human-pasted Action/VSiN splits keyed by Odds API event id. */
+    /** Human-pasted Action/VSiN splits keyed by Odds API event id (Chedda primary). */
     pastedSplitsByEventId?: Map<string, BettingSplitSummary>
-    /** Kickoff weather for Tank Over wind veto. */
+    /** All pasted boards per game for Tank street collation. */
+    pastedSplitsAllByEventId?: Map<string, BettingSplitSummary[]>
+    /** Kickoff weather for Tank Over wind veto + weather-as-side. */
     weatherByEventId?: Map<string, GameWeatherSummary>
     /** Opening total from lounge_market_files for Tank rising/falling total gate. */
     openTotalByEventId?: Map<string, number | null>
+    /** Rest / travel / short week / B2B for Tank spots. */
+    restTravelByEventId?: Map<string, RestTravelMatchup>
   } = {},
 ): NflSlateCard | null {
   if (!Array.isArray(events) || events.length === 0) return null
@@ -1069,8 +1112,10 @@ export function buildNflAtsSlateCard(
   const cfbRatings = opts.cfbRatingsMap
   const sideModifiers = opts.sideModifiersByEventId || new Map<string, SideModifier>()
   const pastedSplits = opts.pastedSplitsByEventId || new Map<string, BettingSplitSummary>()
+  const pastedSplitsAll = opts.pastedSplitsAllByEventId || new Map<string, BettingSplitSummary[]>()
   const weatherByEvent = opts.weatherByEventId || new Map<string, GameWeatherSummary>()
   const openTotalByEvent = opts.openTotalByEventId || new Map<string, number | null>()
+  const restTravelByEvent = opts.restTravelByEventId || new Map<string, RestTravelMatchup>()
 
   for (const ev of events) {
     const homeTeam = ev.home_team
@@ -1312,7 +1357,34 @@ export function buildNflAtsSlateCard(
       isNonConference: cfbMatchup?.isNonConference === true,
       isCfb: !!isCfb,
     })
-    void tankRestWeight // reserved for rest/travel boost once that feed is first-class
+    void tankRestWeight // rest/travel now votes on Tank spots, not totals
+    const eventKey = String(ev.id || '').trim()
+    const pastedBoard = pastedSplitsAll.get(eventKey)
+      || (pastedSplit ? [pastedSplit] : [])
+    const tankAts = resolveTankSituationalAts({
+      homeTeam,
+      awayTeam,
+      homePoint,
+      tankTotalsSide,
+      restTravel: restTravelByEvent.get(eventKey) || null,
+      weather,
+      sideModifier,
+      isCfb: !!isCfb,
+      homeTempo: cfbMatchup?.homeTempo ?? null,
+      awayTempo: cfbMatchup?.awayTempo ?? null,
+      modelTotal,
+      marketTotal: marketTotalQuote?.total ?? null,
+      pastedSplits: pastedBoard,
+    })
+    if (tankAts.published && tankAts.side === 'home') {
+      tankAts.lineDisplay = homeLineDisp
+      tankAts.pickLine = homePoint
+      tankAts.pickPrice = homePrice
+    } else if (tankAts.published && tankAts.side === 'away') {
+      tankAts.lineDisplay = awayLineDisp
+      tankAts.pickLine = awayPoint
+      tankAts.pickPrice = awayPrice
+    }
 
     const overPickObj: OddsPick | null = marketTotalQuote
       ? {
@@ -1520,6 +1592,7 @@ export function buildNflAtsSlateCard(
       adjustedModelSpreadHome,
       splits: gameSplits,
       trenchEpa,
+      tankAts,
       consensusPick: {
         side: consensusSide,
         teamName: consensusSide === 'home' ? homeTeam : awayTeam,
@@ -1772,6 +1845,40 @@ export async function publishAndRecordNflSlateCard(
             is_trench_mismatch: g.trenchEpa.isTrenchMismatch,
             is_epa_mismatch: g.trenchEpa.isEpaMismatch,
           } : undefined,
+        },
+      })
+    }
+
+    if (g.tankAts?.published && (g.tankAts.side === 'home' || g.tankAts.side === 'away')) {
+      rowsToInsert.push({
+        bot_user_id: botUserId,
+        picker_name: 'Tank',
+        post_id: ledgerPostId,
+        event_id: g.eventId,
+        sport_key: g.sportKey,
+        home_team: g.homeTeam,
+        away_team: g.awayTeam,
+        commence_time: g.commenceTime,
+        market_key: 'spreads',
+        pick_name: g.tankAts.teamName,
+        pick_line: g.tankAts.pickLine ?? g.spreadPoint,
+        pick_price: g.tankAts.pickPrice || -110,
+        book_title: null,
+        status: 'pending',
+        metadata: {
+          factors: ['tank_ats_spot', ...g.tankAts.reasons, ...g.tankAts.tags],
+          side: g.tankAts.side,
+          bucket: 'solo',
+          lane: TANK_ATS_LANE,
+          consensus_type: g.consensusPick.type,
+          vote_count: 0,
+          tank_ats: {
+            reasons: g.tankAts.reasons,
+            tags: g.tankAts.tags,
+            rationale: g.tankAts.rationale,
+            sharp_side: g.tankAts.sharpBoard.side,
+            sharp_gap: g.tankAts.sharpBoard.gap,
+          },
         },
       })
     }

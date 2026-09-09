@@ -314,7 +314,7 @@ export async function compileMonthlySyndicateScoreboard(
     'Read bucket×desk rows. Do not average Hammer + Consensus into one shop ATS.',
     'CLV = your side vs locked close (not opener). Dog +7 that closes +3 is good CLV even on an ATS loss.',
     'CLV beat % = beats / (beats + misses). Calling the same number as the close is off the board.',
-    'Tank rows are totals-only; Scott / Rocco / Chedda / Quorum are sides.',
+    'Tank rows are totals-only on this board; Tank ATS sidecar (market_key spreads) is skipped. Scott / Rocco / Chedda / Quorum are sides.',
     'Pass = desk PASS (cancelled ledger) … n only, no ATS.',
     'No adaptive weights until a bucket has a real sample. FEI waits.',
   ]

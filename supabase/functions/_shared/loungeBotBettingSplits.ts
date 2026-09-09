@@ -218,18 +218,57 @@ type SlateEventLike = {
   away_team?: string
 }
 
+export type PastedSplitsBoard = {
+  /** Chedda vote … latest / strongest single board. */
+  primaryByEventId: Map<string, BettingSplitSummary>
+  /** Tank street collation … Action + VSiN + manual can all live. */
+  allByEventId: Map<string, BettingSplitSummary[]>
+}
+
+function splitPrimaryRank(summary: BettingSplitSummary, createdAt: string | null): number {
+  const src = String(summary.source || '').toLowerCase()
+  const srcBoost = src.includes('vsin') || src.includes('action') ? 20 : src.includes('manual') ? 5 : 10
+  const created = createdAt ? Date.parse(createdAt) : 0
+  const recency = Number.isFinite(created) ? created / 1e13 : 0
+  return (summary.isSharpDivergence ? 100 : 0) + Number(summary.divergencePts || 0) + srcBoost + recency
+}
+
+function pushSplitForEvent(
+  board: PastedSplitsBoard,
+  eventId: string,
+  summary: BettingSplitSummary,
+  createdAt: string | null,
+  ranks: Map<string, number>,
+) {
+  if (!eventId) return
+  const list = board.allByEventId.get(eventId) || []
+  list.push(summary)
+  board.allByEventId.set(eventId, list)
+  const rank = splitPrimaryRank(summary, createdAt)
+  const prev = ranks.get(eventId)
+  if (prev == null || rank >= prev) {
+    ranks.set(eventId, rank)
+    board.primaryByEventId.set(eventId, summary)
+  }
+}
+
 /**
  * Load active pasted splits for a sport and map onto slate event ids.
+ * Keeps every source (Action + VSiN) so Tank can weight the street board.
  */
-export async function loadPastedBettingSplitsForSlate(
+export async function loadPastedBettingSplitsBoardForSlate(
   admin: SupabaseClient,
   sportKey: string,
   events: Array<SlateEventLike>,
-): Promise<Map<string, BettingSplitSummary>> {
-  const out = new Map<string, BettingSplitSummary>()
-  if (!events.length) return out
+): Promise<PastedSplitsBoard> {
+  const board: PastedSplitsBoard = {
+    primaryByEventId: new Map(),
+    allByEventId: new Map(),
+  }
+  if (!events.length) return board
 
   const eventIds = events.map((e) => String(e.id || '').trim()).filter(Boolean)
+  const ranks = new Map<string, number>()
   const { data, error } = await admin
     .from('syndicate_betting_splits')
     .select('*')
@@ -238,27 +277,37 @@ export async function loadPastedBettingSplitsForSlate(
 
   if (error) {
     console.warn('syndicate_betting_splits load:', error.message)
-    return out
+    return board
   }
 
   for (const row of data || []) {
     const summary = summaryFromPastedRow(row)
+    const createdAt = row.created_at != null ? String(row.created_at) : row.updated_at != null ? String(row.updated_at) : null
     const rowEventId = row.event_id != null ? String(row.event_id).trim() : ''
     if (rowEventId && eventIds.includes(rowEventId)) {
-      out.set(rowEventId, summary)
+      pushSplitForEvent(board, rowEventId, summary, createdAt, ranks)
       continue
     }
     for (const ev of events) {
       const id = String(ev.id || '').trim()
-      if (!id || out.has(id)) continue
+      if (!id) continue
       if (
         teamsMatch(String(row.home_team || ''), String(ev.home_team || '')) &&
         teamsMatch(String(row.away_team || ''), String(ev.away_team || ''))
       ) {
-        out.set(id, summary)
+        pushSplitForEvent(board, id, summary, createdAt, ranks)
       }
     }
   }
 
-  return out
+  return board
+}
+
+export async function loadPastedBettingSplitsForSlate(
+  admin: SupabaseClient,
+  sportKey: string,
+  events: Array<SlateEventLike>,
+): Promise<Map<string, BettingSplitSummary>> {
+  const board = await loadPastedBettingSplitsBoardForSlate(admin, sportKey, events)
+  return board.primaryByEventId
 }

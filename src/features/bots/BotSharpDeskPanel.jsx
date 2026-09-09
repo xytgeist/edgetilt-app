@@ -50,7 +50,7 @@ const PICKER_METAS = {
     badge: 'bg-amber-950/70 text-amber-300 ring-amber-500/30',
   },
   Tank: {
-    title: 'Totals & Primetime',
+    title: 'Totals & Spots',
     badge: 'bg-purple-950/70 text-purple-300 ring-purple-500/30',
   },
 }

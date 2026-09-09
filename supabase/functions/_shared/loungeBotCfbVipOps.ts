@@ -19,7 +19,7 @@ import {
   resolvePublishDestinations,
 } from './loungeBotPublishDestinations.ts'
 import { resolveSideModifiersForSlate } from './loungeBotSideModifier.ts'
-import { loadPastedBettingSplitsForSlate } from './loungeBotBettingSplits.ts'
+import { loadPastedBettingSplitsBoardForSlate } from './loungeBotBettingSplits.ts'
 import { loadPersonaWeights } from './loungeBotPersonaAdaptive.ts'
 import { loadDbTeamMetricsMap } from './loungeBotTeamMetrics.ts'
 import { loadDbCfbPowerRatingsMap } from './loungeBotCfbPowerRatings.ts'
@@ -122,13 +122,13 @@ async function loadCfbSlateCard(
   cardTitle?: string,
 ): Promise<NflSlateCard | null> {
   if (!events.length) return null
-  const [weightsMap, teamMetricsMap, cfbRatingsMap, sideModifiersByEventId, pastedSplitsByEventId, tankCtx] =
+  const [weightsMap, teamMetricsMap, cfbRatingsMap, sideModifiersByEventId, pastedSplitsBoard, tankCtx] =
     await Promise.all([
       loadPersonaWeights(admin),
       loadDbTeamMetricsMap(admin),
       loadDbCfbPowerRatingsMap(admin),
       resolveSideModifiersForSlate(admin, CFB_SPORT, events),
-      loadPastedBettingSplitsForSlate(admin, CFB_SPORT, events),
+      loadPastedBettingSplitsBoardForSlate(admin, CFB_SPORT, events),
       loadTankTotalsContextForSlate(admin, CFB_SPORT, events),
     ])
 
@@ -139,9 +139,11 @@ async function loadCfbSlateCard(
     teamMetricsMap,
     cfbRatingsMap,
     sideModifiersByEventId,
-    pastedSplitsByEventId,
+    pastedSplitsByEventId: pastedSplitsBoard.primaryByEventId,
+    pastedSplitsAllByEventId: pastedSplitsBoard.allByEventId,
     weatherByEventId: tankCtx.weatherByEventId,
     openTotalByEventId: tankCtx.openTotalByEventId,
+    restTravelByEventId: tankCtx.restTravelByEventId,
   })
 }
 
@@ -174,6 +176,9 @@ function formatVipDeepFromGame(g: SlateGamePick, label: string): string {
     `• Chedda: ${g.pickerPicks.Chedda.lineDisplay}`,
     `• Tank: ${g.pickerPicks.Tank.lineDisplay}`,
   ]
+  if (g.tankAts?.published) {
+    lines.push(`• Tank spot: ${g.tankAts.lineDisplay || g.tankAts.teamName} (${g.tankAts.reasons.join(' + ')})`)
+  }
   if (g.sideModifier?.isSignificant) {
     lines.push('', `Injury / side mod: ${g.sideModifier.reason}`)
   }

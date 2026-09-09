@@ -93,7 +93,7 @@ export function SyndicateSplitsDropSchedule({ rows = [], compact = false, onOpen
           </p>
           <p className="text-[11px] text-zinc-400 leading-snug mt-0.5 max-w-xl">
             One habit. Same Action / VSiN shots land in one table. Chedda uses ticket vs handle for dogs.
-            Tank uses those rows as a confirm, plus the totals tab for Overs.
+            Tank weights those rows as a confirm / veto on spots, plus the totals tab for Overs.
           </p>
         </div>
         <button

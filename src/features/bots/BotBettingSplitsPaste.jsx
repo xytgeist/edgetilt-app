@@ -379,6 +379,7 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast, schedu
           .eq('sport_key', p.sport_key)
           .eq('home_team', p.home_team)
           .eq('away_team', p.away_team)
+          .eq('source', p.source)
           .eq('active', true)
 
         const { error } = await supabaseClient.from('syndicate_betting_splits').insert(p)
@@ -386,7 +387,7 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast, schedu
         saved += 1
       }
 
-      setToast?.(`Saved ${saved} split row${saved === 1 ? '' : 's'} for Chedda.`)
+      setToast?.(`Saved ${saved} split row${saved === 1 ? '' : 's'} for Chedda + Tank board.`)
       setPreviewGames([])
       setPreviewConfidence(null)
       await loadRows()
@@ -443,6 +444,7 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast, schedu
           .from('syndicate_betting_splits')
           .select('id')
           .eq('event_id', payload.event_id)
+          .eq('source', payload.source)
           .eq('active', true)
           .maybeSingle()
         if (existing?.id) {
@@ -500,7 +502,7 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast, schedu
           </div>
           <p className="mt-0.5 text-xs text-zinc-400 max-w-2xl">
             One habit for Chedda and Tank. Ctrl+V Action / VSiN shots, process, save.
-            Same rows: Chedda fires dogs from ticket vs handle. Tank confirms, and reads totals for Overs.
+            Same rows: Chedda fires dogs from ticket vs handle. Tank weights the street board as a confirm / veto on spots, and reads totals for Overs.
           </p>
         </div>
         <button

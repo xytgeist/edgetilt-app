@@ -364,10 +364,6 @@ Deno.serve(async (req) => {
       const { resolveSideModifiersForSlate } = await import('../_shared/loungeBotSideModifier.ts')
       const sideModifiersByEventId = await resolveSideModifiersForSlate(admin, sportKey, events)
 
-      // Human-pasted Action/VSiN ticket% vs handle% (Chedda money vote when present)
-      const { loadPastedBettingSplitsForSlate } = await import('../_shared/loungeBotBettingSplits.ts')
-      const pastedSplitsByEventId = await loadPastedBettingSplitsForSlate(admin, sportKey, events)
-
       // Need totals for Tank's O/U lane
       let eventsWithTotals = events
       try {
@@ -378,7 +374,11 @@ Deno.serve(async (req) => {
         // keep spreads-only events
       }
 
-      const { weatherByEventId, openTotalByEventId } = await loadTankTotalsContextForSlate(
+      // Human-pasted Action/VSiN ticket% vs handle% (Chedda money + Tank street board)
+      const { loadPastedBettingSplitsBoardForSlate } = await import('../_shared/loungeBotBettingSplits.ts')
+      const pastedSplitsBoard = await loadPastedBettingSplitsBoardForSlate(admin, sportKey, eventsWithTotals)
+
+      const { weatherByEventId, openTotalByEventId, restTravelByEventId } = await loadTankTotalsContextForSlate(
         admin,
         sportKey,
         eventsWithTotals,
@@ -391,9 +391,11 @@ Deno.serve(async (req) => {
         teamMetricsMap,
         cfbRatingsMap,
         sideModifiersByEventId,
-        pastedSplitsByEventId,
+        pastedSplitsByEventId: pastedSplitsBoard.primaryByEventId,
+        pastedSplitsAllByEventId: pastedSplitsBoard.allByEventId,
         weatherByEventId,
         openTotalByEventId,
+        restTravelByEventId,
       })
 
       if (!card) {

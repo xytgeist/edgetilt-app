@@ -6,7 +6,7 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { shortDisplayName, filterOddsEventsForNextFootballSlate, type OddsEvent } from './loungeBotOddsCaption.ts'
 import { fetchSportOdds } from './loungeBotOddsRun.ts'
-import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
+import { fanOutMissedAll, fanOutVipOnlyCaption } from './loungeBotPublishDestinations.ts'
 import { findPrimetimeGameCandidate } from './loungeBotPrimetimeSpotlight.ts'
 import { fetchGameInjuryPval } from './loungeBotInjuryPval.ts'
 import { resolveSideModifiersForSlate } from './loungeBotSideModifier.ts'
@@ -71,8 +71,8 @@ async function markPublished(
 export async function runNflWedTnfVipNote(
   admin: SupabaseClient,
   botUserId: string,
-  opts?: { dryRun?: boolean },
-): Promise<{ ok: boolean; skipped?: string; dryRun?: boolean; captionPreview?: string }> {
+  opts?: { dryRun?: boolean; destinations?: unknown },
+): Promise<{ ok: boolean; skipped?: string; dryRun?: boolean; captionPreview?: string; xWarning?: string; tweetId?: string | null; postId?: string }> {
   const dryRun = opts?.dryRun === true
   const day = ptDateKey()
   const dedupeKey = `nfl_wed_tnf_vip:${day}`
@@ -122,16 +122,27 @@ export async function runNflWedTnfVipNote(
     return { ok: true, dryRun: true, captionPreview: caption }
   }
 
-  const vip = await publishBotSubChatMessage(admin, {
+  const fan = await fanOutVipOnlyCaption({
+    admin,
     botUserId,
+    destinations: opts?.destinations,
     caption,
   })
-  if (vip.error || !vip.messageId) {
-    return { ok: false, skipped: vip.error || 'vip_publish_failed' }
+  if (fan.dest.loungePublic && fan.error) {
+    return { ok: false, skipped: fan.error, xWarning: fan.xWarning }
+  }
+  if (fanOutMissedAll(fan)) {
+    return { ok: false, skipped: fan.error || fan.vipChatWarning || fan.xWarning || 'vip_publish_failed', xWarning: fan.xWarning }
   }
 
   await markPublished(admin, botUserId, dedupeKey, caption, 'nfl_wed_tnf_vip')
-  return { ok: true, captionPreview: caption.slice(0, 280) }
+  return {
+    ok: true,
+    captionPreview: caption.slice(0, 280),
+    postId: fan.publicPostId || undefined,
+    tweetId: fan.tweetId,
+    ...(fan.xWarning ? { xWarning: fan.xWarning } : {}),
+  }
 }
 
 type LockFlip = {
@@ -147,8 +158,8 @@ type LockFlip = {
 export async function runNflSatVipAddsKills(
   admin: SupabaseClient,
   botUserId: string,
-  opts?: { dryRun?: boolean },
-): Promise<{ ok: boolean; skipped?: string; dryRun?: boolean; changeCount?: number; captionPreview?: string }> {
+  opts?: { dryRun?: boolean; destinations?: unknown },
+): Promise<{ ok: boolean; skipped?: string; dryRun?: boolean; changeCount?: number; captionPreview?: string; xWarning?: string; tweetId?: string | null; postId?: string }> {
   const dryRun = opts?.dryRun === true
   const day = ptDateKey()
   const dedupeKey = `nfl_sat_vip_adds_kills:${day}`
@@ -294,14 +305,31 @@ export async function runNflSatVipAddsKills(
     return { ok: true, dryRun: true, changeCount: unique.length, captionPreview: caption }
   }
 
-  const vip = await publishBotSubChatMessage(admin, {
+  const fan = await fanOutVipOnlyCaption({
+    admin,
     botUserId,
+    destinations: opts?.destinations,
     caption,
   })
-  if (vip.error || !vip.messageId) {
-    return { ok: false, skipped: vip.error || 'vip_publish_failed', changeCount: unique.length }
+  if (fan.dest.loungePublic && fan.error) {
+    return { ok: false, skipped: fan.error, changeCount: unique.length, xWarning: fan.xWarning }
+  }
+  if (fanOutMissedAll(fan)) {
+    return {
+      ok: false,
+      skipped: fan.error || fan.vipChatWarning || fan.xWarning || 'vip_publish_failed',
+      changeCount: unique.length,
+      xWarning: fan.xWarning,
+    }
   }
 
   await markPublished(admin, botUserId, dedupeKey, caption, 'nfl_sat_vip_adds_kills')
-  return { ok: true, changeCount: unique.length, captionPreview: caption.slice(0, 280) }
+  return {
+    ok: true,
+    changeCount: unique.length,
+    captionPreview: caption.slice(0, 280),
+    postId: fan.publicPostId || undefined,
+    tweetId: fan.tweetId,
+    ...(fan.xWarning ? { xWarning: fan.xWarning } : {}),
+  }
 }

@@ -1119,6 +1119,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-09:** **Ops Send to + X `@sharpesyndicate` (Windows).** Sharp Desk checkbox bar on **sharpesyndicate.com/ops**. `destinations` on `lounge-odds-poll` (`loungePublic` / `loungeFanOnly` / `vipChat` / `x`). Cron omits picker … implicit dest, **no X**. VIP-only (halftime, middle, Wed/Sat VIP, UFC) public + X default off; UFC public tease when `loungePublic` checked. X via `loungeBotXPublish.ts` (OAuth 1.0a, plain text, no URLs). Secrets `X_SYNDICATE_*` not in repo. **Do not redeploy prod Edge until Ryan sets secrets and asks.** Pages `test` updates Ops UI. **`1.4.128`.**
+
 - 2026-09-08: **Alerts navigateToGuideSlug:** Restored missing imports in `LoungeNotificationsPanel` (AP guide tap + weekly drop tap). Prod Sentry. **`1.4.123`.** **`test` → `main`.**
 
 - 2026-09-08: **Play Logbook follow-up prod promote:** frontend **`test` → `main`**. Partner self-Paid, Partners (i) light contrast, ANALYZE Scope logged games. **No SQL / Edge.** **`1.4.122`.**

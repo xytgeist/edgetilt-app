@@ -56,6 +56,55 @@ const DESK_TABS = [
   { id: 'ufc_metrics', label: '🥊 UFC Fighter Metrics', shortLabel: 'UFC Metrics' },
 ]
 
+const SEND_TO_KEYS = [
+  { key: 'loungePublic', label: 'Lounge public' },
+  { key: 'loungeFanOnly', label: 'Lounge fan-only' },
+  { key: 'vipChat', label: 'VIP chat' },
+  { key: 'x', label: 'X @sharpesyndicate' },
+]
+
+const SEND_TO_BAR_DEFAULT = {
+  loungePublic: true,
+  loungeFanOnly: true,
+  vipChat: true,
+  x: true,
+}
+
+const VIP_ONLY_DROP_KINDS = new Set(['halftime', 'middle', 'ufc'])
+const FAN_ONLY_DROP_KINDS = new Set(['slate', 'primetime'])
+const NO_VIP_DROP_KINDS = new Set(['solo'])
+
+function defaultDestForKind(kind) {
+  if (VIP_ONLY_DROP_KINDS.has(kind)) {
+    return { loungePublic: false, loungeFanOnly: false, vipChat: true, x: false }
+  }
+  return {
+    loungePublic: true,
+    loungeFanOnly: FAN_ONLY_DROP_KINDS.has(kind),
+    vipChat: !NO_VIP_DROP_KINDS.has(kind),
+    x: true,
+  }
+}
+
+function anySendTo(d) {
+  return Boolean(d?.loungePublic || d?.loungeFanOnly || d?.vipChat || d?.x)
+}
+
+function destForPublish(kind, sendTo, destDirty) {
+  if (!destDirty) return defaultDestForKind(kind)
+  return {
+    loungePublic: sendTo.loungePublic === true,
+    loungeFanOnly: FAN_ONLY_DROP_KINDS.has(kind) && sendTo.loungeFanOnly === true,
+    vipChat: sendTo.vipChat === true,
+    x: sendTo.x === true,
+  }
+}
+
+function toastWithDestWarnings(base, data) {
+  const extra = [data?.xWarning, data?.fanOnlyWarning, data?.vipChatWarning].filter(Boolean)
+  return extra.length ? `${base} ${extra.join(' ')}` : base
+}
+
 export function BotSharpDeskPanel({
   supabaseClient,
   botUserId,
@@ -78,6 +127,8 @@ export function BotSharpDeskPanel({
   const [monthlyBoard, setMonthlyBoard] = useState(null)
   /** @type {[null | Record<string, unknown>, Function]} */
   const [dropPreview, setDropPreview] = useState(null)
+  const [sendTo, setSendTo] = useState(SEND_TO_BAR_DEFAULT)
+  const [destDirty, setDestDirty] = useState(false)
 
   /**
    * @param {string} title
@@ -146,6 +197,20 @@ export function BotSharpDeskPanel({
     loadData()
   }, [loadData])
 
+  const toggleSendTo = (key) => {
+    setDestDirty(true)
+    setSendTo((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  const requireDestinations = (kind) => {
+    const destinations = destForPublish(kind, sendTo, destDirty)
+    if (!anySendTo(destinations)) {
+      setToast?.('Pick at least one Send to destination.')
+      return null
+    }
+    return destinations
+  }
+
   const handleGradePicks = async () => {
     setGrading(true)
     if (setBusy) setBusy(true)
@@ -167,6 +232,8 @@ export function BotSharpDeskPanel({
   }
 
   const handleDropPick = async (dryRun = false) => {
+    const destinations = dryRun ? undefined : requireDestinations('solo')
+    if (!dryRun && !destinations) return
     setDropping(true)
     if (setBusy) setBusy(true)
     try {
@@ -176,6 +243,7 @@ export function BotSharpDeskPanel({
         pickerName: selectedPicker !== 'auto' ? selectedPicker : undefined,
         sportKey: selectedSportKey || undefined,
         dryRun,
+        destinations,
       })
       if (error) {
         setToast?.(`Drop failed: ${error.message}`)
@@ -185,7 +253,7 @@ export function BotSharpDeskPanel({
         const msg = data.isSyndicate
           ? `Published Syndicate Card (${data.pickIds?.length || 0} picks)`
           : `Published Solo Pick for ${data.pickerName}`
-        setToast?.(msg)
+        setToast?.(toastWithDestWarnings(msg, data))
         await loadData()
       } else if (dryRun) {
         showDropDryRunPreview('Solo / Spot Drop', data, data?.message || 'No picks available.')
@@ -201,6 +269,8 @@ export function BotSharpDeskPanel({
   }
 
   const handleDropSlateCard = async (sportKey = 'americanfootball_nfl', dryRun = false) => {
+    const destinations = dryRun ? undefined : requireDestinations('slate')
+    if (!dryRun && !destinations) return
     setDropping(true)
     if (setBusy) setBusy(true)
     const sportName = sportKey === 'americanfootball_ncaaf' ? 'CFB' : 'NFL'
@@ -209,13 +279,17 @@ export function BotSharpDeskPanel({
         slug: botSlug,
         sportKey,
         dryRun,
+        destinations,
       })
       if (error) {
         setToast?.(`${sportName} Slate Card failed: ${error.message}`)
       } else if (data?.dryRun) {
         showDropDryRunPreview(`${sportName} Slate`, data)
       } else if (data?.ok) {
-        setToast?.(`Published ${sportName} Slate Card: ${data.totalGames || 0} games (${data.hammersCount || 0} Hammers, ${data.consensusCount || 0} Consensus).`)
+        setToast?.(toastWithDestWarnings(
+          `Published ${sportName} Slate Card: ${data.totalGames || 0} games (${data.hammersCount || 0} Hammers, ${data.consensusCount || 0} Consensus).`,
+          data,
+        ))
         await loadData()
       } else if (dryRun) {
         showDropDryRunPreview(`${sportName} Slate`, data, data?.message || `No ${sportName} slate card candidates found.`)
@@ -231,19 +305,22 @@ export function BotSharpDeskPanel({
   }
 
   const handleDropWongTeaser = async (dryRun = false) => {
+    const destinations = dryRun ? undefined : requireDestinations('wong')
+    if (!dryRun && !destinations) return
     setDropping(true)
     if (setBusy) setBusy(true)
     try {
       const { data, error } = await invokeLoungeOddsWongTeaser(supabaseClient, {
         slug: botSlug,
         dryRun,
+        destinations,
       })
       if (error) {
         setToast?.(`Wong Teaser drop failed: ${error.message}`)
       } else if (data?.dryRun) {
         showDropDryRunPreview('Wong Teaser', data)
       } else if (data?.ok) {
-        setToast?.(`Published 2-Leg Wong Teaser of the Week!`)
+        setToast?.(toastWithDestWarnings('Published 2-Leg Wong Teaser of the Week!', data))
         await loadData()
       } else if (dryRun) {
         showDropDryRunPreview('Wong Teaser', data, data?.message || 'No qualifying Wong teaser legs found on current lines.')
@@ -259,6 +336,8 @@ export function BotSharpDeskPanel({
   }
 
   const handleDropPrimetimeSpotlight = async (primetimeType, dryRun = false) => {
+    const destinations = dryRun ? undefined : requireDestinations('primetime')
+    if (!dryRun && !destinations) return
     setDropping(true)
     if (setBusy) setBusy(true)
     const label = primetimeType || 'Primetime'
@@ -267,6 +346,7 @@ export function BotSharpDeskPanel({
         slug: botSlug,
         primetimeType,
         dryRun,
+        destinations,
       })
       if (error) {
         setToast?.(`${label} Spotlight failed: ${error.message}`)
@@ -281,7 +361,7 @@ export function BotSharpDeskPanel({
         const dest = extras.length
           ? `public: ${sp?.awayTeam} @ ${sp?.homeTeam}. ${extras.join(' ')}`
           : `${sp?.awayTeam} @ ${sp?.homeTeam}${data?.privatePostId ? ' (public + fan-only)' : ''}`
-        setToast?.(`Published ${sp?.primetimeLabel || label} Spotlight ${dest}`)
+        setToast?.(toastWithDestWarnings(`Published ${sp?.primetimeLabel || label} Spotlight ${dest}`, data))
         await loadData()
       } else if (dryRun) {
         showDropDryRunPreview(`${label} Spotlight`, data, data?.message || `No eligible ${label} game found on active board.`)
@@ -303,19 +383,22 @@ export function BotSharpDeskPanel({
   }
 
   const handleDropWeeklyRecap = async (dryRun = false) => {
+    const destinations = dryRun ? undefined : requireDestinations('weekly')
+    if (!dryRun && !destinations) return
     setDropping(true)
     if (setBusy) setBusy(true)
     try {
       const { data, error } = await invokeLoungeOddsWeeklyRecap(supabaseClient, {
         slug: botSlug,
         dryRun,
+        destinations,
       })
       if (error) {
         setToast?.(`Weekly Recap failed: ${error.message}`)
       } else if (data?.dryRun) {
         showDropDryRunPreview('Weekly Recap', data)
       } else if (data?.ok) {
-        setToast?.('Published Tuesday Weekly Syndicate Ledger & Post-Mortem!')
+        setToast?.(toastWithDestWarnings('Published Tuesday Weekly Syndicate Ledger & Post-Mortem!', data))
         await loadData()
       } else if (dryRun) {
         showDropDryRunPreview('Weekly Recap', data, data?.message || 'No graded picks over last 7 days.')
@@ -363,19 +446,22 @@ export function BotSharpDeskPanel({
   }
 
   const handleDropHalftimePivot = async (dryRun = false) => {
+    const destinations = dryRun ? undefined : requireDestinations('halftime')
+    if (!dryRun && !destinations) return
     setDropping(true)
     if (setBusy) setBusy(true)
     try {
       const { data, error } = await invokeLoungeOddsHalftimePivot(supabaseClient, {
         slug: botSlug,
         dryRun,
+        destinations,
       })
       if (error) {
         setToast?.(`Halftime Pivot failed: ${error.message}`)
       } else if (data?.dryRun) {
         showDropDryRunPreview('Halftime Pivot', data)
       } else if (data?.ok) {
-        setToast?.(`Published Halftime Pivot to Sharpe VIP chat!`)
+        setToast?.(toastWithDestWarnings('Published Halftime Pivot to Sharpe VIP chat!', data))
         await loadData()
       } else if (dryRun) {
         showDropDryRunPreview('Halftime Pivot', data, data?.message || 'No live NFL game currently at halftime.')
@@ -391,19 +477,22 @@ export function BotSharpDeskPanel({
   }
 
   const handleDropAnytimeTd = async (dryRun = false) => {
+    const destinations = dryRun ? undefined : requireDestinations('anytime')
+    if (!dryRun && !destinations) return
     setDropping(true)
     if (setBusy) setBusy(true)
     try {
       const { data, error } = await invokeLoungeOddsAnytimeTd(supabaseClient, {
         slug: botSlug,
         dryRun,
+        destinations,
       })
       if (error) {
         setToast?.(`Anytime TD drop failed: ${error.message}`)
       } else if (data?.dryRun) {
         showDropDryRunPreview('Anytime TD', data)
       } else if (data?.ok) {
-        setToast?.(`Published Chedda's TD of the Week & VIP 3-player slate!`)
+        setToast?.(toastWithDestWarnings("Published Chedda's TD of the Week & VIP 3-player slate!", data))
         await loadData()
       } else if (dryRun) {
         showDropDryRunPreview('Anytime TD', data, data?.message || 'No active NFL games with Anytime TD candidates.')
@@ -419,19 +508,22 @@ export function BotSharpDeskPanel({
   }
 
   const handleDropMiddleArb = async (dryRun = false) => {
+    const destinations = dryRun ? undefined : requireDestinations('middle')
+    if (!dryRun && !destinations) return
     setDropping(true)
     if (setBusy) setBusy(true)
     try {
       const { data, error } = await invokeLoungeOddsMiddleArb(supabaseClient, {
         slug: botSlug,
         dryRun,
+        destinations,
       })
       if (error) {
         setToast?.(`Middle & Arb Scanner failed: ${error.message}`)
       } else if (data?.dryRun) {
         showDropDryRunPreview('Middle & Arb', data)
       } else if (data?.ok) {
-        setToast?.(`Published Live Middle / Arb Alert to Sharpe VIP chat!`)
+        setToast?.(toastWithDestWarnings('Published Live Middle / Arb Alert to Sharpe VIP chat!', data))
         await loadData()
       } else if (dryRun) {
         showDropDryRunPreview('Middle & Arb', data, data?.message || 'No qualifying Middle or Arb opportunities found on active boards.')
@@ -447,6 +539,8 @@ export function BotSharpDeskPanel({
   }
 
   const handleDropUfcCard = async (dryRun = false) => {
+    const destinations = dryRun ? undefined : requireDestinations('ufc')
+    if (!dryRun && !destinations) return
     setDropping(true)
     if (setBusy) setBusy(true)
     try {
@@ -454,13 +548,17 @@ export function BotSharpDeskPanel({
         slug: botSlug,
         dryRun,
         cardTitle: 'UFC Main Card',
+        destinations,
       })
       if (error) {
         setToast?.(`UFC Slate Card failed: ${error.message}`)
       } else if (data?.dryRun) {
         showDropDryRunPreview('UFC Slate', data)
       } else if (data?.ok) {
-        setToast?.(`Published UFC Syndicate Card (${data?.totalPicksRecorded || 0} picks recorded)!`)
+        setToast?.(toastWithDestWarnings(
+          `Published UFC Syndicate Card (${data?.totalPicksRecorded || 0} picks recorded)!`,
+          data,
+        ))
         await loadData()
       } else if (dryRun) {
         showDropDryRunPreview('UFC Slate', data, data?.message || 'No active UFC fight lines found on active boards.')
@@ -590,6 +688,26 @@ export function BotSharpDeskPanel({
                   {dropping ? 'Publishing…' : 'Publish Pick'}
                 </button>
               </div>
+            </div>
+
+            <div className="rounded-md border border-zinc-800 bg-zinc-950/80 px-2.5 py-2 space-y-1.5">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                <span className="text-zinc-400 font-medium text-[11px]">Send to:</span>
+                {SEND_TO_KEYS.map(({ key, label }) => (
+                  <label key={key} className="inline-flex items-center gap-1.5 text-[11px] text-zinc-200 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(sendTo[key])}
+                      onChange={() => toggleSendTo(key)}
+                      className="rounded border-zinc-600 bg-zinc-900 text-amber-500 focus:ring-amber-500/40"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+              <p className="text-[10px] text-zinc-500 leading-snug">
+                Applies to the next Publish. Leave the bar alone for normal defaults ... public drops include X; VIP-only (halftime, middle, UFC) stay VIP unless you check Public Lounge or X. Preview ignores destinations. Monthly Board is ops-only.
+              </p>
             </div>
 
             {/* Row 2: Specialty Engine Triggers (NFL/CFB Slate Cards & Wong Teasers) */}

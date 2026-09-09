@@ -864,13 +864,30 @@ Chat and X do **not** render Lounge markdown. Tags like `[gold]`, `**bold**`, `#
 | Lounge feed (public) | Yes … dialect in this doc |
 | Lounge VIP / `creator_fan_only` posts | Yes … same dialect |
 | Chat rooms (Signal or Syndicate fan room) | **Never** |
-| X.com auto-post (when built) | **Never** |
+| X.com `@sharpesyndicate` (Ops Send to) | **Never** |
 
 **Rule:** author once in Lounge markdown. At fan-out, strip.
 
 - Chat choke point: `publishBotSubChatMessage` → `toPlainOutboundText` (`loungeBotPlainOutbound.ts`).
-- X auto-post **must** call `toPlainOutboundText` before the tweet body. Do not send Lounge captions raw.
+- X posts **must** call `toPlainOutboundText` (`loungeBotXPublish.ts` → `formatSyndicateXText`). No URLs (X bills URL tweets ~$0.20 vs ~$0.015). One tweet, 280-char cap. Do not send Lounge captions raw.
 - Lounge `publishLoungeBotPost` must **not** strip.
+
+### Ops Send to + X (`2026-09-09`)
+
+**Cron / scheduled auto-publish:** today's destinations. **No X.** Public Lounge stays public tease. VIP-only stays VIP.
+
+**Ops Publish** (`sharpesyndicate.com/ops` Sharp Desk): **Send to** checkboxes on the Scorecard / Specialty Drops card (`loungePublic`, `loungeFanOnly`, `vipChat`, `x`). Passed on `lounge-odds-poll` body as `destinations`. Omit / cron = implicit dest + `x: false`. All boxes off refuses Publish.
+
+**X never gets the uncut VIP caption unless you check X on that Publish.** Default X uses the public tease. VIP-only drops (halftime, middle/arb, Wed TNF / Sat adds/kills, UFC uncut): Public Lounge + X **off but clickable**. Checking them posts that drop's public tease if one exists (UFC uses `formatUfcCardCaption`), otherwise the VIP caption (opt-in leak).
+
+**X secrets** (Edge `lounge-odds-poll` only, never repo). App-only bearer cannot tweet. Generate **Read and Write** user tokens while logged in as `@sharpesyndicate`:
+
+`X_SYNDICATE_API_KEY`  
+`X_SYNDICATE_API_SECRET`  
+`X_SYNDICATE_ACCESS_TOKEN`  
+`X_SYNDICATE_ACCESS_TOKEN_SECRET`
+
+Missing secrets skip X and return `xWarning`. Lounge insert failure still blocks the drop. X failure does not roll back Lounge. Do **not** auto-tweet inside `publishLoungeBotPost`.
 
 Already-posted chat messages stay as they were; next publish is clean.
 

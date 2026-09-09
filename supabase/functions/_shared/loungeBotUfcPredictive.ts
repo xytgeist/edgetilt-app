@@ -27,7 +27,10 @@ import {
 } from './loungeBotUfcMetrics.ts'
 import { formatColoredPickerList, formatColoredPickerName } from './loungeBotPickerColors.ts'
 import { resolveGameBettingSplits, type BettingSplitSummary } from './loungeBotBettingSplits.ts'
-import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
+import {
+  fanOutSyndicatePublish,
+  resolvePublishDestinations,
+} from './loungeBotPublishDestinations.ts'
 
 export type UfcFightPick = {
   eventId: string
@@ -365,8 +368,9 @@ export async function publishAndRecordUfcCard(
     botUserId: string
     card: UfcSlateCard
     postLoungeFeed?: boolean
+    destinations?: unknown
   },
-): Promise<{ success: boolean; totalPicksRecorded: number; error?: string }> {
+): Promise<{ success: boolean; totalPicksRecorded: number; error?: string; xWarning?: string; tweetId?: string | null; postId?: string }> {
   const { botUserId, card } = input
   if (!card.fights || card.fights.length === 0) {
     return { success: false, totalPicksRecorded: 0, error: 'Empty UFC card.' }
@@ -417,11 +421,35 @@ export async function publishAndRecordUfcCard(
     return { success: false, totalPicksRecorded: 0, error: insErr.message }
   }
 
-  // 2. Drop uncut individual card into VIP Sub-chat
-  await publishBotSubChatMessage(supabase, {
-    botUserId,
-    content: formatUfcVipCardCaption(card),
+  const dest = resolvePublishDestinations(input.destinations, {
+    loungePublic: input.postLoungeFeed === true,
+    loungeFanOnly: false,
+    vipChat: true,
   })
+  const publicCaption = formatUfcCardCaption(card)
+  const vipCaption = formatUfcVipCardCaption(card)
+  const fan = await fanOutSyndicatePublish({
+    admin: supabase,
+    botUserId,
+    dest,
+    publicCaption,
+    vipCaption,
+    categoryPills: ['sports'],
+  })
+  if (dest.loungePublic && fan.error) {
+    return {
+      success: false,
+      totalPicksRecorded: picksToInsert.length,
+      error: fan.error,
+      xWarning: fan.xWarning,
+    }
+  }
 
-  return { success: true, totalPicksRecorded: picksToInsert.length }
+  return {
+    success: true,
+    totalPicksRecorded: picksToInsert.length,
+    postId: fan.publicPostId || undefined,
+    tweetId: fan.tweetId,
+    ...(fan.xWarning ? { xWarning: fan.xWarning } : {}),
+  }
 }

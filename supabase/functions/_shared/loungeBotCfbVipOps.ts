@@ -12,8 +12,12 @@ import {
   type OddsEvent,
 } from './loungeBotOddsCaption.ts'
 import { fetchSportOdds } from './loungeBotOddsRun.ts'
-import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
-import { publishLoungeBotPost } from './loungeBotPublish.ts'
+import {
+  fanOutMissedAll,
+  fanOutSyndicatePublish,
+  fanOutVipOnlyCaption,
+  resolvePublishDestinations,
+} from './loungeBotPublishDestinations.ts'
 import { resolveSideModifiersForSlate } from './loungeBotSideModifier.ts'
 import { loadPastedBettingSplitsForSlate } from './loungeBotBettingSplits.ts'
 import { loadPersonaWeights } from './loungeBotPersonaAdaptive.ts'
@@ -183,8 +187,8 @@ function formatVipDeepFromGame(g: SlateGamePick, label: string): string {
 export async function runCfbWedMidweekVip(
   admin: SupabaseClient,
   botUserId: string,
-  opts?: { dryRun?: boolean },
-): Promise<{ ok: boolean; skipped?: string; dryRun?: boolean; gameCount?: number; captionPreview?: string }> {
+  opts?: { dryRun?: boolean; destinations?: unknown },
+): Promise<{ ok: boolean; skipped?: string; dryRun?: boolean; gameCount?: number; captionPreview?: string; xWarning?: string; tweetId?: string | null; postId?: string }> {
   const dryRun = opts?.dryRun === true
   const day = ptDateKey()
   const dedupeKey = `cfb_wed_midweek_vip:${day}`
@@ -226,13 +230,33 @@ export async function runCfbWedMidweekVip(
     return { ok: true, dryRun: true, gameCount: card.games.length, captionPreview: caption }
   }
 
-  const vip = await publishBotSubChatMessage(admin, { botUserId, caption })
-  if (vip.error || !vip.messageId) {
-    return { ok: false, skipped: vip.error || 'vip_publish_failed', gameCount: card.games.length }
+  const fan = await fanOutVipOnlyCaption({
+    admin,
+    botUserId,
+    destinations: opts?.destinations,
+    caption,
+  })
+  if (fan.dest.loungePublic && fan.error) {
+    return { ok: false, skipped: fan.error, gameCount: card.games.length, xWarning: fan.xWarning }
+  }
+  if (fanOutMissedAll(fan)) {
+    return {
+      ok: false,
+      skipped: fan.error || fan.vipChatWarning || fan.xWarning || 'vip_publish_failed',
+      gameCount: card.games.length,
+      xWarning: fan.xWarning,
+    }
   }
 
   await markPublished(admin, botUserId, dedupeKey, caption, 'cfb_wed_midweek_vip')
-  return { ok: true, gameCount: card.games.length, captionPreview: caption.slice(0, 280) }
+  return {
+    ok: true,
+    gameCount: card.games.length,
+    captionPreview: caption.slice(0, 280),
+    postId: fan.publicPostId || undefined,
+    tweetId: fan.tweetId,
+    ...(fan.xWarning ? { xWarning: fan.xWarning } : {}),
+  }
 }
 
 /**
@@ -241,8 +265,8 @@ export async function runCfbWedMidweekVip(
 export async function runCfbThuNightSpotlight(
   admin: SupabaseClient,
   botUserId: string,
-  opts?: { dryRun?: boolean },
-): Promise<{ ok: boolean; skipped?: string; dryRun?: boolean; postId?: string; captionPreview?: string }> {
+  opts?: { dryRun?: boolean; destinations?: unknown },
+): Promise<{ ok: boolean; skipped?: string; dryRun?: boolean; postId?: string; captionPreview?: string; xWarning?: string; tweetId?: string | null }> {
   const dryRun = opts?.dryRun === true
   const day = ptDateKey()
   const dedupeKey = `cfb_thu_night_spotlight:${day}`
@@ -275,18 +299,34 @@ export async function runCfbThuNightSpotlight(
     return { ok: true, dryRun: true, captionPreview: publicCaption }
   }
 
-  const postRes = await publishLoungeBotPost(admin, {
-    botUserId,
-    caption: publicCaption,
-    categoryPills: ['sports', 'cfb'],
+  const dest = resolvePublishDestinations(opts?.destinations, {
+    loungePublic: true,
+    loungeFanOnly: false,
+    vipChat: true,
   })
-  if (postRes.error || !postRes.postId) {
-    return { ok: false, skipped: postRes.error || 'public_publish_failed' }
+  const fan = await fanOutSyndicatePublish({
+    admin,
+    botUserId,
+    dest,
+    publicCaption,
+    vipCaption,
+    categoryPills: ['sports'],
+  })
+  if (dest.loungePublic && fan.error) {
+    return { ok: false, skipped: fan.error, xWarning: fan.xWarning }
+  }
+  if (fanOutMissedAll(fan)) {
+    return { ok: false, skipped: fan.error || fan.vipChatWarning || fan.xWarning || 'publish_failed', xWarning: fan.xWarning }
   }
 
-  await publishBotSubChatMessage(admin, { botUserId, caption: vipCaption }).catch(() => null)
   await markPublished(admin, botUserId, dedupeKey, publicCaption, 'cfb_thu_night_spotlight')
-  return { ok: true, postId: postRes.postId, captionPreview: publicCaption.slice(0, 280) }
+  return {
+    ok: true,
+    postId: fan.publicPostId || undefined,
+    captionPreview: publicCaption.slice(0, 280),
+    tweetId: fan.tweetId,
+    ...(fan.xWarning ? { xWarning: fan.xWarning } : {}),
+  }
 }
 
 /**
@@ -295,8 +335,8 @@ export async function runCfbThuNightSpotlight(
 export async function runCfbSatVipAddsKills(
   admin: SupabaseClient,
   botUserId: string,
-  opts?: { dryRun?: boolean },
-): Promise<{ ok: boolean; skipped?: string; dryRun?: boolean; changeCount?: number; captionPreview?: string }> {
+  opts?: { dryRun?: boolean; destinations?: unknown },
+): Promise<{ ok: boolean; skipped?: string; dryRun?: boolean; changeCount?: number; captionPreview?: string; xWarning?: string; tweetId?: string | null; postId?: string }> {
   const dryRun = opts?.dryRun === true
   const day = ptDateKey()
   const dedupeKey = `cfb_sat_vip_adds_kills:${day}`
@@ -436,11 +476,31 @@ export async function runCfbSatVipAddsKills(
     return { ok: true, dryRun: true, changeCount: unique.length, captionPreview: caption }
   }
 
-  const vip = await publishBotSubChatMessage(admin, { botUserId, caption })
-  if (vip.error || !vip.messageId) {
-    return { ok: false, skipped: vip.error || 'vip_publish_failed', changeCount: unique.length }
+  const fan = await fanOutVipOnlyCaption({
+    admin,
+    botUserId,
+    destinations: opts?.destinations,
+    caption,
+  })
+  if (fan.dest.loungePublic && fan.error) {
+    return { ok: false, skipped: fan.error, changeCount: unique.length, xWarning: fan.xWarning }
+  }
+  if (fanOutMissedAll(fan)) {
+    return {
+      ok: false,
+      skipped: fan.error || fan.vipChatWarning || fan.xWarning || 'vip_publish_failed',
+      changeCount: unique.length,
+      xWarning: fan.xWarning,
+    }
   }
 
   await markPublished(admin, botUserId, dedupeKey, caption, 'cfb_sat_vip_adds_kills')
-  return { ok: true, changeCount: unique.length, captionPreview: caption.slice(0, 280) }
+  return {
+    ok: true,
+    changeCount: unique.length,
+    captionPreview: caption.slice(0, 280),
+    postId: fan.publicPostId || undefined,
+    tweetId: fan.tweetId,
+    ...(fan.xWarning ? { xWarning: fan.xWarning } : {}),
+  }
 }

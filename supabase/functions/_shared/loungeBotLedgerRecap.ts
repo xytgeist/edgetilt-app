@@ -6,8 +6,10 @@
  * and publishes a natural, swaggered syndicate recap to the Lounge feed + Scott's VIP subscriber channel.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { publishLoungeBotPost } from './loungeBotPublish.ts'
-import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
+import {
+  fanOutSyndicatePublish,
+  resolvePublishDestinations,
+} from './loungeBotPublishDestinations.ts'
 import { fetchEspnGameSummary, type EspnGameSummary } from './loungeBotEspnSummary.ts'
 import { shortDisplayName } from './loungeBotOddsCaption.ts'
 import { formatColoredPickerName } from './loungeBotPickerColors.ts'
@@ -743,18 +745,9 @@ export async function publishWeeklySyndicateRecap(
   botUserId: string,
   recap: WeeklyRecapPayload,
   categoryPills: string[] = ['sports'],
-): Promise<{ ok: boolean; postId?: string; error?: string }> {
+  destinations?: unknown,
+): Promise<{ ok: boolean; postId?: string; error?: string; xWarning?: string; tweetId?: string | null }> {
   const caption = formatWeeklySyndicateRecapCaption(recap)
-
-  const postRes = await publishLoungeBotPost(admin, {
-    botUserId,
-    caption,
-    categoryPills: [...new Set([...categoryPills, 'sports'])],
-  })
-
-  if (!postRes.postId) {
-    return { ok: false, error: postRes.error || 'Failed to post weekly recap to Lounge.' }
-  }
 
   const vipDrop = [
     `📊 **Sharpe VIP Syndicate · Weekly Ledger Complete**`,
@@ -765,10 +758,28 @@ export async function publishWeeklySyndicateRecap(
     `*Early Week opening line movements and CLV targets posting here tonight.*`,
   ].join('\n')
 
-  await publishBotSubChatMessage(admin, {
+  const dest = resolvePublishDestinations(destinations, {
+    loungePublic: true,
+    loungeFanOnly: false,
+    vipChat: true,
+  })
+  const fan = await fanOutSyndicatePublish({
+    admin,
     botUserId,
-    caption: vipDrop,
+    dest,
+    publicCaption: caption,
+    vipCaption: vipDrop,
+    categoryPills: [...new Set([...categoryPills, 'sports'])],
   })
 
-  return { ok: true, postId: postRes.postId }
+  if (dest.loungePublic && fan.error) {
+    return { ok: false, error: fan.error, xWarning: fan.xWarning }
+  }
+
+  return {
+    ok: true,
+    postId: fan.publicPostId || undefined,
+    tweetId: fan.tweetId,
+    ...(fan.xWarning ? { xWarning: fan.xWarning } : {}),
+  }
 }

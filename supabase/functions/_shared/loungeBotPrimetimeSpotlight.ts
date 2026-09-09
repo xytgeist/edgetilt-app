@@ -16,9 +16,11 @@ import {
   type OddsPick,
 } from './loungeBotOddsCaption.ts'
 import { formatColoredPickerName } from './loungeBotPickerColors.ts'
-import { publishLoungeBotPost } from './loungeBotPublish.ts'
-import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
 import { resolveSlatePublisher } from './loungeBotSyndicateIdentity.ts'
+import {
+  fanOutSyndicatePublish,
+  resolvePublishDestinations,
+} from './loungeBotPublishDestinations.ts'
 import { fetchGameWeather, type GameWeatherSummary } from './loungeBotWeather.ts'
 import { oddsSportKeyToRundownSportId } from './loungeBotRundownContext.ts'
 import { fetchGameInjuryPval, type GameInjurySummary } from './loungeBotInjuryPval.ts'
@@ -437,6 +439,8 @@ export type PrimetimePublishResult = {
   error?: string
   fanOnlyWarning?: string
   vipChatWarning?: string
+  xWarning?: string
+  tweetId?: string | null
 }
 
 /**
@@ -448,50 +452,41 @@ export async function publishAndRecordPrimetimeSpotlight(
   botUserId: string,
   spotlight: PrimetimeSpotlightGame,
   categoryPills: string[] = ['sports'],
+  destinations?: unknown,
 ): Promise<PrimetimePublishResult> {
   const publisher = await resolveSlatePublisher(admin, botUserId)
   const publishAs = publisher.botUserId
   const pills = categoryPills.length ? categoryPills : ['sports']
   const publicCaption = formatPrimetimeSpotlightCaption(spotlight)
   const vipCaption = formatPrimetimeVipDeepDive(spotlight)
+  const dest = resolvePublishDestinations(destinations, {
+    loungePublic: true,
+    loungeFanOnly: publisher.mode === 'syndicate',
+    vipChat: true,
+  })
+  dest.loungeFanOnly = dest.loungeFanOnly && publisher.mode === 'syndicate'
 
-  // 1. Public Lounge tease (one lean only).
-  // Tribe pills are `sports` only … `nfl` / `primetime` are not in the Lounge allowlist
-  // and used to fail the insert, which Ops then toasted as "no game".
-  const postRes = await publishLoungeBotPost(admin, {
+  const fan = await fanOutSyndicatePublish({
+    admin,
     botUserId: publishAs,
-    caption: publicCaption,
+    dest,
+    publicCaption,
+    fanOnlyCaption: vipCaption,
+    vipCaption,
     categoryPills: pills,
   })
 
-  if (postRes.error || !postRes.postId) {
+  if (dest.loungePublic && fan.error) {
     return {
       ok: false,
       pickIds: [],
       publisherMode: publisher.mode,
-      error: postRes.error || 'Lounge publish failed.',
+      error: fan.error,
+      xWarning: fan.xWarning,
     }
   }
 
-  // 2. Fan-only Lounge card … Preview already shows this as the subscriber post.
-  let privatePostId: string | null = null
-  let fanOnlyWarning: string | undefined
-  if (publisher.mode === 'syndicate') {
-    const privateRes = await publishLoungeBotPost(admin, {
-      botUserId: publishAs,
-      caption: vipCaption,
-      categoryPills: pills,
-      creatorFanOnly: true,
-    })
-    if (privateRes.error || !privateRes.postId) {
-      fanOnlyWarning = privateRes.error || 'Fan-only primetime card failed'
-      console.error('Syndicate fan-only primetime failed:', fanOnlyWarning)
-    } else {
-      privatePostId = privateRes.postId
-    }
-  }
-
-  const postId = privatePostId || postRes.postId
+  const postId = fan.privatePostId || fan.publicPostId || undefined
   const pickIds: string[] = []
 
   // 3. Log official consensus pick into lounge_bot_picks for grading
@@ -540,24 +535,16 @@ export async function publishAndRecordPrimetimeSpotlight(
     pickIds.push(inserted.id)
   }
 
-  // 4. VIP chat gets the same 4-desk card (plain text). Do not swallow the miss.
-  const vipChat = await publishBotSubChatMessage(admin, {
-    botUserId: publishAs,
-    caption: vipCaption,
-  })
-  const vipChatWarning = vipChat.error || undefined
-  if (vipChatWarning) {
-    console.error('Primetime VIP chat failed:', vipChatWarning)
-  }
-
   return {
     ok: true,
     postId,
-    publicPostId: postRes.postId,
-    privatePostId,
+    publicPostId: fan.publicPostId,
+    privatePostId: fan.privatePostId,
     publisherMode: publisher.mode,
     pickIds,
-    ...(fanOnlyWarning ? { fanOnlyWarning } : {}),
-    ...(vipChatWarning ? { vipChatWarning } : {}),
+    tweetId: fan.tweetId,
+    ...(fan.fanOnlyWarning ? { fanOnlyWarning: fan.fanOnlyWarning } : {}),
+    ...(fan.vipChatWarning ? { vipChatWarning: fan.vipChatWarning } : {}),
+    ...(fan.xWarning ? { xWarning: fan.xWarning } : {}),
   }
 }

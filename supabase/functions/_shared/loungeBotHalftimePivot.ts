@@ -7,7 +7,7 @@
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { shortDisplayName } from './loungeBotOddsCaption.ts'
-import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
+import { fanOutMissedAll, fanOutVipOnlyCaption } from './loungeBotPublishDestinations.ts'
 import { fetchEspnGameSummary, type EspnGameSummary } from './loungeBotEspnSummary.ts'
 
 export type HalftimePivotReport = {
@@ -168,7 +168,29 @@ export async function publishHalftimePivotToVip(
   admin: SupabaseClient,
   botUserId: string,
   pivot: HalftimePivotReport,
-): Promise<{ ok: boolean; messageId?: string | null; error?: string | null }> {
-  const res = await publishBotSubChatMessage(admin, botUserId, pivot.vipCaption)
-  return { ok: Boolean(res.messageId), messageId: res.messageId, error: res.error }
+  destinations?: unknown,
+): Promise<{ ok: boolean; messageId?: string | null; error?: string | null; xWarning?: string; tweetId?: string | null; postId?: string }> {
+  const fan = await fanOutVipOnlyCaption({
+    admin,
+    botUserId,
+    destinations,
+    caption: pivot.vipCaption,
+  })
+  if (fan.dest.loungePublic && fan.error) {
+    return { ok: false, error: fan.error, xWarning: fan.xWarning }
+  }
+  if (fanOutMissedAll(fan)) {
+    return {
+      ok: false,
+      error: fan.error || fan.vipChatWarning || fan.xWarning || 'publish_failed',
+      xWarning: fan.xWarning,
+    }
+  }
+  return {
+    ok: true,
+    messageId: fan.vipMessageId,
+    postId: fan.publicPostId || undefined,
+    tweetId: fan.tweetId,
+    ...(fan.xWarning ? { xWarning: fan.xWarning } : {}),
+  }
 }

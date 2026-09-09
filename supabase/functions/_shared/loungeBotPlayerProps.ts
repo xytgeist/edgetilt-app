@@ -14,8 +14,10 @@ import {
   shortDisplayName,
   type OddsEvent,
 } from './loungeBotOddsCaption.ts'
-import { publishLoungeBotPost } from './loungeBotPublish.ts'
-import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
+import {
+  fanOutSyndicatePublish,
+  resolvePublishDestinations,
+} from './loungeBotPublishDestinations.ts'
 import {
   calculateTrenchEpaMatchup,
   loadDbTeamMetricsMap,
@@ -270,27 +272,35 @@ export async function publishAndRecordAnytimeTdCard(
   botUserId: string,
   events: OddsEvent[],
   categoryPills: string[] = ['sports', 'nfl'],
-): Promise<{ ok: boolean; postId?: string; pickIds: string[] }> {
+  destinations?: unknown,
+): Promise<{ ok: boolean; postId?: string; pickIds: string[]; error?: string; xWarning?: string; tweetId?: string | null }> {
   const card = await buildAnytimeTdCard(admin, events)
   if (!card) return { ok: false, pickIds: [] }
 
-  // 1. Public Lounge Feed Post
-  const postRes = await publishLoungeBotPost(admin, botUserId, card.publicCaption, {
-    categoryPills: [...new Set([...categoryPills, 'nfl', 'props'])],
-    dryRun: false,
+  const dest = resolvePublishDestinations(destinations, {
+    loungePublic: true,
+    loungeFanOnly: false,
+    vipChat: true,
+  })
+  const fan = await fanOutSyndicatePublish({
+    admin,
+    botUserId,
+    dest,
+    publicCaption: card.publicCaption,
+    vipCaption: card.vipCaption,
+    categoryPills: [...new Set([...categoryPills, 'sports'])],
   })
 
-  if (!postRes.ok || !postRes.postId) {
-    return { ok: false, pickIds: [] }
+  if (dest.loungePublic && fan.error) {
+    return { ok: false, pickIds: [], error: fan.error, xWarning: fan.xWarning }
   }
 
-  // 2. Record Featured Pick to Ledger
-  const { data: inserted, error: insertErr } = await admin
+  const { data: inserted } = await admin
     .from('lounge_bot_picks')
     .insert({
       bot_user_id: botUserId,
       picker_name: 'Chedda',
-      post_id: postRes.postId,
+      post_id: fan.publicPostId,
       event_id: card.featuredPick.eventId,
       sport_key: card.featuredPick.sportKey,
       home_team: card.featuredPick.homeTeam,
@@ -313,13 +323,12 @@ export async function publishAndRecordAnytimeTdCard(
     })
     .select('id')
 
-  // 3. Drop Full 3-Player Card into Scott's VIP Sub-Chat
-  try {
-    await publishBotSubChatMessage(admin, botUserId, card.vipCaption)
-  } catch (chatErr) {
-    console.error('Failed to drop Anytime TD card to VIP chat:', chatErr)
-  }
-
   const pickIds = (inserted || []).map((r) => r.id)
-  return { ok: true, postId: postRes.postId, pickIds }
+  return {
+    ok: true,
+    postId: fan.publicPostId || undefined,
+    pickIds,
+    tweetId: fan.tweetId,
+    ...(fan.xWarning ? { xWarning: fan.xWarning } : {}),
+  }
 }

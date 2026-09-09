@@ -24,7 +24,7 @@ import {
   type OddsEvent,
 } from './loungeBotOddsCaption.ts'
 import { fetchSportOdds } from './loungeBotOddsRun.ts'
-import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
+import { fanOutMissedAll, fanOutVipOnlyCaption } from './loungeBotPublishDestinations.ts'
 import {
   NFL_KEY_NUMBER_FREQUENCIES,
   NFL_TOTAL_KEY_NUMBER_FREQUENCIES,
@@ -1000,22 +1000,39 @@ export async function publishMiddleArbToVip(
   admin: SupabaseClient,
   botUserId: string,
   opportunity: MiddleArbOpportunity,
-): Promise<{ ok: boolean; messageId?: string | null; error?: string | null }> {
-  const vipResult = await publishBotSubChatMessage(admin, {
+  destinations?: unknown,
+): Promise<{ ok: boolean; messageId?: string | null; error?: string | null; xWarning?: string; tweetId?: string | null; postId?: string }> {
+  const fan = await fanOutVipOnlyCaption({
+    admin,
     botUserId,
+    destinations,
     caption: opportunity.vipCaption,
   })
 
+  const landed = !fanOutMissedAll(fan) && !(fan.dest.loungePublic && fan.error)
   await admin.from('lounge_bot_publish_log').insert({
     bot_user_id: botUserId,
     caption: opportunity.vipCaption,
-    status: vipResult.messageId ? 'published' : 'failed',
-    error_message: vipResult.error || null,
+    status: landed ? 'published' : 'failed',
+    error_message: fan.error || fan.vipChatWarning || fan.xWarning || null,
   })
 
+  if (fan.dest.loungePublic && fan.error) {
+    return { ok: false, error: fan.error, xWarning: fan.xWarning }
+  }
+  if (fanOutMissedAll(fan)) {
+    return {
+      ok: false,
+      error: fan.error || fan.vipChatWarning || fan.xWarning || 'publish_failed',
+      xWarning: fan.xWarning,
+    }
+  }
+
   return {
-    ok: !!vipResult.messageId,
-    messageId: vipResult.messageId,
-    error: vipResult.error,
+    ok: true,
+    messageId: fan.vipMessageId,
+    postId: fan.publicPostId || undefined,
+    tweetId: fan.tweetId,
+    ...(fan.xWarning ? { xWarning: fan.xWarning } : {}),
   }
 }

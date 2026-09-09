@@ -107,6 +107,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Mac Theo.** Ryan signed off: (1) App Store account is **Digiverse Ventures LLC**, (2) **digiverse.ventures** live, (3) Cloudflare email for edgetilt + digiverse / reply-from. **Still open:** Apple increased price request (Lifetime above `$1,000`). DSA trader is unblocked now that the org flip landed. Do not Add for Review.
 
+### Windows Theo 2026-09-09 … Ops Send to + X
+
+**I am Windows Theo.** sharpesyndicate.com/ops Sharp Desk has a **Send to** bar (Lounge public / fan-only / VIP chat / X `@sharpesyndicate`). Cron stays today's dest, **no X**. VIP-only drops keep public + X off unless Ryan checks them. Code on `test` **`1.4.128`**. X will not tweet until Ryan pastes the four `X_SYNDICATE_*` user tokens on **prod** Edge `lounge-odds-poll` and asks for a redeploy. Do not prod-deploy this yourself.
+
 ### Windows Theo 2026-09-09 … Primetime Preview vs Publish dual posts
 
 **I am Windows Theo.** After the pill fix, Primetime Publish landed the public Lounge tease only. Preview already showed public + subscriber. Publish now writes the fan-only Lounge 4-desk card too (slate model) plus VIP chat. Code on `test` **`1.4.126`**. **`lounge-odds-poll` is on prod** (`jtjgtucumuoswnbauxry`) from `dceefc49` as of 2026-09-09. Preview then Publish on Ops should land both Lounge posts.

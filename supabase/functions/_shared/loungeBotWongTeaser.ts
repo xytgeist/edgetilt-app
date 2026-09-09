@@ -14,8 +14,10 @@ import {
   shortDisplayName,
   type OddsEvent,
 } from './loungeBotOddsCaption.ts'
-import { publishLoungeBotPost } from './loungeBotPublish.ts'
-import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
+import {
+  fanOutSyndicatePublish,
+  resolvePublishDestinations,
+} from './loungeBotPublishDestinations.ts'
 
 export type WongLegType = 'underdog' | 'favorite'
 
@@ -306,21 +308,33 @@ export async function publishAndRecordWongTeaser(
   botUserId: string,
   events: OddsEvent[],
   categoryPills: string[] = ['sports', 'nfl'],
-): Promise<{ success: boolean; postId?: string; pickId?: string; error?: string }> {
+  destinations?: unknown,
+): Promise<{ success: boolean; postId?: string; pickId?: string; error?: string; xWarning?: string; tweetId?: string | null }> {
   const pair = buildWongTeaserPair(events)
   if (!pair) {
     return { success: false, error: 'Fewer than 2 qualifying NFL Wong teaser legs available on the active board.' }
   }
 
-  const postRes = await publishLoungeBotPost(admin, {
+  const dest = resolvePublishDestinations(destinations, {
+    loungePublic: true,
+    loungeFanOnly: false,
+    vipChat: true,
+  })
+  const vipExtra = formatWongAdditionalLegsVipCaption(pair)
+  if (!vipExtra) dest.vipChat = false
+  const fan = await fanOutSyndicatePublish({
+    admin,
     botUserId,
-    caption: pair.caption,
+    dest,
+    publicCaption: pair.caption,
+    vipCaption: vipExtra || null,
     categoryPills,
   })
 
-  if (postRes.error || !postRes.postId) {
-    return { success: false, error: postRes.error || 'Failed to publish Wong Teaser post' }
+  if (dest.loungePublic && fan.error) {
+    return { success: false, error: fan.error, xWarning: fan.xWarning }
   }
+  const postRes = { postId: fan.publicPostId, error: fan.error }
 
   // Earlier commence time
   const t1 = Date.parse(pair.leg1.commenceTime) || 0
@@ -387,22 +401,11 @@ export async function publishAndRecordWongTeaser(
     console.error('Failed to insert Wong teaser pick into lounge_bot_picks:', insertErr)
   }
 
-  // If additional qualifying legs exist, post them to Scott's VIP subscriber channel
-  const vipExtra = formatWongAdditionalLegsVipCaption(pair)
-  if (vipExtra) {
-    try {
-      await publishBotSubChatMessage(admin, {
-        botUserId,
-        body: vipExtra,
-      })
-    } catch (vipErr) {
-      console.warn('Failed to publish VIP sub-chat Wong teaser legs:', vipErr)
-    }
-  }
-
   return {
     success: true,
-    postId: postRes.postId,
+    postId: postRes.postId || undefined,
     pickId: inserted?.id,
+    tweetId: fan.tweetId,
+    ...(fan.xWarning ? { xWarning: fan.xWarning } : {}),
   }
 }

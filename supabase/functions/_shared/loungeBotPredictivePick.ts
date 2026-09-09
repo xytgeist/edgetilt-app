@@ -14,10 +14,13 @@ import {
   type OddsPick,
 } from './loungeBotOddsCaption.ts'
 import { formatColoredPickerName } from './loungeBotPickerColors.ts'
-import { publishLoungeBotPost, publishLoungeBotPostWithThread } from './loungeBotPublish.ts'
 import { LOUNGE_BOT_CAPTION_MAX } from './loungeBotCaptionLimits.ts'
-import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
 import { resolveSlatePublisher } from './loungeBotSyndicateIdentity.ts'
+import {
+  fanOutSyndicatePublish,
+  fanOutWarnings,
+  resolvePublishDestinations,
+} from './loungeBotPublishDestinations.ts'
 import { fetchGameWeather, type GameWeatherSummary } from './loungeBotWeather.ts'
 import { consumeRundownGradeTrace, matchRundownFinalScore, oddsSportKeyToRundownSportId } from './loungeBotRundownContext.ts'
 import { loadPersonaWeights } from './loungeBotPersonaAdaptive.ts'
@@ -1554,6 +1557,7 @@ export async function publishAndRecordNflSlateCard(
     botUserId: string
     card: NflSlateCard
     categoryPills?: string[]
+    destinations?: unknown
   },
 ): Promise<{
   success: boolean
@@ -1563,6 +1567,10 @@ export async function publishAndRecordNflSlateCard(
   publisherMode?: string
   totalPicksRecorded: number
   error?: string
+  xWarning?: string
+  fanOnlyWarning?: string
+  vipChatWarning?: string
+  tweetId?: string | null
 }> {
   if (!input.card || !input.card.games.length) {
     return { success: false, totalPicksRecorded: 0, error: 'Empty slate card.' }
@@ -1572,47 +1580,49 @@ export async function publishAndRecordNflSlateCard(
   const botUserId = publisher.botUserId
   const categoryPills = input.categoryPills || ['sports']
   const publicCaption = formatNflSlateCardCaption(input.card)
+  const dest = resolvePublishDestinations(input.destinations, {
+    loungePublic: true,
+    loungeFanOnly: publisher.mode === 'syndicate',
+    vipChat: true,
+  })
+  dest.loungeFanOnly = dest.loungeFanOnly && publisher.mode === 'syndicate'
 
-  const publicRes = await publishLoungeBotPost(admin, {
+  const fullPrivateCaption = formatNflSlatePrivateRootCaption(input.card)
+  const captionChunks = splitSlateCaptionToFit(fullPrivateCaption, LOUNGE_BOT_CAPTION_MAX)
+  const deskThread = VIP_ATS_THREAD_PICKERS.map((p) => ({
+    body: formatPickerSlateList(input.card, p),
+  }))
+  const overflowThread = captionChunks.slice(1).map((body) => ({ body }))
+  const chatTitle =
+    publisher.mode === 'syndicate'
+      ? `🏈 ${input.card.cardTitle || 'Sharpe Syndicate Slate'} ... Full Uncut Desk Cards\n\nPlain-text ATS cards for Scott / Rocco / Chedda 👇`
+      : `🏈 ${input.card.cardTitle || 'Sharpe Syndicate Slate'} ... Full Uncut Breakdown\n\nPublic feed gets the consensus & hammer teasers. Here are the uncut individual ATS cards across Scott / Rocco / Chedda for the full slate 👇`
+
+  const fan = await fanOutSyndicatePublish({
+    admin,
     botUserId,
-    caption: publicCaption,
+    dest,
+    publicCaption,
+    fanOnlyCaption: captionChunks[0] || fullPrivateCaption,
+    fanOnlyThreadParts: [...overflowThread, ...deskThread],
+    vipCaption: chatTitle,
+    vipThreadParts: VIP_ATS_THREAD_PICKERS.map((p) => formatPickerSlateList(input.card, p)),
     categoryPills,
   })
 
-  if (publicRes.error || !publicRes.postId) {
+  if (dest.loungePublic && fan.error) {
     return {
       success: false,
       totalPicksRecorded: 0,
       publisherMode: publisher.mode,
-      error: publicRes.error || 'Failed to publish public teaser',
+      error: fan.error,
+      ...fanOutWarnings(fan) ? { xWarning: fan.xWarning, fanOnlyWarning: fan.fanOnlyWarning, vipChatWarning: fan.vipChatWarning } : {},
     }
   }
 
-  let privatePostId: string | null = null
-  let privatePublishNote: string | null = null
-  if (publisher.mode === 'syndicate') {
-    const fullPrivateCaption = formatNflSlatePrivateRootCaption(input.card)
-    const captionChunks = splitSlateCaptionToFit(fullPrivateCaption, LOUNGE_BOT_CAPTION_MAX)
-    const rootCaption = captionChunks[0] || fullPrivateCaption
-    const overflowThread = captionChunks.slice(1).map((body) => ({ body }))
-    const deskThread = VIP_ATS_THREAD_PICKERS.map((p) => ({
-      body: formatPickerSlateList(input.card, p),
-    }))
-    const privateRes = await publishLoungeBotPostWithThread(admin, {
-      botUserId,
-      caption: rootCaption,
-      categoryPills,
-      creatorFanOnly: true,
-      threadParts: [...overflowThread, ...deskThread],
-    })
-    if (privateRes.error || !privateRes.postId) {
-      privatePublishNote = privateRes.error || 'Fan-only full card failed'
-      console.error('Syndicate fan-only slate failed:', privatePublishNote)
-    } else {
-      privatePostId = privateRes.postId
-    }
-  }
-
+  const publicRes = { postId: fan.publicPostId }
+  const privatePostId: string | null = fan.privatePostId
+  const privatePublishNote: string | null = fan.fanOnlyWarning || null
   const ledgerPostId = privatePostId || publicRes.postId
 
   const rowsToInsert: any[] = []
@@ -1730,30 +1740,17 @@ export async function publishAndRecordNflSlateCard(
 
   await syncBotProfileHighlight(admin, botUserId)
 
-  // Full desk cards → publisher fan room (markdown stripped at chat publish). Never Signal once Syndicate exists.
-  try {
-    const threadParts = VIP_ATS_THREAD_PICKERS.map((p) => formatPickerSlateList(input.card, p))
-    const chatTitle =
-      publisher.mode === 'syndicate'
-        ? `🏈 ${input.card.cardTitle || 'Sharpe Syndicate Slate'} ... Full Uncut Desk Cards\n\nPlain-text ATS cards for Scott / Rocco / Chedda 👇`
-        : `🏈 ${input.card.cardTitle || 'Sharpe Syndicate Slate'} ... Full Uncut Breakdown\n\nPublic feed gets the consensus & hammer teasers. Here are the uncut individual ATS cards across Scott / Rocco / Chedda for the full slate 👇`
-    await publishBotSubChatMessage(admin, {
-      botUserId,
-      caption: chatTitle,
-      threadParts,
-    })
-  } catch (vipErr) {
-    console.error('Error posting slate to fan sub chat:', vipErr)
-  }
-
   return {
     success: true,
-    postId: ledgerPostId,
-    publicPostId: publicRes.postId,
+    postId: ledgerPostId || undefined,
+    publicPostId: publicRes.postId || undefined,
     privatePostId,
     publisherMode: publisher.mode,
     totalPicksRecorded: insertedRows?.length || 0,
+    tweetId: fan.tweetId,
     ...(privatePublishNote ? { fanOnlyWarning: privatePublishNote } : {}),
+    ...(fan.vipChatWarning ? { vipChatWarning: fan.vipChatWarning } : {}),
+    ...(fan.xWarning ? { xWarning: fan.xWarning } : {}),
   }
 }
 
@@ -1780,8 +1777,9 @@ export async function publishAndRecordPicks(
     picks: SinglePickerPick[]
     cardTitle?: string
     categoryPills?: string[]
+    destinations?: unknown
   },
-): Promise<{ success: boolean; postId?: string; pickIds: string[]; error?: string }> {
+): Promise<{ success: boolean; postId?: string; pickIds: string[]; error?: string; xWarning?: string; tweetId?: string | null }> {
   if (!input.picks.length) {
     return { success: false, pickIds: [], error: 'At least one pick required.' }
   }
@@ -1821,16 +1819,24 @@ export async function publishAndRecordPicks(
     : formatSyndicateCardCaption(input.cardTitle || '🎯 Sharp Syndicate Card', input.picks)
 
   const categoryPills = input.categoryPills || ['sports']
+  const dest = resolvePublishDestinations(input.destinations, {
+    loungePublic: true,
+    loungeFanOnly: false,
+    vipChat: false,
+  })
 
-  const postRes = await publishLoungeBotPost(admin, {
+  const fan = await fanOutSyndicatePublish({
+    admin,
     botUserId: input.botUserId,
-    caption,
+    dest,
+    publicCaption: caption,
     categoryPills,
   })
 
-  if (postRes.error || !postRes.postId) {
-    return { success: false, pickIds: [], error: postRes.error || 'Failed to publish post' }
+  if (dest.loungePublic && fan.error) {
+    return { success: false, pickIds: [], error: fan.error, xWarning: fan.xWarning }
   }
+  const postRes = { postId: fan.publicPostId, error: fan.error }
 
   const rowsToInsert = input.picks.map((item) => {
     const factors: string[] = []
@@ -1900,16 +1906,24 @@ export async function publishAndRecordPicks(
   if (pickErr) {
     return {
       success: true,
-      postId: postRes.postId,
+      postId: postRes.postId || undefined,
       pickIds: [],
       error: `Published post, but ledger insert failed: ${pickErr.message}`,
+      tweetId: fan.tweetId,
+      ...(fan.xWarning ? { xWarning: fan.xWarning } : {}),
     }
   }
 
   // Update profile bio highlight
   await syncBotProfileHighlight(admin, opts.botUserId)
 
-  return { success: true, postId: postRes.postId, pickIds }
+  return {
+    success: true,
+    postId: postRes.postId || undefined,
+    pickIds,
+    tweetId: fan.tweetId,
+    ...(fan.xWarning ? { xWarning: fan.xWarning } : {}),
+  }
 }
 
 /**

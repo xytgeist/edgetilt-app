@@ -13,6 +13,11 @@
 import { type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { adminOpsCorsHeaders, adminOpsJson, authorizeServiceRoleOrAdmin } from '../_shared/adminAuth.ts'
 import {
+  anyPublishDestination,
+  implicitDestForPollAction,
+  resolvePublishDestinations,
+} from '../_shared/loungeBotPublishDestinations.ts'
+import {
   countPublishedKindToday,
   evaluateEdgeAlertCandidate,
   fetchActiveSportsCatalog,
@@ -90,6 +95,14 @@ Deno.serve(async (req) => {
     const action = String(body?.action || 'poll_edges').trim()
     const dryRun = body?.dryRun === true
     const force = body?.force === true
+    const destPickerRaw = body?.destinations
+    const destPicked = Boolean(
+      destPickerRaw
+      && typeof destPickerRaw === 'object'
+      && !Array.isArray(destPickerRaw)
+      && ['loungePublic', 'loungeFanOnly', 'vipChat', 'x'].some((k) => k in (destPickerRaw as Record<string, unknown>)),
+    )
+    const destinations = destPicked ? destPickerRaw : undefined
     const alertKindRaw = String(body?.alertKind || '').trim().toLowerCase()
     const alertKind = alertKindRaw || null
 
@@ -97,6 +110,13 @@ Deno.serve(async (req) => {
       return adminOpsJson(400, {
         error: 'action must be a valid lounge-odds-poll action (incl. picks_for_today, pval_injury_ledger, cfb VIP ops).',
       })
+    }
+
+    if (destPicked && !dryRun && action !== 'syndicate_monthly_scoreboard') {
+      const dest = resolvePublishDestinations(destinations, implicitDestForPollAction(action))
+      if (!anyPublishDestination(dest)) {
+        return adminOpsJson(400, { error: 'Pick at least one Send to destination.' })
+      }
     }
 
     const ownershipSkip = await oddsPollActionOwnershipSkip(admin, requestedSlug, action)
@@ -259,31 +279,31 @@ Deno.serve(async (req) => {
 
     if (action === 'nfl_wed_tnf_vip') {
       const { runNflWedTnfVipNote } = await import('../_shared/loungeBotNflVipOps.ts')
-      const result = await runNflWedTnfVipNote(admin, bot.user_id, { dryRun })
+      const result = await runNflWedTnfVipNote(admin, bot.user_id, { dryRun, destinations })
       return adminOpsJson(200, { ok: result.ok !== false, action: 'nfl_wed_tnf_vip', ...result })
     }
 
     if (action === 'nfl_sat_vip_adds_kills') {
       const { runNflSatVipAddsKills } = await import('../_shared/loungeBotNflVipOps.ts')
-      const result = await runNflSatVipAddsKills(admin, bot.user_id, { dryRun })
+      const result = await runNflSatVipAddsKills(admin, bot.user_id, { dryRun, destinations })
       return adminOpsJson(200, { ok: result.ok !== false, action: 'nfl_sat_vip_adds_kills', ...result })
     }
 
     if (action === 'cfb_wed_midweek_vip') {
       const { runCfbWedMidweekVip } = await import('../_shared/loungeBotCfbVipOps.ts')
-      const result = await runCfbWedMidweekVip(admin, bot.user_id, { dryRun })
+      const result = await runCfbWedMidweekVip(admin, bot.user_id, { dryRun, destinations })
       return adminOpsJson(200, { ok: result.ok !== false, action: 'cfb_wed_midweek_vip', ...result })
     }
 
     if (action === 'cfb_thu_night_spotlight') {
       const { runCfbThuNightSpotlight } = await import('../_shared/loungeBotCfbVipOps.ts')
-      const result = await runCfbThuNightSpotlight(admin, bot.user_id, { dryRun })
+      const result = await runCfbThuNightSpotlight(admin, bot.user_id, { dryRun, destinations })
       return adminOpsJson(200, { ok: result.ok !== false, action: 'cfb_thu_night_spotlight', ...result })
     }
 
     if (action === 'cfb_sat_vip_adds_kills') {
       const { runCfbSatVipAddsKills } = await import('../_shared/loungeBotCfbVipOps.ts')
-      const result = await runCfbSatVipAddsKills(admin, bot.user_id, { dryRun })
+      const result = await runCfbSatVipAddsKills(admin, bot.user_id, { dryRun, destinations })
       return adminOpsJson(200, { ok: result.ok !== false, action: 'cfb_sat_vip_adds_kills', ...result })
     }
 
@@ -294,6 +314,7 @@ Deno.serve(async (req) => {
         sportKey,
         dryRun,
         dayKey: body?.dayKey ? String(body.dayKey).trim() : undefined,
+        destinations,
       })
       return adminOpsJson(200, { action: 'picks_for_today', ...result })
     }
@@ -423,6 +444,7 @@ Deno.serve(async (req) => {
         botUserId: bot.user_id,
         card,
         categoryPills: bot.category_pills_default || ['sports'],
+        destinations,
       })
 
       return adminOpsJson(200, {
@@ -482,6 +504,7 @@ Deno.serve(async (req) => {
         bot.user_id,
         events,
         bot.category_pills_default || ['sports', 'nfl'],
+        destinations,
       )
 
       return adminOpsJson(200, {
@@ -537,6 +560,7 @@ Deno.serve(async (req) => {
         bot.user_id,
         spotlight,
         bot.category_pills_default || ['sports'],
+        destinations,
       )
 
       if (!result.ok) {
@@ -593,7 +617,7 @@ Deno.serve(async (req) => {
         })
       }
 
-      const result = await publishHalftimePivotToVip(admin, bot.user_id, pivot)
+      const result = await publishHalftimePivotToVip(admin, bot.user_id, pivot, destinations)
       return adminOpsJson(200, {
         ok: result.ok,
         action: 'nfl_halftime_pivot',
@@ -639,7 +663,7 @@ Deno.serve(async (req) => {
 
       // Publish top opportunity to Scott's VIP subscriber channel
       const topOpp = opportunities[0]
-      const result = await publishMiddleArbToVip(admin, bot.user_id, topOpp)
+      const result = await publishMiddleArbToVip(admin, bot.user_id, topOpp, destinations)
 
       return adminOpsJson(200, {
         ok: result.ok,
@@ -689,6 +713,7 @@ Deno.serve(async (req) => {
         bot.user_id,
         oddsData.events,
         bot.category_pills_default || ['sports', 'nfl', 'props'],
+        destinations,
       )
 
       return adminOpsJson(200, {
@@ -738,32 +763,16 @@ Deno.serve(async (req) => {
         })
       }
 
-      // Publish post to lounge feed
-      const caption = formatUfcCardCaption(card)
-      const { data: post, error: postErr } = await admin
-        .from('community_feed_posts')
-        .insert({
-          user_id: bot.user_id,
-          caption,
-          category_pills: bot.category_pills_default || ['sports', 'ufc', 'mma'],
-        })
-        .select('id')
-        .single()
-
-      if (postErr) {
-        return adminOpsJson(500, { error: `Failed to create UFC post: ${postErr.message}` })
-      }
-
-      // Record picks and VIP sub-chat drops
       const result = await publishAndRecordUfcCard(admin, {
         botUserId: bot.user_id,
         card,
+        destinations,
       })
 
       return adminOpsJson(200, {
-        ok: true,
+        ok: result.success !== false,
         action: 'ufc_slate_card',
-        postId: post.id,
+        postId: result.postId,
         totalFights: card.totalFights,
         hammersCount: card.hammers.length,
         consensusCount: card.consensus.length,
@@ -804,6 +813,7 @@ Deno.serve(async (req) => {
         bot.user_id,
         recap,
         bot.category_pills_default || ['sports', 'recap'],
+        destinations,
       )
 
       return adminOpsJson(200, {
@@ -896,6 +906,7 @@ Deno.serve(async (req) => {
           picks: card.picks,
           cardTitle: card.cardTitle,
           categoryPills: bot.category_pills_default || ['sports'],
+          destinations,
         })
         return adminOpsJson(200, { ok: true, isSyndicate: true, ...result })
       } else {
@@ -928,6 +939,7 @@ Deno.serve(async (req) => {
           botUserId: bot.user_id,
           picks: [{ pickerName: solo.pickerName, pick: solo.pick }],
           categoryPills: bot.category_pills_default || ['sports'],
+          destinations,
         })
         return adminOpsJson(200, { ok: true, isSyndicate: false, pickerName: solo.pickerName, ...result })
       }

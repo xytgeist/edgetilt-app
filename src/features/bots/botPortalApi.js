@@ -35,6 +35,15 @@ async function messageFromFunctionsInvokeError(error, fallback) {
 }
 
 /**
+ * Ops Send-to picker. Omit on cron / when Preview did not pass dest.
+ * @param {{ destinations?: unknown }} opts
+ */
+function destinationsBody(opts = {}) {
+  if (!opts.destinations || typeof opts.destinations !== 'object') return {}
+  return { destinations: opts.destinations }
+}
+
+/**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string} functionName
  * @param {Record<string, unknown>} body
@@ -527,6 +536,7 @@ export async function fetchBotRecentPicks(supabaseClient, botUserId, limit = 50)
  *   sportKey?: string,
  *   cardTitle?: string,
  *   dryRun?: boolean,
+ *   destinations?: { loungePublic?: boolean, loungeFanOnly?: boolean, vipChat?: boolean, x?: boolean },
  * }} [opts]
  */
 export async function invokeLoungeOddsPredictivePick(supabaseClient, opts = {}) {
@@ -540,6 +550,7 @@ export async function invokeLoungeOddsPredictivePick(supabaseClient, opts = {}) 
       sportKey: opts.sportKey || undefined,
       cardTitle: opts.cardTitle || undefined,
       dryRun: opts.dryRun === true,
+      ...destinationsBody(opts),
     },
   })
   if (error) return { data: null, error: new Error(error.message || 'Predictive pick drop failed') }
@@ -568,7 +579,7 @@ export async function invokeLoungeOddsGradePicks(supabaseClient, opts = {}) {
 /**
  * Trigger on-demand generation and publishing of full ATS Slate Card (NFL or CFB).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
- * @param {{ slug?: string, sportKey?: string, dryRun?: boolean }} [opts]
+ * @param {{ slug?: string, sportKey?: string, dryRun?: boolean, destinations?: object }} [opts]
  */
 export async function invokeLoungeOddsSlateCard(supabaseClient, opts = {}) {
   const slug = opts.slug || 'sports-odds'
@@ -580,6 +591,7 @@ export async function invokeLoungeOddsSlateCard(supabaseClient, opts = {}) {
       action,
       sportKey,
       dryRun: opts.dryRun === true,
+      ...destinationsBody(opts),
     },
   })
   if (error) return { data: null, error: new Error(error.message || 'Slate card drop failed') }
@@ -590,7 +602,7 @@ export async function invokeLoungeOddsSlateCard(supabaseClient, opts = {}) {
 /**
  * Trigger on-demand generation and publishing of NFL Wong 6-pt Teasers.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
- * @param {{ slug?: string, dryRun?: boolean }} [opts]
+ * @param {{ slug?: string, dryRun?: boolean, destinations?: object }} [opts]
  */
 export async function invokeLoungeOddsWongTeaser(supabaseClient, opts = {}) {
   const slug = opts.slug || 'sports-odds'
@@ -599,6 +611,7 @@ export async function invokeLoungeOddsWongTeaser(supabaseClient, opts = {}) {
       slug,
       action: 'nfl_wong_teaser',
       dryRun: opts.dryRun === true,
+      ...destinationsBody(opts),
     },
   })
   if (error) return { data: null, error: new Error(error.message || 'Wong teaser drop failed') }
@@ -609,7 +622,7 @@ export async function invokeLoungeOddsWongTeaser(supabaseClient, opts = {}) {
 /**
  * Trigger on-demand generation and publishing of NFL Primetime Spotlight (TNF / SNF / MNF).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
- * @param {{ slug?: string, primetimeType?: 'TNF' | 'SNF' | 'MNF', dryRun?: boolean }} [opts]
+ * @param {{ slug?: string, primetimeType?: 'TNF' | 'SNF' | 'MNF', dryRun?: boolean, destinations?: object }} [opts]
  */
 export async function invokeLoungeOddsPrimetimeSpotlight(supabaseClient, opts = {}) {
   const slug = opts.slug || 'sports-odds'
@@ -619,6 +632,7 @@ export async function invokeLoungeOddsPrimetimeSpotlight(supabaseClient, opts = 
       action: 'nfl_primetime_spotlight',
       primetimeType: opts.primetimeType || undefined,
       dryRun: opts.dryRun === true,
+      ...destinationsBody(opts),
     },
   })
   if (error) return { data: null, error: new Error(error.message || 'Primetime spotlight drop failed') }
@@ -629,7 +643,7 @@ export async function invokeLoungeOddsPrimetimeSpotlight(supabaseClient, opts = 
 /**
  * Trigger on-demand generation and publishing of Tuesday Morning Weekly Syndicate Ledger & Post-Mortem.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
- * @param {{ slug?: string, dryRun?: boolean }} [opts]
+ * @param {{ slug?: string, dryRun?: boolean, destinations?: object }} [opts]
  */
 export async function invokeLoungeOddsWeeklyRecap(supabaseClient, opts = {}) {
   const slug = opts.slug || 'sports-odds'
@@ -638,6 +652,7 @@ export async function invokeLoungeOddsWeeklyRecap(supabaseClient, opts = {}) {
       slug,
       action: 'weekly_syndicate_recap',
       dryRun: opts.dryRun === true,
+      ...destinationsBody(opts),
     },
   })
   if (error) return { data: null, error: new Error(error.message || 'Weekly recap failed') }
@@ -668,7 +683,7 @@ export async function invokeLoungeOddsMonthlyScoreboard(supabaseClient, opts = {
 /**
  * Trigger on-demand generation and publishing of NFL Halftime Pivot into Scott's VIP Sub-Chat.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
- * @param {{ slug?: string, dryRun?: boolean }} [opts]
+ * @param {{ slug?: string, dryRun?: boolean, destinations?: object }} [opts]
  */
 export async function invokeLoungeOddsHalftimePivot(supabaseClient, opts = {}) {
   const slug = opts.slug || 'sports-odds'
@@ -677,6 +692,7 @@ export async function invokeLoungeOddsHalftimePivot(supabaseClient, opts = {}) {
       slug,
       action: 'nfl_halftime_pivot',
       dryRun: opts.dryRun === true,
+      ...destinationsBody(opts),
     },
   })
   if (error) return { data: null, error: new Error(error.message || 'Halftime pivot failed') }
@@ -687,7 +703,7 @@ export async function invokeLoungeOddsHalftimePivot(supabaseClient, opts = {}) {
 /**
  * Trigger on-demand generation and publishing of NFL Anytime TD / Player Props card.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
- * @param {{ slug?: string, dryRun?: boolean }} [opts]
+ * @param {{ slug?: string, dryRun?: boolean, destinations?: object }} [opts]
  */
 export async function invokeLoungeOddsAnytimeTd(supabaseClient, opts = {}) {
   const slug = opts.slug || 'sports-odds'
@@ -696,6 +712,7 @@ export async function invokeLoungeOddsAnytimeTd(supabaseClient, opts = {}) {
       slug,
       action: 'nfl_anytime_td',
       dryRun: opts.dryRun === true,
+      ...destinationsBody(opts),
     },
   })
   if (error) return { data: null, error: new Error(error.message || 'Anytime TD drop failed') }
@@ -706,7 +723,7 @@ export async function invokeLoungeOddsAnytimeTd(supabaseClient, opts = {}) {
 /**
  * Trigger on-demand scanning and VIP drop for Live Middle & Arbitrage opportunities.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
- * @param {{ slug?: string, dryRun?: boolean, sportKeys?: string[] }} [opts]
+ * @param {{ slug?: string, dryRun?: boolean, sportKeys?: string[], destinations?: object }} [opts]
  */
 export async function invokeLoungeOddsMiddleArb(supabaseClient, opts = {}) {
   const slug = opts.slug || 'sports-odds'
@@ -716,6 +733,7 @@ export async function invokeLoungeOddsMiddleArb(supabaseClient, opts = {}) {
       action: 'nfl_live_middle_arb',
       dryRun: opts.dryRun === true,
       sportKeys: opts.sportKeys,
+      ...destinationsBody(opts),
     },
   })
   if (error) return { data: null, error: new Error(error.message || 'Live Middle/Arb scanner failed') }
@@ -726,7 +744,7 @@ export async function invokeLoungeOddsMiddleArb(supabaseClient, opts = {}) {
 /**
  * Trigger on-demand generation and drop for UFC 4-Desk Syndicate card.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
- * @param {{ slug?: string, dryRun?: boolean, cardTitle?: string }} [opts]
+ * @param {{ slug?: string, dryRun?: boolean, cardTitle?: string, destinations?: object }} [opts]
  */
 export async function invokeLoungeOddsUfcCard(supabaseClient, opts = {}) {
   const slug = opts.slug || 'sports-odds'
@@ -736,6 +754,7 @@ export async function invokeLoungeOddsUfcCard(supabaseClient, opts = {}) {
       action: 'ufc_slate_card',
       dryRun: opts.dryRun === true,
       cardTitle: opts.cardTitle || 'UFC Fight Night',
+      ...destinationsBody(opts),
     },
   })
   if (error) {

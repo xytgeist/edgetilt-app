@@ -121,6 +121,7 @@ export async function runPicksForToday(
     sportKey: string
     dryRun?: boolean
     dayKey?: string
+    destinations?: unknown
   },
 ): Promise<PicksForTodayResult> {
   const dayKey = opts.dayKey || ptDateKey()
@@ -188,6 +189,7 @@ export async function runPicksForToday(
     const result = await publishAndRecordUfcCard(admin, {
       botUserId,
       card,
+      destinations: opts.destinations,
     })
     return {
       ok: result.success,
@@ -297,6 +299,7 @@ export async function runPicksForToday(
     card,
     // Only allowlisted tribe slugs (sports). Sport-specific tags like cfb/nfl are not in the constraint.
     categoryPills: ['sports'],
+    destinations: opts.destinations,
   })
 
   return {

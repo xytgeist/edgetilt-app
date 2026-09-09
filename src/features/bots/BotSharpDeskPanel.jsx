@@ -33,6 +33,7 @@ import BotCfbPowerRatingsEditor from './BotCfbPowerRatingsEditor.jsx'
 import BotUfcMetricsEditor from './BotUfcMetricsEditor.jsx'
 import BotBettingSplitsPaste from './BotBettingSplitsPaste.jsx'
 import { SyndicateDryRunPreview } from '../../syndicate/SyndicateDryRunPreview.jsx'
+import { SyndicateOpsDropInfo } from '../../syndicate/SyndicateOpsDropInfo.jsx'
 
 const PICKER_METAS = {
   Scott: {
@@ -143,6 +144,7 @@ export function BotSharpDeskPanel({
   const [destDirty, setDestDirty] = useState(false)
   const [selectedSportKey, setSelectedSportKey] = useState('americanfootball_nfl')
   const [selectedDropId, setSelectedDropId] = useState('today')
+  const [dropInfoOpen, setDropInfoOpen] = useState(false)
 
   const sportDrops = useMemo(() => dropsForSport(selectedSportKey), [selectedSportKey])
   const activeDrop = dropById(selectedDropId)
@@ -739,8 +741,38 @@ export function BotSharpDeskPanel({
                   ))}
                 </select>
               </label>
-              <label className="flex flex-col gap-1 text-[11px] text-zinc-400 min-w-[11rem] flex-1">
-                Drop
+              <div className="flex flex-col gap-1 text-[11px] text-zinc-400 min-w-[11rem] flex-1">
+                <div className="flex items-center gap-1">
+                  <span>Drop</span>
+                  <button
+                    type="button"
+                    onClick={() => setDropInfoOpen((open) => !open)}
+                    aria-expanded={dropInfoOpen}
+                    aria-controls="syndicate-ops-drop-info"
+                    aria-label={dropInfoOpen ? 'Hide drop type explanations' : 'What each drop type is'}
+                    className={`inline-flex h-5 w-5 items-center justify-center rounded-full border transition ${
+                      dropInfoOpen
+                        ? 'border-amber-500/50 bg-amber-500/15 text-amber-300'
+                        : 'border-zinc-600 text-zinc-400 hover:border-zinc-400 hover:text-zinc-200'
+                    }`}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="h-3 w-3"
+                      aria-hidden
+                    >
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="16" x2="12" y2="12" />
+                      <line x1="12" y1="8" x2="12.01" y2="8" />
+                    </svg>
+                  </button>
+                </div>
                 <select
                   value={selectedDropId}
                   onChange={(e) => setSelectedDropId(e.target.value)}
@@ -753,9 +785,17 @@ export function BotSharpDeskPanel({
                     </option>
                   ))}
                 </select>
-              </label>
+              </div>
             </div>
-            {dropHint ? (
+            {dropInfoOpen ? (
+              <div id="syndicate-ops-drop-info">
+                <SyndicateOpsDropInfo
+                  drops={sportDrops}
+                  selectedDropId={selectedDropId}
+                  onSelectDrop={setSelectedDropId}
+                />
+              </div>
+            ) : dropHint ? (
               <p className="text-[10px] text-zinc-500 leading-snug">{dropHint}</p>
             ) : null}
 

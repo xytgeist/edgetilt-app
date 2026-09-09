@@ -876,7 +876,7 @@ Chat and X do **not** render Lounge markdown. Tags like `[gold]`, `**bold**`, `#
 
 **Cron / scheduled auto-publish:** today's destinations. **No X.** Public Lounge stays public tease. VIP-only stays VIP.
 
-**Ops Publish** (`sharpesyndicate.com/ops` Sharp Desk): sport dropdown, then a **filtered drop** dropdown (Picks for today, slate, primetime, UFC slate, etc.). One Preview / Publish pair. **Send to** (`loungePublic`, `loungeFanOnly`, `vipChat`, `x`) applies to that Publish, including **Picks for today**. Passed on `lounge-odds-poll` body as `destinations`. Omit / cron = implicit dest + `x: false`. All boxes off refuses Publish. Monthly Board is ops-only (no Send to).
+**Ops Publish** (`sharpesyndicate.com/ops` Sharp Desk): sport dropdown, then a **filtered drop** dropdown (Picks for today, slate, primetime, UFC slate, etc.). Drop **(i)** lists every type for that sport (`OPS_DROPS.info`). One Preview / Publish pair. **Send to** (`loungePublic`, `loungeFanOnly`, `vipChat`, `x`) applies to that Publish, including **Picks for today**. Passed on `lounge-odds-poll` body as `destinations`. Omit / cron = implicit dest + `x: false`. All boxes off refuses Publish. Monthly Board is ops-only (no Send to).
 
 **X never gets the uncut VIP caption unless you check X on that Publish.** Default X uses the public tease. VIP-only drops (halftime, middle/arb, Wed TNF / Sat adds/kills, UFC uncut): Public Lounge + X **off but clickable**. Checking them posts that drop's public tease if one exists (UFC uses `formatUfcCardCaption`), otherwise the VIP caption (opt-in leak).
 

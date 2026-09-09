@@ -12,7 +12,7 @@ export const OPS_SPORTS = [
   { id: OPS_SPORT_UFC, label: 'UFC' },
 ]
 
-/** @type {{ id: string, label: string, sports: string[], destKind: string | null, hint: string }[]} */
+/** @type {{ id: string, label: string, sports: string[], destKind: string | null, hint: string, info: string }[]} */
 export const OPS_DROPS = [
   {
     id: 'today',
@@ -20,6 +20,7 @@ export const OPS_DROPS = [
     sports: [OPS_SPORT_NFL, OPS_SPORT_CFB, OPS_SPORT_UFC],
     destKind: 'today',
     hint: 'Full syndicate card for every game kicking today (PT). Gap-fill … not a replay of Thu tease / Fri lock crons.',
+    info: 'Full 4-desk vote on every game kicking today (Pacific time). Hammers, consensus, house divided, Tank totals. Use this to fill gaps after cron already posted the Thu tease or Fri lock. It is not a replay of those scheduled packages. Football also writes the fan-only Lounge card + VIP chat unless you change Send to.',
   },
   {
     id: 'slate',
@@ -27,6 +28,7 @@ export const OPS_DROPS = [
     sports: [OPS_SPORT_NFL, OPS_SPORT_CFB],
     destKind: 'slate',
     hint: 'Scheduled / full-board slate card. Use Picks for today when you only want kickoffs on this PT day.',
+    info: 'The scheduled / full-board shop card for the sport (week or lock window), not limited to games kicking today. Same 4-desk layout as Picks for today. Pick today when you only want this PT calendar day.',
   },
   {
     id: 'ufc_slate',
@@ -34,13 +36,15 @@ export const OPS_DROPS = [
     sports: [OPS_SPORT_UFC],
     destKind: 'ufc',
     hint: 'Active UFC board / main card. Picks for today limits to fights kicking today (PT).',
+    info: 'Active UFC board / main card, not limited to fights kicking today. Defaults to VIP chat. Check Public Lounge or X if you want the tease out too. Use Picks for today when you only want tonight\'s card.',
   },
   {
     id: 'solo',
     label: 'Solo / spot',
     sports: [OPS_SPORT_NFL, OPS_SPORT_CFB],
     destKind: 'solo',
-    hint: 'One lean or multi-picker syndicate card from the live board.',
+    hint: 'One lean or a short multi-desk snack from leftover +EV. Not the full today/slate card.',
+    info: 'Opportunistic +EV hunter, not a full slate. Scans the live board and posts either one desk lean or a short 2-4 pick snack (Chedda dog, Tank total, Rocco spread, Scott leftover). Auto builds the snack when the board is thick, otherwise one pick. Solo lock forces one desk. Syndicate card forces the snack. Public Lounge only unless you change Send to. Use Picks for today or Slate when you want every game voted.',
   },
   {
     id: 'primetime',
@@ -48,6 +52,7 @@ export const OPS_DROPS = [
     sports: [OPS_SPORT_NFL],
     destKind: 'primetime',
     hint: 'TNF / SNF / MNF spotlight (auto-picks the next eligible primetime game).',
+    info: 'One-game TNF / SNF / MNF spotlight. Auto-picks the next eligible primetime matchup. Public tease plus fan-only 4-desk card and VIP chat on the usual defaults.',
   },
   {
     id: 'wong',
@@ -55,6 +60,7 @@ export const OPS_DROPS = [
     sports: [OPS_SPORT_NFL],
     destKind: 'wong',
     hint: '2-leg Wong teaser of the week from current NFL lines.',
+    info: 'Builds a 2-leg Wong teaser from current NFL lines (key-number buys). One teaser card, not a full slate.',
   },
   {
     id: 'weekly',
@@ -62,6 +68,7 @@ export const OPS_DROPS = [
     sports: [OPS_SPORT_NFL, OPS_SPORT_CFB],
     destKind: 'weekly',
     hint: 'Tuesday syndicate ledger / post-mortem from graded picks.',
+    info: 'Tuesday ledger / post-mortem from graded picks over the last week. Record, CLV, what hit and what missed. Not a new card of upcoming games.',
   },
   {
     id: 'anytime',
@@ -69,6 +76,7 @@ export const OPS_DROPS = [
     sports: [OPS_SPORT_NFL],
     destKind: 'anytime',
     hint: "Chedda's plus-money TD of the week plus VIP 3-player slate.",
+    info: "Chedda's plus-money anytime TD of the week on the public feed, plus an uncut 3-player TD slate in VIP. NFL player-prop board only.",
   },
   {
     id: 'halftime',
@@ -76,6 +84,7 @@ export const OPS_DROPS = [
     sports: [OPS_SPORT_NFL],
     destKind: 'halftime',
     hint: 'Live NFL game at halftime. VIP-only unless you check Public Lounge or X.',
+    info: 'Looks at a live NFL game sitting at halftime and posts a 2nd-half pivot when yardage / scoreboard / pace say so. VIP-only unless you check Public Lounge or X.',
   },
   {
     id: 'middle',
@@ -83,6 +92,7 @@ export const OPS_DROPS = [
     sports: [OPS_SPORT_NFL, OPS_SPORT_CFB],
     destKind: 'middle',
     hint: 'Live middle / arb alert. VIP-only unless you check Public Lounge or X.',
+    info: 'Scans live books against pending syndicate positions for a middle window or a cross-book arb. Alert only … not a new full card. VIP-only unless you check Public Lounge or X.',
   },
   {
     id: 'monthly',
@@ -90,6 +100,7 @@ export const OPS_DROPS = [
     sports: [OPS_SPORT_NFL, OPS_SPORT_CFB, OPS_SPORT_UFC],
     destKind: null,
     hint: 'Ops-only ATS + CLV scoreboard. Does not publish. Send to is ignored.',
+    info: 'Ops-only ATS + CLV scoreboard by bucket × desk. Does not publish anywhere. Send to is ignored. This month or last 3 months.',
   },
 ]
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   fetchBotPicksRecord,
   fetchBotRecentPicks,
@@ -14,6 +14,19 @@ import {
   invokeLoungeOddsMiddleArb,
   invokeLoungeOddsUfcCard,
 } from './botPortalApi.js'
+import {
+  destKindForDrop,
+  dropById,
+  dropsForSport,
+  firstDropIdForSport,
+  OPS_SPORTS,
+  sportLabel,
+} from '../../syndicate/syndicateOpsDrops.js'
+import {
+  formatTodayPicksResult,
+  runTodayPicksForSport,
+  todayPicksPlan,
+} from '../../syndicate/syndicateTodayPicks.js'
 import BotPlayerPvalEditor from './BotPlayerPvalEditor.jsx'
 import BotTeamMetricsEditor from './BotTeamMetricsEditor.jsx'
 import BotCfbPowerRatingsEditor from './BotCfbPowerRatingsEditor.jsx'
@@ -112,7 +125,6 @@ export function BotSharpDeskPanel({
   setToast,
   busy,
   setBusy,
-  selectedSportKey,
 }) {
   const [activeTab, setActiveTab] = useState('scorecard')
   const [recordData, setRecordData] = useState(null)
@@ -129,6 +141,20 @@ export function BotSharpDeskPanel({
   const [dropPreview, setDropPreview] = useState(null)
   const [sendTo, setSendTo] = useState(SEND_TO_BAR_DEFAULT)
   const [destDirty, setDestDirty] = useState(false)
+  const [selectedSportKey, setSelectedSportKey] = useState('americanfootball_nfl')
+  const [selectedDropId, setSelectedDropId] = useState('today')
+
+  const sportDrops = useMemo(() => dropsForSport(selectedSportKey), [selectedSportKey])
+  const activeDrop = dropById(selectedDropId)
+  const activeDestKind = destKindForDrop(selectedDropId, selectedSportKey)
+  const todayHint = todayPicksPlan(selectedSportKey).summary
+  const dropHint = selectedDropId === 'today' ? todayHint : activeDrop?.hint || ''
+
+  useEffect(() => {
+    if (!sportDrops.some((d) => d.id === selectedDropId)) {
+      setSelectedDropId(firstDropIdForSport(selectedSportKey))
+    }
+  }, [selectedSportKey, selectedDropId, sportDrops])
 
   /**
    * @param {string} title
@@ -573,6 +599,63 @@ export function BotSharpDeskPanel({
     }
   }
 
+  const handleDropToday = async (dryRun = false) => {
+    const destKind = destKindForDrop('today', selectedSportKey)
+    const destinations = dryRun ? undefined : requireDestinations(destKind)
+    if (!dryRun && !destinations) return
+    setDropping(true)
+    if (setBusy) setBusy(true)
+    const sportName = sportLabel(selectedSportKey)
+    try {
+      const { data, error } = await runTodayPicksForSport(supabaseClient, {
+        slug: botSlug,
+        sportKey: selectedSportKey,
+        dryRun,
+        destinations,
+      })
+      if (error) {
+        setToast?.(error.message || 'Picks for today failed.')
+      } else if (dryRun || data?.dryRun) {
+        showDropDryRunPreview(`${sportName} · today`, data)
+      } else {
+        setToast?.(toastWithDestWarnings(formatTodayPicksResult(data, false), data))
+        await loadData()
+      }
+    } catch (err) {
+      setToast?.(`Picks for today error: ${err.message}`)
+    } finally {
+      setDropping(false)
+      if (setBusy) setBusy(false)
+    }
+  }
+
+  const handleRunSelectedDrop = async (dryRun = false) => {
+    switch (selectedDropId) {
+      case 'today':
+        return handleDropToday(dryRun)
+      case 'slate':
+        return handleDropSlateCard(selectedSportKey, dryRun)
+      case 'ufc_slate':
+        return handleDropUfcCard(dryRun)
+      case 'solo':
+        return handleDropPick(dryRun)
+      case 'primetime':
+        return handleDropPrimetimeSpotlight(undefined, dryRun)
+      case 'wong':
+        return handleDropWongTeaser(dryRun)
+      case 'weekly':
+        return handleDropWeeklyRecap(dryRun)
+      case 'anytime':
+        return handleDropAnytimeTd(dryRun)
+      case 'halftime':
+        return handleDropHalftimePivot(dryRun)
+      case 'middle':
+        return handleDropMiddleArb(dryRun)
+      default:
+        setToast?.('Pick a drop type.')
+    }
+  }
+
   const overall = recordData?.overall || { wins: 0, losses: 0, pushes: 0, pending: 0, win_rate_pct: 0, units_net: 0 }
   const pickers = recordData?.pickers || {}
 
@@ -639,12 +722,45 @@ export function BotSharpDeskPanel({
       {activeTab === 'scorecard' && (
         <div className="space-y-3 pt-2">
           <SyndicateDryRunPreview preview={dropPreview} onDismiss={() => setDropPreview(null)} />
-          {/* Manual Drop & Specialty Engine Controls */}
-          <div className="rounded-lg bg-zinc-950/60 border border-zinc-800/80 p-3 space-y-2.5">
-            {/* Row 1: Solo & General Syndicate Drops */}
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/60 pb-2.5">
+          <div className="rounded-lg bg-zinc-950/60 border border-zinc-800/80 p-3 space-y-2.5" data-syndicate-ops-composer>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="flex flex-col gap-1 text-[11px] text-zinc-400 min-w-[7.5rem]">
+                Sport
+                <select
+                  value={selectedSportKey}
+                  onChange={(e) => setSelectedSportKey(e.target.value)}
+                  disabled={busy || dropping}
+                  className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-white focus:outline-none disabled:opacity-50"
+                >
+                  {OPS_SPORTS.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-[11px] text-zinc-400 min-w-[11rem] flex-1">
+                Drop
+                <select
+                  value={selectedDropId}
+                  onChange={(e) => setSelectedDropId(e.target.value)}
+                  disabled={busy || dropping}
+                  className="rounded-md border border-zinc-700 bg-zinc-900 px-2 py-1.5 text-xs text-white focus:outline-none disabled:opacity-50"
+                >
+                  {sportDrops.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            {dropHint ? (
+              <p className="text-[10px] text-zinc-500 leading-snug">{dropHint}</p>
+            ) : null}
+
+            {selectedDropId === 'solo' ? (
               <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="text-zinc-400 font-medium text-[11px]">Solo / Spot:</span>
                 <select
                   value={cardMode}
                   onChange={(e) => setCardMode(e.target.value)}
@@ -654,8 +770,7 @@ export function BotSharpDeskPanel({
                   <option value="solo">Solo Pick</option>
                   <option value="syndicate">Syndicate Card (Multi-Picker)</option>
                 </select>
-
-                {cardMode !== 'syndicate' && (
+                {cardMode !== 'syndicate' ? (
                   <select
                     value={selectedPicker}
                     onChange={(e) => setSelectedPicker(e.target.value)}
@@ -667,166 +782,42 @@ export function BotSharpDeskPanel({
                     <option value="Chedda">Chedda (ML & Dogs)</option>
                     <option value="Tank">Tank (Totals / O/U)</option>
                   </select>
-                )}
+                ) : null}
               </div>
+            ) : null}
 
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  disabled={busy || dropping || loading}
-                  onClick={() => handleDropPick(true)}
-                  className="rounded bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 text-[11px] font-medium text-zinc-300 transition disabled:opacity-50"
-                >
-                  Preview
-                </button>
-                <button
-                  type="button"
-                  disabled={busy || dropping || loading}
-                  onClick={() => handleDropPick(false)}
-                  className="rounded bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 px-3 py-1 text-[11px] font-bold text-white shadow-sm transition disabled:opacity-50"
-                >
-                  {dropping ? 'Publishing…' : 'Publish Pick'}
-                </button>
+            {selectedDropId !== 'monthly' && activeDestKind ? (
+              <div className="rounded-md border border-zinc-800 bg-zinc-950/80 px-2.5 py-2 space-y-1.5">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                  <span className="text-zinc-400 font-medium text-[11px]">Send to:</span>
+                  {SEND_TO_KEYS.map(({ key, label }) => (
+                    <label key={key} className="inline-flex items-center gap-1.5 text-[11px] text-zinc-200 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(sendTo[key])}
+                        onChange={() => toggleSendTo(key)}
+                        className="rounded border-zinc-600 bg-zinc-900 text-amber-500 focus:ring-amber-500/40"
+                      />
+                      {label}
+                    </label>
+                  ))}
+                </div>
+                <p className="text-[10px] text-zinc-500 leading-snug">
+                  Applies to Publish for the drop above, including Picks for today. Leave the bar alone for normal defaults
+                  ... public drops include X; VIP-only (halftime, middle, UFC) stay VIP unless you check Public Lounge or X.
+                  Preview ignores destinations.
+                </p>
               </div>
-            </div>
+            ) : null}
 
-            <div className="rounded-md border border-zinc-800 bg-zinc-950/80 px-2.5 py-2 space-y-1.5">
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                <span className="text-zinc-400 font-medium text-[11px]">Send to:</span>
-                {SEND_TO_KEYS.map(({ key, label }) => (
-                  <label key={key} className="inline-flex items-center gap-1.5 text-[11px] text-zinc-200 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(sendTo[key])}
-                      onChange={() => toggleSendTo(key)}
-                      className="rounded border-zinc-600 bg-zinc-900 text-amber-500 focus:ring-amber-500/40"
-                    />
-                    {label}
-                  </label>
-                ))}
-              </div>
-              <p className="text-[10px] text-zinc-500 leading-snug">
-                Applies to the next Publish. Leave the bar alone for normal defaults ... public drops include X; VIP-only (halftime, middle, UFC) stay VIP unless you check Public Lounge or X. Preview ignores destinations. Monthly Board is ops-only.
-              </p>
-            </div>
-
-            {/* Row 2: Specialty Engine Triggers (NFL/CFB Slate Cards & Wong Teasers) */}
-            <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-              <span className="text-zinc-400 font-medium text-[11px]">Specialty Drops:</span>
-              <div className="flex flex-wrap items-center gap-2">
-                {/* NFL Slate Card */}
-                <div className="flex items-center gap-1 rounded bg-zinc-900 border border-zinc-800 px-2 py-1">
-                  <span className="font-semibold text-zinc-200 text-[11px]">🏈 NFL Slate:</span>
-                  <button
-                    type="button"
-                    disabled={busy || dropping || loading}
-                    onClick={() => handleDropSlateCard('americanfootball_nfl', true)}
-                    className="rounded bg-zinc-800 hover:bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 transition disabled:opacity-50"
-                  >
-                    Preview
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy || dropping || loading}
-                    onClick={() => handleDropSlateCard('americanfootball_nfl', false)}
-                    className="rounded bg-blue-600/80 hover:bg-blue-500 px-2 py-0.5 text-[10px] font-bold text-white transition disabled:opacity-50"
-                  >
-                    Publish
-                  </button>
-                </div>
-
-                {/* CFB Slate Card */}
-                <div className="flex items-center gap-1 rounded bg-zinc-900 border border-zinc-800 px-2 py-1">
-                  <span className="font-semibold text-zinc-200 text-[11px]">🎓 CFB Slate:</span>
-                  <button
-                    type="button"
-                    disabled={busy || dropping || loading}
-                    onClick={() => handleDropSlateCard('americanfootball_ncaaf', true)}
-                    className="rounded bg-zinc-800 hover:bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 transition disabled:opacity-50"
-                  >
-                    Preview
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy || dropping || loading}
-                    onClick={() => handleDropSlateCard('americanfootball_ncaaf', false)}
-                    className="rounded bg-purple-600/80 hover:bg-purple-500 px-2 py-0.5 text-[10px] font-bold text-white transition disabled:opacity-50"
-                  >
-                    Publish
-                  </button>
-                </div>
-
-                {/* Wong Teaser */}
-                <div className="flex items-center gap-1 rounded bg-zinc-900 border border-zinc-800 px-2 py-1">
-                  <span className="font-semibold text-zinc-200 text-[11px]">⚡ Wong Teaser:</span>
-                  <button
-                    type="button"
-                    disabled={busy || dropping || loading}
-                    onClick={() => handleDropWongTeaser(true)}
-                    className="rounded bg-zinc-800 hover:bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 transition disabled:opacity-50"
-                  >
-                    Preview
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy || dropping || loading}
-                    onClick={() => handleDropWongTeaser(false)}
-                    className="rounded bg-emerald-600/80 hover:bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white transition disabled:opacity-50"
-                  >
-                    Publish
-                  </button>
-                </div>
-
-                {/* Primetime Spotlights (TNF/SNF/MNF) */}
-                <div className="flex items-center gap-1 rounded bg-zinc-900 border border-zinc-800 px-2 py-1">
-                  <span className="font-semibold text-amber-300 text-[11px]">📺 Primetime:</span>
-                  <button
-                    type="button"
-                    disabled={busy || dropping || loading}
-                    onClick={() => handleDropPrimetimeSpotlight(undefined, true)}
-                    className="rounded bg-zinc-800 hover:bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 transition disabled:opacity-50"
-                  >
-                    Preview
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy || dropping || loading}
-                    onClick={() => handleDropPrimetimeSpotlight(undefined, false)}
-                    className="rounded bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 px-2 py-0.5 text-[10px] font-bold text-white transition disabled:opacity-50"
-                  >
-                    Publish
-                  </button>
-                </div>
-
-                {/* Tuesday Ledger & Recap */}
-                <div className="flex items-center gap-1 rounded bg-zinc-900 border border-zinc-800 px-2 py-1">
-                  <span className="font-semibold text-emerald-300 text-[11px]">📊 Weekly Recap:</span>
-                  <button
-                    type="button"
-                    disabled={busy || dropping || loading}
-                    onClick={() => handleDropWeeklyRecap(true)}
-                    className="rounded bg-zinc-800 hover:bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 transition disabled:opacity-50"
-                  >
-                    Preview
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy || dropping || loading}
-                    onClick={() => handleDropWeeklyRecap(false)}
-                    className="rounded bg-emerald-600/80 hover:bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-white transition disabled:opacity-50"
-                  >
-                    Publish
-                  </button>
-                </div>
-
-                {/* Monthly ATS + CLV scoreboard (ops only) */}
-                <div className="flex items-center gap-1 rounded bg-zinc-900 border border-zinc-800 px-2 py-1">
-                  <span className="font-semibold text-violet-300 text-[11px]">📋 Monthly Board:</span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {selectedDropId === 'monthly' ? (
+                <>
                   <button
                     type="button"
                     disabled={busy || dropping || loading}
                     onClick={() => handleMonthlyScoreboard(1)}
-                    className="rounded bg-violet-700/80 hover:bg-violet-600 px-2 py-0.5 text-[10px] font-bold text-white transition disabled:opacity-50"
+                    className="rounded bg-violet-700/80 hover:bg-violet-600 px-3 py-1 text-[11px] font-bold text-white transition disabled:opacity-50"
                   >
                     This month
                   </button>
@@ -834,96 +825,31 @@ export function BotSharpDeskPanel({
                     type="button"
                     disabled={busy || dropping || loading}
                     onClick={() => handleMonthlyScoreboard(3)}
-                    className="rounded bg-zinc-800 hover:bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 transition disabled:opacity-50"
+                    className="rounded bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 text-[11px] font-medium text-zinc-300 transition disabled:opacity-50"
                   >
                     3 mo
                   </button>
-                </div>
-
-                {/* Halftime Pivot (VIP Sub-Chat) */}
-                <div className="flex items-center gap-1 rounded bg-zinc-900 border border-zinc-800 px-2 py-1">
-                  <span className="font-semibold text-cyan-300 text-[11px]">⚡ Halftime Pivot:</span>
+                </>
+              ) : (
+                <>
                   <button
                     type="button"
                     disabled={busy || dropping || loading}
-                    onClick={() => handleDropHalftimePivot(true)}
-                    className="rounded bg-zinc-800 hover:bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 transition disabled:opacity-50"
+                    onClick={() => void handleRunSelectedDrop(true)}
+                    className="rounded bg-zinc-800 hover:bg-zinc-700 px-2.5 py-1 text-[11px] font-medium text-zinc-300 transition disabled:opacity-50"
                   >
                     Preview
                   </button>
                   <button
                     type="button"
                     disabled={busy || dropping || loading}
-                    onClick={() => handleDropHalftimePivot(false)}
-                    className="rounded bg-cyan-600/80 hover:bg-cyan-500 px-2 py-0.5 text-[10px] font-bold text-white transition disabled:opacity-50"
+                    onClick={() => void handleRunSelectedDrop(false)}
+                    className="rounded bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 px-3 py-1 text-[11px] font-bold text-white shadow-sm transition disabled:opacity-50"
                   >
-                    Publish
+                    {dropping ? 'Publishing…' : 'Publish'}
                   </button>
-                </div>
-
-                {/* Anytime TD / Player Props */}
-                <div className="flex items-center gap-1 rounded bg-zinc-900 border border-zinc-800 px-2 py-1">
-                  <span className="font-semibold text-rose-300 text-[11px]">🏈 Anytime TD:</span>
-                  <button
-                    type="button"
-                    disabled={busy || dropping || loading}
-                    onClick={() => handleDropAnytimeTd(true)}
-                    className="rounded bg-zinc-800 hover:bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 transition disabled:opacity-50"
-                  >
-                    Preview
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy || dropping || loading}
-                    onClick={() => handleDropAnytimeTd(false)}
-                    className="rounded bg-rose-600/80 hover:bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white transition disabled:opacity-50"
-                  >
-                    Publish
-                  </button>
-                </div>
-
-                {/* Middle & Arbitrage Scanner (VIP Sub-Chat) */}
-                <div className="flex items-center gap-1 rounded bg-zinc-900 border border-zinc-800 px-2 py-1">
-                  <span className="font-semibold text-purple-300 text-[11px]">🎯 Middle & Arb:</span>
-                  <button
-                    type="button"
-                    disabled={busy || dropping || loading}
-                    onClick={() => handleDropMiddleArb(true)}
-                    className="rounded bg-zinc-800 hover:bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 transition disabled:opacity-50"
-                  >
-                    Preview
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy || dropping || loading}
-                    onClick={() => handleDropMiddleArb(false)}
-                    className="rounded bg-purple-600/80 hover:bg-purple-500 px-2 py-0.5 text-[10px] font-bold text-white transition disabled:opacity-50"
-                  >
-                    Publish
-                  </button>
-                </div>
-
-                {/* UFC Slate Card */}
-                <div className="flex items-center gap-1 rounded bg-zinc-900 border border-zinc-800 px-2 py-1">
-                  <span className="font-semibold text-red-300 text-[11px]">🥊 UFC Slate:</span>
-                  <button
-                    type="button"
-                    disabled={busy || dropping || loading}
-                    onClick={() => handleDropUfcCard(true)}
-                    className="rounded bg-zinc-800 hover:bg-zinc-700 px-1.5 py-0.5 text-[10px] text-zinc-300 transition disabled:opacity-50"
-                  >
-                    Preview
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy || dropping || loading}
-                    onClick={() => handleDropUfcCard(false)}
-                    className="rounded bg-red-600/80 hover:bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white transition disabled:opacity-50"
-                  >
-                    Publish
-                  </button>
-                </div>
-              </div>
+                </>
+              )}
             </div>
           </div>
 

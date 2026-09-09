@@ -51,17 +51,20 @@ async function messageFromFunctionsInvokeError(error, invokeResponse) {
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
- * @param {{ slug?: string, sportKey: string, dryRun?: boolean }} opts
+ * @param {{ slug?: string, sportKey: string, dryRun?: boolean, destinations?: object }} opts
  */
 export async function runTodayPicksForSport(supabaseClient, opts) {
   const plan = todayPicksPlan(opts.sportKey)
   const slug = opts.slug || 'sharpe-syndicate'
+  const dest =
+    opts.destinations && typeof opts.destinations === 'object' ? { destinations: opts.destinations } : {}
   const { data, error, response } = await supabaseClient.functions.invoke('lounge-odds-poll', {
     body: {
       slug,
       action: 'picks_for_today',
       sportKey: opts.sportKey,
       dryRun: opts.dryRun === true,
+      ...dest,
     },
   })
   if (error) {

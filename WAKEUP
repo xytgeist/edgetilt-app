@@ -109,7 +109,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Windows Theo 2026-09-09 … Primetime Preview vs Publish dual posts
 
-**I am Windows Theo.** After the pill fix, Primetime Publish landed the public Lounge tease only. Preview already showed public + subscriber. Publish now writes the fan-only Lounge 4-desk card too (slate model) plus VIP chat. Code on `test` **`1.4.126`**. **Still Ryan:** redeploy **`lounge-odds-poll` on prod**. Fan-only needs Syndicate Connect + go live.
+**I am Windows Theo.** After the pill fix, Primetime Publish landed the public Lounge tease only. Preview already showed public + subscriber. Publish now writes the fan-only Lounge 4-desk card too (slate model) plus VIP chat. Code on `test` **`1.4.126`**. **`lounge-odds-poll` is on prod** (`jtjgtucumuoswnbauxry`) from `dceefc49` as of 2026-09-09. Preview then Publish on Ops should land both Lounge posts.
 
 ### Windows Theo 2026-09-09 … Primetime Preview vs Publish “no game”
 

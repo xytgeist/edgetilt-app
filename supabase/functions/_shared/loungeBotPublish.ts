@@ -36,6 +36,37 @@ export type BotThreadPart = {
   body: string
 }
 
+/** Same allowlist as `community_feed_posts_category_pills_allowed` / `lounge_allowed_category_slugs()`. */
+const LOUNGE_ALLOWED_CATEGORY_PILLS = new Set([
+  'ap_slots',
+  'ap_tables',
+  'poker',
+  'gaming',
+  'sports',
+  'tabletop',
+  'investing',
+  'trading',
+  'stocks',
+  'crypto',
+  'collectibles',
+])
+
+/**
+ * Drop slugs the Lounge pill check constraint rejects (`nfl`, `primetime`, `ufc`, …).
+ * Empty is valid. Callers can still pass sport tags in captions / pick metadata.
+ */
+export function sanitizeBotCategoryPills(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return []
+  const out: string[] = []
+  for (const item of raw) {
+    const slug = String(item || '').trim()
+    if (!slug || !LOUNGE_ALLOWED_CATEGORY_PILLS.has(slug) || out.includes(slug)) continue
+    out.push(slug)
+    if (out.length >= 3) break
+  }
+  return out
+}
+
 export function serviceAdmin(): SupabaseClient {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim()
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.trim()
@@ -69,9 +100,7 @@ export async function publishLoungeBotPost(
     return { postId: null, error: `Caption exceeds ${LOUNGE_BOT_CAPTION_MAX} chars.` }
   }
 
-  const pills = Array.isArray(input.categoryPills)
-    ? input.categoryPills.map((p) => String(p || '').trim()).filter(Boolean).slice(0, 3)
-    : []
+  const pills = sanitizeBotCategoryPills(input.categoryPills)
 
   let finalCaption = caption
   const rawUrl = String(input.sourceUrl || '').trim()

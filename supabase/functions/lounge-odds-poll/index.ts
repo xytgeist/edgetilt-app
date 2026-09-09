@@ -536,8 +536,18 @@ Deno.serve(async (req) => {
         admin,
         bot.user_id,
         spotlight,
-        bot.category_pills_default || ['sports', 'nfl'],
+        bot.category_pills_default || ['sports'],
       )
+
+      if (!result.ok) {
+        return adminOpsJson(200, {
+          ok: false,
+          action: 'nfl_primetime_spotlight',
+          spotlight,
+          message: result.error || 'Found the primetime game but Lounge publish failed.',
+          ...result,
+        })
+      }
 
       return adminOpsJson(200, {
         ok: true,

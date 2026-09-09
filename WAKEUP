@@ -107,6 +107,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Mac Theo.** Ryan signed off: (1) App Store account is **Digiverse Ventures LLC**, (2) **digiverse.ventures** live, (3) Cloudflare email for edgetilt + digiverse / reply-from. **Still open:** Apple increased price request (Lifetime above `$1,000`). DSA trader is unblocked now that the org flip landed. Do not Add for Review.
 
+### Windows Theo 2026-09-09 … Primetime Preview vs Publish “no game”
+
+**I am Windows Theo.** sharpesyndicate.com/ops Primetime Preview found the NFL game; Publish toasted no game. Root cause: Lounge pill allowlist rejects `nfl`/`primetime` on insert. Code on `test` **`1.4.125`**. **Still Ryan:** redeploy **`lounge-odds-poll` on prod** (Ops pins production). Do not prod-deploy without his ask.
+
 ### Windows Theo 2026-09-08 … FAB Alerts from Slots
 
 **I am Windows Theo.** Lounge → Slots → FAB → Notifications taps were no-ops: keep-alive Lounge is `hidden`/`inert`, and clickShield could sit over the panel. Close dock + switch to Lounge on row activate. **`test` → `main`.** **`1.4.124`.**

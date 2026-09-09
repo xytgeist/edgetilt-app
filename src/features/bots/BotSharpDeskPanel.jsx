@@ -279,7 +279,13 @@ export function BotSharpDeskPanel({
       } else if (dryRun) {
         showDropDryRunPreview(`${label} Spotlight`, data, data?.message || `No eligible ${label} game found on active board.`)
       } else {
-        setToast?.(data?.message || `No eligible ${label} game found on active board.`)
+        const sp = data?.spotlight
+        setToast?.(
+          data?.message
+            || (sp?.awayTeam && sp?.homeTeam
+              ? `Found ${sp.awayTeam} @ ${sp.homeTeam} but publish failed.`
+              : `No eligible ${label} game found on active board.`),
+        )
       }
     } catch (err) {
       setToast?.(`${label} Spotlight error: ${err.message}`)

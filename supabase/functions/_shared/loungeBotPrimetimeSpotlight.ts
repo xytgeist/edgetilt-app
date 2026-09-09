@@ -432,19 +432,21 @@ export async function publishAndRecordPrimetimeSpotlight(
   admin: SupabaseClient,
   botUserId: string,
   spotlight: PrimetimeSpotlightGame,
-  categoryPills: string[] = ['sports', 'nfl'],
-): Promise<{ ok: boolean; postId?: string; pickIds: string[] }> {
+  categoryPills: string[] = ['sports'],
+): Promise<{ ok: boolean; postId?: string; pickIds: string[]; error?: string }> {
   const caption = formatPrimetimeSpotlightCaption(spotlight)
 
-  // 1. Publish public tease to the Lounge feed (one lean only)
+  // 1. Publish public tease to the Lounge feed (one lean only).
+  // Tribe pills are `sports` only … `nfl` / `primetime` are not in the Lounge allowlist
+  // and used to fail the insert, which Ops then toasted as "no game".
   const postRes = await publishLoungeBotPost(admin, {
     botUserId,
     caption,
-    categoryPills: [...new Set([...categoryPills, 'nfl', 'primetime'])],
+    categoryPills: categoryPills.length ? categoryPills : ['sports'],
   })
 
   if (postRes.error || !postRes.postId) {
-    return { ok: false, pickIds: [] }
+    return { ok: false, pickIds: [], error: postRes.error || 'Lounge publish failed.' }
   }
 
   const postId = postRes.postId

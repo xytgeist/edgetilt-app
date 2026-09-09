@@ -5,7 +5,8 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { publishLoungeBotPost, publishLoungeBotPostWithThread, type BotThreadPart } from './loungeBotPublish.ts'
 import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
-import { publishSyndicateXPost } from './loungeBotXPublish.ts'
+import { toPlainOutboundText } from './loungeBotPlainOutbound.ts'
+import { formatSyndicateXText, publishSyndicateXPost } from './loungeBotXPublish.ts'
 
 export type PublishDestinations = {
   loungePublic: boolean
@@ -67,6 +68,76 @@ export function implicitDestForPollAction(action: string): Omit<PublishDestinati
     default:
       return { loungePublic: true, loungeFanOnly: false, vipChat: false }
   }
+}
+
+export type DestPreviewPart = { label?: string; body: string }
+
+export type DestPreviewSlot = {
+  caption: string
+  threadParts: DestPreviewPart[]
+  chars?: number
+}
+
+/** Exact copy each Send to location would get (same fallbacks as fanOut). */
+export type SyndicateDestPreview = {
+  public: DestPreviewSlot
+  private: DestPreviewSlot
+  chat: DestPreviewSlot
+  x: DestPreviewSlot
+}
+
+export type DestPreviewInput = {
+  publicCaption?: string | null
+  fanOnlyCaption?: string | null
+  fanOnlyThreadParts?: Array<{ label?: string; body?: string } | string> | null
+  vipCaption?: string | null
+  vipThreadParts?: Array<{ label?: string; body?: string } | string> | null
+}
+
+function normalizeThreadParts(raw: DestPreviewInput['fanOnlyThreadParts']): DestPreviewPart[] {
+  if (!Array.isArray(raw)) return []
+  const out: DestPreviewPart[] = []
+  for (const part of raw) {
+    if (typeof part === 'string') {
+      const body = part.trim()
+      if (body) out.push({ body })
+      continue
+    }
+    if (!part || typeof part !== 'object') continue
+    const body = String(part.body || '').trim()
+    if (!body) continue
+    const label = String(part.label || '').trim()
+    out.push(label ? { label, body } : { body })
+  }
+  return out
+}
+
+export function buildSyndicateDestPreview(input: DestPreviewInput): SyndicateDestPreview {
+  const publicCaption = String(input.publicCaption || '').trim()
+  const fanOnlyCaption = String(input.fanOnlyCaption || '').trim()
+  const vipCaption = String(input.vipCaption || '').trim()
+  const fanThreads = normalizeThreadParts(input.fanOnlyThreadParts)
+  const vipThreads = normalizeThreadParts(input.vipThreadParts)
+  const publicOut = publicCaption || vipCaption
+  const privateOut = fanOnlyCaption || publicCaption || vipCaption
+  const chatOut = vipCaption || publicCaption
+  const xOut = formatSyndicateXText(publicCaption || vipCaption || fanOnlyCaption)
+  return {
+    public: { caption: publicOut, threadParts: [] },
+    private: { caption: privateOut, threadParts: fanThreads },
+    chat: {
+      caption: toPlainOutboundText(chatOut),
+      threadParts: vipThreads.map((p) => ({
+        ...(p.label ? { label: p.label } : {}),
+        body: toPlainOutboundText(p.body),
+      })),
+    },
+    x: { caption: xOut, threadParts: [], chars: xOut.length },
+  }
+}
+
+export function destPreviewPayload(input: DestPreviewInput): { destPreviews: SyndicateDestPreview } {
+  return { destPreviews: buildSyndicateDestPreview(input) }
 }
 
 export type FanOutInput = {

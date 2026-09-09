@@ -17,6 +17,7 @@ import { formatColoredPickerName } from './loungeBotPickerColors.ts'
 import { LOUNGE_BOT_CAPTION_MAX } from './loungeBotCaptionLimits.ts'
 import { resolveSlatePublisher } from './loungeBotSyndicateIdentity.ts'
 import {
+  destPreviewPayload,
   fanOutSyndicatePublish,
   fanOutWarnings,
   resolvePublishDestinations,
@@ -1564,6 +1565,60 @@ export function buildNflAtsSlateCard(
 }
 
 /**
+ * Same bodies Publish uses … Preview dest tabs must call this, not invent a second card.
+ */
+export function buildSlatePublishBodies(
+  card: NflSlateCard,
+  publisherMode: string = 'syndicate',
+): {
+  publicCaption: string
+  fanOnlyCaption: string
+  fanOnlyThreadParts: Array<{ label?: string; body: string }>
+  vipCaption: string
+  vipThreadParts: Array<{ label?: string; body: string }>
+} {
+  const publicCaption = formatNflSlateCardCaption(card)
+  const fullPrivateCaption = formatNflSlatePrivateRootCaption(card)
+  const captionChunks = splitSlateCaptionToFit(fullPrivateCaption, LOUNGE_BOT_CAPTION_MAX)
+  const threadDesks = slateShouldThreadDeskCards(card)
+  const deskParts = threadDesks
+    ? VIP_ATS_THREAD_PICKERS.map((p) => ({
+        label: `${p} full card`,
+        body: formatPickerSlateList(card, p),
+      }))
+    : []
+  const overflowThread = captionChunks.slice(1).map((body, i) => ({
+    label: `Overflow ${i + 1}`,
+    body,
+  }))
+  const vipCaption = threadDesks
+    ? publisherMode === 'syndicate'
+      ? `🏈 ${card.cardTitle || 'Sharpe Syndicate Slate'} ... Full Uncut Desk Cards\n\nPlain-text ATS cards for Scott / Rocco / Chedda 👇`
+      : `🏈 ${card.cardTitle || 'Sharpe Syndicate Slate'} ... Full Uncut Breakdown\n\nPublic feed gets the consensus & hammer teasers. Here are the uncut individual ATS cards across Scott / Rocco / Chedda for the full slate 👇`
+    : fullPrivateCaption
+
+  return {
+    publicCaption,
+    fanOnlyCaption: captionChunks[0] || fullPrivateCaption,
+    fanOnlyThreadParts: [...overflowThread, ...deskParts],
+    vipCaption,
+    vipThreadParts: deskParts,
+  }
+}
+
+export function slateDestPreviewPayload(card: NflSlateCard, publisherMode: string = 'syndicate') {
+  const bodies = buildSlatePublishBodies(card, publisherMode)
+  return {
+    ...bodies,
+    previewCaption: bodies.publicCaption,
+    captionPreview: bodies.publicCaption,
+    vipPreviewCaption: bodies.fanOnlyCaption,
+    subscriberThreadParts: bodies.fanOnlyThreadParts,
+    ...destPreviewPayload(bodies),
+  }
+}
+
+/**
  * Publish NFL / CFB slate:
  * - Public Lounge teaser (capped) as Syndicate when that bot exists
  * - Fan-only Lounge full card (thread of desk lists) when monetization is live
@@ -1598,7 +1653,6 @@ export async function publishAndRecordNflSlateCard(
   const publisher = await resolveSlatePublisher(admin, input.botUserId)
   const botUserId = publisher.botUserId
   const categoryPills = input.categoryPills || ['sports']
-  const publicCaption = formatNflSlateCardCaption(input.card)
   const dest = resolvePublishDestinations(input.destinations, {
     loungePublic: true,
     loungeFanOnly: publisher.mode === 'syndicate',
@@ -1606,32 +1660,16 @@ export async function publishAndRecordNflSlateCard(
   })
   dest.loungeFanOnly = dest.loungeFanOnly && publisher.mode === 'syndicate'
 
-  const fullPrivateCaption = formatNflSlatePrivateRootCaption(input.card)
-  const captionChunks = splitSlateCaptionToFit(fullPrivateCaption, LOUNGE_BOT_CAPTION_MAX)
-  const threadDesks = slateShouldThreadDeskCards(input.card)
-  const deskThread = threadDesks
-    ? VIP_ATS_THREAD_PICKERS.map((p) => ({
-        body: formatPickerSlateList(input.card, p),
-      }))
-    : []
-  const overflowThread = captionChunks.slice(1).map((body) => ({ body }))
-  const chatTitle = threadDesks
-    ? publisher.mode === 'syndicate'
-      ? `🏈 ${input.card.cardTitle || 'Sharpe Syndicate Slate'} ... Full Uncut Desk Cards\n\nPlain-text ATS cards for Scott / Rocco / Chedda 👇`
-      : `🏈 ${input.card.cardTitle || 'Sharpe Syndicate Slate'} ... Full Uncut Breakdown\n\nPublic feed gets the consensus & hammer teasers. Here are the uncut individual ATS cards across Scott / Rocco / Chedda for the full slate 👇`
-    : fullPrivateCaption
-
+  const bodies = buildSlatePublishBodies(input.card, publisher.mode)
   const fan = await fanOutSyndicatePublish({
     admin,
     botUserId,
     dest,
-    publicCaption,
-    fanOnlyCaption: captionChunks[0] || fullPrivateCaption,
-    fanOnlyThreadParts: [...overflowThread, ...deskThread],
-    vipCaption: chatTitle,
-    vipThreadParts: threadDesks
-      ? VIP_ATS_THREAD_PICKERS.map((p) => formatPickerSlateList(input.card, p))
-      : [],
+    publicCaption: bodies.publicCaption,
+    fanOnlyCaption: bodies.fanOnlyCaption,
+    fanOnlyThreadParts: bodies.fanOnlyThreadParts,
+    vipCaption: bodies.vipCaption,
+    vipThreadParts: bodies.vipThreadParts.map((p) => p.body),
     categoryPills,
   })
 

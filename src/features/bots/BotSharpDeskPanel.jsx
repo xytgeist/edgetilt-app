@@ -172,7 +172,18 @@ export function BotSharpDeskPanel({
     const threadParts = Array.isArray(data?.subscriberThreadParts)
       ? data.subscriberThreadParts
       : null
-    const hasAnyCaption = Boolean(caption || vipCaption || (threadParts && threadParts.length))
+    const destPreviews = data?.destPreviews && typeof data.destPreviews === 'object'
+      ? data.destPreviews
+      : null
+    const hasAnyCaption = Boolean(
+      caption
+        || vipCaption
+        || (threadParts && threadParts.length)
+        || destPreviews?.public?.caption
+        || destPreviews?.private?.caption
+        || destPreviews?.chat?.caption
+        || destPreviews?.x?.caption,
+    )
     const err =
       data?.ok === false
         ? String(data.message || data.error || fallbackError || 'No preview.')
@@ -187,6 +198,7 @@ export function BotSharpDeskPanel({
       previewCaption: caption || null,
       vipPreviewCaption: vipCaption || null,
       subscriberThreadParts: threadParts,
+      destPreviews,
       gamesSummary: data?.gamesSummary || null,
       gamesToday: data?.gamesToday ?? data?.totalGames ?? data?.totalFights ?? null,
       totalGames: data?.totalGames ?? data?.totalFights ?? null,

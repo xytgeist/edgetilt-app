@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { renderLoungeMarkdown } from '../features/lounge/loungeMarkdown.jsx'
+import {
+  DEST_PREVIEW_NOTES,
+  DEST_PREVIEW_TABS,
+  destSlotHasCopy,
+  firstDestTabWithCopy,
+  resolveDestPreviews,
+} from './syndicateDestPreview.js'
 
 const TYPE_LABEL = {
   hammer: 'Hammer (3-0)',
@@ -8,6 +15,13 @@ const TYPE_LABEL = {
   split: 'Split (1-1)',
   solo: 'Solo',
   pass_only: 'All pass',
+}
+
+const TAB_ACTIVE = {
+  public: 'bg-amber-500 text-black',
+  private: 'bg-violet-500 text-white',
+  chat: 'bg-sky-500 text-black',
+  x: 'bg-zinc-100 text-black',
 }
 
 function typeBadgeClass(type) {
@@ -20,7 +34,7 @@ function typeBadgeClass(type) {
   return 'bg-zinc-800 text-zinc-400 border-zinc-700'
 }
 
-function CaptionArticle({ caption, emptyLabel }) {
+function MarkdownCaption({ caption, emptyLabel }) {
   const rich = useMemo(() => {
     const text = String(caption || '').trim()
     if (!text) return null
@@ -38,6 +52,43 @@ function CaptionArticle({ caption, emptyLabel }) {
   )
 }
 
+function PlainCaption({ caption, emptyLabel }) {
+  const text = String(caption || '').trim()
+  if (!text) {
+    return emptyLabel ? <p className="text-sm text-zinc-500">{emptyLabel}</p> : null
+  }
+  return (
+    <pre className="rounded-xl border border-zinc-800 bg-zinc-950 px-3 py-3 text-[13px] leading-relaxed text-zinc-100 whitespace-pre-wrap font-sans">
+      {text}
+    </pre>
+  )
+}
+
+function DestSlotBody({ tabId, slot }) {
+  const isPlain = tabId === 'chat' || tabId === 'x'
+  const Caption = isPlain ? PlainCaption : MarkdownCaption
+  const empty = 'Nothing posts here unless this Send to box is checked and the drop has copy.'
+  if (!destSlotHasCopy(slot)) {
+    return <p className="text-sm text-zinc-500">{empty}</p>
+  }
+  return (
+    <div className="space-y-3">
+      {slot.caption ? <Caption caption={slot.caption} /> : null}
+      {slot.threadParts.map((part, i) => (
+        <div key={`${part.label || 'part'}-${i}`} className="space-y-1.5">
+          <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-500 font-semibold">
+            Thread · {part.label || `Part ${i + 1}`}
+          </p>
+          <Caption caption={part.body} />
+        </div>
+      ))}
+      {tabId === 'x' ? (
+        <p className="text-[10px] text-zinc-500">{slot.chars || slot.caption.length}/280</p>
+      ) : null}
+    </div>
+  )
+}
+
 /**
  * @param {{
  *   preview: {
@@ -46,6 +97,7 @@ function CaptionArticle({ caption, emptyLabel }) {
  *     previewCaption?: string
  *     vipPreviewCaption?: string
  *     subscriberThreadParts?: Array<{ label?: string, body?: string }>
+ *     destPreviews?: Record<string, { caption?: string, threadParts?: Array<{ label?: string, body?: string }>, chars?: number }>
  *     gamesSummary?: Array<{ away: string, home: string, when: string, lineDisplay: string, badge: string, type: string }>
  *     gamesToday?: number
  *     totalGames?: number
@@ -58,24 +110,19 @@ function CaptionArticle({ caption, emptyLabel }) {
  * }} props
  */
 export function SyndicateDryRunPreview({ preview, onDismiss }) {
-  const publicCaption = String(preview?.previewCaption || '').trim()
-  const vipCaption = String(preview?.vipPreviewCaption || '').trim()
-  const threadParts = Array.isArray(preview?.subscriberThreadParts)
-    ? preview.subscriberThreadParts.filter((p) => String(p?.body || '').trim())
-    : []
-  const hasPublic = Boolean(publicCaption)
-  const hasSubscriber = Boolean(vipCaption || threadParts.length)
-  const dual = hasPublic && hasSubscriber
-
-  const [tab, setTab] = useState(hasPublic ? 'public' : 'subscriber')
+  const dests = useMemo(() => resolveDestPreviews(preview), [preview])
+  const firstTab = firstDestTabWithCopy(dests)
+  const [tab, setTab] = useState(firstTab)
 
   useEffect(() => {
-    setTab(hasPublic ? 'public' : 'subscriber')
-  }, [preview?.sportLabel, preview?.previewCaption, preview?.vipPreviewCaption, hasPublic])
+    setTab(firstDestTabWithCopy(dests))
+  }, [preview?.sportLabel, preview?.previewCaption, preview?.vipPreviewCaption, preview?.destPreviews, dests])
 
   if (!preview) return null
 
-  const activeTab = dual ? tab : hasPublic ? 'public' : 'subscriber'
+  const active = DEST_PREVIEW_TABS.some((t) => t.id === tab) ? tab : firstTab
+  const activeSlot = dests[active] || { caption: '', threadParts: [] }
+  const hasAnyDest = DEST_PREVIEW_TABS.some((t) => destSlotHasCopy(dests[t.id]))
 
   const stats = [
     preview.gamesToday != null ? `${preview.gamesToday} kickoff today` : null,
@@ -121,68 +168,41 @@ export function SyndicateDryRunPreview({ preview, onDismiss }) {
         <p className="px-3 py-3 text-sm text-red-400">{preview.error}</p>
       ) : null}
 
-      {dual ? (
-        <div className="flex gap-1 px-3 pt-3">
-          <button
-            type="button"
-            onClick={() => setTab('public')}
-            className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition ${
-              activeTab === 'public'
-                ? 'bg-amber-500 text-black'
-                : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            Public Lounge
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('subscriber')}
-            className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition ${
-              activeTab === 'subscriber'
-                ? 'bg-violet-500 text-white'
-                : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            Subscriber full card
-          </button>
+      {!preview.error && hasAnyDest ? (
+        <div className="flex flex-wrap gap-1 px-3 pt-3">
+          {DEST_PREVIEW_TABS.map((t) => {
+            const on = destSlotHasCopy(dests[t.id])
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => setTab(t.id)}
+                className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition ${
+                  active === t.id
+                    ? TAB_ACTIVE[t.id]
+                    : on
+                      ? 'bg-zinc-800 text-zinc-300 hover:text-zinc-100'
+                      : 'bg-zinc-900 text-zinc-600 hover:text-zinc-400'
+                }`}
+              >
+                {t.label}
+              </button>
+            )
+          })}
         </div>
       ) : null}
 
-      {!preview.error && activeTab === 'public' && hasPublic ? (
-        <div className="px-3 py-3 border-b border-zinc-800/80">
-          <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-500 font-semibold mb-2">
-            {dual || hasSubscriber ? 'Public Lounge (exact)' : 'Post caption (exact)'}
+      {!preview.error && hasAnyDest ? (
+        <div className="px-3 py-3 border-b border-zinc-800/80 space-y-2">
+          <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-500 font-semibold">
+            {DEST_PREVIEW_TABS.find((t) => t.id === active)?.label} (exact)
           </p>
-          <CaptionArticle caption={publicCaption} />
-          {games.length ? (
-            <p className="text-[10px] text-zinc-500 mt-2">
-              Public tease caps hammers / consensus / splits. Ledger still records every scored game below.
-            </p>
-          ) : null}
+          <DestSlotBody tabId={active} slot={activeSlot} />
+          <p className="text-[10px] text-zinc-500">{DEST_PREVIEW_NOTES[active]}</p>
         </div>
       ) : null}
 
-      {!preview.error && activeTab === 'subscriber' && hasSubscriber ? (
-        <div className="px-3 py-3 border-b border-zinc-800/80 space-y-3">
-          <p className="text-[10px] uppercase tracking-[0.14em] text-violet-300/90 font-semibold">
-            Subscriber / fan-only (exact)
-          </p>
-          {vipCaption ? <CaptionArticle caption={vipCaption} /> : null}
-          {threadParts.map((part, i) => (
-            <div key={`${part.label || 'desk'}-${i}`} className="space-y-1.5">
-              <p className="text-[10px] uppercase tracking-[0.12em] text-zinc-500 font-semibold">
-                Thread · {part.label || `Part ${i + 1}`}
-              </p>
-              <CaptionArticle caption={part.body} />
-            </div>
-          ))}
-          <p className="text-[10px] text-zinc-500">
-            Same markdown / plain text the app posts to creator-fan Lounge + VIP chat. Use this to tune full-card formatting.
-          </p>
-        </div>
-      ) : null}
-
-      {!preview.error && !hasPublic && !hasSubscriber ? (
+      {!preview.error && !hasAnyDest ? (
         <p className="px-3 py-3 text-sm text-zinc-500">No caption generated (desk may not have voted yet).</p>
       ) : null}
 

@@ -14,6 +14,7 @@ import { type SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { adminOpsCorsHeaders, adminOpsJson, authorizeServiceRoleOrAdmin } from '../_shared/adminAuth.ts'
 import {
   anyPublishDestination,
+  destPreviewPayload,
   implicitDestForPollAction,
   resolvePublishDestinations,
 } from '../_shared/loungeBotPublishDestinations.ts'
@@ -407,14 +408,7 @@ Deno.serve(async (req) => {
       }
 
       if (dryRun) {
-        const {
-          formatNflSlateCardCaption,
-          formatNflSlatePrivateRootCaption,
-          slateDeskThreadPreviewParts,
-        } = await import('../_shared/loungeBotPredictivePick.ts')
-        const previewCaption = formatNflSlateCardCaption(card)
-        const vipPreviewCaption = formatNflSlatePrivateRootCaption(card)
-        const subscriberThreadParts = slateDeskThreadPreviewParts(card)
+        const { slateDestPreviewPayload } = await import('../_shared/loungeBotPredictivePick.ts')
         return adminOpsJson(200, {
           ok: true,
           dryRun: true,
@@ -428,10 +422,7 @@ Deno.serve(async (req) => {
           totalEventsInWindow: events.length,
           clusterDays: FOOTBALL_SLATE_CLUSTER_DAYS,
           maxLookaheadDays: FOOTBALL_SLATE_MAX_LOOKAHEAD_DAYS,
-          previewCaption,
-          captionPreview: previewCaption,
-          vipPreviewCaption,
-          subscriberThreadParts,
+          ...slateDestPreviewPayload(card),
           card,
         })
       }
@@ -492,6 +483,10 @@ Deno.serve(async (req) => {
           previewCaption,
           captionPreview: previewCaption,
           vipPreviewCaption,
+          ...destPreviewPayload({
+            publicCaption: previewCaption,
+            vipCaption: vipPreviewCaption,
+          }),
         })
       }
 
@@ -548,6 +543,11 @@ Deno.serve(async (req) => {
           previewCaption,
           captionPreview: previewCaption,
           vipPreviewCaption,
+          ...destPreviewPayload({
+            publicCaption: previewCaption,
+            fanOnlyCaption: vipPreviewCaption,
+            vipCaption: vipPreviewCaption,
+          }),
         })
       }
 
@@ -610,6 +610,7 @@ Deno.serve(async (req) => {
           previewCaption: null,
           captionPreview: previewCaption,
           vipPreviewCaption: previewCaption,
+          ...destPreviewPayload({ vipCaption: previewCaption }),
         })
       }
 
@@ -654,6 +655,7 @@ Deno.serve(async (req) => {
           previewCaption: null,
           captionPreview: previewCaption,
           vipPreviewCaption: previewCaption,
+          ...destPreviewPayload({ vipCaption: previewCaption }),
         })
       }
 
@@ -701,6 +703,10 @@ Deno.serve(async (req) => {
           previewCaption,
           captionPreview: previewCaption || vipPreviewCaption,
           vipPreviewCaption: vipPreviewCaption || null,
+          ...destPreviewPayload({
+            publicCaption: previewCaption,
+            vipCaption: vipPreviewCaption,
+          }),
         })
       }
 
@@ -755,6 +761,10 @@ Deno.serve(async (req) => {
           previewCaption,
           captionPreview: previewCaption,
           vipPreviewCaption,
+          ...destPreviewPayload({
+            publicCaption: previewCaption,
+            vipCaption: vipPreviewCaption,
+          }),
           card,
         })
       }
@@ -792,8 +802,11 @@ Deno.serve(async (req) => {
       }
 
       if (dryRun) {
-        const { formatWeeklySyndicateRecapCaption } = await import('../_shared/loungeBotLedgerRecap.ts')
+        const { formatWeeklySyndicateRecapCaption, formatWeeklySyndicateVipCaption } = await import(
+          '../_shared/loungeBotLedgerRecap.ts'
+        )
         const previewCaption = formatWeeklySyndicateRecapCaption(recap)
+        const vipPreviewCaption = formatWeeklySyndicateVipCaption(recap)
         return adminOpsJson(200, {
           ok: true,
           dryRun: true,
@@ -801,6 +814,11 @@ Deno.serve(async (req) => {
           recap,
           previewCaption,
           captionPreview: previewCaption,
+          vipPreviewCaption,
+          ...destPreviewPayload({
+            publicCaption: previewCaption,
+            vipCaption: vipPreviewCaption,
+          }),
         })
       }
 
@@ -832,13 +850,15 @@ Deno.serve(async (req) => {
         asOf: body?.asOf ? String(body.asOf) : undefined,
       })
 
+      const monthlyCaption = formatScoreboardToast(scoreboard)
       return adminOpsJson(200, {
         ok: true,
         action: 'syndicate_monthly_scoreboard',
-        summary: formatScoreboardToast(scoreboard),
-        previewCaption: formatScoreboardToast(scoreboard),
-        captionPreview: formatScoreboardToast(scoreboard),
+        summary: monthlyCaption,
+        previewCaption: monthlyCaption,
+        captionPreview: monthlyCaption,
         scoreboard,
+        ...destPreviewPayload({ publicCaption: monthlyCaption }),
       })
     }
 
@@ -895,6 +915,7 @@ Deno.serve(async (req) => {
             card,
             previewCaption,
             captionPreview: previewCaption,
+            ...destPreviewPayload({ publicCaption: previewCaption }),
           })
         }
         const result = await publishAndRecordPicks(admin, {
@@ -929,6 +950,7 @@ Deno.serve(async (req) => {
             pick: solo.pick,
             previewCaption,
             captionPreview: previewCaption,
+            ...destPreviewPayload({ publicCaption: previewCaption }),
           })
         }
         const result = await publishAndRecordPicks(admin, {

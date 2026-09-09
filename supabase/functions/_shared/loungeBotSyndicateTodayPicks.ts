@@ -13,12 +13,11 @@ import {
 import { fetchSportOdds } from './loungeBotOddsRun.ts'
 import {
   buildNflAtsSlateCard,
-  formatNflSlateCardCaption,
-  formatNflSlatePrivateRootCaption,
-  slateDeskThreadPreviewParts,
   loadTankTotalsContextForSlate,
   publishAndRecordNflSlateCard,
+  slateDestPreviewPayload,
 } from './loungeBotPredictivePick.ts'
+import { destPreviewPayload } from './loungeBotPublishDestinations.ts'
 import { loadPersonaWeights } from './loungeBotPersonaAdaptive.ts'
 import { loadDbTeamMetricsMap } from './loungeBotTeamMetrics.ts'
 import { loadDbCfbPowerRatingsMap } from './loungeBotCfbPowerRatings.ts'
@@ -174,6 +173,10 @@ export async function runPicksForToday(
         captionPreview: previewCaption,
         previewCaption,
         vipPreviewCaption,
+        ...destPreviewPayload({
+          publicCaption: previewCaption,
+          vipCaption: vipPreviewCaption,
+        }),
         gamesSummary: card.fights.map((f) => ({
           away: f.fighterA,
           home: f.fighterB,
@@ -258,9 +261,6 @@ export async function runPicksForToday(
   }
 
   if (dryRun) {
-    const previewCaption = formatNflSlateCardCaption(card)
-    const vipPreviewCaption = formatNflSlatePrivateRootCaption(card)
-    const subscriberThreadParts = slateDeskThreadPreviewParts(card)
     return {
       ok: true,
       dryRun: true,
@@ -275,10 +275,7 @@ export async function runPicksForToday(
       majoritySplitsCount: card.majoritySplits.length,
       passOnlyCount: card.passOnly.length,
       totalEventsRaw: rawEvents.length,
-      previewCaption,
-      captionPreview: previewCaption,
-      vipPreviewCaption,
-      subscriberThreadParts,
+      ...slateDestPreviewPayload(card),
       gamesSummary: card.games.map((g) => ({
         away: sportTeamDisplayName(g.awayTeam, g.sportKey || card.sportKey),
         home: sportTeamDisplayName(g.homeTeam, g.sportKey || card.sportKey),

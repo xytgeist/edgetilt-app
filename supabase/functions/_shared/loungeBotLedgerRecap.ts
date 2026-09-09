@@ -737,6 +737,17 @@ export function formatWeeklySyndicateRecapCaption(recap: WeeklyRecapPayload): st
   return lines.join('\n').trim()
 }
 
+export function formatWeeklySyndicateVipCaption(recap: WeeklyRecapPayload): string {
+  return [
+    `📊 **Sharpe VIP Syndicate · Weekly Ledger Complete**`,
+    `Desk Net: **${formatColoredUnits(recap.overall.unitsNet)}** (${recap.overall.wins}-${recap.overall.losses})`,
+    '',
+    `Top Performer: ${recap.topPerformer?.summary || 'Even contribution across the crew.'}`,
+    '',
+    `*Early Week opening line movements and CLV targets posting here tonight.*`,
+  ].join('\n')
+}
+
 /**
  * Publish the Tuesday Morning Syndicate Weekly Ledger to the public feed & VIP chat.
  */
@@ -748,15 +759,7 @@ export async function publishWeeklySyndicateRecap(
   destinations?: unknown,
 ): Promise<{ ok: boolean; postId?: string; error?: string; xWarning?: string; tweetId?: string | null }> {
   const caption = formatWeeklySyndicateRecapCaption(recap)
-
-  const vipDrop = [
-    `📊 **Sharpe VIP Syndicate · Weekly Ledger Complete**`,
-    `Desk Net: **${formatColoredUnits(recap.overall.unitsNet)}** (${recap.overall.wins}-${recap.overall.losses})`,
-    '',
-    `Top Performer: ${recap.topPerformer?.summary || 'Even contribution across the crew.'}`,
-    '',
-    `*Early Week opening line movements and CLV targets posting here tonight.*`,
-  ].join('\n')
+  const vipDrop = formatWeeklySyndicateVipCaption(recap)
 
   const dest = resolvePublishDestinations(destinations, {
     loungePublic: true,

@@ -878,6 +878,8 @@ Chat and X do **not** render Lounge markdown. Tags like `[gold]`, `**bold**`, `#
 
 **Ops Publish** (`sharpesyndicate.com/ops` Sharp Desk): sport dropdown, then a **filtered drop** dropdown (Picks for today, slate, primetime, UFC slate, etc.). Drop **(i)** lists every type for that sport (`OPS_DROPS.info`). One Preview / Publish pair. Preview has **Public / Private / Chat / X** tabs (`destPreviews` from dry-run … same fallbacks as fan-out). **`lounge-odds-poll` redeployed prod** (`jtjgtucumuoswnbauxry`) 2026-09-09 from `3a2f3e50`. **Send to** (`loungePublic`, `loungeFanOnly`, `vipChat`, `x`) applies to that Publish, including **Picks for today**. Passed on `lounge-odds-poll` body as `destinations`. Omit / cron = implicit dest + `x: false`. All boxes off refuses Publish. Monthly Board is ops-only (no Send to).
 
+**Splits screenshot schedule (PT):** Scorecard banner + Splits paste checklist. Tue/Wed seed (full sides), Thu/Fri movers, Sat/Sun (NFL) or Fri/Sat (CFB) lock + totals tab. Same `syndicate_betting_splits` rows for Chedda (dog fire) and Tank (confirm + totals). Desktop alert optional.
+
 **X never gets the uncut VIP caption unless you check X on that Publish.** Default X uses the public tease. VIP-only drops (halftime, middle/arb, Wed TNF / Sat adds/kills, UFC uncut): Public Lounge + X **off but clickable**. Checking them posts that drop's public tease if one exists (UFC uses `formatUfcCardCaption`), otherwise the VIP caption (opt-in leak).
 
 **X secrets** (Edge `lounge-odds-poll` only, never repo). App-only bearer cannot tweet. Generate **Read and Write** user tokens while logged in as `@sharpesyndicate`. **On prod** (`jtjgtucumuoswnbauxry`) as of 2026-09-09 with `lounge-odds-poll` redeployed:

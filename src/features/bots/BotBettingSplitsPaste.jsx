@@ -4,6 +4,7 @@ import {
   imageFilesFromClipboardEvent,
   imageFilesFromNavigatorClipboardRead,
 } from '../../utils/clipboardImagePaste.js'
+import { SyndicateSplitsDropSchedule } from '../../syndicate/SyndicateSplitsDropSchedule.jsx'
 
 const SPORT_OPTIONS = [
   { id: 'americanfootball_ncaaf', label: 'CFB' },
@@ -92,7 +93,7 @@ async function blobToBase64(blob) {
  * Stage screenshots one-by-one (paste/drop), then Process all → vision extract.
  * Chedda reads these; no scraping.
  */
-export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
+export default function BotBettingSplitsPaste({ supabaseClient, setToast, scheduleRows }) {
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -491,15 +492,15 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
         <div>
           <div className="flex items-center gap-2">
             <span className="text-base font-bold text-white tracking-wide">
-              Chedda splits paste
+              Splits paste
             </span>
             <span className="rounded bg-amber-950/80 px-2 py-0.5 text-[10.5px] font-bold text-amber-300 ring-1 ring-amber-500/30">
               Action / VSiN
             </span>
           </div>
           <p className="mt-0.5 text-xs text-zinc-400 max-w-2xl">
-            Click the box below, then Ctrl+V screenshots one after another. Process all when ready.
-            Review + save for Chedda. Manual form still below.
+            One habit for Chedda and Tank. Ctrl+V Action / VSiN shots, process, save.
+            Same rows: Chedda fires dogs from ticket vs handle. Tank confirms, and reads totals for Overs.
           </p>
         </div>
         <button
@@ -511,6 +512,8 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast }) {
           {loading ? 'Refreshing...' : 'Refresh'}
         </button>
       </div>
+
+      <SyndicateSplitsDropSchedule rows={rows.length ? rows : scheduleRows || []} />
 
       <div
         ref={dropZoneRef}

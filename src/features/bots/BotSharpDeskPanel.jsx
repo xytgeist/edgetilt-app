@@ -34,6 +34,7 @@ import BotUfcMetricsEditor from './BotUfcMetricsEditor.jsx'
 import BotBettingSplitsPaste from './BotBettingSplitsPaste.jsx'
 import { SyndicateDryRunPreview } from '../../syndicate/SyndicateDryRunPreview.jsx'
 import { SyndicateOpsDropInfo } from '../../syndicate/SyndicateOpsDropInfo.jsx'
+import { SyndicateSplitsDropSchedule } from '../../syndicate/SyndicateSplitsDropSchedule.jsx'
 
 const PICKER_METAS = {
   Scott: {
@@ -63,7 +64,7 @@ const TIMEFRAME_OPTIONS = [
 
 const DESK_TABS = [
   { id: 'scorecard', label: '🎯 Scorecard & Drops', shortLabel: 'Scorecard' },
-  { id: 'splits', label: '🧀 Chedda Splits Paste', shortLabel: 'Splits' },
+  { id: 'splits', label: '🧀 Splits Paste', shortLabel: 'Splits' },
   { id: 'pvals', label: '🩹 NFL Injury PVALs', shortLabel: 'NFL PVALs' },
   { id: 'trench_epa', label: '🏈 NFL EPA & Trenches', shortLabel: 'NFL Trenches' },
   { id: 'cfb_power', label: '🎓 CFB Power Index', shortLabel: 'CFB Ratings' },
@@ -142,6 +143,7 @@ export function BotSharpDeskPanel({
   const [dropPreview, setDropPreview] = useState(null)
   const [sendTo, setSendTo] = useState(SEND_TO_BAR_DEFAULT)
   const [destDirty, setDestDirty] = useState(false)
+  const [splitsRows, setSplitsRows] = useState([])
   const [selectedSportKey, setSelectedSportKey] = useState('americanfootball_nfl')
   const [selectedDropId, setSelectedDropId] = useState('today')
   const [dropInfoOpen, setDropInfoOpen] = useState(false)
@@ -157,6 +159,27 @@ export function BotSharpDeskPanel({
       setSelectedDropId(firstDropIdForSport(selectedSportKey))
     }
   }, [selectedSportKey, selectedDropId, sportDrops])
+
+  useEffect(() => {
+    if (!supabaseClient) return undefined
+    let cancelled = false
+    const load = async () => {
+      const { data } = await supabaseClient
+        .from('syndicate_betting_splits')
+        .select(
+          'sport_key,active,updated_at,created_at,home_ticket_pct,home_handle_pct,over_ticket_pct,over_handle_pct',
+        )
+        .eq('active', true)
+        .limit(200)
+      if (!cancelled) setSplitsRows(data || [])
+    }
+    void load()
+    const t = window.setInterval(() => void load(), 60_000)
+    return () => {
+      cancelled = true
+      window.clearInterval(t)
+    }
+  }, [supabaseClient, activeTab])
 
   /**
    * @param {string} title
@@ -735,6 +758,11 @@ export function BotSharpDeskPanel({
       {/* Tab 1: Scorecard & Syndicate Drops */}
       {activeTab === 'scorecard' && (
         <div className="space-y-3 pt-2">
+          <SyndicateSplitsDropSchedule
+            rows={splitsRows}
+            compact
+            onOpenPaste={() => setActiveTab('splits')}
+          />
           <SyndicateDryRunPreview preview={dropPreview} onDismiss={() => setDropPreview(null)} />
           <div className="rounded-lg bg-zinc-950/60 border border-zinc-800/80 p-3 space-y-2.5" data-syndicate-ops-composer>
             <div className="flex flex-wrap items-end gap-2">
@@ -1204,6 +1232,7 @@ export function BotSharpDeskPanel({
           <BotBettingSplitsPaste
             supabaseClient={supabaseClient}
             setToast={setToast}
+            scheduleRows={splitsRows}
           />
         </div>
       )}

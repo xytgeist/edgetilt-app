@@ -109,7 +109,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Windows Theo 2026-09-09 … Primetime Preview vs Publish “no game”
 
-**I am Windows Theo.** sharpesyndicate.com/ops Primetime Preview found the NFL game; Publish toasted no game. Root cause: Lounge pill allowlist rejects `nfl`/`primetime` on insert. Code on `test` **`1.4.125`**. **Still Ryan:** redeploy **`lounge-odds-poll` on prod** (Ops pins production). Do not prod-deploy without his ask.
+**I am Windows Theo.** sharpesyndicate.com/ops Primetime Preview found the NFL game; Publish toasted no game. Root cause: Lounge pill allowlist rejects `nfl`/`primetime` on insert. Code on `test` **`1.4.125`**. **`lounge-odds-poll` is on prod** (`jtjgtucumuoswnbauxry`) as of 2026-09-09. Preview then Publish on Ops.
 
 ### Windows Theo 2026-09-08 … FAB Alerts from Slots
 

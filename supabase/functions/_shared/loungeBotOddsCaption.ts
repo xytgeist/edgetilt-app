@@ -298,6 +298,68 @@ export function ptDateKey(now = new Date()): string {
 }
 
 /**
+ * NFL regular-season Week 1 open (PT date of the first kick).
+ * Add a year when the league opens before that year's first Thursday.
+ */
+export const NFL_REGULAR_SEASON_OPEN_PT: Record<number, string> = {
+  2023: '2023-09-07',
+  2024: '2024-09-05',
+  2025: '2025-09-04',
+  2026: '2026-09-09',
+}
+
+const NFL_WEEK_MS = 7 * 24 * 60 * 60 * 1000
+
+/** Midnight PT for a YYYY-MM-DD (DST-safe). */
+export function ptYmdStartMs(ymd: string): number | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd)) return null
+  for (const offset of ['-07:00', '-08:00'] as const) {
+    const ms = Date.parse(`${ymd}T00:00:00${offset}`)
+    if (!Number.isFinite(ms)) continue
+    if (ptDateKey(new Date(ms)) === ymd) return ms
+  }
+  const fallback = Date.parse(`${ymd}T00:00:00-07:00`)
+  return Number.isFinite(fallback) ? fallback : null
+}
+
+export function firstThursdayOfSeptemberPt(year: number): string {
+  for (let day = 1; day <= 7; day++) {
+    const ymd = `${year}-09-${String(day).padStart(2, '0')}`
+    const ms = ptYmdStartMs(ymd)
+    if (ms == null) continue
+    const wd = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Los_Angeles',
+      weekday: 'short',
+    }).format(new Date(ms))
+    if (wd === 'Thu') return ymd
+  }
+  return `${year}-09-04`
+}
+
+export function nflRegularSeasonOpenPt(seasonYear: number): string {
+  return NFL_REGULAR_SEASON_OPEN_PT[seasonYear] || firstThursdayOfSeptemberPt(seasonYear)
+}
+
+/** Official-ish NFL week from kickoff. Preseason / playoffs return null. */
+export function estimateNflRegularSeasonWeek(ms: number): number | null {
+  if (!Number.isFinite(ms)) return null
+  const kick = new Date(ms)
+  const month = Number(
+    new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', month: 'numeric' }).format(kick),
+  )
+  const year = Number(
+    new Intl.DateTimeFormat('en-US', { timeZone: 'America/Los_Angeles', year: 'numeric' }).format(kick),
+  )
+  if (month >= 3 && month <= 7) return null
+  const seasonYear = month <= 2 ? year - 1 : year
+  const openMs = ptYmdStartMs(nflRegularSeasonOpenPt(seasonYear))
+  if (openMs == null || ms < openMs) return null
+  const week = Math.floor((ms - openMs) / NFL_WEEK_MS) + 1
+  if (week < 1 || week > 18) return null
+  return week
+}
+
+/**
  * Games whose kickoff falls on a PT calendar day (default today).
  * futureOnly drops games that already started.
  */

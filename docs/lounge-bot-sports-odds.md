@@ -902,7 +902,7 @@ Already-posted chat messages stay as they were; next publish is clean.
 ### Public slate teaser (`formatNflSlateCardCaption`)
 
 - Caps: **1** hammer, **2** consensus, **3** house-divided games (VIP still gets full desk cards)
-- H1 title + `Week N · Sep 10-15` line; H2 section headers with emojis
+- H1 title + `Week N · Sep 10-15` line (NFL only … Week 1 pinned to the real regular-season open in `NFL_REGULAR_SEASON_OPEN_PT`, 2026 = Sep 9; CFB is the date range only); H2 section headers with emojis
 - **Hammers:** same layout as Consensus … `### {away}/{home} · {when}` then `· **[gold]{pick}[/gold]**` (no pick-first parens; no desk names on hammers)
 - **Consensus / House Divided / Split:** `### Matchup · when` then `· **[gold]pick[/gold]** · desks`
 - **Tank's Totals:** `{away}/{home} - **[gold]Over|Under …[/gold]**` (no kickoff; NFL shorts Pats/Bucs/Cards)

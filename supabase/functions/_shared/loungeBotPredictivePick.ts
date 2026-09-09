@@ -7,6 +7,7 @@
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import {
+  estimateNflRegularSeasonWeek,
   formatAmericanOdds,
   formatOddsCommenceTimeShort,
   shortDisplayName,
@@ -281,25 +282,17 @@ function formatSlateWeekSubtitle(games: SlateGamePick[]): string | null {
   return start === end ? start : `${start}-${end}`
 }
 
-/** Rough NFL/CFB slate week label from earliest kickoff (display only). */
-function estimateSlateWeekNumber(ms: number): number | null {
-  const d = new Date(ms)
-  const month = d.getUTCMonth()
-  if (month < 7 || month > 11) return null
-  const seasonAnchor = Date.UTC(d.getUTCFullYear(), 8, 1)
-  if (ms < seasonAnchor) return null
-  const week = Math.floor((ms - seasonAnchor) / (7 * 24 * 60 * 60 * 1000)) + 1
-  return Math.min(Math.max(week, 1), 18)
-}
-
-function formatSlateWeekLine(games: SlateGamePick[]): string | null {
+function formatSlateWeekLine(games: SlateGamePick[], sportKey?: string): string | null {
   const range = formatSlateWeekSubtitle(games)
   if (!range) return null
+  const key = String(sportKey || games[0]?.sportKey || '')
+  const isNfl = key === 'americanfootball_nfl' || key === 'americanfootball_nfl_preseason'
+  if (!isNfl) return range
   const earliest = games
     .map((g) => Date.parse(String(g.commenceTime || '')))
     .filter((t) => Number.isFinite(t))
     .sort((a, b) => a - b)[0]
-  const weekNum = earliest != null ? estimateSlateWeekNumber(earliest) : null
+  const weekNum = earliest != null ? estimateNflRegularSeasonWeek(earliest) : null
   return weekNum ? `Week ${weekNum} · ${range}` : range
 }
 
@@ -463,7 +456,7 @@ export function formatNflSlateCardCaption(
 
   const title = card.cardTitle || '🏈 NFL Sharpe Syndicate Slate'
   const lines: string[] = [`# ${title}`]
-  const weekLine = formatSlateWeekLine(card.games)
+  const weekLine = formatSlateWeekLine(card.games, card.sportKey)
   if (weekLine) lines.push(weekLine)
   lines.push('')
 

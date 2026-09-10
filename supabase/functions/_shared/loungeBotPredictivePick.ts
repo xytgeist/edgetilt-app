@@ -428,7 +428,10 @@ function tankTotalsLeanDisplay(g: SlateGamePick): string {
 function formatTankAtsItem(g: SlateGamePick): string {
   const away = sportTeamDisplayName(g.awayTeam, g.sportKey)
   const home = sportTeamDisplayName(g.homeTeam, g.sportKey)
-  const pick = String(g.tankAts?.lineDisplay || g.tankAts?.teamName || '').trim()
+  if (!g.tankAts?.published) {
+    return `${away}/${home} - PASS (ATS)`
+  }
+  const pick = String(g.tankAts.lineDisplay || g.tankAts.teamName || '').trim()
   const why = formatTankAtsWhy(g.tankAts)
   const total = tankTotalsLeanDisplay(g)
   const bits = [`${away}/${home} - ${formatGoldPick(pick)}`]
@@ -528,13 +531,14 @@ export function formatNflSlateCardCaption(
   }
   lines.push('')
 
-  const tankSpotsAll = card.games.filter((g) => g.tankAts?.published === true)
-  const tankSpots = uncut ? tankSpotsAll : tankSpotsAll.slice(0, 3)
+  const tankSpots = uncut ? card.games : card.games.slice(0, 3)
+  lines.push("## 🛡️ Tank's Spots")
   if (tankSpots.length > 0) {
-    lines.push("## 🛡️ Tank's Spots")
     for (const g of tankSpots) lines.push(formatTankAtsItem(g))
-    lines.push('')
+  } else {
+    lines.push('No ATS lean this slate')
   }
+  lines.push('')
 
   if (solos.length > 0) {
     lines.push('## 🎯 Solo Picks')

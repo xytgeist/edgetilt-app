@@ -1,7 +1,8 @@
 /**
  * Tank ATS sidecar (spots), not a 4th hammer vote.
  *
- * Situational layer: PASS unless two independent Tank reasons point the same way.
+ * Situational layer: PASS unless two independent Tank reasons point the same way,
+ * or his own Under + dog tell fires (that one is enough).
  * Reasons: rest/travel, weather-as-side, CFB tempo/clock, own-total agree (Under + dog).
  * Injury / QB is a stack tag only … never a second reason (Scott already moved the model).
  *
@@ -199,11 +200,9 @@ export function resolveTankSituationalAts(input: {
   const tags: string[] = []
   const bySide: Record<'home' | 'away', TankAtsReasonKey[]> = { home: [], away: [] }
 
-  let restSide: 'home' | 'away' | null = null
   if (restTravel && restTravelSignificant(restTravel)) {
     const side = teamIsSide(restTravel.restedTeam, homeTeam, awayTeam)
     if (side && side !== 'pass') {
-      restSide = side
       bySide[side].push('rest')
       if (restTravel.travelFatigue) tags.push('travel_fatigue')
       if (restTravel.restGapDays >= 2) tags.push('rest_gap')
@@ -229,9 +228,7 @@ export function resolveTankSituationalAts(input: {
     modelTotal: input.modelTotal,
     marketTotal: input.marketTotal,
   })
-  let tempoSide: 'home' | 'away' | null = null
   if (tempoLean) {
-    tempoSide = tempoLean.side
     bySide[tempoLean.side].push('tempo')
     tags.push(...tempoLean.tags)
   }
@@ -253,19 +250,15 @@ export function resolveTankSituationalAts(input: {
     return empty('Over + weather dog is a conflict … PASS the side', ['total_conflict'])
   }
 
-  // Under + dog (weather, or any dog lean) stacks as its own reason.
+  // Under + dog is Tank's own tell … it is a reason by itself, not a bonus tag.
   const dogSide: 'home' | 'away' | null = input.homePoint > 0
     ? 'home'
     : input.homePoint < 0
       ? 'away'
       : null
   if (input.tankTotalsSide === 'under' && dogSide) {
-    const dogHasSituational =
-      restSide === dogSide || weatherSide === dogSide || tempoSide === dogSide
-    if (dogHasSituational) {
-      bySide[dogSide].push('total_agree')
-      tags.push('under_dog_stack')
-    }
+    bySide[dogSide].push('total_agree')
+    tags.push('under_dog_stack')
   }
 
   const sides = (['home', 'away'] as const).filter((s) => bySide[s].length > 0)
@@ -290,12 +283,13 @@ export function resolveTankSituationalAts(input: {
   }
 
   const situationalFire = reasons.length >= 2
+  const uniqueTell = reasons.includes('total_agree')
   const sharpBoard = scoreSharpBoardFromSplits(input.pastedSplits)
-  let published = situationalFire
-  if (situationalFire && sharpBoard.isStrong && sharpBoard.side && sharpBoard.side !== lean) {
+  let published = situationalFire || uniqueTell
+  if (published && sharpBoard.isStrong && sharpBoard.side && sharpBoard.side !== lean) {
     published = false
     tags.push('street_fade')
-  } else if (situationalFire && sharpBoard.isLean && sharpBoard.side === lean) {
+  } else if (published && sharpBoard.isLean && sharpBoard.side === lean) {
     tags.push('sharp_agree')
   }
 
@@ -303,7 +297,7 @@ export function resolveTankSituationalAts(input: {
   const why = reasons.join(' + ')
   const rationale = published
     ? `Tank spot ${teamName} (${why})`
-    : situationalFire
+    : uniqueTell || situationalFire
       ? `Tank spot ${teamName} faded by street board`
       : `Look only … one Tank reason (${why})`
 
@@ -407,7 +401,14 @@ export async function loadRestTravelByEventId(
   return out
 }
 
+const TANK_ATS_WHY_LABEL: Record<TankAtsReasonKey, string> = {
+  rest: 'rest',
+  weather: 'weather',
+  tempo: 'tempo',
+  total_agree: 'under + dog',
+}
+
 export function formatTankAtsWhy(spot: TankAtsSpot | null | undefined): string {
   if (!spot?.published) return ''
-  return spot.reasons.join(' + ')
+  return spot.reasons.map((r) => TANK_ATS_WHY_LABEL[r] || r).join(' + ')
 }

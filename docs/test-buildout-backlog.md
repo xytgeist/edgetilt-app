@@ -1121,6 +1121,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-10:** **UFC metrics insert from fight cards (Windows).** Tuesday ufcstats sync now upserts anyone on upcoming + last 3 completed UFC cards. Seed was a 38-name champ list, which is why Paddy Pimblett was missing. `--ensure=` for one-off names. **`1.4.151`.**
+
 - **2026-09-10:** **Ops calendar post times + Posted green (Windows).** Expected syndicate drops show the PT cron time. Green **Posted** when `lounge_bot_publish_log` or same-day picks/feed prove the drop landed. House slates use the picks trail (they do not write publish_log yet). **`1.4.150`.**
 
 - **2026-09-10:** **Ops Mon-Sun week calendar (Windows).** `sharpesyndicate.com/ops` shows a PT Mon-Sun grid above the desk tabs, broken out by NFL / CFB / UFC. Splits cells use `syndicate_betting_splits`. Trench / PVAL / board / UFC / grade can be marked in. Cron rows stay Auto. **`1.4.149`.**

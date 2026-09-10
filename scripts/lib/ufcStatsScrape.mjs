@@ -178,9 +178,12 @@ export async function buildUfcStatsNameIndex(jar, opts = {}) {
     await sleep(delayMs)
   }
 
+  /** @type {Map<string, string>} */
+  const byUrl = new Map()
   for (const [href, parts] of partsByUrl) {
     const full = `${parts.first} ${parts.last}`.trim()
     if (!full) continue
+    byUrl.set(href, full)
     byNormName.set(normName(full), href)
     // Also index last, first for soft match helpers
     if (parts.last && parts.first) {
@@ -188,14 +191,125 @@ export async function buildUfcStatsNameIndex(jar, opts = {}) {
     }
   }
 
-  return byNormName
+  return { byNormName, byUrl }
 }
 
-function normName(s) {
+export function normUfcStatsName(s) {
   return String(s || '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
+}
+
+function normName(s) {
+  return normUfcStatsName(s)
+}
+
+export function divisionFromWeightLbs(lbs) {
+  const n = Number(lbs)
+  if (!Number.isFinite(n)) return 'Lightweight'
+  if (n <= 118) return "Women's Strawweight"
+  if (n <= 128) return 'Flyweight'
+  if (n <= 138) return 'Bantamweight'
+  if (n <= 148) return 'Featherweight'
+  if (n <= 158) return 'Lightweight'
+  if (n <= 173) return 'Welterweight'
+  if (n <= 188) return 'Middleweight'
+  if (n <= 208) return 'Light Heavyweight'
+  return 'Heavyweight'
+}
+
+/**
+ * Upcoming cards plus the most recent completed UFC events (ufcstats.com).
+ * @returns {Promise<string[]>}
+ */
+export async function listUfcStatsEventUrls(jar, opts = {}) {
+  const delayMs = Number(opts.delayMs) || 350
+  const completedLimit = Number.isFinite(opts.completedLimit) ? opts.completedLimit : 3
+  const urls = []
+  const seen = new Set()
+
+  const pull = async (pageUrl, limit) => {
+    const { html } = await fetchHtml(pageUrl, jar)
+    const found = []
+    const re = /href="(http:\/\/ufcstats\.com\/event-details\/[a-f0-9]+)"/gi
+    let m
+    while ((m = re.exec(html))) {
+      const href = m[1]
+      if (seen.has(href)) continue
+      seen.add(href)
+      found.push(href)
+    }
+    const take = limit > 0 ? found.slice(0, limit) : found
+    urls.push(...take)
+    await sleep(delayMs)
+  }
+
+  await pull('http://ufcstats.com/statistics/events/upcoming', 0)
+  await pull('http://ufcstats.com/statistics/events/completed', completedLimit)
+  return urls
+}
+
+/**
+ * Fighter names + detail URLs on one UFC Stats event page.
+ * @returns {Promise<Array<{ name: string, url: string, division: string | null }>>}
+ */
+export async function scrapeUfcStatsEventFighters(jar, eventUrl, opts = {}) {
+  const byUrl = opts.byUrl instanceof Map ? opts.byUrl : null
+  const { html } = await fetchHtml(eventUrl, jar)
+  /** @type {Map<string, { name: string, url: string, division: string | null }>} */
+  const out = new Map()
+
+  const weightHints = []
+  const weightRe = />([^<]*?(?:weight|strawweight|flyweight|bantamweight|featherweight|lightweight|welterweight|middleweight|heavyweight)[^<]*)</gi
+  let wm
+  while ((wm = weightRe.exec(html))) {
+    const raw = stripTags(wm[1])
+    if (/bout|weight/i.test(raw)) weightHints.push(raw)
+  }
+
+  const re = /href="(http:\/\/ufcstats\.com\/fighter-details\/[a-f0-9]+)"[^>]*>([\s\S]*?)<\/a>/gi
+  let m
+  while ((m = re.exec(html))) {
+    const href = m[1]
+    if (out.has(href)) continue
+    let name = stripTags(m[2])
+    if (!name || normName(name).split(' ').length < 2) {
+      name = byUrl?.get(href) || name
+    }
+    if (!name || normName(name).split(' ').length < 2) continue
+    out.set(href, { name, url: href, division: null })
+  }
+
+  const rows = [...out.values()]
+  if (weightHints.length && rows.length) {
+    // Event pages list fights in order; pair two fighters to one weight hint when counts line up.
+    const fights = Math.floor(rows.length / 2)
+    for (let i = 0; i < fights && i < weightHints.length; i += 1) {
+      const hint = weightHints[i]
+      const div = divisionFromWeightClassLabel(hint)
+      rows[i * 2].division = div
+      rows[i * 2 + 1].division = div
+    }
+  }
+  return rows
+}
+
+function divisionFromWeightClassLabel(raw) {
+  const s = String(raw || '').toLowerCase()
+  if (s.includes('women') && s.includes('straw')) return "Women's Strawweight"
+  if (s.includes('women') && s.includes('fly')) return "Women's Flyweight"
+  if (s.includes('women') && s.includes('bantam')) return "Women's Bantamweight"
+  if (s.includes('light heavy')) return 'Light Heavyweight'
+  if (s.includes('heavy')) return 'Heavyweight'
+  if (s.includes('middle')) return 'Middleweight'
+  if (s.includes('welter')) return 'Welterweight'
+  if (s.includes('light')) return 'Lightweight'
+  if (s.includes('feather')) return 'Featherweight'
+  if (s.includes('bantam')) return 'Bantamweight'
+  if (s.includes('fly')) return 'Flyweight'
+  if (s.includes('straw')) return "Women's Strawweight"
+  return null
 }
 
 /**
@@ -244,6 +358,8 @@ export function parseUfcStatsFighterHtml(html) {
 
   const reachRaw = extractLiValue(html, 'Reach:')
   const stanceRaw = extractLiValue(html, 'STANCE:')
+  const weightRaw = extractLiValue(html, 'Weight:')
+  const weightLbs = parseNum(weightRaw)
 
   const career = extractCareerStatMap(html)
   const slpm = parseNum(career['slpm'])
@@ -320,6 +436,7 @@ export function parseUfcStatsFighterHtml(html) {
     ko_finish_rate: koFinishRate ?? 0,
     sub_finish_rate: subFinishRate ?? 0,
     career_wins: wins,
+    division: divisionFromWeightLbs(weightLbs),
   }
 }
 

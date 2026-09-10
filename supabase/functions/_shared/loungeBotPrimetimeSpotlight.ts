@@ -424,7 +424,11 @@ export function formatPrimetimeVipDeepDive(spotlight: PrimetimeSpotlightGame): s
     if (spotlight.injuries?.summaryLine) lines.push(`🩹 ${spotlight.injuries.summaryLine}`)
     if (spotlight.splits?.summaryLine) lines.push(`⚡ ${spotlight.splits.summaryLine}`)
   }
-  lines.push('', `*Halftime pivots drop in Sharpe VIP when there's a real 2H play.*`)
+  lines.push(
+    '',
+    `*Lean, not lock. Desks stay as written. We only kill or flip if a listed starter (QB / LT / edge / featured RB) is ruled out, or the number walks off the edge. Official lock is 90-min inactives.*`,
+    `*Halftime pivots drop in Sharpe VIP when there's a real 2H play.*`,
+  )
   return lines.join('\n')
 }
 

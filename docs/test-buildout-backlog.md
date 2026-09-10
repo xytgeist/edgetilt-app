@@ -1121,6 +1121,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-10:** **Primetime lean-not-lock footer (Windows).** TNF / SNF / MNF card says desks stay as written; kill or flip only if a listed starter is out or the number walks off the edge; lock is 90-min inactives. Redeploy **`lounge-odds-poll`**. **`1.4.155`.**
+
 - **2026-09-10:** **Primetime X is the VIP card (Windows).** TNF / SNF / MNF tweet the same 4-desk writeup as VIP chat (4000 long-form, no 280 clip). House slate X stays the public tease. Cron tweets primetime. Redeploy **`lounge-odds-poll`**. **`1.4.154`.**
 
 - **2026-09-10:** **Primetime Lounge is the 4-desk card (Windows).** TNF / SNF / MNF public Lounge posts the VIP-format desk writeup. No fan-only Lounge twin. VIP chat + short X lean stay. Dropped the “full notes in Sharpe VIP” tease footer. Cron / Preview / Publish. Redeploy **`lounge-odds-poll`**. **`1.4.153`.**

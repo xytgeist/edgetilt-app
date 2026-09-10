@@ -78,7 +78,7 @@ export type PicksForTodayResult = {
   postId?: string
 }
 
-async function loadFootballEventsWithTotals(sportKey: string): Promise<{
+async function loadFootballEventsWithTotals(sportKey: string, dayKey?: string): Promise<{
   sportKey: string
   rawEvents: OddsEvent[]
   todayEvents: OddsEvent[]
@@ -93,15 +93,19 @@ async function loadFootballEventsWithTotals(sportKey: string): Promise<{
     }
   }
 
+  // Include live games that kicked this PT day … late Publish after kickoff still needs the card.
+  const filterOpts = { dayKey, futureOnly: false }
   const rawEvents = oddsData?.events || []
-  const todaySpreads = filterOddsEventsKickoffPtDay(rawEvents)
+  const todaySpreads = filterOddsEventsKickoffPtDay(rawEvents, filterOpts)
+    .filter((ev) => ev.completed !== true)
   if (!todaySpreads.length) {
     return { sportKey: resolvedKey, rawEvents, todayEvents: [] }
   }
 
   try {
     const withTotals = await fetchSportOdds(resolvedKey, ['us'], ['spreads', 'totals'])
-    const todayWithTotals = filterOddsEventsKickoffPtDay(withTotals?.events || [])
+    const todayWithTotals = filterOddsEventsKickoffPtDay(withTotals?.events || [], filterOpts)
+      .filter((ev) => ev.completed !== true)
     if (todayWithTotals.length) {
       return { sportKey: resolvedKey, rawEvents, todayEvents: todayWithTotals }
     }
@@ -213,6 +217,7 @@ export async function runPicksForToday(
 
   const { sportKey, rawEvents, todayEvents } = await loadFootballEventsWithTotals(
     requestedSport === 'americanfootball_ncaaf' ? 'americanfootball_ncaaf' : 'americanfootball_nfl',
+    dayKey,
   )
 
   if (!todayEvents.length) {

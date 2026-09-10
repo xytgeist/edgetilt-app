@@ -953,8 +953,9 @@ export function BotSharpDeskPanel({
                 </div>
                 <p className="text-[10px] text-zinc-500 leading-snug">
                   Applies to Publish for the drop above, including Picks for today. Leave the bar alone for normal defaults
-                  ... public drops include X; primetime is public Lounge + VIP chat (no fan-only Lounge); VIP-only
-                  (halftime, middle, UFC) stay VIP unless you check Public Lounge or X. Preview ignores destinations.
+                  ... public drops include X; primetime is public Lounge + VIP chat + X (same 4-desk card, no fan-only
+                  Lounge); VIP-only (halftime, middle, UFC) stay VIP unless you check Public Lounge or X. Preview
+                  ignores destinations.
                 </p>
               </div>
             ) : null}

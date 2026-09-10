@@ -22,6 +22,7 @@ import {
   fanOutSyndicatePublish,
   resolvePublishDestinations,
 } from './loungeBotPublishDestinations.ts'
+import { X_LONG_FORM_CHARS } from './loungeBotXPublish.ts'
 import { fetchGameWeather, type GameWeatherSummary } from './loungeBotWeather.ts'
 import { oddsSportKeyToRundownSportId } from './loungeBotRundownContext.ts'
 import { fetchGameInjuryPval, type GameInjurySummary } from './loungeBotInjuryPval.ts'
@@ -384,7 +385,7 @@ export async function findPrimetimeGameCandidate(
 }
 
 /**
- * Short X lean for TNF / SNF / MNF. Lounge public + VIP chat use the 4-desk card.
+ * Short fallback lean. Primetime X / Lounge / VIP chat use the 4-desk card.
  */
 export function formatPrimetimeSpotlightCaption(spotlight: PrimetimeSpotlightGame): string {
   const kickoff = formatOddsCommenceTimeShort(spotlight.commenceTime)
@@ -442,8 +443,8 @@ export type PrimetimePublishResult = {
 }
 
 /**
- * Publish the Primetime Solo Spotlight: public Lounge 4-desk card + VIP chat
- * (+ short X lean). No fan-only Lounge post. Ledger the lean.
+ * Publish the Primetime Solo Spotlight: public Lounge + VIP chat + X
+ * all get the 4-desk card. No fan-only Lounge post. Ledger the lean.
  */
 export async function publishAndRecordPrimetimeSpotlight(
   admin: SupabaseClient,
@@ -456,11 +457,11 @@ export async function publishAndRecordPrimetimeSpotlight(
   const publishAs = publisher.botUserId
   const pills = categoryPills.length ? categoryPills : ['sports']
   const loungeCaption = formatPrimetimeVipDeepDive(spotlight)
-  const xCaption = formatPrimetimeSpotlightCaption(spotlight)
   const dest = resolvePublishDestinations(destinations, {
     loungePublic: true,
     loungeFanOnly: false,
     vipChat: true,
+    x: true,
   })
   dest.loungeFanOnly = false
 
@@ -470,7 +471,8 @@ export async function publishAndRecordPrimetimeSpotlight(
     dest,
     publicCaption: loungeCaption,
     vipCaption: loungeCaption,
-    xCaption,
+    xCaption: loungeCaption,
+    xMaxChars: X_LONG_FORM_CHARS,
     categoryPills: pills,
   })
 

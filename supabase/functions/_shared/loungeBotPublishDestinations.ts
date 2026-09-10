@@ -17,16 +17,16 @@ export type PublishDestinations = {
 
 const KEYS = ['loungePublic', 'loungeFanOnly', 'vipChat', 'x'] as const
 
-/** Implicit destinations when Ops/cron omit the picker. x is always forced false. */
+/** Implicit destinations when Ops/cron omit the picker. x stays off unless implicit.x is true. */
 export function resolvePublishDestinations(
   raw: unknown,
-  implicit: Omit<PublishDestinations, 'x'>,
+  implicit: Omit<PublishDestinations, 'x'> & { x?: boolean },
 ): PublishDestinations {
   const fallback: PublishDestinations = {
     loungePublic: implicit.loungePublic === true,
     loungeFanOnly: implicit.loungeFanOnly === true,
     vipChat: implicit.vipChat === true,
-    x: false,
+    x: implicit.x === true,
   }
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return fallback
   const o = raw as Record<string, unknown>
@@ -43,21 +43,21 @@ export function anyPublishDestination(d: PublishDestinations): boolean {
   return d.loungePublic || d.loungeFanOnly || d.vipChat || d.x
 }
 
-export function implicitDestForPollAction(action: string): Omit<PublishDestinations, 'x'> {
+export function implicitDestForPollAction(action: string): PublishDestinations {
   switch (String(action || '').trim()) {
     case 'nfl_slate_card':
     case 'cfb_slate_card':
-      return { loungePublic: true, loungeFanOnly: true, vipChat: true }
+      return { loungePublic: true, loungeFanOnly: true, vipChat: true, x: false }
     case 'nfl_primetime_spotlight':
-      return { loungePublic: true, loungeFanOnly: false, vipChat: true }
+      return { loungePublic: true, loungeFanOnly: false, vipChat: true, x: true }
     case 'nfl_wong_teaser':
     case 'weekly_syndicate_recap':
     case 'nfl_anytime_td':
     case 'cfb_thu_night_spotlight':
-      return { loungePublic: true, loungeFanOnly: false, vipChat: true }
+      return { loungePublic: true, loungeFanOnly: false, vipChat: true, x: false }
     case 'predictive_pick':
     case 'picks_for_today':
-      return { loungePublic: true, loungeFanOnly: false, vipChat: false }
+      return { loungePublic: true, loungeFanOnly: false, vipChat: false, x: false }
     case 'nfl_halftime_pivot':
     case 'nfl_live_middle_arb':
     case 'nfl_wed_tnf_vip':
@@ -65,9 +65,9 @@ export function implicitDestForPollAction(action: string): Omit<PublishDestinati
     case 'cfb_wed_midweek_vip':
     case 'cfb_sat_vip_adds_kills':
     case 'ufc_slate_card':
-      return { loungePublic: false, loungeFanOnly: false, vipChat: true }
+      return { loungePublic: false, loungeFanOnly: false, vipChat: true, x: false }
     default:
-      return { loungePublic: true, loungeFanOnly: false, vipChat: false }
+      return { loungePublic: true, loungeFanOnly: false, vipChat: false, x: false }
   }
 }
 
@@ -77,6 +77,7 @@ export type DestPreviewSlot = {
   caption: string
   threadParts: DestPreviewPart[]
   chars?: number
+  limit?: number
 }
 
 /** Exact copy each Send to location would get (same fallbacks as fanOut). */
@@ -94,6 +95,7 @@ export type DestPreviewInput = {
   vipCaption?: string | null
   vipThreadParts?: Array<{ label?: string; body?: string } | string> | null
   xCaption?: string | null
+  xMaxChars?: number
 }
 
 function normalizeThreadParts(raw: DestPreviewInput['fanOnlyThreadParts']): DestPreviewPart[] {
@@ -119,12 +121,13 @@ export function buildSyndicateDestPreview(input: DestPreviewInput): SyndicateDes
   const fanOnlyCaption = String(input.fanOnlyCaption || '').trim()
   const vipCaption = String(input.vipCaption || '').trim()
   const xCaption = String(input.xCaption || '').trim()
+  const xMaxChars = input.xMaxChars
   const fanThreads = normalizeThreadParts(input.fanOnlyThreadParts)
   const vipThreads = normalizeThreadParts(input.vipThreadParts)
   const publicOut = publicCaption || vipCaption
   const privateOut = fanOnlyCaption || publicCaption || vipCaption
   const chatOut = vipCaption || publicCaption
-  const xOut = formatSyndicateXText(xCaption || publicCaption || vipCaption || fanOnlyCaption)
+  const xOut = formatSyndicateXText(xCaption || publicCaption || vipCaption || fanOnlyCaption, xMaxChars)
   return {
     public: { caption: publicOut, threadParts: [] },
     private: { caption: privateOut, threadParts: fanThreads },
@@ -135,7 +138,7 @@ export function buildSyndicateDestPreview(input: DestPreviewInput): SyndicateDes
         body: toPlainOutboundText(p.body),
       })),
     },
-    x: { caption: xOut, threadParts: [], chars: xOut.length },
+    x: { caption: xOut, threadParts: [], chars: xOut.length, ...(xMaxChars ? { limit: xMaxChars } : {}) },
   }
 }
 
@@ -151,6 +154,7 @@ export type FanOutInput = {
   fanOnlyCaption?: string | null
   vipCaption?: string | null
   xCaption?: string | null
+  xMaxChars?: number
   categoryPills?: string[]
   fanOnlyThreadParts?: BotThreadPart[]
   vipThreadParts?: string[]
@@ -241,7 +245,7 @@ export async function fanOutSyndicatePublish(input: FanOutInput): Promise<FanOut
 
   if (input.dest.x) {
     const caption = xCaption || publicCaption || vipCaption || fanOnlyCaption
-    const x = await publishSyndicateXPost(caption)
+    const x = await publishSyndicateXPost(caption, { maxChars: input.xMaxChars })
     if (x.warning || !x.tweetId) {
       out.xWarning = x.warning || 'X publish failed.'
     } else {

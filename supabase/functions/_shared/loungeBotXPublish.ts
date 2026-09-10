@@ -6,7 +6,10 @@ import { toPlainOutboundText } from './loungeBotPlainOutbound.ts'
 import { formatXApiFailure } from './loungeBotXApi.ts'
 
 const TWEET_URL = 'https://api.x.com/2/tweets'
-const X_SAFE_CHARS = 280
+/** Default tweet cap (free / standard). */
+export const X_SAFE_CHARS = 280
+/** Premium long-form cap … used when X gets the same card as VIP chat (TNF / SNF / MNF). */
+export const X_LONG_FORM_CHARS = 4000
 
 export type SyndicateXPublishResult = {
   tweetId: string | null
@@ -89,20 +92,24 @@ function stripHttpUrls(text: string): string {
     .trim()
 }
 
-export function formatSyndicateXText(raw: string): string {
+export function formatSyndicateXText(raw: string, maxChars: number = X_SAFE_CHARS): string {
+  const cap = Number.isFinite(maxChars) && maxChars > 0 ? maxChars : X_SAFE_CHARS
   const plain = stripHttpUrls(toPlainOutboundText(raw))
-  if (plain.length <= X_SAFE_CHARS) return plain
-  return `${plain.slice(0, X_SAFE_CHARS - 3).trimEnd()}...`
+  if (plain.length <= cap) return plain
+  return `${plain.slice(0, cap - 3).trimEnd()}...`
 }
 
-export async function publishSyndicateXPost(rawCaption: string): Promise<SyndicateXPublishResult> {
+export async function publishSyndicateXPost(
+  rawCaption: string,
+  opts?: { maxChars?: number },
+): Promise<SyndicateXPublishResult> {
   if (!syndicateXSecretsReady()) {
     return {
       tweetId: null,
       warning: 'X secrets missing (X_SYNDICATE_API_KEY / SECRET / ACCESS_TOKEN / ACCESS_TOKEN_SECRET).',
     }
   }
-  const text = formatSyndicateXText(rawCaption)
+  const text = formatSyndicateXText(rawCaption, opts?.maxChars)
   if (!text) {
     return { tweetId: null, warning: 'X caption empty after plain-text strip.' }
   }

@@ -17,7 +17,7 @@ export const DEST_PREVIEW_NOTES = {
   public: 'Lounge markdown. Posts when Lounge public is checked.',
   private: 'Fan-only Lounge markdown. Posts when Lounge fan-only is checked.',
   chat: 'VIP chat plain text. Posts when VIP chat is checked.',
-  x: 'Tweet as @sharpesyndicate. Posts when X is checked. 280 cap, no URLs.',
+  x: 'Tweet as @sharpesyndicate. Posts when X is checked. No URLs. 280 default … primetime uses the VIP card (long-form).',
 }
 
 function colorPairRe() {
@@ -92,7 +92,8 @@ function normalizeSlot(slot) {
         .filter((p) => p.body)
     : []
   const chars = Number.isFinite(slot?.chars) ? slot.chars : caption.length
-  return { caption, threadParts, chars }
+  const limit = Number.isFinite(slot?.limit) && slot.limit > 0 ? slot.limit : undefined
+  return { caption, threadParts, chars, limit }
 }
 
 function slotHasCopy(slot) {

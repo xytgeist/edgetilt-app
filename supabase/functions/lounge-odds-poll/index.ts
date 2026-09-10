@@ -534,12 +534,12 @@ Deno.serve(async (req) => {
       }
 
       if (dryRun) {
-        const { formatPrimetimeSpotlightCaption, formatPrimetimeVipDeepDive } = await import(
+        const { formatPrimetimeVipDeepDive } = await import(
           '../_shared/loungeBotPrimetimeSpotlight.ts'
         )
+        const { X_LONG_FORM_CHARS } = await import('../_shared/loungeBotXPublish.ts')
         const previewCaption = formatPrimetimeVipDeepDive(spotlight)
         const vipPreviewCaption = previewCaption
-        const xPreviewCaption = formatPrimetimeSpotlightCaption(spotlight)
 
         // Desk pages need the real house vote (Chedda can PASS), not the spotlight costume.
         let deskEvals = null
@@ -591,7 +591,8 @@ Deno.serve(async (req) => {
           ...destPreviewPayload({
             publicCaption: previewCaption,
             vipCaption: vipPreviewCaption,
-            xCaption: xPreviewCaption,
+            xCaption: previewCaption,
+            xMaxChars: X_LONG_FORM_CHARS,
           }),
         })
       }

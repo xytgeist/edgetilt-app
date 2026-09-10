@@ -162,7 +162,7 @@ VIP uncut cards lock when injury + splits are real enough … **not** Tue vibes,
 | Weekday predictive | — | muted | Was public freebie … killed |
 
 Public crumbs (not a second card): Coffee & Covers · Value Radar **one look**. Best Bet Hour = VIP only.  
-Primetime public posts (TNF / SNF / MNF @ 3:30 PM) = **full 4-desk card** on Lounge + VIP chat. No fan-only Lounge twin. X gets the short lean. Wed TNF VIP stays room-only.  
+Primetime public posts (TNF / SNF / MNF @ 3:30 PM) = **full 4-desk card** on Lounge + VIP chat + X. No fan-only Lounge twin. Wed TNF VIP stays room-only.  
 **Sat / Sun AM:** portal tweaks for late scratches … no auto full-card republish.  
 **Window math:** next kickoff within 21d, then games within **5 days** of that kickoff.
 

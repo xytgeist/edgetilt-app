@@ -83,7 +83,9 @@ function DestSlotBody({ tabId, slot }) {
         </div>
       ))}
       {tabId === 'x' ? (
-        <p className="text-[10px] text-zinc-500">{slot.chars || slot.caption.length}/280</p>
+        <p className="text-[10px] text-zinc-500">
+          {slot.chars || slot.caption.length}/{slot.limit || 280}
+        </p>
       ) : null}
     </div>
   )

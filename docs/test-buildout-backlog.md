@@ -1121,6 +1121,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-10:** **Primetime X is the VIP card (Windows).** TNF / SNF / MNF tweet the same 4-desk writeup as VIP chat (4000 long-form, no 280 clip). House slate X stays the public tease. Cron tweets primetime. Redeploy **`lounge-odds-poll`**. **`1.4.154`.**
+
 - **2026-09-10:** **Primetime Lounge is the 4-desk card (Windows).** TNF / SNF / MNF public Lounge posts the VIP-format desk writeup. No fan-only Lounge twin. VIP chat + short X lean stay. Dropped the “full notes in Sharpe VIP” tease footer. Cron / Preview / Publish. Redeploy **`lounge-odds-poll`**. **`1.4.153`.**
 
 - **2026-09-10:** **10DLC privacy copy (Windows).** Telnyx failed guest campaign **`C6NW3Y9`** (`TELNYX_FAILED`) because `/privacy` lacked carrier SMS share/sell language ([Telnyx 10DLC Privacy Policy](https://support.telnyx.com/en/articles/10645583-10dlc-privacy-policy)). Added Privacy **§6** + the same sentences on the SMS opt-in HTML pages. Bare `/privacy` no longer bounces to `/`. Vercel rewrites **`/privacy`** (and terms/guidelines) to **`api/legal-document.js`** so reviewers see the text without running the SPA. **`LEGAL_POLICY_VERSION` `2026-09-10`**. Promote **`main`** before resubmit (another **~$15**). **`1.4.152`.**

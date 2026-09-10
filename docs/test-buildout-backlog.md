@@ -177,6 +177,7 @@ Hot Windows files (first cuts): `pwaNotificationPrompt.js`, `PwaInstallBanner.js
 - [x] **Apply migrations `20260705020000`–`20260705040000` on test + prod** (manual `supabase db query -f`; `db push` blocked by test history drift)
 - [x] **Apply migration `20260705050000` on test + prod** (manual `supabase db query -f`; `db push` blocked by test history drift)
 - [x] **Syndicate GHA metrics sync → prod on Tuesday schedule + Edge Monitor heartbeat** (`syndicate_football_metrics_sync_production`, migration **`20260903210000`**, 2026-09-02)
+- [ ] **NFL trench follow-up (after 2026-09-29):** recalibrate `TRENCH_Z_TO_POINTS` on a 2026 ESPN board → scheme mixer → sack/hit flag. Spec [`data/syndicate/trench-followup.json`](../data/syndicate/trench-followup.json). Ticket [#3](https://github.com/xytgeist/edgetilt-app/issues/3). Tuesday `/theo` nag + GHA. Kill when JSON + test row are `done`.
 - [x] **Syndicate Ops on sharpesyndicate.com** (`/ops` or `?ops=1`): admin login + Sharp Desk. EdgeTilt `/?tab=bots` keeps create/pause/Odds/X. 2026-09-02.
 - [ ] **Syndicate collection failure monitoring (rest):** registry missing slate/grade/VIP/specialty crons + table freshness / Odds API last error banners. Spec note 2026-09-02.
 - [ ] **Chedda name vs pick gold (light):** Chedda stays muddy orange; pick `[gold]` readable on light (emerald). Do not paint all gold amber. See Update log **2026-09-04** OPEN.
@@ -1119,6 +1120,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 ---
 
 ## Update log
+
+- **2026-09-10:** **Trench follow-up scheduler (Windows).** Spec in `data/syndicate/trench-followup.json`. Test pg_cron **`syndicate_trench_followup_nudge`** (`20260910160000`, test /theo only) nags Tuesdays after **2026-09-29**. GHA `syndicate-trench-followup.yml` for `main`. Do not apply that SQL on prod. **`1.4.148`.**
 
 - **2026-09-10:** **Trench z-score scaler (Windows).** Same PBWR/PRWR + RBWR/RSWR cross-matchup, but each rate is z-scored against the loaded 32-team vintage before the net. 55/45 pass/run blend. Points map `0.56` keeps the ≥0.8 house gate on the old 2025 hit rate. Do not mix vintages. Scheme / LT rewrite still later. Redeploy **`lounge-odds-poll`**. **`1.4.147`.**
 

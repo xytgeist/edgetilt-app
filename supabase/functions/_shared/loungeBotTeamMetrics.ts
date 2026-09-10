@@ -53,6 +53,8 @@ export const TRENCH_RUN_Z_WEIGHT = 0.45
  * Blended trench-z to spread points. Calibrated on ESPN 2025 Week 18 so
  * median |pts| and the >=0.8 hit rate match the old raw /12 / /25 board.
  * Recalibrate after 3-4 weeks of a 2026 vintage.
+ * Later: scheme mixer, then sack/hit flags. Scheduler:
+ * data/syndicate/trench-followup.json
  */
 export const TRENCH_Z_TO_POINTS = 0.56
 const TRENCH_ZSCORE_MIN_N = 16

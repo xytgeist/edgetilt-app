@@ -1,0 +1,89 @@
+# Weekly nag for NFL trench follow-up (scheme mixer, then sack/hit flags).
+# GitHub schedule only runs from the default branch (main). Test pg_cron
+# posts https://lvslotpro.com/theo even if this file has not landed on main.
+#
+# Kill: set data/syndicate/trench-followup.json status=done.
+
+name: Syndicate trench follow-up
+
+on:
+  schedule:
+    - cron: '15 15 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: syndicate-trench-followup
+  cancel-in-progress: false
+
+jobs:
+  nudge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check due date
+        id: nudge
+        continue-on-error: true
+        env:
+          SUPABASE_URL_TEST: ${{ secrets.SUPABASE_URL_TEST }}
+          SUPABASE_SERVICE_ROLE_KEY_TEST: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TEST }}
+        run: node scripts/syndicate-trench-followup-nudge.mjs --post-theo
+
+      - name: Open or comment GitHub issue
+        if: steps.nudge.outputs.due == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = 'NFL trench follow-up: recalibrate, scheme mixer, sack/hit flags'
+            const body = [
+              'Scheduled nudge. Spec: `data/syndicate/trench-followup.json`.',
+              '',
+              '1. Recalibrate `TRENCH_Z_TO_POINTS` after 3-4 weeks of a 2026 ESPN board. Do not mix vintages. House 0.8 stays points.',
+              '2. Then scheme mixer (air_yards share / personnel_offense). Caps pass >= 0.35, run <= 0.60.',
+              '3. Then sack/hit flag from Tuesday nflverse. Haircut, do not drop. Kill fake pressure columns. No PFF.',
+              '',
+              'Kill: set that JSON `status` to `done` and `syndicate_trench_followup.status=done` on test.',
+              'Mailbox: https://lvslotpro.com/theo',
+            ].join('\n')
+            const q = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${context.repo.owner}/${context.repo.repo} is:issue in:title "${title}"`,
+            })
+            const existing = (q.data.items || [])[0]
+            if (!existing) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+              })
+              return
+            }
+            if (existing.state === 'open') {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing.number,
+                body: `Tuesday nag still due. ${body}`,
+              })
+            }
+
+      - name: Fail while still due
+        if: steps.nudge.outputs.due == 'true'
+        run: |
+          echo "Trench follow-up is due. See data/syndicate/trench-followup.json and lvslotpro.com/theo"
+          exit 1

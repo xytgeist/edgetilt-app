@@ -1,0 +1,30 @@
+{
+  "id": "nfl",
+  "status": "pending",
+  "due_on": "2026-09-29",
+  "title": "NFL trench follow-up: recalibrate, then scheme mixer, then sack/hit flags",
+  "github_issue": "https://github.com/xytgeist/edgetilt-app/issues/3",
+  "kill_switch": "Set status to done here AND syndicate_trench_followup.status='done' on test when this work ships or is explicitly dropped. That stops the Tuesday /theo nag.",
+  "order": [
+    {
+      "id": "zscore",
+      "done": true,
+      "note": "Shipped 1.4.147. Z-score PBWR/PRWR/RBWR/RSWR inside the loaded vintage. Same home-minus-away pairing. 55/45 blend. TRENCH_Z_TO_POINTS=0.56. House gate 0.8 points, not a z cutoff."
+    },
+    {
+      "id": "recalibrate",
+      "done": false,
+      "note": "After 3-4 weeks of a real 2026 ESPN board, plot trench points vs ATS / close error and retune TRENCH_Z_TO_POINTS. Do not mix 2026 raw % with 2025 raw %. Do not treat 0.8 as a z cutoff."
+    },
+    {
+      "id": "scheme",
+      "done": false,
+      "note": "Weight mixer only. Mute pass-trench from time-to-throw or air-yards share (not a hard <=5 air yards cut). Screens/WR screens should mute rush; a 4-yard out on 3rd-and-7 should not. If TTT is missing, air_yards + qb_dropback + pass_location is enough. 12-personnel from personnel_offense bumps run. Caps: pass weight never below ~0.35, run never above ~0.60. Do not ship in week 1-2."
+    },
+    {
+      "id": "sack_hit_flag",
+      "done": false,
+      "note": "Flag, do not overwrite. Sack/hit rate from the same Tuesday nflverse job. If |z(PBWR) - z(1 - sack rate allowed)| >= 1.5, tag process!=outcome and haircut trench points (about x0.6). Kill the August fake pressure_rate_* leftovers. Do not scrape PFF."
+    }
+  ]
+}

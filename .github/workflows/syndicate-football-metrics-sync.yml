@@ -67,6 +67,13 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY_TEST: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TEST }}
         run: npm run syndicate:pval-sleeper:refresh:test
 
+      - name: NFL trench follow-up nudge (does not fail this sync)
+        continue-on-error: true
+        env:
+          SUPABASE_URL_TEST: ${{ secrets.SUPABASE_URL_TEST }}
+          SUPABASE_SERVICE_ROLE_KEY_TEST: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TEST }}
+        run: node scripts/syndicate-trench-followup-nudge.mjs --post-theo
+
   sync-production:
     if: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.sync_production == true) }}
     needs: sync-test

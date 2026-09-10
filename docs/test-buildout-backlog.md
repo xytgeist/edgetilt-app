@@ -1119,6 +1119,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-09:** **Hammer = unanimous house ATS (Windows).** Every voting desk on the same side, including Tank's spot. 2-0 / 3-0 / 4-0 are all hammers. Dropped the old 3-0 + Scott + independent-second gate. **`1.4.140`.** Redeploy **`lounge-odds-poll`**.
+
 - **2026-09-09:** **Tank ATS always on the card (Windows).** Spots section always prints. Under + dog is enough to publish his side (Week 1 Pats +3 with Under 44.5). Other reasons still need two. Still not a 4th hammer. **`1.4.139`.** Redeploy **`lounge-odds-poll`**.
 
 - **2026-09-09:** **Desk cards pin to locked close, not live first-book (Windows).** `buildNflAtsSlateCard` used the first Odds API book. After kickoff that was live DK **Seahawks +7.5**, so Chedda treated the defending champs as a dog. Real file: open SEA **-3.5**, locked close **-3** / total **44.5**. Slate now uses `lounge_market_files` close (never live current after lock). **`1.4.138`.** Redeploy **`lounge-odds-poll`** test + prod. Rewrite the Week 1 Lounge captions + ledger if they still say +7.5.

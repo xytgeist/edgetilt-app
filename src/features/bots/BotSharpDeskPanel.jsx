@@ -33,8 +33,16 @@ import BotCfbPowerRatingsEditor from './BotCfbPowerRatingsEditor.jsx'
 import BotUfcMetricsEditor from './BotUfcMetricsEditor.jsx'
 import BotBettingSplitsPaste from './BotBettingSplitsPaste.jsx'
 import { SyndicateDryRunPreview } from '../../syndicate/SyndicateDryRunPreview.jsx'
+import { SyndicateDeskEvalBoard } from '../../syndicate/SyndicateDeskEvalBoard.jsx'
 import { SyndicateOpsDropInfo } from '../../syndicate/SyndicateOpsDropInfo.jsx'
 import { SyndicateSplitsDropSchedule } from '../../syndicate/SyndicateSplitsDropSchedule.jsx'
+import {
+  deskEvalsFor,
+  deskMeta,
+  isNamedOpsDesk,
+  OPS_DESK_HOUSE,
+  OPS_DESKS,
+} from '../../syndicate/syndicateOpsDesks.js'
 
 const PICKER_METAS = {
   Scott: {
@@ -147,6 +155,7 @@ export function BotSharpDeskPanel({
   const [selectedSportKey, setSelectedSportKey] = useState('americanfootball_nfl')
   const [selectedDropId, setSelectedDropId] = useState('today')
   const [dropInfoOpen, setDropInfoOpen] = useState(false)
+  const [selectedOpsDesk, setSelectedOpsDesk] = useState(OPS_DESK_HOUSE)
 
   const sportDrops = useMemo(() => dropsForSport(selectedSportKey), [selectedSportKey])
   const activeDrop = dropById(selectedDropId)
@@ -198,6 +207,11 @@ export function BotSharpDeskPanel({
     const destPreviews = data?.destPreviews && typeof data.destPreviews === 'object'
       ? data.destPreviews
       : null
+    const deskEvals = data?.deskEvals && typeof data.deskEvals === 'object' ? data.deskEvals : null
+    const hasDeskEvals = Boolean(
+      deskEvals
+        && ['Scott', 'Rocco', 'Chedda', 'Tank'].some((k) => Array.isArray(deskEvals[k]) && deskEvals[k].length),
+    )
     const hasAnyCaption = Boolean(
       caption
         || vipCaption
@@ -212,7 +226,7 @@ export function BotSharpDeskPanel({
         ? String(data.message || data.error || fallbackError || 'No preview.')
         : data?.skipped
           ? String(data.note || data.skipped)
-          : !hasAnyCaption
+          : !hasAnyCaption && !hasDeskEvals
             ? fallbackError || 'No caption returned for this dry run.'
             : null
     setDropPreview({
@@ -222,6 +236,7 @@ export function BotSharpDeskPanel({
       vipPreviewCaption: vipCaption || null,
       subscriberThreadParts: threadParts,
       destPreviews,
+      deskEvals,
       gamesSummary: data?.gamesSummary || null,
       gamesToday: data?.gamesToday ?? data?.totalGames ?? data?.totalFights ?? null,
       totalGames: data?.totalGames ?? data?.totalFights ?? null,
@@ -233,7 +248,13 @@ export function BotSharpDeskPanel({
       passOnlyCount: data?.passOnlyCount ?? null,
       error: err,
     })
-    setToast?.(hasAnyCaption ? 'Full post preview ready below.' : err || 'Preview ready below.')
+    setToast?.(
+      hasDeskEvals
+        ? 'Desk evals ready below. Open a desk to read the vote and why.'
+        : hasAnyCaption
+          ? 'Full post preview ready below.'
+          : err || 'Preview ready below.',
+    )
   }
 
   const loadData = useCallback(async () => {
@@ -695,21 +716,64 @@ export function BotSharpDeskPanel({
 
   const overall = recordData?.overall || { wins: 0, losses: 0, pushes: 0, pending: 0, win_rate_pct: 0, units_net: 0 }
   const pickers = recordData?.pickers || {}
+  const activeDeskMeta = deskMeta(selectedOpsDesk)
+  const inspectingDesk = isNamedOpsDesk(selectedOpsDesk)
+  const activeDeskRows = deskEvalsFor(dropPreview, selectedOpsDesk)
 
   return (
     <div className="mt-3 rounded-xl border border-amber-500/30 bg-amber-950/15 p-3 sm:p-4 text-white">
+      <div className="flex flex-wrap items-center gap-1.5 pb-3">
+        <button
+          type="button"
+          onClick={() => setSelectedOpsDesk(OPS_DESK_HOUSE)}
+          className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold border transition ${
+            selectedOpsDesk === OPS_DESK_HOUSE
+              ? 'bg-amber-500 text-black border-amber-400'
+              : 'bg-zinc-900 text-zinc-300 border-zinc-700 hover:bg-zinc-800'
+          }`}
+        >
+          House
+        </button>
+        {OPS_DESKS.map((desk) => {
+          const on = selectedOpsDesk === desk.id
+          return (
+            <button
+              key={desk.id}
+              type="button"
+              onClick={() => {
+                setSelectedOpsDesk(desk.id)
+                setActiveTab('scorecard')
+              }}
+              className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold border transition ${
+                on ? desk.chipOn : `${desk.chipOff} hover:bg-zinc-800`
+              }`}
+            >
+              {desk.icon} {desk.id}
+            </button>
+          )
+        })}
+      </div>
+
       {/* Panel Header */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-800/80 pb-3">
         <div>
           <div className="flex items-center gap-2">
-            <span className="text-base">🎯</span>
-            <span className="font-bold text-sm text-zinc-100">Sharp Syndicate Desk</span>
-            <span className="text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40">
-              4-Man Crew
+            <span className="text-base">{inspectingDesk ? activeDeskMeta?.icon || '🎯' : '🎯'}</span>
+            <span className="font-bold text-sm text-zinc-100">
+              {inspectingDesk ? `${selectedOpsDesk} desk` : 'Sharp Syndicate Desk'}
+            </span>
+            <span className={`text-[10px] uppercase font-semibold px-2 py-0.5 rounded-full ring-1 ${
+              inspectingDesk
+                ? activeDeskMeta?.badge || 'bg-amber-500/20 text-amber-300 ring-amber-500/40'
+                : 'bg-amber-500/20 text-amber-300 ring-amber-500/40'
+            }`}>
+              {inspectingDesk ? activeDeskMeta?.title || 'Desk' : '4-Man Crew'}
             </span>
           </div>
           <div className="text-[11px] text-zinc-400 mt-0.5">
-            Scott, Rocco, Chedda & Tank predictive betting tally ... auto-graded against final scores.
+            {inspectingDesk
+              ? `${activeDeskMeta?.lane || ''} Preview a drop to see this desk's vote and why on every game.`
+              : 'Scott, Rocco, Chedda & Tank. Open a desk to inspect its vote and why.'}
           </div>
         </div>
 
@@ -763,7 +827,6 @@ export function BotSharpDeskPanel({
             compact
             onOpenPaste={() => setActiveTab('splits')}
           />
-          <SyndicateDryRunPreview preview={dropPreview} onDismiss={() => setDropPreview(null)} />
           <div className="rounded-lg bg-zinc-950/60 border border-zinc-800/80 p-3 space-y-2.5" data-syndicate-ops-composer>
             <div className="flex flex-wrap items-end gap-2">
               <label className="flex flex-col gap-1 text-[11px] text-zinc-400 min-w-[7.5rem]">
@@ -931,7 +994,38 @@ export function BotSharpDeskPanel({
                 </>
               )}
             </div>
+            {inspectingDesk && selectedDropId !== 'monthly' ? (
+              <p className="text-[10px] text-zinc-500 leading-snug">
+                Preview on this desk shows {selectedOpsDesk}&apos;s vote and why. Publish still sends the house card, not a
+                solo {selectedOpsDesk} post.
+              </p>
+            ) : null}
           </div>
+
+          {inspectingDesk ? (
+            <SyndicateDeskEvalBoard
+              deskId={selectedOpsDesk}
+              rows={activeDeskRows}
+              sportLabel={dropPreview?.sportLabel || sportLabel(selectedSportKey)}
+              emptyHint={
+                dropPreview
+                  ? 'This drop did not return desk votes. Use Picks for today, Slate, Primetime, or UFC.'
+                  : `Pick ${sportLabel(selectedSportKey)} + a drop, then Preview. ${selectedOpsDesk} will list every game and why.`
+              }
+            />
+          ) : null}
+          {inspectingDesk && dropPreview ? (
+            <details className="rounded-lg border border-zinc-800 bg-zinc-950/40">
+              <summary className="cursor-pointer px-3 py-2 text-[11px] font-semibold text-zinc-400 hover:text-zinc-200">
+                House post preview (what Publish would send)
+              </summary>
+              <div className="px-1 pb-2">
+                <SyndicateDryRunPreview preview={dropPreview} onDismiss={() => setDropPreview(null)} />
+              </div>
+            </details>
+          ) : (
+            <SyndicateDryRunPreview preview={dropPreview} onDismiss={() => setDropPreview(null)} />
+          )}
 
           {monthlyBoard && (
             <div className="rounded-lg bg-zinc-950/60 border border-violet-900/50 p-3 space-y-2">

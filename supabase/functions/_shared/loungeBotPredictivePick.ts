@@ -144,6 +144,9 @@ export type SlateGamePick = {
     uglyJuice?: boolean
     /** When ugly-juice hard-PASS, the side/line Rocco wanted before the gate. */
     wouldBeLineDisplay?: string
+    /** Ops desk board … why this desk voted this way. */
+    why?: string
+    signals?: string[]
   }>
 }
 
@@ -1032,6 +1035,61 @@ export function resolveTankTotalsSide(
   return side
 }
 
+function fmtDeskPts(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return 'n/a'
+  const rounded = Math.round(n * 10) / 10
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+}
+
+/** Human why for Tank's totals vote. Mirrors resolveTankTotalsSide … do not change the vote here. */
+export function explainTankTotalsSide(
+  modelTotal: number | null,
+  marketTotal: number | null,
+  ctx: TankTotalsContext,
+  side: 'over' | 'under' | 'pass',
+): { why: string; signals: string[] } {
+  const signals: string[] = []
+  if (modelTotal == null || marketTotal == null) {
+    return { why: 'No model or market total to compare.', signals }
+  }
+  const delta = modelTotal - marketTotal
+  const abs = Math.abs(delta)
+  const keyCross = abs >= TANK_TOTALS_LOOK_PTS && crossesTotalsKeyNumber(modelTotal, marketTotal)
+  if (keyCross) signals.push('key_cross')
+  if (ctx.isHighWind) signals.push('wind')
+  if (ctx.isNonConference) signals.push('non_conf')
+  const openTotal = ctx.openTotal
+  const hasOpen = openTotal != null && Number.isFinite(openTotal)
+  const totalRose = hasOpen && marketTotal - (openTotal as number) >= TANK_TOTALS_OPEN_MOVE_PTS
+  const totalFell = hasOpen && (openTotal as number) - marketTotal >= TANK_TOTALS_OPEN_MOVE_PTS
+  if (totalRose) signals.push('total_up')
+  if (totalFell) signals.push('total_down')
+
+  const base = `Model ${fmtDeskPts(modelTotal)} vs market ${fmtDeskPts(marketTotal)} (${delta >= 0 ? '+' : ''}${fmtDeskPts(delta)}).`
+  if (side === 'pass' && ctx.isHighWind && delta > 0) {
+    return { why: `${base} Wind veto on the Over.`, signals }
+  }
+  if (side === 'pass' && totalFell && delta > 0) {
+    return { why: `${base} Falling total vetoes the Over.`, signals }
+  }
+  if (side === 'over' || side === 'under') {
+    if (abs >= TANK_TOTALS_EDGE_PTS) {
+      return { why: `${base} Clears the 3.5-pt totals edge.`, signals: ['model_edge', ...signals] }
+    }
+    if (keyCross) {
+      return { why: `${base} 2.5+ and crosses a 48/51/54 key.`, signals }
+    }
+    if (ctx.isCfb && ctx.isNonConference) {
+      return { why: `${base} CFB non-conference Over bump.`, signals }
+    }
+    return { why: base, signals }
+  }
+  return {
+    why: `${base} Need 3.5 pts, or 2.5 when the model crosses 48/51/54.`,
+    signals,
+  }
+}
+
 /**
  * Load open totals + kickoff weather for Tank slate modifiers.
  * Weather is fetched in parallel (Open-Meteo); failures leave that event without wind veto.
@@ -1505,8 +1563,83 @@ export function buildNflAtsSlateCard(
         ? underPickObj
         : homePickObj
     const tankLineDisp = tankTotalsSide === 'pass' || !tankPickObj
-      ? 'PASS (totals)'
+      ? 'PASS'
       : formatPickLine(tankPickObj)
+    const tankTotalsExplain = explainTankTotalsSide(
+      modelTotal,
+      marketTotalQuote?.total ?? null,
+      {
+        isHighWind: weather?.isHighWind === true,
+        openTotal,
+        isNonConference: cfbMatchup?.isNonConference === true,
+        isCfb: !!isCfb,
+      },
+      tankTotalsSide,
+    )
+
+    const scottGap = injuryValue?.spreadDelta ?? softModelValue?.spreadDelta ?? 0
+    const scottSignals: string[] = []
+    let scottWhy = ''
+    if (scottSide !== 'pass' && injuryValue?.isValuePlay) {
+      scottSignals.push('model_edge')
+      if (sideModifier?.isSignificant) scottSignals.push('pval')
+      scottWhy =
+        `Model vs market is ${fmtDeskPts(scottGap)} pts after PVAL (need 2.5). ` +
+        `Model home ${fmtDeskPts(adjustedModelSpreadHome)}, market ${fmtDeskPts(homePoint)}.`
+    } else if (scottSide !== 'pass') {
+      scottSignals.push('key_soft_gap')
+      scottWhy =
+        `Soft ${fmtDeskPts(scottGap)} pt gap on a true 3/7 key (1.5 unlock). ` +
+        `Model home ${fmtDeskPts(adjustedModelSpreadHome)}, market ${fmtDeskPts(homePoint)}.`
+    } else if (adjustedModelSpreadHome == null) {
+      scottWhy = 'No model vs market read (missing EPA / power).'
+    } else {
+      scottWhy =
+        `Gap ${fmtDeskPts(scottGap)} pts vs current. Need 2.5, or 1.5 on a 3/7 key. ` +
+        `Model home ${fmtDeskPts(adjustedModelSpreadHome)}, market ${fmtDeskPts(homePoint)}.`
+    }
+
+    const cheddaSignals: string[] = []
+    if (cheddaMoneyHome || cheddaMoneyAway) cheddaSignals.push('pasted_money')
+    if (cheddaGoldenHookHome || cheddaGoldenHookAway) cheddaSignals.push('dog_hook')
+    if (cheddaModelDogHome || cheddaModelDogAway) cheddaSignals.push('dog_pval')
+    const cheddaTeam = cheddaSide === 'home' ? homeTeam : cheddaSide === 'away' ? awayTeam : ''
+    let cheddaWhy = 'No dog+hook, dog+PVAL, or pasted money.'
+    if (cheddaSide !== 'pass') {
+      if (cheddaMoneyHome || cheddaMoneyAway) {
+        cheddaWhy = gameSplits.summaryLine || `Pasted sharp money on ${sportTeamDisplayName(cheddaTeam, ev.sport_key)}.`
+      } else if (cheddaGoldenHookHome || cheddaGoldenHookAway) {
+        cheddaWhy = `Dog + golden hook on ${sportTeamDisplayName(cheddaTeam, ev.sport_key)}.`
+      } else {
+        cheddaWhy = `Dog + model/PVAL on ${sportTeamDisplayName(cheddaTeam, ev.sport_key)}.`
+      }
+    }
+
+    const roccoSignals: string[] = []
+    if (isShortFavHome || isShortFavAway) roccoSignals.push('short_fav')
+    if (hurtSide) roccoSignals.push('hurt')
+    if (Math.abs(roccoHookTaxPenalty) >= 0.8) roccoSignals.push('hook_tax')
+    if (pastedChalkTrap) roccoSignals.push('chalk_trap')
+    if (isCfb && Math.abs(roccoPowerBonus) >= 1.0) roccoSignals.push('cfb_power')
+    if (roccoPassedUglyJuice) roccoSignals.push('ugly_juice')
+    const roccoWanted =
+      roccoLeanSide === 'home' ? homeTeam : roccoLeanSide === 'away' ? awayTeam : ''
+    let roccoWhy = 'No short-fav, hurt side, hook tax, or pasted chalk-trap.'
+    if (roccoPassedUglyJuice) {
+      roccoWhy =
+        `Wanted ${sportTeamDisplayName(roccoWanted, ev.sport_key)} ${roccoWouldBeLine || ''} but juice worse than ${ROCCO_UGLY_JUICE_WORSE_THAN}.`
+    } else if (roccoSide !== 'pass' && !roccoHasStrengthReason) {
+      roccoWhy =
+        `Lean ${sportTeamDisplayName(roccoWanted, ev.sport_key)} on short-fav alone. Does not count as a house vote.`
+    } else if (roccoSide !== 'pass') {
+      const bits: string[] = []
+      if (hurtSide) bits.push('hurt side')
+      if (Math.abs(roccoHookTaxPenalty) >= 0.8) bits.push('hook tax')
+      if (pastedChalkTrap) bits.push('pasted chalk-trap')
+      if (isCfb && Math.abs(roccoPowerBonus) >= 1.0) bits.push('CFB power gap')
+      if (isShortFavHome || isShortFavAway) bits.push('short-fav')
+      roccoWhy = `Fires ${sportTeamDisplayName(roccoWanted, ev.sport_key)} on ${bits.join(' + ') || 'spread lean'}.`
+    }
 
     const pickerPicks: Record<SharpPicker, {
       side: SlateDeskSide
@@ -1524,6 +1657,8 @@ export function buildNflAtsSlateCard(
         pickPrice: scottSide === 'home' ? homePrice : scottSide === 'away' ? awayPrice : 0,
         pick: scottSide === 'home' ? homePickObj : scottSide === 'away' ? awayPickObj : homePickObj,
         countsForHouse: scottSide !== 'pass',
+        why: scottWhy,
+        signals: scottSignals,
       },
       Rocco: {
         side: roccoSide,
@@ -1558,6 +1693,8 @@ export function buildNflAtsSlateCard(
         countsForHouse: roccoCountsForHouse,
         uglyJuice: roccoKeptUglyJuice || roccoPassedUglyJuice,
         wouldBeLineDisplay: roccoPassedUglyJuice && roccoWouldBeLine ? roccoWouldBeLine : undefined,
+        why: roccoWhy,
+        signals: roccoSignals,
       },
       Chedda: {
         side: cheddaSide,
@@ -1570,6 +1707,8 @@ export function buildNflAtsSlateCard(
         pickPrice: cheddaSide === 'home' ? homePrice : cheddaSide === 'away' ? awayPrice : 0,
         pick: cheddaSide === 'home' ? homePickObj : cheddaSide === 'away' ? awayPickObj : homePickObj,
         countsForHouse: cheddaSide !== 'pass',
+        why: cheddaWhy,
+        signals: cheddaSignals,
       },
       Tank: {
         side: tankTotalsSide,
@@ -1582,6 +1721,8 @@ export function buildNflAtsSlateCard(
         pickPrice: tankPickObj?.pickPrice ?? 0,
         pick: tankPickObj || homePickObj,
         countsForHouse: false, // totals desk … never fills ATS house buckets
+        why: tankTotalsExplain.why,
+        signals: tankTotalsExplain.signals,
       },
     }
 
@@ -1682,6 +1823,86 @@ export function buildNflAtsSlateCard(
   }
 }
 
+export type DeskEvalRow = {
+  eventId: string
+  away: string
+  home: string
+  when: string
+  houseBadge: string
+  side: string
+  teamName: string
+  lineDisplay: string
+  why: string
+  signals: string[]
+  countsForHouse: boolean
+  market: 'spreads' | 'totals'
+  extra?: {
+    label: string
+    side: string
+    teamName: string
+    lineDisplay: string
+    why: string
+    signals: string[]
+    published: boolean
+  }
+}
+
+export type DeskEvalBoard = Record<SharpPicker, DeskEvalRow[]>
+
+/** Per-desk vote + why for Ops. Same votes as the house card. */
+export function slateDeskEvalBoard(card: NflSlateCard | null | undefined): DeskEvalBoard {
+  const empty: DeskEvalBoard = { Scott: [], Rocco: [], Chedda: [], Tank: [] }
+  if (!card?.games?.length) return empty
+
+  for (const g of card.games) {
+    const away = sportTeamDisplayName(g.awayTeam, g.sportKey || card.sportKey)
+    const home = sportTeamDisplayName(g.homeTeam, g.sportKey || card.sportKey)
+    const when = formatOddsCommenceTimeShort(g.commenceTime)
+    const houseBadge = g.consensusPick.badgeText
+    const base = { eventId: g.eventId, away, home, when, houseBadge }
+
+    for (const desk of ATS_SIDE_DESKS) {
+      const p = g.pickerPicks[desk]
+      empty[desk].push({
+        ...base,
+        side: p.side,
+        teamName: p.teamName,
+        lineDisplay: p.lineDisplay,
+        why: p.why || p.lineDisplay,
+        signals: p.signals || [],
+        countsForHouse: p.countsForHouse !== false && p.side !== 'pass',
+        market: 'spreads',
+      })
+    }
+
+    const tank = g.pickerPicks.Tank
+    const spot = g.tankAts
+    empty.Tank.push({
+      ...base,
+      side: tank.side,
+      teamName: tank.teamName,
+      lineDisplay: tank.lineDisplay,
+      why: tank.why || tank.lineDisplay,
+      signals: tank.signals || [],
+      countsForHouse: false,
+      market: 'totals',
+      extra: {
+        label: 'ATS spot',
+        side: spot?.published ? String(spot.side) : 'pass',
+        teamName: spot?.published ? String(spot.teamName || '') : 'PASS',
+        lineDisplay: spot?.published
+          ? String(spot.lineDisplay || spot.teamName || '')
+          : 'PASS',
+        why: spot?.rationale || 'No rest / weather / tempo / under+dog tell.',
+        signals: spot?.published ? (spot.reasons || []) : (spot?.tags || []),
+        published: spot?.published === true,
+      },
+    })
+  }
+
+  return empty
+}
+
 /**
  * Same bodies Publish uses … Preview dest tabs must call this, not invent a second card.
  */
@@ -1732,6 +1953,7 @@ export function slateDestPreviewPayload(card: NflSlateCard, publisherMode: strin
     captionPreview: bodies.publicCaption,
     vipPreviewCaption: bodies.fanOnlyCaption,
     subscriberThreadParts: bodies.fanOnlyThreadParts,
+    deskEvals: slateDeskEvalBoard(card),
     ...destPreviewPayload(bodies),
   }
 }

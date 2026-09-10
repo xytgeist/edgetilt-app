@@ -88,7 +88,7 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
             <p className="text-[10px] uppercase tracking-[0.18em] text-emerald-500/80 font-semibold">
               Sharpe Syndicate
             </p>
-            <h1 className="text-lg font-bold text-zinc-50 truncate">Ops · Sharp Desk</h1>
+            <h1 className="text-lg font-bold text-zinc-50 truncate">Ops · Desks</h1>
             <p className="text-[11px] text-zinc-500 truncate">{userEmail}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -111,12 +111,12 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
 
       <main className="max-w-5xl mx-auto px-3 py-4 pb-16">
         <p className="text-[11px] text-zinc-500 mb-4">
-          Pick a sport, then a drop. Picks for today is in that list and uses Send to like every other Publish. Scorecard,
-          Chedda paste, PVALs, and metrics stay on the tabs below. Bot create / pause / X sources stay on EdgeTilt{' '}
+          House is the 4-desk composer. Open Scott, Rocco, Chedda, or Tank, then Preview a drop to see that desk&apos;s
+          vote and why. Scorecard, Chedda paste, PVALs, and metrics stay on the tabs below. Bot create / pause / X sources stay on EdgeTilt{' '}
           <span className="font-mono text-zinc-400">/?tab=bots</span>.
         </p>
 
-        {loading ? <p className="text-zinc-400 text-sm">Loading Scott desk…</p> : null}
+        {loading ? <p className="text-zinc-400 text-sm">Loading desks…</p> : null}
         {error ? <p className="text-red-400 text-sm mb-3">{error}</p> : null}
 
         {!loading && bot ? (

@@ -75,6 +75,7 @@ export type PicksForTodayResult = {
     badge: string
     type: string
   }>
+  deskEvals?: unknown
   postId?: string
 }
 
@@ -131,7 +132,7 @@ export async function runPicksForToday(
   const requestedSport = String(opts.sportKey || '').trim()
 
   if (requestedSport === 'mma_mixed_martial_arts') {
-    const { buildUfcSlateCard, formatUfcCardCaption, publishAndRecordUfcCard } = await import(
+    const { buildUfcSlateCard, formatUfcCardCaption, publishAndRecordUfcCard, ufcDeskEvalBoard } = await import(
       './loungeBotUfcPredictive.ts'
     )
     const oddsData = await fetchSportOdds('mma_mixed_martial_arts', ['us', 'us2', 'eu'], ['h2h', 'totals'])
@@ -189,6 +190,7 @@ export async function runPicksForToday(
           badge: f.consensusPick.badgeText,
           type: f.consensusPick.type,
         })),
+        deskEvals: ufcDeskEvalBoard(card),
       }
     }
 

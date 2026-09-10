@@ -1119,6 +1119,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-09:** **Ops desk inspect (Windows).** House / Scott / Rocco / Chedda / Tank chips on `sharpesyndicate.com/ops`. Preview on today / slate / primetime / UFC returns `deskEvals` (vote + why). Primetime uses the house slate vote for that game. Publish still house. **`1.4.142`.** Redeploy **`lounge-odds-poll`**.
+
 - **2026-09-09:** **Hammer is 4-0 only (Windows).** All four desks same side. PASS → consensus. Consensus = 3-1 / 3-0 / 2-0. House Divided = everything else. **`1.4.141`.** Redeploy **`lounge-odds-poll`**.
 
 - **2026-09-09:** **Hammer = unanimous house ATS (Windows).** Every voting desk on the same side, including Tank's spot. 2-0 / 3-0 / 4-0 are all hammers. Dropped the old 3-0 + Scott + independent-second gate. **`1.4.140`.** **Superseded same night** by 4-0-only hammer.

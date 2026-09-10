@@ -539,6 +539,45 @@ Deno.serve(async (req) => {
         )
         const previewCaption = formatPrimetimeSpotlightCaption(spotlight)
         const vipPreviewCaption = formatPrimetimeVipDeepDive(spotlight)
+
+        // Desk pages need the real house vote (Chedda can PASS), not the spotlight costume.
+        let deskEvals = null
+        const ptEvent = (oddsData.events || []).find((ev) => ev.id === spotlight.eventId)
+        if (ptEvent) {
+          const { buildNflAtsSlateCard, slateDeskEvalBoard, loadTankTotalsContextForSlate } =
+            await import('../_shared/loungeBotPredictivePick.ts')
+          const { loadPersonaWeights } = await import('../_shared/loungeBotPersonaAdaptive.ts')
+          const { loadDbTeamMetricsMap } = await import('../_shared/loungeBotTeamMetrics.ts')
+          const { loadDbCfbPowerRatingsMap } = await import('../_shared/loungeBotCfbPowerRatings.ts')
+          const { resolveSideModifiersForSlate } = await import('../_shared/loungeBotSideModifier.ts')
+          const { loadPastedBettingSplitsBoardForSlate } = await import('../_shared/loungeBotBettingSplits.ts')
+          const ptEvents = [ptEvent]
+          const [weightsMap, teamMetricsMap, cfbRatingsMap, sideModifiersByEventId, pastedSplitsBoard, tankCtx] =
+            await Promise.all([
+              loadPersonaWeights(admin),
+              loadDbTeamMetricsMap(admin),
+              loadDbCfbPowerRatingsMap(admin),
+              resolveSideModifiersForSlate(admin, 'americanfootball_nfl', ptEvents),
+              loadPastedBettingSplitsBoardForSlate(admin, 'americanfootball_nfl', ptEvents),
+              loadTankTotalsContextForSlate(admin, 'americanfootball_nfl', ptEvents),
+            ])
+          const houseCard = buildNflAtsSlateCard(ptEvents, {
+            cardTitle: `🏈 NFL Primetime · ${spotlight.primetimeLabel}`,
+            sportKey: 'americanfootball_nfl',
+            weightsMap,
+            teamMetricsMap,
+            cfbRatingsMap,
+            sideModifiersByEventId,
+            pastedSplitsByEventId: pastedSplitsBoard.primaryByEventId,
+            pastedSplitsAllByEventId: pastedSplitsBoard.allByEventId,
+            weatherByEventId: tankCtx.weatherByEventId,
+            openTotalByEventId: tankCtx.openTotalByEventId,
+            marketFilesByEventId: tankCtx.marketFilesByEventId,
+            restTravelByEventId: tankCtx.restTravelByEventId,
+          })
+          deskEvals = slateDeskEvalBoard(houseCard)
+        }
+
         return adminOpsJson(200, {
           ok: true,
           dryRun: true,
@@ -547,6 +586,7 @@ Deno.serve(async (req) => {
           previewCaption,
           captionPreview: previewCaption,
           vipPreviewCaption,
+          deskEvals,
           ...destPreviewPayload({
             publicCaption: previewCaption,
             fanOnlyCaption: vipPreviewCaption,
@@ -737,6 +777,7 @@ Deno.serve(async (req) => {
         formatUfcCardCaption,
         formatUfcVipCardCaption,
         publishAndRecordUfcCard,
+        ufcDeskEvalBoard,
       } = await import('../_shared/loungeBotUfcPredictive.ts')
 
       const oddsData = await fetchSportOdds('mma_mixed_martial_arts', ['us', 'us2', 'eu'], ['h2h', 'totals'])
@@ -765,6 +806,7 @@ Deno.serve(async (req) => {
           previewCaption,
           captionPreview: previewCaption,
           vipPreviewCaption,
+          deskEvals: ufcDeskEvalBoard(card),
           ...destPreviewPayload({
             publicCaption: previewCaption,
             vipCaption: vipPreviewCaption,

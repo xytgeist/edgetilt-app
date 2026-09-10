@@ -72,6 +72,52 @@ export type UfcSlateCard = {
 
 const SHARP_PICKERS = ['Scott', 'Rocco', 'Chedda', 'Tank'] as const
 
+/** Ops desk board … same votes as the UFC card. */
+export function ufcDeskEvalBoard(card: UfcSlateCard | null | undefined) {
+  const empty = { Scott: [], Rocco: [], Chedda: [], Tank: [] } as Record<
+    (typeof SHARP_PICKERS)[number],
+    Array<{
+      eventId: string
+      away: string
+      home: string
+      when: string
+      houseBadge: string
+      side: string
+      teamName: string
+      lineDisplay: string
+      why: string
+      signals: string[]
+      countsForHouse: boolean
+      market: 'spreads' | 'totals'
+    }>
+  >
+  if (!card?.fights?.length) return empty
+  for (const fight of card.fights) {
+    const base = {
+      eventId: fight.eventId,
+      away: fight.fighterA,
+      home: fight.fighterB,
+      when: fight.commenceTime || '',
+      houseBadge: fight.consensusPick.badgeText,
+    }
+    for (const desk of SHARP_PICKERS) {
+      const p = fight.pickerPicks[desk]
+      const isTotal = p.side === 'Over' || p.side === 'Under'
+      empty[desk].push({
+        ...base,
+        side: p.side,
+        teamName: p.pickName,
+        lineDisplay: p.pickName,
+        why: p.rationale || p.pickName,
+        signals: [],
+        countsForHouse: true,
+        market: isTotal ? 'totals' : 'spreads',
+      })
+    }
+  }
+  return empty
+}
+
 /**
  * Build a quantitative UFC slate card for an upcoming fight night.
  */

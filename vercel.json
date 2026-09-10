@@ -25,6 +25,12 @@
     }
   ],
   "rewrites": [
+    { "source": "/privacy", "destination": "/api/legal-document?slug=privacy" },
+    { "source": "/privacy/", "destination": "/api/legal-document?slug=privacy" },
+    { "source": "/terms", "destination": "/api/legal-document?slug=terms" },
+    { "source": "/terms/", "destination": "/api/legal-document?slug=terms" },
+    { "source": "/guidelines", "destination": "/api/legal-document?slug=guidelines" },
+    { "source": "/guidelines/", "destination": "/api/legal-document?slug=guidelines" },
     { "source": "/reset-password", "destination": "/index.html" },
     {
       "source": "/lounge/p/:postId",

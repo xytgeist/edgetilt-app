@@ -276,11 +276,6 @@ function App() {
         const pathname = window.location.pathname || '/'
         const search = window.location.search || ''
         const legalSlug = resolveLegalViewFromLocation(pathname, search)
-        if (parseLegalPathname(pathname) && !legalSlug) {
-          window.history.replaceState({}, document.title, '/')
-          setCurrentView('app')
-          return
-        }
         if (legalSlug) {
           setCurrentView(legalSlug)
           return

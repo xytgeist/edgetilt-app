@@ -144,6 +144,7 @@ export const LEGAL_DOCUMENTS = {
         heading: '1. Information we collect',
         paragraphs: [
           'Account information: email address, authentication identifiers, profile details you provide (display name, handle, avatar, banner, bio, location, category pills), and account settings.',
+          'Phone and SMS: if you verify a mobile number or someone consents to tournament swap texts, we store that number and the related opt-in or consent record for that program.',
           'Usage and device information: app interactions, feature usage, approximate location when you grant permission (for example, to suggest a nearby casino for bankroll or logbook capture), device type, browser, IP address, and diagnostic logs.',
           'Content you create: Lounge posts, comments, reactions, bookmarks, chat messages, media uploads, offers calendar entries, bankroll sessions, and Play Logbook entries including metric values, casino names, notes, and timestamps.',
           'Payment information: subscriptions are processed by Stripe. We receive billing status and customer identifiers from Stripe; we do not store full payment card numbers on our servers.',
@@ -179,7 +180,7 @@ export const LEGAL_DOCUMENTS = {
         paragraphs: [
           'Provide, maintain, and secure the Service; authenticate users; sync your data across devices.',
           'Personalize your experience (for example, profile display, feed ranking, and saved preferences).',
-          'Send transactional messages (account verification, password reset, billing receipts) and, with your consent, push notifications.',
+          'Send transactional messages (account verification, password reset, billing receipts, SMS one-time codes, and tournament swap notices you or a guest opted into) and, with your consent, push notifications.',
           'Moderate content, prevent abuse, and enforce our Terms and community guidelines.',
           'Analyze usage and Play Logbook data to improve calculators, guides, and product features as described above.',
           'Comply with legal obligations and respond to lawful requests.',
@@ -190,15 +191,27 @@ export const LEGAL_DOCUMENTS = {
         heading: '5. How we share information',
         paragraphs: [
           'Public profile and Lounge content: information you choose to make public (such as posts, handle, and public profile fields) is visible to other users according to product settings and RLS policies.',
-          'Service providers: we use vendors such as Supabase (database and auth), Vercel (hosting), Cloudflare (media and video), Stripe (payments), Google (Analytics and fonts), and push notification infrastructure. They process data on our behalf under contractual safeguards.',
+          'Service providers: we use vendors such as Supabase (database and auth), Vercel (hosting), Cloudflare (media and video), Stripe (payments), Google (Analytics and fonts), Telnyx (SMS / 10DLC message delivery), and push notification infrastructure. They process data on our behalf under contractual safeguards.',
           'Legal and safety: we may disclose information if required by law, to protect rights and safety, or to investigate fraud or abuse.',
           'Business transfers: if we merge, sell assets, or reorganize, user information may transfer as part of that transaction, subject to this Policy.',
           'We do not sell your personal information for cross-context behavioral advertising.',
         ],
       },
       {
+        id: 'sms',
+        heading: '6. Text messages and mobile numbers',
+        paragraphs: [
+          'When you or a guest opt in to an EdgeTilt SMS program (for example tournament swap notices or account verification codes), we collect the mobile number and the opt-in / consent record for that program.',
+          'Your mobile information will not be sold or shared with third parties for promotional or marketing purposes.',
+          'All the above categories exclude text messaging originator opt-in data and consent; this information will not be shared with any third parties.',
+          'We will not share your opt-in to an SMS campaign with any third party for purposes unrelated to providing you with the services of that campaign. We may share your Personal Data, including your SMS opt-in or consent status, with third parties that help us provide our messaging services, including but not limited to platform providers, phone companies, and any other vendors who assist us in the delivery of text messages.',
+          'Those vendors currently include our SMS connectivity provider (Telnyx) and the mobile network operators that deliver the messages. They process this data only to send the texts you opted into.',
+          'Reply STOP to opt out of a program. Reply HELP for help, or email ops@edgetilt.com.',
+        ],
+      },
+      {
         id: 'retention',
-        heading: '6. Data retention',
+        heading: '7. Data retention',
         paragraphs: [
           'We retain information while your account is active and as needed to provide the Service.',
           'When you delete your account, we delete or anonymize associated personal data within a reasonable period, except where we must retain records for legal, security, or backup purposes.',
@@ -207,7 +220,7 @@ export const LEGAL_DOCUMENTS = {
       },
       {
         id: 'security',
-        heading: '7. Security',
+        heading: '8. Security',
         paragraphs: [
           'We use industry-standard measures such as encryption in transit (HTTPS), access controls, and row-level security in our database. No method of transmission or storage is 100% secure.',
           'You are responsible for safeguarding your login credentials and devices.',
@@ -215,37 +228,38 @@ export const LEGAL_DOCUMENTS = {
       },
       {
         id: 'rights',
-        heading: '8. Your choices and rights',
+        heading: '9. Your choices and rights',
         paragraphs: [
           'You may update profile information, adjust notification settings, export certain data where the app provides export tools, and delete your account in settings.',
           'Depending on your location, you may have rights to access, correct, delete, or port personal data, or to object to or restrict certain processing. Contact us to exercise these rights.',
           'You may opt out of marketing emails using unsubscribe links. Push notifications can be disabled in device and in-app settings.',
+          'You may opt out of an EdgeTilt SMS program by replying STOP to a message from that program. Reply HELP for help.',
         ],
       },
       {
         id: 'children',
-        heading: '9. Children',
+        heading: '10. Children',
         paragraphs: [
           'The Service is not directed to children under 18. We do not knowingly collect personal information from children. Contact us if you believe a child has provided us data.',
         ],
       },
       {
         id: 'international',
-        heading: '10. International users',
+        heading: '11. International users',
         paragraphs: [
           'We operate from the United States. If you access the Service from other regions, your information may be processed in the U.S. or where our service providers operate.',
         ],
       },
       {
         id: 'changes',
-        heading: '11. Changes to this Policy',
+        heading: '12. Changes to this Policy',
         paragraphs: [
           'We may update this Privacy Policy from time to time. We will post the revised version with a new effective date and provide additional notice or request renewed acceptance where required.',
         ],
       },
       {
         id: 'contact',
-        heading: '12. Contact',
+        heading: '13. Contact',
         paragraphs: [
           `Privacy questions or requests: ${LEGAL_CONTACT_EMAIL}.`,
           `${LEGAL_ENTITY_NAME} (${LEGAL_ENTITY_STATE}).`,
@@ -364,22 +378,16 @@ export function parseLegalPathname(pathname) {
   return null
 }
 
-/** Legal full-page routes require ?from= (stops bare /privacy becoming a search landing URL). */
-const LEGAL_BOOTSTRAP_FROM = new Set(['auth', 'welcome', 'settings', 'acceptance', 'public'])
-
 /**
+ * Bare `/privacy`, `/terms`, and `/guidelines` must render the document.
+ * 10DLC reviewers crawl `https://edgetilt.com/privacy` with no query string.
+ * `?from=` is only for in-app return (auth, settings, etc.), not a gate.
+ * On Vercel, those paths rewrite to `api/legal-document.js` so crawlers see HTML without JS.
+ *
  * @param {string} pathname
- * @param {string} [search]
+ * @param {string} [_search]
  * @returns {'terms' | 'privacy' | 'guidelines' | null}
  */
-export function resolveLegalViewFromLocation(pathname, search) {
-  const slug = parseLegalPathname(pathname)
-  if (!slug) return null
-  try {
-    const from = new URLSearchParams(search ?? '').get('from')
-    if (!from || !LEGAL_BOOTSTRAP_FROM.has(from)) return null
-  } catch {
-    return null
-  }
-  return slug
+export function resolveLegalViewFromLocation(pathname, _search) {
+  return parseLegalPathname(pathname)
 }

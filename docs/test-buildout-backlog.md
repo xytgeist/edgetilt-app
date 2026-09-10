@@ -1121,6 +1121,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-10:** **10DLC privacy copy (Windows).** Telnyx failed guest campaign **`C6NW3Y9`** (`TELNYX_FAILED`) because `/privacy` lacked carrier SMS share/sell language ([Telnyx 10DLC Privacy Policy](https://support.telnyx.com/en/articles/10645583-10dlc-privacy-policy)). Added Privacy **§6** + the same sentences on the SMS opt-in HTML pages. Bare `/privacy` no longer bounces to `/`. Vercel rewrites **`/privacy`** (and terms/guidelines) to **`api/legal-document.js`** so reviewers see the text without running the SPA. **`LEGAL_POLICY_VERSION` `2026-09-10`**. Promote **`main`** before resubmit (another **~$15**). **`1.4.152`.**
+
 - **2026-09-10:** **UFC metrics insert from fight cards (Windows).** Tuesday ufcstats sync now upserts anyone on upcoming + last 3 completed UFC cards. Seed was a 38-name champ list, which is why Paddy Pimblett was missing. `--ensure=` for one-off names. **`1.4.151`.**
 
 - **2026-09-10:** **Ops calendar post times + Posted green (Windows).** Expected syndicate drops show the PT cron time. Green **Posted** when `lounge_bot_publish_log` or same-day picks/feed prove the drop landed. House slates use the picks trail (they do not write publish_log yet). **`1.4.150`.**

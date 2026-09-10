@@ -312,7 +312,7 @@ Suggested future tightening:
 
 Already planned for Slot Pro backlog; prod cutover reminders:
 
-- [x] Public legal URLs on **`edgetilt.com`** — **`/terms`**, **`/privacy`**, **`/guidelines`** (in-app routes; no separate static legal site required). Counsel-reviewed; entity **Digiverse Ventures, LLC, Wyoming** (Ryan sign-off **2026-07-01**; entity name updated in-app **2026-07-23**, **`LEGAL_POLICY_VERSION` `2026-07-23`**).
+- [x] Public legal URLs on **`edgetilt.com`** — **`/terms`**, **`/privacy`**, **`/guidelines`**. Counsel-reviewed; entity **Digiverse Ventures, LLC, Wyoming** (Ryan sign-off **2026-07-01**; entity name updated in-app **2026-07-23**). **10DLC SMS share/sell language** added **2026-09-10** (**`LEGAL_POLICY_VERSION` `2026-09-10`**) after Telnyx rejected guest campaign **`C6NW3Y9`**. Prod serves those paths as HTML via **`api/legal-document.js`** (crawlers do not need JS). Must be live on **prod** before campaign resubmit.
 - [x] Signup acceptance + **`profiles`** legal timestamps (migration **`20260627200000_profiles_legal_acceptance.sql`**).
 
 ---

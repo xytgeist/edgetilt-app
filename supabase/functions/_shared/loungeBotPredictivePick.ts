@@ -338,8 +338,7 @@ function houseAtsVote(g: SlateGamePick, desk: SharpPicker): 'home' | 'away' | 'p
     return 'pass'
   }
   const pp = g.pickerPicks[desk]
-  if (!pp || pp.countsForHouse === false) return 'pass'
-  if (pp.side === 'home' || pp.side === 'away') return pp.side
+  if (pp?.side === 'home' || pp?.side === 'away') return pp.side
   return 'pass'
 }
 
@@ -512,26 +511,32 @@ export function formatNflSlateCardCaption(
   lines.push('')
 
   if (hammers.length > 0) {
-    lines.push('## 🔥 Hammers')
+    lines.push('## 🔥 Hammers (4-0)')
     for (const g of hammers) lines.push(...formatHammerItem(g))
     lines.push('')
   }
 
   if (consensus.length > 0) {
     lines.push('## 🎯 Consensus')
-    for (const g of consensus) lines.push(...formatConsensusItem(g))
+    for (const g of consensus) {
+      const bothSides = desksOnSide(g, 'home').length > 0 && desksOnSide(g, 'away').length > 0
+      lines.push(...(bothSides ? formatHouseDividedItem(g) : formatConsensusItem(g)))
+    }
     lines.push('')
   }
 
-  if (majoritySplits.length > 0) {
+  const divided = [...majoritySplits, ...splits, ...solos]
+  if (divided.length > 0) {
     lines.push('## ⚔️ House Divided')
-    for (const g of majoritySplits) lines.push(...formatHouseDividedItem(g))
-    lines.push('')
-  }
-
-  if (splits.length > 0) {
-    lines.push('## ⚖️ Split')
-    for (const g of splits) lines.push(...formatSplitItem(g))
+    for (const g of divided) {
+      const homeN = desksOnSide(g, 'home').length
+      const awayN = desksOnSide(g, 'away').length
+      if (homeN > 0 && awayN > 0) {
+        lines.push(...(homeN === awayN ? formatSplitItem(g) : formatHouseDividedItem(g)))
+      } else {
+        lines.push(...formatConsensusItem(g))
+      }
+    }
     lines.push('')
   }
 
@@ -1088,7 +1093,7 @@ export async function loadTankTotalsContextForSlate(
 
 /**
  * Build a full NFL / CFB ATS Slate Card across all games on the board.
- * House ATS (Scott, Rocco, Chedda, Tank spot) votes the side. Hammer = every voting desk on the same side.
+ * House ATS is Scott / Rocco / Chedda / Tank spot. Hammer = 4-0 only. PASS kills a hammer.
  * Tank also votes totals (PASS default; ≥3.5 or key-cross). Street board can only veto his spot.
  * Scott PASSes under |model−market| 2.5 (1.5 only on true 3/7 keys). Rocco may PASS.
  * Rocco short-fav alone stays on his VIP desk card but does not count for house buckets.
@@ -1580,27 +1585,18 @@ export function buildNflAtsSlateCard(
       },
     }
 
-    // House tally: Scott / Rocco / Chedda / Tank spot. Rocco short-fav-only still sits out.
+    // House tally: all 4 ATS desks. PASS counts. Hammer is 4-0 only.
     let homeVotes = 0
     let awayVotes = 0
-    let activeSideVotes = 0
     for (const p of ATS_SIDE_DESKS) {
-      const pp = pickerPicks[p]
-      if (pp.countsForHouse === false) continue
-      const side = pp.side
-      if (side === 'home') {
-        homeVotes++
-        activeSideVotes++
-      } else if (side === 'away') {
-        awayVotes++
-        activeSideVotes++
-      }
+      const side = pickerPicks[p].side
+      if (side === 'home') homeVotes++
+      else if (side === 'away') awayVotes++
     }
-    if (tankAts.published && (tankAts.side === 'home' || tankAts.side === 'away')) {
-      if (tankAts.side === 'home') homeVotes++
-      else awayVotes++
-      activeSideVotes++
-    }
+    if (tankAts.published && tankAts.side === 'home') homeVotes++
+    else if (tankAts.published && tankAts.side === 'away') awayVotes++
+    const activeSideVotes = homeVotes + awayVotes
+    const passVotes = 4 - activeSideVotes
 
     let consensusType: 'hammer' | 'consensus' | 'majority_split' | 'split' | 'solo' | 'pass_only' = 'pass_only'
     let badgeText = '— All pass'
@@ -1612,28 +1608,27 @@ export function buildNflAtsSlateCard(
       badgeText = '⏭️ All pass'
       consensusSide = 'home'
       voteCount = 0
-    } else if (activeSideVotes === 1) {
-      consensusType = 'solo'
-      consensusSide = homeVotes === 1 ? 'home' : 'away'
-      voteCount = 1
-      badgeText = '🎯 Solo'
-    } else if (homeVotes >= 1 && awayVotes >= 1) {
+    } else {
       consensusSide = homeVotes >= awayVotes ? 'home' : 'away'
       voteCount = Math.max(homeVotes, awayVotes)
-      const minority = activeSideVotes - voteCount
-      if (homeVotes === awayVotes) {
-        consensusType = 'split'
-        badgeText = `⚖️ ${homeVotes}-${awayVotes} Split`
+      const minority = Math.min(homeVotes, awayVotes)
+      const fourOh = (homeVotes === 4 || awayVotes === 4) && passVotes === 0
+      const threeOne = (homeVotes === 3 && awayVotes === 1) || (awayVotes === 3 && homeVotes === 1)
+      const threeOh = (homeVotes === 3 && awayVotes === 0) || (awayVotes === 3 && homeVotes === 0)
+      const twoOh = (homeVotes === 2 && awayVotes === 0) || (awayVotes === 2 && homeVotes === 0)
+      if (fourOh) {
+        consensusType = 'hammer'
+        badgeText = '🔥 4-0 Hammer'
+      } else if (threeOne || threeOh || twoOh) {
+        consensusType = 'consensus'
+        badgeText = threeOne ? '🎯 3-1 Consensus' : threeOh ? '🎯 3-0 Consensus' : '🎯 2-0 Consensus'
+      } else if (activeSideVotes === 1) {
+        consensusType = 'solo'
+        badgeText = '⚔️ 1-0 House Divided'
       } else {
-        consensusType = 'majority_split'
+        consensusType = homeVotes === awayVotes ? 'split' : 'majority_split'
         badgeText = `⚔️ ${voteCount}-${minority} House Divided`
       }
-    } else {
-      // Hammer = every voting desk on the same side. 2-0, 3-0, 4-0 are all hammers.
-      consensusSide = homeVotes > 0 ? 'home' : 'away'
-      voteCount = activeSideVotes
-      consensusType = 'hammer'
-      badgeText = `🔥 ${activeSideVotes}-0 Hammer`
     }
 
     const gamePick: SlateGamePick = {

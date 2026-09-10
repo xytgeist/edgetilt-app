@@ -1,7 +1,7 @@
 {
   "name": "phoenixlinkcalc",
   "private": true,
-    "version": "1.4.158",
+    "version": "1.4.159",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -72,6 +72,9 @@
     "syndicate:pval-sleeper:apply:production": "node scripts/pval-sleeper-sync.mjs --apply --target=production",
     "syndicate:pval-sleeper:refresh:test": "node scripts/pval-sleeper-sync.mjs --apply --refresh --no-out --target=test",
     "syndicate:pval-sleeper:refresh:production": "node scripts/pval-sleeper-sync.mjs --apply --refresh --no-out --target=production",
+    "syndicate:pval-twodeep": "node scripts/pval-twodeep-fill.mjs --dry-run --target=test",
+    "syndicate:pval-twodeep:apply:test": "node scripts/pval-twodeep-fill.mjs --apply --target=test",
+    "syndicate:pval-twodeep:apply:production": "node scripts/pval-twodeep-fill.mjs --apply --target=production",
     "syndicate:trench-followup": "node scripts/syndicate-trench-followup-nudge.mjs",
     "backtest:ufc": "node scripts/backtest-ufc-model.mjs",
     "backtest:ufc:odds": "node scripts/backtest-ufc-model.mjs --with-odds",

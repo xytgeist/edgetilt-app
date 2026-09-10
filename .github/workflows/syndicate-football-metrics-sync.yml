@@ -1,6 +1,7 @@
 # Weekly NFL EPA (nflverse) + CFB power board + UFC Stats fighter metrics
 # (refresh roster + insert upcoming/recent UFC card names) 
-# + Sleeper PVAL refresh (depth band + week fantasy seat; skips overrides).
+# + Sleeper PVAL refresh (depth band + week fantasy seat; skips overrides)
+# + TWO·DEEP hole-fill after Sleeper (OL / empty TE-WR depth only; polite scrape).
 #
 # Schedule: Tuesdays 14:00 UTC (~7:00am PT) → test AND production.
 # Manual: workflow_dispatch; set sync_production=false to skip prod.
@@ -68,6 +69,13 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY_TEST: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TEST }}
         run: npm run syndicate:pval-sleeper:refresh:test
 
+      - name: TWO·DEEP PVAL hole-fill (test)
+        continue-on-error: true
+        env:
+          SUPABASE_URL_TEST: ${{ secrets.SUPABASE_URL_TEST }}
+          SUPABASE_SERVICE_ROLE_KEY_TEST: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TEST }}
+        run: npm run syndicate:pval-twodeep:apply:test
+
       - name: NFL trench follow-up nudge (does not fail this sync)
         continue-on-error: true
         env:
@@ -117,6 +125,13 @@ jobs:
           SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
           SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
         run: npm run syndicate:pval-sleeper:refresh:production
+
+      - name: TWO·DEEP PVAL hole-fill (production)
+        continue-on-error: true
+        env:
+          SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
+          SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
+        run: npm run syndicate:pval-twodeep:apply:production
 
       - name: Record Edge Monitor heartbeat (ok)
         if: success()

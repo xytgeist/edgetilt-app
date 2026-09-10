@@ -1121,6 +1121,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-10:** **TWO·DEEP PVAL hole-fill (Windows).** Hunter Ansley said we may scrape `thetwodeep.com`. Polite sequential NFL team pages (4s, 20h cache). Fills OL years_exp seats + empty TE/WR starter depth only. After Sleeper on Tuesday GHA. **`1.4.159`.**
+
 - **2026-09-10:** **Arb locks do not repeat (Windows).** Syndicate Middle & arb and Signal Arb Watch skip an already-posted event + market lock. If nothing unused remains, skip the drop. Redeploy **`lounge-odds-poll`**. **`1.4.158`.**
 
 - **2026-09-10:** **Dropped “not Friday house card” from primetime / Wed TNF copy (Windows).** Redeploy **`lounge-odds-poll`**. **`1.4.157`.**

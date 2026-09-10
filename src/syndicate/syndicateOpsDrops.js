@@ -51,8 +51,8 @@ export const OPS_DROPS = [
     label: 'Primetime',
     sports: [OPS_SPORT_NFL],
     destKind: 'primetime',
-    hint: 'TNF / SNF / MNF spotlight (auto-picks the next eligible primetime game).',
-    info: 'One-game TNF / SNF / MNF spotlight. Auto-picks the next eligible primetime matchup. Public tease plus fan-only 4-desk card and VIP chat on the usual defaults.',
+    hint: 'TNF / SNF / MNF 4-desk spotlight on public Lounge + VIP chat. Short lean on X.',
+    info: 'One-game TNF / SNF / MNF spotlight. Auto-picks the next eligible primetime matchup. Public Lounge gets the full 4-desk card (same copy as VIP chat). No fan-only Lounge post. X gets the short lean. Wednesday TNF VIP is a separate early room drop.',
   },
   {
     id: 'wong',

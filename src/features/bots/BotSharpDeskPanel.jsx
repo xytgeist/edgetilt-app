@@ -94,7 +94,7 @@ const SEND_TO_BAR_DEFAULT = {
 }
 
 const VIP_ONLY_DROP_KINDS = new Set(['halftime', 'middle', 'ufc'])
-const FAN_ONLY_DROP_KINDS = new Set(['slate', 'primetime'])
+const FAN_ONLY_DROP_KINDS = new Set(['slate'])
 const NO_VIP_DROP_KINDS = new Set(['solo'])
 
 function defaultDestForKind(kind) {
@@ -937,7 +937,9 @@ export function BotSharpDeskPanel({
               <div className="rounded-md border border-zinc-800 bg-zinc-950/80 px-2.5 py-2 space-y-1.5">
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                   <span className="text-zinc-400 font-medium text-[11px]">Send to:</span>
-                  {SEND_TO_KEYS.map(({ key, label }) => (
+                  {SEND_TO_KEYS.filter(
+                    ({ key }) => key !== 'loungeFanOnly' || FAN_ONLY_DROP_KINDS.has(activeDestKind),
+                  ).map(({ key, label }) => (
                     <label key={key} className="inline-flex items-center gap-1.5 text-[11px] text-zinc-200 cursor-pointer">
                       <input
                         type="checkbox"
@@ -951,8 +953,8 @@ export function BotSharpDeskPanel({
                 </div>
                 <p className="text-[10px] text-zinc-500 leading-snug">
                   Applies to Publish for the drop above, including Picks for today. Leave the bar alone for normal defaults
-                  ... public drops include X; VIP-only (halftime, middle, UFC) stay VIP unless you check Public Lounge or X.
-                  Preview ignores destinations.
+                  ... public drops include X; primetime is public Lounge + VIP chat (no fan-only Lounge); VIP-only
+                  (halftime, middle, UFC) stay VIP unless you check Public Lounge or X. Preview ignores destinations.
                 </p>
               </div>
             ) : null}

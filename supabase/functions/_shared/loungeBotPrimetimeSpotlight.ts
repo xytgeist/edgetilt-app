@@ -6,6 +6,7 @@
  * 3. Tank (totals / situational)
  * 4. Chedda (dogs / splits when present)
  * 5. Spotlight lean recommendation (do not label as house hammer).
+ * Public Lounge + VIP chat get the 4-desk card. No fan-only Lounge post. X gets the short lean.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import type { OddsEvent } from './loungeBotOddsCaption.ts'
@@ -383,9 +384,7 @@ export async function findPrimetimeGameCandidate(
 }
 
 /**
- * Public Lounge primetime tease: ONE lean + CTA.
- * Full 4-desk card is the fan-only Lounge post + VIP chat
- * (see publishAndRecordPrimetimeSpotlight).
+ * Short X lean for TNF / SNF / MNF. Lounge public + VIP chat use the 4-desk card.
  */
 export function formatPrimetimeSpotlightCaption(spotlight: PrimetimeSpotlightGame): string {
   const kickoff = formatOddsCommenceTimeShort(spotlight.commenceTime)
@@ -398,17 +397,16 @@ export function formatPrimetimeSpotlightCaption(spotlight: PrimetimeSpotlightGam
     '',
     `🔦 **Lean:** **${spotlight.consensusPick.lineDisplay}**`,
     `*${spotlight.consensusPick.confidenceBadge} · ${spotlight.consensusPick.summaryReason}*`,
-    '',
-    `💬 *Spotlight path (not Friday house card). Full desk notes in Sharpe VIP.*`,
   ].join('\n')
 }
 
+/** Public Lounge + VIP chat card. Same 4-desk writeup. No fan-only Lounge twin. */
 export function formatPrimetimeVipDeepDive(spotlight: PrimetimeSpotlightGame): string {
   const homeShort = shortDisplayName(spotlight.homeTeam)
   const awayShort = shortDisplayName(spotlight.awayTeam)
   const lines = [
-    `🔦 **Sharpe VIP Primetime Spotlight · ${awayShort} @ ${homeShort}**`,
-    `Spotlight lean (not Friday house card): **${spotlight.consensusPick.lineDisplay}**`,
+    `🔦 **${spotlight.primetimeLabel} Spotlight · ${awayShort} @ ${homeShort}**`,
+    `**Lean:** **${spotlight.consensusPick.lineDisplay}**`,
     '',
     `• ${formatColoredPickerName('Scott')}: ${spotlight.personaLeans.Scott.lineDisplay}`,
     `  └ *${spotlight.personaLeans.Scott.bulletRationale}*`,
@@ -425,7 +423,7 @@ export function formatPrimetimeVipDeepDive(spotlight: PrimetimeSpotlightGame): s
     if (spotlight.injuries?.summaryLine) lines.push(`🩹 ${spotlight.injuries.summaryLine}`)
     if (spotlight.splits?.summaryLine) lines.push(`⚡ ${spotlight.splits.summaryLine}`)
   }
-  lines.push('', `*Halftime pivots drop here when there's a real 2H play.*`)
+  lines.push('', `*Halftime pivots drop in Sharpe VIP when there's a real 2H play.*`)
   return lines.join('\n')
 }
 
@@ -444,8 +442,8 @@ export type PrimetimePublishResult = {
 }
 
 /**
- * Publish the Primetime Solo Spotlight: public Lounge tease + fan-only 4-desk card
- * (same dual-post model as slate) + VIP chat, then log the lean to the ledger.
+ * Publish the Primetime Solo Spotlight: public Lounge 4-desk card + VIP chat
+ * (+ short X lean). No fan-only Lounge post. Ledger the lean.
  */
 export async function publishAndRecordPrimetimeSpotlight(
   admin: SupabaseClient,
@@ -457,22 +455,22 @@ export async function publishAndRecordPrimetimeSpotlight(
   const publisher = await resolveSlatePublisher(admin, botUserId)
   const publishAs = publisher.botUserId
   const pills = categoryPills.length ? categoryPills : ['sports']
-  const publicCaption = formatPrimetimeSpotlightCaption(spotlight)
-  const vipCaption = formatPrimetimeVipDeepDive(spotlight)
+  const loungeCaption = formatPrimetimeVipDeepDive(spotlight)
+  const xCaption = formatPrimetimeSpotlightCaption(spotlight)
   const dest = resolvePublishDestinations(destinations, {
     loungePublic: true,
-    loungeFanOnly: publisher.mode === 'syndicate',
+    loungeFanOnly: false,
     vipChat: true,
   })
-  dest.loungeFanOnly = dest.loungeFanOnly && publisher.mode === 'syndicate'
+  dest.loungeFanOnly = false
 
   const fan = await fanOutSyndicatePublish({
     admin,
     botUserId: publishAs,
     dest,
-    publicCaption,
-    fanOnlyCaption: vipCaption,
-    vipCaption,
+    publicCaption: loungeCaption,
+    vipCaption: loungeCaption,
+    xCaption,
     categoryPills: pills,
   })
 

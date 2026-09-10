@@ -47,8 +47,9 @@ export function implicitDestForPollAction(action: string): Omit<PublishDestinati
   switch (String(action || '').trim()) {
     case 'nfl_slate_card':
     case 'cfb_slate_card':
-    case 'nfl_primetime_spotlight':
       return { loungePublic: true, loungeFanOnly: true, vipChat: true }
+    case 'nfl_primetime_spotlight':
+      return { loungePublic: true, loungeFanOnly: false, vipChat: true }
     case 'nfl_wong_teaser':
     case 'weekly_syndicate_recap':
     case 'nfl_anytime_td':
@@ -92,6 +93,7 @@ export type DestPreviewInput = {
   fanOnlyThreadParts?: Array<{ label?: string; body?: string } | string> | null
   vipCaption?: string | null
   vipThreadParts?: Array<{ label?: string; body?: string } | string> | null
+  xCaption?: string | null
 }
 
 function normalizeThreadParts(raw: DestPreviewInput['fanOnlyThreadParts']): DestPreviewPart[] {
@@ -116,12 +118,13 @@ export function buildSyndicateDestPreview(input: DestPreviewInput): SyndicateDes
   const publicCaption = String(input.publicCaption || '').trim()
   const fanOnlyCaption = String(input.fanOnlyCaption || '').trim()
   const vipCaption = String(input.vipCaption || '').trim()
+  const xCaption = String(input.xCaption || '').trim()
   const fanThreads = normalizeThreadParts(input.fanOnlyThreadParts)
   const vipThreads = normalizeThreadParts(input.vipThreadParts)
   const publicOut = publicCaption || vipCaption
   const privateOut = fanOnlyCaption || publicCaption || vipCaption
   const chatOut = vipCaption || publicCaption
-  const xOut = formatSyndicateXText(publicCaption || vipCaption || fanOnlyCaption)
+  const xOut = formatSyndicateXText(xCaption || publicCaption || vipCaption || fanOnlyCaption)
   return {
     public: { caption: publicOut, threadParts: [] },
     private: { caption: privateOut, threadParts: fanThreads },
@@ -147,6 +150,7 @@ export type FanOutInput = {
   publicCaption?: string | null
   fanOnlyCaption?: string | null
   vipCaption?: string | null
+  xCaption?: string | null
   categoryPills?: string[]
   fanOnlyThreadParts?: BotThreadPart[]
   vipThreadParts?: string[]
@@ -164,13 +168,14 @@ export type FanOutResult = {
 }
 
 /**
- * Honor destination flags. X uses public tease when present, else VIP caption (Ops opt-in leak).
+ * Honor destination flags. X uses xCaption when set, else public tease, else VIP (Ops opt-in leak).
  */
 export async function fanOutSyndicatePublish(input: FanOutInput): Promise<FanOutResult> {
   const pills = input.categoryPills?.length ? input.categoryPills : ['sports']
   const publicCaption = String(input.publicCaption || '').trim()
   const fanOnlyCaption = String(input.fanOnlyCaption || '').trim()
   const vipCaption = String(input.vipCaption || '').trim()
+  const xCaption = String(input.xCaption || '').trim()
   const out: FanOutResult = {
     publicPostId: null,
     privatePostId: null,
@@ -235,7 +240,7 @@ export async function fanOutSyndicatePublish(input: FanOutInput): Promise<FanOut
   }
 
   if (input.dest.x) {
-    const caption = publicCaption || vipCaption || fanOnlyCaption
+    const caption = xCaption || publicCaption || vipCaption || fanOnlyCaption
     const x = await publishSyndicateXPost(caption)
     if (x.warning || !x.tweetId) {
       out.xWarning = x.warning || 'X publish failed.'

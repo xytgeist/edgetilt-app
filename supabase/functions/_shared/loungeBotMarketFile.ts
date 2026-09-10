@@ -208,6 +208,83 @@ function extractConsensusQuote(
   }
 }
 
+export type PregameSpreadQuote = {
+  homePoint: number
+  homePrice: number
+  awayPrice: number
+  source: string
+}
+
+export type PregameTotalQuote = {
+  total: number
+  overPrice: number
+  underPrice: number
+  source: string
+}
+
+/**
+ * Desk cards use the market-file pregame number. After lock / kickoff that is the
+ * frozen close, never a live in-play DraftKings blowout.
+ */
+export function resolvePregameSpreadFromFile(
+  file: MarketFileRow | null | undefined,
+  commenceIso: string,
+  nowMs = Date.now(),
+): PregameSpreadQuote | null {
+  if (!file) return null
+  const kickMs = Date.parse(commenceIso)
+  const useClose =
+    file.close_locked === true
+    || (Number.isFinite(kickMs) && nowMs >= kickMs - MARKET_FILE_CLOSE_LOCK_BEFORE_MS)
+  // After lock / kickoff never fall back to current … that field can be a live in-play blowout.
+  const home = useClose ? file.close_spread_home : (file.current_spread_home ?? file.close_spread_home)
+  if (home == null || !Number.isFinite(home)) return null
+  const homePrice = useClose
+    ? (file.close_spread_home_price ?? -110)
+    : (file.current_spread_home_price ?? file.close_spread_home_price ?? -110)
+  const awayPrice = useClose
+    ? (file.close_spread_away_price ?? -110)
+    : (file.current_spread_away_price ?? file.close_spread_away_price ?? -110)
+  const source = useClose
+    ? (file.close_spread_source || 'close')
+    : (file.current_spread_source || file.close_spread_source || 'current')
+  return {
+    homePoint: home,
+    homePrice: Number.isFinite(homePrice) ? homePrice : -110,
+    awayPrice: Number.isFinite(awayPrice) ? awayPrice : -110,
+    source,
+  }
+}
+
+export function resolvePregameTotalFromFile(
+  file: MarketFileRow | null | undefined,
+  commenceIso: string,
+  nowMs = Date.now(),
+): PregameTotalQuote | null {
+  if (!file) return null
+  const kickMs = Date.parse(commenceIso)
+  const useClose =
+    file.close_locked === true
+    || (Number.isFinite(kickMs) && nowMs >= kickMs - MARKET_FILE_CLOSE_LOCK_BEFORE_MS)
+  const total = useClose ? file.close_total : (file.current_total ?? file.close_total)
+  if (total == null || !Number.isFinite(total)) return null
+  const overPrice = useClose
+    ? (file.close_over_price ?? -110)
+    : (file.current_over_price ?? file.close_over_price ?? -110)
+  const underPrice = useClose
+    ? (file.close_under_price ?? -110)
+    : (file.current_under_price ?? file.close_under_price ?? -110)
+  const source = useClose
+    ? (file.close_total_source || 'close')
+    : (file.current_total_source || file.close_total_source || 'current')
+  return {
+    total,
+    overPrice: Number.isFinite(overPrice) ? overPrice : -110,
+    underPrice: Number.isFinite(underPrice) ? underPrice : -110,
+    source,
+  }
+}
+
 /** Prefer pinnacle/circa/lowvig; else multi-book consensus median. */
 export function extractMarketFileQuote(event: OddsEvent): MarketFileQuote | null {
   const home = String(event.home_team || '').trim()

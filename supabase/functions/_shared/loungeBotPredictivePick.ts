@@ -50,7 +50,13 @@ import {
   type CfbMatchupProjection,
   type CfbTeamPowerRating,
 } from './loungeBotCfbPowerRatings.ts'
-import { loadMarketFilesByEventIds } from './loungeBotMarketFile.ts'
+import {
+  extractMarketFileQuote,
+  loadMarketFilesByEventIds,
+  resolvePregameSpreadFromFile,
+  resolvePregameTotalFromFile,
+  type MarketFileRow,
+} from './loungeBotMarketFile.ts'
 import {
   espnFallbackCoversMarket,
   fetchEspnCompletedScoreboard,
@@ -1017,16 +1023,21 @@ export async function loadTankTotalsContextForSlate(
   weatherByEventId: Map<string, GameWeatherSummary>
   openTotalByEventId: Map<string, number | null>
   restTravelByEventId: Map<string, RestTravelMatchup>
+  marketFilesByEventId: Map<string, MarketFileRow>
 }> {
   const weatherByEventId = new Map<string, GameWeatherSummary>()
   const openTotalByEventId = new Map<string, number | null>()
   const restTravelByEventId = new Map<string, RestTravelMatchup>()
+  const marketFilesByEventId = new Map<string, MarketFileRow>()
   const ids = events.map((e) => String(e.id || '').trim()).filter(Boolean)
-  if (!ids.length) return { weatherByEventId, openTotalByEventId, restTravelByEventId }
+  if (!ids.length) {
+    return { weatherByEventId, openTotalByEventId, restTravelByEventId, marketFilesByEventId }
+  }
 
   try {
     const files = await loadMarketFilesByEventIds(admin, ids)
     for (const [eid, row] of files) {
+      marketFilesByEventId.set(eid, row)
       openTotalByEventId.set(eid, row.open_total)
     }
   } catch (e) {
@@ -1056,7 +1067,7 @@ export async function loadTankTotalsContextForSlate(
     console.error('Tank rest/travel load failed:', e)
   }
 
-  return { weatherByEventId, openTotalByEventId, restTravelByEventId }
+  return { weatherByEventId, openTotalByEventId, restTravelByEventId, marketFilesByEventId }
 }
 
 /**
@@ -1105,6 +1116,8 @@ export function buildNflAtsSlateCard(
     weatherByEventId?: Map<string, GameWeatherSummary>
     /** Opening total from lounge_market_files for Tank rising/falling total gate. */
     openTotalByEventId?: Map<string, number | null>
+    /** Full market-file rows so desk cards pin to locked close, not live first-book. */
+    marketFilesByEventId?: Map<string, MarketFileRow>
     /** Rest / travel / short week / B2B for Tank spots. */
     restTravelByEventId?: Map<string, RestTravelMatchup>
   } = {},
@@ -1127,38 +1140,61 @@ export function buildNflAtsSlateCard(
   const weatherByEvent = opts.weatherByEventId || new Map<string, GameWeatherSummary>()
   const openTotalByEvent = opts.openTotalByEventId || new Map<string, number | null>()
   const restTravelByEvent = opts.restTravelByEventId || new Map<string, RestTravelMatchup>()
+  const marketFilesByEvent = opts.marketFilesByEventId || new Map<string, MarketFileRow>()
 
   for (const ev of events) {
     const homeTeam = ev.home_team
     const awayTeam = ev.away_team
     if (!homeTeam || !awayTeam) continue
 
-    // Find consensus or primary book spread market
-    let bestSpreadMarket: { key: string; outcomes: Array<{ name: string; price: number; point?: number }> } | null = null
+    const eventKey = String(ev.id || '').trim()
+    const marketFile = marketFilesByEvent.get(eventKey) || null
+    const kickMs = Date.parse(ev.commence_time)
+    const alreadyKicked = Number.isFinite(kickMs) && Date.now() >= kickMs
+
+    let homePoint: number | null = null
+    let awayPoint: number | null = null
+    let homePrice = -110
+    let awayPrice = -110
     let bookTitle = 'Consensus'
 
-    for (const b of ev.bookmakers || []) {
-      const sm = b.markets.find((m) => m.key === 'spreads' && m.outcomes?.length === 2)
-      if (sm) {
-        bestSpreadMarket = sm
-        bookTitle = b.title || b.key
-        break
+    const fileSpread = resolvePregameSpreadFromFile(marketFile, ev.commence_time)
+    if (fileSpread) {
+      homePoint = fileSpread.homePoint
+      awayPoint = -fileSpread.homePoint
+      homePrice = fileSpread.homePrice
+      awayPrice = fileSpread.awayPrice
+      bookTitle = fileSpread.source
+    } else if (!alreadyKicked) {
+      const sharpQuote = extractMarketFileQuote(ev)
+      if (sharpQuote?.spreadHome != null && Number.isFinite(sharpQuote.spreadHome)) {
+        homePoint = sharpQuote.spreadHome
+        awayPoint = -sharpQuote.spreadHome
+        homePrice = sharpQuote.spreadHomePrice ?? -110
+        awayPrice = sharpQuote.spreadAwayPrice ?? -110
+        bookTitle = sharpQuote.spreadSource || 'Consensus'
+      } else {
+        for (const b of ev.bookmakers || []) {
+          const sm = b.markets.find((m) => m.key === 'spreads' && m.outcomes?.length === 2)
+          if (!sm) continue
+          const homeOutcome = sm.outcomes.find((o) => isTeamMatch(o.name, homeTeam))
+          const awayOutcome = sm.outcomes.find((o) => isTeamMatch(o.name, awayTeam))
+          if (!homeOutcome || !awayOutcome || homeOutcome.point == null || awayOutcome.point == null) {
+            continue
+          }
+          homePoint = homeOutcome.point
+          awayPoint = awayOutcome.point
+          homePrice = homeOutcome.price
+          awayPrice = awayOutcome.price
+          bookTitle = b.title || b.key
+          break
+        }
       }
     }
 
-    if (!bestSpreadMarket) continue
-
-    const homeOutcome = bestSpreadMarket.outcomes.find((o) => isTeamMatch(o.name, homeTeam))
-    const awayOutcome = bestSpreadMarket.outcomes.find((o) => isTeamMatch(o.name, awayTeam))
-
-    if (!homeOutcome || !awayOutcome || homeOutcome.point == null || awayOutcome.point == null) {
+    if (homePoint == null || awayPoint == null || !Number.isFinite(homePoint) || !Number.isFinite(awayPoint)) {
       continue
     }
-
-    const homePoint = homeOutcome.point
-    const awayPoint = awayOutcome.point
-    const homePrice = homeOutcome.price
-    const awayPrice = awayOutcome.price
 
     // Convert into OddsPick structures for ledger
     const homePickObj: OddsPick = {
@@ -1354,7 +1390,16 @@ export function buildNflAtsSlateCard(
     const roccoCountsForHouse = roccoSide !== 'pass' && roccoHasStrengthReason
 
     // 4. Tank — totals desk (model edge + wind / open-total / CFB non-conf modifiers)
-    const marketTotalQuote = extractEventMarketTotal(ev)
+    const fileTotal = resolvePregameTotalFromFile(marketFile, ev.commence_time)
+    const liveTotalQuote = alreadyKicked ? null : extractEventMarketTotal(ev)
+    const marketTotalQuote: MarketTotalQuote | null = fileTotal
+      ? {
+          total: fileTotal.total,
+          overPrice: fileTotal.overPrice,
+          underPrice: fileTotal.underPrice,
+          bookTitle: fileTotal.source,
+        }
+      : liveTotalQuote
     const modelTotal = isCfb
       ? (cfbMatchup?.modelTotal ?? null)
       : estimateNflModelTotal(homeTeam, awayTeam, teamMetrics)
@@ -1369,7 +1414,6 @@ export function buildNflAtsSlateCard(
       isCfb: !!isCfb,
     })
     void tankRestWeight // rest/travel now votes on Tank spots, not totals
-    const eventKey = String(ev.id || '').trim()
     const pastedBoard = pastedSplitsAll.get(eventKey)
       || (pastedSplit ? [pastedSplit] : [])
     const tankAts = resolveTankSituationalAts({

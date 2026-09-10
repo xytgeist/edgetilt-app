@@ -253,6 +253,7 @@ export async function runPicksForToday(
     pastedSplitsAllByEventId: pastedSplitsBoard.allByEventId,
     weatherByEventId: tankCtx.weatherByEventId,
     openTotalByEventId: tankCtx.openTotalByEventId,
+    marketFilesByEventId: tankCtx.marketFilesByEventId,
     restTravelByEventId: tankCtx.restTravelByEventId,
   })
 

@@ -1119,7 +1119,9 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- **2026-09-09:** **Pats/Hawks Week 1 call published (Windows).** Game was already live so today-picks dropped it. `picks_for_today` now keeps the PT-day board after kickoff. **`1.4.137`.** Poll redeployed test + prod from `b7a74375`. Published `@sharpesyndicate` public + fan-only: 2-0 **Seahawks +7.5** (Scott + Chedda). Tank PASS totals. No X.
+- **2026-09-09:** **Desk cards pin to locked close, not live first-book (Windows).** `buildNflAtsSlateCard` used the first Odds API book. After kickoff that was live DK **Seahawks +7.5**, so Chedda treated the defending champs as a dog. Real file: open SEA **-3.5**, locked close **-3** / total **44.5**. Slate now uses `lounge_market_files` close (never live current after lock). **`1.4.138`.** Redeploy **`lounge-odds-poll`** test + prod. Rewrite the Week 1 Lounge captions + ledger if they still say +7.5.
+
+- **2026-09-09:** **Pats/Hawks Week 1 call published (Windows).** Game was already live so today-picks dropped it. `picks_for_today` now keeps the PT-day board after kickoff. **`1.4.137`.** Poll redeployed test + prod from `b7a74375`. Published `@sharpesyndicate` public + fan-only: 2-0 **Seahawks +7.5** (Scott + Chedda). **VOID that number** … it was a live in-play DK line, not the pregame close (SEA -3). See 1.4.138.
 
 - **2026-09-09:** **Tank O/U stays on the slate (Windows).** Totals section always prints. Uncut lists every game incl. PASS. Public tease is fires or `No O/U lean this slate`. Spot lines also hang his Over/Under when he has one. **`1.4.136`.** **`lounge-odds-poll` redeployed test + prod** (`kcosfvmreeiosdjdzycb` + `jtjgtucumuoswnbauxry`) 2026-09-09 from `6df960a3`.
 

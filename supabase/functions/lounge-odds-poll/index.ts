@@ -378,11 +378,12 @@ Deno.serve(async (req) => {
       const { loadPastedBettingSplitsBoardForSlate } = await import('../_shared/loungeBotBettingSplits.ts')
       const pastedSplitsBoard = await loadPastedBettingSplitsBoardForSlate(admin, sportKey, eventsWithTotals)
 
-      const { weatherByEventId, openTotalByEventId, restTravelByEventId } = await loadTankTotalsContextForSlate(
-        admin,
-        sportKey,
-        eventsWithTotals,
-      )
+      const { weatherByEventId, openTotalByEventId, restTravelByEventId, marketFilesByEventId } =
+        await loadTankTotalsContextForSlate(
+          admin,
+          sportKey,
+          eventsWithTotals,
+        )
 
       const card = buildNflAtsSlateCard(eventsWithTotals, {
         cardTitle: body?.cardTitle,
@@ -395,6 +396,7 @@ Deno.serve(async (req) => {
         pastedSplitsAllByEventId: pastedSplitsBoard.allByEventId,
         weatherByEventId,
         openTotalByEventId,
+        marketFilesByEventId,
         restTravelByEventId,
       })
 

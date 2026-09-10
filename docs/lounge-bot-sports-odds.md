@@ -861,7 +861,7 @@ npm run syndicate:sync-cfb-power:production   # Ryan explicit only
 
 **Cron:** [`.github/workflows/syndicate-football-metrics-sync.yml`](../.github/workflows/syndicate-football-metrics-sync.yml) … Tuesdays **14:00 UTC** syncs **test + production** (NFL EPA + CFB power + UFC metrics + **Sleeper PVAL refresh**). Manual dispatch can set `sync_production=false` to skip prod. Edge Monitor heartbeat **`syndicate_football_metrics_sync_production`** (migration **`20260903210000`**).
 
-**Model:** [`loungeBotTeamMetrics.ts`](../supabase/functions/_shared/loungeBotTeamMetrics.ts) `calculateTrenchEpaMatchup` uses nflverse EPA plus ESPN PBWR/PRWR/RBWR/RSWR. Scott’s NFL model spread is `-(epaSpread + trenchSpread)`. Redeploy **`lounge-odds-poll`** after that change.
+**Model:** [`loungeBotTeamMetrics.ts`](../supabase/functions/_shared/loungeBotTeamMetrics.ts) `calculateTrenchEpaMatchup` uses nflverse EPA plus ESPN PBWR/PRWR/RBWR/RSWR. Trench scaler z-scores the four team rates **inside the loaded vintage** (never 2026 raw minus 2025 raw), keeps the same home-minus-away cross-matchup, blends 55% pass / 45% run, then maps blended z to points (`TRENCH_Z_TO_POINTS = 0.56`, calibrated so the 2025 Week 18 ≥0.8 hit rate matches the old ÷12 / ÷25 board). House gate stays **0.8 points**, not a z cutoff. Recalibrate that constant after 3-4 weeks of a 2026 board. Scott’s NFL model spread is `-(epaSpread + trenchSpread)`. Redeploy **`lounge-odds-poll`** after that change.
 
 ---
 

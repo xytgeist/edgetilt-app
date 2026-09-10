@@ -1,10 +1,11 @@
 /**
  * NFL Team EPA registry and matchup calculator.
  *
- * Provides Off / Def EPA per play (+ success rate in DB) for Scott & Rocco.
- * Pass/run block & rush win rates (PBWR/PRWR/RBWR/RSWR) are PFF-class charting …
- * columns may exist in DB for future paid ingest, but matchup math ignores them
- * until a real charting feed is wired (see scripts/sync-nfl-team-metrics.mjs).
+ * Off / Def EPA per play (+ success rate) come from nflverse (Tuesday sync).
+ * Trench rates (PBWR / PRWR / RBWR / RSWR) are ESPN Analytics, one vintage
+ * at a time. Matchup math z-scores those four rates inside the loaded board,
+ * then keeps the same home-minus-away cross-matchup. Do not mix 2025 raw %
+ * with a 2026 board. Pressure columns are unused leftovers.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { shortDisplayName } from './loungeBotOddsCaption.ts'
@@ -39,9 +40,90 @@ export type TrenchEpaMatchupSummary = {
   awayPassTrenchDelta: number // away PBWR - home PRWR
   netTrenchSpreadImpactHome: number // in points
   trenchAdvantageSide: 'home' | 'away' | null
-  isTrenchMismatch: boolean // >= 0.8 pts trench edge
+  isTrenchMismatch: boolean // >= TRENCH_MISMATCH_PTS on the point scale
   isEpaMismatch: boolean    // >= 2.0 pts EPA edge
   summaryLine: string
+}
+
+/** House / Rocco gate. Stays on the point scale, not a z cutoff. */
+export const TRENCH_MISMATCH_PTS = 0.8
+export const TRENCH_PASS_Z_WEIGHT = 0.55
+export const TRENCH_RUN_Z_WEIGHT = 0.45
+/**
+ * Blended trench-z to spread points. Calibrated on ESPN 2025 Week 18 so
+ * median |pts| and the >=0.8 hit rate match the old raw /12 / /25 board.
+ * Recalibrate after 3-4 weeks of a 2026 vintage.
+ */
+export const TRENCH_Z_TO_POINTS = 0.56
+const TRENCH_ZSCORE_MIN_N = 16
+const TRENCH_STDEV_FLOOR = 1e-6
+
+export type WinRateMoment = { mean: number; stdev: number }
+
+export type TrenchLeagueMoments = {
+  pbwr: WinRateMoment
+  prwr: WinRateMoment
+  rbwr: WinRateMoment
+  rswr: WinRateMoment
+}
+
+export function sampleMoment(values: number[]): WinRateMoment | null {
+  const xs = values.filter((v) => Number.isFinite(v))
+  if (xs.length < TRENCH_ZSCORE_MIN_N) return null
+  const mean = xs.reduce((sum, v) => sum + v, 0) / xs.length
+  const variance = xs.reduce((sum, v) => sum + (v - mean) ** 2, 0) / (xs.length - 1)
+  const stdev = Math.sqrt(variance)
+  if (!(stdev > TRENCH_STDEV_FLOOR)) return null
+  return { mean, stdev }
+}
+
+export function zScore(value: number, moment: WinRateMoment): number {
+  return (value - moment.mean) / moment.stdev
+}
+
+export function computeTrenchLeagueMoments(
+  teams: Iterable<NflTeamMetrics>,
+): TrenchLeagueMoments | null {
+  const list = Array.from(teams)
+  const pbwr = sampleMoment(list.map((t) => t.pass_block_win_rate))
+  const prwr = sampleMoment(list.map((t) => t.pass_rush_win_rate))
+  const rbwr = sampleMoment(list.map((t) => t.run_block_win_rate))
+  const rswr = sampleMoment(list.map((t) => t.run_stop_win_rate))
+  if (!pbwr || !prwr || !rbwr || !rswr) return null
+  return { pbwr, prwr, rbwr, rswr }
+}
+
+function vintageTeamsForTrench(teamMap?: Map<string, NflTeamMetrics>): NflTeamMetrics[] {
+  if (teamMap && teamMap.size >= TRENCH_ZSCORE_MIN_N) return Array.from(teamMap.values())
+  return NFL_BASELINE_TEAM_METRICS
+}
+
+/** Raw % fallback if the vintage board is too thin or zero-variance. */
+function rawNetTrenchSpreadImpactHome(home: NflTeamMetrics, away: NflTeamMetrics): number {
+  const homePassTrenchDelta = home.pass_block_win_rate - away.pass_rush_win_rate
+  const awayPassTrenchDelta = away.pass_block_win_rate - home.pass_rush_win_rate
+  const homeRunTrenchDelta = home.run_block_win_rate - away.run_stop_win_rate
+  const awayRunTrenchDelta = away.run_block_win_rate - home.run_stop_win_rate
+  const passTrenchPoints = (homePassTrenchDelta - awayPassTrenchDelta) / 12.0
+  const runTrenchPoints = (homeRunTrenchDelta - awayRunTrenchDelta) / 25.0
+  return Math.round((passTrenchPoints + runTrenchPoints) * 10) / 10
+}
+
+export function computeNetTrenchSpreadImpactHome(
+  home: NflTeamMetrics,
+  away: NflTeamMetrics,
+  moments: TrenchLeagueMoments | null,
+): number {
+  if (!moments) return rawNetTrenchSpreadImpactHome(home, away)
+
+  const homePassZ = zScore(home.pass_block_win_rate, moments.pbwr) - zScore(away.pass_rush_win_rate, moments.prwr)
+  const awayPassZ = zScore(away.pass_block_win_rate, moments.pbwr) - zScore(home.pass_rush_win_rate, moments.prwr)
+  const homeRunZ = zScore(home.run_block_win_rate, moments.rbwr) - zScore(away.run_stop_win_rate, moments.rswr)
+  const awayRunZ = zScore(away.run_block_win_rate, moments.rbwr) - zScore(home.run_stop_win_rate, moments.rswr)
+  const passZ = homePassZ - awayPassZ
+  const runZ = homeRunZ - awayRunZ
+  const blendedZ = TRENCH_PASS_Z_WEIGHT * passZ + TRENCH_RUN_Z_WEIGHT * runZ
+  return Math.round(blendedZ * TRENCH_Z_TO_POINTS * 10) / 10
 }
 
 /**
@@ -179,20 +261,17 @@ export function calculateTrenchEpaMatchup(
   // Net EPA spread impact: 1 net EPA unit per play ~ 22.0 spread points across ~65 plays
   const epaSpreadImpactHome = Math.round(netEpaDeltaHome * 22.0 * 10) / 10
 
-  // 2. Trench matchup (ESPN PBWR/PRWR/RBWR/RSWR)
+  // 2. Trench matchup: z-score this vintage, then OL vs opp rush both ways
   const homePassTrenchDelta = home.pass_block_win_rate - away.pass_rush_win_rate
   const awayPassTrenchDelta = away.pass_block_win_rate - home.pass_rush_win_rate
-  const homeRunTrenchDelta = home.run_block_win_rate - away.run_stop_win_rate
-  const awayRunTrenchDelta = away.run_block_win_rate - home.run_stop_win_rate
-  const passTrenchPoints = (homePassTrenchDelta - awayPassTrenchDelta) / 12.0
-  const runTrenchPoints = (homeRunTrenchDelta - awayRunTrenchDelta) / 25.0
-  const netTrenchSpreadImpactHome = Math.round((passTrenchPoints + runTrenchPoints) * 10) / 10
+  const moments = computeTrenchLeagueMoments(vintageTeamsForTrench(teamMap))
+  const netTrenchSpreadImpactHome = computeNetTrenchSpreadImpactHome(home, away, moments)
 
   let trenchAdvantageSide: 'home' | 'away' | null = null
-  if (netTrenchSpreadImpactHome >= 0.8) trenchAdvantageSide = 'home'
-  else if (netTrenchSpreadImpactHome <= -0.8) trenchAdvantageSide = 'away'
+  if (netTrenchSpreadImpactHome >= TRENCH_MISMATCH_PTS) trenchAdvantageSide = 'home'
+  else if (netTrenchSpreadImpactHome <= -TRENCH_MISMATCH_PTS) trenchAdvantageSide = 'away'
 
-  const isTrenchMismatch = Math.abs(netTrenchSpreadImpactHome) >= 0.8
+  const isTrenchMismatch = Math.abs(netTrenchSpreadImpactHome) >= TRENCH_MISMATCH_PTS
   const isEpaMismatch = Math.abs(epaSpreadImpactHome) >= 2.0
 
   let summaryLine = ''

@@ -1120,6 +1120,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-10:** **Trench z-score scaler (Windows).** Same PBWR/PRWR + RBWR/RSWR cross-matchup, but each rate is z-scored against the loaded 32-team vintage before the net. 55/45 pass/run blend. Points map `0.56` keeps the ≥0.8 house gate on the old 2025 hit rate. Do not mix vintages. Scheme / LT rewrite still later. Redeploy **`lounge-odds-poll`**. **`1.4.147`.**
+
 - **2026-09-10:** **Trench back on (Windows).** ESPN 2025 Week 18 board written to **prod** `nfl_team_metrics`. Scott NFL model = EPA + trench. Rocco house-votes a ≥0.8 pt mismatch. Redeploy **`lounge-odds-poll`** test+prod. **`1.4.146`.**
 
 - **2026-09-10:** **ESPN trench screenshot ingest (Windows).** Ops NFL Trenches tab: Ctrl+V ESPN team table → `syndicate-trench-vision` → review → apply four win-rate columns. Skips custom overrides. Model trench still 0. **`1.4.145`.**

@@ -1121,6 +1121,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-10:** **Prod poll has the z-score scaler (Windows).** Redeployed **`lounge-odds-poll`** on **`jtjgtucumuoswnbauxry`**. Live Scott/Rocco trench is vintage z-score + 55/45 + 0.56, house 0.8. Follow-up cron still test-only.
+
 - **2026-09-10:** **Trench follow-up scheduler (Windows).** Spec in `data/syndicate/trench-followup.json`. Test pg_cron **`syndicate_trench_followup_nudge`** (`20260910160000`, test /theo only) nags Tuesdays after **2026-09-29**. GHA `syndicate-trench-followup.yml` for `main`. Do not apply that SQL on prod. **`1.4.148`.**
 
 - **2026-09-10:** **Trench z-score scaler (Windows).** Same PBWR/PRWR + RBWR/RSWR cross-matchup, but each rate is z-scored against the loaded 32-team vintage before the net. 55/45 pass/run blend. Points map `0.56` keeps the ≥0.8 house gate on the old 2025 hit rate. Do not mix vintages. Scheme / LT rewrite still later. Redeploy **`lounge-odds-poll`**. **`1.4.147`.**

@@ -734,6 +734,7 @@ Deno.serve(async (req) => {
     if (action === 'nfl_live_middle_arb') {
       const {
         findLiveMiddleArbCandidates,
+        pickNextMiddleArbOpportunity,
         publishMiddleArbToVip,
       } = await import('../_shared/loungeBotMiddleArb.ts')
 
@@ -742,18 +743,20 @@ Deno.serve(async (req) => {
         : ['americanfootball_nfl', 'americanfootball_nfl_preseason', 'americanfootball_ncaaf', 'basketball_nba', 'baseball_mlb']
 
       const opportunities = await findLiveMiddleArbCandidates(admin, sportKeys)
+      const topOpp = pickNextMiddleArbOpportunity(opportunities)
 
-      if (!opportunities.length) {
+      if (!topOpp) {
         return adminOpsJson(200, {
           ok: false,
           action: 'nfl_live_middle_arb',
-          message: 'No qualifying Live Middle or Arbitrage opportunities currently active across pending syndicate cards or books.',
+          message: 'No unused Live Middle or Arbitrage lock to post. Already-posted arb locks are skipped.',
           sportKeys,
+          totalOpportunities: opportunities.length,
         })
       }
 
       if (dryRun) {
-        const previewCaption = String(opportunities[0]?.vipCaption || '').trim()
+        const previewCaption = String(topOpp.vipCaption || '').trim()
         return adminOpsJson(200, {
           ok: true,
           dryRun: true,
@@ -767,8 +770,6 @@ Deno.serve(async (req) => {
         })
       }
 
-      // Publish top opportunity to Scott's VIP subscriber channel
-      const topOpp = opportunities[0]
       const result = await publishMiddleArbToVip(admin, bot.user_id, topOpp, destinations)
 
       return adminOpsJson(200, {

@@ -1121,6 +1121,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-10:** **Arb locks do not repeat (Windows).** Syndicate Middle & arb and Signal Arb Watch skip an already-posted event + market lock. If nothing unused remains, skip the drop. Redeploy **`lounge-odds-poll`**. **`1.4.158`.**
+
 - **2026-09-10:** **Dropped “not Friday house card” from primetime / Wed TNF copy (Windows).** Redeploy **`lounge-odds-poll`**. **`1.4.157`.**
 
 - **2026-09-10:** **Primetime inactives lock drop (Windows).** `nfl_primetime_lock` ~90 min pre-kick. Confirm the lean or kill (pass / cancel ledger) if a listed starter is out or the number walked 1.5+. No new pick. Ops **Primetime lock**. Cron every 10 min Thu/Sun/Mon afternoon-evening (`20260910220000`). Redeploy **`lounge-odds-poll`**. **`1.4.156`.**

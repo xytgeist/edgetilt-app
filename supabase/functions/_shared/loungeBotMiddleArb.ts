@@ -14,6 +14,9 @@
  * - Multi-Book Totals & Spread Scanning: Evaluates cross-book total and spread corridors across all sportsbooks.
  *
  * Drops institutional execution blueprints directly into Scott's Sharpe VIP Syndicate channel.
+ *
+ * Arb locks are one-shot per event + market. Already-posted arbs stay out of the queue;
+ * if nothing unused remains, the drop skips instead of repeating the same lock.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import {
@@ -31,6 +34,13 @@ import {
 } from './loungeBotKeyNumbers.ts'
 
 export type MiddleArbType = 'SYNDICATE_POSITION_MIDDLE' | 'CROSS_BOOK_MIDDLE' | 'CROSS_BOOK_ARBITRAGE'
+
+export const MIDDLE_ARB_POST_KIND = 'nfl_live_middle_arb'
+
+/** Same event + market arb lock stays suppressed for the life of the board. */
+export const MIDDLE_ARB_DEDUPE_LOOKBACK_MS = 7 * 24 * 3600_000
+
+const MIDDLE_CAPTION_DEDUPE_MS = 6 * 3600_000
 
 export type MiddleArbLeg = {
   label: string
@@ -76,6 +86,25 @@ export type MiddleArbOpportunity = {
     kellyOptimalStaking?: string
   }
   vipCaption: string
+}
+
+export function middleArbDedupeKey(opp: MiddleArbOpportunity): string {
+  if (opp.type === 'CROSS_BOOK_ARBITRAGE') {
+    return `${MIDDLE_ARB_POST_KIND}:arb:${opp.eventId}:${opp.marketKey}`
+  }
+  return `${MIDDLE_ARB_POST_KIND}:${opp.id}`
+}
+
+/** Prefer an unused arb lock. Middles still publish when no unused arb remains. */
+export function pickNextMiddleArbOpportunity(
+  opps: MiddleArbOpportunity[],
+): MiddleArbOpportunity | null {
+  const arbs = opps.filter((opp) => opp.type === 'CROSS_BOOK_ARBITRAGE')
+  if (arbs.length) {
+    arbs.sort((a, b) => (Number(b.arbProfitPct) || 0) - (Number(a.arbProfitPct) || 0))
+    return arbs[0] ?? null
+  }
+  return opps[0] ?? null
 }
 
 const SUPPORTED_SPORTS = [
@@ -969,8 +998,43 @@ export function formatMiddleArbVipCaption(opp: MiddleArbOpportunity): string {
   return lines.join('\n')
 }
 
+type MiddleArbPublishLogRow = {
+  caption?: string | null
+  created_at?: string | null
+  dedupe_key?: string | null
+  post_kind?: string | null
+  status?: string | null
+}
+
+function isAlreadyPublishedMiddleArb(
+  opp: MiddleArbOpportunity,
+  logs: MiddleArbPublishLogRow[],
+): boolean {
+  const key = middleArbDedupeKey(opp)
+  if (logs.some((row) => row.dedupe_key === key || row.dedupe_key === opp.id)) {
+    return true
+  }
+
+  const home = shortDisplayName(opp.homeTeam)
+  if (opp.type === 'CROSS_BOOK_ARBITRAGE') {
+    return logs.some((row) => {
+      const caption = String(row.caption || '')
+      return caption.includes('ARBITRAGE LOCK') && caption.includes(home)
+    })
+  }
+
+  const cutoff = Date.now() - MIDDLE_CAPTION_DEDUPE_MS
+  return logs.some((row) => {
+    const created = Date.parse(String(row.created_at || ''))
+    if (created && created < cutoff) return false
+    const caption = String(row.caption || '')
+    return caption.includes('MIDDLE') && caption.includes(home)
+  })
+}
+
 /**
- * Filter out recently published middle/arb alerts within the last 6 hours to prevent alert spam.
+ * Drop already-posted arb locks (event + market, board lifetime) and recent middles.
+ * Empty result means skip the drop ... do not republish the same arb.
  */
 async function filterAndDedupeOpportunities(
   admin: SupabaseClient,
@@ -978,19 +1042,16 @@ async function filterAndDedupeOpportunities(
 ): Promise<MiddleArbOpportunity[]> {
   if (!opps.length) return []
 
-  const sixHoursAgo = new Date(Date.now() - 6 * 3600_000).toISOString()
+  const since = new Date(Date.now() - MIDDLE_ARB_DEDUPE_LOOKBACK_MS).toISOString()
   const { data: recentLogs } = await admin
     .from('lounge_bot_publish_log')
-    .select('caption, created_at')
-    .gte('created_at', sixHoursAgo)
+    .select('caption, created_at, dedupe_key, post_kind, status')
+    .eq('status', 'published')
+    .gte('created_at', since)
+    .limit(1000)
 
-  const recentCaptions = (recentLogs || []).map((l) => l.caption || '')
-
-  return opps.filter((opp) => {
-    const eventSnippet = `${shortDisplayName(opp.homeTeam)}`
-    const isDupe = recentCaptions.some((c) => c.includes('MIDDLE') && c.includes(eventSnippet))
-    return !isDupe
-  })
+  const logs = (recentLogs || []) as MiddleArbPublishLogRow[]
+  return opps.filter((opp) => !isAlreadyPublishedMiddleArb(opp, logs))
 }
 
 /**
@@ -1015,6 +1076,10 @@ export async function publishMiddleArbToVip(
     caption: opportunity.vipCaption,
     status: landed ? 'published' : 'failed',
     error_message: fan.error || fan.vipChatWarning || fan.xWarning || null,
+    post_kind: MIDDLE_ARB_POST_KIND,
+    dedupe_key: middleArbDedupeKey(opportunity),
+    post_id: fan.publicPostId || fan.privatePostId || null,
+    sub_chat_message_id: fan.vipMessageId || null,
   })
 
   if (fan.dest.loungePublic && fan.error) {

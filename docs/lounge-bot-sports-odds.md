@@ -252,7 +252,11 @@ Dedupe: **one alert per event/market/kind per ~60 min** (`line_evt:{kind}:{event
 2. Arb when sum of implied probs **&lt; 100%** (combined &lt; 1.0)
 3. Require legs from **≥ 2 different books**; reject arbs **&gt; 12%** (stale data filter)
 4. Caption includes both sides, books, guaranteed **%**, and balanced stake split on **$100** total
-5. Dedupe **`arb_watch:{ptDay}:{eventId}:{market}`** per day; cap **`max_arb_alerts_per_day`** (default **6**)
+5. Dedupe **`arb_watch:{eventId}:{market}`** for **7 days**. Same event + market does not re-alert when the line ticks. If every remaining lock is already posted, skip. Cap **`max_arb_alerts_per_day`** (default **6**)
+
+### Syndicate Middle & Arb (`nfl_live_middle_arb`)
+
+**`loungeBotMiddleArb.ts`** — VIP Middle & arb drop. Pure **`ARBITRAGE LOCK`** is one-shot per **event + market** (`nfl_live_middle_arb:arb:{eventId}:{market}`). Already-posted locks stay out of the queue. If no unused arb remains and there is no unused middle, the drop **skips**. Publish log writes **`post_kind`** + **`dedupe_key`**. Old caption sniff only caught **`MIDDLE`**, so the same arb kept winning every cron tick.
 
 ```text
 🔒 Arb Watch

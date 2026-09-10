@@ -14,7 +14,6 @@ import {
 } from './loungeBotOddsCaption.ts'
 import {
   hasDedupePublishedToday,
-  ptTodayDate,
   type OddsBotRow,
   type OddsCfgRow,
 } from './loungeBotOddsRun.ts'
@@ -375,9 +374,11 @@ export function findArbitrageOpportunities(
   return all
 }
 
-export function arbWatchDedupeKey(arb: ArbOpportunity, ptDay = ptTodayDate()): string {
-  const lineSig = arb.linePoint != null ? `:${arb.linePoint}` : ''
-  return `arb_watch:${ptDay}:${arb.eventId}:${arb.marketKey}${lineSig}`
+const ARB_WATCH_DEDUPE_LOOKBACK_MS = 7 * 24 * 3600_000
+
+/** Same event + market stays one lock. Line ticks do not mint a new post. */
+export function arbWatchDedupeKey(arb: ArbOpportunity): string {
+  return `arb_watch:${arb.eventId}:${arb.marketKey}`
 }
 
 function formatStakeSummary(arb: ArbOpportunity): string {
@@ -475,7 +476,8 @@ export async function tryPublishArbWatchAlerts(
     if (publishedToday >= maxPerDay) break
 
     const dedupeKey = arbWatchDedupeKey(arb)
-    if (await hasDedupePublishedToday(admin, bot.user_id, dedupeKey, dayStart)) continue
+    const since = new Date(Date.now() - ARB_WATCH_DEDUPE_LOOKBACK_MS).toISOString()
+    if (await hasDedupePublishedToday(admin, bot.user_id, dedupeKey, since)) continue
     if (await hasPendingScheduleDedupe(admin, bot.user_id, dedupeKey)) continue
 
     const caption = buildArbWatchCaption(arb, {

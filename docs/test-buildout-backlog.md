@@ -1119,6 +1119,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-09:** **Pats/Hawks Week 1 call published (Windows).** Game was already live so today-picks dropped it. `picks_for_today` now keeps the PT-day board after kickoff. **`1.4.137`.** Poll redeployed test + prod from `b7a74375`. Published `@sharpesyndicate` public + fan-only: 2-0 **Seahawks +7.5** (Scott + Chedda). Tank PASS totals. No X.
+
 - **2026-09-09:** **Tank O/U stays on the slate (Windows).** Totals section always prints. Uncut lists every game incl. PASS. Public tease is fires or `No O/U lean this slate`. Spot lines also hang his Over/Under when he has one. **`1.4.136`.** **`lounge-odds-poll` redeployed test + prod** (`kcosfvmreeiosdjdzycb` + `jtjgtucumuoswnbauxry`) 2026-09-09 from `6df960a3`.
 
 - **2026-09-09:** **Tank ATS spots sidecar (Windows).** PASS unless two independent reasons agree: rest/travel, outdoor weather-dog, CFB tempo/clock, Under+dog total-agree. Injury is a stack tag only. Over + weather-dog PASSes the side. Pasted Action/VSiN is a weighted street score (never fires alone; strong fade vetoes). Not a 4th hammer. Splits paste deactivates same source only. **`1.4.135`.** **`lounge-odds-poll` redeployed test + prod** 2026-09-09 from `6df960a3`.

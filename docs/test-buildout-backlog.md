@@ -1119,6 +1119,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-10:** **ESPN 2025 trench board (Windows).** PBWR / PRWR / RBWR / RSWR from ESPN Analytics Week 18 (`46138675`) in `data/syndicate/espn-nfl-2025-team-win-rates.json`. Applied on **test** `nfl_team_metrics`. Tuesday EPA sync still does not touch these. Model trench impact stays **0**. Prod write when Ryan OKs. **`1.4.144`.**
+
 - **2026-09-09:** **Rocco short-fav-only is not a house vote (Windows).** Hammer / consensus / divided and the ledger Pass bucket use `countsForHouse`. Desk card still shows the lean. **`1.4.143`.** Redeploy **`lounge-odds-poll`**.
 
 - **2026-09-09:** **Ops desk inspect (Windows).** House / Scott / Rocco / Chedda / Tank chips on `sharpesyndicate.com/ops`. Preview on today / slate / primetime / UFC returns `deskEvals` (vote + why). Primetime uses the house slate vote for that game. Publish still house. **`1.4.142`.** Redeploy **`lounge-odds-poll`**.

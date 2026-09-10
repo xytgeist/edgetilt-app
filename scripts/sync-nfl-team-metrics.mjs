@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Sync real NFL Off/Def EPA + success rate from nflverse into public.nfl_team_metrics.
- * Skips rows with is_custom_override = true. Does not invent trench win rates.
+ * Skips rows with is_custom_override = true. Does not touch trench win rates
+ * (those are ESPN 2025 end-of-season via sync-nfl-trench-win-rates.mjs).
  *
  * Usage:
  *   node scripts/sync-nfl-team-metrics.mjs --target=test

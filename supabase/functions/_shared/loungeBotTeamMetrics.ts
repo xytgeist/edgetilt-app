@@ -45,57 +45,57 @@ export type TrenchEpaMatchupSummary = {
 }
 
 /**
- * High-fidelity baseline NFL metrics (fallback only when DB is empty).
- * Prefer nflverse sync via scripts/sync-nfl-team-metrics.mjs.
+ * Fallback only when DB is empty. EPA / success_rate prefer nflverse.
+ * Trench win rates = ESPN Analytics 2025 Week 18 (not a weekly live feed).
  */
 export const NFL_BASELINE_TEAM_METRICS: NflTeamMetrics[] = [
-  // AFC EAST
-  { team_abbr: 'BUF', team_name: 'Buffalo Bills', conference: 'AFC', division: 'East', off_epa_play: 0.14, def_epa_play: -0.04, success_rate: 49.5, pass_block_win_rate: 65, pass_rush_win_rate: 48, run_block_win_rate: 73, run_stop_win_rate: 33, pressure_rate_allowed: 26, pressure_rate_generated: 36 },
-  { team_abbr: 'MIA', team_name: 'Miami Dolphins', conference: 'AFC', division: 'East', off_epa_play: 0.08, def_epa_play: 0.02, success_rate: 47.0, pass_block_win_rate: 57, pass_rush_win_rate: 46, run_block_win_rate: 68, run_stop_win_rate: 31, pressure_rate_allowed: 31, pressure_rate_generated: 34 },
-  { team_abbr: 'NYJ', team_name: 'New York Jets', conference: 'AFC', division: 'East', off_epa_play: 0.03, def_epa_play: -0.09, success_rate: 45.0, pass_block_win_rate: 62, pass_rush_win_rate: 52, run_block_win_rate: 70, run_stop_win_rate: 36, pressure_rate_allowed: 29, pressure_rate_generated: 39 },
-  { team_abbr: 'NE', team_name: 'New England Patriots', conference: 'AFC', division: 'East', off_epa_play: -0.12, def_epa_play: 0.04, success_rate: 40.0, pass_block_win_rate: 52, pass_rush_win_rate: 40, run_block_win_rate: 64, run_stop_win_rate: 29, pressure_rate_allowed: 39, pressure_rate_generated: 28 },
+  // AFC EAST ... trench = ESPN Analytics 2025 Week 18 (espn-nfl-2025-team-win-rates.json)
+  { team_abbr: 'BUF', team_name: 'Buffalo Bills', conference: 'AFC', division: 'East', off_epa_play: 0.14, def_epa_play: -0.04, success_rate: 49.5, pass_block_win_rate: 71, pass_rush_win_rate: 31, run_block_win_rate: 75, run_stop_win_rate: 30, pressure_rate_allowed: 26, pressure_rate_generated: 36 },
+  { team_abbr: 'MIA', team_name: 'Miami Dolphins', conference: 'AFC', division: 'East', off_epa_play: 0.08, def_epa_play: 0.02, success_rate: 47.0, pass_block_win_rate: 59, pass_rush_win_rate: 34, run_block_win_rate: 70, run_stop_win_rate: 30, pressure_rate_allowed: 31, pressure_rate_generated: 34 },
+  { team_abbr: 'NYJ', team_name: 'New York Jets', conference: 'AFC', division: 'East', off_epa_play: 0.03, def_epa_play: -0.09, success_rate: 45.0, pass_block_win_rate: 58, pass_rush_win_rate: 33, run_block_win_rate: 71, run_stop_win_rate: 30, pressure_rate_allowed: 29, pressure_rate_generated: 39 },
+  { team_abbr: 'NE', team_name: 'New England Patriots', conference: 'AFC', division: 'East', off_epa_play: -0.12, def_epa_play: 0.04, success_rate: 40.0, pass_block_win_rate: 64, pass_rush_win_rate: 35, run_block_win_rate: 72, run_stop_win_rate: 31, pressure_rate_allowed: 39, pressure_rate_generated: 28 },
 
   // AFC NORTH
-  { team_abbr: 'BAL', team_name: 'Baltimore Ravens', conference: 'AFC', division: 'North', off_epa_play: 0.16, def_epa_play: -0.07, success_rate: 51.0, pass_block_win_rate: 64, pass_rush_win_rate: 49, run_block_win_rate: 77, run_stop_win_rate: 37, pressure_rate_allowed: 27, pressure_rate_generated: 37 },
-  { team_abbr: 'CIN', team_name: 'Cincinnati Bengals', conference: 'AFC', division: 'North', off_epa_play: 0.10, def_epa_play: 0.05, success_rate: 48.0, pass_block_win_rate: 59, pass_rush_win_rate: 43, run_block_win_rate: 67, run_stop_win_rate: 28, pressure_rate_allowed: 32, pressure_rate_generated: 31 },
-  { team_abbr: 'CLE', team_name: 'Cleveland Browns', conference: 'AFC', division: 'North', off_epa_play: -0.06, def_epa_play: -0.11, success_rate: 42.5, pass_block_win_rate: 63, pass_rush_win_rate: 55, run_block_win_rate: 71, run_stop_win_rate: 38, pressure_rate_allowed: 33, pressure_rate_generated: 42 },
-  { team_abbr: 'PIT', team_name: 'Pittsburgh Steelers', conference: 'AFC', division: 'North', off_epa_play: -0.02, def_epa_play: -0.08, success_rate: 44.0, pass_block_win_rate: 61, pass_rush_win_rate: 53, run_block_win_rate: 72, run_stop_win_rate: 35, pressure_rate_allowed: 30, pressure_rate_generated: 40 },
+  { team_abbr: 'BAL', team_name: 'Baltimore Ravens', conference: 'AFC', division: 'North', off_epa_play: 0.16, def_epa_play: -0.07, success_rate: 51.0, pass_block_win_rate: 69, pass_rush_win_rate: 30, run_block_win_rate: 71, run_stop_win_rate: 30, pressure_rate_allowed: 27, pressure_rate_generated: 37 },
+  { team_abbr: 'CIN', team_name: 'Cincinnati Bengals', conference: 'AFC', division: 'North', off_epa_play: 0.10, def_epa_play: 0.05, success_rate: 48.0, pass_block_win_rate: 58, pass_rush_win_rate: 29, run_block_win_rate: 72, run_stop_win_rate: 29, pressure_rate_allowed: 32, pressure_rate_generated: 31 },
+  { team_abbr: 'CLE', team_name: 'Cleveland Browns', conference: 'AFC', division: 'North', off_epa_play: -0.06, def_epa_play: -0.11, success_rate: 42.5, pass_block_win_rate: 63, pass_rush_win_rate: 46, run_block_win_rate: 70, run_stop_win_rate: 34, pressure_rate_allowed: 33, pressure_rate_generated: 42 },
+  { team_abbr: 'PIT', team_name: 'Pittsburgh Steelers', conference: 'AFC', division: 'North', off_epa_play: -0.02, def_epa_play: -0.08, success_rate: 44.0, pass_block_win_rate: 71, pass_rush_win_rate: 41, run_block_win_rate: 72, run_stop_win_rate: 29, pressure_rate_allowed: 30, pressure_rate_generated: 40 },
 
   // AFC SOUTH
-  { team_abbr: 'HOU', team_name: 'Houston Texans', conference: 'AFC', division: 'South', off_epa_play: 0.09, def_epa_play: -0.03, success_rate: 47.5, pass_block_win_rate: 61, pass_rush_win_rate: 50, run_block_win_rate: 69, run_stop_win_rate: 34, pressure_rate_allowed: 29, pressure_rate_generated: 38 },
-  { team_abbr: 'IND', team_name: 'Indianapolis Colts', conference: 'AFC', division: 'South', off_epa_play: 0.04, def_epa_play: 0.03, success_rate: 46.0, pass_block_win_rate: 67, pass_rush_win_rate: 44, run_block_win_rate: 74, run_stop_win_rate: 30, pressure_rate_allowed: 25, pressure_rate_generated: 32 },
-  { team_abbr: 'JAX', team_name: 'Jacksonville Jaguars', conference: 'AFC', division: 'South', off_epa_play: 0.02, def_epa_play: 0.04, success_rate: 45.0, pass_block_win_rate: 58, pass_rush_win_rate: 45, run_block_win_rate: 68, run_stop_win_rate: 31, pressure_rate_allowed: 33, pressure_rate_generated: 33 },
-  { team_abbr: 'TEN', team_name: 'Tennessee Titans', conference: 'AFC', division: 'South', off_epa_play: -0.09, def_epa_play: 0.01, success_rate: 41.5, pass_block_win_rate: 54, pass_rush_win_rate: 42, run_block_win_rate: 66, run_stop_win_rate: 33, pressure_rate_allowed: 37, pressure_rate_generated: 30 },
+  { team_abbr: 'HOU', team_name: 'Houston Texans', conference: 'AFC', division: 'South', off_epa_play: 0.09, def_epa_play: -0.03, success_rate: 47.5, pass_block_win_rate: 56, pass_rush_win_rate: 35, run_block_win_rate: 68, run_stop_win_rate: 32, pressure_rate_allowed: 29, pressure_rate_generated: 38 },
+  { team_abbr: 'IND', team_name: 'Indianapolis Colts', conference: 'AFC', division: 'South', off_epa_play: 0.04, def_epa_play: 0.03, success_rate: 46.0, pass_block_win_rate: 58, pass_rush_win_rate: 29, run_block_win_rate: 73, run_stop_win_rate: 29, pressure_rate_allowed: 25, pressure_rate_generated: 32 },
+  { team_abbr: 'JAX', team_name: 'Jacksonville Jaguars', conference: 'AFC', division: 'South', off_epa_play: 0.02, def_epa_play: 0.04, success_rate: 45.0, pass_block_win_rate: 68, pass_rush_win_rate: 38, run_block_win_rate: 73, run_stop_win_rate: 28, pressure_rate_allowed: 33, pressure_rate_generated: 33 },
+  { team_abbr: 'TEN', team_name: 'Tennessee Titans', conference: 'AFC', division: 'South', off_epa_play: -0.09, def_epa_play: 0.01, success_rate: 41.5, pass_block_win_rate: 64, pass_rush_win_rate: 37, run_block_win_rate: 70, run_stop_win_rate: 30, pressure_rate_allowed: 37, pressure_rate_generated: 30 },
 
   // AFC WEST
-  { team_abbr: 'KC', team_name: 'Kansas City Chiefs', conference: 'AFC', division: 'West', off_epa_play: 0.18, def_epa_play: -0.08, success_rate: 52.0, pass_block_win_rate: 68, pass_rush_win_rate: 51, run_block_win_rate: 74, run_stop_win_rate: 35, pressure_rate_allowed: 24, pressure_rate_generated: 38 },
-  { team_abbr: 'LAC', team_name: 'Los Angeles Chargers', conference: 'AFC', division: 'West', off_epa_play: 0.06, def_epa_play: -0.02, success_rate: 46.5, pass_block_win_rate: 66, pass_rush_win_rate: 47, run_block_win_rate: 73, run_stop_win_rate: 32, pressure_rate_allowed: 26, pressure_rate_generated: 35 },
-  { team_abbr: 'DEN', team_name: 'Denver Broncos', conference: 'AFC', division: 'West', off_epa_play: -0.04, def_epa_play: 0.00, success_rate: 43.0, pass_block_win_rate: 64, pass_rush_win_rate: 45, run_block_win_rate: 70, run_stop_win_rate: 32, pressure_rate_allowed: 28, pressure_rate_generated: 33 },
-  { team_abbr: 'LV', team_name: 'Las Vegas Raiders', conference: 'AFC', division: 'West', off_epa_play: -0.08, def_epa_play: 0.01, success_rate: 42.0, pass_block_win_rate: 56, pass_rush_win_rate: 49, run_block_win_rate: 67, run_stop_win_rate: 33, pressure_rate_allowed: 35, pressure_rate_generated: 37 },
+  { team_abbr: 'KC', team_name: 'Kansas City Chiefs', conference: 'AFC', division: 'West', off_epa_play: 0.18, def_epa_play: -0.08, success_rate: 52.0, pass_block_win_rate: 71, pass_rush_win_rate: 40, run_block_win_rate: 70, run_stop_win_rate: 28, pressure_rate_allowed: 24, pressure_rate_generated: 38 },
+  { team_abbr: 'LAC', team_name: 'Los Angeles Chargers', conference: 'AFC', division: 'West', off_epa_play: 0.06, def_epa_play: -0.02, success_rate: 46.5, pass_block_win_rate: 54, pass_rush_win_rate: 37, run_block_win_rate: 69, run_stop_win_rate: 30, pressure_rate_allowed: 26, pressure_rate_generated: 35 },
+  { team_abbr: 'DEN', team_name: 'Denver Broncos', conference: 'AFC', division: 'West', off_epa_play: -0.04, def_epa_play: 0.00, success_rate: 43.0, pass_block_win_rate: 68, pass_rush_win_rate: 45, run_block_win_rate: 74, run_stop_win_rate: 32, pressure_rate_allowed: 28, pressure_rate_generated: 33 },
+  { team_abbr: 'LV', team_name: 'Las Vegas Raiders', conference: 'AFC', division: 'West', off_epa_play: -0.08, def_epa_play: 0.01, success_rate: 42.0, pass_block_win_rate: 61, pass_rush_win_rate: 37, run_block_win_rate: 70, run_stop_win_rate: 30, pressure_rate_allowed: 35, pressure_rate_generated: 37 },
 
   // NFC EAST
-  { team_abbr: 'PHI', team_name: 'Philadelphia Eagles', conference: 'NFC', division: 'East', off_epa_play: 0.13, def_epa_play: -0.03, success_rate: 49.0, pass_block_win_rate: 71, pass_rush_win_rate: 52, run_block_win_rate: 78, run_stop_win_rate: 34, pressure_rate_allowed: 23, pressure_rate_generated: 39 },
-  { team_abbr: 'DAL', team_name: 'Dallas Cowboys', conference: 'NFC', division: 'East', off_epa_play: 0.09, def_epa_play: 0.02, success_rate: 47.0, pass_block_win_rate: 63, pass_rush_win_rate: 50, run_block_win_rate: 69, run_stop_win_rate: 30, pressure_rate_allowed: 28, pressure_rate_generated: 38 },
-  { team_abbr: 'WAS', team_name: 'Washington Commanders', conference: 'NFC', division: 'East', off_epa_play: 0.07, def_epa_play: 0.06, success_rate: 46.5, pass_block_win_rate: 57, pass_rush_win_rate: 43, run_block_win_rate: 69, run_stop_win_rate: 29, pressure_rate_allowed: 34, pressure_rate_generated: 31 },
-  { team_abbr: 'NYG', team_name: 'New York Giants', conference: 'NFC', division: 'East', off_epa_play: -0.11, def_epa_play: 0.03, success_rate: 40.5, pass_block_win_rate: 49, pass_rush_win_rate: 48, run_block_win_rate: 65, run_stop_win_rate: 31, pressure_rate_allowed: 41, pressure_rate_generated: 36 },
+  { team_abbr: 'PHI', team_name: 'Philadelphia Eagles', conference: 'NFC', division: 'East', off_epa_play: 0.13, def_epa_play: -0.03, success_rate: 49.0, pass_block_win_rate: 64, pass_rush_win_rate: 35, run_block_win_rate: 71, run_stop_win_rate: 30, pressure_rate_allowed: 23, pressure_rate_generated: 39 },
+  { team_abbr: 'DAL', team_name: 'Dallas Cowboys', conference: 'NFC', division: 'East', off_epa_play: 0.09, def_epa_play: 0.02, success_rate: 47.0, pass_block_win_rate: 63, pass_rush_win_rate: 40, run_block_win_rate: 72, run_stop_win_rate: 32, pressure_rate_allowed: 28, pressure_rate_generated: 38 },
+  { team_abbr: 'WAS', team_name: 'Washington Commanders', conference: 'NFC', division: 'East', off_epa_play: 0.07, def_epa_play: 0.06, success_rate: 46.5, pass_block_win_rate: 63, pass_rush_win_rate: 36, run_block_win_rate: 70, run_stop_win_rate: 31, pressure_rate_allowed: 34, pressure_rate_generated: 31 },
+  { team_abbr: 'NYG', team_name: 'New York Giants', conference: 'NFC', division: 'East', off_epa_play: -0.11, def_epa_play: 0.03, success_rate: 40.5, pass_block_win_rate: 65, pass_rush_win_rate: 41, run_block_win_rate: 71, run_stop_win_rate: 28, pressure_rate_allowed: 41, pressure_rate_generated: 36 },
 
   // NFC NORTH
-  { team_abbr: 'DET', team_name: 'Detroit Lions', conference: 'NFC', division: 'North', off_epa_play: 0.17, def_epa_play: -0.02, success_rate: 52.5, pass_block_win_rate: 70, pass_rush_win_rate: 49, run_block_win_rate: 79, run_stop_win_rate: 36, pressure_rate_allowed: 22, pressure_rate_generated: 37 },
-  { team_abbr: 'GB', team_name: 'Green Bay Packers', conference: 'NFC', division: 'North', off_epa_play: 0.11, def_epa_play: -0.01, success_rate: 48.5, pass_block_win_rate: 67, pass_rush_win_rate: 48, run_block_win_rate: 72, run_stop_win_rate: 33, pressure_rate_allowed: 25, pressure_rate_generated: 36 },
-  { team_abbr: 'MIN', team_name: 'Minnesota Vikings', conference: 'NFC', division: 'North', off_epa_play: 0.05, def_epa_play: -0.05, success_rate: 46.0, pass_block_win_rate: 62, pass_rush_win_rate: 51, run_block_win_rate: 68, run_stop_win_rate: 34, pressure_rate_allowed: 30, pressure_rate_generated: 39 },
-  { team_abbr: 'CHI', team_name: 'Chicago Bears', conference: 'NFC', division: 'North', off_epa_play: 0.01, def_epa_play: -0.04, success_rate: 44.5, pass_block_win_rate: 58, pass_rush_win_rate: 46, run_block_win_rate: 70, run_stop_win_rate: 35, pressure_rate_allowed: 34, pressure_rate_generated: 35 },
+  { team_abbr: 'DET', team_name: 'Detroit Lions', conference: 'NFC', division: 'North', off_epa_play: 0.17, def_epa_play: -0.02, success_rate: 52.5, pass_block_win_rate: 56, pass_rush_win_rate: 32, run_block_win_rate: 71, run_stop_win_rate: 28, pressure_rate_allowed: 22, pressure_rate_generated: 37 },
+  { team_abbr: 'GB', team_name: 'Green Bay Packers', conference: 'NFC', division: 'North', off_epa_play: 0.11, def_epa_play: -0.01, success_rate: 48.5, pass_block_win_rate: 69, pass_rush_win_rate: 39, run_block_win_rate: 71, run_stop_win_rate: 29, pressure_rate_allowed: 25, pressure_rate_generated: 36 },
+  { team_abbr: 'MIN', team_name: 'Minnesota Vikings', conference: 'NFC', division: 'North', off_epa_play: 0.05, def_epa_play: -0.05, success_rate: 46.0, pass_block_win_rate: 59, pass_rush_win_rate: 46, run_block_win_rate: 74, run_stop_win_rate: 30, pressure_rate_allowed: 30, pressure_rate_generated: 39 },
+  { team_abbr: 'CHI', team_name: 'Chicago Bears', conference: 'NFC', division: 'North', off_epa_play: 0.01, def_epa_play: -0.04, success_rate: 44.5, pass_block_win_rate: 74, pass_rush_win_rate: 29, run_block_win_rate: 74, run_stop_win_rate: 29, pressure_rate_allowed: 34, pressure_rate_generated: 35 },
 
   // NFC SOUTH
-  { team_abbr: 'TB', team_name: 'Tampa Bay Buccaneers', conference: 'NFC', division: 'South', off_epa_play: 0.06, def_epa_play: 0.01, success_rate: 46.5, pass_block_win_rate: 64, pass_rush_win_rate: 44, run_block_win_rate: 69, run_stop_win_rate: 34, pressure_rate_allowed: 27, pressure_rate_generated: 33 },
-  { team_abbr: 'ATL', team_name: 'Atlanta Falcons', conference: 'NFC', division: 'South', off_epa_play: 0.04, def_epa_play: 0.02, success_rate: 46.0, pass_block_win_rate: 65, pass_rush_win_rate: 41, run_block_win_rate: 74, run_stop_win_rate: 30, pressure_rate_allowed: 27, pressure_rate_generated: 29 },
-  { team_abbr: 'NO', team_name: 'New Orleans Saints', conference: 'NFC', division: 'South', off_epa_play: -0.01, def_epa_play: 0.00, success_rate: 44.0, pass_block_win_rate: 59, pass_rush_win_rate: 45, run_block_win_rate: 68, run_stop_win_rate: 32, pressure_rate_allowed: 31, pressure_rate_generated: 34 },
-  { team_abbr: 'CAR', team_name: 'Carolina Panthers', conference: 'NFC', division: 'South', off_epa_play: -0.15, def_epa_play: 0.12, success_rate: 38.5, pass_block_win_rate: 55, pass_rush_win_rate: 36, run_block_win_rate: 66, run_stop_win_rate: 26, pressure_rate_allowed: 38, pressure_rate_generated: 25 },
+  { team_abbr: 'TB', team_name: 'Tampa Bay Buccaneers', conference: 'NFC', division: 'South', off_epa_play: 0.06, def_epa_play: 0.01, success_rate: 46.5, pass_block_win_rate: 64, pass_rush_win_rate: 40, run_block_win_rate: 70, run_stop_win_rate: 30, pressure_rate_allowed: 27, pressure_rate_generated: 33 },
+  { team_abbr: 'ATL', team_name: 'Atlanta Falcons', conference: 'NFC', division: 'South', off_epa_play: 0.04, def_epa_play: 0.02, success_rate: 46.0, pass_block_win_rate: 64, pass_rush_win_rate: 41, run_block_win_rate: 70, run_stop_win_rate: 31, pressure_rate_allowed: 27, pressure_rate_generated: 29 },
+  { team_abbr: 'NO', team_name: 'New Orleans Saints', conference: 'NFC', division: 'South', off_epa_play: -0.01, def_epa_play: 0.00, success_rate: 44.0, pass_block_win_rate: 56, pass_rush_win_rate: 35, run_block_win_rate: 70, run_stop_win_rate: 31, pressure_rate_allowed: 31, pressure_rate_generated: 34 },
+  { team_abbr: 'CAR', team_name: 'Carolina Panthers', conference: 'NFC', division: 'South', off_epa_play: -0.15, def_epa_play: 0.12, success_rate: 38.5, pass_block_win_rate: 59, pass_rush_win_rate: 34, run_block_win_rate: 70, run_stop_win_rate: 26, pressure_rate_allowed: 38, pressure_rate_generated: 25 },
 
   // NFC WEST
-  { team_abbr: 'SF', team_name: 'San Francisco 49ers', conference: 'NFC', division: 'West', off_epa_play: 0.15, def_epa_play: -0.06, success_rate: 51.5, pass_block_win_rate: 60, pass_rush_win_rate: 53, run_block_win_rate: 75, run_stop_win_rate: 36, pressure_rate_allowed: 30, pressure_rate_generated: 41 },
-  { team_abbr: 'LAR', team_name: 'Los Angeles Rams', conference: 'NFC', division: 'West', off_epa_play: 0.08, def_epa_play: 0.01, success_rate: 47.0, pass_block_win_rate: 65, pass_rush_win_rate: 47, run_block_win_rate: 72, run_stop_win_rate: 31, pressure_rate_allowed: 26, pressure_rate_generated: 35 },
-  { team_abbr: 'SEA', team_name: 'Seattle Seahawks', conference: 'NFC', division: 'West', off_epa_play: 0.03, def_epa_play: -0.01, success_rate: 45.5, pass_block_win_rate: 58, pass_rush_win_rate: 48, run_block_win_rate: 68, run_stop_win_rate: 32, pressure_rate_allowed: 32, pressure_rate_generated: 36 },
-  { team_abbr: 'ARI', team_name: 'Arizona Cardinals', conference: 'NFC', division: 'West', off_epa_play: 0.02, def_epa_play: 0.07, success_rate: 45.0, pass_block_win_rate: 61, pass_rush_win_rate: 39, run_block_win_rate: 71, run_stop_win_rate: 27, pressure_rate_allowed: 30, pressure_rate_generated: 27 },
+  { team_abbr: 'SF', team_name: 'San Francisco 49ers', conference: 'NFC', division: 'West', off_epa_play: 0.15, def_epa_play: -0.06, success_rate: 51.5, pass_block_win_rate: 67, pass_rush_win_rate: 29, run_block_win_rate: 72, run_stop_win_rate: 31, pressure_rate_allowed: 30, pressure_rate_generated: 41 },
+  { team_abbr: 'LAR', team_name: 'Los Angeles Rams', conference: 'NFC', division: 'West', off_epa_play: 0.08, def_epa_play: 0.01, success_rate: 47.0, pass_block_win_rate: 69, pass_rush_win_rate: 40, run_block_win_rate: 74, run_stop_win_rate: 34, pressure_rate_allowed: 26, pressure_rate_generated: 35 },
+  { team_abbr: 'SEA', team_name: 'Seattle Seahawks', conference: 'NFC', division: 'West', off_epa_play: 0.03, def_epa_play: -0.01, success_rate: 45.5, pass_block_win_rate: 65, pass_rush_win_rate: 41, run_block_win_rate: 73, run_stop_win_rate: 32, pressure_rate_allowed: 32, pressure_rate_generated: 36 },
+  { team_abbr: 'ARI', team_name: 'Arizona Cardinals', conference: 'NFC', division: 'West', off_epa_play: 0.02, def_epa_play: 0.07, success_rate: 45.0, pass_block_win_rate: 63, pass_rush_win_rate: 39, run_block_win_rate: 71, run_stop_win_rate: 30, pressure_rate_allowed: 30, pressure_rate_generated: 27 },
 ]
 
 /**
@@ -160,8 +160,8 @@ export async function loadDbTeamMetricsMap(admin: SupabaseClient): Promise<Map<s
 
 /**
  * Net EPA matchup impact between two teams.
- * Trench win-rate disparities are disabled until a paid charting feed exists
- * (netTrenchSpreadImpactHome stays 0; isTrenchMismatch stays false).
+ * Trench columns are ESPN 2025 end-of-season, but model impact stays 0
+ * until Ryan turns the disparity math back on (netTrench stays 0).
  */
 export function calculateTrenchEpaMatchup(
   homeTeamName: string,
@@ -181,7 +181,7 @@ export function calculateTrenchEpaMatchup(
   // Net EPA spread impact: 1 net EPA unit per play ~ 22.0 spread points across ~65 plays
   const epaSpreadImpactHome = Math.round(netEpaDeltaHome * 22.0 * 10) / 10
 
-  // 2. Trench win rates: frozen at 0 until real PBWR/PRWR/RBWR/RSWR ingest (PFF / equivalent)
+  // 2. Trench win rates: stored ESPN 2025 numbers, model impact still frozen at 0
   const homePassTrenchDelta = 0
   const awayPassTrenchDelta = 0
   const netTrenchSpreadImpactHome = 0

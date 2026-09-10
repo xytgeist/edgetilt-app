@@ -2,7 +2,8 @@
  * Aggregate season-to-date Off/Def EPA per play + success rate from nflverse play-by-play.
  * Source: https://github.com/nflverse/nflverse-data (play_by_play_{year}.csv[.gz])
  *
- * Does NOT invent trench win rates (PBWR/PRWR/etc.). Those stay untouched until a paid charting feed.
+ * Does NOT write trench win rates. Those come from ESPN 2025 end-of-season
+ * (scripts/sync-nfl-trench-win-rates.mjs) and stay frozen until a 2026 board.
  */
 
 import { createGunzip } from 'zlib'

@@ -1,7 +1,7 @@
 {
   "name": "phoenixlinkcalc",
   "private": true,
-    "version": "1.4.143",
+    "version": "1.4.144",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -58,6 +58,9 @@
     "syndicate:sync-nfl-metrics": "node scripts/sync-nfl-team-metrics.mjs",
     "syndicate:sync-nfl-metrics:test": "node scripts/sync-nfl-team-metrics.mjs --target=test",
     "syndicate:sync-nfl-metrics:production": "node scripts/sync-nfl-team-metrics.mjs --target=production",
+    "syndicate:sync-nfl-trench": "node scripts/sync-nfl-trench-win-rates.mjs",
+    "syndicate:sync-nfl-trench:test": "node scripts/sync-nfl-trench-win-rates.mjs --target=test",
+    "syndicate:sync-nfl-trench:production": "node scripts/sync-nfl-trench-win-rates.mjs --target=production",
     "syndicate:sync-cfb-power": "node scripts/sync-cfb-power-ratings.mjs",
     "syndicate:sync-cfb-power:test": "node scripts/sync-cfb-power-ratings.mjs --target=test",
     "syndicate:sync-cfb-power:production": "node scripts/sync-cfb-power-ratings.mjs --target=production",

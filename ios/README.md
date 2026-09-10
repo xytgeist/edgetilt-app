@@ -36,6 +36,22 @@ xcodebuild -project ios/EdgeTilt.xcodeproj -scheme "EdgeTilt Test" -destination 
 
 Pick **EdgeTilt Test** in Xcode and Run (▶) on a Simulator or a paired iPhone (Developer Mode on; Trust developer under **Settings → General → VPN & Device Management**).
 
+### App Store status bar (9:41 / full Wi-Fi / full battery)
+
+**EdgeTilt Prod** Run stamps the Simulator status bar after launch (`ios/scripts/stamp-app-store-status-bar.sh`). Physical device Runs skip it.
+
+1. Scheme **EdgeTilt Prod**, Simulator destination (iPhone 17 Pro / Pro Max).
+2. Run (⌘R). Wait for the app.
+3. Confirm: `xcrun simctl status_bar booted list` … you want `Time: 9:41`.
+
+If a cold boot races the post-action, run the script yourself from `ios/`:
+
+```bash
+./scripts/stamp-app-store-status-bar.sh
+```
+
+iOS 27 ignores `--time "9:41"`. The script sends a full Pacific ISO timestamp so the clock reads 9:41, not 2:41.
+
 ### Safari Web Inspector (device WKWebView)
 
 1. iPhone: **Settings → Apps → Safari → Advanced → Web Inspector** → On  

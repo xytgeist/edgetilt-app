@@ -79,5 +79,9 @@ schemes:
     run:
       config: Release
       askForAppToLaunch: false
+      postActions:
+        - name: Stamp App Store status bar
+          settingsTarget: EdgeTilt
+          script: '"${SRCROOT}/scripts/stamp-app-store-status-bar.sh"'
     archive:
       config: Release

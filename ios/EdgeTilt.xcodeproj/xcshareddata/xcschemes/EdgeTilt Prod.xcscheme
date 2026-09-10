@@ -59,6 +59,25 @@
             ReferencedContainer = "container:EdgeTilt.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <PostActions>
+         <ExecutionAction
+            ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
+            <ActionContent
+               title = "Stamp App Store status bar"
+               scriptText = "&quot;${SRCROOT}/scripts/stamp-app-store-status-bar.sh&quot;"
+               shellToInvoke = "/bin/bash">
+               <EnvironmentBuildable>
+                  <BuildableReference
+                     BuildableIdentifier = "primary"
+                     BlueprintIdentifier = "91193AAD51A0876C7ED2EDB0"
+                     BuildableName = "EdgeTilt.app"
+                     BlueprintName = "EdgeTilt"
+                     ReferencedContainer = "container:EdgeTilt.xcodeproj">
+                  </BuildableReference>
+               </EnvironmentBuildable>
+            </ActionContent>
+         </ExecutionAction>
+      </PostActions>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"

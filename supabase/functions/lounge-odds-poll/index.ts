@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
     const alertKindRaw = String(body?.alertKind || '').trim().toLowerCase()
     const alertKind = alertKindRaw || null
 
-    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'cfb_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'syndicate_monthly_scoreboard', 'calibrate_persona_models', 'ufc_slate_card', 'nfl_wed_tnf_vip', 'nfl_sat_vip_adds_kills', 'cfb_wed_midweek_vip', 'cfb_thu_night_spotlight', 'cfb_sat_vip_adds_kills', 'picks_for_today', 'pval_injury_ledger', 'lane_b_refresh'].includes(action)) {
+    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'cfb_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_primetime_lock', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'syndicate_monthly_scoreboard', 'calibrate_persona_models', 'ufc_slate_card', 'nfl_wed_tnf_vip', 'nfl_sat_vip_adds_kills', 'cfb_wed_midweek_vip', 'cfb_thu_night_spotlight', 'cfb_sat_vip_adds_kills', 'picks_for_today', 'pval_injury_ledger', 'lane_b_refresh'].includes(action)) {
       return adminOpsJson(400, {
         error: 'action must be a valid lounge-odds-poll action (incl. picks_for_today, pval_injury_ledger, cfb VIP ops).',
       })
@@ -628,6 +628,68 @@ Deno.serve(async (req) => {
             ].filter(Boolean).join(' '),
           }
           : {}),
+      })
+    }
+
+    if (action === 'nfl_primetime_lock') {
+      const { fetchSportOdds } = await import('../_shared/loungeBotOddsRun.ts')
+      const { publishPrimetimeLock } = await import('../_shared/loungeBotPrimetimeLock.ts')
+      const { X_LONG_FORM_CHARS } = await import('../_shared/loungeBotXPublish.ts')
+
+      const oddsData = await fetchSportOdds('americanfootball_nfl', ['us', 'us2'], ['spreads', 'totals'])
+      const result = await publishPrimetimeLock(admin, bot.user_id, oddsData.events, {
+        dryRun,
+        destinations,
+        requireWindow: !dryRun && !destPicked && !force,
+        primetimeType: body?.primetimeType || undefined,
+        categoryPills: bot.category_pills_default || ['sports'],
+      })
+
+      if (dryRun) {
+        const previewCaption = String(result.previewCaption || result.captionPreview || '').trim()
+        return adminOpsJson(200, {
+          ok: result.ok,
+          dryRun: true,
+          action: 'nfl_primetime_lock',
+          skipped: result.skipped,
+          verdict: result.verdict,
+          lock: result.lock,
+          previewCaption,
+          captionPreview: previewCaption,
+          vipPreviewCaption: previewCaption,
+          message: result.skipped || undefined,
+          ...destPreviewPayload({
+            publicCaption: previewCaption,
+            vipCaption: previewCaption,
+            xCaption: previewCaption,
+            xMaxChars: X_LONG_FORM_CHARS,
+          }),
+        })
+      }
+
+      if (result.skipped) {
+        return adminOpsJson(200, {
+          ok: true,
+          action: 'nfl_primetime_lock',
+          skipped: result.skipped,
+          message: result.skipped,
+          ...result,
+        })
+      }
+
+      if (!result.ok) {
+        return adminOpsJson(200, {
+          ok: false,
+          action: 'nfl_primetime_lock',
+          message: result.error || 'Primetime lock publish failed.',
+          ...result,
+        })
+      }
+
+      return adminOpsJson(200, {
+        ok: true,
+        action: 'nfl_primetime_lock',
+        ...result,
       })
     }
 

@@ -7,6 +7,7 @@ import {
   invokeLoungeOddsSlateCard,
   invokeLoungeOddsWongTeaser,
   invokeLoungeOddsPrimetimeSpotlight,
+  invokeLoungeOddsPrimetimeLock,
   invokeLoungeOddsWeeklyRecap,
   invokeLoungeOddsMonthlyScoreboard,
   invokeLoungeOddsHalftimePivot,
@@ -466,6 +467,36 @@ export function BotSharpDeskPanel({
     }
   }
 
+  const handleDropPrimetimeLock = async (dryRun = false) => {
+    const destinations = dryRun ? undefined : requireDestinations('primetime')
+    if (!dryRun && !destinations) return
+    setDropping(true)
+    if (setBusy) setBusy(true)
+    try {
+      const { data, error } = await invokeLoungeOddsPrimetimeLock(supabaseClient, {
+        slug: botSlug,
+        dryRun,
+        destinations,
+      })
+      if (error) {
+        setToast?.(`Primetime lock failed: ${error.message}`)
+      } else if (data?.dryRun) {
+        showDropDryRunPreview('Primetime Lock', data, data?.message || data?.skipped || 'No lock candidate.')
+      } else if (data?.ok && !data?.skipped) {
+        const verdict = data?.verdict === 'kill' ? 'KILL' : 'LOCK'
+        setToast?.(toastWithDestWarnings(`Published primetime ${verdict}`, data))
+        await loadData()
+      } else {
+        setToast?.(data?.message || data?.skipped || 'Primetime lock skipped.')
+      }
+    } catch (err) {
+      setToast?.(`Primetime lock error: ${err.message}`)
+    } finally {
+      setDropping(false)
+      if (setBusy) setBusy(false)
+    }
+  }
+
   const handleDropWeeklyRecap = async (dryRun = false) => {
     const destinations = dryRun ? undefined : requireDestinations('weekly')
     if (!dryRun && !destinations) return
@@ -699,6 +730,8 @@ export function BotSharpDeskPanel({
         return handleDropPick(dryRun)
       case 'primetime':
         return handleDropPrimetimeSpotlight(undefined, dryRun)
+      case 'primetime_lock':
+        return handleDropPrimetimeLock(dryRun)
       case 'wong':
         return handleDropWongTeaser(dryRun)
       case 'weekly':

@@ -52,7 +52,15 @@ export const OPS_DROPS = [
     sports: [OPS_SPORT_NFL],
     destKind: 'primetime',
     hint: 'TNF / SNF / MNF 4-desk spotlight on public Lounge, VIP chat, and X.',
-    info: 'One-game TNF / SNF / MNF spotlight. Auto-picks the next eligible primetime matchup. Public Lounge, VIP chat, and X get the same 4-desk card. No fan-only Lounge post. Wednesday TNF VIP is a separate early room drop.',
+    info: 'One-game TNF / SNF / MNF spotlight. Auto-picks the next eligible primetime matchup. Public Lounge, VIP chat, and X get the same 4-desk card. No fan-only Lounge post. Wednesday TNF VIP is a separate early room drop. Inactives lock is the Primetime lock drop.',
+  },
+  {
+    id: 'primetime_lock',
+    label: 'Primetime lock',
+    sports: [OPS_SPORT_NFL],
+    destKind: 'primetime',
+    hint: '90-min inactives lock. Confirm the lean or kill (pass) if a listed starter is out or the number walked.',
+    info: 'Second primetime drop, ~90 minutes before kick. Reads the lean already on the ledger. Locks the same side if inactives and the number are clean. Kills (pass, not a new pick) if a listed starter (QB / LT / edge / featured RB) is out on our side, or the number walked 1.5+ pts off the edge. Same public Lounge + VIP chat + X destinations as Primetime. Cron waits for the 70-110 min window; Preview / Publish can run anytime.',
   },
   {
     id: 'wong',

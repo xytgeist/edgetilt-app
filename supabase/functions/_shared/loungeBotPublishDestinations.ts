@@ -49,6 +49,7 @@ export function implicitDestForPollAction(action: string): PublishDestinations {
     case 'cfb_slate_card':
       return { loungePublic: true, loungeFanOnly: true, vipChat: true, x: false }
     case 'nfl_primetime_spotlight':
+    case 'nfl_primetime_lock':
       return { loungePublic: true, loungeFanOnly: false, vipChat: true, x: true }
     case 'nfl_wong_teaser':
     case 'weekly_syndicate_recap':

@@ -641,6 +641,27 @@ export async function invokeLoungeOddsPrimetimeSpotlight(supabaseClient, opts = 
 }
 
 /**
+ * 90-min inactives lock for the primetime lean already on the ledger.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {{ slug?: string, primetimeType?: 'TNF' | 'SNF' | 'MNF', dryRun?: boolean, destinations?: object }} [opts]
+ */
+export async function invokeLoungeOddsPrimetimeLock(supabaseClient, opts = {}) {
+  const slug = opts.slug || 'sports-odds'
+  const { data, error } = await supabaseClient.functions.invoke('lounge-odds-poll', {
+    body: {
+      slug,
+      action: 'nfl_primetime_lock',
+      primetimeType: opts.primetimeType || undefined,
+      dryRun: opts.dryRun === true,
+      ...destinationsBody(opts),
+    },
+  })
+  if (error) return { data: null, error: new Error(error.message || 'Primetime lock drop failed') }
+  if (data?.error) return { data: null, error: new Error(String(data.error)) }
+  return { data, error: null }
+}
+
+/**
  * Trigger on-demand generation and publishing of Tuesday Morning Weekly Syndicate Ledger & Post-Mortem.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {{ slug?: string, dryRun?: boolean, destinations?: object }} [opts]

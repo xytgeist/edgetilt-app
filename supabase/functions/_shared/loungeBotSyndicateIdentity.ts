@@ -29,6 +29,7 @@ export const SYNDICATE_DESK_POLL_ACTIONS = new Set([
   'cfb_slate_card',
   'nfl_wong_teaser',
   'nfl_primetime_spotlight',
+  'nfl_primetime_lock',
   'nfl_halftime_pivot',
   'nfl_anytime_td',
   'nfl_live_middle_arb',

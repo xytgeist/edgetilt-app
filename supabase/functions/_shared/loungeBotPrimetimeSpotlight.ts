@@ -233,7 +233,7 @@ export async function findPrimetimeGameCandidate(
     : ''
   const roccoBullet = (roccoSide === 'home' ? homeKeyAnalysis?.isHookTax : awayKeyAnalysis?.isHookTax)
     ? `Short-fav / hook lane on ${shortDisplayName(roccoTeam)}.${roccoKeyTaxTag}`
-    : `Situational short-yardage lean on ${shortDisplayName(roccoTeam)} (spotlight path … not Friday house vote).${roccoKeyTaxTag}`
+    : `Situational short-yardage lean on ${shortDisplayName(roccoTeam)}.${roccoKeyTaxTag}`
 
   // 3. Tank (Climate, Pace & Totals)
   const isUnderLean = (weather?.isHighWind || weather?.isExtremeCold) || (totalPoint >= 47.0 && (trenchEpa?.awayNetEpa ?? 0) < 0)
@@ -297,7 +297,7 @@ export async function findPrimetimeGameCandidate(
       marketKey: 'spreads',
       confidenceBadge: isHammer ? '🔦 SPOTLIGHT LEAN (3-0)' : '🔦 SPOTLIGHT LEAN',
       consensusTitle: `${shortDisplayName(consensusTeam)} (${isHammer ? '3-desk spotlight lean' : 'spotlight majority'})`,
-      summaryReason: trenchEpa?.summaryLine || splits.summaryLine || 'Primetime spotlight lean … not the Friday house card.',
+      summaryReason: trenchEpa?.summaryLine || splits.summaryLine || 'Primetime spotlight lean.',
     },
     personaLeans: {
       Scott: {

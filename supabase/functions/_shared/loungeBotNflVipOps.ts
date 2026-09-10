@@ -115,7 +115,7 @@ export async function runNflWedTnfVipNote(
     `Early lean: **${scott}**`,
     `Injury watch: ${injuryLine}`,
     '',
-    `_Not the Friday house card. TNF package locks Thursday · full desks drop with the primetime spotlight._`,
+    `_TNF package locks Thursday · full desks drop with the primetime spotlight._`,
   ].join('\n')
 
   if (dryRun) {

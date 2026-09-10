@@ -35,7 +35,7 @@ import BotBettingSplitsPaste from './BotBettingSplitsPaste.jsx'
 import { SyndicateDryRunPreview } from '../../syndicate/SyndicateDryRunPreview.jsx'
 import { SyndicateDeskEvalBoard } from '../../syndicate/SyndicateDeskEvalBoard.jsx'
 import { SyndicateOpsDropInfo } from '../../syndicate/SyndicateOpsDropInfo.jsx'
-import { SyndicateSplitsDropSchedule } from '../../syndicate/SyndicateSplitsDropSchedule.jsx'
+import { SyndicateOpsWeekCalendar } from '../../syndicate/SyndicateOpsWeekCalendar.jsx'
 import {
   deskEvalsFor,
   deskMeta,
@@ -797,6 +797,13 @@ export function BotSharpDeskPanel({
         </div>
       </div>
 
+      <div className="mt-3">
+        <SyndicateOpsWeekCalendar
+          rows={splitsRows}
+          onOpenTab={(tab) => setActiveTab(tab)}
+        />
+      </div>
+
       {/* Sub-Tab Navigation Bar */}
       <div className="mt-3 flex flex-wrap items-center gap-1.5 border-b border-zinc-800/80 pb-2.5">
         {DESK_TABS.map((tab) => {
@@ -822,11 +829,6 @@ export function BotSharpDeskPanel({
       {/* Tab 1: Scorecard & Syndicate Drops */}
       {activeTab === 'scorecard' && (
         <div className="space-y-3 pt-2">
-          <SyndicateSplitsDropSchedule
-            rows={splitsRows}
-            compact
-            onOpenPaste={() => setActiveTab('splits')}
-          />
           <div className="rounded-lg bg-zinc-950/60 border border-zinc-800/80 p-3 space-y-2.5" data-syndicate-ops-composer>
             <div className="flex flex-wrap items-end gap-2">
               <label className="flex flex-col gap-1 text-[11px] text-zinc-400 min-w-[7.5rem]">

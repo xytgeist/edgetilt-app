@@ -229,6 +229,18 @@ function coverageOk(drop, rows, weekTueYmd) {
   return true
 }
 
+export function splitsCoverageOk(dropId, rows, weekTueYmd) {
+  const drop = SPLITS_DROPS.find((d) => d.id === dropId)
+  if (!drop) return false
+  return coverageOk(drop, rows, weekTueYmd)
+}
+
+export function splitsDropAfterWindow(dropId, now = new Date()) {
+  const drop = SPLITS_DROPS.find((d) => d.id === dropId)
+  if (!drop) return false
+  return afterDropWindow(drop, ptClockParts(now))
+}
+
 export function evaluateSplitsDrops(rows, now = new Date()) {
   const clock = ptClockParts(now)
   const weekTueYmd = shopWeekTuesdayYmd(now)

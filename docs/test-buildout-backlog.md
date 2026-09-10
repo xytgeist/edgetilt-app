@@ -1121,6 +1121,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-10:** **Ops Mon-Sun week calendar (Windows).** `sharpesyndicate.com/ops` shows a PT Mon-Sun grid above the desk tabs, broken out by NFL / CFB / UFC. Splits cells use `syndicate_betting_splits`. Trench / PVAL / board / UFC / grade can be marked in. Cron rows stay Auto. **`1.4.149`.**
+
 - **2026-09-10:** **Prod poll has the z-score scaler (Windows).** Redeployed **`lounge-odds-poll`** on **`jtjgtucumuoswnbauxry`**. Live Scott/Rocco trench is vintage z-score + 55/45 + 0.56, house 0.8. Follow-up cron still test-only.
 
 - **2026-09-10:** **Trench follow-up scheduler (Windows).** Spec in `data/syndicate/trench-followup.json`. Test pg_cron **`syndicate_trench_followup_nudge`** (`20260910160000`, test /theo only) nags Tuesdays after **2026-09-29**. GHA `syndicate-trench-followup.yml` for `main`. Do not apply that SQL on prod. **`1.4.148`.**

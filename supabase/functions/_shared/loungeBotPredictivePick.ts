@@ -334,15 +334,23 @@ function formatDeskJoin(names: readonly SharpPicker[]): string {
   return names.map((n) => formatColoredPickerName(n)).join(' & ')
 }
 
+/** ATS house ballot. Lean-only (Rocco short-fav with no strength reason) is PASS. */
+function pickerHouseAtsSide(
+  pp: SlateGamePick['pickerPicks'][SharpPicker] | null | undefined,
+): 'home' | 'away' | 'pass' {
+  if (!pp) return 'pass'
+  if (pp.countsForHouse === false) return 'pass'
+  if (pp.side === 'home' || pp.side === 'away') return pp.side
+  return 'pass'
+}
+
 function houseAtsVote(g: SlateGamePick, desk: SharpPicker): 'home' | 'away' | 'pass' {
   if (desk === 'Tank') {
     const t = g.tankAts
     if (t?.published && (t.side === 'home' || t.side === 'away')) return t.side
     return 'pass'
   }
-  const pp = g.pickerPicks[desk]
-  if (pp?.side === 'home' || pp?.side === 'away') return pp.side
-  return 'pass'
+  return pickerHouseAtsSide(g.pickerPicks[desk])
 }
 
 function houseAtsLineDisplay(g: SlateGamePick, desk: SharpPicker): string {
@@ -1727,10 +1735,11 @@ export function buildNflAtsSlateCard(
     }
 
     // House tally: all 4 ATS desks. PASS counts. Hammer is 4-0 only.
+    // Rocco short-fav-only is a desk lean, not a ballot (`countsForHouse: false`).
     let homeVotes = 0
     let awayVotes = 0
     for (const p of ATS_SIDE_DESKS) {
-      const side = pickerPicks[p].side
+      const side = pickerHouseAtsSide(pickerPicks[p])
       if (side === 'home') homeVotes++
       else if (side === 'away') awayVotes++
     }
@@ -2035,7 +2044,15 @@ export async function publishAndRecordNflSlateCard(
       const pPick = g.pickerPicks[pName]
 
       // Side/totals PASS → cancelled ledger row (Pass bucket sample size).
-      if ((pName === 'Scott' || pName === 'Rocco' || pName === 'Chedda' || pName === 'Tank') && pPick.side === 'pass') {
+      // Rocco short-fav-only is a desk lean, not a house play … same Pass bucket.
+      const leanOnlyHousePass =
+        (pName === 'Scott' || pName === 'Rocco' || pName === 'Chedda')
+        && pPick.countsForHouse === false
+        && (pPick.side === 'home' || pPick.side === 'away')
+      if (
+        ((pName === 'Scott' || pName === 'Rocco' || pName === 'Chedda' || pName === 'Tank') && pPick.side === 'pass')
+        || leanOnlyHousePass
+      ) {
         rowsToInsert.push({
           bot_user_id: botUserId,
           picker_name: pName,
@@ -2059,6 +2076,9 @@ export async function publishAndRecordNflSlateCard(
             side: 'pass',
             consensus_type: g.consensusPick.type,
             vote_count: g.consensusPick.voteCount,
+            ...(leanOnlyHousePass
+              ? { lean_only: true, lean_side: pPick.side, lean_line: pPick.lineDisplay }
+              : {}),
           },
         })
         continue

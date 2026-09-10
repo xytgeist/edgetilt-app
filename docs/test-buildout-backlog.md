@@ -1119,6 +1119,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-09:** **Rocco short-fav-only is not a house vote (Windows).** Hammer / consensus / divided and the ledger Pass bucket use `countsForHouse`. Desk card still shows the lean. **`1.4.143`.** Redeploy **`lounge-odds-poll`**.
+
 - **2026-09-09:** **Ops desk inspect (Windows).** House / Scott / Rocco / Chedda / Tank chips on `sharpesyndicate.com/ops`. Preview on today / slate / primetime / UFC returns `deskEvals` (vote + why). Primetime uses the house slate vote for that game. Publish still house. **`1.4.142`.** Redeploy **`lounge-odds-poll`**.
 
 - **2026-09-09:** **Hammer is 4-0 only (Windows).** All four desks same side. PASS → consensus. Consensus = 3-1 / 3-0 / 2-0. House Divided = everything else. **`1.4.141`.** Redeploy **`lounge-odds-poll`**.

@@ -5,6 +5,8 @@ import {
 } from './syndicateSplitsDropSchedule.js'
 import {
   buildOpsWeek,
+  emptyOpsWeekEvidence,
+  fetchOpsWeekEvidence,
   formatOpsWeekDayLabel,
   formatOpsWeekRange,
   isOpsWeekTaskMarked,
@@ -23,24 +25,47 @@ import {
 /**
  * @param {{
  *   rows?: object[]
+ *   supabaseClient?: import('@supabase/supabase-js').SupabaseClient | null
+ *   botUserId?: string
  *   onOpenTab?: (tab: string) => void
  * }} props
  */
-export function SyndicateOpsWeekCalendar({ rows = [], onOpenTab }) {
+export function SyndicateOpsWeekCalendar({
+  rows = [],
+  supabaseClient = null,
+  botUserId = '',
+  onOpenTab,
+}) {
   const [nowTick, setNowTick] = useState(() => Date.now())
   const [sport, setSport] = useState(() => opsWeekSportFilter())
   const [open, setOpen] = useState(() => opsWeekCalendarOpen())
   const [copiedId, setCopiedId] = useState('')
   const [markTick, setMarkTick] = useState(0)
+  const [evidence, setEvidence] = useState(() => emptyOpsWeekEvidence())
 
   useEffect(() => {
     const t = window.setInterval(() => setNowTick(Date.now()), 60_000)
     return () => window.clearInterval(t)
   }, [])
 
+  useEffect(() => {
+    if (!supabaseClient || !botUserId) return undefined
+    let cancelled = false
+    const load = async () => {
+      const next = await fetchOpsWeekEvidence(supabaseClient, botUserId, new Date())
+      if (!cancelled) setEvidence(next)
+    }
+    void load()
+    const t = window.setInterval(() => void load(), 60_000)
+    return () => {
+      cancelled = true
+      window.clearInterval(t)
+    }
+  }, [supabaseClient, botUserId])
+
   const week = useMemo(
-    () => buildOpsWeek(rows, new Date(nowTick)),
-    [rows, nowTick, markTick],
+    () => buildOpsWeek(rows, new Date(nowTick), evidence),
+    [rows, nowTick, markTick, evidence],
   )
   const dueSplits = useMemo(() => dueSplitsDrops(rows, new Date(nowTick)), [rows, nowTick])
 
@@ -104,6 +129,7 @@ export function SyndicateOpsWeekCalendar({ rows = [], onOpenTab }) {
           <p className="text-[11px] text-zinc-400 leading-snug mt-0.5">
             {week.dueCount ? `${week.dueCount} due` : 'Nothing due'}
             {week.missedCount ? ` · ${week.missedCount} missed` : ''}
+            {week.postedCount ? ` · ${week.postedCount} posted` : ''}
             {open ? '' : ' · tap to expand Mon-Sun'}
           </p>
         </button>
@@ -144,6 +170,7 @@ export function SyndicateOpsWeekCalendar({ rows = [], onOpenTab }) {
               <span className={`uppercase text-[10px] font-semibold ${sportChipClass(task.sports[0])}`}>
                 {task.sports.join('/').toUpperCase()}
               </span>
+              {task.kind === 'post' && task.atLabel ? ` · ${task.atLabel}` : ''}
               {' · Due · '}
               {task.label}
               {' ... '}
@@ -196,18 +223,25 @@ export function SyndicateOpsWeekCalendar({ rows = [], onOpenTab }) {
                             type="button"
                             onClick={() => openTask(task)}
                             title={task.detail}
-                            className="w-full rounded border border-zinc-800/70 bg-zinc-900/70 px-1 py-1 text-left hover:border-zinc-600"
+                            className={`w-full rounded border px-1 py-1 text-left hover:border-zinc-600 ${
+                              task.kind === 'post' && task.status === 'done'
+                                ? 'border-emerald-500/40 bg-emerald-950/30'
+                                : 'border-zinc-800/70 bg-zinc-900/70'
+                            }`}
                           >
                             <div className="flex flex-wrap items-center gap-0.5">
                               <span
                                 className={`inline-flex rounded border px-1 py-px text-[9px] font-semibold ${opsWeekStatusClass(task.status)}`}
                               >
-                                {opsWeekStatusLabel(task.status)}
+                                {opsWeekStatusLabel(task.status, task.kind)}
                               </span>
                               <span className={`text-[9px] font-semibold uppercase ${sportChipClass(task.sports[0])}`}>
                                 {task.sports.length > 1 ? 'All' : task.sports[0]}
                               </span>
                             </div>
+                            {task.atLabel ? (
+                              <p className="mt-0.5 text-[10px] font-semibold text-zinc-300">{task.atLabel}</p>
+                            ) : null}
                             <p className="mt-0.5 text-[11px] font-medium text-zinc-200 leading-snug">
                               {task.label}
                             </p>

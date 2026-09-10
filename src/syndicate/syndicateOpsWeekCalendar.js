@@ -25,7 +25,7 @@ export const OPS_WEEK_SPORTS = [
 ]
 
 /**
- * @typedef {'shot' | 'auto' | 'check'} OpsWeekKind
+ * @typedef {'shot' | 'auto' | 'check' | 'post'} OpsWeekKind
  * @typedef {'upcoming' | 'due' | 'done' | 'missed' | 'auto' | 'ran'} OpsWeekStatus
  */
 
@@ -43,19 +43,26 @@ export const OPS_WEEK_SPORTS = [
  *   splitsId?: string
  *   search?: string
  *   markable?: boolean
+ *   atLabel?: string
+ *   postKinds?: string[]
+ *   pickMatch?: { sportIncludes?: string, marketKey?: string, primetime?: boolean, minCount?: number }
+ *   feedNeedle?: string
  * }>}
  */
 export const OPS_WEEK_TASKS = [
   {
     id: 'nfl_mnf',
     sports: ['nfl'],
-    kind: 'auto',
+    kind: 'post',
     label: 'MNF spotlight',
-    detail: 'Cron posts the Monday night lean if a game is on.',
+    atLabel: '3:30pm',
+    detail: 'Mon 3:30pm PT. Public primetime lean + CTA if MNF is on.',
     days: [1],
-    startHour: 17,
-    endHour: 21,
+    startHour: 15.5,
+    endHour: 18,
     tab: 'scorecard',
+    postKinds: ['nfl_primetime_spotlight'],
+    pickMatch: { sportIncludes: 'nfl', primetime: true },
   },
   {
     id: 'nfl_grade',
@@ -91,6 +98,20 @@ export const OPS_WEEK_TASKS = [
     startHour: 7,
     endHour: 9,
     tab: 'trench_epa',
+  },
+  {
+    id: 'weekly_recap',
+    sports: ['nfl', 'cfb'],
+    kind: 'post',
+    label: 'Weekly recap',
+    atLabel: '7:30am',
+    detail: 'Tue 7:30am PT. Last week ATS / CLV ledger.',
+    days: [2],
+    startHour: 7.5,
+    endHour: 9.5,
+    tab: 'scorecard',
+    postKinds: ['weekly_syndicate_recap'],
+    feedNeedle: 'Weekly Ledger',
   },
   {
     id: 'nfl_seed',
@@ -169,24 +190,28 @@ export const OPS_WEEK_TASKS = [
   {
     id: 'cfb_wed_vip',
     sports: ['cfb'],
-    kind: 'auto',
+    kind: 'post',
     label: 'VIP midweek',
-    detail: 'Wed 2pm PT. CFB Thu/Fri night VIP card.',
+    atLabel: '2:00pm',
+    detail: 'Wed 2:00pm PT. CFB Thu/Fri night VIP card.',
     days: [3],
     startHour: 14,
-    endHour: 15,
+    endHour: 15.5,
     tab: 'scorecard',
+    postKinds: ['cfb_wed_midweek_vip'],
   },
   {
     id: 'nfl_tnf_vip',
     sports: ['nfl'],
-    kind: 'auto',
+    kind: 'post',
     label: 'TNF VIP',
-    detail: 'Wednesday TNF VIP card if Thursday night is on.',
+    atLabel: '11:00am',
+    detail: 'Wed 11:00am PT. TNF VIP lean if Thursday night is on.',
     days: [3],
-    startHour: 12,
-    endHour: 20,
+    startHour: 11,
+    endHour: 13,
     tab: 'scorecard',
+    postKinds: ['nfl_wed_tnf_vip'],
   },
   {
     id: 'cfb_movers',
@@ -217,24 +242,29 @@ export const OPS_WEEK_TASKS = [
   {
     id: 'cfb_thu_tease',
     sports: ['cfb'],
-    kind: 'auto',
+    kind: 'post',
     label: 'Night tease',
-    detail: 'Thu 3:30pm PT CFB night spotlight.',
+    atLabel: '3:30pm',
+    detail: 'Thu 3:30pm PT. CFB Thursday night public tease + VIP deep.',
     days: [4],
     startHour: 15.5,
-    endHour: 16.5,
+    endHour: 17,
     tab: 'scorecard',
+    postKinds: ['cfb_thu_night_spotlight'],
   },
   {
     id: 'nfl_tnf_prime',
     sports: ['nfl'],
-    kind: 'auto',
+    kind: 'post',
     label: 'TNF public',
-    detail: 'Thursday night public lean + CTA if a game is on.',
+    atLabel: '3:30pm',
+    detail: 'Thu 3:30pm PT. Public TNF lean + CTA if a game is on.',
     days: [4],
-    startHour: 16,
-    endHour: 20,
+    startHour: 15.5,
+    endHour: 18,
     tab: 'scorecard',
+    postKinds: ['nfl_primetime_spotlight'],
+    pickMatch: { sportIncludes: 'nfl', primetime: true },
   },
   {
     id: 'cfb_lock',
@@ -252,24 +282,44 @@ export const OPS_WEEK_TASKS = [
   {
     id: 'cfb_fri_house',
     sports: ['cfb'],
-    kind: 'auto',
+    kind: 'post',
     label: 'House lock',
-    detail: 'Fri 12pm PT CFB house slate. Paste splits first.',
+    atLabel: '12:00pm',
+    detail: 'Fri 12:00pm PT CFB house slate. Paste splits first.',
     days: [5],
     startHour: 12,
-    endHour: 13,
+    endHour: 14,
     tab: 'scorecard',
+    postKinds: ['cfb_slate_card', 'slate'],
+    pickMatch: { sportIncludes: 'ncaaf', slate: true, minCount: 4 },
   },
   {
     id: 'nfl_fri_house',
     sports: ['nfl'],
-    kind: 'auto',
+    kind: 'post',
     label: 'House lock',
-    detail: 'Fri 1pm PT NFL house slate. Paste splits first.',
+    atLabel: '1:00pm',
+    detail: 'Fri 1:00pm PT NFL house slate. Paste splits first.',
     days: [5],
     startHour: 13,
-    endHour: 14,
+    endHour: 15,
     tab: 'scorecard',
+    postKinds: ['nfl_slate_card', 'slate'],
+    pickMatch: { sportIncludes: 'nfl', slate: true, minCount: 4 },
+  },
+  {
+    id: 'nfl_wong',
+    sports: ['nfl'],
+    kind: 'post',
+    label: 'Wong teaser',
+    atLabel: '1:30pm',
+    detail: 'Fri 1:30pm PT. 6-point Wong teaser if a pair exists.',
+    days: [5],
+    startHour: 13.5,
+    endHour: 15.5,
+    tab: 'scorecard',
+    postKinds: ['nfl_wong_teaser'],
+    pickMatch: { sportIncludes: 'nfl', marketKey: 'teasers' },
   },
   {
     id: 'ufc_card',
@@ -299,24 +349,28 @@ export const OPS_WEEK_TASKS = [
   {
     id: 'sat_adds_cfb',
     sports: ['cfb'],
-    kind: 'auto',
+    kind: 'post',
     label: 'Adds / kills',
-    detail: 'Sat 10am PT CFB VIP adds and kills.',
+    atLabel: '10:00am',
+    detail: 'Sat 10:00am PT. CFB VIP adds and kills if a lock flipped.',
     days: [6],
     startHour: 10,
-    endHour: 11,
+    endHour: 12,
     tab: 'scorecard',
+    postKinds: ['cfb_sat_vip_adds_kills'],
   },
   {
     id: 'sat_adds_nfl',
     sports: ['nfl'],
-    kind: 'auto',
+    kind: 'post',
     label: 'Adds / kills',
-    detail: 'Sat 10am PT NFL VIP adds and kills.',
+    atLabel: '10:00am',
+    detail: 'Sat 10:00am PT. NFL VIP adds and kills if a lock flipped.',
     days: [6],
     startHour: 10,
-    endHour: 11,
+    endHour: 12,
     tab: 'scorecard',
+    postKinds: ['nfl_sat_vip_adds_kills'],
   },
   {
     id: 'cfb_grade_sun',
@@ -333,13 +387,16 @@ export const OPS_WEEK_TASKS = [
   {
     id: 'nfl_snf',
     sports: ['nfl'],
-    kind: 'auto',
+    kind: 'post',
     label: 'SNF spotlight',
-    detail: 'Cron posts the Sunday night lean if a game is on.',
+    atLabel: '3:30pm',
+    detail: 'Sun 3:30pm PT. Public primetime lean + CTA if SNF is on.',
     days: [0],
-    startHour: 16,
-    endHour: 21,
+    startHour: 15.5,
+    endHour: 18,
     tab: 'scorecard',
+    postKinds: ['nfl_primetime_spotlight'],
+    pickMatch: { sportIncludes: 'nfl', primetime: true },
   },
   {
     id: 'nfl_grade_sun',
@@ -473,8 +530,71 @@ export function setOpsWeekCalendarOpen(open) {
   }
 }
 
-function markAnchorYmd(task, dayYmd) {
-  return shopTuesdayYmdFromYmd(dayYmd)
+export function emptyOpsWeekEvidence() {
+  return { logs: [], picks: [], posts: [] }
+}
+
+function evidenceYmd(iso) {
+  if (!iso) return ''
+  const ms = Date.parse(String(iso))
+  if (!Number.isFinite(ms)) return ''
+  return ptClockParts(new Date(ms)).ymd
+}
+
+function pickMeta(row) {
+  const meta = row?.metadata
+  return meta && typeof meta === 'object' ? meta : {}
+}
+
+function pickMatches(task, row, dayYmd) {
+  const match = task.pickMatch
+  if (!match) return false
+  if (evidenceYmd(row.created_at) !== dayYmd) return false
+  const sport = String(row.sport_key || '').toLowerCase()
+  if (match.sportIncludes && !sport.includes(match.sportIncludes)) return false
+  if (match.marketKey && String(row.market_key || '') !== match.marketKey) return false
+  const meta = pickMeta(row)
+  if (match.primetime && !meta.is_primetime_spotlight) return false
+  if (match.slate && !(meta.consensus_type || meta.bucket || meta.lane)) return false
+  return true
+}
+
+/**
+ * @param {typeof OPS_WEEK_TASKS[number]} task
+ * @param {string} dayYmd
+ * @param {{ logs?: object[], picks?: object[], posts?: object[] }} evidence
+ */
+export function findPostedEvidence(task, dayYmd, evidence = emptyOpsWeekEvidence()) {
+  const kinds = task.postKinds || []
+  const log = (evidence.logs || []).find((row) => {
+    if (String(row.status || '') !== 'published') return false
+    if (kinds.length && !kinds.includes(String(row.post_kind || ''))) return false
+    return evidenceYmd(row.created_at) === dayYmd
+  })
+  if (log) return { posted: true, at: log.created_at, via: 'log' }
+
+  const picks = (evidence.picks || []).filter((row) => pickMatches(task, row, dayYmd))
+  const need = task.pickMatch?.minCount || 1
+  if (task.pickMatch && picks.length >= need) {
+    return { posted: true, at: picks[0].created_at, via: 'picks' }
+  }
+
+  const needle = String(task.feedNeedle || '').toLowerCase()
+  if (needle) {
+    const post = (evidence.posts || []).find((row) => {
+      if (evidenceYmd(row.created_at) !== dayYmd) return false
+      return String(row.body || '').toLowerCase().includes(needle)
+    })
+    if (post) return { posted: true, at: post.created_at, via: 'feed' }
+  }
+
+  const failed = (evidence.logs || []).find((row) => {
+    if (String(row.status || '') !== 'failed') return false
+    if (kinds.length && !kinds.includes(String(row.post_kind || ''))) return false
+    return evidenceYmd(row.created_at) === dayYmd
+  })
+  if (failed) return { posted: false, failed: true, at: failed.created_at, via: 'log' }
+  return { posted: false, failed: false, at: null, via: null }
 }
 
 /**
@@ -482,11 +602,32 @@ function markAnchorYmd(task, dayYmd) {
  * @param {string} dayYmd
  * @param {object[]} rows
  * @param {Date} now
+ * @param {{ logs?: object[], picks?: object[], posts?: object[] }} [evidence]
  */
-export function evaluateOpsWeekTaskOnDay(task, dayYmd, rows, now = new Date()) {
+export function evaluateOpsWeekTaskOnDay(task, dayYmd, rows, now = new Date(), evidence = emptyOpsWeekEvidence()) {
   const clock = ptClockParts(now)
   const shopTue = shopTuesdayYmdFromYmd(dayYmd)
   const marked = task.markable ? isOpsWeekTaskMarked(shopTue, task.id) : false
+
+  if (task.kind === 'post') {
+    const hit = findPostedEvidence(task, dayYmd, evidence)
+    if (hit.posted) {
+      return { ...task, status: 'done', dayYmd, shopTue, marked: false, postedAt: hit.at }
+    }
+    if (dayYmd > clock.ymd) {
+      return { ...task, status: 'upcoming', dayYmd, shopTue, marked: false, postedAt: null }
+    }
+    if (dayYmd === clock.ymd) {
+      if (inTaskClockWindow(task, clock)) {
+        return { ...task, status: 'due', dayYmd, shopTue, marked: false, postedAt: null }
+      }
+      if (afterTaskWindow(task, clock) || hit.failed) {
+        return { ...task, status: 'missed', dayYmd, shopTue, marked: false, postedAt: null }
+      }
+      return { ...task, status: 'upcoming', dayYmd, shopTue, marked: false, postedAt: null }
+    }
+    return { ...task, status: 'missed', dayYmd, shopTue, marked: false, postedAt: null }
+  }
 
   if (task.splitsId) {
     const done = splitsCoverageOk(task.splitsId, rows, shopTue)
@@ -544,7 +685,7 @@ export function evaluateOpsWeekTaskOnDay(task, dayYmd, rows, now = new Date()) {
   return { ...task, status: 'missed', dayYmd, shopTue, marked: false }
 }
 
-export function buildOpsWeek(rows, now = new Date()) {
+export function buildOpsWeek(rows, now = new Date(), evidence = emptyOpsWeekEvidence()) {
   const clock = ptClockParts(now)
   const mondayYmd = weekMondayYmd(now)
   const splitsLive = evaluateSplitsDrops(rows, now)
@@ -553,7 +694,7 @@ export function buildOpsWeek(rows, now = new Date()) {
     const weekday = (1 + i) % 7
     const weekdayLabel = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][weekday]
     const tasks = OPS_WEEK_TASKS.filter((task) => task.days.includes(weekday)).map((task) =>
-      evaluateOpsWeekTaskOnDay(task, ymd, rows, now),
+      evaluateOpsWeekTaskOnDay(task, ymd, rows, now, evidence),
     )
     return {
       ymd,
@@ -599,6 +740,10 @@ export function buildOpsWeek(rows, now = new Date()) {
     owed,
     dueCount: owed.filter((t) => t.status === 'due').length,
     missedCount: owed.filter((t) => t.status === 'missed').length,
+    postedCount: days.reduce(
+      (n, day) => n + day.tasks.filter((t) => t.kind === 'post' && t.status === 'done').length,
+      0,
+    ),
   }
 }
 
@@ -607,10 +752,10 @@ export function taskMatchesSportFilter(task, sport) {
   return task.sports.includes(sport)
 }
 
-export function opsWeekStatusLabel(status) {
-  if (status === 'due') return 'Due'
-  if (status === 'done') return 'In'
-  if (status === 'missed') return 'Missed'
+export function opsWeekStatusLabel(status, kind) {
+  if (status === 'due') return kind === 'post' ? 'Goes out' : 'Due'
+  if (status === 'done') return kind === 'post' ? 'Posted' : 'In'
+  if (status === 'missed') return kind === 'post' ? 'No post' : 'Missed'
   if (status === 'auto') return 'Runs now'
   if (status === 'ran') return 'Auto'
   return 'Later'
@@ -639,4 +784,49 @@ export function formatOpsWeekDayLabel(ymd) {
 
 export function formatOpsWeekRange(mondayYmd, sundayYmd) {
   return `${formatOpsWeekDayLabel(mondayYmd)}-${formatOpsWeekDayLabel(sundayYmd)}`
+}
+
+export function opsWeekQuerySinceIso(now = new Date()) {
+  const monday = weekMondayYmd(now)
+  const ms = ptYmdStartMs(monday)
+  return new Date(ms).toISOString()
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient | null} supabaseClient
+ * @param {string} botUserId
+ * @param {Date} [now]
+ */
+export async function fetchOpsWeekEvidence(supabaseClient, botUserId, now = new Date()) {
+  if (!supabaseClient || !botUserId) return emptyOpsWeekEvidence()
+  const since = opsWeekQuerySinceIso(now)
+  const [logsRes, picksRes, postsRes] = await Promise.all([
+    supabaseClient
+      .from('lounge_bot_publish_log')
+      .select('post_kind,status,created_at,dedupe_key')
+      .eq('bot_user_id', botUserId)
+      .gte('created_at', since)
+      .in('status', ['published', 'failed'])
+      .order('created_at', { ascending: false })
+      .limit(250),
+    supabaseClient
+      .from('lounge_bot_picks')
+      .select('id,sport_key,market_key,created_at,metadata')
+      .eq('bot_user_id', botUserId)
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .limit(400),
+    supabaseClient
+      .from('community_feed_posts')
+      .select('id,body,created_at')
+      .eq('user_id', botUserId)
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .limit(80),
+  ])
+  return {
+    logs: logsRes.data || [],
+    picks: picksRes.data || [],
+    posts: postsRes.data || [],
+  }
 }

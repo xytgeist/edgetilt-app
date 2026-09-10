@@ -800,6 +800,8 @@ export function BotSharpDeskPanel({
       <div className="mt-3">
         <SyndicateOpsWeekCalendar
           rows={splitsRows}
+          supabaseClient={supabaseClient}
+          botUserId={botUserId}
           onOpenTab={(tab) => setActiveTab(tab)}
         />
       </div>

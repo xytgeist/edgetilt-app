@@ -22,4 +22,4 @@ supabase functions deploy syndicate-trench-vision --project-ref jtjgtucumuoswnba
 
 Returns `{ ok, teams: [{ team_abbr, team_name, prwr, rswr, pbwr, rbwr }], unmatched, through, confidence }`.
 
-Client: Ops **NFL Trenches** tab (`BotTrenchScreenshotIngest`). Writes only those four columns on `nfl_team_metrics`. Skips `is_custom_override`. Does not set override. Model trench impact stays 0 until Ryan turns it on.
+Client: Ops **NFL Trenches** tab (`BotTrenchScreenshotIngest`). Writes only those four columns on `nfl_team_metrics`. Skips `is_custom_override`. Does not set override. Scott + Rocco read these on the next poll.

@@ -2,7 +2,7 @@
  * NFL Primetime Solo Spotlights Engine (TNF / SNF / MNF).
  * Spotlight lean path … not the Friday house slate (`buildNflAtsSlateCard`).
  * 1. Scott (model / Net EPA)
- * 2. Rocco (short-fav / hooks … no live PBWR/trench claim)
+ * 2. Rocco (short-fav / hooks / ESPN trench)
  * 3. Tank (totals / situational)
  * 4. Chedda (dogs / splits when present)
  * 5. Spotlight lean recommendation (do not label as house hammer).
@@ -221,7 +221,7 @@ export async function findPrimetimeGameCandidate(
     ? `Net EPA/play favors ${shortDisplayName(scottTeam)} by +${Math.abs(trenchEpa.netEpaDeltaHome).toFixed(3)} pts/play (Model spread: ${trenchEpa.epaSpreadImpactHome > 0 ? shortDisplayName(homeTeam) : shortDisplayName(awayTeam)} ${Math.abs(trenchEpa.epaSpreadImpactHome).toFixed(1)}).${scottKeyTag}`
     : `Model rates ${shortDisplayName(scottTeam)} with an efficiency edge in high-leverage passing situations.${scottKeyTag}`
 
-  // 2. Rocco (short-fav / hooks … trench impact hard-zero until ingest)
+  // 2. Rocco (short-fav / hooks / ESPN trench)
   const trenchFavorsHome = (trenchEpa?.netTrenchSpreadImpactHome ?? 0) > 0
   const roccoSide = trenchFavorsHome ? 'home' : 'away'
   const roccoTeam = roccoSide === 'home' ? homeTeam : awayTeam

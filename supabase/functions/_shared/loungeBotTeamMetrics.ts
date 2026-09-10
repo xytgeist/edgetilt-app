@@ -159,9 +159,7 @@ export async function loadDbTeamMetricsMap(admin: SupabaseClient): Promise<Map<s
 }
 
 /**
- * Net EPA matchup impact between two teams.
- * Trench columns are ESPN 2025 end-of-season, but model impact stays 0
- * until Ryan turns the disparity math back on (netTrench stays 0).
+ * Net EPA + ESPN trench win-rate matchup impact between two teams.
  */
 export function calculateTrenchEpaMatchup(
   homeTeamName: string,
@@ -181,16 +179,29 @@ export function calculateTrenchEpaMatchup(
   // Net EPA spread impact: 1 net EPA unit per play ~ 22.0 spread points across ~65 plays
   const epaSpreadImpactHome = Math.round(netEpaDeltaHome * 22.0 * 10) / 10
 
-  // 2. Trench win rates: stored ESPN 2025 numbers, model impact still frozen at 0
-  const homePassTrenchDelta = 0
-  const awayPassTrenchDelta = 0
-  const netTrenchSpreadImpactHome = 0
-  const trenchAdvantageSide: 'home' | 'away' | null = null
-  const isTrenchMismatch = false
+  // 2. Trench matchup (ESPN PBWR/PRWR/RBWR/RSWR)
+  const homePassTrenchDelta = home.pass_block_win_rate - away.pass_rush_win_rate
+  const awayPassTrenchDelta = away.pass_block_win_rate - home.pass_rush_win_rate
+  const homeRunTrenchDelta = home.run_block_win_rate - away.run_stop_win_rate
+  const awayRunTrenchDelta = away.run_block_win_rate - home.run_stop_win_rate
+  const passTrenchPoints = (homePassTrenchDelta - awayPassTrenchDelta) / 12.0
+  const runTrenchPoints = (homeRunTrenchDelta - awayRunTrenchDelta) / 25.0
+  const netTrenchSpreadImpactHome = Math.round((passTrenchPoints + runTrenchPoints) * 10) / 10
+
+  let trenchAdvantageSide: 'home' | 'away' | null = null
+  if (netTrenchSpreadImpactHome >= 0.8) trenchAdvantageSide = 'home'
+  else if (netTrenchSpreadImpactHome <= -0.8) trenchAdvantageSide = 'away'
+
+  const isTrenchMismatch = Math.abs(netTrenchSpreadImpactHome) >= 0.8
   const isEpaMismatch = Math.abs(epaSpreadImpactHome) >= 2.0
 
   let summaryLine = ''
-  if (isEpaMismatch) {
+  if (isTrenchMismatch) {
+    const advSide = trenchAdvantageSide === 'home' ? home : away
+    const oppSide = trenchAdvantageSide === 'home' ? away : home
+    const advPts = Math.abs(netTrenchSpreadImpactHome)
+    summaryLine = `Trench Mismatch · ${shortDisplayName(advSide.team_name)} O-Line (${advSide.pass_block_win_rate}% PBWR vs ${oppSide.pass_rush_win_rate}% PRWR) · +${advPts} pt line edge`
+  } else if (isEpaMismatch) {
     const advSide = epaSpreadImpactHome > 0 ? home : away
     const oppSide = epaSpreadImpactHome > 0 ? away : home
     const advPts = Math.abs(epaSpreadImpactHome)

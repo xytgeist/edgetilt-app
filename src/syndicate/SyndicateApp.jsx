@@ -1508,9 +1508,8 @@ export function SyndicateApp() {
                   Key Numbers, Hook Tax &amp; Wong Structure
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  Rocco lives in short favorites, hook tax, and hurtSide / PVAL fades. He PASSes when none of those
-                  fire. Live PBWR / trench charting is <em>not</em> in the vote yet (hard-zero until ingest) ... do not
-                  read &quot;trench&quot; language as a live feed. Short-fav alone can vote but cannot unlock a hammer by itself.
+                  Rocco lives in short favorites, hook tax, hurtSide / PVAL fades, and ESPN trench mismatches.
+                  He PASSes when none of those fire. Short-fav alone can lean but cannot unlock a hammer by itself.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   That same key-number map powers the 6-point Wong teaser engine: favorites teased from -7.5/-8.5 down through

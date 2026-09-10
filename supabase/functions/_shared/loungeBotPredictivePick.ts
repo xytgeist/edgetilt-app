@@ -1325,7 +1325,7 @@ export function buildNflAtsSlateCard(
     const sharpFavorsHome = hasRealSplits && gameSplits.sharpFavoredSide === 'home'
     const sharpFavorsAway = hasRealSplits && gameSplits.sharpFavoredSide === 'away'
 
-    // Calculate EPA matchups (NFL) or Power Rating Projections (CFB). Trench impact stays 0 until ingest.
+    // NFL: EPA + ESPN trench. CFB: power projection.
     const isCfb = ev.sport_key === 'americanfootball_ncaaf' || (opts.sportKey && opts.sportKey.includes('ncaaf'))
     const trenchEpa = !isCfb ? calculateTrenchEpaMatchup(homeTeam, awayTeam, teamMetrics) : null
     const cfbMatchup = isCfb ? calculateCfbMatchupProjection(homeTeam, awayTeam, homePoint, cfbRatings) : null
@@ -1334,7 +1334,9 @@ export function buildNflAtsSlateCard(
     const sideModifier = sideModifiers.get(String(ev.id || '').trim()) || null
     const baseModelSpreadHome = isCfb
       ? (cfbMatchup?.modelSpreadHome ?? null)
-      : (trenchEpa != null ? -trenchEpa.epaSpreadImpactHome : null)
+      : (trenchEpa != null
+        ? -(trenchEpa.epaSpreadImpactHome + trenchEpa.netTrenchSpreadImpactHome)
+        : null)
     const adjustedModelSpreadHome = baseModelSpreadHome != null && sideModifier
       ? applySideModifierToModelSpread(baseModelSpreadHome, sideModifier.netSpreadImpactHome)
       : baseModelSpreadHome
@@ -1415,13 +1417,17 @@ export function buildNflAtsSlateCard(
       : (awayKeyAnalysis?.isHookTax && isShortFavAway)
         ? 0.8
         : 0
-    // CFB still uses power gap on short favs; NFL trench impact remains hard-zero (do not claim PBWR).
+    // CFB: power gap on short favs. NFL: ESPN trench mismatch.
     const roccoPowerBonus = isCfb && cfbMatchup
       ? (cfbMatchup.homePower - cfbMatchup.awayPower > 10.0 && homePoint < 0
         ? 1.2
         : cfbMatchup.awayPower - cfbMatchup.homePower > 10.0 && awayPoint < 0
           ? -1.2
           : 0)
+      : 0
+    const nflTrenchMismatch = !isCfb && trenchEpa?.isTrenchMismatch === true
+    const roccoTrenchBonus = !isCfb && trenchEpa
+      ? Math.max(-1.8, Math.min(1.8, trenchEpa.netTrenchSpreadImpactHome * 0.8))
       : 0
     const hurtSide = sideModifier?.hurtSide ?? null
     const roccoStarterOutPenalty =
@@ -1440,12 +1446,14 @@ export function buildNflAtsSlateCard(
       || hurtSide != null
       || Math.abs(roccoHookTaxPenalty) >= 0.8
       || pastedChalkTrap
+      || nflTrenchMismatch
       || (isCfb && Math.abs(roccoPowerBonus) >= 1.0)
     const roccoScoreHome =
       (isShortFavHome ? (1.2 * roccoWeight) : isShortFavAway ? (-1.2 * roccoWeight) : (homePoint < 0 ? 0.4 : -0.4))
       + roccoChalkTrapPenalty
       + roccoHookTaxPenalty
       + roccoPowerBonus
+      + roccoTrenchBonus
       + roccoStarterOutPenalty
     let roccoSide: SlateDeskSide = roccoHasVoteFeature
       ? (roccoScoreHome >= 0 ? 'home' : 'away')
@@ -1455,6 +1463,7 @@ export function buildNflAtsSlateCard(
       hurtSide != null
       || Math.abs(roccoHookTaxPenalty) >= 0.8
       || pastedChalkTrap
+      || nflTrenchMismatch
       || (isCfb && Math.abs(roccoPowerBonus) >= 1.0)
 
     // Ugly juice gate: worse than -115 → always PASS (hard pass … no Scott/Chedda override).
@@ -1628,11 +1637,12 @@ export function buildNflAtsSlateCard(
     if (hurtSide) roccoSignals.push('hurt')
     if (Math.abs(roccoHookTaxPenalty) >= 0.8) roccoSignals.push('hook_tax')
     if (pastedChalkTrap) roccoSignals.push('chalk_trap')
+    if (nflTrenchMismatch) roccoSignals.push('trench')
     if (isCfb && Math.abs(roccoPowerBonus) >= 1.0) roccoSignals.push('cfb_power')
     if (roccoPassedUglyJuice) roccoSignals.push('ugly_juice')
     const roccoWanted =
       roccoLeanSide === 'home' ? homeTeam : roccoLeanSide === 'away' ? awayTeam : ''
-    let roccoWhy = 'No short-fav, hurt side, hook tax, or pasted chalk-trap.'
+    let roccoWhy = 'No short-fav, hurt side, hook tax, trench mismatch, or pasted chalk-trap.'
     if (roccoPassedUglyJuice) {
       roccoWhy =
         `Wanted ${sportTeamDisplayName(roccoWanted, ev.sport_key)} ${roccoWouldBeLine || ''} but juice worse than ${ROCCO_UGLY_JUICE_WORSE_THAN}.`
@@ -1644,6 +1654,7 @@ export function buildNflAtsSlateCard(
       if (hurtSide) bits.push('hurt side')
       if (Math.abs(roccoHookTaxPenalty) >= 0.8) bits.push('hook tax')
       if (pastedChalkTrap) bits.push('pasted chalk-trap')
+      if (nflTrenchMismatch) bits.push('trench mismatch')
       if (isCfb && Math.abs(roccoPowerBonus) >= 1.0) bits.push('CFB power gap')
       if (isShortFavHome || isShortFavAway) bits.push('short-fav')
       roccoWhy = `Fires ${sportTeamDisplayName(roccoWanted, ev.sport_key)} on ${bits.join(' + ') || 'spread lean'}.`

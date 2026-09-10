@@ -117,6 +117,9 @@ verify_jwt = true
 [functions.syndicate-splits-vision]
 verify_jwt = true
 
+[functions.syndicate-trench-vision]
+verify_jwt = true
+
 # StoreKit purchase confirm. Client sends the user JWT; function re-checks it.
 [functions.apple-iap-verify]
 verify_jwt = true

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import BotTrenchScreenshotIngest from './BotTrenchScreenshotIngest.jsx'
 
 export default function BotTeamMetricsEditor({ supabaseClient, setToast }) {
   const [teams, setTeams] = useState([])
@@ -26,6 +27,8 @@ export default function BotTeamMetricsEditor({ supabaseClient, setToast }) {
           def_epa_play: Number(t.def_epa_play),
           pass_block_win_rate: Number(t.pass_block_win_rate),
           pass_rush_win_rate: Number(t.pass_rush_win_rate),
+          run_block_win_rate: Number(t.run_block_win_rate),
+          run_stop_win_rate: Number(t.run_stop_win_rate),
           success_rate: Number(t.success_rate),
         }
       }
@@ -60,9 +63,11 @@ export default function BotTeamMetricsEditor({ supabaseClient, setToast }) {
     const defEpa = Number(edit.def_epa_play)
     const pbwr = Number(edit.pass_block_win_rate)
     const prwr = Number(edit.pass_rush_win_rate)
+    const rbwr = Number(edit.run_block_win_rate)
+    const rswr = Number(edit.run_stop_win_rate)
     const succRate = Number(edit.success_rate)
 
-    if (isNaN(offEpa) || isNaN(defEpa) || isNaN(pbwr) || isNaN(prwr)) {
+    if (isNaN(offEpa) || isNaN(defEpa) || isNaN(pbwr) || isNaN(prwr) || isNaN(rbwr) || isNaN(rswr)) {
       setToast?.({ message: 'Invalid numbers in team metrics fields', isError: true })
       return
     }
@@ -76,6 +81,8 @@ export default function BotTeamMetricsEditor({ supabaseClient, setToast }) {
           def_epa_play: defEpa,
           pass_block_win_rate: pbwr,
           pass_rush_win_rate: prwr,
+          run_block_win_rate: rbwr,
+          run_stop_win_rate: rswr,
           success_rate: succRate,
           is_custom_override: true,
           updated_at: new Date().toISOString(),
@@ -93,6 +100,8 @@ export default function BotTeamMetricsEditor({ supabaseClient, setToast }) {
                 def_epa_play: defEpa,
                 pass_block_win_rate: pbwr,
                 pass_rush_win_rate: prwr,
+                run_block_win_rate: rbwr,
+                run_stop_win_rate: rswr,
                 success_rate: succRate,
                 is_custom_override: true,
               }
@@ -133,7 +142,7 @@ export default function BotTeamMetricsEditor({ supabaseClient, setToast }) {
             </span>
           </div>
           <p className="mt-0.5 text-xs text-zinc-400">
-            Off/Def EPA per play, Pass Block Win Rate (PBWR), and Pass Rush Win Rate (PRWR) for matchup trench disparity.
+            Off/Def EPA stay on the Tuesday nflverse sync. Trench % come from ESPN screenshots below (or the 2025 Week 18 board).
           </p>
         </div>
 
@@ -146,6 +155,13 @@ export default function BotTeamMetricsEditor({ supabaseClient, setToast }) {
           {loading ? 'Refreshing...' : '🔄 Refresh Table'}
         </button>
       </div>
+
+      <BotTrenchScreenshotIngest
+        supabaseClient={supabaseClient}
+        teams={teams}
+        setToast={setToast}
+        onApplied={loadTeams}
+      />
 
       {/* Filters & Search */}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2.5">
@@ -187,6 +203,8 @@ export default function BotTeamMetricsEditor({ supabaseClient, setToast }) {
               <th className="px-2 py-2">Net EPA</th>
               <th className="px-2 py-2">PBWR %</th>
               <th className="px-2 py-2">PRWR %</th>
+              <th className="px-2 py-2">RBWR %</th>
+              <th className="px-2 py-2">RSWR %</th>
               <th className="px-2 py-2">Succ %</th>
               <th className="px-3 py-2 text-right">Action</th>
             </tr>
@@ -198,6 +216,8 @@ export default function BotTeamMetricsEditor({ supabaseClient, setToast }) {
                 def_epa_play: Number(team.def_epa_play),
                 pass_block_win_rate: Number(team.pass_block_win_rate),
                 pass_rush_win_rate: Number(team.pass_rush_win_rate),
+                run_block_win_rate: Number(team.run_block_win_rate),
+                run_stop_win_rate: Number(team.run_stop_win_rate),
                 success_rate: Number(team.success_rate),
               }
 
@@ -207,6 +227,8 @@ export default function BotTeamMetricsEditor({ supabaseClient, setToast }) {
                 Number(edit.def_epa_play) !== Number(team.def_epa_play) ||
                 Number(edit.pass_block_win_rate) !== Number(team.pass_block_win_rate) ||
                 Number(edit.pass_rush_win_rate) !== Number(team.pass_rush_win_rate) ||
+                Number(edit.run_block_win_rate) !== Number(team.run_block_win_rate) ||
+                Number(edit.run_stop_win_rate) !== Number(team.run_stop_win_rate) ||
                 Number(edit.success_rate) !== Number(team.success_rate)
 
               const isSaving = savingId === team.id
@@ -271,6 +293,24 @@ export default function BotTeamMetricsEditor({ supabaseClient, setToast }) {
                   <td className="px-2 py-2">
                     <input
                       type="number"
+                      step="1"
+                      value={edit.run_block_win_rate}
+                      onChange={(e) => handleFieldChange(team.id, 'run_block_win_rate', e.target.value)}
+                      className="w-14 rounded border border-zinc-700 bg-zinc-950 px-1.5 py-0.5 text-xs text-white font-mono focus:border-amber-500 focus:outline-none"
+                    />
+                  </td>
+                  <td className="px-2 py-2">
+                    <input
+                      type="number"
+                      step="1"
+                      value={edit.run_stop_win_rate}
+                      onChange={(e) => handleFieldChange(team.id, 'run_stop_win_rate', e.target.value)}
+                      className="w-14 rounded border border-zinc-700 bg-zinc-950 px-1.5 py-0.5 text-xs text-white font-mono focus:border-amber-500 focus:outline-none"
+                    />
+                  </td>
+                  <td className="px-2 py-2">
+                    <input
+                      type="number"
                       step="0.5"
                       value={edit.success_rate}
                       onChange={(e) => handleFieldChange(team.id, 'success_rate', e.target.value)}
@@ -296,7 +336,7 @@ export default function BotTeamMetricsEditor({ supabaseClient, setToast }) {
             })}
             {filteredTeams.length === 0 && (
               <tr>
-                <td colSpan={9} className="py-6 text-center text-zinc-500">
+                <td colSpan={11} className="py-6 text-center text-zinc-500">
                   No NFL teams found matching filter.
                 </td>
               </tr>

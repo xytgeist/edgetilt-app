@@ -821,7 +821,7 @@ Use **`npm run db:query:production`** / **`db:query:test`** — not parallel raw
 
 **NFL (free):** [`scripts/sync-nfl-team-metrics.mjs`](../scripts/sync-nfl-team-metrics.mjs) pulls nflverse play-by-play and upserts `off_epa_play`, `def_epa_play`, `success_rate`. Skips `is_custom_override` rows. Does **not** overwrite trench columns.
 
-**NFL trench (frozen 2025):** [`scripts/sync-nfl-trench-win-rates.mjs`](../scripts/sync-nfl-trench-win-rates.mjs) writes PBWR / PRWR / RBWR / RSWR from [`data/syndicate/espn-nfl-2025-team-win-rates.json`](../data/syndicate/espn-nfl-2025-team-win-rates.json) (ESPN story `46138675`, through Week 18). Pressure rates stay unused invented leftovers.
+**NFL trench (frozen 2025 + screenshot ingest):** [`scripts/sync-nfl-trench-win-rates.mjs`](../scripts/sync-nfl-trench-win-rates.mjs) writes the Week 18 2025 board from [`data/syndicate/espn-nfl-2025-team-win-rates.json`](../data/syndicate/espn-nfl-2025-team-win-rates.json). Weekly refresh is Ops **NFL Trenches** → paste ESPN team table screenshot → Edge **`syndicate-trench-vision`** → review → apply (four win-rate columns only; skips `is_custom_override`). Pressure rates stay unused leftovers.
 
 ```bash
 npm run syndicate:sync-nfl-trench:test

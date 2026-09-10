@@ -838,6 +838,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 - [x] `process-offer-uploads` deployed and validated on test
 - [x] `w2g-vision-extract` deployed on test (OpenAI vision W-2G six fields; Starter+ / staff)
+- [x] **`syndicate-trench-vision`** (ESPN team PBWR/PRWR/RBWR/RSWR screenshot) … Ops NFL Trenches paste. Same `OPENAI_API_KEY` as splits. Deploy test; prod when Ryan OKs.
 - [x] `get-web-push-config` deployed and validated on test
 - [x] `send-test-push` deployed and validated on test
 - [x] `send-due-offer-reminders` deployed and validated on test
@@ -1118,6 +1119,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 ---
 
 ## Update log
+
+- **2026-09-10:** **ESPN trench screenshot ingest (Windows).** Ops NFL Trenches tab: Ctrl+V ESPN team table → `syndicate-trench-vision` → review → apply four win-rate columns. Skips custom overrides. Model trench still 0. **`1.4.145`.**
 
 - **2026-09-10:** **ESPN 2025 trench board (Windows).** PBWR / PRWR / RBWR / RSWR from ESPN Analytics Week 18 (`46138675`) in `data/syndicate/espn-nfl-2025-team-win-rates.json`. Applied on **test** `nfl_team_metrics`. Tuesday EPA sync still does not touch these. Model trench impact stays **0**. Prod write when Ryan OKs. **`1.4.144`.**
 

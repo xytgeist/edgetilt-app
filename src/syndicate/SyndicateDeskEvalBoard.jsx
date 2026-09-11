@@ -1,4 +1,5 @@
 import { deskMeta } from './syndicateOpsDesks.js'
+import { SyndicateDeskEquationList } from './SyndicateDeskEquationList.jsx'
 
 function passLike(side) {
   const s = String(side || '').toLowerCase()
@@ -119,6 +120,7 @@ export function SyndicateDeskEvalBoard({ deskId, rows, sportLabel, emptyHint }) 
                 <p className="text-[11px] text-orange-300/90">Lean only … does not count in the house tally.</p>
               ) : null}
               <SignalRow signals={g.signals} />
+              <SyndicateDeskEquationList equations={g.equations} />
               {g.extra ? (
                 <div className="mt-2 rounded-lg border border-zinc-800 bg-zinc-900/60 px-2.5 py-2">
                   <div className="flex flex-wrap items-center justify-between gap-2">
@@ -135,6 +137,7 @@ export function SyndicateDeskEvalBoard({ deskId, rows, sportLabel, emptyHint }) 
                     {g.extra.why || 'No ATS write-up.'}
                   </p>
                   <SignalRow signals={g.extra.signals} />
+                  <SyndicateDeskEquationList equations={g.extra.equations} />
                 </div>
               ) : null}
             </li>

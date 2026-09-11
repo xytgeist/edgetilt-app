@@ -111,8 +111,9 @@ export function SyndicateOpsShell({ supabaseClient, userEmail, onSignOut }) {
 
       <main className="max-w-5xl mx-auto px-3 py-4 pb-16">
         <p className="text-[11px] text-zinc-500 mb-4">
-          House is the 4-desk composer. Open Scott, Rocco, Chedda, or Tank, then Preview a drop to see that desk&apos;s
-          vote and why. Scorecard, Chedda paste, PVALs, and metrics stay on the tabs below. Bot create / pause / X sources stay on EdgeTilt{' '}
+          House is the 4-desk composer. Desk Math shows every equation and how it moves the vote. Open Scott, Rocco,
+          Chedda, or Tank, then Preview a drop for that desk&apos;s game list. Scorecard, Chedda paste, PVALs, and
+          metrics stay on the tabs below. Bot create / pause / X sources stay on EdgeTilt{' '}
           <span className="font-mono text-zinc-400">/?tab=bots</span>.
         </p>
 

@@ -72,6 +72,14 @@ import {
   type SideModifier,
 } from './loungeBotSideModifier.ts'
 import {
+  buildCheddaFootballEquations,
+  buildRoccoFootballEquations,
+  buildScottFootballEquations,
+  buildTankAtsEquations,
+  buildTankTotalsEquations,
+  type DeskEquation,
+} from './loungeBotDeskEquations.ts'
+import {
   computePickClvPts,
   mapConsensusTypeToBucket,
 } from './loungeBotSyndicateScoreboard.ts'
@@ -147,6 +155,8 @@ export type SlateGamePick = {
     /** Ops desk board … why this desk voted this way. */
     why?: string
     signals?: string[]
+    /** Ops desk math … one row per equation that moved this vote. */
+    equations?: DeskEquation[]
   }>
 }
 
@@ -1660,6 +1670,92 @@ export function buildNflAtsSlateCard(
       roccoWhy = `Fires ${sportTeamDisplayName(roccoWanted, ev.sport_key)} on ${bits.join(' + ') || 'spread lean'}.`
     }
 
+    const scottPickPoint = scottSide === 'home'
+      ? homePoint
+      : scottSide === 'away'
+        ? awayPoint
+        : (softModelValue?.valueSide === 'home'
+          ? homePoint
+          : softModelValue?.valueSide === 'away'
+            ? awayPoint
+            : homePoint)
+    const tankAbsEdge = modelTotal != null && marketTotalQuote?.total != null
+      ? Math.round(Math.abs(modelTotal - marketTotalQuote.total) * 10) / 10
+      : null
+    const tankKeyCross = modelTotal != null && marketTotalQuote?.total != null
+      ? crossesTotalsKeyNumber(modelTotal, marketTotalQuote.total)
+      : false
+    const scottEquations = buildScottFootballEquations({
+      isCfb: !!isCfb,
+      homeTeam,
+      awayTeam,
+      baseModelSpreadHome,
+      adjustedModelSpreadHome,
+      marketSpreadHome: homePoint,
+      pvalImpactHome: sideModifier?.netSpreadImpactHome ?? null,
+      pvalSignificant: sideModifier?.isSignificant === true,
+      pvalReason: sideModifier?.reason ?? null,
+      hardFire: injuryValue?.isValuePlay === true,
+      softEligible: softModelValue?.isValuePlay === true && !injuryValue?.isValuePlay,
+      pickIsTrueKey: isTrueKeySpreadPoint(scottPickPoint),
+      side: scottSide,
+    })
+    const roccoEquations = buildRoccoFootballEquations({
+      homeTeam,
+      awayTeam,
+      homePoint,
+      awayPoint,
+      homePrice,
+      awayPrice,
+      isCfb: !!isCfb,
+      isShortFavHome,
+      isShortFavAway,
+      hurtSide,
+      hookTaxHome: homeKeyAnalysis?.isHookTax === true,
+      hookTaxAway: awayKeyAnalysis?.isHookTax === true,
+      hookTaxPenalty: roccoHookTaxPenalty,
+      chalkTrap: pastedChalkTrap,
+      chalkTrapPenalty: roccoChalkTrapPenalty,
+      trenchMismatch: nflTrenchMismatch,
+      trenchBonus: roccoTrenchBonus,
+      powerBonus: roccoPowerBonus,
+      starterOutPenalty: roccoStarterOutPenalty,
+      scoreHome: roccoScoreHome,
+      hasVoteFeature: roccoHasVoteFeature,
+      hasStrengthReason: roccoHasStrengthReason,
+      uglyJuice: roccoPassedUglyJuice,
+      uglyJuiceCutoff: ROCCO_UGLY_JUICE_WORSE_THAN,
+      leanSide: roccoLeanSide,
+      side: roccoSide,
+      countsForHouse: roccoCountsForHouse,
+    })
+    const cheddaEquations = buildCheddaFootballEquations({
+      homeTeam,
+      awayTeam,
+      homeIsDog,
+      awayIsDog,
+      goldenHookHome: cheddaGoldenHookHome,
+      goldenHookAway: cheddaGoldenHookAway,
+      modelDogHome: cheddaModelDogHome,
+      modelDogAway: cheddaModelDogAway,
+      moneyHome: cheddaMoneyHome,
+      moneyAway: cheddaMoneyAway,
+      hasRealSplits,
+      splitsLine: gameSplits.summaryLine || null,
+      side: cheddaSide,
+    })
+    const tankTotalsEquations = buildTankTotalsEquations({
+      modelTotal,
+      marketTotal: marketTotalQuote?.total ?? null,
+      openTotal,
+      isHighWind: weather?.isHighWind === true,
+      isCfb: !!isCfb,
+      isNonConference: cfbMatchup?.isNonConference === true,
+      keyCross: tankKeyCross,
+      absEdge: tankAbsEdge,
+      side: tankTotalsSide,
+    })
+
     const pickerPicks: Record<SharpPicker, {
       side: SlateDeskSide
       teamName: string
@@ -1668,6 +1764,10 @@ export function buildNflAtsSlateCard(
       pick: OddsPick
       countsForHouse?: boolean
       uglyJuice?: boolean
+      wouldBeLineDisplay?: string
+      why?: string
+      signals?: string[]
+      equations?: DeskEquation[]
     }> = {
       Scott: {
         side: scottSide,
@@ -1678,6 +1778,7 @@ export function buildNflAtsSlateCard(
         countsForHouse: scottSide !== 'pass',
         why: scottWhy,
         signals: scottSignals,
+        equations: scottEquations,
       },
       Rocco: {
         side: roccoSide,
@@ -1714,6 +1815,7 @@ export function buildNflAtsSlateCard(
         wouldBeLineDisplay: roccoPassedUglyJuice && roccoWouldBeLine ? roccoWouldBeLine : undefined,
         why: roccoWhy,
         signals: roccoSignals,
+        equations: roccoEquations,
       },
       Chedda: {
         side: cheddaSide,
@@ -1728,6 +1830,7 @@ export function buildNflAtsSlateCard(
         countsForHouse: cheddaSide !== 'pass',
         why: cheddaWhy,
         signals: cheddaSignals,
+        equations: cheddaEquations,
       },
       Tank: {
         side: tankTotalsSide,
@@ -1742,6 +1845,7 @@ export function buildNflAtsSlateCard(
         countsForHouse: false, // totals desk … never fills ATS house buckets
         why: tankTotalsExplain.why,
         signals: tankTotalsExplain.signals,
+        equations: tankTotalsEquations,
       },
     }
 
@@ -1856,6 +1960,7 @@ export type DeskEvalRow = {
   signals: string[]
   countsForHouse: boolean
   market: 'spreads' | 'totals'
+  equations?: DeskEquation[]
   extra?: {
     label: string
     side: string
@@ -1864,6 +1969,7 @@ export type DeskEvalRow = {
     why: string
     signals: string[]
     published: boolean
+    equations?: DeskEquation[]
   }
 }
 
@@ -1892,6 +1998,7 @@ export function slateDeskEvalBoard(card: NflSlateCard | null | undefined): DeskE
         signals: p.signals || [],
         countsForHouse: p.countsForHouse !== false && p.side !== 'pass',
         market: 'spreads',
+        equations: p.equations || [],
       })
     }
 
@@ -1906,6 +2013,7 @@ export function slateDeskEvalBoard(card: NflSlateCard | null | undefined): DeskE
       signals: tank.signals || [],
       countsForHouse: false,
       market: 'totals',
+      equations: tank.equations || [],
       extra: {
         label: 'ATS spot',
         side: spot?.published ? String(spot.side) : 'pass',
@@ -1916,6 +2024,20 @@ export function slateDeskEvalBoard(card: NflSlateCard | null | undefined): DeskE
         why: spot?.rationale || 'No rest / weather / tempo / under+dog tell.',
         signals: spot?.published ? (spot.reasons || []) : (spot?.tags || []),
         published: spot?.published === true,
+        equations: buildTankAtsEquations({
+          homeTeam: g.homeTeam,
+          awayTeam: g.awayTeam,
+          restReasons: spot?.reasons?.includes('rest') ? ['rest'] : [],
+          weatherReasons: spot?.reasons?.includes('weather') ? ['weather'] : [],
+          tempoReasons: spot?.reasons?.includes('tempo') ? ['tempo'] : [],
+          underDog: spot?.reasons?.includes('total_agree') === true,
+          conflict: (spot?.tags || []).some((t) => t === 'conflict_pass' || t === 'total_conflict'),
+          streetFade: (spot?.tags || []).includes('street_fade'),
+          reasons: spot?.reasons || [],
+          published: spot?.published === true,
+          side: String(spot?.side || 'pass'),
+          rationale: spot?.rationale || '',
+        }),
       },
     })
   }

@@ -31,6 +31,13 @@ import {
   fanOutSyndicatePublish,
   resolvePublishDestinations,
 } from './loungeBotPublishDestinations.ts'
+import {
+  buildUfcCheddaEquations,
+  buildUfcRoccoEquations,
+  buildUfcScottEquations,
+  buildUfcTankEquations,
+  type DeskEquation,
+} from './loungeBotDeskEquations.ts'
 
 export type UfcFightPick = {
   eventId: string
@@ -46,10 +53,10 @@ export type UfcFightPick = {
   marketTotalOverPrice?: number
   marketTotalUnderPrice?: number
   pickerPicks: {
-    Scott: { pickName: string; side: 'A' | 'B' | 'Over' | 'Under'; odds: number; rationale: string }
-    Rocco: { pickName: string; side: 'A' | 'B' | 'Over' | 'Under'; odds: number; rationale: string }
-    Chedda: { pickName: string; side: 'A' | 'B' | 'Over' | 'Under'; odds: number; rationale: string }
-    Tank: { pickName: string; side: 'A' | 'B' | 'Over' | 'Under'; odds: number; rationale: string }
+    Scott: { pickName: string; side: 'A' | 'B' | 'Over' | 'Under'; odds: number; rationale: string; equations?: DeskEquation[] }
+    Rocco: { pickName: string; side: 'A' | 'B' | 'Over' | 'Under'; odds: number; rationale: string; equations?: DeskEquation[] }
+    Chedda: { pickName: string; side: 'A' | 'B' | 'Over' | 'Under'; odds: number; rationale: string; equations?: DeskEquation[] }
+    Tank: { pickName: string; side: 'A' | 'B' | 'Over' | 'Under'; odds: number; rationale: string; equations?: DeskEquation[] }
   }
   consensusPick: {
     side: 'A' | 'B' | 'Over' | 'Under'
@@ -89,6 +96,7 @@ export function ufcDeskEvalBoard(card: UfcSlateCard | null | undefined) {
       signals: string[]
       countsForHouse: boolean
       market: 'spreads' | 'totals'
+      equations?: DeskEquation[]
     }>
   >
   if (!card?.fights?.length) return empty
@@ -112,6 +120,7 @@ export function ufcDeskEvalBoard(card: UfcSlateCard | null | undefined) {
         signals: [],
         countsForHouse: true,
         market: isTotal ? 'totals' : 'spreads',
+        equations: p.equations || [],
       })
     }
   }
@@ -172,10 +181,10 @@ export async function buildUfcSlateCard(
     let scottOdds = oddsA
     let scottPickName = `${fighterA} ML (${formatAmericanOdds(oddsA)})`
     let scottRationale = `Model devig clears +EV vs Pinnacle/Circa consensus pricing.`
+    const edgeA = matchup ? matchup.projectedWinProbA - americanToImplied(oddsA) : null
+    const edgeB = matchup ? matchup.projectedWinProbB - americanToImplied(oddsB) : null
 
-    if (matchup) {
-      const edgeA = matchup.projectedWinProbA - americanToImplied(oddsA)
-      const edgeB = matchup.projectedWinProbB - americanToImplied(oddsB)
+    if (matchup && edgeA != null && edgeB != null) {
       if (edgeB > edgeA) {
         scottSide = 'B'
         scottOdds = oddsB
@@ -302,6 +311,12 @@ export async function buildUfcSlateCard(
 
     const consFighter = consensusSide === 'A' ? fighterA : fighterB
     const consOdds = consensusSide === 'A' ? oddsA : oddsB
+    const cheddaCopiedRocco = !((isDogB && oddsB <= 260) || (isDogA && oddsA <= 260))
+    const cheddaDogSide: 'A' | 'B' | null = (isDogB && oddsB <= 260)
+      ? 'B'
+      : (isDogA && oddsA <= 260)
+        ? 'A'
+        : null
 
     const fightPick: UfcFightPick = {
       eventId: ev.id,
@@ -317,10 +332,65 @@ export async function buildUfcSlateCard(
       marketTotalOverPrice: overPrice,
       marketTotalUnderPrice: underPrice,
       pickerPicks: {
-        Scott: { pickName: scottPickName, side: scottSide, odds: scottOdds, rationale: scottRationale },
-        Rocco: { pickName: roccoPickName, side: roccoSide, odds: roccoOdds, rationale: roccoRationale },
-        Chedda: { pickName: cheddaPickName, side: cheddaSide, odds: cheddaOdds, rationale: cheddaRationale },
-        Tank: { pickName: tankPickName, side: tankSide, odds: tankOdds, rationale: tankRationale },
+        Scott: {
+          pickName: scottPickName,
+          side: scottSide,
+          odds: scottOdds,
+          rationale: scottRationale,
+          equations: buildUfcScottEquations({
+            fighterA,
+            fighterB,
+            oddsA,
+            oddsB,
+            edgeA,
+            edgeB,
+            fairA: matchup?.modelFairOddsA ?? null,
+            fairB: matchup?.modelFairOddsB ?? null,
+            side: scottSide,
+          }),
+        },
+        Rocco: {
+          pickName: roccoPickName,
+          side: roccoSide,
+          odds: roccoOdds,
+          rationale: roccoRationale,
+          equations: buildUfcRoccoEquations({
+            fighterA,
+            fighterB,
+            strikingDiffA: matchup?.strikingDiffA ?? null,
+            tdA: matchup?.takedownControlA ?? null,
+            tdB: matchup?.takedownControlB ?? null,
+            side: roccoSide,
+          }),
+        },
+        Chedda: {
+          pickName: cheddaPickName,
+          side: cheddaSide,
+          odds: cheddaOdds,
+          rationale: cheddaRationale,
+          equations: buildUfcCheddaEquations({
+            fighterA,
+            fighterB,
+            oddsA,
+            oddsB,
+            finishProb: matchup?.projectedFinishProb ?? null,
+            dogSide: cheddaDogSide,
+            side: cheddaSide,
+            copiedRocco: cheddaCopiedRocco,
+          }),
+        },
+        Tank: {
+          pickName: tankPickName,
+          side: tankSide,
+          odds: tankOdds,
+          rationale: tankRationale,
+          equations: buildUfcTankEquations({
+            totalLine,
+            finishProb: matchup?.projectedFinishProb ?? null,
+            isApex,
+            side: tankSide,
+          }),
+        },
       },
       consensusPick: {
         side: consensusSide,

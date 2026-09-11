@@ -38,6 +38,7 @@ import { SyndicateDeskEvalBoard } from '../../syndicate/SyndicateDeskEvalBoard.j
 import { SyndicateOpsDropInfo } from '../../syndicate/SyndicateOpsDropInfo.jsx'
 import { SyndicateOpsWeekCalendar } from '../../syndicate/SyndicateOpsWeekCalendar.jsx'
 import { SyndicateWeeklyPullsPanel } from '../../syndicate/SyndicateWeeklyPullsPanel.jsx'
+import { SyndicateDeskMathPanel } from '../../syndicate/SyndicateDeskMathPanel.jsx'
 import {
   deskEvalsFor,
   deskMeta,
@@ -74,6 +75,7 @@ const TIMEFRAME_OPTIONS = [
 
 const DESK_TABS = [
   { id: 'pulls', label: '📡 Weekly Pulls', shortLabel: 'Pulls' },
+  { id: 'math', label: '🧮 Desk Math', shortLabel: 'Math' },
   { id: 'scorecard', label: '🎯 Scorecard & Drops', shortLabel: 'Scorecard' },
   { id: 'splits', label: '🧀 Splits Paste', shortLabel: 'Splits' },
   { id: 'pvals', label: '🩹 NFL Injury PVALs', shortLabel: 'NFL PVALs' },
@@ -777,7 +779,7 @@ export function BotSharpDeskPanel({
               type="button"
               onClick={() => {
                 setSelectedOpsDesk(desk.id)
-                setActiveTab('scorecard')
+                if (activeTab !== 'math') setActiveTab('scorecard')
               }}
               className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold border transition ${
                 on ? desk.chipOn : `${desk.chipOff} hover:bg-zinc-800`
@@ -807,8 +809,8 @@ export function BotSharpDeskPanel({
           </div>
           <div className="text-[11px] text-zinc-400 mt-0.5">
             {inspectingDesk
-              ? `${activeDeskMeta?.lane || ''} Preview a drop to see this desk's vote and why on every game.`
-              : 'Scott, Rocco, Chedda & Tank. Open a desk to inspect its vote and why.'}
+              ? `${activeDeskMeta?.lane || ''} Desk Math shows every equation. Preview still lists the vote and why.`
+              : 'Scott, Rocco, Chedda & Tank. Desk Math shows the equations. Open a desk to inspect one vote board.'}
           </div>
         </div>
 
@@ -867,6 +869,14 @@ export function BotSharpDeskPanel({
         <SyndicateWeeklyPullsPanel
           supabaseClient={supabaseClient}
           onOpenTab={(tab) => setActiveTab(tab)}
+        />
+      )}
+
+      {activeTab === 'math' && (
+        <SyndicateDeskMathPanel
+          supabaseClient={supabaseClient}
+          botSlug={botSlug}
+          selectedDesk={selectedOpsDesk}
         />
       )}
 

@@ -1121,6 +1121,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-10:** **Ops Desk Math tab (Windows).** `sharpesyndicate.com/ops` **Desk Math** dry-runs NFL / CFB / UFC and lists each desk equation, live outcome, and how it moves the vote. `deskEvals.equations` from `lounge-odds-poll`. Redeploy the function. **`1.4.162`.**
+
 - **2026-09-10:** **Ops Weekly Pulls tab (Windows).** `sharpesyndicate.com/ops` shows Tue 7am PT data pulls (EPA, CFB, UFC, Sleeper, Two Deep) as pass/fail from table writes + GHA heartbeats. Staff SELECT on `admin_ops_job_heartbeats`. **`1.4.161`.**
 
 - **2026-09-10:** **Poker Details tab `Icon` crash.** `PokerBankrollOverview` `MatrixTypeHead` rendered `<Icon />` without taking `Icon` from props. Same component backs Details on Bankroll and Stable. Sentry `c33d33dad8d24fcbef5085c816b60270`. **`1.4.160`.**

@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-11 … report/block on prod
+
+**I am Mac Theo.** **`20260911130000`** applied on prod. `test` → **`main`** for **`1.4.173`** (report/block + Gmail confirm card). Re-record report/block on the 128 IPA after Vercel prod finishes. Do not Resubmit until Ryan reviews the written reply.
+
 ### Mac Theo 2026-09-11 … Lounge report + block wired
 
 **I am Mac Theo.** Report / Block on post, comment, and profile are real. `lounge_reports` + `public.blocks` hide that author from the viewer’s feed and comments. Staff queue: Monitor → Product. **`1.4.173`.** Migration **`20260911130000`**. Apply on **prod** before the App Review recording on edgetilt.com. Do not claim report/block on the old tape.

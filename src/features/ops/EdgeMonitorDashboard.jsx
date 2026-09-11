@@ -44,6 +44,7 @@ import EdgeMonitorSystemHealthPanel from './EdgeMonitorSystemHealthPanel.jsx'
 import EdgeMonitorPokerCatalogPanel from './EdgeMonitorPokerCatalogPanel.jsx'
 import EdgeMonitorSecurityPanel from './EdgeMonitorSecurityPanel.jsx'
 import EdgeMonitorUserSignupsPanel from './EdgeMonitorUserSignupsPanel.jsx'
+import EdgeMonitorLoungeReportsPanel from '../lounge/EdgeMonitorLoungeReportsPanel.jsx'
 import { useEdgeMonitorLivePulse } from './useEdgeMonitorLivePulse.js'
 import { useEdgeMonitorSubscriberRoster } from './useEdgeMonitorSubscriberRoster.js'
 import { useEdgeMonitorSystemHealth } from './useEdgeMonitorSystemHealth.js'
@@ -1015,6 +1016,7 @@ export default function EdgeMonitorDashboard({
     if (section === 'product') {
       return (
         <>
+          <EdgeMonitorLoungeReportsPanel supabaseClient={supabaseClient} />
           <EdgeMonitorAppSectionUsagePanel
             usage={appSectionUsage}
             loading={appSectionUsageLoading}

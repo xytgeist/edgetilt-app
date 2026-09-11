@@ -18,7 +18,7 @@ import { LOUNGE_FEED_SORT, readLoungeFeedSort } from '../../utils/loungeFeedSort
 import { readLoungeFeedCategoryFilter } from '../../utils/loungeFeedCategoryFilterPref.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import {
-  fetchProfileFeedMutedUserIds,
+  fetchHiddenAuthorUserIds,
   filterCommunityPostsByMutedAuthors,
 } from '../lounge/profileFeedMutes.js'
 import { renderRichCaption } from '../lounge/loungeCaption'
@@ -484,6 +484,7 @@ export default function AppShell({
   /** True while the first page of the Lounge feed is being reloaded (including silent pull-to-refresh). */
   const communityFeedHeadReloadingRef = useRef(false)
   const feedMutedUserIdsRef = useRef(new Set())
+  const [hiddenAuthorUserIds, setHiddenAuthorUserIds] = useState(() => new Set())
   const pwaNotifPromptInFlightRef = useRef(false)
   const [globalConfirmState, setGlobalConfirmState] = useState({
     open: false,
@@ -941,11 +942,15 @@ export default function AppShell({
       const viewerId = session?.user?.id
       if (!viewerId) {
         feedMutedUserIdsRef.current = new Set()
+        setHiddenAuthorUserIds(new Set())
         return
       }
-      feedMutedUserIdsRef.current = await fetchProfileFeedMutedUserIds(supabaseClient, viewerId)
+      const next = await fetchHiddenAuthorUserIds(supabaseClient, viewerId)
+      feedMutedUserIdsRef.current = next
+      setHiddenAuthorUserIds(next)
     } catch {
       feedMutedUserIdsRef.current = new Set()
+      setHiddenAuthorUserIds(new Set())
     }
   }, [supabaseClient])
 
@@ -957,6 +962,7 @@ export default function AppShell({
   useEffect(() => {
     if (browseMode !== 'member') {
       feedMutedUserIdsRef.current = new Set()
+      setHiddenAuthorUserIds(new Set())
       return
     }
     void reloadFeedMutedUserIds()
@@ -2555,6 +2561,7 @@ export default function AppShell({
             onResetTabErrorStrikes={handleResetTabErrorStrikes}
             showGlobalConfirm={showGlobalConfirm}
             onProfileFeedMuteChange={handleProfileFeedMuteChange}
+            hiddenAuthorUserIds={hiddenAuthorUserIds}
           />
         </div>
       </Suspense>

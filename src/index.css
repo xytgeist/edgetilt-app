@@ -11535,6 +11535,36 @@ html.light [data-lounge-tribe-max-alert] button:hover {
   background-color: #e4e4e7 !important;
 }
 
+html.light [data-lounge-report-sheet] form {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+  color: #09090b !important;
+}
+html.light [data-lounge-report-sheet] h2,
+html.light [data-lounge-report-sheet] .text-white,
+html.light [data-lounge-report-sheet] .text-zinc-100 {
+  color: #18181b !important;
+}
+html.light [data-lounge-report-sheet] .text-zinc-400,
+html.light [data-lounge-report-sheet] .text-zinc-500,
+html.light [data-lounge-report-sheet] .text-zinc-300 {
+  color: #52525b !important;
+}
+html.light [data-lounge-report-sheet] label.border-zinc-800,
+html.light [data-lounge-report-sheet] textarea {
+  background-color: #f8fafc !important;
+  border-color: #e4e4e7 !important;
+  color: #18181b !important;
+}
+html.light [data-lounge-report-sheet] label.border-cyan-500\/60 {
+  background-color: #ecfeff !important;
+  border-color: #22d3ee !important;
+}
+html.light [data-lounge-report-sheet] button.bg-zinc-800 {
+  background-color: #f4f4f5 !important;
+  color: #18181b !important;
+}
+
 
 
 

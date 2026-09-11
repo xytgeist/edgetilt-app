@@ -284,7 +284,7 @@ Primary Lounge nav is a **draggable cyan FAB** + **arc spin wheel** (`LoungeDock
 
 ## Phase I - Moderation + strikes + bans
 
-- `reports` table + internal moderation queue UI.
+- **Shipped (2026-09-11):** `lounge_reports` + member Report sheet (post / comment / profile) + staff queue on **Monitor → Product**. Staff can hide the reported post/comment and mark actioned / dismissed. Ban / strikes UI still open.
 - Moderator hide action sets `hidden_at` (+ review metadata as needed).
 - Ban behavior enforced in RLS (`profiles.banned_at` blocks mutations).
 
@@ -294,6 +294,7 @@ Primary Lounge nav is a **draggable cyan FAB** + **arc spin wheel** (`LoungeDock
 
 - **Shipped (test build, Popular slice 2026-05-21):** Home feed **Latest | Popular** toggle (`LoungeFeedSortSwitch.jsx`, `loungeFeedSortPref.js`); server **`lounge_feed_posts_page`** RPC + **`lounge_feed_popular_score()`** (likes + 2×reposts + 2×comments, gravity/time decay) — migration **`20260521120000_lounge_feed_popular_sort.sql`**. Pinned head unchanged; Following scope works in both sorts. Ryan smoke pending after SQL apply on test.
 - `blocks` and `mutes` tables.
+- **Shipped (2026-09-11):** Post / comment / profile **Block** writes `public.blocks` (same row as Chat). Lounge home feed and comment threads hide authors you blocked or who blocked you. Mute stays `profile_feed_mutes`.
 - Feed filtering and interaction restrictions by relationship.
 - Block/mute quality improvements (roadmap “J polish”).
 

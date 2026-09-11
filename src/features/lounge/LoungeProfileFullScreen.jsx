@@ -818,6 +818,8 @@ export default function LoungeProfileFullScreen({
   onShareProfile = null,
   /** Refilter Lounge home feed after mute toggle. */
   onProfileFeedMuteChange = null,
+  showGlobalConfirm = null,
+  onReportProfile = null,
   /** Open another member profile from feed rows (replaces modal). */
   onNavigateToProfile = null,
   /** Stacked profile opened from a parent sheet (follow list); uses absolute overlay. */
@@ -2823,8 +2825,22 @@ export default function LoungeProfileFullScreen({
   const toggleBlock = async () => {
     if (!viewerUserId || !profileUserId || isOwnProfile || blockBusy) return
     const confirmed = iBlockingThem
-      ? window.confirm('Unblock this member? They will be able to message you again.')
-      : window.confirm('Block this member? They will not be able to send you messages.')
+      ? typeof showGlobalConfirm === 'function'
+        ? await showGlobalConfirm({
+            title: 'Unblock this member?',
+            message: 'They can message you again and their posts can show in your Lounge feed.',
+            confirmLabel: 'Unblock',
+            cancelLabel: 'Cancel',
+          })
+        : window.confirm('Unblock this member? They will be able to message you again.')
+      : typeof showGlobalConfirm === 'function'
+        ? await showGlobalConfirm({
+            title: 'Block this member?',
+            message: 'They will disappear from your Lounge feed and comments, and they cannot message you.',
+            confirmLabel: 'Block',
+            cancelLabel: 'Cancel',
+          })
+        : window.confirm('Block this member? They will disappear from your feed and cannot message you.')
     if (!confirmed) return
     setBlockBusy(true)
     try {
@@ -2835,8 +2851,20 @@ export default function LoungeProfileFullScreen({
         await chatBlockUser(supabaseClient, profileUserId)
         setIBlockingThem(true)
       }
+      if (typeof onProfileFeedMuteChange === 'function') {
+        await onProfileFeedMuteChange()
+      }
     } catch (err) {
-      window.alert(err instanceof Error ? err.message : 'Could not update block status.')
+      if (typeof showGlobalConfirm === 'function') {
+        await showGlobalConfirm({
+          title: 'Could not update block',
+          message: err instanceof Error ? err.message : 'Could not update block status.',
+          confirmLabel: 'OK',
+          cancelLabel: '',
+        })
+      } else {
+        window.alert(err instanceof Error ? err.message : 'Could not update block status.')
+      }
     } finally {
       setBlockBusy(false)
     }
@@ -3596,6 +3624,14 @@ export default function LoungeProfileFullScreen({
                             setOtherProfileMenuOpen(false)
                             void toggleBlock()
                           }}
+                          onReport={
+                            typeof onReportProfile === 'function'
+                              ? () => {
+                                  setOtherProfileMenuOpen(false)
+                                  onReportProfile()
+                                }
+                              : undefined
+                          }
                           blockBusy={blockBusy}
                           iBlockingThem={iBlockingThem}
                           profileHandle={profile?.handle}
@@ -4224,6 +4260,16 @@ export default function LoungeProfileFullScreen({
               }}
               onShareProfile={onShareProfile}
               onProfileFeedMuteChange={onProfileFeedMuteChange}
+              showGlobalConfirm={showGlobalConfirm}
+              onReportProfile={
+                typeof onReportProfile === 'function'
+                  ? () =>
+                      onReportProfile({
+                        userId: layer.userId,
+                        handle: layer.profile?.handle,
+                      })
+                  : undefined
+              }
               onViewerFollowChange={onViewerFollowChange}
               suspendVideoCoordinator={suspendVideoCoordinator}
               showVideoDebugHud={showVideoDebugHud}

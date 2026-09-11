@@ -1,4 +1,4 @@
-import { Ban, Share, Volume2, VolumeX } from 'lucide-react'
+import { Ban, Flag, Share, Volume2, VolumeX } from 'lucide-react'
 
 const MENU_ITEM_CLASS =
   'flex w-full items-center gap-3 px-4 py-3 text-left text-[15px] font-medium touch-manipulation hover:bg-zinc-800 disabled:opacity-50'
@@ -11,6 +11,7 @@ const MENU_ICON_CLASS = 'h-[18px] w-[18px] shrink-0 text-zinc-300'
  *   isFeedMuted?: boolean,
  *   muteBusy?: boolean,
  *   onToggleBlock?: () => void,
+ *   onReport?: () => void,
  *   blockBusy?: boolean,
  *   iBlockingThem?: boolean,
  *   profileHandle?: string,
@@ -32,6 +33,7 @@ export default function LoungeProfileOverflowMenu({
   isFeedMuted = false,
   muteBusy = false,
   onToggleBlock,
+  onReport,
   blockBusy = false,
   iBlockingThem = false,
   profileHandle = '',
@@ -114,6 +116,12 @@ export default function LoungeProfileOverflowMenu({
             <VolumeX className={MENU_ICON_CLASS} strokeWidth={1.75} aria-hidden />
           )}
           {isFeedMuted ? 'Unmute posts' : 'Mute posts'}
+        </button>
+      ) : null}
+      {typeof onReport === 'function' ? (
+        <button type="button" role="menuitem" className={`${MENU_ITEM_CLASS} text-zinc-100`} onClick={onReport}>
+          <Flag className={MENU_ICON_CLASS} strokeWidth={1.75} aria-hidden />
+          Report {handleAt}
         </button>
       ) : null}
       {typeof onToggleBlock === 'function' ? (

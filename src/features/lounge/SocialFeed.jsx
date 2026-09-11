@@ -335,6 +335,10 @@ import {
 } from './loungeDockSuppressRegistry.js'
 import { pauseAllLoungeStreamInlineVideos } from '../../utils/loungeStreamInlineVideoControl.js'
 import LoungeProfileFullScreen from './LoungeProfileFullScreen'
+import LoungeReportSheet from './LoungeReportSheet.jsx'
+import { submitLoungeReport } from './loungeReportsApi.js'
+import { filterRowsByHiddenAuthors } from './profileFeedMutes.js'
+import { chatBlockUser } from '../chat/chatApi.js'
 import {
   createLoungeNavReturnStack,
   popLoungeNavReturnFrame,
@@ -778,6 +782,8 @@ export default function SocialFeed({
   showGlobalConfirm = null,
   /** Refilter home feed after muting/unmuting a profile author. */
   onProfileFeedMuteChange = null,
+  /** Authors hidden for this viewer (mutes + blocks). */
+  hiddenAuthorUserIds = null,
 }) {
   const BOOKMARKS_STORAGE_KEY = 'lounge_bookmarks_v1'
   const loungeComposerBoot = () => {
@@ -1215,6 +1221,9 @@ export default function SocialFeed({
   const [loungeDetailCommentEditBusy, setLoungeDetailCommentEditBusy] = useState(false)
   const [loungeDetailCommentDeleteBusyId, setLoungeDetailCommentDeleteBusyId] = useState(null)
   const [composerUserId, setComposerUserId] = useState('')
+  const [loungeReportTarget, setLoungeReportTarget] = useState(null)
+  const [loungeReportBusy, setLoungeReportBusy] = useState(false)
+  const [loungeReportError, setLoungeReportError] = useState('')
   /** Session user for email-based initials before `profiles` exists. */
   const [composerAuthUser, setComposerAuthUser] = useState(null)
   const [composerUserProfile, setComposerUserProfile] = useState(null)
@@ -7617,15 +7626,99 @@ export default function SocialFeed({
     ],
   )
 
-  const onCommentMenuBlockFromDetail = useCallback((c) => {
-    void c
-    setLoungeShareFlash('Blocking users is not available yet.')
-  }, [])
+  const blockLoungeMember = useCallback(
+    async (targetUserId, { confirm = true } = {}) => {
+      const uid = String(targetUserId || '').trim()
+      if (!uid || !composerUserId || uid === composerUserId) return false
+      if (confirm) {
+        const ok = await loungeDestructiveConfirm(showGlobalConfirm, {
+          title: 'Block this member?',
+          message: 'They will disappear from your Lounge feed and comments, and they cannot message you.',
+          confirmLabel: 'Block',
+        })
+        if (!ok) return false
+      }
+      try {
+        await chatBlockUser(supabaseClient, uid)
+        if (typeof onProfileFeedMuteChange === 'function') {
+          await onProfileFeedMuteChange()
+        } else {
+          setCommunityPosts((prev) => (prev || []).filter((row) => String(row?.user_id || '') !== uid))
+        }
+        setLoungeDetailComments((prev) => filterRowsByHiddenAuthors(prev, new Set([uid])))
+        setLoungeShareFlash('Blocked. You can unblock them from their profile.')
+        return true
+      } catch (err) {
+        setLoungeShareFlash(err instanceof Error ? err.message : 'Could not block this member.')
+        return false
+      }
+    },
+    [composerUserId, onProfileFeedMuteChange, setCommunityPosts, showGlobalConfirm, supabaseClient],
+  )
 
-  const onCommentMenuReportFromDetail = useCallback((c) => {
-    void c
-    setLoungeShareFlash('Reporting comments is not available yet.')
-  }, [])
+  const openLoungeReport = useCallback(
+    (target) => {
+      if (!composerUserId) {
+        onRequireAuth?.('create')
+        return
+      }
+      const uid = String(target?.userId || '').trim()
+      if (uid && uid === composerUserId) {
+        setLoungeShareFlash('You cannot report yourself.')
+        return
+      }
+      setLoungeReportError('')
+      setLoungeReportTarget(target)
+    },
+    [composerUserId, onRequireAuth],
+  )
+
+  const submitLoungeReportFromSheet = useCallback(
+    async ({ reason, details, alsoBlock }) => {
+      if (!loungeReportTarget || !composerUserId) return
+      setLoungeReportBusy(true)
+      setLoungeReportError('')
+      try {
+        await submitLoungeReport(supabaseClient, {
+          reporterId: composerUserId,
+          targetKind: loungeReportTarget.kind,
+          targetId: loungeReportTarget.id,
+          targetUserId: loungeReportTarget.userId,
+          reason,
+          details,
+        })
+        if (alsoBlock && loungeReportTarget.userId) {
+          await blockLoungeMember(loungeReportTarget.userId, { confirm: false })
+        }
+        setLoungeReportTarget(null)
+        setLoungeShareFlash('Report sent. Thanks for looking out for the Lounge.')
+      } catch (err) {
+        setLoungeReportError(err instanceof Error ? err.message : 'Could not send report.')
+      } finally {
+        setLoungeReportBusy(false)
+      }
+    },
+    [blockLoungeMember, composerUserId, loungeReportTarget, supabaseClient],
+  )
+
+  const onCommentMenuBlockFromDetail = useCallback(
+    (c) => {
+      void blockLoungeMember(c?.user_id)
+    },
+    [blockLoungeMember],
+  )
+
+  const onCommentMenuReportFromDetail = useCallback(
+    (c) => {
+      openLoungeReport({
+        kind: 'comment',
+        id: c?.id,
+        userId: c?.user_id,
+        label: 'this comment',
+      })
+    },
+    [openLoungeReport],
+  )
 
   /**
    * Load post-detail comments once per opened post - not on every auth/interaction dep change.
@@ -7733,7 +7826,7 @@ export default function SocialFeed({
         hydrated = rows.map((r) => ({ ...r, author_profile: profileBy[r.user_id] || null }))
       }
       if (cancelled) return
-      setLoungeDetailComments(hydrated)
+      setLoungeDetailComments(filterRowsByHiddenAuthors(hydrated, hiddenAuthorUserIds))
       loungeDetailCommentsLoadedPostIdRef.current = postId
       setLoungeDetailCommentsLoading(false)
       if (directFocusComposer) {
@@ -7751,6 +7844,7 @@ export default function SocialFeed({
     loungeReadOnly,
     profileModalOpen,
     profileOverlayStack.length,
+    hiddenAuthorUserIds,
     supabaseClient,
     expandAndFocusLoungeDetailCommentComposer,
   ])
@@ -10036,15 +10130,24 @@ export default function SocialFeed({
     ]
   )
 
-  const onPostMenuBlockFromFeed = useCallback((p) => {
-    void p
-    setLoungeShareFlash('Blocking users is not available yet.')
-  }, [])
+  const onPostMenuBlockFromFeed = useCallback(
+    (p) => {
+      void blockLoungeMember(p?.user_id)
+    },
+    [blockLoungeMember],
+  )
 
-  const onPostMenuReportFromFeed = useCallback((p) => {
-    void p
-    setLoungeShareFlash('Reporting posts is not available yet.')
-  }, [])
+  const onPostMenuReportFromFeed = useCallback(
+    (p) => {
+      openLoungeReport({
+        kind: 'post',
+        id: p?.id,
+        userId: p?.user_id,
+        label: 'this post',
+      })
+    },
+    [openLoungeReport],
+  )
 
   useEffect(() => {
     loungePostDetailVisibleRef.current = loungePostDetailVisible
@@ -19033,6 +19136,22 @@ export default function SocialFeed({
         ? createPortal(loungeDockSlidePanelsEl, document.body)
         : null}
 
+      <LoungeReportSheet
+        open={Boolean(loungeReportTarget)}
+        targetLabel={loungeReportTarget?.label || 'this'}
+        busy={loungeReportBusy}
+        error={loungeReportError}
+        onClose={() => {
+          if (loungeReportBusy) return
+          setLoungeReportTarget(null)
+          setLoungeReportError('')
+        }}
+        onSubmit={submitLoungeReportFromSheet}
+        onOpenGuidelines={
+          typeof onOpenLegalDocument === 'function' ? () => onOpenLegalDocument('guidelines') : undefined
+        }
+      />
+
       {profileModalOpen && profileModalData?.user_id ? (
         <LoungeProfileFullScreen
           open={profileModalOpen}
@@ -19069,6 +19188,17 @@ export default function SocialFeed({
           onNavigateToProfile={openAuthorProfile}
           onShareProfile={handleShareLoungeProfile}
           onProfileFeedMuteChange={onProfileFeedMuteChange}
+          showGlobalConfirm={showGlobalConfirm}
+          onReportProfile={(target) => {
+            const userId = target?.userId || profileModalData.user_id
+            const handle = target?.handle || profileModalData.handle
+            openLoungeReport({
+              kind: 'profile',
+              id: userId,
+              userId,
+              label: handle ? `@${String(handle).replace(/^@/, '')}` : 'this profile',
+            })
+          }}
           suspendVideoCoordinator={Boolean(loungePostDetail?.id)}
           showVideoDebugHud={loungeProfileVideoDebugHud}
           viewerIsAdmin={loungeViewerIsAdmin}
@@ -19122,6 +19252,17 @@ export default function SocialFeed({
               onNavigateToProfile={openAuthorProfile}
               onShareProfile={handleShareLoungeProfile}
               onProfileFeedMuteChange={onProfileFeedMuteChange}
+              showGlobalConfirm={showGlobalConfirm}
+              onReportProfile={(target) => {
+                const userId = target?.userId || layer.userId
+                const handle = target?.handle || layer.profile?.handle
+                openLoungeReport({
+                  kind: 'profile',
+                  id: userId,
+                  userId,
+                  label: handle ? `@${String(handle).replace(/^@/, '')}` : 'this profile',
+                })
+              }}
               suspendVideoCoordinator={Boolean(loungePostDetail?.id)}
               showVideoDebugHud={loungeProfileVideoDebugHud && isTop}
               viewerIsAdmin={loungeViewerIsAdmin}

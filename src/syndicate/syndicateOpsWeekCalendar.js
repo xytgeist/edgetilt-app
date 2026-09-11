@@ -106,11 +106,11 @@ export const OPS_WEEK_TASKS = [
     sports: ['nfl', 'cfb', 'ufc'],
     kind: 'auto',
     label: 'Metrics sync',
-    detail: 'GHA 7am PT: NFL EPA, CFB power, UFC metrics, Sleeper PVALs.',
+    detail: 'GHA 7am PT: NFL EPA, CFB power, UFC metrics, Sleeper PVAL, Two Deep. Pass/fail on Weekly Pulls.',
     days: [2],
     startHour: 7,
     endHour: 9,
-    tab: 'trench_epa',
+    tab: 'pulls',
   },
   {
     id: 'weekly_recap',

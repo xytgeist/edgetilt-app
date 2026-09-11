@@ -102,36 +102,76 @@ jobs:
         run: npm ci
 
       - name: Sync NFL EPA metrics (production)
+        id: prod_nfl_epa
         env:
           SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
           SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
         run: npm run syndicate:sync-nfl-metrics:production
 
+      - name: Heartbeat NFL EPA
+        if: always() && steps.prod_nfl_epa.outcome != 'skipped'
+        env:
+          SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
+          SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
+        run: node scripts/record-ops-job-heartbeat.mjs --target=production --job-id=syndicate_weekly_nfl_epa --status=${{ steps.prod_nfl_epa.outcome == 'success' && 'ok' || 'failed' }}
+
       - name: Sync CFB Elo/SRS power board (production)
+        id: prod_cfb_power
         env:
           SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
           SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
           CFBD_API_KEY: ${{ secrets.CFBD_API_KEY }}
         run: npm run syndicate:sync-cfb-power:production
 
+      - name: Heartbeat CFB power
+        if: always() && steps.prod_cfb_power.outcome != 'skipped'
+        env:
+          SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
+          SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
+        run: node scripts/record-ops-job-heartbeat.mjs --target=production --job-id=syndicate_weekly_cfb_power --status=${{ steps.prod_cfb_power.outcome == 'success' && 'ok' || 'failed' }}
+
       - name: Sync UFC fighter metrics from UFC Stats (production)
+        id: prod_ufc
         env:
           SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
           SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
         run: npm run syndicate:sync-ufc-metrics:production
 
+      - name: Heartbeat UFC metrics
+        if: always() && steps.prod_ufc.outcome != 'skipped'
+        env:
+          SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
+          SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
+        run: node scripts/record-ops-job-heartbeat.mjs --target=production --job-id=syndicate_weekly_ufc_metrics --status=${{ steps.prod_ufc.outcome == 'success' && 'ok' || 'failed' }}
+
       - name: Refresh NFL PVALs from Sleeper (production)
+        id: prod_pval_sleeper
         env:
           SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
           SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
         run: npm run syndicate:pval-sleeper:refresh:production
 
+      - name: Heartbeat Sleeper PVAL
+        if: always() && steps.prod_pval_sleeper.outcome != 'skipped'
+        env:
+          SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
+          SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
+        run: node scripts/record-ops-job-heartbeat.mjs --target=production --job-id=syndicate_weekly_pval_sleeper --status=${{ steps.prod_pval_sleeper.outcome == 'success' && 'ok' || 'failed' }}
+
       - name: TWO·DEEP PVAL hole-fill (production)
+        id: prod_pval_twodeep
         continue-on-error: true
         env:
           SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
           SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
         run: npm run syndicate:pval-twodeep:apply:production
+
+      - name: Heartbeat TWO·DEEP
+        if: always() && steps.prod_pval_twodeep.outcome != 'skipped'
+        env:
+          SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
+          SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
+        run: node scripts/record-ops-job-heartbeat.mjs --target=production --job-id=syndicate_weekly_pval_twodeep --status=${{ steps.prod_pval_twodeep.outcome == 'success' && 'ok' || 'failed' }}
 
       - name: Record Edge Monitor heartbeat (ok)
         if: success()

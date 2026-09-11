@@ -1121,6 +1121,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-10:** **Ops Weekly Pulls tab (Windows).** `sharpesyndicate.com/ops` shows Tue 7am PT data pulls (EPA, CFB, UFC, Sleeper, Two Deep) as pass/fail from table writes + GHA heartbeats. Staff SELECT on `admin_ops_job_heartbeats`. **`1.4.161`.**
+
 - **2026-09-10:** **Poker Details tab `Icon` crash.** `PokerBankrollOverview` `MatrixTypeHead` rendered `<Icon />` without taking `Icon` from props. Same component backs Details on Bankroll and Stable. Sentry `c33d33dad8d24fcbef5085c816b60270`. **`1.4.160`.**
 
 - **2026-09-10:** **TWO·DEEP PVAL hole-fill (Windows).** Hunter Ansley said we may scrape `thetwodeep.com`. Polite sequential NFL team pages (4s, 20h cache). Fills OL years_exp seats + empty TE/WR starter depth only. After Sleeper on Tuesday GHA. **`1.4.159`.**

@@ -863,7 +863,7 @@ npm run syndicate:sync-cfb-power:test
 npm run syndicate:sync-cfb-power:production   # Ryan explicit only
 ```
 
-**Cron:** [`.github/workflows/syndicate-football-metrics-sync.yml`](../.github/workflows/syndicate-football-metrics-sync.yml) … Tuesdays **14:00 UTC** syncs **test + production** (NFL EPA + CFB power + UFC metrics + **Sleeper PVAL refresh**). Manual dispatch can set `sync_production=false` to skip prod. Edge Monitor heartbeat **`syndicate_football_metrics_sync_production`** (migration **`20260903210000`**).
+**Cron:** [`.github/workflows/syndicate-football-metrics-sync.yml`](../.github/workflows/syndicate-football-metrics-sync.yml) … Tuesdays **14:00 UTC** syncs **test + production** (NFL EPA + CFB power + UFC metrics + **Sleeper PVAL refresh** + **TWO·DEEP hole-fill**). Manual dispatch can set `sync_production=false` to skip prod. Edge Monitor heartbeat **`syndicate_football_metrics_sync_production`** plus per-step `syndicate_weekly_*` ids. Ops **Weekly Pulls** tab shows pass/fail. Staff SELECT **`20260910230000`**.
 
 **UFC metrics roster:** Table started as a hand-seeded ~38 champ/contender list (`20260830230000`). Tuesday `syndicate:sync-ufc-metrics` refreshes those rows from **ufcstats.com** and **inserts anyone on upcoming + the last 3 completed UFC cards** who is not on the roster yet. Custom overrides are skipped. `--ensure="Paddy Pimblett"` adds a named fighter the same way. This is not a full UFC encyclopedia… quiet names stay off until they hit a card or we ensure them.
 

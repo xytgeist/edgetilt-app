@@ -37,6 +37,7 @@ import { SyndicateDryRunPreview } from '../../syndicate/SyndicateDryRunPreview.j
 import { SyndicateDeskEvalBoard } from '../../syndicate/SyndicateDeskEvalBoard.jsx'
 import { SyndicateOpsDropInfo } from '../../syndicate/SyndicateOpsDropInfo.jsx'
 import { SyndicateOpsWeekCalendar } from '../../syndicate/SyndicateOpsWeekCalendar.jsx'
+import { SyndicateWeeklyPullsPanel } from '../../syndicate/SyndicateWeeklyPullsPanel.jsx'
 import {
   deskEvalsFor,
   deskMeta,
@@ -72,6 +73,7 @@ const TIMEFRAME_OPTIONS = [
 ]
 
 const DESK_TABS = [
+  { id: 'pulls', label: '📡 Weekly Pulls', shortLabel: 'Pulls' },
   { id: 'scorecard', label: '🎯 Scorecard & Drops', shortLabel: 'Scorecard' },
   { id: 'splits', label: '🧀 Splits Paste', shortLabel: 'Splits' },
   { id: 'pvals', label: '🩹 NFL Injury PVALs', shortLabel: 'NFL PVALs' },
@@ -860,6 +862,13 @@ export function BotSharpDeskPanel({
           )
         })}
       </div>
+
+      {activeTab === 'pulls' && (
+        <SyndicateWeeklyPullsPanel
+          supabaseClient={supabaseClient}
+          onOpenTab={(tab) => setActiveTab(tab)}
+        />
+      )}
 
       {/* Tab 1: Scorecard & Syndicate Drops */}
       {activeTab === 'scorecard' && (

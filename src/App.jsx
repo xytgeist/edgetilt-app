@@ -335,7 +335,8 @@ function App() {
               setAuthTab('signin')
               setShowForgotPassword(false)
               setLoginError('')
-              setAuthPanelOpen(true)
+              const { data: { session: confirmedSession } } = await supabase.auth.getSession()
+              setAuthPanelOpen(!confirmedSession?.user)
               return
             }
             replaceUrlPreservingQuery('/auth/confirm')
@@ -345,12 +346,18 @@ function App() {
           try {
             const { error } = await verifyAuthConfirmOtp(supabase, authConfirm)
             if (error) {
-              const session = await waitForSupabaseSession(supabase, 1500)
-              if (session?.user) {
-                await finishAuthConfirmSuccess()
-                return
+              const mapped = mapAuthConfirmError(error)
+              const alreadyUsed = /expired or was already used|already used|invalid or was already used/i.test(
+                mapped,
+              )
+              if (authConfirm.tokenHash && alreadyUsed) {
+                const session = await waitForSupabaseSession(supabase, 1500)
+                if (session?.user) {
+                  await finishAuthConfirmSuccess()
+                  return
+                }
               }
-              setAuthConfirmError(mapAuthConfirmError(error))
+              setAuthConfirmError(mapped)
               return
             }
             await finishAuthConfirmSuccess()

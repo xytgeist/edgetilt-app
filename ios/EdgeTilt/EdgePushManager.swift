@@ -53,8 +53,13 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
   /// Called from the shell WebView coordinator once WKWebView exists (before first load).
   func attach(webView: WKWebView) {
     DispatchQueue.main.async {
+      let same = self.webView === webView
       self.webView = webView
-      self.readyForDeepLinks = false
+      // Re-attach of the live view must not flip ready off … a later UL would
+      // sit in pending and never load.
+      if !same {
+        self.readyForDeepLinks = false
+      }
     }
   }
 
@@ -83,6 +88,21 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
     DispatchQueue.main.async {
       self.openDeepLink(url)
     }
+  }
+
+  /// Cold-start UL lives in `launchOptions[.userActivityDictionary]`, not `continue userActivity`.
+  static func userActivity(fromLaunchOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> NSUserActivity? {
+    guard let dict = launchOptions?[.userActivityDictionary] as? [AnyHashable: Any] else { return nil }
+    for (_, value) in dict {
+      if let activity = value as? NSUserActivity { return activity }
+    }
+    return nil
+  }
+
+  func ingestBrowsingWebActivity(_ activity: NSUserActivity) {
+    guard activity.activityType == NSUserActivityTypeBrowsingWeb,
+          let url = activity.webpageURL else { return }
+    handleUniversalLink(url)
   }
 
   /// Universal Link (email confirm). Same pending / load queue as APNs taps. No new EdgeNative method.

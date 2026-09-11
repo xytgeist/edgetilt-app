@@ -19,6 +19,9 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     if let remote = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
       EdgePushManager.shared.handleNotificationUserInfo(remote)
     }
+    if let activity = EdgePushManager.userActivity(fromLaunchOptions: launchOptions) {
+      EdgePushManager.shared.ingestBrowsingWebActivity(activity)
+    }
     return true
   }
 

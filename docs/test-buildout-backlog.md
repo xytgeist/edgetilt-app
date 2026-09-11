@@ -1121,6 +1121,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-11:** **UL opens IPA but skip confirm (Mac).** Cold-start Universal Link only foregrounded the shell; `launchOptions` user activity was never copied into the WKWebView, so `verifyOtp` never ran. Also stop treating any existing session as confirm-success when the hash fails. **`1.4.172`** … new Test Fast archive to pick up Swift.
 - **2026-09-11:** **Test Confirm sign up pasted (Mac).** `kcosfvmreeiosdjdzycb` Confirm sign up button is now `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup`. Site URL `https://lvslotpro.com`. Reset / magic / invite / change-email still old on test.
 - **2026-09-11:** **Confirm-email Gmail chrome (Mac).** `/auth/confirm` in Gmail's in-app browser was dumping the full Lounge into a too-tall `dvh` box (black bar + page shoved up). Stays on a visualViewport-pinned card; Open EdgeTilt via `edgetilt://open`. Native `edgetilt://auth/confirm` handler for the next IPA. **`1.4.171`.**
 - **2026-09-11:** **Account info swipe-down keyboard (Mac).** Settings panel was using `touch-pan-y` + swipe-to-close tracking, so native IPA swipe-down (same as Edit profile) never dismissed the keyboard. Account info scroller now matches Edit profile. **`1.4.170`.**

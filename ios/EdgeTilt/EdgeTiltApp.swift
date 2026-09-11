@@ -16,6 +16,10 @@ struct EdgeTiltApp: App {
           }
         }
         .onOpenURL { url in
+          if url.scheme?.lowercased() == "https" {
+            EdgePushManager.shared.handleUniversalLink(url)
+            return
+          }
           if url.scheme?.lowercased() == "edgetilt" {
             EdgeCallKitManager.shared.handleDidBecomeActive()
             EdgePushManager.shared.handleCustomSchemeLink(url)

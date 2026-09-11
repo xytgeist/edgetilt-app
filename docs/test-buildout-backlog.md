@@ -1121,6 +1121,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-11:** **Wong teaser caption cleanup (Windows).** Dropped the Sharpe Syndicate title prefix and the Math Behind the Move essay. Bold title, gold ticket/teased numbers, green/red edge. Edited live prod post `88667512…`. Redeploy `lounge-odds-poll`. **`1.4.176`.**
 - **2026-09-11:** **NFL Sunday lean / steam / window locks (Windows).** Friday 1pm NFL card is a lean, not a lock. Sat 7pm PT steam confirm/kill. Sun ~8:30am early lock (1pm ET) and ~11:30am late lock (4:05/4:25 ET) on 90-min inactives. CFB Friday noon unchanged. TNF/SNF/MNF unchanged. Migration `20260911190000`. Redeploy `lounge-odds-poll`. **`1.4.175`.**
 - **2026-09-11:** **CFB house slate 500 (Windows).** Fri 12pm PT cron fired. Edge died: `venueName` declared twice in `loungeBotWeather.ts` (Rundown hint + resolved name). NFL 1pm would have died the same way. Redeploy `lounge-odds-poll`. **`1.4.174`.**
 - **2026-09-11:** **iOS build numbers (Mac).** Stopped `CI_BUILD_NUMBER + 100`. That counter is per Xcode Cloud workflow, so Test Fast (`test`) and Prod (`main`) plus local archives reused 127/128. Stamp is now UTC `YYYYMMDDHHMMSS` (`ios/scripts/next-ios-build-number.sh`). Next Cloud / local archive will be ~`20260911…`, not 129.

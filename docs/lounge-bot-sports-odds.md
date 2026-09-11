@@ -942,6 +942,13 @@ Already-posted chat messages stay as they were; next publish is clean.
 - PASS: `{away}/{home}: PASS`
 - Rocco ugly-juice hard PASS: `{away}/{home}: **[gold]would-be lean[/gold]** · *PASS* - *ugly juice*`
 
+### NFL Wong teaser (`formatWongTeaserCaption`)
+
+- Bold title only: `**📐 2-Leg NFL Wong Teaser**` (no Sharpe Syndicate prefix, no +EV Basic Strategy suffix)
+- Gold on teaser price and each teased number (`**[gold]+2.5 ➔ +8.5[/gold]**`)
+- Green (or red if negative) on fair odds + edge. No Math Behind the Move essay
+- Commas between matchup extras so sanitize does not turn `·` into `...`
+
 ### Weekly ledger (`formatWeeklySyndicateRecapCaption`)
 
 - H1 title / crew / syndicate total; H2 for CLV + boxscore

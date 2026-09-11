@@ -204,8 +204,13 @@ function evaluateWongCandidate(params: {
   }
 }
 
+function formatAmericanPrice(n: number): string {
+  return n > 0 ? `+${n}` : String(n)
+}
+
 /**
- * Format the Sharpe Syndicate Wong Teaser post caption.
+ * Public Lounge Wong teaser caption.
+ * Bold title, gold on the ticket/teased numbers, green/red on model edge.
  */
 export function formatWongTeaserCaption(pair: WongTeaserPair): string {
   const { leg1, leg2, price, combinedWinProb, fairPrice, edgePct } = pair
@@ -218,20 +223,21 @@ export function formatWongTeaserCaption(pair: WongTeaserPair): string {
   const leg2Opp = shortDisplayName(leg2.opposingTeam)
   const leg2When = formatOddsCommenceTimeShort(leg2.commenceTime)
 
-  const total1Str = leg1.gameTotal ? ` · Total ${leg1.gameTotal}` : ''
-  const total2Str = leg2.gameTotal ? ` · Total ${leg2.gameTotal}` : ''
+  const total1Str = leg1.gameTotal ? `, Total ${leg1.gameTotal}` : ''
+  const total2Str = leg2.gameTotal ? `, Total ${leg2.gameTotal}` : ''
+  const priceDisp = formatAmericanPrice(price)
+  const fairDisp = formatAmericanPrice(fairPrice)
+  const edgeDisp = edgePct > 0 ? `+${edgePct}%` : `${edgePct}%`
+  const edgeColor = edgePct >= 0 ? 'green' : 'red'
 
   const lines = [
-    '📐 Sharpe Syndicate · 2-Leg NFL Wong Teaser (+EV Basic Strategy)',
+    '**📐 2-Leg NFL Wong Teaser**',
     '',
-    `Two-team 6-point teaser (${price > 0 ? `+${price}` : price}):`,
-    `• Leg 1: ${leg1Team} ${leg1.originalSpreadDisp} ➔ ${leg1.teasedSpreadDisp} (${leg1When} vs ${leg1Opp}${total1Str})`,
-    `• Leg 2: ${leg2Team} ${leg2.originalSpreadDisp} ➔ ${leg2.teasedSpreadDisp} (${leg2When} vs ${leg2Opp}${total2Str})`,
+    `Two-team 6-point teaser (**[gold]${priceDisp}[/gold]**):`,
+    `• Leg 1: **${leg1Team}** **[gold]${leg1.originalSpreadDisp} ➔ ${leg1.teasedSpreadDisp}[/gold]** (${leg1When} vs ${leg1Opp}${total1Str})`,
+    `• Leg 2: **${leg2Team}** **[gold]${leg2.originalSpreadDisp} ➔ ${leg2.teasedSpreadDisp}[/gold]** (${leg2When} vs ${leg2Opp}${total2Str})`,
     '',
-    '🧠 The Math Behind the Move:',
-    'NFL games land on 3 (~15%) and 7 (~9%) nearly 24% of the time. Stanford Wong proved that teasing through BOTH key numbers (dogs +1.5/+2.5 up to +7.5/+8.5, favs -7.5/-8.5 down to -1.5/-2.5) in low-total games flips standard bookmaker teaser math into a positive EV long-term edge.',
-    '',
-    `📊 Model Combined Win Prob: ~${combinedWinProb}% (Fair Odds ${fairPrice > 0 ? `+${fairPrice}` : fairPrice}) · Book Line: ${price} (+${edgePct}% Edge)`,
+    `📊 Combined win prob: **~${combinedWinProb}%**, Fair **[${edgeColor}]${fairDisp}[/${edgeColor}]**, Book **${priceDisp}**, [${edgeColor}]${edgeDisp} Edge[/${edgeColor}]`,
   ]
 
   return lines.join('\n').trim()

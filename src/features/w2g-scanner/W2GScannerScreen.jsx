@@ -61,6 +61,7 @@ import {
 import { processW2GImageForArchive } from './w2gBulkImport.js'
 import { enhanceScanicCornerToolbar } from './w2gScanicToolbar.js'
 import {
+  canRecognizeEdgeText,
   canScanEdgeDocument,
   filesFromNativeScanImages,
   scanEdgeDocument,
@@ -100,7 +101,7 @@ export default function W2GScannerScreen({
   titleBarToolCloseVisible = false,
   supabaseClient = null,
   onOpenAuth = null,
-  /** Slots Edge Starter and up (or staff) … bulk import + AI vision extract. */
+  /** Slots Edge Starter and up (or staff) … bulk import + PWA/old-IPA cloud extract. */
   canUseBulkImport = false,
   canUseVisionExtract = false,
   onRequireSubscribe = null,
@@ -468,7 +469,12 @@ export default function W2GScannerScreen({
           },
         })
         if (!jobAlive()) return jobId
-        if (extracted.subscribeRequired && forUi && !attachedSlipId()) {
+        if (
+          extracted.subscribeRequired &&
+          forUi &&
+          !attachedSlipId() &&
+          !canRecognizeEdgeText()
+        ) {
           onRequireSubscribe?.(PRODUCT_SLOTS_EDGE_STARTER)
         }
         if (forUi && uiExtractJobIdRef.current === jobId) setOcrProgress(100)

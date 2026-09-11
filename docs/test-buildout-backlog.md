@@ -146,7 +146,7 @@ Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows**
 - [x] **Call audio web→native hook (2026-08-26):** `chatCallAudioSession` → `setAudioSession(voiceChat|default)` in shell. **Superseded for IPA media 2026-08-27:** native LiveKit owns the session via CallKit `didActivate`.
 - [ ] **Native LiveKit lock-screen smoke (owed):** force-close IPA, lock, answer, **do not unlock**. Caller must leave `Ringing…` with two-way audio. Unlock: camera / remote video on video calls. Remote hangup clears CallKit. Unlocked in-app uses the same native room (no `LiveKitRoom`).
 - [ ] **W-2G VisionKit Take photo smoke (2026-09-11):** current IPA, Slots → W-2G Scanner → Take photo. Expect the iOS document camera (not the system camera roll sheet). Cancel returns idle. A good snap skips `scanic` and lands on extract. Simulator / old IPA still uses the file input.
-- [ ] **W-2G Vision OCR smoke (2026-09-11):** current IPA, scan a slip. Status should say **On-device extract** / **Vision N%**, not a tesseract model download. Fields should fill without waiting on OpenAI. A blurry / partial slip on Starter+ may flip to **AI extract**. Free IPA stays on-device even if a field is empty. PWA / old IPA unchanged.
+- [ ] **W-2G Vision OCR smoke (2026-09-11):** current IPA, scan a slip. Status should say **On-device extract** / **Vision N%**, not a tesseract model download. Fields should fill without waiting on OpenAI. A blurry / partial slip on a **signed-in** IPA (free or paid) may flip to **AI extract**. PWA / old IPA unchanged (Starter+ cloud-first). Redeploy **`w2g-vision-extract`** on test so free IPA is not `403`.
 
 **Later (v1.1+)**
 - [ ] CallKit / background ring; native haptics; Android TWA
@@ -840,7 +840,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 ## Edge Functions (test parity before production)
 
 - [x] `process-offer-uploads` deployed and validated on test
-- [x] `w2g-vision-extract` deployed on test (OpenAI vision W-2G six fields; Starter+ / staff)
+- [x] `w2g-vision-extract` deployed on test (OpenAI vision W-2G six fields; Starter+ / staff on web; **EdgeiOS UA** allowed for any signed-in user as of **`1.4.182`** … redeploy test)
 - [x] **`syndicate-trench-vision`** (ESPN team PBWR/PRWR/RBWR/RSWR screenshot) … Ops NFL Trenches paste. Same `OPENAI_API_KEY` as splits. Deploy test; prod when Ryan OKs.
 - [x] `get-web-push-config` deployed and validated on test
 - [x] `send-test-push` deployed and validated on test
@@ -1123,7 +1123,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- **2026-09-11:** **W-2G on-device Vision OCR (Mac).** `EdgeNative.recognizeText` runs Vision `.accurate` and returns reading-order lines. W-2G extract uses that first on a current IPA, then the scavenger parser. Starter+ cloud (`w2g-vision-extract`) only when name / EIN / box 1 / date look unsure or confidence is under 58. Free IPA stays on-device. PWA / old IPA stay tesseract + optional cloud-first. **`1.4.181`.**
+- **2026-09-11:** **W-2G IPA extract is not a Starter+ perk (Mac).** Vision first for every current IPA user. Signed-in cloud fallback when name / EIN / box 1 / date look unsure or confidence is under 58, free or paid. PWA / old IPA stay entitlement-gated. Edge `w2g-vision-extract` allows `EdgeiOS/` UA without Starter+. Bulk stays paid. **`1.4.182`.** Redeploy the function on test.
+- **2026-09-11:** **W-2G on-device Vision OCR (Mac).** `EdgeNative.recognizeText` runs Vision `.accurate` and returns reading-order lines. W-2G extract uses that first on a current IPA, then the scavenger parser. **Superseded** for the paid-only cloud fallback (`1.4.182`). **`1.4.181`.**
 - **2026-09-11:** **W-2G Take photo uses VisionKit on IPA (Mac).** `EdgeNative.scanDocument` presents the iOS document camera and returns a flattened JPEG. W-2G skips `scanic` on that path. Library / bulk / PWA stay on `<input type="file">`. Needs a new Test Fast / device Run. **`1.4.180`.**
 - **2026-09-11:** **Pats/Hawks card corrected to +3.5 (Windows).** Live Wed Sep 9 public `63696626…` + fan `d39b6baa…` + VIP chat `63c09a91…` now hammer **Pats +3.5 (-105)** and Tank **Under 44.5 (-109)**. Tank spots section removed. Scott/Rocco/Chedda regraded won +0.95u. One-game cards skip Tank spots. Redeploy `lounge-odds-poll`. **`1.4.179`.**
 - **2026-09-11:** **Feed see-more no longer splits `[gold]` (Windows).** `truncateCaptionForDisplay` rewinds an incomplete last line so collapsed slate cards do not leak `· **[gold]Bears`. **`1.4.178`.**

@@ -1,6 +1,6 @@
 /**
  * W-2G field extract waterfall.
- * IPA: Vision OCR first. Starter+ cloud only when the six fields look unsure.
+ * IPA: Vision OCR first for everyone. Signed-in cloud only when the six fields look unsure.
  * PWA / old IPA: cloud first when entitled, else tesseract.
  */
 
@@ -127,7 +127,9 @@ async function recognizeTesseractFromCanvas(canvas, opts = {}) {
  */
 export async function extractW2GFields(canvas, opts = {}) {
   const supabase = opts.supabase || null
-  const useCloudVision = Boolean(opts.useCloudVision && supabase)
+  const native = canRecognizeEdgeText()
+  // IPA: same fallback for any signed-in user. PWA / old IPA stay entitlement-gated.
+  const useCloudVision = Boolean(supabase && (native || opts.useCloudVision))
   const onProgress = typeof opts.onProgress === 'function' ? opts.onProgress : null
   const onPhase = typeof opts.onPhase === 'function' ? opts.onPhase : null
   let subscribeRequired = false
@@ -135,7 +137,7 @@ export async function extractW2GFields(canvas, opts = {}) {
   /** @type {Awaited<ReturnType<typeof recognizeNativeFromCanvas>> | null} */
   let local = null
 
-  if (canRecognizeEdgeText()) {
+  if (native) {
     onPhase?.('vision')
     onProgress?.(18)
     try {

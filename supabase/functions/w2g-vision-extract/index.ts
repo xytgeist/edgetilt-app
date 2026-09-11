@@ -1,8 +1,10 @@
 /**
  * w2g-vision-extract
  *
- * Auth'd users with Slots Edge Starter+ (or staff) send a W-2G image;
- * OpenAI vision returns the six TurboTax-combine fields as JSON.
+ * Auth'd users send a W-2G image; OpenAI vision returns the six
+ * TurboTax-combine fields as JSON.
+ * PWA / web: Slots Edge Starter+ or staff.
+ * EdgeiOS: any signed-in user (on-device Vision fallback when a slip is unsure).
  *
  * Secrets: OPENAI_API_KEY (same as process-offer-uploads)
  * Optional: OPENAI_VISION_MODEL (default gpt-4o-mini)
@@ -247,7 +249,8 @@ Deno.serve(async (req) => {
     return json(401, { error: 'Sign in required.', code: 'auth_required' })
   }
 
-  const allowed = await userHasSlotsEdgeAccess(supabase, userData.user.id)
+  const isEdgeiOS = /EdgeiOS\//i.test(req.headers.get('user-agent') ?? '')
+  const allowed = isEdgeiOS || (await userHasSlotsEdgeAccess(supabase, userData.user.id))
   if (!allowed) {
     return json(403, {
       error: 'Slots Edge (Starter or higher) required for AI W-2G extract.',

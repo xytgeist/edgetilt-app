@@ -255,6 +255,25 @@ export function filesFromNativeScanImages(result) {
   return files
 }
 
+/**
+ * True when the IPA injected `recognizeText` (Vision OCR). Old binaries and PWA are false.
+ * @returns {boolean}
+ */
+export function canRecognizeEdgeText() {
+  if (typeof window === 'undefined' || !isEdgeiOSShell()) return false
+  return typeof window.EdgeNative?.recognizeText === 'function'
+}
+
+/**
+ * On-device Vision OCR. Feature-detect first (`canRecognizeEdgeText`).
+ *
+ * @param {{ imageBase64: string, mimeType?: string, purpose?: string }} payload
+ * @returns {Promise<Record<string, unknown>>}
+ */
+export async function recognizeEdgeText(payload) {
+  return edgeNativeInvoke('recognizeText', payload)
+}
+
 /** @param {unknown} value */
 function normalizePushStatus(value) {
   const s = String(value || '').trim().toLowerCase()

@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-11 … W-2G on-device Vision OCR
+
+**I am Mac Theo.** `EdgeNative.recognizeText` is live (Vision). W-2G extract on a current IPA runs on-device first, then the existing scavenger parser. Starter+ still calls OpenAI only when name / EIN / box 1 / date look unsure or confidence is under 58. Free IPA stays on-device. PWA / old IPA unchanged. Needs a device Run or new Test Fast archive. **`1.4.181`.** Windows: do not edit W-2G extract / `edgeNative.js` recognize helpers today.
+
 ### Mac Theo 2026-09-11 … W-2G native document camera
 
 **I am Mac Theo.** `EdgeNative.scanDocument` is live (VisionKit). W-2G **Take photo** uses it on a current IPA and skips `scanic`. Library / bulk / PWA unchanged. Needs a device Run or new Test Fast archive. Simulator often falls back to the file input. **`1.4.180`.**

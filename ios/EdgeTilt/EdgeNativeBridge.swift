@@ -271,6 +271,8 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
         ?? (payload?["maxPages"] as? NSNumber)?.intValue
         ?? 1
       EdgeDocumentScanner.present(maxPages: rawMax, completion: completion)
+    case "recognizeText":
+      EdgeTextRecognizer.recognize(payload: payload, completion: completion)
     default:
       completion(.failure(BridgeError.unknownMethod(method)))
     }
@@ -602,6 +604,9 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       },
       scanDocument: function (payload) {
         return call('scanDocument', payload || {});
+      },
+      recognizeText: function (payload) {
+        return call('recognizeText', payload || {});
       },
       bustServiceWorker: function () {
         return call('bustServiceWorker', null);

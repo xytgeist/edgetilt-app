@@ -1,6 +1,8 @@
 /**
  * Client-side W-2G OCR (tesseract.js) + scavenger parser for TurboTax-combine fields only.
- * On-device OCR; archive upload is separate (w2gArchiveApi).
+ * IPA extract prefers Vision (`w2gExtract.js` / `EdgeNative.recognizeText`) and only
+ * falls through to tesseract when native OCR is missing or failed.
+ * Archive upload is separate (w2gArchiveApi).
  */
 
 /** @typedef {{ key: string, label: string, value: string }} W2GField */

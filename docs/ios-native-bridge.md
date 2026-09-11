@@ -33,7 +33,7 @@ Do **not** "fix" CallKit by retrying WKWebView `getUserMedia`, remounting `LiveK
 | --- | --- |
 | **UA substring** | **`EdgeiOS/0.1.0`** (token format `EdgeiOS/<semver>`; bump with `AppConfig.shellVersion` in `ios/`) |
 | **Global** | `window.EdgeNative` injected at document start |
-| **Helper** | **`src/utils/edgeNative.js`** … `isEdgeiOSShell()`, `readEdgeiOSShellVersion()`, `edgeNativeInvoke(method, payload)`, **`openExternalBillingUrl(url)`** (shell → `openInSafari`; else `location.assign`), **`canScanEdgeDocument` / `scanEdgeDocument` / `filesFromNativeScanImages`** (W-2G Take photo) |
+| **Helper** | **`src/utils/edgeNative.js`** … `isEdgeiOSShell()`, `readEdgeiOSShellVersion()`, `edgeNativeInvoke(method, payload)`, **`openExternalBillingUrl(url)`** (shell → `openInSafari`; else `location.assign`), **`canScanEdgeDocument` / `scanEdgeDocument` / `filesFromNativeScanImages`** (W-2G Take photo), **`canRecognizeEdgeText` / `recognizeEdgeText`** (on-device Vision OCR) |
 
 **Do not** treat generic iOS Safari / PWA as the store shell. Positive checks only (`AGENT_RULE_POSITIVE_PLATFORM_GUARDS`).
 
@@ -89,6 +89,7 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | `manageStoreSubscriptions` | JS→native | none | `{ ok: boolean }` | Mac | **native** (2026-09-05). `AppStore.showManageSubscriptions`. Apple-billed users only. |
 | `beginRefundRequest` | JS→native | `{ productId?, transactionId? }` | `{ ok, status: 'requested'\|'cancelled'\|'no_transaction' }` | Mac | **native** (2026-09-05). `Transaction.beginRefundRequest`. Manage membership + fan Cancel sheet. |
 | `scanDocument` | JS→native | `{ purpose?: string, maxPages?: number }` | `{ ok, cancelled?, unsupported?, images?: [{ mimeType, base64, width, height }] }` | Mac + web caller | **native** + **web caller** (2026-09-11). VisionKit `VNDocumentCameraViewController`. Default 1 page, max 8. JPEG ≤2000px. W-2G **Take photo** uses it when present and skips `scanic` (page is already flattened). Cancel / Simulator `unsupported` / old IPA → hidden file input. PWA unchanged. |
+| `recognizeText` | JS→native | `{ imageBase64, mimeType?: string, purpose?: string }` | `{ ok, text?, confidence?: number, lines?: [{ text, confidence }], error? }` | Mac + web caller | **native** + **web caller** (2026-09-11). Vision `VNRecognizeTextRequest` `.accurate`. JPEG/PNG base64, ≤8MB decoded, downscaled to 2000px. `confidence` is 0-1. Lines grouped into reading-order rows. W-2G extract uses this first on a current IPA, then the existing scavenger parser. **Slots Edge Starter+** still calls Edge `w2g-vision-extract` only when the six fields look unsure. Free IPA stays on-device. PWA / old IPA stay tesseract + optional cloud. |
 
 **Web-owned (no Swift required for first cut):**
 

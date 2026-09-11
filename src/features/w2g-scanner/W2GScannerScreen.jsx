@@ -43,9 +43,9 @@ import {
 import {
   W2G_FIELD_DEFS,
   fieldsToList,
-  ocrW2G,
   taxYearFromDate,
 } from './w2gOcr.js'
+import { extractW2GFields } from './w2gExtract.js'
 import {
   collateW2GSlips,
   dbRowToFields,
@@ -60,7 +60,6 @@ import {
 } from './w2gArchiveApi.js'
 import { processW2GImageForArchive } from './w2gBulkImport.js'
 import { enhanceScanicCornerToolbar } from './w2gScanicToolbar.js'
-import { canvasToVisionJpegBlob, extractW2GFieldsWithVision } from './w2gVisionApi.js'
 import {
   canScanEdgeDocument,
   filesFromNativeScanImages,
@@ -419,7 +418,7 @@ export default function W2GScannerScreen({
           ocrConfidenceRef.current = confidence ?? null
           setStatusNote((prev) => {
             const base = String(prev || '')
-              .replace(/\s*·\s*(AI|OCR)\s+\d*%?/i, '')
+              .replace(/\s*·\s*(AI|OCR|Vision)\s+\d*%?/i, '')
               .trim()
             const tag =
               confidence != null
@@ -444,44 +443,36 @@ export default function W2GScannerScreen({
       }
 
       try {
-        if (canUseVisionExtract && supabaseClient) {
-          try {
-            if (forUi && uiExtractJobIdRef.current === jobId) {
-              setOcrProgress(12)
-              setStatusNote((prev) => {
-                const base = String(prev || '')
-                  .replace(/\s*·\s*(AI|OCR).*$/i, '')
-                  .trim()
-                return base ? `${base} · AI extract…` : 'AI extract…'
-              })
-            }
-            const imageBlob = await canvasToVisionJpegBlob(flatCanvas)
-            if (!jobAlive()) return jobId
-            if (forUi && uiExtractJobIdRef.current === jobId) setOcrProgress(45)
-            const vision = await extractW2GFieldsWithVision({
-              supabase: supabaseClient,
-              imageBlob,
-            })
-            if (!jobAlive()) return jobId
-            if (forUi && uiExtractJobIdRef.current === jobId) setOcrProgress(100)
-            await deliver(vision.fields, vision.confidence, 'AI')
-            return jobId
-          } catch (err) {
-            if (!jobAlive()) return jobId
-            if (err?.code === 'subscribe_required' && forUi && !attachedSlipId()) {
-              onRequireSubscribe?.(PRODUCT_SLOTS_EDGE_STARTER)
-            }
-            // Fall through to local OCR; still silent if attached to archive slip.
-          }
-        }
-
-        const { fields, confidence } = await ocrW2G(flatCanvas, {
+        const extracted = await extractW2GFields(flatCanvas, {
+          supabase: supabaseClient,
+          useCloudVision: canUseVisionExtract,
           onProgress: (pct) => {
-            if (forUi && uiExtractJobIdRef.current === jobId && jobAlive()) setOcrProgress(pct)
+            if (forUi && uiExtractJobIdRef.current === jobId && jobAlive()) {
+              setOcrProgress(pct)
+            }
+          },
+          onPhase: (phase) => {
+            if (!(forUi && uiExtractJobIdRef.current === jobId && jobAlive())) return
+            const label =
+              phase === 'vision'
+                ? 'On-device extract…'
+                : phase === 'ai'
+                  ? 'AI extract…'
+                  : 'OCR…'
+            setStatusNote((prev) => {
+              const base = String(prev || '')
+                .replace(/\s*·\s*(AI|OCR|Vision|On-device).*$/i, '')
+                .trim()
+              return base ? `${base} · ${label}` : label
+            })
           },
         })
         if (!jobAlive()) return jobId
-        await deliver(fields, confidence, 'OCR')
+        if (extracted.subscribeRequired && forUi && !attachedSlipId()) {
+          onRequireSubscribe?.(PRODUCT_SLOTS_EDGE_STARTER)
+        }
+        if (forUi && uiExtractJobIdRef.current === jobId) setOcrProgress(100)
+        await deliver(extracted.fields, extracted.confidence, extracted.engineLabel)
       } catch {
         failSilent()
       }
@@ -1167,29 +1158,12 @@ export default function W2GScannerScreen({
                 const pretty = presentPrettyScan(flat)
                 const imageBlob = await canvasToJpegBlob(pretty)
 
-                /** @type {Record<string, string>} */
-                let fields = {}
-                /** @type {number | null} */
-                let confidence = null
-                if (canUseVisionExtractRef.current) {
-                  try {
-                    const visionBlob = await canvasToVisionJpegBlob(flat)
-                    const vision = await extractW2GFieldsWithVision({
-                      supabase: client,
-                      imageBlob: visionBlob,
-                    })
-                    fields = vision.fields || {}
-                    confidence = vision.confidence ?? null
-                  } catch {
-                    const local = await ocrW2G(flat)
-                    fields = local.fields || {}
-                    confidence = local.confidence ?? null
-                  }
-                } else {
-                  const local = await ocrW2G(flat)
-                  fields = local.fields || {}
-                  confidence = local.confidence ?? null
-                }
+                const fieldExtract = await extractW2GFields(flat, {
+                  supabase: client,
+                  useCloudVision: canUseVisionExtractRef.current,
+                })
+                const fields = fieldExtract.fields || {}
+                const confidence = fieldExtract.confidence ?? null
 
                 const updated = await updateW2GSlip({
                   supabase: client,
@@ -1267,28 +1241,12 @@ export default function W2GScannerScreen({
       const blob = await res.blob()
       const canvas = await loadImageCanvasFromFile(blob)
 
-      /** @type {Record<string, string>} */
-      let fields = {}
-      let confidence = null
-      if (canUseVisionExtract) {
-        try {
-          const visionBlob = await canvasToVisionJpegBlob(canvas)
-          const vision = await extractW2GFieldsWithVision({
-            supabase: supabaseClient,
-            imageBlob: visionBlob,
-          })
-          fields = vision.fields || {}
-          confidence = vision.confidence ?? null
-        } catch {
-          const local = await ocrW2G(canvas)
-          fields = local.fields || {}
-          confidence = local.confidence ?? null
-        }
-      } else {
-        const local = await ocrW2G(canvas)
-        fields = local.fields || {}
-        confidence = local.confidence ?? null
-      }
+      const extracted = await extractW2GFields(canvas, {
+        supabase: supabaseClient,
+        useCloudVision: canUseVisionExtract,
+      })
+      const fields = extracted.fields || {}
+      const confidence = extracted.confidence ?? null
       setVerifyFieldList(fieldsToList(fields))
       ocrConfidenceRef.current = confidence
     } catch (err) {

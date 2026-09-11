@@ -9,8 +9,7 @@ import {
   flattenCroppedDocument,
   presentPrettyScan,
 } from './w2gScanPipeline.js'
-import { ocrW2G } from './w2gOcr.js'
-import { canvasToVisionJpegBlob, extractW2GFieldsWithVision } from './w2gVisionApi.js'
+import { extractW2GFields } from './w2gExtract.js'
 
 /**
  * @param {HTMLCanvasElement} canvas
@@ -100,35 +99,14 @@ export async function processW2GImageForArchive(file, opts = {}) {
     const pretty = presentPrettyScan(flat)
     throwIfAborted()
 
-    /** @type {Record<string, string>} */
-    let fields = {}
-    /** @type {number | null} */
-    let confidence = null
-
-    if (opts.useVision && opts.supabase) {
-      try {
-        const visionBlob = await canvasToVisionJpegBlob(flat)
-        throwIfAborted()
-        const vision = await extractW2GFieldsWithVision({
-          supabase: opts.supabase,
-          imageBlob: visionBlob,
-        })
-        throwIfAborted()
-        fields = vision.fields || {}
-        confidence = vision.confidence ?? null
-      } catch (visionErr) {
-        if (visionErr?.name === 'AbortError') throw visionErr
-        const local = await ocrW2G(flat)
-        throwIfAborted()
-        fields = local.fields || {}
-        confidence = local.confidence ?? null
-      }
-    } else {
-      const local = await ocrW2G(flat)
-      throwIfAborted()
-      fields = local.fields || {}
-      confidence = local.confidence ?? null
-    }
+    const extracted = await extractW2GFields(flat, {
+      supabase: opts.supabase,
+      useCloudVision: Boolean(opts.useVision && opts.supabase),
+      signal,
+    })
+    throwIfAborted()
+    const fields = extracted.fields || {}
+    const confidence = extracted.confidence ?? null
 
     const imageBlob = await canvasToJpegBlob(pretty)
     return {

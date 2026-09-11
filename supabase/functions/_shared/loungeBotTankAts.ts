@@ -394,6 +394,7 @@ export async function loadRestTravelByEventId(
       awayProfile,
       homeProfile,
       best.venueLocation,
+      best.venueName,
     )
     if (matchup) out.set(eid, matchup)
   }

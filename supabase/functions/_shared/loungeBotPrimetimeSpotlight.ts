@@ -203,7 +203,7 @@ export async function findPrimetimeGameCandidate(
   const [teamMetrics, injuries, weather] = await Promise.all([
     loadDbTeamMetricsMap(admin),
     fetchGameInjuryPval(admin, sportId, homeTeam, awayTeam, matchedEvent.commence_time),
-    fetchGameWeather(sportId, homeTeam, matchedEvent.commence_time, rundown?.venueLocation),
+    fetchGameWeather(sportId, homeTeam, matchedEvent.commence_time, rundown?.venueLocation, rundown?.venueName),
   ])
 
   const trenchEpa = calculateTrenchEpaMatchup(homeTeam, awayTeam, teamMetrics)
@@ -424,8 +424,9 @@ export function formatPrimetimeVipDeepDive(spotlight: PrimetimeSpotlightGame): s
     `• ${formatColoredPickerName('Chedda')}: ${spotlight.personaLeans.Chedda.lineDisplay}`,
     `  └ *${spotlight.personaLeans.Chedda.bulletRationale}*`,
   ]
-  if (spotlight.injuries?.summaryLine || spotlight.splits?.summaryLine) {
+  if (spotlight.weather?.summaryLine || spotlight.injuries?.summaryLine || spotlight.splits?.summaryLine) {
     lines.push('')
+    if (spotlight.weather?.summaryLine) lines.push(`🌤️ ${spotlight.weather.summaryLine}`)
     if (spotlight.injuries?.summaryLine) lines.push(`🩹 ${spotlight.injuries.summaryLine}`)
     if (spotlight.splits?.summaryLine) lines.push(`⚡ ${spotlight.splits.summaryLine}`)
   }

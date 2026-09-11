@@ -60,6 +60,7 @@ type FlatEvent = {
   awayTeamName: string
   homeTeamName: string
   venueLocation: string
+  venueName: string
 }
 
 function parseEventMs(value: string): number | null {
@@ -93,6 +94,7 @@ function flattenScheduleEvents(events: RundownEvent[]): FlatEvent[] {
       awayTeamName: teamLabel(away!),
       homeTeamName: teamLabel(home!),
       venueLocation: String(ev.score?.venue_location || '').trim(),
+      venueName: String(ev.score?.venue_name || '').trim(),
     })
   }
   return out.sort((a, b) => b.eventDateMs - a.eventDateMs)
@@ -125,7 +127,7 @@ function venueForTeamOnEvent(
 ): GameVenueCoords | null {
   const isHome = ev.homeTeamId === teamId
   const opponentName = isHome ? ev.awayTeamName : ev.homeTeamName
-  return resolveGameVenueCoords(sportId, teamName, isHome, opponentName, ev.venueLocation)
+  return resolveGameVenueCoords(sportId, teamName, isHome, opponentName, ev.venueLocation, ev.venueName)
 }
 
 export function buildTeamRestProfile(
@@ -248,6 +250,7 @@ export function evaluateRestTravelMatchup(
   awayProfile: TeamRestProfile,
   homeProfile: TeamRestProfile,
   tonightVenueLocation?: string,
+  tonightVenueName?: string,
 ): RestTravelMatchup | null {
   const pairs = [
     { fatigued: awayProfile, rested: homeProfile, fatiguedName: awayTeam, restedName: homeTeam },
@@ -268,6 +271,7 @@ export function evaluateRestTravelMatchup(
       pair.fatigued.isHomeTonight,
       pair.fatigued.isHomeTonight ? pair.restedName : pair.fatiguedName,
       tonightVenueLocation,
+      tonightVenueName,
     )
     const travel = detectTravelFatigue(pair.fatigued.lastVenue ?? null, currentVenue)
 

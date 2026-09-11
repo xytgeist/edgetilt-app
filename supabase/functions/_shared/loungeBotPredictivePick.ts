@@ -1160,7 +1160,7 @@ export async function loadTankTotalsContextForSlate(
           awayTeam: String(ev.away_team || ''),
           commenceTime: commence,
         }).catch(() => null)
-        const weather = await fetchGameWeather(sportId, home, commence, rundown?.venueLocation)
+        const weather = await fetchGameWeather(sportId, home, commence, rundown?.venueLocation, rundown?.venueName)
         if (weather) weatherByEventId.set(eid, weather)
       } catch {
         // leave unset … no wind veto without a read
@@ -2433,6 +2433,7 @@ export async function publishAndRecordPicks(
       single.homeTeam,
       single.commenceTime,
       rundown?.venueLocation,
+      rundown?.venueName,
     )
     injuries = await fetchGameInjuryPval(single.sportKey, single.homeTeam, single.awayTeam, single.commenceTime, admin)
     const mockEv: any = {

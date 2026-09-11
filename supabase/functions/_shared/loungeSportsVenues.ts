@@ -12,6 +12,8 @@ export type SportsVenueRow = {
   lat: number
   lng: number
   tz: UsTzBucket
+  /** Extra Rundown city strings that map to this house (e.g. Los Angeles → Inglewood / SoFi). */
+  locationHints?: string[]
 }
 
 const TZ_ORDER: Record<UsTzBucket, number> = { ET: 0, CT: 1, MT: 2, PT: 3 }
@@ -107,8 +109,8 @@ export const SPORTS_VENUES: SportsVenueRow[] = [
   { sportIds: [2, 25], keys: ['jacksonville jaguars', 'jaguars'], venueName: 'EverBank Stadium', city: 'Jacksonville', lat: 30.324, lng: -81.637, tz: 'ET' },
   { sportIds: [2, 25], keys: ['kansas city chiefs', 'chiefs'], venueName: 'Arrowhead Stadium', city: 'Kansas City', lat: 39.049, lng: -94.484, tz: 'CT' },
   { sportIds: [2, 25], keys: ['las vegas raiders', 'raiders'], venueName: 'Allegiant Stadium', city: 'Las Vegas', lat: 36.091, lng: -115.184, tz: 'PT' },
-  { sportIds: [2, 25], keys: ['los angeles chargers', 'chargers'], venueName: 'SoFi Stadium', city: 'Inglewood', lat: 33.954, lng: -118.339, tz: 'PT' },
-  { sportIds: [2, 25], keys: ['los angeles rams', 'rams'], venueName: 'SoFi Stadium', city: 'Inglewood', lat: 33.954, lng: -118.339, tz: 'PT' },
+  { sportIds: [2, 25], keys: ['los angeles chargers', 'chargers'], venueName: 'SoFi Stadium', city: 'Inglewood', lat: 33.954, lng: -118.339, tz: 'PT', locationHints: ['los angeles'] },
+  { sportIds: [2, 25], keys: ['los angeles rams', 'rams'], venueName: 'SoFi Stadium', city: 'Inglewood', lat: 33.954, lng: -118.339, tz: 'PT', locationHints: ['los angeles'] },
   { sportIds: [2, 25], keys: ['miami dolphins', 'dolphins'], venueName: 'Hard Rock Stadium', city: 'Miami Gardens', lat: 25.958, lng: -80.239, tz: 'ET' },
   { sportIds: [2, 25], keys: ['minnesota vikings', 'vikings'], venueName: 'U.S. Bank Stadium', city: 'Minneapolis', lat: 44.974, lng: -93.258, tz: 'CT' },
   { sportIds: [2, 25], keys: ['new england patriots', 'patriots'], venueName: 'Gillette Stadium', city: 'Foxborough', lat: 42.091, lng: -71.264, tz: 'ET' },
@@ -122,7 +124,13 @@ export const SPORTS_VENUES: SportsVenueRow[] = [
   { sportIds: [2, 25], keys: ['tampa bay buccaneers', 'buccaneers'], venueName: 'Raymond James Stadium', city: 'Tampa', lat: 27.976, lng: -82.503, tz: 'ET' },
   { sportIds: [2, 25], keys: ['tennessee titans', 'titans'], venueName: 'Nissan Stadium', city: 'Nashville', lat: 36.166, lng: -86.771, tz: 'CT' },
   { sportIds: [2, 25], keys: ['washington commanders', 'commanders'], venueName: 'Northwest Stadium', city: 'Landover', lat: 38.908, lng: -76.864, tz: 'ET' },
-  { sportIds: [2, 25], keys: ['melbourne'], venueName: 'Marvel Stadium', city: 'Melbourne', lat: -37.8165, lng: 144.9475, tz: 'PT' },
+  { sportIds: [2, 25], keys: ['melbourne', 'marvel stadium'], venueName: 'Marvel Stadium', city: 'Melbourne', lat: -37.8165, lng: 144.9475, tz: 'PT' },
+  { sportIds: [2, 25], keys: ['london', 'tottenham', 'tottenham hotspur stadium'], venueName: 'Tottenham Hotspur Stadium', city: 'London', lat: 51.6043, lng: -0.0664, tz: 'ET' },
+  { sportIds: [2, 25], keys: ['wembley', 'wembley stadium'], venueName: 'Wembley Stadium', city: 'London', lat: 51.556, lng: -0.2796, tz: 'ET' },
+  { sportIds: [2, 25], keys: ['mexico city', 'estadio azteca', 'azteca'], venueName: 'Estadio Azteca', city: 'Mexico City', lat: 19.303, lng: -99.1505, tz: 'CT' },
+  { sportIds: [2, 25], keys: ['munich', 'allianz arena'], venueName: 'Allianz Arena', city: 'Munich', lat: 48.2188, lng: 11.6247, tz: 'ET' },
+  { sportIds: [2, 25], keys: ['frankfurt', 'deutsche bank park'], venueName: 'Deutsche Bank Park', city: 'Frankfurt', lat: 50.0686, lng: 8.6455, tz: 'ET' },
+  { sportIds: [2, 25], keys: ['sao paulo', 'são paulo', 'arena corinthians'], venueName: 'Arena Corinthians', city: 'Sao Paulo', lat: -23.5453, lng: -46.4742, tz: 'ET' },
   // WNBA
   { sportIds: [8], keys: ['atlanta dream', 'dream'], venueName: 'State Farm Arena', city: 'Atlanta', lat: 33.757, lng: -84.396, tz: 'ET' },
   { sportIds: [8], keys: ['chicago sky', 'sky'], venueName: 'Wintrust Arena', city: 'Chicago', lat: 41.853, lng: -87.621, tz: 'CT' },
@@ -447,24 +455,31 @@ export function lookupSportsVenue(sportId: number, teamName: string): SportsVenu
   return null
 }
 
-/** Match Rundown `venue_location` (e.g. "Los Angeles, CA") to a seeded row. */
+function locationMatchesVenueRow(row: SportsVenueRow, loc: string, cityToken: string): boolean {
+  const city = norm(row.city)
+  const venueName = norm(row.venueName)
+  if (city && (cityToken === city || loc.includes(city) || city.includes(cityToken))) return true
+  if (venueName && (cityToken === venueName || loc.includes(venueName) || venueName.includes(cityToken))) return true
+  for (const key of row.keys) {
+    const k = norm(key)
+    if (k && (cityToken === k || loc.includes(k) || k.includes(cityToken))) return true
+  }
+  for (const hint of row.locationHints || []) {
+    const h = norm(hint)
+    if (h && (cityToken === h || loc.includes(h) || h.includes(cityToken))) return true
+  }
+  return false
+}
+
+/** Match Rundown `venue_location` / `venue_name` (e.g. "Melbourne" or "Marvel Stadium") to a seeded row. */
 export function lookupVenueByLocation(sportId: number, location: string): SportsVenueRow | null {
   const loc = norm(location)
   if (!loc) return null
   const cityToken = loc.split(',')[0]?.trim() || loc
 
-  const sportMatch = (row: SportsVenueRow) => {
-    if (!row.sportIds.includes(sportId)) return false
-    const city = norm(row.city)
-    return cityToken === city || loc.includes(city) || city.includes(cityToken)
-  }
-
   for (const row of SPORTS_VENUES) {
-    if (sportMatch(row)) return row
-  }
-  for (const row of SPORTS_VENUES) {
-    const city = norm(row.city)
-    if (cityToken === city || loc.includes(city) || city.includes(cityToken)) return row
+    if (!row.sportIds.includes(sportId)) continue
+    if (locationMatchesVenueRow(row, loc, cityToken)) return row
   }
   return null
 }
@@ -494,13 +509,20 @@ export function resolveGameVenueCoords(
   isHome: boolean,
   opponentName: string,
   venueLocation?: string,
+  venueName?: string,
 ): GameVenueCoords | null {
   const venueStr = String(venueLocation || '').trim()
+  const venueNameStr = String(venueName || '').trim()
   if (venueStr) {
     const byLoc = lookupVenueByLocation(sportId, venueStr)
     if (byLoc) return venueRowToCoords(byLoc)
-    // Location is on the event but is not the home city (Melbourne, London, …).
-    // Do not fall back to the listed home team's regular house.
+  }
+  if (venueNameStr) {
+    const byName = lookupVenueByLocation(sportId, venueNameStr)
+    if (byName) return venueRowToCoords(byName)
+  }
+  if (venueStr || venueNameStr) {
+    // Rundown named a site we do not have coords for. Do not stamp the listed home house.
     return null
   }
   const homeTeamName = isHome ? teamName : opponentName

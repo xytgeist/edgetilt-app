@@ -1121,6 +1121,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-11:** **iOS build numbers (Mac).** Stopped `CI_BUILD_NUMBER + 100`. That counter is per Xcode Cloud workflow, so Test Fast (`test`) and Prod (`main`) plus local archives reused 127/128. Stamp is now UTC `YYYYMMDDHHMMSS` (`ios/scripts/next-ios-build-number.sh`). Next Cloud / local archive will be ~`20260911…`, not 129.
 - **2026-09-11:** **Lounge report + block on prod (Mac).** **`20260911130000`** applied on **`jtjgtucumuoswnbauxry`**. `test` → **`main`** (`1.4.173`). Re-record report/block on IPA 128 after Vercel prod.
 - **2026-09-11:** **Lounge report + block wired (Mac).** Post/comment/profile Report writes `lounge_reports`. Block uses `public.blocks` and hides that author from the viewer’s feed + comments. Staff queue: Monitor → Product. Migration **`20260911130000`**. **`1.4.173`.**
 - **2026-09-11:** **Prod IPA 128 uploaded (Mac).** Local **EdgeTilt Prod** / Release → `edgetilt.com`. **1.4.95 (128)** on App Store Connect from `test` `308c095c`. 127 already taken. Not attached to the rejected 1.4.95 listing. Not Resubmitted.

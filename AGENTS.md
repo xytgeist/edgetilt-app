@@ -94,7 +94,7 @@ Follow normal git safety (no secrets, no force-push). Cursor rule: **`.cursor/ru
   - **`PATCH` (e.g. `1.4.0` → `1.4.1`)**: Auto-bump for bug fixes, math calibrations, UI polish, minor tweaks.
   - **`MINOR` (e.g. `1.4.0` → `1.5.0`)**: Bump when shipping a substantial new feature suite (e.g. Creator Fan Subs, StoreKit IAP, new tool suites).
   - **`MAJOR` (e.g. `1.x.x` → `2.0.0`)**: Bump for massive milestones (e.g. full native Swift rewrite / multi-platform public App Store release).
-  - **`BUILD_NUMBER`**: Increments automatically on every build in Xcode Cloud (`CI_BUILD_NUMBER + 100`).
+  - **`BUILD_NUMBER`**: UTC stamp `YYYYMMDDHHMMSS` from `ios/scripts/next-ios-build-number.sh` (Xcode Cloud `ci_post_clone.sh` + local archives). Do **not** use `CI_BUILD_NUMBER + 100` … that counter is per-workflow (`test` vs `main`) and collides on the same App Store app.
 
 `AGENT_RULE_VERSIONING_PROTOCOL` — searchability token.
 

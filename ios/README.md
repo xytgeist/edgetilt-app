@@ -37,6 +37,15 @@ xcodebuild -project ios/EdgeTilt.xcodeproj -scheme "EdgeTilt Test" -destination 
 
 Pick **EdgeTilt Test** in Xcode and Run (▶) on a Simulator or a paired iPhone (Developer Mode on; Trust developer under **Settings → General → VPN & Device Management**).
 
+**Archive / TestFlight build number:** do not pass `CURRENT_PROJECT_VERSION=126`. App Store Connect wants one increasing sequence across Test Fast, Prod, and local uploads. Stamp it:
+
+```bash
+BUILD_NUMBER="$(ios/scripts/next-ios-build-number.sh)"   # e.g. 20260911154432
+xcodebuild ... CURRENT_PROJECT_VERSION="$BUILD_NUMBER" archive
+```
+
+Xcode Cloud uses the same stamp in `ios/ci_scripts/ci_post_clone.sh`.
+
 ### App Store status bar (9:41 / full Wi-Fi / full battery)
 
 **EdgeTilt Prod** Run stamps the Simulator status bar after launch (`ios/scripts/stamp-app-store-status-bar.sh`). Physical device Runs skip it.

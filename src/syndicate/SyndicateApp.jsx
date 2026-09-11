@@ -182,8 +182,8 @@ function SyndicatePerformanceTicker({
 }) {
   const isUfc = sport === 'ufc'
   const recordLabel = isUfc ? 'Overall Record' : 'Overall ATS'
-  const hammerLabel = isUfc ? '🔥 4-0 Fight Hammers' : '🔥 3-0 Hammers'
-  const consensusLabel = isUfc ? '🎯 3-1 Consensus' : '🎯 2-1 Consensus'
+  const hammerLabel = isUfc ? '🔥 4-0 Fight Hammers' : '🔥 4-0 Hammers'
+  const consensusLabel = isUfc ? '🎯 3-1 Consensus' : '🎯 2-1+ Consensus'
   const unitsFoot =
     sport === 'all'
       ? 'Sum of desk books (overlapping)'
@@ -251,7 +251,7 @@ function SyndicatePerformanceTicker({
           {!hammerHasRecord
             ? isUfc
               ? 'Unanimous fight hammers'
-              : 'Unanimous 3-0 sides'
+              : 'Unanimous 4-0 sides'
             : `${hammer.gWinRate}% · n=${hammer.totalGames} · ${hammer.gDisplayUnits}U`}
         </div>
       </div>
@@ -271,7 +271,9 @@ function SyndicatePerformanceTicker({
         </div>
         <div className="text-[10px] sm:text-[11px] text-cyan-400/80 truncate">
           {!consensusHasRecord
-            ? 'Majority consensus'
+            ? isUfc
+              ? 'Majority fight consensus'
+              : '2-1 or better'
             : `${consensus.gWinRate}% · n=${consensus.totalGames} · ${consensus.gDisplayUnits}U`}
         </div>
       </div>
@@ -687,7 +689,7 @@ export function SyndicateApp() {
                 <div>
                   <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">The 4-Desk Syndicate Architecture</h2>
                   <p className="text-zinc-400 text-xs sm:text-sm mt-1">
-                    Three side desks (Scott, Rocco, Chedda) each pick ATS independently ... hammers and consensus come from those three. Tank owns totals, plus occasional sidecar spots that never count as a 4th hammer. Tap any desk to view its audited ledger.
+                    Three side desks (Scott, Rocco, Chedda) each pick ATS independently. Tank owns totals plus sidecar ATS spots. A hammer is 4-0 (all four ATS votes). Consensus is 2-1 or better. Tap any desk to view its audited ledger.
                   </p>
                 </div>
               </div>
@@ -733,7 +735,7 @@ export function SyndicateApp() {
                     <div className="pt-2 border-t border-zinc-800/80 space-y-1 text-[11px] font-mono text-zinc-300">
                       <div>• Core: Model vs market (+EV gap)</div>
                       <div>• Edge: Key Number Clusters (3 &amp; 7)</div>
-                      <div>• Signal: Syndicate Hammer 3-0</div>
+                      <div>• Signal: Syndicate Hammer 4-0</div>
                     </div>
                   </div>
                   <div className="pt-3 border-t border-zinc-800/40 flex items-center justify-between text-xs font-bold text-emerald-400 group-hover:translate-x-0.5 transition-transform">
@@ -966,8 +968,8 @@ export function SyndicateApp() {
                 <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
                   {[
                     { id: 'all', label: 'All Signals' },
-                    { id: 'hammer', label: '🔥 3-0 Hammers' },
-                    { id: 'consensus', label: '🎯 2-1 Consensus' },
+                    { id: 'hammer', label: '🔥 4-0 Hammers' },
+                    { id: 'consensus', label: '🎯 2-1+ Consensus' },
                     { id: 'solo', label: 'Solo Spots' },
                   ].map((s) => (
                     <button
@@ -1089,17 +1091,19 @@ export function SyndicateApp() {
 
                       const isMma = pick.sport_key?.includes('mma') || pick.sport_key?.includes('ufc')
                       const consensusType = pick.metadata?.consensus_type || pick.metadata?.consensus_signal || 'solo'
-                      // Prefer type→label over stored consensus_badge (old NFL rows still say 4-0 / 3-1).
+                      const storedBadge = String(pick.metadata?.consensus_badge || '').trim()
                       const consensusBadge =
                         consensusType === 'hammer'
                           ? isMma
                             ? '🔥 4-0 Fight Hammer'
-                            : '🔥 3-0 Hammer'
+                            : '🔥 4-0 Hammer'
                           : consensusType === 'consensus'
                             ? isMma
                               ? '🎯 3-1 Consensus'
-                              : '🎯 2-1 Consensus'
-                            : pick.metadata?.consensus_badge || 'Solo Spot'
+                              : storedBadge && /[23]-[01]/.test(storedBadge)
+                                ? storedBadge
+                                : '🎯 2-1+ Consensus'
+                            : storedBadge || 'Solo Spot'
                       const eventLabel =
                         pick.away_team && pick.home_team
                           ? isMma
@@ -1461,8 +1465,8 @@ export function SyndicateApp() {
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   The Sharpe Syndicate runs four independent desks ... each tuned to a narrow, high-signal lane (model vs market,
                   EPA &amp; key numbers, underdog / Action splits, situational totals). Every desk publishes its own thesis without
-                  copying the others. Side hammers and consensus are ATS votes among Scott, Rocco, and Chedda (3-0 Hammer / 2-1 Consensus).
-                  Tank publishes totals on his own lane. A house-divided side board stays visible on the slate instead of getting averaged
+                  copying the others. A hammer is 4-0 (Scott, Rocco, Chedda, and Tank&apos;s ATS spot). Consensus is 2-1 or better.
+                  Tank also publishes totals on his own lane. A house-divided side board stays visible on the slate instead of getting averaged
                   into one buried decimal.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">

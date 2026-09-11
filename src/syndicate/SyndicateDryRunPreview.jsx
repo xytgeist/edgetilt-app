@@ -9,8 +9,8 @@ import {
 } from './syndicateDestPreview.js'
 
 const TYPE_LABEL = {
-  hammer: 'Hammer (3-0)',
-  consensus: 'Consensus (2-0)',
+  hammer: 'Hammer (4-0)',
+  consensus: 'Consensus (2-1+)',
   majority_split: 'House Divided (2-1)',
   split: 'Split (1-1)',
   solo: 'Solo',

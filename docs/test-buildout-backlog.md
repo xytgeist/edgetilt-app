@@ -1125,6 +1125,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-11:** **Public hammer / consensus labels are 4-0 and 2-1+ (Windows).** Overview tiles, ledger filter pills, row badges, and Ops dry-run chips. UFC stays 4-0 / 3-1. **`1.4.186`.**
 - **2026-09-11:** **W-2G handpay line is $2,000 (Mac).** Slot W-2G prompt was using the old $1,200 IRS line. Threshold is `W2G_SLOT_REPORT_THRESHOLD` **2000**. **`1.4.185`.**
 - **2026-09-11:** **W-2G logbook handpay + Photos bulk (Mac).** New Log Play cash out ≥ $2,000 prompts Scan the W-2G and prefills date + box 1. Starter+ IPA bulk uses `EdgeNative.pickPhotos` (PHPicker, max 40). First cut used $1,200 … fixed in **`1.4.185`.** **`1.4.184`.**
 - **2026-09-11:** **Ops Scorecard RPC on prod (Windows).** Applied **`20260828113000`** on **`jtjgtucumuoswnbauxry`** (`lounge_bot_get_picks_record(uuid, text, text)`). Dropped the old 1-arg overload. Recorded in `supabase_migrations.schema_migrations`. Ops tiles were 0-0 because the UI calls 3 args and the error was swallowed. Verified All-Time **31-26 / +10.69u / 266 pending**.

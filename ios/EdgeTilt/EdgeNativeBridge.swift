@@ -273,6 +273,11 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       EdgeDocumentScanner.present(maxPages: rawMax, completion: completion)
     case "recognizeText":
       EdgeTextRecognizer.recognize(payload: payload, completion: completion)
+    case "pickPhotos":
+      let rawMax = payload?["maxCount"] as? Int
+        ?? (payload?["maxCount"] as? NSNumber)?.intValue
+        ?? 12
+      EdgePhotoPicker.present(maxCount: rawMax, completion: completion)
     default:
       completion(.failure(BridgeError.unknownMethod(method)))
     }
@@ -607,6 +612,9 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       },
       recognizeText: function (payload) {
         return call('recognizeText', payload || {});
+      },
+      pickPhotos: function (payload) {
+        return call('pickPhotos', payload || {});
       },
       bustServiceWorker: function () {
         return call('bustServiceWorker', null);

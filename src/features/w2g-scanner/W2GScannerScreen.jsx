@@ -46,6 +46,7 @@ import {
   taxYearFromDate,
 } from './w2gOcr.js'
 import { extractW2GFields } from './w2gExtract.js'
+import { mergeW2GLogbookPrefill } from './w2gPrefill.js'
 import {
   collateW2GSlips,
   dbRowToFields,
@@ -61,8 +62,10 @@ import {
 import { processW2GImageForArchive } from './w2gBulkImport.js'
 import { enhanceScanicCornerToolbar } from './w2gScanicToolbar.js'
 import {
+  canPickEdgePhotos,
   canScanEdgeDocument,
   filesFromNativeScanImages,
+  pickEdgePhotos,
   scanEdgeDocument,
   triggerEdgeNativeHaptic,
 } from '../../utils/edgeNative.js'
@@ -103,6 +106,9 @@ export default function W2GScannerScreen({
   /** Slots Edge Starter and up (or staff) … bulk import only. Extract is free. */
   canUseBulkImport = false,
   onRequireSubscribe = null,
+  /** @type {{ dateWon?: string, box1Winnings?: string } | null} */
+  logbookPrefill = null,
+  onLogbookPrefillConsumed = null,
 }) {
   const cameraInputRef = useRef(null)
   const libraryInputRef = useRef(null)
@@ -116,6 +122,7 @@ export default function W2GScannerScreen({
   /** @type {{ current: Map<number, { slipId: string | null, alive: boolean }> }} */
   const extractJobsRef = useRef(new Map())
   const ocrConfidenceRef = useRef(null)
+  const logbookPrefillRef = useRef(/** @type {{ dateWon?: string, box1Winnings?: string } | null} */ (null))
   const bulkAbortRef = useRef(/** @type {AbortController | null} */ (null))
   /** @type {{ current: { source: HTMLCanvasElement, corners: any } | null }} */
   const pendingAdjustRef = useRef(null)
@@ -145,6 +152,9 @@ export default function W2GScannerScreen({
   const [ocrStatus, setOcrStatus] = useState('') // '', loading, ready, error
   const [ocrProgress, setOcrProgress] = useState(0)
   const [fieldList, setFieldList] = useState(() => fieldsToList({}))
+  const [logbookBanner, setLogbookBanner] = useState(
+    /** @type {{ dateWon?: string, box1Winnings?: string } | null} */ (null),
+  )
   const [saving, setSaving] = useState(false)
   const [bulkBusy, setBulkBusy] = useState(false)
   const [bulkProgress, setBulkProgress] = useState(/** @type {{ index: number, total: number, fileName: string } | null} */ (null))
@@ -187,6 +197,22 @@ export default function W2GScannerScreen({
   const verifyAlreadyDone = isW2GSlipVerified(verifySlip)
   const verifyNeedsAttention = isW2GSlipNeedsAttention(verifySlip)
   const processingSlipIdSet = useMemo(() => new Set(processingSlipIds), [processingSlipIds])
+
+  useEffect(() => {
+    if (!logbookPrefill) return
+    const next = {
+      dateWon: String(logbookPrefill.dateWon || '').trim(),
+      box1Winnings: String(logbookPrefill.box1Winnings || '').trim(),
+    }
+    if (!next.dateWon && !next.box1Winnings) {
+      onLogbookPrefillConsumed?.()
+      return
+    }
+    logbookPrefillRef.current = next
+    setLogbookBanner(next)
+    setMainTab('scan')
+    onLogbookPrefillConsumed?.()
+  }, [logbookPrefill, onLogbookPrefillConsumed])
 
   const markSlipProcessing = useCallback((slipId, on) => {
     if (!slipId) return
@@ -412,7 +438,7 @@ export default function W2GScannerScreen({
           return
         }
         if (forUi && uiExtractJobIdRef.current === jobId) {
-          setFieldList(fieldsToList(fields || {}))
+          setFieldList(fieldsToList(mergeW2GLogbookPrefill(fields || {}, logbookPrefillRef.current)))
           setOcrStatus('ready')
           ocrConfidenceRef.current = confidence ?? null
           setStatusNote((prev) => {
@@ -821,6 +847,24 @@ export default function W2GScannerScreen({
       })()
       return
     }
+    if (canPickEdgePhotos()) {
+      void (async () => {
+        try {
+          const result = await pickEdgePhotos({ purpose: 'w2g-bulk', maxCount: 24 })
+          if (result?.cancelled) return
+          const files = filesFromNativeScanImages(result)
+          if (files.length) {
+            void triggerEdgeNativeHaptic('success')
+            void runBulkImport(files)
+            return
+          }
+        } catch {
+          // Old IPA … file input still works.
+        }
+        bulkInputRef.current?.click()
+      })()
+      return
+    }
     bulkInputRef.current?.click()
   }
 
@@ -922,13 +966,14 @@ export default function W2GScannerScreen({
     const flatForLater = flatCanvasRef.current
     try {
       const imageBlob = await canvasToJpegBlob(resultCanvas)
+      const fieldsToSave = mergeW2GLogbookPrefill(fieldsObject, logbookPrefillRef.current)
       const slip = await saveW2GSlip({
         supabase: supabaseClient,
-        fields: fieldsObject,
+        fields: fieldsToSave,
         imageBlob,
         ocrConfidence: extractStillRunning ? null : ocrConfidenceRef.current,
       })
-      const year = taxYearFromDate(fieldsObject.dateWon) || Number(slip.tax_year) || new Date().getFullYear()
+      const year = taxYearFromDate(fieldsToSave.dateWon) || Number(slip.tax_year) || new Date().getFullYear()
       setTaxYear(year)
 
       // Prefer attaching the in-flight extract to this slip (no second AI call).
@@ -1388,6 +1433,19 @@ export default function W2GScannerScreen({
           </div>
         </div>
 
+        {logbookBanner ? (
+          <div
+            className="rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-100"
+            data-w2g-logbook-banner
+          >
+            <div className="font-semibold text-amber-50">From Play Logbook</div>
+            <div className="mt-0.5 text-amber-100/90">
+              {[logbookBanner.box1Winnings, logbookBanner.dateWon].filter(Boolean).join(' · ')}
+              … take a photo and we keep these if the slip is hard to read.
+            </div>
+          </div>
+        ) : null}
+
         <div
           className="grid grid-cols-2 gap-1 rounded-2xl bg-zinc-900 p-1"
           role="tablist"
@@ -1547,7 +1605,9 @@ export default function W2GScannerScreen({
                     </span>
                     <span className="mt-0.5 block text-sm text-zinc-500">
                       {canUseBulkImport
-                        ? 'Select many photos… same extract, saved to your archive'
+                        ? canPickEdgePhotos()
+                          ? 'iPhone photo picker … many slips at once'
+                          : 'Select many photos… same extract, saved to your archive'
                         : 'Slots Edge and up … multi-slip import'}
                     </span>
                   </span>

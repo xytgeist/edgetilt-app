@@ -832,6 +832,34 @@ export function defaultLogPlayTemplateId(templates) {
   return templatesSortedAlphabetically(templates || [])[0]?.id || ''
 }
 
+/** IRS slot W-2G line. Prompt Scan the W-2G when cash out is at or above this. */
+export const W2G_SLOT_REPORT_THRESHOLD = 1200
+
+/**
+ * @param {Record<string, unknown> | null | undefined} values
+ * @returns {boolean}
+ */
+export function playLogLooksLikeW2GHandpay(values) {
+  const out = Number(values?.money_out)
+  return Number.isFinite(out) && out >= W2G_SLOT_REPORT_THRESHOLD
+}
+
+/**
+ * @param {Record<string, unknown> | null | undefined} values
+ * @param {string} captureYmd YYYY-MM-DD
+ * @returns {{ dateWon: string, box1Winnings: string } | null}
+ */
+export function playLogW2GPrefillFromSave(values, captureYmd) {
+  if (!playLogLooksLikeW2GHandpay(values)) return null
+  const out = Number(values.money_out)
+  const ymd = String(captureYmd || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  const dateWon = ymd ? `${ymd[2]}/${ymd[3]}/${ymd[1]}` : ''
+  return {
+    dateWon,
+    box1Winnings: out.toLocaleString('en-US', { style: 'currency', currency: 'USD' }),
+  }
+}
+
 /**
  * Cash P/L for a play (cash out − cash in). Acquisition fee is not included.
  * @param {unknown} moneyIn

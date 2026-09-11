@@ -25,6 +25,7 @@ import {
   orderedLogPlayFormFields,
   parseAcquisitionFee,
   playLogWinLoss,
+  playLogW2GPrefillFromSave,
   LOG_PLAY_TAIL_FIELD_SLUGS,
   PLAY_LOG_CASH_RETURN_INFO_INTRO,
   formatPlayLogBetsWonLost,
@@ -235,12 +236,16 @@ export default function PlayLogbook({
   freemiumUsageLoading = false,
   onRequireSubscribeForPlayLog = null,
   onPlayLogCreated = null,
+  onScanW2G = null,
 }) {
   const [userId, setUserId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [saveAlertMessage, setSaveAlertMessage] = useState('')
+  const [w2gHandpayPrompt, setW2gHandpayPrompt] = useState(
+    /** @type {{ dateWon: string, box1Winnings: string } | null} */ (null),
+  )
   const [schemaMissing, setSchemaMissing] = useState(false)
 
   const [activeTab, setActiveTab] = useState('log')
@@ -1071,6 +1076,10 @@ export default function PlayLogbook({
         })
         if (e) throw e
       }
+      const handpayPrefill =
+        !editingEntryId && !sharedOnEdit
+          ? playLogW2GPrefillFromSave(stored, captureDate)
+          : null
       closeSheet()
       triggerTapHapticLight()
       if (!editingEntryId && !editingSessionId) {
@@ -1078,6 +1087,7 @@ export default function PlayLogbook({
       }
       await loadAll()
       if (!editingEntryId && !sharedOnEdit) onPlayLogCreated?.()
+      if (handpayPrefill) setW2gHandpayPrompt(handpayPrefill)
     } catch (e) {
       setError(e?.message || (editingEntryId ? 'Failed to update entry' : 'Failed to save entry'))
     } finally {
@@ -2360,6 +2370,56 @@ export default function PlayLogbook({
           </div>
         </div>
       ) : null}
+
+      {w2gHandpayPrompt
+        ? createPortal(
+            <div
+              className="fixed inset-0 flex items-end justify-center p-4 pb-[max(1.25rem,env(safe-area-inset-bottom,0px),var(--edge-sab,0px))] bg-black/70 backdrop-blur-sm sm:items-center"
+              style={{ zIndex: Z_APP_ALERT }}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="play-log-w2g-prompt-title"
+              data-w2g-handpay-prompt
+              onClick={() => setW2gHandpayPrompt(null)}
+            >
+              <div
+                className="w-full max-w-sm rounded-2xl border border-amber-400/25 bg-zinc-900 px-5 py-5 shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="text-xs font-semibold uppercase tracking-wide text-amber-300">W-2G</div>
+                <h3 id="play-log-w2g-prompt-title" className="mt-1 text-lg font-bold text-white">
+                  Scan the W-2G?
+                </h3>
+                <p className="mt-2 text-sm leading-relaxed text-zinc-300">
+                  Cash out is {w2gHandpayPrompt.box1Winnings}
+                  {w2gHandpayPrompt.dateWon ? ` on ${w2gHandpayPrompt.dateWon}` : ''}. Casinos
+                  issue a W-2G at $1,200. We can prefill date and box 1.
+                </p>
+                <div className="mt-5 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setW2gHandpayPrompt(null)}
+                    className="min-h-11 rounded-xl bg-zinc-800 text-sm font-semibold text-zinc-200 touch-manipulation"
+                  >
+                    Not now
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const prefill = w2gHandpayPrompt
+                      setW2gHandpayPrompt(null)
+                      onScanW2G?.(prefill)
+                    }}
+                    className="min-h-11 rounded-xl bg-amber-400 text-sm font-bold text-zinc-950 touch-manipulation"
+                  >
+                    Scan
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </>
   )
 }

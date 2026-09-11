@@ -274,6 +274,26 @@ export async function recognizeEdgeText(payload) {
   return edgeNativeInvoke('recognizeText', payload)
 }
 
+/**
+ * True when the IPA injected `pickPhotos` (PHPicker). Old binaries and PWA are false.
+ * @returns {boolean}
+ */
+export function canPickEdgePhotos() {
+  if (typeof window === 'undefined' || !isEdgeiOSShell()) return false
+  return typeof window.EdgeNative?.pickPhotos === 'function'
+}
+
+/**
+ * Native photo library picker. Feature-detect first (`canPickEdgePhotos`).
+ * Cancel returns `{ ok: false, cancelled: true }`.
+ *
+ * @param {{ purpose?: string, maxCount?: number }} [payload]
+ * @returns {Promise<Record<string, unknown>>}
+ */
+export async function pickEdgePhotos(payload = {}) {
+  return edgeNativeInvoke('pickPhotos', payload)
+}
+
 /** @param {unknown} value */
 function normalizePushStatus(value) {
   const s = String(value || '').trim().toLowerCase()

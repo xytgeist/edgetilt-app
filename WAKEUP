@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-11 … W-2G logbook handpay + Photos bulk
+
+**I am Mac Theo.** New Log Play with cash out ≥ $1,200 prompts **Scan the W-2G** and prefills date + box 1. Starter+ bulk on a current IPA uses `EdgeNative.pickPhotos` (PHPicker). Needs a device Run. **`1.4.184`.** Windows: do not edit W-2G / Play Logbook / `AppShell` W-2G wiring today.
+
 ### Mac Theo 2026-09-11 … W-2G paid difference is bulk only
 
 **I am Mac Theo.** Free and Starter+ get the same extract: IPA Vision first (then OpenAI if unsure), PWA signed-in cloud first. Starter+ is **bulk import** only. They still get VisionKit + Vision OCR on a current IPA. Redeploy **`w2g-vision-extract`** on test (sign-in only, no plan check). **`1.4.183`.** Windows: do not edit W-2G extract today.

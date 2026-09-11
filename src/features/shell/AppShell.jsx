@@ -352,6 +352,7 @@ export default function AppShell({
   const [pendingPlayLogLedger, setPendingPlayLogLedger] = useState(false)
   const [pendingPlayLogPartner, setPendingPlayLogPartner] = useState(null)
   const [pendingPlayLogSessionId, setPendingPlayLogSessionId] = useState(null)
+  const [pendingW2GPrefill, setPendingW2GPrefill] = useState(null)
   const [pendingPokerSessionId, setPendingPokerSessionId] = useState(null)
   const [pendingPokerStableDealId, setPendingPokerStableDealId] = useState(null)
   const [pendingTournamentSwapId, setPendingTournamentSwapId] = useState(null)
@@ -1247,6 +1248,11 @@ export default function AppShell({
         if (browseMode === 'anonymous') {
           onRequireAuthRef.current?.()
         } else {
+          const dateWon = (params.get('w2gDate') || '').trim()
+          const box1Winnings = (params.get('w2gAmount') || '').trim()
+          if (dateWon || box1Winnings) {
+            setPendingW2GPrefill({ dateWon, box1Winnings })
+          }
           setTab('w2g-scanner')
           setMenuOpen(false)
         }
@@ -2912,6 +2918,10 @@ export default function AppShell({
             setPendingPlayLogPartner(null)
             setPendingPlayLogSessionId(null)
           }}
+          onScanW2G={(prefill) => {
+            setPendingW2GPrefill(prefill || null)
+            openSlotsTool('w2g-scanner')
+          }}
         />
       )
     } else if (tab === 'w2g-scanner') {
@@ -2921,6 +2931,8 @@ export default function AppShell({
           onOpenAuth={(mode) => onOpenAuth?.(mode || 'login')}
           canUseBulkImport={Boolean(hasSlotsEdgeStarter || hasActiveSubscription)}
           onRequireSubscribe={(slug) => onRequireSubscribe?.(slug || 'slots-edge-starter')}
+          logbookPrefill={pendingW2GPrefill}
+          onLogbookPrefillConsumed={() => setPendingW2GPrefill(null)}
           titleBarNavSlot={renderTitleBarNavSlot()}
           titleBarCenterSlot={renderTitleBarCenterSlot()}
           titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}

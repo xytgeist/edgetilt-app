@@ -3,6 +3,49 @@ import { splitTextWithLinks } from '../../utils/linkifyText.jsx'
 import { LOUNGE_CAPTION_DISPLAY_MAX, LOUNGE_CAPTION_DISPLAY_MAX_LINES } from '../../utils/loungeCommentLimits.js'
 import { marketCashtagColorClass, guessCashtagAssetClass } from '../../utils/loungeMarketCaptionParse.js'
 
+function countSubstr(s, token) {
+  let n = 0
+  let i = 0
+  while ((i = s.indexOf(token, i)) !== -1) {
+    n += 1
+    i += token.length
+  }
+  return n
+}
+
+/** True when a feed preview line would leak raw `**` / `[gold]` because the closer was cut. */
+function hasUnclosedLoungeMarkup(s) {
+  const t = String(s ?? '')
+  if (!t) return false
+  if (/\[[a-z]*$/i.test(t)) return true
+  for (const m of t.matchAll(/\[(green|red|gold|blue|purple)\]/gi)) {
+    const name = String(m[1] || '').toLowerCase()
+    const after = t.slice(m.index + m[0].length)
+    if (!new RegExp(`\\[/${name}\\]`, 'i').test(after)) return true
+  }
+  if (countSubstr(t, '**') % 2 === 1) return true
+  if (countSubstr(t, '==') % 2 === 1) return true
+  if (countSubstr(t, '~~') % 2 === 1) return true
+  if (countSubstr(t, '||') % 2 === 1) return true
+  if (countSubstr(t, '`') % 2 === 1) return true
+  return false
+}
+
+function rewindUnclosedLoungeMarkup(text) {
+  let t = String(text ?? '')
+  for (let i = 0; i < 3; i += 1) {
+    const lastNl = t.lastIndexOf('\n')
+    const lastLine = lastNl >= 0 ? t.slice(lastNl + 1) : t
+    if (!hasUnclosedLoungeMarkup(lastLine)) return t
+    if (lastNl < 0) {
+      const opener = lastLine.search(/(\*\*|\[(?:green|red|gold|blue|purple)\]|==|~~|\|\|)/i)
+      return opener > 0 ? lastLine.slice(0, opener).trimEnd() : t
+    }
+    t = t.slice(0, lastNl).trimEnd()
+  }
+  return t
+}
+
 /** @returns {{ text: string, isTruncated: boolean }} */
 export function truncateCaptionForDisplay(
   raw,
@@ -22,17 +65,24 @@ export function truncateCaptionForDisplay(
     isTruncated = true
   }
 
-  if (text.length <= max) {
-    return { text, isTruncated }
+  if (text.length > max) {
+    let cut = max
+    const slice = text.slice(0, max)
+    const lastSpace = slice.lastIndexOf(' ')
+    const lastNewline = slice.lastIndexOf('\n')
+    const breakAt = Math.max(lastSpace, lastNewline)
+    if (breakAt > max * 0.6) cut = breakAt
+    text = text.slice(0, cut).trimEnd()
+    isTruncated = true
   }
 
-  let cut = max
-  const slice = text.slice(0, max)
-  const lastSpace = slice.lastIndexOf(' ')
-  const lastNewline = slice.lastIndexOf('\n')
-  const breakAt = Math.max(lastSpace, lastNewline)
-  if (breakAt > max * 0.6) cut = breakAt
-  return { text: text.slice(0, cut).trimEnd(), isTruncated: true }
+  const rewound = rewindUnclosedLoungeMarkup(text)
+  if (rewound !== text) {
+    isTruncated = true
+    text = rewound
+  }
+
+  return { text, isTruncated }
 }
 
 /** Strip trailing punctuation often pasted after URLs in prose. */

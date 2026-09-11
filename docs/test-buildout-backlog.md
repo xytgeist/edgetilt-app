@@ -1121,6 +1121,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-11:** **Feed see-more no longer splits `[gold]` (Windows).** `truncateCaptionForDisplay` rewinds an incomplete last line so collapsed slate cards do not leak `· **[gold]Bears`. **`1.4.178`.**
 - **2026-09-11:** **CFB slate omits PASSes (Windows).** College house / desk cards skip All Pass, Tank PASS lines, and desk PASS rows. NFL still prints them. Edited live prod public `7cbbeeb8…` + fan `0b0bb923…` + thread/VIP copies. Redeploy `lounge-odds-poll`. **`1.4.177`.**
 - **2026-09-11:** **Wong teaser caption cleanup (Windows).** Dropped the Sharpe Syndicate title prefix and the Math Behind the Move essay. Bold title, gold ticket/teased numbers, green/red edge. Edited live prod post `88667512…`. Redeploy `lounge-odds-poll`. **`1.4.176`.**
 - **2026-09-11:** **NFL Sunday lean / steam / window locks (Windows).** Friday 1pm NFL card is a lean, not a lock. Sat 7pm PT steam confirm/kill. Sun ~8:30am early lock (1pm ET) and ~11:30am late lock (4:05/4:25 ET) on 90-min inactives. CFB Friday noon unchanged. TNF/SNF/MNF unchanged. Migration `20260911190000`. Redeploy `lounge-odds-poll`. **`1.4.175`.**

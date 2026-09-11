@@ -1123,6 +1123,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-11:** **Ops Scorecard RPC on prod (Windows).** Applied **`20260828113000`** on **`jtjgtucumuoswnbauxry`** (`lounge_bot_get_picks_record(uuid, text, text)`). Dropped the old 1-arg overload. Recorded in `supabase_migrations.schema_migrations`. Ops tiles were 0-0 because the UI calls 3 args and the error was swallowed. Verified All-Time **31-26 / +10.69u / 266 pending**.
 - **2026-09-11:** **W-2G paid difference is bulk only (Mac).** Free and Starter+ share extract. IPA Vision first for both, then OpenAI if unsure. PWA signed-in cloud first. Edge `w2g-vision-extract` is sign-in only. **`1.4.183`.** Redeploy the function on test.
 - **2026-09-11:** **W-2G IPA extract is not a Starter+ perk (Mac).** Vision first for every current IPA user. **Superseded** … bulk is the only paid W-2G difference (`1.4.183`). **`1.4.182`.**
 - **2026-09-11:** **W-2G on-device Vision OCR (Mac).** `EdgeNative.recognizeText` runs Vision `.accurate` and returns reading-order lines. W-2G extract uses that first on a current IPA, then the scavenger parser. **Superseded** for the paid-only cloud fallback (`1.4.182`). **`1.4.181`.**

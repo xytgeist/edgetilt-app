@@ -49,9 +49,9 @@ export async function fetchGameWeather(
   homeTeam: string,
   commenceTimeIso: string,
   venueLocation?: string,
-  venueName?: string,
+  venueNameHint?: string,
 ): Promise<GameWeatherSummary | null> {
-  const venue = resolveGameVenueCoords(sportId, homeTeam, true, homeTeam, venueLocation, venueName)
+  const venue = resolveGameVenueCoords(sportId, homeTeam, true, homeTeam, venueLocation, venueNameHint)
   if (!venue) return null
 
   const venueName = venue.venueName || ''

@@ -1121,6 +1121,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-11:** **CFB house slate 500 (Windows).** Fri 12pm PT cron fired. Edge died: `venueName` declared twice in `loungeBotWeather.ts` (Rundown hint + resolved name). NFL 1pm would have died the same way. Redeploy `lounge-odds-poll`. **`1.4.174`.**
 - **2026-09-11:** **iOS build numbers (Mac).** Stopped `CI_BUILD_NUMBER + 100`. That counter is per Xcode Cloud workflow, so Test Fast (`test`) and Prod (`main`) plus local archives reused 127/128. Stamp is now UTC `YYYYMMDDHHMMSS` (`ios/scripts/next-ios-build-number.sh`). Next Cloud / local archive will be ~`20260911…`, not 129.
 - **2026-09-11:** **Lounge report + block on prod (Mac).** **`20260911130000`** applied on **`jtjgtucumuoswnbauxry`**. `test` → **`main`** (`1.4.173`). Re-record report/block on IPA 128 after Vercel prod.
 - **2026-09-11:** **Lounge report + block wired (Mac).** Post/comment/profile Report writes `lounge_reports`. Block uses `public.blocks` and hides that author from the viewer’s feed + comments. Staff queue: Monitor → Product. Migration **`20260911130000`**. **`1.4.173`.**

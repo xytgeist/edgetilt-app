@@ -1121,6 +1121,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-11:** **Account info swipe-down keyboard (Mac).** Settings panel was using `touch-pan-y` + swipe-to-close tracking, so native IPA swipe-down (same as Edit profile) never dismissed the keyboard. Account info scroller now matches Edit profile. **`1.4.170`.**
 - **2026-09-11:** **Account info keyboard trap (Mac).** IPA hides the WK Done bar and Settings scroll is not the WKWebView `scrollView`, so there was no way to dismiss the keyboard on Account info. Tap-outside, Enter/Done, Back, and Delete now blur + `dismissKeyboard`. **`1.4.169`.**
 - **2026-09-11:** **Account info delete + swipe steal (Mac).** Delete account used native `window.confirm` / `alert` (iOS PWA / IPA freeze or no-op). Settings panel also started swipe-to-dismiss on button taps, so Account info / Delete felt dead until a second tap. In-app portaled confirm + swipe ignores buttons/links. **`1.4.168`.**
 - **2026-09-11:** **Prod Confirm sign up template pasted (Mac).** `jtjgtucumuoswnbauxry` Confirm sign up body now uses `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup`. Toast: Successfully updated email template. Reset / magic / invite / change-email still old `ConfirmationURL`. Test project not pasted.

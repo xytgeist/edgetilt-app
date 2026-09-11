@@ -1011,6 +1011,9 @@ export default function LoungeDockSlidePanels({
 
   const onPointerDown = useCallback((e) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return
+    // Account info matches Edit profile: the form scroller owns vertical
+    // swipes (native keyboard dismiss). Do not start panel-drag tracking.
+    if (accountInfoScreenOpen) return
     const t = e.target
     if (t instanceof Element) {
       // Buttons / links must get the click. Starting a swipe here is why
@@ -1027,7 +1030,7 @@ export default function LoungeDockSlidePanels({
     decidedRef.current = false
     horizontalRef.current = false
     pointerCapturedRef.current = false
-  }, [])
+  }, [accountInfoScreenOpen])
 
   const onPointerMove = useCallback(
     (e) => {
@@ -1170,7 +1173,9 @@ export default function LoungeDockSlidePanels({
         className={
           openPanel === 'chat'
             ? 'min-h-0 flex flex-1 flex-col overflow-hidden overscroll-y-contain [-webkit-overflow-scrolling:touch] touch-pan-y'
-            : 'min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] touch-pan-y'
+            : accountInfoScreenOpen
+              ? 'min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain no-scrollbar [-webkit-overflow-scrolling:touch]'
+              : 'min-h-0 flex-1 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch] touch-pan-y'
         }
         style={{
           paddingTop: scrollPaddingTopPx,

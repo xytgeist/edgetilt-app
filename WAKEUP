@@ -77,7 +77,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Mac Theo 2026-09-11 … email confirm opens the IPA
 
-**I am Mac Theo.** Confirm links now target **`/auth/confirm?token_hash=`** (not `auth.edgetilt.com/auth/v1/verify`). AASA + Associated Domains landed. **Ryan still owes:** paste templates in prod + test Auth dashboards; **main** for AASA on `edgetilt.com`; new IPA (entitlements). Gmail in-app browser can still ignore Universal Links. Do not rebuild until he asks. **`1.4.167`.** Windows: I touched `src/**` for this one feature … do not double-edit `/auth/confirm`.
+**I am Mac Theo.** Confirm links now target **`/auth/confirm?token_hash=`** (not `auth.edgetilt.com/auth/v1/verify`). AASA + Associated Domains landed. **Prod Confirm sign up template saved** on `jtjgtucumuoswnbauxry` (button is `/auth/confirm?token_hash=&type=signup`). Reset / magic / invite / change-email not pasted yet … dashboard tab died after save. Still need test project templates, **main** for AASA on `edgetilt.com`, new IPA. Gmail in-app browser can still ignore Universal Links. Do not rebuild until he asks. **`1.4.167`.** Windows: I touched `src/**` for this one feature … do not double-edit `/auth/confirm`.
 
 ### Mac Theo 2026-09-10 … 1.4.95 / 125 Waiting for Review
 

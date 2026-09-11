@@ -26,6 +26,7 @@ import {
   parseAcquisitionFee,
   playLogWinLoss,
   playLogW2GPrefillFromSave,
+  W2G_SLOT_REPORT_THRESHOLD,
   LOG_PLAY_TAIL_FIELD_SLUGS,
   PLAY_LOG_CASH_RETURN_INFO_INTRO,
   formatPlayLogBetsWonLost,
@@ -2393,7 +2394,13 @@ export default function PlayLogbook({
                 <p className="mt-2 text-sm leading-relaxed text-zinc-300">
                   Cash out is {w2gHandpayPrompt.box1Winnings}
                   {w2gHandpayPrompt.dateWon ? ` on ${w2gHandpayPrompt.dateWon}` : ''}. Casinos
-                  issue a W-2G at $1,200. We can prefill date and box 1.
+                  issue a W-2G at{' '}
+                  {W2G_SLOT_REPORT_THRESHOLD.toLocaleString('en-US', {
+                    style: 'currency',
+                    currency: 'USD',
+                    maximumFractionDigits: 0,
+                  })}
+                  . We can prefill date and box 1.
                 </p>
                 <div className="mt-5 grid grid-cols-2 gap-2">
                   <button

@@ -832,8 +832,8 @@ export function defaultLogPlayTemplateId(templates) {
   return templatesSortedAlphabetically(templates || [])[0]?.id || ''
 }
 
-/** IRS slot W-2G line. Prompt Scan the W-2G when cash out is at or above this. */
-export const W2G_SLOT_REPORT_THRESHOLD = 1200
+/** IRS slot W-2G line ($2,000 as of 2026). Prompt Scan the W-2G when cash out is at or above this. */
+export const W2G_SLOT_REPORT_THRESHOLD = 2000
 
 /**
  * @param {Record<string, unknown> | null | undefined} values

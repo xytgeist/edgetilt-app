@@ -2,7 +2,7 @@
  * CallKit bridge for EdgeiOS shell chat calls.
  * Contract: `docs/ios-native-bridge.md`
  */
-import { edgeNativeInvoke, isEdgeiOSShell } from './edgeNative.js'
+import { dismissEdgeKeyboard, edgeNativeInvoke, isEdgeiOSShell } from './edgeNative.js'
 
 /**
  * @param {{
@@ -246,14 +246,7 @@ export async function setNativeCallStreamFocus(args = {}) {
 
 /** Blur web focus and tell WKWebView to drop the software keyboard. */
 export function dismissEdgeCallKeyboard() {
-  try {
-    const el = typeof document !== 'undefined' ? document.activeElement : null
-    if (el && el !== document.body && typeof el.blur === 'function') el.blur()
-  } catch {
-    /* ignore */
-  }
-  if (!isEdgeiOSShell()) return
-  void edgeNativeInvoke('dismissKeyboard')
+  dismissEdgeKeyboard()
 }
 
 export async function getNativeCallState() {

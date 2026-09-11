@@ -11,6 +11,7 @@ import {
   saveProfilePhoneNumber,
   saveProfileWithHandleFallback,
 } from './profileGate.js'
+import { dismissEdgeKeyboard } from '../../utils/edgeNative.js'
 
 const HANDLE_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000
 
@@ -225,6 +226,18 @@ export default function SettingsAccountInfoScreen({
     void persistAccountInfo()
   }, [formDirty, handleChangedAt, handleDirty, persistAccountInfo, saveBusy])
 
+  const onFieldKeyDown = useCallback((e) => {
+    if (e.key !== 'Enter') return
+    e.preventDefault()
+    dismissEdgeKeyboard()
+  }, [])
+
+  const onNonFieldPointerDown = useCallback((e) => {
+    const t = e.target
+    if (t instanceof Element && t.closest('input, textarea, select, label')) return
+    dismissEdgeKeyboard()
+  }, [])
+
   const onConfirmDeleteAccount = useCallback(async () => {
     if (typeof onDeleteAccount !== 'function' || deleteAccountBusy) return
     setSaveError('')
@@ -241,10 +254,17 @@ export default function SettingsAccountInfoScreen({
   }, [deleteAccountBusy, onDeleteAccount])
 
   return (
-    <div className="px-3 py-4" data-settings-account-info>
+    <div
+      className="px-3 py-4"
+      data-settings-account-info
+      onPointerDown={onNonFieldPointerDown}
+    >
       <button
         type="button"
-        onClick={() => onBack?.()}
+        onClick={() => {
+          dismissEdgeKeyboard()
+          onBack?.()
+        }}
         className="mb-4 flex min-h-10 items-center gap-1.5 rounded-lg px-1 text-[14px] font-semibold text-zinc-300 touch-manipulation hover:text-zinc-100 [-webkit-tap-highlight-color:transparent]"
       >
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden>
@@ -284,7 +304,9 @@ export default function SettingsAccountInfoScreen({
                 inputMode="text"
                 autoComplete="username"
                 spellCheck={false}
+                enterKeyHint="done"
                 value={handleDraft}
+                onKeyDown={onFieldKeyDown}
                 onChange={onHandleInputChange}
                 className="min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 py-2 pl-8 pr-3 text-[15px] text-zinc-100 outline-none focus:border-cyan-500/50"
               />
@@ -303,7 +325,9 @@ export default function SettingsAccountInfoScreen({
               type="email"
               inputMode="email"
               autoComplete="email"
+              enterKeyHint="done"
               value={emailDraft}
+              onKeyDown={onFieldKeyDown}
               onChange={(e) => {
                 setEmailDraft(e.target.value)
                 setSaveMessage('')
@@ -326,7 +350,9 @@ export default function SettingsAccountInfoScreen({
               inputMode="tel"
               autoComplete="tel"
               placeholder="Optional"
+              enterKeyHint="done"
               value={phoneDraft}
+              onKeyDown={onFieldKeyDown}
               onChange={(e) => {
                 setPhoneDraft(e.target.value)
                 setSaveMessage('')
@@ -359,6 +385,7 @@ export default function SettingsAccountInfoScreen({
                 type="button"
                 disabled={deleteAccountBusy}
                 onClick={() => {
+                  dismissEdgeKeyboard()
                   setSaveError('')
                   setDeleteDialogOpen(true)
                 }}

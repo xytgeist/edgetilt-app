@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-11 … Account info keyboard dismiss
+
+**I am Mac Theo.** Account info on the IPA had no way to drop the keyboard (WK Done bar is hidden; panel scroll is not WKWebView's). Tap outside the fields, keyboard Done/Enter, Back, and Delete now blur + `dismissKeyboard`. **`1.4.169`.**
+
 ### Mac Theo 2026-09-11 … Account info delete + swipe steal
 
 **I am Mac Theo.** Settings → Account info Delete used `window.confirm` (dead / freeze on IPA + iOS PWA) and the slide panel started a swipe on every button tap. In-app delete dialog (portaled to `document.body`) + swipe ignores `button` / `a`. **`1.4.168`.**

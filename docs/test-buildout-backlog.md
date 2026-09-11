@@ -1121,6 +1121,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-11:** **Account info keyboard trap (Mac).** IPA hides the WK Done bar and Settings scroll is not the WKWebView `scrollView`, so there was no way to dismiss the keyboard on Account info. Tap-outside, Enter/Done, Back, and Delete now blur + `dismissKeyboard`. **`1.4.169`.**
 - **2026-09-11:** **Account info delete + swipe steal (Mac).** Delete account used native `window.confirm` / `alert` (iOS PWA / IPA freeze or no-op). Settings panel also started swipe-to-dismiss on button taps, so Account info / Delete felt dead until a second tap. In-app portaled confirm + swipe ignores buttons/links. **`1.4.168`.**
 - **2026-09-11:** **Prod Confirm sign up template pasted (Mac).** `jtjgtucumuoswnbauxry` Confirm sign up body now uses `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup`. Toast: Successfully updated email template. Reset / magic / invite / change-email still old `ConfirmationURL`. Test project not pasted.
 - **2026-09-11:** **Email confirm Universal Links (Mac).** Confirm button should not stay on `auth.edgetilt.com`. Web **`/auth/confirm?token_hash=&type=`** + AASA + IPA `applinks:`. Hash-token confirm still works. Ryan must re-paste Auth email templates (prod + test). Prod AASA needs **main**. New IPA for Associated Domains. Gmail in-app browser can ignore UL. **`1.4.167`.**

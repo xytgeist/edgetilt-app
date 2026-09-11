@@ -54,6 +54,18 @@ export async function edgeNativeInvoke(method, payload = {}) {
   return fn.call(bridge, payload)
 }
 
+/** Blur the focused field and drop the IPA software keyboard (no WK Done bar). */
+export function dismissEdgeKeyboard() {
+  try {
+    const el = typeof document !== 'undefined' ? document.activeElement : null
+    if (el && el !== document.body && typeof el.blur === 'function') el.blur()
+  } catch {
+    // ignore
+  }
+  if (!isEdgeiOSShell()) return
+  void edgeNativeInvoke('dismissKeyboard').catch(() => {})
+}
+
 /**
  * Open a Stripe Checkout / Customer Portal / Connect onboarding URL.
  * EdgeiOS shell → system Safari (`openInSafari`). Everywhere else → same-tab assign.

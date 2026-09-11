@@ -1,0 +1,19 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": [
+          "8932AKQW4W.com.edgetilt.app"
+        ],
+        "components": [
+          {
+            "/": "/auth/confirm"
+          },
+          {
+            "/": "/auth/confirm/*"
+          }
+        ]
+      }
+    ]
+  }
+}

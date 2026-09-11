@@ -1121,6 +1121,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-11:** **Email confirm Universal Links (Mac).** Confirm button should not stay on `auth.edgetilt.com`. Web **`/auth/confirm?token_hash=&type=`** + AASA + IPA `applinks:`. Hash-token confirm still works. Ryan must re-paste Auth email templates (prod + test). Prod AASA needs **main**. New IPA for Associated Domains. Gmail in-app browser can ignore UL. **`1.4.167`.**
 - **2026-09-11:** **10DLC privacy glued to share clauses (Windows).** Second Telnyx fail on **`C6NW3Y9`** was the same canned privacy email. TCR requires the exact `originator optin` (no hyphen) sentence immediately after sell/share/transfer language, plus the spoken verbal script to say mobile info will not be sold or shared. **`LEGAL_POLICY_VERSION` `2026-09-11`**. Promote **main** before another appeal. **`1.4.166`.**
 
 - **2026-09-10:** **Add for Review again (Mac).** Canceled stuck draft `415e408c-…` (124 version item REJECTED). Build **125** already VALID / attached. New draft `75504e35-…` has version + five SKUs + both group versions. Submitted `2026-09-11T04:34:28Z`. **WAITING_FOR_REVIEW.** Manual release. Highest ASC build number was already 125 … did not need 126.

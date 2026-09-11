@@ -71,4 +71,17 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
   ) {
     EdgePushManager.shared.didFailToRegister(error: error)
   }
+
+  func application(
+    _ application: UIApplication,
+    continue userActivity: NSUserActivity,
+    restorationHandler: @escaping ([UIUserActivityRestoring]?) -> Void
+  ) -> Bool {
+    guard userActivity.activityType == NSUserActivityTypeBrowsingWeb,
+          let url = userActivity.webpageURL else {
+      return false
+    }
+    EdgePushManager.shared.handleUniversalLink(url)
+    return true
+  }
 }

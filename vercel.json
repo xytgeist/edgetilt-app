@@ -22,6 +22,27 @@
     {
       "source": "/theo",
       "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
+    },
+    {
+      "source": "/.well-known/apple-app-site-association",
+      "headers": [
+        { "key": "Content-Type", "value": "application/json" },
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
+      ]
+    },
+    {
+      "source": "/apple-app-site-association",
+      "headers": [
+        { "key": "Content-Type", "value": "application/json" },
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
+      ]
+    },
+    {
+      "source": "/.well-known/apple-app-site-association.json",
+      "headers": [
+        { "key": "Content-Type", "value": "application/json" },
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
+      ]
     }
   ],
   "rewrites": [
@@ -32,6 +53,15 @@
     { "source": "/guidelines", "destination": "/api/legal-document?slug=guidelines" },
     { "source": "/guidelines/", "destination": "/api/legal-document?slug=guidelines" },
     { "source": "/reset-password", "destination": "/index.html" },
+    { "source": "/auth/confirm", "destination": "/index.html" },
+    {
+      "source": "/.well-known/apple-app-site-association",
+      "destination": "/.well-known/apple-app-site-association.json"
+    },
+    {
+      "source": "/apple-app-site-association",
+      "destination": "/.well-known/apple-app-site-association.json"
+    },
     {
       "source": "/lounge/p/:postId",
       "destination": "/api/lounge-post-og?postId=:postId"

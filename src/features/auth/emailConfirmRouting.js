@@ -4,6 +4,81 @@
 
 import { isPokerStableClaimFlowPending } from '../poker-stable/pokerStableBackerClaimNav.js'
 
+/** First-party confirm path. Email templates use token_hash here so Universal Links can open the IPA. */
+export const AUTH_CONFIRM_PATH = '/auth/confirm'
+
+const AUTH_CONFIRM_OTP_TYPES = new Set([
+  'signup',
+  'invite',
+  'magiclink',
+  'recovery',
+  'email_change',
+  'email',
+])
+
+/**
+ * @param {string} pathname
+ * @param {string} [search]
+ * @returns {{ tokenHash: string, type: string, next: string } | null}
+ */
+export function parseAuthConfirmFromLocation(pathname, search = '') {
+  const path = String(pathname || '').replace(/\/+$/, '') || '/'
+  if (path !== AUTH_CONFIRM_PATH) return null
+  const params = new URLSearchParams(search.startsWith('?') ? search : `?${search}`)
+  return {
+    tokenHash: String(params.get('token_hash') || '').trim(),
+    type: String(params.get('type') || '').trim().toLowerCase(),
+    next: String(params.get('next') || '').trim(),
+  }
+}
+
+export function isAuthConfirmRecovery(parsed) {
+  if (!parsed) return false
+  if (parsed.type === 'recovery') return true
+  const next = String(parsed.next || '')
+  return next === '/reset-password' || next.startsWith('/reset-password?')
+}
+
+/**
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {{ tokenHash?: string, type?: string } | null} parsed
+ */
+export async function verifyAuthConfirmOtp(supabase, parsed) {
+  const tokenHash = String(parsed?.tokenHash || '').trim()
+  const type = String(parsed?.type || '').trim().toLowerCase()
+  if (!tokenHash || !AUTH_CONFIRM_OTP_TYPES.has(type)) {
+    return {
+      data: { user: null, session: null },
+      error: new Error('That confirmation link is missing a token.'),
+    }
+  }
+  return supabase.auth.verifyOtp({
+    token_hash: tokenHash,
+    type,
+  })
+}
+
+export function mapAuthConfirmError(error) {
+  const code = String(error?.code || error?.name || '')
+  const message = String(error?.message || '')
+  const raw = `${code} ${message}`.toLowerCase()
+  if (
+    raw.includes('otp_expired') ||
+    raw.includes('email link is invalid') ||
+    raw.includes('link is invalid or has expired') ||
+    (raw.includes('expired') && raw.includes('link'))
+  ) {
+    return 'That confirmation link expired or was already used. Sign in if you already confirmed, or request a new email.'
+  }
+  if (raw.includes('missing a token')) {
+    return 'That confirmation link is missing a token. Request a new email.'
+  }
+  if (raw.includes('invalid') || raw.includes('token')) {
+    return 'That confirmation link is invalid or was already used. Sign in if you already confirmed, or request a new email.'
+  }
+  return message || 'That confirmation link could not finish. Request a new email or try signing in.'
+}
+
 /** @param {import('@supabase/supabase-js').SupabaseClient} supabase */
 export async function waitForSupabaseSession(supabase, maxMs = 3000) {
   const start = Date.now()

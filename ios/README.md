@@ -16,6 +16,7 @@ Thin native loader for the live Edge site. **Not Capacitor.** No baked Vite `dis
 - **Safe area:** WebView is **edge-to-edge** (`.ignoresSafeArea()`). Native injects `--edge-sat|sar|sab|sal` from **window / SwiftUI geometry** insets (not `webView.safeAreaInsets`, which SwiftUI zeroes under ignoresSafeArea). Web uses `max(env(safe-area-inset-*), var(--edge-*))`. See `EdgeSafeAreaInsets.swift` + `src/utils/edgeSafeAreaCss.js`.
 - **App icon:** `AppIcon-1024.png` generated from live web pack **`public/EdgeIconBlack/`** (same as `public/apple-touch-icon.png`). Upscaled 310→1024, flattened onto black (no alpha) for App Store rules. Swap with a true 1024 master when you have one.
 - **Push (APNs):** bridge `getPushPermissionStatus` / `requestPushPermission` / `getPushToken` live. `CODE_SIGN_ENTITLEMENTS` on. Team **`8932AKQW4W`**. Lounge Settings → native permission + token upload (web). Notification **tap** loads payload `url` in the existing WKWebView (`didReceive` / cold-start pending). No new `EdgeNative` method. HTTPS + edgetilt/lvslotpro hosts only.
+- **Universal Links:** Associated Domains `applinks:edgetilt.com` / `lvslotpro.com`. Email confirm (`/auth/confirm`) opens the existing WKWebView via the same pending-URL queue. AASA on the live site. No new `EdgeNative` method. New binary after entitlement change.
 
 ## Open / build
 

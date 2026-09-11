@@ -85,6 +85,25 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
     }
   }
 
+  /// Universal Link (email confirm). Same pending / load queue as APNs taps. No new EdgeNative method.
+  func handleUniversalLink(_ url: URL) {
+    guard Self.isAllowedUniversalLink(url) else { return }
+    DispatchQueue.main.async {
+      self.openDeepLink(url)
+    }
+  }
+
+  /// HTTPS + our hosts + `/auth/confirm` only. AASA is the other half of this gate.
+  static func isAllowedUniversalLink(_ url: URL) -> Bool {
+    guard let scheme = url.scheme?.lowercased(), scheme == "https",
+          let host = url.host?.lowercased() else {
+      return false
+    }
+    guard allowedDeepLinkHosts().contains(host) else { return false }
+    let path = url.path.lowercased()
+    return path == "/auth/confirm" || path.hasPrefix("/auth/confirm/")
+  }
+
   /// Read-only status. Never prompts. `prompt` = notDetermined / unknown.
   func permissionStatus(completion: @escaping (Result<[String: Any], Error>) -> Void) {
     UNUserNotificationCenter.current().getNotificationSettings { settings in

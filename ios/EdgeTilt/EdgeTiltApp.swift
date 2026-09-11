@@ -20,6 +20,10 @@ struct EdgeTiltApp: App {
             EdgeCallKitManager.shared.handleDidBecomeActive()
           }
         }
+        .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
+          guard let url = userActivity.webpageURL else { return }
+          EdgePushManager.shared.handleUniversalLink(url)
+        }
     }
   }
 }

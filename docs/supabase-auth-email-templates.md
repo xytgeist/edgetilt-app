@@ -4,13 +4,17 @@
 
 **SMTP (prod):** sender **`EdgeTilt`** `<noreply@auth.edgetilt.com>` via Resend. Templates below do not change SMTP ... only subject + body.
 
-**URLs:** Bodies use **`{{ .ConfirmationURL }}`**. Supabase builds that from **Authentication → URL Configuration** (`Site URL` + redirect allow list). Prod: **`https://edgetilt.com`**.
+**URLs:** Action links go to **our** site, not `auth.edgetilt.com` / `{{ .ConfirmationURL }}`. That first hop is the Supabase verify API, so iOS cannot open the IPA.
+
+Use **`{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=…`**. `Site URL` must have **no trailing slash** (prod `https://edgetilt.com`, test `https://lvslotpro.com`). The page calls `verifyOtp`, then the existing guest-claim / reset-password routing.
+
+**Universal Links:** AASA is `/.well-known/apple-app-site-association` on the same host. IPA Associated Domains `applinks:edgetilt.com` + `applinks:lvslotpro.com`. New binary required. Gmail's in-app browser can still ignore Universal Links; Mail.app / Messages / Safari are the clean path. Browser fallback is the same `/auth/confirm` page.
 
 **Guest stake claim signup:** confirm email uses the **Site URL** (`https://edgetilt.com/`) as `emailRedirectTo` so Supabase allow-list always matches. The claim token is stored in **`sessionStorage`** + **`localStorage`** before signup; after confirm the app sends the player to **`/poker-stake-claim`**. Optional allow-list entry: **`https://edgetilt.com/poker-stake-claim`** (not required for confirm).
 
 **Guest backer claim signup (`/poker-stable-claim`):** same Site URL confirm redirect + token stash pattern; after confirm the app opens **`/poker-stable-claim`** (or auto-links by email) then Stable slice onboarding.
 
-**Variables (Go template):** `{{ .ConfirmationURL }}`, `{{ .Email }}`, `{{ .SiteURL }}`, `{{ .Token }}`, `{{ .TokenHash }}`. Prefer **`{{ .ConfirmationURL }}`** for all action links.
+**Variables (Go template):** `{{ .Email }}`, `{{ .SiteURL }}`, `{{ .Token }}`, `{{ .TokenHash }}`. Prefer **`{{ .TokenHash }}`** + **`/auth/confirm`**. Do **not** paste `{{ .ConfirmationURL }}` for the button (that is `auth.edgetilt.com` / `auth/v1/verify`).
 
 **Logo in email:** use **one** full-width header JPG ... **no** dual `<img>`, **no** `@media` CSS (Gmail strips it and shows both logos).
 
@@ -107,7 +111,7 @@ Confirm your EdgeTilt account
               <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 24px;">
                 <tr>
                   <td style="border-radius:12px;background:linear-gradient(90deg,#0891b2,#06b6d4);">
-                    <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px;">Confirm email</a>
+                    <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px;">Confirm email</a>
                   </td>
                 </tr>
               </table>
@@ -115,7 +119,7 @@ Confirm your EdgeTilt account
                 If the button does not work, copy and paste this link into your browser:
               </p>
               <p style="margin:0 0 24px;font-size:12px;line-height:1.5;word-break:break-all;color:#0891b2;">
-                <a href="{{ .ConfirmationURL }}" style="color:#0891b2;">{{ .ConfirmationURL }}</a>
+                <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup" style="color:#0891b2;">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup</a>
               </p>
               <p style="margin:0;font-size:13px;line-height:1.6;color:#a1a1aa;">
                 If you did not create an EdgeTilt account, you can ignore this email.
@@ -181,7 +185,7 @@ Reset your EdgeTilt password
               <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 24px;">
                 <tr>
                   <td style="border-radius:12px;background:linear-gradient(90deg,#0891b2,#06b6d4);">
-                    <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px;">Reset password</a>
+                    <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px;">Reset password</a>
                   </td>
                 </tr>
               </table>
@@ -189,7 +193,7 @@ Reset your EdgeTilt password
                 If the button does not work, copy and paste this link into your browser:
               </p>
               <p style="margin:0 0 24px;font-size:12px;line-height:1.5;word-break:break-all;color:#0891b2;">
-                <a href="{{ .ConfirmationURL }}" style="color:#0891b2;">{{ .ConfirmationURL }}</a>
+                <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password" style="color:#0891b2;">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password</a>
               </p>
               <p style="margin:0;font-size:13px;line-height:1.6;color:#a1a1aa;">
                 If you did not request a password reset, you can ignore this email. Your password will not change.
@@ -211,7 +215,7 @@ Reset your EdgeTilt password
 </html>
 ```
 
-**Note:** App redirect target is **`/reset-password`** (`App.jsx`, Settings). Supabase includes that in **`{{ .ConfirmationURL }}`** when **`redirectTo`** / allow list is configured.
+**Note:** App redirect target is **`/reset-password`**. The confirm page honors **`type=recovery`** (and `next=/reset-password`) after `verifyOtp`.
 
 ---
 
@@ -254,7 +258,7 @@ Your EdgeTilt sign-in link
               <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 24px;">
                 <tr>
                   <td style="border-radius:12px;background:linear-gradient(90deg,#0891b2,#06b6d4);">
-                    <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px;">Sign in</a>
+                    <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=magiclink" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px;">Sign in</a>
                   </td>
                 </tr>
               </table>
@@ -262,7 +266,7 @@ Your EdgeTilt sign-in link
                 If the button does not work, copy and paste this link into your browser:
               </p>
               <p style="margin:0 0 24px;font-size:12px;line-height:1.5;word-break:break-all;color:#0891b2;">
-                <a href="{{ .ConfirmationURL }}" style="color:#0891b2;">{{ .ConfirmationURL }}</a>
+                <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=magiclink" style="color:#0891b2;">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=magiclink</a>
               </p>
               <p style="margin:0;font-size:13px;line-height:1.6;color:#a1a1aa;">
                 If you did not request this link, you can ignore this email.
@@ -325,7 +329,7 @@ Confirm your new EdgeTilt email
               <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 24px;">
                 <tr>
                   <td style="border-radius:12px;background:linear-gradient(90deg,#0891b2,#06b6d4);">
-                    <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px;">Confirm new email</a>
+                    <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email_change" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px;">Confirm new email</a>
                   </td>
                 </tr>
               </table>
@@ -333,7 +337,7 @@ Confirm your new EdgeTilt email
                 If the button does not work, copy and paste this link into your browser:
               </p>
               <p style="margin:0 0 24px;font-size:12px;line-height:1.5;word-break:break-all;color:#0891b2;">
-                <a href="{{ .ConfirmationURL }}" style="color:#0891b2;">{{ .ConfirmationURL }}</a>
+                <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email_change" style="color:#0891b2;">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email_change</a>
               </p>
               <p style="margin:0;font-size:13px;line-height:1.6;color:#a1a1aa;">
                 If you did not request this change, contact support and do not use the link.
@@ -396,7 +400,7 @@ You're invited to EdgeTilt
               <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 24px;">
                 <tr>
                   <td style="border-radius:12px;background:linear-gradient(90deg,#0891b2,#06b6d4);">
-                    <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px;">Accept invite</a>
+                    <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:12px;">Accept invite</a>
                   </td>
                 </tr>
               </table>
@@ -404,7 +408,7 @@ You're invited to EdgeTilt
                 If the button does not work, copy and paste this link into your browser:
               </p>
               <p style="margin:0 0 24px;font-size:12px;line-height:1.5;word-break:break-all;color:#0891b2;">
-                <a href="{{ .ConfirmationURL }}" style="color:#0891b2;">{{ .ConfirmationURL }}</a>
+                <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite" style="color:#0891b2;">{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=invite</a>
               </p>
             </td>
           </tr>
@@ -427,13 +431,15 @@ You're invited to EdgeTilt
 
 ## Smoke (prod)
 
-- [ ] **Confirm signup** ... new email signup on `edgetilt.com`; link lands on site and confirms
-- [ ] **Reset password** ... forgot password or Settings → change password; link opens **`/reset-password`**
+- [ ] **Confirm signup** ... new email signup; button is `https://edgetilt.com/auth/confirm?token_hash=…&type=signup` (not `auth.edgetilt.com`). Browser confirms. IPA (new binary) opens when installed, else Safari.
+- [ ] **Reset password** ... forgot password or Settings → change password; confirm page then **`/reset-password`**
 - [ ] Inbox shows **EdgeTilt** sender, **EDGE** logo image (opaque JPG/PNG), and branded body
+- [ ] AASA live: `https://edgetilt.com/.well-known/apple-app-site-association` returns JSON (needs **main** / prod Vercel). Test host: `https://lvslotpro.com/.well-known/apple-app-site-association`
 
 ---
 
 ## Update log
 
+- **2026-09-11:** Buttons use **`/auth/confirm?token_hash={{ .TokenHash }}`** so Universal Links can open the IPA. Ryan must re-paste templates in **prod + test** Auth dashboards. Old `{{ .ConfirmationURL }}` still verifies in a browser.
 - **2026-07-02:** Initial EdgeTilt-branded templates (confirm, reset, magic link, change email, invite). Source of truth for dashboard paste.
 - **2026-07-02:** Email header: single opaque **`edge-email-header-dark.jpg`** (no CSS logo swap; Gmail strips `<style>`). Build: **`node scripts/build-edge-email-logo.mjs`**.

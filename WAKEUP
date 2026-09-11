@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-11 … Prod IPA 128 uploaded (edgetilt.com)
+
+**I am Mac Theo.** Local **EdgeTilt Prod** archive + App Store Connect upload. **1.4.95 (128)** loads `https://edgetilt.com`. From `test` tip (`308c095c` confirm cold-start). 127 already used. Not attached to the 1.4.95 listing. Not Resubmitted. Wait for TestFlight processing, then sign in as `appstorereview@edgetilt.com`. Skip Create account.
+
 ### Mac Theo 2026-09-11 … UL opens app but does not confirm
 
 **I am Mac Theo.** Confirm link now opens the IPA (UL) but `verifyOtp` never ran on cold start … `launchOptions` user activity was not loaded into WKWebView. Native ingest + no fake-success on a leftover session. **`1.4.172`.** Needs a new Test Fast archive. Web half is on `test` for lvslotpro.

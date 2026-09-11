@@ -24,7 +24,7 @@ import {
 } from './loungeBotPublishDestinations.ts'
 import { X_LONG_FORM_CHARS } from './loungeBotXPublish.ts'
 import { fetchGameWeather, type GameWeatherSummary } from './loungeBotWeather.ts'
-import { oddsSportKeyToRundownSportId } from './loungeBotRundownContext.ts'
+import { oddsSportKeyToRundownSportId, resolveRundownEvent } from './loungeBotRundownContext.ts'
 import { fetchGameInjuryPval, type GameInjurySummary } from './loungeBotInjuryPval.ts'
 import { resolveGameBettingSplits, type BettingSplitSummary } from './loungeBotBettingSplits.ts'
 import {
@@ -194,10 +194,16 @@ export async function findPrimetimeGameCandidate(
 
   // Load team metrics, injuries, weather, and betting splits in parallel
   const sportId = oddsSportKeyToRundownSportId(matchedEvent.sport_key) || 2
+  const rundown = await resolveRundownEvent({
+    sportKey: matchedEvent.sport_key,
+    homeTeam,
+    awayTeam,
+    commenceTime: matchedEvent.commence_time,
+  }).catch(() => null)
   const [teamMetrics, injuries, weather] = await Promise.all([
     loadDbTeamMetricsMap(admin),
     fetchGameInjuryPval(admin, sportId, homeTeam, awayTeam, matchedEvent.commence_time),
-    fetchGameWeather(sportId, homeTeam, matchedEvent.commence_time),
+    fetchGameWeather(sportId, homeTeam, matchedEvent.commence_time, rundown?.venueLocation),
   ])
 
   const trenchEpa = calculateTrenchEpaMatchup(homeTeam, awayTeam, teamMetrics)
@@ -418,9 +424,8 @@ export function formatPrimetimeVipDeepDive(spotlight: PrimetimeSpotlightGame): s
     `• ${formatColoredPickerName('Chedda')}: ${spotlight.personaLeans.Chedda.lineDisplay}`,
     `  └ *${spotlight.personaLeans.Chedda.bulletRationale}*`,
   ]
-  if (spotlight.weather?.summaryLine || spotlight.injuries?.summaryLine || spotlight.splits?.summaryLine) {
+  if (spotlight.injuries?.summaryLine || spotlight.splits?.summaryLine) {
     lines.push('')
-    if (spotlight.weather?.summaryLine) lines.push(`🌤️ ${spotlight.weather.summaryLine}`)
     if (spotlight.injuries?.summaryLine) lines.push(`🩹 ${spotlight.injuries.summaryLine}`)
     if (spotlight.splits?.summaryLine) lines.push(`⚡ ${spotlight.splits.summaryLine}`)
   }

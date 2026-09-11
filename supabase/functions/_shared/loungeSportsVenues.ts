@@ -122,6 +122,7 @@ export const SPORTS_VENUES: SportsVenueRow[] = [
   { sportIds: [2, 25], keys: ['tampa bay buccaneers', 'buccaneers'], venueName: 'Raymond James Stadium', city: 'Tampa', lat: 27.976, lng: -82.503, tz: 'ET' },
   { sportIds: [2, 25], keys: ['tennessee titans', 'titans'], venueName: 'Nissan Stadium', city: 'Nashville', lat: 36.166, lng: -86.771, tz: 'CT' },
   { sportIds: [2, 25], keys: ['washington commanders', 'commanders'], venueName: 'Northwest Stadium', city: 'Landover', lat: 38.908, lng: -76.864, tz: 'ET' },
+  { sportIds: [2, 25], keys: ['melbourne'], venueName: 'Marvel Stadium', city: 'Melbourne', lat: -37.8165, lng: 144.9475, tz: 'PT' },
   // WNBA
   { sportIds: [8], keys: ['atlanta dream', 'dream'], venueName: 'State Farm Arena', city: 'Atlanta', lat: 33.757, lng: -84.396, tz: 'ET' },
   { sportIds: [8], keys: ['chicago sky', 'sky'], venueName: 'Wintrust Arena', city: 'Chicago', lat: 41.853, lng: -87.621, tz: 'CT' },
@@ -498,6 +499,9 @@ export function resolveGameVenueCoords(
   if (venueStr) {
     const byLoc = lookupVenueByLocation(sportId, venueStr)
     if (byLoc) return venueRowToCoords(byLoc)
+    // Location is on the event but is not the home city (Melbourne, London, …).
+    // Do not fall back to the listed home team's regular house.
+    return null
   }
   const homeTeamName = isHome ? teamName : opponentName
   const row = lookupSportsVenue(sportId, homeTeamName)

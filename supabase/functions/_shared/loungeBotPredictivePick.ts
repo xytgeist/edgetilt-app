@@ -25,7 +25,12 @@ import {
   resolvePublishDestinations,
 } from './loungeBotPublishDestinations.ts'
 import { fetchGameWeather, type GameWeatherSummary } from './loungeBotWeather.ts'
-import { consumeRundownGradeTrace, matchRundownFinalScore, oddsSportKeyToRundownSportId } from './loungeBotRundownContext.ts'
+import {
+  consumeRundownGradeTrace,
+  matchRundownFinalScore,
+  oddsSportKeyToRundownSportId,
+  resolveRundownEvent,
+} from './loungeBotRundownContext.ts'
 import { loadPersonaWeights } from './loungeBotPersonaAdaptive.ts'
 import { fetchGameInjuryPval, type GameInjurySummary } from './loungeBotInjuryPval.ts'
 import { resolveGameBettingSplits, type BettingSplitSummary } from './loungeBotBettingSplits.ts'
@@ -1149,7 +1154,13 @@ export async function loadTankTotalsContextForSlate(
       const commence = String(ev.commence_time || '').trim()
       if (!eid || !home || !commence) return
       try {
-        const weather = await fetchGameWeather(sportId, home, commence)
+        const rundown = await resolveRundownEvent({
+          sportKey,
+          homeTeam: home,
+          awayTeam: String(ev.away_team || ''),
+          commenceTime: commence,
+        }).catch(() => null)
+        const weather = await fetchGameWeather(sportId, home, commence, rundown?.venueLocation)
         if (weather) weatherByEventId.set(eid, weather)
       } catch {
         // leave unset … no wind veto without a read
@@ -2411,7 +2422,18 @@ export async function publishAndRecordPicks(
   if (isSolo) {
     const single = input.picks[0].pick
     const sportId = oddsSportKeyToRundownSportId(single.sportKey) || 2
-    weather = await fetchGameWeather(sportId, single.homeTeam, single.commenceTime)
+    const rundown = await resolveRundownEvent({
+      sportKey: single.sportKey,
+      homeTeam: single.homeTeam,
+      awayTeam: single.awayTeam,
+      commenceTime: single.commenceTime,
+    }).catch(() => null)
+    weather = await fetchGameWeather(
+      sportId,
+      single.homeTeam,
+      single.commenceTime,
+      rundown?.venueLocation,
+    )
     injuries = await fetchGameInjuryPval(single.sportKey, single.homeTeam, single.awayTeam, single.commenceTime, admin)
     const mockEv: any = {
       id: single.eventId,

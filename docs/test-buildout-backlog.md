@@ -1121,6 +1121,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-10:** **TNF Australia SoFi line (Windows).** Primetime card used the listed home team's regular house (SoFi) for 49ers @ Rams in Melbourne. Stripped the weather/stadium line from Lounge `edf91ea3…` + VIP chat. Cards no longer print home-stadium weather. Rundown `venue_location` that is not the home city does not fall back to the regular house. Redeploy `lounge-odds-poll`. **`1.4.164`.**
+
 - **2026-09-10:** **Build 124 iPhone-only attached (Mac).** pbxproj target family `1` (`6af450d4`). Archive 1.4.95 / 124 with Xcode 26.6, `edgetilt.com`, `UIDeviceFamily [1]`. `APP_STORE_ELIGIBLE`. On the 1.4.95 listing. Draft review `415e408c-aae2-4a33-8628-a529e0a228aa` now has the version + five paywall SKUs. Not submitted. Lifetime out. Do not Add for Review.
 - **2026-09-10:** **IAP draft + free price (Mac).** Five paywall subscription versions (Starter mo/yr, Pro mo/yr, Edge Pro monthly) are items on draft review submission `415e408c-aae2-4a33-8628-a529e0a228aa`. `submittedDate` null. Lifetime out. App price **$0**. Availability **175/175**. Version 1.4.95 cannot be added to that draft: Apple wants **APP_IPAD_PRO_3GEN_129**. Build 123 icon is iPad (`~ipad`). `project.yml` is iPhone-only (`TARGETED_DEVICE_FAMILY: 1`) but some pbxproj Release rows are `1,2`. Do not Add for Review.
 - **2026-09-10:** **DSA trader submitted (Mac / Ryan).** Ryan handed the EU trader packet in ASC Business. Status **In Review** (27 countries, updated Sep 10). Do not invent a street. Do not Add for Review.

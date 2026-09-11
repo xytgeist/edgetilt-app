@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-11 … W-2G native document camera
+
+**I am Mac Theo.** `EdgeNative.scanDocument` is live (VisionKit). W-2G **Take photo** uses it on a current IPA and skips `scanic`. Library / bulk / PWA unchanged. Needs a device Run or new Test Fast archive. Simulator often falls back to the file input. **`1.4.180`.**
+
 ### Mac Theo 2026-09-11 … iOS build numbers are UTC stamps now
 
 **I am Mac Theo.** `CI_BUILD_NUMBER + 100` collided because Test Fast and Prod each have their own counter, and local archives are a third clock. ASC still wants one increasing sequence. Cloud + local now use `YYYYMMDDHHMMSS` (`ios/scripts/next-ios-build-number.sh`). Next upload will look like `20260911124551`, not 129.

@@ -61,6 +61,12 @@ import {
 import { processW2GImageForArchive } from './w2gBulkImport.js'
 import { enhanceScanicCornerToolbar } from './w2gScanicToolbar.js'
 import { canvasToVisionJpegBlob, extractW2GFieldsWithVision } from './w2gVisionApi.js'
+import {
+  canScanEdgeDocument,
+  filesFromNativeScanImages,
+  scanEdgeDocument,
+  triggerEdgeNativeHaptic,
+} from '../../utils/edgeNative.js'
 
 function moneyLabel(n) {
   return Number(n || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' })
@@ -618,11 +624,12 @@ export default function W2GScannerScreen({
   }, [phase, adjustEpoch, clearEditor])
 
   const processFile = useCallback(
-    async (file) => {
+    async (file, options = {}) => {
       if (!file || !String(file.type || '').startsWith('image/')) {
         setError('Pick a photo of the W-2G.')
         return
       }
+      const skipDetect = Boolean(options.skipDetect)
       clearEditor()
       cancelUnattachedExtractJobs()
       setError('')
@@ -631,11 +638,15 @@ export default function W2GScannerScreen({
       setOcrStatus('')
       setBusy(true)
       setPhase('scanning')
-      setStatusNote('Finding corners…')
+      setStatusNote(skipDetect ? 'Preparing scan…' : 'Finding corners…')
 
       try {
         const source = await loadImageCanvasFromFile(file)
         sourceCanvasRef.current = source
+        if (skipDetect) {
+          await finishPretty(source, 'iPhone scan')
+          return
+        }
         const { result, detector, cropMode } = await autoScanDocument(source)
         if (result?.success && result.output) {
           const engine = detector === 'ml' ? 'ML' : 'auto'
@@ -658,6 +669,26 @@ export default function W2GScannerScreen({
     },
     [cancelUnattachedExtractJobs, clearEditor, finishPretty, openAdjust],
   )
+
+  const onTakePhoto = useCallback(async () => {
+    if (canScanEdgeDocument()) {
+      try {
+        const result = await scanEdgeDocument({ purpose: 'w2g', maxPages: 1 })
+        if (result?.cancelled) return
+        if (result?.ok) {
+          const files = filesFromNativeScanImages(result)
+          if (files[0]) {
+            void triggerEdgeNativeHaptic('success')
+            void processFile(files[0], { skipDetect: true })
+            return
+          }
+        }
+      } catch {
+        // Old IPA or VisionKit unavailable … file input still works.
+      }
+    }
+    cameraInputRef.current?.click()
+  }, [processFile])
 
   const onPickFile = (event) => {
     const file = event.target.files?.[0]
@@ -1508,7 +1539,7 @@ export default function W2GScannerScreen({
                 <button
                   type="button"
                   disabled={busy}
-                  onClick={() => cameraInputRef.current?.click()}
+                  onClick={() => void onTakePhoto()}
                   className="flex w-full items-center gap-4 rounded-3xl bg-zinc-900 px-4 py-5 text-left touch-manipulation active:scale-[0.99] transition-transform disabled:opacity-60"
                   data-w2g-primary
                 >
@@ -1522,7 +1553,9 @@ export default function W2GScannerScreen({
                   <span className="min-w-0 flex-1">
                     <span className="block text-lg font-bold text-white">Take photo</span>
                     <span className="mt-0.5 block text-sm text-zinc-500">
-                      Use the rear camera when you can
+                      {canScanEdgeDocument()
+                        ? 'iPhone document camera … auto-crop the slip'
+                        : 'Use the rear camera when you can'}
                     </span>
                   </span>
                 </button>

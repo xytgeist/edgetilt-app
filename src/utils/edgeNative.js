@@ -210,6 +210,51 @@ export async function setEdgeCallAudioRoute(route) {
   }
 }
 
+/**
+ * True when the IPA injected `scanDocument` (VisionKit). Old binaries and PWA are false.
+ * @returns {boolean}
+ */
+export function canScanEdgeDocument() {
+  if (typeof window === 'undefined' || !isEdgeiOSShell()) return false
+  return typeof window.EdgeNative?.scanDocument === 'function'
+}
+
+/**
+ * Present the iOS document camera. Feature-detect first (`canScanEdgeDocument`).
+ * Cancel returns `{ ok: false, cancelled: true }`. Simulator often returns `unsupported`.
+ *
+ * @param {{ purpose?: string, maxPages?: number }} [payload]
+ * @returns {Promise<Record<string, unknown>>}
+ */
+export async function scanEdgeDocument(payload = {}) {
+  return edgeNativeInvoke('scanDocument', payload)
+}
+
+/**
+ * Turn native JPEG pages into Files the W-2G pipeline already understands.
+ * @param {Record<string, unknown> | null | undefined} result
+ * @returns {File[]}
+ */
+export function filesFromNativeScanImages(result) {
+  const images = Array.isArray(result?.images) ? result.images : []
+  const files = []
+  for (let i = 0; i < images.length; i++) {
+    const img = images[i] && typeof images[i] === 'object' ? images[i] : {}
+    const b64 = String(img.base64 || '').replace(/\s+/g, '')
+    if (!b64) continue
+    try {
+      const binary = atob(b64)
+      const bytes = new Uint8Array(binary.length)
+      for (let n = 0; n < binary.length; n++) bytes[n] = binary.charCodeAt(n)
+      const mime = String(img.mimeType || 'image/jpeg')
+      files.push(new File([bytes], `scan-${i + 1}.jpg`, { type: mime }))
+    } catch {
+      // skip a bad page
+    }
+  }
+  return files
+}
+
 /** @param {unknown} value */
 function normalizePushStatus(value) {
   const s = String(value || '').trim().toLowerCase()

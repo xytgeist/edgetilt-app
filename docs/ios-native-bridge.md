@@ -33,7 +33,7 @@ Do **not** "fix" CallKit by retrying WKWebView `getUserMedia`, remounting `LiveK
 | --- | --- |
 | **UA substring** | **`EdgeiOS/0.1.0`** (token format `EdgeiOS/<semver>`; bump with `AppConfig.shellVersion` in `ios/`) |
 | **Global** | `window.EdgeNative` injected at document start |
-| **Helper** | **`src/utils/edgeNative.js`** … `isEdgeiOSShell()`, `readEdgeiOSShellVersion()`, `edgeNativeInvoke(method, payload)`, **`openExternalBillingUrl(url)`** (shell → `openInSafari`; else `location.assign`) |
+| **Helper** | **`src/utils/edgeNative.js`** … `isEdgeiOSShell()`, `readEdgeiOSShellVersion()`, `edgeNativeInvoke(method, payload)`, **`openExternalBillingUrl(url)`** (shell → `openInSafari`; else `location.assign`), **`canScanEdgeDocument` / `scanEdgeDocument` / `filesFromNativeScanImages`** (W-2G Take photo) |
 
 **Do not** treat generic iOS Safari / PWA as the store shell. Positive checks only (`AGENT_RULE_POSITIVE_PLATFORM_GUARDS`).
 
@@ -88,6 +88,7 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | `restoreStorePurchases` | JS→native | none | `{ ok, transactions: [...] }` | Mac | **native** + Restore on Subscribe + Manage membership. **Device smoke pending.** |
 | `manageStoreSubscriptions` | JS→native | none | `{ ok: boolean }` | Mac | **native** (2026-09-05). `AppStore.showManageSubscriptions`. Apple-billed users only. |
 | `beginRefundRequest` | JS→native | `{ productId?, transactionId? }` | `{ ok, status: 'requested'\|'cancelled'\|'no_transaction' }` | Mac | **native** (2026-09-05). `Transaction.beginRefundRequest`. Manage membership + fan Cancel sheet. |
+| `scanDocument` | JS→native | `{ purpose?: string, maxPages?: number }` | `{ ok, cancelled?, unsupported?, images?: [{ mimeType, base64, width, height }] }` | Mac + web caller | **native** + **web caller** (2026-09-11). VisionKit `VNDocumentCameraViewController`. Default 1 page, max 8. JPEG ≤2000px. W-2G **Take photo** uses it when present and skips `scanic` (page is already flattened). Cancel / Simulator `unsupported` / old IPA → hidden file input. PWA unchanged. |
 
 **Web-owned (no Swift required for first cut):**
 

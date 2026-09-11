@@ -266,6 +266,11 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
         productId: payload?["productId"] as? String,
         completion: completion
       )
+    case "scanDocument":
+      let rawMax = payload?["maxPages"] as? Int
+        ?? (payload?["maxPages"] as? NSNumber)?.intValue
+        ?? 1
+      EdgeDocumentScanner.present(maxPages: rawMax, completion: completion)
     default:
       completion(.failure(BridgeError.unknownMethod(method)))
     }
@@ -594,6 +599,9 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       },
       beginRefundRequest: function (payload) {
         return call('beginRefundRequest', payload || {});
+      },
+      scanDocument: function (payload) {
+        return call('scanDocument', payload || {});
       },
       bustServiceWorker: function () {
         return call('bustServiceWorker', null);

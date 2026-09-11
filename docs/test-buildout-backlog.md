@@ -145,6 +145,7 @@ Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows**
 - [ ] **Keyboard compose pass (IPA):** Lounge feed compose, thread compose, chat … field + toolbar not covered by keys. Safari/PWA thread media-bar-behind-keys bug is parked; GIF picker IPA already signed.
 - [x] **Call audio web→native hook (2026-08-26):** `chatCallAudioSession` → `setAudioSession(voiceChat|default)` in shell. **Superseded for IPA media 2026-08-27:** native LiveKit owns the session via CallKit `didActivate`.
 - [ ] **Native LiveKit lock-screen smoke (owed):** force-close IPA, lock, answer, **do not unlock**. Caller must leave `Ringing…` with two-way audio. Unlock: camera / remote video on video calls. Remote hangup clears CallKit. Unlocked in-app uses the same native room (no `LiveKitRoom`).
+- [ ] **W-2G VisionKit Take photo smoke (2026-09-11):** current IPA, Slots → W-2G Scanner → Take photo. Expect the iOS document camera (not the system camera roll sheet). Cancel returns idle. A good snap skips `scanic` and lands on extract. Simulator / old IPA still uses the file input.
 
 **Later (v1.1+)**
 - [ ] CallKit / background ring; native haptics; Android TWA
@@ -1121,6 +1122,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-11:** **W-2G Take photo uses VisionKit on IPA (Mac).** `EdgeNative.scanDocument` presents the iOS document camera and returns a flattened JPEG. W-2G skips `scanic` on that path. Library / bulk / PWA stay on `<input type="file">`. Needs a new Test Fast / device Run. **`1.4.180`.**
 - **2026-09-11:** **Pats/Hawks card corrected to +3.5 (Windows).** Live Wed Sep 9 public `63696626…` + fan `d39b6baa…` + VIP chat `63c09a91…` now hammer **Pats +3.5 (-105)** and Tank **Under 44.5 (-109)**. Tank spots section removed. Scott/Rocco/Chedda regraded won +0.95u. One-game cards skip Tank spots. Redeploy `lounge-odds-poll`. **`1.4.179`.**
 - **2026-09-11:** **Feed see-more no longer splits `[gold]` (Windows).** `truncateCaptionForDisplay` rewinds an incomplete last line so collapsed slate cards do not leak `· **[gold]Bears`. **`1.4.178`.**
 - **2026-09-11:** **CFB slate omits PASSes (Windows).** College house / desk cards skip All Pass, Tank PASS lines, and desk PASS rows. NFL still prints them. Edited live prod public `7cbbeeb8…` + fan `0b0bb923…` + thread/VIP copies. Redeploy `lounge-odds-poll`. **`1.4.177`.**

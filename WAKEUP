@@ -77,7 +77,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Mac Theo 2026-09-11 … W-2G IPA extract is for everyone
 
-**I am Mac Theo.** Vision-first + unsure OpenAI fallback is the IPA default, not Starter+. Signed-in free IPA users get the same path. PWA / bulk stay gated. Redeploy **`w2g-vision-extract`** on test (`EdgeiOS/` UA allowed). **`1.4.182`.** Windows: do not edit W-2G extract today.
+**I am Mac Theo.** Vision-first + unsure OpenAI fallback is the IPA default, not Starter+. Signed-in free IPA users get the same path. PWA / bulk stay gated. Redeployed **`w2g-vision-extract`** on test (`EdgeiOS/` UA allowed). Prod function still old until you ask. **`1.4.182`.** Windows: do not edit W-2G extract today.
 
 ### Mac Theo 2026-09-11 … W-2G on-device Vision OCR
 

@@ -1695,10 +1695,20 @@ export function buildNflAtsSlateCard(
       pvalImpactHome: sideModifier?.netSpreadImpactHome ?? null,
       pvalSignificant: sideModifier?.isSignificant === true,
       pvalReason: sideModifier?.reason ?? null,
+      pvalSource: sideModifier?.source ?? null,
       hardFire: injuryValue?.isValuePlay === true,
       softEligible: softModelValue?.isValuePlay === true && !injuryValue?.isValuePlay,
       pickIsTrueKey: isTrueKeySpreadPoint(scottPickPoint),
+      pickPoint: scottPickPoint,
       side: scottSide,
+      trench: trenchEpa,
+      cfb: cfbMatchup
+        ? {
+            homePower: cfbMatchup.homePower,
+            awayPower: cfbMatchup.awayPower,
+            homeFieldAdv: cfbMatchup.homeFieldAdv,
+          }
+        : null,
     })
     const roccoEquations = buildRoccoFootballEquations({
       homeTeam,
@@ -1728,6 +1738,10 @@ export function buildNflAtsSlateCard(
       leanSide: roccoLeanSide,
       side: roccoSide,
       countsForHouse: roccoCountsForHouse,
+      roccoWeight,
+      trenchPtsHome: trenchEpa?.netTrenchSpreadImpactHome ?? null,
+      homePower: cfbMatchup?.homePower ?? null,
+      awayPower: cfbMatchup?.awayPower ?? null,
     })
     const cheddaEquations = buildCheddaFootballEquations({
       homeTeam,
@@ -1743,6 +1757,8 @@ export function buildNflAtsSlateCard(
       hasRealSplits,
       splitsLine: gameSplits.summaryLine || null,
       side: cheddaSide,
+      homePoint,
+      awayPoint,
     })
     const tankTotalsEquations = buildTankTotalsEquations({
       modelTotal,
@@ -1754,6 +1770,17 @@ export function buildNflAtsSlateCard(
       keyCross: tankKeyCross,
       absEdge: tankAbsEdge,
       side: tankTotalsSide,
+      signedEdge: modelTotal != null && marketTotalQuote?.total != null
+        ? Math.round((modelTotal - marketTotalQuote.total) * 10) / 10
+        : null,
+      homeTempo: cfbMatchup?.homeTempo ?? null,
+      awayTempo: cfbMatchup?.awayTempo ?? null,
+      homeOffEpa: trenchEpa?.homeOffEpa ?? null,
+      homeDefEpa: trenchEpa?.homeDefEpa ?? null,
+      awayOffEpa: trenchEpa?.awayOffEpa ?? null,
+      awayDefEpa: trenchEpa?.awayDefEpa ?? null,
+      homePower: cfbMatchup?.homePower ?? null,
+      awayPower: cfbMatchup?.awayPower ?? null,
     })
 
     const pickerPicks: Record<SharpPicker, {

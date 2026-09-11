@@ -34,10 +34,18 @@ export type TrenchEpaMatchupSummary = {
   awayTeam: string
   homeNetEpa: number
   awayNetEpa: number
+  homeOffEpa: number
+  homeDefEpa: number
+  awayOffEpa: number
+  awayDefEpa: number
   netEpaDeltaHome: number // homeNetEpa - awayNetEpa
   epaSpreadImpactHome: number // in points (+ = favors home, - = favors away)
   homePassTrenchDelta: number // home PBWR - away PRWR
   awayPassTrenchDelta: number // away PBWR - home PRWR
+  homePbwr: number
+  awayPrwr: number
+  awayPbwr: number
+  homePrwr: number
   netTrenchSpreadImpactHome: number // in points
   trenchAdvantageSide: 'home' | 'away' | null
   isTrenchMismatch: boolean // >= TRENCH_MISMATCH_PTS on the point scale
@@ -296,10 +304,18 @@ export function calculateTrenchEpaMatchup(
     awayTeam: away.team_name,
     homeNetEpa,
     awayNetEpa,
+    homeOffEpa: home.off_epa_play,
+    homeDefEpa: home.def_epa_play,
+    awayOffEpa: away.off_epa_play,
+    awayDefEpa: away.def_epa_play,
     netEpaDeltaHome,
     epaSpreadImpactHome,
     homePassTrenchDelta,
     awayPassTrenchDelta,
+    homePbwr: home.pass_block_win_rate,
+    awayPrwr: away.pass_rush_win_rate,
+    awayPbwr: away.pass_block_win_rate,
+    homePrwr: home.pass_rush_win_rate,
     netTrenchSpreadImpactHome,
     trenchAdvantageSide,
     isTrenchMismatch,

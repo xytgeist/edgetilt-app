@@ -21,7 +21,7 @@ export const DESK_PLAYBOOKS = {
     football: {
       analyzes: 'Model vs the current market after PVAL. EPA + ESPN trench on NFL. CFB power on college.',
       gates: [
-        { label: 'Base model', formula: 'NFL: −(EPA + trench). CFB: power projection.', effect: 'Sets the pre-injury home spread.' },
+        { label: 'Base model', formula: 'NFL: −((home net EPA − away net EPA) × 22 + trench pts). CFB: (away power − home power) − HFA.', effect: 'Sets the pre-injury home spread.' },
         { label: 'PVAL', formula: 'adjusted = model − netSpreadImpactHome', effect: 'Moves the model. Does not vote by itself.' },
         { label: 'Gap', formula: '|market home − adjusted model|', effect: 'Fire at 2.5 pts. Value side is the cheap side vs the model.' },
         { label: 'True 3/7 key', formula: '3, 7, or the half onto those', effect: 'Soft 1.5 unlock. Non-keys stay PASS under 2.5.' },

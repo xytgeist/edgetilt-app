@@ -26,8 +26,18 @@ export function SyndicateDeskEquationList({ equations, emptyHint }) {
                 {meta.label}
               </span>
             </div>
-            <p className="mt-1.5 text-[13px] text-zinc-200 tabular-nums">{eq.value}</p>
-            <p className="mt-0.5 text-[12px] text-zinc-400 leading-snug">{eq.impact}</p>
+            <p className="mt-1.5 text-[13px] font-semibold text-zinc-100 tabular-nums">{eq.value}</p>
+            {Array.isArray(eq.vars) && eq.vars.length ? (
+              <dl className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-1.5">
+                {eq.vars.map((v) => (
+                  <div key={`${eq.id}-${v.label}`} className="min-w-0">
+                    <dt className="text-[10px] uppercase tracking-wide text-zinc-500">{v.label}</dt>
+                    <dd className="text-[12px] text-zinc-200 tabular-nums break-words">{v.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : null}
+            <p className="mt-1.5 text-[12px] text-zinc-400 leading-snug">{eq.impact}</p>
           </li>
         )
       })}

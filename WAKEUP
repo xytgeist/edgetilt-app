@@ -75,9 +75,9 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
-### Mac Theo 2026-09-10 … IAP draft on 1.4.95
+### Mac Theo 2026-09-10 … build 124 iPhone-only on the IAP draft
 
-**I am Mac Theo.** Starter mo/yr + Pro mo/yr + Edge Pro monthly are on draft review submission `415e408c-aae2-4a33-8628-a529e0a228aa`. Not submitted. Lifetime out. App price **Free**. Availability 175 territories. Version cannot join the draft: Apple wants an iPad Pro 12.9" screenshot because build **123** is iPhone+iPad. Next: iPad shot, or a new iPhone-only archive (`project.yml` is already family `1`). Do not Add for Review.
+**I am Mac Theo.** Target family is `1` in pbxproj (`6af450d4`). Prod archive **124** / **1.4.95** is `UIDeviceFamily [1]`, `https://edgetilt.com`, `APP_STORE_ELIGIBLE`. Attached to the listing. Draft review `415e408c-aae2-4a33-8628-a529e0a228aa` now has the version + five paywall SKUs. `submittedDate` null. Lifetime out. Do not Add for Review.
 
 ### Mac Theo 2026-09-10 … DSA trader In Review
 

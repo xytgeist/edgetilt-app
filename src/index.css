@@ -4072,6 +4072,27 @@ html.light [data-settings-account-info] .hover\:text-red-300:hover {
   color: #b91c1c !important;
 }
 
+html.light [data-settings-account-info-dialog] .bg-zinc-900 {
+  background-color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 16px 48px rgba(0,0,0,0.16), 0 0 0 1px rgba(0,0,0,0.05) !important;
+}
+html.light [data-settings-account-info-dialog] .border-zinc-600 {
+  border-color: #d4d4d8 !important;
+}
+html.light [data-settings-account-info-dialog] h2 {
+  color: #18181b !important;
+}
+html.light [data-settings-account-info-dialog] .text-zinc-200,
+html.light [data-settings-account-info-dialog] .text-zinc-100 {
+  color: #3f3f46 !important;
+}
+html.light [data-settings-account-info-dialog] .bg-zinc-800\/90 {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-settings-account-info-dialog] .hover\:bg-zinc-700:hover {
+  background-color: #e4e4e7 !important;
+}
+
 /* Settings → Log out link */
 html.light [data-settings-logout] .text-zinc-400 {
   color: #71717a !important;

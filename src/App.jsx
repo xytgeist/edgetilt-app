@@ -1140,12 +1140,6 @@ function App() {
   }
 
   const handleDeleteAccount = useCallback(async () => {
-    if (
-      !window.confirm(
-        'Permanently delete this account? All data tied to it in this project (profile, Lounge posts, offers subscriptions, Auth flags, etc.) will be removed. This cannot be undone.'
-      )
-    )
-      return
     setDeleteAccountBusy(true)
     try {
       const {
@@ -1182,7 +1176,7 @@ function App() {
       const fallback =
         'Could not delete account. Deploy the delete-own-account Edge Function (see supabase/functions/delete-own-account/README.md).'
       const msg = typeof e?.message === 'string' && e.message.trim() ? e.message.trim() : fallback
-      window.alert(msg)
+      throw new Error(msg)
     } finally {
       setDeleteAccountBusy(false)
     }

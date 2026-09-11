@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import ProfileHandleConflictDialog from './ProfileHandleConflictDialog.jsx'
 import {
   checkProfileHandleAvailability,
@@ -50,6 +51,7 @@ export default function SettingsAccountInfoScreen({
 
   const [handleChangeDialog, setHandleChangeDialog] = useState(null)
   const [handleConflictDialog, setHandleConflictDialog] = useState(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 
   const reloadProfile = useCallback(async () => {
     if (!supabaseClient || !userId) {
@@ -223,6 +225,21 @@ export default function SettingsAccountInfoScreen({
     void persistAccountInfo()
   }, [formDirty, handleChangedAt, handleDirty, persistAccountInfo, saveBusy])
 
+  const onConfirmDeleteAccount = useCallback(async () => {
+    if (typeof onDeleteAccount !== 'function' || deleteAccountBusy) return
+    setSaveError('')
+    try {
+      await onDeleteAccount()
+    } catch (e) {
+      setDeleteDialogOpen(false)
+      setSaveError(
+        typeof e?.message === 'string' && e.message.trim()
+          ? e.message.trim()
+          : 'Could not delete account.',
+      )
+    }
+  }, [deleteAccountBusy, onDeleteAccount])
+
   return (
     <div className="px-3 py-4" data-settings-account-info>
       <button
@@ -341,8 +358,11 @@ export default function SettingsAccountInfoScreen({
               <button
                 type="button"
                 disabled={deleteAccountBusy}
-                onClick={() => void onDeleteAccount()}
-                className="text-[14px] font-semibold text-red-400 underline underline-offset-2 touch-manipulation hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
+                onClick={() => {
+                  setSaveError('')
+                  setDeleteDialogOpen(true)
+                }}
+                className="inline-flex min-h-11 items-center text-[14px] font-semibold text-red-400 underline underline-offset-2 touch-manipulation hover:text-red-300 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
               >
                 {deleteAccountBusy ? 'Deleting account…' : 'Delete account'}
               </button>
@@ -432,6 +452,57 @@ export default function SettingsAccountInfoScreen({
           void persistAccountInfo({ forcedHandle: suggested })
         }}
       />
+
+      {deleteDialogOpen && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[120] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
+              data-settings-account-info-dialog
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="settings-delete-account-title"
+            >
+              <button
+                type="button"
+                className="absolute inset-0 z-0 cursor-default touch-manipulation"
+                aria-label="Dismiss"
+                disabled={deleteAccountBusy}
+                onClick={() => {
+                  if (deleteAccountBusy) return
+                  setDeleteDialogOpen(false)
+                }}
+              />
+              <div className="relative z-10 w-full max-w-sm rounded-2xl border border-zinc-600 bg-zinc-900 p-5 shadow-2xl">
+                <h2 id="settings-delete-account-title" className="text-[16px] font-bold text-white">
+                  Delete this account?
+                </h2>
+                <p className="mt-3 text-[15px] leading-relaxed text-zinc-200">
+                  Permanently removes your login, profile, Lounge posts, and other data tied to this
+                  account. This cannot be undone.
+                </p>
+                <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    disabled={deleteAccountBusy}
+                    onClick={() => setDeleteDialogOpen(false)}
+                    className="min-h-11 w-full rounded-xl border border-zinc-600 bg-zinc-800/90 px-4 text-[15px] font-semibold text-zinc-100 touch-manipulation hover:bg-zinc-700 disabled:opacity-50 sm:w-auto"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={deleteAccountBusy}
+                    onClick={() => void onConfirmDeleteAccount()}
+                    className="min-h-11 w-full rounded-xl bg-red-600 px-4 text-[15px] font-semibold text-white touch-manipulation hover:bg-red-500 disabled:opacity-50 sm:w-auto"
+                  >
+                    {deleteAccountBusy ? 'Deleting…' : 'Delete account'}
+                  </button>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   )
 }

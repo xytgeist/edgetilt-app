@@ -1121,6 +1121,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-11:** **Account info delete + swipe steal (Mac).** Delete account used native `window.confirm` / `alert` (iOS PWA / IPA freeze or no-op). Settings panel also started swipe-to-dismiss on button taps, so Account info / Delete felt dead until a second tap. In-app portaled confirm + swipe ignores buttons/links. **`1.4.168`.**
 - **2026-09-11:** **Prod Confirm sign up template pasted (Mac).** `jtjgtucumuoswnbauxry` Confirm sign up body now uses `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup`. Toast: Successfully updated email template. Reset / magic / invite / change-email still old `ConfirmationURL`. Test project not pasted.
 - **2026-09-11:** **Email confirm Universal Links (Mac).** Confirm button should not stay on `auth.edgetilt.com`. Web **`/auth/confirm?token_hash=&type=`** + AASA + IPA `applinks:`. Hash-token confirm still works. Ryan must re-paste Auth email templates (prod + test). Prod AASA needs **main**. New IPA for Associated Domains. Gmail in-app browser can ignore UL. **`1.4.167`.**
 - **2026-09-11:** **10DLC privacy glued to share clauses (Windows).** Second Telnyx fail on **`C6NW3Y9`** was the same canned privacy email. TCR requires the exact `originator optin` (no hyphen) sentence immediately after sell/share/transfer language, plus the spoken verbal script to say mobile info will not be sold or shared. **`LEGAL_POLICY_VERSION` `2026-09-11`**. Promote **main** before another appeal. **`1.4.166`.**

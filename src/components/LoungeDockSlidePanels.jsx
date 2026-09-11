@@ -1013,10 +1013,10 @@ export default function LoungeDockSlidePanels({
     if (e.pointerType === 'mouse' && e.button !== 0) return
     const t = e.target
     if (t instanceof Element) {
-      if (t.closest('input, textarea, select, label')) return
+      // Buttons / links must get the click. Starting a swipe here is why
+      // Account info / Delete account felt dead until a second tap.
+      if (t.closest('input, textarea, select, label, button, a, [role="button"]')) return
       if (t.closest('[data-lounge-panel-horizontal-scroll]')) return
-      if (t.closest('button[aria-label="Close"]')) return
-      if (t.closest('button[aria-label="Close panel"]')) return
     }
     if (!(e.currentTarget instanceof Element)) return
     pointerIdRef.current = e.pointerId
@@ -1027,7 +1027,6 @@ export default function LoungeDockSlidePanels({
     decidedRef.current = false
     horizontalRef.current = false
     pointerCapturedRef.current = false
-    setTxTransition(false)
   }, [])
 
   const onPointerMove = useCallback(
@@ -1046,6 +1045,7 @@ export default function LoungeDockSlidePanels({
           return
         }
         horizontalRef.current = true
+        setTxTransition(false)
         const cur = e.currentTarget
         if (cur instanceof Element && !pointerCapturedRef.current) {
           try {

@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-11 … Account info delete + swipe steal
+
+**I am Mac Theo.** Settings → Account info Delete used `window.confirm` (dead / freeze on IPA + iOS PWA) and the slide panel started a swipe on every button tap. In-app delete dialog (portaled to `document.body`) + swipe ignores `button` / `a`. **`1.4.168`.**
+
 ### Mac Theo 2026-09-11 … email confirm opens the IPA
 
 **I am Mac Theo.** Confirm links now target **`/auth/confirm?token_hash=`** (not `auth.edgetilt.com/auth/v1/verify`). AASA + Associated Domains landed. **Prod Confirm sign up template saved** on `jtjgtucumuoswnbauxry` (button is `/auth/confirm?token_hash=&type=signup`). Reset / magic / invite / change-email not pasted yet … dashboard tab died after save. Still need test project templates, **main** for AASA on `edgetilt.com`, new IPA. Gmail in-app browser can still ignore Universal Links. Do not rebuild until he asks. **`1.4.167`.** Windows: I touched `src/**` for this one feature … do not double-edit `/auth/confirm`.

@@ -61,7 +61,6 @@ import {
 import { processW2GImageForArchive } from './w2gBulkImport.js'
 import { enhanceScanicCornerToolbar } from './w2gScanicToolbar.js'
 import {
-  canRecognizeEdgeText,
   canScanEdgeDocument,
   filesFromNativeScanImages,
   scanEdgeDocument,
@@ -101,9 +100,8 @@ export default function W2GScannerScreen({
   titleBarToolCloseVisible = false,
   supabaseClient = null,
   onOpenAuth = null,
-  /** Slots Edge Starter and up (or staff) … bulk import + PWA/old-IPA cloud extract. */
+  /** Slots Edge Starter and up (or staff) … bulk import only. Extract is free. */
   canUseBulkImport = false,
-  canUseVisionExtract = false,
   onRequireSubscribe = null,
 }) {
   const cameraInputRef = useRef(null)
@@ -446,7 +444,6 @@ export default function W2GScannerScreen({
       try {
         const extracted = await extractW2GFields(flatCanvas, {
           supabase: supabaseClient,
-          useCloudVision: canUseVisionExtract,
           onProgress: (pct) => {
             if (forUi && uiExtractJobIdRef.current === jobId && jobAlive()) {
               setOcrProgress(pct)
@@ -469,14 +466,6 @@ export default function W2GScannerScreen({
           },
         })
         if (!jobAlive()) return jobId
-        if (
-          extracted.subscribeRequired &&
-          forUi &&
-          !attachedSlipId() &&
-          !canRecognizeEdgeText()
-        ) {
-          onRequireSubscribe?.(PRODUCT_SLOTS_EDGE_STARTER)
-        }
         if (forUi && uiExtractJobIdRef.current === jobId) setOcrProgress(100)
         await deliver(extracted.fields, extracted.confidence, extracted.engineLabel)
       } catch {
@@ -485,9 +474,7 @@ export default function W2GScannerScreen({
       return jobId
     },
     [
-      canUseVisionExtract,
       markSlipProcessing,
-      onRequireSubscribe,
       patchSlipFieldsSilent,
       supabaseClient,
     ],
@@ -751,8 +738,7 @@ export default function W2GScannerScreen({
           try {
             const result = await processW2GImageForArchive(file, {
               signal: ac.signal,
-              supabase: canUseVisionExtract ? supabaseClient : null,
-              useVision: canUseVisionExtract,
+              supabase: supabaseClient,
             })
             if (result.ok) {
               await saveW2GSlip({
@@ -796,7 +782,6 @@ export default function W2GScannerScreen({
     },
     [
       canUseBulkImport,
-      canUseVisionExtract,
       cancelUnattachedExtractJobs,
       clearEditor,
       onOpenAuth,
@@ -1054,8 +1039,6 @@ export default function W2GScannerScreen({
   verifySlipRef.current = verifySlip
   const taxYearRef = useRef(taxYear)
   taxYearRef.current = taxYear
-  const canUseVisionExtractRef = useRef(canUseVisionExtract)
-  canUseVisionExtractRef.current = canUseVisionExtract
   const supabaseClientRef = useRef(supabaseClient)
   supabaseClientRef.current = supabaseClient
 
@@ -1166,7 +1149,6 @@ export default function W2GScannerScreen({
 
                 const fieldExtract = await extractW2GFields(flat, {
                   supabase: client,
-                  useCloudVision: canUseVisionExtractRef.current,
                 })
                 const fields = fieldExtract.fields || {}
                 const confidence = fieldExtract.confidence ?? null
@@ -1249,7 +1231,6 @@ export default function W2GScannerScreen({
 
       const extracted = await extractW2GFields(canvas, {
         supabase: supabaseClient,
-        useCloudVision: canUseVisionExtract,
       })
       const fields = extracted.fields || {}
       const confidence = extracted.confidence ?? null
@@ -1566,7 +1547,7 @@ export default function W2GScannerScreen({
                     </span>
                     <span className="mt-0.5 block text-sm text-zinc-500">
                       {canUseBulkImport
-                        ? 'Select many photos… OCR + save each to your archive'
+                        ? 'Select many photos… same extract, saved to your archive'
                         : 'Slots Edge and up … multi-slip import'}
                     </span>
                   </span>

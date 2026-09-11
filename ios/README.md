@@ -18,7 +18,7 @@ Thin native loader for the live Edge site. **Not Capacitor.** No baked Vite `dis
 - **Push (APNs):** bridge `getPushPermissionStatus` / `requestPushPermission` / `getPushToken` live. `CODE_SIGN_ENTITLEMENTS` on. Team **`8932AKQW4W`**. Lounge Settings → native permission + token upload (web). Notification **tap** loads payload `url` in the existing WKWebView (`didReceive` / cold-start pending). No new `EdgeNative` method. HTTPS + edgetilt/lvslotpro hosts only.
 - **Universal Links:** Associated Domains `applinks:edgetilt.com` / `lvslotpro.com`. Email confirm (`/auth/confirm`) opens the existing WKWebView via the same pending-URL queue. AASA on the live site. Gmail in-app can ignore UL; `edgetilt://auth/confirm?…` is the fallback (new binary). No new `EdgeNative` method.
 - **Document camera:** `EdgeNative.scanDocument` → VisionKit. W-2G **Take photo** on a current IPA. Simulator often reports unsupported and falls back to the file input.
-- **On-device OCR:** `EdgeNative.recognizeText` → Vision. W-2G extract on a current IPA for everyone. Signed-in cloud only when the six fields look unsure. Simulator works. Old IPA / PWA stay on tesseract (+ Starter+ cloud).
+- **On-device OCR:** `EdgeNative.recognizeText` → Vision. W-2G extract on a current IPA for everyone (free and Starter+). Signed-in cloud only when the six fields look unsure. Simulator works. PWA / old IPA: signed-in cloud first, else tesseract. Bulk import is the only Starter+ W-2G difference.
 
 ## Open / build
 

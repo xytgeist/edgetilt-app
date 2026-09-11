@@ -75,9 +75,13 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-11 … W-2G paid difference is bulk only
+
+**I am Mac Theo.** Free and Starter+ get the same extract: IPA Vision first (then OpenAI if unsure), PWA signed-in cloud first. Starter+ is **bulk import** only. They still get VisionKit + Vision OCR on a current IPA. Redeploy **`w2g-vision-extract`** on test (sign-in only, no plan check). **`1.4.183`.** Windows: do not edit W-2G extract today.
+
 ### Mac Theo 2026-09-11 … W-2G IPA extract is for everyone
 
-**I am Mac Theo.** Vision-first + unsure OpenAI fallback is the IPA default, not Starter+. Signed-in free IPA users get the same path. PWA / bulk stay gated. Redeployed **`w2g-vision-extract`** on test (`EdgeiOS/` UA allowed). Prod function still old until you ask. **`1.4.182`.** Windows: do not edit W-2G extract today.
+**I am Mac Theo.** Vision-first + unsure OpenAI fallback is the IPA default. **Superseded** … paid difference is bulk only (`1.4.183`). **`1.4.182`.**
 
 ### Mac Theo 2026-09-11 … W-2G on-device Vision OCR
 

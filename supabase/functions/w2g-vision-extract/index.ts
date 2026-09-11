@@ -2,9 +2,8 @@
  * w2g-vision-extract
  *
  * Auth'd users send a W-2G image; OpenAI vision returns the six
- * TurboTax-combine fields as JSON.
- * PWA / web: Slots Edge Starter+ or staff.
- * EdgeiOS: any signed-in user (on-device Vision fallback when a slip is unsure).
+ * TurboTax-combine fields as JSON. Sign-in only … extract is free.
+ * Slots Edge Starter+ is bulk import in the app, not this function.
  *
  * Secrets: OPENAI_API_KEY (same as process-offer-uploads)
  * Optional: OPENAI_VISION_MODEL (default gpt-4o-mini)
@@ -19,7 +18,6 @@ const CORS = {
 
 const OPENAI_MODEL = Deno.env.get('OPENAI_VISION_MODEL') ?? 'gpt-4o-mini'
 const MAX_BYTES = 4_500_000
-const SLOT_PLAN_SLUGS = new Set(['slots-edge-starter', 'slots-edge', 'slots-edge-lifetime'])
 
 type W2GFields = {
   payerName: string
@@ -121,39 +119,6 @@ function normalizeFields(raw: Record<string, unknown>): W2GFields {
   }
 }
 
-async function userHasSlotsEdgeAccess(
-  supabase: ReturnType<typeof createClient>,
-  userId: string,
-): Promise<boolean> {
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role, has_active_subscription')
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  const role = String(profile?.role || '').toLowerCase()
-  if (role === 'admin' || role === 'moderator') return true
-  if (profile?.has_active_subscription === true) return true
-
-  const { data: entitlements, error } = await supabase.rpc('get_my_entitlements')
-  if (!error && entitlements && typeof entitlements === 'object') {
-    for (const slug of SLOT_PLAN_SLUGS) {
-      if ((entitlements as Record<string, { active?: boolean }>)[slug]?.active) return true
-    }
-  }
-
-  // Fallback direct table read (RLS: own rows).
-  const { data: subs } = await supabase
-    .from('user_subscriptions')
-    .select('product_slug, status')
-    .eq('user_id', userId)
-    .in('product_slug', [...SLOT_PLAN_SLUGS])
-    .in('status', ['active', 'trialing'])
-    .limit(5)
-
-  return Array.isArray(subs) && subs.length > 0
-}
-
 async function extractWithOpenAi(
   openaiApiKey: string,
   mimeType: string,
@@ -247,15 +212,6 @@ Deno.serve(async (req) => {
   const { data: userData, error: userError } = await supabase.auth.getUser()
   if (userError || !userData?.user?.id) {
     return json(401, { error: 'Sign in required.', code: 'auth_required' })
-  }
-
-  const isEdgeiOS = /EdgeiOS\//i.test(req.headers.get('user-agent') ?? '')
-  const allowed = isEdgeiOS || (await userHasSlotsEdgeAccess(supabase, userData.user.id))
-  if (!allowed) {
-    return json(403, {
-      error: 'Slots Edge (Starter or higher) required for AI W-2G extract.',
-      code: 'subscribe_required',
-    })
   }
 
   let body: Record<string, unknown>

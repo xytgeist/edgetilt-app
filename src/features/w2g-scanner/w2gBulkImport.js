@@ -34,7 +34,6 @@ function canvasToJpegBlob(canvas, quality = 0.92) {
  * @param {{
  *   signal?: AbortSignal,
  *   supabase?: import('@supabase/supabase-js').SupabaseClient | null,
- *   useVision?: boolean,
  * }} [opts]
  * @returns {Promise<{
  *   ok: true,
@@ -101,7 +100,6 @@ export async function processW2GImageForArchive(file, opts = {}) {
 
     const extracted = await extractW2GFields(flat, {
       supabase: opts.supabase,
-      useCloudVision: Boolean(opts.useVision && opts.supabase),
       signal,
     })
     throwIfAborted()

@@ -5,9 +5,7 @@ Auth’d Edge Function: OpenAI vision extracts the six TurboTax-combine W-2G fie
 ## Access
 
 - Signed-in user required
-- **PWA / web:** **Slots Edge Starter**, **Pro**, **Lifetime**, or staff
-- **EdgeiOS** (`EdgeiOS/` in the User-Agent): any signed-in user … IPA uses this only when on-device Vision looks unsure
-- Free PWA / web users get `403` with `code: subscribe_required`
+- Extract is free. Starter+ is **bulk import** in the app, not this function.
 
 ## Secrets
 

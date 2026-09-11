@@ -1,7 +1,8 @@
 /**
  * W-2G field extract waterfall.
- * IPA: Vision OCR first for everyone. Signed-in cloud only when the six fields look unsure.
- * PWA / old IPA: cloud first when entitled, else tesseract.
+ * IPA: Vision first for everyone (free and Starter+). Signed-in cloud if the slip looks unsure.
+ * PWA / old IPA: signed-in cloud first, else tesseract.
+ * Starter+ does not change extract. Bulk import is the paid difference.
  */
 
 import { canRecognizeEdgeText, recognizeEdgeText } from '../../utils/edgeNative.js'
@@ -111,7 +112,6 @@ async function recognizeTesseractFromCanvas(canvas, opts = {}) {
  * @param {HTMLCanvasElement} canvas
  * @param {{
  *   supabase?: import('@supabase/supabase-js').SupabaseClient | null,
- *   useCloudVision?: boolean,
  *   signal?: AbortSignal,
  *   onProgress?: (pct: number) => void,
  *   onPhase?: (phase: 'vision' | 'ai' | 'ocr') => void,
@@ -128,8 +128,7 @@ async function recognizeTesseractFromCanvas(canvas, opts = {}) {
 export async function extractW2GFields(canvas, opts = {}) {
   const supabase = opts.supabase || null
   const native = canRecognizeEdgeText()
-  // IPA: same fallback for any signed-in user. PWA / old IPA stay entitlement-gated.
-  const useCloudVision = Boolean(supabase && (native || opts.useCloudVision))
+  const useCloudVision = Boolean(supabase)
   const onProgress = typeof opts.onProgress === 'function' ? opts.onProgress : null
   const onPhase = typeof opts.onPhase === 'function' ? opts.onPhase : null
   let subscribeRequired = false

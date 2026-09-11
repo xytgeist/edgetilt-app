@@ -927,20 +927,21 @@ Already-posted chat messages stay as they were; next publish is clean.
 - H1 title + `Week N · Sep 10-15` line (NFL only … Week 1 pinned to the real regular-season open in `NFL_REGULAR_SEASON_OPEN_PT`, 2026 = Sep 9; CFB is the date range only); H2 section headers with emojis
 - **Hammers:** **4-0 only.** Header is `## 🔥 Hammers (4-0)`. Same layout as Consensus … `### {away}/{home} · {when}` then `· **[gold]{pick}[/gold]**`
 - **Consensus / House Divided / Split:** leftover types. House Divided / Split print `### Matchup · when` then `· **[gold]pick[/gold]** · desks`
-- **Tank's Totals:** always on the card. `{away}/{home} - **[gold]Over|Under|PASS (totals)[/gold]**` (no kickoff; NFL shorts Pats/Bucs/Cards). Uncut lists every game. Public tease is fires only (cap 3), or `No O/U lean this slate`.
-- **Tank's Spots:** always on the card (same as Totals). `{away}/{home} - **[gold]{side line}[/gold]** · **[gold]Over|Under[/gold]** · under + dog` or `PASS (ATS)`. Under + dog publishes. Other reasons still need two. Public lists first 3 games.
+- **Tank's Totals:** always on the card. `{away}/{home} - **[gold]Over|Under|PASS (totals)[/gold]**` (no kickoff; NFL shorts Pats/Bucs/Cards). NFL uncut lists every game. CFB omits PASSes (fires only, or `No O/U lean this slate`). Public tease is fires only (cap 3).
+- **Tank's Spots:** always on the card (same as Totals). `{away}/{home} - **[gold]{side line}[/gold]** · **[gold]Over|Under[/gold]** · under + dog` or `PASS (ATS)` (NFL). CFB omits PASSes. Under + dog publishes. Other reasons still need two. Public lists first 3 games (CFB: first 3 published spots).
+- **All Pass:** NFL only. CFB drops the section … 80-game boards turn it into noise.
 - Markdown dialect captions preserve middle dots (`·`) through publish sanitize
 
 ### VIP desk thread parts (`formatPickerSlateList`)
 
 - **Skip the thread on a 1-game board.** The root already has the split / hammer / Tank total. Scott / Rocco / Chedda replies would just repeat that one pick. Same for VIP chat (one message, no desk parts). Helper: `slateShouldThreadDeskCards`. **`lounge-odds-poll` redeployed prod** (`jtjgtucumuoswnbauxry`) 2026-09-09 from `1e287dac`.
 - Scott / Rocco / Chedda only (Tank totals live on root … no desk thread part)
-- Lounge markdown: colored desk H2 + gold picks / plain PASS
+- Lounge markdown: colored desk H2 + gold picks / plain PASS (NFL). CFB desk cards omit PASSes
 - Chat copy of the same card is plain text (`toPlainOutboundText` at publish)
 - No leading `·` on lines
 - Fires: `**[gold]pick[/gold]**` (no Team/Team)
-- PASS: `{away}/{home}: PASS`
-- Rocco ugly-juice hard PASS: `{away}/{home}: **[gold]would-be lean[/gold]** · *PASS* - *ugly juice*`
+- PASS (NFL only): `{away}/{home}: PASS`
+- Rocco ugly-juice hard PASS (NFL only): `{away}/{home}: **[gold]would-be lean[/gold]** · *PASS* - *ugly juice*`
 
 ### NFL Wong teaser (`formatWongTeaserCaption`)
 

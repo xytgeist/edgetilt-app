@@ -345,6 +345,11 @@ function formatGoldPick(lineDisplay: string): string {
   return `**[gold]${lineDisplay}[/gold]**`
 }
 
+function isCfbSlateCard(card: { sportKey?: string } | null | undefined): boolean {
+  const key = String(card?.sportKey || '')
+  return key === 'americanfootball_ncaaf' || key.includes('ncaaf')
+}
+
 function formatDeskJoin(names: readonly SharpPicker[]): string {
   return names.map((n) => formatColoredPickerName(n)).join(' & ')
 }
@@ -521,14 +526,23 @@ export function formatNflSlateCardCaption(
     : (card.majoritySplits || []).slice(0, PUBLIC_SLATE_MAJORITY_SPLIT_CAP)
   const solos = uncut ? (card.solos || []) : (card.solos || []).slice(0, PUBLIC_SLATE_SOLO_CAP)
   const splits = uncut ? card.splits : card.splits.slice(0, PUBLIC_SLATE_HOUSE_DIVIDED_CAP)
-  const passOnly = uncut
-    ? (card.passOnly || [])
-    : (card.passOnly || []).slice(0, PUBLIC_SLATE_PASS_CAP)
+  const cfb = isCfbSlateCard(card)
+  const passOnly = cfb
+    ? []
+    : uncut
+      ? (card.passOnly || [])
+      : (card.passOnly || []).slice(0, PUBLIC_SLATE_PASS_CAP)
   const tankTotalsFired = card.games.filter(
     (g) => g.pickerPicks.Tank.side === 'over' || g.pickerPicks.Tank.side === 'under',
   )
-  // O/U stays on every card. Uncut lists every game (incl. PASS). Public tease is fires only.
-  const tankTotals = uncut ? card.games : tankTotalsFired.slice(0, 3)
+  // NFL uncut lists every game (incl. PASS). CFB omits PASSes ... the board is too wide.
+  const tankTotals = cfb
+    ? (uncut ? tankTotalsFired : tankTotalsFired.slice(0, 3))
+    : (uncut ? card.games : tankTotalsFired.slice(0, 3))
+  const tankSpotsFired = card.games.filter((g) => g.tankAts?.published)
+  const tankSpots = cfb
+    ? (uncut ? tankSpotsFired : tankSpotsFired.slice(0, 3))
+    : (uncut ? card.games : card.games.slice(0, 3))
 
   const title = card.cardTitle || '🏈 NFL Sharpe Syndicate Slate'
   const lines: string[] = [`# ${title}`]
@@ -574,7 +588,6 @@ export function formatNflSlateCardCaption(
   }
   lines.push('')
 
-  const tankSpots = uncut ? card.games : card.games.slice(0, 3)
   lines.push("## 🛡️ Tank's Spots")
   if (tankSpots.length > 0) {
     for (const g of tankSpots) lines.push(formatTankAtsItem(g))
@@ -693,7 +706,7 @@ export function splitSlateCaptionToFit(caption: string, maxChars: number): strin
  * Format a full ATS card for one persona … VIP / fan thread part.
  * Tank totals already appear on the slate root … not posted as a desk thread part.
  * Same Lounge markdown dialect as the slate root (colored desk name, gold picks).
- * Every slate game is listed with that desk's decision (including PASS).
+ * NFL lists every game (including PASS). CFB lists fires only ... PASSes clutter an 80-game board.
  */
 export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): string {
   const icon = picker === 'Tank' ? '🛡️' : picker === 'Chedda' ? '🧀' : picker === 'Rocco' ? '🥩' : '🎯'
@@ -712,6 +725,8 @@ export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): 
     specialty,
     '',
   ]
+  const omitPasses = isCfbSlateCard(card)
+  let listed = 0
   for (const g of card.games) {
     const pPick = g.pickerPicks[picker]
     const sportKey = g.sportKey || card.sportKey
@@ -720,6 +735,7 @@ export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): 
     const matchup = `${away}/${home}`
     const isPass = pPick.side === 'pass' || !String(pPick.lineDisplay || '').trim()
     if (isPass) {
+      if (omitPasses) continue
       const uglyPass = pPick.uglyJuice === true || /ugly juice/i.test(String(pPick.lineDisplay || ''))
       const wouldBe = String(pPick.wouldBeLineDisplay || '').trim()
       if (uglyPass && wouldBe) {
@@ -729,20 +745,23 @@ export function formatPickerSlateList(card: NflSlateCard, picker: SharpPicker): 
       } else {
         lines.push(`${matchup}: PASS`)
       }
+      listed += 1
     } else {
       const raw = String(pPick.lineDisplay || '').trim()
       const base = raw.replace(/\s·\s\[red\]ugly juice\[\/red\]\s*$/i, '').trim() || raw
       const ugly = pPick.uglyJuice === true || /\[red\]ugly juice\[\/red\]/i.test(raw)
       const wouldBe = String(pPick.wouldBeLineDisplay || '').trim() || base
       // Desk cards never keep an ugly-juice play … gate already PASSed those.
+      if (omitPasses && ugly) continue
       lines.push(
         ugly
           ? `${matchup}: ${formatGoldPick(wouldBe)} · *PASS* - *ugly juice*`
           : formatGoldPick(base),
       )
+      listed += 1
     }
   }
-  if (card.games.length === 0) {
+  if (listed === 0) {
     lines.push(picker === 'Tank' ? 'No totals leans this slate' : 'No ATS leans this slate')
   }
   return lines.join('\n')

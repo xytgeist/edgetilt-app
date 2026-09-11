@@ -301,7 +301,7 @@ export const ROCCO_UGLY_JUICE_WORSE_THAN = -115
  * - No nested indent (mobile wrap room)
  * - Consensus: pick + agreeing desks only (no PASS callouts)
  * - House Divided / Split: one · line per active side
- * - Order: Hammers → Consensus → House Divided → Split → Tank's Totals (always) → Tank's Spots → Solo → All Pass
+ * - Order: Hammers → Consensus → House Divided → Split → Tank's Totals (always) → Tank's Spots (multi-game only) → Solo → All Pass
  * - VIP desk thread parts use the same Lounge markdown dialect (colored desk + gold picks). Chat/X copies are stripped at publish.
  */
 function formatSlateWeekSubtitle(games: SlateGamePick[]): string | null {
@@ -588,13 +588,17 @@ export function formatNflSlateCardCaption(
   }
   lines.push('')
 
-  lines.push("## 🛡️ Tank's Spots")
-  if (tankSpots.length > 0) {
-    for (const g of tankSpots) lines.push(formatTankAtsItem(g))
-  } else {
-    lines.push('No ATS lean this slate')
+  // One-game cards (Wed TNF VIP, etc.) already have the hammer + Tank total.
+  // Reprinting the same side as a "spot" is just noise.
+  if (card.games.length > 1) {
+    lines.push("## 🛡️ Tank's Spots")
+    if (tankSpots.length > 0) {
+      for (const g of tankSpots) lines.push(formatTankAtsItem(g))
+    } else {
+      lines.push('No ATS lean this slate')
+    }
+    lines.push('')
   }
-  lines.push('')
 
   if (solos.length > 0) {
     lines.push('## 🎯 Solo Picks')

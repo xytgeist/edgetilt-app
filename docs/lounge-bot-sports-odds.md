@@ -928,7 +928,7 @@ Already-posted chat messages stay as they were; next publish is clean.
 - **Hammers:** **4-0 only.** Header is `## 🔥 Hammers (4-0)`. Same layout as Consensus … `### {away}/{home} · {when}` then `· **[gold]{pick}[/gold]**`
 - **Consensus / House Divided / Split:** leftover types. House Divided / Split print `### Matchup · when` then `· **[gold]pick[/gold]** · desks`
 - **Tank's Totals:** always on the card. `{away}/{home} - **[gold]Over|Under|PASS (totals)[/gold]**` (no kickoff; NFL shorts Pats/Bucs/Cards). NFL uncut lists every game. CFB omits PASSes (fires only, or `No O/U lean this slate`). Public tease is fires only (cap 3).
-- **Tank's Spots:** always on the card (same as Totals). `{away}/{home} - **[gold]{side line}[/gold]** · **[gold]Over|Under[/gold]** · under + dog` or `PASS (ATS)` (NFL). CFB omits PASSes. Under + dog publishes. Other reasons still need two. Public lists first 3 games (CFB: first 3 published spots).
+- **Tank's Spots:** on multi-game slates only (same as Totals layout). One-game cards (Wed TNF VIP, etc.) skip the section ... the hammer + Tank total already cover it. `{away}/{home} - **[gold]{side line}[/gold]** · **[gold]Over|Under[/gold]** · under + dog` or `PASS (ATS)` (NFL). CFB omits PASSes. Under + dog publishes. Other reasons still need two. Public lists first 3 games (CFB: first 3 published spots).
 - **All Pass:** NFL only. CFB drops the section … 80-game boards turn it into noise.
 - Markdown dialect captions preserve middle dots (`·`) through publish sanitize
 

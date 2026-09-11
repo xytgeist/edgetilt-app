@@ -1121,6 +1121,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-11:** **Pats/Hawks card corrected to +3.5 (Windows).** Live Wed Sep 9 public `63696626…` + fan `d39b6baa…` + VIP chat `63c09a91…` now hammer **Pats +3.5 (-105)** and Tank **Under 44.5 (-109)**. Tank spots section removed. Scott/Rocco/Chedda regraded won +0.95u. One-game cards skip Tank spots. Redeploy `lounge-odds-poll`. **`1.4.179`.**
 - **2026-09-11:** **Feed see-more no longer splits `[gold]` (Windows).** `truncateCaptionForDisplay` rewinds an incomplete last line so collapsed slate cards do not leak `· **[gold]Bears`. **`1.4.178`.**
 - **2026-09-11:** **CFB slate omits PASSes (Windows).** College house / desk cards skip All Pass, Tank PASS lines, and desk PASS rows. NFL still prints them. Edited live prod public `7cbbeeb8…` + fan `0b0bb923…` + thread/VIP copies. Redeploy `lounge-odds-poll`. **`1.4.177`.**
 - **2026-09-11:** **Wong teaser caption cleanup (Windows).** Dropped the Sharpe Syndicate title prefix and the Math Behind the Move essay. Bold title, gold ticket/teased numbers, green/red edge. Edited live prod post `88667512…`. Redeploy `lounge-odds-poll`. **`1.4.176`.**

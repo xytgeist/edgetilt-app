@@ -661,6 +661,37 @@ export async function invokeLoungeOddsPrimetimeLock(supabaseClient, opts = {}) {
   return { data, error: null }
 }
 
+export async function invokeLoungeOddsSatSteam(supabaseClient, opts = {}) {
+  const slug = opts.slug || 'sports-odds'
+  const { data, error } = await supabaseClient.functions.invoke('lounge-odds-poll', {
+    body: {
+      slug,
+      action: 'nfl_sat_steam',
+      dryRun: opts.dryRun === true,
+      ...destinationsBody(opts),
+    },
+  })
+  if (error) return { data: null, error: new Error(error.message || 'Saturday steam drop failed') }
+  if (data?.error) return { data: null, error: new Error(String(data.error)) }
+  return { data, error: null }
+}
+
+export async function invokeLoungeOddsSundayWindowLock(supabaseClient, opts = {}) {
+  const slug = opts.slug || 'sports-odds'
+  const action = opts.window === 'late' ? 'nfl_sunday_late_lock' : 'nfl_sunday_early_lock'
+  const { data, error } = await supabaseClient.functions.invoke('lounge-odds-poll', {
+    body: {
+      slug,
+      action,
+      dryRun: opts.dryRun === true,
+      ...destinationsBody(opts),
+    },
+  })
+  if (error) return { data: null, error: new Error(error.message || 'Sunday window lock failed') }
+  if (data?.error) return { data: null, error: new Error(String(data.error)) }
+  return { data, error: null }
+}
+
 /**
  * Trigger on-demand generation and publishing of Tuesday Morning Weekly Syndicate Ledger & Post-Mortem.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient

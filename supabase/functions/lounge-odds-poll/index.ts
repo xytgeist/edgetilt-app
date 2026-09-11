@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
     const alertKindRaw = String(body?.alertKind || '').trim().toLowerCase()
     const alertKind = alertKindRaw || null
 
-    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'cfb_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_primetime_lock', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'syndicate_monthly_scoreboard', 'calibrate_persona_models', 'ufc_slate_card', 'nfl_wed_tnf_vip', 'nfl_sat_vip_adds_kills', 'cfb_wed_midweek_vip', 'cfb_thu_night_spotlight', 'cfb_sat_vip_adds_kills', 'picks_for_today', 'pval_injury_ledger', 'lane_b_refresh'].includes(action)) {
+    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'cfb_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_primetime_lock', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'syndicate_monthly_scoreboard', 'calibrate_persona_models', 'ufc_slate_card', 'nfl_wed_tnf_vip', 'nfl_sat_vip_adds_kills', 'nfl_sat_steam', 'nfl_sunday_early_lock', 'nfl_sunday_late_lock', 'cfb_wed_midweek_vip', 'cfb_thu_night_spotlight', 'cfb_sat_vip_adds_kills', 'picks_for_today', 'pval_injury_ledger', 'lane_b_refresh'].includes(action)) {
       return adminOpsJson(400, {
         error: 'action must be a valid lounge-odds-poll action (incl. picks_for_today, pval_injury_ledger, cfb VIP ops).',
       })
@@ -288,6 +288,12 @@ Deno.serve(async (req) => {
       const { runNflSatVipAddsKills } = await import('../_shared/loungeBotNflVipOps.ts')
       const result = await runNflSatVipAddsKills(admin, bot.user_id, { dryRun, destinations })
       return adminOpsJson(200, { ok: result.ok !== false, action: 'nfl_sat_vip_adds_kills', ...result })
+    }
+
+    if (action === 'nfl_sat_steam') {
+      const { runNflSatSteam } = await import('../_shared/loungeBotNflVipOps.ts')
+      const result = await runNflSatSteam(admin, bot.user_id, { dryRun, destinations })
+      return adminOpsJson(200, { ok: result.ok !== false, action: 'nfl_sat_steam', ...result })
     }
 
     if (action === 'cfb_wed_midweek_vip') {
@@ -691,6 +697,59 @@ Deno.serve(async (req) => {
         action: 'nfl_primetime_lock',
         ...result,
       })
+    }
+
+    if (action === 'nfl_sunday_early_lock' || action === 'nfl_sunday_late_lock') {
+      const { fetchSportOdds } = await import('../_shared/loungeBotOddsRun.ts')
+      const { publishSundayWindowLock } = await import('../_shared/loungeBotSundayWindowLock.ts')
+      const window = action === 'nfl_sunday_early_lock' ? 'early' : 'late'
+      const oddsData = await fetchSportOdds('americanfootball_nfl', ['us', 'us2'], ['spreads'])
+      const result = await publishSundayWindowLock(admin, bot.user_id, oddsData.events || [], {
+        window,
+        dryRun,
+        destinations,
+        requireWindow: !dryRun && !destPicked && !force,
+        categoryPills: bot.category_pills_default || ['sports'],
+      })
+
+      if (dryRun) {
+        const previewCaption = String(result.previewCaption || result.captionPreview || '').trim()
+        return adminOpsJson(200, {
+          ok: result.ok,
+          dryRun: true,
+          action,
+          skipped: result.skipped,
+          previewCaption,
+          captionPreview: previewCaption,
+          vipPreviewCaption: previewCaption,
+          message: result.skipped || undefined,
+          ...destPreviewPayload({
+            publicCaption: previewCaption,
+            vipCaption: previewCaption,
+          }),
+        })
+      }
+
+      if (result.skipped) {
+        return adminOpsJson(200, {
+          ok: true,
+          action,
+          skipped: result.skipped,
+          message: result.skipped,
+          ...result,
+        })
+      }
+
+      if (!result.ok) {
+        return adminOpsJson(200, {
+          ok: false,
+          action,
+          message: result.error || 'Sunday window lock publish failed.',
+          ...result,
+        })
+      }
+
+      return adminOpsJson(200, { ok: true, action, ...result })
     }
 
     if (action === 'nfl_halftime_pivot') {

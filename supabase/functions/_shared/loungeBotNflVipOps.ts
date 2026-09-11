@@ -1,15 +1,23 @@
 /**
- * NFL VIP ops satellites (not the Friday house slate):
+ * NFL VIP ops satellites (not the Friday house lean):
  * - Wed: TNF lean + injury watch → VIP only
- * - Sat: adds/kills stub → VIP only when a lock flipped or starter shock
+ * - Sat evening: steam confirm / kill on Friday leans
+ * - Legacy Sat 10am adds/kills stub kept for Ops
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { shortDisplayName, filterOddsEventsForNextFootballSlate, type OddsEvent } from './loungeBotOddsCaption.ts'
 import { fetchSportOdds } from './loungeBotOddsRun.ts'
-import { fanOutMissedAll, fanOutVipOnlyCaption } from './loungeBotPublishDestinations.ts'
+import {
+  fanOutMissedAll,
+  fanOutSyndicatePublish,
+  fanOutVipOnlyCaption,
+  resolvePublishDestinations,
+} from './loungeBotPublishDestinations.ts'
 import { findPrimetimeGameCandidate } from './loungeBotPrimetimeSpotlight.ts'
 import { fetchGameInjuryPval } from './loungeBotInjuryPval.ts'
 import { resolveSideModifiersForSlate } from './loungeBotSideModifier.ts'
+import { lineWalkedAgainst } from './loungeBotPrimetimeLock.ts'
+import { resolveSlatePublisher } from './loungeBotSyndicateIdentity.ts'
 
 function ptDateKey(now = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', {
@@ -329,6 +337,195 @@ export async function runNflSatVipAddsKills(
     changeCount: unique.length,
     captionPreview: caption.slice(0, 280),
     postId: fan.publicPostId || undefined,
+    tweetId: fan.tweetId,
+    ...(fan.xWarning ? { xWarning: fan.xWarning } : {}),
+  }
+}
+
+/**
+ * Saturday steam window (6-9pm PT). Always posts.
+ * Confirms Friday leans or kills if the number walked / starter shock.
+ * Still a lean … Sunday inactives are the lock.
+ */
+export async function runNflSatSteam(
+  admin: SupabaseClient,
+  botUserId: string,
+  opts?: { dryRun?: boolean; destinations?: unknown },
+): Promise<{
+  ok: boolean
+  skipped?: string
+  dryRun?: boolean
+  killCount?: number
+  standCount?: number
+  captionPreview?: string
+  previewCaption?: string
+  vipPreviewCaption?: string
+  xWarning?: string
+  tweetId?: string | null
+  publicPostId?: string
+}> {
+  const dryRun = opts?.dryRun === true
+  const day = ptDateKey()
+  const dedupeKey = `nfl_sat_steam:${day}`
+
+  if (!dryRun && await alreadyPostedDedupe(admin, botUserId, dedupeKey)) {
+    return { ok: true, skipped: 'already_posted_today' }
+  }
+
+  const publisher = await resolveSlatePublisher(admin, botUserId)
+  const since = new Date(Date.now() - 5 * 86_400_000).toISOString()
+  const { data: locks, error: lockErr } = await admin
+    .from('lounge_bot_picks')
+    .select('id, event_id, home_team, away_team, pick_name, pick_line, picker_name, commence_time, metadata, created_at')
+    .eq('bot_user_id', publisher.botUserId)
+    .eq('status', 'pending')
+    .eq('picker_name', 'Scott')
+    .eq('market_key', 'spreads')
+    .in('sport_key', ['americanfootball_nfl', 'americanfootball_nfl_preseason'])
+    .gte('created_at', since)
+    .order('created_at', { ascending: false })
+    .limit(40)
+
+  if (lockErr) return { ok: false, skipped: lockErr.message }
+  if (!locks?.length) return { ok: true, skipped: 'no_friday_leans' }
+
+  const byEvent = new Map<string, (typeof locks)[0]>()
+  for (const row of locks) {
+    const eid = String(row.event_id || '')
+    if (!eid || byEvent.has(eid)) continue
+    const meta = row.metadata && typeof row.metadata === 'object' ? row.metadata as Record<string, unknown> : {}
+    if (meta.is_primetime_spotlight === true) continue
+    byEvent.set(eid, row)
+  }
+
+  let oddsData: { events?: OddsEvent[] }
+  try {
+    oddsData = await fetchSportOdds('americanfootball_nfl', ['us'], ['spreads'])
+  } catch (e) {
+    return { ok: false, skipped: `odds_fetch_failed:${e}` }
+  }
+
+  const events = filterOddsEventsForNextFootballSlate(oddsData?.events || [])
+  const eventById = new Map(events.map((e) => [String(e.id), e]))
+  const sideMods = await resolveSideModifiersForSlate(admin, 'americanfootball_nfl', events)
+
+  const stands: string[] = []
+  const kills: Array<{ eventId: string; pickId: string; line: string; why: string }> = []
+
+  for (const [eventId, lock] of byEvent) {
+    const ev = eventById.get(eventId)
+    if (!ev) continue
+    const lockedTeam = normalizeTeam(String(lock.pick_name || ''))
+    const home = normalizeTeam(ev.home_team)
+    const away = normalizeTeam(ev.away_team)
+    const lockedHome = lockedTeam === home || lockedTeam.includes(home) || home.includes(lockedTeam)
+    const side = lockedHome ? 'home' : 'away'
+    const currentHomeSpread = homeSpreadFromEvent(ev)
+    const lockedLine = lock.pick_line != null ? Number(lock.pick_line) : null
+    const walk = lineWalkedAgainst('spreads', side, lockedLine, currentHomeSpread, null)
+    const mod = sideMods.get(eventId)
+    const reasons: string[] = []
+    if (walk.against) reasons.push(walk.note)
+    if (mod?.isSignificant) reasons.push(mod.reason || 'Starter shock vs Friday lean')
+
+    const awayShort = shortDisplayName(String(lock.away_team))
+    const homeShort = shortDisplayName(String(lock.home_team))
+    const lineDisp = lockedLine == null
+      ? `${lockedHome ? homeShort : awayShort}`
+      : `${lockedHome ? homeShort : awayShort} ${lockedLine > 0 ? `+${lockedLine}` : lockedLine}`
+
+    if (reasons.length) {
+      kills.push({
+        eventId,
+        pickId: String(lock.id),
+        line: `${awayShort} @ ${homeShort} · ${lineDisp}`,
+        why: reasons.join(' · '),
+      })
+    } else {
+      stands.push(`${awayShort} @ ${homeShort} · **${lineDisp}**`)
+    }
+  }
+
+  if (!stands.length && !kills.length) {
+    return { ok: true, skipped: 'no_live_leans_to_check' }
+  }
+
+  const lines = [
+    `🌫️ **Saturday Steam · Sunday leans**`,
+    `Friday stays a lean. This is the steam check. Official lock is Sunday inactives.`,
+    '',
+  ]
+  if (stands.length) {
+    lines.push('**STANDS**')
+    for (const row of stands) lines.push(`• ${row}`)
+    lines.push('')
+  }
+  if (kills.length) {
+    lines.push('**KILL**')
+    for (const row of kills) lines.push(`• ${row.line}`, `  ${row.why}`)
+    lines.push('')
+  }
+  lines.push(`*Still a lean. Early window locks ~8:30am PT. Late window ~11:30am PT.*`)
+  const caption = lines.join('\n')
+
+  if (dryRun) {
+    return {
+      ok: true,
+      dryRun: true,
+      killCount: kills.length,
+      standCount: stands.length,
+      captionPreview: caption,
+      previewCaption: caption,
+      vipPreviewCaption: caption,
+    }
+  }
+
+  const dest = resolvePublishDestinations(opts?.destinations, {
+    loungePublic: true,
+    loungeFanOnly: false,
+    vipChat: true,
+    x: false,
+  })
+  dest.loungeFanOnly = false
+  const fan = await fanOutSyndicatePublish({
+    admin,
+    botUserId: publisher.botUserId,
+    dest,
+    publicCaption: caption,
+    vipCaption: caption,
+    categoryPills: ['sports'],
+  })
+  if (dest.loungePublic && fan.error) {
+    return { ok: false, skipped: fan.error, xWarning: fan.xWarning }
+  }
+  if (fanOutMissedAll(fan)) {
+    return {
+      ok: false,
+      skipped: fan.error || fan.vipChatWarning || fan.xWarning || 'steam_publish_failed',
+      xWarning: fan.xWarning,
+    }
+  }
+
+  for (const kill of kills) {
+    const { data } = await admin.from('lounge_bot_picks').select('id, metadata, event_id').eq('event_id', kill.eventId).eq('bot_user_id', publisher.botUserId).eq('status', 'pending')
+    for (const row of data || []) {
+      const meta = row.metadata && typeof row.metadata === 'object' ? row.metadata as Record<string, unknown> : {}
+      if (meta.is_primetime_spotlight === true) continue
+      await admin.from('lounge_bot_picks').update({
+        status: 'cancelled',
+        metadata: { ...meta, slate_steam: 'kill', steam_why: kill.why },
+      }).eq('id', row.id)
+    }
+  }
+
+  await markPublished(admin, publisher.botUserId, dedupeKey, caption, 'nfl_sat_steam')
+  return {
+    ok: true,
+    killCount: kills.length,
+    standCount: stands.length,
+    captionPreview: caption,
+    previewCaption: caption,
+    publicPostId: fan.publicPostId || undefined,
     tweetId: fan.tweetId,
     ...(fan.xWarning ? { xWarning: fan.xWarning } : {}),
   }

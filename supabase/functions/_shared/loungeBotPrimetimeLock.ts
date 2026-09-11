@@ -17,9 +17,9 @@ import {
 } from './loungeBotPublishDestinations.ts'
 import { X_LONG_FORM_CHARS } from './loungeBotXPublish.ts'
 
-const LOCK_MIN_BEFORE_KICK = 70
-const LOCK_MAX_BEFORE_KICK = 110
-const LINE_WALK_PTS = 1.5
+export const LOCK_MIN_BEFORE_KICK = 70
+export const LOCK_MAX_BEFORE_KICK = 110
+export const LINE_WALK_PTS = 1.5
 const POST_KIND = 'nfl_primetime_lock'
 
 export type PrimetimeLockVerdict = 'lock' | 'kill'
@@ -48,7 +48,7 @@ type LeanPickRow = {
   metadata: Record<string, unknown> | null
 }
 
-function isListedStarterPos(pos: string): boolean {
+export function isListedStarterPos(pos: string): boolean {
   const p = String(pos || '').trim().toUpperCase()
   if (p === 'QB') return true
   if (p === 'LT' || p === 'RT' || p === 'OT' || p === 'T') return true
@@ -69,7 +69,7 @@ export function inPrimetimeLockWindow(commenceTimeIso: string, now = new Date())
   return Number.isFinite(mins) && mins >= LOCK_MIN_BEFORE_KICK && mins <= LOCK_MAX_BEFORE_KICK
 }
 
-function listedStarterShocks(injuries: GameInjurySummary | null, teamName: string): string[] {
+export function listedStarterShocks(injuries: GameInjurySummary | null, teamName: string): string[] {
   if (!injuries) return []
   const report = injuries.homeTeam === teamName ? injuries.homeReport : injuries.awayReport
   const hits: string[] = []
@@ -80,7 +80,7 @@ function listedStarterShocks(injuries: GameInjurySummary | null, teamName: strin
   return hits
 }
 
-function lineWalkedAgainst(
+export function lineWalkedAgainst(
   marketKey: 'spreads' | 'totals',
   leanSide: string,
   leanLine: number | null,

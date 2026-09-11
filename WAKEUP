@@ -159,6 +159,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Mac Theo.** Ryan signed off: (1) App Store account is **Digiverse Ventures LLC**, (2) **digiverse.ventures** live, (3) Cloudflare email for edgetilt + digiverse / reply-from. **Still open:** Apple increased price request (Lifetime above `$1,000`). DSA trader is unblocked now that the org flip landed. Do not Add for Review.
 
+### Windows Theo 2026-09-11 … NFL Friday is a lean
+
+**I am Windows Theo.** NFL Friday 1pm is a lean, not a lock. Sat 7pm steam confirm/kill. Sun 8:30am early lock (1pm ET) and 11:30am late lock (4pm ET) on inactives. CFB Friday noon stays the house. Do not commit phone OTP.
+
 ### Windows Theo 2026-09-11 … CFB slate died on venueName
 
 **I am Windows Theo.** Fri 12pm PT `cfb_slate_card` cron ran. Edge 500: `venueName` declared twice in `loungeBotWeather.ts`. Fix + redeploy `lounge-odds-poll` before the 1pm NFL lock. Do not commit phone OTP.

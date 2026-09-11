@@ -154,9 +154,11 @@ VIP uncut cards lock when injury + splits are real enough … **not** Tue vibes,
 | CFB Thu night | **Thu 3:30 PM** | `cfb_thu_night_spotlight` | Public **one lean** + VIP deep |
 | CFB Saturday lock | **Fri 12:00 PM** | `cfb_slate_card` | Public teaser + VIP full |
 | CFB Sat adds/kills | **Sat 10:00 AM** | `cfb_sat_vip_adds_kills` | **VIP only** (no-op if quiet) |
-| NFL Sunday lock | **Fri 1:00 PM** | `nfl_slate_card` | Public teaser + VIP full |
+| NFL Sunday lean | **Fri 1:00 PM** | `nfl_slate_card` | Public teaser + VIP full … **lean, not lock** |
+| NFL Sat steam | **Sat 7:00 PM** | `nfl_sat_steam` | Public + VIP confirm / kill |
+| NFL Sunday early lock | **Sun ~8:30 AM** | `nfl_sunday_early_lock` | 1pm ET window on 90-min inactives |
+| NFL Sunday late lock | **Sun ~11:30 AM** | `nfl_sunday_late_lock` | 4:05/4:25 ET window on 90-min inactives |
 | NFL Wed TNF watch | **Wed 11:00 AM** | `nfl_wed_tnf_vip` | **VIP only** |
-| NFL Sat adds/kills | **Sat 10:00 AM** | `nfl_sat_vip_adds_kills` | **VIP only** (no-op if nothing flipped) |
 | Weekly recap | **Tue 7:30 AM** | `weekly_syndicate_recap` | Public + VIP |
 | Auto-grade | **:22** 10am–11pm PT | `grade_picks` | Ledger ATS + CLV (not a shop post) |
 | Weekday predictive | — | muted | Was public freebie … killed |
@@ -196,9 +198,9 @@ Run desk scoring **independently**. Preferred publish set:
 - Conviction 1–3 when reviewing by hand
 - One sentence reason tied to **that desk’s inputs** (not an essay)
 
-### Fri … the lock
+### Fri … CFB lock / NFL lean
 
-Auto publish: **CFB Fri 12:00 PM PT**, **NFL Fri 1:00 PM PT** (`cfb_slate_card` / `nfl_slate_card`). Paste Chedda splits before those times.
+Auto publish: **CFB Fri 12:00 PM PT** house lock (`cfb_slate_card`). **NFL Fri 1:00 PM PT** is a **lean** (`nfl_slate_card`), not a lock. Paste Chedda splits before those times. NFL Saturday steam confirms or kills. NFL official lock is Sunday inactives (early ~8:30am PT, late ~11:30am PT).
 
 **Locked definitions (clarified):**
 

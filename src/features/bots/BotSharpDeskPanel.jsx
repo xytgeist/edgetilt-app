@@ -8,6 +8,8 @@ import {
   invokeLoungeOddsWongTeaser,
   invokeLoungeOddsPrimetimeSpotlight,
   invokeLoungeOddsPrimetimeLock,
+  invokeLoungeOddsSatSteam,
+  invokeLoungeOddsSundayWindowLock,
   invokeLoungeOddsWeeklyRecap,
   invokeLoungeOddsMonthlyScoreboard,
   invokeLoungeOddsHalftimePivot,
@@ -501,6 +503,66 @@ export function BotSharpDeskPanel({
     }
   }
 
+  const handleDropSatSteam = async (dryRun = false) => {
+    const destinations = dryRun ? undefined : requireDestinations('wong')
+    if (!dryRun && !destinations) return
+    setDropping(true)
+    if (setBusy) setBusy(true)
+    try {
+      const { data, error } = await invokeLoungeOddsSatSteam(supabaseClient, {
+        slug: botSlug,
+        dryRun,
+        destinations,
+      })
+      if (error) {
+        setToast?.(`Saturday steam failed: ${error.message}`)
+      } else if (data?.dryRun) {
+        showDropDryRunPreview('Saturday Steam', data, data?.message || data?.skipped)
+      } else if (data?.ok && !data?.skipped) {
+        setToast?.(toastWithDestWarnings(`Published Saturday steam · ${data?.standCount || 0} stand / ${data?.killCount || 0} kill`, data))
+        await loadData()
+      } else {
+        setToast?.(data?.message || data?.skipped || 'Saturday steam skipped.')
+      }
+    } catch (err) {
+      setToast?.(`Saturday steam error: ${err.message}`)
+    } finally {
+      setDropping(false)
+      if (setBusy) setBusy(false)
+    }
+  }
+
+  const handleDropSundayLock = async (window, dryRun = false) => {
+    const destinations = dryRun ? undefined : requireDestinations('wong')
+    if (!dryRun && !destinations) return
+    const label = window === 'late' ? 'Sunday Late Lock' : 'Sunday Early Lock'
+    setDropping(true)
+    if (setBusy) setBusy(true)
+    try {
+      const { data, error } = await invokeLoungeOddsSundayWindowLock(supabaseClient, {
+        slug: botSlug,
+        window,
+        dryRun,
+        destinations,
+      })
+      if (error) {
+        setToast?.(`${label} failed: ${error.message}`)
+      } else if (data?.dryRun) {
+        showDropDryRunPreview(label, data, data?.message || data?.skipped)
+      } else if (data?.ok && !data?.skipped) {
+        setToast?.(toastWithDestWarnings(`Published ${label}`, data))
+        await loadData()
+      } else {
+        setToast?.(data?.message || data?.skipped || `${label} skipped.`)
+      }
+    } catch (err) {
+      setToast?.(`${label} error: ${err.message}`)
+    } finally {
+      setDropping(false)
+      if (setBusy) setBusy(false)
+    }
+  }
+
   const handleDropWeeklyRecap = async (dryRun = false) => {
     const destinations = dryRun ? undefined : requireDestinations('weekly')
     if (!dryRun && !destinations) return
@@ -736,6 +798,12 @@ export function BotSharpDeskPanel({
         return handleDropPrimetimeSpotlight(undefined, dryRun)
       case 'primetime_lock':
         return handleDropPrimetimeLock(dryRun)
+      case 'sat_steam':
+        return handleDropSatSteam(dryRun)
+      case 'sunday_early_lock':
+        return handleDropSundayLock('early', dryRun)
+      case 'sunday_late_lock':
+        return handleDropSundayLock('late', dryRun)
       case 'wong':
         return handleDropWongTeaser(dryRun)
       case 'weekly':

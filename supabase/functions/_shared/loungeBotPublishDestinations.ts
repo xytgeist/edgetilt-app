@@ -61,6 +61,10 @@ export function implicitDestForPollAction(action: string): PublishDestinations {
       return { loungePublic: true, loungeFanOnly: false, vipChat: false, x: false }
     case 'nfl_halftime_pivot':
     case 'nfl_live_middle_arb':
+    case 'nfl_sat_steam':
+    case 'nfl_sunday_early_lock':
+    case 'nfl_sunday_late_lock':
+      return { loungePublic: true, loungeFanOnly: false, vipChat: true, x: false }
     case 'nfl_wed_tnf_vip':
     case 'nfl_sat_vip_adds_kills':
     case 'cfb_wed_midweek_vip':

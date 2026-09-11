@@ -614,6 +614,14 @@ export function formatNflSlateCardCaption(
     lines.push(footer === 'subscriber_desks' ? formatSlateSubscriberFooter(card) : formatSlateVipCtaLine(card))
   }
 
+  const sportKey = String(card.sportKey || '')
+  if (sportKey === 'americanfootball_nfl' || sportKey === 'americanfootball_nfl_preseason') {
+    lines.push('')
+    lines.push(
+      `*Lean, not lock. Saturday steam confirms or kills. Official lock is Sunday inactives … early window ~8:30am PT, late window ~11:30am PT.*`,
+    )
+  }
+
   return lines.join('\n').trim()
 }
 
@@ -2247,6 +2255,9 @@ export async function publishAndRecordNflSlateCard(
             side: 'pass',
             consensus_type: g.consensusPick.type,
             vote_count: g.consensusPick.voteCount,
+            ...(String(g.sportKey || input.card.sportKey || '').startsWith('americanfootball_nfl')
+              ? { slate_phase: 'lean' }
+              : {}),
             ...(leanOnlyHousePass
               ? { lean_only: true, lean_side: pPick.side, lean_line: pPick.lineDisplay }
               : {}),
@@ -2310,6 +2321,9 @@ export async function publishAndRecordNflSlateCard(
             is_trench_mismatch: g.trenchEpa.isTrenchMismatch,
             is_epa_mismatch: g.trenchEpa.isEpaMismatch,
           } : undefined,
+          ...(String(g.sportKey || input.card.sportKey || '').startsWith('americanfootball_nfl')
+            ? { slate_phase: 'lean' }
+            : {}),
         },
       })
     }

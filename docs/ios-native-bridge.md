@@ -192,7 +192,7 @@ The APNs alert is a **sibling** of the VoIP ring, not the CallKit UI. Answering 
 **We cannot unlock the phone.** There is no public API for that. After a lock-screen answer, iOS keeps the system CallKit UI on the lock screen (audio is already native). Unlocking often does **not** foreground Edge. Two traps that made this look like a no-op:
 
 1. `callKitWebReady` force-revealed chrome while we were still backgrounded, then **cleared** `pendingCallReveal`. Unlock had nothing left to do.
-2. `protectedDataDidBecomeAvailable` often does **not** fire after the first unlock of the boot. We also listen for SpringBoard `lockstate` (0 = unlocked) and keep polling `requestSceneSessionActivation` + `edgetilt://call` until `.active`.
+2. `protectedDataDidBecomeAvailable` often does **not** fire after the first unlock of the boot. Do **not** listen for SpringBoard `lockstate` ... Apple rejects that as **ITMS-90699**. Keep polling `requestSceneSessionActivation` + `edgetilt://call` until `.active` from public notifications (`protectedData`, `didBecomeActive`, scene activate, foreground).
 
 Then `edge-native-call-reveal` opens the chat room + live chrome.
 

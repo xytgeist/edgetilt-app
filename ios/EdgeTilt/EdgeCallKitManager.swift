@@ -120,24 +120,9 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     ) { [weak self] _ in
       self?.handleDidBecomeActive()
     }
-    // protectedData often stays available after the first unlock of the boot,
-    // so it does not fire on later unlocks. SpringBoard lockstate does.
-    // Darwin notify has no payload here ... we try on every lock/unlock flip.
-    // Activate is ignored while the device stays locked.
-    CFNotificationCenterAddObserver(
-      CFNotificationCenterGetDarwinNotifyCenter(),
-      Unmanaged.passUnretained(self).toOpaque(),
-      { _, observer, _, _, _ in
-        guard let observer else { return }
-        let manager = Unmanaged<EdgeCallKitManager>.fromOpaque(observer).takeUnretainedValue()
-        DispatchQueue.main.async {
-          manager.handleDeviceUnlocked()
-        }
-      },
-      "com.apple.springboard.lockstate" as CFString,
-      nil,
-      .deliverImmediately
-    )
+    // Do not observe SpringBoard lockstate. Apple rejects that as ITMS-90699.
+    // Later unlocks of the same boot often skip protectedData. The public
+    // fallback is the scene poll started from a lock-screen answer.
   }
 
   func attach(webView: WKWebView) {
@@ -289,8 +274,8 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
 
   /// Bring the existing WKWebView scene forward after a lock-screen / background answer.
   /// `protectedDataDidBecomeAvailable` often does **not** fire after the first unlock
-  /// of the boot (data stays available while locked), so we also poll this until
-  /// we actually become `.active`.
+  /// of the boot (data stays available while locked). Poll public scene APIs until
+  /// we become `.active`. Do not use SpringBoard lockstate (ITMS-90699).
   private func activateCallScene() {
     if let last = lastSceneActivationAt, Date().timeIntervalSince(last) < 0.7 {
       return

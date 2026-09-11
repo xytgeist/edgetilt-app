@@ -7,6 +7,25 @@ import { isPokerStableClaimFlowPending } from '../poker-stable/pokerStableBacker
 /** First-party confirm path. Email templates use token_hash here so Universal Links can open the IPA. */
 export const AUTH_CONFIRM_PATH = '/auth/confirm'
 
+/** Custom scheme already on the store IPA. Opens the app; path is ignored until a new binary. */
+export function edgeAppOpenSchemeUrl() {
+  return 'edgetilt://open'
+}
+
+/**
+ * Next-IPA path. Native maps this to `https://…/auth/confirm?…` in the WKWebView.
+ * Do not use after the browser has already consumed the hash.
+ */
+export function edgeAppAuthConfirmSchemeUrl(parsed) {
+  const tokenHash = String(parsed?.tokenHash || '').trim()
+  const type = String(parsed?.type || '').trim()
+  if (!tokenHash || !type) return edgeAppOpenSchemeUrl()
+  const q = new URLSearchParams()
+  q.set('token_hash', tokenHash)
+  q.set('type', type)
+  return `edgetilt://auth/confirm?${q.toString()}`
+}
+
 const AUTH_CONFIRM_OTP_TYPES = new Set([
   'signup',
   'invite',

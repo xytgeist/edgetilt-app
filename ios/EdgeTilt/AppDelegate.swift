@@ -84,4 +84,17 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     EdgePushManager.shared.handleUniversalLink(url)
     return true
   }
+
+  func application(
+    _ app: UIApplication,
+    open url: URL,
+    options: [UIApplication.OpenURLOptionsKey: Any] = [:]
+  ) -> Bool {
+    if url.scheme?.lowercased() == "edgetilt" {
+      EdgeCallKitManager.shared.handleDidBecomeActive()
+      EdgePushManager.shared.handleCustomSchemeLink(url)
+      return true
+    }
+    return false
+  }
 }

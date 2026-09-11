@@ -11,6 +11,7 @@ import {
   verifyAuthConfirmOtp,
   waitForSupabaseSession,
 } from './features/auth/emailConfirmRouting.js'
+import AuthConfirmScreen from './features/auth/AuthConfirmScreen.jsx'
 import AuthModalPanel from './features/auth/AuthModalPanel'
 import AuthModalShell from './features/auth/AuthModalShell'
 import AppShell from './features/shell'
@@ -251,6 +252,7 @@ function App() {
   // Verification success message
   const [verificationSuccess, setVerificationSuccess] = useState(false)
   const [authConfirmError, setAuthConfirmError] = useState('')
+  const [authConfirmSuccess, setAuthConfirmSuccess] = useState(false)
   const [acceptedLegal, setAcceptedLegal] = useState(false)
   const [legalAcceptancePending, setLegalAcceptancePending] = useState(false)
   const [legalAcceptanceBusy, setLegalAcceptanceBusy] = useState(false)
@@ -296,6 +298,7 @@ function App() {
         if (authConfirm) {
           setCurrentView('auth-confirm')
           setAuthConfirmError('')
+          setAuthConfirmSuccess(false)
           const guestClaimArgs = {
             pathname,
             search,
@@ -325,13 +328,19 @@ function App() {
             }
             const routed = await routeAfterGuestClaimEmailConfirm(supabase, guestClaimArgs)
             if (routed) return
-            replaceUrlPreservingQuery('/')
-            setCurrentView('app')
-            setVerificationSuccess(true)
-            setAuthTab('signin')
-            setShowForgotPassword(false)
-            setLoginError('')
-            setAuthPanelOpen(true)
+            if (isEdgeiOSShell()) {
+              replaceUrlPreservingQuery('/')
+              setCurrentView('app')
+              setVerificationSuccess(true)
+              setAuthTab('signin')
+              setShowForgotPassword(false)
+              setLoginError('')
+              setAuthPanelOpen(true)
+              return
+            }
+            replaceUrlPreservingQuery('/auth/confirm')
+            setCurrentView('auth-confirm')
+            setAuthConfirmSuccess(true)
           }
           try {
             const { error } = await verifyAuthConfirmOtp(supabase, authConfirm)
@@ -1576,31 +1585,19 @@ function App() {
 
   if (currentView === 'auth-confirm') {
     return (
-      <div className={mobileShell}>
-        <div className="bg-gray-900 p-6 sm:p-8 rounded-3xl max-w-sm w-full" data-auth-modal>
-          <h2 className="text-2xl font-bold text-white mb-6 text-center">Confirm your email</h2>
-          {authConfirmError ? (
-            <>
-              <div className="mb-6 p-4 bg-red-900/50 border border-red-500 rounded-2xl text-red-300 text-sm text-center">
-                {authConfirmError}
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  window.location.href = window.location.origin
-                }}
-                className={`${linkBtn} text-sm sm:text-base`}
-              >
-                ← Back to Login
-              </button>
-            </>
-          ) : (
-            <p className="text-center text-gray-500 text-sm leading-relaxed">
-              One moment… finishing your confirmation.
-            </p>
-          )}
-        </div>
-      </div>
+      <AuthConfirmScreen
+        error={authConfirmError}
+        success={authConfirmSuccess}
+        onContinueInBrowser={() => {
+          replaceUrlPreservingQuery('/')
+          setCurrentView('app')
+          setVerificationSuccess(true)
+          setAuthTab('signin')
+          setShowForgotPassword(false)
+          setLoginError('')
+          setAuthPanelOpen(true)
+        }}
+      />
     )
   }
 

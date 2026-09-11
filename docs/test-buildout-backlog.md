@@ -1121,6 +1121,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-11:** **Confirm-email Gmail chrome (Mac).** `/auth/confirm` in Gmail's in-app browser was dumping the full Lounge into a too-tall `dvh` box (black bar + page shoved up). Stays on a visualViewport-pinned card; Open EdgeTilt via `edgetilt://open`. Native `edgetilt://auth/confirm` handler for the next IPA. **`1.4.171`.**
 - **2026-09-11:** **Account info swipe-down keyboard (Mac).** Settings panel was using `touch-pan-y` + swipe-to-close tracking, so native IPA swipe-down (same as Edit profile) never dismissed the keyboard. Account info scroller now matches Edit profile. **`1.4.170`.**
 - **2026-09-11:** **Account info keyboard trap (Mac).** IPA hides the WK Done bar and Settings scroll is not the WKWebView `scrollView`, so there was no way to dismiss the keyboard on Account info. Tap-outside, Enter/Done, Back, and Delete now blur + `dismissKeyboard`. **`1.4.169`.**
 - **2026-09-11:** **Account info delete + swipe steal (Mac).** Delete account used native `window.confirm` / `alert` (iOS PWA / IPA freeze or no-op). Settings panel also started swipe-to-dismiss on button taps, so Account info / Delete felt dead until a second tap. In-app portaled confirm + swipe ignores buttons/links. **`1.4.168`.**

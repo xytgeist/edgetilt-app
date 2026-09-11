@@ -18,6 +18,7 @@ struct EdgeTiltApp: App {
         .onOpenURL { url in
           if url.scheme?.lowercased() == "edgetilt" {
             EdgeCallKitManager.shared.handleDidBecomeActive()
+            EdgePushManager.shared.handleCustomSchemeLink(url)
           }
         }
         .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in

@@ -93,6 +93,14 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
     }
   }
 
+  /// `edgetilt://auth/confirm?token_hash=&type=` from Gmail / in-app browsers that ignore Universal Links.
+  func handleCustomSchemeLink(_ url: URL) {
+    guard let httpsURL = Self.httpsConfirmURL(fromCustomScheme: url) else { return }
+    DispatchQueue.main.async {
+      self.openDeepLink(httpsURL)
+    }
+  }
+
   /// HTTPS + our hosts + `/auth/confirm` only. AASA is the other half of this gate.
   static func isAllowedUniversalLink(_ url: URL) -> Bool {
     guard let scheme = url.scheme?.lowercased(), scheme == "https",
@@ -102,6 +110,19 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
     guard allowedDeepLinkHosts().contains(host) else { return false }
     let path = url.path.lowercased()
     return path == "/auth/confirm" || path.hasPrefix("/auth/confirm/")
+  }
+
+  /// `edgetilt://auth/confirm?…` → `https://<site>/auth/confirm?…`
+  static func httpsConfirmURL(fromCustomScheme url: URL) -> URL? {
+    guard url.scheme?.lowercased() == "edgetilt" else { return nil }
+    let host = url.host?.lowercased() ?? ""
+    let path = url.path.lowercased()
+    let isConfirm = host == "auth" && (path == "/confirm" || path.hasPrefix("/confirm/"))
+    guard isConfirm else { return nil }
+    var comps = URLComponents(url: AppConfig.baseURL, resolvingAgainstBaseURL: false)
+    comps?.path = "/auth/confirm"
+    comps?.query = url.query
+    return comps?.url
   }
 
   /// Read-only status. Never prompts. `prompt` = notDetermined / unknown.

@@ -75,9 +75,9 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
-### Mac Theo 2026-09-10 … ITMS-90699 lockstate out
+### Mac Theo 2026-09-10 … 1.4.95 / 125 Waiting for Review
 
-**I am Mac Theo.** 1.4.95 / 124 went **Invalid Binary** after Add for Review. Email: apps may not listen to device lock notifications (**ITMS-90699**). Removed `com.apple.springboard.lockstate` from `EdgeCallKitManager`. Unlock still uses `protectedData` + the 0.8s scene poll. Next: archive **125**, attach, Add for Review. Lifetime out. Manual release.
+**I am Mac Theo.** Canceled the stuck 124 draft (`415e408c-…`). Build **125** (lockstate out, iPhone-only, `edgetilt.com`) is on 1.4.95. New draft `75504e35-…` submitted **2026-09-11T04:34:28Z**. Version **WAITING_FOR_REVIEW**. Manual release. Lifetime out. `main` was FF'd to `8076685c` before this Windows weather commit.
 
 ### Mac Theo 2026-09-10 … DSA trader In Review
 

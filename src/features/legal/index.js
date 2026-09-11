@@ -1,6 +1,16 @@
 export { default as LegalDocumentScreen } from './LegalDocumentScreen.jsx'
 export { default as LegalAcceptanceModal } from './LegalAcceptanceModal.jsx'
-export { LEGAL_DOCUMENTS, getLegalDocument, parseLegalPathname, resolveLegalViewFromLocation } from './legalDocuments.js'
+export {
+  LEGAL_DOCUMENTS,
+  getLegalDocument,
+  parseLegalPathname,
+  resolveLegalViewFromLocation,
+} from './legalDocuments.js'
+export {
+  TELNYX_10DLC_MOBILE_NOT_SOLD_OR_SHARED,
+  TELNYX_10DLC_ORIGINATOR_OPTIN_EXCLUSION,
+  TELNYX_10DLC_SMS_VENDOR_SHARE,
+} from './telnyx10dlcPrivacyCopy.js'
 export {
   LEGAL_POLICY_VERSION,
   LEGAL_CONTACT_EMAIL,

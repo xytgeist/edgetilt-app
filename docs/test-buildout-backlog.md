@@ -1121,6 +1121,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-11:** **10DLC privacy glued to share clauses (Windows).** Second Telnyx fail on **`C6NW3Y9`** was the same canned privacy email. TCR requires the exact `originator optin` (no hyphen) sentence immediately after sell/share/transfer language, plus the spoken verbal script to say mobile info will not be sold or shared. **`LEGAL_POLICY_VERSION` `2026-09-11`**. Promote **main** before another appeal. **`1.4.166`.**
+
 - **2026-09-10:** **Add for Review again (Mac).** Canceled stuck draft `415e408c-…` (124 version item REJECTED). Build **125** already VALID / attached. New draft `75504e35-…` has version + five SKUs + both group versions. Submitted `2026-09-11T04:34:28Z`. **WAITING_FOR_REVIEW.** Manual release. Highest ASC build number was already 125 … did not need 126.
 - **2026-09-10:** **ITMS-90699 lockstate out (Mac).** Apple bounced 124 after Add for Review: apps may not listen to device lock notifications (`com.apple.springboard.lockstate`). Removed the Darwin observer. Unlock after lock-screen answer still uses `protectedData` + the 0.8s scene poll. Next IPA is **125**. Do not Add for Review until that archive is on the listing.
 - **2026-09-10:** **Add for Review (Mac).** Ryan asked. First PATCH bounced: first-time groups need their group version on the same draft. Added Slots Edge `ba831cf3-…` + Edge Pro `1a32d359-…`. Draft `415e408c-aae2-4a33-8628-a529e0a228aa` submitted `2026-09-11T04:14:06Z`. Version then flipped to **INVALID_BINARY**. Email ITMS-90699. Lifetime out. Manual release.

@@ -115,6 +115,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Mac Theo.** Ryan signed off: (1) App Store account is **Digiverse Ventures LLC**, (2) **digiverse.ventures** live, (3) Cloudflare email for edgetilt + digiverse / reply-from. **Still open:** Apple increased price request (Lifetime above `$1,000`). DSA trader is unblocked now that the org flip landed. Do not Add for Review.
 
+### Windows Theo 2026-09-11 … 10DLC privacy glued to share clauses
+
+**I am Windows Theo.** Guest **`C6NW3Y9`** failed Telnyx privacy a second time. Same canned email. Real issue: share/sell/transfer clauses without the exact TCR `originator optin` sentence glued to them, plus the verbal script missing “will not be sold or shared.” **`LEGAL_POLICY_VERSION` `2026-09-11`**. Needs **main** before another appeal. Do not Create Campaign. Do not mix unfinished phone OTP.
+
 ### Windows Theo 2026-09-10 … TNF weather line stays
 
 **I am Windows Theo.** Primetime cards still print the weather/stadium line. Do not use the listed home team's house for location. Rundown city/name (Melbourne, London, …) picks the site. Do not commit phone OTP.
@@ -137,7 +141,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Windows Theo 2026-09-10 … 10DLC privacy copy
 
-**I am Windows Theo.** Guest campaign **`C6NW3Y9`** is **`TELNYX_FAILED`** on privacy. `/privacy` §6 + SMS opt-in HTML have the Telnyx share/sell sentences. Bare `/privacy` no longer bounces to home. Vercel serves `/privacy` as HTML (`api/legal-document.js`) so Telnyx can grep it without JS. **`LEGAL_POLICY_VERSION` `2026-09-10`**. Needs **main** before resubmit. Do not Create Campaign again. Do not mix unfinished phone OTP app code into this.
+**I am Windows Theo.** First privacy pass. Superseded **2026-09-11** (`originator optin` glued to share clauses). Do not Create Campaign. Do not mix unfinished phone OTP.
 
 ### Windows Theo 2026-09-10 … UFC card roster upsert
 

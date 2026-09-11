@@ -309,7 +309,7 @@ Primary Lounge nav is a **draggable cyan FAB** + **arc spin wheel** (`LoungeDock
 ## Phase L - Legal (parallel)
 
 - **Shipped:** stable routes **`/terms`**, **`/privacy`**, **`/guidelines`**. Prod HTML via **`api/legal-document.js`** (10DLC crawlers).
-- **Shipped:** counsel-reviewed policy text for **Digiverse Ventures, LLC** (Wyoming) ... Ryan sign-off **2026-07-01**; operating entity name in **`legalPolicyVersion.js`** updated **2026-07-23**. **10DLC SMS share/sell language** (Privacy **§6**) **`LEGAL_POLICY_VERSION` `2026-09-10`** after Telnyx rejected guest campaign **`C6NW3Y9`**.
+- **Shipped:** counsel-reviewed policy text for **Digiverse Ventures, LLC** (Wyoming) ... Ryan sign-off **2026-07-01**; operating entity name in **`legalPolicyVersion.js`** updated **2026-07-23**. **10DLC SMS** exact TCR `originator optin` language on Privacy **§5** + **§6** (**`LEGAL_POLICY_VERSION` `2026-09-11`**) after Telnyx rejected guest campaign **`C6NW3Y9`** twice.
 - **Shipped:** signup acceptance wiring + **`profiles`** legal timestamps (migration **`20260627200000`**).
 
 ---

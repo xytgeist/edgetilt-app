@@ -4,6 +4,11 @@ import {
   LEGAL_ENTITY_NAME,
   LEGAL_ENTITY_STATE,
 } from './legalPolicyVersion.js'
+import {
+  TELNYX_10DLC_MOBILE_NOT_SOLD_OR_SHARED,
+  TELNYX_10DLC_ORIGINATOR_OPTIN_EXCLUSION,
+  TELNYX_10DLC_SMS_VENDOR_SHARE,
+} from './telnyx10dlcPrivacyCopy.js'
 
 /**
  * @typedef {{ id: string, heading?: string, paragraphs: string[] }} LegalSection
@@ -172,6 +177,7 @@ export const LEGAL_DOCUMENTS = {
           'We may analyze Play Logbook entries in aggregate or in de-identified form. Analysis may include metrics such as game or template type, bet size, denomination, counters, meters, cash in/out, spins, bonus counts, calculator snapshots (for example, EV or RTP at time of play), session timing, and derived statistics such as realized return or net profit/loss.',
           'Free-text notes and casino names may be excluded from analytics datasets or redacted where feasible. Shared play sessions may be counted once per session for statistical purposes rather than once per participant.',
           'We do not sell Play Logbook data to third parties for their independent marketing.',
+          TELNYX_10DLC_ORIGINATOR_OPTIN_EXCLUSION,
         ],
       },
       {
@@ -193,8 +199,11 @@ export const LEGAL_DOCUMENTS = {
           'Public profile and Lounge content: information you choose to make public (such as posts, handle, and public profile fields) is visible to other users according to product settings and RLS policies.',
           'Service providers: we use vendors such as Supabase (database and auth), Vercel (hosting), Cloudflare (media and video), Stripe (payments), Google (Analytics and fonts), Telnyx (SMS / 10DLC message delivery), and push notification infrastructure. They process data on our behalf under contractual safeguards.',
           'Legal and safety: we may disclose information if required by law, to protect rights and safety, or to investigate fraud or abuse.',
-          'Business transfers: if we merge, sell assets, or reorganize, user information may transfer as part of that transaction, subject to this Policy.',
+          'Business transfers: if we merge, sell assets, or reorganize, user information may transfer as part of that transaction, subject to this Policy. Text messaging originator optin data and consent are excluded from any such transfer and will not be shared with affiliates or other businesses.',
           'We do not sell your personal information for cross-context behavioral advertising.',
+          TELNYX_10DLC_MOBILE_NOT_SOLD_OR_SHARED,
+          TELNYX_10DLC_ORIGINATOR_OPTIN_EXCLUSION,
+          TELNYX_10DLC_SMS_VENDOR_SHARE,
         ],
       },
       {
@@ -202,9 +211,10 @@ export const LEGAL_DOCUMENTS = {
         heading: '6. Text messages and mobile numbers',
         paragraphs: [
           'When you or a guest opt in to an EdgeTilt SMS program (for example tournament swap notices or account verification codes), we collect the mobile number and the opt-in / consent record for that program.',
-          'Your mobile information will not be sold or shared with third parties for promotional or marketing purposes.',
-          'All the above categories exclude text messaging originator opt-in data and consent; this information will not be shared with any third parties.',
-          'We will not share your opt-in to an SMS campaign with any third party for purposes unrelated to providing you with the services of that campaign. We may share your Personal Data, including your SMS opt-in or consent status, with third parties that help us provide our messaging services, including but not limited to platform providers, phone companies, and any other vendors who assist us in the delivery of text messages.',
+          TELNYX_10DLC_MOBILE_NOT_SOLD_OR_SHARED,
+          TELNYX_10DLC_ORIGINATOR_OPTIN_EXCLUSION,
+          TELNYX_10DLC_SMS_VENDOR_SHARE,
+          'We do not share, sell, rent, or transfer text messaging originator optin data or consent to affiliates, partners, or other businesses for their own purposes.',
           'Those vendors currently include our SMS connectivity provider (Telnyx) and the mobile network operators that deliver the messages. They process this data only to send the texts you opted into.',
           'Reply STOP to opt out of a program. Reply HELP for help, or email ops@edgetilt.com.',
         ],

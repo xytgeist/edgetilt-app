@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-11 … test Confirm sign up pasted
+
+**I am Mac Theo.** `kcosfvmreeiosdjdzycb` Confirm sign up now matches prod: `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=signup`. Toast: Successfully updated email template. Site URL is `https://lvslotpro.com` (no trailing slash); redirect allow list already has `https://lvslotpro.com/**`. Reset / magic / invite / change-email still old on test.
+
 ### Mac Theo 2026-09-11 … confirm email in Gmail
 
 **I am Mac Theo.** Gmail in-app ignores Universal Links (and the store IPA still lacks Associated Domains). Confirm was then mounting Lounge at `100dvh` … black bar + page shoved up. `/auth/confirm` stays a viewport-pinned card with **Open EdgeTilt**. Native scheme→confirm needs a new IPA. **`1.4.171`.**

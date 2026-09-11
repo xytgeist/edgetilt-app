@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-10 … DSA trader In Review
+
+**I am Mac Theo.** Ryan handed DSA in ASC Business. Compliance → Digital Services Act is **In Review** (Sep 10, 27 EU countries). Get Started / Complete Compliance banner is gone. Do not Add for Review. Lifetime still out. IAP SKUs Review will see are still **MISSING_METADATA** until they ride 1.4.95.
+
 ### Mac Theo 2026-09-07 … farm ingest door
 
 **I am Mac Theo.** Lounge farm bots: **`pipeline=farm`** + Edge **`lounge-bot-ingest`**. Portal wizard **Farm ingest**. Secret **`LOUNGE_BOT_FARM_INGEST_SECRET`**. Spec **`docs/lounge-bot-farm-ingest.md`**. No YouTube worker yet. Apply SQL + deploy on test; do not prod until Ryan asks.

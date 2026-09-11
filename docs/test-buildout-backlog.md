@@ -98,7 +98,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [x] **Billing v1 (US) Safari link-out:** Stripe Checkout / portal / Connect never `location.assign` inside EdgeiOS … `openExternalBillingUrl` → `openInSafari`. StoreKit IAP deferred to v1.1. Counsel + App Review notes still before submit.
 - [ ] **Store listing leftovers:** iPhone 6.5" screenshots (need ≥1, first 3 show on install), Add Build, Review phone + demo login. Listing **text** saved 2026-09-07. Privacy URL + nutrition **published** 2026-09-07. App Accessibility optional (left empty). Icon / splash still owed.
 - [x] **App Information leftovers (2026-09-06):** Age Ratings saved (calculated 16+, override **18+** for ToS 18+; Brazil 19+). Content Rights Yes (third-party / UGC). Encryption: do not upload docs … Xcode `ITSAppUsesNonExemptEncryption = NO`. Vietnam Game License / Medical Device N/A.
-- [ ] **DSA trader (still owed):** Org changeover to **Digiverse Ventures LLC** is done (Ryan 2026-09-07). Trader as the LLC is now unblocked (company address / phone / email). Do not invent those. Do not open a second developer account.
+- [x] **DSA trader:** Ryan submitted 2026-09-10. ASC Business → Compliance → Digital Services Act is **In Review** (27 EU countries, last updated Sep 10). Complete Compliance Requirements banner is gone. Apple still verifying contact. Do not Add for Review until that clears if they bounce it.
 
 ### Before IAP / App Store submit (Ryan 2026-09-06)
 
@@ -1121,6 +1121,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-10:** **DSA trader submitted (Mac / Ryan).** Ryan handed the EU trader packet in ASC Business. Status **In Review** (27 countries, updated Sep 10). Do not invent a street. Do not Add for Review.
 - **2026-09-10:** **Ops Desk Math variables (Windows).** Each equation now lists the inputs (EPA off/def, ×22, trench PBWR/PRWR, PVAL, CFB power − HFA) under the result. Redeploy `lounge-odds-poll`. **`1.4.163`.**
 
 - **2026-09-10:** **Ops Desk Math tab (Windows).** `sharpesyndicate.com/ops` **Desk Math** dry-runs NFL / CFB / UFC and lists each desk equation, live outcome, and how it moves the vote. `deskEvals.equations` from `lounge-odds-poll`. Redeploy the function. **`1.4.162`.**

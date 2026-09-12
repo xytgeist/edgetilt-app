@@ -1130,6 +1130,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-12:** **Status bar fade on prod (Mac).** `test` → **`main`** (`d2a550aa`, **`1.4.193`**). Web live after Vercel. No new SQL / Edge / IPA.
 - **2026-09-12:** **Status bar fades with title hide (Mac).** Safe-area plate (`EdgeStatusBarScrollPlate`) goes opaque as the EDGE bar hides and fades out when it returns. Lounge feed, dock panels, `ScrollLinkedEdgeTitleBarShell`. Title translate unchanged. **`1.4.193`.**
 - **2026-09-12:** **W-2G extract enlarge on prod (Mac).** `test` → **`main`** (`435cf9b3`, **`1.4.192`**). Web live after Vercel. No new SQL / Edge / IPA. CFB Sat lock-flip source is on `main`; `lounge-odds-poll` not redeployed.
 - **2026-09-12:** **W-2G extract/review tap-to-enlarge (Mac).** Capture preview uses the same fullscreen lightbox as Verify. Tap opens, swipe still pages the queue. **`1.4.192`.** Web only.

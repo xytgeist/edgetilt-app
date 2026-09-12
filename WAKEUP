@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-12 … status bar fade on prod
+
+**I am Mac Theo.** `test` → **`main`** at **`d2a550aa`** (`1.4.193`). Vercel **edgetilt.com**. No new SQL / Edge / IPA.
+
 ### Mac Theo 2026-09-12 … status bar fade with title hide
 
 **I am Mac Theo.** App-wide status-bar plate fades to opaque on scroll up and out on scroll down (`EdgeStatusBarScrollPlate`). Title slide unchanged. Lounge feed, dock panels, `ScrollLinkedEdgeTitleBarShell`. **`1.4.193`.** Web only. Windows: do not edit title-bar shell / SocialFeed title chrome today.

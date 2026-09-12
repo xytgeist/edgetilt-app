@@ -216,6 +216,10 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     case "dismissKeyboard":
       EdgeCallKitManager.shared.dismissWebKeyboard()
       completion(.success(["ok": true]))
+    case "setKeyboardAccessory":
+      let visible = Self.payloadFlag(payload, "visible")
+      EdgeWebKitKeyboard.setShowsAccessoryBar(visible, in: webView)
+      completion(.success(["ok": true, "visible": visible]))
     case "getStorefront":
       guard #available(iOS 15.0, *) else {
         completion(.success(["countryCode": "", "isUnitedStates": false]))
@@ -670,6 +674,9 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       },
       dismissKeyboard: function () {
         return call('dismissKeyboard', null);
+      },
+      setKeyboardAccessory: function (payload) {
+        return call('setKeyboardAccessory', payload || {});
       },
       getStorefront: function () {
         return call('getStorefront', null);

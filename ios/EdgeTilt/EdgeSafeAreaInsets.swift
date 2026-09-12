@@ -80,14 +80,17 @@ enum EdgeSafeAreaInsets {
 final class EdgeInsetAwareWebView: WKWebView {
   var onSafeAreaInsetsChange: (() -> Void)?
 
-  /// Hide the WKWebView Done / prev-next accessory. First responder is often
-  /// internal `WKContentView` … `EdgeWebKitKeyboard.hideAccessoryBar()` covers that.
-  override var inputAccessoryView: UIView? { nil }
+  /// Hide the WK Done / prev-next accessory unless a screen opted into the system bar.
+  override var inputAccessoryView: UIView? {
+    EdgeWebKitKeyboard.showsAccessoryBar ? super.inputAccessoryView : nil
+  }
 
   override var inputAssistantItem: UITextInputAssistantItem {
     let item = super.inputAssistantItem
-    item.leadingBarButtonGroups = []
-    item.trailingBarButtonGroups = []
+    if !EdgeWebKitKeyboard.showsAccessoryBar {
+      item.leadingBarButtonGroups = []
+      item.trailingBarButtonGroups = []
+    }
     return item
   }
 
@@ -98,8 +101,10 @@ final class EdgeInsetAwareWebView: WKWebView {
 
   override func didMoveToWindow() {
     super.didMoveToWindow()
-    inputAssistantItem.leadingBarButtonGroups = []
-    inputAssistantItem.trailingBarButtonGroups = []
+    if !EdgeWebKitKeyboard.showsAccessoryBar {
+      inputAssistantItem.leadingBarButtonGroups = []
+      inputAssistantItem.trailingBarButtonGroups = []
+    }
     onSafeAreaInsetsChange?()
   }
 

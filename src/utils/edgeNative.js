@@ -54,6 +54,27 @@ export async function edgeNativeInvoke(method, payload = {}) {
   return fn.call(bridge, payload)
 }
 
+/**
+ * Show or hide the system WK Done / prev-next accessory. Default is hidden.
+ * Feature-detect first … old binaries no-op.
+ *
+ * @param {boolean} visible
+ * @returns {Promise<Record<string, unknown> | { ok: false }>}
+ */
+export async function setEdgeKeyboardAccessoryVisible(visible) {
+  if (typeof window === 'undefined' || !isEdgeiOSShell()) {
+    return { ok: false }
+  }
+  if (typeof window.EdgeNative?.setKeyboardAccessory !== 'function') {
+    return { ok: false }
+  }
+  try {
+    return await edgeNativeInvoke('setKeyboardAccessory', { visible: Boolean(visible) })
+  } catch {
+    return { ok: false }
+  }
+}
+
 /** Blur the focused field and drop the IPA software keyboard (no WK Done bar). */
 export function dismissEdgeKeyboard() {
   try {

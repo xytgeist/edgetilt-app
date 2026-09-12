@@ -11068,6 +11068,9 @@ html.light [data-w2g-scanner] [data-w2g-preview-count] span {
 html.light [data-w2g-scanner] [data-w2g-preview-dots] .bg-zinc-400\/70 {
   background-color: #a1a1aa !important;
 }
+html.light [data-w2g-scanner] [data-w2g-preview-hint] {
+  color: #71717a !important;
+}
 html.light [data-w2g-scanner] [data-w2g-editor-host] {
   background-color: #f4f4f5 !important;
 }
@@ -11244,6 +11247,11 @@ html.light [data-w2g-verify-modal] [data-w2g-attn-editor] {
 }
 html.light [data-w2g-verify-modal] [data-w2g-preview] button .text-zinc-500 {
   color: #71717a !important;
+}
+/* Cinema enlarge shells stay black in both themes */
+html.light [data-w2g-review-lightbox] .text-white,
+html.light [data-w2g-verify-lightbox] .text-white {
+  color: #ffffff !important;
 }
 
 /* Edge Pro Badge light mode styling */

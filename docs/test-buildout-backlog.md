@@ -147,6 +147,7 @@ Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows**
 - [ ] **Native LiveKit lock-screen smoke (owed):** force-close IPA, lock, answer, **do not unlock**. Caller must leave `Ringing…` with two-way audio. Unlock: camera / remote video on video calls. Remote hangup clears CallKit. Unlocked in-app uses the same native room (no `LiveKitRoom`).
 - [ ] **W-2G VisionKit Take photo smoke (2026-09-11):** current IPA, Slots → W-2G Scanner → Take photo. Expect the iOS document camera (not the system camera roll sheet). Cancel returns idle. A good snap skips `scanic` and lands on extract. Simulator / old IPA still uses the file input.
 - [ ] **W-2G multi-page Take photo (2026-09-12):** current IPA, capture 2–3 slips in one VisionKit session. Land on the extract/review screen, swipe the image frame, Save keeps you there and slides in the next. Remove drops only that slip. Last save goes to My W-2Gs.
+- [ ] **W-2G extract image enlarge (2026-09-12):** extract/review image tap opens the same fullscreen lightbox as Verify. Swipe still pages multi-slip. Backdrop or X closes. Web only.
 - [ ] **W-2G My W-2Gs delete (2026-09-12):** trash on a slip opens the in-app confirm and removes the row. IPA `window.confirm` was a silent no.
 - [ ] **W-2G extract keyboard + auto-verify (2026-09-12):** current IPA after this native toggle, tap a tax field on extract / verify. Expect the **system** WK Done / prev-next bar, not a custom chip. Take photo save (after extract) shows Verified. Library bulk stays Verify. New Test Fast required for the bar.
 - [ ] **W-2G Vision OCR smoke (2026-09-11):** current IPA, scan a slip on **free and Starter+**. Same path: **On-device extract** / **Vision N%**. A blurry signed-in slip may flip to **AI extract**. Bulk lock is the only Starter+ difference. Redeploy **`w2g-vision-extract`** on test (sign-in only).
@@ -1128,6 +1129,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-12:** **W-2G extract/review tap-to-enlarge (Mac).** Capture preview uses the same fullscreen lightbox as Verify. Tap opens, swipe still pages the queue. **`1.4.192`.** Web only.
 - **2026-09-12:** **CFB Sat adds/kills no longer nuke every away dog (Windows).** Prod VIP dump today was 45 fake `KILL / REVISIT` lines. Old check treated “we locked away and home is still favored” as a flip. Now uses `evaluateSatLockFlip`: ≥1.5 against the locked side, or that side actually crossed favorite/dog. Same helper on NFL Sat VIP leftover. Silent if nothing real moved. Redeploy `lounge-odds-poll`. **`1.4.191`.**
 - **2026-09-12:** **W-2G uses the system keyboard accessory (Mac).** Removed the custom hover chip. `setKeyboardAccessory` opts W-2G tax fields back into the stock WK Done / prev-next bar. GIF picker stays hidden. **Needs a new Test Fast.** **`1.4.190`.**
 - **2026-09-12:** **W-2G capture review queue on prod (Mac).** `test` → **`main`** (`335f95c8`, **`1.4.189`**). Web live after Vercel. No new SQL / Edge / IPA. Ryan smoke on test IPA: works really well.

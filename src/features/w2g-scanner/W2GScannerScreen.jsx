@@ -109,6 +109,37 @@ function engineStatusTag(engineLabel, confidence) {
   return confidence != null ? `${engineLabel} ${Math.round(confidence)}%` : engineLabel
 }
 
+function W2GSlipImageLightbox({ src, onClose, dataAttr, alt = 'W-2G slip enlarged' }) {
+  if (!src || typeof document === 'undefined') return null
+  return createPortal(
+    <div
+      className="fixed inset-0 flex items-center justify-center bg-black/92 px-3 py-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
+      style={{ zIndex: Z_APP_ALERT + 10 }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Expanded W-2G slip"
+      {...{ [dataAttr]: true }}
+      onClick={onClose}
+    >
+      <button
+        type="button"
+        onClick={onClose}
+        className="absolute right-3 top-[max(0.75rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] inline-flex h-11 w-11 items-center justify-center rounded-full bg-zinc-800/90 text-white touch-manipulation"
+        aria-label="Close enlarged image"
+      >
+        <X size={20} aria-hidden />
+      </button>
+      <img
+        src={src}
+        alt={alt}
+        className="max-h-full max-w-full object-contain"
+        onClick={(e) => e.stopPropagation()}
+      />
+    </div>,
+    document.body,
+  )
+}
+
 /**
  * W-2G tax archive: scan → six TurboTax fields → save image + row → collate by EIN.
  */
@@ -208,6 +239,7 @@ export default function W2GScannerScreen({
   const [verifyError, setVerifyError] = useState('')
   const [verifyReprocessing, setVerifyReprocessing] = useState(false)
   const [verifyImageExpanded, setVerifyImageExpanded] = useState(false)
+  const [reviewImageExpanded, setReviewImageExpanded] = useState(false)
   const [attnSourceReady, setAttnSourceReady] = useState(false)
   const [attnLoading, setAttnLoading] = useState(false)
   const [attnApplying, setAttnApplying] = useState(false)
@@ -340,6 +372,10 @@ export default function W2GScannerScreen({
   }, [])
 
   useEffect(() => {
+    if (mainTab !== 'scan' || phase !== 'result') setReviewImageExpanded(false)
+  }, [mainTab, phase])
+
+  useEffect(() => {
     return () => {
       editorRef.current?.destroy?.()
       editorRef.current = null
@@ -462,6 +498,7 @@ export default function W2GScannerScreen({
     setOcrStatus('')
     setOcrProgress(0)
     setFieldList(fieldsToList({}))
+    setReviewImageExpanded(false)
     clearReviewDrafts()
   }, [clearEditor, clearReviewDrafts])
 
@@ -1143,6 +1180,7 @@ export default function W2GScannerScreen({
   const onAdjustFromResult = () => {
     const source = sourceCanvasRef.current
     if (!source) return
+    setReviewImageExpanded(false)
     void openAdjust(source, null)
   }
 
@@ -1239,8 +1277,8 @@ export default function W2GScannerScreen({
   }
 
   const onReviewPointerDown = (event) => {
-    if (reviewCount < 2) return
     swipeRef.current = { x: event.clientX, y: event.clientY, on: true, axis: null }
+    if (reviewCount < 2) return
     try {
       event.currentTarget.setPointerCapture(event.pointerId)
     } catch {
@@ -1261,10 +1299,17 @@ export default function W2GScannerScreen({
     const swipe = swipeRef.current
     if (!swipe.on) return
     swipe.on = false
-    if (swipe.axis !== 'x') return
     const dx = event.clientX - swipe.x
-    if (dx <= -48) goReviewDraft(1)
-    else if (dx >= 48) goReviewDraft(-1)
+    const dy = event.clientY - swipe.y
+    if (swipe.axis === 'x' && reviewCount >= 2) {
+      if (dx <= -48) goReviewDraft(1)
+      else if (dx >= 48) goReviewDraft(-1)
+      return
+    }
+    if (swipe.axis === 'y') return
+    if (Math.abs(dx) < 12 && Math.abs(dy) < 12 && (activeReviewDraft?.previewUrl || resultPreviewUrl)) {
+      setReviewImageExpanded(true)
+    }
   }
 
   const fieldsObject = useMemo(() => {
@@ -2037,7 +2082,7 @@ export default function W2GScannerScreen({
                   <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{statusNote}</div>
                 ) : null}
                 <div
-                  className="relative overflow-hidden rounded-2xl bg-white p-2 ring-1 ring-zinc-800 touch-pan-y"
+                  className="relative overflow-hidden rounded-2xl bg-white p-2 ring-1 ring-zinc-800 touch-pan-y cursor-pointer"
                   data-w2g-preview
                   onPointerDown={onReviewPointerDown}
                   onPointerMove={onReviewPointerMove}
@@ -2097,6 +2142,14 @@ export default function W2GScannerScreen({
                         ))}
                       </div>
                     </>
+                  ) : null}
+                  {activeReviewDraft?.previewUrl || resultPreviewUrl ? (
+                    <div
+                      className="mt-1 text-center text-[11px] font-semibold text-zinc-500"
+                      data-w2g-preview-hint
+                    >
+                      Tap to enlarge
+                    </div>
                   ) : null}
                 </div>
 
@@ -2629,35 +2682,24 @@ export default function W2GScannerScreen({
           </div>
 
           {verifyImageExpanded && verifyImageUrl ? (
-            <div
-              className="fixed inset-0 flex items-center justify-center bg-black/92 px-3 py-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
-              style={{ zIndex: Z_APP_ALERT + 10 }}
-              role="dialog"
-              aria-modal="true"
-              aria-label="Expanded W-2G slip"
-              data-w2g-verify-lightbox
-              onClick={() => setVerifyImageExpanded(false)}
-            >
-              <button
-                type="button"
-                onClick={() => setVerifyImageExpanded(false)}
-                className="absolute right-3 top-[max(0.75rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] inline-flex h-11 w-11 items-center justify-center rounded-full bg-zinc-800/90 text-white touch-manipulation"
-                aria-label="Close enlarged image"
-              >
-                <X size={20} aria-hidden />
-              </button>
-              <img
-                src={verifyImageUrl}
-                alt="W-2G slip enlarged"
-                className="max-h-full max-w-full object-contain"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
+            <W2GSlipImageLightbox
+              src={verifyImageUrl}
+              onClose={() => setVerifyImageExpanded(false)}
+              dataAttr="data-w2g-verify-lightbox"
+            />
           ) : null}
           </>,
           document.body,
         )
       : null}
+    {reviewImageExpanded ? (
+      <W2GSlipImageLightbox
+        src={activeReviewDraft?.previewUrl || resultPreviewUrl}
+        onClose={() => setReviewImageExpanded(false)}
+        dataAttr="data-w2g-review-lightbox"
+        alt="Scanned W-2G enlarged"
+      />
+    ) : null}
     <W2GKeyboardFieldNavPill />
     </>
   )

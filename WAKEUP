@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-12 … W-2G extract tap-to-enlarge
+
+**I am Mac Theo.** Extract/review image tap opens the same fullscreen lightbox as Verify. Swipe still pages multi-slip. **`1.4.192`.** Web only. Windows: do not edit W-2G today.
+
 ### Windows Theo 2026-09-12 … CFB Sat adds/kills false flips
 
 **I am Windows Theo.** Sat 10am CFB VIP adds/kills treated every away-dog Friday lock as a kill (45 lines on prod today). Fix is `evaluateSatLockFlip` … ≥1.5 against the lock or fav/dog cross only. Same helper on NFL Sat VIP leftover. Redeploy `lounge-odds-poll`. Do not commit phone OTP.

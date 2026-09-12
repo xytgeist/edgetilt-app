@@ -455,6 +455,88 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     }
   }
 
+  /// Custom `uiDelegate` replaces WK defaults. Missing these makes `alert`/`confirm` silent no-ops.
+  func webView(
+    _ webView: WKWebView,
+    runJavaScriptAlertPanelWithMessage message: String,
+    initiatedByFrame frame: WKFrameInfo,
+    completionHandler: @escaping () -> Void
+  ) {
+    presentJsDialog(message: message, cancelTitle: nil, confirmTitle: "OK") { _ in
+      completionHandler()
+    }
+  }
+
+  func webView(
+    _ webView: WKWebView,
+    runJavaScriptConfirmPanelWithMessage message: String,
+    initiatedByFrame frame: WKFrameInfo,
+    completionHandler: @escaping (Bool) -> Void
+  ) {
+    presentJsDialog(message: message, cancelTitle: "Cancel", confirmTitle: "OK") { ok in
+      completionHandler(ok)
+    }
+  }
+
+  func webView(
+    _ webView: WKWebView,
+    runJavaScriptTextInputPanelWithPrompt prompt: String,
+    defaultText: String?,
+    initiatedByFrame frame: WKFrameInfo,
+    completionHandler: @escaping (String?) -> Void
+  ) {
+    DispatchQueue.main.async {
+      let alert = UIAlertController(title: nil, message: prompt, preferredStyle: .alert)
+      alert.addTextField { $0.text = defaultText }
+      alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in
+        completionHandler(nil)
+      })
+      alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in
+        completionHandler(alert.textFields?.first?.text)
+      })
+      guard let presenter = Self.topViewController() else {
+        completionHandler(nil)
+        return
+      }
+      presenter.present(alert, animated: true)
+    }
+  }
+
+  private func presentJsDialog(
+    message: String,
+    cancelTitle: String?,
+    confirmTitle: String,
+    completion: @escaping (Bool) -> Void
+  ) {
+    DispatchQueue.main.async {
+      let alert = UIAlertController(title: nil, message: message, preferredStyle: .alert)
+      if let cancelTitle {
+        alert.addAction(UIAlertAction(title: cancelTitle, style: .cancel) { _ in
+          completion(false)
+        })
+      }
+      alert.addAction(UIAlertAction(title: confirmTitle, style: .default) { _ in
+        completion(true)
+      })
+      guard let presenter = Self.topViewController() else {
+        completion(cancelTitle == nil)
+        return
+      }
+      presenter.present(alert, animated: true)
+    }
+  }
+
+  private static func topViewController() -> UIViewController? {
+    let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+    let window = scenes.flatMap(\.windows).first(where: \.isKeyWindow)
+      ?? scenes.first?.windows.first
+    var controller = window?.rootViewController
+    while let presented = controller?.presentedViewController {
+      controller = presented
+    }
+    return controller
+  }
+
   func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
     applyCustomUserAgent(to: webView)
     // Listeners die with the outgoing page; JS re-marks after it reinstalls them.

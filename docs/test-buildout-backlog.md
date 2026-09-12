@@ -146,6 +146,8 @@ Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows**
 - [x] **Call audio web→native hook (2026-08-26):** `chatCallAudioSession` → `setAudioSession(voiceChat|default)` in shell. **Superseded for IPA media 2026-08-27:** native LiveKit owns the session via CallKit `didActivate`.
 - [ ] **Native LiveKit lock-screen smoke (owed):** force-close IPA, lock, answer, **do not unlock**. Caller must leave `Ringing…` with two-way audio. Unlock: camera / remote video on video calls. Remote hangup clears CallKit. Unlocked in-app uses the same native room (no `LiveKitRoom`).
 - [ ] **W-2G VisionKit Take photo smoke (2026-09-11):** current IPA, Slots → W-2G Scanner → Take photo. Expect the iOS document camera (not the system camera roll sheet). Cancel returns idle. A good snap skips `scanic` and lands on extract. Simulator / old IPA still uses the file input.
+- [ ] **W-2G multi-page Take photo (2026-09-12):** current IPA, capture 2–3 slips in one VisionKit session. All pages should save to My W-2Gs (not only the first). One page still opens the editor.
+- [ ] **W-2G My W-2Gs delete (2026-09-12):** trash on a slip opens the in-app confirm and removes the row. IPA `window.confirm` was a silent no.
 - [ ] **W-2G Vision OCR smoke (2026-09-11):** current IPA, scan a slip on **free and Starter+**. Same path: **On-device extract** / **Vision N%**. A blurry signed-in slip may flip to **AI extract**. Bulk lock is the only Starter+ difference. Redeploy **`w2g-vision-extract`** on test (sign-in only).
 - [ ] **W-2G logbook handpay prompt (2026-09-11):** Log Play with cash out ≥ $2,000. After save, **Scan the W-2G?** Not now stays in Logbook. Scan opens W-2G with a From Play Logbook banner (date + box 1). Extract keeps those if the slip is blank there. $1,200 must not prompt.
 - [ ] **W-2G native Photos bulk (2026-09-11):** Starter+ current IPA, Bulk import. Expect PHPicker, not the file sheet. Cancel returns idle. Pick a few slips and they import. Free tile stays locked. PWA / old IPA stay on `<input multiple>`.
@@ -1125,6 +1127,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-12:** **W-2G delete + multi-page capture (Mac).** My W-2Gs trash uses AppShell confirm (`window.confirm` is silent on IPA because custom `WKUIDelegate` had no JS dialogs). Take photo now keeps every VisionKit page (max 8) and imports 2+ as a free capture batch. Native JS alert/confirm/prompt landed for the next IPA. **`1.4.187`.**
 - **2026-09-11:** **W-2G native loop on prod (Mac).** `test` → **`main`** (`44b53aa6`). Redeployed **`w2g-vision-extract`** on **`jtjgtucumuoswnbauxry`** (sign-in only). Web extract + $2,000 handpay prompt are live on edgetilt.com after Vercel. IPA camera / Vision OCR / PHPicker still need a new binary.
 - **2026-09-11:** **Public hammer / consensus labels are 4-0 and 2-1+ (Windows).** Overview tiles, ledger filter pills, row badges, and Ops dry-run chips. UFC stays 4-0 / 3-1. **`1.4.186`.**
 - **2026-09-11:** **W-2G handpay line is $2,000 (Mac).** Slot W-2G prompt was using the old $1,200 IRS line. Threshold is `W2G_SLOT_REPORT_THRESHOLD` **2000**. **`1.4.185`.**

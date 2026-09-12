@@ -109,6 +109,8 @@ export default function W2GScannerScreen({
   /** @type {{ dateWon?: string, box1Winnings?: string } | null} */
   logbookPrefill = null,
   onLogbookPrefillConsumed = null,
+  /** AppShell in-app confirm … IPA `window.confirm` is a silent no after custom WKUIDelegate. */
+  showGlobalConfirm = null,
 }) {
   const cameraInputRef = useRef(null)
   const libraryInputRef = useRef(null)
@@ -680,26 +682,6 @@ export default function W2GScannerScreen({
     [cancelUnattachedExtractJobs, clearEditor, finishPretty, openAdjust],
   )
 
-  const onTakePhoto = useCallback(async () => {
-    if (canScanEdgeDocument()) {
-      try {
-        const result = await scanEdgeDocument({ purpose: 'w2g', maxPages: 1 })
-        if (result?.cancelled) return
-        if (result?.ok) {
-          const files = filesFromNativeScanImages(result)
-          if (files[0]) {
-            void triggerEdgeNativeHaptic('success')
-            void processFile(files[0], { skipDetect: true })
-            return
-          }
-        }
-      } catch {
-        // Old IPA or VisionKit unavailable … file input still works.
-      }
-    }
-    cameraInputRef.current?.click()
-  }, [processFile])
-
   const onPickFile = (event) => {
     const file = event.target.files?.[0]
     event.target.value = ''
@@ -711,13 +693,15 @@ export default function W2GScannerScreen({
   }, [])
 
   const runBulkImport = useCallback(
-    async (files) => {
+    async (files, options = {}) => {
       const list = [...(files || [])].filter((f) => String(f?.type || '').startsWith('image/'))
+      const skipEntitlement = Boolean(options.skipEntitlement)
+      const skipDetect = Boolean(options.skipDetect)
       if (!list.length) {
         setError('Pick one or more W-2G photos.')
         return
       }
-      if (!canUseBulkImport) {
+      if (!skipEntitlement && !canUseBulkImport) {
         onRequireSubscribe?.(PRODUCT_SLOTS_EDGE_STARTER)
         return
       }
@@ -728,12 +712,12 @@ export default function W2GScannerScreen({
       try {
         const { data } = await supabaseClient.auth.getUser()
         if (!data?.user?.id) {
-          setError('Sign in to bulk-import W-2Gs.')
+          setError(skipEntitlement ? 'Sign in to save these W-2Gs.' : 'Sign in to bulk-import W-2Gs.')
           onOpenAuth?.('login')
           return
         }
       } catch {
-        setError('Sign in to bulk-import W-2Gs.')
+        setError(skipEntitlement ? 'Sign in to save these W-2Gs.' : 'Sign in to bulk-import W-2Gs.')
         onOpenAuth?.('login')
         return
       }
@@ -760,11 +744,16 @@ export default function W2GScannerScreen({
           if (ac.signal.aborted) break
           const file = list[i]
           setBulkProgress({ index: i + 1, total: list.length, fileName: file.name || `Image ${i + 1}` })
-          setStatusNote(`Bulk import ${i + 1}/${list.length}…`)
+          setStatusNote(
+            skipEntitlement
+              ? `Saving ${i + 1}/${list.length}…`
+              : `Bulk import ${i + 1}/${list.length}…`,
+          )
           try {
             const result = await processW2GImageForArchive(file, {
               signal: ac.signal,
               supabase: supabaseClient,
+              skipDetect,
             })
             if (result.ok) {
               await saveW2GSlip({
@@ -817,6 +806,31 @@ export default function W2GScannerScreen({
       taxYear,
     ],
   )
+
+  const onTakePhoto = useCallback(async () => {
+    if (canScanEdgeDocument()) {
+      try {
+        const result = await scanEdgeDocument({ purpose: 'w2g', maxPages: 8 })
+        if (result?.cancelled) return
+        if (result?.ok) {
+          const files = filesFromNativeScanImages(result)
+          if (files.length > 1) {
+            void triggerEdgeNativeHaptic('success')
+            void runBulkImport(files, { skipEntitlement: true, skipDetect: true })
+            return
+          }
+          if (files[0]) {
+            void triggerEdgeNativeHaptic('success')
+            void processFile(files[0], { skipDetect: true })
+            return
+          }
+        }
+      } catch {
+        // Old IPA or VisionKit unavailable … file input still works.
+      }
+    }
+    cameraInputRef.current?.click()
+  }, [processFile, runBulkImport])
 
   const onPickBulkFiles = (event) => {
     // Snapshot before clearing … input.files is a live FileList and value='' empties it.
@@ -1019,7 +1033,17 @@ export default function W2GScannerScreen({
 
   const onDeleteSlip = async (slip) => {
     if (!supabaseClient || !slip?.id) return
-    if (!window.confirm('Delete this W-2G from your archive?')) return
+    const ok = showGlobalConfirm
+      ? await showGlobalConfirm({
+          title: 'Delete this W-2G?',
+          message: 'It will be removed from your archive.',
+          confirmLabel: 'Delete',
+          cancelLabel: 'Cancel',
+        })
+      : typeof window !== 'undefined'
+        ? window.confirm('Delete this W-2G from your archive?')
+        : false
+    if (!ok) return
     setDeletingId(slip.id)
     setArchiveError('')
     try {
@@ -1406,11 +1430,15 @@ export default function W2GScannerScreen({
           <button
             type="button"
             disabled={deletingId === slip.id}
-            onClick={() => void onDeleteSlip(slip)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-zinc-800 text-zinc-300 touch-manipulation disabled:opacity-50"
+            onClick={(e) => {
+              e.stopPropagation()
+              void onDeleteSlip(slip)
+            }}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-xl bg-zinc-800 text-zinc-300 touch-manipulation disabled:opacity-50"
             aria-label="Delete slip"
+            data-w2g-delete-btn
           >
-            <Trash2 size={16} aria-hidden />
+            <Trash2 size={16} className="pointer-events-none" aria-hidden />
           </button>
         </div>
       </li>
@@ -1557,7 +1585,7 @@ export default function W2GScannerScreen({
                     <span className="block text-lg font-bold text-white">Take photo</span>
                     <span className="mt-0.5 block text-sm text-zinc-500">
                       {canScanEdgeDocument()
-                        ? 'iPhone document camera … auto-crop the slip'
+                        ? 'iPhone document camera … keep adding pages for more slips'
                         : 'Use the rear camera when you can'}
                     </span>
                   </span>

@@ -34,6 +34,7 @@ function canvasToJpegBlob(canvas, quality = 0.92) {
  * @param {{
  *   signal?: AbortSignal,
  *   supabase?: import('@supabase/supabase-js').SupabaseClient | null,
+ *   skipDetect?: boolean,
  * }} [opts]
  * @returns {Promise<{
  *   ok: true,
@@ -77,6 +78,26 @@ export async function processW2GImageForArchive(file, opts = {}) {
       fallbackBlob = await canvasToJpegBlob(source, 0.88)
     } catch {
       fallbackBlob = file
+    }
+
+    if (opts.skipDetect) {
+      const flat = await flattenCroppedDocument(source)
+      throwIfAborted()
+      const pretty = presentPrettyScan(flat)
+      throwIfAborted()
+      const extracted = await extractW2GFields(flat, {
+        supabase: opts.supabase,
+        signal,
+      })
+      throwIfAborted()
+      return {
+        ok: true,
+        fileName,
+        fields: extracted.fields || {},
+        imageBlob: await canvasToJpegBlob(pretty),
+        ocrConfidence: extracted.confidence ?? null,
+        needsAttention: false,
+      }
     }
 
     const { result } = await autoScanDocument(source)

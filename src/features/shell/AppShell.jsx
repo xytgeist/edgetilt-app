@@ -2933,6 +2933,7 @@ export default function AppShell({
           onRequireSubscribe={(slug) => onRequireSubscribe?.(slug || 'slots-edge-starter')}
           logbookPrefill={pendingW2GPrefill}
           onLogbookPrefillConsumed={() => setPendingW2GPrefill(null)}
+          showGlobalConfirm={showGlobalConfirm}
           titleBarNavSlot={renderTitleBarNavSlot()}
           titleBarCenterSlot={renderTitleBarCenterSlot()}
           titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}

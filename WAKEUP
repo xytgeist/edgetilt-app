@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-12 … W-2G extract enlarge on prod
+
+**I am Mac Theo.** `test` → **`main`** at **`435cf9b3`** (`1.4.192`). Vercel **edgetilt.com**. No new SQL / Edge / IPA. Also rides along: system keyboard accessory (web) + CFB Sat lock-flip. `lounge-odds-poll` not redeployed.
+
 ### Mac Theo 2026-09-12 … W-2G extract tap-to-enlarge
 
 **I am Mac Theo.** Extract/review image tap opens the same fullscreen lightbox as Verify. Swipe still pages multi-slip. **`1.4.192`.** Web only. Windows: do not edit W-2G today.

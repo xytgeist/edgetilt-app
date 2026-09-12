@@ -61,6 +61,7 @@ import {
 } from './w2gArchiveApi.js'
 import { processW2GImageForArchive } from './w2gBulkImport.js'
 import { enhanceScanicCornerToolbar } from './w2gScanicToolbar.js'
+import W2GKeyboardFieldNavPill from './W2GKeyboardFieldNavPill.jsx'
 import {
   canPickEdgePhotos,
   canScanEdgeDocument,
@@ -389,6 +390,7 @@ export default function W2GScannerScreen({
           slipId,
           fields,
           ocrConfidence: confidence ?? null,
+          markVerified: Boolean(fields?.payerName || fields?.box1Winnings),
         })
         setSlips((prev) => {
           const idx = prev.findIndex((s) => s.id === slipId)
@@ -761,6 +763,7 @@ export default function W2GScannerScreen({
                 fields: result.fields,
                 imageBlob: result.imageBlob,
                 ocrConfidence: result.ocrConfidence,
+                markVerified: skipDetect,
               })
               saved += 1
               continue
@@ -986,6 +989,9 @@ export default function W2GScannerScreen({
         fields: fieldsToSave,
         imageBlob,
         ocrConfidence: extractStillRunning ? null : ocrConfidenceRef.current,
+        markVerified:
+          !extractStillRunning &&
+          Boolean(fieldsToSave.payerName || fieldsToSave.box1Winnings),
       })
       const year = taxYearFromDate(fieldsToSave.dateWon) || Number(slip.tax_year) || new Date().getFullYear()
       setTaxYear(year)
@@ -1765,7 +1771,7 @@ export default function W2GScannerScreen({
                     <div className="text-xs text-zinc-500 mt-0.5">
                       {ocrStatus === 'loading'
                         ? 'Extracting… you can save now and finish in My W-2Gs.'
-                        : 'Edit if needed, then save. Or save now and verify later.'}
+                        : 'Edit if needed, then save. Take photo extracts land as verified.'}
                     </div>
                   </div>
 
@@ -1793,6 +1799,7 @@ export default function W2GScannerScreen({
                             className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500"
                             autoComplete="off"
                             spellCheck={false}
+                            enterKeyHint={field.key === 'dateWon' ? 'done' : 'next'}
                           />
                         </label>
                       )
@@ -2193,6 +2200,7 @@ export default function W2GScannerScreen({
                             className="mt-1 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-white outline-none focus:border-cyan-500 disabled:opacity-60"
                             autoComplete="off"
                             spellCheck={false}
+                            enterKeyHint={field.key === 'dateWon' ? 'done' : 'next'}
                           />
                         </label>
                       )
@@ -2260,6 +2268,7 @@ export default function W2GScannerScreen({
           document.body,
         )
       : null}
+    <W2GKeyboardFieldNavPill />
     </>
   )
 }

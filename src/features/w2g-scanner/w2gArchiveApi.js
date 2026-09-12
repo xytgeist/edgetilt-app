@@ -86,6 +86,7 @@ export function dbRowToFields(row) {
  *   ocrConfidence?: number | null,
  *   attentionReason?: string | null,
  *   taxYear?: number | null,
+ *   markVerified?: boolean,
  * }} args
  */
 export async function saveW2GSlip({
@@ -95,6 +96,7 @@ export async function saveW2GSlip({
   ocrConfidence = null,
   attentionReason = null,
   taxYear = null,
+  markVerified = false,
 }) {
   if (!supabase) throw new Error('Supabase client missing')
   if (!imageBlob) throw new Error('Missing slip image')
@@ -119,6 +121,7 @@ export async function saveW2GSlip({
     image_content_type: contentType,
     attention_reason: reason,
     updated_at: new Date().toISOString(),
+    ...(markVerified && !reason ? { verified_at: new Date().toISOString() } : {}),
   }
 
   const { data, error } = await supabase.from('w2g_slips').insert(row).select('*').single()

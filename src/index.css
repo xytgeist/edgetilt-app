@@ -11225,6 +11225,17 @@ html.light [data-w2g-verify-modal] [data-w2g-attn-editor] {
 html.light [data-w2g-verify-modal] [data-w2g-preview] button .text-zinc-500 {
   color: #71717a !important;
 }
+html.light [data-w2g-kb-pill] > div {
+  background-color: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+}
+html.light [data-w2g-kb-pill] button {
+  color: #18181b !important;
+}
+html.light [data-w2g-kb-pill] button.bg-amber-500 {
+  background-color: #f59e0b !important;
+  color: #18181b !important;
+}
 
 /* Edge Pro Badge light mode styling */
 html.light [data-edge-pro-badge] {

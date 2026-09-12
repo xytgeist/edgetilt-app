@@ -842,7 +842,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 ## Edge Functions (test parity before production)
 
 - [x] `process-offer-uploads` deployed and validated on test
-- [x] `w2g-vision-extract` deployed on test (OpenAI vision W-2G six fields; **sign-in only** as of **`1.4.183`** … Starter+ is bulk in the app)
+- [x] `w2g-vision-extract` deployed on test + **prod** (OpenAI vision W-2G six fields; **sign-in only** as of **`1.4.183`** … Starter+ is bulk in the app; prod redeploy 2026-09-11)
 - [x] **`syndicate-trench-vision`** (ESPN team PBWR/PRWR/RBWR/RSWR screenshot) … Ops NFL Trenches paste. Same `OPENAI_API_KEY` as splits. Deploy test; prod when Ryan OKs.
 - [x] `get-web-push-config` deployed and validated on test
 - [x] `send-test-push` deployed and validated on test
@@ -1125,6 +1125,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-11:** **W-2G native loop on prod (Mac).** `test` → **`main`** (`44b53aa6`). Redeployed **`w2g-vision-extract`** on **`jtjgtucumuoswnbauxry`** (sign-in only). Web extract + $2,000 handpay prompt are live on edgetilt.com after Vercel. IPA camera / Vision OCR / PHPicker still need a new binary.
 - **2026-09-11:** **Public hammer / consensus labels are 4-0 and 2-1+ (Windows).** Overview tiles, ledger filter pills, row badges, and Ops dry-run chips. UFC stays 4-0 / 3-1. **`1.4.186`.**
 - **2026-09-11:** **W-2G handpay line is $2,000 (Mac).** Slot W-2G prompt was using the old $1,200 IRS line. Threshold is `W2G_SLOT_REPORT_THRESHOLD` **2000**. **`1.4.185`.**
 - **2026-09-11:** **W-2G logbook handpay + Photos bulk (Mac).** New Log Play cash out ≥ $2,000 prompts Scan the W-2G and prefills date + box 1. Starter+ IPA bulk uses `EdgeNative.pickPhotos` (PHPicker, max 40). First cut used $1,200 … fixed in **`1.4.185`.** **`1.4.184`.**

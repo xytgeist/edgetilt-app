@@ -212,7 +212,7 @@ supabase functions deploy lounge-send-activity-push
 supabase functions deploy poker-tournament-swap-notify
 # Poker Stable guest stake/session notify (after migrations 20260801000000–20260802120000):
 supabase functions deploy poker-stable-notify
-# W-2G vision extract (Starter+; after migrations 20260811400000–420000; needs OPENAI_API_KEY):
+# W-2G vision extract (sign-in only; after migrations 20260811400000–420000; needs OPENAI_API_KEY):
 supabase functions deploy w2g-vision-extract
 # Stripe billing (after migrations through 20260701160000 — full checklist docs/stripe-billing-test-to-prod-handoff.md):
 supabase functions deploy stripe-create-checkout-session

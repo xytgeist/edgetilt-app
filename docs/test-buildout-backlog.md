@@ -1131,6 +1131,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-12:** **UFC slate keeps one fight night (Windows).** Date window + drop double-booked names (Hokit vs Gane / Pereira futures) + largest intra-day cluster so Oktagon 9am PT does not glue onto Noche. Redeploy `lounge-odds-poll`. **`1.4.196`.**
 - **2026-09-12:** **UFC slate no longer eats Dec 31 futures (Windows).** Odds API `mma_mixed_martial_arts` dumped Hokit vs Gane and Hokit vs Pereira dated 2026-12-31 onto the Saturday card. `filterOddsEventsForNextUfcCard` keeps PT today / the next 10-day cluster and drops double-booked names. Redeploy `lounge-odds-poll`. **`1.4.195`.**
 - **2026-09-12:** **UFC Lounge dest on prod + today's backfill (Windows).** Redeployed `lounge-odds-poll` on **`jtjgtucumuoswnbauxry`**. Today's public tease `8677470f-…` + fan-only uncut `920747a1-…` posted with `skipPickInsert` (0 new ledger rows, VIP not re-sent). Afternoon board was 41 fights / 6 hammers / 16 consensus vs 9am's 55. Also lands the CFB Sat flip fix on prod Edge.
 - **2026-09-12:** **UFC slate hits public tease + fan-only Lounge (Windows).** Saturday 9am cron was VIP chat only. Implicit dest is now public tease (`formatUfcCardCaption`) + fan-only uncut (threaded) + VIP. Ops UFC Send to matches. Ledger insert skippable via `skipPickInsert` for Lounge backfill. Redeploy `lounge-odds-poll`. **`1.4.194`.**

@@ -22,6 +22,8 @@ export const FOOTBALL_SLATE_MAX_LOOKAHEAD_DAYS = 21
 export const UFC_SLATE_CLUSTER_DAYS = 1.5
 export const UFC_SLATE_MAX_LOOKAHEAD_DAYS = 10
 export const UFC_SLATE_LOOKBACK_HOURS = 18
+/** Split same-day cards (Oktagon 9am PT vs Noche prelims). Noche gaps stay under 1h. */
+export const UFC_SLATE_INTRA_GAP_HOURS = 1.5
 export const DEFAULT_MIN_BOOKS = 3
 /** Pre-match +EV edge alerts require stronger book consensus (v1). */
 export const EDGE_ALERT_MIN_BOOKS = 4
@@ -295,6 +297,30 @@ function mmaFighterKey(name: string): string {
   return String(name || '').trim().toLowerCase()
 }
 
+/** Keep the densest same-day cluster so a UFC night is not glued to an earlier Euro card. */
+export function largestIntraDayMmaCluster(events: OddsEvent[]): OddsEvent[] {
+  const sorted = [...(events || [])].sort(
+    (a, b) => Date.parse(String(a.commence_time)) - Date.parse(String(b.commence_time)),
+  )
+  if (sorted.length <= 1) return sorted
+
+  const gapMs = UFC_SLATE_INTRA_GAP_HOURS * 3_600_000
+  let best: OddsEvent[] = []
+  let cur: OddsEvent[] = [sorted[0]!]
+  for (let i = 1; i < sorted.length; i++) {
+    const prev = Date.parse(String(sorted[i - 1]!.commence_time))
+    const next = Date.parse(String(sorted[i]!.commence_time))
+    if (Number.isFinite(prev) && Number.isFinite(next) && next - prev <= gapMs) {
+      cur.push(sorted[i]!)
+      continue
+    }
+    if (cur.length > best.length) best = cur
+    cur = [sorted[i]!]
+  }
+  if (cur.length > best.length) best = cur
+  return best
+}
+
 /** Futures boards reuse the same name in two "fights" (Hokit vs Gane and Hokit vs Pereira). */
 export function dropDoubleBookedMmaEvents(events: OddsEvent[]): OddsEvent[] {
   const counts = new Map<string, number>()
@@ -330,7 +356,9 @@ export function filterOddsEventsForNextUfcCard(events: OddsEvent[]): OddsEvent[]
 
   const todayPt = ptDateKey()
   const todayEvents = dated.filter((ev) => ptDateFromCommenceIso(String(ev.commence_time || '')) === todayPt)
-  if (todayEvents.length) return dropDoubleBookedMmaEvents(todayEvents)
+  if (todayEvents.length) {
+    return dropDoubleBookedMmaEvents(largestIntraDayMmaCluster(todayEvents))
+  }
 
   const upcoming = dated.filter((ev) => Date.parse(String(ev.commence_time)) > now)
   if (!upcoming.length) return []
@@ -342,7 +370,7 @@ export function filterOddsEventsForNextUfcCard(events: OddsEvent[]): OddsEvent[]
     const t = Date.parse(String(ev.commence_time))
     return t >= clusterStart && t <= clusterEnd
   })
-  return dropDoubleBookedMmaEvents(cluster)
+  return dropDoubleBookedMmaEvents(largestIntraDayMmaCluster(cluster))
 }
 
 /** PT calendar date YYYY-MM-DD (America/Los_Angeles). */

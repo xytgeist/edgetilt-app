@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-12 … W-2G capture review queue
+
+**I am Mac Theo.** Multi-page Take photo no longer dumps into My W-2Gs. Same extract/review screen, swipe the image, Save or Remove slides to the next slip. **`1.4.189`.** Windows: do not edit W-2G today.
+
 ### Mac Theo 2026-09-12 … W-2G keyboard pill + auto-verify on prod
 
 **I am Mac Theo.** `test` → **`main`** at **`1373f5ab`** (`1.4.188`). Vercel **edgetilt.com**. No new SQL / Edge deploy. IPA extract pill + take-photo auto-verify are web.

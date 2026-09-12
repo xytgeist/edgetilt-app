@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   X,
   ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
@@ -95,6 +96,19 @@ function canvasToJpegBlob(canvas, quality = 0.92) {
   })
 }
 
+async function canvasPreviewUrl(canvas) {
+  const blob = await canvasToJpegBlob(canvas, 0.88)
+  return URL.createObjectURL(blob)
+}
+
+function revokeDraftPreview(draft) {
+  if (draft?.previewUrl) URL.revokeObjectURL(draft.previewUrl)
+}
+
+function engineStatusTag(engineLabel, confidence) {
+  return confidence != null ? `${engineLabel} ${Math.round(confidence)}%` : engineLabel
+}
+
 /**
  * W-2G tax archive: scan → six TurboTax fields → save image + row → collate by EIN.
  */
@@ -122,9 +136,18 @@ export default function W2GScannerScreen({
   const flatCanvasRef = useRef(null)
   const ocrJobIdRef = useRef(0)
   const uiExtractJobIdRef = useRef(0)
-  /** @type {{ current: Map<number, { slipId: string | null, alive: boolean }> }} */
+  /** @type {{ current: Map<number, { slipId: string | null, alive: boolean, draftId?: string | null }> }} */
   const extractJobsRef = useRef(new Map())
   const ocrConfidenceRef = useRef(null)
+  const fieldListRef = useRef(fieldsToList({}))
+  const ocrStatusRef = useRef('')
+  const ocrProgressRef = useRef(0)
+  const statusNoteRef = useRef('')
+  const resultCanvasHoldRef = useRef(/** @type {HTMLCanvasElement | null} */ (null))
+  /** @type {{ current: Array<Record<string, any>> }} */
+  const reviewDraftsRef = useRef([])
+  const activeDraftIdRef = useRef(/** @type {string | null} */ (null))
+  const swipeRef = useRef({ x: 0, y: 0, on: false, axis: /** @type {null | 'x' | 'y'} */ (null) })
   const logbookPrefillRef = useRef(/** @type {{ dateWon?: string, box1Winnings?: string } | null} */ (null))
   const bulkAbortRef = useRef(/** @type {AbortController | null} */ (null))
   /** @type {{ current: { source: HTMLCanvasElement, corners: any } | null }} */
@@ -155,6 +178,9 @@ export default function W2GScannerScreen({
   const [ocrStatus, setOcrStatus] = useState('') // '', loading, ready, error
   const [ocrProgress, setOcrProgress] = useState(0)
   const [fieldList, setFieldList] = useState(() => fieldsToList({}))
+  const [reviewDrafts, setReviewDrafts] = useState(/** @type {Array<Record<string, any>>} */ ([]))
+  const [activeDraftId, setActiveDraftId] = useState(/** @type {string | null} */ (null))
+  const [reviewSlideKey, setReviewSlideKey] = useState(0)
   const [logbookBanner, setLogbookBanner] = useState(
     /** @type {{ dateWon?: string, box1Winnings?: string } | null} */ (null),
   )
@@ -200,6 +226,14 @@ export default function W2GScannerScreen({
   const verifyAlreadyDone = isW2GSlipVerified(verifySlip)
   const verifyNeedsAttention = isW2GSlipNeedsAttention(verifySlip)
   const processingSlipIdSet = useMemo(() => new Set(processingSlipIds), [processingSlipIds])
+  fieldListRef.current = fieldList
+  ocrStatusRef.current = ocrStatus
+  ocrProgressRef.current = ocrProgress
+  statusNoteRef.current = statusNote
+  resultCanvasHoldRef.current = resultCanvas
+  const activeDraftIndex = reviewDrafts.findIndex((d) => d.id === activeDraftId)
+  const reviewCount = reviewDrafts.length
+  const activeReviewDraft = activeDraftIndex >= 0 ? reviewDrafts[activeDraftIndex] : null
 
   useEffect(() => {
     if (!logbookPrefill) return
@@ -233,6 +267,61 @@ export default function W2GScannerScreen({
     }
     uiExtractJobIdRef.current = 0
   }, [])
+
+  const updateDraftRecord = useCallback((draftId, patch, { refresh = false } = {}) => {
+    if (!draftId) return
+    reviewDraftsRef.current = reviewDraftsRef.current.map((d) =>
+      d.id === draftId ? { ...d, ...patch } : d,
+    )
+    if (refresh) setReviewDrafts(reviewDraftsRef.current.slice())
+  }, [])
+
+  const persistActiveDraft = useCallback(() => {
+    const id = activeDraftIdRef.current
+    if (!id) return
+    updateDraftRecord(id, {
+      fieldList: fieldListRef.current,
+      ocrStatus: ocrStatusRef.current,
+      ocrProgress: ocrProgressRef.current,
+      ocrConfidence: ocrConfidenceRef.current,
+      statusNote: statusNoteRef.current,
+      pretty: resultCanvasHoldRef.current || reviewDraftsRef.current.find((d) => d.id === id)?.pretty,
+    })
+  }, [updateDraftRecord])
+
+  const applyDraftToUi = useCallback((draft) => {
+    if (!draft) return
+    sourceCanvasRef.current = draft.source
+    flatCanvasRef.current = draft.flat
+    ocrConfidenceRef.current = draft.ocrConfidence
+    uiExtractJobIdRef.current = draft.extractJobId || 0
+    activeDraftIdRef.current = draft.id
+    setActiveDraftId(draft.id)
+    setResultCanvas(draft.pretty)
+    setFieldList(draft.fieldList?.length ? draft.fieldList : fieldsToList({}))
+    setOcrStatus(draft.ocrStatus || '')
+    setOcrProgress(draft.ocrProgress || 0)
+    setStatusNote(draft.statusNote || '')
+  }, [])
+
+  const clearReviewDrafts = useCallback(() => {
+    for (const draft of reviewDraftsRef.current) revokeDraftPreview(draft)
+    reviewDraftsRef.current = []
+    activeDraftIdRef.current = null
+    setReviewDrafts([])
+    setActiveDraftId(null)
+  }, [])
+
+  const showDraftAt = useCallback(
+    (index, { animate = true } = {}) => {
+      const next = reviewDraftsRef.current[index]
+      if (!next) return
+      persistActiveDraft()
+      applyDraftToUi(next)
+      if (animate) setReviewSlideKey((n) => n + 1)
+    },
+    [applyDraftToUi, persistActiveDraft],
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -373,7 +462,8 @@ export default function W2GScannerScreen({
     setOcrStatus('')
     setOcrProgress(0)
     setFieldList(fieldsToList({}))
-  }, [clearEditor])
+    clearReviewDrafts()
+  }, [clearEditor, clearReviewDrafts])
 
   const resetAll = useCallback(() => {
     cancelUnattachedExtractJobs()
@@ -414,10 +504,11 @@ export default function W2GScannerScreen({
   )
 
   const runExtractJob = useCallback(
-    async (flatCanvas, { forUi = true, slipId = null } = {}) => {
+    async (flatCanvas, { forUi = true, slipId = null, draftId = null } = {}) => {
       if (!flatCanvas) return 0
       const jobId = ++ocrJobIdRef.current
-      extractJobsRef.current.set(jobId, { slipId: slipId || null, alive: true })
+      extractJobsRef.current.set(jobId, { slipId: slipId || null, alive: true, draftId: draftId || null })
+      if (draftId) updateDraftRecord(draftId, { extractJobId: jobId, ocrStatus: 'loading', ocrProgress: 0 })
       if (forUi) {
         uiExtractJobIdRef.current = jobId
         setOcrStatus('loading')
@@ -432,6 +523,12 @@ export default function W2GScannerScreen({
         return Boolean(job?.alive)
       }
       const attachedSlipId = () => extractJobsRef.current.get(jobId)?.slipId || null
+      const attachedDraftId = () => extractJobsRef.current.get(jobId)?.draftId || null
+      const isActiveDraft = () => {
+        const id = attachedDraftId()
+        return Boolean(id && activeDraftIdRef.current === id)
+      }
+      const isUiJob = () => forUi && uiExtractJobIdRef.current === jobId
 
       const deliver = async (fields, confidence, engineLabel) => {
         if (!jobAlive()) return
@@ -441,18 +538,39 @@ export default function W2GScannerScreen({
           extractJobsRef.current.delete(jobId)
           return
         }
-        if (forUi && uiExtractJobIdRef.current === jobId) {
-          setFieldList(fieldsToList(mergeW2GLogbookPrefill(fields || {}, logbookPrefillRef.current)))
+        const merged = mergeW2GLogbookPrefill(
+          fields || {},
+          attachedDraftId() && reviewDraftsRef.current[0]?.id === attachedDraftId()
+            ? logbookPrefillRef.current
+            : attachedDraftId()
+              ? null
+              : logbookPrefillRef.current,
+        )
+        const nextFields = fieldsToList(merged)
+        const tag = engineStatusTag(engineLabel, confidence)
+        const targetDraft = attachedDraftId()
+        if (targetDraft) {
+          const current = reviewDraftsRef.current.find((d) => d.id === targetDraft)
+          const base = String(current?.statusNote || '')
+            .replace(/\s*·\s*(AI|OCR|Vision)\s+\d*%?/i, '')
+            .trim()
+          updateDraftRecord(targetDraft, {
+            fieldList: nextFields,
+            ocrStatus: 'ready',
+            ocrProgress: 100,
+            ocrConfidence: confidence ?? null,
+            statusNote: base ? `${base} · ${tag}` : tag,
+          })
+        }
+        if (isUiJob() || isActiveDraft()) {
+          setFieldList(nextFields)
           setOcrStatus('ready')
           ocrConfidenceRef.current = confidence ?? null
+          setOcrProgress(100)
           setStatusNote((prev) => {
             const base = String(prev || '')
               .replace(/\s*·\s*(AI|OCR|Vision)\s+\d*%?/i, '')
               .trim()
-            const tag =
-              confidence != null
-                ? `${engineLabel} ${Math.round(confidence)}%`
-                : engineLabel
             return base ? `${base} · ${tag}` : tag
           })
         }
@@ -464,9 +582,13 @@ export default function W2GScannerScreen({
         const targetSlipId = attachedSlipId()
         if (targetSlipId) {
           markSlipProcessing(targetSlipId, false)
-        } else if (forUi && uiExtractJobIdRef.current === jobId) {
-          setOcrStatus('ready')
-          setOcrProgress(0)
+        } else {
+          const targetDraft = attachedDraftId()
+          if (targetDraft) updateDraftRecord(targetDraft, { ocrStatus: 'ready', ocrProgress: 0 })
+          if (isUiJob() || isActiveDraft()) {
+            setOcrStatus('ready')
+            setOcrProgress(0)
+          }
         }
         extractJobsRef.current.delete(jobId)
       }
@@ -475,28 +597,39 @@ export default function W2GScannerScreen({
         const extracted = await extractW2GFields(flatCanvas, {
           supabase: supabaseClient,
           onProgress: (pct) => {
-            if (forUi && uiExtractJobIdRef.current === jobId && jobAlive()) {
-              setOcrProgress(pct)
-            }
+            if (!jobAlive()) return
+            const targetDraft = attachedDraftId()
+            if (targetDraft) updateDraftRecord(targetDraft, { ocrProgress: pct })
+            if (isUiJob() || isActiveDraft()) setOcrProgress(pct)
           },
           onPhase: (phase) => {
-            if (!(forUi && uiExtractJobIdRef.current === jobId && jobAlive())) return
+            if (!jobAlive()) return
             const label =
               phase === 'vision'
                 ? 'On-device extract…'
                 : phase === 'ai'
                   ? 'AI extract…'
                   : 'OCR…'
-            setStatusNote((prev) => {
-              const base = String(prev || '')
+            const targetDraft = attachedDraftId()
+            if (targetDraft) {
+              const current = reviewDraftsRef.current.find((d) => d.id === targetDraft)
+              const base = String(current?.statusNote || '')
                 .replace(/\s*·\s*(AI|OCR|Vision|On-device).*$/i, '')
                 .trim()
-              return base ? `${base} · ${label}` : label
-            })
+              updateDraftRecord(targetDraft, { statusNote: base ? `${base} · ${label}` : label })
+            }
+            if (isUiJob() || isActiveDraft()) {
+              setStatusNote((prev) => {
+                const base = String(prev || '')
+                  .replace(/\s*·\s*(AI|OCR|Vision|On-device).*$/i, '')
+                  .trim()
+                return base ? `${base} · ${label}` : label
+              })
+            }
           },
         })
         if (!jobAlive()) return jobId
-        if (forUi && uiExtractJobIdRef.current === jobId) setOcrProgress(100)
+        if (isUiJob() || isActiveDraft()) setOcrProgress(100)
         await deliver(extracted.fields, extracted.confidence, extracted.engineLabel)
       } catch {
         failSilent()
@@ -507,6 +640,7 @@ export default function W2GScannerScreen({
       markSlipProcessing,
       patchSlipFieldsSilent,
       supabaseClient,
+      updateDraftRecord,
     ],
   )
 
@@ -526,9 +660,54 @@ export default function W2GScannerScreen({
       } catch {
         /* keep prior */
       }
-      void runExtractJob(flat, { forUi: true })
+      const previewUrl = await canvasPreviewUrl(pretty).catch(() => '')
+      const existingId = activeDraftIdRef.current
+      if (existingId && reviewDraftsRef.current.some((d) => d.id === existingId)) {
+        const prev = reviewDraftsRef.current.find((d) => d.id === existingId)
+        if (prev?.extractJobId) {
+          const job = extractJobsRef.current.get(prev.extractJobId)
+          if (job && !job.slipId) job.alive = false
+        }
+        revokeDraftPreview(prev)
+        updateDraftRecord(
+          existingId,
+          {
+            source: sourceCanvasRef.current || docCanvas,
+            pretty,
+            flat,
+            previewUrl,
+            fieldList: fieldsToList({}),
+            ocrStatus: 'loading',
+            ocrProgress: 0,
+            ocrConfidence: null,
+            statusNote: note || 'Ready',
+          },
+          { refresh: true },
+        )
+        void runExtractJob(flat, { forUi: true, draftId: existingId })
+        return
+      }
+      const draft = {
+        id: crypto.randomUUID(),
+        source: sourceCanvasRef.current || docCanvas,
+        pretty,
+        flat,
+        previewUrl,
+        fieldList: fieldsToList({}),
+        ocrStatus: 'loading',
+        ocrProgress: 0,
+        ocrConfidence: null,
+        statusNote: note || 'Ready',
+        extractJobId: 0,
+      }
+      for (const old of reviewDraftsRef.current) revokeDraftPreview(old)
+      reviewDraftsRef.current = [draft]
+      activeDraftIdRef.current = draft.id
+      setReviewDrafts([draft])
+      setActiveDraftId(draft.id)
+      void runExtractJob(flat, { forUi: true, draftId: draft.id })
     },
-    [runExtractJob],
+    [runExtractJob, updateDraftRecord],
   )
 
   finishPrettyRef.current = finishPretty
@@ -593,6 +772,16 @@ export default function W2GScannerScreen({
             radius: '14px',
           },
           onCancel: () => {
+            const drafts = reviewDraftsRef.current
+            if (drafts.length) {
+              const draft =
+                drafts.find((d) => d.id === activeDraftIdRef.current) || drafts[0]
+              clearEditor()
+              applyDraftToUi(draft)
+              setPhase('result')
+              setBusy(false)
+              return
+            }
             resetAllRef.current?.()
           },
           onConfirm: (nextCorners) => {
@@ -635,7 +824,7 @@ export default function W2GScannerScreen({
       editorRef.current?.destroy?.()
       editorRef.current = null
     }
-  }, [phase, adjustEpoch, clearEditor])
+  }, [applyDraftToUi, phase, adjustEpoch, clearEditor])
 
   const processFile = useCallback(
     async (file, options = {}) => {
@@ -646,6 +835,7 @@ export default function W2GScannerScreen({
       const skipDetect = Boolean(options.skipDetect)
       clearEditor()
       cancelUnattachedExtractJobs()
+      clearReviewDrafts()
       setError('')
       setResultCanvas(null)
       setFieldList(fieldsToList({}))
@@ -681,7 +871,85 @@ export default function W2GScannerScreen({
         setError(err?.message || 'Scan failed. Try another photo.')
       }
     },
-    [cancelUnattachedExtractJobs, clearEditor, finishPretty, openAdjust],
+    [cancelUnattachedExtractJobs, clearEditor, clearReviewDrafts, finishPretty, openAdjust],
+  )
+
+  const processCaptureFiles = useCallback(
+    async (files) => {
+      const list = [...(files || [])].filter((f) => String(f?.type || '').startsWith('image/'))
+      if (!list.length) {
+        setError('Pick a photo of the W-2G.')
+        return
+      }
+      if (list.length === 1) {
+        await processFile(list[0], { skipDetect: true })
+        return
+      }
+      clearEditor()
+      cancelUnattachedExtractJobs()
+      clearReviewDrafts()
+      setError('')
+      setResultCanvas(null)
+      setFieldList(fieldsToList({}))
+      setOcrStatus('')
+      setBusy(true)
+      setPhase('scanning')
+      try {
+        /** @type {Array<Record<string, any>>} */
+        const built = []
+        for (let i = 0; i < list.length; i++) {
+          setStatusNote(`Preparing ${i + 1}/${list.length}…`)
+          const source = await loadImageCanvasFromFile(list[i])
+          const flat = await flattenCroppedDocument(source)
+          const pretty = presentPrettyScan(flat)
+          const previewUrl = await canvasPreviewUrl(pretty)
+          built.push({
+            id: crypto.randomUUID(),
+            source,
+            pretty,
+            flat,
+            previewUrl,
+            fieldList: fieldsToList({}),
+            ocrStatus: 'loading',
+            ocrProgress: 0,
+            ocrConfidence: null,
+            statusNote: 'iPhone scan',
+            extractJobId: 0,
+          })
+        }
+        reviewDraftsRef.current = built
+        setReviewDrafts(built)
+        applyDraftToUi(built[0])
+        setPhase('result')
+        setBusy(false)
+        setReviewSlideKey((n) => n + 1)
+        try {
+          const file = await canvasToPngFile(built[0].pretty, 'probe-share.png')
+          setCanNativeShare(Boolean(navigator.canShare?.({ files: [file] })))
+        } catch {
+          /* keep prior */
+        }
+        for (const draft of built) {
+          void runExtractJob(draft.flat, {
+            forUi: draft.id === built[0].id,
+            draftId: draft.id,
+          })
+        }
+      } catch (err) {
+        setBusy(false)
+        setPhase('idle')
+        setError(err?.message || 'Scan failed. Try another photo.')
+        clearReviewDrafts()
+      }
+    },
+    [
+      applyDraftToUi,
+      cancelUnattachedExtractJobs,
+      clearEditor,
+      clearReviewDrafts,
+      processFile,
+      runExtractJob,
+    ],
   )
 
   const onPickFile = (event) => {
@@ -695,15 +963,13 @@ export default function W2GScannerScreen({
   }, [])
 
   const runBulkImport = useCallback(
-    async (files, options = {}) => {
+    async (files) => {
       const list = [...(files || [])].filter((f) => String(f?.type || '').startsWith('image/'))
-      const skipEntitlement = Boolean(options.skipEntitlement)
-      const skipDetect = Boolean(options.skipDetect)
       if (!list.length) {
         setError('Pick one or more W-2G photos.')
         return
       }
-      if (!skipEntitlement && !canUseBulkImport) {
+      if (!canUseBulkImport) {
         onRequireSubscribe?.(PRODUCT_SLOTS_EDGE_STARTER)
         return
       }
@@ -714,12 +980,12 @@ export default function W2GScannerScreen({
       try {
         const { data } = await supabaseClient.auth.getUser()
         if (!data?.user?.id) {
-          setError(skipEntitlement ? 'Sign in to save these W-2Gs.' : 'Sign in to bulk-import W-2Gs.')
+          setError('Sign in to bulk-import W-2Gs.')
           onOpenAuth?.('login')
           return
         }
       } catch {
-        setError(skipEntitlement ? 'Sign in to save these W-2Gs.' : 'Sign in to bulk-import W-2Gs.')
+        setError('Sign in to bulk-import W-2Gs.')
         onOpenAuth?.('login')
         return
       }
@@ -746,16 +1012,11 @@ export default function W2GScannerScreen({
           if (ac.signal.aborted) break
           const file = list[i]
           setBulkProgress({ index: i + 1, total: list.length, fileName: file.name || `Image ${i + 1}` })
-          setStatusNote(
-            skipEntitlement
-              ? `Saving ${i + 1}/${list.length}…`
-              : `Bulk import ${i + 1}/${list.length}…`,
-          )
+          setStatusNote(`Bulk import ${i + 1}/${list.length}…`)
           try {
             const result = await processW2GImageForArchive(file, {
               signal: ac.signal,
               supabase: supabaseClient,
-              skipDetect,
             })
             if (result.ok) {
               await saveW2GSlip({
@@ -763,7 +1024,6 @@ export default function W2GScannerScreen({
                 fields: result.fields,
                 imageBlob: result.imageBlob,
                 ocrConfidence: result.ocrConfidence,
-                markVerified: skipDetect,
               })
               saved += 1
               continue
@@ -817,14 +1077,9 @@ export default function W2GScannerScreen({
         if (result?.cancelled) return
         if (result?.ok) {
           const files = filesFromNativeScanImages(result)
-          if (files.length > 1) {
+          if (files.length) {
             void triggerEdgeNativeHaptic('success')
-            void runBulkImport(files, { skipEntitlement: true, skipDetect: true })
-            return
-          }
-          if (files[0]) {
-            void triggerEdgeNativeHaptic('success')
-            void processFile(files[0], { skipDetect: true })
+            void processCaptureFiles(files)
             return
           }
         }
@@ -833,7 +1088,7 @@ export default function W2GScannerScreen({
       }
     }
     cameraInputRef.current?.click()
-  }, [processFile, runBulkImport])
+  }, [processCaptureFiles])
 
   const onPickBulkFiles = (event) => {
     // Snapshot before clearing … input.files is a live FileList and value='' empties it.
@@ -950,6 +1205,68 @@ export default function W2GScannerScreen({
     setFieldList((prev) => prev.map((f) => (f.key === key ? { ...f, value } : f)))
   }
 
+  const removeActiveReviewDraft = () => {
+    const id = activeDraftIdRef.current
+    if (!id) {
+      resetAll()
+      return
+    }
+    const idx = reviewDraftsRef.current.findIndex((d) => d.id === id)
+    const draft = idx >= 0 ? reviewDraftsRef.current[idx] : null
+    if (draft?.extractJobId) {
+      const job = extractJobsRef.current.get(draft.extractJobId)
+      if (job && !job.slipId) job.alive = false
+    }
+    revokeDraftPreview(draft)
+    const leftover = reviewDraftsRef.current.filter((d) => d.id !== id)
+    reviewDraftsRef.current = leftover
+    setReviewDrafts(leftover)
+    if (!leftover.length) {
+      resetAll()
+      return
+    }
+    const nextIdx = idx >= 0 && idx < leftover.length ? idx : leftover.length - 1
+    applyDraftToUi(leftover[nextIdx])
+    setReviewSlideKey((n) => n + 1)
+    setPhase('result')
+  }
+
+  const goReviewDraft = (delta) => {
+    if (reviewCount < 2 || activeDraftIndex < 0) return
+    const next = Math.max(0, Math.min(reviewCount - 1, activeDraftIndex + delta))
+    if (next === activeDraftIndex) return
+    showDraftAt(next)
+  }
+
+  const onReviewPointerDown = (event) => {
+    if (reviewCount < 2) return
+    swipeRef.current = { x: event.clientX, y: event.clientY, on: true, axis: null }
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId)
+    } catch {
+      /* ignore */
+    }
+  }
+  const onReviewPointerMove = (event) => {
+    const swipe = swipeRef.current
+    if (!swipe.on) return
+    const dx = event.clientX - swipe.x
+    const dy = event.clientY - swipe.y
+    if (!swipe.axis && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+      swipe.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
+    }
+    if (swipe.axis === 'x') event.preventDefault()
+  }
+  const onReviewPointerUp = (event) => {
+    const swipe = swipeRef.current
+    if (!swipe.on) return
+    swipe.on = false
+    if (swipe.axis !== 'x') return
+    const dx = event.clientX - swipe.x
+    if (dx <= -48) goReviewDraft(1)
+    else if (dx >= 48) goReviewDraft(-1)
+  }
+
   const fieldsObject = useMemo(() => {
     /** @type {Record<string, string>} */
     const o = {}
@@ -1000,21 +1317,15 @@ export default function W2GScannerScreen({
       const liveJob = uiJobId ? extractJobsRef.current.get(uiJobId) : null
       if (extractStillRunning && liveJob?.alive) {
         liveJob.slipId = slip.id
+        liveJob.draftId = null
         markSlipProcessing(slip.id, true)
         uiExtractJobIdRef.current = 0
-        dismissScanUi()
       } else if (
         flatForLater &&
         !fieldsObject.payerName &&
         !fieldsObject.box1Winnings
       ) {
-        // Fields empty and no live job … start archive-bound extract.
-        dismissScanUi()
         void runExtractJob(flatForLater, { forUi: false, slipId: slip.id })
-      } else {
-        cancelUnattachedExtractJobs()
-        flatCanvasRef.current = null
-        dismissScanUi()
       }
 
       setSlips((prev) => {
@@ -1029,6 +1340,28 @@ export default function W2GScannerScreen({
           /* thumb later on refresh */
         }
       }
+
+      const savedDraftId = activeDraftIdRef.current
+      const savedIdx = reviewDraftsRef.current.findIndex((d) => d.id === savedDraftId)
+      const leftover = reviewDraftsRef.current.filter((d) => d.id !== savedDraftId)
+      const savedDraft = reviewDraftsRef.current.find((d) => d.id === savedDraftId)
+      revokeDraftPreview(savedDraft)
+      reviewDraftsRef.current = leftover
+      setReviewDrafts(leftover)
+
+      if (leftover.length) {
+        const nextIdx = savedIdx >= 0 && savedIdx < leftover.length ? savedIdx : leftover.length - 1
+        applyDraftToUi(leftover[nextIdx])
+        setReviewSlideKey((n) => n + 1)
+        setPhase('result')
+        return
+      }
+
+      if (!extractStillRunning || !liveJob?.alive) {
+        cancelUnattachedExtractJobs()
+        flatCanvasRef.current = null
+      }
+      dismissScanUi()
       setMainTab('archive')
     } catch (err) {
       setError(err?.message || 'Save failed.')
@@ -1703,16 +2036,68 @@ export default function W2GScannerScreen({
                 {statusNote ? (
                   <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500">{statusNote}</div>
                 ) : null}
-                <div className="overflow-hidden rounded-2xl bg-white p-2 ring-1 ring-zinc-800" data-w2g-preview>
-                  {resultPreviewUrl ? (
+                <div
+                  className="relative overflow-hidden rounded-2xl bg-white p-2 ring-1 ring-zinc-800 touch-pan-y"
+                  data-w2g-preview
+                  onPointerDown={onReviewPointerDown}
+                  onPointerMove={onReviewPointerMove}
+                  onPointerUp={onReviewPointerUp}
+                  onPointerCancel={onReviewPointerUp}
+                >
+                  {activeReviewDraft?.previewUrl || resultPreviewUrl ? (
                     <img
-                      src={resultPreviewUrl}
+                      key={`${activeDraftId || 'solo'}-${reviewSlideKey}`}
+                      src={activeReviewDraft?.previewUrl || resultPreviewUrl}
                       alt="Scanned W-2G"
+                      data-w2g-preview-slide
                       className="mx-auto max-h-[min(70vh,640px)] w-full object-contain"
+                      draggable={false}
                     />
                   ) : (
                     <div className="grid min-h-[200px] place-items-center text-sm text-zinc-500">Preparing preview…</div>
                   )}
+                  {reviewCount > 1 ? (
+                    <>
+                      <div
+                        className="pointer-events-none absolute inset-x-0 top-2 flex justify-center"
+                        data-w2g-preview-count
+                      >
+                        <span className="rounded-full bg-zinc-950/70 px-2.5 py-0.5 text-[11px] font-semibold text-white">
+                          {activeDraftIndex + 1} / {reviewCount}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={activeDraftIndex <= 0}
+                        aria-label="Previous slip"
+                        className="absolute left-1 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-zinc-950/55 text-white touch-manipulation disabled:opacity-20"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={() => goReviewDraft(-1)}
+                      >
+                        <ChevronLeft size={20} className="pointer-events-none" aria-hidden />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={activeDraftIndex >= reviewCount - 1}
+                        aria-label="Next slip"
+                        className="absolute right-1 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-zinc-950/55 text-white touch-manipulation disabled:opacity-20"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={() => goReviewDraft(1)}
+                      >
+                        <ChevronRight size={20} className="pointer-events-none" aria-hidden />
+                      </button>
+                      <div className="mt-2 flex justify-center gap-1.5" data-w2g-preview-dots>
+                        {reviewDrafts.map((draft) => (
+                          <span
+                            key={draft.id}
+                            className={`h-1.5 rounded-full ${
+                              draft.id === activeDraftId ? 'w-4 bg-amber-400' : 'w-1.5 bg-zinc-400/70'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </>
+                  ) : null}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -1724,7 +2109,11 @@ export default function W2GScannerScreen({
                     data-w2g-save
                   >
                     <CloudUpload size={16} strokeWidth={1.75} aria-hidden />
-                    {saving ? 'Saving…' : 'Save to archive'}
+                    {saving
+                      ? 'Saving…'
+                      : reviewCount > 1
+                        ? `Save to archive · ${activeDraftIndex + 1} of ${reviewCount}`
+                        : 'Save to archive'}
                   </button>
                   <button
                     type="button"
@@ -1757,11 +2146,12 @@ export default function W2GScannerScreen({
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={resetAll}
+                    onClick={removeActiveReviewDraft}
                     className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-zinc-900 px-3 text-sm font-semibold text-zinc-200 touch-manipulation disabled:opacity-60"
+                    data-w2g-remove-draft
                   >
-                    <RefreshCw size={16} strokeWidth={1.75} aria-hidden />
-                    New scan
+                    <Trash2 size={16} strokeWidth={1.75} aria-hidden />
+                    Remove
                   </button>
                 </div>
 

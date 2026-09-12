@@ -146,7 +146,7 @@ Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows**
 - [x] **Call audio web→native hook (2026-08-26):** `chatCallAudioSession` → `setAudioSession(voiceChat|default)` in shell. **Superseded for IPA media 2026-08-27:** native LiveKit owns the session via CallKit `didActivate`.
 - [ ] **Native LiveKit lock-screen smoke (owed):** force-close IPA, lock, answer, **do not unlock**. Caller must leave `Ringing…` with two-way audio. Unlock: camera / remote video on video calls. Remote hangup clears CallKit. Unlocked in-app uses the same native room (no `LiveKitRoom`).
 - [ ] **W-2G VisionKit Take photo smoke (2026-09-11):** current IPA, Slots → W-2G Scanner → Take photo. Expect the iOS document camera (not the system camera roll sheet). Cancel returns idle. A good snap skips `scanic` and lands on extract. Simulator / old IPA still uses the file input.
-- [ ] **W-2G multi-page Take photo (2026-09-12):** current IPA, capture 2–3 slips in one VisionKit session. All pages should save to My W-2Gs (not only the first). One page still opens the editor.
+- [ ] **W-2G multi-page Take photo (2026-09-12):** current IPA, capture 2–3 slips in one VisionKit session. Land on the extract/review screen, swipe the image frame, Save keeps you there and slides in the next. Remove drops only that slip. Last save goes to My W-2Gs.
 - [ ] **W-2G My W-2Gs delete (2026-09-12):** trash on a slip opens the in-app confirm and removes the row. IPA `window.confirm` was a silent no.
 - [ ] **W-2G extract keyboard pill + auto-verify (2026-09-12):** IPA, tap a tax field on the extract or verify list. Prev / next / Done pill sits above the keys. Take photo save (after extract) shows Verified in My W-2Gs. Library bulk stays Verify.
 - [ ] **W-2G Vision OCR smoke (2026-09-11):** current IPA, scan a slip on **free and Starter+**. Same path: **On-device extract** / **Vision N%**. A blurry signed-in slip may flip to **AI extract**. Bulk lock is the only Starter+ difference. Redeploy **`w2g-vision-extract`** on test (sign-in only).
@@ -1128,6 +1128,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-12:** **W-2G capture review queue (Mac).** Multi-page Take photo stays on extract/review (swipe + save-next). New scan is **Remove**. Library bulk still auto-saves. **`1.4.189`.**
 - **2026-09-12:** **W-2G keyboard pill + auto-verify on prod (Mac).** `test` → **`main`** (`1373f5ab`, **`1.4.188`**). Web live after Vercel. No new SQL / Edge deploy.
 - **2026-09-12:** **W-2G extract keyboard pill + auto-verify (Mac).** IPA tax-field focus shows prev / next / Done above the keys (`dismissEdgeKeyboard`). Take photo / extract saves (and capture-batch pages that extract) land as Verified in My W-2Gs. Library bulk and ATTN stay unverified. **`1.4.188`.**
 - **2026-09-12:** **W-2G delete + multi-page on prod (Mac).** `test` → **`main`** (`da23489a`, **`1.4.187`**). Web live after Vercel. No new SQL / Edge deploy. Native JS dialogs still need a new IPA; in-app delete confirm does not.

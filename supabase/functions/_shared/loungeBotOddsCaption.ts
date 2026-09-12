@@ -18,6 +18,10 @@ export const DEFAULT_ODDS_WINDOW_HOURS = 48
  */
 export const FOOTBALL_SLATE_CLUSTER_DAYS = 5
 export const FOOTBALL_SLATE_MAX_LOOKAHEAD_DAYS = 21
+/** Next UFC night only. Odds API mma_* dumps every promotion plus Dec 31 futures. */
+export const UFC_SLATE_CLUSTER_DAYS = 1.5
+export const UFC_SLATE_MAX_LOOKAHEAD_DAYS = 10
+export const UFC_SLATE_LOOKBACK_HOURS = 18
 export const DEFAULT_MIN_BOOKS = 3
 /** Pre-match +EV edge alerts require stronger book consensus (v1). */
 export const EDGE_ALERT_MIN_BOOKS = 4
@@ -285,6 +289,60 @@ export function filterOddsEventsForNextFootballSlate(
   const firstMs = Date.parse(String(upcoming[0].commence_time))
   const clusterEnd = firstMs + clusterDays * 86_400_000
   return upcoming.filter((ev) => Date.parse(String(ev.commence_time)) <= clusterEnd)
+}
+
+function mmaFighterKey(name: string): string {
+  return String(name || '').trim().toLowerCase()
+}
+
+/** Futures boards reuse the same name in two "fights" (Hokit vs Gane and Hokit vs Pereira). */
+export function dropDoubleBookedMmaEvents(events: OddsEvent[]): OddsEvent[] {
+  const counts = new Map<string, number>()
+  for (const ev of events) {
+    for (const name of [ev.home_team, ev.away_team]) {
+      const key = mmaFighterKey(String(name || ''))
+      if (!key) continue
+      counts.set(key, (counts.get(key) || 0) + 1)
+    }
+  }
+  return events.filter((ev) => {
+    const home = mmaFighterKey(String(ev.home_team || ''))
+    const away = mmaFighterKey(String(ev.away_team || ''))
+    return (counts.get(home) || 0) <= 1 && (counts.get(away) || 0) <= 1
+  })
+}
+
+/**
+ * Next UFC / MMA fight night: PT today if that card exists, else the next kickoff cluster.
+ * Caps lookahead so Dec 31 futures never land on the Saturday slate.
+ */
+export function filterOddsEventsForNextUfcCard(events: OddsEvent[]): OddsEvent[] {
+  const now = Date.now()
+  const maxMs = now + UFC_SLATE_MAX_LOOKAHEAD_DAYS * 86_400_000
+  const dated = (events || [])
+    .filter((ev) => {
+      const t = Date.parse(String(ev.commence_time || ''))
+      return Number.isFinite(t) && t <= maxMs
+    })
+    .sort((a, b) => Date.parse(String(a.commence_time)) - Date.parse(String(b.commence_time)))
+
+  if (!dated.length) return []
+
+  const todayPt = ptDateKey()
+  const todayEvents = dated.filter((ev) => ptDateFromCommenceIso(String(ev.commence_time || '')) === todayPt)
+  if (todayEvents.length) return dropDoubleBookedMmaEvents(todayEvents)
+
+  const upcoming = dated.filter((ev) => Date.parse(String(ev.commence_time)) > now)
+  if (!upcoming.length) return []
+
+  const firstMs = Date.parse(String(upcoming[0].commence_time))
+  const clusterStart = firstMs - UFC_SLATE_LOOKBACK_HOURS * 3_600_000
+  const clusterEnd = firstMs + UFC_SLATE_CLUSTER_DAYS * 86_400_000
+  const cluster = dated.filter((ev) => {
+    const t = Date.parse(String(ev.commence_time))
+    return t >= clusterStart && t <= clusterEnd
+  })
+  return dropDoubleBookedMmaEvents(cluster)
 }
 
 /** PT calendar date YYYY-MM-DD (America/Los_Angeles). */

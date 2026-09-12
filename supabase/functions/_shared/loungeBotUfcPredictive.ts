@@ -17,6 +17,7 @@ import {
   americanToImplied,
   impliedToAmerican,
   shortDisplayName,
+  filterOddsEventsForNextUfcCard,
 } from './loungeBotOddsCaption.ts'
 import {
   type UfcFighterMetric,
@@ -139,12 +140,15 @@ export async function buildUfcSlateCard(
 ): Promise<UfcSlateCard | null> {
   if (!events || events.length === 0) return null
 
+  const slateEvents = filterOddsEventsForNextUfcCard(events)
+  if (!slateEvents.length) return null
+
   const metricsList = await fetchUfcFighterMetrics(supabase)
   const fights: UfcFightPick[] = []
   const hammers: UfcFightPick[] = []
   const consensus: UfcFightPick[] = []
 
-  for (const ev of events) {
+  for (const ev of slateEvents) {
     const fighterA = ev.home_team // In Odds API, fighter 1 is home_team
     const fighterB = ev.away_team
     if (!fighterA || !fighterB) continue

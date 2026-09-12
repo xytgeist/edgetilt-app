@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-12 … W-2G delete + multi-page on prod
+
+**I am Mac Theo.** `test` → **`main`** at **`da23489a`** (`1.4.187`). Vercel **edgetilt.com**. No new SQL / Edge deploy. Delete confirm + multi-page Take photo are web. Native JS dialogs still need a new IPA.
+
 ### Mac Theo 2026-09-12 … W-2G delete + multi-page capture
 
 **I am Mac Theo.** My W-2Gs delete was a silent no on IPA (`window.confirm` with a custom `WKUIDelegate` and no JS dialog methods). Trash now uses AppShell confirm. Take photo asks VisionKit for 8 pages and imports every page when you keep scanning. Native alert/confirm/prompt landed for the next IPA. **`1.4.187`.** Windows: do not edit W-2G / `AppShell` W-2G wiring / `EdgeNativeBridge` JS dialogs today.

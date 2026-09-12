@@ -1127,6 +1127,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-12:** **W-2G delete + multi-page on prod (Mac).** `test` → **`main`** (`da23489a`, **`1.4.187`**). Web live after Vercel. No new SQL / Edge deploy. Native JS dialogs still need a new IPA; in-app delete confirm does not.
 - **2026-09-12:** **W-2G delete + multi-page capture (Mac).** My W-2Gs trash uses AppShell confirm (`window.confirm` is silent on IPA because custom `WKUIDelegate` had no JS dialogs). Take photo now keeps every VisionKit page (max 8) and imports 2+ as a free capture batch. Native JS alert/confirm/prompt landed for the next IPA. **`1.4.187`.**
 - **2026-09-11:** **W-2G native loop on prod (Mac).** `test` → **`main`** (`44b53aa6`). Redeployed **`w2g-vision-extract`** on **`jtjgtucumuoswnbauxry`** (sign-in only). Web extract + $2,000 handpay prompt are live on edgetilt.com after Vercel. IPA camera / Vision OCR / PHPicker still need a new binary.
 - **2026-09-11:** **Public hammer / consensus labels are 4-0 and 2-1+ (Windows).** Overview tiles, ledger filter pills, row badges, and Ops dry-run chips. UFC stays 4-0 / 3-1. **`1.4.186`.**

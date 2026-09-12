@@ -78,6 +78,7 @@ import {
 } from '../utils/loungeSearchSortPref.js'
 import { LOUNGE_NOTIFICATION_PREF_ROWS } from '../utils/loungeNotificationPreferencesApi.js'
 import LoungeDockMenuLayoutHelp from './LoungeDockMenuLayoutHelp.jsx'
+import EdgeStatusBarScrollPlate from './EdgeStatusBarScrollPlate.jsx'
 import IosPwaInstallHelpDialog from './IosPwaInstallHelpDialog.jsx'
 import { getTheme, setTheme } from '../utils/theme.js'
 import { Z_LOUNGE_DOCK_SLIDE_OVER_DETAIL_PROFILE } from '../constants/appZIndex.js'
@@ -1135,6 +1136,11 @@ export default function LoungeDockSlidePanels({
         onPointerUp={endPointerGesture}
         onPointerCancel={endPointerGesture}
       >
+      <EdgeStatusBarScrollPlate
+        reveal={panelTitleReveal}
+        heightPx={viewportTitleTopPx}
+        position="absolute"
+      />
       <div
         ref={panelTitleBarRef}
         className="pointer-events-auto absolute left-0 right-0 z-20 w-full border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform"

@@ -109,6 +109,17 @@ html:not(.light) [data-edge-scroll-shell] {
   background-color: #030712 !important;
 }
 
+/* Status-bar plate: fades to opaque as the title hides. Cinema-solid in both themes. */
+[data-edge-status-bar-plate] {
+  background-color: #09090b;
+}
+html:not(.light) [data-edge-status-bar-plate] {
+  background-color: #030712;
+}
+html.light [data-edge-status-bar-plate] {
+  background-color: #fafafa;
+}
+
 /*
  * LVSlotPro brand palette
  * - Tailwind: bg-lv-red, text-lv-blue, border-lv-purple, …

@@ -406,6 +406,7 @@ import {
   loungeTitleBarHideTranslateYPx,
 } from '../../utils/loungeTitleRevealScroll.js'
 import { readCssSafeAreaTopPx } from '../../utils/edgeSafeAreaCss.js'
+import EdgeStatusBarScrollPlate from '../../components/EdgeStatusBarScrollPlate.jsx'
 import LoungeDockSlidePanels from '../../components/LoungeDockSlidePanels.jsx'
 import LoungePostCommentThread from './LoungePostCommentThread.jsx'
 import {
@@ -16321,6 +16322,12 @@ export default function SocialFeed({
       ) : null}
       {/* Fixed title bar: hidden while dock slide panel is open. */}
       {!loungeDockPanel ? (
+        <>
+        <EdgeStatusBarScrollPlate
+          reveal={loungeTitleReveal}
+          heightPx={loungeFeedViewportTopPx}
+          className="max-w-2xl"
+        />
         <div
           ref={loungeTitleBarRef}
           data-lounge-title-bar
@@ -16346,6 +16353,7 @@ export default function SocialFeed({
             }
           />
         </div>
+        </>
       ) : null}
 
       {/* LOUNGE_DOCK_FOOTER_BAR_DISABLED - see import above

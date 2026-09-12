@@ -11,6 +11,7 @@ import {
   unlockStableLayoutViewportHeight,
 } from '../utils/stableLayoutViewport.js'
 import { loungeTitleBarHideTranslateYPx } from '../utils/loungeTitleRevealScroll.js'
+import EdgeStatusBarScrollPlate from './EdgeStatusBarScrollPlate.jsx'
 
 /**
  * Fixed EDGE title bar + scroll-linked hide/show - same chrome and tuning as
@@ -172,6 +173,11 @@ export default function ScrollLinkedEdgeTitleBarShell({
       {...(stableLayoutViewport ? { 'data-stable-layout-viewport': '' } : {})}
       className={`mx-auto flex ${heightClass} min-h-0 w-full ${colMax} flex-col overflow-hidden bg-zinc-950 pt-[max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))]`}
     >
+      <EdgeStatusBarScrollPlate
+        reveal={titleReveal}
+        heightPx={feedViewportTopPx}
+        className={colMax}
+      />
       <div
         ref={titleBarRef}
         data-edge-scroll-shell

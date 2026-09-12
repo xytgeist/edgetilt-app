@@ -47,6 +47,7 @@ export function implicitDestForPollAction(action: string): PublishDestinations {
   switch (String(action || '').trim()) {
     case 'nfl_slate_card':
     case 'cfb_slate_card':
+    case 'ufc_slate_card':
       return { loungePublic: true, loungeFanOnly: true, vipChat: true, x: false }
     case 'nfl_primetime_spotlight':
     case 'nfl_primetime_lock':
@@ -69,7 +70,6 @@ export function implicitDestForPollAction(action: string): PublishDestinations {
     case 'nfl_sat_vip_adds_kills':
     case 'cfb_wed_midweek_vip':
     case 'cfb_sat_vip_adds_kills':
-    case 'ufc_slate_card':
       return { loungePublic: false, loungeFanOnly: false, vipChat: true, x: false }
     default:
       return { loungePublic: true, loungeFanOnly: false, vipChat: false, x: false }

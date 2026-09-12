@@ -132,7 +132,14 @@ export async function runPicksForToday(
   const requestedSport = String(opts.sportKey || '').trim()
 
   if (requestedSport === 'mma_mixed_martial_arts') {
-    const { buildUfcSlateCard, formatUfcCardCaption, publishAndRecordUfcCard, ufcDeskEvalBoard } = await import(
+    const {
+      buildUfcSlateCard,
+      formatUfcCardCaption,
+      formatUfcFanOnlyBodies,
+      formatUfcVipCardCaption,
+      publishAndRecordUfcCard,
+      ufcDeskEvalBoard,
+    } = await import(
       './loungeBotUfcPredictive.ts'
     )
     const oddsData = await fetchSportOdds('mma_mixed_martial_arts', ['us', 'us2', 'eu'], ['h2h', 'totals'])
@@ -163,9 +170,9 @@ export async function runPicksForToday(
     }
 
     if (dryRun) {
-      const { formatUfcVipCardCaption } = await import('./loungeBotUfcPredictive.ts')
       const previewCaption = formatUfcCardCaption(card)
       const vipPreviewCaption = formatUfcVipCardCaption(card)
+      const fanOnly = formatUfcFanOnlyBodies(card)
       return {
         ok: true,
         dryRun: true,
@@ -180,6 +187,8 @@ export async function runPicksForToday(
         vipPreviewCaption,
         ...destPreviewPayload({
           publicCaption: previewCaption,
+          fanOnlyCaption: fanOnly.caption,
+          fanOnlyThreadParts: fanOnly.threadParts,
           vipCaption: vipPreviewCaption,
         }),
         gamesSummary: card.fights.map((f) => ({

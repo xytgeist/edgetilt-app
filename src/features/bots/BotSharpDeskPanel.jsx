@@ -100,11 +100,14 @@ const SEND_TO_BAR_DEFAULT = {
   x: true,
 }
 
-const VIP_ONLY_DROP_KINDS = new Set(['halftime', 'middle', 'ufc'])
-const FAN_ONLY_DROP_KINDS = new Set(['slate'])
+const VIP_ONLY_DROP_KINDS = new Set(['halftime', 'middle'])
+const FAN_ONLY_DROP_KINDS = new Set(['slate', 'ufc'])
 const NO_VIP_DROP_KINDS = new Set(['solo'])
 
 function defaultDestForKind(kind) {
+  if (kind === 'ufc') {
+    return { loungePublic: true, loungeFanOnly: true, vipChat: true, x: false }
+  }
   if (VIP_ONLY_DROP_KINDS.has(kind)) {
     return { loungePublic: false, loungeFanOnly: false, vipChat: true, x: false }
   }

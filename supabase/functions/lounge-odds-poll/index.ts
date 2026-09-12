@@ -900,6 +900,7 @@ Deno.serve(async (req) => {
         buildUfcSlateCard,
         formatUfcCardCaption,
         formatUfcVipCardCaption,
+        formatUfcFanOnlyBodies,
         publishAndRecordUfcCard,
         ufcDeskEvalBoard,
       } = await import('../_shared/loungeBotUfcPredictive.ts')
@@ -919,6 +920,7 @@ Deno.serve(async (req) => {
       if (dryRun) {
         const previewCaption = formatUfcCardCaption(card)
         const vipPreviewCaption = formatUfcVipCardCaption(card)
+        const fanOnly = formatUfcFanOnlyBodies(card)
         return adminOpsJson(200, {
           ok: true,
           dryRun: true,
@@ -933,6 +935,8 @@ Deno.serve(async (req) => {
           deskEvals: ufcDeskEvalBoard(card),
           ...destPreviewPayload({
             publicCaption: previewCaption,
+            fanOnlyCaption: fanOnly.caption,
+            fanOnlyThreadParts: fanOnly.threadParts,
             vipCaption: vipPreviewCaption,
           }),
           card,
@@ -943,6 +947,7 @@ Deno.serve(async (req) => {
         botUserId: bot.user_id,
         card,
         destinations,
+        skipPickInsert: body?.skipPickInsert === true,
       })
 
       return adminOpsJson(200, {

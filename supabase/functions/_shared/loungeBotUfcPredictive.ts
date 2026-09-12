@@ -29,8 +29,10 @@ import { formatColoredPickerList, formatColoredPickerName } from './loungeBotPic
 import { resolveGameBettingSplits, type BettingSplitSummary } from './loungeBotBettingSplits.ts'
 import {
   fanOutSyndicatePublish,
+  implicitDestForPollAction,
   resolvePublishDestinations,
 } from './loungeBotPublishDestinations.ts'
+import { LOUNGE_BOT_CAPTION_MAX } from './loungeBotCaptionLimits.ts'
 import {
   buildUfcCheddaEquations,
   buildUfcRoccoEquations,
@@ -417,6 +419,17 @@ export async function buildUfcSlateCard(
   }
 }
 
+function formatUfcFightDeskBlock(fight: UfcFightPick): string {
+  return [
+    `**${fight.fighterA} vs ${fight.fighterB}** (${fight.matchup?.division || 'UFC'})`,
+    `• ${formatColoredPickerName('Scott')}: ${fight.pickerPicks.Scott.pickName} ... ${fight.pickerPicks.Scott.rationale}`,
+    `• ${formatColoredPickerName('Rocco')}: ${fight.pickerPicks.Rocco.pickName} ... ${fight.pickerPicks.Rocco.rationale}`,
+    `• ${formatColoredPickerName('Chedda')}: ${fight.pickerPicks.Chedda.pickName} ... ${fight.pickerPicks.Chedda.rationale}`,
+    `• ${formatColoredPickerName('Tank')}: ${fight.pickerPicks.Tank.pickName} ... ${fight.pickerPicks.Tank.rationale}`,
+    `• *Consensus Signal: ${fight.consensusPick.badgeText}*`,
+  ].join('\n')
+}
+
 /**
  * Subscriber / VIP sub-chat: uncut 4-desk fight breakdown.
  */
@@ -424,17 +437,46 @@ export function formatUfcVipCardCaption(card: UfcSlateCard): string {
   const vipLines: string[] = []
   vipLines.push(`🥊 **${card.cardTitle.toUpperCase()} · UNCUT 4-DESK BREAKDOWN**\n`)
   vipLines.push(`Here are the individual cards and prop values across all 4 desks for tonight's card:\n`)
-
   for (const fight of card.fights || []) {
-    vipLines.push(`**${fight.fighterA} vs ${fight.fighterB}** (${fight.matchup?.division || 'UFC'})`)
-    vipLines.push(`• ${formatColoredPickerName('Scott')}: ${fight.pickerPicks.Scott.pickName} ... ${fight.pickerPicks.Scott.rationale}`)
-    vipLines.push(`• ${formatColoredPickerName('Rocco')}: ${fight.pickerPicks.Rocco.pickName} ... ${fight.pickerPicks.Rocco.rationale}`)
-    vipLines.push(`• ${formatColoredPickerName('Chedda')}: ${fight.pickerPicks.Chedda.pickName} ... ${fight.pickerPicks.Chedda.rationale}`)
-    vipLines.push(`• ${formatColoredPickerName('Tank')}: ${fight.pickerPicks.Tank.pickName} ... ${fight.pickerPicks.Tank.rationale}`)
-    vipLines.push(`• *Consensus Signal: ${fight.consensusPick.badgeText}*\n`)
+    vipLines.push(formatUfcFightDeskBlock(fight), '')
   }
-
   return vipLines.join('\n').trim()
+}
+
+const UFC_FAN_ROOT_MAX = 4000
+
+/** Fan-only Lounge: uncut desks, overflow in reply thread so we stay under caption max. */
+export function formatUfcFanOnlyBodies(card: UfcSlateCard): {
+  caption: string
+  threadParts: Array<{ body: string }>
+} {
+  const header = [
+    `🥊 **${card.cardTitle.toUpperCase()} · UNCUT 4-DESK BREAKDOWN**`,
+    '',
+    `Here are the individual cards and prop values across all 4 desks for tonight's card.`,
+  ].join('\n')
+  const fights = (card.fights || []).map(formatUfcFightDeskBlock)
+  let caption = header
+  let i = 0
+  while (i < fights.length) {
+    const next = `${caption}\n\n${fights[i]}`
+    if (next.length > UFC_FAN_ROOT_MAX) break
+    caption = next
+    i += 1
+  }
+  const threadParts: Array<{ body: string }> = []
+  let chunk = ''
+  for (; i < fights.length; i++) {
+    const next = chunk ? `${chunk}\n\n${fights[i]}` : fights[i]
+    if (chunk && next.length > LOUNGE_BOT_CAPTION_MAX) {
+      threadParts.push({ body: chunk })
+      chunk = fights[i]
+    } else {
+      chunk = next
+    }
+  }
+  if (chunk) threadParts.push({ body: chunk })
+  return { caption, threadParts }
 }
 
 /**
@@ -469,14 +511,14 @@ export function formatUfcCardCaption(card: UfcSlateCard): string {
   }
 
   // Teaser for uncut individual breakdown
-  lines.push(`💬 *Uncut individual cards (Rocco's Grappling Edges, Chedda's Inside Distance Props, Tank's Round Totals) dropping in Sharpe VIP Syndicate chat.*`)
+  lines.push(`💬 *Uncut 4-desk cards in the fan-only Lounge post and Sharpe VIP chat.*`)
   lines.push(`🌐 Audited ledger & fighter metrics: sharpesyndicate.com`)
 
   return lines.join('\n')
 }
 
 /**
- * Record and publish a UFC slate card to Supabase ledger and VIP sub-chat.
+ * Record and publish a UFC slate card: public tease, fan-only uncut, VIP chat.
  */
 export async function publishAndRecordUfcCard(
   supabase: SupabaseClient,
@@ -485,8 +527,9 @@ export async function publishAndRecordUfcCard(
     card: UfcSlateCard
     postLoungeFeed?: boolean
     destinations?: unknown
+    skipPickInsert?: boolean
   },
-): Promise<{ success: boolean; totalPicksRecorded: number; error?: string; xWarning?: string; tweetId?: string | null; postId?: string }> {
+): Promise<{ success: boolean; totalPicksRecorded: number; error?: string; xWarning?: string; tweetId?: string | null; postId?: string; privatePostId?: string }> {
   const { botUserId, card } = input
   if (!card.fights || card.fights.length === 0) {
     return { success: false, totalPicksRecorded: 0, error: 'Empty UFC card.' }
@@ -530,41 +573,55 @@ export async function publishAndRecordUfcCard(
     }
   }
 
-  // 1. Insert picks to lounge_bot_picks table
-  const { error: insErr } = await supabase.from('lounge_bot_picks').insert(picksToInsert)
-  if (insErr) {
-    console.error('Failed to insert UFC picks:', insErr)
-    return { success: false, totalPicksRecorded: 0, error: insErr.message }
+  if (!input.skipPickInsert) {
+    const { error: insErr } = await supabase.from('lounge_bot_picks').insert(picksToInsert)
+    if (insErr) {
+      console.error('Failed to insert UFC picks:', insErr)
+      return { success: false, totalPicksRecorded: 0, error: insErr.message }
+    }
   }
 
+  const implicit = implicitDestForPollAction('ufc_slate_card')
   const dest = resolvePublishDestinations(input.destinations, {
-    loungePublic: input.postLoungeFeed === true,
-    loungeFanOnly: false,
-    vipChat: true,
+    ...implicit,
+    loungePublic: implicit.loungePublic || input.postLoungeFeed === true,
   })
   const publicCaption = formatUfcCardCaption(card)
   const vipCaption = formatUfcVipCardCaption(card)
+  const fanOnly = formatUfcFanOnlyBodies(card)
   const fan = await fanOutSyndicatePublish({
     admin: supabase,
     botUserId,
     dest,
     publicCaption,
+    fanOnlyCaption: fanOnly.caption,
+    fanOnlyThreadParts: fanOnly.threadParts,
     vipCaption,
     categoryPills: ['sports'],
   })
   if (dest.loungePublic && fan.error) {
     return {
       success: false,
-      totalPicksRecorded: picksToInsert.length,
+      totalPicksRecorded: input.skipPickInsert ? 0 : picksToInsert.length,
       error: fan.error,
+      xWarning: fan.xWarning,
+    }
+  }
+  if (dest.loungeFanOnly && !fan.privatePostId) {
+    return {
+      success: false,
+      totalPicksRecorded: input.skipPickInsert ? 0 : picksToInsert.length,
+      error: fan.fanOnlyWarning || 'Fan-only Lounge failed.',
+      postId: fan.publicPostId || undefined,
       xWarning: fan.xWarning,
     }
   }
 
   return {
     success: true,
-    totalPicksRecorded: picksToInsert.length,
+    totalPicksRecorded: input.skipPickInsert ? 0 : picksToInsert.length,
     postId: fan.publicPostId || undefined,
+    privatePostId: fan.privatePostId || undefined,
     tweetId: fan.tweetId,
     ...(fan.xWarning ? { xWarning: fan.xWarning } : {}),
   }

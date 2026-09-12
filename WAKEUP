@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Windows Theo 2026-09-12 … UFC slate Lounge dest
+
+**I am Windows Theo.** Sat 9am UFC cron now posts public tease + fan-only uncut + VIP. Was VIP-only. Redeploy `lounge-odds-poll`. Do not commit phone OTP.
+
 ### Mac Theo 2026-09-12 … status bar fade on prod
 
 **I am Mac Theo.** `test` → **`main`** at **`d2a550aa`** (`1.4.193`). Vercel **edgetilt.com**. No new SQL / Edge / IPA.

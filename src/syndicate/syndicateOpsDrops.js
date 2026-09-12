@@ -36,7 +36,7 @@ export const OPS_DROPS = [
     sports: [OPS_SPORT_UFC],
     destKind: 'ufc',
     hint: 'Active UFC board / main card. Picks for today limits to fights kicking today (PT).',
-    info: 'Active UFC board / main card, not limited to fights kicking today. Defaults to VIP chat. Check Public Lounge or X if you want the tease out too. Use Picks for today when you only want tonight\'s card.',
+    info: 'Active UFC board / main card, not limited to fights kicking today. Cron and default Send to: public tease + fan-only uncut + VIP chat. X stays off unless you check it. Use Picks for today when you only want tonight\'s card.',
   },
   {
     id: 'solo',

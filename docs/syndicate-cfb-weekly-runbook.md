@@ -153,7 +153,7 @@ VIP uncut cards lock when injury + splits are real enough … **not** Tue vibes,
 | CFB Wed midweek | **Wed 2:00 PM** | `cfb_wed_midweek_vip` | **VIP only** (Thu/Fri night leans) |
 | CFB Thu night | **Thu 3:30 PM** | `cfb_thu_night_spotlight` | Public **one lean** + VIP deep |
 | CFB Saturday lock | **Fri 12:00 PM** | `cfb_slate_card` | Public teaser + VIP full |
-| CFB Sat adds/kills | **Sat 10:00 AM** | `cfb_sat_vip_adds_kills` | **VIP only** (no-op if quiet) |
+| CFB Sat adds/kills | **Sat 10:00 AM** | `cfb_sat_vip_adds_kills` | **VIP only** (no-op unless ≥1.5 against lock or fav/dog cross) |
 | NFL Sunday lean | **Fri 1:00 PM** | `nfl_slate_card` | Public teaser + VIP full … **lean, not lock** |
 | NFL Sat steam | **Sat 7:00 PM** | `nfl_sat_steam` | Public + VIP confirm / kill |
 | NFL Sunday early lock | **Sun ~8:30 AM** | `nfl_sunday_early_lock` | 1pm ET window on 90-min inactives |

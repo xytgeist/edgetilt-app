@@ -378,7 +378,7 @@ export const OPS_WEEK_TASKS = [
     kind: 'post',
     label: 'Adds / kills',
     atLabel: '10:00am',
-    detail: 'Sat 10:00am PT. CFB VIP adds and kills if a lock flipped.',
+    detail: 'Sat 10:00am PT. CFB VIP adds/kills only if a number walked ≥1.5 against the lock or the locked side crossed favorite/dog.',
     days: [6],
     startHour: 10,
     endHour: 12,

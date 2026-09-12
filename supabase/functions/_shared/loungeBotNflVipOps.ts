@@ -16,7 +16,7 @@ import {
 import { findPrimetimeGameCandidate } from './loungeBotPrimetimeSpotlight.ts'
 import { fetchGameInjuryPval } from './loungeBotInjuryPval.ts'
 import { resolveSideModifiersForSlate } from './loungeBotSideModifier.ts'
-import { lineWalkedAgainst } from './loungeBotPrimetimeLock.ts'
+import { evaluateSatLockFlip, lineWalkedAgainst } from './loungeBotPrimetimeLock.ts'
 import { resolveSlatePublisher } from './loungeBotSyndicateIdentity.ts'
 
 function ptDateKey(now = new Date()): string {
@@ -227,46 +227,14 @@ export async function runNflSatVipAddsKills(
     const lockedSideHome = lockedHome
     const currentHomeSpread = homeSpreadFromEvent(ev)
     const lockedLine = lock.pick_line != null ? Number(lock.pick_line) : null
+    const flip = evaluateSatLockFlip(lockedSideHome, lockedLine, currentHomeSpread)
 
-    // Flip: market now prices the other side as the better number vs our lock
-    // Simple shop rule: if we locked home and home spread worsened by ≥1.5 vs lock line, or vice versa.
-    let flipped = false
-    let flipDetail = ''
-    if (currentHomeSpread != null && lockedLine != null && Number.isFinite(lockedLine)) {
-      if (lockedSideHome) {
-        // Locked home at lockedLine (home spread). Worse = more negative / harder to cover.
-        if (currentHomeSpread <= lockedLine - 1.5) {
-          flipped = true
-          flipDetail = `Home number moved ${lockedLine} → ${currentHomeSpread} (against lock)`
-        }
-      } else {
-        // Locked away: away spread ≈ -homeSpread. Worse for away = home spread rose (favorite shortened the other way).
-        const lockedAwaySpread = -lockedLine
-        const currentAwaySpread = -currentHomeSpread
-        if (currentAwaySpread <= lockedAwaySpread - 1.5) {
-          flipped = true
-          flipDetail = `Away number moved ${lockedAwaySpread} → ${currentAwaySpread} (against lock)`
-        }
-      }
-    }
-
-    // Also treat "consensus books now price opposite favorite" as a soft kill when line crossed 0 vs our side.
-    if (!flipped && currentHomeSpread != null) {
-      if (lockedSideHome && currentHomeSpread > 0) {
-        flipped = true
-        flipDetail = `Market flipped … home now dog (+${currentHomeSpread}) vs our home lock`
-      } else if (!lockedSideHome && currentHomeSpread < 0) {
-        flipped = true
-        flipDetail = `Market flipped … away now dog vs our away lock (home ${currentHomeSpread})`
-      }
-    }
-
-    if (flipped) {
+    if (flip.flipped) {
       changes.push({
         away: String(lock.away_team),
         home: String(lock.home_team),
         reason: 'lock_flip',
-        detail: flipDetail,
+        detail: flip.detail,
       })
     }
 

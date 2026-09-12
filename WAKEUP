@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Windows Theo 2026-09-12 … CFB Sat adds/kills false flips
+
+**I am Windows Theo.** Sat 10am CFB VIP adds/kills treated every away-dog Friday lock as a kill (45 lines on prod today). Fix is `evaluateSatLockFlip` … ≥1.5 against the lock or fav/dog cross only. Same helper on NFL Sat VIP leftover. Redeploy `lounge-odds-poll`. Do not commit phone OTP.
+
 ### Mac Theo 2026-09-12 … W-2G system keyboard accessory
 
 **I am Mac Theo.** The custom W-2G hover chip is gone. Tax-field focus turns the **stock** WK Done / prev-next bar back on (`setKeyboardAccessory`). New Test Fast required. **`1.4.190`.** Windows: do not edit W-2G / `edgeNative.js` accessory helper today.

@@ -114,6 +114,51 @@ export function lineWalkedAgainst(
   }
 }
 
+function signedLine(n: number): string {
+  return n > 0 ? `+${n}` : String(n)
+}
+
+/**
+ * True only when the locked side crossed through pick'em (favorite ↔ dog).
+ * A dog that is still a dog is not a flip.
+ */
+export function lockedSideCrossedPickem(
+  leanSide: string,
+  leanLine: number | null,
+  currentHomeSpread: number | null,
+): { flipped: boolean; note: string } {
+  if (leanLine == null || !Number.isFinite(leanLine) || currentHomeSpread == null) {
+    return { flipped: false, note: '' }
+  }
+  const currentLine = leanSide === 'home' ? currentHomeSpread : -currentHomeSpread
+  if (leanLine === 0 || currentLine === 0) return { flipped: false, note: '' }
+  if (Math.sign(leanLine) === Math.sign(currentLine)) {
+    return { flipped: false, note: '' }
+  }
+  const from = leanLine < 0 ? 'favorite' : 'dog'
+  const to = currentLine < 0 ? 'favorite' : 'dog'
+  return {
+    flipped: true,
+    note: `Locked ${from} crossed to ${to} (${signedLine(leanLine)} → ${signedLine(currentLine)})`,
+  }
+}
+
+/** Sat VIP adds/kills: ≥1.5 against the lock, or the locked side crossed favorite/dog. */
+export function evaluateSatLockFlip(
+  lockedSideHome: boolean,
+  lockedLine: number | null,
+  currentHomeSpread: number | null,
+): { flipped: boolean; detail: string } {
+  const side = lockedSideHome ? 'home' : 'away'
+  const walk = lineWalkedAgainst('spreads', side, lockedLine, currentHomeSpread, null)
+  if (walk.against) {
+    return { flipped: true, detail: `${walk.note} (against lock)` }
+  }
+  const cross = lockedSideCrossedPickem(side, lockedLine, currentHomeSpread)
+  if (cross.flipped) return { flipped: true, detail: cross.note }
+  return { flipped: false, detail: '' }
+}
+
 async function alreadyPostedLock(
   admin: SupabaseClient,
   botUserId: string,

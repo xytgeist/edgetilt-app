@@ -2,7 +2,7 @@
  * CFB VIP ops satellites (mirror NFL shop skeleton):
  * - Wed: Thu/Fri night early leans → VIP only (not the Friday house card)
  * - Thu: night-game public tease (one lean + CTA) + VIP deep
- * - Sat: adds/kills stub → VIP only when a lock flipped or starter shock
+ * - Sat: adds/kills → VIP only when a lock walked ≥1.5 against, fav/dog crossed, or starter shock
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import {
@@ -18,6 +18,7 @@ import {
   fanOutVipOnlyCaption,
   resolvePublishDestinations,
 } from './loungeBotPublishDestinations.ts'
+import { evaluateSatLockFlip } from './loungeBotPrimetimeLock.ts'
 import { resolveSideModifiersForSlate } from './loungeBotSideModifier.ts'
 import { loadPastedBettingSplitsBoardForSlate } from './loungeBotBettingSplits.ts'
 import { loadPersonaWeights } from './loungeBotPersonaAdaptive.ts'
@@ -336,7 +337,8 @@ export async function runCfbThuNightSpotlight(
 }
 
 /**
- * Saturday VIP stub for CFB: only when Friday lock flipped or starter shock.
+ * Saturday VIP stub for CFB: only when Friday lock walked ≥1.5 against,
+ * the locked side crossed favorite/dog, or starter shock.
  */
 export async function runCfbSatVipAddsKills(
   admin: SupabaseClient,
@@ -402,41 +404,14 @@ export async function runCfbSatVipAddsKills(
     const lockedSideHome = lockedHome
     const currentHomeSpread = homeSpreadFromEvent(ev)
     const lockedLine = lock.pick_line != null ? Number(lock.pick_line) : null
+    const flip = evaluateSatLockFlip(lockedSideHome, lockedLine, currentHomeSpread)
 
-    let flipped = false
-    let flipDetail = ''
-    if (currentHomeSpread != null && lockedLine != null && Number.isFinite(lockedLine)) {
-      if (lockedSideHome) {
-        if (currentHomeSpread <= lockedLine - 1.5) {
-          flipped = true
-          flipDetail = `Home number moved ${lockedLine} → ${currentHomeSpread} (against lock)`
-        }
-      } else {
-        const lockedAwaySpread = -lockedLine
-        const currentAwaySpread = -currentHomeSpread
-        if (currentAwaySpread <= lockedAwaySpread - 1.5) {
-          flipped = true
-          flipDetail = `Away number moved ${lockedAwaySpread} → ${currentAwaySpread} (against lock)`
-        }
-      }
-    }
-
-    if (!flipped && currentHomeSpread != null) {
-      if (lockedSideHome && currentHomeSpread > 0) {
-        flipped = true
-        flipDetail = `Market flipped … home now dog (+${currentHomeSpread}) vs our home lock`
-      } else if (!lockedSideHome && currentHomeSpread < 0) {
-        flipped = true
-        flipDetail = `Market flipped … away now dog vs our away lock (home ${currentHomeSpread})`
-      }
-    }
-
-    if (flipped) {
+    if (flip.flipped) {
       changes.push({
         away: String(lock.away_team),
         home: String(lock.home_team),
         reason: 'lock_flip',
-        detail: flipDetail,
+        detail: flip.detail,
       })
     }
 

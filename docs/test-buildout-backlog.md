@@ -1128,6 +1128,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-12:** **CFB Sat adds/kills no longer nuke every away dog (Windows).** Prod VIP dump today was 45 fake `KILL / REVISIT` lines. Old check treated “we locked away and home is still favored” as a flip. Now uses `evaluateSatLockFlip`: ≥1.5 against the locked side, or that side actually crossed favorite/dog. Same helper on NFL Sat VIP leftover. Silent if nothing real moved. Redeploy `lounge-odds-poll`. **`1.4.191`.**
 - **2026-09-12:** **W-2G uses the system keyboard accessory (Mac).** Removed the custom hover chip. `setKeyboardAccessory` opts W-2G tax fields back into the stock WK Done / prev-next bar. GIF picker stays hidden. **Needs a new Test Fast.** **`1.4.190`.**
 - **2026-09-12:** **W-2G capture review queue on prod (Mac).** `test` → **`main`** (`335f95c8`, **`1.4.189`**). Web live after Vercel. No new SQL / Edge / IPA. Ryan smoke on test IPA: works really well.
 - **2026-09-12:** **W-2G capture review queue (Mac).** Multi-page Take photo stays on extract/review (swipe + save-next). New scan is **Remove**. Library bulk still auto-saves. **`1.4.189`.**

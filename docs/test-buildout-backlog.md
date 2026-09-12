@@ -1130,6 +1130,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-12:** **UFC Lounge dest on prod + today's backfill (Windows).** Redeployed `lounge-odds-poll` on **`jtjgtucumuoswnbauxry`**. Today's public tease `8677470f-…` + fan-only uncut `920747a1-…` posted with `skipPickInsert` (0 new ledger rows, VIP not re-sent). Afternoon board was 41 fights / 6 hammers / 16 consensus vs 9am's 55. Also lands the CFB Sat flip fix on prod Edge.
 - **2026-09-12:** **UFC slate hits public tease + fan-only Lounge (Windows).** Saturday 9am cron was VIP chat only. Implicit dest is now public tease (`formatUfcCardCaption`) + fan-only uncut (threaded) + VIP. Ops UFC Send to matches. Ledger insert skippable via `skipPickInsert` for Lounge backfill. Redeploy `lounge-odds-poll`. **`1.4.194`.**
 - **2026-09-12:** **Status bar fade on prod (Mac).** `test` → **`main`** (`d2a550aa`, **`1.4.193`**). Web live after Vercel. No new SQL / Edge / IPA.
 - **2026-09-12:** **Status bar fades with title hide (Mac).** Safe-area plate (`EdgeStatusBarScrollPlate`) goes opaque as the EDGE bar hides and fades out when it returns. Lounge feed, dock panels, `ScrollLinkedEdgeTitleBarShell`. Title translate unchanged. **`1.4.193`.**

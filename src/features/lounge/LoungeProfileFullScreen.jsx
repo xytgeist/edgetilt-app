@@ -4,7 +4,7 @@ import {
   invalidateCssSafeAreaTopPxCache,
   readCssSafeAreaTopPx,
 } from '../../utils/edgeSafeAreaCss.js'
-import { isEdgeiOSShell } from '../../utils/edgeNative.js'
+import { isEdgeiOSShell, tryAssignEdgePickedPhotos } from '../../utils/edgeNative.js'
 import {
   prefersReducedMotion,
   profileBannerBlurTuckFrac,
@@ -3714,7 +3714,15 @@ export default function LoungeProfileFullScreen({
                     <button
                       type="button"
                       disabled={bannerBusy}
-                      onClick={() => bannerInputRef.current?.click()}
+                      onClick={() => {
+                        void (async () => {
+                          const status = await tryAssignEdgePickedPhotos(bannerInputRef.current, {
+                            purpose: 'profile-banner',
+                            maxCount: 1,
+                          })
+                          if (status === 'fallback') bannerInputRef.current?.click()
+                        })()
+                      }}
                       className="absolute bottom-2 right-2 z-10 rounded-full border border-zinc-600/90 bg-zinc-950/90 px-3 py-1.5 text-[12px] font-semibold text-zinc-200 shadow hover:bg-zinc-900 disabled:opacity-50 touch-manipulation"
                     >
                       {bannerBusy ? 'Uploading…' : 'Banner'}
@@ -3771,7 +3779,15 @@ export default function LoungeProfileFullScreen({
                     <button
                       type="button"
                       disabled={avatarBusy}
-                      onClick={() => avatarInputRef.current?.click()}
+                      onClick={() => {
+                        void (async () => {
+                          const status = await tryAssignEdgePickedPhotos(avatarInputRef.current, {
+                            purpose: 'profile-avatar',
+                            maxCount: 1,
+                          })
+                          if (status === 'fallback') avatarInputRef.current?.click()
+                        })()
+                      }}
                       aria-label={avatarBusy ? 'Uploading avatar' : 'Change avatar'}
                       className="absolute bottom-0 right-0 z-10 rounded-full border border-zinc-600/90 bg-zinc-950/95 px-2 py-0.5 text-[10px] font-semibold leading-tight text-zinc-200 shadow-md hover:bg-zinc-900 disabled:opacity-50 touch-manipulation sm:px-2.5 sm:py-1 sm:text-[11px]"
                     >

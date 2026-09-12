@@ -3116,6 +3116,17 @@ html.light [data-offer-form] .border-zinc-600 { border-color: #d1d5db !important
 
 /* Title text in header */
 html.light [data-offer-form] .text-white { color: #111827 !important; }
+html.light [data-offer-form] [data-edge-native-image-source] .bg-cyan-700 {
+  background-color: #0891b2 !important;
+  color: #ffffff !important;
+}
+html.light [data-offer-form] [data-edge-native-image-source] .bg-zinc-800 {
+  background-color: #e4e4e7 !important;
+  color: #18181b !important;
+}
+html.light [data-offer-form] [data-edge-native-image-source] .text-zinc-400 {
+  color: #52525b !important;
+}
 
 /* Dropdown menus */
 html.light [data-offer-form] .bg-zinc-900\/95 { background-color: #ffffff !important; }

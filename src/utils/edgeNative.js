@@ -315,6 +315,86 @@ export async function pickEdgePhotos(payload = {}) {
   return edgeNativeInvoke('pickPhotos', payload)
 }
 
+/**
+ * Put Files on a hidden `<input type="file">` and fire `change` so existing handlers run.
+ * Empty `files` still fires change so cancel paths can unwind picker-session locks.
+ *
+ * @param {HTMLInputElement | null | undefined} input
+ * @param {File[]} [files]
+ * @returns {boolean}
+ */
+export function dispatchFilesOnInput(input, files = []) {
+  if (!input) return false
+  try {
+    const dt = new DataTransfer()
+    for (const file of files) {
+      if (file instanceof File) dt.items.add(file)
+    }
+    input.files = dt.files
+    input.dispatchEvent(new Event('change', { bubbles: true }))
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * PHPicker → hidden file input. `fallback` means the caller should `.click()` the input.
+ *
+ * @param {HTMLInputElement | null | undefined} input
+ * @param {{ purpose?: string, maxCount?: number }} [opts]
+ * @returns {Promise<'picked' | 'cancelled' | 'fallback'>}
+ */
+export async function tryAssignEdgePickedPhotos(input, opts = {}) {
+  if (!input || !canPickEdgePhotos()) return 'fallback'
+  try {
+    const result = await pickEdgePhotos({
+      purpose: opts.purpose || 'photos',
+      maxCount: opts.maxCount,
+    })
+    if (result?.cancelled) {
+      dispatchFilesOnInput(input, [])
+      return 'cancelled'
+    }
+    const files = filesFromNativeScanImages(result)
+    if (!files.length) return 'fallback'
+    if (!dispatchFilesOnInput(input, files)) return 'fallback'
+    void triggerEdgeNativeHaptic('success')
+    return 'picked'
+  } catch {
+    return 'fallback'
+  }
+}
+
+/**
+ * VisionKit → hidden file input. `fallback` means the caller should `.click()` the input.
+ *
+ * @param {HTMLInputElement | null | undefined} input
+ * @param {{ purpose?: string, maxPages?: number }} [opts]
+ * @returns {Promise<'picked' | 'cancelled' | 'fallback'>}
+ */
+export async function tryAssignEdgeScannedDocuments(input, opts = {}) {
+  if (!input || !canScanEdgeDocument()) return 'fallback'
+  try {
+    const result = await scanEdgeDocument({
+      purpose: opts.purpose || 'scan',
+      maxPages: opts.maxPages,
+    })
+    if (result?.cancelled) {
+      dispatchFilesOnInput(input, [])
+      return 'cancelled'
+    }
+    if (result?.unsupported) return 'fallback'
+    const files = filesFromNativeScanImages(result)
+    if (!files.length) return 'fallback'
+    if (!dispatchFilesOnInput(input, files)) return 'fallback'
+    void triggerEdgeNativeHaptic('success')
+    return 'picked'
+  } catch {
+    return 'fallback'
+  }
+}
+
 /** @param {unknown} value */
 function normalizePushStatus(value) {
   const s = String(value || '').trim().toLowerCase()

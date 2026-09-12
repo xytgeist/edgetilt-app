@@ -28,6 +28,7 @@ import {
   chatUpdateGroup,
 } from './chatApi.js'
 import { saveCreatorFanPrivateSubsRoom } from '../creatorFanSubs/creatorFanSubsApi.js'
+import { tryAssignEdgePickedPhotos } from '../../utils/edgeNative.js'
 import ChatGroupHeaderStack from './ChatGroupHeaderStack.jsx'
 import {
   ChatGroupMediaSheet,
@@ -490,7 +491,15 @@ export default function ChatGroupSettingsSheet({
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => avatarInputRef.current?.click()}
+                onClick={() => {
+                  void (async () => {
+                    const status = await tryAssignEdgePickedPhotos(avatarInputRef.current, {
+                      purpose: 'chat-group-avatar',
+                      maxCount: 1,
+                    })
+                    if (status === 'fallback') avatarInputRef.current?.click()
+                  })()
+                }}
                 className="text-[13px] font-semibold text-cyan-400 touch-manipulation active:opacity-70 disabled:opacity-40"
               >
                 {busy ? 'Uploading…' : room.avatar_url ? 'Change photo' : 'Set photo'}

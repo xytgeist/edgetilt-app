@@ -21,6 +21,7 @@ import {
   plainTextFromComposerRoot,
 } from '../lounge/loungeRichComposerDom.js'
 import { notifyChatMediaPickerActive } from './chatMediaPickerRegistry.js'
+import { tryAssignEdgePickedPhotos } from '../../utils/edgeNative.js'
 import { useChatMentionState } from './chatMentionAutocomplete.js'
 import LoungeMentionDropdown from '../lounge/LoungeMentionDropdown.jsx'
 
@@ -665,7 +666,17 @@ export default function ChatComposer({
         <button
           type="button"
           disabled={disabled || imageSlots.length >= MAX_IMAGES}
-          onClick={() => { setPlusOpen(false); beginMediaPickerSession(); fileInputRef.current?.click() }}
+          onClick={() => {
+            setPlusOpen(false)
+            beginMediaPickerSession()
+            void (async () => {
+              const status = await tryAssignEdgePickedPhotos(fileInputRef.current, {
+                purpose: 'chat-compose',
+                maxCount: Math.max(1, MAX_IMAGES - imageSlots.length),
+              })
+              if (status === 'fallback') fileInputRef.current?.click()
+            })()
+          }}
           className="flex w-full items-center gap-3 px-4 py-3.5 text-[15px] font-semibold text-zinc-100 touch-manipulation transition-colors active:bg-white/10 disabled:opacity-40"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0">

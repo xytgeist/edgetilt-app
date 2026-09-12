@@ -1,3 +1,5 @@
+import { canPickEdgePhotos, tryAssignEdgePickedPhotos } from '../../utils/edgeNative.js'
+
 /** Shared image / video / GIF toolbar controls for lounge composers. */
 
 export function LoungeComposerMediaImageIcon({ className = 'h-8 w-8', filled = true }) {
@@ -169,6 +171,17 @@ export default function LoungeComposerMediaToolbar({
 
   const preventFocusSteal = (e) => e.preventDefault()
 
+  const onImageClick = async (event) => {
+    if (!canPickEdgePhotos() || !imageInputId) return
+    event.preventDefault()
+    const input = document.getElementById(imageInputId)
+    const status = await tryAssignEdgePickedPhotos(input, {
+      purpose: 'lounge-compose',
+      maxCount: 6,
+    })
+    if (status === 'fallback') input?.click()
+  }
+
   return (
     <div
       data-lounge-media-toolbar=""
@@ -178,6 +191,7 @@ export default function LoungeComposerMediaToolbar({
         htmlFor={imageInputId}
         onPointerDown={onImagePointerDown}
         onMouseDown={preventFocusSteal}
+        onClick={onImageClick}
         className={labelClass}
         title="Add image"
         aria-label="Add image"

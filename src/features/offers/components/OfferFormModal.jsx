@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { triggerTapHapticLight } from '../../../utils/tapHaptic.js'
+import {
+  canPickEdgePhotos,
+  canScanEdgeDocument,
+  tryAssignEdgePickedPhotos,
+  tryAssignEdgeScannedDocuments,
+} from '../../../utils/edgeNative.js'
 import DatePicker from 'react-datepicker'
 import Picker from 'react-mobile-picker'
 import {
@@ -136,6 +142,7 @@ export default function OfferFormModal({
   const [showOfferTypeMenu, setShowOfferTypeMenu] = useState(false)
   const [showAlertMenu, setShowAlertMenu] = useState(false)
   const [showDiscardConfirm, setShowDiscardConfirm] = useState(false)
+  const [showNativeImageSource, setShowNativeImageSource] = useState(false)
   const [alertCardPulse, setAlertCardPulse] = useState(false)
   const [offerTypeMenuDirection, setOfferTypeMenuDirection] = useState('down')
   const [alertMenuDirection, setAlertMenuDirection] = useState('down')
@@ -166,6 +173,10 @@ export default function OfferFormModal({
     const fmt = new Intl.NumberFormat(undefined, { maximumFractionDigits: 2 })
     return `$${fmt.format(num)}`
   }, [valueRaw])
+
+  useEffect(() => {
+    if (!showForm) setShowNativeImageSource(false)
+  }, [showForm])
 
   // Keep Ends populated whenever Starts exists.
   useEffect(() => {
@@ -556,7 +567,31 @@ export default function OfferFormModal({
                     onRequireSubscribe?.()
                     return
                   }
-                  fileInputRef.current?.click()
+                  const canLib = canPickEdgePhotos()
+                  const canCam = canScanEdgeDocument()
+                  if (canLib && canCam) {
+                    setShowNativeImageSource(true)
+                    return
+                  }
+                  void (async () => {
+                    if (canLib) {
+                      const status = await tryAssignEdgePickedPhotos(fileInputRef.current, {
+                        purpose: 'offers-mailer',
+                        maxCount: 24,
+                      })
+                      if (status === 'fallback') fileInputRef.current?.click()
+                      return
+                    }
+                    if (canCam) {
+                      const status = await tryAssignEdgeScannedDocuments(fileInputRef.current, {
+                        purpose: 'offers-mailer',
+                        maxPages: 8,
+                      })
+                      if (status === 'fallback') fileInputRef.current?.click()
+                      return
+                    }
+                    fileInputRef.current?.click()
+                  })()
                 }}
                 className="w-full min-h-11 touch-manipulation text-left disabled:opacity-55"
               >
@@ -584,6 +619,52 @@ export default function OfferFormModal({
                 className="hidden"
                 onChange={(e) => void handleImportPhotos(e)}
               />
+              {showNativeImageSource ? (
+                <div className="mt-3 grid grid-cols-1 gap-2" data-edge-native-image-source>
+                  <button
+                    type="button"
+                    disabled={uploading}
+                    onClick={() => {
+                      setShowNativeImageSource(false)
+                      void (async () => {
+                        const status = await tryAssignEdgeScannedDocuments(fileInputRef.current, {
+                          purpose: 'offers-mailer',
+                          maxPages: 8,
+                        })
+                        if (status === 'fallback') fileInputRef.current?.click()
+                      })()
+                    }}
+                    className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-cyan-700 px-3 text-sm font-semibold text-white touch-manipulation disabled:opacity-60"
+                  >
+                    Take photo
+                  </button>
+                  <button
+                    type="button"
+                    disabled={uploading}
+                    onClick={() => {
+                      setShowNativeImageSource(false)
+                      void (async () => {
+                        const status = await tryAssignEdgePickedPhotos(fileInputRef.current, {
+                          purpose: 'offers-mailer',
+                          maxCount: 24,
+                        })
+                        if (status === 'fallback') fileInputRef.current?.click()
+                      })()
+                    }}
+                    className="inline-flex min-h-11 items-center justify-center rounded-2xl bg-zinc-800 px-3 text-sm font-semibold text-zinc-100 touch-manipulation disabled:opacity-60"
+                  >
+                    Photo library
+                  </button>
+                  <button
+                    type="button"
+                    disabled={uploading}
+                    onClick={() => setShowNativeImageSource(false)}
+                    className="inline-flex min-h-10 items-center justify-center text-sm font-semibold text-zinc-400 touch-manipulation"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : null}
             </div>
           )}
 

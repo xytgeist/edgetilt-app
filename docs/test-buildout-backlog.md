@@ -1128,6 +1128,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-12:** **W-2G capture review queue on prod (Mac).** `test` → **`main`** (`335f95c8`, **`1.4.189`**). Web live after Vercel. No new SQL / Edge / IPA. Ryan smoke on test IPA: works really well.
 - **2026-09-12:** **W-2G capture review queue (Mac).** Multi-page Take photo stays on extract/review (swipe + save-next). New scan is **Remove**. Library bulk still auto-saves. **`1.4.189`.**
 - **2026-09-12:** **W-2G keyboard pill + auto-verify on prod (Mac).** `test` → **`main`** (`1373f5ab`, **`1.4.188`**). Web live after Vercel. No new SQL / Edge deploy.
 - **2026-09-12:** **W-2G extract keyboard pill + auto-verify (Mac).** IPA tax-field focus shows prev / next / Done above the keys (`dismissEdgeKeyboard`). Take photo / extract saves (and capture-batch pages that extract) land as Verified in My W-2Gs. Library bulk and ATTN stay unverified. **`1.4.188`.**

@@ -1128,6 +1128,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-12:** **W-2G keyboard pill + auto-verify on prod (Mac).** `test` → **`main`** (`1373f5ab`, **`1.4.188`**). Web live after Vercel. No new SQL / Edge deploy.
 - **2026-09-12:** **W-2G extract keyboard pill + auto-verify (Mac).** IPA tax-field focus shows prev / next / Done above the keys (`dismissEdgeKeyboard`). Take photo / extract saves (and capture-batch pages that extract) land as Verified in My W-2Gs. Library bulk and ATTN stay unverified. **`1.4.188`.**
 - **2026-09-12:** **W-2G delete + multi-page on prod (Mac).** `test` → **`main`** (`da23489a`, **`1.4.187`**). Web live after Vercel. No new SQL / Edge deploy. Native JS dialogs still need a new IPA; in-app delete confirm does not.
 - **2026-09-12:** **W-2G delete + multi-page capture (Mac).** My W-2Gs trash uses AppShell confirm (`window.confirm` is silent on IPA because custom `WKUIDelegate` had no JS dialogs). Take photo now keeps every VisionKit page (max 8) and imports 2+ as a free capture batch. Native JS alert/confirm/prompt landed for the next IPA. **`1.4.187`.**

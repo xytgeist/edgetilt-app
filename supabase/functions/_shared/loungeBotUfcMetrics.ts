@@ -399,6 +399,13 @@ export async function fetchUfcFighterMetrics(
   }
 }
 
+/** Apex only from venue/address. Never Fight Night or bare Las Vegas. */
+export function inferApexVenue(eventName?: string | null, venue?: string | null): boolean {
+  const blob = `${eventName || ''} ${venue || ''}`
+  if (/t-?mobile/i.test(blob) || /\bsphere\b/i.test(blob)) return false
+  return /ufc\s*apex/i.test(blob) || /\bapex\b/i.test(blob) || /6650\s+el\s+camino/i.test(blob)
+}
+
 export type UfcCardFightFact = {
   eventName: string
   venue: string

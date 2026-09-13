@@ -96,8 +96,12 @@ async function collectCards(jar, byUrl, completedLimit) {
   for (const eventUrl of eventUrls) {
     const card = await scrapeUfcStatsEventCard(jar, eventUrl, { byUrl })
     cards.push(card)
+    const five = card.fights
+      .filter((f) => f.scheduledRounds === 5)
+      .map((f) => `${f.fighterA}/${f.roundsSource || '?'}`)
+      .join(', ')
     console.log(
-      `[ufc-metrics]   ${card.eventName || eventUrl.split('/').pop()} fights=${card.fights.length} venue=${card.venue || '?'} apex=${card.isApex}`,
+      `[ufc-metrics]   ${card.eventName || eventUrl.split('/').pop()} fights=${card.fights.length} venue=${card.venue || '?'} apex=${card.isApex} five=${five || 'none'}`,
     )
     for (const fight of card.fights) {
       for (const f of [

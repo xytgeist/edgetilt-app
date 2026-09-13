@@ -128,8 +128,9 @@ function normalizeStance(raw) {
 }
 
 function inferApex(eventName, location) {
-  const blob = `${eventName} ${location}`.toLowerCase()
-  return blob.includes('apex') || /fight night/i.test(eventName)
+  const blob = `${eventName || ''} ${location || ''}`
+  if (/t-?mobile/i.test(blob) || /\bsphere\b/i.test(blob)) return false
+  return /ufc\s*apex/i.test(blob) || /\bapex\b/i.test(blob) || /6650\s+el\s+camino/i.test(blob)
 }
 
 function hfSnapshot(row, headers, prefix, fighterName, division) {

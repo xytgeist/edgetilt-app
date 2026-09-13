@@ -261,8 +261,52 @@ export function normUfcAlias(s) {
 }
 
 /**
+ * Scheduled rounds from UFC Stats Time format, not title / belt.
+ * `5 Rnd (5-5-5-5-5)` → 5. `3 Rnd (5-5-5)` → 3. Null if the page has no format.
+ */
+export function parseUfcTimeFormatRounds(text) {
+  const blob = String(text || '')
+  if (!blob) return null
+  const labeled = blob.match(/Time format:\s*(\d+)\s*Rnd\s*\(([^)]+)\)/i)
+  if (labeled) {
+    const n = Number(labeled[1])
+    const pattern = labeled[2] || ''
+    if (n === 5 || /\b5-5-5-5-5\b/.test(pattern)) return 5
+    if (n === 3 || /\b5-5-5\b/.test(pattern)) return 3
+  }
+  if (/\(5-5-5-5-5\)/.test(blob)) return 5
+  const threeRnd = blob.match(/(\d+)\s*Rnd\s*\(5-5-5\)/i)
+  if (threeRnd && Number(threeRnd[1]) === 3) return 3
+  if (/\(5-5-5\)/.test(blob) && !/\(5-5-5-5-5\)/.test(blob)) return 3
+  return null
+}
+
+/**
+ * Apex only when the venue/location string says Apex (or the Apex street address).
+ * T-Mobile / Sphere stay false. Never infer from "Fight Night" or bare Las Vegas.
+ */
+export function inferApexVenue(eventName, venue) {
+  const blob = `${eventName || ''} ${venue || ''}`
+  if (/t-?mobile/i.test(blob) || /\bsphere\b/i.test(blob)) return false
+  return /ufc\s*apex/i.test(blob) || /\bapex\b/i.test(blob) || /6650\s+el\s+camino/i.test(blob)
+}
+
+function extractFightDetailsUrl(attrs, block) {
+  const blob = `${attrs || ''} ${block || ''}`
+  return (blob.match(/https?:\/\/ufcstats\.com\/fight-details\/[a-f0-9]+/i) || [])[0] || null
+}
+
+function applyListedMainFallback(fights) {
+  if (fights[0] && !fights[0].timeFormatRounds) {
+    fights[0].scheduledRounds = 5
+    fights[0].roundsSource = 'listed_main'
+  }
+}
+
+/**
  * Parse one UFC Stats event page into venue + fight facts.
- * 5 rounds if the row has a title belt, says 5-round, or is the listed main (index 0).
+ * Rounds come from Time format when present. Belt is a badge only.
+ * Listed main (index 0) is 5 only when the page has no time format.
  */
 export function parseUfcStatsEventHtml(eventUrl, html, opts = {}) {
   const byUrl = opts.byUrl instanceof Map ? opts.byUrl : null
@@ -270,12 +314,12 @@ export function parseUfcStatsEventHtml(eventUrl, html, opts = {}) {
     (html.match(/b-content__title-highlight[^>]*>([\s\S]*?)<\//i) || [])[1] || '',
   )
   const venue = stripTags((html.match(/Location:\s*<\/i>([\s\S]*?)<\/li>/i) || [])[1] || '')
-  const isApex = /apex/i.test(venue) || /apex/i.test(eventName)
   const fights = []
-  const rowRe = /<tr[^>]*js-fight-details-click[^>]*>([\s\S]*?)<\/tr>/gi
+  const rowRe = /<tr([^>]*js-fight-details-click[^>]*)>([\s\S]*?)<\/tr>/gi
   let row
   while ((row = rowRe.exec(html))) {
-    const block = row[1]
+    const attrs = row[1]
+    const block = row[2]
     const pair = []
     const fre = /href="(http:\/\/ufcstats\.com\/fighter-details\/[a-f0-9]+)"[^>]*>([\s\S]*?)<\/a>/gi
     let fm
@@ -290,7 +334,7 @@ export function parseUfcStatsEventHtml(eventUrl, html, opts = {}) {
     }
     if (pair.length < 2) continue
     const hasBelt = /belt\.png/i.test(block)
-    const fiveLabel = /5[-\s]?rounds?|5\s*rnd/i.test(block)
+    const fromFormat = parseUfcTimeFormatRounds(`${attrs} ${block}`)
     const weightRaw = stripTags(
       (block.match(
         /((?:Women'?s\s+)?(?:Super\s+)?(?:Fly|Bantam|Feather|Light\s+Heavy|Light|Welter|Middle|Heavy|Straw)weight)/i,
@@ -301,26 +345,54 @@ export function parseUfcStatsEventHtml(eventUrl, html, opts = {}) {
       fighterB: pair[1].name,
       fighterAUrl: pair[0].url,
       fighterBUrl: pair[1].url,
+      detailsUrl: extractFightDetailsUrl(attrs, block),
       division: divisionFromWeightClassLabel(weightRaw),
-      scheduledRounds: hasBelt || fiveLabel ? 5 : 3,
+      scheduledRounds: fromFormat || 3,
+      timeFormatRounds: fromFormat,
+      roundsSource: fromFormat ? 'time_format' : 'default_3',
       hasTitleBelt: hasBelt,
     })
   }
-  if (fights[0] && fights[0].scheduledRounds !== 5) {
-    fights[0].scheduledRounds = 5
-  }
+  applyListedMainFallback(fights)
   return {
     eventUrl,
     eventName,
     venue,
-    isApex,
+    isApex: inferApexVenue(eventName, venue),
     fights,
   }
 }
 
 export async function scrapeUfcStatsEventCard(jar, eventUrl, opts = {}) {
   const { html } = await fetchHtml(eventUrl, jar)
-  return parseUfcStatsEventHtml(eventUrl, html, opts)
+  const card = parseUfcStatsEventHtml(eventUrl, html, opts)
+  const delayMs = Number(opts.fightDelayMs) || 250
+  if (!opts.skipFightDetails) {
+    let detailsMisses = 0
+    for (const fight of card.fights) {
+      if (fight.timeFormatRounds || !fight.detailsUrl) continue
+      // Upcoming stubs have no Time format. Two empty pages → skip the rest of this card.
+      if (detailsMisses >= 2) break
+      const { html: detailsHtml } = await fetchHtml(fight.detailsUrl, jar)
+      const fromFormat = parseUfcTimeFormatRounds(detailsHtml)
+      if (fromFormat) {
+        fight.scheduledRounds = fromFormat
+        fight.timeFormatRounds = fromFormat
+        fight.roundsSource = 'time_format'
+        detailsMisses = 0
+      } else {
+        detailsMisses += 1
+      }
+      const loc = stripTags((detailsHtml.match(/Location:\s*<\/i>([\s\S]*?)<\/li>/i) || [])[1] || '')
+      if (loc && (inferApexVenue(card.eventName, loc) || !card.venue)) {
+        card.venue = loc
+      }
+      await sleep(delayMs)
+    }
+  }
+  applyListedMainFallback(card.fights)
+  card.isApex = inferApexVenue(card.eventName, card.venue)
+  return card
 }
 
 /**

@@ -1138,6 +1138,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-12:** **UFC card-fact parser holes (Windows).** Time format (`5-5-5-5-5` vs `5-5-5`) is the 5-round flag. Belt is a badge. Apex = Apex / UFC APEX / 6650 El Camino only … T-Mobile / Sphere / Fight Night stay false. Desk rules unchanged. **`1.4.205`.**
 - **2026-09-12:** **IPA tap haptic medium sign-off (Mac).** Ryan: feels good vs X. **`1.4.204`.**
 - **2026-09-12:** **IPA tap haptic bumped to medium (Mac).** `triggerTapHapticLight` in the shell now uses `triggerHaptic` `medium`. Safari / PWA stay on the switch trick. **`1.4.204`.**
 - **2026-09-12:** **In-app confirms for leftover deletes (Mac).** Play Logbook, poker session/stake deletes, chat leave/delete/remove use AppShell confirm. **`1.4.203`.**

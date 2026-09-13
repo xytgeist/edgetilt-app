@@ -26,6 +26,7 @@ import {
   fetchUfcFighterMetrics,
   fetchUfcCardFights,
   findCardFight,
+  inferApexVenue,
 } from './loungeBotUfcMetrics.ts'
 import { formatColoredPickerList, formatColoredPickerName } from './loungeBotPickerColors.ts'
 import { resolveGameBettingSplits, type BettingSplitSummary } from './loungeBotBettingSplits.ts'
@@ -181,7 +182,7 @@ export async function buildUfcSlateCard(
     const cardFact = findCardFight(cardFacts, fighterA, fighterB, metricsList)
     const isApex = cardFact
       ? cardFact.isApex
-      : Boolean(ev.venue_name?.toLowerCase().includes('apex'))
+      : inferApexVenue(ev.sport_key, ev.venue_name)
     const isFiveRounds = cardFact?.scheduledRounds === 5
 
     // Quantitative matchup model

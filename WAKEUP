@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Windows Theo 2026-09-12 … UFC card-fact parser holes
+
+**I am Windows Theo.** Data (1) parser patched: rounds from Time format, not belt. Apex from Apex / UFC APEX / 6650 El Camino only. T-Mobile / Sphere / Fight Night stay false. Desks untouched. Next gate is still Rocco last-5 + independence test. Chedda stays PASS. Do not commit phone OTP.
+
 ### Windows Theo 2026-09-12 … UFC desk contract locked
 
 **I am Windows Theo.** UFC data (1) is in: aliases + 3/5/venue on the Tuesday ufcstats job. Desk pick rules unchanged. Chedda stays PASS until a method feed. Do not commit phone OTP.

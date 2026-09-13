@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Windows Theo 2026-09-13 … CFB ledger is Top 25 only
+
+**I am Windows Theo.** Prod CFB book: cancelled 167 unranked games. Ranked Week 3 AP games stay. Poll file updated. Do not commit phone OTP.
+
 ### Windows Theo 2026-09-13 … Rocco UFC last-5 is live
 
 **I am Windows Theo.** Rocco votes UFC from `ufc_fighter_last5` (sit if missing / thin / too close). Print is Scott + Rocco. Independence check: `npm run syndicate:ufc-rocco-independence`. Chedda / Tank sit. Do not commit phone OTP.

@@ -114,7 +114,7 @@ Do not buy another costume on the 255-row ufcstats file. The Odds API we already
 
 **Locked order:**
 
-1. **This week, free:** alias table + parse 3 vs 5 and venue on the Tuesday ufcstats job. Scott can vote. Rocco can start on his own file (stance pair, reach gap, last-5 TD acc vs last-5 TD def, last-5 control, plus 3/5 + cage). Leave the desk engine alone until this is in.
+1. **This week, free (landed 2026-09-12):** alias table + parse 3 vs 5 and venue on the Tuesday ufcstats job (`ufc_fighter_aliases`, `ufc_card_fights`). Scott can resolve board names. Rocco can start on his own file next (last-5 still not built). Desk pick rules unchanged. 5 rounds = title belt icon, “5-round” label, or listed main (index 0). Apex only when the venue/title string says Apex … Las Vegas Fight Night is not assumed Apex. Mid-card titles without a belt icon still parse as 3.
 2. **Next dollar:** odds-api.io (or SportsGameOdds) for method + goes-the-distance. Chedda stays **PASS** until that lands. Chedda voting on career KO% is a contract violation.
 3. **Tank:** limp on the totals we already have + real 3/5. Sit when the total is missing. Do not fake minutes.
 4. **Kill clock:** manual Ops flag. No scraper. Closed list only: miss / scratch / walk-off.

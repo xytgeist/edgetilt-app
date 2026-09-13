@@ -193,7 +193,7 @@ Hot Windows files (first cuts): `pwaNotificationPrompt.js`, `PwaInstallBanner.js
 - [x] **Syndicate GHA metrics sync → prod on Tuesday schedule + Edge Monitor heartbeat** (`syndicate_football_metrics_sync_production`, migration **`20260903210000`**, 2026-09-02)
 - [ ] **NFL trench follow-up (after 2026-09-29):** recalibrate `TRENCH_Z_TO_POINTS` on a 2026 ESPN board → scheme mixer → sack/hit flag. Spec [`data/syndicate/trench-followup.json`](../data/syndicate/trench-followup.json). Ticket [#3](https://github.com/xytgeist/edgetilt-app/issues/3). Tuesday `/theo` nag + GHA. Kill when JSON + test row are `done`.
 - [x] **Syndicate Ops on sharpesyndicate.com** (`/ops` or `?ops=1`): admin login + Sharp Desk. EdgeTilt `/?tab=bots` keeps create/pause/Odds/X. 2026-09-02.
-- [ ] **UFC data (1) alias + 3/5 + venue (gate):** fighter alias table + parse scheduled rounds / venue on the Tuesday ufcstats job. Leave the UFC desks alone until this is in. Spec appendix: **`docs/syndicate-ufc-desk-contract.md`**.
+- [x] **UFC data (1) alias + 3/5 + venue (gate):** `ufc_fighter_aliases` + `ufc_card_fights` on the Tuesday ufcstats job. Edge lookup uses aliases and real 3/5 + venue. Desk pick rules unchanged. **`1.4.202`.** Spec: **`docs/syndicate-ufc-desk-contract.md`**.
 - [ ] **UFC desk independence test (gate):** hide Scott’s fair%, rerun Rocco + Tank, each must emit Side or PASS from its own file. After data (1). Spec: **`docs/syndicate-ufc-desk-contract.md`**.
 - [ ] **Syndicate collection failure monitoring (rest):** registry missing slate/grade/VIP/specialty crons + table freshness / Odds API last error banners. Spec note 2026-09-02.
 - [ ] **Chedda name vs pick gold (light):** Chedda stays muddy orange; pick `[gold]` readable on light (emerald). Do not paint all gold amber. See Update log **2026-09-04** OPEN.
@@ -1137,6 +1137,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-12:** **UFC data (1) aliases + card facts (Windows).** Tuesday `syndicate:sync-ufc-metrics` writes `ufc_fighter_aliases` + `ufc_card_fights` (3/5, venue, Apex). Edge match uses aliases. Apex is no longer guessed from “Fight Night.” Desk rules unchanged. **`1.4.202`.**
 - **2026-09-12:** **WK confirm dialogs sign-off (Mac).** Ryan: Play Logbook / poker / chat leave-group show stock iOS Cancel / OK. Silent `window.confirm` is dead on current IPA. In-app sheets still optional polish. **`1.4.187`+.**
 - **2026-09-12:** **Native share sheet sign-off (Mac).** Ryan smoked Lounge post / profile, W-2G image, poker completed result, chart snapshot, chat recording. System sheet. **`1.4.201`.**
 - **2026-09-12:** **UFC data order locked (Windows).** Alias + 3/5/venue first. Chedda PASS until odds-api.io / SportsGameOdds method+GTD. Tank limps on existing totals + real 3/5. Kill clock is a manual Ops flag. Leave desks alone until (1). Appendix on **`docs/syndicate-ufc-desk-contract.md`**.

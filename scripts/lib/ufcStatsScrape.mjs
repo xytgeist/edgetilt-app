@@ -74,7 +74,7 @@ export async function openUfcStatsSession() {
   return jar
 }
 
-async function fetchHtml(url, jar) {
+export async function fetchHtml(url, jar) {
   const res = await fetch(url, {
     headers: {
       'User-Agent': UA,
@@ -251,46 +251,88 @@ export async function listUfcStatsEventUrls(jar, opts = {}) {
 }
 
 /**
+ * Compact name key for aliases / card-fight pairs (matches Edge findFighterMetric).
+ */
+export function normUfcAlias(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .trim()
+}
+
+/**
+ * Parse one UFC Stats event page into venue + fight facts.
+ * 5 rounds if the row has a title belt, says 5-round, or is the listed main (index 0).
+ */
+export function parseUfcStatsEventHtml(eventUrl, html, opts = {}) {
+  const byUrl = opts.byUrl instanceof Map ? opts.byUrl : null
+  const eventName = stripTags(
+    (html.match(/b-content__title-highlight[^>]*>([\s\S]*?)<\//i) || [])[1] || '',
+  )
+  const venue = stripTags((html.match(/Location:\s*<\/i>([\s\S]*?)<\/li>/i) || [])[1] || '')
+  const isApex = /apex/i.test(venue) || /apex/i.test(eventName)
+  const fights = []
+  const rowRe = /<tr[^>]*js-fight-details-click[^>]*>([\s\S]*?)<\/tr>/gi
+  let row
+  while ((row = rowRe.exec(html))) {
+    const block = row[1]
+    const pair = []
+    const fre = /href="(http:\/\/ufcstats\.com\/fighter-details\/[a-f0-9]+)"[^>]*>([\s\S]*?)<\/a>/gi
+    let fm
+    while ((fm = fre.exec(block))) {
+      let name = stripTags(fm[2])
+      if (/view\s*matchup/i.test(name)) continue
+      if (!name || normName(name).split(' ').length < 2) {
+        name = byUrl?.get(fm[1]) || name
+      }
+      if (!name || normName(name).split(' ').length < 2) continue
+      pair.push({ name, url: fm[1] })
+    }
+    if (pair.length < 2) continue
+    const hasBelt = /belt\.png/i.test(block)
+    const fiveLabel = /5[-\s]?rounds?|5\s*rnd/i.test(block)
+    const weightRaw = stripTags(
+      (block.match(
+        /((?:Women'?s\s+)?(?:Super\s+)?(?:Fly|Bantam|Feather|Light\s+Heavy|Light|Welter|Middle|Heavy|Straw)weight)/i,
+      ) || [])[0] || '',
+    )
+    fights.push({
+      fighterA: pair[0].name,
+      fighterB: pair[1].name,
+      fighterAUrl: pair[0].url,
+      fighterBUrl: pair[1].url,
+      division: divisionFromWeightClassLabel(weightRaw),
+      scheduledRounds: hasBelt || fiveLabel ? 5 : 3,
+      hasTitleBelt: hasBelt,
+    })
+  }
+  if (fights[0] && fights[0].scheduledRounds !== 5) {
+    fights[0].scheduledRounds = 5
+  }
+  return {
+    eventUrl,
+    eventName,
+    venue,
+    isApex,
+    fights,
+  }
+}
+
+export async function scrapeUfcStatsEventCard(jar, eventUrl, opts = {}) {
+  const { html } = await fetchHtml(eventUrl, jar)
+  return parseUfcStatsEventHtml(eventUrl, html, opts)
+}
+
+/**
  * Fighter names + detail URLs on one UFC Stats event page.
  * @returns {Promise<Array<{ name: string, url: string, division: string | null }>>}
  */
 export async function scrapeUfcStatsEventFighters(jar, eventUrl, opts = {}) {
-  const byUrl = opts.byUrl instanceof Map ? opts.byUrl : null
-  const { html } = await fetchHtml(eventUrl, jar)
-  /** @type {Map<string, { name: string, url: string, division: string | null }>} */
-  const out = new Map()
-
-  const weightHints = []
-  const weightRe = />([^<]*?(?:weight|strawweight|flyweight|bantamweight|featherweight|lightweight|welterweight|middleweight|heavyweight)[^<]*)</gi
-  let wm
-  while ((wm = weightRe.exec(html))) {
-    const raw = stripTags(wm[1])
-    if (/bout|weight/i.test(raw)) weightHints.push(raw)
-  }
-
-  const re = /href="(http:\/\/ufcstats\.com\/fighter-details\/[a-f0-9]+)"[^>]*>([\s\S]*?)<\/a>/gi
-  let m
-  while ((m = re.exec(html))) {
-    const href = m[1]
-    if (out.has(href)) continue
-    let name = stripTags(m[2])
-    if (!name || normName(name).split(' ').length < 2) {
-      name = byUrl?.get(href) || name
-    }
-    if (!name || normName(name).split(' ').length < 2) continue
-    out.set(href, { name, url: href, division: null })
-  }
-
-  const rows = [...out.values()]
-  if (weightHints.length && rows.length) {
-    // Event pages list fights in order; pair two fighters to one weight hint when counts line up.
-    const fights = Math.floor(rows.length / 2)
-    for (let i = 0; i < fights && i < weightHints.length; i += 1) {
-      const hint = weightHints[i]
-      const div = divisionFromWeightClassLabel(hint)
-      rows[i * 2].division = div
-      rows[i * 2 + 1].division = div
-    }
+  const card = await scrapeUfcStatsEventCard(jar, eventUrl, opts)
+  const rows = []
+  for (const fight of card.fights) {
+    rows.push({ name: fight.fighterA, url: fight.fighterAUrl, division: fight.division })
+    rows.push({ name: fight.fighterB, url: fight.fighterBUrl, division: fight.division })
   }
   return rows
 }

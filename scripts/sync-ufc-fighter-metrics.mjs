@@ -8,6 +8,7 @@
  *   node scripts/sync-ufc-fighter-metrics.mjs --target=test
  *   node scripts/sync-ufc-fighter-metrics.mjs --target=test --dry-run
  *   node scripts/sync-ufc-fighter-metrics.mjs --target=test --ensure="Paddy Pimblett"
+ *   node scripts/sync-ufc-fighter-metrics.mjs --target=test --cards-only
  *   npm run syndicate:sync-ufc-metrics:test
  */
 
@@ -22,14 +23,16 @@ import {
   buildUfcStatsNameIndex,
   scrapeUfcStatsFighterByName,
   listUfcStatsEventUrls,
-  scrapeUfcStatsEventFighters,
+  scrapeUfcStatsEventCard,
   normUfcStatsName,
+  normUfcAlias,
 } from './lib/ufcStatsScrape.mjs'
-import { UFC_STATS_NAME_ALIASES } from './lib/ufcStatsNameAliases.mjs'
+import { UFC_STATS_NAME_ALIASES, UFC_MANUAL_BOARD_ALIASES } from './lib/ufcStatsNameAliases.mjs'
 
 function parseArgs(argv) {
   let target = 'test'
   let dryRun = false
+  let cardsOnly = false
   let limit = 0
   let completedLimit = 3
   const ensure = []
@@ -37,6 +40,7 @@ function parseArgs(argv) {
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i]
     if (arg === '--dry-run') dryRun = true
+    else if (arg === '--cards-only') cardsOnly = true
     else if (arg.startsWith('--target=')) target = arg.slice('--target='.length)
     else if (arg.startsWith('--limit=')) limit = Number(arg.slice('--limit='.length)) || 0
     else if (arg.startsWith('--completed=')) completedLimit = Number(arg.slice('--completed='.length)) || 0
@@ -58,7 +62,7 @@ function parseArgs(argv) {
   if (target !== 'test' && target !== 'production') {
     throw new Error('--target must be test or production')
   }
-  return { target, dryRun, limit, completedLimit, ensure }
+  return { target, dryRun, cardsOnly, limit, completedLimit, ensure }
 }
 
 function metricsPatch(metrics, url, syncedAt, division) {
@@ -83,21 +87,113 @@ function metricsPatch(metrics, url, syncedAt, division) {
   }
 }
 
-async function collectCardFighters(jar, byUrl, completedLimit) {
+async function collectCards(jar, byUrl, completedLimit) {
   const eventUrls = await listUfcStatsEventUrls(jar, { completedLimit, delayMs: 350 })
   console.log(`[ufc-metrics] card events=${eventUrls.length}`)
+  const cards = []
   /** @type {Map<string, { name: string, url: string, division: string | null }>} */
   const byNorm = new Map()
   for (const eventUrl of eventUrls) {
-    const fighters = await scrapeUfcStatsEventFighters(jar, eventUrl, { byUrl })
-    console.log(`[ufc-metrics]   ${eventUrl.split('/').pop()} fighters=${fighters.length}`)
-    for (const f of fighters) {
-      const key = normUfcStatsName(f.name)
-      if (!key) continue
-      if (!byNorm.has(key)) byNorm.set(key, f)
+    const card = await scrapeUfcStatsEventCard(jar, eventUrl, { byUrl })
+    cards.push(card)
+    console.log(
+      `[ufc-metrics]   ${card.eventName || eventUrl.split('/').pop()} fights=${card.fights.length} venue=${card.venue || '?'} apex=${card.isApex}`,
+    )
+    for (const fight of card.fights) {
+      for (const f of [
+        { name: fight.fighterA, url: fight.fighterAUrl, division: fight.division },
+        { name: fight.fighterB, url: fight.fighterBUrl, division: fight.division },
+      ]) {
+        const key = normUfcStatsName(f.name)
+        if (!key) continue
+        if (!byNorm.has(key)) byNorm.set(key, f)
+      }
     }
   }
-  return [...byNorm.values()]
+  return { cards, cardFighters: [...byNorm.values()] }
+}
+
+async function upsertAlias(supabase, dryRun, fighterId, source, alias) {
+  const aliasNorm = normUfcAlias(alias)
+  if (!fighterId || !aliasNorm) return
+  if (dryRun) return
+  const { error } = await supabase.from('ufc_fighter_aliases').upsert(
+    {
+      fighter_metrics_id: fighterId,
+      source,
+      alias,
+      alias_norm: aliasNorm,
+    },
+    { onConflict: 'source,alias_norm' },
+  )
+  if (error) throw error
+}
+
+async function upsertCardFacts(supabase, dryRun, cards, roster, syncedAt) {
+  let fights = 0
+  let mismatches = 0
+  for (const card of cards) {
+    for (let i = 0; i < card.fights.length; i += 1) {
+      const fight = card.fights[i]
+      const row = {
+        event_url: card.eventUrl,
+        event_name: card.eventName || '',
+        venue: card.venue || '',
+        is_apex: Boolean(card.isApex),
+        fight_index: i,
+        fighter_a: fight.fighterA,
+        fighter_b: fight.fighterB,
+        fighter_a_url: fight.fighterAUrl,
+        fighter_b_url: fight.fighterBUrl,
+        fighter_a_norm: normUfcAlias(fight.fighterA),
+        fighter_b_norm: normUfcAlias(fight.fighterB),
+        division: fight.division,
+        scheduled_rounds: fight.scheduledRounds,
+        source_synced_at: syncedAt,
+        updated_at: syncedAt,
+      }
+      fights += 1
+      if (!dryRun) {
+        const { error } = await supabase
+          .from('ufc_card_fights')
+          .upsert(row, { onConflict: 'event_url,fight_index' })
+        if (error) throw error
+      }
+      for (const name of [fight.fighterA, fight.fighterB]) {
+        const hit = findExisting(roster, name, null)
+        if (hit) {
+          await upsertAlias(supabase, dryRun, hit.id, 'ufcstats', hit.fighter_name)
+          await upsertAlias(supabase, dryRun, hit.id, 'ufcstats', name)
+        } else {
+          mismatches += 1
+          if (!dryRun) {
+            const { error } = await supabase.from('ufc_fighter_name_mismatches').upsert(
+              {
+                raw_name: name,
+                raw_norm: normUfcAlias(name),
+                source: 'ufcstats',
+                event_url: card.eventUrl,
+                last_seen_at: syncedAt,
+              },
+              { onConflict: 'source,raw_norm' },
+            )
+            if (error) throw error
+          }
+        }
+      }
+    }
+  }
+
+  for (const [official, extras] of Object.entries(UFC_MANUAL_BOARD_ALIASES)) {
+    const hit = findExisting(roster, official, null)
+    if (!hit) continue
+    await upsertAlias(supabase, dryRun, hit.id, 'manual', official)
+    for (const extra of extras) {
+      await upsertAlias(supabase, dryRun, hit.id, 'manual', extra)
+    }
+  }
+
+  console.log(`[ufc-metrics] card fights upserted=${fights} name mismatches=${mismatches}`)
 }
 
 function findExisting(roster, name, url) {
@@ -109,16 +205,25 @@ function findExisting(roster, name, url) {
 }
 
 async function main() {
-  const { target, dryRun, limit, completedLimit, ensure } = parseArgs(process.argv)
+  const { target, dryRun, cardsOnly, limit, completedLimit, ensure } = parseArgs(process.argv)
   loadSupabaseEnv(target)
   const supabase = createSupabaseServiceClient(createClient)
 
   console.log(`[ufc-metrics] Opening UFC Stats session (${targetHuman(target)})…`)
   const jar = await openUfcStatsSession()
 
-  console.log('[ufc-metrics] Building fighter name index (a–z)…')
-  const { byNormName, byUrl } = await buildUfcStatsNameIndex(jar, { delayMs: 350 })
-  console.log(`[ufc-metrics] index size=${byNormName.size}`)
+  let byNormName = null
+  let byUrl = null
+  if (!cardsOnly) {
+    console.log('[ufc-metrics] Building fighter name index (a–z)…')
+    const index = await buildUfcStatsNameIndex(jar, { delayMs: 350 })
+    byNormName = index.byNormName
+    byUrl = index.byUrl
+    console.log(`[ufc-metrics] index size=${byNormName.size}`)
+  } else {
+    console.log('[ufc-metrics] cards-only … skipping a–z index')
+    byUrl = new Map()
+  }
 
   const { data: existing, error: loadErr } = await supabase
     .from('ufc_fighter_metrics')
@@ -129,7 +234,7 @@ async function main() {
   let roster = existing || []
   console.log(`[ufc-metrics] roster=${roster.length}`)
 
-  const cardFighters = await collectCardFighters(jar, byUrl, completedLimit)
+  const { cards, cardFighters } = await collectCards(jar, byUrl, completedLimit)
   const wantedNew = []
   const seenWanted = new Set()
   for (const f of cardFighters) {
@@ -193,6 +298,17 @@ async function main() {
       failed += 1
       console.warn(`[ufc-metrics] INSERT FAIL ${f.name}: ${err.message || err}`)
     }
+  }
+
+  try {
+    await upsertCardFacts(supabase, dryRun, cards, roster, syncedAt)
+  } catch (err) {
+    console.warn(`[ufc-metrics] card facts skipped: ${err.message || err}`)
+  }
+
+  if (cardsOnly) {
+    console.log(`[ufc-metrics] cards-only done${dryRun ? ' (dry-run)' : ''}`)
+    return
   }
 
   let refresh = roster

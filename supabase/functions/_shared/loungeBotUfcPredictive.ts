@@ -21,11 +21,11 @@ import {
   filterOddsEventsForNextUfcCard,
 } from './loungeBotOddsCaption.ts'
 import {
-  type UfcFighterMetric,
   type UfcMatchupAnalysis,
   analyzeUfcMatchup,
   fetchUfcFighterMetrics,
-  findFighterMetric,
+  fetchUfcCardFights,
+  findCardFight,
 } from './loungeBotUfcMetrics.ts'
 import { formatColoredPickerList, formatColoredPickerName } from './loungeBotPickerColors.ts'
 import { resolveGameBettingSplits, type BettingSplitSummary } from './loungeBotBettingSplits.ts'
@@ -148,6 +148,7 @@ export async function buildUfcSlateCard(
   if (!slateEvents.length) return null
 
   const metricsList = await fetchUfcFighterMetrics(supabase)
+  const cardFacts = await fetchUfcCardFights(supabase)
   const fights: UfcFightPick[] = []
   const hammers: UfcFightPick[] = []
   const consensus: UfcFightPick[] = []
@@ -177,13 +178,14 @@ export async function buildUfcSlateCard(
     const overPrice = overOut?.price ?? -110
     const underPrice = underOut?.price ?? -110
 
-    // Check if venue is UFC Apex (25ft small cage)
-    const isApex = ev.venue_name?.toLowerCase().includes('apex') ||
-      cardTitle.toLowerCase().includes('fight night') ||
-      false
+    const cardFact = findCardFight(cardFacts, fighterA, fighterB, metricsList)
+    const isApex = cardFact
+      ? cardFact.isApex
+      : Boolean(ev.venue_name?.toLowerCase().includes('apex'))
+    const isFiveRounds = cardFact?.scheduledRounds === 5
 
     // Quantitative matchup model
-    const matchup = analyzeUfcMatchup(fighterA, fighterB, metricsList, isApex)
+    const matchup = analyzeUfcMatchup(fighterA, fighterB, metricsList, isApex, isFiveRounds)
     const splits = resolveGameBettingSplits(ev, null, oddsA, oddsB)
 
     // 1. Desk 1: Scott Sharpe (Offshore Devig & +EV)

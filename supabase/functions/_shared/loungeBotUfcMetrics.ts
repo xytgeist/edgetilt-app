@@ -42,6 +42,8 @@ export type UfcFighterMetric = {
   ko_finish_rate: number
   sub_finish_rate: number
   is_custom_override?: boolean
+  id?: string
+  aliases?: string[]
 }
 
 export type DivisionFinishBaseline = {
@@ -179,16 +181,20 @@ export function findFighterMetric(
   const norm = normalizeName(targetName)
   if (!norm) return null
 
-  // Direct match
-  const direct = metricsList.find((m) => normalizeName(m.fighter_name) === norm)
+  const namesOf = (m: UfcFighterMetric) => [m.fighter_name, ...(m.aliases || [])]
+
+  // Direct match on official name or alias
+  const direct = metricsList.find((m) => namesOf(m).some((n) => normalizeName(n) === norm))
   if (direct) return direct
 
   // Token / Substring match (e.g. "O'Malley" or "Nurmagomedov")
   const tokens = targetName.toLowerCase().split(/\s+/).filter((t) => t.length >= 3)
   for (const m of metricsList) {
-    const mNorm = normalizeName(m.fighter_name)
-    if (tokens.every((t) => mNorm.includes(t))) return m
-    if (tokens.some((t) => mNorm.includes(t) && t.length >= 6)) return m
+    for (const n of namesOf(m)) {
+      const mNorm = normalizeName(n)
+      if (tokens.every((t) => mNorm.includes(t))) return m
+      if (tokens.some((t) => mNorm.includes(t) && t.length >= 6)) return m
+    }
   }
 
   return null
@@ -368,9 +374,96 @@ export async function fetchUfcFighterMetrics(
       return UFC_BASELINE_FIGHTER_METRICS
     }
 
-    return data as UfcFighterMetric[]
+    const rows = data as UfcFighterMetric[]
+    const { data: aliasRows } = await supabase
+      .from('ufc_fighter_aliases')
+      .select('fighter_metrics_id, alias')
+    if (aliasRows?.length) {
+      const byId = new Map<string, string[]>()
+      for (const a of aliasRows) {
+        const id = String(a.fighter_metrics_id || '')
+        if (!id || !a.alias) continue
+        const list = byId.get(id) || []
+        list.push(String(a.alias))
+        byId.set(id, list)
+      }
+      for (const row of rows) {
+        if (row.id && byId.has(row.id)) row.aliases = byId.get(row.id)
+      }
+    }
+
+    return rows
   } catch (err) {
     console.warn('Failed to fetch ufc_fighter_metrics from DB:', err)
     return UFC_BASELINE_FIGHTER_METRICS
   }
+}
+
+export type UfcCardFightFact = {
+  eventName: string
+  venue: string
+  isApex: boolean
+  fighterA: string
+  fighterB: string
+  fighterANorm: string
+  fighterBNorm: string
+  scheduledRounds: 3 | 5
+  division: string | null
+}
+
+export async function fetchUfcCardFights(
+  supabase?: SupabaseClient,
+): Promise<UfcCardFightFact[]> {
+  if (!supabase) return []
+  try {
+    const { data, error } = await supabase
+      .from('ufc_card_fights')
+      .select('event_name, venue, is_apex, fighter_a, fighter_b, fighter_a_norm, fighter_b_norm, scheduled_rounds, division')
+    if (error || !data) return []
+    return data.map((row) => ({
+      eventName: String(row.event_name || ''),
+      venue: String(row.venue || ''),
+      isApex: Boolean(row.is_apex),
+      fighterA: String(row.fighter_a || ''),
+      fighterB: String(row.fighter_b || ''),
+      fighterANorm: String(row.fighter_a_norm || ''),
+      fighterBNorm: String(row.fighter_b_norm || ''),
+      scheduledRounds: row.scheduled_rounds === 5 ? 5 : 3,
+      division: row.division ? String(row.division) : null,
+    }))
+  } catch (err) {
+    console.warn('Failed to fetch ufc_card_fights from DB:', err)
+    return []
+  }
+}
+
+function nameKeys(raw: string, metricsList?: UfcFighterMetric[]): Set<string> {
+  const keys = new Set<string>()
+  const add = (s: string) => {
+    const n = normalizeName(s)
+    if (n) keys.add(n)
+  }
+  add(raw)
+  const hit = metricsList?.length ? findFighterMetric(raw, metricsList) : null
+  if (hit) {
+    add(hit.fighter_name)
+    for (const alias of hit.aliases || []) add(alias)
+  }
+  return keys
+}
+
+export function findCardFight(
+  fights: UfcCardFightFact[],
+  fighterAName: string,
+  fighterBName: string,
+  metricsList?: UfcFighterMetric[],
+): UfcCardFightFact | null {
+  const aKeys = nameKeys(fighterAName, metricsList)
+  const bKeys = nameKeys(fighterBName, metricsList)
+  if (!aKeys.size || !bKeys.size) return null
+  return fights.find((f) => {
+    const fa = f.fighterANorm || normalizeName(f.fighterA)
+    const fb = f.fighterBNorm || normalizeName(f.fighterB)
+    return (aKeys.has(fa) && bKeys.has(fb)) || (aKeys.has(fb) && bKeys.has(fa))
+  }) || null
 }

@@ -858,7 +858,7 @@ Desk mapping: **Scott** = PASS unless model−market ≥ 2.5 after PVAL (1.5 onl
 
 **Internal weekly SOP (honest inventory + publish rules):** [`docs/syndicate-cfb-weekly-runbook.md`](./syndicate-cfb-weekly-runbook.md). Keep blend weights out of public UI.
 
-**UFC / MMA 4-desk contract (locked, not coded):** [`docs/syndicate-ufc-desk-contract.md`](./syndicate-ufc-desk-contract.md). Leave desks alone until data appendix **(1)** (alias + 3/5 + venue). Chedda PASS until a method feed.
+**UFC / MMA 4-desk contract (locked, not coded):** [`docs/syndicate-ufc-desk-contract.md`](./syndicate-ufc-desk-contract.md). Data **(1)** landed. Desk pick rules unchanged. Chedda PASS until a method feed.
 
 Requires **`CFBD_API_KEY`** in `.env.supabase.{test,production}` and GitHub Actions secret `CFBD_API_KEY` ([get key](https://collegefootballdata.com/key)). Free tier is 1k calls/mo … weekly sync is fine; Patreon ~$5/mo if you need more.
 
@@ -869,7 +869,7 @@ npm run syndicate:sync-cfb-power:production   # Ryan explicit only
 
 **Cron:** [`.github/workflows/syndicate-football-metrics-sync.yml`](../.github/workflows/syndicate-football-metrics-sync.yml) … Tuesdays **14:00 UTC** syncs **test + production** (NFL EPA + CFB power + UFC metrics + **Sleeper PVAL refresh** + **TWO·DEEP hole-fill**). Manual dispatch can set `sync_production=false` to skip prod. Edge Monitor heartbeat **`syndicate_football_metrics_sync_production`** plus per-step `syndicate_weekly_*` ids. Ops **Weekly Pulls** tab shows pass/fail. Staff SELECT **`20260910230000`**.
 
-**UFC metrics roster:** Table started as a hand-seeded ~38 champ/contender list (`20260830230000`). Tuesday `syndicate:sync-ufc-metrics` refreshes those rows from **ufcstats.com** and **inserts anyone on upcoming + the last 3 completed UFC cards** who is not on the roster yet. Custom overrides are skipped. `--ensure="Paddy Pimblett"` adds a named fighter the same way. This is not a full UFC encyclopedia… quiet names stay off until they hit a card or we ensure them.
+**UFC metrics roster:** Table started as a hand-seeded ~38 champ/contender list (`20260830230000`). Tuesday `syndicate:sync-ufc-metrics` refreshes those rows from **ufcstats.com** and **inserts anyone on upcoming + the last 3 completed UFC cards** who is not on the roster yet. Same job upserts **`ufc_card_fights`** (venue, Apex, scheduled 3/5) and **`ufc_fighter_aliases`**. `--cards-only` skips the career refresh. `--ensure="Paddy Pimblett"` adds a named fighter the same way. This is not a full UFC encyclopedia… quiet names stay off until they hit a card or we ensure them.
 
 **Model:** [`loungeBotTeamMetrics.ts`](../supabase/functions/_shared/loungeBotTeamMetrics.ts) `calculateTrenchEpaMatchup` uses nflverse EPA plus ESPN PBWR/PRWR/RBWR/RSWR. Trench scaler z-scores the four team rates **inside the loaded vintage** (never 2026 raw minus 2025 raw), keeps the same home-minus-away cross-matchup, blends 55% pass / 45% run, then maps blended z to points (`TRENCH_Z_TO_POINTS = 0.56`, calibrated so the 2025 Week 18 ≥0.8 hit rate matches the old ÷12 / ÷25 board). House gate stays **0.8 points**, not a z cutoff. Recalibrate that constant after 3-4 weeks of a 2026 board. Scott’s NFL model spread is `-(epaSpread + trenchSpread)`. **`lounge-odds-poll`** on test + prod as of 2026-09-10 (z-score scaler).
 

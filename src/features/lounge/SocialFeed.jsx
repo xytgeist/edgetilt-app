@@ -2238,9 +2238,14 @@ export default function SocialFeed({
 
   const loungeComposerCaptionTargetConfig = useCallback(
     (target) => {
+      const keepCommentDetailInPlace =
+        loungeCommentDetailPathIdsRef.current.length > 0 ||
+        loungePostDetailOverLightboxRef.current
       const scrollFeedToTop =
         target === 'detailComment'
-          ? scrollLoungePostDetailToTopInstant
+          ? keepCommentDetailInPlace
+            ? undefined
+            : scrollLoungePostDetailToTopInstant
           : target === 'composer'
             ? scrollLoungeFeedToTopInstant
             : undefined
@@ -2448,7 +2453,12 @@ export default function SocialFeed({
   )
 
   const expandAndFocusLoungeDetailCommentComposer = useCallback(({ skipScrollToTop = false } = {}) => {
-    const skipScroll = skipScrollToTop || loungePostDetailOverLightboxRef.current
+    // Comment detail parks on the tapped reply. Scrolling to top on focus
+    // jumps back to the OP when the keyboard opens.
+    const skipScroll =
+      skipScrollToTop ||
+      loungePostDetailOverLightboxRef.current ||
+      loungeCommentDetailPathIdsRef.current.length > 0
     if (!skipScroll) scrollLoungePostDetailToTopInstant()
     focusLoungeComposerCaption(() => loungeDetailCommentFieldRef.current, {
       scrollFeedToTop: skipScroll ? undefined : scrollLoungePostDetailToTopInstant,

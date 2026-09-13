@@ -151,6 +151,7 @@ Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows**
 - [ ] **Title-bar status plate fade (2026-09-12):** Lounge + any `ScrollLinkedEdgeTitleBarShell` tab. Scroll up: Island / clock sit on an opaque cap (title slide unchanged). Scroll down: that cap fades out as EDGE returns. Light and dark.
 - [ ] **Native photo pickers app-wide (2026-09-12):** current IPA (has `pickPhotos` / `scanDocument`). Lounge image button, chat Add Media, profile Banner/Avatar, chat group photo → PHPicker. Offers import → Take photo (VisionKit) or Photo library. Cancel returns. Video still uses the file sheet. PWA / old IPA unchanged.
 - [ ] **App-wide WK Done / prev-next (2026-09-12):** IPA with `setKeyboardAccessory`. Tap a field in Lounge, thread, chat, logbook, bankroll, poker, W-2G. Expect the stock accessory. GIF search stays bar-less. Old IPA still has no bar. Rebuild Test Fast if not done since **`1.4.190`**.
+- [ ] **Comment-detail composer stays put (2026-09-12):** tap a comment → comment screen (OP above). Tap the reply composer. Keyboard up. Stay on that comment. Must not jump to the OP. Post-level reply can still scroll to top.
 - [ ] **W-2G My W-2Gs delete (2026-09-12):** trash on a slip opens the in-app confirm and removes the row. IPA `window.confirm` was a silent no.
 - [ ] **W-2G extract keyboard + auto-verify (2026-09-12):** current IPA after this native toggle, tap a tax field on extract / verify. Expect the **system** WK Done / prev-next bar, not a custom chip. Take photo save (after extract) shows Verified. Library bulk stays Verify. New Test Fast required for the bar.
 - [ ] **W-2G Vision OCR smoke (2026-09-11):** current IPA, scan a slip on **free and Starter+**. Same path: **On-device extract** / **Vision N%**. A blurry signed-in slip may flip to **AI extract**. Bulk lock is the only Starter+ difference. Redeploy **`w2g-vision-extract`** on test (sign-in only).
@@ -1132,6 +1133,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-12:** **Comment-detail reply composer stays on the comment (Mac).** Expanding / focusing the detail reply field no longer `scrollTo(0)` while a comment path is open. Post-level reply still jumps to the OP. **`1.4.200`.**
 - **2026-09-12:** **Tank still cards UFC ML while O/U is parked (Windows).** Parking totals is not a sit. Restored Tank Gantt ML (`e61e7be1-…`, won +0.25u) and that fight's `4-0` badge. Other 12 Tank Noche rows stay cancelled (those were O/U). New slates: Tank copies Scott ML + votes. Redeploy `lounge-odds-poll`. **`1.4.199`.**
 - **2026-09-12:** **Noche audited ledger restamped 3-desk (Windows).** (Superseded by 1.4.199.) Briefly cancelled Tank Gantt ML by mistake; 12 Tank totals stay void. Scott/Rocco/Chedda 39 ML rows were `3-0` / `2-1` except Gantt back to `4-0`.
 - **2026-09-12:** **Tank UFC round O/U parked (Windows).** Uncut captions no longer print Tank Over/Under. Ledger insert skips those O/U rows. Tank still cards an ML. Football Tank totals unchanged. Flip `TANK_UFC_ROUND_TOTALS_ENABLED` when trained. Redeploy `lounge-odds-poll`. **`1.4.198`.**

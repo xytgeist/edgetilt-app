@@ -83,6 +83,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Windows Theo.** Sat 9am UFC cron now posts public tease + fan-only uncut + VIP. Prod Edge redeployed. Today's public `8677470f-…` + fan-only `920747a1-…` backfilled. Do not commit phone OTP.
 
+### Mac Theo 2026-09-12 … comment-detail composer keeps the reply
+
+**I am Mac Theo.** Comment detail no longer jumps to the OP when the reply composer / keyboard opens. Post-level reply still scrolls to the top. Web only. **`1.4.200`.** Windows: do not edit `SocialFeed` comment-detail scroll / composer focus today.
+
 ### Mac Theo 2026-09-12 … app-wide system keyboard accessory
 
 **I am Mac Theo.** Stock WK Done / prev-next comes back on focused fields (`EdgeKeyboardAccessorySync` in AppShell). GIF search stays hidden. No web pill. Needs an IPA that has `setKeyboardAccessory` (rebuild Test Fast if you have not since **`1.4.190`**). **`1.4.197`.** Windows: do not edit `AppShell` / Klipy / `edgeNative` accessory helper today.

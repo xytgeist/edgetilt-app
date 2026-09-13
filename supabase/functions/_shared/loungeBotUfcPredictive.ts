@@ -6,7 +6,7 @@
  * 2. Rocco (Octagon Grappling & Strike Differential) ... Takedown control rate & net SLpM efficiency.
  * 3. Chedda (Live Dogs & Inside Distance Props) ... Plus-money live underdogs & KO/Sub finish equity.
  * 4. Tank ... UFC round O/U is parked until the desk is trained.
- * Live print / ledger is Scott only until the other desks have their own files.
+ * Live print / ledger is Scott + Rocco. Chedda / Tank sit.
  *    Football totals stay on the NFL/CFB slate.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
@@ -28,7 +28,9 @@ import {
   fetchUfcCardFights,
   findCardFight,
   inferApexVenue,
+  findFighterMetric,
 } from './loungeBotUfcMetrics.ts'
+import { decideRoccoUfc, fetchUfcFighterLast5, findLast5 } from './loungeBotUfcRocco.ts'
 import { formatColoredPickerName } from './loungeBotPickerColors.ts'
 import { resolveGameBettingSplits, type BettingSplitSummary } from './loungeBotBettingSplits.ts'
 import {
@@ -85,11 +87,11 @@ export type UfcSlateCard = {
 
 const SHARP_PICKERS = ['Scott', 'Rocco', 'Chedda', 'Tank'] as const
 /** Live UFC print + ledger. Costume desks stay computed, not published. */
-const UFC_PRINT_DESKS = ['Scott'] as const
+const UFC_PRINT_DESKS = ['Scott', 'Rocco'] as const
 /** Flip when Tank's UFC round-total model is trained. Football O/U is unchanged. */
 const TANK_UFC_ROUND_TOTALS_ENABLED = false
 
-/** Ops desk board … Scott only on UFC until the other desks are real. */
+/** Ops desk board … Scott + Rocco. Chedda / Tank sit. */
 export function ufcDeskEvalBoard(card: UfcSlateCard | null | undefined) {
   const empty = { Scott: [], Rocco: [], Chedda: [], Tank: [] } as Record<
     (typeof SHARP_PICKERS)[number],
@@ -153,6 +155,7 @@ export async function buildUfcSlateCard(
 
   const metricsList = await fetchUfcFighterMetrics(supabase)
   const cardFacts = await fetchUfcCardFights(supabase)
+  const last5List = await fetchUfcFighterLast5(supabase)
   const fights: UfcFightPick[] = []
   const hammers: UfcFightPick[] = []
   const consensus: UfcFightPick[] = []
@@ -218,28 +221,26 @@ export async function buildUfcSlateCard(
       }
     }
 
-    // 2. Desk 2: Rocco (Octagon Grappling & Strike Differential)
-    let roccoSide: 'A' | 'B' = 'A'
-    let roccoOdds = oddsA
-    let roccoPickName = `${fighterA} ML (${formatAmericanOdds(oddsA)})`
-    let roccoRationale = `Striking differential and cage control advantage.`
-
-    if (matchup) {
-      if (matchup.takedownControlA >= matchup.takedownControlB + 0.5 || matchup.strikingDiffA >= 1.2) {
-        roccoSide = 'A'
-        roccoOdds = oddsA
-        roccoPickName = `${fighterA} ML (${formatAmericanOdds(oddsA)})`
-        roccoRationale = `Octagon Efficiency: +${matchup.strikingDiffA} net striking differential and controlled takedown pressure.`
-      } else {
-        roccoSide = 'B'
-        roccoOdds = oddsB
-        roccoPickName = `${fighterB} ML (${formatAmericanOdds(oddsB)})`
-        roccoRationale = `Takedown Defense & Striking: Negates ground game with elite takedown defense and active counters.`
-      }
-    } else {
-      roccoSide = scottSide
-      roccoOdds = scottOdds
-      roccoPickName = scottPickName
+    // 2. Desk 2: Rocco ... last-5 styles. Ignores juice. Sit is first-class.
+    const metricA = findFighterMetric(fighterA, metricsList)
+    const metricB = findFighterMetric(fighterB, metricsList)
+    const rocco = decideRoccoUfc({
+      fighterA,
+      fighterB,
+      last5A: findLast5(fighterA, last5List, metricA?.id),
+      last5B: findLast5(fighterB, last5List, metricB?.id),
+      scheduledRounds: isFiveRounds ? 5 : 3,
+      isApex,
+      stanceA: metricA?.stance || null,
+      stanceB: metricB?.stance || null,
+    })
+    let roccoSide: 'A' | 'B' | 'PASS' = rocco.side
+    let roccoOdds = 0
+    let roccoPickName = 'PASS'
+    let roccoRationale = rocco.rationale
+    if (rocco.side === 'A' || rocco.side === 'B') {
+      roccoOdds = rocco.side === 'A' ? oddsA : oddsB
+      roccoPickName = `${rocco.side === 'A' ? fighterA : fighterB} ML (${formatAmericanOdds(roccoOdds)})`
     }
 
     // 3. Desk 3: Chedda (Live Dogs & Inside Distance Equity)
@@ -263,8 +264,7 @@ export async function buildUfcSlateCard(
       cheddaOdds = oddsA
       cheddaPickName = `${fighterA} +${oddsA} Live Dog`
       cheddaRationale = `Underdog Value: Plus-money line ${formatAmericanOdds(oddsA)} underestimates ground game equity.`
-    } else {
-      // Chalk or model favorite
+    } else if (roccoSide === 'A' || roccoSide === 'B') {
       cheddaSide = roccoSide
       cheddaOdds = roccoOdds
       cheddaPickName = roccoPickName
@@ -382,14 +382,16 @@ export async function buildUfcSlateCard(
           side: roccoSide,
           odds: roccoOdds,
           rationale: roccoRationale,
-          equations: buildUfcRoccoEquations({
-            fighterA,
-            fighterB,
-            strikingDiffA: matchup?.strikingDiffA ?? null,
-            tdA: matchup?.takedownControlA ?? null,
-            tdB: matchup?.takedownControlB ?? null,
-            side: roccoSide,
-          }),
+          equations: roccoSide === 'A' || roccoSide === 'B'
+            ? buildUfcRoccoEquations({
+                fighterA,
+                fighterB,
+                strikingDiffA: matchup?.strikingDiffA ?? null,
+                tdA: matchup?.takedownControlA ?? null,
+                tdB: matchup?.takedownControlB ?? null,
+                side: roccoSide,
+              })
+            : [],
         },
         Chedda: {
           pickName: cheddaPickName,
@@ -447,19 +449,24 @@ export async function buildUfcSlateCard(
 
 function formatUfcFightDeskBlock(fight: UfcFightPick): string {
   const scott = fight.pickerPicks.Scott
+  const rocco = fight.pickerPicks.Rocco
+  const roccoLine = rocco.side === 'PASS'
+    ? `• ${formatColoredPickerName('Rocco')}: PASS ... ${rocco.rationale}`
+    : `• ${formatColoredPickerName('Rocco')}: ${rocco.pickName} ... ${rocco.rationale}`
   return [
     `**${fight.fighterA} vs ${fight.fighterB}** (${fight.matchup?.division || 'UFC'})`,
     `• ${formatColoredPickerName('Scott')}: ${scott.pickName} ... ${scott.rationale}`,
+    roccoLine,
   ].join('\n')
 }
 
 /**
- * Subscriber / VIP sub-chat: Scott price card only.
+ * Subscriber / VIP sub-chat: Scott price + Rocco styles.
  */
 export function formatUfcVipCardCaption(card: UfcSlateCard): string {
   const vipLines: string[] = []
-  vipLines.push(`🥊 **${card.cardTitle.toUpperCase()} · SCOTT PRICE CARD**\n`)
-  vipLines.push(`Scott only. Rocco / Chedda / Tank sit until their files are real.\n`)
+  vipLines.push(`🥊 **${card.cardTitle.toUpperCase()} · SCOTT + ROCCO**\n`)
+  vipLines.push(`Price desk + styles. Chedda / Tank sit.\n`)
   for (const fight of card.fights || []) {
     vipLines.push(formatUfcFightDeskBlock(fight), '')
   }
@@ -474,9 +481,9 @@ export function formatUfcFanOnlyBodies(card: UfcSlateCard): {
   threadParts: Array<{ body: string }>
 } {
   const header = [
-    `🥊 **${card.cardTitle.toUpperCase()} · SCOTT PRICE CARD**`,
+    `🥊 **${card.cardTitle.toUpperCase()} · SCOTT + ROCCO**`,
     '',
-    `Scott only. Rocco / Chedda / Tank sit until their files are real.`,
+    `Price desk + styles. Chedda / Tank sit.`,
   ].join('\n')
   const fights = (card.fights || []).map(formatUfcFightDeskBlock)
   let caption = header
@@ -508,20 +515,23 @@ export function formatUfcFanOnlyBodies(card: UfcSlateCard): {
 export function formatUfcCardCaption(card: UfcSlateCard): string {
   const lines: string[] = []
 
-  lines.push(`🥊 **${card.cardTitle.toUpperCase()} · SCOTT PRICE CARD** 🥊`)
-  lines.push(`Posted ML vs model fair. Other desks sit until their files are real.\n`)
+  lines.push(`🥊 **${card.cardTitle.toUpperCase()} · SCOTT + ROCCO** 🥊`)
+  lines.push(`Price desk + last-5 styles. Chedda / Tank sit.\n`)
 
   for (const fight of card.fights || []) {
     const scott = fight.pickerPicks.Scott
+    const rocco = fight.pickerPicks.Rocco
     const opp = scott.side === 'A' ? fight.fighterB : fight.fighterA
     lines.push(`• **${scott.pickName}** vs ${opp}`)
-    if (fight.matchup?.summaryLine) {
-      lines.push(`  ↳ *${fight.matchup.summaryLine}*`)
-    }
+    lines.push(
+      rocco.side === 'PASS'
+        ? `  ↳ ${formatColoredPickerName('Rocco')}: PASS ... ${rocco.rationale}`
+        : `  ↳ ${formatColoredPickerName('Rocco')}: ${rocco.pickName}`,
+    )
   }
 
   lines.push('')
-  lines.push(`💬 *Same Scott card in the fan-only Lounge post and Sharpe VIP chat.*`)
+  lines.push(`💬 *Same Scott + Rocco card in the fan-only Lounge post and Sharpe VIP chat.*`)
   lines.push(`🌐 Audited ledger & fighter metrics: sharpesyndicate.com`)
 
   return lines.join('\n')
@@ -571,14 +581,14 @@ export async function publishAndRecordUfcCard(
         units_net: 0,
         created_at: new Date().toISOString(),
         metadata: {
-          consensus_type: 'scott',
-          consensus_badge: 'Scott',
+          consensus_type: picker === 'Rocco' ? 'rocco' : 'scott',
+          consensus_badge: picker,
           vote_count: 1,
           rationale: pPick.rationale,
           division: fight.matchup?.division,
           is_apex: fight.isApexCage,
           clv_beat: Math.random() > 0.25, // ~75% CLV beat model
-          desk_label: 'Consensus Devig',
+          desk_label: picker === 'Rocco' ? 'Last-5 styles' : 'Consensus Devig',
         },
       })
     }

@@ -1,0 +1,202 @@
+/**
+ * Rocco UFC decide. Own file only: last-5 + 3/5 + cage + stance.
+ * No juice. No Scott fair% / +EV / model win%. Sit is first-class.
+ * Keep in sync with scripts/lib/ufcRoccoDecide.mjs (independence test imports the .mjs).
+ */
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
+
+export const ROCCO_MIN_FIGHTS = 3
+export const ROCCO_SIT_MARGIN = 0.35
+
+export type UfcRoccoLast5 = {
+  fighterName?: string
+  fighterMetricsId?: string
+  fightCount: number
+  wins: number
+  losses: number
+  koWins: number
+  subWins: number
+  decWins: number
+  tdLanded: number
+  sigStrLanded: number
+  roundsFought: number
+  distanceFights: number
+  stance?: string | null
+}
+
+export type RoccoUfcDecision = {
+  side: 'A' | 'B' | 'PASS'
+  margin: number
+  rationale: string
+  features: string[]
+}
+
+function num(v: unknown) {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : 0
+}
+
+function perFight(total: unknown, fights: unknown) {
+  const n = num(fights)
+  if (n <= 0) return 0
+  return num(total) / n
+}
+
+export function decideRoccoUfc(input: {
+  fighterA: string
+  fighterB: string
+  last5A?: UfcRoccoLast5 | null
+  last5B?: UfcRoccoLast5 | null
+  scheduledRounds?: 3 | 5 | null
+  isApex?: boolean
+  stanceA?: string | null
+  stanceB?: string | null
+}): RoccoUfcDecision {
+  const fighterA = String(input?.fighterA || 'A')
+  const fighterB = String(input?.fighterB || 'B')
+  const last5A = input?.last5A
+  const last5B = input?.last5B
+  const scheduledRounds = input?.scheduledRounds === 5 ? 5 : 3
+  const isApex = Boolean(input?.isApex)
+  const stanceA = input?.stanceA || last5A?.stance || 'Orthodox'
+  const stanceB = input?.stanceB || last5B?.stance || 'Orthodox'
+
+  if (!last5A || !last5B) {
+    return {
+      side: 'PASS',
+      margin: 0,
+      rationale: 'No last-5 file for both names. Rocco sits.',
+      features: ['missing_last5'],
+    }
+  }
+  if (num(last5A.fightCount) < ROCCO_MIN_FIGHTS || num(last5B.fightCount) < ROCCO_MIN_FIGHTS) {
+    return {
+      side: 'PASS',
+      margin: 0,
+      rationale: 'Last-5 tape under 3 fights. Rocco sits.',
+      features: ['thin_tape'],
+    }
+  }
+
+  const wrestleA = perFight(last5A.tdLanded, last5A.fightCount)
+  const wrestleB = perFight(last5B.tdLanded, last5B.fightCount)
+  const strikeA = perFight(last5A.sigStrLanded, last5A.fightCount)
+  const strikeB = perFight(last5B.sigStrLanded, last5B.fightCount)
+  const winA = perFight(last5A.wins, last5A.fightCount)
+  const winB = perFight(last5B.wins, last5B.fightCount)
+  const distanceA = perFight(last5A.distanceFights, last5A.fightCount)
+  const distanceB = perFight(last5B.distanceFights, last5B.fightCount)
+
+  let scoreA = 0
+  const features: string[] = []
+
+  const wrestleGap = wrestleA - wrestleB
+  scoreA += wrestleGap * 2
+  if (Math.abs(wrestleGap) >= 0.4) {
+    features.push(wrestleGap > 0 ? 'wrestling_a' : 'wrestling_b')
+  }
+
+  const strikeGap = (strikeA - strikeB) / 20
+  scoreA += strikeGap
+  if (Math.abs(strikeA - strikeB) >= 8) {
+    features.push(strikeA > strikeB ? 'volume_a' : 'volume_b')
+  }
+
+  scoreA += (winA - winB) * 1.4
+
+  if (scheduledRounds === 5) {
+    scoreA += (distanceA - distanceB) * 0.9
+    if (Math.abs(distanceA - distanceB) >= 0.3) features.push('five_round_cardio')
+  }
+
+  if (isApex) {
+    scoreA += wrestleGap * 0.7
+    if (Math.abs(wrestleGap) >= 0.3) features.push('apex_wrestle')
+  }
+
+  if (stanceA === 'Southpaw' && stanceB === 'Orthodox') {
+    scoreA += 0.2
+    features.push('southpaw_open')
+  } else if (stanceB === 'Southpaw' && stanceA === 'Orthodox') {
+    scoreA -= 0.2
+    features.push('southpaw_open')
+  }
+
+  const margin = Math.round(Math.abs(scoreA) * 100) / 100
+  if (margin < ROCCO_SIT_MARGIN) {
+    return {
+      side: 'PASS',
+      margin,
+      rationale: `Styles too close on last-5 (margin ${margin}). Rocco sits.`,
+      features: features.length ? features : ['coin_flip'],
+    }
+  }
+
+  const side = scoreA > 0 ? 'A' : 'B'
+  const pick = side === 'A' ? fighterA : fighterB
+  const why = features.includes('wrestling_a') || features.includes('wrestling_b')
+    ? 'wrestling vs liner'
+    : features.includes('volume_a') || features.includes('volume_b')
+      ? 'last-5 strike volume'
+      : 'last-5 form'
+  return {
+    side,
+    margin,
+    rationale: `If they ran it 10 times: ${pick} (${why}, margin ${margin}).`,
+    features,
+  }
+}
+
+export async function fetchUfcFighterLast5(
+  supabase?: SupabaseClient,
+): Promise<UfcRoccoLast5[]> {
+  if (!supabase) return []
+  try {
+    const { data, error } = await supabase
+      .from('ufc_fighter_last5')
+      .select(
+        'fighter_metrics_id, fighter_name, fight_count, wins, losses, ko_wins, sub_wins, dec_wins, td_landed, sig_str_landed, rounds_fought, distance_fights',
+      )
+    if (error || !data) return []
+    return data.map((row) => ({
+      fighterMetricsId: String(row.fighter_metrics_id || ''),
+      fighterName: String(row.fighter_name || ''),
+      fightCount: Number(row.fight_count) || 0,
+      wins: Number(row.wins) || 0,
+      losses: Number(row.losses) || 0,
+      koWins: Number(row.ko_wins) || 0,
+      subWins: Number(row.sub_wins) || 0,
+      decWins: Number(row.dec_wins) || 0,
+      tdLanded: Number(row.td_landed) || 0,
+      sigStrLanded: Number(row.sig_str_landed) || 0,
+      roundsFought: Number(row.rounds_fought) || 0,
+      distanceFights: Number(row.distance_fights) || 0,
+    }))
+  } catch (err) {
+    console.warn('Failed to fetch ufc_fighter_last5:', err)
+    return []
+  }
+}
+
+export function findLast5(
+  fighterName: string,
+  last5List: UfcRoccoLast5[],
+  fighterMetricsId?: string | null,
+): UfcRoccoLast5 | null {
+  if (fighterMetricsId) {
+    const byId = last5List.find((row) => row.fighterMetricsId === fighterMetricsId)
+    if (byId) return byId
+  }
+  const key = String(fighterName || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+  if (!key) return null
+  return (
+    last5List.find(
+      (row) =>
+        String(row.fighterName || '')
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, '') === key,
+    ) || null
+  )
+}

@@ -200,6 +200,78 @@ async function upsertCardFacts(supabase, dryRun, cards, roster, syncedAt) {
   console.log(`[ufc-metrics] card fights upserted=${fights} name mismatches=${mismatches}`)
 }
 
+async function upsertLast5(supabase, dryRun, fighterId, fighterName, last5, syncedAt) {
+  if (!fighterId || !last5) return
+  const row = {
+    fighter_metrics_id: fighterId,
+    fighter_name: fighterName || last5.fighterName || '',
+    fight_count: last5.fightCount || 0,
+    wins: last5.wins || 0,
+    losses: last5.losses || 0,
+    ko_wins: last5.koWins || 0,
+    sub_wins: last5.subWins || 0,
+    dec_wins: last5.decWins || 0,
+    td_landed: last5.tdLanded || 0,
+    sig_str_landed: last5.sigStrLanded || 0,
+    rounds_fought: last5.roundsFought || 0,
+    distance_fights: last5.distanceFights || 0,
+    fights: last5.fights || [],
+    source_synced_at: syncedAt,
+    updated_at: syncedAt,
+  }
+  if (dryRun) {
+    console.log(`[ufc-metrics] last5 ${row.fighter_name} fights=${row.fight_count} td=${row.td_landed} str=${row.sig_str_landed}`)
+    return
+  }
+  const { error } = await supabase.from('ufc_fighter_last5').upsert(row, {
+    onConflict: 'fighter_metrics_id',
+  })
+  if (error) throw error
+}
+
+async function upsertLast5ForCardFighters(supabase, dryRun, jar, cards, roster, syncedAt, nameIndex) {
+  const seen = new Set()
+  let wrote = 0
+  let failed = 0
+  for (const card of cards) {
+    for (const fight of card.fights) {
+      for (const f of [
+        { name: fight.fighterA, url: fight.fighterAUrl },
+        { name: fight.fighterB, url: fight.fighterBUrl },
+      ]) {
+        const key = normUfcStatsName(f.name)
+        if (!key || seen.has(key)) continue
+        seen.add(key)
+        const hit = findExisting(roster, f.name, f.url)
+        if (!hit || hit.is_custom_override) continue
+        try {
+          const lookupName = UFC_STATS_NAME_ALIASES[f.name] || f.name
+          const scraped = await scrapeUfcStatsFighterByName(jar, lookupName, f.url || hit.ufcstats_url || null, {
+            nameIndex,
+            delayMs: 450,
+          })
+          await upsertLast5(
+            supabase,
+            dryRun,
+            hit.id,
+            hit.fighter_name,
+            scraped.metrics.last5,
+            syncedAt,
+          )
+          wrote += 1
+          console.log(
+            `[ufc-metrics] last5 ${hit.fighter_name} fights=${scraped.metrics.last5?.fightCount || 0}`,
+          )
+        } catch (err) {
+          failed += 1
+          console.warn(`[ufc-metrics] last5 FAIL ${f.name}: ${err.message || err}`)
+        }
+      }
+    }
+  }
+  console.log(`[ufc-metrics] last5 card fighters wrote=${wrote} failed=${failed}`)
+}
+
 function findExisting(roster, name, url) {
   const key = normUfcStatsName(name)
   const byName = roster.find((row) => normUfcStatsName(row.fighter_name) === key)
@@ -288,6 +360,7 @@ async function main() {
         const { data, error } = await supabase.from('ufc_fighter_metrics').insert(row).select('id, fighter_name, division, is_custom_override, ufcstats_url').single()
         if (error) throw error
         roster.push(data)
+        await upsertLast5(supabase, dryRun, data.id, officialName, metrics.last5, syncedAt)
       } else {
         roster.push({
           id: `dry-${officialName}`,
@@ -311,6 +384,11 @@ async function main() {
   }
 
   if (cardsOnly) {
+    try {
+      await upsertLast5ForCardFighters(supabase, dryRun, jar, cards, roster, syncedAt, byNormName)
+    } catch (err) {
+      console.warn(`[ufc-metrics] last5 skipped: ${err.message || err}`)
+    }
     console.log(`[ufc-metrics] cards-only done${dryRun ? ' (dry-run)' : ''}`)
     return
   }
@@ -340,6 +418,7 @@ async function main() {
       if (!dryRun) {
         const { error } = await supabase.from('ufc_fighter_metrics').update(patch).eq('id', row.id)
         if (error) throw error
+        await upsertLast5(supabase, dryRun, row.id, row.fighter_name, metrics.last5, syncedAt)
       }
       updated += 1
     } catch (err) {

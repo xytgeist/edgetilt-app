@@ -1,7 +1,7 @@
 # Sharpe Syndicate UFC / MMA desk contract (internal)
 
 **Audience:** Ryan + agents. **Not** public marketing copy.  
-**Status:** Locked 2026-09-12. Data order locked the same night. Current live UFC engine (`loungeBotUfcPredictive.ts`) does **not** satisfy this contract. Live print / ledger is **Scott only** (2026-09-12). Rocco / Chedda / Tank stay computed, not published. Leave those desks alone until the independence test is a real check.
+**Status:** Locked 2026-09-12. Data order locked the same night. Live print / ledger is **Scott + Rocco** (2026-09-13). Rocco votes from `ufc_fighter_last5` (sit if missing / thin / too close). Independence check: `npm run syndicate:ufc-rocco-independence`. Chedda / Tank stay sat. Current Scott engine still uses career fair% (costume vs this contract). Do not rebuild Chedda / Tank yet.
 
 Football desks stay on **`docs/lounge-bot-sports-odds.md`** + **`docs/syndicate-cfb-weekly-runbook.md`**. This file is the UFC house only.
 
@@ -114,7 +114,7 @@ Do not buy another costume on the 255-row ufcstats file. The Odds API we already
 
 **Locked order:**
 
-1. **This week, free (landed 2026-09-12, parser holes patched 2026-09-12):** alias table + parse 3 vs 5 and venue on the Tuesday ufcstats job (`ufc_fighter_aliases`, `ufc_card_fights`). Scott can resolve board names. Rocco can start on his own file next (last-5 still not built). Desk pick rules unchanged. Scheduled rounds come from UFC Stats **Time format** (`5 Rnd (5-5-5-5-5)` vs `3 Rnd (5-5-5)`), fetched from fight-details when the listing is empty. Belt is a badge only. Listed main (index 0) is 5 only when the page has no time format. Apex if venue/location contains Apex, `UFC APEX`, or `6650 El Camino`. T-Mobile / Sphere stay false. Never infer Apex from “Fight Night” or bare Las Vegas.
+1. **This week, free (landed 2026-09-12, last-5 2026-09-13):** alias table + 3 vs 5 + venue + Rocco last-5 (`ufc_fighter_aliases`, `ufc_card_fights`, `ufc_fighter_last5`). Scott resolves board names. Rocco votes from last-5 + 3/5 + cage, or PASS. Scheduled rounds come from UFC Stats **Time format** (`5 Rnd (5-5-5-5-5)` vs `3 Rnd (5-5-5)`). Belt is a badge only. Apex if venue/location contains Apex, `UFC APEX`, or `6650 El Camino`. T-Mobile / Sphere stay false. Never infer Apex from “Fight Night” or bare Las Vegas.
 2. **Next dollar:** odds-api.io (or SportsGameOdds) for method + goes-the-distance. Chedda stays **PASS** until that lands. Chedda voting on career KO% is a contract violation.
 3. **Tank:** limp on the totals we already have + real 3/5. Sit when the total is missing. Do not fake minutes.
 4. **Kill clock:** manual Ops flag. No scraper. Closed list only: miss / scratch / walk-off.

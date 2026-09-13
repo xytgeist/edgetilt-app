@@ -1138,6 +1138,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-13:** **Rocco UFC last-5 (Windows).** `ufc_fighter_last5` from ufcstats history. Rocco Side or PASS from that file + 3/5 + cage. No Scott fair%. Print Scott + Rocco. Check: `npm run syndicate:ufc-rocco-independence`. Chedda / Tank sit. **`1.4.207`.**
 - **2026-09-12:** **UFC print is Scott only (Windows).** Public / fan-only / VIP / ledger / Ops eval drop costume Rocco / Chedda / Tank. Football 4-desk unchanged. **`1.4.206`.**
 - **2026-09-12:** **Tonight's work on prod (Mac).** `test` → **`main`** (`8f44c549`, **`1.4.206`**). Web live after Vercel. Includes keyboard accessory, comment-detail stay, native share callers, in-app confirms, medium haptics, photo pickers, plus Windows UFC web/docs. **No prod SQL / Edge / store IPA.** Still owed if Ryan wants UFC aliases live: **`20260913020000`** + redeploy **`lounge-odds-poll`**.
 - **2026-09-12:** **UFC card-fact parser holes (Windows).** Time format (`5-5-5-5-5` vs `5-5-5`) is the 5-round flag. Belt is a badge. Apex = Apex / UFC APEX / 6650 El Camino only … T-Mobile / Sphere / Fight Night stay false. Desk rules unchanged. **`1.4.205`.**

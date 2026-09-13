@@ -461,6 +461,107 @@ export async function searchUfcStatsFighterUrl(jar, fighterName, nameIndex = nul
   return null
 }
 
+function classifyFightMethod(raw) {
+  const s = String(raw || '').toUpperCase()
+  if (/SUB|CHOKE|ARM|TRIANGLE|HEEL|KIMURA|GUILLOTINE|REAR NAKED/.test(s)) return 'SUB'
+  if (/\bKO\b|\bTKO\b|PUNCH|KICK|ELBOW|KNEE|STRIKE/.test(s) && !/SUB/.test(s)) return 'KO'
+  if (/\bKO\b|\bTKO\b/.test(s)) return 'KO'
+  if (/U-DEC|S-DEC|M-DEC|\bDEC\b|DECISION/.test(s)) return 'DEC'
+  return 'OTHER'
+}
+
+function firstPairNum(raw) {
+  const m = String(raw || '').trim().match(/^(-?\d+(?:\.\d+)?)/)
+  return m ? Number(m[1]) : 0
+}
+
+function parseClockSeconds(raw) {
+  const m = String(raw || '').trim().match(/^(\d+):(\d+)/)
+  if (!m) return 0
+  return Number(m[1]) * 60 + Number(m[2])
+}
+
+/**
+ * Last-5 completed fights from a fighter-details page. Page owner is `fighterName`.
+ */
+export function parseUfcStatsLast5(html, fighterName) {
+  const self = stripTags(fighterName)
+  const fights = []
+  const rowRe = /<tr[^>]*b-fight-details__table-row[^>]*>([\s\S]*?)<\/tr>/gi
+  let row
+  while ((row = rowRe.exec(html))) {
+    const cells = [...row[1].matchAll(/<td[\s\S]*?>([\s\S]*?)<\/td>/gi)].map((c) =>
+      stripTags(c[1]),
+    )
+    if (cells.length < 8) continue
+    const result = String(cells[0] || '').toLowerCase()
+    if (!result.startsWith('win') && !result.startsWith('loss') && !result.startsWith('draw')) {
+      continue
+    }
+    const names = String(cells[1] || '')
+    let opponent = names
+    if (self && names.toLowerCase().startsWith(self.toLowerCase())) {
+      opponent = names.slice(self.length).trim()
+    }
+    const methodRaw = `${cells[7] || ''}`.trim()
+    const method = classifyFightMethod(methodRaw)
+    const round = Number.parseInt(String(cells[8] || ''), 10) || 0
+    const timeSec = parseClockSeconds(cells[9] || '')
+    const distance = method === 'DEC' || (round >= 3 && timeSec >= 300)
+    fights.push({
+      result: result.startsWith('win') ? 'win' : result.startsWith('loss') ? 'loss' : 'draw',
+      opponent,
+      method,
+      methodRaw,
+      round,
+      tdLanded: firstPairNum(cells[4]),
+      sigStrLanded: firstPairNum(cells[3]),
+      distance,
+    })
+    if (fights.length >= 5) break
+  }
+  return summarizeUfcLast5(self, fights)
+}
+
+export function summarizeUfcLast5(fighterName, fights) {
+  const rows = Array.isArray(fights) ? fights.slice(0, 5) : []
+  let wins = 0
+  let losses = 0
+  let koWins = 0
+  let subWins = 0
+  let decWins = 0
+  let tdLanded = 0
+  let sigStrLanded = 0
+  let roundsFought = 0
+  let distanceFights = 0
+  for (const f of rows) {
+    if (f.result === 'win') {
+      wins += 1
+      if (f.method === 'KO') koWins += 1
+      else if (f.method === 'SUB') subWins += 1
+      else if (f.method === 'DEC') decWins += 1
+    } else if (f.result === 'loss') losses += 1
+    tdLanded += Number(f.tdLanded) || 0
+    sigStrLanded += Number(f.sigStrLanded) || 0
+    roundsFought += Number(f.round) || 0
+    if (f.distance) distanceFights += 1
+  }
+  return {
+    fighterName: fighterName || '',
+    fightCount: rows.length,
+    wins,
+    losses,
+    koWins,
+    subWins,
+    decWins,
+    tdLanded,
+    sigStrLanded,
+    roundsFought,
+    distanceFights,
+    fights: rows,
+  }
+}
+
 /**
  * Parse career metrics + finish mix from a fighter-details HTML page.
  */
@@ -551,6 +652,7 @@ export function parseUfcStatsFighterHtml(html) {
     sub_finish_rate: subFinishRate ?? 0,
     career_wins: wins,
     division: divisionFromWeightLbs(weightLbs),
+    last5: parseUfcStatsLast5(html, name),
   }
 }
 

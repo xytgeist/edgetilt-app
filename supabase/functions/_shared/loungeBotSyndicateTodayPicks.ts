@@ -196,8 +196,8 @@ export async function runPicksForToday(
           home: f.fighterB,
           when: f.commenceTime || '',
           lineDisplay: f.pickerPicks.Scott.pickName,
-          badge: 'Scott',
-          type: 'scott',
+          badge: f.pickerPicks.Rocco.side === 'PASS' ? 'Scott' : 'Scott + Rocco',
+          type: f.pickerPicks.Rocco.side === 'PASS' ? 'scott' : 'scott_rocco',
         })),
         deskEvals: ufcDeskEvalBoard(card),
       }

@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Windows Theo 2026-09-12 … UFC desk contract locked
+
+**I am Windows Theo.** UFC 4-desk rebuild is locked in `docs/syndicate-ufc-desk-contract.md`. Do not code it until the independence test (hide Scott’s fair%, rerun Rocco + Tank) is a real check. Live engine stays costume. Do not commit phone OTP.
+
 ### Windows Theo 2026-09-12 … UFC slate futures junk
 
 **I am Windows Theo.** Saturday UFC card ate Odds API futures (Hokit vs Gane and Hokit vs Pereira, Dec 31) plus same-day Oktagon. Filter is next fight-night cluster only. Noche 9am dest restamped on prod: public `b6a55f2f-…`, fan-only `6d9fb7e7-…`, VIP `efbd4b6b-…`. Tank UFC round O/U parked ... he still cards an ML. Gantt ML restored on the book. Do not commit phone OTP.

@@ -182,7 +182,7 @@ Hot Windows files (first cuts): `pwaNotificationPrompt.js`, `PwaInstallBanner.js
 | **Self-contained** | Sports odds, financial wire | Tune config, audit log, kill switch ... **no daily inbox** |
 | **Editorial (X only)** | Crypto, smart money, poker, slots/AP, ... | **Morning inbox:** edit, skip, schedule |
 
-**Roster:** one Edge profile per niche. Spec: **`docs/lounge-bot-editorial-queue.md`** (X editorial), **`docs/lounge-bot-sports-odds.md`**, **`docs/lounge-bot-market-news.md`**, **`docs/lounge-bot-farm-ingest.md`** (external worker door).
+**Roster:** one Edge profile per niche. Spec: **`docs/lounge-bot-editorial-queue.md`** (X editorial), **`docs/lounge-bot-sports-odds.md`**, **`docs/syndicate-ufc-desk-contract.md`** (UFC 4-desk rebuild, locked), **`docs/lounge-bot-market-news.md`**, **`docs/lounge-bot-farm-ingest.md`** (external worker door).
 
 ### Self-contained (parallel)
 
@@ -191,6 +191,7 @@ Hot Windows files (first cuts): `pwaNotificationPrompt.js`, `PwaInstallBanner.js
 - [x] **Syndicate GHA metrics sync → prod on Tuesday schedule + Edge Monitor heartbeat** (`syndicate_football_metrics_sync_production`, migration **`20260903210000`**, 2026-09-02)
 - [ ] **NFL trench follow-up (after 2026-09-29):** recalibrate `TRENCH_Z_TO_POINTS` on a 2026 ESPN board → scheme mixer → sack/hit flag. Spec [`data/syndicate/trench-followup.json`](../data/syndicate/trench-followup.json). Ticket [#3](https://github.com/xytgeist/edgetilt-app/issues/3). Tuesday `/theo` nag + GHA. Kill when JSON + test row are `done`.
 - [x] **Syndicate Ops on sharpesyndicate.com** (`/ops` or `?ops=1`): admin login + Sharp Desk. EdgeTilt `/?tab=bots` keeps create/pause/Odds/X. 2026-09-02.
+- [ ] **UFC desk independence test (gate):** hide Scott’s fair%, rerun Rocco + Tank, each must emit Side or PASS from its own file. Do not start the UFC rebuild until this is a real check. Spec: **`docs/syndicate-ufc-desk-contract.md`**.
 - [ ] **Syndicate collection failure monitoring (rest):** registry missing slate/grade/VIP/specialty crons + table freshness / Odds API last error banners. Spec note 2026-09-02.
 - [ ] **Chedda name vs pick gold (light):** Chedda stays muddy orange; pick `[gold]` readable on light (emerald). Do not paint all gold amber. See Update log **2026-09-04** OPEN.
 - [ ] **Chedda Action PRO paste nag emails:** day before NFL Fri 1pm PT / CFB Fri 12pm PT lock, email Ryan every **10 minutes** until `syndicate_betting_splits` has paste for that slate (or explicit skip). Stop when screenshots submitted. Spec note 2026-09-02.
@@ -1133,6 +1134,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-12:** **UFC 4-desk contract locked (Windows).** `docs/syndicate-ufc-desk-contract.md`. Four questions, sit-first, own-unit conviction, closed kill list, Wed–Fri lean / weigh-in lock. Independence test (hide Scott's fair%, rerun Rocco + Tank) must be a real check before any rebuild code. Live UFC engine stays costume until then.
 - **2026-09-12:** **App-wide WK accessory + comment-detail sign-off (Mac).** Ryan smoked Lounge compose, post reply, thread (toolbar vs Done), chat, logbook, bankroll, poker, W-2G. Comment-detail jump-to-OP then confirmed fixed. **`1.4.200`.**
 - **2026-09-12:** **Comment-detail reply composer stays on the comment (Mac).** Expanding / focusing the detail reply field no longer `scrollTo(0)` while a comment path is open. Post-level reply still jumps to the OP. **`1.4.200`.**
 - **2026-09-12:** **Tank still cards UFC ML while O/U is parked (Windows).** Parking totals is not a sit. Restored Tank Gantt ML (`e61e7be1-…`, won +0.25u) and that fight's `4-0` badge. Other 12 Tank Noche rows stay cancelled (those were O/U). New slates: Tank copies Scott ML + votes. Redeploy `lounge-odds-poll`. **`1.4.199`.**

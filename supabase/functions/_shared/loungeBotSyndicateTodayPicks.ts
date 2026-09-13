@@ -195,9 +195,9 @@ export async function runPicksForToday(
           away: f.fighterA,
           home: f.fighterB,
           when: f.commenceTime || '',
-          lineDisplay: f.consensusPick.pickName,
-          badge: f.consensusPick.badgeText,
-          type: f.consensusPick.type,
+          lineDisplay: f.pickerPicks.Scott.pickName,
+          badge: 'Scott',
+          type: 'scott',
         })),
         deskEvals: ufcDeskEvalBoard(card),
       }

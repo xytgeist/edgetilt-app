@@ -5,7 +5,8 @@
  * 1. Scott Sharpe (Head Quant) ... +EV Devigged Consensus vs Sharp Offshore Books (Pinnacle/Circa).
  * 2. Rocco (Octagon Grappling & Strike Differential) ... Takedown control rate & net SLpM efficiency.
  * 3. Chedda (Live Dogs & Inside Distance Props) ... Plus-money live underdogs & KO/Sub finish equity.
- * 4. Tank ... UFC round O/U is parked until the desk is trained. He still cards an ML.
+ * 4. Tank ... UFC round O/U is parked until the desk is trained.
+ * Live print / ledger is Scott only until the other desks have their own files.
  *    Football totals stay on the NFL/CFB slate.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
@@ -28,7 +29,7 @@ import {
   findCardFight,
   inferApexVenue,
 } from './loungeBotUfcMetrics.ts'
-import { formatColoredPickerList, formatColoredPickerName } from './loungeBotPickerColors.ts'
+import { formatColoredPickerName } from './loungeBotPickerColors.ts'
 import { resolveGameBettingSplits, type BettingSplitSummary } from './loungeBotBettingSplits.ts'
 import {
   fanOutSyndicatePublish,
@@ -83,10 +84,12 @@ export type UfcSlateCard = {
 }
 
 const SHARP_PICKERS = ['Scott', 'Rocco', 'Chedda', 'Tank'] as const
+/** Live UFC print + ledger. Costume desks stay computed, not published. */
+const UFC_PRINT_DESKS = ['Scott'] as const
 /** Flip when Tank's UFC round-total model is trained. Football O/U is unchanged. */
 const TANK_UFC_ROUND_TOTALS_ENABLED = false
 
-/** Ops desk board … same votes as the UFC card. */
+/** Ops desk board … Scott only on UFC until the other desks are real. */
 export function ufcDeskEvalBoard(card: UfcSlateCard | null | undefined) {
   const empty = { Scott: [], Rocco: [], Chedda: [], Tank: [] } as Record<
     (typeof SHARP_PICKERS)[number],
@@ -113,9 +116,9 @@ export function ufcDeskEvalBoard(card: UfcSlateCard | null | undefined) {
       away: fight.fighterA,
       home: fight.fighterB,
       when: fight.commenceTime || '',
-      houseBadge: fight.consensusPick.badgeText,
+      houseBadge: fight.pickerPicks.Scott.pickName,
     }
-    for (const desk of SHARP_PICKERS) {
+    for (const desk of UFC_PRINT_DESKS) {
       const p = fight.pickerPicks[desk]
       const isTotal = p.side === 'Over' || p.side === 'Under'
       const isPass = p.side === 'PASS'
@@ -430,8 +433,6 @@ export async function buildUfcSlateCard(
     }
 
     fights.push(fightPick)
-    if (consensusType === 'hammer') hammers.push(fightPick)
-    else if (consensusType === 'consensus') consensus.push(fightPick)
   }
 
   return {
@@ -445,29 +446,20 @@ export async function buildUfcSlateCard(
 }
 
 function formatUfcFightDeskBlock(fight: UfcFightPick): string {
-  const lines = [
+  const scott = fight.pickerPicks.Scott
+  return [
     `**${fight.fighterA} vs ${fight.fighterB}** (${fight.matchup?.division || 'UFC'})`,
-    `• ${formatColoredPickerName('Scott')}: ${fight.pickerPicks.Scott.pickName} ... ${fight.pickerPicks.Scott.rationale}`,
-    `• ${formatColoredPickerName('Rocco')}: ${fight.pickerPicks.Rocco.pickName} ... ${fight.pickerPicks.Rocco.rationale}`,
-    `• ${formatColoredPickerName('Chedda')}: ${fight.pickerPicks.Chedda.pickName} ... ${fight.pickerPicks.Chedda.rationale}`,
-  ]
-  const tank = fight.pickerPicks.Tank
-  if (tank.side === 'PASS') {
-    lines.push(`• ${formatColoredPickerName('Tank')}: PASS ... ${tank.rationale}`)
-  } else if (tank.side !== 'Over' && tank.side !== 'Under') {
-    lines.push(`• ${formatColoredPickerName('Tank')}: ${tank.pickName} ... ${tank.rationale}`)
-  }
-  lines.push(`• *Consensus Signal: ${fight.consensusPick.badgeText}*`)
-  return lines.join('\n')
+    `• ${formatColoredPickerName('Scott')}: ${scott.pickName} ... ${scott.rationale}`,
+  ].join('\n')
 }
 
 /**
- * Subscriber / VIP sub-chat: uncut 4-desk fight breakdown.
+ * Subscriber / VIP sub-chat: Scott price card only.
  */
 export function formatUfcVipCardCaption(card: UfcSlateCard): string {
   const vipLines: string[] = []
-  vipLines.push(`🥊 **${card.cardTitle.toUpperCase()} · UNCUT 4-DESK BREAKDOWN**\n`)
-  vipLines.push(`Here are the individual cards and prop values across all 4 desks for tonight's card:\n`)
+  vipLines.push(`🥊 **${card.cardTitle.toUpperCase()} · SCOTT PRICE CARD**\n`)
+  vipLines.push(`Scott only. Rocco / Chedda / Tank sit until their files are real.\n`)
   for (const fight of card.fights || []) {
     vipLines.push(formatUfcFightDeskBlock(fight), '')
   }
@@ -476,15 +468,15 @@ export function formatUfcVipCardCaption(card: UfcSlateCard): string {
 
 const UFC_FAN_ROOT_MAX = 4000
 
-/** Fan-only Lounge: uncut desks, overflow in reply thread so we stay under caption max. */
+/** Fan-only Lounge: Scott card, overflow in reply thread so we stay under caption max. */
 export function formatUfcFanOnlyBodies(card: UfcSlateCard): {
   caption: string
   threadParts: Array<{ body: string }>
 } {
   const header = [
-    `🥊 **${card.cardTitle.toUpperCase()} · UNCUT 4-DESK BREAKDOWN**`,
+    `🥊 **${card.cardTitle.toUpperCase()} · SCOTT PRICE CARD**`,
     '',
-    `Here are the individual cards and prop values across all 4 desks for tonight's card.`,
+    `Scott only. Rocco / Chedda / Tank sit until their files are real.`,
   ].join('\n')
   const fights = (card.fights || []).map(formatUfcFightDeskBlock)
   let caption = header
@@ -516,33 +508,20 @@ export function formatUfcFanOnlyBodies(card: UfcSlateCard): {
 export function formatUfcCardCaption(card: UfcSlateCard): string {
   const lines: string[] = []
 
-  lines.push(`🥊 **${card.cardTitle.toUpperCase()} · 4-DESK SYNDICATE CARD** 🥊`)
-  lines.push(`Audited quantitative fight breakdowns across striking differential, takedown control & sharp offshore devigs.\n`)
+  lines.push(`🥊 **${card.cardTitle.toUpperCase()} · SCOTT PRICE CARD** 🥊`)
+  lines.push(`Posted ML vs model fair. Other desks sit until their files are real.\n`)
 
-  if (card.hammers.length > 0) {
-    lines.push(`🔥 **UNANIMOUS 4-0 FIGHT HAMMERS**`)
-    for (const h of card.hammers) {
-      lines.push(`• **${h.consensusPick.lineDisplay}** vs ${h.consensusPick.side === 'A' ? h.fighterB : h.fighterA}`)
-      if (h.matchup?.summaryLine) {
-        lines.push(`  ↳ *${h.matchup.summaryLine}*`)
-      }
+  for (const fight of card.fights || []) {
+    const scott = fight.pickerPicks.Scott
+    const opp = scott.side === 'A' ? fight.fighterB : fight.fighterA
+    lines.push(`• **${scott.pickName}** vs ${opp}`)
+    if (fight.matchup?.summaryLine) {
+      lines.push(`  ↳ *${fight.matchup.summaryLine}*`)
     }
-    lines.push('')
   }
 
-  if (card.consensus.length > 0) {
-    lines.push(`🎯 **3-1 SYNDICATE CONSENSUS PLAYS**`)
-    for (const c of card.consensus) {
-      const agreeingDesks = formatColoredPickerList(
-        SHARP_PICKERS.filter((p) => c.pickerPicks[p].side === c.consensusPick.side),
-      )
-      lines.push(`• **${c.consensusPick.lineDisplay}** (${agreeingDesks}) vs ${c.consensusPick.side === 'A' ? c.fighterB : c.fighterA}`)
-    }
-    lines.push('')
-  }
-
-  // Teaser for uncut individual breakdown
-  lines.push(`💬 *Uncut 4-desk cards in the fan-only Lounge post and Sharpe VIP chat.*`)
+  lines.push('')
+  lines.push(`💬 *Same Scott card in the fan-only Lounge post and Sharpe VIP chat.*`)
   lines.push(`🌐 Audited ledger & fighter metrics: sharpesyndicate.com`)
 
   return lines.join('\n')
@@ -569,12 +548,11 @@ export async function publishAndRecordUfcCard(
   const picksToInsert: any[] = []
 
   for (const fight of card.fights) {
-    for (const picker of SHARP_PICKERS) {
+    for (const picker of UFC_PRINT_DESKS) {
       const pPick = fight.pickerPicks[picker]
       if (pPick.side === 'PASS') continue
       if (!TANK_UFC_ROUND_TOTALS_ENABLED && (pPick.side === 'Over' || pPick.side === 'Under')) continue
       const isTotal = pPick.side === 'Over' || pPick.side === 'Under'
-      const pickedFighter = pPick.side === 'A' ? fight.fighterA : fight.fighterB
 
       picksToInsert.push({
         bot_user_id: botUserId,
@@ -593,14 +571,14 @@ export async function publishAndRecordUfcCard(
         units_net: 0,
         created_at: new Date().toISOString(),
         metadata: {
-          consensus_type: fight.consensusPick.type,
-          consensus_badge: fight.consensusPick.badgeText,
-          vote_count: fight.consensusPick.voteCount,
+          consensus_type: 'scott',
+          consensus_badge: 'Scott',
+          vote_count: 1,
           rationale: pPick.rationale,
           division: fight.matchup?.division,
           is_apex: fight.isApexCage,
           clv_beat: Math.random() > 0.25, // ~75% CLV beat model
-          desk_label: picker === 'Scott' ? 'Consensus Devig' : picker === 'Rocco' ? 'Octagon Grappling' : picker === 'Chedda' ? 'Dogs & Props' : (isTotal ? 'Round Totals' : 'Pace / ML'),
+          desk_label: 'Consensus Devig',
         },
       })
     }

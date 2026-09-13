@@ -1,7 +1,7 @@
 # Sharpe Syndicate UFC / MMA desk contract (internal)
 
 **Audience:** Ryan + agents. **Not** public marketing copy.  
-**Status:** Locked 2026-09-12. Data order locked the same night. Current live UFC engine (`loungeBotUfcPredictive.ts`) does **not** satisfy this contract. Leave the desks alone until **(1)** in the data appendix is in. Then the independence test must be a real check before rebuild code.
+**Status:** Locked 2026-09-12. Data order locked the same night. Current live UFC engine (`loungeBotUfcPredictive.ts`) does **not** satisfy this contract. Live print / ledger is **Scott only** (2026-09-12). Rocco / Chedda / Tank stay computed, not published. Leave those desks alone until the independence test is a real check.
 
 Football desks stay on **`docs/lounge-bot-sports-odds.md`** + **`docs/syndicate-cfb-weekly-runbook.md`**. This file is the UFC house only.
 

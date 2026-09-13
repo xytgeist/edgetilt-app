@@ -303,7 +303,7 @@ Primary Lounge nav is a **draggable cyan FAB** + **arc spin wheel** (`LoungeDock
 ## Phase K - Permalinks + share
 
 - `/p/:id` single post page with comment teaser rules (not shipped; in-app query param used first).
-- **Shipped (partial):** share permalink **`/lounge/p/<uuid>`** (Vercel **`api/lounge-post-og.js`** serves **Open Graph** / Twitter Card HTML + redirect to **`/?tab=home&post=<uuid>`**); **Share** uses `navigator.share` with **clipboard** fallback (`src/utils/loungeSharePost.js` + `SocialFeed.jsx`). Anonymous visitors can **open** a shared post in the detail sheet (read-only); other entry paths to the sheet still require sign-in where they did before.
+- **Shipped (partial):** share permalink **`/lounge/p/<uuid>`** (Vercel **`api/lounge-post-og.js`** serves **Open Graph** / Twitter Card HTML + redirect to **`/?tab=home&post=<uuid>`**); **Share** uses IPA `EdgeNative.share` (`UIActivityViewController`) when present, else `navigator.share`, else clipboard (`src/utils/loungeSharePost.js` + `SocialFeed.jsx`). Anonymous visitors can **open** a shared post in the detail sheet (read-only); other entry paths to the sheet still require sign-in where they did before.
 
 ---
 

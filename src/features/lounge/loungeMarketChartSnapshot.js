@@ -8,6 +8,7 @@ import {
   mergeAnnotationLayerOntoCanvas,
 } from './loungeMarketChartAnnotation.js'
 import { computeMarketChartVisibleWindowQuoteFromChart } from './loungeMarketChartTypes.js'
+import { shareViaBestAvailable } from '../../utils/edgeNative.js'
 
 const MARKET_CHART_EDGE_LOGO = {
   dark: '/edge-lounge-logo-transparent.png',
@@ -625,16 +626,12 @@ export async function saveMarketChartScreenshot(chart, branding, annotationItems
     branding,
     annotationItems,
   )
-  const nav = typeof navigator !== 'undefined' ? navigator : null
-
-  if (nav?.share) {
-    const shareData = { files: [file] }
-    const canShareFiles =
-      typeof nav.canShare !== 'function' ? true : nav.canShare(shareData)
-    if (canShareFiles) {
-      await nav.share(shareData)
-      return 'share'
-    }
+  const result = await shareViaBestAvailable({
+    title: 'Edge chart',
+    files: [file],
+  })
+  if (result.mode === 'native' || result.mode === 'web' || result.mode === 'aborted') {
+    return 'share'
   }
 
   downloadMarketChartPngFile(file)

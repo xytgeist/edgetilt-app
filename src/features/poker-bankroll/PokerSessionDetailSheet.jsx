@@ -1,4 +1,5 @@
-import { DollarSign, Trophy } from 'lucide-react'
+import { DollarSign, Share2, Trophy } from 'lucide-react'
+import { shareViaBestAvailable } from '../../utils/edgeNative.js'
 import { APP_MODAL_OVERLAY_CLASS } from '../../constants/appZIndex.js'
 import { POKER_SHEET_PANEL_CLASS } from './pokerBankrollTrackerSheet.js'
 import { isPieceDealType } from '../poker-stable/pokerStableMath.js'
@@ -41,6 +42,21 @@ import {
   sessionSwapSettlementDelta,
   swapViewerSettlementDelta,
 } from './pokerTournamentSwapMath.js'
+
+function buildPokerSessionShareText({ session, playerNet, hours, dateLabel }) {
+  const lines = [pokerSessionStakesLabel(session)]
+  const meta = pokerSessionMetaLine(session)
+  if (meta) lines.push(meta)
+  const result =
+    playerNet == null
+      ? ''
+      : `${playerNet > 0 ? '+' : ''}${fmtPoker$(playerNet)}`
+  const hrs = hours >= 0.02 ? `${Number(hours).toFixed(1)}h` : ''
+  const resultLine = [result, hrs].filter(Boolean).join(' · ')
+  if (resultLine) lines.push(resultLine)
+  if (dateLabel) lines.push(dateLabel)
+  return lines.filter(Boolean).join('\n')
+}
 
 function pokerSessionInForLine(session) {
   const total = pokerSessionTotalCost(session)
@@ -441,6 +457,27 @@ export default function PokerSessionDetailSheet({
             </div>
             <p className="mt-1 text-sm text-zinc-400">{pokerSessionMetaLine(session)}</p>
           </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {!isActive ? (
+              <button
+                type="button"
+                onClick={() => {
+                  void shareViaBestAvailable({
+                    title: 'Edge poker',
+                    text: buildPokerSessionShareText({
+                      session,
+                      playerNet,
+                      hours: hrs,
+                      dateLabel: startDate,
+                    }),
+                  })
+                }}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-zinc-400 touch-manipulation"
+                aria-label="Share result"
+              >
+                <Share2 className="h-4 w-4" strokeWidth={2.25} />
+              </button>
+            ) : null}
           <button
             type="button"
             onClick={() => onClose?.()}
@@ -449,6 +486,7 @@ export default function PokerSessionDetailSheet({
           >
             ✕
           </button>
+          </div>
         </div>
 
         <div className="mb-4 rounded-2xl border border-zinc-800 bg-zinc-900/60 px-4 py-1">

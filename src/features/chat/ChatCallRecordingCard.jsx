@@ -6,6 +6,7 @@ import {
 } from '../../utils/chatCallRecordingPoster.js'
 import ChatCallTranscriptModal from './ChatCallTranscriptModal.jsx'
 import { CHAT_MESSAGE_COLUMN_WIDTH_CLASS } from './chatVideoTileLayout.js'
+import { canShareEdgeNative, shareViaBestAvailable } from '../../utils/edgeNative.js'
 
 const PROCESSING_RETRY_MS = 1600
 const PROCESSING_GIVE_UP_MS = 120000
@@ -173,7 +174,9 @@ export default function ChatCallRecordingCard({
     if (!videoUrl || !cardRef.current) return
     const rect = cardRef.current.getBoundingClientRect()
     const menuW = 220
-    const nativeShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function'
+    const nativeShare =
+      canShareEdgeNative() ||
+      (typeof navigator !== 'undefined' && typeof navigator.share === 'function')
     const rows = 2 + (nativeShare ? 1 : 0) + (canDelete && onDelete ? 1 : 0) + (supabaseClient ? 1 : 0)
     const menuH = 48 * rows + 16
     const left = Math.max(12, Math.min(rect.left + 8, window.innerWidth - menuW - 12))
@@ -259,23 +262,16 @@ export default function ChatCallRecordingCard({
 
   const shareLink = useCallback(async () => {
     if (!videoUrl) return
-    try {
-      if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-        await navigator.share({
-          title: 'Call recording',
-          url: videoUrl,
-        })
-        closeMenu()
-        return
-      }
-    } catch (err) {
-      // User cancelled share sheet — keep menu closed either way.
-      if (err && typeof err === 'object' && 'name' in err && err.name === 'AbortError') {
-        closeMenu()
-        return
-      }
+    const result = await shareViaBestAvailable({
+      title: 'Call recording',
+      url: videoUrl,
+    })
+    if (result.mode === 'copy' || result.mode === 'failed') {
+      if (result.mode === 'failed') await copyLink()
+      else closeMenu()
+      return
     }
-    await copyLink()
+    closeMenu()
   }, [videoUrl, closeMenu, copyLink])
 
   const durationSec = Number(meta?.duration_seconds) || 0
@@ -289,7 +285,8 @@ export default function ChatCallRecordingCard({
   const shown = participants.slice(0, 5)
   const overflow = Math.max(0, participants.length - shown.length)
   const canShareNative =
-    typeof navigator !== 'undefined' && typeof navigator.share === 'function'
+    canShareEdgeNative() ||
+    (typeof navigator !== 'undefined' && typeof navigator.share === 'function')
   const processing = !mediaReady
 
   return (

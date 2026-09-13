@@ -282,6 +282,8 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
         ?? (payload?["maxCount"] as? NSNumber)?.intValue
         ?? 12
       EdgePhotoPicker.present(maxCount: rawMax, completion: completion)
+    case "share":
+      EdgeShareSheet.present(payload: payload, completion: completion)
     default:
       completion(.failure(BridgeError.unknownMethod(method)))
     }
@@ -704,6 +706,9 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       },
       pickPhotos: function (payload) {
         return call('pickPhotos', payload || {});
+      },
+      share: function (payload) {
+        return call('share', payload || {});
       },
       bustServiceWorker: function () {
         return call('bustServiceWorker', null);

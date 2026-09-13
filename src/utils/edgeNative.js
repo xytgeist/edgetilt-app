@@ -75,6 +75,170 @@ export async function setEdgeKeyboardAccessoryVisible(visible) {
   }
 }
 
+/**
+ * True when the IPA can present `UIActivityViewController`.
+ * @returns {boolean}
+ */
+export function canShareEdgeNative() {
+  if (typeof window === 'undefined' || !isEdgeiOSShell()) return false
+  return typeof window.EdgeNative?.share === 'function'
+}
+
+/**
+ * @param {Blob | File} file
+ * @returns {Promise<{ mimeType: string, base64: string, filename?: string } | null>}
+ */
+export async function fileToEdgeShareImage(file) {
+  if (!file) return null
+  const mime = String(file.type || 'image/jpeg').toLowerCase()
+  if (mime !== 'image/jpeg' && mime !== 'image/jpg' && mime !== 'image/png') return null
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(new Error('Could not read image'))
+    reader.readAsDataURL(file)
+  })
+  const comma = dataUrl.indexOf(',')
+  const base64 = comma >= 0 ? dataUrl.slice(comma + 1) : ''
+  if (!base64) return null
+  const filename =
+    file instanceof File && file.name ? String(file.name) : undefined
+  return { mimeType: mime === 'image/jpg' ? 'image/jpeg' : mime, base64, filename }
+}
+
+/**
+ * @param {HTMLCanvasElement} canvas
+ * @param {string} [filename]
+ * @returns {{ mimeType: string, base64: string, filename: string } | null}
+ */
+export function canvasToEdgeShareImage(canvas, filename = 'edge-share.jpg') {
+  if (!canvas || typeof canvas.toDataURL !== 'function') return null
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.86)
+  const comma = dataUrl.indexOf(',')
+  const base64 = comma >= 0 ? dataUrl.slice(comma + 1) : ''
+  if (!base64) return null
+  return { mimeType: 'image/jpeg', base64, filename }
+}
+
+/**
+ * Present the system share sheet. Old IPA / missing items → `{ ok: false }`.
+ *
+ * @param {{
+ *   url?: string,
+ *   text?: string,
+ *   title?: string,
+ *   images?: Array<{ mimeType?: string, base64?: string, filename?: string } | null | undefined>,
+ * }} [opts]
+ * @returns {Promise<{ ok: boolean, cancelled?: boolean }>}
+ */
+export async function shareEdgeNative(opts = {}) {
+  if (!canShareEdgeNative()) return { ok: false }
+  const url = String(opts.url || '').trim()
+  const text = String(opts.text || '').trim()
+  const title = String(opts.title || '').trim()
+  const images = (Array.isArray(opts.images) ? opts.images : [])
+    .filter((row) => row && String(row.base64 || '').trim())
+    .slice(0, 4)
+    .map((row) => ({
+      mimeType: String(row.mimeType || 'image/jpeg'),
+      base64: String(row.base64),
+      filename: row.filename ? String(row.filename) : undefined,
+    }))
+  if (!url && !text && images.length === 0) return { ok: false }
+  try {
+    const result = await edgeNativeInvoke('share', {
+      url: url || undefined,
+      text: text || undefined,
+      title: title || undefined,
+      images: images.length ? images : undefined,
+    })
+    return {
+      ok: result?.ok !== false,
+      cancelled: result?.cancelled === true,
+    }
+  } catch {
+    return { ok: false }
+  }
+}
+
+/**
+ * IPA uses the system sheet. Everywhere else uses `navigator.share`, then clipboard for a URL.
+ *
+ * @param {{
+ *   url?: string,
+ *   title?: string,
+ *   text?: string,
+ *   files?: File[],
+ *   images?: Array<{ mimeType?: string, base64?: string, filename?: string }>,
+ *   onCopied?: () => void,
+ *   onCopyFailed?: () => void,
+ * }} opts
+ * @returns {Promise<{ mode: 'native' | 'web' | 'copy' | 'aborted' | 'failed' }>}
+ */
+export async function shareViaBestAvailable(opts = {}) {
+  const url = String(opts.url || '').trim()
+  const title = String(opts.title || '').trim()
+  const text = String(opts.text || '').trim()
+  let images = Array.isArray(opts.images) ? opts.images.filter(Boolean) : []
+  if (!images.length && Array.isArray(opts.files) && opts.files.length) {
+    const converted = await Promise.all(opts.files.map((file) => fileToEdgeShareImage(file)))
+    images = converted.filter(Boolean)
+  }
+
+  if (canShareEdgeNative()) {
+    const result = await shareEdgeNative({ url, title, text, images })
+    if (result.cancelled) return { mode: 'aborted' }
+    if (result.ok) return { mode: 'native' }
+  }
+
+  const nav = typeof navigator !== 'undefined' ? navigator : null
+  if (nav?.share) {
+    const shareData = {}
+    if (url) shareData.url = url
+    if (title) shareData.title = title
+    if (text) shareData.text = text
+    if (Array.isArray(opts.files) && opts.files.length) shareData.files = opts.files
+    const allowed = typeof nav.canShare !== 'function' ? true : nav.canShare(shareData)
+    if (allowed) {
+      try {
+        await nav.share(shareData)
+        return { mode: 'web' }
+      } catch (e) {
+        if (e && typeof e === 'object' && e.name === 'AbortError') {
+          return { mode: 'aborted' }
+        }
+      }
+    }
+  }
+
+  if (url) {
+    try {
+      if (nav?.clipboard?.writeText) {
+        await nav.clipboard.writeText(url)
+        opts.onCopied?.()
+        return { mode: 'copy' }
+      }
+    } catch {
+      // fall through
+    }
+  }
+
+  if (text && !url) {
+    try {
+      if (nav?.clipboard?.writeText) {
+        await nav.clipboard.writeText(text)
+        opts.onCopied?.()
+        return { mode: 'copy' }
+      }
+    } catch {
+      // fall through
+    }
+  }
+
+  opts.onCopyFailed?.()
+  return { mode: 'failed' }
+}
+
 /** Blur the focused field and drop the IPA software keyboard (no WK Done bar). */
 export function dismissEdgeKeyboard() {
   try {

@@ -87,6 +87,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Windows Theo.** Sat 9am UFC cron now posts public tease + fan-only uncut + VIP. Prod Edge redeployed. Today's public `8677470f-…` + fan-only `920747a1-…` backfilled. Do not commit phone OTP.
 
+### Mac Theo 2026-09-12 … native share sheet
+
+**I am Mac Theo.** `EdgeNative.share` presents `UIActivityViewController`. Lounge post / profile, W-2G image, poker completed-session result, chart snapshot, chat recording. Old IPA / PWA keep `navigator.share`. Needs a new Test Fast. **`1.4.201`.** Windows: do not edit `edgeNative` share helpers / `loungeSharePost` / W-2G share / poker session sheet / chat recording share today.
+
 ### Mac Theo 2026-09-12 … comment-detail composer keeps the reply
 
 **I am Mac Theo.** Comment detail no longer jumps to the OP when the reply composer / keyboard opens. Post-level reply still scrolls to the top. Web only. **`1.4.200`.** Windows: do not edit `SocialFeed` comment-detail scroll / composer focus today.

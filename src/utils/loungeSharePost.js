@@ -1,3 +1,5 @@
+import { shareViaBestAvailable } from './edgeNative.js'
+
 /** Matches `AppShell` / feed head select for `community_feed_posts` hydration. */
 export const LOUNGE_SINGLE_POST_SELECT =
   'id,caption,game_title,game_slug,category_pills,user_id,created_at,edited_at,pinned,like_count,comment_count,repost_count,repost_of_post_id,repost_of_comment_id,is_plain_repost,repost_target_unavailable,media_url,gif_url,image_urls,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,is_ap_guide_post,guide_thumbnail_url,link_preview,market_embeds'
@@ -143,40 +145,19 @@ export function stripLoungeActivityPushQueryParams() {
 }
 
 /**
- * Prefer `navigator.share` when allowed; otherwise copy `url` to the clipboard.
- * User cancel / dismiss of the native sheet → `AbortError` → no `onCopied` / `onCopyFailed`.
+ * IPA uses `UIActivityViewController`. Elsewhere `navigator.share`, then clipboard.
+ * User cancel / dismiss → no `onCopied` / `onCopyFailed`.
  */
 export async function shareLoungePostHybrid({ url, title, text, onCopied, onCopyFailed }) {
   if (!url) {
     onCopyFailed?.()
     return { mode: 'failed' }
   }
-  const shareData = { url, title: title || 'Lounge post' }
-  const t = typeof text === 'string' ? text.trim() : ''
-  if (t) shareData.text = t
-  const nav = typeof navigator !== 'undefined' ? navigator : null
-  if (nav?.share) {
-    const allowed = typeof nav.canShare !== 'function' ? true : nav.canShare(shareData)
-    if (allowed) {
-      try {
-        await nav.share(shareData)
-        return { mode: 'native' }
-      } catch (e) {
-        if (e && typeof e === 'object' && e.name === 'AbortError') {
-          return { mode: 'aborted' }
-        }
-      }
-    }
-  }
-  try {
-    if (nav?.clipboard?.writeText) {
-      await nav.clipboard.writeText(url)
-      onCopied?.()
-      return { mode: 'copy' }
-    }
-  } catch {
-    // fall through
-  }
-  onCopyFailed?.()
-  return { mode: 'failed' }
+  return shareViaBestAvailable({
+    url,
+    title: title || 'Lounge post',
+    text,
+    onCopied,
+    onCopyFailed,
+  })
 }

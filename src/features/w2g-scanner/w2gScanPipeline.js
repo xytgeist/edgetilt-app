@@ -1,3 +1,5 @@
+import { canvasToEdgeShareImage, shareViaBestAvailable } from '../../utils/edgeNative.js'
+
 /**
  * Client-side W-2G scan: load photo → detect page → safe crop → light enhance → pad.
  * Prefer axis-aligned crop over homography on wrinkled slips (homography was melting forms).
@@ -354,15 +356,13 @@ export async function downloadScanPng(canvas, filename = `w2g-scan-${Date.now()}
  */
 export async function shareOrDownloadScan(canvas) {
   const file = await canvasToPngFile(canvas)
-  try {
-    if (typeof navigator !== 'undefined' && navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], title: 'W-2G scan' })
-      return 'shared'
-    }
-  } catch (err) {
-    if (err && typeof err === 'object' && 'name' in err && err.name === 'AbortError') {
-      return 'shared'
-    }
+  const result = await shareViaBestAvailable({
+    title: 'W-2G scan',
+    files: [file],
+    images: [canvasToEdgeShareImage(canvas, file.name.replace(/\.png$/i, '.jpg'))].filter(Boolean),
+  })
+  if (result.mode === 'native' || result.mode === 'web' || result.mode === 'aborted') {
+    return 'shared'
   }
   await downloadScanPng(canvas, file.name)
   return 'downloaded'

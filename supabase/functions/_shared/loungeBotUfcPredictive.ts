@@ -5,7 +5,7 @@
  * 1. Scott Sharpe (Head Quant) ... +EV Devigged Consensus vs Sharp Offshore Books (Pinnacle/Circa).
  * 2. Rocco (Octagon Grappling & Strike Differential) ... Takedown control rate & net SLpM efficiency.
  * 3. Chedda (Live Dogs & Inside Distance Props) ... Plus-money live underdogs & KO/Sub finish equity.
- * 4. Tank (Fight Totals & Small Cage Pace) ... Over / Under round totals based on Apex 25-ft cage and finish rates.
+ * 4. Tank ... UFC round O/U is parked until the desk is trained. Football totals stay on the NFL/CFB slate.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import {
@@ -56,10 +56,10 @@ export type UfcFightPick = {
   marketTotalOverPrice?: number
   marketTotalUnderPrice?: number
   pickerPicks: {
-    Scott: { pickName: string; side: 'A' | 'B' | 'Over' | 'Under'; odds: number; rationale: string; equations?: DeskEquation[] }
-    Rocco: { pickName: string; side: 'A' | 'B' | 'Over' | 'Under'; odds: number; rationale: string; equations?: DeskEquation[] }
-    Chedda: { pickName: string; side: 'A' | 'B' | 'Over' | 'Under'; odds: number; rationale: string; equations?: DeskEquation[] }
-    Tank: { pickName: string; side: 'A' | 'B' | 'Over' | 'Under'; odds: number; rationale: string; equations?: DeskEquation[] }
+    Scott: { pickName: string; side: 'A' | 'B' | 'Over' | 'Under' | 'PASS'; odds: number; rationale: string; equations?: DeskEquation[] }
+    Rocco: { pickName: string; side: 'A' | 'B' | 'Over' | 'Under' | 'PASS'; odds: number; rationale: string; equations?: DeskEquation[] }
+    Chedda: { pickName: string; side: 'A' | 'B' | 'Over' | 'Under' | 'PASS'; odds: number; rationale: string; equations?: DeskEquation[] }
+    Tank: { pickName: string; side: 'A' | 'B' | 'Over' | 'Under' | 'PASS'; odds: number; rationale: string; equations?: DeskEquation[] }
   }
   consensusPick: {
     side: 'A' | 'B' | 'Over' | 'Under'
@@ -81,6 +81,8 @@ export type UfcSlateCard = {
 }
 
 const SHARP_PICKERS = ['Scott', 'Rocco', 'Chedda', 'Tank'] as const
+/** Flip when Tank's UFC round-total model is trained. Football O/U is unchanged. */
+const TANK_UFC_ROUND_TOTALS_ENABLED = false
 
 /** Ops desk board … same votes as the UFC card. */
 export function ufcDeskEvalBoard(card: UfcSlateCard | null | undefined) {
@@ -114,6 +116,7 @@ export function ufcDeskEvalBoard(card: UfcSlateCard | null | undefined) {
     for (const desk of SHARP_PICKERS) {
       const p = fight.pickerPicks[desk]
       const isTotal = p.side === 'Over' || p.side === 'Under'
+      const isPass = p.side === 'PASS'
       empty[desk].push({
         ...base,
         side: p.side,
@@ -121,8 +124,8 @@ export function ufcDeskEvalBoard(card: UfcSlateCard | null | undefined) {
         lineDisplay: p.pickName,
         why: p.rationale || p.pickName,
         signals: [],
-        countsForHouse: true,
-        market: isTotal ? 'totals' : 'spreads',
+        countsForHouse: !isPass,
+        market: isTotal || isPass ? 'totals' : 'spreads',
         equations: p.equations || [],
       })
     }
@@ -261,58 +264,64 @@ export async function buildUfcSlateCard(
       cheddaRationale = `High-conviction finish equity backing the model chalk.`
     }
 
-    // 4. Desk 4: Tank (Fight Totals, Pace & 25-ft Cage Finish Dynamics)
-    let tankSide: 'A' | 'B' | 'Over' | 'Under' = 'Under'
-    let tankOdds = underPrice
-    let tankPickName = `Under ${totalLine} Rounds`
-    let tankRationale = `Fight pace and durability modeling.`
+    // 4. Desk 4: Tank. UFC round O/U stays parked until the model is trained.
+    let tankSide: 'A' | 'B' | 'Over' | 'Under' | 'PASS' = 'PASS'
+    let tankOdds = 0
+    let tankPickName = 'PASS'
+    let tankRationale = 'Round totals parked until the desk is trained.'
 
-    if (matchup) {
-      if (matchup.projectedFinishProb >= 0.60 || isApex) {
-        tankSide = 'Under'
-        tankOdds = underPrice
-        tankPickName = `Under ${totalLine} Rounds (${formatAmericanOdds(underPrice)})`
-        tankRationale = `Pace & Finish Dynamics: High combined stoppage equity (${Math.round(matchup.projectedFinishProb * 100)}%)${isApex ? ' in 25ft Apex small cage' : ''}.`
-      } else {
-        tankSide = 'Over'
-        tankOdds = overPrice
-        tankPickName = `Over ${totalLine} Rounds (${formatAmericanOdds(overPrice)})`
-        tankRationale = `Cardio & Decision Rate: Projected 3-round distance battle.`
+    if (TANK_UFC_ROUND_TOTALS_ENABLED) {
+      tankSide = 'Under'
+      tankOdds = underPrice
+      tankPickName = `Under ${totalLine} Rounds`
+      tankRationale = 'Fight pace and durability modeling.'
+      if (matchup) {
+        if (matchup.projectedFinishProb >= 0.60 || isApex) {
+          tankSide = 'Under'
+          tankOdds = underPrice
+          tankPickName = `Under ${totalLine} Rounds (${formatAmericanOdds(underPrice)})`
+          tankRationale = `Pace & Finish Dynamics: High combined stoppage equity (${Math.round(matchup.projectedFinishProb * 100)}%)${isApex ? ' in 25ft Apex small cage' : ''}.`
+        } else {
+          tankSide = 'Over'
+          tankOdds = overPrice
+          tankPickName = `Over ${totalLine} Rounds (${formatAmericanOdds(overPrice)})`
+          tankRationale = `Cardio & Decision Rate: Projected 3-round distance battle.`
+        }
       }
-    } else {
-      // Fallback ML pick
-      tankSide = scottSide
-      tankOdds = scottOdds
-      tankPickName = scottPickName
-      tankRationale = `Pace control favors the dominant fighter.`
     }
 
-    // Consensus Tally (comparing ML sides A vs B)
+    // Consensus Tally (Scott / Rocco / Chedda ML). Tank does not vote while O/U is parked.
     const mlSides = [scottSide, roccoSide, cheddaSide]
     if (tankSide === 'A' || tankSide === 'B') mlSides.push(tankSide)
 
     const votesA = mlSides.filter((s) => s === 'A').length
     const votesB = mlSides.filter((s) => s === 'B').length
+    const mlVoters = mlSides.length
 
     let consensusSide: 'A' | 'B' | 'Over' | 'Under' = 'A'
     let consensusType: 'hammer' | 'consensus' | 'split' = 'split'
     let consensusVoteCount = 2
-    let badgeText = '⚔️ 2-2 Split'
+    let badgeText = '⚔️ Split'
 
-    if (votesA >= 3) {
+    if (votesA === mlVoters && mlVoters >= 3) {
       consensusSide = 'A'
-      consensusVoteCount = votesA === 4 ? 4 : 3
-      consensusType = votesA === 4 ? 'hammer' : 'consensus'
-      badgeText = votesA === 4 ? '🔥 4-0 Fight Hammer' : '🎯 3-1 Consensus'
-    } else if (votesB >= 3) {
+      consensusVoteCount = votesA
+      consensusType = 'hammer'
+      badgeText = mlVoters === 4 ? '🔥 4-0 Fight Hammer' : '🔥 3-0 Fight Hammer'
+    } else if (votesB === mlVoters && mlVoters >= 3) {
       consensusSide = 'B'
-      consensusVoteCount = votesB === 4 ? 4 : 3
-      consensusType = votesB === 4 ? 'hammer' : 'consensus'
-      badgeText = votesB === 4 ? '🔥 4-0 Fight Hammer' : '🎯 3-1 Consensus'
+      consensusVoteCount = votesB
+      consensusType = 'hammer'
+      badgeText = mlVoters === 4 ? '🔥 4-0 Fight Hammer' : '🔥 3-0 Fight Hammer'
+    } else if (votesA >= 2 || votesB >= 2) {
+      consensusSide = votesA >= votesB ? 'A' : 'B'
+      consensusVoteCount = Math.max(votesA, votesB)
+      consensusType = 'consensus'
+      badgeText = mlVoters === 4 ? '🎯 3-1 Consensus' : '🎯 2-1 Consensus'
     } else {
       consensusSide = votesA >= votesB ? 'A' : 'B'
       consensusType = 'split'
-      badgeText = '⚔️ 2-2 Desk Split'
+      badgeText = '⚔️ Desk Split'
     }
 
     const consFighter = consensusSide === 'A' ? fighterA : fighterB
@@ -390,12 +399,14 @@ export async function buildUfcSlateCard(
           side: tankSide,
           odds: tankOdds,
           rationale: tankRationale,
-          equations: buildUfcTankEquations({
-            totalLine,
-            finishProb: matchup?.projectedFinishProb ?? null,
-            isApex,
-            side: tankSide,
-          }),
+          equations: tankSide === 'Over' || tankSide === 'Under'
+            ? buildUfcTankEquations({
+              totalLine,
+              finishProb: matchup?.projectedFinishProb ?? null,
+              isApex,
+              side: tankSide,
+            })
+            : [],
         },
       },
       consensusPick: {
@@ -424,14 +435,20 @@ export async function buildUfcSlateCard(
 }
 
 function formatUfcFightDeskBlock(fight: UfcFightPick): string {
-  return [
+  const lines = [
     `**${fight.fighterA} vs ${fight.fighterB}** (${fight.matchup?.division || 'UFC'})`,
     `• ${formatColoredPickerName('Scott')}: ${fight.pickerPicks.Scott.pickName} ... ${fight.pickerPicks.Scott.rationale}`,
     `• ${formatColoredPickerName('Rocco')}: ${fight.pickerPicks.Rocco.pickName} ... ${fight.pickerPicks.Rocco.rationale}`,
     `• ${formatColoredPickerName('Chedda')}: ${fight.pickerPicks.Chedda.pickName} ... ${fight.pickerPicks.Chedda.rationale}`,
-    `• ${formatColoredPickerName('Tank')}: ${fight.pickerPicks.Tank.pickName} ... ${fight.pickerPicks.Tank.rationale}`,
-    `• *Consensus Signal: ${fight.consensusPick.badgeText}*`,
-  ].join('\n')
+  ]
+  const tank = fight.pickerPicks.Tank
+  if (tank.side === 'PASS') {
+    lines.push(`• ${formatColoredPickerName('Tank')}: PASS ... ${tank.rationale}`)
+  } else if (tank.side !== 'Over' && tank.side !== 'Under') {
+    lines.push(`• ${formatColoredPickerName('Tank')}: ${tank.pickName} ... ${tank.rationale}`)
+  }
+  lines.push(`• *Consensus Signal: ${fight.consensusPick.badgeText}*`)
+  return lines.join('\n')
 }
 
 /**
@@ -544,6 +561,8 @@ export async function publishAndRecordUfcCard(
   for (const fight of card.fights) {
     for (const picker of SHARP_PICKERS) {
       const pPick = fight.pickerPicks[picker]
+      if (pPick.side === 'PASS') continue
+      if (!TANK_UFC_ROUND_TOTALS_ENABLED && (pPick.side === 'Over' || pPick.side === 'Under')) continue
       const isTotal = pPick.side === 'Over' || pPick.side === 'Under'
       const pickedFighter = pPick.side === 'A' ? fight.fighterA : fight.fighterB
 

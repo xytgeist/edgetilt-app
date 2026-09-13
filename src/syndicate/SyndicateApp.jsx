@@ -1094,14 +1094,12 @@ export function SyndicateApp() {
                       const storedBadge = String(pick.metadata?.consensus_badge || '').trim()
                       const consensusBadge =
                         consensusType === 'hammer'
-                          ? isMma
-                            ? '🔥 4-0 Fight Hammer'
-                            : '🔥 4-0 Hammer'
+                          ? storedBadge || (isMma ? '🔥 3-0 Fight Hammer' : '🔥 4-0 Hammer')
                           : consensusType === 'consensus'
-                            ? isMma
-                              ? '🎯 3-1 Consensus'
-                              : storedBadge && /[23]-[01]/.test(storedBadge)
-                                ? storedBadge
+                            ? storedBadge && /[23]-[01]/.test(storedBadge)
+                              ? storedBadge
+                              : isMma
+                                ? '🎯 2-1 Consensus'
                                 : '🎯 2-1+ Consensus'
                             : storedBadge || 'Solo Spot'
                       const eventLabel =

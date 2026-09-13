@@ -1138,6 +1138,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-12:** **IPA tap haptic medium sign-off (Mac).** Ryan: feels good vs X. **`1.4.204`.**
 - **2026-09-12:** **IPA tap haptic bumped to medium (Mac).** `triggerTapHapticLight` in the shell now uses `triggerHaptic` `medium`. Safari / PWA stay on the switch trick. **`1.4.204`.**
 - **2026-09-12:** **In-app confirms for leftover deletes (Mac).** Play Logbook, poker session/stake deletes, chat leave/delete/remove use AppShell confirm. **`1.4.203`.**
 - **2026-09-12:** **UFC data (1) aliases + card facts (Windows).** Tuesday `syndicate:sync-ufc-metrics` writes `ufc_fighter_aliases` + `ufc_card_fights` (3/5, venue, Apex). Edge match uses aliases. Apex is no longer guessed from “Fight Night.” Desk rules unchanged. **`1.4.202`.**

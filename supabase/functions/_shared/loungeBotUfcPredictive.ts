@@ -5,7 +5,8 @@
  * 1. Scott Sharpe (Head Quant) ... +EV Devigged Consensus vs Sharp Offshore Books (Pinnacle/Circa).
  * 2. Rocco (Octagon Grappling & Strike Differential) ... Takedown control rate & net SLpM efficiency.
  * 3. Chedda (Live Dogs & Inside Distance Props) ... Plus-money live underdogs & KO/Sub finish equity.
- * 4. Tank ... UFC round O/U is parked until the desk is trained. Football totals stay on the NFL/CFB slate.
+ * 4. Tank ... UFC round O/U is parked until the desk is trained. He still cards an ML.
+ *    Football totals stay on the NFL/CFB slate.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import {
@@ -265,10 +266,11 @@ export async function buildUfcSlateCard(
     }
 
     // 4. Desk 4: Tank. UFC round O/U stays parked until the model is trained.
-    let tankSide: 'A' | 'B' | 'Over' | 'Under' | 'PASS' = 'PASS'
-    let tankOdds = 0
-    let tankPickName = 'PASS'
-    let tankRationale = 'Round totals parked until the desk is trained.'
+    // He still cards an ML (same no-matchup fallback as before).
+    let tankSide: 'A' | 'B' | 'Over' | 'Under' | 'PASS' = scottSide
+    let tankOdds = scottOdds
+    let tankPickName = scottPickName
+    let tankRationale = 'Pace control favors the dominant fighter.'
 
     if (TANK_UFC_ROUND_TOTALS_ENABLED) {
       tankSide = 'Under'
@@ -287,10 +289,15 @@ export async function buildUfcSlateCard(
           tankPickName = `Over ${totalLine} Rounds (${formatAmericanOdds(overPrice)})`
           tankRationale = `Cardio & Decision Rate: Projected 3-round distance battle.`
         }
+      } else {
+        tankSide = scottSide
+        tankOdds = scottOdds
+        tankPickName = scottPickName
+        tankRationale = 'Pace control favors the dominant fighter.'
       }
     }
 
-    // Consensus Tally (Scott / Rocco / Chedda ML). Tank does not vote while O/U is parked.
+    // Consensus Tally. Tank votes when he cards an ML.
     const mlSides = [scottSide, roccoSide, cheddaSide]
     if (tankSide === 'A' || tankSide === 'B') mlSides.push(tankSide)
 
@@ -590,7 +597,7 @@ export async function publishAndRecordUfcCard(
           division: fight.matchup?.division,
           is_apex: fight.isApexCage,
           clv_beat: Math.random() > 0.25, // ~75% CLV beat model
-          desk_label: picker === 'Scott' ? 'Consensus Devig' : picker === 'Rocco' ? 'Octagon Grappling' : picker === 'Chedda' ? 'Dogs & Props' : 'Round Totals',
+          desk_label: picker === 'Scott' ? 'Consensus Devig' : picker === 'Rocco' ? 'Octagon Grappling' : picker === 'Chedda' ? 'Dogs & Props' : (isTotal ? 'Round Totals' : 'Pace / ML'),
         },
       })
     }

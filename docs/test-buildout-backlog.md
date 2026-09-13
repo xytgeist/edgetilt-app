@@ -1132,6 +1132,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-12:** **Noche audited ledger restamped 3-desk (Windows).** Cancelled leftover Tank Gantt ML + 12 Tank totals (13 cancelled, 0 Tank on the public book). Scott/Rocco/Chedda 39 ML rows restamped `4-0`/`3-1`/`2-2` → `3-0 Fight Hammer` (21) / `2-1 Consensus` (18). Desk: Scott 6-7 (+0.55u), Rocco 9-4 (+2.45u), Chedda 8-5 (+2.48u). Hard-refresh sharpesyndicate.com UFC.
 - **2026-09-12:** **Tank UFC round O/U parked (Windows).** Uncut captions no longer print Tank Over/Under. Ledger insert skips those rows. House is Scott / Rocco / Chedda (3-0 / 2-1). Football Tank totals unchanged. Flip `TANK_UFC_ROUND_TOTALS_ENABLED` when trained. Redeploy `lounge-odds-poll`. **`1.4.198`.**
 - **2026-09-12:** **Noche UFC ledger graded espn_local (Windows).** 52/52 pending rows settled from the ESPN UFC scoreboard (Edge still cannot see UFC finals). Scott 6-7 (+0.55u), Rocco 9-4 (+2.45u), Chedda 8-5 (+2.48u), Tank 3-10 (-7.00u, 1.5s vs mostly R3). 0 Noche pending. Hard-refresh sharpesyndicate.com UFC.
 - **2026-09-12:** **Noche UFC 9am dest restamped on prod (Windows).** Public tease `b6a55f2f-…` + fan-only uncut `6d9fb7e7-…` + VIP `efbd4b6b-…` stamped `2026-09-12T16:00:00Z` (Sat 9am PT) from the 9am Noche ledger (13 fights, no Hokit). Earlier backfill IDs never persisted.

@@ -227,6 +227,7 @@ export default function KlipyGifPicker({ open, onClose, onPick, supabaseClient }
       }}
     >
       <div
+        data-klipy-gif-picker
         className="klipy-gif-sheet pointer-events-auto relative z-10 mb-0 flex w-full max-w-lg shrink-0 flex-col overflow-hidden rounded-t-2xl border border-zinc-700/80 bg-[#14161c]/92 shadow-xl backdrop-blur-md"
         style={{ height: resolvedSheetHeightPx }}
         onClick={(e) => e.stopPropagation()}

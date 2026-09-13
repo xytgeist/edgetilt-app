@@ -60,6 +60,7 @@ import {
   subscribeAppConsoleLogHudEnabled,
 } from '../../utils/appConsoleLogHudPref.js'
 import LoungeAppSplash from '../../components/LoungeAppSplash.jsx'
+import EdgeKeyboardAccessorySync from '../../components/EdgeKeyboardAccessorySync.jsx'
 import { useLoungeColdBootSplash } from '../lounge/useLoungeColdBootSplash.js'
 import { LOUNGE_COLD_BOOT_RESUME_EVENT } from '../../utils/loungeColdBootSplash.js'
 import { shouldShowLoungeColdBootSplash } from '../../utils/loungeColdBootSplash.js'
@@ -3212,6 +3213,7 @@ export default function AppShell({
         openChatRoomDirect(roomId, { skipReloadIfSame: true })
       }}
     >
+      <EdgeKeyboardAccessorySync />
       {shellTree}
     </ChatCallProvider>
   )

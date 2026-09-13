@@ -62,7 +62,6 @@ import {
 } from './w2gArchiveApi.js'
 import { processW2GImageForArchive } from './w2gBulkImport.js'
 import { enhanceScanicCornerToolbar } from './w2gScanicToolbar.js'
-import W2GKeyboardFieldNavPill from './W2GKeyboardFieldNavPill.jsx'
 import {
   canPickEdgePhotos,
   canScanEdgeDocument,
@@ -2700,7 +2699,6 @@ export default function W2GScannerScreen({
         alt="Scanned W-2G enlarged"
       />
     ) : null}
-    <W2GKeyboardFieldNavPill />
     </>
   )
 }

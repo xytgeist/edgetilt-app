@@ -3,8 +3,8 @@ import UIKit
 import WebKit
 
 /// Default: hide WKWebView's extra bar above the software keyboard (Done / prev-next).
-/// GIF picker and most compose fields stay clean. W-2G tax fields opt back into
-/// the **system** accessory via `setShowsAccessoryBar`.
+/// Focused fields opt back into the **system** accessory via `setShowsAccessoryBar`.
+/// GIF search stays hidden.
 ///
 /// The focused view is usually internal `WKContentView`, not `WKWebView`, so a
 /// subclass override alone is not enough. Replacing that getter is the same

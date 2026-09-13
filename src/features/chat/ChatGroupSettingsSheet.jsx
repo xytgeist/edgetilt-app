@@ -93,6 +93,7 @@ export default function ChatGroupSettingsSheet({
   viewerReadReceiptsEnabled = true,
   onViewerReadReceiptsEnabledChange = null,
   readReceiptsBusy = false,
+  showGlobalConfirm = null,
 }) {
   const isCreatorFanRoom = chatIsFanRoom(room)
   const isPlatformSubRoom = chatIsPlatformSubRoom(room)
@@ -846,13 +847,17 @@ export default function ChatGroupSettingsSheet({
               type="button"
               className="w-full rounded-2xl border border-rose-600/50 bg-rose-950/40 py-3.5 text-[15px] font-semibold text-rose-300 touch-manipulation active:bg-rose-950/70"
               onClick={async () => {
-                if (
-                  !window.confirm(
-                    'Delete this group for all members? All messages will be removed. This cannot be undone.',
-                  )
-                ) {
-                  return
-                }
+                const ok = showGlobalConfirm
+                  ? await showGlobalConfirm({
+                      title: 'Delete group?',
+                      message:
+                        'Delete this group for all members? All messages will be removed. This cannot be undone.',
+                      confirmLabel: 'Delete',
+                    })
+                  : window.confirm(
+                      'Delete this group for all members? All messages will be removed. This cannot be undone.',
+                    )
+                if (!ok) return
                 try {
                   await chatDeleteGroup(supabaseClient, room.id)
                   onLeftGroup()
@@ -868,7 +873,14 @@ export default function ChatGroupSettingsSheet({
             type="button"
             className="w-full rounded-2xl border border-rose-500/30 bg-rose-950/20 py-3.5 text-[15px] font-semibold text-rose-400 touch-manipulation active:bg-rose-950/50"
             onClick={async () => {
-              if (!window.confirm('Leave this group?')) return
+              const ok = showGlobalConfirm
+                ? await showGlobalConfirm({
+                    title: 'Leave group?',
+                    message: 'Leave this group?',
+                    confirmLabel: 'Leave',
+                  })
+                : window.confirm('Leave this group?')
+              if (!ok) return
               try {
                 await chatLeaveRoom(supabaseClient, room.id)
                 onLeftGroup()
@@ -997,7 +1009,14 @@ export default function ChatGroupSettingsSheet({
           ) : null}
           {!isCreatorFanRoom && !isPlatformSubRoom ? (
             <SheetRow accent="rose" onClick={async () => {
-              if (!window.confirm(`Remove ${memberActionTarget.label} from the group?`)) return
+              const ok = showGlobalConfirm
+                ? await showGlobalConfirm({
+                    title: 'Remove member?',
+                    message: `Remove ${memberActionTarget.label} from the group?`,
+                    confirmLabel: 'Remove',
+                  })
+                : window.confirm(`Remove ${memberActionTarget.label} from the group?`)
+              if (!ok) return
               try {
                 await chatRemoveGroupMember(supabaseClient, room.id, memberActionTarget.user_id)
                 await reload()

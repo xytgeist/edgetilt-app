@@ -3640,7 +3640,14 @@ export default function PokerBankrollTracker({
 
   async function deleteSession() {
     if (!editingId || !supabaseClient || !userId) return
-    if (!window.confirm('Delete this poker session?')) return
+    const ok = showGlobalConfirm
+      ? await showGlobalConfirm({
+          title: 'Delete session?',
+          message: 'Delete this poker session?',
+          confirmLabel: 'Delete',
+        })
+      : window.confirm('Delete this poker session?')
+    if (!ok) return
     setSaving(true)
     try {
       const editingRow = sessions.find((s) => s.id === editingId)
@@ -3749,7 +3756,14 @@ export default function PokerBankrollTracker({
   /** Discard an in-progress session from End Session (no bankroll delta yet). */
   async function deleteActiveSession() {
     if (!actionSession || !supabaseClient || !userId) return
-    if (!window.confirm('Delete this session? It will not be saved to your history.')) return
+    const ok = showGlobalConfirm
+      ? await showGlobalConfirm({
+          title: 'Delete session?',
+          message: 'Delete this session? It will not be saved to your history.',
+          confirmLabel: 'Delete',
+        })
+      : window.confirm('Delete this session? It will not be saved to your history.')
+    if (!ok) return
     setSaving(true)
     setError('')
     try {
@@ -3784,13 +3798,15 @@ export default function PokerBankrollTracker({
     if (!supabaseClient || !userId || scopedSessions.length === 0 || saving) return
     const scopeLabel = isOnStake ? 'On Stake' : 'personal'
     const n = scopedSessions.length
-    if (
-      !window.confirm(
-        `Delete all ${n} ${scopeLabel} poker session${n === 1 ? '' : 's'}? Your bankroll will be adjusted by the reversed session P/L. This cannot be undone.`,
-      )
-    ) {
-      return
-    }
+    const purgeMsg = `Delete all ${n} ${scopeLabel} poker session${n === 1 ? '' : 's'}? Your bankroll will be adjusted by the reversed session P/L. This cannot be undone.`
+    const ok = showGlobalConfirm
+      ? await showGlobalConfirm({
+          title: 'Delete all sessions?',
+          message: purgeMsg,
+          confirmLabel: 'Delete all',
+        })
+      : window.confirm(purgeMsg)
+    if (!ok) return
     setSaving(true)
     setError('')
     try {
@@ -5439,13 +5455,15 @@ export default function PokerBankrollTracker({
           onCancelStake={async () => {
             const deal = stakeeDeals.find((d) => d.id === termsDealId)
             const label = deal?.label?.trim() || 'this stake'
-            if (
-              !window.confirm(
-                `Delete ${label}? This removes the stake and any sessions logged on it before backers accept. This cannot be undone.`,
-              )
-            ) {
-              return
-            }
+            const deleteStakeMsg = `Delete ${label}? This removes the stake and any sessions logged on it before backers accept. This cannot be undone.`
+            const ok = showGlobalConfirm
+              ? await showGlobalConfirm({
+                  title: 'Delete stake?',
+                  message: deleteStakeMsg,
+                  confirmLabel: 'Delete',
+                })
+              : window.confirm(deleteStakeMsg)
+            if (!ok) return
             setStableSaving(true)
             setError('')
             try {

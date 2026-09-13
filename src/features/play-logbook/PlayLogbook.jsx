@@ -238,6 +238,7 @@ export default function PlayLogbook({
   onRequireSubscribeForPlayLog = null,
   onPlayLogCreated = null,
   onScanW2G = null,
+  showGlobalConfirm = null,
 }) {
   const [userId, setUserId] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -1240,7 +1241,14 @@ export default function PlayLogbook({
         ? 'Delete this shared play for everyone? All partners will lose their log entries.'
         : 'Remove this play from your logbook only? Other partners keep their entries.'
       : 'Delete this log entry?'
-    if (!window.confirm(msg)) return
+    const ok = showGlobalConfirm
+      ? await showGlobalConfirm({
+          title: sessionId ? (isOwner ? 'Delete shared play?' : 'Remove this play?') : 'Delete play?',
+          message: msg,
+          confirmLabel: 'Delete',
+        })
+      : window.confirm(msg)
+    if (!ok) return
     setError('')
     const wasViewing = viewingEntryId != null && String(viewingEntryId) === String(entryId)
     try {
@@ -1258,7 +1266,14 @@ export default function PlayLogbook({
   }
 
   const deleteCustomTemplate = async (templateId) => {
-    if (!window.confirm('Delete this custom game template? Entries using it will remain.')) return
+    const ok = showGlobalConfirm
+      ? await showGlobalConfirm({
+          title: 'Delete template?',
+          message: 'Delete this custom game template? Entries using it will remain.',
+          confirmLabel: 'Delete',
+        })
+      : window.confirm('Delete this custom game template? Entries using it will remain.')
+    if (!ok) return
     try {
       const { error: e } = await supabaseClient
         .from('play_log_game_templates')
@@ -1276,7 +1291,14 @@ export default function PlayLogbook({
 
   const deleteSystemTemplate = async (templateId) => {
     if (!viewerIsAdmin) return
-    if (!window.confirm('Delete this primary game template? Existing log entries will remain.')) return
+    const ok = showGlobalConfirm
+      ? await showGlobalConfirm({
+          title: 'Delete primary game?',
+          message: 'Delete this primary game template? Existing log entries will remain.',
+          confirmLabel: 'Delete',
+        })
+      : window.confirm('Delete this primary game template? Existing log entries will remain.')
+    if (!ok) return
     try {
       const { error: e } = await supabaseClient
         .from('play_log_game_templates')

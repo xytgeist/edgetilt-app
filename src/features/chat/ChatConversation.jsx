@@ -183,6 +183,7 @@ export default function ChatConversation({
   viewerReadReceiptsEnabled = true,
   onViewerReadReceiptsEnabledChange = null,
   readReceiptsBusy = false,
+  showGlobalConfirm = null,
 }) {
   const [messages, setMessages] = useState(/** @type {any[]} */ ([]))
   // Aggregated reactions per message: { [messageId]: { emoji, count, viewerReacted }[] }
@@ -3013,6 +3014,7 @@ export default function ChatConversation({
             await refreshReadReceipts()
           }}
           readReceiptsBusy={readReceiptsBusy}
+          showGlobalConfirm={showGlobalConfirm}
         />
       ) : null}
     </div>

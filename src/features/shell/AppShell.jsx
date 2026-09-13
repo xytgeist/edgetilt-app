@@ -2584,6 +2584,7 @@ export default function AppShell({
         >
           <ChatTab
             supabaseClient={supabaseClient}
+            showGlobalConfirm={showGlobalConfirm}
             hasActiveSubscription={hasActiveSubscription}
             isStaff={isStaff}
             browseMode={browseMode}
@@ -2919,6 +2920,7 @@ export default function AppShell({
             setPendingPlayLogPartner(null)
             setPendingPlayLogSessionId(null)
           }}
+          showGlobalConfirm={showGlobalConfirm}
           onScanW2G={(prefill) => {
             setPendingW2GPrefill(prefill || null)
             openSlotsTool('w2g-scanner')

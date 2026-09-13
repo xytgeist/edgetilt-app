@@ -74,6 +74,7 @@ export default function ChatTab({
   onViewProfile = null,
   onOpenLoungePost = null,
   registerDirectNav = null,
+  showGlobalConfirm = null,
 }) {
   const [viewerUserId, setViewerUserId] = useState('')
   const [viewerProfile, setViewerProfile] = useState(null)
@@ -657,11 +658,20 @@ export default function ChatTab({
     setRoomMenu(null)
     if (action === 'delete') {
       const label = chatRoomLabel(room)
-      const confirmed = window.confirm(
-        room.kind === 'group'
-          ? `Leave "${label}"? It will be removed from your inbox.`
-          : `Delete "${label}"? It will be removed from your inbox.`,
-      )
+      const isGroup = room.kind === 'group'
+      const confirmed = showGlobalConfirm
+        ? await showGlobalConfirm({
+            title: isGroup ? 'Leave group?' : 'Delete chat?',
+            message: isGroup
+              ? `Leave "${label}"? It will be removed from your inbox.`
+              : `Delete "${label}"? It will be removed from your inbox.`,
+            confirmLabel: isGroup ? 'Leave' : 'Delete',
+          })
+        : window.confirm(
+            isGroup
+              ? `Leave "${label}"? It will be removed from your inbox.`
+              : `Delete "${label}"? It will be removed from your inbox.`,
+          )
       if (!confirmed) {
         setOpenSwipeRoomId(null)
         return
@@ -684,7 +694,7 @@ export default function ChatTab({
     } catch (e) {
       setActionErr(e?.message || 'Action failed.')
     }
-  }, [supabaseClient, refreshInboxLists, activeRoomId])
+  }, [supabaseClient, refreshInboxLists, activeRoomId, showGlobalConfirm])
 
   // ── Group creation ────────────────────────────────────────────────────────
 
@@ -897,6 +907,7 @@ export default function ChatTab({
         viewerReadReceiptsEnabled={viewerReadReceiptsEnabled}
         onViewerReadReceiptsEnabledChange={handleViewerReadReceiptsChange}
         readReceiptsBusy={readReceiptsToggleBusy}
+        showGlobalConfirm={showGlobalConfirm}
       />
     )
   }

@@ -33,7 +33,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
-**Branch:** `test` (match `origin/test` before edits). `main` @ **`85572993`**. Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
+**Branch:** `test` (match `origin/test` before edits). `main` @ **`8f44c549`**. Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
 
 **Supabase (do not swap these):**
 
@@ -94,6 +94,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 ### Windows Theo 2026-09-12 … UFC slate Lounge dest
 
 **I am Windows Theo.** Sat 9am UFC cron now posts public tease + fan-only uncut + VIP. Prod Edge redeployed. Today's public `8677470f-…` + fan-only `920747a1-…` backfilled. Do not commit phone OTP.
+
+### Mac Theo 2026-09-12 … tonight's work on prod
+
+**I am Mac Theo.** `test` → **`main`** at **`8f44c549`** (`1.4.206`). Vercel **edgetilt.com**. Git only. No prod SQL. No Edge redeploy. No new store IPA. Windows UFC `20260913020000` + `lounge-odds-poll` source rode along in git but are not live on **`jtjgtucumuoswnbauxry`** until Ryan asks.
 
 ### Mac Theo 2026-09-12 … IPA tap haptic is medium
 

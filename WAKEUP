@@ -87,6 +87,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Windows Theo.** Sat 9am UFC cron now posts public tease + fan-only uncut + VIP. Prod Edge redeployed. Today's public `8677470f-…` + fan-only `920747a1-…` backfilled. Do not commit phone OTP.
 
+### Mac Theo 2026-09-12 … IPA tap haptic is medium
+
+**I am Mac Theo.** Shell `triggerTapHapticLight` now fires `triggerHaptic({ style: 'medium' })`. Light felt weaker than X. Safari / PWA unchanged. No new IPA. **`1.4.204`.** Windows: do not edit `tapHaptic.js` today.
+
 ### Mac Theo 2026-09-12 … in-app confirms for leftover deletes
 
 **I am Mac Theo.** Play Logbook delete, poker session/stake deletes, chat leave / delete group / remove member / inbox swipe-delete use AppShell confirm (same sheet as W-2G). Stock `window.confirm` is fallback only. Web only. **`1.4.203`.** Windows: do not edit AppShell confirm wiring / PlayLogbook / ChatTab / ChatGroupSettings / PokerBankrollTracker deletes today.

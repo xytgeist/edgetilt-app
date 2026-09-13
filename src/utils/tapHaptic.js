@@ -57,12 +57,12 @@ function fireAndroidVibrate() {
   }
 }
 
-/** Light impact for standard button taps (X.com-style). Must run inside the user gesture. */
+/** Standard button taps. IPA uses medium impact (light felt weaker than X). Safari / PWA stay on the switch trick. */
 export function triggerTapHapticLight() {
   if (!isTapHapticSupported()) return
 
   if (isEdgeiOSShell()) {
-    void triggerEdgeNativeHaptic('light')
+    void triggerEdgeNativeHaptic('medium')
     return
   }
 

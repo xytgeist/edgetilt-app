@@ -192,7 +192,8 @@ Hot Windows files (first cuts): `pwaNotificationPrompt.js`, `PwaInstallBanner.js
 - [x] **Syndicate GHA metrics sync → prod on Tuesday schedule + Edge Monitor heartbeat** (`syndicate_football_metrics_sync_production`, migration **`20260903210000`**, 2026-09-02)
 - [ ] **NFL trench follow-up (after 2026-09-29):** recalibrate `TRENCH_Z_TO_POINTS` on a 2026 ESPN board → scheme mixer → sack/hit flag. Spec [`data/syndicate/trench-followup.json`](../data/syndicate/trench-followup.json). Ticket [#3](https://github.com/xytgeist/edgetilt-app/issues/3). Tuesday `/theo` nag + GHA. Kill when JSON + test row are `done`.
 - [x] **Syndicate Ops on sharpesyndicate.com** (`/ops` or `?ops=1`): admin login + Sharp Desk. EdgeTilt `/?tab=bots` keeps create/pause/Odds/X. 2026-09-02.
-- [ ] **UFC desk independence test (gate):** hide Scott’s fair%, rerun Rocco + Tank, each must emit Side or PASS from its own file. Do not start the UFC rebuild until this is a real check. Spec: **`docs/syndicate-ufc-desk-contract.md`**.
+- [ ] **UFC data (1) alias + 3/5 + venue (gate):** fighter alias table + parse scheduled rounds / venue on the Tuesday ufcstats job. Leave the UFC desks alone until this is in. Spec appendix: **`docs/syndicate-ufc-desk-contract.md`**.
+- [ ] **UFC desk independence test (gate):** hide Scott’s fair%, rerun Rocco + Tank, each must emit Side or PASS from its own file. After data (1). Spec: **`docs/syndicate-ufc-desk-contract.md`**.
 - [ ] **Syndicate collection failure monitoring (rest):** registry missing slate/grade/VIP/specialty crons + table freshness / Odds API last error banners. Spec note 2026-09-02.
 - [ ] **Chedda name vs pick gold (light):** Chedda stays muddy orange; pick `[gold]` readable on light (emerald). Do not paint all gold amber. See Update log **2026-09-04** OPEN.
 - [ ] **Chedda Action PRO paste nag emails:** day before NFL Fri 1pm PT / CFB Fri 12pm PT lock, email Ryan every **10 minutes** until `syndicate_betting_splits` has paste for that slate (or explicit skip). Stop when screenshots submitted. Spec note 2026-09-02.
@@ -1135,6 +1136,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-12:** **UFC data order locked (Windows).** Alias + 3/5/venue first. Chedda PASS until odds-api.io / SportsGameOdds method+GTD. Tank limps on existing totals + real 3/5. Kill clock is a manual Ops flag. Leave desks alone until (1). Appendix on **`docs/syndicate-ufc-desk-contract.md`**.
 - **2026-09-12:** **UFC 4-desk contract locked (Windows).** `docs/syndicate-ufc-desk-contract.md`. Four questions, sit-first, own-unit conviction, closed kill list, Wed–Fri lean / weigh-in lock. Independence test (hide Scott's fair%, rerun Rocco + Tank) must be a real check before any rebuild code. Live UFC engine stays costume until then.
 - **2026-09-12:** **Native share sheet (Mac).** `EdgeNative.share` → `UIActivityViewController`. Lounge post / profile, W-2G image, poker completed result, chart snapshot, chat recording. Old IPA / PWA keep `navigator.share`. New Test Fast. **`1.4.201`.**
 - **2026-09-12:** **App-wide WK accessory + comment-detail sign-off (Mac).** Ryan smoked Lounge compose, post reply, thread (toolbar vs Done), chat, logbook, bankroll, poker, W-2G. Comment-detail jump-to-OP then confirmed fixed. **`1.4.200`.**

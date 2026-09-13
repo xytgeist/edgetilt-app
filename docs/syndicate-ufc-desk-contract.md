@@ -1,7 +1,7 @@
 # Sharpe Syndicate UFC / MMA desk contract (internal)
 
 **Audience:** Ryan + agents. **Not** public marketing copy.  
-**Status:** Locked 2026-09-12. Current live UFC engine (`loungeBotUfcPredictive.ts`) does **not** satisfy this contract. Do **not** start the rebuild until the independence test below is implemented as a real check and passing.
+**Status:** Locked 2026-09-12. Data order locked the same night. Current live UFC engine (`loungeBotUfcPredictive.ts`) does **not** satisfy this contract. Leave the desks alone until **(1)** in the data appendix is in. Then the independence test must be a real check before rebuild code.
 
 Football desks stay on **`docs/lounge-bot-sports-odds.md`** + **`docs/syndicate-cfb-weekly-runbook.md`**. This file is the UFC house only.
 
@@ -105,6 +105,29 @@ Do not “patch” these by copying Scott harder. Rebuild against this file.
 - Chedda copies Rocco on chalk. Dog screen has no named path.
 - Missing both names in the ~39-row metrics file collapses the house into one desk.
 - Odds API `home_team` is not a pick.
+
+---
+
+## Data appendix (locked 2026-09-12)
+
+Do not buy another costume on the 255-row ufcstats file. The Odds API we already pay (`the-odds-api.com`) is fight winner + limited totals. Expanding `markets=` does **not** unlock method / goes-the-distance. That is a different product.
+
+**Locked order:**
+
+1. **This week, free:** alias table + parse 3 vs 5 and venue on the Tuesday ufcstats job. Scott can vote. Rocco can start on his own file (stance pair, reach gap, last-5 TD acc vs last-5 TD def, last-5 control, plus 3/5 + cage). Leave the desk engine alone until this is in.
+2. **Next dollar:** odds-api.io (or SportsGameOdds) for method + goes-the-distance. Chedda stays **PASS** until that lands. Chedda voting on career KO% is a contract violation.
+3. **Tank:** limp on the totals we already have + real 3/5. Sit when the total is missing. Do not fake minutes.
+4. **Kill clock:** manual Ops flag. No scraper. Closed list only: miss / scratch / walk-off.
+
+| Desk | Enough to vote | Still a sit |
+| --- | --- | --- |
+| Scott | Odds ML + alias | Name miss |
+| Rocco | Own matchup file + 3/5 + venue | No matchup row |
+| Chedda | Method market (KO / sub / decision) | Only career KO% |
+| Tank | O/U totals + real 3/5 | No minutes market |
+| House clock | Manual weigh-in flag | No feed |
+
+Skip: PFF-for-MMA, Sportradar, random GitHub UFC APIs. McInerney later for backtests, not a live feed.
 
 ---
 

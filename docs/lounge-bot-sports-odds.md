@@ -858,7 +858,7 @@ Desk mapping: **Scott** = PASS unless model−market ≥ 2.5 after PVAL (1.5 onl
 
 **Internal weekly SOP (honest inventory + publish rules):** [`docs/syndicate-cfb-weekly-runbook.md`](./syndicate-cfb-weekly-runbook.md). Keep blend weights out of public UI.
 
-**UFC / MMA 4-desk contract (locked, not coded):** [`docs/syndicate-ufc-desk-contract.md`](./syndicate-ufc-desk-contract.md).
+**UFC / MMA 4-desk contract (locked, not coded):** [`docs/syndicate-ufc-desk-contract.md`](./syndicate-ufc-desk-contract.md). Leave desks alone until data appendix **(1)** (alias + 3/5 + venue). Chedda PASS until a method feed.
 
 Requires **`CFBD_API_KEY`** in `.env.supabase.{test,production}` and GitHub Actions secret `CFBD_API_KEY` ([get key](https://collegefootballdata.com/key)). Free tier is 1k calls/mo … weekly sync is fine; Patreon ~$5/mo if you need more.
 

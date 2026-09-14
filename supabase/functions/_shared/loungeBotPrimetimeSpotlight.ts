@@ -545,6 +545,31 @@ export async function publishAndRecordPrimetimeSpotlight(
     pickIds.push(inserted.id)
   }
 
+  // Friday house lean is not the primetime lock. Void leftover pending
+  // desk rows on this event so SNF/MNF does not double-grade.
+  const { data: houseRows } = await admin
+    .from('lounge_bot_picks')
+    .select('id, market_key, metadata')
+    .eq('bot_user_id', publishAs)
+    .eq('event_id', spotlight.eventId)
+    .eq('status', 'pending')
+  for (const row of houseRows || []) {
+    if (String(row.market_key || '') === 'teasers') continue
+    const meta = row.metadata && typeof row.metadata === 'object'
+      ? row.metadata as Record<string, unknown>
+      : {}
+    if (meta.is_primetime_spotlight === true) continue
+    await admin
+      .from('lounge_bot_picks')
+      .update({
+        status: 'cancelled',
+        units_net: 0,
+        resolved_at: new Date().toISOString(),
+        metadata: { ...meta, slate_void: 'primetime_owns_lock' },
+      })
+      .eq('id', row.id)
+  }
+
   return {
     ok: true,
     postId,

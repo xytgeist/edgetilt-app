@@ -7,6 +7,11 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { formatOddsCommenceTimeShort, shortDisplayName, type OddsEvent } from './loungeBotOddsCaption.ts'
 import { fetchGameInjuryPval, type GameInjurySummary } from './loungeBotInjuryPval.ts'
 import {
+  isDoubtfulStatus,
+  isGtdStatus,
+  isQuestionableStatus,
+} from './loungeBotPvalBands.ts'
+import {
   findPrimetimeGameCandidate,
   type PrimetimeSpotlightGame,
 } from './loungeBotPrimetimeSpotlight.ts'
@@ -38,6 +43,8 @@ export type PrimetimeLockEval = {
   reasons: string[]
   numberNote: string
   injuryNote: string
+  /** Set when QB / LT / edge is still Q / GTD / doubtful ... cron retries. */
+  hold?: string
 }
 
 type LeanPickRow = {
@@ -76,6 +83,34 @@ export function listedStarterShocks(injuries: GameInjurySummary | null, teamName
   for (const a of report?.keyAbsences || []) {
     if (!isListedStarterPos(a.pos)) continue
     hits.push(`${a.name} (${a.pos} ${a.status})`)
+  }
+  return hits
+}
+
+/** Hold the lock for QB / LT / top edge still listed as a game-time decision. */
+export function isHoldLockPos(pos: string): boolean {
+  const p = String(pos || '').trim().toUpperCase()
+  if (p === 'QB') return true
+  if (p === 'LT') return true
+  if (p === 'OT' || p === 'T') return true
+  if (p.includes('TACKLE') && !p.includes('DEF') && !p.includes('RIGHT')) return true
+  if (p === 'EDGE' || p.includes('EDGE') || p === 'DE') return true
+  return false
+}
+
+export function isUnresolvedGameTimeStatus(status: string): boolean {
+  return isQuestionableStatus(status) || isDoubtfulStatus(status) || isGtdStatus(status)
+}
+
+export function listedStarterGtds(injuries: GameInjurySummary | null): string[] {
+  if (!injuries) return []
+  const hits: string[] = []
+  for (const report of [injuries.homeReport, injuries.awayReport]) {
+    for (const a of report?.keyAbsences || []) {
+      if (!isHoldLockPos(a.pos)) continue
+      if (!isUnresolvedGameTimeStatus(a.status)) continue
+      hits.push(`${a.name} (${a.pos} ${a.status})`)
+    }
   }
   return hits
 }
@@ -237,6 +272,15 @@ export async function evaluatePrimetimeLock(
     spotlight.commenceTime,
     admin,
   )
+  const injuryWatch = await fetchGameInjuryPval(
+    spotlight.sportKey,
+    spotlight.homeTeam,
+    spotlight.awayTeam,
+    spotlight.commenceTime,
+    admin,
+    { hardOutsOnly: false },
+  )
+  const gtdHolds = listedStarterGtds(injuryWatch)
 
   const ourShocks = ourTeam ? listedStarterShocks(injuries, ourTeam) : []
   const anyShocks = [
@@ -281,6 +325,9 @@ export async function evaluatePrimetimeLock(
         ? `${walk.note} … steam confirmed our side`
         : walk.note,
       injuryNote: injuries?.summaryLine || 'No listed-starter shock on the inactive list.',
+      ...(gtdHolds.length
+        ? { hold: `Holding lock … ${gtdHolds.join(', ')} still a game-time decision.` }
+        : {}),
     },
   }
 }
@@ -352,6 +399,17 @@ export async function publishPrimetimeLock(
   }
   const lock = found.eval
   const caption = formatPrimetimeLockCaption(lock)
+
+  if (lock.hold) {
+    return {
+      ok: true,
+      skipped: lock.hold,
+      dryRun: opts?.dryRun === true,
+      lock,
+      captionPreview: caption,
+      previewCaption: caption,
+    }
+  }
 
   if (opts?.requireWindow && !lock.inWindow) {
     const mins = Math.round(lock.minutesToKick)

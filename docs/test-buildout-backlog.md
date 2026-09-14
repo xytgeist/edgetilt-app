@@ -1138,6 +1138,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-14:** **MNF lean is 2:00pm PT (Windows).** Cron `0 21 * * 1`. Friday house lean is not the lock (spotlight voids those pending rows). 90-min lock holds if QB / LT / edge is still GTD. TNF / SNF stay 3:30pm. **`1.4.211`.**
 - **2026-09-14:** **Lifetime IAP list is $1,499.99 (Mac).** Ryan dropped the offer-code route. Immediate global change on `6809032089` … US **`$1,499.99`** (was `$1,999.00`). Raise later when founding ends. Do not attach to **1.4.95 (125)**.
 - **2026-09-14:** **Prod CFB ledger wiped (Windows).** Hard-deleted 374 Syndicate `americanfootball_ncaaf` `lounge_bot_picks` (32 won / 39 lost / 2 push / 301 cancelled). Week 1-3 no longer count. NFL + UFC kept. Lounge posts not deleted. Test had zero CFB rows.
 - **2026-09-14:** **Founding Lifetime offer codes (Mac).** Offer **Founding Lifetime** on IAP `6809032089` (`e4b718f8-3bfc-44a8-861c-56fe90217797`). US **`$1,499.99`**. List stays **`$1,999.00`**. All eligibility + 175 countries. Sandbox: 10 one-time codes expire Mar 14, 2027. Production custom / one-time codes blocked until Lifetime IAP is approved and the app is Ready for Distribution. Do not attach to **1.4.95 (125)**. Redeem URL `https://apps.apple.com/redeem?ctx=offercodes&id=6806401093&code=CODE`.

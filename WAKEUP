@@ -75,9 +75,13 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-14 … Lifetime IAP list is $1,499.99
+
+**I am Mac Theo.** Ryan dropped the offer-code path. Lifetime list is now US **`$1,499.99`** (was `$1,999.00`). Immediate global. StoreKit will charge that when the SKU is live. Raise back to `$1,999` when the founding window ends. Offer **Founding Lifetime** still exists in ASC (same $1,499.99) … ignore it. Do not Add for Review. Do not attach to **1.4.95 (125)**. Web founding `$1,274.25` still Safari.
+
 ### Mac Theo 2026-09-14 … Founding Lifetime offer codes
 
-**I am Mac Theo.** Offer **Founding Lifetime** is live on IAP `6809032089` (`e4b718f8-3bfc-44a8-861c-56fe90217797`). US paid offer **`$1,499.99`**. List stays **`$1,999.00`**. All three eligibility buckets, 175 countries. **10 sandbox** one-time codes expire **Mar 14, 2027** … download from that offer page. Production custom / one-time codes are gated until Lifetime IAP is approved and the app is Ready for Distribution. Do not Add for Review. Do not attach to **1.4.95 (125)**. Founding Apple Lifetime is redeem-a-code, not an intro sticker. Suggest vanity `FOUNDING` or `EDGEFOUNDING` after 125 ships and Lifetime rides a new version. Web founding `$1,274.25` still works via Safari.
+**I am Mac Theo.** Offer **Founding Lifetime** is live on IAP `6809032089` (`e4b718f8-3bfc-44a8-861c-56fe90217797`). US paid offer **`$1,499.99`**. **Superseded same day:** Ryan parked the list at `$1,499.99` instead of codes. All three eligibility buckets, 175 countries. **10 sandbox** one-time codes expire **Mar 14, 2027**. Production custom / one-time codes stay gated. Do not attach to **1.4.95 (125)**.
 
 ### Mac Theo 2026-09-14 … Lifetime IAP is $1,999
 

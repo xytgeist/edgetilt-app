@@ -114,6 +114,54 @@ function bookMarket(book: BookLike, marketKey: string): MarketLike | null {
   return (book.markets || []).find((m) => m.key === marketKey) || null
 }
 
+export type ShoppedSpread = {
+  point: number
+  price: number
+  bookTitle: string
+}
+
+function namesMatch(a: string, b: string): boolean {
+  const x = String(a || '').trim().toLowerCase()
+  const y = String(b || '').trim().toLowerCase()
+  if (!x || !y) return false
+  if (x === y) return true
+  if (x.includes(y) || y.includes(x)) return true
+  const xLast = x.split(/\s+/).pop() || ''
+  const yLast = y.split(/\s+/).pop() || ''
+  return Boolean(xLast && yLast && xLast === yLast)
+}
+
+/** Best bettable ATS number for one side: most points, then best juice. */
+export function bestSpreadForTeam(
+  books: BookLike[] | undefined,
+  team: string,
+): ShoppedSpread | null {
+  let best: ShoppedSpread | null = null
+  for (const book of books || []) {
+    const spreads = bookMarket(book, 'spreads')
+    if (!spreads) continue
+    for (const out of spreads.outcomes || []) {
+      if (!namesMatch(String(out.name || ''), team)) continue
+      const point = out.point != null ? Number(out.point) : NaN
+      const price = Number(out.price)
+      if (!Number.isFinite(point) || !Number.isFinite(price)) continue
+      const cand: ShoppedSpread = {
+        point,
+        price,
+        bookTitle: String(book.title || book.key || 'book'),
+      }
+      if (
+        !best
+        || cand.point > best.point
+        || (cand.point === best.point && cand.price > best.price)
+      ) {
+        best = cand
+      }
+    }
+  }
+  return best
+}
+
 function outcomeFor(
   market: MarketLike | null,
   name: string,

@@ -161,6 +161,7 @@ function houseDeskToPersonaLean(
       pickName: housePick.teamName,
       linePoint: housePick.pick?.linePoint ?? null,
       pickPrice: housePick.pickPrice,
+      bookTitle: housePick.pick?.bookTitle || 'Consensus',
       bookmakerKey: 'consensus',
       evPct: 0,
     } as OddsPick,
@@ -677,12 +678,20 @@ export async function publishAndRecordPrimetimeSpotlight(
     && (spotlight.consensusPick.houseVoteCount ?? 1) > 0
 
   if (houseLean) {
-    const officialLean = spotlight.personaLeans.Scott.fullPick
     const isHome = spotlight.consensusPick.side === 'home'
-    const pickLine = spotlight.consensusPick.marketKey === 'spreads'
-      ? (isHome ? spotlight.spreadPoint : (spotlight.spreadPoint != null ? -spotlight.spreadPoint : null))
-      : spotlight.totalPoint
-    const leanPrice = officialLean.pickPrice
+    const leanDesk = (['Scott', 'Rocco', 'Chedda'] as const)
+      .map((name) => spotlight.personaLeans[name])
+      .find((d) =>
+        d.pickTeamOrSide === spotlight.consensusPick.pickedName
+        && d.fullPick?.linePoint != null
+      )
+    const pickLine = leanDesk?.fullPick.linePoint != null
+      ? leanDesk.fullPick.linePoint
+      : spotlight.consensusPick.marketKey === 'spreads'
+        ? (isHome ? spotlight.spreadPoint : (spotlight.spreadPoint != null ? -spotlight.spreadPoint : null))
+        : spotlight.totalPoint
+    const leanPrice = leanDesk?.fullPick.pickPrice
+      || spotlight.personaLeans.Scott.fullPick.pickPrice
       || (isHome ? spotlight.homeSpreadPrice : spotlight.awaySpreadPrice)
 
     const { data: inserted } = await admin
@@ -700,7 +709,7 @@ export async function publishAndRecordPrimetimeSpotlight(
         pick_name: spotlight.consensusPick.pickedName,
         pick_line: pickLine,
         pick_price: leanPrice,
-        bookmaker_key: 'consensus',
+        bookmaker_key: leanDesk?.fullPick.bookTitle || 'consensus',
         ev_pct: 0,
         status: 'pending',
         metadata: {

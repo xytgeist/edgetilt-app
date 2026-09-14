@@ -13,6 +13,7 @@ import {
   formatOddsCommenceTimeShort,
   shortDisplayName,
   sportTeamDisplayName,
+  type OddsEvent,
   type OddsPick,
 } from './loungeBotOddsCaption.ts'
 import { formatColoredPickerName } from './loungeBotPickerColors.ts'
@@ -56,8 +57,10 @@ import {
   type CfbTeamPowerRating,
 } from './loungeBotCfbPowerRatings.ts'
 import {
+  bestSpreadForTeam,
   extractMarketFileQuote,
   loadMarketFilesByEventIds,
+  MARKET_FILE_CLOSE_LOCK_BEFORE_MS,
   resolvePregameSpreadFromFile,
   resolvePregameTotalFromFile,
   type MarketFileRow,
@@ -205,6 +208,80 @@ export function formatPickLine(pick: OddsPick): string {
     return `${side} ${pick.linePoint} (${odds})`
   }
   return `${pick.pickName} (${odds})`
+}
+
+type ShopableAtsDesk = {
+  side: SlateDeskSide
+  teamName: string
+  lineDisplay: string
+  pickPrice: number
+  pick: OddsPick
+  uglyJuice?: boolean
+  wouldBeLineDisplay?: string
+}
+
+function canShopLiveSpreads(
+  marketFile: MarketFileRow | null | undefined,
+  kickMs: number,
+): boolean {
+  if (marketFile?.close_locked === true) return false
+  if (Number.isFinite(kickMs) && Date.now() >= kickMs - MARKET_FILE_CLOSE_LOCK_BEFORE_MS) {
+    return false
+  }
+  return true
+}
+
+function applyShoppedAtsLine(
+  desk: ShopableAtsDesk,
+  books: OddsEvent['bookmakers'] | undefined,
+): void {
+  const shopTeam =
+    desk.side === 'home' || desk.side === 'away'
+      ? desk.teamName
+      : desk.wouldBeLineDisplay && desk.teamName && desk.teamName !== 'PASS'
+        ? desk.teamName
+        : ''
+  if (!shopTeam) return
+  const shop = bestSpreadForTeam(books, shopTeam)
+  if (!shop) return
+  const shoppedPick: OddsPick = {
+    ...desk.pick,
+    pickName: shopTeam,
+    marketKey: 'spreads',
+    linePoint: shop.point,
+    pickPrice: shop.price,
+    bookTitle: shop.bookTitle,
+  }
+  const shoppedLine = formatPickLine(shoppedPick)
+  if (desk.side === 'home' || desk.side === 'away') {
+    desk.pick = shoppedPick
+    desk.pickPrice = shop.price
+    desk.lineDisplay = desk.uglyJuice
+      ? `${shoppedLine} · [red]ugly juice[/red]`
+      : shoppedLine
+  }
+  if (desk.wouldBeLineDisplay) desk.wouldBeLineDisplay = shoppedLine
+}
+
+function applyShoppedTankAts(
+  tankAts: TankAtsSpot,
+  books: OddsEvent['bookmakers'] | undefined,
+  template: OddsPick,
+): void {
+  if (!tankAts.published) return
+  if (tankAts.side !== 'home' && tankAts.side !== 'away') return
+  const shop = bestSpreadForTeam(books, tankAts.teamName)
+  if (!shop) return
+  tankAts.pickLine = shop.point
+  tankAts.pickPrice = shop.price
+  tankAts.lineDisplay = formatPickLine({
+    ...template,
+    pickName: tankAts.teamName,
+    marketKey: 'spreads',
+    linePoint: shop.point,
+    pickPrice: shop.price,
+    bookTitle: shop.bookTitle,
+  })
 }
 
 /**
@@ -1916,6 +1993,14 @@ export function buildNflAtsSlateCard(
       },
     }
 
+    const canShop = canShopLiveSpreads(marketFile, kickMs)
+    if (canShop) {
+      applyShoppedAtsLine(pickerPicks.Scott, ev.bookmakers)
+      applyShoppedAtsLine(pickerPicks.Rocco, ev.bookmakers)
+      applyShoppedAtsLine(pickerPicks.Chedda, ev.bookmakers)
+      applyShoppedTankAts(tankAts, ev.bookmakers, homePickObj)
+    }
+
     // House tally: all 4 ATS desks. PASS counts. Hammer is 4-0 only.
     // Rocco short-fav-only is a desk lean, not a ballot (`countsForHouse: false`).
     let homeVotes = 0
@@ -1980,7 +2065,12 @@ export function buildNflAtsSlateCard(
       consensusPick: {
         side: consensusSide,
         teamName: consensusSide === 'home' ? homeTeam : awayTeam,
-        lineDisplay: consensusSide === 'home' ? homeLineDisp : awayLineDisp,
+        lineDisplay: (
+          ATS_SIDE_DESKS
+            .map((d) => pickerPicks[d])
+            .find((p) => p.side === consensusSide && p.lineDisplay)
+            ?.lineDisplay
+        ) || (consensusSide === 'home' ? homeLineDisp : awayLineDisp),
         voteCount,
         type: consensusType,
         badgeText,

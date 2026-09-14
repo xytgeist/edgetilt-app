@@ -84,6 +84,8 @@ export type PrimetimeSpotlightGame = {
   }
   /** Tank totals for the header … vote, or the Over lean the wind/falling-total veto sat. */
   tankOuDisplay: string
+  /** Totals equation for the tape footer. Not the ATS sidecar. */
+  tankOuWhy: string
   personaLeans: Record<'Scott' | 'Rocco' | 'Chedda' | 'Tank', PrimetimePersonaLean>
 }
 
@@ -184,10 +186,12 @@ function formatTankOuHeader(
   const windKills = signals.includes('wind') || /wind veto/i.test(why)
   const fallKills = signals.includes('total_down') || /falling total/i.test(why)
   if (windKills) {
-    return tot ? `Lean toward the Over (${tot}) … wind kills` : 'Lean toward the Over … wind kills'
+    return tot ? `Lean toward the Over (${tot}) … wind kills the bet` : 'Lean toward the Over … wind kills the bet'
   }
   if (fallKills) {
-    return tot ? `Lean toward the Over (${tot}) … falling total kills` : 'Lean toward the Over … falling total kills'
+    return tot
+      ? `Lean toward the Over (${tot}) … falling total kills the bet`
+      : 'Lean toward the Over … falling total kills the bet'
   }
   return tot ? `PASS (${tot})` : 'PASS'
 }
@@ -392,14 +396,15 @@ export async function findPrimetimeGameCandidate(
   const cheddaHouse = houseGame?.pickerPicks.Chedda || passPick
   const tankHouse = houseGame?.pickerPicks.Tank || {
     ...passPick,
-    lineDisplay: 'PASS (no totals unlock)',
+    lineDisplay: 'PASS',
     pick: { ...passPick.pick, marketKey: 'totals' as const },
   }
+  const tankOuWhy = String(tankHouse.why || '').trim()
 
-  let tankBullet = String(tankHouse.why || 'No totals unlock.').trim()
+  let tankBullet = tankOuWhy
   if (houseGame?.tankAts?.published) {
     const ats = houseGame.tankAts.lineDisplay || houseGame.tankAts.teamName || 'ATS spot'
-    tankBullet = `${tankBullet} ATS spot: ${ats}.`
+    tankBullet = `${tankBullet} ATS spot: ${ats}.`.trim()
   }
 
   const houseC = houseGame?.consensusPick || null
@@ -461,6 +466,7 @@ export async function findPrimetimeGameCandidate(
       tankHouse,
       houseGame?.marketTotal ?? totalPoint,
     ),
+    tankOuWhy,
     personaLeans: {
       Scott: houseDeskToPersonaLean(
         'Scott',
@@ -514,9 +520,13 @@ export function formatPrimetimeSpotlightCaption(spotlight: PrimetimeSpotlightGam
     `🏈 **${spotlight.primetimeLabel} SPOTLIGHT LEAN**`,
     `**${awayShort} @ ${homeShort}** · ${kickoff}`,
     '',
-    `🔦 **Lean:** **${spotlight.consensusPick.lineDisplay}**`,
+    spotlight.consensusPick.pickedName === 'SPLIT'
+      ? `⚔️ **House Divided**`
+      : `🔦 **Lean:** **${spotlight.consensusPick.lineDisplay}**`,
+    ...(spotlight.consensusPick.pickedName === 'SPLIT'
+      ? [`**${spotlight.consensusPick.lineDisplay}**`]
+      : []),
     `**O/U:** ${spotlight.tankOuDisplay}`,
-    `*${spotlight.consensusPick.confidenceBadge} · ${spotlight.consensusPick.summaryReason}*`,
   ].join('\n')
 }
 
@@ -524,26 +534,30 @@ export function formatPrimetimeSpotlightCaption(spotlight: PrimetimeSpotlightGam
 export function formatPrimetimeVipDeepDive(spotlight: PrimetimeSpotlightGame): string {
   const homeShort = shortDisplayName(spotlight.homeTeam)
   const awayShort = shortDisplayName(spotlight.awayTeam)
+  const divided = spotlight.consensusPick.pickedName === 'SPLIT'
   const lines = [
     `🔦 **${spotlight.primetimeLabel} Spotlight · ${awayShort} @ ${homeShort}**`,
-    `**Lean:** **${spotlight.consensusPick.lineDisplay}**`,
+    ...(divided
+      ? [`**⚔️ House Divided**`, `**${spotlight.consensusPick.lineDisplay}**`]
+      : [`**Lean:** **${spotlight.consensusPick.lineDisplay}**`]),
     `**O/U:** ${spotlight.tankOuDisplay}`,
     '',
-    `• ${formatColoredPickerName('Scott')}: ${spotlight.personaLeans.Scott.lineDisplay}`,
-    `  └ *${spotlight.personaLeans.Scott.bulletRationale}*`,
-    `• ${formatColoredPickerName('Rocco')}: ${spotlight.personaLeans.Rocco.lineDisplay}`,
-    `  └ *${spotlight.personaLeans.Rocco.bulletRationale}*`,
-    `• ${formatColoredPickerName('Tank')}: ${spotlight.personaLeans.Tank.lineDisplay}`,
-    `  └ *${spotlight.personaLeans.Tank.bulletRationale}*`,
-    `• ${formatColoredPickerName('Chedda')}: ${spotlight.personaLeans.Chedda.lineDisplay}`,
-    `  └ *${spotlight.personaLeans.Chedda.bulletRationale}*`,
   ]
+  for (const desk of ['Scott', 'Rocco', 'Tank', 'Chedda'] as const) {
+    const lean = spotlight.personaLeans[desk]
+    lines.push(`• ${formatColoredPickerName(desk)}: ${lean.lineDisplay}`)
+    const isPass = lean.pickTeamOrSide === 'PASS' || /^PASS\b/i.test(lean.lineDisplay)
+    if (!isPass && lean.bulletRationale) {
+      lines.push(`  └ *${lean.bulletRationale}*`)
+    }
+  }
   const pastedLine = spotlight.splits?.isPasted === true ? spotlight.splits.summaryLine : ''
-  if (spotlight.weather?.summaryLine || spotlight.injuries?.summaryLine || pastedLine) {
+  if (spotlight.weather?.summaryLine || spotlight.injuries?.summaryLine || pastedLine || spotlight.tankOuWhy) {
     lines.push('')
     if (spotlight.weather?.summaryLine) lines.push(`🌤️ ${spotlight.weather.summaryLine}`)
     if (spotlight.injuries?.summaryLine) lines.push(`🩹 ${spotlight.injuries.summaryLine}`)
     if (pastedLine) lines.push(`⚡ ${pastedLine}`)
+    if (spotlight.tankOuWhy) lines.push(`Tank O/U: ${spotlight.tankOuWhy}`)
   }
   lines.push(
     '',

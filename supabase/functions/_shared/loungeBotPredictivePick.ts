@@ -1707,7 +1707,7 @@ export function buildNflAtsSlateCard(
       if (nflTrenchMismatch) bits.push('trench mismatch')
       if (isCfb && Math.abs(roccoPowerBonus) >= 1.0) bits.push('CFB power gap')
       if (isShortFavHome || isShortFavAway) bits.push('short-fav')
-      roccoWhy = `Fires ${sportTeamDisplayName(roccoWanted, ev.sport_key)} on ${bits.join(' + ') || 'spread lean'}.`
+      roccoWhy = `${sportTeamDisplayName(roccoWanted, ev.sport_key)} on ${bits.join(' + ') || 'spread lean'}.`
     }
 
     const scottPickPoint = scottSide === 'home'

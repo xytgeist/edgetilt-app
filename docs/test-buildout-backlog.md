@@ -1138,6 +1138,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-13:** **Syndicate Overview flips sport records (Windows).** Home tiles + desk chips cycle All / NFL / CFB / UFC every 4s. Dots jump. **`1.4.209`.**
 - **2026-09-13:** **CFB ledger is AP Top 25 games only (Windows).** Cancelled 167 unranked prod rows (G5/FCS/cupcakes). 73 ranked rows stay (32-39-2). Week 3 poll in `ncaaf-ap-top25-keys.json`. **`1.4.208`.**
 - **2026-09-13:** **Rocco UFC last-5 (Windows).** `ufc_fighter_last5` from ufcstats history. Rocco Side or PASS from that file + 3/5 + cage. No Scott fair%. Print Scott + Rocco. Check: `npm run syndicate:ufc-rocco-independence`. Chedda / Tank sit. **`1.4.207`.**
 - **2026-09-12:** **UFC print is Scott only (Windows).** Public / fan-only / VIP / ledger / Ops eval drop costume Rocco / Chedda / Tank. Football 4-desk unchanged. **`1.4.206`.**

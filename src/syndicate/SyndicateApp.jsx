@@ -18,6 +18,15 @@ const SPORT_TABS = [
   { id: 'ufc', label: 'UFC' },
 ]
 
+/** Home Overview flips the public book through each sport. */
+const OVERVIEW_RECORD_SPORTS = [
+  { id: 'all', label: 'All' },
+  { id: 'nfl', label: 'NFL' },
+  { id: 'cfb', label: 'CFB' },
+  { id: 'ufc', label: 'UFC' },
+]
+const OVERVIEW_RECORD_FLIP_MS = 4000
+
 function isSportTab(tabId) {
   return SPORT_TABS.some((t) => t.id === tabId)
 }
@@ -307,6 +316,7 @@ export function SyndicateApp() {
   const [sportFilter, setSportFilter] = useState('all')
   const [deskFilter, setDeskFilter] = useState('all')
   const [signalFilter, setSignalFilter] = useState('all')
+  const [overviewSportIdx, setOverviewSportIdx] = useState(0)
 
   useEffect(() => {
     async function loadData() {
@@ -337,13 +347,32 @@ export function SyndicateApp() {
     return () => document.removeEventListener('mousedown', onPointerDown)
   }, [sportsMenuOpen])
 
+  useEffect(() => {
+    if (activeTab !== 'overview') return undefined
+    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      return undefined
+    }
+    const id = window.setInterval(() => {
+      if (document.hidden) return
+      setOverviewSportIdx((i) => (i + 1) % OVERVIEW_RECORD_SPORTS.length)
+    }, OVERVIEW_RECORD_FLIP_MS)
+    return () => window.clearInterval(id)
+  }, [activeTab, overviewSportIdx])
+
   // Record tiles use settled Syndicate rows only (pending/future never have a winner).
   const overviewStats = computePerformanceStats(picks)
   const nflStats = computePerformanceStats(picks.filter((p) => pickMatchesSport(p, 'nfl')))
   const cfbStats = computePerformanceStats(picks.filter((p) => pickMatchesSport(p, 'cfb')))
   const ufcStats = computePerformanceStats(picks.filter((p) => pickMatchesSport(p, 'ufc')))
-
-  const gradedPicks = picks.filter(isPickSettled)
+  const statsBySport = {
+    all: overviewStats,
+    nfl: nflStats,
+    cfb: cfbStats,
+    ufc: ufcStats,
+  }
+  const overviewSport = OVERVIEW_RECORD_SPORTS[overviewSportIdx] || OVERVIEW_RECORD_SPORTS[0]
+  const overviewDeskRecordLabel =
+    overviewSport.id === 'all' ? 'Overall record' : `${overviewSport.label} record`
 
   const summarizePicks = (pickList) => {
     const graded = pickList.filter(isPickSettled)
@@ -365,12 +394,16 @@ export function SyndicateApp() {
     }
   }
 
-  const deskStatsByName = {
-    Scott: summarizePicks(gradedPicks.filter((p) => (p.picker_name || 'Scott') === 'Scott')),
-    Rocco: summarizePicks(gradedPicks.filter((p) => p.picker_name === 'Rocco')),
-    Chedda: summarizePicks(gradedPicks.filter((p) => p.picker_name === 'Chedda')),
-    Tank: summarizePicks(gradedPicks.filter((p) => p.picker_name === 'Tank')),
-  }
+  const summarizeDesks = (pickList) => ({
+    Scott: summarizePicks(pickList.filter((p) => (p.picker_name || 'Scott') === 'Scott')),
+    Rocco: summarizePicks(pickList.filter((p) => p.picker_name === 'Rocco')),
+    Chedda: summarizePicks(pickList.filter((p) => p.picker_name === 'Chedda')),
+    Tank: summarizePicks(pickList.filter((p) => p.picker_name === 'Tank')),
+  })
+
+  const deskStatsByName = summarizeDesks(
+    overviewSport.id === 'all' ? picks : picks.filter((p) => pickMatchesSport(p, overviewSport.id)),
+  )
 
   const openLedgerSignal = (signal, sport = 'all') => {
     setSignalFilter(signal)
@@ -675,13 +708,41 @@ export function SyndicateApp() {
               </div>
             </div>
 
-            {/* Live Syndicate Performance Ticker */}
-            <SyndicatePerformanceTicker
-              stats={overviewStats}
-              sport="all"
-              onHammerClick={() => openLedgerSignal('hammer', 'all')}
-              onConsensusClick={() => openLedgerSignal('consensus', 'all')}
-            />
+            {/* Live Syndicate Performance Ticker ... flips All / NFL / CFB / UFC */}
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div
+                    className="text-[10px] sm:text-xs font-mono text-zinc-400 uppercase tracking-wider"
+                    aria-live="polite"
+                  >
+                    {overviewSport.id === 'all' ? 'All sports' : overviewSport.label}
+                  </div>
+                  <div className="flex items-center gap-1.5" role="tablist" aria-label="Sport records">
+                    {OVERVIEW_RECORD_SPORTS.map((s, i) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={i === overviewSportIdx}
+                        aria-label={s.label === 'All' ? 'All sports' : s.label}
+                        onClick={() => setOverviewSportIdx(i)}
+                        className={`h-1.5 rounded-full transition-all ${
+                          i === overviewSportIdx
+                            ? 'w-5 bg-emerald-400'
+                            : 'w-1.5 bg-zinc-600 hover:bg-zinc-400'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+                <SyndicatePerformanceTicker
+                  stats={statsBySport[overviewSport.id]}
+                  sport={overviewSport.id}
+                  onHammerClick={() => openLedgerSignal('hammer', overviewSport.id)}
+                  onConsensusClick={() => openLedgerSignal('consensus', overviewSport.id)}
+                />
+              </div>
 
             {/* The 4 Desks Breakdown */}
             <div className="space-y-6">
@@ -713,7 +774,7 @@ export function SyndicateApp() {
                     </div>
                     <h3 className="text-lg font-bold text-white group-hover:text-emerald-300 transition-colors">Scott Sharpe</h3>
                     <div className="rounded-xl border border-emerald-500/25 bg-emerald-500/5 px-3 py-2 font-mono">
-                      <div className="text-[10px] uppercase tracking-wider text-emerald-400/80">Overall record</div>
+                      <div className="text-[10px] uppercase tracking-wider text-emerald-400/80">{overviewDeskRecordLabel}</div>
                       <div className="mt-0.5 flex items-baseline justify-between gap-2">
                         <span className="text-sm font-bold text-white">
                           {deskStatsByName.Scott.gradedCount > 0
@@ -762,7 +823,7 @@ export function SyndicateApp() {
                     </div>
                     <h3 className="text-lg font-bold text-white group-hover:text-blue-300 transition-colors">Rocco</h3>
                     <div className="rounded-xl border border-blue-500/25 bg-blue-500/5 px-3 py-2 font-mono">
-                      <div className="text-[10px] uppercase tracking-wider text-blue-400/80">Overall record</div>
+                      <div className="text-[10px] uppercase tracking-wider text-blue-400/80">{overviewDeskRecordLabel}</div>
                       <div className="mt-0.5 flex items-baseline justify-between gap-2">
                         <span className="text-sm font-bold text-white">
                           {deskStatsByName.Rocco.gradedCount > 0
@@ -811,7 +872,7 @@ export function SyndicateApp() {
                     </div>
                     <h3 className="text-lg font-bold text-white group-hover:text-amber-300 transition-colors">Chedda</h3>
                     <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 px-3 py-2 font-mono">
-                      <div className="text-[10px] uppercase tracking-wider text-amber-400/80">Overall record</div>
+                      <div className="text-[10px] uppercase tracking-wider text-amber-400/80">{overviewDeskRecordLabel}</div>
                       <div className="mt-0.5 flex items-baseline justify-between gap-2">
                         <span className="text-sm font-bold text-white">
                           {deskStatsByName.Chedda.gradedCount > 0
@@ -860,7 +921,7 @@ export function SyndicateApp() {
                     </div>
                     <h3 className="text-lg font-bold text-white group-hover:text-purple-300 transition-colors">Tank</h3>
                     <div className="rounded-xl border border-purple-500/25 bg-purple-500/5 px-3 py-2 font-mono">
-                      <div className="text-[10px] uppercase tracking-wider text-purple-400/80">Overall record</div>
+                      <div className="text-[10px] uppercase tracking-wider text-purple-400/80">{overviewDeskRecordLabel}</div>
                       <div className="mt-0.5 flex items-baseline justify-between gap-2">
                         <span className="text-sm font-bold text-white">
                           {deskStatsByName.Tank.gradedCount > 0
@@ -890,6 +951,7 @@ export function SyndicateApp() {
                   </div>
                 </div>
               </div>
+            </div>
             </div>
 
             {/* VIP CTA Card */}

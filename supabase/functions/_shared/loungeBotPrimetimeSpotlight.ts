@@ -2,7 +2,7 @@
  * NFL Primetime Solo Spotlights Engine (TNF / SNF / MNF).
  * Desk votes come from the same house slate (`buildNflAtsSlateCard`) as Friday /
  * Desk Math. No costume EPA-sign / fake-RLM path. Chedda only votes on pasted
- * Action/VSiN money, dog+hook, or dog+PVAL. Synthetic splits never print.
+ * Action/VSiN money or dog+hook. PVAL is Scott. Synthetic splits never print.
  * Public Lounge + VIP chat get the 4-desk card. No fan-only Lounge post.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
@@ -192,6 +192,23 @@ function formatTankOuHeader(
   return tot ? `PASS (${tot})` : 'PASS'
 }
 
+function formatSplitLeanHeader(houseGame: SlateGamePick): string {
+  const bits: string[] = []
+  for (const name of ['Scott', 'Rocco', 'Chedda'] as const) {
+    const p = houseGame.pickerPicks[name]
+    if (p.side !== 'home' && p.side !== 'away') continue
+    const line = String(p.lineDisplay || '')
+      .replace(/\s*·\s*\[red\].*$/i, '')
+      .trim()
+    bits.push(`${name} ${line || shortDisplayName(p.teamName)}`)
+  }
+  if (houseGame.tankAts?.published) {
+    const ats = houseGame.tankAts.lineDisplay || houseGame.tankAts.teamName || ''
+    if (ats) bits.push(`Tank ${ats}`)
+  }
+  return bits.join(' / ') || 'SPLIT'
+}
+
 function cheddaPrimetimeWhy(
   housePick: SlateGamePick['pickerPicks']['Chedda'],
   splits: BettingSplitSummary | null,
@@ -207,7 +224,7 @@ function cheddaPrimetimeWhy(
   const board = splits.summaryLine
     ? ` ${splits.summaryLine}`
     : ''
-  return `${base || 'No dog+hook, dog+PVAL, or pasted money.'}${board} Same-side public and money ... not a Chedda unlock.`
+  return `${base || 'No golden hook or pasted sharp money.'}${board} Same-side public and money ... not a Chedda unlock.`
 }
 
 /**
@@ -399,6 +416,7 @@ export async function findPrimetimeGameCandidate(
 
   const houseC = houseGame?.consensusPick || null
   const housePass = !houseC || houseC.type === 'pass_only' || (houseC.voteCount || 0) === 0
+  const houseSplit = houseC?.type === 'split'
   const consensusPick = housePass
     ? {
       side: 'pass' as const,
@@ -410,6 +428,17 @@ export async function findPrimetimeGameCandidate(
       summaryReason: splits?.summaryLine || 'No house ATS unlock on this primetime card.',
       houseVoteCount: 0,
     }
+    : houseSplit && houseGame
+      ? {
+        side: 'pass' as const,
+        pickedName: 'SPLIT',
+        lineDisplay: formatSplitLeanHeader(houseGame),
+        marketKey: 'spreads' as const,
+        confidenceBadge: houseC.badgeText,
+        consensusTitle: 'House split',
+        summaryReason: 'Desks disagree. No cloned Chedda vote to break it.',
+        houseVoteCount: 0,
+      }
     : {
       side: houseC.side,
       pickedName: houseC.teamName,

@@ -25,7 +25,7 @@ export const OPS_DESKS = [
     id: 'Chedda',
     icon: '🧀',
     title: 'Dogs & Money',
-    lane: 'Dog + golden hook, dog + model/PVAL, or pasted Action/VSiN sharp money. No street board, no fire.',
+    lane: 'Dog + golden hook or pasted Action/VSiN sharp money. PVAL is Scott. No street board, no fire.',
     badge: 'bg-amber-950/70 text-amber-300 ring-amber-500/30',
     chipOn: 'bg-amber-500 text-black',
     chipOff: 'bg-zinc-900 text-amber-300 border-amber-800/80',

@@ -1594,9 +1594,10 @@ export function SyndicateApp() {
                   Underdog Value &amp; Moneyline Pricing
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
-                  Chedda hunts mispriced dogs and plus-money moneylines. Votes unlock on dog+golden hook, dog+PVAL/injury
-                  model value, or pasted Action / VSiN bet% vs money% (RLM). Raw EPA alone does not unlock a vote.
-                  Synthetic or missing splits do not unlock a money vote. Quiet Chedda is intended SOP when paste is late.
+                  Chedda hunts mispriced dogs and plus-money moneylines. Votes unlock on dog+golden hook
+                  or pasted Action / VSiN bet% vs money% (RLM). Dog + PVAL is Scott's lane, not a Chedda clone.
+                  Raw EPA alone does not unlock a vote. Synthetic or missing splits do not unlock a money vote.
+                  Quiet Chedda is intended SOP when paste is late.
                 </p>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   On structured teasers, Chedda owns the dog-side Wong windows (+1.5/+2.5 up through +7.5/+8.5) when the total stays

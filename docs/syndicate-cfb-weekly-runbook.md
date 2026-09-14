@@ -133,7 +133,7 @@ Do **not** reshuffle Phase 1 blend weights while operating this loop.
 |------|----------|--------------------------------------|------------|------------|
 | **Scott** | Is the number wrong? | Model spread vs market (+ PVAL), true key numbers | Gap ≥ **2.5** after PVAL, or ≥ **1.5** only when pick line is on 3/7 (or half onto those). Else **PASS**. No juice/fav/synthetic lean. | Gap closed, no model, or soft non-key spot |
 | **Rocco** | Is the better team a short fav I want? | Short fav band, hook tax, hurtSide, **pasted** chalk-trap | Any of those features fire → vote; else **PASS**. Short-fav alone can vote but **cannot** unlock Hammer by itself. | No feature; brand-only chalk with nothing else |
-| **Chedda** | Where are the points / the money? | Dogs, golden hooks, pasted ticket vs handle / RLM, dog+PVAL | Dog + (hook **or** pasted money **or** PVAL injury model). Raw EPA alone does **not** unlock. | Blind dog; synthetic splits; missing paste |
+| **Chedda** | Where are the points / the money? | Dogs, golden hooks, pasted ticket vs handle / RLM | Dog + (hook **or** pasted sharp money). Dog+PVAL is Scott. Raw EPA alone does **not** unlock. | Blind dog; Scott clone; synthetic splits; missing paste |
 | **Tank** | Does situation change the **total** (or rarely the side)? | Tempo pair, off/def for totals, rest/travel/weather when real | Totals lean with supporting tempo/weather/rest | Side-only vibes with no situational meat |
 
 **Hard rule:** a desk must be able to vote **NO PLAY** (or opposite side) using its own inputs even when Scott’s gap flag is green.

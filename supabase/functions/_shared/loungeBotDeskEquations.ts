@@ -526,15 +526,15 @@ export function buildCheddaFootballEquations(input: {
     deskEq(
       'chedda_pval',
       'Dog + model / PVAL',
-      'dog is also Scott/CFB value side after PVAL',
+      'Scott already used this. Does not unlock Chedda.',
       input.modelDogHome
         ? input.homeTeam
         : input.modelDogAway
           ? input.awayTeam
           : 'no',
-      input.modelDogHome || input.modelDogAway ? 'fire' : 'pass',
+      'pass',
       input.modelDogHome || input.modelDogAway
-        ? 'Model agrees with the dog. Unlocks Chedda.'
+        ? 'Same signal Scott already used. Chedda sits unless hook or sharp money.'
         : 'Dog is not the model value side.',
     ),
     deskEq(
@@ -558,7 +558,7 @@ export function buildCheddaFootballEquations(input: {
     deskEq(
       'chedda_decision',
       'Chedda decision',
-      'money first, else dog+hook or dog+PVAL. No street board, no fire.',
+      'money first, else dog+hook. PVAL is Scott. No street board, no fire.',
       decision,
       input.side === 'pass' ? 'pass' : 'fire',
       input.side === 'pass'

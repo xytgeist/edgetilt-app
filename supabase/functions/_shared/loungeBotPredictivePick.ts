@@ -1412,7 +1412,7 @@ export function buildNflAtsSlateCard(
     // Desk lanes (Grok audit package):
     // Scott: PASS unless |model−market| ≥ 2.5 after PVAL; 1.5 only on true 3/7 (or half onto those)
     // Rocco: PASS unless short-fav / hurtSide / hook-tax / pasted chalk-trap (no trench claim)
-    // Chedda: PASS unless dog+hook / dog+PVAL / pasted money (no dog+raw-EPA; no synthetic)
+    // Chedda: PASS unless dog+hook / pasted sharp money (PVAL is Scott … not a Chedda clone)
     // Tank: totals first-pass (3.5 / key) + wind / open-total / CFB non-conf modifiers
 
     // 1. Scott — model vs current market only (no juice/fav/synthetic lean costume)
@@ -1425,7 +1425,7 @@ export function buildNflAtsSlateCard(
     }
 
     // 2. Chedda — dogs / money.
-    // Unlock: dog+hook, dog+PVAL/injury model (not raw EPA), or pasted Action/VSiN sharp divergence.
+    // Unlock: dog+hook or pasted Action/VSiN sharp divergence. Dog+PVAL is Scott.
     const homeIsDog = homePoint > 0
     const awayIsDog = awayPoint > 0
     const cheddaGoldenHookHome = Boolean(homeKeyAnalysis?.isHookGolden && homeIsDog)
@@ -1443,8 +1443,6 @@ export function buildNflAtsSlateCard(
     const cheddaHasRealFeature =
       cheddaGoldenHookHome
       || cheddaGoldenHookAway
-      || cheddaModelDogHome
-      || cheddaModelDogAway
       || cheddaMoneyHome
       || cheddaMoneyAway
     void cheddaSweetWeight // reserved when fully automated splits API arrives
@@ -1452,8 +1450,8 @@ export function buildNflAtsSlateCard(
     if (cheddaHasRealFeature) {
       if (cheddaMoneyHome) cheddaSide = 'home'
       else if (cheddaMoneyAway) cheddaSide = 'away'
-      else if (cheddaGoldenHookHome || cheddaModelDogHome) cheddaSide = 'home'
-      else if (cheddaGoldenHookAway || cheddaModelDogAway) cheddaSide = 'away'
+      else if (cheddaGoldenHookHome) cheddaSide = 'home'
+      else if (cheddaGoldenHookAway) cheddaSide = 'away'
     }
 
     // 3. Rocco — short fav / hook tax / hurtSide / pasted chalk-trap only
@@ -1671,17 +1669,16 @@ export function buildNflAtsSlateCard(
     const cheddaSignals: string[] = []
     if (cheddaMoneyHome || cheddaMoneyAway) cheddaSignals.push('pasted_money')
     if (cheddaGoldenHookHome || cheddaGoldenHookAway) cheddaSignals.push('dog_hook')
-    if (cheddaModelDogHome || cheddaModelDogAway) cheddaSignals.push('dog_pval')
     const cheddaTeam = cheddaSide === 'home' ? homeTeam : cheddaSide === 'away' ? awayTeam : ''
-    let cheddaWhy = 'No dog+hook, dog+PVAL, or pasted money.'
+    let cheddaWhy = 'No golden hook or pasted sharp money.'
     if (cheddaSide !== 'pass') {
       if (cheddaMoneyHome || cheddaMoneyAway) {
         cheddaWhy = gameSplits.summaryLine || `Pasted sharp money on ${sportTeamDisplayName(cheddaTeam, ev.sport_key)}.`
       } else if (cheddaGoldenHookHome || cheddaGoldenHookAway) {
         cheddaWhy = `Dog + golden hook on ${sportTeamDisplayName(cheddaTeam, ev.sport_key)}.`
-      } else {
-        cheddaWhy = `Dog + model/PVAL on ${sportTeamDisplayName(cheddaTeam, ev.sport_key)}.`
       }
+    } else if (cheddaModelDogHome || cheddaModelDogAway) {
+      cheddaWhy = 'Dog + PVAL is Scott\'s lane. Chedda needs a golden hook or sharp money.'
     }
 
     const roccoSignals: string[] = []
@@ -1893,7 +1890,7 @@ export function buildNflAtsSlateCard(
           ? homeLineDisp
           : cheddaSide === 'away'
             ? awayLineDisp
-            : 'PASS (no dog+hook / dog+PVAL / pasted money)',
+            : 'PASS (no dog+hook / pasted money)',
         pickPrice: cheddaSide === 'home' ? homePrice : cheddaSide === 'away' ? awayPrice : 0,
         pick: cheddaSide === 'home' ? homePickObj : cheddaSide === 'away' ? awayPickObj : homePickObj,
         countsForHouse: cheddaSide !== 'pass',

@@ -75,9 +75,13 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-14 … Lifetime IAP is $1,999
+
+**I am Mac Theo.** SKU already existed (`com.edgetilt.app.slots_edge_lifetime`, Apple ID `6809032089`, non-consumable). US price is now **`$1,999.00`** (was `$1,000` placeholder). Immediate global change. Still Prepare for Submission. First non-consumable must ride a **new app version**. Do not attach to **1.4.95 (125)** Waiting for Review.
+
 ### Mac Theo 2026-09-14 … IPA Lifetime card is back
 
-**I am Mac Theo.** Apple approved the higher price-point request. Subscribe carousel shows Lifetime again on the shell (Starter + Pro + Lifetime). Web already had it. No new IPA. Confirm ASC `com.edgetilt.app.slots_edge_lifetime` is Cleared for Sale. **`1.4.210`.** Windows: do not edit `SubscribeModal` today.
+**I am Mac Theo.** Apple approved the higher price-point request. Subscribe carousel shows Lifetime again on the shell (Starter + Pro + Lifetime). Web already had it. No new IPA. **`1.4.210`.** Windows: do not edit `SubscribeModal` today.
 
 ### Mac Theo 2026-09-13 … farm sports X stash
 

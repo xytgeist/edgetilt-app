@@ -526,7 +526,7 @@ export function buildCheddaFootballEquations(input: {
     deskEq(
       'chedda_pval',
       'Dog + model / PVAL',
-      'Scott already used this. Does not unlock Chedda.',
+      'Not a hook or money split.',
       input.modelDogHome
         ? input.homeTeam
         : input.modelDogAway
@@ -534,8 +534,8 @@ export function buildCheddaFootballEquations(input: {
           : 'no',
       'pass',
       input.modelDogHome || input.modelDogAway
-        ? 'Same signal Scott already used. Chedda sits unless hook or sharp money.'
-        : 'Dog is not the model value side.',
+        ? 'Does not move this desk. Need a hook or a real money split.'
+        : 'Dog is not sitting on a hook or a money split.',
     ),
     deskEq(
       'chedda_money',

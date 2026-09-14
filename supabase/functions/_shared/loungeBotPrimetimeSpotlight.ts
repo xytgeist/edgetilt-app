@@ -211,20 +211,8 @@ function formatSplitLeanHeader(houseGame: SlateGamePick): string {
 
 function cheddaPrimetimeWhy(
   housePick: SlateGamePick['pickerPicks']['Chedda'],
-  splits: BettingSplitSummary | null,
 ): string {
-  const base = String(housePick.why || '').trim()
-  if (housePick.side !== 'pass') return base || 'House Chedda unlock.'
-  if (!splits?.isPasted) {
-    return 'No pasted Action/VSiN board. Chedda does not invent splits.'
-  }
-  if (splits.isRlm || splits.isSharpDivergence) {
-    return base || splits.summaryLine
-  }
-  const board = splits.summaryLine
-    ? ` ${splits.summaryLine}`
-    : ''
-  return `${base || 'No golden hook or pasted sharp money.'}${board} Same-side public and money ... not a Chedda unlock.`
+  return String(housePick.why || 'No hook on the number. Sitting.').trim()
 }
 
 /**
@@ -508,7 +496,7 @@ export async function findPrimetimeGameCandidate(
         matchedEvent,
         homeTeam,
         awayTeam,
-        cheddaPrimetimeWhy(cheddaHouse, splits),
+        cheddaPrimetimeWhy(cheddaHouse),
       ),
     },
   }

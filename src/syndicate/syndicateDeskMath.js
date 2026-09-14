@@ -63,7 +63,7 @@ export const DESK_PLAYBOOKS = {
       gates: [
         { label: 'Dog', formula: 'plus points on the board', effect: 'Chedda’s lane.' },
         { label: 'Golden hook', formula: 'dog +3.5 / +7.5', effect: 'Unlocks that dog.' },
-        { label: 'Dog + PVAL', formula: 'dog is also the model value side', effect: 'Scott already used this. Does not unlock Chedda.' },
+        { label: 'Dog + PVAL', formula: 'dog is also the model value side', effect: 'Does not move this desk.' },
         { label: 'Pasted money', formula: 'Action/VSiN sharp divergence', effect: 'Highest priority. Beats hook.' },
       ],
       decision: 'Money first, else dog+hook. PVAL is Scott. Else PASS.',

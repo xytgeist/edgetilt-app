@@ -1670,15 +1670,16 @@ export function buildNflAtsSlateCard(
     if (cheddaMoneyHome || cheddaMoneyAway) cheddaSignals.push('pasted_money')
     if (cheddaGoldenHookHome || cheddaGoldenHookAway) cheddaSignals.push('dog_hook')
     const cheddaTeam = cheddaSide === 'home' ? homeTeam : cheddaSide === 'away' ? awayTeam : ''
-    let cheddaWhy = 'No golden hook or pasted sharp money.'
+    let cheddaWhy = 'No hook on the number. No money split. Sitting.'
     if (cheddaSide !== 'pass') {
       if (cheddaMoneyHome || cheddaMoneyAway) {
-        cheddaWhy = gameSplits.summaryLine || `Pasted sharp money on ${sportTeamDisplayName(cheddaTeam, ev.sport_key)}.`
+        cheddaWhy = gameSplits.summaryLine || `Sharp money on ${sportTeamDisplayName(cheddaTeam, ev.sport_key)}.`
       } else if (cheddaGoldenHookHome || cheddaGoldenHookAway) {
         cheddaWhy = `Dog + golden hook on ${sportTeamDisplayName(cheddaTeam, ev.sport_key)}.`
       }
-    } else if (cheddaModelDogHome || cheddaModelDogAway) {
-      cheddaWhy = 'Dog + PVAL is Scott\'s lane. Chedda needs a golden hook or sharp money.'
+    } else if (hasRealSplits && !gameSplits.isSharpDivergence && !gameSplits.isRlm) {
+      const publicSide = gameSplits.homeTicketPct >= gameSplits.awayTicketPct ? homeTeam : awayTeam
+      cheddaWhy = `No hook on the number. Tickets and money both on ${sportTeamDisplayName(publicSide, ev.sport_key)}. Sitting.`
     }
 
     const roccoSignals: string[] = []
@@ -1890,7 +1891,7 @@ export function buildNflAtsSlateCard(
           ? homeLineDisp
           : cheddaSide === 'away'
             ? awayLineDisp
-            : 'PASS (no dog+hook / pasted money)',
+            : 'PASS',
         pickPrice: cheddaSide === 'home' ? homePrice : cheddaSide === 'away' ? awayPrice : 0,
         pick: cheddaSide === 'home' ? homePickObj : cheddaSide === 'away' ? awayPickObj : homePickObj,
         countsForHouse: cheddaSide !== 'pass',

@@ -1595,7 +1595,7 @@ export function SyndicateApp() {
                 </h3>
                 <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed">
                   Chedda hunts mispriced dogs and plus-money moneylines. Votes unlock on dog+golden hook
-                  or pasted Action / VSiN bet% vs money% (RLM). Dog + PVAL is Scott's lane, not a Chedda clone.
+                  or pasted Action / VSiN bet% vs money% (RLM). A dog that is only model value is not enough.
                   Raw EPA alone does not unlock a vote. Synthetic or missing splits do not unlock a money vote.
                   Quiet Chedda is intended SOP when paste is late.
                 </p>

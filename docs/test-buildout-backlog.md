@@ -1138,6 +1138,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-14:** **Chedda sit copy is his own desk (Windows).** PASS why is hook / money, not “Scott’s lane.” Redeploy **`lounge-odds-poll`**. **`1.4.215`.**
 - **2026-09-14:** **Chedda no longer clones Scott PVAL (Windows).** Unlock is dog+hook or pasted sharp money only. Dog+PVAL sits. Primetime 1-1 prints Scott / Rocco, no fake majority lean. Redeploy **`lounge-odds-poll`**. **`1.4.214`.**
 - **2026-09-14:** **Primetime header prints Tank O/U (Windows).** ATS lean, then O/U (Over lean … wind kills when vetoed). Splits line is ticket/money only … no `Pasted (action_pro)`. Redeploy **`lounge-odds-poll`**. **`1.4.213`.**
 - **2026-09-14:** **Primetime desks use house votes (Windows).** TNF / SNF / MNF card no longer invents RLM or EPA-sign leans. Same `buildNflAtsSlateCard` + pasted Action/VSiN board as Desk Math. Chedda PASSes without a real unlock. Redeploy **`lounge-odds-poll`**. **`1.4.212`.**

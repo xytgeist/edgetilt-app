@@ -82,6 +82,8 @@ export type PrimetimeSpotlightGame = {
     summaryReason: string
     houseVoteCount?: number
   }
+  /** Tank totals for the header … vote, or the Over lean the wind/falling-total veto sat. */
+  tankOuDisplay: string
   personaLeans: Record<'Scott' | 'Rocco' | 'Chedda' | 'Tank', PrimetimePersonaLean>
 }
 
@@ -158,6 +160,36 @@ function houseDeskToPersonaLean(
       evPct: 0,
     } as OddsPick,
   }
+}
+
+function formatTotalNumber(n: number | null | undefined): string {
+  if (n == null || !Number.isFinite(n)) return ''
+  const rounded = Math.round(n * 10) / 10
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+}
+
+function formatTankOuHeader(
+  tankHouse: SlateGamePick['pickerPicks']['Tank'],
+  marketTotal: number | null,
+): string {
+  const tot = formatTotalNumber(marketTotal)
+  const totBit = tot ? ` ${tot}` : ''
+  if (tankHouse.side === 'over' || tankHouse.side === 'under') {
+    const side = tankHouse.side === 'over' ? 'Over' : 'Under'
+    const juice = tankHouse.pickPrice ? ` (${formatAmericanOdds(tankHouse.pickPrice)})` : ''
+    return `${side}${totBit}${juice}`
+  }
+  const signals = tankHouse.signals || []
+  const why = String(tankHouse.why || '')
+  const windKills = signals.includes('wind') || /wind veto/i.test(why)
+  const fallKills = signals.includes('total_down') || /falling total/i.test(why)
+  if (windKills) {
+    return tot ? `Lean toward the Over (${tot}) … wind kills` : 'Lean toward the Over … wind kills'
+  }
+  if (fallKills) {
+    return tot ? `Lean toward the Over (${tot}) … falling total kills` : 'Lean toward the Over … falling total kills'
+  }
+  return tot ? `PASS (${tot})` : 'PASS'
 }
 
 function cheddaPrimetimeWhy(
@@ -347,6 +379,7 @@ export async function findPrimetimeGameCandidate(
       bookCount: 0,
     },
     why: 'No house unlock.',
+    signals: [] as string[],
   }
 
   const scottHouse = houseGame?.pickerPicks.Scott || passPick
@@ -407,6 +440,10 @@ export async function findPrimetimeGameCandidate(
     splits,
     trenchEpa,
     consensusPick,
+    tankOuDisplay: formatTankOuHeader(
+      tankHouse,
+      houseGame?.marketTotal ?? totalPoint,
+    ),
     personaLeans: {
       Scott: houseDeskToPersonaLean(
         'Scott',
@@ -461,6 +498,7 @@ export function formatPrimetimeSpotlightCaption(spotlight: PrimetimeSpotlightGam
     `**${awayShort} @ ${homeShort}** · ${kickoff}`,
     '',
     `🔦 **Lean:** **${spotlight.consensusPick.lineDisplay}**`,
+    `**O/U:** ${spotlight.tankOuDisplay}`,
     `*${spotlight.consensusPick.confidenceBadge} · ${spotlight.consensusPick.summaryReason}*`,
   ].join('\n')
 }
@@ -472,6 +510,7 @@ export function formatPrimetimeVipDeepDive(spotlight: PrimetimeSpotlightGame): s
   const lines = [
     `🔦 **${spotlight.primetimeLabel} Spotlight · ${awayShort} @ ${homeShort}**`,
     `**Lean:** **${spotlight.consensusPick.lineDisplay}**`,
+    `**O/U:** ${spotlight.tankOuDisplay}`,
     '',
     `• ${formatColoredPickerName('Scott')}: ${spotlight.personaLeans.Scott.lineDisplay}`,
     `  └ *${spotlight.personaLeans.Scott.bulletRationale}*`,

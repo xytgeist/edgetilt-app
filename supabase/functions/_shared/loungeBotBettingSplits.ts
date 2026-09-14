@@ -97,17 +97,15 @@ function summarizeSides(
     const fadeSideName = sharpFavoredSide === 'home' ? shortDisplayName(awayTeam) : shortDisplayName(homeTeam)
     const sharpHandle = sharpFavoredSide === 'home' ? homeHandlePct : awayHandlePct
     const publicTickets = sharpFavoredSide === 'home' ? awayTicketPct : homeTicketPct
-    const prefix = opts?.isPasted ? `Pasted (${opts.source || 'manual'})` : 'Synthetic'
     if (isRlm) {
-      summaryLine = `${prefix} · RLM · ${Math.round(sharpHandle)}% money on ${sharpSideName} despite ${Math.round(publicTickets)}% tickets on ${fadeSideName}`
+      summaryLine = `RLM · ${Math.round(sharpHandle)}% money on ${sharpSideName} despite ${Math.round(publicTickets)}% tickets on ${fadeSideName}`
     } else {
-      summaryLine = `${prefix} · ${Math.round(sharpHandle)}% handle on ${sharpSideName} (+${Math.round(divergencePts)} vs tickets)`
+      summaryLine = `${Math.round(sharpHandle)}% handle on ${sharpSideName} (+${Math.round(divergencePts)} vs tickets)`
     }
   } else if (opts?.isPasted) {
-    const prefix = `Pasted (${opts.source || 'manual'})`
     const homeShort = shortDisplayName(homeTeam)
     const awayShort = shortDisplayName(awayTeam)
-    summaryLine = `${prefix} · ${homeShort} ${Math.round(homeTicketPct)}% bets / ${Math.round(homeHandlePct)}% money · ${awayShort} ${Math.round(awayTicketPct)}% / ${Math.round(awayHandlePct)}%`
+    summaryLine = `${homeShort} ${Math.round(homeTicketPct)}% bets / ${Math.round(homeHandlePct)}% money · ${awayShort} ${Math.round(awayTicketPct)}% / ${Math.round(awayHandlePct)}%`
   }
 
   return {

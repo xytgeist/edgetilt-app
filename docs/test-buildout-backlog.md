@@ -1138,6 +1138,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-14:** **Primetime header prints Tank O/U (Windows).** ATS lean, then O/U (Over lean … wind kills when vetoed). Splits line is ticket/money only … no `Pasted (action_pro)`. Redeploy **`lounge-odds-poll`**. **`1.4.213`.**
 - **2026-09-14:** **Primetime desks use house votes (Windows).** TNF / SNF / MNF card no longer invents RLM or EPA-sign leans. Same `buildNflAtsSlateCard` + pasted Action/VSiN board as Desk Math. Chedda PASSes without a real unlock. Redeploy **`lounge-odds-poll`**. **`1.4.212`.**
 - **2026-09-14:** **MNF lean is 2:00pm PT (Windows).** Cron `0 21 * * 1`. Friday house lean is not the lock (spotlight voids those pending rows). 90-min lock holds if QB / LT / edge is still GTD. TNF / SNF stay 3:30pm. **`1.4.211`.**
 - **2026-09-14:** **Lifetime IAP list is $1,499.99 (Mac).** Ryan dropped the offer-code route. Immediate global change on `6809032089` … US **`$1,499.99`** (was `$1,999.00`). Raise later when founding ends. Do not attach to **1.4.95 (125)**.

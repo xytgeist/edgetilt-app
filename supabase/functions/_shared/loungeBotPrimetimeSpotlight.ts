@@ -86,6 +86,9 @@ export type PrimetimeSpotlightGame = {
   tankOuDisplay: string
   /** Totals equation for the tape footer. Not the ATS sidecar. */
   tankOuWhy: string
+  /** Tank's ATS sidecar. Separate from his O/U vote. */
+  tankAtsDisplay: string
+  tankAtsWhy: string
   personaLeans: Record<'Scott' | 'Rocco' | 'Chedda' | 'Tank', PrimetimePersonaLean>
 }
 
@@ -186,12 +189,14 @@ function formatTankOuHeader(
   const windKills = signals.includes('wind') || /wind veto/i.test(why)
   const fallKills = signals.includes('total_down') || /falling total/i.test(why)
   if (windKills) {
-    return tot ? `Lean toward the Over (${tot}) … wind kills the bet` : 'Lean toward the Over … wind kills the bet'
+    return tot
+      ? `Lean toward the Over (${tot}) … *wind kills the bet*`
+      : 'Lean toward the Over … *wind kills the bet*'
   }
   if (fallKills) {
     return tot
-      ? `Lean toward the Over (${tot}) … falling total kills the bet`
-      : 'Lean toward the Over … falling total kills the bet'
+      ? `Lean toward the Over (${tot}) … *falling total kills the bet*`
+      : 'Lean toward the Over … *falling total kills the bet*'
   }
   return tot ? `PASS (${tot})` : 'PASS'
 }
@@ -467,6 +472,12 @@ export async function findPrimetimeGameCandidate(
       houseGame?.marketTotal ?? totalPoint,
     ),
     tankOuWhy,
+    tankAtsDisplay: houseGame?.tankAts?.published
+      ? (houseGame.tankAts.lineDisplay || houseGame.tankAts.teamName || 'PASS')
+      : 'PASS',
+    tankAtsWhy: houseGame?.tankAts?.published
+      ? (houseGame.tankAts.rationale || houseGame.tankAts.lineDisplay || '')
+      : '',
     personaLeans: {
       Scott: houseDeskToPersonaLean(
         'Scott',
@@ -541,12 +552,39 @@ export function formatPrimetimeVipDeepDive(spotlight: PrimetimeSpotlightGame): s
       : [`**Lean:** **${spotlight.consensusPick.lineDisplay}**`]),
     '',
   ]
-  for (const desk of ['Scott', 'Rocco', 'Chedda'] as const) {
-    const lean = spotlight.personaLeans[desk]
-    lines.push(`• ${formatColoredPickerName(desk)}: ${lean.lineDisplay}`)
-    const isPass = lean.pickTeamOrSide === 'PASS' || /^PASS\b/i.test(lean.lineDisplay)
-    if (!isPass && lean.bulletRationale) {
-      lines.push(`  └ *${lean.bulletRationale}*`)
+  const atsRows: Array<{ desk: 'Scott' | 'Rocco' | 'Tank' | 'Chedda'; line: string; why: string; isPass: boolean }> = [
+    {
+      desk: 'Scott',
+      line: spotlight.personaLeans.Scott.lineDisplay,
+      why: spotlight.personaLeans.Scott.bulletRationale,
+      isPass: spotlight.personaLeans.Scott.pickTeamOrSide === 'PASS'
+        || /^PASS\b/i.test(spotlight.personaLeans.Scott.lineDisplay),
+    },
+    {
+      desk: 'Rocco',
+      line: spotlight.personaLeans.Rocco.lineDisplay,
+      why: spotlight.personaLeans.Rocco.bulletRationale,
+      isPass: spotlight.personaLeans.Rocco.pickTeamOrSide === 'PASS'
+        || /^PASS\b/i.test(spotlight.personaLeans.Rocco.lineDisplay),
+    },
+    {
+      desk: 'Tank',
+      line: spotlight.tankAtsDisplay,
+      why: spotlight.tankAtsWhy,
+      isPass: !spotlight.tankAtsDisplay || /^PASS\b/i.test(spotlight.tankAtsDisplay),
+    },
+    {
+      desk: 'Chedda',
+      line: spotlight.personaLeans.Chedda.lineDisplay,
+      why: spotlight.personaLeans.Chedda.bulletRationale,
+      isPass: spotlight.personaLeans.Chedda.pickTeamOrSide === 'PASS'
+        || /^PASS\b/i.test(spotlight.personaLeans.Chedda.lineDisplay),
+    },
+  ]
+  for (const row of atsRows) {
+    lines.push(`• ${formatColoredPickerName(row.desk)}: ${row.line}`)
+    if (!row.isPass && row.why) {
+      lines.push(`  └ *${row.why}*`)
     }
   }
   const pastedLine = spotlight.splits?.isPasted === true ? spotlight.splits.summaryLine : ''
@@ -559,7 +597,7 @@ export function formatPrimetimeVipDeepDive(spotlight: PrimetimeSpotlightGame): s
   if (spotlight.tankOuDisplay || spotlight.tankOuWhy) {
     lines.push('')
     if (spotlight.tankOuDisplay) {
-      lines.push(`**O/U:** **${spotlight.tankOuDisplay}**`)
+      lines.push(`**O/U:** ${spotlight.tankOuDisplay}`)
     }
     if (spotlight.tankOuWhy) {
       lines.push(`• ${formatColoredPickerName('Tank')}: ${spotlight.tankOuWhy}`)

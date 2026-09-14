@@ -1138,6 +1138,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-14:** **Tank ATS line is back (Windows).** Desk list is Scott / Rocco / Tank ATS / Chedda. O/U header still under the tape. “wind kills the bet” is italic. Redeploy **`lounge-odds-poll`**. **`1.4.218`.**
 - **2026-09-14:** **Primetime O/U sits under the tape (Windows).** After bets %, an O/U header + purple Tank model line. Tank is not in the ATS desk list. Redeploy **`lounge-odds-poll`**. **`1.4.217`.**
 - **2026-09-14:** **Primetime 1-1 is House Divided (Windows).** Lean header is ⚔️ House Divided. PASS desks drop the why line. Tank O/U equation sits under the tape. Redeploy **`lounge-odds-poll`**. **`1.4.216`.**
 - **2026-09-14:** **Chedda sit copy is his own desk (Windows).** PASS why is hook / money, not “Scott’s lane.” Redeploy **`lounge-odds-poll`**. **`1.4.215`.**

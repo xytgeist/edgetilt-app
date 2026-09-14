@@ -526,7 +526,6 @@ export function formatPrimetimeSpotlightCaption(spotlight: PrimetimeSpotlightGam
     ...(spotlight.consensusPick.pickedName === 'SPLIT'
       ? [`**${spotlight.consensusPick.lineDisplay}**`]
       : []),
-    `**O/U:** ${spotlight.tankOuDisplay}`,
   ].join('\n')
 }
 
@@ -540,10 +539,9 @@ export function formatPrimetimeVipDeepDive(spotlight: PrimetimeSpotlightGame): s
     ...(divided
       ? [`**⚔️ House Divided**`, `**${spotlight.consensusPick.lineDisplay}**`]
       : [`**Lean:** **${spotlight.consensusPick.lineDisplay}**`]),
-    `**O/U:** ${spotlight.tankOuDisplay}`,
     '',
   ]
-  for (const desk of ['Scott', 'Rocco', 'Tank', 'Chedda'] as const) {
+  for (const desk of ['Scott', 'Rocco', 'Chedda'] as const) {
     const lean = spotlight.personaLeans[desk]
     lines.push(`• ${formatColoredPickerName(desk)}: ${lean.lineDisplay}`)
     const isPass = lean.pickTeamOrSide === 'PASS' || /^PASS\b/i.test(lean.lineDisplay)
@@ -552,12 +550,20 @@ export function formatPrimetimeVipDeepDive(spotlight: PrimetimeSpotlightGame): s
     }
   }
   const pastedLine = spotlight.splits?.isPasted === true ? spotlight.splits.summaryLine : ''
-  if (spotlight.weather?.summaryLine || spotlight.injuries?.summaryLine || pastedLine || spotlight.tankOuWhy) {
+  if (spotlight.weather?.summaryLine || spotlight.injuries?.summaryLine || pastedLine) {
     lines.push('')
     if (spotlight.weather?.summaryLine) lines.push(`🌤️ ${spotlight.weather.summaryLine}`)
     if (spotlight.injuries?.summaryLine) lines.push(`🩹 ${spotlight.injuries.summaryLine}`)
     if (pastedLine) lines.push(`⚡ ${pastedLine}`)
-    if (spotlight.tankOuWhy) lines.push(`Tank O/U: ${spotlight.tankOuWhy}`)
+  }
+  if (spotlight.tankOuDisplay || spotlight.tankOuWhy) {
+    lines.push('')
+    if (spotlight.tankOuDisplay) {
+      lines.push(`**O/U:** **${spotlight.tankOuDisplay}**`)
+    }
+    if (spotlight.tankOuWhy) {
+      lines.push(`• ${formatColoredPickerName('Tank')}: ${spotlight.tankOuWhy}`)
+    }
   }
   lines.push(
     '',

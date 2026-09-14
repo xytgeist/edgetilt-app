@@ -1,12 +1,9 @@
 /**
  * NFL Primetime Solo Spotlights Engine (TNF / SNF / MNF).
- * Spotlight lean path … not the Friday house slate (`buildNflAtsSlateCard`).
- * 1. Scott (model / Net EPA)
- * 2. Rocco (short-fav / hooks / ESPN trench)
- * 3. Tank (totals / situational)
- * 4. Chedda (dogs / splits when present)
- * 5. Spotlight lean recommendation (do not label as house hammer).
- * Public Lounge + VIP chat get the 4-desk card. No fan-only Lounge post. X gets the short lean.
+ * Desk votes come from the same house slate (`buildNflAtsSlateCard`) as Friday /
+ * Desk Math. No costume EPA-sign / fake-RLM path. Chedda only votes on pasted
+ * Action/VSiN money, dog+hook, or dog+PVAL. Synthetic splits never print.
+ * Public Lounge + VIP chat get the 4-desk card. No fan-only Lounge post.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import type { OddsEvent } from './loungeBotOddsCaption.ts'
@@ -26,13 +23,24 @@ import { X_LONG_FORM_CHARS } from './loungeBotXPublish.ts'
 import { fetchGameWeather, type GameWeatherSummary } from './loungeBotWeather.ts'
 import { oddsSportKeyToRundownSportId, resolveRundownEvent } from './loungeBotRundownContext.ts'
 import { fetchGameInjuryPval, type GameInjurySummary } from './loungeBotInjuryPval.ts'
-import { resolveGameBettingSplits, type BettingSplitSummary } from './loungeBotBettingSplits.ts'
+import {
+  loadPastedBettingSplitsBoardForSlate,
+  type BettingSplitSummary,
+} from './loungeBotBettingSplits.ts'
 import {
   calculateTrenchEpaMatchup,
   loadDbTeamMetricsMap,
   type TrenchEpaMatchupSummary,
 } from './loungeBotTeamMetrics.ts'
-import { analyzeFootballKeyNumbers } from './loungeBotKeyNumbers.ts'
+import { loadPersonaWeights } from './loungeBotPersonaAdaptive.ts'
+import { loadDbCfbPowerRatingsMap } from './loungeBotCfbPowerRatings.ts'
+import { resolveSideModifiersForSlate } from './loungeBotSideModifier.ts'
+import {
+  buildNflAtsSlateCard,
+  loadTankTotalsContextForSlate,
+  type SlateDeskSide,
+  type SlateGamePick,
+} from './loungeBotPredictivePick.ts'
 
 export type PrimetimeGameType = 'TNF' | 'SNF' | 'MNF' | 'PRIMETIME'
 
@@ -61,16 +69,18 @@ export type PrimetimeSpotlightGame = {
   underPrice: number
   weather: GameWeatherSummary | null
   injuries: GameInjurySummary | null
-  splits: BettingSplitSummary
+  /** Pasted Action/VSiN only. Never a synthetic hash board. */
+  splits: BettingSplitSummary | null
   trenchEpa: TrenchEpaMatchupSummary | null
   consensusPick: {
-    side: 'home' | 'away' | 'over' | 'under'
+    side: 'home' | 'away' | 'over' | 'under' | 'pass'
     pickedName: string
     lineDisplay: string
     marketKey: 'spreads' | 'totals'
     confidenceBadge: string
     consensusTitle: string
     summaryReason: string
+    houseVoteCount?: number
   }
   personaLeans: Record<'Scott' | 'Rocco' | 'Chedda' | 'Tank', PrimetimePersonaLean>
 }
@@ -110,6 +120,62 @@ export function identifyPrimetimeType(commenceTimeIso: string): PrimetimeGameTyp
   if (dayOfWeek === 'Mon') return 'MNF'
 
   return null
+}
+
+function formatHouseDeskLine(lineDisplay: string, side: SlateDeskSide, pickPrice: number): string {
+  if (side === 'pass' || !pickPrice) return lineDisplay
+  if (/\([+-]\d+\)/.test(lineDisplay)) return lineDisplay
+  return `${lineDisplay} (${formatAmericanOdds(pickPrice)})`
+}
+
+function houseDeskToPersonaLean(
+  desk: 'Scott' | 'Rocco' | 'Chedda' | 'Tank',
+  roleTitle: string,
+  housePick: SlateGamePick['pickerPicks']['Scott'],
+  matchedEvent: OddsEvent,
+  homeTeam: string,
+  awayTeam: string,
+  bullet: string,
+): PrimetimePersonaLean {
+  const marketKey = desk === 'Tank' ? 'totals' : 'spreads'
+  return {
+    pickerName: desk,
+    roleTitle,
+    pickTeamOrSide: housePick.teamName,
+    lineDisplay: formatHouseDeskLine(housePick.lineDisplay, housePick.side, housePick.pickPrice),
+    bulletRationale: bullet,
+    fullPick: {
+      eventId: String(matchedEvent.id || ''),
+      sportKey: String(matchedEvent.sport_key || 'americanfootball_nfl'),
+      homeTeam,
+      awayTeam,
+      commenceTime: String(matchedEvent.commence_time || ''),
+      marketKey,
+      pickName: housePick.teamName,
+      linePoint: housePick.pick?.linePoint ?? null,
+      pickPrice: housePick.pickPrice,
+      bookmakerKey: 'consensus',
+      evPct: 0,
+    } as OddsPick,
+  }
+}
+
+function cheddaPrimetimeWhy(
+  housePick: SlateGamePick['pickerPicks']['Chedda'],
+  splits: BettingSplitSummary | null,
+): string {
+  const base = String(housePick.why || '').trim()
+  if (housePick.side !== 'pass') return base || 'House Chedda unlock.'
+  if (!splits?.isPasted) {
+    return 'No pasted Action/VSiN board. Chedda does not invent splits.'
+  }
+  if (splits.isRlm || splits.isSharpDivergence) {
+    return base || splits.summaryLine
+  }
+  const board = splits.summaryLine
+    ? ` ${splits.summaryLine}`
+    : ''
+  return `${base || 'No dog+hook, dog+PVAL, or pasted money.'}${board} Same-side public and money ... not a Chedda unlock.`
 }
 
 /**
@@ -192,85 +258,6 @@ export async function findPrimetimeGameCandidate(
   if (spreadPoint == null) spreadPoint = -3.0
   if (totalPoint == null) totalPoint = 44.5
 
-  // Load team metrics, injuries, weather, and betting splits in parallel
-  const sportId = oddsSportKeyToRundownSportId(matchedEvent.sport_key) || 2
-  const rundown = await resolveRundownEvent({
-    sportKey: matchedEvent.sport_key,
-    homeTeam,
-    awayTeam,
-    commenceTime: matchedEvent.commence_time,
-  }).catch(() => null)
-  const [teamMetrics, injuries, weather] = await Promise.all([
-    loadDbTeamMetricsMap(admin),
-    fetchGameInjuryPval(admin, sportId, homeTeam, awayTeam, matchedEvent.commence_time),
-    fetchGameWeather(sportId, homeTeam, matchedEvent.commence_time, rundown?.venueLocation, rundown?.venueName),
-  ])
-
-  const trenchEpa = calculateTrenchEpaMatchup(homeTeam, awayTeam, teamMetrics)
-  const splits = resolveGameBettingSplits(matchedEvent, spreadPoint, homeSpreadPrice, awaySpreadPrice)
-
-  const homeSpreadDisp = `${shortDisplayName(homeTeam)} ${spreadPoint > 0 ? `+${spreadPoint}` : spreadPoint}`
-  const awaySpreadDisp = `${shortDisplayName(awayTeam)} ${(-spreadPoint) > 0 ? `+${-spreadPoint}` : -spreadPoint}`
-  const overDisp = `Over ${totalPoint}`
-  const underDisp = `Under ${totalPoint}`
-
-  const homeKeyAnalysis = analyzeFootballKeyNumbers(spreadPoint)
-  const awayKeyAnalysis = analyzeFootballKeyNumbers(spreadPoint != null ? -spreadPoint : null)
-
-  // 1. Scott (The Model / Net EPA)
-  const epaFavorsHome = (trenchEpa?.netEpaDeltaHome ?? 0) >= 0.03
-  const scottSide = epaFavorsHome ? 'home' : 'away'
-  const scottTeam = scottSide === 'home' ? homeTeam : awayTeam
-  const scottLineDisp = scottSide === 'home' ? homeSpreadDisp : awaySpreadDisp
-  const scottKeyTag = (scottSide === 'home' ? homeKeyAnalysis?.isKeyNumber : awayKeyAnalysis?.isKeyNumber)
-    ? ' [Key Margin]'
-    : ''
-  const scottBullet = trenchEpa?.isEpaMismatch
-    ? `Net EPA/play favors ${shortDisplayName(scottTeam)} by +${Math.abs(trenchEpa.netEpaDeltaHome).toFixed(3)} pts/play (Model spread: ${trenchEpa.epaSpreadImpactHome > 0 ? shortDisplayName(homeTeam) : shortDisplayName(awayTeam)} ${Math.abs(trenchEpa.epaSpreadImpactHome).toFixed(1)}).${scottKeyTag}`
-    : `Model rates ${shortDisplayName(scottTeam)} with an efficiency edge in high-leverage passing situations.${scottKeyTag}`
-
-  // 2. Rocco (short-fav / hooks / ESPN trench)
-  const trenchFavorsHome = (trenchEpa?.netTrenchSpreadImpactHome ?? 0) > 0
-  const roccoSide = trenchFavorsHome ? 'home' : 'away'
-  const roccoTeam = roccoSide === 'home' ? homeTeam : awayTeam
-  const roccoLineDisp = roccoSide === 'home' ? homeSpreadDisp : awaySpreadDisp
-  const roccoKeyTaxTag = (roccoSide === 'home' ? homeKeyAnalysis?.isHookTax : awayKeyAnalysis?.isHookTax)
-    ? ' [Hook Tax Alert]'
-    : ''
-  const roccoBullet = (roccoSide === 'home' ? homeKeyAnalysis?.isHookTax : awayKeyAnalysis?.isHookTax)
-    ? `Short-fav / hook lane on ${shortDisplayName(roccoTeam)}.${roccoKeyTaxTag}`
-    : `Situational short-yardage lean on ${shortDisplayName(roccoTeam)}.${roccoKeyTaxTag}`
-
-  // 3. Tank (Climate, Pace & Totals)
-  const isUnderLean = (weather?.isHighWind || weather?.isExtremeCold) || (totalPoint >= 47.0 && (trenchEpa?.awayNetEpa ?? 0) < 0)
-  const tankTotalSide = isUnderLean ? 'under' : 'over'
-  const tankLineDisp = isUnderLean ? underDisp : overDisp
-  const tankBullet = weather?.isHighWind || weather?.isExtremeCold || weather?.isPrecipAlert
-    ? `Weather Alert: ${weather.summaryLine} suggests reduced deep ball EPA and increased ground game clock runoff.`
-    : `Pace analysis projects sustained red zone efficiency against opponent standard defensive scheme.`
-
-  // 4. Chedda (Sharp Splits & Dog Hunter)
-  const sharpDogSide = (spreadPoint > 0 && splits.sharpFavoredSide === 'home')
-    ? 'home'
-    : ((-spreadPoint) > 0 && splits.sharpFavoredSide === 'away')
-      ? 'away'
-      : (spreadPoint > 0 ? 'home' : 'away')
-  const cheddaTeam = sharpDogSide === 'home' ? homeTeam : awayTeam
-  const cheddaLineDisp = sharpDogSide === 'home' ? homeSpreadDisp : awaySpreadDisp
-  const cheddaGoldenTag = (cheddaTeam === homeTeam ? homeKeyAnalysis?.isHookGolden : awayKeyAnalysis?.isHookGolden)
-    ? ' [Golden Hook · Key #3/7 Cluster]'
-    : ''
-  const cheddaBullet = splits.isSharpDivergence
-    ? `${splits.summaryLine}. Backing the live dog with pro money support.${cheddaGoldenTag}`
-    : `Taking points with ${shortDisplayName(cheddaTeam)} on key numbers against over-inflated chalk.${cheddaGoldenTag}`
-
-  // Consensus Primary Recommendation
-  const homeVotes = (scottSide === 'home' ? 1 : 0) + (roccoSide === 'home' ? 1 : 0) + (cheddaTeam === homeTeam ? 1 : 0)
-  const consensusTeam = homeVotes >= 2 ? homeTeam : awayTeam
-  const consensusSide = homeVotes >= 2 ? 'home' : 'away'
-  const consensusLineDisp = consensusSide === 'home' ? homeSpreadDisp : awaySpreadDisp
-  const isHammer = homeVotes === 3 || homeVotes === 0
-
   const primetimeLabels: Record<PrimetimeGameType, string> = {
     TNF: 'THURSDAY NIGHT FOOTBALL',
     SNF: 'SUNDAY NIGHT FOOTBALL',
@@ -278,114 +265,185 @@ export async function findPrimetimeGameCandidate(
     PRIMETIME: 'PRIMETIME SPOTLIGHT',
   }
 
+  const sportKey = String(matchedEvent.sport_key || 'americanfootball_nfl')
+  const houseEvents = [{
+    id: String(matchedEvent.id || ''),
+    sport_key: sportKey,
+    commence_time: String(matchedEvent.commence_time || ''),
+    home_team: homeTeam,
+    away_team: awayTeam,
+    bookmakers: matchedEvent.bookmakers || [],
+  }]
+
+  const sportId = oddsSportKeyToRundownSportId(sportKey) || 2
+  const rundown = await resolveRundownEvent({
+    sportKey,
+    homeTeam,
+    awayTeam,
+    commenceTime: matchedEvent.commence_time,
+  }).catch(() => null)
+  const [
+    teamMetrics,
+    injuries,
+    weather,
+    weightsMap,
+    cfbRatingsMap,
+    sideModifiersByEventId,
+    pastedSplitsBoard,
+    tankCtx,
+  ] = await Promise.all([
+    loadDbTeamMetricsMap(admin),
+    fetchGameInjuryPval(admin, sportId, homeTeam, awayTeam, matchedEvent.commence_time),
+    fetchGameWeather(sportId, homeTeam, matchedEvent.commence_time, rundown?.venueLocation, rundown?.venueName),
+    loadPersonaWeights(admin),
+    loadDbCfbPowerRatingsMap(admin),
+    resolveSideModifiersForSlate(admin, sportKey, houseEvents),
+    loadPastedBettingSplitsBoardForSlate(admin, sportKey, houseEvents),
+    loadTankTotalsContextForSlate(admin, sportKey, houseEvents),
+  ])
+
+  const trenchEpa = calculateTrenchEpaMatchup(homeTeam, awayTeam, teamMetrics)
+  const houseWeather = tankCtx.weatherByEventId.get(String(matchedEvent.id || '')) || weather
+
+  const houseCard = buildNflAtsSlateCard(houseEvents, {
+    cardTitle: `🏈 NFL Primetime · ${primetimeLabels[matchedType]}`,
+    sportKey,
+    weightsMap,
+    teamMetricsMap: teamMetrics,
+    cfbRatingsMap,
+    sideModifiersByEventId,
+    pastedSplitsByEventId: pastedSplitsBoard.primaryByEventId,
+    pastedSplitsAllByEventId: pastedSplitsBoard.allByEventId,
+    weatherByEventId: tankCtx.weatherByEventId,
+    openTotalByEventId: tankCtx.openTotalByEventId,
+    marketFilesByEventId: tankCtx.marketFilesByEventId,
+    restTravelByEventId: tankCtx.restTravelByEventId,
+  })
+  const houseGame = houseCard?.games?.[0] || null
+  const pastedSplits = houseGame?.splits?.isPasted === true
+    ? houseGame.splits
+    : (pastedSplitsBoard.primaryByEventId.get(String(matchedEvent.id || '')) || null)
+  const splits = pastedSplits?.isPasted === true ? pastedSplits : null
+
+  const passPick = {
+    side: 'pass' as const,
+    teamName: 'PASS',
+    lineDisplay: 'PASS',
+    pickPrice: 0,
+    pick: {
+      sportKey,
+      eventId: String(matchedEvent.id || ''),
+      homeTeam,
+      awayTeam,
+      commenceTime: String(matchedEvent.commence_time || ''),
+      marketKey: 'spreads' as const,
+      pickName: 'PASS',
+      pickPrice: 0,
+      bookTitle: 'Consensus',
+      linePoint: null,
+      consensusPrice: -110,
+      edgePct: 0,
+      consensusProb: 0.5,
+      bookCount: 0,
+    },
+    why: 'No house unlock.',
+  }
+
+  const scottHouse = houseGame?.pickerPicks.Scott || passPick
+  const roccoHouse = houseGame?.pickerPicks.Rocco || passPick
+  const cheddaHouse = houseGame?.pickerPicks.Chedda || passPick
+  const tankHouse = houseGame?.pickerPicks.Tank || {
+    ...passPick,
+    lineDisplay: 'PASS (no totals unlock)',
+    pick: { ...passPick.pick, marketKey: 'totals' as const },
+  }
+
+  let tankBullet = String(tankHouse.why || 'No totals unlock.').trim()
+  if (houseGame?.tankAts?.published) {
+    const ats = houseGame.tankAts.lineDisplay || houseGame.tankAts.teamName || 'ATS spot'
+    tankBullet = `${tankBullet} ATS spot: ${ats}.`
+  }
+
+  const houseC = houseGame?.consensusPick || null
+  const housePass = !houseC || houseC.type === 'pass_only' || (houseC.voteCount || 0) === 0
+  const consensusPick = housePass
+    ? {
+      side: 'pass' as const,
+      pickedName: 'PASS',
+      lineDisplay: 'PASS',
+      marketKey: 'spreads' as const,
+      confidenceBadge: houseC?.badgeText || '⏭️ All pass',
+      consensusTitle: 'No house ATS lean',
+      summaryReason: splits?.summaryLine || 'No house ATS unlock on this primetime card.',
+      houseVoteCount: 0,
+    }
+    : {
+      side: houseC.side,
+      pickedName: houseC.teamName,
+      lineDisplay: houseC.lineDisplay,
+      marketKey: 'spreads' as const,
+      confidenceBadge: houseC.badgeText,
+      consensusTitle: `${shortDisplayName(houseC.teamName)} (${houseC.badgeText})`,
+      summaryReason: houseC.badgeText,
+      houseVoteCount: houseC.voteCount,
+    }
+
   return {
-    eventId: matchedEvent.id,
-    sportKey: matchedEvent.sport_key,
+    eventId: String(matchedEvent.id || ''),
+    sportKey,
     primetimeType: matchedType,
     primetimeLabel: primetimeLabels[matchedType],
     homeTeam,
     awayTeam,
-    commenceTime: matchedEvent.commence_time,
+    commenceTime: String(matchedEvent.commence_time || ''),
     spreadPoint,
     totalPoint,
     homeSpreadPrice,
     awaySpreadPrice,
     overPrice,
     underPrice,
-    weather,
+    weather: houseWeather,
     injuries,
     splits,
     trenchEpa,
-    consensusPick: {
-      side: consensusSide,
-      pickedName: consensusTeam,
-      lineDisplay: consensusLineDisp,
-      marketKey: 'spreads',
-      confidenceBadge: isHammer ? '🔦 SPOTLIGHT LEAN (3-0)' : '🔦 SPOTLIGHT LEAN',
-      consensusTitle: `${shortDisplayName(consensusTeam)} (${isHammer ? '3-desk spotlight lean' : 'spotlight majority'})`,
-      summaryReason: trenchEpa?.summaryLine || splits.summaryLine || 'Primetime spotlight lean.',
-    },
+    consensusPick,
     personaLeans: {
-      Scott: {
-        pickerName: 'Scott',
-        roleTitle: 'The Model',
-        pickTeamOrSide: scottTeam,
-        lineDisplay: `${scottLineDisp} (${formatAmericanOdds(scottSide === 'home' ? homeSpreadPrice : awaySpreadPrice)})`,
-        bulletRationale: scottBullet,
-        fullPick: {
-          eventId: matchedEvent.id,
-          sportKey: matchedEvent.sport_key,
-          homeTeam,
-          awayTeam,
-          commenceTime: matchedEvent.commence_time,
-          marketKey: 'spreads',
-          pickName: scottTeam,
-          linePoint: scottSide === 'home' ? spreadPoint : -spreadPoint,
-          pickPrice: scottSide === 'home' ? homeSpreadPrice : awaySpreadPrice,
-          bookmakerKey: 'consensus',
-          evPct: 3.8,
-        },
-      },
-      Rocco: {
-        pickerName: 'Rocco',
-        roleTitle: 'Short-fav / Hooks',
-        pickTeamOrSide: roccoTeam,
-        lineDisplay: `${roccoLineDisp} (${formatAmericanOdds(roccoSide === 'home' ? homeSpreadPrice : awaySpreadPrice)})`,
-        bulletRationale: roccoBullet,
-        fullPick: {
-          eventId: matchedEvent.id,
-          sportKey: matchedEvent.sport_key,
-          homeTeam,
-          awayTeam,
-          commenceTime: matchedEvent.commence_time,
-          marketKey: 'spreads',
-          pickName: roccoTeam,
-          linePoint: roccoSide === 'home' ? spreadPoint : -spreadPoint,
-          pickPrice: roccoSide === 'home' ? homeSpreadPrice : awaySpreadPrice,
-          bookmakerKey: 'consensus',
-          evPct: 3.2,
-        },
-      },
-      Tank: {
-        pickerName: 'Tank',
-        roleTitle: 'Totals & Climate',
-        pickTeamOrSide: tankTotalSide === 'under' ? 'Under' : 'Over',
-        lineDisplay: `${tankLineDisp} (${formatAmericanOdds(tankTotalSide === 'under' ? underPrice : overPrice)})`,
-        bulletRationale: tankBullet,
-        fullPick: {
-          eventId: matchedEvent.id,
-          sportKey: matchedEvent.sport_key,
-          homeTeam,
-          awayTeam,
-          commenceTime: matchedEvent.commence_time,
-          marketKey: 'totals',
-          pickName: tankTotalSide === 'under' ? 'Under' : 'Over',
-          linePoint: totalPoint,
-          pickPrice: tankTotalSide === 'under' ? underPrice : overPrice,
-          bookmakerKey: 'consensus',
-          evPct: 2.9,
-        },
-      },
-      Chedda: {
-        pickerName: 'Chedda',
-        roleTitle: 'Dogs & Action Splits',
-        pickTeamOrSide: cheddaTeam,
-        lineDisplay: `${cheddaLineDisp} (${formatAmericanOdds(cheddaTeam === homeTeam ? homeSpreadPrice : awaySpreadPrice)})`,
-        bulletRationale: cheddaBullet,
-        fullPick: {
-          eventId: matchedEvent.id,
-          sportKey: matchedEvent.sport_key,
-          homeTeam,
-          awayTeam,
-          commenceTime: matchedEvent.commence_time,
-          marketKey: 'spreads',
-          pickName: cheddaTeam,
-          linePoint: cheddaTeam === homeTeam ? spreadPoint : -spreadPoint,
-          pickPrice: cheddaTeam === homeTeam ? homeSpreadPrice : awaySpreadPrice,
-          bookmakerKey: 'consensus',
-          evPct: 3.5,
-        },
-      },
+      Scott: houseDeskToPersonaLean(
+        'Scott',
+        'The Model',
+        scottHouse,
+        matchedEvent,
+        homeTeam,
+        awayTeam,
+        String(scottHouse.why || 'No house unlock.').trim(),
+      ),
+      Rocco: houseDeskToPersonaLean(
+        'Rocco',
+        'Short-fav / Hooks',
+        roccoHouse,
+        matchedEvent,
+        homeTeam,
+        awayTeam,
+        String(roccoHouse.why || 'No house unlock.').trim(),
+      ),
+      Tank: houseDeskToPersonaLean(
+        'Tank',
+        'Totals & Climate',
+        tankHouse,
+        matchedEvent,
+        homeTeam,
+        awayTeam,
+        tankBullet,
+      ),
+      Chedda: houseDeskToPersonaLean(
+        'Chedda',
+        'Dogs & Action Splits',
+        cheddaHouse,
+        matchedEvent,
+        homeTeam,
+        awayTeam,
+        cheddaPrimetimeWhy(cheddaHouse, splits),
+      ),
     },
   }
 }
@@ -424,11 +482,12 @@ export function formatPrimetimeVipDeepDive(spotlight: PrimetimeSpotlightGame): s
     `• ${formatColoredPickerName('Chedda')}: ${spotlight.personaLeans.Chedda.lineDisplay}`,
     `  └ *${spotlight.personaLeans.Chedda.bulletRationale}*`,
   ]
-  if (spotlight.weather?.summaryLine || spotlight.injuries?.summaryLine || spotlight.splits?.summaryLine) {
+  const pastedLine = spotlight.splits?.isPasted === true ? spotlight.splits.summaryLine : ''
+  if (spotlight.weather?.summaryLine || spotlight.injuries?.summaryLine || pastedLine) {
     lines.push('')
     if (spotlight.weather?.summaryLine) lines.push(`🌤️ ${spotlight.weather.summaryLine}`)
     if (spotlight.injuries?.summaryLine) lines.push(`🩹 ${spotlight.injuries.summaryLine}`)
-    if (spotlight.splits?.summaryLine) lines.push(`⚡ ${spotlight.splits.summaryLine}`)
+    if (pastedLine) lines.push(`⚡ ${pastedLine}`)
   }
   lines.push(
     '',
@@ -499,50 +558,56 @@ export async function publishAndRecordPrimetimeSpotlight(
   const postId = fan.privatePostId || fan.publicPostId || undefined
   const pickIds: string[] = []
 
-  // 3. Log official consensus pick into lounge_bot_picks for grading
-  const officialLean = spotlight.personaLeans.Scott.fullPick
-  const isHome = spotlight.consensusPick.side === 'home'
+  const houseLean = spotlight.consensusPick.side !== 'pass'
+    && spotlight.consensusPick.pickedName !== 'PASS'
+    && (spotlight.consensusPick.houseVoteCount ?? 1) > 0
 
-  const pickLine = spotlight.consensusPick.marketKey === 'spreads'
-    ? (isHome ? spotlight.spreadPoint : (spotlight.spreadPoint != null ? -spotlight.spreadPoint : null))
-    : spotlight.totalPoint
+  if (houseLean) {
+    const officialLean = spotlight.personaLeans.Scott.fullPick
+    const isHome = spotlight.consensusPick.side === 'home'
+    const pickLine = spotlight.consensusPick.marketKey === 'spreads'
+      ? (isHome ? spotlight.spreadPoint : (spotlight.spreadPoint != null ? -spotlight.spreadPoint : null))
+      : spotlight.totalPoint
+    const leanPrice = officialLean.pickPrice
+      || (isHome ? spotlight.homeSpreadPrice : spotlight.awaySpreadPrice)
 
-  const { data: inserted } = await admin
-    .from('lounge_bot_picks')
-    .insert({
-      bot_user_id: publishAs,
-      post_id: postId,
-      picker_name: 'Scott',
-      event_id: spotlight.eventId,
-      sport_key: spotlight.sportKey,
-      home_team: spotlight.homeTeam,
-      away_team: spotlight.awayTeam,
-      commence_time: spotlight.commenceTime,
-      market_key: spotlight.consensusPick.marketKey,
-      pick_name: spotlight.consensusPick.pickedName,
-      pick_line: pickLine,
-      pick_price: officialLean.pickPrice,
-      bookmaker_key: officialLean.bookmakerKey || 'consensus',
-      ev_pct: officialLean.evPct || 3.5,
-      status: 'pending',
-      metadata: {
-        primetime_type: spotlight.primetimeType,
-        is_primetime_spotlight: true,
-        consensus_side: spotlight.consensusPick.side,
-        scott_pick: spotlight.personaLeans.Scott.lineDisplay,
-        rocco_pick: spotlight.personaLeans.Rocco.lineDisplay,
-        tank_pick: spotlight.personaLeans.Tank.lineDisplay,
-        chedda_pick: spotlight.personaLeans.Chedda.lineDisplay,
-        weather_summary: spotlight.weather?.summaryLine,
-        splits_summary: spotlight.splits?.summaryLine,
-        trench_summary: spotlight.trenchEpa?.summaryLine,
-      },
-    })
-    .select('id')
-    .single()
+    const { data: inserted } = await admin
+      .from('lounge_bot_picks')
+      .insert({
+        bot_user_id: publishAs,
+        post_id: postId,
+        picker_name: 'Scott',
+        event_id: spotlight.eventId,
+        sport_key: spotlight.sportKey,
+        home_team: spotlight.homeTeam,
+        away_team: spotlight.awayTeam,
+        commence_time: spotlight.commenceTime,
+        market_key: spotlight.consensusPick.marketKey,
+        pick_name: spotlight.consensusPick.pickedName,
+        pick_line: pickLine,
+        pick_price: leanPrice,
+        bookmaker_key: 'consensus',
+        ev_pct: 0,
+        status: 'pending',
+        metadata: {
+          primetime_type: spotlight.primetimeType,
+          is_primetime_spotlight: true,
+          consensus_side: spotlight.consensusPick.side,
+          scott_pick: spotlight.personaLeans.Scott.lineDisplay,
+          rocco_pick: spotlight.personaLeans.Rocco.lineDisplay,
+          tank_pick: spotlight.personaLeans.Tank.lineDisplay,
+          chedda_pick: spotlight.personaLeans.Chedda.lineDisplay,
+          weather_summary: spotlight.weather?.summaryLine,
+          splits_summary: spotlight.splits?.isPasted === true ? spotlight.splits.summaryLine : null,
+          trench_summary: spotlight.trenchEpa?.summaryLine,
+        },
+      })
+      .select('id')
+      .single()
 
-  if (inserted?.id) {
-    pickIds.push(inserted.id)
+    if (inserted?.id) {
+      pickIds.push(inserted.id)
+    }
   }
 
   // Friday house lean is not the primetime lock. Void leftover pending

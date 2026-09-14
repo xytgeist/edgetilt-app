@@ -103,6 +103,11 @@ function summarizeSides(
     } else {
       summaryLine = `${prefix} · ${Math.round(sharpHandle)}% handle on ${sharpSideName} (+${Math.round(divergencePts)} vs tickets)`
     }
+  } else if (opts?.isPasted) {
+    const prefix = `Pasted (${opts.source || 'manual'})`
+    const homeShort = shortDisplayName(homeTeam)
+    const awayShort = shortDisplayName(awayTeam)
+    summaryLine = `${prefix} · ${homeShort} ${Math.round(homeTicketPct)}% bets / ${Math.round(homeHandlePct)}% money · ${awayShort} ${Math.round(awayTicketPct)}% / ${Math.round(awayHandlePct)}%`
   }
 
   return {

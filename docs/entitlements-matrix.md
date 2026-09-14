@@ -190,7 +190,8 @@ Track implementation in `docs/test-buildout-backlog.md` when Phase 1 work starts
 | 2026-09-06 | **Pro-only stream is Edge Pro only.** `profiles.has_edge_pro` + migration **`20260906120000`**. Slots Edge Pro authors drop out of the filtered feed / comments. Verified Subscriber checkmark still uses `has_active_subscription`. Lifetime still counts as Edge Pro. **`1.4.94`.** Superseded **2026-09-07**. |
 | 2026-09-06 | **Slots Edge Pro does not grant Edge Pro.** Lounge Settings unlock card + viewer Pro gates (`isViewerEdgePro`, reply-gate composer) no longer treat `has_active_subscription` / Slots Pro as Edge Pro. Lifetime + staff still included via `hasEdgePro()`. Author badges still use the legacy profile flag. **`1.4.93`.** |
 | 2026-09-05 | **`apple-iap-verify` deployed on test** after sandbox confirm 404. Client fails closed before StoreKit if begin cannot reach the function. **`1.4.92`.** |
-| 2026-09-05 | **IPA Subscribe carousel hides Lifetime again** until Apple unlocks price points above `$1,000`. Web still shows the card. **`1.4.91`.** |
+| 2026-09-14 | **IPA Subscribe carousel shows Lifetime again.** Apple approved higher price points. Starter + Pro + Lifetime, same as web. **`1.4.210`.** |
+| 2026-09-05 | **IPA Subscribe carousel hides Lifetime again** until Apple unlocks price points above `$1,000`. Web still shows the card. **`1.4.91`.** Superseded **2026-09-14**. |
 | 2026-09-05 | **IPA Subscribe carousel shows Lifetime again** (Starter + Pro + Lifetime, same as web). **Superseded same night** (`1.4.91`). |
 | 2026-09-05 | **IPA Subscribe carousel hides Lifetime** until higher App Store price points. Web still shows the card. **Superseded same day** when Ryan put the card back. |
 | 2026-09-05 | **Storefront gate:** IPA shows a cheaper web price next to IAP only when StoreKit storefront is `USA`. |

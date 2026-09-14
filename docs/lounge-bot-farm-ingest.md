@@ -34,6 +34,13 @@ Secret **`LOUNGE_BOT_FARM_INGEST_SECRET`**. README: **`supabase/functions/lounge
 
 Uses existing **`publishLoungeBotPost`** (YouTube links unfurl like other bots). Optional **`dedupe_key`**. Caps from the persona row.
 
+## Worker X lists (stash)
+
+Handles live in **`data/lounge-bot-farm/watchlists.json`**, not on `lounge_bot_accounts`. Assign a list to a slug when that farm persona exists.
+
+- **`sports-x-unassigned`** … 10 sports posters (2026-09-13). No bot slug yet.
+- **`miles-kade-x`** … incomplete (1 of 10). Prod nametag **`miles-kade`**.
+
 ## Next (not this slice)
 
 1. Set the secret on **test** Edge.
@@ -43,4 +50,4 @@ Uses existing **`publishLoungeBotPost`** (YouTube links unfurl like other bots).
 
 ---
 
-_Last updated: 2026-09-07._
+_Last updated: 2026-09-13._

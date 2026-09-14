@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-13 … farm sports X stash
+
+**I am Mac Theo.** Ryan parked 10 sports X accounts for a **future** farm bot (not Miles) in **`data/lounge-bot-farm/watchlists.json`** list **`sports-x-unassigned`**. Miles still only has **`@GodMode248`** (1 of 10) on **`miles-kade-x`**. Spec **`docs/lounge-bot-farm-ingest.md`**. Prod Miles nametag + door already live. No worker yet.
+
 ### Windows Theo 2026-09-13 … Overview flips sport records
 
 **I am Windows Theo.** sharpesyndicate.com home tiles cycle All / NFL / CFB / UFC every 4s. Do not commit phone OTP.

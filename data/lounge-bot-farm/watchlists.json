@@ -1,0 +1,32 @@
+{
+  "comment": "Off-app farm worker X lists. Portal farm bots do not store handles. Do not mix lists across personas.",
+  "lists": [
+    {
+      "id": "sports-x-unassigned",
+      "assigned_bot_slug": null,
+      "topic": "sports",
+      "stashed_at": "2026-09-13",
+      "notes": "Ryan: accounts that typically post about sports. Stash for a future farm bot. Not Miles Kade.",
+      "handles": [
+        "AnitaDreenk",
+        "TBoreman59",
+        "HarrisChar41864",
+        "2thegreatest43",
+        "KG1116",
+        "3rd_And_Nerd",
+        "Timetoball1269",
+        "turnleftjohn",
+        "avelanchefan",
+        "mgrodonjr"
+      ]
+    },
+    {
+      "id": "miles-kade-x",
+      "assigned_bot_slug": "miles-kade",
+      "topic": "mixed",
+      "stashed_at": "2026-09-07",
+      "notes": "Incomplete. Ryan sent 1 of 10 for Miles. Prod farm persona miles-kade is live. Do not steal sports-x-unassigned into this list.",
+      "handles": ["GodMode248"]
+    }
+  ]
+}

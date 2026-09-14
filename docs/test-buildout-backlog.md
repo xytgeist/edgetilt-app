@@ -107,7 +107,7 @@ Work proceeds **in roadmap phase order (A → B → C → …)** with each phase
 - [x] **App Store account changeover to Digiverse Ventures LLC.** Ryan signed off 2026-09-07. DSA trader as the LLC is now unblocked.
 - [x] **[digiverse.ventures](https://digiverse.ventures)** LLC site live. Static files in **`sites/digiverse-ventures/`**. Pages project **`digiverse-ventures`**. Custom domain attached 2026-09-06 (`digiverse.ventures` + `www`, proxied CNAME to `digiverse-ventures.pages.dev`). Apex MX stays Cloudflare Email Routing. No street address. Contact **`contact@digiverse.ventures`**. Ryan signed off 2026-09-07. Not an Edge product surface.
 - [x] **Cloudflare email** for **edgetilt** and **digiverse** … mailboxes + reply-from. Ryan signed off 2026-09-07.
-- [x] **Increased price request approval** from App Store Connect (Lifetime / price points above Apple’s `$1,000` cap). Ryan: approved **2026-09-14**. IPA carousel is Starter + Pro + Lifetime again (`1.4.210`). ASC Lifetime SKU priced **`$1,999.00`** US. Still Prepare for Submission until it rides a new app version.
+- [x] **Increased price request approval** from App Store Connect (Lifetime / price points above Apple’s `$1,000` cap). Ryan: approved **2026-09-14**. IPA carousel is Starter + Pro + Lifetime again (`1.4.210`). ASC Lifetime SKU priced **`$1,999.00`** US. Founding offer **Founding Lifetime** (`e4b718f8-3bfc-44a8-861c-56fe90217797`) US **`$1,499.99`**. 10 sandbox codes expire Mar 14, 2027. Production custom / one-time codes wait until Lifetime IAP + app are approved / Ready for Distribution. Still Prepare for Submission until it rides a new app version.
 
 ### Native gap checklist (audit 2026-08-23)
 
@@ -1138,6 +1138,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-14:** **Founding Lifetime offer codes (Mac).** Offer **Founding Lifetime** on IAP `6809032089` (`e4b718f8-3bfc-44a8-861c-56fe90217797`). US **`$1,499.99`**. List stays **`$1,999.00`**. All eligibility + 175 countries. Sandbox: 10 one-time codes expire Mar 14, 2027. Production custom / one-time codes blocked until Lifetime IAP is approved and the app is Ready for Distribution. Do not attach to **1.4.95 (125)**. Redeem URL `https://apps.apple.com/redeem?ctx=offercodes&id=6806401093&code=CODE`.
 - **2026-09-14:** **Lifetime IAP priced (Mac).** ASC `com.edgetilt.app.slots_edge_lifetime` (`6809032089`) US **`$1,999.00`** (was `$1,000` placeholder). Immediate. Still Prepare for Submission. First non-consumable rides a new app version … do not attach to **1.4.95 (125)**.
 - **2026-09-14:** **IPA Lifetime card back (Mac).** Apple approved higher price points. Subscribe carousel is Starter + Pro + Lifetime again on the shell. Web unchanged. No new IPA. **`1.4.210`.**
 - **2026-09-13:** **Farm sports X stash (Mac):** 10 sports handles in **`data/lounge-bot-farm/watchlists.json`** (`sports-x-unassigned`, no bot slug yet). Miles list still incomplete (`GodMode248` only). Spec **`docs/lounge-bot-farm-ingest.md`**.

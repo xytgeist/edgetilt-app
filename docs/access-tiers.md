@@ -119,6 +119,8 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 
 **Removed from v1 note:** Lifetime was TBD; now catalogued above. MSRP **$1,699** · founding **$1,274.25** at 25% off.
 
+**App Store Lifetime (2026-09-14):** list US **`$1,999.00`**. Founding **`$1,499.99`** is a paid offer code on IAP `6809032089` (offer **Founding Lifetime**, `e4b718f8-3bfc-44a8-861c-56fe90217797`) … not a StoreKit introductory offer. Production custom / one-time codes wait until that IAP is approved and the app is Ready for Distribution. Redeem: `https://apps.apple.com/redeem?ctx=offercodes&id=6806401093&code=CODE`. Web founding **`$1,274.25`** still works via Safari.
+
 ### 5.2 Slots Edge (`slots-edge-starter`)
 
 **Guides (hero)**

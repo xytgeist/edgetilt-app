@@ -1142,7 +1142,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 ## Update log
 
 - **2026-09-15:** **iPad subscribe cards (Mac).** Real iPad viewport (`Test Fast` `1,2`). **`1.4.246`** enlarges tablet slides to `min(24rem, 46vw)`, modal `56rem`. Phone unchanged. Do not resubmit 125.
-- **2026-09-15:** **Hamburger menu visible again (Mac).** Portal attached to the hidden Chat keep-alive hamburger (zero rect) and painted the menu off-screen. Menu is back under the visible button. Title bar rises to z 107 over the FAB dismiss layer. **`1.4.241`.**
+- **2026-09-15:** **Hamburger dismiss unwind (Mac).** Removed portal / z-106 overlay / title-bar `z-index: 107` (that hid the Slots title bar). Overlay back at `z-40`. Document `pointerdown` closes the menu, including FAB. **`1.4.247`.**
 - **2026-09-15:** **Apple unverified-email copy (Mac).** SIWA `ASAuthorizationError` 1000 / `AuthenticationServices` no longer dumps the raw code. Banner: verify the Apple ID email in Settings, then try again. **`1.4.239`.**
 - **2026-09-15:** **Homepage title (Mac).** `index.html` / og / twitter is **EdgeTilt | Edge for Risk Takers**. Ryan: we are not a slots-and-poker app. Slots/poker SEO stays on the hubs.
 - **2026-09-15:** **Simulator first load hung on SW hygiene (Mac).** iOS 27 Sim `WKWebsiteDataStore.removeData` for service workers can never complete, so `makeUIView` never called `load`. Simulator skips that wait. Device still clears with a 2s cap. Console: `EdgeWebView load` / `didStart` / `didFinish`.

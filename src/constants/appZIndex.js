@@ -27,12 +27,6 @@ export const Z_LOUNGE_DOCK_SLIDE_OVER_DETAIL_PROFILE = 104
 /** FAB above that overlay so the wheel chips stay tappable. */
 export const Z_LOUNGE_DOCK_ABOVE_SLIDE_OVER_DETAIL = 105
 
-/** Full-screen dismiss under the title-bar hamburger menu (above FAB 105). */
-export const Z_SHELL_NAV_MENU_DISMISS = 106
-
-/** Portaled hamburger menu panel (above the dismiss layer). */
-export const Z_SHELL_NAV_MENU = 107
-
 /** Default floor for full-screen app sheets/dialogs (bankroll, logbook, offers, lounge prompts). */
 export const Z_APP_MODAL = 120
 

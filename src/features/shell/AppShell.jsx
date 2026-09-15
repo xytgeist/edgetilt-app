@@ -65,7 +65,7 @@ import { useLoungeColdBootSplash } from '../lounge/useLoungeColdBootSplash.js'
 import { LOUNGE_COLD_BOOT_RESUME_EVENT } from '../../utils/loungeColdBootSplash.js'
 import { shouldShowLoungeColdBootSplash } from '../../utils/loungeColdBootSplash.js'
 import { LEGAL_CONTACT_EMAIL } from '../legal/legalPolicyVersion.js'
-import { Z_APP_ALERT, Z_SHELL_NAV_MENU_DISMISS } from '../../constants/appZIndex.js'
+import { Z_APP_ALERT } from '../../constants/appZIndex.js'
 import {
   consumeStakeOnboardingFromSearch,
   readPokerStakeOnboardingDeal,
@@ -397,7 +397,6 @@ export default function AppShell({
   const [pendingOfferEventIds, setPendingOfferEventIds] = useState([])
   const [offerSpotlightEventIds, setOfferSpotlightEventIds] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
-  const menuOpenedAtRef = useRef(0)
   const [tabErrorTestTrigger, setTabErrorTestTrigger] = useState(0)
   const [tabErrorTestOpen, setTabErrorTestOpen] = useState(false)
   const [isActiveAffiliate, setIsActiveAffiliate] = useState(false)
@@ -2087,11 +2086,6 @@ export default function AppShell({
     SLOTS_TOOL_TAB_IDS.has(tab) && !(tab === 'calculators' && activeCalculator)
   const pokerToolTitleBarCloseVisible = POKER_TOOL_TAB_IDS.has(tab)
 
-  const closeTitleBarMenuFromOutside = useCallback(() => {
-    if (Date.now() - menuOpenedAtRef.current < 400) return
-    setMenuOpen(false)
-  }, [])
-
   const renderTitleBarNavSlot = () => (
     <div className="flex items-center gap-1.5 shrink-0" data-title-bar-nav-cluster>
       <TitleBarQuickLinks
@@ -2117,10 +2111,7 @@ export default function AppShell({
         onClick={() => {
           setMenuOpen((v) => {
             const next = !v
-            if (next) {
-              menuOpenedAtRef.current = Date.now()
-              acknowledgePokerOfferHamburger()
-            }
+            if (next) acknowledgePokerOfferHamburger()
             return next
           })
         }}
@@ -2247,6 +2238,21 @@ export default function AppShell({
     setTab('home')
     setMenuOpen(false)
   }, [authSessionReady, browseMode, tab])
+
+  useEffect(() => {
+    if (!menuOpen) return undefined
+    const onPointerDown = (event) => {
+      const target = event.target
+      if (!(target instanceof Element)) {
+        setMenuOpen(false)
+        return
+      }
+      if (target.closest('[data-title-bar-menu-btn], .lounge-title-nav-menu')) return
+      setMenuOpen(false)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [menuOpen])
 
   useEffect(() => {
     if (shouldShowLoungeColdBootSplash({ tab: 'home', pendingWork: false })) {
@@ -3076,7 +3082,6 @@ export default function AppShell({
   const shellTree = (
     <div
       data-app-shell-root=""
-      data-shell-nav-menu-open={menuOpen ? '' : undefined}
       className="min-h-dvh bg-zinc-950"
     >
       {accessNotice ? (
@@ -3183,14 +3188,9 @@ export default function AppShell({
       {menuOpen && (
         <button
           type="button"
-          onPointerDown={(event) => {
-            event.preventDefault()
-            closeTitleBarMenuFromOutside()
-          }}
-          onClick={closeTitleBarMenuFromOutside}
+          onClick={() => setMenuOpen(false)}
           aria-label="Close navigation menu"
-          className="fixed inset-0 cursor-default bg-black/35"
-          style={{ zIndex: Z_SHELL_NAV_MENU_DISMISS }}
+          className="fixed inset-0 z-40 cursor-default bg-black/35"
         />
       )}
 

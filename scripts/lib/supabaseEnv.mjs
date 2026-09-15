@@ -75,6 +75,12 @@ export function loadSupabaseEnv(target) {
   if (target == null) return;
   const file = TARGET_ENV_FILES[target];
   if (!file) return;
+  // Parent shells often keep the other project's pooler URL. Drop those
+  // before applying the target file so --target=test cannot hit production.
+  if (target === "test" || target === "production") {
+    delete process.env.SUPABASE_DB_URL;
+    delete process.env.SUPABASE_DB_PASSWORD;
+  }
   const full = path.join(repoRoot, file);
   if (applyEnvFile(full, { fillEmptyOnly: false })) return;
 

@@ -199,8 +199,14 @@ function releaseLock() {
 }
 
 function resolveDbUrl(target) {
+  const expectedRef = PROJECT_REFS[target];
   const explicit = process.env.SUPABASE_DB_URL?.trim();
-  if (explicit) return explicit;
+  if (explicit && explicit.includes(expectedRef)) return explicit;
+  if (explicit) {
+    process.stderr.write(
+      `[supabase-db-query] ignoring SUPABASE_DB_URL (project ref mismatch for target=${target})\n`,
+    );
+  }
 
   const password = process.env.SUPABASE_DB_PASSWORD?.trim();
   if (!password) return null;

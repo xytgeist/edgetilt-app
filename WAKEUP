@@ -75,6 +75,12 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-15 … delete account GoTrue grants
+
+**I am Mac Theo.** **`1.4.229`.** `Database error deleting user` was GoTrue (`supabase_auth_admin`) failing CASCADE into `public.*` (no DELETE grant, no RLS policy). Applied **`20260915160000`** on **test**. Throwaway `deleteUser` succeeded. No chat-room FK change. No prod SQL. Ryan: retry Delete on the **Test** IPA / lvslotpro.com. If the IPA is on edgetilt.com, this grant is not there yet. Do not resubmit 125.
+
+`db:query:test` was inheriting a prod pooler URL from the shell. `loadSupabaseEnv` / `resolveDbUrl` now refuse a mismatched project ref.
+
 ### Mac Theo 2026-09-15 … rolled back chat FK guess
 
 **I am Mac Theo.** **`1.4.228`.** Rolled back the `chat_rooms.creator_user_id` SET NULL change on **test** (wrong guess, not in `018393a2`). Delete Edge + client restored to the pre-018393a2 `deleteUser` / `invoke` path. Do not resubmit 125.

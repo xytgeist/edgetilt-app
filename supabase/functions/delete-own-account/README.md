@@ -4,6 +4,8 @@ Deletes the **currently signed-in** Auth user (`auth.users` row) using the **ser
 
 **Effect:** Removes the user from Auth. Tables that reference `auth.users(id)` with `ON DELETE CASCADE` (e.g. `public.profiles`, `community_feed_posts`, push subscription tables) are cleaned up by Postgres.
 
+GoTrue runs that delete as **`supabase_auth_admin`**, which does not bypass RLS and needs table grants on `public.*`. Without **`20260915160000_auth_admin_delete_user_grants.sql`**, Auth returns **`Database error deleting user`**. Applied on **test** 2026-09-15. Prod still needs Ryan's OK.
+
 ## Deploy (Supabase CLI)
 
 From repo root:

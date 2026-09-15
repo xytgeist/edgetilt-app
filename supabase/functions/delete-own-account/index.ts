@@ -51,10 +51,27 @@ Deno.serve(async (req) => {
 
     const { error: delErr } = await admin.auth.admin.deleteUser(user.id)
     if (delErr) {
-      return new Response(JSON.stringify({ error: delErr.message || 'Could not delete user.' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      const authMsg = delErr.message || 'Could not delete user.'
+      let detail = ''
+      try {
+        const { data } = await admin.rpc('explain_auth_user_delete_block', {
+          p_user_id: user.id,
+        })
+        if (typeof data === 'string' && data.trim()) detail = data.trim()
+      } catch {
+        /* keep Auth string */
+      }
+      return new Response(
+        JSON.stringify({
+          error: detail || authMsg,
+          auth: authMsg,
+          ...(detail ? { detail } : {}),
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        },
+      )
     }
 
     return new Response(JSON.stringify({ ok: true }), {

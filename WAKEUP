@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-15 … real delete SQL is the swap check
+
+**I am Mac Theo.** **`1.4.230`.** Actual error under `Database error deleting user`: `23514 poker_tournament_swaps_counterparty_present`. This leftover test `lvslotgod` claimed a swap; delete SET NULLs `counterparty_user_id` and the check still wants a user id. Trigger now flips that row to guest. Edge returns `explain_auth_user_delete_block` on failure. Applied **test**. Retry Delete on lvslotpro. Do not resubmit 125.
+
 ### Mac Theo 2026-09-15 … delete account GoTrue grants
 
 **I am Mac Theo.** **`1.4.229`.** `Database error deleting user` was GoTrue (`supabase_auth_admin`) failing CASCADE into `public.*` (no DELETE grant, no RLS policy). Applied **`20260915160000`** on **test**. Throwaway `deleteUser` succeeded. No chat-room FK change. No prod SQL. Ryan: retry Delete on the **Test** IPA / lvslotpro.com. If the IPA is on edgetilt.com, this grant is not there yet. Do not resubmit 125.

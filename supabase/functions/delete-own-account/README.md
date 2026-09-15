@@ -6,6 +6,8 @@ Deletes the **currently signed-in** Auth user (`auth.users` row) using the **ser
 
 GoTrue runs that delete as **`supabase_auth_admin`**, which does not bypass RLS and needs table grants on `public.*`. Without **`20260915160000_auth_admin_delete_user_grants.sql`**, Auth returns **`Database error deleting user`**. Applied on **test** 2026-09-15. Prod still needs Ryan's OK.
 
+GoTrue also hides the real SQL. On failure the function calls **`explain_auth_user_delete_block`** and returns that string as **`error`**. **`20260915170000`**: a claimed tournament-swap counterparty SET NULL was dying on **`poker_tournament_swaps_counterparty_present`**; the row now flips back to guest.
+
 ## Deploy (Supabase CLI)
 
 From repo root:

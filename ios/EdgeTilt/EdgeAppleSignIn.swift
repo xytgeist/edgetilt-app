@@ -91,12 +91,57 @@ private final class Coordinator: NSObject, ASAuthorizationControllerDelegate, AS
     controller: ASAuthorizationController,
     didCompleteWithError error: Error
   ) {
-    if let err = error as? ASAuthorizationError, err.code == .canceled {
-      finish(["ok": false, "cancelled": true])
+    if let err = error as? ASAuthorizationError {
+      if err.code == .canceled {
+        finish(["ok": false, "cancelled": true])
+        return
+      }
+      finish([
+        "ok": false,
+        "error": Self.friendlyMessage(for: err),
+        "errorCode": err.code.rawValue,
+      ])
       return
     }
-    finish(["ok": false, "error": error.localizedDescription])
+    finish(["ok": false, "error": Self.friendlyFallback(error.localizedDescription)])
   }
+
+  /// ASAuthorizationError.unknown (1000) is what Apple throws after the system
+  /// "Unverified Email" sheet. Do not leak `com.apple.AuthenticationServices…`.
+  private static func friendlyMessage(for err: ASAuthorizationError) -> String {
+    let raw = err.localizedDescription.lowercased()
+    if raw.contains("verif") || raw.contains("unverified") {
+      return unverifiedAppleEmailMessage
+    }
+    switch err.code {
+    case .unknown:
+      return unverifiedAppleEmailMessage
+    case .invalidResponse, .failed:
+      return appleSignInFailedMessage
+    case .notHandled, .notInteractive:
+      return appleSignInUnavailableMessage
+    default:
+      return appleSignInFailedMessage
+    }
+  }
+
+  private static func friendlyFallback(_ localized: String) -> String {
+    let raw = localized.lowercased()
+    if raw.contains("verif") || raw.contains("unverified") || raw.contains("error 1000") {
+      return unverifiedAppleEmailMessage
+    }
+    if raw.contains("authenticationservices") || raw.contains("authorizationerror") {
+      return unverifiedAppleEmailMessage
+    }
+    return appleSignInFailedMessage
+  }
+
+  private static let unverifiedAppleEmailMessage =
+    "Your Apple ID email is not verified yet. Open the Settings app, tap your name, and verify the email. Then try Continue with Apple again."
+  private static let appleSignInFailedMessage =
+    "Apple sign-in failed. Try again, or use email or Google."
+  private static let appleSignInUnavailableMessage =
+    "Apple sign-in is not available right now. Try again, or use email or Google."
 
   private func finish(_ payload: [String: Any]) {
     let done = completion

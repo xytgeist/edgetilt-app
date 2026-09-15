@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-15 … Apple unverified email copy
+
+**I am Mac Theo.** Continue with Apple no longer shows `AuthorizationError error 1000`. Unverified Apple ID email → Settings / tap your name / verify, then try again. Native `EdgeAppleSignIn` + `App.jsx` mapper. Rebuild **EdgeTilt Test** ▶ for the native string. **`1.4.239`.** Do not resubmit 125.
+
 ### Mac Theo 2026-09-15 … Homepage title
 
 **I am Mac Theo.** Homepage / og / twitter title is **EdgeTilt | Edge for Risk Takers**. Ryan: we are not a slots-and-poker app. Slots/poker SEO stays on the hubs. Do not resubmit 125.

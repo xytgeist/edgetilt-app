@@ -983,6 +983,16 @@ function App() {
       return 'Apple sign-in is not enabled on this server yet. Use Google or email for now.'
     }
 
+    if (
+      lower.includes('authenticationservices') ||
+      lower.includes('authorizationerror') ||
+      lower.includes('error 1000') ||
+      lower.includes('unverified email') ||
+      (lower.includes('unverified') && lower.includes('apple'))
+    ) {
+      return 'Your Apple ID email is not verified yet. Open the Settings app, tap your name, and verify the email. Then try Continue with Apple again.'
+    }
+
     return message
   }
 

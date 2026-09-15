@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-15:** **Continue with Apple outline (Mac).** Dropped `border-zinc-500` on the black Apple auth button. **`1.4.234`.**
 - **2026-09-15:** **Delete account SQL + Edge on prod.** Applied **`20260915160000`–`20260915200000`** on **`jtjgtucumuoswnbauxry`**. Redeployed **`delete-own-account`**. Same preserve behavior as test.
 - **2026-09-15:** **Delete account PASSED on test (Ryan).** `lvslotgod@gmail.com` deleted on **lvslotpro** after the swap/stake preserve + `label` fix. In-app Delete works. **`1.4.233`.**
 - **2026-09-15:** **Delete `42702 label ambiguous` (Mac).** Profile-delete trigger variable `label` collided with `poker_stable_deal_slices.label`. Renamed to `v_party_label`. Explain-delete on test `lvslotgod` is clean. **`1.4.233`.**

@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-15 … Apple button outline
+
+**I am Mac Theo.** **`1.4.234`.** Continue with Apple is borderless black (no zinc-500 ring). Light mode same. Do not resubmit 125.
+
 ### Mac Theo 2026-09-15 … Delete account SQL on prod
 
 **I am Mac Theo.** **`1.4.233`.** Prod has **`20260915160000`–`20260915200000`** + **`delete-own-account`** redeployed. Test delete already PASSED. Prod smoke on edgetilt.com when Ryan wants. Do not resubmit 125.

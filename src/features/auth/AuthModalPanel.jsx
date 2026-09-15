@@ -158,7 +158,7 @@ export default function AuthModalPanel({
           type="button"
           disabled={isOAuthLoading}
           onClick={() => onOAuthSignIn({ provider: 'apple', setErrorTarget: 'forgot' })}
-          className={`${btnPrimary} flex w-full items-center justify-center gap-2 rounded-2xl border border-zinc-500 bg-black text-white hover:bg-zinc-900 disabled:opacity-60 disabled:cursor-not-allowed`}
+          className={`${btnPrimary} flex w-full items-center justify-center gap-2 rounded-2xl border-0 bg-black text-white hover:bg-zinc-900 disabled:opacity-60 disabled:cursor-not-allowed`}
           aria-label="Continue with Apple"
         >
           <AppleIcon />
@@ -241,7 +241,7 @@ export default function AuthModalPanel({
           if (authTab === 'join' && requireLegalAcceptance('oauth')) return
           onOAuthSignIn({ provider: 'apple', setErrorTarget: authTab })
         }}
-        className={`${btnPrimary} flex w-full items-center justify-center gap-2 rounded-2xl border border-zinc-500 bg-black text-white hover:bg-zinc-900 disabled:opacity-60 disabled:cursor-not-allowed`}
+        className={`${btnPrimary} flex w-full items-center justify-center gap-2 rounded-2xl border-0 bg-black text-white hover:bg-zinc-900 disabled:opacity-60 disabled:cursor-not-allowed`}
         aria-label="Continue with Apple"
       >
         <AppleIcon />

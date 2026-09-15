@@ -41,6 +41,8 @@ xcodebuild -project ios/EdgeTilt.xcodeproj -scheme "EdgeTilt Test" -destination 
 
 Pick **EdgeTilt Test** in Xcode and Run (▶) on a Simulator or a paired iPhone (Developer Mode on; Trust developer under **Settings → General → VPN & Device Management**).
 
+**Simulator console:** Fig / FigCapture / Accessibility plist / `UIAccessibilityLoaderWebShared` lines on iOS 27 are WebKit noise. A real load prints `EdgeWebView load`, then `didStart` / `didFinish`. If those never appear, the first navigation never started.
+
 **Archive / TestFlight build number:** do not pass `CURRENT_PROJECT_VERSION=126`. App Store Connect wants one increasing sequence across Test Fast, Prod, and local uploads. Stamp it:
 
 ```bash

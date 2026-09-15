@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-15 … Simulator never loads
+
+**I am Mac Theo.** Ryan's iOS 27 Sim console was Fig / AX / WebContent plist noise, not a site error. Cold launch was waiting on SW `removeData` before `webView.load`. Simulator now skips that wait. Device still clears, 2s cap. Rebuild **EdgeTilt Test** ▶. Filter console for `EdgeWebView`. Do not resubmit 125.
+
 ### Mac Theo 2026-09-15 … TestFlight Throwaways
 
 **I am Mac Theo.** External group **Throwaways** is set up for `etceterama@gmail.com`. Test Information saved (Ryan Franklin / `+14803934143` / `investigence@gmail.com`, privacy `https://edgetilt.com/privacy`). Build **1.4.95 (128)** is on the group and **Waiting for Review** (Beta App Review ... not App Store resubmit of 125). Invite email goes out after Apple approves that beta. Builds **129+** (including 144) are `INTERNAL_ONLY` and cannot go on an external group. Next throwaway IPA needs an **App Store / TestFlight External** upload, not Internal Only. Ryan can keep using Xcode → Simulator for Join + Apple now. Do not delete Edge Lord. Do not resubmit 125.

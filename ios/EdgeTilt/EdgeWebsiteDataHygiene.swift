@@ -11,13 +11,32 @@ enum EdgeWebsiteDataHygiene {
   ]
 
   /// Run once before the first navigation of a cold launch.
+  /// Simulator WebKit (iOS 27 especially) can sit forever in `removeData` for
+  /// service-worker types, which used to block `webView.load` on a black screen.
+  /// Device still clears, but we never wait more than `clearTimeoutSeconds`.
   static func clearServiceWorkersAndCaches(from store: WKWebsiteDataStore = .default(),
                                            completion: @escaping () -> Void) {
+    #if targetEnvironment(simulator)
+    NSLog("EdgeWebView skip SW hygiene on Simulator")
+    completion()
+    #else
+    var finished = false
+    let once = {
+      DispatchQueue.main.async {
+        guard !finished else { return }
+        finished = true
+        completion()
+      }
+    }
     store.removeData(
       ofTypes: serviceWorkerTypes,
       modifiedSince: Date.distantPast,
-      completionHandler: completion
+      completionHandler: once
     )
+    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+      once()
+    }
+    #endif
   }
 
   /// JS companion for `EdgeNative.bustServiceWorker` after the page is up.

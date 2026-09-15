@@ -7,6 +7,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
   private let messageHandlerName = "edgeNative"
   /// Fired after each main-frame navigation finish (safe-area re-inject, etc.).
   var onDidFinishNavigation: (() -> Void)?
+  private var didRetryTransientLoad = false
 
   func attach(webView: WKWebView) {
     self.webView = webView
@@ -547,14 +548,48 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
   }
 
   func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+    NSLog("EdgeWebView didStart \(webView.url?.absoluteString ?? "<nil>")")
     applyCustomUserAgent(to: webView)
     // Listeners die with the outgoing page; JS re-marks after it reinstalls them.
     EdgeCallKitManager.shared.invalidateWebReady()
   }
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+    NSLog("EdgeWebView didFinish \(webView.url?.absoluteString ?? "<nil>")")
+    didRetryTransientLoad = false
     applyCustomUserAgent(to: webView)
     onDidFinishNavigation?()
+  }
+
+  func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
+    NSLog("EdgeWebView didFailProvisional \(error.localizedDescription)")
+    retryTransientLoad(on: webView, error: error)
+  }
+
+  func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+    NSLog("EdgeWebView didFail \(error.localizedDescription)")
+  }
+
+  private func retryTransientLoad(on webView: WKWebView, error: Error) {
+    let ns = error as NSError
+    if ns.domain == NSURLErrorDomain && ns.code == NSURLErrorCancelled { return }
+    let transient: Set<Int> = [
+      NSURLErrorTimedOut,
+      NSURLErrorNetworkConnectionLost,
+      NSURLErrorNotConnectedToInternet,
+      NSURLErrorDNSLookupFailed,
+      NSURLErrorCannotConnectToHost,
+    ]
+    guard !didRetryTransientLoad,
+          ns.domain == NSURLErrorDomain,
+          transient.contains(ns.code)
+    else { return }
+    didRetryTransientLoad = true
+    let url = webView.url ?? AppConfig.baseURL
+    NSLog("EdgeWebView retry \(url.absoluteString)")
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+      webView.load(URLRequest(url: url))
+    }
   }
 
   private func applyCustomUserAgent(to webView: WKWebView) {

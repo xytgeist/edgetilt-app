@@ -32,6 +32,7 @@ struct EdgeWebView: UIViewRepresentable {
     let store = config.websiteDataStore
     let loadNow = {
       let url = EdgePushManager.shared.consumePendingDeepLinkURL() ?? context.coordinator.url
+      NSLog("EdgeWebView load \(url.absoluteString)")
       webView.load(URLRequest(url: url))
       EdgePushManager.shared.markReadyForDeepLinks()
     }

@@ -133,45 +133,6 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 })
 
-function isUselessErrorText(text) {
-  const t = String(text || '').trim()
-  if (!t) return true
-  if (t === '{}' || t === '[]' || t === '[object Object]') return true
-  if (/^edge function returned a non-2xx status code$/i.test(t)) return true
-  return false
-}
-
-async function deleteOwnAccountViaEdge({ accessToken }) {
-  const url = `${String(supabaseUrl || '').replace(/\/$/, '')}/functions/v1/delete-own-account`
-  if (!url.startsWith('https://')) {
-    throw new Error('Could not delete account.')
-  }
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      apikey: supabaseAnonKey,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ confirm: true }),
-  })
-  const text = await res.text()
-  let body = null
-  if (text) {
-    try {
-      body = JSON.parse(text)
-    } catch {
-      if (!isUselessErrorText(text)) throw new Error(text.slice(0, 280))
-    }
-  }
-  if (body && typeof body === 'object' && body.ok === true) return
-  const fromError = body?.error != null ? String(body.error).trim() : ''
-  const fromMessage = body?.message != null ? String(body.message).trim() : ''
-  if (fromError && !isUselessErrorText(fromError)) throw new Error(fromError)
-  if (fromMessage && !isUselessErrorText(fromMessage)) throw new Error(fromMessage)
-  if (res.ok) throw new Error('Could not delete account.')
-  throw new Error(`Could not delete account (HTTP ${res.status}).`)
-}
 
 function readBillingQueryParams() {
   if (typeof window === 'undefined') return null
@@ -1264,29 +1225,41 @@ function App() {
   const handleDeleteAccount = useCallback(async () => {
     setDeleteAccountBusy(true)
     try {
-      let session = null
-      const refreshed = await supabase.auth.refreshSession()
-      if (refreshed?.data?.session?.access_token) {
-        session = refreshed.data.session
-      } else {
-        const current = await supabase.auth.getSession()
-        session = current?.data?.session ?? null
-      }
+      const {
+        data: { session },
+      } = await supabase.auth.getSession()
       const userId = session?.user?.id ?? null
-      const accessToken = typeof session?.access_token === 'string' ? session.access_token.trim() : ''
-      if (!accessToken) {
-        throw new Error('Sign in again, then delete the account.')
-      }
 
-      await deleteOwnAccountViaEdge({ accessToken })
+      const { data, error, response } = await supabase.functions.invoke('delete-own-account', {
+        method: 'POST',
+        body: {},
+      })
+      if (error) {
+        let detail = typeof error.message === 'string' ? error.message.trim() : ''
+        if (response) {
+          try {
+            const body = await response.clone().json()
+            if (body && typeof body === 'object' && body.error) {
+              detail = String(body.error).trim()
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+        throw new Error(detail || 'Could not delete account.')
+      }
+      if (data && typeof data === 'object' && data.error) {
+        throw new Error(String(data.error))
+      }
 
       clearAccountClientState(userId)
       await supabase.auth.signOut()
       window.location.href = `${window.location.origin}/`
     } catch (e) {
-      const fallback = 'Could not delete account. Try again in a moment.'
+      const fallback =
+        'Could not delete account. Deploy the delete-own-account Edge Function (see supabase/functions/delete-own-account/README.md).'
       const msg = typeof e?.message === 'string' && e.message.trim() ? e.message.trim() : fallback
-      throw new Error(isUselessErrorText(msg) ? fallback : msg)
+      throw new Error(msg)
     } finally {
       setDeleteAccountBusy(false)
     }

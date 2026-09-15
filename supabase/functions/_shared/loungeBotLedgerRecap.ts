@@ -1,7 +1,7 @@
 /**
  * Tuesday Morning Syndicate Weekly Ledger & Post-Mortem Recap Engine.
  *
- * Compiles the full performance breakdown across the crew (Scott, Rocco, Chedda, Quorum, Tank)
+ * Compiles the full performance breakdown across the crew (Scott, Rocco, Chedda, Tank)
  * over the preceding week (last 7 days), extracts boxscore dominance vs turnover flukes via ESPN,
  * and publishes a natural, swaggered syndicate recap to the Lounge feed + Scott's VIP subscriber channel.
  */
@@ -14,8 +14,11 @@ import { fetchEspnGameSummary, type EspnGameSummary } from './loungeBotEspnSumma
 import { shortDisplayName } from './loungeBotOddsCaption.ts'
 import { formatColoredPickerName } from './loungeBotPickerColors.ts'
 
+export const WEEKLY_RECAP_DESKS = ['Scott', 'Rocco', 'Chedda', 'Tank'] as const
+export type WeeklyRecapDesk = (typeof WEEKLY_RECAP_DESKS)[number]
+
 export type PersonaWeeklyTally = {
-  pickerName: 'Scott' | 'Rocco' | 'Chedda' | 'Quorum' | 'Tank'
+  pickerName: WeeklyRecapDesk
   roleTitle: string
   wins: number
   losses: number
@@ -67,7 +70,7 @@ export type WeeklyRecapPayload = {
     total: number
     avgPoints: number
   } | null
-  pickers: Record<'Scott' | 'Rocco' | 'Chedda' | 'Quorum' | 'Tank', PersonaWeeklyTally>
+  pickers: Record<WeeklyRecapDesk, PersonaWeeklyTally>
   topPerformer: {
     pickerName: string
     unitsNet: number
@@ -85,8 +88,11 @@ const PICKER_TITLES: Record<string, string> = {
   Scott: 'The Model',
   Rocco: 'Trenches',
   Chedda: 'Dogs & ML',
-  Quorum: 'Blend Desk',
   Tank: 'Totals',
+}
+
+function isWeeklyRecapDesk(name: unknown): name is WeeklyRecapDesk {
+  return WEEKLY_RECAP_DESKS.includes(name as WeeklyRecapDesk)
 }
 
 /** Rotating bad-beat sign-offs ... ~25% of weeks omit entirely. */
@@ -566,22 +572,23 @@ export async function compileWeeklySyndicateRecap(
     return null
   }
 
+  const deskPicks = picks.filter((p) => isWeeklyRecapDesk(p.picker_name))
+  if (!deskPicks.length) return null
+
   let totalWins = 0
   let totalLosses = 0
   let totalPushes = 0
   let totalUnits = 0
 
-  const pickerTallies: Record<'Scott' | 'Rocco' | 'Chedda' | 'Quorum' | 'Tank', PersonaWeeklyTally> = {
+  const pickerTallies: Record<WeeklyRecapDesk, PersonaWeeklyTally> = {
     Scott: { pickerName: 'Scott', roleTitle: PICKER_TITLES.Scott, wins: 0, losses: 0, pushes: 0, unitsNet: 0, winRatePct: 0 },
     Rocco: { pickerName: 'Rocco', roleTitle: PICKER_TITLES.Rocco, wins: 0, losses: 0, pushes: 0, unitsNet: 0, winRatePct: 0 },
     Chedda: { pickerName: 'Chedda', roleTitle: PICKER_TITLES.Chedda, wins: 0, losses: 0, pushes: 0, unitsNet: 0, winRatePct: 0 },
-    Quorum: { pickerName: 'Quorum', roleTitle: PICKER_TITLES.Quorum, wins: 0, losses: 0, pushes: 0, unitsNet: 0, winRatePct: 0 },
     Tank: { pickerName: 'Tank', roleTitle: PICKER_TITLES.Tank, wins: 0, losses: 0, pushes: 0, unitsNet: 0, winRatePct: 0 },
   }
 
-  for (const p of picks) {
-    const pName = p.picker_name as 'Scott' | 'Rocco' | 'Chedda' | 'Quorum' | 'Tank'
-    const target = pickerTallies[pName] || pickerTallies.Scott
+  for (const p of deskPicks) {
+    const target = pickerTallies[p.picker_name as WeeklyRecapDesk]
     const u = Number(p.units_net) || 0
 
     if (p.status === 'won') {
@@ -599,7 +606,7 @@ export async function compileWeeklySyndicateRecap(
   }
 
   // Calculate win percentages
-  for (const key of Object.keys(pickerTallies) as Array<'Scott' | 'Rocco' | 'Chedda' | 'Quorum' | 'Tank'>) {
+  for (const key of WEEKLY_RECAP_DESKS) {
     const t = pickerTallies[key]
     const decided = t.wins + t.losses
     t.winRatePct = decided > 0 ? Math.round((t.wins / decided) * 1000) / 10 : 0
@@ -610,7 +617,7 @@ export async function compileWeeklySyndicateRecap(
 
   // Top Performer
   let topPicker: PersonaWeeklyTally | null = null
-  for (const key of Object.keys(pickerTallies) as Array<'Scott' | 'Rocco' | 'Chedda' | 'Quorum' | 'Tank'>) {
+  for (const key of WEEKLY_RECAP_DESKS) {
     const t = pickerTallies[key]
     if (!topPicker || t.unitsNet > topPicker.unitsNet) {
       topPicker = t
@@ -624,21 +631,21 @@ export async function compileWeeklySyndicateRecap(
   } : null
 
   // ESPN post-mortem: best split-game pair when available; omit section only on thin weeks
-  const boxscoreHighlights = await resolvePostMortemHighlights(picks, now.toISOString())
+  const boxscoreHighlights = await resolvePostMortemHighlights(deskPicks, now.toISOString())
 
   let clvBeatsCount = 0
-  for (const p of picks) {
+  for (const p of deskPicks) {
     const ev = Number(p.ev_pct) || 0
     if (ev >= 1.0 || (p.metadata?.factors && Object.keys(p.metadata.factors).length > 0)) {
       clvBeatsCount++
     }
   }
-  const clvBeats = Math.min(picks.length, Math.max(clvBeatsCount, Math.round(picks.length * 0.73)))
+  const clvBeats = Math.min(deskPicks.length, Math.max(clvBeatsCount, Math.round(deskPicks.length * 0.73)))
   const clv =
-    picks.length > 0
+    deskPicks.length > 0
       ? {
           beats: clvBeats,
-          total: picks.length,
+          total: deskPicks.length,
           avgPoints: 0.6,
         }
       : null
@@ -647,7 +654,7 @@ export async function compileWeeklySyndicateRecap(
     startDateIso: sevenDaysAgo.toISOString(),
     endDateIso: now.toISOString(),
     overall: {
-      totalPicks: picks.length,
+      totalPicks: deskPicks.length,
       wins: totalWins,
       losses: totalLosses,
       pushes: totalPushes,
@@ -688,7 +695,7 @@ export function formatWeeklySyndicateRecapCaption(recap: WeeklyRecapPayload): st
   lines.push('')
 
   lines.push('# 📋 Crew Breakdown')
-  for (const key of ['Scott', 'Rocco', 'Chedda', 'Quorum', 'Tank'] as const) {
+  for (const key of WEEKLY_RECAP_DESKS) {
     const p = recap.pickers[key]
     const pUnits = formatColoredUnits(p.unitsNet)
     const record = `${p.wins}-${p.losses}${p.pushes > 0 ? `-${p.pushes}` : ''}`

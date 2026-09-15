@@ -957,6 +957,7 @@ Already-posted chat messages stay as they were; next publish is clean.
 ### Weekly ledger (`formatWeeklySyndicateRecapCaption`)
 
 - H1 title / crew / syndicate total; H2 for CLV + boxscore
+- Crew lines are Scott / Rocco / Chedda / Tank only. Quorum is parked and never prints, even at 0-0
 - Crew lines: comma between units and win% (`+1.03u, 55.6%`)
 - green/red/gold color tags; `==🏆 Top Earner==` on top desk
 - CLV: `[green]+0.6[/green] avg points CLV`

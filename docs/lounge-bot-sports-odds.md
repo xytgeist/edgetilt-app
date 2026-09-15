@@ -4,7 +4,7 @@
 
 **Live bot (test):** **Scott Share / Sharpe Signal** — `@sharpesignal`, slug **`sports-odds`**, pipeline **`odds_api`**, category pill **`sports`**. Edges, coffee, line moves, alerts.
 
-**Desk bot (test):** **Sharpe Syndicate** — `@sharpesyndicate`, slug **`sharpe-syndicate`**, pipeline **`odds_api`**. Desk / slate / VIP shop only. **Cannot** run Signal alert polls (Steam, Sharp Money, edges, Coffee, BBH, VBR) … cron + Edge skip those actions for this slug. Migration **`20260903150000`**.
+**Desk bot (test):** **Sharpe Syndicate** — `@sharpesyndicate`, slug **`sharpe-syndicate`**, pipeline **`odds_api`**. Desk / slate / VIP shop only. **Cannot** run Signal alert polls (Steam, Sharp Money, edges, Coffee, BBH, VBR) … cron + Edge skip those actions for this slug. Migration **`20260903150000`**. Lounge **About** stays empty (`syncBotProfileHighlight` no longer stamps the ledger line). Record lives on sharpesyndicate.com.
 
 ### Ownership matrix (Signal vs Syndicate)
 

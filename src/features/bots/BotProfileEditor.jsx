@@ -5,6 +5,7 @@ import { uploadProfileAvatar, uploadProfileBanner } from '../profiles/profileGat
 import { isProbablyImageFile, prepareAvatarImageForUpload } from '../../utils/compressImageForUpload.js'
 import { normalizeLoungeProfileCategoryPills } from '../../utils/loungePostCategoryPills.js'
 import { saveBotSettings } from './botPortalApi.js'
+import { SHARPE_SYNDICATE_BOT_SLUG } from '../../syndicate/syndicateBotIdentity.js'
 
 const ProfileAvatarCropModal = lazy(() => import('../lounge/ProfileAvatarCropModal.jsx'))
 
@@ -44,6 +45,7 @@ export default function BotProfileEditor({ bot, supabaseClient, onReload, setToa
   const avatarUrl = bot.avatar_url || null
   const bannerUrl = bot.banner_url || null
   const displayName = bot.display_name || bot.slug
+  const isSyndicateBot = String(bot.slug || '') === SHARPE_SYNDICATE_BOT_SLUG
 
   const patchProfile = async (patch, successMsg) => {
     setBusy('profile')
@@ -135,7 +137,7 @@ export default function BotProfileEditor({ bot, supabaseClient, onReload, setToa
       {
         handle,
         bio: draft.bio.trim(),
-        about_me: draft.aboutMe.trim(),
+        about_me: isSyndicateBot ? '' : draft.aboutMe.trim(),
         category_pills: normalizeLoungeProfileCategoryPills(draft.profileTribes),
       },
       'Profile saved.',
@@ -274,6 +276,7 @@ export default function BotProfileEditor({ bot, supabaseClient, onReload, setToa
             className="mt-1 w-full rounded-xl border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-white text-sm resize-none focus:border-cyan-500/50 focus:outline-none"
           />
         </label>
+        {isSyndicateBot ? null : (
         <label className="block sm:col-span-2">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
             About (profile, max 140)
@@ -286,6 +289,7 @@ export default function BotProfileEditor({ bot, supabaseClient, onReload, setToa
             className="mt-1 w-full rounded-xl border border-zinc-700/80 bg-zinc-950/60 px-3 py-2 text-white text-sm resize-y focus:border-cyan-500/50 focus:outline-none"
           />
         </label>
+        )}
         <div className="block sm:col-span-2">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500 mb-1">
             Interest tribes

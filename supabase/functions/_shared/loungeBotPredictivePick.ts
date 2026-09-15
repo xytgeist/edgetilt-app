@@ -18,7 +18,7 @@ import {
 } from './loungeBotOddsCaption.ts'
 import { formatColoredPickerName } from './loungeBotPickerColors.ts'
 import { LOUNGE_BOT_CAPTION_MAX } from './loungeBotCaptionLimits.ts'
-import { resolveSlatePublisher } from './loungeBotSyndicateIdentity.ts'
+import { resolveSlatePublisher, SHARPE_SYNDICATE_BOT_SLUG } from './loungeBotSyndicateIdentity.ts'
 import {
   destPreviewPayload,
   fanOutSyndicatePublish,
@@ -3388,13 +3388,27 @@ async function postGradeRecapComments(
 }
 
 /**
- * Update the Scott Bot profile's about_me with the latest verified record highlight.
+ * Update Signal's about_me with the latest verified record highlight.
+ * Syndicate About stays empty … ledger lives on sharpesyndicate.com.
  */
 export async function syncBotProfileHighlight(
   admin: SupabaseClient,
   botUserId: string,
 ): Promise<{ ok: boolean; highlight?: string; error?: string }> {
   try {
+    const { data: bot } = await admin
+      .from('lounge_bot_accounts')
+      .select('slug')
+      .eq('user_id', botUserId)
+      .maybeSingle()
+    if (String(bot?.slug || '') === SHARPE_SYNDICATE_BOT_SLUG) {
+      await admin
+        .from('profiles')
+        .update({ about_me: null })
+        .eq('user_id', botUserId)
+      return { ok: true }
+    }
+
     const { data: rec, error } = await admin.rpc('lounge_bot_get_picks_record', {
       p_bot_user_id: botUserId,
       p_timeframe: 'all_time',

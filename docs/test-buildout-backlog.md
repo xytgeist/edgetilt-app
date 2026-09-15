@@ -896,6 +896,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 - [ ] **`lounge-bot-ingest`** (farm worker door) — deploy on **test** with **`LOUNGE_BOT_FARM_INGEST_SECRET`**; migration **`20260907190000`**; redeploy **`lounge-bot-admin`**. Source: `supabase/functions/lounge-bot-ingest/README.md`, `docs/lounge-bot-farm-ingest.md`.
 
+- [x] **`delete-own-account`** (Settings → Account info). Redeployed **test** **2026-09-15** with `verify_jwt = false` and always-200 `{ ok: true }` / `{ ok: false, error }`. Clears own `feed_comments` + `community_feed_posts` before `deleteUser` (feed delete triggers can abort cascade). Client is raw `fetch` after `refreshSession` (WKWebView `functions.invoke` non-2xx body was `{}`). Source: `supabase/functions/delete-own-account/README.md`. Prod replay when Ryan OKs.
 - [x] **`apple-iap-verify`** (StoreKit begin + confirm) — deployed **test + prod** (2026-09-05). Was **404** on test … sandbox Pro purchase succeeded on Apple, then the IPA showed `Failed to send a request to the Edge Function`. SQL **`20260905120000`** on both. Source: `supabase/functions/apple-iap-verify/README.md`.
 - [x] **`apple-iap-notify`** (App Store Server Notifications V2) — deployed **test + prod** (2026-09-05). SQL **`20260905140000`**. Ryan pastes ASC Production URL. Source: `supabase/functions/apple-iap-notify/README.md`.
 - [x] **`stripe-ensure-edge-pro-price`** (ops, service role) — deployed **test** 2026-09-06. Created test-mode Edge Pro **$9.99/mo** `price_1UCj2NHSxykzMEuFEn1txoxa` and set **`STRIPE_PRICE_EDGE_PRO`**. Old id `price_1UALrKHy8VbdXOQulyD9ZOkd` was not in that Stripe account. Source: `supabase/functions/stripe-ensure-edge-pro-price/README.md`.
@@ -1140,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-15:** **Delete account actually deletes (Mac).** Generic “Try again in a moment” was a swallowed Edge non-2xx (`functions.invoke` empty body on the IPA). Function now always-200 `{ ok }` / `{ error }`, `verify_jwt` off, deletes own feed comments/posts first. Client refreshes the session and `fetch`es. Redeploy **test**. **`1.4.226`.**
 - **2026-09-15:** **Delete account `{}` + Apple error placement (Mac).** Confirm portal was eating the same tap; invoke `{}` is no longer shown as the error. Apple issuer error sits on the Apple button. Ryan still enables Apple in Supabase Auth. **`1.4.225`.**
 - **2026-09-15:** **App Review rejection fixes (Mac).** SIWA on the auth sheet (Apple first). CallKit + PushKit off for storefront `CHN` (China stays a territory). Subscribe 3D carousel spread on iPad-sized viewports. **`1.4.224`.** Do not resubmit 125. Do not Add Lifetime yet. Ryan still enables Apple on the App ID + Supabase Apple provider.
 - **2026-09-15:** **1.4.95 (125) Rejected (Mac).** ASC thread `c0b06dc5-…`. iPad Air 11-inch (M3) / iPadOS 27. **4.8** Sign in with Apple (Google is on the sheet). **4.0** iPad-compat layout crowded (Ryan: subscribe carousel only). **5.0** CallKit + China availability. Do not resubmit 125 unchanged.

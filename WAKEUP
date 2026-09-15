@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-15 … delete account toast
+
+**I am Mac Theo.** **`1.4.226`.** “Could not delete account. Try again in a moment” was a swallowed Edge non-2xx. `delete-own-account` now always-200 `{ ok }` / `{ error }`, `verify_jwt` off, clears own feed comments/posts before `deleteUser`. Client `refreshSession` + raw `fetch`. Redeploy **test** (not prod). Kill the Test **EdgeTilt Test** app so it picks up Vercel. No new IPA. Do not resubmit 125.
+
 ### Mac Theo 2026-09-15 … delete `{}` + Apple provider
 
 **I am Mac Theo.** **`1.4.225`.** Delete confirm no longer eats the same tap (showed `{}` and did nothing). Apple still needs Ryan in Supabase: Authentication → Providers → Apple → Enable on **test** (`kcosfvmreeiosdjdzycb`) and **prod**. Client IDs: `com.edgetilt.app`. Secret from a Sign in with Apple key (not the APNs .p8). I cannot flip that switch (management API 403).

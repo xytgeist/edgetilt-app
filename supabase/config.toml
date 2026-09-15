@@ -127,3 +127,8 @@ verify_jwt = true
 # App Store Server Notifications V2 (Apple signs the JWS, not a Supabase JWT).
 [functions.apple-iap-notify]
 verify_jwt = false
+
+# Self-serve account delete. Handler checks the user JWT; gateway verify_jwt
+# hid the real body as `{}` / non-2xx on the IPA.
+[functions.delete-own-account]
+verify_jwt = false

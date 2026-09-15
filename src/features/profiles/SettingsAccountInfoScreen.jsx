@@ -256,7 +256,12 @@ export default function SettingsAccountInfoScreen({
       await onDeleteAccount()
     } catch (e) {
       const raw = typeof e?.message === 'string' ? e.message.trim() : ''
-      const useless = !raw || raw === '{}' || raw === '[]' || raw === '[object Object]'
+      const useless =
+        !raw ||
+        raw === '{}' ||
+        raw === '[]' ||
+        raw === '[object Object]' ||
+        /^edge function returned a non-2xx status code$/i.test(raw)
       setSaveError(useless ? 'Could not delete account. Try again in a moment.' : raw)
     }
   }, [deleteAccountBusy, onDeleteAccount])

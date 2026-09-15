@@ -108,6 +108,7 @@ import {
 } from './features/poker-stable/pokerGuestBackerAutoLink.js'
 import { lazyRoute } from './utils/lazyImportWithChunkReload.js'
 import { createAppleIdTokenNonce } from './features/auth/appleIdTokenNonce.js'
+import { reloadAfterAuthSession } from './features/auth/authPostLoginReload.js'
 import { edgeNativeInvoke, isEdgeiOSShell } from './utils/edgeNative.js'
 import { syncEdgeNativeAuthSession } from './utils/edgeNativeAuthSession.js'
 
@@ -269,6 +270,8 @@ function App() {
   const legalExitViaPopRef = useRef(false)
   /** Password login reloads the page. Do not consume the subscribe-resume flag (or flash Subscribe) before that reload. */
   const skipSubscribeOpenForAuthReloadRef = useRef(false)
+  /** Sync lock ... React `isOAuthLoading` is too late to stop a second Apple sheet. */
+  const oauthInFlightRef = useRef(false)
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -1005,18 +1008,19 @@ function App() {
       return
     }
 
-    setIsLoggingIn(false)
-    setUser(data.user)
     setAccessNotice('')
     setVerificationSuccess(false)
     setAuthPanelOpen(false)
-    await ensureDefaultProfileRow(supabase, data.user)
-    // Full reload so Lounge (and composer) mount with the new session; same-tab anon → member can leave feed UI stale otherwise.
-    window.location.reload()
+    // Do not setUser before reload ... Updated policies / welcome would mount, then the reload asks again.
+    await reloadAfterAuthSession(
+      (signedInUser) => ensureDefaultProfileRow(supabase, signedInUser),
+      data.user,
+    )
   }
 
   const handleOAuthSignIn = async (provider, { setError = setLoginError, markLegalPending = false } = {}) => {
-    if (isOAuthLoading) return
+    if (isOAuthLoading || oauthInFlightRef.current) return
+    oauthInFlightRef.current = true
     setError('')
     if (markLegalPending) markPendingLegalAcceptance()
     setIsOAuthLoading(true)
@@ -1030,6 +1034,7 @@ function App() {
         const { raw, hashed } = await createAppleIdTokenNonce()
         const native = await edgeNativeInvoke('signInWithApple', { nonce: hashed })
         if (native?.cancelled) {
+          oauthInFlightRef.current = false
           setIsOAuthLoading(false)
           return
         }
@@ -1042,16 +1047,17 @@ function App() {
           nonce: raw,
         })
         if (error) throw error
-        setIsOAuthLoading(false)
-        setUser(data.user)
         setAccessNotice('')
         setVerificationSuccess(false)
         setAuthPanelOpen(false)
-        await ensureDefaultProfileRow(supabase, data.user)
-        window.location.reload()
+        await reloadAfterAuthSession(
+          (signedInUser) => ensureDefaultProfileRow(supabase, signedInUser),
+          data.user,
+        )
         return
       } catch (e) {
         setError(getFriendlyErrorMessage(e))
+        oauthInFlightRef.current = false
         setIsOAuthLoading(false)
         return
       }
@@ -1065,6 +1071,7 @@ function App() {
     })
     if (error) {
       setError(getFriendlyErrorMessage(error))
+      oauthInFlightRef.current = false
       setIsOAuthLoading(false)
     }
   }

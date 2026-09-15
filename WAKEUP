@@ -77,7 +77,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Mac Theo 2026-09-15 … iPad subscribe cards
 
-**I am Mac Theo.** iPad 3D stack stays. Cards were shrinking then **jumping giant** … first-paint `transform` transition + center `translateZ(72)`. **`1.4.244`:** iPad center `tz: 0`, no mount transition, tablet width `12rem`, `height: auto` (beats `h-full` / `sm:min-h`). Phone unchanged. Do not resubmit 125.
+**I am Mac Theo.** Subscribe CSS on `lvslotpro` was already `1.4.244`. iPad Air sim showed no change because the IPA is **iPhone-only** (`TARGETED_DEVICE_FAMILY` `1`) … WKWebView is a scaled iPhone viewport, so tablet rules never match. **Debug / EdgeTilt Test** is now `1,2`. Release stays `1` (listing stays iPhone-only). **Ryan must rebuild the Test scheme** on iPad Air. Web refresh will not fix this. Do not resubmit 125.
 
 ### Mac Theo 2026-09-15 … Hamburger outside tap
 

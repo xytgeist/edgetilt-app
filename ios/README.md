@@ -4,8 +4,8 @@ Thin native loader for the live Edge site. **Not Capacitor.** No baked Vite `dis
 
 | Scheme | Config | Loads |
 | --- | --- | --- |
-| **EdgeTilt Test** | Debug | `https://lvslotpro.com` |
-| **EdgeTilt Prod** | Release | `https://edgetilt.com` |
+| **EdgeTilt Test** | Debug | `https://lvslotpro.com` … iPhone + iPad (`TARGETED_DEVICE_FAMILY` `1,2`) |
+| **EdgeTilt Prod** | Release | `https://edgetilt.com` … iPhone-only (`1`) so App Store archives do not pick up iPad screenshot requirements |
 
 - Bundle ID: `com.edgetilt.app`
 - Shell version / UA token: `EdgeiOS/0.1.0` (see `AppConfig.swift`)

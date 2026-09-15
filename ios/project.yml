@@ -58,6 +58,7 @@ targets:
       configs:
         Debug:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DEBUG EDGE_ENV_TEST"
+          TARGETED_DEVICE_FAMILY: "1,2"
         Release:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) EDGE_ENV_PROD"
           SWIFT_OPTIMIZATION_LEVEL: -O

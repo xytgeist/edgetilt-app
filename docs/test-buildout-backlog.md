@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-15:** **Hamburger outside-tap (Mac).** Title-bar nav menu dismiss layer sits above the Lounge FAB (z 106) and the menu is portaled at 107, so Settings / FAB / feed taps close it. **`1.4.240`.**
 - **2026-09-15:** **Apple unverified-email copy (Mac).** SIWA `ASAuthorizationError` 1000 / `AuthenticationServices` no longer dumps the raw code. Banner: verify the Apple ID email in Settings, then try again. **`1.4.239`.**
 - **2026-09-15:** **Homepage title (Mac).** `index.html` / og / twitter is **EdgeTilt | Edge for Risk Takers**. Ryan: we are not a slots-and-poker app. Slots/poker SEO stays on the hubs.
 - **2026-09-15:** **Simulator first load hung on SW hygiene (Mac).** iOS 27 Sim `WKWebsiteDataStore.removeData` for service workers can never complete, so `makeUIView` never called `load`. Simulator skips that wait. Device still clears with a 2s cap. Console: `EdgeWebView load` / `didStart` / `didFinish`.

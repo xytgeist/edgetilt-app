@@ -2654,6 +2654,12 @@ html.light .lounge-title-nav-btn {
   color: #27272a !important;
 }
 
+/* Open hamburger: title bar above the FAB dismiss layer (z 106) so the in-flow menu stays on screen. */
+[data-app-shell-root][data-shell-nav-menu-open] [data-lounge-title-bar],
+[data-app-shell-root][data-shell-nav-menu-open] [data-edge-scroll-shell] {
+  z-index: 107;
+}
+
 /* Title bar nav dropdown - selected item readable on light gray highlight */
 html.light .lounge-title-nav-menu {
   background-color: #ffffff !important;

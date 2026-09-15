@@ -77,7 +77,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Mac Theo 2026-09-15 … Hamburger outside tap
 
-**I am Mac Theo.** Expanded title-bar hamburger closes on any outside tap, including the FAB. Dismiss layer z 106 (above FAB 105), menu portaled at 107. **`1.4.240`.** Do not resubmit 125.
+**I am Mac Theo.** Hamburger still closes on FAB / outside taps. Menu is **not** portaled (that hid it). In-flow under the button. Title bar z 107 over dismiss 106. **`1.4.241`.** Do not resubmit 125.
 
 ### Mac Theo 2026-09-15 … Apple unverified email copy
 

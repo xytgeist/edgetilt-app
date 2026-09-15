@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, Suspense, useSyncExternalStore } from 'react'
-import { createPortal, flushSync } from 'react-dom'
+import React, { useState, useEffect, useRef, useCallback, Suspense, useSyncExternalStore } from 'react'
+import { flushSync } from 'react-dom'
 import * as Sentry from '@sentry/react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import { feedPostDisplayCaption } from '../../utils/communityFeedPost'
@@ -65,7 +65,7 @@ import { useLoungeColdBootSplash } from '../lounge/useLoungeColdBootSplash.js'
 import { LOUNGE_COLD_BOOT_RESUME_EVENT } from '../../utils/loungeColdBootSplash.js'
 import { shouldShowLoungeColdBootSplash } from '../../utils/loungeColdBootSplash.js'
 import { LEGAL_CONTACT_EMAIL } from '../legal/legalPolicyVersion.js'
-import { Z_APP_ALERT, Z_SHELL_NAV_MENU, Z_SHELL_NAV_MENU_DISMISS } from '../../constants/appZIndex.js'
+import { Z_APP_ALERT, Z_SHELL_NAV_MENU_DISMISS } from '../../constants/appZIndex.js'
 import {
   consumeStakeOnboardingFromSearch,
   readPokerStakeOnboardingDeal,
@@ -397,8 +397,7 @@ export default function AppShell({
   const [pendingOfferEventIds, setPendingOfferEventIds] = useState([])
   const [offerSpotlightEventIds, setOfferSpotlightEventIds] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
-  const titleBarMenuBtnRef = useRef(null)
-  const [titleBarMenuPos, setTitleBarMenuPos] = useState({ top: 56, right: 12 })
+  const menuOpenedAtRef = useRef(0)
   const [tabErrorTestTrigger, setTabErrorTestTrigger] = useState(0)
   const [tabErrorTestOpen, setTabErrorTestOpen] = useState(false)
   const [isActiveAffiliate, setIsActiveAffiliate] = useState(false)
@@ -2088,21 +2087,10 @@ export default function AppShell({
     SLOTS_TOOL_TAB_IDS.has(tab) && !(tab === 'calculators' && activeCalculator)
   const pokerToolTitleBarCloseVisible = POKER_TOOL_TAB_IDS.has(tab)
 
-  useLayoutEffect(() => {
-    if (!menuOpen) return undefined
-    const place = () => {
-      const btn = titleBarMenuBtnRef.current
-      if (!btn) return
-      const rect = btn.getBoundingClientRect()
-      setTitleBarMenuPos({
-        top: rect.bottom + 4,
-        right: Math.max(8, window.innerWidth - rect.right),
-      })
-    }
-    place()
-    window.addEventListener('resize', place)
-    return () => window.removeEventListener('resize', place)
-  }, [menuOpen])
+  const closeTitleBarMenuFromOutside = useCallback(() => {
+    if (Date.now() - menuOpenedAtRef.current < 400) return
+    setMenuOpen(false)
+  }, [])
 
   const renderTitleBarNavSlot = () => (
     <div className="flex items-center gap-1.5 shrink-0" data-title-bar-nav-cluster>
@@ -2114,31 +2102,25 @@ export default function AppShell({
         starterUnlockedCalculatorKeys={starterUnlockedCalculatorKeys}
         onNavigate={handleQuickLinkNavigate}
       />
-      <div className="relative shrink-0">
-      {menuOpen && typeof document !== 'undefined'
-        ? createPortal(
-            <div
-              className="lounge-title-nav-menu fixed min-w-[8.05rem] max-w-[min(10.5rem,calc(100vw-1rem))] w-max max-h-[min(22rem,calc(100dvh-max(env(safe-area-inset-top,0px),var(--edge-sat,0px))-max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px))-5rem))] overflow-y-auto overscroll-y-contain rounded-2xl border border-zinc-800/80 bg-zinc-950/98 px-2 py-2 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-zinc-950/90"
-              role="menu"
-              style={{
-                top: titleBarMenuPos.top,
-                right: titleBarMenuPos.right,
-                zIndex: Z_SHELL_NAV_MENU,
-              }}
-            >
-              {renderNavMenuItems()}
-            </div>,
-            document.body,
-          )
-        : null}
+      <div className="relative z-[55] shrink-0">
+      {menuOpen ? (
+        <div
+          className="lounge-title-nav-menu absolute right-0 top-full z-[55] mt-1 min-w-[8.05rem] max-w-[min(10.5rem,calc(100vw-1rem))] w-max max-h-[min(22rem,calc(100dvh-max(env(safe-area-inset-top,0px),var(--edge-sat,0px))-max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px))-5rem))] overflow-y-auto overscroll-y-contain rounded-2xl border border-zinc-800/80 bg-zinc-950/98 px-2 py-2 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-zinc-950/90"
+          role="menu"
+        >
+          {renderNavMenuItems()}
+        </div>
+      ) : null}
       <button
         type="button"
-        ref={titleBarMenuBtnRef}
         data-title-bar-menu-btn
         onClick={() => {
           setMenuOpen((v) => {
             const next = !v
-            if (next) acknowledgePokerOfferHamburger()
+            if (next) {
+              menuOpenedAtRef.current = Date.now()
+              acknowledgePokerOfferHamburger()
+            }
             return next
           })
         }}
@@ -3092,7 +3074,11 @@ export default function AppShell({
   }
 
   const shellTree = (
-    <div data-app-shell-root="" className="min-h-dvh bg-zinc-950">
+    <div
+      data-app-shell-root=""
+      data-shell-nav-menu-open={menuOpen ? '' : undefined}
+      className="min-h-dvh bg-zinc-950"
+    >
       {accessNotice ? (
         <div
           role="status"
@@ -3199,9 +3185,9 @@ export default function AppShell({
           type="button"
           onPointerDown={(event) => {
             event.preventDefault()
-            setMenuOpen(false)
+            closeTitleBarMenuFromOutside()
           }}
-          onClick={() => setMenuOpen(false)}
+          onClick={closeTitleBarMenuFromOutside}
           aria-label="Close navigation menu"
           className="fixed inset-0 cursor-default bg-black/35"
           style={{ zIndex: Z_SHELL_NAV_MENU_DISMISS }}

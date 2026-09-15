@@ -70,11 +70,11 @@ const SLIDE_POSES = {
   right: { tx: 56, tz: -110, ry: -16, scale: 0.88, opacity: 1, z: 14 },
 }
 
-/** iPad / tall tablet: same 3D stack as phone, more spread so the peeks read. */
+/** iPad: bigger cards, milder % spread so the peeks still fit. */
 const SLIDE_POSES_IPAD = {
-  left: { tx: -82, tz: -64, ry: 8, scale: 0.93, opacity: 1, z: 14 },
-  center: { tx: 0, tz: 28, ry: 0, scale: 1, opacity: 1, z: 30 },
-  right: { tx: 82, tz: -64, ry: -8, scale: 0.93, opacity: 1, z: 14 },
+  left: { tx: -68, tz: -56, ry: 8, scale: 0.94, opacity: 1, z: 14 },
+  center: { tx: 0, tz: 20, ry: 0, scale: 1, opacity: 1, z: 30 },
+  right: { tx: 68, tz: -56, ry: -8, scale: 0.94, opacity: 1, z: 14 },
 }
 
 function isSpreadSubscribeCarousel() {

@@ -77,7 +77,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Mac Theo 2026-09-15 … iPad subscribe cards
 
-**I am Mac Theo.** Card shrink is gone. The giant cards were a scaled iPhone viewport, not CSS. **`1.4.245`** uses the normal `16.75rem` slide + the iPad spread poses. Test Fast stays `1,2`. Do not resubmit 125.
+**I am Mac Theo.** iPad subscribe cards are larger on a real iPad viewport. **`1.4.246`:** slides `min(24rem, 46vw)`, modal `56rem`, milder spread so peeks still fit. Phone unchanged. Test Fast stays `1,2`. Do not resubmit 125.
 
 ### Mac Theo 2026-09-15 … Hamburger outside tap
 

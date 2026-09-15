@@ -36,9 +36,11 @@ function errorText(err: unknown, fallback: string) {
 
 /**
  * Deletes the Auth user identified by the JWT (caller can only delete themselves).
- * Always returns HTTP 200 with `{ ok: true }` or `{ ok: false, error }` so WKWebView
- * / supabase-js can read the body (non-2xx often arrives as `{}`).
- * Gateway verify_jwt is off; this handler checks the bearer via Auth.
+ * Always returns HTTP 200 with `{ ok: true }` or `{ ok: false, error }`.
+ *
+ * Prefer GoTrue `deleteUser` (this is what worked before the Review/SIWA work).
+ * If app triggers abort that (`Database error deleting user`), fall back to
+ * `public.delete_own_account_user()` (replica role).
  */
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -82,23 +84,37 @@ Deno.serve(async (req) => {
       return fail('Invalid or expired session. Sign in again, then delete the account.')
     }
 
-    // Feed delete triggers can abort a cascaded auth.users delete. Clear own
-    // comments/posts first so deleteUser is not fighting those denorm guards.
-    const { error: commentErr } = await admin.from('feed_comments').delete().eq('user_id', user.id)
-    if (commentErr) {
-      return fail(errorText(commentErr, 'Could not delete your comments.'))
-    }
-    const { error: postErr } = await admin.from('community_feed_posts').delete().eq('user_id', user.id)
-    if (postErr) {
-      return fail(errorText(postErr, 'Could not delete your posts.'))
-    }
+    // Do not CASCADE-wipe group chats this user created.
+    await admin.from('chat_rooms').update({ creator_user_id: null }).eq('creator_user_id', user.id)
 
     const { error: delErr } = await admin.auth.admin.deleteUser(user.id)
-    if (delErr) {
-      return fail(errorText(delErr, 'Could not delete user.'))
+    if (!delErr) {
+      return json({ ok: true })
     }
 
-    return json({ ok: true })
+    const delMsg = errorText(delErr, 'Could not delete user.')
+    if (!/database error deleting user/i.test(delMsg)) {
+      return fail(delMsg)
+    }
+
+    const asUser = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { Authorization: `Bearer ${jwt}` } },
+    })
+    const { data, error: rpcErr } = await asUser.rpc('delete_own_account_user')
+    if (!rpcErr && data && typeof data === 'object' && data.ok === true) {
+      return json({ ok: true })
+    }
+    const rpcError =
+      rpcErr
+        ? errorText(rpcErr, '')
+        : data && typeof data === 'object' && data.error != null
+          ? String(data.error).trim()
+          : ''
+    if (rpcError && !/schema cache/i.test(rpcError)) {
+      return fail(rpcError)
+    }
+    return fail(delMsg)
   } catch (e) {
     return fail(errorText(e, 'Server error'))
   }

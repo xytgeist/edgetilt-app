@@ -313,6 +313,8 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 
 **Decision (2026-08-10):** Use **Twilio Verify** for OTP (auth-only). Do **not** run a separate toll-free TFV program for guest swap/stake SMS … those stay **email/push**. Own TFV’d From number for agreement notices is abandoned after carrier gambling-adjacent rejection.
 
+**Decision (2026-09-14):** Telnyx guest campaign **`C6NW3Y9`** failed MNO review **Gambling (704)**. Swap/stake invites are **copy/share the claim link** from the creator's own Messages. Optional email stays. Leased-number SMS is dead for this path. OTP 2FA can still use **`+1 480 393 4143`** / campaign **`CKAVJP0`**. Do not assign **725**. Do not Create Campaign / appeal 704 unless Ryan asks.
+
 **Shipped (placeholder, test @ `fe1402a0`):** Settings → Account → **Account info** — edit handle, email, optional `profiles.phone_number`; delete account text link. Migration **`20260727210000`** on test. **Not verified yet.** OTP opt-in proof page for future TFV/Verify docs: **`public/compliance/sms-otp-opt-in.html`**.
 
 ### Phone verification (Twilio Verify)
@@ -1138,6 +1140,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-14:** **Swap/stake invites are copy-paste (Windows).** Telnyx guest 10DLC **`C6NW3Y9`** failed **Gambling (704)**. Creators **Copy invite** / Share the claim link into their own text. Optional email stays. RPCs **`poker_tournament_swap_mint_invite_link`**, **`poker_stable_guest_stakee_mint_invite_link`**, **`poker_stable_guest_backer_mint_invite_link`** (`20260914200000`) on **test**. Do not assign **725**. Do not appeal 704. **`1.4.220`.**
 - **2026-09-14:** **Desk cards shop the printed ATS number (Windows).** Vote still uses the market file. After the side is picked, print/ledger the best us/us2 point, then juice. Split can show Scott +2.5 / Rocco -1.5. No shop after close lock. Redeploy **`lounge-odds-poll`**. **`1.4.219`.**
 - **2026-09-14:** **Tank ATS line is back (Windows).** Desk list is Scott / Rocco / Tank ATS / Chedda. O/U header still under the tape. “wind kills the bet” is italic. Redeploy **`lounge-odds-poll`**. **`1.4.218`.**
 - **2026-09-14:** **Primetime O/U sits under the tape (Windows).** After bets %, an O/U header + purple Tank model line. Tank is not in the ATS desk list. Redeploy **`lounge-odds-poll`**. **`1.4.217`.**

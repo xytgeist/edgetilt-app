@@ -11,14 +11,12 @@
  * Player-created deals: stakee invokes when guest slices have contact info.
  *
  * Channels:
- *   - guest → Twilio SMS and/or Resend email (informational; no guest claim UI yet)
+ *   - guest → optional Resend email + copy-paste claim link (no leased-number SMS)
  *
- * Secrets (same as poker-tournament-swap-notify):
+ * Secrets (optional email):
  *   RESEND_API_KEY, RESEND_FROM / POKER_SWAP_EMAIL_FROM
- *   TWILIO_ACCOUNT_SID, TWILIO_FROM_NUMBER
- *   TWILIO_API_KEY_SID + TWILIO_API_KEY_SECRET (preferred)
- *   TWILIO_AUTH_TOKEN (legacy fallback)
  *   PUBLIC_APP_URL / APP_ORIGIN (link host)
+ * Leased-number SMS retired (10DLC gambling 704).
  */
 import { billingCorsHeaders, jsonResponse } from '../_shared/billingCors.ts'
 import { createBillingAdmin, getUserFromJwt } from '../_shared/billingDb.ts'
@@ -718,7 +716,7 @@ async function sendResendEmail(to: string, subject: string, html: string, text: 
 }
 
 async function sendTwilioSms(_to: string, _body: string) {
-  // Guest stake SMS retired (carrier TFV / gambling-adjacent). Email + in-app only.
+  // Guest stake SMS retired (10DLC gambling 704). Copy-link + optional email only.
   return { skipped: true as const, reason: 'guest SMS disabled' }
 }
 

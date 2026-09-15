@@ -15,6 +15,11 @@ import {
   notifyStableGuestSyndicateBackers,
 } from './pokerStableApi.js'
 import {
+  guestInviteActorName,
+  loadDealSlicesForInvite,
+  mintGuestStakeInviteRows,
+} from '../poker-bankroll/pokerGuestInviteShare.js'
+import {
   backerSlicePaidCapital,
   computeBackerAvailableBankroll,
   computeBackerPendingHold,
@@ -418,7 +423,8 @@ function SliceEditor({
                 <p className="mb-2 text-[11px] text-rose-400">{guestContactErrors.email}</p>
               ) : null}
               <p className="mb-2 text-[11px] leading-snug text-zinc-500">
-                Email optional ... used to notify them about this stake.
+                Email optional. After you create, copy the invite into your own text ...
+                EdgeTilt does not SMS them.
               </p>
             </>
           ) : null}
@@ -928,7 +934,7 @@ function PokerStableDealFormSheet({
               console.warn('[poker-stable] guest stakee notify failed', guestNotifyWarning)
             } else if (notifiedCount === 0) {
               guestNotifyWarning =
-                'Guest player notify did not send. Check email on the guest player.'
+                'Guest player email did not send. You can still copy the invite.'
             }
           }
         }
@@ -943,7 +949,7 @@ function PokerStableDealFormSheet({
             console.warn('[poker-stable] guest syndicate backer notify failed', msg)
           } else if (notifiedCount === 0) {
             const msg =
-              'Guest syndicate backer notify did not send. Check email/phone on the guest slice.'
+              'Guest syndicate backer email did not send. You can still copy the invite.'
             guestNotifyWarning = guestNotifyWarning ? `${guestNotifyWarning} ${msg}` : msg
           }
         }
@@ -958,11 +964,26 @@ function PokerStableDealFormSheet({
           guestNotifyWarning = notifyErr.message || 'Guest notify failed.'
           console.warn('[poker-stable] guest notify failed', guestNotifyWarning)
         } else if (hadGuestContact && notifiedCount === 0) {
-          guestNotifyWarning = 'Guest notify did not send. Check email/phone on the guest slice.'
+          guestNotifyWarning = 'Guest email did not send. You can still copy the invite.'
         }
       }
+      let guestInvites = []
+      if (createdDeal?.id) {
+        const { data: me } = await supabaseClient
+          .from('profiles')
+          .select('display_name, handle')
+          .eq('user_id', userId)
+          .maybeSingle()
+        const { slices } = await loadDealSlicesForInvite(supabaseClient, createdDeal.id)
+        guestInvites = await mintGuestStakeInviteRows({
+          supabase: supabaseClient,
+          deal: createdDeal,
+          slices,
+          actorName: guestInviteActorName(me),
+        })
+      }
       triggerTapHapticLight()
-      onCreated?.(createdDeal, { guestNotifyWarning })
+      onCreated?.(createdDeal, { guestNotifyWarning, guestInvites })
       onClose()
     } catch (e) {
       const message = e?.message || 'Could not save deal.'
@@ -1085,7 +1106,8 @@ function PokerStableDealFormSheet({
                   <p className="mb-3 text-[11px] text-rose-400">{playerGuestContactErrors.email}</p>
                 ) : null}
                 <p className="mb-3 text-[11px] leading-snug text-zinc-500">
-                  Email optional ... used to notify them about this stake.
+                  Email optional. After you create, copy the invite into your own text ...
+                  EdgeTilt does not SMS them.
                 </p>
               </>
             ) : null}

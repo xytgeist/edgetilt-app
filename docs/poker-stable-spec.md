@@ -22,8 +22,8 @@ Canonical spec for Stable staking: deal types, slices, makeup, settle, top-up, a
 - **Tournament markup:** backer pays `action% × package × markup_rate` on accept. **Face** (`action% × package`) stays in the stake; **fee** (`face × (markup − 1)`) credits the player’s **personal Poker bankroll** immediately and hits backer **Realized P/L** immediately. Fee is **not** in portfolio value; it **does** count in at-risk ROI / TWR / Realized P/L. Markup rate is deal-level (`poker_stable_deals.markup_rate`). Cash backing has **no markup**.
 - **Tournament player contribution:** unsold package face (`baseline × (100 − sold action%)`) is debited from the player’s **personal Poker bankroll** when the stake goes live (no markup on the player share). Tracked on `poker_stable_deals.player_package_capital`. On close, credit **roll × retained %** back to personal; overall P/L = returned − contribution. Cancel/revoke refunds remaining contribution.
 - **Cancel after accept:** player may cancel an unsettled stake; server unwinds paid capital + fee (credit backer, debit player personal, reverse realized). Migration **`20260811210000`**.
-- **Guests (player-initiated):** player-entered terms authoritative; optional phone/email for notify (SMS/email via Edge **`poker-stable-notify`** on create, terms edit with before/after diff, and **session complete**); no guest ledger UI. Player may **delete** the stake until an Edge backer accepts; guest-only stakes remain deletable.
-- **Guests (backer Create Stake):** backer sets terms + lead slice at create; guest player gets email/SMS with **`/poker-stake-claim?token=…`**. Claim links Edge account only (`stakee_user_id`); signup from that page sends email confirm back to the same claim URL (auto-link after verify). Player then **Accept / Decline** on Bankroll (no terms renegotiation). Decline kills the deal for everyone; unhappy with terms → decline and create a new stake. Migration **`20260803100000`**. **Guest syndicate co-backers** on the same create flow are **not wired yet** ... see § Notifications → Phase 1b.
+- **Guests (player-initiated):** player-entered terms authoritative; optional email for notify (Resend via Edge **`poker-stable-notify`** on create, terms edit with before/after diff, and **session complete**); creator **Copy invite** / Share the claim link into their own text (no leased-number SMS). No guest ledger UI. Player may **delete** the stake until an Edge backer accepts; guest-only stakes remain deletable.
+- **Guests (backer Create Stake):** backer sets terms + lead slice at create; guest player gets optional email plus **Copy invite** for **`/poker-stake-claim?token=…`**. Claim links Edge account only (`stakee_user_id`); signup from that page sends email confirm back to the same claim URL (auto-link after verify). Player then **Accept / Decline** on Bankroll (no terms renegotiation). Decline kills the deal for everyone; unhappy with terms → decline and create a new stake. Migration **`20260803100000`**. Guest syndicate co-backer copy-invite mint is on **`poker_stable_guest_backer_mint_invite_link`** (`20260914200000`).
 - **No terms edit (Phase 1, 2026-08-11):** pending stakes are **Accept / Decline only**. Edit terms / Offer new terms / counter / propose are removed (RPCs disabled via **`20260811170000`**). Renegotiate by declining (or revoking) and creating a new stake.
 - **Planned (Phase 2):** deal-level economics (`pricing_mode`, `player_profit_pct` / markup, rakeback) with slices holding identity + `action_pct` only; different economics = separate deals.
 - **Edge stakers:** full slice UI + asymmetric ledger confirm/dispute.
@@ -277,13 +277,13 @@ Two rails ... same pattern everywhere: **emit event → right recipients → rig
 | Rail | Who | Channels |
 | --- | --- | --- |
 | **A — Edge** | Edge account on the deal | `activity_events` → Alerts row + web push (`lounge-send-activity-push`) |
-| **B — Guest** | Email/phone only | Edge **`poker-stable-notify`** (Resend + Twilio) + claim URL where onboarding is needed |
+| **B — Guest** | Email optional + copy/share claim link | Edge **`poker-stable-notify`** (Resend) + **Copy invite** (`20260914200000`). No leased-number SMS (10DLC gambling 704). |
 
 **Session start:** intentionally **off** (end/log only) unless product revisits.
 
 ### Create-stake matrix (shipped vs gap)
 
-| Initiator | Recipient | Guest email/SMS + claim | Edge Alerts/push | Deep link |
+| Initiator | Recipient | Guest email + copy-link claim | Edge Alerts/push | Deep link |
 | --- | --- | --- | --- | --- |
 | **Backer A** | Guest **player** | ✅ **`guest_stakee_offer`** → `/poker-stake-claim` | N/A | Bankroll `stableDeal=` after claim |
 | **Backer A** | Edge **player** | N/A | ✅ **`poker_stable_backer_offer`** (Phase 1) | Bankroll `stableDeal=` |
@@ -533,6 +533,7 @@ Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`**
 
 ## Update log
 
+- **2026-09-14:** **Guest invites are copy-paste:** Telnyx **`C6NW3Y9`** failed Gambling 704. Creators mint claim URLs via **`poker_stable_guest_stakee_mint_invite_link`** / **`poker_stable_guest_backer_mint_invite_link`** (`20260914200000`) and paste into their own text. Optional Resend stays. No leased-number SMS.
 - **2026-08-16:** **Stakee delete from Bankroll Archive (test):** migration **`20260816160000`** adds stakee-only archive/history visibility timestamps + `poker_stable_stakee_hide_archived_deal`. Archive detail now offers **Delete archived stake**, then asks whether merged stake sessions should also leave personal history/metrics. Shared deal/session audit, backer history, and settled bankroll balances remain intact.
 - **2026-08-14:** **Tournament history groups multi-flight series (client):** Completed same-series flights collapse to one history card (aggregate invested/result/hours, deduped swaps). Detail lists each flight with Edit. Group key is series identity + ownership scope, not soft-event UUID. DB stays one row per flight. **`pokerTournamentHistoryGroups.js`**, **`PokerBankrollTracker`**, **`PokerSessionDetailSheet`**.
 - **2026-08-14:** **Swap-term info modals (client):** Each draft checkbox has a small info button with the rule and Player A / Player B examples using a $1,000 buy-in, 10% swap, and $10,000 cash-out where applicable. Copy explicitly treats cash-out as prize, not profit after buy-in. **`PokerTournamentSwapsSection`**.

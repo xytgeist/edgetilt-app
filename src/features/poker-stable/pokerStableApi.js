@@ -1828,7 +1828,7 @@ function parseStableNotifyPayload(data) {
 }
 
 /**
- * Notify guest backers (Twilio SMS + Resend email) via Edge Function.
+ * Notify guest backers (optional Resend email) via Edge Function. Copy-link is separate.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} dealId
  * @param {{ sliceIds?: string[]; kind?: 'offer' | 'deleted' | 'terms_edited' | 'slice_nudge'; termsEdit?: { before: object; after: object } }} [opts]
@@ -1947,7 +1947,7 @@ export async function notifyStableGuestStakee(supabase, dealId) {
 }
 
 /**
- * Notify guest backers when a stake session is completed (Resend email + Twilio SMS).
+ * Notify guest backers when a stake session is completed (optional Resend email).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} dealId
  * @param {string} sessionId

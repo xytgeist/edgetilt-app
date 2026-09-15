@@ -18,6 +18,7 @@ import PokerStableAttentionSheet from './PokerStableAttentionSheet.jsx'
 import PokerStableClosedHorseSheet from './PokerStableClosedHorseSheet.jsx'
 import PokerStableDealDetailSheet from './PokerStableDealDetailSheet.jsx'
 import PokerStableDealTermsSheet from './PokerStableDealTermsSheet.jsx'
+import PokerGuestInvitesSheet from '../poker-bankroll/PokerGuestInviteCopyCard.jsx'
 import PokerStableHorseCarousel from './PokerStableHorseCarousel.jsx'
 import PokerStablePortfolioDetailSheet from './PokerStablePortfolioDetailSheet.jsx'
 import PokerStablePortfolioHero from './PokerStablePortfolioHero.jsx'
@@ -123,6 +124,7 @@ export default function PokerStableScreen({
   const [schemaMissing, setSchemaMissing] = useState(false)
   const [slicesByDeal, setSlicesByDeal] = useState(/** @type {Record<string, object[]>} */ ({}))
   const [sheet, setSheet] = useState(/** @type {null | 'request'} */ (null))
+  const [guestInvites, setGuestInvites] = useState([])
   const [createStakeSeed, setCreateStakeSeed] = useState(/** @type {object | null} */ (null))
   /** @type {{ seed: object, counterpartLabel: string, declinedDealId?: string } | null} */
   const [proposeAfterDecline, setProposeAfterDecline] = useState(null)
@@ -1208,10 +1210,20 @@ export default function PokerStableScreen({
             setSheet(null)
             setCreateStakeSeed(null)
           }}
-          onCreated={() => {
+          onCreated={(_deal, meta) => {
             setCreateStakeSeed(null)
+            if (Array.isArray(meta?.guestInvites) && meta.guestInvites.length) {
+              setGuestInvites(meta.guestInvites)
+            }
             void load()
           }}
+        />
+      ) : null}
+
+      {guestInvites.length ? (
+        <PokerGuestInvitesSheet
+          invites={guestInvites}
+          onClose={() => setGuestInvites([])}
         />
       ) : null}
 

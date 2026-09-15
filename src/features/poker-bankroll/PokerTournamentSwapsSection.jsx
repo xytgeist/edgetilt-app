@@ -13,12 +13,20 @@ import {
   computeSwapOwnershipStats,
 } from './pokerSwapOwnershipSummary.js'
 import PokerSwapOwnershipSummary from './PokerSwapOwnershipSummary.jsx'
+import { PokerGuestInviteCopyCard } from './PokerGuestInviteCopyCard.jsx'
+import {
+  formatGuestSwapInviteText,
+  guestInviteActorName,
+  mintSwapGuestInvite,
+  swapIsUnclaimedGuest,
+} from './pokerGuestInviteShare.js'
 import {
   cancelTournamentSwap,
   closeSwapSideResult,
   emptyDraftSwap,
   markSwapPaid,
   notifyTournamentSwap,
+  formatTournamentEventLabel,
   setSwapSideManualResult,
   swapIsMarkedPaid,
   swapOtherPartyLabel,
@@ -500,6 +508,7 @@ function revealExpandedInOverflowParent(el) {
  *   maxSwapGivePct?: number,
  *   showOwnershipSummary?: boolean,
  *   allowCloseOwnResult?: boolean,
+ *   eventsById?: Record<string, object>,
  *   showGlobalConfirm?: (opts: {
  *     title: string,
  *     message?: string,
@@ -527,6 +536,7 @@ export default function PokerTournamentSwapsSection({
   showOwnershipSummary = false,
   allowCloseOwnResult = false,
   showGlobalConfirm = null,
+  eventsById = {},
 }) {
   const [pickerOpen, setPickerOpen] = useState(false)
   /** swapId → show manual payout fields */
@@ -542,6 +552,7 @@ export default function PokerTournamentSwapsSection({
   const [termsForm, setTermsForm] = useState(/** @type {object | null} */ (null))
   const lastDraftCardRef = useRef(/** @type {HTMLDivElement | null} */ (null))
   const prevDraftCountRef = useRef(draftSwaps.length)
+  const [inviteBySwapId, setInviteBySwapId] = useState({})
 
   useLayoutEffect(() => {
     const prev = prevDraftCountRef.current
@@ -646,6 +657,34 @@ export default function PokerTournamentSwapsSection({
       })
     }
     onDraftSwapsChange(next)
+  }
+
+  async function onCopyGuestInvite(swap) {
+    if (!supabaseClient || !swap?.id) return
+    setBusyId(swap.id)
+    setLocalError('')
+    try {
+      const { url, error } = await mintSwapGuestInvite(supabaseClient, swap.id)
+      if (error) throw error
+      const event = swap.tournament_event_id ? eventsById[swap.tournament_event_id] : null
+      setInviteBySwapId((prev) => ({
+        ...prev,
+        [swap.id]: {
+          url,
+          text: formatGuestSwapInviteText({
+            actorName: guestInviteActorName(profilesById[userId]),
+            pctCreator: swap.pct_creator_gives,
+            pctCounterparty: swap.pct_counterparty_gives,
+            eventLabel: event ? formatTournamentEventLabel(event) : '',
+            url,
+          }),
+        },
+      }))
+    } catch (e) {
+      setLocalError(e?.message || 'Could not create invite link.')
+    } finally {
+      setBusyId('')
+    }
   }
 
   async function onMarkPaid(swap, role) {
@@ -1089,7 +1128,8 @@ export default function PokerTournamentSwapsSection({
                     <p className="text-[11px] text-rose-400">{guestContactErrors.email}</p>
                   ) : null}
                   <p className="text-[11px] leading-snug text-zinc-500">
-                    Email optional ... used to notify them of the swap.
+                    Email optional. After you send, copy the invite into your own text ...
+                    EdgeTilt does not SMS them.
                   </p>
                 </div>
               ) : null}
@@ -1236,6 +1276,21 @@ export default function PokerTournamentSwapsSection({
                       {termsEditorOpen ? 'Close' : 'Edit'}
                     </button>
                   ) : null}
+                  {role === 'creator' && swapIsUnclaimedGuest(swap) ? (
+                    <button
+                      type="button"
+                      disabled={busyId === swap.id}
+                      data-poker-guest-invite-copy-btn
+                      onClick={() => void onCopyGuestInvite(swap)}
+                      className="rounded-lg border border-cyan-500/35 px-2 py-1 text-[11px] font-semibold text-cyan-200 touch-manipulation active:bg-cyan-950/40 disabled:opacity-50"
+                    >
+                      {busyId === swap.id
+                        ? 'Copying…'
+                        : inviteBySwapId[swap.id]
+                          ? 'Refresh invite'
+                          : 'Copy invite'}
+                    </button>
+                  ) : null}
                   {canCancel ? (
                     <button
                       type="button"
@@ -1321,6 +1376,16 @@ export default function PokerTournamentSwapsSection({
               ) : null}
               {statusLine ? (
                 <div className={`text-sm ${statusTone}`}>{statusLine}</div>
+              ) : null}
+              {inviteBySwapId[swap.id] ? (
+                <div className="mt-2">
+                  <PokerGuestInviteCopyCard
+                    title="Text them this"
+                    text={inviteBySwapId[swap.id].text}
+                    url={inviteBySwapId[swap.id].url}
+                    shareTitle="Tournament swap"
+                  />
+                </div>
               ) : null}
               {otherResultLine && !bothReady ? (
                 <div className="mt-0.5 text-[11px] text-zinc-400">{otherResultLine}</div>

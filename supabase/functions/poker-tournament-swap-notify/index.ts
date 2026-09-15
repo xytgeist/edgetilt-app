@@ -7,16 +7,14 @@
  *   - revision: either Edge user changed only their own bookkeeping terms
  *
  * Channels:
- *   - guest → Twilio SMS and/or Resend email
+ *   - guest → optional Resend email + copy-paste claim link (no leased-number SMS)
  *   - Edge user → activity_events (in-app + push via lounge-send-activity-push)
  *     Deep link: /?tab=poker-bankroll
  *
- * Secrets (optional per guest channel):
+ * Secrets (optional email):
  *   RESEND_API_KEY, RESEND_FROM / POKER_SWAP_EMAIL_FROM
- *   TWILIO_ACCOUNT_SID, TWILIO_FROM_NUMBER
- *   TWILIO_API_KEY_SID + TWILIO_API_KEY_SECRET (preferred)
- *   TWILIO_AUTH_TOKEN (legacy fallback if API key not set)
  *   PUBLIC_APP_URL / APP_ORIGIN (claim link host)
+ * Leased-number SMS retired (10DLC gambling 704).
  */
 import { billingCorsHeaders, jsonResponse } from '../_shared/billingCors.ts'
 import { createBillingAdmin, getUserFromJwt } from '../_shared/billingDb.ts'
@@ -191,7 +189,7 @@ async function sendResendEmail(to: string, subject: string, html: string, text: 
 }
 
 async function sendTwilioSms(_to: string, _body: string) {
-  // Guest swap SMS retired (carrier TFV / gambling-adjacent). Email + in-app only.
+  // Guest swap SMS retired (10DLC gambling 704). Copy-link + optional email only.
   return { skipped: true as const, reason: 'guest SMS disabled' }
 }
 

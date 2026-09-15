@@ -1056,7 +1056,8 @@ export async function guestSwapClaimByEmail(supabase) {
 }
 
 /**
- * Notify guest (Twilio SMS + email) or Edge user (in-app + push) via Edge Function.
+ * Notify guest (optional Resend email) or Edge user (in-app + push) via Edge Function.
+ * Guest claim links are also minted client-side for copy/share into the creator's own text.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} swapId
  * @param {{ kind?: 'offer' | 'result' | 'revision' }} [opts]

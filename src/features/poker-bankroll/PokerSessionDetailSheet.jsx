@@ -775,6 +775,7 @@ export default function PokerSessionDetailSheet({
               onDraftSwapsChange={() => {}}
               savedSwaps={uniqueSwaps}
               profilesById={swapProfilesById}
+              eventsById={eventsById}
               onSavedSwapsMutated={onSavedSwapsMutated}
               showGlobalConfirm={showGlobalConfirm}
               compact

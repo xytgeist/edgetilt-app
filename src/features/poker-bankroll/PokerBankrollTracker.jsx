@@ -198,6 +198,13 @@ import {
 } from './pokerSessionAttribution.js'
 import { draftBackerActionSold } from './pokerSessionBackerDrafts.js'
 import PokerTournamentSwapsSection from './PokerTournamentSwapsSection.jsx'
+import PokerGuestInvitesSheet from './PokerGuestInviteCopyCard.jsx'
+import {
+  guestInviteActorName,
+  loadDealSlicesForInvite,
+  mintGuestStakeInviteRows,
+  mintGuestSwapInviteRows,
+} from './pokerGuestInviteShare.js'
 import {
   applySoftTournamentEventToForm,
   isSoftTournamentEventPick,
@@ -455,6 +462,7 @@ export default function PokerBankrollTracker({
   const [error, setError] = useState('')
   /** Brief success copy after + Stake create (pending or active). */
   const [stakeNotice, setStakeNotice] = useState('')
+  const [guestInvites, setGuestInvites] = useState([])
   const [nudgingSliceId, setNudgingSliceId] = useState(/** @type {string | null} */ (null))
   /** @type {null | 'session' | 'sessionDetail' | 'bankroll' | 'start' | 'end' | 'rebuy' | 'import' | 'swaps' | 'createStake'} */
   const [sheet, setSheet] = useState(null)
@@ -2308,8 +2316,8 @@ export default function PokerBankrollTracker({
   }
 
   async function attachDraftSwapsToSession(sessionRow, drafts) {
-    if (!supabaseClient || !userId || !sessionRow?.id) return
-    if (sessionRow.session_type !== 'tournament' || !drafts?.length) return
+    if (!supabaseClient || !userId || !sessionRow?.id) return []
+    if (sessionRow.session_type !== 'tournament' || !drafts?.length) return []
 
     const linked = await linkTournamentEventForSession(sessionRow)
     const tournamentEventId = linked.tournament_event_id || null
@@ -2324,7 +2332,7 @@ export default function PokerBankrollTracker({
       { sessions, eventsById: swapEventsById },
     )
     if (swapErr) {
-      if (isMissingTournamentSwapTableError(swapErr)) return
+      if (isMissingTournamentSwapTableError(swapErr)) return []
       throw swapErr instanceof Error
         ? swapErr
         : new Error(swapErr.message || 'Could not save swaps.')
@@ -2337,6 +2345,12 @@ export default function PokerBankrollTracker({
     setDraftSwaps((prev) =>
       sentLocalIds.size ? prev.filter((d) => !sentLocalIds.has(d.localId)) : [],
     )
+    return mintGuestSwapInviteRows({
+      supabase: supabaseClient,
+      swaps,
+      actorName: guestInviteActorName(swapProfilesById[userId]),
+      eventsById: swapEventsById,
+    })
   }
 
   /** Persist one (or more) draft offers onto an existing tournament session. */
@@ -2345,8 +2359,9 @@ export default function PokerBankrollTracker({
     setSaving(true)
     setError('')
     try {
-      await attachDraftSwapsToSession(sessionRow, drafts)
+      const invites = await attachDraftSwapsToSession(sessionRow, drafts)
       await loadData()
+      if (invites?.length) setGuestInvites(invites)
     } catch (e) {
       setError(e?.message || 'Could not send swap.')
     } finally {
@@ -2905,8 +2920,10 @@ export default function PokerBankrollTracker({
         )
         if (bindErr) throw bindErr
       }
+      const pendingInvites = []
       if (payload.session_type === 'tournament' && draftSwaps.length > 0) {
-        await attachDraftSwapsToSession(sessionRow, draftSwaps)
+        const invites = await attachDraftSwapsToSession(sessionRow, draftSwaps)
+        if (invites?.length) pendingInvites.push(...invites)
       }
       if (payload.session_type === 'tournament') {
         await refreshSeriesSwapBullets(supabaseClient, sessionRow, {
@@ -2922,7 +2939,18 @@ export default function PokerBankrollTracker({
           .eq('id', pieceDeal.id)
         if (linkErr) throw linkErr
         void notifyStableStakeGuests(supabaseClient, pieceDeal.id, { kind: 'offer' })
+        const { slices } = await loadDealSlicesForInvite(supabaseClient, pieceDeal.id)
+        const stakeInvites = await mintGuestStakeInviteRows({
+          supabase: supabaseClient,
+          deal: pieceDeal,
+          slices,
+          actorName: guestInviteActorName(
+            swapProfilesById[userId] || stableProfilesById[userId],
+          ),
+        })
+        if (stakeInvites.length) pendingInvites.push(...stakeInvites)
       }
+      if (pendingInvites.length) setGuestInvites(pendingInvites)
       if (userId) {
         writeStoredPokerBankrollScope(
           userId,
@@ -2949,7 +2977,7 @@ export default function PokerBankrollTracker({
     }
   }
 
-  /** Fire-and-forget guest backer email/SMS when a stake session completes. */
+  /** Fire-and-forget guest backer email when a stake session completes. */
   async function notifyGuestBackersOnSessionComplete(sessionId, dealId) {
     if (!supabaseClient || !sessionId || !dealId) return
     const { error } = await notifyStableSessionComplete(supabaseClient, dealId, sessionId)
@@ -3580,7 +3608,8 @@ export default function PokerBankrollTracker({
         }
         if (payload.session_type === 'tournament') {
           if (draftSwaps.length > 0) {
-            await attachDraftSwapsToSession(sessionRow, draftSwaps)
+            const invites = await attachDraftSwapsToSession(sessionRow, draftSwaps)
+            if (invites?.length) setGuestInvites(invites)
           }
           if (!editingActiveSession) {
             const syncA = await syncCreatorResultsForSession(
@@ -3624,7 +3653,8 @@ export default function PokerBankrollTracker({
           await notifyGuestBackersOnSessionComplete(created.id, created.deal_id)
         }
         if (payload.session_type === 'tournament' && draftSwaps.length > 0) {
-          await attachDraftSwapsToSession(sessionRow, draftSwaps)
+          const invites = await attachDraftSwapsToSession(sessionRow, draftSwaps)
+          if (invites?.length) setGuestInvites(invites)
         }
         void recordAppSessionRecorded(supabaseClient, 'poker-bankroll', payload.session_type)
       }
@@ -5762,6 +5792,9 @@ export default function PokerBankrollTracker({
             if (deal?.id) {
               pendingCarouselDealIdRef.current = deal.id
               const warn = meta?.guestNotifyWarning
+              if (Array.isArray(meta?.guestInvites) && meta.guestInvites.length) {
+                setGuestInvites(meta.guestInvites)
+              }
               if (deal.status === 'pending') {
                 showStakeNotice(
                   warn
@@ -5948,6 +5981,7 @@ export default function PokerBankrollTracker({
               onDraftSwapsChange={setDraftSwaps}
               savedSwaps={editingId ? editingSessionSwaps : formSeriesCarriedSwaps}
               profilesById={swapProfilesById}
+              eventsById={swapEventsById}
               onSavedSwapsMutated={() => void loadData()}
               allowCloseOwnResult={Boolean(editingId && !editingActiveSession)}
               showGlobalConfirm={showGlobalConfirm}
@@ -6215,6 +6249,7 @@ export default function PokerBankrollTracker({
                 onDraftSwapsChange={setDraftSwaps}
                 savedSwaps={formSeriesCarriedSwaps}
                 profilesById={swapProfilesById}
+                eventsById={swapEventsById}
                 onSavedSwapsMutated={() => void loadData()}
                 showGlobalConfirm={showGlobalConfirm}
                 incomingAcceptSwap={incomingAcceptSwap}
@@ -6297,6 +6332,7 @@ export default function PokerBankrollTracker({
               onDraftSwapsChange={setDraftSwaps}
               savedSwaps={actionSessionSwaps}
               profilesById={swapProfilesById}
+              eventsById={swapEventsById}
               onSavedSwapsMutated={() => void loadData()}
               showGlobalConfirm={showGlobalConfirm}
               compact
@@ -6561,6 +6597,13 @@ export default function PokerBankrollTracker({
             </div>
           </div>
         </div>
+      ) : null}
+
+      {guestInvites.length ? (
+        <PokerGuestInvitesSheet
+          invites={guestInvites}
+          onClose={() => setGuestInvites([])}
+        />
       ) : null}
 
       {bankrollInfoOpen ? (

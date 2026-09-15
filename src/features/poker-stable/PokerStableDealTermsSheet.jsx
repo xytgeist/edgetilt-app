@@ -16,6 +16,15 @@ import {
   stakeeCanOpenLedger,
   stakeeCanSettleStake,
 } from './pokerStableTerms.js'
+import { PokerGuestInviteCopyCard } from '../poker-bankroll/PokerGuestInviteCopyCard.jsx'
+import {
+  dealIsUnclaimedGuestPlayer,
+  formatGuestStakeInviteText,
+  guestInviteActorName,
+  mintBackerGuestInvite,
+  mintStakeeGuestInvite,
+  sliceIsUnclaimedGuestBacker,
+} from '../poker-bankroll/pokerGuestInviteShare.js'
 import {
   pokerStableSliceCardClass,
   pokerStableSliceStatusClass,
@@ -100,6 +109,8 @@ function TermsSliceCard({
   onReassignCancel,
   onReassignConfirm,
   onError,
+  invite,
+  onCopyInvite,
 }) {
   const summary = sliceTermsSummary(slice, profilesById, { deal })
   return (
@@ -129,6 +140,27 @@ function TermsSliceCard({
           <p className="text-xs text-zinc-500">{slice.guest_email}</p>
         ) : null}
       </div>
+      {sliceIsUnclaimedGuestBacker(slice) && typeof onCopyInvite === 'function' ? (
+        <button
+          type="button"
+          disabled={saving}
+          data-poker-guest-invite-copy-btn
+          onClick={() => void onCopyInvite()}
+          className="mt-3 w-full rounded-xl border border-cyan-500/35 py-2.5 text-sm font-semibold text-cyan-200 touch-manipulation disabled:opacity-50"
+        >
+          {invite ? 'Refresh invite' : 'Copy invite'}
+        </button>
+      ) : null}
+      {invite ? (
+        <div className="mt-3">
+          <PokerGuestInviteCopyCard
+            title="Text them this"
+            text={invite.text}
+            url={invite.url}
+            shareTitle="Backing invite"
+          />
+        </div>
+      ) : null}
       {showReassign && !reassignOpen ? (
         <button
           type="button"
@@ -180,6 +212,9 @@ export default function PokerStableDealTermsSheet({
   const [reassignSliceId, setReassignSliceId] = useState(null)
   const [periodicSettleOpen, setPeriodicSettleOpen] = useState(false)
   const [closeStakeOpen, setCloseStakeOpen] = useState(false)
+  const [playerInvite, setPlayerInvite] = useState(null)
+  const [sliceInviteById, setSliceInviteById] = useState({})
+  const [inviteBusy, setInviteBusy] = useState('')
 
   if (!deal) return null
 
@@ -187,9 +222,14 @@ export default function PokerStableDealTermsSheet({
   const settleBlockedPending = settleBlockedByPendingCommit(pendingCommits, deal.id)
 
   // Backers only see their own slice(s). Player (stakee) still sees the full syndicate.
+  const isLeadBacker = deal.staker_user_id === userId
   const visibleSlices = isStakee
     ? slices
-    : (slices || []).filter((s) => s.staker_user_id === userId)
+    : (slices || []).filter(
+        (s) =>
+          s.staker_user_id === userId ||
+          (isLeadBacker && sliceIsUnclaimedGuestBacker(s)),
+      )
 
   const canCancel =
     isStakee &&
@@ -208,6 +248,57 @@ export default function PokerStableDealTermsSheet({
     baseline_bankroll: deal.baseline_bankroll,
     roll: rollValue,
   })
+  const actorName = guestInviteActorName(profilesById[userId])
+  const showGuestPlayerInvite = isLeadBacker && dealIsUnclaimedGuestPlayer(deal)
+
+  async function copyPlayerInvite() {
+    if (!supabaseClient || !deal?.id) return
+    setInviteBusy('player')
+    onError?.('')
+    try {
+      const { url, error } = await mintStakeeGuestInvite(supabaseClient, deal.id)
+      if (error) throw error
+      setPlayerInvite({
+        url,
+        text: formatGuestStakeInviteText({
+          actorName,
+          kind: 'player',
+          dealLabel: deal.label,
+          url,
+        }),
+      })
+    } catch (e) {
+      onError?.(e?.message || 'Could not create invite link.')
+    } finally {
+      setInviteBusy('')
+    }
+  }
+
+  async function copySliceInvite(slice) {
+    if (!supabaseClient || !slice?.id) return
+    setInviteBusy(slice.id)
+    onError?.('')
+    try {
+      const { url, error } = await mintBackerGuestInvite(supabaseClient, slice.id)
+      if (error) throw error
+      setSliceInviteById((prev) => ({
+        ...prev,
+        [slice.id]: {
+          url,
+          text: formatGuestStakeInviteText({
+            actorName,
+            kind: 'backer',
+            dealLabel: deal.label,
+            url,
+          }),
+        },
+      }))
+    } catch (e) {
+      onError?.(e?.message || 'Could not create invite link.')
+    } finally {
+      setInviteBusy('')
+    }
+  }
 
   return (
     <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
@@ -257,6 +348,32 @@ export default function PokerStableDealTermsSheet({
           ) : null}
         </div>
 
+        {showGuestPlayerInvite ? (
+          <div className="mb-4">
+            <button
+              type="button"
+              disabled={Boolean(inviteBusy) || saving}
+              data-poker-guest-invite-copy-btn
+              onClick={() => void copyPlayerInvite()}
+              className="mb-2 w-full rounded-xl border border-cyan-500/35 py-2.5 text-sm font-semibold text-cyan-200 touch-manipulation disabled:opacity-50"
+            >
+              {inviteBusy === 'player'
+                ? 'Copying…'
+                : playerInvite
+                  ? `Refresh invite for ${deal.stakee_guest_label}`
+                  : `Copy invite for ${deal.stakee_guest_label}`}
+            </button>
+            {playerInvite ? (
+              <PokerGuestInviteCopyCard
+                title={`Text ${deal.stakee_guest_label}`}
+                text={playerInvite.text}
+                url={playerInvite.url}
+                shareTitle="Stake invite"
+              />
+            ) : null}
+          </div>
+        ) : null}
+
         <div className="mb-4 space-y-2">
           {visibleSlices.map((slice, idx) => (
             <TermsSliceCard
@@ -272,7 +389,13 @@ export default function PokerStableDealTermsSheet({
               reassignOpen={reassignSliceId === slice.id}
               userId={userId}
               supabaseClient={supabaseClient}
-              saving={saving}
+              saving={saving || Boolean(inviteBusy)}
+              invite={slice.id ? sliceInviteById[slice.id] : null}
+              onCopyInvite={
+                sliceIsUnclaimedGuestBacker(slice)
+                  ? () => copySliceInvite(slice)
+                  : undefined
+              }
               onReassignOpen={() => setReassignSliceId(slice.id)}
               onReassignCancel={() => setReassignSliceId(null)}
               onReassignConfirm={async (stakerUserId) => {

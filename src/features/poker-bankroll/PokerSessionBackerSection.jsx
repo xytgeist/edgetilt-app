@@ -181,6 +181,9 @@ export default function PokerSessionBackerSection({
                   autoComplete="email"
                   className={FIELD}
                 />
+                <p className="text-[11px] leading-snug text-zinc-500">
+                  Email optional. After you start, copy the invite into your own text.
+                </p>
               </div>
             ) : null}
             <div className="grid grid-cols-2 gap-2">

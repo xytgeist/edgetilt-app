@@ -667,16 +667,17 @@ export default function PokerTournamentSwapsSection({
       const { url, error } = await mintSwapGuestInvite(supabaseClient, swap.id)
       if (error) throw error
       const event = swap.tournament_event_id ? eventsById[swap.tournament_event_id] : null
+      const actorName = await resolveGuestInviteActorName(
+        supabaseClient,
+        userId,
+        profilesById[userId],
+      )
       setInviteBySwapId((prev) => ({
         ...prev,
         [swap.id]: {
           url,
           text: formatGuestSwapInviteText({
-            actorName: await resolveGuestInviteActorName(
-              supabaseClient,
-              userId,
-              profilesById[userId],
-            ),
+            actorName,
             pctCreator: swap.pct_creator_gives,
             pctCounterparty: swap.pct_counterparty_gives,
             eventLabel: event ? formatTournamentEventLabel(event) : '',

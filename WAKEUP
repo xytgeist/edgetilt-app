@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-15 … preserve stakes on account delete
+
+**I am Mac Theo.** **`1.4.231`.** Stakes no longer CASCADE away when a party deletes. Deal player / lead backer / slice backer become guest labels. Other Edge user keeps the horse. Applied **test**. Do not resubmit 125.
+
 ### Mac Theo 2026-09-15 … real delete SQL is the swap check
 
 **I am Mac Theo.** **`1.4.230`.** Actual error under `Database error deleting user`: `23514 poker_tournament_swaps_counterparty_present`. This leftover test `lvslotgod` claimed a swap; delete SET NULLs `counterparty_user_id` and the check still wants a user id. Trigger now flips that row to guest. Edge returns `explain_auth_user_delete_block` on failure. Applied **test**. Retry Delete on lvslotpro. Do not resubmit 125.

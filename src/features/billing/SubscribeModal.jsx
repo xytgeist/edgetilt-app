@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import {
   PRODUCT_SLOTS_EDGE,
@@ -84,6 +84,42 @@ function isSpreadSubscribeCarousel() {
 
 function slidePoses() {
   return isSpreadSubscribeCarousel() ? SLIDE_POSES_IPAD : SLIDE_POSES
+}
+
+const SUBSCRIBE_IPAD_CARD_SCALE = 1.5
+
+/** Phone card, visually scaled on iPad. Layout box matches the scaled size. */
+function SubscribeCardScale({ children }) {
+  const hostRef = useRef(null)
+  const innerRef = useRef(null)
+
+  useLayoutEffect(() => {
+    const host = hostRef.current
+    const inner = innerRef.current
+    if (!host || !inner) return undefined
+
+    const sync = () => {
+      const scaled = isSpreadSubscribeCarousel()
+      host.style.height = scaled ? `${inner.offsetHeight * SUBSCRIBE_IPAD_CARD_SCALE}px` : ''
+    }
+
+    sync()
+    const ro = new ResizeObserver(sync)
+    ro.observe(inner)
+    window.addEventListener('resize', sync)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', sync)
+    }
+  }, [])
+
+  return (
+    <div ref={hostRef} className="subscribe-plan-card-scale">
+      <div ref={innerRef} className="subscribe-plan-card-scale-inner">
+        {children}
+      </div>
+    </div>
+  )
 }
 
 /** @param {number} a @param {number} b @param {number} t */
@@ -994,6 +1030,7 @@ export default function SubscribeModal({
                       ].join(' ')}
                       style={getSlide3DStyle(0, activeSlide, dragProgress, slideCount)}
                     >
+                    <SubscribeCardScale>
                     <div
                       role="button"
                       tabIndex={busy ? -1 : 0}
@@ -1129,6 +1166,7 @@ export default function SubscribeModal({
                         ))}
                       </ul>
                     </div>
+                    </SubscribeCardScale>
                     </div>
 
                     <div
@@ -1140,6 +1178,7 @@ export default function SubscribeModal({
                       ].join(' ')}
                       style={getSlide3DStyle(1, activeSlide, dragProgress, slideCount)}
                     >
+                    <SubscribeCardScale>
                     <div
                       role="button"
                       tabIndex={busy ? -1 : 0}
@@ -1283,6 +1322,7 @@ export default function SubscribeModal({
                         ))}
                       </ul>
                     </div>
+                    </SubscribeCardScale>
                     </div>
 
                     <div
@@ -1294,6 +1334,7 @@ export default function SubscribeModal({
                       ].join(' ')}
                       style={getSlide3DStyle(2, activeSlide, dragProgress, slideCount)}
                     >
+                    <SubscribeCardScale>
                     <div
                       role="button"
                       tabIndex={busy ? -1 : 0}
@@ -1370,6 +1411,7 @@ export default function SubscribeModal({
                         ))}
                       </ul>
                     </div>
+                    </SubscribeCardScale>
                     </div>
                   </div>
                 </div>

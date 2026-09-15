@@ -3904,14 +3904,29 @@ html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-hero-title {
   [data-subscribe-modal].subscribe-modal-shell {
     max-width: 56rem;
   }
+  [data-subscribe-modal] .subscribe-plan-carousel-3d,
   [data-subscribe-modal] .subscribe-plan-carousel-stage {
-    min-height: 40rem;
+    height: auto;
+    min-height: 0;
+  }
+  [data-subscribe-modal] .subscribe-plan-carousel-stage {
+    min-height: calc(16.75rem * 1.5);
   }
   [data-subscribe-modal] .subscribe-plan-slide-3d {
-    width: min(16.75rem, 32vw);
+    width: calc(16.75rem * 1.5);
+  }
+  [data-subscribe-modal] .subscribe-plan-card-scale-inner {
+    width: 16.75rem;
+    transform: scale(1.5);
+    transform-origin: top left;
   }
   [data-subscribe-modal] .subscribe-plan-card {
-    zoom: 1.5;
+    width: 16.75rem !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+  [data-subscribe-modal] .subscribe-plan-card ul {
+    flex: none;
   }
 }
 [data-subscribe-modal] .subscribe-plan-slide-3d--instant {

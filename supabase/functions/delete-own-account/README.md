@@ -4,7 +4,7 @@ Deletes the **currently signed-in** Auth user (`auth.users` row) using the **ser
 
 **Effect:** Removes the user from Auth. Tables that reference `auth.users(id)` with `ON DELETE CASCADE` (e.g. `public.profiles`, `community_feed_posts`, push subscription tables) are cleaned up by Postgres.
 
-GoTrue runs that delete as **`supabase_auth_admin`**, which does not bypass RLS and needs table grants on `public.*`. Without **`20260915160000_auth_admin_delete_user_grants.sql`**, Auth returns **`Database error deleting user`**. Applied on **test** 2026-09-15. Prod still needs Ryan's OK.
+GoTrue runs that delete as **`supabase_auth_admin`**, which does not bypass RLS and needs table grants on `public.*`. Without **`20260915160000_auth_admin_delete_user_grants.sql`**, Auth returns **`Database error deleting user`**. Applied on **test** and **prod** 2026-09-15.
 
 GoTrue also hides the real SQL. On failure the function calls **`explain_auth_user_delete_block`** and returns that string as **`error`**. **`20260915170000`**: a claimed tournament-swap counterparty SET NULL was dying on **`poker_tournament_swaps_counterparty_present`**; the row now flips back to guest.
 

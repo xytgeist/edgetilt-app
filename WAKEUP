@@ -75,6 +75,14 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-15 … Delete account SQL on prod
+
+**I am Mac Theo.** **`1.4.233`.** Prod has **`20260915160000`–`20260915200000`** + **`delete-own-account`** redeployed. Test delete already PASSED. Prod smoke on edgetilt.com when Ryan wants. Do not resubmit 125.
+
+### Mac Theo 2026-09-15 … Delete account works on test
+
+**I am Mac Theo.** **`1.4.233`.** Ryan: in-app Delete of `lvslotgod@gmail.com` on **lvslotpro** PASSED. Swap/stake history stays as `Name (Deleted User)`. Prod SQL still not applied. Do not resubmit 125.
+
 ### Mac Theo 2026-09-15 … 42702 label ambiguous
 
 **I am Mac Theo.** **`1.4.233`.** Delete died on `slices.label` vs trigger variable `label`. Fixed. Retry Delete on lvslotpro. Do not resubmit 125.

@@ -1141,6 +1141,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-15:** **Delete account SQL + Edge on prod.** Applied **`20260915160000`–`20260915200000`** on **`jtjgtucumuoswnbauxry`**. Redeployed **`delete-own-account`**. Same preserve behavior as test.
+- **2026-09-15:** **Delete account PASSED on test (Ryan).** `lvslotgod@gmail.com` deleted on **lvslotpro** after the swap/stake preserve + `label` fix. In-app Delete works. **`1.4.233`.**
 - **2026-09-15:** **Delete `42702 label ambiguous` (Mac).** Profile-delete trigger variable `label` collided with `poker_stable_deal_slices.label`. Renamed to `v_party_label`. Explain-delete on test `lvslotgod` is clean. **`1.4.233`.**
 - **2026-09-15:** **Keep the person’s name on a deleted-party stake (Mac).** Stamp **`Joey (Deleted User)`** from profile display name / handle before the profile row goes. Generic `Deleted account` is last resort only. Swaps too. **`1.4.232`.**
 - **2026-09-15:** **Preserve stakes on account delete (Mac).** Deal / slice party FKs were CASCADE (other side lost the horse). Now SET NULL + guest label, same idea as swaps. Audit actor ids on commits/settlements SET NULL so those rows stay. Applied **test**. **`1.4.231`.**

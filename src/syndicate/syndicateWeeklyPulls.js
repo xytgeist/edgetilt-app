@@ -7,6 +7,8 @@ import { ptClockParts, shopWeekTuesdayYmd } from './syndicateSplitsDropSchedule.
 const PT_OFFSETS = ['-07:00', '-08:00']
 const FRESH_SLACK_MS = 30 * 60 * 1000
 const LAST_WEEK_OK_MS = 8 * 24 * 3600_000
+/** GHA Tuesday cron is 7:00am PT but often starts late. Do not fail until noon PT. */
+const GRACE_AFTER_DUE_MS = 5 * 60 * 60 * 1000
 
 export const WEEKLY_PULL_SCHEDULE = 'Tue 7:00am PT'
 
@@ -108,7 +110,9 @@ export function resolveWeeklyPullStatus({ lastOkAt, lastFailAt, lastStatus, now 
   if (failIsLatest && afterDue) return 'fail'
   if (hasOk && okMs >= dueMs - FRESH_SLACK_MS) return 'pass'
   if (!afterDue && hasOk && nowMs - okMs < LAST_WEEK_OK_MS) return 'pass'
+  const inGrace = afterDue && nowMs < dueMs + GRACE_AFTER_DUE_MS
   if (!afterDue && !hasOk) return 'waiting'
+  if (inGrace && !failIsLatest) return 'waiting'
   if (afterDue && !hasOk) return 'fail'
   if (afterDue && hasOk && okMs < dueMs - FRESH_SLACK_MS) return 'fail'
   return 'stale'

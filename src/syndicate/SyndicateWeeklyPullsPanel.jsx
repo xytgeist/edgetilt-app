@@ -46,7 +46,7 @@ export function SyndicateWeeklyPullsPanel({ supabaseClient, onOpenTab }) {
         <div>
           <h2 className="text-sm font-bold text-zinc-100">Weekly data pulls</h2>
           <p className="text-[11px] text-zinc-500">
-            Tuesday GHA {WEEKLY_PULL_SCHEDULE}. Pass means this shop week wrote. Fail means the due window passed with no write, or the job heartbeat is failed.
+            Tuesday GHA {WEEKLY_PULL_SCHEDULE}. Pass means this shop week wrote. Waiting until noon PT if the job is late. Fail means a failed heartbeat, or noon passed with no write.
           </p>
         </div>
         <button

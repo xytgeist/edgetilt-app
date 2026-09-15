@@ -16,6 +16,8 @@ name: Syndicate football metrics sync
 on:
   schedule:
     - cron: '0 14 * * 2'
+    # Catch-up if the 14:00 UTC slot never starts (GitHub often delays or skips).
+    - cron: '0 18 * * 2'
   workflow_dispatch:
     inputs:
       sync_production:

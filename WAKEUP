@@ -33,7 +33,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
-**Branch:** `test` (match `origin/test` before edits). `main` @ **`8f44c549`**. Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
+**Branch:** `test` (match `origin/test` before edits). `main` @ **`fa31484c`** (promoted 2026-09-15). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
 
 **Supabase (do not swap these):**
 
@@ -74,6 +74,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 3. **Bridge:** new `window.EdgeNative.*` names go in the bridge contract **before** coding both sides. Stub one side first.
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
+
+### Mac Theo 2026-09-15 … Promote to prod / new IPA
+
+**I am Mac Theo.** Ryan asked to promote and submit. **`test` → `main`** at **`fa31484c`**. Vercel prod is the web. New **EdgeTilt Prod** IPA (not build **125**). CallKit still off in China, China stays a territory. Apple button IPA-only. Do not resubmit 125.
 
 ### Mac Theo 2026-09-15 … iPad subscribe cards
 

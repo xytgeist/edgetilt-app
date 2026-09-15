@@ -3905,14 +3905,13 @@ html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-hero-title {
     max-width: 56rem;
   }
   [data-subscribe-modal] .subscribe-plan-carousel-stage {
-    min-height: 28rem;
+    min-height: 34rem;
   }
   [data-subscribe-modal] .subscribe-plan-slide-3d {
-    width: min(24rem, 46vw);
+    width: min(16.75rem, 32vw);
   }
   [data-subscribe-modal] .subscribe-plan-card {
-    padding-left: 1.15rem;
-    padding-right: 1.15rem;
+    zoom: 1.3;
   }
 }
 [data-subscribe-modal] .subscribe-plan-slide-3d--instant {

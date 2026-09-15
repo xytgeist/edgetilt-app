@@ -200,10 +200,10 @@ import { draftBackerActionSold } from './pokerSessionBackerDrafts.js'
 import PokerTournamentSwapsSection from './PokerTournamentSwapsSection.jsx'
 import PokerGuestInvitesSheet from './PokerGuestInviteCopyCard.jsx'
 import {
-  guestInviteActorName,
   loadDealSlicesForInvite,
   mintGuestStakeInviteRows,
   mintGuestSwapInviteRows,
+  resolveGuestInviteActorName,
 } from './pokerGuestInviteShare.js'
 import {
   applySoftTournamentEventToForm,
@@ -1318,6 +1318,7 @@ export default function PokerBankrollTracker({
       } else {
         setTournamentSwaps(swapsRes.swaps || [])
         const ids = []
+        if (userId) ids.push(userId)
         const eventIds = []
         for (const s of swapsRes.swaps || []) {
           if (s.creator_user_id) ids.push(s.creator_user_id)
@@ -2345,10 +2346,15 @@ export default function PokerBankrollTracker({
     setDraftSwaps((prev) =>
       sentLocalIds.size ? prev.filter((d) => !sentLocalIds.has(d.localId)) : [],
     )
+    const actorName = await resolveGuestInviteActorName(
+      supabaseClient,
+      userId,
+      swapProfilesById[userId],
+    )
     return mintGuestSwapInviteRows({
       supabase: supabaseClient,
       swaps,
-      actorName: guestInviteActorName(swapProfilesById[userId]),
+      actorName,
       eventsById: swapEventsById,
     })
   }
@@ -2944,7 +2950,9 @@ export default function PokerBankrollTracker({
           supabase: supabaseClient,
           deal: pieceDeal,
           slices,
-          actorName: guestInviteActorName(
+          actorName: await resolveGuestInviteActorName(
+            supabaseClient,
+            userId,
             swapProfilesById[userId] || stableProfilesById[userId],
           ),
         })

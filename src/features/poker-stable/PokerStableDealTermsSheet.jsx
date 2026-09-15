@@ -20,8 +20,8 @@ import { PokerGuestInviteCopyCard } from '../poker-bankroll/PokerGuestInviteCopy
 import {
   dealIsUnclaimedGuestPlayer,
   formatGuestStakeInviteText,
-  guestInviteActorName,
   mintBackerGuestInvite,
+  resolveGuestInviteActorName,
   mintStakeeGuestInvite,
   sliceIsUnclaimedGuestBacker,
 } from '../poker-bankroll/pokerGuestInviteShare.js'
@@ -248,7 +248,6 @@ export default function PokerStableDealTermsSheet({
     baseline_bankroll: deal.baseline_bankroll,
     roll: rollValue,
   })
-  const actorName = guestInviteActorName(profilesById[userId])
   const showGuestPlayerInvite = isLeadBacker && dealIsUnclaimedGuestPlayer(deal)
 
   async function copyPlayerInvite() {
@@ -256,6 +255,11 @@ export default function PokerStableDealTermsSheet({
     setInviteBusy('player')
     onError?.('')
     try {
+      const actorName = await resolveGuestInviteActorName(
+        supabaseClient,
+        userId,
+        profilesById[userId],
+      )
       const { url, error } = await mintStakeeGuestInvite(supabaseClient, deal.id)
       if (error) throw error
       setPlayerInvite({
@@ -279,6 +283,11 @@ export default function PokerStableDealTermsSheet({
     setInviteBusy(slice.id)
     onError?.('')
     try {
+      const actorName = await resolveGuestInviteActorName(
+        supabaseClient,
+        userId,
+        profilesById[userId],
+      )
       const { url, error } = await mintBackerGuestInvite(supabaseClient, slice.id)
       if (error) throw error
       setSliceInviteById((prev) => ({

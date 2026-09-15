@@ -15,9 +15,9 @@ import {
   notifyStableGuestSyndicateBackers,
 } from './pokerStableApi.js'
 import {
-  guestInviteActorName,
   loadDealSlicesForInvite,
   mintGuestStakeInviteRows,
+  resolveGuestInviteActorName,
 } from '../poker-bankroll/pokerGuestInviteShare.js'
 import {
   backerSlicePaidCapital,
@@ -969,17 +969,12 @@ function PokerStableDealFormSheet({
       }
       let guestInvites = []
       if (createdDeal?.id) {
-        const { data: me } = await supabaseClient
-          .from('profiles')
-          .select('display_name, handle')
-          .eq('user_id', userId)
-          .maybeSingle()
         const { slices } = await loadDealSlicesForInvite(supabaseClient, createdDeal.id)
         guestInvites = await mintGuestStakeInviteRows({
           supabase: supabaseClient,
           deal: createdDeal,
           slices,
-          actorName: guestInviteActorName(me),
+          actorName: await resolveGuestInviteActorName(supabaseClient, userId),
         })
       }
       triggerTapHapticLight()

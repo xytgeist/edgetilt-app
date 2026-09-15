@@ -156,8 +156,9 @@ export default function PokerStableStakeClaimPage({
             ) : !userId ? (
               <>
                 <p className="mt-4 text-sm text-zinc-300">
-                  Create an account or sign in with the email this invitation was sent to. After you
-                  confirm your email, this page will link the stake and send you to Bankroll.
+                  {preview.guest_email
+                    ? 'Create an account or sign in with the email this invitation was sent to. After you confirm your email, this page will link the stake and send you to Bankroll.'
+                    : 'Create an Edge account or sign in. After you confirm, we link the stake and send you to Bankroll.'}
                 </p>
                 {error ? <p className="mt-3 text-center text-sm text-rose-400">{error}</p> : null}
                 <button

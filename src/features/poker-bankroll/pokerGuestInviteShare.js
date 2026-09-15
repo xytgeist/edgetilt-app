@@ -19,6 +19,31 @@ export function guestInviteActorName(profile) {
   return 'Someone'
 }
 
+/**
+ * Lounge nametag for copy-link invites. Cached swap/stable maps omit the
+ * creator on a first guest offer, so fetch `profiles` when the cache is empty.
+ *
+ * @param {import('@supabase/supabase-js').SupabaseClient | null | undefined} supabase
+ * @param {string | null | undefined} userId
+ * @param {{ display_name?: string | null, handle?: string | null } | null | undefined} [cachedProfile]
+ */
+export async function resolveGuestInviteActorName(supabase, userId, cachedProfile) {
+  const fromCache = guestInviteActorName(cachedProfile)
+  if (fromCache !== 'Someone') return fromCache
+  const id = String(userId || '').trim()
+  if (!supabase || !id) return fromCache
+  try {
+    const { data } = await supabase
+      .from('profiles')
+      .select('display_name, handle')
+      .eq('user_id', id)
+      .maybeSingle()
+    return guestInviteActorName(data)
+  } catch {
+    return fromCache
+  }
+}
+
 export function guestInvitePublicOrigin() {
   if (typeof window === 'undefined') return ''
   return String(window.location.origin || '').replace(/\/$/, '')

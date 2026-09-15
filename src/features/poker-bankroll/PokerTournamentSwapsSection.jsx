@@ -16,8 +16,8 @@ import PokerSwapOwnershipSummary from './PokerSwapOwnershipSummary.jsx'
 import { PokerGuestInviteCopyCard } from './PokerGuestInviteCopyCard.jsx'
 import {
   formatGuestSwapInviteText,
-  guestInviteActorName,
   mintSwapGuestInvite,
+  resolveGuestInviteActorName,
   swapIsUnclaimedGuest,
 } from './pokerGuestInviteShare.js'
 import {
@@ -672,7 +672,11 @@ export default function PokerTournamentSwapsSection({
         [swap.id]: {
           url,
           text: formatGuestSwapInviteText({
-            actorName: guestInviteActorName(profilesById[userId]),
+            actorName: await resolveGuestInviteActorName(
+              supabaseClient,
+              userId,
+              profilesById[userId],
+            ),
             pctCreator: swap.pct_creator_gives,
             pctCounterparty: swap.pct_counterparty_gives,
             eventLabel: event ? formatTournamentEventLabel(event) : '',

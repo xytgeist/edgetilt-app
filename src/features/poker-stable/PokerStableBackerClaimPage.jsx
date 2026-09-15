@@ -220,8 +220,9 @@ export default function PokerStableBackerClaimPage({
         >
           <div className="mx-auto w-full max-w-md">
             <p className="text-sm leading-snug text-zinc-300">
-              Use the email this invitation was sent to. After you confirm, we link your slice and open
-              Stable Manager.
+              {preview.guest_email
+                ? 'Use the email this invitation was sent to. After you confirm, we link your slice and open Stable Manager.'
+                : 'Create an Edge account or sign in. After you confirm, we link your slice and open Stable Manager.'}
             </p>
             {error ? <p className="mt-2 text-center text-sm text-rose-400">{error}</p> : null}
             <button

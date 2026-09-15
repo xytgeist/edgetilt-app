@@ -1140,6 +1140,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-14:** **Guest invite nametag + claim copy (Mac).** Copy-link SMS uses the creator’s Lounge `display_name` / `@handle` (fetches `profiles` when the swap map is empty). Claim pages only say “use the email this invitation was sent to” when `guest_email` exists. **`1.4.221`.**
 - **2026-09-14:** **Swap/stake invites are copy-paste (Windows).** Telnyx guest 10DLC **`C6NW3Y9`** failed **Gambling (704)**. Creators **Copy invite** / Share the claim link into their own text. Optional email stays. RPCs **`poker_tournament_swap_mint_invite_link`**, **`poker_stable_guest_stakee_mint_invite_link`**, **`poker_stable_guest_backer_mint_invite_link`** (`20260914200000`) on **test**. Do not assign **725**. Do not appeal 704. **`1.4.220`.**
 - **2026-09-14:** **Desk cards shop the printed ATS number (Windows).** Vote still uses the market file. After the side is picked, print/ledger the best us/us2 point, then juice. Split can show Scott +2.5 / Rocco -1.5. No shop after close lock. Redeploy **`lounge-odds-poll`**. **`1.4.219`.**
 - **2026-09-14:** **Tank ATS line is back (Windows).** Desk list is Scott / Rocco / Tank ATS / Chedda. O/U header still under the tape. “wind kills the bet” is italic. Redeploy **`lounge-odds-poll`**. **`1.4.218`.**

@@ -109,7 +109,7 @@ export function formatGuestSwapInviteText({
   const you = Number.isFinite(Number(pctCreator)) ? Number(pctCreator) : '?'
   const them = Number.isFinite(Number(pctCounterparty)) ? Number(pctCounterparty) : '?'
   const eventBit = String(eventLabel || '').trim() ? ` in event: ${String(eventLabel).trim()}` : ''
-  const line = `${actor} swapping ${you}% - ${them}% with you${eventBit} from EdgeTilt.com`
+  const line = `${actor} is swapping ${you}% - ${them}% with you${eventBit} from EdgeTilt`
   const link = String(url || '').trim()
   return link ? `${line}\n${link}` : line
 }
@@ -120,8 +120,8 @@ export function formatGuestStakeInviteText({ actorName, kind, dealLabel, url }) 
   const labelBit = label ? ` (${label})` : ''
   const what =
     kind === 'backer'
-      ? `${actor} offered you a backing slice on EdgeTilt.com${labelBit}`
-      : `${actor} offered you a stake on EdgeTilt.com${labelBit}`
+      ? `${actor} offered you a backing slice on EdgeTilt${labelBit}`
+      : `${actor} offered you a stake on EdgeTilt${labelBit}`
   const link = String(url || '').trim()
   return link ? `${what}\n${link}` : what
 }

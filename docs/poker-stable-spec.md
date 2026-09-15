@@ -533,6 +533,7 @@ Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`**
 
 ## Update log
 
+- **2026-09-14:** **Guest invite SMS copy:** `{name} is swapping … from EdgeTilt` (no `.com` in the body). Claim URL is the only link.
 - **2026-09-14:** **Guest invite nametag + claim copy:** mint text uses Lounge `display_name` / `@handle`. Claim auth copy mentions invitation email only when `guest_email` is set.
 - **2026-09-14:** **Guest invites are copy-paste:** Telnyx **`C6NW3Y9`** failed Gambling 704. Creators mint claim URLs via **`poker_stable_guest_stakee_mint_invite_link`** / **`poker_stable_guest_backer_mint_invite_link`** (`20260914200000`) and paste into their own text. Optional Resend stays. No leased-number SMS.
 - **2026-08-16:** **Stakee delete from Bankroll Archive (test):** migration **`20260816160000`** adds stakee-only archive/history visibility timestamps + `poker_stable_stakee_hide_archived_deal`. Archive detail now offers **Delete archived stake**, then asks whether merged stake sessions should also leave personal history/metrics. Shared deal/session audit, backer history, and settled bankroll balances remain intact.

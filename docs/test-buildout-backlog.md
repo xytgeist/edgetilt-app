@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-15:** **TestFlight Throwaways (Mac, ASC).** Test Information filled. External group **Throwaways** has `etceterama@gmail.com` + **1.4.95 (128)** (`APP_STORE_ELIGIBLE`, Waiting for Beta App Review). Not an App Store resubmit of 125. Builds 129+ including 144 are `INTERNAL_ONLY` ... next external IPA must be App Store / external TestFlight, not Internal Only. Invite email after Apple approves the beta.
 - **2026-09-15:** **SIWA Updated-policies loop (Mac).** Password / IPA Apple were `setUser` then `location.reload()`, so the terms sheet could appear, get tapped, then come back after reload. Reload now happens without mounting the app first. Test `@edgelord` legal timestamps cleared so Ryan can retest without deleting the admin account. **`1.4.238`.**
 - **2026-09-15:** **Tuesday pulls missed the cron (Windows).** GHA never started (only prior run was Sep 8 17:38Z). Dispatched run `35003609779`. Ops board waits until noon PT before Fail. Catch-up cron 18:00 UTC is on `test` … needs `main` to fire. **`1.4.237`.**
 - **2026-09-15:** **Syndicate About stays empty (Windows).** Stopped ledger stamp on `profiles.about_me`. Cleared prod + test. Signal disclaimer unchanged. Redeploy **`lounge-odds-poll`**. **`1.4.236`.**

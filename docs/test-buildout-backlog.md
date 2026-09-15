@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 - **2026-09-15:** **Tuesday pulls missed the cron (Windows).** GHA never started (only prior run was Sep 8 17:38Z). Dispatched run `35003609779`. Ops board waits until noon PT before Fail. Catch-up cron 18:00 UTC is on `test` … needs `main` to fire. **`1.4.237`.**
 - **2026-09-15:** **Syndicate About stays empty (Windows).** Stopped ledger stamp on `profiles.about_me`. Cleared prod + test. Signal disclaimer unchanged. Redeploy **`lounge-odds-poll`**. **`1.4.236`.**
 - **2026-09-15:** **Weekly ledger drops Quorum (Windows).** Scott / Rocco / Chedda / Tank only. Live prod post `09e2bb5c-…` stripped. Redeploy **`lounge-odds-poll`**. **`1.4.235`.**
+- **2026-09-15:** **Continue with Apple IPA-only (Mac).** Button hidden on Safari / PWA / Android. Web does not call `signInWithOAuth({ provider: 'apple' })`. IPA still uses native SIWA. **`1.4.250`.**
 - **2026-09-15:** **Continue with Apple outline (Mac).** Dropped `border-zinc-500` on the black Apple auth button. **`1.4.234`.**
 - **2026-09-15:** **Delete account SQL + Edge on prod.** Applied **`20260915160000`–`20260915200000`** on **`jtjgtucumuoswnbauxry`**. Redeployed **`delete-own-account`**. Same preserve behavior as test.
 - **2026-09-15:** **Delete account PASSED on test (Ryan).** `lvslotgod@gmail.com` deleted on **lvslotpro** after the swap/stake preserve + `label` fix. In-app Delete works. **`1.4.233`.**

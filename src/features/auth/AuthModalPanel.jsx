@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { isEdgeiOSShell } from '../../utils/edgeNative.js'
 import { inputBase, btnPrimary, linkBtn } from '../shell/shellClasses'
 import { AppleIcon, OAuthDivider, GoogleIcon } from './OAuthUi'
 import AuthTabSwitcher from './AuthTabSwitcher'
@@ -112,6 +113,7 @@ export default function AuthModalPanel({
     if (checked) setLegalNudgeSource(null)
   }
 
+  const showAppleSignIn = isEdgeiOSShell()
   const legalCheckboxHighlighted = authTab === 'join' && !acceptedLegal && legalNudgeSource != null
   const legalLinks = (
     <>
@@ -147,13 +149,23 @@ export default function AuthModalPanel({
           role="note"
         >
           <p>
-            If you <span className="font-semibold text-white">signed up with Apple or Google</span>, use that
-            button below. You won&apos;t have an Edge password.
+            {showAppleSignIn ? (
+              <>
+                If you <span className="font-semibold text-white">signed up with Apple or Google</span>, use that
+                button below. You won&apos;t have an Edge password.
+              </>
+            ) : (
+              <>
+                If you <span className="font-semibold text-white">signed up with Google</span>, use that button
+                below. Apple accounts sign in from the Edge iOS app. You won&apos;t have an Edge password.
+              </>
+            )}
           </p>
           <p>
             Still having trouble? Enter your email and we&apos;ll send you a reset link.
           </p>
         </div>
+        {showAppleSignIn ? (
         <button
           type="button"
           disabled={isOAuthLoading}
@@ -164,6 +176,7 @@ export default function AuthModalPanel({
           <AppleIcon />
           Continue with Apple
         </button>
+        ) : null}
         <button
           type="button"
           disabled={isOAuthLoading}
@@ -234,6 +247,7 @@ export default function AuthModalPanel({
       ) : null}
       <AuthTabSwitcher value={authTab} onChange={onAuthTabChange} />
       {authTab === 'join' && legalNudgeSource === 'oauth' ? <LegalAcceptanceNudge /> : null}
+      {showAppleSignIn ? (
       <button
         type="button"
         disabled={isOAuthLoading}
@@ -247,6 +261,7 @@ export default function AuthModalPanel({
         <AppleIcon />
         Continue with Apple
       </button>
+      ) : null}
       <button
         type="button"
         disabled={isOAuthLoading}

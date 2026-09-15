@@ -83,6 +83,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 **I am Mac Theo.** Stripped the hamburger dismiss z-index / portal / title-bar lift. That lift hid the Slots title bar on the second open. Overlay is back at `z-40`. Outside + FAB close via a document `pointerdown`. **`1.4.247`.** Do not resubmit 125.
 
+### Mac Theo 2026-09-15 … Apple button IPA-only
+
+**I am Mac Theo.** Continue with Apple is **IPA only** (`isEdgeiOSShell`). Safari / PWA / Android hide it and do not hit web Apple OAuth (that 400 missing secret). Google + email stay. **`1.4.250`.** Do not resubmit 125.
+
 ### Mac Theo 2026-09-15 … Apple unverified email copy
 
 **I am Mac Theo.** Continue with Apple no longer shows `AuthorizationError error 1000`. Unverified Apple ID email → Settings / tap your name / verify, then try again. Native `EdgeAppleSignIn` + `App.jsx` mapper. Rebuild **EdgeTilt Test** ▶ for the native string. **`1.4.239`.** Do not resubmit 125.

@@ -1035,6 +1035,13 @@ function App() {
     if (markLegalPending) markPendingLegalAcceptance()
     setIsOAuthLoading(true)
 
+    if (provider === 'apple' && !isEdgeiOSShell()) {
+      setError('Continue with Apple is only available in the Edge iOS app.')
+      oauthInFlightRef.current = false
+      setIsOAuthLoading(false)
+      return
+    }
+
     if (
       provider === 'apple' &&
       isEdgeiOSShell() &&

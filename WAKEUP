@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-15 … 42702 label ambiguous
+
+**I am Mac Theo.** **`1.4.233`.** Delete died on `slices.label` vs trigger variable `label`. Fixed. Retry Delete on lvslotpro. Do not resubmit 125.
+
 ### Mac Theo 2026-09-15 … keep Joey’s name on the stake
 
 **I am Mac Theo.** **`1.4.232`.** After Joey deletes, Edge Lord still sees **`Joey (Deleted User)`** (display name or handle), not a generic deleted placeholder. Stamped from the profile before it is removed. Applied **test**.

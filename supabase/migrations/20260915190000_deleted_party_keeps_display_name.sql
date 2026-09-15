@@ -92,16 +92,16 @@ security definer
 set search_path = public
 as $$
 declare
-  label text;
+  v_party_label text;
 begin
-  label := public.et_format_deleted_party_label(
+  v_party_label := public.et_format_deleted_party_label(
     old.user_id,
     coalesce(old.display_name, old.handle)
   );
 
   update public.poker_stable_deals
   set
-    stakee_guest_label = label,
+    stakee_guest_label = v_party_label,
     stakee_user_id = null
   where stakee_user_id = old.user_id;
 
@@ -112,14 +112,14 @@ begin
   update public.poker_stable_deal_slices
   set
     counterparty_kind = 'guest',
-    guest_label = label,
+    guest_label = v_party_label,
     staker_user_id = null
   where staker_user_id = old.user_id;
 
   update public.poker_tournament_swaps
   set
     counterparty_kind = 'guest',
-    counterparty_guest_label = label,
+    counterparty_guest_label = v_party_label,
     counterparty_user_id = null
   where counterparty_user_id = old.user_id;
 

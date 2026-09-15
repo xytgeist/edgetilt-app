@@ -70,11 +70,11 @@ const SLIDE_POSES = {
   right: { tx: 56, tz: -110, ry: -16, scale: 0.88, opacity: 1, z: 14 },
 }
 
-/** iPad: peek the sides, do not push the center card toward the camera (that was the grow jump). */
+/** iPad / tall tablet: same 3D stack as phone, more spread so the peeks read. */
 const SLIDE_POSES_IPAD = {
-  left: { tx: -54, tz: -70, ry: 12, scale: 0.88, opacity: 1, z: 14 },
-  center: { tx: 0, tz: 0, ry: 0, scale: 1, opacity: 1, z: 30 },
-  right: { tx: 54, tz: -70, ry: -12, scale: 0.88, opacity: 1, z: 14 },
+  left: { tx: -82, tz: -64, ry: 8, scale: 0.93, opacity: 1, z: 14 },
+  center: { tx: 0, tz: 28, ry: 0, scale: 1, opacity: 1, z: 30 },
+  right: { tx: 82, tz: -64, ry: -8, scale: 0.93, opacity: 1, z: 14 },
 }
 
 function isSpreadSubscribeCarousel() {

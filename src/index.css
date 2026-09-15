@@ -3906,31 +3906,6 @@ html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-hero-title {
     opacity 680ms cubic-bezier(0.32, 0.72, 0, 1);
   will-change: transform, opacity;
 }
-/* After the base width. Earlier tablet rules lost to this block and never shrank. */
-@media (min-width: 768px), (min-width: 640px) and (min-height: 800px) {
-  [data-subscribe-modal].subscribe-modal-shell {
-    max-width: 42rem;
-  }
-  [data-subscribe-modal] .subscribe-plan-carousel-3d {
-    height: auto;
-    min-height: 0;
-  }
-  [data-subscribe-modal] .subscribe-plan-carousel-stage {
-    height: auto;
-    min-height: 20rem;
-  }
-  [data-subscribe-modal] .subscribe-plan-slide-3d {
-    width: min(12rem, 30vw);
-  }
-  [data-subscribe-modal] .subscribe-plan-card {
-    height: auto !important;
-    min-height: 0 !important;
-    padding-left: 0.75rem;
-    padding-right: 0.75rem;
-    padding-top: 2rem;
-    padding-bottom: 0.75rem;
-  }
-}
 [data-subscribe-modal] .subscribe-plan-slide-3d--instant {
   transition: none !important;
 }

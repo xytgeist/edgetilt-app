@@ -8,7 +8,7 @@
 
 | URL | Role |
 | --- | --- |
-| `https://edgetilt.com/` | Homepage title/description: **EdgeTilt** + **slots** + **poker** |
+| `https://edgetilt.com/` | Homepage title/description: **EdgeTilt \| Edge for Risk Takers** (not a slots-and-poker app title). Slots / poker intent stays on `/slots`, `/poker`, `/advantage-play-slots`. |
 | `https://edgetilt.com/advantage-play-slots` | Intent page for **advantage play slots** (competes with listicle SERPs; links catalog + tools) |
 | `https://edgetilt.com/slots` | Slots hub (H1 **+EV Edge for slots**; cards linking to each tool) |
 | `https://edgetilt.com/guides` | Full AP guide **title catalog** (no paywalled markdown). Regenerate: `npm run seo:guides-index` |

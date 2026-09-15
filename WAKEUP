@@ -75,6 +75,14 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-15 … Homepage title
+
+**I am Mac Theo.** Homepage / og / twitter title is **EdgeTilt | Edge for Risk Takers**. Ryan: we are not a slots-and-poker app. Slots/poker SEO stays on the hubs. Do not resubmit 125.
+
+### Mac Theo 2026-09-15 … Simulator blank after didFinish
+
+**I am Mac Theo.** iOS 27 Sim WK went blank with React `#130` then later painted (flake / sticky WK). Safari on 27 and the 26.5 sim were fine. **Not Lottie, not the new .p8.** SW hygiene skip on sim is already on `test` (`1702e8b0`). Do not resubmit 125.
+
 ### Mac Theo 2026-09-15 … Simulator never loads
 
 **I am Mac Theo.** Ryan's iOS 27 Sim console was Fig / AX / WebContent plist noise, not a site error. Cold launch was waiting on SW `removeData` before `webView.load`. Simulator now skips that wait. Device still clears, 2s cap. Rebuild **EdgeTilt Test** ▶. Filter console for `EdgeWebView`. Do not resubmit 125.

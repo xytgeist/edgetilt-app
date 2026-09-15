@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-15:** **Homepage title (Mac).** `index.html` / og / twitter is **EdgeTilt | Edge for Risk Takers**. Ryan: we are not a slots-and-poker app. Slots/poker SEO stays on the hubs.
 - **2026-09-15:** **Simulator first load hung on SW hygiene (Mac).** iOS 27 Sim `WKWebsiteDataStore.removeData` for service workers can never complete, so `makeUIView` never called `load`. Simulator skips that wait. Device still clears with a 2s cap. Console: `EdgeWebView load` / `didStart` / `didFinish`.
 - **2026-09-15:** **TestFlight Throwaways (Mac, ASC).** Test Information filled. External group **Throwaways** has `etceterama@gmail.com` + **1.4.95 (128)** (`APP_STORE_ELIGIBLE`, Waiting for Beta App Review). Not an App Store resubmit of 125. Builds 129+ including 144 are `INTERNAL_ONLY` ... next external IPA must be App Store / external TestFlight, not Internal Only. Invite email after Apple approves the beta.
 - **2026-09-15:** **SIWA Updated-policies loop (Mac).** Password / IPA Apple were `setUser` then `location.reload()`, so the terms sheet could appear, get tapped, then come back after reload. Reload now happens without mounting the app first. Test `@edgelord` legal timestamps cleared so Ryan can retest without deleting the admin account. **`1.4.238`.**

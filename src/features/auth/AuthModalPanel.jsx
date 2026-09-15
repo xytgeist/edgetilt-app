@@ -5,6 +5,26 @@ import AuthTabSwitcher from './AuthTabSwitcher'
 
 const LEGAL_NUDGE_MESSAGE = 'Please accept the Terms & Conditions and Privacy Policy.'
 
+function isOAuthProviderError(message) {
+  const lower = String(message || '').toLowerCase()
+  if (!lower) return false
+  if (lower.includes('appleid.apple.com')) return true
+  if (lower.includes('not enabled on this server')) return true
+  return lower.includes('provider') && lower.includes('not enabled')
+}
+
+function AuthErrorBanner({ message }) {
+  if (!message) return null
+  return (
+    <div
+      className="p-3 bg-red-900/50 border border-red-500 rounded-xl text-red-300 text-sm text-center leading-relaxed"
+      role="alert"
+    >
+      {message}
+    </div>
+  )
+}
+
 function LegalAcceptanceNudge() {
   return (
     <div
@@ -240,6 +260,12 @@ export default function AuthModalPanel({
         <GoogleIcon />
         Continue with Google
       </button>
+      {authTab === 'join' && isOAuthProviderError(signupError) ? (
+        <AuthErrorBanner message={signupError} />
+      ) : null}
+      {authTab !== 'join' && isOAuthProviderError(loginError) ? (
+        <AuthErrorBanner message={loginError} />
+      ) : null}
       <OAuthDivider />
       {authTab === 'join' ? (
         <form
@@ -321,10 +347,8 @@ export default function AuthModalPanel({
             enterKeyHint="go"
             required
           />
-          {signupError ? (
-            <div className="p-3 bg-red-900/50 border border-red-500 rounded-xl text-red-300 text-sm text-center leading-relaxed" role="alert">
-              {signupError}
-            </div>
+          {signupError && !isOAuthProviderError(signupError) ? (
+            <AuthErrorBanner message={signupError} />
           ) : null}
           {legalNudgeSource === 'create' ? <LegalAcceptanceNudge /> : null}
           <button
@@ -369,10 +393,8 @@ export default function AuthModalPanel({
           >
             {isLoggingIn ? 'Signing in...' : 'Sign in'}
           </button>
-          {loginError ? (
-            <div className="p-3 bg-red-900/50 border border-red-500 rounded-xl text-red-300 text-sm text-center leading-relaxed" role="alert">
-              {loginError}
-            </div>
+          {loginError && !isOAuthProviderError(loginError) ? (
+            <AuthErrorBanner message={loginError} />
           ) : null}
           <div className="pt-1">
             <button

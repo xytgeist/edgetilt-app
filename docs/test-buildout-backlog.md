@@ -1140,6 +1140,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-15:** **Delete account `{}` + Apple error placement (Mac).** Confirm portal was eating the same tap; invoke `{}` is no longer shown as the error. Apple issuer error sits on the Apple button. Ryan still enables Apple in Supabase Auth. **`1.4.225`.**
 - **2026-09-15:** **App Review rejection fixes (Mac).** SIWA on the auth sheet (Apple first). CallKit + PushKit off for storefront `CHN` (China stays a territory). Subscribe 3D carousel spread on iPad-sized viewports. **`1.4.224`.** Do not resubmit 125. Do not Add Lifetime yet. Ryan still enables Apple on the App ID + Supabase Apple provider.
 - **2026-09-15:** **1.4.95 (125) Rejected (Mac).** ASC thread `c0b06dc5-…`. iPad Air 11-inch (M3) / iPadOS 27. **4.8** Sign in with Apple (Google is on the sheet). **4.0** iPad-compat layout crowded (Ryan: subscribe carousel only). **5.0** CallKit + China availability. Do not resubmit 125 unchanged.
 - **2026-09-14:** **Guest claim tokens ride signup metadata (Mac).** Copy-link swap/stake/slice invites write the claim token onto `user_metadata` at signup so confirm in the IPA still attaches. Browser stash remains a backup. **`1.4.223`.**

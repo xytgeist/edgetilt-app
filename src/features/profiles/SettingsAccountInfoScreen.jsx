@@ -53,6 +53,7 @@ export default function SettingsAccountInfoScreen({
   const [handleChangeDialog, setHandleChangeDialog] = useState(null)
   const [handleConflictDialog, setHandleConflictDialog] = useState(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteConfirmArmed, setDeleteConfirmArmed] = useState(false)
 
   const reloadProfile = useCallback(async () => {
     if (!supabaseClient || !userId) {
@@ -83,6 +84,16 @@ export default function SettingsAccountInfoScreen({
   useEffect(() => {
     void reloadProfile()
   }, [reloadProfile])
+
+  useEffect(() => {
+    if (!deleteDialogOpen) {
+      setDeleteConfirmArmed(false)
+      return undefined
+    }
+    // IPA: the same tap that opens this portal can land on Confirm. Arm after a beat.
+    const timer = window.setTimeout(() => setDeleteConfirmArmed(true), 450)
+    return () => window.clearTimeout(timer)
+  }, [deleteDialogOpen])
 
   const normalizedHandleDraft = useMemo(() => normalizeHandle(handleDraft), [handleDraft])
   const normalizedPhoneDraft = useMemo(() => normalizePhoneNumber(phoneDraft), [phoneDraft])
@@ -244,12 +255,9 @@ export default function SettingsAccountInfoScreen({
     try {
       await onDeleteAccount()
     } catch (e) {
-      setDeleteDialogOpen(false)
-      setSaveError(
-        typeof e?.message === 'string' && e.message.trim()
-          ? e.message.trim()
-          : 'Could not delete account.',
-      )
+      const raw = typeof e?.message === 'string' ? e.message.trim() : ''
+      const useless = !raw || raw === '{}' || raw === '[]' || raw === '[object Object]'
+      setSaveError(useless ? 'Could not delete account. Try again in a moment.' : raw)
     }
   }, [deleteAccountBusy, onDeleteAccount])
 
@@ -377,7 +385,11 @@ export default function SettingsAccountInfoScreen({
           {saveMessage ? (
             <p className="text-[13px] leading-relaxed text-cyan-200/90">{saveMessage}</p>
           ) : null}
-          {saveError ? <p className="text-[13px] leading-relaxed text-red-300/90">{saveError}</p> : null}
+          {saveError ? (
+            <p className="text-[13px] leading-relaxed text-red-300/90">
+              {typeof saveError === 'string' ? saveError : 'Could not save account info.'}
+            </p>
+          ) : null}
 
           {typeof onDeleteAccount === 'function' ? (
             <div className="border-t border-zinc-800/90 pt-5">
@@ -483,7 +495,7 @@ export default function SettingsAccountInfoScreen({
       {deleteDialogOpen && typeof document !== 'undefined'
         ? createPortal(
             <div
-              className="fixed inset-0 z-[120] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
+              className="fixed inset-0 z-[220] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
               data-settings-account-info-dialog
               role="alertdialog"
               aria-modal="true"
@@ -518,7 +530,7 @@ export default function SettingsAccountInfoScreen({
                   </button>
                   <button
                     type="button"
-                    disabled={deleteAccountBusy}
+                    disabled={deleteAccountBusy || !deleteConfirmArmed}
                     onClick={() => void onConfirmDeleteAccount()}
                     className="min-h-11 w-full rounded-xl bg-red-600 px-4 text-[15px] font-semibold text-white touch-manipulation hover:bg-red-500 disabled:opacity-50 sm:w-auto"
                   >

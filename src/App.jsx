@@ -133,6 +133,41 @@ const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 })
 
+function isUselessErrorText(text) {
+  const t = String(text || '').trim()
+  if (!t) return true
+  if (t === '{}' || t === '[]' || t === '[object Object]') return true
+  if (/^edge function returned a non-2xx status code$/i.test(t)) return true
+  return false
+}
+
+async function messageFromDeleteOwnAccountError(error, response) {
+  const fallback = 'Could not delete account. Try again in a moment.'
+  const res =
+    error?.context && typeof error.context.status === 'number' ? error.context : response
+  if (res && typeof res.clone === 'function') {
+    try {
+      const text = await res.clone().text()
+      if (text) {
+        try {
+          const body = JSON.parse(text)
+          const fromError = body?.error != null ? String(body.error).trim() : ''
+          const fromMessage = body?.message != null ? String(body.message).trim() : ''
+          if (fromError && !isUselessErrorText(fromError)) return fromError
+          if (fromMessage && !isUselessErrorText(fromMessage)) return fromMessage
+        } catch {
+          if (!isUselessErrorText(text)) return text.slice(0, 280)
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  const detail = typeof error?.message === 'string' ? error.message.trim() : ''
+  if (!isUselessErrorText(detail)) return detail
+  return fallback
+}
+
 function readBillingQueryParams() {
   if (typeof window === 'undefined') return null
   try {
@@ -972,6 +1007,13 @@ function App() {
       return 'This reset link is invalid or expired. Please request a new one.'
     }
 
+    if (
+      lower.includes('appleid.apple.com') ||
+      (lower.includes('provider') && lower.includes('not enabled') && lower.includes('apple'))
+    ) {
+      return 'Apple sign-in is not enabled on this server yet. Use Google or email for now.'
+    }
+
     return message
   }
 
@@ -1221,37 +1263,34 @@ function App() {
         data: { session },
       } = await supabase.auth.getSession()
       const userId = session?.user?.id ?? null
+      const accessToken = typeof session?.access_token === 'string' ? session.access_token.trim() : ''
+      if (!accessToken) {
+        throw new Error('Sign in again, then delete the account.')
+      }
 
       const { data, error, response } = await supabase.functions.invoke('delete-own-account', {
         method: 'POST',
-        body: {},
+        body: { confirm: true },
+        headers: { Authorization: `Bearer ${accessToken}` },
       })
       if (error) {
-        let detail = typeof error.message === 'string' ? error.message.trim() : ''
-        if (response) {
-          try {
-            const body = await response.clone().json()
-            if (body && typeof body === 'object' && body.error) {
-              detail = String(body.error).trim()
-            }
-          } catch {
-            /* ignore */
-          }
-        }
-        throw new Error(detail || 'Could not delete account.')
+        throw new Error(await messageFromDeleteOwnAccountError(error, response))
       }
       if (data && typeof data === 'object' && data.error) {
-        throw new Error(String(data.error))
+        const raw = String(data.error).trim()
+        throw new Error(isUselessErrorText(raw) ? 'Could not delete account.' : raw)
+      }
+      if (!data || data.ok !== true) {
+        throw new Error('Could not delete account.')
       }
 
       clearAccountClientState(userId)
       await supabase.auth.signOut()
       window.location.href = `${window.location.origin}/`
     } catch (e) {
-      const fallback =
-        'Could not delete account. Deploy the delete-own-account Edge Function (see supabase/functions/delete-own-account/README.md).'
+      const fallback = 'Could not delete account. Try again in a moment.'
       const msg = typeof e?.message === 'string' && e.message.trim() ? e.message.trim() : fallback
-      throw new Error(msg)
+      throw new Error(isUselessErrorText(msg) ? fallback : msg)
     } finally {
       setDeleteAccountBusy(false)
     }
@@ -1459,18 +1498,33 @@ function App() {
       }}
       verificationSuccess={verificationSuccess}
       email={email}
-      onEmailChange={setEmail}
+      onEmailChange={(value) => {
+        setEmail(value)
+        setLoginError('')
+      }}
       password={password}
-      onPasswordChange={setPassword}
+      onPasswordChange={(value) => {
+        setPassword(value)
+        setLoginError('')
+      }}
       loginError={loginError}
       isLoggingIn={isLoggingIn}
       onLoginSubmit={handleLogin}
       signupEmail={signupEmail}
-      onSignupEmailChange={setSignupEmail}
+      onSignupEmailChange={(value) => {
+        setSignupEmail(value)
+        setSignupError('')
+      }}
       signupPassword={signupPassword}
-      onSignupPasswordChange={setSignupPassword}
+      onSignupPasswordChange={(value) => {
+        setSignupPassword(value)
+        setSignupError('')
+      }}
       signupConfirmPassword={signupConfirmPassword}
-      onSignupConfirmPasswordChange={setSignupConfirmPassword}
+      onSignupConfirmPasswordChange={(value) => {
+        setSignupConfirmPassword(value)
+        setSignupError('')
+      }}
       signupError={signupError}
       signupMessage={signupMessage}
       isSigningUp={isSigningUp}

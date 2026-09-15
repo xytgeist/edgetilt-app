@@ -77,7 +77,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 
 ### Mac Theo 2026-09-15 … iPad subscribe cards
 
-**I am Mac Theo.** iPad subscribe 3D stack stays. **`1.4.242` width never won** … a later `16.75rem` rule overwrote the tablet size. **`1.4.243`** puts tablet width after that rule: `13.5rem` / `36vw`, `min-height: 0` (beats `sm:min-h-[23.5rem]`). Phone unchanged. Do not resubmit 125.
+**I am Mac Theo.** iPad 3D stack stays. Cards were shrinking then **jumping giant** … first-paint `transform` transition + center `translateZ(72)`. **`1.4.244`:** iPad center `tz: 0`, no mount transition, tablet width `12rem`, `height: auto` (beats `h-full` / `sm:min-h`). Phone unchanged. Do not resubmit 125.
 
 ### Mac Theo 2026-09-15 … Hamburger outside tap
 

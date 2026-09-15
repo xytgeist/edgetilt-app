@@ -3896,6 +3896,7 @@ html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-hero-title {
   left: 50%;
   top: 50%;
   width: min(16.75rem, 70vw);
+  transform: translate(-50%, -50%);
   transform-style: preserve-3d;
   overflow: visible;
   backface-visibility: hidden;
@@ -3910,16 +3911,24 @@ html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-hero-title {
   [data-subscribe-modal].subscribe-modal-shell {
     max-width: 42rem;
   }
+  [data-subscribe-modal] .subscribe-plan-carousel-3d {
+    height: auto;
+    min-height: 0;
+  }
   [data-subscribe-modal] .subscribe-plan-carousel-stage {
-    min-height: 22rem;
+    height: auto;
+    min-height: 20rem;
   }
   [data-subscribe-modal] .subscribe-plan-slide-3d {
-    width: min(13.5rem, 36vw);
+    width: min(12rem, 30vw);
   }
   [data-subscribe-modal] .subscribe-plan-card {
-    min-height: 0;
-    padding-left: 0.85rem;
-    padding-right: 0.85rem;
+    height: auto !important;
+    min-height: 0 !important;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    padding-top: 2rem;
+    padding-bottom: 0.75rem;
   }
 }
 [data-subscribe-modal] .subscribe-plan-slide-3d--instant {

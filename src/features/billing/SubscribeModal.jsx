@@ -70,11 +70,11 @@ const SLIDE_POSES = {
   right: { tx: 56, tz: -110, ry: -16, scale: 0.88, opacity: 1, z: 14 },
 }
 
-/** iPad / tall tablet: same 3D stack as phone, slightly more spread. Cards stay small. */
+/** iPad: peek the sides, do not push the center card toward the camera (that was the grow jump). */
 const SLIDE_POSES_IPAD = {
-  left: { tx: -62, tz: -90, ry: 14, scale: 0.86, opacity: 1, z: 14 },
-  center: { tx: 0, tz: 72, ry: 0, scale: 1, opacity: 1, z: 30 },
-  right: { tx: 62, tz: -90, ry: -14, scale: 0.86, opacity: 1, z: 14 },
+  left: { tx: -54, tz: -70, ry: 12, scale: 0.88, opacity: 1, z: 14 },
+  center: { tx: 0, tz: 0, ry: 0, scale: 1, opacity: 1, z: 30 },
+  right: { tx: 54, tz: -70, ry: -12, scale: 0.88, opacity: 1, z: 14 },
 }
 
 function isSpreadSubscribeCarousel() {
@@ -433,6 +433,7 @@ export default function SubscribeModal({
   const [activeSlide, setActiveSlide] = useState(1)
   /** Slides that reposition instantly on wrap (avoids flying across the deck). */
   const [instantSlideIndexes, setInstantSlideIndexes] = useState(() => new Set())
+  const [poseTransitionOn, setPoseTransitionOn] = useState(false)
   const [dragPx, setDragPx] = useState(0)
   const [isDragging, setIsDragging] = useState(false)
   const carouselRef = useRef(/** @type {HTMLDivElement | null} */ (null))
@@ -468,6 +469,7 @@ export default function SubscribeModal({
     setUsStorefront(null)
     setPayVia('iap')
     setInstantSlideIndexes(new Set())
+    setPoseTransitionOn(false)
     setDragPx(0)
     setIsDragging(false)
     dragArmedRef.current = false
@@ -515,6 +517,21 @@ export default function SubscribeModal({
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (!open) {
+      setPoseTransitionOn(false)
+      return undefined
+    }
+    let nested = 0
+    const first = window.requestAnimationFrame(() => {
+      nested = window.requestAnimationFrame(() => setPoseTransitionOn(true))
+    })
+    return () => {
+      window.cancelAnimationFrame(first)
+      window.cancelAnimationFrame(nested)
+    }
+  }, [open])
 
   useEffect(() => {
     if (!open) return undefined
@@ -972,7 +989,7 @@ export default function SubscribeModal({
                       className={[
                         'subscribe-plan-slide-3d',
                         getSlideOffset(0, activeSlide, slideCount) === 0 ? 'subscribe-plan-slide-3d--active' : 'subscribe-plan-slide-3d--side',
-                        instantSlideIndexes.has(0) ? 'subscribe-plan-slide-3d--instant' : '',
+                        !poseTransitionOn || instantSlideIndexes.has(0) ? 'subscribe-plan-slide-3d--instant' : '',
                         isDragging ? 'subscribe-plan-slide-3d--dragging' : '',
                       ].join(' ')}
                       style={getSlide3DStyle(0, activeSlide, dragProgress, slideCount)}
@@ -1118,7 +1135,7 @@ export default function SubscribeModal({
                       className={[
                         'subscribe-plan-slide-3d',
                         getSlideOffset(1, activeSlide, slideCount) === 0 ? 'subscribe-plan-slide-3d--active' : 'subscribe-plan-slide-3d--side',
-                        instantSlideIndexes.has(1) ? 'subscribe-plan-slide-3d--instant' : '',
+                        !poseTransitionOn || instantSlideIndexes.has(1) ? 'subscribe-plan-slide-3d--instant' : '',
                         isDragging ? 'subscribe-plan-slide-3d--dragging' : '',
                       ].join(' ')}
                       style={getSlide3DStyle(1, activeSlide, dragProgress, slideCount)}
@@ -1272,7 +1289,7 @@ export default function SubscribeModal({
                       className={[
                         'subscribe-plan-slide-3d',
                         getSlideOffset(2, activeSlide, slideCount) === 0 ? 'subscribe-plan-slide-3d--active' : 'subscribe-plan-slide-3d--side',
-                        instantSlideIndexes.has(2) ? 'subscribe-plan-slide-3d--instant' : '',
+                        !poseTransitionOn || instantSlideIndexes.has(2) ? 'subscribe-plan-slide-3d--instant' : '',
                         isDragging ? 'subscribe-plan-slide-3d--dragging' : '',
                       ].join(' ')}
                       style={getSlide3DStyle(2, activeSlide, dragProgress, slideCount)}

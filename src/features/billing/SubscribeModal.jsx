@@ -70,11 +70,11 @@ const SLIDE_POSES = {
   right: { tx: 56, tz: -110, ry: -16, scale: 0.88, opacity: 1, z: 14 },
 }
 
-/** iPad Air / tall tablet: spread the 3D stack so the Review carousel is not a cramped cluster. */
+/** iPad / tall tablet: same 3D stack as phone, slightly more spread. Cards stay small. */
 const SLIDE_POSES_IPAD = {
-  left: { tx: -82, tz: -64, ry: 8, scale: 0.93, opacity: 1, z: 14 },
-  center: { tx: 0, tz: 28, ry: 0, scale: 1, opacity: 1, z: 30 },
-  right: { tx: 82, tz: -64, ry: -8, scale: 0.93, opacity: 1, z: 14 },
+  left: { tx: -62, tz: -90, ry: 14, scale: 0.86, opacity: 1, z: 14 },
+  center: { tx: 0, tz: 72, ry: 0, scale: 1, opacity: 1, z: 30 },
+  right: { tx: 62, tz: -90, ry: -14, scale: 0.86, opacity: 1, z: 14 },
 }
 
 function isSpreadSubscribeCarousel() {

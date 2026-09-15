@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-15 … iPad subscribe cards
+
+**I am Mac Theo.** iPad subscribe carousel keeps the 3D stack. Cards were too big (`21rem` / `26rem` min). Now `15.25rem`, no forced min-height. Phone unchanged. **`1.4.242`.** Do not resubmit 125.
+
 ### Mac Theo 2026-09-15 … Hamburger outside tap
 
 **I am Mac Theo.** Hamburger still closes on FAB / outside taps. Menu is **not** portaled (that hid it). In-flow under the button. Title bar z 107 over dismiss 106. **`1.4.241`.** Do not resubmit 125.

@@ -3888,21 +3888,21 @@ html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-hero-title {
     min-height: 24rem;
   }
 }
-/* iPhone-only IPA still reviewed on iPad Air. Spread + enlarge the plan stack. */
+/* iPad / tablet: keep the 3D peek stack, shrink the cards (21rem was overflowing the well). */
 @media (min-width: 768px), (min-width: 640px) and (min-height: 800px) {
   [data-subscribe-modal].subscribe-modal-shell {
-    max-width: 48rem;
+    max-width: 42rem;
   }
   [data-subscribe-modal] .subscribe-plan-carousel-stage {
-    min-height: 28.5rem;
+    min-height: 24rem;
   }
   [data-subscribe-modal] .subscribe-plan-slide-3d {
-    width: min(21rem, 56vw);
+    width: min(15.25rem, 40vw);
   }
   [data-subscribe-modal] .subscribe-plan-card {
-    min-height: 26rem;
-    padding-left: 1.25rem;
-    padding-right: 1.25rem;
+    min-height: 0;
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
 }
 [data-subscribe-modal] .subscribe-plan-carousel-floor {

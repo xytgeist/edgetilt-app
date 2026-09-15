@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-15:** **iPad subscribe cards (Mac).** 3D stack stays. Tablet cards shrink (`15.25rem`, no 26rem min-height). The 21rem iPad bump was overflowing the well. **`1.4.242`.**
 - **2026-09-15:** **Hamburger menu visible again (Mac).** Portal attached to the hidden Chat keep-alive hamburger (zero rect) and painted the menu off-screen. Menu is back under the visible button. Title bar rises to z 107 over the FAB dismiss layer. **`1.4.241`.**
 - **2026-09-15:** **Apple unverified-email copy (Mac).** SIWA `ASAuthorizationError` 1000 / `AuthenticationServices` no longer dumps the raw code. Banner: verify the Apple ID email in Settings, then try again. **`1.4.239`.**
 - **2026-09-15:** **Homepage title (Mac).** `index.html` / og / twitter is **EdgeTilt | Edge for Risk Takers**. Ryan: we are not a slots-and-poker app. Slots/poker SEO stays on the hubs.

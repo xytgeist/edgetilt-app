@@ -85,6 +85,12 @@ import {
 import { tryAutoLinkGuestStakeeOffers } from './features/poker-bankroll/pokerGuestStakeeAutoLink.js'
 import { tryAutoLinkGuestSwapOffers } from './features/poker-bankroll/pokerGuestSwapAutoLink.js'
 import {
+  clearPokerClaimTokensFromUserMetadata,
+  hydratePokerClaimStashFromUser,
+  pokerClaimSignupMetadata,
+  pokerClaimTokensPresent,
+} from './features/poker-bankroll/pokerGuestClaimMetadata.js'
+import {
   markPokerStableClaimFlowPending,
   navigateAfterStableClaim,
   navigateToStableClaimPage,
@@ -470,6 +476,10 @@ function App() {
   useEffect(() => {
     if (!user?.id || isChecking || currentView !== 'app') return
     void (async () => {
+      const hydratedClaims = hydratePokerClaimStashFromUser(user)
+      if (pokerClaimTokensPresent(hydratedClaims)) {
+        void clearPokerClaimTokensFromUserMetadata(supabase)
+      }
       const linkedSwap = await tryAutoLinkGuestSwapOffers(supabase)
       if (linkedSwap) return
       const linkedBacker = await tryAutoLinkGuestBackerOffers(supabase)
@@ -487,15 +497,21 @@ function App() {
         }
         const recovered = await recoverStaleStableBackerClaim(supabase)
         if (recovered) return
-        const stakeToken = readStashedPokerStakeClaimToken()
-        if (stakeToken) {
-          navigateToStakeClaimPage(stakeToken)
-          return
-        }
       }
       const swapToken = readStashedPokerSwapClaimToken()
       if (swapToken) {
         navigateToSwapClaimPage(swapToken)
+        return
+      }
+      const stakeToken = readStashedPokerStakeClaimToken()
+      if (stakeToken) {
+        navigateToStakeClaimPage(stakeToken)
+        return
+      }
+      const stableToken = readStashedPokerStableClaimToken()
+      if (stableToken) {
+        const resumed = await resumeStableBackerClaimAfterConfirm(supabase, stableToken)
+        if (resumed) return
       }
     })()
   }, [user?.id, isChecking, currentView])
@@ -1042,12 +1058,21 @@ function App() {
       markPokerStableClaimFlowPending()
     }
     if (swapClaimCtx?.token) stashPokerSwapClaimToken(swapClaimCtx.token)
+    const signupMeta = {
+      ...(affiliateCode ? { affiliate_code: affiliateCode } : {}),
+      ...(militaryPromoCode ? { military_promo_code: militaryPromoCode } : {}),
+      ...pokerClaimSignupMetadata({
+        swapToken: swapClaimCtx?.token,
+        stakeToken: claimCtx?.token,
+        stableToken: stableClaimCtx?.token,
+      }),
+    }
     const { data, error } = await supabase.auth.signUp({
       email: signupEmail,
       password: signupPassword,
       options: {
-        // Stake/stable/swap claim: confirm via Site URL (always allow-listed); token in sessionStorage.
-        // Other signups: carry ?ref= on redirect when stamped.
+        // Stake/stable/swap claim: confirm via Site URL (always allow-listed).
+        // Claim token also goes on user_metadata so IPA / other-app confirm can attach.
         emailRedirectTo: signupFromStakeClaim
           ? stakeClaimSignupEmailRedirectUrl()
           : signupFromStableClaim
@@ -1055,13 +1080,7 @@ function App() {
             : signupFromSwapClaim
               ? swapClaimSignupEmailRedirectUrl()
               : authRedirectUrlWithPromoStamps(`${window.location.origin}/`),
-        data:
-          affiliateCode || militaryPromoCode
-            ? {
-                ...(affiliateCode ? { affiliate_code: affiliateCode } : {}),
-                ...(militaryPromoCode ? { military_promo_code: militaryPromoCode } : {}),
-              }
-            : undefined,
+        data: Object.keys(signupMeta).length ? signupMeta : undefined,
       },
     })
     if (error) {
@@ -1087,7 +1106,9 @@ function App() {
         ? '✅ Account created! Confirm your email ... that link will link this stake and open Bankroll.'
         : signupFromStableClaim
           ? '✅ Account created! Confirm your email ... that link will link your backing slice and open Stable Manager with the full terms.'
-          : '✅ Account created! Please check your email for the confirmation link.',
+          : signupFromSwapClaim
+            ? '✅ Account created! Confirm your email ... that link will link this swap and open Poker Bankroll.'
+            : '✅ Account created! Please check your email for the confirmation link.',
     )
     setSignupEmail('')
     setSignupPassword('')

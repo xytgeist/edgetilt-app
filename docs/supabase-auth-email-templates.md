@@ -10,9 +10,7 @@ Use **`{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=…`**. `Sit
 
 **Universal Links:** AASA is `/.well-known/apple-app-site-association` on the same host. IPA Associated Domains `applinks:edgetilt.com` + `applinks:lvslotpro.com`. New binary required. Gmail's in-app browser ignores Universal Links. Browser fallback is a viewport-pinned `/auth/confirm` card (does not mount Lounge) plus **Open EdgeTilt** (`edgetilt://open`). Next IPA also accepts `edgetilt://auth/confirm?token_hash=&type=` and loads the https confirm URL. Mail.app / Messages / Safari remain the clean UL path.
 
-**Guest stake claim signup:** confirm email uses the **Site URL** (`https://edgetilt.com/`) as `emailRedirectTo` so Supabase allow-list always matches. The claim token is stored in **`sessionStorage`** + **`localStorage`** before signup; after confirm the app sends the player to **`/poker-stake-claim`**. Optional allow-list entry: **`https://edgetilt.com/poker-stake-claim`** (not required for confirm).
-
-**Guest backer claim signup (`/poker-stable-claim`):** same Site URL confirm redirect + token stash pattern; after confirm the app opens **`/poker-stable-claim`** (or auto-links by email) then Stable slice onboarding.
+**Guest stake / swap / backer claim signup:** confirm email still uses **Site URL** + `/auth/confirm` (allow-list). The claim token is written onto **`user_metadata`** at signup (`poker_swap_claim_token` / `poker_stake_claim_token` / `poker_stable_claim_token`) so confirming in the IPA (a new WebView) can still attach. Browser **`sessionStorage` + `localStorage`** remains a same-browser backup. Optional allow-list entries for `/poker-*-claim` are not required.
 
 **Variables (Go template):** `{{ .Email }}`, `{{ .SiteURL }}`, `{{ .Token }}`, `{{ .TokenHash }}`. Prefer **`{{ .TokenHash }}`** + **`/auth/confirm`**. Do **not** paste `{{ .ConfirmationURL }}` for the button (that is `auth.edgetilt.com` / `auth/v1/verify`).
 

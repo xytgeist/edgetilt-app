@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-14 … guest claim token on the account
+
+**I am Mac Theo.** Signup from `/poker-swap-claim` / stake / stable claim writes the token to `user_metadata`. Confirm in the IPA hydrates stash and attaches. **`1.4.223`.**
+
 ### Mac Theo 2026-09-14 … guest invite SMS has one link
 
 **I am Mac Theo.** Invite body is `{name} is swapping … from EdgeTilt` (no `.com`). iMessage OG stays the claim URL. **`1.4.222`.**

@@ -3,6 +3,11 @@
  */
 
 import { isPokerStableClaimFlowPending } from '../poker-stable/pokerStableBackerClaimNav.js'
+import {
+  clearPokerClaimTokensFromUserMetadata,
+  hydratePokerClaimStashFromUser,
+  pokerClaimTokensPresent,
+} from '../poker-bankroll/pokerGuestClaimMetadata.js'
 
 /** First-party confirm path. Email templates use token_hash here so Universal Links can open the IPA. */
 export const AUTH_CONFIRM_PATH = '/auth/confirm'
@@ -132,6 +137,13 @@ export async function routeAfterGuestClaimEmailConfirm(supabase, {
   recoverStaleStableBackerClaim,
   replaceUrlPreservingQuery,
 }) {
+  await waitForSupabaseSession(supabase)
+  const { data: { session } } = await supabase.auth.getSession()
+  const hydratedClaims = hydratePokerClaimStashFromUser(session?.user)
+  if (pokerClaimTokensPresent(hydratedClaims)) {
+    void clearPokerClaimTokensFromUserMetadata(supabase)
+  }
+
   const stakeClaimReturn = parsePokerStakeClaimFromLocation(pathname, search)
   const stableClaimReturn = parsePokerStableClaimFromLocation(pathname, search)
   const swapClaimReturn = parsePokerSwapClaimFromLocation?.(pathname, search) || null
@@ -155,7 +167,6 @@ export async function routeAfterGuestClaimEmailConfirm(supabase, {
 
   const onHomeAfterConfirm = pathname === '/' || pathname === ''
   if (onHomeAfterConfirm) {
-    await waitForSupabaseSession(supabase)
     const linkedSwap = await tryAutoLinkGuestSwapOffers?.(supabase)
     if (linkedSwap) return true
     const linkedStakee = await tryAutoLinkGuestStakeeOffers(supabase)

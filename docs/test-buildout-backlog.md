@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-15:** **Keep the person’s name on a deleted-party stake (Mac).** Stamp **`Joey (Deleted User)`** from profile display name / handle before the profile row goes. Generic `Deleted account` is last resort only. Swaps too. **`1.4.232`.**
 - **2026-09-15:** **Preserve stakes on account delete (Mac).** Deal / slice party FKs were CASCADE (other side lost the horse). Now SET NULL + guest label, same idea as swaps. Audit actor ids on commits/settlements SET NULL so those rows stay. Applied **test**. **`1.4.231`.**
 - **2026-09-15:** **Delete account real SQL (Mac).** GoTrue string was wrapping **`poker_tournament_swaps_counterparty_present`** after this leftover swap-claim SET NULL. Trigger + **`explain_auth_user_delete_block`** on the Edge error body. Applied **test**. **`1.4.230`.**
 - **2026-09-15:** **Rolled back chat-room FK delete guess (Mac).** Restored `chat_rooms.creator_user_id` CASCADE on test. Delete path back to pre-018393a2 `deleteUser` + `functions.invoke`. **`1.4.228`.**

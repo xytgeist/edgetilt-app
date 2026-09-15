@@ -75,6 +75,10 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-15 … keep Joey’s name on the stake
+
+**I am Mac Theo.** **`1.4.232`.** After Joey deletes, Edge Lord still sees **`Joey (Deleted User)`** (display name or handle), not a generic deleted placeholder. Stamped from the profile before it is removed. Applied **test**.
+
 ### Mac Theo 2026-09-15 … preserve stakes on account delete
 
 **I am Mac Theo.** **`1.4.231`.** Stakes no longer CASCADE away when a party deletes. Deal player / lead backer / slice backer become guest labels. Other Edge user keeps the horse. Applied **test**. Do not resubmit 125.

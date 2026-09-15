@@ -30,6 +30,12 @@ final class EdgeStoreKitManager {
     Task {
       let storefront = await Storefront.current
       let code = storefront?.countryCode ?? ""
+      EdgeChinaAvailability.persist(countryCode: code)
+      if !EdgeChinaAvailability.callKitAllowed {
+        await MainActor.run {
+          EdgeCallKitManager.shared.tearDownForChina()
+        }
+      }
       let isUnitedStates = code.caseInsensitiveCompare("USA") == .orderedSame
       completion(.success([
         "countryCode": code,

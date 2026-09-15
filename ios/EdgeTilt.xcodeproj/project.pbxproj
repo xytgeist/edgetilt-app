@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		0A3440AB6B3037B0FEACE28C /* EdgeSafeAreaInsets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0015D001309AA8C167529D /* EdgeSafeAreaInsets.swift */; };
+		B92D4F15C8E25033A1F7B241 /* EdgeAppleSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = A81C3E04B7D14F2290E6A130 /* EdgeAppleSignIn.swift */; };
+		D14F6B27E0A47255C3B9D463 /* EdgeChinaAvailability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C03E5A16D9F36144B2A8C352 /* EdgeChinaAvailability.swift */; };
 		136F8453907246F1C3A1659D /* EdgeLiveKitCallManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025E73428F6135E0B290548C /* EdgeLiveKitCallManager.swift */; };
 		2EDAB0E529026EF8B5FEA532 /* EdgeHaptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF0D9AEF6D31B7874CAA6351 /* EdgeHaptics.swift */; };
 		9D18F4B70C2E5A33B1D8476E /* EdgeDocumentScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4E91A02B8D4F11A6E3C209 /* EdgeDocumentScanner.swift */; };
@@ -46,6 +48,8 @@
 		636A0FF8CC23E17E467905A0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		80BB8BF27C926AB18BA2EA1A /* EdgePushManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgePushManager.swift; sourceTree = "<group>"; };
 		8EA3ED8893AF6C173919AD50 /* EdgeCallKitManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeCallKitManager.swift; sourceTree = "<group>"; };
+		A81C3E04B7D14F2290E6A130 /* EdgeAppleSignIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeAppleSignIn.swift; sourceTree = "<group>"; };
+		C03E5A16D9F36144B2A8C352 /* EdgeChinaAvailability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeChinaAvailability.swift; sourceTree = "<group>"; };
 		A039684E44413435F9C5696A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A172774CB77EA2CE9B6378F0 /* EdgeAudioSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeAudioSession.swift; sourceTree = "<group>"; };
 		A50DC0B1CCEF2E8786FA052B /* EdgeLocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeLocationManager.swift; sourceTree = "<group>"; };
@@ -90,9 +94,11 @@
 				226468E06E598019B8166B33 /* AppConfig.swift */,
 				F61EE56EC2ACB500F375E8BE /* AppDelegate.swift */,
 				A039684E44413435F9C5696A /* Assets.xcassets */,
+				A81C3E04B7D14F2290E6A130 /* EdgeAppleSignIn.swift */,
 				A172774CB77EA2CE9B6378F0 /* EdgeAudioSession.swift */,
 				C81A3F0E4B2D91A67E5C1048 /* EdgeAuthSessionStore.swift */,
 				8EA3ED8893AF6C173919AD50 /* EdgeCallKitManager.swift */,
+				C03E5A16D9F36144B2A8C352 /* EdgeChinaAvailability.swift */,
 				3E9A1C70B4D2581F90A6C2E8 /* EdgeCallKitAvatarApply.m */,
 				E03C51206D4F13C8907E326A /* EdgeChatCallsClient.swift */,
 				025E73428F6135E0B290548C /* EdgeLiveKitCallManager.swift */,
@@ -202,6 +208,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				BB702B52C0AE20A07AE04E78 /* AppConfig.swift in Sources */,
+				B92D4F15C8E25033A1F7B241 /* EdgeAppleSignIn.swift in Sources */,
+				D14F6B27E0A47255C3B9D463 /* EdgeChinaAvailability.swift in Sources */,
 				56164041B61C9D93975189F6 /* AppDelegate.swift in Sources */,
 				9980D8DAF4E53F6C0DF750A5 /* EdgeAudioSession.swift in Sources */,
 				D92B401F5C3E02B78F6D2159 /* EdgeAuthSessionStore.swift in Sources */,

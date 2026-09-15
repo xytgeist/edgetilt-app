@@ -3493,6 +3493,11 @@ html.light [data-auth-modal] .bg-orange-600         { color: #fff !important; }
 html.light [data-auth-modal] .bg-zinc-800           { box-shadow: inset 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04) !important; }
 html.light [data-auth-modal] .bg-orange-600         { box-shadow: 0 2px 8px rgba(234,88,12,0.35) !important; }
 html.light [data-auth-modal] .bg-white.border       { box-shadow: 0 1px 4px rgba(0,0,0,0.08) !important; }
+html.light [data-auth-modal] button.bg-black {
+  background-color: #000 !important;
+  color: #fff !important;
+  border-color: #18181b !important;
+}
 html.light [data-auth-modal] .bg-zinc-800\/90       { box-shadow: inset 0 1px 2px rgba(0,0,0,0.06) !important; }
 html.light [data-auth-modal] .bg-emerald-900\/50 {
   background-color: #ecfdf5 !important;
@@ -3874,6 +3879,23 @@ html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-hero-title {
 @media (min-width: 640px) {
   [data-subscribe-modal] .subscribe-plan-carousel-stage {
     min-height: 24rem;
+  }
+}
+/* iPhone-only IPA still reviewed on iPad Air. Spread + enlarge the plan stack. */
+@media (min-width: 768px), (min-width: 640px) and (min-height: 800px) {
+  [data-subscribe-modal].subscribe-modal-shell {
+    max-width: 48rem;
+  }
+  [data-subscribe-modal] .subscribe-plan-carousel-stage {
+    min-height: 28.5rem;
+  }
+  [data-subscribe-modal] .subscribe-plan-slide-3d {
+    width: min(21rem, 56vw);
+  }
+  [data-subscribe-modal] .subscribe-plan-card {
+    min-height: 26rem;
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
   }
 }
 [data-subscribe-modal] .subscribe-plan-carousel-floor {

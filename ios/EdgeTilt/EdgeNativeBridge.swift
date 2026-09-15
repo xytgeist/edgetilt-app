@@ -120,7 +120,10 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       EdgeHaptics.trigger(style: style)
       completion(.success(["ok": true]))
     case "getCallKitCapabilities":
-      completion(.success(["supported": true, "voipPush": true]))
+      completion(.success(EdgeCallKitManager.shared.capabilitiesPayload()))
+    case "signInWithApple":
+      let nonce = (payload?["nonce"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+      EdgeAppleSignIn.start(hashedNonce: nonce, completion: completion)
     case "preloadAvatar":
       let avatarUrl = (payload?["avatarUrl"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
       EdgeCallKitCallerAvatar.prefetchToCache(avatarUrl: avatarUrl)
@@ -628,6 +631,9 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       },
       getCallKitCapabilities: function () {
         return call('getCallKitCapabilities', null);
+      },
+      signInWithApple: function (payload) {
+        return call('signInWithApple', payload || {});
       },
       reportIncomingCall: function (payload) {
         return call('reportIncomingCall', payload || {});

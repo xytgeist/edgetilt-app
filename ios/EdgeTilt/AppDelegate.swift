@@ -7,7 +7,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
   ) -> Bool {
     // PushKit must exist before didFinishLaunching returns. A VoIP wake from
     // terminated delivers the payload only after the registry is up. Do this
-    // before LiveKit / web / location work.
+    // before LiveKit / web / location work. Skip in China (CallKit / MIIT).
+    EdgeChinaAvailability.refreshFromStoreKit()
     EdgeCallKitManager.shared.startPushRegistryIfNeeded()
     EdgePushManager.shared.configure()
     EdgeCallKitManager.shared.configure()

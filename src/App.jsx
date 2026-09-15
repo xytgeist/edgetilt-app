@@ -107,7 +107,8 @@ import {
   recoverStaleStableBackerClaim,
 } from './features/poker-stable/pokerGuestBackerAutoLink.js'
 import { lazyRoute } from './utils/lazyImportWithChunkReload.js'
-import { isEdgeiOSShell } from './utils/edgeNative.js'
+import { createAppleIdTokenNonce } from './features/auth/appleIdTokenNonce.js'
+import { edgeNativeInvoke, isEdgeiOSShell } from './utils/edgeNative.js'
 import { syncEdgeNativeAuthSession } from './utils/edgeNativeAuthSession.js'
 
 const EdgeMonitorDesktopPage = lazyRoute(() => import('./features/ops/EdgeMonitorDesktopPage.jsx'))
@@ -1011,6 +1012,43 @@ function App() {
     setError('')
     if (markLegalPending) markPendingLegalAcceptance()
     setIsOAuthLoading(true)
+
+    if (
+      provider === 'apple' &&
+      isEdgeiOSShell() &&
+      typeof window.EdgeNative?.signInWithApple === 'function'
+    ) {
+      try {
+        const { raw, hashed } = await createAppleIdTokenNonce()
+        const native = await edgeNativeInvoke('signInWithApple', { nonce: hashed })
+        if (native?.cancelled) {
+          setIsOAuthLoading(false)
+          return
+        }
+        if (!native?.identityToken) {
+          throw new Error(native?.error || 'Apple sign-in did not return a token.')
+        }
+        const { data, error } = await supabase.auth.signInWithIdToken({
+          provider: 'apple',
+          token: native.identityToken,
+          nonce: raw,
+        })
+        if (error) throw error
+        setIsOAuthLoading(false)
+        setUser(data.user)
+        setAccessNotice('')
+        setVerificationSuccess(false)
+        setAuthPanelOpen(false)
+        await ensureDefaultProfileRow(supabase, data.user)
+        window.location.reload()
+        return
+      } catch (e) {
+        setError(getFriendlyErrorMessage(e))
+        setIsOAuthLoading(false)
+        return
+      }
+    }
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
@@ -1447,7 +1485,7 @@ function App() {
       acceptedLegal={acceptedLegal}
       onAcceptedLegalChange={setAcceptedLegal}
       onOpenLegalDocument={(slug) => openLegalDocument(slug, 'auth')}
-      onGoogleSignIn={({ setErrorTarget }) => {
+      onOAuthSignIn={({ provider, setErrorTarget }) => {
         const setError =
           setErrorTarget === 'forgot'
             ? setForgotError
@@ -1455,7 +1493,7 @@ function App() {
               ? setSignupError
               : setLoginError
         setError('')
-        void handleOAuthSignIn('google', {
+        void handleOAuthSignIn(provider === 'apple' ? 'apple' : 'google', {
           setError,
           markLegalPending: authTab === 'join' && acceptedLegal,
         })

@@ -16,6 +16,19 @@ Do **not** "fix" CallKit by retrying WKWebView `getUserMedia`, remounting `LiveK
 
 `AGENT_RULE_IPA_USES_NATIVE_WHEN_BETTER` — searchability token.
 
+### CallKit off in China (Guideline 5.0 / MIIT)
+
+StoreKit storefront `CHN` (SK1 sync at launch, persisted). First launch with no storefront yet uses locale region `CN`. Then:
+
+- Do **not** start PushKit. A VoIP push without a CallKit report kills the process.
+- Do **not** create / use `CXProvider`.
+- `getCallKitCapabilities.supported` is false so web uses `ChatIncomingCallOverlay`.
+- LiveKit / in-app calls still work. Regular APNs stays.
+
+Do not drop China as a territory unless this gate fails Review.
+
+`AGENT_RULE_CALLKIT_CHINA_OFF` — searchability token.
+
 ---
 
 ## Goals
@@ -65,7 +78,8 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | `triggerHaptic` | JS→native | `{ style?: 'light'\|'medium'\|'heavy'\|'success'\|'warning'\|'error' }` | `{ ok: boolean }` | Mac + web caller | **native** (`EdgeHaptics.swift`, 2026-08-26) + **web caller** (`tapHaptic.js`). IPA taps use `medium` (2026-09-12). Safari / PWA keep the switch trick. |
 | `preloadAvatar` | JS→native | `{ avatarUrl: string }` | `{ ok: boolean }` | Mac + web caller | **native** + **web caller** (2026-08-28): pre-caches avatar JPEG into `Library/Caches/edge-callkit-avatars/` so CallKit has it ready on disk for instant incoming call pill presentation. |
 | `setActiveChatRoom` | JS→native | `{ roomId: string \| null }` | `{ ok: boolean }` | Mac + web caller | **native** + **web caller** (2026-08-28): registers current open chat room ID so foreground APNs alerts for messages arriving in the active room are silenced. |
-| `getCallKitCapabilities` | JS→native | none | `{ supported: boolean, voipToken: string \| null }` | Mac | **native** (2026-08-26). Lets web decide CallKit vs in-app ring UI. **Device smoke pending.** |
+| `getCallKitCapabilities` | JS→native | none | `{ supported: boolean, voipPush: boolean, disabledInChina?: boolean }` | Mac | **native** (2026-08-26). **2026-09-15:** China storefront (`CHN`) / first-launch CN locale → `supported: false`. Web shows the in-app incoming overlay. **Device smoke pending.** |
+| `signInWithApple` | JS→native | `{ nonce: string }` (`SHA-256` hex of the raw nonce) | `{ ok, identityToken?, authorizationCode?, user?, email?, fullName?, cancelled? }` | Mac + web caller | **native** (2026-09-15). `ASAuthorizationAppleID`. Web finishes with Supabase `signInWithIdToken`. Safari / PWA use `signInWithOAuth({ provider: 'apple' })`. Apple first on the auth sheet (HIG). |
 | `reportIncomingCall` | JS→native | `{ callId, handle, hasVideo?, roomId?, avatarUrl? }` | `{ ok: boolean, uuid?: string, deduped?: true, skipped?: 'background' \| 'voip-in-flight' }` | Mac | **native** (2026-08-26). **Deduped by accepted `callId` 2026-08-27**. JS / APNs skip unless `.active` and no PushKit wake is in flight. PushKit always `reportNewIncomingCall`s. `https` `avatarUrl` is set on the **first** `CXCallUpdate` via `localizedCallerImageURL`. A later deduped report prefetches disk only … **never** `reportCall(updated:)` on a live incoming. |
 | `endNativeCall` | JS→native | `{ callId, reason?: 'remote' }` | `{ ok: boolean }` | Mac | **native** (2026-08-26). `reason: 'remote'` uses `reportCall(.remoteEnded)` so a lock-screen CallKit UI actually clears when the other side hangs up. Local hangup still uses `CXEndCallAction`. |
 | `getVoIPPushToken` | JS→native | none | `{ token: string \| null }` | Mac | **native** (2026-08-26): PushKit token, uploaded with `pushChannel: 'voip'`. Also fires `edge-voip-token` event on refresh. **Device smoke pending.** |

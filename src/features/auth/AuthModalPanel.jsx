@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { inputBase, btnPrimary, linkBtn } from '../shell/shellClasses'
-import { OAuthDivider, GoogleIcon } from './OAuthUi'
+import { AppleIcon, OAuthDivider, GoogleIcon } from './OAuthUi'
 import AuthTabSwitcher from './AuthTabSwitcher'
 
 const LEGAL_NUDGE_MESSAGE = 'Please accept the Terms & Conditions and Privacy Policy.'
@@ -48,12 +48,12 @@ export default function AuthModalPanel({
   isSendingReset,
   onForgotSubmit,
   isOAuthLoading,
-  onGoogleSignIn,
+  onOAuthSignIn,
   acceptedLegal = false,
   onAcceptedLegalChange,
   onOpenLegalDocument,
 }) {
-  /** Which signup control triggered the legal nudge: `google` | `create`. */
+  /** Which signup control triggered the legal nudge: `oauth` | `create`. */
   const [legalNudgeSource, setLegalNudgeSource] = useState(null)
   const legalCheckboxRef = useRef(null)
   const signupMessageRef = useRef(null)
@@ -127,8 +127,8 @@ export default function AuthModalPanel({
           role="note"
         >
           <p>
-            If you <span className="font-semibold text-white">signed up with Google</span>, use{' '}
-            <span className="text-orange-300">Continue with Google</span> below. You won&apos;t have an Edge password.
+            If you <span className="font-semibold text-white">signed up with Apple or Google</span>, use that
+            button below. You won&apos;t have an Edge password.
           </p>
           <p>
             Still having trouble? Enter your email and we&apos;ll send you a reset link.
@@ -137,7 +137,17 @@ export default function AuthModalPanel({
         <button
           type="button"
           disabled={isOAuthLoading}
-          onClick={() => onGoogleSignIn({ setErrorTarget: 'forgot' })}
+          onClick={() => onOAuthSignIn({ provider: 'apple', setErrorTarget: 'forgot' })}
+          className={`${btnPrimary} flex w-full items-center justify-center gap-2 rounded-2xl border border-zinc-500 bg-black text-white hover:bg-zinc-900 disabled:opacity-60 disabled:cursor-not-allowed`}
+          aria-label="Continue with Apple"
+        >
+          <AppleIcon />
+          Continue with Apple
+        </button>
+        <button
+          type="button"
+          disabled={isOAuthLoading}
+          onClick={() => onOAuthSignIn({ provider: 'google', setErrorTarget: 'forgot' })}
           className={`${btnPrimary} flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white text-gray-900 hover:bg-gray-100 disabled:opacity-60 disabled:cursor-not-allowed`}
           aria-label="Continue with Google"
         >
@@ -203,13 +213,26 @@ export default function AuthModalPanel({
         </div>
       ) : null}
       <AuthTabSwitcher value={authTab} onChange={onAuthTabChange} />
-      {authTab === 'join' && legalNudgeSource === 'google' ? <LegalAcceptanceNudge /> : null}
+      {authTab === 'join' && legalNudgeSource === 'oauth' ? <LegalAcceptanceNudge /> : null}
       <button
         type="button"
         disabled={isOAuthLoading}
         onClick={() => {
-          if (authTab === 'join' && requireLegalAcceptance('google')) return
-          onGoogleSignIn({ setErrorTarget: authTab })
+          if (authTab === 'join' && requireLegalAcceptance('oauth')) return
+          onOAuthSignIn({ provider: 'apple', setErrorTarget: authTab })
+        }}
+        className={`${btnPrimary} flex w-full items-center justify-center gap-2 rounded-2xl border border-zinc-500 bg-black text-white hover:bg-zinc-900 disabled:opacity-60 disabled:cursor-not-allowed`}
+        aria-label="Continue with Apple"
+      >
+        <AppleIcon />
+        Continue with Apple
+      </button>
+      <button
+        type="button"
+        disabled={isOAuthLoading}
+        onClick={() => {
+          if (authTab === 'join' && requireLegalAcceptance('oauth')) return
+          onOAuthSignIn({ provider: 'google', setErrorTarget: authTab })
         }}
         className={`${btnPrimary} flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white text-gray-900 hover:bg-gray-100 disabled:opacity-60 disabled:cursor-not-allowed`}
         aria-label="Continue with Google"

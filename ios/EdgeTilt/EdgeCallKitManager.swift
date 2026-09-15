@@ -18,7 +18,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     let avatarUrl: String?
   }
 
-  private let provider: CXProvider
+  private var provider: CXProvider?
   private let callController = CXCallController()
   private var calls: [UUID: CallMeta] = [:]
   private var pushRegistry: PKPushRegistry?
@@ -53,6 +53,15 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
   var hasTrackedCalls: Bool { !calls.isEmpty }
 
   private override init() {
+    super.init()
+    if EdgeChinaAvailability.callKitAllowed {
+      installProviderIfNeeded()
+    }
+  }
+
+  private func installProviderIfNeeded() {
+    if provider != nil { return }
+    if !EdgeChinaAvailability.callKitAllowed { return }
     // Call UI name comes from CFBundleDisplayName ("Edge").
     let config = CXProviderConfiguration()
     config.supportsVideo = true
@@ -63,14 +72,40 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     if let icon = UIImage(named: "AppIcon") {
       config.iconTemplateImageData = icon.pngData()
     }
-    provider = CXProvider(configuration: config)
-    super.init()
-    provider.setDelegate(self, queue: nil)
+    let created = CXProvider(configuration: config)
+    created.setDelegate(self, queue: nil)
+    provider = created
+  }
+
+  func capabilitiesPayload() -> [String: Any] {
+    let allowed = EdgeChinaAvailability.callKitAllowed
+    return [
+      "supported": allowed,
+      "voipPush": allowed,
+      "disabledInChina": !allowed,
+    ]
+  }
+
+  /// Drop PushKit + CXProvider when the storefront is China (MIIT / 5.0).
+  func tearDownForChina() {
+    guard !EdgeChinaAvailability.callKitAllowed else { return }
+    pushRegistry?.desiredPushTypes = []
+    pushRegistry?.delegate = nil
+    pushRegistry = nil
+    voipTokenHex = nil
+    provider?.invalidate()
+    provider = nil
+    NSLog("EdgeCallKit torn down for China storefront")
   }
 
   /// Create the VoIP registry first. iOS delivers a terminated-state wake only
-  /// after this exists. Safe to call more than once.
+  /// after this exists. Safe to call more than once. Never start in China ...
+  /// a VoIP push without a CallKit report kills the process.
   func startPushRegistryIfNeeded() {
+    if !EdgeChinaAvailability.callKitAllowed {
+      NSLog("EdgeCallKit PushKit skipped (CallKit off in China)")
+      return
+    }
     if pushRegistry != nil { return }
     let registry = PKPushRegistry(queue: DispatchQueue.main)
     registry.delegate = self
@@ -379,6 +414,15 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     fromPushKit: Bool = false,
     completion: @escaping (Result<[String: Any], Error>) -> Void
   ) {
+    if !EdgeChinaAvailability.callKitAllowed {
+      completion(.success(["ok": false, "skipped": "china"]))
+      return
+    }
+    installProviderIfNeeded()
+    guard let provider else {
+      completion(.success(["ok": false, "skipped": "china"]))
+      return
+    }
     let trimmedCallId = callId.trimmingCharacters(in: .whitespacesAndNewlines)
     let appState = UIApplication.shared.applicationState
     // Backgrounded WKWebView still gets Realtime. JS then calls this, iOS
@@ -497,7 +541,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       pendingCallReveal = false
       didRevealCallThisAnswer = false
       stopUnlockPoll()
-      provider.reportCall(with: uuid, endedAt: Date(), reason: wasAnswered ? .remoteEnded : .unanswered)
+      provider?.reportCall(with: uuid, endedAt: Date(), reason: wasAnswered ? .remoteEnded : .unanswered)
       if calls.isEmpty { endCallBackgroundTask() }
       EdgeAudioSession.apply(mode: "default") { _ in }
       completion(.success(["ok": true]))
@@ -517,7 +561,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
   func endAllCalls() {
     for (uuid, _) in calls {
       let wasAnswered = answeredUUIDs.contains(uuid)
-      provider.reportCall(with: uuid, endedAt: Date(), reason: wasAnswered ? .remoteEnded : .unanswered)
+      provider?.reportCall(with: uuid, endedAt: Date(), reason: wasAnswered ? .remoteEnded : .unanswered)
     }
     calls.removeAll()
     answeredUUIDs.removeAll()
@@ -533,6 +577,12 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
 
   /// Outgoing in-app IPA calls also go through CallKit so `didActivate` fires.
   func reportOutgoingCall(callId: String, roomId: String, handle: String, hasVideo: Bool) {
+    if !EdgeChinaAvailability.callKitAllowed {
+      EdgeAudioSession.apply(mode: hasVideo ? "voiceChat" : "voiceChatEarpiece") { _ in }
+      return
+    }
+    installProviderIfNeeded()
+    guard let provider else { return }
     let trimmedCallId = callId.trimmingCharacters(in: .whitespacesAndNewlines)
     if !trimmedCallId.isEmpty {
       for (staleUUID, staleMeta) in calls where staleMeta.callId != trimmedCallId {
@@ -564,14 +614,14 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     start.isVideo = hasVideo
     callController.request(CXTransaction(action: start)) { [weak self] error in
       guard let self, error == nil else { return }
-      self.provider.reportOutgoingCall(with: uuid, startedConnectingAt: Date())
+      self.provider?.reportOutgoingCall(with: uuid, startedConnectingAt: Date())
     }
   }
 
   func markOutgoingConnected(callId: String) {
     let trimmed = callId.trimmingCharacters(in: .whitespacesAndNewlines)
     guard let uuid = calls.first(where: { $0.value.callId == trimmed })?.key else { return }
-    provider.reportOutgoingCall(with: uuid, connectedAt: Date())
+    provider?.reportOutgoingCall(with: uuid, connectedAt: Date())
     mediaConnected = true
   }
 

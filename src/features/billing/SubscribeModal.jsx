@@ -70,6 +70,22 @@ const SLIDE_POSES = {
   right: { tx: 56, tz: -110, ry: -16, scale: 0.88, opacity: 1, z: 14 },
 }
 
+/** iPad Air / tall tablet: spread the 3D stack so the Review carousel is not a cramped cluster. */
+const SLIDE_POSES_IPAD = {
+  left: { tx: -82, tz: -64, ry: 8, scale: 0.93, opacity: 1, z: 14 },
+  center: { tx: 0, tz: 28, ry: 0, scale: 1, opacity: 1, z: 30 },
+  right: { tx: 82, tz: -64, ry: -8, scale: 0.93, opacity: 1, z: 14 },
+}
+
+function isSpreadSubscribeCarousel() {
+  if (typeof window === 'undefined') return false
+  return window.matchMedia('(min-width: 768px), (min-width: 640px) and (min-height: 800px)').matches
+}
+
+function slidePoses() {
+  return isSpreadSubscribeCarousel() ? SLIDE_POSES_IPAD : SLIDE_POSES
+}
+
 /** @param {number} a @param {number} b @param {number} t */
 function lerp(a, b, t) {
   return a + (b - a) * t
@@ -89,16 +105,17 @@ function lerpPose(from, to, t) {
 
 /** @param {number} offset */
 function poseFromEffectiveOffset(offset) {
+  const poses = slidePoses()
   const fade = Math.max(0, 1 - Math.max(0, Math.abs(offset) - 1) * 2.5)
   let pose
   if (offset <= -1) {
-    pose = { ...SLIDE_POSES.left }
+    pose = { ...poses.left }
   } else if (offset >= 1) {
-    pose = { ...SLIDE_POSES.right }
+    pose = { ...poses.right }
   } else if (offset <= 0) {
-    pose = lerpPose(SLIDE_POSES.left, SLIDE_POSES.center, offset + 1)
+    pose = lerpPose(poses.left, poses.center, offset + 1)
   } else {
-    pose = lerpPose(SLIDE_POSES.center, SLIDE_POSES.right, offset)
+    pose = lerpPose(poses.center, poses.right, offset)
   }
   pose.opacity *= fade
   return pose

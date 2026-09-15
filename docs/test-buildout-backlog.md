@@ -1140,7 +1140,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- **2026-09-15:** **1.4.95 (125) Rejected (Mac).** ASC thread `c0b06dc5-…`. iPad Air 11-inch (M3) / iPadOS 27. **4.8** Sign in with Apple (Google is on the sheet). **4.0** iPad-compat layout crowded. **5.0** CallKit + China availability. Do not resubmit 125 unchanged.
+- **2026-09-15:** **App Review rejection fixes (Mac).** SIWA on the auth sheet (Apple first). CallKit + PushKit off for storefront `CHN` (China stays a territory). Subscribe 3D carousel spread on iPad-sized viewports. **`1.4.224`.** Do not resubmit 125. Do not Add Lifetime yet. Ryan still enables Apple on the App ID + Supabase Apple provider.
+- **2026-09-15:** **1.4.95 (125) Rejected (Mac).** ASC thread `c0b06dc5-…`. iPad Air 11-inch (M3) / iPadOS 27. **4.8** Sign in with Apple (Google is on the sheet). **4.0** iPad-compat layout crowded (Ryan: subscribe carousel only). **5.0** CallKit + China availability. Do not resubmit 125 unchanged.
 - **2026-09-14:** **Guest claim tokens ride signup metadata (Mac).** Copy-link swap/stake/slice invites write the claim token onto `user_metadata` at signup so confirm in the IPA still attaches. Browser stash remains a backup. **`1.4.223`.**
 - **2026-09-14:** **Guest invite SMS copy (Mac).** `{name} is swapping … from EdgeTilt` (no `.com` in the body so iMessage does not steal the tap to the homepage). Claim URL stays the only link / OG preview. **`1.4.222`.**
 - **2026-09-14:** **Guest invite nametag + claim copy (Mac).** Copy-link SMS uses the creator’s Lounge `display_name` / `@handle` (fetches `profiles` when the swap map is empty). Claim pages only say “use the email this invitation was sent to” when `guest_email` exists. **`1.4.221`.**

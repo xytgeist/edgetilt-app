@@ -75,12 +75,22 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.
 5. **Never:** Capacitor, bake `dist/` into IPA, push `main` / prod ops without Ryan’s ask.
 
+### Mac Theo 2026-09-15 … App Review rejection fixes on test
+
+**I am Mac Theo.** **`1.4.224`.** Do not Resubmit 125. Do not Add Lifetime yet.
+
+1. **4.8 SIWA.** Auth sheet: Continue with Apple first, then Google. IPA `signInWithApple` + `signInWithIdToken`. Safari/PWA `signInWithOAuth({ provider: 'apple' })`. Ryan: flip **Sign in with Apple** on App ID `com.edgetilt.app` and enable the Apple provider in Supabase (test + prod).
+2. **5.0 CallKit China.** Storefront `CHN` (SK1 at launch + persist). No PushKit, no `CXProvider`. In-app incoming overlay. China stays a territory.
+3. **4.0 iPad subscribe.** Only the Slots Edge carousel. Taller / wider / less overlap on iPad-sized viewports.
+
+Next: enable Apple capability + Supabase Apple, rebuild IPA, new binary for the next Review (not 125).
+
 ### Mac Theo 2026-09-15 … 1.4.95 (125) Rejected
 
 **I am Mac Theo.** Submission `75504e35-…` is **UNRESOLVED_ISSUES**. Reviewed Sep 15 on **iPad Air 11-inch (M3) / iPadOS 27**. Three hits:
 
 1. **4.8 Login Services.** Google is on the auth sheet. Apple wants an equivalent that hides email / limits to name+email / no ad tracking without consent. That is **Sign in with Apple**. Email/password does not satisfy the hide-email bullet.
-2. **4.0 Design.** iPad layout is crowded / hard to use. Device family is iPhone-only (`TARGETED_DEVICE_FAMILY = 1`) … they still reviewed iPhone-compat on iPad.
+2. **4.0 Design.** iPad layout is crowded / hard to use. Device family is iPhone-only (`TARGETED_DEVICE_FAMILY = 1`) … they still reviewed iPhone-compat on iPad. **Ryan:** only the Slots Edge subscribe carousel was cramped.
 3. **5.0 Legal.** CallKit is live and China is an available territory. MIIT: deactivate CallKit in China. VoIP can stay. Gate CallKit off for the China storefront, or drop China.
 
 Do not Resubmit 125 as-is. Do not Add Lifetime to this rejected listing yet. Newer TestFlight builds exist … swap the binary when we resubmit.

@@ -39,7 +39,7 @@ import {
   stopOutgoingRingback,
   unlockChatCallAudio,
 } from './chatCallRingTone.js'
-import { acceptNativeCall, dismissEdgeCallKeyboard, endEdgeNativeCall, getEdgeVoIPPushToken, installEdgeCallKitListeners, markEdgeCallKitWebReady, preloadEdgeAvatar, reportEdgeIncomingCall, startNativeCall } from '../../../utils/edgeCallKit.js'
+import { acceptNativeCall, dismissEdgeCallKeyboard, endEdgeNativeCall, getEdgeCallKitCapabilities, getEdgeVoIPPushToken, installEdgeCallKitListeners, markEdgeCallKitWebReady, preloadEdgeAvatar, reportEdgeIncomingCall, startNativeCall } from '../../../utils/edgeCallKit.js'
 import { getEdgeiOSPushToken, isEdgeiOSShell } from '../../../utils/edgeNative.js'
 import { upsertMyApnsDeviceToken } from '../../../utils/apnsDeviceTokenApi.js'
 
@@ -148,6 +148,8 @@ export function ChatCallProvider({
   )
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  /** IPA defaults on so the in-app overlay does not flash before capabilities land. China flips this off. */
+  const [callKitSupported, setCallKitSupported] = useState(() => isEdgeiOSShell())
   const broadcastByRoomRef = useRef(/** @type {Map<string, ReturnType<typeof subscribeToChatCallBroadcast>>} */ (new Map()))
 
   const showCallStatusToast = useCallback((message) => {
@@ -168,6 +170,20 @@ export function ChatCallProvider({
   const callerProfileFetchedRef = useRef(/** @type {Set<string>} */ (new Set()))
   activeCallRef.current = activeCall
   incomingRef.current = incoming
+
+  useEffect(() => {
+    if (!isEdgeiOSShell()) {
+      setCallKitSupported(false)
+      return undefined
+    }
+    let cancelled = false
+    getEdgeCallKitCapabilities().then((caps) => {
+      if (!cancelled) setCallKitSupported(caps.supported)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const resolveCallerProfile = useCallback(
     (roomId, fromUserId) => {
@@ -1316,7 +1332,7 @@ export function ChatCallProvider({
     <ChatCallContext.Provider value={value}>
       {children}
       <ChatIncomingCallOverlay
-        open={Boolean(incoming) && !activeCall && !callbackPrompt && !isEdgeiOSShell()}
+        open={Boolean(incoming) && !activeCall && !callbackPrompt && !callKitSupported}
         title={incoming?.title || 'Incoming call'}
         avatarUrl={incoming?.avatarUrl || null}
         subtitle={

@@ -273,6 +273,25 @@ export async function markEdgeCallKitDidConnect() {
 /**
  * @returns {Promise<{ token: string | null, via: 'bridge' | 'noop' | 'error' }>}
  */
+/**
+ * IPA CallKit / PushKit. China storefront returns `supported: false` (Guideline 5.0).
+ * Missing method / old IPA → treat as supported so US rings stay on CallKit.
+ * @returns {Promise<{ supported: boolean, disabledInChina?: boolean, via: string }>}
+ */
+export async function getEdgeCallKitCapabilities() {
+  if (!isEdgeiOSShell()) return { supported: false, via: 'noop' }
+  try {
+    const result = await edgeNativeInvoke('getCallKitCapabilities')
+    return {
+      supported: result?.supported !== false,
+      disabledInChina: result?.disabledInChina === true,
+      via: 'bridge',
+    }
+  } catch {
+    return { supported: true, via: 'error' }
+  }
+}
+
 export async function getEdgeVoIPPushToken() {
   if (!isEdgeiOSShell()) return { token: null, via: 'noop' }
   try {

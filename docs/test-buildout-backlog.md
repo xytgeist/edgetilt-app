@@ -1141,7 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- **2026-09-15:** **iPad subscribe cards (Mac).** Real iPad viewport. **`1.4.248`** scales the phone card with `zoom: 1.3` (not a wider squat). Phone unchanged. Do not resubmit 125.
+- **2026-09-15:** **iPad subscribe cards (Mac).** Real iPad viewport. **`1.4.249`** scales the phone card `zoom: 1.5` (50% bigger). Phone unchanged. Do not resubmit 125.
 - **2026-09-15:** **Hamburger dismiss unwind (Mac).** Removed portal / z-106 overlay / title-bar `z-index: 107` (that hid the Slots title bar). Overlay back at `z-40`. Document `pointerdown` closes the menu, including FAB. **`1.4.247`.**
 - **2026-09-15:** **Apple unverified-email copy (Mac).** SIWA `ASAuthorizationError` 1000 / `AuthenticationServices` no longer dumps the raw code. Banner: verify the Apple ID email in Settings, then try again. **`1.4.239`.**
 - **2026-09-15:** **Homepage title (Mac).** `index.html` / og / twitter is **EdgeTilt | Edge for Risk Takers**. Ryan: we are not a slots-and-poker app. Slots/poker SEO stays on the hubs.

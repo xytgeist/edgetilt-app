@@ -6078,6 +6078,7 @@ export default function PokerBankrollTracker({
               eventsById={swapEventsById}
               onSavedSwapsMutated={() => void loadData()}
               allowCloseOwnResult={Boolean(editingId && !editingActiveSession)}
+              eventOngoing={false}
               showGlobalConfirm={showGlobalConfirm}
               onSendDraft={
                 editingId
@@ -6345,6 +6346,8 @@ export default function PokerBankrollTracker({
                 profilesById={swapProfilesById}
                 eventsById={swapEventsById}
                 onSavedSwapsMutated={() => void loadData()}
+                eventOngoing={false}
+                allowPing={false}
                 showGlobalConfirm={showGlobalConfirm}
                 incomingAcceptSwap={incomingAcceptSwap}
                 onDeclineIncomingAccept={

@@ -509,6 +509,8 @@ function revealExpandedInOverflowParent(el) {
  *   showOwnershipSummary?: boolean,
  *   allowCloseOwnResult?: boolean,
  *   allowAddSwaps?: boolean,
+ *   eventOngoing?: boolean,
+ *   allowPing?: boolean,
  *   eventsById?: Record<string, object>,
  *   showGlobalConfirm?: (opts: {
  *     title: string,
@@ -537,6 +539,8 @@ export default function PokerTournamentSwapsSection({
   showOwnershipSummary = false,
   allowCloseOwnResult = false,
   allowAddSwaps = true,
+  eventOngoing = allowAddSwaps,
+  allowPing = !eventOngoing,
   showGlobalConfirm = null,
   eventsById = {},
 }) {
@@ -1325,7 +1329,7 @@ export default function PokerTournamentSwapsSection({
                       {termsEditorOpen ? 'Close' : 'Edit'}
                     </button>
                   ) : null}
-                  {role === 'creator' && swapIsUnclaimedGuest(swap) ? (
+                  {eventOngoing && role === 'creator' && swapIsUnclaimedGuest(swap) ? (
                     <button
                       type="button"
                       disabled={busyId === swap.id}
@@ -1426,7 +1430,7 @@ export default function PokerTournamentSwapsSection({
               {statusLine ? (
                 <div className={`text-sm ${statusTone}`}>{statusLine}</div>
               ) : null}
-              {inviteBySwapId[swap.id] ? (
+              {eventOngoing && inviteBySwapId[swap.id] ? (
                 <div className="mt-2">
                   <PokerGuestInviteCopyCard
                     title="Text them this"
@@ -1510,38 +1514,47 @@ export default function PokerTournamentSwapsSection({
                 // Only their side is entered manually; your result syncs on session end.
                 const needOther = !(role === 'creator' ? cpReady : creatorReady)
                 if (!needOther) return null
+                const showPing = allowPing
                 // Guests / not-yet-accepted: keep creator "enter their result" open by default.
                 const forceOpen =
                   role === 'creator' && !cpReady && (isGuest || !accepted)
                 const open = forceOpen || Boolean(manualOpen[swap.id])
                 return (
                   <div className="mt-2">
-                    <div className="mb-2 grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        disabled={busyId === swap.id}
-                        data-poker-swap-ping-btn
-                        onClick={() => void onPingOther(swap)}
-                        className="rounded-xl border border-cyan-500/40 bg-cyan-950/40 px-3 py-2 text-xs font-semibold text-cyan-100 touch-manipulation active:bg-cyan-900/50 disabled:opacity-50"
+                    {showPing || !open ? (
+                      <div
+                        className={
+                          showPing ? 'mb-2 grid grid-cols-2 gap-2' : 'mb-2'
+                        }
                       >
-                        {busyId === swap.id ? 'Sending…' : `Ping ${other}`}
-                      </button>
-                      {!open ? (
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setManualOpen((m) => ({ ...m, [swap.id]: true }))
-                          }
-                          className="rounded-xl border border-zinc-600/80 px-3 py-2 text-xs font-semibold text-zinc-300 touch-manipulation active:bg-zinc-800"
-                        >
-                          Enter their result
-                        </button>
-                      ) : (
-                        <span className="self-center text-center text-[11px] text-zinc-500">
-                          Their result
-                        </span>
-                      )}
-                    </div>
+                        {showPing ? (
+                          <button
+                            type="button"
+                            disabled={busyId === swap.id}
+                            data-poker-swap-ping-btn
+                            onClick={() => void onPingOther(swap)}
+                            className="rounded-xl border border-cyan-500/40 bg-cyan-950/40 px-3 py-2 text-xs font-semibold text-cyan-100 touch-manipulation active:bg-cyan-900/50 disabled:opacity-50"
+                          >
+                            {busyId === swap.id ? 'Sending…' : `Ping ${other}`}
+                          </button>
+                        ) : null}
+                        {!open ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setManualOpen((m) => ({ ...m, [swap.id]: true }))
+                            }
+                            className="rounded-xl border border-zinc-600/80 px-3 py-2 text-xs font-semibold text-zinc-300 touch-manipulation active:bg-zinc-800"
+                          >
+                            Enter their result
+                          </button>
+                        ) : showPing ? (
+                          <span className="self-center text-center text-[11px] text-zinc-500">
+                            Their result
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
                     {!open ? null : (
                       <div className="space-y-2 rounded-2xl border border-zinc-700/60 bg-black/20 p-2.5">
                         <div className="flex items-center justify-between gap-2">

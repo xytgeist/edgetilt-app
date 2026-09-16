@@ -46,21 +46,21 @@ export function PokerGuestInviteCopyCard({
       <div className="mt-2.5 flex gap-2">
         <button
           type="button"
-          data-poker-guest-invite-share-btn
-          onClick={() => void onShare()}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 py-2.5 text-xs font-bold text-white touch-manipulation active:bg-emerald-500"
-        >
-          <Share2 size={14} aria-hidden />
-          Share
-        </button>
-        <button
-          type="button"
           data-poker-guest-invite-copy-text-btn
           onClick={() => void onCopy()}
           className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-zinc-600 py-2.5 text-xs font-semibold text-zinc-200 touch-manipulation active:bg-zinc-800"
         >
           <Copy size={14} aria-hidden />
           {copied ? 'Copied' : 'Copy text'}
+        </button>
+        <button
+          type="button"
+          data-poker-guest-invite-share-btn
+          onClick={() => void onShare()}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 py-2.5 text-xs font-bold text-white touch-manipulation active:bg-emerald-500"
+        >
+          <Share2 size={14} aria-hidden />
+          Share
         </button>
       </div>
     </div>

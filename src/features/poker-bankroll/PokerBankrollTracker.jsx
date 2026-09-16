@@ -848,8 +848,8 @@ export default function PokerBankrollTracker({
     [tournamentSwaps, userId],
   )
   const openWaitingSwaps = useMemo(
-    () => tournamentSwaps.filter((s) => swapIsWaitingOnOther(s, userId, sessions)),
-    [tournamentSwaps, userId, sessions],
+    () => tournamentSwaps.filter((s) => swapIsWaitingOnOther(s, userId, sessions, swapEventsById)),
+    [tournamentSwaps, userId, sessions, swapEventsById],
   )
   const standaloneOpenSwap = useMemo(
     () =>
@@ -2569,7 +2569,7 @@ export default function PokerBankrollTracker({
 
   function openOpenSwap(swap) {
     if (!swap?.id) return
-    const session = associatedSessionForOpenSwap(swap, sessions, userId)
+    const session = associatedSessionForOpenSwap(swap, sessions, userId, swapEventsById)
     if (session?.status === 'active' && session.session_type === 'tournament') {
       setStandaloneOpenSwapId(null)
       openActiveSwaps(session)
@@ -3004,6 +3004,9 @@ export default function PokerBankrollTracker({
       }
       setIncomingAcceptSwap(null)
       setDraftBackers([])
+      setSessions((prev) =>
+        prev.some((s) => s.id === sessionRow.id) ? prev : [sessionRow, ...prev],
+      )
       setSheet(null)
       triggerTapHapticLight()
       notifyLiveBankrollSessionsChanged()

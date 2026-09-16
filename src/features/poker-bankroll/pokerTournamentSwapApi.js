@@ -1121,8 +1121,12 @@ export function swapIsIncomingPending(swap, userId) {
   )
 }
 
-/** Active swap where the other party has not reported yet. Incoming Accept stays on Incoming. */
-export function swapIsWaitingOnOther(swap, userId, sessions) {
+/**
+ * Active swap where the other party has not reported yet. Incoming Accept stays on Incoming.
+ * Hidden while the viewer still has a live tournament in this swap's series
+ * (Keep swap open leaves creator_session_id on the ended flight).
+ */
+export function swapIsWaitingOnOther(swap, userId, sessions, eventsById = {}) {
   if (!swap || swap.status !== 'active' || !userId) return false
   if (swapIsIncomingPending(swap, userId)) return false
   const role = swapViewerRole(swap, userId)
@@ -1133,15 +1137,27 @@ export function swapIsWaitingOnOther(swap, userId, sessions) {
       : Boolean(swap.creator_result_ready)
   if (otherReady) return false
   if (Array.isArray(sessions)) {
-    const session = associatedSessionForOpenSwap(swap, sessions, userId)
-    if (session?.status === 'active') return false
+    const hasLiveSeriesSession = sessions.some(
+      (s) =>
+        s?.status === 'active' &&
+        s.session_type === 'tournament' &&
+        swapBelongsOnSession(swap, s, sessions, eventsById, userId),
+    )
+    if (hasLiveSeriesSession) return false
   }
   return true
 }
 
-/** Viewer's own session for an open swap, if it is loaded. */
-export function associatedSessionForOpenSwap(swap, sessions, userId) {
+/** Viewer's own session for an open swap, if it is loaded. Prefer a live series flight. */
+export function associatedSessionForOpenSwap(swap, sessions, userId, eventsById = {}) {
   const list = Array.isArray(sessions) ? sessions : []
+  const live = list.find(
+    (s) =>
+      s?.status === 'active' &&
+      s.session_type === 'tournament' &&
+      swapBelongsOnSession(swap, s, list, eventsById, userId),
+  )
+  if (live) return live
   const viewerSid = viewerSessionIdFromSwap(swap, userId)
   if (viewerSid) {
     const row = list.find((s) => s.id === viewerSid)

@@ -214,6 +214,7 @@ import {
 } from './pokerTournamentNearbyEvents.js'
 import {
   acceptCounterpartySessionBind,
+  associatedSessionForOpenSwap,
   cancelTournamentSwap,
   counterpartySessionNeedsSwapEventRelink,
   ensureSessionTournamentEventLink,
@@ -228,6 +229,7 @@ import {
   persistDraftSwapsForSession,
   draftSwapsReadyError,
   refreshSeriesSwapBullets,
+  swapIsWaitingOnOther,
   swapForViewerBook,
   swapIsMarkedPaid,
   swapOtherPartyLabel,
@@ -239,6 +241,7 @@ import {
 import { eventDisplayNamesDiffer } from './pokerTournamentEventKeys.js'
 import {
   priorSeriesBulletCount,
+  seriesSessionsFor,
   swapBelongsOnSession,
 } from './pokerTournamentSeries.js'
 import {
@@ -464,7 +467,7 @@ export default function PokerBankrollTracker({
   const [stakeNotice, setStakeNotice] = useState('')
   const [guestInvites, setGuestInvites] = useState([])
   const [nudgingSliceId, setNudgingSliceId] = useState(/** @type {string | null} */ (null))
-  /** @type {null | 'session' | 'sessionDetail' | 'bankroll' | 'start' | 'end' | 'rebuy' | 'import' | 'swaps' | 'createStake'} */
+  /** @type {null | 'session' | 'sessionDetail' | 'bankroll' | 'start' | 'end' | 'rebuy' | 'import' | 'swaps' | 'openSwap' | 'createStake'} */
   const [sheet, setSheet] = useState(null)
   const startSheetKbActive = sheet === 'start'
   const startSheetIosSafeBottomPx = useLoungeIosSafeBottomPx(startSheetKbActive)
@@ -528,6 +531,8 @@ export default function PokerBankrollTracker({
   const [incomingApplyPicker, setIncomingApplyPicker] = useState(null)
   /** @type {object[]} */
   const [tournamentSwaps, setTournamentSwaps] = useState([])
+  /** Open swap with no local session card (orphan creator_session_id). */
+  const [standaloneOpenSwapId, setStandaloneOpenSwapId] = useState(/** @type {string | null} */ (null))
   /** Inline Mark settled on completed session cards. */
   const [sessionCardSwapBusyId, setSessionCardSwapBusyId] = useState(null)
   /** @type {Record<string, object>} */
@@ -841,6 +846,17 @@ export default function PokerBankrollTracker({
           !s.counterparty_session_accepted_at,
       ),
     [tournamentSwaps, userId],
+  )
+  const openWaitingSwaps = useMemo(
+    () => tournamentSwaps.filter((s) => swapIsWaitingOnOther(s, userId)),
+    [tournamentSwaps, userId],
+  )
+  const standaloneOpenSwap = useMemo(
+    () =>
+      standaloneOpenSwapId
+        ? tournamentSwaps.find((s) => s.id === standaloneOpenSwapId) ?? null
+        : null,
+    [standaloneOpenSwapId, tournamentSwaps],
   )
   /** Game dropdown: user-added for this Where first, then venue defaults. */
   const cashGamePresets = useMemo(
@@ -2550,6 +2566,26 @@ export default function PokerBankrollTracker({
     triggerTapHapticLight()
   }
 
+  function openOpenSwap(swap) {
+    if (!swap?.id) return
+    const session = associatedSessionForOpenSwap(swap, sessions, userId)
+    if (session?.status === 'active' && session.session_type === 'tournament') {
+      setStandaloneOpenSwapId(null)
+      openActiveSwaps(session)
+      return
+    }
+    if (session) {
+      const series = seriesSessionsFor(session, sessions, swapEventsById)
+      setStandaloneOpenSwapId(null)
+      openSessionDetail(session, series.length > 1 ? series : null)
+      return
+    }
+    setStandaloneOpenSwapId(swap.id)
+    setError('')
+    setSheet('openSwap')
+    triggerTapHapticLight()
+  }
+
   async function markSessionCardSwapSettled(swap) {
     if (!supabaseClient || !swap?.id) return
     const role = swapViewerRole(swap, userId) || 'creator'
@@ -3413,6 +3449,7 @@ export default function PokerBankrollTracker({
     setIncomingFallthrough(null)
     setIncomingApplyPicker(null)
     setActionSessionId(null)
+    setStandaloneOpenSwapId(null)
     setDetailSessionId(null)
     setDetailSeriesSessionIds(null)
     setSessionRecapMode(false)
@@ -4703,6 +4740,53 @@ export default function PokerBankrollTracker({
                             Decline
                           </button>
                         </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            ) : null}
+
+            {openWaitingSwaps.length > 0 ? (
+              <div
+                data-elevated-card="surface"
+                data-poker-open-swaps
+                className="mb-4 rounded-3xl border border-amber-500/30 bg-amber-950/30 p-4"
+              >
+                <div className="mb-2 text-xs font-bold uppercase tracking-wide text-amber-200">
+                  Open swaps
+                </div>
+                <p className="mb-3 text-[11px] text-zinc-400">
+                  Waiting on the other side to report. Tap to ping them or enter their result.
+                </p>
+                <ul className="space-y-2">
+                  {openWaitingSwaps.map((swap) => {
+                    const other = swapOtherPartyLabel(swap, swapProfilesById, userId)
+                    const role = swapViewerRole(swap, userId) || 'creator'
+                    const eventLabel = formatTournamentEventLabel(
+                      swapEventsById[swap.tournament_event_id],
+                    )
+                    const statusLine = formatSwapWaitingStatus(swap, role, other)
+                    return (
+                      <li key={swap.id}>
+                        <button
+                          type="button"
+                          data-poker-open-swap-id={swap.id}
+                          onClick={() => openOpenSwap(swap)}
+                          className="flex w-full items-center justify-between gap-2 rounded-2xl bg-zinc-900/60 px-3 py-2 text-left touch-manipulation active:bg-zinc-800/80"
+                        >
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold text-white">{other}</div>
+                            <div className="truncate text-[11px] text-amber-200/90">{eventLabel}</div>
+                            <div className="text-[11px] text-zinc-400">
+                              {swap.pct_creator_gives}% ↔ {swap.pct_counterparty_gives}%
+                              {statusLine ? ` · ${statusLine}` : ''}
+                            </div>
+                          </div>
+                          <span className="shrink-0 text-[11px] font-semibold text-amber-200/80">
+                            Open
+                          </span>
+                        </button>
                       </li>
                     )
                   })}
@@ -6364,6 +6448,60 @@ export default function PokerBankrollTracker({
                 {saving ? 'Sending…' : 'Send all swaps'}
               </button>
             ) : null}
+            <button
+              type="button"
+              onClick={dismissSheet}
+              className="mt-2 w-full rounded-2xl border border-zinc-700 py-3 text-sm font-semibold text-zinc-300 touch-manipulation"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {sheet === 'openSwap' && standaloneOpenSwap ? (
+        <div
+          className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
+          onClick={() => !saving && dismissSheet()}
+        >
+          <div
+            data-poker-bankroll-sheet
+            className={POKER_SHEET_PANEL_CLASS}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <div className="text-lg font-bold text-white">Open swap</div>
+                <p className="mt-1 text-[12px] leading-snug text-zinc-500">
+                  This swap is not on a current session. Ping them or enter their result.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={dismissSheet}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm text-zinc-400 touch-manipulation"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <PokerTournamentSwapsSection
+              supabaseClient={supabaseClient}
+              userId={userId}
+              enabled
+              allowAddSwaps={false}
+              maxSwapGivePct={100}
+              showOwnershipSummary={false}
+              draftSwaps={[]}
+              onDraftSwapsChange={() => {}}
+              savedSwaps={[standaloneOpenSwap]}
+              profilesById={swapProfilesById}
+              eventsById={swapEventsById}
+              onSavedSwapsMutated={() => void loadData()}
+              showGlobalConfirm={showGlobalConfirm}
+              compact
+            />
+            {error ? <p className="mb-3 text-center text-sm text-rose-400">{error}</p> : null}
             <button
               type="button"
               onClick={dismissSheet}

@@ -30,7 +30,7 @@ supabase functions deploy poker-tournament-swap-notify --project-ref kcosfvmreei
 ## Body
 
 ```json
-{ "swap_id": "<uuid>", "kind": "offer | result | revision" }
+{ "swap_id": "<uuid>", "kind": "offer | result | revision | nudge" }
 ```
 
-`offer` requires the creator. `result` and `revision` accept either Edge party; the other party is notified.
+`offer` requires the creator. `result`, `revision`, and `nudge` accept either Edge party; the other party is notified. `nudge` is a ping to report a result.

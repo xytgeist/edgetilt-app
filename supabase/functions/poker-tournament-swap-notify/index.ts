@@ -5,6 +5,7 @@
  *   - offer (default): creator invites counterparty (guest claim link / Edge in-app)
  *   - result: either party logged a session result → payout expected
  *   - revision: either Edge user changed only their own bookkeeping terms
+ *   - nudge: either party pings the other to report a result
  *
  * Channels:
  *   - guest → optional Resend email + copy-paste claim link (no leased-number SMS)
@@ -295,7 +296,9 @@ Deno.serve(async (req) => {
       ? 'result'
       : requestedKind === 'revision'
         ? 'revision'
-        : 'offer'
+        : requestedKind === 'nudge'
+          ? 'nudge'
+          : 'offer'
 
     const { data: swapRaw, error: swapErr } = await admin
       .from('poker_tournament_swaps')
@@ -357,6 +360,79 @@ Deno.serve(async (req) => {
           actor_user_id: uid,
           event_type: 'poker_tournament_swap_result',
           detail_text: 'updated their tournament swap books',
+          poker_tournament_swap_id: swapId,
+        })
+        .select('id')
+        .maybeSingle()
+      if (actErr) throw new Error(actErr.message)
+      channels.in_app = { ok: true, activity_event_id: activityRow?.id || null }
+      return jsonResponse({ ok: true, kind, channels })
+    }
+
+    // ── Nudge (waiting on the other side to report) ─────────────────────────────
+    if (kind === 'nudge') {
+      if (!isCreator && !isCounterparty) {
+        return jsonResponse({ error: 'Only a swap party can ping the other side.' }, 403)
+      }
+      const detail = 'is waiting on your tournament swap result'
+      if (isCreator) {
+        if (swap.counterparty_kind === 'guest') {
+          const email = String(swap.counterparty_guest_email || '')
+            .trim()
+            .toLowerCase()
+          const hasEmail = Boolean(email && isValidEmail(email))
+          if (!hasEmail) {
+            channels.email = { skipped: true, reason: 'no guest email' }
+            return jsonResponse({ ok: true, kind, channels, notified: false })
+          }
+          const claimUrl = await createGuestClaimUrl(admin, swapId, email)
+          const subject = `${actorLabel} is waiting on your tournament swap result`
+          const text = `${subject}. Review the swap: ${claimUrl}`
+          const appUrl = resolvePublicAppOrigin()
+          const bodyHtml = [
+            transactionalEmailParagraph(`${escapeHtml(subject)}.`),
+            transactionalEmailFallbackLink(claimUrl),
+          ].join('')
+          const html = wrapTransactionalEmailHtml({
+            title: `Tournament swap · waiting on you`,
+            headline: 'Tournament swap',
+            bodyHtml,
+            appUrl,
+            cta: { label: 'Review tournament swap', href: claimUrl },
+          })
+          channels.email = await sendResendEmail(email, subject, html, text)
+          return jsonResponse({ ok: true, kind, channels, notified: true, claim_url: claimUrl })
+        }
+        const recipientId = String(swap.counterparty_user_id || '').trim()
+        if (!recipientId || recipientId === uid) {
+          return jsonResponse({ error: 'No Edge counterparty to ping.' }, 400)
+        }
+        const { data: activityRow, error: actErr } = await admin
+          .from('activity_events')
+          .insert({
+            recipient_user_id: recipientId,
+            actor_user_id: uid,
+            event_type: 'poker_tournament_swap_result',
+            detail_text: detail,
+            poker_tournament_swap_id: swapId,
+          })
+          .select('id')
+          .maybeSingle()
+        if (actErr) throw new Error(actErr.message)
+        channels.in_app = { ok: true, activity_event_id: activityRow?.id || null }
+        return jsonResponse({ ok: true, kind, channels })
+      }
+      const recipientId = String(swap.creator_user_id || '').trim()
+      if (!recipientId || recipientId === uid) {
+        return jsonResponse({ error: 'No creator to ping.' }, 400)
+      }
+      const { data: activityRow, error: actErr } = await admin
+        .from('activity_events')
+        .insert({
+          recipient_user_id: recipientId,
+          actor_user_id: uid,
+          event_type: 'poker_tournament_swap_result',
+          detail_text: detail,
           poker_tournament_swap_id: swapId,
         })
         .select('id')

@@ -763,12 +763,13 @@ export default function PokerSessionDetailSheet({
           )}
         </div>
 
-        {isTourney && isActive ? (
+        {isTourney && (isActive || uniqueSwaps.length > 0) ? (
           <div className="mb-4">
             <PokerTournamentSwapsSection
               supabaseClient={supabaseClient}
               userId={userId}
               enabled
+              allowAddSwaps={isActive}
               maxSwapGivePct={maxSwapGivePct}
               showOwnershipSummary
               draftSwaps={[]}

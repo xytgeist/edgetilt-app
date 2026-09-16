@@ -1061,11 +1061,17 @@ export async function guestSwapClaimByEmail(supabase) {
  * Guest claim links are also minted client-side for copy/share into the creator's own text.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} swapId
- * @param {{ kind?: 'offer' | 'result' | 'revision' }} [opts]
+ * @param {{ kind?: 'offer' | 'result' | 'revision' | 'nudge' }} [opts]
  */
 export async function notifyTournamentSwap(supabase, swapId, opts = {}) {
   const kind =
-    opts.kind === 'result' ? 'result' : opts.kind === 'revision' ? 'revision' : 'offer'
+    opts.kind === 'result'
+      ? 'result'
+      : opts.kind === 'revision'
+        ? 'revision'
+        : opts.kind === 'nudge'
+          ? 'nudge'
+          : 'offer'
   const { data, error } = await supabase.functions.invoke('poker-tournament-swap-notify', {
     body: { swap_id: swapId, kind },
   })
@@ -1104,6 +1110,44 @@ export async function notifyTournamentSwapResults(supabase, swapIds) {
       )
     }
   })
+}
+
+export function swapIsIncomingPending(swap, userId) {
+  return Boolean(
+    swap?.status === 'active' &&
+      userId &&
+      swap.counterparty_user_id === userId &&
+      !swap.counterparty_session_accepted_at,
+  )
+}
+
+/** Active swap where the other party has not reported yet. Incoming Accept stays on Incoming. */
+export function swapIsWaitingOnOther(swap, userId) {
+  if (!swap || swap.status !== 'active' || !userId) return false
+  if (swapIsIncomingPending(swap, userId)) return false
+  const role = swapViewerRole(swap, userId)
+  if (!role) return false
+  const otherReady =
+    role === 'creator'
+      ? Boolean(swap.counterparty_result_ready)
+      : Boolean(swap.creator_result_ready)
+  return !otherReady
+}
+
+/** Viewer's own session for an open swap, if it is loaded. */
+export function associatedSessionForOpenSwap(swap, sessions, userId) {
+  const list = Array.isArray(sessions) ? sessions : []
+  const viewerSid = viewerSessionIdFromSwap(swap, userId)
+  if (viewerSid) {
+    const row = list.find((s) => s.id === viewerSid)
+    if (row) return row
+  }
+  for (const sid of [swap?.creator_session_id, swap?.counterparty_session_id]) {
+    if (!sid) continue
+    const row = list.find((s) => s.id === sid)
+    if (row) return row
+  }
+  return null
 }
 
 /**

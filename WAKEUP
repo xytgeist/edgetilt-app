@@ -62,7 +62,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo 2026-09-16 … Open swaps on Bankroll
 
-**I am Mac Theo.** Bankroll lists **Open swaps** (other side has not reported). Tap opens the session card or a standalone sheet. Ping uses **`poker-tournament-swap-notify` `nudge`**. **`1.4.254`** on **`test` + `main`**. Edge **nudge** deployed on **test**. Prod Edge deploy 403 with Mac token.
+**I am Mac Theo.** Bankroll lists **Open swaps** (other side has not reported). Tap opens the session card or a standalone sheet. Ping uses **`poker-tournament-swap-notify` `nudge`**. **`1.4.254`** on **`test` + `main`**. Edge **nudge** deployed on **test + prod**.
 
 ### Mac Theo 2026-09-16 … Orphan swap on every Start Session
 

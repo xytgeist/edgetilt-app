@@ -30,7 +30,7 @@ Register-ScheduledTask `
   -Trigger $trigger `
   -Settings $settings `
   -Principal $principal `
-  -Description 'Daily EdgeTilt production poker catalog sync (MTTDB + regional + ClubWPT). PC should be on or wake at 2:00 AM.' `
+  -Description 'Daily EdgeTilt poker catalog sync (one scrape including MTTDB, write test then prod). PC should be on or wake at 2:00 AM.' `
   -Force | Out-Null
 
 Get-ScheduledTask -TaskName $taskName | Get-ScheduledTaskInfo | Format-List TaskName, LastRunTime, NextRunTime, LastTaskResult

@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-16:** **Catalog scrape once, write test then prod (Windows).** `--mirror-production`. Home PC 2am scrapes MTTDB once and upserts both DBs. GHA skips MTTDB, scrapes ClubWPT/CoinPoker/Wynn/regional once, same two writes. Promote workflow to **main** so prod dispatch skips MTTDB.
 - **2026-09-16:** **GHA skips MTTDB scrape (Windows).** `--skip-mttdb` / `SKIP_MTTDB` / `GITHUB_ACTIONS`. ClubWPT, CoinPoker, Wynn, regional still run on ubuntu. Home PC Task Scheduler still scrapes MTTDB. Amber CF note only when the home scrape is blocked.
 - **2026-09-16:** **Monitor skips bot billing drift (Windows).** `admin_ops_billing_drift_snapshot` ignores `profiles.is_bot`. Syndicate admin-comp `edge-pro` was a false paid-but-no-access page. Applied **`20260916120000`** on test + prod. Stripe 96h stale warn unchanged.
 - **2026-09-15:** **Promote to prod (Mac).** Ryan asked. **`origin/main` = `0ac76f5c`.** **1.4.95 (20260915213919)** uploaded to ASC (EdgeTilt Prod). Not 125. Attach + Submit for Review after processing. China stays listed. CallKit off on `CHN`.

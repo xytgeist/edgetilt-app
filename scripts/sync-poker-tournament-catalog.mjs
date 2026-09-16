@@ -59,16 +59,39 @@ function parseArgs(argv) {
   let skipFetch = false
   let skipMttdb = false
   let noGeocode = false
+  let mirrorProduction = false
   for (const arg of argv.slice(2)) {
     if (arg === '--dry-run') dryRun = true
     else if (arg === '--no-prune') noPrune = true
     else if (arg === '--skip-fetch') skipFetch = true
     else if (arg === '--skip-mttdb') skipMttdb = true
+    else if (arg === '--mirror-production') mirrorProduction = true
     else if (arg === '--no-geocode') noGeocode = true
     else if (arg.startsWith('--target=')) target = arg.slice('--target='.length)
     else if (arg.startsWith('--file=')) file = path.resolve(repoRoot, arg.slice('--file='.length))
   }
-  return { target, dryRun, file, noPrune, skipFetch, skipMttdb: shouldSkipMttdb(skipMttdb), noGeocode }
+  return {
+    target,
+    dryRun,
+    file,
+    noPrune,
+    skipFetch,
+    skipMttdb: shouldSkipMttdb(skipMttdb),
+    noGeocode,
+    mirrorProduction,
+  }
+}
+
+/** Load one project's credentials and open a service client. Safe to call twice. */
+function serviceClientForTarget(writeTarget) {
+  loadSupabaseEnv(writeTarget)
+  return createSupabaseServiceClient(createClient)
+}
+
+/** One scrape, then upsert test then prod when mirroring. */
+function catalogWriteTargets(target, mirrorProduction) {
+  if (!mirrorProduction) return [target]
+  return ['test', 'production']
 }
 
 /** Re-export for scripts/tests. */
@@ -142,8 +165,10 @@ async function fetchWynnOneOffEvents() {
 }
 
 async function main() {
-  const { target, dryRun, file, noPrune, skipFetch, skipMttdb, noGeocode } = parseArgs(process.argv)
-  loadSupabaseEnv(target)
+  const { target, dryRun, file, noPrune, skipFetch, skipMttdb, noGeocode, mirrorProduction } =
+    parseArgs(process.argv)
+  const writeTargets = catalogWriteTargets(target, mirrorProduction)
+  loadSupabaseEnv(writeTargets[0])
 
   const { paths, payloads } = loadCatalogSeedFiles(file)
   if (!payloads.length) {
@@ -200,7 +225,8 @@ async function main() {
     if (skipMttdb) {
       console.log('[poker:catalog:sync] MTTDB scrape skipped (server / --skip-mttdb). Home PC Task Scheduler still pulls it.')
     } else {
-      const supabaseForMttdb = createSupabaseServiceClient(createClient)
+      const geocodeTarget = mirrorProduction ? 'production' : writeTargets[0]
+      const supabaseForMttdb = serviceClientForTarget(geocodeTarget)
       // Live + online are independent … a live scrape failure must not skip online.
       try {
         const venueResolver = await createMttdbVenueResolver(supabaseForMttdb, {
@@ -328,7 +354,9 @@ async function main() {
   const clubwptGoldOnlineRows = rows.filter((r) => String(r.external_id || '').startsWith('clubwptgold:online:'))
   const coinpokerOnlineRows = rows.filter((r) => String(r.external_id || '').startsWith('coinpoker:web:'))
 
-  console.log(`Target: ${targetHuman(target)}`)
+  console.log(
+    `Target: ${writeTargets.map((t) => targetHuman(t)).join(' then ')}${skipMttdb ? ' · MTTDB skipped' : ''}`,
+  )
   console.log(`Files: ${paths.map((p) => path.relative(repoRoot, p)).join(', ')}`)
   console.log(
     `Rows: ${rows.length}${dryRun ? ' (dry run)' : ''} (mttdb live ${mttdbLiveRows.length}, online ${mttdbOnlineRows.length}, clubwpt ${clubwptOnlineRows.length}, clubwpt gold ${clubwptGoldOnlineRows.length}, coinpoker ${coinpokerOnlineRows.length})`,
@@ -374,26 +402,39 @@ async function main() {
     return
   }
 
-  const supabase = createSupabaseServiceClient(createClient)
   try {
-    const { data, error } = await supabase.rpc('upsert_poker_tournament_catalog', {
-      p_rows: rows,
-      p_prune_past: !noPrune,
-    })
+    /** @type {import('@supabase/supabase-js').SupabaseClient | null} */
+    let prodClient = null
+    /** @type {unknown} */
+    let lastData = null
 
-    if (error) {
-      await recordOpsJobHeartbeatForTarget(supabase, target, 'failed', {
-        message: error.message,
-        rows: rows.length,
-        mttdb: mttdbFetch,
-        clubwpt: clubwptFetch,
-        coinpoker: coinpokerFetch,
+    for (const writeTarget of writeTargets) {
+      const supabase = serviceClientForTarget(writeTarget)
+      if (writeTarget === 'production') prodClient = supabase
+      const { data, error } = await supabase.rpc('upsert_poker_tournament_catalog', {
+        p_rows: rows,
+        p_prune_past: !noPrune,
       })
-      console.error('upsert_poker_tournament_catalog failed:', error.message)
-      process.exit(1)
+      if (error) {
+        if (prodClient) {
+          await recordOpsJobHeartbeatForTarget(prodClient, 'production', 'failed', {
+            message: `${writeTarget}: ${error.message}`,
+            rows: rows.length,
+            mttdb: mttdbFetch,
+            clubwpt: clubwptFetch,
+            coinpoker: coinpokerFetch,
+          })
+        }
+        console.error(`upsert_poker_tournament_catalog failed (${writeTarget}):`, error.message)
+        process.exit(1)
+      }
+      lastData = data
+      console.log(`Upserted ${writeTarget}:`, data)
     }
 
-    const remaining = await countRemainingMttdbCatalogRows(supabase)
+    const heartbeatClient = prodClient || serviceClientForTarget(writeTargets[writeTargets.length - 1])
+    const heartbeatTarget = prodClient ? 'production' : writeTargets[writeTargets.length - 1]
+    const remaining = await countRemainingMttdbCatalogRows(heartbeatClient)
 
     const mttdbProblems =
       skipFetch || skipMttdb ? [] : mttdbFetchProblems(mttdbFetch, mttdbOnlineRows.length, remaining)
@@ -401,7 +442,7 @@ async function main() {
       !skipMttdb &&
       (isMttdbCloudflareBlock(mttdbFetch.onlineError) || isMttdbCloudflareBlock(mttdbFetch.liveError))
     const heartbeatDetail = {
-      upsert: data,
+      upsert: lastData,
       rows: rows.length,
       mttdb: mttdbFetch,
       clubwpt: clubwptFetch,
@@ -412,13 +453,14 @@ async function main() {
       mttdbLiveIngested: mttdbLiveRows.length,
       mttdbBlocked,
       mttdbSkipped: skipMttdb,
+      mirrored: writeTargets,
       clubwptOnlineRows: clubwptOnlineRows.length,
       coinpokerOnlineRows: coinpokerOnlineRows.length,
-      target,
+      target: heartbeatTarget,
     }
 
     if (mttdbProblems.length) {
-      await recordOpsJobHeartbeatForTarget(supabase, target, 'failed', {
+      await recordOpsJobHeartbeatForTarget(heartbeatClient, heartbeatTarget, 'failed', {
         ...heartbeatDetail,
         message: mttdbProblems.join('; '),
       })
@@ -431,22 +473,27 @@ async function main() {
       ? `MTTDB blocked by Cloudflare. Kept catalog: online ${remaining.online} · live ${remaining.live}.`
       : null
 
-    await recordOpsJobHeartbeatForTarget(supabase, target, 'ok', {
+    await recordOpsJobHeartbeatForTarget(heartbeatClient, heartbeatTarget, 'ok', {
       ...heartbeatDetail,
       ...(okMessage ? { message: okMessage } : {}),
     })
     if (mttdbBlocked) {
       console.warn(`[poker:catalog:sync] ${okMessage} Regional/ClubWPT upsert still applied.`)
     }
-    console.log('Done:', data)
+    console.log('Done:', lastData)
   } catch (err) {
-    await recordOpsJobHeartbeatForTarget(supabase, target, 'failed', {
-      message: String(err?.message || err),
-      rows: rows.length,
-      mttdb: mttdbFetch,
-      clubwpt: clubwptFetch,
-      coinpoker: coinpokerFetch,
-    })
+    try {
+      const failClient = serviceClientForTarget('production')
+      await recordOpsJobHeartbeatForTarget(failClient, 'production', 'failed', {
+        message: String(err?.message || err),
+        rows: rows.length,
+        mttdb: mttdbFetch,
+        clubwpt: clubwptFetch,
+        coinpoker: coinpokerFetch,
+      })
+    } catch {
+      /* heartbeat is best-effort */
+    }
     throw err
   }
 }

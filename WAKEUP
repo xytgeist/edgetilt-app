@@ -62,7 +62,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Windows Theo 2026-09-16 … MTTDB scrape is home-PC only
 
-**I am Windows Theo.** GitHub Actions catalog sync skips MTTDB (`--skip-mttdb`). ClubWPT / CoinPoker / Wynn / regional still run on ubuntu. Windows Task Scheduler 2:00 AM still scrapes MTTDB. Amber CF note only after a home scrape hits Turnstile.
+**I am Windows Theo.** GHA never hits MTTDB (`--skip-mttdb` / `GITHUB_ACTIONS`). One scrape writes test then prod (`--mirror-production`). Home PC 2am still scrapes MTTDB and mirrors both DBs. ClubWPT / CoinPoker / Wynn / regional stay on GHA. Promote to **main** so prod dispatch skips MTTDB.
 
 ### Windows Theo 2026-09-16 … Monitor skip bot drift
 

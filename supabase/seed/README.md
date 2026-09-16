@@ -43,7 +43,7 @@ npm run poker:catalog:sync:test:dry
 npm run poker:catalog:sync:test
 npm run poker:catalog:sync:production
 ```
-- **Production schedule:** Windows Task Scheduler on the home PC, **daily 2:00 AM** local (`scripts/install-poker-catalog-windows-task.ps1` → `poker-catalog-sync-windows.ps1`). Log: `scripts/.poker-catalog-sync.log`. That run **includes MTTDB**. GitHub Actions is **manual only** and **skips MTTDB** (ubuntu is Cloudflare-blocked 100%). ClubWPT / CoinPoker / Wynn / regional still run on both. Secrets for local runs: `.env.supabase.production`.
+- **Production schedule:** Windows Task Scheduler on the home PC, **daily 2:00 AM** local (`scripts/install-poker-catalog-windows-task.ps1` → `poker-catalog-sync-windows.ps1`). Log: `scripts/.poker-catalog-sync.log`. One scrape (**includes MTTDB**) upserts **test then production** (`--mirror-production`). GitHub Actions is **manual only**, **skips MTTDB**, and mirrors the other sources the same way. Do not run `sync:test` and `sync:production` back-to-back … that scrapes twice.
 - **Auto-map at sync:** unknown MTTDB **online sites** → `site_name` label; unknown **live venues** → Nominatim geocode + `casinos` insert (duplicate name → alias link on existing row).
 - **Satellites:** included (same picker filters: today/tomorrow + GPS / Site).
 - **Seed only** (no fetch): `npm run poker:catalog:seed:test`

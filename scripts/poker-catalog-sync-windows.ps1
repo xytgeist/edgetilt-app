@@ -1,5 +1,6 @@
 # Production poker catalog sync for Windows Task Scheduler.
-# Includes MTTDB (residential egress). GitHub Actions skips MTTDB.
+# Includes MTTDB (residential egress). One scrape → test, then same rows to prod.
+# GitHub Actions skips MTTDB and also mirrors test → prod for the other sources.
 # Run from repo: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/poker-catalog-sync-windows.ps1
 $ErrorActionPreference = 'Continue'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
@@ -14,7 +15,7 @@ function Write-Log([string]$line) {
 }
 
 Write-Log ''
-Write-Log "===== $stamp poker catalog sync (production) ====="
+Write-Log "===== $stamp poker catalog sync (test then prod, one scrape) ====="
 Write-Log "repo=$repo"
 
 if (-not (Test-Path $node)) {
@@ -37,7 +38,7 @@ try {
 $env:Path = 'C:\Program Files\nodejs;' + $env:Path
 $script = Join-Path $repo 'scripts\sync-poker-tournament-catalog.mjs'
 
-$out = & $node $script --target=production 2>&1
+$out = & $node $script --target=test --mirror-production 2>&1
 $exit = $LASTEXITCODE
 foreach ($line in $out) {
   Write-Log ([string]$line)

@@ -1,14 +1,14 @@
-# Regional JSON + Wynn + ClubWPT + CoinPoker → upsert poker_tournament_events
-# on production. MTTDB is skipped here (Cloudflare blocks ubuntu-latest 100%).
-# Home PC Task Scheduler still scrapes MTTDB
+# One scrape (no MTTDB) → upsert test, then the same rows to production.
+# MTTDB is skipped here (Cloudflare blocks ubuntu-latest 100%).
+# Home PC Task Scheduler scrapes MTTDB once and mirrors test → prod
 # (`scripts/install-poker-catalog-windows-task.ps1`, daily 2:00 AM local).
 #
 # This workflow is manual only (workflow_dispatch). Do not scrape MTTDB from
 # GitHub cloud egress.
 #
 # Required GitHub repo secrets (Settings → Secrets → Actions):
-#   SUPABASE_URL_PRODUCTION
-#   SUPABASE_SERVICE_ROLE_KEY_PRODUCTION
+#   SUPABASE_URL_TEST / SUPABASE_SERVICE_ROLE_KEY_TEST
+#   SUPABASE_URL_PRODUCTION / SUPABASE_SERVICE_ROLE_KEY_PRODUCTION
 #
 # On success, writes admin_ops_job_heartbeats (Edge Monitor) on production.
 
@@ -38,9 +38,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Sync poker tournament catalog to production
+      - name: Sync poker tournament catalog (test then prod, no MTTDB)
         env:
+          SUPABASE_URL_TEST: ${{ secrets.SUPABASE_URL_TEST }}
+          SUPABASE_SERVICE_ROLE_KEY_TEST: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TEST }}
           SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
           SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
           SKIP_MTTDB: '1'
-        run: npm run poker:catalog:sync:production -- --skip-mttdb
+        run: npm run poker:catalog:sync:mirror -- --skip-mttdb

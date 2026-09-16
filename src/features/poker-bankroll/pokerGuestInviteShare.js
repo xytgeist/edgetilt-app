@@ -166,11 +166,20 @@ export async function shareGuestInvite({ title, text, url }) {
   })
 }
 
+export function isDeletedPartyLabel(label) {
+  const value = String(label || '').trim()
+  if (!value) return false
+  return /^(Deleted User|Deleted account)$/i.test(value)
+    || /\(\s*Deleted User\s*\)\s*$/i.test(value)
+    || /\(\s*Deleted account\s*\)\s*$/i.test(value)
+}
+
 export function swapIsUnclaimedGuest(swap) {
   return (
     swap?.counterparty_kind === 'guest' &&
     !swap?.counterparty_user_id &&
-    swap?.status !== 'cancelled'
+    swap?.status !== 'cancelled' &&
+    !isDeletedPartyLabel(swap?.counterparty_guest_label)
   )
 }
 
@@ -179,7 +188,8 @@ export function dealIsUnclaimedGuestPlayer(deal) {
     deal &&
       !deal.stakee_user_id &&
       String(deal.stakee_guest_label || '').trim() &&
-      deal.staker_user_id,
+      deal.staker_user_id &&
+      !isDeletedPartyLabel(deal.stakee_guest_label),
   )
 }
 
@@ -187,7 +197,8 @@ export function sliceIsUnclaimedGuestBacker(slice) {
   return (
     (slice?.counterparty_kind === 'guest' || slice?.counterpartyKind === 'guest') &&
     !slice?.staker_user_id &&
-    ['pending', 'proposed', ''].includes(String(slice?.status || 'pending'))
+    ['pending', 'proposed', ''].includes(String(slice?.status || 'pending')) &&
+    !isDeletedPartyLabel(slice?.guest_label || slice?.guestLabel)
   )
 }
 

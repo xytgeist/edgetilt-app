@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-16 … Copy-invite mint on prod
+
+**I am Mac Theo.** `20260914200000` mint RPCs do not replace the delete-account swap/stake functions. They would have treated `Name (Deleted User)` as a fresh guest, so **`20260916200000`** blocks mint + re-claim. Applied **test + prod**. Web **`1.4.252`**.
+
 ### Windows Theo 2026-09-16 … Monitor paid KPIs skip comps
 
 **I am Windows Theo.** Friend Lifetime comps (`admin_comp_lifetime_*`) still have access. Paid Monitor numbers only count real Stripe. Prod Lifetime paid = **1** (`@kix123`). **`20260916150000`** on test + prod.

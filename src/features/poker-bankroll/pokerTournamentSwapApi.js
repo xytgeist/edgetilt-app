@@ -10,6 +10,7 @@ import {
   seriesSessionsFor,
   seriesTotalBulletCount,
   sessionInSameSeriesAsEvent,
+  samePokerRowId,
   swapBelongsOnSession,
 } from './pokerTournamentSeries.js'
 import { localYmd, pokerSessionTotalCost } from './pokerBankrollMath.js'
@@ -361,7 +362,7 @@ export async function syncCreatorResultsForSession(supabase, sessionId, session,
   if (error) return { error, swapIds: [] }
   const seriesSwaps = (swaps || []).filter(
     (swap) =>
-      swap.creator_session_id === sessionId ||
+      samePokerRowId(swap.creator_session_id, sessionId) ||
       swapBelongsOnSession(swap, session, sessions, eventsById, userId),
   )
   if (!seriesSwaps.length) return { error: null, swapIds: [] }

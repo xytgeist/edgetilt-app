@@ -10,6 +10,13 @@ import { swapBulletCount } from './pokerTournamentSwapMath.js'
 
 export const TOURNAMENT_SERIES_WINDOW_DAYS = 21
 
+/** True when both ids are non-empty and equal. `null === null` is not a match. */
+export function samePokerRowId(a, b) {
+  const left = String(a || '').trim()
+  const right = String(b || '').trim()
+  return Boolean(left) && left === right
+}
+
 /** @param {unknown} name */
 export function normalizeTournamentSeriesName(name) {
   let s = String(name || '')
@@ -347,7 +354,10 @@ export function swapSeriesAnchorSession(swap, sessions, eventsById = {}) {
  */
 export function swapBelongsOnSession(swap, session, sessions, eventsById = {}, userId = '') {
   if (!swap || !session || swap.status === 'cancelled') return false
-  if (swap.creator_session_id === session.id || swap.counterparty_session_id === session.id) {
+  if (
+    samePokerRowId(swap.creator_session_id, session.id) ||
+    samePokerRowId(swap.counterparty_session_id, session.id)
+  ) {
     return true
   }
   if (userId && swap.creator_user_id !== userId && swap.counterparty_user_id !== userId) {

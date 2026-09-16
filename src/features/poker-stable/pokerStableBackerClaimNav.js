@@ -2,6 +2,10 @@ import {
   buildStableBackerOnboardingUrl,
   stashPokerStableBackerOnboarding,
 } from './pokerStableBackerOnboarding.js'
+import {
+  isPokerClaimTokenConsumed,
+  markPokerClaimTokenConsumed,
+} from '../poker-bankroll/pokerClaimTokenConsumed.js'
 
 const STABLE_CLAIM_TOKEN_STORAGE_KEY = 'poker_stable_claim_return_token'
 const STABLE_CLAIM_TOKEN_LOCAL_KEY = 'poker_stable_claim_return_token_v1'
@@ -34,6 +38,7 @@ function serializeStashedClaimTokenEntry(token) {
 export function stashPokerStableClaimToken(token) {
   const t = String(token || '').trim()
   if (!t || typeof window === 'undefined') return
+  if (isPokerClaimTokenConsumed(t)) return
   try {
     const payload = serializeStashedClaimTokenEntry(t)
     sessionStorage.setItem(STABLE_CLAIM_TOKEN_STORAGE_KEY, payload)
@@ -50,11 +55,18 @@ export function readStashedPokerStableClaimToken() {
     const sessionEntry = parseStashedClaimTokenEntry(
       sessionStorage.getItem(STABLE_CLAIM_TOKEN_STORAGE_KEY),
     )
+    let token = null
     if (localEntry?.token && sessionEntry?.token && localEntry.token !== sessionEntry.token) {
       // Prefer the most recently stashed token (new invite beats an old localStorage copy).
-      return (localEntry.savedAt >= sessionEntry.savedAt ? localEntry : sessionEntry).token
+      token = (localEntry.savedAt >= sessionEntry.savedAt ? localEntry : sessionEntry).token
+    } else {
+      token = sessionEntry?.token || localEntry?.token || null
     }
-    return sessionEntry?.token || localEntry?.token || null
+    if (token && isPokerClaimTokenConsumed(token)) {
+      clearStashedPokerStableClaimToken()
+      return null
+    }
+    return token
   } catch {
     return null
   }
@@ -143,6 +155,7 @@ export function stableClaimSignupEmailRedirectUrl() {
 export function navigateToStableClaimPage(token) {
   const t = String(token || '').trim()
   if (!t || typeof window === 'undefined') return
+  if (isPokerClaimTokenConsumed(t)) return
   window.location.assign(
     `${POKER_STABLE_CLAIM_RETURN_PATH}?token=${encodeURIComponent(t)}`,
   )
@@ -155,6 +168,14 @@ export function navigateToStableClaimPage(token) {
  */
 export function navigateAfterStableClaim(redirect, opts = {}) {
   if (typeof window === 'undefined') return
+  const stashed = readStashedPokerStableClaimToken()
+  if (stashed) markPokerClaimTokenConsumed(stashed)
+  try {
+    const urlToken = new URLSearchParams(window.location.search || '').get('token')
+    if (urlToken) markPokerClaimTokenConsumed(urlToken)
+  } catch {
+    // ignore
+  }
   clearStashedPokerStableClaimToken()
   clearPokerStableClaimFlowPending()
   let dest = redirect || '/?tab=poker-stable'

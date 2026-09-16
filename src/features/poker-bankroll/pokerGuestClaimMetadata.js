@@ -13,6 +13,7 @@ import {
   markPokerStableClaimFlowPending,
   stashPokerStableClaimToken,
 } from '../poker-stable/pokerStableBackerClaimNav.js'
+import { isPokerClaimTokenConsumed } from './pokerClaimTokenConsumed.js'
 
 export const POKER_SWAP_CLAIM_META_KEY = 'poker_swap_claim_token'
 export const POKER_STAKE_CLAIM_META_KEY = 'poker_stake_claim_token'
@@ -57,9 +58,13 @@ export function pokerClaimSignupMetadata(tokens = {}) {
  */
 export function hydratePokerClaimStashFromUser(user) {
   const tokens = readPokerClaimTokensFromUser(user)
-  if (tokens.swap) stashPokerSwapClaimToken(tokens.swap)
-  if (tokens.stake) stashPokerStakeClaimToken(tokens.stake)
-  if (tokens.stable) {
+  if (tokens.swap && !isPokerClaimTokenConsumed(tokens.swap)) {
+    stashPokerSwapClaimToken(tokens.swap)
+  }
+  if (tokens.stake && !isPokerClaimTokenConsumed(tokens.stake)) {
+    stashPokerStakeClaimToken(tokens.stake)
+  }
+  if (tokens.stable && !isPokerClaimTokenConsumed(tokens.stable)) {
     stashPokerStableClaimToken(tokens.stable)
     markPokerStableClaimFlowPending()
   }

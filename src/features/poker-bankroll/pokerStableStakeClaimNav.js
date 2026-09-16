@@ -1,5 +1,9 @@
 import { buildStakeOnboardingBankrollUrl, stashPokerStakeOnboardingDeal } from './pokerStakeeOnboarding.js'
 import {
+  isPokerClaimTokenConsumed,
+  markPokerClaimTokenConsumed,
+} from './pokerClaimTokenConsumed.js'
+import {
   parsePokerStableClaimFromLocation,
   stableClaimSignupEmailRedirectUrl,
   stashPokerStableClaimToken,
@@ -17,6 +21,7 @@ const STAKE_CLAIM_TOKEN_LOCAL_KEY = 'poker_stake_claim_return_token_v1'
 export function stashPokerStakeClaimToken(token) {
   const t = String(token || '').trim()
   if (!t || typeof window === 'undefined') return
+  if (isPokerClaimTokenConsumed(t)) return
   try {
     sessionStorage.setItem(STAKE_CLAIM_TOKEN_STORAGE_KEY, t)
     localStorage.setItem(STAKE_CLAIM_TOKEN_LOCAL_KEY, t)
@@ -32,8 +37,12 @@ export function readStashedPokerStakeClaimToken() {
     const fromSession = sessionStorage.getItem(STAKE_CLAIM_TOKEN_STORAGE_KEY)
     const local = fromLocal ? String(fromLocal).trim() : ''
     const session = fromSession ? String(fromSession).trim() : ''
-    if (local && session && local !== session) return local
-    return session || local || null
+    const token = local && session && local !== session ? local : session || local || null
+    if (token && isPokerClaimTokenConsumed(token)) {
+      clearStashedPokerStakeClaimToken()
+      return null
+    }
+    return token
   } catch {
     return null
   }
@@ -79,6 +88,7 @@ export function stakeClaimSignupEmailRedirectUrl() {
 export function navigateToStakeClaimPage(token) {
   const t = String(token || '').trim()
   if (!t || typeof window === 'undefined') return
+  if (isPokerClaimTokenConsumed(t)) return
   window.location.assign(
     `${POKER_STAKE_CLAIM_RETURN_PATH}?token=${encodeURIComponent(t)}`,
   )
@@ -87,6 +97,14 @@ export function navigateToStakeClaimPage(token) {
 /** After guest stakee claim links the account, hard-navigate so Bankroll deep link bootstraps cleanly. */
 export function navigateAfterStakeClaim(redirect) {
   if (typeof window === 'undefined') return
+  const stashed = readStashedPokerStakeClaimToken()
+  if (stashed) markPokerClaimTokenConsumed(stashed)
+  try {
+    const urlToken = new URLSearchParams(window.location.search || '').get('token')
+    if (urlToken) markPokerClaimTokenConsumed(urlToken)
+  } catch {
+    // ignore
+  }
   clearStashedPokerStakeClaimToken()
   let dest = redirect || '/?tab=poker-bankroll'
   try {
@@ -99,7 +117,10 @@ export function navigateAfterStakeClaim(redirect) {
       }
     }
     const finalUrl = new URL(dest, window.location.origin)
-    window.location.assign(`${finalUrl.pathname}${finalUrl.search}`)
+    const next = `${finalUrl.pathname}${finalUrl.search}`
+    const here = `${window.location.pathname}${window.location.search}`
+    if (here === next) return
+    window.location.assign(next)
   } catch {
     window.location.assign('/?tab=poker-bankroll&stakeOnboarding=1')
   }

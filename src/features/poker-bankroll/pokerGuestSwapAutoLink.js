@@ -1,8 +1,10 @@
+import { isPokerClaimTokenConsumed } from './pokerClaimTokenConsumed.js'
 import {
   buildTournamentSwapBankrollUrl,
+  clearStashedPokerSwapClaimToken,
   navigateAfterSwapClaim,
 } from './pokerTournamentSwapNav.js'
-import { guestSwapClaimByEmail } from './pokerTournamentSwapApi.js'
+import { guestSwapClaimByEmail, guestSwapClaimLink } from './pokerTournamentSwapApi.js'
 
 /**
  * After sign-in / email confirm, link guest tournament swaps invited to this account's email
@@ -21,4 +23,35 @@ export async function tryAutoLinkGuestSwapOffers(supabase) {
       : buildTournamentSwapBankrollUrl(swapIds[0])
   navigateAfterSwapClaim(redirect)
   return true
+}
+
+/**
+ * Attach via the invite token without bouncing through /poker-swap-claim.
+ * Terms were already reviewed before signup.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} token
+ * @returns {Promise<boolean>} true when navigation was triggered
+ */
+export async function tryLinkGuestSwapFromToken(supabase, token) {
+  const t = String(token || '').trim()
+  if (!t) return false
+  if (isPokerClaimTokenConsumed(t)) {
+    clearStashedPokerSwapClaimToken()
+    return false
+  }
+  const { result, error } = await guestSwapClaimLink(supabase, t)
+  if (!error) {
+    navigateAfterSwapClaim(
+      result?.redirect || buildTournamentSwapBankrollUrl(result?.swap_id),
+    )
+    return true
+  }
+  const byEmail = await guestSwapClaimByEmail(supabase)
+  if (!byEmail.error && Array.isArray(byEmail.result?.swap_ids) && byEmail.result.swap_ids.length) {
+    navigateAfterSwapClaim(
+      byEmail.result?.redirect || buildTournamentSwapBankrollUrl(byEmail.result.swap_ids[0]),
+    )
+    return true
+  }
+  return false
 }

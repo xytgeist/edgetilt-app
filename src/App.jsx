@@ -82,8 +82,8 @@ import {
   stakeClaimSignupEmailRedirectUrl,
   stashPokerStakeClaimToken,
 } from './features/poker-bankroll/pokerStableStakeClaimNav.js'
-import { tryAutoLinkGuestStakeeOffers } from './features/poker-bankroll/pokerGuestStakeeAutoLink.js'
-import { tryAutoLinkGuestSwapOffers } from './features/poker-bankroll/pokerGuestSwapAutoLink.js'
+import { tryAutoLinkGuestStakeeOffers, tryLinkGuestStakeFromToken } from './features/poker-bankroll/pokerGuestStakeeAutoLink.js'
+import { tryAutoLinkGuestSwapOffers, tryLinkGuestSwapFromToken } from './features/poker-bankroll/pokerGuestSwapAutoLink.js'
 import {
   clearPokerClaimTokensFromUserMetadata,
   hydratePokerClaimStashFromUser,
@@ -480,45 +480,53 @@ function App() {
   /** Guest claim flows after sign-in on home (autolink before stale stored tokens). */
   useEffect(() => {
     if (!user?.id || isChecking || currentView !== 'app') return
+    let cancelled = false
     void (async () => {
       const hydratedClaims = hydratePokerClaimStashFromUser(user)
       if (pokerClaimTokensPresent(hydratedClaims)) {
         void clearPokerClaimTokensFromUserMetadata(supabase)
       }
       const linkedSwap = await tryAutoLinkGuestSwapOffers(supabase)
-      if (linkedSwap) return
+      if (cancelled || linkedSwap) return
       const linkedBacker = await tryAutoLinkGuestBackerOffers(supabase)
-      if (linkedBacker) return
+      if (cancelled || linkedBacker) return
       const linkedStakee = await tryAutoLinkGuestStakeeOffers(supabase)
-      if (linkedStakee) return
+      if (cancelled || linkedStakee) return
       const claimFlowPending = isPokerStableClaimFlowPending()
       const opened = await tryOpenPendingBackerSliceOnboarding(supabase, { force: claimFlowPending })
-      if (opened) return
+      if (cancelled || opened) return
       if (claimFlowPending) {
         const stableToken = readStashedPokerStableClaimToken()
         if (stableToken) {
           const resumed = await resumeStableBackerClaimAfterConfirm(supabase, stableToken)
-          if (resumed) return
+          if (cancelled || resumed) return
         }
         const recovered = await recoverStaleStableBackerClaim(supabase)
-        if (recovered) return
+        if (cancelled || recovered) return
       }
       const swapToken = readStashedPokerSwapClaimToken()
       if (swapToken) {
+        const linkedFromToken = await tryLinkGuestSwapFromToken(supabase, swapToken)
+        if (cancelled || linkedFromToken) return
         navigateToSwapClaimPage(swapToken)
         return
       }
       const stakeToken = readStashedPokerStakeClaimToken()
       if (stakeToken) {
+        const linkedFromToken = await tryLinkGuestStakeFromToken(supabase, stakeToken)
+        if (cancelled || linkedFromToken) return
         navigateToStakeClaimPage(stakeToken)
         return
       }
       const stableToken = readStashedPokerStableClaimToken()
       if (stableToken) {
         const resumed = await resumeStableBackerClaimAfterConfirm(supabase, stableToken)
-        if (resumed) return
+        if (cancelled || resumed) return
       }
     })()
+    return () => {
+      cancelled = true
+    }
   }, [user?.id, isChecking, currentView])
 
   useEffect(() => {

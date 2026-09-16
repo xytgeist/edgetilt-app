@@ -8,6 +8,9 @@ import {
   hydratePokerClaimStashFromUser,
   pokerClaimTokensPresent,
 } from '../poker-bankroll/pokerGuestClaimMetadata.js'
+import { tryLinkGuestSwapFromToken } from '../poker-bankroll/pokerGuestSwapAutoLink.js'
+import { tryLinkGuestStakeFromToken } from '../poker-bankroll/pokerGuestStakeeAutoLink.js'
+import { isPokerClaimTokenConsumed } from '../poker-bankroll/pokerClaimTokenConsumed.js'
 
 /** First-party confirm path. Email templates use token_hash here so Universal Links can open the IPA. */
 export const AUTH_CONFIRM_PATH = '/auth/confirm'
@@ -176,9 +179,13 @@ export async function routeAfterGuestClaimEmailConfirm(supabase, {
   }
 
   if (stashedClaimToken) {
-    replaceUrlPreservingQuery(pathname || '/')
-    navigateToStakeClaimPage(stashedClaimToken)
-    return true
+    const linkedStake = await tryLinkGuestStakeFromToken(supabase, stashedClaimToken)
+    if (linkedStake) return true
+    if (!isPokerClaimTokenConsumed(stashedClaimToken)) {
+      replaceUrlPreservingQuery(pathname || '/')
+      navigateToStakeClaimPage(stashedClaimToken)
+      return true
+    }
   }
   if (stashedStableClaimToken) {
     replaceUrlPreservingQuery(pathname || '/')
@@ -186,9 +193,13 @@ export async function routeAfterGuestClaimEmailConfirm(supabase, {
     if (resumed) return true
   }
   if (stashedSwapClaimToken) {
-    replaceUrlPreservingQuery(pathname || '/')
-    navigateToSwapClaimPage?.(stashedSwapClaimToken)
-    return true
+    const linkedSwapFromToken = await tryLinkGuestSwapFromToken(supabase, stashedSwapClaimToken)
+    if (linkedSwapFromToken) return true
+    if (!isPokerClaimTokenConsumed(stashedSwapClaimToken)) {
+      replaceUrlPreservingQuery(pathname || '/')
+      navigateToSwapClaimPage?.(stashedSwapClaimToken)
+      return true
+    }
   }
 
   if (onHomeAfterConfirm) {

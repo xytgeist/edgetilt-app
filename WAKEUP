@@ -62,7 +62,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo 2026-09-16 … Guest confirm no longer flashes invite page
 
-**I am Mac Theo.** Confirm-email after a guest swap/stake invite was bouncing Bankroll ↔ `/poker-*-claim` because signup JWT metadata kept restashing the token. Attach in place after confirm, mark the token consumed, skip the invite page. **`1.4.258`** on **`test`**.
+**I am Mac Theo.** Confirm-email after a guest swap/stake invite was bouncing Bankroll ↔ `/poker-*-claim` because signup JWT metadata kept restashing the token. Attach in place after confirm, mark the token consumed, skip the invite page. **`1.4.258`** on **`test` + `main`**.
 
 ### Mac Theo 2026-09-16 … Guest share sheet copy
 

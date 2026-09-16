@@ -62,11 +62,11 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo 2026-09-16 … Open swaps on Bankroll
 
-**I am Mac Theo.** Bankroll lists **Open swaps** (other side has not reported). Tap opens the session card or a standalone sheet. Ping uses **`poker-tournament-swap-notify` `nudge`**. **`1.4.254`.** Redeploy that Edge on test + prod.
+**I am Mac Theo.** Bankroll lists **Open swaps** (other side has not reported). Tap opens the session card or a standalone sheet. Ping uses **`poker-tournament-swap-notify` `nudge`**. **`1.4.254`** on **`test`**. Edge **nudge** deployed on **test**. Prod Edge deploy 403 with Mac token; **`main`** not promoted yet.
 
 ### Mac Theo 2026-09-16 … Orphan swap on every Start Session
 
-**I am Mac Theo.** Edge Lord active swap with Bryan (`creator_session_id` null) was matching the unsaved Start form (`id` null) via `null === null`. **`1.4.253`** on `test`. Needs `main` for edgetilt.com.
+**I am Mac Theo.** Edge Lord active swap with Bryan (`creator_session_id` null) was matching the unsaved Start form (`id` null) via `null === null`. **`1.4.253`** on `test` + **`main`** (`e258c0b7`).
 
 ### Mac Theo 2026-09-16 … Copy-invite mint on prod
 

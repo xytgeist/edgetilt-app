@@ -458,8 +458,8 @@ export default function EdgeMonitorSubscriberRosterPanel({
                 ) : null}
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <RosterMetric label="Platform active" value={summary.activePlatform} accent={OPS_CHART_COLORS.purple} />
-                  <RosterMetric label="Fan active" value={summary.activeFan} accent={OPS_CHART_COLORS.pink} />
+                  <RosterMetric label="Platform paid" value={summary.activePlatform} accent={OPS_CHART_COLORS.purple} />
+                  <RosterMetric label="Fan paid" value={summary.activeFan} accent={OPS_CHART_COLORS.pink} />
                   <RosterMetric
                     label="Pending cancel"
                     value={summary.pendingPlatform + summary.pendingFan}

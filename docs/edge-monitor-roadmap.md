@@ -113,6 +113,7 @@ Admin RPC **`admin_ops_system_health_snapshot()`** + **`EdgeMonitorSystemHealthP
 - **Dropped (40500):** orphan **`stripe_customer_id`** with no sub row (checkout noise)
 - **Skip bots (20260916120000):** Lounge `profiles.is_bot` never pages drift (admin-comp `edge-pro` / lifetime on Syndicate / Signal is not a customer lockout)
 - **User + subscription metrics skip bots (20260916140000):** `ops_monitor_is_human()` gates snapshot users/subs, roster rows, Stripe `active_billing_subs`, starter/freemium counts, and trend signups. `app_product_analytics_user_excluded` includes `is_bot` so member-usage stays human-only for current and future bots.
+- **Paid KPIs skip comps (20260916150000):** `ops_monitor_is_paid_billing()` ... admin-comp / test grants (friend Lifetime) stay entitled but do not count in snapshot Lifetime, active-by-product, webhook billing-sub expect, or roster product totals. Roster lists still show Comp rows.
 - **Copy diagnostic:** plain-text bundle for chat triage (project, user ids, Stripe ids, job failures)
 - **Four screens:** Overview · Health · People · Product (`?section=` on `/monitor` and `/?tab=monitor`)
 - **Alerts banner:** drift + critical job issues surface as red/critical alerts without searching subscriber roster
@@ -171,3 +172,4 @@ _Update log: 2026-07-30 — Monitor split into four screens (Overview · Health 
 _Update log: 2026-07-31 — Phase 8 app section visits + member activity through **`20260731222500`** (aggregate panel, dual top-25 tables, Lounge contributor ranking, exclusions, prod **`post_reposts`** guard). Prod **`567070d6`**.
 _Update log: 2026-09-16 — Billing drift skips Lounge bots (`20260916120000`, test + prod)._
 _Update log: 2026-09-16 — User + subscription KPIs skip all Lounge bots (`20260916140000`, test + prod)._
+_Update log: 2026-09-16 — Paid Monitor KPIs skip comps (`20260916150000`, test + prod). Only `@kix123` counts as paid Lifetime._

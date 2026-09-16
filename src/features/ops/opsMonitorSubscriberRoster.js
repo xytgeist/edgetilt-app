@@ -279,14 +279,16 @@ export function opsMonitorUserSignupsSummary(roster) {
   }
 }
 
-/** Paying subscriber counts only (platform + fan). */
+/** Paying subscriber counts only (platform + fan). Comps and test grants are omitted. */
 export function opsMonitorRosterSummary(roster) {
   const platform = roster?.platform || {}
   const fan = roster?.creator_fan || {}
-  const activePlatform = Array.isArray(platform.active_roster) ? platform.active_roster.length : 0
-  const pendingPlatform = Array.isArray(platform.pending_cancel) ? platform.pending_cancel.length : 0
-  const activeFan = Array.isArray(fan.active_roster) ? fan.active_roster.length : 0
-  const pendingFan = Array.isArray(fan.pending_cancel) ? fan.pending_cancel.length : 0
+  const paidActive = (rows) =>
+    (Array.isArray(rows) ? rows : []).filter((row) => opsMonitorRowBillingSource(row) === 'paid')
+  const activePlatform = paidActive(platform.active_roster).length
+  const pendingPlatform = paidActive(platform.pending_cancel).length
+  const activeFan = paidActive(fan.active_roster).length
+  const pendingFan = paidActive(fan.pending_cancel).length
   const monetizedCreators = Array.isArray(fan.monetized_creators) ? fan.monetized_creators.length : 0
   return {
     activePlatform,

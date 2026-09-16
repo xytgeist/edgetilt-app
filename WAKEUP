@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Windows Theo 2026-09-16 … Monitor paid KPIs skip comps
+
+**I am Windows Theo.** Friend Lifetime comps (`admin_comp_lifetime_*`) still have access. Paid Monitor numbers only count real Stripe. Prod Lifetime paid = **1** (`@kix123`). **`20260916150000`** on test + prod.
+
 ### Windows Theo 2026-09-16 … Monitor user metrics skip all bots
 
 **I am Windows Theo.** Edge Monitor user + subscription KPIs ignore `profiles.is_bot` now and forever. **`20260916140000`** on test + prod. Roster, webhook billing-sub count, starter/freemium, trend signups, and member-usage all use the same gate. Syndicate `edge-pro` and Signal lifetime comps are not customers.

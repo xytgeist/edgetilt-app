@@ -652,7 +652,7 @@ export default function EdgeMonitorDashboard({
       <MonitorSection
         themeKey="subs"
         title="Subscriptions"
-        subtitle="Stripe + webhooks"
+        subtitle="Paid Stripe only … comps and test grants omitted"
         className="mb-0"
         chart={
           <MonitorDoughnutChart

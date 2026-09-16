@@ -255,7 +255,6 @@ import {
 import {
   formatSwapIouLine,
   formatSwapSettledParenAmount,
-  formatSwapTermLine,
   formatSwapWaitingStatus,
   swapViewerSettlementDelta,
 } from './pokerTournamentSwapMath.js'
@@ -3098,6 +3097,9 @@ export default function PokerBankrollTracker({
       return
     }
     if (live.session_type === 'tournament' && liveSwaps.length > 0 && swapResultReady == null) {
+      if (cashOut > 0.005) {
+        return endLiveSession(true)
+      }
       setEndSwapDecisionOpen(true)
       return
     }
@@ -5258,9 +5260,6 @@ export default function PokerBankrollTracker({
                                       {swap.pct_creator_gives != null &&
                                       swap.pct_counterparty_gives != null
                                         ? ` · ${swap.pct_creator_gives}%↔${swap.pct_counterparty_gives}%`
-                                        : ''}
-                                      {formatSwapTermLine(swap)
-                                        ? ` · ${formatSwapTermLine(swap)}`
                                         : ''}
                                       {showSettledAmt ? (
                                         <>

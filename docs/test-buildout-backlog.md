@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-16:** **ITM skip swap prompt + history swap line (Mac).** Cashing a tournament with an active swap closes it (no Keep swap open modal). History cards drop Both must cash / min-cash from the swap line. Detail sheet still has the terms. Frontend **`1.4.259`** on **`test`**.
 - **2026-09-16:** **Guest confirm no invite-page flash (Mac).** Confirm-email restashed the invite token from signup JWT metadata and sent the player back to `/poker-swap-claim` after Bankroll opened. Attach via token in place, mark consumed, stay on Bankroll. Same guard on stake / stable invite tokens. Frontend **`1.4.258`** via **`test` → `main`**.
 - **2026-09-16:** **Guest share sheet copy (Mac).** Title **Share your swap with {guest}**. Dropped the subtitle and the SMS paste hint. Stake share sheet title unchanged. Frontend **`1.4.257`** via **`test` → `main`**.
 - **2026-09-16:** **Monitor paid KPIs skip comps (Windows).** `ops_monitor_is_paid_billing()` matches roster Paid/Comp/Test tags. Friend Lifetime (`admin_comp_lifetime_*`) keeps access but is not a paid metric. Prod paid = 9 Slots Edge + 1 Lifetime (`@kix123`). Applied **`20260916150000`** on test + prod.

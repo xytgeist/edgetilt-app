@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-16 … ITM skip swap prompt + card swap line
+
+**I am Mac Theo.** End Session with an ITM cash no longer asks Keep swap open. Historical session cards show name + % only; Both must cash / min cash stay on the detail sheet. **`1.4.259`** on **`test`**.
+
 ### Mac Theo 2026-09-16 … Guest confirm no longer flashes invite page
 
 **I am Mac Theo.** Confirm-email after a guest swap/stake invite was bouncing Bankroll ↔ `/poker-*-claim` because signup JWT metadata kept restashing the token. Attach in place after confirm, mark the token consumed, skip the invite page. **`1.4.258`** on **`test` + `main`**.

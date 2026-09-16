@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-16:** **Monitor skips bot billing drift (Windows).** `admin_ops_billing_drift_snapshot` ignores `profiles.is_bot`. Syndicate admin-comp `edge-pro` was a false paid-but-no-access page. Applied **`20260916120000`** on test + prod. Stripe 96h stale warn unchanged.
 - **2026-09-15:** **Promote to prod (Mac).** Ryan asked. **`origin/main` = `0ac76f5c`.** **1.4.95 (20260915213919)** uploaded to ASC (EdgeTilt Prod). Not 125. Attach + Submit for Review after processing. China stays listed. CallKit off on `CHN`.
 - **2026-09-15:** **iPad subscribe cards (Mac).** **`1.4.251`:** phone card at `transform: scale(1.5)` so type/buttons scale with the box. Killed `h-full` / stage stretch that only made them taller. Phone unchanged. Do not resubmit 125.
 - **2026-09-15:** **Hamburger dismiss unwind (Mac).** Removed portal / z-106 overlay / title-bar `z-index: 107` (that hid the Slots title bar). Overlay back at `z-40`. Document `pointerdown` closes the menu, including FAB. **`1.4.247`.**

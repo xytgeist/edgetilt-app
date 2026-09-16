@@ -111,6 +111,7 @@ Admin RPC **`admin_ops_system_health_snapshot()`** + **`EdgeMonitorSystemHealthP
 - **Scheduled jobs:** pg_cron registry with last run, health (`ok` / `failed` / `stale` / `disabled` / `external` / `unscheduled`), runbook links
 - **Billing drift:** proactive cases naming users stuck **`incomplete`**, active sub + Free profile flag, profile paid flag with no active row, **`past_due`** lockout (warn), fan sub incomplete
 - **Dropped (40500):** orphan **`stripe_customer_id`** with no sub row (checkout noise)
+- **Skip bots (20260916120000):** Lounge `profiles.is_bot` never pages drift (admin-comp `edge-pro` / lifetime on Syndicate / Signal is not a customer lockout)
 - **Copy diagnostic:** plain-text bundle for chat triage (project, user ids, Stripe ids, job failures)
 - **Four screens:** Overview · Health · People · Product (`?section=` on `/monitor` and `/?tab=monitor`)
 - **Alerts banner:** drift + critical job issues surface as red/critical alerts without searching subscriber roster
@@ -166,4 +167,5 @@ _Update log: 2026-07-03 — Phases 2–5 (extended RPC, external-health Edge fn,
 _Update log: 2026-07-23 — Phase 6 subscriber roster (`admin_ops_subscriber_roster` + Monitor panel)._
 _Update log: 2026-07-30 — Phase 7 system health (cron registry + billing drift + copy diagnostic)._
 _Update log: 2026-07-30 — Monitor split into four screens (Overview · Health · People · Product) with URL `?section=`._
-_Update log: 2026-07-31 — Phase 8 app section visits + member activity through **`20260731222500`** (aggregate panel, dual top-25 tables, Lounge contributor ranking, exclusions, prod **`post_reposts`** guard). Prod **`567070d6`**._
+_Update log: 2026-07-31 — Phase 8 app section visits + member activity through **`20260731222500`** (aggregate panel, dual top-25 tables, Lounge contributor ranking, exclusions, prod **`post_reposts`** guard). Prod **`567070d6`**.
+_Update log: 2026-09-16 — Billing drift skips Lounge bots (`20260916120000`, test + prod)._

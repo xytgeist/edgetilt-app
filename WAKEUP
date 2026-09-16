@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Windows Theo 2026-09-16 … Monitor skip bot drift
+
+**I am Windows Theo.** Edge Monitor no longer pages Lounge bots as paid-but-no-access. **`20260916120000`** on test + prod. Syndicate admin-comp `edge-pro` is fine. Stripe 96h stale warn is still a quiet-timer, not a failed webhook.
+
 ### Dual-agent ruleset (BOTH Theos ... follow every session)
 
 Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). Short form:

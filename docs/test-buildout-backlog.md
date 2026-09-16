@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-16:** **Monitor user + subscription KPIs skip all Lounge bots (Windows).** `ops_monitor_is_human()` + wrap on `admin_ops_monitor_snapshot` / `admin_ops_subscriber_roster`. `app_product_analytics_user_excluded` now includes `profiles.is_bot` so current and future bots stay out of member usage too. Webhook `active_billing_subs` is humans only (prod 20 → 18; Syndicate `edge-pro` + Signal lifetime comps dropped). Applied **`20260916140000`** on test + prod.
 - **2026-09-16:** **Catalog scrape once, write test then prod (Windows).** `--mirror-production`. Home PC 2am scrapes MTTDB once and upserts both DBs. GHA skips MTTDB, scrapes ClubWPT/CoinPoker/Wynn/regional once, same two writes. **`main`** @ **`3327d244`** so prod GHA dispatch skips MTTDB.
 - **2026-09-16:** **GHA skips MTTDB scrape (Windows).** `--skip-mttdb` / `SKIP_MTTDB` / `GITHUB_ACTIONS`. ClubWPT, CoinPoker, Wynn, regional still run on ubuntu. Home PC Task Scheduler still scrapes MTTDB. Amber CF note only when the home scrape is blocked.
 - **2026-09-16:** **Monitor skips bot billing drift (Windows).** `admin_ops_billing_drift_snapshot` ignores `profiles.is_bot`. Syndicate admin-comp `edge-pro` was a false paid-but-no-access page. Applied **`20260916120000`** on test + prod. Stripe 96h stale warn unchanged.

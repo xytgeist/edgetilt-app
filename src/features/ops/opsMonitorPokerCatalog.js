@@ -22,7 +22,7 @@ export function pokerCatalogMonitorSummary(systemHealth) {
       skipped: numOrNull(fromRpc.skipped),
       mttdbOnline: numOrNull(fromRpc.mttdb_online),
       mttdbLive: numOrNull(fromRpc.mttdb_live),
-      mttdbBlocked: Boolean(fromRpc.detail?.mttdbBlocked),
+      mttdbBlocked: Boolean(fromRpc.detail?.mttdbBlocked) && !fromRpc.detail?.mttdbSkipped,
       mttdbOnlineIngested: numOrNull(fromRpc.detail?.mttdbOnlineIngested),
       rows: numOrNull(fromRpc.rows),
     }
@@ -44,7 +44,7 @@ export function pokerCatalogMonitorSummary(systemHealth) {
     skipped: numOrNull(upsert.skipped),
     mttdbOnline: numOrNull(detail.mttdbOnlineRows),
     mttdbLive: numOrNull(detail.mttdbLiveRows),
-    mttdbBlocked: Boolean(detail.mttdbBlocked),
+    mttdbBlocked: Boolean(detail.mttdbBlocked) && !detail.mttdbSkipped,
     mttdbOnlineIngested: numOrNull(detail.mttdbOnlineIngested),
     rows: numOrNull(detail.rows),
   }

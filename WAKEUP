@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Windows Theo 2026-09-16 … MTTDB scrape is home-PC only
+
+**I am Windows Theo.** GitHub Actions catalog sync skips MTTDB (`--skip-mttdb`). ClubWPT / CoinPoker / Wynn / regional still run on ubuntu. Windows Task Scheduler 2:00 AM still scrapes MTTDB. Amber CF note only after a home scrape hits Turnstile.
+
 ### Windows Theo 2026-09-16 … Monitor skip bot drift
 
 **I am Windows Theo.** Edge Monitor no longer pages Lounge bots as paid-but-no-access. **`20260916120000`** on test + prod. Syndicate admin-comp `edge-pro` is fine. Stripe 96h stale warn is still a quiet-timer, not a failed webhook.

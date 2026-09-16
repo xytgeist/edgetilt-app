@@ -1,9 +1,10 @@
-# Scrape MTTDB + regional JSON → upsert poker_tournament_events on production.
-#
-# Primary schedule is Windows Task Scheduler on the home PC
+# Regional JSON + Wynn + ClubWPT + CoinPoker → upsert poker_tournament_events
+# on production. MTTDB is skipped here (Cloudflare blocks ubuntu-latest 100%).
+# Home PC Task Scheduler still scrapes MTTDB
 # (`scripts/install-poker-catalog-windows-task.ps1`, daily 2:00 AM local).
-# This workflow is manual only (workflow_dispatch). Do not re-add ubuntu-latest
-# cron … GitHub cloud egress cannot pass MTTDB Cloudflare.
+#
+# This workflow is manual only (workflow_dispatch). Do not scrape MTTDB from
+# GitHub cloud egress.
 #
 # Required GitHub repo secrets (Settings → Secrets → Actions):
 #   SUPABASE_URL_PRODUCTION
@@ -41,4 +42,5 @@ jobs:
         env:
           SUPABASE_URL_PRODUCTION: ${{ secrets.SUPABASE_URL_PRODUCTION }}
           SUPABASE_SERVICE_ROLE_KEY_PRODUCTION: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_PRODUCTION }}
-        run: npm run poker:catalog:sync:production
+          SKIP_MTTDB: '1'
+        run: npm run poker:catalog:sync:production -- --skip-mttdb

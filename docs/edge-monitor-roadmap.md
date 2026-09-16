@@ -120,7 +120,7 @@ Admin RPC **`admin_ops_system_health_snapshot()`** + **`EdgeMonitorSystemHealthP
 
 **Offer reminders cron (40600):** pg_cron **`send_due_offer_reminders_minute`** every minute → **`send-due-offer-reminders`** Edge fn (`lookaheadMinutes: 1`).
 
-**Poker catalog heartbeat (40800):** Production sync heartbeats **`admin_ops_job_heartbeats`**. Primary runner is **Windows Task Scheduler** on the home PC (daily 2:00 AM), not GitHub `ubuntu-latest`. Monitor stale if last success >4 days. Panel shows remaining MTTDB counts; Cloudflare-blocked scrapes stay **ok** (amber note). GitHub Actions is manual dispatch only.
+**Poker catalog heartbeat (40800):** Production sync heartbeats **`admin_ops_job_heartbeats`**. Primary runner is **Windows Task Scheduler** on the home PC (daily 2:00 AM), not GitHub `ubuntu-latest`. Monitor stale if last success >4 days. Panel shows remaining MTTDB counts. **MTTDB scrape is home-PC only** … GitHub Actions skips it (`--skip-mttdb` / `GITHUB_ACTIONS`) because Cloudflare blocks ubuntu 100%. ClubWPT / CoinPoker / Wynn / regional still run on both. Amber CF note only when the home scrape actually hit Turnstile.
 
 ## Phase 8 — app section visits + member activity (shipped, prod 2026-07-31)
 

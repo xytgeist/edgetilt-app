@@ -40,6 +40,16 @@ const WYNN_URL = 'https://www.wynnpoker.com/tournaments'
 const FETCH_UA =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
 
+function envFlagOn(name) {
+  const raw = String(process.env[name] || '').trim().toLowerCase()
+  return raw === '1' || raw === 'true' || raw === 'yes'
+}
+
+/** GitHub ubuntu / SKIP_MTTDB never hits mttdb.com. Home PC and local npm still scrape. */
+function shouldSkipMttdb(flag) {
+  return Boolean(flag) || envFlagOn('SKIP_MTTDB') || envFlagOn('GITHUB_ACTIONS')
+}
+
 function parseArgs(argv) {
   let target = 'test'
   let dryRun = false
@@ -47,16 +57,18 @@ function parseArgs(argv) {
   let file = null
   let noPrune = false
   let skipFetch = false
+  let skipMttdb = false
   let noGeocode = false
   for (const arg of argv.slice(2)) {
     if (arg === '--dry-run') dryRun = true
     else if (arg === '--no-prune') noPrune = true
     else if (arg === '--skip-fetch') skipFetch = true
+    else if (arg === '--skip-mttdb') skipMttdb = true
     else if (arg === '--no-geocode') noGeocode = true
     else if (arg.startsWith('--target=')) target = arg.slice('--target='.length)
     else if (arg.startsWith('--file=')) file = path.resolve(repoRoot, arg.slice('--file='.length))
   }
-  return { target, dryRun, file, noPrune, skipFetch, noGeocode }
+  return { target, dryRun, file, noPrune, skipFetch, skipMttdb: shouldSkipMttdb(skipMttdb), noGeocode }
 }
 
 /** Re-export for scripts/tests. */
@@ -130,7 +142,7 @@ async function fetchWynnOneOffEvents() {
 }
 
 async function main() {
-  const { target, dryRun, file, noPrune, skipFetch, noGeocode } = parseArgs(process.argv)
+  const { target, dryRun, file, noPrune, skipFetch, skipMttdb, noGeocode } = parseArgs(process.argv)
   loadSupabaseEnv(target)
 
   const { paths, payloads } = loadCatalogSeedFiles(file)
@@ -180,62 +192,66 @@ async function main() {
   }
 
   if (!skipFetch && mttdbPayload) {
-    const supabaseForMttdb = createSupabaseServiceClient(createClient)
     /** @type {object[]} */
     let liveOneOff = []
     /** @type {object[]} */
     let onlineOneOff = []
 
-    // Live + online are independent … a live scrape failure must not skip online.
-    try {
-      const venueResolver = await createMttdbVenueResolver(supabaseForMttdb, {
-        dryRun,
-        geocode: !noGeocode && !dryRun,
-      })
-      const live = await fetchMttdbLiveCatalogOneOffs({
-        resolveVenue: venueResolver.resolve,
-      })
-      liveOneOff = live.oneOff || []
-      mttdbFetch.liveParsed = Number(live.stats?.parsed) || 0
-      mttdbFetch.liveIngested = Number(live.stats?.ingested) || 0
-      console.log(
-        `MTTDB live: parsed ${live.stats.parsed}, ingested ${live.stats.ingested} (skipped venue ${live.stats.skippedVenue}, date ${live.stats.skippedDate})`,
-      )
-      const unmappedVenues = venueResolver.unmappedVenues()
-      if (unmappedVenues.length) {
-        console.log(`MTTDB unmapped venues (${unmappedVenues.length}):`)
-        for (const v of unmappedVenues.slice(0, 25)) {
-          console.log(`  - ${v.venue_title} | ${v.venue_city || '?'} | ${v.country_name || '?'}`)
+    if (skipMttdb) {
+      console.log('[poker:catalog:sync] MTTDB scrape skipped (server / --skip-mttdb). Home PC Task Scheduler still pulls it.')
+    } else {
+      const supabaseForMttdb = createSupabaseServiceClient(createClient)
+      // Live + online are independent … a live scrape failure must not skip online.
+      try {
+        const venueResolver = await createMttdbVenueResolver(supabaseForMttdb, {
+          dryRun,
+          geocode: !noGeocode && !dryRun,
+        })
+        const live = await fetchMttdbLiveCatalogOneOffs({
+          resolveVenue: venueResolver.resolve,
+        })
+        liveOneOff = live.oneOff || []
+        mttdbFetch.liveParsed = Number(live.stats?.parsed) || 0
+        mttdbFetch.liveIngested = Number(live.stats?.ingested) || 0
+        console.log(
+          `MTTDB live: parsed ${live.stats.parsed}, ingested ${live.stats.ingested} (skipped venue ${live.stats.skippedVenue}, date ${live.stats.skippedDate})`,
+        )
+        const unmappedVenues = venueResolver.unmappedVenues()
+        if (unmappedVenues.length) {
+          console.log(`MTTDB unmapped venues (${unmappedVenues.length}):`)
+          for (const v of unmappedVenues.slice(0, 25)) {
+            console.log(`  - ${v.venue_title} | ${v.venue_city || '?'} | ${v.country_name || '?'}`)
+          }
+          if (unmappedVenues.length > 25) console.log(`  … +${unmappedVenues.length - 25} more`)
         }
-        if (unmappedVenues.length > 25) console.log(`  … +${unmappedVenues.length - 25} more`)
+      } catch (err) {
+        mttdbFetch.liveError = String(err?.message || err)
+        console.error('[poker:catalog:sync] MTTDB live fetch failed:', mttdbFetch.liveError)
       }
-    } catch (err) {
-      mttdbFetch.liveError = String(err?.message || err)
-      console.error('[poker:catalog:sync] MTTDB live fetch failed:', mttdbFetch.liveError)
-    }
 
-    try {
-      const siteResolver = createMttdbSiteResolver()
-      const online = await fetchMttdbOnlineCatalogOneOffs({
-        resolveSite: siteResolver.resolve,
-      })
-      onlineOneOff = online.oneOff || []
-      mttdbFetch.onlineParsed = Number(online.stats?.parsed) || 0
-      mttdbFetch.onlineIngested = Number(online.stats?.ingested) || 0
-      console.log(
-        `MTTDB online: parsed ${online.stats.parsed}, ingested ${online.stats.ingested} (skipped site ${online.stats.skippedSite}, date ${online.stats.skippedDate})`,
-      )
-      const unmappedSites = siteResolver.unmappedSites()
-      if (unmappedSites.length) {
-        console.log(`MTTDB unmapped online sites (${unmappedSites.length}):`)
-        for (const s of unmappedSites.slice(0, 25)) {
-          console.log(`  - ${s.site_slug || '?'} | ${s.site_name || '?'}`)
+      try {
+        const siteResolver = createMttdbSiteResolver()
+        const online = await fetchMttdbOnlineCatalogOneOffs({
+          resolveSite: siteResolver.resolve,
+        })
+        onlineOneOff = online.oneOff || []
+        mttdbFetch.onlineParsed = Number(online.stats?.parsed) || 0
+        mttdbFetch.onlineIngested = Number(online.stats?.ingested) || 0
+        console.log(
+          `MTTDB online: parsed ${online.stats.parsed}, ingested ${online.stats.ingested} (skipped site ${online.stats.skippedSite}, date ${online.stats.skippedDate})`,
+        )
+        const unmappedSites = siteResolver.unmappedSites()
+        if (unmappedSites.length) {
+          console.log(`MTTDB unmapped online sites (${unmappedSites.length}):`)
+          for (const s of unmappedSites.slice(0, 25)) {
+            console.log(`  - ${s.site_slug || '?'} | ${s.site_name || '?'}`)
+          }
+          if (unmappedSites.length > 25) console.log(`  … +${unmappedSites.length - 25} more`)
         }
-        if (unmappedSites.length > 25) console.log(`  … +${unmappedSites.length - 25} more`)
+      } catch (err) {
+        mttdbFetch.onlineError = String(err?.message || err)
+        console.error('[poker:catalog:sync] MTTDB online fetch failed:', mttdbFetch.onlineError)
       }
-    } catch (err) {
-      mttdbFetch.onlineError = String(err?.message || err)
-      console.error('[poker:catalog:sync] MTTDB online fetch failed:', mttdbFetch.onlineError)
     }
 
     /** @type {object[]} */
@@ -339,7 +355,7 @@ async function main() {
       )
     }
     if (rows.length > 8) console.log(`  … +${rows.length - 8} more`)
-    if (!skipFetch) {
+    if (!skipFetch && !skipMttdb) {
       if (isMttdbCloudflareBlock(mttdbFetch.onlineError) || isMttdbCloudflareBlock(mttdbFetch.liveError)) {
         console.warn(
           '[poker:catalog:sync] MTTDB Cloudflare block (dry-run). Would keep existing catalog rows and still upsert regional/ClubWPT.',
@@ -377,15 +393,13 @@ async function main() {
       process.exit(1)
     }
 
-    const remaining = skipFetch
-      ? { online: mttdbOnlineRows.length, live: mttdbLiveRows.length }
-      : await countRemainingMttdbCatalogRows(supabase)
+    const remaining = await countRemainingMttdbCatalogRows(supabase)
 
-    const mttdbProblems = skipFetch
-      ? []
-      : mttdbFetchProblems(mttdbFetch, mttdbOnlineRows.length, remaining)
+    const mttdbProblems =
+      skipFetch || skipMttdb ? [] : mttdbFetchProblems(mttdbFetch, mttdbOnlineRows.length, remaining)
     const mttdbBlocked =
-      isMttdbCloudflareBlock(mttdbFetch.onlineError) || isMttdbCloudflareBlock(mttdbFetch.liveError)
+      !skipMttdb &&
+      (isMttdbCloudflareBlock(mttdbFetch.onlineError) || isMttdbCloudflareBlock(mttdbFetch.liveError))
     const heartbeatDetail = {
       upsert: data,
       rows: rows.length,
@@ -397,6 +411,7 @@ async function main() {
       mttdbOnlineIngested: mttdbOnlineRows.length,
       mttdbLiveIngested: mttdbLiveRows.length,
       mttdbBlocked,
+      mttdbSkipped: skipMttdb,
       clubwptOnlineRows: clubwptOnlineRows.length,
       coinpokerOnlineRows: coinpokerOnlineRows.length,
       target,

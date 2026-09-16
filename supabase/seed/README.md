@@ -43,7 +43,7 @@ npm run poker:catalog:sync:test:dry
 npm run poker:catalog:sync:test
 npm run poker:catalog:sync:production
 ```
-- **Production schedule:** Windows Task Scheduler on the home PC, **daily 2:00 AM** local (`scripts/install-poker-catalog-windows-task.ps1` → `poker-catalog-sync-windows.ps1`). Log: `scripts/.poker-catalog-sync.log`. GitHub Actions workflow is **manual only** (`workflow_dispatch`). Secrets for local runs: `.env.supabase.production`. MTTDB Cloudflare still possible; blocked scrapes keep last `mttdb:*` rows and still upsert regional/ClubWPT.
+- **Production schedule:** Windows Task Scheduler on the home PC, **daily 2:00 AM** local (`scripts/install-poker-catalog-windows-task.ps1` → `poker-catalog-sync-windows.ps1`). Log: `scripts/.poker-catalog-sync.log`. That run **includes MTTDB**. GitHub Actions is **manual only** and **skips MTTDB** (ubuntu is Cloudflare-blocked 100%). ClubWPT / CoinPoker / Wynn / regional still run on both. Secrets for local runs: `.env.supabase.production`.
 - **Auto-map at sync:** unknown MTTDB **online sites** → `site_name` label; unknown **live venues** → Nominatim geocode + `casinos` insert (duplicate name → alias link on existing row).
 - **Satellites:** included (same picker filters: today/tomorrow + GPS / Site).
 - **Seed only** (no fetch): `npm run poker:catalog:seed:test`

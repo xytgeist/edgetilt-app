@@ -1,4 +1,5 @@
 # Production poker catalog sync for Windows Task Scheduler.
+# Includes MTTDB (residential egress). GitHub Actions skips MTTDB.
 # Run from repo: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/poker-catalog-sync-windows.ps1
 $ErrorActionPreference = 'Continue'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path

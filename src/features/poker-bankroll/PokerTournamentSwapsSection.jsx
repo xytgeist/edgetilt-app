@@ -1163,10 +1163,22 @@ export default function PokerTournamentSwapsSection({
                   {guestContactErrors.email ? (
                     <p className="text-[11px] text-rose-400">{guestContactErrors.email}</p>
                   ) : null}
-                  <p className="text-[11px] leading-snug text-zinc-500">
-                    Email optional. After you send, copy the invite into your own text ...
-                    EdgeTilt does not SMS them.
-                  </p>
+                  <label
+                    data-poker-swap-invite-text
+                    className="mt-0.5 flex items-start gap-2.5"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={Boolean(draft.invite_via_text)}
+                      onChange={(e) =>
+                        updateDraft(draft.localId, { invite_via_text: e.target.checked })
+                      }
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-zinc-600 bg-zinc-800 text-emerald-500 focus:ring-emerald-500/40"
+                    />
+                    <span className="text-xs font-semibold leading-snug text-zinc-200">
+                      or invite via text
+                    </span>
+                  </label>
                 </div>
               ) : null}
 
@@ -1322,10 +1334,10 @@ export default function PokerTournamentSwapsSection({
                       className="rounded-lg border border-cyan-500/35 px-2 py-1 text-[11px] font-semibold text-cyan-200 touch-manipulation active:bg-cyan-950/40 disabled:opacity-50"
                     >
                       {busyId === swap.id
-                        ? 'Copying…'
+                        ? 'Preparing…'
                         : inviteBySwapId[swap.id]
                           ? 'Refresh invite'
-                          : 'Copy invite'}
+                          : 'Share invite'}
                     </button>
                   ) : null}
                   {canCancel ? (

@@ -202,14 +202,39 @@ export function sliceIsUnclaimedGuestBacker(slice) {
   )
 }
 
+export function guestDraftWantsTextInvite(draft) {
+  return draft?.counterparty_kind === 'guest' && Boolean(draft.invite_via_text)
+}
+
+/** Match guest drafts that opted into text invite onto the swaps just created. */
+export function swapIdsForTextInvite(drafts, swaps) {
+  const remaining = (drafts || []).filter(guestDraftWantsTextInvite)
+  const ids = []
+  for (const swap of swaps || []) {
+    if (!swapIsUnclaimedGuest(swap)) continue
+    const i = remaining.findIndex(
+      (d) =>
+        String(d.counterparty_guest_label || '').trim().toLowerCase() ===
+        String(swap.counterparty_guest_label || '').trim().toLowerCase(),
+    )
+    if (i < 0) continue
+    ids.push(swap.id)
+    remaining.splice(i, 1)
+  }
+  return ids
+}
+
 export async function mintGuestSwapInviteRows({
   supabase,
   swaps,
   actorName,
   eventsById = {},
+  onlySwapIds = null,
 }) {
+  const allow = onlySwapIds ? new Set(onlySwapIds) : null
   const rows = []
   for (const swap of swaps || []) {
+    if (allow && !allow.has(swap.id)) continue
     if (!swapIsUnclaimedGuest(swap)) continue
     const { url, error } = await mintSwapGuestInvite(supabase, swap.id)
     if (error) {

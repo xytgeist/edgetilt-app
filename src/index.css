@@ -6950,6 +6950,11 @@ html.light [data-poker-guest-invite] .border-zinc-600 {
 html.light [data-poker-guest-invite] .text-zinc-200 {
   color: #3f3f46 !important;
 }
+html.light [data-poker-guest-invite] [data-poker-guest-invite-share-btn] {
+  background-color: #059669 !important;
+  color: #ffffff !important;
+  border-color: transparent !important;
+}
 html.light [data-poker-guest-invites-sheet] {
   background-color: #ffffff !important;
 }
@@ -8754,6 +8759,12 @@ html.light [data-poker-tournament-swaps] [data-poker-swap-term-checks] .text-zin
   color: #065f46 !important;
 }
 html.light [data-poker-tournament-swaps] [data-poker-swap-term-checks] input[type='checkbox'] {
+  accent-color: #047857;
+}
+html.light [data-poker-tournament-swaps] [data-poker-swap-invite-text] .text-zinc-200 {
+  color: #18181b !important;
+}
+html.light [data-poker-tournament-swaps] [data-poker-swap-invite-text] input[type='checkbox'] {
   accent-color: #047857;
 }
 html.light [data-poker-tournament-swaps] [data-poker-swap-term-checks] input:not([type='checkbox']) {

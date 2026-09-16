@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-16 … Guest text invite + Open swaps after end
+
+**I am Mac Theo.** Guest swap draft: no email helper. **or invite via text** checkbox opens the share sheet after send. Share is the green CTA and closes the sheet; **Share invite** on the swap card re-mints. Open swaps wait until the associated session is no longer live. **`1.4.255`.**
+
 ### Mac Theo 2026-09-16 … Open swaps on Bankroll
 
 **I am Mac Theo.** Bankroll lists **Open swaps** (other side has not reported). Tap opens the session card or a standalone sheet. Ping uses **`poker-tournament-swap-notify` `nudge`**. **`1.4.254`** on **`test` + `main`**. Edge **nudge** deployed on **test + prod**.

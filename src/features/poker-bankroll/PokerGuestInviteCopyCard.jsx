@@ -12,6 +12,7 @@ export function PokerGuestInviteCopyCard({
   text,
   url,
   shareTitle = 'EdgeTilt invite',
+  onShared,
 }) {
   const [copied, setCopied] = useState(false)
   const body = String(text || '').trim()
@@ -25,7 +26,9 @@ export function PokerGuestInviteCopyCard({
   }
 
   async function onShare() {
-    await shareGuestInvite({ title: shareTitle, text: body, url: link })
+    const result = await shareGuestInvite({ title: shareTitle, text: body, url: link })
+    if (result?.mode === 'aborted' || result?.mode === 'failed') return
+    onShared?.()
   }
 
   if (!body) return null
@@ -43,19 +46,21 @@ export function PokerGuestInviteCopyCard({
       <div className="mt-2.5 flex gap-2">
         <button
           type="button"
-          onClick={() => void onCopy()}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 py-2.5 text-xs font-bold text-white touch-manipulation active:bg-emerald-500"
-        >
-          <Copy size={14} aria-hidden />
-          {copied ? 'Copied' : 'Copy text'}
-        </button>
-        <button
-          type="button"
+          data-poker-guest-invite-share-btn
           onClick={() => void onShare()}
-          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-zinc-600 py-2.5 text-xs font-semibold text-zinc-200 touch-manipulation active:bg-zinc-800"
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-600 py-2.5 text-xs font-bold text-white touch-manipulation active:bg-emerald-500"
         >
           <Share2 size={14} aria-hidden />
           Share
+        </button>
+        <button
+          type="button"
+          data-poker-guest-invite-copy-text-btn
+          onClick={() => void onCopy()}
+          className="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-zinc-600 py-2.5 text-xs font-semibold text-zinc-200 touch-manipulation active:bg-zinc-800"
+        >
+          <Copy size={14} aria-hidden />
+          {copied ? 'Copied' : 'Copy text'}
         </button>
       </div>
     </div>
@@ -97,6 +102,7 @@ export default function PokerGuestInvitesSheet({
               text={row.text}
               url={row.url}
               shareTitle={row.shareTitle || 'EdgeTilt invite'}
+              onShared={onClose}
             />
           ))}
         </div>

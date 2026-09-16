@@ -1122,7 +1122,7 @@ export function swapIsIncomingPending(swap, userId) {
 }
 
 /** Active swap where the other party has not reported yet. Incoming Accept stays on Incoming. */
-export function swapIsWaitingOnOther(swap, userId) {
+export function swapIsWaitingOnOther(swap, userId, sessions) {
   if (!swap || swap.status !== 'active' || !userId) return false
   if (swapIsIncomingPending(swap, userId)) return false
   const role = swapViewerRole(swap, userId)
@@ -1131,7 +1131,12 @@ export function swapIsWaitingOnOther(swap, userId) {
     role === 'creator'
       ? Boolean(swap.counterparty_result_ready)
       : Boolean(swap.creator_result_ready)
-  return !otherReady
+  if (otherReady) return false
+  if (Array.isArray(sessions)) {
+    const session = associatedSessionForOpenSwap(swap, sessions, userId)
+    if (session?.status === 'active') return false
+  }
+  return true
 }
 
 /** Viewer's own session for an open swap, if it is loaded. */
@@ -1198,6 +1203,7 @@ export function emptyDraftSwap() {
     counterparty_guest_label: '',
     counterparty_guest_phone: '',
     counterparty_guest_email: '',
+    invite_via_text: false,
     pct_you_give: '5',
     pct_they_give: '5',
     both_must_cash: false,

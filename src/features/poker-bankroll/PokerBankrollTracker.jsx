@@ -204,6 +204,7 @@ import {
   mintGuestStakeInviteRows,
   mintGuestSwapInviteRows,
   resolveGuestInviteActorName,
+  swapIdsForTextInvite,
 } from './pokerGuestInviteShare.js'
 import {
   applySoftTournamentEventToForm,
@@ -848,8 +849,8 @@ export default function PokerBankrollTracker({
     [tournamentSwaps, userId],
   )
   const openWaitingSwaps = useMemo(
-    () => tournamentSwaps.filter((s) => swapIsWaitingOnOther(s, userId)),
-    [tournamentSwaps, userId],
+    () => tournamentSwaps.filter((s) => swapIsWaitingOnOther(s, userId, sessions)),
+    [tournamentSwaps, userId, sessions],
   )
   const standaloneOpenSwap = useMemo(
     () =>
@@ -2372,6 +2373,7 @@ export default function PokerBankrollTracker({
       swaps,
       actorName,
       eventsById: swapEventsById,
+      onlySwapIds: swapIdsForTextInvite(drafts, swaps),
     })
   }
 

@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { Copy, Share2 } from 'lucide-react'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import {
-  GUEST_INVITE_HINT,
   copyGuestInviteText,
+  guestSwapInviteSheetTitle,
+  invitesAreTournamentSwaps,
   shareGuestInvite,
 } from './pokerGuestInviteShare.js'
 
@@ -42,7 +43,6 @@ export function PokerGuestInviteCopyCard({
       <p className="mt-1.5 whitespace-pre-wrap break-words text-sm leading-snug text-zinc-100">
         {body}
       </p>
-      <p className="mt-2 text-[11px] leading-snug text-zinc-500">{GUEST_INVITE_HINT}</p>
       <div className="mt-2.5 flex gap-2">
         <button
           type="button"
@@ -69,10 +69,16 @@ export function PokerGuestInviteCopyCard({
 
 export default function PokerGuestInvitesSheet({
   invites = [],
+  heading,
   onClose,
 }) {
   const rows = Array.isArray(invites) ? invites.filter((row) => row?.text) : []
   if (!rows.length) return null
+  const title =
+    String(heading || '').trim()
+    || (invitesAreTournamentSwaps(rows)
+      ? guestSwapInviteSheetTitle(rows)
+      : 'Send in your own text')
 
   return (
     <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
@@ -81,19 +87,16 @@ export default function PokerGuestInvitesSheet({
         className={`relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto ${APP_MODAL_SHEET_PANEL_CLASS}`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <h3 className="text-lg font-bold text-white">Send in your own text</h3>
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <h3 className="min-w-0 text-lg font-bold leading-snug text-white">{title}</h3>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-xl px-3 py-1.5 text-sm font-semibold text-zinc-400 touch-manipulation"
+            className="shrink-0 rounded-xl px-3 py-1.5 text-sm font-semibold text-zinc-400 touch-manipulation"
           >
             Done
           </button>
         </div>
-        <p className="mb-3 text-[13px] leading-snug text-zinc-400">
-          Copy or share the invite. They open the link, make a free Edge account, and join.
-        </p>
         <div className="space-y-3">
           {rows.map((row, idx) => (
             <PokerGuestInviteCopyCard

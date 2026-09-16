@@ -6,9 +6,6 @@
 import { shareViaBestAvailable } from '../../utils/edgeNative.js'
 import { formatTournamentEventLabel } from './pokerTournamentSwapApi.js'
 
-export const GUEST_INVITE_HINT =
-  'Paste this into your own text. EdgeTilt does not send SMS for swaps or stakes.'
-
 export function guestInviteActorName(profile) {
   const name = String(profile?.display_name || '').trim()
   if (name) return name
@@ -206,6 +203,36 @@ export function guestDraftWantsTextInvite(draft) {
   return draft?.counterparty_kind === 'guest' && Boolean(draft.invite_via_text)
 }
 
+export function guestInviteGuestNames(invites) {
+  const names = []
+  for (const row of invites || []) {
+    const fromLabel = String(row.guestLabel || '').trim()
+    const fromTitle = String(row.title || '').replace(/^text\s+/i, '').trim()
+    const name = fromLabel || fromTitle
+    if (!name) continue
+    if (names.some((existing) => existing.toLowerCase() === name.toLowerCase())) continue
+    names.push(name)
+  }
+  return names
+}
+
+export function formatGuestInviteNameList(names) {
+  if (!names.length) return 'them'
+  if (names.length === 1) return names[0]
+  if (names.length === 2) return `${names[0]} and ${names[1]}`
+  return `${names.slice(0, -1).join(', ')}, and ${names[names.length - 1]}`
+}
+
+export function guestSwapInviteSheetTitle(invites) {
+  return `Share your swap with ${formatGuestInviteNameList(guestInviteGuestNames(invites))}`
+}
+
+export function invitesAreTournamentSwaps(invites) {
+  const rows = Array.isArray(invites) ? invites : []
+  if (!rows.length) return false
+  return rows.every((row) => !row.shareTitle || row.shareTitle === 'Tournament swap')
+}
+
 /** Match guest drafts that opted into text invite onto the swaps just created. */
 export function swapIdsForTextInvite(drafts, swaps) {
   const remaining = (drafts || []).filter(guestDraftWantsTextInvite)
@@ -245,6 +272,7 @@ export async function mintGuestSwapInviteRows({
     const guestLabel = String(swap.counterparty_guest_label || '').trim() || 'them'
     rows.push({
       id: swap.id,
+      guestLabel,
       title: `Text ${guestLabel}`,
       url,
       text: formatGuestSwapInviteText({

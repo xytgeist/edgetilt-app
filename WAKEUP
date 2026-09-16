@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-16 … Guest share sheet copy
+
+**I am Mac Theo.** Swap share sheet title is **Share your swap with {guest}**. No subtitle. No "Paste this into your own text..." line (same invite card, so live session / Stable copy cards lose that line too). Stake sheet title still **Send in your own text**. **`1.4.257`** on **`test`**.
+
 ### Mac Theo 2026-09-16 … Ping and Share invite placement
 
 **I am Mac Theo.** Ping is hidden while the event is live. Copy text is left, Share is right. **Share invite** only on live session swap cards, not historical recap. **`1.4.256`** on **`test` + `main`**.

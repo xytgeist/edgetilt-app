@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Windows Theo 2026-09-16 … Wed TNF VIP hits fan-only Lounge
+
+**I am Windows Theo.** `nfl_wed_tnf_vip` now posts fan-only Lounge + VIP chat. Still no public Lounge and no X. CFB Wed VIP / Sat adds stay chat-only. Redeploy `lounge-odds-poll` for the cron. **`1.4.269`** on **`test`**.
+
 ### Mac Theo 2026-09-16 … Tournament dates + Edge avatars
 
 **I am Mac Theo.** Start Session tournament picker always shows the date (Today / Tomorrow / weekday), not just the time. Log Play Add partner and swap +Edge user lists show avatars or initials. Guests stay text-only. **`1.4.267`** on **`test` + `main`**.

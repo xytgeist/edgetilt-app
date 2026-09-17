@@ -158,13 +158,13 @@ VIP uncut cards lock when injury + splits are real enough … **not** Tue vibes,
 | NFL Sat steam | **Sat 7:00 PM** | `nfl_sat_steam` | Public + VIP confirm / kill |
 | NFL Sunday early lock | **Sun ~8:30 AM** | `nfl_sunday_early_lock` | 1pm ET window on 90-min inactives |
 | NFL Sunday late lock | **Sun ~11:30 AM** | `nfl_sunday_late_lock` | 4:05/4:25 ET window on 90-min inactives |
-| NFL Wed TNF watch | **Wed 11:00 AM** | `nfl_wed_tnf_vip` | **VIP only** |
+| NFL Wed TNF watch | **Wed 11:00 AM** | `nfl_wed_tnf_vip` | Fan-only Lounge + VIP chat (no public, no X) |
 | Weekly recap | **Tue 7:30 AM** | `weekly_syndicate_recap` | Public + VIP |
 | Auto-grade | **:22** 10am–11pm PT | `grade_picks` | Ledger ATS + CLV (not a shop post) |
 | Weekday predictive | — | muted | Was public freebie … killed |
 
 Public crumbs (not a second card): Coffee & Covers · Value Radar **one look**. Best Bet Hour = VIP only.  
-Primetime public posts: TNF / SNF @ 3:30 PM PT, **MNF lean @ 2:00 PM PT**. Full 4-desk card on Lounge + VIP chat + X. No fan-only Lounge twin. Friday house lean is not the MNF/SNF lock ... spotlight owns the book. **90-min inactives lock** (`nfl_primetime_lock`) confirms or kills (pass). Hold if QB / LT / edge is still GTD. Wed TNF VIP stays room-only.  
+Primetime public posts: TNF / SNF @ 3:30 PM PT, **MNF lean @ 2:00 PM PT**. Full 4-desk card on Lounge + VIP chat + X. No fan-only Lounge twin. Friday house lean is not the MNF/SNF lock ... spotlight owns the book. **90-min inactives lock** (`nfl_primetime_lock`) confirms or kills (pass). Hold if QB / LT / edge is still GTD. Wed TNF VIP is fan-only Lounge + VIP chat (no public, no X).  
 **Sat / Sun AM:** portal tweaks for late scratches … no auto full-card republish.  
 **Window math:** next kickoff within 21d, then games within **5 days** of that kickoff.
 

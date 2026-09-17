@@ -224,7 +224,7 @@ export const OPS_WEEK_TASKS = [
     kind: 'post',
     label: 'TNF VIP',
     atLabel: '11:00am',
-    detail: 'Wed 11:00am PT. TNF VIP lean if Thursday night is on.',
+    detail: 'Wed 11:00am PT. TNF VIP lean on fan-only Lounge + VIP chat if Thursday night is on. No public Lounge. No X.',
     days: [3],
     startHour: 11,
     endHour: 13,

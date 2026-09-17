@@ -52,7 +52,7 @@ export const OPS_DROPS = [
     sports: [OPS_SPORT_NFL],
     destKind: 'primetime',
     hint: 'TNF / SNF / MNF 4-desk spotlight on public Lounge, VIP chat, and X.',
-    info: 'One-game TNF / SNF / MNF spotlight. Auto-picks the next eligible primetime matchup. TNF / SNF cron 3:30pm PT. MNF lean cron 2:00pm PT. Public Lounge, VIP chat, and X get the same 4-desk card. Friday house lean is not the primetime lock. Wednesday TNF VIP is a separate early room drop. Inactives lock is the Primetime lock drop.',
+    info: 'One-game TNF / SNF / MNF spotlight. Auto-picks the next eligible primetime matchup. TNF / SNF cron 3:30pm PT. MNF lean cron 2:00pm PT. Public Lounge, VIP chat, and X get the same 4-desk card. Friday house lean is not the primetime lock. Wednesday TNF VIP is a separate early fan-only Lounge + VIP chat drop (no public Lounge, no X). Inactives lock is the Primetime lock drop.',
   },
   {
     id: 'primetime_lock',

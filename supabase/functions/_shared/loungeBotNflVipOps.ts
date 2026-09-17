@@ -1,6 +1,6 @@
 /**
  * NFL VIP ops satellites (not the Friday house lean):
- * - Wed: TNF lean + injury watch → VIP only
+ * - Wed: TNF lean + injury watch → fan-only Lounge + VIP chat
  * - Sat evening: steam confirm / kill on Friday leans
  * - Legacy Sat 10am adds/kills stub kept for Ops
  */
@@ -8,9 +8,11 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { shortDisplayName, filterOddsEventsForNextFootballSlate, type OddsEvent } from './loungeBotOddsCaption.ts'
 import { fetchSportOdds } from './loungeBotOddsRun.ts'
 import {
+  destPreviewPayload,
   fanOutMissedAll,
   fanOutSyndicatePublish,
   fanOutVipOnlyCaption,
+  implicitDestForPollAction,
   resolvePublishDestinations,
 } from './loungeBotPublishDestinations.ts'
 import { findPrimetimeGameCandidate } from './loungeBotPrimetimeSpotlight.ts'
@@ -74,13 +76,14 @@ async function markPublished(
 }
 
 /**
- * Wednesday VIP: TNF lean + injury watch (no public Lounge post).
+ * Wednesday VIP: TNF lean + injury watch.
+ * Fan-only Lounge + VIP chat. No public Lounge. No X.
  */
 export async function runNflWedTnfVipNote(
   admin: SupabaseClient,
   botUserId: string,
   opts?: { dryRun?: boolean; destinations?: unknown },
-): Promise<{ ok: boolean; skipped?: string; dryRun?: boolean; captionPreview?: string; xWarning?: string; tweetId?: string | null; postId?: string }> {
+): Promise<{ ok: boolean; skipped?: string; dryRun?: boolean; captionPreview?: string; xWarning?: string; tweetId?: string | null; postId?: string; privatePostId?: string }> {
   const dryRun = opts?.dryRun === true
   const day = ptDateKey()
   const dedupeKey = `nfl_wed_tnf_vip:${day}`
@@ -126,30 +129,66 @@ export async function runNflWedTnfVipNote(
     `_TNF package locks Thursday · full desks drop with the primetime spotlight._`,
   ].join('\n')
 
+  const dest = resolvePublishDestinations(
+    opts?.destinations,
+    implicitDestForPollAction('nfl_wed_tnf_vip'),
+  )
+  const destPreview = destPreviewPayload({
+    fanOnlyCaption: caption,
+    vipCaption: caption,
+  })
+
   if (dryRun) {
-    return { ok: true, dryRun: true, captionPreview: caption }
+    return { ok: true, dryRun: true, captionPreview: caption, ...destPreview }
   }
 
-  const fan = await fanOutVipOnlyCaption({
+  const fan = await fanOutSyndicatePublish({
     admin,
     botUserId,
-    destinations: opts?.destinations,
-    caption,
+    dest,
+    fanOnlyCaption: caption,
+    vipCaption: caption,
   })
-  if (fan.dest.loungePublic && fan.error) {
-    return { ok: false, skipped: fan.error, xWarning: fan.xWarning }
+  if (fan.error) {
+    return { ok: false, skipped: fan.error, xWarning: fan.xWarning, ...destPreview }
+  }
+  if (dest.loungeFanOnly && !fan.privatePostId) {
+    return {
+      ok: false,
+      skipped: fan.fanOnlyWarning || 'fan_only_lounge_failed',
+      xWarning: fan.xWarning,
+      ...destPreview,
+    }
+  }
+  if (dest.vipChat && !fan.vipMessageId) {
+    return {
+      ok: false,
+      skipped: fan.vipChatWarning || 'vip_chat_failed',
+      xWarning: fan.xWarning,
+      privatePostId: fan.privatePostId || undefined,
+      ...destPreview,
+    }
   }
   if (fanOutMissedAll(fan)) {
-    return { ok: false, skipped: fan.error || fan.vipChatWarning || fan.xWarning || 'vip_publish_failed', xWarning: fan.xWarning }
+    return {
+      ok: false,
+      skipped: fan.error || fan.fanOnlyWarning || fan.vipChatWarning || fan.xWarning || 'vip_publish_failed',
+      xWarning: fan.xWarning,
+      ...destPreview,
+    }
   }
 
   await markPublished(admin, botUserId, dedupeKey, caption, 'nfl_wed_tnf_vip')
   return {
     ok: true,
     captionPreview: caption.slice(0, 280),
-    postId: fan.publicPostId || undefined,
+    postId: fan.publicPostId || fan.privatePostId || undefined,
+    privatePostId: fan.privatePostId || undefined,
     tweetId: fan.tweetId,
+    ...destPreview,
     ...(fan.xWarning ? { xWarning: fan.xWarning } : {}),
+    ...(fan.fanOnlyWarning ? { fanOnlyWarning: fan.fanOnlyWarning } : {}),
+    ...(fan.vipChatWarning ? { vipChatWarning: fan.vipChatWarning } : {}),
   }
 }
 

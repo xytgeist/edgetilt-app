@@ -896,7 +896,7 @@ Chat and X do **not** render Lounge markdown. Tags like `[gold]`, `**bold**`, `#
 
 ### Ops Send to + X (`2026-09-09`)
 
-**Cron / scheduled auto-publish:** today's destinations. **No X** except NFL primetime (TNF / SNF / MNF) … that drop tweets the same 4-desk card as VIP chat. Other public drops stay public tease. VIP-only stays VIP.
+**Cron / scheduled auto-publish:** today's destinations. **No X** except NFL primetime (TNF / SNF / MNF) … that drop tweets the same 4-desk card as VIP chat. Other public drops stay public tease. Wed TNF VIP is fan-only Lounge + VIP chat (no public, no X). Other VIP-only drops stay chat-only.
 
 **Ops Publish** (`sharpesyndicate.com/ops` Sharp Desk): **House / Scott / Rocco / Chedda / Tank** chips. House is the 4-desk composer. **Desk Math** tab dry-runs the NFL / CFB / UFC slate and lists each equation (formula, live outcome, effect on the vote). A named desk + Preview on today / slate / primetime / UFC returns `deskEvals` (vote + why + `equations` per game … Tank also shows ATS spot). Primetime Preview **and** Publish use the **house slate vote** for that game (Chedda can PASS). No costume Chedda / fake splits on the public card. Sport dropdown, then a **filtered drop** dropdown (Picks for today, slate, primetime, UFC slate, etc.). Drop **(i)** lists every type for that sport (`OPS_DROPS.info`). One Preview / Publish pair. Preview has **Public / Private / Chat / X** tabs (`destPreviews` from dry-run … same fallbacks as fan-out). **Send to** (`loungePublic`, `loungeFanOnly`, `vipChat`, `x`) applies to that Publish, including **Picks for today**. Passed on `lounge-odds-poll` body as `destinations`. Omit / cron = implicit dest (`x: false` except primetime). All boxes off refuses Publish. Monthly Board is ops-only (no Send to).
 
@@ -904,7 +904,7 @@ Chat and X do **not** render Lounge markdown. Tags like `[gold]`, `**bold**`, `#
 
 **Splits screenshot schedule (PT):** Tue/Wed seed (full sides), Thu/Fri movers, Sat/Sun (NFL) or Fri/Sat (CFB) lock + totals tab. Same `syndicate_betting_splits` rows for Chedda (dog fire) and Tank (weighted street confirm/veto + totals). Bulk save deactivates **same source** only so Action + VSiN can both stay live.
 
-**X never gets the uncut VIP caption unless you check X on that Publish**, except NFL primetime (no fan-only Lounge twin) … X is the same 4-desk card as VIP chat. House slate and other tease drops still use the public tease on X. VIP-only drops (halftime, middle/arb, Wed TNF / Sat adds/kills): Public Lounge + X **off but clickable**. **UFC slate** cron and default Send to are public + fan-only + VIP (X off), Scott + Rocco. Checking X posts the public card (`formatUfcCardCaption`).
+**X never gets the uncut VIP caption unless you check X on that Publish**, except NFL primetime (no fan-only Lounge twin) … X is the same 4-desk card as VIP chat. House slate and other tease drops still use the public tease on X. **Wed TNF VIP** cron is fan-only Lounge + VIP chat (public + X off). Other VIP-only drops (halftime, middle/arb, Sat adds/kills, CFB Wed VIP): Public Lounge + X **off but clickable**. **UFC slate** cron and default Send to are public + fan-only + VIP (X off), Scott + Rocco. Checking X posts the public card (`formatUfcCardCaption`).
 
 **X secrets** (Edge `lounge-odds-poll` only, never repo). App-only bearer cannot tweet. Generate **Read and Write** user tokens while logged in as `@sharpesyndicate`. **On prod** (`jtjgtucumuoswnbauxry`) as of 2026-09-09 with `lounge-odds-poll` redeployed:
 

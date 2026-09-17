@@ -67,6 +67,7 @@ export function implicitDestForPollAction(action: string): PublishDestinations {
     case 'nfl_sunday_late_lock':
       return { loungePublic: true, loungeFanOnly: false, vipChat: true, x: false }
     case 'nfl_wed_tnf_vip':
+      return { loungePublic: false, loungeFanOnly: true, vipChat: true, x: false }
     case 'nfl_sat_vip_adds_kills':
     case 'cfb_wed_midweek_vip':
     case 'cfb_sat_vip_adds_kills':
@@ -268,7 +269,7 @@ export function fanOutWarnings(fan: FanOutResult): string | undefined {
 
 const VIP_ONLY_IMPLICIT = { loungePublic: false, loungeFanOnly: false, vipChat: true } as const
 
-/** VIP-only runners (halftime, middle, Wed/Sat ops). Public/X are Ops opt-in. */
+/** Chat-only runners (halftime, middle, Sat adds/kills, CFB Wed VIP). Public/X are Ops opt-in. */
 export async function fanOutVipOnlyCaption(input: {
   admin: SupabaseClient
   botUserId: string

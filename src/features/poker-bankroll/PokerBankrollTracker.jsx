@@ -1811,20 +1811,25 @@ export default function PokerBankrollTracker({
     userId,
   ])
 
-  function selectBankrollScope(scopeId) {
-    let next = scopeId === 'personal' ? 'personal' : String(scopeId || '').trim()
-    if (!next) return
-    if (next !== 'personal' && !stakeeDeals.some((d) => d.id === next)) {
-      next = 'personal'
-    }
-    if (next !== bankrollScope) {
-      pendingRestoreScopeRef.current = next
-      setBankrollScope(next)
-    } else {
-      pendingRestoreScopeRef.current = null
-    }
-    if (userId && scopeHydrated) writeStoredPokerBankrollScope(userId, next)
-  }
+  const selectBankrollScope = useCallback(
+    (scopeId) => {
+      let next = scopeId === 'personal' ? 'personal' : String(scopeId || '').trim()
+      if (!next) return
+      if (next !== 'personal' && !stakeeDeals.some((d) => d.id === next)) {
+        next = 'personal'
+      }
+      setBankrollScope((prev) => {
+        if (next === prev) {
+          pendingRestoreScopeRef.current = null
+          return prev
+        }
+        pendingRestoreScopeRef.current = next
+        return next
+      })
+      if (userId && scopeHydrated) writeStoredPokerBankrollScope(userId, next)
+    },
+    [stakeeDeals, userId, scopeHydrated],
+  )
 
   /** After + Stake create while already mounted, jump carousel once the deal lands. */
   useEffect(() => {

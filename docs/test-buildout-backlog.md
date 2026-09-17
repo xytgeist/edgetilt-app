@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-16:** **Bankroll carousel swipe keeps the session ledger (Mac).** Stake hero could show Etcetera while the list stayed Personal (piece sessions + Closed stake banners). Scroll→scope debounce was cleared on every Tracker re-render. Frontend **`1.4.280`**.
 - **2026-09-16:** **0% player profit split allowed (Mac).** Sell Action and Create Stake accept 0% player share (blank still fails). Horse MTM no longer maps stored 0 to 50/50. Frontend **`1.4.279`**.
 - **2026-09-16:** **Ryan smoke PASSED (prod):** AP Slots Lounge intro after `/slots` (and hubs) → create account → email confirm still shows AP Slots-only. **`3b318b9e`** / **`1.4.276`** on **edgetilt.com**.
 - **2026-09-16:** **Live session backers card shows terms (Mac).** In-progress Sell Action session detail lists each backer with action %, backing $, and profit split. Share invite stays on unclaimed guests. Frontend **`1.4.278`** via **`test` → `main`**.

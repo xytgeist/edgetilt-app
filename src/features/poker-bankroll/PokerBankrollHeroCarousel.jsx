@@ -26,14 +26,24 @@ const PokerBankrollHeroCarousel = forwardRef(function PokerBankrollHeroCarousel(
   const slideRefs = useRef(/** @type {(HTMLElement | null)[]} */ ([]))
   const ignoreScrollRef = useRef(false)
   const visibleIdRef = useRef(activeId)
+  const slidesRef = useRef(slides)
+  const activeIdRef = useRef(activeId)
+  const onActiveIdChangeRef = useRef(onActiveIdChange)
+  const activeSyncEnabledRef = useRef(activeSyncEnabled)
+  slidesRef.current = slides
+  activeIdRef.current = activeId
+  onActiveIdChangeRef.current = onActiveIdChange
+  activeSyncEnabledRef.current = activeSyncEnabled
 
   const foundIndex = slides.findIndex((s) => s.id === activeId)
   const activeIndex = Math.max(0, foundIndex)
 
   const readCenteredSlideId = useCallback(() => {
+    const currentSlides = slidesRef.current
+    const fallbackId = activeIdRef.current
     const scroller = scrollerRef.current
-    if (!scroller || !slides.length) return activeId
-    if (slides.length <= 1) return slides[0]?.id || activeId
+    if (!scroller || !currentSlides.length) return fallbackId
+    if (currentSlides.length <= 1) return currentSlides[0]?.id || fallbackId
     const left = scroller.scrollLeft + PEEK_PX + 24
     let bestIdx = 0
     let bestDist = Infinity
@@ -48,9 +58,17 @@ const PokerBankrollHeroCarousel = forwardRef(function PokerBankrollHeroCarousel(
       }
     })
     // Unmounted refs used to fall through to slide 0 (Personal) and steal stake writes.
-    if (measured === 0) return activeId
-    return slides[bestIdx]?.id || activeId
-  }, [slides, activeId])
+    if (measured === 0) return fallbackId
+    return currentSlides[bestIdx]?.id || fallbackId
+  }, [])
+
+  const emitCenteredIfNeeded = useCallback(() => {
+    if (ignoreScrollRef.current) return
+    if (!activeSyncEnabledRef.current) return
+    const nextId = readCenteredSlideId()
+    if (nextId) visibleIdRef.current = nextId
+    if (nextId && nextId !== activeIdRef.current) onActiveIdChangeRef.current(nextId)
+  }, [readCenteredSlideId])
 
   useImperativeHandle(
     ref,
@@ -59,12 +77,12 @@ const PokerBankrollHeroCarousel = forwardRef(function PokerBankrollHeroCarousel(
       getVisibleSlideId: () => {
         const centered = readCenteredSlideId()
         if (centered) visibleIdRef.current = centered
-        return visibleIdRef.current || activeId
+        return visibleIdRef.current || activeIdRef.current
       },
       /** True while programmatic restore/snap scroll is ignoring user scroll→scope. */
       isIgnoringScroll: () => ignoreScrollRef.current === true,
     }),
-    [readCenteredSlideId, activeId],
+    [readCenteredSlideId],
   )
 
   useEffect(() => {
@@ -83,8 +101,9 @@ const PokerBankrollHeroCarousel = forwardRef(function PokerBankrollHeroCarousel(
     // Keep ignore armed long enough for WebKit async scroll events after behavior:auto.
     window.setTimeout(() => {
       ignoreScrollRef.current = false
+      emitCenteredIfNeeded()
     }, smooth ? 320 : 250)
-  }, [])
+  }, [emitCenteredIfNeeded])
 
   // Archived / removed deal ids must not silently clamp to slide 0 (Personal) while
   // parent scope still filters sessions for the missing stake.
@@ -100,25 +119,36 @@ const PokerBankrollHeroCarousel = forwardRef(function PokerBankrollHeroCarousel(
   }, [activeIndex, scrollToIndex, slides.length])
 
   useEffect(() => {
+    if (!activeSyncEnabled) return
+    emitCenteredIfNeeded()
+  }, [activeSyncEnabled, emitCenteredIfNeeded])
+
+  useEffect(() => {
     const scroller = scrollerRef.current
-    if (!scroller || slides.length <= 1 || !activeSyncEnabled) return undefined
+    if (!scroller || slides.length <= 1) return undefined
 
     let t = 0
-    const onScroll = () => {
-      if (ignoreScrollRef.current) return
+    const scheduleEmit = () => {
       window.clearTimeout(t)
-      t = window.setTimeout(() => {
-        const nextId = readCenteredSlideId()
-        if (nextId) visibleIdRef.current = nextId
-        if (nextId && nextId !== activeId) onActiveIdChange(nextId)
-      }, 80)
+      t = window.setTimeout(() => emitCenteredIfNeeded(), 80)
+    }
+    const onScroll = () => {
+      scheduleEmit()
+    }
+    const onScrollEnd = () => {
+      window.clearTimeout(t)
+      emitCenteredIfNeeded()
     }
     scroller.addEventListener('scroll', onScroll, { passive: true })
+    scroller.addEventListener('scrollend', onScrollEnd)
+    scroller.addEventListener('touchend', scheduleEmit, { passive: true })
     return () => {
       window.clearTimeout(t)
       scroller.removeEventListener('scroll', onScroll)
+      scroller.removeEventListener('scrollend', onScrollEnd)
+      scroller.removeEventListener('touchend', scheduleEmit)
     }
-  }, [slides, activeId, onActiveIdChange, activeSyncEnabled, readCenteredSlideId])
+  }, [slides.length, emitCenteredIfNeeded])
 
   if (slides.length <= 1) {
     return <div className="mb-4">{renderSlide(slides[0], 0)}</div>

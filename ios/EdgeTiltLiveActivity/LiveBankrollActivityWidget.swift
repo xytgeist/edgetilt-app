@@ -93,7 +93,8 @@ private struct LiveBankrollElapsedText: View {
 // MARK: - Compact leading mark
 
 /// Circular accent behind glyph. Live pulse via SF Symbol effects (TimelineView
-/// breath does not run on the Island / Lock Screen). Slots uses a white die.
+/// breath does not run on the Island / Lock Screen). Slots uses a white die;
+/// poker / dual uses a four-suit cluster.
 private struct LiveBankrollBrandMark: View {
   var state: LiveBankrollAttributes.ContentState
   var size: CGFloat
@@ -123,20 +124,49 @@ private struct LiveBankrollBrandMark: View {
           // Custom die isn't an SF Symbol … pulse comes from the circle behind it.
           LiveBankrollWhiteDice(size: size * 0.62)
         } else {
-          Image(systemName: symbolName)
-            .font(.system(size: size * 0.52, weight: .bold))
-            .foregroundStyle(Color.black)
-            .symbolEffect(.pulse, options: .repeating.speed(0.7), isActive: shouldPulse)
+          // Suit cluster is multi-Image … pulse comes from the circle behind it.
+          LiveBankrollSuitCluster(size: size * 0.72)
         }
       }
     }
     .frame(width: size, height: size)
     .accessibilityLabel(state.lockTitle)
   }
+}
 
-  private var symbolName: String {
-    if state.hasSlots && state.hasPoker { return "square.on.square.fill" }
-    return "suit.spade.fill"
+/// Black spade · red heart · green club · blue diamond, slightly overlapping.
+private struct LiveBankrollSuitCluster: View {
+  var size: CGFloat
+
+  private struct SuitSpec {
+    let name: String
+    let color: Color
+    let dx: CGFloat
+    let dy: CGFloat
+  }
+
+  private var suits: [SuitSpec] {
+    let o = size * 0.16
+    return [
+      SuitSpec(name: "suit.spade.fill", color: .black, dx: -o, dy: -o * 0.85),
+      SuitSpec(name: "suit.heart.fill", color: Color(red: 0.92, green: 0.22, blue: 0.28), dx: o, dy: -o * 0.85),
+      SuitSpec(name: "suit.club.fill", color: Color(red: 0.18, green: 0.72, blue: 0.38), dx: -o, dy: o * 0.85),
+      SuitSpec(name: "suit.diamond.fill", color: Color(red: 0.22, green: 0.48, blue: 0.98), dx: o, dy: o * 0.85),
+    ]
+  }
+
+  var body: some View {
+    let glyph = size * 0.46
+    ZStack {
+      ForEach(Array(suits.enumerated()), id: \.offset) { _, suit in
+        Image(systemName: suit.name)
+          .font(.system(size: glyph, weight: .bold))
+          .foregroundStyle(suit.color)
+          .shadow(color: .black.opacity(0.35), radius: 0.6, x: 0, y: 0.4)
+          .offset(x: suit.dx, y: suit.dy)
+      }
+    }
+    .frame(width: size, height: size)
   }
 }
 

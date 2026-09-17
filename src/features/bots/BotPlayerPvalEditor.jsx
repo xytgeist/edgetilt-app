@@ -56,13 +56,41 @@ export default function BotPlayerPvalEditor({ supabaseClient, setToast }) {
         .eq('id', player.id)
 
       if (error) throw error
-      setToast?.({ message: `Updated ${player.player_name} PVAL to ${newVal} pts`, isError: false })
+      setToast?.({ message: `Locked ${player.player_name} at ${newVal} pts (override on)`, isError: false })
       setPlayers((prev) =>
         prev.map((p) => (p.id === player.id ? { ...p, pval: newVal, is_custom_override: true } : p)),
       )
     } catch (err) {
       console.error('Failed to update PVAL:', err)
       setToast?.({ message: `Save failed: ${err.message}`, isError: true })
+    } finally {
+      setSavingId(null)
+    }
+  }
+
+  const handleSetOverride = async (player, on) => {
+    setSavingId(player.id)
+    try {
+      const { error } = await supabaseClient
+        .from('nfl_player_pvals')
+        .update({
+          is_custom_override: on,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', player.id)
+      if (error) throw error
+      setPlayers((prev) =>
+        prev.map((p) => (p.id === player.id ? { ...p, is_custom_override: on } : p)),
+      )
+      setToast?.({
+        message: on
+          ? `Override on for ${player.player_name}. Tuesday will skip this row.`
+          : `Override off for ${player.player_name}. Tuesday can overwrite.`,
+        isError: false,
+      })
+    } catch (err) {
+      console.error('Failed to toggle PVAL override:', err)
+      setToast?.({ message: `Override switch failed: ${err.message}`, isError: true })
     } finally {
       setSavingId(null)
     }
@@ -84,7 +112,7 @@ export default function BotPlayerPvalEditor({ supabaseClient, setToast }) {
   const positions = ['ALL', 'QB', 'EDGE', 'CB', 'OT', 'WR', 'RB', 'DT', 'S', 'TE']
 
   return (
-    <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 p-4 text-zinc-100 shadow-lg">
+    <div data-pval-editor className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 p-4 text-zinc-100 shadow-lg">
       <PvalSyncDumpCard supabaseClient={supabaseClient} />
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/80 pb-3">
         <div>
@@ -97,7 +125,8 @@ export default function BotPlayerPvalEditor({ supabaseClient, setToast }) {
             </span>
           </div>
           <p className="mt-0.5 text-xs text-zinc-400">
-            Real market line impact (pts) when player is ruled OUT. Syndicate injury models read this directly.
+            OUT prior in points. Tuesday Sleeper owns Auto Model rows. Save locks a number. The switch
+            turns override off (or back on) without changing the value.
           </p>
         </div>
 
@@ -191,15 +220,34 @@ export default function BotPlayerPvalEditor({ supabaseClient, setToast }) {
                     </div>
                   </td>
                   <td className="px-3 py-2">
-                    {player.is_custom_override ? (
-                      <span className="rounded bg-amber-950/70 border border-amber-500/40 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300">
-                        Custom Override
-                      </span>
-                    ) : (
-                      <span className="rounded bg-zinc-800/80 px-1.5 py-0.5 text-[10px] text-zinc-400">
-                        Auto Model
-                      </span>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={player.is_custom_override}
+                        aria-label={`Override ${player.player_name}`}
+                        disabled={isSaving}
+                        onClick={() => handleSetOverride(player, !player.is_custom_override)}
+                        className={`relative h-5 w-9 shrink-0 rounded-full transition ${
+                          player.is_custom_override ? 'bg-amber-500' : 'bg-zinc-700'
+                        } ${isSaving ? 'opacity-50' : ''}`}
+                      >
+                        <span
+                          className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-[left] ${
+                            player.is_custom_override ? 'left-4' : 'left-0.5'
+                          }`}
+                        />
+                      </button>
+                      {player.is_custom_override ? (
+                        <span className="rounded bg-amber-950/70 border border-amber-500/40 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300">
+                          Override
+                        </span>
+                      ) : (
+                        <span className="rounded bg-zinc-800/80 px-1.5 py-0.5 text-[10px] text-zinc-400">
+                          Auto
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-3 py-2 text-right">
                     <button

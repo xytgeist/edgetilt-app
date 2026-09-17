@@ -7,7 +7,8 @@
  *   node scripts/pval-sleeper-sync.mjs --apply --refresh --target=test
  *   npm run syndicate:pval-sleeper:refresh:test
  *
- * Never overwrites is_custom_override = true rows.
+ * Skips is_custom_override = true rows. Does not auto-protect seed notes
+ * unless you pass --protect. Ops switch / Save can still lock a row.
  * CI uses service-role upsert (same secrets as NFL metrics sync).
  */
 import fs from 'fs'
@@ -68,8 +69,7 @@ function parseArgs(argv) {
   if (!['test', 'production'].includes(out.target)) {
     throw new Error(`Invalid --target ${out.target}`)
   }
-  // First fill may protect curated rows; weekly refresh skips re-protect unless --protect.
-  if (out.protectExisting == null) out.protectExisting = !out.refresh
+  if (out.protectExisting == null) out.protectExisting = false
   return out
 }
 
@@ -227,7 +227,7 @@ async function savePvalSyncRun(target, dump) {
   console.log(`[pval-sleeper] wrote ops dump (${dump.movers.length} movers)`)
 }
 
-async function applyRows(target, rows, { refresh = false, protectExisting = true } = {}) {
+async function applyRows(target, rows, { refresh = false, protectExisting = false } = {}) {
   loadSupabaseEnv(target)
   const supabase = createSupabaseServiceClient(createClient)
 
@@ -365,8 +365,8 @@ async function main() {
   printCompare(cmp)
 
   if (args.dryRun) {
-    console.log('\nDry-run only. Re-run with --apply --target=test to insert new rows (curated protected).')
-    console.log('Add --refresh to update existing non-override sleeper rows on later weeks.')
+    console.log('\nDry-run only. Re-run with --apply --refresh --target=test to write non-override rows.')
+    console.log('Pass --protect only if you want leftover seed notes locked as overrides.')
     return
   }
 

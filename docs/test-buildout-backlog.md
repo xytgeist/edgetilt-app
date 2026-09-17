@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-16:** **PVAL starts with no overrides (Windows).** Cleared `is_custom_override` on test + prod (`20260917210000`). Sync no longer auto-protects seed notes. Ops row switch turns override off (or on). Save still locks a number. Then Sleeper refresh rewrote Mahomes etc. Frontend **`1.4.266`**.
 - **2026-09-16:** **Ops Seed shot uses this shop week's splits (Windows).** Calendar + nags load active `syndicate_betting_splits` since Tuesday 00:00 PT (paged). The old `.limit(200)` on 345 leftovers hid tonight's NFL paste so Seed stayed Due. Frontend **`1.4.265`**.
 - **2026-09-16:** **PVAL refresh dump on Ops (Windows).** `nfl_pval_sync_runs` on each Sleeper `--apply`. PVALs tab shows pulled / wrote / movers / held overrides. Heartbeat `last_detail` is not the dump. Applied **`20260916210000`** on test + prod. Frontend **`1.4.264`**.
 - **2026-09-16:** **Ops week calendar reads Lounge captions (Windows).** Posted green looks at `community_feed_posts.caption` plus live title needles (MNF spotlight, Weekly Ledger, locks, slates). The old `body` select failed every fetch. MNF lock stays Missed until that post exists. PVAL check is still mark-in.

@@ -21,19 +21,23 @@ final class EdgeLiveBankrollIslandOverlay: NSObject {
   private var appIsActive = true
   private var observersInstalled = false
 
-  private let pillHeight: CGFloat = 36
-  private let glyphSize: CGFloat = 26
+  /// Hardware Dynamic Island core is ~126×37pt. Our old pill was ~92×36 … entirely
+  /// under the camera. Fake Island must be **wider than the cutout** so glyph / timer
+  /// / keyline sit in the side lobes (same silhouette as the system Live Activity).
+  private let hardwareCoreWidth: CGFloat = 126
+  private let pillHeight: CGFloat = 38
+  private let glyphSize: CGFloat = 22
+  private let leftLobeWidth: CGFloat = 36
+  private let rightLobeMinWidth: CGFloat = 50
 
   private override init() {
     super.init()
     pill.backgroundColor = UIColor.black
     pill.layer.cornerRadius = pillHeight / 2
-    pill.layer.borderWidth = 1
-    pill.layer.borderColor = UIColor.white.withAlphaComponent(0.18).cgColor
-    pill.layer.shadowColor = UIColor.black.cgColor
-    pill.layer.shadowOpacity = 0.45
-    pill.layer.shadowRadius = 8
-    pill.layer.shadowOffset = CGSize(width: 0, height: 2)
+    pill.layer.borderWidth = 1.0 / UIScreen.main.scale
+    pill.layer.borderColor = UIColor.white.withAlphaComponent(0.22).cgColor
+    // No drop shadow … system Island doesn't cast one; shadow made ours look off.
+    pill.layer.shadowOpacity = 0
     pill.isUserInteractionEnabled = true
     pill.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(handleTap)))
 
@@ -45,7 +49,7 @@ final class EdgeLiveBankrollIslandOverlay: NSObject {
 
     trailingLabel.font = .monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
     trailingLabel.textColor = .white
-    trailingLabel.textAlignment = .right
+    trailingLabel.textAlignment = .center
     trailingLabel.adjustsFontSizeToFitWidth = true
     trailingLabel.minimumScaleFactor = 0.7
 
@@ -161,7 +165,7 @@ final class EdgeLiveBankrollIslandOverlay: NSObject {
       diceView.setNeedsDisplay()
     } else {
       glyphImage.image = UIImage(systemName: symbolName(for: state))?
-        .withConfiguration(UIImage.SymbolConfiguration(pointSize: glyphSize * 0.42, weight: .bold))
+        .withConfiguration(UIImage.SymbolConfiguration(pointSize: glyphSize * 0.48, weight: .bold))
       glyphImage.tintColor = .black
     }
 
@@ -180,27 +184,34 @@ final class EdgeLiveBankrollIslandOverlay: NSObject {
 
   private func layoutPill() {
     guard let parent = pill.superview ?? host else { return }
-    let safeTop = parent.safeAreaInsets.top
-    let trailingWidth: CGFloat = state?.isDual == true ? 16 : 44
-    let horizontalPad: CGFloat = 8
-    let width = horizontalPad + glyphSize + 6 + trailingWidth + horizontalPad
-    // Sit in the status-bar / Island band.
-    let y = max(pillHeight / 2 + 2, safeTop * 0.52)
+
+    let trailingWidth: CGFloat = state?.isDual == true ? 18 : 40
+    let rightLobe = max(rightLobeMinWidth, trailingWidth + 12)
+    let width = leftLobeWidth + hardwareCoreWidth + rightLobe
+
+    // System Island top inset is ~11pt; height ~37–38. Center matches status chrome.
+    let islandTop: CGFloat = 11
+    let y = islandTop + pillHeight / 2
+
     pill.bounds = CGRect(x: 0, y: 0, width: width, height: pillHeight)
+    pill.layer.cornerRadius = pillHeight / 2
     pill.center = CGPoint(x: parent.bounds.midX, y: y)
 
+    // Glyph in the LEFT lobe (clear of the camera core).
     glyphCircle.frame = CGRect(
-      x: horizontalPad,
+      x: (leftLobeWidth - glyphSize) / 2,
       y: (pillHeight - glyphSize) / 2,
       width: glyphSize,
       height: glyphSize
     )
-    glyphImage.frame = glyphCircle.bounds.insetBy(dx: 4, dy: 4)
-    diceView.frame = glyphCircle.bounds.insetBy(dx: 3, dy: 3)
+    glyphImage.frame = glyphCircle.bounds.insetBy(dx: 3.5, dy: 3.5)
+    diceView.frame = glyphCircle.bounds.insetBy(dx: 2.5, dy: 2.5)
+
+    // Timer in the RIGHT lobe.
     trailingLabel.frame = CGRect(
-      x: glyphCircle.frame.maxX + 6,
+      x: leftLobeWidth + hardwareCoreWidth,
       y: 0,
-      width: trailingWidth,
+      width: rightLobe,
       height: pillHeight
     )
   }

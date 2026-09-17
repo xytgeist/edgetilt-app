@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-16:** **Live Activity Island tightened + restyled (Mac).** Compact was nearly full-width (system timer reserved hours + lonely teal dot). Glyph tile + custom elapsed (`m:ss`, not `showsHours: false` which rolled at 59s), pulse bars, `keylineTint`. New Test Fast / Cloud IPA.
 - **2026-09-16:** **IPA keyboard accessory default-on (Mac).** Bar starts enabled; GIF is the only opt-out. Removes the focusin false→true `reloadInputViews` that clipped iPhone sim keys or popped the bar in ~200ms late. New Test Fast / Cloud IPA.
 - **2026-09-16:** **IPA keyboard accessory no longer clips iPhone Simulator keys (Mac).** `setShowsAccessoryBar(true)` deferred `reloadInputViews` until `keyboardDidShow` (+ 0.45s fallback). Root cause was Sep 12 app-wide accessory sync reloading mid-rise. One native fix covers every `EdgeKeyboardAccessorySync` surface. New Test Fast / Cloud IPA required.
 - **2026-09-16:** **Live slots / poker sessions on the Dynamic Island (Mac).** ActivityKit widget `EdgeTiltLiveActivity` + `EdgeNative.syncLiveBankrollActivity`. IPA hides the title-bar chip when the Island is up; PWA / old IPA keep the chip. Tap opens `?tab=bankroll` or `?tab=poker-bankroll`. New Test Fast IPA required. Frontend **`1.4.282`**. Do not bake this into the in-review **1.4.95** binary.

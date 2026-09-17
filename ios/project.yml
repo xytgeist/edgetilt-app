@@ -78,6 +78,7 @@ targets:
         INFOPLIST_FILE: EdgeTiltLiveActivity/Info.plist
         GENERATE_INFOPLIST_FILE: YES
         SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
         LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"
         TARGETED_DEVICE_FAMILY: "1,2"
         IPHONEOS_DEPLOYMENT_TARGET: "17.0"

@@ -23,7 +23,7 @@ Thin native loader for the live Edge site. **Not Capacitor.** No baked Vite `dis
 - **On-device OCR:** `EdgeNative.recognizeText` → Vision. W-2G extract on a current IPA for everyone (free and Starter+). Signed-in cloud only when the six fields look unsure. Simulator works. PWA / old IPA: signed-in cloud first, else tesseract. Bulk import is the only Starter+ W-2G difference.
 - **Photo picker:** `EdgeNative.pickPhotos` → PHPicker. W-2G **Bulk import** on a current IPA. Max 40 JPEGs. Old IPA / PWA stay on `<input multiple>`.
 - **Share sheet:** `EdgeNative.share` → `UIActivityViewController`. Lounge post / profile, W-2G image, poker result, chart snapshot, chat recording. Old IPA / PWA keep `navigator.share`. See `EdgeShareSheet.swift`.
-- **Live Activities:** widget target **`EdgeTiltLiveActivity`** (`com.edgetilt.app.LiveActivity`). Web calls `EdgeNative.syncLiveBankrollActivity` when a slots / poker session is live. Play / pause clocks; compact glyph breathes; `.timer` width-clamped. Tap opens manager tab only (no session detail). Title-bar chip stays on PWA / old IPA.
+- **Live Activities:** widget target **`EdgeTiltLiveActivity`** (`com.edgetilt.app.LiveActivity`). Web calls `EdgeNative.syncLiveBankrollActivity` when a slots / poker session is live. iOS shows the Island after backgrounding (not while EdgeTilt is foregrounded). In-app title chip covers that gap except on the bankroll screen with the live card.
 
 ## Open / build
 

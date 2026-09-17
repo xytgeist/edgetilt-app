@@ -460,7 +460,6 @@ export default function AppShell({
     slots: liveSlotsSession,
     poker: livePokerSession,
     hasLive: hasLiveBankrollSession,
-    nativeIslandActive: liveSessionIslandActive,
   } = useActiveLiveSessions(supabaseClient, {
     enabled: browseMode === 'member' && authSessionReady && Boolean(chatCallViewerUserId),
     userId: chatCallViewerUserId,
@@ -2333,7 +2332,15 @@ export default function AppShell({
 
   const renderTitleBarCenterSlot = () => {
     if (!hasLiveBankrollSession) return null
-    if (liveSessionIslandActive) return null
+    // iOS hides OUR Live Activity from the Dynamic Island while EdgeTilt is
+    // foregrounded ... it only appears after backgrounding. Do not blank the
+    // title chip just because ActivityKit reported ok (that left in-app users
+    // with no live affordance). Hide the chip only on the screen that already
+    // shows the live session card.
+    const onLiveCardScreen =
+      (tab === 'poker-bankroll' && Boolean(livePokerSession)) ||
+      (tab === 'bankroll' && Boolean(liveSlotsSession))
+    if (onLiveCardScreen) return null
     return (
       <LiveSessionTitleChip
         slots={liveSlotsSession}

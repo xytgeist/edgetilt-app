@@ -13,9 +13,44 @@ import {
   mergeGuestLabelsForPicker,
   removeSavedGuestLabel,
 } from './playLogSavedGuests.js'
+import { profileAvatarInitials, profileAvatarToneClass } from '../profiles/profileGate.js'
 
 const PANEL_HEIGHT_CLASS =
   'h-[min(88dvh,calc(100dvh-max(env(safe-area-inset-top,0px),var(--edge-sat,0px))-1rem))]'
+
+/**
+ * Edge-user avatar for the partner / swap picker. Guests stay text-only.
+ * @param {{ profile: object, sizeClass?: string, textClass?: string }} props
+ */
+function PartnerPickerAvatar({ profile, sizeClass = 'h-10 w-10', textClass = 'text-xs' }) {
+  const uid = String(profile?.user_id || '')
+  const handle = String(profile?.handle || '').trim().replace(/^@/, '')
+  const initials = profileAvatarInitials(profile?.display_name, profile?.handle)
+  const toneClass = profileAvatarToneClass(uid || handle)
+  const url = String(profile?.avatar_url || '').trim()
+  return (
+    <span
+      data-partner-picker-avatar
+      className={`flex ${sizeClass} shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-800 ${textClass} font-bold text-zinc-200`}
+    >
+      {url ? (
+        <img
+          src={url}
+          alt=""
+          className="h-full w-full object-cover"
+          loading="eager"
+          decoding="async"
+        />
+      ) : (
+        <span
+          className={`flex h-full w-full items-center justify-center font-bold text-white ${toneClass}`}
+        >
+          {initials}
+        </span>
+      )}
+    </span>
+  )
+}
 
 /** @param {Array<{ user_id?: string, handle?: string, display_name?: string }>} rows @param {string} query */
 function filterPartnerProfiles(rows, query) {
@@ -301,10 +336,11 @@ export default function PlayLogPartnerPickerModal({
     const disabled = onPlayAlready || picked
     const followingThem = viewerFollowingIds.has(uid)
     const showFollow = !followingThem && !disabled
+    const handle = String(profile.handle || '').trim().replace(/^@/, '')
     return (
       <li key={uid}>
         <div
-          className={`flex items-start gap-2 rounded-xl px-2 py-1 ${
+          className={`flex items-center gap-2 rounded-xl px-2 py-1 ${
             onPlayAlready ? 'opacity-40' : ''
           }`}
         >
@@ -312,27 +348,28 @@ export default function PlayLogPartnerPickerModal({
             type="button"
             disabled={disabled}
             onClick={() => addProfileToStaged(profile)}
-            className={`min-w-0 flex-1 flex items-start gap-2 rounded-xl px-1 py-2 text-left touch-manipulation ${
+            className={`min-w-0 flex-1 flex items-center gap-3 rounded-xl px-1 py-2 text-left touch-manipulation ${
               disabled ? 'cursor-default' : 'active:bg-zinc-800/80 cursor-pointer'
             }`}
           >
+            <PartnerPickerAvatar profile={profile} />
             <span className="min-w-0 flex-1 text-sm">
-              <span className="text-zinc-100 font-medium">{playLogPartnerLabel(profile)}</span>
-              {profile.handle ? (
-                <span className="block text-zinc-500 text-xs mt-0.5">
-                  @{String(profile.handle).trim().replace(/^@/, '')}
-                </span>
+              <span className="block truncate text-zinc-100 font-semibold">
+                {playLogPartnerLabel(profile)}
+              </span>
+              {handle ? (
+                <span className="mt-0.5 block truncate text-xs text-zinc-500">@{handle}</span>
               ) : null}
               {onPlayAlready ? (
-                <span className="block text-zinc-500 text-xs mt-0.5">
+                <span className="mt-0.5 block text-xs text-zinc-500">
                   {isDirectory ? 'Already on this swap' : 'Already on this play'}
                 </span>
               ) : picked ? (
-                <span className="block text-cyan-400/90 text-xs mt-0.5">Added</span>
+                <span className="mt-0.5 block text-xs text-cyan-400/90">Added</span>
               ) : showFollow ? (
-                <span className="block text-zinc-500 text-xs mt-0.5">Follows you · tap to add</span>
+                <span className="mt-0.5 block text-xs text-zinc-500">Follows you · tap to add</span>
               ) : (
-                <span className="block text-zinc-500 text-xs mt-0.5">
+                <span className="mt-0.5 block text-xs text-zinc-500">
                   {confirmOnSelect ? 'Tap to select' : 'Tap to add'}
                 </span>
               )}
@@ -347,7 +384,7 @@ export default function PlayLogPartnerPickerModal({
                 e.stopPropagation()
                 void followUser(uid)
               }}
-              className="mt-2 shrink-0 min-h-9 rounded-full bg-white px-4 text-[13px] font-bold text-[#09090b] touch-manipulation active:bg-zinc-200 disabled:opacity-50"
+              className="self-center shrink-0 min-h-9 rounded-full bg-white px-4 text-[13px] font-bold text-[#09090b] touch-manipulation active:bg-zinc-200 disabled:opacity-50"
             >
               {followBusyId === uid ? '…' : 'Follow'}
             </button>
@@ -400,7 +437,12 @@ export default function PlayLogPartnerPickerModal({
                   const uid = String(profile.user_id)
                   return (
                     <li key={`user:${uid}`}>
-                      <span className="inline-flex max-w-full items-center gap-1 rounded-lg bg-cyan-600/15 border border-cyan-500/30 pl-2.5 pr-1 py-1 text-xs font-semibold text-cyan-200">
+                      <span className="inline-flex max-w-full items-center gap-1.5 rounded-lg bg-cyan-600/15 border border-cyan-500/30 pl-1 pr-1 py-0.5 text-xs font-semibold text-cyan-200">
+                        <PartnerPickerAvatar
+                          profile={profile}
+                          sizeClass="h-5 w-5"
+                          textClass="text-[9px]"
+                        />
                         <span className="truncate">{playLogPartnerLabel(profile)}</span>
                         <button
                           type="button"

@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-16 … Tournament dates + Edge avatars
+
+**I am Mac Theo.** Start Session tournament picker always shows the date (Today / Tomorrow / weekday), not just the time. Log Play Add partner and swap +Edge user lists show avatars or initials. Guests stay text-only. **`1.4.267`** on **`test`**.
+
 ### Windows Theo 2026-09-16 … PVAL no seed overrides + switch
 
 **I am Windows Theo.** Cleared all PVAL overrides. Tuesday owns the table unless Ops Save / the row switch locks a seat. SQL **`20260917210000`** on test + prod. **`1.4.266`** on **`test`**.

@@ -226,10 +226,21 @@ export function resolveLivePickerPinCasinos(opts = {}) {
 
 /**
  * @param {string} isoDate YYYY-MM-DD
+ * @param {string} [todayIso] YYYY-MM-DD ... labels today / tomorrow when it matches
  */
-export function formatPickerEventDateLabel(isoDate) {
+export function formatPickerEventDateLabel(isoDate, todayIso) {
   const d = new Date(`${isoDate}T12:00:00`)
   if (Number.isNaN(d.getTime())) return isoDate
+  const today = String(todayIso || '').trim().slice(0, 10)
+  if (today) {
+    const tomorrow = new Date(`${today}T12:00:00`)
+    if (!Number.isNaN(tomorrow.getTime())) {
+      tomorrow.setDate(tomorrow.getDate() + 1)
+      const tomorrowIso = `${tomorrow.getFullYear()}-${String(tomorrow.getMonth() + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
+      if (isoDate === today) return 'Today'
+      if (isoDate === tomorrowIso) return 'Tomorrow'
+    }
+  }
   const dow = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()]
   return `${dow} ${d.getMonth() + 1}/${d.getDate()}`
 }
@@ -307,15 +318,19 @@ export function formatSoftTournamentOptionLabel(event, distanceMi, todayIso) {
   const name = String(event?.display_name || '').trim()
   const venue = String(event?.venue_name || '').trim()
   const title = name || venue || 'Tournament'
-  const eventDate = String(event?.event_date || '').trim().slice(0, 10)
+  let eventDate = String(event?.event_date || '').trim().slice(0, 10)
+  if (!eventDate && event?.starts_at) {
+    const d = new Date(event.starts_at)
+    if (!Number.isNaN(d.getTime())) {
+      eventDate = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    }
+  }
   const startTime = formatPickerStartTimeLabel(event?.starts_at)
   const bits = []
   if (buyStr && !displayNameAlreadyHasLeadingBuyIn(name, buyIn)) bits.push(buyStr)
   bits.push(title)
+  if (eventDate) bits.push(formatPickerEventDateLabel(eventDate, todayIso))
   if (startTime) bits.push(startTime)
-  else if (todayIso && eventDate && eventDate !== todayIso) {
-    bits.push(formatPickerEventDateLabel(eventDate))
-  }
   if (name && venue && normalizeTournamentVenue(name) !== normalizeTournamentVenue(venue)) {
     bits.push(venue)
   }

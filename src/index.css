@@ -8901,6 +8901,9 @@ html.light [data-partner-picker-follow] {
 html.light [data-partner-picker-follow]:active {
   background-color: #e4e4e7 !important;
 }
+html.light [data-partner-picker-avatar] {
+  background-color: #e4e4e7 !important;
+}
 html.light [data-partner-picker-sheet] footer .bg-cyan-600 {
   background-color: #2563eb !important;
 }

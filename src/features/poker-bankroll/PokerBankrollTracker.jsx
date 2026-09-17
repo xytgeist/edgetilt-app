@@ -400,6 +400,8 @@ function defaultNewSessionForm(activeDeal, scopedSessions, completedSessions) {
  */
 export default function PokerBankrollTracker({
   supabaseClient,
+  /** False while keep-alive hidden ... pause polls / live clock; silent refresh on re-show. */
+  isActivePage = true,
   titleBarNavSlot = null,
   titleBarCenterSlot = null,
   titleBarToolCloseVisible = false,
@@ -1038,7 +1040,7 @@ export default function PokerBankrollTracker({
   }, [openStableDealId, stakeeDeals, onOpenStableDealConsumed])
 
   useEffect(() => {
-    if (!openTournamentSwapId || loading || !userId) return
+    if (!isActivePage || !openTournamentSwapId || loading || !userId) return
     const match = pendingCounterpartySwaps.find((s) => s.id === openTournamentSwapId)
     if (!match && tournamentSwaps.some((s) => s.id === openTournamentSwapId)) {
       // Linked but already accepted / not pending … still clear the deep link.
@@ -1056,6 +1058,7 @@ export default function PokerBankrollTracker({
     }, 120)
     return () => window.clearTimeout(t)
   }, [
+    isActivePage,
     openTournamentSwapId,
     loading,
     userId,
@@ -1103,7 +1106,7 @@ export default function PokerBankrollTracker({
   ])
 
   useEffect(() => {
-    if (!highlightPendingOffer || loading || !userId) return undefined
+    if (!isActivePage || !highlightPendingOffer || loading || !userId) return undefined
     const pendingOffer = stakeeDeals.find(
       (d) => d.status === 'pending' && isBackerInitiatedBackingDeal(d),
     )
@@ -1112,10 +1115,23 @@ export default function PokerBankrollTracker({
       onHighlightPendingOfferConsumed?.()
     }, 4200)
     return () => window.clearTimeout(clearTimer)
-  }, [highlightPendingOffer, loading, userId, stakeeDeals, onHighlightPendingOfferConsumed])
+  }, [
+    isActivePage,
+    highlightPendingOffer,
+    loading,
+    userId,
+    stakeeDeals,
+    onHighlightPendingOfferConsumed,
+  ])
 
   useEffect(() => {
-    if (loading || !userId || !activeStakeOnboardingDealId || stakeOfferOnboardingOpenedRef.current) {
+    if (
+      !isActivePage ||
+      loading ||
+      !userId ||
+      !activeStakeOnboardingDealId ||
+      stakeOfferOnboardingOpenedRef.current
+    ) {
       return
     }
     const deal =
@@ -1127,7 +1143,14 @@ export default function PokerBankrollTracker({
     setScopeHydrated(true)
     setBankrollScope(activeStakeOnboardingDealId)
     setStakeOfferOnboardingOpen(true)
-  }, [loading, userId, activeStakeOnboardingDealId, stakeeDeals, stakeeDealsById])
+  }, [
+    isActivePage,
+    loading,
+    userId,
+    activeStakeOnboardingDealId,
+    stakeeDeals,
+    stakeeDealsById,
+  ])
 
   useEffect(() => {
     if (!supabaseClient) return undefined
@@ -1392,6 +1415,7 @@ export default function PokerBankrollTracker({
 
   /** Reload stake carousel when tab/window refocuses (backer accept while app backgrounded). */
   useEffect(() => {
+    if (!isActivePage) return undefined
     if (typeof document === 'undefined' || typeof window === 'undefined') return undefined
     const refresh = () => void loadData({ silent: true })
     const onVisible = () => {
@@ -1403,19 +1427,40 @@ export default function PokerBankrollTracker({
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('focus', refresh)
     }
-  }, [loadData])
+  }, [isActivePage, loadData])
+
+  /** After keep-alive re-show, silent refresh so stakes/sessions catch up without a loading flash. */
+  const wasActivePageRef = useRef(isActivePage)
+  useEffect(() => {
+    const wasActive = wasActivePageRef.current
+    wasActivePageRef.current = isActivePage
+    if (!wasActive && isActivePage && userId) {
+      void loadData({ silent: true })
+    }
+  }, [isActivePage, userId, loadData])
+
+  /** Drop in-tree / portaled chrome when the tab is hidden so sheets do not float over other tools. */
+  useEffect(() => {
+    if (isActivePage) return
+    setSheet(null)
+    setTermsDealId(null)
+    setLedgerDealId(null)
+    setStakeChatMenuDealId(null)
+    setCommitSyncId(null)
+    setStakeOfferOnboardingOpen(false)
+  }, [isActivePage])
 
   /** While any open stake card is pending or active, poll for backer accept/revoke without leaving Bankroll. */
   const hasLiveStakeCarousel = stakeeDeals.some(
     (d) => d.status === 'pending' || d.status === 'active',
   )
   useEffect(() => {
-    if (!supabaseClient || !userId || !hasLiveStakeCarousel) return undefined
+    if (!isActivePage || !supabaseClient || !userId || !hasLiveStakeCarousel) return undefined
     const id = window.setInterval(() => {
       void loadData({ silent: true })
     }, 8000)
     return () => window.clearInterval(id)
-  }, [supabaseClient, userId, hasLiveStakeCarousel, loadData])
+  }, [isActivePage, supabaseClient, userId, hasLiveStakeCarousel, loadData])
 
   /** Live stake status changes when a backer accepts or revokes (Realtime). */
   useEffect(() => {
@@ -1478,7 +1523,7 @@ export default function PokerBankrollTracker({
 
   /** Swap-result notify deep link: open the viewer's linked session sheet. */
   useEffect(() => {
-    if (!openSessionId || loading) return
+    if (!isActivePage || !openSessionId || loading) return
     const session = sessions.find((s) => String(s.id) === String(openSessionId))
     if (!session) {
       onOpenSessionConsumed?.()
@@ -1487,7 +1532,7 @@ export default function PokerBankrollTracker({
     openSessionDetail(session)
     onOpenSessionConsumed?.()
     // openSessionDetail is a stable-enough local opener; intentionally omit from deps.
-  }, [openSessionId, loading, sessions, onOpenSessionConsumed])
+  }, [isActivePage, openSessionId, loading, sessions, onOpenSessionConsumed])
 
   const fetchNearby = useCallback(async (onNearest) => {
     await fetchNearbyCasinos(supabaseClient, {
@@ -1599,14 +1644,14 @@ export default function PokerBankrollTracker({
   }
 
   useEffect(() => {
-    if (allActiveSessionCount === 0) return undefined
+    if (!isActivePage || allActiveSessionCount === 0) return undefined
     const tick = () => setLiveClockMs(Date.now())
     tick()
     const anyRunning = allActiveSessions.some((s) => !pokerSessionIsPaused(s))
     if (!anyRunning) return undefined
     const id = window.setInterval(tick, 1000)
     return () => window.clearInterval(id)
-  }, [allActiveSessionCount, allActiveSessions])
+  }, [isActivePage, allActiveSessionCount, allActiveSessions])
 
   const metricCompleted = useMemo(
     () => metricSessions.filter((s) => s.status !== 'active'),
@@ -5424,6 +5469,7 @@ export default function PokerBankrollTracker({
             sessions={completedSessions}
             loading={loading}
             onOpenSession={openSessionDetail}
+            pageActive={isActivePage}
           />
         ) : null}
 

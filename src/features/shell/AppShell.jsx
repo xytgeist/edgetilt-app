@@ -364,6 +364,8 @@ export default function AppShell({
       ? 12
       : 28
   const [tab, setTab] = useState('home')
+  /** Mount Poker Bankroll once visited, then hide (like Chat) so reopen skips full reload. */
+  const [pokerBankrollKeepAlive, setPokerBankrollKeepAlive] = useState(false)
   const [pendingPlayLogEntryId, setPendingPlayLogEntryId] = useState(null)
   const [pendingPlayLogLedger, setPendingPlayLogLedger] = useState(false)
   const [pendingPlayLogPartner, setPendingPlayLogPartner] = useState(null)
@@ -467,7 +469,10 @@ export default function AppShell({
 
   useEffect(() => {
     if (tab === 'poker') acknowledgePokerOfferMenu()
-    if (tab === 'poker-bankroll') acknowledgePokerBankrollAttention()
+    if (tab === 'poker-bankroll') {
+      acknowledgePokerBankrollAttention()
+      setPokerBankrollKeepAlive(true)
+    }
     if (tab === 'poker-stable') acknowledgePokerStableAttention()
   }, [
     tab,
@@ -2674,6 +2679,9 @@ export default function AppShell({
     tab === 'home' ? <div className="min-h-dvh w-full bg-zinc-950" aria-hidden /> : null
   const chatSuspenseFallback =
     tab === 'chat' ? <div className="min-h-dvh w-full bg-zinc-950" aria-hidden /> : null
+  const pokerBankrollSuspenseFallback =
+    tab === 'poker-bankroll' ? <TabLoadingFallback /> : null
+  const pokerBankrollMounted = pokerBankrollKeepAlive || tab === 'poker-bankroll'
 
   const renderTabContent = () => {
     /** Stay mounted across tabs so lounge composer / uploads are not torn down when browsing elsewhere in-app. */
@@ -2802,6 +2810,46 @@ export default function AppShell({
         </div>
       </Suspense>
     )
+
+    /** Mount once visited, then hide ... reopen keeps sessions/carousel without full reload. */
+    const keepAlivePokerBankroll = pokerBankrollMounted ? (
+      <Suspense fallback={pokerBankrollSuspenseFallback}>
+        <div
+          key="poker-bankroll-keepalive"
+          className={tab === 'poker-bankroll' ? 'contents min-h-0' : 'hidden'}
+          inert={tab !== 'poker-bankroll'}
+        >
+          <PokerBankrollTracker
+            supabaseClient={supabaseClient}
+            isActivePage={tab === 'poker-bankroll'}
+            titleBarNavSlot={tab === 'poker-bankroll' ? renderTitleBarNavSlot() : null}
+            titleBarCenterSlot={tab === 'poker-bankroll' ? renderTitleBarCenterSlot() : null}
+            titleBarToolCloseVisible={pokerToolTitleBarCloseVisible}
+            openSessionId={pendingPokerSessionId}
+            onOpenSessionConsumed={() => setPendingPokerSessionId(null)}
+            openStableDealId={pendingPokerStableDealId}
+            onOpenStableDealConsumed={() => setPendingPokerStableDealId(null)}
+            openTournamentSwapId={pendingTournamentSwapId}
+            onOpenTournamentSwapConsumed={() => setPendingTournamentSwapId(null)}
+            stakeOnboardingDealId={stakeOnboardingDealId}
+            onStakeOnboardingConsumed={() => setStakeOnboardingDealId(null)}
+            highlightPendingOffer={pulseBankrollOffer}
+            onHighlightPendingOfferConsumed={clearBankrollOfferPulse}
+            showGlobalConfirm={showGlobalConfirm}
+            onOpenChatWithUser={(peerUserId) => {
+              if (!peerUserId) return
+              setPendingChatPeerUserId(peerUserId)
+              setTab('chat')
+              setMenuOpen(false)
+            }}
+            onOpenChatRoom={(roomId) => {
+              if (!roomId) return
+              openChatRoomDirect(roomId, { skipReloadIfSame: true })
+            }}
+          />
+        </div>
+      </Suspense>
+    ) : null
 
     /** Lazy tab content: own Suspense so a loading lounge chunk does not block Offers / Guides / etc. */
     let visibleTab = null
@@ -3015,36 +3063,6 @@ export default function AppShell({
           titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
         />
       )
-    } else if (tab === 'poker-bankroll') {
-      visibleTab = (
-        <PokerBankrollTracker
-          supabaseClient={supabaseClient}
-          titleBarNavSlot={renderTitleBarNavSlot()}
-          titleBarCenterSlot={renderTitleBarCenterSlot()}
-          titleBarToolCloseVisible={pokerToolTitleBarCloseVisible}
-          openSessionId={pendingPokerSessionId}
-          onOpenSessionConsumed={() => setPendingPokerSessionId(null)}
-          openStableDealId={pendingPokerStableDealId}
-          onOpenStableDealConsumed={() => setPendingPokerStableDealId(null)}
-          openTournamentSwapId={pendingTournamentSwapId}
-          onOpenTournamentSwapConsumed={() => setPendingTournamentSwapId(null)}
-          stakeOnboardingDealId={stakeOnboardingDealId}
-          onStakeOnboardingConsumed={() => setStakeOnboardingDealId(null)}
-          highlightPendingOffer={pulseBankrollOffer}
-          onHighlightPendingOfferConsumed={clearBankrollOfferPulse}
-          showGlobalConfirm={showGlobalConfirm}
-          onOpenChatWithUser={(peerUserId) => {
-            if (!peerUserId) return
-            setPendingChatPeerUserId(peerUserId)
-            setTab('chat')
-            setMenuOpen(false)
-          }}
-          onOpenChatRoom={(roomId) => {
-            if (!roomId) return
-            openChatRoomDirect(roomId, { skipReloadIfSame: true })
-          }}
-        />
-      )
     } else if (tab === 'poker-stable') {
       visibleTab = (
         <PokerStableScreen
@@ -3238,6 +3256,7 @@ export default function AppShell({
       <>
         {keepAliveSocialFeed}
         {keepAliveChatTab}
+        {keepAlivePokerBankroll}
         {visibleTab != null ? (
           <TabErrorBoundary onBack={() => setTab('home')}>
             <Suspense fallback={<TabLoadingFallback />}>{visibleTab}</Suspense>

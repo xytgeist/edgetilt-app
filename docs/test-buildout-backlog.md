@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-17:** **Poker Bankroll keep-alive (Mac).** First visit still loads; later opens reuse the mounted tracker (`hidden`/`inert` like Chat). `isActivePage` pauses polls/live clock, dismisses sheets, silent-refreshes on return. Frontend **`1.4.285`**. Web only.
 - **2026-09-17:** **Slots/Poker hub first-tap miss (Mac).** Shell ghost-click guard swallowed every document tap for 1200ms after hamburger / tool ×, so the first hub tool tap never opened. Guard now only shields dock FAB chrome; `isShellNavLoungeHomeSuppressed` still blocks Home bounce. Frontend **`1.4.284`**. Web only.
 - **2026-09-17:** **Chat inbox scroll jitter (Mac).** Rows used `touch-action: none` + manual `scrollTop` forwarding (from the Jul WebKit swipe fix), which killed native momentum. Vertical pans hand off to native overflow again; pointer capture / `touch-action: none` only after horizontal swipe locks. Frontend **`1.4.283`**. Web only.
 - **2026-09-17:** **Fake in-app Island retired (Mac).** Could not nudge system status chrome; looked wrong overlapping time / battery. Title-bar live chips restored (centered to phone width). Real ActivityKit Island still for background / Lock Screen. New Test Fast / Cloud IPA + Vercel for chip layout.

@@ -890,10 +890,20 @@ const VENUE_FILTERS = [
   { id: 'club', label: 'Club' },
 ]
 
-export default function PokerLocationsTab({ sessions, loading, onOpenSession }) {
+export default function PokerLocationsTab({
+  sessions,
+  loading,
+  onOpenSession,
+  /** False while Poker Bankroll keep-alive is hidden … close portaled Location Info. */
+  pageActive = true,
+}) {
   const [selectedLocation, setSelectedLocation] = useState(null)
   /** @type {'all' | 'live' | 'online' | 'club'} */
   const [venueFilter, setVenueFilter] = useState('all')
+
+  useEffect(() => {
+    if (!pageActive) setSelectedLocation(null)
+  }, [pageActive])
 
   const filteredSessions = useMemo(
     () => filterSessionsByVenue(sessions, venueFilter),

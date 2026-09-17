@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		5E6A7B8C9D0E1F23A6B7C8D9 /* LiveBankrollAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E1A2B3C4D5E6F708192A3B4 /* LiveBankrollAttributes.swift */; };
 		7F4A5B6C7D8E9F01A4B5C6F1 /* EdgeLiveBankrollActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3A4B5C6D7E8F90A3B4C5F0 /* EdgeLiveBankrollActivity.swift */; };
+		8F5A6B7C8D9E0F12A5B6C7D0 /* EdgeLiveBankrollIslandOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F4A5B6C7D8E9F01A4B5C6E0 /* EdgeLiveBankrollIslandOverlay.swift */; };
 		EE5A6B7C8D9E0F12A5B6C7E8 /* EdgeTiltLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4E5A6B7C8D9E0F12A5B6C7D8 /* EdgeTiltLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		6E7A8B9C0D1E2F34A7B8C9E0 /* LiveBankrollAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E1A2B3C4D5E6F708192A3B4 /* LiveBankrollAttributes.swift */; };
 		7E8A9B0C1D2E3F45A8B9C0E1 /* LiveBankrollActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E2A3B4C5D6E7F8092A3B4C5 /* LiveBankrollActivityWidget.swift */; };
@@ -72,6 +73,7 @@
 		E03C51206D4F13C8907E326A /* EdgeChatCallsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeChatCallsClient.swift; sourceTree = "<group>"; };
 		EAD18A08A4E225758A68EC4B /* EdgeWebsiteDataHygiene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeWebsiteDataHygiene.swift; sourceTree = "<group>"; };
 		6F3A4B5C6D7E8F90A3B4C5F0 /* EdgeLiveBankrollActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeLiveBankrollActivity.swift; sourceTree = "<group>"; };
+		7F4A5B6C7D8E9F01A4B5C6E0 /* EdgeLiveBankrollIslandOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeLiveBankrollIslandOverlay.swift; sourceTree = "<group>"; };
 		0E1A2B3C4D5E6F708192A3B4 /* LiveBankrollAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveBankrollAttributes.swift; sourceTree = "<group>"; };
 		1E2A3B4C5D6E7F8092A3B4C5 /* LiveBankrollActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveBankrollActivityWidget.swift; sourceTree = "<group>"; };
 		2E3A4B5C6D7E8F90A3B4C5D6 /* EdgeTiltLiveActivityBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeTiltLiveActivityBundle.swift; sourceTree = "<group>"; };
@@ -130,6 +132,7 @@
 				6E8F2A14C0D14B7E9A31B502 /* EdgeShareSheet.swift */,
 				A50DC0B1CCEF2E8786FA052B /* EdgeLocationManager.swift */,
 				6F3A4B5C6D7E8F90A3B4C5F0 /* EdgeLiveBankrollActivity.swift */,
+				7F4A5B6C7D8E9F01A4B5C6E0 /* EdgeLiveBankrollIslandOverlay.swift */,
 				12059FD3E04940779AD6705C /* EdgeNativeBridge.swift */,
 				80BB8BF27C926AB18BA2EA1A /* EdgePushManager.swift */,
 				1A0015D001309AA8C167529D /* EdgeSafeAreaInsets.swift */,
@@ -319,6 +322,7 @@
 				C9BC839D606179C6D5157C72 /* ShellRootView.swift in Sources */,
 				5E6A7B8C9D0E1F23A6B7C8D9 /* LiveBankrollAttributes.swift in Sources */,
 				7F4A5B6C7D8E9F01A4B5C6F1 /* EdgeLiveBankrollActivity.swift in Sources */,
+				8F5A6B7C8D9E0F12A5B6C7D0 /* EdgeLiveBankrollIslandOverlay.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

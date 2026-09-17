@@ -33,6 +33,10 @@ import {
 } from '../../utils/loungeApSlotsIntroFilter.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import {
+  canSetLiveBankrollIslandOverlay,
+  setLiveBankrollIslandOverlayVisible,
+} from '../../utils/edgeNative.js'
+import {
   fetchHiddenAuthorUserIds,
   filterCommunityPostsByMutedAuthors,
 } from '../lounge/profileFeedMutes.js'
@@ -2330,17 +2334,25 @@ export default function AppShell({
     [authSessionReady, browseMode, onRequireAuth],
   )
 
+  const onLiveCardScreen =
+    (tab === 'poker-bankroll' && Boolean(livePokerSession)) ||
+    (tab === 'bankroll' && Boolean(liveSlotsSession))
+
+  useEffect(() => {
+    if (!canSetLiveBankrollIslandOverlay()) return undefined
+    const visible = Boolean(hasLiveBankrollSession && !onLiveCardScreen)
+    void setLiveBankrollIslandOverlayVisible(visible)
+    return () => {
+      void setLiveBankrollIslandOverlayVisible(false)
+    }
+  }, [hasLiveBankrollSession, onLiveCardScreen])
+
   const renderTitleBarCenterSlot = () => {
     if (!hasLiveBankrollSession) return null
-    // iOS hides OUR Live Activity from the Dynamic Island while EdgeTilt is
-    // foregrounded ... it only appears after backgrounding. Do not blank the
-    // title chip just because ActivityKit reported ok (that left in-app users
-    // with no live affordance). Hide the chip only on the screen that already
-    // shows the live session card.
-    const onLiveCardScreen =
-      (tab === 'poker-bankroll' && Boolean(livePokerSession)) ||
-      (tab === 'bankroll' && Boolean(liveSlotsSession))
+    // IPA with fake Island overlay owns the in-app affordance. Old IPA / PWA
+    // keep the title chip (hidden on the live-card bankroll screen).
     if (onLiveCardScreen) return null
+    if (canSetLiveBankrollIslandOverlay()) return null
     return (
       <LiveSessionTitleChip
         slots={liveSlotsSession}

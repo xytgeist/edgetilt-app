@@ -174,6 +174,12 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       completion(.success(["ok": true]))
     case "syncLiveBankrollActivity":
       EdgeLiveBankrollActivity.sync(payload: payload, completion: completion)
+    case "setLiveBankrollIslandOverlay":
+      let visible = Self.payloadFlag(payload, "visible")
+      DispatchQueue.main.async {
+        EdgeLiveBankrollIslandOverlay.shared.setWebWantsVisible(visible)
+      }
+      completion(.success(["ok": true, "visible": visible]))
     case "startNativeCall":
       startNativeCall(payload: payload, completion: completion)
     case "acceptNativeCall":
@@ -756,6 +762,9 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       },
       syncLiveBankrollActivity: function (payload) {
         return call('syncLiveBankrollActivity', payload || {});
+      },
+      setLiveBankrollIslandOverlay: function (payload) {
+        return call('setLiveBankrollIslandOverlay', payload || {});
       },
       bustServiceWorker: function () {
         return call('bustServiceWorker', null);

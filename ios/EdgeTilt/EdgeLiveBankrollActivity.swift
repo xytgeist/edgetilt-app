@@ -2,22 +2,21 @@ import ActivityKit
 import Foundation
 
 /// Starts / updates / ends the slots + poker Live Activity from JS.
+/// Also drives the in-app fake Island overlay (system Island is background-only).
 enum EdgeLiveBankrollActivity {
   static func sync(
     payload: [String: Any]?,
     completion: @escaping (Result<[String: Any], Error>) -> Void
   ) {
-    guard ActivityAuthorizationInfo().areActivitiesEnabled else {
-      completion(.success(["ok": true, "supported": true, "disabled": true]))
-      return
-    }
-
     let slots = dict(payload?["slots"])
     let poker = dict(payload?["poker"])
     let slotsId = string(slots?["id"])
     let pokerId = string(poker?["id"])
 
     if slotsId.isEmpty && pokerId.isEmpty {
+      DispatchQueue.main.async {
+        EdgeLiveBankrollIslandOverlay.shared.apply(state: nil)
+      }
       endAll { ended in
         completion(.success([
           "ok": true,
@@ -41,6 +40,20 @@ enum EdgeLiveBankrollActivity {
         : (pokerPaused ? pauseTimerStart(from: poker) : playTimerStart(from: poker))
     )
 
+    DispatchQueue.main.async {
+      EdgeLiveBankrollIslandOverlay.shared.apply(state: state)
+    }
+
+    guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+      completion(.success([
+        "ok": true,
+        "supported": true,
+        "disabled": true,
+        "overlay": true,
+      ]))
+      return
+    }
+
     Task {
       do {
         if let existing = Activity<LiveBankrollAttributes>.activities.first {
@@ -51,6 +64,7 @@ enum EdgeLiveBankrollActivity {
             "ok": true,
             "supported": true,
             "updated": true,
+            "overlay": true,
           ]))
           return
         }
@@ -65,11 +79,13 @@ enum EdgeLiveBankrollActivity {
           "ok": true,
           "supported": true,
           "started": true,
+          "overlay": true,
         ]))
       } catch {
         completion(.success([
           "ok": false,
           "supported": true,
+          "overlay": true,
           "error": error.localizedDescription,
         ]))
       }
@@ -77,6 +93,9 @@ enum EdgeLiveBankrollActivity {
   }
 
   static func endFromSignOut() {
+    DispatchQueue.main.async {
+      EdgeLiveBankrollIslandOverlay.shared.apply(state: nil)
+    }
     endAll { _ in }
   }
 

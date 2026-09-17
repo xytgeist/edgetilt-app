@@ -594,6 +594,35 @@ export async function syncEdgeLiveBankrollActivity(payload = {}) {
   }
 }
 
+/** Current IPA can draw the in-app fake Island overlay. */
+export function canSetLiveBankrollIslandOverlay() {
+  return (
+    typeof window !== 'undefined' &&
+    isEdgeiOSShell() &&
+    typeof window.EdgeNative?.setLiveBankrollIslandOverlay === 'function'
+  )
+}
+
+/**
+ * Show / hide the in-app Island overlay. Hide on bankroll screens that already
+ * show the live session card. No-op on old IPA / web.
+ *
+ * @param {boolean} visible
+ * @returns {Promise<Record<string, unknown>>}
+ */
+export async function setLiveBankrollIslandOverlayVisible(visible) {
+  if (!canSetLiveBankrollIslandOverlay()) {
+    return { ok: false, via: 'missing' }
+  }
+  try {
+    return await edgeNativeInvoke('setLiveBankrollIslandOverlay', {
+      visible: Boolean(visible),
+    })
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
 /** @param {unknown} value */
 function normalizePushStatus(value) {
   const s = String(value || '').trim().toLowerCase()

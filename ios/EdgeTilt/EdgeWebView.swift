@@ -28,6 +28,7 @@ struct EdgeWebView: UIViewRepresentable {
     #endif
     context.coordinator.bridge.attach(webView: webView)
     context.coordinator.attach(webView: webView)
+    EdgeLiveBankrollIslandOverlay.shared.attach(webView: webView)
 
     let store = config.websiteDataStore
     let loadNow = {
@@ -54,6 +55,7 @@ struct EdgeWebView: UIViewRepresentable {
     context.coordinator.swiftSafeArea = swiftSafeArea
     context.coordinator.pushSafeAreaInsets(from: uiView, force: false)
     EdgeLiveKitCallManager.shared.attach(webView: uiView)
+    EdgeLiveBankrollIslandOverlay.shared.attach(webView: uiView)
   }
 
   final class Coordinator: NSObject {

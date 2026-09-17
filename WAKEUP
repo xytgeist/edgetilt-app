@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-17 … in-app fake Island
+
+**I am Mac Theo.** Native `EdgeLiveBankrollIslandOverlay` while EdgeTilt is foregrounded (system Island stays background-only). Web hides it on live-card bankroll screens. Rebuild Test Fast / Cloud.
+
 ### Mac Theo 2026-09-17 … live chip while Island is background-only
 
 **I am Mac Theo.** iOS won’t show our Live Activity Island while EdgeTilt is foregrounded. Title chip is back in-app (hidden only on the bankroll screen with the live card). Island still for background / Lock Screen.

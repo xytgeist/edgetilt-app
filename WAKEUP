@@ -62,7 +62,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo 2026-09-16 … Backing Bankroll loan display
 
-**I am Mac Theo.** Auto top-up was inflating Backing Bankroll and Portfolio. Hero now treats it as a loan: $704 book + $2500 Sell Action → Backing −$1796, Portfolio $704. **`1.4.277`** on **`test`**.
+**I am Mac Theo.** Auto top-up was inflating Backing Bankroll and Portfolio. Hero now treats it as a loan: $704 book + $2500 Sell Action → Backing −$1796, Portfolio $704. **`1.4.277`** on **`test` + `main`**.
 
 ### Mac Theo 2026-09-16 … Guest claim OAuth matching reverted
 

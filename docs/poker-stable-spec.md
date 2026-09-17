@@ -534,7 +534,7 @@ Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`**
 
 ## Update log
 
-- **2026-09-16:** **Backing Bankroll excludes auto-top-up loans:** hero reconstructs owned deposits + realized − open allocations. `auto_top_up` / `seed_reverse` stay on the ledger and TWR, but do not inflate Backing Bankroll or Portfolio. $704 book + $2500 Sell Action → Backing **−$1796**, Portfolio **$704**. Frontend **`1.4.277`** on **`test`**.
+- **2026-09-16:** **Backing Bankroll excludes auto-top-up loans:** hero reconstructs owned deposits + realized − open allocations. `auto_top_up` / `seed_reverse` stay on the ledger and TWR, but do not inflate Backing Bankroll or Portfolio. $704 book + $2500 Sell Action → Backing **−$1796**, Portfolio **$704**. Frontend **`1.4.277`** via **`test` → `main`**.
 - **2026-09-16:** **Guest claim Google/Apple matching reverted.** `20260917300000` treated Gmail dots as the same mailbox for OAuth. That was a tester alias (`lvs.lotgod` vs Google `lvslotgod`), not a product bug. Rolled back on test with **`20260917310000`**. Invite email stays exact.
 - **2026-09-16:** **Sell Action +Edge user picker:** Start Session backer picker now reads `{ profiles }` from `PlayLogPartnerPickerModal` (same payload as swaps). Tapping an Edge user actually adds the draft card. Frontend **`1.4.271`** via **`test` → `main`**.
 - **2026-09-16:** **Stable live-session MTM:** backer horse cards load `active` sessions (not completed-only) and add in-play buy-in/rebuy/add-on back onto stored roll. SQL still debits those costs immediately (`20260811230000`); without the add-back, horse roll / stake MTM / portfolio sat at $0 until End Session. Frontend **`1.4.270`** via **`test` → `main`**.

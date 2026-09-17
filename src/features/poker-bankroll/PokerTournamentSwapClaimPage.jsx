@@ -218,7 +218,7 @@ export default function PokerTournamentSwapClaimPage({
           <div className="mx-auto w-full max-w-md">
             <p className="text-sm leading-snug text-zinc-300">
               {preview.guest_email
-                ? 'Use the inbox this invitation was sent to. Google or Apple is fine if that account is the same inbox. After you confirm, we link the swap and open Poker Bankroll so you can Accept or Decline.'
+                ? 'Use the email this invitation was sent to. After you confirm, we link the swap and open Poker Bankroll so you can Accept or Decline.'
                 : 'Create an Edge account or sign in. After you confirm, we link the swap and open Poker Bankroll so you can Accept or Decline.'}
             </p>
             {error ? <p className="mt-2 text-center text-sm text-rose-400">{error}</p> : null}

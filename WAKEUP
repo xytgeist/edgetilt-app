@@ -60,9 +60,9 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
-### Mac Theo 2026-09-16 … Guest claim Google/Apple email
+### Mac Theo 2026-09-16 … Guest claim OAuth matching reverted
 
-**I am Mac Theo.** Guest backing/swap/stakee claim failed after Google (and likely Apple) because the invite email was exact-matched to `auth.users.email`. Google stores the canonical Gmail address (dots stripped). OAuth now matches identity emails + the same Gmail mailbox. Email+password dotted testers stay exact. SQL **`20260917300000`** on **test**. **`1.4.274`** on **`test`**.
+**I am Mac Theo.** Rolled back the Google/Apple Gmail-dot claim matching. That was a tester alias issue, not a product bug. SQL **`20260917310000`** restores exact email on **test**. Do not apply **`20260917300000`** on prod.
 
 ### Windows Theo 2026-09-16 … AP Slots Lounge intro actually filters
 

@@ -10,6 +10,7 @@ export function emptyDraftBacker({ isGuest = false } = {}) {
     displayName: '',
     guestLabel: '',
     guestEmail: '',
+    inviteViaText: false,
     actionPct: '',
     playerProfitPct: '50',
   }

@@ -204,6 +204,7 @@ import {
   mintGuestStakeInviteRows,
   mintGuestSwapInviteRows,
   resolveGuestInviteActorName,
+  sliceIdsForTextInvite,
   swapIdsForTextInvite,
 } from './pokerGuestInviteShare.js'
 import {
@@ -2992,6 +2993,7 @@ export default function PokerBankrollTracker({
             userId,
             swapProfilesById[userId] || stableProfilesById[userId],
           ),
+          onlySliceIds: sliceIdsForTextInvite(draftBackers, slices),
         })
         if (stakeInvites.length) pendingInvites.push(...stakeInvites)
       }

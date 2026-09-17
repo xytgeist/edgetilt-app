@@ -64,6 +64,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Mac Theo.** Start Session tournament picker always shows the date (Today / Tomorrow / weekday), not just the time. Log Play Add partner and swap +Edge user lists show avatars or initials. Guests stay text-only. **`1.4.267`** on **`test` + `main`**.
 
+### Mac Theo 2026-09-16 … Sell Action guest text invite
+
+**I am Mac Theo.** Sell Action guests get the same **or invite via text** checkbox as swaps. After Start Session the share sheet opens for those guests. Mint now works on live (active) guest backer slices. Share invite is on the live session detail. SQL **`20260917220000`** on **test**. **`1.4.268`** on **`test`**.
+
 ### Windows Theo 2026-09-16 … PVAL no seed overrides + switch
 
 **I am Windows Theo.** Cleared all PVAL overrides. Tuesday owns the table unless Ops Save / the row switch locks a seat. SQL **`20260917210000`** on test + prod. **`1.4.266`** on **`test`**.

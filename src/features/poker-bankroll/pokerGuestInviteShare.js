@@ -194,13 +194,17 @@ export function sliceIsUnclaimedGuestBacker(slice) {
   return (
     (slice?.counterparty_kind === 'guest' || slice?.counterpartyKind === 'guest') &&
     !slice?.staker_user_id &&
-    ['pending', 'proposed', ''].includes(String(slice?.status || 'pending')) &&
+    ['pending', 'proposed', 'active', ''].includes(String(slice?.status || 'pending')) &&
     !isDeletedPartyLabel(slice?.guest_label || slice?.guestLabel)
   )
 }
 
 export function guestDraftWantsTextInvite(draft) {
   return draft?.counterparty_kind === 'guest' && Boolean(draft.invite_via_text)
+}
+
+export function guestBackerDraftWantsTextInvite(draft) {
+  return Boolean(draft?.isGuest && draft?.inviteViaText)
 }
 
 export function guestInviteGuestNames(invites) {
@@ -227,10 +231,22 @@ export function guestSwapInviteSheetTitle(invites) {
   return `Share your swap with ${formatGuestInviteNameList(guestInviteGuestNames(invites))}`
 }
 
+export function guestStakeInviteSheetTitle(invites) {
+  return `Share your action with ${formatGuestInviteNameList(guestInviteGuestNames(invites))}`
+}
+
 export function invitesAreTournamentSwaps(invites) {
   const rows = Array.isArray(invites) ? invites : []
   if (!rows.length) return false
   return rows.every((row) => !row.shareTitle || row.shareTitle === 'Tournament swap')
+}
+
+export function invitesAreStakeInvites(invites) {
+  const rows = Array.isArray(invites) ? invites : []
+  if (!rows.length) return false
+  return rows.every(
+    (row) => row.shareTitle === 'Backing invite' || row.shareTitle === 'Stake invite',
+  )
 }
 
 /** Match guest drafts that opted into text invite onto the swaps just created. */
@@ -246,6 +262,24 @@ export function swapIdsForTextInvite(drafts, swaps) {
     )
     if (i < 0) continue
     ids.push(swap.id)
+    remaining.splice(i, 1)
+  }
+  return ids
+}
+
+/** Match Sell Action guest drafts that opted into text invite onto created slices. */
+export function sliceIdsForTextInvite(drafts, slices) {
+  const remaining = (drafts || []).filter(guestBackerDraftWantsTextInvite)
+  const ids = []
+  for (const slice of slices || []) {
+    if (!sliceIsUnclaimedGuestBacker(slice)) continue
+    const i = remaining.findIndex(
+      (d) =>
+        String(d.guestLabel || '').trim().toLowerCase() ===
+        String(slice.guest_label || slice.guestLabel || '').trim().toLowerCase(),
+    )
+    if (i < 0) continue
+    ids.push(slice.id)
     remaining.splice(i, 1)
   }
   return ids
@@ -297,9 +331,16 @@ export async function loadDealSlicesForInvite(supabase, dealId) {
   return { slices: data || [], error }
 }
 
-export async function mintGuestStakeInviteRows({ supabase, deal, slices, actorName }) {
+export async function mintGuestStakeInviteRows({
+  supabase,
+  deal,
+  slices,
+  actorName,
+  onlySliceIds = null,
+}) {
   const rows = []
-  if (dealIsUnclaimedGuestPlayer(deal)) {
+  const allowSlices = onlySliceIds ? new Set(onlySliceIds) : null
+  if (dealIsUnclaimedGuestPlayer(deal) && !allowSlices) {
     const { url, error } = await mintStakeeGuestInvite(supabase, deal.id)
     if (error) {
       console.warn('[poker] guest player invite mint failed', error.message || error)
@@ -307,6 +348,7 @@ export async function mintGuestStakeInviteRows({ supabase, deal, slices, actorNa
       const guestLabel = String(deal.stakee_guest_label || '').trim() || 'them'
       rows.push({
         id: `player:${deal.id}`,
+        guestLabel,
         title: `Text ${guestLabel}`,
         url,
         text: formatGuestStakeInviteText({
@@ -320,6 +362,7 @@ export async function mintGuestStakeInviteRows({ supabase, deal, slices, actorNa
     }
   }
   for (const slice of slices || []) {
+    if (allowSlices && !allowSlices.has(slice.id)) continue
     if (!sliceIsUnclaimedGuestBacker(slice)) continue
     const { url, error } = await mintBackerGuestInvite(supabase, slice.id)
     if (error) {
@@ -329,6 +372,7 @@ export async function mintGuestStakeInviteRows({ supabase, deal, slices, actorNa
     const guestLabel = String(slice.guest_label || slice.guestLabel || '').trim() || 'them'
     rows.push({
       id: slice.id,
+      guestLabel,
       title: `Text ${guestLabel}`,
       url,
       text: formatGuestStakeInviteText({

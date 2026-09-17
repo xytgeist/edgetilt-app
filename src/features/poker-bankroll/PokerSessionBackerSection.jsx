@@ -181,9 +181,22 @@ export default function PokerSessionBackerSection({
                   autoComplete="email"
                   className={FIELD}
                 />
-                <p className="text-[11px] leading-snug text-zinc-500">
-                  Email optional. After you start, copy the invite into your own text.
-                </p>
+                <label
+                  data-poker-session-backer-invite-text
+                  className="mt-0.5 flex items-start gap-2.5"
+                >
+                  <input
+                    type="checkbox"
+                    checked={Boolean(row.inviteViaText)}
+                    onChange={(e) =>
+                      patchDraft(row.key, { inviteViaText: e.target.checked })
+                    }
+                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-zinc-600 bg-zinc-800 text-cyan-500 focus:ring-cyan-500/40"
+                  />
+                  <span className="text-xs font-semibold leading-snug text-zinc-200">
+                    or invite via text
+                  </span>
+                </label>
               </div>
             ) : null}
             <div className="grid grid-cols-2 gap-2">

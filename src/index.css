@@ -5782,7 +5782,13 @@ html.light [data-poker-bankroll-sheet] [data-poker-session-backers='featured'] .
   color: #ffffff !important;
 }
 html.light [data-poker-bankroll-sheet] [data-poker-session-backers='featured'] [data-poker-session-backer-name] {
+  color: #0e7490 !important;
+}
+html.light [data-poker-bankroll-sheet] [data-poker-session-backers='featured'] [data-poker-session-backer-invite-text] .text-zinc-200 {
   color: #18181b !important;
+}
+html.light [data-poker-bankroll-sheet] [data-poker-session-backers='featured'] [data-poker-session-backer-invite-text] input[type='checkbox'] {
+  accent-color: #0891b2;
 }
 html.light [data-poker-bankroll-sheet] [data-poker-session-backers='featured'] .text-rose-300 {
   color: #9f1239 !important;
@@ -5843,6 +5849,19 @@ html.light [data-poker-session-detail] [data-poker-session-stake-badge] {
 }
 html.light [data-poker-session-detail] [data-poker-session-section-heading] {
   color: #0e7490 !important;
+}
+html.light [data-poker-session-detail] [data-poker-session-guest-backers] {
+  background-color: #ecfeff !important;
+  border-color: rgba(8, 145, 178, 0.35) !important;
+}
+html.light [data-poker-session-detail] [data-poker-session-guest-backers] .text-cyan-200\/80 {
+  color: #0e7490 !important;
+}
+html.light [data-poker-session-detail] [data-poker-session-guest-backers] .text-white {
+  color: #18181b !important;
+}
+html.light [data-poker-session-detail] [data-poker-session-guest-backers] .text-rose-400 {
+  color: #9f1239 !important;
 }
 html.light [data-poker-session-detail] .text-emerald-300,
 html.light [data-poker-session-detail] .text-emerald-400,

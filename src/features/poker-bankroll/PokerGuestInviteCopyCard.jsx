@@ -3,7 +3,9 @@ import { Copy, Share2 } from 'lucide-react'
 import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import {
   copyGuestInviteText,
+  guestStakeInviteSheetTitle,
   guestSwapInviteSheetTitle,
+  invitesAreStakeInvites,
   invitesAreTournamentSwaps,
   shareGuestInvite,
 } from './pokerGuestInviteShare.js'
@@ -97,7 +99,9 @@ export default function PokerGuestInvitesSheet({
     String(heading || '').trim()
     || (invitesAreTournamentSwaps(remaining)
       ? guestSwapInviteSheetTitle(remaining)
-      : 'Send in your own text')
+      : invitesAreStakeInvites(remaining)
+        ? guestStakeInviteSheetTitle(remaining)
+        : 'Send in your own text')
 
   return (
     <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>

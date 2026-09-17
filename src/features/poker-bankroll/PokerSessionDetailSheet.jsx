@@ -1,4 +1,5 @@
 import { DollarSign, Share2, Trophy } from 'lucide-react'
+import { useState } from 'react'
 import { shareViaBestAvailable } from '../../utils/edgeNative.js'
 import { APP_MODAL_OVERLAY_CLASS } from '../../constants/appZIndex.js'
 import { POKER_SHEET_PANEL_CLASS } from './pokerBankrollTrackerSheet.js'
@@ -20,6 +21,14 @@ import {
   pokerSessionStakesLabel,
 } from './pokerSessionLabels.js'
 import PokerTournamentSwapsSection from './PokerTournamentSwapsSection.jsx'
+import { PokerGuestInviteCopyCard } from './PokerGuestInviteCopyCard.jsx'
+import {
+  formatGuestStakeInviteText,
+  mintBackerGuestInvite,
+  resolveGuestInviteActorName,
+  sliceIsUnclaimedGuestBacker,
+} from './pokerGuestInviteShare.js'
+import { sliceCounterpartyDisplayName } from '../poker-stable/pokerStableTerms.js'
 import {
   swapIsMarkedPaid,
   swapOtherPartyLabel,
@@ -113,6 +122,95 @@ function PartyLine({ label, detail, amount, emphasize = false }) {
         amount={amount}
         className={`shrink-0 tabular-nums ${emphasize ? 'text-base font-bold' : 'text-sm font-semibold'}`}
       />
+    </div>
+  )
+}
+
+function GuestBackerShareBlock({ slices, deal, supabaseClient, userId, profilesById }) {
+  const [inviteById, setInviteById] = useState({})
+  const [busyId, setBusyId] = useState('')
+  const [localError, setLocalError] = useState('')
+  const guests = (slices || []).filter(sliceIsUnclaimedGuestBacker)
+  if (!guests.length) return null
+
+  async function shareSlice(slice) {
+    if (!supabaseClient || !slice?.id) return
+    setBusyId(slice.id)
+    setLocalError('')
+    try {
+      const { url, error } = await mintBackerGuestInvite(supabaseClient, slice.id)
+      if (error) throw error
+      const actorName = await resolveGuestInviteActorName(
+        supabaseClient,
+        userId,
+        profilesById?.[userId],
+      )
+      const guestLabel = String(slice.guest_label || slice.guestLabel || '').trim() || 'them'
+      setInviteById((prev) => ({
+        ...prev,
+        [slice.id]: {
+          url,
+          text: formatGuestStakeInviteText({
+            actorName,
+            kind: 'backer',
+            dealLabel: deal?.label,
+            url,
+          }),
+          guestLabel,
+        },
+      }))
+    } catch (e) {
+      setLocalError(e?.message || 'Could not create invite link.')
+    } finally {
+      setBusyId('')
+    }
+  }
+
+  return (
+    <div
+      className="mb-4 rounded-2xl border border-cyan-500/25 bg-cyan-950/20 p-3"
+      data-poker-session-guest-backers
+    >
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-cyan-200/80">
+        Guest backers
+      </p>
+      <div className="space-y-2">
+        {guests.map((slice) => {
+          const name = sliceCounterpartyDisplayName(slice, profilesById)
+          const invite = inviteById[slice.id]
+          return (
+            <div key={slice.id}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="min-w-0 truncate text-sm font-semibold text-white">{name}</span>
+                <button
+                  type="button"
+                  disabled={busyId === slice.id}
+                  data-poker-guest-invite-copy-btn
+                  onClick={() => void shareSlice(slice)}
+                  className="shrink-0 rounded-lg border border-cyan-500/35 px-2 py-1 text-[11px] font-semibold text-cyan-200 touch-manipulation active:bg-cyan-950/40 disabled:opacity-50"
+                >
+                  {busyId === slice.id
+                    ? 'Preparing…'
+                    : invite
+                      ? 'Refresh invite'
+                      : 'Share invite'}
+                </button>
+              </div>
+              {invite ? (
+                <div className="mt-2">
+                  <PokerGuestInviteCopyCard
+                    title={`Text ${invite.guestLabel}`}
+                    text={invite.text}
+                    url={invite.url}
+                    shareTitle="Backing invite"
+                  />
+                </div>
+              ) : null}
+            </div>
+          )
+        })}
+      </div>
+      {localError ? <p className="mt-2 text-[11px] text-rose-400">{localError}</p> : null}
     </div>
   )
 }
@@ -762,6 +860,16 @@ export default function PokerSessionDetailSheet({
             </>
           )}
         </div>
+
+        {isActive && isPieceSession ? (
+          <GuestBackerShareBlock
+            slices={slices}
+            deal={deal}
+            supabaseClient={supabaseClient}
+            userId={userId}
+            profilesById={stableProfilesById}
+          />
+        ) : null}
 
         {isTourney && (isActive || uniqueSwaps.length > 0) ? (
           <div className="mb-4">

@@ -3,6 +3,10 @@
  *
  * Real path: human paste from Action PRO / VSiN into syndicate_betting_splits.
  * Synthetic path: heuristic only for captions … never a Chedda vote reason.
+ *
+ * Labels:
+ * - Fade the public / sharp split = tickets one way, money the other (or handle≥15 vs tickets).
+ * - RLM = the spread moved against the ticket-heavy side (needs open → current). Never from splits alone.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import type { OddsEvent } from './loungeBotOddsCaption.ts'
@@ -20,14 +24,25 @@ export type BettingSplitSummary = {
   sharpFavoredSide: 'home' | 'away' | null
   divergencePts: number
   isSharpDivergence: boolean
+  /** Tickets heavy one way, money the other. Not RLM. */
+  isFadePublic: boolean
+  /** True only when open→current spread walked against the public ticket side. */
   isRlm: boolean
   summaryLine: string
   /** True when sourced from syndicate_betting_splits paste (Action/VSiN/manual). */
   isPasted?: boolean
   source?: string | null
+  /** Home spread open used for RLM (when known). */
+  openSpreadHome?: number | null
+  /** Home spread current used for RLM (when known). */
+  currentSpreadHome?: number | null
 }
 
 const DIVERGENCE_MIN = 15
+export const FADE_PUBLIC_TICKET_MIN = 65
+export const FADE_PUBLIC_HANDLE_MIN = 55
+/** Half-point minimum for open→current to count as reverse line movement. */
+export const RLM_MIN_SPREAD_MOVE = 0.5
 
 function teamsMatch(a: string, b: string): boolean {
   const x = String(a || '').trim().toLowerCase()
@@ -47,6 +62,65 @@ function hashString(str: string): number {
     hash |= 0
   }
   return Math.abs(hash)
+}
+
+function fmtHomeSpread(n: number): string {
+  if (!Number.isFinite(n)) return '?'
+  if (n > 0) return `+${n}`
+  return String(n)
+}
+
+function publicTicketSide(summary: Pick<BettingSplitSummary, 'homeTicketPct' | 'awayTicketPct'>): 'home' | 'away' | null {
+  const home = Number(summary.homeTicketPct) || 0
+  const away = Number(summary.awayTicketPct) || 0
+  if (home >= 55 && home > away) return 'home'
+  if (away >= 55 && away > home) return 'away'
+  return null
+}
+
+function buildSplitSummaryLine(
+  summary: Omit<BettingSplitSummary, 'summaryLine'>,
+): string {
+  const homeTeam = summary.homeTeam
+  const awayTeam = summary.awayTeam
+  if (summary.isRlm && summary.openSpreadHome != null && summary.currentSpreadHome != null) {
+    const pub = publicTicketSide(summary)
+    const publicName = pub === 'home'
+      ? shortDisplayName(homeTeam)
+      : pub === 'away'
+        ? shortDisplayName(awayTeam)
+        : 'public'
+    const publicPct = pub === 'home'
+      ? summary.homeTicketPct
+      : pub === 'away'
+        ? summary.awayTicketPct
+        : Math.max(summary.homeTicketPct, summary.awayTicketPct)
+    return `RLM · ${fmtHomeSpread(summary.openSpreadHome)}→${fmtHomeSpread(summary.currentSpreadHome)} against ${Math.round(publicPct)}% tickets on ${publicName}`
+  }
+  if (summary.isSharpDivergence && summary.sharpFavoredSide) {
+    const sharpSideName = summary.sharpFavoredSide === 'home'
+      ? shortDisplayName(homeTeam)
+      : shortDisplayName(awayTeam)
+    const fadeSideName = summary.sharpFavoredSide === 'home'
+      ? shortDisplayName(awayTeam)
+      : shortDisplayName(homeTeam)
+    const sharpHandle = summary.sharpFavoredSide === 'home'
+      ? summary.homeHandlePct
+      : summary.awayHandlePct
+    const publicTickets = summary.sharpFavoredSide === 'home'
+      ? summary.awayTicketPct
+      : summary.homeTicketPct
+    if (summary.isFadePublic) {
+      return `Fade public · ${Math.round(sharpHandle)}% money on ${sharpSideName} despite ${Math.round(publicTickets)}% tickets on ${fadeSideName}`
+    }
+    return `${Math.round(sharpHandle)}% handle on ${sharpSideName} (+${Math.round(summary.divergencePts)} vs tickets)`
+  }
+  if (summary.isPasted) {
+    const homeShort = shortDisplayName(homeTeam)
+    const awayShort = shortDisplayName(awayTeam)
+    return `${homeShort} ${Math.round(summary.homeTicketPct)}% bets / ${Math.round(summary.homeHandlePct)}% money · ${awayShort} ${Math.round(summary.awayTicketPct)}% / ${Math.round(summary.awayHandlePct)}%`
+  }
+  return ''
 }
 
 function summarizeSides(
@@ -72,43 +146,25 @@ function summarizeSides(
     divergencePts = awayDivergence
   }
 
-  // Soft RLM-style: public tickets heavy one way, handle the other
-  let isRlm = false
-  if (homeTicketPct >= 65 && awayHandlePct >= 55) {
-    isRlm = true
+  // Fade the public: tickets heavy one way, money the other. Not RLM.
+  let isFadePublic = false
+  if (homeTicketPct >= FADE_PUBLIC_TICKET_MIN && awayHandlePct >= FADE_PUBLIC_HANDLE_MIN) {
+    isFadePublic = true
     if (!sharpFavoredSide) {
       sharpFavoredSide = 'away'
       divergencePts = Math.max(divergencePts, awayHandlePct - awayTicketPct)
     }
   }
-  if (awayTicketPct >= 65 && homeHandlePct >= 55) {
-    isRlm = true
+  if (awayTicketPct >= FADE_PUBLIC_TICKET_MIN && homeHandlePct >= FADE_PUBLIC_HANDLE_MIN) {
+    isFadePublic = true
     if (!sharpFavoredSide) {
       sharpFavoredSide = 'home'
       divergencePts = Math.max(divergencePts, homeHandlePct - homeTicketPct)
     }
   }
 
-  const isSharpDivergence = divergencePts >= DIVERGENCE_MIN || isRlm
-
-  let summaryLine = ''
-  if (isSharpDivergence && sharpFavoredSide) {
-    const sharpSideName = sharpFavoredSide === 'home' ? shortDisplayName(homeTeam) : shortDisplayName(awayTeam)
-    const fadeSideName = sharpFavoredSide === 'home' ? shortDisplayName(awayTeam) : shortDisplayName(homeTeam)
-    const sharpHandle = sharpFavoredSide === 'home' ? homeHandlePct : awayHandlePct
-    const publicTickets = sharpFavoredSide === 'home' ? awayTicketPct : homeTicketPct
-    if (isRlm) {
-      summaryLine = `RLM · ${Math.round(sharpHandle)}% money on ${sharpSideName} despite ${Math.round(publicTickets)}% tickets on ${fadeSideName}`
-    } else {
-      summaryLine = `${Math.round(sharpHandle)}% handle on ${sharpSideName} (+${Math.round(divergencePts)} vs tickets)`
-    }
-  } else if (opts?.isPasted) {
-    const homeShort = shortDisplayName(homeTeam)
-    const awayShort = shortDisplayName(awayTeam)
-    summaryLine = `${homeShort} ${Math.round(homeTicketPct)}% bets / ${Math.round(homeHandlePct)}% money · ${awayShort} ${Math.round(awayTicketPct)}% / ${Math.round(awayHandlePct)}%`
-  }
-
-  return {
+  const isSharpDivergence = divergencePts >= DIVERGENCE_MIN || isFadePublic
+  const draft: Omit<BettingSplitSummary, 'summaryLine'> = {
     sportKey: opts?.sportKey || '',
     homeTeam,
     awayTeam,
@@ -120,10 +176,74 @@ function summarizeSides(
     sharpFavoredSide,
     divergencePts,
     isSharpDivergence,
-    isRlm,
-    summaryLine,
+    isFadePublic,
+    isRlm: false,
     isPasted: opts?.isPasted === true,
     source: opts?.source || null,
+    openSpreadHome: null,
+    currentSpreadHome: null,
+  }
+
+  return {
+    ...draft,
+    summaryLine: buildSplitSummaryLine(draft),
+  }
+}
+
+/**
+ * Stamp real RLM when the spread walked against the ticket-heavy public side.
+ * Open/current are home-team spread points (Odds API convention).
+ */
+export function applyReverseLineMovement(
+  summary: BettingSplitSummary,
+  openSpreadHome: number | null | undefined,
+  currentSpreadHome: number | null | undefined,
+  minMovePts = RLM_MIN_SPREAD_MOVE,
+): BettingSplitSummary {
+  const open = openSpreadHome != null && Number.isFinite(Number(openSpreadHome))
+    ? Number(openSpreadHome)
+    : null
+  const current = currentSpreadHome != null && Number.isFinite(Number(currentSpreadHome))
+    ? Number(currentSpreadHome)
+    : null
+
+  const base: BettingSplitSummary = {
+    ...summary,
+    isRlm: false,
+    openSpreadHome: open,
+    currentSpreadHome: current,
+  }
+
+  if (open == null || current == null) {
+    return { ...base, summaryLine: buildSplitSummaryLine(base) }
+  }
+
+  const delta = current - open
+  if (Math.abs(delta) < minMovePts) {
+    return { ...base, summaryLine: buildSplitSummaryLine(base) }
+  }
+
+  const pub = publicTicketSide(summary)
+  if (!pub) {
+    return { ...base, summaryLine: buildSplitSummaryLine(base) }
+  }
+
+  // Home point up (e.g. -3 → -1.5) = against home tickets. Home point down = against away tickets.
+  const againstPublic =
+    (pub === 'home' && delta > 0) ||
+    (pub === 'away' && delta < 0)
+
+  if (!againstPublic) {
+    return { ...base, summaryLine: buildSplitSummaryLine(base) }
+  }
+
+  const withRlm: BettingSplitSummary = {
+    ...base,
+    isRlm: true,
+  }
+  return {
+    ...withRlm,
+    summaryLine: buildSplitSummaryLine(withRlm),
   }
 }
 
@@ -167,7 +287,7 @@ export function resolveGameBettingSplits(
 
   for (const b of ev.bookmakers || []) {
     const key = String(b.key || '').toLowerCase()
-    const sm = b.markets?.find((m) => m.key === 'spreads')
+    const sm = b.markets.find((m) => m.key === 'spreads')
     if (!sm) continue
     const homeOut = sm.outcomes?.find((o) => o.name === homeTeam)
     if (!homeOut || homeOut.point == null) continue
@@ -185,7 +305,7 @@ export function resolveGameBettingSplits(
   const seed = hashString(`${ev.id}_${homeTeam}_${awayTeam}_splits`)
   const favPublicBias = 60 + (seed % 18)
   let homeTicketPct = isHomeFav ? favPublicBias : isAwayFav ? (100 - favPublicBias) : 50
-  let awayTicketPct = 100 - homeTicketPct
+  const awayTicketPct = 100 - homeTicketPct
 
   let homeHandlePct = homeTicketPct
   let awayHandlePct = awayTicketPct

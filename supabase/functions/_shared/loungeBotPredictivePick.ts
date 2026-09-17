@@ -34,7 +34,11 @@ import {
 } from './loungeBotRundownContext.ts'
 import { loadPersonaWeights } from './loungeBotPersonaAdaptive.ts'
 import { fetchGameInjuryPval, type GameInjurySummary } from './loungeBotInjuryPval.ts'
-import { resolveGameBettingSplits, type BettingSplitSummary } from './loungeBotBettingSplits.ts'
+import {
+  applyReverseLineMovement,
+  resolveGameBettingSplits,
+  type BettingSplitSummary,
+} from './loungeBotBettingSplits.ts'
 import {
   formatTankAtsWhy,
   loadRestTravelByEventId,
@@ -1448,8 +1452,15 @@ export function buildNflAtsSlateCard(
 
     // Prefer human-pasted Action/VSiN splits. Synthetic may appear in captions only …
     // every score bonus / chalk-trap requires isPasted === true (no synthetic path).
-    const pastedSplit = pastedSplits.get(String(ev.id || '').trim()) || null
-    const gameSplits = pastedSplit || resolveGameBettingSplits(ev, homePoint, homePrice, awayPrice)
+    const pastedSplit = pastedSplits.get(eventKey) || null
+    const openSpreadHome = marketFile?.open_spread_home ?? null
+    const currentSpreadHome = marketFile?.current_spread_home ?? homePoint
+    // Splits alone = fade public / sharp split. RLM needs open→current against tickets.
+    const gameSplits = applyReverseLineMovement(
+      pastedSplit || resolveGameBettingSplits(ev, homePoint, homePrice, awayPrice),
+      openSpreadHome,
+      currentSpreadHome,
+    )
     const hasRealSplits = gameSplits.isPasted === true
     const sharpFavorsHome = hasRealSplits && gameSplits.sharpFavoredSide === 'home'
     const sharpFavorsAway = hasRealSplits && gameSplits.sharpFavoredSide === 'away'
@@ -1637,8 +1648,8 @@ export function buildNflAtsSlateCard(
       isCfb: !!isCfb,
     })
     void tankRestWeight // rest/travel now votes on Tank spots, not totals
-    const pastedBoard = pastedSplitsAll.get(eventKey)
-      || (pastedSplit ? [pastedSplit] : [])
+    const pastedBoard = (pastedSplitsAll.get(eventKey) || (pastedSplit ? [pastedSplit] : []))
+      .map((row) => applyReverseLineMovement(row, openSpreadHome, currentSpreadHome))
     const tankAts = resolveTankSituationalAts({
       homeTeam,
       awayTeam,
@@ -1753,9 +1764,11 @@ export function buildNflAtsSlateCard(
         // Keep this short … the ⚡ / splits tape already prints summaryLine.
         cheddaWhy = gameSplits.isRlm
           ? 'RLM significant.'
-          : gameSplits.isSharpDivergence
-            ? 'Sharp money divergence.'
-            : `Sharp money on ${sportTeamDisplayName(cheddaTeam, ev.sport_key)}.`
+          : gameSplits.isFadePublic
+            ? 'Fade the public.'
+            : gameSplits.isSharpDivergence
+              ? 'Sharp money divergence.'
+              : `Sharp money on ${sportTeamDisplayName(cheddaTeam, ev.sport_key)}.`
       } else if (cheddaGoldenHookHome || cheddaGoldenHookAway) {
         cheddaWhy = `Dog + golden hook on ${sportTeamDisplayName(cheddaTeam, ev.sport_key)}.`
       }

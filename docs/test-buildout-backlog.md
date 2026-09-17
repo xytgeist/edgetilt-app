@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-17:** **Live session title chip → manager only (Mac).** Poker chip was setting `pendingPokerSessionId` and opening the session detail sheet. Now matches Island tap … Poker / Slots Bankroll manager only. Frontend **`1.4.287`**. Web only.
 - **2026-09-17:** **Slots Bankroll + Stable Manager keep-alive (Mac).** Same mount-once / `hidden`/`inert` pattern as Poker Bankroll. Deep-link props gated to the active tab so Bankroll and Stable do not both consume `stableDeal`. Frontend **`1.4.286`**. Web only.
 - **2026-09-17:** **Live Activity poker glyph = four suits (Mac).** Island brand mark for poker / dual is black spade + red heart + green club + blue diamond slightly overlapping (slots-only keeps white die). New Test Fast / Cloud IPA.
 - **2026-09-17:** **Poker Bankroll keep-alive (Mac).** First visit still loads; later opens reuse the mounted tracker (`hidden`/`inert` like Chat). `isActivePage` pauses polls/live clock, dismisses sheets, silent-refreshes on return. Frontend **`1.4.285`**. Web only.

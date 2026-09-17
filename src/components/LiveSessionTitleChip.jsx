@@ -13,12 +13,13 @@ function LiveSessionDot({ className, paused = false }) {
 
 /**
  * Center title-bar control for active slots / poker live sessions.
+ * Taps open the matching bankroll manager (not the live session detail sheet).
  *
  * @param {{
  *   slots?: { id: string, label: string } | null,
  *   poker?: { id: string, label: string, paused?: boolean } | null,
  *   onOpenSlots?: () => void,
- *   onOpenPoker?: (sessionId: string) => void,
+ *   onOpenPoker?: () => void,
  * }} props
  */
 export default function LiveSessionTitleChip({
@@ -79,7 +80,7 @@ export default function LiveSessionTitleChip({
         data-live-session-chip
         data-live-session-kind="poker"
         data-live-session-paused={poker.paused ? 'true' : undefined}
-        onClick={() => onOpenPoker?.(poker.id)}
+        onClick={() => onOpenPoker?.()}
         className={`${chipClass} ${
           poker.paused
             ? 'border-amber-500/40 bg-amber-950/55 text-amber-100/90 hover:border-amber-400/50 hover:bg-amber-900/60'
@@ -118,7 +119,7 @@ export default function LiveSessionTitleChip({
           data-live-session-chip
           data-live-session-kind="poker"
           data-live-session-paused={poker.paused ? 'true' : undefined}
-          onClick={() => onOpenPoker?.(poker.id)}
+          onClick={() => onOpenPoker?.()}
           className={`${chipClass} max-w-[calc(50%-0.125rem)] min-w-0 ${
             poker.paused
               ? 'border-amber-500/40 bg-amber-950/55 text-amber-100/90'
@@ -173,7 +174,7 @@ export default function LiveSessionTitleChip({
               className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-[12px] font-semibold text-teal-100 touch-manipulation hover:bg-zinc-900"
               onClick={() => {
                 setPickerOpen(false)
-                onOpenPoker?.(poker.id)
+                onOpenPoker?.()
               }}
             >
               <LiveSessionDot

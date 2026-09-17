@@ -2349,22 +2349,18 @@ export default function AppShell({
     setTab('bankroll')
   }, [authSessionReady, browseMode, onRequireAuth])
 
-  const openLivePokerBankroll = useCallback(
-    (sessionId) => {
-      setMenuOpen(false)
-      setActiveCalculator(null)
-      if (!authSessionReady) return
-      if (browseMode !== 'member') {
-        onRequireAuth?.()
-        return
-      }
-      const sid = String(sessionId || '').trim()
-      if (sid) setPendingPokerSessionId(sid)
-      armShellNavGhostClickGuard()
-      setTab('poker-bankroll')
-    },
-    [authSessionReady, browseMode, onRequireAuth],
-  )
+  const openLivePokerBankroll = useCallback(() => {
+    setMenuOpen(false)
+    setActiveCalculator(null)
+    if (!authSessionReady) return
+    if (browseMode !== 'member') {
+      onRequireAuth?.()
+      return
+    }
+    // Manager only … do not set pendingPokerSessionId (that opens session detail).
+    armShellNavGhostClickGuard()
+    setTab('poker-bankroll')
+  }, [authSessionReady, browseMode, onRequireAuth])
 
   const onLiveCardScreen =
     (tab === 'poker-bankroll' && Boolean(livePokerSession)) ||

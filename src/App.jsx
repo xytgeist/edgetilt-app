@@ -84,6 +84,7 @@ import {
 } from './features/poker-bankroll/pokerStableStakeClaimNav.js'
 import { tryAutoLinkGuestStakeeOffers, tryLinkGuestStakeFromToken } from './features/poker-bankroll/pokerGuestStakeeAutoLink.js'
 import { tryAutoLinkGuestSwapOffers, tryLinkGuestSwapFromToken } from './features/poker-bankroll/pokerGuestSwapAutoLink.js'
+import { isPokerClaimTokenConsumed } from './features/poker-bankroll/pokerClaimTokenConsumed.js'
 import {
   clearPokerClaimTokensFromUserMetadata,
   hydratePokerClaimStashFromUser,
@@ -508,7 +509,9 @@ function App() {
       if (swapToken) {
         const linkedFromToken = await tryLinkGuestSwapFromToken(supabase, swapToken)
         if (cancelled || linkedFromToken) return
-        navigateToSwapClaimPage(swapToken)
+        if (!isPokerClaimTokenConsumed(swapToken) && readStashedPokerSwapClaimToken()) {
+          navigateToSwapClaimPage(swapToken)
+        }
         return
       }
       const stakeToken = readStashedPokerStakeClaimToken()

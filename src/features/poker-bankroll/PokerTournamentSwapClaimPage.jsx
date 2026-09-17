@@ -53,9 +53,19 @@ export default function PokerTournamentSwapClaimPage({
     let cancelled = false
     setLoading(true)
     setError('')
-    void guestSwapClaimPreview(supabaseClient, token).then(({ preview: data, error: err }) => {
+    void guestSwapClaimPreview(supabaseClient, token).then(async ({ preview: data, error: err }) => {
       if (cancelled) return
       if (err) {
+        if (userId) {
+          const byEmail = await guestSwapClaimByEmail(supabaseClient)
+          if (cancelled) return
+          if (!byEmail.error && Array.isArray(byEmail.result?.swap_ids) && byEmail.result.swap_ids.length) {
+            setLinked(true)
+            setLoading(false)
+            onDoneRef.current?.(byEmail.result?.redirect || undefined)
+            return
+          }
+        }
         setError(err.message || 'Invalid or expired claim link.')
         setPreview(null)
       } else {
@@ -66,7 +76,7 @@ export default function PokerTournamentSwapClaimPage({
     return () => {
       cancelled = true
     }
-  }, [supabaseClient, token])
+  }, [supabaseClient, token, userId])
 
   useEffect(() => {
     if (!supabaseClient || !token || !userId || !preview || linked || linkAttemptedRef.current) {

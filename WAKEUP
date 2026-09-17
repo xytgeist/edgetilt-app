@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-16 … Gmail-dot swap claim + cancelled invite copy
+
+**I am Mac Theo.** Confirm-email "swap not found" was a cancelled invite token plus Gmail treating `lv.slotgod` and `lvslot.god` as one inbox but two Auth users. Claim RPCs now match Gmail dots/plus-tags. Cancelled invites say cancelled. Dead tokens do not reopen the claim page. SQL **`20260917120000`** on **test**. **`1.4.262`** on **`test`**.
+
 ### Mac Theo 2026-09-16 … Multi-guest text invite share sheet
 
 **I am Mac Theo.** Start Session with several guests on **invite via text** keeps the share sheet open until each guest is shared. One guest still closes after Share. **Done** still dismisses anytime. Same sheet on Stable guest invites. **`1.4.261`** on **`test` + `main`**.

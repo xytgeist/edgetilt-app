@@ -1,10 +1,26 @@
-import { isPokerClaimTokenConsumed } from './pokerClaimTokenConsumed.js'
+import { isPokerClaimTokenConsumed, markPokerClaimTokenConsumed } from './pokerClaimTokenConsumed.js'
 import {
   buildTournamentSwapBankrollUrl,
   clearStashedPokerSwapClaimToken,
   navigateAfterSwapClaim,
 } from './pokerTournamentSwapNav.js'
 import { guestSwapClaimByEmail, guestSwapClaimLink } from './pokerTournamentSwapApi.js'
+
+function swapClaimErrorIsDeadInvite(error) {
+  const msg = String(error?.message || '').toLowerCase()
+  return (
+    msg.includes('this swap was cancelled') ||
+    msg.includes('swap not found') ||
+    msg.includes('invalid or expired') ||
+    msg.includes('claim link expired')
+  )
+}
+
+function forgetSwapClaimToken(token) {
+  const t = String(token || '').trim()
+  if (t) markPokerClaimTokenConsumed(t)
+  clearStashedPokerSwapClaimToken()
+}
 
 /**
  * After sign-in / email confirm, link guest tournament swaps invited to this account's email
@@ -48,10 +64,14 @@ export async function tryLinkGuestSwapFromToken(supabase, token) {
   }
   const byEmail = await guestSwapClaimByEmail(supabase)
   if (!byEmail.error && Array.isArray(byEmail.result?.swap_ids) && byEmail.result.swap_ids.length) {
+    forgetSwapClaimToken(t)
     navigateAfterSwapClaim(
       byEmail.result?.redirect || buildTournamentSwapBankrollUrl(byEmail.result.swap_ids[0]),
     )
     return true
+  }
+  if (swapClaimErrorIsDeadInvite(error)) {
+    forgetSwapClaimToken(t)
   }
   return false
 }

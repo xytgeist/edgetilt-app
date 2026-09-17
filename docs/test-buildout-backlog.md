@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-16:** **Gmail-dot swap claim + cancelled invite copy (Mac).** `lv.slotgod@gmail.com` vs `lvslot.god@gmail.com` are one mailbox, two Auth users. Claim link / by-email now normalize Gmail. Cancelled invites no longer raise swap not found. Dead tokens skip the claim page and attach any other live guest swap for that mailbox. SQL **`20260917120000`** on **test**. Frontend **`1.4.262`** on **`test`**.
 - **2026-09-16:** **Multi-guest text invite share sheet (Mac).** Several guests with **invite via text** keep the Start Session share sheet open until each guest is shared. Last Share closes it. One guest still closes after Share. Same sheet on Stable. Frontend **`1.4.261`** via **`test` → `main`**.
 - **2026-09-16:** **Open swaps wait for live series to end (Mac).** Hide Open swaps while any series-matching tournament session is still active (Keep swap open + next Start Session). Start Session prepends the live row so the live card paints first. Frontend **`1.4.260`** via **`test` → `main`**.
 - **2026-09-16:** **ITM skip swap prompt + history swap line (Mac).** Cashing a tournament with an active swap closes it (no Keep swap open modal). History cards drop Both must cash / min-cash from the swap line. Detail sheet still has the terms. Frontend **`1.4.259`** via **`test` → `main`**.

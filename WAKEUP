@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-16 … Guest claim Google/Apple email
+
+**I am Mac Theo.** Guest backing/swap/stakee claim failed after Google (and likely Apple) because the invite email was exact-matched to `auth.users.email`. Google stores the canonical Gmail address (dots stripped). OAuth now matches identity emails + the same Gmail mailbox. Email+password dotted testers stay exact. SQL **`20260917300000`** on **test**. **`1.4.274`** on **`test`**.
+
 ### Windows Theo 2026-09-16 … AP Slots Lounge intro filter
 
 **I am Windows Theo.** First 2 Lounge visits from `/slots`, `/guides`, `/advantage-play-slots` (or in-app Slots/Guides → Home) show AP Slots only. Overlay is in-memory ... it does not write Tribes prefs. Tribes edit / Show all retires it. **`1.4.273`** on **`test`**.

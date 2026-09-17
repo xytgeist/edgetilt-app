@@ -47,6 +47,7 @@ export const OPS_WEEK_SPORTS = [
  *   postKinds?: string[]
  *   pickMatch?: { sportIncludes?: string, marketKey?: string, primetime?: boolean, minCount?: number }
  *   feedNeedle?: string
+ *   feedNeedles?: string | string[]
  * }>}
  */
 export const OPS_WEEK_TASKS = [
@@ -63,6 +64,7 @@ export const OPS_WEEK_TASKS = [
     tab: 'scorecard',
     postKinds: ['nfl_primetime_spotlight'],
     pickMatch: { sportIncludes: 'nfl', primetime: true },
+    feedNeedles: ['monday night football spotlight'],
   },
   {
     id: 'nfl_mnf_lock',
@@ -76,6 +78,7 @@ export const OPS_WEEK_TASKS = [
     endHour: 19,
     tab: 'scorecard',
     postKinds: ['nfl_primetime_lock'],
+    feedNeedles: ['monday night football lock', 'monday night football kill'],
   },
   {
     id: 'nfl_grade',
@@ -124,7 +127,7 @@ export const OPS_WEEK_TASKS = [
     endHour: 9.5,
     tab: 'scorecard',
     postKinds: ['weekly_syndicate_recap'],
-    feedNeedle: 'Weekly Ledger',
+    feedNeedles: ['weekly ledger'],
   },
   {
     id: 'nfl_seed',
@@ -212,6 +215,7 @@ export const OPS_WEEK_TASKS = [
     endHour: 15.5,
     tab: 'scorecard',
     postKinds: ['cfb_wed_midweek_vip'],
+    feedNeedles: ['cfb wed midweek watch'],
   },
   {
     id: 'nfl_tnf_vip',
@@ -225,6 +229,7 @@ export const OPS_WEEK_TASKS = [
     endHour: 13,
     tab: 'scorecard',
     postKinds: ['nfl_wed_tnf_vip'],
+    feedNeedles: ['wed tnf watch'],
   },
   {
     id: 'cfb_movers',
@@ -264,6 +269,7 @@ export const OPS_WEEK_TASKS = [
     endHour: 17,
     tab: 'scorecard',
     postKinds: ['cfb_thu_night_spotlight'],
+    feedNeedles: ['cfb thursday night tease'],
   },
   {
     id: 'nfl_tnf_prime',
@@ -278,6 +284,7 @@ export const OPS_WEEK_TASKS = [
     tab: 'scorecard',
     postKinds: ['nfl_primetime_spotlight'],
     pickMatch: { sportIncludes: 'nfl', primetime: true },
+    feedNeedles: ['thursday night football spotlight'],
   },
   {
     id: 'nfl_tnf_lock',
@@ -291,6 +298,7 @@ export const OPS_WEEK_TASKS = [
     endHour: 19,
     tab: 'scorecard',
     postKinds: ['nfl_primetime_lock'],
+    feedNeedles: ['thursday night football lock', 'thursday night football kill'],
   },
   {
     id: 'cfb_lock',
@@ -318,6 +326,7 @@ export const OPS_WEEK_TASKS = [
     tab: 'scorecard',
     postKinds: ['cfb_slate_card', 'slate'],
     pickMatch: { sportIncludes: 'ncaaf', slate: true, minCount: 4 },
+    feedNeedles: ['college football sharpe syndicate slate'],
   },
   {
     id: 'nfl_fri_house',
@@ -332,6 +341,7 @@ export const OPS_WEEK_TASKS = [
     tab: 'scorecard',
     postKinds: ['nfl_slate_card', 'slate'],
     pickMatch: { sportIncludes: 'nfl', slate: true, minCount: 4 },
+    feedNeedles: ['nfl sharpe syndicate slate'],
   },
   {
     id: 'nfl_wong',
@@ -346,6 +356,7 @@ export const OPS_WEEK_TASKS = [
     tab: 'scorecard',
     postKinds: ['nfl_wong_teaser'],
     pickMatch: { sportIncludes: 'nfl', marketKey: 'teasers' },
+    feedNeedles: ['2-leg nfl wong teaser'],
   },
   {
     id: 'ufc_card',
@@ -359,6 +370,7 @@ export const OPS_WEEK_TASKS = [
     endHour: 12,
     tab: 'scorecard',
     postKinds: ['ufc_slate_card'],
+    feedNeedles: ['price desk + last-5 styles'],
   },
   {
     id: 'nfl_lock',
@@ -385,6 +397,7 @@ export const OPS_WEEK_TASKS = [
     endHour: 12,
     tab: 'scorecard',
     postKinds: ['cfb_sat_vip_adds_kills'],
+    feedNeedles: ['cfb sat adds / kills'],
   },
   {
     id: 'sat_adds_nfl',
@@ -398,6 +411,7 @@ export const OPS_WEEK_TASKS = [
     endHour: 22,
     tab: 'scorecard',
     postKinds: ['nfl_sat_steam'],
+    feedNeedles: ['saturday steam · sunday leans'],
   },
   {
     id: 'nfl_sun_early_lock',
@@ -411,6 +425,7 @@ export const OPS_WEEK_TASKS = [
     endHour: 11,
     tab: 'scorecard',
     postKinds: ['nfl_sunday_early_lock'],
+    feedNeedles: ['sunday early lock'],
   },
   {
     id: 'nfl_sun_late_lock',
@@ -424,6 +439,7 @@ export const OPS_WEEK_TASKS = [
     endHour: 14,
     tab: 'scorecard',
     postKinds: ['nfl_sunday_late_lock'],
+    feedNeedles: ['sunday late lock'],
   },
   {
     id: 'cfb_grade_sun',
@@ -450,6 +466,7 @@ export const OPS_WEEK_TASKS = [
     tab: 'scorecard',
     postKinds: ['nfl_primetime_spotlight'],
     pickMatch: { sportIncludes: 'nfl', primetime: true },
+    feedNeedles: ['sunday night football spotlight'],
   },
   {
     id: 'nfl_snf_lock',
@@ -463,6 +480,7 @@ export const OPS_WEEK_TASKS = [
     endHour: 19,
     tab: 'scorecard',
     postKinds: ['nfl_primetime_lock'],
+    feedNeedles: ['sunday night football lock', 'sunday night football kill'],
   },
   {
     id: 'nfl_grade_sun',
@@ -630,12 +648,33 @@ function pickMatches(task, row, dayYmd) {
  * @param {string} dayYmd
  * @param {{ logs?: object[], picks?: object[], posts?: object[] }} evidence
  */
+function postCaptionText(row) {
+  return String(row?.caption || row?.body || '')
+}
+
+function taskFeedNeedles(task) {
+  const raw = task?.feedNeedles ?? task?.feedNeedle
+  if (Array.isArray(raw)) {
+    return raw.map((n) => String(n || '').trim().toLowerCase()).filter(Boolean)
+  }
+  const one = String(raw || '').trim().toLowerCase()
+  return one ? [one] : []
+}
+
+function captionHitsNeedles(text, needles) {
+  if (!needles.length) return false
+  const hay = String(text || '').toLowerCase()
+  return needles.some((needle) => hay.includes(needle))
+}
+
 export function findPostedEvidence(task, dayYmd, evidence = emptyOpsWeekEvidence()) {
   const kinds = task.postKinds || []
+  const needles = taskFeedNeedles(task)
   const log = (evidence.logs || []).find((row) => {
     if (String(row.status || '') !== 'published') return false
-    if (kinds.length && !kinds.includes(String(row.post_kind || ''))) return false
-    return evidenceYmd(row.created_at) === dayYmd
+    if (evidenceYmd(row.created_at) !== dayYmd) return false
+    if (kinds.length && kinds.includes(String(row.post_kind || ''))) return true
+    return captionHitsNeedles(postCaptionText(row), needles)
   })
   if (log) return { posted: true, at: log.created_at, via: 'log' }
 
@@ -645,11 +684,10 @@ export function findPostedEvidence(task, dayYmd, evidence = emptyOpsWeekEvidence
     return { posted: true, at: picks[0].created_at, via: 'picks' }
   }
 
-  const needle = String(task.feedNeedle || '').toLowerCase()
-  if (needle) {
+  if (needles.length) {
     const post = (evidence.posts || []).find((row) => {
       if (evidenceYmd(row.created_at) !== dayYmd) return false
-      return String(row.body || '').toLowerCase().includes(needle)
+      return captionHitsNeedles(postCaptionText(row), needles)
     })
     if (post) return { posted: true, at: post.created_at, via: 'feed' }
   }
@@ -869,7 +907,7 @@ export async function fetchOpsWeekEvidence(supabaseClient, botUserId, now = new 
   const [logsRes, picksRes, postsRes] = await Promise.all([
     supabaseClient
       .from('lounge_bot_publish_log')
-      .select('post_kind,status,created_at,dedupe_key')
+      .select('post_kind,status,created_at,dedupe_key,caption')
       .eq('bot_user_id', botUserId)
       .gte('created_at', since)
       .in('status', ['published', 'failed'])
@@ -884,7 +922,7 @@ export async function fetchOpsWeekEvidence(supabaseClient, botUserId, now = new 
       .limit(400),
     supabaseClient
       .from('community_feed_posts')
-      .select('id,body,created_at')
+      .select('id,caption,created_at')
       .eq('user_id', botUserId)
       .gte('created_at', since)
       .order('created_at', { ascending: false })

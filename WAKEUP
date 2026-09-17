@@ -104,6 +104,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Mac Theo.** `20260914200000` mint RPCs do not replace the delete-account swap/stake functions. They would have treated `Name (Deleted User)` as a fresh guest, so **`20260916200000`** blocks mint + re-claim. Applied **test + prod**. Web **`1.4.252`**.
 
+### Windows Theo 2026-09-16 … Ops calendar Posted uses captions
+
+**I am Windows Theo.** sharpesyndicate.com/ops week tiles were red because the feed query asked for `body` (column does not exist) and never read captions. MNF spotlight + Tuesday recap will go green after this deploys. MNF lock is still a real miss. PVAL is still Mark-in.
+
 ### Windows Theo 2026-09-16 … Monitor paid KPIs skip comps
 
 **I am Windows Theo.** Friend Lifetime comps (`admin_comp_lifetime_*`) still have access. Paid Monitor numbers only count real Stripe. Prod Lifetime paid = **1** (`@kix123`). **`20260916150000`** on test + prod.

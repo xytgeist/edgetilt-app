@@ -30,11 +30,13 @@ struct LiveBankrollActivityWidget: Widget {
           LiveBankrollExpandedRows(state: context.state)
         }
       } compactLeading: {
-        LiveBankrollBrandMark(state: context.state, size: 20)
+        // ~26pt circle reads on the Island; keep layout frame fixed so breath
+        // scale cannot stretch the pill edge-to-edge.
+        LiveBankrollBrandMark(state: context.state, size: 26)
       } compactTrailing: {
         LiveBankrollCompactTrailing(state: context.state)
       } minimal: {
-        LiveBankrollBrandMark(state: context.state, size: 14, minimal: true)
+        LiveBankrollBrandMark(state: context.state, size: 16, minimal: true)
       }
       .keylineTint(LiveBankrollPalette.keyline(for: context.state))
       .widgetURL(context.state.widgetURL)
@@ -67,10 +69,15 @@ private enum LiveBankrollPalette {
 /// System-updating stopwatch. Do not use custom `TimelineView` clocks in Live
 /// Activities ... they freeze at the first frame (stuck `0:00`). Do not use
 /// `Text(timerInterval:showsHours: false)` ... that rolls at 59s.
+///
+/// `Text(..., style: .timer)` reserves a huge intrinsic width (full-bleed Island).
+/// Always clamp with a fixed trailing frame.
 private struct LiveBankrollElapsedText: View {
   var start: Date
   var font: Font
   var pausedTone: Bool = false
+  /// Compact Island trailing budget (~m:ss). Expanded / lock can be wider.
+  var maxWidth: CGFloat = 44
 
   var body: some View {
     Text(start, style: .timer)
@@ -79,7 +86,8 @@ private struct LiveBankrollElapsedText: View {
       .foregroundStyle(pausedTone ? LiveBankrollPalette.paused : .white)
       .multilineTextAlignment(.trailing)
       .lineLimit(1)
-      .minimumScaleFactor(0.7)
+      .minimumScaleFactor(0.65)
+      .frame(width: maxWidth, alignment: .trailing)
   }
 }
 
@@ -96,20 +104,23 @@ private struct LiveBankrollBrandMark: View {
   }
 
   var body: some View {
-    TimelineView(.animation(minimumInterval: isPaused ? 60 : 0.55, paused: isPaused)) { context in
+    TimelineView(.animation(minimumInterval: isPaused ? 60 : 0.35, paused: isPaused)) { context in
       let pulse = isPaused ? 1.0 : breath(at: context.date)
       ZStack {
         Circle()
-          .fill(LiveBankrollPalette.accent(for: state).opacity(minimal ? 1 : 0.28 + 0.22 * pulse))
-          .scaleEffect(minimal ? 1 : 0.92 + 0.08 * pulse)
+          .fill(LiveBankrollPalette.accent(for: state).opacity(minimal ? 1 : 0.22 + 0.48 * pulse))
+          .scaleEffect(minimal || isPaused ? 1 : 0.82 + 0.22 * pulse)
         if !minimal {
           Image(systemName: symbolName)
-            .font(.system(size: size * 0.48, weight: .bold))
+            .font(.system(size: size * 0.62, weight: .bold))
             .foregroundStyle(Color.black)
+            .scaleEffect(isPaused ? 1 : 0.94 + 0.08 * pulse)
         }
       }
       .frame(width: size, height: size)
+      .clipped()
     }
+    .frame(width: size, height: size)
     .accessibilityLabel(state.lockTitle)
   }
 
@@ -120,7 +131,7 @@ private struct LiveBankrollBrandMark: View {
   }
 
   private func breath(at date: Date) -> CGFloat {
-    let phase = date.timeIntervalSinceReferenceDate * 2.2
+    let phase = date.timeIntervalSinceReferenceDate * 2.8
     return CGFloat((sin(phase) + 1) * 0.5)
   }
 }
@@ -137,7 +148,8 @@ private struct LiveBankrollCompactTrailing: View {
       LiveBankrollElapsedText(
         start: start,
         font: .system(size: 12, weight: .semibold, design: .rounded),
-        pausedTone: state.pokerPaused && state.hasPoker && !state.hasSlots
+        pausedTone: state.pokerPaused && state.hasPoker && !state.hasSlots,
+        maxWidth: 44
       )
     }
   }
@@ -157,7 +169,8 @@ private struct LiveBankrollExpandedTimer: View {
       LiveBankrollElapsedText(
         start: start,
         font: .title3.weight(.semibold),
-        pausedTone: state.pokerPaused && state.hasPoker && !state.hasSlots
+        pausedTone: state.pokerPaused && state.hasPoker && !state.hasSlots,
+        maxWidth: 72
       )
     }
   }
@@ -230,7 +243,8 @@ private struct LiveBankrollRow: View {
         LiveBankrollElapsedText(
           start: timerStart,
           font: .subheadline.weight(.semibold),
-          pausedTone: pausedTone
+          pausedTone: pausedTone,
+          maxWidth: 56
         )
       }
     }
@@ -257,7 +271,8 @@ private struct LiveBankrollLockScreenView: View {
           LiveBankrollElapsedText(
             start: start,
             font: .title3.weight(.semibold),
-            pausedTone: state.pokerPaused && state.hasPoker && !state.hasSlots
+            pausedTone: state.pokerPaused && state.hasPoker && !state.hasSlots,
+            maxWidth: 72
           )
         } else if state.isDual {
           Text("2")

@@ -38,10 +38,12 @@ struct LiveBankrollAttributes: ActivityAttributes {
       slotsTimerStart ?? pokerTimerStart
     }
 
+    /// Compact / Lock Screen tap … open the manager tab only (live card is already
+    /// on that screen). Do not pass `pokerSession` or the detail sheet opens.
     var widgetURL: URL {
       Self.liveSessionURL(
         tab: hasPoker && !hasSlots ? "poker-bankroll" : "bankroll",
-        pokerSessionId: hasPoker && !hasSlots ? pokerId : nil
+        pokerSessionId: nil
       )
     }
 
@@ -50,10 +52,7 @@ struct LiveBankrollAttributes: ActivityAttributes {
     }
 
     var pokerWidgetURL: URL {
-      Self.liveSessionURL(
-        tab: "poker-bankroll",
-        pokerSessionId: pokerId.isEmpty ? nil : pokerId
-      )
+      Self.liveSessionURL(tab: "poker-bankroll", pokerSessionId: nil)
     }
 
     private static func short(_ label: String) -> String {

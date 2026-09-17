@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-16:** **Live Activity Island polish (Mac).** Clamp `.timer` to ~44pt (was full-bleed again), larger breathing glyph, tap opens manager tab only (drop `pokerSession` so detail sheet stays closed). New Test Fast / Cloud IPA.
 - **2026-09-16:** **Live Activity clock + Island polish (Mac).** System `Text(..., style: .timer)` synced from play `elapsedSeconds` (was stuck `0:00` on custom TimelineView). Paused poker counts open pause from `pausedAt`. Circular black-glyph mark breathes while live; freeze + amber when paused. No pulse bars / pause glyph. New Test Fast / Cloud IPA.
 - **2026-09-16:** **Live Activity Island tightened + restyled (Mac).** Compact was nearly full-width (system timer reserved hours + lonely teal dot). Glyph tile + custom elapsed (`m:ss`, not `showsHours: false` which rolled at 59s), pulse bars, `keylineTint`. New Test Fast / Cloud IPA.
 - **2026-09-16:** **IPA keyboard accessory default-on (Mac).** Bar starts enabled; GIF is the only opt-out. Removes the focusin false→true `reloadInputViews` that clipped iPhone sim keys or popped the bar in ~200ms late. New Test Fast / Cloud IPA.

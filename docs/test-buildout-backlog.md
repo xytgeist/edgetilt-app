@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-17:** **Chat inbox scroll jitter (Mac).** Rows used `touch-action: none` + manual `scrollTop` forwarding (from the Jul WebKit swipe fix), which killed native momentum. Vertical pans hand off to native overflow again; pointer capture / `touch-action: none` only after horizontal swipe locks. Frontend **`1.4.283`**. Web only.
 - **2026-09-17:** **Fake in-app Island retired (Mac).** Could not nudge system status chrome; looked wrong overlapping time / battery. Title-bar live chips restored (centered to phone width). Real ActivityKit Island still for background / Lock Screen. New Test Fast / Cloud IPA + Vercel for chip layout.
 - **2026-09-17:** **In-app fake Dynamic Island (Mac).** `EdgeLiveBankrollIslandOverlay` draws a compact pill over WKWebView while foregrounded (system Island is background-only). `setLiveBankrollIslandOverlay` hides it on live-card bankroll screens. Title chip stays for old IPA / PWA. New Test Fast / Cloud IPA.
 - **2026-09-17:** **Live session chip vs Island (Mac).** iOS hides our Live Activity Island while EdgeTilt is foregrounded. Title chip no longer blanks when ActivityKit reports ok … chip shows on every screen except the bankroll tab that already has the live card. Island still covers background / Lock Screen.

@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-16 … Backing Bankroll loan display
+
+**I am Mac Theo.** Auto top-up was inflating Backing Bankroll and Portfolio. Hero now treats it as a loan: $704 book + $2500 Sell Action → Backing −$1796, Portfolio $704. **`1.4.277`** on **`test`**.
+
 ### Mac Theo 2026-09-16 … Guest claim OAuth matching reverted
 
 **I am Mac Theo.** Rolled back the Google/Apple Gmail-dot claim matching. That was a tester alias issue, not a product bug. SQL **`20260917310000`** restores exact email on **test**. Do not apply **`20260917300000`** on prod.

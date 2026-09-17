@@ -190,6 +190,17 @@ export const BACKER_CAPITAL_ADJUSTMENT_KINDS = new Set([
 ])
 
 /**
+ * Deposits the backer actually owns. `auto_top_up` / `seed_reverse` are a shortfall
+ * loan so Accept can fund … they must not inflate Backing Bankroll or Portfolio.
+ */
+export const BACKER_OWNED_CAPITAL_ADJUSTMENT_KINDS = new Set([
+  'deposit',
+  'withdraw',
+  'set_balance',
+  'manual',
+])
+
+/**
  * True when a ledger row is a capital top-up / withdrawal (not stake deploy / settle / close).
  * Legacy rows without `kind` count as capital (`manual`).
  * @param {object} row
@@ -197,6 +208,11 @@ export const BACKER_CAPITAL_ADJUSTMENT_KINDS = new Set([
 export function isBackerCapitalAdjustment(row) {
   const kind = String(row?.kind || 'manual').trim() || 'manual'
   return BACKER_CAPITAL_ADJUSTMENT_KINDS.has(kind)
+}
+
+export function isBackerOwnedCapitalAdjustment(row) {
+  const kind = String(row?.kind || 'manual').trim() || 'manual'
+  return BACKER_OWNED_CAPITAL_ADJUSTMENT_KINDS.has(kind)
 }
 
 /**
@@ -208,6 +224,15 @@ export function computeBackerManualAdjustmentTotal(adjustments = []) {
   let total = 0
   for (const row of adjustments) {
     if (!isBackerCapitalAdjustment(row)) continue
+    total = roundMoney(total + (Number(row?.amount) || 0))
+  }
+  return total
+}
+
+export function computeBackerOwnedCapitalTotal(adjustments = []) {
+  let total = 0
+  for (const row of adjustments) {
+    if (!isBackerOwnedCapitalAdjustment(row)) continue
     total = roundMoney(total + (Number(row?.amount) || 0))
   }
   return total
@@ -248,8 +273,9 @@ export function computeBackerActiveAllocatedCapital({
 }
 
 /**
- * Hero backing bankroll: manual deposits/withdrawals ± settlements − open active stakes.
- * Pending stakes are excluded (shown as a separate pending-hold annotation).
+ * Hero backing bankroll: owned deposits/withdrawals ± settlements − open active stakes.
+ * Auto top-up loans are excluded so a $704 book that funds a $2500 slice shows −$1796,
+ * and portfolio (backing + MTM) stays $704. Pending stakes stay off this number.
  */
 export function computeBackerBackingBankroll({
   adjustments = [],
@@ -259,9 +285,9 @@ export function computeBackerBackingBankroll({
   pendingHold = 0,
 }) {
   const capitalRows = (adjustments || []).filter(isBackerCapitalAdjustment)
-  const manual = computeBackerManualAdjustmentTotal(adjustments)
+  const owned = computeBackerOwnedCapitalTotal(adjustments)
   if (capitalRows.length) {
-    return roundMoney(manual + roundMoney(realizedBackingPl) - roundMoney(activeAllocatedCapital))
+    return roundMoney(owned + roundMoney(realizedBackingPl) - roundMoney(activeAllocatedCapital))
   }
   // Stored balance may still reflect legacy pending allocation debits; pending holds are
   // annotated separately on the hero and must not reduce backing bankroll or portfolio.

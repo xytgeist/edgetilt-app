@@ -30,9 +30,8 @@ struct LiveBankrollActivityWidget: Widget {
           LiveBankrollExpandedRows(state: context.state)
         }
       } compactLeading: {
-        // ~26pt circle reads on the Island; keep layout frame fixed so breath
-        // scale cannot stretch the pill edge-to-edge.
-        LiveBankrollBrandMark(state: context.state, size: 26)
+        // Keep under the leading lobe so the circle isn't clipped by the Island.
+        LiveBankrollBrandMark(state: context.state, size: 22)
       } compactTrailing: {
         LiveBankrollCompactTrailing(state: context.state)
       } minimal: {
@@ -111,25 +110,27 @@ private struct LiveBankrollBrandMark: View {
   var body: some View {
     TimelineView(.animation(minimumInterval: isPaused ? 60 : 0.35, paused: isPaused)) { context in
       let pulse = isPaused ? 1.0 : breath(at: context.date)
+      // Inset the fill so breath + Island clipping never shave the circle edge.
+      let circleSize = size * (minimal ? 1 : 0.86)
       ZStack {
         Circle()
           .fill(LiveBankrollPalette.accent(for: state).opacity(minimal ? 1 : 0.22 + 0.48 * pulse))
-          .scaleEffect(minimal || isPaused ? 1 : 0.82 + 0.22 * pulse)
+          .frame(width: circleSize, height: circleSize)
+          .scaleEffect(minimal || isPaused ? 1 : 0.92 + 0.08 * pulse)
         if !minimal {
           Group {
             if useWhiteDice {
-              LiveBankrollWhiteDice(size: size * 0.72)
+              LiveBankrollWhiteDice(size: size * 0.62)
             } else {
               Image(systemName: symbolName)
-                .font(.system(size: size * 0.62, weight: .bold))
+                .font(.system(size: size * 0.52, weight: .bold))
                 .foregroundStyle(Color.black)
             }
           }
-          .scaleEffect(isPaused ? 1 : 0.94 + 0.08 * pulse)
+          .scaleEffect(isPaused ? 1 : 0.96 + 0.04 * pulse)
         }
       }
       .frame(width: size, height: size)
-      .clipped()
     }
     .frame(width: size, height: size)
     .accessibilityLabel(state.lockTitle)

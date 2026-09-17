@@ -304,30 +304,13 @@ private struct LiveBankrollLockScreenView: View {
   var state: LiveBankrollAttributes.ContentState
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 10) {
-      HStack(spacing: 8) {
-        LiveBankrollBrandMark(state: state, size: 28)
-        VStack(alignment: .leading, spacing: 1) {
-          Text("EDGE")
-            .font(.caption.weight(.heavy))
-            .foregroundStyle(.white)
-          Text(state.isDual ? "2 live sessions" : "Live session")
-            .font(.caption2)
-            .foregroundStyle(.white.opacity(0.65))
-        }
-        Spacer(minLength: 8)
-        if !state.isDual, let start = state.primaryTimerStart {
-          LiveBankrollElapsedText(
-            start: start,
-            font: .title3.weight(.semibold),
-            pausedTone: state.pokerPaused && state.hasPoker && !state.hasSlots,
-            maxWidth: 72
-          )
-        } else if state.isDual {
-          Text("2")
-            .font(.title3.weight(.bold))
-            .foregroundStyle(.white)
-        }
+    // One session = one row. The old header (EDGE + timer) stacked on
+    // ExpandedRows printed the same clock twice on the Lock Screen banner.
+    VStack(alignment: .leading, spacing: 8) {
+      if state.isDual {
+        Text("EDGE")
+          .font(.caption.weight(.heavy))
+          .foregroundStyle(.white)
       }
       LiveBankrollExpandedRows(state: state)
     }

@@ -7,10 +7,12 @@ struct LiveBankrollAttributes: ActivityAttributes {
   public struct ContentState: Codable, Hashable {
     var slotsId: String
     var slotsLabel: String
+    /// Effective play-clock start (`now - playElapsed`) for `Text(..., style: .timer)`.
     var slotsTimerStart: Date?
     var pokerId: String
     var pokerLabel: String
     var pokerPaused: Bool
+    /// Play-clock start while running, or `paused_at` while paused (pause stopwatch).
     var pokerTimerStart: Date?
 
     var hasSlots: Bool { !slotsId.isEmpty }
@@ -20,7 +22,7 @@ struct LiveBankrollAttributes: ActivityAttributes {
     var compactLabel: String {
       if isDual { return "2" }
       if hasSlots { return Self.short(slotsLabel) }
-      if hasPoker { return pokerPaused ? "⏸" : Self.short(pokerLabel) }
+      if hasPoker { return Self.short(pokerLabel) }
       return "LIVE"
     }
 
@@ -29,6 +31,11 @@ struct LiveBankrollAttributes: ActivityAttributes {
       if hasSlots { return slotsLabel.isEmpty ? "Slots" : slotsLabel }
       if hasPoker { return pokerLabel.isEmpty ? "Poker" : pokerLabel }
       return "Live session"
+    }
+
+    /// Compact / header clock: slots wins when both are live.
+    var primaryTimerStart: Date? {
+      slotsTimerStart ?? pokerTimerStart
     }
 
     var widgetURL: URL {

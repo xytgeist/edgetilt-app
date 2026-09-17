@@ -28,14 +28,17 @@ enum EdgeLiveBankrollActivity {
       return
     }
 
+    let pokerPaused = bool(poker?["paused"])
     let state = LiveBankrollAttributes.ContentState(
       slotsId: slotsId,
       slotsLabel: string(slots?["label"]),
-      slotsTimerStart: timerStart(from: slots, running: true),
+      slotsTimerStart: playTimerStart(from: slots),
       pokerId: pokerId,
       pokerLabel: string(poker?["label"]),
-      pokerPaused: bool(poker?["paused"]),
-      pokerTimerStart: timerStart(from: poker, running: !bool(poker?["paused"]))
+      pokerPaused: pokerPaused,
+      pokerTimerStart: pokerId.isEmpty
+        ? nil
+        : (pokerPaused ? pauseTimerStart(from: poker) : playTimerStart(from: poker))
     )
 
     Task {
@@ -91,13 +94,26 @@ enum EdgeLiveBankrollActivity {
     }
   }
 
-  private static func timerStart(from dict: [String: Any]?, running: Bool) -> Date? {
-    guard running else { return nil }
+  /// Play clock: prefer `elapsedSeconds` (already pause-subtracted for poker) so
+  /// the Island matches the in-app timer. Falls back to `startAt`.
+  private static func playTimerStart(from dict: [String: Any]?) -> Date? {
+    guard dict != nil else { return nil }
     if let elapsed = number(dict?["elapsedSeconds"]), elapsed >= 0 {
       return Date().addingTimeInterval(-elapsed)
     }
     if let start = parseDate(string(dict?["startAt"])), start <= Date() {
       return start
+    }
+    return nil
+  }
+
+  /// Pause stopwatch: prefer exact `pausedAt`, else `pauseElapsedSeconds`.
+  private static func pauseTimerStart(from dict: [String: Any]?) -> Date? {
+    if let pausedAt = parseDate(string(dict?["pausedAt"])), pausedAt <= Date() {
+      return pausedAt
+    }
+    if let elapsed = number(dict?["pauseElapsedSeconds"]), elapsed >= 0 {
+      return Date().addingTimeInterval(-elapsed)
     }
     return Date()
   }

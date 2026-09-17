@@ -100,6 +100,8 @@ export function useActiveLiveSessions(supabase, { enabled = true, userId = null 
             paused: poker.paused,
             startAt: poker.startAt,
             elapsedSeconds: poker.elapsedSeconds,
+            pausedAt: poker.pausedAt ?? null,
+            pauseElapsedSeconds: poker.pauseElapsedSeconds ?? 0,
           }
         : null,
     }).then((result) => {

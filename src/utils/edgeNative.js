@@ -565,7 +565,15 @@ export async function tryAssignEdgeScannedDocuments(input, opts = {}) {
  *
  * @param {{
  *   slots?: { id?: string, label?: string, startAt?: string | null, elapsedSeconds?: number } | null,
- *   poker?: { id?: string, label?: string, paused?: boolean, startAt?: string | null, elapsedSeconds?: number } | null,
+ *   poker?: {
+ *     id?: string,
+ *     label?: string,
+ *     paused?: boolean,
+ *     startAt?: string | null,
+ *     elapsedSeconds?: number,
+ *     pausedAt?: string | null,
+ *     pauseElapsedSeconds?: number,
+ *   } | null,
  * }} [payload]
  * @returns {Promise<Record<string, unknown>>}
  */

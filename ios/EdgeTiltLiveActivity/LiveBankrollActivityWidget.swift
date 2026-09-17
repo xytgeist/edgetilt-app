@@ -30,8 +30,6 @@ struct LiveBankrollActivityWidget: Widget {
           LiveBankrollExpandedRows(state: context.state)
         }
       } compactLeading: {
-        // Tight leading tile (YouTube-style). Keep under ~24pt so the
-        // island does not stretch edge-to-edge around the camera cutout.
         LiveBankrollBrandMark(state: context.state, size: 20)
       } compactTrailing: {
         LiveBankrollCompactTrailing(state: context.state)
@@ -64,66 +62,66 @@ private enum LiveBankrollPalette {
   }
 }
 
-// MARK: - Compact
+// MARK: - Timer
 
-/// Elapsed clock we own. Do **not** use `Text(timerInterval:showsHours: false)` …
-/// that API only renders the seconds field and rolls at 59s (looked like 0:24 forever).
-/// Custom format stays narrow (`5:00`, then `1:05:00` only after an hour).
+/// System-updating stopwatch. Do not use custom `TimelineView` clocks in Live
+/// Activities ... they freeze at the first frame (stuck `0:00`). Do not use
+/// `Text(timerInterval:showsHours: false)` ... that rolls at 59s.
 private struct LiveBankrollElapsedText: View {
   var start: Date
   var font: Font
+  var pausedTone: Bool = false
 
   var body: some View {
-    TimelineView(.periodic(from: start, by: 1)) { context in
-      Text(Self.format(from: start, to: context.date))
-        .font(font)
-        .monospacedDigit()
-        .foregroundStyle(.white)
-        .multilineTextAlignment(.trailing)
-    }
-  }
-
-  static func format(from start: Date, to now: Date) -> String {
-    let total = max(0, Int(now.timeIntervalSince(start)))
-    let hours = total / 3600
-    let minutes = (total % 3600) / 60
-    let seconds = total % 60
-    if hours > 0 {
-      return String(format: "%d:%02d:%02d", hours, minutes, seconds)
-    }
-    return String(format: "%d:%02d", minutes, seconds)
+    Text(start, style: .timer)
+      .font(font)
+      .monospacedDigit()
+      .foregroundStyle(pausedTone ? LiveBankrollPalette.paused : .white)
+      .multilineTextAlignment(.trailing)
+      .lineLimit(1)
+      .minimumScaleFactor(0.7)
   }
 }
 
-/// Rounded tile with session glyph ... denser than a lonely 10pt dot.
+// MARK: - Compact leading mark
+
+/// Circular accent behind a black glyph. Breaths while live; freezes when paused.
 private struct LiveBankrollBrandMark: View {
   var state: LiveBankrollAttributes.ContentState
   var size: CGFloat
   var minimal: Bool = false
 
+  private var isPaused: Bool {
+    state.pokerPaused && state.hasPoker && !state.hasSlots
+  }
+
   var body: some View {
-    ZStack {
-      RoundedRectangle(cornerRadius: size * 0.28, style: .continuous)
-        .fill(LiveBankrollPalette.accent(for: state).opacity(minimal ? 1 : 0.22))
-      if minimal {
+    TimelineView(.animation(minimumInterval: isPaused ? 60 : 0.55, paused: isPaused)) { context in
+      let pulse = isPaused ? 1.0 : breath(at: context.date)
+      ZStack {
         Circle()
-          .fill(LiveBankrollPalette.accent(for: state))
-          .frame(width: size * 0.42, height: size * 0.42)
-      } else {
-        Image(systemName: symbolName)
-          .font(.system(size: size * 0.52, weight: .bold))
-          .foregroundStyle(LiveBankrollPalette.accent(for: state))
+          .fill(LiveBankrollPalette.accent(for: state).opacity(minimal ? 1 : 0.28 + 0.22 * pulse))
+          .scaleEffect(minimal ? 1 : 0.92 + 0.08 * pulse)
+        if !minimal {
+          Image(systemName: symbolName)
+            .font(.system(size: size * 0.48, weight: .bold))
+            .foregroundStyle(Color.black)
+        }
       }
+      .frame(width: size, height: size)
     }
-    .frame(width: size, height: size)
     .accessibilityLabel(state.lockTitle)
   }
 
   private var symbolName: String {
     if state.hasSlots && state.hasPoker { return "square.on.square.fill" }
     if state.hasSlots { return "dice.fill" }
-    if state.pokerPaused { return "pause.fill" }
     return "suit.spade.fill"
+  }
+
+  private func breath(at date: Date) -> CGFloat {
+    let phase = date.timeIntervalSinceReferenceDate * 2.2
+    return CGFloat((sin(phase) + 1) * 0.5)
   }
 }
 
@@ -131,55 +129,17 @@ private struct LiveBankrollCompactTrailing: View {
   var state: LiveBankrollAttributes.ContentState
 
   var body: some View {
-    Group {
-      if state.isDual {
-        HStack(spacing: 3) {
-          LiveBankrollPulseBars(tint: LiveBankrollPalette.dual, compact: true)
-          Text("2")
-            .font(.system(size: 12, weight: .bold, design: .rounded))
-            .foregroundStyle(.white)
-        }
-      } else if state.pokerPaused && !state.hasSlots {
-        Image(systemName: "pause.fill")
-          .font(.system(size: 11, weight: .bold))
-          .foregroundStyle(LiveBankrollPalette.paused)
-      } else if let start = state.slotsTimerStart ?? state.pokerTimerStart {
-        LiveBankrollElapsedText(
-          start: start,
-          font: .system(size: 12, weight: .semibold, design: .rounded)
-        )
-      } else {
-        LiveBankrollPulseBars(tint: LiveBankrollPalette.accent(for: state), compact: true)
-      }
+    if state.isDual {
+      Text("2")
+        .font(.system(size: 12, weight: .bold, design: .rounded))
+        .foregroundStyle(.white)
+    } else if let start = state.primaryTimerStart {
+      LiveBankrollElapsedText(
+        start: start,
+        font: .system(size: 12, weight: .semibold, design: .rounded),
+        pausedTone: state.pokerPaused && state.hasPoker && !state.hasSlots
+      )
     }
-  }
-}
-
-/// Tiny equalizer so the compact island feels alive (YouTube-style trailing).
-private struct LiveBankrollPulseBars: View {
-  var tint: Color
-  var compact: Bool
-
-  var body: some View {
-    TimelineView(.animation(minimumInterval: 0.18, paused: false)) { context in
-      let t = context.date.timeIntervalSinceReferenceDate
-      HStack(alignment: .center, spacing: compact ? 1.5 : 2) {
-        ForEach(0..<3, id: \.self) { i in
-          Capsule()
-            .fill(tint)
-            .frame(width: compact ? 2 : 2.5, height: barHeight(index: i, time: t))
-        }
-      }
-      .frame(width: compact ? 10 : 14, height: compact ? 12 : 16, alignment: .center)
-    }
-  }
-
-  private func barHeight(index: Int, time: TimeInterval) -> CGFloat {
-    let phase = time * 5.2 + Double(index) * 1.1
-    let wave = (sin(phase) + 1) * 0.5
-    let minH: CGFloat = compact ? 3 : 4
-    let maxH: CGFloat = compact ? 11 : 15
-    return minH + CGFloat(wave) * (maxH - minH)
   }
 }
 
@@ -190,21 +150,15 @@ private struct LiveBankrollExpandedTimer: View {
 
   var body: some View {
     if state.isDual {
-      HStack(spacing: 6) {
-        LiveBankrollPulseBars(tint: LiveBankrollPalette.dual, compact: false)
-        Text("2")
-          .font(.title3.weight(.bold))
-          .foregroundStyle(.white)
-      }
-    } else if let start = state.slotsTimerStart ?? state.pokerTimerStart {
+      Text("2")
+        .font(.title3.weight(.bold))
+        .foregroundStyle(.white)
+    } else if let start = state.primaryTimerStart {
       LiveBankrollElapsedText(
         start: start,
-        font: .title3.weight(.semibold)
+        font: .title3.weight(.semibold),
+        pausedTone: state.pokerPaused && state.hasPoker && !state.hasSlots
       )
-    } else if state.pokerPaused {
-      Text("Paused")
-        .font(.caption.weight(.semibold))
-        .foregroundStyle(LiveBankrollPalette.paused)
     }
   }
 }
@@ -221,7 +175,8 @@ private struct LiveBankrollExpandedRows: View {
             symbol: "dice.fill",
             title: state.slotsLabel.isEmpty ? "Slots" : state.slotsLabel,
             timerStart: state.slotsTimerStart,
-            paused: false
+            pausedTone: false,
+            subtitle: nil
           )
         }
       }
@@ -229,10 +184,11 @@ private struct LiveBankrollExpandedRows: View {
         Link(destination: state.pokerWidgetURL) {
           LiveBankrollRow(
             tint: state.pokerPaused ? LiveBankrollPalette.paused : LiveBankrollPalette.poker,
-            symbol: state.pokerPaused ? "pause.fill" : "suit.spade.fill",
+            symbol: "suit.spade.fill",
             title: state.pokerLabel.isEmpty ? "Poker" : state.pokerLabel,
             timerStart: state.pokerTimerStart,
-            paused: state.pokerPaused
+            pausedTone: state.pokerPaused,
+            subtitle: state.pokerPaused ? "Paused" : nil
           )
         }
       }
@@ -245,31 +201,36 @@ private struct LiveBankrollRow: View {
   var symbol: String
   var title: String
   var timerStart: Date?
-  var paused: Bool
+  var pausedTone: Bool
+  var subtitle: String?
 
   var body: some View {
     HStack(spacing: 8) {
       ZStack {
-        RoundedRectangle(cornerRadius: 5, style: .continuous)
-          .fill(tint.opacity(0.22))
+        Circle()
+          .fill(tint.opacity(0.28))
           .frame(width: 22, height: 22)
         Image(systemName: symbol)
           .font(.system(size: 11, weight: .bold))
-          .foregroundStyle(tint)
+          .foregroundStyle(Color.black)
       }
-      Text(title)
-        .font(.subheadline.weight(.semibold))
-        .foregroundStyle(.white)
-        .lineLimit(1)
+      VStack(alignment: .leading, spacing: 1) {
+        Text(title)
+          .font(.subheadline.weight(.semibold))
+          .foregroundStyle(.white)
+          .lineLimit(1)
+        if let subtitle {
+          Text(subtitle)
+            .font(.caption2.weight(.semibold))
+            .foregroundStyle(tint)
+        }
+      }
       Spacer(minLength: 8)
-      if paused {
-        Text("Paused")
-          .font(.caption.weight(.semibold))
-          .foregroundStyle(tint)
-      } else if let timerStart {
+      if let timerStart {
         LiveBankrollElapsedText(
           start: timerStart,
-          font: .subheadline.weight(.semibold)
+          font: .subheadline.weight(.semibold),
+          pausedTone: pausedTone
         )
       }
     }
@@ -292,13 +253,16 @@ private struct LiveBankrollLockScreenView: View {
             .foregroundStyle(.white.opacity(0.65))
         }
         Spacer(minLength: 8)
-        if !state.isDual, let start = state.slotsTimerStart ?? state.pokerTimerStart {
+        if !state.isDual, let start = state.primaryTimerStart {
           LiveBankrollElapsedText(
             start: start,
-            font: .title3.weight(.semibold)
+            font: .title3.weight(.semibold),
+            pausedTone: state.pokerPaused && state.hasPoker && !state.hasSlots
           )
         } else if state.isDual {
-          LiveBankrollPulseBars(tint: LiveBankrollPalette.dual, compact: false)
+          Text("2")
+            .font(.title3.weight(.bold))
+            .foregroundStyle(.white)
         }
       }
       LiveBankrollExpandedRows(state: state)

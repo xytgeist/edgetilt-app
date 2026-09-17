@@ -56,14 +56,32 @@ export async function fetchActivePokerBankrollSessions(supabase, userId) {
  * @param {{ userId?: string | null }} [opts]
  * @returns {Promise<{
  *   slots: { kind: 'slots', id: string, label: string, paused: false, startAt: string | null, elapsedSeconds: number } | null,
- *   poker: { kind: 'poker', id: string, label: string, paused: boolean, startAt: string | null, elapsedSeconds: number } | null,
+ *   poker: {
+ *     kind: 'poker',
+ *     id: string,
+ *     label: string,
+ *     paused: boolean,
+ *     startAt: string | null,
+ *     elapsedSeconds: number,
+ *     pausedAt: string | null,
+ *     pauseElapsedSeconds: number,
+ *   } | null,
  *   pokerCount: number,
  * }>}
  */
 export async function fetchActiveLiveSessions(supabase, { userId = null } = {}) {
   /** @type {{ kind: 'slots', id: string, label: string, paused: false, startAt: string | null, elapsedSeconds: number } | null} */
   let slots = null
-  /** @type {{ kind: 'poker', id: string, label: string, paused: boolean, startAt: string | null, elapsedSeconds: number } | null} */
+  /** @type {{
+   *   kind: 'poker',
+   *   id: string,
+   *   label: string,
+   *   paused: boolean,
+   *   startAt: string | null,
+   *   elapsedSeconds: number,
+   *   pausedAt: string | null,
+   *   pauseElapsedSeconds: number,
+   * } | null} */
   let poker = null
   let pokerCount = 0
 
@@ -87,13 +105,17 @@ export async function fetchActiveLiveSessions(supabase, { userId = null } = {}) 
   pokerCount = list.length
   const newest = list[0] || null
   if (newest?.id) {
+    const paused = pokerSessionIsPaused(newest)
+    const pausedAt = newest.paused_at ? String(newest.paused_at) : null
     poker = {
       kind: 'poker',
       id: String(newest.id),
       label: pokerLiveSessionLabel(newest),
-      paused: pokerSessionIsPaused(newest),
+      paused,
       startAt: newest.start_at ? String(newest.start_at) : null,
       elapsedSeconds: pokerSessionElapsedSeconds(newest),
+      pausedAt,
+      pauseElapsedSeconds: paused ? pauseOpenElapsedSeconds(pausedAt) : 0,
     }
   }
 
@@ -105,6 +127,13 @@ export const LIVE_BANKROLL_SESSIONS_CHANGED_EVENT = 'edge-live-bankroll-sessions
 
 function slotsElapsedSeconds(startAt) {
   const start = Date.parse(String(startAt || ''))
+  if (!Number.isFinite(start)) return 0
+  return Math.max(0, Math.floor((Date.now() - start) / 1000))
+}
+
+/** Open pause stopwatch (current `paused_at` → now). Not total `paused_seconds`. */
+function pauseOpenElapsedSeconds(pausedAt) {
+  const start = Date.parse(String(pausedAt || ''))
   if (!Number.isFinite(start)) return 0
   return Math.max(0, Math.floor((Date.now() - start) / 1000))
 }

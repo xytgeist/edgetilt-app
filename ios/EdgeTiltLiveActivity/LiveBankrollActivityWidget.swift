@@ -92,8 +92,8 @@ private struct LiveBankrollElapsedText: View {
 
 // MARK: - Compact leading mark
 
-/// Circular accent behind glyph. Breaths while live; freezes when paused.
-/// Slots uses a white die with black pips (not SF `dice.fill`).
+/// Circular accent behind glyph. Live pulse via SF Symbol effects (TimelineView
+/// breath does not run on the Island / Lock Screen). Slots uses a white die.
 private struct LiveBankrollBrandMark: View {
   var state: LiveBankrollAttributes.ContentState
   var size: CGFloat
@@ -107,30 +107,28 @@ private struct LiveBankrollBrandMark: View {
     state.hasSlots && !state.hasPoker
   }
 
+  private var shouldPulse: Bool {
+    !minimal && !isPaused
+  }
+
   var body: some View {
-    TimelineView(.animation(minimumInterval: isPaused ? 60 : 0.35, paused: isPaused)) { context in
-      let pulse = isPaused ? 1.0 : breath(at: context.date)
-      // Inset the fill so breath + Island clipping never shave the circle edge.
-      let circleSize = size * (minimal ? 1 : 0.86)
-      ZStack {
-        Circle()
-          .fill(LiveBankrollPalette.accent(for: state).opacity(minimal ? 1 : 0.22 + 0.48 * pulse))
-          .frame(width: circleSize, height: circleSize)
-          .scaleEffect(minimal || isPaused ? 1 : 0.92 + 0.08 * pulse)
-        if !minimal {
-          Group {
-            if useWhiteDice {
-              LiveBankrollWhiteDice(size: size * 0.62)
-            } else {
-              Image(systemName: symbolName)
-                .font(.system(size: size * 0.52, weight: .bold))
-                .foregroundStyle(Color.black)
-            }
-          }
-          .scaleEffect(isPaused ? 1 : 0.96 + 0.04 * pulse)
+    let circleSize = size * (minimal ? 1 : 0.86)
+    ZStack {
+      Image(systemName: "circle.fill")
+        .font(.system(size: circleSize))
+        .foregroundStyle(LiveBankrollPalette.accent(for: state).opacity(minimal ? 1 : 0.38))
+        .symbolEffect(.pulse, options: .repeating.speed(0.7), isActive: shouldPulse)
+      if !minimal {
+        if useWhiteDice {
+          // Custom die isn't an SF Symbol … pulse comes from the circle behind it.
+          LiveBankrollWhiteDice(size: size * 0.62)
+        } else {
+          Image(systemName: symbolName)
+            .font(.system(size: size * 0.52, weight: .bold))
+            .foregroundStyle(Color.black)
+            .symbolEffect(.pulse, options: .repeating.speed(0.7), isActive: shouldPulse)
         }
       }
-      .frame(width: size, height: size)
     }
     .frame(width: size, height: size)
     .accessibilityLabel(state.lockTitle)
@@ -139,11 +137,6 @@ private struct LiveBankrollBrandMark: View {
   private var symbolName: String {
     if state.hasSlots && state.hasPoker { return "square.on.square.fill" }
     return "suit.spade.fill"
-  }
-
-  private func breath(at date: Date) -> CGFloat {
-    let phase = date.timeIntervalSinceReferenceDate * 2.8
-    return CGFloat((sin(phase) + 1) * 0.5)
   }
 }
 

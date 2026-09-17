@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import { mobileShell, inputBase, btnPrimary, linkBtn } from './features/shell/shellClasses'
+import { mobileShell, btnPrimary, linkBtn } from './features/shell/shellClasses'
 import { readAuthCallbackParams, getOAuthCallbackMessage, readAuthTokensFromLocation, hasAuthSuccessTokens, replaceUrlPreservingQuery, isLikelyEmailConfirmLanding } from './features/auth/oauthCallback'
 import { parseAuthPanelFromSearch, stripAuthPanelQueryParam } from './features/auth/authPanelFromUrl.js'
 import {
@@ -13,6 +13,7 @@ import {
 } from './features/auth/emailConfirmRouting.js'
 import AuthConfirmScreen from './features/auth/AuthConfirmScreen.jsx'
 import AuthModalPanel from './features/auth/AuthModalPanel'
+import AuthPasswordField from './features/auth/AuthPasswordField'
 import AuthModalShell from './features/auth/AuthModalShell'
 import AppShell from './features/shell'
 import { ensureDefaultProfileRow } from './features/profiles/profileGate'
@@ -1738,27 +1739,19 @@ function App() {
             <div className="text-center py-8 text-emerald-400 text-base font-medium leading-relaxed">{resetMessage}</div>
           ) : (
             <form onSubmit={handlePasswordReset} className="space-y-4">
-              <input
-                type="password"
+              <AuthPasswordField
                 placeholder="New Password"
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className={inputBase}
+                onChange={setNewPassword}
                 autoComplete="new-password"
-                inputMode="text"
                 enterKeyHint="next"
-                required
               />
-              <input
-                type="password"
+              <AuthPasswordField
                 placeholder="Confirm New Password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className={inputBase}
+                onChange={setConfirmPassword}
                 autoComplete="new-password"
-                inputMode="text"
                 enterKeyHint="go"
-                required
               />
               <button type="submit" disabled={isUpdatingPassword} className={`${btnPrimary} bg-orange-600 hover:bg-orange-500 rounded-2xl disabled:opacity-60 disabled:cursor-not-allowed`}>
                 {isUpdatingPassword ? 'Updating...' : 'Update Password'}

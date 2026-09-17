@@ -3510,6 +3510,12 @@ html.light [data-auth-modal] .border-emerald-500 {
 html.light [data-auth-modal] .text-emerald-300 {
   color: #047857 !important;
 }
+html.light [data-auth-modal] [data-auth-password-toggle] {
+  color: #52525b !important;
+}
+html.light [data-auth-modal] [data-auth-password-toggle]:hover {
+  color: #18181b !important;
+}
 
 /* Subscribe modal (Slots Edge) - light mode */
 html.light [data-subscribe-modal] {

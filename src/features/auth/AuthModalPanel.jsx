@@ -3,6 +3,7 @@ import { isEdgeiOSShell } from '../../utils/edgeNative.js'
 import { inputBase, btnPrimary, linkBtn } from '../shell/shellClasses'
 import { AppleIcon, OAuthDivider, GoogleIcon } from './OAuthUi'
 import AuthTabSwitcher from './AuthTabSwitcher'
+import AuthPasswordField from './AuthPasswordField'
 
 const LEGAL_NUDGE_MESSAGE = 'Please accept the Terms & Conditions and Privacy Policy.'
 
@@ -340,27 +341,19 @@ export default function AuthModalPanel({
             spellCheck={false}
             required
           />
-          <input
-            type="password"
+          <AuthPasswordField
             placeholder="Password"
             value={signupPassword}
-            onChange={(e) => onSignupPasswordChange(e.target.value)}
-            className={inputBase}
+            onChange={onSignupPasswordChange}
             autoComplete="new-password"
-            inputMode="text"
             enterKeyHint="next"
-            required
           />
-          <input
-            type="password"
+          <AuthPasswordField
             placeholder="Confirm password"
             value={signupConfirmPassword}
-            onChange={(e) => onSignupConfirmPasswordChange(e.target.value)}
-            className={inputBase}
+            onChange={onSignupConfirmPasswordChange}
             autoComplete="new-password"
-            inputMode="text"
             enterKeyHint="go"
-            required
           />
           {signupError && !isOAuthProviderError(signupError) ? (
             <AuthErrorBanner message={signupError} />
@@ -390,16 +383,12 @@ export default function AuthModalPanel({
             spellCheck={false}
             required
           />
-          <input
-            type="password"
+          <AuthPasswordField
             placeholder="Password"
             value={password}
-            onChange={(e) => onPasswordChange(e.target.value)}
-            className={inputBase}
+            onChange={onPasswordChange}
             autoComplete="current-password"
-            inputMode="text"
             enterKeyHint="go"
-            required
           />
           <button
             type="submit"

@@ -534,7 +534,7 @@ Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`**
 
 ## Update log
 
-- **2026-09-16:** **Bankroll swipe debounce 50ms + live session title size:** carousel quiet-window is 50ms. Session detail game title is `text-3xl` / 36px line to match the type icon. Frontend **`1.4.281`**.
+- **2026-09-16:** **Bankroll swipe debounce 50ms + live session title size:** carousel quiet-window is 50ms. Session detail game title is `text-3xl` / 36px line to match the type icon. Frontend **`1.4.281`** via **`test` → `main`**.
 - **2026-09-16:** **Bankroll carousel swipe keeps the session ledger:** swipe was painting the stake hero while Personal history stayed mounted, because parent re-renders cleared the 80ms scroll debounce. Listener now uses refs + scrollend/touchend. Frontend **`1.4.280`** via **`test` → `main`**.
 - **2026-09-16:** **0% player profit split allowed:** Sell Action / Create Stake accept `player_profit_pct` 0-100 (blank still invalid). Horse MTM no longer treats stored 0 as 50/50. Frontend **`1.4.279`**. No SQL.
 - **2026-09-16:** **Live session backers card shows terms:** Sell Action / piece session detail lists every backer (guest + Edge) with action %, backing $, and profit split while the session is open. Share invite stays on unclaimed guests. Frontend **`1.4.278`** via **`test` → `main`**.

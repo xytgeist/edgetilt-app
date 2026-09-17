@@ -66,7 +66,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo 2026-09-16 … Swipe 50ms + session title size
 
-**I am Mac Theo.** Carousel quiet-window 50ms. Live session detail game title is 36px-line `text-3xl` next to the type icon. **`1.4.281`** on **`test`**.
+**I am Mac Theo.** Carousel quiet-window 50ms. Live session detail game title is 36px-line `text-3xl` next to the type icon. **`1.4.281`** on **`test` + `main`**.
 
 ### Mac Theo 2026-09-16 … Bankroll carousel ledger follows swipe
 

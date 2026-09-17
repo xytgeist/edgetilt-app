@@ -394,8 +394,9 @@ export function enrichBankrollByDealFromSessions(deals = [], bankrollByDeal = {}
 }
 
 function backerSliceBackerProfitPct(slice) {
-  const playerPct = Number(slice?.player_profit_pct) || 50
-  return slice?.pricing_mode === 'markup' ? 100 : 100 - playerPct
+  const playerPct = Number(slice?.player_profit_pct)
+  const safePlayer = Number.isFinite(playerPct) ? playerPct : 50
+  return slice?.pricing_mode === 'markup' ? 100 : 100 - safePlayer
 }
 
 function backerSliceActionFraction(slice) {

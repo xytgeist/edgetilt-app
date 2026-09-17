@@ -64,6 +64,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Windows Theo.** Ryan smoke PASSED on **edgetilt.com**: hub → join → email confirm still AP Slots-only. **`1.4.276`**.
 
+### Mac Theo 2026-09-16 … 0% player profit split
+
+**I am Mac Theo.** Sell Action / Create Stake allow 0% player profit (blank still invalid). Horse MTM treats stored 0 as 0, not 50. **`1.4.279`** on **`test` + `main`**.
+
 ### Mac Theo 2026-09-16 … Live session backers terms
 
 **I am Mac Theo.** Live Sell Action session detail Backers card now shows action %, backing $, and profit split (guests + Edge). Share invite still on unclaimed guests. **`1.4.278`** on **`test` + `main`**.

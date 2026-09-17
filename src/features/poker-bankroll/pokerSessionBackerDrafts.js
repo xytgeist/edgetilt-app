@@ -1,5 +1,5 @@
 import { guestNotifyContactFieldErrors } from '../../utils/guestNotifyContact.js'
-import { roundMoney, sumSliceActionPct } from '../poker-stable/pokerStableMath.js'
+import { roundMoney, sumSliceActionPct, parseProfitPctField } from '../poker-stable/pokerStableMath.js'
 
 export function emptyDraftBacker({ isGuest = false } = {}) {
   return {
@@ -30,9 +30,9 @@ export function parseDraftBackersForCreate(drafts, userId) {
     if (!Number.isFinite(actionPct) || actionPct <= 0 || actionPct > 100) {
       return { slices: [], error: new Error('Each backer needs action % between 1 and 100.') }
     }
-    const playerProfitPct = Number(draft.playerProfitPct)
-    if (!Number.isFinite(playerProfitPct) || playerProfitPct <= 0 || playerProfitPct > 100) {
-      return { slices: [], error: new Error('Each backer needs player profit % between 1 and 100.') }
+    const playerProfitPct = parseProfitPctField(draft.playerProfitPct)
+    if (!Number.isFinite(playerProfitPct) || playerProfitPct < 0 || playerProfitPct > 100) {
+      return { slices: [], error: new Error('Each backer needs player profit % between 0 and 100.') }
     }
     if (draft.isGuest) {
       const name = String(draft.guestLabel || '').trim()

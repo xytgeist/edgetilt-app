@@ -14,6 +14,14 @@ export function roundMoney(n, digits = 2) {
   return Math.round(stableNum(n) * f) / f
 }
 
+/** Typed 0 stays 0. Blank stays invalid (`Number('')` is 0). */
+export function parseProfitPctField(value) {
+  if (value === 0) return 0
+  const raw = String(value ?? '').trim()
+  if (raw === '') return Number.NaN
+  return Number(raw)
+}
+
 /**
  * Deal-level makeup (positive = underwater vs baseline).
  * @param {{ baseline_bankroll?: number, roll?: number }} deal

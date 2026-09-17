@@ -18,7 +18,7 @@ Canonical spec for Stable staking: deal types, slices, makeup, settle, top-up, a
 
 - **Multi-slice:** action % sold across slices ≤ 100%; player keeps remainder. Enforced in create/edit UI (`sumSliceActionPct` reads `actionPct` / `action_pct`), RPC propose/apply paths, and deferred trigger **`20260810190000`**.
 - **One pricing mode per stake:** `profit_split` **or** `markup`, never both (deal-level for tournament packages; cash backing is profit-split only).
-- **Profit split:** `player_profit_pct` = player share of winnings on sold action (backer gets complement).
+- **Profit split:** `player_profit_pct` = player share of winnings on sold action (backer gets complement). **0% is allowed** (player is a horse on that slice; backer takes 100% of the sold result).
 - **Tournament markup:** backer pays `action% × package × markup_rate` on accept. **Face** (`action% × package`) stays in the stake; **fee** (`face × (markup − 1)`) credits the player’s **personal Poker bankroll** immediately and hits backer **Realized P/L** immediately. Fee is **not** in portfolio value; it **does** count in at-risk ROI / TWR / Realized P/L. Markup rate is deal-level (`poker_stable_deals.markup_rate`). Cash backing has **no markup**.
 - **Tournament player contribution:** unsold package face (`baseline × (100 − sold action%)`) is debited from the player’s **personal Poker bankroll** when the stake goes live (no markup on the player share). Tracked on `poker_stable_deals.player_package_capital`. On close, credit **roll × retained %** back to personal; overall P/L = returned − contribution. Cancel/revoke refunds remaining contribution.
 - **Cancel after accept:** player may cancel an unsettled stake; server unwinds paid capital + fee (credit backer, debit player personal, reverse realized). Migration **`20260811210000`**.
@@ -534,6 +534,7 @@ Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`**
 
 ## Update log
 
+- **2026-09-16:** **0% player profit split allowed:** Sell Action / Create Stake accept `player_profit_pct` 0-100 (blank still invalid). Horse MTM no longer treats stored 0 as 50/50. Frontend **`1.4.279`**. No SQL.
 - **2026-09-16:** **Live session backers card shows terms:** Sell Action / piece session detail lists every backer (guest + Edge) with action %, backing $, and profit split while the session is open. Share invite stays on unclaimed guests. Frontend **`1.4.278`** via **`test` → `main`**.
 - **2026-09-16:** **Backing Bankroll excludes auto-top-up loans:** hero reconstructs owned deposits + realized − open allocations. `auto_top_up` / `seed_reverse` stay on the ledger and TWR, but do not inflate Backing Bankroll or Portfolio. $704 book + $2500 Sell Action → Backing **−$1796**, Portfolio **$704**. Frontend **`1.4.277`** via **`test` → `main`**.
 - **2026-09-16:** **Guest claim Google/Apple matching reverted.** `20260917300000` treated Gmail dots as the same mailbox for OAuth. That was a tester alias (`lvs.lotgod` vs Google `lvslotgod`), not a product bug. Rolled back on test with **`20260917310000`**. Invite email stays exact.

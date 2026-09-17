@@ -29,7 +29,7 @@ import {
   scrollPokerStableSliceIntoView,
   usePokerStableSheetKeyboardDismissScroll,
 } from './pokerStableSheetScroll.js'
-import { roundMoney, sumSliceActionPct } from './pokerStableMath.js'
+import { parseProfitPctField, roundMoney, sumSliceActionPct } from './pokerStableMath.js'
 import {
   guestNotifyContactFieldErrors,
   guestNotifyContactFieldsValid,
@@ -72,6 +72,14 @@ function moneyFieldFromDeal(value) {
   if (value == null || value === '') return ''
   const n = Number(value)
   return Number.isFinite(n) ? String(n) : ''
+}
+
+/** Keep a typed 0. `value || fallback` would wipe 0% player profit. */
+function keepPctInput(value, fallback = '') {
+  if (value === 0 || value === '0') return '0'
+  if (value != null && value !== '') return value
+  if (fallback === 0 || fallback === '0') return '0'
+  return fallback || ''
 }
 
 function dbSliceToFormSlice(sl, profilesById = {}) {
@@ -187,7 +195,7 @@ function applyDealTypePricingDefaults(slice, dealType) {
   return {
     ...slice,
     pricingMode,
-    playerProfitPct: pricingMode === 'profit_split' ? slice.playerProfitPct || '' : '',
+    playerProfitPct: pricingMode === 'profit_split' ? keepPctInput(slice.playerProfitPct) : '',
     markupRate: pricingMode === 'markup' ? slice.markupRate || '' : '',
   }
 }
@@ -199,7 +207,7 @@ function withDealPricing(slice, dealType, pricingMode, markupRate, playerProfitP
       ...slice,
       pricingMode: 'profit_split',
       markupRate: '',
-      playerProfitPct: playerProfitPct || slice.playerProfitPct || '',
+      playerProfitPct: keepPctInput(playerProfitPct, slice.playerProfitPct),
     }
   }
   if (pricingMode === 'markup') {
@@ -214,7 +222,7 @@ function withDealPricing(slice, dealType, pricingMode, markupRate, playerProfitP
     ...slice,
     pricingMode: 'profit_split',
     markupRate: '',
-    playerProfitPct: playerProfitPct || '',
+    playerProfitPct: keepPctInput(playerProfitPct),
   }
 }
 
@@ -224,9 +232,9 @@ async function resolveUserSlice(supabaseClient, sl, userId, { allowSelf = false 
     throw new Error('Each slice needs action % between 1 and 100.')
   }
   if (sl.pricingMode === 'profit_split') {
-    const playerProfitPct = Number(sl.playerProfitPct)
-    if (!Number.isFinite(playerProfitPct) || playerProfitPct <= 0 || playerProfitPct > 100) {
-      throw new Error('Each profit-split slice needs player profit % between 1 and 100.')
+    const playerProfitPct = parseProfitPctField(sl.playerProfitPct)
+    if (!Number.isFinite(playerProfitPct) || playerProfitPct < 0 || playerProfitPct > 100) {
+      throw new Error('Each profit-split slice needs player profit % between 0 and 100.')
     }
   } else {
     const markupRate = Number(sl.markupRate)
@@ -494,7 +502,7 @@ function SliceEditor({
               <input
                 value={sl.playerProfitPct}
                 onChange={(e) => onChange({ playerProfitPct: e.target.value })}
-                placeholder="70"
+                placeholder="0-100"
                 inputMode="decimal"
                 className={INFIELD_CONTROL}
               />
@@ -628,7 +636,7 @@ function PokerStableDealFormSheet({
         : 'profit_split'
     setDealPricingMode(seededPricing)
     setDealMarkupRate(seedSlice?.markupRate || '')
-    setDealPlayerProfitPct(seedSlice?.playerProfitPct || '')
+    setDealPlayerProfitPct(keepPctInput(seedSlice?.playerProfitPct))
     setBaseline(seedForm.baseline || '')
     setIsMigration(Boolean(seedForm.isMigration))
     setStartingRoll(seedForm.startingRoll || '')
@@ -819,9 +827,9 @@ function PokerStableDealFormSheet({
           throw new Error('Enter a markup rate of 1.0 or higher.')
         }
       } else {
-        const pct = Number(dealPlayerProfitPct)
-        if (!Number.isFinite(pct) || pct <= 0 || pct > 100) {
-          throw new Error('Player profit % must be between 1 and 100.')
+        const pct = parseProfitPctField(dealPlayerProfitPct)
+        if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+          throw new Error('Player profit % must be between 0 and 100.')
         }
       }
       let createdDeal = null
@@ -1248,7 +1256,7 @@ function PokerStableDealFormSheet({
                   <input
                     value={dealPlayerProfitPct}
                     onChange={(e) => setDealPlayerProfitPct(e.target.value)}
-                    placeholder="70"
+                    placeholder="0-100"
                     inputMode="decimal"
                     className={INFIELD_CONTROL}
                   />
@@ -1260,7 +1268,7 @@ function PokerStableDealFormSheet({
               <input
                 value={dealPlayerProfitPct}
                 onChange={(e) => setDealPlayerProfitPct(e.target.value)}
-                placeholder="70"
+                placeholder="0-100"
                 inputMode="decimal"
                 className={INFIELD_CONTROL}
               />

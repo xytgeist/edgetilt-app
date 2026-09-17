@@ -214,7 +214,7 @@ export default function PokerSessionBackerSection({
                 <input
                   value={row.playerProfitPct}
                   onChange={(e) => patchDraft(row.key, { playerProfitPct: e.target.value })}
-                  placeholder="50"
+                  placeholder="0-100"
                   inputMode="decimal"
                   className={FIELD}
                 />

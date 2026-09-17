@@ -184,18 +184,27 @@ final class EdgeLiveBankrollIslandOverlay: NSObject {
 
   private func layoutPill() {
     guard let parent = pill.superview ?? host else { return }
+    let window = webView?.window ?? parent.window
+    let safeTop = window?.safeAreaInsets.top ?? parent.safeAreaInsets.top
 
     let trailingWidth: CGFloat = state?.isDual == true ? 18 : 40
     let rightLobe = max(rightLobeMinWidth, trailingWidth + 12)
     let width = leftLobeWidth + hardwareCoreWidth + rightLobe
 
-    // System Island top inset is ~11pt; height ~37–38. Center matches status chrome.
-    let islandTop: CGFloat = 11
-    let y = islandTop + pillHeight / 2
+    // Align pill center with status-bar time / battery optical center.
+    // Fixed top=11 sat above the time. Half of the top safe area matches
+    // the system chrome band on DI phones (~59pt → center ~29.5, +2 optical).
+    let y = max(pillHeight / 2 + 4, safeTop * 0.5 + 2)
 
     pill.bounds = CGRect(x: 0, y: 0, width: width, height: pillHeight)
     pill.layer.cornerRadius = pillHeight / 2
-    pill.center = CGPoint(x: parent.bounds.midX, y: y)
+    let midX = window?.bounds.midX ?? parent.bounds.midX
+    if let window, pill.superview !== window {
+      // Prefer window coords so SwiftUI hosting offsets don't skew Y.
+      window.addSubview(pill)
+      host = window
+    }
+    pill.center = CGPoint(x: midX, y: y)
 
     // Glyph in the LEFT lobe (clear of the camera core).
     glyphCircle.frame = CGRect(

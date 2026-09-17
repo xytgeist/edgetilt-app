@@ -1141,7 +1141,12 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+<<<<<<< HEAD
 - **2026-09-16:** **Swipe debounce 50ms + live session title (Mac).** Carousel quiet-window 50ms. Session detail game title matches the 36px type icon. Frontend **`1.4.281`** via **`test` → `main`**.
+=======
+- **2026-09-16:** **Live slots / poker sessions on the Dynamic Island (Mac).** ActivityKit widget `EdgeTiltLiveActivity` + `EdgeNative.syncLiveBankrollActivity`. IPA hides the title-bar chip when the Island is up; PWA / old IPA keep the chip. Tap opens `?tab=bankroll` or `?tab=poker-bankroll`. New Test Fast IPA required. Frontend **`1.4.282`**. Do not bake this into the in-review **1.4.95** binary.
+- **2026-09-16:** **Swipe debounce 50ms + live session title (Mac).** Carousel quiet-window 50ms. Session detail game title matches the 36px type icon. Frontend **`1.4.281`**.
+>>>>>>> ffae0062 (Put live slots and poker sessions on the Dynamic Island.)
 - **2026-09-16:** **Bankroll carousel swipe keeps the session ledger (Mac).** Stake hero could show Etcetera while the list stayed Personal (piece sessions + Closed stake banners). Scroll→scope debounce was cleared on every Tracker re-render. Frontend **`1.4.280`** via **`test` → `main`**.
 - **2026-09-16:** **0% player profit split allowed (Mac).** Sell Action and Create Stake accept 0% player share (blank still fails). Horse MTM no longer maps stored 0 to 50/50. Frontend **`1.4.279`**.
 - **2026-09-16:** **Ryan smoke PASSED (prod):** AP Slots Lounge intro after `/slots` (and hubs) → create account → email confirm still shows AP Slots-only. **`3b318b9e`** / **`1.4.276`** on **edgetilt.com**.

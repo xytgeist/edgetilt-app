@@ -170,7 +170,10 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       setAuthSession(payload: payload, completion: completion)
     case "clearAuthSession":
       EdgeAuthSessionStore.clear()
+      EdgeLiveBankrollActivity.endFromSignOut()
       completion(.success(["ok": true]))
+    case "syncLiveBankrollActivity":
+      EdgeLiveBankrollActivity.sync(payload: payload, completion: completion)
     case "startNativeCall":
       startNativeCall(payload: payload, completion: completion)
     case "acceptNativeCall":
@@ -750,6 +753,9 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       },
       share: function (payload) {
         return call('share', payload || {});
+      },
+      syncLiveBankrollActivity: function (payload) {
+        return call('syncLiveBankrollActivity', payload || {});
       },
       bustServiceWorker: function () {
         return call('bustServiceWorker', null);

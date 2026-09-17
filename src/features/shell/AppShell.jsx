@@ -460,6 +460,7 @@ export default function AppShell({
     slots: liveSlotsSession,
     poker: livePokerSession,
     hasLive: hasLiveBankrollSession,
+    nativeIslandActive: liveSessionIslandActive,
   } = useActiveLiveSessions(supabaseClient, {
     enabled: browseMode === 'member' && authSessionReady && Boolean(chatCallViewerUserId),
     userId: chatCallViewerUserId,
@@ -2332,6 +2333,7 @@ export default function AppShell({
 
   const renderTitleBarCenterSlot = () => {
     if (!hasLiveBankrollSession) return null
+    if (liveSessionIslandActive) return null
     return (
       <LiveSessionTitleChip
         slots={liveSlotsSession}

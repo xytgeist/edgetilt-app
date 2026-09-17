@@ -7,6 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		5E6A7B8C9D0E1F23A6B7C8D9 /* LiveBankrollAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E1A2B3C4D5E6F708192A3B4 /* LiveBankrollAttributes.swift */; };
+		7F4A5B6C7D8E9F01A4B5C6F1 /* EdgeLiveBankrollActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3A4B5C6D7E8F90A3B4C5F0 /* EdgeLiveBankrollActivity.swift */; };
+		EE5A6B7C8D9E0F12A5B6C7E8 /* EdgeTiltLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4E5A6B7C8D9E0F12A5B6C7D8 /* EdgeTiltLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		6E7A8B9C0D1E2F34A7B8C9E0 /* LiveBankrollAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E1A2B3C4D5E6F708192A3B4 /* LiveBankrollAttributes.swift */; };
+		7E8A9B0C1D2E3F45A8B9C0E1 /* LiveBankrollActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E2A3B4C5D6E7F8092A3B4C5 /* LiveBankrollActivityWidget.swift */; };
+		8E9A0B1C2D3E4F56A9B0C1E2 /* EdgeTiltLiveActivityBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E3A4B5C6D7E8F90A3B4C5D6 /* EdgeTiltLiveActivityBundle.swift */; };
 		0A3440AB6B3037B0FEACE28C /* EdgeSafeAreaInsets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A0015D001309AA8C167529D /* EdgeSafeAreaInsets.swift */; };
 		B92D4F15C8E25033A1F7B241 /* EdgeAppleSignIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = A81C3E04B7D14F2290E6A130 /* EdgeAppleSignIn.swift */; };
 		D14F6B27E0A47255C3B9D463 /* EdgeChinaAvailability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C03E5A16D9F36144B2A8C352 /* EdgeChinaAvailability.swift */; };
@@ -65,6 +71,12 @@
 		D77BF9A686EB3B073BF18F1F /* EdgeWebKitKeyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeWebKitKeyboard.swift; sourceTree = "<group>"; };
 		E03C51206D4F13C8907E326A /* EdgeChatCallsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeChatCallsClient.swift; sourceTree = "<group>"; };
 		EAD18A08A4E225758A68EC4B /* EdgeWebsiteDataHygiene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeWebsiteDataHygiene.swift; sourceTree = "<group>"; };
+		6F3A4B5C6D7E8F90A3B4C5F0 /* EdgeLiveBankrollActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeLiveBankrollActivity.swift; sourceTree = "<group>"; };
+		0E1A2B3C4D5E6F708192A3B4 /* LiveBankrollAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveBankrollAttributes.swift; sourceTree = "<group>"; };
+		1E2A3B4C5D6E7F8092A3B4C5 /* LiveBankrollActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveBankrollActivityWidget.swift; sourceTree = "<group>"; };
+		2E3A4B5C6D7E8F90A3B4C5D6 /* EdgeTiltLiveActivityBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeTiltLiveActivityBundle.swift; sourceTree = "<group>"; };
+		3E4A5B6C7D8E9F01A4B5C6D7 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		4E5A6B7C8D9E0F12A5B6C7D8 /* EdgeTiltLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = EdgeTiltLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		F61EE56EC2ACB500F375E8BE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -77,6 +89,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+
+		AE1A2B3C4D5E6F78A1B2C3E4 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -84,6 +104,7 @@
 			isa = PBXGroup;
 			children = (
 				5C6C9FCD1395C4102A4D050C /* EdgeTilt */,
+				FE6A7B8C9D0E1F23A6B7C8E9 /* EdgeTiltLiveActivity */,
 				D7563C52910B46C1CCAC6ADA /* Products */,
 			);
 			sourceTree = "<group>";
@@ -108,6 +129,7 @@
 				2E9C41B80A6F4D11C8B3A047 /* EdgePhotoPicker.swift */,
 				6E8F2A14C0D14B7E9A31B502 /* EdgeShareSheet.swift */,
 				A50DC0B1CCEF2E8786FA052B /* EdgeLocationManager.swift */,
+				6F3A4B5C6D7E8F90A3B4C5F0 /* EdgeLiveBankrollActivity.swift */,
 				12059FD3E04940779AD6705C /* EdgeNativeBridge.swift */,
 				80BB8BF27C926AB18BA2EA1A /* EdgePushManager.swift */,
 				1A0015D001309AA8C167529D /* EdgeSafeAreaInsets.swift */,
@@ -127,11 +149,39 @@
 			isa = PBXGroup;
 			children = (
 				4310EE47360251D57F675AE8 /* EdgeTilt.app */,
+				4E5A6B7C8D9E0F12A5B6C7D8 /* EdgeTiltLiveActivity.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
+
+		FE6A7B8C9D0E1F23A6B7C8E9 /* EdgeTiltLiveActivity */ = {
+			isa = PBXGroup;
+			children = (
+				2E3A4B5C6D7E8F90A3B4C5D6 /* EdgeTiltLiveActivityBundle.swift */,
+				3E4A5B6C7D8E9F01A4B5C6D7 /* Info.plist */,
+				0E1A2B3C4D5E6F708192A3B4 /* LiveBankrollAttributes.swift */,
+				1E2A3B4C5D6E7F8092A3B4C5 /* LiveBankrollActivityWidget.swift */,
+			);
+			path = EdgeTiltLiveActivity;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+
+		DE4A5B6C7D8E9F01A4B5C6E7 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				EE5A6B7C8D9E0F12A5B6C7E8 /* EdgeTiltLiveActivity.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXNativeTarget section */
 		91193AAD51A0876C7ED2EDB0 /* EdgeTilt */ = {
@@ -141,10 +191,12 @@
 				DB8699AC652AD65F3335FAC7 /* Sources */,
 				57A3B897D4B68A3507E5A9D1 /* Frameworks */,
 				5B28E63BBC49DA83E18E03F4 /* Resources */,
+				DE4A5B6C7D8E9F01A4B5C6E7 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				1F8A9B0C1D2E3F45A8B9C0EB /* PBXTargetDependency */,
 			);
 			name = EdgeTilt;
 			packageProductDependencies = (
@@ -153,6 +205,26 @@
 			productName = EdgeTilt;
 			productReference = 4310EE47360251D57F675AE8 /* EdgeTilt.app */;
 			productType = "com.apple.product-type.application";
+		};
+
+		9E0A1B2C3D4E5F67A0B1C2E3 /* EdgeTiltLiveActivity */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5F2A3B4C5D6E7F89A2B3C4EF /* Build configuration list for PBXNativeTarget "EdgeTiltLiveActivity" */;
+			buildPhases = (
+				BE2A3B4C5D6E7F89A2B3C4E5 /* Sources */,
+				AE1A2B3C4D5E6F78A1B2C3E4 /* Frameworks */,
+				CE3A4B5C6D7E8F90A3B4C5E6 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = EdgeTiltLiveActivity;
+			packageProductDependencies = (
+			);
+			productName = EdgeTiltLiveActivity;
+			productReference = 4E5A6B7C8D9E0F12A5B6C7D8 /* EdgeTiltLiveActivity.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -164,6 +236,10 @@
 				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					91193AAD51A0876C7ED2EDB0 = {
+						DevelopmentTeam = 8932AKQW4W;
+						ProvisioningStyle = Automatic;
+					};
+					9E0A1B2C3D4E5F67A0B1C2E3 = {
 						DevelopmentTeam = 8932AKQW4W;
 						ProvisioningStyle = Automatic;
 					};
@@ -187,6 +263,7 @@
 			projectRoot = "";
 			targets = (
 				91193AAD51A0876C7ED2EDB0 /* EdgeTilt */,
+				9E0A1B2C3D4E5F67A0B1C2E3 /* EdgeTiltLiveActivity */,
 			);
 		};
 /* End PBXProject section */
@@ -197,6 +274,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				B5EBE7D022CBA3E1F5983A48 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+
+		CE3A4B5C6D7E8F90A3B4C5E6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -232,11 +317,42 @@
 				32BB1D33156BEBC54B50E16D /* EdgeWebView.swift in Sources */,
 				EE01FB4E608236E755E652E2 /* EdgeWebsiteDataHygiene.swift in Sources */,
 				C9BC839D606179C6D5157C72 /* ShellRootView.swift in Sources */,
+				5E6A7B8C9D0E1F23A6B7C8D9 /* LiveBankrollAttributes.swift in Sources */,
+				7F4A5B6C7D8E9F01A4B5C6F1 /* EdgeLiveBankrollActivity.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+
+		BE2A3B4C5D6E7F89A2B3C4E5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6E7A8B9C0D1E2F34A7B8C9E0 /* LiveBankrollAttributes.swift in Sources */,
+				7E8A9B0C1D2E3F45A8B9C0E1 /* LiveBankrollActivityWidget.swift in Sources */,
+				8E9A0B1C2D3E4F56A9B0C1E2 /* EdgeTiltLiveActivityBundle.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
+
+/* Begin PBXContainerItemProxy section */
+		0F7A8B9C0D1E2F34A7B8C9EA /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 9B018330A6B28ADC0B136F49 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9E0A1B2C3D4E5F67A0B1C2E3;
+			remoteInfo = EdgeTiltLiveActivity;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXTargetDependency section */
+		1F8A9B0C1D2E3F45A8B9C0EB /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 9E0A1B2C3D4E5F67A0B1C2E3 /* EdgeTiltLiveActivity */;
+			targetProxy = 0F7A8B9C0D1E2F34A7B8C9EA /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 /* Begin XCBuildConfiguration section */
 		12390625FE9E728F499BFEDD /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -249,6 +365,7 @@
 				INFOPLIST_FILE = EdgeTilt/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Edge;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Edge uses the camera for chat and Lounge video calls, scanning, and photo uploads.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Edge uses your location to show nearby casinos and location-aware poker tools while you use the app.";
@@ -354,6 +471,7 @@
 				INFOPLIST_FILE = EdgeTilt/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Edge;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Edge uses the camera for chat and Lounge video calls, scanning, and photo uploads.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Edge uses your location to show nearby casinos and location-aware poker tools while you use the app.";
@@ -536,6 +654,7 @@
 				INFOPLIST_FILE = EdgeTilt/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = Edge;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.social-networking";
 				INFOPLIST_KEY_NSCameraUsageDescription = "Edge uses the camera for chat and Lounge video calls, scanning, and photo uploads.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Edge uses your location to show nearby casinos and location-aware poker tools while you use the app.";
@@ -557,6 +676,93 @@
 			};
 			name = Debug;
 		};
+
+		2F9A0B1C2D3E4F56A9B0C1EC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 100;
+				DEVELOPMENT_TEAM = 8932AKQW4W;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EdgeTiltLiveActivity/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Edge;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.4.95;
+				PRODUCT_BUNDLE_IDENTIFIER = com.edgetilt.app.LiveActivity;
+				PRODUCT_NAME = EdgeTiltLiveActivity;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG EDGE_ENV_TEST";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		3F0A1B2C3D4E5F67A0B1C2ED /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 100;
+				DEVELOPMENT_TEAM = 8932AKQW4W;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EdgeTiltLiveActivity/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Edge;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.4.95;
+				PRODUCT_BUNDLE_IDENTIFIER = com.edgetilt.app.LiveActivity;
+				PRODUCT_NAME = EdgeTiltLiveActivity;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) EDGE_ENV_PROD";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		4F1A2B3C4D5E6F78A1B2C3EE /* ReleaseTest */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 100;
+				DEVELOPMENT_TEAM = 8932AKQW4W;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EdgeTiltLiveActivity/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Edge;
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.4.95;
+				PRODUCT_BUNDLE_IDENTIFIER = com.edgetilt.app.LiveActivity;
+				PRODUCT_NAME = EdgeTiltLiveActivity;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) EDGE_ENV_TEST";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = ReleaseTest;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -576,6 +782,17 @@
 				90066102A31473E643D626CB /* Debug */,
 				A8C6794CA810DA7DD9153AAA /* Release */,
 				3B9D6E07C41A85F2D0736C19 /* ReleaseTest */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+
+		5F2A3B4C5D6E7F89A2B3C4EF /* Build configuration list for PBXNativeTarget "EdgeTiltLiveActivity" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				2F9A0B1C2D3E4F56A9B0C1EC /* Debug */,
+				3F0A1B2C3D4E5F67A0B1C2ED /* Release */,
+				4F1A2B3C4D5E6F78A1B2C3EE /* ReleaseTest */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;

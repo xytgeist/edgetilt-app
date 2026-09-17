@@ -4,7 +4,7 @@
  */
 
 import { fetchActiveBankrollSession } from '../../utils/nearbyCasinos.js'
-import { pokerSessionIsPaused } from '../poker-bankroll/pokerBankrollMath.js'
+import { pokerSessionElapsedSeconds, pokerSessionIsPaused } from '../poker-bankroll/pokerBankrollMath.js'
 import { pokerSessionStakesLabel } from '../poker-bankroll/pokerSessionLabels.js'
 
 const POKER_ACTIVE_SELECT =
@@ -55,15 +55,15 @@ export async function fetchActivePokerBankrollSessions(supabase, userId) {
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {{ userId?: string | null }} [opts]
  * @returns {Promise<{
- *   slots: { kind: 'slots', id: string, label: string, paused: false, startAt: string | null } | null,
- *   poker: { kind: 'poker', id: string, label: string, paused: boolean, startAt: string | null } | null,
+ *   slots: { kind: 'slots', id: string, label: string, paused: false, startAt: string | null, elapsedSeconds: number } | null,
+ *   poker: { kind: 'poker', id: string, label: string, paused: boolean, startAt: string | null, elapsedSeconds: number } | null,
  *   pokerCount: number,
  * }>}
  */
 export async function fetchActiveLiveSessions(supabase, { userId = null } = {}) {
-  /** @type {{ kind: 'slots', id: string, label: string, paused: false, startAt: string | null } | null} */
+  /** @type {{ kind: 'slots', id: string, label: string, paused: false, startAt: string | null, elapsedSeconds: number } | null} */
   let slots = null
-  /** @type {{ kind: 'poker', id: string, label: string, paused: boolean, startAt: string | null } | null} */
+  /** @type {{ kind: 'poker', id: string, label: string, paused: boolean, startAt: string | null, elapsedSeconds: number } | null} */
   let poker = null
   let pokerCount = 0
 
@@ -79,6 +79,7 @@ export async function fetchActiveLiveSessions(supabase, { userId = null } = {}) 
       label: slotsLiveSessionLabel(slotsRow),
       paused: false,
       startAt: slotsRow.start_at ? String(slotsRow.start_at) : null,
+      elapsedSeconds: slotsElapsedSeconds(slotsRow.start_at),
     }
   }
 
@@ -92,6 +93,7 @@ export async function fetchActiveLiveSessions(supabase, { userId = null } = {}) 
       label: pokerLiveSessionLabel(newest),
       paused: pokerSessionIsPaused(newest),
       startAt: newest.start_at ? String(newest.start_at) : null,
+      elapsedSeconds: pokerSessionElapsedSeconds(newest),
     }
   }
 
@@ -100,6 +102,12 @@ export async function fetchActiveLiveSessions(supabase, { userId = null } = {}) 
 
 /** Dispatched after local bankroll start/end/pause so the title chip can refresh. */
 export const LIVE_BANKROLL_SESSIONS_CHANGED_EVENT = 'edge-live-bankroll-sessions-changed'
+
+function slotsElapsedSeconds(startAt) {
+  const start = Date.parse(String(startAt || ''))
+  if (!Number.isFinite(start)) return 0
+  return Math.max(0, Math.floor((Date.now() - start) / 1000))
+}
 
 export function notifyLiveBankrollSessionsChanged() {
   if (typeof window === 'undefined') return

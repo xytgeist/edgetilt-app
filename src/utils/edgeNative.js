@@ -559,6 +559,33 @@ export async function tryAssignEdgeScannedDocuments(input, opts = {}) {
   }
 }
 
+/**
+ * Mirror live slots / poker sessions onto the iPhone Dynamic Island / Lock Screen.
+ * Old IPA / PWA / Live Activities disabled → `{ ok: false }` so the title chip stays.
+ *
+ * @param {{
+ *   slots?: { id?: string, label?: string, startAt?: string | null, elapsedSeconds?: number } | null,
+ *   poker?: { id?: string, label?: string, paused?: boolean, startAt?: string | null, elapsedSeconds?: number } | null,
+ * }} [payload]
+ * @returns {Promise<Record<string, unknown>>}
+ */
+export async function syncEdgeLiveBankrollActivity(payload = {}) {
+  if (typeof window === 'undefined' || !isEdgeiOSShell()) {
+    return { ok: false, via: 'web' }
+  }
+  if (typeof window.EdgeNative?.syncLiveBankrollActivity !== 'function') {
+    return { ok: false, via: 'missing' }
+  }
+  try {
+    return await edgeNativeInvoke('syncLiveBankrollActivity', {
+      slots: payload?.slots || null,
+      poker: payload?.poker || null,
+    })
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
 /** @param {unknown} value */
 function normalizePushStatus(value) {
   const s = String(value || '').trim().toLowerCase()

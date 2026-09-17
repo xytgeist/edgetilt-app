@@ -114,10 +114,18 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
   }
 
   /// `edgetilt://auth/confirm?token_hash=&type=` from Gmail / in-app browsers that ignore Universal Links.
+  /// `edgetilt://live-session?tab=bankroll` / `poker-bankroll` from the Live Activity.
   func handleCustomSchemeLink(_ url: URL) {
-    guard let httpsURL = Self.httpsConfirmURL(fromCustomScheme: url) else { return }
-    DispatchQueue.main.async {
-      self.openDeepLink(httpsURL)
+    if let httpsURL = Self.httpsConfirmURL(fromCustomScheme: url) {
+      DispatchQueue.main.async {
+        self.openDeepLink(httpsURL)
+      }
+      return
+    }
+    if let httpsURL = Self.httpsLiveSessionURL(fromCustomScheme: url) {
+      DispatchQueue.main.async {
+        self.openDeepLink(httpsURL)
+      }
     }
   }
 
@@ -141,6 +149,17 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
     guard isConfirm else { return nil }
     var comps = URLComponents(url: AppConfig.baseURL, resolvingAgainstBaseURL: false)
     comps?.path = "/auth/confirm"
+    comps?.query = url.query
+    return comps?.url
+  }
+
+  /// `edgetilt://live-session?tab=&pokerSession=` → `https://<site>/?tab=&pokerSession=`
+  static func httpsLiveSessionURL(fromCustomScheme url: URL) -> URL? {
+    guard url.scheme?.lowercased() == "edgetilt" else { return nil }
+    let host = url.host?.lowercased() ?? ""
+    guard host == "live-session" else { return nil }
+    var comps = URLComponents(url: AppConfig.baseURL, resolvingAgainstBaseURL: false)
+    comps?.path = "/"
     comps?.query = url.query
     return comps?.url
   }

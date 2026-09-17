@@ -47,6 +47,9 @@ targets:
     dependencies:
       - package: LiveKit
         product: LiveKit
+      - target: EdgeTiltLiveActivity
+        embed: true
+        codeSign: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.edgetilt.app
@@ -61,6 +64,34 @@ targets:
           TARGETED_DEVICE_FAMILY: "1,2"
         Release:
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) EDGE_ENV_PROD"
+          SWIFT_OPTIMIZATION_LEVEL: -O
+
+  EdgeTiltLiveActivity:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: EdgeTiltLiveActivity
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.edgetilt.app.LiveActivity
+        PRODUCT_NAME: EdgeTiltLiveActivity
+        INFOPLIST_FILE: EdgeTiltLiveActivity/Info.plist
+        GENERATE_INFOPLIST_FILE: YES
+        SKIP_INSTALL: YES
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        MARKETING_VERSION: "1.4.95"
+        INFOPLIST_KEY_CFBundleDisplayName: Edge
+        INFOPLIST_KEY_NSSupportsLiveActivities: YES
+      configs:
+        Debug:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) DEBUG EDGE_ENV_TEST"
+        Release:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) EDGE_ENV_PROD"
+          SWIFT_OPTIMIZATION_LEVEL: -O
+        ReleaseTest:
+          SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) EDGE_ENV_TEST"
           SWIFT_OPTIMIZATION_LEVEL: -O
 
 schemes:

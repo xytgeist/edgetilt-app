@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { syncEdgeLiveBankrollActivity } from '../../utils/edgeNative.js'
 import {
   fetchActiveLiveSessions,
   LIVE_BANKROLL_SESSIONS_CHANGED_EVENT,
@@ -15,6 +16,8 @@ export function useActiveLiveSessions(supabase, { enabled = true, userId = null 
   const [poker, setPoker] = useState(null)
   const [pokerCount, setPokerCount] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [nativeIslandActive, setNativeIslandActive] = useState(false)
+  const [islandHydrated, setIslandHydrated] = useState(false)
   const hasLiveRef = useRef(false)
 
   const refresh = useCallback(async () => {
@@ -23,6 +26,8 @@ export function useActiveLiveSessions(supabase, { enabled = true, userId = null 
       setPoker(null)
       setPokerCount(0)
       hasLiveRef.current = false
+      setNativeIslandActive(false)
+      setIslandHydrated(false)
       return
     }
     setLoading(true)
@@ -36,6 +41,7 @@ export function useActiveLiveSessions(supabase, { enabled = true, userId = null 
       // Keep last good snapshot on transient errors.
     } finally {
       setLoading(false)
+      setIslandHydrated(true)
     }
   }, [supabase, enabled, userId])
 
@@ -45,6 +51,9 @@ export function useActiveLiveSessions(supabase, { enabled = true, userId = null 
       setPoker(null)
       setPokerCount(0)
       hasLiveRef.current = false
+      setNativeIslandActive(false)
+      setIslandHydrated(false)
+      void syncEdgeLiveBankrollActivity({ slots: null, poker: null })
       return undefined
     }
 
@@ -72,12 +81,43 @@ export function useActiveLiveSessions(supabase, { enabled = true, userId = null 
     }
   }, [supabase, enabled, refresh])
 
+  useEffect(() => {
+    if (enabled && !islandHydrated) return undefined
+    let cancelled = false
+    void syncEdgeLiveBankrollActivity({
+      slots: slots
+        ? {
+            id: slots.id,
+            label: slots.label,
+            startAt: slots.startAt,
+            elapsedSeconds: slots.elapsedSeconds,
+          }
+        : null,
+      poker: poker
+        ? {
+            id: poker.id,
+            label: poker.label,
+            paused: poker.paused,
+            startAt: poker.startAt,
+            elapsedSeconds: poker.elapsedSeconds,
+          }
+        : null,
+    }).then((result) => {
+      if (cancelled) return
+      setNativeIslandActive(Boolean(result?.ok && result?.supported && !result?.disabled))
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [slots, poker, enabled, islandHydrated])
+
   return {
     slots,
     poker,
     pokerCount,
     loading,
     hasLive: Boolean(slots || poker),
+    nativeIslandActive,
     refresh,
   }
 }

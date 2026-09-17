@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-16 … live sessions on the Dynamic Island
+
+**I am Mac Theo.** Live slots / poker title-bar chips now start an ActivityKit Live Activity on the IPA (`syncLiveBankrollActivity`). Island + Lock Screen. Web chip hides when the Island is actually running. New Test Fast IPA. Frontend **`1.4.282`**. Not in the in-review **1.4.95** upload.
+
 ### Windows Theo 2026-09-16 … AP Slots intro prod sign-off
 
 **I am Windows Theo.** Ryan smoke PASSED on **edgetilt.com**: hub → join → email confirm still AP Slots-only. **`1.4.276`**.

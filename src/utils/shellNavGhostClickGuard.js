@@ -4,6 +4,9 @@
  * portaled Lounge dock Home chip, which snaps the user back to Lounge.
  *
  * Same capture pattern as LoungeDockArcCarouselPrototype pointer guard.
+ *
+ * Important: only shield dock/FAB chrome. A full-document swallow blocked the first
+ * intentional tap on Slots/Poker hub tools for the whole guard window.
  */
 
 const CAPTURE_EVENTS = [
@@ -17,6 +20,9 @@ const CAPTURE_EVENTS = [
   'touchstart',
 ]
 
+/** Dock / Home chrome that must ignore ghost taps after leaving Lounge. */
+const DOCK_GHOST_TARGET_SELECTOR = '[data-lounge-dock-fab-host]'
+
 /** Home dock / logo need a bit longer than in-menu wheel taps (matches dock AWAY_HOME). */
 export const SHELL_NAV_GHOST_CLICK_GUARD_MS = 1200
 
@@ -25,7 +31,13 @@ let timerId = 0
 /** performance.now() deadline — Lounge dock Home must ignore "away" navigations until then. */
 let suppressLoungeHomeUntil = 0
 
+function isDockGhostTarget(e) {
+  const el = e.target instanceof Element ? e.target : null
+  return Boolean(el?.closest?.(DOCK_GHOST_TARGET_SELECTOR))
+}
+
 function block(e) {
+  if (!isDockGhostTarget(e)) return
   e.preventDefault()
   e.stopPropagation()
   if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation()
@@ -50,8 +62,9 @@ export function isShellNavLoungeHomeSuppressed() {
 }
 
 /**
- * Swallow pointer/click events at document capture for `durationMs`.
+ * Swallow pointer/click events on dock/FAB chrome at document capture for `durationMs`.
  * Call immediately before setTab / setMenuOpen(false) when leaving Lounge via chrome.
+ * Hub content taps stay live (Home still suppressed via isShellNavLoungeHomeSuppressed).
  */
 export function armShellNavGhostClickGuard(durationMs = SHELL_NAV_GHOST_CLICK_GUARD_MS) {
   if (typeof document === 'undefined') return

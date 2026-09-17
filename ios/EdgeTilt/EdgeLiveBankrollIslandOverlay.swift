@@ -63,7 +63,8 @@ final class EdgeLiveBankrollIslandOverlay: NSObject {
 
   func attach(webView: WKWebView) {
     self.webView = webView
-    guard let parent = webView.superview ?? webView.window else { return }
+    let parent = webView.window ?? webView.superview
+    guard let parent else { return }
     if pill.superview !== parent {
       parent.addSubview(pill)
     }

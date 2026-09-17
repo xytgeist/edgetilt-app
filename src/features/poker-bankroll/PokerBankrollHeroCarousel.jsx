@@ -130,7 +130,7 @@ const PokerBankrollHeroCarousel = forwardRef(function PokerBankrollHeroCarousel(
     let t = 0
     const scheduleEmit = () => {
       window.clearTimeout(t)
-      t = window.setTimeout(() => emitCenteredIfNeeded(), 80)
+      t = window.setTimeout(() => emitCenteredIfNeeded(), 50)
     }
     const onScroll = () => {
       scheduleEmit()

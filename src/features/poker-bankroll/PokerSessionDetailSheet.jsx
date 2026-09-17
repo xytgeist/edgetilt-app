@@ -585,10 +585,10 @@ export default function PokerSessionDetailSheet({
                 </span>
               ) : null}
             </div>
-            <div className="flex items-start gap-2">
+            <div className="flex items-center gap-2.5">
               <span
                 data-poker-session-type-icon={isTourney ? 'tournament' : 'cash'}
-                className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
                   isTourney ? 'bg-amber-500/15 text-amber-300' : 'bg-zinc-800 text-zinc-300'
                 }`}
                 aria-hidden
@@ -599,7 +599,7 @@ export default function PokerSessionDetailSheet({
                   <DollarSign className="h-4 w-4" strokeWidth={2.25} />
                 )}
               </span>
-              <h2 className="text-lg font-bold leading-snug text-white">
+              <h2 className="min-w-0 text-3xl font-black leading-9 text-white">
                 {pokerSessionStakesLabel(session)}
               </h2>
             </div>

@@ -2400,7 +2400,7 @@ export default function PokerBankrollTracker({
 
   /**
    * Prefer the visually centered hero card when Start/Log is tapped mid-swipe
-   * (scroll→scope debounce can lag ~80ms). Only ignore a Personal visual during
+   * (scroll→scope debounce can lag ~50ms). Only ignore a Personal visual during
    * restore/programmatic scroll, when scrollLeft=0 can still be the last stake.
    */
   function resolveDealForSessionPrefill() {

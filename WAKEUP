@@ -64,6 +64,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Windows Theo.** Ryan smoke PASSED on **edgetilt.com**: hub → join → email confirm still AP Slots-only. **`1.4.276`**.
 
+### Mac Theo 2026-09-16 … Swipe 50ms + session title size
+
+**I am Mac Theo.** Carousel quiet-window 50ms. Live session detail game title is 36px-line `text-3xl` next to the type icon. **`1.4.281`** on **`test`**.
+
 ### Mac Theo 2026-09-16 … Bankroll carousel ledger follows swipe
 
 **I am Mac Theo.** Swiping to a stake card left Personal history mounted (Closed stake banners + other piece sessions). Scroll→scope debounce was dropped on re-render. **`1.4.280`** on **`test` + `main`**.

@@ -60,9 +60,13 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-16 … Cancelled invite no longer says swap not found
+
+**I am Mac Theo.** Gmail dots stay **different** Auth accounts. Reverted the Gmail-alias merge. Confirm-email "swap not found" was a leftover cancelled invite token. Cancelled says cancelled. Dead tokens do not reopen the claim page. Exact-email by-email still attaches the live invite. SQL **`20260917130000`** on **test**. **`1.4.263`** on **`test`**.
+
 ### Mac Theo 2026-09-16 … Gmail-dot swap claim + cancelled invite copy
 
-**I am Mac Theo.** Confirm-email "swap not found" was a cancelled invite token plus Gmail treating `lv.slotgod` and `lvslot.god` as one inbox but two Auth users. Claim RPCs now match Gmail dots/plus-tags. Cancelled invites say cancelled. Dead tokens do not reopen the claim page. SQL **`20260917120000`** on **test**. **`1.4.262`** on **`test`**.
+**I am Mac Theo.** **Reverted.** Gmail dots stay separate accounts. **`1.4.262`** was the alias attempt on **test**. Use **`1.4.263`**.
 
 ### Mac Theo 2026-09-16 … Multi-guest text invite share sheet
 

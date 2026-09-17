@@ -534,7 +534,7 @@ Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`**
 
 ## Update log
 
-- **2026-09-16:** **Start Session tournament dates + Edge avatars:** picker labels always include the event date (Today / Tomorrow / `Tue 9/16`) even when a start time is set. Log Play **Add partner** and swap **+Edge user** rows show Lounge avatars or initials. Guests stay text-only. Frontend **`1.4.267`**.
+- **2026-09-16:** **Start Session tournament dates + Edge avatars:** picker labels always include the event date (Today / Tomorrow / `Tue 9/16`) even when a start time is set. Log Play **Add partner** and swap **+Edge user** rows show Lounge avatars or initials. Guests stay text-only. Frontend **`1.4.267`** via **`test` → `main`**.
 - **2026-09-14:** **Guest claim tokens on signup metadata:** swap/stake/slice copy-link invites store the token on the new account so confirm-in-app still attaches.
 - **2026-09-14:** **Guest invite SMS copy:** `{name} is swapping … from EdgeTilt` (no `.com` in the body). Claim URL is the only link.
 - **2026-09-14:** **Guest invite nametag + claim copy:** mint text uses Lounge `display_name` / `@handle`. Claim auth copy mentions invitation email only when `guest_email` is set.

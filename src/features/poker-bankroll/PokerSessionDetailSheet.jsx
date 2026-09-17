@@ -3,10 +3,13 @@ import { useState } from 'react'
 import { shareViaBestAvailable } from '../../utils/edgeNative.js'
 import { APP_MODAL_OVERLAY_CLASS } from '../../constants/appZIndex.js'
 import { POKER_SHEET_PANEL_CLASS } from './pokerBankrollTrackerSheet.js'
-import { isPieceDealType } from '../poker-stable/pokerStableMath.js'
+import { isPieceDealType, roundMoney } from '../poker-stable/pokerStableMath.js'
+import { backerSliceAllocatedCapital } from '../poker-stable/pokerStableBackerMath.js'
+import { sliceTermsSummary } from '../poker-stable/pokerStableTerms.js'
 import {
   computeSessionAttribution,
   sessionAttributionAmountClass,
+  slicesCountedForSessionTerms,
 } from './pokerSessionAttribution.js'
 import {
   fmtPoker$,
@@ -28,7 +31,6 @@ import {
   resolveGuestInviteActorName,
   sliceIsUnclaimedGuestBacker,
 } from './pokerGuestInviteShare.js'
-import { sliceCounterpartyDisplayName } from '../poker-stable/pokerStableTerms.js'
 import {
   swapIsMarkedPaid,
   swapOtherPartyLabel,
@@ -126,12 +128,35 @@ function PartyLine({ label, detail, amount, emphasize = false }) {
   )
 }
 
-function GuestBackerShareBlock({ slices, deal, supabaseClient, userId, profilesById }) {
+function liveBackerSliceCapital(deal, slice, session) {
+  const actionPct = Number(slice?.action_pct ?? slice?.actionPct) || 0
+  const invested = session ? pokerSessionTotalCost(session) : 0
+  if (invested > 0.005 && actionPct > 0) {
+    return roundMoney(invested * (actionPct / 100))
+  }
+  return backerSliceAllocatedCapital(deal, slice)
+}
+
+function liveBackerTermLines(deal, slice, session, profilesById) {
+  const summary = sliceTermsSummary(slice, profilesById, { deal, playerName: 'You' })
+  const capital = liveBackerSliceCapital(deal, slice, session)
+  const lines = [...summary.lines]
+  if (capital > 0.005) {
+    const actionIdx = lines.findIndex((line) => line.label === 'Action')
+    lines.splice(actionIdx >= 0 ? actionIdx + 1 : 0, 0, {
+      label: 'Backing',
+      value: fmtPoker$(capital),
+    })
+  }
+  return { name: summary.name, lines }
+}
+
+function GuestBackerShareBlock({ slices, deal, session, supabaseClient, userId, profilesById }) {
   const [inviteById, setInviteById] = useState({})
   const [busyId, setBusyId] = useState('')
   const [localError, setLocalError] = useState('')
-  const guests = (slices || []).filter(sliceIsUnclaimedGuestBacker)
-  if (!guests.length) return null
+  const backers = slicesCountedForSessionTerms(deal, slices)
+  if (!backers.length) return null
 
   async function shareSlice(slice) {
     if (!supabaseClient || !slice?.id) return
@@ -172,30 +197,55 @@ function GuestBackerShareBlock({ slices, deal, supabaseClient, userId, profilesB
       data-poker-session-guest-backers
     >
       <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-cyan-200/80">
-        Guest backers
+        Backers
       </p>
-      <div className="space-y-2">
-        {guests.map((slice) => {
-          const name = sliceCounterpartyDisplayName(slice, profilesById)
+      <div className="space-y-3">
+        {backers.map((slice, idx) => {
+          const { name, lines } = liveBackerTermLines(deal, slice, session, profilesById)
           const invite = inviteById[slice.id]
+          const canShare = sliceIsUnclaimedGuestBacker(slice)
+          const pending = slice.status === 'pending'
           return (
-            <div key={slice.id}>
-              <div className="flex items-center justify-between gap-2">
-                <span className="min-w-0 truncate text-sm font-semibold text-white">{name}</span>
-                <button
-                  type="button"
-                  disabled={busyId === slice.id}
-                  data-poker-guest-invite-copy-btn
-                  onClick={() => void shareSlice(slice)}
-                  className="shrink-0 rounded-lg border border-cyan-500/35 px-2 py-1 text-[11px] font-semibold text-cyan-200 touch-manipulation active:bg-cyan-950/40 disabled:opacity-50"
-                >
-                  {busyId === slice.id
-                    ? 'Preparing…'
-                    : invite
-                      ? 'Refresh invite'
-                      : 'Share invite'}
-                </button>
+            <div
+              key={slice.id}
+              data-poker-session-live-backer
+              className={idx > 0 ? 'border-t border-cyan-500/20 pt-3' : undefined}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <span className="block truncate text-sm font-semibold text-white">{name}</span>
+                  {pending ? (
+                    <span className="mt-0.5 block text-[11px] font-medium text-zinc-500">
+                      Waiting to accept
+                    </span>
+                  ) : null}
+                </div>
+                {canShare ? (
+                  <button
+                    type="button"
+                    disabled={busyId === slice.id}
+                    data-poker-guest-invite-copy-btn
+                    onClick={() => void shareSlice(slice)}
+                    className="shrink-0 rounded-lg border border-cyan-500/35 px-2 py-1 text-[11px] font-semibold text-cyan-200 touch-manipulation active:bg-cyan-950/40 disabled:opacity-50"
+                  >
+                    {busyId === slice.id
+                      ? 'Preparing…'
+                      : invite
+                        ? 'Refresh invite'
+                        : 'Share invite'}
+                  </button>
+                ) : null}
               </div>
+              <dl className="mt-2 space-y-1" data-poker-session-backer-terms>
+                {lines.map((line) => (
+                  <div key={line.label} className="flex items-start justify-between gap-3">
+                    <dt className="shrink-0 text-[11px] font-medium text-zinc-500">{line.label}</dt>
+                    <dd className="min-w-0 text-right text-[12px] font-medium leading-snug text-zinc-200">
+                      {line.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
               {invite ? (
                 <div className="mt-2">
                   <PokerGuestInviteCopyCard
@@ -865,6 +915,7 @@ export default function PokerSessionDetailSheet({
           <GuestBackerShareBlock
             slices={slices}
             deal={deal}
+            session={session}
             supabaseClient={supabaseClient}
             userId={userId}
             profilesById={stableProfilesById}

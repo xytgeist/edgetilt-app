@@ -5866,8 +5866,17 @@ html.light [data-poker-session-detail] [data-poker-session-guest-backers] .text-
 html.light [data-poker-session-detail] [data-poker-session-guest-backers] .text-white {
   color: #18181b !important;
 }
-html.light [data-poker-session-detail] [data-poker-session-guest-backers] .text-rose-400 {
-  color: #9f1239 !important;
+html.light [data-poker-session-detail] [data-poker-session-guest-backers] .text-zinc-200 {
+  color: #18181b !important;
+}
+html.light [data-poker-session-detail] [data-poker-session-guest-backers] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-poker-session-detail] [data-poker-session-guest-backers] .text-cyan-200 {
+  color: #0e7490 !important;
+}
+html.light [data-poker-session-detail] [data-poker-session-live-backer] {
+  border-color: rgba(8, 145, 178, 0.22) !important;
 }
 html.light [data-poker-session-detail] .text-emerald-300,
 html.light [data-poker-session-detail] .text-emerald-400,

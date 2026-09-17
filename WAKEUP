@@ -64,6 +64,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Windows Theo.** Ryan smoke PASSED on **edgetilt.com**: hub → join → email confirm still AP Slots-only. **`1.4.276`**.
 
+### Mac Theo 2026-09-16 … Live session backers terms
+
+**I am Mac Theo.** Live Sell Action session detail Backers card now shows action %, backing $, and profit split (guests + Edge). Share invite still on unclaimed guests. **`1.4.278`** on **`test`**. Not on **`main`** yet.
+
 ### Mac Theo 2026-09-16 … Backing Bankroll loan display
 
 **I am Mac Theo.** Auto top-up was inflating Backing Bankroll and Portfolio. Hero now treats it as a loan: $704 book + $2500 Sell Action → Backing −$1796, Portfolio $704. **`1.4.277`** on **`test` + `main`**.

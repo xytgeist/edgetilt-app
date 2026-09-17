@@ -534,6 +534,7 @@ Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`**
 
 ## Update log
 
+- **2026-09-16:** **Live session backers card shows terms:** Sell Action / piece session detail lists every backer (guest + Edge) with action %, backing $, and profit split while the session is open. Share invite stays on unclaimed guests. Frontend **`1.4.278`** on **`test`**.
 - **2026-09-16:** **Backing Bankroll excludes auto-top-up loans:** hero reconstructs owned deposits + realized − open allocations. `auto_top_up` / `seed_reverse` stay on the ledger and TWR, but do not inflate Backing Bankroll or Portfolio. $704 book + $2500 Sell Action → Backing **−$1796**, Portfolio **$704**. Frontend **`1.4.277`** via **`test` → `main`**.
 - **2026-09-16:** **Guest claim Google/Apple matching reverted.** `20260917300000` treated Gmail dots as the same mailbox for OAuth. That was a tester alias (`lvs.lotgod` vs Google `lvslotgod`), not a product bug. Rolled back on test with **`20260917310000`**. Invite email stays exact.
 - **2026-09-16:** **Sell Action +Edge user picker:** Start Session backer picker now reads `{ profiles }` from `PlayLogPartnerPickerModal` (same payload as swaps). Tapping an Edge user actually adds the draft card. Frontend **`1.4.271`** via **`test` → `main`**.

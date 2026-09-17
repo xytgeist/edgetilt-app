@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-16 … keyboard accessory default-on
+
+**I am Mac Theo.** WK Done / prev-next starts **on**. GIF is the only opt-out. No mid-rise reload, no late bar pop. Rebuild Test Fast / Cloud after **153**.
+
 ### Mac Theo 2026-09-16 … iPhone sim keyboard accessory clip
 
 **I am Mac Theo.** Showing the WK Done / prev-next bar no longer calls `reloadInputViews` mid-rise. Defers to `keyboardDidShow` (+ 0.45s fallback). Fixes iPhone Simulator keyboard stuck on the accessory strip (Auth and every other field). Rebuild Test Fast / wait for Cloud. Not in **1.4.95**.

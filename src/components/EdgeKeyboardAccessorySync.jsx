@@ -1,40 +1,17 @@
 import { useEffect } from 'react'
 import { isEdgeiOSShell, setEdgeKeyboardAccessoryVisible } from '../utils/edgeNative.js'
 
-const SKIP_INPUT_TYPES = new Set([
-  'button',
-  'submit',
-  'reset',
-  'checkbox',
-  'radio',
-  'file',
-  'hidden',
-  'image',
-  'range',
-  'color',
-])
-
-function isKeyboardField(el) {
-  if (!(el instanceof HTMLElement) || el.disabled) return false
-  if (el instanceof HTMLTextAreaElement) return !el.readOnly
-  if (el instanceof HTMLSelectElement) return true
-  if (el instanceof HTMLInputElement) {
-    if (el.readOnly) return false
-    return !SKIP_INPUT_TYPES.has(String(el.type || 'text').toLowerCase())
-  }
-  return Boolean(el.isContentEditable)
-}
-
+/**
+ * Native default is accessory **on**. Only GIF search opts out.
+ * Do not set false on blur / non-fields ... that forces false→true on the
+ * next focus and re-breaks the iPhone keyboard rise.
+ */
 function shouldShowAccessory(el) {
-  if (!isKeyboardField(el)) return false
+  if (!(el instanceof HTMLElement)) return true
   if (el.closest('.klipy-gif-sheet, [data-klipy-gif-picker]')) return false
   return true
 }
 
-/**
- * IPA hides the WK Done / prev-next bar by default. Turn the **system**
- * accessory back on while a real field is focused. GIF search stays hidden.
- */
 export default function EdgeKeyboardAccessorySync() {
   useEffect(() => {
     if (typeof window === 'undefined' || !isEdgeiOSShell()) return undefined
@@ -62,7 +39,6 @@ export default function EdgeKeyboardAccessorySync() {
       document.removeEventListener('focusin', onFocusIn)
       document.removeEventListener('focusout', onFocusOut)
       last = null
-      void setEdgeKeyboardAccessoryVisible(false)
     }
   }, [])
 

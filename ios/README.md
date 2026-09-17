@@ -12,7 +12,7 @@ Thin native loader for the live Edge site. **Not Capacitor.** No baked Vite `dis
 - Bundle ID: `com.edgetilt.app`
 - Shell version / UA token: `EdgeiOS/0.1.0` (see `AppConfig.swift`)
 - Bridge: `window.EdgeNative` … contract **`docs/ios-native-bridge.md`**
-- **Keyboard accessory:** `WKContentView` `inputAccessoryView` is replaced with `nil` by default. Focused fields opt back in via `EdgeNative.setKeyboardAccessory({ visible: true })` (`EdgeKeyboardAccessorySync` in AppShell). GIF search stays hidden. Safari / PWA keep that bar. See `EdgeWebKitKeyboard.swift`.
+- **Keyboard accessory:** WK Done / prev-next starts **on**. GIF search opts out via `EdgeNative.setKeyboardAccessory({ visible: false })` (`EdgeKeyboardAccessorySync` in AppShell). Avoids mid-rise `reloadInputViews` on iPhone. Safari / PWA unchanged. See `EdgeWebKitKeyboard.swift`.
 - **Keyboard dismiss:** `WKWebView.scrollView.keyboardDismissMode = .interactive` (swipe down). Lounge Pro composer also blurs on a downward swipe when the write field is focused.
 - **Audio:** boot + becomeActive apply `AVAudioSession` `.playback` (ignores Ring/Silent) unless a call already owns `.playAndRecord`. Lounge Tap for sound also calls `EdgeNative.setAudioSession({ mode: 'playback' })`.
 - **Safe area:** WebView is **edge-to-edge** (`.ignoresSafeArea()`). Native injects `--edge-sat|sar|sab|sal` from **window / SwiftUI geometry** insets (not `webView.safeAreaInsets`, which SwiftUI zeroes under ignoresSafeArea). Web uses `max(env(safe-area-inset-*), var(--edge-*))`. See `EdgeSafeAreaInsets.swift` + `src/utils/edgeSafeAreaCss.js`.

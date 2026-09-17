@@ -2,25 +2,24 @@ import ObjectiveC
 import UIKit
 import WebKit
 
-/// Default: hide WKWebView's extra bar above the software keyboard (Done / prev-next).
-/// Focused fields opt back into the **system** accessory via `setShowsAccessoryBar`.
-/// GIF search stays hidden.
+/// System WK Done / prev-next accessory is **on by default**.
+/// GIF search (and anything else that opts out) calls `setShowsAccessoryBar(false)`.
+///
+/// Default-on matters: the Sep 12 “opt in on focusin” path set the flag then
+/// `reloadInputViews` while the iPhone keyboard was rising, which either clipped
+/// the keys to accessory height or made the bar pop in ~200ms late.
+/// With the bar already enabled, Auth / Lounge / chat never flip mid-rise.
 ///
 /// The focused view is usually internal `WKContentView`, not `WKWebView`, so a
 /// subclass override alone is not enough. Replacing that getter is the same
 /// public-API pattern Capacitor uses. Safari / PWA cannot do this.
-///
-/// Do **not** call `reloadInputViews` while the iPhone keyboard is still rising.
-/// That clips the body to accessory height on iPhone Simulator (Auth / any field).
 enum EdgeWebKitKeyboard {
   private static var didInstall = false
   private static var originalAccessoryIMP: IMP?
   private static let accessorySelector = NSSelectorFromString("inputAccessoryView")
 
-  private static var pendingShowObserver: NSObjectProtocol?
-  private static var pendingShowFallback: DispatchWorkItem?
-
-  private(set) static var showsAccessoryBar = false
+  /// On unless GIF (or another caller) opts out. Do not start `false`.
+  private(set) static var showsAccessoryBar = true
 
   static func hideAccessoryBar() {
     guard !didInstall else { return }
@@ -46,46 +45,10 @@ enum EdgeWebKitKeyboard {
     showsAccessoryBar = show
     guard changed else { return }
 
+    // Only GIF opt-out / restore hits this. Keyboard is usually already up.
     DispatchQueue.main.async {
-      cancelPendingShowReload()
-      if show {
-        scheduleShowReload(in: webView)
-      } else {
-        reloadInputViews(in: webView)
-      }
-    }
-  }
-
-  /// Attach the system accessory after the keyboard finishes presenting.
-  /// Immediate reload on focus races the rise and leaves only the accessory strip.
-  private static func scheduleShowReload(in webView: WKWebView?) {
-    let apply: () -> Void = {
-      cancelPendingShowReload()
-      guard showsAccessoryBar else { return }
       reloadInputViews(in: webView)
     }
-
-    pendingShowObserver = NotificationCenter.default.addObserver(
-      forName: UIResponder.keyboardDidShowNotification,
-      object: nil,
-      queue: .main
-    ) { _ in
-      apply()
-    }
-
-    // Field-to-field while the keyboard stays up never fires didShow again.
-    let fallback = DispatchWorkItem(block: apply)
-    pendingShowFallback = fallback
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.45, execute: fallback)
-  }
-
-  private static func cancelPendingShowReload() {
-    if let observer = pendingShowObserver {
-      NotificationCenter.default.removeObserver(observer)
-      pendingShowObserver = nil
-    }
-    pendingShowFallback?.cancel()
-    pendingShowFallback = nil
   }
 
   private static func reloadInputViews(in webView: WKWebView?) {

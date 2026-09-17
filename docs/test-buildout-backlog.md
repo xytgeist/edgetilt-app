@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-16:** **AP Slots Lounge intro survives email confirm (Windows).** Eligibility is localStorage, not session. Signup confirm redirect keeps `apSlotsLounge=1` so Gmail / new-tab verify still filters. **`1.4.276`**.
 - **2026-09-16:** **AP Slots Lounge intro actually keeps AP Slots pills (Windows).** Tribe RPC still shows untagged + mixed-pill rows, so exclude-other-tribes looked like a no-op. Intro now client-filters to rows with the `ap_slots` pill and pages until the first screen fills. **`1.4.275`**.
 - **2026-09-16:** **AP Slots Lounge intro filter (Windows).** First 2 Lounge visits from `/slots`, `/guides`, `/advantage-play-slots` (or in-app Slots/Guides) overlay AP Slots only. In-memory ... does not write Tribes prefs. Hub CTAs stamp `apSlotsLounge=1`. Tribes edit kills it. **`1.4.273`**.
 - **2026-09-16:** **Show password on auth (Windows).** Sign in, Create account, and reset-password fields get a show/hide eye. Light toggle scoped under `[data-auth-modal]`. **`1.4.272`**.

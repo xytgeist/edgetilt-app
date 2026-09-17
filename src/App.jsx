@@ -36,6 +36,10 @@ import {
   ensureMilitaryPromoStampFromUserMetadata,
   getMilitaryPromoCodeForCheckout,
 } from './features/billing/militaryPromoStamp.js'
+import {
+  authRedirectUrlWithApSlotsLoungeIntro,
+  consumeApSlotsLoungeIntroArrival,
+} from './utils/loungeApSlotsIntroFilter.js'
 import { useStarterWeeklyDropGuideSlugs } from './features/billing/useStarterWeeklyDropGuideSlugs.js'
 import { useStarterWeeklyDropPoolExhausted } from './features/billing/useStarterWeeklyDropPoolExhausted.js'
 import { PRODUCT_SLOTS_EDGE } from './features/billing/edgeProducts.js'
@@ -301,6 +305,7 @@ function App() {
       void (async () => {
         const pathname = window.location.pathname || '/'
         const search = window.location.search || ''
+        consumeApSlotsLoungeIntroArrival()
         const legalSlug = resolveLegalViewFromLocation(pathname, search)
         if (legalSlug) {
           setCurrentView(legalSlug)
@@ -1161,7 +1166,9 @@ function App() {
             ? stableClaimSignupEmailRedirectUrl()
             : signupFromSwapClaim
               ? swapClaimSignupEmailRedirectUrl()
-              : authRedirectUrlWithPromoStamps(`${window.location.origin}/`),
+              : authRedirectUrlWithApSlotsLoungeIntro(
+                  authRedirectUrlWithPromoStamps(`${window.location.origin}/`),
+                ),
         data: Object.keys(signupMeta).length ? signupMeta : undefined,
       },
     })

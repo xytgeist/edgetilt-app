@@ -102,11 +102,29 @@ function writeApSlotsLoungeIntroVisits(n) {
 }
 
 export function markApSlotsLoungeIntroEligible() {
-  writeStorage(window.sessionStorage, ELIGIBLE_STORAGE_KEY, '1')
+  writeStorage(window.localStorage, ELIGIBLE_STORAGE_KEY, '1')
 }
 
 export function isApSlotsLoungeIntroEligible() {
-  return readStorage(window.sessionStorage, ELIGIBLE_STORAGE_KEY) === '1'
+  return (
+    readStorage(window.localStorage, ELIGIBLE_STORAGE_KEY) === '1' ||
+    readStorage(window.sessionStorage, ELIGIBLE_STORAGE_KEY) === '1'
+  )
+}
+
+/** Email confirm often opens in Gmail / another profile ... keep the hub stamp on the redirect. */
+export function authRedirectUrlWithApSlotsLoungeIntro(baseUrl) {
+  const base = String(baseUrl || '').trim()
+  if (!base) return base
+  try {
+    const u = new URL(base, typeof window !== 'undefined' ? window.location.origin : base)
+    if (isApSlotsLoungeIntroEligible()) {
+      u.searchParams.set(AP_SLOTS_LOUNGE_INTRO_QUERY_PARAM, '1')
+    }
+    return u.toString()
+  } catch {
+    return base
+  }
 }
 
 export function endApSlotsLoungeIntroStay() {
@@ -116,7 +134,7 @@ export function endApSlotsLoungeIntroStay() {
 /** Tribes edit or Show all ... never re-apply on this device. */
 export function retireApSlotsLoungeIntro() {
   writeApSlotsLoungeIntroVisits(AP_SLOTS_LOUNGE_INTRO_MAX_VISITS)
-  writeStorage(window.sessionStorage, ELIGIBLE_STORAGE_KEY, '')
+  writeStorage(window.localStorage, ELIGIBLE_STORAGE_KEY, '')
   endApSlotsLoungeIntroStay()
 }
 

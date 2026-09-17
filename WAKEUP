@@ -64,6 +64,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Mac Theo.** Rolled back the Google/Apple Gmail-dot claim matching. That was a tester alias issue, not a product bug. SQL **`20260917310000`** restores exact email on **test**. Do not apply **`20260917300000`** on prod.
 
+### Windows Theo 2026-09-16 … AP Slots intro survives email confirm
+
+**I am Windows Theo.** Hub eligibility is now localStorage, and signup `emailRedirectTo` keeps `apSlotsLounge=1` so Gmail confirm still intro-filters after they land as a member. **`1.4.276`** on **`test`**.
+
 ### Windows Theo 2026-09-16 … AP Slots Lounge intro actually filters
 
 **I am Windows Theo.** Intro was on, but the tribe RPC still returns untagged + other-tribe rows, so Ryan still saw Sports etc. Now we keep only posts with the AP Slots pill and page until the screen fills. **`1.4.275`** on **`test`**.

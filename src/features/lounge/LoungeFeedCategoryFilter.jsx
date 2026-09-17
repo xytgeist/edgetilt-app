@@ -12,6 +12,7 @@ export default function LoungeFeedCategoryFilter({
   disabled = false,
   readOnly = false,
   onReadOnlyClick,
+  persist = true,
   className = '',
 }) {
   const excluded = Array.isArray(value) ? value : []
@@ -35,12 +36,12 @@ export default function LoungeFeedCategoryFilter({
     const next = loungePostCategoryPillOptions()
       .map((o) => o.slug)
       .filter((s) => set.has(s))
-    writeLoungeFeedCategoryFilter(next)
+    if (persist) writeLoungeFeedCategoryFilter(next)
     onChange?.(next)
   }
 
   const showAll = () => {
-    writeLoungeFeedCategoryFilter([])
+    if (persist) writeLoungeFeedCategoryFilter([])
     onChange?.([])
     setOpen(false)
   }

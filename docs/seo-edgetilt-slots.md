@@ -36,7 +36,7 @@ Vercel rewrites (before SPA catch-all):
 - `/poker/bankroll` → `poker-bankroll.html`
 - `/poker/stable` → `poker-stable.html`
 
-App deep links from hub CTAs (brand, Open app, primary Open-in-EdgeTilt buttons) add `auth=join` so a logged-out visitor lands on the SPA with Join / Sign in already open. Example: `/?tab=slots&auth=join`, brand `https://edgetilt.com/?auth=join`. Logged-in visits strip `auth` and skip the modal. Catalog links (`/?tab=guides&guide=:slug`) do **not** get `auth=` ... regenerating **`npm run seo:guides-index`** only rewrites the title list.
+App deep links from hub CTAs (brand, Open app, primary Open-in-EdgeTilt buttons) add `auth=join` so a logged-out visitor lands on the SPA with Join / Sign in already open. Example: `/?tab=slots&auth=join`, brand `https://edgetilt.com/?auth=join`. `/slots`, `/guides`, and `/advantage-play-slots` CTAs also stamp `apSlotsLounge=1` so the first couple Lounge visits intro-filter to AP Slots (in-memory only ... does not write Tribes prefs). Logged-in visits strip `auth` and skip the modal. Catalog links (`/?tab=guides&guide=:slug`) do **not** get `auth=` ... regenerating **`npm run seo:guides-index`** only rewrites the title list.
 
 Hub pages cross-link the cluster (slots ↔ guides ↔ each tool ↔ poker).
 

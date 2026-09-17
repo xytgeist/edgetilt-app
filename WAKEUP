@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Windows Theo 2026-09-16 … AP Slots Lounge intro filter
+
+**I am Windows Theo.** First 2 Lounge visits from `/slots`, `/guides`, `/advantage-play-slots` (or in-app Slots/Guides → Home) show AP Slots only. Overlay is in-memory ... it does not write Tribes prefs. Tribes edit / Show all retires it. **`1.4.273`** on **`test`**.
+
 ### Windows Theo 2026-09-16 … Show password on auth
 
 **I am Windows Theo.** Sign in / Create account / reset password fields have a show/hide eye. **`1.4.272`** on **`test`**.

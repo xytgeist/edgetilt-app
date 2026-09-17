@@ -15,7 +15,19 @@ import {
 } from '../../utils/loungeFeedScope'
 import { fetchLoungeCommunityFeedPostsForViewer } from '../../utils/loungeFanOnlyPost.js'
 import { LOUNGE_FEED_SORT, readLoungeFeedSort } from '../../utils/loungeFeedSortPref'
-import { readLoungeFeedCategoryFilter } from '../../utils/loungeFeedCategoryFilterPref.js'
+import {
+  readLoungeFeedCategoryFilter,
+  writeLoungeFeedCategoryFilter,
+} from '../../utils/loungeFeedCategoryFilterPref.js'
+import {
+  beginApSlotsLoungeIntroOverlay,
+  consumeApSlotsLoungeIntroArrival,
+  endApSlotsLoungeIntroStay,
+  isApSlotsLoungeIntroHubTab,
+  markApSlotsLoungeIntroEligible,
+  retireApSlotsLoungeIntro,
+  urlLeavesLoungeHomeForApSlotsIntro,
+} from '../../utils/loungeApSlotsIntroFilter.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import {
   fetchHiddenAuthorUserIds,
@@ -479,8 +491,18 @@ export default function AppShell({
   const [loungeFeedCategoryExcludedSlugs, setLoungeFeedCategoryExcludedSlugs] = useState(() =>
     readLoungeFeedCategoryFilter(),
   )
-  const loungeFeedCategoryExcludedSlugsRef = useRef(loungeFeedCategoryExcludedSlugs)
-  loungeFeedCategoryExcludedSlugsRef.current = loungeFeedCategoryExcludedSlugs
+  const loungeFeedCategorySavedRef = useRef(loungeFeedCategoryExcludedSlugs)
+  loungeFeedCategorySavedRef.current = loungeFeedCategoryExcludedSlugs
+  const [loungeApSlotsIntroExcludedSlugs, setLoungeApSlotsIntroExcludedSlugs] = useState(null)
+  const loungeApSlotsIntroExcludedSlugsRef = useRef(loungeApSlotsIntroExcludedSlugs)
+  loungeApSlotsIntroExcludedSlugsRef.current = loungeApSlotsIntroExcludedSlugs
+  const loungeFeedCategoryExcludedSlugsRef = useRef(
+    loungeApSlotsIntroExcludedSlugs ?? loungeFeedCategoryExcludedSlugs,
+  )
+  loungeFeedCategoryExcludedSlugsRef.current =
+    loungeApSlotsIntroExcludedSlugs ?? loungeFeedCategoryExcludedSlugs
+  const loungeFeedEffectiveExcludedSlugs =
+    loungeApSlotsIntroExcludedSlugs ?? loungeFeedCategoryExcludedSlugs
   /** Frozen `p_as_of` for Popular pagination within one head load + load-more chain. */
   const loungeFeedPopularAsOfRef = useRef(/** @type {string | null} */ (null))
   /** True while the first page of the Lounge feed is being reloaded (including silent pull-to-refresh). */
@@ -1086,11 +1108,17 @@ export default function AppShell({
   const onLoungeFeedCategoryFilterChange = useCallback(
     (nextExcludedSlugs) => {
       const normalized = Array.isArray(nextExcludedSlugs) ? nextExcludedSlugs : []
+      if (loungeApSlotsIntroExcludedSlugs) {
+        retireApSlotsLoungeIntro()
+        setLoungeApSlotsIntroExcludedSlugs(null)
+        writeLoungeFeedCategoryFilter(normalized)
+      }
       setLoungeFeedCategoryExcludedSlugs(normalized)
+      loungeFeedCategorySavedRef.current = normalized
       loungeFeedCategoryExcludedSlugsRef.current = normalized
       void loadCommunityFeed({ excludedCategorySlugs: normalized })
     },
-    [loadCommunityFeed],
+    [loadCommunityFeed, loungeApSlotsIntroExcludedSlugs],
   )
 
   useEffect(() => {
@@ -1178,6 +1206,7 @@ export default function AppShell({
   useEffect(() => {
     if (typeof window === 'undefined') return
     const applyFromUrl = () => {
+      consumeApSlotsLoungeIntroArrival()
       const params = new URLSearchParams(window.location.search || '')
       const targetTab = params.get('tab')
       const memberDeepLinkTabs = new Set([
@@ -1431,9 +1460,34 @@ export default function AppShell({
     return () => window.removeEventListener('popstate', applyFromUrl)
   }, [browseMode, isAdmin, authSessionReady, openStableCommitDeepLinkIfPending])
 
-  /** Only refire when entering Lounge - not when `loadCommunityFeed` identity changes (avoids scroll reset mid-feed). */
+  /** Lounge enter reloads the feed. AP Slots intro overlay is in-memory only. */
   useEffect(() => {
-    if (tab === 'home') void loadCommunityFeedRef.current()
+    consumeApSlotsLoungeIntroArrival()
+    if (isApSlotsLoungeIntroHubTab(tab)) {
+      markApSlotsLoungeIntroEligible()
+      if (loungeApSlotsIntroExcludedSlugsRef.current) {
+        endApSlotsLoungeIntroStay()
+        setLoungeApSlotsIntroExcludedSlugs(null)
+      }
+      return
+    }
+    if (tab !== 'home') {
+      if (loungeApSlotsIntroExcludedSlugsRef.current) {
+        endApSlotsLoungeIntroStay()
+        setLoungeApSlotsIntroExcludedSlugs(null)
+      }
+      return
+    }
+    const saved = loungeFeedCategorySavedRef.current
+    const leaveHome = urlLeavesLoungeHomeForApSlotsIntro(
+      window.location.search || '',
+      window.location.pathname || '',
+    )
+    const overlay = leaveHome ? null : beginApSlotsLoungeIntroOverlay(saved)
+    setLoungeApSlotsIntroExcludedSlugs(overlay)
+    const excluded = overlay ?? saved
+    loungeFeedCategoryExcludedSlugsRef.current = excluded
+    void loadCommunityFeedRef.current({ excludedCategorySlugs: excluded })
   }, [tab])
 
   /** Product analytics: debounced section visit rows for Edge Monitor (members only; admins excluded in SQL). */
@@ -2541,8 +2595,9 @@ export default function AppShell({
             onLoungeFeedScopeChange={onLoungeFeedScopeChange}
             loungeFeedSort={loungeFeedSort}
             onLoungeFeedSortChange={onLoungeFeedSortChange}
-            loungeFeedCategoryExcludedSlugs={loungeFeedCategoryExcludedSlugs}
+            loungeFeedCategoryExcludedSlugs={loungeFeedEffectiveExcludedSlugs}
             onLoungeFeedCategoryFilterChange={onLoungeFeedCategoryFilterChange}
+            loungeFeedCategoryFilterPersist={!loungeApSlotsIntroExcludedSlugs}
             loungeFeedBrowseMode={browseMode}
             authSessionReady={authSessionReady}
             coldBootSplashVisible={splashVisible}

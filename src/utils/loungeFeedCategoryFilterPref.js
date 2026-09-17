@@ -1,4 +1,4 @@
-import { normalizeLoungePostCategoryPills } from './loungePostCategoryPills.js'
+import { normalizeLoungeProfileCategoryPills } from './loungePostCategoryPills.js'
 
 /** Persisted home-feed category exclusions (unchecked pills). Empty = all categories visible. */
 export const LOUNGE_FEED_CATEGORY_FILTER_STORAGE_KEY = 'loungeFeedCategoryFilter:v2'
@@ -11,7 +11,7 @@ export function readLoungeFeedCategoryFilter() {
     if (!raw) return []
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
-    return normalizeLoungePostCategoryPills(parsed)
+    return normalizeLoungeProfileCategoryPills(parsed)
   } catch {
     return []
   }
@@ -21,7 +21,7 @@ export function readLoungeFeedCategoryFilter() {
 export function writeLoungeFeedCategoryFilter(excludedSlugs) {
   if (typeof window === 'undefined') return
   try {
-    const next = normalizeLoungePostCategoryPills(excludedSlugs)
+    const next = normalizeLoungeProfileCategoryPills(excludedSlugs)
     if (!next.length) {
       window.localStorage.removeItem(LOUNGE_FEED_CATEGORY_FILTER_STORAGE_KEY)
       return

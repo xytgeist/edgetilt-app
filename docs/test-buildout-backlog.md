@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-16:** **AP Slots Lounge intro filter (Windows).** First 2 Lounge visits from `/slots`, `/guides`, `/advantage-play-slots` (or in-app Slots/Guides) overlay AP Slots only. In-memory ... does not write Tribes prefs. Hub CTAs stamp `apSlotsLounge=1`. Tribes edit kills it. **`1.4.273`**.
 - **2026-09-16:** **Show password on auth (Windows).** Sign in, Create account, and reset-password fields get a show/hide eye. Light toggle scoped under `[data-auth-modal]`. **`1.4.272`**.
 - **2026-09-16:** **Sell Action +Edge user picker (Mac).** Start Session Sell Action was closing the picker without adding the selected Edge user (payload shape mismatch vs swaps). Frontend **`1.4.271`** via **`test` → `main`**.
 - **2026-09-16:** **Stable live-session MTM (Mac).** Backer Stable loads live sessions and restores in-play chips onto horse roll / stake MTM / portfolio while the session is still open. Sessions count includes the live one; profit stays $0 until cash-out. Frontend **`1.4.270`** via **`test` → `main`**.

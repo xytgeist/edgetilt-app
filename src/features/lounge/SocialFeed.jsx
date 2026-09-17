@@ -745,6 +745,7 @@ export default function SocialFeed({
   onLoungeFeedSortChange,
   loungeFeedCategoryExcludedSlugs = [],
   onLoungeFeedCategoryFilterChange,
+  loungeFeedCategoryFilterPersist = true,
   loungeFeedBrowseMode = 'member',
   /** False while Supabase session is still restoring (push / cold start). */
   authSessionReady = true,
@@ -16993,6 +16994,7 @@ export default function SocialFeed({
             <LoungeFeedCategoryFilter
               value={loungeFeedCategoryExcludedSlugs}
               onChange={onLoungeFeedCategoryFilterChange}
+              persist={loungeFeedCategoryFilterPersist}
               disabled={communityFeedLoading && communityPosts.length === 0}
               readOnly={loungeReadOnly}
               onReadOnlyClick={requireLoungeAuth}

@@ -75,26 +75,21 @@ export default function PokerSessionBackerSection({
     onDraftBackersChange?.([...draftBackers, emptyDraftBacker({ isGuest: true })])
   }
 
-  function onPickerConfirm(selected) {
-    const profile = Array.isArray(selected) ? selected[0] : selected
-    const stakerUserId = String(profile?.user_id || '').trim()
-    if (!stakerUserId || stakerUserId === userId) {
-      setPickerOpen(false)
-      return
-    }
-    if (draftBackerUsedUserIds(draftBackers).includes(stakerUserId)) {
-      setPickerOpen(false)
-      return
-    }
-    onDraftBackersChange?.([
-      ...draftBackers,
-      {
+  function onPickerConfirm({ profiles } = {}) {
+    const used = new Set(draftBackerUsedUserIds(draftBackers))
+    const next = [...draftBackers]
+    for (const profile of profiles || []) {
+      const stakerUserId = String(profile?.user_id || profile?.id || '').trim()
+      if (!stakerUserId || stakerUserId === userId || used.has(stakerUserId)) continue
+      used.add(stakerUserId)
+      next.push({
         ...emptyDraftBacker({ isGuest: false }),
         stakerUserId,
         handle: String(profile.handle || '').replace(/^@+/, ''),
         displayName: profile.display_name || profile.handle || 'Backer',
-      },
-    ])
+      })
+    }
+    if (next.length !== draftBackers.length) onDraftBackersChange?.(next)
     setPickerOpen(false)
   }
 

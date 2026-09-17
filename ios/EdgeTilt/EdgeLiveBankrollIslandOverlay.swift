@@ -8,9 +8,11 @@ final class EdgeLiveBankrollIslandOverlay: NSObject {
   static let shared = EdgeLiveBankrollIslandOverlay()
 
   private weak var host: UIView?
+  private weak var webView: WKWebView?
   private let pill = UIView()
   private let glyphCircle = UIView()
   private let glyphImage = UIImageView()
+  private let diceView = EdgeLiveBankrollWhiteDiceView()
   private let trailingLabel = UILabel()
   private var breathTimer: CADisplayLink?
   private var clockTimer: Timer?
@@ -49,11 +51,14 @@ final class EdgeLiveBankrollIslandOverlay: NSObject {
 
     pill.addSubview(glyphCircle)
     glyphCircle.addSubview(glyphImage)
+    glyphCircle.addSubview(diceView)
     pill.addSubview(trailingLabel)
     pill.isHidden = true
+    diceView.isHidden = true
   }
 
   func attach(webView: WKWebView) {
+    self.webView = webView
     guard let parent = webView.superview ?? webView.window else { return }
     if pill.superview !== parent {
       parent.addSubview(pill)
@@ -148,9 +153,17 @@ final class EdgeLiveBankrollIslandOverlay: NSObject {
     let accent = accentColor(for: state)
     pill.layer.borderColor = accent.withAlphaComponent(0.55).cgColor
     glyphCircle.backgroundColor = accent.withAlphaComponent(0.35)
-    glyphImage.image = UIImage(systemName: symbolName(for: state))?
-      .withConfiguration(UIImage.SymbolConfiguration(pointSize: glyphSize * 0.42, weight: .bold))
-    glyphImage.tintColor = .black
+
+    let useDice = state.hasSlots && !state.hasPoker
+    diceView.isHidden = !useDice
+    glyphImage.isHidden = useDice
+    if useDice {
+      diceView.setNeedsDisplay()
+    } else {
+      glyphImage.image = UIImage(systemName: symbolName(for: state))?
+        .withConfiguration(UIImage.SymbolConfiguration(pointSize: glyphSize * 0.42, weight: .bold))
+      glyphImage.tintColor = .black
+    }
 
     let pausedTone = state.pokerPaused && state.hasPoker && !state.hasSlots
     trailingLabel.textColor = pausedTone ? Self.pausedColor : .white
@@ -183,6 +196,7 @@ final class EdgeLiveBankrollIslandOverlay: NSObject {
       height: glyphSize
     )
     glyphImage.frame = glyphCircle.bounds.insetBy(dx: 4, dy: 4)
+    diceView.frame = glyphCircle.bounds.insetBy(dx: 3, dy: 3)
     trailingLabel.frame = CGRect(
       x: glyphCircle.frame.maxX + 6,
       y: 0,
@@ -244,12 +258,23 @@ final class EdgeLiveBankrollIslandOverlay: NSObject {
 
   @objc private func handleTap() {
     guard let state else { return }
+    // In-app: dispatch to web so we setTab without a full WK reload.
+    // `/?tab=bankroll` was previously ignored by AppShell's deep-link parser.
+    let tab = state.hasPoker && !state.hasSlots ? "poker-bankroll" : "bankroll"
+    if let webView {
+      let js = """
+      window.dispatchEvent(new CustomEvent('edge-live-session-open', {
+        detail: { tab: \(Self.jsString(tab)) }
+      }));
+      """
+      webView.evaluateJavaScript(js, completionHandler: nil)
+      return
+    }
     EdgePushManager.shared.handleCustomSchemeLink(state.widgetURL)
   }
 
   private func symbolName(for state: LiveBankrollAttributes.ContentState) -> String {
     if state.hasSlots && state.hasPoker { return "square.on.square.fill" }
-    if state.hasSlots { return "dice.fill" }
     return "suit.spade.fill"
   }
 
@@ -277,5 +302,54 @@ final class EdgeLiveBankrollIslandOverlay: NSObject {
       return String(format: "%d:%02d:%02d", hours, minutes, seconds)
     }
     return String(format: "%d:%02d", minutes, seconds)
+  }
+
+  private static func jsString(_ value: String) -> String {
+    let escaped = value
+      .replacingOccurrences(of: "\\", with: "\\\\")
+      .replacingOccurrences(of: "\"", with: "\\\"")
+    return "\"\(escaped)\""
+  }
+}
+
+/// White die face with black pips (SF `dice.fill` is single-tint … can't do this).
+private final class EdgeLiveBankrollWhiteDiceView: UIView {
+  override init(frame: CGRect) {
+    super.init(frame: frame)
+    isOpaque = false
+    backgroundColor = .clear
+    isUserInteractionEnabled = false
+  }
+
+  required init?(coder: NSCoder) {
+    fatalError("init(coder:) has not been implemented")
+  }
+
+  override func draw(_ rect: CGRect) {
+    guard let ctx = UIGraphicsGetCurrentContext() else { return }
+    let inset = rect.insetBy(dx: 0.5, dy: 0.5)
+    let radius = min(inset.width, inset.height) * 0.22
+    let path = UIBezierPath(roundedRect: inset, cornerRadius: radius)
+    ctx.setFillColor(UIColor.white.cgColor)
+    ctx.addPath(path.cgPath)
+    ctx.fillPath()
+
+    let pipR = min(inset.width, inset.height) * 0.09
+    let cx = inset.midX
+    let cy = inset.midY
+    let dx = inset.width * 0.22
+    let dy = inset.height * 0.22
+    // Five-pip face.
+    let centers: [CGPoint] = [
+      CGPoint(x: cx - dx, y: cy - dy),
+      CGPoint(x: cx + dx, y: cy - dy),
+      CGPoint(x: cx, y: cy),
+      CGPoint(x: cx - dx, y: cy + dy),
+      CGPoint(x: cx + dx, y: cy + dy),
+    ]
+    ctx.setFillColor(UIColor.black.cgColor)
+    for point in centers {
+      ctx.fillEllipse(in: CGRect(x: point.x - pipR, y: point.y - pipR, width: pipR * 2, height: pipR * 2))
+    }
   }
 }

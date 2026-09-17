@@ -93,7 +93,8 @@ private struct LiveBankrollElapsedText: View {
 
 // MARK: - Compact leading mark
 
-/// Circular accent behind a black glyph. Breaths while live; freezes when paused.
+/// Circular accent behind glyph. Breaths while live; freezes when paused.
+/// Slots uses a white die with black pips (not SF `dice.fill`).
 private struct LiveBankrollBrandMark: View {
   var state: LiveBankrollAttributes.ContentState
   var size: CGFloat
@@ -101,6 +102,10 @@ private struct LiveBankrollBrandMark: View {
 
   private var isPaused: Bool {
     state.pokerPaused && state.hasPoker && !state.hasSlots
+  }
+
+  private var useWhiteDice: Bool {
+    state.hasSlots && !state.hasPoker
   }
 
   var body: some View {
@@ -111,10 +116,16 @@ private struct LiveBankrollBrandMark: View {
           .fill(LiveBankrollPalette.accent(for: state).opacity(minimal ? 1 : 0.22 + 0.48 * pulse))
           .scaleEffect(minimal || isPaused ? 1 : 0.82 + 0.22 * pulse)
         if !minimal {
-          Image(systemName: symbolName)
-            .font(.system(size: size * 0.62, weight: .bold))
-            .foregroundStyle(Color.black)
-            .scaleEffect(isPaused ? 1 : 0.94 + 0.08 * pulse)
+          Group {
+            if useWhiteDice {
+              LiveBankrollWhiteDice(size: size * 0.72)
+            } else {
+              Image(systemName: symbolName)
+                .font(.system(size: size * 0.62, weight: .bold))
+                .foregroundStyle(Color.black)
+            }
+          }
+          .scaleEffect(isPaused ? 1 : 0.94 + 0.08 * pulse)
         }
       }
       .frame(width: size, height: size)
@@ -126,13 +137,44 @@ private struct LiveBankrollBrandMark: View {
 
   private var symbolName: String {
     if state.hasSlots && state.hasPoker { return "square.on.square.fill" }
-    if state.hasSlots { return "dice.fill" }
     return "suit.spade.fill"
   }
 
   private func breath(at date: Date) -> CGFloat {
     let phase = date.timeIntervalSinceReferenceDate * 2.8
     return CGFloat((sin(phase) + 1) * 0.5)
+  }
+}
+
+private struct LiveBankrollWhiteDice: View {
+  var size: CGFloat
+
+  var body: some View {
+    let pip = size * 0.12
+    let offset = size * 0.22
+    ZStack {
+      RoundedRectangle(cornerRadius: size * 0.22, style: .continuous)
+        .fill(Color.white)
+        .frame(width: size, height: size)
+      ForEach(Array(pipCenters.enumerated()), id: \.offset) { _, point in
+        Circle()
+          .fill(Color.black)
+          .frame(width: pip, height: pip)
+          .offset(x: point.x * offset, y: point.y * offset)
+      }
+    }
+    .frame(width: size, height: size)
+  }
+
+  /// Five-pip face.
+  private var pipCenters: [CGPoint] {
+    [
+      CGPoint(x: -1, y: -1),
+      CGPoint(x: 1, y: -1),
+      CGPoint(x: 0, y: 0),
+      CGPoint(x: -1, y: 1),
+      CGPoint(x: 1, y: 1),
+    ]
   }
 }
 
@@ -185,7 +227,8 @@ private struct LiveBankrollExpandedRows: View {
         Link(destination: state.slotsWidgetURL) {
           LiveBankrollRow(
             tint: LiveBankrollPalette.slots,
-            symbol: "dice.fill",
+            symbol: nil,
+            useWhiteDice: true,
             title: state.slotsLabel.isEmpty ? "Slots" : state.slotsLabel,
             timerStart: state.slotsTimerStart,
             pausedTone: false,
@@ -198,6 +241,7 @@ private struct LiveBankrollExpandedRows: View {
           LiveBankrollRow(
             tint: state.pokerPaused ? LiveBankrollPalette.paused : LiveBankrollPalette.poker,
             symbol: "suit.spade.fill",
+            useWhiteDice: false,
             title: state.pokerLabel.isEmpty ? "Poker" : state.pokerLabel,
             timerStart: state.pokerTimerStart,
             pausedTone: state.pokerPaused,
@@ -211,7 +255,8 @@ private struct LiveBankrollExpandedRows: View {
 
 private struct LiveBankrollRow: View {
   var tint: Color
-  var symbol: String
+  var symbol: String?
+  var useWhiteDice: Bool
   var title: String
   var timerStart: Date?
   var pausedTone: Bool
@@ -223,9 +268,13 @@ private struct LiveBankrollRow: View {
         Circle()
           .fill(tint.opacity(0.28))
           .frame(width: 22, height: 22)
-        Image(systemName: symbol)
-          .font(.system(size: 11, weight: .bold))
-          .foregroundStyle(Color.black)
+        if useWhiteDice {
+          LiveBankrollWhiteDice(size: 14)
+        } else if let symbol {
+          Image(systemName: symbol)
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(Color.black)
+        }
       }
       VStack(alignment: .leading, spacing: 1) {
         Text(title)

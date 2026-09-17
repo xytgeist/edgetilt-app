@@ -698,6 +698,13 @@ export default function AppShell({
           setTab('poker-stable')
           setMenuOpen(false)
         }
+      } else if (targetTab === 'bankroll') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+        } else {
+          setTab('bankroll')
+          setMenuOpen(false)
+        }
       } else if (targetTab === 'poker-bankroll') {
         if (browseMode === 'anonymous') {
           onRequireAuthRef.current?.()
@@ -1288,6 +1295,7 @@ export default function AppShell({
         'affiliates',
         'stable-smoke',
         'creator',
+        'bankroll',
         'poker-bankroll',
         'poker-stable',
       ])
@@ -1429,6 +1437,14 @@ export default function AppShell({
           onRequireAuthRef.current?.()
         } else {
           setTab('creator')
+          setMenuOpen(false)
+        }
+      }
+      if (targetTab === 'bankroll') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+        } else {
+          setTab('bankroll')
           setMenuOpen(false)
         }
       }
@@ -1610,6 +1626,15 @@ export default function AppShell({
           /* ignore */
         }
         setTab('offers')
+        return
+      }
+      if (targetTab === 'bankroll') {
+        if (browseMode === 'anonymous') {
+          onRequireAuthRef.current?.()
+          return
+        }
+        setTab('bankroll')
+        setMenuOpen(false)
         return
       }
       if (targetTab === 'poker-bankroll') {
@@ -2346,6 +2371,22 @@ export default function AppShell({
       void setLiveBankrollIslandOverlayVisible(false)
     }
   }, [hasLiveBankrollSession, onLiveCardScreen])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+    const onOpen = (event) => {
+      const nextTab = String(event?.detail?.tab || '').trim()
+      if (nextTab === 'bankroll') {
+        openLiveSlotsBankroll()
+        return
+      }
+      if (nextTab === 'poker-bankroll') {
+        openLivePokerBankroll()
+      }
+    }
+    window.addEventListener('edge-live-session-open', onOpen)
+    return () => window.removeEventListener('edge-live-session-open', onOpen)
+  }, [openLiveSlotsBankroll, openLivePokerBankroll])
 
   const renderTitleBarCenterSlot = () => {
     if (!hasLiveBankrollSession) return null

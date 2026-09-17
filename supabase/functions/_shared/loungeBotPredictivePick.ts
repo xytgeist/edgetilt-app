@@ -1750,7 +1750,12 @@ export function buildNflAtsSlateCard(
     let cheddaWhy = 'No hook on the number. No money split. Sitting.'
     if (cheddaSide !== 'pass') {
       if (cheddaMoneyHome || cheddaMoneyAway) {
-        cheddaWhy = gameSplits.summaryLine || `Sharp money on ${sportTeamDisplayName(cheddaTeam, ev.sport_key)}.`
+        // Keep this short … the ⚡ / splits tape already prints summaryLine.
+        cheddaWhy = gameSplits.isRlm
+          ? 'RLM significant.'
+          : gameSplits.isSharpDivergence
+            ? 'Sharp money divergence.'
+            : `Sharp money on ${sportTeamDisplayName(cheddaTeam, ev.sport_key)}.`
       } else if (cheddaGoldenHookHome || cheddaGoldenHookAway) {
         cheddaWhy = `Dog + golden hook on ${sportTeamDisplayName(cheddaTeam, ev.sport_key)}.`
       }
@@ -1774,8 +1779,8 @@ export function buildNflAtsSlateCard(
       roccoWhy =
         `Wanted ${sportTeamDisplayName(roccoWanted, ev.sport_key)} ${roccoWouldBeLine || ''} but juice worse than ${ROCCO_UGLY_JUICE_WORSE_THAN}.`
     } else if (roccoSide !== 'pass' && !roccoHasStrengthReason) {
-      roccoWhy =
-        `Lean ${sportTeamDisplayName(roccoWanted, ev.sport_key)} on short-fav alone. Does not count as a house vote.`
+      // Short-fav-only stays off the house tally in code (`countsForHouse`). Never say that on the card.
+      roccoWhy = `Short-fav on ${sportTeamDisplayName(roccoWanted, ev.sport_key)}.`
     } else if (roccoSide !== 'pass') {
       const bits: string[] = []
       if (hurtSide) bits.push('hurt side')

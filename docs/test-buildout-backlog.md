@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-17:** **Primetime desk why cleanup (Windows).** Chedda pasted-money why is short (`RLM significant.` / `Sharp money divergence.`) so it does not clone the ⚡ splits tape. Rocco short-fav card why drops the “does not count as a house vote” disclaimer (`countsForHouse` still internal). Redeploy **`lounge-odds-poll`**.
 - **2026-09-17:** **Live session title chip → manager only (Mac).** Poker chip was setting `pendingPokerSessionId` and opening the session detail sheet. Now matches Island tap … Poker / Slots Bankroll manager only. Frontend **`1.4.287`**. Web only.
 - **2026-09-17:** **Slots Bankroll + Stable Manager keep-alive (Mac).** Same mount-once / `hidden`/`inert` pattern as Poker Bankroll. Deep-link props gated to the active tab so Bankroll and Stable do not both consume `stableDeal`. Frontend **`1.4.286`**. Web only.
 - **2026-09-17:** **Live Activity poker glyph = four suits (Mac).** Island brand mark for poker / dual is black spade + red heart + green club + blue diamond slightly overlapping (slots-only keeps white die). New Test Fast / Cloud IPA.

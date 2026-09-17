@@ -1,4 +1,8 @@
-import { LOUNGE_POST_CATEGORY_PILL_SLUGS } from './loungePostCategoryPills.js'
+import {
+  displayPostCategoryPills,
+  feedPostCategoryPills,
+  LOUNGE_POST_CATEGORY_PILL_SLUGS,
+} from './loungePostCategoryPills.js'
 
 /** SEO hub CTAs stamp this so Lounge can intro-filter AP Slots without a referrer. */
 export const AP_SLOTS_LOUNGE_INTRO_QUERY_PARAM = 'apSlotsLounge'
@@ -45,10 +49,23 @@ function writeStorage(storage, key, value) {
   }
 }
 
-/** Exclude every tribe except AP Slots. Untagged posts still pass the RPC. */
+/** Exclude every tribe except AP Slots. Untagged posts still pass the RPC ... client filter drops those. */
 export function apSlotsLoungeIntroExcludedSlugs() {
   return LOUNGE_POST_CATEGORY_PILL_SLUGS.filter((slug) => slug !== AP_SLOTS_LOUNGE_INTRO_KEEP_SLUG)
 }
+
+/** True when the row itself (or hydrated OP fallback) has the AP Slots pill. */
+export function loungePostHasApSlotsIntroPill(post) {
+  if (feedPostCategoryPills(post).includes(AP_SLOTS_LOUNGE_INTRO_KEEP_SLUG)) return true
+  return displayPostCategoryPills(post).includes(AP_SLOTS_LOUNGE_INTRO_KEEP_SLUG)
+}
+
+export function filterLoungePostsForApSlotsIntro(posts) {
+  return (posts || []).filter(loungePostHasApSlotsIntroPill)
+}
+
+/** Extra RPC pages while filling an AP Slots-only first screen. */
+export const AP_SLOTS_LOUNGE_INTRO_MAX_RPC_PAGES = 8
 
 export function isApSlotsLoungeIntroHubPath(pathname) {
   const raw = String(pathname || '').split('?')[0]

@@ -20,9 +20,12 @@ import {
   writeLoungeFeedCategoryFilter,
 } from '../../utils/loungeFeedCategoryFilterPref.js'
 import {
+  AP_SLOTS_LOUNGE_INTRO_MAX_RPC_PAGES,
   beginApSlotsLoungeIntroOverlay,
   consumeApSlotsLoungeIntroArrival,
   endApSlotsLoungeIntroStay,
+  filterLoungePostsForApSlotsIntro,
+  isApSlotsLoungeIntroEligible,
   isApSlotsLoungeIntroHubTab,
   markApSlotsLoungeIntroEligible,
   retireApSlotsLoungeIntro,
@@ -996,7 +999,18 @@ export default function AppShell({
     const silent = opts?.silent === true
     const scope = opts?.scope ?? loungeFeedScopeRef.current
     const sort = opts?.sort ?? loungeFeedSortRef.current
-    const excludedCategorySlugs = opts?.excludedCategorySlugs ?? loungeFeedCategoryExcludedSlugsRef.current
+    consumeApSlotsLoungeIntroArrival()
+    if (!loungeApSlotsIntroExcludedSlugsRef.current && isApSlotsLoungeIntroEligible()) {
+      const overlay = beginApSlotsLoungeIntroOverlay(loungeFeedCategorySavedRef.current)
+      if (overlay) {
+        loungeApSlotsIntroExcludedSlugsRef.current = overlay
+        setLoungeApSlotsIntroExcludedSlugs(overlay)
+      }
+    }
+    const introOnly = Boolean(loungeApSlotsIntroExcludedSlugsRef.current?.length)
+    const excludedCategorySlugs =
+      opts?.excludedCategorySlugs ??
+      (introOnly ? loungeApSlotsIntroExcludedSlugsRef.current : loungeFeedCategorySavedRef.current)
     if (!silent) {
       setCommunityFeedLoading(true)
       setCommunityFeedLoadingMore(false)
@@ -1031,18 +1045,57 @@ export default function AppShell({
       const asOf = new Date().toISOString()
       loungeFeedPopularAsOfRef.current = sort === LOUNGE_FEED_SORT.POPULAR ? asOf : null
 
-      const [{ data: pinnedRows }, { data: rows, error }] = await Promise.all([
-        loungeFeedPinnedQuery(supabaseClient, scope, followingAuthorIds, excludedCategorySlugs),
-        loungeFeedPageRpcQuery(supabaseClient, {
-          sort,
-          scope,
-          followingAuthorIds,
-          excludedCategorySlugs,
-          limit: COMMUNITY_FEED_PAGE_SIZE + 1,
-          asOf,
-          cursor: null,
-        }),
-      ])
+      const collected = []
+      let rpcHasMore = false
+      let error = null
+      let nextCursor = null
+      const maxPages = introOnly ? AP_SLOTS_LOUNGE_INTRO_MAX_RPC_PAGES : 1
+      for (let page = 0; page < maxPages; page += 1) {
+        const [{ data: pinnedRows }, pageRes] =
+          page === 0
+            ? await Promise.all([
+                loungeFeedPinnedQuery(supabaseClient, scope, followingAuthorIds, excludedCategorySlugs),
+                loungeFeedPageRpcQuery(supabaseClient, {
+                  sort,
+                  scope,
+                  followingAuthorIds,
+                  excludedCategorySlugs,
+                  limit: COMMUNITY_FEED_PAGE_SIZE + 1,
+                  asOf,
+                  cursor: null,
+                }),
+              ])
+            : [
+                { data: [] },
+                await loungeFeedPageRpcQuery(supabaseClient, {
+                  sort,
+                  scope,
+                  followingAuthorIds,
+                  excludedCategorySlugs,
+                  limit: COMMUNITY_FEED_PAGE_SIZE + 1,
+                  asOf,
+                  cursor: nextCursor,
+                }),
+              ]
+        if (pageRes.error) {
+          error = pageRes.error
+          break
+        }
+        const list = pageRes.data || []
+        rpcHasMore = list.length > COMMUNITY_FEED_PAGE_SIZE
+        const pageRows = rpcHasMore ? list.slice(0, COMMUNITY_FEED_PAGE_SIZE) : list
+        nextCursor = loungeFeedCursorFromPageLast(pageRows.at(-1), sort, asOf)
+        const visible = filterLoungeFeedTimelinePosts(
+          page === 0 ? [...(pinnedRows || []), ...pageRows] : pageRows,
+        )
+        const kept = introOnly ? filterLoungePostsForApSlotsIntro(visible) : visible
+        for (const row of kept) {
+          if (!collected.some((existing) => existing.id === row.id)) collected.push(row)
+        }
+        if (!introOnly) break
+        if (!rpcHasMore) break
+        if (collected.length >= COMMUNITY_FEED_PAGE_SIZE) break
+      }
 
       if (error) {
         setCommunityFeedQueryErr(String(error.message || error.details || 'Could not load feed.'))
@@ -1054,16 +1107,12 @@ export default function AppShell({
       }
 
       setCommunityFeedQueryErr('')
-      const list = rows || []
-      const hasMore = list.length > COMMUNITY_FEED_PAGE_SIZE
-      const pageRows = hasMore ? list.slice(0, COMMUNITY_FEED_PAGE_SIZE) : list
+      const pageRows = collected.slice(0, COMMUNITY_FEED_PAGE_SIZE)
       const pageLast = pageRows.at(-1) || null
-      const merged = filterLoungeFeedTimelinePosts([...(pinnedRows || []), ...pageRows])
-      const deduped = merged.filter((row, idx, arr) => arr.findIndex((x) => x.id === row.id) === idx)
-      const hydrated = await hydrateCommunityPosts(deduped)
+      const hydrated = await hydrateCommunityPosts(pageRows)
 
       setCommunityPosts(filterCommunityPostsByMutedAuthors(hydrated, feedMutedUserIdsRef.current))
-      setCommunityFeedHasMore(hasMore)
+      setCommunityFeedHasMore(collected.length > COMMUNITY_FEED_PAGE_SIZE || rpcHasMore)
       setCommunityFeedCursor(loungeFeedCursorFromPageLast(pageLast, sort, asOf))
     } catch (e) {
       const msg = String(e?.message || 'Could not load feed.')
@@ -1143,7 +1192,10 @@ export default function AppShell({
     try {
       const scope = loungeFeedScopeRef.current
       const sort = loungeFeedSortRef.current
-      const excludedCategorySlugs = loungeFeedCategoryExcludedSlugsRef.current
+      const introOnly = Boolean(loungeApSlotsIntroExcludedSlugsRef.current?.length)
+      const excludedCategorySlugs = introOnly
+        ? loungeApSlotsIntroExcludedSlugsRef.current
+        : loungeFeedCategorySavedRef.current
       const asOf = loungeFeedPopularAsOfRef.current || new Date().toISOString()
       let followingAuthorIds = null
       if (scope === LOUNGE_FEED_SCOPE_FOLLOWING) {
@@ -1156,23 +1208,36 @@ export default function AppShell({
         if (followingAuthorIds.length === 0) return
       }
 
-      const { data: rows, error } = await loungeFeedPageRpcQuery(supabaseClient, {
-        sort,
-        scope,
-        followingAuthorIds,
-        excludedCategorySlugs,
-        limit: COMMUNITY_FEED_PAGE_SIZE + 1,
-        asOf,
-        cursor: communityFeedCursor,
-      })
+      const collected = []
+      let rpcHasMore = false
+      let nextCursor = communityFeedCursor
+      const maxPages = introOnly ? AP_SLOTS_LOUNGE_INTRO_MAX_RPC_PAGES : 1
+      for (let page = 0; page < maxPages; page += 1) {
+        const { data: rows, error } = await loungeFeedPageRpcQuery(supabaseClient, {
+          sort,
+          scope,
+          followingAuthorIds,
+          excludedCategorySlugs,
+          limit: COMMUNITY_FEED_PAGE_SIZE + 1,
+          asOf,
+          cursor: nextCursor,
+        })
+        if (error) return
+        const list = rows || []
+        rpcHasMore = list.length > COMMUNITY_FEED_PAGE_SIZE
+        const pageRows = rpcHasMore ? list.slice(0, COMMUNITY_FEED_PAGE_SIZE) : list
+        nextCursor = loungeFeedCursorFromPageLast(pageRows.at(-1), sort, asOf)
+        const visible = filterLoungeFeedTimelinePosts(pageRows)
+        const kept = introOnly ? filterLoungePostsForApSlotsIntro(visible) : visible
+        collected.push(...kept)
+        if (!introOnly) break
+        if (!rpcHasMore) break
+        if (collected.length >= COMMUNITY_FEED_PAGE_SIZE) break
+      }
 
-      if (error) return
-
-      const list = rows || []
-      const hasMore = list.length > COMMUNITY_FEED_PAGE_SIZE
-      const pageRows = hasMore ? list.slice(0, COMMUNITY_FEED_PAGE_SIZE) : list
+      const pageRows = collected.slice(0, COMMUNITY_FEED_PAGE_SIZE)
       const pageLast = pageRows.at(-1) || null
-      const hydrated = await hydrateCommunityPosts(filterLoungeFeedTimelinePosts(pageRows))
+      const hydrated = await hydrateCommunityPosts(pageRows)
 
       setCommunityPosts((prev) =>
         filterCommunityPostsByMutedAuthors(
@@ -1183,7 +1248,7 @@ export default function AppShell({
           feedMutedUserIdsRef.current,
         ),
       )
-      setCommunityFeedHasMore(hasMore)
+      setCommunityFeedHasMore(collected.length > COMMUNITY_FEED_PAGE_SIZE || rpcHasMore)
       setCommunityFeedCursor(loungeFeedCursorFromPageLast(pageLast, sort, asOf))
     } finally {
       setCommunityFeedLoadingMore(false)

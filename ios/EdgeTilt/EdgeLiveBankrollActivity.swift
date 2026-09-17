@@ -41,7 +41,7 @@ enum EdgeLiveBankrollActivity {
     )
 
     DispatchQueue.main.async {
-      EdgeLiveBankrollIslandOverlay.shared.apply(state: state)
+      EdgeLiveBankrollIslandOverlay.shared.apply(state: nil)
     }
 
     guard ActivityAuthorizationInfo().areActivitiesEnabled else {

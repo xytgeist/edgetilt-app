@@ -117,11 +117,9 @@ final class EdgeLiveBankrollIslandOverlay: NSObject {
   }
 
   private var shouldShow: Bool {
-    guard state != nil else { return false }
-    guard webWantsVisible else { return false }
-    guard appIsActive else { return false }
-    guard UIDevice.current.userInterfaceIdiom == .phone else { return false }
-    return true
+    // Fake in-app Island retired (2026-09-17) ... overlaps system status chrome
+    // and cannot nudge signal/Wi-Fi/battery. Title-bar chips own in-app again.
+    false
   }
 
   private func refreshVisibility(animated: Bool) {

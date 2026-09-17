@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-17 … kill fake Island, restore title chips
+
+**I am Mac Theo.** Fake in-app Island retired (status chrome overlap). Title-bar live chips back, centered to phone width. Real Island still background / Lock Screen. Rebuild IPA + wait for Vercel chip layout.
+
 ### Mac Theo 2026-09-17 … in-app fake Island
 
 **I am Mac Theo.** Native `EdgeLiveBankrollIslandOverlay` while EdgeTilt is foregrounded (system Island stays background-only). Web hides it on live-card bankroll screens. Rebuild Test Fast / Cloud.

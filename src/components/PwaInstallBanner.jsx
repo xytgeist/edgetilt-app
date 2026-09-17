@@ -127,6 +127,8 @@ function PwaInstallHelpDropPanel({
 /**
  * Title bar row: logo | optional center (live session / install) | nav.
  * Live session chip temporarily replaces the How to Install chip while active.
+ * Center controls are absolutely centered to the full bar width (phone width
+ * within the shell column), not the gap between logo and nav.
  */
 export default function PwaInstallTitleBarRow({
   logo,
@@ -227,35 +229,26 @@ export default function PwaInstallTitleBarRow({
   const hasCenter = liveSessionActive || showInstallChip
   const centerContent = liveSessionActive ? centerSlot : showInstallChip ? installChip : null
 
-  // Live chip: logo | flexible middle | full nav. The pill takes whatever gap is
-  // left and truncates ... shortcuts and hamburger always stay visible.
-  // Install chip keeps its center-biased layout.
-  const row = hasCenter ? (
+  // Center chip on the full title-bar / phone width (absolute), not in the
+  // flex gap between logo and nav ... that looked off-center whenever the
+  // sides were unequal.
+  const row = (
     <div
-      className={
-        liveSessionActive
-          ? `grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 ${rowClassName}`
-          : `grid grid-cols-[1fr_auto_1fr] items-center gap-x-2 ${rowClassName}`
-      }
+      className={`relative flex items-center justify-between gap-2 ${rowClassName}`}
       data-pwa-install-title-row
-      data-title-bar-has-center={liveSessionActive ? 'live' : 'install'}
+      data-title-bar-has-center={
+        liveSessionActive ? 'live' : showInstallChip ? 'install' : undefined
+      }
     >
-      <div className="min-w-0 justify-self-start">{logo}</div>
-      <div
-        className={
-          liveSessionActive
-            ? 'flex min-w-0 justify-center px-0.5'
-            : 'min-w-0 justify-self-center'
-        }
-      >
-        {centerContent}
+      <div className="relative z-[1] min-w-0 shrink-0">{logo}</div>
+      {hasCenter ? (
+        <div className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center px-14">
+          <div className="pointer-events-auto min-w-0 max-w-full">{centerContent}</div>
+        </div>
+      ) : null}
+      <div className="relative z-[1] flex min-w-0 shrink-0 items-center justify-end gap-1.5">
+        {navSlot}
       </div>
-      <div className="flex min-w-0 items-center justify-end gap-1.5 justify-self-end">{navSlot}</div>
-    </div>
-  ) : (
-    <div className={`flex items-center justify-between gap-3 ${rowClassName}`}>
-      {logo}
-      <div className="flex min-w-0 shrink-0 items-center justify-end gap-1.5">{navSlot}</div>
     </div>
   )
 

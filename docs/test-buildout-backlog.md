@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-17:** **Fake in-app Island retired (Mac).** Could not nudge system status chrome; looked wrong overlapping time / battery. Title-bar live chips restored (centered to phone width). Real ActivityKit Island still for background / Lock Screen. New Test Fast / Cloud IPA + Vercel for chip layout.
 - **2026-09-17:** **In-app fake Dynamic Island (Mac).** `EdgeLiveBankrollIslandOverlay` draws a compact pill over WKWebView while foregrounded (system Island is background-only). `setLiveBankrollIslandOverlay` hides it on live-card bankroll screens. Title chip stays for old IPA / PWA. New Test Fast / Cloud IPA.
 - **2026-09-17:** **Live session chip vs Island (Mac).** iOS hides our Live Activity Island while EdgeTilt is foregrounded. Title chip no longer blanks when ActivityKit reports ok … chip shows on every screen except the bankroll tab that already has the live card. Island still covers background / Lock Screen.
 - **2026-09-16:** **Live Activity Island polish (Mac).** Clamp `.timer` to ~44pt (was full-bleed again), larger breathing glyph, tap opens manager tab only (drop `pokerSession` so detail sheet stays closed). New Test Fast / Cloud IPA.

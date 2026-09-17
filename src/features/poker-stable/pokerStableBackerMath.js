@@ -336,14 +336,32 @@ export function resolveDealOverallRoll(deal, dealRoll, sessions = []) {
   return roundMoney(base + sessionPl)
 }
 
+/** Buy-in / rebuy / add-on still sitting in a live session (already debited from stored roll). */
+export function dealActiveSessionInPlay(dealId, sessions = []) {
+  let inPlay = 0
+  for (const session of sessions) {
+    if (session?.deal_id !== dealId) continue
+    if (session.status !== 'active') continue
+    const buyIn = Number(session.buy_in) || 0
+    const rebuy = Number(session.rebuy_amount) || 0
+    const addon = Number(session.addon_amount) || 0
+    inPlay = roundMoney(inPlay + buyIn + rebuy + addon)
+  }
+  return inPlay
+}
+
 export function enrichBankrollByDealFromSessions(deals = [], bankrollByDeal = {}, sessions = []) {
   const out = { ...(bankrollByDeal || {}) }
   for (const deal of deals) {
     const existing = out[deal.id]
-    if (existing != null && Number.isFinite(Number(existing.overall_bankroll))) continue
+    const stored =
+      existing != null && Number.isFinite(Number(existing.overall_bankroll))
+        ? Number(existing.overall_bankroll)
+        : resolveDealOverallRoll(deal, null, sessions)
+    const inPlay = dealActiveSessionInPlay(deal.id, sessions)
     out[deal.id] = {
       deal_id: deal.id,
-      overall_bankroll: resolveDealOverallRoll(deal, null, sessions),
+      overall_bankroll: roundMoney(stored + inPlay),
     }
   }
   return out

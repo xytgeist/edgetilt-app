@@ -182,7 +182,7 @@ Play history stays complete; double-counting is avoided.
 
 Same bankroll rules as cash backing close, one payout when manifest is complete:
 
-- Roll reflects all package sessions (gross). **Buy-in, re-entries, and add-ons debit the stake roll as soon as they are logged** (active session), not only when the tournament is completed (`20260811230000`).
+- Roll reflects all package sessions (gross). **Buy-in, re-entries, and add-ons debit the stake roll as soon as they are logged** (active session), not only when the tournament is completed (`20260811230000`). Backer Stable **adds those in-play chips back** for Horse roll / stake MTM / portfolio while the session is still `active` (`1.4.270`).
 - Close returns each backer’s share of **current roll** (not baseline face). Underwater makeup posts to backer **Realized P/L**.
 - Markup is **prepaid on accept** (`face × (markup − 1)`), but **earned per buy-in**: applied fee = prepaid × min(buyins, package) / package. On close, **unused markup** returns to the backer (backing bankroll + reverse Realized) and is clawed from player personal (`20260811260000`). Overall backer performance on Commit = stake P/L − **applied** markup.
 - Close-out applies slice terms including **markup** (entry pricing) and **profit on sold action** separately in settle lines.
@@ -534,6 +534,7 @@ Replaced by stake commits above. Do not smoke **`propose` / `confirm` / `deny`**
 
 ## Update log
 
+- **2026-09-16:** **Stable live-session MTM:** backer horse cards load `active` sessions (not completed-only) and add in-play buy-in/rebuy/add-on back onto stored roll. SQL still debits those costs immediately (`20260811230000`); without the add-back, horse roll / stake MTM / portfolio sat at $0 until End Session. Frontend **`1.4.270`** on **`test`**.
 - **2026-09-16:** **Sell Action guest text invite:** same **or invite via text** checkbox as swaps. Share sheet after Start Session. Mint works on **active** unclaimed guest backer slices (`20260917220000` on test + prod). Share invite on live session detail. Frontend **`1.4.268`** via **`test` → `main`**.
 - **2026-09-16:** **Start Session tournament dates + Edge avatars:** picker labels always include the event date (Today / Tomorrow / `Tue 9/16`) even when a start time is set. Log Play **Add partner** and swap **+Edge user** rows show Lounge avatars or initials. Guests stay text-only. Frontend **`1.4.267`** via **`test` → `main`**.
 - **2026-09-14:** **Guest claim tokens on signup metadata:** swap/stake/slice copy-link invites store the token on the new account so confirm-in-app still attaches.

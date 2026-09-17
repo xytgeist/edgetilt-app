@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-16 … Stable live-session MTM
+
+**I am Mac Theo.** Backer Stable was only loading completed sessions, so horse roll / stake MTM / portfolio sat at $0 while the player was still in the session (SQL already debiting the buy-in). Now we load live sessions and add those chips back for display. **`1.4.270`** on **`test`**.
+
 ### Windows Theo 2026-09-16 … Wed TNF VIP hits fan-only Lounge
 
 **I am Windows Theo.** `nfl_wed_tnf_vip` now posts fan-only Lounge + VIP chat. Still no public Lounge and no X. CFB Wed VIP / Sat adds stay chat-only. Redeploy `lounge-odds-poll` for the cron. **`1.4.269`** on **`test`**.

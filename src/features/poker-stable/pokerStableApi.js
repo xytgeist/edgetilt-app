@@ -382,17 +382,17 @@ export async function loadDealSessionStats(supabase, dealIds) {
     .from('poker_bankroll_sessions')
     .select('deal_id, buy_in, rebuy_amount, addon_amount, cash_out, bounty_winnings, status')
     .in('deal_id', dealIds)
-    .eq('status', 'completed')
+    // Live sessions count on the horse card; profit stays completed-only (cash_out).
+    .in('status', ['completed', 'active'])
     .limit(2000)
   if (error) return { byDeal, error }
 
   for (const s of data || []) {
     const id = s.deal_id
     if (!id || !byDeal[id]) continue
-    const wl = pokerSessionWinLoss(s)
-    if (wl == null) continue
     byDeal[id].sessions += 1
-    byDeal[id].profit += wl
+    const wl = pokerSessionWinLoss(s)
+    if (wl != null) byDeal[id].profit += wl
   }
   return { byDeal, error: null }
 }
@@ -474,7 +474,8 @@ export async function loadDealSessionsForStable(supabase, dealIds) {
       'id, deal_id, user_id, start_at, end_at, venue_name, venue_kind, session_type, game_variant, small_blind, big_blind, tournament_name, status, buy_in, rebuy_amount, addon_amount, cash_out, bounty_winnings, reentries, tables_count',
     )
     .in('deal_id', dealIds)
-    .eq('status', 'completed')
+    // Include live so horse roll / MTM can restore in-play buy-ins already debited in SQL.
+    .in('status', ['completed', 'active'])
     .order('start_at', { ascending: true })
   return { sessions: data || [], error }
 }

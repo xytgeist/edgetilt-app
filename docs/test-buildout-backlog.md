@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-16:** **Stable live-session MTM (Mac).** Backer Stable loads live sessions and restores in-play chips onto horse roll / stake MTM / portfolio while the session is still open. Sessions count includes the live one; profit stays $0 until cash-out. Frontend **`1.4.270`** on **`test`**.
 - **2026-09-16:** **Wed TNF VIP fan-only Lounge (Windows).** `nfl_wed_tnf_vip` implicit dest is fan-only Lounge + VIP chat. Public and X stay off. CFB Wed / Sat adds-kills unchanged. Redeploy `lounge-odds-poll`. **`1.4.269`**.
 - **2026-09-16:** **Sell Action guest text invite (Mac).** Same **or invite via text** checkbox as swaps. Share sheet after Start Session for checked guests. Mint works on active guest backer slices. Share invite on live session detail. SQL **`20260917220000`** on **test + prod**. Frontend **`1.4.268`** via **`test` → `main`**.
 - **2026-09-16:** **Tournament picker dates + Edge avatars (Mac).** Start Session tournament options always show the date (Today / Tomorrow / weekday). Log Play Add partner and swap +Edge user rows show avatars or initials. Guests stay text-only. Frontend **`1.4.267`** via **`test` → `main`**.

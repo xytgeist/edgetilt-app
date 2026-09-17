@@ -67,17 +67,36 @@ export function PokerGuestInviteCopyCard({
   )
 }
 
+function inviteShareKey(row, idx) {
+  return String(row?.id || row?.url || `invite:${idx}`)
+}
+
 export default function PokerGuestInvitesSheet({
   invites = [],
   heading,
   onClose,
 }) {
-  const rows = Array.isArray(invites) ? invites.filter((row) => row?.text) : []
-  if (!rows.length) return null
+  const all = Array.isArray(invites) ? invites.filter((row) => row?.text) : []
+  const [sharedKeys, setSharedKeys] = useState(() => new Set())
+  const remaining = all.filter((row, idx) => !sharedKeys.has(inviteShareKey(row, idx)))
+
+  function handleShared(row, idx) {
+    if (remaining.length <= 1) {
+      onClose()
+      return
+    }
+    setSharedKeys((prev) => {
+      const next = new Set(prev)
+      next.add(inviteShareKey(row, idx))
+      return next
+    })
+  }
+
+  if (!all.length || !remaining.length) return null
   const title =
     String(heading || '').trim()
-    || (invitesAreTournamentSwaps(rows)
-      ? guestSwapInviteSheetTitle(rows)
+    || (invitesAreTournamentSwaps(remaining)
+      ? guestSwapInviteSheetTitle(remaining)
       : 'Send in your own text')
 
   return (
@@ -98,16 +117,20 @@ export default function PokerGuestInvitesSheet({
           </button>
         </div>
         <div className="space-y-3">
-          {rows.map((row, idx) => (
-            <PokerGuestInviteCopyCard
-              key={row.id || row.url || idx}
-              title={row.title || 'Text them this'}
-              text={row.text}
-              url={row.url}
-              shareTitle={row.shareTitle || 'EdgeTilt invite'}
-              onShared={onClose}
-            />
-          ))}
+          {all.map((row, idx) => {
+            const key = inviteShareKey(row, idx)
+            if (sharedKeys.has(key)) return null
+            return (
+              <PokerGuestInviteCopyCard
+                key={key}
+                title={row.title || 'Text them this'}
+                text={row.text}
+                url={row.url}
+                shareTitle={row.shareTitle || 'EdgeTilt invite'}
+                onShared={() => handleShared(row, idx)}
+              />
+            )
+          })}
         </div>
         <button
           type="button"

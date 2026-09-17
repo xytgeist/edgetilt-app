@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import PvalSyncDumpCard from './PvalSyncDumpCard.jsx'
 
 export default function BotPlayerPvalEditor({ supabaseClient, setToast }) {
   const [players, setPlayers] = useState([])
@@ -84,6 +85,7 @@ export default function BotPlayerPvalEditor({ supabaseClient, setToast }) {
 
   return (
     <div className="rounded-xl border border-zinc-800/80 bg-zinc-950/60 p-4 text-zinc-100 shadow-lg">
+      <PvalSyncDumpCard supabaseClient={supabaseClient} />
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800/80 pb-3">
         <div>
           <div className="flex items-center gap-2">

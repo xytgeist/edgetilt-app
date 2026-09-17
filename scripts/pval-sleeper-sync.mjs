@@ -114,6 +114,119 @@ function rowPayload(r) {
   }
 }
 
+function roundPval(n) {
+  return Math.round(Number(n) * 100) / 100
+}
+
+function buildPvalCompare(dbRows, proposed, { refresh = false } = {}) {
+  const byNorm = new Map(proposed.map((r) => [r.normalized_name, r]))
+  const existing = new Map(dbRows.map((d) => [d.normalized_name, d]))
+  const movers = []
+  const overrideBlocked = []
+  let matched = 0
+  let unchanged = 0
+  let inserted = 0
+  let updated = 0
+  let skippedOverrides = 0
+
+  for (const r of proposed) {
+    const d = existing.get(r.normalized_name)
+    if (!d) {
+      inserted++
+      movers.push({
+        kind: 'insert',
+        name: r.player_name,
+        team: r.team_abbr || r.team_name || '',
+        band: r.bandKey,
+        from: null,
+        to: r.pval,
+        delta: r.pval,
+        override: false,
+      })
+      continue
+    }
+    matched++
+    const from = roundPval(d.pval)
+    const to = roundPval(r.pval)
+    const delta = roundPval(to - from)
+    if (d.is_custom_override) {
+      skippedOverrides++
+      if (Math.abs(delta) >= 0.25) {
+        overrideBlocked.push({
+          kind: 'override',
+          name: d.player_name,
+          team: r.team_abbr || r.team_name || '',
+          band: r.bandKey,
+          from,
+          to,
+          delta,
+          override: true,
+        })
+      }
+      continue
+    }
+    if (!refresh) {
+      unchanged++
+      continue
+    }
+    if (Math.abs(delta) < 0.05) {
+      unchanged++
+      continue
+    }
+    updated++
+    movers.push({
+      kind: 'update',
+      name: d.player_name,
+      team: r.team_abbr || r.team_name || '',
+      band: r.bandKey,
+      from,
+      to,
+      delta,
+      override: false,
+    })
+  }
+
+  movers.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+  overrideBlocked.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+
+  return {
+    matched,
+    inserted,
+    updated,
+    unchanged,
+    skippedOverrides,
+    movers,
+    overrideBlocked,
+  }
+}
+
+async function savePvalSyncRun(target, dump) {
+  loadSupabaseEnv(target)
+  const supabase = createSupabaseServiceClient(createClient)
+  const { error } = await supabase.from('nfl_pval_sync_runs').insert({
+    source: 'sleeper',
+    season: dump.season,
+    week: dump.week,
+    proposed_rows: dump.proposed_rows,
+    wrote: dump.wrote,
+    inserted_n: dump.inserted_n,
+    updated_n: dump.updated_n,
+    unchanged_n: dump.unchanged_n,
+    skipped_overrides: dump.skipped_overrides,
+    table_n: dump.table_n,
+    override_n: dump.override_n,
+    band_counts: dump.band_counts,
+    movers: dump.movers,
+    override_blocked: dump.override_blocked,
+    summary: dump.summary,
+  })
+  if (error) {
+    console.warn(`[pval-sleeper] sync-run dump failed: ${error.message}`)
+    return
+  }
+  console.log(`[pval-sleeper] wrote ops dump (${dump.movers.length} movers)`)
+}
+
 async function applyRows(target, rows, { refresh = false, protectExisting = true } = {}) {
   loadSupabaseEnv(target)
   const supabase = createSupabaseServiceClient(createClient)
@@ -186,42 +299,21 @@ async function applyRows(target, rows, { refresh = false, protectExisting = true
     `Apply ${target} (${refresh ? 'refresh non-overrides' : 'insert-new only'}): ` +
       `wrote≈${upserted}, skipped≈${skipped}, table_n=${tableN ?? '?'}, overrides=${overrideN ?? '?'}`,
   )
+  return { upserted, skipped, tableN: tableN ?? 0, overrideN: overrideN ?? 0 }
 }
 
-async function compareToDb(target, rows) {
+async function loadDbPvals(target) {
   loadSupabaseEnv(target)
   const supabase = createSupabaseServiceClient(createClient)
-  const dbRows = await fetchAllRows(
-    supabase,
-    'player_name, normalized_name, pval, is_custom_override',
-  )
-  if (!dbRows.length) return
+  return fetchAllRows(supabase, 'player_name, normalized_name, pval, is_custom_override')
+}
 
-  const byNorm = new Map(rows.map((r) => [r.normalized_name, r]))
-  console.log(`\nCompare to existing ${target} table (${dbRows.length} rows):`)
-  let matched = 0
-  const diffs = []
-  for (const d of dbRows) {
-    const prop = byNorm.get(d.normalized_name)
-    if (!prop) continue
-    matched++
-    const delta = Math.round((prop.pval - Number(d.pval)) * 100) / 100
-    if (Math.abs(delta) >= 0.5) {
-      diffs.push({
-        name: d.player_name,
-        db: Number(d.pval),
-        prop: prop.pval,
-        delta,
-        override: d.is_custom_override,
-        band: prop.bandKey,
-      })
-    }
-  }
-  diffs.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
-  console.log(`  name-matched ${matched} · |Δ|≥0.5 → ${diffs.length}`)
-  for (const d of diffs.slice(0, 12)) {
+function printCompare(cmp) {
+  const big = cmp.movers.filter((m) => Math.abs(m.delta) >= 0.5)
+  console.log(`\nCompare: matched ${cmp.matched} · new ${cmp.inserted} · |Δ|≥0.05 ${cmp.updated} · |Δ|≥0.5 ${big.length}`)
+  for (const d of big.slice(0, 12)) {
     console.log(
-      `  ${d.name}: db ${d.db} → prop ${d.prop} (Δ${d.delta > 0 ? '+' : ''}${d.delta}) ${d.band}${d.override ? ' [OVERRIDE]' : ''}`,
+      `  ${d.name}: ${d.from ?? '-'} -> ${d.to} (d${d.delta > 0 ? '+' : ''}${d.delta}) ${d.band}${d.override ? ' [OVERRIDE]' : ''}`,
     )
   }
 }
@@ -268,7 +360,9 @@ async function main() {
     console.log(`\nWrote ${outPath}`)
   }
 
-  await compareToDb(args.target, built.rows)
+  const dbBefore = await loadDbPvals(args.target)
+  const cmp = buildPvalCompare(dbBefore, built.rows, { refresh: args.refresh })
+  printCompare(cmp)
 
   if (args.dryRun) {
     console.log('\nDry-run only. Re-run with --apply --target=test to insert new rows (curated protected).')
@@ -276,10 +370,27 @@ async function main() {
     return
   }
 
-  await applyRows(args.target, built.rows, {
+  const applied = await applyRows(args.target, built.rows, {
     refresh: args.refresh,
     protectExisting: args.protectExisting,
   })
+  const dump = {
+    season: built.season,
+    week: built.week,
+    proposed_rows: built.rowCount,
+    wrote: applied.upserted,
+    inserted_n: cmp.inserted,
+    updated_n: cmp.updated,
+    unchanged_n: cmp.unchanged,
+    skipped_overrides: cmp.skippedOverrides,
+    table_n: applied.tableN,
+    override_n: applied.overrideN,
+    band_counts: built.bandCounts,
+    movers: cmp.movers.slice(0, 120),
+    override_blocked: cmp.overrideBlocked.slice(0, 40),
+    summary: `Sleeper week ${built.week} ${built.season}: pulled ${built.rowCount}, wrote ${applied.upserted} (${cmp.inserted} new, ${cmp.updated} moved), left ${cmp.skippedOverrides} overrides.`,
+  }
+  await savePvalSyncRun(args.target, dump)
 }
 
 main().catch((err) => {

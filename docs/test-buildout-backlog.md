@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-16:** **PVAL refresh dump on Ops (Windows).** `nfl_pval_sync_runs` on each Sleeper `--apply`. PVALs tab shows pulled / wrote / movers / held overrides. Heartbeat `last_detail` is not the dump. Applied **`20260916210000`** on test + prod. Frontend **`1.4.264`**.
 - **2026-09-16:** **Ops week calendar reads Lounge captions (Windows).** Posted green looks at `community_feed_posts.caption` plus live title needles (MNF spotlight, Weekly Ledger, locks, slates). The old `body` select failed every fetch. MNF lock stays Missed until that post exists. PVAL check is still mark-in.
 - **2026-09-16:** **Swap claim exact email (Mac).** Gmail dots stay separate accounts. Reverted alias matching from **`20260917120000`**. Cancelled invites still say cancelled, not swap not found. Dead tokens skip the claim page. SQL **`20260917130000`** on **test**. Frontend **`1.4.263`** on **`test`**.
 - **2026-09-16:** **Gmail-dot swap claim + cancelled invite copy (Mac).** **Reverted** alias matching. Keep cancelled-invite copy. SQL **`20260917120000`** then **`20260917130000`** on **test**. Frontend **`1.4.262`** was the alias attempt.

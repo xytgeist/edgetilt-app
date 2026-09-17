@@ -11755,6 +11755,26 @@ html.light [data-lounge-report-sheet] button.bg-zinc-800 {
   color: #18181b !important;
 }
 
+html.light [data-pval-sync-dump] {
+  background-color: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+  color: #14532d !important;
+}
+html.light [data-pval-sync-dump] .text-white {
+  color: #14532d !important;
+}
+html.light [data-pval-sync-dump] .text-zinc-300,
+html.light [data-pval-sync-dump] .text-zinc-400 {
+  color: #3f6212 !important;
+}
+html.light [data-pval-sync-dump] table thead {
+  background-color: #f0fdf4 !important;
+}
+html.light [data-pval-sync-dump] .bg-zinc-900,
+html.light [data-pval-sync-dump] .bg-zinc-950 {
+  background-color: #ffffff !important;
+}
+
 
 
 

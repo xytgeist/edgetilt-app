@@ -172,7 +172,7 @@ export const OPS_WEEK_TASKS = [
     sports: ['nfl'],
     kind: 'check',
     label: 'PVAL check',
-    detail: 'Spot-check Sleeper OUTs and overrides after the Tuesday refresh.',
+    detail: 'Tuesday GHA writes the dump on PVALs. Confirm pulled > 0 and wrote/moved, then mark in.',
     days: [2],
     startHour: 9,
     endHour: 18,

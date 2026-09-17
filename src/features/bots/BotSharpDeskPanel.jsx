@@ -39,6 +39,7 @@ import { SyndicateDryRunPreview } from '../../syndicate/SyndicateDryRunPreview.j
 import { SyndicateDeskEvalBoard } from '../../syndicate/SyndicateDeskEvalBoard.jsx'
 import { SyndicateOpsDropInfo } from '../../syndicate/SyndicateOpsDropInfo.jsx'
 import { SyndicateOpsWeekCalendar } from '../../syndicate/SyndicateOpsWeekCalendar.jsx'
+import { fetchSplitsCoverageRows } from '../../syndicate/syndicateSplitsDropSchedule.js'
 import { SyndicateWeeklyPullsPanel } from '../../syndicate/SyndicateWeeklyPullsPanel.jsx'
 import { SyndicateDeskMathPanel } from '../../syndicate/SyndicateDeskMathPanel.jsx'
 import {
@@ -183,13 +184,7 @@ export function BotSharpDeskPanel({
     if (!supabaseClient) return undefined
     let cancelled = false
     const load = async () => {
-      const { data } = await supabaseClient
-        .from('syndicate_betting_splits')
-        .select(
-          'sport_key,active,updated_at,created_at,home_ticket_pct,home_handle_pct,over_ticket_pct,over_handle_pct',
-        )
-        .eq('active', true)
-        .limit(200)
+      const data = await fetchSplitsCoverageRows(supabaseClient)
       if (!cancelled) setSplitsRows(data || [])
     }
     void load()

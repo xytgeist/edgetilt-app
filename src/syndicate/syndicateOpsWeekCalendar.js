@@ -6,6 +6,7 @@
 
 import {
   evaluateSplitsDrops,
+  fetchSplitsCoverageRows,
   ptClockParts,
   shopWeekTuesdayYmd,
   splitsCoverageOk,
@@ -615,7 +616,7 @@ export function setOpsWeekCalendarOpen(open) {
 }
 
 export function emptyOpsWeekEvidence() {
-  return { logs: [], picks: [], posts: [] }
+  return { logs: [], picks: [], posts: [], splits: null }
 }
 
 function evidenceYmd(iso) {
@@ -701,12 +702,16 @@ export function findPostedEvidence(task, dayYmd, evidence = emptyOpsWeekEvidence
   return { posted: false, failed: false, at: null, via: null }
 }
 
+function splitsRowsForWeek(rows, evidence) {
+  return evidence.splits != null ? evidence.splits : rows
+}
+
 /**
  * @param {typeof OPS_WEEK_TASKS[number]} task
  * @param {string} dayYmd
  * @param {object[]} rows
  * @param {Date} now
- * @param {{ logs?: object[], picks?: object[], posts?: object[] }} [evidence]
+ * @param {{ logs?: object[], picks?: object[], posts?: object[], splits?: object[] | null }} [evidence]
  */
 export function evaluateOpsWeekTaskOnDay(task, dayYmd, rows, now = new Date(), evidence = emptyOpsWeekEvidence()) {
   const clock = ptClockParts(now)
@@ -734,7 +739,8 @@ export function evaluateOpsWeekTaskOnDay(task, dayYmd, rows, now = new Date(), e
   }
 
   if (task.splitsId) {
-    const done = splitsCoverageOk(task.splitsId, rows, shopTue)
+    const splitRows = splitsRowsForWeek(rows, evidence)
+    const done = splitsCoverageOk(task.splitsId, splitRows, shopTue)
     if (done) {
       return { ...task, status: 'done', dayYmd, shopTue, marked: false }
     }
@@ -742,12 +748,12 @@ export function evaluateOpsWeekTaskOnDay(task, dayYmd, rows, now = new Date(), e
       return { ...task, status: 'upcoming', dayYmd, shopTue, marked: false }
     }
     if (dayYmd === clock.ymd) {
-      const live = evaluateSplitsDrops(rows, now).find((d) => d.id === task.splitsId)
+      const live = evaluateSplitsDrops(splitRows, now).find((d) => d.id === task.splitsId)
       return { ...task, status: live?.status || 'upcoming', dayYmd, shopTue, marked: false }
     }
     const sameShop = shopWeekTuesdayYmd(now) === shopTue
     if (sameShop && !splitsDropAfterWindow(task.splitsId, now)) {
-      const live = evaluateSplitsDrops(rows, now).find((d) => d.id === task.splitsId)
+      const live = evaluateSplitsDrops(splitRows, now).find((d) => d.id === task.splitsId)
       return { ...task, status: live?.status === 'due' ? 'due' : 'upcoming', dayYmd, shopTue, marked: false }
     }
     return { ...task, status: 'missed', dayYmd, shopTue, marked: false }
@@ -792,13 +798,14 @@ export function evaluateOpsWeekTaskOnDay(task, dayYmd, rows, now = new Date(), e
 export function buildOpsWeek(rows, now = new Date(), evidence = emptyOpsWeekEvidence()) {
   const clock = ptClockParts(now)
   const mondayYmd = weekMondayYmd(now)
-  const splitsLive = evaluateSplitsDrops(rows, now)
+  const splitRows = splitsRowsForWeek(rows, evidence)
+  const splitsLive = evaluateSplitsDrops(splitRows, now)
   const days = [0, 1, 2, 3, 4, 5, 6].map((i) => {
     const ymd = addDaysYmd(mondayYmd, i)
     const weekday = (1 + i) % 7
     const weekdayLabel = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][weekday]
     const tasks = OPS_WEEK_TASKS.filter((task) => task.days.includes(weekday)).map((task) =>
-      evaluateOpsWeekTaskOnDay(task, ymd, rows, now, evidence),
+      evaluateOpsWeekTaskOnDay(task, ymd, splitRows, now, evidence),
     )
     return {
       ymd,
@@ -902,9 +909,13 @@ export function opsWeekQuerySinceIso(now = new Date()) {
  * @param {Date} [now]
  */
 export async function fetchOpsWeekEvidence(supabaseClient, botUserId, now = new Date()) {
-  if (!supabaseClient || !botUserId) return emptyOpsWeekEvidence()
+  if (!supabaseClient) return emptyOpsWeekEvidence()
+  const splitsPromise = fetchSplitsCoverageRows(supabaseClient, now)
+  if (!botUserId) {
+    return { ...emptyOpsWeekEvidence(), splits: await splitsPromise }
+  }
   const since = opsWeekQuerySinceIso(now)
-  const [logsRes, picksRes, postsRes] = await Promise.all([
+  const [logsRes, picksRes, postsRes, splits] = await Promise.all([
     supabaseClient
       .from('lounge_bot_publish_log')
       .select('post_kind,status,created_at,dedupe_key,caption')
@@ -927,10 +938,12 @@ export async function fetchOpsWeekEvidence(supabaseClient, botUserId, now = new 
       .gte('created_at', since)
       .order('created_at', { ascending: false })
       .limit(80),
+    splitsPromise,
   ])
   return {
     logs: logsRes.data || [],
     picks: picksRes.data || [],
     posts: postsRes.data || [],
+    splits,
   }
 }

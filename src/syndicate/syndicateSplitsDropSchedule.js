@@ -150,6 +150,44 @@ export function shopWeekTuesdayYmd(now = new Date()) {
   }).format(new Date(tueMs))
 }
 
+/** Shop-week Tuesday 00:00 PT as ISO. Seed / movers / lock coverage all start here. */
+export function shopWeekTuesdayStartIso(now = new Date()) {
+  return new Date(ptYmdStartMs(shopWeekTuesdayYmd(now))).toISOString()
+}
+
+const SPLITS_COVERAGE_PAGE = 1000
+const SPLITS_COVERAGE_SELECT =
+  'sport_key,active,updated_at,created_at,home_ticket_pct,home_handle_pct,over_ticket_pct,over_handle_pct'
+
+/**
+ * Active splits written this shop week. No 200-row cap... leftover older
+ * actives stay out so Seed / movers / lock see the paste that just landed.
+ * @param {import('@supabase/supabase-js').SupabaseClient | null} supabaseClient
+ * @param {Date} [now]
+ */
+export async function fetchSplitsCoverageRows(supabaseClient, now = new Date()) {
+  if (!supabaseClient) return []
+  const since = shopWeekTuesdayStartIso(now)
+  const out = []
+  for (let from = 0; from < 5000; from += SPLITS_COVERAGE_PAGE) {
+    const { data, error } = await supabaseClient
+      .from('syndicate_betting_splits')
+      .select(SPLITS_COVERAGE_SELECT)
+      .eq('active', true)
+      .gte('updated_at', since)
+      .order('updated_at', { ascending: false })
+      .range(from, from + SPLITS_COVERAGE_PAGE - 1)
+    if (error) {
+      console.error('Failed to load shop-week splits:', error)
+      break
+    }
+    if (!data?.length) break
+    out.push(...data)
+    if (data.length < SPLITS_COVERAGE_PAGE) break
+  }
+  return out
+}
+
 function inDropCalendarDay(drop, weekday) {
   return drop.days.includes(weekday)
 }

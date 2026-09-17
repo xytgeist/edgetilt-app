@@ -49,7 +49,7 @@ export function SyndicateOpsWeekCalendar({
   }, [])
 
   useEffect(() => {
-    if (!supabaseClient || !botUserId) return undefined
+    if (!supabaseClient) return undefined
     let cancelled = false
     const load = async () => {
       const next = await fetchOpsWeekEvidence(supabaseClient, botUserId, new Date())
@@ -67,7 +67,10 @@ export function SyndicateOpsWeekCalendar({
     () => buildOpsWeek(rows, new Date(nowTick), evidence),
     [rows, nowTick, markTick, evidence],
   )
-  const dueSplits = useMemo(() => dueSplitsDrops(rows, new Date(nowTick)), [rows, nowTick])
+  const dueSplits = useMemo(
+    () => dueSplitsDrops(evidence.splits != null ? evidence.splits : rows, new Date(nowTick)),
+    [rows, nowTick, evidence],
+  )
 
   useEffect(() => {
     maybeFireSplitsDesktopNags(dueSplits, new Date(nowTick))

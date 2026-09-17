@@ -364,8 +364,10 @@ export default function AppShell({
       ? 12
       : 28
   const [tab, setTab] = useState('home')
-  /** Mount Poker Bankroll once visited, then hide (like Chat) so reopen skips full reload. */
+  /** Mount once visited, then hide (like Chat) so reopen skips full reload. */
   const [pokerBankrollKeepAlive, setPokerBankrollKeepAlive] = useState(false)
+  const [slotsBankrollKeepAlive, setSlotsBankrollKeepAlive] = useState(false)
+  const [pokerStableKeepAlive, setPokerStableKeepAlive] = useState(false)
   const [pendingPlayLogEntryId, setPendingPlayLogEntryId] = useState(null)
   const [pendingPlayLogLedger, setPendingPlayLogLedger] = useState(false)
   const [pendingPlayLogPartner, setPendingPlayLogPartner] = useState(null)
@@ -473,7 +475,11 @@ export default function AppShell({
       acknowledgePokerBankrollAttention()
       setPokerBankrollKeepAlive(true)
     }
-    if (tab === 'poker-stable') acknowledgePokerStableAttention()
+    if (tab === 'poker-stable') {
+      acknowledgePokerStableAttention()
+      setPokerStableKeepAlive(true)
+    }
+    if (tab === 'bankroll') setSlotsBankrollKeepAlive(true)
   }, [
     tab,
     acknowledgePokerOfferMenu,
@@ -2681,7 +2687,13 @@ export default function AppShell({
     tab === 'chat' ? <div className="min-h-dvh w-full bg-zinc-950" aria-hidden /> : null
   const pokerBankrollSuspenseFallback =
     tab === 'poker-bankroll' ? <TabLoadingFallback /> : null
+  const slotsBankrollSuspenseFallback =
+    tab === 'bankroll' ? <TabLoadingFallback /> : null
+  const pokerStableSuspenseFallback =
+    tab === 'poker-stable' ? <TabLoadingFallback /> : null
   const pokerBankrollMounted = pokerBankrollKeepAlive || tab === 'poker-bankroll'
+  const slotsBankrollMounted = slotsBankrollKeepAlive || tab === 'bankroll'
+  const pokerStableMounted = pokerStableKeepAlive || tab === 'poker-stable'
 
   const renderTabContent = () => {
     /** Stay mounted across tabs so lounge composer / uploads are not torn down when browsing elsewhere in-app. */
@@ -2825,17 +2837,90 @@ export default function AppShell({
             titleBarNavSlot={tab === 'poker-bankroll' ? renderTitleBarNavSlot() : null}
             titleBarCenterSlot={tab === 'poker-bankroll' ? renderTitleBarCenterSlot() : null}
             titleBarToolCloseVisible={pokerToolTitleBarCloseVisible}
-            openSessionId={pendingPokerSessionId}
+            openSessionId={tab === 'poker-bankroll' ? pendingPokerSessionId : null}
             onOpenSessionConsumed={() => setPendingPokerSessionId(null)}
-            openStableDealId={pendingPokerStableDealId}
+            openStableDealId={tab === 'poker-bankroll' ? pendingPokerStableDealId : null}
             onOpenStableDealConsumed={() => setPendingPokerStableDealId(null)}
-            openTournamentSwapId={pendingTournamentSwapId}
+            openTournamentSwapId={tab === 'poker-bankroll' ? pendingTournamentSwapId : null}
             onOpenTournamentSwapConsumed={() => setPendingTournamentSwapId(null)}
-            stakeOnboardingDealId={stakeOnboardingDealId}
+            stakeOnboardingDealId={tab === 'poker-bankroll' ? stakeOnboardingDealId : null}
             onStakeOnboardingConsumed={() => setStakeOnboardingDealId(null)}
-            highlightPendingOffer={pulseBankrollOffer}
+            highlightPendingOffer={tab === 'poker-bankroll' ? pulseBankrollOffer : false}
             onHighlightPendingOfferConsumed={clearBankrollOfferPulse}
             showGlobalConfirm={showGlobalConfirm}
+            onOpenChatWithUser={(peerUserId) => {
+              if (!peerUserId) return
+              setPendingChatPeerUserId(peerUserId)
+              setTab('chat')
+              setMenuOpen(false)
+            }}
+            onOpenChatRoom={(roomId) => {
+              if (!roomId) return
+              openChatRoomDirect(roomId, { skipReloadIfSame: true })
+            }}
+          />
+        </div>
+      </Suspense>
+    ) : null
+
+    /** Slots Bankroll … same keep-alive as Poker Bankroll. */
+    const keepAliveSlotsBankroll = slotsBankrollMounted ? (
+      <Suspense fallback={slotsBankrollSuspenseFallback}>
+        <div
+          key="slots-bankroll-keepalive"
+          className={tab === 'bankroll' ? 'contents min-h-0' : 'hidden'}
+          inert={tab !== 'bankroll'}
+        >
+          <BankrollTracker
+            supabaseClient={supabaseClient}
+            isActivePage={tab === 'bankroll'}
+            canCreateBankrollSession={canCreateBankrollSession}
+            bankrollSessionsRemaining={bankrollSessionsRemaining}
+            freemiumUsageLoading={freemiumUsageLoading}
+            onRequireSubscribeForBankroll={() => onRequireSubscribe?.('slots-edge')}
+            onBankrollSessionCreated={refreshFreemiumUsage}
+            titleBarNavSlot={tab === 'bankroll' ? renderTitleBarNavSlot() : null}
+            titleBarCenterSlot={tab === 'bankroll' ? renderTitleBarCenterSlot() : null}
+            titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
+          />
+        </div>
+      </Suspense>
+    ) : null
+
+    /** Stable Manager … same keep-alive as Poker Bankroll. */
+    const keepAlivePokerStable = pokerStableMounted ? (
+      <Suspense fallback={pokerStableSuspenseFallback}>
+        <div
+          key="poker-stable-keepalive"
+          className={tab === 'poker-stable' ? 'contents min-h-0' : 'hidden'}
+          inert={tab !== 'poker-stable'}
+        >
+          <PokerStableScreen
+            supabaseClient={supabaseClient}
+            isActivePage={tab === 'poker-stable'}
+            titleBarNavSlot={tab === 'poker-stable' ? renderTitleBarNavSlot() : null}
+            titleBarCenterSlot={tab === 'poker-stable' ? renderTitleBarCenterSlot() : null}
+            titleBarToolCloseVisible={pokerToolTitleBarCloseVisible}
+            openStableDealId={tab === 'poker-stable' ? pendingPokerStableDealId : null}
+            onOpenStableDealConsumed={clearPendingPokerStableDealId}
+            showWithdrawnOfferNotice={tab === 'poker-stable' ? pendingStableOfferWithdrawn : false}
+            onWithdrawnOfferNoticeConsumed={clearPendingStableOfferWithdrawn}
+            backerSliceOnboardingDealId={
+              tab === 'poker-stable' ? backerSliceOnboardingDealId : null
+            }
+            backerSliceOnboardingSliceId={
+              tab === 'poker-stable' ? backerSliceOnboardingSliceId : null
+            }
+            onBackerSliceOnboardingConsumed={() => {
+              setBackerSliceOnboardingDealId(null)
+              setBackerSliceOnboardingSliceId(null)
+            }}
+            onOpenPokerBankroll={(dealId) => {
+              setPendingPokerStableDealId(dealId)
+              setTab('poker-bankroll')
+            }}
+            highlightPendingOffer={tab === 'poker-stable' ? pulseStableOffer : false}
+            onHighlightPendingOfferConsumed={clearStableOfferPulse}
             onOpenChatWithUser={(peerUserId) => {
               if (!peerUserId) return
               setPendingChatPeerUserId(peerUserId)
@@ -3049,55 +3134,6 @@ export default function AppShell({
           isAdmin={isAdmin}
         />
       )
-    } else if (tab === 'bankroll') {
-      visibleTab = (
-        <BankrollTracker
-          supabaseClient={supabaseClient}
-          canCreateBankrollSession={canCreateBankrollSession}
-          bankrollSessionsRemaining={bankrollSessionsRemaining}
-          freemiumUsageLoading={freemiumUsageLoading}
-          onRequireSubscribeForBankroll={() => onRequireSubscribe?.('slots-edge')}
-          onBankrollSessionCreated={refreshFreemiumUsage}
-          titleBarNavSlot={renderTitleBarNavSlot()}
-          titleBarCenterSlot={renderTitleBarCenterSlot()}
-          titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
-        />
-      )
-    } else if (tab === 'poker-stable') {
-      visibleTab = (
-        <PokerStableScreen
-          supabaseClient={supabaseClient}
-          titleBarNavSlot={renderTitleBarNavSlot()}
-          titleBarCenterSlot={renderTitleBarCenterSlot()}
-          titleBarToolCloseVisible={pokerToolTitleBarCloseVisible}
-          openStableDealId={pendingPokerStableDealId}
-          onOpenStableDealConsumed={clearPendingPokerStableDealId}
-          showWithdrawnOfferNotice={pendingStableOfferWithdrawn}
-          onWithdrawnOfferNoticeConsumed={clearPendingStableOfferWithdrawn}
-          backerSliceOnboardingDealId={backerSliceOnboardingDealId}
-          backerSliceOnboardingSliceId={backerSliceOnboardingSliceId}
-          onBackerSliceOnboardingConsumed={() => {
-            setBackerSliceOnboardingDealId(null)
-            setBackerSliceOnboardingSliceId(null)
-          }}
-          onOpenPokerBankroll={(dealId) => {
-            setPendingPokerStableDealId(dealId)
-            setTab('poker-bankroll')
-          }}
-          highlightPendingOffer={pulseStableOffer}
-          onHighlightPendingOfferConsumed={clearStableOfferPulse}
-          onOpenChatWithUser={(peerUserId) => {
-            if (!peerUserId) return
-            setPendingChatPeerUserId(peerUserId)
-            setTab('chat')
-            setMenuOpen(false)
-          }}
-          onOpenChatRoom={(roomId) => {
-            if (!roomId) return
-            openChatRoomDirect(roomId, { skipReloadIfSame: true })
-          }}
-        />
-      )
     } else if (tab === 'logbook') {
       visibleTab = (
         <PlayLogbook
@@ -3257,6 +3293,8 @@ export default function AppShell({
         {keepAliveSocialFeed}
         {keepAliveChatTab}
         {keepAlivePokerBankroll}
+        {keepAliveSlotsBankroll}
+        {keepAlivePokerStable}
         {visibleTab != null ? (
           <TabErrorBoundary onBack={() => setTab('home')}>
             <Suspense fallback={<TabLoadingFallback />}>{visibleTab}</Suspense>

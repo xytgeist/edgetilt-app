@@ -87,6 +87,8 @@ import {
  */
 export default function PokerStableScreen({
   supabaseClient,
+  /** False while keep-alive hidden ... pause polls; silent refresh on re-show. */
+  isActivePage = true,
   titleBarNavSlot = null,
   titleBarCenterSlot = null,
   titleBarToolCloseVisible = false,
@@ -325,13 +327,14 @@ export default function PokerStableScreen({
   }, [load])
 
   useEffect(() => {
+    if (!isActivePage) return undefined
     if (typeof document === 'undefined') return undefined
     const onVisible = () => {
       if (document.visibilityState === 'visible') void load({ silent: true })
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => document.removeEventListener('visibilitychange', onVisible)
-  }, [load])
+  }, [isActivePage, load])
 
   /**
    * Live refresh while Stable has open horses (pending/active), matching Bankroll:
@@ -344,12 +347,37 @@ export default function PokerStableScreen({
   }, [deals, userId])
 
   useEffect(() => {
-    if (!supabaseClient || !userId || !hasOpenStableHorses) return undefined
+    if (!isActivePage || !supabaseClient || !userId || !hasOpenStableHorses) return undefined
     const id = window.setInterval(() => {
       void load({ silent: true })
     }, 8000)
     return () => window.clearInterval(id)
-  }, [supabaseClient, userId, hasOpenStableHorses, load])
+  }, [isActivePage, supabaseClient, userId, hasOpenStableHorses, load])
+
+  /** After keep-alive re-show, silent refresh so horses catch up without a loading flash. */
+  const wasActivePageRef = useRef(isActivePage)
+  useEffect(() => {
+    const wasActive = wasActivePageRef.current
+    wasActivePageRef.current = isActivePage
+    if (!wasActive && isActivePage && userId) {
+      void load({ silent: true })
+    }
+  }, [isActivePage, userId, load])
+
+  /** Drop sheets when hidden so they do not float over other tools. */
+  useEffect(() => {
+    if (isActivePage) return
+    setSheet(null)
+    setDetailDealId(null)
+    setTermsDealId(null)
+    setPortfolioDetailOpen(false)
+    setAttentionOpen(false)
+    setBackerSliceOnboardingOpen(false)
+    setArchiveDetailDealId(null)
+    setClosedHorseReviewDealId(null)
+    setProposeAfterDecline(null)
+    setCreateStakeSeed(null)
+  }, [isActivePage])
 
   useEffect(() => {
     if (!supabaseClient || !userId) return undefined
@@ -402,16 +430,16 @@ export default function PokerStableScreen({
   // Only from tapping a poker_stable_offer_withdrawn Alert/push (stableWithdrawn=1).
   // Do not infer withdrawal from a missing stableDeal … that bleeds onto new-invite opens.
   useEffect(() => {
-    if (!showWithdrawnOfferNotice) return
+    if (!isActivePage || !showWithdrawnOfferNotice) return
     setWithdrawnOfferNotice('This stake offer was withdrawn.')
     setDetailDealId(null)
     setFocusHorseDealId(null)
     clearStableWithdrawnDeepLinkParams({ clearStableDeal: true })
     onWithdrawnOfferNoticeConsumedRef.current?.()
-  }, [showWithdrawnOfferNotice])
+  }, [isActivePage, showWithdrawnOfferNotice])
 
   useEffect(() => {
-    if (!openStableDealId || loading || !userId) return
+    if (!isActivePage || !openStableDealId || loading || !userId) return
     if (activeBackerOnboardingDealId && activeBackerOnboardingSliceId) {
       onOpenStableDealConsumedRef.current?.()
       return
@@ -469,6 +497,7 @@ export default function PokerStableScreen({
     void load({ silent: true })
     onOpenStableDealConsumedRef.current?.()
   }, [
+    isActivePage,
     openStableDealId,
     loading,
     userId,
@@ -500,12 +529,18 @@ export default function PokerStableScreen({
   ])
 
   useEffect(() => {
-    if (loading || !userId || !backerOnboardingSliceRow || backerSliceOnboardingOpenedRef.current) {
+    if (
+      !isActivePage ||
+      loading ||
+      !userId ||
+      !backerOnboardingSliceRow ||
+      backerSliceOnboardingOpenedRef.current
+    ) {
       return
     }
     backerSliceOnboardingOpenedRef.current = true
     setBackerSliceOnboardingOpen(true)
-  }, [loading, userId, backerOnboardingSliceRow])
+  }, [isActivePage, loading, userId, backerOnboardingSliceRow])
 
   function closeBackerSliceOnboarding() {
     setBackerSliceOnboardingOpen(false)
@@ -545,7 +580,7 @@ export default function PokerStableScreen({
   )
 
   useEffect(() => {
-    if (!highlightPendingOffer || loading || !userId) return undefined
+    if (!isActivePage || !highlightPendingOffer || loading || !userId) return undefined
     const inviteDeal = activeDeals.find((deal) => {
       const slices = slicesByDeal[deal.id] || []
       return slices.some(
@@ -558,6 +593,7 @@ export default function PokerStableScreen({
     }, 4200)
     return () => window.clearTimeout(clearTimer)
   }, [
+    isActivePage,
     highlightPendingOffer,
     loading,
     userId,

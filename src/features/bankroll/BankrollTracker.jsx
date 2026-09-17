@@ -108,6 +108,8 @@ function stepDurationHoursField(raw, delta) {
 
 export default function BankrollTracker({
   supabaseClient,
+  /** False while keep-alive hidden ... pause live clock; silent refresh on re-show. */
+  isActivePage = true,
   titleBarNavSlot = null,
   titleBarCenterSlot = null,
   titleBarToolCloseVisible = false,
@@ -231,17 +233,38 @@ export default function BankrollTracker({
 
   useEffect(() => { loadData() }, [loadData])
 
+  /** After keep-alive re-show, silent refresh without a loading flash. */
+  const wasActivePageRef = useRef(isActivePage)
+  useEffect(() => {
+    const wasActive = wasActivePageRef.current
+    wasActivePageRef.current = isActivePage
+    if (!wasActive && isActivePage && userId) {
+      void loadData()
+    }
+  }, [isActivePage, userId, loadData])
+
+  /** Drop sheets when hidden so they do not float over other tools. */
+  useEffect(() => {
+    if (isActivePage) return
+    setSheet(null)
+    setSelectMode(false)
+    setOpenSwipeSessionId(null)
+    setHistoryFilterOpen(false)
+    setCasinoPickerOpen(false)
+    setDeleteConfirm(false)
+  }, [isActivePage])
+
   // ── Live elapsed timer for active session ─────────────────────────────────
 
   useEffect(() => {
-    if (!activeSession) { setElapsed(0); return }
+    if (!isActivePage || !activeSession) { setElapsed(0); return }
     const tick = () => {
       setElapsed(Math.max(0, Math.floor((Date.now() - new Date(activeSession.start_at)) / 1000)))
     }
     tick()
     const id = setInterval(tick, 1000)
     return () => clearInterval(id)
-  }, [activeSession])
+  }, [isActivePage, activeSession])
 
   // ── Aggregate stats ───────────────────────────────────────────────────────
 
@@ -727,7 +750,7 @@ export default function BankrollTracker({
           <BankrollChartsTab sessions={tabSessions} />
         )}
         {activeTab === 'locations' && (
-          <BankrollLocationsTab sessions={tabSessions} />
+          <BankrollLocationsTab sessions={tabSessions} pageActive={isActivePage} />
         )}
 
         {/* ── Overview tab ── */}

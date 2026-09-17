@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import {
   Chart as ChartJS,
   LineElement,
@@ -298,8 +298,12 @@ function DonutCard({ title, chart, options, legend }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 
-export default function BankrollLocationsTab({ sessions }) {
+export default function BankrollLocationsTab({ sessions, pageActive = true }) {
   const [selectedLocation, setSelectedLocation] = useState(null)
+
+  useEffect(() => {
+    if (!pageActive) setSelectedLocation(null)
+  }, [pageActive])
 
   const locations = useMemo(() => buildLocationStats(sessions), [sessions])
 

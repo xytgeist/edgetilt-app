@@ -33,7 +33,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
-**Branch:** `test` (match `origin/test` before edits). `main` @ **`fa31484c`** (promoted 2026-09-15). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
+**Branch:** `test` (match `origin/test` before edits). `main` @ **`961ee408`** (promoted 2026-09-16). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
 
 **Supabase (do not swap these):**
 
@@ -62,11 +62,11 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo 2026-09-16 … Sell Action +Edge user picker
 
-**I am Mac Theo.** Start Session Sell Action **+ Edge user** was a no-op after tap (picker payload `{ profiles }` vs treating it as one profile). **`1.4.271`** on **`test`**.
+**I am Mac Theo.** Start Session Sell Action **+ Edge user** was a no-op after tap (picker payload `{ profiles }` vs treating it as one profile). **`1.4.271`** on **`test` + `main`**.
 
 ### Mac Theo 2026-09-16 … Stable live-session MTM
 
-**I am Mac Theo.** Backer Stable was only loading completed sessions, so horse roll / stake MTM / portfolio sat at $0 while the player was still in the session (SQL already debiting the buy-in). Now we load live sessions and add those chips back for display. **`1.4.270`** on **`test`**.
+**I am Mac Theo.** Backer Stable was only loading completed sessions, so horse roll / stake MTM / portfolio sat at $0 while the player was still in the session (SQL already debiting the buy-in). Now we load live sessions and add those chips back for display. **`1.4.270`** on **`test` + `main`**.
 
 ### Windows Theo 2026-09-16 … Wed TNF VIP hits fan-only Lounge
 

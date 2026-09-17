@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-16:** **IPA keyboard accessory no longer clips iPhone Simulator keys (Mac).** `setShowsAccessoryBar(true)` deferred `reloadInputViews` until `keyboardDidShow` (+ 0.45s fallback). Root cause was Sep 12 app-wide accessory sync reloading mid-rise. One native fix covers every `EdgeKeyboardAccessorySync` surface. New Test Fast / Cloud IPA required.
 - **2026-09-16:** **Live slots / poker sessions on the Dynamic Island (Mac).** ActivityKit widget `EdgeTiltLiveActivity` + `EdgeNative.syncLiveBankrollActivity`. IPA hides the title-bar chip when the Island is up; PWA / old IPA keep the chip. Tap opens `?tab=bankroll` or `?tab=poker-bankroll`. New Test Fast IPA required. Frontend **`1.4.282`**. Do not bake this into the in-review **1.4.95** binary.
 - **2026-09-16:** **Swipe debounce 50ms + live session title (Mac).** Carousel quiet-window 50ms. Session detail game title matches the 36px type icon. Frontend **`1.4.281`** via **`test` → `main`**.
 - **2026-09-16:** **Bankroll carousel swipe keeps the session ledger (Mac).** Stake hero could show Etcetera while the list stayed Personal (piece sessions + Closed stake banners). Scroll→scope debounce was cleared on every Tracker re-render. Frontend **`1.4.280`** via **`test` → `main`**.

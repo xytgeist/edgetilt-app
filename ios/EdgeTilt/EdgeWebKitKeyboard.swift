@@ -9,10 +9,16 @@ import WebKit
 /// The focused view is usually internal `WKContentView`, not `WKWebView`, so a
 /// subclass override alone is not enough. Replacing that getter is the same
 /// public-API pattern Capacitor uses. Safari / PWA cannot do this.
+///
+/// Do **not** call `reloadInputViews` while the iPhone keyboard is still rising.
+/// That clips the body to accessory height on iPhone Simulator (Auth / any field).
 enum EdgeWebKitKeyboard {
   private static var didInstall = false
   private static var originalAccessoryIMP: IMP?
   private static let accessorySelector = NSSelectorFromString("inputAccessoryView")
+
+  private static var pendingShowObserver: NSObjectProtocol?
+  private static var pendingShowFallback: DispatchWorkItem?
 
   private(set) static var showsAccessoryBar = false
 
@@ -36,10 +42,50 @@ enum EdgeWebKitKeyboard {
   }
 
   static func setShowsAccessoryBar(_ show: Bool, in webView: WKWebView?) {
+    let changed = showsAccessoryBar != show
     showsAccessoryBar = show
+    guard changed else { return }
+
     DispatchQueue.main.async {
+      cancelPendingShowReload()
+      if show {
+        scheduleShowReload(in: webView)
+      } else {
+        reloadInputViews(in: webView)
+      }
+    }
+  }
+
+  /// Attach the system accessory after the keyboard finishes presenting.
+  /// Immediate reload on focus races the rise and leaves only the accessory strip.
+  private static func scheduleShowReload(in webView: WKWebView?) {
+    let apply: () -> Void = {
+      cancelPendingShowReload()
+      guard showsAccessoryBar else { return }
       reloadInputViews(in: webView)
     }
+
+    pendingShowObserver = NotificationCenter.default.addObserver(
+      forName: UIResponder.keyboardDidShowNotification,
+      object: nil,
+      queue: .main
+    ) { _ in
+      apply()
+    }
+
+    // Field-to-field while the keyboard stays up never fires didShow again.
+    let fallback = DispatchWorkItem(block: apply)
+    pendingShowFallback = fallback
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.45, execute: fallback)
+  }
+
+  private static func cancelPendingShowReload() {
+    if let observer = pendingShowObserver {
+      NotificationCenter.default.removeObserver(observer)
+      pendingShowObserver = nil
+    }
+    pendingShowFallback?.cancel()
+    pendingShowFallback = nil
   }
 
   private static func reloadInputViews(in webView: WKWebView?) {

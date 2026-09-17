@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-16 … iPhone sim keyboard accessory clip
+
+**I am Mac Theo.** Showing the WK Done / prev-next bar no longer calls `reloadInputViews` mid-rise. Defers to `keyboardDidShow` (+ 0.45s fallback). Fixes iPhone Simulator keyboard stuck on the accessory strip (Auth and every other field). Rebuild Test Fast / wait for Cloud. Not in **1.4.95**.
+
 ### Mac Theo 2026-09-16 … live sessions on the Dynamic Island
 
 **I am Mac Theo.** Live slots / poker title-bar chips now start an ActivityKit Live Activity on the IPA (`syncLiveBankrollActivity`). Island + Lock Screen. Web chip hides when the Island is actually running. New Test Fast IPA. Frontend **`1.4.282`**. Not in the in-review **1.4.95** upload.

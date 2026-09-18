@@ -149,19 +149,28 @@ async function loadCfbSlateCard(
   })
 }
 
+/** All desks sat. lineDisplay is the home market number, not a house lean. */
+function isHousePass(g: SlateGamePick): boolean {
+  return g.consensusPick.type === 'pass_only' || (g.consensusPick.voteCount || 0) === 0
+}
+
 function formatPublicOneLeanTease(g: SlateGamePick, label: string): string {
   const away = shortDisplayName(g.awayTeam)
   const home = shortDisplayName(g.homeTeam)
   const when = formatOddsCommenceTimeShort(g.commenceTime)
-  return [
+  const lines = [
     `🏈 **${label}**`,
     `**${away} @ ${home}** · ${when}`,
     '',
-    `🎯 **Lean:** **${g.consensusPick.lineDisplay}**`,
-    `*${g.consensusPick.badgeText}*`,
-    '',
-    `💬 *Full desk card + live adjustments in Sharpe VIP Syndicate.*`,
-  ].join('\n')
+  ]
+  if (isHousePass(g)) {
+    lines.push(`⏭️ **All pass**`)
+  } else {
+    lines.push(`🎯 **Lean:** **${g.consensusPick.lineDisplay}**`)
+    if (g.consensusPick.badgeText) lines.push(`*${g.consensusPick.badgeText}*`)
+  }
+  lines.push('', `💬 *Full desk card + live adjustments in Sharpe VIP Syndicate.*`)
+  return lines.join('\n')
 }
 
 function formatVipDeepFromGame(g: SlateGamePick, label: string): string {
@@ -171,7 +180,9 @@ function formatVipDeepFromGame(g: SlateGamePick, label: string): string {
     `🔒 **Sharpe VIP · ${label}**`,
     `${away} @ ${home}`,
     '',
-    `Official lean: **${g.consensusPick.lineDisplay}** (${g.consensusPick.type})`,
+    isHousePass(g)
+      ? `Official lean: **PASS**`
+      : `Official lean: **${g.consensusPick.lineDisplay}**`,
     '',
     `• Scott: ${g.pickerPicks.Scott.lineDisplay}`,
     `• Rocco: ${g.pickerPicks.Rocco.lineDisplay}`,
@@ -225,9 +236,12 @@ export async function runCfbWedMidweekVip(
   ]
   for (const g of card.games.slice(0, 6)) {
     const when = formatOddsCommenceTimeShort(g.commenceTime)
+    const matchup = `• **${shortDisplayName(g.awayTeam)} @ ${shortDisplayName(g.homeTeam)}** (${when})`
     lines.push(
-      `• **${shortDisplayName(g.awayTeam)} @ ${shortDisplayName(g.homeTeam)}** (${when})`,
-      `  Lean: **${g.consensusPick.lineDisplay}** · ${g.consensusPick.badgeText}`,
+      matchup,
+      isHousePass(g)
+        ? `  ⏭️ All pass`
+        : `  Lean: **${g.consensusPick.lineDisplay}** · ${g.consensusPick.badgeText}`,
     )
   }
   lines.push('', `_Public tease drops Thursday for tonight's featured night game._`)

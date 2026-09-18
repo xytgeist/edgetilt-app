@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **UFC metrics dump rerun (Windows).** Production refresh wrote the first `ufc_metrics_sync_runs` row: 1 new (Lucas Armand), 258 same. Inserts are no longer scraped a second time and counted as moves.
 - **2026-09-18:** **UFC metrics what-changed dump (Windows).** Tuesday sync writes `ufc_metrics_sync_runs`. Ops UFC Metrics tab shows new names and career moves. Frontend **`1.4.289`**. SQL **`20260918120000`** applied and recorded on test + prod.
 - **2026-09-18:** **CFB night tease drops fake Lean on all-pass (Windows).** Public / VIP / Wed midweek no longer print the home market number as a lean when every desk sat. Redeploy **`lounge-odds-poll`**.
 - **2026-09-18:** **Prod archive targets iPad (Mac).** `TARGETED_DEVICE_FAMILY` on EdgeTilt Release is `1,2` (was Debug / Test only). Next EdgeTilt Prod IPA is a real iPad app so App Review is not stuck in iPhone compatibility mode. Marketing version stays **1.4.95**. ASC needs iPad screenshots before Add for Review. Not on the rejected binary until Ryan archives and attaches it.

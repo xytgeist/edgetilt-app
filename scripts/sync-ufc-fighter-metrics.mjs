@@ -397,6 +397,7 @@ async function main() {
   let skipped = 0
   let failed = 0
   const movers = []
+  const insertedIds = new Set()
 
   for (const f of wantedNew) {
     try {
@@ -424,10 +425,13 @@ async function main() {
         const { data, error } = await supabase.from('ufc_fighter_metrics').insert(row).select('id, fighter_name, division, is_custom_override, ufcstats_url').single()
         if (error) throw error
         roster.push(data)
+        insertedIds.add(data.id)
         await upsertLast5(supabase, dryRun, data.id, officialName, metrics.last5, syncedAt)
       } else {
+        const dryId = `dry-${officialName}`
+        insertedIds.add(dryId)
         roster.push({
-          id: `dry-${officialName}`,
+          id: dryId,
           fighter_name: officialName,
           division: row.division,
           is_custom_override: false,
@@ -470,6 +474,10 @@ async function main() {
   console.log(`[ufc-metrics] refresh=${refresh.length} (skipping custom overrides)`)
 
   for (const row of refresh) {
+    if (insertedIds.has(row.id)) {
+      console.log(`[ufc-metrics] skip ${row.fighter_name} (inserted this run)`)
+      continue
+    }
     if (row.is_custom_override) {
       console.log(`[ufc-metrics] skip ${row.fighter_name} (custom override)`)
       skipped += 1
@@ -507,7 +515,7 @@ async function main() {
     }
   }
 
-  const refreshCount = refresh.filter((row) => !row.is_custom_override).length
+  const refreshCount = refresh.filter((row) => !row.is_custom_override && !insertedIds.has(row.id)).length
   await writeUfcMetricsDump(supabase, dryRun, {
     ran_at: syncedAt,
     proposed_rows: wantedNew.length + refreshCount,

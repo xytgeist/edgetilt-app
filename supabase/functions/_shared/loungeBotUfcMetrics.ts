@@ -38,9 +38,11 @@ export type UfcFighterMetric = {
   td_acc: number     // Takedown accuracy %
   td_def: number     // Takedown defense %
   sub_avg: number    // Submission attempts per 15 min
-  finish_rate: number // % of career wins via KO/TKO or Sub
+  finish_rate: number
   ko_finish_rate: number
   sub_finish_rate: number
+  /** False on a Sherdog result-tape anchor. Defaults are not a career sheet. */
+  career_measured?: boolean
   is_custom_override?: boolean
   id?: string
   aliases?: string[]
@@ -236,7 +238,7 @@ export function analyzeUfcMatchup(
   const fA = findFighterMetric(fighterAName, metricsList)
   const fB = findFighterMetric(fighterBName, metricsList)
 
-  if (!fA || !fB) {
+  if (!fA || !fB || fA.career_measured === false || fB.career_measured === false) {
     return null
   }
 

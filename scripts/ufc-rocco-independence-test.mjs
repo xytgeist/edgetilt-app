@@ -110,5 +110,43 @@ if (hiddenScott.rationale.toLowerCase().includes('fair') || hiddenScott.rational
   process.exit(1)
 }
 
+const resultBase = {
+  fightCount: 5,
+  wins: 4,
+  losses: 1,
+  roundsFought: 12,
+  distanceFights: 2,
+  tdLanded: 0,
+  sigStrLanded: 0,
+  countsMeasured: false,
+  stance: 'Orthodox',
+}
+const subber = { ...resultBase, koWins: 0, subWins: 4, decWins: 0 }
+const decisionGuy = { ...resultBase, koWins: 0, subWins: 0, decWins: 4 }
+const resultStyle = decideRoccoUfc({
+  fighterA: 'Subber',
+  fighterB: 'Decider',
+  last5A: subber,
+  last5B: decisionGuy,
+  scheduledRounds: 3,
+  isApex: true,
+})
+if (resultStyle.side !== 'A' || resultStyle.features.includes('wrestling_a') || resultStyle.features.includes('apex_wrestle')) {
+  console.error('FAIL: unmeasured zeros must not count as wrestling', resultStyle)
+  process.exit(1)
+}
+const tinyForm = decideRoccoUfc({
+  fighterA: 'A',
+  fighterB: 'B',
+  last5A: { ...decisionGuy, wins: 3, losses: 2, decWins: 3 },
+  last5B: { ...decisionGuy, wins: 2, losses: 3, decWins: 2 },
+  scheduledRounds: 3,
+  isApex: false,
+})
+if (tinyForm.side !== 'PASS') {
+  console.error('FAIL: tiny result-tape win gap must PASS', tinyForm)
+  process.exit(1)
+}
+
 console.log('ok')
 console.log(JSON.stringify({ missing: missing.side, thin: thin.side, close: close.side, styles }, null, 2))

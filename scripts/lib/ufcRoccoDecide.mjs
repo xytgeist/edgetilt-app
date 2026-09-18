@@ -57,10 +57,11 @@ export function decideRoccoUfc(input) {
   const stanceB = input?.stanceB || last5B?.stance || 'Orthodox'
 
   if (!last5A || !last5B) {
+    const who = !last5A && !last5B ? 'both names' : !last5A ? fighterA : fighterB
     return {
       side: 'PASS',
       margin: 0,
-      rationale: 'No last-5 file for both names. Rocco sits.',
+      rationale: `No last-5 file for ${who}. Rocco sits.`,
       features: ['missing_last5'],
     }
   }
@@ -73,10 +74,7 @@ export function decideRoccoUfc(input) {
     }
   }
 
-  const wrestleA = perFight(last5A.tdLanded, last5A.fightCount)
-  const wrestleB = perFight(last5B.tdLanded, last5B.fightCount)
-  const strikeA = perFight(last5A.sigStrLanded, last5A.fightCount)
-  const strikeB = perFight(last5B.sigStrLanded, last5B.fightCount)
+  const countsOn = last5A.countsMeasured !== false && last5B.countsMeasured !== false
   const winA = perFight(last5A.wins, last5A.fightCount)
   const winB = perFight(last5B.wins, last5B.fightCount)
   const distanceA = perFight(last5A.distanceFights, last5A.fightCount)
@@ -85,16 +83,36 @@ export function decideRoccoUfc(input) {
   let scoreA = 0
   const features = []
 
-  const wrestleGap = wrestleA - wrestleB
-  scoreA += wrestleGap * 2
-  if (Math.abs(wrestleGap) >= 0.4) {
-    features.push(wrestleGap > 0 ? 'wrestling_a' : 'wrestling_b')
-  }
-
-  const strikeGap = (strikeA - strikeB) / 20
-  scoreA += strikeGap
-  if (Math.abs(strikeA - strikeB) >= 8) {
-    features.push(strikeA > strikeB ? 'volume_a' : 'volume_b')
+  if (countsOn) {
+    const wrestleA = perFight(last5A.tdLanded, last5A.fightCount)
+    const wrestleB = perFight(last5B.tdLanded, last5B.fightCount)
+    const strikeA = perFight(last5A.sigStrLanded, last5A.fightCount)
+    const strikeB = perFight(last5B.sigStrLanded, last5B.fightCount)
+    const wrestleGap = wrestleA - wrestleB
+    scoreA += wrestleGap * 2
+    if (Math.abs(wrestleGap) >= 0.4) {
+      features.push(wrestleGap > 0 ? 'wrestling_a' : 'wrestling_b')
+    }
+    const strikeGap = (strikeA - strikeB) / 20
+    scoreA += strikeGap
+    if (Math.abs(strikeA - strikeB) >= 8) {
+      features.push(strikeA > strikeB ? 'volume_a' : 'volume_b')
+    }
+    if (isApex) {
+      scoreA += wrestleGap * 0.7
+      if (Math.abs(wrestleGap) >= 0.3) features.push('apex_wrestle')
+    }
+  } else {
+    const subA = perFight(last5A.subWins, last5A.fightCount)
+    const subB = perFight(last5B.subWins, last5B.fightCount)
+    const koA = perFight(last5A.koWins, last5A.fightCount)
+    const koB = perFight(last5B.koWins, last5B.fightCount)
+    const subGap = subA - subB
+    const koGap = koA - koB
+    scoreA += subGap * 1.1
+    scoreA += koGap * 0.5
+    if (Math.abs(subGap) >= 0.35) features.push(subGap > 0 ? 'finish_sub_a' : 'finish_sub_b')
+    if (Math.abs(koGap) >= 0.35) features.push(koGap > 0 ? 'finish_ko_a' : 'finish_ko_b')
   }
 
   scoreA += (winA - winB) * 1.4
@@ -103,11 +121,6 @@ export function decideRoccoUfc(input) {
     const cardio = (distanceA - distanceB) * 0.9
     scoreA += cardio
     if (Math.abs(distanceA - distanceB) >= 0.3) features.push('five_round_cardio')
-  }
-
-  if (isApex) {
-    scoreA += wrestleGap * 0.7
-    if (Math.abs(wrestleGap) >= 0.3) features.push('apex_wrestle')
   }
 
   if (stanceA === 'Southpaw' && stanceB === 'Orthodox') {
@@ -134,7 +147,9 @@ export function decideRoccoUfc(input) {
     ? 'wrestling vs liner'
     : features.includes('volume_a') || features.includes('volume_b')
       ? 'last-5 strike volume'
-      : 'last-5 form'
+      : features.includes('finish_sub_a') || features.includes('finish_sub_b') || features.includes('finish_ko_a') || features.includes('finish_ko_b')
+        ? 'last-5 finish style'
+        : 'last-5 form'
   return {
     side,
     margin,

@@ -4,7 +4,7 @@
 **Stack:** raw **`WKWebView`** live-site shell (not Capacitor). Product web stays on Vercel; IPA is a thin loader + bridges.  
 **Canonical product plan:** **`docs/test-buildout-backlog.md`** → **Planned (Native shells / app stores)** (+ **Native gap checklist**).  
 **Dual-agent rules:** this file § Dual-machine + root **`WAKEUP`** + **`AGENTS.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`).  
-**Open project:** `ios/README.md` … prefer **Xcode-beta** for iOS 27 devices. **Debug + ReleaseTest** (`EdgeTilt Test` and **EdgeTilt Test Fast**) target iPhone + iPad (`1,2`) so the sim WKWebView is a real iPad viewport. **Release** stays iPhone-only (`1`) for the current listing.
+**Open project:** `ios/README.md` … prefer **Xcode-beta** for iOS 27 devices. **Debug, ReleaseTest, and Release** (`EdgeTilt Test`, **EdgeTilt Test Fast**, and **EdgeTilt Prod**) target iPhone + iPad (`1,2`) so an iPad gets a real viewport, including App Store archives. Listing needs iPad screenshots before Add for Review.
 
 ---
 

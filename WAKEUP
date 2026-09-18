@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Windows Theo 2026-09-17 … bare URL TLD allowlist
+
+**I am Windows Theo.** Lounge/chat linkify bare hosts need a known web TLD … `llama.cpp` / `main.js` stay plain text. `http(s)://` + `www.` unchanged. **`1.4.288`** on **`test`**.
+
 ### Mac Theo 2026-09-17 … kill fake Island, restore title chips
 
 **I am Mac Theo.** Fake in-app Island retired (status chrome overlap). Title-bar live chips back, centered to phone width. Real Island still background / Lock Screen. Rebuild IPA + wait for Vercel chip layout.

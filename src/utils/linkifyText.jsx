@@ -6,9 +6,77 @@ const TRAILING_PUNCT_RE = /[.,;:!?)'\]}>]+$/
 const HTTP_URL_RE = /https?:\/\/[^\s<>"']+/gi
 const WWW_URL_RE = /\bwww\.[^\s<>"']+/gi
 
-/** http(s)://…, www.…, or bare domains (e.g. lvslotpro.com). */
+/**
+ * Finder only … bare hosts still need {@link isAllowedBareDomainMatch}.
+ * http(s)://…, www.…, or word.word(.…)? paths.
+ */
 const URL_RE =
   /(?:https?:\/\/|www\.)[\w\-.~:/?#[\]@!$&'()*+,;=%]+|\b(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}(?::\d{1,5})?(?:\/[\w\-.~:/?#[\]@!$&'()*+,;=%]*)?/gi
+
+/**
+ * Bare `host.tld` only linkifies when the final label is a known web TLD.
+ * Stops file-ish tokens (`llama.cpp`, `main.js`, `readme.md`) from lighting up.
+ * Explicit `http(s)://` / `www.` always pass.
+ *
+ * Country codes that collide with common file extensions (md, py, ts, rs, sh, so, ps)
+ * are omitted on purpose … paste a full https:// URL for those.
+ */
+const ALLOWED_BARE_DOMAIN_TLDS = new Set(
+  [
+    // classic
+    'com', 'org', 'net', 'edu', 'gov', 'mil', 'int',
+    // common / tech / brand-ish
+    'io', 'co', 'ai', 'app', 'dev', 'xyz', 'me', 'info', 'biz', 'tv', 'cc', 'pro', 'name', 'mobi',
+    'online', 'site', 'website', 'store', 'shop', 'tech', 'cloud', 'blog', 'news', 'media', 'live',
+    'world', 'club', 'agency', 'studio', 'design', 'digital', 'space', 'fun', 'page', 'link', 'click',
+    'email', 'network', 'systems', 'solutions', 'services', 'company', 'global', 'today', 'life',
+    'center', 'zone', 'tools', 'watch', 'video', 'tube', 'social', 'community', 'group', 'team',
+    'gg', 'to', 'ly', 'fm', 'am', 'ws', 'vc', 'icu', 'top', 'win', 'vip', 'ink', 'one', 'bio',
+    'cash', 'finance', 'money', 'capital', 'fund', 'investments', 'trading', 'markets', 'crypto',
+    'bet', 'casino', 'poker', 'sport', 'sports', 'football', 'soccer', 'nba', 'nfl',
+    'health', 'law', 'ltd', 'llc', 'inc', 'corp',
+    // frequent ccTLDs (skip md/py/ts/rs/sh/so/ps … file collisions)
+    'us', 'uk', 'ca', 'au', 'nz', 'ie', 'de', 'fr', 'es', 'it', 'nl', 'be', 'at', 'ch', 'se', 'no',
+    'dk', 'fi', 'pl', 'cz', 'pt', 'gr', 'ro', 'hu', 'sk', 'si', 'hr', 'bg', 'lt', 'lv', 'ee',
+    'jp', 'kr', 'cn', 'tw', 'hk', 'sg', 'my', 'th', 'vn', 'ph', 'id', 'in', 'pk', 'bd', 'lk',
+    'ae', 'sa', 'il', 'tr', 'eg', 'za', 'ng', 'ke', 'gh', 'tz', 'ug',
+    'br', 'mx', 'ar', 'cl', 'co', 'pe', 'uy', 'cr', 'pa',
+    'ru', 'ua', 'by', 'kz', 'ge', 'am',
+  ].map((t) => t.toLowerCase()),
+)
+
+/** @returns {boolean} */
+function isExplicitUrlScheme(raw) {
+  return /^(?:https?:\/\/|www\.)/i.test(String(raw || '').trim())
+}
+
+/**
+ * Final label of a bare hostname (before / ? # :).
+ * @param {string} raw
+ * @returns {string}
+ */
+function bareHostnameTld(raw) {
+  const host = String(raw || '')
+    .trim()
+    .replace(/^https?:\/\//i, '')
+    .replace(/^www\./i, '')
+    .split(/[/?#]/)[0]
+    .split(':')[0]
+    .trim()
+    .toLowerCase()
+  if (!host || !host.includes('.')) return ''
+  const labels = host.split('.').filter(Boolean)
+  return labels[labels.length - 1] || ''
+}
+
+/** Bare domain matches must end in {@link ALLOWED_BARE_DOMAIN_TLDS}. */
+export function isAllowedBareDomainMatch(raw) {
+  const s = String(raw || '').trim()
+  if (!s) return false
+  if (isExplicitUrlScheme(s)) return true
+  const tld = bareHostnameTld(s)
+  return Boolean(tld && ALLOWED_BARE_DOMAIN_TLDS.has(tld))
+}
 
 /** Skip URL matches that are part of an email address (local or domain segment). */
 function isPartOfEmailAddress(text, start, end) {
@@ -32,6 +100,7 @@ function trimTrailingPunct(raw) {
 /** @returns {string | null} */
 function safeHttpHref(raw) {
   const trimmed = trimTrailingPunct(raw)
+  if (!isAllowedBareDomainMatch(trimmed)) return null
   let href = trimmed
   if (/^www\./i.test(href)) href = `https://${href}`
   else if (!/^https?:\/\//i.test(href)) href = `https://${href}`
@@ -84,6 +153,7 @@ export function textWithoutUrls(text, { previewUrl = null } = {}) {
     const re = new RegExp(URL_RE.source, URL_RE.flags)
     out = out.replace(re, (match, offset, whole) => {
       if (isPartOfEmailAddress(whole, offset, offset + match.length)) return match
+      if (!isAllowedBareDomainMatch(match)) return match
       return ' '
     })
   }

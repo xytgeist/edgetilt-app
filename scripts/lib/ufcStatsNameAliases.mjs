@@ -4,6 +4,7 @@
  */
 export const UFC_STATS_NAME_ALIASES = {
   'Ian Garry': 'Ian Machado Garry',
+  'Joseph Pyfer': 'Joe Pyfer',
 }
 
 /** Official roster name → other strings that must resolve (Odds API / board). */
@@ -11,4 +12,5 @@ export const UFC_MANUAL_BOARD_ALIASES = {
   'Tommy Gantt': ['Thomas Gantt'],
   'Ian Machado Garry': ['Ian Garry'],
   'Ian Garry': ['Ian Machado Garry'],
+  'Joe Pyfer': ['Joseph Pyfer'],
 }

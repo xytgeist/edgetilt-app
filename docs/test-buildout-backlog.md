@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **UFC name match + roster fill (Windows).** `findFighterMetric` no longer treats a shared first name as a hit (`Gilbert` was using Gilbert Urbina's last-5). Ensured Colby Covington, Gilbert Burns, Luke Rockhold, Joe Pyfer (`Joseph Pyfer` alias), Shuya Kamikubo, Davi Bittencourt on prod. Bryce Meredith, Movlid Khaybulaev, Marcos Breno, Devon Lozej are not on UFC Stats. Redeploy **`lounge-odds-poll`**.
 - **2026-09-18:** **UFC metrics dump rerun (Windows).** Production refresh wrote the first `ufc_metrics_sync_runs` row: 1 new (Lucas Armand), 258 same. Inserts are no longer scraped a second time and counted as moves.
 - **2026-09-18:** **UFC metrics what-changed dump (Windows).** Tuesday sync writes `ufc_metrics_sync_runs`. Ops UFC Metrics tab shows new names and career moves. Frontend **`1.4.289`**. SQL **`20260918120000`** applied and recorded on test + prod.
 - **2026-09-18:** **CFB night tease drops fake Lean on all-pass (Windows).** Public / VIP / Wed midweek no longer print the home market number as a lean when every desk sat. Redeploy **`lounge-odds-poll`**.

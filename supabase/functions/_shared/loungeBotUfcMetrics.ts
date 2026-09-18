@@ -187,17 +187,38 @@ export function findFighterMetric(
   const direct = metricsList.find((m) => namesOf(m).some((n) => normalizeName(n) === norm))
   if (direct) return direct
 
-  // Token / Substring match (e.g. "O'Malley" or "Nurmagomedov")
-  const tokens = targetName.toLowerCase().split(/\s+/).filter((t) => t.length >= 3)
+  // Full-name tokens must all hit. A single token only matches a last name
+  // ("O'Malley", "Nurmagomedov"). Never a shared first name ("Gilbert" ≠ Urbina).
+  const tokens = targetName
+    .split(/\s+/)
+    .map((t) => normalizeName(t))
+    .filter((t) => t.length >= 3)
+  const hits: UfcFighterMetric[] = []
+  const seen = new Set<string>()
   for (const m of metricsList) {
+    let matched = false
     for (const n of namesOf(m)) {
       const mNorm = normalizeName(n)
-      if (tokens.every((t) => mNorm.includes(t))) return m
-      if (tokens.some((t) => mNorm.includes(t) && t.length >= 6)) return m
+      if (!mNorm) continue
+      if (tokens.length >= 2 && tokens.every((t) => mNorm.includes(t))) {
+        matched = true
+        break
+      }
+      if (tokens.length === 1 && tokens[0].length >= 6) {
+        const last = normalizeName(String(n).trim().split(/\s+/).pop() || '')
+        if (last && last === tokens[0]) {
+          matched = true
+          break
+        }
+      }
+    }
+    const key = m.id || m.fighter_name
+    if (matched && !seen.has(key)) {
+      seen.add(key)
+      hits.push(m)
     }
   }
-
-  return null
+  return hits.length === 1 ? hits[0] : null
 }
 
 /**

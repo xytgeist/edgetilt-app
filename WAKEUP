@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Windows Theo 2026-09-18 … UFC name match
+
+**I am Windows Theo.** Rocco no longer latches a shared first name onto the wrong last-5. Production roster now has Colby, Gilbert Burns, Rockhold, Joe Pyfer, Kamikubo, Davi Bittencourt. Meredith, Khaybulaev, Marcos Breno, and Lozej are not on UFC Stats. **`lounge-odds-poll`** redeployed.
+
 ### Windows Theo 2026-09-18 … UFC dump filled
 
 **I am Windows Theo.** Production UFC Stats refresh ran. Dump is **1 new (Lucas Armand, Heavyweight), 258 same**. Hit **Reload dump**. Inserts no longer get counted as career moves.

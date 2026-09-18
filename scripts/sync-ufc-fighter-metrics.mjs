@@ -8,6 +8,7 @@
  *   node scripts/sync-ufc-fighter-metrics.mjs --target=test
  *   node scripts/sync-ufc-fighter-metrics.mjs --target=test --dry-run
  *   node scripts/sync-ufc-fighter-metrics.mjs --target=test --ensure="Paddy Pimblett"
+ *   node scripts/sync-ufc-fighter-metrics.mjs --target=test --ensure-only --ensure="Paddy Pimblett"
  *   node scripts/sync-ufc-fighter-metrics.mjs --target=test --cards-only
  *   npm run syndicate:sync-ufc-metrics:test
  */
@@ -33,6 +34,7 @@ function parseArgs(argv) {
   let target = 'test'
   let dryRun = false
   let cardsOnly = false
+  let ensureOnly = false
   let limit = 0
   let completedLimit = 3
   const ensure = []
@@ -41,6 +43,7 @@ function parseArgs(argv) {
     const arg = args[i]
     if (arg === '--dry-run') dryRun = true
     else if (arg === '--cards-only') cardsOnly = true
+    else if (arg === '--ensure-only') ensureOnly = true
     else if (arg.startsWith('--target=')) target = arg.slice('--target='.length)
     else if (arg.startsWith('--limit=')) limit = Number(arg.slice('--limit='.length)) || 0
     else if (arg.startsWith('--completed=')) completedLimit = Number(arg.slice('--completed='.length)) || 0
@@ -62,7 +65,7 @@ function parseArgs(argv) {
   if (target !== 'test' && target !== 'production') {
     throw new Error('--target must be test or production')
   }
-  return { target, dryRun, cardsOnly, limit, completedLimit, ensure }
+  return { target, dryRun, cardsOnly, ensureOnly, limit, completedLimit, ensure }
 }
 
 function metricsPatch(metrics, url, syncedAt, division) {
@@ -343,7 +346,10 @@ function findExisting(roster, name, url) {
 }
 
 async function main() {
-  const { target, dryRun, cardsOnly, limit, completedLimit, ensure } = parseArgs(process.argv)
+  const { target, dryRun, cardsOnly, ensureOnly, limit, completedLimit, ensure } = parseArgs(process.argv)
+  if (ensureOnly && ensure.length === 0) {
+    throw new Error('--ensure-only needs --ensure="Name"')
+  }
   loadSupabaseEnv(target)
   const supabase = createSupabaseServiceClient(createClient)
 
@@ -372,7 +378,9 @@ async function main() {
   let roster = existing || []
   console.log(`[ufc-metrics] roster=${roster.length}`)
 
-  const { cards, cardFighters } = await collectCards(jar, byUrl, completedLimit)
+  const { cards, cardFighters } = ensureOnly
+    ? { cards: [], cardFighters: [] }
+    : await collectCards(jar, byUrl, completedLimit)
   const wantedNew = []
   const seenWanted = new Set()
   for (const f of cardFighters) {
@@ -459,13 +467,15 @@ async function main() {
     console.warn(`[ufc-metrics] card facts skipped: ${err.message || err}`)
   }
 
-  if (cardsOnly) {
-    try {
-      await upsertLast5ForCardFighters(supabase, dryRun, jar, cards, roster, syncedAt, byNormName)
-    } catch (err) {
-      console.warn(`[ufc-metrics] last5 skipped: ${err.message || err}`)
+  if (cardsOnly || ensureOnly) {
+    if (!ensureOnly) {
+      try {
+        await upsertLast5ForCardFighters(supabase, dryRun, jar, cards, roster, syncedAt, byNormName)
+      } catch (err) {
+        console.warn(`[ufc-metrics] last5 skipped: ${err.message || err}`)
+      }
     }
-    console.log(`[ufc-metrics] cards-only done${dryRun ? ' (dry-run)' : ''}`)
+    console.log(`[ufc-metrics] ${ensureOnly ? 'ensure-only' : 'cards-only'} done${dryRun ? ' (dry-run)' : ''}: inserted=${inserted} failed=${failed}`)
     return
   }
 

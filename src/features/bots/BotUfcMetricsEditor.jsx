@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import UfcMetricsSyncDumpCard from './UfcMetricsSyncDumpCard.jsx'
 
 const DIVISIONS = [
   'ALL',
@@ -196,6 +197,7 @@ export default function BotUfcMetricsEditor({ supabaseClient, setToast }) {
 
   return (
     <div className="space-y-6">
+      <UfcMetricsSyncDumpCard supabaseClient={supabaseClient} />
       {/* Header & Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-zinc-900/60 p-4 rounded-xl border border-zinc-800/80">
         <div>

@@ -87,6 +87,68 @@ function metricsPatch(metrics, url, syncedAt, division) {
   }
 }
 
+const UFC_DUMP_FIELDS = [
+  { key: 'slpm', label: 'SLpM', eps: 0.05 },
+  { key: 'sapm', label: 'SApM', eps: 0.05 },
+  { key: 'str_acc', label: 'Str Acc', eps: 1 },
+  { key: 'str_def', label: 'Str Def', eps: 1 },
+  { key: 'td_avg', label: 'TD Avg', eps: 0.05 },
+  { key: 'td_acc', label: 'TD Acc', eps: 1 },
+  { key: 'td_def', label: 'TD Def', eps: 1 },
+  { key: 'sub_avg', label: 'Sub Avg', eps: 0.05 },
+  { key: 'finish_rate', label: 'Finish %', eps: 1 },
+  { key: 'reach_inches', label: 'Reach', eps: 0.5 },
+]
+
+function numOrNull(v) {
+  if (v == null || v === '') return null
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
+function round2(n) {
+  return Math.round(n * 100) / 100
+}
+
+/** Career fields that actually moved. Noise under eps is "same". */
+function metricMoves(before, after) {
+  const out = []
+  for (const field of UFC_DUMP_FIELDS) {
+    const from = numOrNull(before?.[field.key])
+    const to = numOrNull(after?.[field.key])
+    if (from == null && to == null) continue
+    if (from == null || to == null || Math.abs(to - from) >= field.eps) {
+      out.push({
+        field: field.label,
+        from,
+        to,
+        delta: from != null && to != null ? round2(to - from) : null,
+      })
+    }
+  }
+  const fromDiv = String(before?.division || '').trim()
+  const toDiv = String(after?.division || '').trim()
+  if (toDiv && fromDiv && fromDiv !== toDiv) {
+    out.push({ field: 'Division', from: fromDiv, to: toDiv, delta: null })
+  }
+  return out
+}
+
+async function writeUfcMetricsDump(supabase, dryRun, dump) {
+  const summary = [
+    `Pulled ${dump.proposed_rows}.`,
+    `Wrote ${dump.wrote} (${dump.inserted_n} new, ${dump.updated_n} moved).`,
+    `${dump.unchanged_n} same.`,
+    `${dump.skipped_overrides} overrides kept.`,
+    dump.failed_n ? `${dump.failed_n} failed.` : null,
+  ].filter(Boolean).join(' ')
+  const row = { ...dump, summary, movers: dump.movers.slice(0, 160) }
+  console.log(`[ufc-metrics] dump ${summary}`)
+  if (dryRun) return
+  const { error } = await supabase.from('ufc_metrics_sync_runs').insert(row)
+  if (error) console.warn(`[ufc-metrics] dump skipped: ${error.message}`)
+}
+
 async function collectCards(jar, byUrl, completedLimit) {
   const eventUrls = await listUfcStatsEventUrls(jar, { completedLimit, delayMs: 350 })
   console.log(`[ufc-metrics] card events=${eventUrls.length}`)
@@ -303,7 +365,7 @@ async function main() {
 
   const { data: existing, error: loadErr } = await supabase
     .from('ufc_fighter_metrics')
-    .select('id, fighter_name, division, is_custom_override, ufcstats_url')
+    .select('id, fighter_name, division, is_custom_override, ufcstats_url, reach_inches, stance, slpm, sapm, str_acc, str_def, td_avg, td_acc, td_def, sub_avg, finish_rate')
     .order('fighter_name', { ascending: true })
   if (loadErr) throw loadErr
 
@@ -330,9 +392,11 @@ async function main() {
 
   const syncedAt = new Date().toISOString()
   let inserted = 0
-  let updated = 0
+  let moved = 0
+  let unchanged = 0
   let skipped = 0
   let failed = 0
+  const movers = []
 
   for (const f of wantedNew) {
     try {
@@ -371,6 +435,14 @@ async function main() {
         })
       }
       inserted += 1
+      movers.push({
+        name: officialName,
+        kind: 'insert',
+        field: 'New',
+        from: null,
+        to: row.division,
+        delta: null,
+      })
     } catch (err) {
       failed += 1
       console.warn(`[ufc-metrics] INSERT FAIL ${f.name}: ${err.message || err}`)
@@ -412,25 +484,47 @@ async function main() {
         { nameIndex: byNormName, delayMs: 650 },
       )
       const patch = metricsPatch(metrics, url, syncedAt, metrics.division || null)
+      const changes = metricMoves(row, patch)
       console.log(
-        `[ufc-metrics] ${row.fighter_name}: SLpM ${metrics.slpm} SApM ${metrics.sapm} TD ${metrics.td_avg} finish ${metrics.finish_rate}% (${metrics.career_wins}W)`,
+        `[ufc-metrics] ${row.fighter_name}: SLpM ${metrics.slpm} SApM ${metrics.sapm} TD ${metrics.td_avg} finish ${metrics.finish_rate}% (${metrics.career_wins}W)${changes.length ? ` moved ${changes.map((c) => c.field).join(', ')}` : ' same'}`,
       )
       if (!dryRun) {
         const { error } = await supabase.from('ufc_fighter_metrics').update(patch).eq('id', row.id)
         if (error) throw error
         await upsertLast5(supabase, dryRun, row.id, row.fighter_name, metrics.last5, syncedAt)
       }
-      updated += 1
+      if (changes.length) {
+        moved += 1
+        for (const change of changes) {
+          movers.push({ name: row.fighter_name, kind: 'move', ...change })
+        }
+      } else {
+        unchanged += 1
+      }
     } catch (err) {
       failed += 1
       console.warn(`[ufc-metrics] FAIL ${row.fighter_name}: ${err.message || err}`)
     }
   }
 
+  const refreshCount = refresh.filter((row) => !row.is_custom_override).length
+  await writeUfcMetricsDump(supabase, dryRun, {
+    ran_at: syncedAt,
+    proposed_rows: wantedNew.length + refreshCount,
+    wrote: inserted + moved,
+    inserted_n: inserted,
+    updated_n: moved,
+    unchanged_n: unchanged,
+    skipped_overrides: refresh.filter((row) => row.is_custom_override).length,
+    failed_n: failed,
+    table_n: roster.length,
+    movers,
+  })
+
   console.log(
-    `[ufc-metrics] done${dryRun ? ' (dry-run)' : ''}: inserted=${inserted} updated=${updated} skipped=${skipped} failed=${failed}`,
+    `[ufc-metrics] done${dryRun ? ' (dry-run)' : ''}: inserted=${inserted} moved=${moved} same=${unchanged} skipped=${skipped} failed=${failed}`,
   )
-  if (failed > 0 && inserted === 0 && updated === 0) process.exitCode = 1
+  if (failed > 0 && inserted === 0 && moved === 0 && unchanged === 0) process.exitCode = 1
 }
 
 main().catch((err) => {

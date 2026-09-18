@@ -11812,6 +11812,26 @@ html.light [data-pval-sync-dump] .bg-zinc-950 {
   background-color: #ffffff !important;
 }
 
+html.light [data-ufc-metrics-dump] {
+  background-color: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+  color: #881337 !important;
+}
+html.light [data-ufc-metrics-dump] .text-white {
+  color: #881337 !important;
+}
+html.light [data-ufc-metrics-dump] .text-zinc-300,
+html.light [data-ufc-metrics-dump] .text-zinc-400 {
+  color: #9f1239 !important;
+}
+html.light [data-ufc-metrics-dump] table thead {
+  background-color: #fff1f2 !important;
+}
+html.light [data-ufc-metrics-dump] .bg-zinc-900,
+html.light [data-ufc-metrics-dump] .bg-zinc-950 {
+  background-color: #ffffff !important;
+}
+
 html.light [data-pval-editor] [role="switch"].bg-zinc-700 {
   background-color: #d4d4d8 !important;
 }

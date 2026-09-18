@@ -197,7 +197,7 @@ export const OPS_WEEK_TASKS = [
     sports: ['ufc'],
     kind: 'check',
     label: 'UFC metrics',
-    detail: 'Tuesday sync refreshes roster stats and inserts anyone on upcoming/recent UFC cards.',
+    detail: 'Tuesday sync writes a what-changed dump on UFC Metrics. New names and career moves. Overrides stay put.',
     days: [2],
     startHour: 9,
     endHour: 18,

@@ -1,11 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { isEdgeiOSShell } from '../../utils/edgeNative.js'
 import { inputBase, btnPrimary, linkBtn } from '../shell/shellClasses'
 import { AppleIcon, OAuthDivider, GoogleIcon } from './OAuthUi'
 import AuthTabSwitcher from './AuthTabSwitcher'
 import AuthPasswordField from './AuthPasswordField'
-
-const LEGAL_NUDGE_MESSAGE = 'Please accept the Terms & Conditions and Privacy Policy.'
 
 function isOAuthProviderError(message) {
   const lower = String(message || '').toLowerCase()
@@ -23,18 +21,6 @@ function AuthErrorBanner({ message }) {
       role="alert"
     >
       {message}
-    </div>
-  )
-}
-
-function LegalAcceptanceNudge() {
-  return (
-    <div
-      role="alert"
-      data-auth-legal-nudge
-      className="mb-2 rounded-xl border border-cyan-500/40 bg-cyan-950/35 px-3 py-2.5 text-center text-[13px] font-medium leading-snug text-cyan-100"
-    >
-      {LEGAL_NUDGE_MESSAGE}
     </div>
   )
 }
@@ -71,27 +57,9 @@ export default function AuthModalPanel({
   onForgotSubmit,
   isOAuthLoading,
   onOAuthSignIn,
-  acceptedLegal = false,
-  onAcceptedLegalChange,
   onOpenLegalDocument,
 }) {
-  /** Which signup control triggered the legal nudge: `oauth` | `create`. */
-  const [legalNudgeSource, setLegalNudgeSource] = useState(null)
-  const legalCheckboxRef = useRef(null)
   const signupMessageRef = useRef(null)
-
-  useEffect(() => {
-    if (!legalNudgeSource) return
-    legalCheckboxRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
-  }, [legalNudgeSource])
-
-  useEffect(() => {
-    if (acceptedLegal) setLegalNudgeSource(null)
-  }, [acceptedLegal])
-
-  useEffect(() => {
-    if (authTab !== 'join') setLegalNudgeSource(null)
-  }, [authTab])
 
   /** After Create account, success lives at the top ... scroll the sheet so it is not below the fold. */
   useEffect(() => {
@@ -103,19 +71,7 @@ export default function AuthModalPanel({
     signupMessageRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
   }, [signupMessage])
 
-  const requireLegalAcceptance = (source) => {
-    if (acceptedLegal) return false
-    setLegalNudgeSource(source)
-    return true
-  }
-
-  const onLegalCheckboxChange = (checked) => {
-    onAcceptedLegalChange?.(checked)
-    if (checked) setLegalNudgeSource(null)
-  }
-
   const showAppleSignIn = isEdgeiOSShell()
-  const legalCheckboxHighlighted = authTab === 'join' && !acceptedLegal && legalNudgeSource != null
   const legalLinks = (
     <>
       <a
@@ -128,7 +84,7 @@ export default function AuthModalPanel({
       >
         Terms &amp; Conditions
       </a>
-      {' '}and{' '}
+      {', '}
       <a
         href="/privacy?from=auth"
         onClick={(e) => {
@@ -247,15 +203,11 @@ export default function AuthModalPanel({
         </div>
       ) : null}
       <AuthTabSwitcher value={authTab} onChange={onAuthTabChange} />
-      {authTab === 'join' && legalNudgeSource === 'oauth' ? <LegalAcceptanceNudge /> : null}
       {showAppleSignIn ? (
       <button
         type="button"
         disabled={isOAuthLoading}
-        onClick={() => {
-          if (authTab === 'join' && requireLegalAcceptance('oauth')) return
-          onOAuthSignIn({ provider: 'apple', setErrorTarget: authTab })
-        }}
+        onClick={() => onOAuthSignIn({ provider: 'apple', setErrorTarget: authTab })}
         className={`${btnPrimary} flex w-full items-center justify-center gap-2 rounded-2xl border-0 bg-black text-white hover:bg-zinc-900 disabled:opacity-60 disabled:cursor-not-allowed`}
         aria-label="Continue with Apple"
       >
@@ -266,10 +218,7 @@ export default function AuthModalPanel({
       <button
         type="button"
         disabled={isOAuthLoading}
-        onClick={() => {
-          if (authTab === 'join' && requireLegalAcceptance('oauth')) return
-          onOAuthSignIn({ provider: 'google', setErrorTarget: authTab })
-        }}
+        onClick={() => onOAuthSignIn({ provider: 'google', setErrorTarget: authTab })}
         className={`${btnPrimary} flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white text-gray-900 hover:bg-gray-100 disabled:opacity-60 disabled:cursor-not-allowed`}
         aria-label="Continue with Google"
       >
@@ -284,49 +233,7 @@ export default function AuthModalPanel({
       ) : null}
       <OAuthDivider />
       {authTab === 'join' ? (
-        <form
-          onSubmit={(e) => {
-            if (requireLegalAcceptance('create')) {
-              e.preventDefault()
-              return
-            }
-            onSignUpSubmit(e)
-          }}
-          className="space-y-4"
-        >
-          <label
-            ref={legalCheckboxRef}
-            data-auth-legal-checkbox
-            data-auth-legal-nudge={legalCheckboxHighlighted ? '1' : undefined}
-            className={`relative flex items-start gap-3 rounded-2xl border px-3.5 py-3 text-left cursor-pointer touch-manipulation transition-colors ${
-              legalCheckboxHighlighted
-                ? 'border-orange-400/70 bg-orange-950/25'
-                : 'border-zinc-700/80 bg-zinc-900/50'
-            }`}
-          >
-            {legalCheckboxHighlighted ? (
-              <span
-                className="pointer-events-none absolute -inset-0.5 rounded-[1.1rem] ring-2 ring-cyan-400/75 auth-legal-checkbox-pulse"
-                aria-hidden
-              />
-            ) : null}
-            <input
-              type="checkbox"
-              checked={acceptedLegal}
-              onChange={(e) => onLegalCheckboxChange(e.target.checked)}
-              className="relative z-[1] mt-1 h-4 w-4 shrink-0 rounded border-zinc-500 accent-orange-500"
-              aria-invalid={legalCheckboxHighlighted || undefined}
-              aria-describedby={legalCheckboxHighlighted ? 'auth-legal-nudge-msg' : undefined}
-            />
-            <span className="relative z-[1] text-[13px] leading-relaxed text-zinc-300">
-              I agree to the {legalLinks}.
-            </span>
-          </label>
-          {legalCheckboxHighlighted ? (
-            <span id="auth-legal-nudge-msg" className="sr-only">
-              {LEGAL_NUDGE_MESSAGE}
-            </span>
-          ) : null}
+        <form onSubmit={onSignUpSubmit} className="space-y-4">
           <input
             type="email"
             placeholder="Email"
@@ -358,7 +265,6 @@ export default function AuthModalPanel({
           {signupError && !isOAuthProviderError(signupError) ? (
             <AuthErrorBanner message={signupError} />
           ) : null}
-          {legalNudgeSource === 'create' ? <LegalAcceptanceNudge /> : null}
           <button
             type="submit"
             disabled={isSigningUp}
@@ -412,37 +318,18 @@ export default function AuthModalPanel({
         </form>
       )}
       <p className="text-center text-[11px] leading-relaxed text-zinc-500">
-        {authTab === 'join' ? (
-          <>
-            Required to create an account. See also{' '}
-            <a
-              href="/guidelines?from=auth"
-              onClick={(e) => {
-                e.preventDefault()
-                onOpenLegalDocument?.('guidelines')
-              }}
-              className="text-orange-400/90 underline underline-offset-2"
-            >
-              Community Guidelines
-            </a>
-            .
-          </>
-        ) : (
-          <>
-            By signing in you agree to our {legalLinks}. See also{' '}
-            <a
-              href="/guidelines?from=auth"
-              onClick={(e) => {
-                e.preventDefault()
-                onOpenLegalDocument?.('guidelines')
-              }}
-              className="text-orange-400/90 underline underline-offset-2"
-            >
-              Community Guidelines
-            </a>
-            .
-          </>
-        )}
+        By continuing, you agree to our {legalLinks}, and{' '}
+        <a
+          href="/guidelines?from=auth"
+          onClick={(e) => {
+            e.preventDefault()
+            onOpenLegalDocument?.('guidelines')
+          }}
+          className="text-orange-400/90 underline underline-offset-2"
+        >
+          Community Guidelines
+        </a>
+        .
       </p>
     </div>
   )

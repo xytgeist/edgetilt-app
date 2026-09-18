@@ -268,7 +268,6 @@ function App() {
   const [verificationSuccess, setVerificationSuccess] = useState(false)
   const [authConfirmError, setAuthConfirmError] = useState('')
   const [authConfirmSuccess, setAuthConfirmSuccess] = useState(false)
-  const [acceptedLegal, setAcceptedLegal] = useState(false)
   const [legalAcceptancePending, setLegalAcceptancePending] = useState(false)
   const [legalAcceptanceBusy, setLegalAcceptanceBusy] = useState(false)
   const [legalAcceptanceError, setLegalAcceptanceError] = useState('')
@@ -1116,7 +1115,6 @@ function App() {
     setSignupError('')
     setSignupMessage('')
     if (!signupEmail || !signupPassword || !signupConfirmPassword) return setSignupError("Please fill in all fields")
-    if (!acceptedLegal) return
     if (signupPassword !== signupConfirmPassword) return setSignupError("Passwords do not match")
     if (signupPassword.length < 6) return setSignupError("Password must be at least 6 characters")
     markPendingLegalAcceptance()
@@ -1202,7 +1200,6 @@ function App() {
     setSignupEmail('')
     setSignupPassword('')
     setSignupConfirmPassword('')
-    setAcceptedLegal(false)
     setIsSigningUp(false)
     if (data?.session?.user) {
       void ensureDefaultProfileRow(supabase, data.session.user).then(() =>
@@ -1548,8 +1545,6 @@ function App() {
       isSendingReset={isSendingReset}
       onForgotSubmit={handleForgotPassword}
       isOAuthLoading={isOAuthLoading}
-      acceptedLegal={acceptedLegal}
-      onAcceptedLegalChange={setAcceptedLegal}
       onOpenLegalDocument={(slug) => openLegalDocument(slug, 'auth')}
       onOAuthSignIn={({ provider, setErrorTarget }) => {
         const setError =
@@ -1561,7 +1556,7 @@ function App() {
         setError('')
         void handleOAuthSignIn(provider === 'apple' ? 'apple' : 'google', {
           setError,
-          markLegalPending: authTab === 'join' && acceptedLegal,
+          markLegalPending: authTab === 'join',
         })
       }}
     />

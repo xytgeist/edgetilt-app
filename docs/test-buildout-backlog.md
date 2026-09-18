@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **Auth consent is the continue action (Mac).** Join / Sign in no longer has an I-agree checkbox. The line is "By continuing, you agree..." Terms, Privacy, and Community Guidelines stay linked. Continuing still stamps acceptance. Policy re-accept modal for an already-signed-in account is unchanged. Frontend **`1.4.290`**. Web only.
 - **2026-09-18:** **Sherdog result tape (Windows).** Odds-board names missing from UFC Stats get a last-5 of win / method / round only. `counts_measured` false so Rocco does not read blank takedowns as zero. `career_measured` false so Scott ignores the placeholder sheet. SQL **`20260918150000`** applied and recorded on test + prod. Wrote Bryce Meredith, Movlid Khaybulaev, Marcos Breno, Devon Lozej. Redeployed **`lounge-odds-poll`** test + prod.
 - **2026-09-18:** **iPad sign-in column (Mac).** Wide coarse pointer (`768×700`) uses a full-screen centered auth column. Join / Sign in sit in a bottom bar. Phone sheet unchanged. Landscape iPhone stays the sheet (too short).
 - **2026-09-18:** **UFC name match + roster fill (Windows).** `findFighterMetric` no longer treats a shared first name as a hit (`Gilbert` was using Gilbert Urbina's last-5). Ensured Colby Covington, Gilbert Burns, Luke Rockhold, Joe Pyfer (`Joseph Pyfer` alias), Shuya Kamikubo, Davi Bittencourt on prod. Bryce Meredith, Movlid Khaybulaev, Marcos Breno, Devon Lozej are not on UFC Stats. Redeploy **`lounge-odds-poll`**.

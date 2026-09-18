@@ -72,6 +72,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Windows Theo.** UFC Metrics tab now has a last-refresh dump like Sleeper PVALs. Table `ufc_metrics_sync_runs` on test + prod. First dump lands on the next Tuesday GHA (or a manual sync). **`1.4.289`** on **`test`**.
 
+### Mac Theo 2026-09-18 … iPad sign-in is a centered column
+
+**I am Mac Theo.** iPad login / create account is a full-screen narrow column (X-style), not the phone sheet. Join / Sign in are a bottom bar. Phone unchanged. Web only. Not in the 1.4.95 review binary until the next web deploy.
+
 ### Windows Theo 2026-09-18 … CFB tease no fake Lean
 
 **I am Windows Theo.** All-pass CFB night tease no longer prints a home-market number as **Lean**. Public says **All pass** only. VIP says **PASS**. **`lounge-odds-poll`** redeployed test + prod. Last night's Orange @ Panthers post is still the old copy.

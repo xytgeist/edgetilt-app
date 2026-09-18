@@ -3482,8 +3482,62 @@ html.light .slots-icon-tile svg {
   color: inherit !important;
 }
 
+/* iPad auth: full-screen column, Join / Sign in pinned like X's bottom bar.
+   Phone sheet does not carry data-auth-ipad-stage. */
+[data-auth-ipad-stage] [role='tablist'] {
+  position: fixed;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 30;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  gap: 2.5rem;
+  border-radius: 0;
+  background: #09090b;
+  border-top: 1px solid rgb(63 63 70 / 0.9);
+  padding: 0.85rem 1.5rem calc(0.85rem + max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)));
+}
+[data-auth-ipad-stage] [role='tablist'] button {
+  flex: 0 0 auto;
+  min-height: 2.75rem;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #a1a1aa;
+  font-size: 1rem;
+  font-weight: 600;
+}
+[data-auth-ipad-stage] [role='tablist'] button[aria-selected='true'] {
+  color: #fafafa;
+  background: transparent;
+  box-shadow: none;
+}
+
 /* Auth modal card */
 html.light [data-auth-modal]                        { background-color: #fff !important; box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 16px 48px rgba(0,0,0,0.16), 0 0 0 1px rgba(0,0,0,0.05) !important; }
+html.light [data-auth-ipad-stage] {
+  background-color: #fff;
+  color: #18181b;
+}
+html.light [data-auth-ipad-stage] [data-auth-modal] {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+html.light [data-auth-ipad-stage] [data-auth-ipad-dismiss] {
+  color: #3f3f46;
+}
+html.light [data-auth-ipad-stage] [role='tablist'] {
+  background: #f4f4f5;
+  border-top-color: #e4e4e7;
+}
+html.light [data-auth-ipad-stage] [role='tablist'] button {
+  color: #71717a;
+  background: transparent;
+}
+html.light [data-auth-ipad-stage] [role='tablist'] button[aria-selected='true'] {
+  color: #18181b;
+}
 html.light [data-auth-modal] .border-gray-700       { border-color: #e4e4e7 !important; }
 html.light [data-auth-modal] .text-gray-500         { color: #71717a !important; }
 html.light [data-auth-modal] .bg-gray-900           { background-color: #fff !important; }

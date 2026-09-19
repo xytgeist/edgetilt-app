@@ -1874,56 +1874,41 @@ export default function LoungeDockSlidePanels({
 
             {showAccountSection ? (
               <div ref={settingsAccountSectionRef} data-settings-account-section className="mt-6 border-t border-zinc-800 pt-5">
-                <div className="flex items-start gap-2 rounded-xl px-1 py-1">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex min-h-8 flex-wrap items-center gap-1.5">
-                      <button
-                        type="button"
-                        aria-expanded={accountSettingsOpen}
-                        onClick={() => setAccountSettingsOpen((open) => !open)}
-                        className="text-left text-[15px] font-semibold text-zinc-100 touch-manipulation [-webkit-tap-highlight-color:transparent]"
-                      >
-                        Account
-                      </button>
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={accountSettingsOpen}
+                  onClick={() => setAccountSettingsOpen((open) => !open)}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'Enter' && e.key !== ' ') return
+                    e.preventDefault()
+                    setAccountSettingsOpen((open) => !open)
+                  }}
+                  className="flex min-h-12 w-full cursor-pointer items-start justify-between gap-3 rounded-xl px-1 py-1 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/40"
+                >
+                  <span className="min-w-0">
+                    <span className="flex min-h-8 flex-wrap items-center gap-1.5">
+                      <span className="text-[15px] font-semibold text-zinc-100">Account</span>
                       {accountPhoneVerified ? (
                         <LoungeVerifiedCheckBadge size="modal" />
                       ) : (
-                        <button type="button" onClick={openAccountPhoneVerify} className={ACCOUNT_VERIFY_CLASS}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openAccountPhoneVerify()
+                          }}
+                          className={ACCOUNT_VERIFY_CLASS}
+                        >
                           Verify
                         </button>
                       )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setAccountSettingsOpen((open) => !open)}
-                      className="mt-1 block w-full text-left text-[13px] leading-relaxed text-zinc-500 touch-manipulation [-webkit-tap-highlight-color:transparent]"
-                    >
-                      Profile, password, account info, and legal.
-                    </button>
-                  </div>
-                  <button
-                    type="button"
-                    aria-label={accountSettingsOpen ? 'Collapse Account' : 'Expand Account'}
-                    onClick={() => setAccountSettingsOpen((open) => !open)}
-                    className="mt-0.5 shrink-0 text-zinc-400 touch-manipulation [-webkit-tap-highlight-color:transparent]"
-                  >
-                    <span
-                      aria-hidden
-                      className={`inline-flex transition-transform duration-200 ${
-                        accountSettingsOpen ? 'rotate-180' : 'rotate-0'
-                      }`}
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-                        <path
-                          d="M6 9l6 6 6-6"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
                     </span>
-                  </button>
+                    <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
+                      Profile, password, account info, and legal.
+                    </span>
+                  </span>
+                  <SettingsSectionChevron open={accountSettingsOpen} />
                 </div>
 
                 {accountSettingsOpen ? (

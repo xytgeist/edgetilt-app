@@ -88,6 +88,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Windows Theo.** UFC Metrics tab now has a last-refresh dump like Sleeper PVALs. Table `ufc_metrics_sync_runs` on test + prod. First dump lands on the next Tuesday GHA (or a manual sync). **`1.4.289`** on **`test`**.
 
+### Mac Theo 2026-09-18 … iPad login dropped down
+
+**I am Mac Theo.** iPad login block (logo through legal) sits in the middle, not under the status bar. Continue with Phone is 4.5rem tall. Still not wired. Web **`1.4.294`**.
+
 ### Mac Theo 2026-09-18 … Continue with Phone is a picture
 
 **I am Mac Theo.** iPad login now has the **or** line and a **Continue with Phone** pill. Not wired. No SMS. Web **`1.4.293`**.

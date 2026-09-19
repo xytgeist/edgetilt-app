@@ -3523,6 +3523,8 @@ html.light [data-auth-ipad-stage] [data-auth-ipad-dismiss] {
 [data-auth-ipad-stage] [data-auth-ipad-phone] {
   background-color: #fff;
   color: #09090b;
+  min-height: 4.5rem;
+  font-size: 1.125rem;
 }
 html.light [data-auth-ipad-stage] [data-auth-ipad-phone] {
   background-color: #000 !important;

@@ -124,14 +124,16 @@ export default function AuthModalShell({ onClose, cancelLabel, children }) {
             aria-modal="true"
             aria-labelledby="auth-modal-title"
             data-auth-modal
-            className="mx-auto flex w-full max-w-[26rem] flex-1 flex-col bg-transparent px-6 pb-[calc(6.75rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] shadow-none"
+            className="mx-auto flex min-h-full w-full max-w-[26rem] flex-col bg-transparent px-6 pb-[calc(6.75rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] shadow-none"
             style={{
               paddingTop:
-                'max(5.5rem, calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 3.25rem))',
+                'max(4.5rem, calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 2.5rem))',
             }}
           >
-            <AuthIpadHero />
-            <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+            <div className="my-auto flex w-full flex-col">
+              <AuthIpadHero />
+              {children}
+            </div>
           </div>
         </div>
       </div>

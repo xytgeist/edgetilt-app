@@ -66,7 +66,7 @@ function EmailIcon() {
 
 function PhoneIcon() {
   return (
-    <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden>
+    <svg className="h-6 w-6" viewBox="0 0 24 24" aria-hidden>
       <path
         fill="currentColor"
         d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.85 21 3 13.15 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.46.57 3.58a1 1 0 0 1-.25 1.01l-2.2 2.2z"
@@ -275,7 +275,7 @@ export default function AuthModalPanel({
 
   if (ipadStage) {
     return (
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex flex-col">
         {signupMessage ? (
           <div
             ref={signupMessageRef}
@@ -291,11 +291,7 @@ export default function AuthModalPanel({
             ✅ Account verified - have fun!
           </div>
         ) : null}
-        <div
-          className={`flex flex-1 flex-col items-center px-1 ${
-            authTab !== 'join' || showJoinEmail ? 'pt-8' : 'justify-center'
-          }`}
-        >
+        <div className="mt-10 flex flex-col items-center px-1">
           <div className="flex items-center justify-center gap-5">
             <ProviderCircle
               label="Continue with Google"

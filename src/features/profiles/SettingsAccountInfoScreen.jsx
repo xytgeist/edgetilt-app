@@ -796,42 +796,42 @@ export default function SettingsAccountInfoScreen({
                 <label htmlFor="settings-account-email-code" className="block text-[13px] font-semibold text-zinc-300">
                   Email code
                 </label>
-                <div className="relative">
-                  <input
-                    id="settings-account-email-code"
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    placeholder="6-digit code"
-                    enterKeyHint="go"
-                    value={emailCode}
-                    onChange={(e) => {
-                      setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 10))
-                      setSaveError('')
-                    }}
-                    className="min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 py-2 pl-3 pr-28 text-[15px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-500/50"
-                  />
+                <input
+                  id="settings-account-email-code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="6-digit code"
+                  enterKeyHint="go"
+                  value={emailCode}
+                  onChange={(e) => {
+                    setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 10))
+                    setSaveError('')
+                  }}
+                  className="min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 px-3 text-[15px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-500/50"
+                />
+                <div className="flex flex-wrap gap-x-4">
                   <button
                     type="button"
                     disabled={saveBusy}
                     {...fieldActionHandlers(() => {
                       void confirmEmailCode()
                     })}
-                    className={FIELD_ACTION_CLASS}
+                    className={PHONE_ACTION_CLASS}
                   >
-                    {saveBusy ? 'Checking…' : 'Confirm'}
+                    {saveBusy ? 'Checking…' : 'Confirm email code'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={saveBusy}
+                    {...fieldActionHandlers(() => {
+                      void onSendEmailCode()
+                    })}
+                    className={PHONE_ACTION_CLASS}
+                  >
+                    Send again
                   </button>
                 </div>
-                <button
-                  type="button"
-                  disabled={saveBusy}
-                  {...fieldActionHandlers(() => {
-                    void onSendEmailCode()
-                  })}
-                  className={PHONE_ACTION_CLASS}
-                >
-                  Send again
-                </button>
               </div>
             ) : null}
           </div>

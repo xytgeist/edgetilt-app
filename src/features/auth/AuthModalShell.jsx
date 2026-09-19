@@ -56,44 +56,41 @@ function AuthIpadHero() {
   )
 }
 
+const PHONE_WORDMARKS = [
+  { lead: 'Find Your', label: 'Find Your Edge' },
+  { lead: 'Degen with', label: 'Degen with Edge' },
+]
+
 function AuthWordmark() {
+  const [mark] = useState(() => PHONE_WORDMARKS[Math.floor(Math.random() * PHONE_WORDMARKS.length)])
+
   return (
-    <svg
+    <h1
       id="auth-modal-title"
-      viewBox="0 0 260 32"
-      width="100%"
-      className="mx-auto mb-6 block max-w-[300px]"
-      aria-label="Find Your Edge"
-      role="img"
+      aria-label={mark.label}
+      className="mx-auto mb-6 flex items-center justify-center gap-2 text-white"
     >
-      <text
-        x="26"
-        y="24"
-        textAnchor="start"
-        fontFamily="'Montserrat', sans-serif"
-        fontWeight="300"
-        fontSize="24"
-        fill="currentColor"
+      <span
+        className="text-2xl font-light leading-none tracking-tight"
+        style={{ fontFamily: "'Montserrat', sans-serif" }}
       >
-        Find Your
-      </text>
-      <image
-        href="/edge-lounge-logo-transparent.png"
-        x="150"
-        y="6"
-        width="77"
-        height="19"
-        className="edge-logo--dark"
-      />
-      <image
-        href="/edge-lounge-logo-light.png"
-        x="150"
-        y="6"
-        width="77"
-        height="19"
-        className="edge-logo--light"
-      />
-    </svg>
+        {mark.lead}
+      </span>
+      <span className="inline-flex shrink-0" aria-hidden>
+        <img
+          src="/edge-lounge-logo-transparent.png"
+          alt=""
+          className="edge-logo--dark h-[1.2rem] w-auto"
+          draggable={false}
+        />
+        <img
+          src="/edge-lounge-logo-light.png"
+          alt=""
+          className="edge-logo--light h-[1.2rem] w-auto"
+          draggable={false}
+        />
+      </span>
+    </h1>
   )
 }
 
@@ -141,7 +138,7 @@ export default function AuthModalShell({ onClose, cancelLabel, children }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-end justify-center overflow-x-hidden bg-black/70 backdrop-blur-sm md:items-center md:p-4 md:pt-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] md:pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
+    <div className="fixed inset-0 z-[200] flex items-end justify-center overflow-x-hidden bg-black md:items-center md:p-4 md:pt-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] md:pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
       <button
         type="button"
         className="absolute inset-0 cursor-default [-webkit-tap-highlight-color:transparent]"
@@ -152,8 +149,9 @@ export default function AuthModalShell({ onClose, cancelLabel, children }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="auth-modal-title"
-        className="relative z-10 w-full max-w-lg min-h-0 max-h-[min(92dvh,calc(100dvh-max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px))))] overflow-y-auto overscroll-contain rounded-t-3xl border border-zinc-600/80 border-b-0 bg-gray-900 px-5 pt-3 pb-[max(1.25rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] shadow-2xl md:rounded-3xl md:border-b-zinc-600/80 md:p-8 md:pt-6"
+        className="relative z-10 w-full max-w-lg min-h-0 max-h-[min(92dvh,calc(100dvh-max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px))))] overflow-y-auto overscroll-contain rounded-t-3xl border border-zinc-800 border-b-0 bg-black px-5 pt-3 pb-[max(1.25rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] shadow-2xl md:rounded-3xl md:border-b-zinc-800 md:p-8 md:pt-6"
         data-auth-modal
+        data-auth-sheet
         onClick={(e) => e.stopPropagation()}
       >
         <div

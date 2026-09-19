@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **Phone login matches the iPad column (Mac).** iPhone and Android drop the Join / Sign in tabs for the circles, or-line, unwired phone pill, and bottom Sign in bar. Wordmark is **Find Your** or **Degen with** plus the EDGE mark, 50/50. Sheet background is black, not gray-900. Legal links are white there (near-black in light mode). Apple stays in the iOS shell only. Desktop mouse uses the same sheet. Frontend **`1.4.299`**. Web only.
 - **2026-09-18:** **iPad login buttons pulled up 100px (Mac).** The 200px drop was too much. Circles sit 100px under the old gap. Terms, Privacy, and Community Guidelines links are white on the iPad column (near-black in light mode). Phone sheet links stay orange. Frontend **`1.4.298`**. Web only.
 - **2026-09-18:** **iPad phone pill type and icon (Mac).** Continue with Phone label is 22px. Icon is an outline handset, not a filled glyph. Frontend **`1.4.297`**. Web only.
 - **2026-09-18:** **iPad login buttons dropped 200px (Mac).** Circles, phone pill, and legal line sit 200px under the slogan. Logo stays. Frontend **`1.4.296`**. Web only.

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react'
 import { isEdgeiOSShell } from '../../utils/edgeNative.js'
 import { inputBase, btnPrimary, linkBtn } from '../shell/shellClasses'
 import { AppleIcon, OAuthDivider, GoogleIcon } from './OAuthUi'
-import AuthTabSwitcher from './AuthTabSwitcher'
 import AuthPasswordField from './AuthPasswordField'
 import { useIpadAuthStage } from './AuthModalShell'
 
@@ -78,14 +77,14 @@ function PhoneIcon() {
   )
 }
 
-function IpadOrDivider() {
+function OrDivider({ chipClassName = 'bg-zinc-950', className = 'my-7' }) {
   return (
-    <div className="relative my-7 w-full" data-auth-ipad-or>
+    <div className={`relative w-full ${className}`} data-auth-ipad-or>
       <div className="absolute inset-0 flex items-center" aria-hidden>
         <div data-auth-ipad-or-line className="w-full border-t border-zinc-700" />
       </div>
       <div className="relative flex justify-center text-lg text-zinc-500">
-        <span className="bg-zinc-950 px-3">or</span>
+        <span className={`${chipClassName} px-3`}>or</span>
       </div>
     </div>
   )
@@ -276,8 +275,7 @@ export default function AuthModalPanel({
     authTab === 'join' &&
     (emailOpen || Boolean(signupMessage) || Boolean(signupError && !isOAuthProviderError(signupError)))
 
-  if (ipadStage) {
-    return (
+  return (
       <div className="flex flex-col">
         {signupMessage ? (
           <div
@@ -294,7 +292,7 @@ export default function AuthModalPanel({
             ✅ Account verified - have fun!
           </div>
         ) : null}
-        <div className="mt-[calc(2.5rem+100px)] -mb-[100px] flex flex-col items-center px-1">
+        <div className={`${ipadStage ? 'mt-[calc(2.5rem+100px)] -mb-[100px]' : 'mt-2'} flex flex-col items-center px-1`}>
           <div className="flex items-center justify-center gap-5">
             <ProviderCircle
               label="Continue with Google"
@@ -325,7 +323,10 @@ export default function AuthModalPanel({
           </div>
           {authTab === 'join' && !showJoinEmail ? (
             <>
-              <IpadOrDivider />
+              <OrDivider
+                chipClassName={ipadStage ? 'bg-zinc-950' : 'bg-black'}
+                className={ipadStage ? 'my-7' : 'my-5'}
+              />
               <button
                 type="button"
                 data-auth-ipad-phone
@@ -436,7 +437,7 @@ export default function AuthModalPanel({
         </div>
         <button
           type="button"
-          data-auth-ipad-footer
+          {...(ipadStage ? { 'data-auth-ipad-footer': '' } : { 'data-auth-sheet-footer': '' })}
           onClick={() => {
             setEmailOpen(false)
             onAuthTabChange(authTab === 'join' ? 'signin' : 'join')
@@ -449,142 +450,5 @@ export default function AuthModalPanel({
         </button>
       </div>
     )
-  }
-
-  return (
-    <div className="space-y-4">
-      {signupMessage ? (
-        <div
-          ref={signupMessageRef}
-          data-auth-signup-message
-          role="status"
-          className="p-3 bg-emerald-900/50 border border-emerald-500 rounded-xl text-emerald-300 text-sm text-center leading-relaxed"
-        >
-          {signupMessage}
-        </div>
-      ) : null}
-      {verificationSuccess ? (
-        <div className="p-4 bg-emerald-900/50 border border-emerald-500 rounded-2xl text-emerald-300 text-center text-sm sm:text-base font-medium leading-relaxed">
-          ✅ Account verified - have fun!
-        </div>
-      ) : null}
-      <AuthTabSwitcher value={authTab} onChange={onAuthTabChange} />
-      {showAppleSignIn ? (
-      <button
-        type="button"
-        disabled={isOAuthLoading}
-        onClick={() => onOAuthSignIn({ provider: 'apple', setErrorTarget: authTab })}
-        className={`${btnPrimary} flex w-full items-center justify-center gap-2 rounded-2xl border-0 bg-black text-white hover:bg-zinc-900 disabled:opacity-60 disabled:cursor-not-allowed`}
-        aria-label="Continue with Apple"
-      >
-        <AppleIcon />
-        Continue with Apple
-      </button>
-      ) : null}
-      <button
-        type="button"
-        disabled={isOAuthLoading}
-        onClick={() => onOAuthSignIn({ provider: 'google', setErrorTarget: authTab })}
-        className={`${btnPrimary} flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white text-gray-900 hover:bg-gray-100 disabled:opacity-60 disabled:cursor-not-allowed`}
-        aria-label="Continue with Google"
-      >
-        <GoogleIcon />
-        Continue with Google
-      </button>
-      {authTab === 'join' && isOAuthProviderError(signupError) ? (
-        <AuthErrorBanner message={signupError} />
-      ) : null}
-      {authTab !== 'join' && isOAuthProviderError(loginError) ? (
-        <AuthErrorBanner message={loginError} />
-      ) : null}
-      <OAuthDivider />
-      {authTab === 'join' ? (
-        <form onSubmit={onSignUpSubmit} className="space-y-4">
-          <input
-            type="email"
-            placeholder="Email"
-            value={signupEmail}
-            onChange={(e) => onSignupEmailChange(e.target.value)}
-            className={inputBase}
-            autoComplete="email"
-            inputMode="email"
-            enterKeyHint="next"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            required
-          />
-          <AuthPasswordField
-            placeholder="Password"
-            value={signupPassword}
-            onChange={onSignupPasswordChange}
-            autoComplete="new-password"
-            enterKeyHint="next"
-          />
-          <AuthPasswordField
-            placeholder="Confirm password"
-            value={signupConfirmPassword}
-            onChange={onSignupConfirmPasswordChange}
-            autoComplete="new-password"
-            enterKeyHint="go"
-          />
-          {signupError && !isOAuthProviderError(signupError) ? (
-            <AuthErrorBanner message={signupError} />
-          ) : null}
-          <button
-            type="submit"
-            disabled={isSigningUp}
-            className={`${btnPrimary} bg-orange-600 hover:bg-orange-500 rounded-2xl disabled:opacity-60 disabled:cursor-not-allowed`}
-          >
-            {isSigningUp ? 'Creating account...' : 'Create account'}
-          </button>
-        </form>
-      ) : (
-        <form onSubmit={onLoginSubmit} className="space-y-4">
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => onEmailChange(e.target.value)}
-            className={inputBase}
-            autoComplete="email"
-            inputMode="email"
-            enterKeyHint="next"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-            required
-          />
-          <AuthPasswordField
-            placeholder="Password"
-            value={password}
-            onChange={onPasswordChange}
-            autoComplete="current-password"
-            enterKeyHint="go"
-          />
-          <button
-            type="submit"
-            disabled={isLoggingIn}
-            className={`${btnPrimary} bg-orange-600 hover:bg-orange-500 rounded-2xl disabled:opacity-60 disabled:cursor-not-allowed`}
-          >
-            {isLoggingIn ? 'Signing in...' : 'Sign in'}
-          </button>
-          {loginError && !isOAuthProviderError(loginError) ? (
-            <AuthErrorBanner message={loginError} />
-          ) : null}
-          <div className="pt-1">
-            <button
-              type="button"
-              onClick={onOpenForgotPassword}
-              className="w-full min-h-12 text-base text-orange-400 hover:text-orange-300 touch-manipulation py-3 text-center"
-            >
-              Trouble signing in?
-            </button>
-          </div>
-        </form>
-      )}
-      <ConsentLine legalLinks={legalLinks} onOpenLegalDocument={onOpenLegalDocument} />
-    </div>
-  )
 }
 

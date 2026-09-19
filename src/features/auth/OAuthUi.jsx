@@ -5,7 +5,7 @@ export function OAuthDivider() {
         <div className="w-full border-t border-gray-700" />
       </div>
       <div className="relative flex justify-center text-xs text-gray-500">
-        <span className="bg-gray-900 px-3">or continue with</span>
+        <span data-auth-oauth-chip className="bg-black px-3">or continue with</span>
       </div>
     </div>
   )

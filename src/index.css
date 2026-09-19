@@ -3564,6 +3564,72 @@ html.light [data-auth-ipad-stage] [data-auth-ipad-footer] {
   border-top-color: #e4e4e7;
   color: #3f3f46;
 }
+/* Phone / Android sheet. gray-900 was the blue cast. Black only in dark mode. */
+[data-auth-sheet] [data-auth-ipad-provider][data-selected='1'] {
+  border-color: #fafafa;
+  background: rgb(39 39 42);
+}
+[data-auth-sheet] [data-auth-ipad-phone] {
+  background-color: #fff;
+  color: #09090b;
+  min-height: 4rem;
+  font-size: 1.25rem;
+}
+[data-auth-sheet] p a,
+[data-auth-sheet] p a:hover {
+  color: #fff;
+}
+[data-auth-sheet] p {
+  font-size: 0.8125rem;
+}
+[data-auth-sheet] [data-auth-sheet-footer] {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  margin-top: 1.25rem;
+  border: 0;
+  border-top: 1px solid rgb(63 63 70 / 0.9);
+  background: transparent;
+  color: #a1a1aa;
+  font-size: 1.05rem;
+  font-weight: 600;
+  min-height: 3.25rem;
+  padding: 0.85rem 0.5rem 0.15rem;
+  touch-action: manipulation;
+}
+html.light [data-auth-sheet] [data-auth-ipad-phone] {
+  background-color: #000 !important;
+  color: #fff !important;
+}
+html.light [data-auth-sheet] [data-auth-ipad-provider] {
+  border-color: #d4d4d8;
+  background: #fff;
+  color: #18181b;
+}
+html.light [data-auth-sheet] [data-auth-ipad-provider][data-selected='1'] {
+  border-color: #18181b;
+  background: #f4f4f5;
+}
+html.light [data-auth-sheet] [data-auth-ipad-or] span {
+  background-color: #fff;
+  color: #71717a;
+}
+html.light [data-auth-sheet] [data-auth-ipad-or-line] {
+  border-color: #e4e4e7;
+}
+html.light [data-auth-sheet] p a,
+html.light [data-auth-sheet] p a:hover {
+  color: #18181b;
+}
+html.light [data-auth-sheet] [data-auth-sheet-footer] {
+  border-top-color: #e4e4e7;
+  color: #3f3f46;
+}
+html.light [data-auth-modal] [data-auth-oauth-chip] {
+  background-color: #fff;
+}
 html.light [data-auth-modal] { background-color: #fff !important; box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 16px 48px rgba(0,0,0,0.16), 0 0 0 1px rgba(0,0,0,0.05) !important; }
 html.light [data-auth-modal] .border-gray-700       { border-color: #e4e4e7 !important; }
 html.light [data-auth-modal] .text-gray-500         { color: #71717a !important; }

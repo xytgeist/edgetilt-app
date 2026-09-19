@@ -6,7 +6,7 @@
  * 2. Rocco (Octagon Grappling & Strike Differential) ... Takedown control rate & net SLpM efficiency.
  * 3. Chedda (Live Dogs & Inside Distance Props) ... Plus-money live underdogs & KO/Sub finish equity.
  * 4. Tank ... UFC round O/U is parked until the desk is trained.
- * Live print / ledger is Scott + Rocco. Chedda / Tank sit.
+ * Live print / ledger is Scott + Rocco. Chedda and Tank are not on this card.
  *    Football totals stay on the NFL/CFB slate.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
@@ -91,7 +91,7 @@ const UFC_PRINT_DESKS = ['Scott', 'Rocco'] as const
 /** Flip when Tank's UFC round-total model is trained. Football O/U is unchanged. */
 const TANK_UFC_ROUND_TOTALS_ENABLED = false
 
-/** Ops desk board … Scott + Rocco. Chedda / Tank sit. */
+/** Ops desk board … Scott + Rocco. Chedda and Tank are not on this card. */
 export function ufcDeskEvalBoard(card: UfcSlateCard | null | undefined) {
   const empty = { Scott: [], Rocco: [], Chedda: [], Tank: [] } as Record<
     (typeof SHARP_PICKERS)[number],
@@ -466,7 +466,7 @@ function formatUfcFightDeskBlock(fight: UfcFightPick): string {
 export function formatUfcVipCardCaption(card: UfcSlateCard): string {
   const vipLines: string[] = []
   vipLines.push(`🥊 **${card.cardTitle.toUpperCase()} · SCOTT + ROCCO**\n`)
-  vipLines.push(`Price desk + styles. Chedda / Tank sit.\n`)
+  vipLines.push(`Price desk + styles.\n`)
   for (const fight of card.fights || []) {
     vipLines.push(formatUfcFightDeskBlock(fight), '')
   }
@@ -483,7 +483,7 @@ export function formatUfcFanOnlyBodies(card: UfcSlateCard): {
   const header = [
     `🥊 **${card.cardTitle.toUpperCase()} · SCOTT + ROCCO**`,
     '',
-    `Price desk + styles. Chedda / Tank sit.`,
+    `Price desk + styles.`,
   ].join('\n')
   const fights = (card.fights || []).map(formatUfcFightDeskBlock)
   let caption = header
@@ -516,7 +516,7 @@ export function formatUfcCardCaption(card: UfcSlateCard): string {
   const lines: string[] = []
 
   lines.push(`🥊 **${card.cardTitle.toUpperCase()} · SCOTT + ROCCO** 🥊`)
-  lines.push(`Price desk + last-5 styles. Chedda / Tank sit.\n`)
+  lines.push(`Price desk + last-5 styles.\n`)
 
   for (const fight of card.fights || []) {
     const scott = fight.pickerPicks.Scott

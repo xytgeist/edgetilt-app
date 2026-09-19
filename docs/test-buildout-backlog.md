@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **UFC card drops the sit line (Windows).** Public, fan-only, and VIP no longer print "Chedda / Tank sit." Title already says Scott + Rocco. Redeployed **`lounge-odds-poll`** test + prod.
 - **2026-09-18:** **Rocco no-data copy (Windows).** A pass with no last-5 says "Not enough data," never that a file is missing. Redeployed **`lounge-odds-poll`** test + prod.
 - **2026-09-18:** **Rocco pass copy (Windows).** UFC pass lines no longer end with "Rocco sits." The reason stays (thin tape, no last-5, styles too close). Redeployed **`lounge-odds-poll`** test + prod.
 - **2026-09-18:** **Auth consent is the continue action (Mac).** Join / Sign in no longer has an I-agree checkbox. The line is "By continuing, you agree..." Terms, Privacy, and Community Guidelines stay linked. Continuing still stamps acceptance. Policy re-accept modal for an already-signed-in account is unchanged. Frontend **`1.4.290`**. Web only.

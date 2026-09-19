@@ -1145,6 +1145,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **Australia phone codes (Windows).** Australia is back on the country menu. The code still sends. The sender may show as Unverified until EdgeTilt is registered. Frontend **`1.4.312`**.
 - **2026-09-18:** **Login card ignores outside taps (Mac).** Tapping the blurred area no longer closes the phone card or hits the app behind it. Continue without signing in still closes it. Frontend **`1.4.311`**. Web only.
 - **2026-09-18:** **International phone codes (Windows).** Continue with Phone and Account info can text outside the US and Canada. Those countries use the sender name **EdgeTilt**. The US and Canada stay on **`+1 480 393 4143`**. France, Spain, Australia, India, Singapore, and Russia are not in the menu until that name is registered. Frontend **`1.4.310`**. Test Edge **`auth-send-sms`** redeployed. Prod Auth stays off.
 - **2026-09-18:** **Login scrim blur (Mac).** The see-through area around the phone card now blurs the app behind it. The card stays solid. iPad column unchanged. Frontend **`1.4.309`**. Web only.

@@ -1,8 +1,8 @@
 /**
  * Countries the OTP profile can text without a pre-registered sender name.
  * US and Canada stay on the 10DLC number. Everyone else uses the name EdgeTilt.
- * France, Spain, Australia, India, Singapore, and Russia are left off on purpose.
- * Those carriers reject an unregistered name.
+ * France, Spain, India, Singapore, and Russia are left off on purpose.
+ * Those carriers reject an unregistered name. Australia still sends. The name may show as Unverified until it is registered.
  */
 
 const CA_AREA_CODES = new Set([
@@ -54,6 +54,7 @@ export const PHONE_COUNTRIES = [
   { id: 'XK', name: 'Kosovo', dial: '383', min: 8, max: 8 },
   { id: 'MD', name: 'Moldova', dial: '373', min: 8, max: 8 },
   { id: 'NZ', name: 'New Zealand', dial: '64', min: 8, max: 10 },
+  { id: 'AU', name: 'Australia', dial: '61', min: 9, max: 9 },
   { id: 'BR', name: 'Brazil', dial: '55', min: 10, max: 11 },
   { id: 'AR', name: 'Argentina', dial: '54', min: 10, max: 10 },
   { id: 'CL', name: 'Chile', dial: '56', min: 9, max: 9 },

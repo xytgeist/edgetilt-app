@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Windows Theo 2026-09-18 … Australia phone codes
+
+**I am Windows Theo.** Australia is on the phone menu again. The code still sends. The name may show as Unverified until EdgeTilt is registered. Frontend **`1.4.312`**.
+
 ### Mac Theo 2026-09-18 … login card ignores outside taps
 
 **I am Mac Theo.** Tapping the blurred area no longer closes the phone login card or clicks the app behind it. Continue without signing in still closes it. Web **`1.4.311`**.

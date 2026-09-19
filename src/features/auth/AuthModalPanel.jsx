@@ -294,7 +294,7 @@ export default function AuthModalPanel({
             ✅ Account verified - have fun!
           </div>
         ) : null}
-        <div className="mt-[calc(2.5rem+200px)] -mb-[200px] flex flex-col items-center px-1">
+        <div className="mt-[calc(2.5rem+100px)] -mb-[100px] flex flex-col items-center px-1">
           <div className="flex items-center justify-center gap-5">
             <ProviderCircle
               label="Continue with Google"

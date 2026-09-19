@@ -3529,6 +3529,12 @@ html.light [data-auth-ipad-stage] [data-auth-ipad-dismiss] {
 [data-auth-ipad-stage] [data-auth-modal] p {
   font-size: 1rem;
 }
+[data-auth-ipad-stage] [data-auth-modal] p a {
+  color: #fff;
+}
+html.light [data-auth-ipad-stage] [data-auth-modal] p a {
+  color: #18181b;
+}
 [data-auth-ipad-stage] [data-auth-modal] input,
 [data-auth-ipad-stage] [data-auth-modal] button[type='submit'] {
   font-size: 1.25rem;

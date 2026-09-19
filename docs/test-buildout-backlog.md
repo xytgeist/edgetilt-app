@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **iPad login buttons pulled up 100px (Mac).** The 200px drop was too much. Circles sit 100px under the old gap. Terms, Privacy, and Community Guidelines links are white on the iPad column (near-black in light mode). Phone sheet links stay orange. Frontend **`1.4.298`**. Web only.
 - **2026-09-18:** **iPad phone pill type and icon (Mac).** Continue with Phone label is 22px. Icon is an outline handset, not a filled glyph. Frontend **`1.4.297`**. Web only.
 - **2026-09-18:** **iPad login buttons dropped 200px (Mac).** Circles, phone pill, and legal line sit 200px under the slogan. Logo stays. Frontend **`1.4.296`**. Web only.
 - **2026-09-18:** **iPad login type is larger (Mac).** Slogan, or, legal line, Sign in bar, field text, and Continue with Phone label are bigger. Button sizes unchanged. Phone sheet unchanged. Frontend **`1.4.295`**. Web only.

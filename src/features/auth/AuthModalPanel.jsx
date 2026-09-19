@@ -352,13 +352,13 @@ export default function AuthModalPanel({
             ref={signupMessageRef}
             data-auth-signup-message
             role="status"
-            className="mb-4 p-3 bg-emerald-900/50 border border-emerald-500 rounded-xl text-emerald-300 text-sm text-center leading-relaxed"
+            className={`${ipadStage ? 'mt-16' : ''} mb-4 p-3 bg-emerald-900/50 border border-emerald-500 rounded-xl text-emerald-300 text-sm text-center leading-relaxed`}
           >
             {signupMessage}
           </div>
         ) : null}
         {verificationSuccess ? (
-          <div className="mb-4 p-4 bg-emerald-900/50 border border-emerald-500 rounded-2xl text-emerald-300 text-center text-sm font-medium leading-relaxed">
+          <div className={`${ipadStage ? 'mt-16' : ''} mb-4 p-4 bg-emerald-900/50 border border-emerald-500 rounded-2xl text-emerald-300 text-center text-sm font-medium leading-relaxed`}>
             ✅ Account verified - have fun!
           </div>
         ) : null}

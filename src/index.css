@@ -3713,6 +3713,18 @@ html.light [data-ipad-nav-rail] [data-ipad-nav-badge] {
 html.light [data-ipad-nav-rail] [data-ipad-nav-shortcut-rule] {
   border-top-color: #d4d4d8;
 }
+/* Landscape iPad is short. Portrait keeps the tall gaps. Phone has no rail. */
+@media (orientation: landscape) {
+  [data-ipad-nav-rail] [data-ipad-nav-stack] {
+    gap: 0.25rem;
+  }
+  [data-ipad-nav-rail] [data-ipad-nav-item] {
+    height: 3.5rem;
+  }
+  [data-ipad-nav-rail] [data-ipad-nav-shortcut-rule] {
+    margin-top: 0.45rem;
+  }
+}
 html.light [data-ipad-ev-mark] .edge-logo--light {
   display: block;
 }

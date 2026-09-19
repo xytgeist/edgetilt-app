@@ -51,7 +51,7 @@ export default function LoungeIpadNavRail({ items = [], shortcuts = null }) {
       <div className="flex w-full shrink-0 justify-center pb-6">
         <IpadEvMark />
       </div>
-      <div className="flex w-full shrink-0 flex-col items-center gap-9">
+      <div className="flex w-full shrink-0 flex-col items-center gap-9" data-ipad-nav-stack>
         {navItems.map((item) => (
           <RailButton key={item.id} item={item} />
         ))}

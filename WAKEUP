@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-18 … iPad feed chrome
+
+**I am Mac Theo.** Light mode menu and feed share the same white. The menu divider is a hairline. Multi-image sliders span the lounge with 50px side padding and sit lower so they can slide left under the avatar. Compose glow is gone. Phone unchanged. Web **`1.4.329`**.
+
 ### Windows Theo 2026-09-18 … account info modals
 
 **I am Windows Theo.** Verified phones no longer show Send code. Handle, email, and Remove helper lines are gone. A second handle change in 7 days opens a modal with the next date. Remove number confirms the lost check, or tells them to add an email first. Frontend **`1.4.327`**.

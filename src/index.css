@@ -3638,14 +3638,25 @@ html[data-ipad-nav] [data-lounge-feed-scroll] article::before {
 html[data-ipad-nav] [data-lounge-feed-composer] > .absolute.right-3 {
   right: var(--edge-ipad-feed-pad);
 }
-/* Carousels break out to the viewport on phone. On iPad they stay with the padded posts. */
+/*
+  Media slider is the lounge width, 50px in from each side. First slide still
+  starts in the caption column so it can scroll left under the avatar.
+  Extra top space keeps that travel from covering the avatar.
+*/
 html[data-ipad-nav] [data-lounge-feed-scroll] [data-lounge-feed-carousel-bleed] {
-  width: 100%;
-  max-width: 100%;
-  margin-left: 0;
+  --edge-ipad-carousel-avatar: 4.95rem;
+  --edge-ipad-carousel-gap: 1.125rem;
+  width: calc(100vw - var(--edge-ipad-rail) - 100px);
+  max-width: none;
+  margin-left: calc(
+    50px - var(--edge-ipad-feed-pad) - var(--edge-ipad-carousel-avatar) - var(--edge-ipad-carousel-gap)
+  );
+  margin-top: 1.75rem;
 }
 html[data-ipad-nav] [data-lounge-feed-scroll] [data-lounge-feed-carousel-bleed] [data-lounge-feed-horizontal-scroll] {
-  padding-left: 0;
+  padding-left: calc(
+    var(--edge-ipad-feed-pad) + var(--edge-ipad-carousel-avatar) + var(--edge-ipad-carousel-gap) - 50px
+  );
   padding-right: 0;
 }
 html[data-ipad-nav] [data-lounge-feed-scroll] .-mx-3 {
@@ -3670,9 +3681,13 @@ html[data-ipad-nav] [data-lounge-dock-panels] > [role='dialog'] {
   max-width: none;
 }
 html.light [data-ipad-nav-rail] {
-  background-color: #fff;
+  /* Same canvas as remapped zinc-950, not a brighter white than the feed. */
+  background-color: #fafafa;
   border-right-color: #e4e4e7;
   color: #52525b;
+}
+[data-ipad-nav-rail] {
+  border-right-width: 0.5px;
 }
 html.light [data-ipad-nav-rail] [data-ipad-nav-item] {
   color: #3f3f46;
@@ -3681,7 +3696,7 @@ html.light [data-ipad-nav-rail] [data-ipad-nav-item][data-active='1'] {
   color: #18181b;
 }
 html.light [data-ipad-nav-rail] [data-ipad-nav-badge] {
-  --tw-ring-color: #fff;
+  --tw-ring-color: #fafafa;
 }
 [data-ipad-nav-rail] [data-ipad-nav-item] svg :is(path, circle, line, polyline) {
   stroke-width: 1.2;

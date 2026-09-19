@@ -132,7 +132,7 @@ function ComposeButton({ item }) {
       data-ipad-nav-compose
       data-active={item.active ? '1' : '0'}
       onClick={() => item.onSelect?.()}
-      className="grid h-20 w-20 place-items-center rounded-full bg-[#06cefc] text-zinc-950 shadow-[0_10px_28px_rgba(6,206,252,0.28)] touch-manipulation [-webkit-tap-highlight-color:transparent] disabled:opacity-40"
+      className="grid h-20 w-20 place-items-center rounded-full bg-[#06cefc] text-zinc-950 touch-manipulation [-webkit-tap-highlight-color:transparent] disabled:opacity-40"
     >
       <span className="block h-9 w-9">{item.icon}</span>
     </button>

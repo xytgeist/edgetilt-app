@@ -3709,6 +3709,28 @@ html.light [data-ipad-nav-rail] [data-ipad-nav-badge] {
 html.light [data-ipad-ev-mark] .edge-logo--light {
   display: block;
 }
+/* Hamburger expand. Phone stays on the shared text-sm rows. */
+html[data-ipad-nav] .lounge-title-nav-menu {
+  min-width: 12.1rem;
+  max-width: min(15.75rem, calc(100vw - var(--edge-ipad-rail) - 1rem));
+  max-height: min(33rem, calc(100dvh - max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) - max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)) - 5rem));
+  padding: 0.75rem;
+}
+html[data-ipad-nav] .lounge-title-nav-menu-item {
+  padding: 0.95rem 1.15rem;
+  font-size: 1.3125rem;
+}
+html[data-ipad-nav] .lounge-title-nav-menu-item > span {
+  gap: 0.75rem;
+}
+html[data-ipad-nav] .lounge-title-nav-menu-item > span > [aria-hidden] {
+  font-size: 1.65rem;
+  line-height: 1;
+}
+html[data-ipad-nav] .lounge-title-nav-menu .h-3\.5.w-3\.5 {
+  height: 1.3rem;
+  width: 1.3rem;
+}
 /* Phone card sizes "Degen with EDGE" to the card, not the viewport, so it stays one line. */
 [data-auth-wordmark-slot] {
   container-type: inline-size;

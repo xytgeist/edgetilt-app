@@ -256,7 +256,7 @@ export const SCOTT_EXAMPLE_POST_SPECS: ScottExamplePostSpec[] = [
     postKind: 'fade_the_public',
     label: 'Fade the Public',
     caption: [
-      '🚫 Fade the Public',
+      '🚫 Fade the Public - NFL',
       '',
       'Chiefs vs Raiders',
       '',

@@ -358,9 +358,12 @@ export function buildFadeThePublicCaption(
   homeTeam: string,
   movedTeamLine: string,
   publicSideLine: string,
+  sportKey = '',
 ): string {
+  const sportLabel = sportContextLabelFromKey(sportKey)
+  const header = sportLabel ? `🚫 Fade the Public - ${sportLabel}` : '🚫 Fade the Public'
   return joinCaptionLines([
-    '🚫 Fade the Public',
+    header,
     '',
     formatMatchupParen(awayTeam, homeTeam, ''),
     '',
@@ -464,6 +467,7 @@ export function contextAlertCaption(candidate: ContextAlertCandidate): string {
         candidate.homeTeam,
         candidate.fadeDetails?.movedTeamLine || candidate.pick.pickName,
         candidate.fadeDetails?.publicSideLine || 'opposing side',
+        candidate.sportKey,
       )
     case 'cfb_ranked_home_dog':
       return buildCfbRankedHomeDogCaption(

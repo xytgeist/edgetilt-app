@@ -346,7 +346,7 @@ Disable via **`value_bet_radar_enabled = false`**. Default audience **lounge** (
 | **`confirmed_starters`** | ✅ Confirmed Starters | Compact starter list + pick (skipped if Starter Spotlight already posted/scheduled that day for same game) |
 | **`injury_impact`** | 📐 Situational Lean | Hard injury status (OUT, IR, etc.) + pick — opinionated handicapper voice |
 | **`rest_travel_edge`** | 📐 Situational Lean | 7-day Rundown schedule + venue table: rest gap ≥ 1 day, +EV on **rested** team; optional travel line (≥800 mi or cross-TZ) — same voice |
-| **`fade_the_public`** | 🚫 Fade the Public | **Off by default** — needs public betting % feed (not in Rundown OpenAPI) |
+| **`fade_the_public`** | 🚫 Fade the Public - {league} | **Off by default** ... needs public betting % feed (not in Rundown OpenAPI). Header uses `sportDisplayLabel` (MLS, La Liga, NFL, ...). |
 
 **Situational Lean** (`injury_impact` + `rest_travel_edge`): captions use pick line with **(+EV%)**, one situational sentence, one lean sentence. Combined cap **`MAX_SITUATIONAL_LEANS_PER_DAY` = 2** (code constant; separate from starter spotlight). EV floor **`MIN_SITUATIONAL_LEAN_EV_PCT` = 2.5%** for these two kinds only (regular ⚡ Edge uses **`loungeBotEdgeAlertThresholds.ts`**). Tie-break among candidates: highest EV, then later tipoff.
 

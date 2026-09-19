@@ -45,7 +45,7 @@ export default function ScrollLinkedEdgeTitleBarShell({
   stableLayoutViewport = false,
   /** Fill the parent instead of the viewport. No EDGE title bar. Used by the landscape Slots guides pane. */
   embedded = false,
-  /** iPad landscape Slots: h-8 wordmark centered in the tools column, matching the rail E. */
+  /** iPad landscape Slots: "Slots" on the left instead of the EDGE wordmark. */
   slotsToolsLogo = false,
 }) {
   const colMax = fullWidth ? 'max-w-none' : 'max-w-2xl'
@@ -220,16 +220,12 @@ export default function ScrollLinkedEdgeTitleBarShell({
         <PwaInstallTitleBarRow
           rowClassName={LOUNGE_FEED_TITLE_BAR_ROW_CLASS}
           logo={
-            slotsToolsLogo ? null : (
+            slotsToolsLogo ? (
+              <h1 className="text-2xl font-black tracking-tight text-white">Slots</h1>
+            ) : (
               <EdgeLogoWithEasterEgg behavior="goLounge" className={logoClassName} />
             )
           }
-          brandCenter={
-            slotsToolsLogo ? (
-              <EdgeLogoWithEasterEgg behavior="goLounge" className="h-8 w-auto max-w-none" />
-            ) : null
-          }
-          brandColumn={slotsToolsLogo ? 'slots-tools' : 'bar'}
           centerSlot={titleBarCenterSlot}
           navSlot={
             <>

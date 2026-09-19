@@ -1147,6 +1147,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-19:** **Landscape Slots title (Mac).** iPad landscape title bar says Slots on the left instead of the EDGE logo. The tools column no longer repeats the heading or the subtitle. Frontend **`1.4.355`**. Web only.
 - **2026-09-19:** **Landscape Slots wordmark (Mac).** The EDGE wordmark on iPad landscape Slots matches the rail E and is centered in the tools column. The pane size listener no longer updates state while the node is detaching (max update depth). Frontend **`1.4.354`**. Web only.
 - **2026-09-19:** **Landscape Slots tools (Mac).** iPad landscape opens every Slots hub tool in the right pane, including Slots Pro Lounge. Chat opened from the rail still takes the full screen. Portrait and phone still replace the screen. Frontend **`1.4.353`**. Web only.
 - **2026-09-19:** **Landscape Slots split (Mac).** iPad landscape keeps the Slots tool list on the left and opens AP Guides in the right pane. Portrait, phone, and the other tools still replace the screen. Frontend **`1.4.352`**. Web only.

@@ -3705,18 +3705,6 @@ html[data-ipad-nav] [data-edge-status-bar-plate] {
 html.light [data-slots-landscape-tools] {
   border-right-color: #e4e4e7;
 }
-/* Landscape Slots: wordmark matches the rail E (2rem) and sits in the center of the tools column. */
-@media (orientation: landscape) and (min-width: 768px) and (min-height: 700px) and (pointer: coarse) {
-  html[data-ipad-nav] [data-slots-landscape-brand] {
-    left: -0.75rem;
-    width: min(28rem, calc(42% + 0.63rem));
-  }
-  html[data-ipad-nav] [data-slots-landscape-brand] img {
-    height: 2rem;
-    width: auto;
-    max-width: none;
-  }
-}
 html[data-ipad-nav] [data-lounge-feed-root] .fixed.left-1\/2:not([data-lounge-title-bar]):not([data-edge-status-bar-plate]) {
   left: calc(var(--edge-ipad-rail) + (100vw - var(--edge-ipad-rail)) / 2) !important;
 }

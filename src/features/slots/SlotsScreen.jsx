@@ -190,11 +190,7 @@ export default function SlotsScreen({
             data-slots-landscape-tools
             className="flex w-[min(28rem,42%)] shrink-0 flex-col border-r border-zinc-800/80 min-h-0"
           >
-            <div className="shrink-0 px-3 pb-3 pt-4">
-              <div className="text-white text-2xl font-black tracking-tight">Slots</div>
-              <div className="text-zinc-400 text-sm mt-0.5">Tools for advantage slot play</div>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 pb-[calc(1.5rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 pt-4 pb-[calc(1.5rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
               {toolList}
             </div>
           </div>

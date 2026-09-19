@@ -642,18 +642,14 @@ export function formatUfcCardCaption(card: UfcSlateCard): string {
   lines.push(`🥊 **${card.cardTitle.toUpperCase()} · SCOTT + ROCCO** 🥊`)
   lines.push(`Price desk + last-5 styles.`)
   lines.push('')
-  let sampled = false
   for (const group of groupUfcFightsForPrint(card.fights)) {
     lines.push(`${formatUfcSectionTitle(group.header)} · ${group.fights.length}`)
     if (group.id !== 'pass' && group.fights.length > 1) {
       lines.push(formatUfcPublicSample(group.fights[0]))
-      sampled = true
     }
     lines.push('')
   }
-  lines.push(sampled
-    ? `One fight from each section with more than one. The rest of the sides are in the fan-only Lounge post and Sharpe VIP chat.`
-    : `The sides are in the fan-only Lounge post and Sharpe VIP chat.`)
+  lines.push(`The rest of the sides are in the fan-only Lounge post and Sharpe VIP chat.`)
   lines.push(`🌐 Audited ledger & fighter metrics: sharpesyndicate.com`)
   return lines.join('\n')
 }

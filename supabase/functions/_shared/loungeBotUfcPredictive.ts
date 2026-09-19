@@ -491,22 +491,57 @@ function fightWeightClass(
     || usableWeightClass(divisionB)
 }
 
-/** Same fighter. A sit on either desk is not an agreement. */
-function scottAndRoccoAgree(fight: UfcFightPick): boolean {
-  const scott = fight.pickerPicks.Scott.side
-  const rocco = fight.pickerPicks.Rocco.side
-  return (scott === 'A' || scott === 'B') && scott === rocco
+type UfcPrintBucketId = 'consensus' | 'split' | 'lean' | 'pass'
+
+const UFC_PRINT_BUCKETS: Array<{ id: UfcPrintBucketId; title: string; blurb: string }> = [
+  { id: 'consensus', title: 'Consensus', blurb: 'Both desks, same fighter.' },
+  { id: 'split', title: 'Split', blurb: 'House divided. Different fighters.' },
+  { id: 'lean', title: 'Lean', blurb: 'One desk has a side. The other sat.' },
+  { id: 'pass', title: 'Pass', blurb: 'Both sat.' },
+]
+
+function deskVoted(side: string): boolean {
+  return side === 'A' || side === 'B'
 }
 
-/** Agreed fights first. Relative order inside each group stays put. */
-function orderUfcFightsForPrint(fights: UfcFightPick[] | null | undefined): UfcFightPick[] {
-  const agreed: UfcFightPick[] = []
-  const rest: UfcFightPick[] = []
-  for (const fight of fights || []) {
-    if (scottAndRoccoAgree(fight)) agreed.push(fight)
-    else rest.push(fight)
+function ufcPrintBucket(fight: UfcFightPick): UfcPrintBucketId {
+  const scott = deskVoted(fight.pickerPicks.Scott.side)
+  const rocco = deskVoted(fight.pickerPicks.Rocco.side)
+  if (scott && rocco && fight.pickerPicks.Scott.side === fight.pickerPicks.Rocco.side) return 'consensus'
+  if (scott && rocco) return 'split'
+  if (scott || rocco) return 'lean'
+  return 'pass'
+}
+
+function formatUfcSectionHeader(bucket: { title: string; blurb: string }): string {
+  return `## ${bucket.title}\n${bucket.blurb}`
+}
+
+function groupUfcFightsForPrint(
+  fights: UfcFightPick[] | null | undefined,
+): Array<{ header: string; fights: UfcFightPick[] }> {
+  const list = fights || []
+  const out: Array<{ header: string; fights: UfcFightPick[] }> = []
+  for (const bucket of UFC_PRINT_BUCKETS) {
+    const group = list.filter((fight) => ufcPrintBucket(fight) === bucket.id)
+    if (!group.length) continue
+    out.push({ header: formatUfcSectionHeader(bucket), fights: group })
   }
-  return agreed.concat(rest)
+  return out
+}
+
+function ufcPrintBlocks(
+  fights: UfcFightPick[] | null | undefined,
+  formatFight: (fight: UfcFightPick) => string,
+): string[] {
+  const blocks: string[] = []
+  for (const group of groupUfcFightsForPrint(fights)) {
+    group.fights.forEach((fight, index) => {
+      const body = formatFight(fight)
+      blocks.push(index === 0 ? `${group.header}\n\n${body}` : body)
+    })
+  }
+  return blocks
 }
 
 function formatUfcFightDeskBlock(fight: UfcFightPick): string {
@@ -519,10 +554,25 @@ function formatUfcFightDeskBlock(fight: UfcFightPick): string {
     ? `• ${formatColoredPickerName('Rocco')}: PASS ... ${rocco.rationale}`
     : `• ${formatColoredPickerName('Rocco')}: ${rocco.pickName} ... ${rocco.rationale}`
   const weight = fight.division ? ` (${fight.division})` : ''
-  const names = `**${fight.fighterA} vs ${fight.fighterB}**${weight}`
-  const title = scottAndRoccoAgree(fight) ? `[gold]${names}[/gold]` : names
   return [
-    title,
+    `**${fight.fighterA} vs ${fight.fighterB}**${weight}`,
+    scottLine,
+    roccoLine,
+  ].join('\n')
+}
+
+function formatUfcPublicFight(fight: UfcFightPick): string {
+  const scott = fight.pickerPicks.Scott
+  const rocco = fight.pickerPicks.Rocco
+  const weight = fight.division ? ` (${fight.division})` : ''
+  const scottLine = scott.side === 'PASS'
+    ? `  ↳ ${formatColoredPickerName('Scott')}: PASS ... ${scott.rationale}`
+    : `  ↳ ${formatColoredPickerName('Scott')}: ${scott.pickName}`
+  const roccoLine = rocco.side === 'PASS'
+    ? `  ↳ ${formatColoredPickerName('Rocco')}: PASS ... ${rocco.rationale}`
+    : `  ↳ ${formatColoredPickerName('Rocco')}: ${rocco.pickName}`
+  return [
+    `**${fight.fighterA} vs ${fight.fighterB}**${weight}`,
     scottLine,
     roccoLine,
   ].join('\n')
@@ -535,8 +585,8 @@ export function formatUfcVipCardCaption(card: UfcSlateCard): string {
   const vipLines: string[] = []
   vipLines.push(`🥊 **${card.cardTitle.toUpperCase()} · SCOTT + ROCCO**\n`)
   vipLines.push(`Price desk + styles.\n`)
-  for (const fight of orderUfcFightsForPrint(card.fights)) {
-    vipLines.push(formatUfcFightDeskBlock(fight), '')
+  for (const block of ufcPrintBlocks(card.fights, formatUfcFightDeskBlock)) {
+    vipLines.push(block, '')
   }
   return vipLines.join('\n').trim()
 }
@@ -553,7 +603,7 @@ export function formatUfcFanOnlyBodies(card: UfcSlateCard): {
     '',
     `Price desk + styles.`,
   ].join('\n')
-  const fights = orderUfcFightsForPrint(card.fights).map(formatUfcFightDeskBlock)
+  const fights = ufcPrintBlocks(card.fights, formatUfcFightDeskBlock)
   let caption = header
   let i = 0
   while (i < fights.length) {
@@ -586,25 +636,10 @@ export function formatUfcCardCaption(card: UfcSlateCard): string {
   lines.push(`🥊 **${card.cardTitle.toUpperCase()} · SCOTT + ROCCO** 🥊`)
   lines.push(`Price desk + last-5 styles.\n`)
 
-  for (const fight of orderUfcFightsForPrint(card.fights)) {
-    const scott = fight.pickerPicks.Scott
-    const rocco = fight.pickerPicks.Rocco
-    const agree = scottAndRoccoAgree(fight)
-    if (scott.side !== 'A' && scott.side !== 'B') {
-      lines.push(`• **${fight.fighterA} vs ${fight.fighterB}** ... PASS. ${scott.rationale}`)
-    } else {
-      const opp = scott.side === 'A' ? fight.fighterB : fight.fighterA
-      const pick = agree ? `[gold]**${scott.pickName}** vs ${opp}[/gold]` : `**${scott.pickName}** vs ${opp}`
-      lines.push(`• ${pick}`)
-    }
-    lines.push(
-      rocco.side === 'PASS'
-        ? `  ↳ ${formatColoredPickerName('Rocco')}: PASS ... ${rocco.rationale}`
-        : `  ↳ ${formatColoredPickerName('Rocco')}: ${rocco.pickName}`,
-    )
+  for (const block of ufcPrintBlocks(card.fights, formatUfcPublicFight)) {
+    lines.push(block, '')
   }
 
-  lines.push('')
   lines.push(`💬 *Same Scott + Rocco card in the fan-only Lounge post and Sharpe VIP chat.*`)
   lines.push(`🌐 Audited ledger & fighter metrics: sharpesyndicate.com`)
 

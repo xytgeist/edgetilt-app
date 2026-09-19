@@ -153,7 +153,7 @@ export function decideRoccoUfc(input) {
   return {
     side,
     margin,
-    rationale: `If they ran it 10 times: ${pick} (${why}, margin ${margin}).`,
+    rationale: `${pick} (${why}, margin ${margin}).`,
     features,
   }
 }

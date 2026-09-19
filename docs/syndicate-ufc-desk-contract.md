@@ -42,7 +42,7 @@ A clone vote is a 1-0. Write that in the footer of any house card that used a fa
 | Desk | Question | Legal output | Fake version |
 | --- | --- | --- | --- |
 | Scott | Is the posted ML wrong? | Side / PASS | “I also like the favorite” |
-| Rocco | If they ran it 10 times, who wins the fight? | Side / PASS | Copying Scott’s fair% |
+| Rocco | Who wins the style matchup? | Side / PASS | Copying Scott’s fair% |
 | Chedda | Does the dog (or closer) have a real finish path the market priced as a decision? | Side / PASS | “plus money therefore Chedda” |
 | Tank | Who does the clock help? | Side derived from minutes | Fourth ML guess |
 

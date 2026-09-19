@@ -53,6 +53,8 @@ export type UfcFightPick = {
   fighterB: string // away_team in Odds API
   commenceTime: string
   isApexCage: boolean
+  /** Bout label. Card fact, else the stored class. Never the word UFC. */
+  division: string | null
   matchup?: UfcMatchupAnalysis | null
   splits?: BettingSplitSummary | null
   marketOddsA: number
@@ -352,6 +354,7 @@ export async function buildUfcSlateCard(
       fighterB,
       commenceTime: ev.commence_time,
       isApexCage: isApex,
+      division: fightWeightClass(cardFact?.division, metricA?.division, metricB?.division),
       matchup,
       splits,
       marketOddsA: oddsA,
@@ -447,14 +450,32 @@ export async function buildUfcSlateCard(
   }
 }
 
+function usableWeightClass(raw: string | null | undefined): string | null {
+  const s = String(raw || '').trim()
+  if (!s || /^(unknown|ufc)$/i.test(s)) return null
+  return s
+}
+
+/** Card class if we have the bout, else the first stored class. Not Scott's model. */
+function fightWeightClass(
+  cardDivision: string | null | undefined,
+  divisionA: string | null | undefined,
+  divisionB: string | null | undefined,
+): string | null {
+  return usableWeightClass(cardDivision)
+    || usableWeightClass(divisionA)
+    || usableWeightClass(divisionB)
+}
+
 function formatUfcFightDeskBlock(fight: UfcFightPick): string {
   const scott = fight.pickerPicks.Scott
   const rocco = fight.pickerPicks.Rocco
   const roccoLine = rocco.side === 'PASS'
     ? `• ${formatColoredPickerName('Rocco')}: PASS ... ${rocco.rationale}`
     : `• ${formatColoredPickerName('Rocco')}: ${rocco.pickName} ... ${rocco.rationale}`
+  const weight = fight.division ? ` (${fight.division})` : ''
   return [
-    `**${fight.fighterA} vs ${fight.fighterB}** (${fight.matchup?.division || 'UFC'})`,
+    `**${fight.fighterA} vs ${fight.fighterB}**${weight}`,
     `• ${formatColoredPickerName('Scott')}: ${scott.pickName} ... ${scott.rationale}`,
     roccoLine,
   ].join('\n')
@@ -585,7 +606,7 @@ export async function publishAndRecordUfcCard(
           consensus_badge: picker,
           vote_count: 1,
           rationale: pPick.rationale,
-          division: fight.matchup?.division,
+          division: fight.division,
           is_apex: fight.isApexCage,
           clv_beat: Math.random() > 0.25, // ~75% CLV beat model
           desk_label: picker === 'Rocco' ? 'Last-5 styles' : 'Consensus Devig',

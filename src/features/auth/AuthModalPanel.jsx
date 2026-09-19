@@ -64,6 +64,30 @@ function EmailIcon() {
   )
 }
 
+function PhoneIcon() {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden>
+      <path
+        fill="currentColor"
+        d="M6.62 10.79a15.05 15.05 0 0 0 6.59 6.59l2.2-2.2a1 1 0 0 1 1.01-.24c1.12.37 2.33.57 3.58.57a1 1 0 0 1 1 1V20a1 1 0 0 1-1 1C10.85 21 3 13.15 3 4a1 1 0 0 1 1-1h3.5a1 1 0 0 1 1 1c0 1.25.2 2.46.57 3.58a1 1 0 0 1-.25 1.01l-2.2 2.2z"
+      />
+    </svg>
+  )
+}
+
+function IpadOrDivider() {
+  return (
+    <div className="relative my-7 w-full" data-auth-ipad-or>
+      <div className="absolute inset-0 flex items-center" aria-hidden>
+        <div data-auth-ipad-or-line className="w-full border-t border-zinc-700" />
+      </div>
+      <div className="relative flex justify-center text-sm text-zinc-500">
+        <span className="bg-zinc-950 px-3">or</span>
+      </div>
+    </div>
+  )
+}
+
 function ConsentLine({ legalLinks, onOpenLegalDocument }) {
   return (
     <p className="text-center text-[11px] leading-relaxed text-zinc-500">
@@ -300,6 +324,19 @@ export default function AuthModalPanel({
               <EmailIcon />
             </ProviderCircle>
           </div>
+          {authTab === 'join' && !showJoinEmail ? (
+            <>
+              <IpadOrDivider />
+              <button
+                type="button"
+                data-auth-ipad-phone
+                className={`${btnPrimary} flex w-full items-center justify-center gap-2 rounded-full border-0 bg-black text-white`}
+              >
+                <PhoneIcon />
+                Continue with Phone
+              </button>
+            </>
+          ) : null}
           {authTab === 'join' && isOAuthProviderError(signupError) ? (
             <div className="mt-4 w-full">
               <AuthErrorBanner message={signupError} />

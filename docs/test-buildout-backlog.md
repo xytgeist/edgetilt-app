@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **iPad Continue with Phone is visual only (Mac).** The X column now has the **or** line and a black **Continue with Phone** pill. It does not send a code. Phone accounts are still not wired. Frontend **`1.4.293`**. Web only.
 - **2026-09-18:** **iPad login always shows Apple (Mac).** The iPad column does not hide the Apple circle outside the store shell. Phone and desktop still do. A tap outside the app still does not start Apple's website login. Frontend **`1.4.292`**. Web only.
 - **2026-09-18:** **UFC card weight class (Windows).** Fight label is the stored class, not the word UFC when Scott has no model. Redeployed **`lounge-odds-poll`** test + prod.
 - **2026-09-18:** **iPad login matches the X column (Mac).** EDGE logo, slogan picks **Find your Edge** or **Degen with Edge**, then Google / Apple / email circles. Email opens create. Bottom bar is **Sign in**, not a second tab. Phone sheet unchanged. Email and password stay separate paths: a failed login is not "no account." Frontend **`1.4.291`**. Web only.

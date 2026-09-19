@@ -8,6 +8,7 @@ import {
   readPendingLegalAcceptance,
 } from '../legal/legalAcceptance.js'
 import { LEGAL_POLICY_VERSION } from '../legal/legalPolicyVersion.js'
+import { toE164UsCa } from '../auth/phoneSignIn.js'
 
 /** Strip invisible chars that often sneak in from mobile paste/autocorrect. */
 const ZERO_WIDTH_RE = /[\u200B-\u200D\uFEFF]/g
@@ -163,7 +164,10 @@ export async function ensureDefaultProfileRow(supabaseClient, user) {
   if (!user?.id) return { data: null, error: null, created: false }
   const existing = await fetchOwnProfile(supabaseClient, user.id)
   if (existing.error) return { data: null, error: existing.error, created: false }
-  if (existing.data) return { data: existing.data, error: null, created: false }
+  if (existing.data) {
+    const stamped = await stampProfilePhoneIfBlank(supabaseClient, user, existing.data)
+    return { data: stamped, error: null, created: false }
+  }
   const seed = profileSeedFromUser(user)
   const { data, error } = await saveProfileWithHandleFallback({
     supabaseClient,
@@ -172,7 +176,9 @@ export async function ensureDefaultProfileRow(supabaseClient, user) {
     requestedHandle: seed.baseHandle,
     avatarUrl: undefined,
   })
-  return { data, error, created: !error && !!data }
+  if (error || !data) return { data, error, created: false }
+  const stamped = await stampProfilePhoneIfBlank(supabaseClient, user, data)
+  return { data: stamped, error: null, created: true }
 }
 
 function candidateHandle(base, index) {
@@ -280,6 +286,22 @@ export async function saveProfilePhoneNumber({ supabaseClient, userId, phoneNumb
     return { data: null, error: new Error('Could not update phone number (profile missing).') }
   }
   return { data, error: null }
+}
+
+/** Copy auth phone into Account info when that field is still empty. Does not overwrite a number already saved. */
+export async function stampProfilePhoneIfBlank(supabaseClient, user, profile) {
+  const authPhone = toE164UsCa(user?.phone || '')
+  if (!authPhone || !profile) return profile
+  if (String(profile.phone_number || '').trim()) return profile
+  const userId = String(user?.id || profile.user_id || '').trim()
+  if (!userId) return profile
+  const saved = await saveProfilePhoneNumber({
+    supabaseClient,
+    userId,
+    phoneNumber: authPhone,
+  })
+  if (saved.error || !saved.data) return profile
+  return saved.data
 }
 
 export async function saveProfileWithHandleFallback({

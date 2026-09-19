@@ -315,9 +315,9 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 
 **Decision (2026-09-14):** Telnyx guest campaign **`C6NW3Y9`** failed MNO review **Gambling (704)**. Swap/stake invites are **copy/share the claim link** from the creator's own Messages. Optional email stays. Leased-number SMS is dead for this path. OTP 2FA can still use **`+1 480 393 4143`** / campaign **`CKAVJP0`**. Do not assign **725**. Do not Create Campaign / appeal 704 unless Ryan asks.
 
-**Decision (2026-09-18):** **Continue with Phone** is Supabase phone OTP (`signInWithOtp`, then `verifyOtp` type `sms`). Edge **`auth-send-sms`** texts that code from **`+1 480 393 4143`**. That is login, not the Lounge verified badge below. Do not send Telnyx Verify codes into `verifyOtp`.
+**Decision (2026-09-18):** **Continue with Phone** is Supabase phone OTP (`signInWithOtp`, then `verifyOtp` type `sms`). Edge **`auth-send-sms`** texts that code from **`+1 480 393 4143`**. A new phone account copies that number into Account info when the field is empty. Linking an existing account uses the same field while signed in (`updateUser`, then `verifyOtp` type `phone_change`). That is login, not the Lounge verified badge below. Do not send Telnyx Verify codes into `verifyOtp`.
 
-**Shipped (placeholder, test @ `fe1402a0`):** Settings → Account → **Account info** — edit handle, email, optional `profiles.phone_number`; delete account text link. Migration **`20260727210000`** on test. **Not verified yet.** OTP opt-in proof page for future TFV/Verify docs: **`public/compliance/sms-otp-opt-in.html`**.
+**Shipped (placeholder, test @ `fe1402a0`):** Settings → Account → **Account info** — edit handle, email, phone; delete account text link. Migration **`20260727210000`** on test. **2026-09-18:** the phone field links sign-in (code while signed in) and a Continue with Phone signup fills it. Badge still not shipped. OTP opt-in proof page for future TFV/Verify docs: **`public/compliance/sms-otp-opt-in.html`**.
 
 ### Phone verification (Twilio Verify)
 
@@ -1145,6 +1145,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **Account info phone links login (Windows).** The existing phone field texts a code and attaches that number to the signed-in account. Continue with Phone copies the number into that field when it is empty. Frontend **`1.4.304`**. Not the Lounge verified badge.
 - **2026-09-18:** **Google return was a black screen (Mac).** The login cover now closes once a session exists, and the black boot splash does not cover an OAuth callback. The phone card stays above the dismiss layer. Frontend **`1.4.303`**. Web only.
 - **2026-09-18:** **Continue with Phone (Windows).** The login pill sends a Supabase SMS code (`signInWithOtp` / `verifyOtp` type `sms`). Edge **`auth-send-sms`** is deployed on test. Phone provider and the Send SMS hook are on. Texts wait on Edge secret **`TELNYX_API_KEY`**. Not the Lounge verified badge, and not Telnyx Verify. Frontend **`1.4.302`**. Prod Auth stays off until Ryan asks.
 - **2026-09-18:** **Phone login floats in the center (Mac).** The phone and Android card is no longer pinned to the bottom. Grab handle is gone. iPad column unchanged. Frontend **`1.4.301`**. Web only.

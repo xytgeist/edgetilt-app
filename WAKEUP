@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Windows Theo 2026-09-18 … Account info phone is the login link
+
+**I am Windows Theo.** Account info phone now texts a code and links that number to the signed-in account. Continue with Phone copies the number into that field on a new account. Frontend **`1.4.304`**.
+
 ### Mac Theo 2026-09-18 … Google sign-in black screen
 
 **I am Mac Theo.** After Google, the black login cover was staying up and the boot splash is solid black. The cover now closes once the session exists, and that splash skips OAuth callbacks. Web **`1.4.303`**.

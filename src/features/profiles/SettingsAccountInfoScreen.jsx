@@ -11,6 +11,7 @@ import {
   saveProfilePhoneNumber,
   saveProfileWithHandleFallback,
 } from './profileGate.js'
+import { formatUsCaPhone, toE164UsCa } from '../auth/phoneSignIn.js'
 import { dismissEdgeKeyboard } from '../../utils/edgeNative.js'
 
 const HANDLE_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000
@@ -19,6 +20,37 @@ function handleCooldownUnlockAt(handleChangedAt) {
   const lastAt = handleChangedAt ? new Date(handleChangedAt) : null
   if (!lastAt || Number.isNaN(lastAt.getTime())) return null
   return new Date(lastAt.getTime() + HANDLE_COOLDOWN_MS)
+}
+
+function phoneKey(raw) {
+  return toE164UsCa(raw) || normalizePhoneNumber(raw)
+}
+
+function shownPhone(raw) {
+  const e164 = toE164UsCa(raw)
+  if (e164) return formatUsCaPhone(e164)
+  return String(raw || '').trim()
+}
+
+function phoneLinkError(error) {
+  const lower = String(error?.message || error || '').toLowerCase()
+  if (lower.includes('already') && (lower.includes('registered') || lower.includes('exists'))) {
+    return 'That number is already on another account.'
+  }
+  if (lower.includes('expired') || lower.includes('otp') || lower.includes('token')) {
+    return 'That code is incorrect or expired.'
+  }
+  if (
+    lower.includes('not configured') ||
+    lower.includes('could not send') ||
+    lower.includes('status code') ||
+    lower.includes('hook') ||
+    lower.includes('error sending')
+  ) {
+    return 'Could not send the text right now. Try again in a minute.'
+  }
+  const raw = String(error?.message || '').trim()
+  return raw || 'Could not update the phone number.'
 }
 
 /**
@@ -45,6 +77,8 @@ export default function SettingsAccountInfoScreen({
   const [handleDraft, setHandleDraft] = useState('')
   const [emailDraft, setEmailDraft] = useState('')
   const [phoneDraft, setPhoneDraft] = useState('')
+  const [phoneCode, setPhoneCode] = useState('')
+  const [phoneCodeFor, setPhoneCodeFor] = useState('')
 
   const [saveBusy, setSaveBusy] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
@@ -70,16 +104,30 @@ export default function SettingsAccountInfoScreen({
       setDisplayName(String(data.display_name || '').trim())
       setServerHandle(String(data.handle || '').trim())
       setHandleChangedAt(data.handle_changed_at || null)
-      setServerPhone(String(data.phone_number || '').trim())
       setHandleDraft(String(data.handle || '').trim())
-      setPhoneDraft(String(data.phone_number || '').trim())
+      let phoneRaw = String(data.phone_number || '').trim()
+      const authE164 = toE164UsCa(authUser?.phone || '')
+      if (!phoneRaw && authE164) {
+        const stamped = await saveProfilePhoneNumber({
+          supabaseClient,
+          userId,
+          phoneNumber: authE164,
+        })
+        if (!stamped.error && stamped.data?.phone_number) {
+          phoneRaw = String(stamped.data.phone_number).trim()
+        } else {
+          phoneRaw = authE164
+        }
+      }
+      setServerPhone(phoneKey(phoneRaw))
+      setPhoneDraft(shownPhone(phoneRaw))
       setEmailDraft(String(initialEmail || authUser?.email || '').trim())
     } catch (e) {
       setLoadError(formatProfileSaveDebugError(e, 'Load account'))
     } finally {
       setLoading(false)
     }
-  }, [authUser?.email, initialEmail, supabaseClient, userId])
+  }, [authUser?.email, authUser?.phone, initialEmail, supabaseClient, userId])
 
   useEffect(() => {
     void reloadProfile()
@@ -96,12 +144,11 @@ export default function SettingsAccountInfoScreen({
   }, [deleteDialogOpen])
 
   const normalizedHandleDraft = useMemo(() => normalizeHandle(handleDraft), [handleDraft])
-  const normalizedPhoneDraft = useMemo(() => normalizePhoneNumber(phoneDraft), [phoneDraft])
   const trimmedEmailDraft = useMemo(() => String(emailDraft || '').trim(), [emailDraft])
 
   const handleDirty = normalizedHandleDraft !== serverHandle
   const emailDirty = trimmedEmailDraft !== String(initialEmail || authUser?.email || '').trim()
-  const phoneDirty = normalizedPhoneDraft !== serverPhone
+  const phoneDirty = phoneKey(phoneDraft) !== phoneKey(serverPhone)
   const formDirty = handleDirty || emailDirty || phoneDirty
 
   const onHandleInputChange = useCallback((e) => {
@@ -118,15 +165,14 @@ export default function SettingsAccountInfoScreen({
 
       const nextHandle = normalizeHandle(opts.forcedHandle ?? handleDraft)
       const nextEmail = String(emailDraft || '').trim()
-      const nextPhone = normalizePhoneNumber(phoneDraft)
 
       if (handleDirty && !nextHandle) {
         setSaveError('Handle must be at least 2 characters (letters, numbers, underscore).')
         return
       }
 
-      if (phoneDirty && phoneDraft.trim() && !nextPhone) {
-        setSaveError('Enter a valid phone number (7–15 digits).')
+      if (phoneDirty && phoneDraft.trim() && !toE164UsCa(phoneDraft)) {
+        setSaveError('Enter a valid US or Canada mobile number.')
         return
       }
 
@@ -177,24 +223,64 @@ export default function SettingsAccountInfoScreen({
           setHandleChangedAt(identityRow.handle_changed_at || null)
         }
 
+        let phoneNotice = ''
         if (phoneDirty) {
-          const { data: phoneRow, error: phoneErr } = await saveProfilePhoneNumber({
-            supabaseClient,
-            userId: authUser.id,
-            phoneNumber: nextPhone,
-          })
-          if (phoneErr) throw phoneErr
-          profilePatch = { ...(profilePatch || {}), ...phoneRow }
-          setServerPhone(String(phoneRow.phone_number || '').trim())
-          setPhoneDraft(String(phoneRow.phone_number || '').trim())
+          const nextE164 = toE164UsCa(phoneDraft)
+          const authE164 = toE164UsCa(authUser?.phone || '')
+          const serverE164 = toE164UsCa(serverPhone)
+
+          if (!nextE164) {
+            if (authE164 || serverE164) {
+              setSaveError('This number signs you in. Enter a new US or Canada number to replace it.')
+              return
+            }
+            if (serverPhone) {
+              const { data: phoneRow, error: phoneErr } = await saveProfilePhoneNumber({
+                supabaseClient,
+                userId: authUser.id,
+                phoneNumber: '',
+              })
+              if (phoneErr) throw phoneErr
+              profilePatch = { ...(profilePatch || {}), ...phoneRow }
+              setServerPhone('')
+              setPhoneDraft('')
+              setPhoneCodeFor('')
+              setPhoneCode('')
+            }
+          } else if (nextE164 === authE164) {
+            const { data: phoneRow, error: phoneErr } = await saveProfilePhoneNumber({
+              supabaseClient,
+              userId: authUser.id,
+              phoneNumber: nextE164,
+            })
+            if (phoneErr) throw phoneErr
+            profilePatch = { ...(profilePatch || {}), ...phoneRow }
+            setServerPhone(nextE164)
+            setPhoneDraft(formatUsCaPhone(nextE164))
+            setPhoneCodeFor('')
+            setPhoneCode('')
+          } else {
+            const { error: sendErr } = await supabaseClient.auth.updateUser({ phone: nextE164 })
+            if (sendErr) {
+              setSaveError(phoneLinkError(sendErr))
+              return
+            }
+            setPhoneCode('')
+            setPhoneCodeFor(nextE164)
+            phoneNotice = `Code sent to ${formatUsCaPhone(nextE164)}. Enter it below. The number is not linked until you confirm.`
+          }
         }
 
         if (emailDirty) {
           const { error: emailErr } = await supabaseClient.auth.updateUser({ email: nextEmail })
           if (emailErr) throw emailErr
           setSaveMessage(
-            'Check your inbox to confirm your new email address. Your login email updates after you confirm.',
+            phoneNotice
+              ? `Check your inbox to confirm your new email address. ${phoneNotice}`
+              : 'Check your inbox to confirm your new email address. Your login email updates after you confirm.',
           )
+        } else if (phoneNotice) {
+          setSaveMessage(phoneNotice)
         } else if (handleDirty || phoneDirty) {
           setSaveMessage('Account info saved.')
         }
@@ -217,9 +303,49 @@ export default function SettingsAccountInfoScreen({
       phoneDirty,
       phoneDraft,
       saveBusy,
+      serverPhone,
       supabaseClient,
     ],
   )
+
+  const confirmPhoneCode = useCallback(async () => {
+    if (!supabaseClient || !authUser?.id || saveBusy || !phoneCodeFor) return
+    const token = phoneCode.replace(/\D/g, '')
+    if (token.length < 4) {
+      setSaveError('Enter the code from the text.')
+      return
+    }
+    setSaveBusy(true)
+    setSaveError('')
+    setSaveMessage('')
+    try {
+      const { error } = await supabaseClient.auth.verifyOtp({
+        phone: phoneCodeFor,
+        token,
+        type: 'phone_change',
+      })
+      if (error) {
+        setSaveError(phoneLinkError(error))
+        return
+      }
+      const { data: phoneRow, error: phoneErr } = await saveProfilePhoneNumber({
+        supabaseClient,
+        userId: authUser.id,
+        phoneNumber: phoneCodeFor,
+      })
+      if (phoneErr) throw phoneErr
+      setServerPhone(phoneCodeFor)
+      setPhoneDraft(formatUsCaPhone(phoneCodeFor))
+      setPhoneCode('')
+      setPhoneCodeFor('')
+      setSaveMessage('Phone number linked. Continue with Phone now opens this account.')
+      if (phoneRow) onUpdated?.(phoneRow)
+    } catch (e) {
+      setSaveError(formatProfileSaveDebugError(e, 'Phone'))
+    } finally {
+      setSaveBusy(false)
+    }
+  }, [authUser?.id, onUpdated, phoneCode, phoneCodeFor, saveBusy, supabaseClient])
 
   const onSaveClick = useCallback(() => {
     if (!formDirty || saveBusy) return
@@ -294,7 +420,7 @@ export default function SettingsAccountInfoScreen({
 
       <h2 className="text-[17px] font-semibold text-zinc-100">Account info</h2>
       <p className="mt-1 text-[14px] leading-relaxed text-zinc-500">
-        Update your handle, sign-in email, and contact phone.
+        Update your handle, sign-in email, and phone.
       </p>
 
       {loading ? (
@@ -362,19 +488,50 @@ export default function SettingsAccountInfoScreen({
               type="tel"
               inputMode="tel"
               autoComplete="tel"
-              placeholder="Optional"
+              placeholder="Mobile number"
               enterKeyHint="done"
               value={phoneDraft}
               onKeyDown={onFieldKeyDown}
               onChange={(e) => {
                 setPhoneDraft(e.target.value)
+                setPhoneCodeFor('')
+                setPhoneCode('')
                 setSaveMessage('')
                 setSaveError('')
               }}
               className="mt-1.5 min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 px-3 text-[15px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-500/50"
             />
+            {phoneCodeFor ? (
+              <div className="mt-3 space-y-2">
+                <label htmlFor="settings-account-phone-code" className="block text-[13px] font-semibold text-zinc-300">
+                  Text code
+                </label>
+                <input
+                  id="settings-account-phone-code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="6-digit code"
+                  enterKeyHint="go"
+                  value={phoneCode}
+                  onChange={(e) => {
+                    setPhoneCode(e.target.value.replace(/\D/g, '').slice(0, 10))
+                    setSaveError('')
+                  }}
+                  className="min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 px-3 text-[15px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-500/50"
+                />
+                <button
+                  type="button"
+                  disabled={saveBusy}
+                  onClick={() => void confirmPhoneCode()}
+                  className="min-h-11 w-full rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white touch-manipulation hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
+                >
+                  {saveBusy ? 'Checking…' : 'Confirm code'}
+                </button>
+              </div>
+            ) : null}
             <p className="mt-1.5 text-[12px] leading-snug text-zinc-500">
-              Optional contact number for your account. Not used for sign-in today.
+              US and Canada numbers can sign you in. We text a code when you add or change this number.
             </p>
           </div>
 

@@ -1146,6 +1146,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **Email code (Windows).** Adding or changing an email in Account info has its own Send code. The code box shows after the email is sent. Frontend **`1.4.330`**.
 - **2026-09-18:** **iPad feed chrome (Mac).** Light mode menu matches the feed white. Menu divider is a 0.5px hairline. Multi-image sliders span the lounge with 50px side padding, with extra space under the caption so they can slide left without covering the avatar. Compose glow removed. Phone unchanged. Frontend **`1.4.329`**. Web only.
 - **2026-09-18:** **iPad menu icons (Mac).** Left menu glyphs are a bit smaller and the stroke is thinner. Compose circle unchanged. Phone FAB unchanged. Frontend **`1.4.328`**. Web only.
 - **2026-09-18:** **Account info modals (Windows).** A verified phone hides Send code. Handle, email, and Remove helper lines are gone. Changing a handle again inside 7 days opens a modal with the next date and time. Remove number confirms the lost check and phone sign-in, or tells them to add an email first. Frontend **`1.4.327`**.

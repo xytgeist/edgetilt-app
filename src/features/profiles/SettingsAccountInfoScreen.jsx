@@ -35,6 +35,22 @@ function nationalDraft(raw) {
   return nationalFromE164(stored, country) || stored
 }
 
+function emailLinkError(error) {
+  const lower = String(error?.message || error || '').toLowerCase()
+  if (lower.includes('already') && (lower.includes('registered') || lower.includes('exists'))) {
+    return 'That email is already on another account.'
+  }
+  if (lower.includes('expired') || lower.includes('otp') || lower.includes('token') || lower.includes('invalid')) {
+    return 'That code is incorrect or expired.'
+  }
+  const raw = String(error?.message || '').trim()
+  return raw || 'Could not send the email code.'
+}
+
+function isEmailAddress(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim())
+}
+
 function phoneLinkError(error) {
   const lower = String(error?.message || error || '').toLowerCase()
   if (lower.includes('already') && (lower.includes('registered') || lower.includes('exists'))) {
@@ -174,6 +190,15 @@ export default function SettingsAccountInfoScreen({
     return () => window.clearTimeout(timer)
   }, [deleteDialogOpen])
 
+  useEffect(() => {
+    if (!emailCodeFor) return undefined
+    const input = document.getElementById('settings-account-email-code')
+    if (!(input instanceof HTMLInputElement)) return undefined
+    input.focus()
+    input.scrollIntoView({ block: 'center' })
+    return undefined
+  }, [emailCodeFor])
+
   const normalizedHandleDraft = useMemo(() => normalizeHandle(handleDraft), [handleDraft])
   const trimmedEmailDraft = useMemo(() => String(emailDraft || '').trim(), [emailDraft])
 
@@ -184,6 +209,10 @@ export default function SettingsAccountInfoScreen({
   const loginPhoneVerified =
     Boolean(toE164ForCountry(authUser?.phone || '')) && Boolean(authUser?.phone_confirmed_at)
   const accountEmail = String(authUser?.email || '').trim()
+  const emailConfirmed = Boolean(accountEmail) && Boolean(authUser?.email_confirmed_at)
+  const emailNeedsVerify =
+    isEmailAddress(trimmedEmailDraft) &&
+    (!emailConfirmed || trimmedEmailDraft.toLowerCase() !== accountEmail.toLowerCase())
 
   const onHandleInputChange = useCallback((e) => {
     setHandleDraft(handleSlugFromAtInput(e.target.value))
@@ -212,6 +241,36 @@ export default function SettingsAccountInfoScreen({
     setSaveMessage(`Code sent to ${formatPhoneDisplay(nextE164)}. Enter it below.`)
     return true
   }, [supabaseClient])
+
+  const requestEmailCode = useCallback(async (nextEmail) => {
+    const email = String(nextEmail || '').trim()
+    if (!isEmailAddress(email)) {
+      setSaveError('Enter a valid email address.')
+      return false
+    }
+    const { data, error: sendErr } = await supabaseClient.auth.updateUser({ email })
+    if (sendErr) {
+      setSaveError(emailLinkError(sendErr))
+      return false
+    }
+    const user = data?.user
+    const pending = String(user?.new_email || '').trim()
+    const current = String(user?.email || '').trim()
+    const alreadyConfirmed =
+      Boolean(user?.email_confirmed_at) && current.toLowerCase() === email.toLowerCase() && !pending
+    if (alreadyConfirmed) {
+      if (user) onAuthUserUpdated?.(user)
+      setEmailCode('')
+      setEmailCodeFor('')
+      setSaveError('That email is already confirmed on this account.')
+      return false
+    }
+    const sentTo = pending || email
+    setEmailCode('')
+    setEmailCodeFor(sentTo)
+    setSaveMessage(`Code sent to ${sentTo}. Enter it below.`)
+    return true
+  }, [onAuthUserUpdated, supabaseClient])
 
   const persistAccountInfo = useCallback(
     async (opts = {}) => {
@@ -323,15 +382,11 @@ export default function SettingsAccountInfoScreen({
         }
 
         if (emailDirty) {
-          const { error: emailErr } = await supabaseClient.auth.updateUser({ email: nextEmail })
-          if (emailErr) throw emailErr
-          setEmailCode('')
-          setEmailCodeFor(nextEmail)
-          setSaveMessage(
-            phoneNotice
-              ? `Code sent to ${nextEmail}. Enter it below. ${phoneNotice}`
-              : `Code sent to ${nextEmail}. Enter it below. The link in that email still works.`,
-          )
+          const sent = await requestEmailCode(nextEmail)
+          if (!sent) return
+          if (phoneNotice) {
+            setSaveMessage(`Code sent to ${nextEmail}. Enter it below. ${phoneNotice}`)
+          }
         } else if (phoneNotice) {
           setSaveMessage(phoneNotice)
         } else if (handleDirty || phoneDirty) {
@@ -356,6 +411,7 @@ export default function SettingsAccountInfoScreen({
       phoneCountry,
       phoneDirty,
       phoneDraft,
+      requestEmailCode,
       requestPhoneCode,
       saveBusy,
       serverPhone,
@@ -427,7 +483,7 @@ export default function SettingsAccountInfoScreen({
         type: 'email_change',
       })
       if (error) {
-        setSaveError(phoneLinkError(error))
+        setSaveError(emailLinkError(error))
         return
       }
       const { data: userData } = await supabaseClient.auth.getUser()
@@ -444,6 +500,18 @@ export default function SettingsAccountInfoScreen({
       setSaveBusy(false)
     }
   }, [authUser?.id, emailCode, emailCodeFor, onAuthUserUpdated, saveBusy, supabaseClient])
+
+  const onSendEmailCode = useCallback(async () => {
+    if (!supabaseClient || !authUser?.id || saveBusy) return
+    setSaveBusy(true)
+    setSaveError('')
+    setSaveMessage('')
+    try {
+      await requestEmailCode(emailCodeFor || emailDraft)
+    } finally {
+      setSaveBusy(false)
+    }
+  }, [authUser?.id, emailCodeFor, emailDraft, requestEmailCode, saveBusy, supabaseClient])
 
   const startPhoneRelease = useCallback(async () => {
     if (!supabaseClient || !authUser?.id || saveBusy) return
@@ -670,11 +738,23 @@ export default function SettingsAccountInfoScreen({
               onKeyDown={onFieldKeyDown}
               onChange={(e) => {
                 setEmailDraft(e.target.value)
+                setEmailCodeFor('')
+                setEmailCode('')
                 setSaveMessage('')
                 setSaveError('')
               }}
               className="mt-1.5 min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 px-3 text-[15px] text-zinc-100 outline-none focus:border-cyan-500/50"
             />
+            {emailNeedsVerify && !emailCodeFor ? (
+              <button
+                type="button"
+                disabled={saveBusy}
+                onClick={() => void onSendEmailCode()}
+                className={`mt-2 ${PHONE_ACTION_CLASS}`}
+              >
+                {saveBusy ? 'Sending…' : 'Send code'}
+              </button>
+            ) : null}
             {emailCodeFor ? (
               <div className="mt-3 space-y-2">
                 <label htmlFor="settings-account-email-code" className="block text-[13px] font-semibold text-zinc-300">
@@ -706,17 +786,7 @@ export default function SettingsAccountInfoScreen({
                   <button
                     type="button"
                     disabled={saveBusy}
-                    onClick={() => {
-                      if (!supabaseClient || !emailCodeFor) return
-                      setSaveBusy(true)
-                      setSaveError('')
-                      setSaveMessage('')
-                      void supabaseClient.auth.updateUser({ email: emailCodeFor }).then(({ error }) => {
-                        setSaveBusy(false)
-                        if (error) setSaveError(phoneLinkError(error))
-                        else setSaveMessage(`Code sent to ${emailCodeFor}. Enter it below.`)
-                      })
-                    }}
+                    onClick={() => void onSendEmailCode()}
                     className={PHONE_ACTION_CLASS}
                   >
                     Send again

@@ -1147,6 +1147,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-19:** **Landscape Slots title size (Mac).** iPad landscape "Slots" capitals match the rail E height. Frontend **`1.4.357`**. Web only.
 - **2026-09-19:** **Landscape Slots chrome (Mac).** iPad landscape menu and close sit on the right edge of the tools column. The right pane is full height with no title bar. Frontend **`1.4.356`**. Web only.
 - **2026-09-19:** **Landscape Slots title (Mac).** iPad landscape title bar says Slots on the left instead of the EDGE logo. The tools column no longer repeats the heading or the subtitle. Frontend **`1.4.355`**. Web only.
 - **2026-09-19:** **Landscape Slots wordmark (Mac).** The EDGE wordmark on iPad landscape Slots matches the rail E and is centered in the tools column. The pane size listener no longer updates state while the node is detaching (max update depth). Frontend **`1.4.354`**. Web only.

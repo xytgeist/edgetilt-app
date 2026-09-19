@@ -226,7 +226,9 @@ export default function ScrollLinkedEdgeTitleBarShell({
           rowClassName={LOUNGE_FEED_TITLE_BAR_ROW_CLASS}
           logo={
             slotsToolsLogo ? (
-              <h1 className="text-2xl font-black tracking-tight text-white">Slots</h1>
+              <h1 data-slots-landscape-title className="font-black leading-none tracking-tight text-white">
+                Slots
+              </h1>
             ) : (
               <EdgeLogoWithEasterEgg behavior="goLounge" className={logoClassName} />
             )

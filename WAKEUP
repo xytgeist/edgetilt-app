@@ -88,6 +88,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Windows Theo.** UFC Metrics tab now has a last-refresh dump like Sleeper PVALs. Table `ufc_metrics_sync_runs` on test + prod. First dump lands on the next Tuesday GHA (or a manual sync). **`1.4.289`** on **`test`**.
 
+### Mac Theo 2026-09-18 … phone buttons smaller, Degen wordmark larger
+
+**I am Mac Theo.** Phone sheet circles and Continue with Phone are a bit smaller. Degen with EDGE is larger. Find Your EDGE and the iPad column are unchanged. Web **`1.4.300`**.
+
 ### Mac Theo 2026-09-18 … phone login matches the iPad column
 
 **I am Mac Theo.** Phone and Android auth now use the circles, or-line, unwired phone pill, and bottom Sign in bar. Wordmark flips 50/50 between Find Your EDGE and Degen with EDGE. Sheet is black, not the blue-gray. Apple still shell-only on the phone. Web **`1.4.299`**.

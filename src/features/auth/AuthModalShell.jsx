@@ -68,10 +68,12 @@ function AuthWordmark() {
     <h1
       id="auth-modal-title"
       aria-label={mark.label}
-      className="mx-auto mb-6 flex items-center justify-center gap-2 text-white"
+      className={`mx-auto mb-6 flex items-center justify-center gap-2.5 text-white ${
+        mark.lead === 'Degen with' ? 'text-[clamp(1.9rem,9.4vw,2.7rem)]' : 'text-2xl'
+      }`}
     >
       <span
-        className="text-2xl font-light leading-none tracking-tight"
+        className="font-light leading-none tracking-tight"
         style={{ fontFamily: "'Montserrat', sans-serif" }}
       >
         {mark.lead}
@@ -80,13 +82,13 @@ function AuthWordmark() {
         <img
           src="/edge-lounge-logo-transparent.png"
           alt=""
-          className="edge-logo--dark h-[1.2rem] w-auto"
+          className={`edge-logo--dark w-auto ${mark.lead === 'Degen with' ? 'h-[0.78em]' : 'h-[1.2rem]'}`}
           draggable={false}
         />
         <img
           src="/edge-lounge-logo-light.png"
           alt=""
-          className="edge-logo--light h-[1.2rem] w-auto"
+          className={`edge-logo--light w-auto ${mark.lead === 'Degen with' ? 'h-[0.78em]' : 'h-[1.2rem]'}`}
           draggable={false}
         />
       </span>

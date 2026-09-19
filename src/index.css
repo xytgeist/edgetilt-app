@@ -3569,11 +3569,23 @@ html.light [data-auth-ipad-stage] [data-auth-ipad-footer] {
   border-color: #fafafa;
   background: rgb(39 39 42);
 }
+[data-auth-sheet] [data-auth-ipad-provider] {
+  height: 3.25rem;
+  width: 3.25rem;
+}
+[data-auth-sheet] [data-auth-ipad-provider] svg {
+  height: 1.35rem;
+  width: 1.35rem;
+}
 [data-auth-sheet] [data-auth-ipad-phone] {
   background-color: #fff;
   color: #09090b;
-  min-height: 4rem;
-  font-size: 1.25rem;
+  min-height: 3.25rem;
+  font-size: 1.0625rem;
+}
+[data-auth-sheet] [data-auth-ipad-phone] svg {
+  height: 1.25rem;
+  width: 1.25rem;
 }
 [data-auth-sheet] p a,
 [data-auth-sheet] p a:hover {

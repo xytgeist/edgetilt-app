@@ -62,7 +62,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Windows Theo 2026-09-19 … ML win-gap ladder
 
-**I am Windows Theo.** Every moneyline sits unless the win-rate gap clears `2 + 0.40 / p_mkt`. Spreads, totals, and teasers keep their point gates. A price longer than +1000 plus a thin last-5 also sits Scott. Today's Sharaf line is a sit. Next card needs a prod `lounge-odds-poll` deploy.
+**I am Windows Theo.** Every moneyline sits unless the win-rate gap clears `2 + 0.40 / p_mkt`. Spreads, totals, and teasers keep their point gates. A price longer than +1000 plus a thin last-5 also sits Scott. Prod `lounge-odds-poll` is deployed. Today's UFC public, fan, and VIP posts were regenerated in place. Scott sits Ferreira, Sharaf, and Van.
 
 ### Windows Theo 2026-09-19 … UFC agree highlight
 

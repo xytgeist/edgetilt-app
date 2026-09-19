@@ -4275,6 +4275,18 @@ html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-hero-title {
     flex: none;
   }
 }
+/* Landscape iPad: the 1.5× cards fill the short axis. Portrait iPad and phone stay. */
+@media (orientation: landscape) and (min-width: 768px) and (min-height: 700px) and (pointer: coarse) {
+  [data-subscribe-modal] .subscribe-plan-carousel-stage {
+    min-height: 16.75rem;
+  }
+  [data-subscribe-modal] .subscribe-plan-slide-3d {
+    width: 16.75rem;
+  }
+  [data-subscribe-modal] .subscribe-plan-card-scale-inner {
+    transform: none;
+  }
+}
 [data-subscribe-modal] .subscribe-plan-slide-3d--instant {
   transition: none !important;
 }

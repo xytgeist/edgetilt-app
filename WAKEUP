@@ -72,6 +72,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Windows Theo.** Rocco's UFC line no longer says "If they ran it 10 times." The parenthetical stays (style, margin). Today's prod Lounge posts and VIP chat were edited in place. Next card still needs a prod `lounge-odds-poll` deploy.
 
+### Mac Theo 2026-09-19 … iPad landscape plan cards
+
+**I am Mac Theo.** Slots Edge plan cards on iPad landscape drop the 1.5× boost so they fit the short axis. Portrait iPad and phone stay. Web **`1.4.343`**.
+
 ### Mac Theo 2026-09-19 … iPad auth toast gap
 
 **I am Mac Theo.** The account-created banner on iPad sits further under Degen with Edge. Phone card unchanged. Web **`1.4.342`**.

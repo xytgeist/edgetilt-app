@@ -87,6 +87,15 @@ function slidePoses() {
 }
 
 const SUBSCRIBE_IPAD_CARD_SCALE = 1.5
+/** Landscape iPad is short. Same gate as the shell, plus orientation, so portrait and phones stay. */
+const SUBSCRIBE_IPAD_LANDSCAPE_QUERY =
+  '(orientation: landscape) and (min-width: 768px) and (min-height: 700px) and (pointer: coarse)'
+
+function subscribeIpadCardScale() {
+  if (typeof window === 'undefined') return 1
+  if (window.matchMedia(SUBSCRIBE_IPAD_LANDSCAPE_QUERY).matches) return 1
+  return isSpreadSubscribeCarousel() ? SUBSCRIBE_IPAD_CARD_SCALE : 1
+}
 
 /** Phone card, visually scaled on iPad. Layout box matches the scaled size. */
 function SubscribeCardScale({ children }) {
@@ -99,16 +108,19 @@ function SubscribeCardScale({ children }) {
     if (!host || !inner) return undefined
 
     const sync = () => {
-      const scaled = isSpreadSubscribeCarousel()
-      host.style.height = scaled ? `${inner.offsetHeight * SUBSCRIBE_IPAD_CARD_SCALE}px` : ''
+      const scale = subscribeIpadCardScale()
+      host.style.height = scale > 1 ? `${inner.offsetHeight * scale}px` : ''
     }
 
     sync()
     const ro = new ResizeObserver(sync)
     ro.observe(inner)
+    const landscapeMq = window.matchMedia(SUBSCRIBE_IPAD_LANDSCAPE_QUERY)
+    landscapeMq.addEventListener('change', sync)
     window.addEventListener('resize', sync)
     return () => {
       ro.disconnect()
+      landscapeMq.removeEventListener('change', sync)
       window.removeEventListener('resize', sync)
     }
   }, [])

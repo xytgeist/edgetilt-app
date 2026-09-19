@@ -88,6 +88,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Windows Theo.** UFC Metrics tab now has a last-refresh dump like Sleeper PVALs. Table `ufc_metrics_sync_runs` on test + prod. First dump lands on the next Tuesday GHA (or a manual sync). **`1.4.289`** on **`test`**.
 
+### Mac Theo 2026-09-18 … iPad login type is larger
+
+**I am Mac Theo.** iPad login text is bigger. Continue with Phone label is 24px. Button sizes stayed. Phone sheet unchanged. Web **`1.4.295`**.
+
 ### Mac Theo 2026-09-18 … iPad login dropped down
 
 **I am Mac Theo.** iPad login block (logo through legal) sits in the middle, not under the status bar. Continue with Phone is 4.5rem tall. Still not wired. Web **`1.4.294`**.

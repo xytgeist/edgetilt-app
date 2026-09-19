@@ -48,7 +48,7 @@ function AuthIpadHero() {
       <h1
         id="auth-modal-title"
         data-auth-ipad-slogan
-        className="mt-8 text-[2rem] font-bold leading-tight tracking-tight text-white"
+        className="mt-8 text-[2.5rem] font-bold leading-tight tracking-tight text-white"
       >
         {slogan}
       </h1>
@@ -113,7 +113,7 @@ export default function AuthModalShell({ onClose, cancelLabel, children }) {
           type="button"
           data-auth-ipad-dismiss
           onClick={onClose}
-          className="absolute left-5 z-20 min-h-11 px-1 text-left text-sm text-zinc-400 touch-manipulation"
+          className="absolute left-5 z-20 min-h-11 px-1 text-left text-lg text-zinc-400 touch-manipulation"
           style={{ top: 'max(0.75rem, max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))' }}
         >
           {cancelLabel}

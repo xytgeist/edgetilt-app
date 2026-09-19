@@ -81,7 +81,7 @@ function IpadOrDivider() {
       <div className="absolute inset-0 flex items-center" aria-hidden>
         <div data-auth-ipad-or-line className="w-full border-t border-zinc-700" />
       </div>
-      <div className="relative flex justify-center text-sm text-zinc-500">
+      <div className="relative flex justify-center text-lg text-zinc-500">
         <span className="bg-zinc-950 px-3">or</span>
       </div>
     </div>
@@ -421,7 +421,7 @@ export default function AuthModalPanel({
               <button
                 type="button"
                 onClick={onOpenForgotPassword}
-                className="w-full min-h-12 py-3 text-center text-base text-orange-400 touch-manipulation hover:text-orange-300"
+                className="w-full min-h-12 py-3 text-center text-lg text-orange-400 touch-manipulation hover:text-orange-300"
               >
                 Trouble signing in?
               </button>

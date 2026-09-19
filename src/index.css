@@ -3503,7 +3503,7 @@ html.light .slots-icon-tile svg {
   border-top: 1px solid rgb(63 63 70 / 0.9);
   background: #18181b;
   color: #a1a1aa;
-  font-size: 1rem;
+  font-size: 1.25rem;
   font-weight: 600;
   min-height: 3.25rem;
   padding: 0.85rem 1.5rem calc(0.85rem + max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)));
@@ -3524,7 +3524,14 @@ html.light [data-auth-ipad-stage] [data-auth-ipad-dismiss] {
   background-color: #fff;
   color: #09090b;
   min-height: 4.5rem;
-  font-size: 1.125rem;
+  font-size: 1.5rem;
+}
+[data-auth-ipad-stage] [data-auth-modal] p {
+  font-size: 1rem;
+}
+[data-auth-ipad-stage] [data-auth-modal] input,
+[data-auth-ipad-stage] [data-auth-modal] button[type='submit'] {
+  font-size: 1.25rem;
 }
 html.light [data-auth-ipad-stage] [data-auth-ipad-phone] {
   background-color: #000 !important;

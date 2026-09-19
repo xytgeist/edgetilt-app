@@ -3568,7 +3568,7 @@ html.light [data-auth-ipad-stage] [data-auth-ipad-footer] {
 }
 /* iPad shell. Same stage as auth (coarse, wide, tall). Phone FAB becomes this rail. */
 html[data-ipad-nav] {
-  --edge-ipad-rail: calc(11rem - 50px);
+  --edge-ipad-rail: calc((11rem - 50px) * 0.85);
   /* Inset post text and media. The feed itself stays full width beside the rail. */
   --edge-ipad-feed-pad: max(2.5rem, calc((100vw - var(--edge-ipad-rail)) * 0.07));
 }
@@ -3581,38 +3581,38 @@ html[data-ipad-nav] [data-lounge-feed-root] {
   margin-left: 0;
   margin-right: 0;
 }
-/* About 50% larger type, avatars, and icons. Phone stays on the shared classes. */
-html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[10px\] { font-size: 15px; }
-html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[11px\] { font-size: 16.5px; }
-html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[12px\] { font-size: 18px; }
-html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[13px\] { font-size: 19.5px; }
-html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[14px\] { font-size: 21px; }
-html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[15px\] { font-size: 22.5px; }
-html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[16px\] { font-size: 24px; }
-html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[17px\] { font-size: 25.5px; }
-html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[18px\] { font-size: 27px; }
-html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[19px\] { font-size: 28.5px; }
-html[data-ipad-nav] [data-lounge-feed-scroll] .text-xs { font-size: 18px; }
-html[data-ipad-nav] [data-lounge-feed-scroll] .text-sm { font-size: 21px; }
-html[data-ipad-nav] [data-lounge-feed-scroll] .h-3\.5.w-3\.5 { height: 21px; width: 21px; }
-html[data-ipad-nav] [data-lounge-feed-scroll] .h-4.w-4 { height: 24px; width: 24px; }
-html[data-ipad-nav] [data-lounge-feed-scroll] .h-\[15px\].w-\[15px\] { height: 22.5px; width: 22.5px; }
-html[data-ipad-nav] [data-lounge-feed-scroll] .h-\[16px\].w-\[16px\] { height: 24px; width: 24px; }
-html[data-ipad-nav] [data-lounge-feed-scroll] .h-\[18px\].w-\[18px\] { height: 27px; width: 27px; }
-html[data-ipad-nav] [data-lounge-feed-scroll] .h-\[24px\].w-\[24px\] { height: 36px; width: 36px; }
-html[data-ipad-nav] [data-lounge-feed-scroll] .h-12.w-12 { height: 4.5rem; width: 4.5rem; }
+/* About 1.275× phone (15% under the old 1.5× iPad scale). Phone stays on the shared classes. */
+html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[10px\] { font-size: calc(15px * 0.85); }
+html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[11px\] { font-size: calc(16.5px * 0.85); }
+html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[12px\] { font-size: calc(18px * 0.85); }
+html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[13px\] { font-size: calc(19.5px * 0.85); }
+html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[14px\] { font-size: calc(21px * 0.85); }
+html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[15px\] { font-size: calc(22.5px * 0.85); }
+html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[16px\] { font-size: calc(24px * 0.85); }
+html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[17px\] { font-size: calc(25.5px * 0.85); }
+html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[18px\] { font-size: calc(27px * 0.85); }
+html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[19px\] { font-size: calc(28.5px * 0.85); }
+html[data-ipad-nav] [data-lounge-feed-scroll] .text-xs { font-size: calc(18px * 0.85); }
+html[data-ipad-nav] [data-lounge-feed-scroll] .text-sm { font-size: calc(21px * 0.85); }
+html[data-ipad-nav] [data-lounge-feed-scroll] .h-3\.5.w-3\.5 { height: calc(21px * 0.85); width: calc(21px * 0.85); }
+html[data-ipad-nav] [data-lounge-feed-scroll] .h-4.w-4 { height: calc(24px * 0.85); width: calc(24px * 0.85); }
+html[data-ipad-nav] [data-lounge-feed-scroll] .h-\[15px\].w-\[15px\] { height: calc(22.5px * 0.85); width: calc(22.5px * 0.85); }
+html[data-ipad-nav] [data-lounge-feed-scroll] .h-\[16px\].w-\[16px\] { height: calc(24px * 0.85); width: calc(24px * 0.85); }
+html[data-ipad-nav] [data-lounge-feed-scroll] .h-\[18px\].w-\[18px\] { height: calc(27px * 0.85); width: calc(27px * 0.85); }
+html[data-ipad-nav] [data-lounge-feed-scroll] .h-\[24px\].w-\[24px\] { height: calc(36px * 0.85); width: calc(36px * 0.85); }
+html[data-ipad-nav] [data-lounge-feed-scroll] .h-12.w-12 { height: calc(4.5rem * 0.85); width: calc(4.5rem * 0.85); }
 html[data-ipad-nav] [data-lounge-feed-scroll] .sm\:h-\[3\.3rem\].sm\:w-\[3\.3rem\] {
-  height: 4.95rem;
-  width: 4.95rem;
+  height: calc(4.95rem * 0.85);
+  width: calc(4.95rem * 0.85);
 }
 html[data-ipad-nav] [data-lounge-feed-scroll] .max-h-\[min\(55vh\,420px\)\] {
-  max-height: min(82.5vh, 630px);
+  max-height: min(calc(82.5vh * 0.85), calc(630px * 0.85));
 }
 html[data-ipad-nav] [data-lounge-feed-scroll] .max-w-\[min\(100\%\,20rem\)\] {
-  max-width: min(100%, 30rem);
+  max-width: min(100%, calc(30rem * 0.85));
 }
 html[data-ipad-nav] [data-lounge-feed-scroll] article .gap-3 {
-  gap: 1.125rem;
+  gap: calc(1.125rem * 0.85);
 }
 html[data-ipad-nav] [data-lounge-feed-scroll] article,
 html[data-ipad-nav] [data-lounge-feed-scroll] [data-lounge-feed-composer],
@@ -3620,10 +3620,10 @@ html[data-ipad-nav] [data-lounge-feed-scroll] [data-lounge-feed-toolbar] {
   padding-left: var(--edge-ipad-feed-pad);
   padding-right: var(--edge-ipad-feed-pad);
 }
-/* Composer media row stayed at phone icon size. Match the feed's 1.5× type. Phone has no rail. */
+/* Composer media row tracks the iPad lounge scale. Phone has no rail. */
 html[data-ipad-nav] [data-lounge-feed-composer-tools] svg {
-  width: 2.625rem;
-  height: 2.625rem;
+  width: calc(2.625rem * 0.85);
+  height: calc(2.625rem * 0.85);
 }
 html[data-ipad-nav] [data-lounge-feed-composer-tools],
 html[data-ipad-nav] [data-lounge-feed-composer-tools] [data-lounge-media-toolbar] {
@@ -3654,14 +3654,14 @@ html[data-ipad-nav] [data-lounge-feed-composer] > .absolute.right-3 {
   Extra top space keeps that travel from covering the avatar.
 */
 html[data-ipad-nav] [data-lounge-feed-scroll] [data-lounge-feed-carousel-bleed] {
-  --edge-ipad-carousel-avatar: 4.95rem;
-  --edge-ipad-carousel-gap: 1.125rem;
+  --edge-ipad-carousel-avatar: calc(4.95rem * 0.85);
+  --edge-ipad-carousel-gap: calc(1.125rem * 0.85);
   width: calc(100vw - var(--edge-ipad-rail) - 100px);
   max-width: none;
   margin-left: calc(
     50px - var(--edge-ipad-feed-pad) - var(--edge-ipad-carousel-avatar) - var(--edge-ipad-carousel-gap)
   );
-  margin-top: 1.75rem;
+  margin-top: calc(1.75rem * 0.85);
 }
 html[data-ipad-nav] [data-lounge-feed-scroll] [data-lounge-feed-carousel-bleed] [data-lounge-feed-horizontal-scroll] {
   padding-left: calc(

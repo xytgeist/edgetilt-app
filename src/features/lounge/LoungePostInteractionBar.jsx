@@ -132,17 +132,17 @@ export default function LoungePostInteractionBar({
 
   const isFeed = variant === 'feed'
   const isComment = variant === 'comment'
-  /** Feed type on iPad is already ~1.5×. These glyphs were still the phone sizes. */
+  /** Feed type on iPad is ~1.275× phone (15% under the old 1.5×). These glyphs match that, not the phone sizes. */
   const ipadPostRow = ipadShell && !isComment && !pillOverlay
   const showViews = Boolean(showAdminViewCount) && isFeed
   /** Feed + comment-thread rows: tighter stat padding; sheet = post detail / lightbox. */
   const statsCompact = isFeed || isComment
   /** `justify-between` flex basis = glyph width only (px), so inter-icon gaps match (L − Σw) / 3. */
-  const slotComment = isComment ? 20 : ipadPostRow ? (isFeed ? 33 : 36) : isFeed ? 22 : 24
+  const slotComment = isComment ? 20 : ipadPostRow ? (isFeed ? 28 : 31) : isFeed ? 22 : 24
   const slotRepost = slotComment
   const slotLike = slotComment
-  const slotBookmark = isComment ? 22 : ipadPostRow ? (isFeed ? 36 : 39) : isFeed ? 24 : 26
-  const railMinH = pillOverlay ? undefined : isComment ? 30 : ipadPostRow ? (isFeed ? 48 : 66) : isFeed ? 32 : 44
+  const slotBookmark = isComment ? 22 : ipadPostRow ? (isFeed ? 31 : 33) : isFeed ? 24 : 26
+  const railMinH = pillOverlay ? undefined : isComment ? 30 : ipadPostRow ? (isFeed ? 41 : 56) : isFeed ? 32 : 44
   /** Overlay icons scale via CSS clamp on `[data-lounge-lightbox-pill-row] svg`. */
   const iconSz = pillOverlay
     ? 'h-[1em] w-[1em]'
@@ -150,8 +150,8 @@ export default function LoungePostInteractionBar({
       ? 'h-[20px] w-[20px]'
       : ipadPostRow
         ? isFeed
-          ? 'h-[33px] w-[33px]'
-          : 'h-[36px] w-[36px]'
+          ? 'h-[28px] w-[28px]'
+          : 'h-[31px] w-[31px]'
         : isFeed
           ? 'h-[22px] w-[22px]'
           : 'h-[24px] w-[24px]'
@@ -162,8 +162,8 @@ export default function LoungePostInteractionBar({
       ? `h-[20px] w-[20px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
       : ipadPostRow
         ? isFeed
-          ? `h-[33px] w-[33px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
-          : `h-[36px] w-[36px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
+          ? `h-[28px] w-[28px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
+          : `h-[31px] w-[31px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
         : isFeed
           ? `h-[22px] w-[22px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
           : `h-[24px] w-[24px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
@@ -174,8 +174,8 @@ export default function LoungePostInteractionBar({
       ? 'h-[22px] w-[22px]'
       : ipadPostRow
         ? isFeed
-          ? 'h-[36px] w-[36px]'
-          : 'h-[39px] w-[39px]'
+          ? 'h-[31px] w-[31px]'
+          : 'h-[33px] w-[33px]'
         : isFeed
           ? 'h-[24px] w-[24px]'
           : 'h-[26px] w-[26px]'
@@ -263,10 +263,10 @@ export default function LoungePostInteractionBar({
   const rowClass = pillOverlay
     ? `flex w-full min-w-0 flex-nowrap items-center justify-between gap-[var(--lounge-lightbox-pill-gap)] ${rootClassName}`.trim()
     : isFeed
-      ? `flex w-full min-w-0 flex-1 flex-nowrap items-center justify-between ${ipadPostRow ? 'text-[22px]' : 'text-[15px]'} ${rootClassName}`.trim()
+      ? `flex w-full min-w-0 flex-1 flex-nowrap items-center justify-between ${ipadPostRow ? 'text-[19px]' : 'text-[15px]'} ${rootClassName}`.trim()
       : isComment
         ? `flex w-full min-w-0 flex-1 flex-nowrap items-center justify-between text-[14px] ${rootClassName}`.trim()
-        : `flex w-full min-w-0 flex-1 flex-nowrap items-center justify-between ${ipadPostRow ? 'text-[24px]' : 'text-[16px]'} ${rootClassName}`.trim()
+        : `flex w-full min-w-0 flex-1 flex-nowrap items-center justify-between ${ipadPostRow ? 'text-[20px]' : 'text-[16px]'} ${rootClassName}`.trim()
 
   const repostMenusFeed =
     typeof document !== 'undefined' &&

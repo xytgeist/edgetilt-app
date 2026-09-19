@@ -63,36 +63,40 @@ const PHONE_WORDMARKS = [
 
 function AuthWordmark() {
   const [mark] = useState(() => PHONE_WORDMARKS[Math.floor(Math.random() * PHONE_WORDMARKS.length)])
+  const degen = mark.lead === 'Degen with'
 
   return (
-    <h1
-      id="auth-modal-title"
-      aria-label={mark.label}
-      className={`mx-auto mb-6 flex items-center justify-center gap-2.5 text-white ${
-        mark.lead === 'Degen with' ? 'text-[clamp(1.9rem,9.4vw,2.7rem)]' : 'text-2xl'
-      }`}
-    >
-      <span
-        className="font-light leading-none tracking-tight"
-        style={{ fontFamily: "'Montserrat', sans-serif" }}
+    <div className="w-full min-w-0" data-auth-wordmark-slot>
+      <h1
+        id="auth-modal-title"
+        aria-label={mark.label}
+        data-auth-wordmark={degen ? 'degen' : 'find'}
+        className={`mx-auto mb-6 flex w-full min-w-0 items-center justify-center gap-2.5 whitespace-nowrap text-white ${
+          degen ? '' : 'text-2xl'
+        }`}
       >
-        {mark.lead}
-      </span>
-      <span className="inline-flex shrink-0" aria-hidden>
-        <img
-          src="/edge-lounge-logo-transparent.png"
-          alt=""
-          className={`edge-logo--dark w-auto ${mark.lead === 'Degen with' ? 'h-[0.78em]' : 'h-[1.2rem]'}`}
-          draggable={false}
-        />
-        <img
-          src="/edge-lounge-logo-light.png"
-          alt=""
-          className={`edge-logo--light w-auto ${mark.lead === 'Degen with' ? 'h-[0.78em]' : 'h-[1.2rem]'}`}
-          draggable={false}
-        />
-      </span>
-    </h1>
+        <span
+          className="font-light leading-none tracking-tight"
+          style={{ fontFamily: "'Montserrat', sans-serif" }}
+        >
+          {mark.lead}
+        </span>
+        <span className="inline-flex shrink-0" aria-hidden>
+          <img
+            src="/edge-lounge-logo-transparent.png"
+            alt=""
+            className={`edge-logo--dark w-auto ${degen ? 'h-[0.78em]' : 'h-[1.2rem]'}`}
+            draggable={false}
+          />
+          <img
+            src="/edge-lounge-logo-light.png"
+            alt=""
+            className={`edge-logo--light w-auto ${degen ? 'h-[0.78em]' : 'h-[1.2rem]'}`}
+            draggable={false}
+          />
+        </span>
+      </h1>
+    </div>
   )
 }
 

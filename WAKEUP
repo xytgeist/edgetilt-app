@@ -68,6 +68,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Windows Theo.** Account info phone has its own **Send code** button. Save changes was not an obvious way to text the link code. Frontend **`1.4.305`**.
 
+### Mac Theo 2026-09-18 … Degen with EDGE stays one line
+
+**I am Mac Theo.** "Degen with" was wrapping under itself and the EDGE logo sat beside that stack. It now stays one line and scales to the card. Web **`1.4.307`**.
+
 ### Windows Theo 2026-09-18 … Account info phone is the login link
 
 **I am Windows Theo.** Account info phone now texts a code and links that number to the signed-in account. Continue with Phone copies the number into that field on a new account. Frontend **`1.4.304`**.

@@ -107,9 +107,30 @@ Deno.serve(async (req) => {
     const alertKindRaw = String(body?.alertKind || '').trim().toLowerCase()
     const alertKind = alertKindRaw || null
 
-    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'cfb_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_primetime_lock', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'syndicate_monthly_scoreboard', 'calibrate_persona_models', 'ufc_slate_card', 'nfl_wed_tnf_vip', 'nfl_sat_vip_adds_kills', 'nfl_sat_steam', 'nfl_sunday_early_lock', 'nfl_sunday_late_lock', 'cfb_wed_midweek_vip', 'cfb_thu_night_spotlight', 'cfb_sat_vip_adds_kills', 'picks_for_today', 'pval_injury_ledger', 'lane_b_refresh'].includes(action)) {
+    if (!['poll_edges', 'poll_live', 'daily_slates', 'best_bet_hour', 'value_bet_radar', 'grade_picks', 'predictive_pick', 'nfl_slate_card', 'cfb_slate_card', 'nfl_wong_teaser', 'nfl_primetime_spotlight', 'nfl_primetime_lock', 'nfl_halftime_pivot', 'nfl_anytime_td', 'nfl_live_middle_arb', 'weekly_syndicate_recap', 'syndicate_monthly_scoreboard', 'calibrate_persona_models', 'ufc_slate_card', 'nfl_wed_tnf_vip', 'nfl_sat_vip_adds_kills', 'nfl_sat_steam', 'nfl_sunday_early_lock', 'nfl_sunday_late_lock', 'cfb_wed_midweek_vip', 'cfb_thu_night_spotlight', 'cfb_sat_vip_adds_kills', 'picks_for_today', 'pval_injury_ledger', 'lane_b_refresh', 'replay_public_x'].includes(action)) {
       return adminOpsJson(400, {
         error: 'action must be a valid lounge-odds-poll action (incl. picks_for_today, pval_injury_ledger, cfb VIP ops).',
+      })
+    }
+
+    if (action === 'replay_public_x') {
+      const postId = String(body?.postId || '').trim()
+      if (!postId) return adminOpsJson(400, { error: 'postId required.' })
+      const { data, error } = await admin
+        .from('community_feed_posts')
+        .select('id, caption, creator_fan_only')
+        .eq('id', postId)
+        .maybeSingle()
+      if (error || !data) return adminOpsJson(404, { error: error?.message || 'Post not found.' })
+      if (data.creator_fan_only) return adminOpsJson(400, { error: 'Fan-only posts do not go to X.' })
+      const caption = String(data.caption || '').trim()
+      if (!caption) return adminOpsJson(400, { error: 'Empty caption.' })
+      const { publishSyndicateXPost, X_LONG_FORM_CHARS } = await import('../_shared/loungeBotXPublish.ts')
+      const x = await publishSyndicateXPost(caption, { maxChars: X_LONG_FORM_CHARS })
+      return adminOpsJson(x.tweetId ? 200 : 502, {
+        ok: Boolean(x.tweetId),
+        tweetId: x.tweetId,
+        warning: x.warning || null,
       })
     }
 

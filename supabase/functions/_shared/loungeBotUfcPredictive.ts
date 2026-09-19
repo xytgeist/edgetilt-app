@@ -41,6 +41,7 @@ import {
   implicitDestForPollAction,
   resolvePublishDestinations,
 } from './loungeBotPublishDestinations.ts'
+import { X_LONG_FORM_CHARS } from './loungeBotXPublish.ts'
 import { LOUNGE_BOT_CAPTION_MAX } from './loungeBotCaptionLimits.ts'
 import {
   buildUfcCheddaEquations,
@@ -736,6 +737,7 @@ export async function publishAndRecordUfcCard(
     fanOnlyThreadParts: fanOnly.threadParts,
     vipCaption,
     categoryPills: ['sports'],
+    xMaxChars: X_LONG_FORM_CHARS,
   })
   if (dest.loungePublic && fan.error) {
     return {

@@ -107,7 +107,7 @@ const NO_VIP_DROP_KINDS = new Set(['solo'])
 
 function defaultDestForKind(kind) {
   if (kind === 'ufc') {
-    return { loungePublic: true, loungeFanOnly: true, vipChat: true, x: false }
+    return { loungePublic: true, loungeFanOnly: true, vipChat: true, x: true }
   }
   if (VIP_ONLY_DROP_KINDS.has(kind)) {
     return { loungePublic: false, loungeFanOnly: false, vipChat: true, x: false }
@@ -288,7 +288,11 @@ export function BotSharpDeskPanel({
 
   const toggleSendTo = (key) => {
     setDestDirty(true)
-    setSendTo((prev) => ({ ...prev, [key]: !prev[key] }))
+    setSendTo((prev) => {
+      const next = { ...prev, [key]: !prev[key] }
+      if (next.loungePublic) next.x = true
+      return next
+    })
   }
 
   const requireDestinations = (kind) => {
@@ -1061,7 +1065,8 @@ export function BotSharpDeskPanel({
                     <label key={key} className="inline-flex items-center gap-1.5 text-[11px] text-zinc-200 cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={Boolean(sendTo[key])}
+                        checked={key === 'x' ? Boolean(sendTo.loungePublic || sendTo.x) : Boolean(sendTo[key])}
+                        disabled={key === 'x' && Boolean(sendTo.loungePublic)}
                         onChange={() => toggleSendTo(key)}
                         className="rounded border-zinc-600 bg-zinc-900 text-amber-500 focus:ring-amber-500/40"
                       />
@@ -1070,10 +1075,8 @@ export function BotSharpDeskPanel({
                   ))}
                 </div>
                 <p className="text-[10px] text-zinc-500 leading-snug">
-                  Applies to Publish for the drop above, including Picks for today. Leave the bar alone for normal defaults
-                  ... public drops include X; primetime is public Lounge + VIP chat + X (same 4-desk card, no fan-only
-                  Lounge); VIP-only (halftime, middle, UFC) stay VIP unless you check Public Lounge or X. Preview
-                  ignores destinations.
+                  Applies to Publish for the drop above, including Picks for today. Public Lounge always includes X.
+                  X gets the public tease, except primetime, which tweets the VIP card. Fan-only and VIP-only stay off X unless you check it.
                 </p>
               </div>
             ) : null}

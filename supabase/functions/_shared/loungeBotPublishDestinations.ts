@@ -1,6 +1,6 @@
 /**
  * Ops / cron destination flags for Syndicate desk drops.
- * Cron omits the picker … implicit destinations + x: false.
+ * A public Lounge post always includes X. Fan-only and VIP-only stay off X unless checked.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { publishLoungeBotPost, publishLoungeBotPostWithThread, type BotThreadPart } from './loungeBotPublish.ts'
@@ -17,7 +17,13 @@ export type PublishDestinations = {
 
 const KEYS = ['loungePublic', 'loungeFanOnly', 'vipChat', 'x'] as const
 
-/** Implicit destinations when Ops/cron omit the picker. x stays off unless implicit.x is true. */
+/** Public Lounge and X travel together. VIP-only and fan-only do not. */
+function tiePublicLoungeToX(dest: PublishDestinations): PublishDestinations {
+  if (dest.loungePublic) dest.x = true
+  return dest
+}
+
+/** Public Lounge forces X on, even if the picker left it off. */
 export function resolvePublishDestinations(
   raw: unknown,
   implicit: Omit<PublishDestinations, 'x'> & { x?: boolean },
@@ -28,15 +34,15 @@ export function resolvePublishDestinations(
     vipChat: implicit.vipChat === true,
     x: implicit.x === true,
   }
-  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return fallback
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return tiePublicLoungeToX(fallback)
   const o = raw as Record<string, unknown>
-  if (!KEYS.some((k) => k in o)) return fallback
-  return {
+  if (!KEYS.some((k) => k in o)) return tiePublicLoungeToX(fallback)
+  return tiePublicLoungeToX({
     loungePublic: o.loungePublic === true,
     loungeFanOnly: o.loungeFanOnly === true,
     vipChat: o.vipChat === true,
     x: o.x === true,
-  }
+  })
 }
 
 export function anyPublishDestination(d: PublishDestinations): boolean {
@@ -48,7 +54,7 @@ export function implicitDestForPollAction(action: string): PublishDestinations {
     case 'nfl_slate_card':
     case 'cfb_slate_card':
     case 'ufc_slate_card':
-      return { loungePublic: true, loungeFanOnly: true, vipChat: true, x: false }
+      return { loungePublic: true, loungeFanOnly: true, vipChat: true, x: true }
     case 'nfl_primetime_spotlight':
     case 'nfl_primetime_lock':
       return { loungePublic: true, loungeFanOnly: false, vipChat: true, x: true }
@@ -56,16 +62,16 @@ export function implicitDestForPollAction(action: string): PublishDestinations {
     case 'weekly_syndicate_recap':
     case 'nfl_anytime_td':
     case 'cfb_thu_night_spotlight':
-      return { loungePublic: true, loungeFanOnly: false, vipChat: true, x: false }
+      return { loungePublic: true, loungeFanOnly: false, vipChat: true, x: true }
     case 'predictive_pick':
     case 'picks_for_today':
-      return { loungePublic: true, loungeFanOnly: false, vipChat: false, x: false }
+      return { loungePublic: true, loungeFanOnly: false, vipChat: false, x: true }
     case 'nfl_halftime_pivot':
     case 'nfl_live_middle_arb':
     case 'nfl_sat_steam':
     case 'nfl_sunday_early_lock':
     case 'nfl_sunday_late_lock':
-      return { loungePublic: true, loungeFanOnly: false, vipChat: true, x: false }
+      return { loungePublic: true, loungeFanOnly: false, vipChat: true, x: true }
     case 'nfl_wed_tnf_vip':
       return { loungePublic: false, loungeFanOnly: true, vipChat: true, x: false }
     case 'nfl_sat_vip_adds_kills':
@@ -73,7 +79,7 @@ export function implicitDestForPollAction(action: string): PublishDestinations {
     case 'cfb_sat_vip_adds_kills':
       return { loungePublic: false, loungeFanOnly: false, vipChat: true, x: false }
     default:
-      return { loungePublic: true, loungeFanOnly: false, vipChat: false, x: false }
+      return { loungePublic: true, loungeFanOnly: false, vipChat: false, x: true }
   }
 }
 
@@ -192,6 +198,7 @@ export async function fanOutSyndicatePublish(input: FanOutInput): Promise<FanOut
     vipMessageId: null,
     tweetId: null,
   }
+  if (input.dest.loungePublic) input.dest.x = true
 
   if (input.dest.loungePublic) {
     const caption = publicCaption || vipCaption

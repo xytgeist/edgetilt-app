@@ -493,7 +493,7 @@ function formatUfcFightDeskBlock(fight: UfcFightPick): string {
     : `• ${formatColoredPickerName('Rocco')}: ${rocco.pickName} ... ${rocco.rationale}`
   const weight = fight.division ? ` (${fight.division})` : ''
   const names = `**${fight.fighterA} vs ${fight.fighterB}**${weight}`
-  const title = scottAndRoccoAgree(fight) ? `[gold]Both[/gold] · ${names}` : names
+  const title = scottAndRoccoAgree(fight) ? `[gold]${names}[/gold]` : names
   return [
     title,
     `• ${formatColoredPickerName('Scott')}: ${scott.pickName} ... ${scott.rationale}`,
@@ -564,8 +564,8 @@ export function formatUfcCardCaption(card: UfcSlateCard): string {
     const rocco = fight.pickerPicks.Rocco
     const agree = scottAndRoccoAgree(fight)
     const opp = scott.side === 'A' ? fight.fighterB : fight.fighterA
-    const pick = agree ? `[gold]Both[/gold] · **${scott.pickName}**` : `**${scott.pickName}**`
-    lines.push(`• ${pick} vs ${opp}`)
+    const pick = agree ? `[gold]**${scott.pickName}** vs ${opp}[/gold]` : `**${scott.pickName}** vs ${opp}`
+    lines.push(`• ${pick}`)
     lines.push(
       rocco.side === 'PASS'
         ? `  ↳ ${formatColoredPickerName('Rocco')}: PASS ... ${rocco.rationale}`

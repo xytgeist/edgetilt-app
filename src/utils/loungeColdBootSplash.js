@@ -132,6 +132,12 @@ export function shouldShowLoungeColdBootSplash({ tab, pendingWork = false }) {
   if (!isLoungeColdBootHomeIntent()) return false
   if (pendingWork || readLoungeComposerDraftPendingWork()) return false
   if (readLoungeColdBootSplashCycleDone()) return false
+  // Google sends the app back with tokens in the hash. The boot splash is solid black
+  // and was covering the signed-in app.
+  const hash = window.location.hash || ''
+  if (hash.includes('access_token') || hash.includes('provider_token') || hash.includes('error_description')) {
+    return false
+  }
   return true
 }
 

@@ -140,10 +140,10 @@ export default function AuthModalShell({ onClose, cancelLabel, children }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-x-hidden bg-black px-4 pt-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black px-4 pt-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
       <button
         type="button"
-        className="absolute inset-0 cursor-default [-webkit-tap-highlight-color:transparent]"
+        className="absolute inset-0 z-0 cursor-default [-webkit-tap-highlight-color:transparent]"
         aria-label="Close sign in"
         onClick={onClose}
       />
@@ -151,7 +151,7 @@ export default function AuthModalShell({ onClose, cancelLabel, children }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="auth-modal-title"
-        className="relative z-10 w-full max-w-lg min-h-0 max-h-full overflow-y-auto overscroll-contain rounded-3xl border border-zinc-800 bg-black px-5 py-5 shadow-2xl md:p-8 md:pt-6"
+        className="relative z-10 w-full max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain rounded-3xl border border-zinc-800 bg-black px-5 py-5 shadow-2xl md:p-8 md:pt-6"
         data-auth-modal
         data-auth-sheet
         onClick={(e) => e.stopPropagation()}

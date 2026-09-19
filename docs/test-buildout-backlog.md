@@ -1145,6 +1145,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **Google return was a black screen (Mac).** The login cover now closes once a session exists, and the black boot splash does not cover an OAuth callback. The phone card stays above the dismiss layer. Frontend **`1.4.303`**. Web only.
 - **2026-09-18:** **Continue with Phone (Windows).** The login pill sends a Supabase SMS code (`signInWithOtp` / `verifyOtp` type `sms`). Edge **`auth-send-sms`** is deployed on test. Phone provider and the Send SMS hook are on. Texts wait on Edge secret **`TELNYX_API_KEY`**. Not the Lounge verified badge, and not Telnyx Verify. Frontend **`1.4.302`**. Prod Auth stays off until Ryan asks.
 - **2026-09-18:** **Phone login floats in the center (Mac).** The phone and Android card is no longer pinned to the bottom. Grab handle is gone. iPad column unchanged. Frontend **`1.4.301`**. Web only.
 - **2026-09-18:** **Phone login buttons smaller, Degen wordmark larger (Mac).** Circles and the phone pill on the phone sheet are 52px. **Degen with** plus the EDGE mark scales up. **Find Your** stays the old size. iPad column unchanged. Frontend **`1.4.300`**. Web only.

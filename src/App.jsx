@@ -936,6 +936,12 @@ function App() {
     openSubscribeModal()
   }, [user?.id, isChecking, isLoggingIn, openSubscribeModal])
 
+  /** Google comes back with a session. Drop the black login cover so it cannot sit on top of the app. */
+  useEffect(() => {
+    if (!user?.id) return
+    setAuthPanelOpen(false)
+  }, [user?.id])
+
   useEffect(() => {
     if (isChecking || isLoggingIn) return
     if (typeof window === 'undefined') return
@@ -1140,14 +1146,16 @@ function App() {
       }
     }
 
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: {
-        redirectTo: authRedirectUrlWithPromoStamps(authRedirectBaseForCurrentLocation()),
-      },
-    })
-    if (error) {
-      setError(getFriendlyErrorMessage(error))
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: authRedirectUrlWithPromoStamps(authRedirectBaseForCurrentLocation()),
+        },
+      })
+      if (error) throw error
+    } catch (e) {
+      setError(getFriendlyErrorMessage(e))
       oauthInFlightRef.current = false
       setIsOAuthLoading(false)
     }

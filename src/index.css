@@ -4409,6 +4409,13 @@ html.light [data-settings-account-info] .account-phone-action {
 html.light [data-settings-account-info] .account-phone-action:hover {
   color: #155e75 !important;
 }
+/* Settings sheet stays dark in light mode. Keep Verify readable on that surface. */
+html.light [data-settings-account-section] .account-section-verify {
+  color: #67e8f9 !important;
+}
+html.light [data-settings-account-section] .account-section-verify:hover {
+  color: #a5f3fc !important;
+}
 
 html.light [data-settings-account-info-dialog] .bg-zinc-900 {
   background-color: #ffffff !important;

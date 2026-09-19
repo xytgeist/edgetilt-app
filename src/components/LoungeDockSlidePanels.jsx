@@ -143,6 +143,28 @@ function SettingsSectionChevron({ open }) {
   )
 }
 
+function accountPhoneIsVerified(user) {
+  const digits = String(user?.phone || '').replace(/\D/g, '')
+  return Boolean(digits) && Boolean(user?.phone_confirmed_at)
+}
+
+function AccountVerifiedMark() {
+  return (
+    <span
+      className="inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-cyan-600 text-white"
+      role="img"
+      aria-label="Verified"
+    >
+      <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
+        <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  )
+}
+
+const ACCOUNT_VERIFY_CLASS =
+  'account-section-verify inline-flex min-h-8 shrink-0 items-center rounded-md px-1.5 text-[13px] font-semibold text-cyan-300 underline underline-offset-2 touch-manipulation hover:text-cyan-200 [-webkit-tap-highlight-color:transparent]'
+
 export default function LoungeDockSlidePanels({
   openPanel,
   onClose,
@@ -230,6 +252,7 @@ export default function LoungeDockSlidePanels({
   /** Signed-in auth user (id + email) for Account info screen. */
   settingsAuthUser = null,
   onAccountInfoUpdated,
+  onAuthUserUpdated,
   settingsHasActiveSubscription = false,
   settingsHasSlotsEdgeStarter = false,
   settingsHasSlotsEdgePro = false,
@@ -293,6 +316,7 @@ export default function LoungeDockSlidePanels({
   const [notificationsSettingsOpen, setNotificationsSettingsOpen] = useState(false)
   const [accountSettingsOpen, setAccountSettingsOpen] = useState(false)
   const [accountInfoScreenOpen, setAccountInfoScreenOpen] = useState(false)
+  const [accountInfoFocusPhone, setAccountInfoFocusPhone] = useState(false)
   const [appearanceSettingsOpen, setAppearanceSettingsOpen] = useState(false)
   const [proSettingsOpen, setProSettingsOpen] = useState(false)
   const [autoplaySettingsOpen, setAutoplaySettingsOpen] = useState(false)
@@ -406,6 +430,7 @@ export default function LoungeDockSlidePanels({
       setNotificationsSettingsOpen(false)
       setAccountSettingsOpen(false)
       setAccountInfoScreenOpen(false)
+      setAccountInfoFocusPhone(false)
       setAppearanceSettingsOpen(false)
       setProSettingsOpen(false)
       setAutoplaySettingsOpen(false)
@@ -543,6 +568,26 @@ export default function LoungeDockSlidePanels({
   }, [passwordResetBusy, settingsAccountEmail, settingsSupabaseClient])
 
   const showAccountSection = typeof onLogout === 'function'
+  const accountPhoneVerified = accountPhoneIsVerified(settingsAuthUser)
+  const onAuthUserUpdatedRef = useRef(onAuthUserUpdated)
+  onAuthUserUpdatedRef.current = onAuthUserUpdated
+
+  useEffect(() => {
+    if (openPanel !== 'settings' || !settingsSupabaseClient) return undefined
+    let cancelled = false
+    void settingsSupabaseClient.auth.getUser().then(({ data }) => {
+      if (!cancelled && data?.user) onAuthUserUpdatedRef.current?.(data.user)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [openPanel, settingsSupabaseClient])
+
+  const openAccountPhoneVerify = useCallback(() => {
+    setAccountSettingsOpen(true)
+    setAccountInfoFocusPhone(true)
+    setAccountInfoScreenOpen(true)
+  }, [])
 
   const [q, setQ] = useState(() => initialSearchQuery || '')
   const [searchTextAfterCategory, setSearchTextAfterCategory] = useState('')
@@ -1515,8 +1560,14 @@ export default function LoungeDockSlidePanels({
               supabaseClient={settingsSupabaseClient}
               authUser={settingsAuthUser}
               initialEmail={settingsAccountEmail}
-              onBack={() => setAccountInfoScreenOpen(false)}
+              focusPhone={accountInfoFocusPhone}
+              onPhoneFocusHandled={() => setAccountInfoFocusPhone(false)}
+              onBack={() => {
+                setAccountInfoScreenOpen(false)
+                setAccountInfoFocusPhone(false)
+              }}
               onUpdated={onAccountInfoUpdated}
+              onAuthUserUpdated={onAuthUserUpdated}
               onDeleteAccount={onDeleteAccount}
               deleteAccountBusy={deleteAccountBusy}
             />
@@ -1835,36 +1886,58 @@ export default function LoungeDockSlidePanels({
             </div>
 
             {showAccountSection ? (
-              <div ref={settingsAccountSectionRef} className="mt-6 border-t border-zinc-800 pt-5">
-                <button
-                  type="button"
-                  aria-expanded={accountSettingsOpen}
-                  onClick={() => setAccountSettingsOpen((open) => !open)}
-                  className="flex min-h-12 w-full items-start justify-between gap-3 rounded-xl px-1 py-1 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] hover:bg-zinc-900/40"
-                >
-                  <span className="min-w-0">
-                    <span className="block text-[15px] font-semibold text-zinc-100">Account</span>
-                    <span className="mt-1 block text-[13px] leading-relaxed text-zinc-500">
+              <div ref={settingsAccountSectionRef} data-settings-account-section className="mt-6 border-t border-zinc-800 pt-5">
+                <div className="flex items-start gap-2 rounded-xl px-1 py-1">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex min-h-8 flex-wrap items-center gap-1.5">
+                      <button
+                        type="button"
+                        aria-expanded={accountSettingsOpen}
+                        onClick={() => setAccountSettingsOpen((open) => !open)}
+                        className="text-left text-[15px] font-semibold text-zinc-100 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+                      >
+                        Account
+                      </button>
+                      {accountPhoneVerified ? (
+                        <AccountVerifiedMark />
+                      ) : (
+                        <button type="button" onClick={openAccountPhoneVerify} className={ACCOUNT_VERIFY_CLASS}>
+                          Verify
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setAccountSettingsOpen((open) => !open)}
+                      className="mt-1 block w-full text-left text-[13px] leading-relaxed text-zinc-500 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+                    >
                       Profile, password, account info, and legal.
-                    </span>
-                  </span>
-                  <span
-                    aria-hidden
-                    className={`mt-0.5 shrink-0 text-zinc-400 transition-transform duration-200 ${
-                      accountSettingsOpen ? 'rotate-180' : 'rotate-0'
-                    }`}
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    aria-label={accountSettingsOpen ? 'Collapse Account' : 'Expand Account'}
+                    onClick={() => setAccountSettingsOpen((open) => !open)}
+                    className="mt-0.5 shrink-0 text-zinc-400 touch-manipulation [-webkit-tap-highlight-color:transparent]"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-                      <path
-                        d="M6 9l6 6 6-6"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </span>
-                </button>
+                    <span
+                      aria-hidden
+                      className={`inline-flex transition-transform duration-200 ${
+                        accountSettingsOpen ? 'rotate-180' : 'rotate-0'
+                      }`}
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+                        <path
+                          d="M6 9l6 6 6-6"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </svg>
+                    </span>
+                  </button>
+                </div>
 
                 {accountSettingsOpen ? (
                   <div

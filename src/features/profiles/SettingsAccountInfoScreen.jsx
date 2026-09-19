@@ -63,8 +63,11 @@ export default function SettingsAccountInfoScreen({
   supabaseClient,
   authUser,
   initialEmail = '',
+  focusPhone = false,
+  onPhoneFocusHandled,
   onBack,
   onUpdated,
+  onAuthUserUpdated,
   onDeleteAccount,
   deleteAccountBusy = false,
 }) {
@@ -139,6 +142,22 @@ export default function SettingsAccountInfoScreen({
   useEffect(() => {
     void reloadProfile()
   }, [reloadProfile])
+
+  useEffect(() => {
+    if (loading || !focusPhone) return undefined
+    const input = document.getElementById('settings-account-phone')
+    if (!(input instanceof HTMLInputElement)) return undefined
+    input.focus()
+    const end = input.value.length
+    try {
+      input.setSelectionRange(end, end)
+    } catch {
+      // Some mobile tel inputs refuse a selection range.
+    }
+    input.scrollIntoView({ block: 'center' })
+    onPhoneFocusHandled?.()
+    return undefined
+  }, [focusPhone, loading, onPhoneFocusHandled])
 
   useEffect(() => {
     if (!deleteDialogOpen) {
@@ -343,7 +362,7 @@ export default function SettingsAccountInfoScreen({
     setSaveError('')
     setSaveMessage('')
     try {
-      const { error } = await supabaseClient.auth.verifyOtp({
+      const { data, error } = await supabaseClient.auth.verifyOtp({
         phone: phoneCodeFor,
         token,
         type: 'phone_change',
@@ -358,6 +377,13 @@ export default function SettingsAccountInfoScreen({
         phoneNumber: phoneCodeFor,
       })
       if (phoneErr) throw phoneErr
+      const { data: sessionData } = await supabaseClient.auth.getSession()
+      const rawUser = sessionData?.session?.user || data?.user || authUser
+      onAuthUserUpdated?.({
+        ...rawUser,
+        phone: rawUser?.phone || phoneCodeFor,
+        phone_confirmed_at: rawUser?.phone_confirmed_at || new Date().toISOString(),
+      })
       setServerPhone(phoneCodeFor)
       setPhoneDraft(nationalDraft(phoneCodeFor))
       setPhoneCode('')
@@ -370,7 +396,7 @@ export default function SettingsAccountInfoScreen({
     } finally {
       setSaveBusy(false)
     }
-  }, [authUser?.id, onUpdated, phoneCode, phoneCodeFor, saveBusy, supabaseClient])
+  }, [authUser?.id, onAuthUserUpdated, onUpdated, phoneCode, phoneCodeFor, saveBusy, supabaseClient])
 
   const onSendPhoneCode = useCallback(async () => {
     if (!supabaseClient || !authUser?.id || saveBusy) return

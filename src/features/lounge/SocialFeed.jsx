@@ -16251,6 +16251,9 @@ export default function SocialFeed({
       settingsAccountEmail={String(composerAuthUser?.email || '').trim()}
       settingsAuthUser={composerAuthUser}
       onAccountInfoUpdated={onProfileScreenUpdated}
+      onAuthUserUpdated={(user) => {
+        if (user?.id) setComposerAuthUser(user)
+      }}
       settingsHasActiveSubscription={hasActiveSubscription}
       settingsHasSlotsEdgeStarter={hasSlotsEdgeStarter}
       settingsHasSlotsEdgePro={hasSlotsEdgePro}

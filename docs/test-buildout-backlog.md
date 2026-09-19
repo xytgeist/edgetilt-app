@@ -1145,6 +1145,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **Settings Verify (Windows).** The Account label shows Verify until the phone is confirmed, then a check. Verify opens Account info with the cursor in the phone field. Frontend **`1.4.317`**. Web only.
 - **2026-09-18:** **iPad rail matches the X column (Mac).** Wider left rail, large buttons from the top, EDGE mark on the rail and centered on the lounge, feed fills the rest. Phone unchanged. Frontend **`1.4.316`**. Web only.
 - **2026-09-18:** **Phone verified modal (Windows).** Confirming an Account info code opens a Phone verified modal. The line under Save changes is gone. Frontend **`1.4.315`**. Web only.
 - **2026-09-18:** **iPad left rail (Mac).** On iPad the lounge FAB buttons sit in a left rail, compose at the bottom, portrait and landscape. Phone and desktop keep the FAB. No right column yet. Frontend **`1.4.314`**. Web only.

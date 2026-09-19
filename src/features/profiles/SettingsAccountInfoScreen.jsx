@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import ProfileHandleConflictDialog from './ProfileHandleConflictDialog.jsx'
 import {
@@ -17,6 +17,8 @@ import { dismissEdgeKeyboard } from '../../utils/edgeNative.js'
 const HANDLE_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000
 const PHONE_ACTION_CLASS =
   'account-phone-action inline-flex min-h-11 items-center text-[15px] font-semibold text-cyan-300 underline underline-offset-4 touch-manipulation hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]'
+const FIELD_ACTION_CLASS =
+  'account-phone-action absolute right-1 top-1/2 z-[1] inline-flex h-9 -translate-y-1/2 items-center rounded-lg bg-zinc-900/80 px-2.5 text-[13px] font-semibold text-cyan-300 touch-manipulation hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]'
 
 function handleCooldownUnlockAt(handleChangedAt) {
   const lastAt = handleChangedAt ? new Date(handleChangedAt) : null
@@ -117,6 +119,7 @@ export default function SettingsAccountInfoScreen({
   const [handleConflictDialog, setHandleConflictDialog] = useState(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteConfirmArmed, setDeleteConfirmArmed] = useState(false)
+  const fieldActionAtRef = useRef(0)
 
   const reloadProfile = useCallback(async () => {
     if (!supabaseClient || !userId) {
@@ -643,8 +646,35 @@ export default function SettingsAccountInfoScreen({
 
   const onNonFieldPointerDown = useCallback((e) => {
     const t = e.target
-    if (t instanceof Element && t.closest('input, textarea, select, label')) return
+    // Buttons stay. Blurring the open field here shifts the sheet and the tap lands on Handle or Email.
+    if (t instanceof Element && t.closest('input, textarea, select, label, button, a')) return
     dismissEdgeKeyboard()
+  }, [])
+
+  const fieldActionHandlers = useCallback((run) => {
+    const fire = (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const now = Date.now()
+      if (now - fieldActionAtRef.current < 450) return
+      fieldActionAtRef.current = now
+      run()
+    }
+    return {
+      onPointerDown(e) {
+        e.stopPropagation()
+        if (e.pointerType !== 'mouse') e.preventDefault()
+      },
+      onMouseDown(e) {
+        e.preventDefault()
+        e.stopPropagation()
+      },
+      onPointerUp(e) {
+        if (e.pointerType === 'mouse') return
+        fire(e)
+      },
+      onClick: fire,
+    }
   }, [])
 
   const onConfirmDeleteAccount = useCallback(async () => {
@@ -728,70 +758,80 @@ export default function SettingsAccountInfoScreen({
             <label htmlFor="settings-account-email" className="block text-[13px] font-semibold text-zinc-300">
               Email
             </label>
-            <input
-              id="settings-account-email"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
-              enterKeyHint="done"
-              value={emailDraft}
-              onKeyDown={onFieldKeyDown}
-              onChange={(e) => {
-                setEmailDraft(e.target.value)
-                setEmailCodeFor('')
-                setEmailCode('')
-                setSaveMessage('')
-                setSaveError('')
-              }}
-              className="mt-1.5 min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 px-3 text-[15px] text-zinc-100 outline-none focus:border-cyan-500/50"
-            />
-            {emailNeedsVerify && !emailCodeFor ? (
-              <button
-                type="button"
-                disabled={saveBusy}
-                onClick={() => void onSendEmailCode()}
-                className={`mt-2 ${PHONE_ACTION_CLASS}`}
-              >
-                {saveBusy ? 'Sending…' : 'Send code'}
-              </button>
-            ) : null}
+            <div className="relative mt-1.5">
+              <input
+                id="settings-account-email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                enterKeyHint="done"
+                value={emailDraft}
+                onKeyDown={onFieldKeyDown}
+                onChange={(e) => {
+                  setEmailDraft(e.target.value)
+                  setEmailCodeFor('')
+                  setEmailCode('')
+                  setSaveMessage('')
+                  setSaveError('')
+                }}
+                className={`min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 py-2 text-[15px] text-zinc-100 outline-none focus:border-cyan-500/50 ${
+                  emailNeedsVerify && !emailCodeFor ? 'pl-3 pr-28' : 'px-3'
+                }`}
+              />
+              {emailNeedsVerify && !emailCodeFor ? (
+                <button
+                  type="button"
+                  disabled={saveBusy}
+                  {...fieldActionHandlers(() => {
+                    void onSendEmailCode()
+                  })}
+                  className={FIELD_ACTION_CLASS}
+                >
+                  {saveBusy ? 'Sending…' : 'Send code'}
+                </button>
+              ) : null}
+            </div>
             {emailCodeFor ? (
               <div className="mt-3 space-y-2">
                 <label htmlFor="settings-account-email-code" className="block text-[13px] font-semibold text-zinc-300">
                   Email code
                 </label>
-                <input
-                  id="settings-account-email-code"
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  placeholder="6-digit code"
-                  enterKeyHint="go"
-                  value={emailCode}
-                  onChange={(e) => {
-                    setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 10))
-                    setSaveError('')
-                  }}
-                  className="min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 px-3 text-[15px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-500/50"
-                />
-                <div className="flex flex-wrap gap-x-4">
+                <div className="relative">
+                  <input
+                    id="settings-account-email-code"
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    placeholder="6-digit code"
+                    enterKeyHint="go"
+                    value={emailCode}
+                    onChange={(e) => {
+                      setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 10))
+                      setSaveError('')
+                    }}
+                    className="min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 py-2 pl-3 pr-28 text-[15px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-500/50"
+                  />
                   <button
                     type="button"
                     disabled={saveBusy}
-                    onClick={() => void confirmEmailCode()}
-                    className={PHONE_ACTION_CLASS}
+                    {...fieldActionHandlers(() => {
+                      void confirmEmailCode()
+                    })}
+                    className={FIELD_ACTION_CLASS}
                   >
-                    {saveBusy ? 'Checking…' : 'Confirm email code'}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={saveBusy}
-                    onClick={() => void onSendEmailCode()}
-                    className={PHONE_ACTION_CLASS}
-                  >
-                    Send again
+                    {saveBusy ? 'Checking…' : 'Confirm'}
                   </button>
                 </div>
+                <button
+                  type="button"
+                  disabled={saveBusy}
+                  {...fieldActionHandlers(() => {
+                    void onSendEmailCode()
+                  })}
+                  className={PHONE_ACTION_CLASS}
+                >
+                  Send again
+                </button>
               </div>
             ) : null}
           </div>
@@ -820,7 +860,9 @@ export default function SettingsAccountInfoScreen({
               <button
                 type="button"
                 disabled={saveBusy || !toE164ForCountry(phoneDraft, phoneCountry)}
-                onClick={() => void onSendPhoneCode()}
+                {...fieldActionHandlers(() => {
+                  void onSendPhoneCode()
+                })}
                 className={`mt-2 ${PHONE_ACTION_CLASS}`}
               >
                 {saveBusy && !phoneCode ? 'Sending…' : phoneCodeFor ? 'Send again' : 'Send code'}
@@ -848,7 +890,9 @@ export default function SettingsAccountInfoScreen({
                 <button
                   type="button"
                   disabled={saveBusy}
-                  onClick={() => void confirmPhoneCode()}
+                  {...fieldActionHandlers(() => {
+                    void confirmPhoneCode()
+                  })}
                   className={PHONE_ACTION_CLASS}
                 >
                   {saveBusy ? 'Checking…' : 'Confirm code'}
@@ -865,14 +909,14 @@ export default function SettingsAccountInfoScreen({
                 <button
                   type="button"
                   disabled={saveBusy}
-                  onClick={() => {
+                  {...fieldActionHandlers(() => {
                     dismissEdgeKeyboard()
                     setSaveError('')
                     setSaveMessage('')
                     setPhoneReleaseDialog(
                       accountEmail && authUser?.email_confirmed_at ? 'confirm' : 'need-email',
                     )
-                  }}
+                  })}
                   className="inline-flex min-h-11 items-center text-[14px] font-semibold text-zinc-400 underline underline-offset-2 touch-manipulation hover:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
                 >
                   Remove number
@@ -899,7 +943,9 @@ export default function SettingsAccountInfoScreen({
                     <button
                       type="button"
                       disabled={saveBusy}
-                      onClick={() => void confirmPhoneRelease()}
+                      {...fieldActionHandlers(() => {
+                        void confirmPhoneRelease()
+                      })}
                       className={PHONE_ACTION_CLASS}
                     >
                       {saveBusy ? 'Removing…' : 'Confirm and remove'}
@@ -913,7 +959,7 @@ export default function SettingsAccountInfoScreen({
           <button
             type="button"
             disabled={!formDirty || saveBusy}
-            onClick={() => onSaveClick()}
+            {...fieldActionHandlers(() => onSaveClick())}
             className="min-h-11 w-full rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white touch-manipulation hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
           >
             {saveBusy ? 'Saving…' : 'Save changes'}

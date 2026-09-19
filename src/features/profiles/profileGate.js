@@ -8,7 +8,7 @@ import {
   readPendingLegalAcceptance,
 } from '../legal/legalAcceptance.js'
 import { LEGAL_POLICY_VERSION } from '../legal/legalPolicyVersion.js'
-import { toE164UsCa } from '../auth/phoneSignIn.js'
+import { toE164ForCountry } from '../auth/phoneSignIn.js'
 
 /** Strip invisible chars that often sneak in from mobile paste/autocorrect. */
 const ZERO_WIDTH_RE = /[\u200B-\u200D\uFEFF]/g
@@ -290,7 +290,7 @@ export async function saveProfilePhoneNumber({ supabaseClient, userId, phoneNumb
 
 /** Copy auth phone into Account info when that field is still empty. Does not overwrite a number already saved. */
 export async function stampProfilePhoneIfBlank(supabaseClient, user, profile) {
-  const authPhone = toE164UsCa(user?.phone || '')
+  const authPhone = toE164ForCountry(user?.phone || '')
   if (!authPhone || !profile) return profile
   if (String(profile.phone_number || '').trim()) return profile
   const userId = String(user?.id || profile.user_id || '').trim()

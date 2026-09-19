@@ -7,11 +7,10 @@ import {
   formatProfileSaveDebugError,
   handleSlugFromAtInput,
   normalizeHandle,
-  normalizePhoneNumber,
   saveProfilePhoneNumber,
   saveProfileWithHandleFallback,
 } from './profileGate.js'
-import { formatUsCaPhone, toE164UsCa } from '../auth/phoneSignIn.js'
+import { countryFromE164, formatPhoneDisplay, nationalFromE164, toE164ForCountry } from '../auth/phoneSignIn.js'
 import PhoneCountryField from '../auth/PhoneCountryField.jsx'
 import { dismissEdgeKeyboard } from '../../utils/edgeNative.js'
 
@@ -23,14 +22,15 @@ function handleCooldownUnlockAt(handleChangedAt) {
   return new Date(lastAt.getTime() + HANDLE_COOLDOWN_MS)
 }
 
-function phoneKey(raw) {
-  return toE164UsCa(raw) || normalizePhoneNumber(raw)
+function phoneKey(raw, country) {
+  return toE164ForCountry(raw, country) || ''
 }
 
-function shownPhone(raw) {
-  const e164 = toE164UsCa(raw)
-  if (e164) return formatUsCaPhone(e164)
-  return String(raw || '').trim()
+function nationalDraft(raw) {
+  const stored = toE164ForCountry(raw)
+  if (!stored) return String(raw || '').replace(/\D/g, '')
+  const country = countryFromE164(stored)
+  return nationalFromE164(stored, country) || stored
 }
 
 function phoneLinkError(error) {
@@ -108,7 +108,7 @@ export default function SettingsAccountInfoScreen({
       setHandleChangedAt(data.handle_changed_at || null)
       setHandleDraft(String(data.handle || '').trim())
       let phoneRaw = String(data.phone_number || '').trim()
-      const authE164 = toE164UsCa(authUser?.phone || '')
+      const authE164 = toE164ForCountry(authUser?.phone || '')
       if (!phoneRaw && authE164) {
         const stamped = await saveProfilePhoneNumber({
           supabaseClient,
@@ -121,8 +121,10 @@ export default function SettingsAccountInfoScreen({
           phoneRaw = authE164
         }
       }
-      setServerPhone(phoneKey(phoneRaw))
-      setPhoneDraft(shownPhone(phoneRaw))
+      const stored = toE164ForCountry(phoneRaw) || phoneRaw
+      setServerPhone(toE164ForCountry(stored) || '')
+      setPhoneCountry(countryFromE164(stored))
+      setPhoneDraft(nationalDraft(stored))
       setEmailDraft(String(initialEmail || authUser?.email || '').trim())
     } catch (e) {
       setLoadError(formatProfileSaveDebugError(e, 'Load account'))
@@ -150,7 +152,7 @@ export default function SettingsAccountInfoScreen({
 
   const handleDirty = normalizedHandleDraft !== serverHandle
   const emailDirty = trimmedEmailDraft !== String(initialEmail || authUser?.email || '').trim()
-  const phoneDirty = phoneKey(phoneDraft) !== phoneKey(serverPhone)
+  const phoneDirty = phoneKey(phoneDraft, phoneCountry) !== phoneKey(serverPhone, phoneCountry)
   const formDirty = handleDirty || emailDirty || phoneDirty
 
   const onHandleInputChange = useCallback((e) => {
@@ -167,7 +169,7 @@ export default function SettingsAccountInfoScreen({
     }
     setPhoneCode('')
     setPhoneCodeFor(nextE164)
-    setSaveMessage(`Code sent to ${formatUsCaPhone(nextE164)}. Enter it below.`)
+    setSaveMessage(`Code sent to ${formatPhoneDisplay(nextE164)}. Enter it below.`)
     return true
   }, [supabaseClient])
 
@@ -185,8 +187,8 @@ export default function SettingsAccountInfoScreen({
         return
       }
 
-      if (phoneDirty && phoneDraft.trim() && !toE164UsCa(phoneDraft)) {
-        setSaveError('Enter a valid US or Canada mobile number.')
+      if (phoneDirty && phoneDraft.trim() && !toE164ForCountry(phoneDraft, phoneCountry)) {
+        setSaveError('Enter a valid mobile number.')
         return
       }
 
@@ -239,13 +241,13 @@ export default function SettingsAccountInfoScreen({
 
         let phoneNotice = ''
         if (phoneDirty) {
-          const nextE164 = toE164UsCa(phoneDraft)
-          const authE164 = toE164UsCa(authUser?.phone || '')
-          const serverE164 = toE164UsCa(serverPhone)
+          const nextE164 = toE164ForCountry(phoneDraft, phoneCountry)
+          const authE164 = toE164ForCountry(authUser?.phone || '')
+          const serverE164 = toE164ForCountry(serverPhone)
 
           if (!nextE164) {
             if (authE164 || serverE164) {
-              setSaveError('This number signs you in. Enter a new US or Canada number to replace it.')
+              setSaveError('This number signs you in. Enter a new number to replace it.')
               return
             }
             if (serverPhone) {
@@ -270,13 +272,13 @@ export default function SettingsAccountInfoScreen({
             if (phoneErr) throw phoneErr
             profilePatch = { ...(profilePatch || {}), ...phoneRow }
             setServerPhone(nextE164)
-            setPhoneDraft(formatUsCaPhone(nextE164))
+            setPhoneDraft(nationalDraft(nextE164))
             setPhoneCodeFor('')
             setPhoneCode('')
           } else {
             const sent = await requestPhoneCode(nextE164)
             if (!sent) return
-            phoneNotice = `Code sent to ${formatUsCaPhone(nextE164)}. Enter it below. The number is not linked until you confirm.`
+            phoneNotice = `Code sent to ${formatPhoneDisplay(nextE164)}. Enter it below. The number is not linked until you confirm.`
           }
         }
 
@@ -309,6 +311,7 @@ export default function SettingsAccountInfoScreen({
       handleDirty,
       handleDraft,
       onUpdated,
+      phoneCountry,
       phoneDirty,
       phoneDraft,
       requestPhoneCode,
@@ -345,7 +348,7 @@ export default function SettingsAccountInfoScreen({
       })
       if (phoneErr) throw phoneErr
       setServerPhone(phoneCodeFor)
-      setPhoneDraft(formatUsCaPhone(phoneCodeFor))
+      setPhoneDraft(nationalDraft(phoneCodeFor))
       setPhoneCode('')
       setPhoneCodeFor('')
       setSaveMessage('Phone number linked. Continue with Phone now opens this account.')
@@ -359,9 +362,9 @@ export default function SettingsAccountInfoScreen({
 
   const onSendPhoneCode = useCallback(async () => {
     if (!supabaseClient || !authUser?.id || saveBusy) return
-    const nextE164 = toE164UsCa(phoneDraft)
+    const nextE164 = toE164ForCountry(phoneDraft, phoneCountry)
     if (!nextE164) {
-      setSaveError('Enter a valid US or Canada mobile number.')
+      setSaveError('Enter a valid mobile number.')
       setSaveMessage('')
       return
     }
@@ -373,7 +376,7 @@ export default function SettingsAccountInfoScreen({
     } finally {
       setSaveBusy(false)
     }
-  }, [authUser?.id, phoneDraft, requestPhoneCode, saveBusy, supabaseClient])
+  }, [authUser?.id, phoneCountry, phoneDraft, requestPhoneCode, saveBusy, supabaseClient])
 
   const onSaveClick = useCallback(() => {
     if (!formDirty || saveBusy) return
@@ -529,7 +532,7 @@ export default function SettingsAccountInfoScreen({
             />
             <button
               type="button"
-              disabled={saveBusy || !toE164UsCa(phoneDraft)}
+              disabled={saveBusy || !toE164ForCountry(phoneDraft, phoneCountry)}
               onClick={() => void onSendPhoneCode()}
               className="mt-3 min-h-11 w-full rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white touch-manipulation hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
             >
@@ -565,7 +568,7 @@ export default function SettingsAccountInfoScreen({
               </div>
             ) : null}
             <p className="mt-1.5 text-[12px] leading-snug text-zinc-500">
-              Enter a US or Canada number, then Send code. Confirm the text to use it for sign-in.
+              Enter a mobile number, then Send code. Confirm the text to use it for sign-in.
             </p>
           </div>
 

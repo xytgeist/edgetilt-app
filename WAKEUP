@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Windows Theo 2026-09-18 … International phone codes
+
+**I am Windows Theo.** Phone login can text outside the US and Canada. Those countries show the name **EdgeTilt**. US and Canada stay on **`+1 480 393 4143`**. France, Spain, Australia, India, Singapore, and Russia are not in the menu yet. Frontend **`1.4.310`**. Test hook redeployed. Prod Auth stays off.
+
 ### Mac Theo 2026-09-18 … login scrim blur
 
 **I am Mac Theo.** The see-through area around the phone login card now blurs the app behind it. The card stays solid. iPad column unchanged. Web **`1.4.309`**.

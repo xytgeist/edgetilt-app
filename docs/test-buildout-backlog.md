@@ -315,7 +315,7 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 
 **Decision (2026-09-14):** Telnyx guest campaign **`C6NW3Y9`** failed MNO review **Gambling (704)**. Swap/stake invites are **copy/share the claim link** from the creator's own Messages. Optional email stays. Leased-number SMS is dead for this path. OTP 2FA can still use **`+1 480 393 4143`** / campaign **`CKAVJP0`**. Do not assign **725**. Do not Create Campaign / appeal 704 unless Ryan asks.
 
-**Decision (2026-09-18):** **Continue with Phone** is Supabase phone OTP (`signInWithOtp`, then `verifyOtp` type `sms`). Edge **`auth-send-sms`** texts that code from **`+1 480 393 4143`**. A new phone account copies that number into Account info when the field is empty. Linking an existing account uses the same field while signed in (`updateUser`, then `verifyOtp` type `phone_change`). That is login, not the Lounge verified badge below. Do not send Telnyx Verify codes into `verifyOtp`.
+**Decision (2026-09-18):** **Continue with Phone** is Supabase phone OTP (`signInWithOtp`, then `verifyOtp` type `sms`). Edge **`auth-send-sms`** texts that code from **`+1 480 393 4143`** for the US and Canada, and from the sender name **`EdgeTilt`** for the other countries on the OTP profile. A new phone account copies that number into Account info when the field is empty. Linking an existing account uses the same field while signed in (`updateUser`, then `verifyOtp` type `phone_change`). That is login, not the Lounge verified badge below. Do not send Telnyx Verify codes into `verifyOtp`.
 
 **Shipped (placeholder, test @ `fe1402a0`):** Settings → Account → **Account info** — edit handle, email, phone; delete account text link. Migration **`20260727210000`** on test. **2026-09-18:** the phone field links sign-in (code while signed in) and a Continue with Phone signup fills it. Badge still not shipped. OTP opt-in proof page for future TFV/Verify docs: **`public/compliance/sms-otp-opt-in.html`**.
 
@@ -1145,6 +1145,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **International phone codes (Windows).** Continue with Phone and Account info can text outside the US and Canada. Those countries use the sender name **EdgeTilt**. The US and Canada stay on **`+1 480 393 4143`**. France, Spain, Australia, India, Singapore, and Russia are not in the menu until that name is registered. Frontend **`1.4.310`**. Test Edge **`auth-send-sms`** redeployed. Prod Auth stays off.
 - **2026-09-18:** **Login scrim blur (Mac).** The see-through area around the phone card now blurs the app behind it. The card stays solid. iPad column unchanged. Frontend **`1.4.309`**. Web only.
 - **2026-09-18:** **Login scrim is see-through (Mac).** The black around the phone card is 70% so the app shows through. The card stays solid. iPad column unchanged. Frontend **`1.4.308`**. Web only.
 - **2026-09-18:** **Degen with EDGE stays one line (Mac).** The phone wordmark was wrapping "Degen" over "with" because the size followed the screen, not the card. It now scales to the card. Frontend **`1.4.307`**. Web only.

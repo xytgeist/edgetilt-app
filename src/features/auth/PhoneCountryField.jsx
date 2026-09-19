@@ -1,3 +1,5 @@
+import { phoneCountryById, phoneCountryOptions } from './phoneCountries.js'
+
 function UsFlag() {
   return (
     <svg viewBox="0 0 16 12" className="h-3.5 w-5 shrink-0 overflow-hidden rounded-[2px]" aria-hidden>
@@ -29,7 +31,8 @@ function CanadaFlag() {
 }
 
 /**
- * US / Canada only. Both dial +1. The menu is the country, not a second number format.
+ * Country menu for phone login. US and Canada are +1. Other rows are countries
+ * the OTP profile can text as EdgeTilt.
  */
 export default function PhoneCountryField({
   id,
@@ -43,7 +46,8 @@ export default function PhoneCountryField({
   onKeyDown,
   required = false,
 }) {
-  const countryId = country === 'CA' ? 'CA' : 'US'
+  const selected = phoneCountryById(country)
+  const countryId = selected.id
   const shell =
     tone === 'account'
       ? 'mt-1.5 min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 text-[15px] focus-within:border-cyan-500/50'
@@ -52,8 +56,12 @@ export default function PhoneCountryField({
   return (
     <div data-phone-country={tone} className={`flex items-center ${shell}`}>
       <div className="relative flex shrink-0 items-center gap-1 pl-3 pr-1">
-        {countryId === 'CA' ? <CanadaFlag /> : <UsFlag />}
-        <span className="font-medium text-zinc-100">+1</span>
+        {countryId === 'CA' ? <CanadaFlag /> : countryId === 'US' ? <UsFlag /> : (
+          <span className="phone-country-mark inline-flex h-3.5 w-5 items-center justify-center rounded-[2px] text-[8px] font-semibold leading-none">
+            {countryId.slice(0, 2)}
+          </span>
+        )}
+        <span className="font-medium text-zinc-100">+{selected.dial}</span>
         <svg viewBox="0 0 12 12" className="h-3 w-3 text-zinc-400" aria-hidden>
           <path
             d="M2.5 4.5 6 8l3.5-3.5"
@@ -67,11 +75,14 @@ export default function PhoneCountryField({
         <select
           aria-label="Country code"
           value={countryId}
-          onChange={(e) => onCountryChange?.(e.target.value === 'CA' ? 'CA' : 'US')}
+          onChange={(e) => onCountryChange?.(e.target.value)}
           className="absolute inset-0 cursor-pointer opacity-0"
         >
-          <option value="US">United States (+1)</option>
-          <option value="CA">Canada (+1)</option>
+          {phoneCountryOptions().map((row) => (
+            <option key={row.id} value={row.id}>
+              {row.name} (+{row.dial})
+            </option>
+          ))}
         </select>
       </div>
       <input

@@ -4,7 +4,7 @@ import { inputBase, btnPrimary, linkBtn } from '../shell/shellClasses'
 import { AppleIcon, OAuthDivider, GoogleIcon } from './OAuthUi'
 import AuthPasswordField from './AuthPasswordField'
 import { useIpadAuthStage } from './AuthModalShell'
-import { formatUsCaPhone, toE164UsCa } from './phoneSignIn.js'
+import { formatPhoneDisplay, toE164ForCountry } from './phoneSignIn.js'
 import PhoneCountryField from './PhoneCountryField.jsx'
 
 function isOAuthProviderError(message) {
@@ -302,9 +302,9 @@ export default function AuthModalPanel({
   const submitPhoneNumber = async (e) => {
     e?.preventDefault?.()
     if (phoneBusy) return
-    const e164 = toE164UsCa(phoneInput)
+    const e164 = toE164ForCountry(phoneInput, phoneCountry)
     if (!e164) {
-      setPhoneError('Enter a valid US or Canada mobile number.')
+      setPhoneError('Enter a valid mobile number.')
       return
     }
     setPhoneBusy(true)
@@ -381,7 +381,7 @@ export default function AuthModalPanel({
               ) : (
                 <>
                   <p className="text-center text-sm leading-relaxed text-zinc-400">
-                    Code sent to {formatUsCaPhone(phoneE164)}
+                    Code sent to {formatPhoneDisplay(phoneE164)}
                   </p>
                   <input
                     type="text"

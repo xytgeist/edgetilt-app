@@ -901,6 +901,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 - [ ] **`lounge-bot-ingest`** (farm worker door) — deploy on **test** with **`LOUNGE_BOT_FARM_INGEST_SECRET`**; migration **`20260907190000`**; redeploy **`lounge-bot-admin`**. Source: `supabase/functions/lounge-bot-ingest/README.md`, `docs/lounge-bot-farm-ingest.md`.
 
 - [x] **`delete-own-account`** (Settings → Account info). **2026-09-15:** Real SQL under GoTrue's **`Database error deleting user`** on test `lvslotgod` was **`23514 poker_tournament_swaps_counterparty_present`** (claimed swap SET NULL). **`20260915170000`** flips that row to guest; Edge returns **`explain_auth_user_delete_block`** on failure. Grants **`20260915160000`** still on test. Do not apply on **prod** until Ryan asks.
+- [x] **`account-phone-release`** (Settings → Account info → Remove number). Texts the current phone, then clears the login phone only if email is confirmed. SQL **`20260919120000`** on test. Do not deploy on **prod** until Ryan asks. Source: `supabase/functions/account-phone-release/README.md`.
 - [x] **`apple-iap-verify`** (StoreKit begin + confirm) — deployed **test + prod** (2026-09-05). Was **404** on test … sandbox Pro purchase succeeded on Apple, then the IPA showed `Failed to send a request to the Edge Function`. SQL **`20260905120000`** on both. Source: `supabase/functions/apple-iap-verify/README.md`.
 - [x] **`apple-iap-notify`** (App Store Server Notifications V2) — deployed **test + prod** (2026-09-05). SQL **`20260905140000`**. Ryan pastes ASC Production URL. Source: `supabase/functions/apple-iap-notify/README.md`.
 - [x] **`stripe-ensure-edge-pro-price`** (ops, service role) — deployed **test** 2026-09-06. Created test-mode Edge Pro **$9.99/mo** `price_1UCj2NHSxykzMEuFEn1txoxa` and set **`STRIPE_PRICE_EDGE_PRO`**. Old id `price_1UALrKHy8VbdXOQulyD9ZOkd` was not in that Stripe account. Source: `supabase/functions/stripe-ensure-edge-pro-price/README.md`.
@@ -1145,6 +1146,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **Remove phone (Windows).** Account info can drop a login phone after a confirmed email and a text to that number. The Lounge check comes off and the number is free for another account. In-app email add/change uses a 6-digit code. Signup, reset, and guest claim emails stay links. SQL **`20260919120000`** and Edge **`account-phone-release`** on test. Frontend **`1.4.325`**. Prod Auth stays off.
 - **2026-09-18:** **iPad post rules (Mac).** The line between lounge posts only spans the padded content, not the full feed. Phone unchanged. Frontend **`1.4.324`**. Web only.
 - **2026-09-18:** **iPad feed content padding (Mac).** The lounge stays full width beside the menu. Posts and the Discover row are inset on both sides. Dividers still run edge to edge. Phone unchanged. Frontend **`1.4.323`**. Web only.
 - **2026-09-18:** **iPad feed gutters undone (Mac).** The centered lounge column is reverted. The feed is full width beside the menu again. Phone unchanged. Frontend **`1.4.322`**. Web only.

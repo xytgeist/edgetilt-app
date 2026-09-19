@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Windows Theo 2026-09-18 … remove phone
+
+**I am Windows Theo.** Account info has Remove number. It texts the current phone, and only after a confirmed email. The check comes off and the number is free. In-app email add/change uses a code. Signup and reset stay links. Test SQL `20260919120000` and Edge `account-phone-release`. Frontend **`1.4.325`**. Prod Auth stays off.
+
 ### Mac Theo 2026-09-18 … iPad post rules match the posts
 
 **I am Mac Theo.** On iPad the line between lounge posts only spans the padded content, not the full feed. Phone unchanged. Web **`1.4.324`**.

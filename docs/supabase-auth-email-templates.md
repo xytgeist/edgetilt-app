@@ -321,9 +321,10 @@ Confirm your new EdgeTilt email
           <tr>
             <td style="padding:32px 32px 8px;color:#18181b;">
               <h1 style="margin:0 0 12px;font-size:22px;line-height:1.3;font-weight:700;">Confirm your new email</h1>
-              <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#52525b;">
-                Tap the button below to confirm this email address for your EdgeTilt account.
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#52525b;">
+                Enter this code in Account info, or tap the button. If you did not request this, ignore the email.
               </p>
+              <p style="margin:0 0 24px;font-size:28px;line-height:1.2;font-weight:700;letter-spacing:0.2em;color:#18181b;">{{ .Token }}</p>
               <table role="presentation" cellspacing="0" cellpadding="0" style="margin:0 0 24px;">
                 <tr>
                   <td style="border-radius:12px;background:linear-gradient(90deg,#0891b2,#06b6d4);">

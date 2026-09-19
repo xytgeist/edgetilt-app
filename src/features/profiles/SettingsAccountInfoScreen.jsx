@@ -87,6 +87,10 @@ export default function SettingsAccountInfoScreen({
   const [phoneCode, setPhoneCode] = useState('')
   const [phoneCodeFor, setPhoneCodeFor] = useState('')
   const [phoneVerifiedFor, setPhoneVerifiedFor] = useState('')
+  const [emailCode, setEmailCode] = useState('')
+  const [emailCodeFor, setEmailCodeFor] = useState('')
+  const [phoneReleaseCode, setPhoneReleaseCode] = useState('')
+  const [phoneReleaseFor, setPhoneReleaseFor] = useState('')
 
   const [saveBusy, setSaveBusy] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
@@ -199,6 +203,8 @@ export default function SettingsAccountInfoScreen({
     }
     setPhoneCode('')
     setPhoneCodeFor(nextE164)
+    setPhoneReleaseFor('')
+    setPhoneReleaseCode('')
     setSaveMessage(`Code sent to ${formatPhoneDisplay(nextE164)}. Enter it below.`)
     return true
   }, [supabaseClient])
@@ -315,10 +321,12 @@ export default function SettingsAccountInfoScreen({
         if (emailDirty) {
           const { error: emailErr } = await supabaseClient.auth.updateUser({ email: nextEmail })
           if (emailErr) throw emailErr
+          setEmailCode('')
+          setEmailCodeFor(nextEmail)
           setSaveMessage(
             phoneNotice
-              ? `Check your inbox to confirm your new email address. ${phoneNotice}`
-              : 'Check your inbox to confirm your new email address. Your login email updates after you confirm.',
+              ? `Code sent to ${nextEmail}. Enter it below. ${phoneNotice}`
+              : `Code sent to ${nextEmail}. Enter it below. The link in that email still works.`,
           )
         } else if (phoneNotice) {
           setSaveMessage(phoneNotice)
@@ -397,6 +405,130 @@ export default function SettingsAccountInfoScreen({
       setSaveBusy(false)
     }
   }, [authUser?.id, onAuthUserUpdated, onUpdated, phoneCode, phoneCodeFor, saveBusy, supabaseClient])
+
+  const confirmEmailCode = useCallback(async () => {
+    if (!supabaseClient || !authUser?.id || saveBusy || !emailCodeFor) return
+    const token = emailCode.replace(/\D/g, '')
+    if (token.length < 4) {
+      setSaveError('Enter the code from the email.')
+      return
+    }
+    setSaveBusy(true)
+    setSaveError('')
+    setSaveMessage('')
+    try {
+      const { error } = await supabaseClient.auth.verifyOtp({
+        email: emailCodeFor,
+        token,
+        type: 'email_change',
+      })
+      if (error) {
+        setSaveError(phoneLinkError(error))
+        return
+      }
+      const { data: userData } = await supabaseClient.auth.getUser()
+      const nextUser = userData?.user
+      if (nextUser) onAuthUserUpdated?.(nextUser)
+      setEmailDraft(String(nextUser?.email || emailCodeFor).trim())
+      setEmailCode('')
+      setEmailCodeFor('')
+      dismissEdgeKeyboard()
+      setSaveMessage('Email confirmed.')
+    } catch (e) {
+      setSaveError(formatProfileSaveDebugError(e, 'Email'))
+    } finally {
+      setSaveBusy(false)
+    }
+  }, [authUser?.id, emailCode, emailCodeFor, onAuthUserUpdated, saveBusy, supabaseClient])
+
+  const startPhoneRelease = useCallback(async () => {
+    if (!supabaseClient || !authUser?.id || saveBusy) return
+    const loginPhone = toE164ForCountry(authUser?.phone || '')
+    if (!loginPhone) {
+      setSaveError('This account has no phone number to remove.')
+      setSaveMessage('')
+      return
+    }
+    if (!authUser?.email_confirmed_at) {
+      setSaveError('Add an email and confirm the code before you can remove this number.')
+      setSaveMessage('')
+      return
+    }
+    setSaveBusy(true)
+    setSaveError('')
+    setSaveMessage('')
+    try {
+      const { error } = await supabaseClient.auth.signInWithOtp({
+        phone: loginPhone,
+        options: { channel: 'sms', shouldCreateUser: false },
+      })
+      if (error) {
+        setSaveError(phoneLinkError(error))
+        return
+      }
+      setPhoneCodeFor('')
+      setPhoneCode('')
+      setPhoneReleaseCode('')
+      setPhoneReleaseFor(loginPhone)
+      setSaveMessage(
+        `Code sent to ${formatPhoneDisplay(loginPhone)}. Enter it to remove this number. The check comes off, and Continue with Phone will no longer open this account.`,
+      )
+    } finally {
+      setSaveBusy(false)
+    }
+  }, [authUser?.email_confirmed_at, authUser?.id, authUser?.phone, saveBusy, supabaseClient])
+
+  const confirmPhoneRelease = useCallback(async () => {
+    if (!supabaseClient || !authUser?.id || saveBusy || !phoneReleaseFor) return
+    const token = phoneReleaseCode.replace(/\D/g, '')
+    if (token.length < 4) {
+      setSaveError('Enter the code from the text.')
+      return
+    }
+    setSaveBusy(true)
+    setSaveError('')
+    setSaveMessage('')
+    try {
+      const { data, error, response } = await supabaseClient.functions.invoke('account-phone-release', {
+        method: 'POST',
+        body: { token },
+      })
+      if (error) {
+        let detail = typeof error.message === 'string' ? error.message.trim() : ''
+        if (response) {
+          try {
+            const body = await response.clone().json()
+            if (body && typeof body === 'object' && body.error) detail = String(body.error).trim()
+          } catch {
+            /* keep the invoke message */
+          }
+        }
+        setSaveError(detail || 'Could not remove this number.')
+        return
+      }
+      if (data && typeof data === 'object' && data.error) {
+        setSaveError(String(data.error))
+        return
+      }
+      const { data: refreshed } = await supabaseClient.auth.refreshSession()
+      const refreshedUser = refreshed?.user || refreshed?.session?.user || authUser
+      const nextUser = { ...refreshedUser, phone: null, phone_confirmed_at: null }
+      onAuthUserUpdated?.(nextUser)
+      onUpdated?.({ phone_number: null })
+      setServerPhone('')
+      setPhoneDraft('')
+      setPhoneCode('')
+      setPhoneCodeFor('')
+      setPhoneReleaseCode('')
+      setPhoneReleaseFor('')
+      dismissEdgeKeyboard()
+      setSaveMessage('Phone number removed. Continue with Phone no longer opens this account.')
+    } catch (e) {
+      setSaveError(formatProfileSaveDebugError(e, 'Phone'))
+    } finally {
+      setSaveBusy(false)
+    }
+  }, [authUser, onAuthUserUpdated, onUpdated, phoneReleaseCode, phoneReleaseFor, saveBusy, supabaseClient])
 
   const onSendPhoneCode = useCallback(async () => {
     if (!supabaseClient || !authUser?.id || saveBusy) return
@@ -544,8 +676,57 @@ export default function SettingsAccountInfoScreen({
               className="mt-1.5 min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 px-3 text-[15px] text-zinc-100 outline-none focus:border-cyan-500/50"
             />
             <p className="mt-1.5 text-[12px] leading-snug text-zinc-500">
-              We&apos;ll send a confirmation link when you change your login email.
+              We&apos;ll email a 6-digit code when you add or change this address. Enter it here. The link in that email still works.
             </p>
+            {emailCodeFor ? (
+              <div className="mt-3 space-y-2">
+                <label htmlFor="settings-account-email-code" className="block text-[13px] font-semibold text-zinc-300">
+                  Email code
+                </label>
+                <input
+                  id="settings-account-email-code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="6-digit code"
+                  enterKeyHint="go"
+                  value={emailCode}
+                  onChange={(e) => {
+                    setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 10))
+                    setSaveError('')
+                  }}
+                  className="min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 px-3 text-[15px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-500/50"
+                />
+                <div className="flex flex-wrap gap-x-4">
+                  <button
+                    type="button"
+                    disabled={saveBusy}
+                    onClick={() => void confirmEmailCode()}
+                    className={PHONE_ACTION_CLASS}
+                  >
+                    {saveBusy ? 'Checking…' : 'Confirm email code'}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={saveBusy}
+                    onClick={() => {
+                      if (!supabaseClient || !emailCodeFor) return
+                      setSaveBusy(true)
+                      setSaveError('')
+                      setSaveMessage('')
+                      void supabaseClient.auth.updateUser({ email: emailCodeFor }).then(({ error }) => {
+                        setSaveBusy(false)
+                        if (error) setSaveError(phoneLinkError(error))
+                        else setSaveMessage(`Code sent to ${emailCodeFor}. Enter it below.`)
+                      })
+                    }}
+                    className={PHONE_ACTION_CLASS}
+                  >
+                    Send again
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           <div>
@@ -608,6 +789,50 @@ export default function SettingsAccountInfoScreen({
             <p className="mt-1.5 text-[12px] leading-snug text-zinc-500">
               Enter a mobile number, then Send code. Confirm the text to use it for sign-in.
             </p>
+            {toE164ForCountry(authUser?.phone || '') ? (
+              <div className="mt-3">
+                <button
+                  type="button"
+                  disabled={saveBusy}
+                  onClick={() => void startPhoneRelease()}
+                  className="inline-flex min-h-11 items-center text-[14px] font-semibold text-zinc-400 underline underline-offset-2 touch-manipulation hover:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
+                >
+                  {saveBusy && !phoneReleaseFor ? 'Sending…' : 'Remove number'}
+                </button>
+                <p className="mt-1.5 text-[12px] leading-snug text-zinc-500">
+                  Frees this number for another account. The check comes off, and Continue with Phone will no longer open this account. You need a confirmed email. We text this phone first.
+                </p>
+                {phoneReleaseFor ? (
+                  <div className="mt-3 space-y-2">
+                    <label htmlFor="settings-account-phone-release-code" className="block text-[13px] font-semibold text-zinc-300">
+                      Text code to remove
+                    </label>
+                    <input
+                      id="settings-account-phone-release-code"
+                      type="text"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      placeholder="6-digit code"
+                      enterKeyHint="go"
+                      value={phoneReleaseCode}
+                      onChange={(e) => {
+                        setPhoneReleaseCode(e.target.value.replace(/\D/g, '').slice(0, 10))
+                        setSaveError('')
+                      }}
+                      className="min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 px-3 text-[15px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-500/50"
+                    />
+                    <button
+                      type="button"
+                      disabled={saveBusy}
+                      onClick={() => void confirmPhoneRelease()}
+                      className={PHONE_ACTION_CLASS}
+                    >
+                      {saveBusy ? 'Removing…' : 'Confirm and remove'}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           <button

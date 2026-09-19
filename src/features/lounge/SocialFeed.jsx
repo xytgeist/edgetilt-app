@@ -16254,11 +16254,13 @@ export default function SocialFeed({
       onAuthUserUpdated={(user) => {
         if (!user?.id) return
         setComposerAuthUser(user)
-        if (user.phone_confirmed_at && String(user.phone || '').replace(/\D/g, '')) {
-          setComposerUserProfile((prev) =>
-            prev ? { ...prev, phone_verified_at: user.phone_confirmed_at } : prev,
-          )
-        }
+        const phoneStillConfirmed =
+          Boolean(user.phone_confirmed_at) && Boolean(String(user.phone || '').replace(/\D/g, ''))
+        setComposerUserProfile((prev) =>
+          prev
+            ? { ...prev, phone_verified_at: phoneStillConfirmed ? user.phone_confirmed_at : null }
+            : prev,
+        )
       }}
       settingsHasActiveSubscription={hasActiveSubscription}
       settingsHasSlotsEdgeStarter={hasSlotsEdgeStarter}

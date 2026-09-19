@@ -132,6 +132,10 @@ verify_jwt = false
 [functions.delete-own-account]
 verify_jwt = true
 
+# Account info: drop a login phone after an SMS code. User JWT required.
+[functions.account-phone-release]
+verify_jwt = true
+
 # Auth Send SMS hook. Signature is the webhook secret, not a user JWT.
 [functions.auth-send-sms]
 verify_jwt = false

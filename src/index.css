@@ -11677,8 +11677,13 @@ html.light [data-w2g-verify-lightbox] .text-white {
 }
 
 /* Edge Pro Badge light mode styling */
-html.light [data-edge-pro-badge] {
+html.light [data-edge-pro-badge],
+html.light [data-phone-verified-badge] {
   color: #2563eb !important;
+}
+/* Settings sheet stays dark in light mode, so the Account check stays the dark-theme cyan. */
+html.light [data-settings-account-section] [data-phone-verified-badge] {
+  color: #06cefc !important;
 }
 
 /* Edge Pro Composer Reply Gate Pill & Menu light mode styling */

@@ -101,7 +101,7 @@ export async function loungeSearchUnified(supabaseClient, query, opts = {}) {
   return loungeSearch(supabaseClient, query, opts)
 }
 
-const PROFILE_SEARCH_SELECT = 'user_id,handle,display_name,avatar_url,role,is_og'
+const PROFILE_SEARCH_SELECT = 'user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription,phone_verified_at'
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient

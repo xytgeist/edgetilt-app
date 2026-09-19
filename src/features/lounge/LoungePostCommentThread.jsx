@@ -340,6 +340,7 @@ export function LoungeCommentCard({
         <LoungeFeedAuthorMetaBadges
           role={profile?.role}
           isOg={profile?.is_og}
+          isPhoneVerified={Boolean(profile?.phone_verified_at)}
           displayName={displayName}
           displayNameClassName={LOUNGE_FEED_DISPLAY_NAME_DETAIL_CLASS}
         />
@@ -353,6 +354,7 @@ export function LoungeCommentCard({
       <LoungeFeedAuthorMetaBadges
         role={profile?.role}
         isOg={profile?.is_og}
+        isPhoneVerified={Boolean(profile?.phone_verified_at)}
         displayName={displayName}
         displayNameClassName={LOUNGE_FEED_DISPLAY_NAME_CLASS}
       />

@@ -198,6 +198,7 @@ export default function LoungeStreamVideoLightboxChrome({
                 <LoungeFeedAuthorMetaBadges
                   role={profile?.role}
                   isOg={profile?.is_og === true}
+                  isPhoneVerified={Boolean(profile?.phone_verified_at)}
                   displayName={displayName}
                   displayNameClassName={LOUNGE_LIGHTBOX_DISPLAY_NAME_CLASS}
                 />

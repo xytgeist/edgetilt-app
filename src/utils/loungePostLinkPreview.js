@@ -134,7 +134,7 @@ export async function fetchChatLoungePostEmbed(supabaseClient, postId) {
 
   const { data: prof } = await supabaseClient
     .from('profiles')
-    .select('user_id,display_name,handle,avatar_url,role,is_og')
+    .select('user_id,display_name,handle,avatar_url,role,is_og,has_active_subscription,phone_verified_at')
     .eq('user_id', post.user_id)
     .maybeSingle()
 
@@ -152,6 +152,8 @@ export async function fetchChatLoungePostEmbed(supabaseClient, postId) {
           avatar_url: prof.avatar_url,
           role: prof.role,
           is_og: prof.is_og === true,
+          has_active_subscription: prof.has_active_subscription === true,
+          phone_verified_at: prof.phone_verified_at || null,
         }
       : { user_id: post.user_id },
   }

@@ -30,25 +30,47 @@ const BADGE_SIZE = {
 }
 
 /**
+ * Same cyan check as Edge Pro. Phone verification uses tip "Verified".
+ * Edge Pro keeps "Verified Subscriber".
+ *
+ * @param {{ size?: 'feed' | 'detail' | 'modal' | 'embed', tip?: string, ariaLabel?: string, badgeAttr?: string }} props
+ */
+export function LoungeVerifiedCheckBadge({
+  size = 'feed',
+  tip = 'Verified',
+  ariaLabel = 'Verified',
+  badgeAttr = 'phone-verified-badge',
+}) {
+  const s = BADGE_SIZE[size] ?? BADGE_SIZE.feed
+  const tipClass = `inline-flex items-center ${s.yClass ?? 'translate-y-[2px]'}`
+
+  return (
+    <LoungeBadgeHoverTip tip={tip} tone="pro" className={tipClass}>
+      <span
+        {...{ [`data-${badgeAttr}`]: '' }}
+        className="inline-flex items-center text-[#06cefc] hover:brightness-110 transition-[filter]"
+        role="img"
+        aria-label={ariaLabel}
+      >
+        <VerifiedCheckmarkIcon className={`${s.cls} shrink-0`} />
+      </span>
+    </LoungeBadgeHoverTip>
+  )
+}
+
+/**
  * Standard X-style verified subscriber checkmark badge shown on author headers and profiles.
  *
  * @param {{ isEdgePro?: boolean | null, size?: 'feed' | 'detail' | 'modal' | 'embed' }} props
  */
 export default function LoungeEdgeProBadge({ isEdgePro, size = 'feed' }) {
   if (isEdgePro !== true) return null
-  const s = BADGE_SIZE[size] ?? BADGE_SIZE.feed
-  const tipClass = `inline-flex items-center ${s.yClass ?? 'translate-y-[2px]'}`
-
   return (
-    <LoungeBadgeHoverTip tip="Verified Subscriber" tone="pro" className={tipClass}>
-      <span
-        data-edge-pro-badge=""
-        className="inline-flex items-center text-[#06cefc] hover:brightness-110 transition-[filter]"
-        role="img"
-        aria-label="Verified Subscriber"
-      >
-        <VerifiedCheckmarkIcon className={`${s.cls} shrink-0`} />
-      </span>
-    </LoungeBadgeHoverTip>
+    <LoungeVerifiedCheckBadge
+      size={size}
+      tip="Verified Subscriber"
+      ariaLabel="Verified Subscriber"
+      badgeAttr="edge-pro-badge"
+    />
   )
 }

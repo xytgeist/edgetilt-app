@@ -487,6 +487,7 @@ function LoungePostArticle({
                 role={authorRole}
                 isOg={showOgBadge}
                 isEdgePro={showEdgeProBadge}
+                isPhoneVerified={Boolean(displayEntity?.author_profile?.phone_verified_at)}
                 displayName={displayNameFor(displayEntity)}
                 displayNameClassName={LOUNGE_FEED_DISPLAY_NAME_CLASS}
               />

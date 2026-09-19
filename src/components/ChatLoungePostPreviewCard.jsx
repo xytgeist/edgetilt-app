@@ -149,6 +149,7 @@ export default function ChatLoungePostPreviewCard({
             <LoungeFeedAuthorMetaBadges
               role={author.role}
               isOg={author.is_og === true}
+              isPhoneVerified={Boolean(author.phone_verified_at)}
               displayName={displayName}
               displayNameClassName={LOUNGE_QUOTE_EMBED_DISPLAY_NAME_CLASS}
               metaVariant="quoteEmbed"

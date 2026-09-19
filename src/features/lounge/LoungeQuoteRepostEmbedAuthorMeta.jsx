@@ -80,6 +80,7 @@ export default function LoungeQuoteRepostEmbedAuthorMeta({
           <LoungeFeedAuthorMetaBadges
             role={profile?.role}
             isOg={profile?.is_og === true}
+            isPhoneVerified={Boolean(profile?.phone_verified_at)}
             displayName={displayNameFor(post)}
             displayNameClassName={LOUNGE_QUOTE_EMBED_DISPLAY_NAME_CLASS}
             onDisplayNameClick={onDisplayNameClick}

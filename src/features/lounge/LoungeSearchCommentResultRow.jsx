@@ -145,6 +145,7 @@ export default function LoungeSearchCommentResultRow({
             <LoungeFeedAuthorMetaBadges
               role={authorRole}
               isOg={comment?.author_profile?.is_og === true}
+              isPhoneVerified={Boolean(comment?.author_profile?.phone_verified_at)}
               displayName={typeof displayNameFor === 'function' ? displayNameFor(comment) : 'Member'}
               displayNameClassName={LOUNGE_FEED_DISPLAY_NAME_CLASS}
             />

@@ -1,6 +1,6 @@
 import LoungeStaffRoleBadge from './LoungeStaffRoleBadge.jsx'
 import LoungeOgBadge from './LoungeOgBadge.jsx'
-import LoungeEdgeProBadge from './LoungeEdgeProBadge.jsx'
+import LoungeEdgeProBadge, { LoungeVerifiedCheckBadge } from './LoungeEdgeProBadge.jsx'
 import {
   loungeFeedAuthorHasStaffBadge,
   loungeFeedAuthorIdentityClusterClass,
@@ -18,6 +18,7 @@ export default function LoungeFeedAuthorMetaBadges({
   role,
   isOg = false,
   isEdgePro = false,
+  isPhoneVerified = false,
   displayName,
   displayNameClassName,
   onDisplayNameClick,
@@ -27,6 +28,7 @@ export default function LoungeFeedAuthorMetaBadges({
   const hasStaffBadge = loungeFeedAuthorHasStaffBadge(role)
   const showOgBadge = isOg === true
   const showEdgeProBadge = isEdgePro === true
+  const showPhoneVerified = isPhoneVerified === true && !showEdgeProBadge
   const quoteEmbed = metaVariant === 'quoteEmbed'
   const badgeSize = quoteEmbed ? 'embed' : 'feed'
   const badgeWrapClass = quoteEmbed ? LOUNGE_QUOTE_EMBED_META_BADGE_WRAP_CLASS : LOUNGE_FEED_META_BADGE_WRAP_CLASS
@@ -65,6 +67,10 @@ export default function LoungeFeedAuthorMetaBadges({
       {showEdgeProBadge ? (
         <span className={badgeWrapClass}>
           <LoungeEdgeProBadge isEdgePro size={badgeSize} />
+        </span>
+      ) : showPhoneVerified ? (
+        <span className={badgeWrapClass}>
+          <LoungeVerifiedCheckBadge size={badgeSize} />
         </span>
       ) : null}
     </span>

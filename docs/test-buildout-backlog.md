@@ -1145,6 +1145,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **Phone verified check (Windows).** Settings and Lounge display names use the Edge Pro check once the phone is confirmed. `profiles.phone_verified_at` is public and copied from Auth. It does not include the number. Frontend **`1.4.319`**. Test SQL only. Prod Auth stays off.
 - **2026-09-18:** **iPad rail +EV mark (Mac).** The left menu uses the E with the red check (black E in light mode), and the space between those icons is doubled. Phone unchanged. Frontend **`1.4.318`**. Web only.
 - **2026-09-18:** **Settings Verify (Windows).** The Account label shows Verify until the phone is confirmed, then a check. Verify opens Account info with the cursor in the phone field. Frontend **`1.4.317`**. Web only.
 - **2026-09-18:** **iPad rail matches the X column (Mac).** Wider left rail, large buttons from the top, EDGE mark on the rail and centered on the lounge, feed fills the rest. Phone unchanged. Frontend **`1.4.316`**. Web only.

@@ -10,7 +10,7 @@ import LoungeMarkdownToolbar from './LoungeMarkdownToolbar.jsx'
 import LoungeCashtagDropdown from './LoungeCashtagDropdown.jsx'
 import LoungeMentionDropdown from './LoungeMentionDropdown.jsx'
 import { renderLoungeMarkdown } from './loungeMarkdown.jsx'
-import LoungeEdgeProBadge from './LoungeEdgeProBadge.jsx'
+import LoungeEdgeProBadge, { LoungeVerifiedCheckBadge } from './LoungeEdgeProBadge.jsx'
 import LoungeStaffRoleBadge from './LoungeStaffRoleBadge.jsx'
 import { loungeFeedAuthorHasStaffBadge } from './loungeFeedAvatar.js'
 import {
@@ -81,6 +81,7 @@ export default function LoungeFullScreenComposerModal({
   onSubmit,
   postBusy = false,
   isEdgePro = false,
+  isPhoneVerified = false,
   isStaff = false,
   onUpgradeClick,
   composerUserProfile,
@@ -889,6 +890,7 @@ export default function LoungeFullScreenComposerModal({
                     <span className="truncate text-[16px] font-bold text-zinc-100">{displayName}</span>
                     {isStaffBadge ? <LoungeStaffRoleBadge role={role} size="feed" /> : null}
                     <LoungeEdgeProBadge isEdgePro={isEdgePro || isStaff} size="feed" />
+                    {isPhoneVerified && !(isEdgePro || isStaff) ? <LoungeVerifiedCheckBadge size="feed" /> : null}
                   </div>
                   {handle ? <div className="text-[13px] text-zinc-500">@{handle}</div> : null}
                 </div>

@@ -566,7 +566,7 @@ async function fetchHydratedFeedCommentsForPost(supabaseClient, postId) {
   if (authorIds.length) {
     const pr = await supabaseClient
       .from('profiles')
-      .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription,has_edge_pro')
+      .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription,has_edge_pro,phone_verified_at')
       .in('user_id', authorIds)
     if (!pr.error && pr.data) profileBy = Object.fromEntries(pr.data.map((p) => [p.user_id, p]))
   }
@@ -7833,7 +7833,7 @@ export default function SocialFeed({
         if (authorIds.length) {
           const pr = await supabaseClient
             .from('profiles')
-            .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription,has_edge_pro')
+            .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription,has_edge_pro,phone_verified_at')
             .in('user_id', authorIds)
           if (!pr.error && pr.data) profileBy = Object.fromEntries(pr.data.map((p) => [p.user_id, p]))
         }
@@ -10262,7 +10262,7 @@ export default function SocialFeed({
         const { data } = await supabaseClient
           .from('profiles')
           .select(
-            'user_id,handle,display_name,avatar_url,bio,about_me,banner_url,location,website_url,category_pills,created_at,role,handle_changed_at,is_og,has_active_subscription,has_edge_pro,is_bot',
+            'user_id,handle,display_name,avatar_url,bio,about_me,banner_url,location,website_url,category_pills,created_at,role,handle_changed_at,is_og,has_active_subscription,has_edge_pro,phone_verified_at,is_bot',
           )
           .eq('user_id', uid)
           .maybeSingle()
@@ -12442,7 +12442,7 @@ export default function SocialFeed({
         loungeDetailCommentSnapshotRef.current = null
         const pr = await supabaseClient
           .from('profiles')
-          .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription,has_edge_pro')
+          .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription,has_edge_pro,phone_verified_at')
           .eq('user_id', snap.userId)
           .maybeSingle()
         const row = { ...data, author_profile: pr.data || composerUserProfile || null }
@@ -13242,7 +13242,7 @@ export default function SocialFeed({
           })
           const pr = await supabaseClient
             .from('profiles')
-            .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription,has_edge_pro')
+            .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription,has_edge_pro,phone_verified_at')
             .eq('user_id', snap.userId)
             .maybeSingle()
           const row = { ...data, author_profile: pr.data || composerUserProfile || null }
@@ -16252,7 +16252,13 @@ export default function SocialFeed({
       settingsAuthUser={composerAuthUser}
       onAccountInfoUpdated={onProfileScreenUpdated}
       onAuthUserUpdated={(user) => {
-        if (user?.id) setComposerAuthUser(user)
+        if (!user?.id) return
+        setComposerAuthUser(user)
+        if (user.phone_confirmed_at && String(user.phone || '').replace(/\D/g, '')) {
+          setComposerUserProfile((prev) =>
+            prev ? { ...prev, phone_verified_at: user.phone_confirmed_at } : prev,
+          )
+        }
       }}
       settingsHasActiveSubscription={hasActiveSubscription}
       settingsHasSlotsEdgeStarter={hasSlotsEdgeStarter}
@@ -17549,6 +17555,7 @@ export default function SocialFeed({
                           role={loungePostDetail?.author_profile?.role}
                           isOg={loungePostDetail?.author_profile?.is_og === true}
                           isEdgePro={loungePostDetail?.author_profile?.has_active_subscription === true}
+                          isPhoneVerified={Boolean(loungePostDetail?.author_profile?.phone_verified_at)}
                           displayName={displayNameFor(loungePostDetail)}
                           displayNameClassName={LOUNGE_FEED_DISPLAY_NAME_DETAIL_CLASS}
                         />
@@ -20303,6 +20310,7 @@ export default function SocialFeed({
         }}
         postBusy={postBusy}
         isEdgePro={isViewerEdgePro}
+        isPhoneVerified={Boolean(composerUserProfile?.phone_verified_at)}
         isStaff={loungeStaffToolsEnabled}
         onUpgradeClick={() => onOpenBillingManage?.()}
         composerUserProfile={composerUserProfile}

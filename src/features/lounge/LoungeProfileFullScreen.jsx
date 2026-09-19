@@ -53,7 +53,7 @@ import {
   showLoungeFanOnlyPostUnlockedTint,
 } from '../../utils/loungeFanOnlyPost.js'
 import LoungeFanOnlyPostRowTint from './LoungeFanOnlyPostRowTint.jsx'
-import LoungeEdgeProBadge from './LoungeEdgeProBadge.jsx'
+import LoungeEdgeProBadge, { LoungeVerifiedCheckBadge } from './LoungeEdgeProBadge.jsx'
 import { loungeFeedPostRowPerfStyle } from '../../utils/loungeFeedPostRowPerfStyle.js'
 import { feedCommentRowHasMedia } from '../../utils/communityFeedComment.js'
 import LoungePostArticle from './LoungePostArticle'
@@ -140,9 +140,10 @@ const PROFILE_BANNER_CHROME_BTN_CLASS =
 const PROFILE_BANNER_CHROME_CANCEL_CLASS =
   'pointer-events-auto flex h-10 shrink-0 touch-manipulation items-center justify-center rounded-full bg-white/15 px-4 text-[14px] font-semibold shadow-none backdrop-blur-xl hover:bg-white/25 active:bg-white/30 outline-none ring-0 focus:outline-none focus-visible:outline-none focus:ring-0 focus-visible:ring-0 [-webkit-tap-highlight-color:transparent]'
 
-function ProfileHeaderBadges({ role, isOg, isEdgePro }) {
+function ProfileHeaderBadges({ role, isOg, isEdgePro, isPhoneVerified }) {
   const hasStaff = loungeFeedAuthorHasStaffBadge(role)
-  if (!hasStaff && isOg !== true && isEdgePro !== true) return null
+  const showPhoneVerified = isPhoneVerified === true && isEdgePro !== true
+  if (!hasStaff && isOg !== true && isEdgePro !== true && !showPhoneVerified) return null
   return (
     <span className="inline-flex shrink-0 items-baseline gap-x-1">
       {hasStaff ? <LoungeStaffRoleBadge role={role} size="modal" /> : null}
@@ -154,6 +155,10 @@ function ProfileHeaderBadges({ role, isOg, isEdgePro }) {
       {isEdgePro === true ? (
         <span className="shrink-0">
           <LoungeEdgeProBadge isEdgePro size="modal" />
+        </span>
+      ) : showPhoneVerified ? (
+        <span className="shrink-0">
+          <LoungeVerifiedCheckBadge size="modal" />
         </span>
       ) : null}
     </span>
@@ -189,7 +194,7 @@ async function hydrateFeedCommentsWithProfiles(supabaseClient, rows) {
   if (authorIds.length > 0) {
     const pr = await supabaseClient
       .from('profiles')
-      .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription,has_edge_pro')
+      .select('user_id,handle,display_name,avatar_url,role,is_og,has_active_subscription,has_edge_pro,phone_verified_at')
       .in('user_id', authorIds)
     if (!pr.error && pr.data) {
       profileBy = Object.fromEntries(pr.data.map((p) => [p.user_id, p]))
@@ -691,6 +696,7 @@ export function ProfileReplyRow({ item, postCardProps, onOpenProfileReply, profi
                   role={post?.author_profile?.role}
                   isOg={post?.author_profile?.is_og}
                   isEdgePro={post?.author_profile?.has_active_subscription}
+                  isPhoneVerified={Boolean(post?.author_profile?.phone_verified_at)}
                   displayName={typeof displayNameFor === 'function' ? displayNameFor(post) : 'Member'}
                   displayNameClassName={LOUNGE_FEED_DISPLAY_NAME_CLASS}
                 />
@@ -3903,7 +3909,7 @@ export default function LoungeProfileFullScreen({
                       <span className="text-[12px] font-semibold uppercase tracking-wide text-zinc-500">
                         Display name
                       </span>
-                      <ProfileHeaderBadges role={profile?.role} isOg={profile?.is_og} />
+                      <ProfileHeaderBadges role={profile?.role} isOg={profile?.is_og} isEdgePro={profile?.has_active_subscription} isPhoneVerified={Boolean(profile?.phone_verified_at)} />
                     </div>
                     <input
                       type="text"
@@ -3977,7 +3983,7 @@ export default function LoungeProfileFullScreen({
                 <>
                   <div ref={profileDisplayNameRef} className="flex flex-wrap items-baseline gap-x-1">
                     <span className="text-xl font-bold leading-none text-white sm:text-2xl">{displayName}</span>
-                    <ProfileHeaderBadges role={profile?.role} isOg={profile?.is_og} isEdgePro={profile?.has_active_subscription} />
+                    <ProfileHeaderBadges role={profile?.role} isOg={profile?.is_og} isEdgePro={profile?.has_active_subscription} isPhoneVerified={Boolean(profile?.phone_verified_at)} />
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-[15px] text-cyan-300">
                     <span>{handle}</span>

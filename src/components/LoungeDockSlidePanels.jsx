@@ -30,6 +30,7 @@ import SettingsFanMonetizationSection from '../features/creatorFanSubs/SettingsF
 import CreatorFanSupportedCreatorsPanel from '../features/creatorFanSubs/CreatorFanSupportedCreatorsPanel.jsx'
 import SettingsMembershipPanel from '../features/creatorFanSubs/SettingsMembershipPanel.jsx'
 import SettingsAccountInfoScreen from '../features/profiles/SettingsAccountInfoScreen.jsx'
+import { LoungeVerifiedCheckBadge } from '../features/lounge/LoungeEdgeProBadge.jsx'
 import { startEdgeCheckout } from '../features/billing/stripeBillingApi.js'
 import { PRODUCT_EDGE_PRO } from '../features/billing/edgeProducts.js'
 import { EDGE_PRO_MONTHLY_IAP_USD, EDGE_PRO_MONTHLY_USD, formatUsdMonthly } from '../features/billing/edgePricing.js'
@@ -146,20 +147,6 @@ function SettingsSectionChevron({ open }) {
 function accountPhoneIsVerified(user) {
   const digits = String(user?.phone || '').replace(/\D/g, '')
   return Boolean(digits) && Boolean(user?.phone_confirmed_at)
-}
-
-function AccountVerifiedMark() {
-  return (
-    <span
-      className="inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-cyan-600 text-white"
-      role="img"
-      aria-label="Verified"
-    >
-      <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="3" aria-hidden="true">
-        <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </span>
-  )
 }
 
 const ACCOUNT_VERIFY_CLASS =
@@ -1899,7 +1886,7 @@ export default function LoungeDockSlidePanels({
                         Account
                       </button>
                       {accountPhoneVerified ? (
-                        <AccountVerifiedMark />
+                        <LoungeVerifiedCheckBadge size="modal" />
                       ) : (
                         <button type="button" onClick={openAccountPhoneVerify} className={ACCOUNT_VERIFY_CLASS}>
                           Verify

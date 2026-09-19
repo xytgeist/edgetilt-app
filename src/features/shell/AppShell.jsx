@@ -839,7 +839,7 @@ export default function AppShell({
       let profileByUserId = {}
       if (userIds.length > 0) {
         const coreFields = 'user_id,handle,display_name,avatar_url,bio,role,is_og,has_active_subscription'
-        const withEdgePro = `${coreFields},has_edge_pro`
+        const withEdgePro = `${coreFields},has_edge_pro,phone_verified_at`
         let res = await supabaseClient
           .from('profiles')
           .select(`${withEdgePro},about_me,banner_url,location`)

@@ -1,13 +1,14 @@
 import { useEffect } from 'react'
+import EdgeLogoWithEasterEgg from '../../components/EdgeLogoWithEasterEgg.jsx'
 
 /** Same width as `--edge-ipad-rail` in `index.css`. */
-export const IPAD_NAV_RAIL_WIDTH = '4.75rem'
+export const IPAD_NAV_RAIL_WIDTH = '11rem'
 
 const NAV_ORDER = ['home', 'search', 'notifications', 'chat', 'following', 'settings']
 
 /**
- * iPad portrait and landscape. The phone FAB buttons, pinned on the left.
- * Compose sits at the bottom, like the X iPad rail.
+ * iPad portrait and landscape. Phone FAB buttons, large, starting under the EDGE mark.
+ * Compose sits at the bottom.
  */
 export default function LoungeIpadNavRail({ items = [] }) {
   useEffect(() => {
@@ -28,14 +29,21 @@ export default function LoungeIpadNavRail({ items = [] }) {
     <nav
       data-ipad-nav-rail
       aria-label="Lounge"
-      className="fixed inset-y-0 left-0 z-[60] flex w-[4.75rem] flex-col items-center border-r border-zinc-800 bg-zinc-950 pt-[max(0.75rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-[max(0.85rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
+      className="fixed inset-y-0 left-0 z-[60] flex w-[11rem] flex-col items-center border-r border-zinc-800 bg-zinc-950 px-3 pt-[max(0.85rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
     >
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-1">
+      <div className="flex w-full justify-center pb-6 pt-1">
+        <EdgeLogoWithEasterEgg behavior="static" className="h-8 w-auto" />
+      </div>
+      <div className="flex w-full flex-col items-center gap-1">
         {navItems.map((item) => (
           <RailButton key={item.id} item={item} />
         ))}
       </div>
-      {compose ? <ComposeButton item={compose} /> : null}
+      {compose ? (
+        <div className="mt-auto pt-4">
+          <ComposeButton item={compose} />
+        </div>
+      ) : null}
     </nav>
   )
 }
@@ -50,10 +58,10 @@ function RailButton({ item }) {
       data-ipad-nav-item
       data-active={item.active ? '1' : '0'}
       onClick={() => item.onSelect?.()}
-      className="relative grid h-12 w-12 place-items-center rounded-full text-zinc-400 touch-manipulation [-webkit-tap-highlight-color:transparent] disabled:opacity-40 data-[active=1]:text-white"
+      className="relative grid h-[4.5rem] w-[4.5rem] place-items-center text-zinc-300 touch-manipulation [-webkit-tap-highlight-color:transparent] disabled:opacity-40 data-[active=1]:text-white"
     >
       <span
-        className="block h-7 w-7"
+        className="block h-11 w-11"
         style={item.iconScale ? { transform: `scale(${item.iconScale})` } : undefined}
       >
         {item.icon}
@@ -61,7 +69,7 @@ function RailButton({ item }) {
       {item.badgeCount > 0 ? (
         <span
           data-ipad-nav-badge
-          className="absolute right-0.5 top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-[#fd262d] px-1 text-[10px] font-bold leading-none text-white ring-2 ring-zinc-950"
+          className="absolute right-1 top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#06cefc] px-1 text-[11px] font-bold leading-none text-zinc-950 ring-2 ring-zinc-950"
           aria-hidden
         >
           {item.badgeCount > 99 ? '99+' : item.badgeCount}
@@ -80,9 +88,9 @@ function ComposeButton({ item }) {
       data-ipad-nav-compose
       data-active={item.active ? '1' : '0'}
       onClick={() => item.onSelect?.()}
-      className="grid h-[3.25rem] w-[3.25rem] place-items-center rounded-full bg-[#06cefc] text-zinc-950 shadow-[0_8px_24px_rgba(6,206,252,0.28)] touch-manipulation [-webkit-tap-highlight-color:transparent] disabled:opacity-40"
+      className="grid h-20 w-20 place-items-center rounded-full bg-[#06cefc] text-zinc-950 shadow-[0_10px_28px_rgba(6,206,252,0.28)] touch-manipulation [-webkit-tap-highlight-color:transparent] disabled:opacity-40"
     >
-      <span className="block h-6 w-6">{item.icon}</span>
+      <span className="block h-9 w-9">{item.icon}</span>
     </button>
   )
 }

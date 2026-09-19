@@ -134,6 +134,7 @@ export default function PwaInstallTitleBarRow({
   logo,
   navSlot,
   centerSlot = null,
+  brandCenter = null,
   rowClassName = 'px-3 py-2',
 }) {
   const deferredPromptRef = useRef(null)
@@ -228,10 +229,11 @@ export default function PwaInstallTitleBarRow({
 
   const hasCenter = liveSessionActive || showInstallChip
   const centerContent = liveSessionActive ? centerSlot : showInstallChip ? installChip : null
+  const pinBrand = Boolean(brandCenter)
 
   // Center chip on the full title-bar / phone width (absolute), not in the
   // flex gap between logo and nav ... that looked off-center whenever the
-  // sides were unequal.
+  // sides were unequal. iPad passes brandCenter and keeps the chip on the right.
   const row = (
     <div
       className={`relative flex items-center justify-between gap-2 ${rowClassName}`}
@@ -241,12 +243,19 @@ export default function PwaInstallTitleBarRow({
       }
     >
       <div className="relative z-[1] min-w-0 shrink-0">{logo}</div>
-      {hasCenter ? (
+      {pinBrand ? (
+        <div className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center px-16">
+          <div className="pointer-events-auto min-w-0 max-w-full">{brandCenter}</div>
+        </div>
+      ) : null}
+      {!pinBrand && hasCenter ? (
         <div className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center px-14">
           <div className="pointer-events-auto min-w-0 max-w-full">{centerContent}</div>
         </div>
       ) : null}
       <div className="relative z-[1] flex min-w-0 shrink-0 items-center justify-end gap-1.5">
+        {pinBrand && liveSessionActive ? centerSlot : null}
+        {pinBrand && showInstallChip ? installChip : null}
         {navSlot}
       </div>
     </div>

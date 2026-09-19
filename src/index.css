@@ -3567,18 +3567,41 @@ html.light [data-auth-ipad-stage] [data-auth-ipad-footer] {
 }
 /* iPad shell. Same stage as auth (coarse, wide, tall). Phone FAB becomes this rail. */
 html[data-ipad-nav] {
-  --edge-ipad-rail: 4.75rem;
+  --edge-ipad-rail: 11rem;
 }
 html[data-ipad-nav] [data-app-shell-root] {
   padding-left: var(--edge-ipad-rail);
 }
-html[data-ipad-nav] [data-lounge-feed-root] .fixed.left-1\/2 {
+html[data-ipad-nav] [data-lounge-feed-root] {
+  max-width: none;
+  width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}
+html[data-ipad-nav] [data-edge-status-bar-plate] {
+  left: var(--edge-ipad-rail) !important;
+  right: 0 !important;
+  width: auto !important;
+  max-width: none !important;
+  transform: none !important;
+}
+html[data-ipad-nav] [data-lounge-feed-root] .fixed.left-1\/2:not([data-lounge-title-bar]):not([data-edge-status-bar-plate]) {
   left: calc(var(--edge-ipad-rail) + (100vw - var(--edge-ipad-rail)) / 2) !important;
+}
+html[data-ipad-nav] [data-lounge-dock-panels] {
+  left: var(--edge-ipad-rail) !important;
+  right: 0 !important;
+}
+html[data-ipad-nav] [data-lounge-dock-panels] > [role='dialog'] {
+  max-width: none;
 }
 html.light [data-ipad-nav-rail] {
   background-color: #fff;
   border-right-color: #e4e4e7;
   color: #52525b;
+}
+html.light [data-ipad-nav-rail] [data-ipad-nav-item] {
+  color: #3f3f46;
 }
 html.light [data-ipad-nav-rail] [data-ipad-nav-item][data-active='1'] {
   color: #18181b;

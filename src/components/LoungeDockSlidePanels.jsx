@@ -1111,6 +1111,7 @@ export default function LoungeDockSlidePanels({
     <>
     <div
       className="pointer-events-none fixed inset-x-0 top-0 flex h-dvh max-h-dvh justify-center"
+      data-lounge-dock-panels=""
       style={{ zIndex: stackAboveDetailOrProfile ? Z_LOUNGE_DOCK_SLIDE_OVER_DETAIL_PROFILE : 99 }}
     >
       <div

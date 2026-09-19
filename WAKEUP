@@ -88,6 +88,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Windows Theo.** UFC Metrics tab now has a last-refresh dump like Sleeper PVALs. Table `ufc_metrics_sync_runs` on test + prod. First dump lands on the next Tuesday GHA (or a manual sync). **`1.4.289`** on **`test`**.
 
+### Mac Theo 2026-09-18 … Apple circle on the iPad login
+
+**I am Mac Theo.** The iPad login column always shows Apple, not only inside the store app. Phone and desktop still hide it. Tapping Apple on the website still does not start Apple's web login. Web **`1.4.292`**.
+
 ### Mac Theo 2026-09-18 … iPad login is the X column
 
 **I am Mac Theo.** iPad sign-in is logo, a random slogan (**Find your Edge** / **Degen with Edge**), then Google / Apple / email circles. Email opens the create form. Bottom bar is **Sign in**. Phone sheet still has the tabs. Do not merge email login and create: Supabase uses the same error for a bad password and a missing account. Web **`1.4.291`**.

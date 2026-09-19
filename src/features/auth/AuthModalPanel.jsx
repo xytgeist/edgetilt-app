@@ -131,7 +131,7 @@ export default function AuthModalPanel({
     signupMessageRef.current?.scrollIntoView({ block: 'start', behavior: 'smooth' })
   }, [signupMessage])
 
-  const showAppleSignIn = isEdgeiOSShell()
+  const showAppleSignIn = ipadStage || isEdgeiOSShell()
   const legalLinks = (
     <>
       <a

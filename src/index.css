@@ -2585,10 +2585,6 @@ html.light .text-cyan-300,
 html.light .text-cyan-300\/95 { color: #2563eb !important; }
 html.light .text-cyan-400,
 html.light .text-cyan-400\/90 { color: #2563eb !important; }
-/* Feed thread badge: regular blue in light (opacity cyan variant was skipping the remap). */
-html.light [data-lounge-thread-parts-label] {
-  color: #2563eb !important;
-}
 html.light .text-cyan-500 { color: #1d4ed8 !important; }
 html.light .text-cyan-600 { color: #1d4ed8 !important; }
 html.light .text-\[\#06cefc\] { color: #3b82f6 !important; }

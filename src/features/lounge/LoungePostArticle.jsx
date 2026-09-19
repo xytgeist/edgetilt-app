@@ -731,11 +731,13 @@ function LoungePostArticle({
               ? renderFanSubscribeCta(post)
               : null}
             {loungePostIsThreadRoot(post) && !isLoungeFanOnlyPostLocked(post, fanLockCtx) ? (
-              <div
-                data-lounge-thread-parts-label=""
-                className={`${showPostCaption(post) ? 'mt-1' : LOUNGE_FEED_CAPTION_TOP_CLASS} text-left text-[13px] font-semibold text-cyan-400/90`}
-              >
-                Thread · {loungePostThreadPartCount(post)} parts
+              <div className={`${showPostCaption(post) ? 'mt-2' : LOUNGE_FEED_CAPTION_TOP_CLASS} text-left`}>
+                <span
+                  data-lounge-thread-parts-label=""
+                  className="inline-flex max-w-full items-center rounded-full border border-zinc-700 bg-zinc-800 px-2.5 py-1 text-[13px] font-medium leading-none text-zinc-300"
+                >
+                  Thread · {loungePostThreadPartCount(post)} parts
+                </span>
               </div>
             ) : null}
             {!isLoungeFanOnlyPostLocked(post, fanLockCtx) ? (

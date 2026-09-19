@@ -1147,6 +1147,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-19:** **Thread chip (Mac).** Feed "Thread · N parts" is a zinc pill instead of caption-blue text. Light mode uses the remapped zinc chip, not link blue. Frontend **`1.4.341`**. Web only.
 - **2026-09-19:** **iPad interaction buttons (Mac).** Comment, repost, like, and bookmark on iPad posts are about 50% larger, matching the rest of the feed. Phone sizes unchanged. Reply rows and lightbox pills unchanged. Frontend **`1.4.340`**. Web only.
 - **2026-09-18:** **Shortcut lists split (Mac).** iPad pins and phone pins are separate local lists. An iPad pin does not show on a phone. Frontend **`1.4.339`**. Web only.
 - **2026-09-18:** **iPad shortcut cap (Mac).** iPad pin limit is 6. Phone still shows the two pinned first. Frontend **`1.4.338`**. Web only.

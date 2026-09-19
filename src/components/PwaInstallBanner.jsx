@@ -135,6 +135,8 @@ export default function PwaInstallTitleBarRow({
   navSlot,
   centerSlot = null,
   brandCenter = null,
+  /** `slots-tools` centers the wordmark in the landscape Slots tools column, not the full bar. */
+  brandColumn = 'bar',
   rowClassName = 'px-3 py-2',
 }) {
   const deferredPromptRef = useRef(null)
@@ -244,7 +246,14 @@ export default function PwaInstallTitleBarRow({
     >
       <div className="relative z-[1] min-w-0 shrink-0">{logo}</div>
       {pinBrand ? (
-        <div className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center px-16">
+        <div
+          className={
+            brandColumn === 'slots-tools'
+              ? 'pointer-events-none absolute inset-y-0 z-0 flex items-center justify-center'
+              : 'pointer-events-none absolute inset-0 z-0 flex items-center justify-center px-16'
+          }
+          {...(brandColumn === 'slots-tools' ? { 'data-slots-landscape-brand': '' } : {})}
+        >
           {/* flex, not a line box, so the wordmark top matches the rail E */}
           <div className="pointer-events-auto flex min-w-0 max-w-full">{brandCenter}</div>
         </div>

@@ -371,8 +371,38 @@ export default function AppShell({
   const [tab, setTabRaw] = useState('home')
   /** iPad landscape Slots Pro Lounge stays in the right pane instead of taking Chat full screen. */
   const [slotsLandscapeLounge, setSlotsLandscapeLounge] = useState(false)
-  const [slotsPaneEl, setSlotsPaneEl] = useState(null)
   const [slotsPaneRect, setSlotsPaneRect] = useState(null)
+  const slotsPaneObserverRef = useRef(null)
+  const onSlotsPaneElement = useCallback((node) => {
+    slotsPaneObserverRef.current?.disconnect()
+    slotsPaneObserverRef.current = null
+    // Detach passes null during unmount. setState there loops (max update depth).
+    if (!node) return
+    const sync = () => {
+      if (!node.isConnected) return
+      const r = node.getBoundingClientRect()
+      const next = {
+        top: Math.round(r.top),
+        left: Math.round(r.left),
+        width: Math.round(r.width),
+        height: Math.round(r.height),
+      }
+      setSlotsPaneRect((prev) =>
+        prev &&
+        prev.top === next.top &&
+        prev.left === next.left &&
+        prev.width === next.width &&
+        prev.height === next.height
+          ? prev
+          : next,
+      )
+    }
+    sync()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(sync)
+    ro.observe(node)
+    slotsPaneObserverRef.current = ro
+  }, [])
   const setTab = useCallback((value) => {
     setSlotsLandscapeLounge(false)
     setTabRaw(value)
@@ -434,43 +464,6 @@ export default function AppShell({
   const navSelectAtRef = useRef(0)
   const ipadShell = useIpadAuthStage()
   const ipadSlotsLandscape = useIpadSlotsLandscape()
-  useLayoutEffect(() => {
-    const el = slotsPaneEl
-    if (!el) {
-      setSlotsPaneRect(null)
-      return undefined
-    }
-    const sync = () => {
-      const r = el.getBoundingClientRect()
-      const next = {
-        top: Math.round(r.top),
-        left: Math.round(r.left),
-        width: Math.round(r.width),
-        height: Math.round(r.height),
-      }
-      setSlotsPaneRect((prev) =>
-        prev &&
-        prev.top === next.top &&
-        prev.left === next.left &&
-        prev.width === next.width &&
-        prev.height === next.height
-          ? prev
-          : next,
-      )
-    }
-    sync()
-    if (typeof ResizeObserver === 'undefined') {
-      window.addEventListener('resize', sync)
-      return () => window.removeEventListener('resize', sync)
-    }
-    const ro = new ResizeObserver(sync)
-    ro.observe(el)
-    window.addEventListener('resize', sync)
-    return () => {
-      ro.disconnect()
-      window.removeEventListener('resize', sync)
-    }
-  }, [slotsPaneEl])
   const [tabErrorTestTrigger, setTabErrorTestTrigger] = useState(0)
   const [tabErrorTestOpen, setTabErrorTestOpen] = useState(false)
   const [isActiveAffiliate, setIsActiveAffiliate] = useState(false)
@@ -2911,8 +2904,8 @@ export default function AppShell({
       (tab === 'slots' ||
         SLOTS_PANE_TAB_IDS.has(tab) ||
         (tab === 'chat' && slotsLandscapeLounge))
-    const chatInPane = Boolean(slotsSplitActive && tab === 'chat' && slotsPaneEl)
-    const bankrollInPane = Boolean(slotsSplitActive && slotsPaneEl)
+    const chatInPane = Boolean(slotsSplitActive && tab === 'chat')
+    const bankrollInPane = Boolean(slotsSplitActive)
     const paneCoverStyle = slotsPaneRect
       ? {
           position: 'fixed',
@@ -3248,7 +3241,7 @@ export default function AppShell({
           starterUnlockedCalculatorKeys={starterUnlockedCalculatorKeys}
           landscapeSplit={slotsSplitActive}
           selectedToolId={slotsPaneToolId}
-          onPaneElement={setSlotsPaneEl}
+          onPaneElement={onSlotsPaneElement}
           toolPane={slotsToolPane}
         />
       )

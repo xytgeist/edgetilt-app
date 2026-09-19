@@ -8,7 +8,7 @@ import { linkBtn } from '../shell/shellClasses'
  */
 const IPAD_AUTH_QUERY = '(min-width: 768px) and (min-height: 700px) and (pointer: coarse)'
 
-function useIpadAuthStage() {
+export function useIpadAuthStage() {
   const [on, setOn] = useState(() =>
     typeof window !== 'undefined' ? window.matchMedia(IPAD_AUTH_QUERY).matches : false,
   )
@@ -22,6 +22,38 @@ function useIpadAuthStage() {
   }, [])
 
   return on
+}
+
+const IPAD_SLOGANS = ['Find your Edge', 'Degen with Edge']
+
+function AuthIpadHero() {
+  const [slogan] = useState(() => IPAD_SLOGANS[Math.floor(Math.random() * IPAD_SLOGANS.length)])
+
+  return (
+    <div className="flex flex-col items-center px-4 pt-4 text-center">
+      <span className="inline-flex" aria-hidden>
+        <img
+          src="/edge-lounge-logo-transparent.png"
+          alt=""
+          className="edge-logo--dark h-[4.25rem] w-auto"
+          draggable={false}
+        />
+        <img
+          src="/edge-lounge-logo-light.png"
+          alt=""
+          className="edge-logo--light h-[4.25rem] w-auto"
+          draggable={false}
+        />
+      </span>
+      <h1
+        id="auth-modal-title"
+        data-auth-ipad-slogan
+        className="mt-8 text-[2rem] font-bold leading-tight tracking-tight text-white"
+      >
+        {slogan}
+      </h1>
+    </div>
+  )
 }
 
 function AuthWordmark() {
@@ -98,8 +130,8 @@ export default function AuthModalShell({ onClose, cancelLabel, children }) {
                 'max(5.5rem, calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 3.25rem))',
             }}
           >
-            <AuthWordmark />
-            {children}
+            <AuthIpadHero />
+            <div className="flex min-h-0 flex-1 flex-col">{children}</div>
           </div>
         </div>
       </div>

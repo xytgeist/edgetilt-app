@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **iPad login matches the X column (Mac).** EDGE logo, slogan picks **Find your Edge** or **Degen with Edge**, then Google / Apple / email circles. Email opens create. Bottom bar is **Sign in**, not a second tab. Phone sheet unchanged. Email and password stay separate paths: a failed login is not "no account." Frontend **`1.4.291`**. Web only.
 - **2026-09-18:** **UFC card drops the sit line (Windows).** Public, fan-only, and VIP no longer print "Chedda / Tank sit." Title already says Scott + Rocco. Redeployed **`lounge-odds-poll`** test + prod.
 - **2026-09-18:** **Rocco no-data copy (Windows).** A pass with no last-5 says "Not enough data," never that a file is missing. Redeployed **`lounge-odds-poll`** test + prod.
 - **2026-09-18:** **Rocco pass copy (Windows).** UFC pass lines no longer end with "Rocco sits." The reason stays (thin tape, no last-5, styles too close). Redeployed **`lounge-odds-poll`** test + prod.

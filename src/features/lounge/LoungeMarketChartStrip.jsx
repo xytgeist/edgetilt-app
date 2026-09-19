@@ -7,6 +7,7 @@ import {
 } from '../../utils/loungeMarketCaptionParse.js'
 import { LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS } from './loungeFeedAvatar.js'
 import {
+  bindLoungeFeedCarouselMeasure,
   loungeFeedCarouselFullBleed,
   loungeFeedCarouselMeasureLayout,
 } from './loungeFeedImageAttachment.js'
@@ -52,18 +53,15 @@ export default function LoungeMarketChartStrip({ post, onOpenChart, className = 
 
   useLayoutEffect(() => {
     if (!multi) return undefined
-    const syncViewport = () => {
-      setCarouselViewport(
-        loungeFeedCarouselMeasureLayout(carouselScrollRef.current, carouselFullBleed),
+    return bindLoungeFeedCarouselMeasure(carouselScrollRef.current, carouselFullBleed, (next) => {
+      setCarouselViewport((prev) =>
+        prev.contentWidthPx === next.contentWidthPx &&
+        prev.firstSlideMaxWidthPx === next.firstSlideMaxWidthPx &&
+        prev.maxRowPx === next.maxRowPx
+          ? prev
+          : next,
       )
-    }
-    syncViewport()
-    const id = requestAnimationFrame(syncViewport)
-    window.addEventListener('resize', syncViewport, { passive: true })
-    return () => {
-      cancelAnimationFrame(id)
-      window.removeEventListener('resize', syncViewport)
-    }
+    })
   }, [multi, carouselFullBleed, embeds.length])
 
   if (!embeds.length) return null

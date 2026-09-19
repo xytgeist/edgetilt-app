@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-19 … minichart rotate
+
+**I am Mac Theo.** Paired minicharts (and multi-image carousels) ignore a width measured while the Lounge is hidden, then remeasure when Home is shown. A rotate on another screen no longer leaves them at 96px. Web **`1.4.346`**.
+
 ### Windows Theo 2026-09-19 … Fade the Public sport
 
 **I am Windows Theo.** Fade the Public headers name the league (`🚫 Fade the Public - MLS`). The Sports pill stays. That pill is the Lounge category, not the league.

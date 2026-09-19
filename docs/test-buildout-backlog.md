@@ -1147,6 +1147,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-19:** **Minichart rotate (Mac).** A rotate while the Lounge is hidden no longer locks paired minicharts (or multi-image carousels) at 96px. They remeasure when Home is shown. Frontend **`1.4.346`**. Web only.
 - **2026-09-19:** **Fade the Public sport (Windows).** Header is `🚫 Fade the Public - {league}` via `sportDisplayLabel` (MLS, La Liga, NFL). The Sports pill stays. It is the Lounge category, not the league.
 - **2026-09-19:** **UFC section marks (Windows).** UFC headers match the slate marks: 🎯 Consensus, ⚔️ House Divided (was Split), 📐 Lean, ⏭️ Pass. Today's prod posts were retitled in place. Prices were not regenerated.
 - **2026-09-19:** **iPad landscape rail gaps (Mac).** Menu icons on the iPad landscape rail use a shorter hit box and a 4px gap so shortcuts under Settings are on screen. Portrait spacing unchanged. Frontend **`1.4.345`**. Web only.

@@ -106,6 +106,46 @@ export function loungeFeedCarouselMeasureLayout(scroller, fullBleed) {
 }
 
 /**
+ * Off Home the Lounge is `display: none`, so a resize reports clientWidth 0.
+ * The 96px floor would then stick until another resize. Skip that sample.
+ * @param {HTMLElement | null | undefined} scroller
+ * @param {boolean} fullBleed
+ * @returns {ReturnType<typeof loungeFeedCarouselMeasureLayout> | null}
+ */
+export function loungeFeedCarouselMeasureIfLaidOut(scroller, fullBleed) {
+  if (fullBleed && scroller && scroller.clientWidth < 8) return null
+  return loungeFeedCarouselMeasureLayout(scroller, fullBleed)
+}
+
+/**
+ * Resize plus ResizeObserver. The observer is what runs when Home is shown again
+ * after a rotate on another screen (no window resize on the way back).
+ * @param {HTMLElement | null | undefined} scroller
+ * @param {boolean} fullBleed
+ * @param {(layout: ReturnType<typeof loungeFeedCarouselMeasureLayout>) => void} onMeasure
+ */
+export function bindLoungeFeedCarouselMeasure(scroller, fullBleed, onMeasure) {
+  const sync = () => {
+    const next = loungeFeedCarouselMeasureIfLaidOut(scroller, fullBleed)
+    if (!next) return
+    onMeasure(next)
+  }
+  sync()
+  const id = requestAnimationFrame(sync)
+  window.addEventListener('resize', sync, { passive: true })
+  let ro
+  if (typeof ResizeObserver !== 'undefined' && scroller) {
+    ro = new ResizeObserver(sync)
+    ro.observe(scroller)
+  }
+  return () => {
+    cancelAnimationFrame(id)
+    window.removeEventListener('resize', sync)
+    ro?.disconnect()
+  }
+}
+
+/**
  * Cap slide width at row height (same aspect box as height).
  * @param {number | undefined} widthPx
  * @param {number | undefined} maxWidthPx

@@ -10,7 +10,9 @@ import {
   loungeFeedAttachmentSlideClassName,
   loungeFeedAttachmentTapTargetClassName,
   loungeFeedCarouselCapSlideWidthPx,
+  bindLoungeFeedCarouselMeasure,
   loungeFeedCarouselFullBleed,
+  loungeFeedCarouselMeasureIfLaidOut,
   loungeFeedCarouselMeasureLayout,
   loungeFeedCarouselSlideWidthPx,
   loungeFeedCarouselRowHeightFromFirstSlide,
@@ -278,9 +280,8 @@ export function LoungeImageCarousel({
 
   useLayoutEffect(() => {
     if (!carouselLayout.multiCarousel) return undefined
-    const syncViewport = () => {
+    const apply = (next) => {
       if (getLoungeStreamLightboxOpen()) return
-      const next = loungeFeedCarouselMeasureLayout(carouselScrollRef.current, carouselFullBleed)
       setCarouselViewport((prev) =>
         prev.maxRowPx === next.maxRowPx &&
         prev.contentWidthPx === next.contentWidthPx &&
@@ -289,15 +290,18 @@ export function LoungeImageCarousel({
           : next,
       )
     }
-    syncViewport()
-    const id = requestAnimationFrame(syncViewport)
-    window.addEventListener('resize', syncViewport, { passive: true })
+    const cleanup = bindLoungeFeedCarouselMeasure(
+      carouselScrollRef.current,
+      carouselFullBleed,
+      apply,
+    )
     const unsubLightbox = subscribeLoungeStreamLightboxOpen((open) => {
-      if (!open) syncViewport()
+      if (open) return
+      const next = loungeFeedCarouselMeasureIfLaidOut(carouselScrollRef.current, carouselFullBleed)
+      if (next) apply(next)
     })
     return () => {
-      cancelAnimationFrame(id)
-      window.removeEventListener('resize', syncViewport)
+      cleanup()
       unsubLightbox()
     }
   }, [carouselLayout.multiCarousel, carouselFullBleed, urlsKey])

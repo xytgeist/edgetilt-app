@@ -3586,6 +3586,22 @@ html[data-ipad-nav] [data-lounge-feed-scroll] [data-lounge-feed-toolbar] {
   padding-left: var(--edge-ipad-feed-pad);
   padding-right: var(--edge-ipad-feed-pad);
 }
+/* Post rules stay with the text, not the full feed width. */
+html[data-ipad-nav] [data-lounge-feed-scroll] article {
+  position: relative;
+  border-top-color: transparent;
+}
+html[data-ipad-nav] [data-lounge-feed-scroll] article::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: var(--edge-ipad-feed-pad);
+  right: var(--edge-ipad-feed-pad);
+  height: 1px;
+  background: color-mix(in srgb, var(--color-zinc-800) 70%, transparent);
+  pointer-events: none;
+}
 html[data-ipad-nav] [data-lounge-feed-composer] > .absolute.right-3 {
   right: var(--edge-ipad-feed-pad);
 }

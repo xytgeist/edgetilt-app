@@ -62,7 +62,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Windows Theo 2026-09-18 … Rocco pass copy
 
-**I am Windows Theo.** UFC pass lines no longer say "Rocco sits." Thin tape, missing file, and too-close still explain the pass. **`lounge-odds-poll`** redeployed test + prod.
+**I am Windows Theo.** UFC pass lines no longer say "Rocco sits." No last-5 says "Not enough data," not that a file is missing. **`lounge-odds-poll`** redeployed test + prod.
 
 ### Windows Theo 2026-09-18 … Sherdog result tape
 

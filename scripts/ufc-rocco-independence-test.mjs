@@ -49,8 +49,8 @@ const missing = decideRoccoUfc({
   scheduledRounds: 3,
   isApex: false,
 })
-if (missing.side !== 'PASS') {
-  console.error('FAIL: missing last-5 must PASS', missing)
+if (missing.side !== 'PASS' || /file|missing/i.test(missing.rationale)) {
+  console.error('FAIL: missing last-5 must PASS without saying a file is missing', missing)
   process.exit(1)
 }
 

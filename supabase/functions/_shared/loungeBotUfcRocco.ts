@@ -64,11 +64,11 @@ export function decideRoccoUfc(input: {
   const stanceB = input?.stanceB || last5B?.stance || 'Orthodox'
 
   if (!last5A || !last5B) {
-    const who = !last5A && !last5B ? 'both names' : !last5A ? fighterA : fighterB
+    const who = !last5A && !last5B ? '' : !last5A ? fighterA : fighterB
     return {
       side: 'PASS',
       margin: 0,
-      rationale: `No last-5 file for ${who}.`,
+      rationale: who ? `Not enough data on ${who}.` : 'Not enough data.',
       features: ['missing_last5'],
     }
   }

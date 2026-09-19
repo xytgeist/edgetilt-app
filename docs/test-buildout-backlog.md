@@ -1146,6 +1146,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **iPad feed type (Mac).** Lounge posts, avatars, icons, and the Discover row are about 50% larger on iPad. The left menu is unchanged. Phone unchanged. Frontend **`1.4.326`**. Web only.
 - **2026-09-18:** **Remove phone (Windows).** Account info can drop a login phone after a confirmed email and a text to that number. The Lounge check comes off and the number is free for another account. In-app email add/change uses a 6-digit code. Signup, reset, and guest claim emails stay links. SQL **`20260919120000`** and Edge **`account-phone-release`** on test. Frontend **`1.4.325`**. Prod Auth stays off.
 - **2026-09-18:** **iPad post rules (Mac).** The line between lounge posts only spans the padded content, not the full feed. Phone unchanged. Frontend **`1.4.324`**. Web only.
 - **2026-09-18:** **iPad feed content padding (Mac).** The lounge stays full width beside the menu. Posts and the Discover row are inset on both sides. Dividers still run edge to edge. Phone unchanged. Frontend **`1.4.323`**. Web only.

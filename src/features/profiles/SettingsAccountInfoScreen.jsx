@@ -91,6 +91,7 @@ export default function SettingsAccountInfoScreen({
   const [emailCodeFor, setEmailCodeFor] = useState('')
   const [phoneReleaseCode, setPhoneReleaseCode] = useState('')
   const [phoneReleaseFor, setPhoneReleaseFor] = useState('')
+  const [phoneReleaseDialog, setPhoneReleaseDialog] = useState(null)
 
   const [saveBusy, setSaveBusy] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
@@ -180,6 +181,9 @@ export default function SettingsAccountInfoScreen({
   const emailDirty = trimmedEmailDraft !== String(initialEmail || authUser?.email || '').trim()
   const phoneDirty = phoneKey(phoneDraft, phoneCountry) !== phoneKey(serverPhone, phoneCountry)
   const formDirty = handleDirty || emailDirty || phoneDirty
+  const loginPhoneVerified =
+    Boolean(toE164ForCountry(authUser?.phone || '')) && Boolean(authUser?.phone_confirmed_at)
+  const accountEmail = String(authUser?.email || '').trim()
 
   const onHandleInputChange = useCallback((e) => {
     setHandleDraft(handleSlugFromAtInput(e.target.value))
@@ -470,9 +474,8 @@ export default function SettingsAccountInfoScreen({
       setPhoneCode('')
       setPhoneReleaseCode('')
       setPhoneReleaseFor(loginPhone)
-      setSaveMessage(
-        `Code sent to ${formatPhoneDisplay(loginPhone)}. Enter it to remove this number. The check comes off, and Continue with Phone will no longer open this account.`,
-      )
+      setPhoneReleaseDialog(null)
+      setSaveMessage(`Code sent to ${formatPhoneDisplay(loginPhone)}. Enter it below.`)
     } finally {
       setSaveBusy(false)
     }
@@ -651,9 +654,6 @@ export default function SettingsAccountInfoScreen({
                 className="min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 py-2 pl-8 pr-3 text-[15px] text-zinc-100 outline-none focus:border-cyan-500/50"
               />
             </div>
-            <p className="mt-1.5 text-[12px] leading-snug text-zinc-500">
-              You can change your handle at most once every 7 days.
-            </p>
           </div>
 
           <div>
@@ -675,9 +675,6 @@ export default function SettingsAccountInfoScreen({
               }}
               className="mt-1.5 min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 px-3 text-[15px] text-zinc-100 outline-none focus:border-cyan-500/50"
             />
-            <p className="mt-1.5 text-[12px] leading-snug text-zinc-500">
-              We&apos;ll email a 6-digit code when you add or change this address. Enter it here. The link in that email still works.
-            </p>
             {emailCodeFor ? (
               <div className="mt-3 space-y-2">
                 <label htmlFor="settings-account-email-code" className="block text-[13px] font-semibold text-zinc-300">
@@ -749,14 +746,16 @@ export default function SettingsAccountInfoScreen({
                 setSaveError('')
               }}
             />
-            <button
-              type="button"
-              disabled={saveBusy || !toE164ForCountry(phoneDraft, phoneCountry)}
-              onClick={() => void onSendPhoneCode()}
-              className={`mt-2 ${PHONE_ACTION_CLASS}`}
-            >
-              {saveBusy && !phoneCode ? 'Sending…' : phoneCodeFor ? 'Send again' : 'Send code'}
-            </button>
+            {!loginPhoneVerified ? (
+              <button
+                type="button"
+                disabled={saveBusy || !toE164ForCountry(phoneDraft, phoneCountry)}
+                onClick={() => void onSendPhoneCode()}
+                className={`mt-2 ${PHONE_ACTION_CLASS}`}
+              >
+                {saveBusy && !phoneCode ? 'Sending…' : phoneCodeFor ? 'Send again' : 'Send code'}
+              </button>
+            ) : null}
             {phoneCodeFor ? (
               <div className="mt-3 space-y-2">
                 <label htmlFor="settings-account-phone-code" className="block text-[13px] font-semibold text-zinc-300">
@@ -786,22 +785,28 @@ export default function SettingsAccountInfoScreen({
                 </button>
               </div>
             ) : null}
-            <p className="mt-1.5 text-[12px] leading-snug text-zinc-500">
-              Enter a mobile number, then Send code. Confirm the text to use it for sign-in.
-            </p>
+            {!loginPhoneVerified ? (
+              <p className="mt-1.5 text-[12px] leading-snug text-zinc-500">
+                Enter a mobile number, then Send code. Confirm the text to use it for sign-in.
+              </p>
+            ) : null}
             {toE164ForCountry(authUser?.phone || '') ? (
               <div className="mt-3">
                 <button
                   type="button"
                   disabled={saveBusy}
-                  onClick={() => void startPhoneRelease()}
+                  onClick={() => {
+                    dismissEdgeKeyboard()
+                    setSaveError('')
+                    setSaveMessage('')
+                    setPhoneReleaseDialog(
+                      accountEmail && authUser?.email_confirmed_at ? 'confirm' : 'need-email',
+                    )
+                  }}
                   className="inline-flex min-h-11 items-center text-[14px] font-semibold text-zinc-400 underline underline-offset-2 touch-manipulation hover:text-zinc-200 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
                 >
-                  {saveBusy && !phoneReleaseFor ? 'Sending…' : 'Remove number'}
+                  Remove number
                 </button>
-                <p className="mt-1.5 text-[12px] leading-snug text-zinc-500">
-                  Frees this number for another account. The check comes off, and Continue with Phone will no longer open this account. You need a confirmed email. We text this phone first.
-                </p>
                 {phoneReleaseFor ? (
                   <div className="mt-3 space-y-2">
                     <label htmlFor="settings-account-phone-release-code" className="block text-[13px] font-semibold text-zinc-300">
@@ -875,13 +880,15 @@ export default function SettingsAccountInfoScreen({
         </div>
       )}
 
-      {handleChangeDialog ? (
-        <div
-          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="settings-handle-change-title"
-        >
+      {handleChangeDialog && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[220] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
+              data-settings-account-info-dialog
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="settings-handle-change-title"
+            >
           <button
             type="button"
             className="absolute inset-0 z-0 cursor-default touch-manipulation"
@@ -903,7 +910,7 @@ export default function SettingsAccountInfoScreen({
               </p>
             ) : (
               <p className="mt-3 text-[15px] leading-relaxed text-zinc-200">
-                You already changed your handle within the last 7 days. The next change is allowed after{' '}
+                You can only change your handle once in a 7 day period. You can change it again after{' '}
                 <span className="font-semibold text-zinc-100">
                   {new Date(handleChangeDialog.unlockAt).toLocaleString(undefined, {
                     dateStyle: 'medium',
@@ -920,7 +927,7 @@ export default function SettingsAccountInfoScreen({
                 onClick={() => setHandleChangeDialog(null)}
                 className="min-h-11 w-full rounded-xl border border-zinc-600 bg-zinc-800/90 px-4 text-[15px] font-semibold text-zinc-100 touch-manipulation hover:bg-zinc-700 disabled:opacity-50 sm:w-auto"
               >
-                Cancel
+                {handleChangeDialog.kind === 'confirm' ? 'Cancel' : 'OK'}
               </button>
               {handleChangeDialog.kind === 'confirm' ? (
                 <button
@@ -937,8 +944,10 @@ export default function SettingsAccountInfoScreen({
               ) : null}
             </div>
           </div>
-        </div>
-      ) : null}
+            </div>,
+            document.body,
+          )
+        : null}
 
       <ProfileHandleConflictDialog
         open={Boolean(handleConflictDialog)}
@@ -953,6 +962,65 @@ export default function SettingsAccountInfoScreen({
           void persistAccountInfo({ forcedHandle: suggested })
         }}
       />
+
+      {phoneReleaseDialog && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[220] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
+              data-settings-account-info-dialog
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="settings-phone-release-title"
+            >
+              <button
+                type="button"
+                className="absolute inset-0 z-0 cursor-default touch-manipulation"
+                aria-label="Dismiss"
+                disabled={saveBusy}
+                onClick={() => {
+                  if (saveBusy) return
+                  setPhoneReleaseDialog(null)
+                }}
+              />
+              <div className="relative z-10 w-full max-w-sm rounded-2xl border border-zinc-600 bg-zinc-900 p-5 shadow-2xl">
+                <h2 id="settings-phone-release-title" className="text-[16px] font-bold text-white">
+                  {phoneReleaseDialog === 'confirm' ? 'Remove number?' : 'Add an email first'}
+                </h2>
+                <p className="mt-3 text-[15px] leading-relaxed text-zinc-200">
+                  {phoneReleaseDialog === 'confirm'
+                    ? 'You will lose your verified status and will no longer be able to sign in with this phone.'
+                    : accountEmail
+                      ? 'Confirm your email before you can remove this number.'
+                      : 'Add an email address before you can remove this number.'}
+                </p>
+                <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-end">
+                  <button
+                    type="button"
+                    disabled={saveBusy}
+                    onClick={() => setPhoneReleaseDialog(null)}
+                    className="min-h-11 w-full rounded-xl border border-zinc-600 bg-zinc-800/90 px-4 text-[15px] font-semibold text-zinc-100 touch-manipulation hover:bg-zinc-700 disabled:opacity-50 sm:w-auto"
+                  >
+                    {phoneReleaseDialog === 'confirm' ? 'Cancel' : 'OK'}
+                  </button>
+                  {phoneReleaseDialog === 'confirm' ? (
+                    <button
+                      type="button"
+                      disabled={saveBusy}
+                      onClick={() => {
+                        setPhoneReleaseDialog(null)
+                        void startPhoneRelease()
+                      }}
+                      className="min-h-11 w-full rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white touch-manipulation hover:bg-cyan-500 disabled:opacity-50 sm:w-auto"
+                    >
+                      Remove number
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
       {phoneVerifiedFor && typeof document !== 'undefined'
         ? createPortal(

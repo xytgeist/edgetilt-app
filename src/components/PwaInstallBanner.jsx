@@ -254,10 +254,7 @@ export default function PwaInstallTitleBarRow({
           <div className="pointer-events-auto min-w-0 max-w-full">{centerContent}</div>
         </div>
       ) : null}
-      <div
-        className="relative z-[1] flex min-w-0 shrink-0 items-center justify-end gap-1.5"
-        data-title-bar-end
-      >
+      <div className="relative z-[1] flex min-w-0 shrink-0 items-center justify-end gap-1.5">
         {pinBrand && liveSessionActive ? centerSlot : null}
         {pinBrand && showInstallChip ? installChip : null}
         {navSlot}

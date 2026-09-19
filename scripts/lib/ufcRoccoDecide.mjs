@@ -61,7 +61,7 @@ export function decideRoccoUfc(input) {
     return {
       side: 'PASS',
       margin: 0,
-      rationale: `No last-5 file for ${who}. Rocco sits.`,
+      rationale: `No last-5 file for ${who}.`,
       features: ['missing_last5'],
     }
   }
@@ -69,7 +69,7 @@ export function decideRoccoUfc(input) {
     return {
       side: 'PASS',
       margin: 0,
-      rationale: 'Last-5 tape under 3 fights. Rocco sits.',
+      rationale: 'Last-5 tape under 3 fights.',
       features: ['thin_tape'],
     }
   }
@@ -136,7 +136,7 @@ export function decideRoccoUfc(input) {
     return {
       side: 'PASS',
       margin,
-      rationale: `Styles too close on last-5 (margin ${margin}). Rocco sits.`,
+      rationale: `Styles too close on last-5 (margin ${margin}).`,
       features: features.length ? features : ['coin_flip'],
     }
   }

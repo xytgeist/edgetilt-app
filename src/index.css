@@ -3568,25 +3568,39 @@ html.light [data-auth-ipad-stage] [data-auth-ipad-footer] {
 /* iPad shell. Same stage as auth (coarse, wide, tall). Phone FAB becomes this rail. */
 html[data-ipad-nav] {
   --edge-ipad-rail: calc(11rem - 50px);
+  /* Lounge column, centered on the screen like the X portrait feed. */
+  --edge-ipad-feed: 46.5vw;
+  --edge-ipad-feed-left: calc((100vw - var(--edge-ipad-feed)) / 2);
 }
 html[data-ipad-nav] [data-app-shell-root] {
   padding-left: var(--edge-ipad-rail);
 }
 html[data-ipad-nav] [data-lounge-feed-root] {
+  width: var(--edge-ipad-feed);
   max-width: none;
-  width: 100%;
-  margin-left: 0;
+  margin-left: calc(var(--edge-ipad-feed-left) - var(--edge-ipad-rail));
   margin-right: 0;
 }
+html[data-ipad-nav] [data-lounge-title-bar] {
+  left: var(--edge-ipad-feed-left) !important;
+  right: auto !important;
+  width: var(--edge-ipad-feed) !important;
+  max-width: none !important;
+  overflow: visible;
+}
+/* Header controls sit in the right gutter so they don't cover the centered EDGE word. */
+html[data-ipad-nav] [data-lounge-title-bar] [data-title-bar-end] {
+  transform: translateX(calc(100vw - var(--edge-ipad-feed-left) - var(--edge-ipad-feed)));
+}
 html[data-ipad-nav] [data-edge-status-bar-plate] {
-  left: var(--edge-ipad-rail) !important;
-  right: 0 !important;
-  width: auto !important;
+  left: var(--edge-ipad-feed-left) !important;
+  right: auto !important;
+  width: var(--edge-ipad-feed) !important;
   max-width: none !important;
   transform: none !important;
 }
 html[data-ipad-nav] [data-lounge-feed-root] .fixed.left-1\/2:not([data-lounge-title-bar]):not([data-edge-status-bar-plate]) {
-  left: calc(var(--edge-ipad-rail) + (100vw - var(--edge-ipad-rail)) / 2) !important;
+  left: calc(var(--edge-ipad-feed-left) + var(--edge-ipad-feed) / 2) !important;
 }
 html[data-ipad-nav] [data-lounge-dock-panels] {
   left: var(--edge-ipad-rail) !important;

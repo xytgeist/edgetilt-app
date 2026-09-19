@@ -1145,6 +1145,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **iPad feed gutters (Mac).** The lounge column is centered on the screen with space on both sides, like the X portrait feed. Phone unchanged. Frontend **`1.4.321`**. Web only.
 - **2026-09-18:** **iPad rail E lines up (Mac).** The left-menu E matches the lounge EDGE word in height and distance from the top. The menu is 50px narrower. Phone unchanged. Frontend **`1.4.320`**. Web only.
 - **2026-09-18:** **Phone verified check (Windows).** Settings and Lounge display names use the Edge Pro check once the phone is confirmed. `profiles.phone_verified_at` is public and copied from Auth. It does not include the number. Frontend **`1.4.319`**. Test SQL only. Prod Auth stays off.
 - **2026-09-18:** **iPad rail +EV mark (Mac).** The left menu uses the E with the red check (black E in light mode), and the space between those icons is doubled. Phone unchanged. Frontend **`1.4.318`**. Web only.

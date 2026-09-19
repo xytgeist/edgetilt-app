@@ -66,7 +66,7 @@ export const QUICK_LINK_BY_ID = Object.fromEntries(
 export const QUICK_LINK_MAX = 2
 
 /** Left rail under Settings. Storage keeps this many so a phone session does not drop them. */
-export const QUICK_LINK_MAX_IPAD = 4
+export const QUICK_LINK_MAX_IPAD = 6
 
 /**
  * Same gate as `useIpadAuthStage`. Landscape iPhone is wide but short, so it stays on the phone cap.

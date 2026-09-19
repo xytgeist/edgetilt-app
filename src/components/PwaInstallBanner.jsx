@@ -245,7 +245,8 @@ export default function PwaInstallTitleBarRow({
       <div className="relative z-[1] min-w-0 shrink-0">{logo}</div>
       {pinBrand ? (
         <div className="pointer-events-none absolute inset-0 z-0 flex items-center justify-center px-16">
-          <div className="pointer-events-auto min-w-0 max-w-full">{brandCenter}</div>
+          {/* flex, not a line box, so the wordmark top matches the rail E */}
+          <div className="pointer-events-auto flex min-w-0 max-w-full">{brandCenter}</div>
         </div>
       ) : null}
       {!pinBrand && hasCenter ? (

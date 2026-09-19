@@ -64,6 +64,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Windows Theo.** The Settings verified mark is the Edge Pro check. A confirmed phone shows that same check next to the Lounge display name. Test profiles column `phone_verified_at`. Frontend **`1.4.319`**.
 
+### Mac Theo 2026-09-18 … iPad rail E lines up
+
+**I am Mac Theo.** The left menu E is the same height as the lounge EDGE word, and both sit the same distance from the top. The menu is 50px narrower. Phone unchanged. Web **`1.4.320`**.
+
 ### Mac Theo 2026-09-18 … iPad rail +EV mark
 
 **I am Mac Theo.** The left menu mark is the E with the red check, black E in light mode. Icon spacing is doubled. Phone unchanged. Web **`1.4.318`**.

@@ -29,8 +29,11 @@ import { useLoungeStreamLightbox } from './LoungeStreamLightboxContext.jsx'
 import { peekLoungeStreamSessionPoster } from './loungeStreamSessionPoster.js'
 import { useLoungeFeedCarouselAxisLock } from './useLoungeFeedCarouselAxisLock.js'
 import {
+  getLoungeStreamLightboxOpen,
+  subscribeLoungeStreamLightboxOpen,
+} from './loungeStreamLightboxRegistry.js'
+import {
   heroRectUsableForShrinkBack,
-  isLoungeLightboxGifUrl,
   LOUNGE_OVERLAY_NESTED_LIGHTBOX_PORTAL_CLASS,
   readContainedImageViewportRect,
   readElementViewportRect,
@@ -99,15 +102,12 @@ export function LoungeImageCarousel({
   const getLightboxOriginRect = useCallback((index) => {
     const img = originImgRefs.current[index]
     if (!(img instanceof HTMLElement)) return null
-    const url = list[index] || ''
-    const isGif =
-      isLoungeLightboxGifUrl(url, gifUrl) || (Boolean(gifUrl) && index === list.length - 1)
-    if (isGif && img instanceof HTMLImageElement) {
-      return readContainedImageViewportRect(img)
-    }
+    // Painted pixels, not the slide box. A width-capped carousel cell letterboxes
+    // the photo; flying the cell makes the image resize when the lightbox lands.
+    if (img instanceof HTMLImageElement) return readContainedImageViewportRect(img)
     const rect = readElementViewportRect(img)
     return heroRectUsableForShrinkBack(rect) ? rect : null
-  }, [list, gifUrl])
+  }, [])
 
   const openLightboxAt = useCallback(
     (i) => {
@@ -162,6 +162,9 @@ export function LoungeImageCarousel({
 
     const resetToStart = () => {
       if (scroller.hasAttribute('data-lounge-carousel-dragging')) return
+      // Lightbox open/close resizes the viewport. Snapping the strip then
+      // shifts the feed under the shrinking photo.
+      if (getLoungeStreamLightboxOpen()) return
       scroller.scrollLeft = 0
       try {
         scroller.scrollTo({ left: 0, behavior: 'instant' })
@@ -182,7 +185,7 @@ export function LoungeImageCarousel({
     let wasOut = false
     let raf = 0
     const runScrollGeometry = () => {
-      if (!scrollRoot) return
+      if (!scrollRoot || getLoungeStreamLightboxOpen()) return
       const inView = stripIntersectsRoot(scrollRoot, observeTarget)
       if (!inView) {
         wasOut = true
@@ -214,7 +217,7 @@ export function LoungeImageCarousel({
       io = new IntersectionObserver(
         (entries) => {
           const en = entries[0]
-          if (!en) return
+          if (!en || getLoungeStreamLightboxOpen()) return
           const now = visibleEnough(en)
           if (now && !wasVisibleEnough) resetToStart()
           wasVisibleEnough = now
@@ -276,14 +279,26 @@ export function LoungeImageCarousel({
   useLayoutEffect(() => {
     if (!carouselLayout.multiCarousel) return undefined
     const syncViewport = () => {
-      setCarouselViewport(loungeFeedCarouselMeasureLayout(carouselScrollRef.current, carouselFullBleed))
+      if (getLoungeStreamLightboxOpen()) return
+      const next = loungeFeedCarouselMeasureLayout(carouselScrollRef.current, carouselFullBleed)
+      setCarouselViewport((prev) =>
+        prev.maxRowPx === next.maxRowPx &&
+        prev.contentWidthPx === next.contentWidthPx &&
+        prev.firstSlideMaxWidthPx === next.firstSlideMaxWidthPx
+          ? prev
+          : next,
+      )
     }
     syncViewport()
     const id = requestAnimationFrame(syncViewport)
     window.addEventListener('resize', syncViewport, { passive: true })
+    const unsubLightbox = subscribeLoungeStreamLightboxOpen((open) => {
+      if (!open) syncViewport()
+    })
     return () => {
       cancelAnimationFrame(id)
       window.removeEventListener('resize', syncViewport)
+      unsubLightbox()
     }
   }, [carouselLayout.multiCarousel, carouselFullBleed, urlsKey])
 

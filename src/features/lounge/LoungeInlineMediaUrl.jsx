@@ -308,6 +308,12 @@ export function LoungeImageLightbox({
   const getOriginRectRef = useRef(getOriginRect)
   getOriginRectRef.current = getOriginRect
 
+  const feedScrollTopRef = useRef(/** @type {number | null} */ (null))
+  useLayoutEffect(() => {
+    const sc = document.querySelector('[data-lounge-feed-scroll]')
+    if (sc instanceof HTMLElement) feedScrollTopRef.current = sc.scrollTop
+  }, [])
+
   const wantsFlipOpen = Boolean(openFromRectRef.current)
   const [phase, setPhase] = useState(/** @type {'opening' | 'open' | 'closing'} */ (wantsFlipOpen ? 'opening' : 'open'))
   const [chromeVisible, setChromeVisible] = useState(!wantsFlipOpen)
@@ -363,6 +369,9 @@ export function LoungeImageLightbox({
     if (next == null || !Number.isFinite(slideIndex)) return
     setAspectByIndex((prev) => {
       const prevA = prev[slideIndex]
+      // Opening slide stays on the feed bitmap. A later 2048 decode must not
+      // resize the frame the flyout just landed on.
+      if (slideIndex === chromeLockIndexRef.current && prevA != null) return prev
       if (prevA != null && Math.abs(prevA - next) < 0.0001) return prev
       return { ...prev, [slideIndex]: next }
     })
@@ -674,6 +683,15 @@ export function LoungeImageLightbox({
     }
     if (phaseRef.current !== 'open') return
 
+    const scroller = document.querySelector('[data-lounge-feed-scroll]')
+    if (
+      scroller instanceof HTMLElement &&
+      feedScrollTopRef.current != null &&
+      Math.abs(scroller.scrollTop - feedScrollTopRef.current) > 1
+    ) {
+      scroller.scrollTop = feedScrollTopRef.current
+    }
+
     const origin = resolveCloseOrigin()
     const mediaEl = mediaImageRef.current
     const heroFrame =
@@ -882,10 +900,11 @@ export function LoungeImageLightbox({
     }
   }, [phase])
 
-  // Unlock as soon as fly-home starts. The portal stays painted until WAAPI ends, but
-  // body overflow:hidden (and the full-screen hit target) must not keep eating feed scroll
-  // after the image already looks parked (ease-out lands visually before HERO_SHRINK_MS).
-  const lockPageScroll = Boolean(current) && phase !== 'closing'
+  // iPad keeps the lock through shrink. Unlocking at fly-out start changes 100vw
+  // and the wide media slider reflows the feed under the photo.
+  const lockPageScroll =
+    Boolean(current) &&
+    (phase !== 'closing' || document.documentElement.hasAttribute('data-ipad-nav'))
   useEffect(() => {
     if (!lockPageScroll) return undefined
     const prev = document.body.style.overflow
@@ -1062,21 +1081,17 @@ export function LoungeImageLightbox({
               : { ...prev, [openIdx]: gifAspect },
           )
         }
-        const modeAspect = openingGif ? gifAspect : tileAspect
+        const modeAspect = openingGif
+          ? gifAspect
+          : seedAspect && Number.isFinite(seedAspect) && seedAspect > 0
+            ? seedAspect
+            : tileAspect
         const mode = modeAspect >= 1 || !Number.isFinite(modeAspect) ? 'full' : 'compact'
         setBandByMode((prev) => ({ ...prev, [mode]: band }))
 
-        if (!openingGif) {
-          const target = computeHeroTargetRect(from, {
-            displayW: from.width,
-            displayH: from.height,
-            insetTop: band.top,
-            insetBottom: band.bottom,
-          })
-          runExpandToTarget(from, target, openIdx)
-          return
-        }
-
+        // Wait until the open photo has laid out in the chrome band, then fly to
+        // that painted box. The carousel cell is often wider than the photo, so
+        // targeting the cell makes the image resize the moment the flyout lands.
         requestAnimationFrame(() => {
           requestAnimationFrame(() => {
             if (cancelled) return
@@ -1091,15 +1106,14 @@ export function LoungeImageLightbox({
               liveImg instanceof HTMLImageElement
                 ? readContainedImageViewportRect(liveImg)
                 : null
-            const target =
-              heroRectUsableForShrinkBack(painted)
-                ? painted
-                : computeHeroTargetRect(from, {
-                    aspect: gifAspect > 0 ? gifAspect : undefined,
-                    insetTop: band.top,
-                    insetBottom: band.bottom,
-                    forceBand: true,
-                  })
+            const target = heroRectUsableForShrinkBack(painted)
+              ? painted
+              : computeHeroTargetRect(from, {
+                  aspect: modeAspect > 0 ? modeAspect : undefined,
+                  insetTop: band.top,
+                  insetBottom: band.bottom,
+                  forceBand: openingGif,
+                })
             runExpandToTarget(from, target, openIdx)
           })
         })
@@ -1235,12 +1249,7 @@ export function LoungeImageLightbox({
         <img
           src={ambientDisplaySrc}
           alt=""
-          className={
-            isLoungeLightboxGifUrl(current, gifUrl) ||
-            (Boolean(gifUrl) && list.length === 1)
-              ? 'h-full w-full select-none object-contain'
-              : 'h-full w-full select-none object-cover'
-          }
+          className="h-full w-full select-none object-contain"
           draggable={false}
           decoding="async"
           onError={(e) => onLoungeLightboxImgError(e, current)}
@@ -1519,7 +1528,7 @@ export function LoungeInlineMediaUrl({
     const img = originImgRef.current
     const stored = String(url).trim()
     const fromRect =
-      isLoungeLightboxGifUrl(stored, knownGifUrl) && img instanceof HTMLImageElement
+      img instanceof HTMLImageElement
         ? readContainedImageViewportRect(img)
         : img instanceof HTMLElement
           ? readElementViewportRect(img)
@@ -1530,7 +1539,7 @@ export function LoungeInlineMediaUrl({
       fromRect: heroRectUsableForShrinkBack(fromRect) ? fromRect : null,
     })
     return true
-  }, [url, knownGifUrl, onBeforeOpenLightbox])
+  }, [url, onBeforeOpenLightbox])
 
   useLayoutEffect(() => {
     if (!url || !autoOpenLightbox || !enableLightbox) return

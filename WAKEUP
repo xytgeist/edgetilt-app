@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-18 … lightbox fly
+
+**I am Mac Theo.** Image lightbox fly-in lands on the photo that is already on screen, and fly-out no longer reflows the iPad feed. Web **`1.4.332`**.
+
 ### Windows Theo 2026-09-18 … account row tap
 
 **I am Windows Theo.** The Settings Account header expands from a tap anywhere on the row, same as the other sections. Verify still opens the phone field. Frontend **`1.4.331`**.

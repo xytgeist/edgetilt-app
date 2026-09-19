@@ -494,10 +494,10 @@ function fightWeightClass(
 type UfcPrintBucketId = 'consensus' | 'split' | 'lean' | 'pass'
 
 const UFC_PRINT_BUCKETS: Array<{ id: UfcPrintBucketId; title: string; blurb: string }> = [
-  { id: 'consensus', title: 'Consensus', blurb: 'Both desks, same fighter.' },
-  { id: 'split', title: 'Split', blurb: 'House divided. Different fighters.' },
-  { id: 'lean', title: 'Lean', blurb: 'One desk has a side. The other sat.' },
-  { id: 'pass', title: 'Pass', blurb: 'Both sat.' },
+  { id: 'consensus', title: '🎯 Consensus', blurb: 'Both desks, same fighter.' },
+  { id: 'split', title: '⚔️ House Divided', blurb: 'Different fighters.' },
+  { id: 'lean', title: '📐 Lean', blurb: 'One desk has a side. The other sat.' },
+  { id: 'pass', title: '⏭️ Pass', blurb: 'Both sat.' },
 ]
 
 function deskVoted(side: string): boolean {

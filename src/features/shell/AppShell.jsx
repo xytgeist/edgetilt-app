@@ -120,6 +120,7 @@ import {
 import { guidesTabFullyGated, normalizeGuideAccessSlug } from '../guides/guideAccess.js'
 import { parseGuideSlugFromPathname } from '../lounge/loungeCaptionLink.js'
 import { QUICK_LINK_BY_ID } from './quickLinkDestinations.js'
+import { useIpadSlotsLandscape } from './useIpadSlotsLandscape.js'
 import {
   armShellNavGhostClickGuard,
   isShellNavLoungeHomeSuppressed,
@@ -424,6 +425,7 @@ export default function AppShell({
   /** pointerup + click both fire for one tap. Ignore the second. */
   const navSelectAtRef = useRef(0)
   const ipadShell = useIpadAuthStage()
+  const ipadSlotsLandscape = useIpadSlotsLandscape()
   const [tabErrorTestTrigger, setTabErrorTestTrigger] = useState(0)
   const [tabErrorTestOpen, setTabErrorTestOpen] = useState(false)
   const [isActiveAffiliate, setIsActiveAffiliate] = useState(false)
@@ -3010,7 +3012,7 @@ export default function AppShell({
 
     /** Lazy tab content: own Suspense so a loading lounge chunk does not block Offers / Guides / etc. */
     let visibleTab = null
-    if (tab === 'slots') {
+    if (tab === 'slots' || (ipadSlotsLandscape && tab === 'guides')) {
       visibleTab = (
         <SlotsScreen
           titleBarNavSlot={renderTitleBarNavSlot()}
@@ -3023,6 +3025,42 @@ export default function AppShell({
           isStaff={isStaff}
           gatesMap={contentAccessGatesMap}
           starterUnlockedCalculatorKeys={starterUnlockedCalculatorKeys}
+          landscapeSplit={ipadSlotsLandscape}
+          selectedToolId={tab === 'guides' ? 'guides' : null}
+          guidesPane={
+            ipadSlotsLandscape && tab === 'guides' ? (
+              <Suspense
+                fallback={
+                  <div className="px-4 py-8 text-center text-sm text-zinc-500">Loading guides…</div>
+                }
+              >
+                <GuidesScreen
+                  paneEmbed
+                  supabaseClient={supabaseClient}
+                  onOpenCalculator={openCalculator}
+                  onOpenLogbook={openLogbook}
+                  onNavigateHome={() => setTab('home')}
+                  onCommunityPosted={loadCommunityFeed}
+                  onRequireAuth={onRequireAuth}
+                  hasSlotsEdge={hasActiveSubscription}
+                  hasSlotsEdgeStarter={hasSlotsEdgeStarter}
+                  starterUnlockedGuideSlugs={starterWeeklyDropGuideSlugs}
+                  starterWeeklyDropPoolExhausted={starterWeeklyDropPoolExhausted}
+                  isStaff={isStaff}
+                  isAdmin={isAdmin}
+                  gatesMap={contentAccessGatesMap}
+                  gatesDbReady={contentAccessGatesDbReady}
+                  onSetContentGate={onSetContentAccessGate}
+                  onRequireSubscribe={onRequireSubscribe}
+                  canCreatePlayLog={canCreatePlayLog}
+                  playLogsRemaining={playLogsRemaining}
+                  freemiumUsageLoading={freemiumUsageLoading}
+                  openCardSlug={guideOpenCardSlug}
+                  onOpenCardSlugConsumed={clearGuideOpenCardSlug}
+                />
+              </Suspense>
+            ) : null
+          }
         />
       )
     } else if (tab === 'poker') {

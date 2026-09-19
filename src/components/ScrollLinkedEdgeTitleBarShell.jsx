@@ -43,6 +43,8 @@ export default function ScrollLinkedEdgeTitleBarShell({
   fullWidth = false,
   fillViewport = false,
   stableLayoutViewport = false,
+  /** Fill the parent instead of the viewport. No EDGE title bar. Used by the landscape Slots guides pane. */
+  embedded = false,
 }) {
   const colMax = fullWidth ? 'max-w-none' : 'max-w-2xl'
   const heightClass = stableLayoutViewport ? 'h-[100vh] max-h-[100vh]' : 'h-dvh max-h-dvh'
@@ -113,8 +115,8 @@ export default function ScrollLinkedEdgeTitleBarShell({
   }, [])
 
   useEffect(() => {
-    if (fillViewport) {
-      // No outer scroll → keep title bar fully revealed.
+    if (embedded || fillViewport) {
+      // No outer scroll → keep title bar fully revealed. Embedded panes have no title bar.
       titleRevealRef.current = 1
       setTitleReveal(1)
       return undefined
@@ -159,13 +161,26 @@ export default function ScrollLinkedEdgeTitleBarShell({
       el.removeEventListener('scroll', onScroll)
       if (scrollVisualRafRef.current) window.cancelAnimationFrame(scrollVisualRafRef.current)
     }
-  }, [fillViewport])
+  }, [embedded, fillViewport])
 
   useEffect(() => {
     if (!publishScrollReveal) return undefined
     setEdgeTitleBarReveal(titleReveal)
     return () => setEdgeTitleBarReveal(1)
   }, [publishScrollReveal, titleReveal])
+
+  if (embedded) {
+    return (
+      <div
+        ref={feedScrollRef}
+        data-edge-scroll-shell
+        data-edge-scroll-embedded=""
+        className="min-h-0 w-full flex-1 overflow-y-auto overscroll-y-contain bg-zinc-950 [-webkit-overflow-scrolling:touch]"
+      >
+        <div className={contentClassName}>{children}</div>
+      </div>
+    )
+  }
 
   return (
     <div

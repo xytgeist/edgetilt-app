@@ -1591,6 +1591,8 @@ export default function GuidesScreen({
   /** Clear parent deep-link slug after apply so leaving/re-entering Guides does not re-expand. */
   onOpenCardSlugConsumed = null,
   titleBarToolCloseVisible = false,
+  /** Landscape iPad Slots hub: scroll inside the right pane, no second EDGE bar. */
+  paneEmbed = false,
 }) {
   const [query, setQuery] = useState('')
   const [rows, setRows] = useState([])
@@ -1994,13 +1996,17 @@ export default function GuidesScreen({
   return (
     <>
       <ScrollLinkedEdgeTitleBarShell
-        titleBarNavSlot={titleBarNavSlot}
-        titleBarCenterSlot={titleBarCenterSlot}
-        titleBarToolCloseVisible={titleBarToolCloseVisible}
+        embedded={paneEmbed}
+        titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
+        titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
+        titleBarToolCloseVisible={paneEmbed ? false : titleBarToolCloseVisible}
+        publishScrollReveal={!paneEmbed}
         scrollRootRef={guidesScrollRootRef}
         contentClassName="px-3 pt-3 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
       >
-        <h1 className="sr-only">AP Guides</h1>
+        <h1 className={paneEmbed ? 'mb-3 text-xl font-black tracking-tight text-white' : 'sr-only'}>
+          AP Guides
+        </h1>
         {SHOW_GUIDE_CARD_ADMIN_LOCK_AND_DELETE && isAdmin && !gatesDbReady ? (
           <p className="mb-4 text-xs text-fuchsia-300/90">
             Apply migration `20260526150000_content_access_gates.sql` to enable admin lock switches.

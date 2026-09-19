@@ -73,6 +73,10 @@ export const QUICK_LINK_MAX_IPAD = 6
  */
 export const IPAD_SHELL_QUERY = '(min-width: 768px) and (min-height: 700px) and (pointer: coarse)'
 
+/** iPad shell plus landscape. Phones in landscape are too short to match. */
+export const IPAD_LANDSCAPE_QUERY =
+  '(orientation: landscape) and (min-width: 768px) and (min-height: 700px) and (pointer: coarse)'
+
 export function quickLinkCap() {
   if (typeof window !== 'undefined' && window.matchMedia(IPAD_SHELL_QUERY).matches) {
     return QUICK_LINK_MAX_IPAD

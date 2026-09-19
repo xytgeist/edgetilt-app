@@ -1141,6 +1141,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **Phone login floats in the center (Mac).** The phone and Android card is no longer pinned to the bottom. Grab handle is gone. iPad column unchanged. Frontend **`1.4.301`**. Web only.
 - **2026-09-18:** **Phone login buttons smaller, Degen wordmark larger (Mac).** Circles and the phone pill on the phone sheet are 52px. **Degen with** plus the EDGE mark scales up. **Find Your** stays the old size. iPad column unchanged. Frontend **`1.4.300`**. Web only.
 - **2026-09-18:** **Phone login matches the iPad column (Mac).** iPhone and Android drop the Join / Sign in tabs for the circles, or-line, unwired phone pill, and bottom Sign in bar. Wordmark is **Find Your** or **Degen with** plus the EDGE mark, 50/50. Sheet background is black, not gray-900. Legal links are white there (near-black in light mode). Apple stays in the iOS shell only. Desktop mouse uses the same sheet. Frontend **`1.4.299`**. Web only.
 - **2026-09-18:** **iPad login buttons pulled up 100px (Mac).** The 200px drop was too much. Circles sit 100px under the old gap. Terms, Privacy, and Community Guidelines links are white on the iPad column (near-black in light mode). Phone sheet links stay orange. Frontend **`1.4.298`**. Web only.

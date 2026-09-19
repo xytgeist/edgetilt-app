@@ -3,8 +3,8 @@ import { linkBtn } from '../shell/shellClasses'
 
 /**
  * iPad (and the open Duo, once it is this wide): full-screen centered column.
- * Phone stays a bottom sheet. A landscape iPhone is wide but short, so the
- * height check keeps that on the sheet.
+ * Phone and Android: a centered card. A landscape iPhone is wide but short, so
+ * the height check keeps that on the card, not the iPad column.
  */
 const IPAD_AUTH_QUERY = '(min-width: 768px) and (min-height: 700px) and (pointer: coarse)'
 
@@ -97,7 +97,7 @@ function AuthWordmark() {
 }
 
 /**
- * Auth sign-in / join as a bottom sheet on phone; X-style centered column on iPad.
+ * Auth sign-in / join as a centered card on phone; X-style full-screen column on iPad.
  */
 export default function AuthModalShell({ onClose, cancelLabel, children }) {
   const ipadStage = useIpadAuthStage()
@@ -140,7 +140,7 @@ export default function AuthModalShell({ onClose, cancelLabel, children }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-end justify-center overflow-x-hidden bg-black md:items-center md:p-4 md:pt-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] md:pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center overflow-x-hidden bg-black px-4 pt-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
       <button
         type="button"
         className="absolute inset-0 cursor-default [-webkit-tap-highlight-color:transparent]"
@@ -151,15 +151,11 @@ export default function AuthModalShell({ onClose, cancelLabel, children }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="auth-modal-title"
-        className="relative z-10 w-full max-w-lg min-h-0 max-h-[min(92dvh,calc(100dvh-max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px))))] overflow-y-auto overscroll-contain rounded-t-3xl border border-zinc-800 border-b-0 bg-black px-5 pt-3 pb-[max(1.25rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] shadow-2xl md:rounded-3xl md:border-b-zinc-800 md:p-8 md:pt-6"
+        className="relative z-10 w-full max-w-lg min-h-0 max-h-full overflow-y-auto overscroll-contain rounded-3xl border border-zinc-800 bg-black px-5 py-5 shadow-2xl md:p-8 md:pt-6"
         data-auth-modal
         data-auth-sheet
         onClick={(e) => e.stopPropagation()}
       >
-        <div
-          className="mx-auto mb-3 h-1 w-10 shrink-0 rounded-full bg-zinc-600/70 md:hidden"
-          aria-hidden
-        />
         <button
           type="button"
           onClick={onClose}

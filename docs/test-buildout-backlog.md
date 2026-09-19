@@ -1145,6 +1145,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **Login scrim is see-through (Mac).** The black around the phone card is 70% so the app shows through. The card stays solid. iPad column unchanged. Frontend **`1.4.308`**. Web only.
 - **2026-09-18:** **Degen with EDGE stays one line (Mac).** The phone wordmark was wrapping "Degen" over "with" because the size followed the screen, not the card. It now scales to the card. Frontend **`1.4.307`**. Web only.
 - **2026-09-18:** **Phone country code (Windows).** Continue with Phone and Account info show a US / Canada flag and +1 menu on the number field. Texts stay those two countries. Frontend **`1.4.306`**.
 - **2026-09-18:** **Account info Send code (Windows).** The phone field has its own Send code button. Save changes was not how you start the text. Frontend **`1.4.305`**.

@@ -1147,6 +1147,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-19:** **Hamburger Slots bounce (Mac).** Opening Slots or Poker from the title menu no longer snaps back to the Lounge feed on the first tap. The menu is portaled above the dock, and the click that used to land on Home is ignored. Phone, desktop, and iPad. Frontend **`1.4.351`**. Web only.
 - **2026-09-19:** **Public Lounge tweets (Windows).** Syndicate public Lounge posts always go to @sharpesyndicate. X gets the public tease (UFC uses the long-form cap so the tease is not clipped). Fan-only and VIP-only stay off X. Today's UFC public caption was tweeted. Frontend **`1.4.350`**.
 - **2026-09-19:** **Landscape minicharts (Mac).** iPad landscape market strips stay in the caption column and show two charts plus a peek of the next. Portrait iPad and phone still show one plus a peek. Image carousels unchanged. Frontend **`1.4.349`**. Web only.
 - **2026-09-19:** **UFC public footer (Windows).** Dropped "One fight from each section with more than one." from the open UFC caption. Today's public post updated. Fan and VIP were not.

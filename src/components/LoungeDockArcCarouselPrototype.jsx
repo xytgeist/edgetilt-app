@@ -1818,6 +1818,7 @@ export default function LoungeDockArcCarouselPrototype({
       disabled={item.disabled}
       aria-label={item.label}
       title={item.label}
+      {...(item.id === HOME_ITEM_ID ? { 'data-lounge-dock-home': '' } : {})}
       onPointerDown={
         wheelSpin ? onItemPointerDown : wheelTapOnly || compactChip ? blockPointerDefault : undefined
       }

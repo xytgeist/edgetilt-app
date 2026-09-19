@@ -8580,9 +8580,8 @@ export default function SocialFeed({
   }, [])
 
   const onLoungeDockHome = useCallback(() => {
+    if (isShellNavLoungeHomeSuppressed()) return
     if (!isActivePage) {
-      // Hamburger→Slots/Poker often synthesizes a click on the portaled Home chip.
-      if (isShellNavLoungeHomeSuppressed()) return
       loungeFeedNavClickSuppressUntilRef.current =
         performance.now() + LOUNGE_AWAY_HOME_CLICK_SUPPRESS_MS
       dismissLoungeStackForDockNavRef.current()

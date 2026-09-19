@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback, Suspense, useSyncExternalStore } from 'react'
-import { flushSync } from 'react-dom'
+import React, { useState, useEffect, useLayoutEffect, useRef, useCallback, Suspense, useSyncExternalStore } from 'react'
+import { createPortal, flushSync } from 'react-dom'
 import * as Sentry from '@sentry/react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import { feedPostDisplayCaption } from '../../utils/communityFeedPost'
@@ -120,7 +120,10 @@ import {
 import { guidesTabFullyGated, normalizeGuideAccessSlug } from '../guides/guideAccess.js'
 import { parseGuideSlugFromPathname } from '../lounge/loungeCaptionLink.js'
 import { QUICK_LINK_BY_ID } from './quickLinkDestinations.js'
-import { armShellNavGhostClickGuard } from '../../utils/shellNavGhostClickGuard.js'
+import {
+  armShellNavGhostClickGuard,
+  isShellNavLoungeHomeSuppressed,
+} from '../../utils/shellNavGhostClickGuard.js'
 import {
   TAB_ERROR_COUNT_KEY,
   TabErrorSimulator,
@@ -417,6 +420,9 @@ export default function AppShell({
   const [pendingOfferEventIds, setPendingOfferEventIds] = useState([])
   const [offerSpotlightEventIds, setOfferSpotlightEventIds] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
+  const [menuAnchor, setMenuAnchor] = useState(null)
+  /** pointerup + click both fire for one tap. Ignore the second. */
+  const navSelectAtRef = useRef(0)
   const ipadShell = useIpadAuthStage()
   const [tabErrorTestTrigger, setTabErrorTestTrigger] = useState(0)
   const [tabErrorTestOpen, setTabErrorTestOpen] = useState(false)
@@ -2176,6 +2182,46 @@ export default function AppShell({
         (item.id === 'slots' && isSlotsAreaTab(tab)) ||
         (item.id === 'poker' && isPokerAreaTab(tab))
       const showPokerDot = item.id === 'poker' && pokerMenuAttention
+      const selectItem = () => {
+        const now = typeof performance !== 'undefined' ? performance.now() : Date.now()
+        if (now - navSelectAtRef.current < 450) return
+        navSelectAtRef.current = now
+        if (!authSessionReady && item.id !== 'home') {
+          // Auth still hydrating ... don't open the gate or navigate yet.
+          setMenuOpen(false)
+          return
+        }
+        if (browseMode === 'anonymous' && item.id !== 'home') {
+          onRequireAuth?.()
+          setMenuOpen(false)
+          return
+        }
+        if (showLock) {
+          onRequireSubscribe?.('slots-edge')
+          setMenuOpen(false)
+          return
+        }
+        // Leaving Lounge: menu unmounts under the finger. The click that follows
+        // lands on dock Home or the EDGE mark and snaps back to the feed.
+        if (item.id !== 'home') {
+          armShellNavGhostClickGuard()
+        }
+        if (item.id === 'slots') {
+          setActiveCalculator(null)
+          setTab('slots')
+          triggerTapHapticLight()
+        } else if (item.id === 'poker') {
+          acknowledgePokerOfferMenu()
+          setActiveCalculator(null)
+          setTab('poker')
+          triggerTapHapticLight()
+        } else {
+          setActiveCalculator(null)
+          setTab(item.id)
+          if (item.id === 'chat') triggerTapHapticLight()
+        }
+        setMenuOpen(false)
+      }
       return (
         <button
           key={item.id}
@@ -2187,41 +2233,21 @@ export default function AppShell({
                 ? 'Poker · pending offer needs attention'
                 : undefined
           }
-          onClick={() => {
-            if (!authSessionReady && item.id !== 'home') {
-              // Auth still hydrating ... don't open the gate or navigate yet.
-              setMenuOpen(false)
-              return
-            }
-            if (browseMode === 'anonymous' && item.id !== 'home') {
-              onRequireAuth?.()
-              setMenuOpen(false)
-              return
-            }
-            if (showLock) {
-              onRequireSubscribe?.('slots-edge')
-              setMenuOpen(false)
-              return
-            }
-            // Leaving Lounge: dock portals to body; ghost click after menu close hits Home.
-            if (item.id !== 'home') {
-              armShellNavGhostClickGuard()
-            }
-            if (item.id === 'slots') {
-              setActiveCalculator(null)
-              setTab('slots')
-              triggerTapHapticLight()
-            } else if (item.id === 'poker') {
-              acknowledgePokerOfferMenu()
-              setActiveCalculator(null)
-              setTab('poker')
-              triggerTapHapticLight()
-            } else {
-              setActiveCalculator(null)
-              setTab(item.id)
-              if (item.id === 'chat') triggerTapHapticLight()
-            }
-            setMenuOpen(false)
+          onPointerDown={(event) => {
+            // Cancel the delayed click. Otherwise it hits whatever is under the
+            // menu after it closes ... usually Lounge Home.
+            event.preventDefault()
+            event.stopPropagation()
+          }}
+          onPointerUp={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            selectItem()
+          }}
+          onClick={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            selectItem()
           }}
           className={`lounge-title-nav-menu-item w-full rounded-xl px-3 py-2.5 text-left text-sm touch-manipulation ${
             isActive
@@ -2256,14 +2282,6 @@ export default function AppShell({
       />
       )}
       <div className="relative z-[55] shrink-0">
-      {menuOpen ? (
-        <div
-          className="lounge-title-nav-menu absolute right-0 top-full z-[55] mt-1 min-w-[8.05rem] max-w-[min(10.5rem,calc(100vw-1rem))] w-max max-h-[min(22rem,calc(100dvh-max(env(safe-area-inset-top,0px),var(--edge-sat,0px))-max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px))-5rem))] overflow-y-auto overscroll-y-contain rounded-2xl border border-zinc-800/80 bg-zinc-950/98 px-2 py-2 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-zinc-950/90"
-          role="menu"
-        >
-          {renderNavMenuItems()}
-        </div>
-      ) : null}
       <button
         type="button"
         data-title-bar-menu-btn
@@ -2410,16 +2428,56 @@ export default function AppShell({
   useEffect(() => {
     // Wait for auth hydrate ... otherwise a brief anonymous window on cold boot
     // yanks Slots/Poker/etc. back to Lounge after the first hamburger tap.
-    if (!authSessionReady) return
-    if (browseMode !== 'anonymous') return
-    if (tab === 'home') return
-    setTab('home')
-    setMenuOpen(false)
+    if (!authSessionReady) return undefined
+    if (browseMode !== 'anonymous') return undefined
+    if (tab === 'home') return undefined
+    const yank = () => {
+      setTab('home')
+      setMenuOpen(false)
+    }
+    // Same window as the menu ghost-click guard. A refresh blip right after
+    // Slots/Poker must not win; if they are actually signed out, yank after it.
+    if (isShellNavLoungeHomeSuppressed()) {
+      const id = window.setTimeout(yank, 1300)
+      return () => window.clearTimeout(id)
+    }
+    yank()
+    return undefined
   }, [authSessionReady, browseMode, tab])
+
+  useLayoutEffect(() => {
+    if (!menuOpen || typeof document === 'undefined') {
+      setMenuAnchor(null)
+      return undefined
+    }
+    const place = () => {
+      const btn = [...document.querySelectorAll('[data-title-bar-menu-btn]')].find((el) => {
+        const rect = el.getBoundingClientRect()
+        return rect.width > 1 && rect.height > 1
+      })
+      if (!btn) {
+        setMenuAnchor(null)
+        return
+      }
+      const rect = btn.getBoundingClientRect()
+      const top = Math.round(rect.bottom + 4)
+      const right = Math.max(8, Math.round(window.innerWidth - rect.right))
+      setMenuAnchor((prev) => (prev && prev.top === top && prev.right === right ? prev : { top, right }))
+    }
+    place()
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => {
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+    }
+  }, [menuOpen])
 
   useEffect(() => {
     if (!menuOpen) return undefined
-    const onPointerDown = (event) => {
+    // Click, not pointerdown. Closing on pointerdown unmounts the row before
+    // the click, and that click lands on Lounge Home.
+    const onClick = (event) => {
       const target = event.target
       if (!(target instanceof Element)) {
         setMenuOpen(false)
@@ -2428,8 +2486,8 @@ export default function AppShell({
       if (target.closest('[data-title-bar-menu-btn], .lounge-title-nav-menu')) return
       setMenuOpen(false)
     }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
+    document.addEventListener('click', onClick)
+    return () => document.removeEventListener('click', onClick)
   }, [menuOpen])
 
   useEffect(() => {
@@ -2749,6 +2807,7 @@ export default function AppShell({
             coldBootSplashVisible={splashVisible}
             isActivePage={tab === 'home'}
             onNavigateToLoungeFeed={() => {
+              if (isShellNavLoungeHomeSuppressed()) return
               setTab('home')
               setMenuOpen(false)
             }}
@@ -3423,14 +3482,27 @@ export default function AppShell({
         </div>
       ) : null}
 
-      {menuOpen && (
+      {menuOpen ? (
         <button
           type="button"
           onClick={() => setMenuOpen(false)}
           aria-label="Close navigation menu"
-          className="fixed inset-0 z-40 cursor-default bg-black/35"
+          className="fixed inset-0 z-[108] cursor-default bg-black/35"
         />
-      )}
+      ) : null}
+
+      {menuOpen && menuAnchor && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              className="lounge-title-nav-menu fixed z-[116] mt-0 min-w-[8.05rem] max-w-[min(10.5rem,calc(100vw-1rem))] w-max max-h-[min(22rem,calc(100dvh-max(env(safe-area-inset-top,0px),var(--edge-sat,0px))-max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px))-5rem))] overflow-y-auto overscroll-y-contain rounded-2xl border border-zinc-800/80 bg-zinc-950/98 px-2 py-2 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-zinc-950/90"
+              role="menu"
+              style={{ top: menuAnchor.top, right: menuAnchor.right }}
+            >
+              {renderNavMenuItems()}
+            </div>,
+            document.body,
+          )
+        : null}
 
       {isStaff && consoleLogHudEnabled ? <AppConsoleLogDebugHud /> : null}
 

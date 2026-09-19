@@ -20,8 +20,13 @@ const CAPTURE_EVENTS = [
   'touchstart',
 ]
 
-/** Dock / Home chrome that must ignore ghost taps after leaving Lounge. */
-const DOCK_GHOST_TARGET_SELECTOR = '[data-lounge-dock-fab-host]'
+/**
+ * Dock / Home chrome that must ignore ghost taps after leaving Lounge.
+ * Home is a sibling of the FAB host (compact chip), and other screens' EDGE
+ * mark uses `data-edge-go-lounge`. Both sit where a closing menu's click lands.
+ */
+const DOCK_GHOST_TARGET_SELECTOR =
+  '[data-lounge-dock-fab-host], [data-lounge-dock-home], [data-edge-go-lounge]'
 
 /** Home dock / logo need a bit longer than in-menu wheel taps (matches dock AWAY_HOME). */
 export const SHELL_NAV_GHOST_CLICK_GUARD_MS = 1200

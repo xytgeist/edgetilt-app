@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { dispatchLoungeActivityNavigate } from '../utils/loungeActivityInAppNavigate.js'
+import { isShellNavLoungeHomeSuppressed } from '../utils/shellNavGhostClickGuard.js'
 
 /**
  * EDGE mark in the title area.
@@ -34,6 +35,9 @@ export default function EdgeLogoWithEasterEgg({ className = '', behavior = 'gigg
   }, [clearHideTimer])
 
   const handleGoLounge = useCallback(() => {
+    // Hamburger → Slots/Poker closes the menu under the finger. The click that
+    // follows often lands on this mark and yanks the shell back to Lounge.
+    if (isShellNavLoungeHomeSuppressed()) return
     dispatchLoungeActivityNavigate({ url: '/?tab=home', markActivityRead: false })
   }, [])
 
@@ -58,6 +62,7 @@ export default function EdgeLogoWithEasterEgg({ className = '', behavior = 'gigg
         onClick={onClick}
         className="m-0 inline-flex cursor-pointer border-0 bg-transparent p-0 outline-none focus-visible:ring-2 focus-visible:ring-violet-500/45 focus-visible:ring-offset-2 focus-visible:ring-offset-zinc-950 rounded-sm"
         aria-label={isGoLounge ? 'Go to Lounge' : 'EDGE'}
+        {...(isGoLounge ? { 'data-edge-go-lounge': '' } : {})}
       >
         {logos}
       </button>

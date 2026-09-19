@@ -3703,8 +3703,19 @@ html.light [data-ipad-nav-rail] [data-ipad-nav-item][data-active='1'] {
 html.light [data-ipad-nav-rail] [data-ipad-nav-badge] {
   --tw-ring-color: #fafafa;
 }
-[data-ipad-nav-rail] [data-ipad-nav-item] svg :is(path, circle, line, polyline) {
+[data-ipad-nav-rail] [data-ipad-nav-item] svg :is(path, circle, line, polyline),
+[data-ipad-nav-rail] [data-ipad-nav-shortcut] svg :is(path, circle, line, polyline) {
   stroke-width: 1.2;
+}
+[data-ipad-nav-rail] [data-ipad-nav-shortcut-rule] {
+  width: 100%;
+  height: 0;
+  margin-top: 0.85rem;
+  border-top: 0.5px solid #3f3f46;
+  flex-shrink: 0;
+}
+html.light [data-ipad-nav-rail] [data-ipad-nav-shortcut-rule] {
+  border-top-color: #d4d4d8;
 }
 html.light [data-ipad-ev-mark] .edge-logo--light {
   display: block;
@@ -9469,11 +9480,13 @@ html.light [data-quick-link-modal] .bg-zinc-800 {
 html.light [data-quick-link-modal] .bg-zinc-800\/80 {
   background-color: #f4f4f5 !important;
 }
-html.light [data-quick-link-bar] .text-cyan-300\/95 {
+html.light [data-quick-link-bar] .text-cyan-300\/95,
+html.light [data-ipad-nav-shortcuts] .text-cyan-300\/95 {
   color: #0891b2 !important;
 }
 /* Poker Bankroll Club: dark keeps mint hub tint; light uses solid emerald (not lime). */
-html.light [data-quick-link-bar] .text-\[\#6ee7b7\] {
+html.light [data-quick-link-bar] .text-\[\#6ee7b7\],
+html.light [data-ipad-nav-shortcuts] .text-\[\#6ee7b7\] {
   color: #059669 !important;
 }
 

@@ -1,7 +1,6 @@
 import { createPortal } from 'react-dom'
 import { Z_APP_MODAL } from '../constants/appZIndex.js'
-import { QUICK_LINK_BY_ID } from '../features/shell/quickLinkDestinations.js'
-import { QUICK_LINK_MAX } from '../features/shell/quickLinkDestinations.js'
+import { QUICK_LINK_BY_ID, QUICK_LINK_MAX_IPAD, quickLinkCap } from '../features/shell/quickLinkDestinations.js'
 import { setQuickLinkEnabled } from '../features/shell/quickLinksStore.js'
 
 /**
@@ -29,9 +28,13 @@ export default function QuickLinkAtCapModal({
   const toggleOff = (id) => {
     setQuickLinkEnabled(id, false)
     const result = setQuickLinkEnabled(pendingId, true)
-    if (result.ok) onEnabled?.(pendingId)
+    if (!result.ok) return
+    onEnabled?.(pendingId)
     onClose()
   }
+
+  const cap = quickLinkCap()
+  const onIpad = cap === QUICK_LINK_MAX_IPAD
 
   /*
    * Portal to body: hub pin lives inside a `relative z-[2]` card, which traps a
@@ -56,7 +59,7 @@ export default function QuickLinkAtCapModal({
           Shortcut limit
         </h2>
         <p className="text-zinc-400 text-sm leading-relaxed mb-4">
-          You can pin up to {QUICK_LINK_MAX} tools to the title bar. Turn one off below to add{' '}
+          You can pin up to {cap} tools {onIpad ? 'under Settings' : 'to the title bar'}. Turn one off below to add{' '}
           <span className="text-zinc-200 font-semibold">{pendingLabel}</span>.
         </p>
         <div className="space-y-2 mb-4">

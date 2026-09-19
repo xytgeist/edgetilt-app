@@ -62,7 +62,23 @@ export const QUICK_LINK_BY_ID = Object.fromEntries(
   QUICK_LINK_DESTINATIONS.map(d => [d.id, d]),
 )
 
+/** Phone title bar. iPad rail uses `QUICK_LINK_MAX_IPAD`. */
 export const QUICK_LINK_MAX = 2
+
+/** Left rail under Settings. Storage keeps this many so a phone session does not drop them. */
+export const QUICK_LINK_MAX_IPAD = 4
+
+/**
+ * Same gate as `useIpadAuthStage`. Landscape iPhone is wide but short, so it stays on the phone cap.
+ */
+export const IPAD_SHELL_QUERY = '(min-width: 768px) and (min-height: 700px) and (pointer: coarse)'
+
+export function quickLinkCap() {
+  if (typeof window !== 'undefined' && window.matchMedia(IPAD_SHELL_QUERY).matches) {
+    return QUICK_LINK_MAX_IPAD
+  }
+  return QUICK_LINK_MAX
+}
 
 export const QUICK_LINKS_STORAGE_KEY = 'lvsp:quickLinks:v1'
 

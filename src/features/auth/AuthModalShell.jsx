@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
 import { linkBtn } from '../shell/shellClasses'
+import { IPAD_SHELL_QUERY } from '../shell/quickLinkDestinations.js'
 
 /**
  * iPad (and the open Duo, once it is this wide): full-screen centered column.
  * Phone and Android: a centered card. A landscape iPhone is wide but short, so
  * the height check keeps that on the card, not the iPad column.
  */
-const IPAD_AUTH_QUERY = '(min-width: 768px) and (min-height: 700px) and (pointer: coarse)'
+const IPAD_AUTH_QUERY = IPAD_SHELL_QUERY
 
 export function useIpadAuthStage() {
   const [on, setOn] = useState(() =>

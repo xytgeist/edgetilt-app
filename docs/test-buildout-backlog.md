@@ -564,7 +564,8 @@ Zinc **`bg-*`** remaps under **`html.light`**; **`text-white`** on inputs **does
 | **Calcs shortcut** | Opens **Calculators tab home** (picker) — **not** a specific game or last-opened calc. |
 | **Anonymous** | Non-issue — anon is Lounge read-only; quick links only on member tool surfaces. |
 | **Configuration UX** | **Hub pin** on Slots / Poker tool cards (not Profile / settings, not inside tool screens). Pin ON → adds that destination to the title bar. |
-| **Max slots** | **2** shortcuts globally. Attempting a **3rd** → modal: explains limit, lists the **two active** links with their switches so user can turn one (or both) off, then enable the new one. |
+| **Max slots** | **2** shortcuts on phone (title bar, left of the hamburger). Attempting another → modal: explains the limit, lists the active links with their switches so the user can turn one off, then enable the new one. |
+| **iPad** | Shortcuts leave the title bar. They sit in the left rail under Settings, below a hairline. Max **4**. Storage keeps up to 4 so opening the app on a phone does not drop the extra pins. Phone still shows and allows only the first 2. |
 | **Title bar placement** | Up to **2 icon buttons** in the fixed title bar row, **left of hamburger** (same cluster as `titleBarNavSlot` in `ScrollLinkedEdgeTitleBarShell` / Lounge feed bar). On **Lounge dock panels** (search, notifications, settings, chat), the hamburger cluster **slides left** to make room for the panel **×** close button — logo max-width reserves extra space via `titleBarLayout.js` (`panelCloseVisible`). When a **live session chip** is active, the row uses `auto minmax(0,1fr) auto` and **container queries** hide shortcut 2 then both shortcuts before colliding with the pill (earlier if tool close is present); destinations remain in the hamburger. |
 
 ### Eligible destinations (v1 allowlist)
@@ -586,7 +587,7 @@ Ryan (2026-05-29): Calcs, Calendar, Bankroll, Logbook, AP Guides — no Intel. L
 ### Implementation sketch (when picked up)
 
 - **Registry:** `src/features/shell/quickLinkDestinations.js` — id, label, icon, `tab`, optional `requiresSlotsEdge` / calc gate flags.
-- **Persist:** `localStorage` key e.g. `lvsp:quickLinks:v1` → `string[]` of ≤2 destination ids (profile column optional later).
+- **Persist:** `localStorage` key e.g. `lvsp:quickLinks:v1` → `string[]` of ≤4 destination ids (phone shows and pins only 2; profile column optional later).
 - **Shell:** `AppShell.jsx` — read store, render icons in `renderTitleBarNavSlot()`; tap → same navigation + subscribe/auth as hub tiles.
 - **Shared UI:** `QuickLinkPageToggle.jsx` — small switch row for top of each eligible screen; coordinates with store + **at-cap modal** (`QuickLinkAtCapModal.jsx`).
 - **Light/dark:** reuse title bar / zinc patterns; scope any light overrides under `data-quick-link-*` if needed (same discipline as bankroll/logbook).
@@ -1146,6 +1147,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **iPad shortcuts (Mac).** User pins sit under Settings on the left rail, under a hairline. iPad limit is 4. Phone stays at 2 in the title bar. Frontend **`1.4.337`**. Web only.
 - **2026-09-18:** **Phone on prod (Windows).** Production Auth phone is on. Send SMS hook points at **`auth-send-sms`**. Edge secrets include **`TELNYX_API_KEY`**. SQL **`20260919060000`** and **`20260919120000`** applied. **`account-phone-release`** deployed. SMS autoconfirm stays off. Change-email mail includes the 6-digit code. `main` is **`1.4.336`**.
 - **2026-09-18:** **iPad hamburger menu (Mac).** Expanded menu rows, icons, and the panel are about 50% larger. Phone menu unchanged. Frontend **`1.4.336`**. Web only.
 - **2026-09-18:** **Confirm under the code (Windows).** Account info Confirm email code is back under the code field, next to Send again. Send code stays inside the email field. Frontend **`1.4.335`**.

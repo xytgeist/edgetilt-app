@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-18 … iPad shortcuts under Settings
+
+**I am Mac Theo.** On iPad, pinned shortcuts sit under Settings on the left rail, under a hairline. Limit is 4. Phone stays at 2 in the title bar. Web **`1.4.337`**.
+
 ### Windows Theo 2026-09-18 … phone on prod
 
 **I am Windows Theo.** Phone login is on for production. The Telnyx key is on the prod Edge function. Texts use the same 2FA number as test. Autoconfirm stays off. Frontend on `main` is **`1.4.336`**.

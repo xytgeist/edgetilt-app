@@ -1,8 +1,9 @@
 import { useCallback, useSyncExternalStore } from 'react'
 import {
   isQuickLinkId,
-  QUICK_LINK_MAX,
+  QUICK_LINK_MAX_IPAD,
   QUICK_LINKS_STORAGE_KEY,
+  quickLinkCap,
 } from './quickLinkDestinations.js'
 
 /** @typedef {import('./quickLinkDestinations.js').QuickLinkId} QuickLinkId */
@@ -21,7 +22,7 @@ function readFromStorage() {
     if (!raw) return []
     const parsed = JSON.parse(raw)
     if (!Array.isArray(parsed)) return []
-    return parsed.filter(id => isQuickLinkId(id)).slice(0, QUICK_LINK_MAX)
+    return parsed.filter(id => isQuickLinkId(id)).slice(0, QUICK_LINK_MAX_IPAD)
   } catch {
     return []
   }
@@ -62,7 +63,7 @@ export function setQuickLinkEnabled(id, enabled) {
 
   if (enabled) {
     if (has) return { ok: true, ids: current }
-    if (current.length >= QUICK_LINK_MAX) {
+    if (current.length >= quickLinkCap()) {
       return { ok: false, reason: 'at_cap', ids: current }
     }
     const next = [...current, id]

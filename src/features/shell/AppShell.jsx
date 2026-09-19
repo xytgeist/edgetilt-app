@@ -107,6 +107,7 @@ import { queueLoungeActivityMarkRead } from '../../utils/loungeActivityMarkReadQ
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
 import AttentionDot from '../../components/AttentionDot.jsx'
 import TitleBarQuickLinks from '../../components/TitleBarQuickLinks.jsx'
+import { useIpadAuthStage } from '../auth/AuthModalShell.jsx'
 import TitleBarCloseButton from '../../components/TitleBarCloseButton.jsx'
 import LiveSessionTitleChip from '../../components/LiveSessionTitleChip.jsx'
 import { useActiveLiveSessions } from './useActiveLiveSessions.js'
@@ -416,6 +417,7 @@ export default function AppShell({
   const [pendingOfferEventIds, setPendingOfferEventIds] = useState([])
   const [offerSpotlightEventIds, setOfferSpotlightEventIds] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
+  const ipadShell = useIpadAuthStage()
   const [tabErrorTestTrigger, setTabErrorTestTrigger] = useState(0)
   const [tabErrorTestOpen, setTabErrorTestOpen] = useState(false)
   const [isActiveAffiliate, setIsActiveAffiliate] = useState(false)
@@ -2243,6 +2245,7 @@ export default function AppShell({
 
   const renderTitleBarNavSlot = () => (
     <div className="flex items-center gap-1.5 shrink-0" data-title-bar-nav-cluster>
+      {ipadShell ? null : (
       <TitleBarQuickLinks
         browseMode={browseMode}
         hasSlotsEdge={hasActiveSubscription}
@@ -2251,6 +2254,7 @@ export default function AppShell({
         starterUnlockedCalculatorKeys={starterUnlockedCalculatorKeys}
         onNavigate={handleQuickLinkNavigate}
       />
+      )}
       <div className="relative z-[55] shrink-0">
       {menuOpen ? (
         <div
@@ -2713,6 +2717,19 @@ export default function AppShell({
             loadMoreCommunityFeed={loadMoreCommunityFeed}
             hydrateCommunityPosts={hydrateCommunityPosts}
             titleBarNavSlot={renderTitleBarNavSlot()}
+            ipadRailShortcuts={
+              ipadShell ? (
+                <TitleBarQuickLinks
+                  layout="rail"
+                  browseMode={browseMode}
+                  hasSlotsEdge={hasActiveSubscription}
+                  isStaff={isStaff}
+                  gatesMap={contentAccessGatesMap}
+                  starterUnlockedCalculatorKeys={starterUnlockedCalculatorKeys}
+                  onNavigate={handleQuickLinkNavigate}
+                />
+              ) : null
+            }
             titleBarCenterSlot={renderTitleBarCenterSlot()}
             hasActiveSubscription={hasActiveSubscription}
             hasSlotsEdgeStarter={hasSlotsEdgeStarter}

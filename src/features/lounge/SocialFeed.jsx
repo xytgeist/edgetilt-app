@@ -733,6 +733,8 @@ export default function SocialFeed({
   hydrateCommunityPosts = async (rows) => rows ?? [],
   /** Optional shell UI (e.g. hamburger) rendered on the right side of the fixed title bar. */
   titleBarNavSlot = null,
+  /** iPad left rail, under Settings. Phone keeps shortcuts in the title bar. */
+  ipadRailShortcuts = null,
   titleBarCenterSlot = null,
   /** Shell subscription + staff (topic channels); merged in-feed with profile role where useful. */
   hasActiveSubscription = false,
@@ -16143,7 +16145,10 @@ export default function SocialFeed({
 
   const loungeIpadRail =
     ipadShell && !loungeDockSuppressed && typeof document !== 'undefined'
-      ? createPortal(<LoungeIpadNavRail items={loungeDockWheelItems} />, document.body)
+      ? createPortal(
+          <LoungeIpadNavRail items={loungeDockWheelItems} shortcuts={ipadRailShortcuts} />,
+          document.body,
+        )
       : null
 
   const loungeDockCarousel =

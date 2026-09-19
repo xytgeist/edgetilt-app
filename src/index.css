@@ -4275,16 +4275,21 @@ html.light [data-starter-weekly-drop-modal] .starter-weekly-drop-hero-title {
     flex: none;
   }
 }
-/* Landscape iPad: the 1.5× cards fill the short axis. Portrait iPad and phone stay. */
+/* Landscape iPad: a notch under phone size, and the carousel paints over the tagline so the founding pill is not covered. Portrait and phone stay. */
 @media (orientation: landscape) and (min-width: 768px) and (min-height: 700px) and (pointer: coarse) {
+  [data-subscribe-modal] .subscribe-modal-plans {
+    overflow: visible;
+    z-index: 30;
+  }
   [data-subscribe-modal] .subscribe-plan-carousel-stage {
-    min-height: 16.75rem;
+    min-height: calc(16.75rem * 0.88);
   }
   [data-subscribe-modal] .subscribe-plan-slide-3d {
-    width: 16.75rem;
+    width: calc(16.75rem * 0.88);
   }
   [data-subscribe-modal] .subscribe-plan-card-scale-inner {
-    transform: none;
+    transform: scale(0.88);
+    transform-origin: top left;
   }
 }
 [data-subscribe-modal] .subscribe-plan-slide-3d--instant {

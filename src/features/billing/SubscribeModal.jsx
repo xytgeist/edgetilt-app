@@ -87,13 +87,15 @@ function slidePoses() {
 }
 
 const SUBSCRIBE_IPAD_CARD_SCALE = 1.5
+/** A notch under phone size so the founding pill clears the tagline. */
+const SUBSCRIBE_IPAD_LANDSCAPE_CARD_SCALE = 0.88
 /** Landscape iPad is short. Same gate as the shell, plus orientation, so portrait and phones stay. */
 const SUBSCRIBE_IPAD_LANDSCAPE_QUERY =
   '(orientation: landscape) and (min-width: 768px) and (min-height: 700px) and (pointer: coarse)'
 
 function subscribeIpadCardScale() {
   if (typeof window === 'undefined') return 1
-  if (window.matchMedia(SUBSCRIBE_IPAD_LANDSCAPE_QUERY).matches) return 1
+  if (window.matchMedia(SUBSCRIBE_IPAD_LANDSCAPE_QUERY).matches) return SUBSCRIBE_IPAD_LANDSCAPE_CARD_SCALE
   return isSpreadSubscribeCarousel() ? SUBSCRIBE_IPAD_CARD_SCALE : 1
 }
 
@@ -109,7 +111,7 @@ function SubscribeCardScale({ children }) {
 
     const sync = () => {
       const scale = subscribeIpadCardScale()
-      host.style.height = scale > 1 ? `${inner.offsetHeight * scale}px` : ''
+      host.style.height = scale === 1 ? '' : `${inner.offsetHeight * scale}px`
     }
 
     sync()
@@ -987,7 +989,7 @@ export default function SubscribeModal({
           </div>
         </div>
 
-        <div className="relative z-20 flex min-h-0 flex-1 flex-col overflow-hidden px-6 pb-[max(1.25rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] sm:px-7 sm:pb-6">
+        <div className="subscribe-modal-plans relative z-20 flex min-h-0 flex-1 flex-col overflow-hidden px-6 pb-[max(1.25rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] sm:px-7 sm:pb-6">
           {hasSlotsEdgeLifetime ? (
             <div className="rounded-2xl border border-amber-500/30 bg-amber-950/20 p-5">
               <p className="text-sm leading-relaxed text-zinc-300">

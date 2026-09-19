@@ -3,7 +3,7 @@
  * Situational Lean, live in-game edge, and Best Bet of the Hour use separate floors.
  */
 import type { OddsPick } from './loungeBotOddsCaption.ts'
-import { DEFAULT_MAX_EV_PCT } from './loungeBotOddsCaption.ts'
+import { DEFAULT_MAX_EV_PCT, mlWinGapClears } from './loungeBotOddsCaption.ts'
 import type { PlusEvPickOptions } from './loungeBotOddsCaption.ts'
 
 /** Max ⚡ Edge posts per poll_edges cron tick (best EV across all sports). */
@@ -93,8 +93,9 @@ export function edgeAlertRequiredMinEvPct(sportKey: string, pick: Pick<OddsPick,
 }
 
 export function edgeAlertPickQualifies(sportKey: string, pick: OddsPick): boolean {
-  return pick.bookCount >= edgeAlertRequiredMinBooks(sportKey, pick)
-    && pick.edgePct >= edgeAlertRequiredMinEvPct(sportKey, pick)
+  if (pick.bookCount < edgeAlertRequiredMinBooks(sportKey, pick)) return false
+  if (pick.marketKey === 'h2h') return mlWinGapClears(pick.consensusProb, pick.pickPrice)
+  return pick.edgePct >= edgeAlertRequiredMinEvPct(sportKey, pick)
 }
 
 /** Scan options for findPlusEvOpportunities (may be looser than final qualify for soccer thin books). */

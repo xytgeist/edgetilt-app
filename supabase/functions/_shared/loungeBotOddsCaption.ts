@@ -112,12 +112,21 @@ export function marketLabel(marketKey: OddsPick['marketKey']): string {
   return 'ML'
 }
 
-/** Standard Scott +EV detail: `+13.5% EV · Fair -151 (11 books)`. */
+/**
+ * Scott detail line.
+ * ML: `Fair +733 · +4.8pp vs market (11 books)`.
+ * Spread / total: `+13.5% EV · Fair -151 (11 books)`.
+ */
 export function formatScottEvDetailLine(pick: OddsPick): string {
-  const ev = Math.round(pick.edgePct * 10) / 10
   const fair = formatAmericanOdds(pick.consensusPrice)
   const books = Math.max(0, Number(pick.bookCount) || 0)
   const bookLabel = books === 1 ? '1 book' : `${books} books`
+  if (pick.marketKey === 'h2h') {
+    const gap = mlWinGapPp(pick.consensusProb, pick.pickPrice)
+    const gapText = gap == null ? 'n/a' : formatMlWinGapPp(gap)
+    return `Fair ${fair} · ${gapText} vs market (${bookLabel})`
+  }
+  const ev = Math.round(pick.edgePct * 10) / 10
   return `+${ev}% EV · Fair ${fair} (${bookLabel})`
 }
 
@@ -134,6 +143,41 @@ export function formatPlusEvConsensusLine(pick: OddsPick): string {
 /** Compact +EV suffix for period-report bullets. */
 export function formatPlusEvConsensusBullet(pick: OddsPick): string {
   return formatScottEvDetailBullet(pick)
+}
+
+/**
+ * Moneyline print gate. Win-rate points, not ROI.
+ * need = 2.0 + 0.40 / p_mkt. House rule, not a fitted model.
+ * Spreads, totals, and teasers do not use this.
+ */
+export const ML_WIN_GAP_BASE_PP = 2
+export const ML_WIN_GAP_LENGTH_COEF = 0.4
+/** Longer than this, a thin last-5 sit kills the ML even if the gap clears. */
+export const ML_THIN_TAPE_SIT_PRICE = 1000
+
+export function requiredMlWinGapPp(pMkt: number): number | null {
+  if (!Number.isFinite(pMkt) || pMkt <= 0 || pMkt >= 1) return null
+  return ML_WIN_GAP_BASE_PP + ML_WIN_GAP_LENGTH_COEF / pMkt
+}
+
+export function mlWinGapPp(fairProb: number, americanPrice: number): number | null {
+  const pMkt = americanToImplied(americanPrice)
+  if (requiredMlWinGapPp(pMkt) == null || !Number.isFinite(fairProb)) return null
+  return (fairProb - pMkt) * 100
+}
+
+export function mlWinGapClears(fairProb: number, americanPrice: number): boolean {
+  const pMkt = americanToImplied(americanPrice)
+  const need = requiredMlWinGapPp(pMkt)
+  const gap = mlWinGapPp(fairProb, americanPrice)
+  if (need == null || gap == null) return false
+  return gap + 1e-6 >= need
+}
+
+export function formatMlWinGapPp(pp: number): string {
+  const rounded = Math.round(pp * 10) / 10
+  const sign = rounded > 0 ? '+' : ''
+  return `${sign}${rounded.toFixed(1)}pp`
 }
 
 /** American odds → implied probability (with vig). */
@@ -787,7 +831,12 @@ export function findPlusEvOpportunities(
         const evDecimal = computeEvDecimal(consensusProb, best.price, 1)
         const evPct = Math.round(evDecimal * 1000) / 10
 
-        if (evPct < minEvPct || evPct > maxEvPct) continue
+        if (evPct > maxEvPct) continue
+        if (marketKey === 'h2h') {
+          if (!mlWinGapClears(consensusProb, best.price)) continue
+        } else if (evPct < minEvPct) {
+          continue
+        }
 
         opportunities.push({
           sportKey,

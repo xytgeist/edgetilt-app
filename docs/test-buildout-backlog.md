@@ -1147,6 +1147,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-19:** **ML win-gap ladder (Windows).** Every moneyline sits unless the win-rate gap clears `2 + 0.40 / p_mkt` (points, not ROI). Spreads, totals, and teasers keep their existing gates. A price longer than +1000 plus a thin last-5 also sits Scott. Today's Sharaf Scott line is a sit and the pending ledger row is removed. Next card needs a prod `lounge-odds-poll` deploy.
 - **2026-09-19:** **UFC agree highlight (Windows).** Dropped the Both label. Same-side Scott + Rocco fights keep the matchup line in gold and stay listed first. Today's prod posts were edited in place. Next card needs a prod `lounge-odds-poll` deploy.
 - **2026-09-19:** **UFC Both (Windows).** Fights where Scott and Rocco take the same side are marked gold Both and listed first on the public tease, fan-only card, and VIP chat. A sit is not a Both. Next card needs a prod `lounge-odds-poll` deploy.
 - **2026-09-19:** **Rocco UFC copy (Windows).** Dropped "If they ran it 10 times" from Rocco's UFC rationale. Style and margin stay. Today's prod Lounge posts and VIP chat were edited in place. Next card needs a prod `lounge-odds-poll` deploy.

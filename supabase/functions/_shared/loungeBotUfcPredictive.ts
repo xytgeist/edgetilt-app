@@ -2,7 +2,7 @@
  * UFC & MMA 4-Desk Syndicate Engine.
  *
  * Models and grades full UFC fight cards across our 4 quantitative desks:
- * 1. Scott Sharpe (Head Quant) ... +EV Devigged Consensus vs Sharp Offshore Books (Pinnacle/Circa).
+ * 1. Scott Sharpe (Head Quant) ... moneyline sits unless the win-rate gap clears 2 + 0.40 / p_mkt.
  * 2. Rocco (Octagon Grappling & Strike Differential) ... Takedown control rate & net SLpM efficiency.
  * 3. Chedda (Live Dogs & Inside Distance Props) ... Plus-money live underdogs & KO/Sub finish equity.
  * 4. Tank ... UFC round O/U is parked until the desk is trained.
@@ -20,6 +20,9 @@ import {
   impliedToAmerican,
   shortDisplayName,
   filterOddsEventsForNextUfcCard,
+  formatMlWinGapPp,
+  requiredMlWinGapPp,
+  ML_THIN_TAPE_SIT_PRICE,
 } from './loungeBotOddsCaption.ts'
 import {
   type UfcMatchupAnalysis,
@@ -197,29 +200,35 @@ export async function buildUfcSlateCard(
     const matchup = analyzeUfcMatchup(fighterA, fighterB, metricsList, isApex, isFiveRounds)
     const splits = resolveGameBettingSplits(ev, null, oddsA, oddsB)
 
-    // 1. Desk 1: Scott Sharpe (Offshore Devig & +EV)
-    let scottSide: 'A' | 'B' = 'A'
-    let scottOdds = oddsA
-    let scottPickName = `${fighterA} ML (${formatAmericanOdds(oddsA)})`
-    let scottRationale = `Model devig clears +EV vs Pinnacle/Circa consensus pricing.`
+    // 1. Desk 1: Scott Sharpe. Sit unless the win-rate gap clears 2 + 0.40 / p_mkt.
+    let scottSide: 'A' | 'B' | 'PASS' = 'PASS'
+    let scottOdds = 0
+    let scottPickName = 'PASS'
+    let scottRationale = 'No fair win rate. Sit.'
+    let scottGapPp: number | null = null
+    let scottNeedPp: number | null = null
     const edgeA = matchup ? matchup.projectedWinProbA - americanToImplied(oddsA) : null
     const edgeB = matchup ? matchup.projectedWinProbB - americanToImplied(oddsB) : null
 
     if (matchup && edgeA != null && edgeB != null) {
-      if (edgeB > edgeA) {
-        scottSide = 'B'
-        scottOdds = oddsB
-        scottPickName = `${fighterB} ML (${formatAmericanOdds(oddsB)})`
-        scottRationale = `Fair price ${formatAmericanOdds(matchup.modelFairOddsB)} implies +${Math.round(edgeB * 100)}% +EV edge over market ${formatAmericanOdds(oddsB)}.`
+      const takeB = edgeB > edgeA
+      const sideOdds = takeB ? oddsB : oddsA
+      const fairOdds = takeB ? matchup.modelFairOddsB : matchup.modelFairOddsA
+      const gapPp = (takeB ? edgeB : edgeA) * 100
+      const needPp = requiredMlWinGapPp(americanToImplied(sideOdds))
+      scottGapPp = gapPp
+      scottNeedPp = needPp
+      scottOdds = sideOdds
+      const gapText = formatMlWinGapPp(gapPp)
+      const needText = needPp == null ? 'a real gap' : formatMlWinGapPp(needPp)
+      const marketText = formatAmericanOdds(sideOdds)
+      const fairText = formatAmericanOdds(fairOdds)
+      if (needPp != null && gapPp + 1e-6 >= needPp) {
+        scottSide = takeB ? 'B' : 'A'
+        scottPickName = `${takeB ? fighterB : fighterA} ML (${marketText})`
+        scottRationale = `Fair price ${fairText} is ${gapText} vs market ${marketText}.`
       } else {
-        scottRationale = `Fair price ${formatAmericanOdds(matchup.modelFairOddsA)} implies +${Math.round(edgeA * 100)}% +EV edge over market ${formatAmericanOdds(oddsA)}.`
-      }
-    } else {
-      // Default to slight favorite or sharp money side
-      if (splits.sharpSide === 'away') {
-        scottSide = 'B'
-        scottOdds = oddsB
-        scottPickName = `${fighterB} ML (${formatAmericanOdds(oddsB)})`
+        scottRationale = `Fair price ${fairText} is ${gapText} vs market ${marketText}. Need ${needText}. Sit.`
       }
     }
 
@@ -305,6 +314,19 @@ export async function buildUfcSlateCard(
       }
     }
 
+    // Longer than +1000, Rocco's thin last-5 sits Scott even if the gap cleared.
+    const roccoThinTape = rocco.features.includes('thin_tape') || rocco.features.includes('missing_last5')
+    if (scottSide !== 'PASS' && scottOdds > ML_THIN_TAPE_SIT_PRICE && roccoThinTape) {
+      scottSide = 'PASS'
+      scottPickName = 'PASS'
+      scottRationale = `Price is ${formatAmericanOdds(scottOdds)} and the last-5 tape is thin. Sit.`
+      if (!TANK_UFC_ROUND_TOTALS_ENABLED) {
+        tankSide = 'PASS'
+        tankPickName = 'PASS'
+        tankOdds = 0
+      }
+    }
+
     // Consensus Tally. Tank votes when he cards an ML.
     const mlSides = [scottSide, roccoSide, cheddaSide]
     if (tankSide === 'A' || tankSide === 'B') mlSides.push(tankSide)
@@ -377,7 +399,9 @@ export async function buildUfcSlateCard(
             edgeB,
             fairA: matchup?.modelFairOddsA ?? null,
             fairB: matchup?.modelFairOddsB ?? null,
-            side: scottSide,
+            side: scottSide === 'A' || scottSide === 'B' ? scottSide : 'PASS',
+            gapPp: scottGapPp,
+            needPp: scottNeedPp,
           }),
         },
         Rocco: {
@@ -488,6 +512,9 @@ function orderUfcFightsForPrint(fights: UfcFightPick[] | null | undefined): UfcF
 function formatUfcFightDeskBlock(fight: UfcFightPick): string {
   const scott = fight.pickerPicks.Scott
   const rocco = fight.pickerPicks.Rocco
+  const scottLine = scott.side === 'PASS'
+    ? `• ${formatColoredPickerName('Scott')}: PASS ... ${scott.rationale}`
+    : `• ${formatColoredPickerName('Scott')}: ${scott.pickName} ... ${scott.rationale}`
   const roccoLine = rocco.side === 'PASS'
     ? `• ${formatColoredPickerName('Rocco')}: PASS ... ${rocco.rationale}`
     : `• ${formatColoredPickerName('Rocco')}: ${rocco.pickName} ... ${rocco.rationale}`
@@ -496,7 +523,7 @@ function formatUfcFightDeskBlock(fight: UfcFightPick): string {
   const title = scottAndRoccoAgree(fight) ? `[gold]${names}[/gold]` : names
   return [
     title,
-    `• ${formatColoredPickerName('Scott')}: ${scott.pickName} ... ${scott.rationale}`,
+    scottLine,
     roccoLine,
   ].join('\n')
 }
@@ -563,9 +590,13 @@ export function formatUfcCardCaption(card: UfcSlateCard): string {
     const scott = fight.pickerPicks.Scott
     const rocco = fight.pickerPicks.Rocco
     const agree = scottAndRoccoAgree(fight)
-    const opp = scott.side === 'A' ? fight.fighterB : fight.fighterA
-    const pick = agree ? `[gold]**${scott.pickName}** vs ${opp}[/gold]` : `**${scott.pickName}** vs ${opp}`
-    lines.push(`• ${pick}`)
+    if (scott.side !== 'A' && scott.side !== 'B') {
+      lines.push(`• **${fight.fighterA} vs ${fight.fighterB}** ... PASS. ${scott.rationale}`)
+    } else {
+      const opp = scott.side === 'A' ? fight.fighterB : fight.fighterA
+      const pick = agree ? `[gold]**${scott.pickName}** vs ${opp}[/gold]` : `**${scott.pickName}** vs ${opp}`
+      lines.push(`• ${pick}`)
+    }
     lines.push(
       rocco.side === 'PASS'
         ? `  ↳ ${formatColoredPickerName('Rocco')}: PASS ... ${rocco.rationale}`

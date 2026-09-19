@@ -347,7 +347,7 @@ export async function runBestBetHourPoll(
 
   const best = pickBestBetAcrossSports(candidates)
   const minEvForBest = best ? effectiveMinEvPct(best.sportKey, minEv) : minEv
-  if (!best || best.edgePct < minEvForBest) {
+  if (!best || (best.marketKey !== 'h2h' && best.edgePct < minEvForBest)) {
     return {
       ok: true,
       slug,

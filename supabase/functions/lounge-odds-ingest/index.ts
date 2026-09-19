@@ -10,6 +10,7 @@ import {
   buildOddsEdgeAlertCaption,
   buildOddsSlateCaption,
   DEFAULT_MIN_EV_PCT,
+  mlWinGapClears,
 } from '../_shared/loungeBotOddsCaption.ts'
 import {
   gradePendingPicks,
@@ -244,7 +245,19 @@ Deno.serve(async (req) => {
       : morningPreview
 
     if (dryRun) {
-      const clearsEdge = Boolean(wantEdge && edgePick && edgePick.edgePct >= minEdge)
+      const edgeRow = edgePick as {
+        marketKey?: string
+        consensusProb?: number
+        pickPrice?: number
+        edgePct?: number
+      } | null
+      const clearsEdge = Boolean(
+        wantEdge && edgeRow && (
+          edgeRow.marketKey === 'h2h'
+            ? mlWinGapClears(Number(edgeRow.consensusProb), Number(edgeRow.pickPrice))
+            : Number(edgeRow.edgePct) >= minEdge
+        ),
+      )
       const wouldPost = clearsEdge
         ? 'edge'
         : postMode === 'edge_only'

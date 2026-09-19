@@ -827,10 +827,18 @@ export function buildUfcScottEquations(input: {
   edgeB: number | null
   fairA: number | null
   fairB: number | null
-  side: 'A' | 'B' | 'Over' | 'Under'
+  side: 'A' | 'B' | 'Over' | 'Under' | 'PASS'
+  gapPp?: number | null
+  needPp?: number | null
 }): DeskEquation[] {
-  const pick = input.side === 'A' ? input.fighterA : input.fighterB
-  const edge = input.side === 'A' ? input.edgeA : input.edgeB
+  const sitting = input.side !== 'A' && input.side !== 'B'
+  const pick = input.side === 'A' ? input.fighterA : input.side === 'B' ? input.fighterB : 'Sit'
+  const edge = input.side === 'A' ? input.edgeA : input.side === 'B' ? input.edgeB : null
+  const gap = input.gapPp ?? (edge == null ? null : edge * 100)
+  const need = input.needPp ?? null
+  const clears = gap != null && need != null && gap + 1e-6 >= need
+  const gapText = gap == null ? 'n/a' : `${signedPts(gap)}pp`
+  const needText = need == null ? 'n/a' : `${signedPts(need)}pp`
   return [
     deskEq(
       'ufc_scott_fair',
@@ -850,27 +858,27 @@ export function buildUfcScottEquations(input: {
     ),
     deskEq(
       'ufc_scott_edge',
-      '+EV vs market',
-      'projected win % − implied market %',
-      edge == null
-        ? 'n/a'
-        : `${pick} ${signedPts(Math.round((edge || 0) * 1000) / 10)}%`,
-      edge != null && edge > 0 ? 'fire' : 'pass',
-      edge != null
-        ? `Takes the larger +EV side (${pick}).`
-        : 'No matchup metrics … falls back to sharp side / chalk.',
+      'Win-rate gap',
+      'projected win % − market implied %. Need 2 + 0.40 / p_mkt.',
+      gap == null ? 'n/a' : `${pick} ${gapText} (need ${needText})`,
+      clears && !sitting ? 'fire' : 'pass',
+      gap == null
+        ? 'No fair win rate. Sit.'
+        : clears
+          ? `Gap clears the bar (${pick}).`
+          : `Need ${needText}. Sit.`,
       [
-        { label: `${input.fighterA} +EV`, value: input.edgeA == null ? 'n/a' : `${signedPts(Math.round(input.edgeA * 1000) / 10)}%` },
-        { label: `${input.fighterB} +EV`, value: input.edgeB == null ? 'n/a' : `${signedPts(Math.round(input.edgeB * 1000) / 10)}%` },
+        { label: `${input.fighterA} gap`, value: input.edgeA == null ? 'n/a' : `${signedPts(Math.round(input.edgeA * 1000) / 10)}pp` },
+        { label: `${input.fighterB} gap`, value: input.edgeB == null ? 'n/a' : `${signedPts(Math.round(input.edgeB * 1000) / 10)}pp` },
       ],
     ),
     deskEq(
       'ufc_scott_decision',
       'Scott decision',
-      'larger +EV moneyline',
-      pick,
-      'fire',
-      `Fight vote: ${pick}.`,
+      'larger gap, then the moneyline bar',
+      sitting ? 'PASS' : pick,
+      sitting ? 'pass' : 'fire',
+      sitting ? 'Sit.' : `Fight vote: ${pick}.`,
     ),
   ]
 }

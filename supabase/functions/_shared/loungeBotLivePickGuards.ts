@@ -1,7 +1,7 @@
 /**
  * Live in-game pick quality gates (pre-match uses DEFAULT_MIN_BOOKS = 3).
  */
-import type { OddsPick } from './loungeBotOddsCaption.ts'
+import { type OddsPick, mlWinGapClears } from './loungeBotOddsCaption.ts'
 
 export const LIVE_MIN_BOOKS = 6
 export const LIVE_DEFAULT_MIN_EV_PCT = 7.5
@@ -26,7 +26,11 @@ export type LivePickRejectReason =
 /** Returns a reject reason when a live pick should not be posted. */
 export function rejectLivePick(pick: OddsPick, minEvPct: number): LivePickRejectReason | null {
   if (pick.bookCount < LIVE_MIN_BOOKS) return 'live_min_books'
-  if (pick.edgePct < minEvPct) return 'live_min_ev'
+  if (pick.marketKey === 'h2h') {
+    if (!mlWinGapClears(pick.consensusProb, pick.pickPrice)) return 'live_min_ev'
+  } else if (pick.edgePct < minEvPct) {
+    return 'live_min_ev'
+  }
 
   if (pick.marketKey === 'h2h' && isDrawOrTiePick(pick) && isSoccerSportKey(pick.sportKey)) {
     return 'live_soccer_draw'

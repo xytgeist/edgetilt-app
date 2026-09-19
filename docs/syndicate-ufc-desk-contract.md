@@ -13,7 +13,7 @@ North star: **four questions, not four labels on one ML.** The desks work if the
 
 Sit is a first-class output. Every desk must be able to print PASS. If a desk can’t sit, it isn’t independent.
 
-Conviction is that desk’s own units, not the house’s. Scott uses EV%. Rocco uses matchup margin. Chedda uses path confidence. Tank uses minutes-edge. Don’t normalize them into one fake 1-5 until you have a month of cards.
+Conviction is that desk’s own units, not the house’s. Scott uses win-rate points (`2 + 0.40 / p_mkt`), not ROI. Rocco uses matchup margin. Chedda uses path confidence. Tank uses minutes-edge. Don’t normalize them into one fake 1-5 until you have a month of cards.
 
 Kill list is closed. Miss, scratch, or walk-off. No “I don’t like the story anymore” after lock.
 
@@ -50,7 +50,7 @@ Scott never looks at “who looks better” except as an input to win%. Rocco ig
 
 ### Mapping rules
 
-- **Scott:** fair win% vs posted juice. No edge → PASS.
+- **Scott:** fair win% vs posted juice. Gap under `2 + 0.40 / p_mkt` → PASS. Price longer than +1000 plus a thin last-5 → PASS even if the gap clears.
 - **Rocco:** matchup features (stance, cage, 3 vs 5, wrestling vs liner). Same 0-100 fighter score Scott already used → you have two Scotts. No features → PASS. Never inherit Scott’s fair%.
 - **Chedda:** named path required (KO in pocket, body kick to late, R1 sub off shot). “I take dogs” is a sit. Dog that only wins a decision in Vegas → sit or a flag, not a fifth vote.
 - **Tank:** early-finish fight → closer. Distance fight → cardio / decision. No minutes read → PASS. Do not let Tank vote ML because “he’s the killer.”

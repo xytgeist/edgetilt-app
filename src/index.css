@@ -3524,7 +3524,7 @@ html.light [data-auth-ipad-stage] [data-auth-ipad-dismiss] {
   background-color: #fff;
   color: #09090b;
   min-height: 4.5rem;
-  font-size: 1.5rem;
+  font-size: 1.375rem;
 }
 [data-auth-ipad-stage] [data-auth-modal] p {
   font-size: 1rem;

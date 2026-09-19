@@ -88,6 +88,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Windows Theo.** UFC Metrics tab now has a last-refresh dump like Sleeper PVALs. Table `ufc_metrics_sync_runs` on test + prod. First dump lands on the next Tuesday GHA (or a manual sync). **`1.4.289`** on **`test`**.
 
+### Mac Theo 2026-09-18 … phone pill icon is an outline
+
+**I am Mac Theo.** Continue with Phone label is 22px. The icon is an outline handset. Web **`1.4.297`**.
+
 ### Mac Theo 2026-09-18 … iPad buttons 200px lower
 
 **I am Mac Theo.** iPad login buttons sit 200px under the slogan. Logo did not move. Web **`1.4.296`**.

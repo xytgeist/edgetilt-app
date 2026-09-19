@@ -561,21 +561,8 @@ function formatUfcFightDeskBlock(fight: UfcFightPick): string {
   ].join('\n')
 }
 
-function formatUfcPublicFight(fight: UfcFightPick): string {
-  const scott = fight.pickerPicks.Scott
-  const rocco = fight.pickerPicks.Rocco
-  const weight = fight.division ? ` (${fight.division})` : ''
-  const scottLine = scott.side === 'PASS'
-    ? `  ↳ ${formatColoredPickerName('Scott')}: PASS ... ${scott.rationale}`
-    : `  ↳ ${formatColoredPickerName('Scott')}: ${scott.pickName}`
-  const roccoLine = rocco.side === 'PASS'
-    ? `  ↳ ${formatColoredPickerName('Rocco')}: PASS ... ${rocco.rationale}`
-    : `  ↳ ${formatColoredPickerName('Rocco')}: ${rocco.pickName}`
-  return [
-    `**${fight.fighterA} vs ${fight.fighterB}**${weight}`,
-    scottLine,
-    roccoLine,
-  ].join('\n')
+function formatUfcSectionTitle(header: string): string {
+  return header.split('\n')[0].replace(/^##\s+/, '')
 }
 
 /**
@@ -628,21 +615,19 @@ export function formatUfcFanOnlyBodies(card: UfcSlateCard): {
 }
 
 /**
- * Format public UFC card drop caption for the Lounge feed.
+ * Public Lounge tease. Counts only. Sides stay on the fan-only post and VIP chat.
  */
 export function formatUfcCardCaption(card: UfcSlateCard): string {
   const lines: string[] = []
-
   lines.push(`🥊 **${card.cardTitle.toUpperCase()} · SCOTT + ROCCO** 🥊`)
-  lines.push(`Price desk + last-5 styles.\n`)
-
-  for (const block of ufcPrintBlocks(card.fights, formatUfcPublicFight)) {
-    lines.push(block, '')
+  lines.push(`Price desk + last-5 styles.`)
+  lines.push('')
+  for (const group of groupUfcFightsForPrint(card.fights)) {
+    lines.push(`${formatUfcSectionTitle(group.header)} · ${group.fights.length}`)
   }
-
-  lines.push(`💬 *Same Scott + Rocco card in the fan-only Lounge post and Sharpe VIP chat.*`)
+  lines.push('')
+  lines.push(`The sides are in the fan-only Lounge post and Sharpe VIP chat.`)
   lines.push(`🌐 Audited ledger & fighter metrics: sharpesyndicate.com`)
-
   return lines.join('\n')
 }
 

@@ -315,6 +315,8 @@ Spec: **`docs/chat-calling.md`**. Vendor **LiveKit Cloud**. SQL **`2026072800000
 
 **Decision (2026-09-14):** Telnyx guest campaign **`C6NW3Y9`** failed MNO review **Gambling (704)**. Swap/stake invites are **copy/share the claim link** from the creator's own Messages. Optional email stays. Leased-number SMS is dead for this path. OTP 2FA can still use **`+1 480 393 4143`** / campaign **`CKAVJP0`**. Do not assign **725**. Do not Create Campaign / appeal 704 unless Ryan asks.
 
+**Decision (2026-09-18):** **Continue with Phone** is Supabase phone OTP (`signInWithOtp`, then `verifyOtp` type `sms`). Edge **`auth-send-sms`** texts that code from **`+1 480 393 4143`**. That is login, not the Lounge verified badge below. Do not send Telnyx Verify codes into `verifyOtp`.
+
 **Shipped (placeholder, test @ `fe1402a0`):** Settings → Account → **Account info** — edit handle, email, optional `profiles.phone_number`; delete account text link. Migration **`20260727210000`** on test. **Not verified yet.** OTP opt-in proof page for future TFV/Verify docs: **`public/compliance/sms-otp-opt-in.html`**.
 
 ### Phone verification (Twilio Verify)
@@ -856,6 +858,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Edge Functions (test parity before production)
 
+- [ ] **`auth-send-sms`** deployed on **test** (`verify_jwt` false). Phone provider and the Send SMS hook are on for `kcosfvmreeiosdjdzycb`. **Still blocked:** Edge secret **`TELNYX_API_KEY`** is not set, so the text does not send yet. Optional **`TELNYX_2FA_FROM`** (default `+14803934143`) and **`TELNYX_MESSAGING_PROFILE_ID`**. Prod when Ryan asks. Source: `supabase/functions/auth-send-sms/README.md`.
+
 - [x] `process-offer-uploads` deployed and validated on test
 - [x] `w2g-vision-extract` deployed on test + **prod** (OpenAI vision W-2G six fields; **sign-in only** as of **`1.4.183`** … Starter+ is bulk in the app; prod redeploy 2026-09-11)
 - [x] **`syndicate-trench-vision`** (ESPN team PBWR/PRWR/RBWR/RSWR screenshot) … Ops NFL Trenches paste. Same `OPENAI_API_KEY` as splits. Deploy test; prod when Ryan OKs.
@@ -1141,6 +1145,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **Continue with Phone (Windows).** The login pill sends a Supabase SMS code (`signInWithOtp` / `verifyOtp` type `sms`). Edge **`auth-send-sms`** is deployed on test. Phone provider and the Send SMS hook are on. Texts wait on Edge secret **`TELNYX_API_KEY`**. Not the Lounge verified badge, and not Telnyx Verify. Frontend **`1.4.302`**. Prod Auth stays off until Ryan asks.
 - **2026-09-18:** **Phone login floats in the center (Mac).** The phone and Android card is no longer pinned to the bottom. Grab handle is gone. iPad column unchanged. Frontend **`1.4.301`**. Web only.
 - **2026-09-18:** **Phone login buttons smaller, Degen wordmark larger (Mac).** Circles and the phone pill on the phone sheet are 52px. **Degen with** plus the EDGE mark scales up. **Find Your** stays the old size. iPad column unchanged. Frontend **`1.4.300`**. Web only.
 - **2026-09-18:** **Phone login matches the iPad column (Mac).** iPhone and Android drop the Join / Sign in tabs for the circles, or-line, unwired phone pill, and bottom Sign in bar. Wordmark is **Find Your** or **Degen with** plus the EDGE mark, 50/50. Sheet background is black, not gray-900. Legal links are white there (near-black in light mode). Apple stays in the iOS shell only. Desktop mouse uses the same sheet. Frontend **`1.4.299`**. Web only.

@@ -131,3 +131,7 @@ verify_jwt = false
 # Default (matches pre-018393a2). Explicit so a prior --no-verify-jwt deploy flips back.
 [functions.delete-own-account]
 verify_jwt = true
+
+# Auth Send SMS hook. Signature is the webhook secret, not a user JWT.
+[functions.auth-send-sms]
+verify_jwt = false

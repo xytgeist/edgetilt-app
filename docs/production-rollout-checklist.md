@@ -244,6 +244,8 @@ supabase functions deploy stripe-webhook
 # Apple IAP (after 20260905120000 + 20260905140000; sandbox/prod Server Notification URLs in ASC):
 supabase functions deploy apple-iap-verify
 supabase functions deploy apple-iap-notify
+# Phone login (Send SMS hook). Enable Auth Phone provider + matching hook secret first. Test before prod:
+# supabase functions deploy auth-send-sms
 # Creator fan subs (after migrations 20260720180000–195000 + live fan tier price secrets):
 supabase functions deploy creator-fan-connect
 supabase functions deploy creator-fan-checkout

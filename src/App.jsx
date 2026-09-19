@@ -1009,6 +1009,26 @@ function App() {
       return 'Your Apple ID email is not verified yet. Open the Settings app, tap your name, and verify the email. Then try Continue with Apple again.'
     }
 
+    if (context === 'phone') {
+      if (
+        lower.includes('not enabled') ||
+        lower.includes('phone provider') ||
+        lower.includes('unsupported phone') ||
+        lower.includes('sms provider')
+      ) {
+        return 'Phone sign-in is not turned on yet. Use Google or email for now.'
+      }
+      if (lower.includes('signups not allowed')) {
+        return 'New phone accounts are turned off right now.'
+      }
+      if (lower.includes('not configured') || lower.includes('could not send') || lower.includes('error sending')) {
+        return 'Could not send the text right now. Try again in a minute, or use Google or email.'
+      }
+      if (lower.includes('expired') || lower.includes('otp') || lower.includes('token')) {
+        return 'That code is incorrect or expired.'
+      }
+    }
+
     return message
   }
 
@@ -1042,6 +1062,30 @@ function App() {
       (signedInUser) => ensureDefaultProfileRow(supabase, signedInUser),
       data.user,
     )
+  }
+
+  const handleSendPhoneCode = async (phone) => {
+    const { error } = await supabase.auth.signInWithOtp({
+      phone,
+      options: { channel: 'sms', shouldCreateUser: true },
+    })
+    if (error) return { error: getFriendlyErrorMessage(error, 'phone') }
+    return { error: '' }
+  }
+
+  const handleVerifyPhoneCode = async (phone, token) => {
+    if (authTab === 'join') markPendingLegalAcceptance()
+    const { data, error } = await supabase.auth.verifyOtp({ phone, token, type: 'sms' })
+    if (error) return { error: getFriendlyErrorMessage(error, 'phone') }
+
+    setAccessNotice('')
+    setVerificationSuccess(false)
+    setAuthPanelOpen(false)
+    await reloadAfterAuthSession(
+      (signedInUser) => ensureDefaultProfileRow(supabase, signedInUser),
+      data?.user,
+    )
+    return { error: '' }
   }
 
   const handleOAuthSignIn = async (provider, { setError = setLoginError, markLegalPending = false } = {}) => {
@@ -1546,6 +1590,8 @@ function App() {
       onForgotSubmit={handleForgotPassword}
       isOAuthLoading={isOAuthLoading}
       onOpenLegalDocument={(slug) => openLegalDocument(slug, 'auth')}
+      onSendPhoneCode={handleSendPhoneCode}
+      onVerifyPhoneCode={handleVerifyPhoneCode}
       onOAuthSignIn={({ provider, setErrorTarget }) => {
         const setError =
           setErrorTarget === 'forgot'

@@ -4,6 +4,7 @@ import { inputBase, btnPrimary, linkBtn } from '../shell/shellClasses'
 import { AppleIcon, OAuthDivider, GoogleIcon } from './OAuthUi'
 import AuthPasswordField from './AuthPasswordField'
 import { useIpadAuthStage } from './AuthModalShell'
+import { formatUsCaPhone, toE164UsCa } from './phoneSignIn.js'
 
 function isOAuthProviderError(message) {
   const lower = String(message || '').toLowerCase()
@@ -142,10 +143,24 @@ export default function AuthModalPanel({
   isOAuthLoading,
   onOAuthSignIn,
   onOpenLegalDocument,
+  onSendPhoneCode,
+  onVerifyPhoneCode,
 }) {
   const signupMessageRef = useRef(null)
   const ipadStage = useIpadAuthStage()
   const [emailOpen, setEmailOpen] = useState(false)
+  const [phoneStep, setPhoneStep] = useState(null)
+  const [phoneInput, setPhoneInput] = useState('')
+  const [phoneE164, setPhoneE164] = useState('')
+  const [phoneCode, setPhoneCode] = useState('')
+  const [phoneError, setPhoneError] = useState('')
+  const [phoneBusy, setPhoneBusy] = useState(false)
+
+  useEffect(() => {
+    setPhoneStep(null)
+    setPhoneError('')
+    setPhoneBusy(false)
+  }, [authTab])
 
   /** After Create account, success lives at the top ... scroll the sheet so it is not below the fold. */
   useEffect(() => {
@@ -275,6 +290,59 @@ export default function AuthModalPanel({
     authTab === 'join' &&
     (emailOpen || Boolean(signupMessage) || Boolean(signupError && !isOAuthProviderError(signupError)))
 
+  const closePhoneStep = () => {
+    setPhoneStep(null)
+    setPhoneError('')
+    setPhoneBusy(false)
+    setPhoneCode('')
+  }
+
+  const submitPhoneNumber = async (e) => {
+    e?.preventDefault?.()
+    if (phoneBusy) return
+    const e164 = toE164UsCa(phoneInput)
+    if (!e164) {
+      setPhoneError('Enter a valid US or Canada mobile number.')
+      return
+    }
+    setPhoneBusy(true)
+    setPhoneError('')
+    try {
+      const result = await onSendPhoneCode?.(e164)
+      if (result?.error) {
+        setPhoneError(result.error)
+        return
+      }
+      setPhoneE164(e164)
+      setPhoneCode('')
+      setPhoneStep('code')
+    } catch {
+      setPhoneError('Could not send the code. Try again in a minute.')
+    } finally {
+      setPhoneBusy(false)
+    }
+  }
+
+  const submitPhoneCode = async (e) => {
+    e.preventDefault()
+    if (phoneBusy) return
+    const token = phoneCode.replace(/\D/g, '')
+    if (token.length < 4) {
+      setPhoneError('Enter the code from the text.')
+      return
+    }
+    setPhoneBusy(true)
+    setPhoneError('')
+    try {
+      const result = await onVerifyPhoneCode?.(phoneE164, token)
+      if (result?.error) setPhoneError(result.error)
+    } catch {
+      setPhoneError('That code is incorrect or expired.')
+    } finally {
+      setPhoneBusy(false)
+    }
+  }
+
   return (
       <div className="flex flex-col">
         {signupMessage ? (
@@ -293,6 +361,77 @@ export default function AuthModalPanel({
           </div>
         ) : null}
         <div className={`${ipadStage ? 'mt-[calc(2.5rem+100px)] -mb-[100px]' : 'mt-2'} flex flex-col items-center px-1`}>
+          {phoneStep ? (
+            <form
+              onSubmit={phoneStep === 'code' ? submitPhoneCode : submitPhoneNumber}
+              className="mt-2 w-full space-y-4"
+            >
+              {phoneStep === 'number' ? (
+                <input
+                  type="tel"
+                  placeholder="Mobile number"
+                  value={phoneInput}
+                  onChange={(e) => setPhoneInput(e.target.value)}
+                  className={inputBase}
+                  autoComplete="tel"
+                  inputMode="tel"
+                  enterKeyHint="go"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  required
+                />
+              ) : (
+                <>
+                  <p className="text-center text-sm leading-relaxed text-zinc-400">
+                    Code sent to {formatUsCaPhone(phoneE164)}
+                  </p>
+                  <input
+                    type="text"
+                    placeholder="6-digit code"
+                    value={phoneCode}
+                    onChange={(e) => setPhoneCode(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                    className={inputBase}
+                    autoComplete="one-time-code"
+                    inputMode="numeric"
+                    enterKeyHint="go"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    required
+                  />
+                </>
+              )}
+              {phoneError ? <AuthErrorBanner message={phoneError} /> : null}
+              <button
+                type="submit"
+                disabled={phoneBusy}
+                className={`${btnPrimary} rounded-full bg-orange-600 hover:bg-orange-500 disabled:cursor-not-allowed disabled:opacity-60`}
+              >
+                {phoneBusy
+                  ? phoneStep === 'number'
+                    ? 'Sending...'
+                    : 'Checking...'
+                  : phoneStep === 'number'
+                    ? 'Send code'
+                    : 'Continue'}
+              </button>
+              {phoneStep === 'code' ? (
+                <button
+                  type="button"
+                  disabled={phoneBusy}
+                  onClick={submitPhoneNumber}
+                  className={`${linkBtn} w-full text-sm sm:text-base`}
+                >
+                  Send again
+                </button>
+              ) : null}
+              <button type="button" onClick={closePhoneStep} className={`${linkBtn} w-full text-sm sm:text-base`}>
+                ← Back
+              </button>
+            </form>
+          ) : (
+          <>
           <div className="flex items-center justify-center gap-5">
             <ProviderCircle
               label="Continue with Google"
@@ -321,7 +460,7 @@ export default function AuthModalPanel({
               <EmailIcon />
             </ProviderCircle>
           </div>
-          {authTab === 'join' && !showJoinEmail ? (
+          {!showJoinEmail ? (
             <>
               <OrDivider
                 chipClassName={ipadStage ? 'bg-zinc-950' : 'bg-black'}
@@ -331,6 +470,10 @@ export default function AuthModalPanel({
                 type="button"
                 data-auth-ipad-phone
                 className={`${btnPrimary} flex w-full items-center justify-center gap-2 rounded-full border-0 bg-black text-white`}
+                onClick={() => {
+                  setPhoneError('')
+                  setPhoneStep('number')
+                }}
               >
                 <PhoneIcon />
                 Continue with Phone
@@ -431,6 +574,8 @@ export default function AuthModalPanel({
               </button>
             </form>
           ) : null}
+          </>
+          )}
           <div className="mt-6 w-full">
             <ConsentLine legalLinks={legalLinks} onOpenLegalDocument={onOpenLegalDocument} />
           </div>

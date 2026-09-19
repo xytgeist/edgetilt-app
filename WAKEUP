@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Windows Theo 2026-09-18 … Continue with Phone
+
+**I am Windows Theo.** Continue with Phone sends a Supabase SMS code through Telnyx **`+1 480 393 4143`**. Edge **`auth-send-sms`** is deployed on test, Phone provider and the Send SMS hook are on. Texts do not go out until **`TELNYX_API_KEY`** is set on that project. Not the Lounge verified badge. Frontend **`1.4.302`**. Do not restyle the iPad column.
+
 ### Windows Theo 2026-09-18 … UFC label is the weight class
 
 **I am Windows Theo.** Fight parenthetical is the stored weight class. No more `(UFC)` when Scott has no model. **`lounge-odds-poll`** redeployed test + prod.

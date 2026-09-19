@@ -1145,6 +1145,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **Phone verified modal (Windows).** Confirming an Account info code opens a Phone verified modal. The line under Save changes is gone. Frontend **`1.4.315`**. Web only.
 - **2026-09-18:** **iPad left rail (Mac).** On iPad the lounge FAB buttons sit in a left rail, compose at the bottom, portrait and landscape. Phone and desktop keep the FAB. No right column yet. Frontend **`1.4.314`**. Web only.
 - **2026-09-18:** **Account info phone texts (Windows).** Settings never texted because SMS autoconfirm confirmed the number and skipped the Send SMS hook. Autoconfirm is off on test. The hook texts `sms.phone` (the number being added), not the old `user.phone`. Send code and Confirm code are text links. Save changes stays the filled button. Frontend **`1.4.313`**. Test Edge **`auth-send-sms`** redeployed. Prod Auth stays off.
 - **2026-09-18:** **Australia phone codes (Windows).** Australia is back on the country menu. The code still sends. The sender may show as Unverified until EdgeTilt is registered. Frontend **`1.4.312`**.

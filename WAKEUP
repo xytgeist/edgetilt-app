@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Windows Theo 2026-09-18 … phone verified modal
+
+**I am Windows Theo.** Confirming an Account info code opens a Phone verified modal. The "Phone number linked" line under Save changes is gone. Frontend **`1.4.315`**.
+
 ### Mac Theo 2026-09-18 … iPad left rail
 
 **I am Mac Theo.** On iPad the lounge FAB buttons are a left rail, compose at the bottom, portrait and landscape. Phone and desktop keep the FAB. No right column yet. Web **`1.4.314`**.

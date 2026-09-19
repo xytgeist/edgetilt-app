@@ -83,6 +83,7 @@ export default function SettingsAccountInfoScreen({
   const [phoneCountry, setPhoneCountry] = useState('US')
   const [phoneCode, setPhoneCode] = useState('')
   const [phoneCodeFor, setPhoneCodeFor] = useState('')
+  const [phoneVerifiedFor, setPhoneVerifiedFor] = useState('')
 
   const [saveBusy, setSaveBusy] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
@@ -361,7 +362,8 @@ export default function SettingsAccountInfoScreen({
       setPhoneDraft(nationalDraft(phoneCodeFor))
       setPhoneCode('')
       setPhoneCodeFor('')
-      setSaveMessage('Phone number linked. Continue with Phone now opens this account.')
+      dismissEdgeKeyboard()
+      setPhoneVerifiedFor(phoneCodeFor)
       if (phoneRow) onUpdated?.(phoneRow)
     } catch (e) {
       setSaveError(formatProfileSaveDebugError(e, 'Phone'))
@@ -700,6 +702,52 @@ export default function SettingsAccountInfoScreen({
           void persistAccountInfo({ forcedHandle: suggested })
         }}
       />
+
+      {phoneVerifiedFor && typeof document !== 'undefined'
+        ? createPortal(
+            <div
+              className="fixed inset-0 z-[220] flex items-center justify-center bg-black/55 p-4 backdrop-blur-[2px]"
+              data-settings-account-info-dialog
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="settings-phone-verified-title"
+            >
+              <button
+                type="button"
+                className="absolute inset-0 z-0 cursor-default touch-manipulation"
+                aria-label="Dismiss"
+                onClick={() => setPhoneVerifiedFor('')}
+              />
+              <div className="relative z-10 w-full max-w-sm rounded-2xl border border-zinc-600 bg-zinc-900 p-5 text-center shadow-2xl">
+                <div
+                  className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-cyan-600 text-white"
+                  aria-hidden="true"
+                >
+                  <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <h2 id="settings-phone-verified-title" className="mt-4 text-[16px] font-bold text-white">
+                  Phone verified
+                </h2>
+                <p className="mt-2 text-[15px] font-semibold text-zinc-100">
+                  {formatPhoneDisplay(phoneVerifiedFor)}
+                </p>
+                <p className="mt-2 text-[15px] leading-relaxed text-zinc-200">
+                  Continue with Phone now opens this account.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setPhoneVerifiedFor('')}
+                  className="mt-5 min-h-11 w-full rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white touch-manipulation hover:bg-cyan-500 [-webkit-tap-highlight-color:transparent]"
+                >
+                  Done
+                </button>
+              </div>
+            </div>,
+            document.body,
+          )
+        : null}
 
       {deleteDialogOpen && typeof document !== 'undefined'
         ? createPortal(

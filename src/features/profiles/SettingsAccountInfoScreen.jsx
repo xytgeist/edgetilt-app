@@ -12,6 +12,7 @@ import {
   saveProfileWithHandleFallback,
 } from './profileGate.js'
 import { formatUsCaPhone, toE164UsCa } from '../auth/phoneSignIn.js'
+import PhoneCountryField from '../auth/PhoneCountryField.jsx'
 import { dismissEdgeKeyboard } from '../../utils/edgeNative.js'
 
 const HANDLE_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000
@@ -77,6 +78,7 @@ export default function SettingsAccountInfoScreen({
   const [handleDraft, setHandleDraft] = useState('')
   const [emailDraft, setEmailDraft] = useState('')
   const [phoneDraft, setPhoneDraft] = useState('')
+  const [phoneCountry, setPhoneCountry] = useState('US')
   const [phoneCode, setPhoneCode] = useState('')
   const [phoneCodeFor, setPhoneCodeFor] = useState('')
 
@@ -509,14 +511,13 @@ export default function SettingsAccountInfoScreen({
             <label htmlFor="settings-account-phone" className="block text-[13px] font-semibold text-zinc-300">
               Phone number
             </label>
-            <input
+            <PhoneCountryField
               id="settings-account-phone"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder="Mobile number"
-              enterKeyHint="done"
+              tone="account"
               value={phoneDraft}
+              country={phoneCountry}
+              onCountryChange={setPhoneCountry}
+              enterKeyHint="done"
               onKeyDown={onFieldKeyDown}
               onChange={(e) => {
                 setPhoneDraft(e.target.value)
@@ -525,7 +526,6 @@ export default function SettingsAccountInfoScreen({
                 setSaveMessage('')
                 setSaveError('')
               }}
-              className="mt-1.5 min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 px-3 text-[15px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-500/50"
             />
             <button
               type="button"

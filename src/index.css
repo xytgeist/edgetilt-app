@@ -3536,7 +3536,8 @@ html.light [data-auth-ipad-stage] [data-auth-modal] p a {
   color: #18181b;
 }
 [data-auth-ipad-stage] [data-auth-modal] input,
-[data-auth-ipad-stage] [data-auth-modal] button[type='submit'] {
+[data-auth-ipad-stage] [data-auth-modal] button[type='submit'],
+[data-auth-ipad-stage] [data-phone-country] {
   font-size: 1.25rem;
 }
 html.light [data-auth-ipad-stage] [data-auth-ipad-phone] {
@@ -4319,6 +4320,23 @@ html.light [data-settings-account-info] .border-zinc-800\/90 {
 }
 html.light [data-settings-account-info] .bg-zinc-900\/80 {
   background-color: #ffffff !important;
+}
+html.light [data-phone-country] {
+  background-color: #fff !important;
+  color: #18181b;
+}
+html.light [data-phone-country] .text-zinc-100,
+html.light [data-phone-country] input {
+  color: #18181b !important;
+}
+html.light [data-phone-country] input::placeholder {
+  color: #a1a1aa;
+}
+html.light [data-phone-country] .text-zinc-400 {
+  color: #71717a !important;
+}
+html.light [data-settings-account-info] [data-phone-country] {
+  border-color: #d4d4d8 !important;
 }
 html.light [data-settings-account-info] .text-red-400 {
   color: #dc2626 !important;

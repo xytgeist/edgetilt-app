@@ -5,6 +5,7 @@ import { AppleIcon, OAuthDivider, GoogleIcon } from './OAuthUi'
 import AuthPasswordField from './AuthPasswordField'
 import { useIpadAuthStage } from './AuthModalShell'
 import { formatUsCaPhone, toE164UsCa } from './phoneSignIn.js'
+import PhoneCountryField from './PhoneCountryField.jsx'
 
 function isOAuthProviderError(message) {
   const lower = String(message || '').toLowerCase()
@@ -151,6 +152,7 @@ export default function AuthModalPanel({
   const [emailOpen, setEmailOpen] = useState(false)
   const [phoneStep, setPhoneStep] = useState(null)
   const [phoneInput, setPhoneInput] = useState('')
+  const [phoneCountry, setPhoneCountry] = useState('US')
   const [phoneE164, setPhoneE164] = useState('')
   const [phoneCode, setPhoneCode] = useState('')
   const [phoneError, setPhoneError] = useState('')
@@ -367,18 +369,13 @@ export default function AuthModalPanel({
               className="mt-2 w-full space-y-4"
             >
               {phoneStep === 'number' ? (
-                <input
-                  type="tel"
-                  placeholder="Mobile number"
+                <PhoneCountryField
                   value={phoneInput}
                   onChange={(e) => setPhoneInput(e.target.value)}
-                  className={inputBase}
-                  autoComplete="tel"
-                  inputMode="tel"
+                  country={phoneCountry}
+                  onCountryChange={setPhoneCountry}
+                  placeholder="Phone number"
                   enterKeyHint="go"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
                   required
                 />
               ) : (

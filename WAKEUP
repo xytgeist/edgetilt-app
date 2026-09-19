@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Windows Theo 2026-09-18 … Phone country code
+
+**I am Windows Theo.** Phone number fields show a US / Canada flag and +1 menu, on Continue with Phone and Account info. Texts are still those two countries only. Frontend **`1.4.306`**.
+
 ### Windows Theo 2026-09-18 … Account info Send code
 
 **I am Windows Theo.** Account info phone has its own **Send code** button. Save changes was not an obvious way to text the link code. Frontend **`1.4.305`**.

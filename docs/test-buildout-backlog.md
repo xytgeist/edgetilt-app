@@ -1145,6 +1145,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **Phone country code (Windows).** Continue with Phone and Account info show a US / Canada flag and +1 menu on the number field. Texts stay those two countries. Frontend **`1.4.306`**.
 - **2026-09-18:** **Account info Send code (Windows).** The phone field has its own Send code button. Save changes was not how you start the text. Frontend **`1.4.305`**.
 - **2026-09-18:** **Account info phone links login (Windows).** The existing phone field texts a code and attaches that number to the signed-in account. Continue with Phone copies the number into that field when it is empty. Frontend **`1.4.304`**. Not the Lounge verified badge.
 - **2026-09-18:** **Google return was a black screen (Mac).** The login cover now closes once a session exists, and the black boot splash does not cover an OAuth callback. The phone card stays above the dismiss layer. Frontend **`1.4.303`**. Web only.

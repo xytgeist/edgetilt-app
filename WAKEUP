@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-18 … iPad feed content padding
+
+**I am Mac Theo.** The iPad lounge feed stays full width beside the menu. Post text, media, and the Discover row are inset on both sides. Dividers still run edge to edge. Phone unchanged. Web **`1.4.323`**.
+
 ### Mac Theo 2026-09-18 … iPad feed gutters undone
 
 **I am Mac Theo.** Reverted the centered lounge column. The iPad feed is full width beside the menu again. Phone unchanged. Web **`1.4.322`**.

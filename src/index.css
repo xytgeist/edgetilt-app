@@ -3568,6 +3568,8 @@ html.light [data-auth-ipad-stage] [data-auth-ipad-footer] {
 /* iPad shell. Same stage as auth (coarse, wide, tall). Phone FAB becomes this rail. */
 html[data-ipad-nav] {
   --edge-ipad-rail: calc(11rem - 50px);
+  /* Inset post text and media. The feed itself stays full width beside the rail. */
+  --edge-ipad-feed-pad: max(2.5rem, calc((100vw - var(--edge-ipad-rail)) * 0.07));
 }
 html[data-ipad-nav] [data-app-shell-root] {
   padding-left: var(--edge-ipad-rail);
@@ -3575,6 +3577,29 @@ html[data-ipad-nav] [data-app-shell-root] {
 html[data-ipad-nav] [data-lounge-feed-root] {
   max-width: none;
   width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}
+html[data-ipad-nav] [data-lounge-feed-scroll] article,
+html[data-ipad-nav] [data-lounge-feed-scroll] [data-lounge-feed-composer],
+html[data-ipad-nav] [data-lounge-feed-scroll] [data-lounge-feed-toolbar] {
+  padding-left: var(--edge-ipad-feed-pad);
+  padding-right: var(--edge-ipad-feed-pad);
+}
+html[data-ipad-nav] [data-lounge-feed-composer] > .absolute.right-3 {
+  right: var(--edge-ipad-feed-pad);
+}
+/* Carousels break out to the viewport on phone. On iPad they stay with the padded posts. */
+html[data-ipad-nav] [data-lounge-feed-scroll] [data-lounge-feed-carousel-bleed] {
+  width: 100%;
+  max-width: 100%;
+  margin-left: 0;
+}
+html[data-ipad-nav] [data-lounge-feed-scroll] [data-lounge-feed-carousel-bleed] [data-lounge-feed-horizontal-scroll] {
+  padding-left: 0;
+  padding-right: 0;
+}
+html[data-ipad-nav] [data-lounge-feed-scroll] .-mx-3 {
   margin-left: 0;
   margin-right: 0;
 }

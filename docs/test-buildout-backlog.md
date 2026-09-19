@@ -1145,6 +1145,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **iPad feed content padding (Mac).** The lounge stays full width beside the menu. Posts and the Discover row are inset on both sides. Dividers still run edge to edge. Phone unchanged. Frontend **`1.4.323`**. Web only.
 - **2026-09-18:** **iPad feed gutters undone (Mac).** The centered lounge column is reverted. The feed is full width beside the menu again. Phone unchanged. Frontend **`1.4.322`**. Web only.
 - **2026-09-18:** **iPad feed gutters (Mac).** The lounge column is centered on the screen with space on both sides, like the X portrait feed. Phone unchanged. Frontend **`1.4.321`**. Web only.
 - **2026-09-18:** **iPad rail E lines up (Mac).** The left-menu E matches the lounge EDGE word in height and distance from the top. The menu is 50px narrower. Phone unchanged. Frontend **`1.4.320`**. Web only.

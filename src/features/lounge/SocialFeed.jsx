@@ -16426,6 +16426,7 @@ export default function SocialFeed({
 
       <div
         ref={loungeFeedScrollRef}
+        data-lounge-feed-scroll=""
         className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-y-contain bg-zinc-950 [-webkit-overflow-scrolling:touch]"
         style={{
           ...(loungeFeedDockPaddingBottom > 0 ? { paddingBottom: loungeFeedDockPaddingBottom } : {}),
@@ -17004,7 +17005,7 @@ export default function SocialFeed({
           </div>
         ) : null}
 
-        <div className="shrink-0 px-3 pt-1 pb-[5px]">
+        <div className="shrink-0 px-3 pt-1 pb-[5px]" data-lounge-feed-toolbar="">
           <div className="flex items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <LoungeFeedScopeSwitch

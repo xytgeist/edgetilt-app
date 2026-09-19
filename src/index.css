@@ -3693,14 +3693,17 @@ html[data-ipad-nav] [data-edge-status-bar-plate] {
   max-width: none !important;
   transform: none !important;
 }
-/* Landscape Slots split: title bar spans the content beside the rail, not a centered phone column. */
+/* Landscape Slots split: title bar is only the tools column, so the menu sits on its right edge. The pane runs the full height beside it. */
 @media (orientation: landscape) and (min-width: 768px) and (min-height: 700px) and (pointer: coarse) {
   html[data-ipad-nav] [data-edge-scroll-shell]:has([data-slots-landscape-split]) > .fixed:not([data-edge-status-bar-plate]) {
     left: var(--edge-ipad-rail) !important;
-    width: calc(100vw - var(--edge-ipad-rail)) !important;
+    width: min(28rem, calc((100vw - var(--edge-ipad-rail)) * 0.42)) !important;
     max-width: none !important;
     transform: none !important;
   }
+}
+html[data-ipad-nav] [data-slots-landscape-tools] {
+  padding-top: var(--edge-slots-title-h, 56px);
 }
 html.light [data-slots-landscape-tools] {
   border-right-color: #e4e4e7;

@@ -201,6 +201,11 @@ export default function ScrollLinkedEdgeTitleBarShell({
       data-edge-scroll-shell
       {...(stableLayoutViewport ? { 'data-stable-layout-viewport': '' } : {})}
       className={`mx-auto flex ${heightClass} min-h-0 w-full ${colMax} flex-col overflow-hidden bg-zinc-950 pt-[max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))]`}
+      style={
+        slotsToolsLogo
+          ? { '--edge-slots-title-h': `${titleBarHeight > 0 ? titleBarHeight : 56}px` }
+          : undefined
+      }
     >
       <EdgeStatusBarScrollPlate
         reveal={titleReveal}
@@ -248,7 +253,9 @@ export default function ScrollLinkedEdgeTitleBarShell({
         <div
           aria-hidden
           className="shrink-0"
-          style={{ height: titleBarHeight > 0 ? titleBarHeight : 56 }}
+          style={{
+            height: slotsToolsLogo ? 0 : titleBarHeight > 0 ? titleBarHeight : 56,
+          }}
         />
 
         <div

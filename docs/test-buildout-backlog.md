@@ -858,7 +858,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Edge Functions (test parity before production)
 
-- [ ] **`auth-send-sms`** deployed on **test** (`verify_jwt` false). Phone provider and the Send SMS hook are on for `kcosfvmreeiosdjdzycb`. **Still blocked:** Edge secret **`TELNYX_API_KEY`** is not set, so the text does not send yet. Optional **`TELNYX_2FA_FROM`** (default `+14803934143`) and **`TELNYX_MESSAGING_PROFILE_ID`**. Prod when Ryan asks. Source: `supabase/functions/auth-send-sms/README.md`.
+- [x] **`auth-send-sms`** deployed on **test and prod** (`verify_jwt` false). Phone provider and the Send SMS hook are on for both projects. Edge secrets **`TELNYX_API_KEY`**, **`SEND_SMS_HOOK_SECRET`**, and **`TELNYX_MESSAGING_PROFILE_ID`** are set. SMS autoconfirm stays off. Prod SQL **`20260919060000`** and **`20260919120000`**. Edge **`account-phone-release`** is on prod. Source: `supabase/functions/auth-send-sms/README.md`.
 
 - [x] `process-offer-uploads` deployed and validated on test
 - [x] `w2g-vision-extract` deployed on test + **prod** (OpenAI vision W-2G six fields; **sign-in only** as of **`1.4.183`** … Starter+ is bulk in the app; prod redeploy 2026-09-11)
@@ -1146,6 +1146,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **Phone on prod (Windows).** Production Auth phone is on. Send SMS hook points at **`auth-send-sms`**. Edge secrets include **`TELNYX_API_KEY`**. SQL **`20260919060000`** and **`20260919120000`** applied. **`account-phone-release`** deployed. SMS autoconfirm stays off. Change-email mail includes the 6-digit code. `main` is **`1.4.336`**.
 - **2026-09-18:** **iPad hamburger menu (Mac).** Expanded menu rows, icons, and the panel are about 50% larger. Phone menu unchanged. Frontend **`1.4.336`**. Web only.
 - **2026-09-18:** **Confirm under the code (Windows).** Account info Confirm email code is back under the code field, next to Send again. Send code stays inside the email field. Frontend **`1.4.335`**.
 - **2026-09-18:** **iPad lightbox menu (Mac).** The left menu stays mounted through an image lightbox. Fly-back lifts it above the shrinking photo and clips the shell to the rail, so it does not pop in on land. Phone FAB still hides. Frontend **`1.4.334`**. Web only.

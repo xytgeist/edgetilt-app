@@ -15,9 +15,9 @@ Account info links a number with `updateUser`. That only calls this hook when **
 | `TELNYX_2FA_FROM` | Optional. Defaults to `+14803934143`. US and Canada only. |
 | `TELNYX_MESSAGING_PROFILE_ID` | OTP profile. Required for countries other than the US and Canada. Test value `4001a088-0495-4e4d-9981-a9dc5f928a73`. |
 
-## Dashboard (test, then prod when Ryan asks)
+## Dashboard
 
-Authentication → Providers → Phone: on. Authentication → Hooks → Send SMS:
+Authentication → Providers → Phone: on for test and production. Authentication → Hooks → Send SMS:
 
 - URL `https://<project-ref>.supabase.co/functions/v1/auth-send-sms`
 - Secret matches `SEND_SMS_HOOK_SECRET`

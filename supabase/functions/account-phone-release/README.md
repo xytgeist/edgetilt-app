@@ -8,10 +8,11 @@ Requires a **confirmed email**. Phone-only accounts must add an email and confir
 
 SQL: **`20260919120000_release_account_phone.sql`**. Service role only.
 
-## Deploy (test)
+## Deploy
 
 ```bash
 supabase functions deploy account-phone-release --project-ref kcosfvmreeiosdjdzycb
+supabase functions deploy account-phone-release --project-ref jtjgtucumuoswnbauxry
 ```
 
-Do not deploy to production until Ryan asks. Prod Auth phone stays off.
+Deployed on test and production. SMS autoconfirm stays off.

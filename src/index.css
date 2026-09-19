@@ -3669,6 +3669,19 @@ html[data-ipad-nav] [data-lounge-feed-scroll] [data-lounge-feed-carousel-bleed] 
   );
   padding-right: 0;
 }
+/* Landscape iPad market strip stays in the caption column (one chart wide) so two cards plus a peek fit. Image carousels keep the wide bleed. */
+@media (orientation: landscape) and (min-width: 768px) and (min-height: 700px) and (pointer: coarse) {
+  html[data-ipad-nav] [data-lounge-market-chart-strip] [data-lounge-feed-carousel-bleed] {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    margin-top: 0;
+  }
+  html[data-ipad-nav] [data-lounge-market-chart-strip] [data-lounge-feed-carousel-bleed] [data-lounge-feed-horizontal-scroll] {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}
 html[data-ipad-nav] [data-lounge-feed-scroll] .-mx-3 {
   margin-left: 0;
   margin-right: 0;

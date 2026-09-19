@@ -84,24 +84,33 @@ export function loungeFeedReadCssLengthPx(varName, fallbackPx = 0) {
  * Feed carousel layout numbers from the live horizontal scroller (padding + peek).
  * @param {HTMLElement | null | undefined} scroller
  * @param {boolean} fullBleed
+ * @param {{ pairOnIpadLandscape?: boolean }} [opts]
  */
-export function loungeFeedCarouselMeasureLayout(scroller, fullBleed) {
+export function loungeFeedCarouselMeasureLayout(scroller, fullBleed, opts = {}) {
   const maxRowPx = loungeFeedCarouselMaxRowHeightPx()
   const peekPx = loungeFeedReadCssLengthPx('--lounge-feed-carousel-peek', 48)
   const slideGapPx = loungeFeedReadCssLengthPx('--lounge-feed-carousel-slide-gap', 8)
+  const pairSlides =
+    Boolean(opts.pairOnIpadLandscape) &&
+    typeof window !== 'undefined' &&
+    window.matchMedia('(orientation: landscape) and (min-width: 768px) and (min-height: 700px) and (pointer: coarse)').matches
 
   if (fullBleed && scroller) {
     const s = getComputedStyle(scroller)
     const padL = parseFloat(s.paddingLeft) || 0
     const padR = parseFloat(s.paddingRight) || 0
     const contentWidthPx = Math.max(96, scroller.clientWidth - padL - padR)
-    const firstSlideMaxWidthPx = Math.max(96, contentWidthPx - peekPx - slideGapPx)
+    const firstSlideMaxWidthPx = pairSlides
+      ? Math.max(96, (contentWidthPx - peekPx - slideGapPx * 2) / 2)
+      : Math.max(96, contentWidthPx - peekPx - slideGapPx)
     return { maxRowPx, contentWidthPx, firstSlideMaxWidthPx }
   }
 
   const vw = typeof window !== 'undefined' ? window.innerWidth : 390
   const contentWidthPx = Math.min(vw * 0.88, 320)
-  const firstSlideMaxWidthPx = Math.max(96, contentWidthPx - peekPx - slideGapPx)
+  const firstSlideMaxWidthPx = pairSlides
+    ? Math.max(96, (contentWidthPx - peekPx - slideGapPx * 2) / 2)
+    : Math.max(96, contentWidthPx - peekPx - slideGapPx)
   return { maxRowPx, contentWidthPx, firstSlideMaxWidthPx }
 }
 
@@ -110,11 +119,12 @@ export function loungeFeedCarouselMeasureLayout(scroller, fullBleed) {
  * The 96px floor would then stick until another resize. Skip that sample.
  * @param {HTMLElement | null | undefined} scroller
  * @param {boolean} fullBleed
+ * @param {{ pairOnIpadLandscape?: boolean }} [opts]
  * @returns {ReturnType<typeof loungeFeedCarouselMeasureLayout> | null}
  */
-export function loungeFeedCarouselMeasureIfLaidOut(scroller, fullBleed) {
+export function loungeFeedCarouselMeasureIfLaidOut(scroller, fullBleed, opts = {}) {
   if (fullBleed && scroller && scroller.clientWidth < 8) return null
-  return loungeFeedCarouselMeasureLayout(scroller, fullBleed)
+  return loungeFeedCarouselMeasureLayout(scroller, fullBleed, opts)
 }
 
 /**
@@ -123,10 +133,11 @@ export function loungeFeedCarouselMeasureIfLaidOut(scroller, fullBleed) {
  * @param {HTMLElement | null | undefined} scroller
  * @param {boolean} fullBleed
  * @param {(layout: ReturnType<typeof loungeFeedCarouselMeasureLayout>) => void} onMeasure
+ * @param {{ pairOnIpadLandscape?: boolean }} [opts]
  */
-export function bindLoungeFeedCarouselMeasure(scroller, fullBleed, onMeasure) {
+export function bindLoungeFeedCarouselMeasure(scroller, fullBleed, onMeasure, opts = {}) {
   const sync = () => {
-    const next = loungeFeedCarouselMeasureIfLaidOut(scroller, fullBleed)
+    const next = loungeFeedCarouselMeasureIfLaidOut(scroller, fullBleed, opts)
     if (!next) return
     onMeasure(next)
   }

@@ -61,7 +61,7 @@ export default function LoungeMarketChartStrip({ post, onOpenChart, className = 
           ? prev
           : next,
       )
-    })
+    }, { pairOnIpadLandscape: true })
   }, [multi, carouselFullBleed, embeds.length])
 
   if (!embeds.length) return null

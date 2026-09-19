@@ -1145,6 +1145,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **Account info Send code (Windows).** The phone field has its own Send code button. Save changes was not how you start the text. Frontend **`1.4.305`**.
 - **2026-09-18:** **Account info phone links login (Windows).** The existing phone field texts a code and attaches that number to the signed-in account. Continue with Phone copies the number into that field when it is empty. Frontend **`1.4.304`**. Not the Lounge verified badge.
 - **2026-09-18:** **Google return was a black screen (Mac).** The login cover now closes once a session exists, and the black boot splash does not cover an OAuth callback. The phone card stays above the dismiss layer. Frontend **`1.4.303`**. Web only.
 - **2026-09-18:** **Continue with Phone (Windows).** The login pill sends a Supabase SMS code (`signInWithOtp` / `verifyOtp` type `sms`). Edge **`auth-send-sms`** is deployed on test. Phone provider and the Send SMS hook are on. Texts wait on Edge secret **`TELNYX_API_KEY`**. Not the Lounge verified badge, and not Telnyx Verify. Frontend **`1.4.302`**. Prod Auth stays off until Ryan asks.

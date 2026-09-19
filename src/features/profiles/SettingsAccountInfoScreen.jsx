@@ -157,6 +157,18 @@ export default function SettingsAccountInfoScreen({
     setSaveError('')
   }, [])
 
+  const requestPhoneCode = useCallback(async (nextE164) => {
+    const { error: sendErr } = await supabaseClient.auth.updateUser({ phone: nextE164 })
+    if (sendErr) {
+      setSaveError(phoneLinkError(sendErr))
+      return false
+    }
+    setPhoneCode('')
+    setPhoneCodeFor(nextE164)
+    setSaveMessage(`Code sent to ${formatUsCaPhone(nextE164)}. Enter it below.`)
+    return true
+  }, [supabaseClient])
+
   const persistAccountInfo = useCallback(
     async (opts = {}) => {
       if (!supabaseClient || !authUser?.id || saveBusy) return
@@ -260,13 +272,8 @@ export default function SettingsAccountInfoScreen({
             setPhoneCodeFor('')
             setPhoneCode('')
           } else {
-            const { error: sendErr } = await supabaseClient.auth.updateUser({ phone: nextE164 })
-            if (sendErr) {
-              setSaveError(phoneLinkError(sendErr))
-              return
-            }
-            setPhoneCode('')
-            setPhoneCodeFor(nextE164)
+            const sent = await requestPhoneCode(nextE164)
+            if (!sent) return
             phoneNotice = `Code sent to ${formatUsCaPhone(nextE164)}. Enter it below. The number is not linked until you confirm.`
           }
         }
@@ -302,6 +309,7 @@ export default function SettingsAccountInfoScreen({
       onUpdated,
       phoneDirty,
       phoneDraft,
+      requestPhoneCode,
       saveBusy,
       serverPhone,
       supabaseClient,
@@ -346,6 +354,24 @@ export default function SettingsAccountInfoScreen({
       setSaveBusy(false)
     }
   }, [authUser?.id, onUpdated, phoneCode, phoneCodeFor, saveBusy, supabaseClient])
+
+  const onSendPhoneCode = useCallback(async () => {
+    if (!supabaseClient || !authUser?.id || saveBusy) return
+    const nextE164 = toE164UsCa(phoneDraft)
+    if (!nextE164) {
+      setSaveError('Enter a valid US or Canada mobile number.')
+      setSaveMessage('')
+      return
+    }
+    setSaveBusy(true)
+    setSaveError('')
+    setSaveMessage('')
+    try {
+      await requestPhoneCode(nextE164)
+    } finally {
+      setSaveBusy(false)
+    }
+  }, [authUser?.id, phoneDraft, requestPhoneCode, saveBusy, supabaseClient])
 
   const onSaveClick = useCallback(() => {
     if (!formDirty || saveBusy) return
@@ -501,6 +527,14 @@ export default function SettingsAccountInfoScreen({
               }}
               className="mt-1.5 min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 px-3 text-[15px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-500/50"
             />
+            <button
+              type="button"
+              disabled={saveBusy || !toE164UsCa(phoneDraft)}
+              onClick={() => void onSendPhoneCode()}
+              className="mt-3 min-h-11 w-full rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white touch-manipulation hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
+            >
+              {saveBusy && !phoneCode ? 'Sending…' : phoneCodeFor ? 'Send again' : 'Send code'}
+            </button>
             {phoneCodeFor ? (
               <div className="mt-3 space-y-2">
                 <label htmlFor="settings-account-phone-code" className="block text-[13px] font-semibold text-zinc-300">
@@ -531,7 +565,7 @@ export default function SettingsAccountInfoScreen({
               </div>
             ) : null}
             <p className="mt-1.5 text-[12px] leading-snug text-zinc-500">
-              US and Canada numbers can sign you in. We text a code when you add or change this number.
+              Enter a US or Canada number, then Send code. Confirm the text to use it for sign-in.
             </p>
           </div>
 

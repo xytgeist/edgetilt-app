@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-18 … lightbox menu
+
+**I am Mac Theo.** The iPad menu stays up while an image flies back. It was unmounting for the lightbox, so the feed lost its inset and the menu popped in on land. Web **`1.4.334`**.
+
 ### Windows Theo 2026-09-18 … email send in the field
 
 **I am Windows Theo.** Account info Send code sits inside the email field. Confirm sits inside the code field. Those taps were blurring the open field and jumping the cursor to Handle. Frontend **`1.4.333`**.

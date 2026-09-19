@@ -868,6 +868,9 @@ export function LoungeImageLightbox({
       document
         .querySelectorAll('[data-lounge-title-bar-over-lightbox-close]')
         .forEach((el) => el.removeAttribute('data-lounge-title-bar-over-lightbox-close'))
+      document
+        .querySelectorAll('[data-ipad-nav-rail-over-lightbox-close]')
+        .forEach((el) => el.removeAttribute('data-ipad-nav-rail-over-lightbox-close'))
     }
     const clearClip = () => {
       if (shell) shell.style.clipPath = ''
@@ -883,10 +886,19 @@ export function LoungeImageLightbox({
         if (feedBar instanceof HTMLElement) {
           feedBar.setAttribute('data-lounge-title-bar-over-lightbox-close', '')
         }
+        const rail = document.querySelector('[data-ipad-nav-rail]')
+        if (rail instanceof HTMLElement) {
+          rail.setAttribute('data-ipad-nav-rail-over-lightbox-close', '')
+        }
       }
       const clipTop = readLightboxCloseChromeClipTopPx()
-      if (shell && clipTop > 0) {
-        shell.style.clipPath = `inset(${clipTop}px 0 0 0)`
+      const railEl = document.querySelector('[data-ipad-nav-rail]')
+      const clipLeft =
+        !profileSheetOpen && !detailOpen && railEl instanceof HTMLElement
+          ? Math.max(0, Math.round(railEl.getBoundingClientRect().right))
+          : 0
+      if (shell && (clipTop > 0 || clipLeft > 0)) {
+        shell.style.clipPath = `inset(${clipTop}px 0 0 ${clipLeft}px)`
       } else {
         clearClip()
       }

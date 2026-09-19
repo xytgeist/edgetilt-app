@@ -16142,7 +16142,7 @@ export default function SocialFeed({
   )
 
   const loungeIpadRail =
-    ipadShell && showLoungeViewportDock && typeof document !== 'undefined'
+    ipadShell && !loungeDockSuppressed && typeof document !== 'undefined'
       ? createPortal(<LoungeIpadNavRail items={loungeDockWheelItems} />, document.body)
       : null
 

@@ -1146,6 +1146,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **iPad lightbox menu (Mac).** The left menu stays mounted through an image lightbox. Fly-back lifts it above the shrinking photo and clips the shell to the rail, so it does not pop in on land. Phone FAB still hides. Frontend **`1.4.334`**. Web only.
 - **2026-09-18:** **Email send in the field (Windows).** Account info Send code is inside the email field, and Confirm is inside the code field. Taps were blurring the open field and jumping the cursor to Handle. Frontend **`1.4.333`**.
 - **2026-09-18:** **Image lightbox fly (Mac).** Fly-in targets the painted photo in the chrome band, not the carousel cell, so it does not resize on land. Opening-slide aspect stays locked. On iPad the feed scroll and carousel measure stay put through close. Frontend **`1.4.332`**. Web only.
 - **2026-09-18:** **Account row tap (Windows).** The Settings Account header expands from anywhere on the row, not only the caret. Verify still opens the phone field. Frontend **`1.4.331`**.

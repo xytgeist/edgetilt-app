@@ -1146,6 +1146,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-18:** **iPad menu icons (Mac).** Left menu glyphs are a bit smaller and the stroke is thinner. Compose circle unchanged. Phone FAB unchanged. Frontend **`1.4.328`**. Web only.
 - **2026-09-18:** **Account info modals (Windows).** A verified phone hides Send code. Handle, email, and Remove helper lines are gone. Changing a handle again inside 7 days opens a modal with the next date and time. Remove number confirms the lost check and phone sign-in, or tells them to add an email first. Frontend **`1.4.327`**.
 - **2026-09-18:** **iPad feed type (Mac).** Lounge posts, avatars, icons, and the Discover row are about 50% larger on iPad. The left menu is unchanged. Phone unchanged. Frontend **`1.4.326`**. Web only.
 - **2026-09-18:** **Remove phone (Windows).** Account info can drop a login phone after a confirmed email and a text to that number. The Lounge check comes off and the number is free for another account. In-app email add/change uses a 6-digit code. Signup, reset, and guest claim emails stay links. SQL **`20260919120000`** and Edge **`account-phone-release`** on test. Frontend **`1.4.325`**. Prod Auth stays off.

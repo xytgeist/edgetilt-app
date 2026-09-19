@@ -3683,6 +3683,9 @@ html.light [data-ipad-nav-rail] [data-ipad-nav-item][data-active='1'] {
 html.light [data-ipad-nav-rail] [data-ipad-nav-badge] {
   --tw-ring-color: #fff;
 }
+[data-ipad-nav-rail] [data-ipad-nav-item] svg :is(path, circle, line, polyline) {
+  stroke-width: 1.2;
+}
 html.light [data-ipad-ev-mark] .edge-logo--light {
   display: block;
 }

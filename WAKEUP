@@ -64,6 +64,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Windows Theo.** Verified phones no longer show Send code. Handle, email, and Remove helper lines are gone. A second handle change in 7 days opens a modal with the next date. Remove number confirms the lost check, or tells them to add an email first. Frontend **`1.4.327`**.
 
+### Mac Theo 2026-09-18 … lighter iPad menu icons
+
+**I am Mac Theo.** The left menu icons are a bit smaller and the stroke is thinner. The compose circle is the same. Phone FAB unchanged. Web **`1.4.328`**.
+
 ### Mac Theo 2026-09-18 … iPad feed type is larger
 
 **I am Mac Theo.** On iPad the lounge posts, avatars, icons, and Discover row are about 50% larger. The left menu is unchanged. Phone unchanged. Web **`1.4.326`**.

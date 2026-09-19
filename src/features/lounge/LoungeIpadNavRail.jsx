@@ -105,7 +105,7 @@ function RailButton({ item }) {
       className="relative grid h-[4.5rem] w-[4.5rem] place-items-center text-zinc-300 touch-manipulation [-webkit-tap-highlight-color:transparent] disabled:opacity-40 data-[active=1]:text-white"
     >
       <span
-        className="block h-11 w-11"
+        className="block h-9 w-9"
         style={item.iconScale ? { transform: `scale(${item.iconScale})` } : undefined}
       >
         {item.icon}

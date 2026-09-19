@@ -16851,6 +16851,7 @@ export default function SocialFeed({
             />
             <div
               data-lounge-fab-obstacle
+              data-lounge-feed-composer-tools
               className="mt-0.5 flex w-full items-center pr-1 py-0.5"
             >
               <div data-lounge-media-toolbar className="lounge-media-toolbar inline-flex shrink-0 items-center gap-0.5">

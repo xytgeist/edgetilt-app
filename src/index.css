@@ -3620,6 +3620,15 @@ html[data-ipad-nav] [data-lounge-feed-scroll] [data-lounge-feed-toolbar] {
   padding-left: var(--edge-ipad-feed-pad);
   padding-right: var(--edge-ipad-feed-pad);
 }
+/* Composer media row stayed at phone icon size. Match the feed's 1.5× type. Phone has no rail. */
+html[data-ipad-nav] [data-lounge-feed-composer-tools] svg {
+  width: 2.625rem;
+  height: 2.625rem;
+}
+html[data-ipad-nav] [data-lounge-feed-composer-tools],
+html[data-ipad-nav] [data-lounge-feed-composer-tools] [data-lounge-media-toolbar] {
+  gap: 0.35rem;
+}
 /* Post rules stay with the text, not the full feed width. */
 html[data-ipad-nav] [data-lounge-feed-scroll] article {
   position: relative;

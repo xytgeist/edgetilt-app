@@ -65,7 +65,7 @@ export const QUICK_LINK_BY_ID = Object.fromEntries(
 /** Phone title bar. iPad rail uses `QUICK_LINK_MAX_IPAD`. */
 export const QUICK_LINK_MAX = 2
 
-/** Left rail under Settings. Storage keeps this many so a phone session does not drop them. */
+/** Left rail under Settings. Its own list, not the phone list. */
 export const QUICK_LINK_MAX_IPAD = 6
 
 /**
@@ -81,6 +81,9 @@ export function quickLinkCap() {
 }
 
 export const QUICK_LINKS_STORAGE_KEY = 'lvsp:quickLinks:v1'
+
+/** iPad rail only. A phone never reads this key. */
+export const QUICK_LINKS_STORAGE_KEY_IPAD = 'lvsp:quickLinks:ipad:v1'
 
 /** @param {string | null | undefined} id */
 export function isQuickLinkId(id) {

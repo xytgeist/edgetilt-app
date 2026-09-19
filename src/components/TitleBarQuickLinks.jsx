@@ -63,7 +63,6 @@ export default function TitleBarQuickLinks({
 }) {
   const ids = useQuickLinkIds()
   const rail = layout === 'rail'
-  /** Phone shows the earliest pins. Later iPad pins stay stored and slide in if one of these is removed. */
   const shown = ids.slice(0, rail ? QUICK_LINK_MAX_IPAD : QUICK_LINK_MAX)
   if (browseMode !== 'member' || shown.length === 0) return null
 

@@ -1,8 +1,11 @@
 import { useCallback, useSyncExternalStore } from 'react'
 import {
+  IPAD_SHELL_QUERY,
   isQuickLinkId,
+  QUICK_LINK_MAX,
   QUICK_LINK_MAX_IPAD,
   QUICK_LINKS_STORAGE_KEY,
+  QUICK_LINKS_STORAGE_KEY_IPAD,
   quickLinkCap,
 } from './quickLinkDestinations.js'
 
@@ -11,18 +14,53 @@ import {
 /** @type {Set<(ids: QuickLinkId[]) => void>} */
 const listeners = new Set()
 
-/** @type {QuickLinkId[] | null} */
-let cachedIds = null
+/**
+ * Phone and iPad do not share a list. localStorage is already per device, and the
+ * keys stay split so a later account sync cannot merge them by accident.
+ * @type {{ key: string, ids: QuickLinkId[] } | null}
+ */
+let cached = null
+
+function isIpadQuickLinks() {
+  return typeof window !== 'undefined' && window.matchMedia(IPAD_SHELL_QUERY).matches
+}
+
+function activeStorageKey() {
+  return isIpadQuickLinks() ? QUICK_LINKS_STORAGE_KEY_IPAD : QUICK_LINKS_STORAGE_KEY
+}
+
+function activeCap() {
+  return isIpadQuickLinks() ? QUICK_LINK_MAX_IPAD : QUICK_LINK_MAX
+}
+
+/**
+ * @param {string | null} raw
+ * @param {number} cap
+ * @returns {QuickLinkId[]}
+ */
+function parseIds(raw, cap) {
+  if (!raw) return []
+  const parsed = JSON.parse(raw)
+  if (!Array.isArray(parsed)) return []
+  return parsed.filter(id => isQuickLinkId(id)).slice(0, cap)
+}
 
 /** @returns {QuickLinkId[]} */
 function readFromStorage() {
   if (typeof window === 'undefined') return []
+  const key = activeStorageKey()
+  const cap = activeCap()
   try {
-    const raw = window.localStorage.getItem(QUICK_LINKS_STORAGE_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    if (!Array.isArray(parsed)) return []
-    return parsed.filter(id => isQuickLinkId(id)).slice(0, QUICK_LINK_MAX_IPAD)
+    let raw = window.localStorage.getItem(key)
+    if (key === QUICK_LINKS_STORAGE_KEY_IPAD && raw == null) {
+      const legacy = window.localStorage.getItem(QUICK_LINKS_STORAGE_KEY)
+      if (legacy) {
+        const migrated = parseIds(legacy, cap)
+        window.localStorage.setItem(key, JSON.stringify(migrated))
+        return migrated
+      }
+    }
+    return parseIds(raw, cap)
   } catch {
     return []
   }
@@ -32,21 +70,36 @@ function readFromStorage() {
 function writeToStorage(ids) {
   if (typeof window === 'undefined') return
   try {
-    window.localStorage.setItem(QUICK_LINKS_STORAGE_KEY, JSON.stringify(ids))
+    window.localStorage.setItem(activeStorageKey(), JSON.stringify(ids.slice(0, activeCap())))
   } catch {
     /* ignore quota */
   }
 }
 
+/** @param {QuickLinkId[]} ids */
+function remember(ids) {
+  cached = { key: activeStorageKey(), ids }
+}
+
 /** @returns {QuickLinkId[]} */
 export function getQuickLinkIds() {
-  if (cachedIds === null) cachedIds = readFromStorage()
-  return cachedIds
+  const key = typeof window === 'undefined' ? QUICK_LINKS_STORAGE_KEY : activeStorageKey()
+  if (!cached || cached.key !== key) {
+    remember(readFromStorage())
+  }
+  return cached.ids
 }
 
 function notify() {
   const ids = getQuickLinkIds()
   for (const fn of listeners) fn([...ids])
+}
+
+if (typeof window !== 'undefined') {
+  window.matchMedia(IPAD_SHELL_QUERY).addEventListener('change', () => {
+    cached = null
+    notify()
+  })
 }
 
 /**
@@ -67,7 +120,7 @@ export function setQuickLinkEnabled(id, enabled) {
       return { ok: false, reason: 'at_cap', ids: current }
     }
     const next = [...current, id]
-    cachedIds = next
+    remember(next)
     writeToStorage(next)
     notify()
     return { ok: true, ids: next }
@@ -75,7 +128,7 @@ export function setQuickLinkEnabled(id, enabled) {
 
   if (!has) return { ok: true, ids: current }
   const next = current.filter(x => x !== id)
-  cachedIds = next
+  remember(next)
   writeToStorage(next)
   notify()
   return { ok: true, ids: next }

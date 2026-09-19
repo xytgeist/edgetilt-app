@@ -1147,6 +1147,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-19:** **Landscape Slots tools (Mac).** iPad landscape opens every Slots hub tool in the right pane, including Slots Pro Lounge. Chat opened from the rail still takes the full screen. Portrait and phone still replace the screen. Frontend **`1.4.353`**. Web only.
 - **2026-09-19:** **Landscape Slots split (Mac).** iPad landscape keeps the Slots tool list on the left and opens AP Guides in the right pane. Portrait, phone, and the other tools still replace the screen. Frontend **`1.4.352`**. Web only.
 - **2026-09-19:** **Hamburger Slots bounce (Mac).** Opening Slots or Poker from the title menu no longer snaps back to the Lounge feed on the first tap. The menu is portaled above the dock, and the click that used to land on Home is ignored. Phone, desktop, and iPad. Frontend **`1.4.351`**. Web only.
 - **2026-09-19:** **Public Lounge tweets (Windows).** Syndicate public Lounge posts always go to @sharpesyndicate. X gets the public tease (UFC uses the long-form cap so the tease is not clipped). Fan-only and VIP-only stay off X. Today's UFC public caption was tweeted. Frontend **`1.4.350`**.

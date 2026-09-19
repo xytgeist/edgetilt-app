@@ -226,6 +226,8 @@ export default function PlayLogbook({
   titleBarNavSlot = null,
   titleBarCenterSlot = null,
   titleBarToolCloseVisible = false,
+  /** Landscape iPad Slots hub: fill the right pane, no second EDGE bar. */
+  paneEmbed = false,
   highlightEntryId = null,
   onHighlightEntryConsumed = null,
   openLedger = false,
@@ -1323,9 +1325,11 @@ export default function PlayLogbook({
   return (
     <>
     <ScrollLinkedEdgeTitleBarShell
-      titleBarNavSlot={titleBarNavSlot}
-      titleBarCenterSlot={titleBarCenterSlot}
-      titleBarToolCloseVisible={titleBarToolCloseVisible}
+      embedded={paneEmbed}
+      publishScrollReveal={!paneEmbed}
+      titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
+      titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
+      titleBarToolCloseVisible={paneEmbed ? false : titleBarToolCloseVisible}
       contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
     >
       <div data-play-logbook>

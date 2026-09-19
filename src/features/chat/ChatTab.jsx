@@ -75,6 +75,8 @@ export default function ChatTab({
   onOpenLoungePost = null,
   registerDirectNav = null,
   showGlobalConfirm = null,
+  /** Landscape iPad Slots hub: fill the right pane, no second EDGE bar. */
+  paneEmbed = false,
 }) {
   const [viewerUserId, setViewerUserId] = useState('')
   const [viewerProfile, setViewerProfile] = useState(null)
@@ -818,8 +820,11 @@ export default function ChatTab({
   if (browseMode === 'anonymous') {
     return (
       <ScrollLinkedEdgeTitleBarShell
-        titleBarNavSlot={titleBarNavSlot}
-        titleBarCenterSlot={titleBarCenterSlot}
+        embedded={paneEmbed}
+        publishScrollReveal={!paneEmbed}
+        fillViewport={!paneEmbed}
+        titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
+        titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
         contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
       >
         <div className="mt-16 flex flex-col items-center gap-4 text-center">
@@ -869,8 +874,10 @@ export default function ChatTab({
     const otherUnreadCount = rooms.filter((r) => r.id !== openRoomId && r.hasUnread).length
     const openedFromArchived = archivedRooms.some((r) => r.id === openRoomId)
     return (
+      <div className={paneEmbed ? 'relative min-h-0 min-w-0 flex-1' : undefined}>
       <ChatConversation
         key={`${openRoomId}-${iosResumeCount}`}
+        embedded={paneEmbed}
         supabaseClient={supabaseClient}
         room={room}
         viewerUserId={viewerUserId}
@@ -909,6 +916,7 @@ export default function ChatTab({
         readReceiptsBusy={readReceiptsToggleBusy}
         showGlobalConfirm={showGlobalConfirm}
       />
+      </div>
     )
   }
 
@@ -916,10 +924,17 @@ export default function ChatTab({
 
   return (
     <>
-    <div ref={inboxRootRef} data-chat-feature className="select-none">
+    <div
+      ref={inboxRootRef}
+      data-chat-feature
+      className={paneEmbed ? 'flex min-h-0 min-w-0 flex-1 flex-col select-none' : 'select-none'}
+    >
     <ScrollLinkedEdgeTitleBarShell
-      titleBarNavSlot={titleBarNavSlot}
-      titleBarCenterSlot={titleBarCenterSlot}
+      embedded={paneEmbed}
+      publishScrollReveal={!paneEmbed}
+      fillViewport
+      titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
+      titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
       fillViewport
       contentClassName="px-0 pb-0"
     >

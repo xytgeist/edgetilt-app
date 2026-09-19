@@ -192,13 +192,20 @@ export default function CalculatorsTab({
   logPlayLocked = false,
   playLogsRemaining = null,
   freemiumUsageLoading = false,
+  /** Landscape iPad Slots hub: fill the right pane, no second EDGE bar. */
+  paneEmbed = false,
 }) {
+  const shell = paneEmbed
+    ? { embedded: true, publishScrollReveal: false }
+    : {
+        titleBarNavSlot,
+        titleBarCenterSlot,
+        titleBarToolCloseVisible,
+      }
   if (!activeCalculator) {
     return (
       <ScrollLinkedEdgeTitleBarShell
-        titleBarNavSlot={titleBarNavSlot}
-        titleBarCenterSlot={titleBarCenterSlot}
-        titleBarToolCloseVisible={titleBarToolCloseVisible}
+        {...shell}
         contentClassName="px-3 pt-3 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
       >
         <CalculatorsHome
@@ -222,8 +229,7 @@ export default function CalculatorsTab({
     <Suspense
       fallback={
         <ScrollLinkedEdgeTitleBarShell
-          titleBarNavSlot={titleBarNavSlot}
-          titleBarCenterSlot={titleBarCenterSlot}
+          {...shell}
           contentClassName="px-3 pt-3 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
         >
           <CalculatorLoadingFallback />
@@ -231,7 +237,7 @@ export default function CalculatorsTab({
       }
     >
       {activeCalculator === 'phoenix' ? (
-        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} titleBarCenterSlot={titleBarCenterSlot} contentClassName="px-3 pt-3 pb-[calc(3rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
+        <ScrollLinkedEdgeTitleBarShell {...shell} contentClassName="px-3 pt-3 pb-[calc(3rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
           <PhoenixLink
             onBack={() => setActiveCalculator(null)}
             supabaseClient={supabaseClient}
@@ -244,7 +250,7 @@ export default function CalculatorsTab({
         </ScrollLinkedEdgeTitleBarShell>
       ) : null}
       {activeCalculator === 'buffalo-link' ? (
-        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} titleBarCenterSlot={titleBarCenterSlot} contentClassName="px-3 pt-3 pb-[calc(3rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
+        <ScrollLinkedEdgeTitleBarShell {...shell} contentClassName="px-3 pt-3 pb-[calc(3rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
           <BuffaloLink
             onBack={() => setActiveCalculator(null)}
             supabaseClient={supabaseClient}
@@ -257,7 +263,7 @@ export default function CalculatorsTab({
         </ScrollLinkedEdgeTitleBarShell>
       ) : null}
       {activeCalculator === 'buffalo-diamond' && !calculatorTemporarilyDisabled('buffalo-diamond') ? (
-        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} titleBarCenterSlot={titleBarCenterSlot} contentClassName="px-3 pt-3 pb-[calc(3rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
+        <ScrollLinkedEdgeTitleBarShell {...shell} contentClassName="px-3 pt-3 pb-[calc(3rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
           <BuffaloDiamond
             onBack={() => setActiveCalculator(null)}
             supabaseClient={supabaseClient}
@@ -270,7 +276,7 @@ export default function CalculatorsTab({
         </ScrollLinkedEdgeTitleBarShell>
       ) : null}
       {activeCalculator === 'stackup' ? (
-        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} titleBarCenterSlot={titleBarCenterSlot} contentClassName="px-3 pt-3 pb-[calc(3rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
+        <ScrollLinkedEdgeTitleBarShell {...shell} contentClassName="px-3 pt-3 pb-[calc(3rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
           <StackUpPays
             onBack={() => setActiveCalculator(null)}
             supabaseClient={supabaseClient}
@@ -283,7 +289,7 @@ export default function CalculatorsTab({
         </ScrollLinkedEdgeTitleBarShell>
       ) : null}
       {activeCalculator === 'mhb' ? (
-        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} titleBarCenterSlot={titleBarCenterSlot} contentClassName="px-3 pt-3 pb-[calc(3rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
+        <ScrollLinkedEdgeTitleBarShell {...shell} contentClassName="px-3 pt-3 pb-[calc(3rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
           <MHBCalculator
             onBack={() => setActiveCalculator(null)}
             supabaseClient={supabaseClient}
@@ -296,7 +302,7 @@ export default function CalculatorsTab({
         </ScrollLinkedEdgeTitleBarShell>
       ) : null}
       {activeCalculator === 'wof-collectors-edition' ? (
-        <ScrollLinkedEdgeTitleBarShell titleBarNavSlot={titleBarNavSlot} titleBarCenterSlot={titleBarCenterSlot} contentClassName="px-3 pt-3 pb-[calc(3rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
+        <ScrollLinkedEdgeTitleBarShell {...shell} contentClassName="px-3 pt-3 pb-[calc(3rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
           <WheelOfFortuneCollectorsEdition
             onBack={() => setActiveCalculator(null)}
             supabaseClient={supabaseClient}

@@ -175,9 +175,21 @@ export default function ScrollLinkedEdgeTitleBarShell({
         ref={feedScrollRef}
         data-edge-scroll-shell
         data-edge-scroll-embedded=""
-        className="min-h-0 w-full flex-1 overflow-y-auto overscroll-y-contain bg-zinc-950 [-webkit-overflow-scrolling:touch]"
+        className={
+          fillViewport
+            ? 'flex min-h-0 w-full flex-1 flex-col overflow-hidden bg-zinc-950'
+            : 'min-h-0 w-full flex-1 overflow-y-auto overscroll-y-contain bg-zinc-950 [-webkit-overflow-scrolling:touch]'
+        }
       >
-        <div className={contentClassName}>{children}</div>
+        <div
+          className={
+            fillViewport
+              ? `${contentClassName} flex min-h-0 flex-1 flex-col overflow-hidden`
+              : contentClassName
+          }
+        >
+          {children}
+        </div>
       </div>
     )
   }

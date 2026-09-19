@@ -118,6 +118,8 @@ export default function BankrollTracker({
   freemiumUsageLoading = false,
   onRequireSubscribeForBankroll = null,
   onBankrollSessionCreated = null,
+  /** Landscape iPad Slots hub: fill the right pane, no second EDGE bar. */
+  paneEmbed = false,
 }) {
   const [userId, setUserId] = useState(null)
   const [profile, setProfile] = useState(null)
@@ -684,9 +686,11 @@ export default function BankrollTracker({
   return (
     <>
       <ScrollLinkedEdgeTitleBarShell
-        titleBarNavSlot={titleBarNavSlot}
-        titleBarCenterSlot={titleBarCenterSlot}
-        titleBarToolCloseVisible={titleBarToolCloseVisible}
+        embedded={paneEmbed}
+        publishScrollReveal={!paneEmbed}
+        titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
+        titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
+        titleBarToolCloseVisible={paneEmbed ? false : titleBarToolCloseVisible}
         contentClassName="px-3 pt-2 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
       >
 

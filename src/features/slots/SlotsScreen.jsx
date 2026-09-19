@@ -83,10 +83,11 @@ export default function SlotsScreen({
   isStaff = false,
   gatesMap = null,
   starterUnlockedCalculatorKeys = null,
-  /** iPad landscape: tools stay on the left, AP Guides opens on the right. */
+  /** iPad landscape: tools stay on the left. The open tool fills the right pane. */
   landscapeSplit = false,
   selectedToolId = null,
-  guidesPane = null,
+  toolPane = null,
+  onPaneElement = null,
 }) {
   const showSubscriberLocks = browseMode === 'member' && !isStaff && !hasSlotsEdge
 
@@ -196,12 +197,16 @@ export default function SlotsScreen({
               {toolList}
             </div>
           </div>
-          <div data-slots-landscape-pane className="flex min-h-0 min-w-0 flex-1 flex-col">
-            {guidesPane || (
+          <div
+            ref={onPaneElement}
+            data-slots-landscape-pane
+            className="relative flex min-h-0 min-w-0 flex-1 flex-col"
+          >
+            {toolPane || (selectedToolId ? null : (
               <div className="flex flex-1 items-center justify-center px-6 text-center text-sm text-zinc-500">
-                Tap AP Guides to open them here.
+                Tap a tool to open it here.
               </div>
-            )}
+            ))}
           </div>
         </div>
       </ScrollLinkedEdgeTitleBarShell>

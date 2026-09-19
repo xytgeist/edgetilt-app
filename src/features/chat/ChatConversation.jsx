@@ -184,6 +184,8 @@ export default function ChatConversation({
   onViewerReadReceiptsEnabledChange = null,
   readReceiptsBusy = false,
   showGlobalConfirm = null,
+  /** Landscape iPad Slots pane: fill the column instead of the viewport. */
+  embedded = false,
 }) {
   const [messages, setMessages] = useState(/** @type {any[]} */ ([]))
   // Aggregated reactions per message: { [messageId]: { emoji, count, viewerReacted }[] }
@@ -2445,9 +2447,11 @@ export default function ChatConversation({
     isClassicGroupRoom && roomOpenCall?.id && chatCall && !alreadyInRoomCall && !chatCall.activeCall,
   )
 
-  const listPaddingTop = useRichHeader
-    ? 'calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 12.5rem)'
-    : 'calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 4.5rem)'
+  const listPaddingTop = embedded
+    ? (useRichHeader ? '12.5rem' : '4.5rem')
+    : useRichHeader
+      ? 'calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 12.5rem)'
+      : 'calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 4.5rem)'
   const composerPadBottom = (() => {
     const base = loungeComposerFooterPaddingBottom(kbOverlapPx, iosSafeBottomPx)
     if (!IS_IOS) return base
@@ -2474,7 +2478,11 @@ export default function ChatConversation({
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex h-dvh max-h-dvh flex-col overflow-hidden bg-zinc-950"
+      className={
+        embedded
+          ? 'absolute inset-0 z-10 flex min-h-0 flex-col overflow-hidden bg-zinc-950'
+          : 'fixed inset-0 z-[90] flex h-dvh max-h-dvh flex-col overflow-hidden bg-zinc-950'
+      }
       data-chat-feature
     >
 
@@ -2482,14 +2490,22 @@ export default function ChatConversation({
       {/* Absolute side controls so avatar/title stay true screen-center. */}
       <div
         className="pointer-events-none absolute inset-x-0 top-0 z-20 px-3 pb-4 pt-2"
-        style={{ paddingTop: 'calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 0.5rem)' }}
+        style={
+          embedded
+            ? { paddingTop: '0.5rem' }
+            : { paddingTop: 'calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 0.5rem)' }
+        }
       >
         {/* Back button */}
         <button
           type="button"
           onClick={onBack}
           aria-label="Back to conversations"
-          className="chat-header-glass pointer-events-auto absolute left-3 top-[calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px))+0.5rem)] z-10 flex h-10 w-10 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70 transition-opacity"
+          className={`chat-header-glass pointer-events-auto absolute left-3 z-10 flex h-10 w-10 items-center justify-center rounded-full text-zinc-100 touch-manipulation active:opacity-70 transition-opacity ${
+            embedded
+              ? 'top-2'
+              : 'top-[calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px))+0.5rem)]'
+          }`}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <polyline points="15 18 9 12 15 6" />
@@ -2576,7 +2592,11 @@ export default function ChatConversation({
 
         {/* Call controls (right) — overlay so they do not shift the centered avatar */}
         {(chatCall && (isDmRoom || isClassicGroupRoom)) ? (
-          <div className="pointer-events-auto absolute right-3 top-[calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px))+0.5rem)] z-10 flex items-center gap-1.5">
+          <div className={`pointer-events-auto absolute right-3 z-10 flex items-center gap-1.5 ${
+            embedded
+              ? 'top-2'
+              : 'top-[calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px))+0.5rem)]'
+          }`}>
             {isDmRoom ? (
               <>
                 <button

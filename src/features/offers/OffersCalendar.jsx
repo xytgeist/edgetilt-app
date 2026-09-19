@@ -48,6 +48,8 @@ export default function OffersCalendar({
   titleBarNavSlot = null,
   titleBarCenterSlot = null,
   titleBarToolCloseVisible = false,
+  /** Landscape iPad Slots hub: fill the right pane, no second EDGE bar. */
+  paneEmbed = false,
 }) {
   /** Gate for the large legacy push / iOS help block below (was `false &&`). */
   const showLegacyOffersPushPanel = false
@@ -1034,10 +1036,12 @@ export default function OffersCalendar({
   return (
     <>
       <ScrollLinkedEdgeTitleBarShell
-        titleBarNavSlot={titleBarNavSlot}
-        titleBarCenterSlot={titleBarCenterSlot}
-        titleBarToolCloseVisible={titleBarToolCloseVisible}
-        fullWidth={weekLayoutFullBleed}
+        embedded={paneEmbed}
+        publishScrollReveal={!paneEmbed}
+        titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
+        titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
+        titleBarToolCloseVisible={paneEmbed ? false : titleBarToolCloseVisible}
+        fullWidth={weekLayoutFullBleed && !paneEmbed}
         contentClassName={
           weekLayoutFullBleed
             ? 'px-3 pt-3 pb-[calc(5rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'

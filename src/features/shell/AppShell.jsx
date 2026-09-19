@@ -368,7 +368,15 @@ export default function AppShell({
       Number(navigator.deviceMemory) <= 4)
       ? 12
       : 28
-  const [tab, setTab] = useState('home')
+  const [tab, setTabRaw] = useState('home')
+  /** iPad landscape Slots Pro Lounge stays in the right pane instead of taking Chat full screen. */
+  const [slotsLandscapeLounge, setSlotsLandscapeLounge] = useState(false)
+  const [slotsPaneEl, setSlotsPaneEl] = useState(null)
+  const [slotsPaneRect, setSlotsPaneRect] = useState(null)
+  const setTab = useCallback((value) => {
+    setSlotsLandscapeLounge(false)
+    setTabRaw(value)
+  }, [])
   /** Mount once visited, then hide (like Chat) so reopen skips full reload. */
   const [pokerBankrollKeepAlive, setPokerBankrollKeepAlive] = useState(false)
   const [slotsBankrollKeepAlive, setSlotsBankrollKeepAlive] = useState(false)
@@ -426,6 +434,43 @@ export default function AppShell({
   const navSelectAtRef = useRef(0)
   const ipadShell = useIpadAuthStage()
   const ipadSlotsLandscape = useIpadSlotsLandscape()
+  useLayoutEffect(() => {
+    const el = slotsPaneEl
+    if (!el) {
+      setSlotsPaneRect(null)
+      return undefined
+    }
+    const sync = () => {
+      const r = el.getBoundingClientRect()
+      const next = {
+        top: Math.round(r.top),
+        left: Math.round(r.left),
+        width: Math.round(r.width),
+        height: Math.round(r.height),
+      }
+      setSlotsPaneRect((prev) =>
+        prev &&
+        prev.top === next.top &&
+        prev.left === next.left &&
+        prev.width === next.width &&
+        prev.height === next.height
+          ? prev
+          : next,
+      )
+    }
+    sync()
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', sync)
+      return () => window.removeEventListener('resize', sync)
+    }
+    const ro = new ResizeObserver(sync)
+    ro.observe(el)
+    window.addEventListener('resize', sync)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', sync)
+    }
+  }, [slotsPaneEl])
   const [tabErrorTestTrigger, setTabErrorTestTrigger] = useState(0)
   const [tabErrorTestOpen, setTabErrorTestOpen] = useState(false)
   const [isActiveAffiliate, setIsActiveAffiliate] = useState(false)
@@ -1974,14 +2019,11 @@ export default function AppShell({
     flushSync(() => {
       setShellDirectOpenRoomId(id)
       const api = chatDirectNavRef.current
-      if (opts?.skipReloadIfSame !== false && api?.getOpenRoomId?.() === id) {
-        setTab('chat')
-        setMenuOpen(false)
-        return
-      }
-      api?.openRoomById?.(id, opts)
-      setTab('chat')
+      const alreadyOpen = opts?.skipReloadIfSame !== false && api?.getOpenRoomId?.() === id
+      if (!alreadyOpen) api?.openRoomById?.(id, opts)
+      setTabRaw('chat')
       setMenuOpen(false)
+      setSlotsLandscapeLounge(Boolean(opts?.landscapePane))
     })
   }, [])
 
@@ -2004,7 +2046,10 @@ export default function AppShell({
       const id = String(roomId || '').trim()
       if (!id) return
       slotsProLoungeRoomIdRef.current = id
-      openChatRoomDirect(id, { skipReloadIfSame: true })
+      openChatRoomDirect(id, {
+        skipReloadIfSame: true,
+        landscapePane: ipadSlotsLandscape,
+      })
     }
 
     const cachedId = slotsProLoungeRoomIdRef.current
@@ -2030,6 +2075,7 @@ export default function AppShell({
     onOpenAuth,
     onRequireSubscribe,
     openChatRoomDirect,
+    ipadSlotsLandscape,
     supabaseClient,
   ])
 
@@ -2268,7 +2314,8 @@ export default function AppShell({
     })
 
   const slotsToolTitleBarCloseVisible =
-    SLOTS_TOOL_TAB_IDS.has(tab) && !(tab === 'calculators' && activeCalculator)
+    (SLOTS_TOOL_TAB_IDS.has(tab) && !(tab === 'calculators' && activeCalculator))
+    || (slotsLandscapeLounge && tab === 'chat')
   const pokerToolTitleBarCloseVisible = POKER_TOOL_TAB_IDS.has(tab)
 
   const renderTitleBarNavSlot = () => (
@@ -2851,23 +2898,61 @@ export default function AppShell({
       </Suspense>
     )
 
+    const SLOTS_PANE_TAB_IDS = new Set([
+      'guides',
+      'bankroll',
+      'calculators',
+      'offers',
+      'logbook',
+      'w2g-scanner',
+    ])
+    const slotsSplitActive =
+      ipadSlotsLandscape &&
+      (tab === 'slots' ||
+        SLOTS_PANE_TAB_IDS.has(tab) ||
+        (tab === 'chat' && slotsLandscapeLounge))
+    const chatInPane = Boolean(slotsSplitActive && tab === 'chat' && slotsPaneEl)
+    const bankrollInPane = Boolean(slotsSplitActive && slotsPaneEl)
+    const paneCoverStyle = slotsPaneRect
+      ? {
+          position: 'fixed',
+          top: slotsPaneRect.top,
+          left: slotsPaneRect.left,
+          width: slotsPaneRect.width,
+          height: slotsPaneRect.height,
+          zIndex: 40,
+        }
+      : null
+    const chatCover = Boolean(chatInPane && paneCoverStyle)
+    const bankrollCover = Boolean(bankrollInPane && tab === 'bankroll' && paneCoverStyle)
+
     /** Stay mounted across tabs so an open conversation survives lounge post preview navigation. */
     const keepAliveChatTab = (
       <Suspense fallback={chatSuspenseFallback}>
         <div
           key="chat-keepalive"
-          className={tab === 'chat' ? 'contents min-h-0' : 'hidden'}
+          className={
+            chatCover
+              ? 'relative flex min-h-0 flex-col overflow-hidden bg-zinc-950'
+              : chatInPane
+                ? 'hidden'
+                : tab === 'chat'
+                  ? 'contents min-h-0'
+                  : 'hidden'
+          }
+          style={chatCover ? paneCoverStyle : undefined}
           inert={tab !== 'chat'}
         >
           <ChatTab
+            paneEmbed={chatInPane}
             supabaseClient={supabaseClient}
             showGlobalConfirm={showGlobalConfirm}
             hasActiveSubscription={hasActiveSubscription}
             isStaff={isStaff}
             browseMode={browseMode}
             onRequireAuth={() => onRequireAuth?.()}
-            titleBarNavSlot={renderTitleBarNavSlot()}
-            titleBarCenterSlot={renderTitleBarCenterSlot()}
+            titleBarNavSlot={chatInPane ? null : renderTitleBarNavSlot()}
+            titleBarCenterSlot={chatInPane ? null : renderTitleBarCenterSlot()}
             initialPeerUserId={pendingChatPeerUserId}
             onInitialPeerConsumed={() => setPendingChatPeerUserId(null)}
             initialRoomId={pendingChatRoomId}
@@ -2937,15 +3022,23 @@ export default function AppShell({
       </Suspense>
     ) : null
 
-    /** Slots Bankroll … same keep-alive as Poker Bankroll. */
+    /** Slots Bankroll … same keep-alive as Poker Bankroll. Landscape pane covers it in place so sessions stay mounted. */
     const keepAliveSlotsBankroll = slotsBankrollMounted ? (
       <Suspense fallback={slotsBankrollSuspenseFallback}>
         <div
           key="slots-bankroll-keepalive"
-          className={tab === 'bankroll' ? 'contents min-h-0' : 'hidden'}
+          className={
+            bankrollCover
+              ? 'relative flex min-h-0 flex-col overflow-hidden bg-zinc-950'
+              : bankrollInPane || tab !== 'bankroll'
+                ? 'hidden'
+                : 'contents min-h-0'
+          }
+          style={bankrollCover ? paneCoverStyle : undefined}
           inert={tab !== 'bankroll'}
         >
           <BankrollTracker
+            paneEmbed={bankrollInPane}
             supabaseClient={supabaseClient}
             isActivePage={tab === 'bankroll'}
             canCreateBankrollSession={canCreateBankrollSession}
@@ -2953,9 +3046,9 @@ export default function AppShell({
             freemiumUsageLoading={freemiumUsageLoading}
             onRequireSubscribeForBankroll={() => onRequireSubscribe?.('slots-edge')}
             onBankrollSessionCreated={refreshFreemiumUsage}
-            titleBarNavSlot={tab === 'bankroll' ? renderTitleBarNavSlot() : null}
-            titleBarCenterSlot={tab === 'bankroll' ? renderTitleBarCenterSlot() : null}
-            titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
+            titleBarNavSlot={bankrollInPane || tab !== 'bankroll' ? null : renderTitleBarNavSlot()}
+            titleBarCenterSlot={bankrollInPane || tab !== 'bankroll' ? null : renderTitleBarCenterSlot()}
+            titleBarToolCloseVisible={bankrollInPane ? false : slotsToolTitleBarCloseVisible}
           />
         </div>
       </Suspense>
@@ -3011,8 +3104,136 @@ export default function AppShell({
     ) : null
 
     /** Lazy tab content: own Suspense so a loading lounge chunk does not block Offers / Guides / etc. */
+    const slotsPaneToolId =
+      slotsLandscapeLounge && tab === 'chat'
+        ? 'slots-pro-lounge'
+        : SLOTS_PANE_TAB_IDS.has(tab)
+          ? tab
+          : null
+    const slotsPaneFallback = (
+      <div className="px-4 py-8 text-center text-sm text-zinc-500">Loading…</div>
+    )
+    let slotsToolPane = null
+    if (slotsSplitActive && tab === 'guides') {
+      slotsToolPane = (
+        <Suspense fallback={slotsPaneFallback}>
+          <GuidesScreen
+            paneEmbed
+            supabaseClient={supabaseClient}
+            onOpenCalculator={openCalculator}
+            onOpenLogbook={openLogbook}
+            onNavigateHome={() => setTab('home')}
+            onCommunityPosted={loadCommunityFeed}
+            onRequireAuth={onRequireAuth}
+            hasSlotsEdge={hasActiveSubscription}
+            hasSlotsEdgeStarter={hasSlotsEdgeStarter}
+            starterUnlockedGuideSlugs={starterWeeklyDropGuideSlugs}
+            starterWeeklyDropPoolExhausted={starterWeeklyDropPoolExhausted}
+            isStaff={isStaff}
+            isAdmin={isAdmin}
+            gatesMap={contentAccessGatesMap}
+            gatesDbReady={contentAccessGatesDbReady}
+            onSetContentGate={onSetContentAccessGate}
+            onRequireSubscribe={onRequireSubscribe}
+            canCreatePlayLog={canCreatePlayLog}
+            playLogsRemaining={playLogsRemaining}
+            freemiumUsageLoading={freemiumUsageLoading}
+            openCardSlug={guideOpenCardSlug}
+            onOpenCardSlugConsumed={clearGuideOpenCardSlug}
+          />
+        </Suspense>
+      )
+    } else if (slotsSplitActive && tab === 'calculators') {
+      slotsToolPane = (
+        <Suspense fallback={slotsPaneFallback}>
+          <CalculatorsTab
+            paneEmbed
+            activeCalculator={activeCalculator}
+            setActiveCalculator={setActiveCalculator}
+            browseMode={browseMode}
+            onOpenAuth={() => onOpenAuth?.('login')}
+            hasSlotsEdge={hasActiveSubscription}
+            hasSlotsEdgeStarter={hasSlotsEdgeStarter}
+            isStaff={isStaff}
+            isAdmin={isAdmin}
+            gatesMap={contentAccessGatesMap}
+            starterUnlockedCalculatorKeys={starterUnlockedCalculatorKeys}
+            gatesDbReady={contentAccessGatesDbReady}
+            onSetContentGate={onSetContentAccessGate}
+            onRequireSubscribe={onRequireSubscribe}
+            onOpenLogbook={openLogbook}
+            logPlayLocked={!canCreatePlayLog}
+            playLogsRemaining={playLogsRemaining}
+            freemiumUsageLoading={freemiumUsageLoading}
+            supabaseClient={supabaseClient}
+          />
+        </Suspense>
+      )
+    } else if (slotsSplitActive && tab === 'offers') {
+      slotsToolPane = (
+        <Suspense fallback={slotsPaneFallback}>
+          <OffersCalendar
+            paneEmbed
+            supabaseClient={supabaseClient}
+            pendingOfferEventIds={pendingOfferEventIds}
+            setPendingOfferEventIds={setPendingOfferEventIds}
+            offerSpotlightEventIds={offerSpotlightEventIds}
+            setOfferSpotlightEventIds={setOfferSpotlightEventIds}
+            hasSlotsEdge={hasActiveSubscription || isStaff}
+            onRequireSubscribe={() => onRequireSubscribe?.('slots-edge')}
+            isAdmin={isAdmin}
+          />
+        </Suspense>
+      )
+    } else if (slotsSplitActive && tab === 'logbook') {
+      slotsToolPane = (
+        <Suspense fallback={slotsPaneFallback}>
+          <PlayLogbook
+            paneEmbed
+            supabaseClient={supabaseClient}
+            isAdmin={isAdmin}
+            canCreatePlayLog={canCreatePlayLog}
+            playLogsRemaining={playLogsRemaining}
+            freemiumUsageLoading={freemiumUsageLoading}
+            onRequireSubscribeForPlayLog={() => onRequireSubscribe?.('slots-edge')}
+            onPlayLogCreated={refreshFreemiumUsage}
+            highlightEntryId={pendingPlayLogEntryId}
+            onHighlightEntryConsumed={() => setPendingPlayLogEntryId(null)}
+            openLedger={pendingPlayLogLedger}
+            ledgerPartnerKey={pendingPlayLogPartner}
+            ledgerSessionId={pendingPlayLogSessionId}
+            onLedgerDeepLinkConsumed={() => {
+              setPendingPlayLogLedger(false)
+              setPendingPlayLogPartner(null)
+              setPendingPlayLogSessionId(null)
+            }}
+            showGlobalConfirm={showGlobalConfirm}
+            onScanW2G={(prefill) => {
+              setPendingW2GPrefill(prefill || null)
+              openSlotsTool('w2g-scanner')
+            }}
+          />
+        </Suspense>
+      )
+    } else if (slotsSplitActive && tab === 'w2g-scanner') {
+      slotsToolPane = (
+        <Suspense fallback={slotsPaneFallback}>
+          <W2GScannerScreen
+            paneEmbed
+            supabaseClient={supabaseClient}
+            onOpenAuth={(mode) => onOpenAuth?.(mode || 'login')}
+            canUseBulkImport={Boolean(hasSlotsEdgeStarter || hasActiveSubscription)}
+            onRequireSubscribe={(slug) => onRequireSubscribe?.(slug || 'slots-edge-starter')}
+            logbookPrefill={pendingW2GPrefill}
+            onLogbookPrefillConsumed={() => setPendingW2GPrefill(null)}
+            showGlobalConfirm={showGlobalConfirm}
+          />
+        </Suspense>
+      )
+    }
+
     let visibleTab = null
-    if (tab === 'slots' || (ipadSlotsLandscape && tab === 'guides')) {
+    if (tab === 'slots' || slotsSplitActive) {
       visibleTab = (
         <SlotsScreen
           titleBarNavSlot={renderTitleBarNavSlot()}
@@ -3025,42 +3246,10 @@ export default function AppShell({
           isStaff={isStaff}
           gatesMap={contentAccessGatesMap}
           starterUnlockedCalculatorKeys={starterUnlockedCalculatorKeys}
-          landscapeSplit={ipadSlotsLandscape}
-          selectedToolId={tab === 'guides' ? 'guides' : null}
-          guidesPane={
-            ipadSlotsLandscape && tab === 'guides' ? (
-              <Suspense
-                fallback={
-                  <div className="px-4 py-8 text-center text-sm text-zinc-500">Loading guides…</div>
-                }
-              >
-                <GuidesScreen
-                  paneEmbed
-                  supabaseClient={supabaseClient}
-                  onOpenCalculator={openCalculator}
-                  onOpenLogbook={openLogbook}
-                  onNavigateHome={() => setTab('home')}
-                  onCommunityPosted={loadCommunityFeed}
-                  onRequireAuth={onRequireAuth}
-                  hasSlotsEdge={hasActiveSubscription}
-                  hasSlotsEdgeStarter={hasSlotsEdgeStarter}
-                  starterUnlockedGuideSlugs={starterWeeklyDropGuideSlugs}
-                  starterWeeklyDropPoolExhausted={starterWeeklyDropPoolExhausted}
-                  isStaff={isStaff}
-                  isAdmin={isAdmin}
-                  gatesMap={contentAccessGatesMap}
-                  gatesDbReady={contentAccessGatesDbReady}
-                  onSetContentGate={onSetContentAccessGate}
-                  onRequireSubscribe={onRequireSubscribe}
-                  canCreatePlayLog={canCreatePlayLog}
-                  playLogsRemaining={playLogsRemaining}
-                  freemiumUsageLoading={freemiumUsageLoading}
-                  openCardSlug={guideOpenCardSlug}
-                  onOpenCardSlugConsumed={clearGuideOpenCardSlug}
-                />
-              </Suspense>
-            ) : null
-          }
+          landscapeSplit={slotsSplitActive}
+          selectedToolId={slotsPaneToolId}
+          onPaneElement={setSlotsPaneEl}
+          toolPane={slotsToolPane}
         />
       )
     } else if (tab === 'poker') {

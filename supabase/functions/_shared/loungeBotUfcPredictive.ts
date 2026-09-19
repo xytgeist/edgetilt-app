@@ -467,6 +467,24 @@ function fightWeightClass(
     || usableWeightClass(divisionB)
 }
 
+/** Same fighter. A sit on either desk is not an agreement. */
+function scottAndRoccoAgree(fight: UfcFightPick): boolean {
+  const scott = fight.pickerPicks.Scott.side
+  const rocco = fight.pickerPicks.Rocco.side
+  return (scott === 'A' || scott === 'B') && scott === rocco
+}
+
+/** Agreed fights first. Relative order inside each group stays put. */
+function orderUfcFightsForPrint(fights: UfcFightPick[] | null | undefined): UfcFightPick[] {
+  const agreed: UfcFightPick[] = []
+  const rest: UfcFightPick[] = []
+  for (const fight of fights || []) {
+    if (scottAndRoccoAgree(fight)) agreed.push(fight)
+    else rest.push(fight)
+  }
+  return agreed.concat(rest)
+}
+
 function formatUfcFightDeskBlock(fight: UfcFightPick): string {
   const scott = fight.pickerPicks.Scott
   const rocco = fight.pickerPicks.Rocco
@@ -474,8 +492,10 @@ function formatUfcFightDeskBlock(fight: UfcFightPick): string {
     ? `• ${formatColoredPickerName('Rocco')}: PASS ... ${rocco.rationale}`
     : `• ${formatColoredPickerName('Rocco')}: ${rocco.pickName} ... ${rocco.rationale}`
   const weight = fight.division ? ` (${fight.division})` : ''
+  const names = `**${fight.fighterA} vs ${fight.fighterB}**${weight}`
+  const title = scottAndRoccoAgree(fight) ? `[gold]Both[/gold] · ${names}` : names
   return [
-    `**${fight.fighterA} vs ${fight.fighterB}**${weight}`,
+    title,
     `• ${formatColoredPickerName('Scott')}: ${scott.pickName} ... ${scott.rationale}`,
     roccoLine,
   ].join('\n')
@@ -488,7 +508,7 @@ export function formatUfcVipCardCaption(card: UfcSlateCard): string {
   const vipLines: string[] = []
   vipLines.push(`🥊 **${card.cardTitle.toUpperCase()} · SCOTT + ROCCO**\n`)
   vipLines.push(`Price desk + styles.\n`)
-  for (const fight of card.fights || []) {
+  for (const fight of orderUfcFightsForPrint(card.fights)) {
     vipLines.push(formatUfcFightDeskBlock(fight), '')
   }
   return vipLines.join('\n').trim()
@@ -506,7 +526,7 @@ export function formatUfcFanOnlyBodies(card: UfcSlateCard): {
     '',
     `Price desk + styles.`,
   ].join('\n')
-  const fights = (card.fights || []).map(formatUfcFightDeskBlock)
+  const fights = orderUfcFightsForPrint(card.fights).map(formatUfcFightDeskBlock)
   let caption = header
   let i = 0
   while (i < fights.length) {
@@ -539,11 +559,13 @@ export function formatUfcCardCaption(card: UfcSlateCard): string {
   lines.push(`🥊 **${card.cardTitle.toUpperCase()} · SCOTT + ROCCO** 🥊`)
   lines.push(`Price desk + last-5 styles.\n`)
 
-  for (const fight of card.fights || []) {
+  for (const fight of orderUfcFightsForPrint(card.fights)) {
     const scott = fight.pickerPicks.Scott
     const rocco = fight.pickerPicks.Rocco
+    const agree = scottAndRoccoAgree(fight)
     const opp = scott.side === 'A' ? fight.fighterB : fight.fighterA
-    lines.push(`• **${scott.pickName}** vs ${opp}`)
+    const pick = agree ? `[gold]Both[/gold] · **${scott.pickName}**` : `**${scott.pickName}**`
+    lines.push(`• ${pick} vs ${opp}`)
     lines.push(
       rocco.side === 'PASS'
         ? `  ↳ ${formatColoredPickerName('Rocco')}: PASS ... ${rocco.rationale}`

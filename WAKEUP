@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-18 … iPad left rail
+
+**I am Mac Theo.** On iPad the lounge FAB buttons are a left rail, compose at the bottom, portrait and landscape. Phone and desktop keep the FAB. No right column yet. Web **`1.4.314`**.
+
 ### Windows Theo 2026-09-18 … Account info phone texts
 
 **I am Windows Theo.** Settings was not texting because SMS autoconfirm confirmed the number and skipped the hook. Autoconfirm is off on test. The hook now texts `sms.phone`. Send code and Confirm code are text links. Save changes stays the one filled button. Frontend **`1.4.313`**. The 702 number that got stamped without a text was cleared on the test account so the next Send code is a real change.

@@ -386,6 +386,8 @@ import TitleBarStatusLine from '../../components/TitleBarStatusLine.jsx'
 // LOUNGE_DOCK_FOOTER_BAR_DISABLED - classic dock icon row (FAB wheel is primary nav). Re-enable import + JSX below to restore.
 // import LoungeDockFooterBar from '../../components/LoungeDockFooterBar.jsx'
 import LoungeDockArcCarouselPrototype from '../../components/LoungeDockArcCarouselPrototype.jsx'
+import LoungeIpadNavRail from './LoungeIpadNavRail.jsx'
+import { useIpadAuthStage } from '../auth/AuthModalShell'
 import {
   blurLoungeComposerCaption,
   focusLoungeComposerCaption,
@@ -796,6 +798,7 @@ export default function SocialFeed({
     return { expanded, fold: expanded ? 1 : 0 }
   }
   const loungeComposerInitial = loungeComposerBoot()
+  const ipadShell = useIpadAuthStage()
   const [postText, setPostText] = useState(() => {
     const d = readLoungeComposerDraft()
     return d?.postText ?? ''
@@ -16138,7 +16141,13 @@ export default function SocialFeed({
     ],
   )
 
-  const loungeDockCarousel = showLoungeViewportDock ? (
+  const loungeIpadRail =
+    ipadShell && showLoungeViewportDock && typeof document !== 'undefined'
+      ? createPortal(<LoungeIpadNavRail items={loungeDockWheelItems} />, document.body)
+      : null
+
+  const loungeDockCarousel =
+    ipadShell || !showLoungeViewportDock ? null : (
     <LoungeDockArcCarouselPrototype
       items={loungeDockWheelItems}
       cornerLItems={loungeDockCornerLItems}
@@ -16157,7 +16166,7 @@ export default function SocialFeed({
       viewerUserId={composerUserId || null}
       onMenuLayoutIntroCompleted={onMenuLayoutIntroCompleted}
     />
-  ) : null
+  )
 
   const loungeMarketFeedPosts = useMemo(() => {
     if (!loungePostDetail?.id) return communityPosts
@@ -16263,6 +16272,7 @@ export default function SocialFeed({
 
   return (
     <div
+      data-lounge-feed-root=""
       className={`mx-auto flex h-dvh max-h-dvh min-h-0 w-full max-w-2xl flex-col overflow-hidden bg-zinc-950 pt-[max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-0`}
     >
       <LoungeStreamLightboxProvider ctx={loungeStreamLightboxCtx}>
@@ -16386,6 +16396,8 @@ export default function SocialFeed({
         />
       ) : null}
       */}
+
+      {loungeIpadRail}
 
       {isActivePage ? loungeDockCarousel : null}
 

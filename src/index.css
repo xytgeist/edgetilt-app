@@ -3565,6 +3565,27 @@ html.light [data-auth-ipad-stage] [data-auth-ipad-footer] {
   border-top-color: #e4e4e7;
   color: #3f3f46;
 }
+/* iPad shell. Same stage as auth (coarse, wide, tall). Phone FAB becomes this rail. */
+html[data-ipad-nav] {
+  --edge-ipad-rail: 4.75rem;
+}
+html[data-ipad-nav] [data-app-shell-root] {
+  padding-left: var(--edge-ipad-rail);
+}
+html[data-ipad-nav] [data-lounge-feed-root] .fixed.left-1\/2 {
+  left: calc(var(--edge-ipad-rail) + (100vw - var(--edge-ipad-rail)) / 2) !important;
+}
+html.light [data-ipad-nav-rail] {
+  background-color: #fff;
+  border-right-color: #e4e4e7;
+  color: #52525b;
+}
+html.light [data-ipad-nav-rail] [data-ipad-nav-item][data-active='1'] {
+  color: #18181b;
+}
+html.light [data-ipad-nav-rail] [data-ipad-nav-badge] {
+  --tw-ring-color: #fff;
+}
 /* Phone card sizes "Degen with EDGE" to the card, not the viewport, so it stays one line. */
 [data-auth-wordmark-slot] {
   container-type: inline-size;

@@ -1147,6 +1147,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-19:** **UFC public sample (Windows).** The open UFC post shows one fight from each section with more than one fight. Names and prices only. A single-fight section stays a count. Pass is not sampled. Today's public post was rewritten. Fan and VIP were not.
 - **2026-09-19:** **iPad lounge scale (Mac).** Left rail is 15% narrower. Lounge type, avatars, and action icons are 15% under the old 1.5× iPad scale. Phone unchanged. Frontend **`1.4.348`**. Web only.
 - **2026-09-19:** **UFC public tease (Windows).** The open UFC post is bucket counts only. Sides stay on the fan-only post and VIP chat. Today's public post was rewritten. Fan and VIP were not.
 - **2026-09-19:** **iPad composer tools (Mac).** Photo, video, GIF, chart, thread, and full-screen composer icons on the iPad feed composer are 42px. Phone unchanged. Comment and quote toolbars unchanged. Frontend **`1.4.347`**. Web only.

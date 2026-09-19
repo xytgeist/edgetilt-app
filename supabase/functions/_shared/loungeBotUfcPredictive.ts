@@ -519,13 +519,13 @@ function formatUfcSectionHeader(bucket: { title: string; blurb: string }): strin
 
 function groupUfcFightsForPrint(
   fights: UfcFightPick[] | null | undefined,
-): Array<{ header: string; fights: UfcFightPick[] }> {
+): Array<{ id: UfcPrintBucketId; header: string; fights: UfcFightPick[] }> {
   const list = fights || []
-  const out: Array<{ header: string; fights: UfcFightPick[] }> = []
+  const out: Array<{ id: UfcPrintBucketId; header: string; fights: UfcFightPick[] }> = []
   for (const bucket of UFC_PRINT_BUCKETS) {
     const group = list.filter((fight) => ufcPrintBucket(fight) === bucket.id)
     if (!group.length) continue
-    out.push({ header: formatUfcSectionHeader(bucket), fights: group })
+    out.push({ id: bucket.id, header: formatUfcSectionHeader(bucket), fights: group })
   }
   return out
 }
@@ -563,6 +563,25 @@ function formatUfcFightDeskBlock(fight: UfcFightPick): string {
 
 function formatUfcSectionTitle(header: string): string {
   return header.split('\n')[0].replace(/^##\s+/, '')
+}
+
+function formatUfcPublicDeskLine(
+  name: 'Scott' | 'Rocco',
+  pick: { side: string; pickName: string },
+): string {
+  const label = formatColoredPickerName(name)
+  if (pick.side === 'PASS') return `• ${label}: PASS`
+  return `• ${label}: ${pick.pickName}`
+}
+
+/** One fight, names and prices only. No sit math. */
+function formatUfcPublicSample(fight: UfcFightPick): string {
+  const weight = fight.division ? ` (${fight.division})` : ''
+  return [
+    `**${fight.fighterA} vs ${fight.fighterB}**${weight}`,
+    formatUfcPublicDeskLine('Scott', fight.pickerPicks.Scott),
+    formatUfcPublicDeskLine('Rocco', fight.pickerPicks.Rocco),
+  ].join('\n')
 }
 
 /**
@@ -615,18 +634,26 @@ export function formatUfcFanOnlyBodies(card: UfcSlateCard): {
 }
 
 /**
- * Public Lounge tease. Counts only. Sides stay on the fan-only post and VIP chat.
+ * Public Lounge tease. One fight from each section with more than one pick.
+ * A lone fight stays a count. Pass is never a sample. Fan-only and VIP have the card.
  */
 export function formatUfcCardCaption(card: UfcSlateCard): string {
   const lines: string[] = []
   lines.push(`🥊 **${card.cardTitle.toUpperCase()} · SCOTT + ROCCO** 🥊`)
   lines.push(`Price desk + last-5 styles.`)
   lines.push('')
+  let sampled = false
   for (const group of groupUfcFightsForPrint(card.fights)) {
     lines.push(`${formatUfcSectionTitle(group.header)} · ${group.fights.length}`)
+    if (group.id !== 'pass' && group.fights.length > 1) {
+      lines.push(formatUfcPublicSample(group.fights[0]))
+      sampled = true
+    }
+    lines.push('')
   }
-  lines.push('')
-  lines.push(`The sides are in the fan-only Lounge post and Sharpe VIP chat.`)
+  lines.push(sampled
+    ? `One fight from each section with more than one. The rest of the sides are in the fan-only Lounge post and Sharpe VIP chat.`
+    : `The sides are in the fan-only Lounge post and Sharpe VIP chat.`)
   lines.push(`🌐 Audited ledger & fighter metrics: sharpesyndicate.com`)
   return lines.join('\n')
 }

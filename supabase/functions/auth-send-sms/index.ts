@@ -19,10 +19,12 @@ function json(status: number, message: string) {
 function toE164(raw: unknown) {
   const s = String(raw || '').trim()
   const digits = s.replace(/\D/g, '')
-  if (s.startsWith('+') && digits.length >= 8 && digits.length <= 15) return `+${digits}`
+  if (digits.length < 8 || digits.length > 15) return ''
+  if (s.startsWith('+')) return `+${digits}`
   if (digits.length === 10) return `+1${digits}`
   if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`
-  return ''
+  // GoTrue sends sms.phone as digits only, no plus.
+  return `+${digits}`
 }
 
 Deno.serve(async (req) => {
@@ -42,10 +44,14 @@ Deno.serve(async (req) => {
   try {
     const wh = new Webhook(hookSecret)
     const verified = wh.verify(payload, Object.fromEntries(req.headers)) as {
-      user?: { phone?: string }
-      sms?: { otp?: string }
+      user?: { phone?: string; new_phone?: string }
+      sms?: { otp?: string; phone?: string }
     }
-    userPhone = toE164(verified?.user?.phone)
+    // Phone change keeps the old number on user.phone. The number to text is sms.phone.
+    userPhone =
+      toE164(verified?.sms?.phone) ||
+      toE164(verified?.user?.new_phone) ||
+      toE164(verified?.user?.phone)
     otp = String(verified?.sms?.otp || '').replace(/\D/g, '')
   } catch {
     return json(401, 'Invalid SMS hook signature.')

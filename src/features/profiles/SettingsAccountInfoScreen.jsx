@@ -15,6 +15,8 @@ import PhoneCountryField from '../auth/PhoneCountryField.jsx'
 import { dismissEdgeKeyboard } from '../../utils/edgeNative.js'
 
 const HANDLE_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000
+const PHONE_ACTION_CLASS =
+  'account-phone-action inline-flex min-h-11 items-center text-[15px] font-semibold text-cyan-300 underline underline-offset-4 touch-manipulation hover:text-cyan-200 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]'
 
 function handleCooldownUnlockAt(handleChangedAt) {
   const lastAt = handleChangedAt ? new Date(handleChangedAt) : null
@@ -162,9 +164,17 @@ export default function SettingsAccountInfoScreen({
   }, [])
 
   const requestPhoneCode = useCallback(async (nextE164) => {
-    const { error: sendErr } = await supabaseClient.auth.updateUser({ phone: nextE164 })
+    const { data, error: sendErr } = await supabaseClient.auth.updateUser({ phone: nextE164 })
     if (sendErr) {
       setSaveError(phoneLinkError(sendErr))
+      return false
+    }
+    const digits = (value) => String(value || '').replace(/\D/g, '')
+    const target = digits(nextE164)
+    const pending = data?.user?.new_phone
+    const current = digits(data?.user?.phone)
+    if (current === target && (pending == null || digits(pending) === '')) {
+      setSaveError('That number is already on this account, so no new text was sent.')
       return false
     }
     setPhoneCode('')
@@ -534,7 +544,7 @@ export default function SettingsAccountInfoScreen({
               type="button"
               disabled={saveBusy || !toE164ForCountry(phoneDraft, phoneCountry)}
               onClick={() => void onSendPhoneCode()}
-              className="mt-3 min-h-11 w-full rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white touch-manipulation hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
+              className={`mt-2 ${PHONE_ACTION_CLASS}`}
             >
               {saveBusy && !phoneCode ? 'Sending…' : phoneCodeFor ? 'Send again' : 'Send code'}
             </button>
@@ -561,7 +571,7 @@ export default function SettingsAccountInfoScreen({
                   type="button"
                   disabled={saveBusy}
                   onClick={() => void confirmPhoneCode()}
-                  className="min-h-11 w-full rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white touch-manipulation hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
+                  className={PHONE_ACTION_CLASS}
                 >
                   {saveBusy ? 'Checking…' : 'Confirm code'}
                 </button>

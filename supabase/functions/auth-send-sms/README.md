@@ -4,6 +4,8 @@ Supabase Auth **Send SMS** hook. Phone login (`signInWithOtp` / `verifyOtp` type
 
 `verify_jwt` is false. The hook secret signs the body.
 
+Account info links a number with `updateUser`. That only calls this hook when **SMS autoconfirm is off**. With autoconfirm on, Auth stamps the number confirmed and never texts. Continue with Phone (`signInWithOtp`) still texts either way. The number to text is `sms.phone`, then `user.new_phone`, then `user.phone`. GoTrue omits the plus.
+
 ## Secrets
 
 | Name | Purpose |

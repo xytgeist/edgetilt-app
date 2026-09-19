@@ -4359,6 +4359,12 @@ html.light [data-settings-account-info] .text-red-400 {
 html.light [data-settings-account-info] .hover\:text-red-300:hover {
   color: #b91c1c !important;
 }
+html.light [data-settings-account-info] .account-phone-action {
+  color: #0e7490 !important;
+}
+html.light [data-settings-account-info] .account-phone-action:hover {
+  color: #155e75 !important;
+}
 
 html.light [data-settings-account-info-dialog] .bg-zinc-900 {
   background-color: #ffffff !important;

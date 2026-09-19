@@ -9,6 +9,7 @@ import {
 } from './loungeCommentGlyph.js'
 import { LOUNGE_REPOST_ARROWS_D } from './loungeRepostGlyph.js'
 import { formatCompactStatCount, fullStatCountTitle } from '../../utils/formatCompactStatCount.js'
+import { useIpadAuthStage } from '../auth/AuthModalShell.jsx'
 
 /**
  * Comment / repost / like / bookmark row - same behavior as the feed post row or post-detail sheet.
@@ -72,6 +73,7 @@ export default function LoungePostInteractionBar({
   const repostMenuRef = useRef(null)
   const repostMenuPortalRef = useRef(null)
   const [repostMenuFixed, setRepostMenuFixed] = useState({ top: 0, left: 0 })
+  const ipadShell = useIpadAuthStage()
   const isBookmarked =
     typeof getBookmarked === 'function'
       ? !!getBookmarked(postId)
@@ -130,39 +132,53 @@ export default function LoungePostInteractionBar({
 
   const isFeed = variant === 'feed'
   const isComment = variant === 'comment'
+  /** Feed type on iPad is already ~1.5×. These glyphs were still the phone sizes. */
+  const ipadPostRow = ipadShell && !isComment && !pillOverlay
   const showViews = Boolean(showAdminViewCount) && isFeed
   /** Feed + comment-thread rows: tighter stat padding; sheet = post detail / lightbox. */
   const statsCompact = isFeed || isComment
   /** `justify-between` flex basis = glyph width only (px), so inter-icon gaps match (L − Σw) / 3. */
-  const slotComment = isComment ? 20 : isFeed ? 22 : 24
-  const slotRepost = isComment ? 20 : isFeed ? 22 : 24
-  const slotLike = isComment ? 20 : isFeed ? 22 : 24
-  const slotBookmark = isComment ? 22 : isFeed ? 24 : 26
-  const railMinH = pillOverlay ? undefined : isComment ? 30 : isFeed ? 32 : 44
+  const slotComment = isComment ? 20 : ipadPostRow ? (isFeed ? 33 : 36) : isFeed ? 22 : 24
+  const slotRepost = slotComment
+  const slotLike = slotComment
+  const slotBookmark = isComment ? 22 : ipadPostRow ? (isFeed ? 36 : 39) : isFeed ? 24 : 26
+  const railMinH = pillOverlay ? undefined : isComment ? 30 : ipadPostRow ? (isFeed ? 48 : 66) : isFeed ? 32 : 44
   /** Overlay icons scale via CSS clamp on `[data-lounge-lightbox-pill-row] svg`. */
   const iconSz = pillOverlay
     ? 'h-[1em] w-[1em]'
     : isComment
       ? 'h-[20px] w-[20px]'
-      : isFeed
-        ? 'h-[22px] w-[22px]'
-        : 'h-[24px] w-[24px]'
+      : ipadPostRow
+        ? isFeed
+          ? 'h-[33px] w-[33px]'
+          : 'h-[36px] w-[36px]'
+        : isFeed
+          ? 'h-[22px] w-[22px]'
+          : 'h-[24px] w-[24px]'
   /** Bubble glyph sits low in the 20 viewBox - slight Y stretch so it matches the chip visually */
   const iconSzComment = pillOverlay
     ? `h-[1em] w-[1em] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
     : isComment
       ? `h-[20px] w-[20px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
-      : isFeed
-        ? `h-[22px] w-[22px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
-        : `h-[24px] w-[24px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
+      : ipadPostRow
+        ? isFeed
+          ? `h-[33px] w-[33px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
+          : `h-[36px] w-[36px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
+        : isFeed
+          ? `h-[22px] w-[22px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
+          : `h-[24px] w-[24px] ${LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS}`
   /** Bookmark path is inset in the 20 viewBox - slightly larger box than other stats for visual parity with the chip */
   const iconSzBookmark = pillOverlay
     ? 'h-[1.05em] w-[1.05em]'
     : isComment
       ? 'h-[22px] w-[22px]'
-      : isFeed
-        ? 'h-[24px] w-[24px]'
-        : 'h-[26px] w-[26px]'
+      : ipadPostRow
+        ? isFeed
+          ? 'h-[36px] w-[36px]'
+          : 'h-[39px] w-[39px]'
+        : isFeed
+          ? 'h-[24px] w-[24px]'
+          : 'h-[26px] w-[26px]'
   /** Stat hit targets (padding); inner layout is glyph rail + absolutely positioned count. */
   const statFeedComment =
     'inline-flex shrink-0 items-center gap-1.5 rounded px-1 py-1 hover:bg-zinc-900/70 touch-manipulation [-webkit-tap-highlight-color:transparent]'
@@ -247,10 +263,10 @@ export default function LoungePostInteractionBar({
   const rowClass = pillOverlay
     ? `flex w-full min-w-0 flex-nowrap items-center justify-between gap-[var(--lounge-lightbox-pill-gap)] ${rootClassName}`.trim()
     : isFeed
-      ? `flex w-full min-w-0 flex-1 flex-nowrap items-center justify-between text-[15px] ${rootClassName}`.trim()
+      ? `flex w-full min-w-0 flex-1 flex-nowrap items-center justify-between ${ipadPostRow ? 'text-[22px]' : 'text-[15px]'} ${rootClassName}`.trim()
       : isComment
         ? `flex w-full min-w-0 flex-1 flex-nowrap items-center justify-between text-[14px] ${rootClassName}`.trim()
-        : `flex w-full min-w-0 flex-1 flex-nowrap items-center justify-between text-[16px] ${rootClassName}`.trim()
+        : `flex w-full min-w-0 flex-1 flex-nowrap items-center justify-between ${ipadPostRow ? 'text-[24px]' : 'text-[16px]'} ${rootClassName}`.trim()
 
   const repostMenusFeed =
     typeof document !== 'undefined' &&

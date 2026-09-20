@@ -121,15 +121,14 @@ export function attachFirstRunChromeTour(userId, user, { welcomeAcked = false } 
   if (!userId) return false
   const step = readFirstRunChromeTourStep(userId)
   if (step === FIRST_RUN_CHROME_TOUR_STEP.DONE) return false
-  if (welcomeAcked && step !== FIRST_RUN_CHROME_TOUR_STEP.GUIDELINES) {
-    if (step || isFirstRunChromeTourActive(userId)) markFirstRunChromeTourDone(userId)
+  if (welcomeAcked) {
+    markFirstRunChromeTourDone(userId)
     return false
   }
   if (isFirstRunChromeTourActive(userId)) {
     bindPendingToUser(userId)
     return true
   }
-  if (welcomeAcked) return false
   if (isLikelyNewAuthUser(user)) {
     bindPendingToUser(userId)
     return true
@@ -144,6 +143,16 @@ export function markFirstRunChromeTourDone(userId) {
   }
   writeStorage(window.localStorage, PENDING_UNSCOPED_KEY, '')
   writeStorage(window.sessionStorage, PENDING_UNSCOPED_KEY, '')
+}
+
+/** Drop the signup stamp so a later sign-in cannot restart the chrome tour. */
+export async function clearFirstRunChromeTourMeta(supabase) {
+  if (!supabase?.auth?.updateUser) return
+  try {
+    await supabase.auth.updateUser({ data: { [FIRST_RUN_CHROME_TOUR_META_KEY]: false } })
+  } catch {
+    // ignore
+  }
 }
 
 export function clearFirstRunChromeTour(userId) {

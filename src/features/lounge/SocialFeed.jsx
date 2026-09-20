@@ -161,6 +161,7 @@ import {
   FIRST_RUN_CHROME_TOUR_MENU_HINT_MS,
   FIRST_RUN_CHROME_TOUR_STEP,
   markFirstRunChromeTourDone,
+  clearFirstRunChromeTourMeta,
   readFirstRunChromeTourStep,
   requestChromeTourMenuHold,
   writeFirstRunChromeTourStep,
@@ -10325,6 +10326,10 @@ export default function SocialFeed({
     if (coldBootSplashVisible) return
     if (isPokerStakeOnboardingActive()) return
     if (readLoungeWelcomeAck(composerUserId)) return
+    if (readFirstRunChromeTourStep(composerUserId) === FIRST_RUN_CHROME_TOUR_STEP.DONE) {
+      markLoungeWelcomeSeen(supabaseClient, composerUserId)
+      return
+    }
     if (
       attachFirstRunChromeTour(composerUserId, composerAuthUser, {
         welcomeAcked: false,
@@ -10350,6 +10355,7 @@ export default function SocialFeed({
     loungeOnboardingHydrated,
     coldBootSplashVisible,
     loungeWelcomeOpen,
+    supabaseClient,
   ])
 
   useEffect(() => {
@@ -10369,12 +10375,11 @@ export default function SocialFeed({
   const onLoungeWelcomeAcknowledge = useCallback(() => {
     markLoungeWelcomeSeen(supabaseClient, composerUserId)
     setLoungeWelcomeOpen(false)
-    if (firstRunChromeTourActive) {
-      markFirstRunChromeTourDone(composerUserId)
-      setFirstRunChromeTourActive(false)
-      setFirstRunChromeTourStep(FIRST_RUN_CHROME_TOUR_STEP.DONE)
-    }
-  }, [supabaseClient, composerUserId, firstRunChromeTourActive])
+    markFirstRunChromeTourDone(composerUserId)
+    setFirstRunChromeTourActive(false)
+    setFirstRunChromeTourStep(FIRST_RUN_CHROME_TOUR_STEP.DONE)
+    void clearFirstRunChromeTourMeta(supabaseClient)
+  }, [supabaseClient, composerUserId])
 
   const onSlotsMenuHintDismiss = useCallback(() => {
     markLoungeSlotsMenuHintSeen(supabaseClient, composerUserId)
@@ -10485,6 +10490,13 @@ export default function SocialFeed({
     }
 
     if (step === FIRST_RUN_CHROME_TOUR_STEP.GUIDELINES) {
+      if (readLoungeWelcomeAck(composerUserId)) {
+        markFirstRunChromeTourDone(composerUserId)
+        setFirstRunChromeTourActive(false)
+        setFirstRunChromeTourStep(FIRST_RUN_CHROME_TOUR_STEP.DONE)
+        void clearFirstRunChromeTourMeta(supabaseClient)
+        return undefined
+      }
       if (loungeWelcomeOpen || loungeWelcomeScheduleRef.current) return undefined
       const timer = window.setTimeout(() => {
         loungeWelcomeScheduleRef.current = true
@@ -10507,6 +10519,7 @@ export default function SocialFeed({
     loungeWelcomeOpen,
     skipTourFabToGuidelines,
     onTourVisualExpandSettled,
+    supabaseClient,
   ])
 
   useEffect(() => {
@@ -10580,13 +10593,12 @@ export default function SocialFeed({
   const onOpenGuidelinesFromWelcome = useCallback(() => {
     markLoungeWelcomeSeen(supabaseClient, composerUserId)
     setLoungeWelcomeOpen(false)
-    if (firstRunChromeTourActive) {
-      markFirstRunChromeTourDone(composerUserId)
-      setFirstRunChromeTourActive(false)
-      setFirstRunChromeTourStep(FIRST_RUN_CHROME_TOUR_STEP.DONE)
-    }
+    markFirstRunChromeTourDone(composerUserId)
+    setFirstRunChromeTourActive(false)
+    setFirstRunChromeTourStep(FIRST_RUN_CHROME_TOUR_STEP.DONE)
+    void clearFirstRunChromeTourMeta(supabaseClient)
     onOpenLegalDocument?.('guidelines', 'welcome')
-  }, [onOpenLegalDocument, supabaseClient, composerUserId, firstRunChromeTourActive])
+  }, [onOpenLegalDocument, supabaseClient, composerUserId])
 
   useEffect(() => {
     if (!composerUserId) {

@@ -239,12 +239,9 @@ export function readLoungeDockMenuLayoutIntroCompleted(userId = null) {
   try {
     const uid = userId ? String(userId) : ''
     if (uid) {
-      if (window.localStorage.getItem(`${LOUNGE_DOCK_MENU_LAYOUT_INTRO_KEY}:${uid}`) === '1') return true
+      return window.localStorage.getItem(`${LOUNGE_DOCK_MENU_LAYOUT_INTRO_KEY}:${uid}`) === '1'
     }
-    if (window.localStorage.getItem(LOUNGE_DOCK_MENU_LAYOUT_INTRO_KEY) === '1') return true
-    const prefs = readLoungeDockFabPrefs()
-    if (prefs?.locked) return true
-    return false
+    return window.localStorage.getItem(LOUNGE_DOCK_MENU_LAYOUT_INTRO_KEY) === '1'
   } catch {
     return true
   }
@@ -256,6 +253,7 @@ export function writeLoungeDockMenuLayoutIntroCompleted(userId = null) {
     const uid = userId ? String(userId) : ''
     if (uid) {
       window.localStorage.setItem(`${LOUNGE_DOCK_MENU_LAYOUT_INTRO_KEY}:${uid}`, '1')
+      return
     }
     window.localStorage.setItem(LOUNGE_DOCK_MENU_LAYOUT_INTRO_KEY, '1')
   } catch {

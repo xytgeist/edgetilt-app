@@ -883,6 +883,7 @@ export default function LoungeDockArcCarouselPrototype({
   const persistFabPrefs = useCallback(
     (pos) => {
       if (!pos) return
+      if (visualTourRef.current) return
       if (!loungeDockViewportIsUsable(viewport.width, viewport.height)) return
       const spanX = fabMoveBounds.maxLeft - fabMoveBounds.minLeft
       const spanY = fabMoveBounds.maxTop - fabMoveBounds.minTop
@@ -890,11 +891,8 @@ export default function LoungeDockArcCarouselPrototype({
       const pct = loungeDockFabPctFromPosition(pos.left, pos.top, fabMoveBounds)
       if (pct.xPct <= 0.05 && pct.yPct <= 0.05) return
       writeLoungeDockFabPrefs({ ...pct, locked: true })
-      if (!readLoungeDockMenuLayoutIntroCompleted(viewerUserId)) {
-        completeMenuLayoutIntro()
-      }
     },
-    [fabMoveBounds, viewerUserId, completeMenuLayoutIntro, viewport.width, viewport.height],
+    [fabMoveBounds, viewport.width, viewport.height],
   )
 
   /** When using L layout, snap FAB to bottom corner for the screen half (preferences / resize / mode switch). */

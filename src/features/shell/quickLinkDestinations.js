@@ -84,6 +84,13 @@ export const IPAD_LANDSCAPE_QUERY =
 export const SLOTS_LANDSCAPE_SPLIT_QUERY =
   '(orientation: landscape) and (min-width: 640px) and (pointer: coarse)'
 
+/**
+ * Left Lounge rail (Home / Search / Chat / …).
+ * iPad shell, or any landscape phone/tablet that passes the slots landscape gate.
+ * Auth stage stays on `IPAD_SHELL_QUERY` so short phones keep the card auth layout.
+ */
+export const IPAD_NAV_RAIL_QUERY = `${IPAD_SHELL_QUERY}, ${SLOTS_LANDSCAPE_SPLIT_QUERY}`
+
 /** Short landscape ... shrink tools cards. iPad height stays roomy. */
 export const SLOTS_LANDSCAPE_COMPACT_QUERY =
   '(orientation: landscape) and (max-height: 520px) and (pointer: coarse)'

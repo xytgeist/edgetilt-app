@@ -23,8 +23,8 @@ const EV_MARKS = [
 const NAV_ORDER = ['home', 'search', 'notifications', 'chat', 'following', 'settings']
 
 /**
- * iPad portrait and landscape. Phone FAB buttons, large, starting under the +EV mark.
- * Compose sits at the bottom.
+ * iPad portrait and landscape, plus phone landscape.
+ * Phone portrait keeps the FAB dock.
  */
 export default function LoungeIpadNavRail({ items = [], shortcuts = null }) {
   useEffect(() => {

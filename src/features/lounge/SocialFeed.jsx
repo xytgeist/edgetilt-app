@@ -387,7 +387,7 @@ import TitleBarStatusLine from '../../components/TitleBarStatusLine.jsx'
 // import LoungeDockFooterBar from '../../components/LoungeDockFooterBar.jsx'
 import LoungeDockArcCarouselPrototype from '../../components/LoungeDockArcCarouselPrototype.jsx'
 import LoungeIpadNavRail from './LoungeIpadNavRail.jsx'
-import { useIpadAuthStage } from '../auth/AuthModalShell'
+import { useIpadNavRail } from '../shell/useIpadNavRail.js'
 import {
   blurLoungeComposerCaption,
   focusLoungeComposerCaption,
@@ -800,7 +800,7 @@ export default function SocialFeed({
     return { expanded, fold: expanded ? 1 : 0 }
   }
   const loungeComposerInitial = loungeComposerBoot()
-  const ipadShell = useIpadAuthStage()
+  const ipadNavRail = useIpadNavRail()
   const [postText, setPostText] = useState(() => {
     const d = readLoungeComposerDraft()
     return d?.postText ?? ''
@@ -16143,7 +16143,7 @@ export default function SocialFeed({
   )
 
   const loungeIpadRail =
-    ipadShell && !loungeDockSuppressed && typeof document !== 'undefined'
+    ipadNavRail && !loungeDockSuppressed && typeof document !== 'undefined'
       ? createPortal(
           <LoungeIpadNavRail items={loungeDockWheelItems} shortcuts={ipadRailShortcuts} />,
           document.body,
@@ -16151,7 +16151,7 @@ export default function SocialFeed({
       : null
 
   const loungeDockCarousel =
-    ipadShell || !showLoungeViewportDock ? null : (
+    ipadNavRail || !showLoungeViewportDock ? null : (
     <LoungeDockArcCarouselPrototype
       items={loungeDockWheelItems}
       cornerLItems={loungeDockCornerLItems}
@@ -16362,30 +16362,30 @@ export default function SocialFeed({
         <EdgeStatusBarScrollPlate
           reveal={loungeTitleReveal}
           heightPx={loungeFeedViewportTopPx}
-          className={ipadShell ? 'max-w-none' : 'max-w-2xl'}
+          className={ipadNavRail ? 'max-w-none' : 'max-w-2xl'}
         />
         <div
           ref={loungeTitleBarRef}
           data-lounge-title-bar
           className={
-            ipadShell
+            ipadNavRail
               ? 'fixed right-0 z-[50] border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform'
               : 'fixed left-1/2 z-[50] w-full max-w-2xl border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform'
           }
           style={{
             top: loungeFeedViewportTopPx,
-            ...(ipadShell ? { left: 'var(--edge-ipad-rail)', width: 'auto' } : {}),
-            transform: `translate3d(${ipadShell ? '0' : '-50%'}, ${loungeTitleBarHideTranslateYPx(loungeTitleReveal, loungeTitleBarHeight, loungeFeedViewportTopPx)}px, 0)`,
+            ...(ipadNavRail ? { left: 'var(--edge-ipad-rail)', width: 'auto' } : {}),
+            transform: `translate3d(${ipadNavRail ? '0' : '-50%'}, ${loungeTitleBarHideTranslateYPx(loungeTitleReveal, loungeTitleBarHeight, loungeFeedViewportTopPx)}px, 0)`,
             pointerEvents: loungeTitleReveal > 0.12 ? 'auto' : 'none',
           }}
         >
           <PwaInstallTitleBarRow
             rowClassName={LOUNGE_FEED_TITLE_BAR_ROW_CLASS}
             logo={
-              ipadShell ? null : <EdgeLogoWithEasterEgg className={loungeTitleLogoClassName} />
+              ipadNavRail ? null : <EdgeLogoWithEasterEgg className={loungeTitleLogoClassName} />
             }
             brandCenter={
-              ipadShell ? <EdgeLogoWithEasterEgg className="h-8 w-auto" /> : null
+              ipadNavRail ? <EdgeLogoWithEasterEgg className="h-8 w-auto" /> : null
             }
             centerSlot={titleBarCenterSlot}
             navSlot={

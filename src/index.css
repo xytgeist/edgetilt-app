@@ -3792,7 +3792,7 @@ html.light [data-ipad-nav-rail] [data-ipad-nav-badge] {
 html.light [data-ipad-nav-rail] [data-ipad-nav-shortcut-rule] {
   border-top-color: #d4d4d8;
 }
-/* Landscape iPad is short. Portrait keeps the tall gaps. Phone has no rail. */
+/* Landscape is short. Portrait keeps the tall gaps. */
 @media (orientation: landscape) {
   [data-ipad-nav-rail] [data-ipad-nav-stack] {
     gap: 0.25rem;
@@ -3802,6 +3802,35 @@ html.light [data-ipad-nav-rail] [data-ipad-nav-shortcut-rule] {
   }
   [data-ipad-nav-rail] [data-ipad-nav-shortcut-rule] {
     margin-top: 0.45rem;
+  }
+}
+/* Phone landscape: tighter E mark + compose so the rail fits. */
+@media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+  [data-ipad-nav-rail] {
+    padding-top: calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 0.35rem) !important;
+    padding-bottom: max(0.5rem, max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))) !important;
+  }
+  [data-ipad-nav-rail] > div:first-child {
+    padding-bottom: 0.35rem !important;
+  }
+  [data-ipad-nav-rail] [data-ipad-nav-item] {
+    height: 2.75rem !important;
+    width: 2.75rem !important;
+  }
+  [data-ipad-nav-rail] [data-ipad-nav-item] > span.block {
+    height: 1.5rem !important;
+    width: 1.5rem !important;
+  }
+  [data-ipad-nav-rail] [data-ipad-nav-compose] {
+    height: 3.25rem !important;
+    width: 3.25rem !important;
+  }
+  [data-ipad-nav-rail] [data-ipad-nav-compose] > span.block {
+    height: 1.5rem !important;
+    width: 1.5rem !important;
+  }
+  [data-ipad-nav-rail] > div:last-child {
+    padding-top: 0.35rem !important;
   }
 }
 html.light [data-ipad-ev-mark] .edge-logo--light {

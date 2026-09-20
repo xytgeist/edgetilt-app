@@ -121,7 +121,7 @@ import { guidesTabFullyGated, normalizeGuideAccessSlug } from '../guides/guideAc
 import { parseGuideSlugFromPathname } from '../lounge/loungeCaptionLink.js'
 import { QUICK_LINK_BY_ID } from './quickLinkDestinations.js'
 import { useIpadSlotsLandscape } from './useIpadSlotsLandscape.js'
-import { notifyLoungeDockSuppress } from '../lounge/loungeDockSuppressRegistry.js'
+import { useIpadNavRail } from './useIpadNavRail.js'
 import {
   armShellNavGhostClickGuard,
   isShellNavLoungeHomeSuppressed,
@@ -465,28 +465,13 @@ export default function AppShell({
   const navSelectAtRef = useRef(0)
   const ipadShell = useIpadAuthStage()
   const ipadSlotsLandscape = useIpadSlotsLandscape()
+  const ipadNavRail = useIpadNavRail()
   const prevSlotsLandscapeRef = useRef(ipadSlotsLandscape)
   useEffect(() => {
     const enteredLandscape = ipadSlotsLandscape && !prevSlotsLandscapeRef.current
     prevSlotsLandscapeRef.current = ipadSlotsLandscape
     if (enteredLandscape && tab === 'slots') setTab('guides')
   }, [ipadSlotsLandscape, tab, setTab])
-  /** Phone landscape Slots split: hide the Lounge FAB dock so it does not cover the tools list. */
-  useEffect(() => {
-    if (!ipadSlotsLandscape || ipadShell) return undefined
-    const inSlotsSplit =
-      tab === 'slots' ||
-      tab === 'guides' ||
-      tab === 'bankroll' ||
-      tab === 'calculators' ||
-      tab === 'offers' ||
-      tab === 'logbook' ||
-      tab === 'w2g-scanner' ||
-      (tab === 'chat' && slotsLandscapeLounge)
-    if (!inSlotsSplit) return undefined
-    notifyLoungeDockSuppress(true)
-    return () => notifyLoungeDockSuppress(false)
-  }, [ipadSlotsLandscape, ipadShell, tab, slotsLandscapeLounge])
   const [tabErrorTestTrigger, setTabErrorTestTrigger] = useState(0)
   const [tabErrorTestOpen, setTabErrorTestOpen] = useState(false)
   const [isActiveAffiliate, setIsActiveAffiliate] = useState(false)
@@ -2336,7 +2321,7 @@ export default function AppShell({
 
   const renderTitleBarNavSlot = () => (
     <div className="flex items-center gap-1.5 shrink-0" data-title-bar-nav-cluster>
-      {ipadShell ? null : (
+      {ipadNavRail ? null : (
       <TitleBarQuickLinks
         browseMode={browseMode}
         hasSlotsEdge={hasActiveSubscription}
@@ -2841,7 +2826,7 @@ export default function AppShell({
             hydrateCommunityPosts={hydrateCommunityPosts}
             titleBarNavSlot={renderTitleBarNavSlot()}
             ipadRailShortcuts={
-              ipadShell ? (
+              ipadNavRail ? (
                 <TitleBarQuickLinks
                   layout="rail"
                   browseMode={browseMode}

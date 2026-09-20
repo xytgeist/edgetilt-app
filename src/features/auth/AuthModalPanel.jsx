@@ -301,6 +301,10 @@ export default function AuthModalPanel({
       Boolean(signupMessage) ||
       Boolean(signupHint) ||
       Boolean(signupError && !isOAuthProviderError(signupError)))
+  const showLoginEmail =
+    authTab !== 'join' &&
+    (emailOpen || Boolean(loginError && !isOAuthProviderError(loginError)))
+  const showEmailFields = showJoinEmail || showLoginEmail
 
   const closePhoneStep = () => {
     setPhoneStep(null)
@@ -457,16 +461,17 @@ export default function AuthModalPanel({
               </ProviderCircle>
             ) : null}
             <ProviderCircle
-              label={authTab === 'join' ? 'Continue with email' : 'Sign in with email'}
-              selected={authTab !== 'join' || showJoinEmail}
+              label="Sign in with email"
+              selected={showEmailFields}
               onClick={() => {
+                if (authTab === 'join') onAuthTabChange('signin')
                 setEmailOpen(true)
               }}
             >
               <EmailIcon />
             </ProviderCircle>
           </div>
-          {!showJoinEmail ? (
+          {!showEmailFields ? (
             <>
               <OrDivider
                 chipClassName={ipadStage ? 'bg-zinc-950' : 'bg-black'}
@@ -541,7 +546,7 @@ export default function AuthModalPanel({
               </button>
             </form>
           ) : null}
-          {authTab !== 'join' ? (
+          {showLoginEmail ? (
             <form onSubmit={onLoginSubmit} className="mt-8 w-full space-y-4">
               <input
                 type="email"
@@ -594,7 +599,7 @@ export default function AuthModalPanel({
           {...(ipadStage ? { 'data-auth-ipad-footer': '' } : { 'data-auth-sheet-footer': '' })}
           onClick={() => {
             const next = authTab === 'join' ? 'signin' : 'join'
-            setEmailOpen(next === 'join')
+            setEmailOpen(true)
             onAuthTabChange(next)
           }}
         >

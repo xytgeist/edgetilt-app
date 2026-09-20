@@ -1147,6 +1147,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-20:** **Auth email opens Sign in (Mac).** First auth screen stays the provider picker. Envelope opens login, not Create. Failed password login still prefills Create. Frontend **`1.4.366`**. Web only.
 - **2026-09-20:** **Auth defaults to Sign in (Mac).** Envelope email path opens login, not Create. A failed password login (`invalid_credentials`) switches to Create with that email and password filled in; already-registered Create bounces back to Sign in. Gated `onRequireAuth()` with no mode is login. `?auth=join` still opens Create. Frontend **`1.4.365`**. Web only.
 - **2026-09-20:** **Mac Theo laptop handoff (landscape shell).** Continuity for the iPhone/iPad landscape Slots + rail track is in **`WAKEUP`** → **Mac Theo ACTIVE TRACK 2026-09-20**. Tip **`b843f6ef`** / web **`1.4.364`**. WinTheo: do not edit that track unless Ryan says so.
 - **2026-09-19:** **Phone landscape title chrome (Mac).** iPhone landscape rail E, EDGE wordmark, hamburger/close, and title bar padding are 70% size. Frontend **`1.4.364`**. Web only.

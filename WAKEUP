@@ -66,11 +66,12 @@ The agent should treat the following as **standing instructions for this session
 
 **What this track is:** After App Review of **1.4.95**, Mac built **iPad landscape Slots** into a two-column shell, then Ryan insisted on bringing the same idea to **iPhone landscape**. It shipped and he likes it. Tip of that work is on **`test`**.
 
-**Current tip (Mac):** commit pending this session, web **`1.4.365`**. Branch **`test`**. Do **not** bump iOS **`MARKETING_VERSION`** off **1.4.95**. Dirty Xcode scheme files under `ios/EdgeTilt.xcodeproj/xcshareddata/xcschemes/` are local only ... **do not stage them**.
+**Current tip (Mac):** commit pending, web **`1.4.366`**. Branch **`test`**. Do **not** bump iOS **`MARKETING_VERSION`** off **1.4.95**. Dirty Xcode scheme files under `ios/EdgeTilt.xcodeproj/xcshareddata/xcschemes/` are local only ... **do not stage them**.
 
 **Shipped on this track (newest → older, all Mac unless noted):**
 
-1. **`1.4.365`** ... auth panel defaults to **Sign in**. Envelope email is login. Failed password login switches to Create with email + password filled in. Already-registered Create bounces back to Sign in.
+1. **`1.4.366`** ... auth first screen is the provider picker. Envelope opens Sign in. Failed login still prefills Create.
+2. **`1.4.365`** ... auth panel defaults to **Sign in**. Envelope email is login. Failed password login switches to Create with email + password filled in. Already-registered Create bounces back to Sign in.
 2. **`1.4.364` / `b843f6ef`** ... iPhone landscape title chrome at **70%** (rail E, EDGE wordmark, hamburger/close, title bar padding).
 3. **`1.4.363` / `e7c65415`** ... lounge feed on phone landscape no longer gets the tall-iPad scale-up; short landscape shrinks avatars/type/minicharts and **pairs** market cards.
 4. **`1.4.362` / `05a8fe28`** ... phone landscape gets the **left Lounge rail** (`useIpadNavRail` / `IPAD_NAV_RAIL_QUERY`). Portrait phone keeps FAB. Auth stage stays phone-card (`IPAD_SHELL_QUERY` unchanged).
@@ -104,6 +105,10 @@ The agent should treat the following as **standing instructions for this session
 **Open / next if Ryan continues this track:** live with phone landscape density (title 70%, feed shrink, rail). Tune only if he asks. Poker landscape split was **not** started.
 
 **WinTheo:** leave this track alone. Your separate items stay yours. If you need Mac context, read this block + **`https://lvslotpro.com/theo`**.
+
+### Mac Theo 2026-09-20 ... auth email opens Sign in
+
+**I am Mac Theo.** Auth first screen is the provider picker. Envelope opens Sign in. Failed password login still prefills Create. Web **`1.4.366`**.
 
 ### Mac Theo 2026-09-20 ... auth defaults to Sign in
 

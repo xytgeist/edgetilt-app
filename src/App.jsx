@@ -278,6 +278,19 @@ function App() {
   const [verificationSuccess, setVerificationSuccess] = useState(false)
   const [authConfirmError, setAuthConfirmError] = useState('')
   const [authConfirmSuccess, setAuthConfirmSuccess] = useState(false)
+  const [authConfirmAwaitingClick, setAuthConfirmAwaitingClick] = useState(() => {
+    if (typeof window === 'undefined') return false
+    if (isEdgeiOSShell()) return false
+    const parsed = parseAuthConfirmFromLocation(window.location.pathname, window.location.search)
+    return Boolean(parsed?.tokenHash)
+  })
+  const [authConfirmType, setAuthConfirmType] = useState(() => {
+    if (typeof window === 'undefined') return 'signup'
+    const parsed = parseAuthConfirmFromLocation(window.location.pathname, window.location.search)
+    return parsed?.type || 'signup'
+  })
+  const authConfirmInFlightRef = useRef(false)
+  const runAuthConfirmVerifyRef = useRef(async () => {})
   const [legalAcceptancePending, setLegalAcceptancePending] = useState(false)
   const [legalAcceptanceBusy, setLegalAcceptanceBusy] = useState(false)
   const [legalAcceptanceError, setLegalAcceptanceError] = useState('')
@@ -328,6 +341,7 @@ function App() {
           setCurrentView('auth-confirm')
           setAuthConfirmError('')
           setAuthConfirmSuccess(false)
+          setAuthConfirmType(authConfirm.type || 'signup')
           const guestClaimArgs = {
             pathname,
             search,
@@ -372,26 +386,40 @@ function App() {
             setCurrentView('auth-confirm')
             setAuthConfirmSuccess(true)
           }
-          try {
-            const { error } = await verifyAuthConfirmOtp(supabase, authConfirm)
-            if (error) {
-              const mapped = mapAuthConfirmError(error)
-              const alreadyUsed = /expired or was already used|already used|invalid or was already used/i.test(
-                mapped,
-              )
-              if (authConfirm.tokenHash && alreadyUsed) {
-                const session = await waitForSupabaseSession(supabase, 1500)
-                if (session?.user) {
-                  await finishAuthConfirmSuccess()
-                  return
+          const runVerify = async () => {
+            if (authConfirmInFlightRef.current) return
+            authConfirmInFlightRef.current = true
+            setAuthConfirmAwaitingClick(false)
+            setAuthConfirmError('')
+            try {
+              const { error } = await verifyAuthConfirmOtp(supabase, authConfirm)
+              if (error) {
+                const mapped = mapAuthConfirmError(error)
+                const alreadyUsed = /expired or was already used|already used|invalid or was already used/i.test(
+                  mapped,
+                )
+                if (authConfirm.tokenHash && alreadyUsed) {
+                  const session = await waitForSupabaseSession(supabase, 1500)
+                  if (session?.user) {
+                    await finishAuthConfirmSuccess()
+                    return
+                  }
                 }
+                setAuthConfirmError(mapped)
+                return
               }
-              setAuthConfirmError(mapped)
-              return
+              await finishAuthConfirmSuccess()
+            } catch (err) {
+              setAuthConfirmError(mapAuthConfirmError(err))
+            } finally {
+              authConfirmInFlightRef.current = false
             }
-            await finishAuthConfirmSuccess()
-          } catch (err) {
-            setAuthConfirmError(mapAuthConfirmError(err))
+          }
+          runAuthConfirmVerifyRef.current = runVerify
+          if (isEdgeiOSShell()) {
+            void runVerify()
+          } else {
+            setAuthConfirmAwaitingClick(true)
           }
           return
         }
@@ -1835,6 +1863,11 @@ function App() {
       <AuthConfirmScreen
         error={authConfirmError}
         success={authConfirmSuccess}
+        awaitingClick={authConfirmAwaitingClick}
+        confirmType={authConfirmType}
+        onConfirm={() => {
+          void runAuthConfirmVerifyRef.current()
+        }}
         onContinueInBrowser={() => {
           replaceUrlPreservingQuery('/')
           setCurrentView('app')

@@ -6,7 +6,7 @@
 
 **URLs:** Action links go to **our** site, not `auth.edgetilt.com` / `{{ .ConfirmationURL }}`. That first hop is the Supabase verify API, so iOS cannot open the IPA.
 
-Use **`{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=…`**. `Site URL` must have **no trailing slash** (prod `https://edgetilt.com`, test `https://lvslotpro.com`). The page calls `verifyOtp`, then the existing guest-claim / reset-password routing.
+Use **`{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=…`**. `Site URL` must have **no trailing slash** (prod `https://edgetilt.com`, test `https://lvslotpro.com`). The page waits for a **Confirm** tap, then calls `verifyOtp` (Gmail link previews otherwise burn the one-time hash). Then the existing guest-claim / reset-password routing.
 
 **Universal Links:** AASA is `/.well-known/apple-app-site-association` on the same host. IPA Associated Domains `applinks:edgetilt.com` + `applinks:lvslotpro.com`. New binary required. Gmail's in-app browser ignores Universal Links. Browser fallback is a viewport-pinned `/auth/confirm` card (does not mount Lounge) plus **Open EdgeTilt** (`edgetilt://open`). Next IPA also accepts `edgetilt://auth/confirm?token_hash=&type=` and loads the https confirm URL. Mail.app / Messages / Safari remain the clean UL path.
 

@@ -66,6 +66,37 @@ export function isAuthConfirmRecovery(parsed) {
   return next === '/reset-password' || next.startsWith('/reset-password?')
 }
 
+/** Copy for the click-to-confirm gate (Gmail previews consume one-time hashes). */
+export function authConfirmCta(type) {
+  const kind = String(type || '').trim().toLowerCase()
+  if (kind === 'recovery') {
+    return {
+      title: 'Reset your password',
+      label: 'Continue',
+      body: 'Gmail previews this link in the background. Continue here so that peek does not use it up.',
+    }
+  }
+  if (kind === 'magiclink') {
+    return {
+      title: 'Sign in',
+      label: 'Sign in',
+      body: 'Gmail previews this link in the background. Sign in here so that peek does not use it up.',
+    }
+  }
+  if (kind === 'email_change') {
+    return {
+      title: 'Confirm your new email',
+      label: 'Confirm new email',
+      body: 'Gmail previews this link in the background. Confirm here so that peek does not use it up.',
+    }
+  }
+  return {
+    title: 'Confirm your email',
+    label: 'Confirm email',
+    body: 'Gmail previews this link in the background. Confirm here so that peek does not use it up.',
+  }
+}
+
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {{ tokenHash?: string, type?: string } | null} parsed

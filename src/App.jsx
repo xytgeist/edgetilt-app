@@ -1256,6 +1256,7 @@ function App() {
     }
     if (swapClaimCtx?.token) stashPokerSwapClaimToken(swapClaimCtx.token)
     const signupMeta = {
+      edge_first_run_chrome_tour: true,
       ...(affiliateCode ? { affiliate_code: affiliateCode } : {}),
       ...(militaryPromoCode ? { military_promo_code: militaryPromoCode } : {}),
       ...pokerClaimSignupMetadata({
@@ -1279,7 +1280,7 @@ function App() {
               : authRedirectUrlWithApSlotsLoungeIntro(
                   authRedirectUrlWithPromoStamps(`${window.location.origin}/`),
                 ),
-        data: Object.keys(signupMeta).length ? signupMeta : undefined,
+        data: signupMeta,
       },
     })
     if (isEmailAlreadyRegisteredSignup(error, data)) {

@@ -25,9 +25,17 @@ const PENDING_UNSCOPED_KEY = 'edge-first-run-chrome-tour:pending'
 const PENDING_USER_PREFIX = 'edge-first-run-chrome-tour:'
 const STEP_PREFIX = 'edge-first-run-chrome-tour-step:'
 
+/** Survives Gmail confirm in another browser. Signup writes this onto user_metadata. */
+export const FIRST_RUN_CHROME_TOUR_META_KEY = 'edge_first_run_chrome_tour'
+
 /** Same-device email confirm can land hours later; OAuth returning users have old created_at. */
 const NEW_ACCOUNT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000
 const FIRST_SESSION_WINDOW_MS = 10 * 60 * 1000
+
+export function userHasFirstRunChromeTourMeta(user) {
+  const v = user?.user_metadata?.[FIRST_RUN_CHROME_TOUR_META_KEY]
+  return v === true || v === 'true' || v === 1 || v === '1'
+}
 
 function readStorage(storage, key) {
   if (typeof window === 'undefined') return ''
@@ -67,9 +75,12 @@ export function isLikelyNewAuthUser(user) {
   if (!Number.isFinite(created)) return false
   const age = Date.now() - created
   if (age < 0 || age > NEW_ACCOUNT_MAX_AGE_MS) return false
+  if (userHasFirstRunChromeTourMeta(user)) return true
   const last = Date.parse(user?.last_sign_in_at || '')
   if (!Number.isFinite(last)) return age < FIRST_SESSION_WINDOW_MS
-  return last - created < FIRST_SESSION_WINDOW_MS
+  if (last - created < FIRST_SESSION_WINDOW_MS) return true
+  const confirmed = Date.parse(user?.email_confirmed_at || '')
+  return Number.isFinite(confirmed) && last - confirmed < FIRST_SESSION_WINDOW_MS
 }
 
 export function readFirstRunChromeTourStep(userId) {

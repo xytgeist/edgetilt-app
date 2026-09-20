@@ -1147,6 +1147,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-20:** **Promoted `test` → `main` (`9ba75f30`).** Wheel/Edge intro copy (O anywhere, L left or right). IPA confirm card is **Confirming email...** only. Vercel prod = web **`1.4.374`**.
 - **2026-09-20:** **IPA confirm copy (Mac).** Auto-confirm card is just **Confirming email...** with no subtext. Frontend **`1.4.374`**. Web only.
 - **2026-09-20:** **Wheel/Edge intro copy (Mac).** Wheel (O) can sit anywhere. Edge (L) snaps left or right. Frontend **`1.4.373`**. Web only.
 - **2026-09-20:** **Promoted `test` → `main` (`21f9e15a`).** Guidelines stay dismissed after Got it. Wheel/Edge waits for a real FAB tap. Vercel prod = web **`1.4.372`**.

@@ -10,7 +10,7 @@
 
 | Tier | Internal label | One-line intent |
 | --- | --- | --- |
-| **No account** | `anonymous` | Lounge only: **read-only** feed (no post cap — same feed depth as public RLS + app pagination allow). No search/filter/post detail/navigation; **create account** modal on forbidden actions. |
+| **No account** | `anonymous` | **SEO hubs only** (`/slots`, `/guides`, claim links, legal). SPA **`/`** is an auth wall until they have a session. No Lounge teaser. |
 | **Free (verified user)** | `free` | Full **Lounge** (post, lounge search, filter, comment, like, repost, bookmark, etc.). **Verified user** badge by display name. Rest of app reachable from menu; **subscribe** gates on bankroll, offer alerts/OCR, locked calcs/guides. |
 | **Paid — Slots Edge** | `starter` / `slots-edge-starter` | **Verified** + **subscriber** badges. **AP guide cards** are the primary product: fixed **starter pack** on subscribe + **one random premium guide drop per week** (engagement + upgrade funnel). Tools mostly gated. See **§5**. |
 | **Paid — Slots Edge Pro** | `full` / `slots-edge` | **Verified** + **subscriber** badges. **Instant full AP guide library** + all calculators + unlimited bankroll/logbook + calendar alerts/OCR. Includes the **Edge Pro** social tier. **New** game packs may add **subscriber-only** add-on paywalls. See **§5**. |
@@ -28,28 +28,16 @@
 
 ---
 
-## 3. No account (anonymous) — Lounge teaser
+## 3. No account (anonymous) — SEO only
 
-**Allowed**
+Logged-out visitors can read **static SEO pages** (`/slots`, `/guides`, `/advantage-play-slots`, claim links, `/terms` `/privacy` `/guidelines`). The SPA **`/`** (Lounge / app chrome) is **auth until they have a session**. There is no **Continue without signing in** and no anonymous Lounge feed.
 
-- **Read-only** the Lounge feed for as many posts as the app loads under **public read** + **pagination** (no artificial daily or scroll cap).
-- **No** Lounge **search** (feature may not exist yet; still blocked for anon).
-- **No** feed **filtering** for anon.
-- **No** opening a **post** (tap / drill-in): treat as a forbidden action → **create account** popup (same as other gates below).
+**Forbidden actions → create / sign-in panel**
 
-**Forbidden actions → create account popup**
+- Open the app at **`/`**
+- Any in-app action that previously called **`onRequireAuth`**
 
-If the user attempts **any** of the following, show the **create account** popup (not subscribe):
-
-- Tap **search** (when it exists).
-- Open **any hamburger / nav menu item** (leave Lounge surface).
-- **Tap a post** (detail / thread / sheet — any post open).
-- Any other navigation or action outside the **allowed anon Lounge scroll** rules above.
-
-**After dismiss**
-
-- User may **continue viewing** the Lounge feed (read-only) as loaded.
-- On **any** subsequent forbidden action, show the **create account** popup again (re-entrant).
+First-time **account create** (email, Google, Apple, phone) then runs a chrome tour: hamburger pointer → menu open 3s → FAB hint/expand on phone portrait (iPad / phone landscape skip FAB) → Community Guidelines. Returning sign-in skips the tour. The FAB Wheel/Edge layout modal waits for the first real user tap. Profile handle/avatar still only gates when they try to post.
 
 ---
 

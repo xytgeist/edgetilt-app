@@ -19,6 +19,10 @@ import {
   isEmailAlreadyRegisteredSignup,
   isInvalidLoginCredentialsError,
 } from './features/auth/authCredentialErrors.js'
+import {
+  isLikelyNewAuthUser,
+  markFirstRunChromeTourPending,
+} from './features/lounge/firstRunChromeTour.js'
 import AppShell from './features/shell'
 import { ensureDefaultProfileRow } from './features/profiles/profileGate'
 import SubscribeModal from './features/billing/SubscribeModal.jsx'
@@ -1109,6 +1113,7 @@ function App() {
     if (authTab === 'join') markPendingLegalAcceptance()
     const { data, error } = await supabase.auth.verifyOtp({ phone, token, type: 'sms' })
     if (error) return { error: getFriendlyErrorMessage(error, 'phone') }
+    if (isLikelyNewAuthUser(data?.user)) markFirstRunChromeTourPending()
 
     setAccessNotice('')
     setVerificationSuccess(false)
@@ -1156,6 +1161,7 @@ function App() {
           nonce: raw,
         })
         if (error) throw error
+        if (isLikelyNewAuthUser(data.user)) markFirstRunChromeTourPending()
         setAccessNotice('')
         setVerificationSuccess(false)
         setAuthPanelOpen(false)
@@ -1266,6 +1272,8 @@ function App() {
       setIsSigningUp(false)
       return
     }
+
+    markFirstRunChromeTourPending()
 
     setSignupMessage(
       signupFromStakeClaim
@@ -1428,7 +1436,15 @@ function App() {
     openAuthPanel('login')
   }, [closeSubscribeModal])
 
+  const spaAuthLocked =
+    currentView === 'app' &&
+    !user &&
+    !(isChecking && hasStoredSupabaseAuthToken())
+  const spaAuthLockedRef = useRef(spaAuthLocked)
+  spaAuthLockedRef.current = spaAuthLocked
+
   const closeAuthPanel = useCallback(() => {
+    if (spaAuthLockedRef.current) return
     setAuthPanelOpen(false)
     setLoginError('')
     setSignupError('')
@@ -1560,13 +1576,17 @@ function App() {
   }, [finishLegalReturn])
 
   useEffect(() => {
-    if (!authPanelOpen) return
+    if (spaAuthLocked) setAuthPanelOpen(true)
+  }, [spaAuthLocked])
+
+  useEffect(() => {
+    if (!authPanelOpen || spaAuthLocked) return
     const onKey = (e) => {
       if (e.key === 'Escape') closeAuthPanel()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [authPanelOpen, closeAuthPanel])
+  }, [authPanelOpen, closeAuthPanel, spaAuthLocked])
 
   useEffect(() => {
     if (!authPanelOpen) return
@@ -1661,7 +1681,10 @@ function App() {
 
   const renderAuthModal = (cancelLabel) =>
     authPanelOpen ? (
-      <AuthModalShell onClose={closeAuthPanel} cancelLabel={cancelLabel}>
+      <AuthModalShell
+        onClose={cancelLabel ? closeAuthPanel : () => {}}
+        cancelLabel={cancelLabel || undefined}
+      >
         {authModalPanel}
       </AuthModalShell>
     ) : null
@@ -1878,6 +1901,13 @@ function App() {
 
   // App shell (Lounge and tabs); sign-in / create-account open as a modal on top
   if (currentView === 'app') {
+    if (spaAuthLocked) {
+      return (
+        <AuthModalShell onClose={() => {}} cancelLabel={undefined}>
+          {authModalPanel}
+        </AuthModalShell>
+      )
+    }
     return (
       <>
         <AppShell
@@ -1958,7 +1988,7 @@ function App() {
             onOpenLegalDocument={openLegalDocument}
           />
         ) : null}
-        {renderAuthModal('← Continue without signing in')}
+        {renderAuthModal(user ? '← Cancel' : null)}
       </>
     )
   }

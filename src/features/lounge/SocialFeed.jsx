@@ -154,6 +154,17 @@ import {
   syncLoungeOnboardingFromProfile,
 } from './loungeOnboardingPersistence.js'
 import {
+  attachFirstRunChromeTour,
+  CHROME_TOUR_MENU_HOLD_DONE_EVENT,
+  FIRST_RUN_CHROME_TOUR_FAB_HINT_MS,
+  FIRST_RUN_CHROME_TOUR_MENU_HINT_MS,
+  FIRST_RUN_CHROME_TOUR_STEP,
+  markFirstRunChromeTourDone,
+  readFirstRunChromeTourStep,
+  requestChromeTourMenuHold,
+  writeFirstRunChromeTourStep,
+} from './firstRunChromeTour.js'
+import {
   consumeReopenLoungeDockPanel,
   consumeReopenLoungeWelcome,
 } from '../legal/index.js'
@@ -997,6 +1008,12 @@ export default function SocialFeed({
   const [loungeOnboardingHydrated, setLoungeOnboardingHydrated] = useState(false)
   const [slotsMenuHintOpen, setSlotsMenuHintOpen] = useState(false)
   const [fabHintOpen, setFabHintOpen] = useState(false)
+  const [firstRunChromeTourActive, setFirstRunChromeTourActive] = useState(false)
+  const [firstRunChromeTourStep, setFirstRunChromeTourStep] = useState('')
+  const [fabTourExpandKey, setFabTourExpandKey] = useState(0)
+  const ipadNavRailRef = useRef(ipadNavRail)
+  ipadNavRailRef.current = ipadNavRail
+  const fabTourExpandArmedRef = useRef('')
   const [profileGateBusy, setProfileGateBusy] = useState(false)
   const [profileGateErr, setProfileGateErr] = useState('')
   const [profileGateHandle, setProfileGateHandle] = useState('')
@@ -10307,6 +10324,13 @@ export default function SocialFeed({
     if (coldBootSplashVisible) return
     if (isPokerStakeOnboardingActive()) return
     if (readLoungeWelcomeAck(composerUserId)) return
+    if (
+      attachFirstRunChromeTour(composerUserId, composerAuthUser, {
+        welcomeAcked: false,
+      })
+    ) {
+      return
+    }
 
     const timer = window.setTimeout(() => {
       if (readLoungeWelcomeAck(composerUserId)) return
@@ -10319,6 +10343,7 @@ export default function SocialFeed({
     isActivePage,
     loungeFeedBrowseMode,
     composerUserId,
+    composerAuthUser,
     authSessionReady,
     composerAuthResolved,
     loungeOnboardingHydrated,
@@ -10343,27 +10368,152 @@ export default function SocialFeed({
   const onLoungeWelcomeAcknowledge = useCallback(() => {
     markLoungeWelcomeSeen(supabaseClient, composerUserId)
     setLoungeWelcomeOpen(false)
-  }, [supabaseClient, composerUserId])
+    if (firstRunChromeTourActive) {
+      markFirstRunChromeTourDone(composerUserId)
+      setFirstRunChromeTourActive(false)
+      setFirstRunChromeTourStep(FIRST_RUN_CHROME_TOUR_STEP.DONE)
+    }
+  }, [supabaseClient, composerUserId, firstRunChromeTourActive])
 
   const onSlotsMenuHintDismiss = useCallback(() => {
     markLoungeSlotsMenuHintSeen(supabaseClient, composerUserId)
     setSlotsMenuHintOpen(false)
-  }, [supabaseClient, composerUserId])
+    if (firstRunChromeTourActive) {
+      writeFirstRunChromeTourStep(composerUserId, FIRST_RUN_CHROME_TOUR_STEP.MENU_HOLD)
+      setFirstRunChromeTourStep(FIRST_RUN_CHROME_TOUR_STEP.MENU_HOLD)
+    }
+  }, [supabaseClient, composerUserId, firstRunChromeTourActive])
 
   const onFabHintDismiss = useCallback(() => {
-    markLoungeFabHintSeen(supabaseClient, composerUserId)
     setFabHintOpen(false)
-  }, [supabaseClient, composerUserId])
+    if (firstRunChromeTourActive) {
+      writeFirstRunChromeTourStep(composerUserId, FIRST_RUN_CHROME_TOUR_STEP.FAB_EXPAND)
+      setFirstRunChromeTourStep(FIRST_RUN_CHROME_TOUR_STEP.FAB_EXPAND)
+      return
+    }
+    markLoungeFabHintSeen(supabaseClient, composerUserId)
+  }, [supabaseClient, composerUserId, firstRunChromeTourActive])
 
   const onMenuLayoutIntroCompleted = useCallback(() => {
     markLoungeDockMenuLayoutIntroSeen(supabaseClient, composerUserId)
   }, [supabaseClient, composerUserId])
+
+  const onTourVisualExpandSettled = useCallback(() => {
+    markLoungeFabHintSeen(supabaseClient, composerUserId)
+    writeFirstRunChromeTourStep(composerUserId, FIRST_RUN_CHROME_TOUR_STEP.GUIDELINES)
+    setFirstRunChromeTourStep(FIRST_RUN_CHROME_TOUR_STEP.GUIDELINES)
+  }, [supabaseClient, composerUserId])
+
+  const skipTourFabToGuidelines = useCallback(() => {
+    markLoungeFabHintSeen(supabaseClient, composerUserId)
+    writeFirstRunChromeTourStep(composerUserId, FIRST_RUN_CHROME_TOUR_STEP.GUIDELINES)
+    setFirstRunChromeTourStep(FIRST_RUN_CHROME_TOUR_STEP.GUIDELINES)
+  }, [supabaseClient, composerUserId])
+
+  useEffect(() => {
+    if (!loungeOnboardingHydrated || !composerUserId) return
+    const active = attachFirstRunChromeTour(composerUserId, composerAuthUser, {
+      welcomeAcked: readLoungeWelcomeAck(composerUserId),
+    })
+    setFirstRunChromeTourActive(active)
+    if (active) {
+      setFirstRunChromeTourStep(
+        readFirstRunChromeTourStep(composerUserId) || FIRST_RUN_CHROME_TOUR_STEP.MENU_HINT,
+      )
+    } else {
+      setFirstRunChromeTourStep('')
+    }
+  }, [loungeOnboardingHydrated, composerUserId, composerAuthUser])
+
+  useEffect(() => {
+    if (!firstRunChromeTourActive || !composerUserId) return undefined
+    if (!isActivePage) return undefined
+    if (loungeFeedBrowseMode !== 'member') return undefined
+    if (!authSessionReady || !composerAuthResolved || !loungeOnboardingHydrated) return undefined
+    if (coldBootSplashVisible) return undefined
+    if (isPokerStakeOnboardingActive()) return undefined
+    const step = firstRunChromeTourStep
+    if (!step || step === FIRST_RUN_CHROME_TOUR_STEP.DONE) return undefined
+
+    if (step === FIRST_RUN_CHROME_TOUR_STEP.MENU_HINT) {
+      const timer = window.setTimeout(() => setSlotsMenuHintOpen(true), 400)
+      return () => window.clearTimeout(timer)
+    }
+
+    if (step === FIRST_RUN_CHROME_TOUR_STEP.MENU_HOLD) {
+      setSlotsMenuHintOpen(false)
+      requestChromeTourMenuHold()
+      const onDone = () => {
+        if (ipadNavRailRef.current) {
+          skipTourFabToGuidelines()
+          return
+        }
+        writeFirstRunChromeTourStep(composerUserId, FIRST_RUN_CHROME_TOUR_STEP.FAB_HINT)
+        setFirstRunChromeTourStep(FIRST_RUN_CHROME_TOUR_STEP.FAB_HINT)
+      }
+      window.addEventListener(CHROME_TOUR_MENU_HOLD_DONE_EVENT, onDone)
+      return () => window.removeEventListener(CHROME_TOUR_MENU_HOLD_DONE_EVENT, onDone)
+    }
+
+    if (step === FIRST_RUN_CHROME_TOUR_STEP.FAB_HINT) {
+      if (ipadNavRailRef.current) {
+        skipTourFabToGuidelines()
+        return undefined
+      }
+      const timer = window.setTimeout(() => setFabHintOpen(true), 400)
+      return () => window.clearTimeout(timer)
+    }
+
+    if (step === FIRST_RUN_CHROME_TOUR_STEP.FAB_EXPAND) {
+      if (ipadNavRailRef.current) {
+        skipTourFabToGuidelines()
+        return undefined
+      }
+      setFabHintOpen(false)
+      const armKey = `${composerUserId}:fab-expand`
+      if (fabTourExpandArmedRef.current !== armKey) {
+        fabTourExpandArmedRef.current = armKey
+        setFabTourExpandKey((n) => n + 1)
+      }
+      const fallback = window.setTimeout(() => {
+        if (readFirstRunChromeTourStep(composerUserId) === FIRST_RUN_CHROME_TOUR_STEP.FAB_EXPAND) {
+          onTourVisualExpandSettled()
+        }
+      }, 2500)
+      return () => window.clearTimeout(fallback)
+    }
+
+    if (step === FIRST_RUN_CHROME_TOUR_STEP.GUIDELINES) {
+      if (loungeWelcomeOpen || loungeWelcomeScheduleRef.current) return undefined
+      const timer = window.setTimeout(() => {
+        loungeWelcomeScheduleRef.current = true
+        setLoungeWelcomeOpen(true)
+      }, 400)
+      return () => window.clearTimeout(timer)
+    }
+
+    return undefined
+  }, [
+    firstRunChromeTourActive,
+    firstRunChromeTourStep,
+    composerUserId,
+    isActivePage,
+    loungeFeedBrowseMode,
+    authSessionReady,
+    composerAuthResolved,
+    loungeOnboardingHydrated,
+    coldBootSplashVisible,
+    loungeWelcomeOpen,
+    skipTourFabToGuidelines,
+    onTourVisualExpandSettled,
+  ])
 
   useEffect(() => {
     if (!composerUserId) {
       setSlotsMenuHintOpen(false)
       return undefined
     }
+    if (firstRunChromeTourActive) return undefined
     if (!readLoungeWelcomeAck(composerUserId)) return undefined
     if (readLoungeSlotsMenuHintAck(composerUserId)) return undefined
     if (slotsMenuHintOpen || loungeWelcomeOpen || profileGateOpen || fabHintOpen) return undefined
@@ -10390,10 +10540,12 @@ export default function SocialFeed({
     composerAuthResolved,
     loungeOnboardingHydrated,
     coldBootSplashVisible,
+    firstRunChromeTourActive,
   ])
 
   useEffect(() => {
     if (!composerUserId) return undefined
+    if (firstRunChromeTourActive) return undefined
     if (!readLoungeWelcomeAck(composerUserId)) return undefined
     if (!readLoungeSlotsMenuHintAck(composerUserId)) return undefined
     if (readLoungeFabHintAck(composerUserId)) return undefined
@@ -10421,13 +10573,19 @@ export default function SocialFeed({
     composerAuthResolved,
     loungeOnboardingHydrated,
     coldBootSplashVisible,
+    firstRunChromeTourActive,
   ])
 
   const onOpenGuidelinesFromWelcome = useCallback(() => {
     markLoungeWelcomeSeen(supabaseClient, composerUserId)
     setLoungeWelcomeOpen(false)
+    if (firstRunChromeTourActive) {
+      markFirstRunChromeTourDone(composerUserId)
+      setFirstRunChromeTourActive(false)
+      setFirstRunChromeTourStep(FIRST_RUN_CHROME_TOUR_STEP.DONE)
+    }
     onOpenLegalDocument?.('guidelines', 'welcome')
-  }, [onOpenLegalDocument, supabaseClient, composerUserId])
+  }, [onOpenLegalDocument, supabaseClient, composerUserId, firstRunChromeTourActive])
 
   useEffect(() => {
     if (!composerUserId) {
@@ -16169,6 +16327,8 @@ export default function SocialFeed({
       fabDetailShellCompact={Boolean(loungePostDetail?.id)}
       viewerUserId={composerUserId || null}
       onMenuLayoutIntroCompleted={onMenuLayoutIntroCompleted}
+      tourVisualExpandKey={fabTourExpandKey}
+      onTourVisualExpandSettled={onTourVisualExpandSettled}
     />
   )
 
@@ -19869,11 +20029,19 @@ export default function SocialFeed({
       ) : null}
 
       {slotsMenuHintOpen ? (
-        <LoungeSlotsMenuHintOverlay open={slotsMenuHintOpen} onDismiss={onSlotsMenuHintDismiss} />
+        <LoungeSlotsMenuHintOverlay
+          open={slotsMenuHintOpen}
+          onDismiss={onSlotsMenuHintDismiss}
+          autoDismissMs={firstRunChromeTourActive ? FIRST_RUN_CHROME_TOUR_MENU_HINT_MS : 0}
+        />
       ) : null}
 
       {fabHintOpen ? (
-        <LoungeFabHintOverlay open={fabHintOpen} onDismiss={onFabHintDismiss} />
+        <LoungeFabHintOverlay
+          open={fabHintOpen}
+          onDismiss={onFabHintDismiss}
+          autoDismissMs={firstRunChromeTourActive ? FIRST_RUN_CHROME_TOUR_FAB_HINT_MS : 0}
+        />
       ) : null}
 
       {profileGateOpen && typeof document !== 'undefined'

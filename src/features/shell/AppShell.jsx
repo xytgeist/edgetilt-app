@@ -123,6 +123,11 @@ import { QUICK_LINK_BY_ID } from './quickLinkDestinations.js'
 import { useIpadSlotsLandscape } from './useIpadSlotsLandscape.js'
 import { useIpadNavRail } from './useIpadNavRail.js'
 import {
+  CHROME_TOUR_MENU_HOLD_DONE_EVENT,
+  CHROME_TOUR_MENU_HOLD_EVENT,
+  FIRST_RUN_CHROME_TOUR_MENU_HOLD_MS,
+} from '../lounge/firstRunChromeTour.js'
+import {
   armShellNavGhostClickGuard,
   isShellNavLoungeHomeSuppressed,
 } from '../../utils/shellNavGhostClickGuard.js'
@@ -461,6 +466,8 @@ export default function AppShell({
   const [offerSpotlightEventIds, setOfferSpotlightEventIds] = useState([])
   const [menuOpen, setMenuOpen] = useState(false)
   const [menuAnchor, setMenuAnchor] = useState(null)
+  const chromeTourMenuHoldRef = useRef(false)
+  const chromeTourMenuHoldTimerRef = useRef(0)
   /** pointerup + click both fire for one tap. Ignore the second. */
   const navSelectAtRef = useRef(0)
   const ipadShell = useIpadAuthStage()
@@ -2235,6 +2242,7 @@ export default function AppShell({
         const now = typeof performance !== 'undefined' ? performance.now() : Date.now()
         if (now - navSelectAtRef.current < 450) return
         navSelectAtRef.current = now
+        if (chromeTourMenuHoldRef.current) return
         if (!authSessionReady && item.id !== 'home') {
           // Auth still hydrating ... don't open the gate or navigate yet.
           setMenuOpen(false)
@@ -2336,6 +2344,7 @@ export default function AppShell({
         type="button"
         data-title-bar-menu-btn
         onClick={() => {
+          if (chromeTourMenuHoldRef.current) return
           setMenuOpen((v) => {
             const next = !v
             if (next) acknowledgePokerOfferHamburger()
@@ -2528,6 +2537,7 @@ export default function AppShell({
     // Click, not pointerdown. Closing on pointerdown unmounts the row before
     // the click, and that click lands on Lounge Home.
     const onClick = (event) => {
+      if (chromeTourMenuHoldRef.current) return
       const target = event.target
       if (!(target instanceof Element)) {
         setMenuOpen(false)
@@ -2539,6 +2549,25 @@ export default function AppShell({
     document.addEventListener('click', onClick)
     return () => document.removeEventListener('click', onClick)
   }, [menuOpen])
+
+  useEffect(() => {
+    const onHold = () => {
+      chromeTourMenuHoldRef.current = true
+      setMenuOpen(true)
+      window.clearTimeout(chromeTourMenuHoldTimerRef.current)
+      chromeTourMenuHoldTimerRef.current = window.setTimeout(() => {
+        chromeTourMenuHoldRef.current = false
+        setMenuOpen(false)
+        window.dispatchEvent(new CustomEvent(CHROME_TOUR_MENU_HOLD_DONE_EVENT))
+      }, FIRST_RUN_CHROME_TOUR_MENU_HOLD_MS)
+    }
+    window.addEventListener(CHROME_TOUR_MENU_HOLD_EVENT, onHold)
+    return () => {
+      window.removeEventListener(CHROME_TOUR_MENU_HOLD_EVENT, onHold)
+      window.clearTimeout(chromeTourMenuHoldTimerRef.current)
+      chromeTourMenuHoldRef.current = false
+    }
+  }, [])
 
   useEffect(() => {
     if (shouldShowLoungeColdBootSplash({ tab: 'home', pendingWork: false })) {

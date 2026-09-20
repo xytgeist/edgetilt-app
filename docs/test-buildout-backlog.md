@@ -1147,6 +1147,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-20:** **Auth wall + first-create chrome tour (Mac).** SPA `/` is auth until a session exists. No **Continue without signing in**. Static `/slots` `/guides` claim/legal stay public. First-create only: hamburger pointer → menu 3s → FAB hint/expand (phone portrait) or skip FAB (rail layouts) → Community Guidelines. FAB Wheel/Edge waits for the first real tap. Frontend **`1.4.368`**. Web only.
 - **2026-09-20:** **Auth create confirm stays blank (Mac).** Failed-login Create prefills email + password only. Confirm password is typed again so a typo cannot lock the account. Frontend **`1.4.367`**. Web only.
 - **2026-09-20:** **Auth email opens Sign in (Mac).** First auth screen stays the provider picker. Envelope opens login, not Create. Failed password login still prefills Create. Frontend **`1.4.366`**. Web only.
 - **2026-09-20:** **Auth defaults to Sign in (Mac).** Envelope email path opens login, not Create. A failed password login (`invalid_credentials`) switches to Create with that email and password filled in; already-registered Create bounces back to Sign in. Gated `onRequireAuth()` with no mode is login. `?auth=join` still opens Create. Frontend **`1.4.365`**. Web only.

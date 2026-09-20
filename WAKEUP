@@ -66,11 +66,12 @@ The agent should treat the following as **standing instructions for this session
 
 **What this track is:** After App Review of **1.4.95**, Mac built **iPad landscape Slots** into a two-column shell, then Ryan insisted on bringing the same idea to **iPhone landscape**. It shipped and he likes it. Tip of that work is on **`test`**.
 
-**Current tip (Mac):** web **`1.4.367`**. Branch **`test`**. Do **not** bump iOS **`MARKETING_VERSION`** off **1.4.95**. Dirty Xcode scheme files under `ios/EdgeTilt.xcodeproj/xcshareddata/xcschemes/` are local only ... **do not stage them**.
+**Current tip (Mac):** web **`1.4.368`**. Branch **`test`**. Do **not** bump iOS **`MARKETING_VERSION`** off **1.4.95**. Dirty Xcode scheme files under `ios/EdgeTilt.xcodeproj/xcshareddata/xcschemes/` are local only ... **do not stage them**.
 
 **Shipped on this track (newest → older, all Mac unless noted):**
 
-1. **`1.4.367`** ... Create from a missed login prefills email + password only. Confirm stays blank.
+1. **`1.4.368`** ... SPA `/` is auth until a session. First-create chrome tour (hamburger → FAB on phone portrait → guidelines). Returning sign-in skips it. SEO hubs stay public.
+2. **`1.4.367`** ... Create from a missed login prefills email + password only. Confirm stays blank.
 2. **`1.4.366`** ... auth first screen is the provider picker. Envelope opens Sign in. Failed login still prefills Create.
 2. **`1.4.365`** ... auth panel defaults to **Sign in**. Envelope email is login. Failed password login switches to Create with email + password filled in. Already-registered Create bounces back to Sign in.
 2. **`1.4.364` / `b843f6ef`** ... iPhone landscape title chrome at **70%** (rail E, EDGE wordmark, hamburger/close, title bar padding).
@@ -106,6 +107,10 @@ The agent should treat the following as **standing instructions for this session
 **Open / next if Ryan continues this track:** live with phone landscape density (title 70%, feed shrink, rail). Tune only if he asks. Poker landscape split was **not** started.
 
 **WinTheo:** leave this track alone. Your separate items stay yours. If you need Mac context, read this block + **`https://lvslotpro.com/theo`**.
+
+### Mac Theo 2026-09-20 ... auth wall + first-create tour
+
+**I am Mac Theo.** SPA `/` is auth until they have a session. No Continue without signing in. First-create tour: hamburger pointer → menu 3s → FAB on phone portrait (rail layouts skip FAB) → Community Guidelines. Wheel/Edge waits for the first real FAB tap. Web **`1.4.368`**.
 
 ### Mac Theo 2026-09-20 ... auth create confirm stays blank
 

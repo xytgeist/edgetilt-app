@@ -7,6 +7,7 @@ import {
   clearProfileGateAck,
   LOUNGE_PROFILE_CACHE_KEY,
 } from '../features/lounge/loungeStorage.js'
+import { clearFirstRunChromeTour } from '../features/lounge/firstRunChromeTour.js'
 import {
   OFFERS_ALERT_DEFAULT_PRESET_KEY_PREFIX,
   OFFERS_DEFAULT_VIEW_KEY_PREFIX,
@@ -70,6 +71,7 @@ export function clearAccountClientState(userId) {
     clearLoungeWelcomeAck(userId)
     clearLoungeSlotsMenuHintAck(userId)
     clearLoungeFabHintAck(userId)
+    clearFirstRunChromeTour(userId)
     removePerUserLocalStorageKey(LOUNGE_DOCK_MENU_LAYOUT_INTRO_KEY, userId)
     for (const prefix of OFFERS_USER_KEY_PREFIXES) {
       removeLocalStorageKey(`${prefix}${userId}`)

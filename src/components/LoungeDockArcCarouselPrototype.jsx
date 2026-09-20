@@ -287,6 +287,9 @@ export default function LoungeDockArcCarouselPrototype({
   viewerUserId = null,
   /** Persist menu layout intro completion (local + profile). */
   onMenuLayoutIntroCompleted = null,
+  /** Increment to visually expand the FAB for the first-create tour (does not open Wheel/Edge). */
+  tourVisualExpandKey = 0,
+  onTourVisualExpandSettled = null,
 }) {
   const panelCompactChrome = panelChrome != null && PANEL_CHROME_PANELS.has(panelChrome)
   const isCornerL = menuLayout === 'cornerL'
@@ -311,14 +314,33 @@ export default function LoungeDockArcCarouselPrototype({
 
   /** One-time overlay after first menu open: move FAB copy + Wheel/Edge picker. */
   const [menuLayoutIntroOpen, setMenuLayoutIntroOpen] = useState(false)
+  const visualTourRef = useRef(false)
+  const tourVisualExpandKeyRef = useRef(0)
 
-  const expandMenu = useCallback(() => {
+  const expandMenu = useCallback((opts) => {
     setFabNotifBadgeDismissed(true)
     setOpen(true)
+    if (opts?.visualOnly || visualTourRef.current) return
     if (!readLoungeDockMenuLayoutIntroCompleted(viewerUserId)) {
       setMenuLayoutIntroOpen(true)
     }
   }, [viewerUserId])
+
+  useEffect(() => {
+    if (!tourVisualExpandKey) return undefined
+    if (tourVisualExpandKey === tourVisualExpandKeyRef.current) return undefined
+    tourVisualExpandKeyRef.current = tourVisualExpandKey
+    visualTourRef.current = true
+    expandMenu({ visualOnly: true })
+    const timer = window.setTimeout(() => {
+      setOpen(false)
+      visualTourRef.current = false
+      onTourVisualExpandSettled?.()
+    }, 2000)
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [tourVisualExpandKey, expandMenu, onTourVisualExpandSettled])
 
   const completeMenuLayoutIntro = useCallback(() => {
     writeLoungeDockMenuLayoutIntroCompleted(viewerUserId)
@@ -1228,6 +1250,7 @@ export default function LoungeDockArcCarouselPrototype({
   useEffect(() => {
     if (!open) return undefined
     const onKey = (e) => {
+      if (visualTourRef.current) return
       if (e.key === 'Escape') setOpen(false)
     }
     window.addEventListener('keydown', onKey)
@@ -1264,6 +1287,7 @@ export default function LoungeDockArcCarouselPrototype({
 
   const onFabPointerDown = useCallback(
     (e) => {
+      if (visualTourRef.current) return
       if (e.button !== 0) return
       pipWasCompactRef.current = enableFabCompactPip && fabCompactPipRef.current
       wakeFabFromIdle({ clearCompactPip: false })
@@ -1611,6 +1635,7 @@ export default function LoungeDockArcCarouselPrototype({
 
   const selectItem = useCallback(
     (item) => {
+      if (visualTourRef.current) return
       if (item.disabled) return
       /** Close menu first so feed is not `pointer-events: none` during focus (iOS keyboard). */
       flushSync(() => {
@@ -1665,6 +1690,7 @@ export default function LoungeDockArcCarouselPrototype({
   }, [])
 
   const onBackdropPointerDown = useCallback((e) => {
+    if (visualTourRef.current) return
     if (e.pointerType === 'mouse' && e.button !== 0) return
     backdropGestureRef.current = {
       pointerId: e.pointerId,

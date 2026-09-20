@@ -113,15 +113,17 @@ export default function AuthModalShell({ onClose, cancelLabel, children }) {
         data-auth-ipad-stage
         className="fixed inset-0 z-[200] flex flex-col bg-zinc-950 text-zinc-100"
       >
-        <button
-          type="button"
-          data-auth-ipad-dismiss
-          onClick={onClose}
-          className="absolute left-5 z-20 min-h-11 px-1 text-left text-lg text-zinc-400 touch-manipulation"
-          style={{ top: 'max(0.75rem, max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))' }}
-        >
-          {cancelLabel}
-        </button>
+        {cancelLabel ? (
+          <button
+            type="button"
+            data-auth-ipad-dismiss
+            onClick={onClose}
+            className="absolute left-5 z-20 min-h-11 px-1 text-left text-lg text-zinc-400 touch-manipulation"
+            style={{ top: 'max(0.75rem, max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))' }}
+          >
+            {cancelLabel}
+          </button>
+        ) : null}
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
           <div
             role="dialog"
@@ -154,13 +156,15 @@ export default function AuthModalShell({ onClose, cancelLabel, children }) {
         data-auth-modal
         data-auth-sheet
       >
-        <button
-          type="button"
-          onClick={onClose}
-          className={`${linkBtn} mb-4 !min-h-11 w-full text-sm md:text-base`}
-        >
-          {cancelLabel}
-        </button>
+        {cancelLabel ? (
+          <button
+            type="button"
+            onClick={onClose}
+            className={`${linkBtn} mb-4 !min-h-11 w-full text-sm md:text-base`}
+          >
+            {cancelLabel}
+          </button>
+        ) : null}
         <AuthWordmark />
         {children}
       </div>

@@ -67,7 +67,7 @@ function ArrowToMenu({ menuRect, cardRect }) {
 }
 
 /** One-time hint after Lounge welcome: orange arrow to the real ☰ menu button. */
-export default function LoungeSlotsMenuHintOverlay({ open, onDismiss }) {
+export default function LoungeSlotsMenuHintOverlay({ open, onDismiss, autoDismissMs = 0 }) {
   const [menuRect, setMenuRect] = useState(null)
   const [cardRect, setCardRect] = useState(null)
   const [cardNode, setCardNode] = useState(null)
@@ -99,6 +99,12 @@ export default function LoungeSlotsMenuHintOverlay({ open, onDismiss }) {
       ro?.disconnect()
     }
   }, [open, measure, cardNode])
+
+  useEffect(() => {
+    if (!open || !autoDismissMs || typeof onDismiss !== 'function') return undefined
+    const timer = window.setTimeout(() => onDismiss(), autoDismissMs)
+    return () => window.clearTimeout(timer)
+  }, [open, autoDismissMs, onDismiss])
 
   if (!open || typeof document === 'undefined') return null
 

@@ -3705,9 +3705,9 @@ html[data-ipad-nav] [data-edge-status-bar-plate] {
 html[data-ipad-nav] [data-slots-landscape-tools] {
   padding-top: var(--edge-slots-title-h, 56px);
 }
-/* Rail E is h-8. Cap height is ~0.7em, so the capitals match that mark. */
+/* Same box as the rail E (h-8). The last pass inflated this for cap height and it dwarfed the mark. */
 html[data-ipad-nav] [data-slots-landscape-title] {
-  font-size: calc(2rem / 0.7);
+  font-size: 2rem;
   line-height: 1;
 }
 html.light [data-slots-landscape-tools] {

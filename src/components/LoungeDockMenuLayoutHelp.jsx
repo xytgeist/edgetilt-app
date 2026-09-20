@@ -118,9 +118,7 @@ export default function LoungeDockMenuLayoutHelp({
 
       <p className={moveCopyClass}>
 
-        Press and hold the <span className="font-semibold text-cyan-200/95">Menu (+)</span> button until the button
-
-        animates, then drag it anywhere on the screen. Release to drop it where it&apos;s most comfortable.
+        Press and hold <span className="font-semibold text-cyan-200/95">Menu (+)</span> until it animates, then drag.
 
       </p>
 
@@ -130,9 +128,9 @@ export default function LoungeDockMenuLayoutHelp({
 
           <>
 
-            Choose a layout to continue. <span className="font-semibold text-zinc-200">Wheel (O)</span> puts shortcuts
-            in a ring around the button. <span className="font-semibold text-zinc-200">Edge (L)</span> snaps to a bottom
-            corner. Change anytime in Settings.
+            Choose a layout to continue. <span className="font-semibold text-zinc-200">Wheel (O)</span> can sit
+            anywhere on the screen. <span className="font-semibold text-zinc-200">Edge (L)</span> snaps to the left
+            or right side. Change anytime in Settings.
 
           </>
 
@@ -140,9 +138,8 @@ export default function LoungeDockMenuLayoutHelp({
 
           <>
 
-            Tap a layout below. <span className="font-semibold text-zinc-300">Wheel (O)</span> puts shortcuts in a ring
-
-            around the button. <span className="font-semibold text-zinc-300">Edge (L)</span> snaps to a bottom corner.
+            Tap a layout below. <span className="font-semibold text-zinc-300">Wheel (O)</span> can sit anywhere on
+            the screen. <span className="font-semibold text-zinc-300">Edge (L)</span> snaps to the left or right side.
 
           </>
 
@@ -206,7 +203,7 @@ export default function LoungeDockMenuLayoutHelp({
 
           <p className="mt-1 text-center text-[10px] leading-snug text-zinc-500">
 
-            Shortcuts in a full ring; drag the ring to rotate.
+            Shortcuts in a ring; park it anywhere.
 
           </p>
 
@@ -270,7 +267,7 @@ export default function LoungeDockMenuLayoutHelp({
 
           <p className="mt-1 text-center text-[10px] leading-snug text-zinc-500">
 
-            Snaps to a corner; icons run along bottom + side.
+            Snaps left or right; icons run along bottom + side.
 
           </p>
 

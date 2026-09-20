@@ -60,6 +60,50 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo ACTIVE TRACK 2026-09-20 ... iPhone / iPad landscape shell (laptop handoff)
+
+**I am Mac Theo.** Ryan is moving to the laptop. **WinTheo owns separate work ... do not edit this landscape / Slots chrome track unless Ryan says so.**
+
+**What this track is:** After App Review of **1.4.95**, Mac built **iPad landscape Slots** into a two-column shell, then Ryan insisted on bringing the same idea to **iPhone landscape**. It shipped and he likes it. Tip of that work is on **`test`**.
+
+**Current tip (Mac):** commit **`b843f6ef`**, web **`1.4.364`**. Branch **`test`**. Do **not** bump iOS **`MARKETING_VERSION`** off **1.4.95**. Dirty Xcode scheme files under `ios/EdgeTilt.xcodeproj/xcshareddata/xcschemes/` are local only ... **do not stage them**.
+
+**Shipped on this track (newest → older, all Mac unless noted):**
+
+1. **`1.4.364` / `b843f6ef`** ... iPhone landscape title chrome at **70%** (rail E, EDGE wordmark, hamburger/close, title bar padding).
+2. **`1.4.363` / `e7c65415`** ... lounge feed on phone landscape no longer gets the tall-iPad scale-up; short landscape shrinks avatars/type/minicharts and **pairs** market cards.
+3. **`1.4.362` / `05a8fe28`** ... phone landscape gets the **left Lounge rail** (`useIpadNavRail` / `IPAD_NAV_RAIL_QUERY`). Portrait phone keeps FAB. Auth stage stays phone-card (`IPAD_SHELL_QUERY` unchanged).
+4. **`1.4.361` / `5ad4e5e6`** ... landscape Slots chrome lives **inside the tools column** (hamburger/X on that column’s right edge). Columns ~**50/50**.
+5. **`8b701c92`** ... **native** iPhone landscape unlock (`ios/project.yml` + `project.pbxproj`). Portrait-only before. Needs a **new IPA / Xcode Run** to rotate in the shell (web alone is not enough).
+6. **`1.4.360`** ... phone landscape Slots two-column split (compact tools list).
+7. **`1.4.359`** ... opening Slots on landscape defaults the right pane to **AP Guides**.
+8. **`1.4.358`–`1.4.355`** ... Slots title sizing / “Slots” word / tools heading removed.
+9. **`1.4.356`** ... right pane full height; title bar only over tools column (later moved in-column in 1.4.361).
+10. **`1.4.353`–`1.4.352`** ... every hub tool opens in the right pane (`paneEmbed`); Slots Pro Lounge is the only chat that stays in-pane.
+11. **`1.4.354`** ... pane measurer must **not** `setState(null)` on ref detach (max update depth).
+12. **`1.4.351`** ... hamburger → Slots/Poker bounce fix (any platform).
+13. **`1.4.349`** ... iPad landscape minicharts pair + peek.
+
+**How it works (canonical pointers):**
+
+- Landscape Slots gate: **`SLOTS_LANDSCAPE_SPLIT_QUERY`** in `src/features/shell/quickLinkDestinations.js` + `useIpadSlotsLandscape.js`.
+- Rail gate (iPad **or** phone landscape): **`IPAD_NAV_RAIL_QUERY`** + `useIpadNavRail.js`. Tall iPad-only auth/shell: **`IPAD_SHELL_QUERY`**.
+- Slots UI: `SlotsScreen.jsx` (`data-slots-landscape-split`), AppShell pane embed + bankroll/chat keep-alive cover via `slotsPaneRect`.
+- Phone landscape density CSS: `src/index.css` under `(orientation: landscape) and (max-height: 520px) and (pointer: coarse)`.
+- Architecture row: **`docs/frontend-architecture.md`** → **`slots/`**.
+
+**Still true / do not regress:**
+
+- Portrait **phone** Slots stays full-screen hub (no split). Portrait phone keeps FAB dock.
+- Gray-900 calculator cards untouched.
+- Phone FAB shortcut cap **2**; iPad rail shortcuts cap **6** (device localStorage, not per-account).
+- Do not push **`main`** unless Ryan asks.
+- Mac owns **`ios/`** + this landscape chrome. Windows owns other **`src/**`** features unless Ryan reassigns.
+
+**Open / next if Ryan continues this track:** live with phone landscape density (title 70%, feed shrink, rail). Tune only if he asks. Poker landscape split was **not** started.
+
+**WinTheo:** leave this track alone. Your separate items stay yours. If you need Mac context, read this block + **`https://lvslotpro.com/theo`**.
+
 ### Mac Theo 2026-09-19 ... phone landscape title chrome
 
 **I am Mac Theo.** iPhone landscape title chrome (rail E, EDGE wordmark, hamburger, title bar padding) is 70% size. Web **`1.4.364`**.

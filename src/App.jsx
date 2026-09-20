@@ -1071,7 +1071,7 @@ function App() {
         const nextEmail = String(email || '').trim()
         setSignupEmail(nextEmail)
         setSignupPassword(password)
-        setSignupConfirmPassword(password)
+        setSignupConfirmPassword('')
         setSignupError('')
         setSignupMessage('')
         setSignupHint('That email and password did not match an account. Create one below, or Sign in if you already have one.')
@@ -1397,7 +1397,6 @@ function App() {
         setAuthJoinEmailOpen(true)
         setSignupEmail((prev) => (prev.trim() ? prev : email.trim()))
         setSignupPassword((prev) => (prev ? prev : password))
-        setSignupConfirmPassword((prev) => (prev ? prev : password))
       } else {
         setAuthJoinEmailOpen(false)
         setEmail((prev) => (prev.trim() ? prev : signupEmail.trim()))

@@ -121,6 +121,7 @@ import { guidesTabFullyGated, normalizeGuideAccessSlug } from '../guides/guideAc
 import { parseGuideSlugFromPathname } from '../lounge/loungeCaptionLink.js'
 import { QUICK_LINK_BY_ID } from './quickLinkDestinations.js'
 import { useIpadSlotsLandscape } from './useIpadSlotsLandscape.js'
+import { notifyLoungeDockSuppress } from '../lounge/loungeDockSuppressRegistry.js'
 import {
   armShellNavGhostClickGuard,
   isShellNavLoungeHomeSuppressed,
@@ -470,6 +471,22 @@ export default function AppShell({
     prevSlotsLandscapeRef.current = ipadSlotsLandscape
     if (enteredLandscape && tab === 'slots') setTab('guides')
   }, [ipadSlotsLandscape, tab, setTab])
+  /** Phone landscape Slots split: hide the Lounge FAB dock so it does not cover the tools list. */
+  useEffect(() => {
+    if (!ipadSlotsLandscape || ipadShell) return undefined
+    const inSlotsSplit =
+      tab === 'slots' ||
+      tab === 'guides' ||
+      tab === 'bankroll' ||
+      tab === 'calculators' ||
+      tab === 'offers' ||
+      tab === 'logbook' ||
+      tab === 'w2g-scanner' ||
+      (tab === 'chat' && slotsLandscapeLounge)
+    if (!inSlotsSplit) return undefined
+    notifyLoungeDockSuppress(true)
+    return () => notifyLoungeDockSuppress(false)
+  }, [ipadSlotsLandscape, ipadShell, tab, slotsLandscapeLounge])
   const [tabErrorTestTrigger, setTabErrorTestTrigger] = useState(0)
   const [tabErrorTestOpen, setTabErrorTestOpen] = useState(false)
   const [isActiveAffiliate, setIsActiveAffiliate] = useState(false)

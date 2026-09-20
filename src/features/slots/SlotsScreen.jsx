@@ -178,21 +178,35 @@ export default function SlotsScreen({
   if (landscapeSplit) {
     return (
       <ScrollLinkedEdgeTitleBarShell
-        titleBarNavSlot={titleBarNavSlot}
-        titleBarCenterSlot={titleBarCenterSlot}
         fullWidth
         fillViewport
         slotsToolsLogo
+        publishScrollReveal={false}
         contentClassName="flex min-h-0 flex-1 flex-col overflow-hidden p-0"
       >
         <div data-slots-landscape-split className="flex min-h-0 flex-1">
           <div
             data-slots-landscape-tools
-            className="flex w-[min(28rem,42%)] shrink-0 flex-col border-r border-zinc-800/80 min-h-0"
+            className="flex w-1/2 shrink-0 flex-col border-r border-zinc-800/80 min-h-0"
           >
             <div
+              data-slots-landscape-tools-chrome
+              className="flex shrink-0 items-center justify-between gap-2 border-b border-zinc-800/95 bg-zinc-950 px-3 py-2"
+            >
+              <h1
+                data-slots-landscape-title
+                className="font-black leading-none tracking-tight text-white text-[1.25rem] sm:text-[1.5rem]"
+              >
+                Slots
+              </h1>
+              <div className="flex min-w-0 shrink-0 items-center justify-end gap-1.5">
+                {titleBarCenterSlot}
+                {titleBarNavSlot}
+              </div>
+            </div>
+            <div
               data-slots-landscape-tools-scroll
-              className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 pt-4 pb-[calc(1.5rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
+              className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 pt-3 pb-[calc(1.5rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
             >
               {toolList}
             </div>

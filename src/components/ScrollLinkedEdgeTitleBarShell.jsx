@@ -45,7 +45,7 @@ export default function ScrollLinkedEdgeTitleBarShell({
   stableLayoutViewport = false,
   /** Fill the parent instead of the viewport. No EDGE title bar. Used by the landscape Slots guides pane. */
   embedded = false,
-  /** iPad landscape Slots: "Slots" on the left instead of the EDGE wordmark. */
+  /** Landscape Slots split: no fixed title bar. SlotsScreen owns the tools-column chrome. */
   slotsToolsLogo = false,
 }) {
   const colMax = fullWidth ? 'max-w-none' : 'max-w-2xl'
@@ -64,6 +64,7 @@ export default function ScrollLinkedEdgeTitleBarShell({
     toolCloseVisible: titleBarToolCloseVisible,
     liveSessionChipVisible: Boolean(titleBarCenterSlot),
   })
+  const hideFixedTitleBar = Boolean(slotsToolsLogo)
 
   useLayoutEffect(() => {
     if (!stableLayoutViewport) return undefined
@@ -201,47 +202,36 @@ export default function ScrollLinkedEdgeTitleBarShell({
       data-edge-scroll-shell
       {...(stableLayoutViewport ? { 'data-stable-layout-viewport': '' } : {})}
       className={`mx-auto flex ${heightClass} min-h-0 w-full ${colMax} flex-col overflow-hidden bg-zinc-950 pt-[max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))]`}
-      style={
-        slotsToolsLogo
-          ? { '--edge-slots-title-h': `${titleBarHeight > 0 ? titleBarHeight : 56}px` }
-          : undefined
-      }
     >
       <EdgeStatusBarScrollPlate
-        reveal={titleReveal}
+        reveal={hideFixedTitleBar ? 1 : titleReveal}
         heightPx={feedViewportTopPx}
         className={colMax}
       />
-      <div
-        ref={titleBarRef}
-        data-edge-scroll-shell
-        className={`fixed left-1/2 z-[50] w-full ${colMax} border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform`}
-        style={{
-          top: feedViewportTopPx,
-          transform: `translate3d(-50%, ${loungeTitleBarHideTranslateYPx(titleReveal, titleBarHeight, feedViewportTopPx)}px, 0)`,
-          pointerEvents: titleReveal > 0.12 ? 'auto' : 'none',
-        }}
-      >
-        <PwaInstallTitleBarRow
-          rowClassName={LOUNGE_FEED_TITLE_BAR_ROW_CLASS}
-          logo={
-            slotsToolsLogo ? (
-              <h1 data-slots-landscape-title className="font-black leading-none tracking-tight text-white">
-                Slots
-              </h1>
-            ) : (
-              <EdgeLogoWithEasterEgg behavior="goLounge" className={logoClassName} />
-            )
-          }
-          centerSlot={titleBarCenterSlot}
-          navSlot={
-            <>
-              <TitleBarStatusLine />
-              {titleBarNavSlot}
-            </>
-          }
-        />
-      </div>
+      {hideFixedTitleBar ? null : (
+        <div
+          ref={titleBarRef}
+          data-edge-scroll-shell
+          className={`fixed left-1/2 z-[50] w-full ${colMax} border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform`}
+          style={{
+            top: feedViewportTopPx,
+            transform: `translate3d(-50%, ${loungeTitleBarHideTranslateYPx(titleReveal, titleBarHeight, feedViewportTopPx)}px, 0)`,
+            pointerEvents: titleReveal > 0.12 ? 'auto' : 'none',
+          }}
+        >
+          <PwaInstallTitleBarRow
+            rowClassName={LOUNGE_FEED_TITLE_BAR_ROW_CLASS}
+            logo={<EdgeLogoWithEasterEgg behavior="goLounge" className={logoClassName} />}
+            centerSlot={titleBarCenterSlot}
+            navSlot={
+              <>
+                <TitleBarStatusLine />
+                {titleBarNavSlot}
+              </>
+            }
+          />
+        </div>
+      )}
 
       <div
         ref={feedScrollRef}
@@ -252,13 +242,13 @@ export default function ScrollLinkedEdgeTitleBarShell({
             : 'min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-zinc-950 [-webkit-overflow-scrolling:touch]'
         }
       >
-        <div
-          aria-hidden
-          className="shrink-0"
-          style={{
-            height: slotsToolsLogo ? 0 : titleBarHeight > 0 ? titleBarHeight : 56,
-          }}
-        />
+        {hideFixedTitleBar ? null : (
+          <div
+            aria-hidden
+            className="shrink-0"
+            style={{ height: titleBarHeight > 0 ? titleBarHeight : 56 }}
+          />
+        )}
 
         <div
           className={

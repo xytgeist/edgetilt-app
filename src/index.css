@@ -3693,39 +3693,27 @@ html[data-ipad-nav] [data-edge-status-bar-plate] {
   max-width: none !important;
   transform: none !important;
 }
-/* Landscape Slots split: title bar is only the tools column. Phone has no rail. */
-@media (orientation: landscape) and (min-width: 640px) and (pointer: coarse) {
-  [data-edge-scroll-shell]:has([data-slots-landscape-split]) > .fixed:not([data-edge-status-bar-plate]) {
-    left: 0 !important;
-    width: min(22rem, 40vw) !important;
-    max-width: none !important;
-    transform: none !important;
-  }
-  [data-slots-landscape-tools] {
-    padding-top: var(--edge-slots-title-h, 48px);
-  }
-  [data-slots-landscape-title] {
-    font-size: 1.5rem;
-    line-height: 1;
-  }
+/* Landscape Slots split: tools column owns its chrome (hamburger sits on its right edge). */
+[data-slots-landscape-tools] {
+  width: 50%;
+  flex: 0 0 50%;
+  max-width: 28rem;
 }
-/* iPad with rail: tools column aligns to content beside the rail. */
-@media (orientation: landscape) and (min-width: 768px) and (min-height: 700px) and (pointer: coarse) {
-  html[data-ipad-nav] [data-edge-scroll-shell]:has([data-slots-landscape-split]) > .fixed:not([data-edge-status-bar-plate]) {
-    left: var(--edge-ipad-rail) !important;
-    width: min(28rem, calc((100vw - var(--edge-ipad-rail)) * 0.42)) !important;
-  }
-  html[data-ipad-nav] [data-slots-landscape-title] {
-    font-size: 2rem;
-  }
+html.light [data-slots-landscape-tools] {
+  border-right-color: #e4e4e7;
 }
 /* Phone landscape: tighter tool cards so the short height still fits. */
 @media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
-  [data-edge-scroll-shell]:has([data-slots-landscape-split]) > .fixed:not([data-edge-status-bar-plate]) {
-    width: min(18rem, 38vw) !important;
-  }
   [data-slots-landscape-tools] {
-    width: min(18rem, 38%) !important;
+    width: 50% !important;
+    flex: 0 0 50% !important;
+    max-width: none;
+  }
+  [data-slots-landscape-tools-chrome] {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    padding-top: 0.35rem !important;
+    padding-bottom: 0.35rem !important;
   }
   [data-slots-landscape-tools-scroll] {
     padding-left: 0.5rem !important;
@@ -3761,13 +3749,6 @@ html[data-ipad-nav] [data-edge-status-bar-plate] {
   [data-slots-landscape-title] {
     font-size: 1.25rem !important;
   }
-  [data-pwa-install-title-row] {
-    padding-top: 0.35rem !important;
-    padding-bottom: 0.35rem !important;
-  }
-}
-html.light [data-slots-landscape-tools] {
-  border-right-color: #e4e4e7;
 }
 html[data-ipad-nav] [data-lounge-feed-root] .fixed.left-1\/2:not([data-lounge-title-bar]):not([data-edge-status-bar-plate]) {
   left: calc(var(--edge-ipad-rail) + (100vw - var(--edge-ipad-rail)) / 2) !important;

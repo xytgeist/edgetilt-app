@@ -1147,6 +1147,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-19:** **iPhone landscape unlock (Mac).** Native iPhone shell allowed portrait only. Landscape left/right are enabled in **`ios/project.yml`** + **`project.pbxproj`**. Rebuild the Test app to rotate. Web phone landscape Slots split remains **`1.4.360`**.
 - **2026-09-19:** **Phone landscape Slots split (Mac).** Phone landscape reuses the iPad Slots two-column layout with a tighter tools list and no left rail. Frontend **`1.4.360`**. Web only. iPad landscape opens AP Guides in the right pane when the user goes to Slots. Close still clears the pane. Frontend **`1.4.359`**. Web only. iPad landscape "Slots" is the rail E box (2rem). The cap-height bump was too big. Frontend **`1.4.358`**. Web only.
 - **2026-09-19:** **Landscape Slots chrome (Mac).** iPad landscape menu and close sit on the right edge of the tools column. The right pane is full height with no title bar. Frontend **`1.4.356`**. Web only.
 - **2026-09-19:** **Landscape Slots title (Mac).** iPad landscape title bar says Slots on the left instead of the EDGE logo. The tools column no longer repeats the heading or the subtitle. Frontend **`1.4.355`**. Web only.

@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-19 ... iPhone native landscape unlock
+
+**I am Mac Theo.** iPhone shell was portrait-only in Info.plist. Landscape orientations are now enabled (rebuild required). Phone landscape Slots split was already on web **`1.4.360`**.
+
 ### Mac Theo 2026-09-19 ... phone landscape Slots split
 
 **I am Mac Theo.** Phone landscape Slots uses the same two-column split as iPad, with a compact tools list (no rail). Web **`1.4.360`**.

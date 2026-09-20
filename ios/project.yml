@@ -24,7 +24,7 @@ settings:
     INFOPLIST_KEY_CFBundleDisplayName: Edge
     INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.social-networking
     INFOPLIST_KEY_UILaunchScreen_Generation: YES
-    INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+    INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
     INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
     CODE_SIGN_STYLE: Automatic
     # Individual paid team (Ryan / investigence@gmail.com). Same ID as the old free Personal Team.

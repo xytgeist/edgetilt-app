@@ -132,9 +132,11 @@ export default function AuthModalPanel({
   signupConfirmPassword,
   onSignupConfirmPasswordChange,
   signupError,
+  signupHint,
   signupMessage,
   isSigningUp,
   onSignUpSubmit,
+  joinEmailOpen = false,
   forgotEmail,
   onForgotEmailChange,
   forgotError,
@@ -163,6 +165,10 @@ export default function AuthModalPanel({
     setPhoneError('')
     setPhoneBusy(false)
   }, [authTab])
+
+  useEffect(() => {
+    if (joinEmailOpen) setEmailOpen(true)
+  }, [joinEmailOpen])
 
   /** After Create account, success lives at the top ... scroll the sheet so it is not below the fold. */
   useEffect(() => {
@@ -290,7 +296,11 @@ export default function AuthModalPanel({
 
   const showJoinEmail =
     authTab === 'join' &&
-    (emailOpen || Boolean(signupMessage) || Boolean(signupError && !isOAuthProviderError(signupError)))
+    (emailOpen ||
+      joinEmailOpen ||
+      Boolean(signupMessage) ||
+      Boolean(signupHint) ||
+      Boolean(signupError && !isOAuthProviderError(signupError)))
 
   const closePhoneStep = () => {
     setPhoneStep(null)
@@ -450,7 +460,6 @@ export default function AuthModalPanel({
               label={authTab === 'join' ? 'Continue with email' : 'Sign in with email'}
               selected={authTab !== 'join' || showJoinEmail}
               onClick={() => {
-                if (authTab !== 'join') return
                 setEmailOpen(true)
               }}
             >
@@ -489,6 +498,9 @@ export default function AuthModalPanel({
           ) : null}
           {authTab === 'join' && showJoinEmail ? (
             <form onSubmit={onSignUpSubmit} className="mt-8 w-full space-y-4">
+              {signupHint ? (
+                <p className="text-center text-sm leading-relaxed text-zinc-400">{signupHint}</p>
+              ) : null}
               <input
                 type="email"
                 placeholder="Email"
@@ -581,8 +593,9 @@ export default function AuthModalPanel({
           type="button"
           {...(ipadStage ? { 'data-auth-ipad-footer': '' } : { 'data-auth-sheet-footer': '' })}
           onClick={() => {
-            setEmailOpen(false)
-            onAuthTabChange(authTab === 'join' ? 'signin' : 'join')
+            const next = authTab === 'join' ? 'signin' : 'join'
+            setEmailOpen(next === 'join')
+            onAuthTabChange(next)
           }}
         >
           {authTab === 'join' ? 'Sign in' : 'Create account'}

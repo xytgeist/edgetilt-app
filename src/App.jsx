@@ -15,6 +15,10 @@ import AuthConfirmScreen from './features/auth/AuthConfirmScreen.jsx'
 import AuthModalPanel from './features/auth/AuthModalPanel'
 import AuthPasswordField from './features/auth/AuthPasswordField'
 import AuthModalShell from './features/auth/AuthModalShell'
+import {
+  isEmailAlreadyRegisteredSignup,
+  isInvalidLoginCredentialsError,
+} from './features/auth/authCredentialErrors.js'
 import AppShell from './features/shell'
 import { ensureDefaultProfileRow } from './features/profiles/profileGate'
 import SubscribeModal from './features/billing/SubscribeModal.jsx'
@@ -242,12 +246,14 @@ function App() {
   const [forgotEmail, setForgotEmail] = useState('')
   const [forgotMessage, setForgotMessage] = useState('')
   const [forgotError, setForgotError] = useState('')
-  const [authTab, setAuthTab] = useState('join')
+  const [authTab, setAuthTab] = useState('signin')
   const [signupEmail, setSignupEmail] = useState('')
   const [signupPassword, setSignupPassword] = useState('')
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('')
   const [signupMessage, setSignupMessage] = useState('')
   const [signupError, setSignupError] = useState('')
+  const [signupHint, setSignupHint] = useState('')
+  const [authJoinEmailOpen, setAuthJoinEmailOpen] = useState(false)
 
   // Reset password states
   const [newPassword, setNewPassword] = useState('')
@@ -284,11 +290,13 @@ function App() {
         const pref = window.localStorage.getItem(AUTH_VIEW_STORAGE_KEY)
         if (pref === 'create') {
           setAuthTab('join')
+          setAuthJoinEmailOpen(true)
           setShowForgotPassword(false)
           setAuthPanelOpen(true)
         }
         if (pref === 'login') {
           setAuthTab('signin')
+          setAuthJoinEmailOpen(false)
           setShowForgotPassword(false)
           setAuthPanelOpen(true)
         }
@@ -919,7 +927,9 @@ function App() {
       return
     }
     if (!user?.id) {
-      setAuthTab('join')
+      setAuthTab('signin')
+      setAuthJoinEmailOpen(false)
+      setSignupHint('')
       setShowForgotPassword(false)
       setLoginError('')
       setSignupError('')
@@ -951,6 +961,8 @@ function App() {
     stripAuthPanelQueryParam()
     if (hasAuthSuccessTokens(tokens) || user?.id) return
     setAuthTab(mode === 'login' ? 'signin' : 'join')
+    setAuthJoinEmailOpen(mode !== 'login')
+    setSignupHint('')
     setShowForgotPassword(false)
     setLoginError('')
     setSignupError('')
@@ -1052,9 +1064,23 @@ function App() {
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    
+
     if (error) {
       skipSubscribeOpenForAuthReloadRef.current = false
+      if (isInvalidLoginCredentialsError(error)) {
+        const nextEmail = String(email || '').trim()
+        setSignupEmail(nextEmail)
+        setSignupPassword(password)
+        setSignupConfirmPassword(password)
+        setSignupError('')
+        setSignupMessage('')
+        setSignupHint('That email and password did not match an account. Create one below, or Sign in if you already have one.')
+        setLoginError('')
+        setAuthJoinEmailOpen(true)
+        setAuthTab('join')
+        setIsLoggingIn(false)
+        return
+      }
       setLoginError(getFriendlyErrorMessage(error, 'login'))
       setIsLoggingIn(false)
       return
@@ -1222,20 +1248,21 @@ function App() {
         data: Object.keys(signupMeta).length ? signupMeta : undefined,
       },
     })
-    if (error) {
-      const message = error.message?.toLowerCase() || ''
-      if (message.includes('already registered') || message.includes('already exists') || message.includes('user already')) {
-        setSignupError("Account already exists. Please log in or use Forgot Password.")
-      } else {
-        setSignupError(getFriendlyErrorMessage(error))
-      }
+    if (isEmailAlreadyRegisteredSignup(error, data)) {
+      const nextEmail = String(signupEmail || '').trim()
+      setEmail((prev) => (prev.trim() ? prev : nextEmail))
+      setPassword((prev) => (prev ? prev : signupPassword))
+      setSignupHint('')
+      setSignupError('')
+      setSignupMessage('')
+      setAuthJoinEmailOpen(false)
+      setLoginError('That email already has an account. Check your password or tap Trouble signing in.')
+      setAuthTab('signin')
       setIsSigningUp(false)
       return
     }
-
-    // Supabase can return a user with no identities when the email already exists.
-    if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
-      setSignupError("Account already exists. Please log in or use Forgot Password.")
+    if (error) {
+      setSignupError(getFriendlyErrorMessage(error))
       setIsSigningUp(false)
       return
     }
@@ -1249,6 +1276,7 @@ function App() {
             ? '✅ Account created! Confirm your email ... that link will link this swap and open Poker Bankroll.'
             : '✅ Account created! Please check your email for the confirmation link.',
     )
+    setSignupHint('')
     setSignupEmail('')
     setSignupPassword('')
     setSignupConfirmPassword('')
@@ -1364,17 +1392,26 @@ function App() {
       setLoginError('')
       setSignupError('')
       setSignupMessage('')
+      setSignupHint('')
       if (nextTab === 'join') {
+        setAuthJoinEmailOpen(true)
         setSignupEmail((prev) => (prev.trim() ? prev : email.trim()))
+        setSignupPassword((prev) => (prev ? prev : password))
+        setSignupConfirmPassword((prev) => (prev ? prev : password))
       } else {
+        setAuthJoinEmailOpen(false)
         setEmail((prev) => (prev.trim() ? prev : signupEmail.trim()))
+        setPassword((prev) => (prev ? prev : signupPassword))
       }
     },
-    [email, signupEmail],
+    [email, password, signupEmail, signupPassword],
   )
 
-  const openAuthPanel = (mode = 'create') => {
-    setAuthTab(mode === 'login' ? 'signin' : 'join')
+  const openAuthPanel = (mode = 'login') => {
+    const create = mode === 'create' || mode === 'join'
+    setAuthTab(create ? 'join' : 'signin')
+    setAuthJoinEmailOpen(create)
+    setSignupHint('')
     setShowForgotPassword(false)
     setLoginError('')
     setSignupError('')
@@ -1389,7 +1426,7 @@ function App() {
       // ignore
     }
     closeSubscribeModal()
-    openAuthPanel('create')
+    openAuthPanel('login')
   }, [closeSubscribeModal])
 
   const closeAuthPanel = useCallback(() => {
@@ -1397,6 +1434,8 @@ function App() {
     setLoginError('')
     setSignupError('')
     setSignupMessage('')
+    setSignupHint('')
+    setAuthJoinEmailOpen(false)
     setVerificationSuccess(false)
     try {
       window.sessionStorage.removeItem(RESUME_SUBSCRIBE_AFTER_AUTH_KEY)
@@ -1575,18 +1614,23 @@ function App() {
       onSignupEmailChange={(value) => {
         setSignupEmail(value)
         setSignupError('')
+        setSignupHint('')
       }}
       signupPassword={signupPassword}
       onSignupPasswordChange={(value) => {
         setSignupPassword(value)
         setSignupError('')
+        setSignupHint('')
       }}
       signupConfirmPassword={signupConfirmPassword}
       onSignupConfirmPasswordChange={(value) => {
         setSignupConfirmPassword(value)
         setSignupError('')
+        setSignupHint('')
       }}
       signupError={signupError}
+      signupHint={signupHint}
+      joinEmailOpen={authJoinEmailOpen}
       signupMessage={signupMessage}
       isSigningUp={isSigningUp}
       onSignUpSubmit={handleSignUp}
@@ -1661,7 +1705,7 @@ function App() {
             supabaseClient={supabase}
             token={claim?.token || ''}
             userId={user?.id ?? null}
-            onOpenAuth={() => openAuthPanel('create')}
+            onOpenAuth={() => openAuthPanel('login')}
             onDone={(redirect) => {
               navigateAfterSwapClaim(redirect)
             }}
@@ -1693,7 +1737,7 @@ function App() {
             supabaseClient={supabase}
             token={claim?.token || ''}
             userId={user?.id ?? null}
-            onOpenAuth={() => openAuthPanel('create')}
+            onOpenAuth={() => openAuthPanel('login')}
             onDone={(redirect) => {
               navigateAfterStakeClaim(redirect)
             }}
@@ -1725,7 +1769,7 @@ function App() {
             supabaseClient={supabase}
             token={claim?.token || ''}
             userId={user?.id ?? null}
-            onOpenAuth={() => openAuthPanel('create')}
+            onOpenAuth={() => openAuthPanel('login')}
             onDone={(payload) => {
               navigateAfterStableClaim(payload?.redirect, {
                 dealId: payload?.dealId,
@@ -1860,7 +1904,7 @@ function App() {
           onDeleteAccount={handleDeleteAccount}
           deleteAccountBusy={deleteAccountBusy}
           supabaseClient={supabase}
-          onRequireAuth={(mode) => openAuthPanel(mode === 'login' ? 'login' : 'create')}
+          onRequireAuth={(mode) => openAuthPanel(mode === 'create' ? 'create' : 'login')}
           onOpenLegalDocument={openLegalDocument}
         />
         <SubscribeModal

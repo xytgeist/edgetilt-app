@@ -43,6 +43,7 @@ import {
   Z_LOUNGE_DOCK_ABOVE_SLIDE_PANEL,
   Z_LOUNGE_DOCK_VIEWPORT,
 } from '../constants/appZIndex.js'
+import { FIRST_RUN_CHROME_TOUR_FAB_EXPAND_MS } from '../features/lounge/firstRunChromeTour.js'
 
 const HOME_ITEM_ID = 'home'
 /** Compact FAB + home chip (search/notifications/settings/chat panels, or any non-feed screen). */
@@ -336,7 +337,7 @@ export default function LoungeDockArcCarouselPrototype({
       setOpen(false)
       visualTourRef.current = false
       onTourVisualExpandSettled?.()
-    }, 2000)
+    }, FIRST_RUN_CHROME_TOUR_FAB_EXPAND_MS)
     return () => {
       window.clearTimeout(timer)
     }

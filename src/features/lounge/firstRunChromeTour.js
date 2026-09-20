@@ -4,10 +4,10 @@
  * Returning sign-in does not start this tour.
  */
 
-export const FIRST_RUN_CHROME_TOUR_MENU_HINT_MS = 1400
-export const FIRST_RUN_CHROME_TOUR_MENU_HOLD_MS = 3000
-export const FIRST_RUN_CHROME_TOUR_FAB_HINT_MS = 1400
-export const FIRST_RUN_CHROME_TOUR_FAB_EXPAND_MS = 2000
+export const FIRST_RUN_CHROME_TOUR_MENU_HINT_MS = 5000
+export const FIRST_RUN_CHROME_TOUR_MENU_HOLD_MS = 5000
+export const FIRST_RUN_CHROME_TOUR_FAB_HINT_MS = 5000
+export const FIRST_RUN_CHROME_TOUR_FAB_EXPAND_MS = 5000
 
 export const FIRST_RUN_CHROME_TOUR_STEP = {
   MENU_HINT: 'menu-hint',

@@ -1147,6 +1147,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-20:** **First-create tour pacing (Mac).** Helper + menu hold + FAB expand are 5s each. No Got it on the helper cards. New accounts no longer get the Updated policies modal on first session (signup already accepted Terms/Privacy). Frontend **`1.4.371`**. Web only.
 - **2026-09-20:** **First-create tour survives email confirm (Mac).** Signup stamps `user_metadata.edge_first_run_chrome_tour`. Confirm in Gmail (or a delay past 10 min) still starts hamburger → FAB → guidelines. Frontend **`1.4.370`**. Web only.
 - **2026-09-20:** **Gmail confirm click gate (Mac).** `/auth/confirm` waits for Confirm before `verifyOtp` so Gmail copy/preview does not burn the one-time hash. IPA still auto-verifies on Universal Link open. Templates unchanged. Frontend **`1.4.369`**. Web only.
 - **2026-09-20:** **Auth wall + first-create chrome tour (Mac).** SPA `/` is auth until a session exists. No **Continue without signing in**. Static `/slots` `/guides` claim/legal stay public. First-create only: hamburger pointer → menu 3s → FAB hint/expand (phone portrait) or skip FAB (rail layouts) → Community Guidelines. FAB Wheel/Edge waits for the first real tap. Frontend **`1.4.368`**. Web only.

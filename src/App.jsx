@@ -686,7 +686,9 @@ function App() {
     }
     let cancelled = false
     const syncLegalAcceptance = async () => {
-      if (readPendingLegalAcceptance()) {
+      const stampFromSignup =
+        readPendingLegalAcceptance() || isLikelyNewAuthUser(user)
+      if (stampFromSignup) {
         await ensureDefaultProfileRow(supabase, user)
         const { error } = await recordLegalAcceptance(supabase, user.id)
         if (cancelled) return

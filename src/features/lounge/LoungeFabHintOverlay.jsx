@@ -180,13 +180,6 @@ export default function LoungeFabHintOverlay({ open, onDismiss, autoDismissMs = 
           Tap the <span className="font-semibold text-cyan-300">+</span> button for{' '}
           <span className="font-semibold text-zinc-100">New post</span>, search, chat, and settings. Hold to move it.
         </p>
-        <button
-          type="button"
-          onClick={() => onDismiss?.()}
-          className="mt-4 w-full min-h-11 rounded-xl bg-cyan-600 text-[14px] font-semibold text-white touch-manipulation hover:bg-cyan-500 active:bg-cyan-700 [-webkit-tap-highlight-color:transparent]"
-        >
-          Got it
-        </button>
       </div>
     </div>,
     document.body,

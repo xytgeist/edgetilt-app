@@ -159,13 +159,6 @@ export default function LoungeSlotsMenuHintOverlay({ open, onDismiss, autoDismis
           Tap <span className="font-semibold text-zinc-100">☰</span> →{' '}
           <span className="font-semibold text-zinc-100">Slots</span> for {SLOTS_TOOL_LABELS.join(', ')}.
         </p>
-        <button
-          type="button"
-          onClick={() => onDismiss?.()}
-          className="mt-4 w-full min-h-11 rounded-xl bg-orange-600 text-[14px] font-semibold text-white touch-manipulation hover:bg-orange-500 active:bg-orange-700 [-webkit-tap-highlight-color:transparent]"
-        >
-          Got it
-        </button>
       </div>
     </div>,
     document.body,

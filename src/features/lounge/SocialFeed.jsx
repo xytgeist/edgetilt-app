@@ -156,6 +156,7 @@ import {
 import {
   attachFirstRunChromeTour,
   CHROME_TOUR_MENU_HOLD_DONE_EVENT,
+  FIRST_RUN_CHROME_TOUR_FAB_EXPAND_MS,
   FIRST_RUN_CHROME_TOUR_FAB_HINT_MS,
   FIRST_RUN_CHROME_TOUR_MENU_HINT_MS,
   FIRST_RUN_CHROME_TOUR_STEP,
@@ -10479,7 +10480,7 @@ export default function SocialFeed({
         if (readFirstRunChromeTourStep(composerUserId) === FIRST_RUN_CHROME_TOUR_STEP.FAB_EXPAND) {
           onTourVisualExpandSettled()
         }
-      }, 2500)
+      }, FIRST_RUN_CHROME_TOUR_FAB_EXPAND_MS + 500)
       return () => window.clearTimeout(fallback)
     }
 
@@ -20032,7 +20033,7 @@ export default function SocialFeed({
         <LoungeSlotsMenuHintOverlay
           open={slotsMenuHintOpen}
           onDismiss={onSlotsMenuHintDismiss}
-          autoDismissMs={firstRunChromeTourActive ? FIRST_RUN_CHROME_TOUR_MENU_HINT_MS : 0}
+          autoDismissMs={FIRST_RUN_CHROME_TOUR_MENU_HINT_MS}
         />
       ) : null}
 
@@ -20040,7 +20041,7 @@ export default function SocialFeed({
         <LoungeFabHintOverlay
           open={fabHintOpen}
           onDismiss={onFabHintDismiss}
-          autoDismissMs={firstRunChromeTourActive ? FIRST_RUN_CHROME_TOUR_FAB_HINT_MS : 0}
+          autoDismissMs={FIRST_RUN_CHROME_TOUR_FAB_HINT_MS}
         />
       ) : null}
 

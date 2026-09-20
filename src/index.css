@@ -3693,22 +3693,78 @@ html[data-ipad-nav] [data-edge-status-bar-plate] {
   max-width: none !important;
   transform: none !important;
 }
-/* Landscape Slots split: title bar is only the tools column, so the menu sits on its right edge. The pane runs the full height beside it. */
+/* Landscape Slots split: title bar is only the tools column. Phone has no rail. */
+@media (orientation: landscape) and (min-width: 640px) and (pointer: coarse) {
+  [data-edge-scroll-shell]:has([data-slots-landscape-split]) > .fixed:not([data-edge-status-bar-plate]) {
+    left: 0 !important;
+    width: min(22rem, 40vw) !important;
+    max-width: none !important;
+    transform: none !important;
+  }
+  [data-slots-landscape-tools] {
+    padding-top: var(--edge-slots-title-h, 48px);
+  }
+  [data-slots-landscape-title] {
+    font-size: 1.5rem;
+    line-height: 1;
+  }
+}
+/* iPad with rail: tools column aligns to content beside the rail. */
 @media (orientation: landscape) and (min-width: 768px) and (min-height: 700px) and (pointer: coarse) {
   html[data-ipad-nav] [data-edge-scroll-shell]:has([data-slots-landscape-split]) > .fixed:not([data-edge-status-bar-plate]) {
     left: var(--edge-ipad-rail) !important;
     width: min(28rem, calc((100vw - var(--edge-ipad-rail)) * 0.42)) !important;
-    max-width: none !important;
-    transform: none !important;
+  }
+  html[data-ipad-nav] [data-slots-landscape-title] {
+    font-size: 2rem;
   }
 }
-html[data-ipad-nav] [data-slots-landscape-tools] {
-  padding-top: var(--edge-slots-title-h, 56px);
-}
-/* Same box as the rail E (h-8). The last pass inflated this for cap height and it dwarfed the mark. */
-html[data-ipad-nav] [data-slots-landscape-title] {
-  font-size: 2rem;
-  line-height: 1;
+/* Phone landscape: tighter tool cards so the short height still fits. */
+@media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+  [data-edge-scroll-shell]:has([data-slots-landscape-split]) > .fixed:not([data-edge-status-bar-plate]) {
+    width: min(18rem, 38vw) !important;
+  }
+  [data-slots-landscape-tools] {
+    width: min(18rem, 38%) !important;
+  }
+  [data-slots-landscape-tools-scroll] {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    padding-top: 0.5rem !important;
+    padding-bottom: calc(0.75rem + max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))) !important;
+  }
+  [data-slots-landscape-tools] [data-slots-hub] > * + * {
+    margin-top: 0.375rem !important;
+  }
+  [data-slots-landscape-tools] [data-hub-tool-card] {
+    gap: 0.625rem !important;
+    padding: 0.45rem 0.65rem !important;
+    border-radius: 0.9rem !important;
+  }
+  [data-slots-landscape-tools] .slots-icon-tile {
+    width: 2.25rem !important;
+    height: 2.25rem !important;
+    border-radius: 0.65rem !important;
+  }
+  [data-slots-landscape-tools] .slots-icon-tile svg {
+    width: 1rem !important;
+    height: 1rem !important;
+  }
+  [data-slots-landscape-tools] [data-hub-tool-card] .text-lg {
+    font-size: 0.9375rem !important;
+    line-height: 1.2 !important;
+  }
+  [data-slots-landscape-tools] [data-hub-tool-card] .text-sm {
+    font-size: 0.6875rem !important;
+    line-height: 1.25 !important;
+  }
+  [data-slots-landscape-title] {
+    font-size: 1.25rem !important;
+  }
+  [data-pwa-install-title-row] {
+    padding-top: 0.35rem !important;
+    padding-bottom: 0.35rem !important;
+  }
 }
 html.light [data-slots-landscape-tools] {
   border-right-color: #e4e4e7;

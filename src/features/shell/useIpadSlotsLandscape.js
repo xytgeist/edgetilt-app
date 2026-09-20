@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react'
-import { IPAD_LANDSCAPE_QUERY } from './quickLinkDestinations.js'
+import { SLOTS_LANDSCAPE_SPLIT_QUERY } from './quickLinkDestinations.js'
 
+/**
+ * Landscape Slots two-column split (iPad and phone).
+ * Name kept for call sites; query no longer requires the iPad height floor.
+ */
 export function useIpadSlotsLandscape() {
   const [matches, setMatches] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia(IPAD_LANDSCAPE_QUERY).matches,
+    () => typeof window !== 'undefined' && window.matchMedia(SLOTS_LANDSCAPE_SPLIT_QUERY).matches,
   )
 
   useEffect(() => {
-    const mq = window.matchMedia(IPAD_LANDSCAPE_QUERY)
+    const mq = window.matchMedia(SLOTS_LANDSCAPE_SPLIT_QUERY)
     const sync = () => setMatches(mq.matches)
     sync()
     mq.addEventListener('change', sync)

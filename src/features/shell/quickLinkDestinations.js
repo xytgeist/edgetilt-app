@@ -73,9 +73,20 @@ export const QUICK_LINK_MAX_IPAD = 6
  */
 export const IPAD_SHELL_QUERY = '(min-width: 768px) and (min-height: 700px) and (pointer: coarse)'
 
-/** iPad shell plus landscape. Phones in landscape are too short to match. */
+/** iPad shell plus landscape. Phones in landscape are too short for the full tablet chrome. */
 export const IPAD_LANDSCAPE_QUERY =
   '(orientation: landscape) and (min-width: 768px) and (min-height: 700px) and (pointer: coarse)'
+
+/**
+ * Slots two-column split. Includes phone landscape (short height).
+ * Keeps pointer:coarse so desktop mouse layouts stay phone/desktop column.
+ */
+export const SLOTS_LANDSCAPE_SPLIT_QUERY =
+  '(orientation: landscape) and (min-width: 640px) and (pointer: coarse)'
+
+/** Short landscape ... shrink tools cards. iPad height stays roomy. */
+export const SLOTS_LANDSCAPE_COMPACT_QUERY =
+  '(orientation: landscape) and (max-height: 520px) and (pointer: coarse)'
 
 export function quickLinkCap() {
   if (typeof window !== 'undefined' && window.matchMedia(IPAD_SHELL_QUERY).matches) {

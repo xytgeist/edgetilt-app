@@ -83,7 +83,7 @@ export default function SlotsScreen({
   isStaff = false,
   gatesMap = null,
   starterUnlockedCalculatorKeys = null,
-  /** iPad landscape: tools stay on the left. The open tool fills the right pane. */
+  /** Landscape: tools stay on the left. The open tool fills the right pane. */
   landscapeSplit = false,
   selectedToolId = null,
   toolPane = null,
@@ -190,7 +190,10 @@ export default function SlotsScreen({
             data-slots-landscape-tools
             className="flex w-[min(28rem,42%)] shrink-0 flex-col border-r border-zinc-800/80 min-h-0"
           >
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 pt-4 pb-[calc(1.5rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
+            <div
+              data-slots-landscape-tools-scroll
+              className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 pt-4 pb-[calc(1.5rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
+            >
               {toolList}
             </div>
           </div>

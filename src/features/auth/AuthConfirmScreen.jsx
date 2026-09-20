@@ -33,11 +33,13 @@ export default function AuthConfirmScreen({
   }, [])
 
   const cta = authConfirmCta(confirmType)
+  const busy = !error && !success && !awaitingClick
+  const heading = busy ? 'Confirming email...' : cta.title
 
   return (
     <div className="auth-confirm-shell bg-zinc-950" data-auth-confirm-shell>
       <div className="bg-gray-900 p-6 sm:p-8 rounded-3xl max-w-sm w-full" data-auth-modal>
-        <h2 className="text-2xl font-bold text-white mb-6 text-center">{cta.title}</h2>
+        <h2 className={`text-2xl font-bold text-white text-center ${busy ? '' : 'mb-6'}`}>{heading}</h2>
         {error ? (
           <>
             <div className="mb-6 p-4 bg-red-900/50 border border-red-500 rounded-2xl text-red-300 text-sm text-center">
@@ -88,11 +90,7 @@ export default function AuthConfirmScreen({
               {cta.label}
             </button>
           </>
-        ) : (
-          <p className="text-center text-gray-500 text-sm leading-relaxed">
-            One moment… finishing your confirmation.
-          </p>
-        )}
+        ) : null}
       </div>
     </div>
   )

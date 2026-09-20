@@ -66,10 +66,11 @@ The agent should treat the following as **standing instructions for this session
 
 **What this track is:** After App Review of **1.4.95**, Mac built **iPad landscape Slots** into a two-column shell, then Ryan insisted on bringing the same idea to **iPhone landscape**. It shipped and he likes it. Tip of that work is on **`test`**.
 
-**Current tip (Mac):** web **`1.4.373`**. Branch **`test`**. Do **not** bump iOS **`MARKETING_VERSION`** off **1.4.95**. Dirty Xcode scheme files under `ios/EdgeTilt.xcodeproj/xcshareddata/xcschemes/` are local only ... **do not stage them**.
+**Current tip (Mac):** web **`1.4.374`**. Branch **`test`**. Do **not** bump iOS **`MARKETING_VERSION`** off **1.4.95**. Dirty Xcode scheme files under `ios/EdgeTilt.xcodeproj/xcshareddata/xcschemes/` are local only ... **do not stage them**.
 
 **Shipped on this track (newest → older, all Mac unless noted):**
 
+1. **`1.4.374`** ... IPA confirm card is **Confirming email...** only.
 1. **`1.4.373`** ... Wheel/Edge intro: O parks anywhere, L snaps left or right.
 1. **`1.4.372`** ... guidelines stay dismissed after Got it; Wheel/Edge waits for a real FAB tap.
 1. **`1.4.371`** ... first-create helpers are 5s each, no Got it buttons, no Updated policies modal on a new account.

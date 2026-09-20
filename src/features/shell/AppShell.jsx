@@ -464,6 +464,12 @@ export default function AppShell({
   const navSelectAtRef = useRef(0)
   const ipadShell = useIpadAuthStage()
   const ipadSlotsLandscape = useIpadSlotsLandscape()
+  const prevSlotsLandscapeRef = useRef(ipadSlotsLandscape)
+  useEffect(() => {
+    const enteredLandscape = ipadSlotsLandscape && !prevSlotsLandscapeRef.current
+    prevSlotsLandscapeRef.current = ipadSlotsLandscape
+    if (enteredLandscape && tab === 'slots') setTab('guides')
+  }, [ipadSlotsLandscape, tab, setTab])
   const [tabErrorTestTrigger, setTabErrorTestTrigger] = useState(0)
   const [tabErrorTestOpen, setTabErrorTestOpen] = useState(false)
   const [isActiveAffiliate, setIsActiveAffiliate] = useState(false)
@@ -2249,7 +2255,7 @@ export default function AppShell({
         }
         if (item.id === 'slots') {
           setActiveCalculator(null)
-          setTab('slots')
+          setTab(ipadSlotsLandscape ? 'guides' : 'slots')
           triggerTapHapticLight()
         } else if (item.id === 'poker') {
           acknowledgePokerOfferMenu()

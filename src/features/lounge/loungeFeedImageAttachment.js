@@ -93,7 +93,7 @@ export function loungeFeedCarouselMeasureLayout(scroller, fullBleed, opts = {}) 
   const pairSlides =
     Boolean(opts.pairOnIpadLandscape) &&
     typeof window !== 'undefined' &&
-    window.matchMedia('(orientation: landscape) and (min-width: 768px) and (min-height: 700px) and (pointer: coarse)').matches
+    window.matchMedia('(orientation: landscape) and (min-width: 640px) and (pointer: coarse)').matches
 
   if (fullBleed && scroller) {
     const s = getComputedStyle(scroller)

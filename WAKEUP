@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-19 ... phone landscape lounge scale
+
+**I am Mac Theo.** Phone landscape lounge feed no longer gets the iPad scale-up. Short landscape shrinks avatars, type, and minicharts, and pairs market cards. Web **`1.4.363`**.
+
 ### Mac Theo 2026-09-19 ... phone landscape side rail
 
 **I am Mac Theo.** Phone landscape now gets the left Lounge rail (Home / Search / Chat / …), same as iPad. Portrait phone keeps the FAB. Auth stays on the phone card. Web **`1.4.362`**.

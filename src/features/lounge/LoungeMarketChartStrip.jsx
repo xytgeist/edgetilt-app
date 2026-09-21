@@ -53,10 +53,8 @@ export default function LoungeMarketChartStrip({ post, onOpenChart, className = 
 
   useLayoutEffect(() => {
     if (!multi) return undefined
-    const landscapeSplit =
-      typeof document !== 'undefined' &&
-      Boolean(document.querySelector('[data-lounge-feed-root][data-lounge-landscape-split]'))
-    // Full iPad landscape feed can pair two slides. Split / detail need phone-width cards + peek.
+    // Pair only on full iPad landscape feed. Landscape split is detected live in measure
+    // (feed cards bind before the engagement pane opens and must re-cap on the left).
     return bindLoungeFeedCarouselMeasure(carouselScrollRef.current, carouselFullBleed, (next) => {
       setCarouselViewport((prev) =>
         prev.contentWidthPx === next.contentWidthPx &&
@@ -66,8 +64,8 @@ export default function LoungeMarketChartStrip({ post, onOpenChart, className = 
           : next,
       )
     }, {
-      pairOnIpadLandscape: !landscapeSplit && variant !== 'detail',
-      phoneSlideCap: landscapeSplit || variant === 'detail',
+      pairOnIpadLandscape: variant !== 'detail',
+      phoneSlideCap: variant === 'detail',
     })
   }, [multi, carouselFullBleed, embeds.length, variant])
 

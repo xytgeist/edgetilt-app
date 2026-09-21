@@ -50,9 +50,7 @@ export default function LoungeGameScorePillStrip({ post, className = '', variant
 
   useLayoutEffect(() => {
     if (!multi) return undefined
-    const landscapeSplit =
-      typeof document !== 'undefined' &&
-      Boolean(document.querySelector('[data-lounge-feed-root][data-lounge-landscape-split]'))
+    // Landscape split is detected live in measure so feed cards re-cap when the pane opens.
     return bindLoungeFeedCarouselMeasure(carouselScrollRef.current, carouselFullBleed, (next) => {
       setCarouselViewport((prev) =>
         prev.contentWidthPx === next.contentWidthPx &&
@@ -62,8 +60,8 @@ export default function LoungeGameScorePillStrip({ post, className = '', variant
           : next,
       )
     }, {
-      pairOnIpadLandscape: !landscapeSplit && variant !== 'detail',
-      phoneSlideCap: landscapeSplit || variant === 'detail',
+      pairOnIpadLandscape: variant !== 'detail',
+      phoneSlideCap: variant === 'detail',
     })
   }, [multi, carouselFullBleed, games.length, variant])
 

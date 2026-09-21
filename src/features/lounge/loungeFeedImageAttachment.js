@@ -81,17 +81,31 @@ export function loungeFeedReadCssLengthPx(varName, fallbackPx = 0) {
 }
 
 /**
+ * True when this scroller lives under (or the page has) landscape Lounge engagement split.
+ * Read live on every measure ... feed strips often bind before split opens and must re-cap.
+ * @param {HTMLElement | null | undefined} scroller
+ */
+export function loungeFeedCarouselInLandscapeSplit(scroller) {
+  if (typeof document === 'undefined') return false
+  if (scroller?.closest?.('[data-lounge-feed-root][data-lounge-landscape-split]')) return true
+  return Boolean(document.querySelector('[data-lounge-feed-root][data-lounge-landscape-split]'))
+}
+
+/**
  * Feed carousel layout numbers from the live horizontal scroller (padding + peek).
  * @param {HTMLElement | null | undefined} scroller
  * @param {boolean} fullBleed
- * @param {{ pairOnIpadLandscape?: boolean }} [opts]
+ * @param {{ pairOnIpadLandscape?: boolean, phoneSlideCap?: boolean | number }} [opts]
  */
 export function loungeFeedCarouselMeasureLayout(scroller, fullBleed, opts = {}) {
   const maxRowPx = loungeFeedCarouselMaxRowHeightPx()
   const peekPx = loungeFeedReadCssLengthPx('--lounge-feed-carousel-peek', 48)
   const slideGapPx = loungeFeedReadCssLengthPx('--lounge-feed-carousel-slide-gap', 8)
+  const landscapeSplit = loungeFeedCarouselInLandscapeSplit(scroller)
+  // Split feed column is phone-narrow: never pair two slides (that was for full-bleed iPad feed).
   const pairSlides =
     Boolean(opts.pairOnIpadLandscape) &&
+    !landscapeSplit &&
     typeof window !== 'undefined' &&
     window.matchMedia('(orientation: landscape) and (min-width: 640px) and (pointer: coarse)').matches
 
@@ -110,12 +124,13 @@ export function loungeFeedCarouselMeasureLayout(scroller, fullBleed, opts = {}) 
     ? Math.max(96, (contentWidthPx - peekPx - slideGapPx * 2) / 2)
     : Math.max(96, contentWidthPx - peekPx - slideGapPx)
 
-  // Wide landscape Lounge split / detail: keep phone-like card width so the next slide peeks.
+  // Landscape split feed + detail / explicit phoneSlideCap: keep phone-like card width so the next slide peeks.
   // Prefer ~72% of the column (clear peek) and never exceed 18rem.
-  if (opts.phoneSlideCap) {
+  const phoneSlideCap = opts.phoneSlideCap || landscapeSplit
+  if (phoneSlideCap) {
     const hardCapPx =
-      typeof opts.phoneSlideCap === 'number' && Number.isFinite(opts.phoneSlideCap)
-        ? opts.phoneSlideCap
+      typeof phoneSlideCap === 'number' && Number.isFinite(phoneSlideCap)
+        ? phoneSlideCap
         : 18 * 16
     const softCapPx = Math.max(96, contentWidthPx * 0.72)
     firstSlideMaxWidthPx = Math.min(firstSlideMaxWidthPx, softCapPx, Math.max(96, hardCapPx))
@@ -159,10 +174,20 @@ export function bindLoungeFeedCarouselMeasure(scroller, fullBleed, onMeasure, op
     ro = new ResizeObserver(sync)
     ro.observe(scroller)
   }
+  // Feed strips bind before engagement opens; attribute flip must re-cap even if width is unchanged.
+  let mo
+  const splitRoot =
+    scroller?.closest?.('[data-lounge-feed-root]') ||
+    (typeof document !== 'undefined' ? document.querySelector('[data-lounge-feed-root]') : null)
+  if (splitRoot && typeof MutationObserver !== 'undefined') {
+    mo = new MutationObserver(sync)
+    mo.observe(splitRoot, { attributes: true, attributeFilter: ['data-lounge-landscape-split'] })
+  }
   return () => {
     cancelAnimationFrame(id)
     window.removeEventListener('resize', sync)
     ro?.disconnect()
+    mo?.disconnect()
   }
 }
 

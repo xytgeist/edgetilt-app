@@ -258,7 +258,8 @@ export default function LoungeGameScorePill({
         <span data-lounge-game-pill-seam aria-hidden="true" />
         <span data-lounge-game-pill-row className="relative z-[3] flex min-h-[5.625rem] w-full items-center gap-1.5 px-3 py-2.5">
           <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} halo={air.awayAir} />
-          <span data-lounge-game-pill-score-slot>
+          {/* flex-1 text-center: horizontal midpoint between logo and FINAL/clock */}
+          <span data-lounge-game-pill-score-slot className="min-w-0 flex-1 text-center">
             <ScoreStack
               side={game.away}
               status={game.status}
@@ -272,7 +273,7 @@ export default function LoungeGameScorePill({
               {game.status_label}
             </span>
           </span>
-          <span data-lounge-game-pill-score-slot>
+          <span data-lounge-game-pill-score-slot className="min-w-0 flex-1 text-center">
             <ScoreStack
               side={game.home}
               status={game.status}

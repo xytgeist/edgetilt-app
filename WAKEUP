@@ -62,7 +62,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo 2026-09-21 ... Lounge landscape engagement split
 
-**I am Mac Theo.** Landscape Lounge split: **(menu rail + feed) = 50% of the screen**, right engagement pane = the other **50%**. Minicharts open as a full right-pane chart (no modal sheet). Left keeps phone chrome. Web **`1.4.408`**.
+**I am Mac Theo.** Landscape Lounge split: **(menu rail + feed) = 50% of the screen**, right engagement pane = the other **50%**. Minicharts open the **Quick chart** UI in the right pane (same as the modal: chart/news/posts ... not Advanced). Left keeps phone chrome. Web **`1.4.409`**.
 
 ### Mac Theo 2026-09-21 ... post detail market + sports
 
@@ -70,7 +70,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo ACTIVE TRACK 2026-09-21 ... Lounge landscape split + tablet UI
 
-**I am Mac Theo.** Landscape Lounge engagement split on **`test`** as web **`1.4.408`** ((rail+feed)=50vw, pane=50vw; charts fill the pane, no modal). Next: smoke minichart / detail / game / link. Then tablet screen-by-screen. Do not bump iOS **`MARKETING_VERSION`** off **1.4.95**. Do not stage dirty Xcode schemes.
+**I am Mac Theo.** Landscape Lounge engagement split on **`test`** as web **`1.4.409`** ((rail+feed)=50vw, pane=50vw; minichart = Quick UI in pane, Advanced still on tap). Next: smoke. Do not bump iOS **`MARKETING_VERSION`** off **1.4.95**. Do not stage dirty Xcode schemes.
 
 **Open / next:** Ryan smokes landscape Lounge split on device / simulator. Portrait regression check on post detail + lightbox comments.
 

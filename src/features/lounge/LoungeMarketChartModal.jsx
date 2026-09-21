@@ -1258,28 +1258,9 @@ export default function LoungeMarketChartModal({
     if (!advancedResolutionSessionPickedRef.current) {
       setAdvancedResolutionId(DEFAULT_MARKET_CHART_RESOLUTION_ID)
     }
-    // Landscape Lounge pane is already landscape … skip orientation lock overlay.
-    if (!embedded) void lockMarketChartLandscapeOrientation()
+    void lockMarketChartLandscapeOrientation()
     setAdvancedFullscreenOpen(true)
-  }, [closeAnnotateMenus, embedded])
-
-  // Landscape engagement pane: open the full chart in-pane (no bottom sheet modal).
-  useEffect(() => {
-    if (!embedded) return undefined
-    if (open) {
-      closeAnnotateMenus()
-      setAnnotateMode(false)
-      setChartAnnotations([])
-      setChartType('candle')
-      if (!advancedResolutionSessionPickedRef.current) {
-        setAdvancedResolutionId(DEFAULT_MARKET_CHART_RESOLUTION_ID)
-      }
-      setAdvancedFullscreenOpen(true)
-    } else {
-      setAdvancedFullscreenOpen(false)
-    }
-    return undefined
-  }, [closeAnnotateMenus, embedded, open])
+  }, [closeAnnotateMenus])
 
   const closeAdvancedFullscreen = useCallback(() => {
     advancedResolutionSessionPickedRef.current = false
@@ -2369,20 +2350,15 @@ export default function LoungeMarketChartModal({
   const advancedFullscreenInner =
     advancedFullscreenOpen && open ? (
           <div
-            className={
-              embedded
-                ? 'flex h-full min-h-0 flex-col overflow-hidden bg-zinc-950'
-                : 'fixed inset-0 z-[106] overflow-hidden bg-black touch-none'
-            }
+            className="fixed inset-0 z-[106] overflow-hidden bg-black touch-none"
             role="dialog"
             aria-modal="true"
             aria-label={`${active?.display_symbol || 'Market'} advanced chart`}
-            {...(embedded ? { 'data-lounge-market-chart-embedded': '' } : {})}
           >
             <div
               ref={advancedFullscreenRootRef}
               className={`flex h-full min-h-0 flex-col ${shellClass}`}
-              style={embedded ? { height: '100%', width: '100%' } : advancedFullscreenShellStyle}
+              style={advancedFullscreenShellStyle}
               data-lounge-market-chart-advanced-fullscreen=""
             >
               <div
@@ -2418,14 +2394,11 @@ export default function LoungeMarketChartModal({
                 </div>
                 <button
                   type="button"
-                  aria-label={embedded ? 'Close chart' : 'Close advanced chart'}
-                  onClick={() => {
-                    if (embedded) dismissSheet()
-                    else closeAdvancedFullscreen()
-                  }}
+                  aria-label="Close advanced chart"
+                  onClick={closeAdvancedFullscreen}
                   className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800/90 text-lg leading-none text-zinc-200 touch-manipulation hover:bg-zinc-700"
                 >
-                  {embedded ? '←' : '×'}
+                  ×
                 </button>
               </div>
 
@@ -2782,9 +2755,7 @@ export default function LoungeMarketChartModal({
     ) : null
 
   const advancedFullscreenPortal =
-    advancedFullscreenInner && !embedded
-      ? createPortal(advancedFullscreenInner, document.body)
-      : null
+    advancedFullscreenInner ? createPortal(advancedFullscreenInner, document.body) : null
 
   const marketChartSheetRoot = (
     <div
@@ -2833,15 +2804,16 @@ export default function LoungeMarketChartModal({
         onPointerCancel={embedded ? undefined : onSheetPointerCancel}
       >
         {embedded ? (
-          <div className={`flex shrink-0 items-center justify-end border-b px-2 py-1.5 ${borderClass}`}>
+          <div className={`flex shrink-0 items-center gap-1 border-b px-2 py-1.5 ${borderClass}`}>
             <button
               type="button"
               aria-label="Close chart"
               onClick={dismissSheet}
-              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800/90 text-lg leading-none text-zinc-200 touch-manipulation hover:bg-zinc-700"
+              className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[20px] leading-none text-zinc-300 touch-manipulation hover:bg-zinc-800 hover:text-white"
             >
-              ×
+              ←
             </button>
+            <span className="min-w-0 truncate text-[15px] font-semibold text-zinc-100">Chart</span>
           </div>
         ) : (
           <div
@@ -2905,12 +2877,8 @@ export default function LoungeMarketChartModal({
         </div>
 
         <div
-          className={
-            embedded
-              ? 'relative min-h-0 w-full flex-1 overflow-hidden'
-              : 'relative w-full shrink-0 overflow-hidden'
-          }
-          style={embedded ? undefined : { height: MARKET_CHART_HEIGHT_PX }}
+          className="relative w-full shrink-0 overflow-hidden"
+          style={{ height: MARKET_CHART_HEIGHT_PX }}
           data-lounge-market-chart-area
         >
           <div
@@ -3106,9 +3074,7 @@ export default function LoungeMarketChartModal({
 
   return (
     <>
-      {embedded
-        ? advancedFullscreenInner || marketChartSheetRoot
-        : createPortal(marketChartSheetRoot, document.body)}
+      {embedded ? marketChartSheetRoot : createPortal(marketChartSheetRoot, document.body)}
       {advancedFullscreenPortal}
     </>
   )

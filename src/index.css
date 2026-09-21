@@ -3354,6 +3354,15 @@ html.light [data-lounge-game-pill] .text-zinc-100 {
   font-size: 26px;
   letter-spacing: -0.04em;
 }
+/* Equal gutters between logo and FINAL/clock; text-align centers the shrink-wrapped score. */
+[data-lounge-game-pill-score-slot] {
+  flex: 1 1 0%;
+  min-width: 0;
+  text-align: center;
+}
+[data-lounge-game-pill-score-bundle] {
+  max-width: 100%;
+}
 html.light [data-lounge-game-pill-spread-cover] {
   color: #fff !important;
 }

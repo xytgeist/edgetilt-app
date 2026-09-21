@@ -115,27 +115,26 @@ function ScoreStack({ side, status, dimmed, covered }) {
   const primaryClass = `whitespace-nowrap font-bold leading-none tabular-nums drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
     pre ? '' : 'text-[26px]'
   } ${dimmed ? 'text-white/55' : 'text-white'}`
-  if (pre) {
-    return (
-      <span data-lounge-game-pill-num="fit" className="flex max-w-full min-w-0 flex-col items-center text-center">
-        <span className="flex max-w-full min-w-0 justify-center overflow-hidden">
+
+  // Shrink-wrapped bundle. Parent score slot is flex:1 + text-align:center so this
+  // sits in the midpoint between logo and FINAL without flex/grid justify games.
+  return (
+    <span data-lounge-game-pill-score-bundle className="relative inline-block max-w-full text-center align-middle">
+      {pre ? (
+        <span data-lounge-game-pill-num="fit" className="flex max-w-full justify-center overflow-hidden">
           <FitPrimary className={primaryClass} align="center">
             {primary}
           </FitPrimary>
         </span>
-      </span>
-    )
-  }
-  // Content-sized; parent absolute mid-slot centers between logo and FINAL/clock.
-  return (
-    <span className="relative inline-flex items-center justify-center">
-      <span data-lounge-game-pill-primary className={primaryClass}>
-        {primary}
-      </span>
-      {underLine ? (
+      ) : (
+        <span data-lounge-game-pill-primary className={`${primaryClass} inline-block`}>
+          {primary}
+        </span>
+      )}
+      {!pre && underLine ? (
         <span
           data-lounge-game-pill-spread-cover={covered ? '' : undefined}
-          className="absolute left-1/2 top-full z-[1] mt-0.5 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap text-center text-[11px] font-semibold leading-none tabular-nums tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]"
+          className="absolute left-1/2 top-full z-[1] mt-0.5 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap text-[11px] font-semibold leading-none tabular-nums tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]"
         >
           {covered ? (
             <span
@@ -257,41 +256,33 @@ export default function LoungeGameScorePill({
         <span data-lounge-game-pill-away aria-hidden="true" />
         <span data-lounge-game-pill-home aria-hidden="true" />
         <span data-lounge-game-pill-seam aria-hidden="true" />
-        <span className="relative z-[3] flex min-h-[5.625rem] w-full items-center gap-1.5 px-3 py-2.5">
-          <span className="relative z-[1] shrink-0">
-            <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} halo={air.awayAir} />
+        <span data-lounge-game-pill-row className="relative z-[3] flex min-h-[5.625rem] w-full items-center gap-1.5 px-3 py-2.5">
+          <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} halo={air.awayAir} />
+          <span data-lounge-game-pill-score-slot>
+            <ScoreStack
+              side={game.away}
+              status={game.status}
+              dimmed={game.status === 'post' && !awayWon && !live}
+              covered={awayCovered}
+            />
           </span>
-          <span className="relative min-h-[2.75rem] min-w-0 flex-1 self-stretch">
-            <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <ScoreStack
-                side={game.away}
-                status={game.status}
-                dimmed={game.status === 'post' && !awayWon && !live}
-                covered={awayCovered}
-              />
-            </span>
-          </span>
-          <span className="relative z-[1] flex w-[4.75rem] shrink-0 flex-col items-center px-1">
+          <span className="flex w-[4.75rem] shrink-0 flex-col items-center px-1">
             {live ? <span className="mb-0.5 h-1.5 w-1.5 rounded-full bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.9)]" /> : null}
             <span className="text-center text-[10px] font-semibold uppercase leading-tight tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]">
               {game.status_label}
             </span>
           </span>
-          <span className="relative min-h-[2.75rem] min-w-0 flex-1 self-stretch">
-            <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <ScoreStack
-                side={game.home}
-                status={game.status}
-                dimmed={game.status === 'post' && !homeWon && !live}
-                covered={homeCovered}
-              />
-            </span>
+          <span data-lounge-game-pill-score-slot>
+            <ScoreStack
+              side={game.home}
+              status={game.status}
+              dimmed={game.status === 'post' && !homeWon && !live}
+              covered={homeCovered}
+            />
           </span>
-          <span className="relative z-[1] shrink-0">
-            <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} halo={air.homeAir} />
-          </span>
+          <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} halo={air.homeAir} />
           {canOpenHub ? (
-            <ChevronRight className="relative z-[1] h-5 w-5 shrink-0 text-white/70 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" strokeWidth={2.25} />
+            <ChevronRight className="h-5 w-5 shrink-0 text-white/70 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" strokeWidth={2.25} />
           ) : null}
         </span>
         {pendingInclude ? (

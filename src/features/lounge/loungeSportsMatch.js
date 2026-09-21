@@ -1,4 +1,4 @@
-import { pickAmbiguousTeamGame, pickSpecificMatchupGame, gameHasTeam } from './loungeSportsSlateWindow.js'
+import { pickAmbiguousTeamGame, pickSpecificMatchupGame, gameHasTeam, sideAbbrev } from './loungeSportsSlateWindow.js'
 import { LOUNGE_SPORTS_GAME_PIN_MAX } from './loungeSportsGameField.js'
 
 /** NFL aliases + notable names so captions like "Jayden Daniels" still hit today's game. */
@@ -215,7 +215,7 @@ function canonicalAbbrev(token) {
 }
 
 function versusAbbrevs(original) {
-  const m = String(original || '').match(/\b([A-Z]{2,4})\s+(?:vs\.?|@|v)\s+([A-Z]{2,4})\b/)
+  const m = String(original || '').match(/\b([A-Za-z]{2,4})\s+(?:vs\.?|@|v)\s+([A-Za-z]{2,4})\b/i)
   if (!m) return null
   const a = canonicalAbbrev(m[1])
   const b = canonicalAbbrev(m[2])
@@ -255,8 +255,9 @@ function mentionedNflAbbrevs(original, haystack) {
 
 /**
  * Caption → up to `limit` games (composer suggestions). Prefer specific matchups, then one game per mentioned team.
+ * @returns {{ game: object, specific: boolean }[]}
  */
-export function matchLoungePostToSportsGames(caption, games, limit = LOUNGE_SPORTS_GAME_PIN_MAX) {
+export function matchLoungePostToSportsGamesDetailed(caption, games, limit = LOUNGE_SPORTS_GAME_PIN_MAX) {
   const cap = Math.max(1, Math.min(LOUNGE_SPORTS_GAME_PIN_MAX, Number(limit) || LOUNGE_SPORTS_GAME_PIN_MAX))
   const original = String(caption || '')
   const haystack = norm(original)
@@ -279,28 +280,47 @@ export function matchLoungePostToSportsGames(caption, games, limit = LOUNGE_SPOR
 
   const out = []
   const seen = new Set()
-  const add = (game) => {
+  const add = (game, specific) => {
     const id = String(game?.id || '')
     if (!game || !id || seen.has(id) || out.length >= cap) return
     seen.add(id)
-    out.push(game)
+    out.push({ game, specific: Boolean(specific) })
   }
 
-  for (const row of ranked.filter((r) => r.both)) add(row.game)
+  for (const row of ranked.filter((r) => r.both)) add(row.game, true)
 
   if (pair) {
     const candidates = games.filter((game) => gameHasTeam(game, pair[0]) && gameHasTeam(game, pair[1]))
-    add(pickSpecificMatchupGame(candidates, games))
+    add(pickSpecificMatchupGame(candidates, games), true)
   }
 
   for (const abbrev of mentioned) {
     if (out.length >= cap) break
-    if (out.some((g) => gameHasTeam(g, abbrev))) continue
-    add(pickAmbiguousTeamGame(abbrev, games))
+    if (out.some((row) => gameHasTeam(row.game, abbrev))) continue
+    add(pickAmbiguousTeamGame(abbrev, games), false)
   }
 
-  for (const row of ranked) add(row.game)
+  for (const row of ranked) add(row.game, row.both)
   return out
+}
+
+/**
+ * Caption → up to `limit` games (composer suggestions). Prefer specific matchups, then one game per mentioned team.
+ */
+export function matchLoungePostToSportsGames(caption, games, limit = LOUNGE_SPORTS_GAME_PIN_MAX) {
+  return matchLoungePostToSportsGamesDetailed(caption, games, limit).map((row) => row.game)
+}
+
+/** Team abbrevs on a scoreboard game (home + away). */
+export function loungeSportsGameTeamAbbrevs(game) {
+  return [sideAbbrev(game?.home), sideAbbrev(game?.away)].map((a) => String(a || '').trim().toUpperCase()).filter(Boolean)
+}
+
+/** True when two games share at least one team. */
+export function loungeSportsGamesShareTeam(a, b) {
+  const left = new Set(loungeSportsGameTeamAbbrevs(a))
+  if (!left.size) return false
+  return loungeSportsGameTeamAbbrevs(b).some((abbrev) => left.has(abbrev))
 }
 
 /**

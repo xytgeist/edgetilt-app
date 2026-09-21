@@ -63,7 +63,8 @@ export default function LoungeGameScorePillStrip({ post, className = '', variant
       )
     }, {
       pairOnIpadLandscape: !landscapeSplit && variant !== 'detail',
-      phoneSlideCap: landscapeSplit || variant === 'detail',
+      // Sports cards stay column-width (same as a lone pill). Peek still comes from measure.
+      phoneSlideCap: false,
     })
   }, [multi, carouselFullBleed, games.length, variant])
 

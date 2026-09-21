@@ -7,6 +7,10 @@ import { formatLoungeSearchError, loungeSearch, LOUNGE_SEARCH_SORT } from './lou
 import { executeLoungeCommunityPostSubmission } from './loungePostSubmitJob.js'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import { loungeSportsHubGames } from './loungeSportsSlateWindow.js'
+import {
+  LOUNGE_FEED_TITLE_BAR_ROW_CLASS,
+  LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS,
+} from './loungeFeedAvatar.js'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 
 function formatPostAge(createdAt) {
@@ -561,11 +565,18 @@ export default function LoungeGameHubModal({
       }
       style={embedded ? undefined : { zIndex: Z_APP_MODAL }}
     >
-      <div className="flex items-center gap-2 px-2 pt-[max(0.5rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-1">
+      <div
+        className={
+          embedded
+            ? // Landscape pane already clears Island via Lounge shell sat … match feed title row.
+              `flex items-center gap-2 ${LOUNGE_FEED_TITLE_BAR_ROW_CLASS}`
+            : 'flex items-center gap-2 px-2 pt-[max(0.5rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-1'
+        }
+      >
         <button
           type="button"
           onClick={() => sports.closeHub?.()}
-          className="inline-flex h-10 w-10 items-center justify-center rounded-full touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-zinc-800"
+          className={`inline-flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} items-center justify-center rounded-full touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-zinc-800`}
           aria-label="Back"
         >
           <ChevronLeft className="h-6 w-6" />

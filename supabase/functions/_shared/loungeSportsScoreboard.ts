@@ -815,7 +815,10 @@ async function fillClosingQuotesFromHistorical(
   sportKey: string,
   admin?: SupabaseClient,
 ): Promise<LoungeSportsGame[]> {
-  const missing = games.filter((g) => (g.status === 'post' || g.status === 'in') && !gameHasSpread(g))
+  const missing = games.filter((g) =>
+    (g.status === 'post' || g.status === 'in')
+    && (!gameHasSpread(g) || numOrNull(g.home?.ml) == null || numOrNull(g.away?.ml) == null)
+  )
   const stamps = [...new Set(missing.map((g) => kickoffSnapshotIso(g.commence_time)).filter(Boolean))]
   if (!stamps.length) return games
   let next = games

@@ -335,10 +335,16 @@ export default function LoungeFullScreenComposerModal({
     }
   }, [open, writeFocused, pinComposerViewport])
 
-  const dismissKeyboard = useCallback(() => {
-    blurActiveInput()
+  const blurActiveInput = useCallback(() => {
+    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur()
+    }
     setWriteFocused(false)
   }, [])
+
+  const dismissKeyboard = useCallback(() => {
+    blurActiveInput()
+  }, [blurActiveInput])
 
   const revealWriteAttachments = useCallback(() => {
     setWriteFocused(false)
@@ -417,13 +423,6 @@ export default function LoungeFullScreenComposerModal({
 
   const isSubscribersAudience = composerAudience === LOUNGE_COMPOSER_AUDIENCE_SUBS
   const isCustomGated = isSubscribersAudience || composerReplyGateEdgePro
-
-  const blurActiveInput = () => {
-    if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur()
-    }
-    setWriteFocused(false)
-  }
 
   const handleOpenSettingsFromHeader = () => {
     blurActiveInput()

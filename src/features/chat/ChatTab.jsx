@@ -982,17 +982,18 @@ export default function ChatTab({
       titleBarAlignStartWidth={listTitleBarWidth}
       titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
       titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
+      titleBarBrand={
+        paneEmbed ? null : (
+          <h1 className="font-black leading-none tracking-tight text-zinc-100 text-[1.25rem] sm:text-[1.5rem]">
+            Chat
+          </h1>
+        )
+      }
       contentClassName="px-0 pb-0"
     >
-      {/* Pinned chrome: title, search, tabs — list scrolls underneath */}
+      {/* Pinned chrome: search + tabs — list scrolls underneath */}
       <div className="shrink-0">
-      <div className="px-3 pt-4 pb-2">
-        <div className="text-2xl font-black tracking-tight text-zinc-100">Chat</div>
-        <div className="text-sm text-zinc-500 mt-0.5">Messages &amp; topic rooms</div>
-      </div>
-
-      {/* New message search + New group button */}
-      <div className="relative px-3 pb-2">
+      <div className="relative px-3 pt-3 pb-2">
         <div className="flex items-center gap-2">
           {/* DM search input */}
           <div className="flex flex-1 items-center gap-2 rounded-full border border-zinc-700/60 bg-zinc-900/80 px-3 py-2">

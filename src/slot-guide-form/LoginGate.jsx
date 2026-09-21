@@ -26,7 +26,7 @@ const SHELL_STYLE = {
   maxHeight: '100vh',
   width: '100%',
   overflow: 'hidden',
-  backgroundColor: '#030712',
+  backgroundColor: '#09090b',
 }
 
 const SCROLL_STYLE = {

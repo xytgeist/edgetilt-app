@@ -52,6 +52,8 @@ export default function ScrollLinkedEdgeTitleBarShell({
   embedded = false,
   /** Landscape Slots split: no fixed title bar. SlotsScreen owns the tools-column chrome. */
   slotsToolsLogo = false,
+  /** Replace the EDGE wordmark (e.g. Chat / Settings-style screen title). */
+  titleBarBrand = null,
   titleBarAlignStartWidth = null,
   fillParentHeight = false,
 }) {
@@ -251,7 +253,13 @@ export default function ScrollLinkedEdgeTitleBarShell({
         >
           <PwaInstallTitleBarRow
             rowClassName={LOUNGE_FEED_TITLE_BAR_ROW_CLASS}
-            logo={<EdgeLogoWithEasterEgg behavior="goLounge" className={logoClassName} />}
+            logo={
+              titleBarBrand != null ? (
+                titleBarBrand
+              ) : (
+                <EdgeLogoWithEasterEgg behavior="goLounge" className={logoClassName} />
+              )
+            }
             centerSlot={titleBarCenterSlot}
             navSlot={
               <>

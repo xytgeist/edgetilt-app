@@ -11,7 +11,7 @@ body {
 html,
 body,
 #root {
-  background-color: #030712;
+  background-color: #09090b;
 }
 
 html.light,
@@ -104,9 +104,9 @@ html.light [data-chat-feature] [data-chat-lounge-post-embed] {
   background-color: rgba(24, 24, 27, 0.92);
 }
 
-/* Edge scroll shell: dark = gray-950 canvas (#030712); light = remapped zinc-950 (#fafafa) */
+/* Edge scroll shell: dark = zinc-950 canvas (#09090b); light = remapped zinc-950 (#fafafa) */
 html:not(.light) [data-edge-scroll-shell] {
-  background-color: #030712 !important;
+  background-color: #09090b !important;
 }
 
 /* Status-bar plate: fades to opaque as the title hides. Cinema-solid in both themes. */
@@ -114,7 +114,7 @@ html:not(.light) [data-edge-scroll-shell] {
   background-color: #09090b;
 }
 html:not(.light) [data-edge-status-bar-plate] {
-  background-color: #030712;
+  background-color: #09090b;
 }
 html.light [data-edge-status-bar-plate] {
   background-color: #fafafa;
@@ -162,7 +162,7 @@ html.light [data-edge-status-bar-plate] {
 }
 
 body {
-  background-color: #030712;
+  background-color: #09090b;
   color: var(--color-zinc-50, white);
 }
 
@@ -172,7 +172,7 @@ html.light body {
 
 #root {
   min-height: 100dvh;
-  background-color: #030712;
+  background-color: #09090b;
 }
 
 /* slot-guide-form entry: fixed full-viewport shell - no dvh/JS height (file picker breaks both on Chrome/Windows) */
@@ -202,7 +202,7 @@ html:has([data-slot-guide-form]) .slot-guide-form-shell {
   max-height: 100vh;
   width: 100%;
   overflow: hidden;
-  background-color: #030712;
+  background-color: #09090b;
 }
 
 html:has([data-slot-guide-form]) .slot-guide-form-scroll {

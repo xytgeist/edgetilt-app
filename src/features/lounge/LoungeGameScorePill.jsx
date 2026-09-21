@@ -255,47 +255,51 @@ export default function LoungeGameScorePill({
         <span data-lounge-game-pill-away aria-hidden="true" />
         <span data-lounge-game-pill-home aria-hidden="true" />
         <span data-lounge-game-pill-seam aria-hidden="true" />
-        <span className="relative z-[3] flex flex-col">
-          {pendingInclude ? (
+        <span className="relative z-[3] flex min-h-[5.625rem] items-center gap-2 px-3 py-2.5">
+          <span className="flex min-w-0 flex-1 items-center gap-1.5">
+            <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} halo={air.awayAir} />
+            <ScoreStack
+              side={game.away}
+              status={game.status}
+              align="end"
+              dimmed={game.status === 'post' && !awayWon && !live}
+              covered={awayCovered}
+            />
+          </span>
+          <span className="flex w-[4.75rem] shrink-0 flex-col items-center px-1">
+            {live ? <span className="mb-0.5 h-1.5 w-1.5 rounded-full bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.9)]" /> : null}
+            <span className="text-center text-[10px] font-semibold uppercase leading-tight tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]">
+              {game.status_label}
+            </span>
+          </span>
+          <span className="flex min-w-0 flex-1 items-center gap-1.5">
+            <ScoreStack
+              side={game.home}
+              status={game.status}
+              align="start"
+              dimmed={game.status === 'post' && !homeWon && !live}
+              covered={homeCovered}
+            />
+            <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} halo={air.homeAir} />
+          </span>
+          {canOpenHub ? (
+            <ChevronRight className="h-5 w-5 shrink-0 text-white/70 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" strokeWidth={2.25} />
+          ) : null}
+        </span>
+        {pendingInclude ? (
+          <span
+            data-lounge-game-pill-include-overlay
+            className="pointer-events-none absolute inset-0 z-[4] flex flex-col items-center bg-black/45 px-10 pt-2"
+            aria-hidden="true"
+          >
             <span
               data-lounge-game-pill-include-hint
-              className="px-10 pb-0.5 pt-1.5 text-center text-[11px] font-semibold tracking-wide text-white/90 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]"
+              className="text-center text-[11px] font-semibold tracking-wide text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)]"
             >
               Tap to include
             </span>
-          ) : null}
-          <span className="flex min-h-[5.625rem] items-center gap-2 px-3 py-2.5">
-            <span className="flex min-w-0 flex-1 items-center gap-1.5">
-              <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} halo={air.awayAir} />
-              <ScoreStack
-                side={game.away}
-                status={game.status}
-                align="end"
-                dimmed={game.status === 'post' && !awayWon && !live}
-                covered={awayCovered}
-              />
-            </span>
-            <span className="flex w-[4.75rem] shrink-0 flex-col items-center px-1">
-              {live ? <span className="mb-0.5 h-1.5 w-1.5 rounded-full bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.9)]" /> : null}
-              <span className="text-center text-[10px] font-semibold uppercase leading-tight tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]">
-                {game.status_label}
-              </span>
-            </span>
-            <span className="flex min-w-0 flex-1 items-center gap-1.5">
-              <ScoreStack
-                side={game.home}
-                status={game.status}
-                align="start"
-                dimmed={game.status === 'post' && !homeWon && !live}
-                covered={homeCovered}
-              />
-              <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} halo={air.homeAir} />
-            </span>
-            {canOpenHub ? (
-              <ChevronRight className="h-5 w-5 shrink-0 text-white/70 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" strokeWidth={2.25} />
-            ) : null}
           </span>
-        </span>
+        ) : null}
       </Tag>
       {dismissible ? (
         <button

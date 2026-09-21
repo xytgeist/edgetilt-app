@@ -37,6 +37,48 @@ export async function loungeSportsScoreboard(supabase, body = {}) {
   return data
 }
 
+export const LOUNGE_SPORTS_SCOREBOARD_CACHE_KEY = 'lvsp:loungeSportsScoreboard:v1'
+const LOUNGE_SPORTS_SCOREBOARD_CACHE_MAX_MS = 24 * 60 * 60 * 1000
+
+let scoreboardMemory = { games: null, fetchedAt: 0 }
+
+function cacheStillFresh(fetchedAt) {
+  const at = Number(fetchedAt)
+  return Number.isFinite(at) && at > 0 && Date.now() - at < LOUNGE_SPORTS_SCOREBOARD_CACHE_MAX_MS
+}
+
+/** Last successful slate. Memory first, then localStorage. Null if missing or older than 24h. */
+export function readLoungeSportsScoreboardCache() {
+  if (Array.isArray(scoreboardMemory.games) && cacheStillFresh(scoreboardMemory.fetchedAt)) {
+    return scoreboardMemory.games
+  }
+  if (typeof window === 'undefined') return null
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(LOUNGE_SPORTS_SCOREBOARD_CACHE_KEY) || 'null')
+    const games = parsed?.games
+    if (!Array.isArray(games) || !games.length || !cacheStillFresh(parsed?.fetched_at)) return null
+    scoreboardMemory = { games, fetchedAt: Number(parsed.fetched_at) }
+    return games
+  } catch {
+    return null
+  }
+}
+
+export function writeLoungeSportsScoreboardCache(games) {
+  if (!Array.isArray(games) || !games.length) return
+  const fetchedAt = Date.now()
+  scoreboardMemory = { games, fetchedAt }
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(
+      LOUNGE_SPORTS_SCOREBOARD_CACHE_KEY,
+      JSON.stringify({ fetched_at: fetchedAt, games }),
+    )
+  } catch {
+    /* quota / private mode */
+  }
+}
+
 /**
  * Hub-open detail: live clock/down, multi-book odds, PBP, player stats.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase

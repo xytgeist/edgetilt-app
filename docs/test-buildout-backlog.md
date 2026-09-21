@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-20:** **Lounge scoreboard cache (Mac).** Last sports slate sits in memory + **`lvsp:loungeSportsScoreboard:v1`** so in-post pills paint immediately, then refresh. 24h max age; failed fetches keep the last good slate. Frontend **`1.4.381`**.
 - **2026-09-20:** **Lounge pill logos only (Mac).** In-post game pill dropped team abbrev labels. Logo + score is enough. Frontend **`1.4.380`**.
 - **2026-09-20:** **Lounge game pill art (Mac).** Pill is 2.5x tall with local NFL helmets/logos (`public/sports/nfl/`), helmet left of the abbrev, and a diagonal team-color fade into a blurred seam. Frontend **`1.4.377`**.
 - **2026-09-20:** **Lounge live game hub (Mac).** Pill hub now has clock / down-distance / yard, a simple field marker (no licensed Next Gen faces), Top / Latest / Stats / Plays / Chat, multi-book odds, PBP + player stats when Rundown allows, and **Talk about the game** as a Lounge post. Edge **`lounge-sports-scoreboard`** detail on **test**. Frontend **`1.4.376`**.

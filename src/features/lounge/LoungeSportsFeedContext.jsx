@@ -1,5 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
-import { loungeSportsScoreboard } from '../../utils/loungeSportsApi.js'
+import {
+  loungeSportsScoreboard,
+  readLoungeSportsScoreboardCache,
+  writeLoungeSportsScoreboardCache,
+} from '../../utils/loungeSportsApi.js'
 import { enrichLoungeSportsGame, matchLoungePostToSportsGame, loungeSportsMatchTextFromPost } from './loungeSportsMatch.js'
 
 const LoungeSportsFeedContext = createContext(null)
@@ -19,11 +23,18 @@ function sameHubGame(a, b) {
   )
 }
 
+function gamesFromCache() {
+  const cached = readLoungeSportsScoreboardCache()
+  if (!Array.isArray(cached) || !cached.length) return []
+  return cached.map(enrichLoungeSportsGame)
+}
+
 /**
  * Live/recent scoreboard for in-post game pills.
+ * Paints the last slate immediately (memory + localStorage), then refreshes.
  */
 export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, children }) {
-  const [games, setGames] = useState([])
+  const [games, setGames] = useState(gamesFromCache)
   const [hubGame, setHubGame] = useState(null)
   const inflightRef = useRef(false)
   const gamesRef = useRef(games)
@@ -35,7 +46,9 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
     try {
       const data = await loungeSportsScoreboard(supabaseClient)
       if (data?.error || !Array.isArray(data?.games)) return
-      setGames(data.games.map(enrichLoungeSportsGame))
+      const next = data.games.map(enrichLoungeSportsGame)
+      setGames(next)
+      writeLoungeSportsScoreboardCache(next)
     } catch (err) {
       console.warn('[lounge] sports scoreboard:', err)
     } finally {

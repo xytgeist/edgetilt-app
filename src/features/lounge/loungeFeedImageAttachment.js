@@ -111,12 +111,14 @@ export function loungeFeedCarouselMeasureLayout(scroller, fullBleed, opts = {}) 
     : Math.max(96, contentWidthPx - peekPx - slideGapPx)
 
   // Wide landscape Lounge split / detail: keep phone-like card width so the next slide peeks.
+  // Prefer ~72% of the column (clear peek) and never exceed 18rem.
   if (opts.phoneSlideCap) {
-    const capPx =
+    const hardCapPx =
       typeof opts.phoneSlideCap === 'number' && Number.isFinite(opts.phoneSlideCap)
         ? opts.phoneSlideCap
-        : 20 * 16
-    firstSlideMaxWidthPx = Math.min(firstSlideMaxWidthPx, Math.max(96, capPx))
+        : 18 * 16
+    const softCapPx = Math.max(96, contentWidthPx * 0.72)
+    firstSlideMaxWidthPx = Math.min(firstSlideMaxWidthPx, softCapPx, Math.max(96, hardCapPx))
   }
 
   return { maxRowPx, contentWidthPx, firstSlideMaxWidthPx }

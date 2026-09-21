@@ -298,6 +298,49 @@ function scoreForName(scores: ScoreEvent['scores'], name: string): number | null
   return parseScore(row?.score)
 }
 
+const NFL_ODDS_NAME_ABBREV: Record<string, string> = {
+  'arizona cardinals': 'ARI', cardinals: 'ARI',
+  'atlanta falcons': 'ATL', falcons: 'ATL',
+  'baltimore ravens': 'BAL', ravens: 'BAL',
+  'buffalo bills': 'BUF', bills: 'BUF',
+  'carolina panthers': 'CAR', panthers: 'CAR',
+  'chicago bears': 'CHI', bears: 'CHI',
+  'cincinnati bengals': 'CIN', bengals: 'CIN',
+  'cleveland browns': 'CLE', browns: 'CLE',
+  'dallas cowboys': 'DAL', cowboys: 'DAL',
+  'denver broncos': 'DEN', broncos: 'DEN',
+  'detroit lions': 'DET', lions: 'DET',
+  'green bay packers': 'GB', packers: 'GB',
+  'houston texans': 'HOU', texans: 'HOU',
+  'indianapolis colts': 'IND', colts: 'IND',
+  'jacksonville jaguars': 'JAX', jaguars: 'JAX', jags: 'JAX',
+  'kansas city chiefs': 'KC', chiefs: 'KC',
+  'los angeles chargers': 'LAC', chargers: 'LAC',
+  'los angeles rams': 'LAR', rams: 'LAR',
+  'las vegas raiders': 'LV', raiders: 'LV',
+  'miami dolphins': 'MIA', dolphins: 'MIA',
+  'minnesota vikings': 'MIN', vikings: 'MIN',
+  'new england patriots': 'NE', patriots: 'NE', pats: 'NE',
+  'new orleans saints': 'NO', saints: 'NO',
+  'new york giants': 'NYG', giants: 'NYG',
+  'new york jets': 'NYJ', jets: 'NYJ',
+  'philadelphia eagles': 'PHI', eagles: 'PHI',
+  'pittsburgh steelers': 'PIT', steelers: 'PIT',
+  'san francisco 49ers': 'SF', '49ers': 'SF', niners: 'SF',
+  'seattle seahawks': 'SEA', seahawks: 'SEA',
+  'tampa bay buccaneers': 'TB', buccaneers: 'TB', bucs: 'TB',
+  'tennessee titans': 'TEN', titans: 'TEN',
+  'washington commanders': 'WAS', commanders: 'WAS', washington: 'WAS',
+}
+
+function nflAbbrevFromOddsName(name: string): string {
+  const n = String(name || '').trim().toLowerCase()
+  if (NFL_ODDS_NAME_ABBREV[n]) return NFL_ODDS_NAME_ABBREV[n]
+  const last = n.split(/\s+/).pop() || ''
+  if (NFL_ODDS_NAME_ABBREV[last]) return NFL_ODDS_NAME_ABBREV[last]
+  return (last.slice(0, 3) || n.slice(0, 3)).toUpperCase()
+}
+
 function gameFromOdds(sportKey: string, sportLabel: string, logoLeague: string, ev: ScoreEvent): LoungeSportsGame | null {
   const homeName = String(ev.home_team || '').trim()
   const awayName = String(ev.away_team || '').trim()
@@ -308,20 +351,22 @@ function gameFromOdds(sportKey: string, sportLabel: string, logoLeague: string, 
   const awayScore = scoreForName(ev.scores, awayName)
   const kicked = commence ? Date.parse(commence) <= Date.now() : false
   const status: LoungeSportsGame['status'] = completed ? 'post' : kicked && (homeScore != null || awayScore != null) ? 'in' : 'pre'
-  const homeAbbrev = homeName.split(/\s+/).pop() || homeName
-  const awayAbbrev = awayName.split(/\s+/).pop() || awayName
+  const homeAbbrev = sportKey.includes('nfl') ? nflAbbrevFromOddsName(homeName) : (homeName.split(/\s+/).pop() || homeName).slice(0, 3).toUpperCase()
+  const awayAbbrev = sportKey.includes('nfl') ? nflAbbrevFromOddsName(awayName) : (awayName.split(/\s+/).pop() || awayName).slice(0, 3).toUpperCase()
+  const homeMascot = homeName.split(/\s+/).pop() || homeName
+  const awayMascot = awayName.split(/\s+/).pop() || awayName
   const home: LoungeSportsGameSide = {
     name: homeName,
-    mascot: homeAbbrev,
-    abbrev: homeAbbrev.slice(0, 3).toUpperCase(),
+    mascot: homeMascot,
+    abbrev: homeAbbrev,
     logo: espnLogo(logoLeague, homeAbbrev),
     score: homeScore,
     linescores: [],
   }
   const away: LoungeSportsGameSide = {
     name: awayName,
-    mascot: awayAbbrev,
-    abbrev: awayAbbrev.slice(0, 3).toUpperCase(),
+    mascot: awayMascot,
+    abbrev: awayAbbrev,
     logo: espnLogo(logoLeague, awayAbbrev),
     score: awayScore,
     linescores: [],
@@ -340,35 +385,80 @@ function gameFromOdds(sportKey: string, sportLabel: string, logoLeague: string, 
   }
 }
 
-function slateDates(): string[] {
+function addDaysYmd(ymd: string, days: number): string {
+  const [y, m, d] = ymd.split('-').map(Number)
+  const ms = Date.UTC(y, m - 1, d, 20, 0, 0) + days * 86_400_000
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(ms))
+}
+
+function ptWeekdaySun0(ms = Date.now()): number {
+  const wd = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    weekday: 'short',
+  }).format(new Date(ms))
+  const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }
+  return map[wd] ?? 0
+}
+
+function otherSportSlateDates(): string[] {
   const today = ptTodayDate()
   const yest = ptDateFromIso(new Date(Date.now() - 36 * 3600 * 1000).toISOString())
   return yest === today ? [today] : [yest, today]
 }
 
+/** Thursday-Monday of the current NFL week. Rolls at Tuesday 00:00 PT after MNF. */
+export function nflSlatePtDates(now = Date.now()): string[] {
+  const today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(now))
+  const dow = ptWeekdaySun0(now)
+  const rolled = dow === 2 || dow === 3
+  const thursday = rolled
+    ? addDaysYmd(today, dow === 2 ? 2 : 1)
+    : addDaysYmd(today, -((dow - 4 + 7) % 7))
+  return [0, 1, 2, 3, 4].map((i) => addDaysYmd(thursday, i))
+}
+
+function gameOnSlate(game: LoungeSportsGame, dates: string[]): boolean {
+  if (game.status === 'in') return true
+  const day = ptDateFromIso(game.commence_time)
+  return Boolean(day) && dates.includes(day)
+}
+
 export async function buildLoungeSportsScoreboard(): Promise<{ games: LoungeSportsGame[]; source: string }> {
-  const dates = slateDates()
+  const nflDates = nflSlatePtDates()
+  const otherDates = otherSportSlateDates()
   const byId = new Map<string, LoungeSportsGame>()
   let source = 'none'
 
   for (const sport of LOUNGE_SPORTS_SCOREBOARD_SPORTS) {
-    for (const date of dates) {
-      const events = await listRundownDayEvents(sport.key, date).catch(() => [])
+    const dates = sport.key === 'americanfootball_nfl' ? nflDates : otherDates
+    const batches = await Promise.all(dates.map((date) => listRundownDayEvents(sport.key, date).catch(() => [])))
+    for (const events of batches) {
       if (events.length) source = source === 'none' ? 'rundown' : source
       for (const ev of events) {
         const game = gameFromRundown(sport.key, sport.label, sport.logoLeague, ev)
-        if (game) byId.set(game.id, game)
+        if (game && gameOnSlate(game, dates)) byId.set(game.id, game)
       }
     }
   }
 
-  if (![...byId.values()].some((g) => g.sport_key === 'americanfootball_nfl')) {
+  const hasNfl = [...byId.values()].some((g) => g.sport_key === 'americanfootball_nfl')
+  if (!hasNfl) {
     try {
       const nfl = await fetchSportScores('americanfootball_nfl')
       source = byId.size ? `${source}+odds` : 'odds'
       for (const ev of nfl) {
         const game = gameFromOdds('americanfootball_nfl', 'NFL', 'nfl', ev)
-        if (game && !byId.has(game.id)) byId.set(game.id, game)
+        if (game && gameOnSlate(game, nflDates) && !byId.has(game.id)) byId.set(game.id, game)
       }
     } catch {
       /* Odds fallback is optional */
@@ -376,7 +466,7 @@ export async function buildLoungeSportsScoreboard(): Promise<{ games: LoungeSpor
   }
 
   const games = [...byId.values()].sort((a, b) => {
-    const rank = { in: 0, pre: 1, post: 2 }
+    const rank = { in: 0, post: 1, pre: 2 }
     const d = rank[a.status] - rank[b.status]
     if (d) return d
     return String(a.commence_time).localeCompare(String(b.commence_time))

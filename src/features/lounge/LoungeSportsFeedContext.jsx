@@ -5,6 +5,7 @@ import {
   writeLoungeSportsScoreboardCache,
 } from '../../utils/loungeSportsApi.js'
 import { enrichLoungeSportsGame, matchLoungePostToSportsGame, loungeSportsMatchTextFromPost } from './loungeSportsMatch.js'
+import { isLoungeSportsCurrentSlateGame } from './loungeSportsSlateWindow.js'
 
 const LoungeSportsFeedContext = createContext(null)
 
@@ -26,7 +27,7 @@ function sameHubGame(a, b) {
 function gamesFromCache() {
   const cached = readLoungeSportsScoreboardCache()
   if (!Array.isArray(cached) || !cached.length) return []
-  return cached.map(enrichLoungeSportsGame)
+  return cached.map(enrichLoungeSportsGame).filter(isLoungeSportsCurrentSlateGame)
 }
 
 /**
@@ -46,7 +47,7 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
     try {
       const data = await loungeSportsScoreboard(supabaseClient)
       if (data?.error || !Array.isArray(data?.games)) return
-      const next = data.games.map(enrichLoungeSportsGame)
+      const next = data.games.map(enrichLoungeSportsGame).filter(isLoungeSportsCurrentSlateGame)
       setGames(next)
       writeLoungeSportsScoreboardCache(next)
     } catch (err) {

@@ -49,10 +49,17 @@ function norm(value) {
 
 function catalogRowForSide(side, sportKey) {
   if (!String(sportKey || '').includes('nfl')) return null
+  const hay = ` ${norm(`${side?.name || ''} ${side?.mascot || ''}`)} `
+  const byName = NFL_TEAM_CATALOG.find((row) =>
+    row.names.some((n) => {
+      const p = norm(n)
+      return p.length >= 4 && hay.includes(` ${p} `)
+    }),
+  )
+  if (byName) return byName
   const abbrev = String(side?.abbrev || '').trim().toUpperCase()
-  if (CATALOG_BY_ABBREV.has(abbrev)) return CATALOG_BY_ABBREV.get(abbrev)
-  const hay = norm(`${side?.name || ''} ${side?.mascot || ''}`)
-  return NFL_TEAM_CATALOG.find((row) => row.names.some((n) => hay.includes(norm(n)))) || null
+  if (abbrev.length >= 2 && CATALOG_BY_ABBREV.has(abbrev)) return CATALOG_BY_ABBREV.get(abbrev)
+  return null
 }
 
 function hexToRgb(hex) {
@@ -129,7 +136,7 @@ function escapeRe(value) {
 function hasPhrase(haystack, phrase) {
   const p = norm(phrase)
   if (p.length < 3) return false
-  return haystack.includes(p)
+  return new RegExp(`(?:^| )${escapeRe(p)}(?: |$)`).test(haystack)
 }
 
 function hasAbbrev(original, abbrev) {
@@ -159,7 +166,7 @@ function sideHits(original, haystack, side, sportKey) {
 
 /**
  * Pick the live/recent game a Lounge caption is talking about.
- * Prefers both teams, then a unique player/mascot hit.
+ * Live and this week's finals beat next week's preview, even on a one-team mention.
  */
 export function matchLoungePostToSportsGame(caption, games) {
   const original = String(caption || '')
@@ -177,14 +184,16 @@ export function matchLoungePostToSportsGame(caption, games) {
   }
   if (!ranked.length) return null
   ranked.sort((a, b) => {
-    if (a.both !== b.both) return a.both ? -1 : 1
-    if (b.score !== a.score) return b.score - a.score
     const rank = { in: 0, post: 1, pre: 2 }
-    return (rank[a.game.status] ?? 3) - (rank[b.game.status] ?? 3)
+    const ra = rank[a.game.status] ?? 3
+    const rb = rank[b.game.status] ?? 3
+    if (ra !== rb) return ra - rb
+    if (a.both !== b.both) return a.both ? -1 : 1
+    return b.score - a.score
   })
   const top = ranked[0]
   const twin = ranked[1]
-  if (twin && !top.both && twin.score === top.score) return null
+  if (twin && !top.both && twin.score === top.score && twin.game.status === top.game.status) return null
   return top.game
 }
 

@@ -1148,7 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- **2026-09-20:** **Lounge hub logos (Mac).** Game hub marks are the transparent logos, no zinc circle plate. Frontend **`1.4.378`**.
+- **2026-09-20:** **Lounge pill logos + gridiron (Mac).** Pill marks are the clean local logos (cartoon helmets pulled). Silver gridiron texture sits under the team-color wash. Frontend **`1.4.379`**.
 - **2026-09-20:** **Lounge game pill art (Mac).** Pill is 2.5x tall with local NFL helmets/logos (`public/sports/nfl/`), helmet left of the abbrev, and a diagonal team-color fade into a blurred seam. Frontend **`1.4.377`**.
 - **2026-09-20:** **Lounge live game hub (Mac).** Pill hub now has clock / down-distance / yard, a simple field marker (no licensed Next Gen faces), Top / Latest / Stats / Plays / Chat, multi-book odds, PBP + player stats when Rundown allows, and **Talk about the game** as a Lounge post. Edge **`lounge-sports-scoreboard`** detail on **test**. Frontend **`1.4.376`**.
 - **2026-09-20:** **Lounge game pill (Mac).** In-post score chip opens a game hub (scoreboard, period box, Lounge Top/Latest). TheRundown + NFL player aliases so a Jayden Daniels caption still hits WAS-DAL. Edge **`lounge-sports-scoreboard`** on **test**. Frontend **`1.4.375`**.

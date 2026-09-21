@@ -8,8 +8,8 @@ function scoreLabel(side, status) {
   return String(side.score)
 }
 
-function HelmetMark({ side, flip, dimmed }) {
-  const src = side?.helmet || side?.logo
+function TeamMark({ side, dimmed }) {
+  const src = side?.logo
   const letter = String(side?.abbrev || side?.mascot || '?').slice(0, 1)
   return (
     <span className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center sm:h-11 sm:w-11">
@@ -17,7 +17,7 @@ function HelmetMark({ side, flip, dimmed }) {
         <img
           src={src}
           alt=""
-          className={`h-full w-full object-contain drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)] ${flip ? '-scale-x-100' : ''} ${dimmed ? 'opacity-55' : ''}`}
+          className={`h-full w-full object-contain drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)] ${dimmed ? 'opacity-55' : ''}`}
           loading="lazy"
           decoding="async"
           onError={(ev) => {
@@ -57,12 +57,13 @@ export default function LoungeGameScorePill({ post, className = '' }) {
       className={`${LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS} ${className} relative mt-2 min-h-[5.625rem] overflow-hidden rounded-2xl text-left text-white touch-manipulation [-webkit-tap-highlight-color:transparent] active:opacity-90`.trim()}
       aria-label={`${game.away?.abbrev} ${scoreLabel(game.away, game.status)} ${game.home?.abbrev} ${scoreLabel(game.home, game.status)} ${game.status_label}`}
     >
+      <span data-lounge-game-pill-field aria-hidden="true" />
       <span data-lounge-game-pill-away aria-hidden="true" />
       <span data-lounge-game-pill-home aria-hidden="true" />
       <span data-lounge-game-pill-seam aria-hidden="true" />
-      <span className="relative z-[2] flex min-h-[5.625rem] items-center gap-2 px-3 py-2.5">
+      <span className="relative z-[3] flex min-h-[5.625rem] items-center gap-2 px-3 py-2.5">
         <span className="flex min-w-0 flex-1 items-center gap-1.5">
-          <HelmetMark side={game.away} dimmed={game.status === 'post' && !awayWon} />
+          <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} />
           <span
             className={`truncate text-[14px] font-bold uppercase tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
               awayWon || live || game.status === 'pre' ? 'text-white' : 'text-white/55'
@@ -93,7 +94,7 @@ export default function LoungeGameScorePill({ post, className = '' }) {
             {scoreLabel(game.home, game.status)}
           </span>
           <span className="ml-auto flex min-w-0 items-center gap-1.5">
-            <HelmetMark side={game.home} flip dimmed={game.status === 'post' && !homeWon} />
+            <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} />
             <span
               className={`min-w-0 truncate text-[14px] font-bold uppercase tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
                 homeWon || live || game.status === 'pre' ? 'text-white' : 'text-white/55'

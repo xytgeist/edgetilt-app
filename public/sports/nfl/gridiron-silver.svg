@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="220" viewBox="0 0 640 220" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="steel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d8d8e0"/>
+      <stop offset="0.28" stop-color="#9c9ca6"/>
+      <stop offset="0.55" stop-color="#6f6f79"/>
+      <stop offset="0.78" stop-color="#8f8f99"/>
+      <stop offset="1" stop-color="#c4c4cc"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="0.45" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#000000" stop-opacity="0.18"/>
+    </linearGradient>
+    <filter id="pebble" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency="1.15 0.95" numOctaves="4" seed="11" stitchTiles="stitch"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.72  0 0 0 0 0.72  0 0 0 0 0.76  0 0 0 0.42 0"/>
+    </filter>
+  </defs>
+  <rect width="640" height="220" fill="url(#steel)"/>
+  <rect width="640" height="220" filter="url(#pebble)" opacity="0.62"/>
+  <rect width="640" height="220" fill="url(#sheen)"/>
+  <g fill="none" stroke="#f4f4f8" stroke-linecap="square">
+    <g stroke-width="2" stroke-opacity="0.22">
+      <path d="M40 0v220M80 0v220M160 0v220M200 0v220M280 0v220M320 0v220M400 0v220M440 0v220M520 0v220M560 0v220M600 0v220"/>
+    </g>
+    <g stroke-width="3.5" stroke-opacity="0.38">
+      <path d="M120 0v220M240 0v220M360 0v220M480 0v220"/>
+    </g>
+    <g stroke-width="2" stroke-opacity="0.2">
+      <path d="M28 58h24M68 58h24M148 58h24M188 58h24M268 58h24M308 58h24M388 58h24M428 58h24M508 58h24M548 58h24M588 58h24"/>
+      <path d="M28 162h24M68 162h24M148 162h24M188 162h24M268 162h24M308 162h24M388 162h24M428 162h24M508 162h24M548 162h24M588 162h24"/>
+    </g>
+  </g>
+</svg>

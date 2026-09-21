@@ -102,7 +102,6 @@ export function enrichLoungeSportsGame(game) {
       ...side,
       abbrev: row.abbrev,
       logo: `/sports/nfl/logos/${row.abbrev}.png`,
-      helmet: `/sports/nfl/helmets/${row.abbrev}.png`,
       color: row.color,
       color2: row.color2,
     }

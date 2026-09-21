@@ -127,7 +127,7 @@ function ScoreStack({ side, status, dimmed, covered }) {
     dimmed ? 'text-white/55' : 'text-white'
   }`
   const satLineClass =
-    'flex items-center justify-center gap-1 whitespace-nowrap text-[11px] font-semibold leading-none tabular-nums tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]'
+    'flex items-center justify-center gap-1 whitespace-nowrap text-[9px] font-semibold leading-none tabular-nums tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]'
   // Pre: primary is the spread. Live/final: spread above score, ML below.
   return (
     <span data-lounge-game-pill-num="fit" className="flex w-full min-w-0 flex-col items-center justify-center gap-0.5">

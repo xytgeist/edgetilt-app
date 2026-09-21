@@ -3963,10 +3963,35 @@ html.light [data-lounge-landscape-pane],
 html.light [data-lounge-detail-in-pane] {
   background-color: #fafafa;
 }
+/* Chat landscape: inbox list + open thread (same 50/50 as Lounge engagement). */
+[data-chat-feature][data-chat-landscape-split] {
+  --chat-landscape-list-col: calc(50vw - var(--edge-ipad-rail, 0px));
+  --chat-landscape-pane-col: 50vw;
+}
+[data-chat-landscape-list] {
+  width: var(--chat-landscape-list-col);
+  flex: 0 0 var(--chat-landscape-list-col);
+  max-width: none;
+}
+[data-chat-landscape-pane] {
+  width: var(--chat-landscape-pane-col);
+  flex: 0 0 var(--chat-landscape-pane-col);
+  max-width: none;
+}
+html.light [data-chat-landscape-list] {
+  border-right-color: #e4e4e7;
+}
+html.light [data-chat-landscape-pane] {
+  background-color: #fafafa;
+}
 @media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
   [data-lounge-feed-root][data-lounge-landscape-split] {
     --lounge-landscape-feed-col: calc(50vw - var(--edge-ipad-rail, 0px));
     --lounge-landscape-pane-col: 50vw;
+  }
+  [data-chat-feature][data-chat-landscape-split] {
+    --chat-landscape-list-col: calc(50vw - var(--edge-ipad-rail, 0px));
+    --chat-landscape-pane-col: 50vw;
   }
 }
 /* Phone landscape: tighter tool cards so the short height still fits. */

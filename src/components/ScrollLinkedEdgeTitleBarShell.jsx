@@ -25,6 +25,11 @@ import EdgeStatusBarScrollPlate from './EdgeStatusBarScrollPlate.jsx'
  *   Put your own `overflow-y-auto` region inside children (e.g. chat inbox list under sticky tabs).
  * @param {boolean} [stableLayoutViewport=false] - pin height to layout `100vh` / `innerHeight` instead of `dvh`.
  *   Use on admin surfaces with native file pickers (Chrome/Windows can shrink `dvh` to ~half).
+ * @param {string | null} [titleBarAlignStartWidth=null] - CSS width for a left-aligned fixed title bar
+ *   (e.g. `calc(100vw - var(--edge-ipad-rail, 0px))` or `var(--chat-landscape-list-col)`).
+ *   When set, the bar sits at `left: var(--edge-ipad-rail, 0px)` instead of centered.
+ * @param {boolean} [fillParentHeight=false] - use `h-full` of the parent instead of `h-dvh`
+ *   (landscape list column inside a split shell).
  */
 const defaultShellContentClassName = 'px-3 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
 
@@ -47,9 +52,17 @@ export default function ScrollLinkedEdgeTitleBarShell({
   embedded = false,
   /** Landscape Slots split: no fixed title bar. SlotsScreen owns the tools-column chrome. */
   slotsToolsLogo = false,
+  titleBarAlignStartWidth = null,
+  fillParentHeight = false,
 }) {
-  const colMax = fullWidth ? 'max-w-none' : 'max-w-2xl'
-  const heightClass = stableLayoutViewport ? 'h-[100vh] max-h-[100vh]' : 'h-dvh max-h-dvh'
+  const colMax = fullWidth || titleBarAlignStartWidth ? 'max-w-none' : 'max-w-2xl'
+  const heightClass = fillParentHeight
+    ? 'h-full max-h-full'
+    : stableLayoutViewport
+      ? 'h-[100vh] max-h-[100vh]'
+      : 'h-dvh max-h-dvh'
+  const alignStartWidth = titleBarAlignStartWidth ? String(titleBarAlignStartWidth) : ''
+  const titleBarAlignStart = Boolean(alignStartWidth)
   const internalScrollRef = useRef(null)
   const feedScrollRef = scrollRootRef ?? internalScrollRef
   const titleBarRef = useRef(null)
@@ -212,10 +225,23 @@ export default function ScrollLinkedEdgeTitleBarShell({
         <div
           ref={titleBarRef}
           data-edge-scroll-shell
-          className={`fixed left-1/2 z-[50] w-full ${colMax} border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform`}
+          className={
+            titleBarAlignStart
+              ? `fixed z-[50] border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform`
+              : `fixed left-1/2 z-[50] w-full ${colMax} border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform`
+          }
           style={{
             top: feedViewportTopPx,
-            transform: `translate3d(-50%, ${loungeTitleBarHideTranslateYPx(titleReveal, titleBarHeight, feedViewportTopPx)}px, 0)`,
+            ...(titleBarAlignStart
+              ? {
+                  left: 'var(--edge-ipad-rail, 0px)',
+                  width: alignStartWidth,
+                  maxWidth: 'none',
+                  transform: `translate3d(0, ${loungeTitleBarHideTranslateYPx(titleReveal, titleBarHeight, feedViewportTopPx)}px, 0)`,
+                }
+              : {
+                  transform: `translate3d(-50%, ${loungeTitleBarHideTranslateYPx(titleReveal, titleBarHeight, feedViewportTopPx)}px, 0)`,
+                }),
             pointerEvents: titleReveal > 0.12 ? 'auto' : 'none',
           }}
         >

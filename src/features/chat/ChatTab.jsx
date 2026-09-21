@@ -31,6 +31,7 @@ import { listCreatorFanPrivateSubs } from '../creatorFanSubs/creatorFanSubsApi.j
 import { notifyLoungeDockSuppress } from '../lounge/loungeDockSuppressRegistry.js'
 import { isChatMediaPickerActive } from './chatMediaPickerRegistry.js'
 import { preloadEdgeAvatar } from '../../utils/edgeCallKit.js'
+import { useIpadSlotsLandscape } from '../shell/useIpadSlotsLandscape.js'
 
 /**
  * @param {{
@@ -120,12 +121,15 @@ export default function ChatTab({
   /** Set synchronously by direct nav before hydrate so we never flash inbox / Private Subs. */
   const [directOpenRoomId, setDirectOpenRoomId] = useState(/** @type {string | null} */ (null))
   const openRoomId = activeRoomId || directOpenRoomId || shellPendingRoomId || pendingDeepLinkRoomId
+  /** Landscape Chat split (same gate as Lounge/Slots). Slots Pro Lounge paneEmbed stays single-pane. */
+  const chatLandscapeLayout = useIpadSlotsLandscape() && !paneEmbed
+  const chatThreadInPane = chatLandscapeLayout && Boolean(openRoomId)
 
   // Long-press context menu on room rows
   const [roomMenu, setRoomMenu] = useState(/** @type {{ room: any, y: number, x: number } | null} */ (null))
   const [openSwipeRoomId, setOpenSwipeRoomId] = useState(/** @type {string | null} */ (null))
   const inboxRootRef = useRef(null)
-  const showInboxList = browseMode !== 'anonymous' && !openRoomId
+  const showInboxList = browseMode !== 'anonymous' && (!openRoomId || chatLandscapeLayout)
 
   // Group creation
   const [showGroupCreate, setShowGroupCreate] = useState(false)
@@ -845,97 +849,139 @@ export default function ChatTab({
     )
   }
 
-  // ── Conversation view (full-screen within this tab) ───────────────────────
+  // ── Conversation view ─────────────────────────────────────────────────────
+  // Portrait / Slots paneEmbed: full-stack replace. Landscape: thread sits in the right pane.
 
-  if (openRoomId) {
-    const room = activeRoom
-    const resolvingRoom = !room && (roomsLoading || !hydrateOpenRoomDone)
-    if (resolvingRoom) {
-      return (
-        <div className="flex min-h-[50vh] items-center justify-center text-[14px] text-zinc-500">
-          Opening conversation…
-        </div>
-      )
-    }
-    if (!room) {
-      return (
-        <div className="px-4 py-8 text-center">
-          <p className="text-[14px] text-rose-300">Could not open this chat.</p>
-          <button
-            type="button"
-            className="mt-4 text-[14px] font-semibold text-cyan-400 touch-manipulation"
-            onClick={() => setActiveRoomId(null)}
-          >
-            Back to inbox
-          </button>
-        </div>
-      )
-    }
-    const otherUnreadCount = rooms.filter((r) => r.id !== openRoomId && r.hasUnread).length
-    const openedFromArchived = archivedRooms.some((r) => r.id === openRoomId)
-    return (
-      <div className={paneEmbed ? 'relative min-h-0 min-w-0 flex-1' : undefined}>
-      <ChatConversation
-        key={`${openRoomId}-${iosResumeCount}`}
-        embedded={paneEmbed}
-        supabaseClient={supabaseClient}
-        room={room}
-        viewerUserId={viewerUserId}
-        viewerProfile={viewerProfile}
-        profilesById={profilesById}
-        otherUnreadCount={otherUnreadCount}
-        onBack={() => {
-          const returnToPrivateSubs =
-            openedFromPrivateSubsRef.current
-            || room?.kind === 'platform_sub'
-            || room?.kind === 'creator_fan'
-          if (returnToPrivateSubs) {
-            openedFromPrivateSubsRef.current = false
-            setTab('privateSubs')
+  const conversationThread =
+    openRoomId
+      ? (() => {
+          const room = activeRoom
+          const resolvingRoom = !room && (roomsLoading || !hydrateOpenRoomDone)
+          if (resolvingRoom) {
+            return (
+              <div className="flex min-h-[50vh] flex-1 items-center justify-center text-[14px] text-zinc-500">
+                Opening conversation…
+              </div>
+            )
           }
-          setDirectOpenRoomId(null)
-          setActiveRoomId(null)
-          setHydratedOpenRoom(null)
-          void refreshInboxLists()
-        }}
-        onViewProfile={onViewProfile}
-        onOpenLoungePost={onOpenLoungePost}
-        onOpenDm={openDmWithUser}
-        openedFromArchived={openedFromArchived}
-        onInboxRestored={() => {
-          setShowArchivedList(false)
-          void refreshInboxLists()
-        }}
-        onRoomUpdated={(patch) => {
-          setRooms((prev) => prev.map((r) => r.id === activeRoomId ? { ...r, ...patch } : r))
-          setArchivedRooms((prev) => prev.map((r) => r.id === activeRoomId ? { ...r, ...patch } : r))
-          setHydratedOpenRoom((prev) => prev?.id === activeRoomId ? { ...prev, ...patch } : prev)
-        }}
-        viewerReadReceiptsEnabled={viewerReadReceiptsEnabled}
-        onViewerReadReceiptsEnabledChange={handleViewerReadReceiptsChange}
-        readReceiptsBusy={readReceiptsToggleBusy}
-        showGlobalConfirm={showGlobalConfirm}
-      />
-      </div>
-    )
+          if (!room) {
+            return (
+              <div className="flex flex-1 flex-col items-center justify-center px-4 py-8 text-center">
+                <p className="text-[14px] text-rose-300">Could not open this chat.</p>
+                <button
+                  type="button"
+                  className="mt-4 text-[14px] font-semibold text-cyan-400 touch-manipulation"
+                  onClick={() => setActiveRoomId(null)}
+                >
+                  Back to inbox
+                </button>
+              </div>
+            )
+          }
+          const otherUnreadCount = rooms.filter((r) => r.id !== openRoomId && r.hasUnread).length
+          const openedFromArchived = archivedRooms.some((r) => r.id === openRoomId)
+          const threadEmbedded = Boolean(paneEmbed || chatThreadInPane)
+          return (
+            <div className={threadEmbedded ? 'relative min-h-0 min-w-0 flex-1' : undefined}>
+              <ChatConversation
+                key={`${openRoomId}-${iosResumeCount}`}
+                embedded={threadEmbedded}
+                supabaseClient={supabaseClient}
+                room={room}
+                viewerUserId={viewerUserId}
+                viewerProfile={viewerProfile}
+                profilesById={profilesById}
+                otherUnreadCount={otherUnreadCount}
+                onBack={() => {
+                  const returnToPrivateSubs =
+                    openedFromPrivateSubsRef.current
+                    || room?.kind === 'platform_sub'
+                    || room?.kind === 'creator_fan'
+                  if (returnToPrivateSubs) {
+                    openedFromPrivateSubsRef.current = false
+                    setTab('privateSubs')
+                  }
+                  setDirectOpenRoomId(null)
+                  setActiveRoomId(null)
+                  setHydratedOpenRoom(null)
+                  void refreshInboxLists()
+                }}
+                onViewProfile={onViewProfile}
+                onOpenLoungePost={onOpenLoungePost}
+                onOpenDm={openDmWithUser}
+                openedFromArchived={openedFromArchived}
+                onInboxRestored={() => {
+                  setShowArchivedList(false)
+                  void refreshInboxLists()
+                }}
+                onRoomUpdated={(patch) => {
+                  setRooms((prev) => prev.map((r) => r.id === activeRoomId ? { ...r, ...patch } : r))
+                  setArchivedRooms((prev) => prev.map((r) => r.id === activeRoomId ? { ...r, ...patch } : r))
+                  setHydratedOpenRoom((prev) => prev?.id === activeRoomId ? { ...prev, ...patch } : prev)
+                }}
+                viewerReadReceiptsEnabled={viewerReadReceiptsEnabled}
+                onViewerReadReceiptsEnabledChange={handleViewerReadReceiptsChange}
+                readReceiptsBusy={readReceiptsToggleBusy}
+                showGlobalConfirm={showGlobalConfirm}
+              />
+            </div>
+          )
+        })()
+      : null
+
+  if (openRoomId && !chatLandscapeLayout) {
+    return conversationThread
   }
 
-  // ── Conversation list ─────────────────────────────────────────────────────
+  // ── Conversation list (+ landscape thread pane) ───────────────────────────
+
+  const listTitleBarWidth = chatThreadInPane
+    ? 'var(--chat-landscape-list-col)'
+    : chatLandscapeLayout
+      ? 'calc(100vw - var(--edge-ipad-rail, 0px))'
+      : null
 
   return (
     <>
     <div
       ref={inboxRootRef}
       data-chat-feature
-      className={paneEmbed ? 'flex min-h-0 min-w-0 flex-1 flex-col select-none' : 'select-none'}
+      {...(chatThreadInPane ? { 'data-chat-landscape-split': '' } : {})}
+      className={
+        paneEmbed
+          ? 'flex min-h-0 min-w-0 flex-1 flex-col select-none'
+          : chatThreadInPane
+            ? 'flex h-dvh max-h-dvh min-h-0 w-full select-none flex-col overflow-hidden bg-zinc-950'
+            : chatLandscapeLayout
+              ? 'select-none'
+              : 'select-none'
+      }
+    >
+    <div
+      data-chat-landscape-shell=""
+      className={
+        chatThreadInPane
+          ? 'flex min-h-0 flex-1 flex-row overflow-hidden'
+          : 'contents'
+      }
+    >
+    <div
+      data-chat-landscape-list=""
+      className={
+        chatThreadInPane
+          ? 'flex min-h-0 shrink-0 flex-col border-r border-zinc-800/80'
+          : 'contents'
+      }
     >
     <ScrollLinkedEdgeTitleBarShell
       embedded={paneEmbed}
       publishScrollReveal={!paneEmbed}
       fillViewport
+      fullWidth={Boolean(chatLandscapeLayout)}
+      fillParentHeight={Boolean(chatThreadInPane)}
+      titleBarAlignStartWidth={listTitleBarWidth}
       titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
       titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
-      fillViewport
       contentClassName="px-0 pb-0"
     >
       {/* Pinned chrome: title, search, tabs — list scrolls underneath */}
@@ -1262,6 +1308,7 @@ export default function ChatTab({
                 room={room}
                 label={chatRoomLabel(room)}
                 groupHeaderMembers={groupHeaderByRoomId[room.id] || []}
+                selected={room.id === openRoomId}
                 onOpen={(roomId) => setActiveRoomId(roomId)}
                 onLongPress={(r, x, y) => setRoomMenu({ room: r, x, y, listMode: 'archived' })}
                 onUnarchive={(r) => void handleRoomAction('unarchive', r)}
@@ -1304,6 +1351,7 @@ export default function ChatTab({
               label={chatRoomLabel(room)}
               groupHeaderMembers={groupHeaderByRoomId[room.id] || []}
               listMode="inbox"
+              selected={room.id === openRoomId}
               pinnedBlockPosition={
                 pinnedInboxRooms.length === 1
                   ? 'only'
@@ -1330,6 +1378,7 @@ export default function ChatTab({
               room={room}
               label={chatRoomLabel(room)}
               groupHeaderMembers={groupHeaderByRoomId[room.id] || []}
+              selected={room.id === openRoomId}
               onOpen={(roomId) => setActiveRoomId(roomId)}
               onLongPress={(r, x, y) => setRoomMenu({ room: r, x, y, listMode: 'inbox' })}
               onArchive={(r) => void handleRoomAction('archive', r)}
@@ -1342,6 +1391,17 @@ export default function ChatTab({
       )}
       </div>
     </ScrollLinkedEdgeTitleBarShell>
+    </div>
+
+    {chatThreadInPane ? (
+      <div
+        data-chat-landscape-pane=""
+        className="relative flex min-h-0 min-w-0 shrink-0 flex-col overflow-hidden bg-zinc-950"
+      >
+        {conversationThread}
+      </div>
+    ) : null}
+    </div>
     </div>
 
     {roomMenu && createPortal(
@@ -1471,6 +1531,7 @@ function ChatRoomListRow({
   groupHeaderMembers = [],
   listMode = 'inbox',
   pinnedBlockPosition = null,
+  selected = false,
   onOpen,
   onLongPress,
   onArchive,
@@ -1734,7 +1795,9 @@ function ChatRoomListRow({
         type="button"
         ref={foregroundRef}
         onClick={handleClick}
-        className={`chat-room-swipe-foreground-shell relative z-[1] flex w-full select-none items-center gap-3 px-4 py-3.5 text-left touch-manipulation hover:bg-zinc-900/60 active:bg-zinc-900 [-webkit-tap-highlight-color:transparent] ${foregroundInnerClass}`}
+        className={`chat-room-swipe-foreground-shell relative z-[1] flex w-full select-none items-center gap-3 px-4 py-3.5 text-left touch-manipulation hover:bg-zinc-900/60 active:bg-zinc-900 [-webkit-tap-highlight-color:transparent] ${
+          selected ? 'bg-zinc-800/70' : ''
+        } ${foregroundInnerClass}`}
         style={{
           transform: `translate3d(${offsetX}px, 0, 0)`,
           transition: rowTransition,

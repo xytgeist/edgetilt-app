@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Pre-game pills show ML under the spread (Windows).** When `side.ml` is set, future games paint moneyline below the big spread (same 9px line as finals). Frontend **`1.4.450`**.
 - **2026-09-21:** **Sports pill smaller spread/ML type (Windows).** Closing spread and moneyline lines **11px → 9px**. Frontend **`1.4.449`**.
 - **2026-09-21:** **Sports pill spread above score, ML below; bigger logos (Windows).** Live/final stack is spread → score → moneyline (cover dot stays on spread). Logos **2.75rem** (3rem sm, 2.25rem narrow). Frontend **`1.4.447`**.
 - **2026-09-21:** **Prod close-ML schema + historical backfill (Windows).** Applied `close_*_ml` columns on prod (`jtjgtucumuoswnbauxry`). `node scripts/backfill-close-ml.mjs --target=both` filled locked NFL rows from Odds historical Pinnacle h2h (test **14**, prod **31** incl. WAS@DAL home **-200** / away **+177**). Redeployed prod+test Edge **`lounge-sports-scoreboard`** + **`lounge-odds-poll`**. Git **`main`** at **`be8b8558`** (**1.4.445**).

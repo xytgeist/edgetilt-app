@@ -48,7 +48,7 @@ const SLOTS_TOOLS = [
     label: 'Logbook',
     Icon: ClipboardList,
     color: '#f472b6',
-    description: 'Log AP plays and analyze your data',
+    description: '',
     subscriberGated: () => false,
     shortcutDestinationId: 'logbook',
   },
@@ -57,7 +57,7 @@ const SLOTS_TOOLS = [
     label: 'W-2G Scanner',
     Icon: ScanLine,
     color: '#fbbf24',
-    description: 'Snap a W-2G… auto-crop and center',
+    description: '',
     subscriberGated: () => false,
     shortcutDestinationId: 'w2g-scanner',
   },
@@ -128,7 +128,9 @@ export default function SlotsScreen({
                 <span className="min-w-0 flex-1 truncate text-lg font-bold text-white">{tool.label}</span>
                 {locked ? <NavLockGlyph className="h-4 w-4 shrink-0 text-amber-400/95" /> : null}
               </span>
-              <span className="mt-0.5 block text-sm leading-snug text-zinc-500">{tool.description}</span>
+              {tool.description ? (
+                <span className="mt-0.5 block text-sm leading-snug text-zinc-500">{tool.description}</span>
+              ) : null}
             </span>
             {tool.shortcutDestinationId ? (
               <div

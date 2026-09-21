@@ -166,7 +166,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Windows Theo 2026-09-21 ... sports card tap-to-include + multi
 
-**I am Windows Theo.** Composer sports cards: **Tap to include**; tokens commit on trailing space **or punctuation**; one card per team/matchup; **48h** last-vs-next; matchup replaces vague card. Multi = feed-style full-bleed carousel. Score layout restored to pre-centering baseline (logo+score clusters); cover = white **dot**; closing Pinnacle **ML** on market files. Horizontal logo↔FINAL midpoint still open. Web **`1.4.436`**.
+**I am Windows Theo.** Composer sports cards: **Tap to include**; tokens commit on trailing space **or punctuation**; one card per team/matchup; **48h** last-vs-next; matchup replaces vague card. Multi = feed-style full-bleed carousel. Score row is flat: logo | flex-1 gutter (justify-center) | FINAL | gutter | logo | chevron, with a matching left spacer so gutters stay equal. Cover = white **dot**; closing Pinnacle **ML**. Web **`1.4.438`**.
 
 **Prior track still true (landscape, idle ... do not regress):**
 

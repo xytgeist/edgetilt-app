@@ -116,17 +116,16 @@ function ScoreStack({ side, status, dimmed, covered }) {
     pre ? '' : 'text-[26px]'
   } ${dimmed ? 'text-white/55' : 'text-white'}`
   if (pre) {
+    // Fill the logo↔FINAL gutter so FitPrimary can shrink long spreads.
     return (
-      <span data-lounge-game-pill-num="fit" className="flex min-w-0 flex-1 flex-col items-center text-center">
-        <span className="flex w-full min-w-0 justify-center overflow-hidden">
-          <FitPrimary className={primaryClass} align="center">
-            {primary}
-          </FitPrimary>
-        </span>
+      <span data-lounge-game-pill-num="fit" className="flex w-full min-w-0 justify-center overflow-hidden">
+        <FitPrimary className={primaryClass} align="center">
+          {primary}
+        </FitPrimary>
       </span>
     )
   }
-  // Content-sized next to the logo (not flex-1). Team row justify-* pins clusters to the outer edges.
+  // Content-sized; parent gutter centers this in the logo↔FINAL span.
   return (
     <span className="relative inline-flex shrink-0 items-center justify-center">
       <span data-lounge-game-pill-primary className={primaryClass}>
@@ -257,9 +256,11 @@ export default function LoungeGameScorePill({
         <span data-lounge-game-pill-away aria-hidden="true" />
         <span data-lounge-game-pill-home aria-hidden="true" />
         <span data-lounge-game-pill-seam aria-hidden="true" />
-        <span className="relative z-[3] flex min-h-[5.625rem] items-center gap-2 px-3 py-2.5">
-          <span className="flex min-w-0 flex-1 items-center justify-start gap-1.5">
-            <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} halo={air.awayAir} />
+        <span className="relative z-[3] flex min-h-[5.625rem] w-full items-center gap-1.5 px-3 py-2.5">
+          {/* Match chevron width so away/home logo↔FINAL gutters stay equal. */}
+          <span className="h-5 w-5 shrink-0" aria-hidden="true" />
+          <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} halo={air.awayAir} />
+          <span className="flex min-w-0 flex-1 items-center justify-center">
             <ScoreStack
               side={game.away}
               status={game.status}
@@ -273,18 +274,20 @@ export default function LoungeGameScorePill({
               {game.status_label}
             </span>
           </span>
-          <span className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
+          <span className="flex min-w-0 flex-1 items-center justify-center">
             <ScoreStack
               side={game.home}
               status={game.status}
               dimmed={game.status === 'post' && !homeWon && !live}
               covered={homeCovered}
             />
-            <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} halo={air.homeAir} />
           </span>
+          <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} halo={air.homeAir} />
           {canOpenHub ? (
             <ChevronRight className="h-5 w-5 shrink-0 text-white/70 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" strokeWidth={2.25} />
-          ) : null}
+          ) : (
+            <span className="h-5 w-5 shrink-0" aria-hidden="true" />
+          )}
         </span>
         {pendingInclude ? (
           <span

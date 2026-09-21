@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Sports pill scores center in logo↔FINAL gutters (Windows).** Flat row: spacer | away logo | `flex-1` justify-center score | FINAL | `flex-1` score | home logo | chevron/spacer. No logo+score clusters. Cover dot + ML unchanged. Frontend **`1.4.438`**.
 - **2026-09-21:** **Chat landscape list + thread split (Mac).** Inbox is full width under the left rail. Opening/creating a room splits like Lounge (list left / embedded `ChatConversation` right). Portrait stack unchanged; Slots Pro Lounge `paneEmbed` unchanged. `ScrollLinkedEdgeTitleBarShell` gains left-aligned title bar width for the list column. Frontend **`1.4.437`**. Web only.
 - **2026-09-21:** **Strip failed sports-pill centering attempts (Windows).** Restored pre-experiment row (logo+score clusters pinned outer). Kept cover white **dot** + closing ML paint. Removed score-slot/bundle wrappers and CSS `!important` flex/text-align hacks. Horizontal logo↔FINAL midpoint still open. Frontend **`1.4.436`**.
 - **2026-09-21:** **Sports pill horizontal center forced (Windows).** Same axis: midpoint between team logo and FINAL/clock. Slots now have Tailwind `flex-1 text-center` plus CSS `!important` so the card button’s `text-left` cannot leave scores glued to the logos. Frontend **`1.4.435`**. *(Superseded by **1.4.436**.)*

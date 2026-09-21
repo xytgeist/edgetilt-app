@@ -4021,10 +4021,11 @@ html.light [data-slots-landscape-pane-chrome] {
   border-bottom-color: #e4e4e7;
   background-color: #fafafa;
 }
-/* Match tools chrome (title + h-10 hamburger/close) so pane titles share the same bar height. */
+/* Match tools chrome (title + h-10 hamburger/close + border-b) so pane titles share the same bar height. */
 [data-slots-landscape-tools-chrome],
 [data-slots-landscape-pane-chrome] {
-  min-height: 3.5rem; /* py-2 + h-10 */
+  /* border-box min-height must include the 1px border-b or the pane sits 1px short of the tools row */
+  min-height: calc(3.5rem + 1px); /* py-2 + h-10 + border-b */
   box-sizing: border-box;
 }
 /* Landscape Lounge engagement split:
@@ -4098,7 +4099,7 @@ html.light [data-chat-landscape-pane] {
     padding-right: 0.5rem !important;
     padding-top: 0.35rem !important;
     padding-bottom: 0.35rem !important;
-    min-height: 2.45rem !important; /* 0.35*2 + 1.75 nav btn */
+    min-height: calc(2.45rem + 1px) !important; /* 0.35*2 + 1.75 nav btn + border-b */
   }
   [data-slots-landscape-tools-scroll] {
     padding-left: 0.5rem !important;
@@ -4231,7 +4232,7 @@ html.light [data-ipad-nav-rail] [data-ipad-nav-shortcut-rule] {
     padding-bottom: 0.35rem !important;
     padding-left: 0.525rem !important;
     padding-right: 0.525rem !important;
-    min-height: 2.45rem !important; /* 0.35*2 + 1.75 nav btn */
+    min-height: calc(2.45rem + 1px) !important; /* 0.35*2 + 1.75 nav btn + border-b */
   }
   /* EDGE wordmark in the title bar (h-8 → 70%). */
   [data-lounge-title-bar] img.h-8,

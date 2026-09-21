@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react'
+import { Check, ChevronRight } from 'lucide-react'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import { LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS } from './loungeFeedAvatar.js'
 import { nflPillWash } from './loungeSportsMatch.js'
@@ -12,13 +12,33 @@ export function formatLoungeSportsSpread(point) {
   return n > 0 ? `+${body}` : `-${body}`
 }
 
+/** Home ATS result: (home score - away score) + home spread. >0 home covers, <0 away covers. */
+export function loungeSportsSpreadCover(game) {
+  if (!game || game.status === 'pre') return { home: false, away: false, push: false }
+  const homeScore = Number(game.home?.score)
+  const awayScore = Number(game.away?.score)
+  let homeSpread = Number(game.home?.spread)
+  const awaySpread = Number(game.away?.spread)
+  if (!Number.isFinite(homeScore) || !Number.isFinite(awayScore)) {
+    return { home: false, away: false, push: false }
+  }
+  if (!Number.isFinite(homeSpread)) {
+    if (!Number.isFinite(awaySpread)) return { home: false, away: false, push: false }
+    homeSpread = -awaySpread
+  }
+  const margin = homeScore - awayScore + homeSpread
+  if (margin > 0) return { home: true, away: false, push: false }
+  if (margin < 0) return { home: false, away: true, push: false }
+  return { home: false, away: false, push: true }
+}
+
 function scoreLabel(side, status) {
   if (status === 'pre') return formatLoungeSportsSpread(side?.spread) || '—'
   if (side?.score == null) return '—'
   return String(side.score)
 }
 
-function TeamMark({ side, dimmed }) {
+function TeamMark({ side, dimmed, covered }) {
   const src = side?.logo
   const letter = String(side?.abbrev || side?.mascot || '?').slice(0, 1)
   return (
@@ -37,6 +57,15 @@ function TeamMark({ side, dimmed }) {
       ) : (
         <span className="text-[13px] font-bold text-white/80">{letter}</span>
       )}
+      {covered ? (
+        <span
+          data-lounge-game-pill-cover
+          className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full shadow-[0_1px_2px_rgba(0,0,0,0.65)]"
+          title="Covered"
+        >
+          <Check className="h-2.5 w-2.5" strokeWidth={3.5} />
+        </span>
+      ) : null}
     </span>
   )
 }
@@ -82,12 +111,20 @@ export default function LoungeGameScorePill({
   const homeWon = game.status === 'post' && game.home?.score != null && game.away?.score != null && game.home.score > game.away.score
   const awayWon = game.status === 'post' && game.home?.score != null && game.away?.score != null && game.away.score > game.home.score
   const live = game.status === 'in'
+  const cover = loungeSportsSpreadCover(game)
   const awayColor = nflPillWash(game.away?.color, game.away?.color2)
   const homeColor = nflPillWash(game.home?.color, game.home?.color2)
   const Tag = interactive ? 'button' : 'div'
   const awaySpread = formatLoungeSportsSpread(game.away?.spread)
   const homeSpread = formatLoungeSportsSpread(game.home?.spread)
-  const label = `${game.away?.abbrev} ${scoreLabel(game.away, game.status)}${awaySpread && game.status !== 'pre' ? ` ${awaySpread}` : ''} ${game.home?.abbrev} ${scoreLabel(game.home, game.status)}${homeSpread && game.status !== 'pre' ? ` ${homeSpread}` : ''} ${game.status_label}`
+  const coverNote = cover.home
+    ? `${game.home?.abbrev} covered`
+    : cover.away
+      ? `${game.away?.abbrev} covered`
+      : cover.push
+        ? 'push'
+        : ''
+  const label = `${game.away?.abbrev} ${scoreLabel(game.away, game.status)}${awaySpread && game.status !== 'pre' ? ` ${awaySpread}` : ''} ${game.home?.abbrev} ${scoreLabel(game.home, game.status)}${homeSpread && game.status !== 'pre' ? ` ${homeSpread}` : ''} ${game.status_label}${coverNote ? ` ${coverNote}` : ''}`
 
   return (
     <div className={`relative ${className}`.trim()} data-lounge-composer-game-pill={dismissible ? '' : undefined}>
@@ -112,7 +149,7 @@ export default function LoungeGameScorePill({
         <span data-lounge-game-pill-seam aria-hidden="true" />
         <span className="relative z-[3] flex min-h-[5.625rem] items-center gap-2 px-3 py-2.5">
           <span className="flex min-w-0 flex-1 items-center gap-2">
-            <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} />
+            <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} covered={cover.away} />
             <ScoreStack
               side={game.away}
               status={game.status}
@@ -134,7 +171,7 @@ export default function LoungeGameScorePill({
               dimmed={game.status === 'post' && !homeWon && !live}
             />
             <span className="ml-auto">
-              <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} />
+              <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} covered={cover.home} />
             </span>
           </span>
           {interactive ? (

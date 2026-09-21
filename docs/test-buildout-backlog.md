@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-20:** **Lounge pill cover mark (Mac).** Gold check on the covering team's logo (live or final). Push has no badge. Frontend **`1.4.389`**.
 - **2026-09-20:** **Lounge pill spreads (Mac).** In-post pills show each team's ATS under the score (live/final) or in place of the score (upcoming). Slate fetches Odds spreads with the board; last painted line is kept when a final drops off Odds. Frontend **`1.4.388`**. Redeploy **`lounge-sports-scoreboard`** on **test**.
 - **2026-09-20:** **Lounge full-screen composer TDZ (Mac).** `dismissKeyboard` closed over `blurActiveInput` before that const ran (early return while closed), so swipe-to-dismiss threw `Cannot access 'dt' before initialization`. Frontend **`1.4.387`**.
 - **2026-09-20:** **Lounge pill status label light mode (Mac).** FINAL / kickoff text on the game pill stays white in light mode (`text-white/80` was flipping dark). Dark mode unchanged. Frontend **`1.4.386`**.

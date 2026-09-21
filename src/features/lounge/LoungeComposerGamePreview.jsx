@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import LoungeGameScorePill from './LoungeGameScorePill.jsx'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import { LOUNGE_SPORTS_GAME_PIN_MAX } from './loungeSportsGameField.js'
-import { matchLoungePostToSportsGames } from './loungeSportsMatch.js'
+import { matchLoungePostToSportsGamesDetailed } from './loungeSportsMatch.js'
 import { LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS } from './loungeFeedAvatar.js'
 import {
   bindLoungeFeedCarouselMeasure,
@@ -14,16 +14,15 @@ const EMPTY_GAMES = []
 
 /**
  * Live game-pill suggest under the composer. Cards stay off until the author
- * taps “include”. Multi uses the same full-bleed horizontal carousel as feed
- * post images (slide across the screen with peek).
- * Value is written to `valueRef` for submit (`eventIds` only).
+ * taps “include”. Tokens only match after a trailing space (“Rams ”).
+ * One card per team/matchup context; a specific matchup replaces the vague card.
+ * Multi uses the same full-bleed horizontal carousel as feed post images.
  */
 export default function LoungeComposerGamePreview({ caption, className = '', valueRef, pinnedGame = null }) {
   const sports = useLoungeSportsFeed()
   const games = Array.isArray(sports?.games) ? sports.games : EMPTY_GAMES
   const [includedIds, setIncludedIds] = useState([])
-  const [dismissedIds, setDismissedIds] = useState(() => new Set())
-  const stagedRef = useRef([])
+  const [dismissedContexts, setDismissedContexts] = useState(() => new Set())
   const carouselScrollRef = useRef(null)
   const [carouselViewport, setCarouselViewport] = useState(() =>
     loungeFeedCarouselMeasureLayout(null, true),
@@ -32,48 +31,39 @@ export default function LoungeComposerGamePreview({ caption, className = '', val
   const captionTrim = String(caption || '').trim()
   const captionEmpty = !captionTrim && !pinnedGame
 
-  const matched = useMemo(() => {
-    if (pinnedGame) return [pinnedGame]
-    return matchLoungePostToSportsGames(caption, games, LOUNGE_SPORTS_GAME_PIN_MAX)
+  const matchedDetailed = useMemo(() => {
+    if (pinnedGame) {
+      return [{ game: pinnedGame, specific: true, contextKey: `pin:${pinnedGame.id}` }]
+    }
+    return matchLoungePostToSportsGamesDetailed(caption, games, LOUNGE_SPORTS_GAME_PIN_MAX, {
+      committed: true,
+    })
   }, [caption, games, pinnedGame])
 
-  const matchedKey = matched.map((g) => String(g.id)).join('|')
-  const dismissedKey = [...dismissedIds].sort().join('|')
-
-  const stagedIds = useMemo(() => {
-    if (captionEmpty) {
-      stagedRef.current = []
-      return []
-    }
-    const prev = stagedRef.current.filter((id) => !dismissedIds.has(id))
-    const next = [...prev]
-    for (const game of matched) {
-      const id = String(game?.id || '')
-      if (!id || dismissedIds.has(id) || next.includes(id)) continue
-      if (next.length >= LOUNGE_SPORTS_GAME_PIN_MAX) break
-      next.push(id)
-    }
-    stagedRef.current = next
-    return next
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [captionEmpty, matchedKey, dismissedKey, matched, dismissedIds])
+  const matchedKey = matchedDetailed.map((row) => `${row.contextKey}:${row.game?.id}`).join('|')
 
   useEffect(() => {
     if (!captionEmpty) return
     setIncludedIds((prev) => (prev.length ? [] : prev))
-    setDismissedIds((prev) => (prev.size ? new Set() : prev))
+    setDismissedContexts((prev) => (prev.size ? new Set() : prev))
   }, [captionEmpty])
 
-  const byId = useMemo(() => {
-    const map = new Map(games.map((g) => [String(g.id), g]))
-    if (pinnedGame?.id) map.set(String(pinnedGame.id), pinnedGame)
-    for (const g of matched) {
-      if (g?.id) map.set(String(g.id), g)
-    }
-    return map
-  }, [games, matched, pinnedGame])
+  // Drop dismissals for contexts that are no longer in the caption.
+  useEffect(() => {
+    const live = new Set(matchedDetailed.map((row) => row.contextKey))
+    setDismissedContexts((prev) => {
+      let changed = false
+      const next = new Set()
+      for (const key of prev) {
+        if (live.has(key)) next.add(key)
+        else changed = true
+      }
+      return changed ? next : prev
+    })
+  }, [matchedKey, matchedDetailed])
 
-  const visible = stagedIds.map((id) => byId.get(id)).filter(Boolean)
+  const visibleRows = matchedDetailed.filter((row) => !dismissedContexts.has(row.contextKey))
+  const visible = visibleRows.map((row) => row.game)
   const multi = visible.length > 1
   const carouselFullBleed = multi
 
@@ -115,7 +105,8 @@ export default function LoungeComposerGamePreview({ caption, className = '', val
 
   useEffect(() => {
     if (!valueRef) return
-    const pinned = includedIds.filter((id) => stagedIds.includes(id) && !dismissedIds.has(id))
+    const liveIds = new Set(visible.map((g) => String(g.id)))
+    const pinned = includedIds.filter((id) => liveIds.has(id))
     if (!pinned.length) {
       valueRef.current = { suppress: false, eventId: '', eventIds: [] }
       return
@@ -125,9 +116,9 @@ export default function LoungeComposerGamePreview({ caption, className = '', val
       eventId: pinned[0] || '',
       eventIds: pinned.slice(0, LOUNGE_SPORTS_GAME_PIN_MAX),
     }
-  }, [dismissedIds, includedIds, stagedIds, valueRef])
+  }, [includedIds, valueRef, visible])
 
-  if (!visible.length) return null
+  if (!visibleRows.length) return null
 
   const slideWidthStyle =
     multi && carouselViewport.firstSlideMaxWidthPx
@@ -154,13 +145,18 @@ export default function LoungeComposerGamePreview({ caption, className = '', val
         {...(multi ? { 'data-lounge-feed-carousel-track': true } : null)}
         className={multi ? 'flex flex-nowrap items-stretch gap-2' : 'w-full'}
       >
-        {visible.map((game) => {
+        {visibleRows.map((row) => {
+          const game = row.game
           const id = String(game.id)
           const isIncluded = includedIds.includes(id)
           return (
             <div
-              key={id}
-              className={multi ? 'relative shrink-0' : 'relative w-full max-w-full'}
+              key={row.contextKey}
+              className={
+                multi
+                  ? 'relative shrink-0 overflow-hidden rounded-2xl'
+                  : 'relative w-full max-w-full overflow-hidden rounded-2xl'
+              }
               style={slideWidthStyle}
               {...(carouselFullBleed ? { 'data-lounge-feed-carousel-slide': true } : null)}
             >
@@ -177,9 +173,8 @@ export default function LoungeComposerGamePreview({ caption, className = '', val
                   })
                 }}
                 onDismiss={() => {
-                  setDismissedIds((prev) => new Set(prev).add(id))
+                  setDismissedContexts((prev) => new Set(prev).add(row.contextKey))
                   setIncludedIds((prev) => prev.filter((x) => x !== id))
-                  stagedRef.current = stagedRef.current.filter((x) => x !== id)
                 }}
               />
             </div>

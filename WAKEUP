@@ -166,7 +166,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Windows Theo 2026-09-21 ... sports card tap-to-include + multi
 
-**I am Windows Theo.** Composer suggests game pills with **Tap to include** (default off). Up to **4** pinned `event_ids`. Feed paints **pin-only**. Multi composer cards use the same **full-bleed** horizontal carousel as feed post images (slide across the screen with peek). Web **`1.4.417`**.
+**I am Windows Theo.** Composer sports cards: **Tap to include**; tokens need a trailing space (`Rams `); one card per team/matchup context; within **48h** of a team's last kickoff → last game, else next; `Rams vs Broncos ` replaces the vague Rams card. Multi = feed-style full-bleed carousel; slides keep rounded rects. Web **`1.4.420`**.
 
 **Prior track still true (landscape, idle ... do not regress):**
 

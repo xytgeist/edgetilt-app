@@ -1,4 +1,4 @@
-import { pickAmbiguousTeamGame, pickSpecificMatchupGame, gameHasTeam } from './loungeSportsSlateWindow.js'
+import { pickAmbiguousTeamGame, pickSpecificMatchupGame, gameHasTeam, sideAbbrev } from './loungeSportsSlateWindow.js'
 import { LOUNGE_SPORTS_GAME_PIN_MAX } from './loungeSportsGameField.js'
 
 /** NFL aliases + notable names so captions like "Jayden Daniels" still hit today's game. */
@@ -54,6 +54,14 @@ function norm(value) {
     .replace(/['’]/g, '')
     .replace(/[^a-z0-9]+/g, ' ')
     .trim()
+}
+
+/** Like norm, but keeps a trailing space so “Rams ” can commit and “Rams” cannot. */
+function normKeepTrailingSpace(value) {
+  const raw = String(value || '')
+  const hadTrail = /\s$/.test(raw)
+  const body = norm(raw)
+  return hadTrail && body ? `${body} ` : body
 }
 
 function catalogRowForSide(side, sportKey) {
@@ -202,10 +210,25 @@ function hasPhrase(haystack, phrase) {
   return new RegExp(`(?:^| )${escapeRe(p)}(?: |$)`).test(haystack)
 }
 
+/** Composer: phrase only counts after the user types a trailing space. */
+function hasCommittedPhrase(haystackKeepTrail, phrase) {
+  const p = norm(phrase)
+  if (p.length < 3) return false
+  return new RegExp(`(?:^| )${escapeRe(p)} `).test(haystackKeepTrail)
+}
+
 function hasAbbrev(original, abbrev) {
   const a = String(abbrev || '').trim().toUpperCase()
   if (a.length < 2 || a.length > 4) return false
-  const re = new RegExp(`(?:^|[^A-Za-z])${escapeRe(a)}(?:[^A-Za-z]|$)`)
+  const re = new RegExp(`(?:^|[^A-Za-z])${escapeRe(a)}(?:[^A-Za-z]|$)`, 'i')
+  return re.test(original)
+}
+
+/** Composer: abbrev only counts when followed by whitespace. */
+function hasCommittedAbbrev(original, abbrev) {
+  const a = String(abbrev || '').trim().toUpperCase()
+  if (a.length < 2 || a.length > 4) return false
+  const re = new RegExp(`(?:^|[^A-Za-z])${escapeRe(a)}\\s`, 'i')
   return re.test(original)
 }
 
@@ -215,7 +238,7 @@ function canonicalAbbrev(token) {
 }
 
 function versusAbbrevs(original) {
-  const m = String(original || '').match(/\b([A-Z]{2,4})\s+(?:vs\.?|@|v)\s+([A-Z]{2,4})\b/)
+  const m = String(original || '').match(/\b([A-Za-z]{2,4})\s+(?:vs\.?|@|v)\s+([A-Za-z]{2,4})\b/i)
   if (!m) return null
   const a = canonicalAbbrev(m[1])
   const b = canonicalAbbrev(m[2])
@@ -223,7 +246,45 @@ function versusAbbrevs(original) {
   return [a, b]
 }
 
-function sideHits(original, haystack, side, sportKey) {
+/**
+ * Versus only after both sides are committed (space after each token, or completed pair).
+ * “KC vs” does not count; “KC vs Mia ” / “Rams vs Broncos ” does.
+ */
+function versusAbbrevsCommitted(original) {
+  const m = String(original || '').match(/\b([A-Za-z]{2,4})\s+(?:vs\.?|@|v)\s+([A-Za-z]{2,4})(?:\s|$)/i)
+  if (!m) return null
+  const a = canonicalAbbrev(m[1])
+  const b = canonicalAbbrev(m[2])
+  if (!CATALOG_BY_ABBREV.has(a) || !CATALOG_BY_ABBREV.has(b) || a === b) return null
+  const after = String(original || '').slice(m.index + m[0].length)
+  if (after.length && !/^\s/.test(after)) return null
+  return [a, b]
+}
+
+function resolveCommittedTeamAbbrev(phrase) {
+  const p = norm(phrase)
+  if (!p) return null
+  for (const row of NFL_TEAM_CATALOG) {
+    if (norm(row.abbrev) === p || norm(row.espn) === p) return row.abbrev
+    if (row.names.some((n) => norm(n) === p)) return row.abbrev
+  }
+  return null
+}
+
+/** Name or abbrev matchup with trailing space after the second side (“Rams vs Broncos ”). */
+function versusTeamsCommitted(original) {
+  const fromAbbrev = versusAbbrevsCommitted(original)
+  if (fromAbbrev) return fromAbbrev
+  const soft = normKeepTrailingSpace(original)
+  const m = soft.match(/(.+?)\s+(?:vs\.?|@|v)\s+(.+?)\s/)
+  if (!m) return null
+  const a = resolveCommittedTeamAbbrev(m[1])
+  const b = resolveCommittedTeamAbbrev(m[2])
+  if (!a || !b || a === b) return null
+  return [a, b]
+}
+
+function sideHits(original, haystack, side, sportKey, { committed = false } = {}) {
   let score = 0
   const row = catalogRowForSide(side, sportKey)
   const phrases = [
@@ -232,75 +293,100 @@ function sideHits(original, haystack, side, sportKey) {
     ...(row?.names || []),
     ...(row?.players || []),
   ]
+  const phraseHit = committed ? hasCommittedPhrase : hasPhrase
+  const abbrevHit = committed ? hasCommittedAbbrev : hasAbbrev
+  const hay = committed ? normKeepTrailingSpace(original) : haystack
   for (const phrase of phrases) {
-    if (!hasPhrase(haystack, phrase)) continue
+    if (!phraseHit(hay, phrase)) continue
     const words = norm(phrase).split(' ').filter(Boolean)
     score += words.length >= 2 ? 6 : norm(phrase).length >= 5 ? 4 : 2
   }
   const codes = [side?.abbrev, row?.abbrev, row?.espn]
-  if (codes.some((c) => hasAbbrev(original, c))) score += 3
+  if (codes.some((c) => abbrevHit(original, c))) score += 3
   return score
 }
 
-function mentionedNflAbbrevs(original, haystack) {
+function mentionedNflAbbrevs(original, haystack, { committed = false } = {}) {
   const out = []
+  const phraseHit = committed ? hasCommittedPhrase : hasPhrase
+  const abbrevHit = committed ? hasCommittedAbbrev : hasAbbrev
+  const hay = committed ? normKeepTrailingSpace(original) : haystack
   for (const row of NFL_TEAM_CATALOG) {
-    const nameHit = row.names.some((n) => hasPhrase(haystack, n))
-    const playerHit = row.players.some((n) => hasPhrase(haystack, n))
-    const codeHit = hasAbbrev(original, row.abbrev) || hasAbbrev(original, row.espn)
+    const nameHit = row.names.some((n) => phraseHit(hay, n))
+    const playerHit = row.players.some((n) => phraseHit(hay, n))
+    const codeHit = abbrevHit(original, row.abbrev) || abbrevHit(original, row.espn)
     if (nameHit || playerHit || codeHit) out.push(row.abbrev)
   }
   return [...new Set(out)]
 }
 
+function teamContextKey(abbrev) {
+  return `team:${String(abbrev || '').toUpperCase()}`
+}
+
+function matchupContextKey(a, b) {
+  const pair = [String(a || '').toUpperCase(), String(b || '').toUpperCase()].filter(Boolean).sort()
+  return pair.length === 2 ? `match:${pair.join('-')}` : ''
+}
+
+export function loungeSportsGameTeamAbbrevs(game) {
+  return [sideAbbrev(game?.home), sideAbbrev(game?.away)].map((a) => String(a || '').trim().toUpperCase()).filter(Boolean)
+}
+
+export function loungeSportsGamesShareTeam(a, b) {
+  const left = new Set(loungeSportsGameTeamAbbrevs(a))
+  if (!left.size) return false
+  return loungeSportsGameTeamAbbrevs(b).some((abbrev) => left.has(abbrev))
+}
+
 /**
- * Caption → up to `limit` games (composer suggestions). Prefer specific matchups, then one game per mentioned team.
+ * Caption → up to `limit` games with context keys (composer).
+ * One card per team / matchup context. Specific matchups replace one-team contexts.
+ * @returns {{ game: object, specific: boolean, contextKey: string }[]}
  */
-export function matchLoungePostToSportsGames(caption, games, limit = LOUNGE_SPORTS_GAME_PIN_MAX) {
+export function matchLoungePostToSportsGamesDetailed(caption, games, limit = LOUNGE_SPORTS_GAME_PIN_MAX, opts = {}) {
+  const committed = opts.committed === true
   const cap = Math.max(1, Math.min(LOUNGE_SPORTS_GAME_PIN_MAX, Number(limit) || LOUNGE_SPORTS_GAME_PIN_MAX))
   const original = String(caption || '')
   const haystack = norm(original)
   if (haystack.length < 3 || !Array.isArray(games) || !games.length) return []
 
-  const pair = versusAbbrevs(original)
-  const mentioned = mentionedNflAbbrevs(original, haystack)
-  const ranked = []
-  for (const game of games) {
-    const home = sideHits(original, haystack, game.home, game.sport_key)
-    const away = sideHits(original, haystack, game.away, game.sport_key)
-    let score = home + away
-    const both = home > 0 && away > 0
-    if (both) score += 8
-    if (pair && gameHasTeam(game, pair[0]) && gameHasTeam(game, pair[1])) score += 12
-    if (score < 4) continue
-    ranked.push({ game, score, both })
-  }
-  ranked.sort((a, b) => b.score - a.score || String(a.game.commence_time).localeCompare(String(b.game.commence_time)))
-
+  const pair = committed ? versusTeamsCommitted(original) : versusAbbrevs(original)
+  const mentioned = mentionedNflAbbrevs(original, haystack, { committed })
   const out = []
-  const seen = new Set()
-  const add = (game) => {
-    const id = String(game?.id || '')
-    if (!game || !id || seen.has(id) || out.length >= cap) return
-    seen.add(id)
-    out.push(game)
-  }
+  const seenIds = new Set()
+  const seenContexts = new Set()
 
-  for (const row of ranked.filter((r) => r.both)) add(row.game)
+  const add = (game, specific, contextKey) => {
+    const id = String(game?.id || '')
+    const ctx = String(contextKey || '')
+    if (!game || !id || !ctx || seenIds.has(id) || seenContexts.has(ctx) || out.length >= cap) return
+    seenIds.add(id)
+    seenContexts.add(ctx)
+    out.push({ game, specific: Boolean(specific), contextKey: ctx })
+  }
 
   if (pair) {
     const candidates = games.filter((game) => gameHasTeam(game, pair[0]) && gameHasTeam(game, pair[1]))
-    add(pickSpecificMatchupGame(candidates, games))
+    const picked = pickSpecificMatchupGame(candidates, games)
+    if (picked) add(picked, true, matchupContextKey(pair[0], pair[1]))
   }
 
   for (const abbrev of mentioned) {
     if (out.length >= cap) break
-    if (out.some((g) => gameHasTeam(g, abbrev))) continue
-    add(pickAmbiguousTeamGame(abbrev, games))
+    if (out.some((row) => gameHasTeam(row.game, abbrev))) continue
+    const picked = pickAmbiguousTeamGame(abbrev, games)
+    if (picked) add(picked, false, teamContextKey(abbrev))
   }
 
-  for (const row of ranked) add(row.game)
   return out
+}
+
+/**
+ * Caption → up to `limit` games (composer suggestions). Prefer specific matchups, then one game per mentioned team.
+ */
+export function matchLoungePostToSportsGames(caption, games, limit = LOUNGE_SPORTS_GAME_PIN_MAX, opts = {}) {
+  return matchLoungePostToSportsGamesDetailed(caption, games, limit, opts).map((row) => row.game)
 }
 
 /**

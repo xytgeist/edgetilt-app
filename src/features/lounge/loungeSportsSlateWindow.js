@@ -62,6 +62,10 @@ function commenceMs(game) {
   return Number.isFinite(t) ? t : 0
 }
 
+export { commenceMs as loungeSportsCommenceMs }
+
+const MS_48H = 48 * 3600 * 1000
+
 function gameDay(game) {
   return ptDateFromIsoLocal(game?.commence_time)
 }
@@ -130,27 +134,20 @@ export function gameHasTeam(game, abbrev) {
 }
 
 /**
- * Ambiguous one-team mention: live, else this week's most recent final,
- * else this week's upcoming, until MNF is done... then the next upcoming game.
+ * Ambiguous one-team mention: live first; else last final if still within 48h of
+ * kickoff; else the next upcoming. Falls back to most recent final.
  */
 export function pickAmbiguousTeamGame(abbrev, games, now = Date.now()) {
   const involving = (Array.isArray(games) ? games : []).filter((g) => gameHasTeam(g, abbrev))
   if (!involving.length) return null
   const live = involving.find((g) => g.status === 'in')
   if (live) return live
-  const calThu = nflCalendarThursdayYmd(now)
-  const calDates = nflWeekDatesFromThursday(calThu)
-  const closed = nflMnfWeekComplete(games, calDates, now)
-  if (!closed) {
-    const week = involving.filter((g) => calDates.includes(gameDay(g)))
-    const played = week.filter((g) => g.status === 'post').sort((a, b) => commenceMs(b) - commenceMs(a))
-    if (played[0]) return played[0]
-    const upcoming = week.filter((g) => g.status === 'pre').sort((a, b) => commenceMs(a) - commenceMs(b))
-    if (upcoming[0]) return upcoming[0]
-  }
+  const played = involving.filter((g) => g.status === 'post').sort((a, b) => commenceMs(b) - commenceMs(a))
+  const last = played[0] || null
+  if (last && now - commenceMs(last) < MS_48H) return last
   const upcoming = involving.filter((g) => g.status === 'pre').sort((a, b) => commenceMs(a) - commenceMs(b))
   if (upcoming[0]) return upcoming[0]
-  return involving.filter((g) => g.status === 'post').sort((a, b) => commenceMs(b) - commenceMs(a))[0] || null
+  return last
 }
 
 /** Named matchup: that game, preferring live / this week's final / upcoming in that order. */

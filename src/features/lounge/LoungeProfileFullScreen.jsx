@@ -830,6 +830,8 @@ export default function LoungeProfileFullScreen({
   onNavigateToProfile = null,
   /** Stacked profile opened from a parent sheet (follow list); uses absolute overlay. */
   stackedOverlay = false,
+  /** Fill landscape Lounge right pane (no portal / slide-over). */
+  embedded = false,
   /** Root profile opened while Stream video lightbox is up - paint above hero stack before close. */
   stackAboveStreamLightbox = false,
   /** Pause profile scroll-root autoplay when post detail (or other overlay) owns video budget. */
@@ -3384,15 +3386,23 @@ export default function LoungeProfileFullScreen({
     return null
   }
 
-  const rootShellClass = stackedOverlay
-    ? 'absolute inset-0 z-40 bg-zinc-950'
-    : stackAboveStreamLightbox
-      ? 'fixed inset-0 z-[110] sm:bg-black/85'
-      : 'fixed inset-0 z-[101] sm:bg-black/85'
+  const rootShellClass = embedded
+    ? 'relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-zinc-950'
+    : stackedOverlay
+      ? 'absolute inset-0 z-40 bg-zinc-950'
+      : stackAboveStreamLightbox
+        ? 'fixed inset-0 z-[110] sm:bg-black/85'
+        : 'fixed inset-0 z-[101] sm:bg-black/85'
 
   return (
-    <div className={rootShellClass} role="dialog" aria-modal="true" aria-label="Profile">
-      {!stackedOverlay ? (
+    <div
+      className={rootShellClass}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Profile"
+      {...(embedded ? { 'data-lounge-profile-embedded': '' } : {})}
+    >
+      {!stackedOverlay && !embedded ? (
         <button
           type="button"
           className="absolute inset-0 z-0 hidden cursor-default sm:block"
@@ -3401,21 +3411,33 @@ export default function LoungeProfileFullScreen({
         />
       ) : null}
       <div
-        className={`${
-          stackedOverlay ? 'absolute' : 'fixed'
-        } inset-y-0 right-0 z-10 flex h-dvh max-h-dvh w-full max-w-2xl flex-col overflow-hidden border-l-0 bg-zinc-950 shadow-[-12px_0_40px_rgba(0,0,0,0.45)] transition-transform duration-300 ease-out motion-reduce:transition-none sm:border-l sm:border-zinc-800/90 ${
-          stackedOverlay || panelVisible ? 'translate-x-0' : 'translate-x-full'
-        }`}
+        className={
+          embedded
+            ? 'relative z-10 flex h-full min-h-0 w-full flex-col overflow-hidden bg-zinc-950'
+            : `${
+                stackedOverlay ? 'absolute' : 'fixed'
+              } inset-y-0 right-0 z-10 flex h-dvh max-h-dvh w-full max-w-2xl flex-col overflow-hidden border-l-0 bg-zinc-950 shadow-[-12px_0_40px_rgba(0,0,0,0.45)] transition-transform duration-300 ease-out motion-reduce:transition-none sm:border-l sm:border-zinc-800/90 ${
+                stackedOverlay || panelVisible ? 'translate-x-0' : 'translate-x-full'
+              }`
+        }
         data-lounge-profile-sheet=""
         {...(PROFILE_ANDROID_PERF ? { 'data-lounge-profile-android-perf': '' } : {})}
-        onTransitionEnd={(e) => {
-          if (e.propertyName !== 'transform') return
-          if (!panelVisible) onAfterTransitionOut?.()
-        }}
-        onTransitionCancel={(e) => {
-          if (e.propertyName !== 'transform') return
-          if (!panelVisible) onAfterTransitionOut?.()
-        }}
+        onTransitionEnd={
+          embedded
+            ? undefined
+            : (e) => {
+                if (e.propertyName !== 'transform') return
+                if (!panelVisible) onAfterTransitionOut?.()
+              }
+        }
+        onTransitionCancel={
+          embedded
+            ? undefined
+            : (e) => {
+                if (e.propertyName !== 'transform') return
+                if (!panelVisible) onAfterTransitionOut?.()
+              }
+        }
       >
         <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
         <div

@@ -111,6 +111,8 @@ export default function LoungeFullScreenComposerModal({
   videoInputId,
   onImagePointerDown,
   onVideoPointerDown,
+  /** Fill landscape Lounge right pane (no portal / fullscreen chrome). */
+  embedded = false,
 }) {
   const [activeTab, setActiveTab] = useState('write') // 'write' | 'preview'
   const [settingsModalOpen, setSettingsModalOpen] = useState(false)
@@ -399,7 +401,10 @@ export default function LoungeFullScreenComposerModal({
     swipeStartYRef.current = null
   }, [])
 
-  if (!open || typeof document === 'undefined') return null
+  if (!open) return null
+  if (!embedded && typeof document === 'undefined') return null
+
+  const showProMarkdown = Boolean(isEdgePro || isStaff)
 
   const activeCaption = threadCaptions[activePartIndex] ?? localText
   const len = (activeCaption || '').length
@@ -476,14 +481,19 @@ export default function LoungeFullScreenComposerModal({
     onReplyGateChange?.(gate)
   }
 
-  return createPortal(
+  const composerRoot = (
     <div
       role="dialog"
       aria-modal="true"
       aria-labelledby="pro-composer-title"
       data-lounge-fullscreen-composer=""
+      {...(embedded ? { 'data-lounge-composer-embedded': '' } : {})}
       data-composer-compact={chromeCompact ? 'true' : 'false'}
-      className="fixed inset-0 z-[220] flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-zinc-950 text-zinc-100 animate-in fade-in duration-150"
+      className={
+        embedded
+          ? 'relative flex h-full min-h-0 w-full flex-col overflow-hidden bg-zinc-950 text-zinc-100'
+          : 'fixed inset-0 z-[220] flex h-[100dvh] max-h-[100dvh] flex-col overflow-hidden bg-zinc-950 text-zinc-100 animate-in fade-in duration-150'
+      }
       onTouchStart={onComposerTouchStart}
       onTouchMove={onComposerTouchMove}
       onTouchEnd={onComposerTouchEnd}
@@ -494,7 +504,10 @@ export default function LoungeFullScreenComposerModal({
         className="flex shrink-0 items-center justify-between border-b border-zinc-800/90 bg-zinc-900/95 px-3.5 pb-3 backdrop-blur-md sm:px-6 sm:pb-3.5"
         style={{
           // Inline … Tailwind arbitrary max(env, --edge-sat) has broken before (profile title bar).
-          paddingTop: 'calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 0.75rem)',
+          // Embedded pane already sits under the Lounge safe-area pad.
+          paddingTop: embedded
+            ? '0.75rem'
+            : 'calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 0.75rem)',
         }}
       >
         <div className="flex items-center gap-2.5">
@@ -507,17 +520,19 @@ export default function LoungeFullScreenComposerModal({
               onClose()
             }}
             className="flex h-10 w-10 items-center justify-center rounded-xl text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100 touch-manipulation active:scale-95"
-            title="Minimize to inline composer"
-            aria-label="Minimize composer"
+            title={embedded ? 'Close composer' : 'Minimize to inline composer'}
+            aria-label={embedded ? 'Close composer' : 'Minimize composer'}
           >
             <Minimize2 className="h-5 w-5" />
           </button>
 
           <h2 id="pro-composer-title" className="hidden sm:inline-flex items-center gap-2 text-[15px] font-bold text-zinc-200">
-            <span>Pro Composer</span>
-            <span className="inline-flex items-center rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-2 py-0.5 text-[11px] font-black uppercase tracking-wider text-amber-400 ring-1 ring-amber-500/40">
-              MARKDOWN
-            </span>
+            <span>{showProMarkdown ? 'Pro Composer' : 'Compose'}</span>
+            {showProMarkdown ? (
+              <span className="inline-flex items-center rounded-full bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-2 py-0.5 text-[11px] font-black uppercase tracking-wider text-amber-400 ring-1 ring-amber-500/40">
+                MARKDOWN
+              </span>
+            ) : null}
           </h2>
         </div>
 
@@ -1266,7 +1281,9 @@ export default function LoungeFullScreenComposerModal({
           </div>
         </div>
       ) : null}
-    </div>,
-    document.body
+    </div>
   )
+
+  if (embedded) return composerRoot
+  return createPortal(composerRoot, document.body)
 }

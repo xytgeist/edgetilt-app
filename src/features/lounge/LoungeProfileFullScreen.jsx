@@ -75,6 +75,7 @@ import {
   LOUNGE_FEED_POST_ROW_CLASS,
   LOUNGE_FEED_POST_ROW_INNER_CLASS,
   LOUNGE_FEED_POST_INTERACTIONS_CLASS,
+  LOUNGE_FEED_TITLE_BAR_ROW_CLASS,
   loungeFeedAuthorHasStaffBadge,
 } from './loungeFeedAvatar.js'
 import { LoungeCommentCard } from './LoungePostCommentThread.jsx'
@@ -2336,13 +2337,16 @@ export default function LoungeProfileFullScreen({
       ? 8 // matches 0.5rem chrome row pad (feed-style)
       : Math.max(8, sat) // matches max(0.5rem, sat) on the chrome row
     const isIpa = isEdgeiOSShell()
-    const chromeNudge = collapseOn
-      ? profileChromeCenterNudgePx({
-          bannerHeightPx: bannerH,
-          chromePadTopPx: chromePadTop,
-          isIpaShell: isIpa,
-        })
-      : 0
+    // Embedded landscape: keep back/⋯ on the feed title-bar row (align with hamburger).
+    // Fullscreen overlays still center chrome on the tall banner at rest.
+    const chromeNudge =
+      collapseOn && !underShellSat
+        ? profileChromeCenterNudgePx({
+            bannerHeightPx: bannerH,
+            chromePadTopPx: chromePadTop,
+            isIpaShell: isIpa,
+          })
+        : 0
     profileChromeCenterNudgePxRef.current = chromeNudge
 
     // Pinned strip = Lounge feed title bar height (shell sat only when fullscreen overlay).
@@ -3501,14 +3505,20 @@ export default function LoungeProfileFullScreen({
             ) : null}
           </div>
           <div
-            className="relative z-[1] px-2 pb-1 sm:px-3"
-            style={{
-              // Inline … arbitrary Tailwind max(env, var(--edge-sat)) has broken before.
-              // Embedded landscape pane already clears Island via Lounge shell sat.
-              paddingTop: embedded
-                ? '0.5rem'
-                : 'max(0.5rem, max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))',
-            }}
+            className={
+              embedded
+                ? `relative z-[1] ${LOUNGE_FEED_TITLE_BAR_ROW_CLASS}`
+                : 'relative z-[1] px-2 pb-1 sm:px-3'
+            }
+            style={
+              embedded
+                ? undefined
+                : {
+                    // Inline … arbitrary Tailwind max(env, var(--edge-sat)) has broken before.
+                    paddingTop:
+                      'max(0.5rem, max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))',
+                  }
+            }
           >
             <div
               ref={profileChromeMotionRef}

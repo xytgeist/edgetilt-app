@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Landscape profile back/⋯ align with feed hamburger (Mac).** Embedded profile no longer mid-banner-nudges chrome at rest; row uses the same `LOUNGE_FEED_TITLE_BAR_ROW_CLASS` padding as the left title bar. Frontend **`1.4.431`**. Web only.
 - **2026-09-21:** **Sports pill score center via absolute mid-slots (Windows).** Undid CSS grid centering (no visible change on device). Equal `flex-1` gutters now host `absolute inset-0 flex justify-center` score layers so numbers sit in the logo↔FINAL midpoint. Frontend **`1.4.430`**.
 - **2026-09-21:** **Profile collapsed chrome = feed title bar height (Mac).** Sticky pin no longer sizes from mid-banner chrome nudge (that left a tall strip). Pinned height is **56px** (Lounge feed title row); fullscreen overlays still add sat. Embedded landscape skips a second sat (shell already owns it). Chrome nudge eases to 0 while pinning. Frontend **`1.4.429`**. Web only.
 - **2026-09-21:** **Sports pill score center via grid (Windows).** Nested `flex-1` score wrappers were collapsing to content width so numbers hugged the logos. Row is now CSS grid with equal `minmax(0,1fr)` score columns. Frontend **`1.4.428`**. *(Superseded by **1.4.430**.)*

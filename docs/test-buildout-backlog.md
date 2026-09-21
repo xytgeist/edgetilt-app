@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Chat landscape thread chrome clears Island (Mac).** Split root had no sat while the list shell did, so the in-chat header sat under the status bar. Root gets sat when split; list shell skips a second pad via `fillParentHeight`. Frontend **`1.4.439`**. Web only.
 - **2026-09-21:** **Sports pill scores center in logo↔FINAL gutters (Windows).** Flat row: spacer | away logo | `flex-1` justify-center score | FINAL | `flex-1` score | home logo | chevron/spacer. No logo+score clusters. Cover dot + ML unchanged. Frontend **`1.4.438`**.
 - **2026-09-21:** **Chat landscape list + thread split (Mac).** Inbox is full width under the left rail. Opening/creating a room splits like Lounge (list left / embedded `ChatConversation` right). Portrait stack unchanged; Slots Pro Lounge `paneEmbed` unchanged. `ScrollLinkedEdgeTitleBarShell` gains left-aligned title bar width for the list column. Frontend **`1.4.437`**. Web only.
 - **2026-09-21:** **Strip failed sports-pill centering attempts (Windows).** Restored pre-experiment row (logo+score clusters pinned outer). Kept cover white **dot** + closing ML paint. Removed score-slot/bundle wrappers and CSS `!important` flex/text-align hacks. Horizontal logo↔FINAL midpoint still open. Frontend **`1.4.436`**.

@@ -951,7 +951,8 @@ export default function ChatTab({
         paneEmbed
           ? 'flex min-h-0 min-w-0 flex-1 flex-col select-none'
           : chatThreadInPane
-            ? 'flex h-dvh max-h-dvh min-h-0 w-full select-none flex-col overflow-hidden bg-zinc-950'
+            ? // Shell sat once for list + thread … list shell skips a second pad via fillParentHeight.
+              'flex h-dvh max-h-dvh min-h-0 w-full select-none flex-col overflow-hidden bg-zinc-950 pt-[max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))]'
             : chatLandscapeLayout
               ? 'select-none'
               : 'select-none'

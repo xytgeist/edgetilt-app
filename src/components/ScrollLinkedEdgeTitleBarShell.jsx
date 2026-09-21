@@ -214,7 +214,11 @@ export default function ScrollLinkedEdgeTitleBarShell({
     <div
       data-edge-scroll-shell
       {...(stableLayoutViewport ? { 'data-stable-layout-viewport': '' } : {})}
-      className={`mx-auto flex ${heightClass} min-h-0 w-full ${colMax} flex-col overflow-hidden bg-zinc-950 pt-[max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))]`}
+      className={
+        fillParentHeight
+          ? `mx-auto flex ${heightClass} min-h-0 w-full ${colMax} flex-col overflow-hidden bg-zinc-950`
+          : `mx-auto flex ${heightClass} min-h-0 w-full ${colMax} flex-col overflow-hidden bg-zinc-950 pt-[max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))]`
+      }
     >
       <EdgeStatusBarScrollPlate
         reveal={hideFixedTitleBar ? 1 : titleReveal}

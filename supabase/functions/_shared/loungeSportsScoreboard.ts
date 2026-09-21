@@ -22,6 +22,8 @@ export type LoungeSportsGameSide = {
   logo: string
   score: number | null
   linescores: number[]
+  /** Current or last-known ATS number for this side (favorite negative). */
+  spread?: number | null
   team_id?: number | null
 }
 
@@ -148,8 +150,68 @@ function sideFromRundown(
     logo: espnLogo(logoLeague, abbrev || name),
     score,
     linescores: lines,
+    spread: null,
     team_id: Number.isFinite(teamId) && teamId > 0 ? teamId : null,
   }
+}
+
+function pairSpreads(home: number | null, away: number | null): { home: number | null; away: number | null } {
+  if (home == null && away == null) return { home: null, away: null }
+  return {
+    home: home ?? (away != null ? -away : null),
+    away: away ?? (home != null ? -home : null),
+  }
+}
+
+function spreadFromLineObject(raw: unknown): { home: number | null; away: number | null } {
+  if (!raw || typeof raw !== 'object') return { home: null, away: null }
+  const o = raw as Record<string, unknown>
+  const spreadObj = (o.spread && typeof o.spread === 'object') ? o.spread as Record<string, unknown> : o
+  const home = numOrNull(
+    spreadObj.point_spread_home
+    ?? spreadObj.spread_home
+    ?? spreadObj.home_spread
+    ?? spreadObj.home
+    ?? o.point_spread_home
+    ?? o.spread_home
+    ?? o.home_spread,
+  )
+  const away = numOrNull(
+    spreadObj.point_spread_away
+    ?? spreadObj.spread_away
+    ?? spreadObj.away_spread
+    ?? spreadObj.away
+    ?? o.point_spread_away
+    ?? o.spread_away
+    ?? o.away_spread,
+  )
+  return pairSpreads(home, away)
+}
+
+/** TheRundown day events sometimes carry affiliate `lines` / `line_periods` even after FINAL. */
+function spreadFromRundownEvent(event: Record<string, unknown>): { home: number | null; away: number | null } {
+  const direct = spreadFromLineObject(event)
+  if (direct.home != null || direct.away != null) return direct
+  const periods = event.line_periods
+  if (periods && typeof periods === 'object') {
+    const p = periods as Record<string, unknown>
+    for (const key of ['full', 'period', 'current', 'full_game']) {
+      const hit = spreadFromLineObject(p[key])
+      if (hit.home != null || hit.away != null) return hit
+    }
+    for (const value of Object.values(p)) {
+      const hit = spreadFromLineObject(value)
+      if (hit.home != null || hit.away != null) return hit
+    }
+  }
+  const lines = event.lines
+  if (lines && typeof lines === 'object') {
+    for (const value of Object.values(lines as Record<string, unknown>)) {
+      const hit = spreadFromLineObject(value)
+      if (hit.home != null || hit.away != null) return hit
+    }
+  }
+  return { home: null, away: null }
 }
 
 function numOrNull(value: unknown): number | null {
@@ -234,6 +296,8 @@ function gameFromRundown(
     }>
     live_game_state?: Record<string, unknown>
     game_state?: Record<string, unknown>
+    lines?: unknown
+    line_periods?: unknown
     score?: {
       event_status?: string
       event_status_detail?: string
@@ -279,6 +343,7 @@ function gameFromRundown(
   const id = String(event.event_id || `${sportKey}:${away.abbrev}@${home.abbrev}:${commence}`).trim()
   if (!id) return null
   const live = liveFromRundown(event as Record<string, unknown>, home.team_id ?? null, away.team_id ?? null)
+  const spread = spreadFromRundownEvent(event as Record<string, unknown>)
   return {
     id,
     sport_key: sportKey,
@@ -286,8 +351,8 @@ function gameFromRundown(
     status,
     status_label: statusLabel,
     commence_time: commence,
-    home,
-    away,
+    home: { ...home, spread: spread.home },
+    away: { ...away, spread: spread.away },
     aliases: [...aliasesForSide(home), ...aliasesForSide(away)],
     live,
   }
@@ -363,6 +428,7 @@ function gameFromOdds(sportKey: string, sportLabel: string, logoLeague: string, 
     logo: espnLogo(logoLeague, homeAbbrev),
     score: homeScore,
     linescores: [],
+    spread: null,
   }
   const away: LoungeSportsGameSide = {
     name: awayName,
@@ -371,6 +437,7 @@ function gameFromOdds(sportKey: string, sportLabel: string, logoLeague: string, 
     logo: espnLogo(logoLeague, awayAbbrev),
     score: awayScore,
     linescores: [],
+    spread: null,
   }
   return {
     id: String(ev.id || `${sportKey}:${awayName}@${homeName}`).trim(),
@@ -465,9 +532,10 @@ export async function buildLoungeSportsScoreboard(): Promise<{ games: LoungeSpor
   // Rundown round was burning the Edge wall clock (10s timeout × 6 sports) so the
   // invoke 502'd and the Lounge painted zero pills.
   if (nflSport) {
-    const [nflBatches, nflOdds] = await Promise.all([
+    const [nflBatches, nflScores, nflOddsPack] = await Promise.all([
       Promise.all(nflDates.map((date) => listRundownDayEvents(nflSport.key, date).catch(() => []))),
       fetchSportScores('americanfootball_nfl', 3).catch(() => []),
+      cachedSportOdds('americanfootball_nfl'),
     ])
     for (const events of nflBatches) {
       if (events.length) source = source === 'none' ? 'rundown' : source
@@ -476,13 +544,17 @@ export async function buildLoungeSportsScoreboard(): Promise<{ games: LoungeSpor
         if (game && gameOnSlate(game, nflDates)) upsert(game, true)
       }
     }
-    if (nflOdds.length) {
+    if (nflScores.length) {
       source = source === 'none' ? 'odds' : source.includes('odds') ? source : `${source}+odds`
-      for (const ev of nflOdds) {
+      for (const ev of nflScores) {
         const game = gameFromOdds('americanfootball_nfl', 'NFL', 'nfl', ev)
         if (game && gameOnSlate(game, nflDates)) upsert(game, false)
       }
     }
+    if (nflOddsPack) source = source.includes('odds') ? source : source === 'none' ? 'odds' : `${source}+odds`
+    const withSpreads = applyOddsSpreads([...byKey.values()], nflOddsPack)
+    byKey.clear()
+    for (const game of withSpreads) upsert(game, true)
   }
 
   const games = [...byKey.values()].sort((a, b) => {
@@ -597,6 +669,40 @@ function compactOddsBooksFromEvent(ev: OddsEventRow, homeName: string, awayName:
     if (rows.length >= 5) break
   }
   return rows
+}
+
+function preferredSpreadFromBooks(books: LoungeSportsOddsRow[]): { home: number | null; away: number | null } {
+  for (const row of books) {
+    const pair = pairSpreads(numOrNull(row.home_spread), numOrNull(row.away_spread))
+    if (pair.home != null || pair.away != null) return pair
+  }
+  return { home: null, away: null }
+}
+
+function applyOddsSpreads(
+  games: LoungeSportsGame[],
+  pack: Awaited<ReturnType<typeof fetchSportOdds>> | null,
+): LoungeSportsGame[] {
+  const events = Array.isArray(pack?.events) ? pack!.events as OddsEventRow[] : []
+  if (!events.length) return games
+  return games.map((game) => {
+    const matched = events.find((ev) =>
+      oddsNamesHit(String(ev.home_team || ''), game.home) && oddsNamesHit(String(ev.away_team || ''), game.away)
+    )
+    if (!matched) return game
+    const books = compactOddsBooksFromEvent(
+      matched,
+      String(matched.home_team || game.home.name),
+      String(matched.away_team || game.away.name),
+    )
+    const pair = preferredSpreadFromBooks(books)
+    if (pair.home == null && pair.away == null) return game
+    return {
+      ...game,
+      home: { ...game.home, spread: pair.home },
+      away: { ...game.away, spread: pair.away },
+    }
+  })
 }
 
 function oddsNamesHit(oddsName: string, side: LoungeSportsGameSide): boolean {

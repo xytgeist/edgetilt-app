@@ -31,6 +31,30 @@ function gamesFromCache() {
   return cached.map(enrichLoungeSportsGame).filter(isLoungeSportsCurrentSlateGame)
 }
 
+function sideSpread(side) {
+  const n = Number(side?.spread)
+  return Number.isFinite(n) ? n : null
+}
+
+/** Odds drop completed games; keep the last line we already painted. */
+function preserveSpreads(next, prev) {
+  if (!Array.isArray(next) || !next.length || !Array.isArray(prev) || !prev.length) return next
+  const prevById = new Map(prev.map((game) => [String(game.id), game]))
+  return next.map((game) => {
+    if (sideSpread(game.home) != null || sideSpread(game.away) != null) return game
+    const old = prevById.get(String(game.id))
+    if (!old) return game
+    const homeSpread = sideSpread(old.home)
+    const awaySpread = sideSpread(old.away)
+    if (homeSpread == null && awaySpread == null) return game
+    return {
+      ...game,
+      home: { ...game.home, spread: homeSpread },
+      away: { ...game.away, spread: awaySpread },
+    }
+  })
+}
+
 /**
  * Live/recent scoreboard for in-post game pills.
  * Paints the last slate immediately (memory + localStorage), then refreshes.
@@ -48,8 +72,9 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
     try {
       const data = await loungeSportsScoreboard(supabaseClient)
       if (data?.error || !Array.isArray(data?.games)) return
-      const next = data.games.map(enrichLoungeSportsGame)
-      if (!next.length) return
+      const incoming = data.games.map(enrichLoungeSportsGame)
+      if (!incoming.length) return
+      const next = preserveSpreads(incoming, gamesRef.current)
       setGames(next)
       writeLoungeSportsScoreboardCache(next)
     } catch (err) {

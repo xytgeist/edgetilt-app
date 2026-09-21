@@ -3,8 +3,18 @@ import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import { LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS } from './loungeFeedAvatar.js'
 import { nflPillWash } from './loungeSportsMatch.js'
 
+export function formatLoungeSportsSpread(point) {
+  if (point == null || !Number.isFinite(Number(point))) return null
+  const n = Number(point)
+  if (n === 0) return 'PK'
+  const abs = Math.abs(n)
+  const body = Number.isInteger(abs) ? String(abs) : String(abs)
+  return n > 0 ? `+${body}` : `-${body}`
+}
+
 function scoreLabel(side, status) {
-  if (status === 'pre' || side?.score == null) return '—'
+  if (status === 'pre') return formatLoungeSportsSpread(side?.spread) || '—'
+  if (side?.score == null) return '—'
   return String(side.score)
 }
 
@@ -31,6 +41,28 @@ function TeamMark({ side, dimmed }) {
   )
 }
 
+function ScoreStack({ side, status, align, dimmed }) {
+  const pre = status === 'pre'
+  const primary = scoreLabel(side, status)
+  const spreadUnder = pre ? null : formatLoungeSportsSpread(side?.spread)
+  return (
+    <span className={`flex min-w-0 flex-col ${align === 'end' ? 'ml-auto items-end' : 'items-start'}`}>
+      <span
+        className={`text-[26px] font-bold leading-none tabular-nums drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
+          dimmed ? 'text-white/55' : 'text-white'
+        }`}
+      >
+        {primary}
+      </span>
+      {spreadUnder ? (
+        <span className="mt-1 text-[11px] font-semibold leading-none tabular-nums tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]">
+          {spreadUnder}
+        </span>
+      ) : null}
+    </span>
+  )
+}
+
 /**
  * In-post score pill (X sports chip). Tap opens the Edge game hub.
  * Pass `game` to skip caption matching (composer preview).
@@ -53,7 +85,9 @@ export default function LoungeGameScorePill({
   const awayColor = nflPillWash(game.away?.color, game.away?.color2)
   const homeColor = nflPillWash(game.home?.color, game.home?.color2)
   const Tag = interactive ? 'button' : 'div'
-  const label = `${game.away?.abbrev} ${scoreLabel(game.away, game.status)} ${game.home?.abbrev} ${scoreLabel(game.home, game.status)} ${game.status_label}`
+  const awaySpread = formatLoungeSportsSpread(game.away?.spread)
+  const homeSpread = formatLoungeSportsSpread(game.home?.spread)
+  const label = `${game.away?.abbrev} ${scoreLabel(game.away, game.status)}${awaySpread && game.status !== 'pre' ? ` ${awaySpread}` : ''} ${game.home?.abbrev} ${scoreLabel(game.home, game.status)}${homeSpread && game.status !== 'pre' ? ` ${homeSpread}` : ''} ${game.status_label}`
 
   return (
     <div className={`relative ${className}`.trim()} data-lounge-composer-game-pill={dismissible ? '' : undefined}>
@@ -79,13 +113,12 @@ export default function LoungeGameScorePill({
         <span className="relative z-[3] flex min-h-[5.625rem] items-center gap-2 px-3 py-2.5">
           <span className="flex min-w-0 flex-1 items-center gap-2">
             <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} />
-            <span
-              className={`ml-auto text-[26px] font-bold leading-none tabular-nums drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
-                awayWon || live || game.status === 'pre' ? 'text-white' : 'text-white/55'
-              }`}
-            >
-              {scoreLabel(game.away, game.status)}
-            </span>
+            <ScoreStack
+              side={game.away}
+              status={game.status}
+              align="end"
+              dimmed={game.status === 'post' && !awayWon && !live}
+            />
           </span>
           <span className="flex w-[4.75rem] shrink-0 flex-col items-center px-1">
             {live ? <span className="mb-0.5 h-1.5 w-1.5 rounded-full bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.9)]" /> : null}
@@ -94,13 +127,12 @@ export default function LoungeGameScorePill({
             </span>
           </span>
           <span className="flex min-w-0 flex-1 items-center gap-2">
-            <span
-              className={`text-[26px] font-bold leading-none tabular-nums drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
-                homeWon || live || game.status === 'pre' ? 'text-white' : 'text-white/55'
-              }`}
-            >
-              {scoreLabel(game.home, game.status)}
-            </span>
+            <ScoreStack
+              side={game.home}
+              status={game.status}
+              align="start"
+              dimmed={game.status === 'post' && !homeWon && !live}
+            />
             <span className="ml-auto">
               <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} />
             </span>
@@ -127,4 +159,3 @@ export default function LoungeGameScorePill({
     </div>
   )
 }
-

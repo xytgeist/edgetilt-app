@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Landscape post-detail title bar matches feed hamburger (Mac).** In-pane detail was stacking a second sat on the absolute title bar under shell sat, so back/Post/⋯ sat lower than the left EDGE row. Skip sat when `loungeDetailInPane`. Fullscreen / overlay unchanged. Frontend **`1.4.433`**. Web only.
 - **2026-09-21:** **Sports pill score center the simple way (Windows).** Undid flex-justify / grid / absolute mid-slot attempts. Score slots are `flex: 1 1 0%` + `text-align: center` with an `inline-block` score bundle. Frontend **`1.4.432`**.
 - **2026-09-21:** **Landscape profile back/⋯ align with feed hamburger (Mac).** Embedded profile no longer mid-banner-nudges chrome at rest; row uses the same `LOUNGE_FEED_TITLE_BAR_ROW_CLASS` padding as the left title bar. Frontend **`1.4.431`**. Web only.
 - **2026-09-21:** **Sports pill score center via absolute mid-slots (Windows).** Undid CSS grid centering (no visible change on device). Equal `flex-1` gutters now host `absolute inset-0 flex justify-center` score layers so numbers sit in the logo↔FINAL midpoint. Frontend **`1.4.430`**. *(Superseded by **1.4.432**.)*

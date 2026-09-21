@@ -17811,7 +17811,12 @@ export default function SocialFeed({
             <div
               ref={loungePostDetailTitleBarRef}
               data-lounge-post-detail-title-bar=""
-              className="absolute inset-x-0 top-0 z-30 bg-zinc-950/80 pt-[max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/70 will-change-transform"
+              className={
+                loungeDetailInPane
+                  ? // Landscape pane already clears Island via Lounge shell sat … match feed title row.
+                    'absolute inset-x-0 top-0 z-30 bg-zinc-950/80 backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/70 will-change-transform'
+                  : 'absolute inset-x-0 top-0 z-30 bg-zinc-950/80 pt-[max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] backdrop-blur-md supports-[backdrop-filter]:bg-zinc-950/70 will-change-transform'
+              }
               style={{
                 transform: `translate3d(0, ${-(1 - loungePostDetailTitleReveal) * (loungePostDetailTitleBarHeight > 0 ? loungePostDetailTitleBarHeight : 56)}px, 0)`,
                 pointerEvents: loungePostDetailTitleReveal > 0.12 ? 'auto' : 'none',

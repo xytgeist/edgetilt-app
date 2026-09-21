@@ -3361,6 +3361,7 @@ html.light [data-lounge-game-pill] .text-zinc-100 {
 /*
   5-col grid: logo | score gutter | status | score gutter | logo.
   Chevron is absolute (not a grid column) so narrow carousel slides keep logo↔FINAL gutters.
+  Side pad uses cqi so logos stay inset on wide cards; FitPrimary scales the number to the gutter.
 */
 [data-lounge-game-pill-row] {
   position: relative;
@@ -3368,20 +3369,20 @@ html.light [data-lounge-game-pill] .text-zinc-100 {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) minmax(3rem, 4.25rem) minmax(0, 1fr) auto;
   align-items: center;
-  column-gap: 0.25rem;
+  column-gap: 0.35rem;
   width: 100%;
   min-height: 5.625rem;
-  padding: 0.625rem 0.5rem;
+  padding: 0.625rem clamp(0.7rem, 3.8cqi, 1.15rem);
   box-sizing: border-box;
 }
 [data-lounge-game-pill-hub] [data-lounge-game-pill-row] {
   /* Room for absolute chevron without eating a grid column. */
-  padding-right: 1.65rem;
+  padding-right: clamp(1.55rem, 5cqi, 1.85rem);
 }
 [data-lounge-game-pill-chevron] {
   position: absolute;
   top: 50%;
-  right: 0.35rem;
+  right: 0.4rem;
   z-index: 4;
   display: flex;
   transform: translateY(-50%);
@@ -3416,12 +3417,12 @@ html.light [data-lounge-game-pill] .text-zinc-100 {
 @container lounge-game-pill (max-width: 300px) {
   [data-lounge-game-pill-row] {
     grid-template-columns: auto minmax(0, 1fr) minmax(2.5rem, 3.25rem) minmax(0, 1fr) auto;
-    column-gap: 0.15rem;
-    padding: 0.5rem 0.35rem;
+    column-gap: 0.2rem;
+    padding: 0.5rem clamp(0.55rem, 4cqi, 0.8rem);
     min-height: 5.25rem;
   }
   [data-lounge-game-pill-hub] [data-lounge-game-pill-row] {
-    padding-right: 1.45rem;
+    padding-right: clamp(1.4rem, 5cqi, 1.6rem);
   }
   [data-lounge-game-pill-mark] {
     width: 2rem;

@@ -4,28 +4,37 @@ import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import { LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS } from './loungeFeedAvatar.js'
 import { nflPillWash, nflPillWashLikelyAir, probeLogoWashConflict } from './loungeSportsMatch.js'
 
-const PRE_SPREAD_MAX_PX = 26
+const PRE_SPREAD_MAX_PX = 28
 const PRE_SPREAD_MIN_PX = 13
+/** Aim for this fraction of the logo↔status gutter width. */
+const PRIMARY_GUTTER_FILL = 0.55
 
 function FitPrimary({ children, className, align }) {
   const ref = useRef(null)
   useLayoutEffect(() => {
     const el = ref.current
     if (!el) return
-    const parent = el.parentElement
-    if (!parent) return
+    // Measure the logo↔status gutter, not the shrink-wrapped number wrapper.
+    const measureEl =
+      el.closest('[data-lounge-game-pill-score-gutter]') || el.parentElement
+    if (!measureEl) return
     const fit = () => {
-      el.style.fontSize = `${PRE_SPREAD_MAX_PX}px`
-      const avail = parent.clientWidth
+      const avail = measureEl.clientWidth
+      if (avail <= 0) return
+      const target = Math.max(
+        PRE_SPREAD_MIN_PX,
+        Math.min(PRE_SPREAD_MAX_PX, Math.floor(avail * PRIMARY_GUTTER_FILL)),
+      )
+      el.style.fontSize = `${target}px`
       const need = el.scrollWidth
-      if (avail > 0 && need > avail) {
-        const next = Math.max(PRE_SPREAD_MIN_PX, Math.floor(PRE_SPREAD_MAX_PX * (avail / need) * 0.98))
+      if (need > avail) {
+        const next = Math.max(PRE_SPREAD_MIN_PX, Math.floor(target * (avail / need) * 0.98))
         el.style.fontSize = `${next}px`
       }
     }
     fit()
     const ro = new ResizeObserver(fit)
-    ro.observe(parent)
+    ro.observe(measureEl)
     return () => ro.disconnect()
   }, [children])
   const pin = align === 'end' ? 'ml-auto' : align === 'center' ? 'mx-auto' : 'mr-auto'
@@ -116,28 +125,18 @@ function ScoreStack({ side, status, dimmed, covered }) {
   const mlUnder = pre ? null : formatLoungeSportsMoneyline(side?.ml)
   const underLine = [spreadUnder, mlUnder].filter(Boolean).join(' ')
   const primaryClass = `whitespace-nowrap font-bold leading-none tabular-nums drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
-    pre ? '' : 'text-[26px]'
-  } ${dimmed ? 'text-white/55' : 'text-white'}`
-  if (pre) {
-    // Fill the logo↔FINAL gutter so FitPrimary can shrink long spreads.
-    return (
-      <span data-lounge-game-pill-num="fit" className="flex w-full min-w-0 justify-center overflow-hidden">
-        <FitPrimary className={primaryClass} align="center">
-          {primary}
-        </FitPrimary>
-      </span>
-    )
-  }
-  // Content-sized; parent gutter centers this in the logo↔FINAL span.
+    dimmed ? 'text-white/55' : 'text-white'
+  }`
+  // Parent is the full logo↔FINAL gutter; FitPrimary scales to ~55% of that width.
   return (
-    <span className="relative inline-flex shrink-0 items-center justify-center">
-      <span data-lounge-game-pill-primary className={primaryClass}>
+    <span data-lounge-game-pill-num="fit" className="relative flex w-full min-w-0 justify-center overflow-hidden">
+      <FitPrimary className={primaryClass} align="center">
         {primary}
-      </span>
-      {underLine ? (
+      </FitPrimary>
+      {!pre && underLine ? (
         <span
           data-lounge-game-pill-spread-cover={covered ? '' : undefined}
-          className="absolute left-1/2 top-full z-[1] mt-0.5 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap text-[11px] font-semibold leading-none tabular-nums tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]"
+          className="absolute left-1/2 top-[calc(50%+0.7em)] z-[1] mt-0.5 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap text-[11px] font-semibold leading-none tabular-nums tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]"
         >
           {covered ? (
             <span

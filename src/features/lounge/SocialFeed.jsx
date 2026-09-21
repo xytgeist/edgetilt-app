@@ -16674,7 +16674,7 @@ export default function SocialFeed({
         data-lounge-landscape-feed=""
         className={
           loungeLandscapeEngagementActive
-            ? 'flex min-h-0 w-1/2 shrink-0 flex-col border-r border-zinc-800/80'
+            ? 'flex min-h-0 shrink-0 flex-col border-r border-zinc-800/80'
             : 'contents'
         }
       >
@@ -16684,7 +16684,13 @@ export default function SocialFeed({
         <EdgeStatusBarScrollPlate
           reveal={loungeTitleReveal}
           heightPx={loungeFeedViewportTopPx}
-          className={ipadNavRail ? 'max-w-none' : 'max-w-2xl'}
+          className={
+            loungeLandscapeEngagementActive
+              ? 'max-w-[var(--lounge-landscape-phone-col,24.375rem)]'
+              : ipadNavRail
+                ? 'max-w-none'
+                : 'max-w-2xl'
+          }
         />
         <div
           ref={loungeTitleBarRef}
@@ -16700,10 +16706,8 @@ export default function SocialFeed({
               ? {
                   left: ipadNavRail ? 'var(--edge-ipad-rail)' : 0,
                   right: 'auto',
-                  width: ipadNavRail
-                    ? 'min(28rem, calc((100% - var(--edge-ipad-rail)) * 0.5))'
-                    : 'min(28rem, 50%)',
-                  maxWidth: '28rem',
+                  width: 'var(--lounge-landscape-phone-col, 24.375rem)',
+                  maxWidth: 'var(--lounge-landscape-phone-col, 24.375rem)',
                   transform: `translate3d(0, ${loungeTitleBarHideTranslateYPx(loungeTitleReveal, loungeTitleBarHeight, loungeFeedViewportTopPx)}px, 0)`,
                 }
               : {

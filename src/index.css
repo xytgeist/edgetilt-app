@@ -3730,57 +3730,57 @@ html[data-ipad-nav] [data-lounge-feed-root] {
 }
 /* Tall iPad only: ~1.275× phone. Phone landscape keeps the rail but not this scale-up. */
 @media (min-height: 700px) {
-  html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[10px\] { font-size: calc(15px * 0.85); }
-  html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[11px\] { font-size: calc(16.5px * 0.85); }
-  html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[12px\] { font-size: calc(18px * 0.85); }
-  html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[13px\] { font-size: calc(19.5px * 0.85); }
-  html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[14px\] { font-size: calc(21px * 0.85); }
-  html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[15px\] { font-size: calc(22.5px * 0.85); }
-  html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[16px\] { font-size: calc(24px * 0.85); }
-  html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[17px\] { font-size: calc(25.5px * 0.85); }
-  html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[18px\] { font-size: calc(27px * 0.85); }
-  html[data-ipad-nav] [data-lounge-feed-scroll] .text-\[19px\] { font-size: calc(28.5px * 0.85); }
-  html[data-ipad-nav] [data-lounge-feed-scroll] .text-xs { font-size: calc(18px * 0.85); }
-  html[data-ipad-nav] [data-lounge-feed-scroll] .text-sm { font-size: calc(21px * 0.85); }
-  html[data-ipad-nav] [data-lounge-feed-scroll] .h-3\.5.w-3\.5 { height: calc(21px * 0.85); width: calc(21px * 0.85); }
-  html[data-ipad-nav] [data-lounge-feed-scroll] .h-4.w-4 { height: calc(24px * 0.85); width: calc(24px * 0.85); }
-  html[data-ipad-nav] [data-lounge-feed-scroll] .h-\[15px\].w-\[15px\] { height: calc(22.5px * 0.85); width: calc(22.5px * 0.85); }
-  html[data-ipad-nav] [data-lounge-feed-scroll] .h-\[16px\].w-\[16px\] { height: calc(24px * 0.85); width: calc(24px * 0.85); }
-  html[data-ipad-nav] [data-lounge-feed-scroll] .h-\[18px\].w-\[18px\] { height: calc(27px * 0.85); width: calc(27px * 0.85); }
-  html[data-ipad-nav] [data-lounge-feed-scroll] .h-\[24px\].w-\[24px\] { height: calc(36px * 0.85); width: calc(36px * 0.85); }
-  html[data-ipad-nav] [data-lounge-feed-scroll] .h-12.w-12 { height: calc(4.5rem * 0.85); width: calc(4.5rem * 0.85); }
-  html[data-ipad-nav] [data-lounge-feed-scroll] .sm\:h-\[3\.3rem\].sm\:w-\[3\.3rem\] {
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] .text-\[10px\] { font-size: calc(15px * 0.85); }
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] .text-\[11px\] { font-size: calc(16.5px * 0.85); }
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] .text-\[12px\] { font-size: calc(18px * 0.85); }
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] .text-\[13px\] { font-size: calc(19.5px * 0.85); }
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] .text-\[14px\] { font-size: calc(21px * 0.85); }
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] .text-\[15px\] { font-size: calc(22.5px * 0.85); }
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] .text-\[16px\] { font-size: calc(24px * 0.85); }
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] .text-\[17px\] { font-size: calc(25.5px * 0.85); }
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] .text-\[18px\] { font-size: calc(27px * 0.85); }
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] .text-\[19px\] { font-size: calc(28.5px * 0.85); }
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] .text-xs { font-size: calc(18px * 0.85); }
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] .text-sm { font-size: calc(21px * 0.85); }
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] .h-3\.5.w-3\.5 { height: calc(21px * 0.85); width: calc(21px * 0.85); }
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] .h-4.w-4 { height: calc(24px * 0.85); width: calc(24px * 0.85); }
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] .h-\[15px\].w-\[15px\] { height: calc(22.5px * 0.85); width: calc(22.5px * 0.85); }
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] .h-\[16px\].w-\[16px\] { height: calc(24px * 0.85); width: calc(24px * 0.85); }
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] .h-\[18px\].w-\[18px\] { height: calc(27px * 0.85); width: calc(27px * 0.85); }
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] .h-\[24px\].w-\[24px\] { height: calc(36px * 0.85); width: calc(36px * 0.85); }
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] .h-12.w-12 { height: calc(4.5rem * 0.85); width: calc(4.5rem * 0.85); }
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] .sm\:h-\[3\.3rem\].sm\:w-\[3\.3rem\] {
     height: calc(4.95rem * 0.85);
     width: calc(4.95rem * 0.85);
   }
-  html[data-ipad-nav] [data-lounge-feed-scroll] .max-h-\[min\(55vh\,420px\)\] {
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] .max-h-\[min\(55vh\,420px\)\] {
     max-height: min(calc(82.5vh * 0.85), calc(630px * 0.85));
   }
-  html[data-ipad-nav] [data-lounge-feed-scroll] .max-w-\[min\(100\%\,20rem\)\] {
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] .max-w-\[min\(100\%\,20rem\)\] {
     max-width: min(100%, calc(30rem * 0.85));
   }
-  html[data-ipad-nav] [data-lounge-feed-scroll] article .gap-3 {
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] article .gap-3 {
     gap: calc(1.125rem * 0.85);
   }
-  html[data-ipad-nav] [data-lounge-feed-scroll] article,
-  html[data-ipad-nav] [data-lounge-feed-scroll] [data-lounge-feed-composer],
-  html[data-ipad-nav] [data-lounge-feed-scroll] [data-lounge-feed-toolbar] {
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] article,
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] [data-lounge-feed-composer],
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] [data-lounge-feed-toolbar] {
     padding-left: var(--edge-ipad-feed-pad);
     padding-right: var(--edge-ipad-feed-pad);
   }
-  html[data-ipad-nav] [data-lounge-feed-composer-tools] svg {
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-composer-tools] svg {
     width: calc(2.625rem * 0.85);
     height: calc(2.625rem * 0.85);
   }
-  html[data-ipad-nav] [data-lounge-feed-composer-tools],
-  html[data-ipad-nav] [data-lounge-feed-composer-tools] [data-lounge-media-toolbar] {
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-composer-tools],
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-composer-tools] [data-lounge-media-toolbar] {
     gap: 0.35rem;
   }
-  html[data-ipad-nav] [data-lounge-feed-scroll] article {
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] article {
     position: relative;
     border-top-color: transparent;
   }
-  html[data-ipad-nav] [data-lounge-feed-scroll] article::before {
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] article::before {
     content: "";
     position: absolute;
     z-index: 1;
@@ -3791,10 +3791,10 @@ html[data-ipad-nav] [data-lounge-feed-root] {
     background: color-mix(in srgb, var(--color-zinc-800) 70%, transparent);
     pointer-events: none;
   }
-  html[data-ipad-nav] [data-lounge-feed-composer] > .absolute.right-3 {
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-composer] > .absolute.right-3 {
     right: var(--edge-ipad-feed-pad);
   }
-  html[data-ipad-nav] [data-lounge-feed-scroll] [data-lounge-feed-carousel-bleed] {
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] [data-lounge-feed-carousel-bleed] {
     --edge-ipad-carousel-avatar: calc(4.95rem * 0.85);
     --edge-ipad-carousel-gap: calc(1.125rem * 0.85);
     width: calc(100vw - var(--edge-ipad-rail) - 100px);
@@ -3804,7 +3804,7 @@ html[data-ipad-nav] [data-lounge-feed-root] {
     );
     margin-top: calc(1.75rem * 0.85);
   }
-  html[data-ipad-nav] [data-lounge-feed-scroll] [data-lounge-feed-carousel-bleed] [data-lounge-feed-horizontal-scroll] {
+  html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] [data-lounge-feed-carousel-bleed] [data-lounge-feed-horizontal-scroll] {
     padding-left: calc(
       var(--edge-ipad-feed-pad) + var(--edge-ipad-carousel-avatar) + var(--edge-ipad-carousel-gap) - 50px
     );
@@ -3812,13 +3812,13 @@ html[data-ipad-nav] [data-lounge-feed-root] {
   }
   /* Landscape iPad market strip stays in the caption column (one chart wide) so two cards plus a peek fit. Image carousels keep the wide bleed. */
   @media (orientation: landscape) and (min-width: 768px) and (pointer: coarse) {
-    html[data-ipad-nav] [data-lounge-market-chart-strip] [data-lounge-feed-carousel-bleed] {
+    html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-market-chart-strip] [data-lounge-feed-carousel-bleed] {
       width: 100%;
       max-width: 100%;
       margin-left: 0;
       margin-top: 0;
     }
-    html[data-ipad-nav] [data-lounge-feed-scroll] [data-lounge-market-chart-strip] [data-lounge-feed-carousel-bleed] [data-lounge-feed-horizontal-scroll] {
+    html[data-ipad-nav] [data-lounge-feed-root]:not([data-lounge-landscape-split]) [data-lounge-feed-scroll] [data-lounge-market-chart-strip] [data-lounge-feed-carousel-bleed] [data-lounge-feed-horizontal-scroll] {
       padding-left: 0;
       padding-right: 0;
     }
@@ -3922,14 +3922,17 @@ html[data-ipad-nav] [data-edge-status-bar-plate] {
 html.light [data-slots-landscape-tools] {
   border-right-color: #e4e4e7;
 }
-/* Landscape Lounge engagement split: feed left, detail/chart/hub/link right. */
+/* Landscape Lounge engagement split: phone-width feed left, engagement right. */
 [data-lounge-feed-root][data-lounge-landscape-split] {
   max-width: none;
+  /* Phone chrome … do not inherit full-viewport iPad feed pad. */
+  --edge-ipad-feed-pad: 0.75rem;
+  --lounge-landscape-phone-col: 24.375rem; /* 390px … portrait iPhone logical width */
 }
 [data-lounge-landscape-feed] {
-  width: 50%;
-  flex: 0 0 50%;
-  max-width: 28rem;
+  width: var(--lounge-landscape-phone-col);
+  flex: 0 0 var(--lounge-landscape-phone-col);
+  max-width: var(--lounge-landscape-phone-col);
 }
 html.light [data-lounge-landscape-feed] {
   border-right-color: #e4e4e7;
@@ -3939,10 +3942,8 @@ html.light [data-lounge-detail-in-pane] {
   background-color: #fafafa;
 }
 @media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
-  [data-lounge-landscape-feed] {
-    width: 50% !important;
-    flex: 0 0 50% !important;
-    max-width: none;
+  [data-lounge-feed-root][data-lounge-landscape-split] {
+    --lounge-landscape-phone-col: min(24.375rem, 46vw);
   }
 }
 /* Phone landscape: tighter tool cards so the short height still fits. */

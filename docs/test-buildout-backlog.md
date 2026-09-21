@@ -1148,11 +1148,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-<<<<<<< HEAD
+- **2026-09-21:** **Lounge landscape multi-minichart peek punch (Mac).** Split/detail carousels: slide ~72% of column + 18rem hard cap so the next card peeks hard. Mac landscape split was never reverted ... WinTheo only undid their sports carousel experiment. Frontend **`1.4.418`**. Web only.
 - **2026-09-21:** **Composer sports carousel full-bleed (Windows).** Multi game-card suggest uses the same viewport full-bleed strip as feed post images (peek while sliding). Frontend **`1.4.417`**.
-=======
-- **2026-09-21:** **Lounge landscape multi-minichart peek punch (Mac).** Split/detail carousels: slide ~72% of column + 18rem hard cap so the next card peeks hard. Mac landscape split was never reverted ... WinTheo only undid their sports carousel experiment. Frontend **`1.4.417`**. Web only.
->>>>>>> e70636b7 (Punch landscape multi-minichart peek harder.)
 - **2026-09-21:** **Revert sports carousel/matchup replace (Windows).** Undid **1.4.415** full-width + specific-matchup replace ... back to prior suggest behavior. Frontend **`1.4.416`**.
 - **2026-09-21:** **Sports composer suggest fix (Windows).** Empty composer was infinite-looping `setDismissedIds(new Set())` and killing card suggest. Frontend **`1.4.414`**.
 - **2026-09-21:** **Lounge landscape multi-minichart peek (Mac).** In landscape split / post detail, multi market (and sports) carousels keep phone-width slides (~20rem cap) so the next card peeks instead of stretching full-pane. Frontend **`1.4.413`**. Web only.

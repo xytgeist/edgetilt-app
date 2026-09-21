@@ -1,5 +1,6 @@
-/** NFL aliases + notable names so captions like "Jayden Daniels" still hit today's game. */
+import { pickAmbiguousTeamGame, pickSpecificMatchupGame, sideAbbrev } from './loungeSportsSlateWindow.js'
 
+/** NFL aliases + notable names so captions like "Jayden Daniels" still hit today's game. */
 export const NFL_TEAM_CATALOG = [
   { abbrev: 'ARI', espn: 'ari', color: '#97233F', color2: '#000000', names: ['Arizona Cardinals', 'Cardinals'], players: ['Kyler Murray', 'Marvin Harrison'] },
   { abbrev: 'ATL', espn: 'atl', color: '#A71930', color2: '#000000', names: ['Atlanta Falcons', 'Falcons'], players: ['Michael Penix', 'Bijan Robinson', 'Drake London'] },
@@ -14,7 +15,7 @@ export const NFL_TEAM_CATALOG = [
   { abbrev: 'DET', espn: 'det', color: '#0076B6', color2: '#B0B7BC', names: ['Detroit Lions', 'Lions'], players: ['Jared Goff', 'Amon-Ra St. Brown', 'Jahmyr Gibbs', 'Sam LaPorta'] },
   { abbrev: 'GB', espn: 'gb', color: '#203731', color2: '#FFB612', names: ['Green Bay Packers', 'Packers'], players: ['Jordan Love', 'Jayden Reed', 'Josh Jacobs'] },
   { abbrev: 'HOU', espn: 'hou', color: '#03202F', color2: '#A71930', names: ['Houston Texans', 'Texans'], players: ['C.J. Stroud', 'CJ Stroud', 'Nico Collins', 'Joe Mixon'] },
-  { abbrev: 'IND', espn: 'ind', color: '#002C5F', color2: '#A5ACAF', names: ['Indianapolis Colts', 'Colts'], players: ['Anthony Richardson', 'Daniel Jones', 'Jonathan Taylor'] },
+  { abbrev: 'IND', espn: 'ind', color: '#002C5F', color2: '#A5ACAF', names: ['Indianapolis Colts', 'Colts', 'Indy'], players: ['Anthony Richardson', 'Daniel Jones', 'Jonathan Taylor'] },
   { abbrev: 'JAX', espn: 'jax', color: '#006778', color2: '#000000', names: ['Jacksonville Jaguars', 'Jaguars', 'Jags'], players: ['Trevor Lawrence', 'Brian Thomas'] },
   { abbrev: 'KC', espn: 'kc', color: '#E31837', color2: '#FFB612', names: ['Kansas City Chiefs', 'Chiefs'], players: ['Patrick Mahomes', 'Travis Kelce', 'Xavier Worthy'] },
   { abbrev: 'LAC', espn: 'lac', color: '#007BC7', color2: '#FFC20E', names: ['Los Angeles Chargers', 'LA Chargers', 'Chargers'], players: ['Justin Herbert', 'Ladd McConkey'] },
@@ -186,9 +187,20 @@ function sideHits(original, haystack, side, sportKey) {
   return score
 }
 
+function mentionedNflAbbrevs(original, haystack) {
+  const out = []
+  for (const row of NFL_TEAM_CATALOG) {
+    const nameHit = row.names.some((n) => hasPhrase(haystack, n))
+    const playerHit = row.players.some((n) => hasPhrase(haystack, n))
+    const codeHit = hasAbbrev(original, row.abbrev) || hasAbbrev(original, row.espn)
+    if (nameHit || playerHit || codeHit) out.push(row.abbrev)
+  }
+  return [...new Set(out)]
+}
+
 /**
- * Pick the live/recent game a Lounge caption is talking about.
- * Live and this week's finals beat next week's preview, even on a one-team mention.
+ * Caption → game. Named matchups pin that game (recent or upcoming).
+ * Vague one-team lines use live / most recent until MNF is final, then the next game.
  */
 export function matchLoungePostToSportsGame(caption, games) {
   const original = String(caption || '')
@@ -196,38 +208,45 @@ export function matchLoungePostToSportsGame(caption, games) {
   if (haystack.length < 3 || !Array.isArray(games) || !games.length) return null
 
   const pair = versusAbbrevs(original)
+  const mentioned = mentionedNflAbbrevs(original, haystack)
+  const teams = pair || mentioned
+
+  if (teams.length >= 2) {
+    const [a, b] = pair || mentioned
+    const candidates = games.filter((game) => {
+      const homeAb = sideAbbrev(game.home)
+      const awayAb = sideAbbrev(game.away)
+      return (homeAb === a && awayAb === b) || (homeAb === b && awayAb === a)
+    })
+    const hit = pickSpecificMatchupGame(candidates, games)
+    if (hit) return hit
+  }
+
+  if (teams.length === 1) {
+    return pickAmbiguousTeamGame(teams[0], games)
+  }
+
   const ranked = []
   for (const game of games) {
     const home = sideHits(original, haystack, game.home, game.sport_key)
     const away = sideHits(original, haystack, game.away, game.sport_key)
     let score = home + away
-    let both = home > 0 && away > 0
+    const both = home > 0 && away > 0
     if (both) score += 8
-    if (pair) {
-      const homeAb = canonicalAbbrev(catalogRowForSide(game.home, game.sport_key)?.abbrev || game.home?.abbrev)
-      const awayAb = canonicalAbbrev(catalogRowForSide(game.away, game.sport_key)?.abbrev || game.away?.abbrev)
-      const hit = (pair[0] === awayAb && pair[1] === homeAb) || (pair[0] === homeAb && pair[1] === awayAb)
-      if (hit) {
-        score += 12
-        both = true
-      }
-    }
     if (score < 4) continue
-    ranked.push({ game, score, both })
+    ranked.push({ game, score, both, home, away })
   }
   if (!ranked.length) return null
-  ranked.sort((a, b) => {
-    const rank = { in: 0, post: 1, pre: 2 }
-    const ra = rank[a.game.status] ?? 3
-    const rb = rank[b.game.status] ?? 3
-    if (ra !== rb) return ra - rb
-    if (a.both !== b.both) return a.both ? -1 : 1
-    return b.score - a.score
-  })
-  const top = ranked[0]
-  const twin = ranked[1]
-  if (twin && !top.both && twin.score === top.score && twin.game.status === top.game.status) return null
-  return top.game
+  const specific = ranked.filter((r) => r.both).map((r) => r.game)
+  if (specific.length) return pickSpecificMatchupGame(specific, games)
+  const teamHits = new Set()
+  for (const row of ranked) {
+    if (row.home) teamHits.add(sideAbbrev(row.game.home))
+    if (row.away) teamHits.add(sideAbbrev(row.game.away))
+  }
+  if (teamHits.size === 1) return pickAmbiguousTeamGame([...teamHits][0], games)
+  ranked.sort((a, b) => b.score - a.score)
+  return ranked[0]?.game || null
 }
 
 export function loungeSportsMatchTextFromPost(post) {

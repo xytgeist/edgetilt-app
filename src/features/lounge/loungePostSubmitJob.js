@@ -21,6 +21,7 @@ import { normalizeLoungePostCategoryPills } from '../../utils/loungePostCategory
 import { feedCommentThreadPartInsertPayload } from '../../utils/communityFeedComment.js'
 import { attachLinkPreview } from '../../utils/loungeLinkPreviewApi.js'
 import { attachMarketEmbedsToPost } from '../../utils/loungeMarketApi.js'
+import { serializeLoungeSportsGameField } from './loungeSportsGameField.js'
 import { resolveLoungeSubmissionVideoPrep } from './loungeQueuedVideoPrep.js'
 import { loungeSubmissionSnapshotThreadPartCount } from './loungeSubmissionSnapshot.js'
 
@@ -611,6 +612,24 @@ async function syncMarketEmbedsAfterPostSave(supabaseClient, { postId, caption, 
   return result.embeds ?? []
 }
 
+async function syncSportsGameAfterPostSave(supabaseClient, { postId, sportsGame }) {
+  const id = String(postId || '').trim()
+  if (!id || sportsGame == null || typeof sportsGame !== 'object') return null
+  const payload = serializeLoungeSportsGameField(sportsGame)
+  if (!payload) return null
+  const { error } = await supabaseClient.from('community_feed_posts').update({ sports_game: payload }).eq('id', id)
+  if (error) {
+    const msg = String(error.message || '')
+    if (/sports_game|schema cache/i.test(msg)) {
+      console.warn('[lounge] sports_game column missing; post saved without pinned pill.')
+      return null
+    }
+    console.warn('[lounge] sports_game attach failed:', msg)
+    return null
+  }
+  return payload
+}
+
 /** Mirrors `SocialFeed` so insert failures surface the same copy. */
 const LOUNGE_MAX_PINNED_ALERT =
   'The maximum number of pinned posts is two. Unpin a post to pin this one.'
@@ -735,6 +754,7 @@ export async function executeLoungeCommunityPostSubmission({
     threadCaptions: snapshotThreadCaptions,
     threadParts: snapshotThreadParts,
     marketSymbols,
+    sportsGame,
     creatorFanOnly: snapshotCreatorFanOnly,
     replyGateEdgePro: snapshotReplyGateEdgePro,
   } = snapshot
@@ -1234,6 +1254,10 @@ export async function executeLoungeCommunityPostSubmission({
         caption,
         marketSymbols,
       })
+      await syncSportsGameAfterPostSave(supabaseClient, {
+        postId: rootPostId,
+        sportsGame,
+      })
     }
     const stagedStreamPublish = Boolean(streamVideoUid) && !quoteCommentParentId
     return {
@@ -1275,7 +1299,7 @@ export async function executeLoungeCommunityPostSubmission({
 }
 
 const POST_UPDATE_SELECT =
-  'id,caption,edited_at,feed_visible_at,category_pills,image_urls,media_url,gif_url,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,link_preview,market_embeds'
+  'id,caption,edited_at,feed_visible_at,category_pills,image_urls,media_url,gif_url,stream_video_uid,stream_poster_url,stream_video_width,stream_video_height,link_preview,market_embeds,sports_game'
 
 /**
  * Uploads new media and updates an existing `community_feed_posts` row (author edit).
@@ -1563,6 +1587,10 @@ export async function executeLoungeCommunityPostUpdate({
       caption,
       marketSymbols: snapshot?.marketSymbols,
     })
+    const sportsGameRow = await syncSportsGameAfterPostSave(supabaseClient, {
+      postId,
+      sportsGame: snapshot?.sportsGame,
+    })
     if (previousStreamUid && streamVideoUid && previousStreamUid !== streamVideoUid) {
       await deleteCfStreamOrphanAsset(supabaseClient, previousStreamUid)
     } else if (previousStreamUid && !streamVideoUid && clearStream) {
@@ -1573,6 +1601,7 @@ export async function executeLoungeCommunityPostUpdate({
       ...data,
       ...(linkPreview ? { link_preview: linkPreview } : {}),
       market_embeds: marketEmbeds ?? [],
+      ...(sportsGameRow ? { sports_game: sportsGameRow } : {}),
       stagedStreamPublish,
       postId: data.id,
       streamVideoUid: streamVideoUid || data.stream_video_uid || null,

@@ -6,6 +6,7 @@ import { loungeSportsGameDetail } from '../../utils/loungeSportsApi.js'
 import { formatLoungeSearchError, loungeSearch, LOUNGE_SEARCH_SORT } from './loungeSearchApi.js'
 import { executeLoungeCommunityPostSubmission } from './loungePostSubmitJob.js'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
+import { loungeSportsHubGames } from './loungeSportsSlateWindow.js'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 
 function formatPostAge(createdAt) {
@@ -413,7 +414,7 @@ export default function LoungeGameHubModal({ supabaseClient, hydratePosts, onOpe
   const [chatErr, setChatErr] = useState('')
 
   const sameSportGames = useMemo(
-    () => games.filter((g) => g.sport_key === game?.sport_key),
+    () => loungeSportsHubGames(games, game?.sport_key),
     [game?.sport_key, games],
   )
 
@@ -518,6 +519,7 @@ export default function LoungeGameHubModal({ supabaseClient, hydratePosts, onOpe
           isStaffPoster: false,
           categoryPills: ['sports'],
           marketSymbols: [],
+          sportsGame: { suppress: false, eventId: game.id },
         },
         signal: new AbortController().signal,
         rateLimitMessage: (msg) => String(msg || 'Slow down a second and try again.'),

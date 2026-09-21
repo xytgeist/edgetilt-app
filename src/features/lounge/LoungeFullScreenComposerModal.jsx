@@ -5,6 +5,7 @@ import LoungeComposerCharRing from './LoungeComposerCharRing.jsx'
 import LoungeComposerMediaToolbar from './LoungeComposerMediaToolbar.jsx'
 import LoungePostCategoryPillPicker from './LoungePostCategoryPillPicker.jsx'
 import LoungeComposerMarketChartStrip from './LoungeComposerMarketChartStrip.jsx'
+import LoungeComposerGamePreview from './LoungeComposerGamePreview.jsx'
 import { LoungeImageCarousel } from './LoungePostFeedMedia.jsx'
 import LoungeMarkdownToolbar from './LoungeMarkdownToolbar.jsx'
 import LoungeCashtagDropdown from './LoungeCashtagDropdown.jsx'
@@ -93,6 +94,7 @@ export default function LoungeFullScreenComposerModal({
   onRemoveGif,
   composerMarketSymbols = [],
   onMarketSymbolsChange,
+  sportsGameValueRef,
   composerCategoryPills = [],
   onCategoryPillsChange,
   composerReplyGateEdgePro = false,
@@ -813,6 +815,7 @@ export default function LoungeFullScreenComposerModal({
                     className="mt-2"
                   />
                 ) : null}
+                <LoungeComposerGamePreview caption={localText} valueRef={sportsGameValueRef} className="mt-2" />
 
                 {carouselUrls.length > 0 ? (
                   <LoungeImageCarousel

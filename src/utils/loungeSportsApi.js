@@ -37,7 +37,7 @@ export async function loungeSportsScoreboard(supabase, body = {}) {
   return data
 }
 
-export const LOUNGE_SPORTS_SCOREBOARD_CACHE_KEY = 'lvsp:loungeSportsScoreboard:v2'
+export const LOUNGE_SPORTS_SCOREBOARD_CACHE_KEY = 'lvsp:loungeSportsScoreboard:v3'
 const LOUNGE_SPORTS_SCOREBOARD_CACHE_MAX_MS = 24 * 60 * 60 * 1000
 
 let scoreboardMemory = { games: null, fetchedAt: 0 }

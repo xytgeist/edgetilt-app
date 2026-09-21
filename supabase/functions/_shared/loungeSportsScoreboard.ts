@@ -412,8 +412,8 @@ function otherSportSlateDates(): string[] {
   return yest === today ? [today] : [yest, today]
 }
 
-/** Thursday-Monday of the current NFL week. Rolls at Tuesday 00:00 PT after MNF. */
-export function nflSlatePtDates(now = Date.now()): string[] {
+/** Thursday that starts the calendar NFL week. Tue/Wed roll forward. */
+export function nflCalendarThursdayYmd(now = Date.now()): string {
   const today = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'America/Los_Angeles',
     year: 'numeric',
@@ -421,11 +421,20 @@ export function nflSlatePtDates(now = Date.now()): string[] {
     day: '2-digit',
   }).format(new Date(now))
   const dow = ptWeekdaySun0(now)
-  const rolled = dow === 2 || dow === 3
-  const thursday = rolled
-    ? addDaysYmd(today, dow === 2 ? 2 : 1)
-    : addDaysYmd(today, -((dow - 4 + 7) % 7))
-  return [0, 1, 2, 3, 4].map((i) => addDaysYmd(thursday, i))
+  if (dow === 2 || dow === 3) return addDaysYmd(today, dow === 2 ? 2 : 1)
+  return addDaysYmd(today, -((dow - 4 + 7) % 7))
+}
+
+function nflWeekDatesFromThursday(thursdayYmd: string): string[] {
+  return [0, 1, 2, 3, 4].map((i) => addDaysYmd(thursdayYmd, i))
+}
+
+/** This calendar week plus the adjacent week (recaps + upcoming). */
+export function nflFetchDates(now = Date.now()): string[] {
+  const primary = nflCalendarThursdayYmd(now)
+  const dow = ptWeekdaySun0(now)
+  const secondary = addDaysYmd(primary, dow === 2 || dow === 3 ? -7 : 7)
+  return [...new Set([...nflWeekDatesFromThursday(primary), ...nflWeekDatesFromThursday(secondary)])].sort()
 }
 
 function gameOnSlate(game: LoungeSportsGame, dates: string[]): boolean {
@@ -441,7 +450,7 @@ function slateDedupeKey(game: LoungeSportsGame): string {
 }
 
 export async function buildLoungeSportsScoreboard(): Promise<{ games: LoungeSportsGame[]; source: string }> {
-  const nflDates = nflSlatePtDates()
+  const nflDates = nflFetchDates()
   const otherDates = otherSportSlateDates()
   const byKey = new Map<string, LoungeSportsGame>()
   let source = 'none'

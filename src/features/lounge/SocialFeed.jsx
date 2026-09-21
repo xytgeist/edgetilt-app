@@ -270,6 +270,7 @@ import {
 } from './loungeCaptionLink.js'
 import { useMentionState } from './loungeMentionAutocomplete'
 import LoungeComposerMarketChartStrip from './LoungeComposerMarketChartStrip.jsx'
+import LoungeComposerGamePreview from './LoungeComposerGamePreview.jsx'
 import LoungeMentionDropdown from './LoungeMentionDropdown'
 import { LoungeImageCarousel, LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
 import { LOUNGE_FEED_PRIORITY_IMAGE_ROWS } from './loungeFeedImageAttachment.js'
@@ -1395,6 +1396,7 @@ export default function SocialFeed({
   const composerImageInputRef = useRef(null)
   const composerVideoInputRef = useRef(null)
   const composerFieldRef = useRef(null)
+  const composerSportsRef = useRef({ suppress: false, eventId: '' })
   const readLiveFeedComposerCaption = useCallback(() => {
     const el = composerFieldRef.current
     if (el) {
@@ -11501,6 +11503,7 @@ export default function SocialFeed({
     })
     setComposerMediaUrl('')
     setComposerMarketSymbols([])
+    composerSportsRef.current = { suppress: false, eventId: '' }
     composerFoldRevealRef.current = 0
     setComposerFoldReveal(0)
     composerExpandedRef.current = false
@@ -14631,6 +14634,7 @@ export default function SocialFeed({
         _capturedPrepHandoff: handoffNow ?? null,
         categoryPills: composerCategoryPills,
         marketSymbols: composerMarketSymbols,
+        sportsGame: { ...composerSportsRef.current },
         creatorFanOnly: Boolean(creatorFanOnly) && composerFanMonetizationLive,
         replyGateEdgePro: Boolean(composerReplyGateEdgePro),
       }
@@ -16881,6 +16885,7 @@ export default function SocialFeed({
                       onOpenChart={(embed, embeds) => openMarketChartModal({ embed, embeds })}
                       className="mt-1.5"
                     />
+                    <LoungeComposerGamePreview caption={postText} valueRef={composerSportsRef} className="mt-1.5" />
                   </div>
                   {(() => {
                     const gifUrl = String(composerMediaUrl || '').trim()
@@ -20533,6 +20538,7 @@ export default function SocialFeed({
         onRemoveGif={() => setComposerMediaUrl('')}
         composerMarketSymbols={composerMarketSymbols}
         onMarketSymbolsChange={setComposerMarketSymbols}
+        sportsGameValueRef={composerSportsRef}
         composerCategoryPills={composerCategoryPills}
         onCategoryPillsChange={setComposerCategoryPills}
         composerReplyGateEdgePro={composerReplyGateEdgePro}

@@ -6,6 +6,7 @@ import {
 } from '../../utils/loungeSportsApi.js'
 import { enrichLoungeSportsGame, matchLoungePostToSportsGame, loungeSportsMatchTextFromPost } from './loungeSportsMatch.js'
 import { isLoungeSportsCurrentSlateGame } from './loungeSportsSlateWindow.js'
+import { parseLoungeSportsGameField } from './loungeSportsGameField.js'
 
 const LoungeSportsFeedContext = createContext(null)
 
@@ -77,7 +78,15 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
   }, [games])
 
   const matchPost = useCallback(
-    (post) => matchLoungePostToSportsGame(loungeSportsMatchTextFromPost(post), games),
+    (post) => {
+      const pinned = parseLoungeSportsGameField(post?.sports_game)
+      if (pinned.suppress) return null
+      if (pinned.eventId) {
+        const hit = games.find((g) => String(g.id) === pinned.eventId)
+        if (hit) return hit
+      }
+      return matchLoungePostToSportsGame(loungeSportsMatchTextFromPost(post), games)
+    },
     [games],
   )
 

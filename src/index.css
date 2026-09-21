@@ -3342,6 +3342,11 @@ html.light [data-lounge-game-pill] .text-white,
 html.light [data-lounge-game-pill] .text-zinc-100 {
   color: #fff !important;
 }
+html.light [data-lounge-composer-game-pill] > button {
+  background-color: rgba(24, 24, 27, 0.88) !important;
+  color: #f4f4f5 !important;
+  border-color: rgba(63, 63, 70, 0.8) !important;
+}
 html.light [data-lounge-game-hub] {
   background-color: #fafafa !important;
   color: #18181b !important;

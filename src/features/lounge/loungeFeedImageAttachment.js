@@ -95,7 +95,7 @@ export function loungeFeedCarouselMeasureLayout(scroller, fullBleed, opts = {}) 
     typeof window !== 'undefined' &&
     window.matchMedia('(orientation: landscape) and (min-width: 640px) and (pointer: coarse)').matches
 
-  if (fullBleed && scroller) {
+  if (scroller) {
     const s = getComputedStyle(scroller)
     const padL = parseFloat(s.paddingLeft) || 0
     const padR = parseFloat(s.paddingRight) || 0

@@ -379,6 +379,7 @@ import {
 import KlipyGifPicker from './KlipyGifPicker.jsx'
 import LoungeMarketChartModal from './LoungeMarketChartModal.jsx'
 import LoungeMarketChartStrip from './LoungeMarketChartStrip.jsx'
+import LoungeGameScorePill from './LoungeGameScorePill.jsx'
 import { LoungeMarketFeedProvider } from './LoungeMarketFeedContext.jsx'
 import { LoungeSportsFeedProvider } from './LoungeSportsFeedContext.jsx'
 import LoungeGameHubModal from './LoungeGameHubModal.jsx'
@@ -18017,6 +18018,7 @@ export default function SocialFeed({
                   >
                     <LoungeMarketChartStrip
                       post={loungePostDetail}
+                      variant="detail"
                       onOpenChart={(embed, embeds) => openMarketChartModal({ embed, embeds })}
                     />
                   </div>
@@ -18069,6 +18071,7 @@ export default function SocialFeed({
                             <LoungeMarketChartStrip
                               post={row}
                               className={className}
+                              variant="detail"
                               onOpenChart={(embed, embeds) => openMarketChartModal({ embed, embeds })}
                             />
                           )}
@@ -18088,6 +18091,13 @@ export default function SocialFeed({
                       </div>
                     ) : null}
                   </div>
+                  {!isLoungeFanOnlyPostLocked(loungePostDetail, loungeFanLockCtx) ? (
+                    <div
+                      className={loungeCommentDetailPathIds.length > 0 ? LOUNGE_COMMENT_DETAIL_THREAD_PAD : ''}
+                    >
+                      <LoungeGameScorePill post={loungePostDetail} />
+                    </div>
+                  ) : null}
                 </>
               ) : (
                 <>
@@ -18121,6 +18131,7 @@ export default function SocialFeed({
                   >
                     <LoungeMarketChartStrip
                       post={loungePostDetail}
+                      variant="detail"
                       onOpenChart={(embed, embeds) => openMarketChartModal({ embed, embeds })}
                     />
                   </div>
@@ -18145,6 +18156,9 @@ export default function SocialFeed({
                       streamLightboxSurface={loungeDetailStreamLightboxSurface}
                       priority
                     />
+                    {!isLoungeFanOnlyPostLocked(loungePostDetail, loungeFanLockCtx) ? (
+                      <LoungeGameScorePill post={loungePostDetail} />
+                    ) : null}
                     {/* AP Guide embed card - detail view */}
                     {loungePostDetail.is_ap_guide_post && loungePostDetail.game_slug ? (
                       <button

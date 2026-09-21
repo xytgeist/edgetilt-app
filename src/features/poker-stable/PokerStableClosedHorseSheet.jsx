@@ -1,4 +1,5 @@
-import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import { APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import AppModalOverlay from '../../components/AppModalOverlay.jsx'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { dealTypeLabel } from './pokerStableMath.js'
 import { dealStakeeDisplayName } from './pokerStableTerms.js'
@@ -32,7 +33,7 @@ export default function PokerStableClosedHorseSheet({
   const isRevoked = deal.status === 'revoked'
 
   return (
-    <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
+    <AppModalOverlay className="overflow-x-hidden" onClick={onClose}>
       <div
         data-poker-stable-closed-horse-sheet
         className={`relative z-10 w-full max-w-lg max-h-[85dvh] overflow-y-auto ${APP_MODAL_SHEET_PANEL_CLASS}`}
@@ -107,6 +108,6 @@ export default function PokerStableClosedHorseSheet({
           history.
         </p>
       </div>
-    </div>
+    </AppModalOverlay>
   )
 }

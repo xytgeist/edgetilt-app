@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { flushSync } from 'react-dom'
 import MoneyInputField from '../../components/MoneyInputField.jsx'
-import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import { APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import AppModalOverlay from '../../components/AppModalOverlay.jsx'
 import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import PokerBankrollChartsTab from '../poker-bankroll/PokerBankrollChartsTab.jsx'
@@ -389,7 +390,7 @@ export default function PokerStableDealDetailSheet({
   if (!deal) return null
 
   return (
-    <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
+    <AppModalOverlay className="overflow-x-hidden" onClick={onClose}>
       <div
         data-poker-stable-sheet
         data-poker-stable-deal-detail
@@ -837,6 +838,6 @@ export default function PokerStableDealDetailSheet({
           onConfirm={(rakebackAmount) => void confirmCloseStake(rakebackAmount)}
         />
       ) : null}
-    </div>
+    </AppModalOverlay>
   )
 }

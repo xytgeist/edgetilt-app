@@ -6,7 +6,8 @@ import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitl
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
 import DateWheelPicker from '../../components/DateWheelPicker.jsx'
 import TimeWheelPicker from '../../components/TimeWheelPicker.jsx'
-import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import { APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import AppModalOverlay from '../../components/AppModalOverlay.jsx'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { notifyLiveBankrollSessionsChanged } from '../shell/liveBankrollSessions.js'
 import BankrollSparkline from '../../components/BankrollSparkline.jsx'
@@ -5711,8 +5712,8 @@ export default function PokerBankrollTracker({
       ) : null}
 
       {incomingBindPicker?.swap && incomingBindPicker.candidates?.length > 1 ? (
-        <div
-          className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
+        <AppModalOverlay
+          className="overflow-x-hidden"
           onClick={() => !saving && setIncomingBindPicker(null)}
         >
           <div
@@ -5768,12 +5769,12 @@ export default function PokerBankrollTracker({
             </ul>
             {error ? <p className="mt-3 text-center text-sm text-rose-400">{error}</p> : null}
           </div>
-        </div>
+        </AppModalOverlay>
       ) : null}
 
       {incomingFallthrough?.swap ? (
-        <div
-          className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
+        <AppModalOverlay
+          className="overflow-x-hidden"
           onClick={() => !saving && setIncomingFallthrough(null)}
         >
           <div
@@ -5844,12 +5845,12 @@ export default function PokerBankrollTracker({
             </button>
             {error ? <p className="mt-3 text-center text-sm text-rose-400">{error}</p> : null}
           </div>
-        </div>
+        </AppModalOverlay>
       ) : null}
 
       {incomingApplyPicker?.swap && incomingApplyPicker.candidates?.length > 0 ? (
-        <div
-          className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
+        <AppModalOverlay
+          className="overflow-x-hidden"
           onClick={() => !saving && setIncomingApplyPicker(null)}
         >
           <div
@@ -5901,7 +5902,7 @@ export default function PokerBankrollTracker({
             </ul>
             {error ? <p className="mt-3 text-center text-sm text-rose-400">{error}</p> : null}
           </div>
-        </div>
+        </AppModalOverlay>
       ) : null}
 
       {proposeAfterDecline ? (
@@ -6028,8 +6029,8 @@ export default function PokerBankrollTracker({
       ) : null}
 
       {sheet === 'bankroll' ? (
-        <div
-          className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
+        <AppModalOverlay
+          className="overflow-x-hidden"
           onClick={() => !saving && dismissSheet()}
         >
           <div
@@ -6072,12 +6073,12 @@ export default function PokerBankrollTracker({
               {saving ? 'Saving…' : 'Save bankroll'}
             </button>
           </div>
-        </div>
+        </AppModalOverlay>
       ) : null}
 
       {sheet === 'session' ? (
-        <div
-          className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
+        <AppModalOverlay
+          className="overflow-x-hidden"
           onClick={() => !saving && dismissSheet()}
         >
           <div
@@ -6323,7 +6324,7 @@ export default function PokerBankrollTracker({
               </>
             )}
           </div>
-        </div>
+        </AppModalOverlay>
       ) : null}
 
       {sheet === 'import' ? (
@@ -6338,8 +6339,8 @@ export default function PokerBankrollTracker({
       ) : null}
 
       {sheet === 'start' ? (
-        <div
-          className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
+        <AppModalOverlay
+          className="overflow-x-hidden"
           onClick={() => !saving && dismissSheet()}
         >
           <div
@@ -6454,12 +6455,12 @@ export default function PokerBankrollTracker({
               </button>
             </div>
           </div>
-        </div>
+        </AppModalOverlay>
       ) : null}
 
       {sheet === 'swaps' && actionSession ? (
-        <div
-          className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
+        <AppModalOverlay
+          className="overflow-x-hidden"
           onClick={() => !saving && dismissSheet()}
         >
           <div
@@ -6520,12 +6521,12 @@ export default function PokerBankrollTracker({
               Done
             </button>
           </div>
-        </div>
+        </AppModalOverlay>
       ) : null}
 
       {sheet === 'openSwap' && standaloneOpenSwap ? (
-        <div
-          className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
+        <AppModalOverlay
+          className="overflow-x-hidden"
           onClick={() => !saving && dismissSheet()}
         >
           <div
@@ -6574,12 +6575,12 @@ export default function PokerBankrollTracker({
               Done
             </button>
           </div>
-        </div>
+        </AppModalOverlay>
       ) : null}
 
       {sheet === 'rebuy' && actionSession ? (
-        <div
-          className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
+        <AppModalOverlay
+          className="overflow-x-hidden"
           onClick={() => !saving && dismissSheet()}
         >
           <div
@@ -6640,12 +6641,12 @@ export default function PokerBankrollTracker({
                     : 'Add re-buy'}
             </button>
           </div>
-        </div>
+        </AppModalOverlay>
       ) : null}
 
       {sheet === 'end' && actionSession ? (
-        <div
-          className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
+        <AppModalOverlay
+          className="overflow-x-hidden"
           onClick={() => !saving && dismissSheet()}
         >
           <div
@@ -6745,7 +6746,7 @@ export default function PokerBankrollTracker({
               Delete session
             </button>
           </div>
-        </div>
+        </AppModalOverlay>
       ) : null}
 
       {endSwapDecisionOpen && actionSession ? (

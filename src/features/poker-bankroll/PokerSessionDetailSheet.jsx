@@ -1,7 +1,7 @@
 import { DollarSign, Share2, Trophy } from 'lucide-react'
 import { useState } from 'react'
 import { shareViaBestAvailable } from '../../utils/edgeNative.js'
-import { APP_MODAL_OVERLAY_CLASS } from '../../constants/appZIndex.js'
+import AppModalOverlay from '../../components/AppModalOverlay.jsx'
 import { POKER_SHEET_PANEL_CLASS } from './pokerBankrollTrackerSheet.js'
 import { isPieceDealType, roundMoney } from '../poker-stable/pokerStableMath.js'
 import { backerSliceAllocatedCapital } from '../poker-stable/pokerStableBackerMath.js'
@@ -536,8 +536,8 @@ export default function PokerSessionDetailSheet({
       : null
 
   return (
-    <div
-      className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`}
+    <AppModalOverlay
+      className="overflow-x-hidden"
       onClick={() => onClose?.()}
     >
       <div
@@ -1038,6 +1038,6 @@ export default function PokerSessionDetailSheet({
           </div>
         )}
       </div>
-    </div>
+    </AppModalOverlay>
   )
 }

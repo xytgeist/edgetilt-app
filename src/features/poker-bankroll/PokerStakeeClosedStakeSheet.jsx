@@ -1,4 +1,5 @@
-import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import { APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import AppModalOverlay from '../../components/AppModalOverlay.jsx'
 import { fmtPoker$ } from './pokerBankrollMath.js'
 import { dealTypeLabel } from '../poker-stable/pokerStableMath.js'
 import { buildStakeeClosedStakeReview } from '../poker-stable/pokerStableDealHistory.js'
@@ -46,7 +47,7 @@ export default function PokerStakeeClosedStakeSheet({
     : `${review.closer.label} closed this stake`
 
   return (
-    <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
+    <AppModalOverlay className="overflow-x-hidden" onClick={onClose}>
       <div
         data-poker-stakee-closed-sheet
         className={`relative z-10 flex w-full max-w-lg flex-col !overflow-y-hidden !pb-0 ${APP_MODAL_SHEET_PANEL_CLASS}`}
@@ -116,6 +117,6 @@ export default function PokerStakeeClosedStakeSheet({
           </p>
         </div>
       </div>
-    </div>
+    </AppModalOverlay>
   )
 }

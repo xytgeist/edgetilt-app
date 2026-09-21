@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { APP_MODAL_OVERLAY_CLASS } from '../../constants/appZIndex.js'
+import AppModalOverlay from '../../components/AppModalOverlay.jsx'
 import { PokerStableGuestClaimOfferDetails } from './PokerStableGuestClaimOfferDetails.jsx'
 import { guestBackerSliceOfferDetails } from './pokerStableGuestClaimOffer.js'
 import { dealStakeeDisplayName } from './pokerStableTerms.js'
@@ -24,8 +24,8 @@ export default function PokerStableBackerSliceOfferOnboardingModal({
   const label = offerDetails?.label || 'Cash backing'
 
   return (
-    <div
-      className={`${APP_MODAL_OVERLAY_CLASS} z-[140] overflow-x-hidden bg-black/75 backdrop-blur-sm`}
+    <AppModalOverlay
+      className="z-[140] overflow-x-hidden bg-black/75 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="poker-backer-slice-offer-onboarding-title"
@@ -112,6 +112,6 @@ export default function PokerStableBackerSliceOfferOnboardingModal({
           )}
         </div>
       </div>
-    </div>
+    </AppModalOverlay>
   )
 }

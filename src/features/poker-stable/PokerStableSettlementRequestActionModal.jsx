@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import { APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import AppModalOverlay from '../../components/AppModalOverlay.jsx'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { loadSettlementRequest, respondToSettlementRequest } from './pokerStableApi.js'
@@ -110,7 +111,7 @@ export default function PokerStableSettlementRequestActionModal({
   const settleLabel = pokerStableSettlementKindLabel(request?.settle_kind)
 
   return (
-    <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
+    <AppModalOverlay className="overflow-x-hidden" onClick={onClose}>
       <div
         data-poker-stable-sheet
         data-poker-stable-settlement-action-modal
@@ -209,6 +210,6 @@ export default function PokerStableSettlementRequestActionModal({
           </>
         )}
       </div>
-    </div>
+    </AppModalOverlay>
   )
 }

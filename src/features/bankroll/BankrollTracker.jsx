@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import PokerSurfaceBootLoading from '../../components/PokerSurfaceBootLoading.jsx'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
-import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import { APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import AppModalOverlay from '../../components/AppModalOverlay.jsx'
 import FreemiumUsageCounter from '../billing/FreemiumUsageCounter.jsx'
 import { FREE_BANKROLL_SESSION_LIMIT } from '../billing/freemiumToolLimits.js'
 import TimeWheelPicker from '../../components/TimeWheelPicker.jsx'
@@ -1131,8 +1132,7 @@ export default function BankrollTracker({
       {/* ── Bottom sheets ─────────────────────────────────────── */}
 
       {sheet && sheet !== 'import' && (
-        <div
-          className={APP_MODAL_OVERLAY_CLASS}
+        <AppModalOverlay
           onClick={e => { if (e.target === e.currentTarget) closeSheet() }}
         >
           <div data-bankroll-sheet className={APP_MODAL_SHEET_PANEL_CLASS}>
@@ -1590,7 +1590,7 @@ export default function BankrollTracker({
             )}
 
           </div>
-        </div>
+        </AppModalOverlay>
       )}
 
       {sheet === 'import' && (

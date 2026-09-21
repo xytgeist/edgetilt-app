@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import InField, { INFIELD_CONTROL } from '../../components/InField.jsx'
 import MoneyInputField from '../../components/MoneyInputField.jsx'
-import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import { APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import AppModalOverlay from '../../components/AppModalOverlay.jsx'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
@@ -1019,7 +1020,7 @@ function PokerStableDealFormSheet({
     )
 
   return (
-    <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
+    <AppModalOverlay className="overflow-x-hidden" onClick={onClose}>
       <div
         ref={sheetRef}
         data-poker-stable-sheet
@@ -1384,6 +1385,6 @@ function PokerStableDealFormSheet({
           </button>
         </div>
       </div>
-    </div>
+    </AppModalOverlay>
   )
 }

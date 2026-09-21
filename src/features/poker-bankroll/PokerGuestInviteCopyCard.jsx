@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Copy, Share2 } from 'lucide-react'
-import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import { APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import AppModalOverlay from '../../components/AppModalOverlay.jsx'
 import {
   copyGuestInviteText,
   guestStakeInviteSheetTitle,
@@ -104,7 +105,7 @@ export default function PokerGuestInvitesSheet({
         : 'Send in your own text')
 
   return (
-    <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
+    <AppModalOverlay className="overflow-x-hidden" onClick={onClose}>
       <div
         data-poker-guest-invites-sheet
         className={`relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto ${APP_MODAL_SHEET_PANEL_CLASS}`}
@@ -144,6 +145,6 @@ export default function PokerGuestInvitesSheet({
           Done
         </button>
       </div>
-    </div>
+    </AppModalOverlay>
   )
 }

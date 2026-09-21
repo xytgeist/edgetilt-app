@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import MoneyInputField from '../../components/MoneyInputField.jsx'
-import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import { APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import AppModalOverlay from '../../components/AppModalOverlay.jsx'
 import { parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
 import { computeDealMakeup, computeProfitAboveBaseline, dealTypeLabel } from './pokerStableMath.js'
@@ -33,7 +34,7 @@ export default function PokerStableEndStakeSheet({
   const showMakeup = dealHasMakeup(deal)
 
   return (
-    <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
+    <AppModalOverlay className="overflow-x-hidden" onClick={onClose}>
       <div
         data-poker-stable-end-stake-sheet
         className={`relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto ${APP_MODAL_SHEET_PANEL_CLASS}`}
@@ -141,6 +142,6 @@ export default function PokerStableEndStakeSheet({
           </button>
         </div>
       </div>
-    </div>
+    </AppModalOverlay>
   )
 }

@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Info } from 'lucide-react'
 import MoneyInputField from '../../components/MoneyInputField.jsx'
-import { APP_MODAL_OVERLAY_CLASS } from '../../constants/appZIndex.js'
+import AppModalOverlay from '../../components/AppModalOverlay.jsx'
 import { formatMoneyInputValue, parseMoneyInputNumber } from '../../utils/moneyInputFormat.js'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { fmtPoker$ } from '../poker-bankroll/pokerBankrollMath.js'
@@ -175,8 +175,8 @@ export default function PokerStablePortfolioDetailSheet({
     roundMoney(parseMoneyInputNumber(newBalanceInput) - currentBalance) === 0
 
   return (
-    <div
-      className={`${APP_MODAL_OVERLAY_CLASS} z-[140]`}
+    <AppModalOverlay
+      className="z-[140]"
       role="dialog"
       aria-modal="true"
       aria-labelledby="poker-stable-portfolio-detail-title"
@@ -513,6 +513,6 @@ export default function PokerStablePortfolioDetailSheet({
           </div>
         </div>
       ) : null}
-    </div>
+    </AppModalOverlay>
   )
 }

@@ -1,5 +1,6 @@
 import { DollarSign, Trophy, X } from 'lucide-react'
-import { APP_MODAL_OVERLAY_CLASS, APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import { APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import AppModalOverlay from '../../components/AppModalOverlay.jsx'
 import {
   fmtPoker$,
   fmtPokerBbPerHour,
@@ -130,7 +131,7 @@ export default function PokerStakeArchiveDetailModal({
       : null
 
   return (
-    <div className={`${APP_MODAL_OVERLAY_CLASS} overflow-x-hidden`} onClick={onClose}>
+    <AppModalOverlay className="overflow-x-hidden" onClick={onClose}>
       <div
         data-poker-stake-archive-modal
         className={`relative z-10 w-full max-w-lg max-h-[90vh] overflow-y-auto ${APP_MODAL_SHEET_PANEL_CLASS}`}
@@ -372,6 +373,6 @@ export default function PokerStakeArchiveDetailModal({
           </button>
         </div>
       </div>
-    </div>
+    </AppModalOverlay>
   )
 }

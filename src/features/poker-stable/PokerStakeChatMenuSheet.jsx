@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { MessageCircle, Users } from 'lucide-react'
-import { APP_MODAL_OVERLAY_CLASS } from '../../constants/appZIndex.js'
+import AppModalOverlay from '../../components/AppModalOverlay.jsx'
 import { chatCreateGroup } from '../chat/chatApi.js'
 import { edgeProfileDisplayName } from './pokerStableTerms.js'
 
@@ -76,8 +76,8 @@ export default function PokerStakeChatMenuSheet({
   }
 
   return (
-    <div
-      className={`${APP_MODAL_OVERLAY_CLASS} z-[140] overflow-x-hidden bg-black/70 backdrop-blur-sm`}
+    <AppModalOverlay
+      className="z-[140] overflow-x-hidden bg-black/70 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-labelledby="poker-stake-chat-menu-title"
@@ -152,6 +152,6 @@ export default function PokerStakeChatMenuSheet({
           Cancel
         </button>
       </div>
-    </div>
+    </AppModalOverlay>
   )
 }

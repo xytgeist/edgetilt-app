@@ -10,53 +10,75 @@ import {
 
 /**
  * Live game-pill suggest under the composer. Cards stay off until the author
- * taps “include”. Value is written to `valueRef` for submit (`eventIds` only).
+ * taps “include”. New caption matches append (do not replace) until the cap.
+ * Value is written to `valueRef` for submit (`eventIds` only).
  */
 export default function LoungeComposerGamePreview({ caption, className = '', valueRef, pinnedGame = null }) {
   const sports = useLoungeSportsFeed()
   const games = sports?.games || []
+  const [stagedIds, setStagedIds] = useState([])
   const [includedIds, setIncludedIds] = useState([])
   const [dismissedIds, setDismissedIds] = useState(() => new Set())
 
-  const suggested = useMemo(() => {
+  const matched = useMemo(() => {
     if (pinnedGame) return [pinnedGame]
     return matchLoungePostToSportsGames(caption, games, LOUNGE_SPORTS_GAME_PIN_MAX)
   }, [caption, games, pinnedGame])
 
-  const suggestedKey = suggested.map((g) => String(g.id)).join('|')
+  const captionEmpty = !String(caption || '').trim() && !pinnedGame
 
   useEffect(() => {
-    setIncludedIds((prev) => prev.filter((id) => suggested.some((g) => String(g.id) === id)))
-    setDismissedIds((prev) => {
-      const next = new Set()
-      for (const id of prev) {
-        if (suggested.some((g) => String(g.id) === id)) next.add(id)
+    if (captionEmpty) {
+      setStagedIds([])
+      setIncludedIds([])
+      setDismissedIds(new Set())
+      return
+    }
+    setStagedIds((prev) => {
+      let next = prev
+      for (const game of matched) {
+        const id = String(game?.id || '')
+        if (!id || dismissedIds.has(id)) continue
+        if (next.includes(id)) continue
+        if (next.length >= LOUNGE_SPORTS_GAME_PIN_MAX) break
+        if (next === prev) next = [...prev]
+        next.push(id)
       }
-      return next.size === prev.size ? prev : next
+      return next
     })
-  }, [suggestedKey, suggested])
+  }, [captionEmpty, matched, dismissedIds])
 
-  const pending = suggested.filter((g) => {
-    const id = String(g.id)
-    return !includedIds.includes(id) && !dismissedIds.has(id)
-  })
-  const included = suggested.filter((g) => includedIds.includes(String(g.id)))
-  const visible = [...included, ...pending].slice(0, LOUNGE_SPORTS_GAME_PIN_MAX)
+  const byId = useMemo(() => {
+    const map = new Map(games.map((g) => [String(g.id), g]))
+    if (pinnedGame?.id) map.set(String(pinnedGame.id), pinnedGame)
+    for (const g of matched) {
+      if (g?.id) map.set(String(g.id), g)
+    }
+    return map
+  }, [games, matched, pinnedGame])
+
+  const visible = stagedIds
+    .filter((id) => !dismissedIds.has(id))
+    .map((id) => byId.get(id))
+    .filter(Boolean)
+    .slice(0, LOUNGE_SPORTS_GAME_PIN_MAX)
+
   const multi = visible.length > 1
   const slideClass = multi ? LOUNGE_COMPOSER_MARKET_MINI_MULTI_CLASS : LOUNGE_COMPOSER_MARKET_MINI_SINGLE_CLASS
 
   useEffect(() => {
     if (!valueRef) return
-    if (!includedIds.length) {
+    const pinned = includedIds.filter((id) => stagedIds.includes(id) && !dismissedIds.has(id))
+    if (!pinned.length) {
       valueRef.current = { suppress: false, eventId: '', eventIds: [] }
       return
     }
     valueRef.current = {
       suppress: false,
-      eventId: includedIds[0] || '',
-      eventIds: includedIds.slice(0, LOUNGE_SPORTS_GAME_PIN_MAX),
+      eventId: pinned[0] || '',
+      eventIds: pinned.slice(0, LOUNGE_SPORTS_GAME_PIN_MAX),
     }
-  }, [includedIds, valueRef])
+  }, [dismissedIds, includedIds, stagedIds, valueRef])
 
   if (!visible.length) return null
 
@@ -95,11 +117,9 @@ export default function LoungeComposerGamePreview({ caption, className = '', val
                     })
                   }}
                   onDismiss={() => {
-                    if (isIncluded) {
-                      setIncludedIds((prev) => prev.filter((x) => x !== id))
-                      return
-                    }
                     setDismissedIds((prev) => new Set(prev).add(id))
+                    setIncludedIds((prev) => prev.filter((x) => x !== id))
+                    setStagedIds((prev) => prev.filter((x) => x !== id))
                   }}
                 />
               </div>
@@ -107,7 +127,7 @@ export default function LoungeComposerGamePreview({ caption, className = '', val
           })}
         </div>
       </div>
-      {includedIds.length >= LOUNGE_SPORTS_GAME_PIN_MAX ? (
+      {visible.length >= LOUNGE_SPORTS_GAME_PIN_MAX ? (
         <p className="mt-1 text-[11px] text-zinc-500">Max {LOUNGE_SPORTS_GAME_PIN_MAX} game cards per post.</p>
       ) : null}
     </div>

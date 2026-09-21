@@ -80,14 +80,23 @@ function hexToRgb(hex) {
   return { r, g, b }
 }
 
-function hexLuminance(hex) {
-  const rgb = hexToRgb(hex)
+function rgbLuminance(rgb) {
   if (!rgb) return 0
   const lin = (c) => {
     const x = c / 255
     return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4
   }
   return 0.2126 * lin(rgb.r) + 0.7152 * lin(rgb.g) + 0.0722 * lin(rgb.b)
+}
+
+function hexLuminance(hex) {
+  return rgbLuminance(hexToRgb(hex))
+}
+
+function contrastRatio(a, b) {
+  const hi = Math.max(rgbLuminance(a), rgbLuminance(b))
+  const lo = Math.min(rgbLuminance(a), rgbLuminance(b))
+  return (hi + 0.05) / (lo + 0.05)
 }
 
 function mixHex(a, b, t) {
@@ -103,6 +112,53 @@ export function nflPillWash(primary, _secondary) {
   const p = String(primary || '#3f3f46')
   if (hexLuminance(p) < 0.01) return mixHex(p, '#ffffff', 0.22)
   return p
+}
+
+/** Dark navy/black washes camouflage the mark. Bright red/teal/orange usually do not. */
+export function nflPillWashLikelyAir(washHex) {
+  return hexLuminance(washHex) < 0.1
+}
+
+const logoWashAirCache = new Map()
+
+/**
+ * Sample the PNG against the wash. If enough opaque pixels sit too close to the
+ * jersey color (NYG navy on navy), air the stain out. KC/MIA keep the rich fade.
+ */
+export function probeLogoWashConflict(src, washHex) {
+  const key = `${String(src || '')}|${String(washHex || '').toLowerCase()}`
+  const hit = logoWashAirCache.get(key)
+  if (hit) return hit
+  const job = (async () => {
+    const wash = hexToRgb(washHex)
+    if (!src || !wash || typeof document === 'undefined') return nflPillWashLikelyAir(washHex)
+    try {
+      const img = new Image()
+      img.decoding = 'async'
+      img.src = src
+      await img.decode()
+      const size = 48
+      const canvas = document.createElement('canvas')
+      canvas.width = size
+      canvas.height = size
+      const ctx = canvas.getContext('2d', { willReadFrequently: true })
+      if (!ctx) return nflPillWashLikelyAir(washHex)
+      ctx.drawImage(img, 0, 0, size, size)
+      const { data } = ctx.getImageData(0, 0, size, size)
+      let opaque = 0
+      let camouflaged = 0
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] < 48) continue
+        opaque += 1
+        if (contrastRatio({ r: data[i], g: data[i + 1], b: data[i + 2] }, wash) < 1.55) camouflaged += 1
+      }
+      return opaque > 8 && camouflaged / opaque >= 0.42
+    } catch {
+      return nflPillWashLikelyAir(washHex)
+    }
+  })()
+  logoWashAirCache.set(key, job)
+  return job
 }
 
 export function enrichLoungeSportsGame(game) {

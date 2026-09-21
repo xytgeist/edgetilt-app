@@ -1,8 +1,8 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import { LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS } from './loungeFeedAvatar.js'
-import { nflPillWash } from './loungeSportsMatch.js'
+import { nflPillWash, nflPillWashLikelyAir, probeLogoWashConflict } from './loungeSportsMatch.js'
 
 const PRE_SPREAD_MAX_PX = 26
 const PRE_SPREAD_MIN_PX = 13
@@ -148,6 +148,35 @@ function ScoreStack({ side, status, align, dimmed, covered }) {
   )
 }
 
+function usePillAirSides(game) {
+  const awayColor = game ? nflPillWash(game.away?.color, game.away?.color2) : '#3f3f46'
+  const homeColor = game ? nflPillWash(game.home?.color, game.home?.color2) : '#3f3f46'
+  const awaySrc = game?.away?.logo || ''
+  const homeSrc = game?.home?.logo || ''
+  const [awayAir, setAwayAir] = useState(() => nflPillWashLikelyAir(awayColor))
+  const [homeAir, setHomeAir] = useState(() => nflPillWashLikelyAir(homeColor))
+  useEffect(() => {
+    setAwayAir(nflPillWashLikelyAir(awayColor))
+    setHomeAir(nflPillWashLikelyAir(homeColor))
+    if (typeof document === 'undefined') return undefined
+    let alive = true
+    if (awaySrc) {
+      void probeLogoWashConflict(awaySrc, awayColor).then((air) => {
+        if (alive) setAwayAir(air)
+      })
+    }
+    if (homeSrc) {
+      void probeLogoWashConflict(homeSrc, homeColor).then((air) => {
+        if (alive) setHomeAir(air)
+      })
+    }
+    return () => {
+      alive = false
+    }
+  }, [awaySrc, homeSrc, awayColor, homeColor])
+  return { awayColor, homeColor, awayAir, homeAir }
+}
+
 /**
  * In-post score pill (X sports chip). Tap opens the Edge game hub.
  * Pass `game` to skip caption matching (composer preview).
@@ -162,6 +191,7 @@ export default function LoungeGameScorePill({
 }) {
   const sports = useLoungeSportsFeed()
   const game = gameProp || sports?.matchPost?.(post)
+  const air = usePillAirSides(game)
   if (!game) return null
 
   const homeWon = game.status === 'post' && game.home?.score != null && game.away?.score != null && game.home.score > game.away.score
@@ -170,8 +200,8 @@ export default function LoungeGameScorePill({
   const cover = loungeSportsSpreadCover(game)
   const awayCovered = game.status === 'post' && cover.away
   const homeCovered = game.status === 'post' && cover.home
-  const awayColor = nflPillWash(game.away?.color, game.away?.color2)
-  const homeColor = nflPillWash(game.home?.color, game.home?.color2)
+  const awayColor = air.awayColor
+  const homeColor = air.homeColor
   const Tag = interactive ? 'button' : 'div'
   const awaySpread = formatLoungeSportsSpread(game.away?.spread)
   const homeSpread = formatLoungeSportsSpread(game.home?.spread)
@@ -193,6 +223,8 @@ export default function LoungeGameScorePill({
       <Tag
         type={interactive ? 'button' : undefined}
         data-lounge-game-pill
+        data-pill-away-air={air.awayAir ? '' : undefined}
+        data-pill-home-air={air.homeAir ? '' : undefined}
         onClick={
           interactive
             ? (e) => {

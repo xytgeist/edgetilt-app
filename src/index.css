@@ -3292,8 +3292,33 @@ html.light [data-lounge-market-chart-mini] .text-cyan-300 {
 [data-lounge-game-pill] [data-lounge-game-pill-away],
 [data-lounge-game-pill] [data-lounge-game-pill-home] {
   z-index: 1;
+  mix-blend-mode: multiply;
 }
 [data-lounge-game-pill] [data-lounge-game-pill-away] {
+  background: linear-gradient(
+    108deg,
+    var(--pill-away, #3f3f46) 0%,
+    var(--pill-away, #3f3f46) 18%,
+    color-mix(in srgb, var(--pill-away, #3f3f46) 72%, transparent) 38%,
+    color-mix(in srgb, var(--pill-away, #3f3f46) 22%, transparent) 52%,
+    transparent 68%
+  );
+}
+[data-lounge-game-pill] [data-lounge-game-pill-home] {
+  background: linear-gradient(
+    252deg,
+    var(--pill-home, #3f3f46) 0%,
+    var(--pill-home, #3f3f46) 18%,
+    color-mix(in srgb, var(--pill-home, #3f3f46) 72%, transparent) 38%,
+    color-mix(in srgb, var(--pill-home, #3f3f46) 22%, transparent) 52%,
+    transparent 68%
+  );
+}
+[data-lounge-game-pill][data-pill-away-air] [data-lounge-game-pill-away],
+[data-lounge-game-pill][data-pill-home-air] [data-lounge-game-pill-home] {
+  mix-blend-mode: normal;
+}
+[data-lounge-game-pill][data-pill-away-air] [data-lounge-game-pill-away] {
   background: linear-gradient(
     108deg,
     color-mix(in srgb, var(--pill-away, #3f3f46) 32%, transparent) 0%,
@@ -3302,7 +3327,7 @@ html.light [data-lounge-market-chart-mini] .text-cyan-300 {
     transparent 70%
   );
 }
-[data-lounge-game-pill] [data-lounge-game-pill-home] {
+[data-lounge-game-pill][data-pill-home-air] [data-lounge-game-pill-home] {
   background: linear-gradient(
     252deg,
     color-mix(in srgb, var(--pill-home, #3f3f46) 32%, transparent) 0%,

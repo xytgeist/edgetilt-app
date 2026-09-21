@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-20:** **Lounge pill Pinnacle close (Mac).** Finals paint Pinnacle closing spread + ML (`-4.5 -150`). Source is `lounge_market_files` plus a kickoff historical backfill that writes the close back into that table. Not shopped juice. Frontend **`1.4.392`**. Redeploy **`lounge-sports-scoreboard`** on **test**.
 - **2026-09-20:** **Lounge pill closing lines (Mac).** Finals were painting scores with no ATS because live Odds `/odds` drops completed games and Rundown day events have no lines. Scoreboard now fills missing spreads from the Odds **historical** snapshot at kickoff. Frontend **`1.4.391`**. Redeploy **`lounge-sports-scoreboard`** on **test**.
 - **2026-09-20:** **Lounge pill cover underline (Mac).** Upcoming spreads scale to fit in the score slot. Finals keep the closing line under the score and underline the covering side. Gold logo check removed. Frontend **`1.4.390`**.
 - **2026-09-20:** **Lounge pill cover mark (Mac).** Gold check on the covering team's logo (live or final). Push has no badge. Frontend **`1.4.389`**.

@@ -2,9 +2,17 @@
  * Lounge in-post game pill scoreboard.
  * TheRundown day slates first (period scores + status). Odds API /scores as fallback.
  */
+import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { listRundownDayEvents, ptDateFromIso, rundownApiKey } from './loungeBotRundownContext.ts'
 import { fetchSportScores, type ScoreEvent } from './loungeBotLiveContent.ts'
 import { fetchSportOdds, fetchSportOddsHistorical, ptTodayDate } from './loungeBotOddsRun.ts'
+import type { OddsEvent } from './loungeBotOddsCaption.ts'
+import {
+  loadMarketFilesForSportWindow,
+  resolvePregameSpreadFromFile,
+  upsertMarketFilesFromEvents,
+  type MarketFileRow,
+} from './loungeBotMarketFile.ts'
 
 export const LOUNGE_SPORTS_SCOREBOARD_SPORTS = [
   { key: 'americanfootball_nfl', label: 'NFL', logoLeague: 'nfl' },
@@ -24,6 +32,8 @@ export type LoungeSportsGameSide = {
   linescores: number[]
   /** Current or last-known ATS number for this side (favorite negative). */
   spread?: number | null
+  /** Pinnacle American moneyline for this side. */
+  ml?: number | null
   team_id?: number | null
 }
 
@@ -151,6 +161,7 @@ function sideFromRundown(
     score,
     linescores: lines,
     spread: null,
+    ml: null,
     team_id: Number.isFinite(teamId) && teamId > 0 ? teamId : null,
   }
 }
@@ -429,6 +440,7 @@ function gameFromOdds(sportKey: string, sportLabel: string, logoLeague: string, 
     score: homeScore,
     linescores: [],
     spread: null,
+    ml: null,
   }
   const away: LoungeSportsGameSide = {
     name: awayName,
@@ -438,6 +450,7 @@ function gameFromOdds(sportKey: string, sportLabel: string, logoLeague: string, 
     score: awayScore,
     linescores: [],
     spread: null,
+    ml: null,
   }
   return {
     id: String(ev.id || `${sportKey}:${awayName}@${homeName}`).trim(),
@@ -516,7 +529,9 @@ function slateDedupeKey(game: LoungeSportsGame): string {
   return `${game.sport_key}:${a}@${h}:${ptDateFromIso(game.commence_time)}`
 }
 
-export async function buildLoungeSportsScoreboard(): Promise<{ games: LoungeSportsGame[]; source: string }> {
+export async function buildLoungeSportsScoreboard(
+  admin?: SupabaseClient,
+): Promise<{ games: LoungeSportsGame[]; source: string }> {
   const nflDates = nflFetchDates()
   const byKey = new Map<string, LoungeSportsGame>()
   let source = 'none'
@@ -532,10 +547,11 @@ export async function buildLoungeSportsScoreboard(): Promise<{ games: LoungeSpor
   // Rundown round was burning the Edge wall clock (10s timeout × 6 sports) so the
   // invoke 502'd and the Lounge painted zero pills.
   if (nflSport) {
-    const [nflBatches, nflScores, nflOddsPack] = await Promise.all([
+    const [nflBatches, nflScores, nflOddsPack, pinPack] = await Promise.all([
       Promise.all(nflDates.map((date) => listRundownDayEvents(nflSport.key, date).catch(() => []))),
       fetchSportScores('americanfootball_nfl', 3).catch(() => []),
       cachedSportOdds('americanfootball_nfl'),
+      cachedPinnacleOdds('americanfootball_nfl'),
     ])
     for (const events of nflBatches) {
       if (events.length) source = source === 'none' ? 'rundown' : source
@@ -551,11 +567,12 @@ export async function buildLoungeSportsScoreboard(): Promise<{ games: LoungeSpor
         if (game && gameOnSlate(game, nflDates)) upsert(game, false)
       }
     }
-    if (nflOddsPack) source = source.includes('odds') ? source : source === 'none' ? 'odds' : `${source}+odds`
-    const liveSpreads = applyOddsSpreads([...byKey.values()], nflOddsPack, false)
-    const withSpreads = await fillClosingSpreadsFromHistorical(liveSpreads, 'americanfootball_nfl')
+    if (nflOddsPack || pinPack) source = source.includes('odds') ? source : source === 'none' ? 'odds' : `${source}+odds`
+    let games = applyPinnacleQuotes([...byKey.values()], pinPack, false)
+    games = await applyMarketFileCloses(games, admin, nflDates)
+    games = await fillClosingQuotesFromHistorical(games, 'americanfootball_nfl', admin)
     byKey.clear()
-    for (const game of withSpreads) upsert(game, true)
+    for (const game of games) upsert(game, true)
   }
 
   const games = [...byKey.values()].sort((a, b) => {
@@ -577,6 +594,24 @@ async function cachedSportOdds(sportKey: string) {
   if (cached && Date.now() - cached.at < ODDS_CACHE_MS) return cached.pack
   const pack = await fetchSportOdds(key, ['us', 'us2'], ['h2h', 'spreads', 'totals']).catch(() => null)
   oddsCache.set(key, { at: Date.now(), pack })
+  return pack
+}
+
+const PINNACLE_REGIONS = ['eu', 'us', 'us2']
+const PINNACLE_BOOKS = ['pinnacle']
+const pinnacleCache = new Map<string, { at: number; pack: Awaited<ReturnType<typeof fetchSportOdds>> | null }>()
+
+async function cachedPinnacleOdds(sportKey: string) {
+  const key = `pin:${sportKey}`
+  const cached = pinnacleCache.get(key)
+  if (cached && Date.now() - cached.at < ODDS_CACHE_MS) return cached.pack
+  const pack = await fetchSportOdds(
+    sportKey,
+    PINNACLE_REGIONS,
+    ['h2h', 'spreads'],
+    { bookmakers: PINNACLE_BOOKS },
+  ).catch(() => null)
+  pinnacleCache.set(key, { at: Date.now(), pack })
   return pack
 }
 
@@ -602,6 +637,8 @@ type OddsBookmaker = {
 }
 
 type OddsEventRow = {
+  id?: string
+  commence_time?: string
   home_team?: string
   away_team?: string
   bookmakers?: OddsBookmaker[]
@@ -672,19 +709,15 @@ function compactOddsBooksFromEvent(ev: OddsEventRow, homeName: string, awayName:
   return rows
 }
 
-function preferredSpreadFromBooks(books: LoungeSportsOddsRow[]): { home: number | null; away: number | null } {
-  for (const row of books) {
-    const pair = pairSpreads(numOrNull(row.home_spread), numOrNull(row.away_spread))
-    if (pair.home != null || pair.away != null) return pair
-  }
-  return { home: null, away: null }
-}
-
 function gameHasSpread(game: LoungeSportsGame): boolean {
   return numOrNull(game.home?.spread) != null || numOrNull(game.away?.spread) != null
 }
 
-function applyOddsSpreads(
+function pinnacleBookFromEvent(ev: OddsEventRow): OddsBookmaker | null {
+  return (ev.bookmakers || []).find((b) => String(b.key || '').toLowerCase() === 'pinnacle') || null
+}
+
+function applyPinnacleQuotes(
   games: LoungeSportsGame[],
   pack: Awaited<ReturnType<typeof fetchSportOdds>> | { events?: OddsEventRow[] } | null,
   onlyIfMissing = false,
@@ -692,22 +725,59 @@ function applyOddsSpreads(
   const events = Array.isArray(pack?.events) ? pack!.events as OddsEventRow[] : []
   if (!events.length) return games
   return games.map((game) => {
-    if (onlyIfMissing && gameHasSpread(game)) return game
+    if (onlyIfMissing && gameHasSpread(game) && numOrNull(game.home?.ml) != null) return game
     const matched = events.find((ev) =>
-      oddsNamesHit(String(ev.home_team || ''), game.home) && oddsNamesHit(String(ev.away_team || ''), game.away)
+      sameNflSide(String(ev.home_team || ''), game.home) && sameNflSide(String(ev.away_team || ''), game.away)
     )
     if (!matched) return game
-    const books = compactOddsBooksFromEvent(
-      matched,
-      String(matched.home_team || game.home.name),
-      String(matched.away_team || game.away.name),
-    )
-    const pair = preferredSpreadFromBooks(books)
-    if (pair.home == null && pair.away == null) return game
+    const book = pinnacleBookFromEvent(matched)
+    if (!book) return game
+    const homeName = String(matched.home_team || game.home.name)
+    const awayName = String(matched.away_team || game.away.name)
+    const row = compactBook(book, homeName, awayName)
+    if (!row) return game
+    const pair = pairSpreads(numOrNull(row.home_spread), numOrNull(row.away_spread))
     return {
       ...game,
-      home: { ...game.home, spread: pair.home },
-      away: { ...game.away, spread: pair.away },
+      home: {
+        ...game.home,
+        spread: pair.home ?? game.home.spread ?? null,
+        ml: row.home_ml ?? game.home.ml ?? null,
+      },
+      away: {
+        ...game.away,
+        spread: pair.away ?? game.away.spread ?? null,
+        ml: row.away_ml ?? game.away.ml ?? null,
+      },
+    }
+  })
+}
+
+function fileMatchesGame(file: MarketFileRow, game: LoungeSportsGame): boolean {
+  return sameNflSide(file.home_team, game.home) && sameNflSide(file.away_team, game.away)
+}
+
+async function applyMarketFileCloses(
+  games: LoungeSportsGame[],
+  admin: SupabaseClient | undefined,
+  nflDates: string[],
+): Promise<LoungeSportsGame[]> {
+  if (!admin || !nflDates.length) return games
+  const fromIso = `${nflDates[0]}T00:00:00-07:00`
+  const toIso = `${nflDates[nflDates.length - 1]}T23:59:59-07:00`
+  const files = await loadMarketFilesForSportWindow(admin, 'americanfootball_nfl', fromIso, toIso).catch(() => [])
+  if (!files.length) return games
+  return games.map((game) => {
+    const file = files.find((row) => fileMatchesGame(row, game))
+    if (!file) return game
+    const quote = resolvePregameSpreadFromFile(file, game.commence_time)
+    if (!quote) return game
+    if (game.status !== 'post' && gameHasSpread(game)) return game
+    const pair = pairSpreads(quote.homePoint, quote.homePoint != null ? -quote.homePoint : null)
+    return {
+      ...game,
+      home: { ...game.home, spread: pair.home ?? game.home.spread ?? null },
+      away: { ...game.away, spread: pair.away ?? game.away.spread ?? null },
     }
   })
 }
@@ -718,35 +788,55 @@ const histOddsCache = new Map<string, { at: number; pack: { events: OddsEventRow
 function kickoffSnapshotIso(commence: string): string {
   const t = Date.parse(commence)
   if (!Number.isFinite(t)) return ''
-  return new Date(Math.max(0, t - 60_000)).toISOString()
+  const bucket = Math.floor((t - 60_000) / (10 * 60 * 1000)) * (10 * 60 * 1000)
+  return new Date(Math.max(0, bucket)).toISOString().replace(/\.\d{3}Z$/, 'Z')
 }
 
-async function cachedHistoricalOdds(sportKey: string, dateIso: string) {
-  const key = `${sportKey}|${dateIso}`
+async function cachedHistoricalPinnacle(sportKey: string, dateIso: string) {
+  const key = `pin|${sportKey}|${dateIso}`
   const cached = histOddsCache.get(key)
   if (cached && Date.now() - cached.at < HIST_ODDS_CACHE_MS) return cached.pack
-  const pack = await fetchSportOddsHistorical(sportKey, dateIso, ['us', 'us2'], ['spreads']).catch(() => null)
+  const pack = await fetchSportOddsHistorical(
+    sportKey,
+    dateIso,
+    PINNACLE_REGIONS,
+    ['spreads', 'h2h'],
+    { bookmakers: PINNACLE_BOOKS },
+  ).catch(() => null)
   const events = Array.isArray(pack?.events) ? pack!.events as OddsEventRow[] : []
   const next = { events }
   if (events.length) histOddsCache.set(key, { at: Date.now(), pack: next })
   return next
 }
 
-/** Live /odds drops finals. Kickoff-time historical snapshot is the closing ATS line. */
-async function fillClosingSpreadsFromHistorical(
+/** Live /odds drops finals. Kickoff Pinnacle snapshot is the closing ATS + ML. */
+async function fillClosingQuotesFromHistorical(
   games: LoungeSportsGame[],
   sportKey: string,
+  admin?: SupabaseClient,
 ): Promise<LoungeSportsGame[]> {
   const missing = games.filter((g) => (g.status === 'post' || g.status === 'in') && !gameHasSpread(g))
   const stamps = [...new Set(missing.map((g) => kickoffSnapshotIso(g.commence_time)).filter(Boolean))]
   if (!stamps.length) return games
   let next = games
-  const packs = await Promise.all(stamps.slice(0, 8).map((stamp) => cachedHistoricalOdds(sportKey, stamp)))
+  const used: OddsEventRow[] = []
+  const packs = await Promise.all(stamps.slice(0, 6).map((stamp) => cachedHistoricalPinnacle(sportKey, stamp)))
   for (const pack of packs) {
     if (!pack.events.length) continue
-    next = applyOddsSpreads(next, pack, true)
+    used.push(...pack.events)
+    next = applyPinnacleQuotes(next, pack, true)
+  }
+  if (admin && used.length) {
+    await upsertMarketFilesFromEvents(admin, sportKey, used as OddsEvent[]).catch(() => null)
   }
   return next
+}
+
+function sameNflSide(oddsName: string, side: LoungeSportsGameSide): boolean {
+  if (oddsNamesHit(oddsName, side)) return true
+  const oddsAbbrev = nflAbbrevFromOddsName(oddsName)
+  const sideAbbrev = String(side.abbrev || '').toUpperCase() === 'WSH' ? 'WAS' : String(side.abbrev || '').toUpperCase()
+  return Boolean(oddsAbbrev) && oddsAbbrev === sideAbbrev
 }
 
 function oddsNamesHit(oddsName: string, side: LoungeSportsGameSide): boolean {

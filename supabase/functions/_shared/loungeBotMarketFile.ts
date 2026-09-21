@@ -592,6 +592,22 @@ export async function upsertMarketFilesFromEvents(
   return { upserted: rows.length, locked }
 }
 
+export async function loadMarketFilesForSportWindow(
+  admin: SupabaseClient,
+  sportKey: string,
+  fromIso: string,
+  toIso: string,
+): Promise<MarketFileRow[]> {
+  const { data, error } = await admin
+    .from('lounge_market_files')
+    .select('*')
+    .eq('sport_key', sportKey)
+    .gte('commence_time', fromIso)
+    .lte('commence_time', toIso)
+  if (error) throw new Error(`lounge_market_files window: ${error.message}`)
+  return (data || []).map((row) => rowFromDb(row as Record<string, unknown>))
+}
+
 export async function loadMarketFilesByEventIds(
   admin: SupabaseClient,
   eventIds: string[],

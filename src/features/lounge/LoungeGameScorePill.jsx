@@ -39,6 +39,13 @@ function FitPrimary({ children, className, align }) {
   )
 }
 
+export function formatLoungeSportsMoneyline(price) {
+  if (price == null || !Number.isFinite(Number(price))) return null
+  const n = Math.round(Number(price))
+  if (n === 0) return null
+  return n > 0 ? `+${n}` : String(n)
+}
+
 export function formatLoungeSportsSpread(point) {
   if (point == null || !Number.isFinite(Number(point))) return null
   const n = Number(point)
@@ -101,6 +108,8 @@ function ScoreStack({ side, status, align, dimmed, covered }) {
   const pre = status === 'pre'
   const primary = scoreLabel(side, status)
   const spreadUnder = pre ? null : formatLoungeSportsSpread(side?.spread)
+  const mlUnder = pre ? null : formatLoungeSportsMoneyline(side?.ml)
+  const underLine = [spreadUnder, mlUnder].filter(Boolean).join(' ')
   const primaryClass = `whitespace-nowrap font-bold leading-none tabular-nums drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
     pre ? 'inline-block' : 'text-[26px]'
   } ${dimmed ? 'text-white/55' : 'text-white'}`
@@ -120,14 +129,14 @@ function ScoreStack({ side, status, align, dimmed, covered }) {
           {primary}
         </span>
       )}
-      {spreadUnder ? (
+      {underLine ? (
         <span
           data-lounge-game-pill-spread-cover={covered ? '' : undefined}
           className={`mt-1 whitespace-nowrap text-[11px] font-semibold leading-none tabular-nums tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
             covered ? 'border-b-2 border-white pb-px' : ''
           }`}
         >
-          {spreadUnder}
+          {underLine}
         </span>
       ) : null}
     </span>

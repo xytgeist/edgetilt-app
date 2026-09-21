@@ -286,15 +286,28 @@ export async function fetchActiveSportKeys(): Promise<Set<string>> {
 /** Hard cap so slate/preview Edge calls fail fast instead of hitting Supabase 150s idle timeout. */
 const ODDS_FETCH_TIMEOUT_MS = 25_000
 
-export async function fetchSportOdds(sport: string, regions: string[], markets: string[]) {
-  const key = oddsApiKey()
-  if (!key) throw new Error('THE_ODDS_API_KEY not set on Edge.')
+export type OddsFetchOpts = { bookmakers?: string[] }
+
+function oddsQuery(key: string, regions: string[], markets: string[], opts?: OddsFetchOpts) {
   const qs = new URLSearchParams({
     apiKey: key,
     regions: regions.join(','),
     markets: markets.join(','),
     oddsFormat: 'american',
   })
+  if (opts?.bookmakers?.length) qs.set('bookmakers', opts.bookmakers.join(','))
+  return qs
+}
+
+export async function fetchSportOdds(
+  sport: string,
+  regions: string[],
+  markets: string[],
+  opts?: OddsFetchOpts,
+) {
+  const key = oddsApiKey()
+  if (!key) throw new Error('THE_ODDS_API_KEY not set on Edge.')
+  const qs = oddsQuery(key, regions, markets, opts)
   let res: Response
   try {
     res = await fetch(`${ODDS_BASE}/sports/${sport}/odds?${qs}`, {
@@ -324,16 +337,12 @@ export async function fetchSportOddsHistorical(
   dateIso: string,
   regions: string[],
   markets: string[],
+  opts?: OddsFetchOpts,
 ) {
   const key = oddsApiKey()
   if (!key) throw new Error('THE_ODDS_API_KEY not set on Edge.')
-  const qs = new URLSearchParams({
-    apiKey: key,
-    regions: regions.join(','),
-    markets: markets.join(','),
-    oddsFormat: 'american',
-    date: dateIso,
-  })
+  const qs = oddsQuery(key, regions, markets, opts)
+  qs.set('date', dateIso)
   let res: Response
   try {
     res = await fetch(`${ODDS_BASE}/historical/sports/${sport}/odds?${qs}`, {

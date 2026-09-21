@@ -49,7 +49,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const board = await buildLoungeSportsScoreboard()
+    const board = await buildLoungeSportsScoreboard(admin)
     if (!eventId) {
       return json(200, { ok: true, ...board, fetched_at: new Date().toISOString() })
     }

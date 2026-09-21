@@ -42,27 +42,33 @@ function matchupKey(game) {
   return `${String(game?.sport_key || '')}:${normAbbrev(game?.away?.abbrev)}@${normAbbrev(game?.home?.abbrev)}:${ptDateFromIsoLocal(game?.commence_time)}`
 }
 
-function sideSpread(side) {
-  const n = Number(side?.spread)
+function sideNum(side, key) {
+  const n = Number(side?.[key])
   return Number.isFinite(n) ? n : null
 }
 
-/** Odds drop completed games; keep the last line we already painted. */
+/** Odds drop completed games; keep the last Pinnacle close we already painted. */
 function preserveSpreads(next, prev) {
   if (!Array.isArray(next) || !next.length || !Array.isArray(prev) || !prev.length) return next
   const prevById = new Map(prev.map((game) => [String(game.id), game]))
   const prevByMatch = new Map(prev.map((game) => [matchupKey(game), game]))
   return next.map((game) => {
-    if (sideSpread(game.home) != null || sideSpread(game.away) != null) return game
     const old = prevById.get(String(game.id)) || prevByMatch.get(matchupKey(game))
     if (!old) return game
-    const homeSpread = sideSpread(old.home)
-    const awaySpread = sideSpread(old.away)
-    if (homeSpread == null && awaySpread == null) return game
+    const homeSpread = sideNum(game.home, 'spread') ?? sideNum(old.home, 'spread')
+    const awaySpread = sideNum(game.away, 'spread') ?? sideNum(old.away, 'spread')
+    const homeMl = sideNum(game.home, 'ml') ?? sideNum(old.home, 'ml')
+    const awayMl = sideNum(game.away, 'ml') ?? sideNum(old.away, 'ml')
+    if (
+      homeSpread === sideNum(game.home, 'spread')
+      && awaySpread === sideNum(game.away, 'spread')
+      && homeMl === sideNum(game.home, 'ml')
+      && awayMl === sideNum(game.away, 'ml')
+    ) return game
     return {
       ...game,
-      home: { ...game.home, spread: homeSpread },
-      away: { ...game.away, spread: awaySpread },
+      home: { ...game.home, spread: homeSpread, ml: homeMl },
+      away: { ...game.away, spread: awaySpread, ml: awayMl },
     }
   })
 }

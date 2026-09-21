@@ -1026,18 +1026,22 @@ export default function PokerStableScreen({
 
         {!schemaMissing && userId && !initialStableLoadDone ? (
           <>
-            <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-              Stable Manager
-            </h2>
+            {paneEmbed ? null : (
+              <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+                Stable Manager
+              </h2>
+            )}
             <PokerSurfaceBootLoading label="Loading Stable…" />
           </>
         ) : null}
 
         {!schemaMissing && userId && initialStableLoadDone ? (
           <>
-            <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
-              Stable Manager
-            </h2>
+            {paneEmbed ? null : (
+              <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
+                Stable Manager
+              </h2>
+            )}
             <PokerStablePortfolioHero
               metrics={portfolioMetrics}
               pendingCommitCount={pendingPortfolioCommits.length}

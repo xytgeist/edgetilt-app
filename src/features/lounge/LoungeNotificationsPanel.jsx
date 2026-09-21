@@ -62,9 +62,9 @@ import {
 } from '../../utils/loungeActivityInteraction.js'
 import { renderRichCaption } from './loungeCaption'
 
-function NotificationSettingsGearIcon() {
+export function NotificationSettingsGearIcon({ className = 'h-4 w-4' }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden className="h-4 w-4">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden className={className}>
       <path
         stroke="currentColor"
         strokeWidth="1.65"
@@ -114,7 +114,6 @@ export default function LoungeNotificationsPanel({
   /** Close the dock panel and show Lounge (or let AppShell switch tabs) before row navigation. */
   onBeforeRowNavigate,
   onUnreadChange,
-  onOpenNotificationSettings,
   /** Same handlers as feed `LoungePostArticle` for inline like/repost/bookmark/comment. */
   notificationPostCardProps = null,
   repostMenuScrollRootRef = null,
@@ -982,18 +981,6 @@ export default function LoungeNotificationsPanel({
 
   return (
     <div className="px-3 pt-1 pb-1.5">
-      <div className="flex items-center justify-between gap-2">
-        <h2 className="text-[17px] font-semibold leading-none text-zinc-100">Notifications</h2>
-        <button
-          type="button"
-          aria-label="Notification settings"
-          onClick={() => onOpenNotificationSettings?.()}
-          className="grid h-7 w-7 shrink-0 place-items-center rounded-lg text-zinc-400 touch-manipulation hover:bg-zinc-900/80 hover:text-zinc-200 [-webkit-tap-highlight-color:transparent]"
-        >
-          <NotificationSettingsGearIcon />
-        </button>
-      </div>
-
       <LoungePullRefreshZone
         pullRefreshZoneRef={pullRefreshZoneRef}
         pullIndicatorOverlayRef={pullIndicatorOverlayRef}

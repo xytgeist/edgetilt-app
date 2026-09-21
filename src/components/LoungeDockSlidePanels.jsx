@@ -60,7 +60,9 @@ import {
   LoungeStreamLightboxProvider,
 } from '../features/lounge/LoungeStreamLightboxContext.jsx'
 import LoungeChatPanel from '../features/lounge/LoungeChatPanel.jsx'
-import LoungeNotificationsPanel from '../features/lounge/LoungeNotificationsPanel.jsx'
+import LoungeNotificationsPanel, {
+  NotificationSettingsGearIcon,
+} from '../features/lounge/LoungeNotificationsPanel.jsx'
 import { loungeDockFabScrollBottomInsetPx } from '../utils/loungeDockFabPosition.js'
 import {
   loungeTitleRevealAfterScrollStep,
@@ -1185,7 +1187,24 @@ export default function LoungeDockSlidePanels({
       >
         <PwaInstallTitleBarRow
           rowClassName="px-3 py-2"
-          logo={<EdgeLogoWithEasterEgg className={panelTitleLogoClassName} />}
+          logo={
+            openPanel === 'search' ||
+            openPanel === 'notifications' ||
+            openPanel === 'settings' ? (
+              <h1
+                data-lounge-dock-panel-title
+                className="font-black leading-none tracking-tight text-zinc-100 text-[1.25rem] sm:text-[1.5rem]"
+              >
+                {openPanel === 'search'
+                  ? 'Search'
+                  : openPanel === 'notifications'
+                    ? 'Notifications'
+                    : 'Settings'}
+              </h1>
+            ) : (
+              <EdgeLogoWithEasterEgg className={panelTitleLogoClassName} />
+            )
+          }
           centerSlot={titleBarCenterSlot}
           navSlot={
             <>
@@ -1193,6 +1212,16 @@ export default function LoungeDockSlidePanels({
                 loading={communityFeedLoading}
                 showBuildBadge={settingsViewerIsStaff && buildBadgeEnabled}
               />
+              {openPanel === 'notifications' ? (
+                <button
+                  type="button"
+                  onClick={onOpenNotificationSettings}
+                  className="lounge-title-nav-btn pointer-events-auto grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-zinc-700/60 bg-zinc-900 text-zinc-200 touch-manipulation hover:bg-zinc-800"
+                  aria-label="Notification settings"
+                >
+                  <NotificationSettingsGearIcon className="h-[1.15rem] w-[1.15rem]" />
+                </button>
+              ) : null}
               {titleBarNavSlot}
               <button
                 type="button"
@@ -1534,7 +1563,6 @@ export default function LoungeDockSlidePanels({
               onOpenOwnProfileFollowers={onOpenOwnProfileFollowers}
               onBeforeRowNavigate={onNotificationsBeforeRowNavigate}
               onUnreadChange={onNotificationsUnreadChange}
-              onOpenNotificationSettings={onOpenNotificationSettings}
               notificationPostCardProps={notificationInteractionProps}
               repostMenuScrollRootRef={panelScrollRef}
               listScrollRootRef={panelScrollRef}
@@ -1560,13 +1588,8 @@ export default function LoungeDockSlidePanels({
             />
           ) : (
           <div className="px-3 py-4">
-            <h2 className="text-[17px] font-semibold text-zinc-100">Settings</h2>
-            <p className="mt-1 text-[14px] leading-relaxed text-zinc-500">
-              Lounge preferences.
-            </p>
-
             {/* ── Appearance ── */}
-            <div className="mt-6 border-t border-zinc-800 pt-5">
+            <div>
               <button
                 type="button"
                 aria-expanded={appearanceSettingsOpen}

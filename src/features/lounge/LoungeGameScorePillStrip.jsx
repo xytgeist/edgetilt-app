@@ -50,6 +50,9 @@ export default function LoungeGameScorePillStrip({ post, className = '', variant
 
   useLayoutEffect(() => {
     if (!multi) return undefined
+    const landscapeSplit =
+      typeof document !== 'undefined' &&
+      Boolean(document.querySelector('[data-lounge-feed-root][data-lounge-landscape-split]'))
     return bindLoungeFeedCarouselMeasure(carouselScrollRef.current, carouselFullBleed, (next) => {
       setCarouselViewport((prev) =>
         prev.contentWidthPx === next.contentWidthPx &&
@@ -58,8 +61,11 @@ export default function LoungeGameScorePillStrip({ post, className = '', variant
           ? prev
           : next,
       )
-    }, { pairOnIpadLandscape: true })
-  }, [multi, carouselFullBleed, games.length])
+    }, {
+      pairOnIpadLandscape: !landscapeSplit && variant !== 'detail',
+      phoneSlideCap: landscapeSplit || variant === 'detail',
+    })
+  }, [multi, carouselFullBleed, games.length, variant])
 
   if (!games.length) return null
 

@@ -95,22 +95,30 @@ export function loungeFeedCarouselMeasureLayout(scroller, fullBleed, opts = {}) 
     typeof window !== 'undefined' &&
     window.matchMedia('(orientation: landscape) and (min-width: 640px) and (pointer: coarse)').matches
 
+  let contentWidthPx
   if (scroller) {
     const s = getComputedStyle(scroller)
     const padL = parseFloat(s.paddingLeft) || 0
     const padR = parseFloat(s.paddingRight) || 0
-    const contentWidthPx = Math.max(96, scroller.clientWidth - padL - padR)
-    const firstSlideMaxWidthPx = pairSlides
-      ? Math.max(96, (contentWidthPx - peekPx - slideGapPx * 2) / 2)
-      : Math.max(96, contentWidthPx - peekPx - slideGapPx)
-    return { maxRowPx, contentWidthPx, firstSlideMaxWidthPx }
+    contentWidthPx = Math.max(96, scroller.clientWidth - padL - padR)
+  } else {
+    const vw = typeof window !== 'undefined' ? window.innerWidth : 390
+    contentWidthPx = Math.min(vw * 0.88, 320)
   }
 
-  const vw = typeof window !== 'undefined' ? window.innerWidth : 390
-  const contentWidthPx = Math.min(vw * 0.88, 320)
-  const firstSlideMaxWidthPx = pairSlides
+  let firstSlideMaxWidthPx = pairSlides
     ? Math.max(96, (contentWidthPx - peekPx - slideGapPx * 2) / 2)
     : Math.max(96, contentWidthPx - peekPx - slideGapPx)
+
+  // Wide landscape Lounge split / detail: keep phone-like card width so the next slide peeks.
+  if (opts.phoneSlideCap) {
+    const capPx =
+      typeof opts.phoneSlideCap === 'number' && Number.isFinite(opts.phoneSlideCap)
+        ? opts.phoneSlideCap
+        : 20 * 16
+    firstSlideMaxWidthPx = Math.min(firstSlideMaxWidthPx, Math.max(96, capPx))
+  }
+
   return { maxRowPx, contentWidthPx, firstSlideMaxWidthPx }
 }
 

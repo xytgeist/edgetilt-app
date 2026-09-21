@@ -1363,8 +1363,8 @@ export default function SocialFeed({
     } catch {
       /* ignore */
     }
-    setFullScreenComposerOpen(false)
     if (loungePostDetail && !loungePostDetailOverLightbox) {
+      loungeSkipNavPopOnCloseRef.current = true
       try {
         closeLoungePostDetailRef.current?.()
       } catch {
@@ -2446,8 +2446,7 @@ export default function SocialFeed({
   )
 
   const openFullScreenComposer = useCallback(() => {
-    // Landscape: compose always opens in the right pane (Pro gets markdown; others still compose).
-    if (!loungeLandscapeSplitRef.current && !isViewerEdgePro) {
+    if (!isViewerEdgePro) {
       onOpenBillingManage?.()
       return
     }
@@ -2458,28 +2457,6 @@ export default function SocialFeed({
       }
     } catch {
       // ignore
-    }
-    if (loungeLandscapeSplitRef.current) {
-      try {
-        closeMarketChartModalRef.current?.()
-      } catch {
-        /* ignore */
-      }
-      try {
-        sportsCloseHubRef.current?.()
-      } catch {
-        /* ignore */
-      }
-      try {
-        closeLoungePostDetailRef.current?.()
-      } catch {
-        /* ignore */
-      }
-      try {
-        finalizeProfileModalCloseRef.current?.()
-      } catch {
-        /* ignore */
-      }
     }
     setFullScreenComposerOpen(true)
   }, [isViewerEdgePro, onOpenBillingManage])
@@ -2497,6 +2474,7 @@ export default function SocialFeed({
       } catch {
         /* ignore */
       }
+      loungeSkipNavPopOnCloseRef.current = true
       try {
         closeLoungePostDetailRef.current?.()
       } catch {
@@ -2507,7 +2485,6 @@ export default function SocialFeed({
       } catch {
         /* ignore */
       }
-      setFullScreenComposerOpen(false)
     }
     setMarketChartModal({
       open: true,
@@ -2540,18 +2517,12 @@ export default function SocialFeed({
       flushSync(() => {
         setComposerImageItems(next)
         setComposerFoldReveal(1)
-        if (loungeLandscapeSplitRef.current) {
-          setFullScreenComposerOpen(true)
-        } else {
-          composerExpandedRef.current = true
-          setComposerExpanded(true)
-          setComposerFocusToken((t) => t + 1)
-        }
+        composerExpandedRef.current = true
+        setComposerExpanded(true)
+        setComposerFocusToken((t) => t + 1)
       })
       closeMarketChartModal()
-      if (!loungeLandscapeSplitRef.current) {
-        scrollLoungeFeedToTopInstant()
-      }
+      scrollLoungeFeedToTopInstant()
       setLoungeShareFlash('Chart image added to post.')
       return true
     },
@@ -8397,7 +8368,6 @@ export default function SocialFeed({
         } catch {
           /* ignore */
         }
-        setFullScreenComposerOpen(false)
       }
       if (
         performance.now() < loungeFeedNavClickSuppressUntilRef.current &&
@@ -9112,35 +9082,6 @@ export default function SocialFeed({
     ensureLoungeFeedVisible()
     /** Dismiss z-stacked chrome synchronously so the caption is focusable in the same user gesture (iOS keyboard). */
     dismissLoungeStackForDockNavRef.current()
-
-    if (loungeLandscapeSplitRef.current) {
-      try {
-        closeMarketChartModalRef.current?.()
-      } catch {
-        /* ignore */
-      }
-      try {
-        sportsCloseHubRef.current?.()
-      } catch {
-        /* ignore */
-      }
-      try {
-        closeLoungePostDetailRef.current?.()
-      } catch {
-        /* ignore */
-      }
-      try {
-        finalizeProfileModalCloseRef.current?.()
-      } catch {
-        /* ignore */
-      }
-      flushSync(() => {
-        setLoungeDockPanel(null)
-        setChatDockInitialPeerUserId(null)
-        setFullScreenComposerOpen(true)
-      })
-      return
-    }
 
     flushSync(() => {
       setLoungeDockPanel(null)
@@ -15111,7 +15052,6 @@ export default function SocialFeed({
     } else {
       setProfileOverlayStack([])
     }
-    setFullScreenComposerOpen(false)
     try {
       closeMarketChartModalRef.current?.()
     } catch {
@@ -15176,12 +15116,16 @@ export default function SocialFeed({
         } catch {
           /* ignore */
         }
-        try {
-          closeLoungePostDetailRef.current?.()
-        } catch {
-          /* ignore */
+        // Closing detail must not pop the nav stack we just pushed for this profile
+        // (stale finalize after 400ms was restoring feed and dismissing the profile).
+        if (loungePostDetailOpenRef.current) {
+          loungeSkipNavPopOnCloseRef.current = true
+          try {
+            closeLoungePostDetailRef.current?.()
+          } catch {
+            /* ignore */
+          }
         }
-        setFullScreenComposerOpen(false)
       }
       profileReturnDockPanelRef.current = opts?.returnDockPanel ?? null
       setProfileModalStartEditing(opts?.startEditing === true)
@@ -16632,13 +16576,8 @@ export default function SocialFeed({
   const loungeGameInPane = loungeLandscapeSplit && loungeSportsHubOpen
   const loungeProfileInPane =
     loungeLandscapeSplit && profileModalOpen && Boolean(profileModalData?.user_id)
-  const loungeComposerInPane = loungeLandscapeSplit && fullScreenComposerOpen
   const loungeLandscapeEngagementActive =
-    loungeDetailInPane ||
-    loungeChartInPane ||
-    loungeGameInPane ||
-    loungeProfileInPane ||
-    loungeComposerInPane
+    loungeDetailInPane || loungeChartInPane || loungeGameInPane || loungeProfileInPane
 
   return (
     <div
@@ -16864,7 +16803,7 @@ export default function SocialFeed({
           </div>
         ) : null}
 
-        {loungeReadOnly || loungeLandscapeSplit ? null : (
+        {loungeReadOnly ? null : (
         <div
           className={`relative shrink-0 border-b border-zinc-600/65 bg-zinc-700/55 px-3 ${
             composerExpanded ? 'pt-3 pb-1.5' : 'py-3'
@@ -17774,84 +17713,6 @@ export default function SocialFeed({
               requestAutoOpenSubscribe={profileModalAutoOpenSubscribe}
               onRequestAutoOpenSubscribeConsumed={() => setProfileModalAutoOpenSubscribe(false)}
               onRequireAuth={onRequireAuth}
-            />
-          ) : null}
-          {loungeComposerInPane &&
-          !loungeChartInPane &&
-          !loungeGameInPane &&
-          !loungeProfileInPane ? (
-            <LoungeFullScreenComposerModal
-              embedded
-              open={fullScreenComposerOpen}
-              onClose={() => setFullScreenComposerOpen(false)}
-              postText={postText}
-              onTextChange={handleFeedComposerCaptionChange}
-              onSubmit={(payload) => {
-                const captions = payload?.threadCaptions
-                if (Array.isArray(captions) && captions.length > 1) {
-                  const partsMedia = [
-                    {
-                      imageItems: [...composerImageItems],
-                      gifUrl: String(composerMediaUrl || '').trim(),
-                      videoSlot: composerVideoSlot ? { ...composerVideoSlot } : null,
-                      videoPrepHud: null,
-                    },
-                    ...captions.slice(1).map(() => emptyThreadComposePartMedia()),
-                  ]
-                  const normalized = normalizeThreadComposePartsForSubmit(captions, partsMedia)
-                  if (normalized.length > 1) {
-                    void submitThreadComposeWithAudience(
-                      composerAudience === LOUNGE_COMPOSER_AUDIENCE_SUBS,
-                      { captions, partsMedia },
-                    )
-                    return
-                  }
-                }
-                void submitLoungePost()
-              }}
-              postBusy={postBusy}
-              isEdgePro={isViewerEdgePro}
-              isPhoneVerified={Boolean(composerUserProfile?.phone_verified_at)}
-              isStaff={loungeStaffToolsEnabled}
-              onUpgradeClick={() => onOpenBillingManage?.()}
-              composerUserProfile={composerUserProfile}
-              composerImageItems={composerImageItems}
-              onRemoveImageIndex={(i) => {
-                setComposerImageItems((prev) => {
-                  const item = prev[i]
-                  if (item?.preview) {
-                    try {
-                      URL.revokeObjectURL(item.preview)
-                    } catch {
-                      /* ignore */
-                    }
-                  }
-                  return prev.filter((_, idx) => idx !== i)
-                })
-              }}
-              composerVideoSlot={composerVideoSlot}
-              onRemoveVideo={() => cancelComposerMediaPrep()}
-              composerMediaUrl={composerMediaUrl}
-              onRemoveGif={() => setComposerMediaUrl('')}
-              composerMarketSymbols={composerMarketSymbols}
-              onMarketSymbolsChange={setComposerMarketSymbols}
-              sportsGameValueRef={composerSportsRef}
-              composerCategoryPills={composerCategoryPills}
-              onCategoryPillsChange={setComposerCategoryPills}
-              composerReplyGateEdgePro={composerReplyGateEdgePro}
-              onReplyGateChange={setComposerReplyGateEdgePro}
-              composerAudience={composerAudience}
-              onAudienceChange={setComposerAudience}
-              composerFanMonetizationLive={composerFanMonetizationLive}
-              captionMax={loungeComposerCaptionMax}
-              cashtagComposer={cashtagComposer}
-              mentionComposer={mentionComposer}
-              onOpenGifPicker={() => openKlipyPicker('composer')}
-              onOpenMarketPicker={() => openMarketPicker('composer')}
-              imageInputId={LOUNGE_COMPOSER_IMAGE_INPUT_ID}
-              videoInputId={LOUNGE_COMPOSER_VIDEO_INPUT_ID}
-              onImagePointerDown={() => beginLoungeComposerMediaPicker('composer')}
-              onVideoPointerDown={() => beginLoungeComposerMediaPicker('composer')}
             />
           ) : null}
         </div>
@@ -20916,7 +20777,6 @@ export default function SocialFeed({
         />
       ) : null}
 
-      {loungeComposerInPane ? null : (
       <LoungeFullScreenComposerModal
         open={fullScreenComposerOpen}
         onClose={() => setFullScreenComposerOpen(false)}
@@ -20989,7 +20849,6 @@ export default function SocialFeed({
         onImagePointerDown={() => beginLoungeComposerMediaPicker('composer')}
         onVideoPointerDown={() => beginLoungeComposerMediaPicker('composer')}
       />
-      )}
 
       <LoungeThreadComposeSheet
         key={threadComposeSessionKey}

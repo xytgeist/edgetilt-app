@@ -1326,16 +1326,45 @@ export default function PlayLogbook({
     <>
     <ScrollLinkedEdgeTitleBarShell
       embedded={paneEmbed}
+      fillViewport={paneEmbed}
       publishScrollReveal={!paneEmbed}
       titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
       titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
       titleBarToolCloseVisible={paneEmbed ? false : titleBarToolCloseVisible}
-      contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
+      contentClassName={
+        paneEmbed
+          ? 'flex min-h-0 flex-1 flex-col overflow-hidden p-0'
+          : 'px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
+      }
     >
+      {paneEmbed ? (
+        <div
+          data-slots-landscape-pane-chrome
+          className="flex shrink-0 items-center justify-between gap-2 border-b border-zinc-800/95 bg-zinc-950 px-3 py-2"
+        >
+          <h1
+            data-slots-landscape-title
+            className="font-black leading-none tracking-tight text-white text-[1.25rem] sm:text-[1.5rem]"
+          >
+            Play Logbook
+          </h1>
+        </div>
+      ) : null}
+      <div
+        className={
+          paneEmbed
+            ? 'min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 pt-3 pb-[calc(1.5rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] [-webkit-overflow-scrolling:touch]'
+            : undefined
+        }
+      >
       <div data-play-logbook>
         <div className="mb-5">
-          <h1 className="min-w-0 text-white text-2xl font-black tracking-tight">Play Logbook</h1>
-          <p className="text-zinc-400 text-sm mt-0.5">Capture AP slot data · analyze later</p>
+          {paneEmbed ? null : (
+            <h1 className="min-w-0 text-white text-2xl font-black tracking-tight">Play Logbook</h1>
+          )}
+          <p className={`text-zinc-400 text-sm ${paneEmbed ? '' : 'mt-0.5'}`}>
+            Capture AP slot data · analyze later
+          </p>
           <FreemiumUsageCounter
             remaining={playLogsRemaining}
             limit={FREE_PLAY_LOG_LIMIT}
@@ -1666,6 +1695,7 @@ export default function PlayLogbook({
             )}
           </>
         )}
+      </div>
       </div>
     </ScrollLinkedEdgeTitleBarShell>
 

@@ -1834,16 +1834,43 @@ export default function W2GScannerScreen({
     <>
     <ScrollLinkedEdgeTitleBarShell
       embedded={paneEmbed}
+      fillViewport={paneEmbed}
       publishScrollReveal={!paneEmbed}
       titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
       titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
       titleBarToolCloseVisible={paneEmbed ? false : titleBarToolCloseVisible}
-      contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
+      contentClassName={
+        paneEmbed
+          ? 'flex min-h-0 flex-1 flex-col overflow-hidden p-0'
+          : 'px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
+      }
     >
+      {paneEmbed ? (
+        <div
+          data-slots-landscape-pane-chrome
+          className="flex shrink-0 items-center justify-between gap-2 border-b border-zinc-800/95 bg-zinc-950 px-3 py-2"
+        >
+          <h1
+            data-slots-landscape-title
+            className="font-black leading-none tracking-tight text-white text-[1.25rem] sm:text-[1.5rem]"
+          >
+            W-2G Scanner
+          </h1>
+        </div>
+      ) : null}
+      <div
+        className={
+          paneEmbed
+            ? 'min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 pt-3 pb-[calc(1.5rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] [-webkit-overflow-scrolling:touch]'
+            : undefined
+        }
+      >
       <div data-w2g-scanner className="space-y-5">
         <div>
-          <div className="text-white text-2xl font-black tracking-tight">W-2G Scanner</div>
-          <div className="text-zinc-400 text-sm mt-0.5">
+          {paneEmbed ? null : (
+            <div className="text-white text-2xl font-black tracking-tight">W-2G Scanner</div>
+          )}
+          <div className={`text-zinc-400 text-sm ${paneEmbed ? '' : 'mt-0.5'}`}>
             Snap slips, save the six TurboTax fields + image, then collate by payer EIN for filing.
           </div>
         </div>
@@ -2518,6 +2545,7 @@ export default function W2GScannerScreen({
             )}
           </div>
         ) : null}
+      </div>
       </div>
     </ScrollLinkedEdgeTitleBarShell>
 

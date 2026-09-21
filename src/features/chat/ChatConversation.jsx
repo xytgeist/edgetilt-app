@@ -766,13 +766,13 @@ export default function ChatConversation({
     }
   }, [supabaseClient, room.id, loadReactionsForMessages, scrollMessageIntoView])
 
-  // ── Suppress the Lounge dock FAB while this conversation is on screen ────
-  // The dock portals to document.body and would otherwise float over the chat.
-  // The title-bar nav icon calls temporaryRevealLoungeDock() to briefly surface it.
+  // Suppress the Lounge dock FAB while this conversation is full-screen.
+  // Embedded (landscape Chat pane / Slots Pro Lounge) keeps the left rail visible.
   useEffect(() => {
+    if (embedded) return undefined
     notifyLoungeDockSuppress(true)
     return () => notifyLoungeDockSuppress(false)
-  }, [])
+  }, [embedded])
 
   // ── Notify native shell of active chat room ──────────────────────────────
   // When viewed, APNs alerts for new messages in this room are silenced in foreground.

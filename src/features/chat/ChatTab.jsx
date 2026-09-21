@@ -150,14 +150,13 @@ export default function ChatTab({
 
   const subscriberOk = Boolean(hasActiveSubscription || isStaff)
 
-  // Keep the Lounge dock suppressed for the whole open-room session (not only while
-  // ChatConversation is mounted). iOS remounts the conversation after native pickers
-  // and would otherwise briefly drop suppressCount and let a ghost tap hit dock Home.
+  // Portrait full-screen thread: suppress the Lounge FAB (ghost taps on remount).
+  // Landscape split keeps the left nav rail … do not suppress there.
   useEffect(() => {
-    if (!openRoomId) return undefined
+    if (!openRoomId || chatLandscapeLayout) return undefined
     notifyLoungeDockSuppress(true)
     return () => notifyLoungeDockSuppress(false)
-  }, [openRoomId])
+  }, [openRoomId, chatLandscapeLayout])
 
   // On iOS, app resume with the keyboard open can corrupt the visual viewport layout.
   // Force a full remount of the conversation by bumping the key.

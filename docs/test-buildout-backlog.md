@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-20:** **Lounge pills blank (Mac).** Scoreboard now fetches NFL + Odds only (the 6-sport sequential slate 502'd). Client keeps the last board if a refresh is empty/failed. `Redskins` aliases WAS. Frontend **`1.4.385`**. Redeploy **`lounge-sports-scoreboard`** on **test**.
 - **2026-09-20:** **Lounge game-pill timing + composer (Mac).** Named matchups pin that game. Vague one-team lines use live / most recent until MNF is final, then the upcoming game. Composer paints the pill as the caption matches; X suppresses it (`sports_game` jsonb on **test**). Frontend **`1.4.384`**.
 - **2026-09-20:** **Lounge Sunday finals (Mac).** Scoreboard always merges Odds `/scores` for this NFL week so completed Sunday games still pill after they go FINAL. `WAS`/`WSH` are the same team. Frontend **`1.4.383`**.
 - **2026-09-20:** **Lounge NFL slate window (Mac).** Scoreboard is this week's Thu-Mon games until **Tuesday 00:00 PT** (after MNF), not next week's preview. Caption match is word-bounded so "Chiefs" does not hit CHI. Edge **`lounge-sports-scoreboard`** on **test**. Frontend **`1.4.382`**.

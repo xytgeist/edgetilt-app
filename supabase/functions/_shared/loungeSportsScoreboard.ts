@@ -451,9 +451,9 @@ function slateDedupeKey(game: LoungeSportsGame): string {
 
 export async function buildLoungeSportsScoreboard(): Promise<{ games: LoungeSportsGame[]; source: string }> {
   const nflDates = nflFetchDates()
-  const otherDates = otherSportSlateDates()
   const byKey = new Map<string, LoungeSportsGame>()
   let source = 'none'
+  const nflSport = LOUNGE_SPORTS_SCOREBOARD_SPORTS.find((s) => s.key === 'americanfootball_nfl')
 
   const upsert = (game: LoungeSportsGame, overwrite = false) => {
     const key = slateDedupeKey(game)
@@ -461,27 +461,28 @@ export async function buildLoungeSportsScoreboard(): Promise<{ games: LoungeSpor
     byKey.set(key, game)
   }
 
-  for (const sport of LOUNGE_SPORTS_SCOREBOARD_SPORTS) {
-    const dates = sport.key === 'americanfootball_nfl' ? nflDates : otherDates
-    const batches = await Promise.all(dates.map((date) => listRundownDayEvents(sport.key, date).catch(() => [])))
-    for (const events of batches) {
+  // NFL + Odds only. Fetching CFB/MLB/NBA/NHL/MLS sequentially after a 10-day NFL
+  // Rundown round was burning the Edge wall clock (10s timeout × 6 sports) so the
+  // invoke 502'd and the Lounge painted zero pills.
+  if (nflSport) {
+    const [nflBatches, nflOdds] = await Promise.all([
+      Promise.all(nflDates.map((date) => listRundownDayEvents(nflSport.key, date).catch(() => []))),
+      fetchSportScores('americanfootball_nfl', 3).catch(() => []),
+    ])
+    for (const events of nflBatches) {
       if (events.length) source = source === 'none' ? 'rundown' : source
       for (const ev of events) {
-        const game = gameFromRundown(sport.key, sport.label, sport.logoLeague, ev)
-        if (game && gameOnSlate(game, dates)) upsert(game, true)
+        const game = gameFromRundown(nflSport.key, nflSport.label, nflSport.logoLeague, ev)
+        if (game && gameOnSlate(game, nflDates)) upsert(game, true)
       }
     }
-  }
-
-  try {
-    const nfl = await fetchSportScores('americanfootball_nfl', 3)
-    if (nfl.length) source = source === 'none' ? 'odds' : source.includes('odds') ? source : `${source}+odds`
-    for (const ev of nfl) {
-      const game = gameFromOdds('americanfootball_nfl', 'NFL', 'nfl', ev)
-      if (game && gameOnSlate(game, nflDates)) upsert(game, false)
+    if (nflOdds.length) {
+      source = source === 'none' ? 'odds' : source.includes('odds') ? source : `${source}+odds`
+      for (const ev of nflOdds) {
+        const game = gameFromOdds('americanfootball_nfl', 'NFL', 'nfl', ev)
+        if (game && gameOnSlate(game, nflDates)) upsert(game, false)
+      }
     }
-  } catch {
-    /* Odds fills finals Rundown sometimes drops once they go FINAL */
   }
 
   const games = [...byKey.values()].sort((a, b) => {

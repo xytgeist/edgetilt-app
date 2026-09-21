@@ -48,7 +48,8 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
     try {
       const data = await loungeSportsScoreboard(supabaseClient)
       if (data?.error || !Array.isArray(data?.games)) return
-      const next = data.games.map(enrichLoungeSportsGame).filter(isLoungeSportsCurrentSlateGame)
+      const next = data.games.map(enrichLoungeSportsGame)
+      if (!next.length) return
       setGames(next)
       writeLoungeSportsScoreboardCache(next)
     } catch (err) {

@@ -1,4 +1,4 @@
-import { pickAmbiguousTeamGame, pickSpecificMatchupGame, sideAbbrev } from './loungeSportsSlateWindow.js'
+import { pickAmbiguousTeamGame, pickSpecificMatchupGame, sideAbbrev, gameHasTeam } from './loungeSportsSlateWindow.js'
 
 /** NFL aliases + notable names so captions like "Jayden Daniels" still hit today's game. */
 export const NFL_TEAM_CATALOG = [
@@ -33,7 +33,7 @@ export const NFL_TEAM_CATALOG = [
   { abbrev: 'SEA', espn: 'sea', color: '#002244', color2: '#69BE28', names: ['Seattle Seahawks', 'Seahawks'], players: ['Sam Darnold', 'Jaxon Smith-Njigba', 'Kenneth Walker'] },
   { abbrev: 'TB', espn: 'tb', color: '#A71930', color2: '#322F2B', names: ['Tampa Bay Buccaneers', 'Buccaneers', 'Bucs'], players: ['Baker Mayfield', 'Mike Evans', 'Bucky Irving'] },
   { abbrev: 'TEN', espn: 'ten', color: '#4495D1', color2: '#0C2340', names: ['Tennessee Titans', 'Titans'], players: ['Cam Ward', 'Calvin Ridley'] },
-  { abbrev: 'WAS', espn: 'wsh', color: '#5A1414', color2: '#FFB612', names: ['Washington Commanders', 'Commanders', 'Washington'], players: ['Jayden Daniels', 'Terry McLaurin', 'Brian Robinson', 'Deebo Samuel'] },
+  { abbrev: 'WAS', espn: 'wsh', color: '#5A1414', color2: '#FFB612', names: ['Washington Commanders', 'Commanders', 'Washington', 'Washington Football Team', 'Redskins'], players: ['Jayden Daniels', 'Jayden Daniel', 'Terry McLaurin', 'Brian Robinson', 'Deebo Samuel'] },
 ]
 
 const CATALOG_BY_ABBREV = new Map()
@@ -213,13 +213,13 @@ export function matchLoungePostToSportsGame(caption, games) {
 
   if (teams.length >= 2) {
     const [a, b] = pair || mentioned
-    const candidates = games.filter((game) => {
-      const homeAb = sideAbbrev(game.home)
-      const awayAb = sideAbbrev(game.away)
-      return (homeAb === a && awayAb === b) || (homeAb === b && awayAb === a)
-    })
+    const candidates = games.filter((game) => gameHasTeam(game, a) && gameHasTeam(game, b))
     const hit = pickSpecificMatchupGame(candidates, games)
     if (hit) return hit
+    const live = teams.map((abbrev) => pickAmbiguousTeamGame(abbrev, games)).find((g) => g?.status === 'in')
+    if (live) return live
+    const recent = teams.map((abbrev) => pickAmbiguousTeamGame(abbrev, games)).find(Boolean)
+    if (recent) return recent
   }
 
   if (teams.length === 1) {

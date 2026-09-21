@@ -107,7 +107,7 @@ export function isLoungeSportsCurrentSlateGame(game, now = Date.now()) {
   if (!game) return false
   if (game.status === 'in') return true
   const day = gameDay(game)
-  if (!day) return false
+  if (!day) return true
   const dates = isNflGame(game) ? nflFetchDates(now) : otherSportSlateDates(now)
   return dates.includes(day)
 }
@@ -116,10 +116,17 @@ export function sideAbbrev(side) {
   return String(side?.abbrev || '').trim().toUpperCase()
 }
 
-export function gameHasTeam(game, abbrev) {
+function canonTeamAbbrev(abbrev) {
   const a = String(abbrev || '').trim().toUpperCase()
+  if (a === 'WSH') return 'WAS'
+  if (a === 'JAC') return 'JAX'
+  return a
+}
+
+export function gameHasTeam(game, abbrev) {
+  const a = canonTeamAbbrev(abbrev)
   if (!a) return false
-  return sideAbbrev(game?.home) === a || sideAbbrev(game?.away) === a
+  return canonTeamAbbrev(sideAbbrev(game?.home)) === a || canonTeamAbbrev(sideAbbrev(game?.away)) === a
 }
 
 /**

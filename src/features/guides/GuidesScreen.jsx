@@ -1997,16 +1997,41 @@ export default function GuidesScreen({
     <>
       <ScrollLinkedEdgeTitleBarShell
         embedded={paneEmbed}
+        fillViewport={paneEmbed}
         titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
         titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
         titleBarToolCloseVisible={paneEmbed ? false : titleBarToolCloseVisible}
         publishScrollReveal={!paneEmbed}
-        scrollRootRef={guidesScrollRootRef}
-        contentClassName="px-3 pt-3 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
+        scrollRootRef={paneEmbed ? undefined : guidesScrollRootRef}
+        contentClassName={
+          paneEmbed
+            ? 'flex min-h-0 flex-1 flex-col overflow-hidden p-0'
+            : 'px-3 pt-3 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
+        }
       >
-        <h1 className={paneEmbed ? 'mb-3 text-xl font-black tracking-tight text-white' : 'sr-only'}>
-          AP Guides
-        </h1>
+        {paneEmbed ? (
+          <div
+            data-slots-landscape-pane-chrome
+            className="flex shrink-0 items-center justify-between gap-2 border-b border-zinc-800/95 bg-zinc-950 px-3 py-2"
+          >
+            <h1
+              data-slots-landscape-title
+              className="font-black leading-none tracking-tight text-white text-[1.25rem] sm:text-[1.5rem]"
+            >
+              AP Guides
+            </h1>
+          </div>
+        ) : (
+          <h1 className="sr-only">AP Guides</h1>
+        )}
+        <div
+          ref={paneEmbed ? guidesScrollRootRef : undefined}
+          className={
+            paneEmbed
+              ? 'min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 pt-3 pb-[calc(1.5rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] [-webkit-overflow-scrolling:touch]'
+              : undefined
+          }
+        >
         {SHOW_GUIDE_CARD_ADMIN_LOCK_AND_DELETE && isAdmin && !gatesDbReady ? (
           <p className="mb-4 text-xs text-fuchsia-300/90">
             Apply migration `20260526150000_content_access_gates.sql` to enable admin lock switches.
@@ -2410,6 +2435,7 @@ export default function GuidesScreen({
         </ul>
       )}
 
+        </div>
       </ScrollLinkedEdgeTitleBarShell>
 
       {deleteConfirm ? (

@@ -3975,6 +3975,10 @@ html[data-ipad-nav] [data-edge-status-bar-plate] {
 html.light [data-slots-landscape-tools] {
   border-right-color: #e4e4e7;
 }
+html.light [data-slots-landscape-pane-chrome] {
+  border-bottom-color: #e4e4e7;
+  background-color: #fafafa;
+}
 /* Landscape Lounge engagement split:
    (rail + feed) = 50vw, engagement pane = 50vw. Phone chrome on feed (no tall-iPad pad/scale). */
 [data-lounge-feed-root][data-lounge-landscape-split] {
@@ -4040,7 +4044,8 @@ html.light [data-chat-landscape-pane] {
     flex: 0 0 50% !important;
     max-width: none;
   }
-  [data-slots-landscape-tools-chrome] {
+  [data-slots-landscape-tools-chrome],
+  [data-slots-landscape-pane-chrome] {
     padding-left: 0.5rem !important;
     padding-right: 0.5rem !important;
     padding-top: 0.35rem !important;
@@ -4171,7 +4176,8 @@ html.light [data-ipad-nav-rail] [data-ipad-nav-shortcut-rule] {
   }
   /* Title bar chrome: 70% of lounge / slots header height. */
   [data-lounge-title-bar] [data-pwa-install-title-row],
-  [data-slots-landscape-tools-chrome] {
+  [data-slots-landscape-tools-chrome],
+  [data-slots-landscape-pane-chrome] {
     padding-top: 0.35rem !important;
     padding-bottom: 0.35rem !important;
     padding-left: 0.525rem !important;

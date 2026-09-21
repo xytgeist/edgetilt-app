@@ -9,6 +9,7 @@ import {
   xTweetVideoPlayUrl,
 } from '../utils/xTweetEmbed.js'
 import { profileAvatarInitials, profileAvatarToneClass } from '../features/profiles/profileGate.js'
+import { openExternalUrl } from '../utils/edgeNative.js'
 
 function XVerifiedBadge({ className = '' }) {
   return (
@@ -111,11 +112,7 @@ export default function XTweetEmbedCard({
     }
     const url = String(preview?.url || '').trim()
     if (!url) return
-    try {
-      window.open(url, '_blank', 'noopener,noreferrer')
-    } catch {
-      /* */
-    }
+    void openExternalUrl(url)
   }
 
   const stop = (e) => {

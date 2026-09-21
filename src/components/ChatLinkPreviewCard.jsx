@@ -11,6 +11,7 @@ import { isYouTubeLinkPreview } from '../utils/youtubeEmbed.js'
 import { isXTweetLinkPreview } from '../utils/xTweetEmbed.js'
 import YouTubeChatEmbed from './YouTubeChatEmbed.jsx'
 import XTweetEmbedCard from './XTweetEmbedCard.jsx'
+import { openExternalUrl } from '../utils/edgeNative.js'
 
 /**
  * iMessage-style link preview: rich card (og:image) or compact pill (favicon + title + domain).
@@ -141,7 +142,7 @@ export default function ChatLinkPreviewCard({
       return
     }
     try {
-      window.open(preview.url, '_blank', 'noopener,noreferrer')
+      void openExternalUrl(preview.url)
     } catch {
       /* */
     }

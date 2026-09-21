@@ -252,6 +252,36 @@ export function dismissEdgeKeyboard() {
 }
 
 /**
+ * Open an arbitrary http(s) URL outside the app.
+ * EdgeiOS shell → system Safari (`openInSafari`). Elsewhere → `window.open`.
+ * Prefer this over raw `window.open` so the IPA never spawns a blank child WKWebView.
+ *
+ * @param {string} url
+ * @returns {Promise<{ ok: boolean, via: 'safari' | 'window' | 'noop' | 'error' }>}
+ */
+export async function openExternalUrl(url) {
+  const href = String(url || '').trim()
+  if (!href) return { ok: false, via: 'noop' }
+  if (typeof window === 'undefined') return { ok: false, via: 'noop' }
+
+  if (isEdgeiOSShell()) {
+    try {
+      const result = await edgeNativeInvoke('openInSafari', { url: href })
+      return { ok: result?.ok !== false, via: 'safari' }
+    } catch {
+      return { ok: false, via: 'error' }
+    }
+  }
+
+  try {
+    window.open(href, '_blank', 'noopener,noreferrer')
+    return { ok: true, via: 'window' }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
+/**
  * Open a Stripe Checkout / Customer Portal / Connect onboarding URL.
  * EdgeiOS shell → system Safari (`openInSafari`). Everywhere else → same-tab assign.
  * Never load Stripe-hosted checkout inside the WKWebView.

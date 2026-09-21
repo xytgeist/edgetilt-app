@@ -62,7 +62,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo 2026-09-21 ... Lounge landscape engagement split
 
-**I am Mac Theo.** Landscape Lounge split: **(menu rail + feed) = 50% of the screen**, right engagement pane = the other **50%**. Minicharts open the **Quick chart** UI in the right pane. Multi charts peek (~72% slide) in the **left feed column too** (not only detail). No border under Chart back row. Left keeps phone chrome. Web **`1.4.419`**.
+**I am Mac Theo.** Landscape Lounge split: **(menu rail + feed) = 50% of the screen**, right engagement pane = the other **50%**. Minicharts open the **Quick chart** UI in the right pane. Multi charts peek (~72% slide) in the **left feed column too** (not only detail). No border under Chart back row. Left keeps phone chrome. External Lounge/chat links use Safari in the IPA (no blank WKWebView). Web **`1.4.421`**.
 
 ### Mac Theo 2026-09-21 ... post detail market + sports
 

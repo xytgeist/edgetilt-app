@@ -57,6 +57,7 @@ import {
 } from '../../utils/communityFeedPost'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { isShellNavLoungeHomeSuppressed } from '../../utils/shellNavGhostClickGuard.js'
+import { openExternalUrl } from '../../utils/edgeNative.js'
 import {
   feedPostCategoryPills,
   displayPostCategoryPills,
@@ -829,6 +830,12 @@ export default function SocialFeed({
   const closeMarketChartModalRef = useRef(() => {})
   const [loungeSportsHubOpen, setLoungeSportsHubOpen] = useState(false)
   const [loungeLandscapeLink, setLoungeLandscapeLink] = useState(null)
+  const clearLoungeLandscapeLink = useCallback(() => {
+    setLoungeLandscapeLink(null)
+  }, [])
+  const openLoungeLandscapeLinkExternal = useCallback((url) => {
+    void openExternalUrl(url)
+  }, [])
   const onLoungeSportsHubOpenChange = useCallback((open) => {
     setLoungeSportsHubOpen(Boolean(open))
   }, [])
@@ -15926,11 +15933,7 @@ export default function SocialFeed({
         }
         return
       }
-      try {
-        window.open(openHref, '_blank', 'noopener,noreferrer')
-      } catch {
-        /* */
-      }
+      void openExternalUrl(openHref)
     },
     [
       loungeReadOnly,

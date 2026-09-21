@@ -12,6 +12,7 @@ import {
   LOUNGE_QUOTE_EMBED_SHELL_INTERACTIVE,
 } from '../features/lounge/loungeFeedAvatar.js'
 import { profileAvatarInitials, profileAvatarToneClass } from '../features/profiles/profileGate.js'
+import { openExternalUrl } from '../utils/edgeNative.js'
 import {
   fetchChatLoungePostEmbed,
   isLoungePostLinkPreview,
@@ -102,7 +103,7 @@ export default function ChatLoungePostPreviewCard({
       return
     }
     try {
-      window.open(preview.url, '_blank', 'noopener,noreferrer')
+      void openExternalUrl(preview.url)
     } catch {
       /* */
     }

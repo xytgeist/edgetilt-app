@@ -440,12 +440,41 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
 
   // MARK: - Navigation / UA / media capture
 
+  /// `window.open` / `target=_blank` with a custom `uiDelegate` and no `createWebView`
+  /// used to spawn a blank child WKWebView with no chrome (Ryan had to force-quit).
+  /// Always hand http(s) to system Safari and return nil … never create a second webview.
+  func webView(
+    _ webView: WKWebView,
+    createWebViewWith configuration: WKWebViewConfiguration,
+    for navigationAction: WKNavigationAction,
+    windowFeatures: WKWindowFeatures
+  ) -> WKWebView? {
+    if let url = navigationAction.request.url {
+      Self.openHttpUrlInSafari(url)
+    }
+    return nil
+  }
+
   func webView(
     _ webView: WKWebView,
     decidePolicyFor navigationAction: WKNavigationAction,
     decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
   ) {
+    // Same trap as `window.open`: nil targetFrame means a new-window navigation.
+    if navigationAction.targetFrame == nil, let url = navigationAction.request.url {
+      Self.openHttpUrlInSafari(url)
+      decisionHandler(.cancel)
+      return
+    }
     decisionHandler(.allow)
+  }
+
+  private static func openHttpUrlInSafari(_ url: URL) {
+    let scheme = url.scheme?.lowercased() ?? ""
+    guard scheme == "http" || scheme == "https" else { return }
+    DispatchQueue.main.async {
+      UIApplication.shared.open(url, options: [:], completionHandler: nil)
+    }
   }
 
   @available(iOS 15.0, *)

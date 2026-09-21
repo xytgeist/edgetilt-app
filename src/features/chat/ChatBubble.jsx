@@ -5,6 +5,7 @@ import ChatCallRecordingCard from './ChatCallRecordingCard.jsx'
 import ChatCallSummaryCard from './ChatCallSummaryCard.jsx'
 import ChatMediaViewer from './ChatMediaViewer.jsx'
 import { attachLinkPreview } from '../../utils/loungeLinkPreviewApi.js'
+import { openExternalUrl } from '../../utils/edgeNative.js'
 import {
   bodyTextWithLinkPreview,
   extractFirstUrlFromText,
@@ -251,7 +252,7 @@ export default function ChatBubble({
         return
       }
       try {
-        window.open(preview.url, '_blank', 'noopener,noreferrer')
+        void openExternalUrl(preview.url)
       } catch {
         /* */
       }

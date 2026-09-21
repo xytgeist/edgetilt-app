@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { openExternalUrl } from '../../utils/edgeNative.js'
 
 /**
  * iMessage-style shared link row for group info → Links / Docs tabs.
@@ -40,11 +41,7 @@ export default function ChatSharedLinkCard({
       return
     }
     if (!href) return
-    try {
-      window.open(href, '_blank', 'noopener,noreferrer')
-    } catch {
-      /* */
-    }
+    void openExternalUrl(href)
   }
 
   const footerText = bodyPreview?.trim() || 'View message'

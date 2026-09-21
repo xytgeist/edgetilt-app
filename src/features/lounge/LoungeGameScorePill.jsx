@@ -115,23 +115,24 @@ function ScoreStack({ side, status, dimmed, covered }) {
   const primaryClass = `whitespace-nowrap font-bold leading-none tabular-nums drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
     pre ? '' : 'text-[26px]'
   } ${dimmed ? 'text-white/55' : 'text-white'}`
-
-  // Shrink-wrapped bundle. Parent score slot is flex:1 + text-align:center so this
-  // sits in the midpoint between logo and FINAL without flex/grid justify games.
-  return (
-    <span data-lounge-game-pill-score-bundle className="relative inline-block max-w-full text-center align-middle">
-      {pre ? (
-        <span data-lounge-game-pill-num="fit" className="flex max-w-full justify-center overflow-hidden">
+  if (pre) {
+    return (
+      <span data-lounge-game-pill-num="fit" className="flex min-w-0 flex-1 flex-col items-center text-center">
+        <span className="flex w-full min-w-0 justify-center overflow-hidden">
           <FitPrimary className={primaryClass} align="center">
             {primary}
           </FitPrimary>
         </span>
-      ) : (
-        <span data-lounge-game-pill-primary className={`${primaryClass} inline-block`}>
-          {primary}
-        </span>
-      )}
-      {!pre && underLine ? (
+      </span>
+    )
+  }
+  // Content-sized next to the logo (not flex-1). Team row justify-* pins clusters to the outer edges.
+  return (
+    <span className="relative inline-flex shrink-0 items-center justify-center">
+      <span data-lounge-game-pill-primary className={primaryClass}>
+        {primary}
+      </span>
+      {underLine ? (
         <span
           data-lounge-game-pill-spread-cover={covered ? '' : undefined}
           className="absolute left-1/2 top-full z-[1] mt-0.5 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap text-[11px] font-semibold leading-none tabular-nums tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]"
@@ -256,10 +257,9 @@ export default function LoungeGameScorePill({
         <span data-lounge-game-pill-away aria-hidden="true" />
         <span data-lounge-game-pill-home aria-hidden="true" />
         <span data-lounge-game-pill-seam aria-hidden="true" />
-        <span data-lounge-game-pill-row className="relative z-[3] flex min-h-[5.625rem] w-full items-center gap-1.5 px-3 py-2.5">
-          <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} halo={air.awayAir} />
-          {/* flex-1 text-center: horizontal midpoint between logo and FINAL/clock */}
-          <span data-lounge-game-pill-score-slot className="min-w-0 flex-1 text-center">
+        <span className="relative z-[3] flex min-h-[5.625rem] items-center gap-2 px-3 py-2.5">
+          <span className="flex min-w-0 flex-1 items-center justify-start gap-1.5">
+            <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} halo={air.awayAir} />
             <ScoreStack
               side={game.away}
               status={game.status}
@@ -273,15 +273,15 @@ export default function LoungeGameScorePill({
               {game.status_label}
             </span>
           </span>
-          <span data-lounge-game-pill-score-slot className="min-w-0 flex-1 text-center">
+          <span className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
             <ScoreStack
               side={game.home}
               status={game.status}
               dimmed={game.status === 'post' && !homeWon && !live}
               covered={homeCovered}
             />
+            <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} halo={air.homeAir} />
           </span>
-          <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} halo={air.homeAir} />
           {canOpenHub ? (
             <ChevronRight className="h-5 w-5 shrink-0 text-white/70 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" strokeWidth={2.25} />
           ) : null}

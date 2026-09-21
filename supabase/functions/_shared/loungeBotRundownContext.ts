@@ -72,7 +72,7 @@ export type RundownScore = {
   updated_at?: string
 }
 
-type RundownEvent = {
+export type RundownEvent = {
   event_id?: string
   event_date?: string
   sport_id?: number
@@ -387,6 +387,17 @@ async function loadLiveFoulNotes(eventId: string, sportId: number): Promise<stri
     }
   }
   return notes.slice(0, 2)
+}
+
+/** Day slate for the Lounge in-post game pill (live cache). */
+export async function listRundownDayEvents(
+  sportKey: string,
+  ptDate: string,
+  maxCacheMs = RUNDOWN_LIVE_CACHE_MS,
+): Promise<RundownEvent[]> {
+  const sportId = oddsSportKeyToRundownSportId(sportKey)
+  if (!sportId || !isRundownEnabled()) return []
+  return loadDayEvents(sportId, ptDate, maxCacheMs)
 }
 
 export async function findRundownEventForMatch(

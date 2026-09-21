@@ -379,6 +379,8 @@ import KlipyGifPicker from './KlipyGifPicker.jsx'
 import LoungeMarketChartModal from './LoungeMarketChartModal.jsx'
 import LoungeMarketChartStrip from './LoungeMarketChartStrip.jsx'
 import { LoungeMarketFeedProvider } from './LoungeMarketFeedContext.jsx'
+import { LoungeSportsFeedProvider } from './LoungeSportsFeedContext.jsx'
+import LoungeGameHubModal from './LoungeGameHubModal.jsx'
 import { useLoungeMarketPollActivityTracker } from './loungeMarketPollActivity.js'
 import {
   LOUNGE_IOS,
@@ -16470,6 +16472,7 @@ export default function SocialFeed({
         posts={loungeMarketFeedPosts}
         feedActive={isActivePage}
       >
+      <LoungeSportsFeedProvider supabaseClient={supabaseClient} feedActive={isActivePage}>
       {loungeReplyFailureToast ? (
         <button
           type="button"
@@ -20002,6 +20005,12 @@ export default function SocialFeed({
         onInsertSnapshot={composerUserId && !loungeReadOnly ? insertMarketChartSnapshotIntoComposer : undefined}
       />
 
+      <LoungeGameHubModal
+        supabaseClient={supabaseClient}
+        hydratePosts={hydrateCommunityPosts}
+        onOpenPost={openLoungePostDetail}
+      />
+
       {loungeImageLimitDialog && typeof document !== 'undefined'
         ? createPortal(
             <div
@@ -20817,6 +20826,7 @@ export default function SocialFeed({
         alreadySubscribed={feedFanSubscribed}
         postAlertsEnabled={false}
       />
+      </LoungeSportsFeedProvider>
       </LoungeMarketFeedProvider>
       </LoungePendingPublishActionsProvider>
       </LoungeStreamLightboxProvider>

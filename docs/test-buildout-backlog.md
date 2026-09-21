@@ -882,6 +882,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
   - **Test validation:** Ryan **PASSED** on **test** (2026-05-19): image post + delete on **`media-test.lvslotpro.com`**; CORS includes **`Cache-Control`**. **Legacy migration PASSED:** **68** objects → R2 (**27** posts, **12** comments). **Cache-Control backfill PASSED:** **69** objects **`public, max-age=31536000, immutable`**. External Klipy **`gif_url`** unchanged. **Stream tile posters (new uploads):** WebP on R2 via **`prepareLoungeFeedImageForUpload`** — **PASSED** @ **`93dcc3f`**. **Open (deferred):** **`/cdn-cgi/image/`** after Pro on **`lvslotpro.com`**.
   - Production replay: `production-rollout-checklist.md` §2 + §4; add **`media.lvslotpro.com`** (or prod media subdomain) + prod secrets when promoting.
 
+- [x] **`lounge-sports-scoreboard`** (Lounge in-post game pill + hub). TheRundown day slates, Odds `/scores` fallback. JWT. Source: `supabase/functions/lounge-sports-scoreboard/README.md`. Deploy **test** with **`1.4.375`**.
 - [x] **`lounge-market-data`** (Lounge market charts: Finnhub/Yahoo/CoinGecko proxy, attach, modal series, **`logo_image`**, auto cashtag resolve) deployed on **test** with **`FINNHUB_API_KEY`** (+ optional **`COINGECKO_API_KEY`**). Ryan sign-off **PASSED** on **test** (2026-06-07) — `$AAPL` without picker → real Apple chart; Advanced snapshot PNG → EDGE wordmark left, company centered, floating legend.
   - Source: `supabase/functions/lounge-market-data/README.md`, `finnhubMarket.ts`, `yahooMarket.ts`, `LoungeMarketChartModal.jsx`, `loungeMarketChartSnapshot.js`.
   - Production replay: `production-rollout-checklist.md` §4.
@@ -1147,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-20:** **Lounge game pill (Mac).** In-post score chip opens a game hub (scoreboard, period box, Lounge Top/Latest). TheRundown + NFL player aliases so a Jayden Daniels caption still hits WAS-DAL. Edge **`lounge-sports-scoreboard`** on **test**. Frontend **`1.4.375`**.
 - **2026-09-20:** **Promoted `test` → `main` (`9ba75f30`).** Wheel/Edge intro copy (O anywhere, L left or right). IPA confirm card is **Confirming email...** only. Vercel prod = web **`1.4.374`**.
 - **2026-09-20:** **IPA confirm copy (Mac).** Auto-confirm card is just **Confirming email...** with no subtext. Frontend **`1.4.374`**. Web only.
 - **2026-09-20:** **Wheel/Edge intro copy (Mac).** Wheel (O) can sit anywhere. Edge (L) snaps left or right. Frontend **`1.4.373`**. Web only.

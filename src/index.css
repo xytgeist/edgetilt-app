@@ -3270,6 +3270,51 @@ html.light [data-lounge-market-chart-mini] .text-cyan-300 {
   color: var(--color-cyan-600);
 }
 
+html.light [data-lounge-game-pill] {
+  background-color: #e4e4e7 !important;
+}
+html.light [data-lounge-game-pill] .text-white,
+html.light [data-lounge-game-pill] .text-zinc-100 {
+  color: #18181b !important;
+}
+html.light [data-lounge-game-pill] .text-zinc-400,
+html.light [data-lounge-game-pill] .text-zinc-500 {
+  color: #52525b !important;
+}
+html.light [data-lounge-game-pill] .bg-zinc-800 {
+  background-color: #d4d4d8 !important;
+}
+html.light [data-lounge-game-hub] {
+  background-color: #fafafa !important;
+  color: #18181b !important;
+}
+html.light [data-lounge-game-hub] .bg-zinc-800,
+html.light [data-lounge-game-hub] .bg-zinc-900 {
+  background-color: #e4e4e7 !important;
+}
+html.light [data-lounge-game-hub] .border-zinc-800 {
+  border-color: #d4d4d8 !important;
+}
+html.light [data-lounge-game-hub] .text-white {
+  color: #18181b !important;
+}
+html.light [data-lounge-game-hub] .text-zinc-200,
+html.light [data-lounge-game-hub] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-lounge-game-hub] .text-zinc-400,
+html.light [data-lounge-game-hub] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-lounge-game-hub] .bg-zinc-100 {
+  background-color: #18181b !important;
+  color: #fafafa !important;
+}
+html.light [data-lounge-game-box] {
+  background-color: #f4f4f5 !important;
+  border-color: #d4d4d8 !important;
+}
+
 html.light [data-lounge-market-chart-modal] .border-cyan-400 {
   border-color: var(--color-cyan-600);
 }

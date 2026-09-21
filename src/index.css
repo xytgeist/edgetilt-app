@@ -3270,19 +3270,64 @@ html.light [data-lounge-market-chart-mini] .text-cyan-300 {
   color: var(--color-cyan-600);
 }
 
+[data-lounge-game-pill] {
+  isolation: isolate;
+  background-color: #111113;
+}
+[data-lounge-game-pill] [data-lounge-game-pill-away],
+[data-lounge-game-pill] [data-lounge-game-pill-home] {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+[data-lounge-game-pill] [data-lounge-game-pill-away] {
+  background: linear-gradient(
+    108deg,
+    var(--pill-away, #3f3f46) 0%,
+    var(--pill-away, #3f3f46) 16%,
+    color-mix(in srgb, var(--pill-away, #3f3f46) 78%, transparent) 34%,
+    color-mix(in srgb, var(--pill-away, #3f3f46) 28%, transparent) 48%,
+    transparent 62%
+  );
+}
+[data-lounge-game-pill] [data-lounge-game-pill-home] {
+  background: linear-gradient(
+    252deg,
+    var(--pill-home, #3f3f46) 0%,
+    var(--pill-home, #3f3f46) 16%,
+    color-mix(in srgb, var(--pill-home, #3f3f46) 78%, transparent) 34%,
+    color-mix(in srgb, var(--pill-home, #3f3f46) 28%, transparent) 48%,
+    transparent 62%
+  );
+}
+[data-lounge-game-pill] [data-lounge-game-pill-seam] {
+  position: absolute;
+  top: -45%;
+  bottom: -45%;
+  left: 50%;
+  z-index: 1;
+  width: 4.5rem;
+  pointer-events: none;
+  transform: translateX(-50%) rotate(18deg);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--pill-away, #fff) 35%, transparent) 22%,
+    rgba(255, 255, 255, 0.28) 50%,
+    color-mix(in srgb, var(--pill-home, #fff) 35%, transparent) 78%,
+    transparent 100%
+  );
+  filter: blur(16px);
+}
+
 html.light [data-lounge-game-pill] {
-  background-color: #e4e4e7 !important;
+  /* Team-color split stays in both modes. Do not flatten to zinc. */
+  background-color: #111113 !important;
 }
 html.light [data-lounge-game-pill] .text-white,
 html.light [data-lounge-game-pill] .text-zinc-100 {
-  color: #18181b !important;
-}
-html.light [data-lounge-game-pill] .text-zinc-400,
-html.light [data-lounge-game-pill] .text-zinc-500 {
-  color: #52525b !important;
-}
-html.light [data-lounge-game-pill] .bg-zinc-800 {
-  background-color: #d4d4d8 !important;
+  color: #fff !important;
 }
 html.light [data-lounge-game-hub] {
   background-color: #fafafa !important;

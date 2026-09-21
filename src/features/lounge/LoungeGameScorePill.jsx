@@ -122,13 +122,13 @@ function ScoreStack({ side, status, dimmed, covered }) {
   const pre = status === 'pre'
   const primary = scoreLabel(side, status)
   const spreadLine = pre ? null : formatLoungeSportsSpread(side?.spread)
-  const mlLine = pre ? null : formatLoungeSportsMoneyline(side?.ml)
+  const mlLine = formatLoungeSportsMoneyline(side?.ml)
   const primaryClass = `whitespace-nowrap font-bold leading-none tabular-nums drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
     dimmed ? 'text-white/55' : 'text-white'
   }`
   const satLineClass =
     'flex items-center justify-center gap-1 whitespace-nowrap text-[9px] font-semibold leading-none tabular-nums tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]'
-  // Pre: primary is the spread. Live/final: spread above score, ML below.
+  // Pre: spread primary + ML under when set. Live/final: spread above score, ML below.
   return (
     <span data-lounge-game-pill-num="fit" className="flex w-full min-w-0 flex-col items-center justify-center gap-0.5">
       {!pre && spreadLine ? (
@@ -146,7 +146,7 @@ function ScoreStack({ side, status, dimmed, covered }) {
       <FitPrimary className={primaryClass} align="center">
         {primary}
       </FitPrimary>
-      {!pre && mlLine ? <span className={satLineClass}>{mlLine}</span> : null}
+      {mlLine ? <span className={satLineClass}>{mlLine}</span> : null}
     </span>
   )
 }
@@ -221,8 +221,14 @@ export default function LoungeGameScorePill({
       : cover.push && game.status === 'post'
         ? 'push'
         : ''
-  const awayLine = game.status !== 'pre' ? [awaySpread, awayMl].filter(Boolean).join(' ') : ''
-  const homeLine = game.status !== 'pre' ? [homeSpread, homeMl].filter(Boolean).join(' ') : ''
+  const awayLine =
+    game.status === 'pre'
+      ? [awayMl].filter(Boolean).join(' ')
+      : [awaySpread, awayMl].filter(Boolean).join(' ')
+  const homeLine =
+    game.status === 'pre'
+      ? [homeMl].filter(Boolean).join(' ')
+      : [homeSpread, homeMl].filter(Boolean).join(' ')
   const label = pendingInclude
     ? `Tap to include ${game.away?.abbrev} at ${game.home?.abbrev}`
     : `${game.away?.abbrev} ${scoreLabel(game.away, game.status)}${awayLine ? ` ${awayLine}` : ''} ${game.home?.abbrev} ${scoreLabel(game.home, game.status)}${homeLine ? ` ${homeLine}` : ''} ${game.status_label}${coverNote ? ` ${coverNote}` : ''}`

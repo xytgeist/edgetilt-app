@@ -8,6 +8,17 @@ export function useLoungeSportsFeed() {
   return useContext(LoungeSportsFeedContext)
 }
 
+function sameHubGame(a, b) {
+  if (!a || !b) return false
+  return (
+    a.status === b.status &&
+    a.status_label === b.status_label &&
+    a.home?.score === b.home?.score &&
+    a.away?.score === b.away?.score &&
+    JSON.stringify(a.live || null) === JSON.stringify(b.live || null)
+  )
+}
+
 /**
  * Live/recent scoreboard for in-post game pills.
  */
@@ -35,11 +46,21 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
   useEffect(() => {
     if (!feedActive || !supabaseClient) return undefined
     void loadBoard()
-    const live = gamesRef.current.some((g) => g.status === 'in')
-    const ms = live ? 45_000 : 5 * 60_000
+    const live = gamesRef.current.some((g) => g.status === 'in') || hubGame?.status === 'in'
+    const ms = hubGame ? (hubGame.status === 'in' ? 20_000 : 60_000) : live ? 45_000 : 5 * 60_000
     const id = setInterval(() => void loadBoard(), ms)
     return () => clearInterval(id)
-  }, [feedActive, loadBoard, supabaseClient, games.some((g) => g.status === 'in')])
+  }, [feedActive, hubGame, loadBoard, supabaseClient, games.some((g) => g.status === 'in')])
+
+  useEffect(() => {
+    setHubGame((prev) => {
+      if (!prev) return prev
+      const next = games.find((g) => g.id === prev.id)
+      if (!next) return prev
+      if (sameHubGame(prev, next)) return prev
+      return { ...prev, ...next, live: next.live || prev.live }
+    })
+  }, [games])
 
   const matchPost = useCallback(
     (post) => matchLoungePostToSportsGame(loungeSportsMatchTextFromPost(post), games),

@@ -81,6 +81,8 @@ export type RundownEvent = {
   pitcher_home?: RundownPitcher
   schedule?: { event_headline?: string }
   score?: RundownScore
+  live_game_state?: Record<string, unknown>
+  game_state?: Record<string, unknown>
 }
 
 export type ResolvedRundownEvent = {

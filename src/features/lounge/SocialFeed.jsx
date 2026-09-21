@@ -20009,6 +20009,7 @@ export default function SocialFeed({
         supabaseClient={supabaseClient}
         hydratePosts={hydrateCommunityPosts}
         onOpenPost={openLoungePostDetail}
+        loungeReadOnly={loungeReadOnly}
       />
 
       {loungeImageLimitDialog && typeof document !== 'undefined'

@@ -1,6 +1,9 @@
 # lounge-sports-scoreboard
 
-Logged-in Lounge in-post **game pill** + **game hub**. TheRundown day slates (scores, period lines, status) with Odds API `/scores` fallback when NFL is empty.
+Logged-in Lounge in-post **game pill** + **live game hub**.
+
+- **Slate** (`POST` with empty body): TheRundown day events (scores, period lines, `live_game_state` when the key has it) with Odds API `/scores` fallback when NFL is empty.
+- **Detail** (`POST` `{ "event_id": "..." }`): fresh event live state, `/plays`, `/players/stats`, and multi-book Odds API h2h/spreads/totals. Hub-open only so the 45s pill poll stays cheap.
 
 **Secrets (project-level, already on odds bots):** `THERUNDOWN_API_KEY`, `THE_ODDS_API_KEY`.
 
@@ -8,4 +11,4 @@ Logged-in Lounge in-post **game pill** + **game hub**. TheRundown day slates (sc
 supabase functions deploy lounge-sports-scoreboard --project-ref kcosfvmreeiosdjdzycb
 ```
 
-Client: `src/utils/loungeSportsApi.js` → `supabase.functions.invoke('lounge-sports-scoreboard')`.
+Client: `src/utils/loungeSportsApi.js` → `loungeSportsScoreboard` / `loungeSportsGameDetail`.

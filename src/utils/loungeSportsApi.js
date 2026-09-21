@@ -1,8 +1,9 @@
 /**
  * Invoke `lounge-sports-scoreboard` with the caller's session JWT.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {Record<string, unknown>} [body]
  */
-export async function loungeSportsScoreboard(supabase) {
+export async function loungeSportsScoreboard(supabase, body = {}) {
   let {
     data: { session },
   } = await supabase.auth.getSession()
@@ -15,7 +16,7 @@ export async function loungeSportsScoreboard(supabase) {
   }
 
   const { data, error } = await supabase.functions.invoke('lounge-sports-scoreboard', {
-    body: {},
+    body: body && typeof body === 'object' ? body : {},
     headers: { Authorization: `Bearer ${session.access_token}` },
   })
 
@@ -34,4 +35,15 @@ export async function loungeSportsScoreboard(supabase) {
   }
   if (data && typeof data === 'object' && data.error) return { error: String(data.error) }
   return data
+}
+
+/**
+ * Hub-open detail: live clock/down, multi-book odds, PBP, player stats.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} eventId
+ */
+export async function loungeSportsGameDetail(supabase, eventId) {
+  const id = String(eventId || '').trim()
+  if (!id) return { error: 'Missing event.' }
+  return loungeSportsScoreboard(supabase, { event_id: id })
 }

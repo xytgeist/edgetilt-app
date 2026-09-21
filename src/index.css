@@ -3310,9 +3310,18 @@ html.light [data-lounge-game-hub] .bg-zinc-100 {
   background-color: #18181b !important;
   color: #fafafa !important;
 }
-html.light [data-lounge-game-box] {
+html.light [data-lounge-game-box],
+html.light [data-lounge-game-odds] .border-zinc-800 {
   background-color: #f4f4f5 !important;
   border-color: #d4d4d8 !important;
+}
+html.light [data-lounge-game-chat] {
+  background-color: #f4f4f5 !important;
+  border-color: #d4d4d8 !important;
+  color: #18181b !important;
+}
+html.light [data-lounge-game-chat]::placeholder {
+  color: #71717a !important;
 }
 
 html.light [data-lounge-market-chart-modal] .border-cyan-400 {

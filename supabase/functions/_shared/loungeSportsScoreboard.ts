@@ -2,9 +2,9 @@
  * Lounge in-post game pill scoreboard.
  * TheRundown day slates first (period scores + status). Odds API /scores as fallback.
  */
-import { listRundownDayEvents, ptDateFromIso } from './loungeBotRundownContext.ts'
+import { listRundownDayEvents, ptDateFromIso, rundownApiKey } from './loungeBotRundownContext.ts'
 import { fetchSportScores, type ScoreEvent } from './loungeBotLiveContent.ts'
-import { ptTodayDate } from './loungeBotOddsRun.ts'
+import { fetchSportOdds, ptTodayDate } from './loungeBotOddsRun.ts'
 
 export const LOUNGE_SPORTS_SCOREBOARD_SPORTS = [
   { key: 'americanfootball_nfl', label: 'NFL', logoLeague: 'nfl' },
@@ -22,6 +22,47 @@ export type LoungeSportsGameSide = {
   logo: string
   score: number | null
   linescores: number[]
+  team_id?: number | null
+}
+
+export type LoungeSportsLiveState = {
+  clock: string
+  period: number | null
+  down: number | null
+  distance: number | null
+  yard_line: number | null
+  yard_side: 'home' | 'away' | null
+  possession: 'home' | 'away' | null
+  last_play: string
+}
+
+export type LoungeSportsOddsRow = {
+  book: string
+  home_spread: number | null
+  home_spread_price: number | null
+  away_spread: number | null
+  away_spread_price: number | null
+  total: number | null
+  over_price: number | null
+  under_price: number | null
+  home_ml: number | null
+  away_ml: number | null
+}
+
+export type LoungeSportsPlay = {
+  id: string
+  period: number | null
+  clock: string
+  description: string
+  team: 'home' | 'away' | null
+}
+
+export type LoungeSportsPlayerStat = {
+  name: string
+  team_id: number | null
+  side: 'home' | 'away' | null
+  category: string
+  line: string
 }
 
 export type LoungeSportsGame = {
@@ -34,6 +75,7 @@ export type LoungeSportsGame = {
   home: LoungeSportsGameSide
   away: LoungeSportsGameSide
   aliases: string[]
+  live: LoungeSportsLiveState | null
 }
 
 function espnLogo(league: string, abbrev: string): string {
@@ -86,6 +128,8 @@ function sideFromRundown(
     name?: string
     mascot?: string
     abbreviation?: string
+    team_id?: number
+    id?: number
   } | undefined,
   score: number | null,
   lines: number[],
@@ -95,6 +139,7 @@ function sideFromRundown(
   const mascot = String(team?.mascot || '').trim()
   const abbrev = String(team?.abbreviation || '').trim().toUpperCase()
   const display = [name, mascot].filter(Boolean).join(' ').trim() || abbrev || 'Team'
+  const teamId = Number(team?.team_id ?? team?.id)
   return {
     name: display,
     mascot,
@@ -102,6 +147,59 @@ function sideFromRundown(
     logo: espnLogo(logoLeague, abbrev || name),
     score,
     linescores: lines,
+    team_id: Number.isFinite(teamId) && teamId > 0 ? teamId : null,
+  }
+}
+
+function numOrNull(value: unknown): number | null {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+function liveFromRundown(
+  event: Record<string, unknown>,
+  homeId: number | null,
+  awayId: number | null,
+): LoungeSportsLiveState | null {
+  const score = (event.score && typeof event.score === 'object') ? event.score as Record<string, unknown> : {}
+  const raw = (event.live_game_state || event.game_state || score.live_game_state || {}) as Record<string, unknown>
+  const lastRaw = raw.last_play
+  const lastObj = lastRaw && typeof lastRaw === 'object' ? lastRaw as Record<string, unknown> : null
+  const lastPlay = String(
+    lastObj?.description
+    || lastObj?.play_text
+    || lastObj?.play_description
+    || raw.last_play_description
+    || raw.last_play_text
+    || (typeof lastRaw === 'string' ? lastRaw : ''),
+  ).trim()
+  const clock = String(raw.display_clock || raw.clock || score.display_clock || '').trim()
+  const period = numOrNull(raw.period ?? raw.quarter ?? score.game_period)
+  const down = numOrNull(raw.down)
+  const distance = numOrNull(raw.distance ?? raw.yards_to_go)
+  const yardLine = numOrNull(raw.yard_line ?? raw.yards_from_goal ?? raw.field_position)
+  const possRaw = raw.possession ?? raw.possession_team_id ?? raw.team_in_possession
+  let possession: 'home' | 'away' | null = null
+  if (possRaw === 'home' || possRaw === 'away') possession = possRaw
+  else {
+    const pid = Number(possRaw)
+    if (homeId && pid === homeId) possession = 'home'
+    if (awayId && pid === awayId) possession = 'away'
+  }
+  let yardSide: 'home' | 'away' | null = null
+  const sideRaw = String(raw.yard_line_side || raw.side || raw.territory || '').toLowerCase()
+  if (sideRaw.includes('home')) yardSide = 'home'
+  if (sideRaw.includes('away')) yardSide = 'away'
+  if (!clock && period == null && down == null && !lastPlay) return null
+  return {
+    clock,
+    period,
+    down,
+    distance,
+    yard_line: yardLine,
+    yard_side: yardSide,
+    possession,
+    last_play: lastPlay,
   }
 }
 
@@ -130,7 +228,11 @@ function gameFromRundown(
       abbreviation?: string
       is_home?: boolean
       is_away?: boolean
+      team_id?: number
+      id?: number
     }>
+    live_game_state?: Record<string, unknown>
+    game_state?: Record<string, unknown>
     score?: {
       event_status?: string
       event_status_detail?: string
@@ -175,6 +277,7 @@ function gameFromRundown(
   )
   const id = String(event.event_id || `${sportKey}:${away.abbrev}@${home.abbrev}:${commence}`).trim()
   if (!id) return null
+  const live = liveFromRundown(event as Record<string, unknown>, home.team_id ?? null, away.team_id ?? null)
   return {
     id,
     sport_key: sportKey,
@@ -185,6 +288,7 @@ function gameFromRundown(
     home,
     away,
     aliases: [...aliasesForSide(home), ...aliasesForSide(away)],
+    live,
   }
 }
 
@@ -232,6 +336,7 @@ function gameFromOdds(sportKey: string, sportLabel: string, logoLeague: string, 
     home,
     away,
     aliases: [...aliasesForSide(home), ...aliasesForSide(away)],
+    live: null,
   }
 }
 
@@ -277,4 +382,227 @@ export async function buildLoungeSportsScoreboard(): Promise<{ games: LoungeSpor
     return String(a.commence_time).localeCompare(String(b.commence_time))
   })
   return { games, source }
+}
+
+const RUNDOWN_BASE = 'https://therundown.io/api/v2'
+const ODDS_CACHE_MS = 90_000
+const oddsCache = new Map<string, { at: number; pack: Awaited<ReturnType<typeof fetchSportOdds>> | null }>()
+
+async function cachedSportOdds(sportKey: string) {
+  const key = String(sportKey || '')
+  const cached = oddsCache.get(key)
+  if (cached && Date.now() - cached.at < ODDS_CACHE_MS) return cached.pack
+  const pack = await fetchSportOdds(key, ['us', 'us2'], ['h2h', 'spreads', 'totals']).catch(() => null)
+  oddsCache.set(key, { at: Date.now(), pack })
+  return pack
+}
+
+async function rundownGet<T>(path: string): Promise<T | null> {
+  const key = rundownApiKey()
+  if (!key) return null
+  try {
+    const res = await fetch(`${RUNDOWN_BASE}${path}`, {
+      headers: { 'X-TheRundown-Key': key },
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (!res.ok) return null
+    return await res.json() as T
+  } catch {
+    return null
+  }
+}
+
+type OddsBookmaker = {
+  key?: string
+  title?: string
+  markets?: Array<{ key?: string; outcomes?: Array<{ name?: string; price?: number; point?: number }> }>
+}
+
+type OddsEventRow = {
+  home_team?: string
+  away_team?: string
+  bookmakers?: OddsBookmaker[]
+}
+
+function outcomePoint(outcomes: Array<{ name?: string; price?: number; point?: number }>, name: string) {
+  const want = name.toLowerCase()
+  const row = outcomes.find((o) => String(o.name || '').trim().toLowerCase() === want)
+  return {
+    price: numOrNull(row?.price),
+    point: numOrNull(row?.point),
+  }
+}
+
+function compactBook(
+  book: OddsBookmaker,
+  homeName: string,
+  awayName: string,
+): LoungeSportsOddsRow | null {
+  const markets = Array.isArray(book.markets) ? book.markets : []
+  const h2h = markets.find((m) => m.key === 'h2h')?.outcomes || []
+  const spreads = markets.find((m) => m.key === 'spreads')?.outcomes || []
+  const totals = markets.find((m) => m.key === 'totals')?.outcomes || []
+  const homeH2h = outcomePoint(h2h, homeName)
+  const awayH2h = outcomePoint(h2h, awayName)
+  const homeSp = outcomePoint(spreads, homeName)
+  const awaySp = outcomePoint(spreads, awayName)
+  const over = outcomePoint(totals, 'Over')
+  const under = outcomePoint(totals, 'Under')
+  if (
+    homeH2h.price == null &&
+    awayH2h.price == null &&
+    homeSp.point == null &&
+    over.point == null &&
+    under.point == null
+  ) return null
+  return {
+    book: String(book.title || book.key || 'Books').trim() || 'Books',
+    home_spread: homeSp.point,
+    home_spread_price: homeSp.price,
+    away_spread: awaySp.point,
+    away_spread_price: awaySp.price,
+    total: over.point ?? under.point,
+    over_price: over.price,
+    under_price: under.price,
+    home_ml: homeH2h.price,
+    away_ml: awayH2h.price,
+  }
+}
+
+function compactOddsBooksFromEvent(ev: OddsEventRow, homeName: string, awayName: string): LoungeSportsOddsRow[] {
+  const books = Array.isArray(ev.bookmakers) ? ev.bookmakers : []
+  const preferred = ['pinnacle', 'lowvig', 'fanduel', 'draftkings', 'betmgm', 'caesars', 'fanatics']
+  const ordered: OddsBookmaker[] = []
+  for (const key of preferred) {
+    const hit = books.find((b) => b.key === key)
+    if (hit) ordered.push(hit)
+  }
+  for (const book of books) {
+    if (!ordered.includes(book)) ordered.push(book)
+  }
+  const rows: LoungeSportsOddsRow[] = []
+  for (const book of ordered) {
+    const row = compactBook(book, homeName, awayName)
+    if (row) rows.push(row)
+    if (rows.length >= 5) break
+  }
+  return rows
+}
+
+function oddsNamesHit(oddsName: string, side: LoungeSportsGameSide): boolean {
+  const o = String(oddsName || '').toLowerCase()
+  if (!o) return false
+  const tokens = [side.mascot, side.abbrev, side.name].map((s) => String(s || '').toLowerCase()).filter((s) => s.length >= 3)
+  return tokens.some((t) => o.includes(t) || t.includes(o.split(/\s+/).pop() || o))
+}
+
+function playTeam(raw: unknown, homeId: number | null, awayId: number | null): 'home' | 'away' | null {
+  if (raw === 'home' || raw === 'away') return raw
+  const n = Number(raw)
+  if (homeId && n === homeId) return 'home'
+  if (awayId && n === awayId) return 'away'
+  return null
+}
+
+function categorizeStat(name: string, abbr: string): string | null {
+  const hay = `${name} ${abbr}`.toLowerCase()
+  if (/pass/.test(hay) && !/rush|receiv/.test(hay)) return 'Passing'
+  if (/rush/.test(hay)) return 'Rushing'
+  if (/rec|catch|target/.test(hay)) return 'Receiving'
+  if (/\bpts\b|points|reb|ast|3pt/.test(hay)) return 'Basketball'
+  if (/\bso\b|strike|hits|rbi|era/.test(hay)) return 'Baseball'
+  if (/\bg\b|a\b|sog|save/.test(hay) && /hockey|goal/.test(hay)) return 'Hockey'
+  return null
+}
+
+export async function fetchLoungeSportsGameDetail(
+  game: LoungeSportsGame,
+): Promise<{
+  live: LoungeSportsLiveState | null
+  odds: LoungeSportsOddsRow[]
+  plays: LoungeSportsPlay[]
+  stats: LoungeSportsPlayerStat[]
+}> {
+  const eventId = encodeURIComponent(game.id)
+  const [eventRaw, playsRaw, statsRaw, oddsPack] = await Promise.all([
+    rundownGet<unknown>(`/events/${eventId}`),
+    rundownGet<unknown>(`/events/${eventId}/plays`),
+    rundownGet<unknown>(`/events/${eventId}/players/stats`),
+    cachedSportOdds(game.sport_key),
+  ])
+
+  const eventObj = eventRaw && typeof eventRaw === 'object'
+    ? ((eventRaw as { event?: Record<string, unknown> }).event || eventRaw) as Record<string, unknown>
+    : null
+  const homeId = game.home.team_id ?? null
+  const awayId = game.away.team_id ?? null
+  const live = eventObj
+    ? liveFromRundown(eventObj, homeId, awayId) || game.live
+    : game.live
+
+  const playList: unknown[] = Array.isArray(playsRaw)
+    ? playsRaw
+    : Array.isArray((playsRaw as { plays?: unknown[] } | null)?.plays)
+      ? (playsRaw as { plays: unknown[] }).plays
+      : []
+  const plays: LoungeSportsPlay[] = playList.slice(0, 80).map((row, i) => {
+    const p = (row && typeof row === 'object') ? row as Record<string, unknown> : {}
+    return {
+      id: String(p.id || p.sequence || i),
+      period: numOrNull(p.period ?? p.quarter ?? p.game_period),
+      clock: String(p.clock || p.display_clock || p.time || '').trim(),
+      description: String(p.description || p.play_text || p.play_description || p.text || '').trim(),
+      team: playTeam(p.team_id ?? p.team ?? p.possession, homeId, awayId),
+    }
+  }).filter((p) => p.description)
+
+  const statRows: unknown[] = Array.isArray(statsRaw)
+    ? statsRaw
+    : Array.isArray((statsRaw as { players?: unknown[] } | null)?.players)
+      ? (statsRaw as { players: unknown[] }).players
+      : []
+  const stats: LoungeSportsPlayerStat[] = []
+  for (const row of statRows.slice(0, 80)) {
+    const r = (row && typeof row === 'object') ? row as Record<string, unknown> : {}
+    const player = (r.player && typeof r.player === 'object') ? r.player as Record<string, unknown> : {}
+    const name = String(player.display_name || [player.first_name, player.last_name].filter(Boolean).join(' ')).trim()
+    if (!name) continue
+    const teamId = numOrNull(player.team_id)
+    const side: 'home' | 'away' | null = teamId && homeId === teamId ? 'home' : teamId && awayId === teamId ? 'away' : null
+    const bits: string[] = []
+    let category = ''
+    for (const s of Array.isArray(r.stats) ? r.stats as Array<Record<string, unknown>> : []) {
+      const def = (s.stat && typeof s.stat === 'object') ? s.stat as Record<string, unknown> : {}
+      const stName = String(def.name || def.display_name || '').trim()
+      const abbr = String(def.abbreviation || '').trim()
+      const value = String(s.value ?? '').trim()
+      if (!value) continue
+      const cat = categorizeStat(stName, abbr)
+      if (cat && !category) category = cat
+      bits.push(`${abbr || stName} ${value}`)
+    }
+    if (!bits.length) continue
+    stats.push({
+      name,
+      team_id: teamId,
+      side,
+      category: category || 'Stats',
+      line: bits.slice(0, 8).join(' · '),
+    })
+  }
+
+  const events = Array.isArray(oddsPack?.events) ? oddsPack.events as OddsEventRow[] : []
+  const matched = events.find((ev) =>
+    oddsNamesHit(String(ev.home_team || ''), game.home) && oddsNamesHit(String(ev.away_team || ''), game.away)
+  )
+  const odds = matched
+    ? compactOddsBooksFromEvent(matched, String(matched.home_team || game.home.name), String(matched.away_team || game.away.name))
+    : []
+
+  return {
+    live,
+    odds,
+    plays,
+    stats,
+  }
 }

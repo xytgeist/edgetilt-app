@@ -1,9 +1,10 @@
 /**
  * Logged-in Lounge scoreboard for the in-post game pill + game hub.
- * TheRundown day slates (period scores) with Odds API /scores fallback.
+ * Slate: TheRundown day events (live_game_state when the key has it).
+ * Hub detail: plays, player stats, multi-book Odds API lines.
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { buildLoungeSportsScoreboard } from '../_shared/loungeSportsScoreboard.ts'
+import { buildLoungeSportsScoreboard, fetchLoungeSportsGameDetail } from '../_shared/loungeSportsScoreboard.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -39,9 +40,30 @@ Deno.serve(async (req) => {
   } = await admin.auth.getUser(jwt)
   if (userErr || !user?.id) return json(401, { error: 'Invalid or expired session.' })
 
+  let eventId = ''
+  try {
+    const body = await req.json().catch(() => ({}))
+    eventId = String(body?.event_id || '').trim()
+  } catch {
+    eventId = ''
+  }
+
   try {
     const board = await buildLoungeSportsScoreboard()
-    return json(200, { ok: true, ...board, fetched_at: new Date().toISOString() })
+    if (!eventId) {
+      return json(200, { ok: true, ...board, fetched_at: new Date().toISOString() })
+    }
+    const game = board.games.find((g) => g.id === eventId)
+    if (!game) return json(404, { error: 'Game not on the current slate.' })
+    const detail = await fetchLoungeSportsGameDetail(game)
+    return json(200, {
+      ok: true,
+      game: { ...game, live: detail.live || game.live },
+      odds: detail.odds,
+      plays: detail.plays,
+      stats: detail.stats,
+      fetched_at: new Date().toISOString(),
+    })
   } catch (err) {
     return json(502, { error: err instanceof Error ? err.message : 'Scoreboard failed.' })
   }

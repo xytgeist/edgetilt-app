@@ -256,11 +256,11 @@ export default function LoungeGameScorePill({
         <span data-lounge-game-pill-away aria-hidden="true" />
         <span data-lounge-game-pill-home aria-hidden="true" />
         <span data-lounge-game-pill-seam aria-hidden="true" />
-        <span className="relative z-[3] flex min-h-[5.625rem] w-full items-center gap-1.5 px-3 py-2.5">
-          {/* Match chevron width so away/home logo↔FINAL gutters stay equal. */}
-          <span className="h-5 w-5 shrink-0" aria-hidden="true" />
+        <span data-lounge-game-pill-row>
+          {/* Match chevron column so away/home gutters stay equal. */}
+          <span data-lounge-game-pill-edge aria-hidden="true" />
           <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} halo={air.awayAir} />
-          <span className="flex min-w-0 flex-1 items-center justify-center">
+          <span data-lounge-game-pill-score-gutter>
             <ScoreStack
               side={game.away}
               status={game.status}
@@ -268,13 +268,13 @@ export default function LoungeGameScorePill({
               covered={awayCovered}
             />
           </span>
-          <span className="flex w-[4.75rem] shrink-0 flex-col items-center px-1">
+          <span data-lounge-game-pill-status>
             {live ? <span className="mb-0.5 h-1.5 w-1.5 rounded-full bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.9)]" /> : null}
             <span className="text-center text-[10px] font-semibold uppercase leading-tight tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]">
               {game.status_label}
             </span>
           </span>
-          <span className="flex min-w-0 flex-1 items-center justify-center">
+          <span data-lounge-game-pill-score-gutter>
             <ScoreStack
               side={game.home}
               status={game.status}
@@ -283,11 +283,11 @@ export default function LoungeGameScorePill({
             />
           </span>
           <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} halo={air.homeAir} />
-          {canOpenHub ? (
-            <ChevronRight className="h-5 w-5 shrink-0 text-white/70 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" strokeWidth={2.25} />
-          ) : (
-            <span className="h-5 w-5 shrink-0" aria-hidden="true" />
-          )}
+          <span data-lounge-game-pill-edge aria-hidden={!canOpenHub}>
+            {canOpenHub ? (
+              <ChevronRight className="h-5 w-5 text-white/70 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" strokeWidth={2.25} />
+            ) : null}
+          </span>
         </span>
         {pendingInclude ? (
           <span

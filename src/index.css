@@ -3272,6 +3272,8 @@ html.light [data-lounge-market-chart-mini] .text-cyan-300 {
 
 [data-lounge-game-pill] {
   isolation: isolate;
+  display: block;
+  width: 100%;
   background-color: #7a7a84;
 }
 [data-lounge-game-pill] [data-lounge-game-pill-field],
@@ -3353,6 +3355,43 @@ html.light [data-lounge-game-pill] .text-zinc-100 {
 [data-lounge-game-pill-num='fit'] [data-lounge-game-pill-primary] {
   font-size: 26px;
   letter-spacing: -0.04em;
+}
+/*
+  Flat 7-col grid: edge | logo | score gutter | status | score gutter | logo | edge.
+  Grid (not flex) so iOS Safari / WKWebView cannot collapse the logo↔FINAL gutters.
+*/
+[data-lounge-game-pill-row] {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: 1.25rem auto minmax(0, 1fr) 4.75rem minmax(0, 1fr) auto 1.25rem;
+  align-items: center;
+  column-gap: 0.375rem;
+  width: 100%;
+  min-height: 5.625rem;
+  padding: 0.625rem 0.75rem;
+  box-sizing: border-box;
+}
+[data-lounge-game-pill-edge] {
+  display: flex;
+  width: 1.25rem;
+  height: 1.25rem;
+  align-items: center;
+  justify-content: center;
+}
+[data-lounge-game-pill-score-gutter] {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+}
+[data-lounge-game-pill-status] {
+  display: flex;
+  width: 4.75rem;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 0.25rem;
+  box-sizing: border-box;
 }
 html.light [data-lounge-game-pill-spread-cover] {
   color: #fff !important;

@@ -28,11 +28,12 @@ function FitPrimary({ children, className, align }) {
     ro.observe(parent)
     return () => ro.disconnect()
   }, [children])
+  const pin = align === 'end' ? 'ml-auto' : align === 'center' ? 'mx-auto' : 'mr-auto'
   return (
     <span
       ref={ref}
       data-lounge-game-pill-primary
-      className={`${className} ${align === 'end' ? 'ml-auto' : 'mr-auto'}`}
+      className={`${className} block w-fit ${pin}`}
     >
       {children}
     </span>
@@ -111,16 +112,18 @@ function ScoreStack({ side, status, align, dimmed, covered }) {
   const mlUnder = pre ? null : formatLoungeSportsMoneyline(side?.ml)
   const underLine = [spreadUnder, mlUnder].filter(Boolean).join(' ')
   const primaryClass = `whitespace-nowrap font-bold leading-none tabular-nums drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
-    pre ? 'inline-block' : 'text-[26px]'
+    pre ? '' : 'text-[26px]'
   } ${dimmed ? 'text-white/55' : 'text-white'}`
   return (
     <span
       data-lounge-game-pill-num={pre ? 'fit' : undefined}
-      className={`flex min-w-0 flex-1 flex-col ${align === 'end' ? 'items-end' : 'items-start'}`}
+      className={`flex min-w-0 flex-1 flex-col ${
+        pre ? 'items-center text-center' : align === 'end' ? 'items-end' : 'items-start'
+      }`}
     >
       {pre ? (
-        <span className="block w-full min-w-0 overflow-hidden">
-          <FitPrimary className={primaryClass} align={align}>
+        <span className="flex w-full min-w-0 justify-center overflow-hidden">
+          <FitPrimary className={primaryClass} align="center">
             {primary}
           </FitPrimary>
         </span>

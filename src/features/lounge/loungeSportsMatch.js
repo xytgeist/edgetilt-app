@@ -98,13 +98,11 @@ function mixHex(a, b, t) {
   return `#${[m(A.r, B.r), m(A.g, B.g), m(A.b, B.b)].map((n) => n.toString(16).padStart(2, '0')).join('')}`
 }
 
-/** Edge color for the pill wash so navy/black teams still read on a dark feed. */
-export function nflPillWash(primary, secondary) {
+/** Team primary for the pill fade. Near-black only (Raiders / Steelers) gets a slight lift so multiply-blend still stains. Mixing in color2 turned Giants navy purple and Rams blue muddy gold. */
+export function nflPillWash(primary, _secondary) {
   const p = String(primary || '#3f3f46')
-  const s = String(secondary || '#71717a')
-  if (hexLuminance(p) >= 0.1) return p
-  if (hexLuminance(s) > hexLuminance(p) + 0.04) return mixHex(p, s, 0.42)
-  return mixHex(p, '#ffffff', 0.16)
+  if (hexLuminance(p) < 0.01) return mixHex(p, '#ffffff', 0.22)
+  return p
 }
 
 export function enrichLoungeSportsGame(game) {

@@ -66,12 +66,13 @@ The agent should treat the following as **standing instructions for this session
 
 **What this track is:** After App Review of **1.4.95**, Mac built **iPad landscape Slots** into a two-column shell, then Ryan insisted on bringing the same idea to **iPhone landscape**. It shipped and he likes it. Tip of that work is on **`test`**.
 
-**Current tip (Mac):** web **`1.4.393`**. Branch **`test`**. Do **not** bump iOS **`MARKETING_VERSION`** off **1.4.95**. Dirty Xcode scheme files under `ios/EdgeTilt.xcodeproj/xcshareddata/xcschemes/` are local only ... **do not stage them**.
+**Current tip (Mac):** web **`1.4.394`**. Branch **`test`**. Do **not** bump iOS **`MARKETING_VERSION`** off **1.4.95**. Dirty Xcode scheme files under `ios/EdgeTilt.xcodeproj/xcshareddata/xcschemes/` are local only ... **do not stage them**.
 
 **Week 2 Pinnacle closes are tabled on test.** `lounge_market_files` has 14 locked NFL rows (`close_spread_source=pinnacle`). Smoke Lounge on **WAS@DAL** (`WAS +4 +177` / `DAL -4 -200`, Cowboys covered) and **IND@KC** (`IND +6 +226` / `KC -6 -259`, Colts covered ATS). Week 1 still has no true Pinnacle close.
 
 **Shipped on this track (newest → older, all Mac unless noted):**
 
+1. **`1.4.394`** ... upcoming pill spreads are centered in each team's number slot. Fade uses catalog **primary** (Giants navy / Rams blue), not a mix with color2. Black-only teams still get a slight lift.
 1. **`1.4.393`** ... historical fill also runs when ML is missing (not only spread). Week 2 Pinnacle closes backfilled on test. Redeploy **`lounge-sports-scoreboard`** on **test**.
 1. **`1.4.392`** ... pills use **Pinnacle close** (spread + ML under finals). Reads `lounge_market_files`, backfills kickoff historical into that table. Not shopped DK juice. Redeploy **`lounge-sports-scoreboard`** on **test**.
 1. **`1.4.391`** ... finals actually get a closing ATS line. Live Odds `/odds` drops completed games; the scoreboard now stamps the kickoff historical snapshot. Redeploy **`lounge-sports-scoreboard`** on **test**.

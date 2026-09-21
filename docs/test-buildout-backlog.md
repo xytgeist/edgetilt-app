@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Lounge pill upcoming center + primary fade (Mac).** Upcoming spreads sit in the middle of each team's number slot. Wash uses catalog primary instead of mixing color2 (Giants were going purple). Frontend **`1.4.394`**.
 - **2026-09-20:** **Lounge pill Pinnacle ML fill + week 2 table (Mac).** Historical fill now runs when ML is missing, not only when spread is missing. Test `lounge_market_files` has 14 locked week-2 NFL Pinnacle closes. Smoke **WAS@DAL** / **IND@KC**. Frontend **`1.4.393`**. Redeploy **`lounge-sports-scoreboard`** on **test**.
 - **2026-09-20:** **Lounge pill Pinnacle close (Mac).** Finals paint Pinnacle closing spread + ML (`-4.5 -150`). Source is `lounge_market_files` plus a kickoff historical backfill that writes the close back into that table. Not shopped juice. Frontend **`1.4.392`**. Redeploy **`lounge-sports-scoreboard`** on **test**.
 - **2026-09-20:** **Lounge pill closing lines (Mac).** Finals were painting scores with no ATS because live Odds `/odds` drops completed games and Rundown day events have no lines. Scoreboard now fills missing spreads from the Odds **historical** snapshot at kickoff. Frontend **`1.4.391`**. Redeploy **`lounge-sports-scoreboard`** on **test**.

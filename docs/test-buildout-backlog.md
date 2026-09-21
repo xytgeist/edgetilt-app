@@ -1148,7 +1148,6 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- **2026-09-21:** **Sports composer carousel + matchup replace (Windows).** Composer/feed sports carousels stay full column width (no 20rem shrink). Typing `KC` then `KC vs Mia` replaces the vague KC card with the matchup. Frontend **`1.4.415`**.
 - **2026-09-21:** **Sports composer suggest fix (Windows).** Empty composer was infinite-looping `setDismissedIds(new Set())` and killing card suggest. Frontend **`1.4.414`**.
 - **2026-09-21:** **Lounge landscape multi-minichart peek (Mac).** In landscape split / post detail, multi market (and sports) carousels keep phone-width slides (~20rem cap) so the next card peeks instead of stretching full-pane. Frontend **`1.4.413`**. Web only.
 - **2026-09-21:** **Sports tap-to-include overlay text (Windows).** Keep the dim overlay; move “Tap to include” to top-of-card plain text (no centered badge pill). Caption matches still append. Frontend **`1.4.412`**.

@@ -383,6 +383,9 @@ import LoungeGameScorePill from './LoungeGameScorePill.jsx'
 import { LoungeMarketFeedProvider } from './LoungeMarketFeedContext.jsx'
 import { LoungeSportsFeedProvider } from './LoungeSportsFeedContext.jsx'
 import LoungeGameHubModal from './LoungeGameHubModal.jsx'
+import LoungeLandscapeExternalLinkPane from './LoungeLandscapeExternalLinkPane.jsx'
+import LoungeSportsHubBridge from './LoungeSportsHubBridge.jsx'
+import { useIpadSlotsLandscape } from '../shell/useIpadSlotsLandscape.js'
 import { useLoungeMarketPollActivityTracker } from './loungeMarketPollActivity.js'
 import {
   LOUNGE_IOS,
@@ -818,6 +821,17 @@ export default function SocialFeed({
   }
   const loungeComposerInitial = loungeComposerBoot()
   const ipadNavRail = useIpadNavRail()
+  const loungeLandscapeSplit = useIpadSlotsLandscape()
+  const loungeLandscapeSplitRef = useRef(false)
+  loungeLandscapeSplitRef.current = loungeLandscapeSplit
+  const sportsCloseHubRef = useRef(null)
+  const closeLoungePostDetailRef = useRef(() => {})
+  const closeMarketChartModalRef = useRef(() => {})
+  const [loungeSportsHubOpen, setLoungeSportsHubOpen] = useState(false)
+  const [loungeLandscapeLink, setLoungeLandscapeLink] = useState(null)
+  const onLoungeSportsHubOpenChange = useCallback((open) => {
+    setLoungeSportsHubOpen(Boolean(open))
+  }, [])
   const [postText, setPostText] = useState(() => {
     const d = readLoungeComposerDraft()
     return d?.postText ?? ''
@@ -1338,6 +1352,22 @@ export default function SocialFeed({
   /** Continuation rows for multi-part post threads in post detail. */
   /** X-style: post/comment detail as a bottom sheet over a still-open media lightbox. */
   const [loungePostDetailOverLightbox, setLoungePostDetailOverLightbox] = useState(false)
+  useEffect(() => {
+    if (!loungeLandscapeSplit || !loungeSportsHubOpen) return
+    setLoungeLandscapeLink(null)
+    try {
+      closeMarketChartModalRef.current?.()
+    } catch {
+      /* ignore */
+    }
+    if (loungePostDetail && !loungePostDetailOverLightbox) {
+      try {
+        closeLoungePostDetailRef.current?.()
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [loungeLandscapeSplit, loungeSportsHubOpen])
   const loungePostDetailOverLightboxRef = useRef(false)
   const loungePostDetailOpenedAsLightboxSheetRef = useRef(false)
   const [loungeLightboxSheetMediaEntityId, setLoungeLightboxSheetMediaEntityId] = useState(null)
@@ -2434,6 +2464,19 @@ export default function SocialFeed({
     }
     const list = Array.isArray(embeds) && embeds.length ? embeds : embed ? [embed] : []
     if (!list.length) return
+    if (loungeLandscapeSplitRef.current) {
+      setLoungeLandscapeLink(null)
+      try {
+        sportsCloseHubRef.current?.()
+      } catch {
+        /* ignore */
+      }
+      try {
+        closeLoungePostDetailRef.current?.()
+      } catch {
+        /* ignore */
+      }
+    }
     setMarketChartModal({
       open: true,
       embeds: list,
@@ -2444,6 +2487,7 @@ export default function SocialFeed({
   const closeMarketChartModal = useCallback(() => {
     setMarketChartModal({ open: false, embeds: [], focusSymbol: null })
   }, [])
+  closeMarketChartModalRef.current = closeMarketChartModal
 
   const insertMarketChartSnapshotIntoComposer = useCallback(
     (file) => {
@@ -8139,6 +8183,8 @@ export default function SocialFeed({
       if (!loungePostDetailVisibleRef.current) finalizeLoungePostDetailClose()
     }, 400)
   }, [finalizeLoungePostDetailClose, onReturnToChatRoom])
+  closeLoungePostDetailRef.current = closeLoungePostDetail
+
 
   const discardOptimisticVideoFeedPost = useCallback(
     async (postRow, targetKey) => {
@@ -8297,6 +8343,19 @@ export default function SocialFeed({
       if (loungeFanOnlyPostDetailOpenBlocked(post, loungeFanLockCtx)) {
         return
       }
+      if (loungeLandscapeSplitRef.current && !opts?.keepLightboxPlaying) {
+        setLoungeLandscapeLink(null)
+        try {
+          closeMarketChartModalRef.current?.()
+        } catch {
+          /* ignore */
+        }
+        try {
+          sportsCloseHubRef.current?.()
+        } catch {
+          /* ignore */
+        }
+      }
       if (
         performance.now() < loungeFeedNavClickSuppressUntilRef.current &&
         !opts?.fromReplyFailureToast
@@ -8437,7 +8496,7 @@ export default function SocialFeed({
         window.clearTimeout(openTid)
         loungePostDetailOpenFallbackTimerRef.current = 0
       }
-      if (reduce || opts?.keepLightboxPlaying) {
+      if (reduce || opts?.keepLightboxPlaying || loungeLandscapeSplitRef.current) {
         loungePostDetailPanelEnteredRef.current = true
         setLoungePostDetailPanelEntered(true)
         setLoungePostDetailVisible(true)
@@ -15844,6 +15903,29 @@ export default function SocialFeed({
       }
       const openHref = hrefForExternalOpen(url)
       if (!openHref) return
+      if (loungeLandscapeSplitRef.current) {
+        setLoungeLandscapeLink({
+          url: openHref,
+          title: null,
+          description: null,
+        })
+        try {
+          closeMarketChartModalRef.current?.()
+        } catch {
+          /* ignore */
+        }
+        try {
+          sportsCloseHubRef.current?.()
+        } catch {
+          /* ignore */
+        }
+        try {
+          closeLoungePostDetailRef.current?.()
+        } catch {
+          /* ignore */
+        }
+        return
+      }
       try {
         window.open(openHref, '_blank', 'noopener,noreferrer')
       } catch {
@@ -15872,6 +15954,32 @@ export default function SocialFeed({
       if (postId && isLoungePostShareId(String(postId))) {
         void openLoungePostById(String(postId), { fromPublicLink: true })
         return
+      }
+      if (loungeLandscapeSplitRef.current) {
+        const openHref = hrefForExternalOpen(preview?.url)
+        if (openHref) {
+          setLoungeLandscapeLink({
+            url: openHref,
+            title: preview?.title || preview?.site_name || null,
+            description: preview?.description || null,
+          })
+          try {
+            closeMarketChartModalRef.current?.()
+          } catch {
+            /* ignore */
+          }
+          try {
+            sportsCloseHubRef.current?.()
+          } catch {
+            /* ignore */
+          }
+          try {
+            closeLoungePostDetailRef.current?.()
+          } catch {
+            /* ignore */
+          }
+          return
+        }
       }
       openCaptionLink(preview?.url, e)
     },
@@ -16465,10 +16573,23 @@ export default function SocialFeed({
     />
   ) : null
 
+  const loungeDetailInPane =
+    loungeLandscapeSplit && Boolean(loungePostDetail) && !loungePostDetailOverLightbox
+  const loungeChartInPane = loungeLandscapeSplit && marketChartModal.open
+  const loungeGameInPane = loungeLandscapeSplit && loungeSportsHubOpen
+  const loungeLinkInPane = loungeLandscapeSplit && Boolean(loungeLandscapeLink?.url)
+  const loungeLandscapeEngagementActive =
+    loungeDetailInPane || loungeChartInPane || loungeGameInPane || loungeLinkInPane
+
   return (
     <div
       data-lounge-feed-root=""
-      className={`mx-auto flex h-dvh max-h-dvh min-h-0 w-full max-w-2xl flex-col overflow-hidden bg-zinc-950 pt-[max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-0`}
+      {...(loungeLandscapeEngagementActive ? { 'data-lounge-landscape-split': '' } : {})}
+      className={
+        loungeLandscapeEngagementActive
+          ? 'mx-auto flex h-dvh max-h-dvh min-h-0 w-full max-w-none flex-col overflow-hidden bg-zinc-950 pt-[max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-0'
+          : 'mx-auto flex h-dvh max-h-dvh min-h-0 w-full max-w-2xl flex-col overflow-hidden bg-zinc-950 pt-[max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-0'
+      }
     >
       <LoungeStreamLightboxProvider ctx={loungeStreamLightboxCtx}>
       <LoungePendingPublishActionsProvider cancelPendingPublish={cancelAuthorPendingVideoPublish}>
@@ -16478,6 +16599,10 @@ export default function SocialFeed({
         feedActive={isActivePage}
       >
       <LoungeSportsFeedProvider supabaseClient={supabaseClient} feedActive={isActivePage}>
+      <LoungeSportsHubBridge
+        onHubOpenChange={onLoungeSportsHubOpenChange}
+        closeHubRef={sportsCloseHubRef}
+      />
       {loungeReplyFailureToast ? (
         <button
           type="button"
@@ -16537,6 +16662,22 @@ export default function SocialFeed({
           {loungeShareFlash}
         </div>
       ) : null}
+      <div
+        data-lounge-landscape-shell=""
+        className={
+          loungeLandscapeEngagementActive
+            ? 'flex min-h-0 flex-1 flex-row overflow-hidden'
+            : 'flex min-h-0 flex-1 flex-col overflow-hidden'
+        }
+      >
+      <div
+        data-lounge-landscape-feed=""
+        className={
+          loungeLandscapeEngagementActive
+            ? 'flex min-h-0 w-1/2 shrink-0 flex-col border-r border-zinc-800/80'
+            : 'contents'
+        }
+      >
       {/* Fixed title bar: hidden while dock slide panel is open. */}
       {!loungeDockPanel ? (
         <>
@@ -16549,14 +16690,26 @@ export default function SocialFeed({
           ref={loungeTitleBarRef}
           data-lounge-title-bar
           className={
-            ipadNavRail
+            loungeLandscapeEngagementActive || ipadNavRail
               ? 'fixed right-0 z-[50] border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform'
               : 'fixed left-1/2 z-[50] w-full max-w-2xl border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform'
           }
           style={{
             top: loungeFeedViewportTopPx,
-            ...(ipadNavRail ? { left: 'var(--edge-ipad-rail)', width: 'auto' } : {}),
-            transform: `translate3d(${ipadNavRail ? '0' : '-50%'}, ${loungeTitleBarHideTranslateYPx(loungeTitleReveal, loungeTitleBarHeight, loungeFeedViewportTopPx)}px, 0)`,
+            ...(loungeLandscapeEngagementActive
+              ? {
+                  left: ipadNavRail ? 'var(--edge-ipad-rail)' : 0,
+                  right: 'auto',
+                  width: ipadNavRail
+                    ? 'min(28rem, calc((100% - var(--edge-ipad-rail)) * 0.5))'
+                    : 'min(28rem, 50%)',
+                  maxWidth: '28rem',
+                  transform: `translate3d(0, ${loungeTitleBarHideTranslateYPx(loungeTitleReveal, loungeTitleBarHeight, loungeFeedViewportTopPx)}px, 0)`,
+                }
+              : {
+                  ...(ipadNavRail ? { left: 'var(--edge-ipad-rail)', width: 'auto' } : {}),
+                  transform: `translate3d(${ipadNavRail ? '0' : '-50%'}, ${loungeTitleBarHideTranslateYPx(loungeTitleReveal, loungeTitleBarHeight, loungeFeedViewportTopPx)}px, 0)`,
+                }),
             pointerEvents: loungeTitleReveal > 0.12 ? 'auto' : 'none',
           }}
         >
@@ -17452,19 +17605,69 @@ export default function SocialFeed({
         </LoungePullRefreshZone>
         </LoungeFeedVideoAutoplayProvider>
       </div>
+      </div>
+
+      {loungeLandscapeEngagementActive && !loungeDetailInPane ? (
+        <div
+          data-lounge-landscape-pane=""
+          className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-zinc-950"
+        >
+          {loungeChartInPane ? (
+            <LoungeMarketChartModal
+              embedded
+              open={marketChartModal.open}
+              embeds={marketChartModal.embeds}
+              focusSymbol={marketChartModal.focusSymbol}
+              supabaseClient={supabaseClient}
+              hydratePosts={hydrateCommunityPosts}
+              onOpenPost={openLoungePostDetail}
+              onClose={closeMarketChartModal}
+              onInsertSnapshot={
+                composerUserId && !loungeReadOnly
+                  ? insertMarketChartSnapshotIntoComposer
+                  : undefined
+              }
+            />
+          ) : null}
+          {loungeGameInPane && !loungeChartInPane ? (
+            <LoungeGameHubModal
+              embedded
+              supabaseClient={supabaseClient}
+              hydratePosts={hydrateCommunityPosts}
+              onOpenPost={openLoungePostDetail}
+              loungeReadOnly={loungeReadOnly}
+            />
+          ) : null}
+          {loungeLinkInPane && !loungeChartInPane && !loungeGameInPane ? (
+            <LoungeLandscapeExternalLinkPane
+              url={loungeLandscapeLink.url}
+              title={loungeLandscapeLink.title}
+              description={loungeLandscapeLink.description}
+              onClose={clearLoungeLandscapeLink}
+              onOpenExternal={openLoungeLandscapeLinkExternal}
+            />
+          ) : null}
+        </div>
+      ) : null}
 
       {loungePostDetail ? (
         <div
-          className={`fixed inset-0 ${
-            loungePostDetailOverLightbox
-              ? 'bg-transparent'
-              : 'sm:bg-black/55 sm:backdrop-blur-[2px]'
-          } ${loungePostDetailShellZClass}`}
+          className={
+            loungeDetailInPane
+              ? `relative z-10 flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-zinc-950 ${loungePostDetailShellZClass}`
+              : `fixed inset-0 ${
+                  loungePostDetailOverLightbox
+                    ? 'bg-transparent'
+                    : 'sm:bg-black/55 sm:backdrop-blur-[2px]'
+                } ${loungePostDetailShellZClass}`
+          }
           {...(loungePostDetailOverLightbox ? { 'data-lounge-media-detail-overlay': '' } : {})}
+          {...(loungeDetailInPane ? { 'data-lounge-detail-in-pane': '' } : {})}
           role="dialog"
           aria-modal="true"
           aria-labelledby="lounge-post-detail-title"
         >
+          {loungeDetailInPane ? null : (
           <button
             type="button"
             className={`absolute inset-0 z-0 cursor-default ${
@@ -17477,12 +17680,15 @@ export default function SocialFeed({
               else closeLoungePostDetail()
             }}
           />
+          )}
           <div
             ref={loungePostDetailPanelRef}
             data-lounge-post-detail-sheet=""
             {...(loungePostDetailOverLightbox ? { 'data-lounge-media-detail-sheet': '' } : {})}
             className={
-              loungePostDetailOverLightbox
+              loungeDetailInPane
+                ? 'relative z-10 flex h-full min-h-0 w-full flex-col overflow-hidden bg-zinc-950'
+                : loungePostDetailOverLightbox
                 ? `fixed inset-x-0 bottom-0 z-10 flex w-full flex-col overflow-hidden rounded-t-[22px] border border-b-0 border-zinc-800/70 bg-zinc-950 shadow-[0_-16px_48px_rgba(0,0,0,0.55)] motion-reduce:transition-none ${
                     loungePostDetailVisible ? 'translate-y-0' : 'translate-y-full'
                   }`
@@ -19335,6 +19541,7 @@ export default function SocialFeed({
 
         </div>
       ) : null}
+      </div>
 
       {loungeDetailCommentDiscardPromptOpen ? (
         <div
@@ -20013,23 +20220,27 @@ export default function SocialFeed({
         supabaseClient={supabaseClient}
       />
 
-      <LoungeMarketChartModal
-        open={marketChartModal.open}
-        embeds={marketChartModal.embeds}
-        focusSymbol={marketChartModal.focusSymbol}
-        supabaseClient={supabaseClient}
-        hydratePosts={hydrateCommunityPosts}
-        onOpenPost={openLoungePostDetail}
-        onClose={closeMarketChartModal}
-        onInsertSnapshot={composerUserId && !loungeReadOnly ? insertMarketChartSnapshotIntoComposer : undefined}
-      />
+      {!loungeLandscapeSplit ? (
+        <LoungeMarketChartModal
+          open={marketChartModal.open}
+          embeds={marketChartModal.embeds}
+          focusSymbol={marketChartModal.focusSymbol}
+          supabaseClient={supabaseClient}
+          hydratePosts={hydrateCommunityPosts}
+          onOpenPost={openLoungePostDetail}
+          onClose={closeMarketChartModal}
+          onInsertSnapshot={composerUserId && !loungeReadOnly ? insertMarketChartSnapshotIntoComposer : undefined}
+        />
+      ) : null}
 
-      <LoungeGameHubModal
-        supabaseClient={supabaseClient}
-        hydratePosts={hydrateCommunityPosts}
-        onOpenPost={openLoungePostDetail}
-        loungeReadOnly={loungeReadOnly}
-      />
+      {!loungeLandscapeSplit ? (
+        <LoungeGameHubModal
+          supabaseClient={supabaseClient}
+          hydratePosts={hydrateCommunityPosts}
+          onOpenPost={openLoungePostDetail}
+          loungeReadOnly={loungeReadOnly}
+        />
+      ) : null}
 
       {loungeImageLimitDialog && typeof document !== 'undefined'
         ? createPortal(

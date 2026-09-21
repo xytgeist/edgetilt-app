@@ -399,7 +399,14 @@ function PostList({ posts, postsLoading, postsErr, emptyLabel, onOpenPost, close
  * Game destination opened from the in-post score pill.
  * Live clock / down-distance, field marker, multi-book odds, PBP, Lounge chat.
  */
-export default function LoungeGameHubModal({ supabaseClient, hydratePosts, onOpenPost, loungeReadOnly = false }) {
+export default function LoungeGameHubModal({
+  supabaseClient,
+  hydratePosts,
+  onOpenPost,
+  loungeReadOnly = false,
+  /** Landscape Lounge right pane: fill parent, no portal. */
+  embedded = false,
+}) {
   const sports = useLoungeSportsFeed()
   const game = sports?.hubGame
   const games = sports?.games || []
@@ -542,11 +549,17 @@ export default function LoungeGameHubModal({ supabaseClient, hydratePosts, onOpe
     { id: 'chat', label: 'Chat' },
   ]
 
-  return createPortal(
+  if (!game) return null
+
+  const hubRoot = (
     <div
       data-lounge-game-hub
-      className="fixed inset-0 flex flex-col bg-zinc-950 text-white"
-      style={{ zIndex: Z_APP_MODAL }}
+      className={
+        embedded
+          ? 'flex h-full min-h-0 flex-col bg-zinc-950 text-white'
+          : 'fixed inset-0 flex flex-col bg-zinc-950 text-white'
+      }
+      style={embedded ? undefined : { zIndex: Z_APP_MODAL }}
     >
       <div className="flex items-center gap-2 px-2 pt-[max(0.5rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-1">
         <button
@@ -685,7 +698,9 @@ export default function LoungeGameHubModal({ supabaseClient, hydratePosts, onOpe
           </div>
         </form>
       ) : null}
-    </div>,
-    document.body,
+    </div>
   )
+
+  if (embedded) return hubRoot
+  return createPortal(hubRoot, document.body)
 }

@@ -3922,6 +3922,29 @@ html[data-ipad-nav] [data-edge-status-bar-plate] {
 html.light [data-slots-landscape-tools] {
   border-right-color: #e4e4e7;
 }
+/* Landscape Lounge engagement split: feed left, detail/chart/hub/link right. */
+[data-lounge-feed-root][data-lounge-landscape-split] {
+  max-width: none;
+}
+[data-lounge-landscape-feed] {
+  width: 50%;
+  flex: 0 0 50%;
+  max-width: 28rem;
+}
+html.light [data-lounge-landscape-feed] {
+  border-right-color: #e4e4e7;
+}
+html.light [data-lounge-landscape-pane],
+html.light [data-lounge-detail-in-pane] {
+  background-color: #fafafa;
+}
+@media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+  [data-lounge-landscape-feed] {
+    width: 50% !important;
+    flex: 0 0 50% !important;
+    max-width: none;
+  }
+}
 /* Phone landscape: tighter tool cards so the short height still fits. */
 @media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
   [data-slots-landscape-tools] {

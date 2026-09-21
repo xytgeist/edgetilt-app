@@ -927,6 +927,8 @@ export default function LoungeMarketChartModal({
   hydratePosts,
   onOpenPost,
   onInsertSnapshot,
+  /** Landscape Lounge right pane: fill parent, no portal sheet. */
+  embedded = false,
 }) {
   const chartHostRef = useRef(null)
   const advancedChartHostRef = useRef(null)
@@ -2749,45 +2751,71 @@ export default function LoungeMarketChartModal({
         )
       : null
 
-  return (
-    <>
-      {createPortal(
+  const marketChartSheetRoot = (
     <div
-      className="fixed inset-0 z-[105] flex flex-col justify-end backdrop-blur-[2px] transition-[background-color] duration-200 motion-reduce:transition-none"
-      style={{ backgroundColor: `rgba(0,0,0,${backdropOpacity})` }}
+      className={
+        embedded
+          ? 'flex h-full min-h-0 flex-col overflow-hidden bg-zinc-950'
+          : 'fixed inset-0 z-[105] flex flex-col justify-end backdrop-blur-[2px] transition-[background-color] duration-200 motion-reduce:transition-none'
+      }
+      style={embedded ? undefined : { backgroundColor: `rgba(0,0,0,${backdropOpacity})` }}
       role="dialog"
       aria-modal="true"
       aria-label={`${active?.display_symbol || 'Market'} chart`}
     >
-      <button
-        type="button"
-        className="absolute inset-0 cursor-default"
-        aria-label="Close chart"
-        onClick={dismissSheet}
-      />
+      {embedded ? null : (
+        <button
+          type="button"
+          className="absolute inset-0 cursor-default"
+          aria-label="Close chart"
+          onClick={dismissSheet}
+        />
+      )}
       <div
-        className={`relative z-10 flex w-full max-w-none shrink-0 flex-col rounded-none border-x-0 border-b-0 border-t shadow-2xl will-change-transform motion-reduce:transition-none ${shellClass} ${
-          sheetDragging ? 'touch-none' : ''
-        }`}
-        data-lounge-market-chart-modal
-        style={{
-          height: MARKET_CHART_MODAL_HEIGHT,
-          maxHeight: MARKET_CHART_MODAL_HEIGHT,
-          transform: sheetTransform,
-          transition: sheetTransition,
-        }}
+        className={
+          embedded
+            ? `relative z-10 flex h-full min-h-0 w-full flex-col ${shellClass}`
+            : `relative z-10 flex w-full max-w-none shrink-0 flex-col rounded-none border-x-0 border-b-0 border-t shadow-2xl will-change-transform motion-reduce:transition-none ${shellClass} ${
+                sheetDragging ? 'touch-none' : ''
+              }`
+        }
+        data-lounge-market-chart-modal=""
+        {...(embedded ? { 'data-lounge-market-chart-embedded': '' } : {})}
+        style={
+          embedded
+            ? { height: '100%', maxHeight: '100%' }
+            : {
+                height: MARKET_CHART_MODAL_HEIGHT,
+                maxHeight: MARKET_CHART_MODAL_HEIGHT,
+                transform: sheetTransform,
+                transition: sheetTransition,
+              }
+        }
         onClick={(e) => e.stopPropagation()}
-        onPointerDown={onSheetPointerDown}
-        onPointerMove={onSheetPointerMove}
-        onPointerUp={onSheetPointerEnd}
-        onPointerCancel={onSheetPointerCancel}
+        onPointerDown={embedded ? undefined : onSheetPointerDown}
+        onPointerMove={embedded ? undefined : onSheetPointerMove}
+        onPointerUp={embedded ? undefined : onSheetPointerEnd}
+        onPointerCancel={embedded ? undefined : onSheetPointerCancel}
       >
-        <div
-          className={`flex shrink-0 justify-center px-4 pb-1 pt-2 ${borderClass}`}
-          data-market-sheet-drag
-        >
-          <div className="h-1 w-10 rounded-full bg-zinc-500/35" aria-hidden />
-        </div>
+        {embedded ? (
+          <div className={`flex shrink-0 items-center justify-end border-b px-2 py-1.5 ${borderClass}`}>
+            <button
+              type="button"
+              aria-label="Close chart"
+              onClick={dismissSheet}
+              className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-800/90 text-lg leading-none text-zinc-200 touch-manipulation hover:bg-zinc-700"
+            >
+              ×
+            </button>
+          </div>
+        ) : (
+          <div
+            className={`flex shrink-0 justify-center px-4 pb-1 pt-2 ${borderClass}`}
+            data-market-sheet-drag
+          >
+            <div className="h-1 w-10 rounded-full bg-zinc-500/35" aria-hidden />
+          </div>
+        )}
 
         <div className="shrink-0 px-4 pb-1 pt-0" data-market-sheet-drag>
           <div className="flex items-start gap-3">
@@ -3034,9 +3062,12 @@ export default function LoungeMarketChartModal({
           )}
         </div>
       </div>
-    </div>,
-    document.body,
-      )}
+    </div>
+  )
+
+  return (
+    <>
+      {embedded ? marketChartSheetRoot : createPortal(marketChartSheetRoot, document.body)}
       {advancedFullscreenPortal}
     </>
   )

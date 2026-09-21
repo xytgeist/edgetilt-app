@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Sports pill score center via grid (Windows).** Nested `flex-1` score wrappers were collapsing to content width so numbers hugged the logos. Row is now CSS grid with equal `minmax(0,1fr)` score columns. Frontend **`1.4.428`**.
 - **2026-09-21:** **Persist closing Pinnacle ML on market files (Windows).** `lounge_market_files` gains open/current/close home+away ML columns. Odds poll writes Odds API **h2h** (moneyline) alongside spreads/totals; locked rows missing ML can backfill once. Scoreboard paints close ML from the file. Migration **`20260921210000`** on **test**. Redeployed test Edge **`lounge-odds-poll`** + **`lounge-sports-scoreboard`** (`kcosfvmreeiosdjdzycb`).
 - **2026-09-21:** **Lounge landscape profile dismiss fix + composer revert (Mac).** Profile open was calling `closeLoungePostDetail` without skip-nav, so a stale finalize restored the feed stack and killed the profile. Skip nav on peer detail close. Reverted landscape compose-in-pane / hidden feed composer. Frontend **`1.4.427`**. Web only.
 - **2026-09-21:** **Feed sports pill score center + cover dot (Windows).** Scores sit in the midpoint between logo and FINAL/clock at any card width. Covered spread uses a white dot (not underline). Pinnacle close ML still paints when `side.ml` is set (`+4 -150`); WAS@DAL showing spread-only means scoreboard ML fill is empty for that final. Frontend **`1.4.426`**.

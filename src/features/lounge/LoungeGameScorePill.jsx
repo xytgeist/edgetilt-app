@@ -117,7 +117,7 @@ function ScoreStack({ side, status, dimmed, covered }) {
   } ${dimmed ? 'text-white/55' : 'text-white'}`
   if (pre) {
     return (
-      <span data-lounge-game-pill-num="fit" className="flex min-w-0 flex-1 flex-col items-center text-center">
+      <span data-lounge-game-pill-num="fit" className="flex w-full min-w-0 flex-col items-center text-center">
         <span className="flex w-full min-w-0 justify-center overflow-hidden">
           <FitPrimary className={primaryClass} align="center">
             {primary}
@@ -126,9 +126,9 @@ function ScoreStack({ side, status, dimmed, covered }) {
       </span>
     )
   }
-  // Content-sized; parent flex-1 + justify-center pins the number between logo and FINAL.
+  // Content-sized; grid cell centers this between logo and FINAL/clock.
   return (
-    <span className="relative inline-flex shrink-0 items-center justify-center">
+    <span className="relative inline-flex items-center justify-center">
       <span data-lounge-game-pill-primary className={primaryClass}>
         {primary}
       </span>
@@ -257,37 +257,39 @@ export default function LoungeGameScorePill({
         <span data-lounge-game-pill-away aria-hidden="true" />
         <span data-lounge-game-pill-home aria-hidden="true" />
         <span data-lounge-game-pill-seam aria-hidden="true" />
-        <span className="relative z-[3] flex min-h-[5.625rem] items-center gap-2 px-3 py-2.5">
-          <span className="flex min-w-0 flex-1 items-center gap-1.5">
-            <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} halo={air.awayAir} />
-            <span className="flex min-w-0 flex-1 items-center justify-center">
-              <ScoreStack
-                side={game.away}
-                status={game.status}
-                dimmed={game.status === 'post' && !awayWon && !live}
-                covered={awayCovered}
-              />
-            </span>
+        <span
+          className={`relative z-[3] grid min-h-[5.625rem] w-full items-center gap-x-1.5 px-3 py-2.5 ${
+            canOpenHub
+              ? 'grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto_auto]'
+              : 'grid-cols-[auto_minmax(0,1fr)_auto_minmax(0,1fr)_auto]'
+          }`}
+        >
+          <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} halo={air.awayAir} />
+          <span className="flex min-w-0 items-center justify-center">
+            <ScoreStack
+              side={game.away}
+              status={game.status}
+              dimmed={game.status === 'post' && !awayWon && !live}
+              covered={awayCovered}
+            />
           </span>
-          <span className="flex w-[4.75rem] shrink-0 flex-col items-center px-1">
+          <span className="flex w-[4.75rem] flex-col items-center px-1">
             {live ? <span className="mb-0.5 h-1.5 w-1.5 rounded-full bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.9)]" /> : null}
             <span className="text-center text-[10px] font-semibold uppercase leading-tight tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]">
               {game.status_label}
             </span>
           </span>
-          <span className="flex min-w-0 flex-1 items-center gap-1.5">
-            <span className="flex min-w-0 flex-1 items-center justify-center">
-              <ScoreStack
-                side={game.home}
-                status={game.status}
-                dimmed={game.status === 'post' && !homeWon && !live}
-                covered={homeCovered}
-              />
-            </span>
-            <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} halo={air.homeAir} />
+          <span className="flex min-w-0 items-center justify-center">
+            <ScoreStack
+              side={game.home}
+              status={game.status}
+              dimmed={game.status === 'post' && !homeWon && !live}
+              covered={homeCovered}
+            />
           </span>
+          <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} halo={air.homeAir} />
           {canOpenHub ? (
-            <ChevronRight className="h-5 w-5 shrink-0 text-white/70 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" strokeWidth={2.25} />
+            <ChevronRight className="h-5 w-5 text-white/70 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" strokeWidth={2.25} />
           ) : null}
         </span>
         {pendingInclude ? (

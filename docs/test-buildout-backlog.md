@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Mac computer-change handoff.** Game pills + hub stay on prod **`1.4.401`**. Next chat: pull **`test`**, read WAKEUP **ACTIVE TRACK 2026-09-21**, **https://lvslotpro.com/theo**.
 - **2026-09-21:** **Promoted `test` → `main` (`279b126b`).** Lounge game pills + hub. Vercel prod = web **`1.4.401`**. Prod SQL **`20260920220000`** (`community_feed_posts.sports_game`). Prod Edge **`lounge-sports-scoreboard`**. Week-2 Pinnacle close rows stay test-only; prod uses historical fill.
 - **2026-09-21:** **Lounge pill halo when needed (Mac).** Original rich stain restored. Small white logo halo only when the PNG camouflages on that wash. Frontend **`1.4.401`**.
 - **2026-09-21:** **Lounge pill air stain per logo (Mac).** Rich multiply stain by default. Sample the PNG vs the wash and only air that side when the mark would camouflage (NYG/LAR). KC/MIA stay saturated. Frontend **`1.4.400`**. Reverted stain-air in **1.4.401**.

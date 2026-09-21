@@ -46,7 +46,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Goal (Windows, parallel OK):** _Web app bugs/features + **self-hosted GitHub Actions runner** for poker catalog. Pull often; stay in web lane (`src/**`). Bridge: **`docs/ios-native-bridge.md`**._
 
-**Start by reading:** `AGENTS.md`, this **Pick up here** (esp. **Windows Theo 2026-09-04 … private room history for new members** + chat/X never get markdown), **`docs/lounge-bot-sports-odds.md`** destination markdown rules + desk mapping, backlog Update log **2026-09-04**. Dual-agent: **`docs/ios-native-bridge.md`**.
+**Start by reading:** `AGENTS.md`, this **Pick up here** → **Mac Theo ACTIVE TRACK 2026-09-21** (computer change; Lounge game pills on prod), then **Windows Theo 2026-09-04 … private room history for new members** + chat/X never get markdown, **`docs/lounge-bot-sports-odds.md`** destination markdown rules + desk mapping, backlog Update log **2026-09-21**. Dual-agent: **`docs/ios-native-bridge.md`**. Fast mailbox: **https://lvslotpro.com/theo**.
 
 **Optional add-ons** (delete lines you do not need)
 
@@ -58,15 +58,36 @@ The agent should treat the following as **standing instructions for this session
 
 ## Pick up here (Aug 2026 ... session 2026-08-22)
 
-**Dual-machine handoff.** Ryan has **Cursor on Mac** + continues **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
+**Dual-machine handoff.** Ryan has **Cursor on Mac** + **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. **2026-09-21:** Ryan is changing computers after Mac shipped game pills to prod. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
-### Mac Theo ACTIVE TRACK 2026-09-20 ... iPhone / iPad landscape shell (laptop handoff)
+### Mac Theo ACTIVE TRACK 2026-09-21 ... computer change (Lounge game pills + hub)
 
-**I am Mac Theo.** Ryan is moving to the laptop. **WinTheo owns separate work ... do not edit this landscape / Slots chrome track unless Ryan says so.**
+**Ryan is changing computers.** This Mac Cursor chat is done. Next Theo (Windows or another Mac): `git fetch` + match **`origin/test`** before any edit. Fast read with no pull: **https://lvslotpro.com/theo**. Then paste **Copy into chat** + this block.
 
-**What this track is:** After App Review of **1.4.95**, Mac built **iPad landscape Slots** into a two-column shell, then Ryan insisted on bringing the same idea to **iPhone landscape**. It shipped and he likes it. Tip of that work is on **`test`**.
+**I am Mac Theo handing off.** Mac owned the Lounge sports-hub / in-post game-pill track (even though it is `src/**`). That track is **shipped to prod**. Do not reopen stain / halo / disc experiments unless Ryan hates **edgetilt.com**. Landscape Slots / iPhone rail from **2026-09-20** is also shipped and idle.
 
-**Current tip (Mac):** web **`1.4.401`**. Branch **`test`**. Promoted **`test` → `main`** **`279b126b`** (Vercel **edgetilt.com**). Prod SQL **`20260920220000`** (`sports_game` jsonb). Prod Edge **`lounge-sports-scoreboard`** on **`jtjgtucumuoswnbauxry`**. Week-2 Pinnacle closes were **test-only**; prod fills from Odds historical at kickoff. Do **not** bump iOS **`MARKETING_VERSION`** off **1.4.95**. Dirty Xcode scheme files under `ios/EdgeTilt.xcodeproj/xcshareddata/xcschemes/` are local only ... **do not stage them**.
+**Git right now:**
+
+| Ref | Hash | Note |
+| --- | --- | --- |
+| **`origin/test`** | pull HEAD after this handoff | parent **`2d6d9760`** (1.4.401 prod note). Next chat: `git log -1`. |
+| **`origin/main`** | **`279b126b`** | Vercel **edgetilt.com** web **`1.4.401`**. `test` is **1 docs commit** ahead. Do not FF that docs commit onto `main` unless Ryan asks. |
+
+**Prod already done (do not redo unless Ryan asks):** FF `test` → `main` **`279b126b`**. SQL **`20260920220000`** (`community_feed_posts.sports_game` jsonb) on **`jtjgtucumuoswnbauxry`**, recorded in `schema_migrations`. Edge **`lounge-sports-scoreboard`** deployed on prod. CLI login 403s on prod deploys ... use **`SUPABASE_ACCESS_TOKEN`** from **`.env.supabase.production`** (do not print it).
+
+**Locked pill look:** original **rich multiply stain** (catalog **primary** only, no color2 mix ... Giants stay navy, not purple). Small **white logo halo** only when the PNG would camouflage (`data-lounge-game-pill-logo='light'`, probe in `loungeSportsMatch.js`). KC/MIA stay untouched. Rejected: inset stain, all-sides 32% tint, frosted disc, per-side air stain.
+
+**Data:** Week-2 Pinnacle closes (14 locked NFL rows) are **test-only**. Prod fills missing close from Odds **historical** at kickoff. Client cache **`lvsp:loungeSportsScoreboard:v4`**. Cover underline is **ATS**, not ML winner. Upcoming score slot is spread only, centered.
+
+**Do not:** bump iOS **`MARKETING_VERSION`** off **1.4.95**. Stage `ios/EdgeTilt.xcodeproj/xcshareddata/xcschemes/`. Commit `pill-preview.html` / `src/dev/pillPreview.jsx`. Push `main` / more prod SQL. Prod-backfill week-2 closes unless Ryan asks.
+
+**Open / next:** none unless Ryan smokes **edgetilt.com** (signed-in Lounge, NFL caption → pill → hub, a final shows Pinnacle close + ATS underline). Test smoke still **WAS@DAL** / **IND@KC** on **lvslotpro.com**.
+
+**Canonical files:** `LoungeGameScorePill.jsx`, `LoungeGameHubModal.jsx`, `loungeSportsMatch.js`, `loungeSportsApi.js`, `src/index.css` (`[data-lounge-game-pill]`), Edge `supabase/functions/_shared/loungeSportsScoreboard.ts`. Architecture: **`docs/frontend-architecture.md`** → **`lounge/`**. Backlog Update log **2026-09-21**. Checklist §2 + §4.
+
+**WinTheo:** if you are the next chat, pull first. Default lanes still hold (Mac `ios/`, Windows `src/`). Do not restyle the pill on a drive-by. Take this track only if Ryan says so.
+
+**Current tip (Mac, last session):** web **`1.4.401`**. Branch **`test`**. Promoted **`test` → `main`** **`279b126b`**.
 
 **Week 2 Pinnacle closes are tabled on test.** `lounge_market_files` has 14 locked NFL rows (`close_spread_source=pinnacle`). Smoke Lounge on **WAS@DAL** (`WAS +4 +177` / `DAL -4 -200`, Cowboys covered) and **IND@KC** (`IND +6 +226` / `KC -6 -259`, Colts covered ATS). Week 1 still has no true Pinnacle close.
 
@@ -123,25 +144,25 @@ The agent should treat the following as **standing instructions for this session
 13. **`1.4.351`** ... hamburger → Slots/Poker bounce fix (any platform).
 14. **`1.4.349`** ... iPad landscape minicharts pair + peek.
 
-**How it works (canonical pointers):**
+**How the game pill works (canonical pointers):**
+
+- Match + wash + halo probe: `src/features/lounge/loungeSportsMatch.js` (`nflPillWash` = primary; near-black lift only; `probeLogoWashConflict` / `nflPillWashLikelyAir` gate halo, not stain).
+- Client fetch: `src/utils/loungeSportsApi.js` → Edge **`lounge-sports-scoreboard`** (JWT). Cache **v4**.
+- Pill chrome: `src/index.css` `[data-lounge-game-pill]` multiply stain 0-18% primary; `[data-lounge-game-pill-logo='light']` white halo. Light mode: `html.light [data-lounge-game-pill]` bg `#7a7a84`, text stays white.
+- Hub: `LoungeGameHubModal.jsx`. Composer pin/suppress: `sports_game` jsonb.
+- Edge: `supabase/functions/_shared/loungeSportsScoreboard.ts` (Pinnacle close; historical fill if spread **or** ML missing).
+
+**Prior track still true (landscape, idle ... do not regress):**
 
 - Landscape Slots gate: **`SLOTS_LANDSCAPE_SPLIT_QUERY`** in `src/features/shell/quickLinkDestinations.js` + `useIpadSlotsLandscape.js`.
 - Rail gate (iPad **or** phone landscape): **`IPAD_NAV_RAIL_QUERY`** + `useIpadNavRail.js`. Tall iPad-only auth/shell: **`IPAD_SHELL_QUERY`**.
 - Slots UI: `SlotsScreen.jsx` (`data-slots-landscape-split`), AppShell pane embed + bankroll/chat keep-alive cover via `slotsPaneRect`.
 - Phone landscape density CSS: `src/index.css` under `(orientation: landscape) and (max-height: 520px) and (pointer: coarse)`.
 - Architecture row: **`docs/frontend-architecture.md`** → **`slots/`**.
-
-**Still true / do not regress:**
-
 - Portrait **phone** Slots stays full-screen hub (no split). Portrait phone keeps FAB dock.
 - Gray-900 calculator cards untouched.
 - Phone FAB shortcut cap **2**; iPad rail shortcuts cap **6** (device localStorage, not per-account).
-- Do not push **`main`** unless Ryan asks.
-- Mac owns **`ios/`** + this landscape chrome. Windows owns other **`src/**`** features unless Ryan reassigns.
-
-**Open / next if Ryan continues this track:** live with phone landscape density (title 70%, feed shrink, rail). Tune only if he asks. Poker landscape split was **not** started.
-
-**WinTheo:** leave this track alone. Your separate items stay yours. If you need Mac context, read this block + **`https://lvslotpro.com/theo`**.
+- Poker landscape split was **not** started.
 
 ### Mac Theo 2026-09-20 ... auth wall + first-create tour
 
@@ -732,7 +753,7 @@ Full wording: **`docs/ios-native-bridge.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`). S
 | **Mac** | `ios/` (scaffold), native bridge handlers, Xcode | `src/**` features, Edge/SQL, poker catalog GHA |
 | **Windows** | `src/**`, web bugs/features, catalog runner | `ios/**`, Xcode / signing |
 
-1. **Start / before any edit:** `git fetch` + confirm local matches `origin/test` (pull if behind; stop if diverged). Skim this Pick up here. If shell/bridge work → skim **`docs/ios-native-bridge.md`**. Rule: **`.cursor/rules/sync-origin-before-edit.mdc`**. Fast messages: **https://lvslotpro.com/theo** (Ryan says `read /theo`). Code still needs git.
+1. **Start / before any edit:** `git fetch` + confirm local matches `origin/test` (pull if behind; stop if diverged). Skim this Pick up here (**ACTIVE TRACK 2026-09-21** first). If shell/bridge work → skim **`docs/ios-native-bridge.md`**. Rule: **`.cursor/rules/sync-origin-before-edit.mdc`**. Fast messages: **https://lvslotpro.com/theo** (Ryan says `read /theo`). Code still needs git. **2026-09-21 computer change:** Mac handed off after prod **1.4.401**; next machine pulls **`2d6d9760`**.
 2. **Same-day file ownership:** do not edit the other lane’s files. Conflict → Mac wins `ios/`, Windows wins `src/`.
 3. **Bridge:** new `window.EdgeNative.*` names go in the bridge contract **before** coding both sides. Stub one side first.
 4. **End:** commit + push **`test`**; 2–5 lines here (done / next / bridge notes). Backlog Update log for decisions/ship facts.

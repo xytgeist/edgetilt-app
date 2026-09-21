@@ -6,7 +6,7 @@
 **Dual-agent rules:** this file § Dual-machine + root **`WAKEUP`** + **`AGENTS.md`** (`AGENT_RULE_DUAL_MACHINE_IOS`).  
 **Open project:** `ios/README.md` … prefer **Xcode-beta** for iOS 27 devices. **Debug, ReleaseTest, and Release** (`EdgeTilt Test`, **EdgeTilt Test Fast**, and **EdgeTilt Prod**) target iPhone + iPad (`1,2`) so an iPad gets a real viewport, including App Store archives. Listing needs iPad screenshots before Add for Review.
 
-**Orientations (Mac 2026-09-19):** iPhone supports **portrait + landscape left/right** (`INFOPLIST_KEY_UISupportedInterfaceOrientations` in `ios/project.yml` / `project.pbxproj`). It was portrait-only before **`8b701c92`**. iPad already had all four. Web phone-landscape Slots + Lounge rail live on **`test` ≥ `b843f6ef`** / **`1.4.364`**. Continuity: **`WAKEUP`** → **Mac Theo ACTIVE TRACK 2026-09-20**. Needs a new IPA to rotate in the shell.
+**Orientations (Mac 2026-09-19):** iPhone supports **portrait + landscape left/right** (`INFOPLIST_KEY_UISupportedInterfaceOrientations` in `ios/project.yml` / `project.pbxproj`). It was portrait-only before **`8b701c92`**. iPad already had all four. Web phone-landscape Slots + Lounge rail live on **`test` ≥ `b843f6ef`** / **`1.4.364`**. Continuity: **`WAKEUP`** → **Mac Theo ACTIVE TRACK 2026-09-21** (computer change; Lounge game pills on prod **1.4.401**). Needs a new IPA to rotate in the shell.
 
 ---
 

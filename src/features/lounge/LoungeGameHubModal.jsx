@@ -57,7 +57,7 @@ function TeamLogo({ side, size = 40 }) {
   const letter = String(side?.abbrev || '?').slice(0, 1)
   return (
     <span
-      className="inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-800 text-sm font-bold text-zinc-200"
+      className="inline-flex shrink-0 items-center justify-center text-sm font-bold text-zinc-200"
       style={{ width: size, height: size }}
     >
       {side?.logo ? (
@@ -324,7 +324,7 @@ function PlayList({ game, plays }) {
           <li key={play.id || i} className="py-3">
             <div className="flex items-center gap-2 text-[12px] font-semibold text-zinc-400">
               {side?.logo ? (
-                <img src={side.logo} alt="" className="h-4 w-4 rounded-full object-contain" />
+                <img src={side.logo} alt="" className="h-4 w-4 object-contain" />
               ) : null}
               <span>
                 {play.period != null ? ordinal(play.period) : ''}

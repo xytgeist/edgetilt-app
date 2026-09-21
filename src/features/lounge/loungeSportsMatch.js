@@ -105,11 +105,6 @@ export function nflPillWash(primary, _secondary) {
   return p
 }
 
-/** White halo when the wash is too dark for a navy/black mark to read. */
-export function nflPillLogoHalo(washHex) {
-  return hexLuminance(washHex) < 0.18 ? 'light' : 'dark'
-}
-
 export function enrichLoungeSportsGame(game) {
   if (!game) return game
   const sportKey = String(game.sport_key || '')

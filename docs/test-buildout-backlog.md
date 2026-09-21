@@ -1148,7 +1148,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- **2026-09-21:** **Lounge pill logo halo (Mac).** Inset stain reverted (too hot in the middle). Dark washes get a white drop-shadow halo on the mark. Frontend **`1.4.397`**.
+- **2026-09-21:** **Lounge pill frosted disc (Mac).** Halo reverted. Logos sit on a frosted circle so navy-on-navy still reads. Frontend **`1.4.398`**.
+- **2026-09-21:** **Lounge pill logo halo (Mac).** Inset stain reverted (too hot in the middle). Dark washes get a white drop-shadow halo on the mark. Frontend **`1.4.397`**. Reverted in **1.4.398**.
 - **2026-09-21:** **Lounge pill inset stain (Mac).** Team primary fade starts inboard of the logo so the mark sits on the silver gridiron instead of camouflaging on the jersey color. Frontend **`1.4.396`**. Reverted in **1.4.397**.
 - **2026-09-21:** **Lounge pill score pin + close ML (Mac).** Final scores stay vertically centered with the logos / FINAL; closing spread + ML hang centered under the number. Cache **v4**. Frontend **`1.4.395`**. Redeploy **`lounge-sports-scoreboard`** on **test**.
 - **2026-09-21:** **Lounge pill upcoming center + primary fade (Mac).** Upcoming spreads sit in the middle of each team's number slot. Wash uses catalog primary instead of mixing color2 (Giants were going purple). Frontend **`1.4.394`**.

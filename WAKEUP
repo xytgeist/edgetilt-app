@@ -66,13 +66,14 @@ The agent should treat the following as **standing instructions for this session
 
 **What this track is:** After App Review of **1.4.95**, Mac built **iPad landscape Slots** into a two-column shell, then Ryan insisted on bringing the same idea to **iPhone landscape**. It shipped and he likes it. Tip of that work is on **`test`**.
 
-**Current tip (Mac):** web **`1.4.397`**. Branch **`test`**. Do **not** bump iOS **`MARKETING_VERSION`** off **1.4.95**. Dirty Xcode scheme files under `ios/EdgeTilt.xcodeproj/xcshareddata/xcschemes/` are local only ... **do not stage them**.
+**Current tip (Mac):** web **`1.4.398`**. Branch **`test`**. Do **not** bump iOS **`MARKETING_VERSION`** off **1.4.95**. Dirty Xcode scheme files under `ios/EdgeTilt.xcodeproj/xcshareddata/xcschemes/` are local only ... **do not stage them**.
 
 **Week 2 Pinnacle closes are tabled on test.** `lounge_market_files` has 14 locked NFL rows (`close_spread_source=pinnacle`). Smoke Lounge on **WAS@DAL** (`WAS +4 +177` / `DAL -4 -200`, Cowboys covered) and **IND@KC** (`IND +6 +226` / `KC -6 -259`, Colts covered ATS). Week 1 still has no true Pinnacle close.
 
 **Shipped on this track (newest → older, all Mac unless noted):**
 
-1. **`1.4.397`** ... reverted inset stain. Dark team washes get a white logo halo so navy-on-navy still reads. Bright washes keep the old dark shadow.
+1. **`1.4.398`** ... frosted disc behind pill logos (halo reverted). Original edge stain stays.
+1. **`1.4.397`** ... reverted inset stain. Dark team washes get a white logo halo so navy-on-navy still reads. Bright washes keep the old dark shadow. Reverted in **1.4.398**.
 1. **`1.4.396`** ... pill team stain starts inboard of the logo so the mark sits on the silver gridiron (Giants navy-on-navy fix). Reverted in **1.4.397**.
 1. **`1.4.395`** ... final scores stay on the logo/FINAL midline; close (spread + ML) hangs centered under the score. Client cache **v4**. Redeploy **`lounge-sports-scoreboard`** on **test**.
 1. **`1.4.394`** ... upcoming pill spreads are centered in each team's number slot. Fade uses catalog **primary** (Giants navy / Rams blue), not a mix with color2. Black-only teams still get a slight lift.

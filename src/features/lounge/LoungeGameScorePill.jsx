@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import { LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS } from './loungeFeedAvatar.js'
-import { nflPillWash, nflPillLogoHalo } from './loungeSportsMatch.js'
+import { nflPillWash } from './loungeSportsMatch.js'
 
 const PRE_SPREAD_MAX_PX = 26
 const PRE_SPREAD_MIN_PX = 13
@@ -82,17 +82,17 @@ function scoreLabel(side, status) {
   return String(side.score)
 }
 
-function TeamMark({ side, dimmed, halo = 'dark' }) {
+function TeamMark({ side, dimmed }) {
   const src = side?.logo
   const letter = String(side?.abbrev || side?.mascot || '?').slice(0, 1)
   return (
     <span className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center sm:h-11 sm:w-11">
+      <span data-lounge-game-pill-logo-disc aria-hidden="true" />
       {src ? (
         <img
           src={src}
           alt=""
-          data-lounge-game-pill-logo={halo}
-          className={`h-full w-full object-contain ${dimmed ? 'opacity-55' : ''}`}
+          className={`relative z-[1] h-[78%] w-[78%] object-contain ${dimmed ? 'opacity-55' : ''}`}
           loading="lazy"
           decoding="async"
           onError={(ev) => {
@@ -100,7 +100,7 @@ function TeamMark({ side, dimmed, halo = 'dark' }) {
           }}
         />
       ) : (
-        <span className="text-[13px] font-bold text-white/80">{letter}</span>
+        <span className="relative z-[1] text-[13px] font-bold text-white/80">{letter}</span>
       )}
     </span>
   )
@@ -212,7 +212,7 @@ export default function LoungeGameScorePill({
         <span data-lounge-game-pill-seam aria-hidden="true" />
         <span className="relative z-[3] flex min-h-[5.625rem] items-center gap-2 px-3 py-2.5">
           <span className="flex min-w-0 flex-1 items-center gap-1.5">
-            <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} halo={nflPillLogoHalo(awayColor)} />
+            <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} />
             <ScoreStack
               side={game.away}
               status={game.status}
@@ -235,7 +235,7 @@ export default function LoungeGameScorePill({
               dimmed={game.status === 'post' && !homeWon && !live}
               covered={homeCovered}
             />
-            <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} halo={nflPillLogoHalo(homeColor)} />
+            <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} />
           </span>
           {interactive ? (
             <ChevronRight className="h-5 w-5 shrink-0 text-white/70 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" strokeWidth={2.25} />

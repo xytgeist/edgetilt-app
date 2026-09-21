@@ -62,7 +62,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo 2026-09-21 ... Lounge landscape engagement split
 
-**I am Mac Theo.** Landscape Lounge (same gate as Slots): engaging post detail, minichart, game hub, or external link splits the feed **50/50 beside the rail**. Left keeps portrait-iPhone chrome (no tall-iPad feed pad/scale). Portrait overlays unchanged; lightbox comment sheet stays full-screen. Web **`1.4.405`**.
+**I am Mac Theo.** Landscape Lounge split: **(menu rail + feed) = 50% of the screen**, right engagement pane = the other **50%**. Left keeps phone chrome. Web **`1.4.406`**.
 
 ### Mac Theo 2026-09-21 ... post detail market + sports
 
@@ -70,7 +70,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo ACTIVE TRACK 2026-09-21 ... Lounge landscape split + tablet UI
 
-**I am Mac Theo.** Landscape Lounge engagement split shipped on **`test`** as web **`1.4.405`** (50/50 beside rail + phone chrome). Next: smoke on iPad / phone landscape (post detail, minichart, game pill, external link). Then continue tablet screen-by-screen (Slots pane polish, Poker, Chat, rail panels). Do not bump iOS **`MARKETING_VERSION`** off **1.4.95**. Do not stage dirty Xcode schemes.
+**I am Mac Theo.** Landscape Lounge engagement split shipped on **`test`** as web **`1.4.406`** ((rail+feed)=50vw, pane=50vw + phone chrome). Next: smoke on iPad / phone landscape. Then continue tablet screen-by-screen. Do not bump iOS **`MARKETING_VERSION`** off **1.4.95**. Do not stage dirty Xcode schemes.
 
 **Open / next:** Ryan smokes landscape Lounge split on device / simulator. Portrait regression check on post detail + lightbox comments.
 

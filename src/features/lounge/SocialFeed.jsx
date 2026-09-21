@@ -16674,7 +16674,7 @@ export default function SocialFeed({
         data-lounge-landscape-feed=""
         className={
           loungeLandscapeEngagementActive
-            ? 'flex min-h-0 w-1/2 shrink-0 flex-col border-r border-zinc-800/80'
+            ? 'flex min-h-0 shrink-0 flex-col border-r border-zinc-800/80'
             : 'contents'
         }
       >
@@ -16706,9 +16706,7 @@ export default function SocialFeed({
               ? {
                   left: ipadNavRail ? 'var(--edge-ipad-rail)' : 0,
                   right: 'auto',
-                  width: ipadNavRail
-                    ? 'calc((100% - var(--edge-ipad-rail)) * 0.5)'
-                    : '50%',
+                  width: 'var(--lounge-landscape-feed-col, calc(50vw - var(--edge-ipad-rail, 0px)))',
                   maxWidth: 'none',
                   transform: `translate3d(0, ${loungeTitleBarHideTranslateYPx(loungeTitleReveal, loungeTitleBarHeight, loungeFeedViewportTopPx)}px, 0)`,
                 }
@@ -17616,7 +17614,7 @@ export default function SocialFeed({
       {loungeLandscapeEngagementActive && !loungeDetailInPane ? (
         <div
           data-lounge-landscape-pane=""
-          className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-zinc-950"
+          className="relative flex min-h-0 min-w-0 shrink-0 flex-col overflow-hidden bg-zinc-950"
         >
           {loungeChartInPane ? (
             <LoungeMarketChartModal
@@ -17660,7 +17658,7 @@ export default function SocialFeed({
         <div
           className={
             loungeDetailInPane
-              ? `relative z-10 flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-zinc-950 ${loungePostDetailShellZClass}`
+              ? `relative z-10 flex h-full min-h-0 min-w-0 shrink-0 flex-col overflow-hidden bg-zinc-950 ${loungePostDetailShellZClass}`
               : `fixed inset-0 ${
                   loungePostDetailOverLightbox
                     ? 'bg-transparent'

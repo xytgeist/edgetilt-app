@@ -3922,15 +3922,24 @@ html[data-ipad-nav] [data-edge-status-bar-plate] {
 html.light [data-slots-landscape-tools] {
   border-right-color: #e4e4e7;
 }
-/* Landscape Lounge engagement split: 50/50 beside rail, phone chrome (no tall-iPad pad/scale). */
+/* Landscape Lounge engagement split:
+   (rail + feed) = 50vw, engagement pane = 50vw. Phone chrome on feed (no tall-iPad pad/scale). */
 [data-lounge-feed-root][data-lounge-landscape-split] {
   max-width: none;
   /* Phone chrome … do not inherit full-viewport iPad feed pad. */
   --edge-ipad-feed-pad: 0.75rem;
+  --lounge-landscape-feed-col: calc(50vw - var(--edge-ipad-rail, 0px));
+  --lounge-landscape-pane-col: 50vw;
 }
 [data-lounge-landscape-feed] {
-  width: 50%;
-  flex: 0 0 50%;
+  width: var(--lounge-landscape-feed-col);
+  flex: 0 0 var(--lounge-landscape-feed-col);
+  max-width: none;
+}
+[data-lounge-landscape-pane],
+[data-lounge-detail-in-pane] {
+  width: var(--lounge-landscape-pane-col);
+  flex: 0 0 var(--lounge-landscape-pane-col);
   max-width: none;
 }
 html.light [data-lounge-landscape-feed] {
@@ -3941,10 +3950,9 @@ html.light [data-lounge-detail-in-pane] {
   background-color: #fafafa;
 }
 @media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
-  [data-lounge-landscape-feed] {
-    width: 50% !important;
-    flex: 0 0 50% !important;
-    max-width: none;
+  [data-lounge-feed-root][data-lounge-landscape-split] {
+    --lounge-landscape-feed-col: calc(50vw - var(--edge-ipad-rail, 0px));
+    --lounge-landscape-pane-col: 50vw;
   }
 }
 /* Phone landscape: tighter tool cards so the short height still fits. */

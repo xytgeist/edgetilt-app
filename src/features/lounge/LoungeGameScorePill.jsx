@@ -2,7 +2,7 @@ import { useLayoutEffect, useRef } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import { LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS } from './loungeFeedAvatar.js'
-import { nflPillWash } from './loungeSportsMatch.js'
+import { nflPillWash, nflPillLogoHalo } from './loungeSportsMatch.js'
 
 const PRE_SPREAD_MAX_PX = 26
 const PRE_SPREAD_MIN_PX = 13
@@ -82,7 +82,7 @@ function scoreLabel(side, status) {
   return String(side.score)
 }
 
-function TeamMark({ side, dimmed }) {
+function TeamMark({ side, dimmed, halo = 'dark' }) {
   const src = side?.logo
   const letter = String(side?.abbrev || side?.mascot || '?').slice(0, 1)
   return (
@@ -91,7 +91,8 @@ function TeamMark({ side, dimmed }) {
         <img
           src={src}
           alt=""
-          className={`h-full w-full object-contain drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)] ${dimmed ? 'opacity-55' : ''}`}
+          data-lounge-game-pill-logo={halo}
+          className={`h-full w-full object-contain ${dimmed ? 'opacity-55' : ''}`}
           loading="lazy"
           decoding="async"
           onError={(ev) => {
@@ -211,7 +212,7 @@ export default function LoungeGameScorePill({
         <span data-lounge-game-pill-seam aria-hidden="true" />
         <span className="relative z-[3] flex min-h-[5.625rem] items-center gap-2 px-3 py-2.5">
           <span className="flex min-w-0 flex-1 items-center gap-1.5">
-            <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} />
+            <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} halo={nflPillLogoHalo(awayColor)} />
             <ScoreStack
               side={game.away}
               status={game.status}
@@ -234,7 +235,7 @@ export default function LoungeGameScorePill({
               dimmed={game.status === 'post' && !homeWon && !live}
               covered={homeCovered}
             />
-            <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} />
+            <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} halo={nflPillLogoHalo(homeColor)} />
           </span>
           {interactive ? (
             <ChevronRight className="h-5 w-5 shrink-0 text-white/70 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" strokeWidth={2.25} />

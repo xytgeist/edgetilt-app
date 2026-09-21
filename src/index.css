@@ -3295,26 +3295,23 @@ html.light [data-lounge-market-chart-mini] .text-cyan-300 {
   mix-blend-mode: multiply;
 }
 [data-lounge-game-pill] [data-lounge-game-pill-away] {
-  /* Stain starts inboard of the logo so the mark sits on the silver gridiron. */
   background: linear-gradient(
     108deg,
-    transparent 0%,
-    transparent 14%,
-    color-mix(in srgb, var(--pill-away, #3f3f46) 40%, transparent) 24%,
-    var(--pill-away, #3f3f46) 38%,
-    color-mix(in srgb, var(--pill-away, #3f3f46) 58%, transparent) 54%,
-    transparent 70%
+    var(--pill-away, #3f3f46) 0%,
+    var(--pill-away, #3f3f46) 18%,
+    color-mix(in srgb, var(--pill-away, #3f3f46) 72%, transparent) 38%,
+    color-mix(in srgb, var(--pill-away, #3f3f46) 22%, transparent) 52%,
+    transparent 68%
   );
 }
 [data-lounge-game-pill] [data-lounge-game-pill-home] {
   background: linear-gradient(
     252deg,
-    transparent 0%,
-    transparent 14%,
-    color-mix(in srgb, var(--pill-home, #3f3f46) 40%, transparent) 24%,
-    var(--pill-home, #3f3f46) 38%,
-    color-mix(in srgb, var(--pill-home, #3f3f46) 58%, transparent) 54%,
-    transparent 70%
+    var(--pill-home, #3f3f46) 0%,
+    var(--pill-home, #3f3f46) 18%,
+    color-mix(in srgb, var(--pill-home, #3f3f46) 72%, transparent) 38%,
+    color-mix(in srgb, var(--pill-home, #3f3f46) 22%, transparent) 52%,
+    transparent 68%
   );
 }
 [data-lounge-game-pill] [data-lounge-game-pill-seam] {
@@ -3360,6 +3357,14 @@ html.light [data-lounge-game-pill] .text-zinc-100 {
 html.light [data-lounge-game-pill-spread-cover] {
   color: #fff !important;
   border-color: #fff !important;
+}
+[data-lounge-game-pill] [data-lounge-game-pill-logo] {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.65));
+}
+[data-lounge-game-pill] [data-lounge-game-pill-logo='light'] {
+  filter:
+    drop-shadow(0 0 0.7px #fff)
+    drop-shadow(0 0 1.6px rgba(255, 255, 255, 0.8));
 }
 html.light [data-lounge-composer-game-pill] > button {
   background-color: rgba(24, 24, 27, 0.88) !important;

@@ -30,6 +30,10 @@ export type MarketFileQuote = {
   overPrice: number | null
   underPrice: number | null
   totalSource: string | null
+  /** American moneyline (Odds API h2h). */
+  homeMl: number | null
+  awayMl: number | null
+  mlSource: string | null
 }
 
 export type MarketFileRow = {
@@ -69,6 +73,18 @@ export type MarketFileRow = {
   close_under_price: number | null
   close_total_at: string | null
   close_total_source: string | null
+  open_home_ml: number | null
+  open_away_ml: number | null
+  open_ml_at: string | null
+  open_ml_source: string | null
+  current_home_ml: number | null
+  current_away_ml: number | null
+  current_ml_at: string | null
+  current_ml_source: string | null
+  close_home_ml: number | null
+  close_away_ml: number | null
+  close_ml_at: string | null
+  close_ml_source: string | null
   updated_at: string
 }
 
@@ -188,14 +204,18 @@ function extractSharpQuote(
     if (!book) continue
     const spreads = bookMarket(book, 'spreads')
     const totals = bookMarket(book, 'totals')
+    const h2h = bookMarket(book, 'h2h')
     const homeOut = outcomeFor(spreads, home)
     const awayOut = outcomeFor(spreads, away)
     const overOut = outcomeFor(totals, 'Over')
     const underOut = outcomeFor(totals, 'Under')
+    const homeMlOut = outcomeFor(h2h, home)
+    const awayMlOut = outcomeFor(h2h, away)
 
     const hasSpread = homeOut?.point != null && awayOut != null
     const hasTotal = overOut?.point != null && underOut != null
-    if (!hasSpread && !hasTotal) continue
+    const hasMl = homeMlOut != null && awayMlOut != null
+    if (!hasSpread && !hasTotal && !hasMl) continue
 
     return {
       spreadHome: hasSpread ? roundHalf(homeOut!.point!) : null,
@@ -206,6 +226,9 @@ function extractSharpQuote(
       overPrice: hasTotal ? overOut!.price : null,
       underPrice: hasTotal ? underOut!.price : null,
       totalSource: hasTotal ? want : null,
+      homeMl: hasMl ? homeMlOut!.price : null,
+      awayMl: hasMl ? awayMlOut!.price : null,
+      mlSource: hasMl ? want : null,
     }
   }
   return null
@@ -222,14 +245,19 @@ function extractConsensusQuote(
   const totals: number[] = []
   const overPrices: number[] = []
   const underPrices: number[] = []
+  const homeMls: number[] = []
+  const awayMls: number[] = []
 
   for (const book of books) {
     const spreads = bookMarket(book, 'spreads')
     const totalsM = bookMarket(book, 'totals')
+    const h2h = bookMarket(book, 'h2h')
     const homeOut = outcomeFor(spreads, home)
     const awayOut = outcomeFor(spreads, away)
     const overOut = outcomeFor(totalsM, 'Over')
     const underOut = outcomeFor(totalsM, 'Under')
+    const homeMlOut = outcomeFor(h2h, home)
+    const awayMlOut = outcomeFor(h2h, away)
     if (homeOut?.point != null) {
       homePts.push(homeOut.point)
       homePrices.push(homeOut.price)
@@ -240,10 +268,14 @@ function extractConsensusQuote(
       overPrices.push(overOut.price)
     }
     if (underOut) underPrices.push(underOut.price)
+    if (homeMlOut) homeMls.push(homeMlOut.price)
+    if (awayMlOut) awayMls.push(awayMlOut.price)
   }
 
   const spreadHome = median(homePts)
   const total = median(totals)
+  const homeMl = median(homeMls)
+  const awayMl = median(awayMls)
   return {
     spreadHome: spreadHome != null ? roundHalf(spreadHome) : null,
     spreadHomePrice: median(homePrices),
@@ -253,6 +285,9 @@ function extractConsensusQuote(
     overPrice: median(overPrices),
     underPrice: median(underPrices),
     totalSource: total != null ? 'consensus' : null,
+    homeMl: homeMl != null ? Math.round(homeMl) : null,
+    awayMl: awayMl != null ? Math.round(awayMl) : null,
+    mlSource: homeMl != null && awayMl != null ? 'consensus' : null,
   }
 }
 
@@ -267,6 +302,12 @@ export type PregameTotalQuote = {
   total: number
   overPrice: number
   underPrice: number
+  source: string
+}
+
+export type PregameMlQuote = {
+  homeMl: number
+  awayMl: number
   source: string
 }
 
@@ -302,6 +343,26 @@ export function resolvePregameSpreadFromFile(
     awayPrice: Number.isFinite(awayPrice) ? awayPrice : -110,
     source,
   }
+}
+
+/** Closing / pregame moneyline from the market file (Odds API h2h). */
+export function resolvePregameMlFromFile(
+  file: MarketFileRow | null | undefined,
+  commenceIso: string,
+  nowMs = Date.now(),
+): PregameMlQuote | null {
+  if (!file) return null
+  const kickMs = Date.parse(commenceIso)
+  const useClose =
+    file.close_locked === true
+    || (Number.isFinite(kickMs) && nowMs >= kickMs - MARKET_FILE_CLOSE_LOCK_BEFORE_MS)
+  const homeMl = useClose ? file.close_home_ml : (file.current_home_ml ?? file.close_home_ml)
+  const awayMl = useClose ? file.close_away_ml : (file.current_away_ml ?? file.close_away_ml)
+  if (homeMl == null || awayMl == null || !Number.isFinite(homeMl) || !Number.isFinite(awayMl)) return null
+  const source = useClose
+    ? (file.close_ml_source || 'close')
+    : (file.current_ml_source || file.close_ml_source || 'current')
+  return { homeMl, awayMl, source }
 }
 
 export function resolvePregameTotalFromFile(
@@ -345,7 +406,7 @@ export function extractMarketFileQuote(event: OddsEvent): MarketFileQuote | null
   const consensus = extractConsensusQuote(books, home, away)
 
   if (!sharp) {
-    if (consensus.spreadHome == null && consensus.total == null) return null
+    if (consensus.spreadHome == null && consensus.total == null && consensus.homeMl == null) return null
     return consensus
   }
 
@@ -358,6 +419,9 @@ export function extractMarketFileQuote(event: OddsEvent): MarketFileQuote | null
     overPrice: sharp.overPrice ?? consensus.overPrice,
     underPrice: sharp.underPrice ?? consensus.underPrice,
     totalSource: sharp.totalSource ?? consensus.totalSource,
+    homeMl: sharp.homeMl ?? consensus.homeMl,
+    awayMl: sharp.awayMl ?? consensus.awayMl,
+    mlSource: sharp.mlSource ?? consensus.mlSource,
   }
 }
 
@@ -401,6 +465,11 @@ export function mergeMarketFileRow(args: {
   const openTotalAt = prev?.open_total_at ?? (args.quote.total != null ? nowIso : null)
   const openTotalSource = prev?.open_total_source ?? args.quote.totalSource
 
+  const openHomeMl = prev?.open_home_ml ?? intOrNull(args.quote.homeMl)
+  const openAwayMl = prev?.open_away_ml ?? intOrNull(args.quote.awayMl)
+  const openMlAt = prev?.open_ml_at ?? (args.quote.homeMl != null ? nowIso : null)
+  const openMlSource = prev?.open_ml_source ?? args.quote.mlSource
+
   let currentSpreadHome = args.quote.spreadHome ?? prev?.current_spread_home ?? null
   let currentSpreadHomePrice = intOrNull(args.quote.spreadHomePrice) ?? prev?.current_spread_home_price ?? null
   let currentSpreadAwayPrice = intOrNull(args.quote.spreadAwayPrice) ?? prev?.current_spread_away_price ?? null
@@ -412,6 +481,11 @@ export function mergeMarketFileRow(args: {
   let currentUnderPrice = intOrNull(args.quote.underPrice) ?? prev?.current_under_price ?? null
   let currentTotalAt = args.quote.total != null ? nowIso : prev?.current_total_at ?? null
   let currentTotalSource = args.quote.totalSource ?? prev?.current_total_source ?? null
+
+  let currentHomeMl = intOrNull(args.quote.homeMl) ?? prev?.current_home_ml ?? null
+  let currentAwayMl = intOrNull(args.quote.awayMl) ?? prev?.current_away_ml ?? null
+  let currentMlAt = args.quote.homeMl != null ? nowIso : prev?.current_ml_at ?? null
+  let currentMlSource = args.quote.mlSource ?? prev?.current_ml_source ?? null
 
   // Once locked, freeze current as the last pre-lock quote for grading clarity.
   if (locked) {
@@ -425,6 +499,10 @@ export function mergeMarketFileRow(args: {
     currentUnderPrice = prev?.current_under_price ?? currentUnderPrice
     currentTotalAt = prev?.current_total_at ?? currentTotalAt
     currentTotalSource = prev?.current_total_source ?? currentTotalSource
+    currentHomeMl = prev?.current_home_ml ?? currentHomeMl
+    currentAwayMl = prev?.current_away_ml ?? currentAwayMl
+    currentMlAt = prev?.current_ml_at ?? currentMlAt
+    currentMlSource = prev?.current_ml_source ?? currentMlSource
   }
 
   let closeSpreadHome = prev?.close_spread_home ?? null
@@ -437,6 +515,10 @@ export function mergeMarketFileRow(args: {
   let closeUnderPrice = prev?.close_under_price ?? null
   let closeTotalAt = prev?.close_total_at ?? null
   let closeTotalSource = prev?.close_total_source ?? null
+  let closeHomeMl = prev?.close_home_ml ?? null
+  let closeAwayMl = prev?.close_away_ml ?? null
+  let closeMlAt = prev?.close_ml_at ?? null
+  let closeMlSource = prev?.close_ml_source ?? null
   let closeLocked = locked
 
   if (!closeLocked && shouldLockClose(commence)) {
@@ -451,6 +533,27 @@ export function mergeMarketFileRow(args: {
     closeUnderPrice = currentUnderPrice
     closeTotalAt = currentTotalAt || nowIso
     closeTotalSource = currentTotalSource
+    closeHomeMl = currentHomeMl
+    closeAwayMl = currentAwayMl
+    closeMlAt = currentMlAt || nowIso
+    closeMlSource = currentMlSource
+  }
+
+  // Locked rows that predate ML columns: fill close ML once when a quote arrives.
+  if (
+    closeLocked
+    && (closeHomeMl == null || closeAwayMl == null)
+    && intOrNull(args.quote.homeMl) != null
+    && intOrNull(args.quote.awayMl) != null
+  ) {
+    closeHomeMl = intOrNull(args.quote.homeMl)
+    closeAwayMl = intOrNull(args.quote.awayMl)
+    closeMlAt = nowIso
+    closeMlSource = args.quote.mlSource || 'backfill'
+    if (currentHomeMl == null) currentHomeMl = closeHomeMl
+    if (currentAwayMl == null) currentAwayMl = closeAwayMl
+    if (!currentMlAt) currentMlAt = closeMlAt
+    if (!currentMlSource) currentMlSource = closeMlSource
   }
 
   return {
@@ -490,6 +593,18 @@ export function mergeMarketFileRow(args: {
     close_under_price: closeUnderPrice,
     close_total_at: closeTotalAt,
     close_total_source: closeTotalSource,
+    open_home_ml: openHomeMl,
+    open_away_ml: openAwayMl,
+    open_ml_at: openMlAt,
+    open_ml_source: openMlSource,
+    current_home_ml: currentHomeMl,
+    current_away_ml: currentAwayMl,
+    current_ml_at: currentMlAt,
+    current_ml_source: currentMlSource,
+    close_home_ml: closeHomeMl,
+    close_away_ml: closeAwayMl,
+    close_ml_at: closeMlAt,
+    close_ml_source: closeMlSource,
     updated_at: nowIso,
   }
 }
@@ -532,6 +647,18 @@ function rowFromDb(row: Record<string, unknown>): MarketFileRow {
     close_under_price: row.close_under_price != null ? Number(row.close_under_price) : null,
     close_total_at: row.close_total_at != null ? String(row.close_total_at) : null,
     close_total_source: row.close_total_source != null ? String(row.close_total_source) : null,
+    open_home_ml: row.open_home_ml != null ? Number(row.open_home_ml) : null,
+    open_away_ml: row.open_away_ml != null ? Number(row.open_away_ml) : null,
+    open_ml_at: row.open_ml_at != null ? String(row.open_ml_at) : null,
+    open_ml_source: row.open_ml_source != null ? String(row.open_ml_source) : null,
+    current_home_ml: row.current_home_ml != null ? Number(row.current_home_ml) : null,
+    current_away_ml: row.current_away_ml != null ? Number(row.current_away_ml) : null,
+    current_ml_at: row.current_ml_at != null ? String(row.current_ml_at) : null,
+    current_ml_source: row.current_ml_source != null ? String(row.current_ml_source) : null,
+    close_home_ml: row.close_home_ml != null ? Number(row.close_home_ml) : null,
+    close_away_ml: row.close_away_ml != null ? Number(row.close_away_ml) : null,
+    close_ml_at: row.close_ml_at != null ? String(row.close_ml_at) : null,
+    close_ml_source: row.close_ml_source != null ? String(row.close_ml_source) : null,
     updated_at: String(row.updated_at || ''),
   }
 }
@@ -571,7 +698,7 @@ export async function upsertMarketFilesFromEvents(
   for (const event of events) {
     const quote = extractMarketFileQuote(event)
     if (!quote) continue
-    if (quote.spreadHome == null && quote.total == null) continue
+    if (quote.spreadHome == null && quote.total == null && quote.homeMl == null) continue
     const merged = mergeMarketFileRow({
       existing: existingById.get(String(event.id || '').trim()) || null,
       sportKey,

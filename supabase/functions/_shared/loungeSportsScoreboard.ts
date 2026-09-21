@@ -9,6 +9,7 @@ import { fetchSportOdds, fetchSportOddsHistorical, ptTodayDate } from './loungeB
 import type { OddsEvent } from './loungeBotOddsCaption.ts'
 import {
   loadMarketFilesForSportWindow,
+  resolvePregameMlFromFile,
   resolvePregameSpreadFromFile,
   upsertMarketFilesFromEvents,
   type MarketFileRow,
@@ -780,15 +781,26 @@ async function applyMarketFileCloses(
   return games.map((game) => {
     const file = files.find((row) => fileMatchesGame(row, game))
     if (!file) return game
-    const quote = resolvePregameSpreadFromFile(file, game.commence_time)
-    if (!quote) return game
-    if (game.status !== 'post' && gameHasSpread(game)) return game
-    const pair = pairSpreads(quote.homePoint, quote.homePoint != null ? -quote.homePoint : null)
-    return {
-      ...game,
-      home: { ...game.home, spread: pair.home ?? game.home.spread ?? null },
-      away: { ...game.away, spread: pair.away ?? game.away.spread ?? null },
+    let next = game
+    const spreadQuote = resolvePregameSpreadFromFile(file, game.commence_time)
+    if (spreadQuote && (game.status === 'post' || !gameHasSpread(game))) {
+      const pair = pairSpreads(spreadQuote.homePoint, spreadQuote.homePoint != null ? -spreadQuote.homePoint : null)
+      next = {
+        ...next,
+        home: { ...next.home, spread: pair.home ?? next.home.spread ?? null },
+        away: { ...next.away, spread: pair.away ?? next.away.spread ?? null },
+      }
     }
+    const mlQuote = resolvePregameMlFromFile(file, game.commence_time)
+    const needMl = numOrNull(next.home?.ml) == null || numOrNull(next.away?.ml) == null
+    if (mlQuote && (game.status === 'post' || needMl)) {
+      next = {
+        ...next,
+        home: { ...next.home, ml: mlQuote.homeMl ?? next.home.ml ?? null },
+        away: { ...next.away, ml: mlQuote.awayMl ?? next.away.ml ?? null },
+      }
+    }
+    return next
   })
 }
 

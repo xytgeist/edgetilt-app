@@ -1148,7 +1148,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- **2026-09-21:** **Lounge pill air stain per logo (Mac).** Rich multiply stain by default. Sample the PNG vs the wash and only air that side when the mark would camouflage (NYG/LAR). KC/MIA stay saturated. Frontend **`1.4.400`**.
+- **2026-09-21:** **Lounge pill halo when needed (Mac).** Original rich stain restored. Small white logo halo only when the PNG camouflages on that wash. Frontend **`1.4.401`**.
+- **2026-09-21:** **Lounge pill air stain per logo (Mac).** Rich multiply stain by default. Sample the PNG vs the wash and only air that side when the mark would camouflage (NYG/LAR). KC/MIA stay saturated. Frontend **`1.4.400`**. Reverted stain-air in **1.4.401**.
 - **2026-09-21:** **Lounge pill light stain (Mac).** Same team primary at ~32% opacity, no multiply, discs off. Logos sit on a light tint of the jersey color. Frontend **`1.4.399`**. Replaced by per-side air in **1.4.400**.
 - **2026-09-21:** **Lounge pill frosted disc (Mac).** Halo reverted. Logos sit on a frosted circle so navy-on-navy still reads. Frontend **`1.4.398`**. Reverted in **1.4.399**.
 - **2026-09-21:** **Lounge pill logo halo (Mac).** Inset stain reverted (too hot in the middle). Dark washes get a white drop-shadow halo on the mark. Frontend **`1.4.397`**. Reverted in **1.4.398**.

@@ -3389,10 +3389,20 @@ html.light [data-lounge-game-pill] .text-zinc-100 {
   pointer-events: none;
 }
 [data-lounge-game-pill-score-gutter] {
+  position: relative;
   display: flex;
   min-width: 0;
   align-items: center;
   justify-content: center;
+}
+/* Pin the score bundle to the geometric center of the logo↔status gutter. */
+[data-lounge-game-pill-score-gutter] > [data-lounge-game-pill-num='fit'] {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
 }
 [data-lounge-game-pill-status] {
   display: flex;

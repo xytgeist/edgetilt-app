@@ -127,9 +127,9 @@ function ScoreStack({ side, status, dimmed, covered }) {
   const primaryClass = `whitespace-nowrap font-bold leading-none tabular-nums drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
     dimmed ? 'text-white/55' : 'text-white'
   }`
-  // FitPrimary measures the score gutter (~55% fill). Wrapper shrink-wraps for under-line.
+  // FitPrimary measures the score gutter (~55% fill). No overflow-hidden — that clipped the closing under-line.
   return (
-    <span data-lounge-game-pill-num="fit" className="flex w-full min-w-0 justify-center overflow-hidden">
+    <span data-lounge-game-pill-num="fit" className="flex w-full min-w-0 items-center justify-center">
       <span className="relative inline-block max-w-full">
         <FitPrimary className={primaryClass} align="center">
           {primary}

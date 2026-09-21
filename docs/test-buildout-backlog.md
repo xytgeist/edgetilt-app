@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Sports pill restore closing under-line + absolute gutter center (Windows).** `overflow-hidden` on the score stack was clipping spread/ML under the number (looked “gone”). Score bundle is `position:absolute; inset:0; flex center` in the logo↔FINAL gutter. Closing ML still missing in data: **0/14** locked `lounge_market_files` rows have `close_*_ml` (WAS@DAL included). Frontend **`1.4.445`**.
 - **2026-09-21:** **Sports pill inset logos + scale score to gutter (Windows).** Logos were flush after reclaiming chrome. Side pad uses `clamp(...cqi...)`. Pre + final primaries both use FitPrimary sized to ~55% of the logo↔FINAL gutter (13-28px). Frontend **`1.4.443`**.
 - **2026-09-21:** **Sports pill reclaim gutter width on narrow carousel cards (Windows).** Wide singles were fine; multi slides (~72% + peek) starved `1fr` gutters because left spacer + chevron columns + fat status ate the card. Chevron is absolute; 5-col grid; tighter pad/status; container query shrinks logos under 300px. Frontend **`1.4.442`**.
 - **2026-09-21:** **Sports pill logo↔FINAL gutters via CSS grid (Windows).** Mobile was still logo-glued while desktop looked centered (flex-in-`<button>` gutters collapsing on iOS / stale PWA). Row is now a 7-col grid with `minmax(0,1fr)` score gutters + `justify-content:center`. Button forced `display:block; width:100%`. Frontend **`1.4.441`**. *(Narrow-carousel follow-up **1.4.442**.)*

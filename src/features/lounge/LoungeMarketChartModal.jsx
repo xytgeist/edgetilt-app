@@ -2804,7 +2804,7 @@ export default function LoungeMarketChartModal({
         onPointerCancel={embedded ? undefined : onSheetPointerCancel}
       >
         {embedded ? (
-          <div className={`flex shrink-0 items-center gap-1 border-b px-2 py-1.5 ${borderClass}`}>
+          <div className="flex shrink-0 items-center gap-1 px-2 py-1.5">
             <button
               type="button"
               aria-label="Close chart"

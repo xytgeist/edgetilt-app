@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Lounge landscape chart pane header (Mac).** Drop the border under the embedded Chart back row (landscape pane only). Frontend **`1.4.411`**. Web only.
 - **2026-09-21:** **Lounge landscape chart = Quick sheet in pane (Mac).** Minichart open shows the same Quick chart UI (header/chart/news/posts) in the right pane ... not Advanced, not a modal overlay. Advanced still opens on tap. Frontend **`1.4.409`**. Web only.
 - **2026-09-21:** **Lounge landscape chart fills the pane (Mac).** Minichart open in landscape uses the Advanced chart **in-pane** (no bottom-sheet modal / no fullscreen portal). Back closes the engagement. Frontend **`1.4.408`**. Web only.
 - **2026-09-21:** **Sports cards tap-to-include + multi (Windows).** Composer suggests up to 4 games with **Tap to include** (default off). Feed paints only pinned `sports_game.event_ids` (no caption auto-match). Multi = minichart carousel (`LoungeGameScorePillStrip`). Frontend **`1.4.407`**.

@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Composer sports match rules (Windows).** Trailing-space commit (`Rams `); one card per team/matchup; 48h last-vs-next for one-team; specific matchup replaces vague card; rounded slide shells. Frontend **`1.4.420`**.
 - **2026-09-21:** **Lounge landscape feed-column minichart peek (Mac).** Feed strips were freezing measure opts before split opened, so the left column stayed full-width while detail peeked. Measure now detects `data-lounge-landscape-split` live + MutationObserver. Frontend **`1.4.419`**. Web only.
 - **2026-09-21:** **Lounge landscape multi-minichart peek punch (Mac).** Split/detail carousels: slide ~72% of column + 18rem hard cap so the next card peeks hard. Mac landscape split was never reverted ... WinTheo only undid their sports carousel experiment. Frontend **`1.4.418`**. Web only.
 - **2026-09-21:** **Composer sports carousel full-bleed (Windows).** Multi game-card suggest uses the same viewport full-bleed strip as feed post images (peek while sliding). Frontend **`1.4.417`**.

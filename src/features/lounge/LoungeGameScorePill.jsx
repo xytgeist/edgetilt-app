@@ -114,34 +114,36 @@ function ScoreStack({ side, status, align, dimmed, covered }) {
   const primaryClass = `whitespace-nowrap font-bold leading-none tabular-nums drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
     pre ? '' : 'text-[26px]'
   } ${dimmed ? 'text-white/55' : 'text-white'}`
-  return (
-    <span
-      data-lounge-game-pill-num={pre ? 'fit' : undefined}
-      className={`flex min-w-0 flex-1 flex-col ${
-        pre ? 'items-center text-center' : align === 'end' ? 'items-end' : 'items-start'
-      }`}
-    >
-      {pre ? (
+  if (pre) {
+    return (
+      <span data-lounge-game-pill-num="fit" className="flex min-w-0 flex-1 flex-col items-center text-center">
         <span className="flex w-full min-w-0 justify-center overflow-hidden">
           <FitPrimary className={primaryClass} align="center">
             {primary}
           </FitPrimary>
         </span>
-      ) : (
+      </span>
+    )
+  }
+  return (
+    <span
+      className={`flex min-w-0 flex-1 items-center ${align === 'end' ? 'justify-end' : 'justify-start'}`}
+    >
+      <span className="relative inline-flex items-center justify-center">
         <span data-lounge-game-pill-primary className={primaryClass}>
           {primary}
         </span>
-      )}
-      {underLine ? (
-        <span
-          data-lounge-game-pill-spread-cover={covered ? '' : undefined}
-          className={`mt-1 whitespace-nowrap text-[11px] font-semibold leading-none tabular-nums tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
-            covered ? 'border-b-2 border-white pb-px' : ''
-          }`}
-        >
-          {underLine}
-        </span>
-      ) : null}
+        {underLine ? (
+          <span
+            data-lounge-game-pill-spread-cover={covered ? '' : undefined}
+            className={`absolute left-1/2 top-full z-[1] mt-0.5 -translate-x-1/2 whitespace-nowrap text-center text-[11px] font-semibold leading-none tabular-nums tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
+              covered ? 'border-b-2 border-white pb-px' : ''
+            }`}
+          >
+            {underLine}
+          </span>
+        ) : null}
+      </span>
     </span>
   )
 }
@@ -173,6 +175,8 @@ export default function LoungeGameScorePill({
   const Tag = interactive ? 'button' : 'div'
   const awaySpread = formatLoungeSportsSpread(game.away?.spread)
   const homeSpread = formatLoungeSportsSpread(game.home?.spread)
+  const awayMl = formatLoungeSportsMoneyline(game.away?.ml)
+  const homeMl = formatLoungeSportsMoneyline(game.home?.ml)
   const coverNote = homeCovered
     ? `${game.home?.abbrev} covered`
     : awayCovered
@@ -180,7 +184,9 @@ export default function LoungeGameScorePill({
       : cover.push && game.status === 'post'
         ? 'push'
         : ''
-  const label = `${game.away?.abbrev} ${scoreLabel(game.away, game.status)}${awaySpread && game.status !== 'pre' ? ` ${awaySpread}` : ''} ${game.home?.abbrev} ${scoreLabel(game.home, game.status)}${homeSpread && game.status !== 'pre' ? ` ${homeSpread}` : ''} ${game.status_label}${coverNote ? ` ${coverNote}` : ''}`
+  const awayLine = game.status !== 'pre' ? [awaySpread, awayMl].filter(Boolean).join(' ') : ''
+  const homeLine = game.status !== 'pre' ? [homeSpread, homeMl].filter(Boolean).join(' ') : ''
+  const label = `${game.away?.abbrev} ${scoreLabel(game.away, game.status)}${awayLine ? ` ${awayLine}` : ''} ${game.home?.abbrev} ${scoreLabel(game.home, game.status)}${homeLine ? ` ${homeLine}` : ''} ${game.status_label}${coverNote ? ` ${coverNote}` : ''}`
 
   return (
     <div className={`relative ${className}`.trim()} data-lounge-composer-game-pill={dismissible ? '' : undefined}>

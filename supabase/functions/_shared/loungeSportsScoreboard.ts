@@ -645,8 +645,16 @@ type OddsEventRow = {
 }
 
 function outcomePoint(outcomes: Array<{ name?: string; price?: number; point?: number }>, name: string) {
-  const want = name.toLowerCase()
-  const row = outcomes.find((o) => String(o.name || '').trim().toLowerCase() === want)
+  const want = String(name || '').trim().toLowerCase()
+  if (!want) return { price: null, point: null }
+  const wantLast = want.split(/\s+/).pop() || want
+  const row = outcomes.find((o) => {
+    const n = String(o.name || '').trim().toLowerCase()
+    if (!n) return false
+    if (n === want) return true
+    const last = n.split(/\s+/).pop() || n
+    return Boolean(wantLast) && wantLast.length >= 4 && (last === wantLast || n.endsWith(wantLast) || want.endsWith(last))
+  })
   return {
     price: numOrNull(row?.price),
     point: numOrNull(row?.point),
@@ -725,7 +733,9 @@ function applyPinnacleQuotes(
   const events = Array.isArray(pack?.events) ? pack!.events as OddsEventRow[] : []
   if (!events.length) return games
   return games.map((game) => {
-    if (onlyIfMissing && gameHasSpread(game) && numOrNull(game.home?.ml) != null) return game
+    const needSpread = !gameHasSpread(game)
+    const needMl = numOrNull(game.home?.ml) == null || numOrNull(game.away?.ml) == null
+    if (onlyIfMissing && !needSpread && !needMl) return game
     const matched = events.find((ev) =>
       sameNflSide(String(ev.home_team || ''), game.home) && sameNflSide(String(ev.away_team || ''), game.away)
     )
@@ -783,7 +793,7 @@ async function applyMarketFileCloses(
 }
 
 const HIST_ODDS_CACHE_MS = 12 * 60 * 60 * 1000
-const histOddsCache = new Map<string, { at: number; pack: { events: OddsEventRow[] } }>()
+const histOddsCache = new Map<string, { at: number; pack: { events: OddsEventRow[] }; ttl: number }>()
 
 function kickoffSnapshotIso(commence: string): string {
   const t = Date.parse(commence)
@@ -792,10 +802,16 @@ function kickoffSnapshotIso(commence: string): string {
   return new Date(Math.max(0, bucket)).toISOString().replace(/\.\d{3}Z$/, 'Z')
 }
 
+function eventHasH2h(ev: OddsEventRow): boolean {
+  return (ev.bookmakers || []).some((book) =>
+    (book.markets || []).some((m) => String(m.key || '') === 'h2h' && (m.outcomes || []).length >= 2),
+  )
+}
+
 async function cachedHistoricalPinnacle(sportKey: string, dateIso: string) {
-  const key = `pin|${sportKey}|${dateIso}`
+  const key = `pinh2h|${sportKey}|${dateIso}`
   const cached = histOddsCache.get(key)
-  if (cached && Date.now() - cached.at < HIST_ODDS_CACHE_MS) return cached.pack
+  if (cached && Date.now() - cached.at < cached.ttl) return cached.pack
   const pack = await fetchSportOddsHistorical(
     sportKey,
     dateIso,
@@ -805,7 +821,10 @@ async function cachedHistoricalPinnacle(sportKey: string, dateIso: string) {
   ).catch(() => null)
   const events = Array.isArray(pack?.events) ? pack!.events as OddsEventRow[] : []
   const next = { events }
-  if (events.length) histOddsCache.set(key, { at: Date.now(), pack: next })
+  if (events.length) {
+    const ttl = events.some(eventHasH2h) ? HIST_ODDS_CACHE_MS : 3 * 60 * 1000
+    histOddsCache.set(key, { at: Date.now(), pack: next, ttl })
+  }
   return next
 }
 

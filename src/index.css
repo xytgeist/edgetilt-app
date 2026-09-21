@@ -3275,6 +3275,8 @@ html.light [data-lounge-market-chart-mini] .text-cyan-300 {
   display: block;
   width: 100%;
   background-color: #7a7a84;
+  container-type: inline-size;
+  container-name: lounge-game-pill;
 }
 [data-lounge-game-pill] [data-lounge-game-pill-field],
 [data-lounge-game-pill] [data-lounge-game-pill-away],
@@ -3357,27 +3359,33 @@ html.light [data-lounge-game-pill] .text-zinc-100 {
   letter-spacing: -0.04em;
 }
 /*
-  Flat 7-col grid: edge | logo | score gutter | status | score gutter | logo | edge.
-  Grid (not flex) so iOS Safari / WKWebView cannot collapse the logo↔FINAL gutters.
+  5-col grid: logo | score gutter | status | score gutter | logo.
+  Chevron is absolute (not a grid column) so narrow carousel slides keep logo↔FINAL gutters.
 */
 [data-lounge-game-pill-row] {
   position: relative;
   z-index: 3;
   display: grid;
-  grid-template-columns: 1.25rem auto minmax(0, 1fr) 4.75rem minmax(0, 1fr) auto 1.25rem;
+  grid-template-columns: auto minmax(0, 1fr) minmax(3rem, 4.25rem) minmax(0, 1fr) auto;
   align-items: center;
-  column-gap: 0.375rem;
+  column-gap: 0.25rem;
   width: 100%;
   min-height: 5.625rem;
-  padding: 0.625rem 0.75rem;
+  padding: 0.625rem 0.5rem;
   box-sizing: border-box;
 }
-[data-lounge-game-pill-edge] {
+[data-lounge-game-pill-hub] [data-lounge-game-pill-row] {
+  /* Room for absolute chevron without eating a grid column. */
+  padding-right: 1.65rem;
+}
+[data-lounge-game-pill-chevron] {
+  position: absolute;
+  top: 50%;
+  right: 0.35rem;
+  z-index: 4;
   display: flex;
-  width: 1.25rem;
-  height: 1.25rem;
-  align-items: center;
-  justify-content: center;
+  transform: translateY(-50%);
+  pointer-events: none;
 }
 [data-lounge-game-pill-score-gutter] {
   display: flex;
@@ -3387,11 +3395,45 @@ html.light [data-lounge-game-pill] .text-zinc-100 {
 }
 [data-lounge-game-pill-status] {
   display: flex;
-  width: 4.75rem;
+  width: 100%;
+  max-width: 4.25rem;
   flex-direction: column;
   align-items: center;
-  padding: 0 0.25rem;
+  justify-self: center;
+  padding: 0 0.15rem;
   box-sizing: border-box;
+}
+[data-lounge-game-pill-mark] {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+@media (min-width: 640px) {
+  [data-lounge-game-pill-mark] {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+}
+@container lounge-game-pill (max-width: 300px) {
+  [data-lounge-game-pill-row] {
+    grid-template-columns: auto minmax(0, 1fr) minmax(2.5rem, 3.25rem) minmax(0, 1fr) auto;
+    column-gap: 0.15rem;
+    padding: 0.5rem 0.35rem;
+    min-height: 5.25rem;
+  }
+  [data-lounge-game-pill-hub] [data-lounge-game-pill-row] {
+    padding-right: 1.45rem;
+  }
+  [data-lounge-game-pill-mark] {
+    width: 2rem;
+    height: 2rem;
+  }
+  [data-lounge-game-pill-status] {
+    max-width: 3.25rem;
+  }
+  [data-lounge-game-pill-status] > span:last-child {
+    font-size: 9px;
+    line-height: 1.15;
+  }
 }
 html.light [data-lounge-game-pill-spread-cover] {
   color: #fff !important;

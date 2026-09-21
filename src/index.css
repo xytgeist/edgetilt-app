@@ -3371,8 +3371,8 @@ html.light [data-lounge-game-pill] .text-zinc-100 {
   align-items: center;
   column-gap: 0.35rem;
   width: 100%;
-  min-height: 5.625rem;
-  padding: 0.625rem clamp(0.7rem, 3.8cqi, 1.15rem);
+  min-height: 5.875rem;
+  padding: 0.7rem clamp(0.7rem, 3.8cqi, 1.15rem);
   box-sizing: border-box;
 }
 [data-lounge-game-pill-hub] [data-lounge-game-pill-row] {
@@ -3415,28 +3415,28 @@ html.light [data-lounge-game-pill] .text-zinc-100 {
   box-sizing: border-box;
 }
 [data-lounge-game-pill-mark] {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.75rem;
+  height: 2.75rem;
 }
 @media (min-width: 640px) {
   [data-lounge-game-pill-mark] {
-    width: 2.75rem;
-    height: 2.75rem;
+    width: 3rem;
+    height: 3rem;
   }
 }
 @container lounge-game-pill (max-width: 300px) {
   [data-lounge-game-pill-row] {
     grid-template-columns: auto minmax(0, 1fr) minmax(2.5rem, 3.25rem) minmax(0, 1fr) auto;
     column-gap: 0.2rem;
-    padding: 0.5rem clamp(0.55rem, 4cqi, 0.8rem);
-    min-height: 5.25rem;
+    padding: 0.55rem clamp(0.55rem, 4cqi, 0.8rem);
+    min-height: 5.5rem;
   }
   [data-lounge-game-pill-hub] [data-lounge-game-pill-row] {
     padding-right: clamp(1.4rem, 5cqi, 1.6rem);
   }
   [data-lounge-game-pill-mark] {
-    width: 2rem;
-    height: 2rem;
+    width: 2.25rem;
+    height: 2.25rem;
   }
   [data-lounge-game-pill-status] {
     max-width: 3.25rem;

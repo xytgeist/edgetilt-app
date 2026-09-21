@@ -170,7 +170,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Windows Theo 2026-09-21 ... sports card tap-to-include + multi
 
-**I am Windows Theo.** Composer sports cards: **Tap to include**; tokens commit on trailing space **or punctuation**; one card per team/matchup; **48h** last-vs-next; matchup replaces vague card. Multi = feed-style full-bleed carousel. Score gutters pin the number at absolute center (no overflow clip on closing under-line). FitPrimary scales to gutter. Closing ML backfilled on test+prod (`scripts/backfill-close-ml.mjs`). Cover = white **dot**. Web **`1.4.445`** on **`main`** + **`test`**.
+**I am Windows Theo.** Composer sports cards: **Tap to include**; tokens commit on trailing space **or punctuation**; one card per team/matchup; **48h** last-vs-next; matchup replaces vague card. Multi = feed-style full-bleed carousel. Live/final stack is **spread / score / ML**; logos bumped (~2.75–3rem). Cover = white **dot**. Closing ML backfilled. Web **`1.4.447`**.
 
 **Prior track still true (landscape, idle ... do not regress):**
 

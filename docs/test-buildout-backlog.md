@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Sports pill spread above score, ML below; bigger logos (Windows).** Live/final stack is spread → score → moneyline (cover dot stays on spread). Logos **2.75rem** (3rem sm, 2.25rem narrow). Frontend **`1.4.447`**.
 - **2026-09-21:** **Prod close-ML schema + historical backfill (Windows).** Applied `close_*_ml` columns on prod (`jtjgtucumuoswnbauxry`). `node scripts/backfill-close-ml.mjs --target=both` filled locked NFL rows from Odds historical Pinnacle h2h (test **14**, prod **31** incl. WAS@DAL home **-200** / away **+177**). Redeployed prod+test Edge **`lounge-sports-scoreboard`** + **`lounge-odds-poll`**. Git **`main`** at **`be8b8558`** (**1.4.445**).
 - **2026-09-21:** **Sports pill restore closing under-line + absolute gutter center (Windows).** `overflow-hidden` on the score stack was clipping spread/ML under the number (looked “gone”). Score bundle is `position:absolute; inset:0; flex center` in the logo↔FINAL gutter. Closing ML still missing in data: **0/14** locked `lounge_market_files` rows have `close_*_ml` (WAS@DAL included). Frontend **`1.4.445`**.
 - **2026-09-21:** **Sports pill inset logos + scale score to gutter (Windows).** Logos were flush after reclaiming chrome. Side pad uses `clamp(...cqi...)`. Pre + final primaries both use FitPrimary sized to ~55% of the logo↔FINAL gutter (13-28px). Frontend **`1.4.443`**.

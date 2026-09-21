@@ -7,7 +7,7 @@ import { nflPillWash, nflPillWashLikelyAir, probeLogoWashConflict } from './loun
 const PRE_SPREAD_MAX_PX = 28
 const PRE_SPREAD_MIN_PX = 13
 /** Aim for this fraction of the logo↔status gutter width. */
-const PRIMARY_GUTTER_FILL = 0.55
+const PRIMARY_GUTTER_FILL = 0.48
 
 function FitPrimary({ children, className, align }) {
   const ref = useRef(null)
@@ -121,35 +121,32 @@ function TeamMark({ side, dimmed, halo = false }) {
 function ScoreStack({ side, status, dimmed, covered }) {
   const pre = status === 'pre'
   const primary = scoreLabel(side, status)
-  const spreadUnder = pre ? null : formatLoungeSportsSpread(side?.spread)
-  const mlUnder = pre ? null : formatLoungeSportsMoneyline(side?.ml)
-  const underLine = [spreadUnder, mlUnder].filter(Boolean).join(' ')
+  const spreadLine = pre ? null : formatLoungeSportsSpread(side?.spread)
+  const mlLine = pre ? null : formatLoungeSportsMoneyline(side?.ml)
   const primaryClass = `whitespace-nowrap font-bold leading-none tabular-nums drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
     dimmed ? 'text-white/55' : 'text-white'
   }`
-  // FitPrimary measures the score gutter (~55% fill). No overflow-hidden — that clipped the closing under-line.
+  const satLineClass =
+    'flex items-center justify-center gap-1 whitespace-nowrap text-[11px] font-semibold leading-none tabular-nums tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]'
+  // Pre: primary is the spread. Live/final: spread above score, ML below.
   return (
-    <span data-lounge-game-pill-num="fit" className="flex w-full min-w-0 items-center justify-center">
-      <span className="relative inline-block max-w-full">
-        <FitPrimary className={primaryClass} align="center">
-          {primary}
-        </FitPrimary>
-        {!pre && underLine ? (
-          <span
-            data-lounge-game-pill-spread-cover={covered ? '' : undefined}
-            className="absolute left-1/2 top-full z-[1] mt-0.5 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap text-[11px] font-semibold leading-none tabular-nums tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]"
-          >
-            {covered ? (
-              <span
-                data-lounge-game-pill-cover-dot
-                className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-white"
-                aria-hidden="true"
-              />
-            ) : null}
-            <span>{underLine}</span>
-          </span>
-        ) : null}
-      </span>
+    <span data-lounge-game-pill-num="fit" className="flex w-full min-w-0 flex-col items-center justify-center gap-0.5">
+      {!pre && spreadLine ? (
+        <span data-lounge-game-pill-spread-cover={covered ? '' : undefined} className={satLineClass}>
+          {covered ? (
+            <span
+              data-lounge-game-pill-cover-dot
+              className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-white"
+              aria-hidden="true"
+            />
+          ) : null}
+          <span>{spreadLine}</span>
+        </span>
+      ) : null}
+      <FitPrimary className={primaryClass} align="center">
+        {primary}
+      </FitPrimary>
+      {!pre && mlLine ? <span className={satLineClass}>{mlLine}</span> : null}
     </span>
   )
 }

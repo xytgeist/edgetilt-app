@@ -384,7 +384,6 @@ import LoungeGameScorePillStrip from './LoungeGameScorePillStrip.jsx'
 import { LoungeMarketFeedProvider } from './LoungeMarketFeedContext.jsx'
 import { LoungeSportsFeedProvider } from './LoungeSportsFeedContext.jsx'
 import LoungeGameHubModal from './LoungeGameHubModal.jsx'
-import LoungeLandscapeExternalLinkPane from './LoungeLandscapeExternalLinkPane.jsx'
 import LoungeSportsHubBridge from './LoungeSportsHubBridge.jsx'
 import { useIpadSlotsLandscape } from '../shell/useIpadSlotsLandscape.js'
 import { useLoungeMarketPollActivityTracker } from './loungeMarketPollActivity.js'
@@ -829,13 +828,6 @@ export default function SocialFeed({
   const closeLoungePostDetailRef = useRef(() => {})
   const closeMarketChartModalRef = useRef(() => {})
   const [loungeSportsHubOpen, setLoungeSportsHubOpen] = useState(false)
-  const [loungeLandscapeLink, setLoungeLandscapeLink] = useState(null)
-  const clearLoungeLandscapeLink = useCallback(() => {
-    setLoungeLandscapeLink(null)
-  }, [])
-  const openLoungeLandscapeLinkExternal = useCallback((url) => {
-    void openExternalUrl(url)
-  }, [])
   const onLoungeSportsHubOpenChange = useCallback((open) => {
     setLoungeSportsHubOpen(Boolean(open))
   }, [])
@@ -1361,7 +1353,6 @@ export default function SocialFeed({
   const [loungePostDetailOverLightbox, setLoungePostDetailOverLightbox] = useState(false)
   useEffect(() => {
     if (!loungeLandscapeSplit || !loungeSportsHubOpen) return
-    setLoungeLandscapeLink(null)
     try {
       closeMarketChartModalRef.current?.()
     } catch {
@@ -2472,7 +2463,6 @@ export default function SocialFeed({
     const list = Array.isArray(embeds) && embeds.length ? embeds : embed ? [embed] : []
     if (!list.length) return
     if (loungeLandscapeSplitRef.current) {
-      setLoungeLandscapeLink(null)
       try {
         sportsCloseHubRef.current?.()
       } catch {
@@ -8351,7 +8341,6 @@ export default function SocialFeed({
         return
       }
       if (loungeLandscapeSplitRef.current && !opts?.keepLightboxPlaying) {
-        setLoungeLandscapeLink(null)
         try {
           closeMarketChartModalRef.current?.()
         } catch {
@@ -15910,29 +15899,6 @@ export default function SocialFeed({
       }
       const openHref = hrefForExternalOpen(url)
       if (!openHref) return
-      if (loungeLandscapeSplitRef.current) {
-        setLoungeLandscapeLink({
-          url: openHref,
-          title: null,
-          description: null,
-        })
-        try {
-          closeMarketChartModalRef.current?.()
-        } catch {
-          /* ignore */
-        }
-        try {
-          sportsCloseHubRef.current?.()
-        } catch {
-          /* ignore */
-        }
-        try {
-          closeLoungePostDetailRef.current?.()
-        } catch {
-          /* ignore */
-        }
-        return
-      }
       void openExternalUrl(openHref)
     },
     [
@@ -15957,32 +15923,6 @@ export default function SocialFeed({
       if (postId && isLoungePostShareId(String(postId))) {
         void openLoungePostById(String(postId), { fromPublicLink: true })
         return
-      }
-      if (loungeLandscapeSplitRef.current) {
-        const openHref = hrefForExternalOpen(preview?.url)
-        if (openHref) {
-          setLoungeLandscapeLink({
-            url: openHref,
-            title: preview?.title || preview?.site_name || null,
-            description: preview?.description || null,
-          })
-          try {
-            closeMarketChartModalRef.current?.()
-          } catch {
-            /* ignore */
-          }
-          try {
-            sportsCloseHubRef.current?.()
-          } catch {
-            /* ignore */
-          }
-          try {
-            closeLoungePostDetailRef.current?.()
-          } catch {
-            /* ignore */
-          }
-          return
-        }
       }
       openCaptionLink(preview?.url, e)
     },
@@ -16580,9 +16520,8 @@ export default function SocialFeed({
     loungeLandscapeSplit && Boolean(loungePostDetail) && !loungePostDetailOverLightbox
   const loungeChartInPane = loungeLandscapeSplit && marketChartModal.open
   const loungeGameInPane = loungeLandscapeSplit && loungeSportsHubOpen
-  const loungeLinkInPane = loungeLandscapeSplit && Boolean(loungeLandscapeLink?.url)
   const loungeLandscapeEngagementActive =
-    loungeDetailInPane || loungeChartInPane || loungeGameInPane || loungeLinkInPane
+    loungeDetailInPane || loungeChartInPane || loungeGameInPane
 
   return (
     <div
@@ -17650,15 +17589,6 @@ export default function SocialFeed({
               hydratePosts={hydrateCommunityPosts}
               onOpenPost={openLoungePostDetail}
               loungeReadOnly={loungeReadOnly}
-            />
-          ) : null}
-          {loungeLinkInPane && !loungeChartInPane && !loungeGameInPane ? (
-            <LoungeLandscapeExternalLinkPane
-              url={loungeLandscapeLink.url}
-              title={loungeLandscapeLink.title}
-              description={loungeLandscapeLink.description}
-              onClose={clearLoungeLandscapeLink}
-              onOpenExternal={openLoungeLandscapeLinkExternal}
             />
           ) : null}
         </div>

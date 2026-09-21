@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Lounge landscape links not in split pane (Mac).** External / link-preview taps no longer open the right engagement pane ... they use the normal open path (`openExternalUrl` → Safari in IPA). Split stays post detail / minichart / game hub only. Removed `LoungeLandscapeExternalLinkPane`. Frontend **`1.4.423`**. Web only.
 - **2026-09-21:** **Composer sports commit punctuation (Windows).** Team tokens also commit on punctuation (`DAL,`), not only trailing space. Bare `DAL` / `Rams` still wait. Frontend **`1.4.422`**.
 - **2026-09-21:** **IPA external links → Safari (Mac).** `window.open` / `target=_blank` was spawning a blank child WKWebView (force-quit to escape). Native `createWebView` + nil-frame policy now open http(s) in system Safari. Web **`openExternalUrl`** on Lounge + chat link taps; landscape link pane handlers were missing and are wired. Frontend **`1.4.421`**. **New IPA required** for the native trap; web path helps Lounge on current IPA via existing `openInSafari`.
 - **2026-09-21:** **Composer sports match rules (Windows).** Trailing-space commit (`Rams `); one card per team/matchup; 48h last-vs-next for one-team; specific matchup replaces vague card; rounded slide shells. Frontend **`1.4.420`**.

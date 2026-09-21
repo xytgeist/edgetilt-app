@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Profile collapsed chrome = feed title bar height (Mac).** Sticky pin no longer sizes from mid-banner chrome nudge (that left a tall strip). Pinned height is **56px** (Lounge feed title row); fullscreen overlays still add sat. Embedded landscape skips a second sat (shell already owns it). Chrome nudge eases to 0 while pinning. Frontend **`1.4.429`**. Web only.
 - **2026-09-21:** **Sports pill score center via grid (Windows).** Nested `flex-1` score wrappers were collapsing to content width so numbers hugged the logos. Row is now CSS grid with equal `minmax(0,1fr)` score columns. Frontend **`1.4.428`**.
 - **2026-09-21:** **Persist closing Pinnacle ML on market files (Windows).** `lounge_market_files` gains open/current/close home+away ML columns. Odds poll writes Odds API **h2h** (moneyline) alongside spreads/totals; locked rows missing ML can backfill once. Scoreboard paints close ML from the file. Migration **`20260921210000`** on **test**. Redeployed test Edge **`lounge-odds-poll`** + **`lounge-sports-scoreboard`** (`kcosfvmreeiosdjdzycb`).
 - **2026-09-21:** **Lounge landscape profile dismiss fix + composer revert (Mac).** Profile open was calling `closeLoungePostDetail` without skip-nav, so a stale finalize restored the feed stack and killed the profile. Skip nav on peer detail close. Reverted landscape compose-in-pane / hidden feed composer. Frontend **`1.4.427`**. Web only.

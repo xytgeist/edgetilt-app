@@ -11,11 +11,13 @@ import {
   profileBannerPinScrollRangePx,
   profileBannerStickyTopPx,
   profileChromeCenterNudgePx,
+  profileCollapseProgress,
   profileCollapseShellPreset,
   profileCollapseVisuals,
   profileCompactNameReveal,
   profileLiveBannerBlurProgress,
   profileIosWebTitleChromeEnabled,
+  profilePinnedBannerVisiblePx,
   profileScrollCollapseEnabled,
   PROFILE_AVATAR_RING_PX,
   PROFILE_BANNER_MEDIA_BLUR_MAX_PX,
@@ -24,7 +26,6 @@ import {
   PROFILE_COMPACT_NAME_SLIDE_PX,
   PROFILE_IOS_WEB_TABS_OVERLAP_PX,
   PROFILE_IOS_WEB_TITLE_BAR_PX,
-  PROFILE_PINNED_BANNER_BELOW_CHROME_PX,
 } from './loungeProfileScrollCollapse.js'
 // LOUNGE_DOCK_FOOTER_BAR_DISABLED - classic dock icon row on profile sheet. Re-enable import + JSX below to restore.
 // import LoungeDockFooterBar from '../../components/LoungeDockFooterBar.jsx'
@@ -1894,7 +1895,10 @@ export default function LoungeProfileFullScreen({
       Boolean(opts.forceZero) || showOwnEditControls || !collapseOn
     const y = forceZero ? 0 : Math.max(0, Number(scrollTop) || 0)
     const reduce = forceZero ? false : profileCollapseReduceMotionRef.current
-    const sat = Math.max(8, Number(profileSatPxRef.current) || readCssSafeAreaTopPx())
+    // Embedded landscape: shell already owns sat … keep 0 (do not treat as falsy).
+    const sat = embedded
+      ? 0
+      : Math.max(8, Number(profileSatPxRef.current) || readCssSafeAreaTopPx())
     profileSatPxRef.current = sat
 
     // Classic scroll (iOS PWA / Android): skip collapse math + style thrash every frame.
@@ -2071,15 +2075,10 @@ export default function LoungeProfileFullScreen({
       }
       const collapsedScrim = profileCollapsedScrimRef.current
       if (collapsedScrim) {
-        // Thin frost under chrome/name … same timing as media blur (not pin settle).
+        // Thin frost under chrome/name … height matches the pinned feed-title strip.
         const frostH = Math.max(
-          48,
-          Math.round(
-            (Number(profileChromeCenterNudgePxRef.current) || 0)
-              + sat
-              + 40
-              + 10,
-          ),
+          PROFILE_COLLAPSED_CHROME_ROW_PX,
+          Math.round(Number(profileStickyTopPxRef.current) || PROFILE_COLLAPSED_CHROME_ROW_PX),
         )
         collapsedScrim.style.height = `${frostH}px`
         collapsedScrim.style.top = '0'
@@ -2281,9 +2280,15 @@ export default function LoungeProfileFullScreen({
         chromeMotion.style.transform = `translate3d(0, ${-buttonHidePx}px, 0)`
         chromeMotion.style.opacity = buttonsOnScreen ? '1' : '0'
       } else if (collapseOn) {
+        // Rest: center back/⋯ on the tall banner. Pinned: settle into the feed-title strip.
         const nudge = profileChromeCenterNudgePxRef.current
+        const pinT = profileCollapseProgress(
+          scrollYForChrome,
+          profileCollapseRangePxRef.current,
+        )
+        const liveNudge = reduce ? 0 : Math.round(nudge * (1 - pinT))
         chromeMotion.style.transform =
-          reduce ? '' : `translate3d(0, ${nudge}px, 0)`
+          liveNudge > 0 ? `translate3d(0, ${liveNudge}px, 0)` : ''
         chromeMotion.style.opacity = ''
       } else {
         chromeMotion.style.transform = ''
@@ -2312,21 +2317,24 @@ export default function LoungeProfileFullScreen({
     applied.btn = buttonHidePx
     applied.tabs = tabsTop
     applied.inFeed = inFeedChrome ? 1 : 0
-  }, [showOwnEditControls])
+  }, [embedded, showOwnEditControls])
   applyProfileCollapseVisualsRef.current = applyProfileCollapseVisuals
 
   const measureProfileCollapseGeometry = useCallback(() => {
     const collapseOn = profileCollapseEnabledRef.current
     const iosWebTitle = profileIosWebTitleChromeEnabled()
+    const underShellSat = Boolean(embedded)
     const banner = profileBannerShellRef.current
     const scrollEl = profileBodyScrollRef.current
     const bannerH = banner ? Math.ceil(banner.getBoundingClientRect().height) : 0
     profileBannerHeightPxRef.current = bannerH
     invalidateCssSafeAreaTopPxCache()
     const sat = readCssSafeAreaTopPx()
-    profileSatPxRef.current = Math.max(8, sat)
-    // Chrome row already has paddingTop ≈ sat; nudge so back/⋯ center on the tuned band.
-    const chromePadTop = Math.max(8, sat) // matches max(0.5rem, sat) on the chrome row
+    // Embedded landscape pane already sits under Lounge shell sat … no second inset.
+    profileSatPxRef.current = underShellSat ? 0 : Math.max(8, sat)
+    const chromePadTop = underShellSat
+      ? 8 // matches 0.5rem chrome row pad (feed-style)
+      : Math.max(8, sat) // matches max(0.5rem, sat) on the chrome row
     const isIpa = isEdgeiOSShell()
     const chromeNudge = collapseOn
       ? profileChromeCenterNudgePx({
@@ -2337,10 +2345,11 @@ export default function LoungeProfileFullScreen({
       : 0
     profileChromeCenterNudgePxRef.current = chromeNudge
 
-    const chromeButtonBottom = chromePadTop + chromeNudge + 40
-
-    // Banner rests ~5px below the back/⋯ buttons, then sticks.
-    const pinnedVisible = chromeButtonBottom + PROFILE_PINNED_BANNER_BELOW_CHROME_PX
+    // Pinned strip = Lounge feed title bar height (shell sat only when fullscreen overlay).
+    const pinnedVisible = profilePinnedBannerVisiblePx({
+      safeTopPx: chromePadTop,
+      underShellSafeArea: underShellSat,
+    })
 
     const bannerStickyTop = collapseOn
       ? profileBannerStickyTopPx(bannerH, pinnedVisible)
@@ -2357,7 +2366,7 @@ export default function LoungeProfileFullScreen({
     if (!iosWebTitle) {
       setProfileTabsStickyTopPxState((prev) => {
         if (!collapseOn) {
-          const classicTop = Math.max(0, Math.round(sat))
+          const classicTop = underShellSat ? 0 : Math.max(0, Math.round(sat))
           return prev === classicTop ? prev : classicTop
         }
         return prev === pinnedVisible ? prev : pinnedVisible
@@ -2390,7 +2399,7 @@ export default function LoungeProfileFullScreen({
     profileIosWebAppliedHideRef.current = { title: -1, btn: -1, tabs: -1, inFeed: -1 }
     profileClassicChromeClearedRef.current = false
     applyProfileCollapseVisualsRef.current?.(scrollEl?.scrollTop ?? 0)
-  }, [])
+  }, [embedded])
 
   /** After edit mode (keyboard / overflow-hidden), scroll position or iOS visual viewport can leave the banner chrome clipped. */
   useLayoutEffect(() => {
@@ -3495,7 +3504,10 @@ export default function LoungeProfileFullScreen({
             className="relative z-[1] px-2 pb-1 sm:px-3"
             style={{
               // Inline … arbitrary Tailwind max(env, var(--edge-sat)) has broken before.
-              paddingTop: 'max(0.5rem, max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))',
+              // Embedded landscape pane already clears Island via Lounge shell sat.
+              paddingTop: embedded
+                ? '0.5rem'
+                : 'max(0.5rem, max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))',
             }}
           >
             <div
@@ -3692,9 +3704,11 @@ export default function LoungeProfileFullScreen({
             className={`${profileCollapseEnabled ? 'sticky z-[28]' : 'relative z-10'} w-full shrink-0`}
             data-lounge-profile-banner=""
             style={{
-              // Banner paints under the status bar; spacer below keeps the visible band ~h-28/h-36.
-              // Sticky `top` is measured so the pinned strip ends ~5px below chrome buttons (collapse only).
-              paddingTop: 'max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))',
+              // Banner paints under the status bar (fullscreen); embedded skips sat (shell owns it).
+              // Sticky `top` is measured so the pinned strip matches the Lounge feed title bar.
+              paddingTop: embedded
+                ? 0
+                : 'max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px))',
               top: profileCollapseEnabled ? 0 : undefined,
             }}
           >

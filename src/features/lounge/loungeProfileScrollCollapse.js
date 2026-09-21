@@ -23,13 +23,32 @@ export const PROFILE_COMPACT_NAME_FADE_PX = 36
 /** Compact title slide distance (from below into the chrome row). */
 export const PROFILE_COMPACT_NAME_SLIDE_PX = 18
 
-/** Collapsed chrome row under the status bar (back / name / ⋯). */
-export const PROFILE_COLLAPSED_CHROME_ROW_PX = 48
+/**
+ * Collapsed chrome row (back / name / ⋯).
+ * Matches Lounge feed title bar (`LOUNGE_FEED_TITLE_BAR_ROW_CLASS` + h-10 slots ≈ 56).
+ */
+export const PROFILE_COLLAPSED_CHROME_ROW_PX = 56
 
 /**
  * Extra px below the chrome button bottoms where the pinned banner bottom rests.
+ * Kept for legacy callers; pinned height now matches the feed title bar exactly.
  */
 export const PROFILE_PINNED_BANNER_BELOW_CHROME_PX = 5
+
+/**
+ * Sticky banner strip height when pinned.
+ * Fullscreen overlays include safe-area; embedded panes already sit under shell sat.
+ *
+ * @param {{ safeTopPx?: number, underShellSafeArea?: boolean }} [args]
+ */
+export function profilePinnedBannerVisiblePx({
+  safeTopPx = 0,
+  underShellSafeArea = false,
+} = {}) {
+  const row = PROFILE_COLLAPSED_CHROME_ROW_PX
+  if (underShellSafeArea) return row
+  return Math.max(0, Math.round(Number(safeTopPx) || 0)) + row
+}
 
 /** Fallback scroll range when banner geometry is not measured yet. */
 export const PROFILE_COLLAPSE_RANGE_PX = 112
@@ -421,15 +440,15 @@ export function profileCompactNameOpacity(scrollTop, nameRevealScrollTop) {
 }
 
 /**
- * Sticky `top` for the tab strip = pinned banner bottom (chrome + below gap).
+ * Sticky `top` for the tab strip = pinned banner bottom (feed-title height).
  * @param {number} safeTopPx
+ * @param {{ underShellSafeArea?: boolean }} [opts]
  */
-export function profileTabsStickyTopPx(safeTopPx) {
-  return (
-    Math.max(0, Math.round(Number(safeTopPx) || 0))
-    + PROFILE_COLLAPSED_CHROME_ROW_PX
-    + PROFILE_PINNED_BANNER_BELOW_CHROME_PX
-  )
+export function profileTabsStickyTopPx(safeTopPx, opts = {}) {
+  return profilePinnedBannerVisiblePx({
+    safeTopPx,
+    underShellSafeArea: Boolean(opts.underShellSafeArea),
+  })
 }
 
 export function prefersReducedMotion() {

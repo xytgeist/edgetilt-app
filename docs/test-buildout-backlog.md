@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Lounge pill inset stain (Mac).** Team primary fade starts inboard of the logo so the mark sits on the silver gridiron instead of camouflaging on the jersey color. Frontend **`1.4.396`**.
 - **2026-09-21:** **Lounge pill score pin + close ML (Mac).** Final scores stay vertically centered with the logos / FINAL; closing spread + ML hang centered under the number. Cache **v4**. Frontend **`1.4.395`**. Redeploy **`lounge-sports-scoreboard`** on **test**.
 - **2026-09-21:** **Lounge pill upcoming center + primary fade (Mac).** Upcoming spreads sit in the middle of each team's number slot. Wash uses catalog primary instead of mixing color2 (Giants were going purple). Frontend **`1.4.394`**.
 - **2026-09-20:** **Lounge pill Pinnacle ML fill + week 2 table (Mac).** Historical fill now runs when ML is missing, not only when spread is missing. Test `lounge_market_files` has 14 locked week-2 NFL Pinnacle closes. Smoke **WAS@DAL** / **IND@KC**. Frontend **`1.4.393`**. Redeploy **`lounge-sports-scoreboard`** on **test**.

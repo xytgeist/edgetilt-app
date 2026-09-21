@@ -66,10 +66,11 @@ The agent should treat the following as **standing instructions for this session
 
 **What this track is:** After App Review of **1.4.95**, Mac built **iPad landscape Slots** into a two-column shell, then Ryan insisted on bringing the same idea to **iPhone landscape**. It shipped and he likes it. Tip of that work is on **`test`**.
 
-**Current tip (Mac):** web **`1.4.379`**. Branch **`test`**. Do **not** bump iOS **`MARKETING_VERSION`** off **1.4.95**. Dirty Xcode scheme files under `ios/EdgeTilt.xcodeproj/xcshareddata/xcschemes/` are local only ... **do not stage them**.
+**Current tip (Mac):** web **`1.4.380`**. Branch **`test`**. Do **not** bump iOS **`MARKETING_VERSION`** off **1.4.95**. Dirty Xcode scheme files under `ios/EdgeTilt.xcodeproj/xcshareddata/xcschemes/` are local only ... **do not stage them**.
 
 **Shipped on this track (newest → older, all Mac unless noted):**
 
+1. **`1.4.380`** ... game pill is logo + score only, no team abbrev labels.
 1. **`1.4.379`** ... pill uses clean logos (no cartoon helmets) on a silver gridiron texture under the team-color wash.
 1. **`1.4.378`** ... hub logos sit clean, no circle plate.
 1. **`1.4.377`** ... game pill 2.5x tall, local NFL helmets/logos, diagonal team-color fade.

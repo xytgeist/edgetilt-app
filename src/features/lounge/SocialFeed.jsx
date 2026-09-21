@@ -16936,6 +16936,7 @@ export default function SocialFeed({
           </button>
           <div className="min-w-0 flex-1">
             {composerExpanded ? (
+              <>
               <div
                 className="overflow-hidden will-change-[max-height,opacity]"
                 style={{
@@ -17043,7 +17044,6 @@ export default function SocialFeed({
                       onOpenChart={(embed, embeds) => openMarketChartModal({ embed, embeds })}
                       className="mt-1.5"
                     />
-                    <LoungeComposerGamePreview caption={postText} valueRef={composerSportsRef} className="mt-1.5" />
                   </div>
                   {(() => {
                     const gifUrl = String(composerMediaUrl || '').trim()
@@ -17113,6 +17113,13 @@ export default function SocialFeed({
                   <div className="min-h-0 flex-1" aria-hidden />
                 </div>
               </div>
+              {/* Outside overflow-hidden so feed-style full-bleed carousel is not clipped. */}
+              <LoungeComposerGamePreview
+                caption={postText}
+                valueRef={composerSportsRef}
+                className="mt-1.5"
+              />
+              </>
             ) : (
               <button
                 type="button"

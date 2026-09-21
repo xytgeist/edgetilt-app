@@ -166,7 +166,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Windows Theo 2026-09-21 ... sports card tap-to-include + multi
 
-**I am Windows Theo.** Composer suggests game pills with **Tap to include** (default off). Up to **4** pinned `event_ids`. Feed paints **pin-only** (no caption auto-match ... bots stay clean). Multi = minichart-style horizontal carousel. Web **`1.4.416`** (reverted failed full-width / matchup-replace attempt; back to **1.4.414** behavior + version bump).
+**I am Windows Theo.** Composer suggests game pills with **Tap to include** (default off). Up to **4** pinned `event_ids`. Feed paints **pin-only**. Multi composer cards use the same **full-bleed** horizontal carousel as feed post images (slide across the screen with peek). Web **`1.4.417`**.
 
 **Prior track still true (landscape, idle ... do not regress):**
 

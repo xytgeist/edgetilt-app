@@ -106,7 +106,7 @@ function TeamMark({ side, dimmed, halo = false }) {
   )
 }
 
-function ScoreStack({ side, status, align, dimmed, covered }) {
+function ScoreStack({ side, status, dimmed, covered }) {
   const pre = status === 'pre'
   const primary = scoreLabel(side, status)
   const spreadUnder = pre ? null : formatLoungeSportsSpread(side?.spread)
@@ -126,25 +126,22 @@ function ScoreStack({ side, status, align, dimmed, covered }) {
       </span>
     )
   }
+  // Content-sized next to the logo (not flex-1). Team row justify-* pins clusters to the outer edges.
   return (
-    <span
-      className={`flex min-w-0 flex-1 items-center ${align === 'end' ? 'justify-end' : 'justify-start'}`}
-    >
-      <span className="relative inline-flex items-center justify-center">
-        <span data-lounge-game-pill-primary className={primaryClass}>
-          {primary}
-        </span>
-        {underLine ? (
-          <span
-            data-lounge-game-pill-spread-cover={covered ? '' : undefined}
-            className={`absolute left-1/2 top-full z-[1] mt-0.5 -translate-x-1/2 whitespace-nowrap text-center text-[11px] font-semibold leading-none tabular-nums tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
-              covered ? 'border-b-2 border-white pb-px' : ''
-            }`}
-          >
-            {underLine}
-          </span>
-        ) : null}
+    <span className="relative inline-flex shrink-0 items-center justify-center">
+      <span data-lounge-game-pill-primary className={primaryClass}>
+        {primary}
       </span>
+      {underLine ? (
+        <span
+          data-lounge-game-pill-spread-cover={covered ? '' : undefined}
+          className={`absolute left-1/2 top-full z-[1] mt-0.5 -translate-x-1/2 whitespace-nowrap text-center text-[11px] font-semibold leading-none tabular-nums tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
+            covered ? 'border-b-2 border-white pb-px' : ''
+          }`}
+        >
+          {underLine}
+        </span>
+      ) : null}
     </span>
   )
 }
@@ -256,12 +253,11 @@ export default function LoungeGameScorePill({
         <span data-lounge-game-pill-home aria-hidden="true" />
         <span data-lounge-game-pill-seam aria-hidden="true" />
         <span className="relative z-[3] flex min-h-[5.625rem] items-center gap-2 px-3 py-2.5">
-          <span className="flex min-w-0 flex-1 items-center gap-1.5">
+          <span className="flex min-w-0 flex-1 items-center justify-start gap-1.5">
             <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} halo={air.awayAir} />
             <ScoreStack
               side={game.away}
               status={game.status}
-              align="end"
               dimmed={game.status === 'post' && !awayWon && !live}
               covered={awayCovered}
             />
@@ -272,11 +268,10 @@ export default function LoungeGameScorePill({
               {game.status_label}
             </span>
           </span>
-          <span className="flex min-w-0 flex-1 items-center gap-1.5">
+          <span className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
             <ScoreStack
               side={game.home}
               status={game.status}
-              align="start"
               dimmed={game.status === 'post' && !homeWon && !live}
               covered={homeCovered}
             />

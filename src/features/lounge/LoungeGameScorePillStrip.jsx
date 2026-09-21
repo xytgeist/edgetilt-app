@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import LoungeGameScorePill from './LoungeGameScorePill.jsx'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import { LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS } from './loungeFeedAvatar.js'
@@ -21,6 +21,14 @@ export default function LoungeGameScorePillStrip({ post, className = '', variant
   const [carouselViewport, setCarouselViewport] = useState(() =>
     loungeFeedCarouselMeasureLayout(null, false),
   )
+  // Hub portal can leave WebKit with a stuck pill layer / slide width after back.
+  const hubOpen = Boolean(sports?.hubGame)
+  const wasHubOpenRef = useRef(false)
+  const [hubPaintEpoch, setHubPaintEpoch] = useState(0)
+  useEffect(() => {
+    if (wasHubOpenRef.current && !hubOpen) setHubPaintEpoch((n) => n + 1)
+    wasHubOpenRef.current = hubOpen
+  }, [hubOpen])
 
   const multi = games.length > 1
   const carouselFullBleed = multi && loungeFeedCarouselFullBleed(variant)
@@ -46,7 +54,7 @@ export default function LoungeGameScorePillStrip({ post, className = '', variant
       cancelAnimationFrame(id0)
       cancelAnimationFrame(id1)
     }
-  }, [games.length, multi])
+  }, [games.length, multi, hubPaintEpoch])
 
   useLayoutEffect(() => {
     if (!multi) return undefined
@@ -63,7 +71,7 @@ export default function LoungeGameScorePillStrip({ post, className = '', variant
       pairOnIpadLandscape: variant !== 'detail',
       phoneSlideCap: variant === 'detail',
     })
-  }, [multi, carouselFullBleed, games.length, variant])
+  }, [multi, carouselFullBleed, games.length, variant, hubPaintEpoch])
 
   if (!games.length) return null
 
@@ -94,7 +102,7 @@ export default function LoungeGameScorePillStrip({ post, className = '', variant
       >
         {games.map((game) => (
           <div
-            key={String(game.id)}
+            key={`${String(game.id)}-${hubPaintEpoch}`}
             className={multi ? 'relative shrink-0' : 'relative w-full max-w-full'}
             style={slideWidthStyle}
             {...(carouselFullBleed ? { 'data-lounge-feed-carousel-slide': true } : null)}

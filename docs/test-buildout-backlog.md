@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Feed sports pill layout after hub (Windows).** Home half now `justify-end` so logo+score clusters stay outer-edge balanced; post scores hug logos (no nested flex-1). Hub close remounts the strip so WebKit drops a stuck layer. Frontend **`1.4.425`**.
 - **2026-09-21:** **Lounge landscape profile + compose pane (Mac).** Profiles open in the right engagement pane. Landscape hides the feed inline composer; dock Compose opens a full-height pane composer (`LoungeFullScreenComposerModal` embedded … Edge Pro/staff get markdown). Split peers: detail / chart / game / profile / composer. Frontend **`1.4.424`**. Web only.
 - **2026-09-21:** **Lounge landscape links not in split pane (Mac).** External / link-preview taps no longer open the right engagement pane ... they use the normal open path (`openExternalUrl` → Safari in IPA). Split stays post detail / minichart / game hub only. Removed `LoungeLandscapeExternalLinkPane`. Frontend **`1.4.423`**. Web only.
 - **2026-09-21:** **Composer sports commit punctuation (Windows).** Team tokens also commit on punctuation (`DAL,`), not only trailing space. Bare `DAL` / `Rams` still wait. Frontend **`1.4.422`**.

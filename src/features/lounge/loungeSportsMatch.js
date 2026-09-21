@@ -56,12 +56,18 @@ function norm(value) {
     .trim()
 }
 
-/** Like norm, but keeps a trailing space so “Rams ” can commit and “Rams” cannot. */
-function normKeepTrailingSpace(value) {
-  const raw = String(value || '')
-  const hadTrail = /\s$/.test(raw)
-  const body = norm(raw)
-  return hadTrail && body ? `${body} ` : body
+/**
+ * Soft-norm for composer commits: punctuation becomes a space, trailing spaces are kept.
+ * “Rams” → no commit. “Rams ” / “DAL,” / “Chiefs!” → committed.
+ */
+function softNormForCommit(value) {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/^\s+/, '')
 }
 
 function catalogRowForSide(side, sportKey) {
@@ -210,7 +216,7 @@ function hasPhrase(haystack, phrase) {
   return new RegExp(`(?:^| )${escapeRe(p)}(?: |$)`).test(haystack)
 }
 
-/** Composer: phrase only counts after the user types a trailing space. */
+/** Composer: phrase only counts after whitespace or punctuation (“Rams ” / “Rams,”). */
 function hasCommittedPhrase(haystackKeepTrail, phrase) {
   const p = norm(phrase)
   if (p.length < 3) return false
@@ -224,11 +230,11 @@ function hasAbbrev(original, abbrev) {
   return re.test(original)
 }
 
-/** Composer: abbrev only counts when followed by whitespace. */
+/** Composer: abbrev counts after whitespace or punctuation (“DAL ” / “DAL,”), not bare “DAL”. */
 function hasCommittedAbbrev(original, abbrev) {
   const a = String(abbrev || '').trim().toUpperCase()
   if (a.length < 2 || a.length > 4) return false
-  const re = new RegExp(`(?:^|[^A-Za-z])${escapeRe(a)}\\s`, 'i')
+  const re = new RegExp(`(?:^|[^A-Za-z])${escapeRe(a)}(?=[^A-Za-z0-9])`, 'i')
   return re.test(original)
 }
 
@@ -247,17 +253,18 @@ function versusAbbrevs(original) {
 }
 
 /**
- * Versus only after both sides are committed (space after each token, or completed pair).
- * “KC vs” does not count; “KC vs Mia ” / “Rams vs Broncos ” does.
+ * Versus only after both sides are committed (space/punct after each side).
+ * “KC vs” does not count; “KC vs Mia ” / “Rams vs Broncos,” does.
  */
 function versusAbbrevsCommitted(original) {
-  const m = String(original || '').match(/\b([A-Za-z]{2,4})\s+(?:vs\.?|@|v)\s+([A-Za-z]{2,4})(?:\s|$)/i)
+  const m = String(original || '').match(/\b([A-Za-z]{2,4})\s+(?:vs\.?|@|v)\s+([A-Za-z]{2,4})(?=[^A-Za-z0-9]|$)/i)
   if (!m) return null
   const a = canonicalAbbrev(m[1])
   const b = canonicalAbbrev(m[2])
   if (!CATALOG_BY_ABBREV.has(a) || !CATALOG_BY_ABBREV.has(b) || a === b) return null
+  // Bare EOF after the second token does not commit (same as “DAL” alone).
   const after = String(original || '').slice(m.index + m[0].length)
-  if (after.length && !/^\s/.test(after)) return null
+  if (!after.length || !/^[^A-Za-z0-9]/.test(after)) return null
   return [a, b]
 }
 
@@ -271,11 +278,11 @@ function resolveCommittedTeamAbbrev(phrase) {
   return null
 }
 
-/** Name or abbrev matchup with trailing space after the second side (“Rams vs Broncos ”). */
+/** Name or abbrev matchup with space/punct after the second side (“Rams vs Broncos ” / “Rams vs Broncos,”). */
 function versusTeamsCommitted(original) {
   const fromAbbrev = versusAbbrevsCommitted(original)
   if (fromAbbrev) return fromAbbrev
-  const soft = normKeepTrailingSpace(original)
+  const soft = softNormForCommit(original)
   const m = soft.match(/(.+?)\s+(?:vs\.?|@|v)\s+(.+?)\s/)
   if (!m) return null
   const a = resolveCommittedTeamAbbrev(m[1])
@@ -295,7 +302,7 @@ function sideHits(original, haystack, side, sportKey, { committed = false } = {}
   ]
   const phraseHit = committed ? hasCommittedPhrase : hasPhrase
   const abbrevHit = committed ? hasCommittedAbbrev : hasAbbrev
-  const hay = committed ? normKeepTrailingSpace(original) : haystack
+  const hay = committed ? softNormForCommit(original) : haystack
   for (const phrase of phrases) {
     if (!phraseHit(hay, phrase)) continue
     const words = norm(phrase).split(' ').filter(Boolean)
@@ -310,7 +317,7 @@ function mentionedNflAbbrevs(original, haystack, { committed = false } = {}) {
   const out = []
   const phraseHit = committed ? hasCommittedPhrase : hasPhrase
   const abbrevHit = committed ? hasCommittedAbbrev : hasAbbrev
-  const hay = committed ? normKeepTrailingSpace(original) : haystack
+  const hay = committed ? softNormForCommit(original) : haystack
   for (const row of NFL_TEAM_CATALOG) {
     const nameHit = row.names.some((n) => phraseHit(hay, n))
     const playerHit = row.players.some((n) => phraseHit(hay, n))

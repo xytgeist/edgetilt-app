@@ -14,7 +14,7 @@ const EMPTY_GAMES = []
 
 /**
  * Live game-pill suggest under the composer. Cards stay off until the author
- * taps “include”. Tokens only match after a trailing space (“Rams ”).
+ * taps “include”. Tokens match after a trailing space or punctuation (“Rams ” / “DAL,”).
  * One card per team/matchup context; a specific matchup replaces the vague card.
  * Multi uses the same full-bleed horizontal carousel as feed post images.
  */

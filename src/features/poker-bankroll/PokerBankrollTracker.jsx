@@ -405,6 +405,8 @@ export default function PokerBankrollTracker({
   titleBarNavSlot = null,
   titleBarCenterSlot = null,
   titleBarToolCloseVisible = false,
+  /** Landscape Poker pane: no EDGE title bar; shell fills the keep-alive cover. */
+  paneEmbed = false,
   /** Deep link: open session details sheet for this id (swap result notify). */
   openSessionId = null,
   onOpenSessionConsumed = null,
@@ -3987,9 +3989,11 @@ export default function PokerBankrollTracker({
   return (
     <>
       <ScrollLinkedEdgeTitleBarShell
-        titleBarNavSlot={titleBarNavSlot}
-        titleBarCenterSlot={titleBarCenterSlot}
-        titleBarToolCloseVisible={titleBarToolCloseVisible}
+        embedded={paneEmbed}
+        publishScrollReveal={!paneEmbed}
+        titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
+        titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
+        titleBarToolCloseVisible={paneEmbed ? false : titleBarToolCloseVisible}
         contentClassName="px-3 pt-4 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
       >
         <div data-poker-bankroll>

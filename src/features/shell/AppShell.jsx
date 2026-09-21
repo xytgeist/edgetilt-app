@@ -478,6 +478,7 @@ export default function AppShell({
     const enteredLandscape = ipadSlotsLandscape && !prevSlotsLandscapeRef.current
     prevSlotsLandscapeRef.current = ipadSlotsLandscape
     if (enteredLandscape && tab === 'slots') setTab('guides')
+    if (enteredLandscape && tab === 'poker') setTab('poker-bankroll')
   }, [ipadSlotsLandscape, tab, setTab])
   const [tabErrorTestTrigger, setTabErrorTestTrigger] = useState(0)
   const [tabErrorTestOpen, setTabErrorTestOpen] = useState(false)
@@ -2270,7 +2271,7 @@ export default function AppShell({
         } else if (item.id === 'poker') {
           acknowledgePokerOfferMenu()
           setActiveCalculator(null)
-          setTab('poker')
+          setTab(ipadSlotsLandscape ? 'poker-bankroll' : 'poker')
           triggerTapHapticLight()
         } else {
           setActiveCalculator(null)
@@ -2941,8 +2942,12 @@ export default function AppShell({
       (tab === 'slots' ||
         SLOTS_PANE_TAB_IDS.has(tab) ||
         (tab === 'chat' && slotsLandscapeLounge))
+    const pokerSplitActive =
+      ipadSlotsLandscape && (tab === 'poker' || POKER_TOOL_TAB_IDS.has(tab))
     const chatInPane = Boolean(slotsSplitActive && tab === 'chat')
     const bankrollInPane = Boolean(slotsSplitActive)
+    const pokerBankrollInPane = Boolean(pokerSplitActive)
+    const pokerStableInPane = Boolean(pokerSplitActive)
     const paneCoverStyle = slotsPaneRect
       ? {
           position: 'fixed',
@@ -2955,6 +2960,12 @@ export default function AppShell({
       : null
     const chatCover = Boolean(chatInPane && paneCoverStyle)
     const bankrollCover = Boolean(bankrollInPane && tab === 'bankroll' && paneCoverStyle)
+    const pokerBankrollCover = Boolean(
+      pokerBankrollInPane && tab === 'poker-bankroll' && paneCoverStyle,
+    )
+    const pokerStableCover = Boolean(
+      pokerStableInPane && tab === 'poker-stable' && paneCoverStyle,
+    )
 
     /** Stay mounted across tabs so an open conversation survives lounge post preview navigation. */
     const keepAliveChatTab = (
@@ -3012,20 +3023,33 @@ export default function AppShell({
       </Suspense>
     )
 
-    /** Mount once visited, then hide ... reopen keeps sessions/carousel without full reload. */
+    /** Mount once visited, then hide ... reopen keeps sessions/carousel without full reload.
+     *  Landscape Poker pane covers it in place (same pattern as Slots Bankroll). */
     const keepAlivePokerBankroll = pokerBankrollMounted ? (
       <Suspense fallback={pokerBankrollSuspenseFallback}>
         <div
           key="poker-bankroll-keepalive"
-          className={tab === 'poker-bankroll' ? 'contents min-h-0' : 'hidden'}
+          className={
+            pokerBankrollCover
+              ? 'relative flex min-h-0 flex-col overflow-hidden bg-zinc-950'
+              : pokerBankrollInPane || tab !== 'poker-bankroll'
+                ? 'hidden'
+                : 'contents min-h-0'
+          }
+          style={pokerBankrollCover ? paneCoverStyle : undefined}
           inert={tab !== 'poker-bankroll'}
         >
           <PokerBankrollTracker
+            paneEmbed={pokerBankrollInPane}
             supabaseClient={supabaseClient}
             isActivePage={tab === 'poker-bankroll'}
-            titleBarNavSlot={tab === 'poker-bankroll' ? renderTitleBarNavSlot() : null}
-            titleBarCenterSlot={tab === 'poker-bankroll' ? renderTitleBarCenterSlot() : null}
-            titleBarToolCloseVisible={pokerToolTitleBarCloseVisible}
+            titleBarNavSlot={
+              pokerBankrollInPane || tab !== 'poker-bankroll' ? null : renderTitleBarNavSlot()
+            }
+            titleBarCenterSlot={
+              pokerBankrollInPane || tab !== 'poker-bankroll' ? null : renderTitleBarCenterSlot()
+            }
+            titleBarToolCloseVisible={pokerBankrollInPane ? false : pokerToolTitleBarCloseVisible}
             openSessionId={tab === 'poker-bankroll' ? pendingPokerSessionId : null}
             onOpenSessionConsumed={() => setPendingPokerSessionId(null)}
             openStableDealId={tab === 'poker-bankroll' ? pendingPokerStableDealId : null}
@@ -3084,20 +3108,32 @@ export default function AppShell({
       </Suspense>
     ) : null
 
-    /** Stable Manager … same keep-alive as Poker Bankroll. */
+    /** Stable Manager … same keep-alive + landscape pane cover as Poker Bankroll. */
     const keepAlivePokerStable = pokerStableMounted ? (
       <Suspense fallback={pokerStableSuspenseFallback}>
         <div
           key="poker-stable-keepalive"
-          className={tab === 'poker-stable' ? 'contents min-h-0' : 'hidden'}
+          className={
+            pokerStableCover
+              ? 'relative flex min-h-0 flex-col overflow-hidden bg-zinc-950'
+              : pokerStableInPane || tab !== 'poker-stable'
+                ? 'hidden'
+                : 'contents min-h-0'
+          }
+          style={pokerStableCover ? paneCoverStyle : undefined}
           inert={tab !== 'poker-stable'}
         >
           <PokerStableScreen
+            paneEmbed={pokerStableInPane}
             supabaseClient={supabaseClient}
             isActivePage={tab === 'poker-stable'}
-            titleBarNavSlot={tab === 'poker-stable' ? renderTitleBarNavSlot() : null}
-            titleBarCenterSlot={tab === 'poker-stable' ? renderTitleBarCenterSlot() : null}
-            titleBarToolCloseVisible={pokerToolTitleBarCloseVisible}
+            titleBarNavSlot={
+              pokerStableInPane || tab !== 'poker-stable' ? null : renderTitleBarNavSlot()
+            }
+            titleBarCenterSlot={
+              pokerStableInPane || tab !== 'poker-stable' ? null : renderTitleBarCenterSlot()
+            }
+            titleBarToolCloseVisible={pokerStableInPane ? false : pokerToolTitleBarCloseVisible}
             openStableDealId={tab === 'poker-stable' ? pendingPokerStableDealId : null}
             onOpenStableDealConsumed={clearPendingPokerStableDealId}
             showWithdrawnOfferNotice={tab === 'poker-stable' ? pendingStableOfferWithdrawn : false}
@@ -3282,7 +3318,7 @@ export default function AppShell({
           toolPane={slotsToolPane}
         />
       )
-    } else if (tab === 'poker') {
+    } else if (tab === 'poker' || pokerSplitActive) {
       visibleTab = (
         <PokerScreen
           titleBarNavSlot={renderTitleBarNavSlot()}
@@ -3292,6 +3328,10 @@ export default function AppShell({
           onOpenTool={openPokerTool}
           showBankrollAttentionDot={pokerBankrollAttention}
           showStableAttentionDot={pokerStableAttention}
+          landscapeSplit={pokerSplitActive}
+          selectedToolId={POKER_TOOL_TAB_IDS.has(tab) ? tab : null}
+          onPaneElement={onSlotsPaneElement}
+          toolPane={null}
         />
       )
     } else if (tab === 'calculators') {

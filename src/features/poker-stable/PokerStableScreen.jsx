@@ -92,6 +92,8 @@ export default function PokerStableScreen({
   titleBarNavSlot = null,
   titleBarCenterSlot = null,
   titleBarToolCloseVisible = false,
+  /** Landscape Poker pane: no EDGE title bar; shell fills the keep-alive cover. */
+  paneEmbed = false,
   openStableDealId = null,
   onOpenStableDealConsumed = null,
   /** Alert tap for rewritten withdrawn invite (no deal id left on the activity row). */
@@ -984,9 +986,11 @@ export default function PokerStableScreen({
   return (
     <>
       <ScrollLinkedEdgeTitleBarShell
-        titleBarNavSlot={titleBarNavSlot}
-        titleBarCenterSlot={titleBarCenterSlot}
-        titleBarToolCloseVisible={titleBarToolCloseVisible}
+        embedded={paneEmbed}
+        publishScrollReveal={!paneEmbed}
+        titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
+        titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
+        titleBarToolCloseVisible={paneEmbed ? false : titleBarToolCloseVisible}
         contentClassName="px-3 pt-2 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
       >
         <div data-poker-stable>

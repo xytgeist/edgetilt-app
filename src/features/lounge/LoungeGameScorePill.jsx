@@ -1,7 +1,43 @@
-import { Check, ChevronRight } from 'lucide-react'
+import { useLayoutEffect, useRef } from 'react'
+import { ChevronRight } from 'lucide-react'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import { LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS } from './loungeFeedAvatar.js'
 import { nflPillWash } from './loungeSportsMatch.js'
+
+const PRE_SPREAD_MAX_PX = 26
+const PRE_SPREAD_MIN_PX = 13
+
+function FitPrimary({ children, className, align }) {
+  const ref = useRef(null)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const parent = el.parentElement
+    if (!parent) return
+    const fit = () => {
+      el.style.fontSize = `${PRE_SPREAD_MAX_PX}px`
+      const avail = parent.clientWidth
+      const need = el.scrollWidth
+      if (avail > 0 && need > avail) {
+        const next = Math.max(PRE_SPREAD_MIN_PX, Math.floor(PRE_SPREAD_MAX_PX * (avail / need) * 0.98))
+        el.style.fontSize = `${next}px`
+      }
+    }
+    fit()
+    const ro = new ResizeObserver(fit)
+    ro.observe(parent)
+    return () => ro.disconnect()
+  }, [children])
+  return (
+    <span
+      ref={ref}
+      data-lounge-game-pill-primary
+      className={`${className} ${align === 'end' ? 'ml-auto' : 'mr-auto'}`}
+    >
+      {children}
+    </span>
+  )
+}
 
 export function formatLoungeSportsSpread(point) {
   if (point == null || !Number.isFinite(Number(point))) return null
@@ -38,7 +74,7 @@ function scoreLabel(side, status) {
   return String(side.score)
 }
 
-function TeamMark({ side, dimmed, covered }) {
+function TeamMark({ side, dimmed }) {
   const src = side?.logo
   const letter = String(side?.abbrev || side?.mascot || '?').slice(0, 1)
   return (
@@ -57,34 +93,40 @@ function TeamMark({ side, dimmed, covered }) {
       ) : (
         <span className="text-[13px] font-bold text-white/80">{letter}</span>
       )}
-      {covered ? (
-        <span
-          data-lounge-game-pill-cover
-          className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full shadow-[0_1px_2px_rgba(0,0,0,0.65)]"
-          title="Covered"
-        >
-          <Check className="h-2.5 w-2.5" strokeWidth={3.5} />
-        </span>
-      ) : null}
     </span>
   )
 }
 
-function ScoreStack({ side, status, align, dimmed }) {
+function ScoreStack({ side, status, align, dimmed, covered }) {
   const pre = status === 'pre'
   const primary = scoreLabel(side, status)
   const spreadUnder = pre ? null : formatLoungeSportsSpread(side?.spread)
+  const primaryClass = `whitespace-nowrap font-bold leading-none tabular-nums drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
+    pre ? 'inline-block' : 'text-[26px]'
+  } ${dimmed ? 'text-white/55' : 'text-white'}`
   return (
-    <span className={`flex min-w-0 flex-col ${align === 'end' ? 'ml-auto items-end' : 'items-start'}`}>
-      <span
-        className={`text-[26px] font-bold leading-none tabular-nums drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
-          dimmed ? 'text-white/55' : 'text-white'
-        }`}
-      >
-        {primary}
-      </span>
+    <span
+      data-lounge-game-pill-num={pre ? 'fit' : undefined}
+      className={`flex min-w-0 flex-1 flex-col ${align === 'end' ? 'items-end' : 'items-start'}`}
+    >
+      {pre ? (
+        <span className="block w-full min-w-0 overflow-hidden">
+          <FitPrimary className={primaryClass} align={align}>
+            {primary}
+          </FitPrimary>
+        </span>
+      ) : (
+        <span data-lounge-game-pill-primary className={primaryClass}>
+          {primary}
+        </span>
+      )}
       {spreadUnder ? (
-        <span className="mt-1 text-[11px] font-semibold leading-none tabular-nums tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]">
+        <span
+          data-lounge-game-pill-spread-cover={covered ? '' : undefined}
+          className={`mt-1 whitespace-nowrap text-[11px] font-semibold leading-none tabular-nums tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
+            covered ? 'border-b-2 border-white pb-px' : ''
+          }`}
+        >
           {spreadUnder}
         </span>
       ) : null}
@@ -112,16 +154,18 @@ export default function LoungeGameScorePill({
   const awayWon = game.status === 'post' && game.home?.score != null && game.away?.score != null && game.away.score > game.home.score
   const live = game.status === 'in'
   const cover = loungeSportsSpreadCover(game)
+  const awayCovered = game.status === 'post' && cover.away
+  const homeCovered = game.status === 'post' && cover.home
   const awayColor = nflPillWash(game.away?.color, game.away?.color2)
   const homeColor = nflPillWash(game.home?.color, game.home?.color2)
   const Tag = interactive ? 'button' : 'div'
   const awaySpread = formatLoungeSportsSpread(game.away?.spread)
   const homeSpread = formatLoungeSportsSpread(game.home?.spread)
-  const coverNote = cover.home
+  const coverNote = homeCovered
     ? `${game.home?.abbrev} covered`
-    : cover.away
+    : awayCovered
       ? `${game.away?.abbrev} covered`
-      : cover.push
+      : cover.push && game.status === 'post'
         ? 'push'
         : ''
   const label = `${game.away?.abbrev} ${scoreLabel(game.away, game.status)}${awaySpread && game.status !== 'pre' ? ` ${awaySpread}` : ''} ${game.home?.abbrev} ${scoreLabel(game.home, game.status)}${homeSpread && game.status !== 'pre' ? ` ${homeSpread}` : ''} ${game.status_label}${coverNote ? ` ${coverNote}` : ''}`
@@ -148,13 +192,14 @@ export default function LoungeGameScorePill({
         <span data-lounge-game-pill-home aria-hidden="true" />
         <span data-lounge-game-pill-seam aria-hidden="true" />
         <span className="relative z-[3] flex min-h-[5.625rem] items-center gap-2 px-3 py-2.5">
-          <span className="flex min-w-0 flex-1 items-center gap-2">
-            <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} covered={cover.away} />
+          <span className="flex min-w-0 flex-1 items-center gap-1.5">
+            <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} />
             <ScoreStack
               side={game.away}
               status={game.status}
               align="end"
               dimmed={game.status === 'post' && !awayWon && !live}
+              covered={awayCovered}
             />
           </span>
           <span className="flex w-[4.75rem] shrink-0 flex-col items-center px-1">
@@ -163,16 +208,15 @@ export default function LoungeGameScorePill({
               {game.status_label}
             </span>
           </span>
-          <span className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="flex min-w-0 flex-1 items-center gap-1.5">
             <ScoreStack
               side={game.home}
               status={game.status}
               align="start"
               dimmed={game.status === 'post' && !homeWon && !live}
+              covered={homeCovered}
             />
-            <span className="ml-auto">
-              <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} covered={cover.home} />
-            </span>
+            <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} />
           </span>
           {interactive ? (
             <ChevronRight className="h-5 w-5 shrink-0 text-white/70 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" strokeWidth={2.25} />

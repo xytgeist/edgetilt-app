@@ -3347,13 +3347,16 @@ html.light [data-lounge-game-pill] .text-white\/55,
 html.light [data-lounge-game-pill] .text-zinc-100 {
   color: #fff !important;
 }
-[data-lounge-game-pill-cover] {
-  background-color: #f5c518;
-  color: #111;
+[data-lounge-game-pill-num] {
+  min-width: 0;
 }
-html.light [data-lounge-game-pill-cover] {
-  background-color: #f5c518 !important;
-  color: #111 !important;
+[data-lounge-game-pill-num='fit'] [data-lounge-game-pill-primary] {
+  font-size: 26px;
+  letter-spacing: -0.04em;
+}
+html.light [data-lounge-game-pill-spread-cover] {
+  color: #fff !important;
+  border-color: #fff !important;
 }
 html.light [data-lounge-composer-game-pill] > button {
   background-color: rgba(24, 24, 27, 0.88) !important;

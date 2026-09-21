@@ -126,7 +126,7 @@ function ScoreStack({ side, status, dimmed, covered }) {
       </span>
     )
   }
-  // Content-sized next to the logo (not flex-1). Team row justify-* pins clusters to the outer edges.
+  // Content-sized; parent flex-1 + justify-center pins the number between logo and FINAL.
   return (
     <span className="relative inline-flex shrink-0 items-center justify-center">
       <span data-lounge-game-pill-primary className={primaryClass}>
@@ -135,11 +135,16 @@ function ScoreStack({ side, status, dimmed, covered }) {
       {underLine ? (
         <span
           data-lounge-game-pill-spread-cover={covered ? '' : undefined}
-          className={`absolute left-1/2 top-full z-[1] mt-0.5 -translate-x-1/2 whitespace-nowrap text-center text-[11px] font-semibold leading-none tabular-nums tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)] ${
-            covered ? 'border-b-2 border-white pb-px' : ''
-          }`}
+          className="absolute left-1/2 top-full z-[1] mt-0.5 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap text-center text-[11px] font-semibold leading-none tabular-nums tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]"
         >
-          {underLine}
+          {covered ? (
+            <span
+              data-lounge-game-pill-cover-dot
+              className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-white"
+              aria-hidden="true"
+            />
+          ) : null}
+          <span>{underLine}</span>
         </span>
       ) : null}
     </span>
@@ -253,14 +258,16 @@ export default function LoungeGameScorePill({
         <span data-lounge-game-pill-home aria-hidden="true" />
         <span data-lounge-game-pill-seam aria-hidden="true" />
         <span className="relative z-[3] flex min-h-[5.625rem] items-center gap-2 px-3 py-2.5">
-          <span className="flex min-w-0 flex-1 items-center justify-start gap-1.5">
+          <span className="flex min-w-0 flex-1 items-center gap-1.5">
             <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} halo={air.awayAir} />
-            <ScoreStack
-              side={game.away}
-              status={game.status}
-              dimmed={game.status === 'post' && !awayWon && !live}
-              covered={awayCovered}
-            />
+            <span className="flex min-w-0 flex-1 items-center justify-center">
+              <ScoreStack
+                side={game.away}
+                status={game.status}
+                dimmed={game.status === 'post' && !awayWon && !live}
+                covered={awayCovered}
+              />
+            </span>
           </span>
           <span className="flex w-[4.75rem] shrink-0 flex-col items-center px-1">
             {live ? <span className="mb-0.5 h-1.5 w-1.5 rounded-full bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.9)]" /> : null}
@@ -268,13 +275,15 @@ export default function LoungeGameScorePill({
               {game.status_label}
             </span>
           </span>
-          <span className="flex min-w-0 flex-1 items-center justify-end gap-1.5">
-            <ScoreStack
-              side={game.home}
-              status={game.status}
-              dimmed={game.status === 'post' && !homeWon && !live}
-              covered={homeCovered}
-            />
+          <span className="flex min-w-0 flex-1 items-center gap-1.5">
+            <span className="flex min-w-0 flex-1 items-center justify-center">
+              <ScoreStack
+                side={game.home}
+                status={game.status}
+                dimmed={game.status === 'post' && !homeWon && !live}
+                covered={homeCovered}
+              />
+            </span>
             <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} halo={air.homeAir} />
           </span>
           {canOpenHub ? (

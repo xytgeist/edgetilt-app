@@ -87,12 +87,11 @@ function TeamMark({ side, dimmed }) {
   const letter = String(side?.abbrev || side?.mascot || '?').slice(0, 1)
   return (
     <span className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center sm:h-11 sm:w-11">
-      <span data-lounge-game-pill-logo-disc aria-hidden="true" />
       {src ? (
         <img
           src={src}
           alt=""
-          className={`relative z-[1] h-[78%] w-[78%] object-contain ${dimmed ? 'opacity-55' : ''}`}
+          className={`h-full w-full object-contain drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)] ${dimmed ? 'opacity-55' : ''}`}
           loading="lazy"
           decoding="async"
           onError={(ev) => {
@@ -100,7 +99,7 @@ function TeamMark({ side, dimmed }) {
           }}
         />
       ) : (
-        <span className="relative z-[1] text-[13px] font-bold text-white/80">{letter}</span>
+        <span className="text-[13px] font-bold text-white/80">{letter}</span>
       )}
     </span>
   )

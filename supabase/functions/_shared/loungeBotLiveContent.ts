@@ -108,12 +108,13 @@ const PERIOD_RULES: Record<string, PeriodMilestone[]> = {
   ],
 }
 
-export async function fetchSportScores(sportKey: string): Promise<ScoreEvent[]> {
+export async function fetchSportScores(sportKey: string, daysFrom = 1): Promise<ScoreEvent[]> {
   const key = oddsApiKey()
   if (!key) throw new Error('THE_ODDS_API_KEY not set on Edge.')
+  const days = Math.min(3, Math.max(1, Number(daysFrom) || 1))
   const qs = new URLSearchParams({
     apiKey: key,
-    daysFrom: '1',
+    daysFrom: String(days),
     dateFormat: 'iso',
   })
   const res = await fetch(`${ODDS_BASE}/sports/${sportKey}/scores?${qs}`)

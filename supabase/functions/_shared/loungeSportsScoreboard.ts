@@ -137,7 +137,8 @@ function sideFromRundown(
 ): LoungeSportsGameSide {
   const name = String(team?.name || '').trim()
   const mascot = String(team?.mascot || '').trim()
-  const abbrev = String(team?.abbreviation || '').trim().toUpperCase()
+  const abbrevRaw = String(team?.abbreviation || '').trim().toUpperCase()
+  const abbrev = abbrevRaw === 'WSH' ? 'WAS' : abbrevRaw === 'JAC' ? 'JAX' : abbrevRaw
   const display = [name, mascot].filter(Boolean).join(' ').trim() || abbrev || 'Team'
   const teamId = Number(team?.team_id ?? team?.id)
   return {
@@ -433,11 +434,23 @@ function gameOnSlate(game: LoungeSportsGame, dates: string[]): boolean {
   return Boolean(day) && dates.includes(day)
 }
 
+function slateDedupeKey(game: LoungeSportsGame): string {
+  const a = String(game.away?.abbrev || '').toUpperCase() === 'WSH' ? 'WAS' : String(game.away?.abbrev || '').toUpperCase()
+  const h = String(game.home?.abbrev || '').toUpperCase() === 'WSH' ? 'WAS' : String(game.home?.abbrev || '').toUpperCase()
+  return `${game.sport_key}:${a}@${h}:${ptDateFromIso(game.commence_time)}`
+}
+
 export async function buildLoungeSportsScoreboard(): Promise<{ games: LoungeSportsGame[]; source: string }> {
   const nflDates = nflSlatePtDates()
   const otherDates = otherSportSlateDates()
-  const byId = new Map<string, LoungeSportsGame>()
+  const byKey = new Map<string, LoungeSportsGame>()
   let source = 'none'
+
+  const upsert = (game: LoungeSportsGame, overwrite = false) => {
+    const key = slateDedupeKey(game)
+    if (!overwrite && byKey.has(key)) return
+    byKey.set(key, game)
+  }
 
   for (const sport of LOUNGE_SPORTS_SCOREBOARD_SPORTS) {
     const dates = sport.key === 'americanfootball_nfl' ? nflDates : otherDates
@@ -446,26 +459,23 @@ export async function buildLoungeSportsScoreboard(): Promise<{ games: LoungeSpor
       if (events.length) source = source === 'none' ? 'rundown' : source
       for (const ev of events) {
         const game = gameFromRundown(sport.key, sport.label, sport.logoLeague, ev)
-        if (game && gameOnSlate(game, dates)) byId.set(game.id, game)
+        if (game && gameOnSlate(game, dates)) upsert(game, true)
       }
     }
   }
 
-  const hasNfl = [...byId.values()].some((g) => g.sport_key === 'americanfootball_nfl')
-  if (!hasNfl) {
-    try {
-      const nfl = await fetchSportScores('americanfootball_nfl')
-      source = byId.size ? `${source}+odds` : 'odds'
-      for (const ev of nfl) {
-        const game = gameFromOdds('americanfootball_nfl', 'NFL', 'nfl', ev)
-        if (game && gameOnSlate(game, nflDates) && !byId.has(game.id)) byId.set(game.id, game)
-      }
-    } catch {
-      /* Odds fallback is optional */
+  try {
+    const nfl = await fetchSportScores('americanfootball_nfl', 3)
+    if (nfl.length) source = source === 'none' ? 'odds' : source.includes('odds') ? source : `${source}+odds`
+    for (const ev of nfl) {
+      const game = gameFromOdds('americanfootball_nfl', 'NFL', 'nfl', ev)
+      if (game && gameOnSlate(game, nflDates)) upsert(game, false)
     }
+  } catch {
+    /* Odds fills finals Rundown sometimes drops once they go FINAL */
   }
 
-  const games = [...byId.values()].sort((a, b) => {
+  const games = [...byKey.values()].sort((a, b) => {
     const rank = { in: 0, post: 1, pre: 2 }
     const d = rank[a.status] - rank[b.status]
     if (d) return d

@@ -35,7 +35,14 @@ export const NFL_TEAM_CATALOG = [
   { abbrev: 'WAS', espn: 'wsh', color: '#5A1414', color2: '#FFB612', names: ['Washington Commanders', 'Commanders', 'Washington'], players: ['Jayden Daniels', 'Terry McLaurin', 'Brian Robinson', 'Deebo Samuel'] },
 ]
 
-const CATALOG_BY_ABBREV = new Map(NFL_TEAM_CATALOG.map((row) => [row.abbrev, row]))
+const CATALOG_BY_ABBREV = new Map()
+for (const row of NFL_TEAM_CATALOG) {
+  CATALOG_BY_ABBREV.set(row.abbrev, row)
+  const espn = String(row.espn || '').trim().toUpperCase()
+  if (espn) CATALOG_BY_ABBREV.set(espn, row)
+}
+CATALOG_BY_ABBREV.set('JAC', CATALOG_BY_ABBREV.get('JAX'))
+CATALOG_BY_ABBREV.set('WSH', CATALOG_BY_ABBREV.get('WAS'))
 
 function norm(value) {
   return String(value || '')
@@ -140,10 +147,24 @@ function hasPhrase(haystack, phrase) {
 }
 
 function hasAbbrev(original, abbrev) {
-  const a = String(abbrev || '').trim()
+  const a = String(abbrev || '').trim().toUpperCase()
   if (a.length < 2 || a.length > 4) return false
   const re = new RegExp(`(?:^|[^A-Za-z])${escapeRe(a)}(?:[^A-Za-z]|$)`)
   return re.test(original)
+}
+
+function canonicalAbbrev(token) {
+  const t = String(token || '').trim().toUpperCase()
+  return CATALOG_BY_ABBREV.get(t)?.abbrev || t
+}
+
+function versusAbbrevs(original) {
+  const m = String(original || '').match(/\b([A-Z]{2,4})\s+(?:vs\.?|@|v)\s+([A-Z]{2,4})\b/)
+  if (!m) return null
+  const a = canonicalAbbrev(m[1])
+  const b = canonicalAbbrev(m[2])
+  if (!CATALOG_BY_ABBREV.has(a) || !CATALOG_BY_ABBREV.has(b) || a === b) return null
+  return [a, b]
 }
 
 function sideHits(original, haystack, side, sportKey) {
@@ -160,7 +181,8 @@ function sideHits(original, haystack, side, sportKey) {
     const words = norm(phrase).split(' ').filter(Boolean)
     score += words.length >= 2 ? 6 : norm(phrase).length >= 5 ? 4 : 2
   }
-  if (hasAbbrev(original, side?.abbrev) || (row && hasAbbrev(original, row.abbrev))) score += 3
+  const codes = [side?.abbrev, row?.abbrev, row?.espn]
+  if (codes.some((c) => hasAbbrev(original, c))) score += 3
   return score
 }
 
@@ -173,14 +195,25 @@ export function matchLoungePostToSportsGame(caption, games) {
   const haystack = norm(original)
   if (haystack.length < 3 || !Array.isArray(games) || !games.length) return null
 
+  const pair = versusAbbrevs(original)
   const ranked = []
   for (const game of games) {
     const home = sideHits(original, haystack, game.home, game.sport_key)
     const away = sideHits(original, haystack, game.away, game.sport_key)
     let score = home + away
-    if (home && away) score += 8
+    let both = home > 0 && away > 0
+    if (both) score += 8
+    if (pair) {
+      const homeAb = canonicalAbbrev(catalogRowForSide(game.home, game.sport_key)?.abbrev || game.home?.abbrev)
+      const awayAb = canonicalAbbrev(catalogRowForSide(game.away, game.sport_key)?.abbrev || game.away?.abbrev)
+      const hit = (pair[0] === awayAb && pair[1] === homeAb) || (pair[0] === homeAb && pair[1] === awayAb)
+      if (hit) {
+        score += 12
+        both = true
+      }
+    }
     if (score < 4) continue
-    ranked.push({ game, score, both: home > 0 && away > 0 })
+    ranked.push({ game, score, both })
   }
   if (!ranked.length) return null
   ranked.sort((a, b) => {

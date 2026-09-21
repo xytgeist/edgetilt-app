@@ -3922,17 +3922,16 @@ html[data-ipad-nav] [data-edge-status-bar-plate] {
 html.light [data-slots-landscape-tools] {
   border-right-color: #e4e4e7;
 }
-/* Landscape Lounge engagement split: phone-width feed left, engagement right. */
+/* Landscape Lounge engagement split: 50/50 beside rail, phone chrome (no tall-iPad pad/scale). */
 [data-lounge-feed-root][data-lounge-landscape-split] {
   max-width: none;
   /* Phone chrome … do not inherit full-viewport iPad feed pad. */
   --edge-ipad-feed-pad: 0.75rem;
-  --lounge-landscape-phone-col: 24.375rem; /* 390px … portrait iPhone logical width */
 }
 [data-lounge-landscape-feed] {
-  width: var(--lounge-landscape-phone-col);
-  flex: 0 0 var(--lounge-landscape-phone-col);
-  max-width: var(--lounge-landscape-phone-col);
+  width: 50%;
+  flex: 0 0 50%;
+  max-width: none;
 }
 html.light [data-lounge-landscape-feed] {
   border-right-color: #e4e4e7;
@@ -3942,8 +3941,10 @@ html.light [data-lounge-detail-in-pane] {
   background-color: #fafafa;
 }
 @media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
-  [data-lounge-feed-root][data-lounge-landscape-split] {
-    --lounge-landscape-phone-col: min(24.375rem, 46vw);
+  [data-lounge-landscape-feed] {
+    width: 50% !important;
+    flex: 0 0 50% !important;
+    max-width: none;
   }
 }
 /* Phone landscape: tighter tool cards so the short height still fits. */

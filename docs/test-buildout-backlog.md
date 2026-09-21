@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Lounge landscape 50/50 + phone chrome (Mac).** Split columns are equal beside the rail; left keeps phone pad/type (no tall-iPad feed scale). Frontend **`1.4.405`**. Web only.
 - **2026-09-21:** **Lounge landscape phone feed column (Mac).** Split left column is fixed ~390px portrait-iPhone width and opts out of tall-iPad feed pad/scale so cards/charts are not scrunched. Frontend **`1.4.404`**. Web only.
 - **2026-09-21:** **Lounge landscape engagement split (Mac).** Same gate as Slots (`useIpadSlotsLandscape`). Post detail, market chart, game hub, and external links open in a right pane (~50% feed left). Chart/hub `embedded`; `LoungeLandscapeExternalLinkPane` for outbound URLs. Lightbox comment sheet stays overlay. Frontend **`1.4.403`**. Web only.
 - **2026-09-21:** **Post detail market + sports (Mac).** Detail minicharts use `variant="detail"` and measure the live column so portrait shows one + peek. `LoungeGameScorePill` mounts on post detail (was feed-only). Frontend **`1.4.402`**. Web only.

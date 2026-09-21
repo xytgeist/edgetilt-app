@@ -526,7 +526,7 @@ export default function LoungeGameHubModal({
           isStaffPoster: false,
           categoryPills: ['sports'],
           marketSymbols: [],
-          sportsGame: { suppress: false, eventId: game.id },
+          sportsGame: { suppress: false, eventId: game.id, eventIds: [game.id] },
         },
         signal: new AbortController().signal,
         rateLimitMessage: (msg) => String(msg || 'Slow down a second and try again.'),

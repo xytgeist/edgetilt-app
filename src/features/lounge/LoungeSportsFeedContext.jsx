@@ -4,7 +4,7 @@ import {
   readLoungeSportsScoreboardCache,
   writeLoungeSportsScoreboardCache,
 } from '../../utils/loungeSportsApi.js'
-import { enrichLoungeSportsGame, matchLoungePostToSportsGame, loungeSportsMatchTextFromPost } from './loungeSportsMatch.js'
+import { enrichLoungeSportsGame } from './loungeSportsMatch.js'
 import { isLoungeSportsCurrentSlateGame, ptDateFromIsoLocal } from './loungeSportsSlateWindow.js'
 import { parseLoungeSportsGameField } from './loungeSportsGameField.js'
 
@@ -121,17 +121,19 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
     })
   }, [games])
 
-  const matchPost = useCallback(
+  const gamesForPost = useCallback(
     (post) => {
       const pinned = parseLoungeSportsGameField(post?.sports_game)
-      if (pinned.suppress) return null
-      if (pinned.eventId) {
-        const hit = games.find((g) => String(g.id) === pinned.eventId)
-        if (hit) return hit
-      }
-      return matchLoungePostToSportsGame(loungeSportsMatchTextFromPost(post), games)
+      if (pinned.suppress || !pinned.eventIds.length) return []
+      const byId = new Map(games.map((g) => [String(g.id), g]))
+      return pinned.eventIds.map((id) => byId.get(String(id))).filter(Boolean)
     },
     [games],
+  )
+
+  const matchPost = useCallback(
+    (post) => gamesForPost(post)[0] || null,
+    [gamesForPost],
   )
 
   const openHub = useCallback((game) => {
@@ -141,8 +143,8 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
   const closeHub = useCallback(() => setHubGame(null), [])
 
   const value = useMemo(
-    () => ({ games, hubGame, matchPost, openHub, closeHub, refresh: loadBoard }),
-    [closeHub, games, hubGame, loadBoard, matchPost, openHub],
+    () => ({ games, hubGame, matchPost, gamesForPost, openHub, closeHub, refresh: loadBoard }),
+    [closeHub, games, gamesForPost, hubGame, loadBoard, matchPost, openHub],
   )
 
   return <LoungeSportsFeedContext.Provider value={value}>{children}</LoungeSportsFeedContext.Provider>

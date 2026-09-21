@@ -379,7 +379,7 @@ import {
 import KlipyGifPicker from './KlipyGifPicker.jsx'
 import LoungeMarketChartModal from './LoungeMarketChartModal.jsx'
 import LoungeMarketChartStrip from './LoungeMarketChartStrip.jsx'
-import LoungeGameScorePill from './LoungeGameScorePill.jsx'
+import LoungeGameScorePillStrip from './LoungeGameScorePillStrip.jsx'
 import { LoungeMarketFeedProvider } from './LoungeMarketFeedContext.jsx'
 import { LoungeSportsFeedProvider } from './LoungeSportsFeedContext.jsx'
 import LoungeGameHubModal from './LoungeGameHubModal.jsx'
@@ -1427,7 +1427,7 @@ export default function SocialFeed({
   const composerImageInputRef = useRef(null)
   const composerVideoInputRef = useRef(null)
   const composerFieldRef = useRef(null)
-  const composerSportsRef = useRef({ suppress: false, eventId: '' })
+  const composerSportsRef = useRef({ suppress: false, eventId: '', eventIds: [] })
   const readLiveFeedComposerCaption = useCallback(() => {
     const el = composerFieldRef.current
     if (el) {
@@ -11563,7 +11563,7 @@ export default function SocialFeed({
     })
     setComposerMediaUrl('')
     setComposerMarketSymbols([])
-    composerSportsRef.current = { suppress: false, eventId: '' }
+    composerSportsRef.current = { suppress: false, eventId: '', eventIds: [] }
     composerFoldRevealRef.current = 0
     setComposerFoldReveal(0)
     composerExpandedRef.current = false
@@ -18305,7 +18305,7 @@ export default function SocialFeed({
                     <div
                       className={loungeCommentDetailPathIds.length > 0 ? LOUNGE_COMMENT_DETAIL_THREAD_PAD : ''}
                     >
-                      <LoungeGameScorePill post={loungePostDetail} />
+                      <LoungeGameScorePillStrip post={loungePostDetail} />
                     </div>
                   ) : null}
                 </>
@@ -18367,7 +18367,7 @@ export default function SocialFeed({
                       priority
                     />
                     {!isLoungeFanOnlyPostLocked(loungePostDetail, loungeFanLockCtx) ? (
-                      <LoungeGameScorePill post={loungePostDetail} />
+                      <LoungeGameScorePillStrip post={loungePostDetail} />
                     ) : null}
                     {/* AP Guide embed card - detail view */}
                     {loungePostDetail.is_ap_guide_post && loungePostDetail.game_slug ? (

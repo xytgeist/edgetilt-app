@@ -1,4 +1,5 @@
-import { pickAmbiguousTeamGame, pickSpecificMatchupGame, sideAbbrev, gameHasTeam } from './loungeSportsSlateWindow.js'
+import { pickAmbiguousTeamGame, pickSpecificMatchupGame, gameHasTeam } from './loungeSportsSlateWindow.js'
+import { LOUNGE_SPORTS_GAME_PIN_MAX } from './loungeSportsGameField.js'
 
 /** NFL aliases + notable names so captions like "Jayden Daniels" still hit today's game. */
 export const NFL_TEAM_CATALOG = [
@@ -253,33 +254,16 @@ function mentionedNflAbbrevs(original, haystack) {
 }
 
 /**
- * Caption → game. Named matchups pin that game (recent or upcoming).
- * Vague one-team lines use live / most recent until MNF is final, then the next game.
+ * Caption → up to `limit` games (composer suggestions). Prefer specific matchups, then one game per mentioned team.
  */
-export function matchLoungePostToSportsGame(caption, games) {
+export function matchLoungePostToSportsGames(caption, games, limit = LOUNGE_SPORTS_GAME_PIN_MAX) {
+  const cap = Math.max(1, Math.min(LOUNGE_SPORTS_GAME_PIN_MAX, Number(limit) || LOUNGE_SPORTS_GAME_PIN_MAX))
   const original = String(caption || '')
   const haystack = norm(original)
-  if (haystack.length < 3 || !Array.isArray(games) || !games.length) return null
+  if (haystack.length < 3 || !Array.isArray(games) || !games.length) return []
 
   const pair = versusAbbrevs(original)
   const mentioned = mentionedNflAbbrevs(original, haystack)
-  const teams = pair || mentioned
-
-  if (teams.length >= 2) {
-    const [a, b] = pair || mentioned
-    const candidates = games.filter((game) => gameHasTeam(game, a) && gameHasTeam(game, b))
-    const hit = pickSpecificMatchupGame(candidates, games)
-    if (hit) return hit
-    const live = teams.map((abbrev) => pickAmbiguousTeamGame(abbrev, games)).find((g) => g?.status === 'in')
-    if (live) return live
-    const recent = teams.map((abbrev) => pickAmbiguousTeamGame(abbrev, games)).find(Boolean)
-    if (recent) return recent
-  }
-
-  if (teams.length === 1) {
-    return pickAmbiguousTeamGame(teams[0], games)
-  }
-
   const ranked = []
   for (const game of games) {
     const home = sideHits(original, haystack, game.home, game.sport_key)
@@ -287,20 +271,44 @@ export function matchLoungePostToSportsGame(caption, games) {
     let score = home + away
     const both = home > 0 && away > 0
     if (both) score += 8
+    if (pair && gameHasTeam(game, pair[0]) && gameHasTeam(game, pair[1])) score += 12
     if (score < 4) continue
-    ranked.push({ game, score, both, home, away })
+    ranked.push({ game, score, both })
   }
-  if (!ranked.length) return null
-  const specific = ranked.filter((r) => r.both).map((r) => r.game)
-  if (specific.length) return pickSpecificMatchupGame(specific, games)
-  const teamHits = new Set()
-  for (const row of ranked) {
-    if (row.home) teamHits.add(sideAbbrev(row.game.home))
-    if (row.away) teamHits.add(sideAbbrev(row.game.away))
+  ranked.sort((a, b) => b.score - a.score || String(a.game.commence_time).localeCompare(String(b.game.commence_time)))
+
+  const out = []
+  const seen = new Set()
+  const add = (game) => {
+    const id = String(game?.id || '')
+    if (!game || !id || seen.has(id) || out.length >= cap) return
+    seen.add(id)
+    out.push(game)
   }
-  if (teamHits.size === 1) return pickAmbiguousTeamGame([...teamHits][0], games)
-  ranked.sort((a, b) => b.score - a.score)
-  return ranked[0]?.game || null
+
+  for (const row of ranked.filter((r) => r.both)) add(row.game)
+
+  if (pair) {
+    const candidates = games.filter((game) => gameHasTeam(game, pair[0]) && gameHasTeam(game, pair[1]))
+    add(pickSpecificMatchupGame(candidates, games))
+  }
+
+  for (const abbrev of mentioned) {
+    if (out.length >= cap) break
+    if (out.some((g) => gameHasTeam(g, abbrev))) continue
+    add(pickAmbiguousTeamGame(abbrev, games))
+  }
+
+  for (const row of ranked) add(row.game)
+  return out
+}
+
+/**
+ * Caption → one game. Named matchups pin that game (recent or upcoming).
+ * Vague one-team lines use live / most recent until MNF is final, then the next game.
+ */
+export function matchLoungePostToSportsGame(caption, games) {
+  return matchLoungePostToSportsGames(caption, games, 1)[0] || null
 }
 
 export function loungeSportsMatchTextFromPost(post) {

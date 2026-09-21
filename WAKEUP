@@ -158,11 +158,15 @@ The agent should treat the following as **standing instructions for this session
 
 **How the game pill works (canonical pointers):**
 
-- Match + wash + halo probe: `src/features/lounge/loungeSportsMatch.js` (`nflPillWash` = primary; near-black lift only; `probeLogoWashConflict` / `nflPillWashLikelyAir` gate halo, not stain).
+- Match + wash + halo probe: `src/features/lounge/loungeSportsMatch.js` (`matchLoungePostToSportsGames` for composer suggest; `nflPillWash` = primary; near-black lift only; `probeLogoWashConflict` / `nflPillWashLikelyAir` gate halo, not stain).
 - Client fetch: `src/utils/loungeSportsApi.js` → Edge **`lounge-sports-scoreboard`** (JWT). Cache **v4**.
 - Pill chrome: `src/index.css` `[data-lounge-game-pill]` multiply stain 0-18% primary; `[data-lounge-game-pill-logo='light']` white halo. Light mode: `html.light [data-lounge-game-pill]` bg `#7a7a84`, text stays white.
-- Hub: `LoungeGameHubModal.jsx`. Composer pin/suppress: `sports_game` jsonb.
+- Hub: `LoungeGameHubModal.jsx`. Pin field: `sports_game` jsonb (`event_id` / `event_ids` up to 4). Composer: tap-to-include. Feed: pin-only via `gamesForPost` + `LoungeGameScorePillStrip` carousel.
 - Edge: `supabase/functions/_shared/loungeSportsScoreboard.ts` (Pinnacle close; historical fill if spread **or** ML missing).
+
+### Windows Theo 2026-09-21 ... sports card tap-to-include + multi
+
+**I am Windows Theo.** Composer suggests game pills with **Tap to include** (default off). Up to **4** pinned `event_ids`. Feed paints **pin-only** (no caption auto-match ... bots stay clean). Multi = minichart-style horizontal carousel. Web **`1.4.407`**.
 
 **Prior track still true (landscape, idle ... do not regress):**
 

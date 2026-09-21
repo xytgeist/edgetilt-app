@@ -5,7 +5,7 @@ import { displayPostCategoryPills } from '../../utils/loungePostCategoryPills.js
 import LoungeExpandableRichCaption from './LoungeExpandableRichCaption.jsx'
 import LoungeLinkPreviewBlock from './LoungeLinkPreviewBlock.jsx'
 import LoungeMarketChartStrip from './LoungeMarketChartStrip.jsx'
-import LoungeGameScorePill from './LoungeGameScorePill.jsx'
+import LoungeGameScorePillStrip from './LoungeGameScorePillStrip.jsx'
 import { bodyTextWithLinkPreview } from '../../utils/linkifyText.jsx'
 import { LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
 import LoungeFeedAuthorMetaBadges from './LoungeFeedAuthorMetaBadges.jsx'
@@ -763,9 +763,9 @@ function LoungePostArticle({
 
         {/* ── AP Guide embed card ─────────────────────────────────────────── */}
         {!isCommentRepost && !isLoungeFanOnlyPostLocked(displayPost, fanLockCtx) ? (
-          <LoungeGameScorePill post={isQuoteRepost ? post : displayPost} />
+          <LoungeGameScorePillStrip post={isQuoteRepost ? post : displayPost} />
         ) : isCommentRepost && rc ? (
-          <LoungeGameScorePill post={{ ...post, caption: rc.body, reposted_comment: rc }} />
+          <LoungeGameScorePillStrip post={{ ...post, caption: rc.body, reposted_comment: rc }} />
         ) : null}
 
         {!isCommentRepost && displayPost.is_ap_guide_post && displayPost.game_slug ? (

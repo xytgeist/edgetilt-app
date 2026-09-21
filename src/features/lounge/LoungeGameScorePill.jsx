@@ -180,7 +180,8 @@ function usePillAirSides(game) {
 
 /**
  * In-post score pill (X sports chip). Tap opens the Edge game hub.
- * Pass `game` to skip caption matching (composer preview).
+ * Pass `game` to skip caption matching (composer / strip).
+ * `pendingInclude` = composer suggest overlay until the author opts in.
  */
 export default function LoungeGameScorePill({
   post,
@@ -188,6 +189,8 @@ export default function LoungeGameScorePill({
   className = '',
   dismissible = false,
   onDismiss,
+  onInclude,
+  pendingInclude = false,
   interactive = true,
 }) {
   const sports = useLoungeSportsFeed()
@@ -203,7 +206,8 @@ export default function LoungeGameScorePill({
   const homeCovered = game.status === 'post' && cover.home
   const awayColor = air.awayColor
   const homeColor = air.homeColor
-  const Tag = interactive ? 'button' : 'div'
+  const canOpenHub = interactive && !pendingInclude
+  const Tag = canOpenHub || pendingInclude ? 'button' : 'div'
   const awaySpread = formatLoungeSportsSpread(game.away?.spread)
   const homeSpread = formatLoungeSportsSpread(game.home?.spread)
   const awayMl = formatLoungeSportsMoneyline(game.away?.ml)
@@ -217,30 +221,41 @@ export default function LoungeGameScorePill({
         : ''
   const awayLine = game.status !== 'pre' ? [awaySpread, awayMl].filter(Boolean).join(' ') : ''
   const homeLine = game.status !== 'pre' ? [homeSpread, homeMl].filter(Boolean).join(' ') : ''
-  const label = `${game.away?.abbrev} ${scoreLabel(game.away, game.status)}${awayLine ? ` ${awayLine}` : ''} ${game.home?.abbrev} ${scoreLabel(game.home, game.status)}${homeLine ? ` ${homeLine}` : ''} ${game.status_label}${coverNote ? ` ${coverNote}` : ''}`
+  const label = pendingInclude
+    ? `Tap to include ${game.away?.abbrev} at ${game.home?.abbrev}`
+    : `${game.away?.abbrev} ${scoreLabel(game.away, game.status)}${awayLine ? ` ${awayLine}` : ''} ${game.home?.abbrev} ${scoreLabel(game.home, game.status)}${homeLine ? ` ${homeLine}` : ''} ${game.status_label}${coverNote ? ` ${coverNote}` : ''}`
 
   return (
-    <div className={`relative ${className}`.trim()} data-lounge-composer-game-pill={dismissible ? '' : undefined}>
+    <div
+      className={`relative ${className}`.trim()}
+      data-lounge-composer-game-pill={dismissible || pendingInclude ? '' : undefined}
+      data-lounge-game-pill-pending={pendingInclude ? '' : undefined}
+    >
       <Tag
-        type={interactive ? 'button' : undefined}
+        type={canOpenHub || pendingInclude ? 'button' : undefined}
         data-lounge-game-pill
         onClick={
-          interactive
+          pendingInclude
             ? (e) => {
                 e.stopPropagation()
-                sports.openHub?.(game)
+                onInclude?.()
               }
-            : undefined
+            : canOpenHub
+              ? (e) => {
+                  e.stopPropagation()
+                  sports.openHub?.(game)
+                }
+              : undefined
         }
         style={{ '--pill-away': awayColor, '--pill-home': homeColor }}
-        className={`${LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS} relative mt-2 min-h-[5.625rem] w-full overflow-hidden rounded-2xl text-left text-white touch-manipulation [-webkit-tap-highlight-color:transparent] ${interactive ? 'active:opacity-90' : ''}`.trim()}
+        className={`${LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS} relative min-h-[5.625rem] w-full overflow-hidden rounded-2xl text-left text-white touch-manipulation [-webkit-tap-highlight-color:transparent] ${canOpenHub || pendingInclude ? 'active:opacity-90' : ''}`.trim()}
         aria-label={label}
       >
         <span data-lounge-game-pill-field aria-hidden="true" />
         <span data-lounge-game-pill-away aria-hidden="true" />
         <span data-lounge-game-pill-home aria-hidden="true" />
         <span data-lounge-game-pill-seam aria-hidden="true" />
-        <span className="relative z-[3] flex min-h-[5.625rem] items-center gap-2 px-3 py-2.5">
+        <span className={`relative z-[3] flex min-h-[5.625rem] items-center gap-2 px-3 py-2.5 ${pendingInclude ? 'opacity-55' : ''}`.trim()}>
           <span className="flex min-w-0 flex-1 items-center gap-1.5">
             <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} halo={air.awayAir} />
             <ScoreStack
@@ -267,10 +282,21 @@ export default function LoungeGameScorePill({
             />
             <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} halo={air.homeAir} />
           </span>
-          {interactive ? (
+          {canOpenHub ? (
             <ChevronRight className="h-5 w-5 shrink-0 text-white/70 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]" strokeWidth={2.25} />
           ) : null}
         </span>
+        {pendingInclude ? (
+          <span
+            data-lounge-game-pill-include-overlay
+            className="pointer-events-none absolute inset-0 z-[4] flex items-center justify-center bg-black/45 px-3"
+            aria-hidden="true"
+          >
+            <span className="rounded-full border border-white/35 bg-zinc-950/80 px-3.5 py-1.5 text-[12px] font-semibold tracking-wide text-white shadow-md">
+              Tap to include
+            </span>
+          </span>
+        ) : null}
       </Tag>
       {dismissible ? (
         <button
@@ -281,7 +307,7 @@ export default function LoungeGameScorePill({
             onDismiss?.()
           }}
           className="absolute left-2 top-2 z-10 flex h-6 w-6 touch-manipulation items-center justify-center rounded-full border border-zinc-600/80 bg-zinc-800/95 text-[13px] font-bold leading-none text-zinc-200 shadow-md hover:bg-zinc-700 active:bg-zinc-600 [-webkit-tap-highlight-color:transparent]"
-          aria-label="Remove game pill"
+          aria-label={pendingInclude ? 'Dismiss game suggestion' : 'Remove game pill'}
         >
           ×
         </button>

@@ -3371,6 +3371,17 @@ html.light [data-lounge-composer-game-pill] > button {
   color: #f4f4f5 !important;
   border-color: rgba(63, 63, 70, 0.8) !important;
 }
+[data-lounge-game-pill-include-overlay] {
+  backdrop-filter: blur(1px);
+}
+html.light [data-lounge-game-pill-include-overlay] {
+  background-color: rgba(24, 24, 27, 0.42) !important;
+}
+html.light [data-lounge-game-pill-include-overlay] > span {
+  background-color: rgba(24, 24, 27, 0.9) !important;
+  border-color: rgba(255, 255, 255, 0.45) !important;
+  color: #fafafa !important;
+}
 html.light [data-lounge-game-hub] {
   background-color: #fafafa !important;
   color: #18181b !important;

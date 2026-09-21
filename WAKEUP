@@ -66,10 +66,11 @@ The agent should treat the following as **standing instructions for this session
 
 **What this track is:** After App Review of **1.4.95**, Mac built **iPad landscape Slots** into a two-column shell, then Ryan insisted on bringing the same idea to **iPhone landscape**. It shipped and he likes it. Tip of that work is on **`test`**.
 
-**Current tip (Mac):** web **`1.4.385`**. Branch **`test`**. Do **not** bump iOS **`MARKETING_VERSION`** off **1.4.95**. Dirty Xcode scheme files under `ios/EdgeTilt.xcodeproj/xcshareddata/xcschemes/` are local only ... **do not stage them**.
+**Current tip (Mac):** web **`1.4.386`**. Branch **`test`**. Do **not** bump iOS **`MARKETING_VERSION`** off **1.4.95**. Dirty Xcode scheme files under `ios/EdgeTilt.xcodeproj/xcshareddata/xcschemes/` are local only ... **do not stage them**.
 
 **Shipped on this track (newest → older, all Mac unless noted):**
 
+1. **`1.4.386`** ... light mode game-pill middle label (FINAL / kickoff) stays white. Dark mode unchanged.
 1. **`1.4.385`** ... in-post pills were blank because the scoreboard tried every sport and 502'd, then the client replaced the last slate with `[]`. Slate is NFL + Odds only; a failed/empty refresh keeps the last board.
 1. **`1.4.384`** ... temporally smart game pills (specific matchup vs live/recent until MNF is final, then upcoming). Composer shows the pill as you type, X to drop it.
 1. **`1.4.383`** ... Sunday finals stay on the slate (Odds merge); `WAS vs DAL` pills work even when Rundown uses WSH.

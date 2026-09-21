@@ -3339,6 +3339,11 @@ html.light [data-lounge-game-pill] {
   background-color: #7a7a84 !important;
 }
 html.light [data-lounge-game-pill] .text-white,
+html.light [data-lounge-game-pill] .text-white\/90,
+html.light [data-lounge-game-pill] .text-white\/80,
+html.light [data-lounge-game-pill] .text-white\/70,
+html.light [data-lounge-game-pill] .text-white\/60,
+html.light [data-lounge-game-pill] .text-white\/55,
 html.light [data-lounge-game-pill] .text-zinc-100 {
   color: #fff !important;
 }

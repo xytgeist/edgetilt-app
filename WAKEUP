@@ -166,7 +166,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Windows Theo 2026-09-21 ... sports card tap-to-include + multi
 
-**I am Windows Theo.** Composer sports cards: **Tap to include**; tokens commit on trailing space **or punctuation** (`Rams ` / `DAL,`); one card per team/matchup; **48h** last-vs-next; matchup replaces vague card. Multi = feed-style full-bleed carousel. Web **`1.4.421`**.
+**I am Windows Theo.** Composer sports cards: **Tap to include**; tokens commit on trailing space **or punctuation** (`Rams ` / `DAL,`); one card per team/matchup; **48h** last-vs-next; matchup replaces vague card. Multi = feed-style full-bleed carousel. Web **`1.4.422`**.
 
 **Prior track still true (landscape, idle ... do not regress):**
 

@@ -105,6 +105,7 @@ Track **everything else** already used on test that production must also have ap
 - [x] **Poker Stable backer hide Closed stake (2026-08-06 promote):** SQL **`20260806120000`** applied on **test + prod**. Frontend via `test` → `main`. **No Edge redeploy.** Smoke: Closed stakes → Delete → confirm → card gone from Closed stakes; player ARCHIVE unchanged.
 - [x] **Poker Stable stakee hide archived stake (2026-08-16 promote):** applied **`20260816160000`** on **`jtjgtucumuoswnbauxry`**. Frontend via **`test` → `main`** @ **`e90a116b`**. **No Edge redeploy.** Smoke: Bankroll → Archive → Delete archived stake → **Keep sessions** leaves merged personal history/metrics; **Delete sessions** removes those personal rows/metrics; backer Closed history and settled bankroll balances remain unchanged.
 
+- [x] **Lounge game pills + hub (2026-09-21, `main` @ `279b126b`):** applied **`20260920220000_lounge_sports_game.sql`** on **`jtjgtucumuoswnbauxry`** (`community_feed_posts.sports_game` jsonb). Recorded in `schema_migrations`. Deployed **`lounge-sports-scoreboard`**. Frontend via **`test` → `main`**. Vercel prod = web **`1.4.401`**. Week-2 Pinnacle close rows were test-only; prod fills missing close from Odds historical at kickoff. Smoke: signed-in Lounge on **edgetilt.com** ... NFL caption paints a pill, tap opens the hub, finals show Pinnacle close + ATS underline when historical returns a line.
 - [x] **UFC metrics what-changed dump (2026-09-18):** applied **`20260918120000_ufc_metrics_sync_runs.sql`** on **test + prod** (empty table, public select, service_role write). Recorded in `schema_migrations`. **No Edge redeploy.** Frontend **`1.4.289`** on **`test`**. Manual production refresh the same day wrote the first row: **1 new (Lucas Armand), 258 same**. Smoke: Ops → UFC Metrics → Reload dump.
 - [x] **UFC Sherdog result tape (2026-09-18):** applied **`20260918150000_ufc_result_tape.sql`** on **test + prod**. Recorded in `schema_migrations`. Bryce Meredith, Movlid Khaybulaev, Marcos Breno, and Devon Lozej written as result tapes (`career_measured` false, `counts_measured` false). **`lounge-odds-poll`** redeployed so Scott ignores those rows and Rocco scores finish style instead of blank takedowns.
 - [x] **Ops Scorecard 3-arg picks record (2026-09-11):** applied **`20260828113000`** on **`jtjgtucumuoswnbauxry`** (create 3-arg `lounge_bot_get_picks_record`, drop the old 1-arg, grant authenticated/anon/service_role), recorded in `schema_migrations`. **No Edge redeploy.** Ops tiles were 0-0 because `/ops` calls `(uuid, text, text)` and the error was swallowed. Verified All-Time **31-26 / +10.69u / 266 pending**.
@@ -254,6 +255,8 @@ supabase functions deploy creator-fan-reconcile-stripe
 # Farm ingest door (after 20260907190000 + LOUNGE_BOT_FARM_INGEST_SECRET):
 supabase functions deploy lounge-bot-ingest
 supabase functions deploy lounge-bot-admin
+# Lounge in-post game pill + hub (after 20260920220000 sports_game; needs THERUNDOWN_API_KEY + THE_ODDS_API_KEY):
+supabase functions deploy lounge-sports-scoreboard
 ```
 
 Deploy **`lounge-cf-stream-purge-pending-uploads`** from a repo copy that includes **`supabase/config.toml`** (`verify_jwt = false` for that function) so **`sb_*`** gateway keys work when used from Vault.

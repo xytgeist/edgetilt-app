@@ -33,7 +33,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
-**Branch:** `test` (match `origin/test` before edits). `main` @ **`9ba75f30`** (promoted 2026-09-20). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
+**Branch:** `test` (match `origin/test` before edits). `main` @ **`279b126b`** (promoted 2026-09-21, web **1.4.401**). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
 
 **Supabase (do not swap these):**
 
@@ -66,7 +66,7 @@ The agent should treat the following as **standing instructions for this session
 
 **What this track is:** After App Review of **1.4.95**, Mac built **iPad landscape Slots** into a two-column shell, then Ryan insisted on bringing the same idea to **iPhone landscape**. It shipped and he likes it. Tip of that work is on **`test`**.
 
-**Current tip (Mac):** web **`1.4.401`**. Branch **`test`**. Do **not** bump iOS **`MARKETING_VERSION`** off **1.4.95**. Dirty Xcode scheme files under `ios/EdgeTilt.xcodeproj/xcshareddata/xcschemes/` are local only ... **do not stage them**.
+**Current tip (Mac):** web **`1.4.401`**. Branch **`test`**. Promoted **`test` → `main`** **`279b126b`** (Vercel **edgetilt.com**). Prod SQL **`20260920220000`** (`sports_game` jsonb). Prod Edge **`lounge-sports-scoreboard`** on **`jtjgtucumuoswnbauxry`**. Week-2 Pinnacle closes were **test-only**; prod fills from Odds historical at kickoff. Do **not** bump iOS **`MARKETING_VERSION`** off **1.4.95**. Dirty Xcode scheme files under `ios/EdgeTilt.xcodeproj/xcshareddata/xcschemes/` are local only ... **do not stage them**.
 
 **Week 2 Pinnacle closes are tabled on test.** `lounge_market_files` has 14 locked NFL rows (`close_spread_source=pinnacle`). Smoke Lounge on **WAS@DAL** (`WAS +4 +177` / `DAL -4 -200`, Cowboys covered) and **IND@KC** (`IND +6 +226` / `KC -6 -259`, Colts covered ATS). Week 1 still has no true Pinnacle close.
 

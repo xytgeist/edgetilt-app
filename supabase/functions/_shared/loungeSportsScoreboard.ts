@@ -4,7 +4,7 @@
  */
 import { listRundownDayEvents, ptDateFromIso, rundownApiKey } from './loungeBotRundownContext.ts'
 import { fetchSportScores, type ScoreEvent } from './loungeBotLiveContent.ts'
-import { fetchSportOdds, ptTodayDate } from './loungeBotOddsRun.ts'
+import { fetchSportOdds, fetchSportOddsHistorical, ptTodayDate } from './loungeBotOddsRun.ts'
 
 export const LOUNGE_SPORTS_SCOREBOARD_SPORTS = [
   { key: 'americanfootball_nfl', label: 'NFL', logoLeague: 'nfl' },
@@ -552,7 +552,8 @@ export async function buildLoungeSportsScoreboard(): Promise<{ games: LoungeSpor
       }
     }
     if (nflOddsPack) source = source.includes('odds') ? source : source === 'none' ? 'odds' : `${source}+odds`
-    const withSpreads = applyOddsSpreads([...byKey.values()], nflOddsPack)
+    const liveSpreads = applyOddsSpreads([...byKey.values()], nflOddsPack, false)
+    const withSpreads = await fillClosingSpreadsFromHistorical(liveSpreads, 'americanfootball_nfl')
     byKey.clear()
     for (const game of withSpreads) upsert(game, true)
   }
@@ -679,13 +680,19 @@ function preferredSpreadFromBooks(books: LoungeSportsOddsRow[]): { home: number 
   return { home: null, away: null }
 }
 
+function gameHasSpread(game: LoungeSportsGame): boolean {
+  return numOrNull(game.home?.spread) != null || numOrNull(game.away?.spread) != null
+}
+
 function applyOddsSpreads(
   games: LoungeSportsGame[],
-  pack: Awaited<ReturnType<typeof fetchSportOdds>> | null,
+  pack: Awaited<ReturnType<typeof fetchSportOdds>> | { events?: OddsEventRow[] } | null,
+  onlyIfMissing = false,
 ): LoungeSportsGame[] {
   const events = Array.isArray(pack?.events) ? pack!.events as OddsEventRow[] : []
   if (!events.length) return games
   return games.map((game) => {
+    if (onlyIfMissing && gameHasSpread(game)) return game
     const matched = events.find((ev) =>
       oddsNamesHit(String(ev.home_team || ''), game.home) && oddsNamesHit(String(ev.away_team || ''), game.away)
     )
@@ -703,6 +710,43 @@ function applyOddsSpreads(
       away: { ...game.away, spread: pair.away },
     }
   })
+}
+
+const HIST_ODDS_CACHE_MS = 12 * 60 * 60 * 1000
+const histOddsCache = new Map<string, { at: number; pack: { events: OddsEventRow[] } }>()
+
+function kickoffSnapshotIso(commence: string): string {
+  const t = Date.parse(commence)
+  if (!Number.isFinite(t)) return ''
+  return new Date(Math.max(0, t - 60_000)).toISOString()
+}
+
+async function cachedHistoricalOdds(sportKey: string, dateIso: string) {
+  const key = `${sportKey}|${dateIso}`
+  const cached = histOddsCache.get(key)
+  if (cached && Date.now() - cached.at < HIST_ODDS_CACHE_MS) return cached.pack
+  const pack = await fetchSportOddsHistorical(sportKey, dateIso, ['us', 'us2'], ['spreads']).catch(() => null)
+  const events = Array.isArray(pack?.events) ? pack!.events as OddsEventRow[] : []
+  const next = { events }
+  if (events.length) histOddsCache.set(key, { at: Date.now(), pack: next })
+  return next
+}
+
+/** Live /odds drops finals. Kickoff-time historical snapshot is the closing ATS line. */
+async function fillClosingSpreadsFromHistorical(
+  games: LoungeSportsGame[],
+  sportKey: string,
+): Promise<LoungeSportsGame[]> {
+  const missing = games.filter((g) => (g.status === 'post' || g.status === 'in') && !gameHasSpread(g))
+  const stamps = [...new Set(missing.map((g) => kickoffSnapshotIso(g.commence_time)).filter(Boolean))]
+  if (!stamps.length) return games
+  let next = games
+  const packs = await Promise.all(stamps.slice(0, 8).map((stamp) => cachedHistoricalOdds(sportKey, stamp)))
+  for (const pack of packs) {
+    if (!pack.events.length) continue
+    next = applyOddsSpreads(next, pack, true)
+  }
+  return next
 }
 
 function oddsNamesHit(oddsName: string, side: LoungeSportsGameSide): boolean {

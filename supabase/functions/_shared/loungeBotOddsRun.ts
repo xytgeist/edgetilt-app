@@ -315,6 +315,47 @@ export async function fetchSportOdds(sport: string, regions: string[], markets: 
   }
 }
 
+/**
+ * Snapshot of /odds at or before `dateIso`. Completed games are gone from live /odds;
+ * a kickoff-time snapshot is the closing spread. Historical costs ~10 credits/call.
+ */
+export async function fetchSportOddsHistorical(
+  sport: string,
+  dateIso: string,
+  regions: string[],
+  markets: string[],
+) {
+  const key = oddsApiKey()
+  if (!key) throw new Error('THE_ODDS_API_KEY not set on Edge.')
+  const qs = new URLSearchParams({
+    apiKey: key,
+    regions: regions.join(','),
+    markets: markets.join(','),
+    oddsFormat: 'american',
+    date: dateIso,
+  })
+  let res: Response
+  try {
+    res = await fetch(`${ODDS_BASE}/historical/sports/${sport}/odds?${qs}`, {
+      signal: AbortSignal.timeout(ODDS_FETCH_TIMEOUT_MS),
+    })
+  } catch (err) {
+    const name = err instanceof Error ? err.name : ''
+    if (name === 'TimeoutError' || name === 'AbortError') {
+      throw new Error(`Odds historical timeout after ${ODDS_FETCH_TIMEOUT_MS}ms for ${sport}`)
+    }
+    throw err
+  }
+  if (!res.ok) throw new Error(await readOddsApiError(res, sport))
+  const body = await res.json() as { data?: unknown; timestamp?: string }
+  return {
+    events: Array.isArray(body?.data) ? body.data : (Array.isArray(body) ? body : []),
+    timestamp: String(body?.timestamp || dateIso),
+    remaining: res.headers.get('x-requests-remaining'),
+    used: res.headers.get('x-requests-used'),
+  }
+}
+
 export async function countPublishedKindToday(
   admin: SupabaseClient,
   botUserId: string,

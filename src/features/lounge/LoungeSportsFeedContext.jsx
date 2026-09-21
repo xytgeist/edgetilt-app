@@ -5,7 +5,7 @@ import {
   writeLoungeSportsScoreboardCache,
 } from '../../utils/loungeSportsApi.js'
 import { enrichLoungeSportsGame, matchLoungePostToSportsGame, loungeSportsMatchTextFromPost } from './loungeSportsMatch.js'
-import { isLoungeSportsCurrentSlateGame } from './loungeSportsSlateWindow.js'
+import { isLoungeSportsCurrentSlateGame, ptDateFromIsoLocal } from './loungeSportsSlateWindow.js'
 import { parseLoungeSportsGameField } from './loungeSportsGameField.js'
 
 const LoungeSportsFeedContext = createContext(null)
@@ -31,6 +31,17 @@ function gamesFromCache() {
   return cached.map(enrichLoungeSportsGame).filter(isLoungeSportsCurrentSlateGame)
 }
 
+function normAbbrev(value) {
+  const x = String(value || '').toUpperCase()
+  if (x === 'WSH') return 'WAS'
+  if (x === 'JAC') return 'JAX'
+  return x
+}
+
+function matchupKey(game) {
+  return `${String(game?.sport_key || '')}:${normAbbrev(game?.away?.abbrev)}@${normAbbrev(game?.home?.abbrev)}:${ptDateFromIsoLocal(game?.commence_time)}`
+}
+
 function sideSpread(side) {
   const n = Number(side?.spread)
   return Number.isFinite(n) ? n : null
@@ -40,9 +51,10 @@ function sideSpread(side) {
 function preserveSpreads(next, prev) {
   if (!Array.isArray(next) || !next.length || !Array.isArray(prev) || !prev.length) return next
   const prevById = new Map(prev.map((game) => [String(game.id), game]))
+  const prevByMatch = new Map(prev.map((game) => [matchupKey(game), game]))
   return next.map((game) => {
     if (sideSpread(game.home) != null || sideSpread(game.away) != null) return game
-    const old = prevById.get(String(game.id))
+    const old = prevById.get(String(game.id)) || prevByMatch.get(matchupKey(game))
     if (!old) return game
     const homeSpread = sideSpread(old.home)
     const awaySpread = sideSpread(old.away)

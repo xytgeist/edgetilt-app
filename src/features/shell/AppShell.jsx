@@ -3101,6 +3101,7 @@ export default function AppShell({
         >
           <ChatTab
             paneEmbed={chatInPane}
+            isActivePage={tab === 'chat'}
             supabaseClient={supabaseClient}
             showGlobalConfirm={showGlobalConfirm}
             hasActiveSubscription={hasActiveSubscription}

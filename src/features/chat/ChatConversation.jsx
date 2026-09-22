@@ -186,6 +186,8 @@ export default function ChatConversation({
   showGlobalConfirm = null,
   /** Landscape iPad Slots pane: fill the column instead of the viewport. */
   embedded = false,
+  /** When false, keep-alive Chat under other tabs must not hide the Lounge rail/FAB. */
+  suppressLoungeDock = true,
 }) {
   const [messages, setMessages] = useState(/** @type {any[]} */ ([]))
   // Aggregated reactions per message: { [messageId]: { emoji, count, viewerReacted }[] }
@@ -769,10 +771,10 @@ export default function ChatConversation({
   // Suppress the Lounge dock FAB while this conversation is full-screen.
   // Embedded (landscape Chat pane / Slots Pro Lounge) keeps the left rail visible.
   useEffect(() => {
-    if (embedded) return undefined
+    if (embedded || !suppressLoungeDock) return undefined
     notifyLoungeDockSuppress(true)
     return () => notifyLoungeDockSuppress(false)
-  }, [embedded])
+  }, [embedded, suppressLoungeDock])
 
   // ── Notify native shell of active chat room ──────────────────────────────
   // When viewed, APNs alerts for new messages in this room are silenced in foreground.

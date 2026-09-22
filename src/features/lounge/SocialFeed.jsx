@@ -16433,8 +16433,10 @@ export default function SocialFeed({
     ],
   )
 
+  /** iPad/tablet left rail … keep mounted even when Chat suppress hides the phone FAB
+   *  (keep-alive Chat with an open portrait thread was wiping the rail after landscape→portrait). */
   const loungeIpadRail =
-    ipadNavRail && !loungeDockSuppressed && typeof document !== 'undefined'
+    ipadNavRail && typeof document !== 'undefined'
       ? createPortal(
           <LoungeIpadNavRail items={loungeDockWheelItems} shortcuts={ipadRailShortcuts} />,
           document.body,

@@ -79,6 +79,8 @@ export default function ChatTab({
   showGlobalConfirm = null,
   /** Landscape iPad Slots hub: fill the right pane, no second EDGE bar. */
   paneEmbed = false,
+  /** Keep-alive Chat stays mounted under other tabs … only suppress the Lounge FAB when Chat is visible. */
+  isActivePage = true,
 }) {
   const [viewerUserId, setViewerUserId] = useState('')
   const [viewerProfile, setViewerProfile] = useState(null)
@@ -153,11 +155,12 @@ export default function ChatTab({
 
   // Portrait full-screen thread: suppress the Lounge FAB (ghost taps on remount).
   // Landscape split keeps the left nav rail … do not suppress there.
+  // Keep-alive Chat under Lounge/Poker must not keep suppress on … that hid the iPad rail.
   useEffect(() => {
-    if (!openRoomId || chatLandscapeLayout) return undefined
+    if (!isActivePage || !openRoomId || chatLandscapeLayout) return undefined
     notifyLoungeDockSuppress(true)
     return () => notifyLoungeDockSuppress(false)
-  }, [openRoomId, chatLandscapeLayout])
+  }, [isActivePage, openRoomId, chatLandscapeLayout])
 
   // On iOS, app resume with the keyboard open can corrupt the visual viewport layout.
   // Force a full remount of the conversation by bumping the key.
@@ -886,6 +889,7 @@ export default function ChatTab({
               <ChatConversation
                 key={`${openRoomId}-${iosResumeCount}`}
                 embedded={threadEmbedded}
+                suppressLoungeDock={isActivePage && !threadEmbedded && !chatLandscapeLayout}
                 supabaseClient={supabaseClient}
                 room={room}
                 viewerUserId={viewerUserId}

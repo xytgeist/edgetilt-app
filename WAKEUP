@@ -46,7 +46,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Goal (Windows, parallel OK):** _Web app bugs/features + **self-hosted GitHub Actions runner** for poker catalog. Pull often; stay in web lane (`src/**`). Bridge: **`docs/ios-native-bridge.md`**._
 
-**Start by reading:** `AGENTS.md`, this **Pick up here** → **Mac Theo ACTIVE TRACK 2026-09-21** (computer change; Lounge game pills on prod), then **Windows Theo 2026-09-04 … private room history for new members** + chat/X never get markdown, **`docs/lounge-bot-sports-odds.md`** destination markdown rules + desk mapping, backlog Update log **2026-09-21**. Dual-agent: **`docs/ios-native-bridge.md`**. Fast mailbox: **https://lvslotpro.com/theo**.
+**Start by reading:** `AGENTS.md`, this **Pick up here** → **Windows Theo ACTIVE TRACK 2026-09-21 … sports pill paint + live data**, then Mac landscape / rail notes below, **`docs/lounge-bot-sports-odds.md`**, backlog Update log **2026-09-21**. Dual-agent: **`docs/ios-native-bridge.md`**. Fast mailbox: **https://lvslotpro.com/theo**.
 
 **Optional add-ons** (delete lines you do not need)
 
@@ -58,7 +58,34 @@ The agent should treat the following as **standing instructions for this session
 
 ## Pick up here (Aug 2026 ... session 2026-08-22)
 
-**Dual-machine handoff.** Ryan has **Cursor on Mac** + **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. **2026-09-21:** Ryan is changing computers after Mac shipped game pills to prod. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
+**Dual-machine handoff.** Ryan has **Cursor on Mac** + **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. **2026-09-21:** Windows owns sports-pill paint + live-data decision; Mac owns landscape/rail chrome. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
+
+### Windows Theo ACTIVE TRACK 2026-09-21 ... sports pill paint + live data handoff
+
+**I am Windows Theo.** Ending this chat so Ryan can start fresh. Pull **`origin/test`** first. Tip at handoff write time: **`5874732f`** (Mac rail work may be tip; sports paint landed through **`569ed846`** / web **`1.4.456`**). Current web tip may be higher after Mac (**`1.4.461`** on this pull).
+
+**Pill paint (shipped on `test`, not necessarily promoted to `main` yet):**
+
+1. **Washes:** home keeps catalog **primary**. When home/away primaries are too close (RGB distance &lt; 60 … NYG/LAR, DAL/DEN/NE/SEA `#002244` club), **away uses `color2`** if it actually separates (skip muddy blacks). Do **not** mix color2 into the primary fade (that made Giants purple / Rams gold-muddy).
+2. **Logos:** default `/sports/nfl/logos/{ABBREV}.png` plus light set `*-light.png` (ESPN **500-dark**, all 32 committed). Treatments: **`light`** (navy-on-navy → light asset) or **`halo`** (everything else → full-color mark + thin white edge). Probe no longer returns `default` … NYG blue on red always gets halo.
+3. **Finals:** losing-side **logo dim removed** (`1.4.456`). Scores still dim for the loser.
+4. **Layout still true:** logo↔FINAL gutters (5-col grid, absolute chevron); live/final **spread / score / ML**; pre **spread + ML under**; spread/ML **9px**; cover = white **dot**; logos ~2.75–3rem; FitPrimary ~48% gutter.
+
+**Canonical code:** `LoungeGameScorePill.jsx`, `loungeSportsMatch.js` (`resolveNflPillWashes`, `probeLogoWashTreatment`, `nflPillWashLikelyTreatment`), `src/index.css` (`[data-lounge-game-pill-logo='light'|'halo'|'silhouette']`), assets under `public/sports/nfl/logos/`. Hub: `LoungeGameHubModal.jsx`. Edge: `lounge-sports-scoreboard` / `_shared/loungeSportsScoreboard.ts`. Cache **`lvsp:loungeSportsScoreboard:v4`**.
+
+**Open / next (Ryan decide, do not freestyle):** richer live Game Center vs X (clock, PBP, field viz). Options already discussed:
+
+| Path | Fit | Notes |
+| --- | --- | --- |
+| **TheRundown Ultra (~$399/mo)** | Best first move | We already wire `live_game_state` / `/plays` when the key allows. Ultra unlocks realtime WS plays/scores. Confirm current tier before shopping elsewhere. |
+| **ESPN public scoreboard/summary** | Cheap prototype | Free, unofficial, Edge sometimes 403. Fine for score/clock/last-play experiments, not a product bet. |
+| **Odds API** | Keep for lines | Scores/lines only … not PBP. |
+| **Sportradar / SportsDataIO / Stats Perform** | Mid tier | Quote-based PBP/push. App quality without Genius exclusive. |
+| **Genius Sports (official NFL)** | Only if official + Next Gen / X-like viz | Enterprise sales deal. |
+
+**Do not:** reopen stain/disc experiments; push `main` for paint unless Ryan asks; invent a second live vendor without confirming Rundown tier.
+
+**Smoke:** NYG@LAR (away red + blue ny with halo; home navy + white LA); finals both logos full opacity; narrow carousel gutters still centered.
 
 ### Mac Theo 2026-09-21 ... Notifications double rule under title
 
@@ -107,7 +134,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Prod already done (do not redo unless Ryan asks):** FF `test` → `main` **`279b126b`**. SQL **`20260920220000`** (`community_feed_posts.sports_game` jsonb) on **`jtjgtucumuoswnbauxry`**, recorded in `schema_migrations`. Edge **`lounge-sports-scoreboard`** deployed on prod. CLI login 403s on prod deploys ... use **`SUPABASE_ACCESS_TOKEN`** from **`.env.supabase.production`** (do not print it).
 
-**Locked pill look:** original **rich multiply stain** (catalog **primary** only, no color2 mix ... Giants stay navy, not purple). Small **white logo halo** only when the PNG would camouflage (`data-lounge-game-pill-logo='light'`, probe in `loungeSportsMatch.js`). KC/MIA stay untouched. Rejected: inset stain, all-sides 32% tint, frosted disc, per-side air stain.
+**Locked pill look (superseded 2026-09-21 Windows):** see **Windows Theo ACTIVE TRACK** above. Current rules = dual wash (away `color2` on primary clash) + `light`/`halo` logo treatments + no losing-logo dim. Old Mac note (primary-only wash + conditional halo only) is historical.
 
 **Data:** Week-2 Pinnacle closes (14 locked NFL rows) are **test-only**. Prod fills missing close from Odds **historical** at kickoff. Client cache **`lvsp:loungeSportsScoreboard:v4`**. Cover underline is **ATS**, not ML winner. Upcoming score slot is spread only, centered.
 
@@ -178,15 +205,15 @@ The agent should treat the following as **standing instructions for this session
 
 **How the game pill works (canonical pointers):**
 
-- Match + wash + halo probe: `src/features/lounge/loungeSportsMatch.js` (`matchLoungePostToSportsGames` for composer suggest; `nflPillWash` = primary; near-black lift only; `probeLogoWashConflict` / `nflPillWashLikelyAir` gate halo, not stain).
+- Match + washes + logo treatment: `src/features/lounge/loungeSportsMatch.js` (`matchLoungePostToSportsGames`; `resolveNflPillWashes`; `probeLogoWashTreatment` → `light` | `halo`; assets `logo` + `logoLight`).
 - Client fetch: `src/utils/loungeSportsApi.js` → Edge **`lounge-sports-scoreboard`** (JWT). Cache **v4**.
-- Pill chrome: `src/index.css` `[data-lounge-game-pill]` multiply stain 0-18% primary; `[data-lounge-game-pill-logo='light']` white halo. Light mode: `html.light [data-lounge-game-pill]` bg `#7a7a84`, text stays white.
+- Pill chrome: `src/index.css` `[data-lounge-game-pill]` multiply stain; logo attrs `light` (ESPN dark asset) / `halo` (thin white edge on full-color) / `silhouette` (fallback). Light mode: `html.light [data-lounge-game-pill]` bg `#7a7a84`, text stays white.
 - Hub: `LoungeGameHubModal.jsx`. Pin field: `sports_game` jsonb (`event_id` / `event_ids` up to 4). Composer: tap-to-include. Feed: pin-only via `gamesForPost` + `LoungeGameScorePillStrip` carousel.
-- Edge: `supabase/functions/_shared/loungeSportsScoreboard.ts` (Pinnacle close; historical fill if spread **or** ML missing).
+- Edge: `supabase/functions/_shared/loungeSportsScoreboard.ts` (Pinnacle close; historical fill if spread **or** ML missing; Rundown live state / plays when key tier allows).
 
 ### Windows Theo 2026-09-21 ... sports card tap-to-include + multi
 
-**I am Windows Theo.** Composer sports cards: **Tap to include**; tokens commit on trailing space **or punctuation**; one card per team/matchup; **48h** last-vs-next; matchup replaces vague card. Multi = feed-style full-bleed carousel. Live/final **spread / score / ML**; pre **spread + ML under** when set. Spread/ML at **9px**. Logos ~2.75–3rem. Cover = white **dot**. Pill washes: home primary; away `color2` when primaries clash; marks are `light` or always-on `halo`. Web **`1.4.455`**.
+**I am Windows Theo.** Composer sports cards: **Tap to include**; tokens commit on trailing space **or punctuation**; one card per team/matchup; **48h** last-vs-next; matchup replaces vague card. Multi = feed-style full-bleed carousel. Live/final **spread / score / ML**; pre **spread + ML under** when set. Spread/ML at **9px**. Logos ~2.75–3rem. Cover = white **dot**. Pill washes + light/halo logos + no losing-logo dim … see **ACTIVE TRACK** above. Paint tip **`1.4.456`** (web tip may be higher after Mac).
 
 **Prior track still true (landscape, idle ... do not regress):**
 

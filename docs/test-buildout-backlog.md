@@ -883,6 +883,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
   - Production replay: `production-rollout-checklist.md` §2 + §4; add **`media.lvslotpro.com`** (or prod media subdomain) + prod secrets when promoting.
 
 - [x] **`lounge-sports-scoreboard`** (Lounge in-post game pill + live hub). TheRundown slate + `live_game_state` / plays / player stats when the key allows. Odds API multi-book lines on hub open. JWT. Source: `supabase/functions/lounge-sports-scoreboard/README.md`. On **test** since **`1.4.376`**. On **prod** (`jtjgtucumuoswnbauxry`) **2026-09-21** with **`1.4.401`**.
+- [ ] **Lounge Game Center live-data path (open).** Hub already requests Rundown live state / plays when the key allows; X-like clock + PBP + field viz needs a richer pipe. **Decide with Ryan before coding:** (1) confirm TheRundown tier … Ultra (~$399/mo) is the cheapest leap if we are below it; (2) ESPN public scoreboard as unofficial prototype only; (3) Sportradar / SportsDataIO / Stats Perform quote for mid-tier PBP; (4) Genius official only if we need league-official / Next Gen branding. Odds API stays for lines/scores only. Continuity: **WAKEUP** → Windows ACTIVE TRACK 2026-09-21.
 - [x] **`lounge-market-data`** (Lounge market charts: Finnhub/Yahoo/CoinGecko proxy, attach, modal series, **`logo_image`**, auto cashtag resolve) deployed on **test** with **`FINNHUB_API_KEY`** (+ optional **`COINGECKO_API_KEY`**). Ryan sign-off **PASSED** on **test** (2026-06-07) — `$AAPL` without picker → real Apple chart; Advanced snapshot PNG → EDGE wordmark left, company centered, floating legend.
   - Source: `supabase/functions/lounge-market-data/README.md`, `finnhubMarket.ts`, `yahooMarket.ts`, `LoungeMarketChartModal.jsx`, `loungeMarketChartSnapshot.js`.
   - Production replay: `production-rollout-checklist.md` §4.
@@ -1148,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Windows continuity handoff (sports pill paint + live data).** Dual wash + `*-light.png` + always-on halo + no losing-logo dim are on **`test`** through **`1.4.456`**. Open: confirm TheRundown tier before shopping Genius/Sportradar for X-like PBP. **WAKEUP** ACTIVE TRACK. Pill paint not assumed on **`main`** until Ryan promotes.
 - **2026-09-21:** **Sports pill keep both logos full opacity on finals (Windows).** Losing-side logo dim (`opacity-55`) removed; scores still dim. Frontend **`1.4.456`**.
 - **2026-09-21:** **Sports pill halo always-on for non-light marks (Windows).** Probe no longer returns `default` … only `light` (navy-on-navy) or `halo`. NYG blue on red secondary always gets the thin white edge. Frontend **`1.4.455`**.
 - **2026-09-21:** **Sports pill logo halo middle tier (Windows).** Treatments are `light` / `halo` / `default`. Soft conflict on mid-dark washes (NYG blue on red secondary) keeps the full-color mark with a thin white edge. Frontend **`1.4.453`**.

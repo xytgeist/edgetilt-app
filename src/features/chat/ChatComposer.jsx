@@ -21,7 +21,7 @@ import {
   plainTextFromComposerRoot,
 } from '../lounge/loungeRichComposerDom.js'
 import { notifyChatMediaPickerActive } from './chatMediaPickerRegistry.js'
-import { tryAssignEdgePickedPhotos } from '../../utils/edgeNative.js'
+import { canPickEdgeVideo, nativeVideoPosterDataUrl, pickEdgeVideo, tryAssignEdgePickedPhotos } from '../../utils/edgeNative.js'
 import {
   shouldBlockComposerKeyboard,
   useEdgeiOSComposerPortraitLock,
@@ -697,7 +697,51 @@ export default function ChatComposer({
         <button
           type="button"
           disabled={disabled || imageSlots.length > 0}
-          onClick={() => { setPlusOpen(false); beginMediaPickerSession(); videoInputRef.current?.click() }}
+          onClick={() => {
+            setPlusOpen(false)
+            beginMediaPickerSession()
+            void (async () => {
+              if (!canPickEdgeVideo()) {
+                videoInputRef.current?.click()
+                return
+              }
+              try {
+                const picked = await pickEdgeVideo({ purpose: 'chat-compose' })
+                if (picked?.cancelled) {
+                  endMediaPickerSession()
+                  return
+                }
+                if (!picked?.ok || !picked.assetId) {
+                  videoInputRef.current?.click()
+                  return
+                }
+                const dur = Number(picked.duration)
+                const posterUrl = nativeVideoPosterDataUrl(picked)
+                if (Number.isFinite(dur) && dur > 0 && dur <= LOUNGE_VIDEO_MAX_SECONDS) {
+                  onVideoConfirmed?.({
+                    type: 'nativeEdgeVideo',
+                    nativeAssetId: picked.assetId,
+                    startSec: 0,
+                    endSec: dur,
+                    cropPx: null,
+                    intrinsicWidth: Number(picked.width) || 0,
+                    intrinsicHeight: Number(picked.height) || 0,
+                    posterUrl,
+                  })
+                  endMediaPickerSession()
+                  return
+                }
+                setCropModalFile({
+                  file: null,
+                  previewUrl: String(picked.previewUrl || ''),
+                  nativeAssetId: String(picked.assetId),
+                  knownDurationSec: Number.isFinite(dur) && dur > 0 ? dur : undefined,
+                })
+              } catch {
+                videoInputRef.current?.click()
+              }
+            })()
+          }}
           className="flex w-full items-center gap-3 px-4 py-3.5 text-[15px] font-semibold text-zinc-100 touch-manipulation transition-colors active:bg-white/10 disabled:opacity-40"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" className="shrink-0">
@@ -1014,6 +1058,8 @@ export default function ChatComposer({
       {cropModalFile && (
         <LoungeVideoCropModal
           file={cropModalFile.file}
+          previewUrl={cropModalFile.previewUrl}
+          nativeAssetId={cropModalFile.nativeAssetId}
           knownDurationSec={cropModalFile.knownDurationSec}
           intent="composer"
           onCancel={handleCropCancel}

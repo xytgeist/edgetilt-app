@@ -1,4 +1,4 @@
-import { canPickEdgePhotos, tryAssignEdgePickedPhotos } from '../../utils/edgeNative.js'
+import { canPickEdgePhotos, canPickEdgeVideo, pickEdgeVideo, tryAssignEdgePickedPhotos } from '../../utils/edgeNative.js'
 
 /** Shared image / video / GIF toolbar controls for lounge composers. */
 
@@ -182,6 +182,26 @@ export default function LoungeComposerMediaToolbar({
     if (status === 'fallback') input?.click()
   }
 
+  const onVideoClick = async (event) => {
+    if (!canPickEdgeVideo() || !videoInputId) return
+    event.preventDefault()
+    try {
+      const picked = await pickEdgeVideo({ purpose: 'lounge-compose' })
+      if (picked?.cancelled) return
+      if (!picked?.ok || !picked.assetId) {
+        document.getElementById(videoInputId)?.click()
+        return
+      }
+      window.dispatchEvent(
+        new CustomEvent('edge-lounge-native-video', {
+          detail: { inputId: videoInputId, asset: picked },
+        }),
+      )
+    } catch {
+      document.getElementById(videoInputId)?.click()
+    }
+  }
+
   return (
     <div
       data-lounge-media-toolbar=""
@@ -202,6 +222,7 @@ export default function LoungeComposerMediaToolbar({
         htmlFor={videoInputId}
         onPointerDown={onVideoPointerDown}
         onMouseDown={preventFocusSteal}
+        onClick={onVideoClick}
         className={labelClass}
         title="Add video"
         aria-label="Add video"

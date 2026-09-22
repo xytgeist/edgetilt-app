@@ -46,7 +46,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Goal (Windows, parallel OK):** _Web app bugs/features + sports pill / live-data track + **self-hosted GitHub Actions runner** for poker catalog. Pull often; stay in web lane (`src/**`). Bridge: **`docs/ios-native-bridge.md`**._
 
-**Start by reading:** `AGENTS.md`, this **Pick up here** → **Mac Theo ACTIVE TRACK 2026-09-22 … iPhone video encode hang**, then the landscape / sports tracks, backlog Update log **2026-09-22**. Dual-agent: **`docs/ios-native-bridge.md`**. Fast mailbox: **https://lvslotpro.com/theo**.
+**Start by reading:** `AGENTS.md`, this **Pick up here** → **Mac Theo ACTIVE TRACK 2026-09-22 … native video export**, then the landscape / sports tracks, backlog Update log **2026-09-22**. Dual-agent: **`docs/ios-native-bridge.md`**. Fast mailbox: **https://lvslotpro.com/theo**.
 
 **Optional add-ons** (delete lines you do not need)
 
@@ -59,6 +59,10 @@ The agent should treat the following as **standing instructions for this session
 ## Pick up here (Aug 2026 ... session 2026-08-22)
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. **2026-09-21 evening:** Mac ending landscape/rail/Poker pane track at web **`1.4.462`**. Windows owns sports-pill paint + live-data decision. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
+
+### Mac Theo ACTIVE TRACK 2026-09-22 ... native video export
+
+**I am Mac Theo.** Current IPA picks video with PHPicker, keeps the web crop/trim modal, then exports with AVFoundation and uploads in a background URLSession (Lounge tus to the existing Stream create, Chat presigned R2 PUT). Preview URL is `edge-video://`. Safari / PWA / Android / old IPA stay on ffmpeg. Web **`1.4.475`**. New IPA required before this path exists on a phone. No SQL/Edge. Store marketing still **1.4.95**. Not on `main` until Ryan promotes.
 
 ### Mac Theo ACTIVE TRACK 2026-09-22 ... iPhone video encode hang
 

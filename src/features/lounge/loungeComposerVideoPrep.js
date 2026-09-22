@@ -27,6 +27,11 @@ import {
 } from './loungeFeedVideoDebugRegistry.js'
 import { shouldPrefetchBrowserVideoAudio } from '../../utils/loungeVideoBrowserAudio.js'
 import { prefetchFfmpegCore, trimVideoFileToMp4 } from '../../utils/loungeVideoFfmpegTrim.js'
+import {
+  cancelEdgeVideo,
+  exportEdgeVideo,
+  uploadEdgeVideoTus,
+} from '../../utils/edgeNative.js'
 
 /** Auto-retries before surfacing a hard failure to the user (Cloudflare mint / upload / manifest only). */
 export const COMPOSER_VIDEO_PREP_MAX_ATTEMPTS = 5
@@ -514,6 +519,137 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
  * @param {(detail: string) => void} [opts.onUploadDiagnostic] Shown in the Lounge upload bar `detail` on mint/upload/manifest failures.
  * @returns {Promise<{ encodedFile: File, streamVideoUid: string }>}
  */
+/**
+ * After encode/upload, swap the composer slot to the finished clip.
+ * A native upload has no `File` ... keep the poster / `edge-video://` preview already on the slot.
+ *
+ * @param {object | null | undefined} prev
+ * @param {File | null | undefined} encodedFile
+ * @param {string} streamVideoUid
+ * @param {number} jobId
+ */
+export function loungeVideoSlotAfterPrep(prev, encodedFile, streamVideoUid, jobId) {
+  if (!prev || prev.prepJobId !== jobId) return prev
+  const hasFile = encodedFile instanceof File && encodedFile.size > 0
+  if (!hasFile) {
+    return {
+      ...prev,
+      file: null,
+      streamVideoUid,
+      preview: prev.preview || prev.posterUrl || '',
+      posterUrl: prev.posterUrl || prev.preview || null,
+      prepStatus: 'ready',
+      prepError: '',
+    }
+  }
+  const oldPreview = prev.preview
+  const oldPoster = prev.posterUrl
+  const vidUrl = URL.createObjectURL(encodedFile)
+  const posterToKeep =
+    typeof oldPoster === 'string' && oldPoster && oldPoster !== vidUrl
+      ? oldPoster
+      : typeof oldPreview === 'string' && oldPreview && oldPreview !== vidUrl
+        ? oldPreview
+        : null
+  const revoke = (url) => {
+    if (typeof url !== 'string' || !url.startsWith('blob:') || url === posterToKeep) return
+    try {
+      URL.revokeObjectURL(url)
+    } catch {
+      // ignore
+    }
+  }
+  revoke(oldPreview)
+  if (oldPoster && oldPoster !== posterToKeep) revoke(oldPoster)
+  return {
+    ...prev,
+    file: encodedFile,
+    streamVideoUid,
+    preview: vidUrl,
+    posterUrl: posterToKeep,
+    prepStatus: 'ready',
+    prepError: '',
+  }
+}
+
+async function runNativeEdgeVideoStreamPrep({ supabaseClient, signal, spec, onProgress }) {
+  const report = (progress, status) => {
+    if (typeof onProgress !== 'function') return
+    onProgress({
+      progress: Math.max(0, Math.min(1, progress)),
+      status,
+      detail: '',
+      attempt: 1,
+    })
+  }
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+  maybeReportLoungeVideoUploadDebug('encode', 'native export')
+  report(0.05, 'Preparing video…')
+
+  const {
+    data: { session },
+  } = await supabaseClient.auth.getSession()
+  const accessToken = session?.access_token || ''
+  if (!accessToken) throw new Error('You must be signed in to post a video.')
+
+  const sourceId = String(spec.assetId || '')
+  const watchedIds = new Set([sourceId])
+  const onNativeProgress = (event) => {
+    const detail = event?.detail || {}
+    const id = String(detail.assetId || '')
+    if (id && !watchedIds.has(id)) return
+    const ratio = Number(detail.progress)
+    const safe = Number.isFinite(ratio) ? Math.max(0, Math.min(1, ratio)) : 0
+    if (detail.phase === 'upload') report(0.42 + safe * 0.56, 'Uploading…')
+    else report(0.05 + safe * 0.34, 'Preparing video…')
+  }
+  window.addEventListener('edge-native-video-progress', onNativeProgress)
+  const onAbort = () => {
+    void cancelEdgeVideo()
+  }
+  signal?.addEventListener('abort', onAbort)
+
+  try {
+    const exported = await exportEdgeVideo({
+      assetId: sourceId,
+      startSec: spec.startSec,
+      endSec: spec.endSec,
+      cropPx: spec.cropPx || null,
+      intrinsicWidth: spec.intrinsicWidth,
+      intrinsicHeight: spec.intrinsicHeight,
+    })
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+    if (!exported?.ok || !exported.assetId) {
+      throw new Error(exported?.error || 'Could not prepare that video.')
+    }
+    watchedIds.add(String(exported.assetId))
+    maybeReportLoungeVideoUploadDebug('encode', 'native upload')
+    report(0.42, 'Uploading…')
+    const uploaded = await uploadEdgeVideoTus({
+      assetId: exported.assetId,
+      accessToken,
+      supabaseUrl: String(import.meta.env.VITE_SUPABASE_URL || ''),
+      anonKey: String(import.meta.env.VITE_SUPABASE_ANON_KEY || ''),
+    })
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+    const uid = String(uploaded?.streamVideoUid || '').trim()
+    if (!uploaded?.ok || !uid) {
+      throw new Error('Video upload finished but the service did not return a video id.')
+    }
+    maybeReportLoungeVideoUploadDebug('encode', 'native ready')
+    report(1, 'Upload ready')
+    return { encodedFile: null, streamVideoUid: uid }
+  } catch (err) {
+    if (err?.name === 'AbortError' || /cancelled/i.test(String(err?.message || ''))) {
+      throw new DOMException('Aborted', 'AbortError')
+    }
+    throw err instanceof Error ? err : new Error(String(err || 'Video upload failed.'))
+  } finally {
+    window.removeEventListener('edge-native-video-progress', onNativeProgress)
+    signal?.removeEventListener('abort', onAbort)
+  }
+}
+
 export async function runComposerStreamVideoPrepWithRetries({
   supabaseClient,
   signal,
@@ -522,6 +658,9 @@ export async function runComposerStreamVideoPrepWithRetries({
   onEncodedFileReady,
   onUploadDiagnostic,
 }) {
+  if (spec?.kind === 'native' && spec.assetId) {
+    return runNativeEdgeVideoStreamPrep({ supabaseClient, signal, spec, onProgress })
+  }
   const uploadFile = await encodeComposerVideoFileFromSpec({ signal, spec, supabaseClient, onProgress })
   if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
   onEncodedFileReady?.(uploadFile)

@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-22:** **IPA native video pick / export / upload (Mac).** Current IPA: PHPicker video, web crop/trim modal unchanged, `AVAssetExportSession` trim+crop, background tus to the existing Stream create function (Lounge) or presigned R2 PUT (Chat). Preview is `edge-video://`. Safari, PWA, Android, and old IPAs stay on ffmpeg + the file input. Web **`1.4.475`**. New IPA required. No SQL/Edge. Store marketing still **1.4.95**.
 - **2026-09-22:** **Promoted `test` → `main` (`216189e7`).** Vercel prod = web **`1.4.474`**. iPhone ffmpeg core loads from same-origin assets (blob import was hanging the worker). No new prod SQL/Edge. Store IPA marketing still **1.4.95**.
 - **2026-09-22:** **iPhone video encode hung on ffmpeg wasm (Mac).** Chat debug stopped at `wasm core loading` because iOS module workers never resolve `import(blob:)` of the core. iPhone now loads `@ffmpeg/core` from same-origin assets. Lounge encode also logs `encode start` before any wasm wait (feed was silent because that import sat in front of the first debug line). Android still uses the CDN blob path. Frontend **`1.4.474`**. Web only. Promoted the same night (`216189e7`). Store IPA marketing still **1.4.95**.
 - **2026-09-21:** **Promoted `test` → `main` (`1b81b5ac`).** Vercel prod = web **`1.4.473`**. AuthModalShell `data-auth-reveal-feed` inlined so Fast Refresh cannot throw `revealAttrs`. No new prod SQL/Edge. Store IPA marketing still **1.4.95**.

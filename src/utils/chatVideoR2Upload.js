@@ -1,4 +1,5 @@
-import { requestCfR2DirectUpload, uploadFileToCfR2PresignedUrl } from './loungeCfImageMedia.js'
+import { LOUNGE_CF_R2_OBJECT_CACHE_CONTROL, requestCfR2DirectUpload, uploadFileToCfR2PresignedUrl } from './loungeCfImageMedia.js'
+import { uploadEdgeVideoPut } from './edgeNative.js'
 
 /**
  * Mint a presigned PUT URL for a chat video MP4 from the lounge-chat-r2-video-upload Edge Function.
@@ -21,6 +22,27 @@ async function requestChatVideoR2Upload(supabaseClient) {
  * @param {{ signal?: AbortSignal }} [opts]
  * @returns {Promise<string>}  public URL of the stored video
  */
+/**
+ * PUT an on-device encoded MP4. The bytes stay in the IPA cache, not JS memory.
+ *
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {string} assetId
+ * @returns {Promise<string>}
+ */
+export async function uploadNativeChatVideoToR2(supabaseClient, assetId) {
+  const { uploadURL, publicUrl } = await requestChatVideoR2Upload(supabaseClient)
+  const result = await uploadEdgeVideoPut({
+    assetId,
+    uploadURL,
+    contentType: 'video/mp4',
+    cacheControl: LOUNGE_CF_R2_OBJECT_CACHE_CONTROL,
+  })
+  if (!result?.ok) {
+    throw new Error(result?.error || 'Could not upload your video.')
+  }
+  return publicUrl
+}
+
 export async function uploadChatVideoToR2(supabaseClient, videoFile, opts = {}) {
   const { uploadURL, publicUrl } = await requestChatVideoR2Upload(supabaseClient)
   await uploadFileToCfR2PresignedUrl(uploadURL, videoFile, { signal: opts.signal })

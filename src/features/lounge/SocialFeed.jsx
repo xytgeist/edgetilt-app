@@ -57,7 +57,7 @@ import {
 } from '../../utils/communityFeedPost'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { isShellNavLoungeHomeSuppressed } from '../../utils/shellNavGhostClickGuard.js'
-import { openExternalUrl } from '../../utils/edgeNative.js'
+import { nativeVideoPosterDataUrl, openExternalUrl } from '../../utils/edgeNative.js'
 import { useEdgeiOSComposerPortraitLock } from '../../utils/edgeiOSComposerPortraitLock.js'
 import { prefetchFfmpegCore } from '../../utils/loungeVideoFfmpegTrim.js'
 import {
@@ -243,6 +243,7 @@ import {
 } from './loungeCommentSubmitJob.js'
 import {
   loungeMediaPrepFailureDetails,
+  loungeVideoSlotAfterPrep,
   runComposerStreamVideoPrepWithRetries,
   uploadEncodedVideoToCfStreamWithRetries,
 } from './loungeComposerVideoPrep.js'
@@ -642,6 +643,23 @@ const LOUNGE_QUOTE_REPOST_IMAGE_INPUT_ID = 'lounge-quote-repost-image-input'
 const LOUNGE_QUOTE_REPOST_VIDEO_INPUT_ID = 'lounge-quote-repost-video-input'
 const LOUNGE_THREAD_COMPOSE_IMAGE_INPUT_ID = 'lounge-thread-compose-image-input'
 const LOUNGE_THREAD_COMPOSE_VIDEO_INPUT_ID = 'lounge-thread-compose-video-input'
+
+function loungeNativeVideoModeForInput(inputId) {
+  switch (inputId) {
+    case LOUNGE_DETAIL_COMMENT_VIDEO_INPUT_ID:
+      return 'detailComment'
+    case LOUNGE_DETAIL_EDIT_VIDEO_INPUT_ID:
+      return 'detailEdit'
+    case LOUNGE_COMMENT_EDIT_VIDEO_INPUT_ID:
+      return 'detailCommentEdit'
+    case LOUNGE_QUOTE_REPOST_VIDEO_INPUT_ID:
+      return 'quote'
+    case LOUNGE_THREAD_COMPOSE_VIDEO_INPUT_ID:
+      return LOUNGE_THREAD_COMPOSE_VIDEO_CROP_MODE
+    default:
+      return 'composer'
+  }
+}
 
 function newComposerImageId() {
   return `ci-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
@@ -3427,43 +3445,7 @@ export default function SocialFeed({
             return
           }
           const { encodedFile, streamVideoUid } = result
-          setComposerVideoSlot((prev) => {
-            if (!prev || prev.prepJobId !== jobId) return prev
-            const oldPreview = prev.preview
-            const oldPoster = prev.posterUrl
-            const vidUrl = URL.createObjectURL(encodedFile)
-
-            const posterToKeep =
-              typeof oldPoster === 'string' && oldPoster && oldPoster !== vidUrl
-                ? oldPoster
-                : typeof oldPreview === 'string' && oldPreview && oldPreview !== vidUrl
-                  ? oldPreview
-                  : null
-
-            if (oldPreview && oldPreview !== posterToKeep) {
-              try {
-                URL.revokeObjectURL(oldPreview)
-              } catch {
-                // ignore
-              }
-            }
-            if (oldPoster && oldPoster !== posterToKeep) {
-              try {
-                URL.revokeObjectURL(oldPoster)
-              } catch {
-                // ignore
-              }
-            }
-            return {
-              ...prev,
-              file: encodedFile,
-              streamVideoUid,
-              preview: vidUrl,
-              posterUrl: posterToKeep,
-              prepStatus: 'ready',
-              prepError: '',
-            }
-          })
+          setComposerVideoSlot((prev) => loungeVideoSlotAfterPrep(prev, encodedFile, streamVideoUid, jobId))
           dismissLoungeMediaPrepUploadBarAfterPrep(jobId, null)
         } catch (e) {
           if (!handoff.settled) {
@@ -3620,43 +3602,7 @@ export default function SocialFeed({
             return
           }
           const { encodedFile, streamVideoUid } = result
-          setQuoteRepostVideoSlot((prev) => {
-            if (!prev || prev.prepJobId !== jobId) return prev
-            const oldPreview = prev.preview
-            const oldPoster = prev.posterUrl
-            const vidUrl = URL.createObjectURL(encodedFile)
-
-            const posterToKeep =
-              typeof oldPoster === 'string' && oldPoster && oldPoster !== vidUrl
-                ? oldPoster
-                : typeof oldPreview === 'string' && oldPreview && oldPreview !== vidUrl
-                  ? oldPreview
-                  : null
-
-            if (oldPreview && oldPreview !== posterToKeep) {
-              try {
-                URL.revokeObjectURL(oldPreview)
-              } catch {
-                // ignore
-              }
-            }
-            if (oldPoster && oldPoster !== posterToKeep) {
-              try {
-                URL.revokeObjectURL(oldPoster)
-              } catch {
-                // ignore
-              }
-            }
-            return {
-              ...prev,
-              file: encodedFile,
-              streamVideoUid,
-              preview: vidUrl,
-              posterUrl: posterToKeep,
-              prepStatus: 'ready',
-              prepError: '',
-            }
-          })
+          setQuoteRepostVideoSlot((prev) => loungeVideoSlotAfterPrep(prev, encodedFile, streamVideoUid, jobId))
           dismissLoungeMediaPrepUploadBarAfterPrep(jobId, null)
         } catch (e) {
           if (!handoff.settled) {
@@ -5211,41 +5157,7 @@ export default function SocialFeed({
             return
           }
           const { encodedFile, streamVideoUid } = result
-          setLoungeDetailCommentVideoSlot((prev) => {
-            if (!prev || prev.prepJobId !== jobId) return prev
-            const oldPreview = prev.preview
-            const oldPoster = prev.posterUrl
-            const vidUrl = URL.createObjectURL(encodedFile)
-            const posterToKeep =
-              typeof oldPoster === 'string' && oldPoster && oldPoster !== vidUrl
-                ? oldPoster
-                : typeof oldPreview === 'string' && oldPreview && oldPreview !== vidUrl
-                  ? oldPreview
-                  : null
-            if (oldPreview && oldPreview !== posterToKeep) {
-              try {
-                URL.revokeObjectURL(oldPreview)
-              } catch {
-                // ignore
-              }
-            }
-            if (oldPoster && oldPoster !== posterToKeep) {
-              try {
-                URL.revokeObjectURL(oldPoster)
-              } catch {
-                // ignore
-              }
-            }
-            return {
-              ...prev,
-              file: encodedFile,
-              streamVideoUid,
-              preview: vidUrl,
-              posterUrl: posterToKeep,
-              prepStatus: 'ready',
-              prepError: '',
-            }
-          })
+          setLoungeDetailCommentVideoSlot((prev) => loungeVideoSlotAfterPrep(prev, encodedFile, streamVideoUid, jobId))
           dismissLoungeMediaPrepUploadBarAfterPrep(jobId, null)
         } catch (e) {
           if (!handoff.settled) handoff.reject(e instanceof Error ? e : new Error(String(e)))
@@ -5392,41 +5304,7 @@ export default function SocialFeed({
             return
           }
           const { encodedFile, streamVideoUid } = result
-          setLoungeDetailEditVideoSlot((prev) => {
-            if (!prev || prev.prepJobId !== jobId) return prev
-            const oldPreview = prev.preview
-            const oldPoster = prev.posterUrl
-            const vidUrl = URL.createObjectURL(encodedFile)
-            const posterToKeep =
-              typeof oldPoster === 'string' && oldPoster && oldPoster !== vidUrl
-                ? oldPoster
-                : typeof oldPreview === 'string' && oldPreview && oldPreview !== vidUrl
-                  ? oldPreview
-                  : null
-            if (oldPreview && oldPreview !== posterToKeep) {
-              try {
-                URL.revokeObjectURL(oldPreview)
-              } catch {
-                // ignore
-              }
-            }
-            if (oldPoster && oldPoster !== posterToKeep) {
-              try {
-                URL.revokeObjectURL(oldPoster)
-              } catch {
-                // ignore
-              }
-            }
-            return {
-              ...prev,
-              file: encodedFile,
-              streamVideoUid,
-              preview: vidUrl,
-              posterUrl: posterToKeep,
-              prepStatus: 'ready',
-              prepError: '',
-            }
-          })
+          setLoungeDetailEditVideoSlot((prev) => loungeVideoSlotAfterPrep(prev, encodedFile, streamVideoUid, jobId))
           dismissLoungeMediaPrepUploadBarAfterPrep(jobId, null)
         } catch (e) {
           if (!handoff.settled) handoff.reject(e instanceof Error ? e : new Error(String(e)))
@@ -5573,41 +5451,7 @@ export default function SocialFeed({
             return
           }
           const { encodedFile, streamVideoUid } = result
-          setLoungeDetailCommentEditVideoSlot((prev) => {
-            if (!prev || prev.prepJobId !== jobId) return prev
-            const oldPreview = prev.preview
-            const oldPoster = prev.posterUrl
-            const vidUrl = URL.createObjectURL(encodedFile)
-            const posterToKeep =
-              typeof oldPoster === 'string' && oldPoster && oldPoster !== vidUrl
-                ? oldPoster
-                : typeof oldPreview === 'string' && oldPreview && oldPreview !== vidUrl
-                  ? oldPreview
-                  : null
-            if (oldPreview && oldPreview !== posterToKeep) {
-              try {
-                URL.revokeObjectURL(oldPreview)
-              } catch {
-                // ignore
-              }
-            }
-            if (oldPoster && oldPoster !== posterToKeep) {
-              try {
-                URL.revokeObjectURL(oldPoster)
-              } catch {
-                // ignore
-              }
-            }
-            return {
-              ...prev,
-              file: encodedFile,
-              streamVideoUid,
-              preview: vidUrl,
-              posterUrl: posterToKeep,
-              prepStatus: 'ready',
-              prepError: '',
-            }
-          })
+          setLoungeDetailCommentEditVideoSlot((prev) => loungeVideoSlotAfterPrep(prev, encodedFile, streamVideoUid, jobId))
           dismissLoungeMediaPrepUploadBarAfterPrep(jobId, null)
         } catch (e) {
           if (!handoff.settled) handoff.reject(e instanceof Error ? e : new Error(String(e)))
@@ -5890,6 +5734,95 @@ export default function SocialFeed({
       startThreadComposePartVideoPrepFromSpec,
     ],
   )
+
+  const acceptNativeLoungeVideo = useCallback(
+    (asset, inputId) => {
+      const assetId = String(asset?.assetId || '').trim()
+      if (!assetId) return
+      const dur = Number(asset.duration)
+      const known = Number.isFinite(dur) && dur > 0 ? dur : 0
+      const posterUrl = nativeVideoPosterDataUrl(asset)
+      const previewUrl = String(asset.previewUrl || '').trim()
+      const mode = threadComposeOpenRef.current
+        ? LOUNGE_THREAD_COMPOSE_VIDEO_CROP_MODE
+        : loungeNativeVideoModeForInput(inputId)
+      const spec = {
+        kind: 'native',
+        assetId,
+        startSec: 0,
+        endSec: known > 0 ? known : LOUNGE_VIDEO_MAX_SECONDS,
+        cropPx: null,
+        intrinsicWidth: Number(asset.width) || 0,
+        intrinsicHeight: Number(asset.height) || 0,
+      }
+      const slot = {
+        file: null,
+        posterUrl,
+        preview: previewUrl || posterUrl || '',
+        streamVideoUid: null,
+      }
+      if (!(known > 0) || known > LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
+        setLoungeVideoCrop({
+          file: null,
+          previewUrl,
+          nativeAssetId: assetId,
+          mode,
+          partIdx: threadComposeActivePartIndexRef.current,
+          knownDurationSec: known > 0 ? known : undefined,
+        })
+        return
+      }
+      if (mode === LOUNGE_THREAD_COMPOSE_VIDEO_CROP_MODE) {
+        startThreadComposePartVideoPrepFromSpec(threadComposeActivePartIndexRef.current, spec, slot)
+        restoreLoungeComposerCaptionAfterMediaPick('composer')
+        return
+      }
+      if (mode === 'quote') {
+        disposeComposerVideoMedia(quoteRepostVideoSlotRef.current)
+        startQuoteRepostVideoPrepFromSpec(spec, slot)
+        setQuoteRepostMediaUrl('')
+      } else if (mode === 'detailComment') {
+        disposeComposerVideoMedia(loungeDetailCommentVideoSlotRef.current)
+        startLoungeDetailCommentVideoPrepFromSpec(spec, slot)
+        setLoungeDetailCommentMediaUrl('')
+        loungeDetailCommentMediaSessionRef.current = false
+      } else if (mode === 'detailEdit') {
+        disposeComposerVideoMedia(loungeDetailEditVideoSlotRef.current)
+        setLoungeDetailEditKeepStreamUid(null)
+        startLoungeDetailEditVideoPrepFromSpec(spec, slot)
+        setLoungeDetailEditMediaUrl('')
+      } else if (mode === 'detailCommentEdit') {
+        disposeComposerVideoMedia(loungeDetailCommentEditVideoSlotRef.current)
+        setLoungeDetailCommentEditKeepStreamUid(null)
+        startLoungeDetailCommentEditVideoPrepFromSpec(spec, slot)
+        setLoungeDetailCommentEditMediaUrl('')
+      } else {
+        disposeComposerVideoMedia(composerVideoSlotRef.current)
+        startComposerVideoPrepFromSpec(spec, slot)
+        setComposerMediaUrl('')
+      }
+      restoreLoungeComposerCaptionAfterMediaPick(mode === 'composer' ? 'composer' : mode)
+    },
+    [
+      disposeComposerVideoMedia,
+      restoreLoungeComposerCaptionAfterMediaPick,
+      startComposerVideoPrepFromSpec,
+      startLoungeDetailCommentEditVideoPrepFromSpec,
+      startLoungeDetailCommentVideoPrepFromSpec,
+      startLoungeDetailEditVideoPrepFromSpec,
+      startQuoteRepostVideoPrepFromSpec,
+      startThreadComposePartVideoPrepFromSpec,
+    ],
+  )
+
+  useEffect(() => {
+    const onNativeVideo = (event) => {
+      const inputId = String(event?.detail?.inputId || '')
+      acceptNativeLoungeVideo(event?.detail?.asset, inputId)
+    }
+    window.addEventListener('edge-lounge-native-video', onNativeVideo)
+    return () => window.removeEventListener('edge-lounge-native-video', onNativeVideo)
+  }, [acceptNativeLoungeVideo])
 
   const postAgeLabel = useCallback((createdAt) => {
     if (!createdAt) return ''
@@ -6810,7 +6743,7 @@ export default function SocialFeed({
           ? quoteRepostVideoPrepSpecRef.current
           : null
       const trimRestore =
-        awaiting != null && specForSnap && specForSnap.kind === 'trim' && slot
+        awaiting != null && specForSnap && (specForSnap.kind === 'trim' || specForSnap.kind === 'native') && slot
           ? { posterUrl: slot.posterUrl, preview: slot.preview }
           : null
       const sessionPosterBlob =
@@ -14694,7 +14627,7 @@ export default function SocialFeed({
           ? composerVideoPrepSpecRef.current
           : null
       const trimRestore =
-        awaiting != null && specForSnap && specForSnap.kind === 'trim' && slot
+        awaiting != null && specForSnap && (specForSnap.kind === 'trim' || specForSnap.kind === 'native') && slot
           ? { posterUrl: slot.posterUrl, preview: slot.preview }
           : null
 
@@ -20674,6 +20607,8 @@ export default function SocialFeed({
       {loungeVideoCrop ? (
         <LoungeVideoCropModal
           file={loungeVideoCrop.file}
+          previewUrl={loungeVideoCrop.previewUrl}
+          nativeAssetId={loungeVideoCrop.nativeAssetId}
           knownDurationSec={loungeVideoCrop.knownDurationSec}
           intent="composer"
           shellClassName={
@@ -20711,19 +20646,29 @@ export default function SocialFeed({
                   streamVideoUid: null,
                 })
               } else if (result && typeof result === 'object' && result.type === 'composerTrimJob') {
-                const spec = {
-                  kind: 'trim',
-                  sourceFile: result.sourceFile,
-                  startSec: result.startSec,
-                  endSec: result.endSec,
-                  cropPx: result.cropPx,
-                  intrinsicWidth: result.intrinsicWidth,
-                  intrinsicHeight: result.intrinsicHeight,
-                }
+                const spec = result.nativeAssetId
+                  ? {
+                      kind: 'native',
+                      assetId: result.nativeAssetId,
+                      startSec: result.startSec,
+                      endSec: result.endSec,
+                      cropPx: result.cropPx,
+                      intrinsicWidth: result.intrinsicWidth,
+                      intrinsicHeight: result.intrinsicHeight,
+                    }
+                  : {
+                      kind: 'trim',
+                      sourceFile: result.sourceFile,
+                      startSec: result.startSec,
+                      endSec: result.endSec,
+                      cropPx: result.cropPx,
+                      intrinsicWidth: result.intrinsicWidth,
+                      intrinsicHeight: result.intrinsicHeight,
+                    }
                 startThreadComposePartVideoPrepFromSpec(partIdx, spec, {
                   file: null,
-                  posterUrl: result.posterUrl,
-                  preview: result.posterUrl,
+                  posterUrl: result.posterUrl || null,
+                  preview: result.posterUrl || loungeVideoCrop.previewUrl || '',
                   streamVideoUid: null,
                 })
               }
@@ -20776,19 +20721,29 @@ export default function SocialFeed({
                 } else setComposerMediaUrl('')
               } else if (result && typeof result === 'object' && result.type === 'composerTrimJob') {
                 disposeSlot()
-                const spec = {
-                  kind: 'trim',
-                  sourceFile: result.sourceFile,
-                  startSec: result.startSec,
-                  endSec: result.endSec,
-                  cropPx: result.cropPx,
-                  intrinsicWidth: result.intrinsicWidth,
-                  intrinsicHeight: result.intrinsicHeight,
-                }
+                const spec = result.nativeAssetId
+                  ? {
+                      kind: 'native',
+                      assetId: result.nativeAssetId,
+                      startSec: result.startSec,
+                      endSec: result.endSec,
+                      cropPx: result.cropPx,
+                      intrinsicWidth: result.intrinsicWidth,
+                      intrinsicHeight: result.intrinsicHeight,
+                    }
+                  : {
+                      kind: 'trim',
+                      sourceFile: result.sourceFile,
+                      startSec: result.startSec,
+                      endSec: result.endSec,
+                      cropPx: result.cropPx,
+                      intrinsicWidth: result.intrinsicWidth,
+                      intrinsicHeight: result.intrinsicHeight,
+                    }
                 startPrep(spec, {
                   file: null,
-                  posterUrl: result.posterUrl,
-                  preview: result.posterUrl,
+                  posterUrl: result.posterUrl || null,
+                  preview: result.posterUrl || (result.nativeAssetId ? loungeVideoCrop.previewUrl : '') || '',
                   streamVideoUid: null,
                 })
                 if (cropMode === 'quote') setQuoteRepostMediaUrl('')

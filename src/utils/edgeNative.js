@@ -510,6 +510,70 @@ export async function pickEdgePhotos(payload = {}) {
 }
 
 /**
+ * True when this IPA can pick a video as a file URL instead of a JS `File`.
+ * Old binaries and PWA are false. Those keep `<input type="file">` and ffmpeg.
+ * @returns {boolean}
+ */
+export function canPickEdgeVideo() {
+  if (typeof window === 'undefined' || !isEdgeiOSShell()) return false
+  return typeof window.EdgeNative?.pickEdgeVideo === 'function'
+    && typeof window.EdgeNative?.exportEdgeVideo === 'function'
+    && typeof window.EdgeNative?.uploadEdgeVideoTus === 'function'
+}
+
+/**
+ * PHPicker video. Cancel returns `{ ok: false, cancelled: true }`.
+ * A hit returns `{ assetId, previewUrl, duration, width, height, posterJpegBase64 }`.
+ * `previewUrl` is `edge-video://…` and only plays inside the IPA.
+ *
+ * @param {{ purpose?: string }} [payload]
+ * @returns {Promise<Record<string, unknown>>}
+ */
+export async function pickEdgeVideo(payload = {}) {
+  return edgeNativeInvoke('pickEdgeVideo', payload)
+}
+
+/** JPEG data URL from a native pick, or null. */
+export function nativeVideoPosterDataUrl(asset) {
+  const b64 = String(asset?.posterJpegBase64 || '').trim()
+  if (!b64) return null
+  return `data:image/jpeg;base64,${b64}`
+}
+
+/**
+ * Trim + crop on device. Returns a new `assetId` for the MP4.
+ *
+ * @param {Record<string, unknown>} payload
+ */
+export async function exportEdgeVideo(payload) {
+  return edgeNativeInvoke('exportEdgeVideo', payload)
+}
+
+/**
+ * Tus upload of an already-exported MP4 to Cloudflare Stream.
+ * Auth headers are applied only on the Supabase create call.
+ *
+ * @param {Record<string, unknown>} payload
+ */
+export async function uploadEdgeVideoTus(payload) {
+  return edgeNativeInvoke('uploadEdgeVideoTus', payload)
+}
+
+/** PUT an exported MP4 to a presigned URL (chat R2). */
+export async function uploadEdgeVideoPut(payload) {
+  return edgeNativeInvoke('uploadEdgeVideoPut', payload)
+}
+
+export async function cancelEdgeVideo() {
+  if (!canPickEdgeVideo()) return { ok: false }
+  try {
+    return await edgeNativeInvoke('cancelEdgeVideo', null)
+  } catch {
+    return { ok: false }
+  }
+}
+
+/**
  * Put Files on a hidden `<input type="file">` and fire `change` so existing handlers run.
  * Empty `files` still fires change so cancel paths can unwind picker-session locks.
  *

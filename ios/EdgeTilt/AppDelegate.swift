@@ -17,6 +17,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     EdgeLocationManager.shared.ensureWhenInUseAuthorization()
     EdgeAudioSession.ensurePlaybackUnlessVoiceChat()
     EdgeWebKitKeyboard.hideAccessoryBar()
+    EdgeVideoStore.shared.sweepStaleFiles()
     if let remote = launchOptions?[.remoteNotification] as? [AnyHashable: Any] {
       EdgePushManager.shared.handleNotificationUserInfo(remote)
     }
@@ -100,6 +101,19 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
       return true
     }
     return false
+  }
+
+  func application(
+    _ application: UIApplication,
+    handleEventsForBackgroundURLSession identifier: String,
+    completionHandler: @escaping () -> Void
+  ) {
+    if identifier == EdgeVideoUploader.backgroundSessionIdentifier {
+      EdgeVideoUploader.shared.backgroundEventsCompletion = completionHandler
+      EdgeVideoUploader.shared.reconnectBackgroundSession()
+      return
+    }
+    completionHandler()
   }
 
   func application(

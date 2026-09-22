@@ -37,7 +37,8 @@ import {
   probeVideoFileDisplaySize,
   captureVideoFilePosterObjectUrl,
 } from '../../utils/loungeVideoUpload.js'
-import { uploadChatVideoToR2, uploadChatPosterToR2 } from '../../utils/chatVideoR2Upload.js'
+import { uploadChatPosterToR2, uploadChatVideoToR2, uploadNativeChatVideoToR2 } from '../../utils/chatVideoR2Upload.js'
+import { cancelEdgeVideo, exportEdgeVideo } from '../../utils/edgeNative.js'
 import { subscribeToTyping } from './chatTypingBroadcast.js'
 import { useChatCallOptional } from './calls/ChatCallProvider.jsx'
 import { chatFetchActiveRoomCall } from '../../utils/chatCallsApi.js'
@@ -1695,7 +1696,7 @@ export default function ChatConversation({
   }, [setVideoPrepJobs])
 
   /** Detached from encode queue - runs upload + send after encoding is done. */
-  const uploadAndSendVideoPrepJob = useCallback(async (jobId, encodedFile, posterMetaPromise = null) => {
+  const uploadAndSendVideoPrepJob = useCallback(async (jobId, encodedFile, posterMetaPromise = null, nativeUrls = null) => {
     if (videoPrepJobsRef.current.find((j) => j.jobId === jobId)?.abortCtrl?.signal?.aborted) {
       removeVideoPrepJob(jobId)
       return
@@ -1716,12 +1717,14 @@ export default function ChatConversation({
         if (localPoster) updateVideoPrepJob(jobId, { posterUrl: localPoster })
       }
 
-      const [videoUrl, posterPublicUrl] = await Promise.all([
-        uploadChatVideoToR2(supabaseClient, encodedFile, { signal: abortSignal }),
-        localPoster
-          ? uploadChatPosterToR2(supabaseClient, localPoster).catch(() => null)
-          : Promise.resolve(null),
-      ])
+      const [videoUrl, posterPublicUrl] = nativeUrls?.videoUrl
+        ? [nativeUrls.videoUrl, nativeUrls.posterPublicUrl || null]
+        : await Promise.all([
+            uploadChatVideoToR2(supabaseClient, encodedFile, { signal: abortSignal }),
+            localPoster
+              ? uploadChatPosterToR2(supabaseClient, localPoster).catch(() => null)
+              : Promise.resolve(null),
+          ])
 
       if (abortSignal?.aborted) { removeVideoPrepJob(jobId); return }
 
@@ -1790,6 +1793,7 @@ export default function ChatConversation({
     const jobId = (() => { try { return crypto.randomUUID() } catch { return `${Date.now()}-${Math.random().toString(36).slice(2)}` } })()
     const abortCtrl = new AbortController()
     const isTrimJob = spec?.type === 'composerTrimJob'
+    const hasNativePoster = Boolean(spec?.nativeAssetId)
 
     setVideoPrepJobs((prev) => [...prev, {
       jobId,
@@ -1797,9 +1801,9 @@ export default function ChatConversation({
       status: 'pending',
       progress: 0,
       // Trim jobs come with a pre-captured poster from the modal; direct files capture async.
-      posterUrl: isTrimJob ? (spec.posterUrl ?? null) : null,
-      width: isTrimJob ? (spec.intrinsicWidth ?? null) : null,
-      height: isTrimJob ? (spec.intrinsicHeight ?? null) : null,
+      posterUrl: isTrimJob || hasNativePoster ? (spec.posterUrl ?? null) : null,
+      width: isTrimJob || hasNativePoster ? (spec.intrinsicWidth ?? null) : null,
+      height: isTrimJob || hasNativePoster ? (spec.intrinsicHeight ?? null) : null,
       errorMessage: null,
       spec,
       abortCtrl,
@@ -1811,6 +1815,57 @@ export default function ChatConversation({
       .then(async () => {
         if (abortCtrl.signal.aborted) { removeVideoPrepJob(jobId); return }
         try {
+          if (spec?.nativeAssetId) {
+            updateVideoPrepJob(jobId, {
+              status: 'encoding',
+              progress: 0.05,
+              posterUrl: spec.posterUrl ?? null,
+              width: spec.intrinsicWidth ?? null,
+              height: spec.intrinsicHeight ?? null,
+            })
+            const watched = new Set([String(spec.nativeAssetId)])
+            const onNativeProgress = (event) => {
+              const detail = event?.detail || {}
+              const id = String(detail.assetId || '')
+              if (id && !watched.has(id)) return
+              const ratio = Number(detail.progress)
+              const safe = Number.isFinite(ratio) ? Math.max(0, Math.min(1, ratio)) : 0
+              if (detail.phase === 'upload') {
+                updateVideoPrepJob(jobId, { status: 'uploading', progress: 0.72 + safe * 0.24 })
+              } else {
+                updateVideoPrepJob(jobId, { status: 'encoding', progress: 0.05 + safe * 0.65 })
+              }
+            }
+            window.addEventListener('edge-native-video-progress', onNativeProgress)
+            const onAbort = () => { void cancelEdgeVideo() }
+            abortCtrl.signal.addEventListener('abort', onAbort)
+            try {
+              const exported = await exportEdgeVideo({
+                assetId: spec.nativeAssetId,
+                startSec: spec.startSec,
+                endSec: spec.endSec,
+                cropPx: spec.cropPx || null,
+                intrinsicWidth: spec.intrinsicWidth,
+                intrinsicHeight: spec.intrinsicHeight,
+              })
+              if (abortCtrl.signal.aborted) { removeVideoPrepJob(jobId); return }
+              if (!exported?.ok || !exported.assetId) {
+                throw new Error(exported?.error || 'Could not prepare that video.')
+              }
+              watched.add(String(exported.assetId))
+              updateVideoPrepJob(jobId, { status: 'uploading', progress: 0.72 })
+              const videoUrl = await uploadNativeChatVideoToR2(supabaseClient, exported.assetId)
+              const posterPublicUrl = spec.posterUrl
+                ? await uploadChatPosterToR2(supabaseClient, spec.posterUrl).catch(() => null)
+                : null
+              if (abortCtrl.signal.aborted) { removeVideoPrepJob(jobId); return }
+              await uploadAndSendVideoPrepJob(jobId, null, null, { videoUrl, posterPublicUrl })
+            } finally {
+              window.removeEventListener('edge-native-video-progress', onNativeProgress)
+              abortCtrl.signal.removeEventListener('abort', onAbort)
+            }
+            return
+          }
           const { trimVideoFileToMp4, encodeVideoForChat } = await import('../../utils/loungeVideoFfmpegTrim.js')
 
           let readyFile
@@ -1865,7 +1920,7 @@ export default function ChatConversation({
       .catch(() => {
         // Prevent a broken promise chain from blocking subsequent jobs.
       })
-  }, [setVideoPrepJobs, updateVideoPrepJob, removeVideoPrepJob, uploadAndSendVideoPrepJob, pinTailAfterMutation])
+  }, [setVideoPrepJobs, updateVideoPrepJob, removeVideoPrepJob, uploadAndSendVideoPrepJob, pinTailAfterMutation, supabaseClient])
 
   const cancelVideoPrepJob = useCallback((jobId) => {
     const job = videoPrepJobsRef.current.find((j) => j.jobId === jobId)

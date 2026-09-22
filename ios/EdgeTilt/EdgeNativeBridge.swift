@@ -11,6 +11,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
 
   func attach(webView: WKWebView) {
     self.webView = webView
+    EdgeVideoEvents.webView = webView
   }
 
   func makeConfiguration() -> WKWebViewConfiguration {
@@ -18,6 +19,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     config.allowsInlineMediaPlayback = true
     config.mediaTypesRequiringUserActionForPlayback = []
     config.defaultWebpagePreferences.allowsContentJavaScript = true
+    config.setURLSchemeHandler(EdgeVideoSchemeHandler(), forURLScheme: "edge-video")
 
     let controller = config.userContentController
     controller.add(self, name: messageHandlerName)
@@ -301,6 +303,39 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
         ?? (payload?["maxCount"] as? NSNumber)?.intValue
         ?? 12
       EdgePhotoPicker.present(maxCount: rawMax, completion: completion)
+    case "pickEdgeVideo":
+      EdgeVideoPicker.present(completion: completion)
+    case "exportEdgeVideo":
+      Task {
+        do {
+          let result = try await EdgeVideoExporter.export(payload: payload)
+          completion(.success(result))
+        } catch {
+          completion(.failure(error))
+        }
+      }
+    case "uploadEdgeVideoTus":
+      Task {
+        do {
+          let result = try await EdgeVideoUploader.shared.uploadTus(payload: payload)
+          completion(.success(result))
+        } catch {
+          completion(.failure(error))
+        }
+      }
+    case "uploadEdgeVideoPut":
+      Task {
+        do {
+          let result = try await EdgeVideoUploader.shared.uploadPut(payload: payload)
+          completion(.success(result))
+        } catch {
+          completion(.failure(error))
+        }
+      }
+    case "cancelEdgeVideo":
+      EdgeVideoExporter.cancel()
+      EdgeVideoUploader.shared.cancel()
+      completion(.success(["ok": true]))
     case "share":
       EdgeShareSheet.present(payload: payload, completion: completion)
     default:
@@ -795,6 +830,21 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       },
       pickPhotos: function (payload) {
         return call('pickPhotos', payload || {});
+      },
+      pickEdgeVideo: function (payload) {
+        return call('pickEdgeVideo', payload || {});
+      },
+      exportEdgeVideo: function (payload) {
+        return call('exportEdgeVideo', payload || {});
+      },
+      uploadEdgeVideoTus: function (payload) {
+        return call('uploadEdgeVideoTus', payload || {});
+      },
+      uploadEdgeVideoPut: function (payload) {
+        return call('uploadEdgeVideoPut', payload || {});
+      },
+      cancelEdgeVideo: function () {
+        return call('cancelEdgeVideo', null);
       },
       share: function (payload) {
         return call('share', payload || {});

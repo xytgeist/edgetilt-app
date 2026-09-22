@@ -233,6 +233,8 @@ function cropOverlayPercents(layout, cropPx) {
  */
 export default function LoungeVideoCropModal({
   file,
+  previewUrl = '',
+  nativeAssetId = '',
   knownDurationSec,
   intent = 'composer',
   shellClassName = 'z-[105]',
@@ -290,7 +292,7 @@ export default function LoungeVideoCropModal({
 
   /** While preview is playing, keep playback inside the trim range (loop at end). */
   useEffect(() => {
-    if (!file || duration <= 0) return undefined
+    if ((!file && !previewUrl) || duration <= 0) return undefined
     const v = videoRef.current
     if (!v) return undefined
     const onTime = () => {
@@ -308,15 +310,17 @@ export default function LoungeVideoCropModal({
     }
     v.addEventListener('timeupdate', onTime)
     return () => v.removeEventListener('timeupdate', onTime)
-  }, [file, duration])
+  }, [file, previewUrl, duration])
 
   useEffect(() => {
+    if (nativeAssetId) return undefined
     void prefetchFfmpegCore().catch(() => {})
-  }, [])
+    return undefined
+  }, [nativeAssetId])
 
   /** Prevent the lounge feed (scroll + pull-to-refresh) from moving while this modal is open. */
   useEffect(() => {
-    if (!file) return undefined
+    if (!file && !previewUrl) return undefined
     const html = document.documentElement
     const prevHtml = html.style.overflow
     const prevBody = document.body.style.overflow
@@ -326,13 +330,14 @@ export default function LoungeVideoCropModal({
       html.style.overflow = prevHtml
       document.body.style.overflow = prevBody
     }
-  }, [file])
+  }, [file, previewUrl])
 
   useEffect(() => {
-    if (!file) return undefined
+    if (!file && !previewUrl) return undefined
     posterScanGenRef.current += 1
-    const u = URL.createObjectURL(file)
-    const uProbe = URL.createObjectURL(file)
+    const ownsBlob = Boolean(file)
+    const u = file ? URL.createObjectURL(file) : previewUrl
+    const uProbe = file ? URL.createObjectURL(file) : previewUrl
     urlRef.current = u
     setProbeBlobUrl(uProbe)
     setTrimErr('')
@@ -371,15 +376,17 @@ export default function LoungeVideoCropModal({
       clipRef.current = { start: 0, end: MAX_CLIP_SEC }
     }
     return () => {
-      try {
-        URL.revokeObjectURL(u)
-      } catch {
-        // ignore
-      }
-      try {
-        URL.revokeObjectURL(uProbe)
-      } catch {
-        // ignore
+      if (ownsBlob) {
+        try {
+          URL.revokeObjectURL(u)
+        } catch {
+          // ignore
+        }
+        try {
+          URL.revokeObjectURL(uProbe)
+        } catch {
+          // ignore
+        }
       }
       urlRef.current = ''
       setProbeBlobUrl('')
@@ -392,7 +399,7 @@ export default function LoungeVideoCropModal({
         posterObjectUrlRef.current = ''
       }
     }
-  }, [file, knownDurationSec])
+  }, [file, previewUrl, knownDurationSec])
 
   useEffect(() => {
     const vw = intrinsicSize.w
@@ -750,7 +757,7 @@ export default function LoungeVideoCropModal({
     setTrimErr('')
     const { start, end } = clipRef.current
 
-    if (intent === 'detail') {
+    if (intent === 'detail' && !nativeAssetId) {
       setPhase('trimming')
       const ac = new AbortController()
       trimAbortRef.current = ac
@@ -798,7 +805,9 @@ export default function LoungeVideoCropModal({
       const cropSan =
         rawCrop && iw > 0 && ih > 0 ? sanitizeVideoCropPx(iw, ih, rawCrop) : null
 
-      const posterUrl = await new Promise((resolve, reject) => {
+      let posterUrl = ''
+      try {
+      posterUrl = await new Promise((resolve, reject) => {
         try {
           const cnv = document.createElement('canvas')
           const ctx = cnv.getContext('2d')
@@ -834,10 +843,14 @@ export default function LoungeVideoCropModal({
           reject(err instanceof Error ? err : new Error(String(err)))
         }
       })
+      } catch (posterErr) {
+        if (!nativeAssetId) throw posterErr
+      }
 
       onConfirm({
         type: 'composerTrimJob',
-        sourceFile: file,
+        sourceFile: file || null,
+        nativeAssetId: nativeAssetId || null,
         startSec: start,
         endSec: end,
         cropPx: cropSan,
@@ -850,7 +863,7 @@ export default function LoungeVideoCropModal({
       setTrimErr(err instanceof Error ? err.message : 'Could not prepare clip.')
       setPhase('idle')
     }
-  }, [file, onConfirm, cropAspectKey, intrinsicSize.w, intrinsicSize.h, intent])
+  }, [file, nativeAssetId, onConfirm, cropAspectKey, intrinsicSize.w, intrinsicSize.h, intent])
 
   useEffect(
     () => () => {
@@ -860,7 +873,7 @@ export default function LoungeVideoCropModal({
     [cleanupDrag, cleanupCropDrag],
   )
 
-  if (!file) return null
+  if (!file && !previewUrl) return null
 
   const pct = (t) => (duration > 0 ? (t / duration) * 100 : 0)
   const span = clipEnd - clipStart

@@ -1,4 +1,4 @@
-import { runComposerStreamVideoPrepWithRetries } from './loungeComposerVideoPrep.js'
+import { loungeVideoSlotAfterPrep, runComposerStreamVideoPrepWithRetries } from './loungeComposerVideoPrep.js'
 
 /** @typedef {'queued' | 'preparing' | 'ready' | 'failed'} ThreadComposeVideoPrepStatus */
 
@@ -98,7 +98,7 @@ export function threadPartVideoSlotFromSnapshot(part) {
         prepError: '',
       }
     }
-    if (restore && part.videoPrepSpec.kind === 'trim') {
+    if (restore && (part.videoPrepSpec.kind === 'trim' || part.videoPrepSpec.kind === 'native')) {
       return {
         prepJobId: null,
         file: null,
@@ -148,7 +148,7 @@ export function threadComposePartVideoSnapshotFields(slot, prepMeta) {
         ? handoff.jobId
         : null
   const trimRestore =
-    (awaiting != null || slot.prepStatus === 'queued') && spec?.kind === 'trim'
+    (awaiting != null || slot.prepStatus === 'queued') && (spec?.kind === 'trim' || spec?.kind === 'native')
       ? { posterUrl: slot.posterUrl, preview: slot.preview }
       : null
   const sessionPosterBlob =
@@ -326,41 +326,7 @@ export function createThreadComposeVideoPrepController({
       }
 
       const { encodedFile, streamVideoUid } = result
-      updatePartVideoSlot(partIdx, (prev) => {
-        if (!prev || prev.prepJobId !== jobId) return prev
-        const oldPreview = prev.preview
-        const oldPoster = prev.posterUrl
-        const vidUrl = URL.createObjectURL(encodedFile)
-        const posterToKeep =
-          typeof oldPoster === 'string' && oldPoster && oldPoster !== vidUrl
-            ? oldPoster
-            : typeof oldPreview === 'string' && oldPreview && oldPreview !== vidUrl
-              ? oldPreview
-              : null
-        if (oldPreview && oldPreview !== posterToKeep) {
-          try {
-            URL.revokeObjectURL(oldPreview)
-          } catch {
-            // ignore
-          }
-        }
-        if (oldPoster && oldPoster !== posterToKeep) {
-          try {
-            URL.revokeObjectURL(oldPoster)
-          } catch {
-            // ignore
-          }
-        }
-        return {
-          ...prev,
-          file: encodedFile,
-          streamVideoUid,
-          preview: vidUrl,
-          posterUrl: posterToKeep,
-          prepStatus: 'ready',
-          prepError: '',
-        }
-      })
+      updatePartVideoSlot(partIdx, (prev) => loungeVideoSlotAfterPrep(prev, encodedFile, streamVideoUid, jobId))
       clearHud(partIdx)
     } catch (e) {
       if (!handoff.settled) {

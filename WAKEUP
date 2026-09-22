@@ -33,7 +33,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
-**Branch:** `test` (match `origin/test` before edits). `main` @ **`a27b6a42`** (promoted 2026-09-21 evening, web **1.4.472**). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
+**Branch:** `test` (match `origin/test` before edits). `main` @ **`1b81b5ac`** (promoted 2026-09-21 evening, web **1.4.473**). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
 
 **Supabase (do not swap these):**
 
@@ -66,8 +66,8 @@ The agent should treat the following as **standing instructions for this session
 
 | Ref | Hash | Note |
 | --- | --- | --- |
-| **`origin/test` tip** | `f81de620` | web **`1.4.473`**. AuthModalShell reveal attr inlined (Sentry `revealAttrs`). |
-| **`origin/main`** | **`a27b6a42`** | Vercel **edgetilt.com** web **`1.4.472`** (promoted 2026-09-21 evening). Same tip as `test`. |
+| **`origin/test` tip** | `1b81b5ac` | web **`1.4.473`**. AuthModalShell reveal attr inlined (Sentry `revealAttrs`). |
+| **`origin/main`** | **`1b81b5ac`** | Vercel **edgetilt.com** web **`1.4.473`** (promoted 2026-09-21 evening). Same tip as `test`. |
 | iOS **`MARKETING_VERSION`** | **`1.4.95`** | Do not bump. |
 
 **Dirty local (do not stage):** Xcode schemes under `ios/.../xcschemes/` + `public/og-*.png` (binary noise). Leave them alone.

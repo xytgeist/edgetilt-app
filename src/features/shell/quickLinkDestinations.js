@@ -69,16 +69,17 @@ export const QUICK_LINK_MAX = 2
 export const QUICK_LINK_MAX_IPAD = 6
 
 /**
- * Same gate as `useIpadAuthStage`. Landscape iPhone is wide but short, so it stays on the phone cap.
+ * Same gate as `useIpadAuthStage`. Tall tablet only (auth column, portrait screen titles).
+ * Phone landscape uses the rail / split gates below, not this.
  */
 export const IPAD_SHELL_QUERY = '(min-width: 768px) and (min-height: 700px) and (pointer: coarse)'
 
-/** iPad shell plus landscape. Phones in landscape are too short for the full tablet chrome. */
+/** Tall iPad landscape only. Unused in app code … prefer `SLOTS_LANDSCAPE_SPLIT_QUERY`. */
 export const IPAD_LANDSCAPE_QUERY =
   '(orientation: landscape) and (min-width: 768px) and (min-height: 700px) and (pointer: coarse)'
 
 /**
- * Slots two-column split. Includes phone landscape (short height).
+ * Slots / Poker / Lounge / Chat two-column split. Includes phone landscape (short height).
  * Keeps pointer:coarse so desktop mouse layouts stay phone/desktop column.
  */
 export const SLOTS_LANDSCAPE_SPLIT_QUERY =
@@ -95,16 +96,20 @@ export const IPAD_NAV_RAIL_QUERY = `${IPAD_SHELL_QUERY}, ${SLOTS_LANDSCAPE_SPLIT
 export const SLOTS_LANDSCAPE_COMPACT_QUERY =
   '(orientation: landscape) and (max-height: 520px) and (pointer: coarse)'
 
+/** True when the left nav rail is up (iPad shell or phone/tablet landscape). */
+export function isNavRailLayout() {
+  return typeof window !== 'undefined' && window.matchMedia(IPAD_NAV_RAIL_QUERY).matches
+}
+
 export function quickLinkCap() {
-  if (typeof window !== 'undefined' && window.matchMedia(IPAD_SHELL_QUERY).matches) {
-    return QUICK_LINK_MAX_IPAD
-  }
+  // Rail layouts get the tablet pin cap (phone landscape included). Portrait phone stays at 2.
+  if (isNavRailLayout()) return QUICK_LINK_MAX_IPAD
   return QUICK_LINK_MAX
 }
 
 export const QUICK_LINKS_STORAGE_KEY = 'lvsp:quickLinks:v1'
 
-/** iPad rail only. A phone never reads this key. */
+/** Rail layouts (iPad + phone landscape). Portrait phone title-bar pins stay on the phone key. */
 export const QUICK_LINKS_STORAGE_KEY_IPAD = 'lvsp:quickLinks:ipad:v1'
 
 /** @param {string | null | undefined} id */

@@ -565,7 +565,7 @@ Zinc **`bg-*`** remaps under **`html.light`**; **`text-white`** on inputs **does
 | **Anonymous** | Non-issue — anon is Lounge read-only; quick links only on member tool surfaces. |
 | **Configuration UX** | **Hub pin** on Slots / Poker tool cards (not Profile / settings, not inside tool screens). Pin ON → adds that destination to the title bar. |
 | **Max slots** | **2** shortcuts on phone (title bar, left of the hamburger). Attempting another → modal: explains the limit, lists the active links with their switches so the user can turn one off, then enable the new one. |
-| **iPad** | Shortcuts leave the title bar. They sit in the left rail under Settings, below a hairline. Max **6**, stored in **`lvsp:quickLinks:ipad:v1`**. Phone uses **`lvsp:quickLinks:v1`** and max **2**. The lists do not cross devices. Existing iPad pins in the old key are copied over once. |
+| **iPad / rail** | Shortcuts leave the title bar. They sit in the left rail under Settings, below a hairline. Max **6**, stored in **`lvsp:quickLinks:ipad:v1`**. Gate is **`IPAD_NAV_RAIL_QUERY`** (tall iPad shell **or** phone/tablet landscape). Portrait phone uses **`lvsp:quickLinks:v1`** and max **2**. The lists do not merge across rotate. Existing rail pins migrate from the phone key once if the rail key is empty. |
 | **Title bar placement** | Up to **2 icon buttons** in the fixed title bar row, **left of hamburger** (same cluster as `titleBarNavSlot` in `ScrollLinkedEdgeTitleBarShell` / Lounge feed bar). On **Lounge dock panels** (search, notifications, settings, chat), the hamburger cluster **slides left** to make room for the panel **×** close button — logo max-width reserves extra space via `titleBarLayout.js` (`panelCloseVisible`). When a **live session chip** is active, the row uses `auto minmax(0,1fr) auto` and **container queries** hide shortcut 2 then both shortcuts before colliding with the pill (earlier if tool close is present); destinations remain in the hamburger. |
 
 ### Eligible destinations (v1 allowlist)
@@ -587,7 +587,7 @@ Ryan (2026-05-29): Calcs, Calendar, Bankroll, Logbook, AP Guides — no Intel. L
 ### Implementation sketch (when picked up)
 
 - **Registry:** `src/features/shell/quickLinkDestinations.js` — id, label, icon, `tab`, optional `requiresSlotsEdge` / calc gate flags.
-- **Persist:** phone `lvsp:quickLinks:v1` (≤2) and iPad `lvsp:quickLinks:ipad:v1` (≤6). Separate lists. Not a profile column.
+- **Persist:** portrait phone `lvsp:quickLinks:v1` (≤2) and rail layouts `lvsp:quickLinks:ipad:v1` (≤6 … iPad + phone landscape). Separate lists. Not a profile column.
 - **Shell:** `AppShell.jsx` — read store, render icons in `renderTitleBarNavSlot()`; tap → same navigation + subscribe/auth as hub tiles.
 - **Shared UI:** `QuickLinkPageToggle.jsx` — small switch row for top of each eligible screen; coordinates with store + **at-cap modal** (`QuickLinkAtCapModal.jsx`).
 - **Light/dark:** reuse title bar / zinc patterns; scope any light overrides under `data-quick-link-*` if needed (same discipline as bankroll/logbook).
@@ -1150,6 +1150,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 ## Update log
 
 - **2026-09-21:** **Promoted `test` → `main` (`08800db1`).** Vercel prod = web **`1.4.462`**. Landscape/rail/Poker pane keep-alive track + sports pill paint through **1.4.456**. No new prod SQL/Edge in this push. Store IPA marketing still **1.4.95**.
+- **2026-09-21:** **Phone landscape rail quick-link parity (Mac).** Splits/portals already shared `SLOTS_LANDSCAPE_SPLIT_QUERY`. Rail pin cap **6** + rail storage key + title-bar logo reserve now follow **`IPAD_NAV_RAIL_QUERY`** (not tall-iPad shell only), so iPhone landscape matches iPad rail chrome. Portrait phone stays max **2**. Frontend **`1.4.463`**. Web only.
 - **2026-09-21:** **Windows continuity handoff (sports pill paint + live data).** Dual wash + `*-light.png` + always-on halo + no losing-logo dim are on **`test`** through **`1.4.456`**. Open: confirm TheRundown tier before shopping Genius/Sportradar for X-like PBP. **WAKEUP** ACTIVE TRACK. Pill paint not assumed on **`main`** until Ryan promotes.
 - **2026-09-21:** **Sports pill keep both logos full opacity on finals (Windows).** Losing-side logo dim (`opacity-55`) removed; scores still dim. Frontend **`1.4.456`**.
 - **2026-09-21:** **Chat dock-suppress must not hide iPad rail (Mac).** Keep-alive Chat with an open portrait thread left `loungeDockSuppress` true under Lounge, so `LoungeIpadNavRail` unmounted while title stayed in rail/`brandCenter` mode (EDGE centered, no sidebar). Rail mounts whenever `useIpadNavRail()` matches; FAB suppress only while Chat `isActivePage`. Frontend **`1.4.462`**. Web only.

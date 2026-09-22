@@ -1,11 +1,13 @@
 import { useCallback, useSyncExternalStore } from 'react'
 import {
-  IPAD_SHELL_QUERY,
+  isNavRailLayout,
   isQuickLinkId,
   QUICK_LINK_MAX,
   QUICK_LINK_MAX_IPAD,
   QUICK_LINKS_STORAGE_KEY,
   QUICK_LINKS_STORAGE_KEY_IPAD,
+  IPAD_NAV_RAIL_QUERY,
+  IPAD_SHELL_QUERY,
   quickLinkCap,
 } from './quickLinkDestinations.js'
 
@@ -15,22 +17,18 @@ import {
 const listeners = new Set()
 
 /**
- * Phone and iPad do not share a list. localStorage is already per device, and the
- * keys stay split so a later account sync cannot merge them by accident.
+ * Portrait phone title-bar pins and rail pins stay on separate keys so rotate
+ * (or a later account sync) cannot merge phone-cap lists into the rail list.
  * @type {{ key: string, ids: QuickLinkId[] } | null}
  */
 let cached = null
 
-function isIpadQuickLinks() {
-  return typeof window !== 'undefined' && window.matchMedia(IPAD_SHELL_QUERY).matches
-}
-
 function activeStorageKey() {
-  return isIpadQuickLinks() ? QUICK_LINKS_STORAGE_KEY_IPAD : QUICK_LINKS_STORAGE_KEY
+  return isNavRailLayout() ? QUICK_LINKS_STORAGE_KEY_IPAD : QUICK_LINKS_STORAGE_KEY
 }
 
 function activeCap() {
-  return isIpadQuickLinks() ? QUICK_LINK_MAX_IPAD : QUICK_LINK_MAX
+  return isNavRailLayout() ? QUICK_LINK_MAX_IPAD : QUICK_LINK_MAX
 }
 
 /**
@@ -95,11 +93,16 @@ function notify() {
   for (const fn of listeners) fn([...ids])
 }
 
+function onLayoutGateChange() {
+  cached = null
+  notify()
+}
+
 if (typeof window !== 'undefined') {
-  window.matchMedia(IPAD_SHELL_QUERY).addEventListener('change', () => {
-    cached = null
-    notify()
-  })
+  window.matchMedia(IPAD_SHELL_QUERY).addEventListener('change', onLayoutGateChange)
+  window.matchMedia(IPAD_NAV_RAIL_QUERY).addEventListener('change', onLayoutGateChange)
+  window.addEventListener('orientationchange', onLayoutGateChange)
+  window.addEventListener('resize', onLayoutGateChange)
 }
 
 /**

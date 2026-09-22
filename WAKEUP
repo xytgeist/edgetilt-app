@@ -66,8 +66,8 @@ The agent should treat the following as **standing instructions for this session
 
 | Ref | Hash | Note |
 | --- | --- | --- |
-| **`origin/test` tip** | **6493a7f0** | web **`1.4.463`**. Phone landscape rail quick-link parity on top of **`1.4.462`** landscape/rail/Poker track. |
-| **`origin/main`** | **`08800db1`** | Vercel **edgetilt.com** web **`1.4.462`** (promoted 2026-09-21 evening). Same tip as `test`. |
+| **`origin/test` tip** | **`a17e6eb5`** | web **`1.4.463`**. Phone landscape rail quick-link parity on top of **`1.4.462`** landscape/rail/Poker track. |
+| **`origin/main`** | **`5f217e63`** | Vercel **edgetilt.com** web **`1.4.462`** (promoted 2026-09-21 evening). `test` is ahead … promote when Ryan asks. |
 | iOS **`MARKETING_VERSION`** | **`1.4.95`** | Do not bump. |
 
 **Dirty local (do not stage):** Xcode schemes under `ios/.../xcschemes/` + `public/og-*.png` (binary noise). Leave them alone.

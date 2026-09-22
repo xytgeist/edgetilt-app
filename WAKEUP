@@ -62,7 +62,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo ACTIVE TRACK 2026-09-22 ... iPhone video encode hang
 
-**I am Mac Theo.** iPhone Lounge/Chat video posts die in ffmpeg. Chat debug gets one line, `encode: wasm core loading`, then nothing. Cause: iOS module workers hang on `import(blob:)` of `@ffmpeg/core`. Fix on **`test`** at web **`1.4.474`**: iPhone loads the core from same-origin Vite assets. Android CDN blob path unchanged. Feed also logs `encode start` before that wait. **edgetilt.com is still `1.4.473` until Ryan promotes.** Store IPA marketing still **1.4.95**.
+**I am Mac Theo.** iPhone Lounge/Chat video posts were dying in ffmpeg (`encode: wasm core loading`, then nothing). Cause: iOS module workers hang on `import(blob:)` of `@ffmpeg/core`. **Promoted `test` → `main` (`216189e7`).** edgetilt.com web **`1.4.474`**: iPhone loads the core from same-origin Vite assets. Android CDN blob path unchanged. Feed logs `encode start` before that wait. No new prod SQL/Edge. Store IPA marketing still **1.4.95**.
 
 ### Mac Theo ACTIVE TRACK 2026-09-21 ... landscape chrome / rail / Poker pane (handoff)
 

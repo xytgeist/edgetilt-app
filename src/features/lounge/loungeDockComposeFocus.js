@@ -3,6 +3,7 @@ import {
   plainTextFromComposerRoot,
   setCaretTextOffset,
 } from './loungeRichComposerDom.js'
+import { shouldBlockComposerKeyboard } from '../../utils/edgeiOSComposerPortraitLock.js'
 
 /**
  * Focus caption and place caret at end. Call synchronously from a click/pointer handler when
@@ -13,6 +14,7 @@ import {
  * @returns {boolean} whether the field was found and focus was attempted
  */
 export function focusLoungeComposerCaption(getTextarea, opts = {}) {
+  if (shouldBlockComposerKeyboard()) return false
   opts.scrollFeedToTop?.()
   const el = getTextarea?.()
   if (!el) return false
@@ -46,6 +48,7 @@ export function focusLoungeComposerCaption(getTextarea, opts = {}) {
  * @returns {boolean} whether the textarea is the active element after the attempt
  */
 export function invokeLoungeComposerCaptionKeyboard(getTextarea, opts = {}) {
+  if (shouldBlockComposerKeyboard()) return false
   opts.scrollFeedToTop?.()
   const el = getTextarea?.()
   if (!el) return false
@@ -138,7 +141,7 @@ export function scheduleLoungeComposerTextareaFocus({
   extraDelaysMs = [],
 }) {
   const run = () => {
-    if (isBlocked?.()) return
+    if (isBlocked?.() || shouldBlockComposerKeyboard()) return
     focusLoungeComposerCaption(getTextarea, { scrollFeedToTop })
   }
 

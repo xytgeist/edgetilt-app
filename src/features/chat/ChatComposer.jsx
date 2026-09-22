@@ -22,7 +22,10 @@ import {
 } from '../lounge/loungeRichComposerDom.js'
 import { notifyChatMediaPickerActive } from './chatMediaPickerRegistry.js'
 import { tryAssignEdgePickedPhotos } from '../../utils/edgeNative.js'
-import { useEdgeiOSComposerPortraitLock } from '../../utils/edgeiOSComposerPortraitLock.js'
+import {
+  shouldBlockComposerKeyboard,
+  useEdgeiOSComposerPortraitLock,
+} from '../../utils/edgeiOSComposerPortraitLock.js'
 import { useChatMentionState } from './chatMentionAutocomplete.js'
 import LoungeMentionDropdown from '../lounge/LoungeMentionDropdown.jsx'
 
@@ -256,7 +259,7 @@ export default function ChatComposer({
         })
         return
       }
-      el?.focus()
+      if (!shouldBlockComposerKeyboard()) el?.focus()
       document.execCommand('insertText', false, snippet)
     },
     [body, onTyping, viewerDisplayName],
@@ -578,7 +581,7 @@ export default function ChatComposer({
     setImageSlots([])
     uploadPromisesRef.current.clear()
     onClearReply()
-    if (wasTextareaFocused) {
+    if (wasTextareaFocused && !shouldBlockComposerKeyboard()) {
       try {
         textareaRef.current?.focus({ preventScroll: true })
       } catch {
@@ -859,6 +862,7 @@ export default function ChatComposer({
           {LOUNGE_IOS ? (
             <textarea
               ref={textareaRef}
+              data-composer-kb-field=""
               rows={1}
               value={body}
               disabled={disabled}
@@ -879,7 +883,9 @@ export default function ChatComposer({
               onFocus={
                 footerHost
                   ? (e) => {
+                      if (shouldBlockComposerKeyboard()) return
                       requestAnimationFrame(() => {
+                        if (shouldBlockComposerKeyboard()) return
                         try { e.currentTarget.focus({ preventScroll: true }) } catch { /* ignore */ }
                       })
                     }
@@ -900,6 +906,7 @@ export default function ChatComposer({
           ) : (
             <div
               ref={textareaRef}
+              data-composer-kb-field=""
               contentEditable={!disabled}
               suppressContentEditableWarning
               role="textbox"
@@ -921,7 +928,9 @@ export default function ChatComposer({
               onFocus={
                 footerHost
                   ? (e) => {
+                      if (shouldBlockComposerKeyboard()) return
                       requestAnimationFrame(() => {
+                        if (shouldBlockComposerKeyboard()) return
                         try { e.currentTarget.focus({ preventScroll: true }) } catch { /* ignore */ }
                       })
                     }

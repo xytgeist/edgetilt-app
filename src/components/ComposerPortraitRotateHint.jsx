@@ -1,21 +1,68 @@
+import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Z_COMPOSER_PORTRAIT_HINT } from '../constants/appZIndex.js'
 import { isEdgeiOSShell } from '../utils/edgeNative.js'
 import {
+  isComposerKeyboardField,
+  shouldBlockComposerKeyboard,
   useComposerPortraitWanted,
   usePhoneLandscapeNotTablet,
 } from '../utils/edgeiOSComposerPortraitLock.js'
 
+function blurComposerKeyboard() {
+  const el = typeof document !== 'undefined' ? document.activeElement : null
+  if (!isComposerKeyboardField(el)) return
+  try {
+    el.blur()
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
  * Safari / PWA / Android cannot force-rotate. While a composer is open on a
- * landscape phone, show a rotate-to-portrait icon. It leaves as soon as the
- * device is upright. IPA already locks, so this stays off in the shell.
+ * landscape phone, show a rotate-to-portrait icon and keep the software
+ * keyboard down (it would cover the hint). IPA already locks, so this stays off.
  */
 export default function ComposerPortraitRotateHint() {
   const wanted = useComposerPortraitWanted()
   const phoneLandscape = usePhoneLandscapeNotTablet()
-  if (!wanted || !phoneLandscape || isEdgeiOSShell()) return null
-  if (typeof document === 'undefined') return null
+  const showHint = wanted && phoneLandscape && !isEdgeiOSShell()
+
+  useEffect(() => {
+    if (typeof document === 'undefined' || isEdgeiOSShell()) return undefined
+
+    const blockPointer = (event) => {
+      if (!shouldBlockComposerKeyboard()) return
+      if (!isComposerKeyboardField(event.target)) return
+      event.preventDefault()
+    }
+    const blockFocus = (event) => {
+      if (!shouldBlockComposerKeyboard()) return
+      if (!isComposerKeyboardField(event.target)) return
+      try {
+        event.target.blur()
+      } catch {
+        /* ignore */
+      }
+    }
+
+    document.addEventListener('pointerdown', blockPointer, true)
+    document.addEventListener('touchstart', blockPointer, { capture: true, passive: false })
+    document.addEventListener('focusin', blockFocus, true)
+    return () => {
+      document.removeEventListener('pointerdown', blockPointer, true)
+      document.removeEventListener('touchstart', blockPointer, true)
+      document.removeEventListener('focusin', blockFocus, true)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!showHint) return
+    blurComposerKeyboard()
+  }, [showHint])
+
+  if (!showHint || typeof document === 'undefined') return null
 
   return createPortal(
     <div

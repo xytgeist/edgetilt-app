@@ -474,6 +474,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
         <textarea
           ref={rootRef}
           id={id}
+          data-composer-kb-field=""
           rows={variant === 'fullscreen' ? 6 : 1}
           value={value}
           disabled={disabled}
@@ -507,6 +508,7 @@ const LoungeRichComposerField = forwardRef(function LoungeRichComposerField(
       <div
         ref={rootRef}
         id={id}
+        data-composer-kb-field=""
         role="textbox"
         aria-multiline="true"
         aria-label={ariaLabel}

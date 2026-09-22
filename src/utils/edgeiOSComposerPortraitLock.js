@@ -55,6 +55,20 @@ export function getComposerPortraitWanted() {
   return wantCount > 0
 }
 
+/**
+ * Safari / PWA / Android cannot force-rotate. While the phone is landscape,
+ * do not raise the software keyboard on a composer field.
+ */
+export function shouldBlockComposerKeyboard() {
+  if (typeof window === 'undefined' || isEdgeiOSShell()) return false
+  return readPhoneLandscapeNotTablet()
+}
+
+export function isComposerKeyboardField(node) {
+  if (!node || typeof node.closest !== 'function') return false
+  return Boolean(node.closest('[data-composer-kb-field]'))
+}
+
 export function useComposerPortraitWanted() {
   return useSyncExternalStore(subscribeComposerPortraitWanted, getComposerPortraitWanted, () => false)
 }

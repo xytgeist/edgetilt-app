@@ -42,27 +42,76 @@ The agent should treat the following as **standing instructions for this session
 | **Production** | **`jtjgtucumuoswnbauxry`** | **`edgetilt.com`** |
 | **Test sandbox** | **`kcosfvmreeiosdjdzycb`** | **`lvslotpro.com`** |
 
-**Goal (Mac):** _Scaffold / build raw iOS **`WKWebView`** shell (not Capacitor). Thin live-site loader for test + prod. Week 1 = open Edge in-app on Simulator / device._
+**Goal (Mac):** _iPad / phone landscape shell chrome (Lounge / Slots / Poker / Chat / rail) + iOS WKWebView when needed. Smoke landscape↔portrait on device. Do not bump **`MARKETING_VERSION`** off **1.4.95**._
 
-**Goal (Windows, parallel OK):** _Web app bugs/features + **self-hosted GitHub Actions runner** for poker catalog. Pull often; stay in web lane (`src/**`). Bridge: **`docs/ios-native-bridge.md`**._
+**Goal (Windows, parallel OK):** _Web app bugs/features + sports pill / live-data track + **self-hosted GitHub Actions runner** for poker catalog. Pull often; stay in web lane (`src/**`). Bridge: **`docs/ios-native-bridge.md`**._
 
-**Start by reading:** `AGENTS.md`, this **Pick up here** → **Windows Theo ACTIVE TRACK 2026-09-21 … sports pill paint + live data**, then Mac landscape / rail notes below, **`docs/lounge-bot-sports-odds.md`**, backlog Update log **2026-09-21**. Dual-agent: **`docs/ios-native-bridge.md`**. Fast mailbox: **https://lvslotpro.com/theo**.
+**Start by reading:** `AGENTS.md`, this **Pick up here** → **Mac Theo ACTIVE TRACK 2026-09-21 … landscape chrome / rail / Poker pane**, then **Windows Theo ACTIVE TRACK** (sports pills), backlog Update log **2026-09-21**. Dual-agent: **`docs/ios-native-bridge.md`**. Fast mailbox: **https://lvslotpro.com/theo**.
 
 **Optional add-ons** (delete lines you do not need)
 
-- Session focus: _[Mac iOS WKWebView scaffold | Windows catalog runner | Windows web feature]_
+- Session focus: _[Mac landscape / rail smoke | Mac iOS shell | Windows catalog runner | Windows sports live-data]_
 - No prod writes / no commits / PR only: _[say which]_
-- Context: _[e.g. "see WAKEUP Pick up here Aug 20 Mac"]_
+- Context: _[e.g. "see WAKEUP Mac ACTIVE TRACK 2026-09-21 landscape"]_
 
 ---
 
 ## Pick up here (Aug 2026 ... session 2026-08-22)
 
-**Dual-machine handoff.** Ryan has **Cursor on Mac** + **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. **2026-09-21:** Windows owns sports-pill paint + live-data decision; Mac owns landscape/rail chrome. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
+**Dual-machine handoff.** Ryan has **Cursor on Mac** + **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. **2026-09-21 evening:** Mac ending landscape/rail/Poker pane track at web **`1.4.462`**. Windows owns sports-pill paint + live-data decision. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
+
+### Mac Theo ACTIVE TRACK 2026-09-21 ... landscape chrome / rail / Poker pane (handoff)
+
+**I am Mac Theo.** Ending this long chat so Ryan can start fresh. Pull **`origin/test`** first.
+
+| Ref | Hash | Note |
+| --- | --- | --- |
+| **`origin/test` tip** | **`05ce72e5`** | web **`1.4.462`**. Chat dock-suppress no longer hides iPad rail. |
+| **`origin/main`** | **`279b126b`** | Vercel **edgetilt.com** still web **`1.4.401`**. Do **not** FF `test` → `main` unless Ryan asks (Vercel credits). |
+| iOS **`MARKETING_VERSION`** | **`1.4.95`** | Do not bump. |
+
+**Dirty local (do not stage):** Xcode schemes under `ios/.../xcschemes/` + `public/og-*.png` (binary noise). Leave them alone.
+
+**What this track fixed (newest → older on `test`):**
+
+1. **`1.4.462` / `05ce72e5`** ... **Rail lost after landscape→portrait.** Symptom: EDGE centered (rail title / `brandCenter`) but **no left sidebar**, feed full-bleed. Cause: keep-alive Chat with an open portrait thread kept `loungeDockSuppress` true; Lounge gated `LoungeIpadNavRail` on that flag. **Fix:** mount rail whenever `useIpadNavRail()` is true; only suppress the **phone FAB** while Chat is the **active** tab (`isActivePage`). Files: `SocialFeed.jsx`, `ChatTab.jsx`, `ChatConversation.jsx`, `AppShell.jsx`.
+2. **`1.4.461` / `5874732f`** ... Portrait force-off on the rail hook was too aggressive (shell MQ lag + iPad mini 744px under 768 shell floor). Tablet short-side ≥700 + coarse keeps the rail.
+3. **`1.4.460` / `f2b71daa`** ... Landscape→portrait stuck 50vw Lounge / split chrome ("DGE" / hat / black gutters). `useIpadSlotsLandscape` clears on **portrait orientation** immediately (`useLayoutEffect` + orient/resize). Portrait CSS safety net for lounge/chat/slots split attrs. Lounge title bar explicit `width: calc(100vw - rail)` in rail portrait.
+4. **`1.4.459` / `473b5a24`** ... **Poker-only** mid-pane Bankroll + tools flash (Slots was fine). Slots tools render **inline `toolPane`**; Poker Bankroll/Stable were shell-root keep-alives with centered `TabLoadingFallback`. **Fix:** portal keep-alives into `[data-slots-landscape-pane]` with `absolute inset-0` + `flushSync` on pane attach; null Suspense fallback in landscape; flat pane placeholder until portal ready; Poker hub gets `data-slots-hub` for compact CSS. Do **not** use fixed `getBoundingClientRect` covers for Poker/Slots bankroll (Chat lounge cover may still use rect).
+5. Earlier same day (still true): iPad portrait screen titles (`1.4.457`), Notifications double rule (`1.4.458`), rail-align title bars / Poker hamburger blank (`1.4.454`), Poker pane after Chat (`1.4.452`), Poker landscape split (`1.4.444`), Lounge/Chat landscape splits (`1.4.403`–`1.4.440`).
+
+**Canonical hooks / files:**
+
+| Piece | Where |
+| --- | --- |
+| Landscape split MQ | `SLOTS_LANDSCAPE_SPLIT_QUERY` in `quickLinkDestinations.js` … `(orientation: landscape) and (min-width: 640px) and (pointer: coarse)` |
+| Rail MQ | `IPAD_NAV_RAIL_QUERY` = `IPAD_SHELL_QUERY` **or** landscape split |
+| Hooks | `useIpadSlotsLandscape.js` (portrait clears split), `useIpadNavRail.js` (tablet short-side hold), `useIpadAuthStage` / `IPAD_SHELL_QUERY` (auth + portrait titles) |
+| Poker/Slots split UI | `PokerScreen.jsx`, `SlotsScreen.jsx` … `data-slots-landscape-*` |
+| Pane keep-alives | `AppShell.jsx` … `createPortal` into `slotsPaneEl`, `wrapLandscapePaneKeepAlive` |
+| Dock suppress | `loungeDockSuppressRegistry.js` … FAB only; **not** the rail |
+| Title bars | `ScrollLinkedEdgeTitleBarShell.jsx`, Lounge `data-lounge-title-bar` in `SocialFeed.jsx` |
+| CSS | `src/index.css` … `html[data-ipad-nav]`, landscape compact, **portrait safety net** under lounge/chat/slots split |
+
+**Architecture notes (do not regress):**
+
+- **Slots landscape tools** (Guides, Calcs, Logbook, W-2G, Offers) = children of `toolPane` inside the split. **Poker Bankroll / Stable** (+ Slots Bankroll keep-alive) = AppShell keep-alive **portaled** into the pane. Different mount paths … Poker bugs are often keep-alive/portal, not hub CSS.
+- **`loungeDockSuppress`** = phone FAB ghost taps during full-screen Chat. **Never** use it to unmount `LoungeIpadNavRail`.
+- WKWebView **lags landscape `matchMedia`** after rotate. Portrait orientation (and CSS `@media (orientation: portrait)`) must clear **column split**. Do not clear the **rail** the same way.
+- Do **not** bump iOS marketing version. Do **not** stage dirty Xcode schemes / og PNGs.
+
+**Open / next (Ryan smoke, then decide):**
+
+1. Landscape Poker → Bankroll / Stable: no mid-pane paint, no hub tool flash, no extra full-width rule under Poker chrome.
+2. Landscape Lounge (optionally open post / Chat thread) → rotate portrait: **sidebar stays**, title bar full width beside rail, feed not 50vw.
+3. Chat open room landscape → portrait → Lounge: rail still there.
+4. If anything still fails, note **exact path** (Chat→Poker vs rail→Bankroll vs Lounge rotate) before coding.
+
+**WinTheo:** pull first. Default lanes still hold (Mac may still touch `src/**` on this chrome track when Ryan says so; Windows owns sports/live-data). Do not reopen pill stain experiments.
 
 ### Windows Theo ACTIVE TRACK 2026-09-21 ... sports pill paint + live data handoff
 
-**I am Windows Theo.** Ending this chat so Ryan can start fresh. Pull **`origin/test`** first. Tip at handoff write time: **`5874732f`** (Mac rail work may be tip; sports paint landed through **`569ed846`** / web **`1.4.456`**). Current web tip may be higher after Mac (**`1.4.461`** on this pull).
+**I am Windows Theo.** Ending this chat so Ryan can start fresh. Pull **`origin/test`** first. Tip at handoff write time may be Mac **`05ce72e5`** / web **`1.4.462`**. Sports paint landed through **`569ed846`** / web **`1.4.456`** (plus later Mac commits on tip).
 
 **Pill paint (shipped on `test`, not necessarily promoted to `main` yet):**
 
@@ -89,7 +138,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo 2026-09-21 ... Notifications double rule under title
 
-**I am Mac Theo.** Notifications pull zone had `leadingDivider` under a title bar that already has `border-b` … double line. Dropped the extra divider. Web **`1.4.458`**.
+**I am Mac Theo.** Notifications pull zone had `leadingDivider` under a title bar that already has `border-b` … double line. Dropped the extra divider. Web **`1.4.458`**. *(Superseded for continuity by **Mac ACTIVE TRACK landscape / rail / Poker pane** above.)*
 
 ### Mac Theo 2026-09-21 ... iPad portrait screen titles (not EDGE)
 
@@ -97,11 +146,11 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo 2026-09-21 ... portrait title bars + Poker hamburger blank
 
-**I am Mac Theo.** Landscape→portrait left title bars centered under the rail ("hat" / "DGE") and split CSS could keep a 50vw column. Poker hamburger also hid Bankroll/Stable while `slotsPaneRect` was null (blank → felt like a Lounge bounce). Fix: rail-align `ScrollLinkedEdgeTitleBarShell`, scope lounge/chat split widths under split attrs, orientationchange sync on landscape/rail hooks, keep-alive stays `contents` until cover is ready. Web **`1.4.454`**.
+**I am Mac Theo.** Landscape→portrait left title bars centered under the rail ("hat" / "DGE") and split CSS could keep a 50vw column. Poker hamburger also hid Bankroll/Stable while `slotsPaneRect` was null (blank → felt like a Lounge bounce). Fix: rail-align `ScrollLinkedEdgeTitleBarShell`, scope lounge/chat split widths under split attrs, orientationchange sync on landscape/rail hooks, keep-alive stays `contents` until cover is ready. Web **`1.4.454`**. *(Later superseded by portal keep-alives + portrait orientation clear … see ACTIVE TRACK.)*
 
 ### Mac Theo 2026-09-21 ... Poker pane cover after Chat
 
-**I am Mac Theo.** Chat → Poker left a stale `slotsPaneRect`, so Bankroll/Stable keep-alive covers painted mid-screen (and hub cards flashed). Fix: clear rect on split-owner change, defer measure two rAFs, `fillViewport` on pane-embed bankroll/stable/slots bankroll. Web **`1.4.452`**. Smoke: landscape Chat → hamburger Poker → Bankroll flush top of right pane; tap Stable with no mid-flash.
+**I am Mac Theo.** Chat → Poker left a stale `slotsPaneRect`, so Bankroll/Stable keep-alive covers painted mid-screen (and hub cards flashed). Fix: clear rect on split-owner change, defer measure two rAFs, `fillViewport` on pane-embed bankroll/stable/slots bankroll. Web **`1.4.452`**. *(Later: portal into pane replaces fixed-rect covers for Poker … **`1.4.459`**.)*
 
 ### Mac Theo 2026-09-21 ... Poker landscape split
 
@@ -115,22 +164,15 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Mac Theo.** Post/comment detail: market minicharts use `variant="detail"` and measure the live column so portrait shows one + peek. NFL/sports game pills mount on detail (were feed-only). Web **`1.4.402`**.
 
-### Mac Theo ACTIVE TRACK 2026-09-21 ... Lounge landscape split + tablet UI
+### Mac Theo ACTIVE TRACK 2026-09-21 ... Lounge landscape split + tablet UI (historical)
 
-**I am Mac Theo.** Landscape Lounge engagement split on **`test`** as web **`1.4.409`** ((rail+feed)=50vw, pane=50vw; minichart = Quick UI in pane, Advanced still on tap). Next: smoke. Do not bump iOS **`MARKETING_VERSION`** off **1.4.95**. Do not stage dirty Xcode schemes.
+**I am Mac Theo.** Older computer-change handoff for Lounge sports hub / pill track. **Superseded** by **Mac ACTIVE TRACK … landscape chrome / rail / Poker pane** (tip **`05ce72e5`** / **`1.4.462`**) and Windows sports paint track. Kept for git/prod context below.
 
-**Open / next:** Ryan smokes landscape Lounge split on device / simulator. Portrait regression check on post detail + lightbox comments.
-
-**Ryan is changing computers.** This Mac Cursor chat is done. Next Theo (Windows or another Mac): `git fetch` + match **`origin/test`** before any edit. Fast read with no pull: **https://lvslotpro.com/theo**. Then paste **Copy into chat** + this block.
-
-**I am Mac Theo handing off.** Mac owned the Lounge sports-hub / in-post game-pill track (even though it is `src/**`). That track is **shipped to prod**. Do not reopen stain / halo / disc experiments unless Ryan hates **edgetilt.com**. Landscape Slots / iPhone rail from **2026-09-20** is also shipped and idle.
-
-**Git right now:**
+**Git right now (stale tip … use ACTIVE TRACK table above):**
 
 | Ref | Hash | Note |
 | --- | --- | --- |
-| **`origin/test`** | **`e98fa278`** | computer-change handoff. Parent **`2d6d9760`**. |
-| **`origin/main`** | **`279b126b`** | Vercel **edgetilt.com** web **`1.4.401`**. `test` is **1 docs commit** ahead. Do not FF that docs commit onto `main` unless Ryan asks. |
+| **`origin/main`** | **`279b126b`** | Vercel **edgetilt.com** web **`1.4.401`**. Do not FF docs-only ahead onto `main` unless Ryan asks. |
 
 **Prod already done (do not redo unless Ryan asks):** FF `test` → `main` **`279b126b`**. SQL **`20260920220000`** (`community_feed_posts.sports_game` jsonb) on **`jtjgtucumuoswnbauxry`**, recorded in `schema_migrations`. Edge **`lounge-sports-scoreboard`** deployed on prod. CLI login 403s on prod deploys ... use **`SUPABASE_ACCESS_TOKEN`** from **`.env.supabase.production`** (do not print it).
 
@@ -140,13 +182,9 @@ The agent should treat the following as **standing instructions for this session
 
 **Do not:** bump iOS **`MARKETING_VERSION`** off **1.4.95**. Stage `ios/EdgeTilt.xcodeproj/xcshareddata/xcschemes/`. Commit `pill-preview.html` / `src/dev/pillPreview.jsx`. Push `main` / more prod SQL. Prod-backfill week-2 closes unless Ryan asks.
 
-**Open / next:** none unless Ryan smokes **edgetilt.com** (signed-in Lounge, NFL caption → pill → hub, a final shows Pinnacle close + ATS underline). Test smoke still **WAS@DAL** / **IND@KC** on **lvslotpro.com**.
-
 **Canonical files:** `LoungeGameScorePill.jsx`, `LoungeGameHubModal.jsx`, `loungeSportsMatch.js`, `loungeSportsApi.js`, `src/index.css` (`[data-lounge-game-pill]`), Edge `supabase/functions/_shared/loungeSportsScoreboard.ts`. Architecture: **`docs/frontend-architecture.md`** → **`lounge/`**. Backlog Update log **2026-09-21**. Checklist §2 + §4.
 
 **WinTheo:** if you are the next chat, pull first. Default lanes still hold (Mac `ios/`, Windows `src/`). Do not restyle the pill on a drive-by. Take this track only if Ryan says so.
-
-**Current tip (Mac, last session):** web **`1.4.401`**. Branch **`test`**. Promoted **`test` → `main`** **`279b126b`**.
 
 **Week 2 Pinnacle closes are tabled on test.** `lounge_market_files` has 14 locked NFL rows (`close_spread_source=pinnacle`). Smoke Lounge on **WAS@DAL** (`WAS +4 +177` / `DAL -4 -200`, Cowboys covered) and **IND@KC** (`IND +6 +226` / `KC -6 -259`, Colts covered ATS). Week 1 still has no true Pinnacle close.
 
@@ -217,15 +255,17 @@ The agent should treat the following as **standing instructions for this session
 
 **Prior track still true (landscape, idle ... do not regress):**
 
-- Landscape Slots gate: **`SLOTS_LANDSCAPE_SPLIT_QUERY`** in `src/features/shell/quickLinkDestinations.js` + `useIpadSlotsLandscape.js`.
-- Rail gate (iPad **or** phone landscape): **`IPAD_NAV_RAIL_QUERY`** + `useIpadNavRail.js`. Tall iPad-only auth/shell: **`IPAD_SHELL_QUERY`**.
-- Slots UI: `SlotsScreen.jsx` (`data-slots-landscape-split`), AppShell pane embed + bankroll/chat keep-alive cover via `slotsPaneRect`.
-- Phone landscape density CSS: `src/index.css` under `(orientation: landscape) and (max-height: 520px) and (pointer: coarse)`.
-- Architecture row: **`docs/frontend-architecture.md`** → **`slots/`**.
+- Landscape Slots gate: **`SLOTS_LANDSCAPE_SPLIT_QUERY`** in `src/features/shell/quickLinkDestinations.js` + `useIpadSlotsLandscape.js` (**portrait orientation clears split immediately**).
+- Rail gate (iPad **or** phone landscape **or** tablet portrait short-side ≥700): **`IPAD_NAV_RAIL_QUERY`** + `useIpadNavRail.js`. Tall iPad-only auth/shell: **`IPAD_SHELL_QUERY`**.
+- Slots UI: `SlotsScreen.jsx` (`data-slots-landscape-split`); Guides/Calcs/etc. = inline `toolPane`. Slots Bankroll keep-alive portals like Poker.
+- Poker Bankroll/Stable: AppShell keep-alive **`createPortal` into pane** (`AppShell.jsx`) … not fixed-rect covers. Chat lounge cover may still use `slotsPaneRect`.
+- **`loungeDockSuppress`:** phone FAB only. Never unmount `LoungeIpadNavRail`.
+- Phone landscape density CSS: `src/index.css` under `(orientation: landscape) and (max-height: 520px) and (pointer: coarse)`. Portrait safety net for stuck split attrs.
+- Architecture: **`docs/frontend-architecture.md`** → **`slots/`**, **`poker/`**, **`chat/`**. Full continuity: **WAKEUP → Mac ACTIVE TRACK landscape chrome / rail / Poker pane**.
 - Portrait **phone** Slots stays full-screen hub (no split). Portrait phone keeps FAB dock.
 - Gray-900 calculator cards untouched.
 - Phone FAB shortcut cap **2**; iPad rail shortcuts cap **6** (device localStorage, not per-account).
-- Poker landscape split: same gate as Slots; hub left / tool right; default **`poker-bankroll`**; Stable covers the same way.
+- Poker landscape split: same gate as Slots; hub left / tool right; default **`poker-bankroll`**.
 
 ### Mac Theo 2026-09-20 ... auth wall + first-create tour
 

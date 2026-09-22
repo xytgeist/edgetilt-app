@@ -3,8 +3,8 @@ import { ChevronRight } from 'lucide-react'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import { LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS } from './loungeFeedAvatar.js'
 import {
-  nflPillWashLikelyNeedsLightLogo,
-  probeLogoWashConflict,
+  nflPillWashLikelyTreatment,
+  probeLogoWashTreatment,
   resolveNflPillWashes,
 } from './loungeSportsMatch.js'
 
@@ -95,17 +95,20 @@ function scoreLabel(side, status) {
   return String(side.score)
 }
 
-function TeamMark({ side, dimmed, useLight = false }) {
+function TeamMark({ side, dimmed, treatment = 'default' }) {
   const defaultSrc = side?.logo || ''
   const lightSrc = side?.logoLight || ''
   const [lightFailed, setLightFailed] = useState(false)
   useEffect(() => {
     setLightFailed(false)
-  }, [lightSrc, useLight, defaultSrc])
-  const wantAssetLight = Boolean(useLight && lightSrc && !lightFailed)
+  }, [lightSrc, treatment, defaultSrc])
+  const wantAssetLight = Boolean(treatment === 'light' && lightSrc && !lightFailed)
   const src = wantAssetLight ? lightSrc : defaultSrc
   const letter = String(side?.abbrev || side?.mascot || '?').slice(0, 1)
-  const logoTone = wantAssetLight ? 'light' : useLight ? 'silhouette' : 'dark'
+  let logoTone = 'dark'
+  if (wantAssetLight) logoTone = 'light'
+  else if (treatment === 'light') logoTone = 'silhouette'
+  else if (treatment === 'halo') logoTone = 'halo'
   return (
     <span
       data-lounge-game-pill-mark
@@ -175,28 +178,28 @@ function usePillWashAndLogos(game) {
   const homeColor = washes.homeWash
   const awaySrc = game?.away?.logo || ''
   const homeSrc = game?.home?.logo || ''
-  const [awayLight, setAwayLight] = useState(() => nflPillWashLikelyNeedsLightLogo(awayColor))
-  const [homeLight, setHomeLight] = useState(() => nflPillWashLikelyNeedsLightLogo(homeColor))
+  const [awayTreatment, setAwayTreatment] = useState(() => nflPillWashLikelyTreatment(awayColor))
+  const [homeTreatment, setHomeTreatment] = useState(() => nflPillWashLikelyTreatment(homeColor))
   useEffect(() => {
-    setAwayLight(nflPillWashLikelyNeedsLightLogo(awayColor))
-    setHomeLight(nflPillWashLikelyNeedsLightLogo(homeColor))
+    setAwayTreatment(nflPillWashLikelyTreatment(awayColor))
+    setHomeTreatment(nflPillWashLikelyTreatment(homeColor))
     if (typeof document === 'undefined') return undefined
     let alive = true
     if (awaySrc) {
-      void probeLogoWashConflict(awaySrc, awayColor).then((needs) => {
-        if (alive) setAwayLight(needs)
+      void probeLogoWashTreatment(awaySrc, awayColor).then((t) => {
+        if (alive) setAwayTreatment(t)
       })
     }
     if (homeSrc) {
-      void probeLogoWashConflict(homeSrc, homeColor).then((needs) => {
-        if (alive) setHomeLight(needs)
+      void probeLogoWashTreatment(homeSrc, homeColor).then((t) => {
+        if (alive) setHomeTreatment(t)
       })
     }
     return () => {
       alive = false
     }
   }, [awaySrc, homeSrc, awayColor, homeColor])
-  return { awayColor, homeColor, awayLight, homeLight }
+  return { awayColor, homeColor, awayTreatment, homeTreatment }
 }
 
 /**
@@ -284,7 +287,7 @@ export default function LoungeGameScorePill({
         <span data-lounge-game-pill-home aria-hidden="true" />
         <span data-lounge-game-pill-seam aria-hidden="true" />
         <span data-lounge-game-pill-row>
-          <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} useLight={paint.awayLight} />
+          <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} treatment={paint.awayTreatment} />
           <span data-lounge-game-pill-score-gutter>
             <ScoreStack
               side={game.away}
@@ -307,7 +310,7 @@ export default function LoungeGameScorePill({
               covered={homeCovered}
             />
           </span>
-          <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} useLight={paint.homeLight} />
+          <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} treatment={paint.homeTreatment} />
         </span>
         {canOpenHub ? (
           <span data-lounge-game-pill-chevron aria-hidden="true">

@@ -173,7 +173,20 @@ export function resolveNflPillWashes(home, away) {
 
 /** Dark navy/black washes camouflage the default mark. Prefer the light logo asset instead. */
 export function nflPillWashLikelyNeedsLightLogo(washHex) {
-  return hexLuminance(washHex) < 0.1
+  return nflPillWashLikelyTreatment(washHex) === 'light'
+}
+
+/**
+ * Optimistic treatment before the PNG probe lands.
+ * - light: near-black / deep navy wash (NYG/LAR primary)
+ * - halo: mid-dark wash where the default mark still needs a thin white edge (NYG on red)
+ * - default: bright stains (gold / orange / teal)
+ */
+export function nflPillWashLikelyTreatment(washHex) {
+  const L = hexLuminance(washHex)
+  if (L < 0.08) return 'light'
+  if (L < 0.28) return 'halo'
+  return 'default'
 }
 
 /** @deprecated Use nflPillWashLikelyNeedsLightLogo */
@@ -181,20 +194,21 @@ export function nflPillWashLikelyAir(washHex) {
   return nflPillWashLikelyNeedsLightLogo(washHex)
 }
 
-const logoWashAirCache = new Map()
+const logoWashTreatmentCache = new Map()
 
 /**
- * Sample the default PNG against the wash. If enough opaque pixels sit too close to the
- * jersey color (NYG navy on navy), swap to the light logo on that same wash. KC/MIA keep
- * the full-color mark.
+ * Sample the default PNG against the wash.
+ * - light: heavy camouflage on a dark wash → `*-light.png`
+ * - halo: soft conflict / mid-dark wash → keep full-color mark + thin white edge
+ * - default: leave the mark alone
  */
-export function probeLogoWashConflict(src, washHex) {
+export function probeLogoWashTreatment(src, washHex) {
   const key = `${String(src || '')}|${String(washHex || '').toLowerCase()}`
-  const hit = logoWashAirCache.get(key)
+  const hit = logoWashTreatmentCache.get(key)
   if (hit) return hit
   const job = (async () => {
     const wash = hexToRgb(washHex)
-    if (!src || !wash || typeof document === 'undefined') return nflPillWashLikelyNeedsLightLogo(washHex)
+    if (!src || !wash || typeof document === 'undefined') return nflPillWashLikelyTreatment(washHex)
     try {
       const img = new Image()
       img.decoding = 'async'
@@ -205,7 +219,7 @@ export function probeLogoWashConflict(src, washHex) {
       canvas.width = size
       canvas.height = size
       const ctx = canvas.getContext('2d', { willReadFrequently: true })
-      if (!ctx) return nflPillWashLikelyNeedsLightLogo(washHex)
+      if (!ctx) return nflPillWashLikelyTreatment(washHex)
       ctx.drawImage(img, 0, 0, size, size)
       const { data } = ctx.getImageData(0, 0, size, size)
       let opaque = 0
@@ -215,13 +229,25 @@ export function probeLogoWashConflict(src, washHex) {
         opaque += 1
         if (contrastRatio({ r: data[i], g: data[i + 1], b: data[i + 2] }, wash) < 1.55) camouflaged += 1
       }
-      return opaque > 8 && camouflaged / opaque >= 0.42
+      if (opaque <= 8) return nflPillWashLikelyTreatment(washHex)
+      const frac = camouflaged / opaque
+      const washLum = rgbLuminance(wash)
+      // Deep navy-on-navy → light asset. NYG blue on red is only a soft conflict → halo.
+      if (frac >= 0.42 && washLum < 0.12) return 'light'
+      if (frac >= 0.16 || (washLum < 0.22 && frac >= 0.08)) return 'halo'
+      return 'default'
     } catch {
-      return nflPillWashLikelyNeedsLightLogo(washHex)
+      return nflPillWashLikelyTreatment(washHex)
     }
   })()
-  logoWashAirCache.set(key, job)
+  logoWashTreatmentCache.set(key, job)
   return job
+}
+
+/** @deprecated Use probeLogoWashTreatment … returns true when treatment is `light`. */
+export function probeLogoWashConflict(src, washHex) {
+  const job = probeLogoWashTreatment(src, washHex)
+  return Promise.resolve(job).then((t) => t === 'light')
 }
 
 export function enrichLoungeSportsGame(game) {

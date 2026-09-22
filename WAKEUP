@@ -66,7 +66,7 @@ The agent should treat the following as **standing instructions for this session
 
 | Ref | Hash | Note |
 | --- | --- | --- |
-| **`origin/test` tip** | *(this push)* | web **`1.4.467`**. Landscape composer taps do not open the keyboard off IPA. |
+| **`origin/test` tip** | **`8075d94b`** | web **`1.4.467`**. Landscape composer taps do not open the keyboard off IPA. |
 | **`origin/main`** | **`5f217e63`** / **`08800db1`** | Vercel **edgetilt.com** web **`1.4.462`**. `test` is ahead … promote when Ryan asks. |
 | iOS **`MARKETING_VERSION`** | **`1.4.95`** | Do not bump. |
 

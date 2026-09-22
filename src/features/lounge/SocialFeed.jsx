@@ -59,6 +59,7 @@ import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { isShellNavLoungeHomeSuppressed } from '../../utils/shellNavGhostClickGuard.js'
 import { openExternalUrl } from '../../utils/edgeNative.js'
 import { useEdgeiOSComposerPortraitLock } from '../../utils/edgeiOSComposerPortraitLock.js'
+import { prefetchFfmpegCore } from '../../utils/loungeVideoFfmpegTrim.js'
 import {
   feedPostCategoryPills,
   displayPostCategoryPills,
@@ -1651,7 +1652,7 @@ export default function SocialFeed({
   }, [])
 
   useEffect(() => {
-    void import('../../utils/loungeVideoFfmpegTrim.js').then((m) => m.prefetchFfmpegCore())
+    void prefetchFfmpegCore()
   }, [])
 
   useEffect(() => {

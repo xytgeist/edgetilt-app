@@ -1,5 +1,7 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { fetchFile, toBlobURL } from '@ffmpeg/util'
+import ffmpegCoreJsUrl from '@ffmpeg/core?url'
+import ffmpegCoreWasmUrl from '@ffmpeg/core/wasm?url'
 import { sanitizeVideoCropPx } from './loungeVideoCropMath.js'
 import { maybeReportLoungeVideoUploadDebug } from '../features/lounge/loungeFeedVideoDebugRegistry.js'
 import {
@@ -28,18 +30,65 @@ const MEMFS_INPUT_MAX_BYTES = 4 * 1024 * 1024
 let ffmpegSingleton = null
 let loadPromise = null
 
+/**
+ * iOS module workers hang forever on `import(blob:)` of the core (the promise never rejects).
+ * Same-origin URLs let the worker import the core directly. Android Chrome is fine with the
+ * CDN blob copy, so leave that path alone.
+ *
+ * @returns {Promise<{ coreURL: string, wasmURL: string }>}
+ */
+async function resolveFfmpegCoreUrls() {
+  if (isIOSBrowser()) {
+    maybeReportLoungeVideoUploadDebug('encode', 'wasm core fetch same-origin')
+    return { coreURL: ffmpegCoreJsUrl, wasmURL: ffmpegCoreWasmUrl }
+  }
+  maybeReportLoungeVideoUploadDebug('encode', 'wasm core fetch cdn')
+  return {
+    coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript'),
+    wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
+  }
+}
+
 async function getFfmpeg() {
   if (ffmpegSingleton) return ffmpegSingleton
   if (loadPromise) return loadPromise
   loadPromise = (async () => {
     const ffmpeg = new FFmpeg()
-    await ffmpeg.load({
-      coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript'),
-      wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
-    })
+    const urls = await resolveFfmpegCoreUrls()
+    maybeReportLoungeVideoUploadDebug('encode', 'wasm core worker start')
+    /** iOS load has no worker.onerror, so a dead worker never rejects. Cap the wait. */
+    const timeoutMs = isIOSBrowser() ? 120000 : 0
+    if (!timeoutMs) {
+      await ffmpeg.load(urls)
+    } else {
+      let timer
+      try {
+        await Promise.race([
+          ffmpeg.load(urls),
+          new Promise((_, reject) => {
+            timer = setTimeout(() => {
+              reject(new Error('Video encoder took too long to start. Leave EdgeTilt open and try again.'))
+            }, timeoutMs)
+          }),
+        ])
+      } catch (e) {
+        try {
+          ffmpeg.terminate()
+        } catch {
+          // ignore
+        }
+        throw e
+      } finally {
+        if (timer) clearTimeout(timer)
+      }
+    }
     ffmpegSingleton = ffmpeg
+    maybeReportLoungeVideoUploadDebug('encode', 'wasm core ready')
     return ffmpeg
-  })()
+  })().catch((e) => {
+    loadPromise = null
+    throw e
+  })
   return loadPromise
 }
 

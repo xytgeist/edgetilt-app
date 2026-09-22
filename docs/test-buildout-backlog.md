@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-22:** **iPhone video encode hung on ffmpeg wasm (Mac).** Chat debug stopped at `wasm core loading` because iOS module workers never resolve `import(blob:)` of the core. iPhone now loads `@ffmpeg/core` from same-origin assets. Lounge encode also logs `encode start` before any wasm wait (feed was silent because that import sat in front of the first debug line). Android still uses the CDN blob path. Frontend **`1.4.474`**. Web only. Not on edgetilt.com until the next `test` → `main` promote. Store IPA marketing still **1.4.95**.
 - **2026-09-21:** **Promoted `test` → `main` (`1b81b5ac`).** Vercel prod = web **`1.4.473`**. AuthModalShell `data-auth-reveal-feed` inlined so Fast Refresh cannot throw `revealAttrs`. No new prod SQL/Edge. Store IPA marketing still **1.4.95**.
 - **2026-09-21:** **AuthModalShell `revealAttrs` ReferenceError (Mac).** Sentry on localhost Fast Refresh: `revealAttrs is not defined`. Mid-edit HMR used the spread before the const landed. Inlined `data-auth-reveal-feed` so that identifier cannot throw. Frontend **`1.4.473`**. Web only.
 - **2026-09-21:** **Promoted `test` → `main` (`a27b6a42`).** Vercel prod = web **`1.4.472`**. Phone landscape rail/title/50-50, composer portrait lock + rotate hint, light canvas `#fff`, auth-wall Lounge frost. No new prod SQL/Edge in this push. Store IPA marketing still **1.4.95**.

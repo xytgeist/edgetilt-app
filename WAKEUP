@@ -46,7 +46,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Goal (Windows, parallel OK):** _Web app bugs/features + sports pill / live-data track + **self-hosted GitHub Actions runner** for poker catalog. Pull often; stay in web lane (`src/**`). Bridge: **`docs/ios-native-bridge.md`**._
 
-**Start by reading:** `AGENTS.md`, this **Pick up here** → **Mac Theo ACTIVE TRACK 2026-09-21 … landscape chrome / rail / Poker pane**, then **Windows Theo ACTIVE TRACK** (sports pills), backlog Update log **2026-09-21**. Dual-agent: **`docs/ios-native-bridge.md`**. Fast mailbox: **https://lvslotpro.com/theo**.
+**Start by reading:** `AGENTS.md`, this **Pick up here** → **Mac Theo ACTIVE TRACK 2026-09-22 … iPhone video encode hang**, then the landscape / sports tracks, backlog Update log **2026-09-22**. Dual-agent: **`docs/ios-native-bridge.md`**. Fast mailbox: **https://lvslotpro.com/theo**.
 
 **Optional add-ons** (delete lines you do not need)
 
@@ -59,6 +59,10 @@ The agent should treat the following as **standing instructions for this session
 ## Pick up here (Aug 2026 ... session 2026-08-22)
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. **2026-09-21 evening:** Mac ending landscape/rail/Poker pane track at web **`1.4.462`**. Windows owns sports-pill paint + live-data decision. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
+
+### Mac Theo ACTIVE TRACK 2026-09-22 ... iPhone video encode hang
+
+**I am Mac Theo.** iPhone Lounge/Chat video posts die in ffmpeg. Chat debug gets one line, `encode: wasm core loading`, then nothing. Cause: iOS module workers hang on `import(blob:)` of `@ffmpeg/core`. Fix on **`test`** at web **`1.4.474`**: iPhone loads the core from same-origin Vite assets. Android CDN blob path unchanged. Feed also logs `encode start` before that wait. **edgetilt.com is still `1.4.473` until Ryan promotes.** Store IPA marketing still **1.4.95**.
 
 ### Mac Theo ACTIVE TRACK 2026-09-21 ... landscape chrome / rail / Poker pane (handoff)
 

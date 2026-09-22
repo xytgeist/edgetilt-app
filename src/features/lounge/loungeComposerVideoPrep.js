@@ -26,6 +26,7 @@ import {
   recordLoungeVideoPrepOutcome,
 } from './loungeFeedVideoDebugRegistry.js'
 import { shouldPrefetchBrowserVideoAudio } from '../../utils/loungeVideoBrowserAudio.js'
+import { prefetchFfmpegCore, trimVideoFileToMp4 } from '../../utils/loungeVideoFfmpegTrim.js'
 
 /** Auto-retries before surfacing a hard failure to the user (Cloudflare mint / upload / manifest only). */
 export const COMPOSER_VIDEO_PREP_MAX_ATTEMPTS = 5
@@ -90,7 +91,7 @@ function debugComposerVideoProgress(status, detail) {
 
 function warmLoungeVideoUploadPipeline(supabaseClient) {
   return Promise.all([
-    import('../../utils/loungeVideoFfmpegTrim').then((m) => m.prefetchFfmpegCore()),
+    prefetchFfmpegCore(),
     supabaseClient ? supabaseClient.auth.getSession() : Promise.resolve(null),
     import('tus-js-client').catch(() => null),
   ])
@@ -143,9 +144,10 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
 
   if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
 
-  void warmLoungeVideoUploadPipeline(supabaseClient)
+  maybeReportLoungeVideoUploadDebug('encode', 'encode start')
+  report(0.02, 'Opening encoder', '', 1)
 
-  const { trimVideoFileToMp4 } = await import('../../utils/loungeVideoFfmpegTrim')
+  void warmLoungeVideoUploadPipeline(supabaseClient)
 
   /** @type {File} */
   let uploadFile

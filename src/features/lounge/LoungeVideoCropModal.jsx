@@ -2,6 +2,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { LOUNGE_VIDEO_MAX_SECONDS } from '../../utils/loungeVideoUpload'
 import { maxCropRectForAspect, sanitizeVideoCropPx } from '../../utils/loungeVideoCropMath.js'
+import { prefetchFfmpegCore, trimVideoFileToMp4 } from '../../utils/loungeVideoFfmpegTrim.js'
 
 const MIN_CLIP_SEC = 0.5
 const MAX_CLIP_SEC = LOUNGE_VIDEO_MAX_SECONDS
@@ -310,9 +311,7 @@ export default function LoungeVideoCropModal({
   }, [file, duration])
 
   useEffect(() => {
-    void import('../../utils/loungeVideoFfmpegTrim')
-      .then((m) => m.prefetchFfmpegCore())
-      .catch(() => {})
+    void prefetchFfmpegCore().catch(() => {})
   }, [])
 
   /** Prevent the lounge feed (scroll + pull-to-refresh) from moving while this modal is open. */
@@ -756,7 +755,6 @@ export default function LoungeVideoCropModal({
       const ac = new AbortController()
       trimAbortRef.current = ac
       try {
-        const { trimVideoFileToMp4 } = await import('../../utils/loungeVideoFfmpegTrim')
         const v = videoRef.current
         const iw = Number(v?.videoWidth) || intrinsicSize.w
         const ih = Number(v?.videoHeight) || intrinsicSize.h

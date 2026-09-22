@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Promoted `test` → `main` (`a27b6a42`).** Vercel prod = web **`1.4.472`**. Phone landscape rail/title/50-50, composer portrait lock + rotate hint, light canvas `#fff`, auth-wall Lounge frost. No new prod SQL/Edge in this push. Store IPA marketing still **1.4.95**.
 - **2026-09-21:** **Auth wall frost lighter (Mac).** Reveal scrim is more transparent and `blur-lg` instead of `blur-xl` so more of the inert Lounge reads through. Frontend **`1.4.472`**. Web only.
 - **2026-09-21:** **Auth wall Lounge frost (Mac).** Logged-out `/` still cannot dismiss the login modal. AppShell mounts inert behind it so the feed shows through blur. No Continue without signing in. iPad stage uses the same frost instead of a solid canvas. Frontend **`1.4.471`**. Web only.
 - **2026-09-21:** **Light mode canvas is white (Mac).** `html.light` zinc-950 was `#fafafa`, so the white E / EDGE tiles had a gray halo. Canvas + matching chrome (rail, status plate, landscape panes, lightbox shell, calc root) are `#ffffff`. Cards stay `#f4f4f5` / `#fafafa`. Dark unchanged. Frontend **`1.4.470`**. Web only.

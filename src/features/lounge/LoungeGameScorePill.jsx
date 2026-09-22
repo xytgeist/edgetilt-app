@@ -95,7 +95,7 @@ function scoreLabel(side, status) {
   return String(side.score)
 }
 
-function TeamMark({ side, dimmed, treatment = 'default' }) {
+function TeamMark({ side, treatment = 'default' }) {
   const defaultSrc = side?.logo || ''
   const lightSrc = side?.logoLight || ''
   const [lightFailed, setLightFailed] = useState(false)
@@ -118,7 +118,7 @@ function TeamMark({ side, dimmed, treatment = 'default' }) {
           src={src}
           alt=""
           data-lounge-game-pill-logo={logoTone}
-          className={`h-full w-full object-contain ${dimmed ? 'opacity-55' : ''}`}
+          className="h-full w-full object-contain"
           loading="lazy"
           decoding="async"
           onError={(ev) => {
@@ -286,7 +286,7 @@ export default function LoungeGameScorePill({
         <span data-lounge-game-pill-home aria-hidden="true" />
         <span data-lounge-game-pill-seam aria-hidden="true" />
         <span data-lounge-game-pill-row>
-          <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} treatment={paint.awayTreatment} />
+          <TeamMark side={game.away} treatment={paint.awayTreatment} />
           <span data-lounge-game-pill-score-gutter>
             <ScoreStack
               side={game.away}
@@ -309,7 +309,7 @@ export default function LoungeGameScorePill({
               covered={homeCovered}
             />
           </span>
-          <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} treatment={paint.homeTreatment} />
+          <TeamMark side={game.home} treatment={paint.homeTreatment} />
         </span>
         {canOpenHub ? (
           <span data-lounge-game-pill-chevron aria-hidden="true">

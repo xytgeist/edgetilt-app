@@ -4302,6 +4302,33 @@ html.light [data-ipad-nav-rail] [data-ipad-nav-shortcut-rule] {
 html.light [data-ipad-ev-mark] .edge-logo--light {
   display: block;
 }
+[data-composer-portrait-hint-phone] {
+  transform: rotate(90deg);
+  animation: composer-portrait-hint-spin 1.7s ease-in-out infinite;
+}
+@keyframes composer-portrait-hint-spin {
+  0%,
+  18% {
+    transform: rotate(90deg);
+  }
+  42%,
+  62% {
+    transform: rotate(0deg);
+  }
+  86%,
+  100% {
+    transform: rotate(90deg);
+  }
+}
+html.light [data-composer-portrait-hint-plate] {
+  background: rgba(250, 250, 250, 0.9);
+  border-color: #d4d4d8;
+  color: #18181b;
+  box-shadow: 0 12px 40px rgba(24, 24, 27, 0.16);
+}
+html.light [data-composer-portrait-hint-plate] .text-white\/90 {
+  color: rgb(24 24 27 / 0.88);
+}
 /* Hamburger expand. Phone stays on the shared text-sm rows. */
 html[data-ipad-nav] .lounge-title-nav-menu {
   min-width: 12.1rem;

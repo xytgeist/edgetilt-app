@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Composer rotate hint off IPA (Mac).** Safari / PWA / Android landscape phone shows a rotate-to-portrait icon while a composer is open. Hides on portrait. IPA still force-rotates. iPad unchanged. Frontend **`1.4.466`**. Web only.
 - **2026-09-21:** **iPhone composer forces portrait (Mac).** IPA `setOrientationLock` + `useEdgeiOSComposerPortraitLock` on Lounge compose / thread / quote / detail reply / chat tap-to-open. iPad / Safari / PWA unchanged. Unlock on close. New IPA required. Frontend **`1.4.465`**.
 - **2026-09-21:** **Phone landscape title + hamburger back to full chrome (Mac).** `1.4.364` 70% shrink made Chat / Slots / Poker titles and the ☰ button smaller than Notifications gear/close (`h-10`). Restored title bar buttons and `data-slots-landscape-title` to the shared `h-10` / `1.25–1.5rem` sizes. Rail E stays 70% so the short rail still fits. Frontend **`1.4.464`**. Web only.
 - **2026-09-21:** **Promoted `test` → `main` (`08800db1`).** Vercel prod = web **`1.4.462`**. Landscape/rail/Poker pane keep-alive track + sports pill paint through **1.4.456**. No new prod SQL/Edge in this push. Store IPA marketing still **1.4.95**.

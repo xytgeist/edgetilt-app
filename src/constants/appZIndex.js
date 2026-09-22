@@ -33,6 +33,9 @@ export const Z_APP_MODAL = 120
 /** Centered alert above app sheets (e.g. logbook save validation). */
 export const Z_APP_ALERT = 130
 
+/** Safari / PWA rotate-to-portrait hint over fullscreen composers (`z-[220]`). */
+export const Z_COMPOSER_PORTRAIT_HINT = 230
+
 /** Bottom sheet overlay (above EDGE title bar z-50). Prefer `AppModalOverlay` so it portals to body. */
 export const APP_MODAL_OVERLAY_CLASS = `fixed inset-0 z-[${Z_APP_MODAL}] bg-black/60 backdrop-blur-sm flex items-end justify-center`
 

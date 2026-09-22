@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Light mode canvas is white (Mac).** `html.light` zinc-950 was `#fafafa`, so the white E / EDGE tiles had a gray halo. Canvas + matching chrome (rail, status plate, landscape panes, lightbox shell, calc root) are `#ffffff`. Cards stay `#f4f4f5` / `#fafafa`. Dark unchanged. Frontend **`1.4.470`**. Web only.
 - **2026-09-21:** **Phone landscape Lounge title bar tighter (Mac).** Feed row was portrait `py-2` + full `h-8` EDGE next to a 70% rail E. Pad matches Slots landscape chrome (`0.35rem`); wordmark is 70% of `h-8`; hamburger stays `h-10`. Pane profile / post / game-hub headers share the same pad so they stay lined up. iPad / portrait unchanged. Frontend **`1.4.469`**. Web only.
 - **2026-09-21:** **Phone landscape Slots/Poker 50/50 includes the rail (Mac).** Tools were `50%` of leftover after the rail, so the hub column ran wide. Phone landscape now matches Lounge/Chat: `(rail + tools) = 50vw`, pane = `50vw`. iPad split unchanged. Frontend **`1.4.468`**. Web only.
 - **2026-09-21:** **Composer landscape keyboard blocked off IPA (Mac).** Safari / PWA / Android no longer focuses composer fields in phone landscape, so the rotate hint is not covered by the keyboard. Frontend **`1.4.467`**. Web only.

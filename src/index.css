@@ -44,8 +44,9 @@ input.calc-field-lg {
  * Accent colors (cyan, amber, lv-*) are intentionally unchanged - brand stays.
  */
 html.light {
-  /* Inverted zinc scale: darkest dark → near-white, lightest dark → near-black */
-  --color-zinc-950: #fafafa;
+  /* Inverted zinc scale: darkest dark → white canvas, lightest dark → near-black.
+     Canvas is #fff so the +EV / EDGE tiles (true white) do not flash a gray halo. */
+  --color-zinc-950: #ffffff;
   --color-zinc-900: #f4f4f5;
   --color-zinc-800: #e4e4e7;
   --color-zinc-700: #d4d4d8;
@@ -104,7 +105,7 @@ html.light [data-chat-feature] [data-chat-lounge-post-embed] {
   background-color: rgba(24, 24, 27, 0.92);
 }
 
-/* Edge scroll shell: dark = zinc-950 canvas (#09090b); light = remapped zinc-950 (#fafafa) */
+/* Edge scroll shell: dark = zinc-950 canvas (#09090b); light = remapped zinc-950 (#ffffff) */
 html:not(.light) [data-edge-scroll-shell] {
   background-color: #09090b !important;
 }
@@ -117,7 +118,7 @@ html:not(.light) [data-edge-status-bar-plate] {
   background-color: #09090b;
 }
 html.light [data-edge-status-bar-plate] {
-  background-color: #fafafa;
+  background-color: #ffffff;
 }
 
 /*
@@ -167,7 +168,7 @@ body {
 }
 
 html.light body {
-  background-color: var(--color-zinc-950, #fafafa);
+  background-color: var(--color-zinc-950, #ffffff);
 }
 
 #root {
@@ -260,7 +261,7 @@ html:has([data-auth-confirm-shell]) #root {
   padding-bottom: max(1.25rem, env(safe-area-inset-bottom, 0px));
 }
 html.light [data-auth-confirm-shell] {
-  background-color: #fafafa;
+  background-color: #ffffff;
 }
 html.light [data-auth-confirm-shell] [data-auth-modal] h2 {
   color: rgb(24 24 27);
@@ -270,7 +271,7 @@ html.light [data-auth-confirm-shell] [data-auth-confirm-pending] {
 }
 
 html.light #root {
-  background-color: var(--color-zinc-950, #fafafa);
+  background-color: var(--color-zinc-950, #ffffff);
 }
 
 /* Native range look; expand hit-testing vertically without changing layout much. */
@@ -1384,10 +1385,10 @@ html.light [data-lounge-media-lightbox]:not([data-lounge-image-lightbox]) .text-
  * Lounge image/GIF lightbox - light mode only: white shell so iOS status bar blends;
  * grey idle chrome + interaction glyphs; hydrated colors unchanged.
  * Opaque shell only while fully open … opening/closing must stay transparent so the
- * feed shows through the fading scrim during FLIP (otherwise shrink floats on blank #fafafa).
+ * feed shows through the fading scrim during FLIP (otherwise shrink floats on blank #fff).
  */
 html.light [data-lounge-image-lightbox][data-lounge-image-lightbox-phase='open'] {
-  background-color: #fafafa !important;
+  background-color: #ffffff !important;
 }
 html.light [data-lounge-image-lightbox][data-lounge-image-lightbox-phase='opening'],
 html.light [data-lounge-image-lightbox][data-lounge-image-lightbox-phase='closing'] {
@@ -1395,7 +1396,7 @@ html.light [data-lounge-image-lightbox][data-lounge-image-lightbox-phase='closin
 }
 /* Light scrim (not black) so open/close fade matches the open shell. */
 html.light [data-lounge-image-lightbox] [data-lounge-image-lightbox-scrim] {
-  background-color: #fafafa !important;
+  background-color: #ffffff !important;
 }
 /*
  * Fly-in, both modes: fading opacity on this layer makes it an isolated group, which flattens
@@ -4046,7 +4047,7 @@ html.light [data-slots-landscape-tools] {
 }
 html.light [data-slots-landscape-pane-chrome] {
   border-bottom-color: #e4e4e7;
-  background-color: #fafafa;
+  background-color: #ffffff;
 }
 /* Match tools chrome (title + h-10 hamburger/close + border-b) so pane titles share the same bar height. */
 [data-slots-landscape-tools-chrome],
@@ -4082,7 +4083,7 @@ html.light [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-lan
 }
 html.light [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-landscape-pane],
 html.light [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-detail-in-pane] {
-  background-color: #fafafa;
+  background-color: #ffffff;
 }
 /* Portrait safety net: if React still has split attrs while WKWebView clears landscape MQ, reflow full width. */
 @media (orientation: portrait) {
@@ -4149,7 +4150,7 @@ html.light [data-chat-feature][data-chat-landscape-split] [data-chat-landscape-l
   border-right-color: #e4e4e7;
 }
 html.light [data-chat-feature][data-chat-landscape-split] [data-chat-landscape-pane] {
-  background-color: #fafafa;
+  background-color: #ffffff;
 }
 @media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
   [data-lounge-feed-root][data-lounge-landscape-split] {
@@ -4246,8 +4247,8 @@ html[data-ipad-nav] [data-lounge-dock-panels] > [role='dialog'] {
   max-width: none;
 }
 html.light [data-ipad-nav-rail] {
-  /* Same canvas as remapped zinc-950, not a brighter white than the feed. */
-  background-color: #fafafa;
+  /* Same canvas as remapped zinc-950 (#fff) so the E tile has no gray halo. */
+  background-color: #ffffff;
   border-right-color: #e4e4e7;
   color: #52525b;
 }
@@ -4261,7 +4262,7 @@ html.light [data-ipad-nav-rail] [data-ipad-nav-item][data-active='1'] {
   color: #18181b;
 }
 html.light [data-ipad-nav-rail] [data-ipad-nav-badge] {
-  --tw-ring-color: #fafafa;
+  --tw-ring-color: #ffffff;
 }
 [data-ipad-nav-rail] [data-ipad-nav-item] svg :is(path, circle, line, polyline),
 [data-ipad-nav-rail] [data-ipad-nav-shortcut] svg :is(path, circle, line, polyline) {
@@ -5736,13 +5737,13 @@ html.light .calc-list-btn {
 
 /*
  * Page background + base text.
- * Match the Shell's zinc-950 light value (#fafafa) so the calculator root
- * blends seamlessly with the page - no mysterious white rectangle.
+ * Match the Shell's zinc-950 light value (#ffffff) so the calculator root
+ * blends seamlessly with the page.
  * Cards (bg-gray-900) are set to #f4f4f5 so they sit BELOW the background
  * shade, just like the snapshot; heavy shadows do the lifting.
  */
 html.light [data-calc] {
-  background-color: #fafafa;
+  background-color: #ffffff;
   color: #18181b;
   min-height: 100%;
 }
@@ -6143,10 +6144,10 @@ html.light [data-calc="mhb"] .focus\:ring-cyan-200\/85:focus {
 
 /* ── StackUpPays (slate-* → light grays, backgrounds + shadows only) ──────── */
 html.light [data-calc="stackup"] {
-  background-color: #fafafa;
+  background-color: #ffffff;
 }
 html.light [data-calc="stackup"] .bg-slate-950 {
-  background-color: #fafafa;
+  background-color: #ffffff;
 }
 html.light [data-calc="stackup"] .bg-slate-900 {
   background-color: #f4f4f5;

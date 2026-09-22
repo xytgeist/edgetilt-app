@@ -155,6 +155,25 @@ import { isSmokeChecklistHostAllowed } from '../ops/smokeChecklistHost.js'
 
 const LOUNGE_ACTIVITY_INAPP_TOAST_MS = 7000
 
+const SLOTS_TOOL_TAB_IDS = new Set([
+  'calculators',
+  'offers',
+  'bankroll',
+  'guides',
+  'intel',
+  'logbook',
+  'w2g-scanner',
+])
+const POKER_TOOL_TAB_IDS = new Set(['poker-bankroll', 'poker-stable'])
+const SLOTS_PANE_TAB_IDS = new Set([
+  'guides',
+  'bankroll',
+  'calculators',
+  'offers',
+  'logbook',
+  'w2g-scanner',
+])
+
 const SocialFeed = lazyRoute(() => import('../lounge/SocialFeed.jsx'))
 const OffersCalendar = lazyRoute(() => import('../offers/OffersCalendar.jsx'))
 const GuidesScreen = lazyRoute(() => import('../guides/GuidesScreen.jsx'))
@@ -379,36 +398,60 @@ export default function AppShell({
   const [slotsLandscapeLounge, setSlotsLandscapeLounge] = useState(false)
   const [slotsPaneRect, setSlotsPaneRect] = useState(null)
   const slotsPaneObserverRef = useRef(null)
-  const onSlotsPaneElement = useCallback((node) => {
-    slotsPaneObserverRef.current?.disconnect()
-    slotsPaneObserverRef.current = null
-    // Detach passes null during unmount. setState there loops (max update depth).
-    if (!node) return
-    const sync = () => {
-      if (!node.isConnected) return
-      const r = node.getBoundingClientRect()
-      const next = {
-        top: Math.round(r.top),
-        left: Math.round(r.left),
-        width: Math.round(r.width),
-        height: Math.round(r.height),
-      }
-      setSlotsPaneRect((prev) =>
-        prev &&
-        prev.top === next.top &&
-        prev.left === next.left &&
-        prev.width === next.width &&
-        prev.height === next.height
-          ? prev
-          : next,
-      )
+  const slotsPaneElRef = useRef(null)
+  /** Bumped when the split host changes so deferred measures from a prior pane are ignored. */
+  const slotsPaneMeasureEpochRef = useRef(0)
+  const slotsPaneOwnerRef = useRef(null)
+  const applySlotsPaneRect = useCallback((node) => {
+    if (!node?.isConnected) return false
+    const r = node.getBoundingClientRect()
+    // Pre-flex layout often reports an empty box ... wait for a real pane.
+    if (r.width < 48 || r.height < 48) return false
+    const next = {
+      top: Math.round(r.top),
+      left: Math.round(r.left),
+      width: Math.round(r.width),
+      height: Math.round(r.height),
     }
-    sync()
-    if (typeof ResizeObserver === 'undefined') return
-    const ro = new ResizeObserver(sync)
-    ro.observe(node)
-    slotsPaneObserverRef.current = ro
+    setSlotsPaneRect((prev) =>
+      prev &&
+      prev.top === next.top &&
+      prev.left === next.left &&
+      prev.width === next.width &&
+      prev.height === next.height
+        ? prev
+        : next,
+    )
+    return true
   }, [])
+  const onSlotsPaneElement = useCallback(
+    (node) => {
+      slotsPaneObserverRef.current?.disconnect()
+      slotsPaneObserverRef.current = null
+      slotsPaneElRef.current = node
+      // Detach passes null during unmount. setState there loops (max update depth).
+      if (!node) return
+      const epoch = slotsPaneMeasureEpochRef.current
+      const sync = () => {
+        if (epoch !== slotsPaneMeasureEpochRef.current) return
+        applySlotsPaneRect(node)
+      }
+      // Ref attach runs before flex finishes. Immediate getBoundingClientRect is often
+      // wrong (full-bleed / mid-screen). Defer two frames so the cover does not paint stale.
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(sync)
+        })
+      } else {
+        sync()
+      }
+      if (typeof ResizeObserver === 'undefined') return
+      const ro = new ResizeObserver(sync)
+      ro.observe(node)
+      slotsPaneObserverRef.current = ro
+    },
+    [applySlotsPaneRect],
+  )
   const setTab = useCallback((value) => {
     setSlotsLandscapeLounge(false)
     setTabRaw(value)
@@ -480,6 +523,42 @@ export default function AppShell({
     if (enteredLandscape && tab === 'slots') setTab('guides')
     if (enteredLandscape && tab === 'poker') setTab('poker-bankroll')
   }, [ipadSlotsLandscape, tab, setTab])
+
+  /**
+   * Landscape keep-alive covers (Bankroll / Stable / Slots bankroll) use a fixed rect from
+   * the split pane. Chat is not a pane host, so leaving Chat for Poker/Slots must drop any
+   * stale rect ... otherwise the cover paints mid-screen until a later ResizeObserver tick.
+   */
+  useLayoutEffect(() => {
+    const owner =
+      ipadSlotsLandscape && (tab === 'poker' || POKER_TOOL_TAB_IDS.has(tab))
+        ? 'poker'
+        : ipadSlotsLandscape &&
+            (tab === 'slots' ||
+              SLOTS_TOOL_TAB_IDS.has(tab) ||
+              (tab === 'chat' && slotsLandscapeLounge))
+          ? 'slots'
+          : null
+    if (owner === slotsPaneOwnerRef.current) return
+    slotsPaneOwnerRef.current = owner
+    slotsPaneMeasureEpochRef.current += 1
+    setSlotsPaneRect(null)
+    if (!owner) return
+    const node = slotsPaneElRef.current
+    if (!node?.isConnected) return
+    const epoch = slotsPaneMeasureEpochRef.current
+    const sync = () => {
+      if (epoch !== slotsPaneMeasureEpochRef.current) return
+      applySlotsPaneRect(node)
+    }
+    if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(sync)
+      })
+    } else {
+      sync()
+    }
+  }, [ipadSlotsLandscape, tab, slotsLandscapeLounge, applySlotsPaneRect])
   const [tabErrorTestTrigger, setTabErrorTestTrigger] = useState(0)
   const [tabErrorTestOpen, setTabErrorTestOpen] = useState(false)
   const [isActiveAffiliate, setIsActiveAffiliate] = useState(false)
@@ -2148,16 +2227,6 @@ export default function AppShell({
     setMenuOpen(false)
   }, [])
 
-  const SLOTS_TOOL_TAB_IDS = new Set([
-    'calculators',
-    'offers',
-    'bankroll',
-    'guides',
-    'intel',
-    'logbook',
-    'w2g-scanner',
-  ])
-  const POKER_TOOL_TAB_IDS = new Set(['poker-bankroll', 'poker-stable'])
   // `intel` - routable if tab set programmatically; not on Slots hub (Ryan, 2026-05-29).
   const isSlotsAreaTab = (activeTab) => activeTab === 'slots' || SLOTS_TOOL_TAB_IDS.has(activeTab)
   const isPokerAreaTab = (activeTab) => activeTab === 'poker' || POKER_TOOL_TAB_IDS.has(activeTab)
@@ -2929,14 +2998,6 @@ export default function AppShell({
       </Suspense>
     )
 
-    const SLOTS_PANE_TAB_IDS = new Set([
-      'guides',
-      'bankroll',
-      'calculators',
-      'offers',
-      'logbook',
-      'w2g-scanner',
-    ])
     const slotsSplitActive =
       ipadSlotsLandscape &&
       (tab === 'slots' ||

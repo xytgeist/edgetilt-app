@@ -987,13 +987,25 @@ export default function PokerStableScreen({
     <>
       <ScrollLinkedEdgeTitleBarShell
         embedded={paneEmbed}
+        fillViewport={paneEmbed}
         publishScrollReveal={!paneEmbed}
         titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
         titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
         titleBarToolCloseVisible={paneEmbed ? false : titleBarToolCloseVisible}
-        contentClassName="px-3 pt-2 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
+        contentClassName={
+          paneEmbed
+            ? 'flex min-h-0 flex-1 flex-col overflow-hidden p-0'
+            : 'px-3 pt-2 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
+        }
       >
-        <div data-poker-stable>
+        <div
+          data-poker-stable
+          className={
+            paneEmbed
+              ? 'min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 pt-2 pb-[calc(1.5rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] [-webkit-overflow-scrolling:touch]'
+              : undefined
+          }
+        >
         {schemaMissing ? (
           <div className="mb-4 rounded-2xl border border-amber-500/30 bg-amber-950/40 px-4 py-3 text-sm text-amber-100">
             Stable tables are not on this database yet. Apply{' '}

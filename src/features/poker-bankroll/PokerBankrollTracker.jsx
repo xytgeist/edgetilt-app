@@ -3991,13 +3991,25 @@ export default function PokerBankrollTracker({
     <>
       <ScrollLinkedEdgeTitleBarShell
         embedded={paneEmbed}
+        fillViewport={paneEmbed}
         publishScrollReveal={!paneEmbed}
         titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
         titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
         titleBarToolCloseVisible={paneEmbed ? false : titleBarToolCloseVisible}
-        contentClassName="px-3 pt-4 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
+        contentClassName={
+          paneEmbed
+            ? 'flex min-h-0 flex-1 flex-col overflow-hidden p-0'
+            : 'px-3 pt-4 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
+        }
       >
-        <div data-poker-bankroll>
+        <div
+          data-poker-bankroll
+          className={
+            paneEmbed
+              ? 'min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 pt-4 pb-[calc(1.5rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] [-webkit-overflow-scrolling:touch]'
+              : undefined
+          }
+        >
 
         {/* Pills: OVERVIEW · DETAILS · TREND · LOCATIONS · CHARTS */}
         <div className="mb-5 -mx-3 flex gap-1 overflow-x-auto px-3 no-scrollbar">

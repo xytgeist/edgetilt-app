@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import BarnIcon from '../../components/BarnIcon.jsx'
 import PokerSurfaceBootLoading from '../../components/PokerSurfaceBootLoading.jsx'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
+import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
+import { useIpadAuthStage } from '../auth/AuthModalShell.jsx'
 import {
   clearStableCommitDeepLinkParams,
   clearStableWithdrawnDeepLinkParams,
@@ -112,6 +114,7 @@ export default function PokerStableScreen({
   /** @type {(roomId: string) => void} */
   onOpenChatRoom = null,
 }) {
+  const ipadShell = useIpadAuthStage()
   const [userId, setUserId] = useState(null)
   const [deals, setDeals] = useState([])
   const [profilesById, setProfilesById] = useState(/** @type {Record<string, object>} */ ({}))
@@ -992,6 +995,11 @@ export default function PokerStableScreen({
         titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
         titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
         titleBarToolCloseVisible={paneEmbed ? false : titleBarToolCloseVisible}
+        titleBarBrand={
+          !paneEmbed && ipadShell ? (
+            <TitleBarScreenTitle>Stable Manager</TitleBarScreenTitle>
+          ) : null
+        }
         contentClassName={
           paneEmbed
             ? 'flex min-h-0 flex-1 flex-col overflow-hidden p-0'
@@ -1038,7 +1046,7 @@ export default function PokerStableScreen({
 
         {!schemaMissing && userId && !initialStableLoadDone ? (
           <>
-            {paneEmbed ? null : (
+            {paneEmbed || ipadShell ? null : (
               <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
                 Stable Manager
               </h2>
@@ -1049,7 +1057,7 @@ export default function PokerStableScreen({
 
         {!schemaMissing && userId && initialStableLoadDone ? (
           <>
-            {paneEmbed ? null : (
+            {paneEmbed || ipadShell ? null : (
               <h2 className="mb-2 text-[11px] font-bold uppercase tracking-wide text-zinc-500">
                 Stable Manager
               </h2>

@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import PokerSurfaceBootLoading from '../../components/PokerSurfaceBootLoading.jsx'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
+import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
 import { APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
 import AppModalOverlay from '../../components/AppModalOverlay.jsx'
 import FreemiumUsageCounter from '../billing/FreemiumUsageCounter.jsx'
+import { useIpadAuthStage } from '../auth/AuthModalShell.jsx'
 import { FREE_BANKROLL_SESSION_LIMIT } from '../billing/freemiumToolLimits.js'
 import TimeWheelPicker from '../../components/TimeWheelPicker.jsx'
 import DateWheelPicker from '../../components/DateWheelPicker.jsx'
@@ -122,6 +124,7 @@ export default function BankrollTracker({
   /** Landscape iPad Slots hub: fill the right pane, no second EDGE bar. */
   paneEmbed = false,
 }) {
+  const ipadShell = useIpadAuthStage()
   const [userId, setUserId] = useState(null)
   const [profile, setProfile] = useState(null)
   const [sessions, setSessions] = useState([])
@@ -693,6 +696,11 @@ export default function BankrollTracker({
         titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
         titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
         titleBarToolCloseVisible={paneEmbed ? false : titleBarToolCloseVisible}
+        titleBarBrand={
+          !paneEmbed && ipadShell ? (
+            <TitleBarScreenTitle>Bankroll Manager</TitleBarScreenTitle>
+          ) : null
+        }
         contentClassName={
           paneEmbed
             ? 'flex min-h-0 flex-1 flex-col overflow-hidden p-0'

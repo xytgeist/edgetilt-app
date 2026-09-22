@@ -17,3 +17,7 @@ export function edgeLogoTitleBarClassName(quickLinkCount, { panelCloseVisible = 
   if (liveSessionChipVisible) reserveRem += 7.5
   return `h-6 w-auto max-w-[min(140px,calc(100vw-${reserveRem}rem))] shrink-0 object-contain object-left`
 }
+
+/** Landscape tools chrome / Chat / iPad portrait titleBarBrand. */
+export const TITLE_BAR_SCREEN_TITLE_CLASS =
+  'font-black leading-none tracking-tight text-white text-[1.25rem] sm:text-[1.5rem]'

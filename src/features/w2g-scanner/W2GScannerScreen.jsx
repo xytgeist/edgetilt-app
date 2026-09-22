@@ -21,7 +21,9 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
+import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
+import { useIpadAuthStage } from '../auth/AuthModalShell.jsx'
 import {
   APP_MODAL_OVERLAY_CLASS,
   APP_MODAL_SHEET_PANEL_CLASS,
@@ -159,6 +161,7 @@ export default function W2GScannerScreen({
   /** AppShell in-app confirm … IPA `window.confirm` is a silent no after custom WKUIDelegate. */
   showGlobalConfirm = null,
 }) {
+  const ipadShell = useIpadAuthStage()
   const cameraInputRef = useRef(null)
   const libraryInputRef = useRef(null)
   const bulkInputRef = useRef(null)
@@ -1839,6 +1842,9 @@ export default function W2GScannerScreen({
       titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
       titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
       titleBarToolCloseVisible={paneEmbed ? false : titleBarToolCloseVisible}
+      titleBarBrand={
+        !paneEmbed && ipadShell ? <TitleBarScreenTitle>W-2G Scanner</TitleBarScreenTitle> : null
+      }
       contentClassName={
         paneEmbed
           ? 'flex min-h-0 flex-1 flex-col overflow-hidden p-0'
@@ -1867,10 +1873,10 @@ export default function W2GScannerScreen({
       >
       <div data-w2g-scanner className="space-y-5">
         <div>
-          {paneEmbed ? null : (
+          {paneEmbed || ipadShell ? null : (
             <div className="text-white text-2xl font-black tracking-tight">W-2G Scanner</div>
           )}
-          <div className={`text-zinc-400 text-sm ${paneEmbed ? '' : 'mt-0.5'}`}>
+          <div className={`text-zinc-400 text-sm ${paneEmbed || ipadShell ? '' : 'mt-0.5'}`}>
             Snap slips, save the six TurboTax fields + image, then collate by payer EIN for filing.
           </div>
         </div>

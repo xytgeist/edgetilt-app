@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. **2026-09-21:** Ryan is changing computers after Mac shipped game pills to prod. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-21 ... iPad portrait screen titles (not EDGE)
+
+**I am Mac Theo.** iPad/tablet portrait (`IPAD_SHELL_QUERY`): title bar shows the screen name (Slots, Poker, AP Guides, …) like landscape chrome … no EDGE wordmark next to the rail E. Phone portrait unchanged. Web **`1.4.456`**.
+
 ### Mac Theo 2026-09-21 ... portrait title bars + Poker hamburger blank
 
 **I am Mac Theo.** Landscape→portrait left title bars centered under the rail ("hat" / "DGE") and split CSS could keep a 50vw column. Poker hamburger also hid Bankroll/Stable while `slotsPaneRect` was null (blank → felt like a Lounge bounce). Fix: rail-align `ScrollLinkedEdgeTitleBarShell`, scope lounge/chat split widths under split attrs, orientationchange sync on landscape/rail hooks, keep-alive stays `contents` until cover is ready. Web **`1.4.454`**.

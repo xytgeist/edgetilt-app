@@ -63,8 +63,10 @@ import {
   profileCategoryPills,
 } from '../../utils/loungePostCategoryPills.js'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
+import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
 import ContentAccessAdminSwitch from '../../components/ContentAccessAdminSwitch.jsx'
+import { useIpadAuthStage } from '../auth/AuthModalShell.jsx'
 import {
   canOpenGuide,
   guideRequiresSlotsEdge,
@@ -1594,6 +1596,7 @@ export default function GuidesScreen({
   /** Landscape iPad Slots hub: scroll inside the right pane, no second EDGE bar. */
   paneEmbed = false,
 }) {
+  const ipadShell = useIpadAuthStage()
   const [query, setQuery] = useState('')
   const [rows, setRows] = useState([])
   const [loading, setLoading] = useState(true)
@@ -2001,6 +2004,9 @@ export default function GuidesScreen({
         titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
         titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
         titleBarToolCloseVisible={paneEmbed ? false : titleBarToolCloseVisible}
+        titleBarBrand={
+          !paneEmbed && ipadShell ? <TitleBarScreenTitle>AP Guides</TitleBarScreenTitle> : null
+        }
         publishScrollReveal={!paneEmbed}
         scrollRootRef={paneEmbed ? undefined : guidesScrollRootRef}
         contentClassName={

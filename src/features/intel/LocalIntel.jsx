@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback } from 'react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
+import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
+import { useIpadAuthStage } from '../auth/AuthModalShell.jsx'
 
 export default function LocalIntel({
   supabaseClient,
   titleBarNavSlot = null,
   titleBarToolCloseVisible = false,
 }) {
+  const ipadShell = useIpadAuthStage()
   const [intelView, setIntelView] = useState({ screen: 'home', cityId: null, casinoId: null })
 
   const [cities, setCities] = useState([])
@@ -163,9 +166,13 @@ export default function LocalIntel({
               ‹
             </button>
           )}
-          <div className="text-white text-2xl font-black tracking-tight truncate">{title}</div>
+          {ipadShell ? null : (
+            <div className="text-white text-2xl font-black tracking-tight truncate">{title}</div>
+          )}
         </div>
-        {subtitle && <div className="text-zinc-400 text-sm mt-0.5">{subtitle}</div>}
+        {subtitle && (
+          <div className={`text-zinc-400 text-sm ${ipadShell && !onBack ? '' : 'mt-0.5'}`}>{subtitle}</div>
+        )}
       </div>
       {right}
     </div>
@@ -186,6 +193,7 @@ export default function LocalIntel({
       <ScrollLinkedEdgeTitleBarShell
         titleBarNavSlot={titleBarNavSlot}
         titleBarToolCloseVisible={titleBarToolCloseVisible}
+        titleBarBrand={ipadShell ? <TitleBarScreenTitle>Local Intel</TitleBarScreenTitle> : null}
         contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
       >
         <Header title="Local Intel" subtitle="City + casino updates (skeleton)" />
@@ -234,6 +242,9 @@ export default function LocalIntel({
       <ScrollLinkedEdgeTitleBarShell
         titleBarNavSlot={titleBarNavSlot}
         titleBarToolCloseVisible={titleBarToolCloseVisible}
+        titleBarBrand={
+          ipadShell ? <TitleBarScreenTitle>{city?.name || 'City'}</TitleBarScreenTitle> : null
+        }
         contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
       >
         <Header
@@ -363,6 +374,9 @@ export default function LocalIntel({
       <ScrollLinkedEdgeTitleBarShell
         titleBarNavSlot={titleBarNavSlot}
         titleBarToolCloseVisible={titleBarToolCloseVisible}
+        titleBarBrand={
+          ipadShell ? <TitleBarScreenTitle>{casino?.name || 'Casino'}</TitleBarScreenTitle> : null
+        }
         contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
       >
         <Header

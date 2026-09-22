@@ -31,6 +31,7 @@ import { listCreatorFanPrivateSubs } from '../creatorFanSubs/creatorFanSubsApi.j
 import { notifyLoungeDockSuppress } from '../lounge/loungeDockSuppressRegistry.js'
 import { isChatMediaPickerActive } from './chatMediaPickerRegistry.js'
 import { preloadEdgeAvatar } from '../../utils/edgeCallKit.js'
+import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
 import { useIpadSlotsLandscape } from '../shell/useIpadSlotsLandscape.js'
 
 /**
@@ -983,11 +984,7 @@ export default function ChatTab({
       titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
       titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
       titleBarBrand={
-        paneEmbed ? null : (
-          <h1 className="font-black leading-none tracking-tight text-zinc-100 text-[1.25rem] sm:text-[1.5rem]">
-            Chat
-          </h1>
-        )
+        paneEmbed ? null : <TitleBarScreenTitle>Chat</TitleBarScreenTitle>
       }
       contentClassName="px-0 pb-0"
     >

@@ -1,7 +1,9 @@
 import { Calculator, CalendarDays, Wallet, BookOpen, ClipboardList, MessageCircle, ScanLine } from 'lucide-react'
 import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
+import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
+import { useIpadAuthStage } from '../auth/AuthModalShell.jsx'
 import { calculatorsTabFullyGated } from '../calculators/calculatorAccess.js'
 import { guidesTabFullyGated } from '../guides/guideAccess.js'
 
@@ -89,6 +91,7 @@ export default function SlotsScreen({
   toolPane = null,
   onPaneElement = null,
 }) {
+  const ipadShell = useIpadAuthStage()
   const showSubscriberLocks = browseMode === 'member' && !isStaff && !hasSlotsEdge
 
   const handleOpen = (tool) => {
@@ -233,12 +236,19 @@ export default function SlotsScreen({
     <ScrollLinkedEdgeTitleBarShell
       titleBarNavSlot={titleBarNavSlot}
       titleBarCenterSlot={titleBarCenterSlot}
-      contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
+      titleBarBrand={ipadShell ? <TitleBarScreenTitle>Slots</TitleBarScreenTitle> : null}
+      contentClassName={
+        ipadShell
+          ? 'px-3 pt-3 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
+          : 'px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
+      }
     >
-      <div className="mb-6">
-        <div className="text-white text-2xl font-black tracking-tight">Slots</div>
-        <div className="text-zinc-400 text-sm mt-0.5">Tools for advantage slot play</div>
-      </div>
+      {ipadShell ? null : (
+        <div className="mb-6">
+          <div className="text-white text-2xl font-black tracking-tight">Slots</div>
+          <div className="text-zinc-400 text-sm mt-0.5">Tools for advantage slot play</div>
+        </div>
+      )}
       {toolList}
     </ScrollLinkedEdgeTitleBarShell>
   )

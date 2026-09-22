@@ -3,7 +3,9 @@ import { flushSync } from 'react-dom'
 import { DollarSign, FileText, Info, MessageCircle, Pause, Play, Trophy } from 'lucide-react'
 import PokerSurfaceBootLoading from '../../components/PokerSurfaceBootLoading.jsx'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
+import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
 import CasinoAutocomplete from '../../components/CasinoAutocomplete.jsx'
+import { useIpadAuthStage } from '../auth/AuthModalShell.jsx'
 import DateWheelPicker from '../../components/DateWheelPicker.jsx'
 import TimeWheelPicker from '../../components/TimeWheelPicker.jsx'
 import { APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
@@ -430,6 +432,7 @@ export default function PokerBankrollTracker({
   /** Open an existing Chat room by id (stake group create). */
   onOpenChatRoom = null,
 }) {
+  const ipadShell = useIpadAuthStage()
   const [userId, setUserId] = useState(null)
   const [profile, setProfile] = useState(null)
   /** All sessions for this user (personal + deal-scoped). */
@@ -3996,6 +3999,11 @@ export default function PokerBankrollTracker({
         titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
         titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
         titleBarToolCloseVisible={paneEmbed ? false : titleBarToolCloseVisible}
+        titleBarBrand={
+          !paneEmbed && ipadShell ? (
+            <TitleBarScreenTitle>Bankroll Manager</TitleBarScreenTitle>
+          ) : null
+        }
         contentClassName={
           paneEmbed
             ? 'flex min-h-0 flex-1 flex-col overflow-hidden p-0'

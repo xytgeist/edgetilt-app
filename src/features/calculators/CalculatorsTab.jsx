@@ -1,8 +1,10 @@
 import { Suspense, useState } from 'react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
+import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
 import NavLockGlyph from '../../components/NavLockGlyph.jsx'
 import SlotsEdgeUpgradePill from '../../components/SlotsEdgeUpgradePill.jsx'
 import ContentAccessAdminSwitch from '../../components/ContentAccessAdminSwitch.jsx'
+import { useIpadAuthStage } from '../auth/AuthModalShell.jsx'
 import { lazyRoute } from '../../utils/lazyImportWithChunkReload.js'
 import {
   CALCULATOR_CATALOG,
@@ -195,12 +197,14 @@ export default function CalculatorsTab({
   /** Landscape iPad Slots hub: fill the right pane, no second EDGE bar. */
   paneEmbed = false,
 }) {
+  const ipadShell = useIpadAuthStage()
   const shell = paneEmbed
     ? { embedded: true, publishScrollReveal: false }
     : {
         titleBarNavSlot,
         titleBarCenterSlot,
         titleBarToolCloseVisible,
+        titleBarBrand: ipadShell ? <TitleBarScreenTitle>Calcs</TitleBarScreenTitle> : null,
       }
   if (!activeCalculator) {
     return (

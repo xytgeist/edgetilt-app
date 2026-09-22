@@ -3,6 +3,8 @@ import AttentionDot from '../../components/AttentionDot.jsx'
 import BarnIcon from '../../components/BarnIcon.jsx'
 import QuickLinkPageToggle from '../../components/QuickLinkPageToggle.jsx'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
+import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
+import { useIpadAuthStage } from '../auth/AuthModalShell.jsx'
 
 const POKER_TOOLS = [
   {
@@ -41,6 +43,7 @@ export default function PokerScreen({
   toolPane = null,
   onPaneElement = null,
 }) {
+  const ipadShell = useIpadAuthStage()
   const handleOpen = (tool) => {
     if (browseMode !== 'member') {
       onOpenAuth?.()
@@ -205,12 +208,19 @@ export default function PokerScreen({
     <ScrollLinkedEdgeTitleBarShell
       titleBarNavSlot={titleBarNavSlot}
       titleBarCenterSlot={titleBarCenterSlot}
-      contentClassName="px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
+      titleBarBrand={ipadShell ? <TitleBarScreenTitle>Poker</TitleBarScreenTitle> : null}
+      contentClassName={
+        ipadShell
+          ? 'px-3 pt-3 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
+          : 'px-3 py-6 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
+      }
     >
-      <div className="mb-6">
-        <div className="text-white text-2xl font-black tracking-tight">Poker</div>
-        <div className="text-zinc-400 text-sm mt-0.5">Tools for cash games and tournaments</div>
-      </div>
+      {ipadShell ? null : (
+        <div className="mb-6">
+          <div className="text-white text-2xl font-black tracking-tight">Poker</div>
+          <div className="text-zinc-400 text-sm mt-0.5">Tools for cash games and tournaments</div>
+        </div>
+      )}
       {toolList}
     </ScrollLinkedEdgeTitleBarShell>
   )

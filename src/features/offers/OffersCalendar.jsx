@@ -15,7 +15,9 @@ import UploadProgressOverlay from './components/UploadProgressOverlay'
 import OfferFormModal from './components/OfferFormModal'
 import WeekEventDetailModal from './components/WeekEventDetailModal'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
+import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
 import SlotsToolPageHeader from '../../components/SlotsToolPageHeader.jsx'
+import { useIpadAuthStage } from '../auth/AuthModalShell.jsx'
 import useOffersCalendarState from './hooks/useOffersCalendarState'
 import useOffersCalendarMutations from './hooks/useOffersCalendarMutations'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
@@ -51,6 +53,7 @@ export default function OffersCalendar({
   /** Landscape iPad Slots hub: fill the right pane, no second EDGE bar. */
   paneEmbed = false,
 }) {
+  const ipadShell = useIpadAuthStage()
   /** Gate for the large legacy push / iOS help block below (was `false &&`). */
   const showLegacyOffersPushPanel = false
   const [sendingTestPush, setSendingTestPush] = useState(false)
@@ -1041,6 +1044,9 @@ export default function OffersCalendar({
         titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
         titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
         titleBarToolCloseVisible={paneEmbed ? false : titleBarToolCloseVisible}
+        titleBarBrand={
+          !paneEmbed && ipadShell ? <TitleBarScreenTitle>Calendar</TitleBarScreenTitle> : null
+        }
         fullWidth={weekLayoutFullBleed && !paneEmbed}
         contentClassName={
           weekLayoutFullBleed

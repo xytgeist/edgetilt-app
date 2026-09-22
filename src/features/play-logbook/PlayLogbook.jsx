@@ -1,7 +1,9 @@
 import { useState, useEffect, useLayoutEffect, useCallback, useMemo, useRef, Suspense } from 'react'
 import { createPortal } from 'react-dom'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
+import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
 import FreemiumUsageCounter from '../billing/FreemiumUsageCounter.jsx'
+import { useIpadAuthStage } from '../auth/AuthModalShell.jsx'
 import { FREE_PLAY_LOG_LIMIT } from '../billing/freemiumToolLimits.js'
 import DateWheelPicker from '../../components/DateWheelPicker.jsx'
 import TimeWheelPicker from '../../components/TimeWheelPicker.jsx'
@@ -242,6 +244,7 @@ export default function PlayLogbook({
   onScanW2G = null,
   showGlobalConfirm = null,
 }) {
+  const ipadShell = useIpadAuthStage()
   const [userId, setUserId] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -1331,6 +1334,9 @@ export default function PlayLogbook({
       titleBarNavSlot={paneEmbed ? null : titleBarNavSlot}
       titleBarCenterSlot={paneEmbed ? null : titleBarCenterSlot}
       titleBarToolCloseVisible={paneEmbed ? false : titleBarToolCloseVisible}
+      titleBarBrand={
+        !paneEmbed && ipadShell ? <TitleBarScreenTitle>Play Logbook</TitleBarScreenTitle> : null
+      }
       contentClassName={
         paneEmbed
           ? 'flex min-h-0 flex-1 flex-col overflow-hidden p-0'
@@ -1359,10 +1365,10 @@ export default function PlayLogbook({
       >
       <div data-play-logbook>
         <div className="mb-5">
-          {paneEmbed ? null : (
+          {paneEmbed || ipadShell ? null : (
             <h1 className="min-w-0 text-white text-2xl font-black tracking-tight">Play Logbook</h1>
           )}
-          <p className={`text-zinc-400 text-sm ${paneEmbed ? '' : 'mt-0.5'}`}>
+          <p className={`text-zinc-400 text-sm ${paneEmbed || ipadShell ? '' : 'mt-0.5'}`}>
             Capture AP slot data · analyze later
           </p>
           <FreemiumUsageCounter

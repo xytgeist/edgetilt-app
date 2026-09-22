@@ -19,7 +19,13 @@ export function useIpadAuthStage() {
     const apply = () => setOn(mq.matches)
     apply()
     mq.addEventListener('change', apply)
-    return () => mq.removeEventListener('change', apply)
+    window.addEventListener('orientationchange', apply)
+    window.addEventListener('resize', apply)
+    return () => {
+      mq.removeEventListener('change', apply)
+      window.removeEventListener('orientationchange', apply)
+      window.removeEventListener('resize', apply)
+    }
   }, [])
 
   return on

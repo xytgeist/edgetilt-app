@@ -2,7 +2,11 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import { LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS } from './loungeFeedAvatar.js'
-import { nflPillWash, nflPillWashLikelyAir, probeLogoWashConflict } from './loungeSportsMatch.js'
+import {
+  nflPillWashLikelyNeedsLightLogo,
+  probeLogoWashConflict,
+  resolveNflPillWashes,
+} from './loungeSportsMatch.js'
 
 const PRE_SPREAD_MAX_PX = 28
 const PRE_SPREAD_MIN_PX = 13
@@ -91,9 +95,17 @@ function scoreLabel(side, status) {
   return String(side.score)
 }
 
-function TeamMark({ side, dimmed, halo = false }) {
-  const src = side?.logo
+function TeamMark({ side, dimmed, useLight = false }) {
+  const defaultSrc = side?.logo || ''
+  const lightSrc = side?.logoLight || ''
+  const [lightFailed, setLightFailed] = useState(false)
+  useEffect(() => {
+    setLightFailed(false)
+  }, [lightSrc, useLight, defaultSrc])
+  const wantAssetLight = Boolean(useLight && lightSrc && !lightFailed)
+  const src = wantAssetLight ? lightSrc : defaultSrc
   const letter = String(side?.abbrev || side?.mascot || '?').slice(0, 1)
+  const logoTone = wantAssetLight ? 'light' : useLight ? 'silhouette' : 'dark'
   return (
     <span
       data-lounge-game-pill-mark
@@ -103,11 +115,15 @@ function TeamMark({ side, dimmed, halo = false }) {
         <img
           src={src}
           alt=""
-          data-lounge-game-pill-logo={halo ? 'light' : 'dark'}
+          data-lounge-game-pill-logo={logoTone}
           className={`h-full w-full object-contain ${dimmed ? 'opacity-55' : ''}`}
           loading="lazy"
           decoding="async"
           onError={(ev) => {
+            if (wantAssetLight) {
+              setLightFailed(true)
+              return
+            }
             ev.currentTarget.style.display = 'none'
           }}
         />
@@ -151,33 +167,36 @@ function ScoreStack({ side, status, dimmed, covered }) {
   )
 }
 
-function usePillAirSides(game) {
-  const awayColor = game ? nflPillWash(game.away?.color, game.away?.color2) : '#3f3f46'
-  const homeColor = game ? nflPillWash(game.home?.color, game.home?.color2) : '#3f3f46'
+function usePillWashAndLogos(game) {
+  const washes = game
+    ? resolveNflPillWashes(game.home, game.away)
+    : { homeWash: '#3f3f46', awayWash: '#3f3f46' }
+  const awayColor = washes.awayWash
+  const homeColor = washes.homeWash
   const awaySrc = game?.away?.logo || ''
   const homeSrc = game?.home?.logo || ''
-  const [awayAir, setAwayAir] = useState(() => nflPillWashLikelyAir(awayColor))
-  const [homeAir, setHomeAir] = useState(() => nflPillWashLikelyAir(homeColor))
+  const [awayLight, setAwayLight] = useState(() => nflPillWashLikelyNeedsLightLogo(awayColor))
+  const [homeLight, setHomeLight] = useState(() => nflPillWashLikelyNeedsLightLogo(homeColor))
   useEffect(() => {
-    setAwayAir(nflPillWashLikelyAir(awayColor))
-    setHomeAir(nflPillWashLikelyAir(homeColor))
+    setAwayLight(nflPillWashLikelyNeedsLightLogo(awayColor))
+    setHomeLight(nflPillWashLikelyNeedsLightLogo(homeColor))
     if (typeof document === 'undefined') return undefined
     let alive = true
     if (awaySrc) {
-      void probeLogoWashConflict(awaySrc, awayColor).then((air) => {
-        if (alive) setAwayAir(air)
+      void probeLogoWashConflict(awaySrc, awayColor).then((needs) => {
+        if (alive) setAwayLight(needs)
       })
     }
     if (homeSrc) {
-      void probeLogoWashConflict(homeSrc, homeColor).then((air) => {
-        if (alive) setHomeAir(air)
+      void probeLogoWashConflict(homeSrc, homeColor).then((needs) => {
+        if (alive) setHomeLight(needs)
       })
     }
     return () => {
       alive = false
     }
   }, [awaySrc, homeSrc, awayColor, homeColor])
-  return { awayColor, homeColor, awayAir, homeAir }
+  return { awayColor, homeColor, awayLight, homeLight }
 }
 
 /**
@@ -197,7 +216,7 @@ export default function LoungeGameScorePill({
 }) {
   const sports = useLoungeSportsFeed()
   const game = gameProp || sports?.matchPost?.(post)
-  const air = usePillAirSides(game)
+  const paint = usePillWashAndLogos(game)
   if (!game) return null
 
   const homeWon = game.status === 'post' && game.home?.score != null && game.away?.score != null && game.home.score > game.away.score
@@ -206,8 +225,8 @@ export default function LoungeGameScorePill({
   const cover = loungeSportsSpreadCover(game)
   const awayCovered = game.status === 'post' && cover.away
   const homeCovered = game.status === 'post' && cover.home
-  const awayColor = air.awayColor
-  const homeColor = air.homeColor
+  const awayColor = paint.awayColor
+  const homeColor = paint.homeColor
   const canOpenHub = interactive && !pendingInclude
   const Tag = canOpenHub || pendingInclude ? 'button' : 'div'
   const awaySpread = formatLoungeSportsSpread(game.away?.spread)
@@ -265,7 +284,7 @@ export default function LoungeGameScorePill({
         <span data-lounge-game-pill-home aria-hidden="true" />
         <span data-lounge-game-pill-seam aria-hidden="true" />
         <span data-lounge-game-pill-row>
-          <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} halo={air.awayAir} />
+          <TeamMark side={game.away} dimmed={game.status === 'post' && !awayWon} useLight={paint.awayLight} />
           <span data-lounge-game-pill-score-gutter>
             <ScoreStack
               side={game.away}
@@ -288,7 +307,7 @@ export default function LoungeGameScorePill({
               covered={homeCovered}
             />
           </span>
-          <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} halo={air.homeAir} />
+          <TeamMark side={game.home} dimmed={game.status === 'post' && !homeWon} useLight={paint.homeLight} />
         </span>
         {canOpenHub ? (
           <span data-lounge-game-pill-chevron aria-hidden="true">

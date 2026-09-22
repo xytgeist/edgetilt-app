@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Sports pill dual wash + light logos (Windows).** Home keeps primary; when primaries clash (NYG/LAR, #002244 club), away uses `color2`. Logo-vs-wash camouflage swaps to `*-light.png` (ESPN 500-dark) on the same rich wash ... CSS white halo retired. Frontend **`1.4.451`**.
 - **2026-09-21:** **Pre-game pills show ML under the spread (Windows).** When `side.ml` is set, future games paint moneyline below the big spread (same 9px line as finals). Frontend **`1.4.450`**.
 - **2026-09-21:** **Sports pill smaller spread/ML type (Windows).** Closing spread and moneyline lines **11px → 9px**. Frontend **`1.4.449`**.
 - **2026-09-21:** **Sports pill spread above score, ML below; bigger logos (Windows).** Live/final stack is spread → score → moneyline (cover dot stays on spread). Logos **2.75rem** (3rem sm, 2.25rem narrow). Frontend **`1.4.447`**.

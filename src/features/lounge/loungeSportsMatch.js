@@ -129,16 +129,64 @@ export function nflPillWash(primary, _secondary) {
   return p
 }
 
-/** Dark navy/black washes camouflage the mark. Bright red/teal/orange usually do not. */
-export function nflPillWashLikelyAir(washHex) {
+function colorDist(aHex, bHex) {
+  const A = hexToRgb(aHex)
+  const B = hexToRgb(bHex)
+  if (!A || !B) return 999
+  const dr = A.r - B.r
+  const dg = A.g - B.g
+  const db = A.b - B.b
+  return Math.sqrt(dr * dr + dg * dg + db * db)
+}
+
+/**
+ * Two jersey primaries read as the same stain (NYG navy vs LAR blue, DAL/DEN/NE/SEA #002244).
+ * Hue-blind luminance contrast is wrong here (KC red vs MIA teal both mid-dark) ... use RGB distance.
+ */
+export function nflPrimariesTooSimilar(aHex, bHex) {
+  const A = hexToRgb(aHex)
+  const B = hexToRgb(bHex)
+  if (!A || !B) return false
+  return colorDist(aHex, bHex) < 60
+}
+
+/**
+ * Home keeps primary. Away keeps primary unless both primaries clash ... then away uses
+ * secondary when that secondary actually separates from the home wash (skip muddy blacks).
+ */
+export function resolveNflPillWashes(home, away) {
+  const homeWash = nflPillWash(home?.color, home?.color2)
+  const awayPrimary = nflPillWash(away?.color, away?.color2)
+  if (!nflPrimariesTooSimilar(home?.color, away?.color)) {
+    return { homeWash, awayWash: awayPrimary }
+  }
+  const sec = String(away?.color2 || '').trim()
+  if (!sec || !hexToRgb(sec)) return { homeWash, awayWash: awayPrimary }
+  const awaySecondary = nflPillWash(sec)
+  // Secondary must beat the same-color mud (and not collapse into home).
+  if (colorDist(homeWash, awaySecondary) < 40) return { homeWash, awayWash: awayPrimary }
+  if (colorDist(homeWash, awaySecondary) < 60 && colorDist(awayPrimary, homeWash) <= colorDist(awaySecondary, homeWash)) {
+    return { homeWash, awayWash: awayPrimary }
+  }
+  return { homeWash, awayWash: awaySecondary }
+}
+
+/** Dark navy/black washes camouflage the default mark. Prefer the light logo asset instead. */
+export function nflPillWashLikelyNeedsLightLogo(washHex) {
   return hexLuminance(washHex) < 0.1
+}
+
+/** @deprecated Use nflPillWashLikelyNeedsLightLogo */
+export function nflPillWashLikelyAir(washHex) {
+  return nflPillWashLikelyNeedsLightLogo(washHex)
 }
 
 const logoWashAirCache = new Map()
 
 /**
- * Sample the PNG against the wash. If enough opaque pixels sit too close to the
- * jersey color (NYG navy on navy), air the stain out. KC/MIA keep the rich fade.
+ * Sample the default PNG against the wash. If enough opaque pixels sit too close to the
+ * jersey color (NYG navy on navy), swap to the light logo on that same wash. KC/MIA keep
+ * the full-color mark.
  */
 export function probeLogoWashConflict(src, washHex) {
   const key = `${String(src || '')}|${String(washHex || '').toLowerCase()}`
@@ -146,7 +194,7 @@ export function probeLogoWashConflict(src, washHex) {
   if (hit) return hit
   const job = (async () => {
     const wash = hexToRgb(washHex)
-    if (!src || !wash || typeof document === 'undefined') return nflPillWashLikelyAir(washHex)
+    if (!src || !wash || typeof document === 'undefined') return nflPillWashLikelyNeedsLightLogo(washHex)
     try {
       const img = new Image()
       img.decoding = 'async'
@@ -157,7 +205,7 @@ export function probeLogoWashConflict(src, washHex) {
       canvas.width = size
       canvas.height = size
       const ctx = canvas.getContext('2d', { willReadFrequently: true })
-      if (!ctx) return nflPillWashLikelyAir(washHex)
+      if (!ctx) return nflPillWashLikelyNeedsLightLogo(washHex)
       ctx.drawImage(img, 0, 0, size, size)
       const { data } = ctx.getImageData(0, 0, size, size)
       let opaque = 0
@@ -169,7 +217,7 @@ export function probeLogoWashConflict(src, washHex) {
       }
       return opaque > 8 && camouflaged / opaque >= 0.42
     } catch {
-      return nflPillWashLikelyAir(washHex)
+      return nflPillWashLikelyNeedsLightLogo(washHex)
     }
   })()
   logoWashAirCache.set(key, job)
@@ -186,6 +234,7 @@ export function enrichLoungeSportsGame(game) {
       ...side,
       abbrev: row.abbrev,
       logo: `/sports/nfl/logos/${row.abbrev}.png`,
+      logoLight: `/sports/nfl/logos/${row.abbrev}-light.png`,
       color: row.color,
       color2: row.color2,
     }

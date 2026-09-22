@@ -4,6 +4,7 @@ import TitleBarStatusLine from './TitleBarStatusLine.jsx'
 import PwaInstallTitleBarRow from './PwaInstallBanner.jsx'
 import { LOUNGE_FEED_TITLE_BAR_ROW_CLASS } from '../features/lounge/loungeFeedAvatar.js'
 import { useQuickLinkIds } from '../features/shell/quickLinksStore.js'
+import { useIpadNavRail } from '../features/shell/useIpadNavRail.js'
 import { edgeLogoTitleBarClassName } from '../features/shell/titleBarLayout.js'
 import { setEdgeTitleBarReveal } from '../features/shell/edgeTitleBarRevealStore.js'
 import {
@@ -57,13 +58,24 @@ export default function ScrollLinkedEdgeTitleBarShell({
   titleBarAlignStartWidth = null,
   fillParentHeight = false,
 }) {
-  const colMax = fullWidth || titleBarAlignStartWidth ? 'max-w-none' : 'max-w-2xl'
+  const ipadNavRail = useIpadNavRail()
+  /**
+   * Explicit landscape widths win. Otherwise the iPad/phone-landscape rail needs the
+   * same left-align Lounge already uses ... centered `left-1/2` paints under the rail
+   * ("hat", "DGE" beside the rail E) after landscape→portrait.
+   */
+  const resolvedAlignStartWidth =
+    titleBarAlignStartWidth ||
+    (ipadNavRail && !embedded && !slotsToolsLogo
+      ? 'calc(100vw - var(--edge-ipad-rail, 0px))'
+      : null)
+  const colMax = fullWidth || resolvedAlignStartWidth || ipadNavRail ? 'max-w-none' : 'max-w-2xl'
   const heightClass = fillParentHeight
     ? 'h-full max-h-full'
     : stableLayoutViewport
       ? 'h-[100vh] max-h-[100vh]'
       : 'h-dvh max-h-dvh'
-  const alignStartWidth = titleBarAlignStartWidth ? String(titleBarAlignStartWidth) : ''
+  const alignStartWidth = resolvedAlignStartWidth ? String(resolvedAlignStartWidth) : ''
   const titleBarAlignStart = Boolean(alignStartWidth)
   const internalScrollRef = useRef(null)
   const feedScrollRef = scrollRootRef ?? internalScrollRef

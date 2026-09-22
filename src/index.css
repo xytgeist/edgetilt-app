@@ -4053,7 +4053,9 @@ html.light [data-slots-landscape-pane-chrome] {
   box-sizing: border-box;
 }
 /* Landscape Lounge engagement split:
-   (rail + feed) = 50vw, engagement pane = 50vw. Phone chrome on feed (no tall-iPad pad/scale). */
+   (rail + feed) = 50vw, engagement pane = 50vw. Phone chrome on feed (no tall-iPad pad/scale).
+   Width rules are scoped under the split attr so portrait keep-alive does not keep a 50vw column
+   when WebKit leaves `display:contents` children with stale flex basis. */
 [data-lounge-feed-root][data-lounge-landscape-split] {
   max-width: none;
   /* Phone chrome … do not inherit full-viewport iPad feed pad. */
@@ -4061,22 +4063,22 @@ html.light [data-slots-landscape-pane-chrome] {
   --lounge-landscape-feed-col: calc(50vw - var(--edge-ipad-rail, 0px));
   --lounge-landscape-pane-col: 50vw;
 }
-[data-lounge-landscape-feed] {
+[data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-landscape-feed] {
   width: var(--lounge-landscape-feed-col);
   flex: 0 0 var(--lounge-landscape-feed-col);
   max-width: none;
 }
-[data-lounge-landscape-pane],
-[data-lounge-detail-in-pane] {
+[data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-landscape-pane],
+[data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-detail-in-pane] {
   width: var(--lounge-landscape-pane-col);
   flex: 0 0 var(--lounge-landscape-pane-col);
   max-width: none;
 }
-html.light [data-lounge-landscape-feed] {
+html.light [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-landscape-feed] {
   border-right-color: #e4e4e7;
 }
-html.light [data-lounge-landscape-pane],
-html.light [data-lounge-detail-in-pane] {
+html.light [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-landscape-pane],
+html.light [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-detail-in-pane] {
   background-color: #fafafa;
 }
 /* Chat landscape: inbox list + open thread (same 50/50 as Lounge engagement). */
@@ -4084,20 +4086,20 @@ html.light [data-lounge-detail-in-pane] {
   --chat-landscape-list-col: calc(50vw - var(--edge-ipad-rail, 0px));
   --chat-landscape-pane-col: 50vw;
 }
-[data-chat-landscape-list] {
+[data-chat-feature][data-chat-landscape-split] [data-chat-landscape-list] {
   width: var(--chat-landscape-list-col);
   flex: 0 0 var(--chat-landscape-list-col);
   max-width: none;
 }
-[data-chat-landscape-pane] {
+[data-chat-feature][data-chat-landscape-split] [data-chat-landscape-pane] {
   width: var(--chat-landscape-pane-col);
   flex: 0 0 var(--chat-landscape-pane-col);
   max-width: none;
 }
-html.light [data-chat-landscape-list] {
+html.light [data-chat-feature][data-chat-landscape-split] [data-chat-landscape-list] {
   border-right-color: #e4e4e7;
 }
-html.light [data-chat-landscape-pane] {
+html.light [data-chat-feature][data-chat-landscape-split] [data-chat-landscape-pane] {
   background-color: #fafafa;
 }
 @media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
@@ -4161,6 +4163,10 @@ html.light [data-chat-landscape-pane] {
   }
 }
 html[data-ipad-nav] [data-lounge-feed-root] .fixed.left-1\/2:not([data-lounge-title-bar]):not([data-edge-status-bar-plate]) {
+  left: calc(var(--edge-ipad-rail) + (100vw - var(--edge-ipad-rail)) / 2) !important;
+}
+/* Same rail recenter for ScrollLinkedEdgeTitleBarShell (Chat / Slots / Poker / Guides / …). */
+html[data-ipad-nav] [data-edge-scroll-shell].fixed.left-1\/2 {
   left: calc(var(--edge-ipad-rail) + (100vw - var(--edge-ipad-rail)) / 2) !important;
 }
 html[data-ipad-nav] [data-lounge-dock-panels] {

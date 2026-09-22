@@ -3085,7 +3085,9 @@ export default function AppShell({
     )
 
     /** Mount once visited, then hide ... reopen keeps sessions/carousel without full reload.
-     *  Landscape Poker pane covers it in place (same pattern as Slots Bankroll). */
+     *  Landscape Poker pane covers it in place (same pattern as Slots Bankroll).
+     *  While the pane rect is still measuring, keep the active tab in `contents` (never `hidden`)
+     *  so hamburger → Poker does not paint a blank screen / look like a crash back to Lounge. */
     const keepAlivePokerBankroll = pokerBankrollMounted ? (
       <Suspense fallback={pokerBankrollSuspenseFallback}>
         <div
@@ -3093,24 +3095,24 @@ export default function AppShell({
           className={
             pokerBankrollCover
               ? 'relative flex min-h-0 flex-col overflow-hidden bg-zinc-950'
-              : pokerBankrollInPane || tab !== 'poker-bankroll'
-                ? 'hidden'
-                : 'contents min-h-0'
+              : tab === 'poker-bankroll'
+                ? 'contents min-h-0'
+                : 'hidden'
           }
           style={pokerBankrollCover ? paneCoverStyle : undefined}
           inert={tab !== 'poker-bankroll'}
         >
           <PokerBankrollTracker
-            paneEmbed={pokerBankrollInPane}
+            paneEmbed={Boolean(pokerBankrollCover)}
             supabaseClient={supabaseClient}
             isActivePage={tab === 'poker-bankroll'}
             titleBarNavSlot={
-              pokerBankrollInPane || tab !== 'poker-bankroll' ? null : renderTitleBarNavSlot()
+              pokerBankrollCover || tab !== 'poker-bankroll' ? null : renderTitleBarNavSlot()
             }
             titleBarCenterSlot={
-              pokerBankrollInPane || tab !== 'poker-bankroll' ? null : renderTitleBarCenterSlot()
+              pokerBankrollCover || tab !== 'poker-bankroll' ? null : renderTitleBarCenterSlot()
             }
-            titleBarToolCloseVisible={pokerBankrollInPane ? false : pokerToolTitleBarCloseVisible}
+            titleBarToolCloseVisible={pokerBankrollCover ? false : pokerToolTitleBarCloseVisible}
             openSessionId={tab === 'poker-bankroll' ? pendingPokerSessionId : null}
             onOpenSessionConsumed={() => setPendingPokerSessionId(null)}
             openStableDealId={tab === 'poker-bankroll' ? pendingPokerStableDealId : null}
@@ -3145,15 +3147,15 @@ export default function AppShell({
           className={
             bankrollCover
               ? 'relative flex min-h-0 flex-col overflow-hidden bg-zinc-950'
-              : bankrollInPane || tab !== 'bankroll'
-                ? 'hidden'
-                : 'contents min-h-0'
+              : tab === 'bankroll'
+                ? 'contents min-h-0'
+                : 'hidden'
           }
           style={bankrollCover ? paneCoverStyle : undefined}
           inert={tab !== 'bankroll'}
         >
           <BankrollTracker
-            paneEmbed={bankrollInPane}
+            paneEmbed={Boolean(bankrollCover)}
             supabaseClient={supabaseClient}
             isActivePage={tab === 'bankroll'}
             canCreateBankrollSession={canCreateBankrollSession}
@@ -3161,9 +3163,9 @@ export default function AppShell({
             freemiumUsageLoading={freemiumUsageLoading}
             onRequireSubscribeForBankroll={() => onRequireSubscribe?.('slots-edge')}
             onBankrollSessionCreated={refreshFreemiumUsage}
-            titleBarNavSlot={bankrollInPane || tab !== 'bankroll' ? null : renderTitleBarNavSlot()}
-            titleBarCenterSlot={bankrollInPane || tab !== 'bankroll' ? null : renderTitleBarCenterSlot()}
-            titleBarToolCloseVisible={bankrollInPane ? false : slotsToolTitleBarCloseVisible}
+            titleBarNavSlot={bankrollCover || tab !== 'bankroll' ? null : renderTitleBarNavSlot()}
+            titleBarCenterSlot={bankrollCover || tab !== 'bankroll' ? null : renderTitleBarCenterSlot()}
+            titleBarToolCloseVisible={bankrollCover ? false : slotsToolTitleBarCloseVisible}
           />
         </div>
       </Suspense>
@@ -3177,24 +3179,24 @@ export default function AppShell({
           className={
             pokerStableCover
               ? 'relative flex min-h-0 flex-col overflow-hidden bg-zinc-950'
-              : pokerStableInPane || tab !== 'poker-stable'
-                ? 'hidden'
-                : 'contents min-h-0'
+              : tab === 'poker-stable'
+                ? 'contents min-h-0'
+                : 'hidden'
           }
           style={pokerStableCover ? paneCoverStyle : undefined}
           inert={tab !== 'poker-stable'}
         >
           <PokerStableScreen
-            paneEmbed={pokerStableInPane}
+            paneEmbed={Boolean(pokerStableCover)}
             supabaseClient={supabaseClient}
             isActivePage={tab === 'poker-stable'}
             titleBarNavSlot={
-              pokerStableInPane || tab !== 'poker-stable' ? null : renderTitleBarNavSlot()
+              pokerStableCover || tab !== 'poker-stable' ? null : renderTitleBarNavSlot()
             }
             titleBarCenterSlot={
-              pokerStableInPane || tab !== 'poker-stable' ? null : renderTitleBarCenterSlot()
+              pokerStableCover || tab !== 'poker-stable' ? null : renderTitleBarCenterSlot()
             }
-            titleBarToolCloseVisible={pokerStableInPane ? false : pokerToolTitleBarCloseVisible}
+            titleBarToolCloseVisible={pokerStableCover ? false : pokerToolTitleBarCloseVisible}
             openStableDealId={tab === 'poker-stable' ? pendingPokerStableDealId : null}
             onOpenStableDealConsumed={clearPendingPokerStableDealId}
             showWithdrawnOfferNotice={tab === 'poker-stable' ? pendingStableOfferWithdrawn : false}

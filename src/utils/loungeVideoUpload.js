@@ -161,9 +161,31 @@ export function loungeVideoLimitsForViewer(edgePro) {
   }
 }
 
-/** Limits for the Lounge viewer SocialFeed last recorded. Defaults to the free cap. */
+/** Limits for the Lounge viewer last recorded. Defaults to the free cap. */
 export function currentLoungeVideoLimits() {
   return loungeVideoLimitsForViewer(loungeVideoViewerEdgePro)
+}
+
+/**
+ * R2 accepts one PUT up to 5 GiB. Chat stays on that single upload, so the stored
+ * file cannot be the full 8 GB Edge Pro source. Longer phone files are re-encoded down.
+ */
+export const CHAT_R2_PUT_MAX_BYTES = 5 * 1024 * 1024 * 1024 - 1024 * 1024
+
+/**
+ * Same duration as Lounge. Stored size is the Lounge cap, or the R2 single-PUT cap when that is smaller.
+ * @param {boolean} [edgePro]
+ */
+export function chatVideoLimits(edgePro = loungeVideoViewerEdgePro) {
+  const limits = loungeVideoLimitsForViewer(edgePro)
+  return {
+    ...limits,
+    maxBytes: Math.min(limits.maxBytes, CHAT_R2_PUT_MAX_BYTES),
+  }
+}
+
+export function currentChatVideoLimits() {
+  return chatVideoLimits()
 }
 
 /** @param {number} maxSeconds */

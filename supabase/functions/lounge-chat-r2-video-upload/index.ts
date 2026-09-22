@@ -1,6 +1,6 @@
 /**
  * Mint a presigned PUT URL for Lounge chat videos (Cloudflare R2).
- * Only accepts video/mp4 — used by the chat composer after browser-side encoding.
+ * Only accepts video/mp4. byteSize must fit the viewer's Lounge duration cap and a 5 GiB R2 PUT.
  *
  * Secrets (same as lounge-cf-r2-direct-upload):
  *   CLOUDFLARE_ACCOUNT_ID
@@ -18,6 +18,13 @@ import {
   loungeCfR2RequireUser,
   readLoungeCfR2Config,
 } from '../_shared/loungeCfR2.ts'
+import {
+  loungeStreamUploadAllowance,
+  loungeVideoTooLargeMessage,
+} from '../_shared/loungeStreamUploadLimits.ts'
+
+/** R2 PutObject max is 5 GiB. Stay under it. Matches CHAT_R2_PUT_MAX_BYTES in loungeVideoUpload.js. */
+const CHAT_R2_PUT_MAX_BYTES = 5 * 1024 * 1024 * 1024 - 1024 * 1024
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -42,17 +49,34 @@ Deno.serve(async (req) => {
       )
     }
 
-    const { user } = await loungeCfR2RequireUser(req)
+    const { user, admin } = await loungeCfR2RequireUser(req)
 
     let contentType = 'video/mp4'
+    let byteSize = 0
     try {
-      const body = (await req.json()) as { contentType?: string }
+      const body = (await req.json()) as { contentType?: string; byteSize?: number }
       if (typeof body?.contentType === 'string' && body.contentType.trim()) {
         contentType = body.contentType.trim()
       }
+      byteSize = Number(body?.byteSize)
     } catch {
       return new Response(JSON.stringify({ error: 'Invalid JSON body.' }), {
         status: 400,
+        headers: { ...loungeCfR2CorsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (!Number.isFinite(byteSize) || byteSize <= 0) {
+      return new Response(JSON.stringify({ error: 'Video upload is missing a file size.' }), {
+        status: 400,
+        headers: { ...loungeCfR2CorsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    const allowance = await loungeStreamUploadAllowance(admin, user.id)
+    const maxBytes = Math.min(allowance.maxBytes, CHAT_R2_PUT_MAX_BYTES)
+    if (byteSize > maxBytes) {
+      return new Response(JSON.stringify({ error: loungeVideoTooLargeMessage(maxBytes) }), {
+        status: 413,
         headers: { ...loungeCfR2CorsHeaders, 'Content-Type': 'application/json' },
       })
     }

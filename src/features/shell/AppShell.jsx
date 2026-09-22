@@ -15,6 +15,7 @@ import {
 } from '../../utils/loungeFeedScope'
 import { fetchLoungeCommunityFeedPostsForViewer } from '../../utils/loungeFanOnlyPost.js'
 import { LOUNGE_FEED_SORT, readLoungeFeedSort } from '../../utils/loungeFeedSortPref'
+import { setLoungeVideoViewerEdgePro } from '../../utils/loungeVideoUpload.js'
 import {
   readLoungeFeedCategoryFilter,
   writeLoungeFeedCategoryFilter,
@@ -382,6 +383,10 @@ export default function AppShell({
   onOpenBillingManage,
   onOpenLegalDocument,
 }) {
+  useLayoutEffect(() => {
+    setLoungeVideoViewerEdgePro(Boolean(hasEdgePro))
+  }, [hasEdgePro])
+
   const consoleLogHudEnabled = useSyncExternalStore(
     subscribeAppConsoleLogHudEnabled,
     readAppConsoleLogHudEnabled,

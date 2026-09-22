@@ -9,12 +9,13 @@ import {
 } from '../lounge/loungeDockComposeFocus.js'
 import KlipyGifPicker from '../lounge/KlipyGifPicker.jsx'
 import LoungeVideoCropModal from '../lounge/LoungeVideoCropModal.jsx'
-import { probeVideoFileDurationSeconds } from '../../utils/loungeVideoUpload.js'
-
-/** Chat clips stay short. Lounge Stream caps are separate. */
-const CHAT_VIDEO_MAX_SECONDS = 60
-const CHAT_VIDEO_MAX_UPLOAD_BYTES = 200 * 1024 * 1024
-const CHAT_VIDEO_MAX_SOURCE_BYTES = 1_500_000_000
+import {
+  currentChatVideoLimits,
+  LOUNGE_VIDEO_NATIVE_SOURCE_MAX_BYTES,
+  loungeVideoDurationWithinCap,
+  loungeVideoTooLargeMessage,
+  probeVideoFileDurationSeconds,
+} from '../../utils/loungeVideoUpload.js'
 import {
   getCaretTextOffset,
   insertComposerLineBreakViaExecCommand,
@@ -536,6 +537,11 @@ export default function ChatComposer({
       endMediaPickerSession()
       return
     }
+    if (file.size > LOUNGE_VIDEO_NATIVE_SOURCE_MAX_BYTES) {
+      setUploadErr(loungeVideoTooLargeMessage(LOUNGE_VIDEO_NATIVE_SOURCE_MAX_BYTES))
+      endMediaPickerSession()
+      return
+    }
 
     // Only open the trimmer if the clip exceeds the limit.
     let duration = NaN
@@ -545,7 +551,7 @@ export default function ChatComposer({
       // Probe failed - let the crop modal handle it.
     }
 
-    if (Number.isFinite(duration) && duration <= CHAT_VIDEO_MAX_SECONDS) {
+    if (loungeVideoDurationWithinCap(duration, currentChatVideoLimits())) {
       // Short video: skip trim modal entirely.
       onVideoConfirmed?.(file)
       endMediaPickerSession()
@@ -708,11 +714,12 @@ export default function ChatComposer({
                 return
               }
               try {
+                const limits = currentChatVideoLimits()
                 const picked = await pickEdgeVideo({
                   purpose: 'chat-compose',
-                  maxUploadBytes: CHAT_VIDEO_MAX_UPLOAD_BYTES,
-                  maxSourceBytes: CHAT_VIDEO_MAX_SOURCE_BYTES,
-                  maxClipSeconds: CHAT_VIDEO_MAX_SECONDS + 0.35,
+                  maxUploadBytes: limits.maxBytes,
+                  maxSourceBytes: LOUNGE_VIDEO_NATIVE_SOURCE_MAX_BYTES,
+                  maxClipSeconds: limits.maxSeconds + limits.slackSeconds,
                 })
                 if (picked?.cancelled) {
                   endMediaPickerSession()
@@ -724,7 +731,7 @@ export default function ChatComposer({
                 }
                 const dur = Number(picked.duration)
                 const posterUrl = nativeVideoPosterDataUrl(picked)
-                if (Number.isFinite(dur) && dur > 0 && dur <= CHAT_VIDEO_MAX_SECONDS) {
+                if (loungeVideoDurationWithinCap(dur, limits)) {
                   onVideoConfirmed?.({
                     type: 'nativeEdgeVideo',
                     nativeAssetId: picked.assetId,
@@ -1069,7 +1076,7 @@ export default function ChatComposer({
           nativeAssetId={cropModalFile.nativeAssetId}
           knownDurationSec={cropModalFile.knownDurationSec}
           intent="composer"
-          maxClipSec={CHAT_VIDEO_MAX_SECONDS}
+          maxClipSec={currentChatVideoLimits().maxSeconds}
           onCancel={handleCropCancel}
           onConfirm={handleCropConfirm}
         />

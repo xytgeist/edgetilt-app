@@ -34,8 +34,14 @@ import {
   sortChatMessagesChronological,
 } from './chatMessageTimeline.js'
 import {
-  probeVideoFileDisplaySize,
+  canSkipLoungeVideoWasmEncode,
   captureVideoFilePosterObjectUrl,
+  currentChatVideoLimits,
+  loungeVideoDurationWithinCap,
+  loungeVideoFileTooLargeReason,
+  loungeVideoTooLongMessage,
+  probeVideoFileDisplaySize,
+  probeVideoFileDurationSeconds,
 } from '../../utils/loungeVideoUpload.js'
 import { uploadChatPosterToR2, uploadChatVideoToR2, uploadNativeChatVideoToR2 } from '../../utils/chatVideoR2Upload.js'
 import { cancelEdgeVideo, exportEdgeVideo } from '../../utils/edgeNative.js'
@@ -1840,6 +1846,7 @@ export default function ChatConversation({
             const onAbort = () => { void cancelEdgeVideo() }
             abortCtrl.signal.addEventListener('abort', onAbort)
             try {
+              const limits = currentChatVideoLimits()
               const exported = await exportEdgeVideo({
                 assetId: spec.nativeAssetId,
                 startSec: spec.startSec,
@@ -1847,8 +1854,8 @@ export default function ChatConversation({
                 cropPx: spec.cropPx || null,
                 intrinsicWidth: spec.intrinsicWidth,
                 intrinsicHeight: spec.intrinsicHeight,
-                maxClipSeconds: 60.35,
-                maxUploadBytes: 200 * 1024 * 1024,
+                maxClipSeconds: limits.maxSeconds + limits.slackSeconds,
+                maxUploadBytes: limits.maxBytes,
               })
               if (abortCtrl.signal.aborted) { removeVideoPrepJob(jobId); return }
               if (!exported?.ok || !exported.assetId) {
@@ -1856,7 +1863,11 @@ export default function ChatConversation({
               }
               watched.add(String(exported.assetId))
               updateVideoPrepJob(jobId, { status: 'uploading', progress: 0.72 })
-              const videoUrl = await uploadNativeChatVideoToR2(supabaseClient, exported.assetId)
+              const videoUrl = await uploadNativeChatVideoToR2(
+                supabaseClient,
+                exported.assetId,
+                Number(exported.byteSize) || 0,
+              )
               const posterPublicUrl = spec.posterUrl
                 ? await uploadChatPosterToR2(supabaseClient, spec.posterUrl).catch(() => null)
                 : null
@@ -1885,6 +1896,12 @@ export default function ChatConversation({
               },
             )
           } else {
+            const limits = currentChatVideoLimits()
+            const sourceDur = await probeVideoFileDurationSeconds(spec)
+            if (!loungeVideoDurationWithinCap(sourceDur, limits)) {
+              throw new Error(loungeVideoTooLongMessage(limits.maxSeconds))
+            }
+            const skipEncode = canSkipLoungeVideoWasmEncode(spec, sourceDur, 'direct', limits)
             // Direct file: capture poster + dims in parallel with encoding, then await before upload.
             const posterMetaPromise = Promise.all([
               probeVideoFileDisplaySize(spec).catch(() => null),
@@ -1897,11 +1914,18 @@ export default function ChatConversation({
                 height: dims?.height ?? null,
               })
             })
-            updateVideoPrepJob(jobId, { status: 'encoding', progress: 0.02 })
-            readyFile = await encodeVideoForChat(spec, {
-              signal: abortCtrl.signal,
-              onProgress: (r) => updateVideoPrepJob(jobId, { progress: 0.02 + r * 0.75 }),
-            })
+            if (skipEncode) {
+              updateVideoPrepJob(jobId, { status: 'uploading', progress: 0.4 })
+              readyFile = spec
+            } else {
+              updateVideoPrepJob(jobId, { status: 'encoding', progress: 0.02 })
+              readyFile = await encodeVideoForChat(spec, {
+                signal: abortCtrl.signal,
+                onProgress: (r) => updateVideoPrepJob(jobId, { progress: 0.02 + r * 0.75 }),
+              })
+            }
+            const tooLarge = loungeVideoFileTooLargeReason(readyFile, limits)
+            if (tooLarge) throw new Error(tooLarge)
 
             if (abortCtrl.signal.aborted) { removeVideoPrepJob(jobId); return }
 
@@ -1911,6 +1935,9 @@ export default function ChatConversation({
           }
 
           if (abortCtrl.signal.aborted) { removeVideoPrepJob(jobId); return }
+
+          const trimTooLarge = loungeVideoFileTooLargeReason(readyFile, currentChatVideoLimits())
+          if (trimTooLarge) throw new Error(trimTooLarge)
 
           // Trim/encode done - launch upload+send detached so the queue is free for the next job.
           void uploadAndSendVideoPrepJob(jobId, readyFile)

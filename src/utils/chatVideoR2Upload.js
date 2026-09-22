@@ -4,12 +4,22 @@ import { uploadEdgeVideoPut } from './edgeNative.js'
 /**
  * Mint a presigned PUT URL for a chat video MP4 from the lounge-chat-r2-video-upload Edge Function.
  */
-async function requestChatVideoR2Upload(supabaseClient) {
+async function requestChatVideoR2Upload(supabaseClient, byteSize) {
   const { data, error } = await supabaseClient.functions.invoke('lounge-chat-r2-video-upload', {
-    body: { contentType: 'video/mp4' },
+    body: { contentType: 'video/mp4', byteSize },
   })
   if (error || !data?.uploadURL || !data?.publicUrl) {
-    throw new Error(error?.message || 'Failed to mint video upload URL.')
+    let msg = (data && typeof data.error === 'string' && data.error) || error?.message || 'Failed to mint video upload URL.'
+    const ctx = error && typeof error === 'object' ? error.context : null
+    if (ctx && typeof ctx.clone === 'function') {
+      try {
+        const body = await ctx.clone().json()
+        if (body && typeof body.error === 'string' && body.error.trim()) msg = body.error.trim()
+      } catch {
+        // non-JSON body
+      }
+    }
+    throw new Error(msg)
   }
   return { uploadURL: String(data.uploadURL), publicUrl: String(data.publicUrl) }
 }
@@ -29,8 +39,8 @@ async function requestChatVideoR2Upload(supabaseClient) {
  * @param {string} assetId
  * @returns {Promise<string>}
  */
-export async function uploadNativeChatVideoToR2(supabaseClient, assetId) {
-  const { uploadURL, publicUrl } = await requestChatVideoR2Upload(supabaseClient)
+export async function uploadNativeChatVideoToR2(supabaseClient, assetId, byteSize) {
+  const { uploadURL, publicUrl } = await requestChatVideoR2Upload(supabaseClient, byteSize)
   const result = await uploadEdgeVideoPut({
     assetId,
     uploadURL,
@@ -44,7 +54,7 @@ export async function uploadNativeChatVideoToR2(supabaseClient, assetId) {
 }
 
 export async function uploadChatVideoToR2(supabaseClient, videoFile, opts = {}) {
-  const { uploadURL, publicUrl } = await requestChatVideoR2Upload(supabaseClient)
+  const { uploadURL, publicUrl } = await requestChatVideoR2Upload(supabaseClient, videoFile?.size || 0)
   await uploadFileToCfR2PresignedUrl(uploadURL, videoFile, { signal: opts.signal })
   return publicUrl
 }

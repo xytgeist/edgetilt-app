@@ -12,8 +12,8 @@ import {
 
 /** Lock close once kickoff is within this window (or already started). */
 export const MARKET_FILE_CLOSE_LOCK_BEFORE_MS = 5 * 60 * 1000
-/** Keep recently tipped games in the update set so close can lock. */
-export const MARKET_FILE_RECENT_STARTED_MS = 6 * 60 * 60 * 1000
+/** Keep recently tipped games in the update set so close can lock (MNF + late windows). */
+export const MARKET_FILE_RECENT_STARTED_MS = 36 * 60 * 60 * 1000
 
 const SHARP_BOOK_KEYS = ['pinnacle', 'circa', 'lowvig', 'betonlineag'] as const
 
@@ -664,9 +664,69 @@ function rowFromDb(row: Record<string, unknown>): MarketFileRow {
 }
 
 /**
- * Upsert open/current/close for events in this poll.
- * Safe no-op when dryRun or no usable quotes.
+ * Odds `/odds` drops games after tip. Rows we already tracked still have `current_*`.
+ * Lock those closes from the last pregame quote without needing the event in the live feed.
  */
+export async function lockDueMarketFileCloses(
+  admin: SupabaseClient,
+  sportKey: string,
+): Promise<{ locked: number }> {
+  const horizon = new Date(Date.now() + MARKET_FILE_CLOSE_LOCK_BEFORE_MS).toISOString()
+  const oldest = new Date(Date.now() - 14 * 86_400_000).toISOString()
+  const { data, error } = await admin
+    .from('lounge_market_files')
+    .select('*')
+    .eq('sport_key', sportKey)
+    .eq('close_locked', false)
+    .lte('commence_time', horizon)
+    .gte('commence_time', oldest)
+  if (error) throw new Error(`lockDueMarketFileCloses: ${error.message}`)
+
+  const rows: MarketFileRow[] = []
+  for (const raw of data || []) {
+    const prev = rowFromDb(raw as Record<string, unknown>)
+    if (!shouldLockClose(prev.commence_time)) continue
+    if (
+      prev.current_spread_home == null
+      && prev.current_home_ml == null
+      && prev.current_total == null
+    ) {
+      continue
+    }
+    const merged = mergeMarketFileRow({
+      existing: prev,
+      sportKey,
+      event: {
+        id: prev.event_id,
+        sport_key: sportKey,
+        home_team: prev.home_team,
+        away_team: prev.away_team,
+        commence_time: prev.commence_time,
+        bookmakers: [],
+      },
+      quote: {
+        spreadHome: prev.current_spread_home,
+        spreadHomePrice: prev.current_spread_home_price,
+        spreadAwayPrice: prev.current_spread_away_price,
+        spreadSource: prev.current_spread_source,
+        total: prev.current_total,
+        overPrice: prev.current_over_price,
+        underPrice: prev.current_under_price,
+        totalSource: prev.current_total_source,
+        homeMl: prev.current_home_ml,
+        awayMl: prev.current_away_ml,
+        mlSource: prev.current_ml_source,
+      },
+    })
+    if (merged?.close_locked) rows.push(merged)
+  }
+
+  if (!rows.length) return { locked: 0 }
+  const { error: upErr } = await admin.from('lounge_market_files').upsert(rows, { onConflict: 'event_id' })
+  if (upErr) throw new Error(`lockDueMarketFileCloses upsert: ${upErr.message}`)
+  return { locked: rows.length }
+}
+
 export async function upsertMarketFilesFromEvents(
   admin: SupabaseClient,
   sportKey: string,

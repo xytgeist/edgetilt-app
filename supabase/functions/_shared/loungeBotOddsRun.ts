@@ -466,6 +466,12 @@ export async function loadSportOddsContext(
     try {
       const marketEvents = eventsForMarketFile(sportKey, raw)
       await upsertMarketFilesFromEvents(admin, sportKey, marketEvents)
+      await lockDueMarketFileCloses(admin, sportKey).catch((err) => {
+        console.warn(
+          'lounge_market_files lock-due failed:',
+          err instanceof Error ? err.message : String(err),
+        )
+      })
 
       // NFL PVAL calibration ledger (hard-OUT → spread residual). Scaffold only.
       if (sportKey === NFL_PVAL_LEDGER_SPORT) {

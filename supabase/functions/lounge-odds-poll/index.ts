@@ -197,6 +197,7 @@ Deno.serve(async (req) => {
       const {
         eventsForMarketFile,
         upsertMarketFilesFromEvents,
+        lockDueMarketFileCloses,
       } = await import('../_shared/loungeBotMarketFile.ts')
       const {
         syncNflPvalInjuryLedger,
@@ -223,6 +224,7 @@ Deno.serve(async (req) => {
       }
 
       await upsertMarketFilesFromEvents(admin, NFL_PVAL_LEDGER_SPORT, marketEvents)
+      await lockDueMarketFileCloses(admin, NFL_PVAL_LEDGER_SPORT).catch(() => null)
       const ledger = await syncNflPvalInjuryLedger(admin, marketEvents)
       return adminOpsJson(200, {
         ok: true,

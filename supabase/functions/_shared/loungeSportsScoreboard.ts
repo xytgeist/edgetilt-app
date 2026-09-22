@@ -9,6 +9,7 @@ import { fetchSportOdds, fetchSportOddsHistorical, ptTodayDate } from './loungeB
 import type { OddsEvent } from './loungeBotOddsCaption.ts'
 import {
   loadMarketFilesForSportWindow,
+  lockDueMarketFileCloses,
   resolvePregameMlFromFile,
   resolvePregameSpreadFromFile,
   upsertMarketFilesFromEvents,
@@ -570,8 +571,19 @@ export async function buildLoungeSportsScoreboard(
     }
     if (nflOddsPack || pinPack) source = source.includes('odds') ? source : source === 'none' ? 'odds' : `${source}+odds`
     let games = applyPinnacleQuotes([...byKey.values()], pinPack, false)
+    // Persist live Pinnacle quotes while Odds still lists the event (open/current → close at tip).
+    if (admin && pinPack?.events?.length) {
+      await upsertMarketFilesFromEvents(
+        admin,
+        'americanfootball_nfl',
+        pinPack.events as OddsEvent[],
+      ).catch(() => null)
+    }
     games = await applyMarketFileCloses(games, admin, nflDates)
     games = await fillClosingQuotesFromHistorical(games, 'americanfootball_nfl', admin)
+    if (admin) {
+      await lockDueMarketFileCloses(admin, 'americanfootball_nfl').catch(() => null)
+    }
     byKey.clear()
     for (const game of games) upsert(game, true)
   }
@@ -854,7 +866,7 @@ async function fillClosingQuotesFromHistorical(
   if (!stamps.length) return games
   let next = games
   const used: OddsEventRow[] = []
-  const packs = await Promise.all(stamps.slice(0, 6).map((stamp) => cachedHistoricalPinnacle(sportKey, stamp)))
+  const packs = await Promise.all(stamps.slice(0, 24).map((stamp) => cachedHistoricalPinnacle(sportKey, stamp)))
   for (const pack of packs) {
     if (!pack.events.length) continue
     used.push(...pack.events)
@@ -862,6 +874,7 @@ async function fillClosingQuotesFromHistorical(
   }
   if (admin && used.length) {
     await upsertMarketFilesFromEvents(admin, sportKey, used as OddsEvent[]).catch(() => null)
+    await lockDueMarketFileCloses(admin, sportKey).catch(() => null)
   }
   return next
 }

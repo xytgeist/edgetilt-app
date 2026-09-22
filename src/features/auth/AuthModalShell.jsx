@@ -109,15 +109,22 @@ function AuthWordmark() {
 
 /**
  * Auth sign-in / join as a centered card on phone; X-style full-screen column on iPad.
+ * `revealFeed`: frost the stage so an inert Lounge behind the wall can show through.
  */
-export default function AuthModalShell({ onClose, cancelLabel, children }) {
+export default function AuthModalShell({ onClose, cancelLabel, children, revealFeed = false }) {
   const ipadStage = useIpadAuthStage()
+  const revealAttrs = revealFeed ? { 'data-auth-reveal-feed': '' } : {}
 
   if (ipadStage) {
     return (
       <div
         data-auth-ipad-stage
-        className="fixed inset-0 z-[200] flex flex-col bg-zinc-950 text-zinc-100"
+        {...revealAttrs}
+        className={
+          revealFeed
+            ? 'fixed inset-0 z-[200] flex flex-col bg-zinc-950/50 text-zinc-100 backdrop-blur-xl'
+            : 'fixed inset-0 z-[200] flex flex-col bg-zinc-950 text-zinc-100'
+        }
       >
         {cancelLabel ? (
           <button
@@ -153,7 +160,14 @@ export default function AuthModalShell({ onClose, cancelLabel, children }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-md px-4 pt-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
+    <div
+      {...revealAttrs}
+      className={
+        revealFeed
+          ? 'fixed inset-0 z-[200] flex items-center justify-center bg-black/55 backdrop-blur-xl px-4 pt-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
+          : 'fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-md px-4 pt-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
+      }
+    >
       <div
         role="dialog"
         aria-modal="true"

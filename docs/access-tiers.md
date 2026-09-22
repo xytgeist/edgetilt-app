@@ -10,7 +10,7 @@
 
 | Tier | Internal label | One-line intent |
 | --- | --- | --- |
-| **No account** | `anonymous` | **SEO hubs only** (`/slots`, `/guides`, claim links, legal). SPA **`/`** is an auth wall until they have a session. No Lounge teaser. |
+| **No account** | `anonymous` | **SEO hubs** (`/slots`, `/guides`, claim links, legal). SPA **`/`** is an auth wall until they have a session. Lounge may paint **inert** behind the frost (visual only). |
 | **Free (verified user)** | `free` | Full **Lounge** (post, lounge search, filter, comment, like, repost, bookmark, etc.). **Verified user** badge by display name. Rest of app reachable from menu; **subscribe** gates on bankroll, offer alerts/OCR, locked calcs/guides. |
 | **Paid — Slots Edge** | `starter` / `slots-edge-starter` | **Verified** + **subscriber** badges. **AP guide cards** are the primary product: fixed **starter pack** on subscribe + **one random premium guide drop per week** (engagement + upgrade funnel). Tools mostly gated. See **§5**. |
 | **Paid — Slots Edge Pro** | `full` / `slots-edge` | **Verified** + **subscriber** badges. **Instant full AP guide library** + all calculators + unlimited bankroll/logbook + calendar alerts/OCR. Includes the **Edge Pro** social tier. **New** game packs may add **subscriber-only** add-on paywalls. See **§5**. |
@@ -30,7 +30,7 @@
 
 ## 3. No account (anonymous) — SEO only
 
-Logged-out visitors can read **static SEO pages** (`/slots`, `/guides`, `/advantage-play-slots`, claim links, `/terms` `/privacy` `/guidelines`). The SPA **`/`** (Lounge / app chrome) is **auth until they have a session**. There is no **Continue without signing in** and no anonymous Lounge feed.
+Logged-out visitors can read **static SEO pages** (`/slots`, `/guides`, `/advantage-play-slots`, claim links, `/terms` `/privacy` `/guidelines`). The SPA **`/`** (Lounge / app chrome) is **auth until they have a session**. There is no **Continue without signing in**. The Lounge can show through the modal frost as an **inert** backdrop … it is not a usable anonymous feed.
 
 **Forbidden actions → create / sign-in panel**
 

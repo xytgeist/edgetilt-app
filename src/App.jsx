@@ -1720,10 +1720,15 @@ function App() {
       </AuthModalShell>
     ) : null
 
-  if (isChecking && !shouldShowLoungeColdBootSplash({
-    tab: 'home',
-    pendingWork: readLoungeComposerDraftPendingWork(),
-  }) && currentView === 'app') {
+  if (
+    isChecking &&
+    !spaAuthLocked &&
+    !shouldShowLoungeColdBootSplash({
+      tab: 'home',
+      pendingWork: readLoungeComposerDraftPendingWork(),
+    }) &&
+    currentView === 'app'
+  ) {
     return <div className={`${mobileShell} text-zinc-50`}>Loading...</div>
   }
 
@@ -1935,17 +1940,17 @@ function App() {
   const hasEdgeProAccess =
     isStaffRole || hasEdgeProFromRpc || hasSlotsEdgeProAccess || hasSlotsEdgeLifetimeAccess
 
-  // App shell (Lounge and tabs); sign-in / create-account open as a modal on top
+  // App shell (Lounge and tabs); sign-in / create-account open as a modal on top.
+  // Auth wall still blocks interaction … Lounge mounts inert so the frost can show the feed.
   if (currentView === 'app') {
-    if (spaAuthLocked) {
-      return (
-        <AuthModalShell onClose={() => {}} cancelLabel={undefined}>
-          {authModalPanel}
-        </AuthModalShell>
-      )
-    }
     return (
       <>
+        <div
+          className={spaAuthLocked ? 'pointer-events-none' : undefined}
+          {...(spaAuthLocked
+            ? { inert: true, 'aria-hidden': true, 'data-auth-feed-backdrop': '' }
+            : {})}
+        >
         <AppShell
           browseMode={user ? 'member' : 'anonymous'}
           authSessionReady={!isChecking}
@@ -1972,6 +1977,7 @@ function App() {
           onRequireAuth={(mode) => openAuthPanel(mode === 'create' ? 'create' : 'login')}
           onOpenLegalDocument={openLegalDocument}
         />
+        </div>
         <SubscribeModal
           key={subscribeModal.openKey}
           open={subscribeModal.open}
@@ -2024,7 +2030,13 @@ function App() {
             onOpenLegalDocument={openLegalDocument}
           />
         ) : null}
-        {renderAuthModal(user ? '← Cancel' : null)}
+        {spaAuthLocked ? (
+          <AuthModalShell onClose={() => {}} revealFeed>
+            {authModalPanel}
+          </AuthModalShell>
+        ) : (
+          renderAuthModal(user ? '← Cancel' : null)
+        )}
       </>
     )
   }

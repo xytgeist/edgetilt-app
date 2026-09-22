@@ -47,6 +47,7 @@ struct EdgeVideoAsset {
   let id: String
   let fileURL: URL
   var byteSize: Int64
+  var originalFilename: String = ""
 }
 
 final class EdgeVideoStore {
@@ -76,7 +77,7 @@ final class EdgeVideoStore {
     }
   }
 
-  func insertCopy(of source: URL, preferredExtension: String) throws -> EdgeVideoAsset {
+  func insertCopy(of source: URL, preferredExtension: String, originalFilename: String = "") throws -> EdgeVideoAsset {
     let id = UUID().uuidString.lowercased()
     let ext = preferredExtension.isEmpty ? "mov" : preferredExtension
     let dest = directory.appendingPathComponent("\(id).\(ext)")
@@ -93,7 +94,12 @@ final class EdgeVideoStore {
       try? FileManager.default.removeItem(at: dest)
       throw EdgeVideoError.tooLarge
     }
-    let asset = EdgeVideoAsset(id: id, fileURL: dest, byteSize: size)
+    let asset = EdgeVideoAsset(
+      id: id,
+      fileURL: dest,
+      byteSize: size,
+      originalFilename: originalFilename
+    )
     lock.lock()
     assets[id] = asset
     lock.unlock()
@@ -348,7 +354,11 @@ enum EdgeVideoPicker {
         }
         do {
           let ext = url.pathExtension.isEmpty ? "mov" : url.pathExtension
-          let stored = try EdgeVideoStore.shared.insertCopy(of: url, preferredExtension: ext)
+          let stored = try EdgeVideoStore.shared.insertCopy(
+            of: url,
+            preferredExtension: ext,
+            originalFilename: url.lastPathComponent
+          )
           Task {
             let probed = await EdgeVideoProbe.probe(url: stored.fileURL)
             var payload: [String: Any] = [
@@ -443,7 +453,8 @@ enum EdgeVideoExporter {
       throw EdgeVideoError.unreadable
     }
     let asset = AVURLAsset(url: source.fileURL)
-    guard let videoTrack = try await asset.loadTracks(withMediaType: .video).first else {
+    let videoTracks = try await asset.loadTracks(withMediaType: .video)
+    guard let videoTrack = videoTracks.first else {
       throw EdgeVideoError.unreadable
     }
     let full = try await asset.load(.duration).seconds
@@ -463,6 +474,26 @@ enum EdgeVideoExporter {
     let preferred = try await videoTrack.load(.preferredTransform)
     let display = EdgeVideoProbe.displaySize(natural: natural, transform: preferred)
     let crop = cropRect(payload?["cropPx"], display: display, intrinsicWidth: double(payload?["intrinsicWidth"]) ?? Double(display.width), intrinsicHeight: double(payload?["intrinsicHeight"]) ?? Double(display.height))
+
+    if canPassthrough(
+      source: source,
+      full: full,
+      startSec: startSec,
+      endSec: endSec,
+      crop: crop,
+      display: display,
+      videoTrackCount: videoTracks.count
+    ) {
+      EdgeVideoEvents.post(phase: "export", progress: 1, assetId: assetId)
+      return [
+        "ok": true,
+        "passthrough": true,
+        "assetId": assetId,
+        "sourceAssetId": assetId,
+        "byteSize": source.byteSize,
+        "previewUrl": "edge-video://local/\(assetId)",
+      ]
+    }
 
     let composition = AVMutableComposition()
     guard let compVideo = composition.addMutableTrack(withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid) else {
@@ -551,6 +582,43 @@ enum EdgeVideoExporter {
       "byteSize": size,
       "previewUrl": "edge-video://local/\(stored.id)",
     ]
+  }
+
+  private static let screenRecordingSizes: Set<String> = [
+    "1170x2532", "2532x1170",
+    "1179x2556", "2556x1179",
+    "1284x2778", "2778x1284",
+    "1290x2796", "2796x1290",
+    "1320x2868", "2868x1320",
+    "1080x2340", "2340x1080",
+    "1125x2436", "2436x1125",
+    "1242x2688", "2688x1242",
+  ]
+
+  /// Untouched normal clips upload as picked. Re-encode only for a trim, a crop,
+  /// a `.mov` / spatial / screen recording, or a file over the 200MB upload cap.
+  private static func canPassthrough(
+    source: EdgeVideoAsset,
+    full: Double,
+    startSec: Double,
+    endSec: Double,
+    crop: CGRect?,
+    display: CGSize,
+    videoTrackCount: Int
+  ) -> Bool {
+    if crop != nil { return false }
+    if startSec > 0.25 { return false }
+    if full.isFinite, full - endSec > 0.35 { return false }
+    if videoTrackCount > 1 { return false }
+    if source.byteSize > EdgeVideoLimits.maxUploadBytes { return false }
+    if source.fileURL.pathExtension.lowercased() == "mov" { return false }
+    let name = source.originalFilename
+    if name.range(of: "screen\\s*record|rpreplay|simulator\\s*screen", options: [.regularExpression, .caseInsensitive]) != nil {
+      return false
+    }
+    let key = "\(Int(display.width.rounded()))x\(Int(display.height.rounded()))"
+    if screenRecordingSizes.contains(key) { return false }
+    return true
   }
 
   private static func cropRect(_ raw: Any?, display: CGSize, intrinsicWidth: Double, intrinsicHeight: Double) -> CGRect? {

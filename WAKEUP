@@ -62,7 +62,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo ACTIVE TRACK 2026-09-22 ... native video export
 
-**I am Mac Theo.** Current IPA picks video with PHPicker, keeps the web crop/trim modal, then exports with AVFoundation and uploads in a background URLSession (Lounge tus to the existing Stream create, Chat presigned R2 PUT). Preview URL is `edge-video://`. Safari / PWA / Android / old IPA stay on ffmpeg. Web **`1.4.475`**. New IPA required before this path exists on a phone. No SQL/Edge. Store marketing still **1.4.95**. Not on `main` until Ryan promotes.
+**I am Mac Theo.** Current IPA picks video with PHPicker, keeps the web crop/trim modal, then uploads in a background URLSession (Lounge tus to the existing Stream create, Chat presigned R2 PUT). Untouched normal clips upload as picked. Re-encode only for a trim, a crop, a `.mov` / spatial / screen recording, or a file over 200MB. Preview URL is `edge-video://`. Safari / PWA / Android / old IPA stay on ffmpeg. Web **`1.4.475`**. New IPA required. No SQL/Edge. Store marketing still **1.4.95**. Not on `main` until Ryan promotes.
 
 ### Mac Theo ACTIVE TRACK 2026-09-22 ... iPhone video encode hang
 

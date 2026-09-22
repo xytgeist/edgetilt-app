@@ -3459,12 +3459,13 @@ html.light [data-lounge-game-pill-cover-dot] {
 [data-lounge-game-pill] [data-lounge-game-pill-logo='light'] {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
 }
-/* Default full-color mark that still needs a thin white edge (NYG blue on red). */
-[data-lounge-game-pill] [data-lounge-game-pill-logo='halo'] {
+/* Full-color mark + thin white edge. Default path for anything that is not a light asset. */
+[data-lounge-game-pill] [data-lounge-game-pill-logo='halo'],
+[data-lounge-game-pill] [data-lounge-game-pill-logo='dark'] {
   filter:
-    drop-shadow(0 0 0.55px #fff)
-    drop-shadow(0 0 1.15px rgba(255, 255, 255, 0.7))
-    drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+    drop-shadow(0 0 0.7px #fff)
+    drop-shadow(0 0 1.35px rgba(255, 255, 255, 0.85))
+    drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
 }
 /* Fallback when *-light.png missing: white silhouette of the default mark. */
 [data-lounge-game-pill] [data-lounge-game-pill-logo='silhouette'] {

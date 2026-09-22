@@ -1148,6 +1148,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Sports pill halo always-on for non-light marks (Windows).** Probe no longer returns `default` … only `light` (navy-on-navy) or `halo`. NYG blue on red secondary always gets the thin white edge. Frontend **`1.4.455`**.
 - **2026-09-21:** **Sports pill logo halo middle tier (Windows).** Treatments are `light` / `halo` / `default`. Soft conflict on mid-dark washes (NYG blue on red secondary) keeps the full-color mark with a thin white edge. Frontend **`1.4.453`**.
 - **2026-09-21:** **Sports pill dual wash + light logos (Windows).** Home keeps primary; when primaries clash (NYG/LAR, #002244 club), away uses `color2`. Logo-vs-wash camouflage swaps to `*-light.png` (ESPN 500-dark) on the same rich wash ... CSS white halo retired. Frontend **`1.4.451`**.
 - **2026-09-21:** **Pre-game pills show ML under the spread (Windows).** When `side.ml` is set, future games paint moneyline below the big spread (same 9px line as finals). Frontend **`1.4.450`**.

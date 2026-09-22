@@ -179,14 +179,12 @@ export function nflPillWashLikelyNeedsLightLogo(washHex) {
 /**
  * Optimistic treatment before the PNG probe lands.
  * - light: near-black / deep navy wash (NYG/LAR primary)
- * - halo: mid-dark wash where the default mark still needs a thin white edge (NYG on red)
- * - default: bright stains (gold / orange / teal)
+ * - halo: everything else … better a thin white edge than a camouflaged mark
  */
 export function nflPillWashLikelyTreatment(washHex) {
   const L = hexLuminance(washHex)
   if (L < 0.08) return 'light'
-  if (L < 0.28) return 'halo'
-  return 'default'
+  return 'halo'
 }
 
 /** @deprecated Use nflPillWashLikelyNeedsLightLogo */
@@ -199,8 +197,8 @@ const logoWashTreatmentCache = new Map()
 /**
  * Sample the default PNG against the wash.
  * - light: heavy camouflage on a dark wash → `*-light.png`
- * - halo: soft conflict / mid-dark wash → keep full-color mark + thin white edge
- * - default: leave the mark alone
+ * - halo: anything short of that … keep full-color mark + thin white edge
+ *   (NYG blue on red looks “fine” to WCAG contrast but still needs the edge)
  */
 export function probeLogoWashTreatment(src, washHex) {
   const key = `${String(src || '')}|${String(washHex || '').toLowerCase()}`
@@ -227,15 +225,15 @@ export function probeLogoWashTreatment(src, washHex) {
       for (let i = 0; i < data.length; i += 4) {
         if (data[i + 3] < 48) continue
         opaque += 1
-        if (contrastRatio({ r: data[i], g: data[i + 1], b: data[i + 2] }, wash) < 1.55) camouflaged += 1
+        // Slightly looser than WCAG-ish 1.55 so “close” navy-on-red still counts.
+        if (contrastRatio({ r: data[i], g: data[i + 1], b: data[i + 2] }, wash) < 2.05) camouflaged += 1
       }
       if (opaque <= 8) return nflPillWashLikelyTreatment(washHex)
       const frac = camouflaged / opaque
       const washLum = rgbLuminance(wash)
-      // Deep navy-on-navy → light asset. NYG blue on red is only a soft conflict → halo.
+      // Only deep navy-on-navy (etc.) upgrades to the light asset. Everything else gets halo.
       if (frac >= 0.42 && washLum < 0.12) return 'light'
-      if (frac >= 0.16 || (washLum < 0.22 && frac >= 0.08)) return 'halo'
-      return 'default'
+      return 'halo'
     } catch {
       return nflPillWashLikelyTreatment(washHex)
     }

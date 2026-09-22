@@ -105,10 +105,9 @@ function TeamMark({ side, dimmed, treatment = 'default' }) {
   const wantAssetLight = Boolean(treatment === 'light' && lightSrc && !lightFailed)
   const src = wantAssetLight ? lightSrc : defaultSrc
   const letter = String(side?.abbrev || side?.mascot || '?').slice(0, 1)
-  let logoTone = 'dark'
+  let logoTone = 'halo'
   if (wantAssetLight) logoTone = 'light'
   else if (treatment === 'light') logoTone = 'silhouette'
-  else if (treatment === 'halo') logoTone = 'halo'
   return (
     <span
       data-lounge-game-pill-mark

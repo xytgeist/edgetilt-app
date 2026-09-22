@@ -33,7 +33,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
-**Branch:** `test` (match `origin/test` before edits). `main` @ **`279b126b`** (promoted 2026-09-21, web **1.4.401**). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
+**Branch:** `test` (match `origin/test` before edits). `main` @ **`08800db1`** (promoted 2026-09-21 evening, web **1.4.462**). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
 
 **Supabase (do not swap these):**
 
@@ -66,8 +66,8 @@ The agent should treat the following as **standing instructions for this session
 
 | Ref | Hash | Note |
 | --- | --- | --- |
-| **`origin/test` tip** | **`05ce72e5`** | web **`1.4.462`**. Chat dock-suppress no longer hides iPad rail. |
-| **`origin/main`** | **`279b126b`** | Vercel **edgetilt.com** still web **`1.4.401`**. Do **not** FF `test` → `main` unless Ryan asks (Vercel credits). |
+| **`origin/test` tip** | **`08800db1`** | web **`1.4.462`**. Continuity docs + Chat dock-suppress / rail fix. |
+| **`origin/main`** | **`08800db1`** | Vercel **edgetilt.com** web **`1.4.462`** (promoted 2026-09-21 evening). Same tip as `test`. |
 | iOS **`MARKETING_VERSION`** | **`1.4.95`** | Do not bump. |
 
 **Dirty local (do not stage):** Xcode schemes under `ios/.../xcschemes/` + `public/og-*.png` (binary noise). Leave them alone.

@@ -39,7 +39,8 @@ function RouletteProgressRing({ progress, status }) {
   useChatRouletteChaseAnimation(arcRef, ballArmRef)
 
   const label =
-    status === 'trimming'  ? 'Trimming'
+    status === 'checking'  ? 'Checking'
+    : status === 'trimming'  ? 'Trimming'
     : status === 'encoding'  ? 'Encoding'
     : status === 'uploading' ? 'Uploading'
     : status === 'sending'   ? 'Sending'
@@ -124,7 +125,7 @@ function RouletteProgressRing({ progress, status }) {
  * @param {{
  *   job: {
  *     jobId: string,
- *     status: 'pending'|'trimming'|'encoding'|'uploading'|'sending'|'done'|'error',
+ *     status: 'pending'|'checking'|'trimming'|'encoding'|'uploading'|'sending'|'done'|'error',
  *     progress: number,
  *     posterUrl: string | null,
  *     errorMessage: string | null,

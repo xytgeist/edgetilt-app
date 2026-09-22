@@ -3,6 +3,7 @@ import {
   canPassThroughLoungeVideoOnEncodeFail,
   canSkipLoungeVideoWasmEncode,
   currentLoungeVideoLimits,
+  nativeEdgeVideoProgressStep,
   loungeVideoDurationWithinCap,
   loungeVideoFileTooLargeReason,
   loungeVideoTooLongMessage,
@@ -586,7 +587,7 @@ async function runNativeEdgeVideoStreamPrep({ supabaseClient, signal, spec, onPr
   }
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
   maybeReportLoungeVideoUploadDebug('encode', 'native export')
-  report(0.05, 'Preparing video…')
+  report(0.05, 'Checking video…')
 
   const {
     data: { session },
@@ -600,10 +601,10 @@ async function runNativeEdgeVideoStreamPrep({ supabaseClient, signal, spec, onPr
     const detail = event?.detail || {}
     const id = String(detail.assetId || '')
     if (id && !watchedIds.has(id)) return
-    const ratio = Number(detail.progress)
-    const safe = Number.isFinite(ratio) ? Math.max(0, Math.min(1, ratio)) : 0
-    if (detail.phase === 'upload') report(0.42 + safe * 0.56, 'Uploading…')
-    else report(0.05 + safe * 0.34, 'Preparing video…')
+    const step = nativeEdgeVideoProgressStep(detail)
+    if (step.step === 'uploading') report(0.42 + step.progress * 0.56, 'Uploading…')
+    else if (step.step === 'encoding') report(0.08 + step.progress * 0.32, 'Encoding…')
+    else report(0.05, 'Checking video…')
   }
   window.addEventListener('edge-native-video-progress', onNativeProgress)
   const onAbort = () => {

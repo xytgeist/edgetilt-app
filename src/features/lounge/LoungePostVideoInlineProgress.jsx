@@ -1,4 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
+import { isEdgeiOSShell } from '../../utils/edgeNative.js'
 import {
   getLoungePendingPostProgress,
   LOUNGE_CF_PROCESSING_PROGRESS_FLOOR,
@@ -176,12 +177,18 @@ export default function LoungePostVideoInlineProgress({
     (publishProgress >= 0.9 ? 'Processing video…' : 'Preparing video…')
   const detail =
     phase === 'error' ? String(registryProgress?.detail || '').trim() : ''
+  const statusLower = status.trim().toLowerCase()
+  const nativeShell = isEdgeiOSShell()
   const footnote =
     phase === 'error'
       ? ''
       : phase === 'processing' || publishProgress >= LOUNGE_CF_PROCESSING_PROGRESS_FLOOR
         ? LOUNGE_PENDING_PUBLISH_CF_WAIT_MSG
-        : LOUNGE_PENDING_PUBLISH_KEEP_OPEN_MSG
+        : nativeShell && /uploading…\s*$/.test(statusLower)
+          ? 'You can switch apps. The upload keeps going.'
+          : nativeShell && /encoding…\s*$/.test(statusLower)
+            ? 'Keep EdgeTilt open while this encodes.'
+            : LOUNGE_PENDING_PUBLISH_KEEP_OPEN_MSG
   const scrimOpacity = 0.1 + 0.2 * (1 - publishProgress)
   const cancelKey = String(pendingKey || '').trim()
 

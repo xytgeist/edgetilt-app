@@ -37,6 +37,7 @@ import {
   canSkipLoungeVideoWasmEncode,
   captureVideoFilePosterObjectUrl,
   currentChatVideoLimits,
+  nativeEdgeVideoProgressStep,
   loungeVideoDurationWithinCap,
   loungeVideoFileTooLargeReason,
   loungeVideoTooLongMessage,
@@ -1823,7 +1824,7 @@ export default function ChatConversation({
         try {
           if (spec?.nativeAssetId) {
             updateVideoPrepJob(jobId, {
-              status: 'encoding',
+              status: 'checking',
               progress: 0.05,
               posterUrl: spec.posterUrl ?? null,
               width: spec.intrinsicWidth ?? null,
@@ -1834,12 +1835,13 @@ export default function ChatConversation({
               const detail = event?.detail || {}
               const id = String(detail.assetId || '')
               if (id && !watched.has(id)) return
-              const ratio = Number(detail.progress)
-              const safe = Number.isFinite(ratio) ? Math.max(0, Math.min(1, ratio)) : 0
-              if (detail.phase === 'upload') {
-                updateVideoPrepJob(jobId, { status: 'uploading', progress: 0.72 + safe * 0.24 })
+              const step = nativeEdgeVideoProgressStep(detail)
+              if (step.step === 'uploading') {
+                updateVideoPrepJob(jobId, { status: 'uploading', progress: 0.72 + step.progress * 0.24 })
+              } else if (step.step === 'encoding') {
+                updateVideoPrepJob(jobId, { status: 'encoding', progress: 0.08 + step.progress * 0.62 })
               } else {
-                updateVideoPrepJob(jobId, { status: 'encoding', progress: 0.05 + safe * 0.65 })
+                updateVideoPrepJob(jobId, { status: 'checking', progress: 0.05 })
               }
             }
             window.addEventListener('edge-native-video-progress', onNativeProgress)
@@ -1943,7 +1945,7 @@ export default function ChatConversation({
           void uploadAndSendVideoPrepJob(jobId, readyFile)
         } catch (e) {
           if (e?.name === 'AbortError') { removeVideoPrepJob(jobId); return }
-          updateVideoPrepJob(jobId, { status: 'error', errorMessage: e?.message || 'Encoding failed.' })
+          updateVideoPrepJob(jobId, { status: 'error', errorMessage: e?.message || 'Could not send that video.' })
         }
       })
       .catch(() => {

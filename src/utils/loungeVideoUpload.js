@@ -188,6 +188,21 @@ export function currentChatVideoLimits() {
   return chatVideoLimits()
 }
 
+/**
+ * Native `edge-native-video-progress` phases.
+ * `export` is the older IPA name for an encode. A passthrough clip never emits it.
+ * @param {{ phase?: string, progress?: number } | null | undefined} detail
+ * @returns {{ step: 'checking' | 'encoding' | 'uploading', progress: number }}
+ */
+export function nativeEdgeVideoProgressStep(detail) {
+  const phase = String(detail?.phase || '')
+  const ratio = Number(detail?.progress)
+  const progress = Number.isFinite(ratio) ? Math.max(0, Math.min(1, ratio)) : 0
+  if (phase === 'upload') return { step: 'uploading', progress }
+  if (phase === 'encoding' || phase === 'export') return { step: 'encoding', progress }
+  return { step: 'checking', progress }
+}
+
 /** @param {number} maxSeconds */
 export function loungeVideoDurationLabel(maxSeconds) {
   const whole = Math.floor(Number(maxSeconds) || 0)

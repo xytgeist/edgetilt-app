@@ -541,6 +541,7 @@ enum EdgeVideoExporter {
       start: CMTime(seconds: startSec, preferredTimescale: 600),
       duration: CMTime(seconds: max(0.1, endSec - startSec), preferredTimescale: 600)
     )
+    EdgeVideoEvents.post(phase: "checking", progress: 0.05, assetId: assetId)
 
     let natural = try await videoTrack.load(.naturalSize)
     let preferred = try await videoTrack.load(.preferredTransform)
@@ -557,7 +558,6 @@ enum EdgeVideoExporter {
       videoTrackCount: videoTracks.count,
       maxUploadBytes: maxUploadBytes
     ) {
-      EdgeVideoEvents.post(phase: "export", progress: 1, assetId: assetId)
       return [
         "ok": true,
         "passthrough": true,
@@ -615,7 +615,7 @@ enum EdgeVideoExporter {
     let progressTask = Task {
       while !Task.isCancelled {
         let value = Double(session.progress)
-        EdgeVideoEvents.post(phase: "export", progress: value, assetId: assetId)
+        EdgeVideoEvents.post(phase: "encoding", progress: value, assetId: assetId)
         if session.status != .waiting && session.status != .exporting && session.status != .unknown { break }
         try? await Task.sleep(nanoseconds: 200_000_000)
       }
@@ -647,7 +647,7 @@ enum EdgeVideoExporter {
       throw EdgeVideoError.tooLarge
     }
     let stored = try EdgeVideoStore.shared.adoptExportedFile(outURL, byteSize: size)
-    EdgeVideoEvents.post(phase: "export", progress: 1, assetId: assetId)
+    EdgeVideoEvents.post(phase: "encoding", progress: 1, assetId: assetId)
     return [
       "ok": true,
       "assetId": stored.id,

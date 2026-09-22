@@ -57,7 +57,7 @@ import {
 } from '../../utils/communityFeedPost'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { isShellNavLoungeHomeSuppressed } from '../../utils/shellNavGhostClickGuard.js'
-import { nativeVideoPosterDataUrl, openExternalUrl } from '../../utils/edgeNative.js'
+import { isEdgeiOSShell, nativeVideoPosterDataUrl, openExternalUrl } from '../../utils/edgeNative.js'
 import { useEdgeiOSComposerPortraitLock } from '../../utils/edgeiOSComposerPortraitLock.js'
 import { prefetchFfmpegCore } from '../../utils/loungeVideoFfmpegTrim.js'
 import {
@@ -619,6 +619,17 @@ const LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL = 'Ether goblins ate your shit...trying ag
 /** Top line of the Lounge video upload bar (`mode === 'mediaPrep'`). Step labels live in `status` / `detail` below. */
 const LOUNGE_VIDEO_UPLOAD_BAR_HEADLINE =
   'Posting your video. You can continue using the app, but keep the app open…'
+
+/** Native encode must stay in the foreground. The native upload can leave the app. */
+function loungeVideoUploadBarHeadline(bar) {
+  if (!isEdgeiOSShell() || bar?.mode !== 'mediaPrep') return LOUNGE_VIDEO_UPLOAD_BAR_HEADLINE
+  const status = String(bar?.status || '').trim().toLowerCase()
+  if (/encoding…\s*$/.test(status)) return 'Encoding your video. Keep EdgeTilt open until this finishes…'
+  if (/uploading…\s*$/.test(status)) return 'Uploading your video. You can switch apps. It keeps going…'
+  if (/processing video…\s*$/.test(status)) return 'Processing your video. You can switch apps…'
+  if (/checking video…\s*$/.test(status)) return 'Checking your video…'
+  return LOUNGE_VIDEO_UPLOAD_BAR_HEADLINE
+}
 
 const LOUNGE_POST_AUTHOR_EDIT_WINDOW_MS = 30 * 60 * 1000
 
@@ -20545,7 +20556,7 @@ export default function SocialFeed({
                     : loungePostUploadBar.editSave
                       ? 'Saving edit…'
                       : loungePostUploadBar.mode === 'mediaPrep'
-                        ? LOUNGE_VIDEO_UPLOAD_BAR_HEADLINE
+                        ? loungeVideoUploadBarHeadline(loungePostUploadBar)
                         : 'Uploading post…'}
               </div>
               <div className="mt-0.5 text-[12px] leading-snug text-cyan-200/90">

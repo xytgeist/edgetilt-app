@@ -989,7 +989,6 @@ export default function LoungeNotificationsPanel({
         pullSpinnerRef={pullSpinnerRef}
         pullAriaRef={pullAriaRef}
         pullPostsWrapRef={pullPostsWrapRef}
-        leadingDivider
       >
       {loading && !pullRefreshing ? (
         <p className="mt-4 text-[14px] text-zinc-500">Loading…</p>

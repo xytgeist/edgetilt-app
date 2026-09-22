@@ -852,7 +852,7 @@ export default function LoungeFullScreenComposerModal({
                       preload="metadata"
                       aria-label="Video preview"
                     />
-                    )}
+                    ) : null}
                     <button
                       type="button"
                       onClick={onRemoveVideo}
@@ -949,7 +949,7 @@ export default function LoungeFullScreenComposerModal({
                     playsInline
                     preload="metadata"
                   />
-                  )}
+                  ) : null}
                 </div>
               ) : null}
 

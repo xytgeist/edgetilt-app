@@ -1845,8 +1845,13 @@ export default function ChatConversation({
               }
             }
             window.addEventListener('edge-native-video-progress', onNativeProgress)
-            const onAbort = () => { void cancelEdgeVideo() }
+            let cancelId = String(spec.nativeAssetId)
+            const onAbort = () => { void cancelEdgeVideo(cancelId) }
             abortCtrl.signal.addEventListener('abort', onAbort)
+            const cleanupNative = () => {
+              window.removeEventListener('edge-native-video-progress', onNativeProgress)
+              abortCtrl.signal.removeEventListener('abort', onAbort)
+            }
             try {
               const limits = currentChatVideoLimits()
               const exported = await exportEdgeVideo({
@@ -1859,25 +1864,44 @@ export default function ChatConversation({
                 maxClipSeconds: limits.maxSeconds + limits.slackSeconds,
                 maxUploadBytes: limits.maxBytes,
               })
-              if (abortCtrl.signal.aborted) { removeVideoPrepJob(jobId); return }
+              if (abortCtrl.signal.aborted) {
+                cleanupNative()
+                removeVideoPrepJob(jobId)
+                return
+              }
               if (!exported?.ok || !exported.assetId) {
+                cleanupNative()
                 throw new Error(exported?.error || 'Could not prepare that video.')
               }
               watched.add(String(exported.assetId))
+              cancelId = String(exported.assetId)
               updateVideoPrepJob(jobId, { status: 'uploading', progress: 0.72 })
-              const videoUrl = await uploadNativeChatVideoToR2(
-                supabaseClient,
-                exported.assetId,
-                Number(exported.byteSize) || 0,
-              )
-              const posterPublicUrl = spec.posterUrl
-                ? await uploadChatPosterToR2(supabaseClient, spec.posterUrl).catch(() => null)
-                : null
-              if (abortCtrl.signal.aborted) { removeVideoPrepJob(jobId); return }
-              await uploadAndSendVideoPrepJob(jobId, null, null, { videoUrl, posterPublicUrl })
-            } finally {
-              window.removeEventListener('edge-native-video-progress', onNativeProgress)
-              abortCtrl.signal.removeEventListener('abort', onAbort)
+              // Encode is done. Upload runs beside the next clip's encode.
+              void (async () => {
+                try {
+                  const videoUrl = await uploadNativeChatVideoToR2(
+                    supabaseClient,
+                    exported.assetId,
+                    Number(exported.byteSize) || 0,
+                  )
+                  const posterPublicUrl = spec.posterUrl
+                    ? await uploadChatPosterToR2(supabaseClient, spec.posterUrl).catch(() => null)
+                    : null
+                  if (abortCtrl.signal.aborted) { removeVideoPrepJob(jobId); return }
+                  await uploadAndSendVideoPrepJob(jobId, null, null, { videoUrl, posterPublicUrl })
+                } catch (e) {
+                  if (e?.name === 'AbortError' || /cancelled/i.test(String(e?.message || ''))) {
+                    removeVideoPrepJob(jobId)
+                    return
+                  }
+                  updateVideoPrepJob(jobId, { status: 'error', errorMessage: e?.message || 'Could not send that video.' })
+                } finally {
+                  cleanupNative()
+                }
+              })()
+            } catch (e) {
+              cleanupNative()
+              throw e
             }
             return
           }

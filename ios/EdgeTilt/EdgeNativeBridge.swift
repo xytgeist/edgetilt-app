@@ -334,9 +334,16 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
         }
       }
     case "cancelEdgeVideo":
-      EdgeVideoExporter.cancel()
-      EdgeVideoUploader.shared.cancel()
-      EdgeVideoBackgroundKeepAlive.finish(success: false)
+      let cancelId = (payload?["assetId"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+      if cancelId.isEmpty {
+        EdgeVideoExporter.cancel()
+        EdgeVideoUploader.shared.cancel()
+        EdgeVideoBackgroundKeepAlive.finish(success: false)
+      } else {
+        EdgeVideoExporter.cancel(assetId: cancelId)
+        EdgeVideoUploader.shared.cancel(assetId: cancelId)
+        EdgeVideoBackgroundKeepAlive.endJob(id: cancelId, success: false)
+      }
       completion(.success(["ok": true]))
     case "share":
       EdgeShareSheet.present(payload: payload, completion: completion)

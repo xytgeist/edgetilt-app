@@ -528,6 +528,10 @@ enum EdgeVideoBackgroundKeepAlive {
   private static var finished = false
   private static var backgroundId: UIBackgroundTaskIdentifier = .invalid
   private static var continuedIdentifier: String?
+  /// asset id → "encoding" or "upload". The lock-screen task stays up until this is empty.
+  private static var jobs: [String: String] = [:]
+  private static var encodeFraction: Double = 0
+  private static var uploadFraction: Double = 0
 
   static var isRunning: Bool {
     lock.lock()
@@ -535,62 +539,139 @@ enum EdgeVideoBackgroundKeepAlive {
     return started && !finished
   }
 
-  static func begin(title: String, subtitle: String) {
+  /// One in-flight encode or upload. A second call with the same id does not add another job.
+  static func beginJob(id: String, phase: String, title: String, subtitle: String) {
+    let key = id.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !key.isEmpty else { return }
     lock.lock()
-    let already = started && !finished
-    if !already {
+    if jobs[key] != nil {
+      jobs[key] = phase
+      lock.unlock()
+      refreshChrome()
+      return
+    }
+    let fresh = !(started && !finished)
+    jobs[key] = phase
+    if fresh {
       started = true
       finished = false
       continuedIdentifier = nil
+      encodeFraction = 0
+      uploadFraction = 0
       if #available(iOS 26.0, *) {
         EdgeVideoContinuedTaskBox.shared.task = nil
       }
     }
     lock.unlock()
-    if already {
-      retitle(title: title, subtitle: subtitle)
+    if fresh {
+      let app = UIApplication.shared
+      let bg = app.beginBackgroundTask(withName: "edge-video-job") {
+        endSystemBackgroundTask()
+      }
+      lock.lock()
+      backgroundId = bg
+      lock.unlock()
+      submitContinued(title: title, subtitle: subtitle)
       return
     }
-    let app = UIApplication.shared
-    let id = app.beginBackgroundTask(withName: "edge-video-job") {
-      endSystemBackgroundTask()
-    }
+    refreshChrome()
+  }
+
+  /// Export finished and the same job continues as the upload of `to`.
+  static func rebind(from: String, to: String) {
+    let source = from.trimmingCharacters(in: .whitespacesAndNewlines)
+    let dest = to.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !source.isEmpty, !dest.isEmpty else { return }
     lock.lock()
-    backgroundId = id
+    guard jobs.removeValue(forKey: source) != nil else {
+      lock.unlock()
+      return
+    }
+    jobs[dest] = "upload"
     lock.unlock()
-    submitContinued(title: title, subtitle: subtitle)
+    refreshChrome()
+  }
+
+  /// Drop one clip. The lock-screen task ends only when nothing is left.
+  static func endJob(id: String, success: Bool) {
+    let key = id.trimmingCharacters(in: .whitespacesAndNewlines)
+    lock.lock()
+    if !key.isEmpty { jobs.removeValue(forKey: key) }
+    let idle = jobs.isEmpty && started && !finished
+    let stolen = idle ? stealTaskLocked() : nil
+    let bg: UIBackgroundTaskIdentifier = idle ? markFinishedLocked() : .invalid
+    lock.unlock()
+    guard idle else { return }
+    completeStolen(stolen, success: success)
+    if bg != .invalid {
+      UIApplication.shared.endBackgroundTask(bg)
+    }
   }
 
   static func noteEncoding(fraction: Double) {
-    let clamped = min(1, max(0, fraction))
-    report(fraction: clamped * 0.45, title: "Preparing video", subtitle: "EdgeTilt")
+    lock.lock()
+    encodeFraction = min(1, max(0, fraction))
+    lock.unlock()
+    refreshChrome()
   }
 
   static func noteUploading(fraction: Double) {
-    let clamped = min(1, max(0, fraction))
-    report(fraction: 0.45 + clamped * 0.55, title: "Uploading video", subtitle: "EdgeTilt")
+    lock.lock()
+    uploadFraction = min(1, max(0, fraction))
+    let encoding = jobs.values.contains("encoding")
+    lock.unlock()
+    if encoding { return }
+    refreshChrome()
   }
 
   static func finish(success: Bool) {
     lock.lock()
-    if !started || finished {
+    jobs.removeAll()
+    encodeFraction = 0
+    uploadFraction = 0
+    guard started && !finished else {
       lock.unlock()
       return
     }
+    let stolen = stealTaskLocked()
+    let bg = markFinishedLocked()
+    lock.unlock()
+    completeStolen(stolen, success: success)
+    if bg != .invalid {
+      UIApplication.shared.endBackgroundTask(bg)
+    }
+  }
+
+  /// Caller holds `lock`.
+  private static func markFinishedLocked() -> UIBackgroundTaskIdentifier {
     finished = true
     started = false
     continuedIdentifier = nil
     let bg = backgroundId
     backgroundId = .invalid
+    return bg
+  }
+
+  /// Caller holds `lock`.
+  private static func stealTaskLocked() -> Any? {
+    guard #available(iOS 26.0, *) else { return nil }
+    let task = EdgeVideoContinuedTaskBox.shared.task
+    EdgeVideoContinuedTaskBox.shared.task = nil
+    return task
+  }
+
+  private static func completeStolen(_ stolen: Any?, success: Bool) {
+    guard #available(iOS 26.0, *) else { return }
+    (stolen as? BGContinuedProcessingTask)?.setTaskCompleted(success: success)
+  }
+
+  private static func refreshChrome() {
+    lock.lock()
+    let encoding = jobs.values.contains("encoding")
+    let fraction = encoding ? encodeFraction * 0.45 : 0.45 + uploadFraction * 0.55
+    let title = encoding ? "Preparing video" : "Uploading video"
     lock.unlock()
-    if #available(iOS 26.0, *) {
-      let task = EdgeVideoContinuedTaskBox.shared.task
-      EdgeVideoContinuedTaskBox.shared.task = nil
-      task?.setTaskCompleted(success: success)
-    }
-    if bg != .invalid {
-      UIApplication.shared.endBackgroundTask(bg)
-    }
+    report(fraction: fraction, title: title, subtitle: "EdgeTilt")
   }
 
   private static func submitContinued(title: String, subtitle: String) {
@@ -648,12 +729,6 @@ enum EdgeVideoBackgroundKeepAlive {
     task.updateTitle(title, subtitle: subtitle)
   }
 
-  private static func retitle(title: String, subtitle: String) {
-    guard #available(iOS 26.0, *) else { return }
-    guard let task = EdgeVideoContinuedTaskBox.shared.task else { return }
-    task.updateTitle(title, subtitle: subtitle)
-  }
-
   private static func endSystemBackgroundTask() {
     lock.lock()
     let bg = backgroundId
@@ -666,12 +741,74 @@ enum EdgeVideoBackgroundKeepAlive {
 }
 
 enum EdgeVideoExporter {
+  private struct ExportWaiter {
+    var assetId: String
+    var continuation: CheckedContinuation<Void, Error>
+  }
+
   private static var activeSession: AVAssetExportSession?
   private static let sessionLock = NSLock()
+  private static var gateHeld = false
+  private static var activeAssetId: String?
+  private static var exportWaiters: [ExportWaiter] = []
+
+  /// One encode at a time. The next clip waits here, then starts once this export returns
+  /// and the file has moved on to upload.
+  private static func acquireTurn(assetId: String) async throws {
+    try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+      sessionLock.lock()
+      if !gateHeld {
+        gateHeld = true
+        activeAssetId = assetId
+        sessionLock.unlock()
+        cont.resume()
+        return
+      }
+      exportWaiters.append(ExportWaiter(assetId: assetId, continuation: cont))
+      sessionLock.unlock()
+    }
+  }
+
+  private static func releaseTurn() {
+    sessionLock.lock()
+    activeAssetId = nil
+    if exportWaiters.isEmpty {
+      gateHeld = false
+      sessionLock.unlock()
+      return
+    }
+    let next = exportWaiters.removeFirst()
+    activeAssetId = next.assetId
+    sessionLock.unlock()
+    next.continuation.resume()
+  }
 
   static func cancel() {
     sessionLock.lock()
     let session = activeSession
+    let pending = exportWaiters
+    exportWaiters.removeAll()
+    sessionLock.unlock()
+    session?.cancelExport()
+    for turn in pending {
+      turn.continuation.resume(throwing: EdgeVideoError.cancelled)
+    }
+  }
+
+  static func cancel(assetId: String) {
+    let key = assetId.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !key.isEmpty else {
+      cancel()
+      return
+    }
+    sessionLock.lock()
+    if let idx = exportWaiters.firstIndex(where: { $0.assetId == key }) {
+      let turn = exportWaiters.remove(at: idx)
+      sessionLock.unlock()
+      turn.continuation.resume(throwing: EdgeVideoError.cancelled)
+      return
+    }
+    let session = activeAssetId == key ? activeSession : nil
     sessionLock.unlock()
     session?.cancelExport()
   }
@@ -681,6 +818,8 @@ enum EdgeVideoExporter {
     guard let source = EdgeVideoStore.shared.asset(id: assetId) else {
       throw EdgeVideoError.unreadable
     }
+    try await acquireTurn(assetId: assetId)
+    defer { releaseTurn() }
     let asset = AVURLAsset(url: source.fileURL)
     let videoTracks = try await asset.loadTracks(withMediaType: .video)
     guard let videoTrack = videoTracks.first else {
@@ -696,10 +835,10 @@ enum EdgeVideoExporter {
     if endSec - startSec > maxClipSeconds {
       throw EdgeVideoError.tooLong("Video must be \(EdgeVideoLimits.durationLabel(maxClipSeconds)) or shorter.")
     }
-    EdgeVideoBackgroundKeepAlive.begin(title: "Preparing video", subtitle: "EdgeTilt")
+    EdgeVideoBackgroundKeepAlive.beginJob(id: assetId, phase: "encoding", title: "Preparing video", subtitle: "EdgeTilt")
     var handOff = false
     defer {
-      if !handOff { EdgeVideoBackgroundKeepAlive.finish(success: false) }
+      if !handOff { EdgeVideoBackgroundKeepAlive.endJob(id: assetId, success: false) }
     }
     let clip = CMTimeRange(
       start: CMTime(seconds: startSec, preferredTimescale: 600),
@@ -722,7 +861,7 @@ enum EdgeVideoExporter {
       videoTrackCount: videoTracks.count,
       maxUploadBytes: maxUploadBytes
     ) {
-      EdgeVideoBackgroundKeepAlive.noteUploading(fraction: 0)
+      EdgeVideoBackgroundKeepAlive.rebind(from: assetId, to: assetId)
       handOff = true
       return [
         "ok": true,
@@ -815,7 +954,7 @@ enum EdgeVideoExporter {
     }
     let stored = try EdgeVideoStore.shared.adoptExportedFile(outURL, byteSize: size)
     EdgeVideoEvents.post(phase: "encoding", progress: 1, assetId: assetId)
-    EdgeVideoBackgroundKeepAlive.noteUploading(fraction: 0)
+    EdgeVideoBackgroundKeepAlive.rebind(from: assetId, to: stored.id)
     handOff = true
     return [
       "ok": true,
@@ -931,20 +1070,33 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
 
   private let lock = NSLock()
   private var waiters: [Int: Waiter] = [:]
-  private var activeTask: URLSessionUploadTask?
+  private var tasksByAsset: [String: URLSessionUploadTask] = [:]
 
   func cancel() {
     lock.lock()
-    let task = activeTask
+    let tasks = Array(tasksByAsset.values)
+    tasksByAsset.removeAll()
+    lock.unlock()
+    for task in tasks { task.cancel() }
+  }
+
+  func cancel(assetId: String) {
+    let key = assetId.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !key.isEmpty else {
+      cancel()
+      return
+    }
+    lock.lock()
+    let task = tasksByAsset[key]
     lock.unlock()
     task?.cancel()
   }
 
   func uploadTus(payload: [String: Any]?) async throws -> [String: Any] {
-    EdgeVideoBackgroundKeepAlive.begin(title: "Uploading video", subtitle: "EdgeTilt")
-    var ok = false
-    defer { EdgeVideoBackgroundKeepAlive.finish(success: ok) }
     let assetId = Self.string(payload?["assetId"])
+    EdgeVideoBackgroundKeepAlive.beginJob(id: assetId, phase: "upload", title: "Uploading video", subtitle: "EdgeTilt")
+    var ok = false
+    defer { EdgeVideoBackgroundKeepAlive.endJob(id: assetId, success: ok) }
     guard let stored = EdgeVideoStore.shared.asset(id: assetId) else {
       throw EdgeVideoError.unreadable
     }
@@ -972,10 +1124,10 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
   }
 
   func uploadPut(payload: [String: Any]?) async throws -> [String: Any] {
-    EdgeVideoBackgroundKeepAlive.begin(title: "Uploading video", subtitle: "EdgeTilt")
-    var ok = false
-    defer { EdgeVideoBackgroundKeepAlive.finish(success: ok) }
     let assetId = Self.string(payload?["assetId"])
+    EdgeVideoBackgroundKeepAlive.beginJob(id: assetId, phase: "upload", title: "Uploading video", subtitle: "EdgeTilt")
+    var ok = false
+    defer { EdgeVideoBackgroundKeepAlive.endJob(id: assetId, success: ok) }
     guard let stored = EdgeVideoStore.shared.asset(id: assetId) else {
       throw EdgeVideoError.unreadable
     }
@@ -1092,7 +1244,7 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
     waiter.sentBefore = sentBefore
     lock.lock()
     waiters[task.taskIdentifier] = waiter
-    activeTask = task
+    tasksByAsset[assetId] = task
     lock.unlock()
     let app = UIApplication.shared
     var backgroundId: UIBackgroundTaskIdentifier = .invalid
@@ -1127,7 +1279,9 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
   func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
     lock.lock()
     let waiter = waiters.removeValue(forKey: task.taskIdentifier)
-    if activeTask?.taskIdentifier == task.taskIdentifier { activeTask = nil }
+    if let waiter, tasksByAsset[waiter.assetId]?.taskIdentifier == task.taskIdentifier {
+      tasksByAsset.removeValue(forKey: waiter.assetId)
+    }
     lock.unlock()
     guard let waiter else { return }
     if let error {

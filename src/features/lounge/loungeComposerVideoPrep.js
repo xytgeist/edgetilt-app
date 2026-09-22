@@ -575,7 +575,7 @@ export function loungeVideoSlotAfterPrep(prev, encodedFile, streamVideoUid, jobI
   }
 }
 
-async function runNativeEdgeVideoStreamPrep({ supabaseClient, signal, spec, onProgress }) {
+async function runNativeEdgeVideoStreamPrep({ supabaseClient, signal, spec, onProgress, onEncodeFinished }) {
   const report = (progress, status) => {
     if (typeof onProgress !== 'function') return
     onProgress({
@@ -607,8 +607,9 @@ async function runNativeEdgeVideoStreamPrep({ supabaseClient, signal, spec, onPr
     else report(0.05, 'Checking video…')
   }
   window.addEventListener('edge-native-video-progress', onNativeProgress)
+  let cancelId = sourceId
   const onAbort = () => {
-    void cancelEdgeVideo()
+    void cancelEdgeVideo(cancelId)
   }
   signal?.addEventListener('abort', onAbort)
 
@@ -629,6 +630,8 @@ async function runNativeEdgeVideoStreamPrep({ supabaseClient, signal, spec, onPr
       throw new Error(exported?.error || 'Could not prepare that video.')
     }
     watchedIds.add(String(exported.assetId))
+    cancelId = String(exported.assetId)
+    onEncodeFinished?.()
     maybeReportLoungeVideoUploadDebug('encode', 'native upload')
     report(0.42, 'Uploading…')
     const uploaded = await uploadEdgeVideoTus({
@@ -664,14 +667,16 @@ export async function runComposerStreamVideoPrepWithRetries({
   spec,
   onProgress,
   onEncodedFileReady,
+  onEncodeFinished,
   onUploadDiagnostic,
 }) {
   if (spec?.kind === 'native' && spec.assetId) {
-    return runNativeEdgeVideoStreamPrep({ supabaseClient, signal, spec, onProgress })
+    return runNativeEdgeVideoStreamPrep({ supabaseClient, signal, spec, onProgress, onEncodeFinished })
   }
   const uploadFile = await encodeComposerVideoFileFromSpec({ signal, spec, supabaseClient, onProgress })
   if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
   onEncodedFileReady?.(uploadFile)
+  onEncodeFinished?.()
   const { streamVideoUid } = await uploadEncodedVideoToCfStreamWithRetries({
     supabaseClient,
     signal,

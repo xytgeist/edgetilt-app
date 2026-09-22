@@ -165,7 +165,7 @@ export function threadComposePartVideoSnapshotFields(slot, prepMeta) {
 }
 
 /**
- * Sequential encode/upload queue for thread compose (one active prep at a time).
+ * Thread compose queue. One encode at a time. The next section can encode once the previous file is uploading.
  *
  * @param {object} opts
  * @param {import('@supabase/supabase-js').SupabaseClient} opts.supabaseClient
@@ -195,18 +195,30 @@ export function createThreadComposeVideoPrepController({
 
   const setHud = (partIdx, hud) => updatePartPrepHud(partIdx, hud)
 
-  const runNext = () => {
-    if (running || queue.length === 0) return
-    const item = queue.shift()
-    if (!item) return
+  const startPrep = (partIdx, spec, slotBase) => {
     running = true
-    void runPrep(item.partIdx, item.spec, item.slotBase).finally(() => {
+    let handedOff = false
+    const handEncodeOff = () => {
+      if (handedOff) return
+      handedOff = true
+      running = false
+      runNext()
+    }
+    void runPrep(partIdx, spec, slotBase, handEncodeOff).finally(() => {
+      if (handedOff) return
       running = false
       runNext()
     })
   }
 
-  const runPrep = async (partIdx, spec, slotBase) => {
+  const runNext = () => {
+    if (running || queue.length === 0) return
+    const item = queue.shift()
+    if (!item) return
+    startPrep(item.partIdx, item.spec, item.slotBase)
+  }
+
+  const runPrep = async (partIdx, spec, slotBase, handEncodeOff) => {
     if (isBackgroundSubmitBusy()) {
       updatePartVideoSlot(partIdx, () => ({
         ...slotBase,
@@ -289,6 +301,9 @@ export function createThreadComposeVideoPrepController({
         onEncodedFileReady: (f) => {
           meta.lastEncodedFile = f
         },
+        onEncodeFinished: () => {
+          handEncodeOff?.()
+        },
         onProgress: (info) => {
           const cur = getPrepMeta(partIdx)
           if (!cur || cur.prepJobId !== jobId) return
@@ -356,7 +371,7 @@ export function createThreadComposeVideoPrepController({
           prepStatus: 'queued',
           prepError: '',
         }))
-        setHud(partIdx, { progress: 0, status: 'Queued', detail: 'Waiting for previous video…' })
+        setHud(partIdx, { progress: 0, status: 'Queued', detail: 'Waiting to encode…' })
         setPrepMeta(partIdx, {
           prepJobId: null,
           abort: null,
@@ -367,11 +382,7 @@ export function createThreadComposeVideoPrepController({
         queue.push({ partIdx, spec, slotBase })
         return
       }
-      running = true
-      void runPrep(partIdx, spec, slotBase).finally(() => {
-        running = false
-        runNext()
-      })
+      startPrep(partIdx, spec, slotBase)
     },
     /** @param {number} partIdx */
     cancel(partIdx) {

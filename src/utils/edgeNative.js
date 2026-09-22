@@ -569,10 +569,11 @@ export async function uploadEdgeVideoPut(payload) {
   return edgeNativeInvoke('uploadEdgeVideoPut', payload)
 }
 
-export async function cancelEdgeVideo() {
+export async function cancelEdgeVideo(assetId) {
   if (!canPickEdgeVideo()) return { ok: false }
+  const id = String(assetId || '').trim()
   try {
-    return await edgeNativeInvoke('cancelEdgeVideo', null)
+    return await edgeNativeInvoke('cancelEdgeVideo', id ? { assetId: id } : null)
   } catch {
     return { ok: false }
   }

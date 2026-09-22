@@ -57,7 +57,7 @@ import {
 } from '../../utils/communityFeedPost'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { isShellNavLoungeHomeSuppressed } from '../../utils/shellNavGhostClickGuard.js'
-import { isEdgeiOSShell, isEdgeVideoLocalUrl, nativeVideoPosterDataUrl, openExternalUrl } from '../../utils/edgeNative.js'
+import { isEdgeVideoLocalUrl, nativeVideoPosterDataUrl, openExternalUrl } from '../../utils/edgeNative.js'
 import { useEdgeiOSComposerPortraitLock } from '../../utils/edgeiOSComposerPortraitLock.js'
 import { prefetchFfmpegCore } from '../../utils/loungeVideoFfmpegTrim.js'
 import {
@@ -616,19 +616,32 @@ function loungePostDetailThreadAncestorClick(e, onNavigate) {
 /** Shown in upload bar `detail` instead of raw telemetry when `onUploadDiagnostic` fires. */
 const LOUNGE_UPLOAD_BAR_GOBLIN_DETAIL = 'Ether goblins ate your shit...trying again...'
 
-/** Top line of the Lounge video upload bar (`mode === 'mediaPrep'`). Step labels live in `status` / `detail` below. */
-const LOUNGE_VIDEO_UPLOAD_BAR_HEADLINE =
-  'Posting your video. You can continue using the app, but keep the app open…'
+/** One short line for the floating upload chip. Step text already lives in `status`. */
+function loungeUploadBarLabel(bar, queue) {
+  if (queue?.total > 1) return `Post ${queue.index} of ${queue.total}`
+  if (bar?.draftSave) return 'Saving draft…'
+  if (bar?.editSave) return 'Saving edit…'
+  const status = String(bar?.status || '').trim()
+  if (status) return status
+  if (bar?.threadPartTotal > 1 && bar?.threadPartPublished > 0) {
+    return `Part ${bar.threadPartPublished} of ${bar.threadPartTotal} posted`
+  }
+  return bar?.mode === 'mediaPrep' ? 'Posting video…' : 'Posting…'
+}
 
-/** Native encode must stay in the foreground. The native upload can leave the app. */
-function loungeVideoUploadBarHeadline(bar) {
-  if (!isEdgeiOSShell() || bar?.mode !== 'mediaPrep') return LOUNGE_VIDEO_UPLOAD_BAR_HEADLINE
-  const status = String(bar?.status || '').trim().toLowerCase()
-  if (/encoding…\s*$/.test(status)) return 'Encoding your video. Keep EdgeTilt open until this finishes…'
-  if (/uploading…\s*$/.test(status)) return 'Uploading your video. You can switch apps. It keeps going…'
-  if (/processing video…\s*$/.test(status)) return 'Processing your video. You can switch apps…'
-  if (/checking video…\s*$/.test(status)) return 'Checking your video…'
-  return LOUNGE_VIDEO_UPLOAD_BAR_HEADLINE
+/** Retry / failure copy only. Routine step detail stays off the chip. */
+function loungeUploadBarWarnDetail(bar) {
+  const detail = String(bar?.detail || '').trim()
+  if (!detail) return ''
+  const status = String(bar?.status || '').toLowerCase()
+  const lower = detail.toLowerCase()
+  const warn =
+    bar?.mode === 'mediaPrep' &&
+    (status === 'retrying' ||
+      status.includes('waiting until you are back') ||
+      lower.includes('retry') ||
+      lower.includes('goblins'))
+  return warn ? detail : ''
 }
 
 const LOUNGE_POST_AUTHOR_EDIT_WINDOW_MS = 30 * 60 * 1000
@@ -20552,84 +20565,67 @@ export default function SocialFeed({
       {loungePostUploadBar ? (
         <div
           ref={loungeUploadBarRef}
-          className="pointer-events-auto fixed inset-x-0 bottom-0 z-[94] border-t border-zinc-700/90 bg-zinc-950/95 px-3 pt-2 pb-[max(0.5rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] backdrop-blur-md shadow-[0_-8px_30px_rgba(0,0,0,0.35)]"
+          data-lounge-upload-bar=""
+          className="pointer-events-none fixed inset-x-0 bottom-0 z-[94] flex justify-center px-3 pb-[max(0.7rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
         >
-          <div className="mx-auto flex max-w-2xl items-center gap-3">
-            <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-medium text-zinc-200">
-                {loungeSubmitQueueDisplay.total > 1
-                  ? `Post ${loungeSubmitQueueDisplay.index} of ${loungeSubmitQueueDisplay.total}`
-                  : loungePostUploadBar.draftSave
-                    ? 'Saving draft…'
-                    : loungePostUploadBar.editSave
-                      ? 'Saving edit…'
-                      : loungePostUploadBar.mode === 'mediaPrep'
-                        ? loungeVideoUploadBarHeadline(loungePostUploadBar)
-                        : 'Uploading post…'}
-              </div>
-              <div className="mt-0.5 text-[12px] leading-snug text-cyan-200/90">
-                <span className="font-semibold text-cyan-300/95">Now:</span>{' '}
-                {loungePostUploadBar.status ||
-                  (loungePostUploadBar.threadPartTotal > 1 && loungePostUploadBar.threadPartPublished > 0
-                    ? `Part ${loungePostUploadBar.threadPartPublished} of ${loungePostUploadBar.threadPartTotal} posted`
-                    : '-')}
-              </div>
-              {loungePostUploadBar.detail ? (
-                <div
-                  className={`mt-0.5 text-[11px] leading-snug break-words ${
-                    loungePostUploadBar.mode === 'mediaPrep' &&
-                    (String(loungePostUploadBar.status || '').toLowerCase() === 'retrying' ||
-                      String(loungePostUploadBar.status || '')
-                        .toLowerCase()
-                        .includes('waiting until you are back') ||
-                      String(loungePostUploadBar.detail || '').toLowerCase().includes('retry') ||
-                      String(loungePostUploadBar.detail || '').includes('goblins'))
-                      ? 'text-amber-200/90'
-                      : 'text-zinc-400'
-                  }`}
-                >
-                  {loungePostUploadBar.detail}
+          <div className="pointer-events-auto w-full max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/88 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-md">
+            <div className="flex items-center gap-2 px-3 py-2">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-baseline gap-2">
+                  <p className="min-w-0 flex-1 truncate text-[13px] font-medium text-zinc-100">
+                    {loungeUploadBarLabel(loungePostUploadBar, loungeSubmitQueueDisplay)}
+                  </p>
+                  <span className="shrink-0 tabular-nums text-[12px] font-semibold text-cyan-200/90">
+                    {Math.round((loungePostUploadBar.progress || 0) * 100)}%
+                  </span>
                 </div>
-              ) : null}
-              <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-zinc-800">
-                <div
-                  className="h-full rounded-full bg-cyan-500 transition-[width] duration-300 ease-out"
-                  style={{ width: `${Math.round((loungePostUploadBar.progress || 0) * 100)}%` }}
-                  role="progressbar"
-                  aria-valuenow={Math.round((loungePostUploadBar.progress || 0) * 100)}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                />
+                {loungeUploadBarWarnDetail(loungePostUploadBar) ? (
+                  <p className="mt-0.5 truncate text-[11px] leading-snug text-amber-200/90">
+                    {loungeUploadBarWarnDetail(loungePostUploadBar)}
+                  </p>
+                ) : null}
               </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const backgroundUploadActive =
+                    loungePostJobRunningRef.current ||
+                    loungeDetailCommentJobRunningRef.current ||
+                    loungeDetailEditJobRunningRef.current
+                  if (
+                    backgroundUploadActive ||
+                    loungePostUploadBar.postSubmission ||
+                    loungePostUploadBar.mode !== 'mediaPrep'
+                  ) {
+                    cancelLoungePostUpload()
+                    return
+                  }
+                  if (loungeDetailCommentVideoSlotRef.current?.prepStatus === 'preparing') {
+                    cancelLoungeDetailCommentMediaPrep({ userInitiated: true })
+                  } else if (quoteRepostVideoSlotRef.current?.prepStatus === 'preparing') {
+                    cancelQuoteRepostMediaPrep({ userInitiated: true })
+                  } else {
+                    cancelComposerMediaPrep({ userInitiated: true })
+                  }
+                }}
+                aria-label="Cancel upload"
+                className="shrink-0 touch-manipulation bg-transparent px-1 py-1 text-[13px] font-semibold text-zinc-300 hover:text-white [-webkit-tap-highlight-color:transparent]"
+              >
+                Cancel
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                const backgroundUploadActive =
-                  loungePostJobRunningRef.current ||
-                  loungeDetailCommentJobRunningRef.current ||
-                  loungeDetailEditJobRunningRef.current
-                if (
-                  backgroundUploadActive ||
-                  loungePostUploadBar.postSubmission ||
-                  loungePostUploadBar.mode !== 'mediaPrep'
-                ) {
-                  cancelLoungePostUpload()
-                  return
-                }
-                if (loungeDetailCommentVideoSlotRef.current?.prepStatus === 'preparing') {
-                  cancelLoungeDetailCommentMediaPrep({ userInitiated: true })
-                } else if (quoteRepostVideoSlotRef.current?.prepStatus === 'preparing') {
-                  cancelQuoteRepostMediaPrep({ userInitiated: true })
-                } else {
-                  cancelComposerMediaPrep({ userInitiated: true })
-                }
-              }}
-              aria-label="Cancel upload"
-              className="shrink-0 touch-manipulation bg-transparent px-1 py-1 text-[14px] font-semibold text-cyan-400 hover:text-cyan-300 [-webkit-tap-highlight-color:transparent]"
+            <div
+              className="h-[2px] bg-white/10"
+              role="progressbar"
+              aria-valuenow={Math.round((loungePostUploadBar.progress || 0) * 100)}
+              aria-valuemin={0}
+              aria-valuemax={100}
             >
-              Cancel
-            </button>
+              <div
+                className="h-full bg-cyan-400 transition-[width] duration-300 ease-out"
+                style={{ width: `${Math.round((loungePostUploadBar.progress || 0) * 100)}%` }}
+              />
+            </div>
           </div>
         </div>
       ) : null}

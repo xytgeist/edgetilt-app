@@ -1,5 +1,4 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
-import { isEdgeiOSShell } from '../../utils/edgeNative.js'
 import {
   getLoungePendingPostProgress,
   LOUNGE_CF_PROCESSING_PROGRESS_FLOOR,
@@ -177,19 +176,6 @@ export default function LoungePostVideoInlineProgress({
     (publishProgress >= 0.9 ? 'Processing video…' : 'Preparing video…')
   const detail =
     phase === 'error' ? String(registryProgress?.detail || '').trim() : ''
-  const statusLower = status.trim().toLowerCase()
-  const nativeShell = isEdgeiOSShell()
-  const footnote =
-    phase === 'error'
-      ? ''
-      : phase === 'processing' || publishProgress >= LOUNGE_CF_PROCESSING_PROGRESS_FLOOR
-        ? LOUNGE_PENDING_PUBLISH_CF_WAIT_MSG
-        : nativeShell && /uploading…\s*$/.test(statusLower)
-          ? 'You can switch apps. The upload keeps going.'
-          : nativeShell && /encoding…\s*$/.test(statusLower)
-            ? 'Keep EdgeTilt open while this encodes.'
-            : LOUNGE_PENDING_PUBLISH_KEEP_OPEN_MSG
-  const scrimOpacity = 0.1 + 0.2 * (1 - publishProgress)
   const cancelKey = String(pendingKey || '').trim()
 
   const onCancelClick = (e) => {
@@ -214,63 +200,59 @@ export default function LoungePostVideoInlineProgress({
   if (variant === 'chip') {
     return (
       <div
-        className="pointer-events-none absolute right-2 top-2 z-[8] flex items-center gap-1.5 rounded-full border border-cyan-500/40 bg-black/70 px-2 py-1 text-[10px] font-semibold text-cyan-100 backdrop-blur-sm"
+        className="pointer-events-none absolute right-2 top-2 z-[8] flex max-w-[70%] items-center gap-1.5 rounded-full bg-black/55 px-2 py-1 text-[11px] font-medium text-white/90 backdrop-blur-sm"
         aria-live="polite"
       >
-        <span
-          className="inline-block h-3 w-3 rounded-full border-2 border-cyan-400/30 border-t-cyan-300 animate-spin"
-          aria-hidden
-        />
-        <span className="max-w-[8rem] truncate">{status}</span>
-        <span className="tabular-nums text-cyan-200/90">{pct}%</span>
+        <span className="min-w-0 truncate">{isErrorPhase ? 'Upload failed' : status}</span>
+        <span className="shrink-0 tabular-nums text-white/70">{pct}%</span>
       </div>
     )
   }
 
   return (
     <div
-      className="pointer-events-none absolute inset-0 z-[7] flex flex-col items-center justify-center px-3 py-4 text-center"
-      style={{ backgroundColor: `rgba(0,0,0,${scrimOpacity.toFixed(3)})` }}
+      className="pointer-events-none absolute inset-x-0 bottom-0 z-[7]"
       aria-live="polite"
       role="status"
     >
-      <div className="flex w-full max-w-[14rem] flex-col items-center gap-1.5 rounded-2xl border border-white/15 bg-black/70 px-3.5 py-3 shadow-[0_8px_28px_rgba(0,0,0,0.45)] backdrop-blur-md">
-        <div className="text-[12px] font-semibold leading-snug text-[#fafafa]">{status}</div>
-        {detail ? (
-          <div className="max-w-full truncate text-[11px] leading-snug text-[#e4e4e7]/95">{detail}</div>
-        ) : null}
-        <div className="mt-0.5 w-full overflow-hidden rounded-full bg-[#27272a]/90">
-          <div
-            className="h-1 rounded-full bg-cyan-500 transition-[width] duration-700 ease-out"
-            style={{ width: `${pct}%` }}
-            role="progressbar"
-            aria-valuenow={pct}
-            aria-valuemin={0}
-            aria-valuemax={100}
-          />
-        </div>
-        <div className="text-[13px] font-bold tabular-nums text-[#a5f3fc]">{pct}%</div>
-        {footnote ? (
-          <p className="mt-1 max-w-[13rem] text-[10px] leading-snug text-[#fef3c7]/95">{footnote}</p>
-        ) : null}
-        <div className="pointer-events-auto mt-2 flex max-w-[14rem] flex-wrap items-center justify-center gap-2">
+      <div className="bg-gradient-to-t from-black/75 via-black/25 to-transparent px-2.5 pb-1.5 pt-7">
+        <div className="flex items-center gap-2">
+          <p className="min-w-0 flex-1 truncate text-[12px] font-medium text-white/95">
+            {isErrorPhase ? 'Upload failed' : status}
+          </p>
+          <span className="shrink-0 tabular-nums text-[11px] font-semibold text-white/70">{pct}%</span>
           <button
             type="button"
-            className="touch-manipulation rounded-lg border border-white/35 bg-black/40 px-3 py-1.5 text-[11px] font-semibold text-[#f4f4f5] hover:border-white/55 hover:bg-black/55"
+            className="pointer-events-auto shrink-0 touch-manipulation text-[12px] font-semibold text-white/80 [-webkit-tap-highlight-color:transparent]"
             onClick={onCancelClick}
           >
             {LOUNGE_PENDING_PUBLISH_CANCEL_LABEL}
           </button>
-          {showCfFailTestButton ? (
-            <button
-              type="button"
-              className="touch-manipulation rounded-lg border border-rose-500/60 bg-rose-950/60 px-2.5 py-1.5 text-[10px] font-semibold leading-snug text-rose-100 hover:border-rose-400 hover:bg-rose-950/80"
-              onClick={onCfFailTestClick}
-            >
-              {LOUNGE_CF_PROCESSING_FAIL_TEST_LABEL}
-            </button>
-          ) : null}
         </div>
+        {detail ? (
+          <p className="mt-0.5 truncate text-[11px] leading-snug text-rose-200">{detail}</p>
+        ) : null}
+        {showCfFailTestButton ? (
+          <button
+            type="button"
+            className="pointer-events-auto mt-1 touch-manipulation text-[10px] font-semibold text-rose-200"
+            onClick={onCfFailTestClick}
+          >
+            {LOUNGE_CF_PROCESSING_FAIL_TEST_LABEL}
+          </button>
+        ) : null}
+      </div>
+      <div
+        className="h-[2px] bg-white/20"
+        role="progressbar"
+        aria-valuenow={pct}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <div
+          className="h-full bg-cyan-400 transition-[width] duration-700 ease-out"
+          style={{ width: `${pct}%` }}
+        />
       </div>
     </div>
   )

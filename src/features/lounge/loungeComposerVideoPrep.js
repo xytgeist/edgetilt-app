@@ -524,7 +524,7 @@ export async function uploadEncodedVideoToCfStreamWithRetries({
  */
 /**
  * After encode/upload, swap the composer slot to the finished clip.
- * A native upload has no `File` ... keep the poster / `edge-video://` preview already on the slot.
+ * A native upload has no `File` ... keep the poster still already on the slot.
  *
  * @param {object | null | undefined} prev
  * @param {File | null | undefined} encodedFile

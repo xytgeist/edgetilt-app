@@ -921,6 +921,7 @@ export default function LoungeVideoCropModal({
             }}
             onDurationChange={onMetaLoaded}
           />
+          {nativeAssetId ? null : (
           <video
             ref={posterVideoRef}
             key={probeBlobUrl || 'probe'}
@@ -937,6 +938,7 @@ export default function LoungeVideoCropModal({
             }}
             onCanPlay={scheduleProbePosterScan}
           />
+          )}
           {cropPc ? (
             <div key={layoutRev} className="absolute inset-0 z-[5] select-none touch-none">
               <div

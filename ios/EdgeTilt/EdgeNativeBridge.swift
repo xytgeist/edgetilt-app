@@ -8,6 +8,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
   /// Fired after each main-frame navigation finish (safe-area re-inject, etc.).
   var onDidFinishNavigation: (() -> Void)?
   private var didRetryTransientLoad = false
+  private var didReloadAfterContentCrash = false
 
   func attach(webView: WKWebView) {
     self.webView = webView
@@ -634,9 +635,18 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     EdgeOrientationLock.reset()
   }
 
+  func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+    NSLog("EdgeWebView web content process terminated")
+    guard !didReloadAfterContentCrash else { return }
+    didReloadAfterContentCrash = true
+    let url = webView.url ?? AppConfig.baseURL
+    webView.load(URLRequest(url: url))
+  }
+
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
     NSLog("EdgeWebView didFinish \(webView.url?.absoluteString ?? "<nil>")")
     didRetryTransientLoad = false
+    didReloadAfterContentCrash = false
     applyCustomUserAgent(to: webView)
     onDidFinishNavigation?()
   }

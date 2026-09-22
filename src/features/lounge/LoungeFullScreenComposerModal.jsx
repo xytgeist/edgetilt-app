@@ -20,6 +20,7 @@ import {
 } from '../../utils/loungeFanOnlyPost.js'
 import LoungeFlameIcon from './LoungeFlameIcon.jsx'
 import { LOUNGE_COMMENT_BUBBLE_D, LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS } from './loungeCommentGlyph.js'
+import { isEdgeVideoLocalUrl } from '../../utils/edgeNative.js'
 import { LOUNGE_REPOST_ARROWS_D } from './loungeRepostGlyph.js'
 import {
   useLoungeKeyboardOverlapPx,
@@ -835,6 +836,13 @@ export default function LoungeFullScreenComposerModal({
 
                 {composerVideoSlot?.preview ? (
                   <div className="relative mt-2 inline-flex max-w-[min(78vw,20rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none">
+                    {!composerVideoSlot.file && composerVideoSlot.preview && !isEdgeVideoLocalUrl(composerVideoSlot.preview) ? (
+                      <img
+                        src={composerVideoSlot.preview}
+                        alt=""
+                        className="block h-auto max-h-56 w-auto max-w-[min(78vw,20rem)] object-contain"
+                      />
+                    ) : composerVideoSlot.file ? (
                     <video
                       src={composerVideoSlot.preview}
                       poster={composerVideoSlot.posterUrl || undefined}
@@ -844,6 +852,7 @@ export default function LoungeFullScreenComposerModal({
                       preload="metadata"
                       aria-label="Video preview"
                     />
+                    )}
                     <button
                       type="button"
                       onClick={onRemoveVideo}
@@ -925,13 +934,22 @@ export default function LoungeFullScreenComposerModal({
 
               {composerVideoSlot?.preview ? (
                 <div className="mt-3.5 overflow-hidden rounded-xl border border-zinc-800 bg-black">
+                  {!composerVideoSlot.file && composerVideoSlot.preview && !isEdgeVideoLocalUrl(composerVideoSlot.preview) ? (
+                    <img
+                      src={composerVideoSlot.preview}
+                      alt=""
+                      className="max-h-80 w-full object-contain"
+                    />
+                  ) : composerVideoSlot.file ? (
                   <video
                     src={composerVideoSlot.preview}
                     poster={composerVideoSlot.posterUrl || undefined}
                     className="max-h-80 w-full object-contain"
                     controls
                     playsInline
+                    preload="metadata"
                   />
+                  )}
                 </div>
               ) : null}
 

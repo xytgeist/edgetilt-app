@@ -540,6 +540,11 @@ export function nativeVideoPosterDataUrl(asset) {
   return `data:image/jpeg;base64,${b64}`
 }
 
+/** Local IPA file URL. Never use this as an `<img>` or composer `<video>` src. */
+export function isEdgeVideoLocalUrl(url) {
+  return String(url || '').trim().toLowerCase().startsWith('edge-video:')
+}
+
 /**
  * Trim + crop on device. Returns a new `assetId` for the MP4.
  *

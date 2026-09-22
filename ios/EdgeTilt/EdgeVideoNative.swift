@@ -246,6 +246,11 @@ final class EdgeVideoSchemeHandler: NSObject, WKURLSchemeHandler {
       urlSchemeTask.didFailWithError(EdgeVideoError.unreadable)
       return
     }
+    let accept = (urlSchemeTask.request.value(forHTTPHeaderField: "Accept") ?? "").lowercased()
+    if accept.contains("image/") && !accept.contains("video/") {
+      urlSchemeTask.didFailWithError(EdgeVideoError.unreadable)
+      return
+    }
     let assetId = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
     guard let fileURL = EdgeVideoStore.shared.fileURL(id: assetId) else {
       urlSchemeTask.didFailWithError(EdgeVideoError.unreadable)

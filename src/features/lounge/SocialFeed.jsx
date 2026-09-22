@@ -57,7 +57,7 @@ import {
 } from '../../utils/communityFeedPost'
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { isShellNavLoungeHomeSuppressed } from '../../utils/shellNavGhostClickGuard.js'
-import { isEdgeiOSShell, nativeVideoPosterDataUrl, openExternalUrl } from '../../utils/edgeNative.js'
+import { isEdgeiOSShell, isEdgeVideoLocalUrl, nativeVideoPosterDataUrl, openExternalUrl } from '../../utils/edgeNative.js'
 import { useEdgeiOSComposerPortraitLock } from '../../utils/edgeiOSComposerPortraitLock.js'
 import { prefetchFfmpegCore } from '../../utils/loungeVideoFfmpegTrim.js'
 import {
@@ -656,6 +656,14 @@ const LOUNGE_QUOTE_REPOST_IMAGE_INPUT_ID = 'lounge-quote-repost-image-input'
 const LOUNGE_QUOTE_REPOST_VIDEO_INPUT_ID = 'lounge-quote-repost-video-input'
 const LOUNGE_THREAD_COMPOSE_IMAGE_INPUT_ID = 'lounge-thread-compose-image-input'
 const LOUNGE_THREAD_COMPOSE_VIDEO_INPUT_ID = 'lounge-thread-compose-video-input'
+
+function loungeStillPreviewSrc(slot) {
+  const preview = String(slot?.preview || '').trim()
+  if (preview && !isEdgeVideoLocalUrl(preview)) return preview
+  const poster = String(slot?.posterUrl || '').trim()
+  if (poster && !isEdgeVideoLocalUrl(poster)) return poster
+  return ''
+}
 
 function loungeNativeVideoModeForInput(inputId) {
   switch (inputId) {
@@ -5774,7 +5782,7 @@ export default function SocialFeed({
       const slot = {
         file: null,
         posterUrl,
-        preview: previewUrl || posterUrl || '',
+        preview: posterUrl || '',
         streamVideoUid: null,
       }
       if (!loungeVideoDurationWithinCap(known)) {
@@ -11048,9 +11056,9 @@ export default function SocialFeed({
         ) : null}
         {loungeDetailCommentEditVideoSlot ? (
           <div className="relative mt-1.5 inline-flex max-w-[min(78vw,18rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none">
-            {!loungeDetailCommentEditVideoSlot.file && loungeDetailCommentEditVideoSlot.preview ? (
+            {!loungeDetailCommentEditVideoSlot.file && loungeStillPreviewSrc(loungeDetailCommentEditVideoSlot) ? (
               <img
-                src={loungeDetailCommentEditVideoSlot.preview}
+                src={loungeStillPreviewSrc(loungeDetailCommentEditVideoSlot)}
                 alt=""
                 className="block h-auto max-h-40 w-auto max-w-[min(78vw,18rem)] object-contain"
               />
@@ -17065,9 +17073,9 @@ export default function SocialFeed({
                   })()}
                   {composerVideoSlot ? (
                     <div className="relative mt-1.5 inline-flex max-w-[min(78vw,18rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none">
-                      {!composerVideoSlot.file && composerVideoSlot.preview ? (
+                      {!composerVideoSlot.file && loungeStillPreviewSrc(composerVideoSlot) ? (
                         <img
-                          src={composerVideoSlot.preview}
+                          src={loungeStillPreviewSrc(composerVideoSlot)}
                           alt=""
                           className="block h-auto max-h-52 w-auto max-w-[min(78vw,18rem)] object-contain"
                         />
@@ -18223,9 +18231,9 @@ export default function SocialFeed({
                         ) : null}
                         {loungeDetailEditVideoSlot ? (
                           <div className="relative mt-3 inline-flex max-w-[min(78vw,18rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none">
-                            {!loungeDetailEditVideoSlot.file && loungeDetailEditVideoSlot.preview ? (
+                            {!loungeDetailEditVideoSlot.file && loungeStillPreviewSrc(loungeDetailEditVideoSlot) ? (
                               <img
-                                src={loungeDetailEditVideoSlot.preview}
+                                src={loungeStillPreviewSrc(loungeDetailEditVideoSlot)}
                                 alt=""
                                 className="block h-auto max-h-40 w-auto max-w-[min(78vw,18rem)] object-contain"
                               />
@@ -19462,9 +19470,9 @@ export default function SocialFeed({
                         })()}
                         {loungeDetailCommentVideoSlot ? (
                           <div className="relative mt-1.5 inline-flex max-w-[min(78vw,18rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none">
-                            {!loungeDetailCommentVideoSlot.file && loungeDetailCommentVideoSlot.preview ? (
+                            {!loungeDetailCommentVideoSlot.file && loungeStillPreviewSrc(loungeDetailCommentVideoSlot) ? (
                               <img
-                                src={loungeDetailCommentVideoSlot.preview}
+                                src={loungeStillPreviewSrc(loungeDetailCommentVideoSlot)}
                                 alt=""
                                 className="block h-auto max-h-40 w-auto max-w-[min(78vw,18rem)] object-contain"
                               />
@@ -20073,9 +20081,9 @@ export default function SocialFeed({
                 })()}
                 {quoteRepostVideoSlot ? (
                   <div className="relative mt-1.5 inline-flex max-w-[min(78vw,18rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none">
-                    {!quoteRepostVideoSlot.file && quoteRepostVideoSlot.preview ? (
+                    {!quoteRepostVideoSlot.file && loungeStillPreviewSrc(quoteRepostVideoSlot) ? (
                       <img
-                        src={quoteRepostVideoSlot.preview}
+                        src={loungeStillPreviewSrc(quoteRepostVideoSlot)}
                         alt=""
                         className="block h-auto max-h-52 w-auto max-w-[min(78vw,18rem)] object-contain"
                       />
@@ -20691,7 +20699,7 @@ export default function SocialFeed({
                 startThreadComposePartVideoPrepFromSpec(partIdx, spec, {
                   file: null,
                   posterUrl: result.posterUrl || null,
-                  preview: result.posterUrl || loungeVideoCrop.previewUrl || '',
+                  preview: result.posterUrl || '',
                   streamVideoUid: null,
                 })
               }
@@ -20766,7 +20774,7 @@ export default function SocialFeed({
                 startPrep(spec, {
                   file: null,
                   posterUrl: result.posterUrl || null,
-                  preview: result.posterUrl || (result.nativeAssetId ? loungeVideoCrop.previewUrl : '') || '',
+                  preview: result.posterUrl || '',
                   streamVideoUid: null,
                 })
                 if (cropMode === 'quote') setQuoteRepostMediaUrl('')

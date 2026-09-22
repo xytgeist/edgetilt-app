@@ -5,6 +5,7 @@ import LoungeMentionDropdown from './LoungeMentionDropdown.jsx'
 import LoungePostCategoryPillPicker from './LoungePostCategoryPillPicker.jsx'
 import { LoungeImageCarousel } from './LoungePostFeedMedia.jsx'
 import { LOUNGE_CAPTION_MAX, LOUNGE_POST_THREAD_MAX_PARTS } from '../../utils/loungeCommentLimits.js'
+import { isEdgeVideoLocalUrl } from '../../utils/edgeNative.js'
 import { LOUNGE_FEED_AVATAR_CLASS } from './loungeFeedAvatar.js'
 import {
   threadComposePartCarouselUrls,
@@ -694,7 +695,7 @@ export default function LoungeThreadComposeSheet({
                     <div
                       className={`relative mt-2 inline-flex max-w-[min(78vw,18rem)] shrink-0 self-start overflow-hidden rounded-xl border border-zinc-700/80 bg-black leading-none ${isPast ? 'opacity-90' : ''}`}
                     >
-                      {!videoSlot.file && videoSlot.preview ? (
+                      {!videoSlot.file && videoSlot.preview && !isEdgeVideoLocalUrl(videoSlot.preview) ? (
                         <img
                           src={videoSlot.preview}
                           alt=""

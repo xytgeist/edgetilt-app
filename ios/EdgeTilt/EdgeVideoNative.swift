@@ -1,4 +1,5 @@
 import AVFoundation
+import BackgroundTasks
 import PhotosUI
 import UIKit
 import UniformTypeIdentifiers
@@ -511,6 +512,159 @@ private enum EdgeVideoProbe {
   }
 }
 
+/// iOS 26 lock-screen task. Kept off the iOS 17 type so the deployment target still builds.
+@available(iOS 26.0, *)
+private final class EdgeVideoContinuedTaskBox {
+  static let shared = EdgeVideoContinuedTaskBox()
+  var task: BGContinuedProcessingTask?
+}
+
+/// Keeps a user-started encode/upload running after the phone locks.
+/// iOS 26+ asks the system for a continued-processing task (lock screen progress).
+/// Older systems only get the short `beginBackgroundTask` window.
+enum EdgeVideoBackgroundKeepAlive {
+  private static let lock = NSLock()
+  private static var started = false
+  private static var finished = false
+  private static var backgroundId: UIBackgroundTaskIdentifier = .invalid
+  private static var continuedIdentifier: String?
+
+  static var isRunning: Bool {
+    lock.lock()
+    defer { lock.unlock() }
+    return started && !finished
+  }
+
+  static func begin(title: String, subtitle: String) {
+    lock.lock()
+    let already = started && !finished
+    if !already {
+      started = true
+      finished = false
+      continuedIdentifier = nil
+      if #available(iOS 26.0, *) {
+        EdgeVideoContinuedTaskBox.shared.task = nil
+      }
+    }
+    lock.unlock()
+    if already {
+      retitle(title: title, subtitle: subtitle)
+      return
+    }
+    let app = UIApplication.shared
+    let id = app.beginBackgroundTask(withName: "edge-video-job") {
+      endSystemBackgroundTask()
+    }
+    lock.lock()
+    backgroundId = id
+    lock.unlock()
+    submitContinued(title: title, subtitle: subtitle)
+  }
+
+  static func noteEncoding(fraction: Double) {
+    let clamped = min(1, max(0, fraction))
+    report(fraction: clamped * 0.45, title: "Preparing video", subtitle: "EdgeTilt")
+  }
+
+  static func noteUploading(fraction: Double) {
+    let clamped = min(1, max(0, fraction))
+    report(fraction: 0.45 + clamped * 0.55, title: "Uploading video", subtitle: "EdgeTilt")
+  }
+
+  static func finish(success: Bool) {
+    lock.lock()
+    if !started || finished {
+      lock.unlock()
+      return
+    }
+    finished = true
+    started = false
+    continuedIdentifier = nil
+    let bg = backgroundId
+    backgroundId = .invalid
+    lock.unlock()
+    if #available(iOS 26.0, *) {
+      let task = EdgeVideoContinuedTaskBox.shared.task
+      EdgeVideoContinuedTaskBox.shared.task = nil
+      task?.setTaskCompleted(success: success)
+    }
+    if bg != .invalid {
+      UIApplication.shared.endBackgroundTask(bg)
+    }
+  }
+
+  private static func submitContinued(title: String, subtitle: String) {
+    guard #available(iOS 26.0, *) else { return }
+    let identifier = "com.edgetilt.app.video.\(UUID().uuidString.lowercased())"
+    lock.lock()
+    continuedIdentifier = identifier
+    lock.unlock()
+    let registered = BGTaskScheduler.shared.register(forTaskWithIdentifier: identifier, using: nil) { bgTask in
+      guard let continued = bgTask as? BGContinuedProcessingTask else {
+        bgTask.setTaskCompleted(success: false)
+        return
+      }
+      attach(continued, identifier: identifier)
+    }
+    guard registered else {
+      NSLog("EdgeVideo continued processing register failed")
+      return
+    }
+    let request = BGContinuedProcessingTaskRequest(identifier: identifier, title: title, subtitle: subtitle)
+    request.strategy = .queue
+    do {
+      try BGTaskScheduler.shared.submit(request)
+    } catch {
+      NSLog("EdgeVideo continued processing submit failed \(error.localizedDescription)")
+    }
+  }
+
+  @available(iOS 26.0, *)
+  private static func attach(_ task: BGContinuedProcessingTask, identifier: String) {
+    lock.lock()
+    let stale = finished || continuedIdentifier != identifier
+    if !stale {
+      EdgeVideoContinuedTaskBox.shared.task = task
+    }
+    lock.unlock()
+    if stale {
+      task.setTaskCompleted(success: false)
+      return
+    }
+    task.progress.totalUnitCount = 1000
+    task.expirationHandler = {
+      EdgeVideoExporter.cancel()
+      EdgeVideoUploader.shared.cancel()
+      finish(success: false)
+    }
+  }
+
+  private static func report(fraction: Double, title: String, subtitle: String) {
+    guard #available(iOS 26.0, *) else { return }
+    lock.lock()
+    lock.unlock()
+    guard let task = EdgeVideoContinuedTaskBox.shared.task else { return }
+    task.progress.completedUnitCount = Int64((min(1, max(0, fraction)) * 1000).rounded())
+    task.updateTitle(title, subtitle: subtitle)
+  }
+
+  private static func retitle(title: String, subtitle: String) {
+    guard #available(iOS 26.0, *) else { return }
+    guard let task = EdgeVideoContinuedTaskBox.shared.task else { return }
+    task.updateTitle(title, subtitle: subtitle)
+  }
+
+  private static func endSystemBackgroundTask() {
+    lock.lock()
+    let bg = backgroundId
+    backgroundId = .invalid
+    lock.unlock()
+    if bg != .invalid {
+      UIApplication.shared.endBackgroundTask(bg)
+    }
+  }
+}
+
 enum EdgeVideoExporter {
   private static var activeSession: AVAssetExportSession?
   private static let sessionLock = NSLock()
@@ -542,6 +696,11 @@ enum EdgeVideoExporter {
     if endSec - startSec > maxClipSeconds {
       throw EdgeVideoError.tooLong("Video must be \(EdgeVideoLimits.durationLabel(maxClipSeconds)) or shorter.")
     }
+    EdgeVideoBackgroundKeepAlive.begin(title: "Preparing video", subtitle: "EdgeTilt")
+    var handOff = false
+    defer {
+      if !handOff { EdgeVideoBackgroundKeepAlive.finish(success: false) }
+    }
     let clip = CMTimeRange(
       start: CMTime(seconds: startSec, preferredTimescale: 600),
       duration: CMTime(seconds: max(0.1, endSec - startSec), preferredTimescale: 600)
@@ -563,6 +722,8 @@ enum EdgeVideoExporter {
       videoTrackCount: videoTracks.count,
       maxUploadBytes: maxUploadBytes
     ) {
+      EdgeVideoBackgroundKeepAlive.noteUploading(fraction: 0)
+      handOff = true
       return [
         "ok": true,
         "passthrough": true,
@@ -621,6 +782,7 @@ enum EdgeVideoExporter {
       while !Task.isCancelled {
         let value = Double(session.progress)
         EdgeVideoEvents.post(phase: "encoding", progress: value, assetId: assetId)
+        EdgeVideoBackgroundKeepAlive.noteEncoding(fraction: value)
         if session.status != .waiting && session.status != .exporting && session.status != .unknown { break }
         try? await Task.sleep(nanoseconds: 200_000_000)
       }
@@ -653,6 +815,8 @@ enum EdgeVideoExporter {
     }
     let stored = try EdgeVideoStore.shared.adoptExportedFile(outURL, byteSize: size)
     EdgeVideoEvents.post(phase: "encoding", progress: 1, assetId: assetId)
+    EdgeVideoBackgroundKeepAlive.noteUploading(fraction: 0)
+    handOff = true
     return [
       "ok": true,
       "assetId": stored.id,
@@ -777,6 +941,9 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
   }
 
   func uploadTus(payload: [String: Any]?) async throws -> [String: Any] {
+    EdgeVideoBackgroundKeepAlive.begin(title: "Uploading video", subtitle: "EdgeTilt")
+    var ok = false
+    defer { EdgeVideoBackgroundKeepAlive.finish(success: ok) }
     let assetId = Self.string(payload?["assetId"])
     guard let stored = EdgeVideoStore.shared.asset(id: assetId) else {
       throw EdgeVideoError.unreadable
@@ -800,10 +967,14 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
     )
     try await patchFile(stored.fileURL, location: created.location, assetId: assetId, byteSize: stored.byteSize)
     EdgeVideoEvents.post(phase: "upload", progress: 1, assetId: assetId)
+    ok = true
     return ["ok": true, "streamVideoUid": created.uid, "assetId": assetId]
   }
 
   func uploadPut(payload: [String: Any]?) async throws -> [String: Any] {
+    EdgeVideoBackgroundKeepAlive.begin(title: "Uploading video", subtitle: "EdgeTilt")
+    var ok = false
+    defer { EdgeVideoBackgroundKeepAlive.finish(success: ok) }
     let assetId = Self.string(payload?["assetId"])
     guard let stored = EdgeVideoStore.shared.asset(id: assetId) else {
       throw EdgeVideoError.unreadable
@@ -820,6 +991,7 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
     }
     try await send(request: request, fileURL: stored.fileURL, assetId: assetId, byteSize: stored.byteSize)
     EdgeVideoEvents.post(phase: "upload", progress: 1, assetId: assetId)
+    ok = true
     return ["ok": true, "assetId": assetId]
   }
 
@@ -949,6 +1121,7 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
     let sent = waiter.sentBefore + totalBytesSent
     let progress = total > 0 ? Double(sent) / Double(total) : 0
     EdgeVideoEvents.post(phase: "upload", progress: progress, assetId: waiter.assetId)
+    EdgeVideoBackgroundKeepAlive.noteUploading(fraction: progress)
   }
 
   func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {

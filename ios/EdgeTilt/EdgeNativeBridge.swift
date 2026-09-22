@@ -336,6 +336,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     case "cancelEdgeVideo":
       EdgeVideoExporter.cancel()
       EdgeVideoUploader.shared.cancel()
+      EdgeVideoBackgroundKeepAlive.finish(success: false)
       completion(.success(["ok": true]))
     case "share":
       EdgeShareSheet.present(payload: payload, completion: completion)
@@ -637,6 +638,10 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
 
   func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
     NSLog("EdgeWebView web content process terminated")
+    if EdgeVideoBackgroundKeepAlive.isRunning {
+      NSLog("EdgeWebView leaving the page up while a video job is still running")
+      return
+    }
     guard !didReloadAfterContentCrash else { return }
     didReloadAfterContentCrash = true
     let url = webView.url ?? AppConfig.baseURL

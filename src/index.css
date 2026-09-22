@@ -4033,7 +4033,9 @@ html[data-ipad-nav] [data-edge-status-bar-plate] {
   max-width: none !important;
   transform: none !important;
 }
-/* Landscape Slots split: tools column owns its chrome (hamburger sits on its right edge). */
+/* Landscape Slots/Poker split: tools column owns its chrome (hamburger sits on its right edge).
+   iPad: 50% of leftover after the rail, capped at 28rem.
+   Phone landscape overrides below so (rail + tools) = 50vw. */
 [data-slots-landscape-tools] {
   width: 50%;
   flex: 0 0 50%;
@@ -4158,13 +4160,23 @@ html.light [data-chat-feature][data-chat-landscape-split] [data-chat-landscape-p
     --chat-landscape-list-col: calc(50vw - var(--edge-ipad-rail, 0px));
     --chat-landscape-pane-col: 50vw;
   }
+  /* (rail + tools) = 50vw, pane = 50vw. Do not use 50% of leftover … that ignores the rail. */
+  [data-slots-landscape-split] {
+    --slots-landscape-tools-col: calc(50vw - var(--edge-ipad-rail, 0px));
+    --slots-landscape-pane-col: 50vw;
+  }
 }
 /* Phone landscape: tighter tool cards so the short height still fits. */
 @media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
   [data-slots-landscape-tools] {
-    width: 50% !important;
-    flex: 0 0 50% !important;
+    width: var(--slots-landscape-tools-col) !important;
+    flex: 0 0 var(--slots-landscape-tools-col) !important;
     max-width: none;
+  }
+  [data-slots-landscape-pane] {
+    width: var(--slots-landscape-pane-col) !important;
+    flex: 0 0 var(--slots-landscape-pane-col) !important;
+    min-width: 0;
   }
   [data-slots-landscape-tools-chrome],
   [data-slots-landscape-pane-chrome] {

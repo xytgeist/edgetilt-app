@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Phone landscape Slots/Poker 50/50 includes the rail (Mac).** Tools were `50%` of leftover after the rail, so the hub column ran wide. Phone landscape now matches Lounge/Chat: `(rail + tools) = 50vw`, pane = `50vw`. iPad split unchanged. Frontend **`1.4.468`**. Web only.
 - **2026-09-21:** **Composer landscape keyboard blocked off IPA (Mac).** Safari / PWA / Android no longer focuses composer fields in phone landscape, so the rotate hint is not covered by the keyboard. Frontend **`1.4.467`**. Web only.
 - **2026-09-21:** **Composer rotate hint off IPA (Mac).** Safari / PWA / Android landscape phone shows a rotate-to-portrait icon while a composer is open. Hides on portrait. IPA still force-rotates. iPad unchanged. Frontend **`1.4.466`**. Web only.
 - **2026-09-21:** **iPhone composer forces portrait (Mac).** IPA `setOrientationLock` + `useEdgeiOSComposerPortraitLock` on Lounge compose / thread / quote / detail reply / chat tap-to-open. iPad / Safari / PWA unchanged. Unlock on close. New IPA required. Frontend **`1.4.465`**.

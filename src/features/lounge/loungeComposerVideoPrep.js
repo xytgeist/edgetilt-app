@@ -587,7 +587,7 @@ async function runNativeEdgeVideoStreamPrep({ supabaseClient, signal, spec, onPr
   }
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
   maybeReportLoungeVideoUploadDebug('encode', 'native export')
-  report(0.05, 'Checking video…')
+  report(0, 'Waiting to encode…')
 
   const {
     data: { session },

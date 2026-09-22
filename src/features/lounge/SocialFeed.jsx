@@ -3356,16 +3356,11 @@ export default function SocialFeed({
 
   const startComposerVideoPrepFromSpec = useCallback(
     (spec, slotBase) => {
-      if (loungeBackgroundSubmitBusy()) {
-        composerVideoPrepSpecRef.current = spec
-        composerVideoLastEncodedFileRef.current = null
-        setComposerVideoSlot({
-          ...slotBase,
-          prepJobId: null,
-          prepStatus: 'queued',
-          prepError: '',
-        })
-        return
+      if (loungeBackgroundSubmitBusy() && composerVideoPrepHandoffRef.current) {
+        // The in-flight handoff belongs to the post already submitted. Detach it
+        // without cancelling, so this next clip can encode while that one uploads.
+        composerVideoPrepHandoffRef.current = null
+        composerVideoPrepAbortRef.current = null
       }
       const prevH = composerVideoPrepHandoffRef.current
       if (prevH && !prevH.settled) {
@@ -3437,7 +3432,6 @@ export default function SocialFeed({
               composerVideoLastEncodedFileRef.current = f
             },
             onProgress: (info) => {
-              if (composerVideoPrepJobIdRef.current !== jobId) return
               for (const fn of handoff.progressListeners) {
                 try {
                   fn(info)
@@ -3445,6 +3439,7 @@ export default function SocialFeed({
                   // ignore
                 }
               }
+              if (composerVideoPrepJobIdRef.current !== jobId) return
               setLoungePostUploadBar((bar) => {
                 if (!bar || bar?.mode !== 'mediaPrep' || bar.prepJobId !== jobId) return bar
                 const d = String(info.detail || '').trim()
@@ -3469,13 +3464,14 @@ export default function SocialFeed({
               )
             },
           })
-          if (ac.signal.aborted || composerVideoPrepJobIdRef.current !== jobId) {
+          if (ac.signal.aborted) {
             if (!handoff.settled) {
               handoff.reject(new DOMException('Aborted', 'AbortError'))
             }
             return
           }
           handoff.resolve(result)
+          if (composerVideoPrepJobIdRef.current !== jobId) return
           composerVideoLastEncodedFileRef.current = null
           if (loungePostJobRunningRef.current || loungePostSnapshotRef.current) {
             dismissLoungeMediaPrepUploadBarAfterPrep(jobId, loungePostSnapshotRef.current)
@@ -13827,7 +13823,20 @@ export default function SocialFeed({
   const drainLoungeSubmitQueue = useCallback(async () => {
     try {
       while (loungeSubmitQueueRef.current.length > 0) {
-        startParallelQueuedVideoPrepForWaitingJobs(loungeSubmitQueueRef.current, supabaseClient)
+        startParallelQueuedVideoPrepForWaitingJobs(
+          loungeSubmitQueueRef.current,
+          supabaseClient,
+          (job, info) => {
+            applyLoungePostSubmitUploadProgress(
+              {
+                progress: typeof info?.progress === 'number' ? info.progress : 0,
+                status: String(info?.status || ''),
+                detail: String(info?.detail || ''),
+              },
+              job?.snapshot,
+            )
+          },
+        )
         const job = loungeSubmitQueueRef.current[0]
         const batch = loungeSubmitQueueBatchRef.current
         setLoungeSubmitQueueDisplay({ index: batch.completed + 1, total: batch.total })
@@ -13862,7 +13871,7 @@ export default function SocialFeed({
       resumeDeferredVideoPrepSlots()
       flushPendingFastLaneFailure()
     }
-  }, [dismissLoungePostUploadBarIfIdle, flushPendingFastLaneFailure, resumeDeferredVideoPrepSlots, supabaseClient])
+  }, [applyLoungePostSubmitUploadProgress, dismissLoungePostUploadBarIfIdle, flushPendingFastLaneFailure, resumeDeferredVideoPrepSlots, supabaseClient])
 
   /** Video jobs queue; text/image/GIF run immediately on the fast lane. */
   const enqueueAndRunLoungeSubmit = useCallback(
@@ -13881,7 +13890,16 @@ export default function SocialFeed({
       loungeSubmitQueueRef.current.push(job)
       // Mark running before returning so a rapid second submit cannot overwrite snapshot refs.
       if (loungeSubmitQueueRunningRef.current) {
-        startParallelQueuedVideoPrep(job, supabaseClient)
+        startParallelQueuedVideoPrep(job, supabaseClient, (info) => {
+          applyLoungePostSubmitUploadProgress(
+            {
+              progress: typeof info?.progress === 'number' ? info.progress : 0,
+              status: String(info?.status || ''),
+              detail: String(info?.detail || ''),
+            },
+            job.snapshot,
+          )
+        })
         setLoungeSubmitQueueDisplay((prev) => ({
           index: prev.index,
           total: loungeSubmitQueueBatchRef.current.total,
@@ -13891,7 +13909,7 @@ export default function SocialFeed({
         void drainLoungeSubmitQueue()
       }
     },
-    [drainLoungeSubmitQueue, supabaseClient],
+    [applyLoungePostSubmitUploadProgress, drainLoungeSubmitQueue, supabaseClient],
   )
   enqueueAndRunLoungeSubmitRef.current = enqueueAndRunLoungeSubmit
 
@@ -14662,8 +14680,15 @@ export default function SocialFeed({
 
       const slot = slotNow
       const handoffNow = composerVideoPrepHandoffRef.current
+      const handoffForSnap =
+        handoffNow &&
+        slot?.prepStatus === 'preparing' &&
+        typeof slot?.prepJobId === 'number' &&
+        handoffNow.jobId === slot.prepJobId
+          ? handoffNow
+          : null
       const uid = hasVideo ? String(slot?.streamVideoUid || '').trim() || null : null
-      const awaiting = loungeComposeVideoPrepAwaitingJobId(slot, handoffNow, hasVideo, uid)
+      const awaiting = loungeComposeVideoPrepAwaitingJobId(slot, handoffForSnap, hasVideo, uid)
       const specForSnap =
         hasVideo && !uid && composerVideoPrepSpecRef.current
           ? composerVideoPrepSpecRef.current
@@ -14697,8 +14722,8 @@ export default function SocialFeed({
         wantsPin: false,
         isStaffPoster,
         savedDraftId: loungeComposerActiveDraftIdRef.current,
-        // Capture prep handoff by reference so queued jobs don't race on the shared ref
-        _capturedPrepHandoff: handoffNow ?? null,
+        // Only the handoff for this composer slot. A previous post keeps its own.
+        _capturedPrepHandoff: handoffForSnap,
         categoryPills: composerCategoryPills,
         marketSymbols: composerMarketSymbols,
         sportsGame: { ...composerSportsRef.current },

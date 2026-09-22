@@ -168,9 +168,10 @@ export async function resolveLoungeSubmissionVideoPrep({
  *
  * @param {{ id: string, snapshot: object, videoPrep?: LoungeQueuedVideoPrepSlot }} job
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {(info: { progress: number, status: string, detail?: string, attempt: number }) => void} [onProgress]
  * @returns {Promise<LoungeVideoPrepOutcome> | null}
  */
-export function startParallelQueuedVideoPrep(job, supabaseClient) {
+export function startParallelQueuedVideoPrep(job, supabaseClient, onProgress) {
   if (!job || !snapshotNeedsBackgroundVideoPrep(job.snapshot)) return null
   if (job.videoPrep?.promise) return job.videoPrep.promise
   if (job.videoPrep?.result) {
@@ -190,10 +191,12 @@ export function startParallelQueuedVideoPrep(job, supabaseClient) {
 
   slot.promise = (async () => {
     try {
+      onProgress?.({ progress: 0, status: 'Waiting to encode…', detail: '', attempt: 1 })
       const out = await resolveLoungeSubmissionVideoPrep({
         snapshot: job.snapshot,
         supabaseClient,
         signal: ac.signal,
+        onProgress,
       })
       slot.status = 'done'
       slot.result = out
@@ -236,9 +239,10 @@ export async function awaitQueuedVideoPrepForJob(job) {
 }
 
 /** Kick parallel prep for every video job waiting behind the active head. */
-export function startParallelQueuedVideoPrepForWaitingJobs(queue, supabaseClient) {
+export function startParallelQueuedVideoPrepForWaitingJobs(queue, supabaseClient, onProgress) {
   if (!Array.isArray(queue) || queue.length < 2) return
   for (let i = 1; i < queue.length; i += 1) {
-    startParallelQueuedVideoPrep(queue[i], supabaseClient)
+    const job = queue[i]
+    startParallelQueuedVideoPrep(queue[i], supabaseClient, (info) => onProgress?.(job, info))
   }
 }

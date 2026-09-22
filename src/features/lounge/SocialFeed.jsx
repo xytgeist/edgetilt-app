@@ -16748,7 +16748,11 @@ export default function SocialFeed({
               ipadNavRail ? null : <EdgeLogoWithEasterEgg className={loungeTitleLogoClassName} />
             }
             brandCenter={
-              ipadNavRail ? <EdgeLogoWithEasterEgg className="h-8 w-auto" /> : null
+              ipadNavRail ? (
+                <span data-lounge-title-wordmark="">
+                  <EdgeLogoWithEasterEgg className="h-8 w-auto" />
+                </span>
+              ) : null
             }
             centerSlot={titleBarCenterSlot}
             navSlot={
@@ -17849,7 +17853,10 @@ export default function SocialFeed({
                 pointerEvents: loungePostDetailTitleReveal > 0.12 ? 'auto' : 'none',
               }}
             >
-              <div className={`flex shrink-0 items-center gap-2 ${LOUNGE_FEED_TITLE_BAR_ROW_CLASS}`}>
+              <div
+                data-lounge-align-feed-title=""
+                className={`flex shrink-0 items-center gap-2 ${LOUNGE_FEED_TITLE_BAR_ROW_CLASS}`}
+              >
               <button
                 type="button"
                 onClick={handleLoungePostDetailBack}

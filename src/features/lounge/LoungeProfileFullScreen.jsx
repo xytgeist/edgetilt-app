@@ -3505,6 +3505,7 @@ export default function LoungeProfileFullScreen({
             ) : null}
           </div>
           <div
+            {...(embedded ? { 'data-lounge-align-feed-title': '' } : {})}
             className={
               embedded
                 ? `relative z-[1] ${LOUNGE_FEED_TITLE_BAR_ROW_CLASS}`

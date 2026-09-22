@@ -4165,6 +4165,19 @@ html.light [data-chat-feature][data-chat-landscape-split] [data-chat-landscape-p
     --slots-landscape-tools-col: calc(50vw - var(--edge-ipad-rail, 0px));
     --slots-landscape-pane-col: 50vw;
   }
+  /* Lounge feed title: portrait py-2 + h-8 EDGE is huge on a ~390px-tall phone.
+     Keep h-10 tap targets. Shrink pad + wordmark toward the 70% rail E / Slots chrome. */
+  [data-lounge-title-bar] [data-pwa-install-title-row],
+  [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-align-feed-title] {
+    padding-top: 0.35rem !important;
+    padding-bottom: 0.35rem !important;
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+  [data-lounge-title-bar] [data-lounge-title-wordmark] img {
+    height: calc(2rem * 0.7) !important;
+    width: auto !important;
+  }
 }
 /* Phone landscape: tighter tool cards so the short height still fits. */
 @media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {

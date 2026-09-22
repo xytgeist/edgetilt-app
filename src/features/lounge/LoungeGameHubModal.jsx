@@ -566,6 +566,7 @@ export default function LoungeGameHubModal({
       style={embedded ? undefined : { zIndex: Z_APP_MODAL }}
     >
       <div
+        {...(embedded ? { 'data-lounge-align-feed-title': '' } : {})}
         className={
           embedded
             ? // Landscape pane already clears Island via Lounge shell sat … match feed title row.

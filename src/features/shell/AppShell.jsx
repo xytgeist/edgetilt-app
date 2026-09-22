@@ -119,7 +119,7 @@ import {
 } from '../calculators/calculatorAccess.js'
 import { guidesTabFullyGated, normalizeGuideAccessSlug } from '../guides/guideAccess.js'
 import { parseGuideSlugFromPathname } from '../lounge/loungeCaptionLink.js'
-import { QUICK_LINK_BY_ID } from './quickLinkDestinations.js'
+import { QUICK_LINK_BY_ID, SLOTS_LANDSCAPE_SPLIT_QUERY } from './quickLinkDestinations.js'
 import { useIpadSlotsLandscape } from './useIpadSlotsLandscape.js'
 import { useIpadNavRail } from './useIpadNavRail.js'
 import {
@@ -399,6 +399,8 @@ export default function AppShell({
   const [slotsPaneRect, setSlotsPaneRect] = useState(null)
   const slotsPaneObserverRef = useRef(null)
   const slotsPaneElRef = useRef(null)
+  /** Connected split pane node … keep-alives portal here with absolute inset (no fixed-rect race). */
+  const [slotsPaneEl, setSlotsPaneEl] = useState(null)
   /** Bumped when the split host changes so deferred measures from a prior pane are ignored. */
   const slotsPaneMeasureEpochRef = useRef(0)
   const slotsPaneOwnerRef = useRef(null)
@@ -407,6 +409,8 @@ export default function AppShell({
     const r = node.getBoundingClientRect()
     // Pre-flex layout often reports an empty box ... wait for a real pane.
     if (r.width < 48 || r.height < 48) return false
+    // Mid-screen tops are almost always a pre-layout lie (Chat→Poker / rotate). Reject.
+    if (typeof window !== 'undefined' && r.top > window.innerHeight * 0.4) return false
     const next = {
       top: Math.round(r.top),
       left: Math.round(r.left),
@@ -430,14 +434,25 @@ export default function AppShell({
       slotsPaneObserverRef.current = null
       slotsPaneElRef.current = node
       // Detach passes null during unmount. setState there loops (max update depth).
-      if (!node) return
+      if (!node) {
+        queueMicrotask(() => {
+          if (slotsPaneElRef.current == null) {
+            setSlotsPaneEl((prev) => (prev == null ? prev : null))
+          }
+        })
+        return
+      }
+      flushSync(() => {
+        setSlotsPaneEl(node)
+      })
       const epoch = slotsPaneMeasureEpochRef.current
       const sync = () => {
         if (epoch !== slotsPaneMeasureEpochRef.current) return
         applySlotsPaneRect(node)
       }
       // Ref attach runs before flex finishes. Immediate getBoundingClientRect is often
-      // wrong (full-bleed / mid-screen). Defer two frames so the cover does not paint stale.
+      // wrong (full-bleed / mid-screen). Defer two frames so any remaining fixed covers
+      // (Chat lounge) do not paint stale.
       if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
         window.requestAnimationFrame(() => {
           window.requestAnimationFrame(sync)
@@ -516,8 +531,28 @@ export default function AppShell({
   const ipadShell = useIpadAuthStage()
   const ipadSlotsLandscape = useIpadSlotsLandscape()
   const ipadNavRail = useIpadNavRail()
+  /** Absorb brief matchMedia flicker so Poker keep-alives do not paint portrait `contents` mid-split. */
+  const [pokerSplitLayout, setPokerSplitLayout] = useState(false)
+  useLayoutEffect(() => {
+    if (ipadSlotsLandscape) {
+      if (tab === 'poker' || POKER_TOOL_TAB_IDS.has(tab)) setPokerSplitLayout(true)
+      return undefined
+    }
+    let cancelled = false
+    const raf = requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (cancelled) return
+        const mq = window.matchMedia(SLOTS_LANDSCAPE_SPLIT_QUERY)
+        if (!mq.matches) setPokerSplitLayout(false)
+      })
+    })
+    return () => {
+      cancelled = true
+      cancelAnimationFrame(raf)
+    }
+  }, [ipadSlotsLandscape, tab])
   const prevSlotsLandscapeRef = useRef(ipadSlotsLandscape)
-  useEffect(() => {
+  useLayoutEffect(() => {
     const enteredLandscape = ipadSlotsLandscape && !prevSlotsLandscapeRef.current
     prevSlotsLandscapeRef.current = ipadSlotsLandscape
     if (enteredLandscape && tab === 'slots') setTab('guides')
@@ -2892,12 +2927,15 @@ export default function AppShell({
     tab === 'home' ? <div className="min-h-dvh w-full bg-zinc-950" aria-hidden /> : null
   const chatSuspenseFallback =
     tab === 'chat' ? <div className="min-h-dvh w-full bg-zinc-950" aria-hidden /> : null
+  const pokerPortraitSuspenseFallback = (
+    <div className="min-h-dvh w-full bg-zinc-950" aria-hidden />
+  )
   const pokerBankrollSuspenseFallback =
-    tab === 'poker-bankroll' ? <TabLoadingFallback /> : null
+    tab === 'poker-bankroll' && !pokerSplitLayout ? pokerPortraitSuspenseFallback : null
   const slotsBankrollSuspenseFallback =
     tab === 'bankroll' ? <TabLoadingFallback /> : null
   const pokerStableSuspenseFallback =
-    tab === 'poker-stable' ? <TabLoadingFallback /> : null
+    tab === 'poker-stable' && !pokerSplitLayout ? pokerPortraitSuspenseFallback : null
   const pokerBankrollMounted = pokerBankrollKeepAlive || tab === 'poker-bankroll'
   const slotsBankrollMounted = slotsBankrollKeepAlive || tab === 'bankroll'
   const pokerStableMounted = pokerStableKeepAlive || tab === 'poker-stable'
@@ -3004,11 +3042,12 @@ export default function AppShell({
         SLOTS_PANE_TAB_IDS.has(tab) ||
         (tab === 'chat' && slotsLandscapeLounge))
     const pokerSplitActive =
-      ipadSlotsLandscape && (tab === 'poker' || POKER_TOOL_TAB_IDS.has(tab))
+      pokerSplitLayout && (tab === 'poker' || POKER_TOOL_TAB_IDS.has(tab))
     const chatInPane = Boolean(slotsSplitActive && tab === 'chat')
     const bankrollInPane = Boolean(slotsSplitActive)
     const pokerBankrollInPane = Boolean(pokerSplitActive)
     const pokerStableInPane = Boolean(pokerSplitActive)
+    const panePortalReady = Boolean(slotsPaneEl?.isConnected)
     const paneCoverStyle = slotsPaneRect
       ? {
           position: 'fixed',
@@ -3020,13 +3059,33 @@ export default function AppShell({
         }
       : null
     const chatCover = Boolean(chatInPane && paneCoverStyle)
-    const bankrollCover = Boolean(bankrollInPane && tab === 'bankroll' && paneCoverStyle)
-    const pokerBankrollCover = Boolean(
-      pokerBankrollInPane && tab === 'poker-bankroll' && paneCoverStyle,
-    )
-    const pokerStableCover = Boolean(
-      pokerStableInPane && tab === 'poker-stable' && paneCoverStyle,
-    )
+    /** Bankroll/Stable portal into the pane … no fixed-rect mid-screen paint. */
+    const pokerBankrollPanePortal = Boolean(pokerBankrollInPane && panePortalReady)
+    const pokerStablePanePortal = Boolean(pokerStableInPane && panePortalReady)
+    const slotsBankrollPanePortal = Boolean(bankrollInPane && panePortalReady)
+    const pokerPaneFallback = <div className="min-h-0 flex-1 bg-zinc-950" aria-hidden />
+
+    const wrapLandscapePaneKeepAlive = (opts) => {
+      const { active, inSplit, portalReady, portalNode, children } = opts
+      const host = (
+        <div
+          className={
+            inSplit && portalReady && active
+              ? 'absolute inset-0 z-[10] flex min-h-0 flex-col overflow-hidden bg-zinc-950'
+              : active && !inSplit
+                ? 'contents min-h-0'
+                : 'hidden'
+          }
+          inert={!active ? true : undefined}
+        >
+          {children}
+        </div>
+      )
+      if (inSplit && portalReady && portalNode) {
+        return createPortal(host, portalNode)
+      }
+      return host
+    }
 
     /** Stay mounted across tabs so an open conversation survives lounge post preview navigation. */
     const keepAliveChatTab = (
@@ -3085,150 +3144,149 @@ export default function AppShell({
     )
 
     /** Mount once visited, then hide ... reopen keeps sessions/carousel without full reload.
-     *  Landscape Poker pane covers it in place (same pattern as Slots Bankroll).
-     *  While the pane rect is still measuring, keep the active tab in `contents` (never `hidden`)
-     *  so hamburger → Poker does not paint a blank screen / look like a crash back to Lounge. */
+     *  Landscape: portal into the split pane (absolute inset) so we never paint a mid-screen
+     *  fixed cover from a stale/pre-flex getBoundingClientRect. While the pane node is not
+     *  ready, stay `hidden` (not `contents`) so the hub tools do not flash centered. */
     const keepAlivePokerBankroll = pokerBankrollMounted ? (
       <Suspense fallback={pokerBankrollSuspenseFallback}>
-        <div
-          key="poker-bankroll-keepalive"
-          className={
-            pokerBankrollCover
-              ? 'relative flex min-h-0 flex-col overflow-hidden bg-zinc-950'
-              : tab === 'poker-bankroll'
-                ? 'contents min-h-0'
-                : 'hidden'
-          }
-          style={pokerBankrollCover ? paneCoverStyle : undefined}
-          inert={tab !== 'poker-bankroll'}
-        >
-          <PokerBankrollTracker
-            paneEmbed={Boolean(pokerBankrollCover)}
-            supabaseClient={supabaseClient}
-            isActivePage={tab === 'poker-bankroll'}
-            titleBarNavSlot={
-              pokerBankrollCover || tab !== 'poker-bankroll' ? null : renderTitleBarNavSlot()
-            }
-            titleBarCenterSlot={
-              pokerBankrollCover || tab !== 'poker-bankroll' ? null : renderTitleBarCenterSlot()
-            }
-            titleBarToolCloseVisible={pokerBankrollCover ? false : pokerToolTitleBarCloseVisible}
-            openSessionId={tab === 'poker-bankroll' ? pendingPokerSessionId : null}
-            onOpenSessionConsumed={() => setPendingPokerSessionId(null)}
-            openStableDealId={tab === 'poker-bankroll' ? pendingPokerStableDealId : null}
-            onOpenStableDealConsumed={() => setPendingPokerStableDealId(null)}
-            openTournamentSwapId={tab === 'poker-bankroll' ? pendingTournamentSwapId : null}
-            onOpenTournamentSwapConsumed={() => setPendingTournamentSwapId(null)}
-            stakeOnboardingDealId={tab === 'poker-bankroll' ? stakeOnboardingDealId : null}
-            onStakeOnboardingConsumed={() => setStakeOnboardingDealId(null)}
-            highlightPendingOffer={tab === 'poker-bankroll' ? pulseBankrollOffer : false}
-            onHighlightPendingOfferConsumed={clearBankrollOfferPulse}
-            showGlobalConfirm={showGlobalConfirm}
-            onOpenChatWithUser={(peerUserId) => {
-              if (!peerUserId) return
-              setPendingChatPeerUserId(peerUserId)
-              setTab('chat')
-              setMenuOpen(false)
-            }}
-            onOpenChatRoom={(roomId) => {
-              if (!roomId) return
-              openChatRoomDirect(roomId, { skipReloadIfSame: true })
-            }}
-          />
-        </div>
+        {wrapLandscapePaneKeepAlive({
+          active: tab === 'poker-bankroll',
+          inSplit: pokerBankrollInPane,
+          portalReady: pokerBankrollPanePortal,
+          portalNode: slotsPaneEl,
+          children: (
+            <PokerBankrollTracker
+              paneEmbed={pokerBankrollPanePortal}
+              supabaseClient={supabaseClient}
+              isActivePage={tab === 'poker-bankroll'}
+              titleBarNavSlot={
+                pokerBankrollPanePortal || tab !== 'poker-bankroll'
+                  ? null
+                  : renderTitleBarNavSlot()
+              }
+              titleBarCenterSlot={
+                pokerBankrollPanePortal || tab !== 'poker-bankroll'
+                  ? null
+                  : renderTitleBarCenterSlot()
+              }
+              titleBarToolCloseVisible={
+                pokerBankrollPanePortal ? false : pokerToolTitleBarCloseVisible
+              }
+              openSessionId={tab === 'poker-bankroll' ? pendingPokerSessionId : null}
+              onOpenSessionConsumed={() => setPendingPokerSessionId(null)}
+              openStableDealId={tab === 'poker-bankroll' ? pendingPokerStableDealId : null}
+              onOpenStableDealConsumed={() => setPendingPokerStableDealId(null)}
+              openTournamentSwapId={tab === 'poker-bankroll' ? pendingTournamentSwapId : null}
+              onOpenTournamentSwapConsumed={() => setPendingTournamentSwapId(null)}
+              stakeOnboardingDealId={tab === 'poker-bankroll' ? stakeOnboardingDealId : null}
+              onStakeOnboardingConsumed={() => setStakeOnboardingDealId(null)}
+              highlightPendingOffer={tab === 'poker-bankroll' ? pulseBankrollOffer : false}
+              onHighlightPendingOfferConsumed={clearBankrollOfferPulse}
+              showGlobalConfirm={showGlobalConfirm}
+              onOpenChatWithUser={(peerUserId) => {
+                if (!peerUserId) return
+                setPendingChatPeerUserId(peerUserId)
+                setTab('chat')
+                setMenuOpen(false)
+              }}
+              onOpenChatRoom={(roomId) => {
+                if (!roomId) return
+                openChatRoomDirect(roomId, { skipReloadIfSame: true })
+              }}
+            />
+          ),
+        })}
       </Suspense>
     ) : null
 
-    /** Slots Bankroll … same keep-alive as Poker Bankroll. Landscape pane covers it in place so sessions stay mounted. */
+    /** Slots Bankroll … portal into landscape pane like Poker Bankroll. */
     const keepAliveSlotsBankroll = slotsBankrollMounted ? (
       <Suspense fallback={slotsBankrollSuspenseFallback}>
-        <div
-          key="slots-bankroll-keepalive"
-          className={
-            bankrollCover
-              ? 'relative flex min-h-0 flex-col overflow-hidden bg-zinc-950'
-              : tab === 'bankroll'
-                ? 'contents min-h-0'
-                : 'hidden'
-          }
-          style={bankrollCover ? paneCoverStyle : undefined}
-          inert={tab !== 'bankroll'}
-        >
-          <BankrollTracker
-            paneEmbed={Boolean(bankrollCover)}
-            supabaseClient={supabaseClient}
-            isActivePage={tab === 'bankroll'}
-            canCreateBankrollSession={canCreateBankrollSession}
-            bankrollSessionsRemaining={bankrollSessionsRemaining}
-            freemiumUsageLoading={freemiumUsageLoading}
-            onRequireSubscribeForBankroll={() => onRequireSubscribe?.('slots-edge')}
-            onBankrollSessionCreated={refreshFreemiumUsage}
-            titleBarNavSlot={bankrollCover || tab !== 'bankroll' ? null : renderTitleBarNavSlot()}
-            titleBarCenterSlot={bankrollCover || tab !== 'bankroll' ? null : renderTitleBarCenterSlot()}
-            titleBarToolCloseVisible={bankrollCover ? false : slotsToolTitleBarCloseVisible}
-          />
-        </div>
+        {wrapLandscapePaneKeepAlive({
+          active: tab === 'bankroll',
+          inSplit: bankrollInPane,
+          portalReady: slotsBankrollPanePortal,
+          portalNode: slotsPaneEl,
+          children: (
+            <BankrollTracker
+              paneEmbed={slotsBankrollPanePortal}
+              supabaseClient={supabaseClient}
+              isActivePage={tab === 'bankroll'}
+              canCreateBankrollSession={canCreateBankrollSession}
+              bankrollSessionsRemaining={bankrollSessionsRemaining}
+              freemiumUsageLoading={freemiumUsageLoading}
+              onRequireSubscribeForBankroll={() => onRequireSubscribe?.('slots-edge')}
+              onBankrollSessionCreated={refreshFreemiumUsage}
+              titleBarNavSlot={
+                slotsBankrollPanePortal || tab !== 'bankroll' ? null : renderTitleBarNavSlot()
+              }
+              titleBarCenterSlot={
+                slotsBankrollPanePortal || tab !== 'bankroll' ? null : renderTitleBarCenterSlot()
+              }
+              titleBarToolCloseVisible={
+                slotsBankrollPanePortal ? false : slotsToolTitleBarCloseVisible
+              }
+            />
+          ),
+        })}
       </Suspense>
     ) : null
 
-    /** Stable Manager … same keep-alive + landscape pane cover as Poker Bankroll. */
+    /** Stable Manager … portal into landscape pane like Poker Bankroll. */
     const keepAlivePokerStable = pokerStableMounted ? (
       <Suspense fallback={pokerStableSuspenseFallback}>
-        <div
-          key="poker-stable-keepalive"
-          className={
-            pokerStableCover
-              ? 'relative flex min-h-0 flex-col overflow-hidden bg-zinc-950'
-              : tab === 'poker-stable'
-                ? 'contents min-h-0'
-                : 'hidden'
-          }
-          style={pokerStableCover ? paneCoverStyle : undefined}
-          inert={tab !== 'poker-stable'}
-        >
-          <PokerStableScreen
-            paneEmbed={Boolean(pokerStableCover)}
-            supabaseClient={supabaseClient}
-            isActivePage={tab === 'poker-stable'}
-            titleBarNavSlot={
-              pokerStableCover || tab !== 'poker-stable' ? null : renderTitleBarNavSlot()
-            }
-            titleBarCenterSlot={
-              pokerStableCover || tab !== 'poker-stable' ? null : renderTitleBarCenterSlot()
-            }
-            titleBarToolCloseVisible={pokerStableCover ? false : pokerToolTitleBarCloseVisible}
-            openStableDealId={tab === 'poker-stable' ? pendingPokerStableDealId : null}
-            onOpenStableDealConsumed={clearPendingPokerStableDealId}
-            showWithdrawnOfferNotice={tab === 'poker-stable' ? pendingStableOfferWithdrawn : false}
-            onWithdrawnOfferNoticeConsumed={clearPendingStableOfferWithdrawn}
-            backerSliceOnboardingDealId={
-              tab === 'poker-stable' ? backerSliceOnboardingDealId : null
-            }
-            backerSliceOnboardingSliceId={
-              tab === 'poker-stable' ? backerSliceOnboardingSliceId : null
-            }
-            onBackerSliceOnboardingConsumed={() => {
-              setBackerSliceOnboardingDealId(null)
-              setBackerSliceOnboardingSliceId(null)
-            }}
-            onOpenPokerBankroll={(dealId) => {
-              setPendingPokerStableDealId(dealId)
-              setTab('poker-bankroll')
-            }}
-            highlightPendingOffer={tab === 'poker-stable' ? pulseStableOffer : false}
-            onHighlightPendingOfferConsumed={clearStableOfferPulse}
-            onOpenChatWithUser={(peerUserId) => {
-              if (!peerUserId) return
-              setPendingChatPeerUserId(peerUserId)
-              setTab('chat')
-              setMenuOpen(false)
-            }}
-            onOpenChatRoom={(roomId) => {
-              if (!roomId) return
-              openChatRoomDirect(roomId, { skipReloadIfSame: true })
-            }}
-          />
-        </div>
+        {wrapLandscapePaneKeepAlive({
+          active: tab === 'poker-stable',
+          inSplit: pokerStableInPane,
+          portalReady: pokerStablePanePortal,
+          portalNode: slotsPaneEl,
+          children: (
+            <PokerStableScreen
+              paneEmbed={pokerStablePanePortal}
+              supabaseClient={supabaseClient}
+              isActivePage={tab === 'poker-stable'}
+              titleBarNavSlot={
+                pokerStablePanePortal || tab !== 'poker-stable' ? null : renderTitleBarNavSlot()
+              }
+              titleBarCenterSlot={
+                pokerStablePanePortal || tab !== 'poker-stable' ? null : renderTitleBarCenterSlot()
+              }
+              titleBarToolCloseVisible={
+                pokerStablePanePortal ? false : pokerToolTitleBarCloseVisible
+              }
+              openStableDealId={tab === 'poker-stable' ? pendingPokerStableDealId : null}
+              onOpenStableDealConsumed={clearPendingPokerStableDealId}
+              showWithdrawnOfferNotice={tab === 'poker-stable' ? pendingStableOfferWithdrawn : false}
+              onWithdrawnOfferNoticeConsumed={clearPendingStableOfferWithdrawn}
+              backerSliceOnboardingDealId={
+                tab === 'poker-stable' ? backerSliceOnboardingDealId : null
+              }
+              backerSliceOnboardingSliceId={
+                tab === 'poker-stable' ? backerSliceOnboardingSliceId : null
+              }
+              onBackerSliceOnboardingConsumed={() => {
+                setBackerSliceOnboardingDealId(null)
+                setBackerSliceOnboardingSliceId(null)
+              }}
+              onOpenPokerBankroll={(dealId) => {
+                setPendingPokerStableDealId(dealId)
+                setTab('poker-bankroll')
+              }}
+              highlightPendingOffer={tab === 'poker-stable' ? pulseStableOffer : false}
+              onHighlightPendingOfferConsumed={clearStableOfferPulse}
+              onOpenChatWithUser={(peerUserId) => {
+                if (!peerUserId) return
+                setPendingChatPeerUserId(peerUserId)
+                setTab('chat')
+                setMenuOpen(false)
+              }}
+              onOpenChatRoom={(roomId) => {
+                if (!roomId) return
+                openChatRoomDirect(roomId, { skipReloadIfSame: true })
+              }}
+            />
+          ),
+        })}
       </Suspense>
     ) : null
 
@@ -3242,6 +3300,13 @@ export default function AppShell({
     const slotsPaneFallback = (
       <div className="px-4 py-8 text-center text-sm text-zinc-500">Loading…</div>
     )
+    let pokerToolPane = null
+    if (pokerSplitActive && tab === 'poker-bankroll' && !pokerBankrollPanePortal) {
+      pokerToolPane = pokerPaneFallback
+    } else if (pokerSplitActive && tab === 'poker-stable' && !pokerStablePanePortal) {
+      pokerToolPane = pokerPaneFallback
+    }
+
     let slotsToolPane = null
     if (slotsSplitActive && tab === 'guides') {
       slotsToolPane = (
@@ -3394,7 +3459,7 @@ export default function AppShell({
           landscapeSplit={pokerSplitActive}
           selectedToolId={POKER_TOOL_TAB_IDS.has(tab) ? tab : null}
           onPaneElement={onSlotsPaneElement}
-          toolPane={null}
+          toolPane={pokerToolPane}
         />
       )
     } else if (tab === 'calculators') {

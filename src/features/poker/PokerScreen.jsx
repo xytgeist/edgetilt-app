@@ -53,7 +53,11 @@ export default function PokerScreen({
   }
 
   const toolList = (
-    <div className={landscapeSplit ? 'space-y-2.5' : 'space-y-3'} data-poker-hub>
+    <div
+      className={landscapeSplit ? 'space-y-2.5' : 'space-y-3'}
+      data-poker-hub
+      data-slots-hub
+    >
       {POKER_TOOLS.map((tool) => {
         const { Icon, color } = tool
         const comingSoon = Boolean(tool.comingSoon)

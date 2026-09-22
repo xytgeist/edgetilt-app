@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Promoted `test` → `main` (`08800db1`).** Vercel prod = web **`1.4.462`**. Landscape/rail/Poker pane keep-alive track + sports pill paint through **1.4.456**. No new prod SQL/Edge in this push. Store IPA marketing still **1.4.95**.
 - **2026-09-21:** **Windows continuity handoff (sports pill paint + live data).** Dual wash + `*-light.png` + always-on halo + no losing-logo dim are on **`test`** through **`1.4.456`**. Open: confirm TheRundown tier before shopping Genius/Sportradar for X-like PBP. **WAKEUP** ACTIVE TRACK. Pill paint not assumed on **`main`** until Ryan promotes.
 - **2026-09-21:** **Sports pill keep both logos full opacity on finals (Windows).** Losing-side logo dim (`opacity-55`) removed; scores still dim. Frontend **`1.4.456`**.
 - **2026-09-21:** **Chat dock-suppress must not hide iPad rail (Mac).** Keep-alive Chat with an open portrait thread left `loungeDockSuppress` true under Lounge, so `LoungeIpadNavRail` unmounted while title stayed in rail/`brandCenter` mode (EDGE centered, no sidebar). Rail mounts whenever `useIpadNavRail()` matches; FAB suppress only while Chat `isActivePage`. Frontend **`1.4.462`**. Web only.

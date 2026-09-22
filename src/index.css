@@ -4172,7 +4172,7 @@ html.light [data-chat-feature][data-chat-landscape-split] [data-chat-landscape-p
     padding-right: 0.5rem !important;
     padding-top: 0.35rem !important;
     padding-bottom: 0.35rem !important;
-    min-height: calc(2.45rem + 1px) !important; /* 0.35*2 + 1.75 nav btn + border-b */
+    min-height: calc(3.2rem + 1px) !important; /* 0.35*2 + h-10 nav btn + border-b */
   }
   [data-slots-landscape-tools-scroll] {
     padding-left: 0.5rem !important;
@@ -4204,9 +4204,6 @@ html.light [data-chat-feature][data-chat-landscape-split] [data-chat-landscape-p
   [data-slots-landscape-tools] [data-hub-tool-card] .text-sm {
     font-size: 0.6875rem !important;
     line-height: 1.25 !important;
-  }
-  [data-slots-landscape-title] {
-    font-size: 1.25rem !important;
   }
 }
 html[data-ipad-nav] [data-lounge-feed-root] .fixed.left-1\/2:not([data-lounge-title-bar]):not([data-edge-status-bar-plate]) {
@@ -4300,37 +4297,6 @@ html.light [data-ipad-nav-rail] [data-ipad-nav-shortcut-rule] {
   }
   [data-ipad-nav-rail] > div:last-child {
     padding-top: 0.35rem !important;
-  }
-  /* Title bar chrome: 70% of lounge / slots header height. */
-  [data-lounge-title-bar] [data-pwa-install-title-row],
-  [data-slots-landscape-tools-chrome],
-  [data-slots-landscape-pane-chrome] {
-    padding-top: 0.35rem !important;
-    padding-bottom: 0.35rem !important;
-    padding-left: 0.525rem !important;
-    padding-right: 0.525rem !important;
-    min-height: calc(2.45rem + 1px) !important; /* 0.35*2 + 1.75 nav btn + border-b */
-  }
-  /* EDGE wordmark in the title bar (h-8 → 70%). */
-  [data-lounge-title-bar] img.h-8,
-  [data-lounge-title-bar] .h-8.w-auto {
-    height: 1.4rem !important;
-    width: auto !important;
-    max-height: 1.4rem !important;
-  }
-  /* Hamburger + close: h-10 → 70%. */
-  [data-title-bar-menu-btn].lounge-title-nav-btn,
-  [data-title-bar-nav-cluster] .lounge-title-nav-btn {
-    height: 1.75rem !important;
-    width: 1.75rem !important;
-    border-radius: 0.525rem !important;
-  }
-  [data-title-bar-menu-btn].lounge-title-nav-btn .text-xl,
-  [data-title-bar-nav-cluster] .lounge-title-nav-btn .text-xl {
-    font-size: 0.875rem !important;
-  }
-  [data-slots-landscape-title] {
-    font-size: 0.875rem !important; /* 70% of the prior 1.25rem compact title */
   }
 }
 html.light [data-ipad-ev-mark] .edge-logo--light {

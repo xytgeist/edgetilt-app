@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-21:** **Phone landscape title + hamburger back to full chrome (Mac).** `1.4.364` 70% shrink made Chat / Slots / Poker titles and the ☰ button smaller than Notifications gear/close (`h-10`). Restored title bar buttons and `data-slots-landscape-title` to the shared `h-10` / `1.25–1.5rem` sizes. Rail E stays 70% so the short rail still fits. Frontend **`1.4.464`**. Web only.
 - **2026-09-21:** **Promoted `test` → `main` (`08800db1`).** Vercel prod = web **`1.4.462`**. Landscape/rail/Poker pane keep-alive track + sports pill paint through **1.4.456**. No new prod SQL/Edge in this push. Store IPA marketing still **1.4.95**.
 - **2026-09-21:** **Phone landscape rail quick-link parity (Mac).** Splits/portals already shared `SLOTS_LANDSCAPE_SPLIT_QUERY`. Rail pin cap **6** + rail storage key + title-bar logo reserve now follow **`IPAD_NAV_RAIL_QUERY`** (not tall-iPad shell only), so iPhone landscape matches iPad rail chrome. Portrait phone stays max **2**. Frontend **`1.4.463`**. Web only.
 - **2026-09-21:** **Windows continuity handoff (sports pill paint + live data).** Dual wash + `*-light.png` + always-on halo + no losing-logo dim are on **`test`** through **`1.4.456`**. Open: confirm TheRundown tier before shopping Genius/Sportradar for X-like PBP. **WAKEUP** ACTIVE TRACK. Pill paint not assumed on **`main`** until Ryan promotes.

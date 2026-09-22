@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. **2026-09-21:** Ryan is changing computers after Mac shipped game pills to prod. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo 2026-09-21 ... Notifications double rule under title
+
+**I am Mac Theo.** Notifications pull zone had `leadingDivider` under a title bar that already has `border-b` … double line. Dropped the extra divider. Web **`1.4.458`**.
+
 ### Mac Theo 2026-09-21 ... iPad portrait screen titles (not EDGE)
 
 **I am Mac Theo.** iPad/tablet portrait (`IPAD_SHELL_QUERY`): title bar shows the screen name (Slots, Poker, AP Guides, …) like landscape chrome … no EDGE wordmark next to the rail E. Phone portrait unchanged. Web **`1.4.457`**.

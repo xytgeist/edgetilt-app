@@ -260,6 +260,7 @@ export function createThreadComposeVideoPrepController({
       rejHandoff = rej
     })
     const handoff = {
+      spec,
       jobId,
       settled: false,
       promise: prepPromise,

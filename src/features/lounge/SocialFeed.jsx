@@ -3388,6 +3388,7 @@ export default function SocialFeed({
         rejHandoff = rej
       })
       const handoff = {
+        spec,
         jobId,
         settled: false,
         progressListeners: new Set(),
@@ -3555,6 +3556,7 @@ export default function SocialFeed({
         rejHandoff = rej
       })
       const handoff = {
+        spec,
         jobId,
         settled: false,
         promise: prepPromise,
@@ -5113,6 +5115,7 @@ export default function SocialFeed({
         rejHandoff = rej
       })
       const handoff = {
+        spec,
         jobId,
         settled: false,
         promise: prepPromise,
@@ -5260,6 +5263,7 @@ export default function SocialFeed({
         rejHandoff = rej
       })
       const handoff = {
+        spec,
         jobId,
         settled: false,
         promise: prepPromise,
@@ -5407,6 +5411,7 @@ export default function SocialFeed({
         rejHandoff = rej
       })
       const handoff = {
+        spec,
         jobId,
         settled: false,
         promise: prepPromise,

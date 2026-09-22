@@ -81,6 +81,23 @@ export function snapshotNeedsBackgroundVideoPrep(snapshot) {
   )
 }
 
+function prepSpecKey(spec) {
+  if (!spec || typeof spec !== 'object') return ''
+  if (spec.kind === 'native') return `native:${String(spec.assetId || '')}`
+  const file = spec.file instanceof File ? spec.file : spec.sourceFile instanceof File ? spec.sourceFile : null
+  if (file) return `file:${file.name}:${file.size}:${file.lastModified}`
+  if (spec.kind) return `kind:${spec.kind}:${String(spec.startSec ?? '')}:${String(spec.endSec ?? '')}`
+  return ''
+}
+
+/** A handoff with no spec stored is trusted. A different clip must not reuse it. */
+function prepHandoffMatchesSpec(handoff, spec) {
+  const want = prepSpecKey(spec)
+  const have = prepSpecKey(handoff?.spec)
+  if (!want || !have) return true
+  return want === have
+}
+
 /**
  * Resolve Stream video prep for a captured submit snapshot (queue-safe; no shared composer refs).
  *
@@ -139,7 +156,14 @@ export async function resolveLoungeSubmissionVideoPrep({
   if (awaitingId == null && handoff && !handoff.settled && typeof handoff.jobId === 'number') {
     awaitingId = handoff.jobId
   }
-  if (handoff && !handoff.settled && typeof handoff.jobId === 'number' && handoff.jobId === awaitingId) {
+  const handoffIsThisClip = prepHandoffMatchesSpec(handoff, snapshot?.videoPrepSpec)
+  if (
+    handoffIsThisClip &&
+    handoff &&
+    !handoff.settled &&
+    typeof handoff.jobId === 'number' &&
+    handoff.jobId === awaitingId
+  ) {
     /** @param {Parameters<NonNullable<typeof onProgress>>[0]} info */
     const relayHandoffProgress = (info) => {
       onProgress?.(info)

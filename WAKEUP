@@ -62,7 +62,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo 2026-09-21 ... Poker pane cover after Chat
 
-**I am Mac Theo.** Chat → Poker left a stale `slotsPaneRect`, so Bankroll/Stable keep-alive covers painted mid-screen (and hub cards flashed). Fix: clear rect on split-owner change, defer measure two rAFs, `fillViewport` on pane-embed bankroll/stable/slots bankroll. Web **`1.4.451`**. Smoke: landscape Chat → hamburger Poker → Bankroll flush top of right pane; tap Stable with no mid-flash.
+**I am Mac Theo.** Chat → Poker left a stale `slotsPaneRect`, so Bankroll/Stable keep-alive covers painted mid-screen (and hub cards flashed). Fix: clear rect on split-owner change, defer measure two rAFs, `fillViewport` on pane-embed bankroll/stable/slots bankroll. Web **`1.4.452`**. Smoke: landscape Chat → hamburger Poker → Bankroll flush top of right pane; tap Stable with no mid-flash.
 
 ### Mac Theo 2026-09-21 ... Poker landscape split
 

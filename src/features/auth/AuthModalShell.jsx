@@ -122,7 +122,7 @@ export default function AuthModalShell({ onClose, cancelLabel, children, revealF
         {...revealAttrs}
         className={
           revealFeed
-            ? 'fixed inset-0 z-[200] flex flex-col bg-zinc-950/50 text-zinc-100 backdrop-blur-xl'
+            ? 'fixed inset-0 z-[200] flex flex-col bg-zinc-950/30 text-zinc-100 backdrop-blur-lg'
             : 'fixed inset-0 z-[200] flex flex-col bg-zinc-950 text-zinc-100'
         }
       >
@@ -164,7 +164,7 @@ export default function AuthModalShell({ onClose, cancelLabel, children, revealF
       {...revealAttrs}
       className={
         revealFeed
-          ? 'fixed inset-0 z-[200] flex items-center justify-center bg-black/55 backdrop-blur-xl px-4 pt-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
+          ? 'fixed inset-0 z-[200] flex items-center justify-center bg-black/35 backdrop-blur-lg px-4 pt-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
           : 'fixed inset-0 z-[200] flex items-center justify-center bg-black/70 backdrop-blur-md px-4 pt-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
       }
     >

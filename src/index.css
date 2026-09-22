@@ -3783,11 +3783,11 @@ html.light [data-auth-ipad-stage]:not([data-auth-reveal-feed]) {
   color: #18181b;
 }
 html.light [data-auth-ipad-stage][data-auth-reveal-feed] {
-  background-color: rgb(255 255 255 / 0.42);
+  background-color: rgb(255 255 255 / 0.22);
   color: #18181b;
 }
 html.light [data-auth-reveal-feed]:not([data-auth-ipad-stage]) {
-  background-color: rgb(255 255 255 / 0.4);
+  background-color: rgb(255 255 255 / 0.22);
 }
 html.light [data-auth-ipad-stage] [data-auth-modal] {
   background-color: transparent !important;

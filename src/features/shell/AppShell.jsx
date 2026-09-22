@@ -119,7 +119,7 @@ import {
 } from '../calculators/calculatorAccess.js'
 import { guidesTabFullyGated, normalizeGuideAccessSlug } from '../guides/guideAccess.js'
 import { parseGuideSlugFromPathname } from '../lounge/loungeCaptionLink.js'
-import { QUICK_LINK_BY_ID, SLOTS_LANDSCAPE_SPLIT_QUERY } from './quickLinkDestinations.js'
+import { QUICK_LINK_BY_ID } from './quickLinkDestinations.js'
 import { useIpadSlotsLandscape } from './useIpadSlotsLandscape.js'
 import { useIpadNavRail } from './useIpadNavRail.js'
 import {
@@ -531,25 +531,20 @@ export default function AppShell({
   const ipadShell = useIpadAuthStage()
   const ipadSlotsLandscape = useIpadSlotsLandscape()
   const ipadNavRail = useIpadNavRail()
-  /** Absorb brief matchMedia flicker so Poker keep-alives do not paint portrait `contents` mid-split. */
+  /** Hold split through brief landscape MQ flicker … never sticky into portrait. */
   const [pokerSplitLayout, setPokerSplitLayout] = useState(false)
   useLayoutEffect(() => {
-    if (ipadSlotsLandscape) {
-      if (tab === 'poker' || POKER_TOOL_TAB_IDS.has(tab)) setPokerSplitLayout(true)
+    const portraitMq = window.matchMedia('(orientation: portrait)')
+    if (portraitMq.matches) {
+      setPokerSplitLayout(false)
       return undefined
     }
-    let cancelled = false
-    const raf = requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (cancelled) return
-        const mq = window.matchMedia(SLOTS_LANDSCAPE_SPLIT_QUERY)
-        if (!mq.matches) setPokerSplitLayout(false)
-      })
-    })
-    return () => {
-      cancelled = true
-      cancelAnimationFrame(raf)
+    if (ipadSlotsLandscape && (tab === 'poker' || POKER_TOOL_TAB_IDS.has(tab))) {
+      setPokerSplitLayout(true)
+      return undefined
     }
+    if (!ipadSlotsLandscape) setPokerSplitLayout(false)
+    return undefined
   }, [ipadSlotsLandscape, tab])
   const prevSlotsLandscapeRef = useRef(ipadSlotsLandscape)
   useLayoutEffect(() => {

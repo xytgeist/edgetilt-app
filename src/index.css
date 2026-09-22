@@ -4082,6 +4082,52 @@ html.light [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-lan
 html.light [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-detail-in-pane] {
   background-color: #fafafa;
 }
+/* Portrait safety net: if React still has split attrs while WKWebView clears landscape MQ, reflow full width. */
+@media (orientation: portrait) {
+  [data-lounge-feed-root][data-lounge-landscape-split] {
+    --lounge-landscape-feed-col: calc(100vw - var(--edge-ipad-rail, 0px));
+    --lounge-landscape-pane-col: 100vw;
+  }
+  [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-landscape-shell] {
+    flex-direction: column !important;
+  }
+  [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-landscape-feed] {
+    width: 100% !important;
+    flex: 1 1 auto !important;
+    max-width: none !important;
+    border-right-width: 0 !important;
+  }
+  html[data-ipad-nav] [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-title-bar] {
+    left: var(--edge-ipad-rail, 0px) !important;
+    right: 0 !important;
+    width: calc(100vw - var(--edge-ipad-rail, 0px)) !important;
+    max-width: none !important;
+  }
+  [data-chat-feature][data-chat-landscape-split] {
+    --chat-landscape-list-col: calc(100vw - var(--edge-ipad-rail, 0px));
+    --chat-landscape-pane-col: 100vw;
+  }
+  [data-chat-feature][data-chat-landscape-split] [data-chat-landscape-list] {
+    width: 100% !important;
+    flex: 1 1 auto !important;
+    max-width: none !important;
+    border-right-width: 0 !important;
+  }
+  [data-slots-landscape-split] {
+    flex-direction: column !important;
+  }
+  [data-slots-landscape-tools] {
+    width: 100% !important;
+    flex: 0 0 auto !important;
+    max-width: none !important;
+    border-right-width: 0 !important;
+  }
+  [data-slots-landscape-pane] {
+    width: 100% !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+  }
+}
 /* Chat landscape: inbox list + open thread (same 50/50 as Lounge engagement). */
 [data-chat-feature][data-chat-landscape-split] {
   --chat-landscape-list-col: calc(50vw - var(--edge-ipad-rail, 0px));

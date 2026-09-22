@@ -2680,10 +2680,18 @@ export default function SocialFeed({
     }
     const ro = new ResizeObserver(sync)
     ro.observe(el)
+    const onOrient = () => {
+      sync()
+      requestAnimationFrame(sync)
+    }
     window.addEventListener('resize', sync)
+    window.addEventListener('orientationchange', onOrient)
+    window.visualViewport?.addEventListener('resize', sync)
     return () => {
       ro.disconnect()
       window.removeEventListener('resize', sync)
+      window.removeEventListener('orientationchange', onOrient)
+      window.visualViewport?.removeEventListener('resize', sync)
     }
   }, [])
 
@@ -16709,7 +16717,14 @@ export default function SocialFeed({
                   transform: `translate3d(0, ${loungeTitleBarHideTranslateYPx(loungeTitleReveal, loungeTitleBarHeight, loungeFeedViewportTopPx)}px, 0)`,
                 }
               : {
-                  ...(ipadNavRail ? { left: 'var(--edge-ipad-rail)', width: 'auto' } : {}),
+                  ...(ipadNavRail
+                    ? {
+                        left: 'var(--edge-ipad-rail)',
+                        right: 0,
+                        width: 'calc(100vw - var(--edge-ipad-rail, 0px))',
+                        maxWidth: 'none',
+                      }
+                    : {}),
                   transform: `translate3d(${ipadNavRail ? '0' : '-50%'}, ${loungeTitleBarHideTranslateYPx(loungeTitleReveal, loungeTitleBarHeight, loungeFeedViewportTopPx)}px, 0)`,
                 }),
             pointerEvents: loungeTitleReveal > 0.12 ? 'auto' : 'none',

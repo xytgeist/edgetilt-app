@@ -66,7 +66,7 @@ The agent should treat the following as **standing instructions for this session
 
 | Ref | Hash | Note |
 | --- | --- | --- |
-| **`origin/test` tip** | `a27b6a42` | web **`1.4.472`**. Auth wall frost lighter / less blur. |
+| **`origin/test` tip** | *(this push)* | web **`1.4.473`**. AuthModalShell reveal attr inlined (Sentry `revealAttrs`). |
 | **`origin/main`** | **`a27b6a42`** | Vercel **edgetilt.com** web **`1.4.472`** (promoted 2026-09-21 evening). Same tip as `test`. |
 | iOS **`MARKETING_VERSION`** | **`1.4.95`** | Do not bump. |
 
@@ -74,8 +74,9 @@ The agent should treat the following as **standing instructions for this session
 
 **What this track fixed (newest → older on `test`):**
 
-1. **`1.4.472`** ... **Auth wall frost lighter.** More transparent scrim, `blur-lg` instead of `blur-xl`, so more of the inert Lounge reads through.
-2. **`1.4.471`** ... **Auth wall reveals Lounge through frost.** SPA `/` still has no Continue without signing in. AppShell mounts **inert** behind the modal so the feed shows through blur. Taps cannot reach the feed. iPad stage is frosted, not solid.
+1. **`1.4.473`** ... **AuthModalShell `revealAttrs` gone.** Sentry Fast Refresh: identifier not defined. Attribute is inlined now.
+2. **`1.4.472`** ... **Auth wall frost lighter.** More transparent scrim, `blur-lg` instead of `blur-xl`, so more of the inert Lounge reads through.
+3. **`1.4.471`** ... **Auth wall reveals Lounge through frost.** SPA `/` still has no Continue without signing in. AppShell mounts **inert** behind the modal so the feed shows through blur. Taps cannot reach the feed. iPad stage is frosted, not solid.
 3. **`1.4.470`** ... **Light mode canvas is white.** zinc-950 was `#fafafa`, so the white E tile had a gray halo. Page + rail / status / landscape panes / lightbox / calc root are `#ffffff`. Cards stay off-white. Dark unchanged.
 4. **`1.4.469`** ... **Phone landscape Lounge title bar tighter.** Portrait `py-2` + full `h-8` EDGE looked huge next to the 70% rail E. Pad matches Slots chrome; wordmark 70%; hamburger stays `h-10`. Pane headers share the pad.
 4. **`1.4.468`** ... **Phone landscape Slots/Poker 50/50 includes the rail.** Tools were 50% of leftover after the rail, so the hub ran wide. Now `(rail + tools) = 50vw`, pane = `50vw`, same as Lounge/Chat. iPad unchanged.

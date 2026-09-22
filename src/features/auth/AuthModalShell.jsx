@@ -113,13 +113,12 @@ function AuthWordmark() {
  */
 export default function AuthModalShell({ onClose, cancelLabel, children, revealFeed = false }) {
   const ipadStage = useIpadAuthStage()
-  const revealAttrs = revealFeed ? { 'data-auth-reveal-feed': '' } : {}
 
   if (ipadStage) {
     return (
       <div
         data-auth-ipad-stage
-        {...revealAttrs}
+        data-auth-reveal-feed={revealFeed ? '' : undefined}
         className={
           revealFeed
             ? 'fixed inset-0 z-[200] flex flex-col bg-zinc-950/30 text-zinc-100 backdrop-blur-lg'
@@ -161,7 +160,7 @@ export default function AuthModalShell({ onClose, cancelLabel, children, revealF
 
   return (
     <div
-      {...revealAttrs}
+      data-auth-reveal-feed={revealFeed ? '' : undefined}
       className={
         revealFeed
           ? 'fixed inset-0 z-[200] flex items-center justify-center bg-black/35 backdrop-blur-lg px-4 pt-[max(1rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'

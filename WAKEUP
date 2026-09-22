@@ -66,7 +66,7 @@ The agent should treat the following as **standing instructions for this session
 
 | Ref | Hash | Note |
 | --- | --- | --- |
-| **`origin/test` tip** | *(this push)* | web **`1.4.473`**. AuthModalShell reveal attr inlined (Sentry `revealAttrs`). |
+| **`origin/test` tip** | `f81de620` | web **`1.4.473`**. AuthModalShell reveal attr inlined (Sentry `revealAttrs`). |
 | **`origin/main`** | **`a27b6a42`** | Vercel **edgetilt.com** web **`1.4.472`** (promoted 2026-09-21 evening). Same tip as `test`. |
 | iOS **`MARKETING_VERSION`** | **`1.4.95`** | Do not bump. |
 

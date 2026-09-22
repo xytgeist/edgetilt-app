@@ -233,6 +233,12 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       let visible = Self.payloadFlag(payload, "visible")
       EdgeWebKitKeyboard.setShowsAccessoryBar(visible, in: webView)
       completion(.success(["ok": true, "visible": visible]))
+    case "setOrientationLock":
+      let raw = (payload?["lock"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
+      let portrait = raw == "portrait"
+      EdgeOrientationLock.setPortraitLocked(portrait) { result in
+        completion(.success(result))
+      }
     case "getStorefront":
       guard #available(iOS 15.0, *) else {
         completion(.success(["countryCode": "", "isUnitedStates": false]))
@@ -590,6 +596,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     applyCustomUserAgent(to: webView)
     // Listeners die with the outgoing page; JS re-marks after it reinstalls them.
     EdgeCallKitManager.shared.invalidateWebReady()
+    EdgeOrientationLock.reset()
   }
 
   func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
@@ -758,6 +765,9 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       },
       setKeyboardAccessory: function (payload) {
         return call('setKeyboardAccessory', payload || {});
+      },
+      setOrientationLock: function (payload) {
+        return call('setOrientationLock', payload || {});
       },
       getStorefront: function () {
         return call('getStorefront', null);

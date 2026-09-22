@@ -58,6 +58,7 @@ import {
 import { triggerTapHapticLight } from '../../utils/tapHaptic.js'
 import { isShellNavLoungeHomeSuppressed } from '../../utils/shellNavGhostClickGuard.js'
 import { openExternalUrl } from '../../utils/edgeNative.js'
+import { useEdgeiOSComposerPortraitLock } from '../../utils/edgeiOSComposerPortraitLock.js'
 import {
   feedPostCategoryPills,
   displayPostCategoryPills,
@@ -1867,6 +1868,15 @@ export default function SocialFeed({
   }, [loungePostDetailOverLightbox, loungeDetailCommentFieldFocused])
 
   const quoteRepostComposeOpen = Boolean(quoteRepostModal && quoteRepostModal.mode !== 'remove')
+  useEdgeiOSComposerPortraitLock(
+    composerExpanded ||
+      fullScreenComposerOpen ||
+      threadComposeOpen ||
+      quoteRepostComposeOpen ||
+      loungeDetailEditing ||
+      loungeDetailCommentComposerExpanded ||
+      Boolean(loungeDetailCommentEditingId),
+  )
   const {
     overlapPx: quoteRepostKbOverlapPx,
     targetPx: quoteRepostKbOverlapTargetPx,

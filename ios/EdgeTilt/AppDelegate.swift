@@ -101,4 +101,11 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     }
     return false
   }
+
+  func application(
+    _ application: UIApplication,
+    supportedInterfaceOrientationsFor window: UIWindow?
+  ) -> UIInterfaceOrientationMask {
+    EdgeOrientationLock.supportedMask
+  }
 }

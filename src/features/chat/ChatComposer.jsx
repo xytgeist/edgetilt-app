@@ -22,6 +22,7 @@ import {
 } from '../lounge/loungeRichComposerDom.js'
 import { notifyChatMediaPickerActive } from './chatMediaPickerRegistry.js'
 import { tryAssignEdgePickedPhotos } from '../../utils/edgeNative.js'
+import { useEdgeiOSComposerPortraitLock } from '../../utils/edgeiOSComposerPortraitLock.js'
 import { useChatMentionState } from './chatMentionAutocomplete.js'
 import LoungeMentionDropdown from '../lounge/LoungeMentionDropdown.jsx'
 
@@ -87,6 +88,7 @@ export default function ChatComposer({
   const [expanded, setExpanded]     = useState(false)
   /** footerHost: no textarea in DOM until tap - matches lounge reply collapsed pill (iOS keyboard). */
   const [composerActive, setComposerActive] = useState(!footerHost)
+  useEdgeiOSComposerPortraitLock(footerHost && composerActive)
 
   // Video state - only the trim-modal gating lives here now.
   // Processing (trim/encode/upload) is owned by ChatConversation via onVideoConfirmed.

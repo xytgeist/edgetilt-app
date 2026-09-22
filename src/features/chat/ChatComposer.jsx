@@ -9,10 +9,12 @@ import {
 } from '../lounge/loungeDockComposeFocus.js'
 import KlipyGifPicker from '../lounge/KlipyGifPicker.jsx'
 import LoungeVideoCropModal from '../lounge/LoungeVideoCropModal.jsx'
-import {
-  probeVideoFileDurationSeconds,
-  LOUNGE_VIDEO_MAX_SECONDS,
-} from '../../utils/loungeVideoUpload.js'
+import { probeVideoFileDurationSeconds } from '../../utils/loungeVideoUpload.js'
+
+/** Chat clips stay short. Lounge Stream caps are separate. */
+const CHAT_VIDEO_MAX_SECONDS = 60
+const CHAT_VIDEO_MAX_UPLOAD_BYTES = 200 * 1024 * 1024
+const CHAT_VIDEO_MAX_SOURCE_BYTES = 1_500_000_000
 import {
   getCaretTextOffset,
   insertComposerLineBreakViaExecCommand,
@@ -543,7 +545,7 @@ export default function ChatComposer({
       // Probe failed - let the crop modal handle it.
     }
 
-    if (Number.isFinite(duration) && duration <= LOUNGE_VIDEO_MAX_SECONDS) {
+    if (Number.isFinite(duration) && duration <= CHAT_VIDEO_MAX_SECONDS) {
       // Short video: skip trim modal entirely.
       onVideoConfirmed?.(file)
       endMediaPickerSession()
@@ -706,7 +708,12 @@ export default function ChatComposer({
                 return
               }
               try {
-                const picked = await pickEdgeVideo({ purpose: 'chat-compose' })
+                const picked = await pickEdgeVideo({
+                  purpose: 'chat-compose',
+                  maxUploadBytes: CHAT_VIDEO_MAX_UPLOAD_BYTES,
+                  maxSourceBytes: CHAT_VIDEO_MAX_SOURCE_BYTES,
+                  maxClipSeconds: CHAT_VIDEO_MAX_SECONDS + 0.35,
+                })
                 if (picked?.cancelled) {
                   endMediaPickerSession()
                   return
@@ -717,7 +724,7 @@ export default function ChatComposer({
                 }
                 const dur = Number(picked.duration)
                 const posterUrl = nativeVideoPosterDataUrl(picked)
-                if (Number.isFinite(dur) && dur > 0 && dur <= LOUNGE_VIDEO_MAX_SECONDS) {
+                if (Number.isFinite(dur) && dur > 0 && dur <= CHAT_VIDEO_MAX_SECONDS) {
                   onVideoConfirmed?.({
                     type: 'nativeEdgeVideo',
                     nativeAssetId: picked.assetId,
@@ -1062,6 +1069,7 @@ export default function ChatComposer({
           nativeAssetId={cropModalFile.nativeAssetId}
           knownDurationSec={cropModalFile.knownDurationSec}
           intent="composer"
+          maxClipSec={CHAT_VIDEO_MAX_SECONDS}
           onCancel={handleCropCancel}
           onConfirm={handleCropConfirm}
         />

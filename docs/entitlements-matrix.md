@@ -57,6 +57,7 @@ Pro-only stream / comment filter uses **`profiles.has_edge_pro`** (`edge-pro`, `
 | Capability | Free | Edge Pro | Slots Edge* | Creator (monetized) | Staff |
 | --- | --- | --- | --- | --- | --- |
 | Post / thread (500 chars) | Y | Y (10000 chars) | Y (10000 chars) | Y | Y |
+| Lounge video length | 2:20 · 512 MB | **20 min · 8 GB** | Pro / Life **20 min · 8 GB** · Starter 2:20 | 2:20 · 512 MB | **20 min · 8 GB** |
 | Mark post **creator fan-only** | N | N | N | **Y** | Y |
 | **Replies on my posts** limited to Edge Pro subscribers only | N | **Y** (author setting) | Pro / Life **Y** · Starter N | N | Y |
 | Non‑subscribers may view/like/repost but **not reply** on gated threads | N | **Y** (when setting on) | Pro / Life **Y** · Starter N | N | Y |
@@ -171,6 +172,7 @@ Track implementation in `docs/test-buildout-backlog.md` when Phase 1 work starts
 
 | Date | Change |
 | --- | --- |
+| 2026-09-22 | **Lounge video length.** Free 2:20 / 512 MB. Edge Pro, Slots Edge Pro, Lifetime, and staff 20 min / 8 GB. Enforced on `lounge-cf-stream-tus-create`. Web **1.4.476**. |
 | 2026-07-18 | Initial matrix: multi-product catalog, capability table, creator fan sub v1, Edge Pro platform tier, stacking rules, engineering target, rollout phases (Ryan spec). |
 | 2026-07-22 | **Private Subs** chat tab spec locked (Ryan): creator-named fan rooms + description + topic keywords + editable avatar; full catalog with in-tab search; member rows highlighted and top; fan rooms excluded from Inbox; zero-sub rooms still listed; §5 mod UI may ship after tab. Backlog **`test-buildout-backlog.md` §4**. |
 | 2026-07-21 | Creator fan sub tiers expanded to **seven** monthly MSRPs: added **$149.99** / **$249.99** (`fan-tier-14999`, `fan-tier-24999`); migration **`20260721180000`**. |

@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { LOUNGE_VIDEO_MAX_SECONDS } from '../../utils/loungeVideoUpload'
+import { LOUNGE_VIDEO_MAX_SECONDS, loungeVideoDurationLabel } from '../../utils/loungeVideoUpload'
 import { maxCropRectForAspect, sanitizeVideoCropPx } from '../../utils/loungeVideoCropMath.js'
 import { prefetchFfmpegCore, trimVideoFileToMp4 } from '../../utils/loungeVideoFfmpegTrim.js'
 
 const MIN_CLIP_SEC = 0.5
-const MAX_CLIP_SEC = LOUNGE_VIDEO_MAX_SECONDS
 
 /** `pointermove` must be non-passive so drag handlers can `preventDefault` and stop scroll / pull-to-refresh underneath. */
 const POINTER_MOVE_DRAG = { passive: false }
@@ -238,9 +237,12 @@ export default function LoungeVideoCropModal({
   knownDurationSec,
   intent = 'composer',
   shellClassName = 'z-[105]',
+  maxClipSec = LOUNGE_VIDEO_MAX_SECONDS,
   onCancel,
   onConfirm,
 }) {
+  const MAX_CLIP_SEC = Math.max(1, Number(maxClipSec) || LOUNGE_VIDEO_MAX_SECONDS)
+  const maxClipLabel = loungeVideoDurationLabel(MAX_CLIP_SEC)
   const videoRef = useRef(null)
   /** Hidden clone: poster frame is captured here so the visible preview is never seek-snapped for posters. */
   const posterVideoRef = useRef(null)
@@ -899,9 +901,9 @@ export default function LoungeVideoCropModal({
         }}
       />
       <div className="relative z-10 w-full max-w-md rounded-2xl border border-zinc-700/85 bg-zinc-950/96 p-4 shadow-2xl backdrop-blur-md">
-        <h2 className="text-[17px] font-bold text-white">Trim &amp; crop (max {MAX_CLIP_SEC}s)</h2>
+        <h2 className="text-[17px] font-bold text-white">Trim &amp; crop (max {maxClipLabel})</h2>
         <p className="mt-1 text-[13px] leading-snug text-zinc-400">
-          Max length allowed is {MAX_CLIP_SEC} seconds. Press play to preview and trim with the timeline below. Playback stays inside your selection and loops at the end. Optional crop: pick an aspect, then drag the highlighted region to frame your shot.
+          Max length allowed is {maxClipLabel}. Press play to preview and trim with the timeline below. Playback stays inside your selection and loops at the end. Optional crop: pick an aspect, then drag the highlighted region to frame your shot.
         </p>
 
         <div ref={videoStageRef} className="relative mt-3 min-h-[min(40vh,220px)] overflow-hidden rounded-xl border border-zinc-700/80 bg-zinc-900">
@@ -1001,7 +1003,7 @@ export default function LoungeVideoCropModal({
                 Start {formatClock(clipStart)} · End {formatClock(clipEnd)}
               </span>
               <span>
-                Length {formatClock(span)} / max {MAX_CLIP_SEC}s
+                Length {formatClock(span)} / max {maxClipLabel}
               </span>
             </div>
             <div ref={trackRef} className="relative mt-2 h-11 select-none touch-none">

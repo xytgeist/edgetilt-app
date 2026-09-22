@@ -6,7 +6,12 @@
 import { Muxer, ArrayBufferTarget } from 'mp4-muxer'
 import { sanitizeVideoCropPx } from './loungeVideoCropMath.js'
 import { captureBrowserVideoTrimSegment } from './loungeVideoBrowserAudio.js'
-import { isAndroidBrowser } from './loungeVideoUpload.js'
+import {
+  isAndroidBrowser,
+  LOUNGE_VIDEO_DURATION_SLACK_SECONDS,
+  LOUNGE_VIDEO_EDGE_PRO_MAX_SECONDS,
+  loungeVideoTooLongMessage,
+} from './loungeVideoUpload.js'
 
 const LOUNGE_ENCODE_MAX_WIDTH = 720
 const TARGET_FPS = 30
@@ -271,7 +276,10 @@ export async function trimVideoFileWithWebCodecs(file, startSec, endSec, opts = 
   const end = Math.max(start, Number(endSec) || 0)
   const dur = end - start
   if (!(dur > 0)) throw new Error('Invalid WebCodecs trim range')
-  if (dur > 60.35) throw new Error('WebCodecs trim range must be 60 seconds or shorter.')
+  if (dur > LOUNGE_VIDEO_EDGE_PRO_MAX_SECONDS + LOUNGE_VIDEO_DURATION_SLACK_SECONDS) {
+    throw new Error(loungeVideoTooLongMessage(LOUNGE_VIDEO_EDGE_PRO_MAX_SECONDS))
+  }
+  const trimBudgetMs = Math.max(MAX_TRIM_MS, Math.ceil(dur * 1000) + 20_000)
 
   throwIfAborted(signal)
 
@@ -494,7 +502,7 @@ export async function trimVideoFileWithWebCodecs(file, startSec, endSec, opts = 
           { once: true },
         )
 
-        timeoutId = window.setTimeout(finish, MAX_TRIM_MS)
+        timeoutId = window.setTimeout(finish, trimBudgetMs)
         armStallWatch()
 
         if (typeof video.requestVideoFrameCallback === 'function') {
@@ -503,7 +511,7 @@ export async function trimVideoFileWithWebCodecs(file, startSec, endSec, opts = 
           window.requestAnimationFrame(drawFrame)
         }
       }),
-      MAX_TRIM_MS + 5000,
+      trimBudgetMs + 5000,
       'webcodecs trim encode',
     )
 

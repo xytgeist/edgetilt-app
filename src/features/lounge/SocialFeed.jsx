@@ -81,8 +81,10 @@ import {
   prepareAvatarImageForUpload,
 } from '../../utils/compressImageForUpload'
 import {
-  LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES,
-  LOUNGE_VIDEO_MAX_SECONDS,
+  currentLoungeVideoLimits,
+  loungeVideoDurationWithinCap,
+  loungeVideoFileTooLargeReason,
+  setLoungeVideoViewerEdgePro,
   captureVideoFilePosterObjectUrl,
   deleteCfStreamForCommunityFeedPost,
   deleteCfStreamOrphanAsset,
@@ -1783,6 +1785,9 @@ export default function SocialFeed({
   // Slots Edge Pro + Lifetime inherit Edge Pro via App.jsx / hasEdgePro().
   const isViewerEdgePro = Boolean(hasEdgePro)
   const loungeProFilterActive = isViewerEdgePro && proFilterEnabled
+  useLayoutEffect(() => {
+    setLoungeVideoViewerEdgePro(isViewerEdgePro)
+  }, [isViewerEdgePro])
 
   const isProOrStaffComment = useCallback(
     (comment) => {
@@ -5502,7 +5507,7 @@ export default function SocialFeed({
         }
         const spatialDirectBlocked =
           isLoungeAndroidBlockedIphoneSpatialDirectUpload(vf) &&
-          dur <= LOUNGE_VIDEO_MAX_SECONDS + 0.35
+          loungeVideoDurationWithinCap(dur)
         if (spatialDirectBlocked) {
           const spatialTitle = loungeAndroidIphoneSpatialDirectUploadTitle()
           const spatialMsg = loungeAndroidIphoneSpatialDirectUploadMessage()
@@ -5536,7 +5541,7 @@ export default function SocialFeed({
           })
           return
         }
-        const needsInAppTrim = dur > LOUNGE_VIDEO_MAX_SECONDS + 0.35
+        const needsInAppTrim = !loungeVideoDurationWithinCap(dur)
         if (needsInAppTrim && isLoungeAndroidBlockedOversizedTrimSource(vf)) {
           const trimTitle = loungeAndroidOversizedTrimSourceTitle()
           const trimMsg = loungeAndroidOversizedTrimSourceMessage()
@@ -5572,7 +5577,7 @@ export default function SocialFeed({
         }
         if (threadComposeOpenRef.current || mode === LOUNGE_THREAD_COMPOSE_VIDEO_CROP_MODE) {
           const partIdx = threadComposeActivePartIndexRef.current
-          if (dur <= LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
+          if (loungeVideoDurationWithinCap(dur)) {
             const spec = { kind: 'direct', file: vf }
             const previewUrl = URL.createObjectURL(vf)
             let posterUrl = null
@@ -5598,7 +5603,7 @@ export default function SocialFeed({
           }
           return
         }
-        if (dur <= LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
+        if (loungeVideoDurationWithinCap(dur)) {
           if (mode === 'composer') {
             disposeComposerVideoMedia(composerVideoSlotRef.current)
             const spec = { kind: 'direct', file: vf }
@@ -5750,7 +5755,7 @@ export default function SocialFeed({
         kind: 'native',
         assetId,
         startSec: 0,
-        endSec: known > 0 ? known : LOUNGE_VIDEO_MAX_SECONDS,
+        endSec: known > 0 ? known : currentLoungeVideoLimits().maxSeconds,
         cropPx: null,
         intrinsicWidth: Number(asset.width) || 0,
         intrinsicHeight: Number(asset.height) || 0,
@@ -5761,7 +5766,7 @@ export default function SocialFeed({
         preview: previewUrl || posterUrl || '',
         streamVideoUid: null,
       }
-      if (!(known > 0) || known > LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
+      if (!loungeVideoDurationWithinCap(known)) {
         setLoungeVideoCrop({
           file: null,
           previewUrl,
@@ -6679,8 +6684,9 @@ export default function SocialFeed({
       setQuoteRepostErr('Remove the GIF before posting a video.')
       return
     }
-    if (hasVideo && slotNow?.file && slotNow.file.size > LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
-      setQuoteRepostErr('Video must be 200 MB or smaller for upload.')
+    const quoteVideoTooLarge = hasVideo ? loungeVideoFileTooLargeReason(slotNow?.file) : ''
+    if (quoteVideoTooLarge) {
+      setQuoteRepostErr(quoteVideoTooLarge)
       return
     }
     const hasQuoteMedia =
@@ -7294,8 +7300,9 @@ export default function SocialFeed({
       setLoungeDetailCommentErr('Remove the GIF before posting a video.')
       return
     }
-    if (hasVideo && slotNow?.file && slotNow.file.size > LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
-      setLoungeDetailCommentErr('Video must be 200 MB or smaller for upload.')
+    const commentVideoTooLarge = hasVideo ? loungeVideoFileTooLargeReason(slotNow?.file) : ''
+    if (commentVideoTooLarge) {
+      setLoungeDetailCommentErr(commentVideoTooLarge)
       return
     }
     if (hasVideo && slotNow?.prepStatus === 'failed') {
@@ -7493,8 +7500,9 @@ export default function SocialFeed({
       setLoungeDetailCommentErr('Remove the GIF before posting a video.')
       return
     }
-    if (hasVideo && slotNow?.file && slotNow.file.size > LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
-      setLoungeDetailCommentErr('Video must be 200 MB or smaller for upload.')
+    const commentVideoTooLarge = hasVideo ? loungeVideoFileTooLargeReason(slotNow?.file) : ''
+    if (commentVideoTooLarge) {
+      setLoungeDetailCommentErr(commentVideoTooLarge)
       return
     }
     if (hasVideo && slotNow?.prepStatus === 'failed') {
@@ -9803,8 +9811,9 @@ export default function SocialFeed({
       setLoungeDetailEditErr('Remove the GIF before posting a video.')
       return
     }
-    if (hasNewVideo && slotNow?.file && slotNow.file.size > LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
-      setLoungeDetailEditErr('Video must be 200 MB or smaller for upload.')
+    const editVideoTooLarge = hasNewVideo ? loungeVideoFileTooLargeReason(slotNow?.file) : ''
+    if (editVideoTooLarge) {
+      setLoungeDetailEditErr(editVideoTooLarge)
       return
     }
     if (hasNewVideo && slotNow?.prepStatus === 'failed') {
@@ -14505,8 +14514,9 @@ export default function SocialFeed({
         return
       }
       const slot = media.videoSlot
-      if (slot?.file && slot.file.size > LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
-        setThreadComposeErr(`Post ${i + 1}: video must be 200 MB or smaller for upload.`)
+      const partVideoTooLarge = loungeVideoFileTooLargeReason(slot?.file)
+      if (partVideoTooLarge) {
+        setThreadComposeErr(`Post ${i + 1}: ${partVideoTooLarge.charAt(0).toLowerCase()}${partVideoTooLarge.slice(1)}`)
         return
       }
     }
@@ -14732,8 +14742,9 @@ export default function SocialFeed({
     if (loungeComposerVideoPostBlocked) return
 
     if (hasVideo && composerVideoSlot?.file) {
-      if (composerVideoSlot.file.size > LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
-        setPostErr('Video must be 200 MB or smaller for upload.')
+      const composerVideoTooLarge = loungeVideoFileTooLargeReason(composerVideoSlot.file)
+      if (composerVideoTooLarge) {
+        setPostErr(composerVideoTooLarge)
         return
       }
     }
@@ -20610,6 +20621,7 @@ export default function SocialFeed({
           previewUrl={loungeVideoCrop.previewUrl}
           nativeAssetId={loungeVideoCrop.nativeAssetId}
           knownDurationSec={loungeVideoCrop.knownDurationSec}
+          maxClipSec={currentLoungeVideoLimits().maxSeconds}
           intent="composer"
           shellClassName={
             loungeVideoCrop.mode === 'quote'

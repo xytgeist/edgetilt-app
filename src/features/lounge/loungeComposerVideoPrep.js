@@ -1,9 +1,11 @@
 import { sanitizeVideoCropPx } from '../../utils/loungeVideoCropMath.js'
 import {
-  LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES,
-  LOUNGE_VIDEO_MAX_SECONDS,
   canPassThroughLoungeVideoOnEncodeFail,
   canSkipLoungeVideoWasmEncode,
+  currentLoungeVideoLimits,
+  loungeVideoDurationWithinCap,
+  loungeVideoFileTooLargeReason,
+  loungeVideoTooLongMessage,
   deleteCfStreamOrphanAsset,
   isAndroidBrowser,
   isIOSBrowser,
@@ -149,6 +151,7 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
 
   if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
 
+  const limits = currentLoungeVideoLimits()
   maybeReportLoungeVideoUploadDebug('encode', 'encode start')
   report(0.02, 'Opening encoder', '', 1)
 
@@ -167,8 +170,8 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
     if (!Number.isFinite(sourceDur) || sourceDur <= 0) {
       throw new Error('Could not read this video file.')
     }
-    if (sourceDur > LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
-      throw new Error(`Video must be ${LOUNGE_VIDEO_MAX_SECONDS} seconds or shorter.`)
+    if (!loungeVideoDurationWithinCap(sourceDur, limits)) {
+      throw new Error(loungeVideoTooLongMessage(limits.maxSeconds))
     }
     validatedDurSec = sourceDur
     if (isLoungeAndroidBlockedIphoneSpatialDirectUpload(source)) {
@@ -186,7 +189,7 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
         `force wasm (${forceReason}) ${source.name || 'video'} ${sourceMb}MB`,
       )
     }
-    if (!forceWasmEncode && canSkipLoungeVideoWasmEncode(source, sourceDur, 'direct')) {
+    if (!forceWasmEncode && canSkipLoungeVideoWasmEncode(source, sourceDur, 'direct', limits)) {
       const androidDirect = isAndroidBrowser()
       maybeReportLoungeVideoUploadDebug(
         'encode',
@@ -372,11 +375,10 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
   }
 
   if (signal.aborted) throw new DOMException('Aborted', 'AbortError')
-  if (uploadFile.size > LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
-    throw new Error('Video must be 200 MB or smaller for upload.')
-  }
-  if (!Number.isFinite(validatedDurSec) || validatedDurSec <= 0 || validatedDurSec > LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
-    throw new Error(`Video must be ${LOUNGE_VIDEO_MAX_SECONDS} seconds or shorter.`)
+  const tooLarge = loungeVideoFileTooLargeReason(uploadFile, limits)
+  if (tooLarge) throw new Error(tooLarge)
+  if (!loungeVideoDurationWithinCap(validatedDurSec, limits)) {
+    throw new Error(loungeVideoTooLongMessage(limits.maxSeconds))
   }
 
   return uploadFile
@@ -610,6 +612,7 @@ async function runNativeEdgeVideoStreamPrep({ supabaseClient, signal, spec, onPr
   signal?.addEventListener('abort', onAbort)
 
   try {
+    const limits = currentLoungeVideoLimits()
     const exported = await exportEdgeVideo({
       assetId: sourceId,
       startSec: spec.startSec,
@@ -617,6 +620,8 @@ async function runNativeEdgeVideoStreamPrep({ supabaseClient, signal, spec, onPr
       cropPx: spec.cropPx || null,
       intrinsicWidth: spec.intrinsicWidth,
       intrinsicHeight: spec.intrinsicHeight,
+      maxClipSeconds: limits.maxSeconds + limits.slackSeconds,
+      maxUploadBytes: limits.maxBytes,
     })
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
     if (!exported?.ok || !exported.assetId) {
@@ -630,6 +635,8 @@ async function runNativeEdgeVideoStreamPrep({ supabaseClient, signal, spec, onPr
       accessToken,
       supabaseUrl: String(import.meta.env.VITE_SUPABASE_URL || ''),
       anonKey: String(import.meta.env.VITE_SUPABASE_ANON_KEY || ''),
+      streamMaxDurationSeconds: limits.streamMaxDurationSeconds,
+      maxUploadBytes: limits.maxBytes,
     })
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
     const uid = String(uploaded?.streamVideoUid || '').trim()

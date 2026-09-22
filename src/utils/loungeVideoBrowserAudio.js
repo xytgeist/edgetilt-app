@@ -4,7 +4,12 @@
  */
 
 import { detectAppleWebKitInlineStream } from './loungeAppleWebKit.js'
-import { isAndroidBrowser } from './loungeVideoUpload.js'
+import {
+  isAndroidBrowser,
+  LOUNGE_VIDEO_DURATION_SLACK_SECONDS,
+  LOUNGE_VIDEO_EDGE_PRO_MAX_SECONDS,
+  loungeVideoTooLongMessage,
+} from './loungeVideoUpload.js'
 
 const DESKTOP_EXTRACT_PLAYBACK_RATE = 4
 const EXTRACT_TIMEOUT_PAD_MS = 3000
@@ -897,8 +902,8 @@ export async function captureBrowserVideoTrimSegment(
   const end = Math.max(start, Number(endSec) || 0)
   const dur = end - start
   if (!(dur > 0)) throw new Error('Invalid trim capture range')
-  if (dur > 60.35) {
-    throw new Error('Trim capture range must be 60 seconds or shorter.')
+  if (dur > LOUNGE_VIDEO_EDGE_PRO_MAX_SECONDS + LOUNGE_VIDEO_DURATION_SLACK_SECONDS) {
+    throw new Error(loungeVideoTooLongMessage(LOUNGE_VIDEO_EDGE_PRO_MAX_SECONDS))
   }
 
   throwIfAborted(signal)
@@ -942,7 +947,9 @@ export async function captureBrowserVideoTrimSegment(
           onProgress?.(r)
         },
       })
-      const result = await withTimeout(extractPromise, MAX_ATTEMPT_MS, attempt.name)
+      const rate = Math.max(0.25, Number(attempt.playbackRate) || 1)
+      const trimBudgetMs = Math.max(MAX_ATTEMPT_MS, Math.ceil((dur * 1000) / rate) + 20_000)
+      const result = await withTimeout(extractPromise, trimBudgetMs, attempt.name)
 
       const minBytes = minBrowserVideoTrimCaptureBytes(dur)
       if (!isViableBrowserVideoTrimCapture(result.blob, dur, maxProgress)) {

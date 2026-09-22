@@ -7,3 +7,5 @@ Proxies the **tus creation** `POST` from the Lounge web app to Cloudflare Stream
 **Deploy:** `supabase functions deploy lounge-cf-stream-tus-create`
 
 Client: `uploadVideoToCfStreamResumableTus` in `src/utils/loungeVideoUpload.js`.
+
+The function rejects `Upload-Length` above the caller's cap (free 512 MB, Edge Pro 8 GB) and rewrites `maxDurationSeconds` (free 155, Edge Pro 1215). Deploy this function with the cap change or the server still forwards whatever the client sends.

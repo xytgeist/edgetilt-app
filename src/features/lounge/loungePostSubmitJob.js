@@ -8,8 +8,10 @@ import {
   uploadLoungeFeedPostImage,
 } from '../../utils/communityFeedPost'
 import {
-  LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES,
-  LOUNGE_VIDEO_MAX_SECONDS,
+  currentLoungeVideoLimits,
+  loungeVideoDurationWithinCap,
+  loungeVideoFileTooLargeReason,
+  loungeVideoTooLongMessage,
   captureVideoFilePosterObjectUrl,
   deleteCfStreamOrphanAsset,
   probeVideoFileDisplaySize,
@@ -930,14 +932,14 @@ export async function executeLoungeCommunityPostSubmission({
       report(0.55, 'Video ready', 'Using upload from composer')
     } else if (hasVideo && videoFile) {
       const vf = videoFile
-      if (vf.size > LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
-        throw new Error('Video must be 200 MB or smaller for upload.')
-      }
+      const limits = currentLoungeVideoLimits()
+      const tooLarge = loungeVideoFileTooLargeReason(vf, limits)
+      if (tooLarge) throw new Error(tooLarge)
       report(0.06, 'Reading video metadata', `${Math.round(vf.size / (1024 * 1024))} MB file`)
       const dur = await probeVideoFileDurationSeconds(vf)
       throwIfAborted()
-      if (!Number.isFinite(dur) || dur > LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
-        throw new Error(`Video must be ${LOUNGE_VIDEO_MAX_SECONDS} seconds or shorter.`)
+      if (!loungeVideoDurationWithinCap(dur, limits)) {
+        throw new Error(loungeVideoTooLongMessage(limits.maxSeconds))
       }
       report(0.08, 'Uploading video', 'Ether Stream (resumable)')
       const { streamVideoUid: uid } = await uploadEncodedVideoToCfStreamWithRetries({
@@ -1394,14 +1396,14 @@ export async function executeLoungeCommunityPostUpdate({
       report(0.55, 'Video ready', 'Using upload from composer')
     } else if (hasVideo && videoFile) {
       const vf = videoFile
-      if (vf.size > LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) {
-        throw new Error('Video must be 200 MB or smaller for upload.')
-      }
+      const limits = currentLoungeVideoLimits()
+      const tooLarge = loungeVideoFileTooLargeReason(vf, limits)
+      if (tooLarge) throw new Error(tooLarge)
       report(0.06, 'Reading video metadata', `${Math.round(vf.size / (1024 * 1024))} MB file`)
       const dur = await probeVideoFileDurationSeconds(vf)
       throwIfAborted()
-      if (!Number.isFinite(dur) || dur > LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
-        throw new Error(`Video must be ${LOUNGE_VIDEO_MAX_SECONDS} seconds or shorter.`)
+      if (!loungeVideoDurationWithinCap(dur, limits)) {
+        throw new Error(loungeVideoTooLongMessage(limits.maxSeconds))
       }
       report(0.08, 'Uploading video', 'Ether Stream (resumable)')
       const { streamVideoUid: uid } = await uploadEncodedVideoToCfStreamWithRetries({

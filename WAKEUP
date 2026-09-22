@@ -62,7 +62,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo ACTIVE TRACK 2026-09-22 ... native video export
 
-**I am Mac Theo.** Current IPA picks video with PHPicker, keeps the web crop/trim modal, then uploads in a background URLSession (Lounge tus to the existing Stream create, Chat presigned R2 PUT). Untouched normal clips upload as picked. Re-encode only for a trim, a crop, a `.mov` / spatial / screen recording, or a file over 200MB. Preview URL is `edge-video://`. Safari / PWA / Android / old IPA stay on ffmpeg. Web **`1.4.475`**. New IPA required. No SQL/Edge. Store marketing still **1.4.95**. Not on `main` until Ryan promotes.
+**I am Mac Theo.** Lounge video caps: free **2:20 / 512 MB**, Edge Pro (Slots Edge Pro, Lifetime, staff) **20 min / 8 GB**. Server sets `maxDurationSeconds` (155 or 1215) and rejects oversized `Upload-Length` on **`lounge-cf-stream-tus-create`** (deployed on test; prod Edge not deployed). IPA chunks PATCH above 200 MB. Untouched normal clips still skip re-encode. Chat stays 60s / 200 MB. Web **`1.4.476`**. New IPA required. No SQL. Store marketing still **1.4.95**. Not on `main`.
 
 ### Mac Theo ACTIVE TRACK 2026-09-22 ... iPhone video encode hang
 

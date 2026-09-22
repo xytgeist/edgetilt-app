@@ -6,6 +6,11 @@
  * @see https://developers.cloudflare.com/stream/uploading-videos/direct-creator-uploads/#direct-creator-uploads-with-tus-protocol
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import {
+  loungeStreamUploadAllowance,
+  loungeVideoTooLargeMessage,
+  rewriteTusMaxDuration,
+} from '../_shared/loungeStreamUploadLimits.ts'
 
 const CLOUDFLARE_ACCOUNT_ID_RE = /^[0-9a-f]{32}$/i
 
@@ -80,9 +85,26 @@ Deno.serve(async (req) => {
       })
     }
 
+    const allowance = await loungeStreamUploadAllowance(admin, user.id)
     const tusResumable = req.headers.get('Tus-Resumable') || req.headers.get('tus-resumable') || '1.0.0'
     const uploadLength = req.headers.get('Upload-Length') || req.headers.get('upload-length') || ''
-    const uploadMetadata = req.headers.get('Upload-Metadata') || req.headers.get('upload-metadata') || ''
+    const uploadBytes = Number(uploadLength)
+    if (!Number.isFinite(uploadBytes) || uploadBytes <= 0) {
+      return new Response(JSON.stringify({ error: 'Video upload is missing a file size.' }), {
+        status: 400,
+        headers: { ...h, 'Content-Type': 'application/json' },
+      })
+    }
+    if (uploadBytes > allowance.maxBytes) {
+      return new Response(JSON.stringify({ error: loungeVideoTooLargeMessage(allowance.maxBytes) }), {
+        status: 413,
+        headers: { ...h, 'Content-Type': 'application/json' },
+      })
+    }
+    const uploadMetadata = rewriteTusMaxDuration(
+      req.headers.get('Upload-Metadata') || req.headers.get('upload-metadata') || '',
+      allowance.maxDurationSeconds,
+    )
 
     const cfUrl = `https://api.cloudflare.com/client/v4/accounts/${accountId}/stream?direct_user=true`
     const cfHeaders = new Headers({

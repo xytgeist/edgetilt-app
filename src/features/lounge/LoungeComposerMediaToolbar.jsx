@@ -1,4 +1,5 @@
 import { canPickEdgePhotos, canPickEdgeVideo, pickEdgeVideo, tryAssignEdgePickedPhotos } from '../../utils/edgeNative.js'
+import { currentLoungeVideoLimits, LOUNGE_VIDEO_NATIVE_SOURCE_MAX_BYTES } from '../../utils/loungeVideoUpload.js'
 
 /** Shared image / video / GIF toolbar controls for lounge composers. */
 
@@ -186,7 +187,13 @@ export default function LoungeComposerMediaToolbar({
     if (!canPickEdgeVideo() || !videoInputId) return
     event.preventDefault()
     try {
-      const picked = await pickEdgeVideo({ purpose: 'lounge-compose' })
+      const limits = currentLoungeVideoLimits()
+      const picked = await pickEdgeVideo({
+        purpose: 'lounge-compose',
+        maxUploadBytes: limits.maxBytes,
+        maxSourceBytes: LOUNGE_VIDEO_NATIVE_SOURCE_MAX_BYTES,
+        maxClipSeconds: limits.maxSeconds + limits.slackSeconds,
+      })
       if (picked?.cancelled) return
       if (!picked?.ok || !picked.assetId) {
         document.getElementById(videoInputId)?.click()

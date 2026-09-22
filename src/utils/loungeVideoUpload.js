@@ -105,14 +105,115 @@ function nowMs() {
   return typeof performance !== 'undefined' ? performance.now() : Date.now()
 }
 
-/** Max length for Lounge video posts (product cap; client validation). */
-export const LOUNGE_VIDEO_MAX_SECONDS = 60
+/**
+ * Free Lounge video length. Matches X's non-subscriber cap (2:20).
+ * Edge Pro uses {@link LOUNGE_VIDEO_EDGE_PRO_MAX_SECONDS}.
+ */
+export const LOUNGE_VIDEO_MAX_SECONDS = 140
 
-/** Cloudflare `maxDurationSeconds` is set slightly above the product cap so a clip that measures ~59s in an editor but ~60.1s in the browser/encoder is not rejected at the API. */
-export const LOUNGE_CF_STREAM_MAX_DURATION_SECONDS = 75
+/** Edge Pro, Slots Edge Pro, Lifetime, and staff. */
+export const LOUNGE_VIDEO_EDGE_PRO_MAX_SECONDS = 20 * 60
 
-/** Cloudflare Stream basic POST direct upload limit. */
-export const LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES = 200 * 1024 * 1024
+/** Probe / encoder drift allowed above the product cap. */
+export const LOUNGE_VIDEO_DURATION_SLACK_SECONDS = 0.35
+
+/**
+ * Cloudflare `maxDurationSeconds` sits above the product cap so a clip that measures
+ * just over the limit in the browser is not rejected. The Edge function sets this
+ * from the viewer's entitlement. A client-supplied value is not trusted.
+ */
+export const LOUNGE_CF_STREAM_DURATION_HEADROOM_SECONDS = 15
+
+/** Free-tier Stream reservation. Prefer {@link loungeVideoLimitsForViewer}. */
+export const LOUNGE_CF_STREAM_MAX_DURATION_SECONDS =
+  LOUNGE_VIDEO_MAX_SECONDS + LOUNGE_CF_STREAM_DURATION_HEADROOM_SECONDS
+
+/** Free upload size. Matches X's non-subscriber cap (512 MB). */
+export const LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES = 512 * 1024 * 1024
+
+/** Edge Pro upload size. Covers about 20 minutes of iPhone 4K60 (~400 MB per minute). */
+export const LOUNGE_CF_STREAM_EDGE_PRO_MAX_UPLOAD_BYTES = 8 * 1024 * 1024 * 1024
+
+/** Largest source the IPA will copy so a long clip can still be trimmed in the modal. */
+export const LOUNGE_VIDEO_NATIVE_SOURCE_MAX_BYTES = 8 * 1024 * 1024 * 1024
+
+let loungeVideoViewerEdgePro = false
+
+/** SocialFeed sets this from the signed-in Edge Pro grant. Chat does not use it. */
+export function setLoungeVideoViewerEdgePro(edgePro) {
+  loungeVideoViewerEdgePro = Boolean(edgePro)
+}
+
+/**
+ * @param {boolean} edgePro
+ * @returns {{ edgePro: boolean, maxSeconds: number, maxBytes: number, slackSeconds: number, streamMaxDurationSeconds: number }}
+ */
+export function loungeVideoLimitsForViewer(edgePro) {
+  const pro = Boolean(edgePro)
+  const maxSeconds = pro ? LOUNGE_VIDEO_EDGE_PRO_MAX_SECONDS : LOUNGE_VIDEO_MAX_SECONDS
+  const maxBytes = pro ? LOUNGE_CF_STREAM_EDGE_PRO_MAX_UPLOAD_BYTES : LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES
+  return {
+    edgePro: pro,
+    maxSeconds,
+    maxBytes,
+    slackSeconds: LOUNGE_VIDEO_DURATION_SLACK_SECONDS,
+    streamMaxDurationSeconds: maxSeconds + LOUNGE_CF_STREAM_DURATION_HEADROOM_SECONDS,
+  }
+}
+
+/** Limits for the Lounge viewer SocialFeed last recorded. Defaults to the free cap. */
+export function currentLoungeVideoLimits() {
+  return loungeVideoLimitsForViewer(loungeVideoViewerEdgePro)
+}
+
+/** @param {number} maxSeconds */
+export function loungeVideoDurationLabel(maxSeconds) {
+  const whole = Math.floor(Number(maxSeconds) || 0)
+  const minutes = Math.floor(whole / 60)
+  const seconds = whole % 60
+  if (whole > 0 && whole < 120 && seconds === 0) return `${whole} seconds`
+  if (seconds === 0) return minutes === 1 ? '1 minute' : `${minutes} minutes`
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
+/** @param {number} maxSeconds */
+export function loungeVideoTooLongMessage(maxSeconds) {
+  return `Video must be ${loungeVideoDurationLabel(maxSeconds)} or shorter.`
+}
+
+/** @param {number} maxBytes */
+export function loungeVideoTooLargeMessage(maxBytes) {
+  const gb = maxBytes / (1024 * 1024 * 1024)
+  if (gb >= 1 && Math.abs(gb - Math.round(gb)) < 0.01) {
+    const n = Math.round(gb)
+    return `Video must be ${n} GB or smaller for upload.`
+  }
+  const mb = Math.max(1, Math.round(maxBytes / (1024 * 1024)))
+  return `Video must be ${mb} MB or smaller for upload.`
+}
+
+/**
+ * @param {File | { size?: number } | null | undefined} file
+ * @param {{ maxBytes: number }} [limits]
+ * @returns {string} empty when the file fits
+ */
+export function loungeVideoFileTooLargeReason(file, limits = currentLoungeVideoLimits()) {
+  const size = typeof file?.size === 'number' ? file.size : 0
+  if (!Number.isFinite(size) || size <= 0 || size <= limits.maxBytes) return ''
+  return loungeVideoTooLargeMessage(limits.maxBytes)
+}
+
+/**
+ * @param {number} durationSec
+ * @param {{ maxSeconds: number, slackSeconds: number }} [limits]
+ */
+export function loungeVideoDurationWithinCap(durationSec, limits = currentLoungeVideoLimits()) {
+  return (
+    Number.isFinite(durationSec) &&
+    durationSec > 0 &&
+    durationSec <= limits.maxSeconds + limits.slackSeconds
+  )
+}
 
 /** Same window as `lounge-cf-stream-direct-upload` / tus-create Edge (`expiry` metadata). */
 export const LOUNGE_CF_STREAM_UPLOAD_EXPIRY_MS = 6 * 60 * 60 * 1000
@@ -137,9 +238,6 @@ const PROBE_DURATION_TIMEOUT_MS = 45000
 
 /** Direct picks at or below this size may skip wasm encode when already device MP4/MOV. */
 export const LOUNGE_VIDEO_FAST_PATH_MAX_BYTES = 20 * 1024 * 1024
-
-/** Already-clean MP4/M4V exports (e.g. pre-muxed AAC) may pass through without wasm up to this size. */
-export const LOUNGE_VIDEO_MP4_PASS_THROUGH_MAX_BYTES = 50 * 1024 * 1024
 
 /**
  * Android wasm often hangs on large WORKERFS HEVC sources; upload as-is and let CF Stream transcode.
@@ -242,8 +340,8 @@ export async function resolveLoungeVideoForceWasmEncode(file) {
 }
 
 /** User-facing copy when a screen recording cannot be wasm-encoded for Stream upload. */
-export function loungeIphoneScreenRecordingEncodeFailMessage() {
-  return 'This screen recording could not be converted for upload. Trim it to 60 seconds or less in Photos, then try again.'
+export function loungeIphoneScreenRecordingEncodeFailMessage(maxSeconds = currentLoungeVideoLimits().maxSeconds) {
+  return `This screen recording could not be converted for upload. Trim it to ${loungeVideoDurationLabel(maxSeconds)} or less in Photos, then try again.`
 }
 
 /** User-facing copy when Android must not direct-upload iPhone camera-roll MOV sources. */
@@ -258,9 +356,10 @@ export function loungeAndroidIphoneSpatialDirectUploadTitle() {
 
 /**
  * Android in-app trim (WebCodecs → MediaRecorder) is unreliable above this source size.
- * Matches {@link LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES}: trim failure cannot fall back to pass-through above it.
+ * Stays at 200 MB even though the upload cap is higher. Larger files upload as-is when they
+ * already fit the viewer's length cap, or get trimmed outside the app.
  */
-export const LOUNGE_VIDEO_ANDROID_TRIM_MAX_SOURCE_BYTES = LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES
+export const LOUNGE_VIDEO_ANDROID_TRIM_MAX_SOURCE_BYTES = 200 * 1024 * 1024
 
 /** @returns {number} megabyte cap for {@link loungeAndroidOversizedTrimSourceMessage}. */
 export function loungeAndroidTrimMaxSourceMegabytes() {
@@ -284,9 +383,9 @@ export function loungeAndroidOversizedTrimSourceTitle() {
 }
 
 /** User-facing copy when Android cannot in-app trim an oversized long clip. */
-export function loungeAndroidOversizedTrimSourceMessage() {
+export function loungeAndroidOversizedTrimSourceMessage(maxSeconds = currentLoungeVideoLimits().maxSeconds) {
   const mb = loungeAndroidTrimMaxSourceMegabytes()
-  return `This video is over ${mb} MB. On Android, EdgeTilt can't trim large files in the app. Trim it to 60 seconds or less in your gallery or another app, then upload the shorter clip.`
+  return `This video is over ${mb} MB. On Android, EdgeTilt can't trim large files in the app. Trim it to ${loungeVideoDurationLabel(maxSeconds)} or less in your gallery or another app, then upload the shorter clip.`
 }
 
 /**
@@ -309,26 +408,25 @@ export function isLoungeAndroidBlockedIphoneSpatialDirectUpload(file) {
  * @param {File} file
  * @param {number} durationSec
  * @param {'direct' | 'trim'} specKind
+ * @param {{ maxSeconds: number, maxBytes: number, slackSeconds: number }} [limits]
  */
-export function canSkipLoungeVideoWasmEncode(file, durationSec, specKind) {
+export function canSkipLoungeVideoWasmEncode(file, durationSec, specKind, limits = currentLoungeVideoLimits()) {
   if (specKind !== 'direct') return false
   if (isLikelyIphoneScreenRecording(file)) return false
   if (isIOSBrowser() && isLoungeVideoQuicktimeMov(file)) return false
   const size = typeof file?.size === 'number' ? file.size : 0
   if (!Number.isFinite(size) || size <= 0) return false
-  if (!Number.isFinite(durationSec) || durationSec <= 0 || durationSec > LOUNGE_VIDEO_MAX_SECONDS + 0.35) {
-    return false
-  }
+  if (!loungeVideoDurationWithinCap(durationSec, limits)) return false
   // Android: skip client wasm encode entirely; CF Stream transcodes server-side.
   // iPhone spatial sources are blocked from this path (see isLoungeAndroidBlockedIphoneSpatialDirectUpload).
   if (
     isAndroidBrowser() &&
-    size <= LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES &&
+    size <= limits.maxBytes &&
     !isLoungeAndroidBlockedIphoneSpatialDirectUpload(file)
   ) {
     return true
   }
-  if (isLoungeVideoMp4Container(file) && size <= LOUNGE_VIDEO_MP4_PASS_THROUGH_MAX_BYTES) {
+  if (isLoungeVideoMp4Container(file) && size <= limits.maxBytes) {
     return true
   }
   if (size > LOUNGE_VIDEO_FAST_PATH_MAX_BYTES) return false
@@ -343,12 +441,16 @@ export function canSkipLoungeVideoWasmEncode(file, durationSec, specKind) {
   )
 }
 
-/** Ultimate fallback when client encode fails: upload original for CF Stream to transcode. */
-export function canPassThroughLoungeVideoOnEncodeFail(file) {
+/**
+ * Ultimate fallback when client encode fails: upload original for CF Stream to transcode.
+ * @param {File | undefined} file
+ * @param {{ maxBytes: number }} [limits]
+ */
+export function canPassThroughLoungeVideoOnEncodeFail(file, limits = currentLoungeVideoLimits()) {
   if (isLikelyIphoneScreenRecording(file)) return false
   if (isIOSBrowser() && isLoungeVideoQuicktimeMov(file)) return false
   const size = typeof file?.size === 'number' ? file.size : 0
-  if (!Number.isFinite(size) || size <= 0 || size > LOUNGE_CF_STREAM_MAX_UPLOAD_BYTES) return false
+  if (!Number.isFinite(size) || size <= 0 || size > limits.maxBytes) return false
   if (isLoungeAndroidBlockedIphoneSpatialDirectUpload(file)) return false
   return true
 }
@@ -1525,7 +1627,7 @@ export function uploadVideoToCfStreamResumableTus(supabaseClient, file, options 
           removeFingerprintOnSuccess: true,
           metadata: {
             name: loungeTusSafeFilename(file.name),
-            maxDurationSeconds: String(LOUNGE_CF_STREAM_MAX_DURATION_SECONDS),
+            maxDurationSeconds: String(currentLoungeVideoLimits().streamMaxDurationSeconds),
             expiry,
           },
           headers: {},

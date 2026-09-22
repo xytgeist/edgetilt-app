@@ -304,7 +304,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
         ?? 12
       EdgePhotoPicker.present(maxCount: rawMax, completion: completion)
     case "pickEdgeVideo":
-      EdgeVideoPicker.present(completion: completion)
+      EdgeVideoPicker.present(payload: payload, completion: completion)
     case "exportEdgeVideo":
       Task {
         do {

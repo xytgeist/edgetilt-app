@@ -1,5 +1,5 @@
 /**
- * Mint a one-time Cloudflare Stream direct upload URL (product cap 60s; CF maxDurationSeconds has headroom for probe/encoder drift). Caller must be authenticated.
+ * Mint a one-time Cloudflare Stream direct upload URL. Duration reservation follows the caller's Edge Pro grant. Caller must be authenticated.
  *
  * Secrets (Supabase project → Edge Functions):
  *   CLOUDFLARE_ACCOUNT_ID
@@ -8,14 +8,12 @@
  * @see https://developers.cloudflare.com/stream/uploading-videos/direct-creator-uploads/
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { loungeStreamUploadAllowance } from '../_shared/loungeStreamUploadLimits.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
-
-/** Slightly above 60 so clips that read as ~59s in an editor but measure just over 60s at upload are not rejected by Cloudflare. Client still enforces the 60s product cap. */
-const MAX_DURATION_SECONDS = 75
 
 /** Cloudflare Account IDs are 32 hex chars (same length as Zone IDs — use Account ID from the dashboard sidebar, not a zone). */
 const CLOUDFLARE_ACCOUNT_ID_RE = /^[0-9a-f]{32}$/i
@@ -97,6 +95,7 @@ Deno.serve(async (req) => {
       })
     }
 
+    const allowance = await loungeStreamUploadAllowance(admin, user.id)
     /** Direct upload URL stops accepting bytes after this time (RFC 3339). Orphan Stream rows may still show pendingupload until deleted — see `lounge-cf-stream-purge-pending-uploads` and client orphan delete. */
     const uploadExpiryMs = 6 * 60 * 60 * 1000
     const expiry = new Date(Date.now() + uploadExpiryMs).toISOString()
@@ -109,7 +108,7 @@ Deno.serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        maxDurationSeconds: MAX_DURATION_SECONDS,
+        maxDurationSeconds: allowance.maxDurationSeconds,
         requireSignedURLs: false,
         expiry,
       }),
@@ -183,7 +182,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         uploadURL: cfJson.result.uploadURL,
         uid: cfJson.result.uid,
-        maxDurationSeconds: MAX_DURATION_SECONDS,
+        maxDurationSeconds: allowance.maxDurationSeconds,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )

@@ -434,24 +434,35 @@ const ENCODE_STALL_MS_VIDEO_COPY = 8_000
 const ENCODE_STALL_MS_ANDROID = 15_000
 const ENCODE_MAX_MS_ANDROID_LARGE = 60_000
 
-/** @param {number} fileBytes @param {EncodeStrategy | undefined} strategy @returns {{ stallMs: number, maxMs: number }} */
-function encodeStrategyWatchLimits(fileBytes, strategy) {
+/**
+ * @param {number} fileBytes
+ * @param {EncodeStrategy | undefined} strategy
+ * @param {number} [durationSec] output length. Clips over the old 60s cap get a longer wall clock so a 2:20 or 20 minute encode is not killed while it is still making progress.
+ * @returns {{ stallMs: number, maxMs: number }}
+ */
+function encodeStrategyWatchLimits(fileBytes, strategy, durationSec = 0) {
   const mb = typeof fileBytes === 'number' && Number.isFinite(fileBytes) ? fileBytes / (1024 * 1024) : 0
-  if (strategy?.videoCopy) {
-    return { stallMs: ENCODE_STALL_MS_VIDEO_COPY, maxMs: 60_000 }
-  }
-  if (strategy?.label?.startsWith('screen-rec-')) {
-    let maxMs = 180_000
-    if (mb >= 30) maxMs = 240_000
-    return { stallMs: 45_000, maxMs }
-  }
-  if (isAndroidBrowser() && mb >= 20) {
-    return { stallMs: ENCODE_STALL_MS_ANDROID, maxMs: ENCODE_MAX_MS_ANDROID_LARGE }
-  }
+  let stallMs = ENCODE_STALL_MS
   let maxMs = 90_000
-  if (mb >= 50) maxMs = 180_000
-  else if (mb >= 20) maxMs = 150_000
-  return { stallMs: ENCODE_STALL_MS, maxMs }
+  if (strategy?.videoCopy) {
+    stallMs = ENCODE_STALL_MS_VIDEO_COPY
+    maxMs = 60_000
+  } else if (strategy?.label?.startsWith('screen-rec-')) {
+    stallMs = 45_000
+    maxMs = mb >= 30 ? 240_000 : 180_000
+  } else if (isAndroidBrowser() && mb >= 20) {
+    stallMs = ENCODE_STALL_MS_ANDROID
+    maxMs = ENCODE_MAX_MS_ANDROID_LARGE
+  } else if (mb >= 50) {
+    maxMs = 180_000
+  } else if (mb >= 20) {
+    maxMs = 150_000
+  }
+  const dur = Number(durationSec)
+  if (Number.isFinite(dur) && dur > 60) {
+    maxMs = Math.max(maxMs, Math.ceil(dur * 1000 * 3 + 30_000))
+  }
+  return { stallMs, maxMs }
 }
 
 /**
@@ -933,7 +944,7 @@ async function runWasmEncodeStrategyLoop(ffmpeg, ctx) {
 
   for (const strategy of strategies) {
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
-    const watchLimits = encodeStrategyWatchLimits(file.size, strategy)
+    const watchLimits = encodeStrategyWatchLimits(file.size, strategy, dur)
     maybeReportLoungeVideoUploadDebug('encode', `encode try ${strategy.label}`)
     try {
       await deleteFfmpegFileSafe(ffmpeg, outName)
@@ -1460,7 +1471,7 @@ async function wasmReencodeToMp4({
 
     for (const strategy of strategies) {
       if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
-      const watchLimits = encodeStrategyWatchLimits(file.size, strategy)
+      const watchLimits = encodeStrategyWatchLimits(file.size, strategy, dur)
       maybeReportLoungeVideoUploadDebug('encode', `encode try ${strategy.label}`)
       if (typeof onProgress === 'function') {
         onProgress(encodeProgressBase + 0.03)

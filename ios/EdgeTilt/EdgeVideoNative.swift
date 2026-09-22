@@ -8,10 +8,77 @@ import WebKit
 /// The web crop modal stays the UI. This file only replaces ffmpeg.wasm + the JS tus body on the IPA.
 
 private enum EdgeVideoLimits {
-  static let maxSourceBytes: Int64 = 1_500_000_000
-  static let maxUploadBytes: Int64 = 200 * 1024 * 1024
-  static let maxClipSeconds: Double = 60.35
-  static let streamMaxDurationSeconds = 75
+  /// Omitted payload fields keep the pre-cap IPA behavior so a cached web bundle cannot jump ahead.
+  static let legacySourceBytes: Int64 = 1_500_000_000
+  static let legacyUploadBytes: Int64 = 200 * 1024 * 1024
+  static let legacyClipSeconds: Double = 60.35
+  static let legacyStreamMaxDurationSeconds = 75
+  /// Hard ceiling. Matches Edge Pro (20 minutes, 8 GB). JS cannot ask for more.
+  static let absoluteMaxSourceBytes: Int64 = 8 * 1024 * 1024 * 1024
+  static let absoluteMaxUploadBytes: Int64 = 8 * 1024 * 1024 * 1024
+  static let absoluteMaxClipSeconds: Double = 1200.35
+  static let absoluteStreamMaxDurationSeconds = 1215
+  /// Cloudflare rejects a single tus PATCH above 200 MB. Larger files go out in 100 MB pieces.
+  static let cfSingleRequestMaxBytes: Int64 = 200 * 1024 * 1024
+  static let cfChunkBytes: Int64 = 100 * 1024 * 1024
+  static let cfMinChunkBytes: Int64 = 5_242_880
+  static let cfChunkUnit: Int64 = 262_144
+
+  static func positiveInt64(_ raw: Any?) -> Int64? {
+    if let n = raw as? Int64, n > 0 { return n }
+    if let n = raw as? Int, n > 0 { return Int64(n) }
+    if let n = raw as? NSNumber, n.int64Value > 0 { return n.int64Value }
+    if let n = raw as? Double, n > 0, n <= Double(Int64.max) { return Int64(n) }
+    if let s = raw as? String, let n = Int64(s), n > 0 { return n }
+    return nil
+  }
+
+  static func resolvedSourceBytes(_ payload: [String: Any]?) -> Int64 {
+    min(positiveInt64(payload?["maxSourceBytes"]) ?? legacySourceBytes, absoluteMaxSourceBytes)
+  }
+
+  static func resolvedUploadBytes(_ payload: [String: Any]?) -> Int64 {
+    min(positiveInt64(payload?["maxUploadBytes"]) ?? legacyUploadBytes, absoluteMaxUploadBytes)
+  }
+
+  static func resolvedClipSeconds(_ payload: [String: Any]?) -> Double {
+    let raw = payload?["maxClipSeconds"]
+    let parsed: Double? = {
+      if let n = raw as? Double, n > 0 { return n }
+      if let n = raw as? NSNumber, n.doubleValue > 0 { return n.doubleValue }
+      if let s = raw as? String, let n = Double(s), n > 0 { return n }
+      return nil
+    }()
+    return min(parsed ?? legacyClipSeconds, absoluteMaxClipSeconds)
+  }
+
+  static func resolvedStreamDuration(_ payload: [String: Any]?) -> Int {
+    let raw = positiveInt64(payload?["streamMaxDurationSeconds"]) ?? Int64(legacyStreamMaxDurationSeconds)
+    return Int(min(raw, Int64(absoluteStreamMaxDurationSeconds)))
+  }
+
+  static func durationLabel(_ seconds: Double) -> String {
+    let whole = Int(seconds.rounded(.down))
+    let minutes = whole / 60
+    let remain = whole % 60
+    if whole > 0 && whole < 120 && remain == 0 { return "\(whole) seconds" }
+    if remain == 0 { return minutes == 1 ? "1 minute" : "\(minutes) minutes" }
+    return String(format: "%d:%02d", minutes, remain)
+  }
+
+  /// Non-final chunks stay ≥ 5 MB and a multiple of 256 KiB. The last chunk can be shorter.
+  static func nextChunkLength(offset: Int64, total: Int64) -> Int64 {
+    let left = total - offset
+    if offset == 0 && left <= cfSingleRequestMaxBytes { return left }
+    if left <= cfChunkBytes { return left }
+    var take = cfChunkBytes
+    let after = left - take
+    if after > 0 && after < cfMinChunkBytes {
+      take = ((left - cfMinChunkBytes) / cfChunkUnit) * cfChunkUnit
+      if take < cfMinChunkBytes { take = cfMinChunkBytes }
+    }
+    return min(take, left)
+  }
 }
 
 enum EdgeVideoEvents {
@@ -77,7 +144,7 @@ final class EdgeVideoStore {
     }
   }
 
-  func insertCopy(of source: URL, preferredExtension: String, originalFilename: String = "") throws -> EdgeVideoAsset {
+  func insertCopy(of source: URL, preferredExtension: String, originalFilename: String = "", maxSourceBytes: Int64) throws -> EdgeVideoAsset {
     let id = UUID().uuidString.lowercased()
     let ext = preferredExtension.isEmpty ? "mov" : preferredExtension
     let dest = directory.appendingPathComponent("\(id).\(ext)")
@@ -90,7 +157,7 @@ final class EdgeVideoStore {
       try? FileManager.default.removeItem(at: dest)
       throw EdgeVideoError.unreadable
     }
-    if size > EdgeVideoLimits.maxSourceBytes {
+    if size > maxSourceBytes {
       try? FileManager.default.removeItem(at: dest)
       throw EdgeVideoError.tooLarge
     }
@@ -144,7 +211,7 @@ enum EdgeVideoError: LocalizedError {
   case cancelled
   case unreadable
   case tooLarge
-  case tooLong
+  case tooLong(String)
   case exportFailed(String)
   case uploadFailed(String)
   case notSignedIn
@@ -157,8 +224,8 @@ enum EdgeVideoError: LocalizedError {
       return "Could not open that video."
     case .tooLarge:
       return "That video is too large to import. Pick a shorter clip."
-    case .tooLong:
-      return "Video must be 60 seconds or shorter."
+    case .tooLong(let message):
+      return message
     case .exportFailed(let message):
       return message.isEmpty ? "Could not prepare that video." : message
     case .uploadFailed(let message):
@@ -292,7 +359,7 @@ final class EdgeVideoSchemeHandler: NSObject, WKURLSchemeHandler {
 }
 
 enum EdgeVideoPicker {
-  static func present(completion: @escaping (Result<[String: Any], Error>) -> Void) {
+  static func present(payload: [String: Any]?, completion: @escaping (Result<[String: Any], Error>) -> Void) {
     DispatchQueue.main.async {
       guard let presenter = topViewController() else {
         completion(.success(["ok": false, "error": "No window to present the picker."]))
@@ -302,7 +369,7 @@ enum EdgeVideoPicker {
       config.filter = .videos
       config.selectionLimit = 1
       config.preferredAssetRepresentationMode = .current
-      let session = Session(completion: completion)
+      let session = Session(maxSourceBytes: EdgeVideoLimits.resolvedSourceBytes(payload), completion: completion)
       Session.current = session
       let picker = PHPickerViewController(configuration: config)
       picker.delegate = session
@@ -322,10 +389,12 @@ enum EdgeVideoPicker {
 
   private final class Session: NSObject, PHPickerViewControllerDelegate {
     static var current: Session?
+    private let maxSourceBytes: Int64
     private let completion: (Result<[String: Any], Error>) -> Void
     private var didFinish = false
 
-    init(completion: @escaping (Result<[String: Any], Error>) -> Void) {
+    init(maxSourceBytes: Int64, completion: @escaping (Result<[String: Any], Error>) -> Void) {
+      self.maxSourceBytes = maxSourceBytes
       self.completion = completion
     }
 
@@ -357,7 +426,8 @@ enum EdgeVideoPicker {
           let stored = try EdgeVideoStore.shared.insertCopy(
             of: url,
             preferredExtension: ext,
-            originalFilename: url.lastPathComponent
+            originalFilename: url.lastPathComponent,
+            maxSourceBytes: self.maxSourceBytes
           )
           Task {
             let probed = await EdgeVideoProbe.probe(url: stored.fileURL)
@@ -462,8 +532,10 @@ enum EdgeVideoExporter {
     var endSec = double(payload?["endSec"]) ?? full
     if !endSec.isFinite || endSec <= startSec { endSec = full }
     endSec = min(endSec, full)
-    if endSec - startSec > EdgeVideoLimits.maxClipSeconds {
-      throw EdgeVideoError.tooLong
+    let maxClipSeconds = EdgeVideoLimits.resolvedClipSeconds(payload)
+    let maxUploadBytes = EdgeVideoLimits.resolvedUploadBytes(payload)
+    if endSec - startSec > maxClipSeconds {
+      throw EdgeVideoError.tooLong("Video must be \(EdgeVideoLimits.durationLabel(maxClipSeconds)) or shorter.")
     }
     let clip = CMTimeRange(
       start: CMTime(seconds: startSec, preferredTimescale: 600),
@@ -482,7 +554,8 @@ enum EdgeVideoExporter {
       endSec: endSec,
       crop: crop,
       display: display,
-      videoTrackCount: videoTracks.count
+      videoTrackCount: videoTracks.count,
+      maxUploadBytes: maxUploadBytes
     ) {
       EdgeVideoEvents.post(phase: "export", progress: 1, assetId: assetId)
       return [
@@ -569,7 +642,7 @@ enum EdgeVideoExporter {
     }
 
     let size = (try? FileManager.default.attributesOfItem(atPath: outURL.path)[.size] as? NSNumber)?.int64Value ?? 0
-    if size <= 0 || size > EdgeVideoLimits.maxUploadBytes {
+    if size <= 0 || size > maxUploadBytes {
       try? FileManager.default.removeItem(at: outURL)
       throw EdgeVideoError.tooLarge
     }
@@ -596,7 +669,7 @@ enum EdgeVideoExporter {
   ]
 
   /// Untouched normal clips upload as picked. Re-encode only for a trim, a crop,
-  /// a `.mov` / spatial / screen recording, or a file over the 200MB upload cap.
+  /// a `.mov` / spatial / screen recording, or a file over the viewer's upload cap.
   private static func canPassthrough(
     source: EdgeVideoAsset,
     full: Double,
@@ -604,13 +677,14 @@ enum EdgeVideoExporter {
     endSec: Double,
     crop: CGRect?,
     display: CGSize,
-    videoTrackCount: Int
+    videoTrackCount: Int,
+    maxUploadBytes: Int64
   ) -> Bool {
     if crop != nil { return false }
     if startSec > 0.25 { return false }
     if full.isFinite, full - endSec > 0.35 { return false }
     if videoTrackCount > 1 { return false }
-    if source.byteSize > EdgeVideoLimits.maxUploadBytes { return false }
+    if source.byteSize > maxUploadBytes { return false }
     if source.fileURL.pathExtension.lowercased() == "mov" { return false }
     let name = source.originalFilename
     if name.range(of: "screen\\s*record|rpreplay|simulator\\s*screen", options: [.regularExpression, .caseInsensitive]) != nil {
@@ -683,6 +757,7 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
     var continuation: CheckedContinuation<Void, Error>?
     var assetId = ""
     var byteSize: Int64 = 0
+    var sentBefore: Int64 = 0
   }
 
   private let lock = NSLock()
@@ -707,7 +782,17 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
     guard !token.isEmpty, !supabaseURL.isEmpty, !anonKey.isEmpty else {
       throw EdgeVideoError.notSignedIn
     }
-    let created = try await createTus(fileSize: stored.byteSize, token: token, supabaseURL: supabaseURL, anonKey: anonKey)
+    let maxUploadBytes = EdgeVideoLimits.resolvedUploadBytes(payload)
+    if stored.byteSize > maxUploadBytes {
+      throw EdgeVideoError.tooLarge
+    }
+    let created = try await createTus(
+      fileSize: stored.byteSize,
+      token: token,
+      supabaseURL: supabaseURL,
+      anonKey: anonKey,
+      streamMaxDurationSeconds: EdgeVideoLimits.resolvedStreamDuration(payload)
+    )
     try await patchFile(stored.fileURL, location: created.location, assetId: assetId, byteSize: stored.byteSize)
     EdgeVideoEvents.post(phase: "upload", progress: 1, assetId: assetId)
     return ["ok": true, "streamVideoUid": created.uid, "assetId": assetId]
@@ -738,7 +823,7 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
     var uid: String
   }
 
-  private func createTus(fileSize: Int64, token: String, supabaseURL: String, anonKey: String) async throws -> TusCreate {
+  private func createTus(fileSize: Int64, token: String, supabaseURL: String, anonKey: String, streamMaxDurationSeconds: Int) async throws -> TusCreate {
     guard let url = URL(string: "\(supabaseURL)/functions/v1/lounge-cf-stream-tus-create") else {
       throw EdgeVideoError.uploadFailed("Could not start the upload.")
     }
@@ -748,7 +833,7 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
     request.setValue(anonKey, forHTTPHeaderField: "apikey")
     request.setValue("1.0.0", forHTTPHeaderField: "Tus-Resumable")
     request.setValue(String(fileSize), forHTTPHeaderField: "Upload-Length")
-    request.setValue(Self.tusMetadata(), forHTTPHeaderField: "Upload-Metadata")
+    request.setValue(Self.tusMetadata(streamMaxDurationSeconds: streamMaxDurationSeconds), forHTTPHeaderField: "Upload-Metadata")
     request.setValue("0", forHTTPHeaderField: "Content-Length")
     let (data, response) = try await URLSession.shared.data(for: request)
     guard let http = response as? HTTPURLResponse else {
@@ -758,8 +843,7 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
       throw EdgeVideoError.notSignedIn
     }
     guard (200...299).contains(http.statusCode) else {
-      let body = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-      throw EdgeVideoError.uploadFailed(body.isEmpty ? "Video upload failed. Try again." : "Video upload failed (\(http.statusCode)).")
+      throw EdgeVideoError.uploadFailed(Self.message(from: data, status: http.statusCode))
     }
     let uid = (http.value(forHTTPHeaderField: "stream-media-id") ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
     guard uid.range(of: "^[0-9a-fA-F]{32}$", options: .regularExpression) != nil else {
@@ -773,19 +857,62 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
   }
 
   private func patchFile(_ fileURL: URL, location: URL, assetId: String, byteSize: Int64) async throws {
-    var request = URLRequest(url: location)
-    request.httpMethod = "PATCH"
-    request.setValue("1.0.0", forHTTPHeaderField: "Tus-Resumable")
-    request.setValue("0", forHTTPHeaderField: "Upload-Offset")
-    request.setValue("application/offset+octet-stream", forHTTPHeaderField: "Content-Type")
-    try await send(request: request, fileURL: fileURL, assetId: assetId, byteSize: byteSize)
+    if byteSize <= EdgeVideoLimits.cfSingleRequestMaxBytes {
+      var request = URLRequest(url: location)
+      request.httpMethod = "PATCH"
+      request.setValue("1.0.0", forHTTPHeaderField: "Tus-Resumable")
+      request.setValue("0", forHTTPHeaderField: "Upload-Offset")
+      request.setValue("application/offset+octet-stream", forHTTPHeaderField: "Content-Type")
+      try await send(request: request, fileURL: fileURL, assetId: assetId, byteSize: byteSize, sentBefore: 0)
+      return
+    }
+    var offset: Int64 = 0
+    while offset < byteSize {
+      let length = EdgeVideoLimits.nextChunkLength(offset: offset, total: byteSize)
+      let slice = try Self.sliceFile(fileURL, offset: offset, length: length)
+      defer { try? FileManager.default.removeItem(at: slice) }
+      var request = URLRequest(url: location)
+      request.httpMethod = "PATCH"
+      request.setValue("1.0.0", forHTTPHeaderField: "Tus-Resumable")
+      request.setValue(String(offset), forHTTPHeaderField: "Upload-Offset")
+      request.setValue("application/offset+octet-stream", forHTTPHeaderField: "Content-Type")
+      try await send(request: request, fileURL: slice, assetId: assetId, byteSize: byteSize, sentBefore: offset)
+      offset += length
+    }
   }
 
-  private func send(request: URLRequest, fileURL: URL, assetId: String, byteSize: Int64) async throws {
+  private static func sliceFile(_ fileURL: URL, offset: Int64, length: Int64) throws -> URL {
+    let dest = FileManager.default.temporaryDirectory.appendingPathComponent("edge-tus-\(UUID().uuidString.lowercased()).part")
+    if FileManager.default.fileExists(atPath: dest.path) {
+      try? FileManager.default.removeItem(at: dest)
+    }
+    let input = try FileHandle(forReadingFrom: fileURL)
+    defer { try? input.close() }
+    try input.seek(toOffset: UInt64(offset))
+    FileManager.default.createFile(atPath: dest.path, contents: nil)
+    let output = try FileHandle(forWritingTo: dest)
+    defer { try? output.close() }
+    var remaining = length
+    while remaining > 0 {
+      let n = Int(min(Int64(1024 * 1024), remaining))
+      let data = input.readData(ofLength: n)
+      if data.isEmpty { break }
+      output.write(data)
+      remaining -= Int64(data.count)
+    }
+    if remaining != 0 {
+      try? FileManager.default.removeItem(at: dest)
+      throw EdgeVideoError.uploadFailed("Could not read that video.")
+    }
+    return dest
+  }
+
+  private func send(request: URLRequest, fileURL: URL, assetId: String, byteSize: Int64, sentBefore: Int64 = 0) async throws {
     let task = session.uploadTask(with: request, fromFile: fileURL)
     let waiter = Waiter()
     waiter.assetId = assetId
     waiter.byteSize = byteSize
+    waiter.sentBefore = sentBefore
     lock.lock()
     waiters[task.taskIdentifier] = waiter
     activeTask = task
@@ -813,8 +940,9 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
     let waiter = waiters[task.taskIdentifier]
     lock.unlock()
     guard let waiter else { return }
-    let total = totalBytesExpectedToSend > 0 ? totalBytesExpectedToSend : waiter.byteSize
-    let progress = total > 0 ? Double(totalBytesSent) / Double(total) : 0
+    let total = waiter.byteSize > 0 ? waiter.byteSize : totalBytesExpectedToSend
+    let sent = waiter.sentBefore + totalBytesSent
+    let progress = total > 0 ? Double(sent) / Double(total) : 0
     EdgeVideoEvents.post(phase: "upload", progress: progress, assetId: waiter.assetId)
   }
 
@@ -848,13 +976,22 @@ final class EdgeVideoUploader: NSObject, URLSessionDelegate, URLSessionTaskDeleg
     }
   }
 
-  private static func tusMetadata() -> String {
+  private static func message(from data: Data, status: Int) -> String {
+    if let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+       let error = obj["error"] as? String {
+      let trimmed = error.trimmingCharacters(in: .whitespacesAndNewlines)
+      if !trimmed.isEmpty { return trimmed }
+    }
+    return "Video upload failed (\(status))."
+  }
+
+  private static func tusMetadata(streamMaxDurationSeconds: Int) -> String {
     let expiry = ISO8601DateFormatter()
     expiry.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
     let stamp = expiry.string(from: Date().addingTimeInterval(6 * 60 * 60))
     let pairs = [
       ("name", "video.mp4"),
-      ("maxDurationSeconds", String(EdgeVideoLimits.streamMaxDurationSeconds)),
+      ("maxDurationSeconds", String(streamMaxDurationSeconds)),
       ("expiry", stamp),
     ]
     return pairs.map { key, value in

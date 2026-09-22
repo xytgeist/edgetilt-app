@@ -1847,6 +1847,8 @@ export default function ChatConversation({
                 cropPx: spec.cropPx || null,
                 intrinsicWidth: spec.intrinsicWidth,
                 intrinsicHeight: spec.intrinsicHeight,
+                maxClipSeconds: 60.35,
+                maxUploadBytes: 200 * 1024 * 1024,
               })
               if (abortCtrl.signal.aborted) { removeVideoPrepJob(jobId); return }
               if (!exported?.ok || !exported.assetId) {

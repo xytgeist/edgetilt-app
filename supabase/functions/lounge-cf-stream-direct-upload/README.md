@@ -42,8 +42,10 @@ supabase functions deploy lounge-cf-stream-direct-upload --project-ref jtjgtucum
 
 ## Product limits (enforced in app + upload token)
 
-- **60 seconds** max length in the app; direct upload tokens use **`maxDurationSeconds: 75`** so clips that measure slightly over 60s at the encoder are not rejected by Cloudflare while the product cap stays 60s.
-- **200 MB** max file size for the basic POST upload path (Cloudflare; see Stream direct upload docs).
+- **Free:** 2:20 and 512 MB. Direct upload tokens use **`maxDurationSeconds: 155`** (15s of probe headroom).
+- **Edge Pro** (also Slots Edge Pro, Lifetime, and staff): **20 minutes** and **8 GB**. Tokens use **`maxDurationSeconds: 1215`**.
+- The function reads `has_edge_pro_entitlement` and sets the reservation. A client cannot raise it.
+- Cloudflare's single request is still 200 MB. The web tus client and the IPA split larger files into smaller chunks.
 
 Direct upload responses include an **`expiry`** (currently **6 hours** from mint) so the one-time upload URL stops accepting bytes; the Stream asset may still appear as **pending upload** until encoding completes or the asset is deleted. Failed posts call **`lounge-cf-stream-delete-orphan`** from the app; use **`lounge-cf-stream-purge-pending-uploads`** on a schedule for anything the client never cleaned up.
 

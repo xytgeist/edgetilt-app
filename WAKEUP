@@ -66,7 +66,7 @@ The agent should treat the following as **standing instructions for this session
 
 | Ref | Hash | Note |
 | --- | --- | --- |
-| **`origin/test` tip** | *(this push)* | web **`1.4.469`**. Phone landscape Lounge title bar tighter. |
+| **`origin/test` tip** | **`3e0d2538`** | web **`1.4.469`**. Phone landscape Lounge title bar tighter. |
 | **`origin/main`** | **`5f217e63`** / **`08800db1`** | Vercel **edgetilt.com** web **`1.4.462`**. `test` is ahead … promote when Ryan asks. |
 | iOS **`MARKETING_VERSION`** | **`1.4.95`** | Do not bump. |
 

@@ -48,6 +48,8 @@ import {
 import { profileAvatarInitials, profileAvatarToneClass } from '../profiles/profileGate.js'
 
 const ALL_PLAN_SLUGS = [PRODUCT_SLOTS_EDGE_STARTER, PRODUCT_SLOTS_EDGE, PRODUCT_SLOTS_EDGE_LIFETIME]
+/** Shell Review path: Starter + Pro only until Lifetime IAP rides a submission. Web keeps the card. */
+const IPA_PLAN_SLUGS = [PRODUCT_SLOTS_EDGE_STARTER, PRODUCT_SLOTS_EDGE]
 
 /** @param {number} index @param {number} activeIndex @param {number} slideCount */
 function getSlideOffset(index, activeIndex, slideCount) {
@@ -454,13 +456,15 @@ export default function SubscribeModal({
   starterPriceInterval = null,
   fullPriceInterval = null,
 }) {
-  const planSlugs = ALL_PLAN_SLUGS
+  // IPA hides Lifetime so Review cannot swipe onto an IAP that is not in the submission.
+  const hideLifetimeCard = isEdgeiOSShell()
+  const planSlugs = hideLifetimeCard ? IPA_PLAN_SLUGS : ALL_PLAN_SLUGS
   const slideCount = planSlugs.length
   const [usStorefront, setUsStorefront] = useState(/** @type {boolean | null} */ (null))
   const showWebComparePrice = canShowIapWebComparePrice(usStorefront)
 
   const defaultPlan = useMemo(() => {
-    if (initialProductSlug === PRODUCT_SLOTS_EDGE_LIFETIME) {
+    if (initialProductSlug === PRODUCT_SLOTS_EDGE_LIFETIME && !hideLifetimeCard) {
       return PRODUCT_SLOTS_EDGE_LIFETIME
     }
     if (initialProductSlug === PRODUCT_SLOTS_EDGE_STARTER) return PRODUCT_SLOTS_EDGE_STARTER
@@ -468,7 +472,7 @@ export default function SubscribeModal({
     if (hasSlotsEdgeStarter && !hasSlotsEdgePro && !hasSlotsEdgeLifetime) return PRODUCT_SLOTS_EDGE_STARTER
     if (hasSlotsEdgePro && !hasSlotsEdgeLifetime) return PRODUCT_SLOTS_EDGE
     return PRODUCT_SLOTS_EDGE
-  }, [hasSlotsEdgeLifetime, hasSlotsEdgePro, hasSlotsEdgeStarter, initialProductSlug])
+  }, [hasSlotsEdgeLifetime, hasSlotsEdgePro, hasSlotsEdgeStarter, hideLifetimeCard, initialProductSlug])
 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -547,7 +551,12 @@ export default function SubscribeModal({
           if (!cancelled) setUsStorefront(null)
         }
         try {
-          const { products } = await fetchEdgeStoreProducts(supabaseClient, allKnownIapProductIds())
+          const productIds = hideLifetimeCard
+            ? allKnownIapProductIds().filter(
+                (id) => id !== iapProductIdForPlan(PRODUCT_SLOTS_EDGE_LIFETIME),
+              )
+            : allKnownIapProductIds()
+          const { products } = await fetchEdgeStoreProducts(supabaseClient, productIds)
           if (cancelled) return
           setStoreProductsById(indexStoreProductsById(products))
         } catch {
@@ -1339,6 +1348,7 @@ export default function SubscribeModal({
                     </SubscribeCardScale>
                     </div>
 
+                    {hideLifetimeCard ? null : (
                     <div
                       className={[
                         'subscribe-plan-slide-3d',
@@ -1427,6 +1437,7 @@ export default function SubscribeModal({
                     </div>
                     </SubscribeCardScale>
                     </div>
+                    )}
                   </div>
                 </div>
               </div>

@@ -196,7 +196,8 @@ Track implementation in `docs/test-buildout-backlog.md` when Phase 1 work starts
 | 2026-09-05 | **`apple-iap-verify` deployed on test** after sandbox confirm 404. Client fails closed before StoreKit if begin cannot reach the function. **`1.4.92`.** |
 | 2026-09-14 | **Lifetime IAP list is `$1,499.99`.** Ryan dropped offer codes. Immediate global on `com.edgetilt.app.slots_edge_lifetime`. Raise to `$1,999` when founding ends. |
 | 2026-09-14 | **Founding Lifetime offer codes.** ASC offer **Founding Lifetime** (`e4b718f8-3bfc-44a8-861c-56fe90217797`) on `com.edgetilt.app.slots_edge_lifetime`. **Superseded same day** when the list moved to `$1,499.99`. |
-| 2026-09-14 | **IPA Subscribe carousel shows Lifetime again.** Apple approved higher price points. Starter + Pro + Lifetime, same as web. **`1.4.210`.** |
+| 2026-09-23 | **IPA Subscribe carousel hides Lifetime again.** Review **2.1(b)** (Sep 23): app referenced lifetime pro but Lifetime IAP was not in the submission. Shell = Starter + Pro only; web keeps the card. **`1.4.494`.** |
+| 2026-09-14 | **IPA Subscribe carousel shows Lifetime again.** Apple approved higher price points. Starter + Pro + Lifetime, same as web. **`1.4.210`.** Superseded **2026-09-23**. |
 | 2026-09-05 | **IPA Subscribe carousel hides Lifetime again** until Apple unlocks price points above `$1,000`. Web still shows the card. **`1.4.91`.** Superseded **2026-09-14**. |
 | 2026-09-05 | **IPA Subscribe carousel shows Lifetime again** (Starter + Pro + Lifetime, same as web). **Superseded same night** (`1.4.91`). |
 | 2026-09-05 | **IPA Subscribe carousel hides Lifetime** until higher App Store price points. Web still shows the card. **Superseded same day** when Ryan put the card back. |

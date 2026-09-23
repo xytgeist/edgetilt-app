@@ -46,7 +46,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Goal (Windows, parallel OK):** _Web app bugs/features + sports pill / live-data track + **self-hosted GitHub Actions runner** for poker catalog. Pull often; stay in web lane (`src/**`). Bridge: **`docs/ios-native-bridge.md`**._
 
-**Start by reading:** `AGENTS.md`, this **Pick up here** → **Mac Theo ACTIVE TRACK 2026-09-22 … native video export**, then the landscape / sports tracks, backlog Update log **2026-09-22**. Dual-agent: **`docs/ios-native-bridge.md`**. Fast mailbox: **https://lvslotpro.com/theo**.
+**Start by reading:** `AGENTS.md`, this **Pick up here** → **Mac Theo ACTIVE TRACK 2026-09-23 … ASC Lifetime hide**, then the video / landscape tracks, backlog Update log **2026-09-23**. Dual-agent: **`docs/ios-native-bridge.md`**. Fast mailbox: **https://lvslotpro.com/theo**.
 
 **Optional add-ons** (delete lines you do not need)
 
@@ -59,6 +59,10 @@ The agent should treat the following as **standing instructions for this session
 ## Pick up here (Aug 2026 ... session 2026-08-22)
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. **2026-09-21 evening:** Mac ending landscape/rail/Poker pane track at web **`1.4.462`**. Windows owns sports-pill paint + live-data decision. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
+
+### Mac Theo ACTIVE TRACK 2026-09-23 ... ASC Lifetime hide for Review
+
+**I am Mac Theo.** ASC rejected **1.4.95** again (**2.1(b)** Sep 23): shell showed Lifetime without the IAP in the submission. Option 2: hide Lifetime on IPA Subscribe carousel again (Starter + Pro only); web keeps the card. Web **`1.4.494`**. Needs **`test` → `main`** (Prod IPA loads edgetilt.com) + new Prod archive (marketing still **1.4.95**) + resubmit **without** attaching Lifetime IAP. Do not attach `com.edgetilt.app.slots_edge_lifetime`.
 
 ### Mac Theo ACTIVE TRACK 2026-09-22 ... native video export
 

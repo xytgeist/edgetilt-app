@@ -1,5 +1,5 @@
 /**
- * Session-only map: Cloudflare Stream uid → composer-captured JPEG poster URL.
+ * Session-only map: Cloudflare Stream uid (or pending publish key) → composer JPEG poster URL.
  * `blob:` from browser crop, or `data:image/…` from the iPhone native picker.
  * Used so the feed tile can show stable intrinsic dimensions immediately after post,
  * then `LoungePostStreamVideo` swaps to CF `thumbnail.jpg` when it loads and revokes here.
@@ -14,7 +14,34 @@ export function isLoungeSessionPosterSrc(url) {
 }
 
 /**
- * @param {string} uid Stream asset id (hex)
+ * Prefer `posterUrl`, then still `preview`, when either is a session poster src.
+ * @param {{ posterUrl?: string | null, preview?: string | null } | null | undefined} slot
+ * @returns {string | null}
+ */
+export function resolveLoungeSessionPosterFromSlot(slot) {
+  if (!slot || typeof slot !== 'object') return null
+  for (const key of ['posterUrl', 'preview']) {
+    const u = String(slot[key] || '').trim()
+    if (isLoungeSessionPosterSrc(u)) return u
+  }
+  return null
+}
+
+/**
+ * Snapshot field, then trim restore stills.
+ * @param {object | null | undefined} snapshot
+ * @returns {string | null}
+ */
+export function resolveLoungeSessionPosterFromSnapshot(snapshot) {
+  const direct = String(snapshot?.sessionStreamPosterBlobUrl || '').trim()
+  if (isLoungeSessionPosterSrc(direct)) return direct
+  const fromRestore = resolveLoungeSessionPosterFromSlot(snapshot?.videoPrepSlotRestore)
+  if (fromRestore) return fromRestore
+  return null
+}
+
+/**
+ * @param {string} uid Stream asset id (hex) or pending publish key
  * @param {string} objectUrl `blob:` or `data:image/…` JPEG poster
  */
 export function pinLoungeStreamSessionPoster(uid, objectUrl) {

@@ -4,9 +4,8 @@ import {
 } from '../../utils/loungeVideoUpload.js'
 import {
   loungeSubmissionSnapshotIncludesVideo,
-  loungeSubmissionSnapshotThreadPartCount,
 } from './loungeSubmissionSnapshot.js'
-import { isLoungeSessionPosterSrc } from './loungeStreamSessionPoster.js'
+import { isLoungeSessionPosterSrc, resolveLoungeSessionPosterFromSnapshot, peekLoungeStreamSessionPoster, pinLoungeStreamSessionPoster } from './loungeStreamSessionPoster.js'
 
 /** @typedef {{ progress: number, status: string, detail: string, phase?: string, processingStartedAt?: number }} LoungePendingPostProgress */
 
@@ -740,6 +739,8 @@ export function remitLoungePendingPostProgressKey(fromKey, toKey) {
     progressByKey.delete(from)
     notifyPendingPostProgress()
   }
+  const poster = peekLoungeStreamSessionPoster(from)
+  if (poster) pinLoungeStreamSessionPoster(to, poster)
 }
 
 /** Any Lounge submit snapshot with Stream video uses inline tile progress (not the bottom bar). */
@@ -789,8 +790,7 @@ export function createLoungePendingPublishKey(prefix = 'pending') {
  * @param {object | null | undefined} [opts.authorProfile]
  */
 function sessionPosterBlobFromSnapshot(snapshot) {
-  const posterBlob = String(snapshot?.sessionStreamPosterBlobUrl || '').trim()
-  return isLoungeSessionPosterSrc(posterBlob) ? posterBlob : null
+  return resolveLoungeSessionPosterFromSnapshot(snapshot)
 }
 
 export function buildAuthorPendingVideoFeedPost({ snapshot, pendingKey, userId, authorProfile }) {

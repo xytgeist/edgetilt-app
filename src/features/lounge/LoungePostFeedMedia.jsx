@@ -703,6 +703,7 @@ export function LoungePostFeedImagesAndGif({
     post?._authorPendingPublish === true || post?.feed_visible_at === null
   const sessionPosterFromPost =
     String(post?._sessionStreamPosterBlob || '').trim() ||
+    (pendingPublishKey ? peekLoungeStreamSessionPoster(pendingPublishKey) : '') ||
     (streamUid ? peekLoungeStreamSessionPoster(streamUid) : '')
   if (post?._authorPendingPublish && pendingPublishKey && !streamUid) {
     if (hideAsSheetPeekDuplicate) return null
@@ -719,7 +720,8 @@ export function LoungePostFeedImagesAndGif({
   const streamDims = streamUid ? feedPostStreamVideoDisplayDimensions(post) : null
   const sessionStreamPosterUrl =
     sessionPosterFromPost ||
-    (streamUid ? peekLoungeStreamSessionPoster(streamUid) : '')
+    (streamUid ? peekLoungeStreamSessionPoster(streamUid) : '') ||
+    (pendingPublishKey ? peekLoungeStreamSessionPoster(pendingPublishKey) : '')
   const feedAutoplayClientId = loungeFeedAutoplayClientId({
     enableLightbox,
     variant,

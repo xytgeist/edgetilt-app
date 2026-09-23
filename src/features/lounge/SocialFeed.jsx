@@ -383,6 +383,8 @@ import {
   loungeSubmitSnapshotBlobUrls,
   pinLoungeStreamSessionPoster,
   releaseLoungeStreamSessionPoster,
+  resolveLoungeSessionPosterFromSlot,
+  resolveLoungeSessionPosterFromSnapshot,
 } from './loungeStreamSessionPoster.js'
 import KlipyGifPicker from './KlipyGifPicker.jsx'
 import LoungeMarketChartModal from './LoungeMarketChartModal.jsx'
@@ -4191,6 +4193,8 @@ export default function SocialFeed({
         userId: composerUserId,
         authorProfile: composerUserProfile || null,
       })
+      const poster = resolveLoungeSessionPosterFromSnapshot(snapshot)
+      if (poster) pinLoungeStreamSessionPoster(key, poster)
       setCommunityPosts((prev) => [row, ...prev.filter((p) => p.id !== key && p._pendingPublishKey !== key)])
       setLoungePendingPostProgress(key, { progress: 0, status: 'Starting…', detail: '', phase: 'upload' })
     },
@@ -4209,6 +4213,8 @@ export default function SocialFeed({
         original,
         originalKind,
       })
+      const poster = resolveLoungeSessionPosterFromSnapshot(snapshot)
+      if (poster) pinLoungeStreamSessionPoster(key, poster)
       setCommunityPosts((prev) => [row, ...prev.filter((p) => p.id !== key && p._pendingPublishKey !== key)])
       setLoungePendingPostProgress(key, { progress: 0, status: 'Starting…', detail: '', phase: 'upload' })
     },
@@ -4226,6 +4232,8 @@ export default function SocialFeed({
         authorProfile: composerUserProfile || null,
         threadPartCount,
       })
+      const poster = resolveLoungeSessionPosterFromSnapshot(snapshot)
+      if (poster) pinLoungeStreamSessionPoster(key, poster)
       setCommunityPosts((prev) => [row, ...prev.filter((p) => p.id !== key && p._pendingPublishKey !== key)])
       setLoungePendingPostProgress(key, { progress: 0, status: 'Starting…', detail: '', phase: 'upload' })
     },
@@ -4244,6 +4252,8 @@ export default function SocialFeed({
         postId: snapshot.postId,
         parentId: snapshot.parentId,
       })
+      const poster = resolveLoungeSessionPosterFromSnapshot(snapshot)
+      if (poster) pinLoungeStreamSessionPoster(key, poster)
       setLoungeDetailComments((prev) => {
         const filtered = prev.filter((r) => r.id !== key && r._pendingPublishKey !== key)
         const withNew = [...filtered, row]
@@ -5814,6 +5824,7 @@ export default function SocialFeed({
           file: null,
           previewUrl,
           nativeAssetId: assetId,
+          initialPosterUrl: posterUrl || '',
           mode,
           partIdx: threadComposeActivePartIndexRef.current,
           knownDurationSec: known > 0 ? known : undefined,
@@ -6795,10 +6806,7 @@ export default function SocialFeed({
         awaiting != null && specForSnap && (specForSnap.kind === 'trim' || specForSnap.kind === 'native') && slot
           ? { posterUrl: slot.posterUrl, preview: slot.preview }
           : null
-      const sessionPosterBlob =
-        hasVideo && slot?.posterUrl && isLoungeSessionPosterSrc(slot.posterUrl)
-          ? String(slot.posterUrl).trim()
-          : null
+      const sessionPosterBlob = hasVideo ? resolveLoungeSessionPosterFromSlot(slot) : null
 
       snapshot = {
         caption: cap,
@@ -7364,10 +7372,7 @@ export default function SocialFeed({
       hasVideo && !uid && loungeDetailCommentVideoPrepSpecRef.current
         ? loungeDetailCommentVideoPrepSpecRef.current
         : null
-    const sessionPosterBlob =
-      hasVideo && slotNow?.posterUrl && isLoungeSessionPosterSrc(slotNow.posterUrl)
-          ? String(slotNow.posterUrl).trim()
-          : null
+    const sessionPosterBlob = hasVideo ? resolveLoungeSessionPosterFromSlot(slotNow) : null
 
     const snapshot = {
       clientMutationId: createLoungeCommentMutationId(),
@@ -7563,10 +7568,7 @@ export default function SocialFeed({
       hasNewVideo && !uid && loungeDetailCommentEditVideoPrepSpecRef.current
         ? loungeDetailCommentEditVideoPrepSpecRef.current
         : null
-    const sessionPosterBlob =
-      hasNewVideo && slotNow?.posterUrl && isLoungeSessionPosterSrc(slotNow.posterUrl)
-          ? String(slotNow.posterUrl).trim()
-          : null
+    const sessionPosterBlob = hasNewVideo ? resolveLoungeSessionPosterFromSlot(slotNow) : null
 
     const snapshot = {
       commentId: loungeDetailCommentEditingId,
@@ -9873,10 +9875,7 @@ export default function SocialFeed({
       hasNewVideo && !uid && loungeDetailEditVideoPrepSpecRef.current
         ? loungeDetailEditVideoPrepSpecRef.current
         : null
-    const sessionPosterBlob =
-      hasNewVideo && slotNow?.posterUrl && isLoungeSessionPosterSrc(slotNow.posterUrl)
-          ? String(slotNow.posterUrl).trim()
-          : null
+    const sessionPosterBlob = hasNewVideo ? resolveLoungeSessionPosterFromSlot(slotNow) : null
 
     const snapshot = {
       postId: loungePostDetail.id,
@@ -14724,9 +14723,7 @@ export default function SocialFeed({
           : null
 
       const sessionPosterBlob =
-        hasVideo && slot?.posterUrl && isLoungeSessionPosterSrc(slot.posterUrl)
-          ? String(slot.posterUrl).trim()
-          : null
+        hasVideo ? resolveLoungeSessionPosterFromSlot(slot) : null
 
       snapshot = {
         caption,
@@ -20685,6 +20682,7 @@ export default function SocialFeed({
           file={loungeVideoCrop.file}
           previewUrl={loungeVideoCrop.previewUrl}
           nativeAssetId={loungeVideoCrop.nativeAssetId}
+          initialPosterUrl={loungeVideoCrop.initialPosterUrl}
           knownDurationSec={loungeVideoCrop.knownDurationSec}
           maxClipSec={currentLoungeVideoLimits().maxSeconds}
           intent="composer"
@@ -20744,8 +20742,14 @@ export default function SocialFeed({
                     }
                 startThreadComposePartVideoPrepFromSpec(partIdx, spec, {
                   file: null,
-                  posterUrl: result.posterUrl || null,
-                  preview: result.posterUrl || '',
+                  posterUrl:
+                    result.posterUrl ||
+                    String(loungeVideoCrop.initialPosterUrl || '').trim() ||
+                    null,
+                  preview:
+                    result.posterUrl ||
+                    String(loungeVideoCrop.initialPosterUrl || '').trim() ||
+                    '',
                   streamVideoUid: null,
                 })
               }
@@ -20819,8 +20823,14 @@ export default function SocialFeed({
                     }
                 startPrep(spec, {
                   file: null,
-                  posterUrl: result.posterUrl || null,
-                  preview: result.posterUrl || '',
+                  posterUrl:
+                    result.posterUrl ||
+                    String(loungeVideoCrop.initialPosterUrl || '').trim() ||
+                    null,
+                  preview:
+                    result.posterUrl ||
+                    String(loungeVideoCrop.initialPosterUrl || '').trim() ||
+                    '',
                   streamVideoUid: null,
                 })
                 if (cropMode === 'quote') setQuoteRepostMediaUrl('')

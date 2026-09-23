@@ -1,5 +1,5 @@
 import { loungeVideoSlotAfterPrep, runComposerStreamVideoPrepWithRetries } from './loungeComposerVideoPrep.js'
-import { isLoungeSessionPosterSrc } from './loungeStreamSessionPoster.js'
+import { isLoungeSessionPosterSrc, resolveLoungeSessionPosterFromSlot } from './loungeStreamSessionPoster.js'
 
 /** @typedef {'queued' | 'preparing' | 'ready' | 'failed'} ThreadComposeVideoPrepStatus */
 
@@ -152,8 +152,7 @@ export function threadComposePartVideoSnapshotFields(slot, prepMeta) {
     (awaiting != null || slot.prepStatus === 'queued') && (spec?.kind === 'trim' || spec?.kind === 'native')
       ? { posterUrl: slot.posterUrl, preview: slot.preview }
       : null
-  const sessionPosterBlob =
-    slot.posterUrl && isLoungeSessionPosterSrc(slot.posterUrl) ? String(slot.posterUrl).trim() : null
+  const sessionPosterBlob = resolveLoungeSessionPosterFromSlot(slot)
   return {
     videoFile: slot.file instanceof File ? slot.file : null,
     streamVideoUid: uid,

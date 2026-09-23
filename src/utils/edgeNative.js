@@ -535,9 +535,10 @@ export async function pickEdgeVideo(payload = {}) {
 
 /** JPEG data URL from a native pick, or null. */
 export function nativeVideoPosterDataUrl(asset) {
-  const b64 = String(asset?.posterJpegBase64 || '').trim()
-  if (!b64) return null
-  return `data:image/jpeg;base64,${b64}`
+  const raw = String(asset?.posterJpegBase64 || '').trim()
+  if (!raw) return null
+  if (raw.startsWith('data:image/')) return raw
+  return `data:image/jpeg;base64,${raw}`
 }
 
 /** Local IPA file URL. Never use this as an `<img>` or composer `<video>` src. */

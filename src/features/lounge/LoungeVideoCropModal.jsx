@@ -234,6 +234,7 @@ export default function LoungeVideoCropModal({
   file,
   previewUrl = '',
   nativeAssetId = '',
+  initialPosterUrl = '',
   knownDurationSec,
   intent = 'composer',
   shellClassName = 'z-[105]',
@@ -261,7 +262,7 @@ export default function LoungeVideoCropModal({
   const [clipEnd, setClipEnd] = useState(MAX_CLIP_SEC)
   const [phase, setPhase] = useState('idle')
   const [trimErr, setTrimErr] = useState('')
-  const [posterUrl, setPosterUrl] = useState('')
+  const [posterUrl, setPosterUrl] = useState(() => String(initialPosterUrl || '').trim())
   /** Separate blob URL for the hidden probe so WebKit decodes it independently of the main preview. */
   const [probeBlobUrl, setProbeBlobUrl] = useState('')
   const [intrinsicSize, setIntrinsicSize] = useState({ w: 0, h: 0 })
@@ -847,6 +848,10 @@ export default function LoungeVideoCropModal({
       })
       } catch (posterErr) {
         if (!nativeAssetId) throw posterErr
+        posterUrl = String(initialPosterUrl || '').trim()
+      }
+      if (!posterUrl && nativeAssetId) {
+        posterUrl = String(initialPosterUrl || '').trim()
       }
 
       onConfirm({
@@ -865,7 +870,7 @@ export default function LoungeVideoCropModal({
       setTrimErr(err instanceof Error ? err.message : 'Could not prepare clip.')
       setPhase('idle')
     }
-  }, [file, nativeAssetId, onConfirm, cropAspectKey, intrinsicSize.w, intrinsicSize.h, intent])
+  }, [file, nativeAssetId, initialPosterUrl, onConfirm, cropAspectKey, intrinsicSize.w, intrinsicSize.h, intent])
 
   useEffect(
     () => () => {

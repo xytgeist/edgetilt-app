@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-23:** **Android FAB Search tap-through (Mac).** Opening Search disarmed the pointer guard immediately so Android’s ghost click under the Edge-L Search chip (under `+`) hit the feed. Keep a short feed-only capture guard (no z-200 shield) when a slide panel opens. Web **`1.4.493`**. No IPA / SQL.
 - **2026-09-23:** **Universal Links for Lounge share + Smart App Banner (Mac).** AASA + Swift claim `/lounge/p/*`, `/u/*`, and SPA `post` / `u` / `profile` query links; share permalinks rewrite to `/?tab=home&…` in the shell. Safari Smart App Banner (`app-id=6806401093`) on `index.html` + post/profile OG pages. Web **`1.4.492`**. **New IPA** for Swift allowlist / rewrite. No SQL.
 - **2026-09-23:** **Composer Include game → Sports tribe (Mac).** Including a suggested NFL card also selects the Sports category pill (cap 3 … replaces last if full). Web **`1.4.491`**. No IPA / SQL.
 - **2026-09-23:** **Composer NFL card less trigger-happy (Mac).** Committed abbrevs must be uppercase (`WAS` not `Was`); abbrev-only one-team suggests need a sports cue (vs / cover / odds / …). Full names, players, and clear matchups stay eager. Web **`1.4.490`**. No IPA / SQL.

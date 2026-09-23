@@ -15,6 +15,7 @@ const EMPTY_GAMES = []
 /**
  * Live game-pill suggest under the composer. Cards stay off until the author
  * taps “include”. Tokens match after a trailing space or punctuation (“Rams ” / “DAL,”).
+ * Abbrevs must be uppercase; abbrev-only one-team needs a sports cue (vs, cover, …).
  * One card per team/matchup context; a specific matchup replaces the vague card.
  * Multi uses the same full-bleed horizontal carousel as feed post images.
  */

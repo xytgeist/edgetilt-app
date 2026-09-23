@@ -303,11 +303,14 @@ function hasAbbrev(original, abbrev) {
   return re.test(original)
 }
 
-/** Composer: abbrev counts after whitespace or punctuation (“DAL ” / “DAL,”), not bare “DAL”. */
+/**
+ * Composer: abbrev counts after whitespace or punctuation (“DAL ” / “DAL,”), not bare “DAL”.
+ * Token must be uppercase so English “Was ” / “No ” / “Sea ” do not fire team codes.
+ */
 function hasCommittedAbbrev(original, abbrev) {
   const a = String(abbrev || '').trim().toUpperCase()
   if (a.length < 2 || a.length > 4) return false
-  const re = new RegExp(`(?:^|[^A-Za-z])${escapeRe(a)}(?=[^A-Za-z0-9])`, 'i')
+  const re = new RegExp(`(?:^|[^A-Za-z])${escapeRe(a)}(?=[^A-Za-z0-9])`)
   return re.test(original)
 }
 
@@ -327,11 +330,13 @@ function versusAbbrevs(original) {
 
 /**
  * Versus only after both sides are committed (space/punct after each side).
- * “KC vs” does not count; “KC vs Mia ” / “Rams vs Broncos,” does.
+ * “KC vs” does not count; “KC vs MIA ” / “Rams vs Broncos,” does.
+ * Abbrev sides must be typed uppercase (same rule as lone codes).
  */
 function versusAbbrevsCommitted(original) {
   const m = String(original || '').match(/\b([A-Za-z]{2,4})\s+(?:vs\.?|@|v)\s+([A-Za-z]{2,4})(?=[^A-Za-z0-9]|$)/i)
   if (!m) return null
+  if (m[1] !== m[1].toUpperCase() || m[2] !== m[2].toUpperCase()) return null
   const a = canonicalAbbrev(m[1])
   const b = canonicalAbbrev(m[2])
   if (!CATALOG_BY_ABBREV.has(a) || !CATALOG_BY_ABBREV.has(b) || a === b) return null
@@ -341,12 +346,30 @@ function versusAbbrevsCommitted(original) {
   return [a, b]
 }
 
-function resolveCommittedTeamAbbrev(phrase) {
+/** Soft-norm path: full names / mascots only (never lowercased abbrevs like “was”). */
+function resolveCommittedTeamName(phrase) {
   const p = norm(phrase)
   if (!p) return null
   for (const row of NFL_TEAM_CATALOG) {
-    if (norm(row.abbrev) === p || norm(row.espn) === p) return row.abbrev
     if (row.names.some((n) => norm(n) === p)) return row.abbrev
+  }
+  return null
+}
+
+/** “Rams vs DAL ” / “DAL vs Rams,” … one side uppercase abbrev, other a committed name. */
+function versusNameAbbrevCommitted(original) {
+  const text = String(original || '')
+  const rightAbbrev = text.match(/(.+?)\s+(?:vs\.?|@|v)\s+([A-Z]{2,4})(?=[^A-Za-z0-9])/i)
+  if (rightAbbrev) {
+    const a = resolveCommittedTeamName(softNormForCommit(rightAbbrev[1]).trim())
+    const b = canonicalAbbrev(rightAbbrev[2])
+    if (a && CATALOG_BY_ABBREV.has(b) && a !== b) return [a, b]
+  }
+  const leftAbbrev = text.match(/\b([A-Z]{2,4})\s+(?:vs\.?|@|v)\s+(.+?)(?=[^A-Za-z0-9])/i)
+  if (leftAbbrev) {
+    const a = canonicalAbbrev(leftAbbrev[1])
+    const b = resolveCommittedTeamName(softNormForCommit(leftAbbrev[2]).trim())
+    if (b && CATALOG_BY_ABBREV.has(a) && a !== b) return [a, b]
   }
   return null
 }
@@ -355,11 +378,13 @@ function resolveCommittedTeamAbbrev(phrase) {
 function versusTeamsCommitted(original) {
   const fromAbbrev = versusAbbrevsCommitted(original)
   if (fromAbbrev) return fromAbbrev
+  const fromMix = versusNameAbbrevCommitted(original)
+  if (fromMix) return fromMix
   const soft = softNormForCommit(original)
   const m = soft.match(/(.+?)\s+(?:vs\.?|@|v)\s+(.+?)\s/)
   if (!m) return null
-  const a = resolveCommittedTeamAbbrev(m[1])
-  const b = resolveCommittedTeamAbbrev(m[2])
+  const a = resolveCommittedTeamName(m[1])
+  const b = resolveCommittedTeamName(m[2])
   if (!a || !b || a === b) return null
   return [a, b]
 }
@@ -386,18 +411,62 @@ function sideHits(original, haystack, side, sportKey, { committed = false } = {}
   return score
 }
 
-function mentionedNflAbbrevs(original, haystack, { committed = false } = {}) {
-  const out = []
+/**
+ * Betting / game-talk cues so a lone uppercase abbrev is not enough to suggest a card.
+ * Matchups and full team names bypass this gate.
+ */
+const SPORTS_CONTEXT_RE =
+  /\b(?:vs\.?|v\.?|@|spread|spreads|odds|lines?|ats|ml|moneyline|money\s*line|cover(?:s|ed)?|beat(?:s|en)?|won|wins|winning|losing|lost|lose|score(?:d|s)?|points?|week\s*\d+|snf|mnf|tnf|nfl|football|kickoff|touchdown|tds?|field\s*goals?|fgs?|over|under|totals?|matchups?|gameday|game\s*day|qb|rb|wr|te|defense|offense|picks?|parlay|teaser|favorite|underdog|dog|lock|hammer|units?)\b/i
+
+function captionHasSportsContext(original) {
+  return SPORTS_CONTEXT_RE.test(String(original || ''))
+}
+
+/**
+ * @returns {{ abbrev: string, viaName: boolean, viaPlayer: boolean, viaAbbrev: boolean }[]}
+ */
+function mentionedNflTeamsDetailed(original, haystack, { committed = false } = {}) {
+  /** @type {Map<string, { abbrev: string, viaName: boolean, viaPlayer: boolean, viaAbbrev: boolean }>} */
+  const byAbbrev = new Map()
   const phraseHit = committed ? hasCommittedPhrase : hasPhrase
   const abbrevHit = committed ? hasCommittedAbbrev : hasAbbrev
   const hay = committed ? softNormForCommit(original) : haystack
   for (const row of NFL_TEAM_CATALOG) {
-    const nameHit = row.names.some((n) => phraseHit(hay, n))
-    const playerHit = row.players.some((n) => phraseHit(hay, n))
-    const codeHit = abbrevHit(original, row.abbrev) || abbrevHit(original, row.espn)
-    if (nameHit || playerHit || codeHit) out.push(row.abbrev)
+    const viaName = row.names.some((n) => phraseHit(hay, n))
+    const viaPlayer = row.players.some((n) => phraseHit(hay, n))
+    const viaAbbrev = abbrevHit(original, row.abbrev) || abbrevHit(original, row.espn)
+    if (!viaName && !viaPlayer && !viaAbbrev) continue
+    const prev = byAbbrev.get(row.abbrev)
+    if (prev) {
+      prev.viaName = prev.viaName || viaName
+      prev.viaPlayer = prev.viaPlayer || viaPlayer
+      prev.viaAbbrev = prev.viaAbbrev || viaAbbrev
+    } else {
+      byAbbrev.set(row.abbrev, { abbrev: row.abbrev, viaName, viaPlayer, viaAbbrev })
+    }
   }
-  return [...new Set(out)]
+  return [...byAbbrev.values()]
+}
+
+function mentionedNflAbbrevs(original, haystack, { committed = false } = {}) {
+  return mentionedNflTeamsDetailed(original, haystack, { committed }).map((row) => row.abbrev)
+}
+
+/**
+ * Abbrev-only one-team hits need a sports cue (or another strong team signal).
+ * Full names, players, and clear matchups stay eager.
+ */
+function shouldSuggestAmbiguousTeam(hit, mentioned, { hasMatchup, hasSportsContext }) {
+  if (!hit) return false
+  if (hit.viaName || hit.viaPlayer) return true
+  if (!hit.viaAbbrev) return false
+  if (hasMatchup || hasSportsContext) return true
+  const strongOther = mentioned.some(
+    (other) => other.abbrev !== hit.abbrev && (other.viaName || other.viaPlayer),
+  )
+  if (strongOther) return true
+  const abbrevPeers = mentioned.filter((other) => other.viaAbbrev && other.abbrev !== hit.abbrev)
+  return abbrevPeers.length >= 1
 }
 
 function teamContextKey(abbrev) {
@@ -422,6 +491,7 @@ export function loungeSportsGamesShareTeam(a, b) {
 /**
  * Caption → up to `limit` games with context keys (composer).
  * One card per team / matchup context. Specific matchups replace one-team contexts.
+ * Committed mode: uppercase abbrevs only; abbrev-only one-team needs a sports cue.
  * @returns {{ game: object, specific: boolean, contextKey: string }[]}
  */
 export function matchLoungePostToSportsGamesDetailed(caption, games, limit = LOUNGE_SPORTS_GAME_PIN_MAX, opts = {}) {
@@ -432,7 +502,8 @@ export function matchLoungePostToSportsGamesDetailed(caption, games, limit = LOU
   if (haystack.length < 3 || !Array.isArray(games) || !games.length) return []
 
   const pair = committed ? versusTeamsCommitted(original) : versusAbbrevs(original)
-  const mentioned = mentionedNflAbbrevs(original, haystack, { committed })
+  const mentioned = mentionedNflTeamsDetailed(original, haystack, { committed })
+  const hasSportsContext = committed ? captionHasSportsContext(original) : true
   const out = []
   const seenIds = new Set()
   const seenContexts = new Set()
@@ -452,11 +523,20 @@ export function matchLoungePostToSportsGamesDetailed(caption, games, limit = LOU
     if (picked) add(picked, true, matchupContextKey(pair[0], pair[1]))
   }
 
-  for (const abbrev of mentioned) {
+  for (const hit of mentioned) {
     if (out.length >= cap) break
-    if (out.some((row) => gameHasTeam(row.game, abbrev))) continue
-    const picked = pickAmbiguousTeamGame(abbrev, games)
-    if (picked) add(picked, false, teamContextKey(abbrev))
+    if (out.some((row) => gameHasTeam(row.game, hit.abbrev))) continue
+    if (
+      committed &&
+      !shouldSuggestAmbiguousTeam(hit, mentioned, {
+        hasMatchup: Boolean(pair),
+        hasSportsContext,
+      })
+    ) {
+      continue
+    }
+    const picked = pickAmbiguousTeamGame(hit.abbrev, games)
+    if (picked) add(picked, false, teamContextKey(hit.abbrev))
   }
 
   return out

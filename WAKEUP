@@ -62,7 +62,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo ACTIVE TRACK 2026-09-23 ... ASC Lifetime hide for Review
 
-**I am Mac Theo.** ASC rejected **1.4.95** again (**2.1(b)** Sep 23): shell showed Lifetime without the IAP in the submission. Option 2: hide Lifetime on IPA Subscribe carousel again (Starter + Pro only); web keeps the card. Web **`1.4.494`**. Needs **`test` → `main`** (Prod IPA loads edgetilt.com) + new Prod archive (marketing still **1.4.95**) + resubmit **without** attaching Lifetime IAP. Do not attach `com.edgetilt.app.slots_edge_lifetime`.
+**I am Mac Theo.** ASC rejected **1.4.95** again (**2.1(b)** Sep 23): shell showed Lifetime without the IAP in the submission. Option 2 done: hide Lifetime on IPA Subscribe (Starter + Pro only); web keeps the card. Promoted **`main`** (`090f82cb`). Prod web **`1.4.494`**. Prod IPA **1.4.95 (20260923140305)** uploaded, attached, replied, **Waiting for Review**. No Lifetime IAP in the package. Marketing still **1.4.95**.
 
 ### Mac Theo ACTIVE TRACK 2026-09-22 ... native video export
 

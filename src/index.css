@@ -3552,6 +3552,26 @@ html.light [data-lounge-game-chat] {
 html.light [data-lounge-game-chat]::placeholder {
   color: #71717a !important;
 }
+/* Team-color hero stays light-on-dark even in light mode */
+html.light [data-lounge-game-hero] .text-white,
+html.light [data-lounge-game-hero] .text-white\/90,
+html.light [data-lounge-game-hero] .text-white\/85,
+html.light [data-lounge-game-hero] .text-white\/80,
+html.light [data-lounge-game-hero] .text-white\/75,
+html.light [data-lounge-game-hero] .text-white\/70,
+html.light [data-lounge-game-hero] .text-white\/55 {
+  color: #fff !important;
+}
+html.light [data-lounge-game-hero] .text-rose-300 {
+  color: #fda4af !important;
+}
+html.light [data-lounge-game-players] input,
+html.light [data-lounge-game-fantasy] a {
+  color: inherit;
+}
+html.light [data-lounge-game-fantasy] .text-emerald-400 {
+  color: #059669 !important;
+}
 
 html.light [data-lounge-market-chart-modal] .border-cyan-400 {
   border-color: var(--color-cyan-600);

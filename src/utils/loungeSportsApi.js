@@ -89,3 +89,51 @@ export async function loungeSportsGameDetail(supabase, eventId) {
   if (!id) return { error: 'Missing event.' }
   return loungeSportsScoreboard(supabase, { event_id: id })
 }
+
+/**
+ * Game-scoped Players + Fantasy + Kalshi props.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {{ eventId: string, awayAbbrev: string, homeAbbrev: string }} opts
+ */
+export async function loungeNflGameFantasy(supabase, opts) {
+  let {
+    data: { session },
+  } = await supabase.auth.getSession()
+  if (!session?.access_token) return { error: 'You must be signed in for fantasy data.' }
+
+  const nowSecs = Math.floor(Date.now() / 1000)
+  if (!session.expires_at || session.expires_at - nowSecs < 60) {
+    const { data: refreshed } = await supabase.auth.refreshSession()
+    if (refreshed?.session?.access_token) session = refreshed.session
+  }
+
+  const body = {
+    event_id: String(opts?.eventId || '').trim(),
+    away_abbrev: String(opts?.awayAbbrev || '').trim(),
+    home_abbrev: String(opts?.homeAbbrev || '').trim(),
+  }
+  if (!body.event_id || !body.away_abbrev || !body.home_abbrev) {
+    return { error: 'Missing event or teams.' }
+  }
+
+  const { data, error } = await supabase.functions.invoke('lounge-nfl-game-fantasy', {
+    body,
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  })
+
+  if (error) {
+    let message = error.message || 'Fantasy request failed.'
+    try {
+      const ctx = error.context
+      if (ctx && typeof ctx.json === 'function') {
+        const errBody = await ctx.json()
+        if (errBody?.error) message = String(errBody.error)
+      }
+    } catch {
+      /* ignore */
+    }
+    return { error: message }
+  }
+  if (data && typeof data === 'object' && data.error) return { error: String(data.error) }
+  return data
+}

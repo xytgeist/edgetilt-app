@@ -1,0 +1,25 @@
+# lounge-nfl-game-fantasy
+
+Logged-in Lounge **per-game** Players + Fantasy payload for `LoungeGameHubModal`.
+
+- **Request** `POST` `{ "event_id", "away_abbrev", "home_abbrev" }` with user JWT
+- **Response** `{ ok, players[], props[], season, week, sources[], fetched_at }`
+- **Sources:** `nfl_players` table (preferred) or live Sleeper roster filter; Sleeper weekly PPR projections; Kalshi open NFL prop markets (public, no key); FantasyPros ECR/projections when `FANTASYPROS_API_KEY` is set
+- **Cache:** `nfl_game_fantasy_cache` (~90s TTL)
+
+## Secrets
+
+| Name | Required | Notes |
+| --- | --- | --- |
+| `FANTASYPROS_API_KEY` | optional | `x-api-key` for FP public API |
+| `KALSHI_API_KEY_ID` / `KALSHI_PRIVATE_KEY` | optional | Public market data works without; reserved for auth trading |
+
+Mirror the same names in repo-root `.env.supabase.test` (gitignored) for local scripts.
+
+```bash
+supabase functions deploy lounge-nfl-game-fantasy --project-ref kcosfvmreeiosdjdzycb
+```
+
+Client: `loungeNflGameFantasy` in `src/utils/loungeSportsApi.js`.
+
+Player sync: `node scripts/sync-nfl-players.mjs --target=test [--download]`.

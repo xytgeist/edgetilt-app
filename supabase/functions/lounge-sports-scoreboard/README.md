@@ -14,3 +14,5 @@ supabase functions deploy lounge-sports-scoreboard --project-ref kcosfvmreeiosdj
 ```
 
 Client: `src/utils/loungeSportsApi.js` → `loungeSportsScoreboard` / `loungeSportsGameDetail`.
+
+**Players / Fantasy companion:** [`lounge-nfl-game-fantasy`](../lounge-nfl-game-fantasy/README.md) (Sleeper + Kalshi + optional FantasyPros). Does not run on the pill poll.

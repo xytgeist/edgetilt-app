@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-23:** **NFL game hub rebuild phase 1 (Mac).** Per-game hub X-style team-color hero; tabs Posts (Top/Latest) / Stats / Plays / Players / Fantasy / Chat. Edge **`lounge-nfl-game-fantasy`** (Sleeper roster+PPR, Kalshi public props, FantasyPros when `FANTASYPROS_API_KEY` set). SQL **`20260923160000_nfl_players`** on test + sync script (`npm run nfl:players:sync`). Sample headshots under `public/sports/nfl/players/`. Keys placeholders in `.env.supabase.example` / `.env.supabase.test`. Web **`1.4.496`**. Test Edge deployed. No prod SQL/Edge. MARKETING still **1.4.95**.
 - **2026-09-23:** **Safari `Load failed` unhandledrejection (Mac).** Treat WebKit `Load failed` / `Failed to fetch` like other stale-chunk misses: one tab reload via `installStaleChunkReloadListener`, plus Sentry `ignoreErrors` for that noise. Hydralool cold open on iPhone Safari. Web **`1.4.495`**. No IPA / SQL.
 - **2026-09-23:** **ASC resubmit after Lifetime hide (Mac).** Promoted **`test` → `main`** (`090f82cb`). Prod web **`1.4.494`**. EdgeTilt Prod archive **1.4.95 (20260923140305)** uploaded + attached. Replied on 2.1(b). Submission **Waiting for Review** with Starter/Pro IAPs only (no Lifetime). No SQL.
 - **2026-09-23:** **IPA Subscribe hides Lifetime again (Mac).** ASC Review **2.1(b)** (Sep 23): binary referenced lifetime pro but Lifetime IAP was not in the submission. Shell carousel = Starter + Pro only (same gate as Sep 5); web keeps Lifetime. Web **`1.4.494`**.

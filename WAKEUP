@@ -60,6 +60,10 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. **2026-09-21 evening:** Mac ending landscape/rail/Poker pane track at web **`1.4.462`**. Windows owns sports-pill paint + live-data decision. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Mac Theo ACTIVE TRACK 2026-09-23 ... NFL game hub rebuild phase 1
+
+**I am Mac Theo.** Per-game Lounge hub rebuilt: team-color hero, Posts (Top/Latest), Players, Fantasy (Sleeper + Kalshi; FantasyPros when key set). Edge **`lounge-nfl-game-fantasy`** on **test**. SQL **`20260923160000`** applied on test. Web **`1.4.496`**. Paste **`FANTASYPROS_API_KEY`** into `.env.supabase.test` + Edge secrets when you get it from FantasyPros. League hub = phase 2. MARKETING still **1.4.95**.
+
 ### Mac Theo ACTIVE TRACK 2026-09-23 ... ASC Lifetime hide for Review
 
 **I am Mac Theo.** ASC rejected **1.4.95** again (**2.1(b)** Sep 23): shell showed Lifetime without the IAP in the submission. Option 2 done: hide Lifetime on IPA Subscribe (Starter + Pro only); web keeps the card. Promoted **`main`** (`090f82cb`). Prod web **`1.4.494`**. Prod IPA **1.4.95 (20260923140305)** uploaded, attached, replied, **Waiting for Review**. No Lifetime IAP in the package. Marketing still **1.4.95**.

@@ -86,10 +86,14 @@ export default function GameHubPlayersPane({ players, loading, error, awayAbbrev
                 {p.search_rank != null ? ` · #${p.search_rank}` : ''}
               </div>
             </div>
-            {p.projected_ppr != null ? (
+            {p.projected_ppr != null || p.season_ppr != null ? (
               <div className="shrink-0 text-right">
-                <div className="text-[14px] font-bold tabular-nums text-zinc-100">{p.projected_ppr}</div>
-                <div className="text-[10px] uppercase tracking-wide text-zinc-500">PPR</div>
+                <div className="text-[14px] font-bold tabular-nums text-zinc-100">
+                  {p.projected_ppr != null ? p.projected_ppr : '—'}
+                </div>
+                <div className="text-[10px] uppercase tracking-wide text-zinc-500">
+                  {p.season_ppr != null ? `YTD ${p.season_ppr}` : 'Proj'}
+                </div>
               </div>
             ) : null}
           </li>

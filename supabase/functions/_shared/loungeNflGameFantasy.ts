@@ -25,7 +25,20 @@ export type NflGameFantasyPlayer = {
   side: 'home' | 'away'
   headshot_url: string | null
   search_rank: number | null
+  /** This-week Sleeper PPR projection (DFF / weekly fantasy). */
   projected_ppr: number | null
+  projected_pass_yd: number | null
+  projected_rush_yd: number | null
+  projected_rec_yd: number | null
+  projected_rec: number | null
+  /** Season-to-date Sleeper PPR + counting stats. */
+  season_ppr: number | null
+  season_gp: number | null
+  season_pass_yd: number | null
+  season_rush_yd: number | null
+  season_rec_yd: number | null
+  season_rec: number | null
+  /** Optional FantasyPros enrich when key is set. */
   ecr: number | null
   fantasypros_pts: number | null
 }
@@ -147,23 +160,65 @@ async function loadPlayersFromSleeper(away: string, home: string): Promise<Array
   return out
 }
 
-async function loadSleeperProjections(
+type SleeperStatRow = {
+  pts_ppr?: number | null
+  pts_half_ppr?: number | null
+  pts_std?: number | null
+  gp?: number | null
+  pass_yd?: number | null
+  rush_yd?: number | null
+  rec_yd?: number | null
+  rec?: number | null
+  stats?: SleeperStatRow
+}
+
+function numOrNull(v: unknown): number | null {
+  const n = Number(v)
+  return Number.isFinite(n) ? Math.round(n * 10) / 10 : null
+}
+
+function intOrNull(v: unknown): number | null {
+  const n = Number(v)
+  return Number.isFinite(n) ? Math.round(n) : null
+}
+
+function readSleeperRow(row: unknown): SleeperStatRow {
+  if (!row || typeof row !== 'object') return {}
+  const r = row as SleeperStatRow
+  return r.stats && typeof r.stats === 'object' ? { ...r, ...r.stats } : r
+}
+
+/** Path style used by Sleeper + our PVAL sync: /nfl/regular/{season}/{week?} */
+async function loadSleeperStatMap(
+  kind: 'projections' | 'stats',
   season: string,
-  week: number,
-): Promise<Map<string, number>> {
-  const url = `https://api.sleeper.app/v1/projections/nfl/${season}/${week}?season_type=regular`
+  week?: number | null,
+): Promise<Map<string, SleeperStatRow>> {
+  const base =
+    week != null && Number.isFinite(week)
+      ? `https://api.sleeper.app/v1/${kind}/nfl/regular/${season}/${week}`
+      : `https://api.sleeper.app/v1/${kind}/nfl/regular/${season}`
   try {
-    const raw = (await fetchJson(url)) as Record<string, Record<string, unknown>>
-    const map = new Map<string, number>()
+    const raw = (await fetchJson(base)) as Record<string, unknown>
+    const map = new Map<string, SleeperStatRow>()
     for (const [id, row] of Object.entries(raw || {})) {
-      const stats = (row?.stats || row) as Record<string, unknown>
-      const pts = Number(stats?.pts_ppr ?? stats?.pts_half_ppr ?? stats?.pts_std)
-      if (Number.isFinite(pts)) map.set(String(id), pts)
+      map.set(String(id), readSleeperRow(row))
     }
     return map
   } catch {
     return new Map()
   }
+}
+
+async function loadSleeperProjections(
+  season: string,
+  week: number,
+): Promise<Map<string, SleeperStatRow>> {
+  return loadSleeperStatMap('projections', season, week)
+}
+
+async function loadSleeperSeasonStats(season: string): Promise<Map<string, SleeperStatRow>> {
+  return loadSleeperStatMap('stats', season, null)
 }
 
 async function loadKalshiProps(away: string, home: string): Promise<NflGameFantasyProp[]> {
@@ -284,10 +339,19 @@ function mapDbRow(
     position: row.position != null ? String(row.position) : null,
     team,
     side: team === home ? 'home' : 'away',
-    // Prefer ESPN CDN until local/R2 mirrors are confirmed present.
     headshot_url: cdn || local,
     search_rank: Number.isFinite(Number(row.search_rank)) ? Number(row.search_rank) : null,
     projected_ppr: null,
+    projected_pass_yd: null,
+    projected_rush_yd: null,
+    projected_rec_yd: null,
+    projected_rec: null,
+    season_ppr: null,
+    season_gp: null,
+    season_pass_yd: null,
+    season_rush_yd: null,
+    season_rec_yd: null,
+    season_rec: null,
     ecr: null,
     fantasypros_pts: null,
   }
@@ -332,19 +396,40 @@ export async function buildNflGameFantasy(
   sources.push('sleeper_state')
 
   const projections =
-    season && week != null ? await loadSleeperProjections(season, week) : new Map<string, number>()
+    season && week != null ? await loadSleeperProjections(season, week) : new Map<string, SleeperStatRow>()
   if (projections.size) sources.push('sleeper_projections')
+
+  const seasonStats = season ? await loadSleeperSeasonStats(season) : new Map<string, SleeperStatRow>()
+  if (seasonStats.size) sources.push('sleeper_season_stats')
 
   const players: NflGameFantasyPlayer[] = []
   for (const row of rawRows) {
     const mapped = mapDbRow(row, away, home)
     if (!mapped) continue
-    const pts = projections.get(mapped.sleeper_id)
-    if (pts != null) mapped.projected_ppr = Math.round(pts * 10) / 10
+    const proj = projections.get(mapped.sleeper_id)
+    if (proj) {
+      mapped.projected_ppr = numOrNull(proj.pts_ppr ?? proj.pts_half_ppr ?? proj.pts_std)
+      mapped.projected_pass_yd = intOrNull(proj.pass_yd)
+      mapped.projected_rush_yd = intOrNull(proj.rush_yd)
+      mapped.projected_rec_yd = intOrNull(proj.rec_yd)
+      mapped.projected_rec = numOrNull(proj.rec)
+    }
+    const sea = seasonStats.get(mapped.sleeper_id)
+    if (sea) {
+      mapped.season_ppr = numOrNull(sea.pts_ppr ?? sea.pts_half_ppr ?? sea.pts_std)
+      mapped.season_gp = intOrNull(sea.gp)
+      mapped.season_pass_yd = intOrNull(sea.pass_yd)
+      mapped.season_rush_yd = intOrNull(sea.rush_yd)
+      mapped.season_rec_yd = intOrNull(sea.rec_yd)
+      mapped.season_rec = numOrNull(sea.rec)
+    }
     players.push(mapped)
   }
 
   players.sort((a, b) => {
+    const pa = a.projected_ppr ?? -1
+    const pb = b.projected_ppr ?? -1
+    if (pb !== pa) return pb - pa
     const ra = a.search_rank ?? 9999
     const rb = b.search_rank ?? 9999
     if (ra !== rb) return ra - rb

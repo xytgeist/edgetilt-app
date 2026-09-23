@@ -146,7 +146,7 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
       let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
       for item in items {
         let name = item.name.lowercased()
-        let value = (item.value || "").trimmingCharacters(in: .whitespacesAndNewlines)
+        let value = (item.value ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         if value.isEmpty { continue }
         if name == "post" || name == "u" || name == "profile" { return true }
       }

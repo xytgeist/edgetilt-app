@@ -1,6 +1,9 @@
 import { LOUNGE_CF_R2_OBJECT_CACHE_CONTROL, requestCfR2DirectUpload, uploadFileToCfR2PresignedUrl } from './loungeCfImageMedia.js'
 import { uploadEdgeVideoPut } from './edgeNative.js'
 
+/** Gaps before native PUT attempt 0 / 1 / 2 (1–2 retries after the first try). */
+const NATIVE_CHAT_VIDEO_PUT_RETRY_GAPS_MS = [0, 1000, 2500]
+
 /**
  * Mint a presigned PUT URL for a chat video MP4 from the lounge-chat-r2-video-upload Edge Function.
  */
@@ -24,35 +27,86 @@ async function requestChatVideoR2Upload(supabaseClient, byteSize) {
   return { uploadURL: String(data.uploadURL), publicUrl: String(data.publicUrl) }
 }
 
-/**
- * Upload an already-encoded MP4 file to Cloudflare R2 for chat.
- *
- * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
- * @param {File} videoFile  compressed MP4 produced by encodeVideoForChat()
- * @param {{ signal?: AbortSignal }} [opts]
- * @returns {Promise<string>}  public URL of the stored video
- */
+function sleepMs(ms, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException('Aborted', 'AbortError'))
+      return
+    }
+    const id = window.setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort)
+      resolve()
+    }, Math.max(0, ms))
+    const onAbort = () => {
+      window.clearTimeout(id)
+      reject(new DOMException('Aborted', 'AbortError'))
+    }
+    signal?.addEventListener('abort', onAbort, { once: true })
+  })
+}
+
+/** Network / interrupted PUT. Do not retry cancel / auth / clear client errors. */
+function isRetryableNativeChatVideoPutFailure(error) {
+  if (!error) return false
+  if (error?.name === 'AbortError') return false
+  const msg = String(error?.message || error || '')
+  if (/cancelled|canceled|not signed in|must be signed in|too large|too long/i.test(msg)) {
+    return false
+  }
+  return /failed to fetch|load failed|networkerror|network request failed|interrupted|timed out|timeout|upload failed|could not upload|try again/i.test(
+    msg,
+  )
+}
+
 /**
  * PUT an on-device encoded MP4. The bytes stay in the IPA cache, not JS memory.
+ * Remints the presigned URL and retries 1–2 times on transient network failures.
  *
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string} assetId
+ * @param {number} byteSize
+ * @param {{ signal?: AbortSignal }} [opts]
  * @returns {Promise<string>}
  */
-export async function uploadNativeChatVideoToR2(supabaseClient, assetId, byteSize) {
-  const { uploadURL, publicUrl } = await requestChatVideoR2Upload(supabaseClient, byteSize)
-  const result = await uploadEdgeVideoPut({
-    assetId,
-    uploadURL,
-    contentType: 'video/mp4',
-    cacheControl: LOUNGE_CF_R2_OBJECT_CACHE_CONTROL,
-  })
-  if (!result?.ok) {
-    throw new Error(result?.error || 'Could not upload your video.')
+export async function uploadNativeChatVideoToR2(supabaseClient, assetId, byteSize, opts = {}) {
+  const signal = opts.signal
+  const lastIndex = NATIVE_CHAT_VIDEO_PUT_RETRY_GAPS_MS.length - 1
+  let lastErr = /** @type {unknown} */ (null)
+  for (let attempt = 0; attempt <= lastIndex; attempt += 1) {
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+    const gap = NATIVE_CHAT_VIDEO_PUT_RETRY_GAPS_MS[attempt] ?? 0
+    if (gap > 0) await sleepMs(gap, signal)
+    try {
+      const { uploadURL, publicUrl } = await requestChatVideoR2Upload(supabaseClient, byteSize)
+      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
+      const result = await uploadEdgeVideoPut({
+        assetId,
+        uploadURL,
+        contentType: 'video/mp4',
+        cacheControl: LOUNGE_CF_R2_OBJECT_CACHE_CONTROL,
+      })
+      if (!result?.ok) {
+        throw new Error(result?.error || 'Could not upload your video.')
+      }
+      return publicUrl
+    } catch (e) {
+      lastErr = e
+      if (e?.name === 'AbortError' || /cancelled/i.test(String(e?.message || ''))) throw e
+      if (!isRetryableNativeChatVideoPutFailure(e) || attempt >= lastIndex) throw e
+    }
   }
-  return publicUrl
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr || 'Could not upload your video.'))
 }
 
+/**
+ * Upload an already-encoded MP4 file to Cloudflare R2 for chat.
+ * Web PUT path already retries inside `uploadFileToCfR2PresignedUrl`.
+ *
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
+ * @param {File} videoFile
+ * @param {{ signal?: AbortSignal }} [opts]
+ * @returns {Promise<string>}
+ */
 export async function uploadChatVideoToR2(supabaseClient, videoFile, opts = {}) {
   const { uploadURL, publicUrl } = await requestChatVideoR2Upload(supabaseClient, videoFile?.size || 0)
   await uploadFileToCfR2PresignedUrl(uploadURL, videoFile, { signal: opts.signal })

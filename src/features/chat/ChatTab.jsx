@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from 'react-dom'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import ChatConversation from './ChatConversation.jsx'
+import { ChatVideoPrepProvider } from './ChatVideoPrepProvider.jsx'
 import ChatGroupHeaderStack from './ChatGroupHeaderStack.jsx'
 import ChatPrivateSubsTab from './ChatPrivateSubsTab.jsx'
 import {
@@ -58,7 +59,15 @@ import { useIpadSlotsLandscape } from '../shell/useIpadSlotsLandscape.js'
 
 /** @typedef {{ openRoomById: (roomId: string, opts?: { skipReloadIfSame?: boolean }) => void, getActiveRoomId: () => string | null, getOpenRoomId: () => string | null }} ChatDirectNavApi */
 
-export default function ChatTab({
+export default function ChatTab(props) {
+  return (
+    <ChatVideoPrepProvider supabaseClient={props.supabaseClient}>
+      <ChatTabBody {...props} />
+    </ChatVideoPrepProvider>
+  )
+}
+
+function ChatTabBody({
   supabaseClient,
   hasActiveSubscription = false,
   isStaff = false,

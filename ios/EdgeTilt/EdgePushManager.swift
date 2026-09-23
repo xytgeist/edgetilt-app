@@ -105,11 +105,12 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
     handleUniversalLink(url)
   }
 
-  /// Universal Link (email confirm). Same pending / load queue as APNs taps. No new EdgeNative method.
+  /// Universal Link (email confirm, Lounge post/profile share). Same pending / load queue as APNs taps.
   func handleUniversalLink(_ url: URL) {
     guard Self.isAllowedUniversalLink(url) else { return }
+    let loadURL = Self.canonicalWebURL(fromUniversalLink: url)
     DispatchQueue.main.async {
-      self.openDeepLink(url)
+      self.openDeepLink(loadURL)
     }
   }
 
@@ -129,7 +130,8 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
     }
   }
 
-  /// HTTPS + our hosts + `/auth/confirm` only. AASA is the other half of this gate.
+  /// HTTPS + our hosts + auth confirm, Lounge share paths, or SPA `post` / `u` / `profile` query.
+  /// AASA is the other half of this gate.
   static func isAllowedUniversalLink(_ url: URL) -> Bool {
     guard let scheme = url.scheme?.lowercased(), scheme == "https",
           let host = url.host?.lowercased() else {
@@ -137,7 +139,61 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
     }
     guard allowedDeepLinkHosts().contains(host) else { return false }
     let path = url.path.lowercased()
-    return path == "/auth/confirm" || path.hasPrefix("/auth/confirm/")
+    if path == "/auth/confirm" || path.hasPrefix("/auth/confirm/") { return true }
+    if path.hasPrefix("/lounge/p/") { return true }
+    if path.hasPrefix("/u/") { return true }
+    if path == "/" || path.isEmpty {
+      let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+      for item in items {
+        let name = item.name.lowercased()
+        let value = (item.value || "").trimmingCharacters(in: .whitespacesAndNewlines)
+        if value.isEmpty { continue }
+        if name == "post" || name == "u" || name == "profile" { return true }
+      }
+    }
+    return false
+  }
+
+  /// Map share permalinks to the SPA query the web already opens (`/?tab=home&post=` / `&u=`).
+  /// Avoids loading the OG HTML shell inside WKWebView.
+  static func canonicalWebURL(fromUniversalLink url: URL) -> URL {
+    let path = url.path
+    let pathLower = path.lowercased()
+    var comps = URLComponents(url: url, resolvingAgainstBaseURL: false)
+
+    if pathLower.hasPrefix("/lounge/p/") {
+      let id = String(path.dropFirst("/lounge/p/".count))
+        .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        .split(separator: "/")
+        .first
+        .map(String.init) ?? ""
+      if !id.isEmpty {
+        comps?.path = "/"
+        comps?.queryItems = [
+          URLQueryItem(name: "tab", value: "home"),
+          URLQueryItem(name: "post", value: id),
+        ]
+        if let next = comps?.url { return next }
+      }
+    }
+
+    if pathLower.hasPrefix("/u/") {
+      let handle = String(path.dropFirst("/u/".count))
+        .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        .split(separator: "/")
+        .first
+        .map(String.init) ?? ""
+      if !handle.isEmpty {
+        comps?.path = "/"
+        comps?.queryItems = [
+          URLQueryItem(name: "tab", value: "home"),
+          URLQueryItem(name: "u", value: handle.lowercased()),
+        ]
+        if let next = comps?.url { return next }
+      }
+    }
+
+    return url
   }
 
   /// `edgetilt://auth/confirm?…` → `https://<site>/auth/confirm?…`

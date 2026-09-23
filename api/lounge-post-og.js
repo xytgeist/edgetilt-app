@@ -176,6 +176,18 @@ function appBrandLinkTags(origin) {
 `
 }
 
+/** Safari Smart App Banner (ASC id from redeem / App Store Connect). */
+const EDGE_IOS_APP_STORE_ID = '6806401093'
+
+function appleSmartAppBannerMeta(appArgumentUrl) {
+  const arg = String(appArgumentUrl || '').trim()
+  const content = arg
+    ? `app-id=${EDGE_IOS_APP_STORE_ID}, app-argument=${arg}`
+    : `app-id=${EDGE_IOS_APP_STORE_ID}`
+  return `  <meta name="apple-itunes-app" content="${escapeAttr(content)}" />
+`
+}
+
 async function fetchJson(url, headers) {
   const res = await fetch(url, { headers, redirect: 'follow' })
   const text = await res.text()
@@ -192,12 +204,13 @@ function genericHtml(origin, canonicalPath, title, description) {
   const canonical = `${origin}${canonicalPath}`
   const ogImage = `${origin}/apple-touch-icon.png`
   const brand = appBrandLinkTags(origin)
+  const smartBanner = appleSmartAppBannerMeta(canonical)
   return `<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-${brand}
+${brand}${smartBanner}
   <title>${escapeAttr(title)}</title>
   <link rel="canonical" href="${escapeAttr(canonical)}" />
   <meta property="og:site_name" content="Edge" />
@@ -328,6 +341,7 @@ export default async function handler(req, res) {
   const canonical = `${origin}/lounge/p/${postId}`
   const appTarget = `${origin}/?tab=home&post=${encodeURIComponent(postId)}`
   const brand = appBrandLinkTags(origin)
+  const smartBanner = appleSmartAppBannerMeta(canonical)
 
   const ldJson = {
     '@context': 'https://schema.org',
@@ -351,7 +365,7 @@ export default async function handler(req, res) {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-${brand}
+${brand}${smartBanner}
   <title>${escapeAttr(docTitle)}</title>
   <link rel="canonical" href="${escapeAttr(canonical)}" />
   <meta property="og:site_name" content="Edge" />

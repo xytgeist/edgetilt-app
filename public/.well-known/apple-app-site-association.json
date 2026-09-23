@@ -7,10 +7,40 @@
         ],
         "components": [
           {
-            "/": "/auth/confirm"
+            "/": "/auth/confirm",
+            "comment": "Email magic-link / OTP confirm"
           },
           {
             "/": "/auth/confirm/*"
+          },
+          {
+            "/": "/lounge/p/*",
+            "comment": "Lounge post share permalink"
+          },
+          {
+            "/": "/u/*",
+            "comment": "Lounge profile share permalink"
+          },
+          {
+            "/": "/",
+            "?": {
+              "post": "?*"
+            },
+            "comment": "SPA post deep link after OG redirect"
+          },
+          {
+            "/": "/",
+            "?": {
+              "u": "?*"
+            },
+            "comment": "SPA profile deep link (?u=handle)"
+          },
+          {
+            "/": "/",
+            "?": {
+              "profile": "?*"
+            },
+            "comment": "SPA profile deep link (?profile=uuid)"
           }
         ]
       }

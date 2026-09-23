@@ -22,4 +22,5 @@ supabase functions deploy lounge-nfl-game-fantasy --project-ref kcosfvmreeiosdjd
 
 Client: `loungeNflGameFantasy` in `src/utils/loungeSportsApi.js`.
 
-Player sync: `node scripts/sync-nfl-players.mjs --target=test [--download]`.
+Player sync: `npm run nfl:players:sync`.
+Headshot R2 mirror: `npm run nfl:players:headshots:r2` (service role → Edge `mirror_headshots` → `sports/nfl/players/{espn_id}.png`).

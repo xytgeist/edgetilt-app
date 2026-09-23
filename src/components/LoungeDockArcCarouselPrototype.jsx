@@ -695,12 +695,25 @@ export default function LoungeDockArcCarouselPrototype({
   }, [clearPointerGuardCapture, syncPointerBlock])
 
   const armPointerGuard = useCallback(
-    (durationMs = POINTER_GUARD_MS) => {
+    (durationMs = POINTER_GUARD_MS, opts = {}) => {
+      /** Full-screen shield blocks slide panels (z-200 over z-99). Feed-only mode keeps capture + feed pointer-events:none. */
+      const withShield = opts.shield !== false
       pointerGuardRef.current = true
-      setClickShield(true)
+      setClickShield(withShield)
       syncPointerBlock()
       clearPointerGuardCapture()
-      const blockCapture = (e) => blockPointerEvent(e)
+      const blockCapture = (e) => {
+        const t = e.target
+        if (
+          t instanceof Element &&
+          t.closest(
+            '[data-lounge-dock-panels], [data-lounge-dock-fab-host], [data-lounge-dock-home], [data-lounge-dock-item], .lounge-dock-fab-center, .lounge-dock-backdrop',
+          )
+        ) {
+          return
+        }
+        blockPointerEvent(e)
+      }
       REPOSITION_CAPTURE_EVENT_TYPES.forEach((type) => {
         document.addEventListener(type, blockCapture, true)
       })
@@ -730,13 +743,13 @@ export default function LoungeDockArcCarouselPrototype({
     }
   }, [disarmPointerGuard])
 
-  // Live slide panel must stay tappable ... never leave clickShield over Notifications/etc.
-  // Keep-alive Lounge can still have post/profile mounted while the FAB is on Slots/Poker.
-  // Skipping disarm in that case left z-200 shield over the panel so row taps did nothing.
+  // Slide panel open: drop the z-200 shield so Search/Alerts are tappable, but keep a short
+  // feed-only capture guard. Android synthesizes a click under the FAB chip (Search sits under
+  // + on Edge L) the moment the menu closes; immediate disarm left that click hot on the feed.
   useEffect(() => {
     if (!panelChrome || !SLIDE_PANEL_CHROME.has(panelChrome)) return
-    disarmPointerGuard()
-  }, [panelChrome, disarmPointerGuard])
+    armPointerGuard(POINTER_GUARD_MS, { shield: false })
+  }, [panelChrome, armPointerGuard])
 
   const clearRepositionCapture = useCallback(() => {
     repositionCaptureCleanupRef.current?.()
@@ -1844,6 +1857,7 @@ export default function LoungeDockArcCarouselPrototype({
       aria-label={item.label}
       title={item.label}
       {...(item.id === HOME_ITEM_ID ? { 'data-lounge-dock-home': '' } : {})}
+      data-lounge-dock-item=""
       onPointerDown={
         wheelSpin ? onItemPointerDown : wheelTapOnly || compactChip ? blockPointerDefault : undefined
       }

@@ -378,6 +378,7 @@ import LoungeFeedAuthorMetaBadges from './LoungeFeedAuthorMetaBadges.jsx'
 import LoungeQuoteRepostEmbedAuthorMeta from './LoungeQuoteRepostEmbedAuthorMeta.jsx'
 import LoungeVideoCropModal from './LoungeVideoCropModal.jsx'
 import {
+  isLoungeSessionPosterSrc,
   loungeSubmitSnapshotBlobUrls,
   pinLoungeStreamSessionPoster,
   releaseLoungeStreamSessionPoster,
@@ -4270,7 +4271,7 @@ export default function SocialFeed({
               ...r,
               _authorPendingPublish: true,
               _pendingPublishKey: key,
-              _sessionStreamPosterBlob: posterBlob.startsWith('blob:') ? posterBlob : null,
+              _sessionStreamPosterBlob: isLoungeSessionPosterSrc(posterBlob) ? posterBlob : null,
               ...(pendingPublishRevert ? { _pendingPublishRevert: pendingPublishRevert } : {}),
             }
           : r,
@@ -4896,7 +4897,7 @@ export default function SocialFeed({
     }
 
     const postUid = snap && String(snap.streamVideoUid || '').trim()
-    if (postUid && pendingPoster.startsWith('blob:')) {
+    if (postUid && isLoungeSessionPosterSrc(pendingPoster)) {
       pinLoungeStreamSessionPoster(postUid, pendingPoster)
     }
     dismissLoungeUploadBarForInlineTileSubmit(snap)
@@ -4976,7 +4977,7 @@ export default function SocialFeed({
     }
 
     const postUid = snap && String(snap.streamVideoUid || '').trim()
-    if (postUid && pendingPoster.startsWith('blob:')) {
+    if (postUid && isLoungeSessionPosterSrc(pendingPoster)) {
       pinLoungeStreamSessionPoster(postUid, pendingPoster)
     }
     dismissLoungeUploadBarForInlineTileSubmit(snap)
@@ -5057,7 +5058,7 @@ export default function SocialFeed({
     }
 
     const postUid = snap && String(snap.streamVideoUid || '').trim()
-    if (postUid && pendingPoster.startsWith('blob:')) {
+    if (postUid && isLoungeSessionPosterSrc(pendingPoster)) {
       pinLoungeStreamSessionPoster(postUid, pendingPoster)
     }
     dismissLoungeUploadBarForInlineTileSubmit(snap)
@@ -5961,7 +5962,7 @@ export default function SocialFeed({
         _authorPendingPublish: true,
         _pendingPublishKey: key,
         feed_visible_at: null,
-        _sessionStreamPosterBlob: posterBlob.startsWith('blob:') ? posterBlob : null,
+        _sessionStreamPosterBlob: isLoungeSessionPosterSrc(posterBlob) ? posterBlob : null,
         ...(pendingPublishRevert ? { _pendingPublishRevert: pendingPublishRevert } : {}),
       })
       setLoungePendingPostProgress(key, { progress: 0, status: 'Starting…', detail: '', phase: 'upload' })
@@ -6786,8 +6787,8 @@ export default function SocialFeed({
           ? { posterUrl: slot.posterUrl, preview: slot.preview }
           : null
       const sessionPosterBlob =
-        hasVideo && slot?.posterUrl && String(slot.posterUrl).startsWith('blob:')
-          ? String(slot.posterUrl)
+        hasVideo && slot?.posterUrl && isLoungeSessionPosterSrc(slot.posterUrl)
+          ? String(slot.posterUrl).trim()
           : null
 
       snapshot = {
@@ -6835,7 +6836,7 @@ export default function SocialFeed({
         ? snapshot.sessionStreamPosterBlobUrl.trim()
         : ''
     const quotePostUid = String(snapshot.streamVideoUid || '').trim()
-    if (quotePostUid && quotePosterBlob.startsWith('blob:')) {
+    if (quotePostUid && isLoungeSessionPosterSrc(quotePosterBlob)) {
       pinLoungeStreamSessionPoster(quotePostUid, quotePosterBlob)
     }
     clearQuoteRepostForPostAttemptRef.current?.({
@@ -7355,9 +7356,9 @@ export default function SocialFeed({
         ? loungeDetailCommentVideoPrepSpecRef.current
         : null
     const sessionPosterBlob =
-      hasVideo && slotNow?.posterUrl && String(slotNow.posterUrl).startsWith('blob:')
-        ? String(slotNow.posterUrl)
-        : null
+      hasVideo && slotNow?.posterUrl && isLoungeSessionPosterSrc(slotNow.posterUrl)
+          ? String(slotNow.posterUrl).trim()
+          : null
 
     const snapshot = {
       clientMutationId: createLoungeCommentMutationId(),
@@ -7390,7 +7391,7 @@ export default function SocialFeed({
         ? snapshot.sessionStreamPosterBlobUrl.trim()
         : ''
     const commentPostUid = String(snapshot.streamVideoUid || '').trim()
-    if (commentPostUid && commentPosterBlob.startsWith('blob:')) {
+    if (commentPostUid && isLoungeSessionPosterSrc(commentPosterBlob)) {
       pinLoungeStreamSessionPoster(commentPostUid, commentPosterBlob)
     }
     clearLoungeDetailCommentForPostAttempt({
@@ -7554,9 +7555,9 @@ export default function SocialFeed({
         ? loungeDetailCommentEditVideoPrepSpecRef.current
         : null
     const sessionPosterBlob =
-      hasNewVideo && slotNow?.posterUrl && String(slotNow.posterUrl).startsWith('blob:')
-        ? String(slotNow.posterUrl)
-        : null
+      hasNewVideo && slotNow?.posterUrl && isLoungeSessionPosterSrc(slotNow.posterUrl)
+          ? String(slotNow.posterUrl).trim()
+          : null
 
     const snapshot = {
       commentId: loungeDetailCommentEditingId,
@@ -7584,7 +7585,7 @@ export default function SocialFeed({
         ? snapshot.sessionStreamPosterBlobUrl.trim()
         : ''
     const commentPostUid = String(snapshot.streamVideoUid || '').trim()
-    if (commentPostUid && commentPosterBlob.startsWith('blob:')) {
+    if (commentPostUid && isLoungeSessionPosterSrc(commentPosterBlob)) {
       pinLoungeStreamSessionPoster(commentPostUid, commentPosterBlob)
     }
     clearLoungeDetailCommentEditForPostAttempt({
@@ -9864,9 +9865,9 @@ export default function SocialFeed({
         ? loungeDetailEditVideoPrepSpecRef.current
         : null
     const sessionPosterBlob =
-      hasNewVideo && slotNow?.posterUrl && String(slotNow.posterUrl).startsWith('blob:')
-        ? String(slotNow.posterUrl)
-        : null
+      hasNewVideo && slotNow?.posterUrl && isLoungeSessionPosterSrc(slotNow.posterUrl)
+          ? String(slotNow.posterUrl).trim()
+          : null
 
     const snapshot = {
       postId: loungePostDetail.id,
@@ -9896,7 +9897,7 @@ export default function SocialFeed({
         ? snapshot.sessionStreamPosterBlobUrl.trim()
         : ''
     const editPostUid = String(snapshot.streamVideoUid || '').trim()
-    if (editPostUid && editPosterBlob.startsWith('blob:')) {
+    if (editPostUid && isLoungeSessionPosterSrc(editPosterBlob)) {
       pinLoungeStreamSessionPoster(editPostUid, editPosterBlob)
     }
     if (loungePostEditSnapshotShowsFeedCardSpinner(snapshot)) {
@@ -11583,7 +11584,7 @@ export default function SocialFeed({
     }
 
     const postUid = snap && String(snap.streamVideoUid || '').trim()
-    if (postUid && pendingPoster.startsWith('blob:')) {
+    if (postUid && isLoungeSessionPosterSrc(pendingPoster)) {
       pinLoungeStreamSessionPoster(postUid, pendingPoster)
     }
     dismissLoungeUploadBarForInlineTileSubmit(snap)
@@ -11673,7 +11674,7 @@ export default function SocialFeed({
               typeof p?.sessionStreamPosterBlobUrl === 'string'
                 ? p.sessionStreamPosterBlobUrl.trim()
                 : ''
-            if (partUid && partPoster.startsWith('blob:')) {
+            if (partUid && isLoungeSessionPosterSrc(partPoster)) {
               pinLoungeStreamSessionPoster(partUid, partPoster)
             }
           }
@@ -11991,7 +11992,7 @@ export default function SocialFeed({
     }
 
     const postUid = snap && String(snap.streamVideoUid || '').trim()
-    if (postUid && pendingPoster.startsWith('blob:')) {
+    if (postUid && isLoungeSessionPosterSrc(pendingPoster)) {
       pinLoungeStreamSessionPoster(postUid, pendingPoster)
     }
     dismissLoungeUploadBarForInlineTileSubmit(snap)
@@ -12323,7 +12324,7 @@ export default function SocialFeed({
           const pend =
             typeof snap.sessionStreamPosterBlobUrl === 'string' ? snap.sessionStreamPosterBlobUrl.trim() : ''
           const nu = String(snap.streamVideoUid || '').trim()
-          if (nu && pend.startsWith('blob:')) {
+          if (nu && isLoungeSessionPosterSrc(pend)) {
             pinLoungeStreamSessionPoster(nu, pend)
           }
           if (inlineVideoProgress && pendingPublishKey && nu) {
@@ -12359,7 +12360,7 @@ export default function SocialFeed({
                   if (!id) return
                   patchAuthorPendingVideoPost(pendingPublishKey, { stream_video_uid: id })
                   const poster = String(snap.sessionStreamPosterBlobUrl || '').trim()
-                  if (poster.startsWith('blob:')) {
+                  if (isLoungeSessionPosterSrc(poster)) {
                     pinLoungeStreamSessionPoster(id, poster)
                   }
                 }
@@ -12630,7 +12631,7 @@ export default function SocialFeed({
               ),
             )
           }
-          if (nu && pend.startsWith('blob:')) {
+          if (nu && isLoungeSessionPosterSrc(pend)) {
             pinLoungeStreamSessionPoster(nu, pend)
           }
           if (
@@ -13035,7 +13036,7 @@ export default function SocialFeed({
           if (inlineVideoProgress && pendingPublishKey && nu) {
             patchAuthorPendingVideoPost(pendingPublishKey, { stream_video_uid: nu })
           }
-          if (nu && pend.startsWith('blob:')) {
+          if (nu && isLoungeSessionPosterSrc(pend)) {
             pinLoungeStreamSessionPoster(nu, pend)
           }
           if (
@@ -13063,7 +13064,7 @@ export default function SocialFeed({
                   if (!id) return
                   patchAuthorPendingVideoPost(pendingPublishKey, { stream_video_uid: id })
                   const poster = String(snap.sessionStreamPosterBlobUrl || '').trim()
-                  if (poster.startsWith('blob:')) {
+                  if (isLoungeSessionPosterSrc(poster)) {
                     pinLoungeStreamSessionPoster(id, poster)
                   }
                 }
@@ -13313,7 +13314,7 @@ export default function SocialFeed({
               ),
             )
           }
-          if (nu && pend.startsWith('blob:')) {
+          if (nu && isLoungeSessionPosterSrc(pend)) {
             pinLoungeStreamSessionPoster(nu, pend)
           }
           if (
@@ -14492,7 +14493,7 @@ export default function SocialFeed({
           ? snapshot.sessionStreamPosterBlobUrl.trim()
           : ''
       const postUid = String(snapshot.streamVideoUid || '').trim()
-      if (postUid && posterBlob.startsWith('blob:')) {
+      if (postUid && isLoungeSessionPosterSrc(posterBlob)) {
         pinLoungeStreamSessionPoster(postUid, posterBlob)
       }
       if (Array.isArray(snapshot.threadParts)) {
@@ -14502,7 +14503,7 @@ export default function SocialFeed({
             typeof part?.sessionStreamPosterBlobUrl === 'string'
               ? part.sessionStreamPosterBlobUrl.trim()
               : ''
-          if (partUid && partPoster.startsWith('blob:')) {
+          if (partUid && isLoungeSessionPosterSrc(partPoster)) {
             pinLoungeStreamSessionPoster(partUid, partPoster)
           }
         }
@@ -14704,8 +14705,8 @@ export default function SocialFeed({
           : null
 
       const sessionPosterBlob =
-        hasVideo && slot?.posterUrl && String(slot.posterUrl).startsWith('blob:')
-          ? String(slot.posterUrl)
+        hasVideo && slot?.posterUrl && isLoungeSessionPosterSrc(slot.posterUrl)
+          ? String(slot.posterUrl).trim()
           : null
 
       snapshot = {
@@ -14756,7 +14757,7 @@ export default function SocialFeed({
         ? snapshot.sessionStreamPosterBlobUrl.trim()
         : ''
     const postUid = String(snapshot.streamVideoUid || '').trim()
-    if (postUid && posterBlob.startsWith('blob:')) {
+    if (postUid && isLoungeSessionPosterSrc(posterBlob)) {
       pinLoungeStreamSessionPoster(postUid, posterBlob)
     }
     clearComposerForPostAttempt({

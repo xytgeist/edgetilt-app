@@ -6,6 +6,7 @@ import {
   loungeSubmissionSnapshotIncludesVideo,
   loungeSubmissionSnapshotThreadPartCount,
 } from './loungeSubmissionSnapshot.js'
+import { isLoungeSessionPosterSrc } from './loungeStreamSessionPoster.js'
 
 /** @typedef {{ progress: number, status: string, detail: string, phase?: string, processingStartedAt?: number }} LoungePendingPostProgress */
 
@@ -726,7 +727,7 @@ export function createLoungePendingPublishKey(prefix = 'pending') {
  */
 function sessionPosterBlobFromSnapshot(snapshot) {
   const posterBlob = String(snapshot?.sessionStreamPosterBlobUrl || '').trim()
-  return posterBlob.startsWith('blob:') ? posterBlob : null
+  return isLoungeSessionPosterSrc(posterBlob) ? posterBlob : null
 }
 
 export function buildAuthorPendingVideoFeedPost({ snapshot, pendingKey, userId, authorProfile }) {
@@ -860,7 +861,7 @@ export function authorPendingPublishPatchFromSubmit({
     _pendingPublishKey: id,
     _authorPendingPublish: true,
     feed_visible_at: null,
-    ...(poster.startsWith('blob:') ? { _sessionStreamPosterBlob: poster } : {}),
+    ...(isLoungeSessionPosterSrc(poster) ? { _sessionStreamPosterBlob: poster } : {}),
   }
 }
 

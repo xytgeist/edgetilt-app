@@ -313,7 +313,7 @@ function SoundOnGlyph({ className = 'h-4 w-4' }) {
  * @param {import('react').RefObject<HTMLElement | null>} [visibilityResetRootRef] - Optional scroll root for in-view
  *   checks; when omitted, intersection uses the viewport (still correct when the feed scrolls inside the window).
  * @param {string} [feedAutoplayClientId] - When inside `LoungeFeedVideoAutoplayProvider`, ring/active coordinator id.
- * @param {string} [sessionPosterUrl] - Optional `blob:` JPEG from composer; shown until CF `thumbnail.jpg` loads (same-tab session pin).
+ * @param {string} [sessionPosterUrl] - Optional `blob:` / `data:image/` JPEG from composer; shown until CF `thumbnail.jpg` loads (same-tab session pin).
  * @param {string} [persistedStreamPosterUrl] - Public `lounge-feed` poster URL from DB (cross-device stable tile).
  * @param {number} [streamVideoDisplayWidth] - Display width from DB for CSS `aspect-ratio` when set with height.
  * @param {number} [streamVideoDisplayHeight] - Display height from DB for CSS `aspect-ratio` when set with width.

@@ -28,7 +28,7 @@ import LoungePostVideoInlineProgress, {
   useLoungePendingPublishDisplay,
 } from './LoungePostVideoInlineProgress.jsx'
 import { useLoungeStreamLightbox } from './LoungeStreamLightboxContext.jsx'
-import { peekLoungeStreamSessionPoster } from './loungeStreamSessionPoster.js'
+import { peekLoungeStreamSessionPoster, isLoungeSessionPosterSrc } from './loungeStreamSessionPoster.js'
 import { useLoungeFeedCarouselAxisLock } from './useLoungeFeedCarouselAxisLock.js'
 import {
   getLoungeStreamLightboxOpen,
@@ -706,7 +706,7 @@ export function LoungePostFeedImagesAndGif({
     (streamUid ? peekLoungeStreamSessionPoster(streamUid) : '')
   if (post?._authorPendingPublish && pendingPublishKey && !streamUid) {
     if (hideAsSheetPeekDuplicate) return null
-    const posterSrc = sessionPosterFromPost.startsWith('blob:') ? sessionPosterFromPost : ''
+    const posterSrc = isLoungeSessionPosterSrc(sessionPosterFromPost) ? sessionPosterFromPost : ''
     return (
       <LoungePostPendingStreamPublishTile
         pendingKey={pendingPublishKey}

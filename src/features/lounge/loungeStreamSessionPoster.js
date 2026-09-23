@@ -1,21 +1,28 @@
 /**
- * Session-only map: Cloudflare Stream uid → composer-captured JPEG `blob:` URL.
+ * Session-only map: Cloudflare Stream uid → composer-captured JPEG poster URL.
+ * `blob:` from browser crop, or `data:image/…` from the iPhone native picker.
  * Used so the feed tile can show stable intrinsic dimensions immediately after post,
  * then `LoungePostStreamVideo` swaps to CF `thumbnail.jpg` when it loads and revokes here.
  */
 
 const byUid = new Map()
 
+/** Composer / native session poster usable in the pending feed tile (pixel reveal). */
+export function isLoungeSessionPosterSrc(url) {
+  const u = String(url || '').trim()
+  return u.startsWith('blob:') || u.startsWith('data:image/')
+}
+
 /**
  * @param {string} uid Stream asset id (hex)
- * @param {string} objectUrl `blob:` URL from `URL.createObjectURL` (JPEG poster)
+ * @param {string} objectUrl `blob:` or `data:image/…` JPEG poster
  */
 export function pinLoungeStreamSessionPoster(uid, objectUrl) {
   const id = String(uid || '').trim()
   const u = String(objectUrl || '').trim()
-  if (!id || !u.startsWith('blob:')) return
+  if (!id || !isLoungeSessionPosterSrc(u)) return
   const prev = byUid.get(id)
-  if (prev && prev !== u) {
+  if (prev && prev !== u && prev.startsWith('blob:')) {
     try {
       URL.revokeObjectURL(prev)
     } catch {
@@ -37,10 +44,12 @@ export function releaseLoungeStreamSessionPoster(uid) {
   const id = String(uid || '').trim()
   const u = byUid.get(id)
   if (!u) return
-  try {
-    URL.revokeObjectURL(u)
-  } catch {
-    // ignore
+  if (u.startsWith('blob:')) {
+    try {
+      URL.revokeObjectURL(u)
+    } catch {
+      // ignore
+    }
   }
   byUid.delete(id)
 }
@@ -83,7 +92,7 @@ export function loungeSubmitSnapshotBlobUrls(snapshot) {
 }
 
 /**
- * Resolve a JPEG poster `File` from snapshot blob URL and/or session pin for a Stream uid.
+ * Resolve a JPEG poster `File` from snapshot poster URL and/or session pin for a Stream uid.
  * @param {{ sessionStreamPosterBlobUrl?: string | null }} snapshot
  * @param {string} streamVideoUid
  * @param {AbortSignal} [signal]
@@ -93,9 +102,9 @@ export async function fetchLoungeStreamPosterFileFromSnapshot(snapshot, streamVi
   /** @type {string[]} */
   const candidates = []
   const sess = String(snapshot?.sessionStreamPosterBlobUrl || '').trim()
-  if (sess.startsWith('blob:')) candidates.push(sess)
+  if (isLoungeSessionPosterSrc(sess)) candidates.push(sess)
   const pinned = peekLoungeStreamSessionPoster(streamVideoUid)
-  if (pinned.startsWith('blob:') && !candidates.includes(pinned)) candidates.push(pinned)
+  if (isLoungeSessionPosterSrc(pinned) && !candidates.includes(pinned)) candidates.push(pinned)
   for (const url of candidates) {
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError')
     try {

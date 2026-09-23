@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-23:** **Composer Include game → Sports tribe (Mac).** Including a suggested NFL card also selects the Sports category pill (cap 3 … replaces last if full). Web **`1.4.491`**. No IPA / SQL.
 - **2026-09-23:** **Composer NFL card less trigger-happy (Mac).** Committed abbrevs must be uppercase (`WAS` not `Was`); abbrev-only one-team suggests need a sports cue (vs / cover / odds / …). Full names, players, and clear matchups stay eager. Web **`1.4.490`**. No IPA / SQL.
 - **2026-09-22:** **Pending video tile blank during encode (Mac).** Composer still had the native JPEG, but the optimistic feed tile often got no session poster (trim path dropped it; tile only looked up by Stream uid). Resolve poster from slot/restore, pin by pending key, and keep native pick poster through crop. Pixel reveal can run from Encoding 0%. Web **`1.4.489`**. No new IPA / SQL.
 - **2026-09-22:** **Chat video jobs survive leave + native PUT retries (Mac).** Encode/upload queue lifted to **`ChatVideoPrepProvider`** under keep-alive **`ChatTab`** (room leave / iOS resume remount no longer drops the bubble). Native R2 PUT remints + retries 1–2 times on transient failures. Web **`1.4.488`**. No new IPA / SQL.

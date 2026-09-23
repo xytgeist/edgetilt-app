@@ -18,6 +18,7 @@ import {
   LOUNGE_COMPOSER_AUDIENCE_ALL,
   LOUNGE_COMPOSER_AUDIENCE_SUBS,
 } from '../../utils/loungeFanOnlyPost.js'
+import { ensureLoungePostCategoryPill } from '../../utils/loungePostCategoryPills.js'
 import LoungeFlameIcon from './LoungeFlameIcon.jsx'
 import { LOUNGE_COMMENT_BUBBLE_D, LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS } from './loungeCommentGlyph.js'
 import { isEdgeVideoLocalUrl } from '../../utils/edgeNative.js'
@@ -815,7 +816,14 @@ export default function LoungeFullScreenComposerModal({
                     className="mt-2"
                   />
                 ) : null}
-                <LoungeComposerGamePreview caption={localText} valueRef={sportsGameValueRef} className="mt-2" />
+                <LoungeComposerGamePreview
+                  caption={localText}
+                  valueRef={sportsGameValueRef}
+                  className="mt-2"
+                  onGameIncluded={() => {
+                    onCategoryPillsChange?.((prev) => ensureLoungePostCategoryPill(prev, 'sports'))
+                  }}
+                />
 
                 {carouselUrls.length > 0 ? (
                   <LoungeImageCarousel

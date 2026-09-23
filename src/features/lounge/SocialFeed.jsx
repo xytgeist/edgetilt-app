@@ -67,6 +67,7 @@ import {
   resolveQuoteRepostInitialCategoryPills,
   normalizeLoungeProfileCategoryPills,
   profileCategoryPills,
+  ensureLoungePostCategoryPill,
 } from '../../utils/loungePostCategoryPills.js'
 import {
   feedCommentAuthorEditMediaSeed,
@@ -17171,6 +17172,9 @@ export default function SocialFeed({
                 caption={postText}
                 valueRef={composerSportsRef}
                 className="mt-1.5"
+                onGameIncluded={() => {
+                  setComposerCategoryPills((prev) => ensureLoungePostCategoryPill(prev, 'sports'))
+                }}
               />
               </>
             ) : (

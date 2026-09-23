@@ -19,7 +19,14 @@ const EMPTY_GAMES = []
  * One card per team/matchup context; a specific matchup replaces the vague card.
  * Multi uses the same full-bleed horizontal carousel as feed post images.
  */
-export default function LoungeComposerGamePreview({ caption, className = '', valueRef, pinnedGame = null }) {
+export default function LoungeComposerGamePreview({
+  caption,
+  className = '',
+  valueRef,
+  pinnedGame = null,
+  /** Fired once when the author includes a suggested game card (not on dismiss). */
+  onGameIncluded = null,
+}) {
   const sports = useLoungeSportsFeed()
   const games = Array.isArray(sports?.games) ? sports.games : EMPTY_GAMES
   const [includedIds, setIncludedIds] = useState([])
@@ -172,6 +179,7 @@ export default function LoungeComposerGamePreview({ caption, className = '', val
                     if (prev.includes(id) || prev.length >= LOUNGE_SPORTS_GAME_PIN_MAX) return prev
                     return [...prev, id]
                   })
+                  onGameIncluded?.()
                 }}
                 onDismiss={() => {
                   setDismissedContexts((prev) => new Set(prev).add(row.contextKey))

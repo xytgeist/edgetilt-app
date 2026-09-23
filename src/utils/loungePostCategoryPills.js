@@ -176,6 +176,19 @@ export function normalizeLoungePostCategoryPills(value) {
   return out
 }
 
+/**
+ * Ensure a tribe slug is selected (e.g. Sports when a game card is included).
+ * If already present, unchanged. If under the cap, append. If at cap, replace the last slot.
+ */
+export function ensureLoungePostCategoryPill(value, slug) {
+  const resolved = resolveCategoryPillSlug(slug)
+  if (!resolved) return normalizeLoungePostCategoryPills(value)
+  const next = normalizeLoungePostCategoryPills(value)
+  if (next.includes(resolved)) return next
+  if (next.length < 3) return [...next, resolved]
+  return [...next.slice(0, 2), resolved]
+}
+
 /** Profile interests - same slug rules as posts, no cardinality cap. */
 export function normalizeLoungeProfileCategoryPills(value) {
   const raw = Array.isArray(value) ? value : []

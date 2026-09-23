@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-22:** **Long native Lounge videos false-failed after looking posted (Mac).** iPhone uploads have no `File.size`, so CF HLS wait used the 5-minute budget and discarded the staged post (Save draft, no Retry). Unknown/native/long clips now get 15–30 min, and a soft wait timeout keeps “Still processing…” instead of deleting. Web **`1.4.487`**. No new IPA / SQL.
 - **2026-09-22:** **Pending video pixel reveal restored for native posters (Mac).** iPhone session posters are `data:image/jpeg;base64,…`, but the pending tile / snapshot / pin paths only accepted `blob:`, so the develop-reveal canvas never got a poster. `isLoungeSessionPosterSrc` now accepts both. Web **`1.4.486`**. No new IPA / SQL.
 - **2026-09-22:** **Chat video caps match Lounge duration (Mac).** Free **2:20 / 512 MB**. Edge Pro, Slots Edge Pro, Lifetime, and staff **20 min**. Chat stays on R2, so the stored file stops at **5 GB** (one PUT). Bigger phone files re-encode. A normal MP4 under the cap uploads as picked. Web **`1.4.477`**. Test Edge **`lounge-chat-r2-video-upload`** deployed. No prod Edge. New IPA for the phone path.
 - **2026-09-22:** **Market-file close persistence on prod (Mac).** Redeployed **`lounge-sports-scoreboard`** + **`lounge-odds-poll`** to **`jtjgtucumuoswnbauxry`**. Prod already had locked MNF **NYG@LAR** (`LAR -7 / -290`). No SQL change needed on prod for that game.

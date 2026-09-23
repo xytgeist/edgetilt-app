@@ -226,6 +226,7 @@ import {
   registerLoungeStagedFeedPostPublishJob,
   remitLoungePendingPostProgressKey,
   resolveLoungeCfStreamProcessingTimeoutMs,
+  loungeSnapshotVideoDurationSec,
   resumeAllLoungePendingCfWaitJobs,
   setLoungePendingPostProgress,
   getLoungePendingPostProgress,
@@ -4300,7 +4301,15 @@ export default function SocialFeed({
         typeof opts.sourceBytes === 'number' && Number.isFinite(opts.sourceBytes)
           ? opts.sourceBytes
           : 0
-      const timeoutMs = resolveLoungeCfStreamProcessingTimeoutMs(sourceBytes)
+      const durationSec =
+        typeof opts.durationSec === 'number' && Number.isFinite(opts.durationSec)
+          ? opts.durationSec
+          : 0
+      const timeoutMs = resolveLoungeCfStreamProcessingTimeoutMs({
+        sourceBytes,
+        durationSec,
+        assumeLarge: Boolean(opts.assumeLarge),
+      })
       remitLoungePendingPostProgressKey(key, id)
       patchAuthorPendingVideoPost(key, {
         id,
@@ -12399,7 +12408,11 @@ export default function SocialFeed({
             submitResult.postId,
             submitResult.streamVideoUid,
             pendingPublishKey,
-            { sourceBytes: snap.videoFile?.size ?? snap.videoPrepSpec?.sourceFile?.size },
+            {
+              sourceBytes: snap.videoFile?.size ?? snap.videoPrepSpec?.sourceFile?.size,
+              durationSec: loungeSnapshotVideoDurationSec(snap),
+              assumeLarge: snap.videoPrepSpec?.kind === 'native',
+            },
           )
           patchAuthorPendingVideoPost(
             pendingPublishKey,
@@ -12731,9 +12744,11 @@ export default function SocialFeed({
             streamUid,
             pendingKey: pendingPublishKey,
             supabaseClient,
-            timeoutMs: resolveLoungeCfStreamProcessingTimeoutMs(
-              snap.videoFile?.size ?? snap.videoPrepSpec?.sourceFile?.size,
-            ),
+            timeoutMs: resolveLoungeCfStreamProcessingTimeoutMs({
+              sourceBytes: snap.videoFile?.size ?? snap.videoPrepSpec?.sourceFile?.size,
+              durationSec: loungeSnapshotVideoDurationSec(snap),
+              assumeLarge: snap.videoPrepSpec?.kind === 'native',
+            }),
           })
         }
         if (row.id) {
@@ -13100,6 +13115,8 @@ export default function SocialFeed({
         ) {
           startStagedVideoPostPublish(data.postId, data.streamVideoUid, pendingPublishKey, {
             sourceBytes: snap.videoFile?.size ?? snap.videoPrepSpec?.sourceFile?.size,
+            durationSec: loungeSnapshotVideoDurationSec(snap),
+            assumeLarge: snap.videoPrepSpec?.kind === 'native',
           })
         }
         persistLoungeComposerLastCategoryPillsFromSubmit(snap)
@@ -13378,9 +13395,11 @@ export default function SocialFeed({
             streamUid,
             pendingKey: pendingPublishKey,
             supabaseClient,
-            timeoutMs: resolveLoungeCfStreamProcessingTimeoutMs(
-              snap.videoFile?.size ?? snap.videoPrepSpec?.sourceFile?.size,
-            ),
+            timeoutMs: resolveLoungeCfStreamProcessingTimeoutMs({
+              sourceBytes: snap.videoFile?.size ?? snap.videoPrepSpec?.sourceFile?.size,
+              durationSec: loungeSnapshotVideoDurationSec(snap),
+              assumeLarge: snap.videoPrepSpec?.kind === 'native',
+            }),
           })
         }
         setLoungePostUploadFailedOpen(false)

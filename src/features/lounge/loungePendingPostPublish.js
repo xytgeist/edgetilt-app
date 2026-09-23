@@ -17,10 +17,14 @@ export const LOUNGE_CF_PROCESSING_PROGRESS_CAP = 0.99
 export const LOUNGE_CF_PROCESSING_TICK_MS = 7000
 /** Default CF wait for staged publish background poll. */
 export const LOUNGE_CF_PROCESSING_TIMEOUT_BASE_MS = 300_000
-/** Large direct uploads (Android CF transcode) can exceed 5 minutes. */
+/** Large direct uploads (Android CF transcode) / native / unknown size. */
 export const LOUNGE_CF_PROCESSING_TIMEOUT_LARGE_MS = 900_000
+/** Hard cap for long Edge Pro clips (CF can take a while on 10–20 min sources). */
+export const LOUNGE_CF_PROCESSING_TIMEOUT_MAX_MS = 1_800_000
 /** Source size above which staged publish uses the large timeout (~50 MB). */
 export const LOUNGE_CF_PROCESSING_LARGE_SOURCE_BYTES = 50 * 1024 * 1024
+/** Clip duration (seconds) above which we always use at least the large timeout. */
+export const LOUNGE_CF_PROCESSING_LONG_CLIP_SEC = 90
 
 const progressByKey = new Map()
 const listeners = new Set()
@@ -109,8 +113,9 @@ async function runLoungeStagedFeedPostPublishLoop(postId) {
       return
     }
     console.warn('staged video publish:', e)
-    // Tab hide / AbortError returns above. Timeout and Stream 404 are processing failures.
-    // Unexpected errors (e.g. feed_visible_at write) wait for resume on return.
+    // Tab hide / AbortError returns above. Soft HLS wait timeout and unexpected
+    // errors (e.g. feed_visible_at write) wait for resume on return. Hard CF
+    // encode error / missing uid are handled above.
     setLoungePendingPostProgress(id, {
       progress: 0.99,
       status: 'Still processing…',
@@ -136,7 +141,7 @@ export function startLoungeStagedFeedPostPublish({
   postId,
   streamUid,
   supabaseClient,
-  timeoutMs = LOUNGE_CF_PROCESSING_TIMEOUT_BASE_MS,
+  timeoutMs = LOUNGE_CF_PROCESSING_TIMEOUT_LARGE_MS,
 }) {
   const id = String(postId || '').trim()
   const uid = String(streamUid || '').trim()
@@ -149,7 +154,7 @@ export function startLoungeStagedFeedPostPublish({
     timeoutMs:
       typeof timeoutMs === 'number' && Number.isFinite(timeoutMs)
         ? timeoutMs
-        : LOUNGE_CF_PROCESSING_TIMEOUT_BASE_MS,
+        : LOUNGE_CF_PROCESSING_TIMEOUT_LARGE_MS,
     abortController: prev?.abortController ?? null,
     running: false,
     finalizeInFlight: prev?.finalizeInFlight,
@@ -215,7 +220,7 @@ async function runPendingCommentCfPollLoop(commentId) {
       return
     }
     console.warn('pending comment video CF wait:', e)
-    // Tab hide / AbortError returns above. Timeout and Stream 404 are processing failures.
+    // Soft HLS wait timeout / unexpected errors: resume on return.
     setLoungePendingPostProgress(id, {
       progress: 0.99,
       status: 'Still processing…',
@@ -258,7 +263,7 @@ export function startLoungePendingCommentVideoProcessing({
   commentId,
   streamUid,
   pendingKey,
-  timeoutMs = LOUNGE_CF_PROCESSING_TIMEOUT_BASE_MS,
+  timeoutMs = LOUNGE_CF_PROCESSING_TIMEOUT_LARGE_MS,
   supabaseClient,
 }) {
   const id = String(commentId || '').trim()
@@ -274,7 +279,7 @@ export function startLoungePendingCommentVideoProcessing({
     timeoutMs:
       typeof timeoutMs === 'number' && Number.isFinite(timeoutMs)
         ? timeoutMs
-        : LOUNGE_CF_PROCESSING_TIMEOUT_BASE_MS,
+        : LOUNGE_CF_PROCESSING_TIMEOUT_LARGE_MS,
     abortController: prev?.abortController ?? null,
     running: false,
   })
@@ -304,7 +309,7 @@ export function registerLoungePendingCommentVideoProcessingJob({
     timeoutMs:
       typeof timeoutMs === 'number' && Number.isFinite(timeoutMs)
         ? timeoutMs
-        : prev?.timeoutMs ?? LOUNGE_CF_PROCESSING_TIMEOUT_BASE_MS,
+        : prev?.timeoutMs ?? LOUNGE_CF_PROCESSING_TIMEOUT_LARGE_MS,
     abortController: prev?.abortController ?? null,
     running: prev?.running ?? false,
   })
@@ -447,15 +452,73 @@ export function abortLoungeStagedFeedPostPublish(postId) {
 }
 
 /**
- * @param {number | null | undefined} sourceBytes
+ * CF HLS-ready wait budget.
+ * Native iPhone uploads have no `File.size` on the snapshot, so the old
+ * bytes-only helper always returned the 5-minute base and long clips timed
+ * out after looking posted. Unknown size / native / long duration → large.
+ *
+ * @param {number | null | undefined | {
+ *   sourceBytes?: number | null,
+ *   durationSec?: number | null,
+ *   assumeLarge?: boolean,
+ * }} sourceBytesOrOpts
+ * @param {number | null | undefined} [durationSec]
  * @returns {number}
  */
-export function resolveLoungeCfStreamProcessingTimeoutMs(sourceBytes) {
-  const bytes = typeof sourceBytes === 'number' && Number.isFinite(sourceBytes) ? sourceBytes : 0
-  if (bytes >= LOUNGE_CF_PROCESSING_LARGE_SOURCE_BYTES) {
-    return LOUNGE_CF_PROCESSING_TIMEOUT_LARGE_MS
+export function resolveLoungeCfStreamProcessingTimeoutMs(sourceBytesOrOpts, durationSec) {
+  let sourceBytes = 0
+  let duration = 0
+  let assumeLarge = false
+  if (sourceBytesOrOpts && typeof sourceBytesOrOpts === 'object') {
+    const b = Number(sourceBytesOrOpts.sourceBytes)
+    sourceBytes = Number.isFinite(b) && b > 0 ? b : 0
+    const d = Number(sourceBytesOrOpts.durationSec)
+    duration = Number.isFinite(d) && d > 0 ? d : 0
+    assumeLarge = Boolean(sourceBytesOrOpts.assumeLarge)
+  } else {
+    const b = Number(sourceBytesOrOpts)
+    sourceBytes = Number.isFinite(b) && b > 0 ? b : 0
+    const d = Number(durationSec)
+    duration = Number.isFinite(d) && d > 0 ? d : 0
   }
-  return LOUNGE_CF_PROCESSING_TIMEOUT_BASE_MS
+
+  const unknownSize = sourceBytes <= 0
+  const longClip = duration >= LOUNGE_CF_PROCESSING_LONG_CLIP_SEC
+  const largeBytes = sourceBytes >= LOUNGE_CF_PROCESSING_LARGE_SOURCE_BYTES
+  let timeoutMs =
+    assumeLarge || unknownSize || largeBytes || longClip
+      ? LOUNGE_CF_PROCESSING_TIMEOUT_LARGE_MS
+      : LOUNGE_CF_PROCESSING_TIMEOUT_BASE_MS
+
+  // Extra minute per 30s of clip past 2 minutes (long Pro exports).
+  if (duration > 120) {
+    const extraMs = Math.ceil((duration - 120) / 30) * 60_000
+    timeoutMs = Math.min(LOUNGE_CF_PROCESSING_TIMEOUT_MAX_MS, timeoutMs + extraMs)
+  }
+  return timeoutMs
+}
+
+/**
+ * Clip length from a composer / submit snapshot (native trim/export specs included).
+ * @param {object | null | undefined} snapshot
+ * @returns {number}
+ */
+export function loungeSnapshotVideoDurationSec(snapshot) {
+  const specs = []
+  if (snapshot?.videoPrepSpec) specs.push(snapshot.videoPrepSpec)
+  if (Array.isArray(snapshot?.threadParts)) {
+    for (const part of snapshot.threadParts) {
+      if (part?.videoPrepSpec) specs.push(part.videoPrepSpec)
+    }
+  }
+  let max = 0
+  for (const spec of specs) {
+    const start = Number(spec?.startSec)
+    const end = Number(spec?.endSec)
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) continue
+    max = Math.max(max, end - start)
+  }
+  return max
 }
 
 function notifyStagedFeedPostPublishComplete(payload) {
@@ -497,7 +560,7 @@ export function registerLoungeStagedFeedPostPublishJob({
     timeoutMs:
       typeof timeoutMs === 'number' && Number.isFinite(timeoutMs)
         ? timeoutMs
-        : prev?.timeoutMs ?? LOUNGE_CF_PROCESSING_TIMEOUT_BASE_MS,
+        : prev?.timeoutMs ?? LOUNGE_CF_PROCESSING_TIMEOUT_LARGE_MS,
     abortController: prev?.abortController ?? null,
     running: prev?.running ?? false,
     finalizeInFlight: prev?.finalizeInFlight,
@@ -904,7 +967,7 @@ export async function publishLoungeFeedPostWhenStreamReady({
     timeoutMs:
       typeof timeoutMs === 'number' && Number.isFinite(timeoutMs)
         ? timeoutMs
-        : LOUNGE_CF_PROCESSING_TIMEOUT_BASE_MS,
+        : LOUNGE_CF_PROCESSING_TIMEOUT_LARGE_MS,
   })
   onProgress?.({ progress: 0.98, status: 'Going live…' })
 

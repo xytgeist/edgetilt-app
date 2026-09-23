@@ -2135,8 +2135,9 @@ export async function fetchCfStreamVideoProcessingStatus(supabaseClient, uid, si
 
 /**
  * Poll until Stream HLS playback is ready (encoding finished).
- * When `supabaseClient` is set, also polls CF `status.state` and fails fast on encode
- * `error`, confirmed missing (404), or HLS timeout. Tab hide stays AbortError.
+ * When `supabaseClient` is set, also polls CF `status.state` and fails hard on encode
+ * `error` or confirmed missing (404). A soft wait timeout throws a normal Error so
+ * staged publish can keep “Still processing…” and resume on focus. Tab hide stays AbortError.
  * @param {string} uid
  * @param {{ timeoutMs?: number, intervalMs?: number, signal?: AbortSignal, supabaseClient?: import('@supabase/supabase-js').SupabaseClient, onPoll?: (args: { elapsed: number }) => void, onUploadDiagnostic?: (detail: string) => void }} [options]
  */
@@ -2171,17 +2172,12 @@ export async function waitForCfStreamManifestReady(uid, options = {}) {
         },
         onUploadDiagnostic,
       )
-      throw new LoungeCfStreamProcessingError(
-        loungeCfStreamProcessingErrorMessage({
-          state: 'timeout',
-          errorReasonCode: 'playback_timeout',
-          errorReasonText: lastPollError,
-        }),
-        {
-          state: 'timeout',
-          errorReasonCode: 'playback_timeout',
-          errorReasonText: lastPollError.slice(0, 200),
-        },
+      // Soft timeout: do not discard the staged post. Callers keep "Still processing…"
+      // and resume on app focus. Hard-fail only on CF encode error / confirmed missing.
+      throw new Error(
+        lastPollError
+          ? `Video is still processing on Cloudflare (${Math.round(timeoutMs / 1000)}s wait). ${lastPollError.slice(0, 120)}`
+          : `Video is still processing on Cloudflare (${Math.round(timeoutMs / 1000)}s wait).`,
       )
     }
     options.onPoll?.({ elapsed })

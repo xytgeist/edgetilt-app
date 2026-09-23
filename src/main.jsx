@@ -38,6 +38,16 @@ Sentry.init({
   dsn: import.meta.env.VITE_SENTRY_DSN || 'https://8d6b45f5282d2474693cb8b9957f51d9@o4511453426876416.ingest.us.sentry.io/4511453430611968',
   environment: import.meta.env.MODE,
   sendDefaultPii: false,
+  // Safari/WebKit + mid-deploy chunk misses. Recover via installStaleChunkReloadListener.
+  ignoreErrors: [
+    'Load failed',
+    'Failed to fetch',
+    'NetworkError when attempting to fetch resource',
+    'Importing a module script failed',
+    'Failed to load module script',
+    'Network request failed',
+    /Non-Error promise rejection captured with value:.*Load failed/i,
+  ],
 })
 
 if (shouldShowLoungeColdBootSplash({ tab: 'home', pendingWork: readLoungeComposerDraftPendingWork() })) {

@@ -14,6 +14,11 @@ export function isStaleChunkLoadError(err) {
     msg.includes('failed to load module script') ||
     msg.includes('loading chunk') ||
     msg.includes('chunkloaderror') ||
+    // Safari / WebKit: failed dynamic import or fetch during boot (often "TypeError: Load failed")
+    msg.includes('load failed') ||
+    msg.includes('failed to fetch') ||
+    msg.includes('networkerror when attempting to fetch') ||
+    msg.includes('network request failed') ||
     // React.lazy after a mid-deploy stale chunk (Safari / Chrome wording)
     msg.includes('_result.default') ||
     msg.includes("reading 'default'") ||
@@ -87,11 +92,10 @@ export function clearStaleChunkReloadGuard(reloadKey = STALE_CHUNK_RELOAD_KEY) {
 export function installStaleChunkReloadListener(reloadKey = STALE_CHUNK_RELOAD_KEY) {
   if (typeof window === 'undefined') return
 
+  /** @param {unknown} reason @returns {boolean} true when a reload was started */
   const maybeReload = (reason) => {
-    if (!isStaleChunkLoadError(reason)) return
-    if (reloadOnceForStaleChunk(reloadKey)) {
-      // Prevent duplicate handlers from also treating this as fatal.
-    }
+    if (!isStaleChunkLoadError(reason)) return false
+    return reloadOnceForStaleChunk(reloadKey)
   }
 
   window.addEventListener('vite:preloadError', (event) => {
@@ -100,6 +104,11 @@ export function installStaleChunkReloadListener(reloadKey = STALE_CHUNK_RELOAD_K
   })
 
   window.addEventListener('unhandledrejection', (event) => {
-    maybeReload(event.reason)
+    if (!isStaleChunkLoadError(event.reason)) return
+    // One hard reload for Safari "Load failed" / stale chunk. Swallow only when we
+    // are recovering so the tab does not look like a crash mid-reload.
+    if (maybeReload(event.reason)) {
+      event.preventDefault()
+    }
   })
 }

@@ -3,6 +3,7 @@
  * Public Kalshi market data needs no key. FantasyPros optional via FANTASYPROS_API_KEY.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
+import { loadPolymarketProps } from './loungePolymarketNflProps.ts'
 
 const SLEEPER_PLAYERS = 'https://api.sleeper.app/v1/players/nfl'
 const SLEEPER_STATE = 'https://api.sleeper.app/v1/state/nfl'
@@ -122,6 +123,8 @@ export type NflGameFantasyPlayer = {
 
 export type NflGameFantasyPropKind = 'game' | 'period' | 'player'
 
+export type NflGameFantasyPropSource = 'kalshi' | 'polymarket'
+
 export type NflGameFantasyProp = {
   ticker: string
   series: string
@@ -131,6 +134,8 @@ export type NflGameFantasyProp = {
   line_label: string
   /** `game` moneyline/spread/total/team · `period` half/quarter · `player` strike markets. */
   kind: NflGameFantasyPropKind
+  /** Venue that produced this book. */
+  source: NflGameFantasyPropSource
   player_name: string
   team_hint: string | null
   yes_bid: number | null
@@ -314,6 +319,7 @@ function mapKalshiMarket(
     title,
     line_label: lineLabelFromTitle(title, playerName),
     kind: propKindForSeries(series),
+    source: 'kalshi',
     player_name: playerName,
     team_hint: null,
     yes_bid: dollarsToNum(m.yes_bid_dollars ?? m.yes_bid),
@@ -777,12 +783,21 @@ export async function buildNflGameFantasy(
   }
 
   let props: NflGameFantasyProp[] = []
-  try {
-    props = await loadKalshiProps(away, home)
-    if (props.length) sources.push('kalshi')
-  } catch {
-    props = []
-  }
+  const [kalshiProps, polyProps] = await Promise.all([
+    loadKalshiProps(away, home).catch(() => [] as NflGameFantasyProp[]),
+    loadPolymarketProps(away, home).catch(() => [] as NflGameFantasyProp[]),
+  ])
+  if (kalshiProps.length) sources.push('kalshi')
+  if (polyProps.length) sources.push('polymarket')
+  props = [...kalshiProps, ...(polyProps as NflGameFantasyProp[])]
+  props.sort((a, b) => {
+    const kindRank = (k: NflGameFantasyPropKind) => (k === 'game' ? 0 : k === 'period' ? 1 : 2)
+    const dk = kindRank(a.kind) - kindRank(b.kind)
+    if (dk !== 0) return dk
+    // Kalshi first within kind when liquidity ties … familiar books on top.
+    if (a.source !== b.source) return a.source === 'kalshi' ? -1 : 1
+    return 0
+  })
 
   const payload: NflGameFantasyPayload = {
     ok: true,

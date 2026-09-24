@@ -129,13 +129,15 @@ export default function GameHubPlayersPane({
   if (error) return <div className="py-10 text-center text-sm text-lv-red">{error}</div>
 
   const hasKalshi = Array.isArray(sources) && sources.includes('kalshi')
+  const hasPoly = Array.isArray(sources) && sources.includes('polymarket')
 
   return (
     <div data-lounge-game-players className="space-y-3 py-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-[12px] text-zinc-500">
           {season && week != null ? `Week ${week} · ${season}` : 'This matchup'}
-          {hasKalshi && view === 'props' ? ' · Kalshi' : ''}
+          {view === 'props' && hasKalshi ? ' · Kalshi' : ''}
+          {view === 'props' && hasPoly ? ' · Polymarket' : ''}
         </div>
         <div className="flex gap-1 rounded-full bg-zinc-900 p-0.5">
           {[

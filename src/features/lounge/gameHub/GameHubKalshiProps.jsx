@@ -16,12 +16,63 @@ function propBookDepth(prop) {
 }
 
 function seriesShort(series) {
+  const raw = String(series || '')
+  if (raw.startsWith('football_')) {
+    return raw
+      .replace(/^football_/, '')
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, (c) => c.toUpperCase())
+  }
+  return raw.replace(/^KXNFL/, '').replace(/([A-Z]+)(\d)/g, '$1 $2').trim() || 'PROP'
+}
+
+function SourceChip({ source }) {
+  const poly = source === 'polymarket'
   return (
-    String(series || '')
-      .replace(/^KXNFL/, '')
-      .replace(/([A-Z]+)(\d)/g, '$1 $2')
-      .trim() || 'PROP'
+    <span
+      className={`inline-flex shrink-0 items-center rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+        poly
+          ? 'bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-400/30'
+          : 'bg-zinc-700/80 text-zinc-300 ring-1 ring-inset ring-zinc-600/80'
+      }`}
+    >
+      {poly ? 'Poly' : 'Kalshi'}
+    </span>
   )
+}
+
+function VenueFilter({ value, onChange, counts }) {
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {[
+        { id: 'all', label: 'All' },
+        { id: 'kalshi', label: 'Kalshi' },
+        { id: 'polymarket', label: 'Polymarket' },
+      ].map((opt) => {
+        const n = counts?.[opt.id]
+        return (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => onChange(opt.id)}
+            className={`rounded-full px-3 py-1 text-[11px] font-semibold tracking-wide ${
+              value === opt.id
+                ? 'bg-zinc-100 text-zinc-950'
+                : 'bg-zinc-900 text-zinc-400 ring-1 ring-inset ring-zinc-800'
+            }`}
+          >
+            {opt.label}
+            {n != null ? ` · ${n}` : ''}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+function filterByVenue(list, venue) {
+  if (venue === 'all') return list
+  return (list || []).filter((p) => (p.source || 'kalshi') === venue)
 }
 
 function sumField(props, key) {
@@ -148,9 +199,10 @@ function KalshiGamePropCard({ prop, liqScale }) {
           rel="noopener noreferrer"
           className="min-w-0 flex-1 touch-manipulation active:opacity-90"
         >
-          <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-            Kalshi · {seriesShort(prop.series)}
-          </div>
+        <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+          <SourceChip source={prop.source} />
+          <span>{seriesShort(prop.series)}</span>
+        </div>
           <div className="mt-0.5 text-[13px] font-semibold leading-snug text-zinc-100">
             {prop.line_label || prop.title}
           </div>
@@ -195,6 +247,9 @@ function KalshiPlayerPropGroup({ group, liqScale }) {
           <div key={prop.ticker} className="flex items-center gap-2 px-3 py-2">
             <div className="min-w-0 flex-1">
               <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                <span className="mr-1.5 inline-flex align-middle">
+                  <SourceChip source={prop.source} />
+                </span>
                 {seriesShort(prop.series)}
                 <span className="ml-2 font-normal normal-case tracking-normal tabular-nums text-zinc-600">
                   V {kalshiContracts(prop.volume_24h ?? prop.volume)} · OI{' '}
@@ -268,58 +323,80 @@ function groupPlayerProps(props, rosterPlayers) {
 
 /** Player strike markets grouped under each player. */
 export function KalshiPlayerPropsBoard({ props, players, emptyLabel }) {
-  const groups = useMemo(() => groupPlayerProps(props, players), [props, players])
+  const [venue, setVenue] = useState('all')
+  const filtered = useMemo(() => filterByVenue(props, venue), [props, venue])
+  const groups = useMemo(() => groupPlayerProps(filtered, players), [filtered, players])
   const scale = useMemo(() => {
     const lines = groups.flatMap((g) => g.lines)
     return liqScaleFor(lines)
   }, [groups])
-
-  if (!groups.length) {
-    return (
-      <div className="py-8 text-center text-sm text-zinc-500">
-        {emptyLabel || 'No open Kalshi player props for this matchup right now.'}
-      </div>
+  const counts = useMemo(() => {
+    const list = Array.isArray(props) ? props : []
+    const playerOnly = list.filter(
+      (p) => p.kind === 'player' || (p.player_name && p.kind !== 'game' && p.kind !== 'period'),
     )
-  }
+    return {
+      all: playerOnly.length,
+      kalshi: playerOnly.filter((p) => (p.source || 'kalshi') === 'kalshi').length,
+      polymarket: playerOnly.filter((p) => p.source === 'polymarket').length,
+    }
+  }, [props])
 
   return (
     <div className="space-y-3" data-lounge-kalshi-player-props>
-      {groups.map((group) => (
-        <KalshiPlayerPropGroup key={group.key} group={group} liqScale={scale} />
-      ))}
+      <VenueFilter value={venue} onChange={setVenue} counts={counts} />
+      {!groups.length ? (
+        <div className="py-8 text-center text-sm text-zinc-500">
+          {emptyLabel || 'No open player props for this matchup right now.'}
+        </div>
+      ) : (
+        groups.map((group) => (
+          <KalshiPlayerPropGroup key={group.key} group={group} liqScale={scale} />
+        ))
+      )}
     </div>
   )
 }
 
-/** Game + period Kalshi markets (ML / spread / total / halves / quarters). */
+/** Game + period markets (ML / total / halves / quarters) from Kalshi + Polymarket. */
 export function KalshiGamePropsBoard({ props, showPeriods = true }) {
-  const { game, period, scale } = useMemo(() => {
-    const list = Array.isArray(props) ? props : []
+  const [venue, setVenue] = useState('all')
+  const [filter, setFilter] = useState('all')
+
+  const { game, period, scale, counts } = useMemo(() => {
+    const list = filterByVenue(Array.isArray(props) ? props : [], venue)
     const gameList = list.filter((p) => p.kind === 'game' || (!p.kind && !p.player_name))
     const periodList = list.filter((p) => p.kind === 'period')
+    const all = Array.isArray(props) ? props : []
+    const gamePeriod = all.filter((p) => p.kind === 'game' || p.kind === 'period' || (!p.kind && !p.player_name))
     return {
       game: gameList,
       period: periodList,
       scale: liqScaleFor([...gameList, ...periodList]),
+      counts: {
+        all: gamePeriod.length,
+        kalshi: gamePeriod.filter((p) => (p.source || 'kalshi') === 'kalshi').length,
+        polymarket: gamePeriod.filter((p) => p.source === 'polymarket').length,
+      },
     }
-  }, [props])
+  }, [props, venue])
 
-  const [filter, setFilter] = useState('all')
   const showGame = filter === 'all' || filter === 'game'
   const showPeriod = showPeriods && (filter === 'all' || filter === 'period')
   const visible =
     (showGame ? game.length : 0) + (showPeriod ? period.length : 0)
 
-  if (!game.length && !period.length) {
+  if (!counts.all) {
     return (
       <div className="py-6 text-center text-sm text-zinc-500">
-        No open Kalshi game markets for this matchup right now.
+        No open game markets for this matchup right now.
       </div>
     )
   }
 
   return (
     <div className="space-y-3" data-lounge-kalshi-game-props>
+      <VenueFilter value={venue} onChange={setVenue} counts={counts} />
       {showPeriods && period.length ? (
         <div className="flex flex-wrap gap-1.5">
           {[
@@ -347,7 +424,7 @@ export function KalshiGamePropsBoard({ props, showPeriods = true }) {
         <section className="space-y-2">
           <div className="flex items-baseline justify-between gap-2 px-0.5">
             <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-              Kalshi · Game
+              Game
             </h3>
             <span className="text-[11px] tabular-nums text-zinc-600">{game.length}</span>
           </div>
@@ -363,7 +440,7 @@ export function KalshiGamePropsBoard({ props, showPeriods = true }) {
         <section className="space-y-2">
           <div className="flex items-baseline justify-between gap-2 px-0.5">
             <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-              Kalshi · Periods
+              Periods
             </h3>
             <span className="text-[11px] tabular-nums text-zinc-600">{period.length}</span>
           </div>

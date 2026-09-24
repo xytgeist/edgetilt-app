@@ -3715,6 +3715,14 @@ html.light [data-lounge-kalshi-player-props] [data-kalshi-liq] .text-zinc-500,
 html.light [data-lounge-kalshi-game-props] [data-kalshi-liq] .text-zinc-500 {
   color: #71717a !important;
 }
+html.light [data-lounge-kalshi-player-props] .text-blue-300,
+html.light [data-lounge-kalshi-game-props] .text-blue-300 {
+  color: #2563eb !important;
+}
+html.light [data-lounge-kalshi-player-props] .bg-blue-500\/15,
+html.light [data-lounge-kalshi-game-props] .bg-blue-500\/15 {
+  background-color: rgb(59 130 246 / 0.12) !important;
+}
 html.light [data-lounge-kalshi-player-props] a,
 html.light [data-lounge-kalshi-game-props] a {
   color: inherit;

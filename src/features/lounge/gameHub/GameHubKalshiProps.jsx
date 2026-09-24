@@ -100,7 +100,8 @@ export function KalshiLiqStrip({ vol, oi, book, scale, compact = false }) {
   )
 }
 
-function YesNoButtons({ prop, tight = false }) {
+/** Compact Yes/No deep-link chips … label + price on one line. */
+function YesNoButtons({ prop }) {
   const yesPx = prop.yes_ask ?? prop.yes_bid ?? prop.last
   const noPx =
     prop.no_ask ??
@@ -108,27 +109,25 @@ function YesNoButtons({ prop, tight = false }) {
     (yesPx != null && Number.isFinite(Number(yesPx)) ? Math.max(0, 1 - Number(yesPx)) : null)
   const yesHref = prop.url_yes || prop.url_market || prop.url
   const noHref = prop.url_no || prop.url_market || prop.url
-  const pad = tight ? 'px-2 py-1.5' : 'px-2 py-2'
-  const pxSize = tight ? 'text-[14px]' : 'text-[16px]'
   return (
-    <div className="grid grid-cols-2 gap-2">
+    <div className="inline-flex shrink-0 overflow-hidden rounded-lg ring-1 ring-inset ring-zinc-700/80">
       <a
         href={yesHref}
         target="_blank"
         rel="noopener noreferrer"
-        className={`flex flex-col items-center justify-center rounded-xl border border-emerald-500/35 bg-emerald-500/15 ${pad} touch-manipulation active:opacity-90`}
+        className="inline-flex items-center gap-1 bg-emerald-500/15 px-2 py-1 touch-manipulation active:opacity-80"
       >
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-300/90">Yes</span>
-        <span className={`${pxSize} font-bold tabular-nums text-emerald-300`}>{kalshiCents(yesPx)}</span>
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-300/90">Y</span>
+        <span className="text-[12px] font-bold tabular-nums text-emerald-300">{kalshiCents(yesPx)}</span>
       </a>
       <a
         href={noHref}
         target="_blank"
         rel="noopener noreferrer"
-        className={`flex flex-col items-center justify-center rounded-xl border border-rose-400/35 bg-rose-500/10 ${pad} touch-manipulation active:opacity-90`}
+        className="inline-flex items-center gap-1 border-l border-zinc-700/80 bg-rose-500/10 px-2 py-1 touch-manipulation active:opacity-80"
       >
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-rose-300/90">No</span>
-        <span className={`${pxSize} font-bold tabular-nums text-rose-300`}>{kalshiCents(noPx)}</span>
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-rose-300/90">N</span>
+        <span className="text-[12px] font-bold tabular-nums text-rose-300">{kalshiCents(noPx)}</span>
       </a>
     </div>
   )
@@ -141,25 +140,25 @@ function KalshiGamePropCard({ prop, liqScale }) {
   const marketHref = prop.url_market || prop.url
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 px-3 py-3">
-      <a
-        href={marketHref}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="block min-w-0 touch-manipulation active:opacity-90"
-      >
-        <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-          Kalshi · {seriesShort(prop.series)}
-        </div>
-        <div className="mt-0.5 text-[14px] font-semibold leading-snug text-zinc-100">
-          {prop.line_label || prop.title}
-        </div>
-      </a>
-      <div className="mt-2.5">
-        <KalshiLiqStrip vol={vol} oi={oi} book={depth} scale={liqScale} compact />
-      </div>
-      <div className="mt-2.5">
+    <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 px-3 py-2.5">
+      <div className="flex items-start gap-2">
+        <a
+          href={marketHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="min-w-0 flex-1 touch-manipulation active:opacity-90"
+        >
+          <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+            Kalshi · {seriesShort(prop.series)}
+          </div>
+          <div className="mt-0.5 text-[13px] font-semibold leading-snug text-zinc-100">
+            {prop.line_label || prop.title}
+          </div>
+        </a>
         <YesNoButtons prop={prop} />
+      </div>
+      <div className="mt-2">
+        <KalshiLiqStrip vol={vol} oi={oi} book={depth} scale={liqScale} compact />
       </div>
     </div>
   )
@@ -193,27 +192,25 @@ function KalshiPlayerPropGroup({ group, liqScale }) {
       </div>
       <div className="divide-y divide-zinc-800/70">
         {lines.map((prop) => (
-          <div key={prop.ticker} className="px-3 py-2.5">
-            <div className="mb-2 flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-                  {seriesShort(prop.series)}
-                </div>
-                <a
-                  href={prop.url_market || prop.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-0.5 block text-[13px] font-semibold leading-snug text-zinc-100 touch-manipulation active:opacity-90"
-                >
-                  {prop.line_label || prop.title}
-                </a>
+          <div key={prop.ticker} className="flex items-center gap-2 px-3 py-2">
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                {seriesShort(prop.series)}
+                <span className="ml-2 font-normal normal-case tracking-normal tabular-nums text-zinc-600">
+                  V {kalshiContracts(prop.volume_24h ?? prop.volume)} · OI{' '}
+                  {kalshiContracts(prop.open_interest)}
+                </span>
               </div>
-              <div className="shrink-0 text-right text-[10px] tabular-nums text-zinc-500">
-                <div>V {kalshiContracts(prop.volume_24h ?? prop.volume)}</div>
-                <div>OI {kalshiContracts(prop.open_interest)}</div>
-              </div>
+              <a
+                href={prop.url_market || prop.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-0.5 block truncate text-[13px] font-semibold leading-snug text-zinc-100 touch-manipulation active:opacity-90"
+              >
+                {prop.line_label || prop.title}
+              </a>
             </div>
-            <YesNoButtons prop={prop} tight />
+            <YesNoButtons prop={prop} />
           </div>
         ))}
       </div>

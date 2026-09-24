@@ -55,8 +55,8 @@ function FieldViz({ game, live }) {
 }
 
 /**
- * X-style split team-color hero. Wash + logo treatment match Lounge post game cards.
- * `topBar` (back + game pills) sits inside the wash so colors run under the status row.
+ * X-style split team-color hero. Same silver gridiron + multiply washes as Lounge
+ * post game cards. `topBar` sits inside the wash so colors run under the status row.
  */
 export default function GameHubHero({ game, live, lastPlay, topBar = null }) {
   const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(game)
@@ -66,18 +66,23 @@ export default function GameHubHero({ game, live, lastPlay, topBar = null }) {
   const kickoff = game.status === 'pre' ? formatKickoff(game.commence_time) : ''
 
   return (
-    <div data-lounge-game-hero className="relative overflow-hidden">
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background: `linear-gradient(90deg, ${awayColor} 0%, ${awayColor} 46%, ${homeColor} 54%, ${homeColor} 100%)`,
-        }}
-      />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-black/30 to-zinc-950" />
+    <div
+      data-lounge-game-hero
+      className="relative overflow-hidden"
+      style={{
+        '--hero-away': awayColor,
+        '--hero-home': homeColor,
+      }}
+    >
+      <span data-lounge-game-hero-field aria-hidden="true" />
+      <span data-lounge-game-hero-away aria-hidden="true" />
+      <span data-lounge-game-hero-home aria-hidden="true" />
+      <span data-lounge-game-hero-seam aria-hidden="true" />
+      <div className="pointer-events-none absolute inset-0 z-[3] bg-gradient-to-b from-black/15 via-black/28 to-zinc-950" />
 
-      {topBar ? <div className="relative z-[1]">{topBar}</div> : null}
+      {topBar ? <div className="relative z-[4]">{topBar}</div> : null}
 
-      <div className="relative px-4 pb-2 pt-2">
+      <div className="relative z-[4] px-4 pb-2 pt-2">
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
             <LoungeSportsTeamLogo side={game.away} treatment={awayTreatment} size={52} />
@@ -123,10 +128,12 @@ export default function GameHubHero({ game, live, lastPlay, topBar = null }) {
         </div>
       </div>
 
-      <FieldViz game={game} live={live} />
+      <div className="relative z-[4]">
+        <FieldViz game={game} live={live} />
+      </div>
 
       {lastPlay ? (
-        <div className="relative truncate px-4 pb-3 text-[12px] text-white/75">
+        <div className="relative z-[4] truncate px-4 pb-3 text-[12px] text-white/75">
           <span className="font-semibold uppercase tracking-wide text-white/55">Last play </span>
           {lastPlay}
         </div>

@@ -3557,7 +3557,73 @@ html.light [data-lounge-game-chat] {
 html.light [data-lounge-game-chat]::placeholder {
   color: #71717a !important;
 }
+/* Game hub hero: silver gridiron + multiply team stains (same recipe as post pills). */
+[data-lounge-game-hero] {
+  isolation: isolate;
+  background-color: #7a7a84;
+}
+[data-lounge-game-hero] [data-lounge-game-hero-field],
+[data-lounge-game-hero] [data-lounge-game-hero-away],
+[data-lounge-game-hero] [data-lounge-game-hero-home] {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+[data-lounge-game-hero] [data-lounge-game-hero-field] {
+  z-index: 0;
+  inset: -22%;
+  background: url('/sports/nfl/gridiron-silver.svg') center / cover no-repeat;
+  transform: rotate(-6deg) scale(1.14);
+  filter: contrast(1.1) saturate(0.72);
+}
+[data-lounge-game-hero] [data-lounge-game-hero-away],
+[data-lounge-game-hero] [data-lounge-game-hero-home] {
+  z-index: 1;
+  mix-blend-mode: multiply;
+}
+[data-lounge-game-hero] [data-lounge-game-hero-away] {
+  background: linear-gradient(
+    105deg,
+    var(--hero-away, #3f3f46) 0%,
+    var(--hero-away, #3f3f46) 22%,
+    color-mix(in srgb, var(--hero-away, #3f3f46) 78%, transparent) 42%,
+    color-mix(in srgb, var(--hero-away, #3f3f46) 28%, transparent) 56%,
+    transparent 72%
+  );
+}
+[data-lounge-game-hero] [data-lounge-game-hero-home] {
+  background: linear-gradient(
+    255deg,
+    var(--hero-home, #3f3f46) 0%,
+    var(--hero-home, #3f3f46) 22%,
+    color-mix(in srgb, var(--hero-home, #3f3f46) 78%, transparent) 42%,
+    color-mix(in srgb, var(--hero-home, #3f3f46) 28%, transparent) 56%,
+    transparent 72%
+  );
+}
+[data-lounge-game-hero] [data-lounge-game-hero-seam] {
+  position: absolute;
+  top: -50%;
+  bottom: -50%;
+  left: 50%;
+  z-index: 2;
+  width: 5.5rem;
+  pointer-events: none;
+  transform: translateX(-50%) rotate(16deg);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--hero-away, #fff) 20%, transparent) 22%,
+    rgba(255, 255, 255, 0.38) 50%,
+    color-mix(in srgb, var(--hero-home, #fff) 20%, transparent) 78%,
+    transparent 100%
+  );
+  filter: blur(18px);
+}
 /* Team-color hero stays light-on-dark even in light mode */
+html.light [data-lounge-game-hero] {
+  background-color: #7a7a84 !important;
+}
 html.light [data-lounge-game-hero] .text-white,
 html.light [data-lounge-game-hero] .text-white\/90,
 html.light [data-lounge-game-hero] .text-white\/85,

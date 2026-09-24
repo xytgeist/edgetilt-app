@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-23:** **Game hub hero gridiron wash (Mac).** Hero uses same silver gridiron SVG + multiply team stains + center seam as Lounge post pills. Web **`1.4.504`**.
 - **2026-09-23:** **Game hub hero wash/logo = post pills (Mac).** Shared `loungeSportsPillPaint` (`resolveNflPillWashes` + light/halo/silhouette probe). Hero uses same colors/logos as Lounge game cards. Web **`1.4.503`**.
 - **2026-09-23:** **Game hub pills soft edge fade (Mac).** Soft `mask-image` fade on sibling pill scroller (no dark overlays; chips still no backdrop-blur). Web **`1.4.502`**.
 - **2026-09-23:** **Game hub pills chrome (Mac).** Removed edge fade overlays + native scrollbar on sibling game pills. Web **`1.4.501`**.

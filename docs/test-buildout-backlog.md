@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Players Roster stats grid edge bleed + no crush (Mac).** Stats table full-bleeds card padding; columns use min tracks + horizontal scroll instead of `1fr` crush. Web **`1.4.570`**.
 - **2026-09-24:** **Players Roster kicker grid + Career row (Mac).** Kickers get ESPN-style FG%/FG/distance/AVG/LNG/XP/PTS (Regular + Projected). Career under Projected for all positions via Sleeper season-sum lookback (20y, isolate-cached). Redeploy **`lounge-nfl-game-fantasy`**. Web **`1.4.569`**.
 - **2026-09-24:** **Players Roster skill full lines + full-width grid (Mac).** RB/WR/TE always show Rushing + Receiving + Fumbles (zeros when missing); RB rush-first, WR/TE rec-first. Fat stats grid stretches to card width. Web **`1.4.568`**.
 - **2026-09-24:** **Players Roster adaptive expand (#1) (Mac).** Fat groups (5+ cols) use one sticky-STATS CSS grid so columns share tracks; thin groups (Kicking/Defense) use full-width Regular Season | Projected stacks. Web **`1.4.567`**.

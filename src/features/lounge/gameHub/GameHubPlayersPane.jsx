@@ -418,7 +418,7 @@ function RosterSeasonStatsTable({ player }) {
   const thinGroups = fatCapable ? [] : groups
 
   return (
-    <div data-roster-season-stats className="mt-3 space-y-2">
+    <div data-roster-season-stats className="mt-3 -mx-3.5 space-y-2">
       {fatGroups.length ? <RosterFatStatsGrid groups={fatGroups} rowLabels={rowLabels} /> : null}
       {thinGroups.map((group) => (
         <RosterThinStatsBlock key={group.title} group={group} rowLabels={rowLabels} />
@@ -432,20 +432,21 @@ function RosterFatStatsGrid({ groups, rowLabels }) {
   const colCount = dataCols.length
   if (!colCount) return null
 
-  const gridCols = `minmax(5.75rem, max-content) repeat(${colCount}, minmax(0, 1fr))`
+  // Fixed min tracks + horizontal scroll … never crush labels into each other with 1fr.
+  const gridCols = `minmax(5.5rem, max-content) repeat(${colCount}, minmax(2.4rem, max-content))`
 
   return (
-    <div className="w-full overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950">
-      <div className="w-full overflow-x-auto overscroll-x-contain">
-        <div className="grid w-full" style={{ gridTemplateColumns: gridCols }}>
+    <div className="overflow-hidden border-y border-zinc-700/80 bg-zinc-950">
+      <div className="overflow-x-auto overscroll-x-contain">
+        <div className="grid w-max min-w-full" style={{ gridTemplateColumns: gridCols }}>
           <div className="sticky left-0 z-[1] border-b border-r border-zinc-700/80 bg-zinc-950" />
           {groups.map((group) => (
             <div
               key={`cat-${group.title}`}
-              className="flex h-8 items-end justify-center border-b border-zinc-700/80 px-1 pb-1"
+              className="flex h-8 items-end justify-center border-b border-zinc-700/80 px-1.5 pb-1"
               style={{ gridColumn: `span ${group.cols.length}` }}
             >
-              <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-300">
+              <span className="whitespace-nowrap text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-300">
                 {group.title}
               </span>
             </div>
@@ -460,9 +461,9 @@ function RosterFatStatsGrid({ groups, rowLabels }) {
             group.cols.map((col) => (
               <div
                 key={`h-${group.title}-${col.key}`}
-                className="flex h-7 items-center justify-center border-b border-l border-zinc-700/80 px-1 text-[10px] font-bold uppercase tracking-wide text-zinc-400"
+                className="flex h-7 items-center justify-center border-b border-l border-zinc-700/80 px-1.5 text-[10px] font-bold uppercase tracking-wide text-zinc-400"
               >
-                {col.label}
+                <span className="whitespace-nowrap">{col.label}</span>
               </div>
             )),
           )}
@@ -481,11 +482,11 @@ function RosterFatStatsGrid({ groups, rowLabels }) {
                 return group.cols.map((col) => (
                   <div
                     key={`${label}-${group.title}-${col.key}`}
-                    className={`flex h-8 items-center justify-center border-l border-zinc-700/80 px-1 text-[12px] tabular-nums text-zinc-200 ${
+                    className={`flex h-8 items-center justify-center border-l border-zinc-700/80 px-1.5 text-[12px] tabular-nums text-zinc-200 ${
                       rowIdx < rowLabels.length - 1 ? 'border-b' : ''
                     }`}
                   >
-                    {row?.cells?.[col.key] ?? '—'}
+                    <span className="whitespace-nowrap">{row?.cells?.[col.key] ?? '—'}</span>
                   </div>
                 ))
               })}
@@ -499,7 +500,7 @@ function RosterFatStatsGrid({ groups, rowLabels }) {
 
 function RosterThinStatsBlock({ group, rowLabels }) {
   return (
-    <div className="overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950 px-3 py-2.5">
+    <div className="border-y border-zinc-700/80 bg-zinc-950 px-3.5 py-2.5">
       <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-300">{group.title}</div>
       <div className="mt-2 grid grid-cols-2 gap-3">
         {rowLabels.map((label) => {

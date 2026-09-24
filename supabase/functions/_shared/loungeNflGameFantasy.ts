@@ -452,7 +452,7 @@ async function loadPlayersFromDb(
   const { data, error } = await admin
     .from('nfl_players')
     .select(
-      'sleeper_id, espn_id, full_name, position, team, fantasy_positions, search_rank, depth_chart_order, depth_chart_position, headshot_url, local_headshot_path',
+      'sleeper_id, espn_id, full_name, position, team, fantasy_positions, search_rank, depth_chart_order, depth_chart_position, headshot_url, local_headshot_path, injury_status',
     )
     .in('team', [away, home])
   if (error) throw new Error(error.message)

@@ -23,11 +23,13 @@ function PlayerAvatar({ player }) {
 
 /** Fixed-frame headshot for H2H (same height both sides). Missing → bust silhouette.
  * Sources are landscape busts (~1.4:1). Use contain + bottom so shoulders aren't
- * sliced by a tall object-cover crop. */
-function MatchupPortrait({ player, isDef }) {
+ * sliced by a tall object-cover crop. Anchor toward the VS center (inner edge). */
+function MatchupPortrait({ player, isDef, align = 'left' }) {
   const [failed, setFailed] = useState(false)
   const src = player?.headshot_url
   const showPhoto = Boolean(src) && !failed && !isDef
+  // Home (right half) hugs left/center; away (left half) hugs right/center.
+  const objectPos = align === 'right' ? 'object-[left_bottom]' : 'object-[right_bottom]'
 
   if (isDef) return null
 
@@ -36,7 +38,7 @@ function MatchupPortrait({ player, isDef }) {
       <img
         src="/sports/nfl/silhouettes/player-bust.png"
         alt=""
-        className="h-full w-full object-contain object-bottom opacity-80"
+        className={`h-full w-full object-contain opacity-80 ${objectPos}`}
       />
     )
   }
@@ -45,7 +47,7 @@ function MatchupPortrait({ player, isDef }) {
     <img
       src={src}
       alt=""
-      className="h-full w-full object-contain object-bottom"
+      className={`h-full w-full object-contain ${objectPos}`}
       onError={() => setFailed(true)}
     />
   )
@@ -372,14 +374,11 @@ function MatchupHalf({
         </span>
         {!empty && !isDef ? (
           <div
-            className={`pointer-events-none absolute bottom-0 z-[2] flex h-[11rem] w-full items-end ${
-              align === 'right' ? 'justify-start pl-0.5' : 'justify-end pr-0.5'
+            className={`pointer-events-none absolute bottom-0 z-[2] h-[11rem] w-[12rem] overflow-hidden ${
+              align === 'right' ? 'left-0' : 'right-0'
             }`}
           >
-            {/* Wide enough for landscape NFL/ESPN busts (~1.4:1) without side-slicing shoulders. */}
-            <div className="h-[11rem] w-[12rem] overflow-hidden">
-              <MatchupPortrait player={player} isDef={false} />
-            </div>
+            <MatchupPortrait player={player} isDef={false} align={align} />
           </div>
         ) : null}
         {empty ? (

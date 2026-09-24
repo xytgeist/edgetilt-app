@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, Fragment } from 'react'
 import { KalshiPlayerPropsBoard } from './GameHubKalshiProps.jsx'
 import { injuryTag } from './GameHubFantasyPane.jsx'
+import { useLoungeSportsPillWashAndLogos } from '../loungeSportsPillPaint.jsx'
 
 function InjuryPill({ status }) {
   const tag = injuryTag(status)
@@ -405,7 +406,7 @@ const FAT_STAT_COL_MIN = 5
  * so vertical rules share a single track. Thin groups (Kicking / Defense): full-width
  * Regular Season | Projected stacks … no empty ESPN chrome.
  */
-function RosterSeasonStatsTable({ player }) {
+function RosterSeasonStatsTable({ player, edgeBleed = false }) {
   const groups = buildStatGroups(player)
   if (!groups.length) return null
 
@@ -418,7 +419,10 @@ function RosterSeasonStatsTable({ player }) {
   const thinGroups = fatCapable ? [] : groups
 
   return (
-    <div data-roster-season-stats className="mt-3 -mx-3.5">
+    <div
+      data-roster-season-stats
+      className={edgeBleed ? 'mt-0' : 'mt-3 -mx-3.5'}
+    >
       {fatGroups.length ? <RosterFatStatsGrid groups={fatGroups} rowLabels={rowLabels} /> : null}
       {thinGroups.map((group) => (
         <RosterThinStatsBlock key={group.title} group={group} rowLabels={rowLabels} />
@@ -597,8 +601,28 @@ function normalizePos(pos) {
   return p
 }
 
-function RosterBoard({ players }) {
+function teamAbbrev(value) {
+  return String(value || '')
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+}
+
+function rosterWashForPlayer(player, game, awayColor, homeColor) {
+  const team = teamAbbrev(player?.team)
+  const away = teamAbbrev(game?.away?.abbrev)
+  const home = teamAbbrev(game?.home?.abbrev)
+  if (team && away && team === away) {
+    return { color: awayColor || '#3f3f46', meshSrc: '/sports/nfl/textures/jersey-mesh-1.jpg' }
+  }
+  if (team && home && team === home) {
+    return { color: homeColor || '#3f3f46', meshSrc: '/sports/nfl/textures/jersey-mesh-2.jpg' }
+  }
+  return { color: homeColor || awayColor || '#3f3f46', meshSrc: '/sports/nfl/textures/jersey-mesh-1.jpg' }
+}
+
+function RosterBoard({ players, game }) {
   const [expandedId, setExpandedId] = useState(null)
+  const { awayColor, homeColor } = useLoungeSportsPillWashAndLogos(game)
   const sorted = useMemo(() => {
     const list = [...(players || [])]
     list.sort((a, b) => {
@@ -625,19 +649,19 @@ function RosterBoard({ players }) {
 
   const expandedIdx = sorted.findIndex((p) => String(p.sleeper_id) === expandedId)
 
-  const renderRow = (p, { expanded = false } = {}) => {
+  const renderCollapsedRow = (p) => {
     const headline = seasonHeadline(p)
     const id = String(p.sleeper_id)
     const hasStats = buildStatGroups(p).length > 0
     return (
-      <li key={id} className={expanded ? 'px-3.5 pt-3.5 pb-0' : 'px-3.5 py-3.5'}>
+      <li key={id} className="px-3.5 py-3.5">
         <button
           type="button"
           disabled={!hasStats}
-          aria-expanded={hasStats ? expanded : undefined}
+          aria-expanded={false}
           onClick={() => {
             if (!hasStats) return
-            setExpandedId((cur) => (cur === id ? null : id))
+            setExpandedId(id)
           }}
           className={`flex w-full items-start gap-3 text-left touch-manipulation ${
             hasStats ? 'active:opacity-90' : ''
@@ -651,7 +675,6 @@ function RosterBoard({ players }) {
             </div>
             <div className="mt-0.5 text-[12px] text-zinc-500">
               {p.position || '-'} · {p.team}
-              {p.is_starter ? ' · Starter' : ''}
             </div>
           </div>
           {headline ? (
@@ -661,18 +684,70 @@ function RosterBoard({ players }) {
             </div>
           ) : null}
           {hasStats ? (
-            <span
-              aria-hidden
-              className={`mt-2 shrink-0 text-zinc-500 transition-transform ${expanded ? 'rotate-180' : ''}`}
-            >
+            <span aria-hidden className="mt-2 shrink-0 text-zinc-500">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
             </span>
           ) : null}
         </button>
-        {expanded ? <RosterSeasonStatsTable player={p} /> : null}
       </li>
+    )
+  }
+
+  const renderExpandedCard = (p) => {
+    const headline = seasonHeadline(p)
+    const id = String(p.sleeper_id)
+    const wash = rosterWashForPlayer(p, game, awayColor, homeColor)
+    return (
+      <ul
+        key={id}
+        data-roster-player-card
+        data-expanded=""
+        className="overflow-hidden rounded-2xl border border-zinc-600 bg-zinc-900 shadow-lg shadow-black/30"
+      >
+        <li>
+          <div
+            data-fantasy-h2h-wash
+            className="relative px-3.5 pb-3 pt-3.5"
+            style={{ '--fantasy-wash': wash.color }}
+          >
+            <span className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
+              <img data-fantasy-h2h-mesh src={wash.meshSrc} alt="" />
+              <span data-fantasy-h2h-tint />
+            </span>
+            <button
+              type="button"
+              aria-expanded
+              onClick={() => setExpandedId(null)}
+              className="relative z-[2] flex w-full items-start gap-3 text-left touch-manipulation active:opacity-90"
+            >
+              <PlayerAvatar player={p} />
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <div className="truncate text-[16px] font-semibold text-white">{p.name}</div>
+                  <InjuryPill status={p.injury_status} />
+                </div>
+                <div className="mt-0.5 text-[12px] text-white/70">
+                  {p.position || '-'} · {p.team}
+                </div>
+              </div>
+              {headline ? (
+                <div className="shrink-0 pt-0.5 text-right">
+                  <div className="text-[18px] font-bold tabular-nums text-white">{headline.value}</div>
+                  <div className="text-[10px] uppercase tracking-wide text-white/65">{headline.label}</div>
+                </div>
+              ) : null}
+              <span aria-hidden className="mt-2 shrink-0 rotate-180 text-white/70">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </span>
+            </button>
+          </div>
+          <RosterSeasonStatsTable player={p} edgeBleed />
+        </li>
+      </ul>
     )
   }
 
@@ -682,7 +757,7 @@ function RosterBoard({ players }) {
   if (expandedIdx < 0) {
     return (
       <ul data-roster-list className={listClass}>
-        {sorted.map((p) => renderRow(p))}
+        {sorted.map((p) => renderCollapsedRow(p))}
       </ul>
     )
   }
@@ -695,19 +770,13 @@ function RosterBoard({ players }) {
     <div className="space-y-2">
       {before.length ? (
         <ul data-roster-list className={listClass}>
-          {before.map((p) => renderRow(p))}
+          {before.map((p) => renderCollapsedRow(p))}
         </ul>
       ) : null}
-      <ul
-        data-roster-player-card
-        data-expanded=""
-        className="overflow-hidden rounded-2xl border border-zinc-600 bg-zinc-900 shadow-lg shadow-black/30"
-      >
-        {renderRow(mid, { expanded: true })}
-      </ul>
+      {renderExpandedCard(mid)}
       {after.length ? (
         <ul data-roster-list className={listClass}>
-          {after.map((p) => renderRow(p))}
+          {after.map((p) => renderCollapsedRow(p))}
         </ul>
       ) : null}
     </div>
@@ -730,6 +799,7 @@ export default function GameHubPlayersPane({
   props,
   loading,
   error,
+  game = null,
   defaultView = 'roster',
 }) {
   const [view, setView] = useState(defaultView === 'props' ? 'props' : 'roster')
@@ -814,7 +884,7 @@ export default function GameHubPlayersPane({
         !players?.length ? (
           <div className="py-10 text-center text-sm text-zinc-500">No roster data for this matchup yet.</div>
         ) : (
-          <RosterBoard players={filteredPlayers} />
+          <RosterBoard players={filteredPlayers} game={game} />
         )
       ) : null}
 

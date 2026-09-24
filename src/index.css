@@ -3723,6 +3723,13 @@ html.light [data-lounge-game-players] [data-roster-player-card] {
   border-color: #d4d4d8;
   box-shadow: 0 8px 24px rgba(24, 24, 27, 0.08);
 }
+html.light [data-lounge-game-players] [data-roster-player-card] [data-fantasy-h2h-wash] .text-white {
+  color: #ffffff !important;
+}
+html.light [data-lounge-game-players] [data-roster-player-card] [data-fantasy-h2h-wash] .text-white\/70,
+html.light [data-lounge-game-players] [data-roster-player-card] [data-fantasy-h2h-wash] .text-white\/65 {
+  color: rgb(255 255 255 / 0.7) !important;
+}
 html.light [data-lounge-game-players] [data-roster-season-stats] {
   background-color: #ffffff;
   border-color: #e4e4e7;

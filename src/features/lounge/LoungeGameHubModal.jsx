@@ -327,6 +327,7 @@ export default function LoungeGameHubModal({
             props={fantasy.props}
             loading={fantasyLoading}
             error={fantasyErr}
+            game={game}
           />
         ) : tab === 'fantasy' ? (
           <GameHubFantasyPane

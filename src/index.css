@@ -3754,8 +3754,14 @@ html.light [data-lounge-game-fantasy] [data-fantasy-h2h] .text-zinc-500 {
 html.light [data-lounge-game-fantasy] [data-fantasy-h2h] .bg-zinc-700 {
   background-color: #a1a1aa;
 }
-html.light [data-lounge-game-fantasy] [data-fantasy-h2h] .bg-zinc-200 {
-  background-color: #3f3f46;
+html.light [data-lounge-game-fantasy] [data-fantasy-h2h] .text-emerald-400 {
+  color: #059669 !important;
+}
+html.light [data-lounge-game-fantasy] [data-fantasy-h2h] .text-amber-300 {
+  color: #d97706 !important;
+}
+html.light [data-lounge-game-fantasy] [data-fantasy-h2h] .text-rose-400 {
+  color: #e11d48 !important;
 }
 html.light [data-lounge-game-fantasy] .text-emerald-300,
 html.light [data-lounge-game-fantasy] .text-emerald-300\/90 {

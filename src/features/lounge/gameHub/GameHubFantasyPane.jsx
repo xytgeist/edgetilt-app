@@ -212,7 +212,7 @@ function matchupStatLine(player, pos) {
     const td = (Number(player.season_pass_td) || 0) + (Number(player.season_rush_td) || 0)
     const hasTd = player.season_pass_td != null || player.season_rush_td != null
     if (tot == null && !hasTd) return null
-    if (tot != null && hasTd) return `${fmtYd(tot)} Yds - ${fmt(td, 0)} TD`
+    if (tot != null && hasTd) return `${fmtYd(tot)} Yds · ${fmt(td, 0)} TD`
     if (tot != null) return `${fmtYd(tot)} Yds`
     return `${fmt(td, 0)} TD`
   }
@@ -224,7 +224,7 @@ function matchupStatLine(player, pos) {
     const td = (Number(player.season_rush_td) || 0) + (Number(player.season_rec_td) || 0)
     const hasTd = player.season_rush_td != null || player.season_rec_td != null
     if (tot == null && !hasTd) return null
-    if (tot != null && hasTd) return `${fmtYd(tot)} Yds - ${fmt(td, 0)} TD`
+    if (tot != null && hasTd) return `${fmtYd(tot)} Yds · ${fmt(td, 0)} TD`
     if (tot != null) return `${fmtYd(tot)} Yds`
     return `${fmt(td, 0)} TD`
   }
@@ -236,7 +236,7 @@ function matchupStatLine(player, pos) {
       made != null || miss != null ? (Number(made) || 0) + (Number(miss) || 0) : null
     if (pts == null && att == null) return null
     if (pts != null && att != null) {
-      return `${fmt(pts, 0)} Pts - ${fmt(made ?? 0, 0)}/${fmt(att, 0)} FGs`
+      return `${fmt(pts, 0)} Pts · ${fmt(made ?? 0, 0)}/${fmt(att, 0)} FGs`
     }
     if (pts != null) return `${fmt(pts, 0)} Pts`
     return `${fmt(made ?? 0, 0)}/${fmt(att, 0)} FGs`
@@ -246,12 +246,34 @@ function matchupStatLine(player, pos) {
     const sack = player.season_sack
     if (pts == null && sack == null) return null
     if (pts != null && sack != null) {
-      return `${fmt(pts, 0)} Allowed - ${fmt(sack, sack % 1 === 0 ? 0 : 1)} Sacks`
+      return `${fmt(pts, 0)} Allowed · ${fmt(sack, sack % 1 === 0 ? 0 : 1)} Sacks`
     }
     if (pts != null) return `${fmt(pts, 0)} Allowed`
     return `${fmt(sack, sack % 1 === 0 ? 0 : 1)} Sacks`
   }
   return null
+}
+
+/** Quartile color from league position rank (1 = best). */
+function posRankTone(rank, of) {
+  if (rank == null || rank <= 0) return null
+  if (of == null || of <= 0) return 'text-zinc-400'
+  const pct = rank / of
+  if (pct <= 0.25) return 'text-emerald-400'
+  if (pct > 0.75) return 'text-rose-400'
+  return 'text-amber-300'
+}
+
+function PosRankMark({ player }) {
+  const rank = player?.season_pos_rank
+  const of = player?.season_pos_rank_of
+  const tone = posRankTone(rank, of)
+  if (rank == null || !tone) return null
+  return (
+    <span className={`font-semibold tabular-nums ${tone}`} title={of != null ? `#${rank} of ${of}` : `#${rank}`}>
+      #{rank}
+    </span>
+  )
 }
 
 const MATCHUP_SLOTS = [
@@ -314,14 +336,14 @@ function MatchupHalf({
     >
       <div
         data-fantasy-h2h-wash
-        className="relative h-[10.25rem] w-full overflow-hidden"
+        className="relative h-[8.2rem] w-full overflow-hidden"
         style={{ '--fantasy-wash': washColor || '#3f3f46' }}
       >
         <img data-fantasy-h2h-mesh src={meshSrc} alt="" aria-hidden="true" />
         <span data-fantasy-h2h-tint aria-hidden="true" />
         <span
           className={`pointer-events-none absolute top-1/2 z-[1] -translate-y-1/2 ${
-            align === 'right' ? '-right-3' : '-left-3'
+            align === 'right' ? '-right-[18%]' : '-left-[18%]'
           }`}
           style={{ opacity: logoOpacity }}
           aria-hidden="true"
@@ -337,11 +359,11 @@ function MatchupHalf({
         </span>
         {!empty && !isDef ? (
           <div
-            className={`absolute bottom-0 z-[2] flex h-[8.75rem] w-full items-end ${
+            className={`absolute -bottom-2 z-[2] flex h-[7rem] w-full items-end ${
               align === 'right' ? 'justify-start pl-0.5' : 'justify-end pr-0.5'
             }`}
           >
-            <div className="h-[8.75rem] w-[6.75rem] overflow-hidden">
+            <div className="h-[7rem] w-[5.4rem] overflow-hidden">
               <MatchupPortrait player={player} isDef={false} />
             </div>
           </div>
@@ -362,8 +384,20 @@ function MatchupHalf({
               </div>
               {!empty && !isDef ? <InjuryPill status={player.injury_status} /> : null}
             </div>
-            {stats ? (
-              <div className="mt-0.5 truncate text-[11px] font-medium text-zinc-400">{stats}</div>
+            {stats || (!empty && player?.season_pos_rank != null) ? (
+              <div
+                className={`mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] font-medium text-zinc-400 ${
+                  align === 'right' ? 'justify-end' : ''
+                }`}
+              >
+                {stats ? <span className="truncate">{stats}</span> : null}
+                {!empty && player?.season_pos_rank != null ? (
+                  <>
+                    {stats ? <span className="shrink-0 text-zinc-600">·</span> : null}
+                    <PosRankMark player={player} />
+                  </>
+                ) : null}
+              </div>
             ) : null}
             {avg ? <div className="mt-0.5 text-[11px] text-zinc-500">{avg}</div> : null}
           </div>

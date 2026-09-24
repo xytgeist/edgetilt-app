@@ -114,6 +114,10 @@ export type NflGameFantasyPlayer = {
   season_fgmiss: number | null
   season_pts_allow: number | null
   season_sack: number | null
+  /** Sleeper PPR rank within position (1 = best). */
+  season_pos_rank: number | null
+  /** How many players at that position were ranked (for quartile color). */
+  season_pos_rank_of: number | null
   /** Optional FantasyPros enrich when key is set. */
   ecr: number | null
   fantasypros_pts: number | null
@@ -539,6 +543,8 @@ type SleeperStatRow = {
   fgmiss?: number | null
   pts_allow?: number | null
   sack?: number | null
+  pos_rank_ppr?: number | null
+  rank_ppr?: number | null
   stats?: SleeperStatRow
 }
 
@@ -596,6 +602,39 @@ async function loadSleeperWeekStats(
 
 async function loadSleeperSeasonStats(season: string): Promise<Map<string, SleeperStatRow>> {
   return loadSleeperStatMap('stats', season, null)
+}
+
+/** League-wide PPR position pools from nfl_players × season pts (for quartile color). */
+async function loadPosRankPoolSizes(
+  admin: SupabaseClient,
+  seasonStats: Map<string, SleeperStatRow>,
+): Promise<Map<string, number>> {
+  const sizes = new Map<string, number>()
+  try {
+    const { data, error } = await admin
+      .from('nfl_players')
+      .select('sleeper_id, position')
+      .in('position', ['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'DST', 'FB', 'HB', 'PK'])
+    if (error || !Array.isArray(data)) return sizes
+    const counts = new Map<string, number>()
+    for (const row of data) {
+      const id = String(row.sleeper_id || '')
+      if (!id || !seasonStats.has(id)) continue
+      const sea = seasonStats.get(id)!
+      const pts = sea.pts_ppr ?? sea.pts_half_ppr ?? sea.pts_std
+      if (pts == null || !Number.isFinite(Number(pts))) continue
+      let pos = fantasyPosKey(row.position)
+      if (pos === 'FB' || pos === 'HB') pos = 'RB'
+      if (pos === 'DST' || pos === 'D') pos = 'DEF'
+      if (pos === 'PK') pos = 'K'
+      if (!FANTASY_POS.has(pos) && pos !== 'DEF' && pos !== 'K') continue
+      counts.set(pos, (counts.get(pos) || 0) + 1)
+    }
+    for (const [pos, n] of counts) sizes.set(pos, n)
+  } catch {
+    // optional
+  }
+  return sizes
 }
 
 async function loadKalshiProps(away: string, home: string): Promise<NflGameFantasyProp[]> {
@@ -795,6 +834,8 @@ function mapDbRow(
     season_fgmiss: null,
     season_pts_allow: null,
     season_sack: null,
+    season_pos_rank: null,
+    season_pos_rank_of: null,
     ecr: null,
     fantasypros_pts: null,
   }
@@ -934,6 +975,11 @@ export async function buildNflGameFantasy(
   const seasonStats = season ? await loadSleeperSeasonStats(season) : new Map<string, SleeperStatRow>()
   if (seasonStats.size) sources.push('sleeper_season_stats')
 
+  const posRankOf = seasonStats.size
+    ? await loadPosRankPoolSizes(admin, seasonStats)
+    : new Map<string, number>()
+  if (posRankOf.size) sources.push('pos_rank_pools')
+
   const injuryMap = await loadSleeperInjuryMap(away, home)
   if (injuryMap.size) sources.push('sleeper_injury')
 
@@ -970,6 +1016,13 @@ export async function buildNflGameFantasy(
       mapped.season_fgmiss = intOrNull(sea.fgmiss)
       mapped.season_pts_allow = numOrNull(sea.pts_allow)
       mapped.season_sack = numOrNull(sea.sack)
+      mapped.season_pos_rank = intOrNull(sea.pos_rank_ppr)
+      let pos = fantasyPosKey(mapped.position)
+      if (pos === 'FB' || pos === 'HB') pos = 'RB'
+      if (pos === 'DST' || pos === 'D') pos = 'DEF'
+      if (pos === 'PK') pos = 'K'
+      const of = posRankOf.get(pos)
+      mapped.season_pos_rank_of = of != null && of > 0 ? of : null
     }
     const inj = injuryMap.get(mapped.sleeper_id)
     if (inj) mapped.injury_status = inj

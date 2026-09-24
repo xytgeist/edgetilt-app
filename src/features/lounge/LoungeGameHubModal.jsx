@@ -239,34 +239,44 @@ export default function LoungeGameHubModal({
         type="button"
         onClick={() => sports.closeHub?.()}
         data-lounge-game-glass-chip
-        className={`inline-flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} items-center justify-center rounded-full border border-white/25 bg-white/15 text-white shadow-sm backdrop-blur-md touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/25`}
+        className={`inline-flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} items-center justify-center rounded-full border border-white/25 bg-white/15 text-white shadow-sm touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/25`}
         aria-label="Back"
       >
         <ChevronLeft className="h-6 w-6" />
       </button>
-      <div data-lounge-game-pills-scroll className="min-w-0 flex-1 overflow-x-auto">
-        <div className="flex gap-2 px-1 pr-3">
-          {sameSportGames.map((g) => {
-            const active = g.id === game.id
-            return (
-              <button
-                key={g.id}
-                type="button"
-                data-lounge-game-glass-chip={active ? 'active' : 'idle'}
-                onClick={() => sports.openHub?.(g)}
-                className={`shrink-0 rounded-full border px-2.5 py-1 text-[12px] font-semibold touch-manipulation backdrop-blur-md ${
-                  active
-                    ? 'border-white/55 bg-white/35 text-white shadow-sm'
-                    : 'border-white/20 bg-white/12 text-white/85'
-                }`}
-              >
-                {g.away?.abbrev} {g.status === 'pre' ? '@' : g.away?.score ?? ''} {g.home?.abbrev}{' '}
-                {g.status === 'pre' ? '' : g.home?.score ?? ''} ·{' '}
-                {g.status === 'post' ? 'F' : g.status === 'in' ? 'Live' : g.status_label}
-              </button>
-            )
-          })}
+      <div className="relative min-w-0 flex-1">
+        <div data-lounge-game-pills-scroll className="min-w-0 overflow-x-auto">
+          <div className="flex gap-2 px-1 pr-3">
+            {sameSportGames.map((g) => {
+              const active = g.id === game.id
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  data-lounge-game-glass-chip={active ? 'active' : 'idle'}
+                  onClick={() => sports.openHub?.(g)}
+                  className={`shrink-0 rounded-full border px-2.5 py-1 text-[12px] font-semibold touch-manipulation ${
+                    active
+                      ? 'border-white/55 bg-white/35 text-white shadow-sm'
+                      : 'border-white/20 bg-white/10 text-white/80'
+                  }`}
+                >
+                  {g.away?.abbrev} {g.status === 'pre' ? '@' : g.away?.score ?? ''} {g.home?.abbrev}{' '}
+                  {g.status === 'pre' ? '' : g.home?.score ?? ''} ·{' '}
+                  {g.status === 'post' ? 'F' : g.status === 'in' ? 'Live' : g.status_label}
+                </button>
+              )
+            })}
+          </div>
         </div>
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 left-0 w-3 bg-gradient-to-r from-black/35 to-transparent"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-black/35 to-transparent"
+        />
       </div>
     </div>
   )

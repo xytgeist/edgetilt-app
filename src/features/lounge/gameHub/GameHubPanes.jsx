@@ -34,8 +34,8 @@ export function BoxScoreCard({ game }) {
               </tr>
             </thead>
             <tbody className="text-zinc-200">
-              {[game.away, game.home].map((side) => (
-                <tr key={side.abbrev}>
+              {[game.away, game.home].filter(Boolean).map((side) => (
+                <tr key={side.abbrev || side.name || 'side'}>
                   <td className="px-1 py-1 text-left font-semibold">{side.abbrev}</td>
                   {Array.from({ length: cols }, (_, i) => (
                     <td key={i} className="px-1 py-1 tabular-nums">

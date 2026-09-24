@@ -127,7 +127,7 @@ export default function GameHubFantasyPane({
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                    Kalshi · {prop.series.replace(/^KXNFL/, '')}
+                    Kalshi · {String(prop.series || '').replace(/^KXNFL/, '')}
                   </div>
                   <div className="mt-0.5 text-[14px] font-semibold leading-snug text-zinc-100">
                     {prop.title}

@@ -131,7 +131,7 @@ export default function GameHubHero({ game, live, lastPlay, topBar = null }) {
             {yard ? <span className="text-[12px] font-semibold text-white/70">{yard}</span> : null}
             {kickoff ? <span className="text-[11px] font-medium text-white/70">{kickoff}</span> : null}
             {game.status === 'pre' ? (
-              <span className="mt-1 rounded-full border border-white/20 bg-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/90 backdrop-blur-md">
+              <span className="mt-1 rounded-full border border-white/20 bg-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/90">
                 Pregame
               </span>
             ) : null}

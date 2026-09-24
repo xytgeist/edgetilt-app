@@ -3577,23 +3577,8 @@ html.light [data-lounge-game-hero] [data-lounge-game-glass-chip='active'] {
   background-color: rgba(255, 255, 255, 0.38) !important;
   border-color: rgba(255, 255, 255, 0.55) !important;
 }
-/* Soft fade on horizontal pill scroller bounds */
-[data-lounge-game-pills-scroll] {
-  -webkit-mask-image: linear-gradient(
-    90deg,
-    transparent 0,
-    #000 14px,
-    #000 calc(100% - 18px),
-    transparent 100%
-  );
-  mask-image: linear-gradient(
-    90deg,
-    transparent 0,
-    #000 14px,
-    #000 calc(100% - 18px),
-    transparent 100%
-  );
-}
+/* Pill scroller: no mask-image (WebKit + translucent chips was a blank-tab risk).
+   Edge fades are absolute gradient overlays on the wrapper in LoungeGameHubModal. */
 html.light [data-lounge-game-players] input,
 html.light [data-lounge-game-fantasy] a {
   color: inherit;

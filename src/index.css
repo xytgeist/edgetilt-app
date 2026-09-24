@@ -3474,23 +3474,28 @@ html.light [data-lounge-game-pill-spread-cover] {
 html.light [data-lounge-game-pill-cover-dot] {
   background-color: #fff !important;
 }
-[data-lounge-game-pill] [data-lounge-game-pill-logo] {
+[data-lounge-game-pill] [data-lounge-game-pill-logo],
+[data-lounge-game-hero] [data-lounge-game-pill-logo] {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.65));
 }
 /* ESPN 500-dark marks (light ink on dark jersey wash). Soft shadow only. */
-[data-lounge-game-pill] [data-lounge-game-pill-logo='light'] {
+[data-lounge-game-pill] [data-lounge-game-pill-logo='light'],
+[data-lounge-game-hero] [data-lounge-game-pill-logo='light'] {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
 }
 /* Full-color mark + thin white edge. Default path for anything that is not a light asset. */
 [data-lounge-game-pill] [data-lounge-game-pill-logo='halo'],
-[data-lounge-game-pill] [data-lounge-game-pill-logo='dark'] {
+[data-lounge-game-pill] [data-lounge-game-pill-logo='dark'],
+[data-lounge-game-hero] [data-lounge-game-pill-logo='halo'],
+[data-lounge-game-hero] [data-lounge-game-pill-logo='dark'] {
   filter:
     drop-shadow(0 0 0.7px #fff)
     drop-shadow(0 0 1.35px rgba(255, 255, 255, 0.85))
     drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
 }
 /* Fallback when *-light.png missing: white silhouette of the default mark. */
-[data-lounge-game-pill] [data-lounge-game-pill-logo='silhouette'] {
+[data-lounge-game-pill] [data-lounge-game-pill-logo='silhouette'],
+[data-lounge-game-hero] [data-lounge-game-pill-logo='silhouette'] {
   filter:
     brightness(0)
     invert(1)

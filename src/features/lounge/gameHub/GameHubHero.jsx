@@ -1,4 +1,7 @@
-import { NFL_TEAM_CATALOG } from '../loungeSportsMatch.js'
+import {
+  LoungeSportsTeamLogo,
+  useLoungeSportsPillWashAndLogos,
+} from '../loungeSportsPillPaint.jsx'
 import {
   downDistanceLabel,
   fieldPercent,
@@ -7,34 +10,6 @@ import {
   scoreText,
   yardLineLabel,
 } from './gameHubFormatters.js'
-
-function teamMeta(abbrev) {
-  const a = String(abbrev || '').toUpperCase()
-  return NFL_TEAM_CATALOG.find((t) => t.abbrev === a) || null
-}
-
-function TeamLogo({ side, size = 56 }) {
-  const letter = String(side?.abbrev || '?').slice(0, 1)
-  return (
-    <span
-      className="inline-flex shrink-0 items-center justify-center drop-shadow"
-      style={{ width: size, height: size }}
-    >
-      {side?.logo ? (
-        <img
-          src={side.logo}
-          alt=""
-          className="h-full w-full object-contain"
-          onError={(ev) => {
-            ev.currentTarget.style.display = 'none'
-          }}
-        />
-      ) : (
-        <span className="text-lg font-bold text-white/90">{letter}</span>
-      )}
-    </span>
-  )
-}
 
 function FieldViz({ game, live }) {
   if (!String(game.sport_key || '').includes('football')) return null
@@ -80,14 +55,11 @@ function FieldViz({ game, live }) {
 }
 
 /**
- * X-style split team-color hero. `topBar` (back + game pills) sits inside the wash
- * so colors run under the status / title row.
+ * X-style split team-color hero. Wash + logo treatment match Lounge post game cards.
+ * `topBar` (back + game pills) sits inside the wash so colors run under the status row.
  */
 export default function GameHubHero({ game, live, lastPlay, topBar = null }) {
-  const awayMeta = teamMeta(game.away?.abbrev)
-  const homeMeta = teamMeta(game.home?.abbrev)
-  const awayColor = awayMeta?.color || '#3f3f46'
-  const homeColor = homeMeta?.color || '#27272a'
+  const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(game)
   const clock = liveClockLabel(game, live)
   const down = downDistanceLabel(live)
   const yard = yardLineLabel(game, live)
@@ -108,7 +80,7 @@ export default function GameHubHero({ game, live, lastPlay, topBar = null }) {
       <div className="relative px-4 pb-2 pt-2">
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
-            <TeamLogo side={game.away} size={52} />
+            <LoungeSportsTeamLogo side={game.away} treatment={awayTreatment} size={52} />
             <div className="min-w-0">
               <div className="truncate text-[13px] font-semibold uppercase tracking-wide text-white/80">
                 {game.away?.abbrev}
@@ -138,7 +110,7 @@ export default function GameHubHero({ game, live, lastPlay, topBar = null }) {
           </div>
 
           <div className="flex min-w-0 flex-1 flex-col items-end gap-1">
-            <TeamLogo side={game.home} size={52} />
+            <LoungeSportsTeamLogo side={game.home} treatment={homeTreatment} size={52} />
             <div className="min-w-0 text-right">
               <div className="truncate text-[13px] font-semibold uppercase tracking-wide text-white/80">
                 {game.home?.abbrev}

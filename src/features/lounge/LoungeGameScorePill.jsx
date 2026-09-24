@@ -1,12 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import { LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS } from './loungeFeedAvatar.js'
 import {
-  nflPillWashLikelyTreatment,
-  probeLogoWashTreatment,
-  resolveNflPillWashes,
-} from './loungeSportsMatch.js'
+  LoungeSportsTeamLogo,
+  useLoungeSportsPillWashAndLogos,
+} from './loungeSportsPillPaint.jsx'
 
 const PRE_SPREAD_MAX_PX = 28
 const PRE_SPREAD_MIN_PX = 13
@@ -95,47 +94,6 @@ function scoreLabel(side, status) {
   return String(side.score)
 }
 
-function TeamMark({ side, treatment = 'default' }) {
-  const defaultSrc = side?.logo || ''
-  const lightSrc = side?.logoLight || ''
-  const [lightFailed, setLightFailed] = useState(false)
-  useEffect(() => {
-    setLightFailed(false)
-  }, [lightSrc, treatment, defaultSrc])
-  const wantAssetLight = Boolean(treatment === 'light' && lightSrc && !lightFailed)
-  const src = wantAssetLight ? lightSrc : defaultSrc
-  const letter = String(side?.abbrev || side?.mascot || '?').slice(0, 1)
-  let logoTone = 'halo'
-  if (wantAssetLight) logoTone = 'light'
-  else if (treatment === 'light') logoTone = 'silhouette'
-  return (
-    <span
-      data-lounge-game-pill-mark
-      className="relative inline-flex shrink-0 items-center justify-center"
-    >
-      {src ? (
-        <img
-          src={src}
-          alt=""
-          data-lounge-game-pill-logo={logoTone}
-          className="h-full w-full object-contain"
-          loading="lazy"
-          decoding="async"
-          onError={(ev) => {
-            if (wantAssetLight) {
-              setLightFailed(true)
-              return
-            }
-            ev.currentTarget.style.display = 'none'
-          }}
-        />
-      ) : (
-        <span className="text-[13px] font-bold text-white/80">{letter}</span>
-      )}
-    </span>
-  )
-}
-
 function ScoreStack({ side, status, dimmed, covered }) {
   const pre = status === 'pre'
   const primary = scoreLabel(side, status)
@@ -169,38 +127,6 @@ function ScoreStack({ side, status, dimmed, covered }) {
   )
 }
 
-function usePillWashAndLogos(game) {
-  const washes = game
-    ? resolveNflPillWashes(game.home, game.away)
-    : { homeWash: '#3f3f46', awayWash: '#3f3f46' }
-  const awayColor = washes.awayWash
-  const homeColor = washes.homeWash
-  const awaySrc = game?.away?.logo || ''
-  const homeSrc = game?.home?.logo || ''
-  const [awayTreatment, setAwayTreatment] = useState(() => nflPillWashLikelyTreatment(awayColor))
-  const [homeTreatment, setHomeTreatment] = useState(() => nflPillWashLikelyTreatment(homeColor))
-  useEffect(() => {
-    setAwayTreatment(nflPillWashLikelyTreatment(awayColor))
-    setHomeTreatment(nflPillWashLikelyTreatment(homeColor))
-    if (typeof document === 'undefined') return undefined
-    let alive = true
-    if (awaySrc) {
-      void probeLogoWashTreatment(awaySrc, awayColor).then((t) => {
-        if (alive) setAwayTreatment(t)
-      })
-    }
-    if (homeSrc) {
-      void probeLogoWashTreatment(homeSrc, homeColor).then((t) => {
-        if (alive) setHomeTreatment(t)
-      })
-    }
-    return () => {
-      alive = false
-    }
-  }, [awaySrc, homeSrc, awayColor, homeColor])
-  return { awayColor, homeColor, awayTreatment, homeTreatment }
-}
-
 /**
  * In-post score pill (X sports chip). Tap opens the Edge game hub.
  * Pass `game` to skip caption matching (composer / strip).
@@ -218,7 +144,7 @@ export default function LoungeGameScorePill({
 }) {
   const sports = useLoungeSportsFeed()
   const game = gameProp || sports?.matchPost?.(post)
-  const paint = usePillWashAndLogos(game)
+  const paint = useLoungeSportsPillWashAndLogos(game)
   if (!game) return null
 
   const homeWon = game.status === 'post' && game.home?.score != null && game.away?.score != null && game.home.score > game.away.score
@@ -286,7 +212,7 @@ export default function LoungeGameScorePill({
         <span data-lounge-game-pill-home aria-hidden="true" />
         <span data-lounge-game-pill-seam aria-hidden="true" />
         <span data-lounge-game-pill-row>
-          <TeamMark side={game.away} treatment={paint.awayTreatment} />
+          <LoungeSportsTeamLogo side={game.away} treatment={paint.awayTreatment} />
           <span data-lounge-game-pill-score-gutter>
             <ScoreStack
               side={game.away}
@@ -309,7 +235,7 @@ export default function LoungeGameScorePill({
               covered={homeCovered}
             />
           </span>
-          <TeamMark side={game.home} treatment={paint.homeTreatment} />
+          <LoungeSportsTeamLogo side={game.home} treatment={paint.homeTreatment} />
         </span>
         {canOpenHub ? (
           <span data-lounge-game-pill-chevron aria-hidden="true">

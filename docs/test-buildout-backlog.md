@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Odds Hanging/Outlier false positive (Mac).** PHI@CHI LowVig was badged for total 41 vs med 41.5 (0.5pt → score 2, auto-Hanging) despite ~0% ML gap. Now: ML floor **2.5%** (3.5% if ±300+), noise **2%**, 0.5pt only if that book is alone on the number, juice hang only when worse than median. Web **`1.4.564`**.
 - **2026-09-24:** **Players Roster ESPN-style season table (Mac).** Keep headline PPR/yards on the card top; replace pill grid with sticky STATS + horizontally scrollable Passing/Rushing/Receiving groups (Regular Season + paced Projected). Edge adds sack/rtg/ypa (+ lng when Sleeper reports a real single-play max). Web **`1.4.563`**.
 - **2026-09-24:** **Prod catch-up (Mac).** Redeployed **all 61** Edge Functions from repo tip to **`jtjgtucumuoswnbauxry`** (incl. **`lounge-sports-scoreboard`** splits + **`lounge-nfl-game-fantasy`**; new **`stripe-ensure-edge-pro-price`**). Applied/recorded missing product SQL (`app_section_visits` chain, affiliate handle upsert, offer-reminder cron, Edge Pro reply gate, poker claim email finals). Skipped test-only theo/trench. Prod has **16** active NFL `syndicate_betting_splits` rows. Git **`main`** already at **`fc9ac534`** (**1.4.562**).
 - **2026-09-24:** **Fantasy Rest of Board PROJ→LIVE→GAME (Mac).** Column title tracks game state; live shows paced proj under live PPR (green/red vs original); final shows original proj muted beat/miss. Passes hub `live` clock. Web **`1.4.562`**.

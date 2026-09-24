@@ -23,6 +23,7 @@ supabase functions deploy lounge-nfl-game-fantasy --project-ref kcosfvmreeiosdjd
 Client: `loungeNflGameFantasy` in `src/utils/loungeSportsApi.js`.
 
 Player sync: `npm run nfl:players:sync`.
-Headshot R2 mirror: `npm run nfl:players:headshots:r2` (service role → Edge `mirror_headshots` → `sports/nfl/players/{espn_id}.png`).
+Headshot R2 mirror (legacy ESPN busts): `npm run nfl:players:headshots:r2`.
+**Preferred** NFL.com masters via nflverse → R2 v2: `npm run nfl:players:headshots:nflcom:r2` (service role → Edge `mirror_nflcom_headshots` → `sports/nfl/players/v2/{espn_id}.png`).
 
 Fantasy board uses **Sleeper** under **Players → Fantasy**. Props pull **Kalshi** + **Polymarket US** (`gateway.polymarket.us`) in parallel: player props under **Players → Props**, game/period under **Stats** as **strike ladder cards** (Total / Spread / team total with period pills + slider … not one row per Over). Polymarket links use `polymarket.us/sports/…` event boards. Caps trim per series so ladders stay intact; cover-style Polymarket spreads skipped (poor Yes/No fit). FantasyPros optional via `FANTASYPROS_API_KEY`.

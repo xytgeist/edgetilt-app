@@ -6,11 +6,15 @@
  *
  * Service role (ops backfill):
  *   { mirror_headshots: true, limit?: number }
+ *   { mirror_nflcom_headshots: true, items: [{ sleeper_id, espn_id, source_url }] }
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { isKnownServiceRoleBearer } from '../_shared/adminAuth.ts'
 import { buildNflGameFantasy } from '../_shared/loungeNflGameFantasy.ts'
-import { mirrorNflPlayerHeadshotsBatch } from '../_shared/nflPlayerHeadshotR2.ts'
+import {
+  mirrorNflComHeadshotsBatch,
+  mirrorNflPlayerHeadshotsBatch,
+} from '../_shared/nflPlayerHeadshotR2.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -60,6 +64,23 @@ Deno.serve(async (req) => {
       return json(200, result)
     } catch (err) {
       return json(502, { error: err instanceof Error ? err.message : 'Headshot mirror failed.' })
+    }
+  }
+
+  // Ops: NFL.com masters (nflverse URLs) → R2 v2
+  if (body?.mirror_nflcom_headshots === true) {
+    if (!isKnownServiceRoleBearer(jwt, serviceKey, supabaseUrl)) {
+      return json(403, { error: 'Service role required for headshot mirror.' })
+    }
+    try {
+      const items = Array.isArray(body.items) ? body.items : []
+      const result = await mirrorNflComHeadshotsBatch(
+        admin,
+        items as Array<{ sleeper_id: string; espn_id: string; source_url: string }>,
+      )
+      return json(200, result)
+    } catch (err) {
+      return json(502, { error: err instanceof Error ? err.message : 'NFL.com headshot mirror failed.' })
     }
   }
 

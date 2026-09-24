@@ -14,6 +14,15 @@ function americanToImplied(ml) {
   return n > 0 ? 100 / (n + 100) : -n / (-n + 100)
 }
 
+/** Two-way de-vig home win probability (falls back to raw home implied). */
+function deVigHomeImplied(homeMl, awayMl) {
+  const h = americanToImplied(homeMl)
+  const a = americanToImplied(awayMl)
+  if (h == null) return null
+  if (a == null || h + a <= 0) return h
+  return h / (h + a)
+}
+
 function median(values) {
   const a = values.filter((v) => v != null && Number.isFinite(v)).sort((x, y) => x - y)
   if (!a.length) return null
@@ -21,35 +30,146 @@ function median(values) {
   return a.length % 2 ? a[mid] : (a[mid - 1] + a[mid]) / 2
 }
 
+/** Cents of juice between two American prices (same-side comparison). */
+function juiceCentsApart(a, b) {
+  const x = numOrNull(a)
+  const y = numOrNull(b)
+  if (x == null || y == null) return null
+  if ((x < 0 && y < 0) || (x > 0 && y > 0)) return Math.abs(x - y)
+  // Mixed signs … use implied-prob gap × 100 as a cents-ish stand-in.
+  const ix = americanToImplied(x)
+  const iy = americanToImplied(y)
+  if (ix == null || iy == null) return null
+  return Math.abs(ix - iy) * 100
+}
+
+function halfPointKey(v) {
+  return Math.round(Number(v) * 2) / 2
+}
+
+/** Largest half-point cluster; used as “market already settled here.” */
+function majorityCluster(values) {
+  const counts = new Map()
+  for (const v of values) {
+    if (v == null || !Number.isFinite(v)) continue
+    const k = halfPointKey(v)
+    counts.set(k, (counts.get(k) || 0) + 1)
+  }
+  let best = null
+  for (const [value, n] of counts) {
+    if (!best || n > best.n) best = { value, n }
+  }
+  return best
+}
+
+const ML_OUTLIER_PCT = 2.0
+const ML_HEAVY_OUTLIER_PCT = 3.0
+const SPREAD_POINT_FLAG = 0.5
+const JUICE_CENTS_FLAG = 10
+const NOISE_FLOOR_PCT = 1.5
+
 /**
- * Book furthest from the median consensus across spread / total / ML.
- * Needs ≥3 books so "consensus" means something.
+ * Flag the book furthest past Grok-style hanging/outlier thresholds.
+ * - Outlier: ≥2% de-vig implied off consensus (3% when ±300+)
+ * - Hanging: same gap *and* a clear majority cluster the book sits outside
+ *   (snapshot proxy for “other books already moved” … we have no line history)
+ * - Spread/total: 0.5pt off number, or 10¢ juice on the same number
+ * - Below ~1.5% / sub-threshold gaps: no badge
+ *
+ * Needs ≥3 books.
+ * @returns {{ book: string, kind: 'hanging'|'outlier', score: number } | null}
  */
-function biggestConsensusDeltaBook(books) {
+function consensusHangOrOutlier(books) {
   const list = Array.isArray(books) ? books : []
   if (list.length < 3) return null
 
   const medSpread = median(list.map((b) => numOrNull(b.home_spread)))
   const medTotal = median(list.map((b) => numOrNull(b.total)))
-  const medMl = median(list.map((b) => americanToImplied(b.home_ml)))
+  const medMl = median(list.map((b) => deVigHomeImplied(b.home_ml, b.away_ml)))
+
+  const spreadCluster = majorityCluster(list.map((b) => numOrNull(b.home_spread)))
+  const totalCluster = majorityCluster(list.map((b) => numOrNull(b.total)))
+  const majorityNeed = Math.ceil(list.length / 2)
+  const spreadSettled = spreadCluster && spreadCluster.n >= majorityNeed
+  const totalSettled = totalCluster && totalCluster.n >= majorityNeed
+
+  const sameSpreadBooks = list.filter(
+    (b) => medSpread != null && numOrNull(b.home_spread) != null && halfPointKey(b.home_spread) === halfPointKey(medSpread),
+  )
+  const medSpreadJuice = median(sameSpreadBooks.map((b) => numOrNull(b.home_spread_price)))
+  const sameTotalBooks = list.filter(
+    (b) => medTotal != null && numOrNull(b.total) != null && halfPointKey(b.total) === halfPointKey(medTotal),
+  )
+  const medOverJuice = median(sameTotalBooks.map((b) => numOrNull(b.over_price)))
 
   let best = null
   for (const b of list) {
-    const deltas = []
+    const flags = []
+    let hangingHint = false
+
     const sp = numOrNull(b.home_spread)
     const tot = numOrNull(b.total)
-    const ml = americanToImplied(b.home_ml)
-    // Normalize: 1 spread/total point ≈ 1; ML uses percentage points.
-    if (sp != null && medSpread != null) deltas.push(Math.abs(sp - medSpread))
-    if (tot != null && medTotal != null) deltas.push(Math.abs(tot - medTotal))
-    if (ml != null && medMl != null) deltas.push(Math.abs(ml - medMl) * 100)
-    if (!deltas.length) continue
-    const score = Math.max(...deltas)
-    if (!best || score > best.score) best = { book: b.book, score }
+    const ml = deVigHomeImplied(b.home_ml, b.away_ml)
+    const heavy =
+      Math.abs(numOrNull(b.home_ml) || 0) >= 300 || Math.abs(numOrNull(b.away_ml) || 0) >= 300
+    const mlThresh = heavy ? ML_HEAVY_OUTLIER_PCT : ML_OUTLIER_PCT
+
+    if (ml != null && medMl != null) {
+      const gapPct = Math.abs(ml - medMl) * 100
+      if (gapPct >= mlThresh) {
+        flags.push(gapPct)
+        // ML “moved”: most books within 1% of median and this one isn’t.
+        const nearMed = list.filter((row) => {
+          const p = deVigHomeImplied(row.home_ml, row.away_ml)
+          return p != null && Math.abs(p - medMl) * 100 <= 1.0
+        }).length
+        if (nearMed >= majorityNeed) hangingHint = true
+      } else if (gapPct < NOISE_FLOOR_PCT) {
+        // noise
+      }
+    }
+
+    if (sp != null && medSpread != null) {
+      const ptGap = Math.abs(sp - medSpread)
+      if (ptGap >= SPREAD_POINT_FLAG) {
+        flags.push(ptGap * 4) // ~0.5pt ≈ 2% scale
+        if (spreadSettled && halfPointKey(sp) !== halfPointKey(spreadCluster.value)) hangingHint = true
+      } else if (ptGap < 0.01 && medSpreadJuice != null) {
+        const cents = juiceCentsApart(b.home_spread_price, medSpreadJuice)
+        if (cents != null && cents >= JUICE_CENTS_FLAG) {
+          flags.push(cents / 5) // 10¢ ≈ 2% scale
+          if (spreadSettled) hangingHint = true
+        }
+      }
+    }
+
+    if (tot != null && medTotal != null) {
+      const ptGap = Math.abs(tot - medTotal)
+      if (ptGap >= SPREAD_POINT_FLAG) {
+        flags.push(ptGap * 4)
+        if (totalSettled && halfPointKey(tot) !== halfPointKey(totalCluster.value)) hangingHint = true
+      } else if (ptGap < 0.01 && medOverJuice != null) {
+        const cents = juiceCentsApart(b.over_price, medOverJuice)
+        if (cents != null && cents >= JUICE_CENTS_FLAG) {
+          flags.push(cents / 5)
+          if (totalSettled) hangingHint = true
+        }
+      }
+    }
+
+    if (!flags.length) continue
+    const score = Math.max(...flags)
+    if (score < NOISE_FLOOR_PCT) continue
+    if (!best || score > best.score) {
+      best = {
+        book: b.book,
+        score,
+        kind: hangingHint ? 'hanging' : 'outlier',
+      }
+    }
   }
-  // Ignore noise (half a point / half a % still looks like agreement).
-  if (!best || best.score < 0.5) return null
-  return best.book
+
+  return best
 }
 
 export function BoxScoreCard({ game }) {
@@ -111,7 +231,16 @@ export function BoxScoreCard({ game }) {
 export function OddsTable({ game, books }) {
   const list = Array.isArray(books) ? books : []
   const [bookId, setBookId] = useState(() => list[0]?.book || '')
-  const outlierBook = useMemo(() => biggestConsensusDeltaBook(list), [list])
+  const badge = useMemo(() => consensusHangOrOutlier(list), [list])
+  const badgeBook = badge?.book || null
+  const badgeKind = badge?.kind || null
+  const badgeLabel = badgeKind === 'hanging' ? 'Hanging' : badgeKind === 'outlier' ? 'Outlier' : null
+  const badgeTitle =
+    badgeKind === 'hanging'
+      ? 'Hanging … ≥2% off consensus while other books clustered elsewhere'
+      : badgeKind === 'outlier'
+        ? 'Outlier … ≥2% implied (or 0.5pt / 10¢ juice) off consensus'
+        : undefined
 
   useEffect(() => {
     if (!list.length) {
@@ -137,10 +266,10 @@ export function OddsTable({ game, books }) {
       <div className="border-b border-zinc-800/80 px-2 pt-2">
         <div className="mb-1.5 flex items-center gap-2 px-1">
           <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Odds</span>
-          {outlierBook ? (
+          {badgeLabel ? (
             <span className="inline-flex items-center gap-1 text-[10px] font-medium normal-case tracking-normal text-zinc-500">
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" aria-hidden />
-              furthest from consensus
+              {badgeLabel}
             </span>
           ) : null}
         </div>
@@ -148,19 +277,19 @@ export function OddsTable({ game, books }) {
           <div className="flex w-max gap-1.5">
             {list.map((b) => {
               const active = b.book === row.book
-              const isOutlier = outlierBook != null && b.book === outlierBook
+              const isBadged = badgeBook != null && b.book === badgeBook
               return (
                 <button
                   key={b.book}
                   type="button"
                   onClick={() => setBookId(b.book)}
-                  title={isOutlier ? 'Biggest gap from consensus' : undefined}
-                  aria-label={isOutlier ? `${b.book}, biggest gap from consensus` : b.book}
+                  title={isBadged ? badgeTitle : undefined}
+                  aria-label={isBadged ? `${b.book}, ${badgeLabel}` : b.book}
                   className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-semibold touch-manipulation ${
                     active ? 'bg-zinc-100 text-zinc-950' : 'bg-zinc-800 text-zinc-300'
                   }`}
                 >
-                  {isOutlier ? (
+                  {isBadged ? (
                     <span
                       className={`h-1.5 w-1.5 shrink-0 rounded-full ${
                         active ? 'bg-amber-500' : 'bg-amber-400'

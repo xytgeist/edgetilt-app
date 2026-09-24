@@ -1,7 +1,7 @@
 {
   "name": "phoenixlinkcalc",
   "private": true,
-  "version": "1.4.538",
+  "version": "1.4.540",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -78,6 +78,8 @@
     "nfl:players:espn-ids:production": "node scripts/sync-nfl-players-espn-ids.mjs --target=production",
     "nfl:players:headshots:r2": "node scripts/sync-nfl-player-headshots-r2.mjs --target=test",
     "nfl:players:headshots:r2:production": "node scripts/sync-nfl-player-headshots-r2.mjs --target=production",
+    "nfl:players:headshots:nflcom:r2": "node scripts/sync-nfl-player-headshots-nflcom-r2.mjs --target=test",
+    "nfl:players:headshots:nflcom:r2:production": "node scripts/sync-nfl-player-headshots-nflcom-r2.mjs --target=production",
     "syndicate:pval-sleeper": "node scripts/pval-sleeper-sync.mjs --dry-run --target=test",
     "syndicate:pval-sleeper:apply:test": "node scripts/pval-sleeper-sync.mjs --apply --target=test",
     "syndicate:pval-sleeper:apply:production": "node scripts/pval-sleeper-sync.mjs --apply --target=production",

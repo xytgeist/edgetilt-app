@@ -1149,6 +1149,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Odds amber badge → Hanging / Outlier (Mac).** Replaces “furthest from consensus.” Thresholds: ≥2% de-vig ML (3% if ±300+), 0.5pt spread/total, 10¢ same-number juice; noise &lt;1.5% ignored. Hanging when a majority cluster exists and the book sits outside (no line-history yet). Web **`1.4.540`**.
+- **2026-09-24:** **NFL.com headshots → R2 v2 (Mac).** nflverse `espn_id`→Cloudinary crosswalk; Edge `mirror_nflcom_headshots`; keys `sports/nfl/players/v2/{espn_id}.png` (cache-bust vs ESPN). Scripts `nfl:players:headshots:nflcom:r2` (+ prod). Redeploy test+prod **`lounge-nfl-game-fantasy`**. Web **`1.4.539`**.
 - **2026-09-24:** **Fantasy H2H portrait behind data (Mac).** Player image stacks under the lower stats/points panel. Web **`1.4.538`**.
 - **2026-09-24:** **Fantasy H2H portrait/rank polish (Mac).** Rank as `(14)` (no ·); avg line matches stats color; portraits +25% and hang ~10% under wash. Web **`1.4.537`**.
 - **2026-09-24:** **Fantasy H2H last-week + DEF logo (Mac).** DEF logos centered; rest-of-board drops `gp`; avg line is `X last · Y avg` via prior-week Sleeper stats. Redeploy test+prod **`lounge-nfl-game-fantasy`**. Web **`1.4.536`**.

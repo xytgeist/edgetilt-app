@@ -3686,6 +3686,8 @@ html.light [data-lounge-game-hero] [data-lounge-game-hero-ml] .text-white\/40 {
 }
 /* Match Roster/Props pill type (12px / semibold). Global select floor is 16px for iOS zoom. */
 [data-lounge-game-players] select {
+  appearance: none;
+  -webkit-appearance: none;
   font-family: inherit !important;
   font-size: 12px !important;
   font-weight: 600 !important;
@@ -3699,6 +3701,9 @@ html.light [data-lounge-game-fantasy] a {
 html.light [data-lounge-game-players] select {
   background-color: #f4f4f5;
   border-color: #d4d4d8;
+  color: #18181b;
+}
+html.light [data-lounge-game-players] [data-pos-filter-caret] {
   color: #18181b;
 }
 html.light [data-lounge-game-fantasy] [data-fantasy-h2h] {

@@ -269,12 +269,12 @@ export default function GameHubPlayersPane({
             </button>
           ))}
         </div>
-        <label className="ml-auto inline-flex items-center gap-1.5">
+        <label className="relative ml-auto inline-flex items-center">
           <span className="sr-only">Position</span>
           <select
             value={position}
             onChange={(e) => setPosition(e.target.value)}
-            className="rounded-full border border-zinc-700 bg-zinc-900 py-1 pl-3 pr-8 font-sans text-[12px] font-semibold leading-none text-zinc-200 outline-none focus:border-zinc-500"
+            className="appearance-none rounded-full border border-zinc-700 bg-zinc-900 py-1 pl-3 pr-7 font-sans text-[12px] font-semibold leading-none text-zinc-200 outline-none focus:border-zinc-500"
           >
             {POSITION_FILTERS.map((opt) => (
               <option key={opt.id} value={opt.id}>
@@ -282,6 +282,19 @@ export default function GameHubPlayersPane({
               </option>
             ))}
           </select>
+          <svg
+            data-pos-filter-caret
+            viewBox="0 0 20 20"
+            className="pointer-events-none absolute right-2.5 h-3.5 w-3.5 text-zinc-200"
+            fill="currentColor"
+            aria-hidden
+          >
+            <path
+              fillRule="evenodd"
+              d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.168l3.71-3.936a.75.75 0 1 1 1.08 1.04l-4.24 4.5a.75.75 0 0 1-1.08 0l-4.24-4.5a.75.75 0 0 1 .02-1.06Z"
+              clipRule="evenodd"
+            />
+          </svg>
         </label>
       </div>
 

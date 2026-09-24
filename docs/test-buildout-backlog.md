@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Players position caret (Mac).** Native double-chevron replaced with single down caret matching select text color (zinc-200 / light zinc-950). Web **`1.4.555`**.
 - **2026-09-24:** **Players tab chrome polish (Mac).** Dropped roster `gp` metric; position `<select>` type matches Roster/Props pills (12px / semibold; scoped override of global 16px select floor). Web **`1.4.554`**.
 - **2026-09-24:** **Game hub DEF avatars = team logos (Mac).** Players + Fantasy rest-of-board use `/sports/nfl/logos/{TEAM}.png` for DEF/DST instead of letter fallback. Web **`1.4.553`**.
 - **2026-09-24:** **Fantasy H2H silhouette +5% / more off-center (Mac).** Scale 0.76; nudge `translate-x-3` away from VS. Web **`1.4.552`**.

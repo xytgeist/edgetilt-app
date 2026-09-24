@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Fantasy H2H busts tighter to VS (Mac).** Push frames −2rem past midline; half clips so arms can cut at the split. Web **`1.4.547`**.
 - **2026-09-24:** **Fantasy H2H portraits mid-size (Mac).** Frame 9.75×10.5rem (between 8.25×9 and 11×12). Web **`1.4.546`**.
 - **2026-09-24:** **Fantasy H2H portraits −25% (Mac).** Frame 8.25×9rem (was 11×12). Web **`1.4.545`**.
 - **2026-09-24:** **Fantasy H2H portraits to VS center (Mac).** Pin frames to the midline (`left-0` / `right-0`) and `object-position` toward center so busts start at the card split. Web **`1.4.544`**.

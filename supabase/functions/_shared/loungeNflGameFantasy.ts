@@ -96,6 +96,8 @@ export type NflGameFantasyPlayer = {
   projected_rec: number | null
   /** This-week actual Sleeper PPR (live / final box). */
   game_ppr: number | null
+  /** Prior-week actual Sleeper PPR (for “X last · Y avg” on H2H cards). */
+  last_week_ppr: number | null
   /** Sleeper injury_status (Questionable / Doubtful / Out / …). */
   injury_status: string | null
   /** Season-to-date Sleeper PPR + counting stats. */
@@ -815,6 +817,7 @@ function mapDbRow(
     projected_rec_yd: null,
     projected_rec: null,
     game_ppr: null,
+    last_week_ppr: null,
     injury_status:
       row.injury_status != null && String(row.injury_status).trim()
         ? String(row.injury_status).trim()
@@ -972,6 +975,13 @@ export async function buildNflGameFantasy(
     season && week != null ? await loadSleeperWeekStats(season, week) : new Map<string, SleeperStatRow>()
   if (weekStats.size) sources.push('sleeper_week_stats')
 
+  const lastWeek = week != null && week >= 2 ? week - 1 : null
+  const lastWeekStats =
+    season && lastWeek != null
+      ? await loadSleeperWeekStats(season, lastWeek)
+      : new Map<string, SleeperStatRow>()
+  if (lastWeekStats.size) sources.push('sleeper_last_week_stats')
+
   const seasonStats = season ? await loadSleeperSeasonStats(season) : new Map<string, SleeperStatRow>()
   if (seasonStats.size) sources.push('sleeper_season_stats')
 
@@ -998,6 +1008,10 @@ export async function buildNflGameFantasy(
     const weekRow = weekStats.get(mapped.sleeper_id)
     if (weekRow) {
       mapped.game_ppr = numOrNull(weekRow.pts_ppr ?? weekRow.pts_half_ppr ?? weekRow.pts_std)
+    }
+    const lastRow = lastWeekStats.get(mapped.sleeper_id)
+    if (lastRow) {
+      mapped.last_week_ppr = numOrNull(lastRow.pts_ppr ?? lastRow.pts_half_ppr ?? lastRow.pts_std)
     }
     const sea = seasonStats.get(mapped.sleeper_id)
     if (sea) {

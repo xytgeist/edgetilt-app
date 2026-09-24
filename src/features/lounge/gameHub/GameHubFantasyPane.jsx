@@ -96,7 +96,6 @@ function seasonDetailLine(player) {
     if (player.season_rec_yd != null) parts.push(`${fmt(player.season_rec_yd, 0)} rec yd`)
     else if (player.season_rec != null) parts.push(`${fmt(player.season_rec, 0)} rec`)
   }
-  if (player.season_gp != null) parts.push(`${fmt(player.season_gp, 0)} gp`)
   return parts.join(' · ')
 }
 
@@ -194,9 +193,12 @@ function teamNickname(side) {
 function seasonAvgLine(player) {
   const season = player?.season_ppr
   const gp = player?.season_gp
-  if (season != null && gp != null && Number(gp) > 0) {
-    return `${fmt(Number(season) / Number(gp))} avg`
-  }
+  const last = player?.last_week_ppr
+  const avg =
+    season != null && gp != null && Number(gp) > 0 ? Number(season) / Number(gp) : null
+  if (last != null && avg != null) return `${fmt(last)} last · ${fmt(avg)} avg`
+  if (last != null) return `${fmt(last)} last`
+  if (avg != null) return `${fmt(avg)} avg`
   if (season != null) return `${fmt(season)} YTD`
   return null
 }
@@ -343,7 +345,11 @@ function MatchupHalf({
         <span data-fantasy-h2h-tint aria-hidden="true" />
         <span
           className={`pointer-events-none absolute top-1/2 z-[1] -translate-y-1/2 ${
-            align === 'right' ? '-right-[18%]' : '-left-[18%]'
+            isDef
+              ? 'left-1/2 -translate-x-1/2'
+              : align === 'right'
+                ? '-right-[18%]'
+                : '-left-[18%]'
           }`}
           style={{ opacity: logoOpacity }}
           aria-hidden="true"

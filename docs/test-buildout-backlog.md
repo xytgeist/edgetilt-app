@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Fantasy H2H last-week + DEF logo (Mac).** DEF logos centered; rest-of-board drops `gp`; avg line is `X last · Y avg` via prior-week Sleeper stats. Redeploy test+prod **`lounge-nfl-game-fantasy`**. Web **`1.4.536`**.
 - **2026-09-24:** **Fantasy H2H layout + pos ranks (Mac).** Logos pushed out; shorter wash/portraits; stats use `·`; Sleeper `pos_rank_ppr` + pool size for green/yellow/red quartile. Redeploy test+prod **`lounge-nfl-game-fantasy`**. Web **`1.4.535`**.
 - **2026-09-24:** **Fantasy list season stats fix (Mac).** Rest-of-board was showing weekly projection yards as `rec`/`rush` (Adams “56 rec” = proj rec yd). Now uses Sleeper season actuals; Roster labels say `rush yd` / `rec yd`. Web **`1.4.534`**.
 - **2026-09-24:** **Fantasy H2H mesh + stats tweak (Mac).** Real jersey mesh textures + tint; larger edge-biased logos; photo-style bust silhouette; restored avg line; stats `Yds - TD` / `Pts - FGs` / `Allowed - Sacks`. Web **`1.4.533`**.

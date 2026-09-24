@@ -3700,14 +3700,52 @@ html.light [data-lounge-game-fantasy] .border-rose-400\/35 {
 html.light [data-lounge-game-fantasy] .bg-rose-500\/10 {
   background-color: rgb(244 63 94 / 0.1) !important;
 }
-html.light [data-lounge-game-fantasy] [data-kalshi-liq] .bg-zinc-800\/90 {
+html.light [data-lounge-game-fantasy] [data-kalshi-liq] .bg-zinc-800\/90,
+html.light [data-lounge-kalshi-player-props] [data-kalshi-liq] .bg-zinc-800\/90,
+html.light [data-lounge-kalshi-game-props] [data-kalshi-liq] .bg-zinc-800\/90 {
   background-color: #e4e4e7 !important;
 }
-html.light [data-lounge-game-fantasy] [data-kalshi-liq] .text-zinc-300 {
+html.light [data-lounge-game-fantasy] [data-kalshi-liq] .text-zinc-300,
+html.light [data-lounge-kalshi-player-props] [data-kalshi-liq] .text-zinc-300,
+html.light [data-lounge-kalshi-game-props] [data-kalshi-liq] .text-zinc-300 {
   color: #3f3f46 !important;
 }
-html.light [data-lounge-game-fantasy] [data-kalshi-liq] .text-zinc-500 {
+html.light [data-lounge-game-fantasy] [data-kalshi-liq] .text-zinc-500,
+html.light [data-lounge-kalshi-player-props] [data-kalshi-liq] .text-zinc-500,
+html.light [data-lounge-kalshi-game-props] [data-kalshi-liq] .text-zinc-500 {
   color: #71717a !important;
+}
+html.light [data-lounge-kalshi-player-props] a,
+html.light [data-lounge-kalshi-game-props] a {
+  color: inherit;
+}
+html.light [data-lounge-kalshi-player-props] .text-emerald-300,
+html.light [data-lounge-kalshi-player-props] .text-emerald-300\/90,
+html.light [data-lounge-kalshi-game-props] .text-emerald-300,
+html.light [data-lounge-kalshi-game-props] .text-emerald-300\/90 {
+  color: #059669 !important;
+}
+html.light [data-lounge-kalshi-player-props] .border-emerald-500\/35,
+html.light [data-lounge-kalshi-game-props] .border-emerald-500\/35 {
+  border-color: rgb(16 185 129 / 0.45) !important;
+}
+html.light [data-lounge-kalshi-player-props] .bg-emerald-500\/15,
+html.light [data-lounge-kalshi-game-props] .bg-emerald-500\/15 {
+  background-color: rgb(16 185 129 / 0.12) !important;
+}
+html.light [data-lounge-kalshi-player-props] .text-rose-300,
+html.light [data-lounge-kalshi-player-props] .text-rose-300\/90,
+html.light [data-lounge-kalshi-game-props] .text-rose-300,
+html.light [data-lounge-kalshi-game-props] .text-rose-300\/90 {
+  color: #e11d48 !important;
+}
+html.light [data-lounge-kalshi-player-props] .border-rose-400\/35,
+html.light [data-lounge-kalshi-game-props] .border-rose-400\/35 {
+  border-color: rgb(251 113 133 / 0.45) !important;
+}
+html.light [data-lounge-kalshi-player-props] .bg-rose-500\/10,
+html.light [data-lounge-kalshi-game-props] .bg-rose-500\/10 {
+  background-color: rgb(244 63 94 / 0.1) !important;
 }
 
 html.light [data-lounge-market-chart-modal] .border-cyan-400 {

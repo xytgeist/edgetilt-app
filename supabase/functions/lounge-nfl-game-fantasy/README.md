@@ -25,4 +25,4 @@ Client: `loungeNflGameFantasy` in `src/utils/loungeSportsApi.js`.
 Player sync: `npm run nfl:players:sync`.
 Headshot R2 mirror: `npm run nfl:players:headshots:r2` (service role → Edge `mirror_headshots` → `sports/nfl/players/{espn_id}.png`).
 
-Fantasy board uses **Sleeper** weekly projections (`/projections/nfl/regular/{season}/{week}`) + season-to-date stats (`/stats/nfl/regular/{season}`). Kalshi Props tab covers **game** (ML/spread/total/team), **period** (half/quarter), and **player** strike markets (grouped by player, Yes/No deep links + Vol/OI/Book meters). FantasyPros is optional when `FANTASYPROS_API_KEY` is set.
+Fantasy board uses **Sleeper** weekly projections + season stats under **Players → Fantasy**. Kalshi **player** props live under **Players → Props** (grouped by player). Kalshi **game / period** markets sit on **Stats** under the sportsbook odds (ML/spread/total + halves/quarters). Fetch uses exact event tickers + 429 retries (concurrency 2). FantasyPros optional via `FANTASYPROS_API_KEY`.

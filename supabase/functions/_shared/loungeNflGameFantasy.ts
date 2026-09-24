@@ -72,9 +72,9 @@ const KALSHI_PLAYER_SERIES = [
 ] as const
 
 const KALSHI_SERIES = [
+  ...KALSHI_PLAYER_SERIES,
   ...KALSHI_GAME_SERIES,
   ...KALSHI_PERIOD_SERIES,
-  ...KALSHI_PLAYER_SERIES,
 ] as const
 
 const KALSHI_PLAYER_SERIES_SET = new Set<string>(KALSHI_PLAYER_SERIES)
@@ -84,7 +84,9 @@ const KALSHI_PERIOD_SERIES_SET = new Set<string>(KALSHI_PERIOD_SERIES)
 const KALSHI_MAX_GAME = 60
 const KALSHI_MAX_PERIOD = 40
 const KALSHI_MAX_PLAYER = 80
-const KALSHI_FETCH_CONCURRENCY = 8
+/** Keep low ... Kalshi public API 429s hard under fan-out. */
+const KALSHI_FETCH_CONCURRENCY = 2
+const KALSHI_FETCH_RETRIES = 5
 
 const CACHE_TTL_MS = 90_000
 
@@ -184,16 +186,26 @@ function nameKey(name: string): string {
 }
 
 async function fetchJson(url: string, init?: RequestInit): Promise<unknown> {
-  const res = await fetch(url, {
-    ...init,
-    headers: {
-      Accept: 'application/json',
-      'User-Agent': 'EdgeTilt-lounge-nfl-game-fantasy/1.0',
-      ...(init?.headers || {}),
-    },
-  })
-  if (!res.ok) throw new Error(`${url} → ${res.status}`)
-  return res.json()
+  let lastErr: Error | null = null
+  for (let attempt = 0; attempt < KALSHI_FETCH_RETRIES; attempt++) {
+    const res = await fetch(url, {
+      ...init,
+      headers: {
+        Accept: 'application/json',
+        'User-Agent': 'EdgeTilt-lounge-nfl-game-fantasy/1.0',
+        ...(init?.headers || {}),
+      },
+    })
+    if (res.status === 429) {
+      const waitMs = Math.min(8_000, 350 * 2 ** attempt) + Math.floor(Math.random() * 200)
+      await new Promise((r) => setTimeout(r, waitMs))
+      lastErr = new Error(`${url} → 429`)
+      continue
+    }
+    if (!res.ok) throw new Error(`${url} → ${res.status}`)
+    return res.json()
+  }
+  throw lastErr || new Error(`${url} → failed`)
 }
 
 function dollarsToNum(v: unknown): number | null {
@@ -336,18 +348,65 @@ async function resolveKalshiGameSuffix(away: string, home: string): Promise<stri
   return null
 }
 
+async function fetchMarketsForEventTicker(
+  series: string,
+  eventTicker: string,
+): Promise<NflGameFantasyProp[]> {
+  const out: NflGameFantasyProp[] = []
+  let cursor = ''
+  for (let page = 0; page < 6; page++) {
+    const q = new URLSearchParams({
+      event_ticker: eventTicker,
+      status: 'open',
+      limit: '200',
+    })
+    if (cursor) q.set('cursor', cursor)
+    const data = (await fetchJson(`${KALSHI_BASE}/markets?${q}`)) as {
+      markets?: Array<Record<string, unknown>>
+      cursor?: string
+    }
+    const markets = Array.isArray(data.markets) ? data.markets : []
+    for (const m of markets) {
+      const status = String(m.status || 'open').toLowerCase()
+      if (status && status !== 'open' && status !== 'active') continue
+      const et = String(m.event_ticker || eventTicker)
+      out.push(mapKalshiMarket(series, et, m))
+    }
+    cursor = String(data.cursor || '')
+    if (!cursor || markets.length === 0) break
+  }
+  return out
+}
+
+/** Series whose event tickers append extra suffixes (race lines, team-scoped first TD). */
+const KALSHI_MULTI_EVENT_SERIES = new Set(['KXNFLRACE', 'KXNFLTEAMFIRSTTD'])
+
+/**
+ * Prefer exact `SERIES-SUFFIX` event (one request). Fall back to events list only for
+ * multi-event series (or when the exact call itself fails).
+ */
 async function fetchKalshiSeriesForSuffix(
   series: string,
   suffix: string,
 ): Promise<NflGameFantasyProp[]> {
+  const exactTicker = `${series}-${suffix}`
+  let exactFailed = false
+  try {
+    const direct = await fetchMarketsForEventTicker(series, exactTicker)
+    if (direct.length) return direct
+  } catch {
+    exactFailed = true
+  }
+
+  if (!exactFailed && !KALSHI_MULTI_EVENT_SERIES.has(series)) return []
+
   const out: NflGameFantasyProp[] = []
   let cursor = ''
-  for (let page = 0; page < 4; page++) {
+  for (let page = 0; page < 3; page++) {
     const q = new URLSearchParams({
       series_ticker: series,
       status: 'open',
       limit: '200',
-      with_nested_markets: 'true',
     })
     if (cursor) q.set('cursor', cursor)
     const data = (await fetchJson(`${KALSHI_BASE}/events?${q}`)) as {
@@ -355,18 +414,19 @@ async function fetchKalshiSeriesForSuffix(
       cursor?: string
     }
     const events = Array.isArray(data.events) ? data.events : []
-    for (const ev of events) {
-      const eventTicker = String(ev.event_ticker || '')
-      if (!eventMatchesGameSuffix(eventTicker, suffix)) continue
-      const markets = Array.isArray(ev.markets) ? (ev.markets as Array<Record<string, unknown>>) : []
-      for (const m of markets) {
-        const status = String(m.status || 'open').toLowerCase()
-        if (status && status !== 'open' && status !== 'active') continue
-        out.push(mapKalshiMarket(series, eventTicker, m))
+    const matched = events
+      .map((ev) => String(ev.event_ticker || ''))
+      .filter((et) => et && eventMatchesGameSuffix(et, suffix) && et !== exactTicker)
+    for (const eventTicker of matched) {
+      try {
+        const markets = await fetchMarketsForEventTicker(series, eventTicker)
+        out.push(...markets)
+      } catch {
+        // Skip one bad event; keep collecting.
       }
     }
     cursor = String(data.cursor || '')
-    if (!cursor || events.length === 0) break
+    if (matched.length || !cursor || events.length === 0) break
   }
   return out
 }

@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import GameHubFantasyPane from './GameHubFantasyPane.jsx'
+import { KalshiPlayerPropsBoard } from './GameHubKalshiProps.jsx'
 
 function PlayerAvatar({ player }) {
   const [failed, setFailed] = useState(false)
@@ -20,10 +22,7 @@ function PlayerAvatar({ player }) {
   )
 }
 
-/**
- * Ranked roster for both teams in this matchup.
- */
-export default function GameHubPlayersPane({ players, loading, error, awayAbbrev, homeAbbrev }) {
+function RosterBoard({ players, awayAbbrev, homeAbbrev }) {
   const [q, setQ] = useState('')
   const [side, setSide] = useState('all')
 
@@ -41,14 +40,12 @@ export default function GameHubPlayersPane({ players, loading, error, awayAbbrev
     })
   }, [players, q, side])
 
-  if (loading) return <div className="py-10 text-center text-sm text-zinc-500">Loading roster…</div>
-  if (error) return <div className="py-10 text-center text-sm text-lv-red">{error}</div>
   if (!players?.length) {
     return <div className="py-10 text-center text-sm text-zinc-500">No roster data for this matchup yet.</div>
   }
 
   return (
-    <div data-lounge-game-players className="space-y-3 py-3">
+    <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
         <input
           type="search"
@@ -101,6 +98,83 @@ export default function GameHubPlayersPane({ players, loading, error, awayAbbrev
       </ul>
       {!filtered.length ? (
         <div className="py-6 text-center text-sm text-zinc-500">No players match that filter.</div>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * Players hub surface: Roster + Fantasy board + Kalshi player props.
+ */
+export default function GameHubPlayersPane({
+  players,
+  props,
+  loading,
+  error,
+  awayAbbrev,
+  homeAbbrev,
+  season,
+  week,
+  sources,
+  /** Prefer fantasy on pregame (hub used to open Fantasy tab). */
+  defaultView = 'roster',
+}) {
+  const [view, setView] = useState(defaultView)
+
+  useEffect(() => {
+    setView(defaultView)
+  }, [defaultView])
+
+  if (loading) return <div className="py-10 text-center text-sm text-zinc-500">Loading players…</div>
+  if (error) return <div className="py-10 text-center text-sm text-lv-red">{error}</div>
+
+  const hasKalshi = Array.isArray(sources) && sources.includes('kalshi')
+
+  return (
+    <div data-lounge-game-players className="space-y-3 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-[12px] text-zinc-500">
+          {season && week != null ? `Week ${week} · ${season}` : 'This matchup'}
+          {hasKalshi && view === 'props' ? ' · Kalshi' : ''}
+        </div>
+        <div className="flex gap-1 rounded-full bg-zinc-900 p-0.5">
+          {[
+            { id: 'roster', label: 'Roster' },
+            { id: 'fantasy', label: 'Fantasy' },
+            { id: 'props', label: 'Props' },
+          ].map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => setView(opt.id)}
+              className={`rounded-full px-3 py-1 text-[12px] font-semibold ${
+                view === opt.id ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-400'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {view === 'roster' ? (
+        <RosterBoard players={players} awayAbbrev={awayAbbrev} homeAbbrev={homeAbbrev} />
+      ) : null}
+
+      {view === 'fantasy' ? (
+        <GameHubFantasyPane
+          players={players}
+          loading={false}
+          error=""
+          season={season}
+          week={week}
+          sources={sources}
+          embedded
+        />
+      ) : null}
+
+      {view === 'props' ? (
+        <KalshiPlayerPropsBoard props={props} players={players} />
       ) : null}
     </div>
   )

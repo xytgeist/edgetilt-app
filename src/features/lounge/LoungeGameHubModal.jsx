@@ -12,13 +12,13 @@ import {
 } from './loungeFeedAvatar.js'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 import GameHubHero from './gameHub/GameHubHero.jsx'
-import GameHubFantasyPane from './gameHub/GameHubFantasyPane.jsx'
 import GameHubPlayersPane from './gameHub/GameHubPlayersPane.jsx'
+import { KalshiGamePropsBoard } from './gameHub/GameHubKalshiProps.jsx'
 import { BoxScoreCard, OddsTable, PlayList, PlayerStats, PostList } from './gameHub/GameHubPanes.jsx'
 
 /**
  * Game destination opened from the in-post score pill.
- * X-style hero, Posts (Top/Latest), Stats, Plays, Players, Fantasy, Chat.
+ * X-style hero, Posts (Top/Latest), Stats, Plays, Players (roster/fantasy/props), Chat.
  */
 export default function LoungeGameHubModal({
   supabaseClient,
@@ -90,7 +90,7 @@ export default function LoungeGameHubModal({
     }
   }, [game, supabaseClient])
 
-  const wantsFantasy = tab === 'players' || tab === 'fantasy'
+  const wantsFantasy = tab === 'players' || tab === 'stats'
   useEffect(() => {
     if (!game || !supabaseClient || !wantsFantasy) return undefined
     let cancelled = false
@@ -167,10 +167,10 @@ export default function LoungeGameHubModal({
   }, [game, hydratePosts, postSort, postsNonce, searchQuery, supabaseClient, tab, wantsPosts])
 
   useEffect(() => {
-    // Pregame → Fantasy differentiator; live → Chat; post → Posts
+    // Pregame → Players (fantasy subview); live → Chat; post → Posts
     if (!game?.id) return
     if (game.status === 'in') setTab('chat')
-    else if (game.status === 'pre') setTab('fantasy')
+    else if (game.status === 'pre') setTab('players')
     else setTab('posts')
     setPostsSort('top')
     setDraft('')
@@ -222,7 +222,6 @@ export default function LoungeGameHubModal({
     { id: 'stats', label: 'Stats' },
     { id: 'plays', label: 'Plays' },
     { id: 'players', label: 'Players' },
-    { id: 'fantasy', label: 'Fantasy' },
     { id: 'chat', label: 'Chat' },
   ]
 
@@ -302,6 +301,11 @@ export default function LoungeGameHubModal({
         {tab === 'stats' ? (
           <div className="space-y-3 py-3">
             <OddsTable game={game} books={detail.odds} />
+            {fantasyLoading && !(fantasy.props || []).length ? (
+              <div className="py-4 text-center text-sm text-zinc-500">Loading Kalshi markets…</div>
+            ) : (
+              <KalshiGamePropsBoard props={fantasy.props} />
+            )}
             <BoxScoreCard game={game} />
             <PlayerStats game={game} stats={detail.stats} />
           </div>
@@ -312,20 +316,15 @@ export default function LoungeGameHubModal({
         ) : tab === 'players' ? (
           <GameHubPlayersPane
             players={fantasy.players}
+            props={fantasy.props}
             loading={fantasyLoading}
             error={fantasyErr}
             awayAbbrev={game.away?.abbrev}
             homeAbbrev={game.home?.abbrev}
-          />
-        ) : tab === 'fantasy' ? (
-          <GameHubFantasyPane
-            players={fantasy.players}
-            props={fantasy.props}
-            loading={fantasyLoading}
-            error={fantasyErr}
             season={fantasy.season}
             week={fantasy.week}
             sources={fantasy.sources}
+            defaultView={game.status === 'pre' ? 'fantasy' : 'roster'}
           />
         ) : (
           <div className="py-2">

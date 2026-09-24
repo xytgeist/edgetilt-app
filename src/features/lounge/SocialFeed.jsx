@@ -394,6 +394,7 @@ import LoungeGameScorePillStrip from './LoungeGameScorePillStrip.jsx'
 import { LoungeMarketFeedProvider } from './LoungeMarketFeedContext.jsx'
 import { LoungeSportsFeedProvider } from './LoungeSportsFeedContext.jsx'
 import LoungeGameHubModal from './LoungeGameHubModal.jsx'
+import LoungeSportsHubSlate from './LoungeSportsHubSlate.jsx'
 import LoungeSportsHubBridge from './LoungeSportsHubBridge.jsx'
 import { useIpadSlotsLandscape } from '../shell/useIpadSlotsLandscape.js'
 import { useLoungeMarketPollActivityTracker } from './loungeMarketPollActivity.js'
@@ -887,8 +888,16 @@ export default function SocialFeed({
   const closeLoungePostDetailRef = useRef(() => {})
   const closeMarketChartModalRef = useRef(() => {})
   const [loungeSportsHubOpen, setLoungeSportsHubOpen] = useState(false)
+  const [loungeSportsSlateOpen, setLoungeSportsSlateOpen] = useState(false)
+  const [loungeSportsGameHubOpen, setLoungeSportsGameHubOpen] = useState(false)
   const onLoungeSportsHubOpenChange = useCallback((open) => {
     setLoungeSportsHubOpen(Boolean(open))
+  }, [])
+  const onLoungeSportsSlateOpenChange = useCallback((open) => {
+    setLoungeSportsSlateOpen(Boolean(open))
+  }, [])
+  const onLoungeSportsGameHubOpenChange = useCallback((open) => {
+    setLoungeSportsGameHubOpen(Boolean(open))
   }, [])
   const [postText, setPostText] = useState(() => {
     const d = readLoungeComposerDraft()
@@ -16618,11 +16627,16 @@ export default function SocialFeed({
   const loungeDetailInPane =
     loungeLandscapeSplit && Boolean(loungePostDetail) && !loungePostDetailOverLightbox
   const loungeChartInPane = loungeLandscapeSplit && marketChartModal.open
-  const loungeGameInPane = loungeLandscapeSplit && loungeSportsHubOpen
+  const loungeGameInPane = loungeLandscapeSplit && loungeSportsGameHubOpen
+  const loungeSlateInPane = loungeLandscapeSplit && loungeSportsSlateOpen && !loungeSportsGameHubOpen
   const loungeProfileInPane =
     loungeLandscapeSplit && profileModalOpen && Boolean(profileModalData?.user_id)
   const loungeLandscapeEngagementActive =
-    loungeDetailInPane || loungeChartInPane || loungeGameInPane || loungeProfileInPane
+    loungeDetailInPane ||
+    loungeChartInPane ||
+    loungeGameInPane ||
+    loungeSlateInPane ||
+    loungeProfileInPane
 
   return (
     <div
@@ -16644,6 +16658,8 @@ export default function SocialFeed({
       <LoungeSportsFeedProvider supabaseClient={supabaseClient} feedActive={isActivePage}>
       <LoungeSportsHubBridge
         onHubOpenChange={onLoungeSportsHubOpenChange}
+        onSlateOpenChange={onLoungeSportsSlateOpenChange}
+        onGameHubOpenChange={onLoungeSportsGameHubOpenChange}
         closeHubRef={sportsCloseHubRef}
       />
       {loungeReplyFailureToast ? (
@@ -17706,7 +17722,10 @@ export default function SocialFeed({
               loungeReadOnly={loungeReadOnly}
             />
           ) : null}
-          {loungeProfileInPane && !loungeChartInPane && !loungeGameInPane ? (
+          {loungeSlateInPane && !loungeChartInPane && !loungeGameInPane ? (
+            <LoungeSportsHubSlate embedded />
+          ) : null}
+          {loungeProfileInPane && !loungeChartInPane && !loungeGameInPane && !loungeSlateInPane ? (
             <LoungeProfileFullScreen
               embedded
               open={profileModalOpen}
@@ -20369,12 +20388,15 @@ export default function SocialFeed({
       ) : null}
 
       {!loungeLandscapeSplit ? (
-        <LoungeGameHubModal
-          supabaseClient={supabaseClient}
-          hydratePosts={hydrateCommunityPosts}
-          onOpenPost={openLoungePostDetail}
-          loungeReadOnly={loungeReadOnly}
-        />
+        <>
+          <LoungeSportsHubSlate />
+          <LoungeGameHubModal
+            supabaseClient={supabaseClient}
+            hydratePosts={hydrateCommunityPosts}
+            onOpenPost={openLoungePostDetail}
+            loungeReadOnly={loungeReadOnly}
+          />
+        </>
       ) : null}
 
       {loungeImageLimitDialog && typeof document !== 'undefined'

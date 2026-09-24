@@ -154,6 +154,11 @@ import {
 } from '../../utils/lazyImportWithChunkReload.js'
 import { ChatCallProvider } from '../chat/calls/ChatCallProvider.jsx'
 import { isSmokeChecklistHostAllowed } from '../ops/smokeChecklistHost.js'
+import {
+  LOUNGE_SPORTS_HUB_FILTER_ALL,
+  LOUNGE_SPORTS_HUB_FILTER_NFL,
+  requestLoungeSportsHubOpen,
+} from '../lounge/loungeSportsHubNav.js'
 
 const LOUNGE_ACTIVITY_INAPP_TOAST_MS = 7000
 
@@ -2285,10 +2290,12 @@ export default function AppShell({
     }
   }, [browseMode, supabaseClient, tab])
 
-  /** Title bar ☰ menu - Slots / Poker hubs + Chat (Lounge via dock home; Monitor admin-only). */
+  /** Title bar ☰ menu - Slots / Poker / Sports hubs + Chat (Lounge via dock home; Monitor admin-only). */
   const navItems = [
     { id: 'slots', label: 'Slots', icon: '🎰', subscriberGated: false },
     { id: 'poker', label: 'Poker', icon: '♠️', subscriberGated: false },
+    { id: 'sports-hub', label: 'Sports Hub', icon: '🏟️', subscriberGated: false },
+    { id: 'nfl-hub', label: 'NFL Hub', icon: '🏈', subscriberGated: false },
     { id: 'chat', label: 'Chat', icon: '💬', subscriberGated: false },
     ...(isAdmin ? [{ id: 'monitor', label: 'Monitor', icon: '📊', subscriberGated: false }] : []),
     ...(isAdmin ? [{ id: 'bots', label: 'Bots', icon: '🤖', subscriberGated: false }] : []),
@@ -2377,6 +2384,13 @@ export default function AppShell({
           acknowledgePokerOfferMenu()
           setActiveCalculator(null)
           setTab(ipadSlotsLandscape ? 'poker-bankroll' : 'poker')
+          triggerTapHapticLight()
+        } else if (item.id === 'sports-hub' || item.id === 'nfl-hub') {
+          setActiveCalculator(null)
+          setTab('home')
+          requestLoungeSportsHubOpen(
+            item.id === 'nfl-hub' ? LOUNGE_SPORTS_HUB_FILTER_NFL : LOUNGE_SPORTS_HUB_FILTER_ALL,
+          )
           triggerTapHapticLight()
         } else {
           setActiveCalculator(null)

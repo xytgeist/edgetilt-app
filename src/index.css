@@ -3522,6 +3522,13 @@ html.light [data-lounge-game-hub] {
   background-color: #fafafa !important;
   color: #18181b !important;
 }
+html.light [data-lounge-sports-hub-slate] {
+  background-color: #fafafa !important;
+  color: #18181b !important;
+}
+html.light [data-lounge-sports-hub-slate] .text-zinc-500 {
+  color: #71717a !important;
+}
 html.light [data-lounge-game-hub] .bg-zinc-800,
 html.light [data-lounge-game-hub] .bg-zinc-900 {
   background-color: #e4e4e7 !important;

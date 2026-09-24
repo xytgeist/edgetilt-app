@@ -107,6 +107,21 @@ export function loungeSportsHubGames(games, sportKey, now = Date.now()) {
   return same.filter((g) => g.status === 'in' || dates.has(gameDay(g)))
 }
 
+/** Sports Hub slate list: `all` = current multi-sport slate; NFL uses week window across nfl* keys. */
+export function loungeSportsSlateGames(games, filter, now = Date.now()) {
+  const list = Array.isArray(games) ? games : []
+  const key = String(filter || '').trim()
+  if (!key || key === 'all') {
+    return list.filter((g) => isLoungeSportsCurrentSlateGame(g, now))
+  }
+  if (key.includes('nfl')) {
+    const nfl = list.filter((g) => String(g?.sport_key || '').includes('nfl'))
+    const dates = new Set(nflHubDates(list, now))
+    return nfl.filter((g) => g.status === 'in' || dates.has(gameDay(g)))
+  }
+  return loungeSportsHubGames(list, key, now)
+}
+
 export function isLoungeSportsCurrentSlateGame(game, now = Date.now()) {
   if (!game) return false
   if (game.status === 'in') return true

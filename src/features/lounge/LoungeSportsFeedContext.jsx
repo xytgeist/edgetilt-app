@@ -7,6 +7,12 @@ import {
 import { enrichLoungeSportsGame } from './loungeSportsMatch.js'
 import { isLoungeSportsCurrentSlateGame, ptDateFromIsoLocal } from './loungeSportsSlateWindow.js'
 import { parseLoungeSportsGameField } from './loungeSportsGameField.js'
+import {
+  consumeLoungeSportsHubPending,
+  LOUNGE_SPORTS_HUB_FILTER_ALL,
+  LOUNGE_SPORTS_HUB_OPEN_EVENT,
+  normalizeLoungeSportsHubFilter,
+} from './loungeSportsHubNav.js'
 
 const LoungeSportsFeedContext = createContext(null)
 
@@ -74,12 +80,14 @@ function preserveSpreads(next, prev) {
 }
 
 /**
- * Live/recent scoreboard for in-post game pills.
+ * Live/recent scoreboard for in-post game pills + Sports Hub slate.
  * Paints the last slate immediately (memory + localStorage), then refreshes.
  */
 export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, children }) {
   const [games, setGames] = useState(gamesFromCache)
   const [hubGame, setHubGame] = useState(null)
+  /** null = closed; `all` or a sport_key (e.g. americanfootball_nfl). */
+  const [slateFilter, setSlateFilter] = useState(null)
   const inflightRef = useRef(false)
   const gamesRef = useRef(games)
   gamesRef.current = games
@@ -121,11 +129,33 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
     })
   }, [games])
 
+  const openSlate = useCallback((filter = LOUNGE_SPORTS_HUB_FILTER_ALL) => {
+    setSlateFilter(normalizeLoungeSportsHubFilter(filter))
+  }, [])
+
+  const closeSlate = useCallback(() => {
+    setSlateFilter(null)
+    setHubGame(null)
+  }, [])
+
+  useEffect(() => {
+    const apply = (filter) => {
+      if (!filter) return
+      openSlate(filter)
+    }
+    apply(consumeLoungeSportsHubPending())
+    const onOpen = (event) => {
+      apply(normalizeLoungeSportsHubFilter(event?.detail?.filter))
+    }
+    window.addEventListener(LOUNGE_SPORTS_HUB_OPEN_EVENT, onOpen)
+    return () => window.removeEventListener(LOUNGE_SPORTS_HUB_OPEN_EVENT, onOpen)
+  }, [openSlate])
+
   const gamesForPost = useCallback(
     (post) => {
       const pinned = parseLoungeSportsGameField(post?.sports_game)
       if (pinned.suppress || !pinned.eventIds.length) return []
-      const byId = new Map(games.map((g) => [String(g.id), g]))
+      const byId = new Map(games.map((game) => [String(game.id), game]))
       return pinned.eventIds.map((id) => byId.get(String(id))).filter(Boolean)
     },
     [games],
@@ -143,8 +173,31 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
   const closeHub = useCallback(() => setHubGame(null), [])
 
   const value = useMemo(
-    () => ({ games, hubGame, matchPost, gamesForPost, openHub, closeHub, refresh: loadBoard }),
-    [closeHub, games, gamesForPost, hubGame, loadBoard, matchPost, openHub],
+    () => ({
+      games,
+      hubGame,
+      slateFilter,
+      slateOpen: Boolean(slateFilter),
+      matchPost,
+      gamesForPost,
+      openHub,
+      closeHub,
+      openSlate,
+      closeSlate,
+      refresh: loadBoard,
+    }),
+    [
+      closeHub,
+      closeSlate,
+      games,
+      gamesForPost,
+      hubGame,
+      loadBoard,
+      matchPost,
+      openHub,
+      openSlate,
+      slateFilter,
+    ],
   )
 
   return <LoungeSportsFeedContext.Provider value={value}>{children}</LoungeSportsFeedContext.Provider>

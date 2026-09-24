@@ -135,8 +135,14 @@ export function OddsTable({ game, books }) {
       className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900"
     >
       <div className="border-b border-zinc-800/80 px-2 pt-2">
-        <div className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-          Odds
+        <div className="mb-1.5 flex items-center gap-2 px-1">
+          <span className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">Odds</span>
+          {outlierBook ? (
+            <span className="inline-flex items-center gap-1 text-[10px] font-medium normal-case tracking-normal text-zinc-500">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" aria-hidden />
+              furthest from consensus
+            </span>
+          ) : null}
         </div>
         <div className="-mx-1 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex w-max gap-1.5">

@@ -25,4 +25,4 @@ Client: `loungeNflGameFantasy` in `src/utils/loungeSportsApi.js`.
 Player sync: `npm run nfl:players:sync`.
 Headshot R2 mirror: `npm run nfl:players:headshots:r2` (service role → Edge `mirror_headshots` → `sports/nfl/players/{espn_id}.png`).
 
-Fantasy board uses **Sleeper** weekly projections (`/projections/nfl/regular/{season}/{week}`) + season-to-date stats (`/stats/nfl/regular/{season}`). Kalshi stays on the Props sub-tab only. FantasyPros is optional when `FANTASYPROS_API_KEY` is set.
+Fantasy board uses **Sleeper** weekly projections (`/projections/nfl/regular/{season}/{week}`) + season-to-date stats (`/stats/nfl/regular/{season}`). Kalshi stays on the Props sub-tab only (Yes/No deep links + volume / OI / book depth). FantasyPros is optional when `FANTASYPROS_API_KEY` is set.

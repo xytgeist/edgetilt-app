@@ -3680,8 +3680,25 @@ html.light [data-lounge-game-players] input,
 html.light [data-lounge-game-fantasy] a {
   color: inherit;
 }
-html.light [data-lounge-game-fantasy] .text-emerald-400 {
+html.light [data-lounge-game-fantasy] .text-emerald-300,
+html.light [data-lounge-game-fantasy] .text-emerald-300\/90 {
   color: #059669 !important;
+}
+html.light [data-lounge-game-fantasy] .border-emerald-500\/35 {
+  border-color: rgb(16 185 129 / 0.45) !important;
+}
+html.light [data-lounge-game-fantasy] .bg-emerald-500\/15 {
+  background-color: rgb(16 185 129 / 0.12) !important;
+}
+html.light [data-lounge-game-fantasy] .text-rose-300,
+html.light [data-lounge-game-fantasy] .text-rose-300\/90 {
+  color: #e11d48 !important;
+}
+html.light [data-lounge-game-fantasy] .border-rose-400\/35 {
+  border-color: rgb(251 113 133 / 0.45) !important;
+}
+html.light [data-lounge-game-fantasy] .bg-rose-500\/10 {
+  background-color: rgb(244 63 94 / 0.1) !important;
 }
 
 html.light [data-lounge-market-chart-modal] .border-cyan-400 {

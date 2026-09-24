@@ -46,13 +46,33 @@ export type NflGameFantasyPlayer = {
 export type NflGameFantasyProp = {
   ticker: string
   series: string
+  event_ticker: string
   title: string
   player_name: string
   team_hint: string | null
   yes_bid: number | null
   yes_ask: number | null
+  no_bid: number | null
+  no_ask: number | null
   last: number | null
+  /** Lifetime contracts traded. */
+  volume: number | null
+  /** 24h contracts traded. */
+  volume_24h: number | null
+  /** Open interest (contracts). */
+  open_interest: number | null
+  /** Contracts at best yes bid (book depth proxy … liquidity_dollars is deprecated). */
+  yes_bid_size: number | null
+  /** Contracts at best yes ask. */
+  yes_ask_size: number | null
+  /** Series browse URL. */
   url: string
+  /** Direct market deep link. */
+  url_market: string
+  /** Deep link hinting Yes side (falls back to market page). */
+  url_yes: string
+  /** Deep link hinting No side (falls back to market page). */
+  url_no: string
 }
 
 export type NflGameFantasyPayload = {
@@ -99,6 +119,31 @@ function dollarsToNum(v: unknown): number | null {
   if (v == null) return null
   const n = Number(v)
   return Number.isFinite(n) ? n : null
+}
+
+/** Fixed-point contract counts (`"1234.00"`) → whole contracts. */
+function contractsToNum(v: unknown): number | null {
+  if (v == null) return null
+  const n = Number(v)
+  if (!Number.isFinite(n)) return null
+  return Math.round(n)
+}
+
+function kalshiMarketUrls(series: string, eventTicker: string, ticker: string) {
+  const seriesSlug = String(series || '').trim().toLowerCase()
+  const eventSlug = String(eventTicker || '').trim().toLowerCase()
+  const tickerSlug = String(ticker || '').trim().toLowerCase()
+  const seriesUrl = seriesSlug ? `https://kalshi.com/markets/${seriesSlug}` : 'https://kalshi.com/markets'
+  const marketUrl =
+    seriesSlug && eventSlug && tickerSlug
+      ? `https://kalshi.com/markets/${seriesSlug}/${eventSlug}/${tickerSlug}`
+      : tickerSlug
+        ? `https://kalshi.com/markets/${tickerSlug}`
+        : seriesUrl
+  // Kalshi web accepts side hints on market URLs; if ignored, user still lands on the book.
+  const yesUrl = `${marketUrl}?side=yes`
+  const noUrl = `${marketUrl}?side=no`
+  return { seriesUrl, marketUrl, yesUrl, noUrl }
 }
 
 function parsePlayerFromKalshiTitle(title: string): string {
@@ -239,24 +284,40 @@ async function loadKalshiProps(away: string, home: string): Promise<NflGameFanta
         const title = String(m.title || m.yes_sub_title || '')
         const playerName = parsePlayerFromKalshiTitle(title)
         const ticker = String(m.ticker || '')
+        const urls = kalshiMarketUrls(series, eventTicker, ticker)
         props.push({
           ticker,
           series,
+          event_ticker: eventTicker,
           title,
           player_name: playerName,
-          team_hint: eventTicker.includes(away) && eventTicker.includes(home) ? null : null,
+          team_hint: null,
           yes_bid: dollarsToNum(m.yes_bid_dollars ?? m.yes_bid),
           yes_ask: dollarsToNum(m.yes_ask_dollars ?? m.yes_ask),
+          no_bid: dollarsToNum(m.no_bid_dollars ?? m.no_bid),
+          no_ask: dollarsToNum(m.no_ask_dollars ?? m.no_ask),
           last: dollarsToNum(m.last_price_dollars ?? m.last_price),
-          url: `https://kalshi.com/markets/${series.toLowerCase()}`,
+          volume: contractsToNum(m.volume_fp ?? m.volume),
+          volume_24h: contractsToNum(m.volume_24h_fp ?? m.volume_24h),
+          open_interest: contractsToNum(m.open_interest_fp ?? m.open_interest),
+          yes_bid_size: contractsToNum(m.yes_bid_size_fp ?? m.yes_bid_size),
+          yes_ask_size: contractsToNum(m.yes_ask_size_fp ?? m.yes_ask_size),
+          url: urls.seriesUrl,
+          url_market: urls.marketUrl,
+          url_yes: urls.yesUrl,
+          url_no: urls.noUrl,
         })
       }
       cursor = String(data.cursor || '')
       if (!cursor || markets.length === 0) break
     }
   }
-  // Prefer mid-probability interesting props; cap list
+  // Prefer liquid / active books, then mid-probability props.
   props.sort((a, b) => {
+    const liq = (p: NflGameFantasyProp) =>
+      (p.volume_24h ?? 0) * 2 + (p.volume ?? 0) + (p.open_interest ?? 0) + (p.yes_bid_size ?? 0) + (p.yes_ask_size ?? 0)
+    const dLiq = liq(b) - liq(a)
+    if (dLiq !== 0) return dLiq
     const pa = a.yes_ask ?? a.yes_bid ?? a.last ?? 0
     const pb = b.yes_ask ?? b.yes_bid ?? b.last ?? 0
     const score = (p: number) => -Math.abs(p - 0.45)

@@ -116,3 +116,13 @@ export function kalshiCents(value) {
   if (value == null || !Number.isFinite(Number(value))) return '—'
   return `${Math.round(Number(value) * 100)}¢`
 }
+
+/** Compact contract counts for Kalshi volume / OI / book size. */
+export function kalshiContracts(value) {
+  if (value == null || !Number.isFinite(Number(value))) return '—'
+  const n = Math.round(Number(value))
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`
+  if (n >= 10_000) return `${Math.round(n / 1000)}k`
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
+  return String(n)
+}

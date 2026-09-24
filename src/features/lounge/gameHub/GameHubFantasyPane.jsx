@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { kalshiCents } from './gameHubFormatters.js'
+import { kalshiCents, kalshiContracts } from './gameHubFormatters.js'
 
 function PlayerAvatar({ player }) {
   const [failed, setFailed] = useState(false)
@@ -43,6 +43,68 @@ function yardLine(player, mode) {
   else if (player.season_rec != null) parts.push(`${fmt(player.season_rec, 1)} rec`)
   if (player.season_gp != null) parts.push(`${fmt(player.season_gp, 0)} gp`)
   return parts.join(' · ')
+}
+
+function propBookDepth(prop) {
+  const bid = prop?.yes_bid_size
+  const ask = prop?.yes_ask_size
+  if (bid == null && ask == null) return null
+  return (bid || 0) + (ask || 0)
+}
+
+function KalshiPropCard({ prop }) {
+  const yesPx = prop.yes_ask ?? prop.yes_bid ?? prop.last
+  const noPx =
+    prop.no_ask ??
+    prop.no_bid ??
+    (yesPx != null && Number.isFinite(Number(yesPx)) ? Math.max(0, 1 - Number(yesPx)) : null)
+  const vol = prop.volume_24h ?? prop.volume
+  const oi = prop.open_interest
+  const depth = propBookDepth(prop)
+  const yesHref = prop.url_yes || prop.url_market || prop.url
+  const noHref = prop.url_no || prop.url_market || prop.url
+  const marketHref = prop.url_market || prop.url
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 px-3 py-3">
+      <a
+        href={marketHref}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block min-w-0 touch-manipulation active:opacity-90"
+      >
+        <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+          Kalshi · {String(prop.series || '').replace(/^KXNFL/, '')}
+        </div>
+        <div className="mt-0.5 text-[14px] font-semibold leading-snug text-zinc-100">{prop.title}</div>
+        <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] tabular-nums text-zinc-500">
+          <span>Vol {kalshiContracts(vol)}</span>
+          <span>OI {kalshiContracts(oi)}</span>
+          {depth != null ? <span>Book {kalshiContracts(depth)}</span> : null}
+        </div>
+      </a>
+      <div className="mt-2.5 grid grid-cols-2 gap-2">
+        <a
+          href={yesHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex flex-col items-center justify-center rounded-xl border border-emerald-500/35 bg-emerald-500/15 px-2 py-2 touch-manipulation active:opacity-90"
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-300/90">Yes</span>
+          <span className="text-[16px] font-bold tabular-nums text-emerald-300">{kalshiCents(yesPx)}</span>
+        </a>
+        <a
+          href={noHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex flex-col items-center justify-center rounded-xl border border-rose-400/35 bg-rose-500/10 px-2 py-2 touch-manipulation active:opacity-90"
+        >
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-rose-300/90">No</span>
+          <span className="text-[16px] font-bold tabular-nums text-rose-300">{kalshiCents(noPx)}</span>
+        </a>
+      </div>
+    </div>
+  )
 }
 
 /**
@@ -117,30 +179,7 @@ export default function GameHubFantasyPane({
       {view === 'props' ? (
         <div className="space-y-2">
           {(props || []).map((prop) => (
-            <a
-              key={prop.ticker}
-              href={prop.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 px-3 py-3 touch-manipulation active:opacity-90"
-            >
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-                    Kalshi · {String(prop.series || '').replace(/^KXNFL/, '')}
-                  </div>
-                  <div className="mt-0.5 text-[14px] font-semibold leading-snug text-zinc-100">
-                    {prop.title}
-                  </div>
-                </div>
-                <div className="shrink-0 text-right">
-                  <div className="text-[16px] font-bold tabular-nums text-emerald-400">
-                    {kalshiCents(prop.yes_ask ?? prop.yes_bid ?? prop.last)}
-                  </div>
-                  <div className="text-[10px] uppercase tracking-wide text-zinc-500">Yes</div>
-                </div>
-              </div>
-            </a>
+            <KalshiPropCard key={prop.ticker} prop={prop} />
           ))}
           {!props?.length ? (
             <div className="py-8 text-center text-sm text-zinc-500">

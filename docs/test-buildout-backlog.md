@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Players Roster tap-to-expand + yards headline (Mac).** Stats table collapses until tap; right-rail headline is position yards (FG/Sack for K/DEF), not PPR. Web **`1.4.566`**.
 - **2026-09-24:** **Pinnacle O/U on hub + close-total backfill (Mac).** Live Pinnacle pack and historical kickoff snap now request **totals** (was h2h/spreads only). Script **`scripts/backfill-close-total.mjs`** fills locked `lounge_market_files.close_total`. Redeploy **`lounge-sports-scoreboard`**. Web **`1.4.565`**.
 - **2026-09-24:** **Odds Hanging/Outlier false positive (Mac).** PHI@CHI LowVig was badged for total 41 vs med 41.5 (0.5pt → score 2, auto-Hanging) despite ~0% ML gap. Now: ML floor **2.5%** (3.5% if ±300+), noise **2%**, 0.5pt only if that book is alone on the number, juice hang only when worse than median. Web **`1.4.564`**.
 - **2026-09-24:** **Players Roster ESPN-style season table (Mac).** Keep headline PPR/yards on the card top; replace pill grid with sticky STATS + horizontally scrollable Passing/Rushing/Receiving groups (Regular Season + paced Projected). Edge adds sack/rtg/ypa (+ lng when Sleeper reports a real single-play max). Web **`1.4.563`**.

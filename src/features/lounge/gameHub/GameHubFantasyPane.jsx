@@ -21,7 +21,7 @@ function PlayerAvatar({ player }) {
   )
 }
 
-/** Fixed-frame headshot for H2H (same height both sides). Missing → silhouette. */
+/** Fixed-frame headshot for H2H (same height both sides). Missing → bust silhouette. */
 function MatchupPortrait({ player, isDef }) {
   const [failed, setFailed] = useState(false)
   const src = player?.headshot_url
@@ -31,19 +31,11 @@ function MatchupPortrait({ player, isDef }) {
 
   if (!showPhoto) {
     return (
-      <svg
-        viewBox="0 0 80 100"
-        className="h-full w-full text-white/55"
-        aria-hidden="true"
-        fill="currentColor"
-      >
-        <ellipse cx="40" cy="22" rx="16" ry="18" />
-        <path d="M18 98c0-22 10-36 22-36h0c12 0 22 14 22 36H18z" />
-        <path
-          d="M12 62c6-10 14-14 28-14s22 4 28 14l-8 6c-5-6-11-8-20-8s-15 2-20 8l-8-6z"
-          opacity="0.85"
-        />
-      </svg>
+      <img
+        src="/sports/nfl/silhouettes/player-bust.png"
+        alt=""
+        className="h-full w-full object-contain object-bottom opacity-80"
+      />
     )
   }
 
@@ -168,64 +160,65 @@ function teamNickname(side) {
   return parts[parts.length - 1] || name
 }
 
+function seasonAvgLine(player) {
+  const season = player?.season_ppr
+  const gp = player?.season_gp
+  if (season != null && gp != null && Number(gp) > 0) {
+    return `${fmt(Number(season) / Number(gp))} avg`
+  }
+  if (season != null) return `${fmt(season)} YTD`
+  return null
+}
+
 function matchupStatLine(player, pos) {
   if (!player) return null
   const p = pos || normalizeFantasyPos(player)
   if (p === 'QB') {
-    const pass = fmtYd(player.season_pass_yd)
+    const pass = Number(player.season_pass_yd) || 0
     const rush = Number(player.season_rush_yd) || 0
     const tot =
-      player.season_pass_yd != null ? fmtYd(Number(player.season_pass_yd) + rush) : null
-    const td = player.season_pass_td
-    const ints = player.season_pass_int
-    const parts = []
-    if (pass != null && tot != null && tot !== pass) parts.push(`${pass}/${tot} yd`)
-    else if (pass != null) parts.push(`${pass} yd`)
-    else if (tot != null) parts.push(`${tot} yd`)
-    if (td != null) parts.push(`${fmt(td, 0)} TD`)
-    if (ints != null) parts.push(`${fmt(ints, 0)} INT`)
-    return parts.length ? parts.join(' · ') : null
+      player.season_pass_yd != null || player.season_rush_yd != null ? pass + rush : null
+    const td = (Number(player.season_pass_td) || 0) + (Number(player.season_rush_td) || 0)
+    const hasTd = player.season_pass_td != null || player.season_rush_td != null
+    if (tot == null && !hasTd) return null
+    if (tot != null && hasTd) return `${fmtYd(tot)} Yds - ${fmt(td, 0)} TD`
+    if (tot != null) return `${fmtYd(tot)} Yds`
+    return `${fmt(td, 0)} TD`
   }
-  if (p === 'RB') {
-    const rush = fmtYd(player.season_rush_yd)
+  if (p === 'RB' || p === 'WR' || p === 'TE') {
+    const rush = Number(player.season_rush_yd) || 0
     const rec = Number(player.season_rec_yd) || 0
     const tot =
-      player.season_rush_yd != null
-        ? fmtYd(Number(player.season_rush_yd) + rec)
-        : fmtYd(player.season_rec_yd)
+      player.season_rush_yd != null || player.season_rec_yd != null ? rush + rec : null
     const td = (Number(player.season_rush_td) || 0) + (Number(player.season_rec_td) || 0)
-    const fum = player.season_fum_lost
-    const parts = []
-    if (rush != null && tot != null && tot !== rush) parts.push(`${rush}/${tot} yd`)
-    else if (rush != null) parts.push(`${rush} yd`)
-    else if (tot != null) parts.push(`${tot} yd`)
-    if (td > 0 || player.season_rush_td != null || player.season_rec_td != null) {
-      parts.push(`${fmt(td, 0)} TD`)
-    }
-    if (fum != null) parts.push(`${fmt(fum, 0)} FUM`)
-    return parts.length ? parts.join(' · ') : null
-  }
-  if (p === 'WR' || p === 'TE') {
-    const yd = fmtYd(player.season_rec_yd)
-    const td = player.season_rec_td
-    const parts = []
-    if (yd != null) parts.push(`${yd} yd`)
-    if (td != null) parts.push(`${fmt(td, 0)} TD`)
-    return parts.length ? parts.join(' · ') : null
+    const hasTd = player.season_rush_td != null || player.season_rec_td != null
+    if (tot == null && !hasTd) return null
+    if (tot != null && hasTd) return `${fmtYd(tot)} Yds - ${fmt(td, 0)} TD`
+    if (tot != null) return `${fmtYd(tot)} Yds`
+    return `${fmt(td, 0)} TD`
   }
   if (p === 'K') {
+    const pts = player.season_ppr
     const made = player.season_fgm
     const miss = player.season_fgmiss
-    if (made == null && miss == null) return null
-    return `${fmt(made ?? 0, 0)}/${fmt(miss ?? 0, 0)} FG`
+    const att =
+      made != null || miss != null ? (Number(made) || 0) + (Number(miss) || 0) : null
+    if (pts == null && att == null) return null
+    if (pts != null && att != null) {
+      return `${fmt(pts, 0)} Pts - ${fmt(made ?? 0, 0)}/${fmt(att, 0)} FGs`
+    }
+    if (pts != null) return `${fmt(pts, 0)} Pts`
+    return `${fmt(made ?? 0, 0)}/${fmt(att, 0)} FGs`
   }
   if (p === 'DEF') {
     const pts = player.season_pts_allow
     const sack = player.season_sack
-    const parts = []
-    if (pts != null) parts.push(`${fmt(pts, 0)} pts`)
-    if (sack != null) parts.push(`${fmt(sack, sack % 1 === 0 ? 0 : 1)} sack`)
-    return parts.length ? parts.join(' · ') : null
+    if (pts == null && sack == null) return null
+    if (pts != null && sack != null) {
+      return `${fmt(pts, 0)} Allowed - ${fmt(sack, sack % 1 === 0 ? 0 : 1)} Sacks`
+    }
+    if (pts != null) return `${fmt(pts, 0)} Allowed`
+    return `${fmt(sack, sack % 1 === 0 ? 0 : 1)} Sacks`
   }
   return null
 }
@@ -269,6 +262,7 @@ function MatchupHalf({
   teamSide,
   logoTreatment,
   liveOrFinal,
+  meshSrc,
 }) {
   const isDef = slotPos === 'DEF' || normalizeFantasyPos(player) === 'DEF'
   const proj = player?.projected_ppr ?? player?.fantasypros_pts
@@ -278,7 +272,8 @@ function MatchupHalf({
   const empty = !player
   const nick = teamNickname(teamSide)
   const stats = matchupStatLine(player, slotPos)
-  const logoOpacity = isDef ? 0.72 : 0.22
+  const avg = seasonAvgLine(player)
+  const logoOpacity = isDef ? 0.82 : 0.3
 
   return (
     <div
@@ -291,13 +286,16 @@ function MatchupHalf({
         className="relative h-[10.25rem] w-full overflow-hidden"
         style={{ '--fantasy-wash': washColor || '#3f3f46' }}
       >
-        <span data-fantasy-h2h-mesh aria-hidden="true" />
+        <img data-fantasy-h2h-mesh src={meshSrc} alt="" aria-hidden="true" />
+        <span data-fantasy-h2h-tint aria-hidden="true" />
         <span
-          className="pointer-events-none absolute left-1/2 top-1/2 z-[1] -translate-x-1/2 -translate-y-1/2"
+          className={`pointer-events-none absolute top-1/2 z-[1] -translate-y-1/2 ${
+            align === 'right' ? '-right-3' : '-left-3'
+          }`}
           style={{ opacity: logoOpacity }}
           aria-hidden="true"
         >
-          <LoungeSportsTeamLogo side={teamSide} treatment={logoTreatment} size={118} />
+          <LoungeSportsTeamLogo side={teamSide} treatment={logoTreatment} size={168} />
         </span>
         <span
           className={`absolute top-2 z-[3] rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${positionPillClass(
@@ -335,9 +333,8 @@ function MatchupHalf({
             </div>
             {stats ? (
               <div className="mt-0.5 truncate text-[11px] font-medium text-zinc-400">{stats}</div>
-            ) : (
-              <div className="mt-0.5 text-[11px] font-medium text-zinc-500">Season stats TBD</div>
-            )}
+            ) : null}
+            {avg ? <div className="mt-0.5 text-[11px] text-zinc-500">{avg}</div> : null}
           </div>
           <div className="flex h-[3.25rem] w-[3.25rem] shrink-0 flex-col items-center justify-center rounded-xl bg-zinc-800 ring-1 ring-zinc-700/80">
             <div className="text-[15px] font-bold tabular-nums leading-none text-zinc-50">{fmt(main)}</div>
@@ -403,6 +400,7 @@ function FantasyMatchupCarousel({ matchups, game, liveOrFinal }) {
             teamSide={awaySide}
             logoTreatment={awayTreatment}
             liveOrFinal={liveOrFinal}
+            meshSrc="/sports/nfl/textures/jersey-mesh-1.jpg"
           />
           <div className="w-px shrink-0 self-stretch bg-zinc-800" aria-hidden="true" />
           <MatchupHalf
@@ -414,6 +412,7 @@ function FantasyMatchupCarousel({ matchups, game, liveOrFinal }) {
             teamSide={homeSide}
             logoTreatment={homeTreatment}
             liveOrFinal={liveOrFinal}
+            meshSrc="/sports/nfl/textures/jersey-mesh-2.jpg"
           />
         </div>
 

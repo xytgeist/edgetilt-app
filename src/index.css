@@ -3780,6 +3780,18 @@ html.light [data-lounge-game-fantasy] [data-fantasy-h2h] .text-amber-300 {
 html.light [data-lounge-game-fantasy] [data-fantasy-h2h] .text-rose-400 {
   color: #e11d48 !important;
 }
+html.light [data-lounge-game-fantasy] .text-emerald-400 {
+  color: #059669 !important;
+}
+html.light [data-lounge-game-fantasy] .text-emerald-400\/55 {
+  color: rgb(5 150 105 / 0.7) !important;
+}
+html.light [data-lounge-game-fantasy] .text-rose-400 {
+  color: #e11d48 !important;
+}
+html.light [data-lounge-game-fantasy] .text-rose-400\/55 {
+  color: rgb(225 29 72 / 0.7) !important;
+}
 html.light [data-lounge-game-fantasy] .text-emerald-300,
 html.light [data-lounge-game-fantasy] .text-emerald-300\/90 {
   color: #059669 !important;

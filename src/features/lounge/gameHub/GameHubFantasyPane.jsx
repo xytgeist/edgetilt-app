@@ -339,13 +339,13 @@ function MatchupHalf({
 
   return (
     <div
-      className={`relative flex min-w-0 flex-1 flex-col ${
+      className={`relative flex min-w-0 flex-1 flex-col overflow-hidden ${
         align === 'right' ? 'items-end text-right' : 'items-start text-left'
       }`}
     >
       <div
         data-fantasy-h2h-wash
-        className="relative h-[8.2rem] w-full overflow-visible"
+        className="relative h-[8.2rem] w-full overflow-hidden"
         style={{ '--fantasy-wash': washColor || '#3f3f46' }}
       >
         <span className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
@@ -375,7 +375,7 @@ function MatchupHalf({
         {!empty && !isDef ? (
           <div
             className={`pointer-events-none absolute bottom-0 z-[2] h-[9.75rem] w-[10.5rem] overflow-hidden ${
-              align === 'right' ? 'left-0' : 'right-0'
+              align === 'right' ? '-left-8' : '-right-8'
             }`}
           >
             <MatchupPortrait player={player} isDef={false} align={align} />

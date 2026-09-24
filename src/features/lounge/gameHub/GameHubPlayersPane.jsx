@@ -386,31 +386,43 @@ function RosterSeasonStatsTable({ player }) {
   )
 }
 
-/** Position-primary season number for the right rail. */
+/** Position-primary season number for the right rail (stats card … not fantasy PPR). */
 function seasonHeadline(player) {
-  if (player.season_ppr != null) {
-    return { value: fmtStat(player.season_ppr, 1), label: 'PPR' }
-  }
   const pos = String(player.position || '')
     .toUpperCase()
     .replace(/[^A-Z]/g, '')
   if (pos === 'QB' && player.season_pass_yd != null) {
-    return { value: fmtStat(player.season_pass_yd), label: 'Pass yd' }
+    return { value: fmtComma(player.season_pass_yd, 0), label: 'Pass yd' }
   }
   if ((pos === 'RB' || pos === 'FB' || pos === 'HB') && player.season_rush_yd != null) {
-    return { value: fmtStat(player.season_rush_yd), label: 'Rush yd' }
+    return { value: fmtComma(player.season_rush_yd, 0), label: 'Rush yd' }
   }
   if ((pos === 'WR' || pos === 'TE') && player.season_rec_yd != null) {
-    return { value: fmtStat(player.season_rec_yd), label: 'Rec yd' }
+    return { value: fmtComma(player.season_rec_yd, 0), label: 'Rec yd' }
+  }
+  if (pos === 'K' || pos === 'PK') {
+    if (player.season_fgm != null || player.season_fgmiss != null) {
+      const made = Number(player.season_fgm) || 0
+      const miss = Number(player.season_fgmiss) || 0
+      return { value: `${made}/${made + miss}`, label: 'FG' }
+    }
+  }
+  if (pos === 'DEF' || pos === 'DST' || pos === 'D') {
+    if (player.season_sack != null) {
+      return {
+        value: fmtStat(player.season_sack, Number(player.season_sack) % 1 === 0 ? 0 : 1),
+        label: 'Sack',
+      }
+    }
   }
   if (player.season_pass_yd != null) {
-    return { value: fmtStat(player.season_pass_yd), label: 'Pass yd' }
+    return { value: fmtComma(player.season_pass_yd, 0), label: 'Pass yd' }
   }
   if (player.season_rush_yd != null) {
-    return { value: fmtStat(player.season_rush_yd), label: 'Rush yd' }
+    return { value: fmtComma(player.season_rush_yd, 0), label: 'Rush yd' }
   }
   if (player.season_rec_yd != null) {
-    return { value: fmtStat(player.season_rec_yd), label: 'Rec yd' }
+    return { value: fmtComma(player.season_rec_yd, 0), label: 'Rec yd' }
   }
   if (player.season_rec != null) {
     return { value: fmtStat(player.season_rec, 1), label: 'Rec' }
@@ -442,6 +454,7 @@ function normalizePos(pos) {
 }
 
 function RosterBoard({ players }) {
+  const [expandedId, setExpandedId] = useState(null)
   const sorted = useMemo(() => {
     const list = [...(players || [])]
     list.sort((a, b) => {
@@ -474,9 +487,23 @@ function RosterBoard({ players }) {
           p.season_pos_rank != null
             ? `#${p.season_pos_rank}${p.season_pos_rank_of != null ? `/${p.season_pos_rank_of}` : ''}`
             : null
+        const id = String(p.sleeper_id)
+        const expanded = expandedId === id
+        const hasStats = buildStatGroups(p).length > 0
         return (
-          <li key={p.sleeper_id} className="px-3.5 py-4">
-            <div className="flex items-start gap-3">
+          <li key={id} className="px-3.5 py-3.5">
+            <button
+              type="button"
+              disabled={!hasStats}
+              aria-expanded={hasStats ? expanded : undefined}
+              onClick={() => {
+                if (!hasStats) return
+                setExpandedId((cur) => (cur === id ? null : id))
+              }}
+              className={`flex w-full items-start gap-3 text-left touch-manipulation ${
+                hasStats ? 'active:opacity-90' : ''
+              }`}
+            >
               <PlayerAvatar player={p} />
               <div className="min-w-0 flex-1">
                 <div className="flex min-w-0 items-center gap-1.5">
@@ -495,8 +522,18 @@ function RosterBoard({ players }) {
                   <div className="text-[10px] uppercase tracking-wide text-zinc-500">{headline.label}</div>
                 </div>
               ) : null}
-            </div>
-            <RosterSeasonStatsTable player={p} />
+              {hasStats ? (
+                <span
+                  aria-hidden
+                  className={`mt-2 shrink-0 text-zinc-500 transition-transform ${expanded ? 'rotate-180' : ''}`}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </span>
+              ) : null}
+            </button>
+            {expanded ? <RosterSeasonStatsTable player={p} /> : null}
           </li>
         )
       })}

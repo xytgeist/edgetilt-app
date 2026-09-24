@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Players Roster drop pos rank (Mac).** Roster cards no longer show `#rank/of` … Fantasy tab keeps PosRankMark. Web **`1.4.573`**.
 - **2026-09-24:** **Players Roster expand grid flush bottom (Mac).** Expanded card drops bottom padding so the stats grid meets the card edge. Web **`1.4.572`**.
 - **2026-09-24:** **Players Roster expand card + light dividers (Mac).** Expanded player splits out of the list into its own card; light mode shows roster row separators. Web **`1.4.571`**.
 - **2026-09-24:** **Players Roster stats grid edge bleed + no crush (Mac).** Stats table full-bleeds card padding; columns use min tracks + horizontal scroll instead of `1fr` crush. Web **`1.4.570`**.

@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Fantasy Rest of Board PROJ→LIVE→GAME (Mac).** Column title tracks game state; live shows paced proj under live PPR (green/red vs original); final shows original proj muted beat/miss. Passes hub `live` clock. Web **`1.4.562`**.
 - **2026-09-24:** **DEN wash = Broncos orange (Mac).** `loungeSportsMatch` primary `#FB4F14` (navy as color2) so hero/pill washes read orange, not navy. Web **`1.4.561`**.
 - **2026-09-24:** **Players Roster full season grid (Mac).** Bigger cards + labeled stat chips (CMP/ATT, TGT, ATT, TD/INT/FUM, DEF sack/FR/PA, PPR headline + pos rank). Edge maps more Sleeper season fields … redeploy **`lounge-nfl-game-fantasy`**. Web **`1.4.560`**.
 - **2026-09-24:** **Players Roster cards roomier (Mac).** Larger avatar/padding; season stats on their own wrapping line (full pos line: yd/TD/INT/rec … not truncated). Web **`1.4.559`**.

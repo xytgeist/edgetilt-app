@@ -560,13 +560,94 @@ function FantasyMatchupCarousel({ matchups, game, liveOrFinal }) {
   )
 }
 
+function parseClockSeconds(clock) {
+  const s = String(clock || '').trim()
+  if (!s) return null
+  const m = s.match(/^(\d+):(\d{1,2})$/)
+  if (m) return Number(m[1]) * 60 + Number(m[2])
+  const n = Number(s)
+  return Number.isFinite(n) ? n : null
+}
+
+/** 0..1 through NFL regulation (4×15). OT treated as nearly complete. */
+function nflFantasyElapsedFraction(live, gameStatus) {
+  if (gameStatus === 'post') return 1
+  if (gameStatus === 'pre') return 0
+  const period = Number(live?.period)
+  if (!Number.isFinite(period) || period < 1) return 0.4
+  const Q = 15 * 60
+  if (period > 4) return 0.97
+  const clockSec = parseClockSeconds(live?.clock)
+  const left = clockSec != null ? Math.min(Q, Math.max(0, clockSec)) : Q / 2
+  const elapsedInPeriod = Q - left
+  return Math.min(0.999, Math.max(0, ((period - 1) * Q + elapsedInPeriod) / (4 * Q)))
+}
+
+function toneVsProj(value, proj) {
+  if (value == null || proj == null || !Number.isFinite(value) || !Number.isFinite(proj)) return 'muted'
+  if (value > proj + 0.05) return 'good'
+  if (value < proj - 0.05) return 'bad'
+  return 'muted'
+}
+
+/**
+ * Rest-of-board Game column:
+ * pre → PROJ (pregame projection)
+ * in  → LIVE pts + paced live proj (green/red vs original)
+ * post → GAME pts + original proj (muted green/red beat/miss)
+ */
+function restBoardPointsColumn(player, gameStatus, live) {
+  const projRaw = player?.projected_ppr ?? player?.fantasypros_pts
+  const scoredRaw = player?.game_ppr
+  const proj = projRaw != null && Number.isFinite(Number(projRaw)) ? Number(projRaw) : null
+  const scored = scoredRaw != null && Number.isFinite(Number(scoredRaw)) ? Number(scoredRaw) : null
+
+  if (gameStatus === 'pre') {
+    return { main: proj, under: null, underTone: 'muted', underMuted: false }
+  }
+
+  if (gameStatus === 'post') {
+    return {
+      main: scored,
+      under: proj,
+      underTone: toneVsProj(scored, proj),
+      underMuted: true,
+    }
+  }
+
+  const elapsed = nflFantasyElapsedFraction(live, gameStatus)
+  const scoredOr0 = scored ?? 0
+  const liveProj =
+    proj == null ? null : Math.round((scoredOr0 + proj * (1 - elapsed)) * 10) / 10
+  return {
+    main: scored,
+    under: liveProj,
+    underTone: toneVsProj(liveProj, proj),
+    underMuted: false,
+  }
+}
+
+function underToneClass(tone, muted) {
+  if (tone === 'good') return muted ? 'text-emerald-400/55' : 'text-emerald-400'
+  if (tone === 'bad') return muted ? 'text-rose-400/55' : 'text-rose-400'
+  return muted ? 'text-zinc-500/70' : 'text-zinc-500'
+}
+
 /**
  * Sleeper game PPR + season on each row.
- * Pregame: Game = projection. Live/final: Game = scored, proj tucked under.
+ * Rest of board Game col: PROJ → LIVE (paced) → GAME (vs original).
  * Top: H2H carousel for QB / RB1 / WR1 / TE / K / DEF.
  */
-export default function GameHubFantasyPane({ players, loading, error, gameStatus = 'pre', game = null }) {
+export default function GameHubFantasyPane({
+  players,
+  loading,
+  error,
+  gameStatus = 'pre',
+  game = null,
+  live = null,
+}) {
   const liveOrFinal = gameStatus === 'in' || gameStatus === 'post'
+  const gameColTitle = gameStatus === 'post' ? 'Game' : gameStatus === 'in' ? 'Live' : 'Proj'
 
   const { matchups, rest } = useMemo(() => {
     const list = players || []
@@ -624,18 +705,15 @@ export default function GameHubFantasyPane({ players, loading, error, gameStatus
         <div className="space-y-2">
           <div className="grid grid-cols-[minmax(0,1fr)_3.25rem_3.25rem] gap-x-2 px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-600">
             <span>Rest of board</span>
-            <span className="text-right">Game</span>
+            <span className="text-right">{gameColTitle}</span>
             <span className="text-right">Season</span>
           </div>
 
           <ul className="divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
             {rest.slice(0, 40).map((p) => {
-              const proj = p.projected_ppr ?? p.fantasypros_pts
-              const scored = p.game_ppr
               const season = p.season_ppr
               const detail = seasonDetailLine(p)
-              const gameMain = liveOrFinal ? scored : proj
-              const showProjUnder = liveOrFinal && proj != null
+              const col = restBoardPointsColumn(p, gameStatus, live)
               return (
                 <li
                   key={p.sleeper_id}
@@ -655,9 +733,13 @@ export default function GameHubFantasyPane({ players, loading, error, gameStatus
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-[14px] font-bold tabular-nums text-zinc-100">{fmt(gameMain)}</div>
-                    {showProjUnder ? (
-                      <div className="text-[10px] tabular-nums text-zinc-500">{fmt(proj)} proj</div>
+                    <div className="text-[14px] font-bold tabular-nums text-zinc-100">{fmt(col.main)}</div>
+                    {col.under != null ? (
+                      <div
+                        className={`text-[10px] tabular-nums ${underToneClass(col.underTone, col.underMuted)}`}
+                      >
+                        {fmt(col.under)}
+                      </div>
                     ) : (
                       <div className="text-[10px] uppercase tracking-wide text-zinc-500">PPR</div>
                     )}

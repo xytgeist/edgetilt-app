@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-23:** **Fantasy Proj + Season columns (Mac).** Dropped Weekly/Season toggle; each row shows Proj PPR + Season YTD. Web **`1.4.527`**.
 - **2026-09-23:** **Fantasy out of Players tab (Mac).** Game hub top-level **Fantasy** tab; Players is Roster|Props only. Pregame opens Fantasy. Web **`1.4.526`**.
 - **2026-09-23:** **Game props strike ladders (Mac).** Stats Kalshi/Poly totals/spreads/team totals collapse into Poly-style slider cards (period pills + strike rail + Yes/No %). Raised game prop caps; per-series trim keeps ladders. Redeploy test **`lounge-nfl-game-fantasy`**. Web **`1.4.525`**.
 - **2026-09-23:** **Odds consensus legend (Mac).** Dot legend next to Odds title (“furthest from consensus”). Web **`1.4.524`**.

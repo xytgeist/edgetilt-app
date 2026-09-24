@@ -15,9 +15,35 @@ function InjuryPill({ status }) {
   )
 }
 
+function isDefOrDst(player) {
+  const p = String(player?.position || '')
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+  return p === 'DEF' || p === 'DST' || p === 'D'
+}
+
 function PlayerAvatar({ player }) {
   const [failed, setFailed] = useState(false)
-  const letter = String(player?.name || '?').slice(0, 1).toUpperCase()
+  const team = String(player?.team || '')
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+  const letter = String(player?.name || team || '?').slice(0, 1).toUpperCase()
+
+  if (isDefOrDst(player) && team && !failed) {
+    return (
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-800 p-1.5 ring-1 ring-zinc-700/80">
+        <img
+          src={`/sports/nfl/logos/${team}.png`}
+          alt=""
+          className="h-full w-full object-contain"
+          loading="lazy"
+          decoding="async"
+          onError={() => setFailed(true)}
+        />
+      </span>
+    )
+  }
+
   if (!player?.headshot_url || failed) {
     return (
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm font-bold text-zinc-300">

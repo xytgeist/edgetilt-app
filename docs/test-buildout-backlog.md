@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Game hub DEF avatars = team logos (Mac).** Players + Fantasy rest-of-board use `/sports/nfl/logos/{TEAM}.png` for DEF/DST instead of letter fallback. Web **`1.4.553`**.
 - **2026-09-24:** **Fantasy H2H silhouette +5% / more off-center (Mac).** Scale 0.76; nudge `translate-x-3` away from VS. Web **`1.4.552`**.
 - **2026-09-24:** **Fantasy H2H portraits +10% (Mac).** Frame 10.725×11.55rem. Web **`1.4.551`**.
 - **2026-09-24:** **Fantasy H2H silhouette retune (Mac).** Back to inside-edge (like photos) with a light off-center nudge; scale 0.72; keep drop. Web **`1.4.550`**.

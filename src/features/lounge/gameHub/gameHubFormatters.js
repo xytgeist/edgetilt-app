@@ -31,13 +31,13 @@ export function ordinal(n) {
 }
 
 export function american(price) {
-  if (price == null || !Number.isFinite(Number(price)) || Number(price) === 0) return '—'
+  if (price == null || !Number.isFinite(Number(price)) || Number(price) === 0) return '-'
   const n = Number(price)
   return n > 0 ? `+${n}` : String(n)
 }
 
 export function signedPoint(point) {
-  if (point == null || !Number.isFinite(Number(point))) return '—'
+  if (point == null || !Number.isFinite(Number(point))) return '-'
   const n = Number(point)
   if (n > 0) return `+${n}`
   return String(n)

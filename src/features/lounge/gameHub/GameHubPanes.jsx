@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { american, formatPostAge, ordinal, periodLabel, signedPoint } from './gameHubFormatters.js'
 import { feedPostDisplayCaption } from '../../../utils/communityFeedPost.js'
 
@@ -58,52 +59,88 @@ export function BoxScoreCard({ game }) {
 }
 
 export function OddsTable({ game, books }) {
-  if (!Array.isArray(books) || books.length === 0) {
+  const list = Array.isArray(books) ? books : []
+  const [bookId, setBookId] = useState(() => list[0]?.book || '')
+
+  useEffect(() => {
+    if (!list.length) {
+      setBookId('')
+      return
+    }
+    if (!list.some((row) => row.book === bookId)) {
+      setBookId(list[0].book)
+    }
+  }, [list, bookId])
+
+  if (!list.length) {
     return <div className="py-4 text-center text-sm text-zinc-500">Live lines are not up for this game yet.</div>
   }
+
+  const row = list.find((b) => b.book === bookId) || list[0]
+
   return (
-    <div data-lounge-game-odds className="space-y-2">
-      {books.map((row) => (
-        <div key={row.book} className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
-          <div className="px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-            Odds · {row.book}
-          </div>
-          <table className="w-full text-[12px]">
-            <thead>
-              <tr className="text-zinc-500">
-                <th className="px-3 py-1 text-left font-semibold"> </th>
-                <th className="px-2 py-1 font-semibold">Spread</th>
-                <th className="px-2 py-1 font-semibold">Total</th>
-                <th className="px-3 py-1 font-semibold">ML</th>
-              </tr>
-            </thead>
-            <tbody className="text-zinc-200">
-              <tr className="border-t border-zinc-800">
-                <td className="px-3 py-2 text-left font-semibold">{game.away?.abbrev}</td>
-                <td className="px-2 py-2 tabular-nums">
-                  {signedPoint(row.away_spread)}{' '}
-                  <span className="text-zinc-500">{american(row.away_spread_price)}</span>
-                </td>
-                <td className="px-2 py-2 tabular-nums">
-                  O {row.total ?? '—'} <span className="text-zinc-500">{american(row.over_price)}</span>
-                </td>
-                <td className="px-3 py-2 font-semibold tabular-nums">{american(row.away_ml)}</td>
-              </tr>
-              <tr className="border-t border-zinc-800">
-                <td className="px-3 py-2 text-left font-semibold">{game.home?.abbrev}</td>
-                <td className="px-2 py-2 tabular-nums">
-                  {signedPoint(row.home_spread)}{' '}
-                  <span className="text-zinc-500">{american(row.home_spread_price)}</span>
-                </td>
-                <td className="px-2 py-2 tabular-nums">
-                  U {row.total ?? '—'} <span className="text-zinc-500">{american(row.under_price)}</span>
-                </td>
-                <td className="px-3 py-2 font-semibold tabular-nums">{american(row.home_ml)}</td>
-              </tr>
-            </tbody>
-          </table>
+    <div
+      data-lounge-game-odds
+      className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900"
+    >
+      <div className="border-b border-zinc-800/80 px-2 pt-2">
+        <div className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+          Odds
         </div>
-      ))}
+        <div className="-mx-1 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex w-max gap-1.5">
+            {list.map((b) => {
+              const active = b.book === row.book
+              return (
+                <button
+                  key={b.book}
+                  type="button"
+                  onClick={() => setBookId(b.book)}
+                  className={`shrink-0 rounded-full px-3 py-1 text-[12px] font-semibold touch-manipulation ${
+                    active ? 'bg-zinc-100 text-zinc-950' : 'bg-zinc-800 text-zinc-300'
+                  }`}
+                >
+                  {b.book}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+      <table className="w-full text-[12px]">
+        <thead>
+          <tr className="text-zinc-500">
+            <th className="px-3 py-1 text-left font-semibold"> </th>
+            <th className="px-2 py-1 font-semibold">Spread</th>
+            <th className="px-2 py-1 font-semibold">Total</th>
+            <th className="px-3 py-1 font-semibold">ML</th>
+          </tr>
+        </thead>
+        <tbody className="text-zinc-200">
+          <tr className="border-t border-zinc-800">
+            <td className="px-3 py-2 text-left font-semibold">{game.away?.abbrev}</td>
+            <td className="px-2 py-2 tabular-nums">
+              {signedPoint(row.away_spread)}{' '}
+              <span className="text-zinc-500">{american(row.away_spread_price)}</span>
+            </td>
+            <td className="px-2 py-2 tabular-nums">
+              O {row.total ?? '-'} <span className="text-zinc-500">{american(row.over_price)}</span>
+            </td>
+            <td className="px-3 py-2 font-semibold tabular-nums">{american(row.away_ml)}</td>
+          </tr>
+          <tr className="border-t border-zinc-800">
+            <td className="px-3 py-2 text-left font-semibold">{game.home?.abbrev}</td>
+            <td className="px-2 py-2 tabular-nums">
+              {signedPoint(row.home_spread)}{' '}
+              <span className="text-zinc-500">{american(row.home_spread_price)}</span>
+            </td>
+            <td className="px-2 py-2 tabular-nums">
+              U {row.total ?? '-'} <span className="text-zinc-500">{american(row.under_price)}</span>
+            </td>
+            <td className="px-3 py-2 font-semibold tabular-nums">{american(row.home_ml)}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   )
 }

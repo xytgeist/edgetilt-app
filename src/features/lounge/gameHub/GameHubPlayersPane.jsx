@@ -418,7 +418,7 @@ function RosterSeasonStatsTable({ player }) {
   const thinGroups = fatCapable ? [] : groups
 
   return (
-    <div data-roster-season-stats className="mt-3 -mx-3.5 space-y-2">
+    <div data-roster-season-stats className="mt-3 -mx-3.5">
       {fatGroups.length ? <RosterFatStatsGrid groups={fatGroups} rowLabels={rowLabels} /> : null}
       {thinGroups.map((group) => (
         <RosterThinStatsBlock key={group.title} group={group} rowLabels={rowLabels} />
@@ -436,7 +436,7 @@ function RosterFatStatsGrid({ groups, rowLabels }) {
   const gridCols = `minmax(5.5rem, max-content) repeat(${colCount}, minmax(2.4rem, max-content))`
 
   return (
-    <div className="overflow-hidden border-y border-zinc-700/80 bg-zinc-950">
+    <div className="overflow-hidden border-t border-zinc-700/80 bg-zinc-950">
       <div className="overflow-x-auto overscroll-x-contain">
         <div className="grid w-max min-w-full" style={{ gridTemplateColumns: gridCols }}>
           <div className="sticky left-0 z-[1] border-b border-r border-zinc-700/80 bg-zinc-950" />
@@ -500,7 +500,7 @@ function RosterFatStatsGrid({ groups, rowLabels }) {
 
 function RosterThinStatsBlock({ group, rowLabels }) {
   return (
-    <div className="border-y border-zinc-700/80 bg-zinc-950 px-3.5 py-2.5">
+    <div className="border-t border-zinc-700/80 bg-zinc-950 px-3.5 py-2.5">
       <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-300">{group.title}</div>
       <div className="mt-2 grid grid-cols-2 gap-3">
         {rowLabels.map((label) => {
@@ -634,7 +634,7 @@ function RosterBoard({ players }) {
     const id = String(p.sleeper_id)
     const hasStats = buildStatGroups(p).length > 0
     return (
-      <li key={id} className="px-3.5 py-3.5">
+      <li key={id} className={expanded ? 'px-3.5 pt-3.5 pb-0' : 'px-3.5 py-3.5'}>
         <button
           type="button"
           disabled={!hasStats}

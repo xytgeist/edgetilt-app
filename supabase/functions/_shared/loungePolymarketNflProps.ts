@@ -93,19 +93,24 @@ function sidePrice(
   return { bid: px, ask: px }
 }
 
+/**
+ * Polymarket US sports boards live under /sports/nfl/{eventSlug}.
+ * Legacy /event/{event}/{market} paths 404 on polymarket.us.
+ */
 function polyUrls(eventSlug: string, marketSlug: string) {
-  const eventUrl = `${POLY_WEB}/event/${eventSlug}`
-  const marketUrl =
-    eventSlug && marketSlug
-      ? `${POLY_WEB}/event/${eventSlug}/${marketSlug}`
-      : marketSlug
-        ? `${POLY_WEB}/market/${marketSlug}`
-        : eventUrl
+  const eventUrl = `${POLY_WEB}/sports/nfl/${encodeURIComponent(eventSlug)}`
+  const qs = new URLSearchParams()
+  if (marketSlug) qs.set('market', marketSlug)
+  const marketUrl = qs.toString() ? `${eventUrl}?${qs.toString()}` : eventUrl
+  const yesQs = new URLSearchParams(qs)
+  yesQs.set('side', 'yes')
+  const noQs = new URLSearchParams(qs)
+  noQs.set('side', 'no')
   return {
     seriesUrl: eventUrl,
     marketUrl,
-    yesUrl: `${marketUrl}?side=yes`,
-    noUrl: `${marketUrl}?side=no`,
+    yesUrl: `${eventUrl}?${yesQs.toString()}`,
+    noUrl: `${eventUrl}?${noQs.toString()}`,
   }
 }
 

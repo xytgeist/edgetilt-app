@@ -75,85 +75,313 @@ function positionRank(pos) {
 function fmtStat(n, digits = 0) {
   if (n == null || !Number.isFinite(Number(n))) return null
   const v = Number(n)
-  return Number.isInteger(v) || digits === 0 ? String(Math.round(v)) : v.toFixed(digits)
+  if (digits === 0 || Number.isInteger(v)) return String(Math.round(v))
+  return v.toFixed(digits)
 }
 
-function pushCell(cells, label, value, digits = 0, { skipZero = false } = {}) {
-  if (value == null || !Number.isFinite(Number(value))) return
-  if (skipZero && Number(value) === 0) return
-  const v = fmtStat(value, digits)
-  if (v == null) return
-  cells.push({ label, value: v })
+function fmtComma(n, digits = 0) {
+  const s = fmtStat(n, digits)
+  if (s == null) return null
+  const [whole, frac] = s.split('.')
+  const withCommas = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return frac != null ? `${withCommas}.${frac}` : withCommas
 }
 
-/** Position-aware season cells for the roster grid. */
-function seasonStatCells(player) {
+function pct(numer, denom) {
+  if (numer == null || denom == null) return null
+  const a = Number(numer)
+  const b = Number(denom)
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b <= 0) return null
+  return Math.round((a / b) * 1000) / 10
+}
+
+function avg(numer, denom, digits = 1) {
+  if (numer == null || denom == null) return null
+  const a = Number(numer)
+  const b = Number(denom)
+  if (!Number.isFinite(a) || !Number.isFinite(b) || b <= 0) return null
+  return Math.round((a / b) * 10 ** digits) / 10 ** digits
+}
+
+/** Pace season counting stats out to a 17-game slate when gp is known. */
+function paceSeason(value, gp, digits = 0) {
+  if (value == null || gp == null) return null
+  const v = Number(value)
+  const g = Number(gp)
+  if (!Number.isFinite(v) || !Number.isFinite(g) || g < 1) return null
+  const paced = (v / g) * 17
+  return digits === 0 ? Math.round(paced) : Math.round(paced * 10 ** digits) / 10 ** digits
+}
+
+const PASSING_COLS = [
+  { key: 'cmp', label: 'CMP' },
+  { key: 'att', label: 'ATT' },
+  { key: 'cmpPct', label: 'CMP%' },
+  { key: 'yds', label: 'YDS' },
+  { key: 'avg', label: 'AVG' },
+  { key: 'td', label: 'TD' },
+  { key: 'int', label: 'INT' },
+  { key: 'lng', label: 'LNG' },
+  { key: 'sack', label: 'SACK' },
+  { key: 'rtg', label: 'RTG' },
+]
+
+const RUSHING_COLS = [
+  { key: 'car', label: 'CAR' },
+  { key: 'yds', label: 'YDS' },
+  { key: 'avg', label: 'AVG' },
+  { key: 'td', label: 'TD' },
+  { key: 'lng', label: 'LNG' },
+]
+
+const RECEIVING_COLS = [
+  { key: 'tgt', label: 'TGT' },
+  { key: 'rec', label: 'REC' },
+  { key: 'yds', label: 'YDS' },
+  { key: 'avg', label: 'AVG' },
+  { key: 'td', label: 'TD' },
+  { key: 'lng', label: 'LNG' },
+]
+
+const KICKING_COLS = [
+  { key: 'fgm', label: 'FGM' },
+  { key: 'fga', label: 'FGA' },
+  { key: 'fgPct', label: 'FG%' },
+]
+
+const DEFENSE_COLS = [
+  { key: 'sack', label: 'SACK' },
+  { key: 'int', label: 'INT' },
+  { key: 'fr', label: 'FR' },
+  { key: 'td', label: 'TD' },
+  { key: 'pa', label: 'PA' },
+]
+
+function passingRow(player, mode) {
+  const gp = player.season_gp
+  const take = (v, digits = 0) => (mode === 'projected' ? paceSeason(v, gp, digits) : v)
+  const cmp = take(player.season_pass_cmp)
+  const att = take(player.season_pass_att)
+  const yd = take(player.season_pass_yd)
+  const td = take(player.season_pass_td)
+  const ints = take(player.season_pass_int)
+  const sack = take(player.season_pass_sack, 1)
+  const has =
+    cmp != null || att != null || yd != null || td != null || ints != null || sack != null
+  if (!has) return null
+  const ypa =
+    mode === 'season' && player.season_pass_ypa != null
+      ? player.season_pass_ypa
+      : avg(yd, att, 1)
+  return {
+    cmp: fmtStat(cmp, 0),
+    att: fmtStat(att, 0),
+    cmpPct: fmtStat(pct(cmp, att), 1),
+    yds: fmtComma(yd, 0),
+    avg: fmtStat(ypa, 1),
+    td: fmtStat(td, 0),
+    int: fmtStat(ints, 0),
+    lng: mode === 'season' ? fmtStat(player.season_pass_lng, 0) : null,
+    sack: fmtStat(sack, Number(sack) % 1 === 0 ? 0 : 1),
+    rtg: mode === 'season' ? fmtStat(player.season_pass_rtg, 1) : null,
+  }
+}
+
+function rushingRow(player, mode) {
+  const gp = player.season_gp
+  const take = (v, digits = 0) => (mode === 'projected' ? paceSeason(v, gp, digits) : v)
+  const car = take(player.season_rush_att)
+  const yd = take(player.season_rush_yd)
+  const td = take(player.season_rush_td)
+  if (car == null && yd == null && td == null) return null
+  const ypa =
+    mode === 'season' && player.season_rush_ypa != null
+      ? player.season_rush_ypa
+      : avg(yd, car, 1)
+  return {
+    car: fmtStat(car, 0),
+    yds: fmtComma(yd, 0),
+    avg: fmtStat(ypa, 1),
+    td: fmtStat(td, 0),
+    lng: mode === 'season' ? fmtStat(player.season_rush_lng, 0) : null,
+  }
+}
+
+function receivingRow(player, mode) {
+  const gp = player.season_gp
+  const take = (v, digits = 0) => (mode === 'projected' ? paceSeason(v, gp, digits) : v)
+  const tgt = take(player.season_rec_tgt)
+  const rec = take(player.season_rec, 1)
+  const yd = take(player.season_rec_yd)
+  const td = take(player.season_rec_td)
+  if (tgt == null && rec == null && yd == null && td == null) return null
+  return {
+    tgt: fmtStat(tgt, 0),
+    rec: fmtStat(rec, Number(rec) % 1 === 0 ? 0 : 1),
+    yds: fmtComma(yd, 0),
+    avg: fmtStat(avg(yd, rec, 1), 1),
+    td: fmtStat(td, 0),
+    lng: mode === 'season' ? fmtStat(player.season_rec_lng, 0) : null,
+  }
+}
+
+function kickingRow(player, mode) {
+  const gp = player.season_gp
+  const take = (v) => (mode === 'projected' ? paceSeason(v, gp, 0) : v)
+  const made = take(player.season_fgm)
+  const miss = take(player.season_fgmiss)
+  if (made == null && miss == null) return null
+  const m = Number(made) || 0
+  const a = m + (Number(miss) || 0)
+  return {
+    fgm: fmtStat(m, 0),
+    fga: fmtStat(a, 0),
+    fgPct: fmtStat(pct(m, a), 1),
+  }
+}
+
+function defenseRow(player, mode) {
+  const gp = player.season_gp
+  const take = (v, digits = 0) => (mode === 'projected' ? paceSeason(v, gp, digits) : v)
+  const sack = take(player.season_sack, 1)
+  const ints = take(player.season_def_int)
+  const fr = take(player.season_fum_rec)
+  const td = take(player.season_def_td)
+  const pa = take(player.season_pts_allow, 1)
+  if (sack == null && ints == null && fr == null && td == null && pa == null) return null
+  return {
+    sack: fmtStat(sack, Number(sack) % 1 === 0 ? 0 : 1),
+    int: fmtStat(ints, 0),
+    fr: fmtStat(fr, 0),
+    td: fmtStat(td, 0),
+    pa: fmtStat(pa, Number(pa) % 1 === 0 ? 0 : 1),
+  }
+}
+
+function buildStatGroups(player) {
   const pos = String(player?.position || '')
     .toUpperCase()
     .replace(/[^A-Z]/g, '')
-  const cells = []
-  if (pos === 'QB') {
-    if (player.season_pass_cmp != null && player.season_pass_att != null) {
-      cells.push({
-        label: 'CMP/ATT',
-        value: `${fmtStat(player.season_pass_cmp, 0)}/${fmtStat(player.season_pass_att, 0)}`,
-      })
-    }
-    pushCell(cells, 'PASS YD', player.season_pass_yd)
-    pushCell(cells, 'TD', player.season_pass_td)
-    pushCell(cells, 'INT', player.season_pass_int)
-    pushCell(cells, 'RUSH YD', player.season_rush_yd, 0, { skipZero: true })
-    pushCell(cells, 'RUSH TD', player.season_rush_td, 0, { skipZero: true })
-  } else if (pos === 'RB' || pos === 'FB' || pos === 'HB') {
-    pushCell(cells, 'ATT', player.season_rush_att)
-    pushCell(cells, 'RUSH YD', player.season_rush_yd)
-    pushCell(cells, 'RUSH TD', player.season_rush_td)
-    pushCell(cells, 'TGT', player.season_rec_tgt)
-    pushCell(cells, 'REC', player.season_rec)
-    pushCell(cells, 'REC YD', player.season_rec_yd)
-    pushCell(cells, 'REC TD', player.season_rec_td, 0, { skipZero: true })
-  } else if (pos === 'WR' || pos === 'TE') {
-    pushCell(cells, 'TGT', player.season_rec_tgt)
-    pushCell(cells, 'REC', player.season_rec)
-    pushCell(cells, 'REC YD', player.season_rec_yd)
-    pushCell(cells, 'TD', player.season_rec_td)
-    pushCell(cells, 'RUSH YD', player.season_rush_yd, 0, { skipZero: true })
-    pushCell(cells, 'RUSH TD', player.season_rush_td, 0, { skipZero: true })
-  } else if (pos === 'K' || pos === 'PK') {
-    if (player.season_fgm != null || player.season_fgmiss != null) {
-      const made = Number(player.season_fgm) || 0
-      const miss = Number(player.season_fgmiss) || 0
-      cells.push({ label: 'FG', value: `${made}/${made + miss}` })
-    }
-  } else if (pos === 'DEF' || pos === 'DST' || pos === 'D') {
-    pushCell(cells, 'SACK', player.season_sack, Number(player.season_sack) % 1 === 0 ? 0 : 1)
-    pushCell(cells, 'INT', player.season_def_int)
-    pushCell(cells, 'FR', player.season_fum_rec)
-    pushCell(cells, 'TD', player.season_def_td)
-    pushCell(cells, 'PA', player.season_pts_allow)
-  } else {
-    pushCell(cells, 'PASS YD', player.season_pass_yd)
-    pushCell(cells, 'RUSH YD', player.season_rush_yd)
-    pushCell(cells, 'REC YD', player.season_rec_yd)
-    pushCell(cells, 'REC', player.season_rec)
+  const groups = []
+
+  const addGroup = (title, cols, builder) => {
+    const season = builder(player, 'season')
+    const projected = builder(player, 'projected')
+    if (!season && !projected) return
+    groups.push({
+      title,
+      cols,
+      rows: [
+        { label: 'Regular Season', cells: season },
+        { label: 'Projected', cells: projected },
+      ].filter((r) => r.cells),
+    })
   }
-  pushCell(cells, 'FUM', player.season_fum_lost, 0, { skipZero: true })
-  return cells
+
+  if (pos === 'QB') {
+    addGroup('Passing', PASSING_COLS, passingRow)
+    addGroup('Rushing', RUSHING_COLS, rushingRow)
+  } else if (pos === 'RB' || pos === 'FB' || pos === 'HB') {
+    addGroup('Rushing', RUSHING_COLS, rushingRow)
+    addGroup('Receiving', RECEIVING_COLS, receivingRow)
+  } else if (pos === 'WR' || pos === 'TE') {
+    addGroup('Receiving', RECEIVING_COLS, receivingRow)
+    addGroup('Rushing', RUSHING_COLS, rushingRow)
+  } else if (pos === 'K' || pos === 'PK') {
+    addGroup('Kicking', KICKING_COLS, kickingRow)
+  } else if (pos === 'DEF' || pos === 'DST' || pos === 'D') {
+    addGroup('Defense', DEFENSE_COLS, defenseRow)
+  } else {
+    addGroup('Passing', PASSING_COLS, passingRow)
+    addGroup('Rushing', RUSHING_COLS, rushingRow)
+    addGroup('Receiving', RECEIVING_COLS, receivingRow)
+  }
+
+  return groups
 }
 
-function SeasonStatGrid({ cells }) {
-  if (!cells?.length) return null
+/**
+ * ESPN-style season table: sticky STATS labels + horizontally scrollable groups.
+ */
+function RosterSeasonStatsTable({ player }) {
+  const groups = buildStatGroups(player)
+  if (!groups.length) return null
+
+  const rowLabels = ['Regular Season', 'Projected'].filter((label) =>
+    groups.some((g) => g.rows.some((r) => r.label === label)),
+  )
+
   return (
-    <div className="mt-2.5 grid grid-cols-4 gap-1.5 sm:grid-cols-5">
-      {cells.map((c) => (
-        <div
-          key={c.label}
-          className="rounded-lg bg-zinc-950/70 px-1.5 py-1.5 text-center ring-1 ring-inset ring-zinc-800"
-        >
-          <div className="text-[13px] font-bold tabular-nums leading-none text-zinc-100">{c.value}</div>
-          <div className="mt-1 text-[9px] font-semibold uppercase tracking-wide text-zinc-500">{c.label}</div>
+    <div
+      data-roster-season-stats
+      className="mt-3 overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950"
+    >
+      <div className="flex min-w-0">
+        <div className="z-[1] shrink-0 border-r border-zinc-700/80 bg-zinc-950">
+          <div className="h-8 border-b border-zinc-700/80" />
+          <div className="flex h-7 items-center border-b border-zinc-700/80 px-2.5">
+            <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-zinc-400">
+              Stats
+            </span>
+          </div>
+          {rowLabels.map((label) => (
+            <div
+              key={label}
+              className="flex h-8 items-center border-b border-zinc-700/80 px-2.5 last:border-b-0"
+            >
+              <span className="whitespace-nowrap text-[11px] text-zinc-400">{label}</span>
+            </div>
+          ))}
         </div>
-      ))}
+
+        <div className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain">
+          <div className="flex w-max">
+            {groups.map((group) => (
+              <div key={group.title} className="border-r border-zinc-700/80 last:border-r-0">
+                <div className="flex h-8 items-end justify-center border-b border-zinc-700/80 px-1 pb-1">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-300">
+                    {group.title}
+                  </span>
+                </div>
+                <div
+                  className="grid border-b border-zinc-700/80"
+                  style={{ gridTemplateColumns: `repeat(${group.cols.length}, minmax(2.4rem, auto))` }}
+                >
+                  {group.cols.map((col) => (
+                    <div
+                      key={col.key}
+                      className="flex h-7 items-center justify-center px-1 text-[10px] font-bold uppercase tracking-wide text-zinc-400"
+                    >
+                      {col.label}
+                    </div>
+                  ))}
+                </div>
+                {rowLabels.map((label) => {
+                  const row = group.rows.find((r) => r.label === label)
+                  return (
+                    <div
+                      key={label}
+                      className="grid border-b border-zinc-700/80 last:border-b-0"
+                      style={{
+                        gridTemplateColumns: `repeat(${group.cols.length}, minmax(2.4rem, auto))`,
+                      }}
+                    >
+                      {group.cols.map((col) => (
+                        <div
+                          key={col.key}
+                          className="flex h-8 items-center justify-center px-1 text-[12px] tabular-nums text-zinc-200"
+                        >
+                          {row?.cells?.[col.key] ?? '—'}
+                        </div>
+                      ))}
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -242,7 +470,6 @@ function RosterBoard({ players }) {
     <ul className="divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
       {sorted.map((p) => {
         const headline = seasonHeadline(p)
-        const cells = seasonStatCells(p)
         const rank =
           p.season_pos_rank != null
             ? `#${p.season_pos_rank}${p.season_pos_rank_of != null ? `/${p.season_pos_rank_of}` : ''}`
@@ -269,7 +496,7 @@ function RosterBoard({ players }) {
                 </div>
               ) : null}
             </div>
-            <SeasonStatGrid cells={cells} />
+            <RosterSeasonStatsTable player={p} />
           </li>
         )
       })}

@@ -106,11 +106,19 @@ export type NflGameFantasyPlayer = {
   season_pass_yd: number | null
   season_pass_cmp: number | null
   season_pass_att: number | null
+  season_pass_ypa: number | null
+  /** Longest completion when Sleeper reports a plausible single-play value. */
+  season_pass_lng: number | null
+  season_pass_sack: number | null
+  season_pass_rtg: number | null
   season_rush_yd: number | null
   season_rush_att: number | null
+  season_rush_ypa: number | null
+  season_rush_lng: number | null
   season_rec_yd: number | null
   season_rec: number | null
   season_rec_tgt: number | null
+  season_rec_lng: number | null
   season_pass_td: number | null
   season_pass_int: number | null
   season_rush_td: number | null
@@ -574,6 +582,13 @@ function intOrNull(v: unknown): number | null {
   return Number.isFinite(n) ? Math.round(n) : null
 }
 
+/** Sleeper often stores cumulative “long” totals; a real single-play max is ≤99. */
+function plausiblePlayLng(v: unknown): number | null {
+  const n = intOrNull(v)
+  if (n == null || n < 0 || n > 99) return null
+  return n
+}
+
 function readSleeperRow(row: unknown): SleeperStatRow {
   if (!row || typeof row !== 'object') return {}
   const r = row as SleeperStatRow
@@ -841,11 +856,18 @@ function mapDbRow(
     season_pass_yd: null,
     season_pass_cmp: null,
     season_pass_att: null,
+    season_pass_ypa: null,
+    season_pass_lng: null,
+    season_pass_sack: null,
+    season_pass_rtg: null,
     season_rush_yd: null,
     season_rush_att: null,
+    season_rush_ypa: null,
+    season_rush_lng: null,
     season_rec_yd: null,
     season_rec: null,
     season_rec_tgt: null,
+    season_rec_lng: null,
     season_pass_td: null,
     season_pass_int: null,
     season_rush_td: null,
@@ -1041,11 +1063,18 @@ export async function buildNflGameFantasy(
       mapped.season_pass_yd = intOrNull(sea.pass_yd)
       mapped.season_pass_cmp = intOrNull(sea.pass_cmp)
       mapped.season_pass_att = intOrNull(sea.pass_att)
+      mapped.season_pass_ypa = numOrNull(sea.pass_ypa)
+      mapped.season_pass_lng = plausiblePlayLng(sea.pass_lng)
+      mapped.season_pass_sack = numOrNull(sea.pass_sack)
+      mapped.season_pass_rtg = numOrNull(sea.pass_rtg)
       mapped.season_rush_yd = intOrNull(sea.rush_yd)
       mapped.season_rush_att = intOrNull(sea.rush_att)
+      mapped.season_rush_ypa = numOrNull(sea.rush_ypa)
+      mapped.season_rush_lng = plausiblePlayLng(sea.rush_lng)
       mapped.season_rec_yd = intOrNull(sea.rec_yd)
       mapped.season_rec = numOrNull(sea.rec)
       mapped.season_rec_tgt = intOrNull(sea.rec_tgt)
+      mapped.season_rec_lng = plausiblePlayLng(sea.rec_lng)
       mapped.season_pass_td = intOrNull(sea.pass_td)
       mapped.season_pass_int = intOrNull(sea.pass_int)
       mapped.season_rush_td = intOrNull(sea.rush_td)

@@ -3711,6 +3711,24 @@ html.light [data-lounge-game-players] select {
 html.light [data-lounge-game-players] [data-pos-filter-caret] {
   color: #18181b;
 }
+html.light [data-lounge-game-players] [data-roster-season-stats] {
+  background-color: #ffffff;
+  border-color: #e4e4e7;
+}
+html.light [data-lounge-game-players] [data-roster-season-stats] .bg-zinc-950,
+html.light [data-lounge-game-players] [data-roster-season-stats] .border-zinc-700\/80 {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-lounge-game-players] [data-roster-season-stats] .text-zinc-300 {
+  color: #3f3f46 !important;
+}
+html.light [data-lounge-game-players] [data-roster-season-stats] .text-zinc-400 {
+  color: #71717a !important;
+}
+html.light [data-lounge-game-players] [data-roster-season-stats] .text-zinc-200 {
+  color: #27272a !important;
+}
 html.light [data-lounge-game-fantasy] [data-fantasy-h2h] {
   color: inherit;
 }

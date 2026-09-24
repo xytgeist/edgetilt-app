@@ -31,7 +31,7 @@ function PlayerAvatar({ player }) {
 
   if (isDefOrDst(player) && team && !failed) {
     return (
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-800 p-1.5 ring-1 ring-zinc-700/80">
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-800 p-1.5 ring-1 ring-zinc-700/80">
         <img
           src={`/sports/nfl/logos/${team}.png`}
           alt=""
@@ -46,7 +46,7 @@ function PlayerAvatar({ player }) {
 
   if (!player?.headshot_url || failed) {
     return (
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm font-bold text-zinc-300">
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm font-bold text-zinc-300">
         {letter}
       </span>
     )
@@ -55,7 +55,7 @@ function PlayerAvatar({ player }) {
     <img
       src={player.headshot_url}
       alt=""
-      className="h-10 w-10 shrink-0 rounded-full object-cover bg-zinc-800"
+      className="h-12 w-12 shrink-0 rounded-full object-cover bg-zinc-800"
       onError={() => setFailed(true)}
     />
   )
@@ -78,18 +78,49 @@ function fmtStat(n, digits = 0) {
   return Number.isInteger(v) || digits === 0 ? String(Math.round(v)) : v.toFixed(digits)
 }
 
-/** Season counting line for roster (not weekly projections). */
-function seasonStatLine(player, headline) {
+/** Full season counting line for roster cards (wraps … not truncated). */
+function seasonStatLine(player) {
+  const pos = String(player?.position || '')
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
   const parts = []
-  const pass = fmtStat(player.season_pass_yd)
-  const rush = fmtStat(player.season_rush_yd)
-  const recYd = fmtStat(player.season_rec_yd)
-  const rec = fmtStat(player.season_rec, 0)
-  const skip = headline?.label
-  if (pass && skip !== 'Pass yd') parts.push(`${pass} pass yd`)
-  if (rush && skip !== 'Rush yd') parts.push(`${rush} rush yd`)
-  if (recYd && skip !== 'Rec yd') parts.push(`${recYd} rec yd`)
-  if (rec) parts.push(`${rec} rec`)
+  if (pos === 'QB') {
+    if (player.season_pass_yd != null) parts.push(`${fmtStat(player.season_pass_yd)} pass yd`)
+    if (player.season_pass_td != null) parts.push(`${fmtStat(player.season_pass_td, 0)} TD`)
+    if (player.season_pass_int != null) parts.push(`${fmtStat(player.season_pass_int, 0)} INT`)
+    if (player.season_rush_yd != null && Number(player.season_rush_yd) > 0) {
+      parts.push(`${fmtStat(player.season_rush_yd)} rush yd`)
+    }
+  } else if (pos === 'RB' || pos === 'FB' || pos === 'HB') {
+    if (player.season_rush_yd != null) parts.push(`${fmtStat(player.season_rush_yd)} rush yd`)
+    if (player.season_rush_td != null) parts.push(`${fmtStat(player.season_rush_td, 0)} rush TD`)
+    if (player.season_rec != null) parts.push(`${fmtStat(player.season_rec, 0)} rec`)
+    if (player.season_rec_yd != null) parts.push(`${fmtStat(player.season_rec_yd)} rec yd`)
+    if (player.season_rec_td != null) parts.push(`${fmtStat(player.season_rec_td, 0)} rec TD`)
+  } else if (pos === 'WR' || pos === 'TE') {
+    if (player.season_rec != null) parts.push(`${fmtStat(player.season_rec, 0)} rec`)
+    if (player.season_rec_yd != null) parts.push(`${fmtStat(player.season_rec_yd)} rec yd`)
+    if (player.season_rec_td != null) parts.push(`${fmtStat(player.season_rec_td, 0)} TD`)
+    if (player.season_rush_yd != null && Number(player.season_rush_yd) > 0) {
+      parts.push(`${fmtStat(player.season_rush_yd)} rush yd`)
+    }
+  } else if (pos === 'K' || pos === 'PK') {
+    if (player.season_fgm != null || player.season_fgmiss != null) {
+      const made = Number(player.season_fgm) || 0
+      const miss = Number(player.season_fgmiss) || 0
+      parts.push(`${made}/${made + miss} FG`)
+    }
+  } else if (pos === 'DEF' || pos === 'DST' || pos === 'D') {
+    if (player.season_pts_allow != null) parts.push(`${fmtStat(player.season_pts_allow, 0)} allowed`)
+    if (player.season_sack != null) {
+      parts.push(`${fmtStat(player.season_sack, Number(player.season_sack) % 1 === 0 ? 0 : 1)} sack`)
+    }
+  } else {
+    if (player.season_pass_yd != null) parts.push(`${fmtStat(player.season_pass_yd)} pass yd`)
+    if (player.season_rush_yd != null) parts.push(`${fmtStat(player.season_rush_yd)} rush yd`)
+    if (player.season_rec_yd != null) parts.push(`${fmtStat(player.season_rec_yd)} rec yd`)
+    else if (player.season_rec != null) parts.push(`${fmtStat(player.season_rec, 0)} rec`)
+  }
   return parts.join(' · ')
 }
 
@@ -174,24 +205,26 @@ function RosterBoard({ players }) {
     <ul className="divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
       {sorted.map((p) => {
         const headline = seasonHeadline(p)
-        const detail = seasonStatLine(p, headline)
+        const detail = seasonStatLine(p)
         return (
-          <li key={p.sleeper_id} className="flex items-center gap-3 px-3 py-2.5">
+          <li key={p.sleeper_id} className="flex items-start gap-3 px-3.5 py-3.5">
             <PlayerAvatar player={p} />
             <div className="min-w-0 flex-1">
               <div className="flex min-w-0 items-center gap-1.5">
-                <div className="truncate text-[14px] font-semibold text-zinc-100">{p.name}</div>
+                <div className="truncate text-[15px] font-semibold text-zinc-100">{p.name}</div>
                 <InjuryPill status={p.injury_status} />
               </div>
-              <div className="truncate text-[12px] text-zinc-500">
+              <div className="mt-0.5 text-[12px] text-zinc-500">
                 {p.position || '-'} · {p.team}
                 {p.is_starter ? ' · Starter' : ''}
-                {detail ? ` · ${detail}` : ''}
               </div>
+              {detail ? (
+                <div className="mt-1.5 text-[12px] leading-snug text-zinc-300">{detail}</div>
+              ) : null}
             </div>
             {headline ? (
-              <div className="shrink-0 text-right">
-                <div className="text-[14px] font-bold tabular-nums text-zinc-100">{headline.value}</div>
+              <div className="shrink-0 pt-0.5 text-right">
+                <div className="text-[16px] font-bold tabular-nums text-zinc-100">{headline.value}</div>
                 <div className="text-[10px] uppercase tracking-wide text-zinc-500">{headline.label}</div>
               </div>
             ) : null}

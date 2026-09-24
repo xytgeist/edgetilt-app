@@ -3718,21 +3718,11 @@ html.light [data-lounge-game-players] [data-roster-player-card] {
 }
 html.light [data-lounge-game-players] [data-roster-list].divide-zinc-800 > :not([hidden]) ~ :not([hidden]),
 html.light [data-lounge-game-players] [data-roster-list].divide-zinc-800\/80 > :not([hidden]) ~ :not([hidden]) {
-  border-color: rgb(228 228 231 / 0.55);
+  border-color: #e4e4e7;
 }
 html.light [data-lounge-game-players] [data-roster-player-card] {
   border-color: #d4d4d8;
   box-shadow: 0 8px 24px rgba(24, 24, 27, 0.08);
-}
-html.light [data-lounge-game-players] [data-roster-player-wash] .text-white,
-html.light [data-lounge-game-players] [data-roster-player-card] [data-fantasy-h2h-wash] .text-white {
-  color: #ffffff !important;
-}
-html.light [data-lounge-game-players] [data-roster-player-wash] .text-white\/70,
-html.light [data-lounge-game-players] [data-roster-player-wash] .text-white\/65,
-html.light [data-lounge-game-players] [data-roster-player-card] [data-fantasy-h2h-wash] .text-white\/70,
-html.light [data-lounge-game-players] [data-roster-player-card] [data-fantasy-h2h-wash] .text-white\/65 {
-  color: rgb(255 255 255 / 0.7) !important;
 }
 html.light [data-lounge-game-players] [data-roster-season-stats] {
   background-color: #ffffff;

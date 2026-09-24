@@ -26,16 +26,23 @@ function isDefOrDst(player) {
   return p === 'DEF' || p === 'DST' || p === 'D'
 }
 
-function PlayerAvatar({ player }) {
+function PlayerAvatar({ player, accentColor }) {
   const [failed, setFailed] = useState(false)
   const team = String(player?.team || '')
     .toUpperCase()
     .replace(/[^A-Z]/g, '')
   const letter = String(player?.name || team || '?').slice(0, 1).toUpperCase()
+  const ringStyle = accentColor
+    ? { boxShadow: `0 0 0 2px ${accentColor}` }
+    : undefined
+  const ringFallback = accentColor ? '' : 'ring-1 ring-zinc-700/80'
 
   if (isDefOrDst(player) && team && !failed) {
     return (
-      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-zinc-800 p-2 ring-1 ring-zinc-700/80">
+      <span
+        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-zinc-800 p-2 ${ringFallback}`}
+        style={ringStyle}
+      >
         <img
           src={`/sports/nfl/logos/${team}.png`}
           alt=""
@@ -50,7 +57,10 @@ function PlayerAvatar({ player }) {
 
   if (!player?.headshot_url || failed) {
     return (
-      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-base font-bold text-zinc-300">
+      <span
+        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-base font-bold text-zinc-300 ${ringFallback}`}
+        style={ringStyle}
+      >
         {letter}
       </span>
     )
@@ -59,7 +69,8 @@ function PlayerAvatar({ player }) {
     <img
       src={player.headshot_url}
       alt=""
-      className="h-14 w-14 shrink-0 rounded-full object-cover bg-zinc-800"
+      className={`h-14 w-14 shrink-0 rounded-full object-cover bg-zinc-800 ${ringFallback}`}
+      style={ringStyle}
       onError={() => setFailed(true)}
     />
   )
@@ -610,14 +621,13 @@ function teamAbbrev(value) {
     .replace(/[^A-Z]/g, '')
 }
 
-function rosterWashForPlayer(player, game, paint) {
+function rosterAccentForPlayer(player, game, paint) {
   const team = teamAbbrev(player?.team)
   const away = teamAbbrev(game?.away?.abbrev)
   const home = teamAbbrev(game?.home?.abbrev)
   if (team && away && team === away) {
     return {
       color: paint.awayColor || '#3f3f46',
-      meshSrc: '/sports/nfl/textures/jersey-mesh-1.jpg',
       side: game?.away || { abbrev: team },
       treatment: paint.awayTreatment || 'halo',
     }
@@ -625,44 +635,33 @@ function rosterWashForPlayer(player, game, paint) {
   if (team && home && team === home) {
     return {
       color: paint.homeColor || '#3f3f46',
-      meshSrc: '/sports/nfl/textures/jersey-mesh-2.jpg',
       side: game?.home || { abbrev: team },
       treatment: paint.homeTreatment || 'halo',
     }
   }
   return {
     color: paint.homeColor || paint.awayColor || '#3f3f46',
-    meshSrc: '/sports/nfl/textures/jersey-mesh-1.jpg',
     side: game?.home || game?.away || { abbrev: team || '?' },
     treatment: paint.homeTreatment || paint.awayTreatment || 'halo',
   }
 }
 
-function RosterPlayerHeader({
-  player,
-  wash,
-  expanded,
-  hasStats,
-  onToggle,
-}) {
+/** Hairline accent + faded logo + team-colored avatar ring … no jersey wash bomb. */
+function RosterPlayerHeader({ player, accent, expanded, hasStats, onToggle }) {
   const headline = seasonHeadline(player)
   return (
-    <div
-      data-fantasy-h2h-wash
-      data-roster-player-wash
-      className="relative px-3.5 py-3.5"
-      style={{ '--fantasy-wash': wash.color }}
-    >
-      <span className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
-        <img data-fantasy-h2h-mesh src={wash.meshSrc} alt="" />
-        <span data-fantasy-h2h-tint />
-      </span>
+    <div data-roster-player-header className="relative overflow-hidden px-3.5 py-3.5">
       <span
-        className="pointer-events-none absolute top-1/2 z-[1] -translate-y-1/2 -right-[12%]"
-        style={{ opacity: 0.32 }}
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 left-0 z-[1] w-[3.5px]"
+        style={{ backgroundColor: accent.color }}
+      />
+      <span
+        className="pointer-events-none absolute top-1/2 z-[0] -translate-y-1/2 -right-[10%]"
+        style={{ opacity: 0.14 }}
         aria-hidden="true"
       >
-        <LoungeSportsTeamLogo side={wash.side} treatment={wash.treatment} size={118} />
+        <LoungeSportsTeamLogo side={accent.side} treatment={accent.treatment} size={112} />
       </span>
       <button
         type="button"
@@ -673,26 +672,26 @@ function RosterPlayerHeader({
           hasStats ? 'active:opacity-90' : ''
         }`}
       >
-        <PlayerAvatar player={player} />
+        <PlayerAvatar player={player} accentColor={accent.color} />
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-1.5">
-            <div className="truncate text-[16px] font-semibold text-white">{player.name}</div>
+            <div className="truncate text-[16px] font-semibold text-zinc-100">{player.name}</div>
             <InjuryPill status={player.injury_status} />
           </div>
-          <div className="mt-0.5 text-[12px] text-white/70">
+          <div className="mt-0.5 text-[12px] text-zinc-500">
             {player.position || '-'} · {player.team}
           </div>
         </div>
         {headline ? (
           <div className="shrink-0 pt-0.5 text-right">
-            <div className="text-[18px] font-bold tabular-nums text-white">{headline.value}</div>
-            <div className="text-[10px] uppercase tracking-wide text-white/65">{headline.label}</div>
+            <div className="text-[18px] font-bold tabular-nums text-zinc-100">{headline.value}</div>
+            <div className="text-[10px] uppercase tracking-wide text-zinc-500">{headline.label}</div>
           </div>
         ) : null}
         {hasStats ? (
           <span
             aria-hidden
-            className={`mt-2 shrink-0 text-white/70 transition-transform ${expanded ? 'rotate-180' : ''}`}
+            className={`mt-2 shrink-0 text-zinc-500 transition-transform ${expanded ? 'rotate-180' : ''}`}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
@@ -736,12 +735,12 @@ function RosterBoard({ players, game }) {
   const renderCollapsedRow = (p) => {
     const id = String(p.sleeper_id)
     const hasStats = buildStatGroups(p).length > 0
-    const wash = rosterWashForPlayer(p, game, paint)
+    const accent = rosterAccentForPlayer(p, game, paint)
     return (
       <li key={id} className="overflow-hidden">
         <RosterPlayerHeader
           player={p}
-          wash={wash}
+          accent={accent}
           expanded={false}
           hasStats={hasStats}
           onToggle={() => {
@@ -755,7 +754,7 @@ function RosterBoard({ players, game }) {
 
   const renderExpandedCard = (p) => {
     const id = String(p.sleeper_id)
-    const wash = rosterWashForPlayer(p, game, paint)
+    const accent = rosterAccentForPlayer(p, game, paint)
     return (
       <ul
         key={id}
@@ -766,7 +765,7 @@ function RosterBoard({ players, game }) {
         <li>
           <RosterPlayerHeader
             player={p}
-            wash={wash}
+            accent={accent}
             expanded
             hasStats
             onToggle={() => setExpandedId(null)}
@@ -778,7 +777,7 @@ function RosterBoard({ players, game }) {
   }
 
   const listClass =
-    'divide-y divide-zinc-800/80 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900'
+    'divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900'
 
   if (expandedIdx < 0) {
     return (

@@ -3684,6 +3684,13 @@ html.light [data-lounge-game-hero] [data-lounge-game-hero-ml] .text-white\/40 {
 [data-lounge-game-pills-scroll]::-webkit-scrollbar {
   display: none;
 }
+/* Match Roster/Props pill type (12px / semibold). Global select floor is 16px for iOS zoom. */
+[data-lounge-game-players] select {
+  font-family: inherit !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+}
 html.light [data-lounge-game-players] input,
 html.light [data-lounge-game-players] select,
 html.light [data-lounge-game-fantasy] a {

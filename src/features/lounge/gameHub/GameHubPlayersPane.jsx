@@ -85,13 +85,11 @@ function seasonStatLine(player, headline) {
   const rush = fmtStat(player.season_rush_yd)
   const recYd = fmtStat(player.season_rec_yd)
   const rec = fmtStat(player.season_rec, 0)
-  const gp = fmtStat(player.season_gp)
   const skip = headline?.label
   if (pass && skip !== 'Pass yd') parts.push(`${pass} pass yd`)
   if (rush && skip !== 'Rush yd') parts.push(`${rush} rush yd`)
   if (recYd && skip !== 'Rec yd') parts.push(`${recYd} rec yd`)
   if (rec) parts.push(`${rec} rec`)
-  if (gp) parts.push(`${gp} gp`)
   return parts.join(' · ')
 }
 
@@ -276,7 +274,7 @@ export default function GameHubPlayersPane({
           <select
             value={position}
             onChange={(e) => setPosition(e.target.value)}
-            className="rounded-full border border-zinc-700 bg-zinc-900 py-1 pl-3 pr-8 text-[12px] font-semibold text-zinc-200 outline-none focus:border-zinc-500"
+            className="rounded-full border border-zinc-700 bg-zinc-900 py-1 pl-3 pr-8 font-sans text-[12px] font-semibold leading-none text-zinc-200 outline-none focus:border-zinc-500"
           >
             {POSITION_FILTERS.map((opt) => (
               <option key={opt.id} value={opt.id}>

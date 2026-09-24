@@ -26,23 +26,16 @@ function isDefOrDst(player) {
   return p === 'DEF' || p === 'DST' || p === 'D'
 }
 
-function PlayerAvatar({ player, accentColor }) {
+function PlayerAvatar({ player }) {
   const [failed, setFailed] = useState(false)
   const team = String(player?.team || '')
     .toUpperCase()
     .replace(/[^A-Z]/g, '')
   const letter = String(player?.name || team || '?').slice(0, 1).toUpperCase()
-  const ringStyle = accentColor
-    ? { boxShadow: `0 0 0 2px ${accentColor}` }
-    : undefined
-  const ringFallback = accentColor ? '' : 'ring-1 ring-zinc-700/80'
 
   if (isDefOrDst(player) && team && !failed) {
     return (
-      <span
-        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-zinc-800 p-2 ${ringFallback}`}
-        style={ringStyle}
-      >
+      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-zinc-800 p-2 ring-1 ring-zinc-700/80">
         <img
           src={`/sports/nfl/logos/${team}.png`}
           alt=""
@@ -57,10 +50,7 @@ function PlayerAvatar({ player, accentColor }) {
 
   if (!player?.headshot_url || failed) {
     return (
-      <span
-        className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-base font-bold text-zinc-300 ${ringFallback}`}
-        style={ringStyle}
-      >
+      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-base font-bold text-zinc-300 ring-1 ring-zinc-700/80">
         {letter}
       </span>
     )
@@ -69,8 +59,7 @@ function PlayerAvatar({ player, accentColor }) {
     <img
       src={player.headshot_url}
       alt=""
-      className={`h-14 w-14 shrink-0 rounded-full object-cover bg-zinc-800 ${ringFallback}`}
-      style={ringStyle}
+      className="h-14 w-14 shrink-0 rounded-full object-cover bg-zinc-800 ring-1 ring-zinc-700/80"
       onError={() => setFailed(true)}
     />
   )
@@ -646,16 +635,11 @@ function rosterAccentForPlayer(player, game, paint) {
   }
 }
 
-/** Hairline accent + faded logo + team-colored avatar ring … no jersey wash bomb. */
+/** Faded team logo only … no wash / hairline / accent ring. */
 function RosterPlayerHeader({ player, accent, expanded, hasStats, onToggle }) {
   const headline = seasonHeadline(player)
   return (
     <div data-roster-player-header className="relative overflow-hidden px-3.5 py-3.5">
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-y-0 left-0 z-[1] w-[3.5px]"
-        style={{ backgroundColor: accent.color }}
-      />
       <span
         className="pointer-events-none absolute top-1/2 z-[0] -translate-y-1/2 -right-[10%]"
         style={{ opacity: 0.14 }}
@@ -672,7 +656,7 @@ function RosterPlayerHeader({ player, accent, expanded, hasStats, onToggle }) {
           hasStats ? 'active:opacity-90' : ''
         }`}
       >
-        <PlayerAvatar player={player} accentColor={accent.color} />
+        <PlayerAvatar player={player} />
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-1.5">
             <div className="truncate text-[16px] font-semibold text-zinc-100">{player.name}</div>

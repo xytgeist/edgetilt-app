@@ -60,12 +60,43 @@ function fmtYd(n) {
   return String(Math.round(Number(n)))
 }
 
-function projYardLine(player) {
+function seasonDetailLine(player) {
+  const pos = String(player?.position || '')
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
   const parts = []
-  if (player.projected_pass_yd != null) parts.push(`${fmt(player.projected_pass_yd, 0)} pass`)
-  if (player.projected_rush_yd != null) parts.push(`${fmt(player.projected_rush_yd, 0)} rush`)
-  if (player.projected_rec_yd != null) parts.push(`${fmt(player.projected_rec_yd, 0)} rec`)
-  else if (player.projected_rec != null) parts.push(`${fmt(player.projected_rec, 1)} rec`)
+  if (pos === 'QB') {
+    if (player.season_pass_yd != null) parts.push(`${fmt(player.season_pass_yd, 0)} pass yd`)
+    if (player.season_pass_td != null) parts.push(`${fmt(player.season_pass_td, 0)} TD`)
+    if (player.season_pass_int != null) parts.push(`${fmt(player.season_pass_int, 0)} INT`)
+  } else if (pos === 'RB' || pos === 'FB' || pos === 'HB') {
+    if (player.season_rush_yd != null) parts.push(`${fmt(player.season_rush_yd, 0)} rush yd`)
+    if (player.season_rec != null) parts.push(`${fmt(player.season_rec, 0)} rec`)
+    if (player.season_rec_yd != null && player.season_rec == null) {
+      parts.push(`${fmt(player.season_rec_yd, 0)} rec yd`)
+    }
+  } else if (pos === 'WR' || pos === 'TE') {
+    if (player.season_rec != null) parts.push(`${fmt(player.season_rec, 0)} rec`)
+    if (player.season_rec_yd != null) parts.push(`${fmt(player.season_rec_yd, 0)} yd`)
+    if (player.season_rec_td != null) parts.push(`${fmt(player.season_rec_td, 0)} TD`)
+  } else if (pos === 'K' || pos === 'PK') {
+    if (player.season_fgm != null || player.season_fgmiss != null) {
+      const made = Number(player.season_fgm) || 0
+      const miss = Number(player.season_fgmiss) || 0
+      parts.push(`${made}/${made + miss} FG`)
+    }
+  } else if (pos === 'DEF' || pos === 'DST') {
+    if (player.season_pts_allow != null) parts.push(`${fmt(player.season_pts_allow, 0)} allowed`)
+    if (player.season_sack != null) {
+      parts.push(`${fmt(player.season_sack, player.season_sack % 1 === 0 ? 0 : 1)} sack`)
+    }
+  } else {
+    if (player.season_pass_yd != null) parts.push(`${fmt(player.season_pass_yd, 0)} pass yd`)
+    if (player.season_rush_yd != null) parts.push(`${fmt(player.season_rush_yd, 0)} rush yd`)
+    if (player.season_rec_yd != null) parts.push(`${fmt(player.season_rec_yd, 0)} rec yd`)
+    else if (player.season_rec != null) parts.push(`${fmt(player.season_rec, 0)} rec`)
+  }
+  if (player.season_gp != null) parts.push(`${fmt(player.season_gp, 0)} gp`)
   return parts.join(' · ')
 }
 
@@ -530,7 +561,7 @@ export default function GameHubFantasyPane({ players, loading, error, gameStatus
               const proj = p.projected_ppr ?? p.fantasypros_pts
               const scored = p.game_ppr
               const season = p.season_ppr
-              const detail = projYardLine(p)
+              const detail = seasonDetailLine(p)
               const gameMain = liveOrFinal ? scored : proj
               const showProjUnder = liveOrFinal && proj != null
               return (

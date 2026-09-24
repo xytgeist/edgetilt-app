@@ -52,19 +52,19 @@ function fmtStat(n, digits = 0) {
   return Number.isInteger(v) || digits === 0 ? String(Math.round(v)) : v.toFixed(digits)
 }
 
-/** Season counting line for roster (not fantasy PPR). Omits the headline yards already on the right. */
+/** Season counting line for roster (not weekly projections). */
 function seasonStatLine(player, headline) {
   const parts = []
   const pass = fmtStat(player.season_pass_yd)
   const rush = fmtStat(player.season_rush_yd)
   const recYd = fmtStat(player.season_rec_yd)
-  const rec = fmtStat(player.season_rec, 1)
+  const rec = fmtStat(player.season_rec, 0)
   const gp = fmtStat(player.season_gp)
   const skip = headline?.label
-  if (pass && skip !== 'Pass yd') parts.push(`${pass} pass`)
-  if (rush && skip !== 'Rush yd') parts.push(`${rush} rush`)
+  if (pass && skip !== 'Pass yd') parts.push(`${pass} pass yd`)
+  if (rush && skip !== 'Rush yd') parts.push(`${rush} rush yd`)
   if (recYd && skip !== 'Rec yd') parts.push(`${recYd} rec yd`)
-  else if (rec && skip !== 'Rec') parts.push(`${rec} rec`)
+  if (rec) parts.push(`${rec} rec`)
   if (gp) parts.push(`${gp} gp`)
   return parts.join(' · ')
 }

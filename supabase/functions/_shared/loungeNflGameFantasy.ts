@@ -12,47 +12,23 @@ const FP_BASE = 'https://api.fantasypros.com/public/v2/json'
 
 const FANTASY_POS = new Set(['QB', 'RB', 'WR', 'TE'])
 
-/** Moneyline / spread / total / race / team specials tied to a single game. */
+/** Core game lines only … ML / spread / total / team total (drop exotics that flood Stats). */
 const KALSHI_GAME_SERIES = [
   'KXNFLGAME',
   'KXNFLSPREAD',
   'KXNFLTOTAL',
   'KXNFLTEAMTOTAL',
-  'KXNFLWINMARGIN',
-  'KXNFLRACE',
-  'KXNFLDSTTD',
-  'KXNFLSFTY',
-  'KXNFLTOTALTD',
-  'KXNFLTEAMTD',
-  'KXNFLTEAMSACK',
-  'KXNFLTEAMYDS',
-  'KXNFLFG',
-  'KXNFLTEAMFG',
-  'KXNFLTEAMTO',
-  'KXNFLTEAM1STDOWNS',
 ] as const
 
-/** Half / quarter winners, spreads, totals. */
+/** Half markets only … quarters are too noisy for the hub board. */
 const KALSHI_PERIOD_SERIES = [
   'KXNFL1H',
   'KXNFL2H',
-  'KXNFL1Q',
-  'KXNFL2Q',
-  'KXNFL3Q',
-  'KXNFL4Q',
   'KXNFL1HSPREAD',
   'KXNFL1HTOTAL',
   'KXNFL1HTEAMTOTAL',
   'KXNFL2HSPREAD',
   'KXNFL2HTOTAL',
-  'KXNFL1QSPREAD',
-  'KXNFL1QTOTAL',
-  'KXNFL2QSPREAD',
-  'KXNFL2QTOTAL',
-  'KXNFL3QSPREAD',
-  'KXNFL3QTOTAL',
-  'KXNFL4QSPREAD',
-  'KXNFL4QTOTAL',
 ] as const
 
 /** Player-scoped strike markets (grouped by player in the UI). */
@@ -82,8 +58,8 @@ const KALSHI_PLAYER_SERIES_SET = new Set<string>(KALSHI_PLAYER_SERIES)
 const KALSHI_PERIOD_SERIES_SET = new Set<string>(KALSHI_PERIOD_SERIES)
 
 /** Soft caps so one game does not return hundreds of strike lines. */
-const KALSHI_MAX_GAME = 60
-const KALSHI_MAX_PERIOD = 40
+const KALSHI_MAX_GAME = 16
+const KALSHI_MAX_PERIOD = 12
 const KALSHI_MAX_PLAYER = 80
 /** Keep low ... Kalshi public API 429s hard under fan-out. */
 const KALSHI_FETCH_CONCURRENCY = 2

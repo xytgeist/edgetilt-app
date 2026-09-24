@@ -5,9 +5,36 @@
 
 const POLY_BASE = 'https://gateway.polymarket.us'
 const POLY_WEB = 'https://polymarket.us'
-const POLY_MAX_GAME = 50
-const POLY_MAX_PERIOD = 35
+const POLY_MAX_GAME = 12
+const POLY_MAX_PERIOD = 10
 const POLY_MAX_PLAYER = 70
+
+/** Popular board types only … skip quarters / race / margin / specialty noise. */
+const POLY_POPULAR_GAME = new Set([
+  'football_team_full_game_winner',
+  'football_team_full_game_total',
+  'football_team_points_full_game_total',
+  'football_team_full_game_team_total',
+])
+
+const POLY_POPULAR_PERIOD = new Set([
+  'football_team_first_half_winner',
+  'football_team_first_half_total',
+  'football_game_first_half_total',
+  'football_team_second_half_winner',
+  'football_team_second_half_total',
+  'football_game_second_half_total',
+])
+
+function isPopularPolyNonPlayer(sportsType: string): boolean {
+  const t = String(sportsType || '').toLowerCase()
+  if (POLY_POPULAR_GAME.has(t) || POLY_POPULAR_PERIOD.has(t)) return true
+  // Team totals often land under slightly different type strings.
+  if (t.includes('team') && t.includes('total') && (t.includes('full_game') || t.includes('first_half') || t.includes('second_half'))) {
+    return true
+  }
+  return false
+}
 
 type PropKind = 'game' | 'period' | 'player'
 
@@ -230,6 +257,8 @@ export async function loadPolymarketProps(away: string, home: string): Promise<P
     if (st.includes('spread') && !st.includes('winner')) continue
     const mapped = mapPolyMarket(eventSlug, m)
     if (!mapped || seen.has(mapped.ticker)) continue
+    // Player props stay; game/period only when on the popular allowlist.
+    if (mapped.kind !== 'player' && !isPopularPolyNonPlayer(st)) continue
     seen.add(mapped.ticker)
     out.push(mapped)
   }

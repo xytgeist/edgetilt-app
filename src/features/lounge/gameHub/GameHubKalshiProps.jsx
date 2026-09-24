@@ -477,33 +477,62 @@ export function KalshiPlayerPropsBoard({ props, players, emptyLabel }) {
   )
 }
 
-/** Game + period markets (ML / total / halves / quarters) from Kalshi + Polymarket. */
-export function KalshiGamePropsBoard({ props, showPeriods = true }) {
+function isSecondHalfProp(prop) {
+  const series = String(prop?.series || '').toUpperCase()
+  if (series.includes('2H') || series.includes('SECOND_HALF') || series.includes('2ND_HALF')) {
+    return true
+  }
+  const text = `${prop?.line_label || ''} ${prop?.title || ''}`.toLowerCase()
+  return /\b2nd half\b|\bsecond half\b|\b2h\b/.test(text)
+}
+
+/** 2H markets unlock at halftime (or once 3Q+ is on the board). */
+function isPastHalftime(game, live) {
+  if (game?.status === 'post') return true
+  if (game?.status !== 'in') return false
+  const label = String(game?.status_label || live?.status_label || '').toLowerCase()
+  if (/half\s*time|\bhalftime\b|\bht\b/.test(label)) return true
+  const period = Number(live?.period ?? game?.live?.period)
+  return Number.isFinite(period) && period >= 3
+}
+
+/** Game + period markets (ML / total / halves) from Kalshi + Polymarket. */
+export function KalshiGamePropsBoard({ props, game = null, live = null, showPeriods = true }) {
   const [venue, setVenue] = useState('all')
   const [filter, setFilter] = useState('all')
+  const pastHalftime = isPastHalftime(game, live)
 
-  const { game, period, scale, counts } = useMemo(() => {
-    const list = filterByVenue(Array.isArray(props) ? props : [], venue)
-    const gameList = list.filter((p) => p.kind === 'game' || (!p.kind && !p.player_name))
+  const { gameList, period, scale, counts } = useMemo(() => {
+    const list = filterByVenue(Array.isArray(props) ? props : [], venue).filter((p) => {
+      if (p.kind === 'player') return false
+      if (isSecondHalfProp(p) && !pastHalftime) return false
+      return true
+    })
+    const gameRows = list.filter((p) => p.kind === 'game' || (!p.kind && !p.player_name))
     const periodList = list.filter((p) => p.kind === 'period')
     const all = Array.isArray(props) ? props : []
-    const gamePeriod = all.filter((p) => p.kind === 'game' || p.kind === 'period' || (!p.kind && !p.player_name))
+    const gamePeriod = all.filter((p) => {
+      if (p.kind === 'player') return false
+      if (!(p.kind === 'game' || p.kind === 'period' || (!p.kind && !p.player_name))) return false
+      if (isSecondHalfProp(p) && !pastHalftime) return false
+      return true
+    })
     return {
-      game: gameList,
+      gameList: gameRows,
       period: periodList,
-      scale: liqScaleFor([...gameList, ...periodList]),
+      scale: liqScaleFor([...gameRows, ...periodList]),
       counts: {
         all: gamePeriod.length,
         kalshi: gamePeriod.filter((p) => (p.source || 'kalshi') === 'kalshi').length,
         polymarket: gamePeriod.filter((p) => p.source === 'polymarket').length,
       },
     }
-  }, [props, venue])
+  }, [props, venue, pastHalftime])
 
   const showGame = filter === 'all' || filter === 'game'
   const showPeriod = showPeriods && (filter === 'all' || filter === 'period')
   const visible =
-    (showGame ? game.length : 0) + (showPeriod ? period.length : 0)
+    (showGame ? gameList.length : 0) + (showPeriod ? period.length : 0)
 
   if (!counts.all) {
     return (
@@ -539,16 +568,16 @@ export function KalshiGamePropsBoard({ props, showPeriods = true }) {
         </div>
       ) : null}
 
-      {showGame && game.length ? (
+      {showGame && gameList.length ? (
         <section className="space-y-2">
           <div className="flex items-baseline justify-between gap-2 px-0.5">
             <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
               Game
             </h3>
-            <span className="text-[11px] tabular-nums text-zinc-600">{game.length}</span>
+            <span className="text-[11px] tabular-nums text-zinc-600">{gameList.length}</span>
           </div>
           <div className="space-y-2">
-            {game.map((prop) => (
+            {gameList.map((prop) => (
               <KalshiGamePropCard key={prop.ticker} prop={prop} liqScale={scale} />
             ))}
           </div>

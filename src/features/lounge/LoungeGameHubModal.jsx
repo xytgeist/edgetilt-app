@@ -304,7 +304,7 @@ export default function LoungeGameHubModal({
             {fantasyLoading && !(fantasy.props || []).length ? (
               <div className="py-4 text-center text-sm text-zinc-500">Loading Kalshi markets…</div>
             ) : (
-              <KalshiGamePropsBoard props={fantasy.props} />
+              <KalshiGamePropsBoard props={fantasy.props} game={game} live={live} />
             )}
             <BoxScoreCard game={game} />
             <PlayerStats game={game} stats={detail.stats} />

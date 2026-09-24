@@ -378,7 +378,7 @@ function MatchupHalf({
         </span>
         {!empty && !isDef ? (
           <div
-            className={`pointer-events-none absolute bottom-0 z-[2] h-[9.75rem] w-[10.5rem] overflow-hidden ${
+            className={`pointer-events-none absolute bottom-0 z-[2] h-[10.725rem] w-[11.55rem] overflow-hidden ${
               align === 'right' ? '-left-8' : '-right-8'
             }`}
           >

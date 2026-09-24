@@ -627,10 +627,6 @@ function RosterBoard({ players }) {
 
   const renderRow = (p, { expanded = false } = {}) => {
     const headline = seasonHeadline(p)
-    const rank =
-      p.season_pos_rank != null
-        ? `#${p.season_pos_rank}${p.season_pos_rank_of != null ? `/${p.season_pos_rank_of}` : ''}`
-        : null
     const id = String(p.sleeper_id)
     const hasStats = buildStatGroups(p).length > 0
     return (
@@ -656,7 +652,6 @@ function RosterBoard({ players }) {
             <div className="mt-0.5 text-[12px] text-zinc-500">
               {p.position || '-'} · {p.team}
               {p.is_starter ? ' · Starter' : ''}
-              {rank ? ` · ${rank}` : ''}
             </div>
           </div>
           {headline ? (

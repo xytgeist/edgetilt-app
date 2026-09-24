@@ -1,6 +1,56 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { american, formatPostAge, ordinal, periodLabel, signedPoint } from './gameHubFormatters.js'
 import { feedPostDisplayCaption } from '../../../utils/communityFeedPost.js'
+
+function numOrNull(v) {
+  if (v == null || v === '') return null
+  const n = Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
+function americanToImplied(ml) {
+  const n = numOrNull(ml)
+  if (n == null || n === 0) return null
+  return n > 0 ? 100 / (n + 100) : -n / (-n + 100)
+}
+
+function median(values) {
+  const a = values.filter((v) => v != null && Number.isFinite(v)).sort((x, y) => x - y)
+  if (!a.length) return null
+  const mid = Math.floor(a.length / 2)
+  return a.length % 2 ? a[mid] : (a[mid - 1] + a[mid]) / 2
+}
+
+/**
+ * Book furthest from the median consensus across spread / total / ML.
+ * Needs ≥3 books so "consensus" means something.
+ */
+function biggestConsensusDeltaBook(books) {
+  const list = Array.isArray(books) ? books : []
+  if (list.length < 3) return null
+
+  const medSpread = median(list.map((b) => numOrNull(b.home_spread)))
+  const medTotal = median(list.map((b) => numOrNull(b.total)))
+  const medMl = median(list.map((b) => americanToImplied(b.home_ml)))
+
+  let best = null
+  for (const b of list) {
+    const deltas = []
+    const sp = numOrNull(b.home_spread)
+    const tot = numOrNull(b.total)
+    const ml = americanToImplied(b.home_ml)
+    // Normalize: 1 spread/total point ≈ 1; ML uses percentage points.
+    if (sp != null && medSpread != null) deltas.push(Math.abs(sp - medSpread))
+    if (tot != null && medTotal != null) deltas.push(Math.abs(tot - medTotal))
+    if (ml != null && medMl != null) deltas.push(Math.abs(ml - medMl) * 100)
+    if (!deltas.length) continue
+    const score = Math.max(...deltas)
+    if (!best || score > best.score) best = { book: b.book, score }
+  }
+  // Ignore noise (half a point / half a % still looks like agreement).
+  if (!best || best.score < 0.5) return null
+  return best.book
+}
 
 export function BoxScoreCard({ game }) {
   const awayLines = Array.isArray(game.away?.linescores) ? game.away.linescores : []
@@ -61,6 +111,7 @@ export function BoxScoreCard({ game }) {
 export function OddsTable({ game, books }) {
   const list = Array.isArray(books) ? books : []
   const [bookId, setBookId] = useState(() => list[0]?.book || '')
+  const outlierBook = useMemo(() => biggestConsensusDeltaBook(list), [list])
 
   useEffect(() => {
     if (!list.length) {
@@ -91,15 +142,26 @@ export function OddsTable({ game, books }) {
           <div className="flex w-max gap-1.5">
             {list.map((b) => {
               const active = b.book === row.book
+              const isOutlier = outlierBook != null && b.book === outlierBook
               return (
                 <button
                   key={b.book}
                   type="button"
                   onClick={() => setBookId(b.book)}
-                  className={`shrink-0 rounded-full px-3 py-1 text-[12px] font-semibold touch-manipulation ${
+                  title={isOutlier ? 'Biggest gap from consensus' : undefined}
+                  aria-label={isOutlier ? `${b.book}, biggest gap from consensus` : b.book}
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-semibold touch-manipulation ${
                     active ? 'bg-zinc-100 text-zinc-950' : 'bg-zinc-800 text-zinc-300'
                   }`}
                 >
+                  {isOutlier ? (
+                    <span
+                      className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+                        active ? 'bg-amber-500' : 'bg-amber-400'
+                      }`}
+                      aria-hidden
+                    />
+                  ) : null}
                   {b.book}
                 </button>
               )

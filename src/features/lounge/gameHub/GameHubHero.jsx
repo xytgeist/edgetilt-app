@@ -55,8 +55,8 @@ function FieldViz({ game, live }) {
 }
 
 /**
- * One bets bar (away left / home right) with a money seam marker on the same track.
- * Side labels show bets·money so the divergence stays readable without a second rail.
+ * One bets bar (away left / home right). Money lives in the side pair `bets·$`
+ * under each abbrev … no second rail, no seam tick.
  */
 function HeroPublicBetting({ game, splits, awayColor, homeColor }) {
   if (!splits) return null
@@ -73,43 +73,13 @@ function HeroPublicBetting({ game, splits, awayColor, homeColor }) {
 
   return (
     <div data-lounge-game-hero-splits className="px-4 pb-2.5 pt-0.5">
-      <div className="flex items-end justify-between gap-2">
-        <div className="min-w-0 text-left">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70 drop-shadow">
-            {game.away?.abbrev}
-          </div>
-          <div className="text-[12px] font-bold tabular-nums leading-none text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
-            {Math.round(awayBets)}
-            <span className="mx-0.5 font-semibold text-white/40">·</span>
-            <span className={moneySkew ? 'text-amber-200' : 'text-white/80'}>
-              {Math.round(awayMoney)}
-            </span>
-          </div>
-        </div>
-        <div className="pb-0.5 text-center text-[9px] font-semibold uppercase tracking-[0.14em] text-white/45">
-          {moneySkew ? 'Public · $ split' : 'Public'}
-        </div>
-        <div className="min-w-0 text-right">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70 drop-shadow">
-            {game.home?.abbrev}
-          </div>
-          <div className="text-[12px] font-bold tabular-nums leading-none text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
-            {Math.round(homeBets)}
-            <span className="mx-0.5 font-semibold text-white/40">·</span>
-            <span className={moneySkew ? 'text-amber-200' : 'text-white/80'}>
-              {Math.round(homeMoney)}
-            </span>
-          </div>
-        </div>
-      </div>
-
       <div
-        className={`relative mt-1.5 h-[7px] overflow-visible rounded-full bg-black/25 ring-1 ring-inset ${
+        className={`relative h-[7px] overflow-hidden rounded-full bg-black/25 ring-1 ring-inset ${
           moneySkew ? 'ring-amber-300/45' : 'ring-white/15'
         }`}
-        title="Bar = % of bets · tick = % of money"
+        title="% of bets"
       >
-        <div className="absolute inset-0 flex overflow-hidden rounded-full">
+        <div className="absolute inset-0 flex">
           <div
             className="h-full transition-[width] duration-500 ease-out"
             style={{
@@ -125,22 +95,35 @@ function HeroPublicBetting({ game, splits, awayColor, homeColor }) {
             }}
           />
         </div>
-        {/* Money seam … where handle % splits away/home on the same axis */}
-        <div
-          className="pointer-events-none absolute top-1/2 z-[1] -translate-x-1/2 -translate-y-1/2"
-          style={{ left: `${awayMoney}%` }}
-        >
-          <div
-            className={`h-3.5 w-[2px] rounded-full shadow-[0_0_0_1px_rgba(0,0,0,0.35)] ${
-              moneySkew ? 'bg-amber-200' : 'bg-white'
-            }`}
-          />
-          <div
-            className={`absolute left-1/2 top-full mt-0.5 -translate-x-1/2 text-[8px] font-bold uppercase tracking-wide ${
-              moneySkew ? 'text-amber-200/90' : 'text-white/55'
-            }`}
-          >
-            $
+      </div>
+
+      <div className="mt-1.5 flex items-start justify-between gap-2">
+        <div className="min-w-0 text-left">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70 drop-shadow">
+            {game.away?.abbrev}
+          </div>
+          <div className="mt-0.5 text-[12px] font-bold tabular-nums leading-none text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
+            {Math.round(awayBets)}
+            <span className="mx-0.5 font-semibold text-white/40">·</span>
+            <span className={moneySkew ? 'text-amber-200' : 'text-white/75'}>
+              {Math.round(awayMoney)}
+            </span>
+          </div>
+        </div>
+        <div className="pt-0.5 text-center text-[9px] font-semibold uppercase tracking-[0.14em] text-white/40">
+          <div>{moneySkew ? 'Public · $ split' : 'Public'}</div>
+          <div className="mt-0.5 font-medium normal-case tracking-normal text-white/30">bets · $</div>
+        </div>
+        <div className="min-w-0 text-right">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70 drop-shadow">
+            {game.home?.abbrev}
+          </div>
+          <div className="mt-0.5 text-[12px] font-bold tabular-nums leading-none text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
+            {Math.round(homeBets)}
+            <span className="mx-0.5 font-semibold text-white/40">·</span>
+            <span className={moneySkew ? 'text-amber-200' : 'text-white/75'}>
+              {Math.round(homeMoney)}
+            </span>
           </div>
         </div>
       </div>

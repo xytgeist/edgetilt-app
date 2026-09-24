@@ -5,6 +5,7 @@
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { buildLoungeSportsScoreboard, fetchLoungeSportsGameDetail } from '../_shared/loungeSportsScoreboard.ts'
+import { loadPastedBettingSplitsForSlate } from '../_shared/loungeBotBettingSplits.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -56,12 +57,32 @@ Deno.serve(async (req) => {
     const game = board.games.find((g) => g.id === eventId)
     if (!game) return json(404, { error: 'Game not on the current slate.' })
     const detail = await fetchLoungeSportsGameDetail(game)
+    const splitMap = await loadPastedBettingSplitsForSlate(admin, game.sport_key, [
+      {
+        id: game.id,
+        home_team: game.home?.name || game.home?.mascot || '',
+        away_team: game.away?.name || game.away?.mascot || '',
+      },
+    ])
+    const summary = splitMap.get(game.id)
+    const splits = summary
+      ? {
+          away_ticket_pct: Math.round(Number(summary.awayTicketPct) || 0),
+          away_handle_pct: Math.round(Number(summary.awayHandlePct) || 0),
+          home_ticket_pct: Math.round(Number(summary.homeTicketPct) || 0),
+          home_handle_pct: Math.round(Number(summary.homeHandlePct) || 0),
+          source: summary.source || null,
+          is_fade_public: Boolean(summary.isFadePublic),
+          divergence_pts: Math.round(Number(summary.divergencePts) || 0),
+        }
+      : null
     return json(200, {
       ok: true,
       game: { ...game, live: detail.live || game.live },
       odds: detail.odds,
       plays: detail.plays,
       stats: detail.stats,
+      splits,
       fetched_at: new Date().toISOString(),
     })
   } catch (err) {

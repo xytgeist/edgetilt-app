@@ -37,7 +37,7 @@ export default function LoungeGameHubModal({
   const [postsLoading, setPostsLoading] = useState(false)
   const [postsErr, setPostsErr] = useState('')
   const [postsNonce, setPostsNonce] = useState(0)
-  const [detail, setDetail] = useState({ odds: [], plays: [], stats: [], live: null })
+  const [detail, setDetail] = useState({ odds: [], plays: [], stats: [], live: null, splits: null })
   const [fantasy, setFantasy] = useState({
     players: [],
     props: [],
@@ -67,7 +67,7 @@ export default function LoungeGameHubModal({
 
   useEffect(() => {
     if (!game || !supabaseClient) {
-      setDetail({ odds: [], plays: [], stats: [], live: null })
+      setDetail({ odds: [], plays: [], stats: [], live: null, splits: null })
       return undefined
     }
     let cancelled = false
@@ -79,6 +79,7 @@ export default function LoungeGameHubModal({
           plays: Array.isArray(data.plays) ? data.plays : [],
           stats: Array.isArray(data.stats) ? data.stats : [],
           live: data.game?.live || data.live || null,
+          splits: data.splits && typeof data.splits === 'object' ? data.splits : null,
         })
       })
     }
@@ -286,8 +287,7 @@ export default function LoungeGameHubModal({
         live={live}
         lastPlay={lastPlay}
         topBar={hubTopBar}
-        props={fantasy.props}
-        books={detail.odds}
+        splits={detail.splits}
       />
 
       <div className="flex shrink-0 gap-5 overflow-x-auto border-b border-zinc-800 px-4">

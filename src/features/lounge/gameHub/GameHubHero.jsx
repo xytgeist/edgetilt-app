@@ -6,12 +6,10 @@ import {
   downDistanceLabel,
   fieldPercent,
   formatKickoff,
-  kalshiContracts,
   liveClockLabel,
   scoreText,
   yardLineLabel,
 } from './gameHubFormatters.js'
-import { pickGameMoneyline } from './gameHubMoneyline.js'
 
 function FieldViz({ game, live }) {
   if (!String(game.sport_key || '').includes('football')) return null
@@ -56,54 +54,90 @@ function FieldViz({ game, live }) {
   )
 }
 
-function MoneylineRow({ side, accent }) {
-  if (!side) return null
-  const inner = (
-    <>
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-[13px] font-semibold text-white">{side.label}</div>
-        <div className="mt-0.5 h-[3px] w-10 rounded-full" style={{ background: accent }} />
-      </div>
-      <span className="shrink-0 text-[11px] font-medium tabular-nums text-white/45">{side.mult}x</span>
-      <span className="inline-flex shrink-0 items-center justify-center rounded-full border border-emerald-400/45 bg-emerald-500/15 px-2.5 py-1 text-[12px] font-bold tabular-nums text-emerald-300">
-        {side.pct}%
+function SplitRail({ label, awayPct, homePct, awayColor, homeColor, emphasize }) {
+  const away = Math.max(0, Math.min(100, Number(awayPct) || 0))
+  const home = Math.max(0, Math.min(100, Number(homePct) || 0))
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-7 shrink-0 text-right text-[11px] font-bold tabular-nums text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
+        {away}
       </span>
-    </>
-  )
-  if (side.url) {
-    return (
-      <a
-        href={side.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center gap-2 touch-manipulation active:opacity-85"
+      <div
+        className={`relative h-[5px] min-w-0 flex-1 overflow-hidden rounded-full bg-black/25 ring-1 ring-inset ${
+          emphasize ? 'ring-amber-300/50' : 'ring-white/15'
+        }`}
       >
-        {inner}
-      </a>
-    )
-  }
-  return <div className="flex items-center gap-2">{inner}</div>
+        <div className="absolute inset-0 flex">
+          <div
+            className="h-full transition-[width] duration-500 ease-out"
+            style={{
+              width: `${away}%`,
+              background: `linear-gradient(90deg, ${awayColor}cc, ${awayColor})`,
+            }}
+          />
+          <div
+            className="h-full transition-[width] duration-500 ease-out"
+            style={{
+              width: `${home}%`,
+              background: `linear-gradient(90deg, ${homeColor}, ${homeColor}cc)`,
+            }}
+          />
+        </div>
+      </div>
+      <span className="w-7 shrink-0 text-[11px] font-bold tabular-nums text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
+        {home}
+      </span>
+      <span
+        className={`w-9 shrink-0 text-right text-[9px] font-semibold uppercase tracking-[0.14em] ${
+          emphasize ? 'text-amber-200/90' : 'text-white/45'
+        }`}
+      >
+        {label}
+      </span>
+    </div>
+  )
 }
 
-function HeroMoneylineMarket({ game, props, books, awayColor, homeColor }) {
-  const market = pickGameMoneyline({ props, books, game })
-  if (!market?.away || !market?.home) return null
-  const volLabel =
-    market.volume != null && market.volume > 0 ? `${kalshiContracts(market.volume)} vol` : null
-  const sourceLabel =
-    market.source === 'polymarket' ? 'Poly' : market.source === 'kalshi' ? 'Kalshi' : market.source
+/**
+ * Public ticket % vs handle % … no card, floats on the team wash.
+ * Combines bets + money as twin opposing rails (away left / home right).
+ */
+function HeroPublicBetting({ game, splits, awayColor, homeColor }) {
+  if (!splits) return null
+  const awayBets = splits.away_ticket_pct
+  const homeBets = splits.home_ticket_pct
+  const awayMoney = splits.away_handle_pct
+  const homeMoney = splits.home_handle_pct
+  if ([awayBets, homeBets, awayMoney, homeMoney].some((n) => n == null || Number.isNaN(Number(n)))) {
+    return null
+  }
+  const moneySkew = Math.abs(Number(awayMoney) - Number(awayBets)) >= 12 || Boolean(splits.is_fade_public)
 
   return (
-    <div data-lounge-game-hero-ml className="px-4 pb-3 pt-1">
-      <div className="space-y-2 rounded-2xl border border-white/10 bg-black/25 px-3 py-2.5 backdrop-blur-[2px]">
-        <MoneylineRow side={market.away} accent={awayColor || '#ef4444'} />
-        <MoneylineRow side={market.home} accent={homeColor || '#22c55e'} />
-        {volLabel || sourceLabel ? (
-          <div className="flex items-center justify-between gap-2 pt-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">
-            <span>{volLabel || 'Winner'}</span>
-            {sourceLabel ? <span>{sourceLabel}</span> : null}
-          </div>
-        ) : null}
+    <div data-lounge-game-hero-splits className="px-4 pb-2.5 pt-0.5">
+      <div className="space-y-1.5">
+        <SplitRail
+          label="bets"
+          awayPct={awayBets}
+          homePct={homeBets}
+          awayColor={awayColor || '#ef4444'}
+          homeColor={homeColor || '#22c55e'}
+        />
+        <SplitRail
+          label="money"
+          awayPct={awayMoney}
+          homePct={homeMoney}
+          awayColor={awayColor || '#ef4444'}
+          homeColor={homeColor || '#22c55e'}
+          emphasize={moneySkew}
+        />
+      </div>
+      <div className="mt-1.5 flex items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/50">
+        <span className="text-white/70 drop-shadow">{game.away?.abbrev}</span>
+        <span className="truncate text-center">
+          {moneySkew ? 'Public · money split' : 'Public'}
+        </span>
+        <span className="text-white/70 drop-shadow">{game.home?.abbrev}</span>
       </div>
     </div>
   )
@@ -118,8 +152,7 @@ export default function GameHubHero({
   live,
   lastPlay,
   topBar = null,
-  props = null,
-  books = null,
+  splits = null,
 }) {
   const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(game)
   const clock = liveClockLabel(game, live)
@@ -186,10 +219,9 @@ export default function GameHubHero({
       </div>
 
       <div className="relative z-[4]">
-        <HeroMoneylineMarket
+        <HeroPublicBetting
           game={game}
-          props={props}
-          books={books}
+          splits={splits}
           awayColor={awayColor}
           homeColor={homeColor}
         />

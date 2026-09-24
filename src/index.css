@@ -3655,13 +3655,17 @@ html.light [data-lounge-game-hero] [data-lounge-game-glass-chip='active'] {
   background-color: rgba(255, 255, 255, 0.38) !important;
   border-color: rgba(255, 255, 255, 0.55) !important;
 }
-/* Hero moneyline strip stays light-on-dark on the team wash */
-html.light [data-lounge-game-hero] [data-lounge-game-hero-ml] .text-emerald-300 {
-  color: #6ee7b7 !important;
+/* Hero public splits strip stays light-on-dark on the team wash */
+html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-white,
+html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-white\/70 {
+  color: #fff !important;
 }
-html.light [data-lounge-game-hero] [data-lounge-game-hero-ml] .text-white\/45,
-html.light [data-lounge-game-hero] [data-lounge-game-hero-ml] .text-white\/40 {
-  color: rgba(255, 255, 255, 0.45) !important;
+html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-white\/50,
+html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-white\/45 {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-amber-200\/90 {
+  color: #fde68a !important;
 }
 /* Game hub sibling pills: hide scrollbar + soft edge fade (mask only … no backdrop-blur on chips). */
 [data-lounge-game-pills-scroll] {

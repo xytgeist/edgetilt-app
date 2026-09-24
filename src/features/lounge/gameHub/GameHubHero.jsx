@@ -6,10 +6,12 @@ import {
   downDistanceLabel,
   fieldPercent,
   formatKickoff,
+  kalshiContracts,
   liveClockLabel,
   scoreText,
   yardLineLabel,
 } from './gameHubFormatters.js'
+import { pickGameMoneyline } from './gameHubMoneyline.js'
 
 function FieldViz({ game, live }) {
   if (!String(game.sport_key || '').includes('football')) return null
@@ -54,11 +56,71 @@ function FieldViz({ game, live }) {
   )
 }
 
+function MoneylineRow({ side, accent }) {
+  if (!side) return null
+  const inner = (
+    <>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[13px] font-semibold text-white">{side.label}</div>
+        <div className="mt-0.5 h-[3px] w-10 rounded-full" style={{ background: accent }} />
+      </div>
+      <span className="shrink-0 text-[11px] font-medium tabular-nums text-white/45">{side.mult}x</span>
+      <span className="inline-flex shrink-0 items-center justify-center rounded-full border border-emerald-400/45 bg-emerald-500/15 px-2.5 py-1 text-[12px] font-bold tabular-nums text-emerald-300">
+        {side.pct}%
+      </span>
+    </>
+  )
+  if (side.url) {
+    return (
+      <a
+        href={side.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 touch-manipulation active:opacity-85"
+      >
+        {inner}
+      </a>
+    )
+  }
+  return <div className="flex items-center gap-2">{inner}</div>
+}
+
+function HeroMoneylineMarket({ game, props, books, awayColor, homeColor }) {
+  const market = pickGameMoneyline({ props, books, game })
+  if (!market?.away || !market?.home) return null
+  const volLabel =
+    market.volume != null && market.volume > 0 ? `${kalshiContracts(market.volume)} vol` : null
+  const sourceLabel =
+    market.source === 'polymarket' ? 'Poly' : market.source === 'kalshi' ? 'Kalshi' : market.source
+
+  return (
+    <div data-lounge-game-hero-ml className="px-4 pb-3 pt-1">
+      <div className="space-y-2 rounded-2xl border border-white/10 bg-black/25 px-3 py-2.5 backdrop-blur-[2px]">
+        <MoneylineRow side={market.away} accent={awayColor || '#ef4444'} />
+        <MoneylineRow side={market.home} accent={homeColor || '#22c55e'} />
+        {volLabel || sourceLabel ? (
+          <div className="flex items-center justify-between gap-2 pt-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/40">
+            <span>{volLabel || 'Winner'}</span>
+            {sourceLabel ? <span>{sourceLabel}</span> : null}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
 /**
  * X-style split team-color hero. Same silver gridiron + multiply washes as Lounge
  * post game cards. `topBar` sits inside the wash so colors run under the status row.
  */
-export default function GameHubHero({ game, live, lastPlay, topBar = null }) {
+export default function GameHubHero({
+  game,
+  live,
+  lastPlay,
+  topBar = null,
+  props = null,
+  books = null,
+}) {
   const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(game)
   const clock = liveClockLabel(game, live)
   const down = downDistanceLabel(live)
@@ -107,11 +169,6 @@ export default function GameHubHero({ game, live, lastPlay, topBar = null }) {
             {down ? <span className="text-[12px] font-semibold text-white/90">{down}</span> : null}
             {yard ? <span className="text-[12px] font-semibold text-white/70">{yard}</span> : null}
             {kickoff ? <span className="text-[11px] font-medium text-white/70">{kickoff}</span> : null}
-            {game.status === 'pre' ? (
-              <span className="mt-1 rounded-full border border-white/20 bg-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/90">
-                Pregame
-              </span>
-            ) : null}
           </div>
 
           <div className="flex min-w-0 flex-1 flex-col items-end gap-1">
@@ -129,6 +186,13 @@ export default function GameHubHero({ game, live, lastPlay, topBar = null }) {
       </div>
 
       <div className="relative z-[4]">
+        <HeroMoneylineMarket
+          game={game}
+          props={props}
+          books={books}
+          awayColor={awayColor}
+          homeColor={homeColor}
+        />
         <FieldViz game={game} live={live} />
       </div>
 

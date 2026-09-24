@@ -44,7 +44,7 @@ export function signedPoint(point) {
 }
 
 export function scoreText(side, status) {
-  if (status === 'pre' || side?.score == null) return '—'
+  if (status === 'pre' || side?.score == null) return '-'
   return String(side.score)
 }
 

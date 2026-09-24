@@ -90,9 +90,8 @@ export default function LoungeGameHubModal({
     }
   }, [game, supabaseClient])
 
-  const wantsFantasy = tab === 'players' || tab === 'stats'
   useEffect(() => {
-    if (!game || !supabaseClient || !wantsFantasy) return undefined
+    if (!game || !supabaseClient) return undefined
     let cancelled = false
     setFantasyLoading(true)
     setFantasyErr('')
@@ -126,7 +125,7 @@ export default function LoungeGameHubModal({
     return () => {
       cancelled = true
     }
-  }, [game, supabaseClient, wantsFantasy])
+  }, [game, supabaseClient])
 
   const wantsPosts = tab === 'posts' || tab === 'chat'
   const postSort = postsSort === 'top' ? LOUNGE_SEARCH_SORT.ENGAGEMENT : LOUNGE_SEARCH_SORT.RECENT
@@ -280,7 +279,14 @@ export default function LoungeGameHubModal({
       }
       style={embedded ? undefined : { zIndex: Z_APP_MODAL }}
     >
-      <GameHubHero game={game} live={live} lastPlay={lastPlay} topBar={hubTopBar} />
+      <GameHubHero
+        game={game}
+        live={live}
+        lastPlay={lastPlay}
+        topBar={hubTopBar}
+        props={fantasy.props}
+        books={detail.odds}
+      />
 
       <div className="flex shrink-0 gap-5 overflow-x-auto border-b border-zinc-800 px-4">
         {tabs.map((item) => (

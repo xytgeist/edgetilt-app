@@ -151,8 +151,22 @@ export function KalshiLiqStrip({ vol, oi, book, scale, compact = false }) {
   )
 }
 
-/** Compact Yes/No deep-link chips … label + price on one line. */
+/** Compact Yes/No deep-link chips … dashes (no link) when a venue has no book. */
 function YesNoButtons({ prop }) {
+  if (!prop) {
+    return (
+      <div className="inline-flex shrink-0 overflow-hidden rounded-lg ring-1 ring-inset ring-zinc-800 opacity-55">
+        <span className="inline-flex items-center gap-1 px-2 py-1">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Y</span>
+          <span className="text-[12px] font-bold tabular-nums text-zinc-500">—</span>
+        </span>
+        <span className="inline-flex items-center gap-1 border-l border-zinc-800 px-2 py-1">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">N</span>
+          <span className="text-[12px] font-bold tabular-nums text-zinc-500">—</span>
+        </span>
+      </div>
+    )
+  }
   const yesPx = prop.yes_ask ?? prop.yes_bid ?? prop.last
   const noPx =
     prop.no_ask ??
@@ -184,6 +198,79 @@ function YesNoButtons({ prop }) {
   )
 }
 
+function escapeRegExp(s) {
+  return String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/** Strip player name + normalize synonyms so Kalshi/Poly lines can share a row. */
+function lineMatchKey(prop, playerName) {
+  let s = String(prop?.line_label || prop?.title || '')
+  const name = String(playerName || prop?.player_name || '').trim()
+  if (name) s = s.replace(new RegExp(`^${escapeRegExp(name)}\\s*[:\\-]?\\s*`, 'i'), '')
+  s = s
+    .toLowerCase()
+    .replace(/\bwill\b/g, ' ')
+    .replace(/\brecord\b/g, ' ')
+    .replace(/\bthe\b/g, ' ')
+    .replace(/\btouchdowns?\b/g, 'td')
+    .replace(/\btds?\b/g, 'td')
+    .replace(/\bpassing yards?\b/g, 'passyd')
+    .replace(/\bpass yds?\b/g, 'passyd')
+    .replace(/\brushing yards?\b/g, 'rushyd')
+    .replace(/\brush yds?\b/g, 'rushyd')
+    .replace(/\breceiving yards?\b/g, 'recyd')
+    .replace(/\brec yds?\b/g, 'recyd')
+    .replace(/\breceptions?\b/g, 'rec')
+    .replace(/\bfirst touchdown\b/g, 'firsttd')
+    .replace(/\bfirst td\b/g, 'firsttd')
+    .replace(/\bfantasy points?(?:\s*ppr)?\b/g, 'fpts')
+    .replace(/\bcompletions?\b/g, 'comp')
+    .replace(/\battempts?\b/g, 'att')
+    .replace(/[^a-z0-9+.]/g, '')
+  return s || String(prop?.ticker || '')
+}
+
+function displayLineLabel(prop, playerName) {
+  let s = String(prop?.line_label || prop?.title || '').trim()
+  const name = String(playerName || prop?.player_name || '').trim()
+  if (name) s = s.replace(new RegExp(`^${escapeRegExp(name)}\\s*[:\\-]?\\s*`, 'i'), '')
+  s = s.replace(/^will\s+/i, '').replace(/\s+record\s+/i, ' ').trim()
+  return s || prop?.line_label || prop?.title || 'Line'
+}
+
+/** Pair Kalshi + Polymarket books that describe the same strike. */
+function pairPlayerLines(lines, playerName) {
+  const byKey = new Map()
+  for (const p of lines || []) {
+    const key = lineMatchKey(p, playerName)
+    if (!byKey.has(key)) {
+      byKey.set(key, {
+        key,
+        label: displayLineLabel(p, playerName),
+        kalshi: null,
+        polymarket: null,
+      })
+    }
+    const row = byKey.get(key)
+    const src = p.source || 'kalshi'
+    if (src === 'polymarket') row.polymarket = p
+    else row.kalshi = p
+    const label = displayLineLabel(p, playerName)
+    if (label && label.length <= String(row.label || '').length) row.label = label
+  }
+  const rows = [...byKey.values()]
+  rows.sort((a, b) => {
+    const score = (row) => {
+      const props = [row.kalshi, row.polymarket].filter(Boolean)
+      return props.reduce((s, p) => s + ((p.volume_24h ?? p.volume) || 0), 0)
+    }
+    const ds = score(b) - score(a)
+    if (ds !== 0) return ds
+    return String(a.label).localeCompare(String(b.label))
+  })
+  return rows
+}
+
 function KalshiGamePropCard({ prop, liqScale }) {
   const vol = prop.volume_24h ?? prop.volume
   const oi = prop.open_interest
@@ -199,10 +286,10 @@ function KalshiGamePropCard({ prop, liqScale }) {
           rel="noopener noreferrer"
           className="min-w-0 flex-1 touch-manipulation active:opacity-90"
         >
-        <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-          <SourceChip source={prop.source} />
-          <span>{seriesShort(prop.series)}</span>
-        </div>
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+            <SourceChip source={prop.source} />
+            <span>{seriesShort(prop.series)}</span>
+          </div>
           <div className="mt-0.5 text-[13px] font-semibold leading-snug text-zinc-100">
             {prop.line_label || prop.title}
           </div>
@@ -218,6 +305,7 @@ function KalshiGamePropCard({ prop, liqScale }) {
 
 function KalshiPlayerPropGroup({ group, liqScale }) {
   const { name, roster, lines } = group
+  const pairs = useMemo(() => pairPlayerLines(lines, name), [lines, name])
   const aggVol = sumField(lines, 'volume_24h') ?? sumField(lines, 'volume')
   const aggOi = sumField(lines, 'open_interest')
   const aggBook = lines.reduce((acc, p) => {
@@ -234,7 +322,7 @@ function KalshiPlayerPropGroup({ group, liqScale }) {
             <div className="truncate text-[15px] font-semibold text-zinc-100">{name}</div>
             <div className="truncate text-[12px] text-zinc-500">
               {[roster?.position, roster?.team].filter(Boolean).join(' · ') || 'Player props'}
-              {` · ${lines.length} line${lines.length === 1 ? '' : 's'}`}
+              {` · ${pairs.length} line${pairs.length === 1 ? '' : 's'}`}
             </div>
           </div>
         </div>
@@ -242,30 +330,28 @@ function KalshiPlayerPropGroup({ group, liqScale }) {
           <KalshiLiqStrip vol={aggVol} oi={aggOi} book={aggBook} scale={liqScale} compact />
         </div>
       </div>
+
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(6.75rem,auto)_minmax(6.75rem,auto)] gap-x-2 border-b border-zinc-800/80 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-zinc-600">
+        <span>Line</span>
+        <span className="text-center">Kalshi</span>
+        <span className="text-center">Poly</span>
+      </div>
+
       <div className="divide-y divide-zinc-800/70">
-        {lines.map((prop) => (
-          <div key={prop.ticker} className="flex items-center gap-2 px-3 py-2">
-            <div className="min-w-0 flex-1">
-              <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-                <span className="mr-1.5 inline-flex align-middle">
-                  <SourceChip source={prop.source} />
-                </span>
-                {seriesShort(prop.series)}
-                <span className="ml-2 font-normal normal-case tracking-normal tabular-nums text-zinc-600">
-                  V {kalshiContracts(prop.volume_24h ?? prop.volume)} · OI{' '}
-                  {kalshiContracts(prop.open_interest)}
-                </span>
-              </div>
-              <a
-                href={prop.url_market || prop.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="mt-0.5 block truncate text-[13px] font-semibold leading-snug text-zinc-100 touch-manipulation active:opacity-90"
-              >
-                {prop.line_label || prop.title}
-              </a>
+        {pairs.map((row) => (
+          <div
+            key={row.key}
+            className="grid grid-cols-[minmax(0,1fr)_minmax(6.75rem,auto)_minmax(6.75rem,auto)] items-center gap-x-2 px-3 py-2"
+          >
+            <div className="min-w-0 truncate text-[13px] font-semibold leading-snug text-zinc-100">
+              {row.label}
             </div>
-            <YesNoButtons prop={prop} />
+            <div className="flex justify-center">
+              <YesNoButtons prop={row.kalshi} />
+            </div>
+            <div className="flex justify-center">
+              <YesNoButtons prop={row.polymarket} />
+            </div>
           </div>
         ))}
       </div>
@@ -315,45 +401,30 @@ function groupPlayerProps(props, rosterPlayers) {
     if (lb !== la) return lb - la
     return a.name.localeCompare(b.name)
   })
-  for (const g of groups) {
-    g.lines.sort((a, b) => ((b.volume_24h ?? b.volume) || 0) - ((a.volume_24h ?? a.volume) || 0))
-  }
   return groups
 }
 
-/** Player strike markets grouped under each player. */
+/** Player strike markets grouped under each player … Kalshi | Poly columns. */
 export function KalshiPlayerPropsBoard({ props, players, emptyLabel }) {
-  const [venue, setVenue] = useState('all')
-  const filtered = useMemo(() => filterByVenue(props, venue), [props, venue])
-  const groups = useMemo(() => groupPlayerProps(filtered, players), [filtered, players])
+  const groups = useMemo(() => groupPlayerProps(props, players), [props, players])
   const scale = useMemo(() => {
     const lines = groups.flatMap((g) => g.lines)
     return liqScaleFor(lines)
   }, [groups])
-  const counts = useMemo(() => {
-    const list = Array.isArray(props) ? props : []
-    const playerOnly = list.filter(
-      (p) => p.kind === 'player' || (p.player_name && p.kind !== 'game' && p.kind !== 'period'),
+
+  if (!groups.length) {
+    return (
+      <div className="py-8 text-center text-sm text-zinc-500">
+        {emptyLabel || 'No open player props for this matchup right now.'}
+      </div>
     )
-    return {
-      all: playerOnly.length,
-      kalshi: playerOnly.filter((p) => (p.source || 'kalshi') === 'kalshi').length,
-      polymarket: playerOnly.filter((p) => p.source === 'polymarket').length,
-    }
-  }, [props])
+  }
 
   return (
     <div className="space-y-3" data-lounge-kalshi-player-props>
-      <VenueFilter value={venue} onChange={setVenue} counts={counts} />
-      {!groups.length ? (
-        <div className="py-8 text-center text-sm text-zinc-500">
-          {emptyLabel || 'No open player props for this matchup right now.'}
-        </div>
-      ) : (
-        groups.map((group) => (
-          <KalshiPlayerPropGroup key={group.key} group={group} liqScale={scale} />
-        ))
-      )}
+      {groups.map((group) => (
+        <KalshiPlayerPropGroup key={group.key} group={group} liqScale={scale} />
+      ))}
     </div>
   )
 }

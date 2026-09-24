@@ -26,16 +26,20 @@ function isDefOrDst(player) {
   return p === 'DEF' || p === 'DST' || p === 'D'
 }
 
-function PlayerAvatar({ player }) {
+function PlayerAvatar({ player, accentColor }) {
   const [failed, setFailed] = useState(false)
   const team = String(player?.team || '')
     .toUpperCase()
     .replace(/[^A-Z]/g, '')
   const letter = String(player?.name || team || '?').slice(0, 1).toUpperCase()
+  const fill = accentColor ? { backgroundColor: accentColor } : undefined
 
   if (isDefOrDst(player) && team && !failed) {
     return (
-      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-zinc-800 p-2 ring-1 ring-zinc-700/80">
+      <span
+        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full p-2 ring-1 ring-zinc-700/80"
+        style={fill || undefined}
+      >
         <img
           src={`/sports/nfl/logos/${team}.png`}
           alt=""
@@ -50,18 +54,28 @@ function PlayerAvatar({ player }) {
 
   if (!player?.headshot_url || failed) {
     return (
-      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-base font-bold text-zinc-300 ring-1 ring-zinc-700/80">
+      <span
+        className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-base font-bold text-white ring-1 ring-zinc-700/80"
+        style={fill || undefined}
+      >
         {letter}
       </span>
     )
   }
   return (
-    <img
-      src={player.headshot_url}
-      alt=""
-      className="h-14 w-14 shrink-0 rounded-full object-cover bg-zinc-800 ring-1 ring-zinc-700/80"
-      onError={() => setFailed(true)}
-    />
+    <span
+      className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full ring-1 ring-zinc-700/80"
+      style={fill || undefined}
+    >
+      <img
+        src={player.headshot_url}
+        alt=""
+        className="absolute inset-0 h-full w-full origin-[center_22%] scale-[1.42] object-cover object-[center_18%]"
+        loading="lazy"
+        decoding="async"
+        onError={() => setFailed(true)}
+      />
+    </span>
   )
 }
 
@@ -656,7 +670,7 @@ function RosterPlayerHeader({ player, accent, expanded, hasStats, onToggle }) {
           hasStats ? 'active:opacity-90' : ''
         }`}
       >
-        <PlayerAvatar player={player} />
+        <PlayerAvatar player={player} accentColor={accent.color} />
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-1.5">
             <div className="truncate text-[16px] font-semibold text-zinc-100">{player.name}</div>

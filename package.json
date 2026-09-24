@@ -1,7 +1,7 @@
 {
   "name": "phoenixlinkcalc",
   "private": true,
-  "version": "1.4.530",
+  "version": "1.4.531",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -72,9 +72,12 @@
     "syndicate:sync-ufc-sherdog:production": "node scripts/sync-ufc-sherdog-last5.mjs --target=production",
     "syndicate:ufc-rocco-independence": "node scripts/ufc-rocco-independence-test.mjs",
     "nfl:players:sync": "node scripts/sync-nfl-players.mjs --target=test",
+    "nfl:players:sync:production": "node scripts/sync-nfl-players.mjs --target=production",
     "nfl:players:sync:download": "node scripts/sync-nfl-players.mjs --target=test --download",
     "nfl:players:espn-ids": "node scripts/sync-nfl-players-espn-ids.mjs --target=test",
+    "nfl:players:espn-ids:production": "node scripts/sync-nfl-players-espn-ids.mjs --target=production",
     "nfl:players:headshots:r2": "node scripts/sync-nfl-player-headshots-r2.mjs --target=test",
+    "nfl:players:headshots:r2:production": "node scripts/sync-nfl-player-headshots-r2.mjs --target=production",
     "syndicate:pval-sleeper": "node scripts/pval-sleeper-sync.mjs --dry-run --target=test",
     "syndicate:pval-sleeper:apply:test": "node scripts/pval-sleeper-sync.mjs --apply --target=test",
     "syndicate:pval-sleeper:apply:production": "node scripts/pval-sleeper-sync.mjs --apply --target=production",

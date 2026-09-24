@@ -12,7 +12,7 @@ export const NFL_TEAM_CATALOG = [
   { abbrev: 'CIN', espn: 'cin', color: '#FB4F14', color2: '#000000', names: ['Cincinnati Bengals', 'Bengals'], players: ['Joe Burrow', 'Ja\'Marr Chase', 'Jamarr Chase', 'Tee Higgins'] },
   { abbrev: 'CLE', espn: 'cle', color: '#FF3C00', color2: '#311D00', names: ['Cleveland Browns', 'Browns'], players: ['Dillon Gabriel', 'Shedeur Sanders', 'Myles Garrett'] },
   { abbrev: 'DAL', espn: 'dal', color: '#002244', color2: '#B0B7BC', names: ['Dallas Cowboys', 'Cowboys'], players: ['Dak Prescott', 'CeeDee Lamb', 'CeDee Lamb', 'George Pickens', 'Micah Parsons'] },
-  { abbrev: 'DEN', espn: 'den', color: '#002244', color2: '#FB4F14', names: ['Denver Broncos', 'Broncos'], players: ['Bo Nix', 'Courtland Sutton'] },
+  { abbrev: 'DEN', espn: 'den', color: '#FB4F14', color2: '#002244', names: ['Denver Broncos', 'Broncos'], players: ['Bo Nix', 'Courtland Sutton'] },
   { abbrev: 'DET', espn: 'det', color: '#0076B6', color2: '#B0B7BC', names: ['Detroit Lions', 'Lions'], players: ['Jared Goff', 'Amon-Ra St. Brown', 'Jahmyr Gibbs', 'Sam LaPorta'] },
   { abbrev: 'GB', espn: 'gb', color: '#203731', color2: '#FFB612', names: ['Green Bay Packers', 'Packers'], players: ['Jordan Love', 'Jayden Reed', 'Josh Jacobs'] },
   { abbrev: 'HOU', espn: 'hou', color: '#03202F', color2: '#A71930', names: ['Houston Texans', 'Texans'], players: ['C.J. Stroud', 'CJ Stroud', 'Nico Collins', 'Joe Mixon'] },
@@ -140,7 +140,7 @@ function colorDist(aHex, bHex) {
 }
 
 /**
- * Two jersey primaries read as the same stain (NYG navy vs LAR blue, DAL/DEN/NE/SEA #002244).
+ * Two jersey primaries read as the same stain (NYG navy vs LAR blue, DAL/NE/SEA #002244).
  * Hue-blind luminance contrast is wrong here (KC red vs MIA teal both mid-dark) ... use RGB distance.
  */
 export function nflPrimariesTooSimilar(aHex, bHex) {

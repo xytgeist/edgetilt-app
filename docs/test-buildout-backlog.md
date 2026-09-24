@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Fantasy H2H portraits −25% (Mac).** Frame 8.25×9rem (was 11×12). Web **`1.4.545`**.
 - **2026-09-24:** **Fantasy H2H portraits to VS center (Mac).** Pin frames to the midline (`left-0` / `right-0`) and `object-position` toward center so busts start at the card split. Web **`1.4.544`**.
 - **2026-09-24:** **Fantasy H2H portraits larger (Mac).** Frame ~11×12rem (was 8.75×9.5). Web **`1.4.543`**.
 - **2026-09-24:** **Fantasy H2H portraits up (Mac).** Dropped the −10% hang; busts sit on the wash bottom again (still contain + wide frame). Web **`1.4.542`**.

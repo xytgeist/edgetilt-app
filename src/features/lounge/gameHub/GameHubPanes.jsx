@@ -62,19 +62,22 @@ function majorityCluster(values) {
   return best
 }
 
-const ML_OUTLIER_PCT = 2.0
-const ML_HEAVY_OUTLIER_PCT = 3.0
+const ML_OUTLIER_PCT = 2.5
+const ML_HEAVY_OUTLIER_PCT = 3.5
+/** Half-point alone is noise on NFL; full point clears the badge floor. */
 const SPREAD_POINT_FLAG = 0.5
-const JUICE_CENTS_FLAG = 10
-const NOISE_FLOOR_PCT = 1.5
+const SPREAD_POINT_STRONG = 1.0
+const JUICE_CENTS_FLAG = 13
+const NOISE_FLOOR_PCT = 2.0
 
 /**
- * Flag the book furthest past Grok-style hanging/outlier thresholds.
- * - Outlier: ≥2% de-vig implied off consensus (3% when ±300+)
- * - Hanging: same gap *and* a clear majority cluster the book sits outside
- *   (snapshot proxy for “other books already moved” … we have no line history)
- * - Spread/total: 0.5pt off number, or 10¢ juice on the same number
- * - Below ~1.5% / sub-threshold gaps: no badge
+ * Flag the book furthest past hanging/outlier thresholds.
+ * - Outlier: ≥2.5% de-vig implied off consensus (3.5% when ±300+)
+ * - Hanging: same gap *and* the book is isolated on its number while a majority
+ *   cluster sits elsewhere (snapshot proxy for “other books already moved”)
+ * - Spread/total: full 1.0pt off number (0.5pt is ignored … common alt number),
+ *   or ≥13¢ juice on the same number
+ * - Below ~2% / sub-threshold gaps: no badge
  *
  * Needs ≥3 books.
  * @returns {{ book: string, kind: 'hanging'|'outlier', score: number } | null}
@@ -87,6 +90,20 @@ function consensusHangOrOutlier(books) {
   const medTotal = median(list.map((b) => numOrNull(b.total)))
   const medMl = median(list.map((b) => deVigHomeImplied(b.home_ml, b.away_ml)))
 
+  const spreadCounts = new Map()
+  const totalCounts = new Map()
+  for (const b of list) {
+    const sp = numOrNull(b.home_spread)
+    const tot = numOrNull(b.total)
+    if (sp != null) {
+      const k = halfPointKey(sp)
+      spreadCounts.set(k, (spreadCounts.get(k) || 0) + 1)
+    }
+    if (tot != null) {
+      const k = halfPointKey(tot)
+      totalCounts.set(k, (totalCounts.get(k) || 0) + 1)
+    }
+  }
   const spreadCluster = majorityCluster(list.map((b) => numOrNull(b.home_spread)))
   const totalCluster = majorityCluster(list.map((b) => numOrNull(b.total)))
   const majorityNeed = Math.ceil(list.length / 2)
@@ -124,35 +141,67 @@ function consensusHangOrOutlier(books) {
           return p != null && Math.abs(p - medMl) * 100 <= 1.0
         }).length
         if (nearMed >= majorityNeed) hangingHint = true
-      } else if (gapPct < NOISE_FLOOR_PCT) {
-        // noise
       }
     }
 
     if (sp != null && medSpread != null) {
       const ptGap = Math.abs(sp - medSpread)
-      if (ptGap >= SPREAD_POINT_FLAG) {
-        flags.push(ptGap * 4) // ~0.5pt ≈ 2% scale
-        if (spreadSettled && halfPointKey(sp) !== halfPointKey(spreadCluster.value)) hangingHint = true
+      const aloneOnNumber = (spreadCounts.get(halfPointKey(sp)) || 0) <= 1
+      if (ptGap >= SPREAD_POINT_STRONG) {
+        flags.push(ptGap * 4)
+        if (spreadSettled && halfPointKey(sp) !== halfPointKey(spreadCluster.value) && aloneOnNumber) {
+          hangingHint = true
+        }
+      } else if (ptGap >= SPREAD_POINT_FLAG) {
+        // 0.5pt is a common alt number … only badge when this book is alone there.
+        if (aloneOnNumber) {
+          flags.push(ptGap * 4)
+          if (spreadSettled && halfPointKey(sp) !== halfPointKey(spreadCluster.value)) {
+            hangingHint = true
+          }
+        }
       } else if (ptGap < 0.01 && medSpreadJuice != null) {
         const cents = juiceCentsApart(b.home_spread_price, medSpreadJuice)
         if (cents != null && cents >= JUICE_CENTS_FLAG) {
-          flags.push(cents / 5) // 10¢ ≈ 2% scale
-          if (spreadSettled) hangingHint = true
+          flags.push(cents / 5)
+          // Hanging juice = worse than median (more negative / shorter plus), not LowVig sharp.
+          const mine = numOrNull(b.home_spread_price)
+          const worseThanMed =
+            mine != null &&
+            medSpreadJuice != null &&
+            ((mine < 0 && medSpreadJuice < 0 && mine < medSpreadJuice) ||
+              (mine > 0 && medSpreadJuice > 0 && mine < medSpreadJuice))
+          if (spreadSettled && worseThanMed) hangingHint = true
         }
       }
     }
 
     if (tot != null && medTotal != null) {
       const ptGap = Math.abs(tot - medTotal)
-      if (ptGap >= SPREAD_POINT_FLAG) {
+      const aloneOnNumber = (totalCounts.get(halfPointKey(tot)) || 0) <= 1
+      if (ptGap >= SPREAD_POINT_STRONG) {
         flags.push(ptGap * 4)
-        if (totalSettled && halfPointKey(tot) !== halfPointKey(totalCluster.value)) hangingHint = true
+        if (totalSettled && halfPointKey(tot) !== halfPointKey(totalCluster.value) && aloneOnNumber) {
+          hangingHint = true
+        }
+      } else if (ptGap >= SPREAD_POINT_FLAG) {
+        if (aloneOnNumber) {
+          flags.push(ptGap * 4)
+          if (totalSettled && halfPointKey(tot) !== halfPointKey(totalCluster.value)) {
+            hangingHint = true
+          }
+        }
       } else if (ptGap < 0.01 && medOverJuice != null) {
         const cents = juiceCentsApart(b.over_price, medOverJuice)
         if (cents != null && cents >= JUICE_CENTS_FLAG) {
           flags.push(cents / 5)
-          if (totalSettled) hangingHint = true
+          const mine = numOrNull(b.over_price)
+          const worseThanMed =
+            mine != null &&
+            medOverJuice != null &&
+            ((mine < 0 && medOverJuice < 0 && mine < medOverJuice) ||
+              (mine > 0 && medOverJuice > 0 && mine < medOverJuice))
+          if (totalSettled && worseThanMed) hangingHint = true
         }
       }
     }

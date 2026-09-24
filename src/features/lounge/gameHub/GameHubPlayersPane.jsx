@@ -79,12 +79,23 @@ function fmtStat(n, digits = 0) {
   return v.toFixed(digits)
 }
 
+/** Like fmtStat, but null → "0" when the position always shows the column. */
+function fmtStatOrZero(n, digits = 0) {
+  if (n == null || !Number.isFinite(Number(n))) return '0'
+  return fmtStat(n, digits)
+}
+
 function fmtComma(n, digits = 0) {
   const s = fmtStat(n, digits)
   if (s == null) return null
   const [whole, frac] = s.split('.')
   const withCommas = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
   return frac != null ? `${withCommas}.${frac}` : withCommas
+}
+
+function fmtCommaOrZero(n, digits = 0) {
+  if (n == null || !Number.isFinite(Number(n))) return '0'
+  return fmtComma(n, digits) ?? '0'
 }
 
 function pct(numer, denom) {
@@ -143,6 +154,8 @@ const RECEIVING_COLS = [
   { key: 'lng', label: 'LNG' },
 ]
 
+const FUMBLES_COLS = [{ key: 'lost', label: 'FUM' }]
+
 const KICKING_COLS = [
   { key: 'fgm', label: 'FGM' },
   { key: 'fga', label: 'FGA' },
@@ -187,41 +200,58 @@ function passingRow(player, mode) {
   }
 }
 
-function rushingRow(player, mode) {
+function rushingRow(player, mode, { forceZeros = false } = {}) {
   const gp = player.season_gp
   const take = (v, digits = 0) => (mode === 'projected' ? paceSeason(v, gp, digits) : v)
   const car = take(player.season_rush_att)
   const yd = take(player.season_rush_yd)
   const td = take(player.season_rush_td)
-  if (car == null && yd == null && td == null) return null
+  if (!forceZeros && car == null && yd == null && td == null) return null
   const ypa =
     mode === 'season' && player.season_rush_ypa != null
       ? player.season_rush_ypa
       : avg(yd, car, 1)
+  const cell = forceZeros ? fmtStatOrZero : fmtStat
+  const cellComma = forceZeros ? fmtCommaOrZero : fmtComma
+  const lngRaw = mode === 'season' ? player.season_rush_lng : null
   return {
-    car: fmtStat(car, 0),
-    yds: fmtComma(yd, 0),
-    avg: fmtStat(ypa, 1),
-    td: fmtStat(td, 0),
-    lng: mode === 'season' ? fmtStat(player.season_rush_lng, 0) : null,
+    car: cell(car, 0),
+    yds: cellComma(yd, 0),
+    avg: forceZeros ? fmtStatOrZero(ypa, 1) : fmtStat(ypa, 1),
+    td: cell(td, 0),
+    lng: mode === 'season' ? (forceZeros ? fmtStatOrZero(lngRaw, 0) : fmtStat(lngRaw, 0)) : null,
   }
 }
 
-function receivingRow(player, mode) {
+function receivingRow(player, mode, { forceZeros = false } = {}) {
   const gp = player.season_gp
   const take = (v, digits = 0) => (mode === 'projected' ? paceSeason(v, gp, digits) : v)
   const tgt = take(player.season_rec_tgt)
   const rec = take(player.season_rec, 1)
   const yd = take(player.season_rec_yd)
   const td = take(player.season_rec_td)
-  if (tgt == null && rec == null && yd == null && td == null) return null
+  if (!forceZeros && tgt == null && rec == null && yd == null && td == null) return null
+  const cell = forceZeros ? fmtStatOrZero : fmtStat
+  const cellComma = forceZeros ? fmtCommaOrZero : fmtComma
+  const ypr = avg(yd, rec, 1)
+  const lngRaw = mode === 'season' ? player.season_rec_lng : null
   return {
-    tgt: fmtStat(tgt, 0),
-    rec: fmtStat(rec, Number(rec) % 1 === 0 ? 0 : 1),
-    yds: fmtComma(yd, 0),
-    avg: fmtStat(avg(yd, rec, 1), 1),
-    td: fmtStat(td, 0),
-    lng: mode === 'season' ? fmtStat(player.season_rec_lng, 0) : null,
+    tgt: cell(tgt, 0),
+    rec: cell(rec, Number(rec) % 1 === 0 ? 0 : 1),
+    yds: cellComma(yd, 0),
+    avg: forceZeros ? fmtStatOrZero(ypr, 1) : fmtStat(ypr, 1),
+    td: cell(td, 0),
+    lng: mode === 'season' ? (forceZeros ? fmtStatOrZero(lngRaw, 0) : fmtStat(lngRaw, 0)) : null,
+  }
+}
+
+function fumblesRow(player, mode, { forceZeros = false } = {}) {
+  const gp = player.season_gp
+  const take = (v, digits = 0) => (mode === 'projected' ? paceSeason(v, gp, digits) : v)
+  const lost = take(player.season_fum_lost)
+  if (!forceZeros && lost == null) return null
+  return {
+    lost: forceZeros ? fmtStatOrZero(lost, 0) : fmtStat(lost, 0),
   }
 }
 
@@ -264,9 +294,9 @@ function buildStatGroups(player) {
     .replace(/[^A-Z]/g, '')
   const groups = []
 
-  const addGroup = (title, cols, builder) => {
-    const season = builder(player, 'season')
-    const projected = builder(player, 'projected')
+  const addGroup = (title, cols, builder, opts = {}) => {
+    const season = builder(player, 'season', opts)
+    const projected = builder(player, 'projected', opts)
     if (!season && !projected) return
     groups.push({
       title,
@@ -282,11 +312,14 @@ function buildStatGroups(player) {
     addGroup('Passing', PASSING_COLS, passingRow)
     addGroup('Rushing', RUSHING_COLS, rushingRow)
   } else if (pos === 'RB' || pos === 'FB' || pos === 'HB') {
-    addGroup('Rushing', RUSHING_COLS, rushingRow)
-    addGroup('Receiving', RECEIVING_COLS, receivingRow)
+    // Always show full rush / rec / fum … zeros when Sleeper has no line.
+    addGroup('Rushing', RUSHING_COLS, rushingRow, { forceZeros: true })
+    addGroup('Receiving', RECEIVING_COLS, receivingRow, { forceZeros: true })
+    addGroup('Fumbles', FUMBLES_COLS, fumblesRow, { forceZeros: true })
   } else if (pos === 'WR' || pos === 'TE') {
-    addGroup('Receiving', RECEIVING_COLS, receivingRow)
-    addGroup('Rushing', RUSHING_COLS, rushingRow)
+    addGroup('Receiving', RECEIVING_COLS, receivingRow, { forceZeros: true })
+    addGroup('Rushing', RUSHING_COLS, rushingRow, { forceZeros: true })
+    addGroup('Fumbles', FUMBLES_COLS, fumblesRow, { forceZeros: true })
   } else if (pos === 'K' || pos === 'PK') {
     addGroup('Kicking', KICKING_COLS, kickingRow)
   } else if (pos === 'DEF' || pos === 'DST' || pos === 'D') {
@@ -314,8 +347,10 @@ function RosterSeasonStatsTable({ player }) {
   const rowLabels = ['Regular Season', 'Projected'].filter((label) =>
     groups.some((g) => g.rows.some((r) => r.label === label)),
   )
-  const fatGroups = groups.filter((g) => g.cols.length >= FAT_STAT_COL_MIN)
-  const thinGroups = groups.filter((g) => g.cols.length < FAT_STAT_COL_MIN)
+  const fatCapable = groups.some((g) => g.cols.length >= FAT_STAT_COL_MIN)
+  // Keep Fumbles (1 col) in the same aligned grid as rush/rec when present.
+  const fatGroups = fatCapable ? groups : []
+  const thinGroups = fatCapable ? [] : groups
 
   return (
     <div data-roster-season-stats className="mt-3 space-y-2">
@@ -332,15 +367,12 @@ function RosterFatStatsGrid({ groups, rowLabels }) {
   const colCount = dataCols.length
   if (!colCount) return null
 
-  const gridCols = `minmax(5.75rem, max-content) repeat(${colCount}, minmax(2.5rem, max-content))`
+  const gridCols = `minmax(5.75rem, max-content) repeat(${colCount}, minmax(0, 1fr))`
 
   return (
-    <div className="overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950">
-      <div className="overflow-x-auto overscroll-x-contain">
-        <div
-          className="grid w-max min-w-full border-collapse"
-          style={{ gridTemplateColumns: gridCols }}
-        >
+    <div className="w-full overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950">
+      <div className="w-full overflow-x-auto overscroll-x-contain">
+        <div className="grid w-full" style={{ gridTemplateColumns: gridCols }}>
           <div className="sticky left-0 z-[1] border-b border-r border-zinc-700/80 bg-zinc-950" />
           {groups.map((group) => (
             <div

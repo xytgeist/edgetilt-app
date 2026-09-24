@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Players Roster skill full lines + full-width grid (Mac).** RB/WR/TE always show Rushing + Receiving + Fumbles (zeros when missing); RB rush-first, WR/TE rec-first. Fat stats grid stretches to card width. Web **`1.4.568`**.
 - **2026-09-24:** **Players Roster adaptive expand (#1) (Mac).** Fat groups (5+ cols) use one sticky-STATS CSS grid so columns share tracks; thin groups (Kicking/Defense) use full-width Regular Season | Projected stacks. Web **`1.4.567`**.
 - **2026-09-24:** **Players Roster tap-to-expand + yards headline (Mac).** Stats table collapses until tap; right-rail headline is position yards (FG/Sack for K/DEF), not PPR. Web **`1.4.566`**.
 - **2026-09-24:** **Pinnacle O/U on hub + close-total backfill (Mac).** Live Pinnacle pack and historical kickoff snap now request **totals** (was h2h/spreads only). Script **`scripts/backfill-close-total.mjs`** fills locked `lounge_market_files.close_total`. Redeploy **`lounge-sports-scoreboard`**. Web **`1.4.565`**.

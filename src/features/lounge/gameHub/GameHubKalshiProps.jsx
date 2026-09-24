@@ -15,64 +15,157 @@ function propBookDepth(prop) {
   return (bid || 0) + (ask || 0)
 }
 
-function seriesShort(series) {
-  const raw = String(series || '')
-  if (raw.startsWith('football_')) {
-    return raw
-      .replace(/^football_/, '')
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, (c) => c.toUpperCase())
+function escapeRegExp(s) {
+  return String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+const NFL_CLUB_TO_ABBR = [
+  [/green\s*bay\s*packers/gi, 'GB'],
+  [/kansas\s*city\s*chiefs/gi, 'KC'],
+  [/los\s*angeles\s*rams/gi, 'LAR'],
+  [/los\s*angeles\s*chargers/gi, 'LAC'],
+  [/new\s*england\s*patriots/gi, 'NE'],
+  [/new\s*orleans\s*saints/gi, 'NO'],
+  [/new\s*york\s*giants/gi, 'NYG'],
+  [/new\s*york\s*jets/gi, 'NYJ'],
+  [/san\s*francisco\s*49ers/gi, 'SF'],
+  [/tampa\s*bay\s*buccaneers/gi, 'TB'],
+  [/las\s*vegas\s*raiders/gi, 'LV'],
+  [/jacksonville\s*jaguars/gi, 'JAX'],
+  [/atlanta\s*falcons/gi, 'ATL'],
+  [/arizona\s*cardinals/gi, 'ARI'],
+  [/baltimore\s*ravens/gi, 'BAL'],
+  [/buffalo\s*bills/gi, 'BUF'],
+  [/carolina\s*panthers/gi, 'CAR'],
+  [/chicago\s*bears/gi, 'CHI'],
+  [/cincinnati\s*bengals/gi, 'CIN'],
+  [/cleveland\s*browns/gi, 'CLE'],
+  [/dallas\s*cowboys/gi, 'DAL'],
+  [/denver\s*broncos/gi, 'DEN'],
+  [/detroit\s*lions/gi, 'DET'],
+  [/houston\s*texans/gi, 'HOU'],
+  [/indianapolis\s*colts/gi, 'IND'],
+  [/miami\s*dolphins/gi, 'MIA'],
+  [/minnesota\s*vikings/gi, 'MIN'],
+  [/philadelphia\s*eagles/gi, 'PHI'],
+  [/pittsburgh\s*steelers/gi, 'PIT'],
+  [/seattle\s*seahawks/gi, 'SEA'],
+  [/tennessee\s*titans/gi, 'TEN'],
+  [/washington\s*(?:commanders|football\s*team|redskins)/gi, 'WAS'],
+]
+
+/** Lone nicknames (no city) → abbrev so Poly/Kalshi wording still matches. */
+const NFL_NICK_TO_ABBR = [
+  [/\bpackers\b/gi, 'GB'],
+  [/\bfalcons\b/gi, 'ATL'],
+  [/\bcardinals\b/gi, 'ARI'],
+  [/\bravens\b/gi, 'BAL'],
+  [/\bbills\b/gi, 'BUF'],
+  [/\bpanthers\b/gi, 'CAR'],
+  [/\bbears\b/gi, 'CHI'],
+  [/\bbengals\b/gi, 'CIN'],
+  [/\bbrowns\b/gi, 'CLE'],
+  [/\bcowboys\b/gi, 'DAL'],
+  [/\bbroncos\b/gi, 'DEN'],
+  [/\blions\b/gi, 'DET'],
+  [/\btexans\b/gi, 'HOU'],
+  [/\bcolts\b/gi, 'IND'],
+  [/\bchiefs\b/gi, 'KC'],
+  [/\bchargers\b/gi, 'LAC'],
+  [/\brams\b/gi, 'LAR'],
+  [/\braiders\b/gi, 'LV'],
+  [/\bdolphins\b/gi, 'MIA'],
+  [/\bvikings\b/gi, 'MIN'],
+  [/\bpatriots\b/gi, 'NE'],
+  [/\bsaints\b/gi, 'NO'],
+  [/\bgiants\b/gi, 'NYG'],
+  [/\bjets\b/gi, 'NYJ'],
+  [/\beagles\b/gi, 'PHI'],
+  [/\bsteelers\b/gi, 'PIT'],
+  [/\bseahawks\b/gi, 'SEA'],
+  [/\b49ers\b/gi, 'SF'],
+  [/\bbuccaneers\b/gi, 'TB'],
+  [/\btitans\b/gi, 'TEN'],
+  [/\bcommanders\b/gi, 'WAS'],
+  [/\bjaguars\b/gi, 'JAX'],
+]
+
+const NFL_NICKNAMES =
+  'Packers|Falcons|Cardinals|Ravens|Bills|Panthers|Bears|Bengals|Browns|Cowboys|Broncos|Lions|Texans|Colts|Chiefs|Chargers|Rams|Raiders|Dolphins|Vikings|Patriots|Saints|Giants|Jets|Eagles|Steelers|Seahawks|49ers|Buccaneers|Titans|Commanders|Jaguars'
+
+const NFL_ABBR =
+  'ATL|ARI|BAL|BUF|CAR|CHI|CIN|CLE|DAL|DEN|DET|GB|HOU|IND|JAX|KC|LAC|LAR|LV|MIA|MIN|NE|NO|NYG|NYJ|PHI|PIT|SEA|SF|TB|TEN|WAS'
+
+function compressTeamNames(text) {
+  let s = String(text || '')
+  for (const [re, abbr] of NFL_CLUB_TO_ABBR) s = s.replace(re, abbr)
+  s = s.replace(new RegExp(`\\b(${NFL_ABBR})\\s+(?:${NFL_NICKNAMES})\\b`, 'gi'), '$1')
+  for (const [re, abbr] of NFL_NICK_TO_ABBR) s = s.replace(re, abbr)
+  return s
+}
+
+/**
+ * Shared display cleanup for Kalshi + Polymarket line text …
+ * drop fluff, compress teams/periods/stats, keep the strike readable.
+ */
+function normalizeMarketLabel(raw, { playerName = '' } = {}) {
+  let s = String(raw || '').trim()
+  if (!s) return ''
+
+  const name = String(playerName || '').trim()
+  if (name) {
+    s = s.replace(new RegExp(`^${escapeRegExp(name)}\\s*[:\\-]?\\s*`, 'i'), '')
+    s = s.replace(new RegExp(`\\b${escapeRegExp(name)}\\b`, 'ig'), ' ')
   }
-  return raw.replace(/^KXNFL/, '').replace(/([A-Z]+)(\d)/g, '$1 $2').trim() || 'PROP'
+
+  s = s.replace(/^will\s+/i, '').replace(/\?+\s*$/g, '')
+  s = compressTeamNames(s)
+
+  s = s
+    .replace(/\b(?:1st|first)\s*half\b/gi, '1H')
+    .replace(/\b(?:2nd|second)\s*half\b/gi, '2H')
+    .replace(/\b(?:1st|first)\s*quarter\b/gi, '1Q')
+    .replace(/\b(?:2nd|second)\s*quarter\b/gi, '2Q')
+    .replace(/\b(?:3rd|third)\s*quarter\b/gi, '3Q')
+    .replace(/\b(?:4th|fourth)\s*quarter\b/gi, '4Q')
+    .replace(/\bmoneyline\b/gi, '')
+    .replace(/\bto (?:win|cover)\b/gi, '')
+    .replace(/\bwins?\b/gi, '')
+    .replace(/\brecord\b/gi, ' ')
+    .replace(/\bfantasy\s*points?(?:\s*\(?\s*ppr\s*\)?)?/gi, 'fantasy')
+    .replace(/\bpassing yards?\b/gi, 'pass yds')
+    .replace(/\bpass yds?\b/gi, 'pass yds')
+    .replace(/\brushing yards?\b/gi, 'rush yds')
+    .replace(/\brush yds?\b/gi, 'rush yds')
+    .replace(/\breceiving yards?\b/gi, 'rec yds')
+    .replace(/\brec yds?\b/gi, 'rec yds')
+    .replace(/\bcompletions?\b/gi, 'comp')
+    .replace(/\battempts?\b/gi, 'att')
+    .replace(/\breceptions?\b/gi, 'rec')
+    .replace(/\btouchdowns?\b/gi, 'TDs')
+    .replace(/\btds?\b/gi, 'TDs')
+    .replace(/\bpoints?\b/gi, '')
+    .replace(/\bthe\b/gi, ' ')
+    .replace(/\s*([+/])\s*/g, '$1')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+
+  // "Over45.5" from the +/- collapse above … keep space before digit groups after words.
+  s = s.replace(/([a-zA-Z])(\d)/g, '$1 $2').replace(/\s{2,}/g, ' ').trim()
+  return s
 }
 
-function SourceChip({ source }) {
-  const poly = source === 'polymarket'
-  return (
-    <span
-      className={`inline-flex shrink-0 items-center rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
-        poly
-          ? 'bg-blue-500/15 text-blue-300 ring-1 ring-inset ring-blue-400/30'
-          : 'bg-zinc-700/80 text-zinc-300 ring-1 ring-inset ring-zinc-600/80'
-      }`}
-    >
-      {poly ? 'Poly' : 'Kalshi'}
-    </span>
-  )
-}
-
-function VenueFilter({ value, onChange, counts }) {
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {[
-        { id: 'all', label: 'All' },
-        { id: 'kalshi', label: 'Kalshi' },
-        { id: 'polymarket', label: 'Polymarket' },
-      ].map((opt) => {
-        const n = counts?.[opt.id]
-        return (
-          <button
-            key={opt.id}
-            type="button"
-            onClick={() => onChange(opt.id)}
-            className={`rounded-full px-3 py-1 text-[11px] font-semibold tracking-wide ${
-              value === opt.id
-                ? 'bg-zinc-100 text-zinc-950'
-                : 'bg-zinc-900 text-zinc-400 ring-1 ring-inset ring-zinc-800'
-            }`}
-          >
-            {opt.label}
-            {n != null ? ` · ${n}` : ''}
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-function filterByVenue(list, venue) {
-  if (venue === 'all') return list
-  return (list || []).filter((p) => (p.source || 'kalshi') === venue)
+function preferShorterLabel(current, next) {
+  const a = String(current || '')
+  const b = String(next || '')
+  if (!a) return b
+  if (!b) return a
+  if (b.length < a.length) return b
+  if (a.length < b.length) return a
+  const score = (x) =>
+    (new RegExp(`\\b(?:${NFL_ABBR})\\b`, 'i').test(x) ? 2 : 0) +
+    (/\b(?:1H|2H|TDs|yds|fantasy|comp|att|rec)\b/.test(x) ? 1 : 0)
+  return score(b) > score(a) ? b : a
 }
 
 function sumField(props, key) {
@@ -157,10 +250,10 @@ function YesNoButtons({ prop }) {
     return (
       <div className="inline-flex shrink-0 overflow-hidden rounded-lg ring-1 ring-inset ring-zinc-800 opacity-55">
         <span className="inline-flex min-w-[2rem] items-center justify-center px-1.5 py-1">
-          <span className="text-[12px] font-bold tabular-nums text-zinc-500">—</span>
+          <span className="text-[12px] font-bold tabular-nums text-zinc-500">-</span>
         </span>
         <span className="inline-flex min-w-[2rem] items-center justify-center border-l border-zinc-800 px-1.5 py-1">
-          <span className="text-[12px] font-bold tabular-nums text-zinc-500">—</span>
+          <span className="text-[12px] font-bold tabular-nums text-zinc-500">-</span>
         </span>
       </div>
     )
@@ -194,20 +287,20 @@ function YesNoButtons({ prop }) {
   )
 }
 
-function escapeRegExp(s) {
-  return String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
 /** Strip player name + normalize synonyms so Kalshi/Poly lines can share a row. */
 function lineMatchKey(prop, playerName) {
   let s = String(prop?.line_label || prop?.title || '')
   const name = String(playerName || prop?.player_name || '').trim()
   if (name) s = s.replace(new RegExp(`^${escapeRegExp(name)}\\s*[:\\-]?\\s*`, 'i'), '')
+  s = compressTeamNames(s)
   s = s
     .toLowerCase()
     .replace(/\bwill\b/g, ' ')
     .replace(/\brecord\b/g, ' ')
     .replace(/\bthe\b/g, ' ')
+    .replace(/\bfirst touchdown\b/g, 'firsttd')
+    .replace(/\bfirst td\b/g, 'firsttd')
+    .replace(/\bfirst tds\b/g, 'firsttd')
     .replace(/\btouchdowns?\b/g, 'td')
     .replace(/\btds?\b/g, 'td')
     .replace(/\bpassing yards?\b/g, 'passyd')
@@ -217,9 +310,8 @@ function lineMatchKey(prop, playerName) {
     .replace(/\breceiving yards?\b/g, 'recyd')
     .replace(/\brec yds?\b/g, 'recyd')
     .replace(/\breceptions?\b/g, 'rec')
-    .replace(/\bfirst touchdown\b/g, 'firsttd')
-    .replace(/\bfirst td\b/g, 'firsttd')
     .replace(/\bfantasy points?(?:\s*ppr)?\b/g, 'fpts')
+    .replace(/\bfantasy\b/g, 'fpts')
     .replace(/\bcompletions?\b/g, 'comp')
     .replace(/\battempts?\b/g, 'att')
     .replace(/[^a-z0-9+.]/g, '')
@@ -227,11 +319,9 @@ function lineMatchKey(prop, playerName) {
 }
 
 function displayLineLabel(prop, playerName) {
-  let s = String(prop?.line_label || prop?.title || '').trim()
   const name = String(playerName || prop?.player_name || '').trim()
-  if (name) s = s.replace(new RegExp(`^${escapeRegExp(name)}\\s*[:\\-]?\\s*`, 'i'), '')
-  s = s.replace(/^will\s+/i, '').replace(/\s+record\s+/i, ' ').trim()
-  return s || prop?.line_label || prop?.title || 'Line'
+  const raw = String(prop?.line_label || prop?.title || '').trim()
+  return normalizeMarketLabel(raw, { playerName: name }) || raw || 'Line'
 }
 
 /** Skill-group rank for in-card market order (pass → rush → rec → TD → fantasy → other). */
@@ -276,8 +366,7 @@ function pairPlayerLines(lines, playerName) {
     const src = p.source || 'kalshi'
     if (src === 'polymarket') row.polymarket = p
     else row.kalshi = p
-    const label = displayLineLabel(p, playerName)
-    if (label && label.length <= String(row.label || '').length) row.label = label
+    row.label = preferShorterLabel(row.label, displayLineLabel(p, playerName))
   }
   const rows = [...byKey.values()]
   rows.sort((a, b) => {
@@ -302,38 +391,6 @@ function positionRank(pos) {
   // FB / HB → RB bucket; everything else after skill positions
   if (p === 'FB' || p === 'HB') return POSITION_ORDER.RB
   return 50
-}
-
-function KalshiGamePropCard({ prop, liqScale }) {
-  const vol = prop.volume_24h ?? prop.volume
-  const oi = prop.open_interest
-  const depth = propBookDepth(prop)
-  const marketHref = prop.url_market || prop.url
-
-  return (
-    <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 px-3 py-2.5">
-      <div className="flex items-start gap-2">
-        <a
-          href={marketHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="min-w-0 flex-1 touch-manipulation active:opacity-90"
-        >
-          <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
-            <SourceChip source={prop.source} />
-            <span>{seriesShort(prop.series)}</span>
-          </div>
-          <div className="mt-0.5 text-[13px] font-semibold leading-snug text-zinc-100">
-            {prop.line_label || prop.title}
-          </div>
-        </a>
-        <YesNoButtons prop={prop} />
-      </div>
-      <div className="mt-2">
-        <KalshiLiqStrip vol={vol} oi={oi} book={depth} scale={liqScale} compact />
-      </div>
-    </div>
-  )
 }
 
 function KalshiPlayerPropGroup({ group, liqScale }) {
@@ -496,45 +553,213 @@ function isPastHalftime(game, live) {
   return Number.isFinite(period) && period >= 3
 }
 
-/** Game + period markets (ML / total / halves) from Kalshi + Polymarket. */
+function gamePeriodTag(prop) {
+  const series = String(prop?.series || '').toLowerCase()
+  const text = `${prop?.line_label || ''} ${prop?.title || ''}`.toLowerCase()
+  if (series.includes('2h') || series.includes('second_half') || /\b2nd half\b|\bsecond half\b|\b2h\b/.test(text)) {
+    return '2h'
+  }
+  if (series.includes('1h') || series.includes('first_half') || /\b1st half\b|\bfirst half\b|\b1h\b/.test(text)) {
+    return '1h'
+  }
+  return 'fg'
+}
+
+function gameLineCategory(prop) {
+  const series = String(prop?.series || '').toLowerCase()
+  const text = `${prop?.line_label || ''} ${prop?.title || ''}`.toLowerCase()
+  if (
+    series.includes('teamtotal') ||
+    series.includes('team_total') ||
+    series.includes('points_full_game') ||
+    (series.includes('team') && series.includes('total')) ||
+    /\b(atl|ari|bal|buf|car|chi|cin|cle|dal|den|det|gb|hou|ind|jax|kc|lac|lar|lv|mia|min|ne|no|nyg|nyj|phi|pit|sea|sf|tb|ten|was)\s+over\b/i.test(
+      text,
+    )
+  ) {
+    return 'teamtotal'
+  }
+  if (series.includes('spread') || /[+-]\d+(?:\.\d+)?/.test(text) && /\bspread\b/.test(series + text)) {
+    return 'spread'
+  }
+  if (series.includes('total') || /\bover\b|\bunder\b|\btotal\b/.test(text)) return 'total'
+  if (
+    series.includes('winner') ||
+    series.includes('kxnflgame') ||
+    /\bvs\b|\bwins?\b|\bmoneyline\b|\bml\b/.test(text) ||
+    /^[a-z]{2,3}(?:\s+1h|\s+2h)?$/i.test(String(prop?.line_label || '').trim())
+  ) {
+    return 'ml'
+  }
+  return 'other'
+}
+
+/** Normalize game/period lines so Kalshi + Poly share a row. */
+function gameLineMatchKey(prop) {
+  const period = gamePeriodTag(prop)
+  const cat = gameLineCategory(prop)
+  let text = compressTeamNames(String(prop?.line_label || prop?.title || ''))
+    .toLowerCase()
+    .replace(/\b(?:1st|first)\s*half\b/g, '1h')
+    .replace(/\b(?:2nd|second)\s*half\b/g, '2h')
+    .replace(/\bmoneyline\b/g, ' ')
+    .replace(/\bpoints?\b/g, ' ')
+    .replace(/\bwill\b/g, ' ')
+    .replace(/\bthe\b/g, ' ')
+    .replace(/\brecord\b/g, ' ')
+  const team =
+    (text.match(
+      /\b(atl|ari|bal|buf|car|chi|cin|cle|dal|den|det|gb|hou|ind|jax|kc|lac|lar|lv|mia|min|ne|no|nyg|nyj|phi|pit|sea|sf|tb|ten|was|tie)\b/,
+    ) || [])[1] || ''
+  const num = (text.match(/(\d+(?:\.\d+)?)/) || [])[1] || ''
+  const side = /\bunder\b/.test(text) ? 'u' : /\bover\b/.test(text) ? 'o' : ''
+  if (cat === 'ml') return `${period}:ml:${team || 'game'}`
+  if (cat === 'spread') return `${period}:spread:${team}:${num}`
+  if (cat === 'teamtotal') return `${period}:tt:${team}:${side}${num}`
+  if (cat === 'total') return `${period}:total:${side}${num}`
+  return `${period}:${cat}:${text.replace(/[^a-z0-9+.]/g, '').slice(0, 40)}`
+}
+
+function displayGameLineLabel(prop) {
+  const raw = String(prop?.line_label || prop?.title || '').trim()
+  return normalizeMarketLabel(raw) || raw || 'Line'
+}
+
+function gameLineSortRank(key) {
+  const period = key.startsWith('2h:') ? 2 : key.startsWith('1h:') ? 1 : 0
+  let cat = 9
+  if (key.includes(':ml:')) cat = 0
+  else if (key.includes(':spread:')) cat = 1
+  else if (key.includes(':total:')) cat = 2
+  else if (key.includes(':tt:')) cat = 3
+  return period * 10 + cat
+}
+
+function pairGameLines(list) {
+  const byKey = new Map()
+  for (const p of list || []) {
+    const key = gameLineMatchKey(p)
+    if (!byKey.has(key)) {
+      byKey.set(key, {
+        key,
+        label: displayGameLineLabel(p),
+        kalshi: null,
+        polymarket: null,
+      })
+    }
+    const row = byKey.get(key)
+    const src = p.source || 'kalshi'
+    if (src === 'polymarket') row.polymarket = p
+    else row.kalshi = p
+    row.label = preferShorterLabel(row.label, displayGameLineLabel(p))
+  }
+  const rows = [...byKey.values()]
+  rows.sort((a, b) => {
+    const ra = gameLineSortRank(a.key)
+    const rb = gameLineSortRank(b.key)
+    if (ra !== rb) return ra - rb
+    const na = lineStrikeNum(a.key, a.label)
+    const nb = lineStrikeNum(b.key, b.label)
+    if (na !== nb) return na - nb
+    return String(a.label).localeCompare(String(b.label))
+  })
+  return rows
+}
+
+function VenueColumnsHeader() {
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_minmax(4.5rem,auto)_minmax(4.5rem,auto)] gap-x-2 border-b border-zinc-800/80 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-zinc-600">
+      <span className="self-end">Line</span>
+      <span className="text-center leading-tight">
+        Kalshi
+        <span className="mt-0.5 flex justify-center gap-3 font-semibold normal-case tracking-normal text-zinc-500">
+          <span className="text-emerald-400/80">Y</span>
+          <span className="text-rose-400/80">N</span>
+        </span>
+      </span>
+      <span className="text-center leading-tight">
+        Poly
+        <span className="mt-0.5 flex justify-center gap-3 font-semibold normal-case tracking-normal text-zinc-500">
+          <span className="text-emerald-400/80">Y</span>
+          <span className="text-rose-400/80">N</span>
+        </span>
+      </span>
+    </div>
+  )
+}
+
+function PairedPropRows({ pairs }) {
+  return (
+    <div className="divide-y divide-zinc-800/70">
+      {pairs.map((row) => (
+        <div
+          key={row.key}
+          className="grid grid-cols-[minmax(0,1fr)_minmax(4.5rem,auto)_minmax(4.5rem,auto)] items-center gap-x-2 px-3 py-2"
+        >
+          <div className="min-w-0 truncate text-[13px] font-semibold leading-snug text-zinc-100">
+            {row.label}
+          </div>
+          <div className="flex justify-center">
+            <YesNoButtons prop={row.kalshi} />
+          </div>
+          <div className="flex justify-center">
+            <YesNoButtons prop={row.polymarket} />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function GamePropsSection({ title, lines, liqScale }) {
+  const pairs = useMemo(() => pairGameLines(lines), [lines])
+  const aggVol = sumField(lines, 'volume_24h') ?? sumField(lines, 'volume')
+  const aggOi = sumField(lines, 'open_interest')
+  const aggBook = lines.reduce((acc, p) => {
+    const d = propBookDepth(p)
+    return d == null ? acc : (acc || 0) + d
+  }, null)
+  if (!pairs.length) return null
+  return (
+    <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
+      <div className="border-b border-zinc-800/80 px-3 py-2.5">
+        <div className="flex items-baseline justify-between gap-2">
+          <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+            {title}
+          </h3>
+          <span className="text-[11px] tabular-nums text-zinc-600">{pairs.length}</span>
+        </div>
+        <div className="mt-2">
+          <KalshiLiqStrip vol={aggVol} oi={aggOi} book={aggBook} scale={liqScale} compact />
+        </div>
+      </div>
+      <VenueColumnsHeader />
+      <PairedPropRows pairs={pairs} />
+    </div>
+  )
+}
+
+/** Game + period markets … Kalshi | Poly columns (same pattern as player props). */
 export function KalshiGamePropsBoard({ props, game = null, live = null, showPeriods = true }) {
-  const [venue, setVenue] = useState('all')
-  const [filter, setFilter] = useState('all')
   const pastHalftime = isPastHalftime(game, live)
 
-  const { gameList, period, scale, counts } = useMemo(() => {
-    const list = filterByVenue(Array.isArray(props) ? props : [], venue).filter((p) => {
-      if (p.kind === 'player') return false
-      if (isSecondHalfProp(p) && !pastHalftime) return false
-      return true
-    })
-    const gameRows = list.filter((p) => p.kind === 'game' || (!p.kind && !p.player_name))
-    const periodList = list.filter((p) => p.kind === 'period')
-    const all = Array.isArray(props) ? props : []
-    const gamePeriod = all.filter((p) => {
+  const { gameList, periodList, scale } = useMemo(() => {
+    const list = (Array.isArray(props) ? props : []).filter((p) => {
       if (p.kind === 'player') return false
       if (!(p.kind === 'game' || p.kind === 'period' || (!p.kind && !p.player_name))) return false
       if (isSecondHalfProp(p) && !pastHalftime) return false
       return true
     })
+    const gameRows = list.filter((p) => p.kind === 'game' || (!p.kind && !p.player_name))
+    const periodRows = list.filter((p) => p.kind === 'period')
     return {
       gameList: gameRows,
-      period: periodList,
-      scale: liqScaleFor([...gameRows, ...periodList]),
-      counts: {
-        all: gamePeriod.length,
-        kalshi: gamePeriod.filter((p) => (p.source || 'kalshi') === 'kalshi').length,
-        polymarket: gamePeriod.filter((p) => p.source === 'polymarket').length,
-      },
+      periodList: periodRows,
+      scale: liqScaleFor(list),
     }
-  }, [props, venue, pastHalftime])
+  }, [props, pastHalftime])
 
-  const showGame = filter === 'all' || filter === 'game'
-  const showPeriod = showPeriods && (filter === 'all' || filter === 'period')
-  const visible =
-    (showGame ? gameList.length : 0) + (showPeriod ? period.length : 0)
-
-  if (!counts.all) {
+  if (!gameList.length && !(showPeriods && periodList.length)) {
     return (
       <div className="py-6 text-center text-sm text-zinc-500">
         No open game markets for this matchup right now.
@@ -544,64 +769,11 @@ export function KalshiGamePropsBoard({ props, game = null, live = null, showPeri
 
   return (
     <div className="space-y-3" data-lounge-kalshi-game-props>
-      <VenueFilter value={venue} onChange={setVenue} counts={counts} />
-      {showPeriods && period.length ? (
-        <div className="flex flex-wrap gap-1.5">
-          {[
-            { id: 'all', label: 'All' },
-            { id: 'game', label: 'Game' },
-            { id: 'period', label: 'Periods' },
-          ].map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => setFilter(opt.id)}
-              className={`rounded-full px-3 py-1 text-[11px] font-semibold tracking-wide ${
-                filter === opt.id
-                  ? 'bg-zinc-100 text-zinc-950'
-                  : 'bg-zinc-900 text-zinc-400 ring-1 ring-inset ring-zinc-800'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
+      {gameList.length ? (
+        <GamePropsSection title="Game" lines={gameList} liqScale={scale} />
       ) : null}
-
-      {showGame && gameList.length ? (
-        <section className="space-y-2">
-          <div className="flex items-baseline justify-between gap-2 px-0.5">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-              Game
-            </h3>
-            <span className="text-[11px] tabular-nums text-zinc-600">{gameList.length}</span>
-          </div>
-          <div className="space-y-2">
-            {gameList.map((prop) => (
-              <KalshiGamePropCard key={prop.ticker} prop={prop} liqScale={scale} />
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {showPeriod && period.length ? (
-        <section className="space-y-2">
-          <div className="flex items-baseline justify-between gap-2 px-0.5">
-            <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-              Periods
-            </h3>
-            <span className="text-[11px] tabular-nums text-zinc-600">{period.length}</span>
-          </div>
-          <div className="space-y-2">
-            {period.map((prop) => (
-              <KalshiGamePropCard key={prop.ticker} prop={prop} liqScale={scale} />
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {!visible ? (
-        <div className="py-6 text-center text-sm text-zinc-500">Nothing in that filter right now.</div>
+      {showPeriods && periodList.length ? (
+        <GamePropsSection title="Halves" lines={periodList} liqScale={scale} />
       ) : null}
     </div>
   )

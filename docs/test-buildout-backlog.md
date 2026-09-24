@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-23:** **Game hub props labels normalized (Mac).** Shared `normalizeMarketLabel` for Kalshi|Poly player + game rows (club→abbr, 1H/2H, pass/rush/rec/TDs/fantasy fluff). Dead single-card game UI removed. Web **`1.4.518`**.
 - **2026-09-23:** **Game props trimmed (Mac).** Stats board: Kalshi/Poly limited to popular ML/spread/total + 1H/2H (no quarters/exotics). **2H hidden until live halftime** (period ≥ 3 or HT label). Edge redeployed. Web **`1.4.517`**.
 - **2026-09-23:** **Polymarket US deep links (Mac).** Fixed 404s: US boards are `/sports/nfl/{event}` (+ `?market=` / `side=`), not `/event/.../market`. Edge redeployed. Web **`1.4.516`**.
 - **2026-09-23:** **NFL headshots restored + sync harden (Mac).** Depth sync had wiped `espn_id`/`headshot_url` (Sleeper nulls). `nfl:players:sync` now preserves existing ESPN/R2 media. Re-ran espn-ids (**805**) + R2 mirror (**803**). Web **`1.4.515`**. No prod SQL.

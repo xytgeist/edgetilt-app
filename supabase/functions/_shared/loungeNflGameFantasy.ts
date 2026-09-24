@@ -10,7 +10,82 @@ const KALSHI_BASE = 'https://external-api.kalshi.com/trade-api/v2'
 const FP_BASE = 'https://api.fantasypros.com/public/v2/json'
 
 const FANTASY_POS = new Set(['QB', 'RB', 'WR', 'TE'])
-const KALSHI_SERIES = ['KXNFLPASSYDS', 'KXNFLRSHYDS', 'KXNFLRECYDS', 'KXNFLTD'] as const
+
+/** Moneyline / spread / total / race / team specials tied to a single game. */
+const KALSHI_GAME_SERIES = [
+  'KXNFLGAME',
+  'KXNFLSPREAD',
+  'KXNFLTOTAL',
+  'KXNFLTEAMTOTAL',
+  'KXNFLWINMARGIN',
+  'KXNFLRACE',
+  'KXNFLDSTTD',
+  'KXNFLSFTY',
+  'KXNFLTOTALTD',
+  'KXNFLTEAMTD',
+  'KXNFLTEAMSACK',
+  'KXNFLTEAMYDS',
+  'KXNFLFG',
+  'KXNFLTEAMFG',
+  'KXNFLTEAMTO',
+  'KXNFLTEAM1STDOWNS',
+] as const
+
+/** Half / quarter winners, spreads, totals. */
+const KALSHI_PERIOD_SERIES = [
+  'KXNFL1H',
+  'KXNFL2H',
+  'KXNFL1Q',
+  'KXNFL2Q',
+  'KXNFL3Q',
+  'KXNFL4Q',
+  'KXNFL1HSPREAD',
+  'KXNFL1HTOTAL',
+  'KXNFL1HTEAMTOTAL',
+  'KXNFL2HSPREAD',
+  'KXNFL2HTOTAL',
+  'KXNFL1QSPREAD',
+  'KXNFL1QTOTAL',
+  'KXNFL2QSPREAD',
+  'KXNFL2QTOTAL',
+  'KXNFL3QSPREAD',
+  'KXNFL3QTOTAL',
+  'KXNFL4QSPREAD',
+  'KXNFL4QTOTAL',
+] as const
+
+/** Player-scoped strike markets (grouped by player in the UI). */
+const KALSHI_PLAYER_SERIES = [
+  'KXNFLPASSYDS',
+  'KXNFLRSHYDS',
+  'KXNFLRECYDS',
+  'KXNFLTD',
+  'KXNFLREC',
+  'KXNFLRSHATT',
+  'KXNFLPASSATT',
+  'KXNFLPASSCOMP',
+  'KXNFLRRYDS',
+  'KXNFLFIRSTTD',
+  'KXNFLTEAMFIRSTTD',
+  'KXNFLSACK',
+  'KXNFLTKL',
+] as const
+
+const KALSHI_SERIES = [
+  ...KALSHI_GAME_SERIES,
+  ...KALSHI_PERIOD_SERIES,
+  ...KALSHI_PLAYER_SERIES,
+] as const
+
+const KALSHI_PLAYER_SERIES_SET = new Set<string>(KALSHI_PLAYER_SERIES)
+const KALSHI_PERIOD_SERIES_SET = new Set<string>(KALSHI_PERIOD_SERIES)
+
+/** Soft caps so one game does not return hundreds of strike lines. */
+const KALSHI_MAX_GAME = 60
+const KALSHI_MAX_PERIOD = 40
+const KALSHI_MAX_PLAYER = 80
+const KALSHI_FETCH_CONCURRENCY = 8
+
 const CACHE_TTL_MS = 90_000
 
 const HEADSHOT_CDN = (espnId: string) =>
@@ -43,11 +118,17 @@ export type NflGameFantasyPlayer = {
   fantasypros_pts: number | null
 }
 
+export type NflGameFantasyPropKind = 'game' | 'period' | 'player'
+
 export type NflGameFantasyProp = {
   ticker: string
   series: string
   event_ticker: string
   title: string
+  /** Short line without player prefix when available (e.g. "250+ passing yards"). */
+  line_label: string
+  /** `game` moneyline/spread/total/team · `period` half/quarter · `player` strike markets. */
+  kind: NflGameFantasyPropKind
   player_name: string
   team_hint: string | null
   yes_bid: number | null
@@ -146,10 +227,37 @@ function kalshiMarketUrls(series: string, eventTicker: string, ticker: string) {
   return { seriesUrl, marketUrl, yesUrl, noUrl }
 }
 
-function parsePlayerFromKalshiTitle(title: string): string {
-  const raw = String(title || '')
+/** Player strike titles look like `Micah Parsons: 1+ sacks`. Game titles do not. */
+function parsePlayerFromKalshiTitle(title: string, series: string): string {
+  if (!KALSHI_PLAYER_SERIES_SET.has(series)) return ''
+  const raw = String(title || '').trim()
   const cut = raw.indexOf(':')
-  return (cut > 0 ? raw.slice(0, cut) : raw).trim()
+  if (cut <= 0) return ''
+  const name = raw.slice(0, cut).trim()
+  // Reject obviously non-player prefixes.
+  if (!name || /^(will|over|under|full game|neither)/i.test(name)) return ''
+  if (name.length > 48) return ''
+  return name
+}
+
+function lineLabelFromTitle(title: string, playerName: string): string {
+  const raw = String(title || '').trim()
+  if (playerName && raw.toLowerCase().startsWith(playerName.toLowerCase())) {
+    const rest = raw.slice(playerName.length).replace(/^:\s*/, '').trim()
+    if (rest) return rest
+  }
+  const cut = raw.indexOf(':')
+  if (cut > 0 && cut < 48) {
+    const rest = raw.slice(cut + 1).trim()
+    if (rest) return rest
+  }
+  return raw
+}
+
+function propKindForSeries(series: string): NflGameFantasyPropKind {
+  if (KALSHI_PLAYER_SERIES_SET.has(series)) return 'player'
+  if (KALSHI_PERIOD_SERIES_SET.has(series)) return 'period'
+  return 'game'
 }
 
 function eventMatchesTeams(eventTicker: string, away: string, home: string): boolean {
@@ -159,6 +267,126 @@ function eventMatchesTeams(eventTicker: string, away: string, home: string): boo
   if (!t || !a || !h) return false
   // e.g. KXNFLPASSYDS-26SEP24ATLGB or KXNFLGAME-26SEP24ATLGB
   return (t.includes(a) && t.includes(h)) || t.endsWith(`${a}${h}`) || t.endsWith(`${h}${a}`)
+}
+
+function eventMatchesGameSuffix(eventTicker: string, suffix: string): boolean {
+  const t = String(eventTicker || '').toUpperCase()
+  const s = String(suffix || '').toUpperCase()
+  if (!t || !s) return false
+  return t.endsWith(s) || t.includes(`-${s}`) || t.includes(`-${s}-`)
+}
+
+function propLiquidity(p: NflGameFantasyProp): number {
+  return (
+    (p.volume_24h ?? 0) * 2 +
+    (p.volume ?? 0) +
+    (p.open_interest ?? 0) +
+    (p.yes_bid_size ?? 0) +
+    (p.yes_ask_size ?? 0)
+  )
+}
+
+function mapKalshiMarket(
+  series: string,
+  eventTicker: string,
+  m: Record<string, unknown>,
+): NflGameFantasyProp {
+  const title = String(m.title || m.yes_sub_title || '')
+  const ticker = String(m.ticker || '')
+  const playerName = parsePlayerFromKalshiTitle(title, series)
+  const urls = kalshiMarketUrls(series, eventTicker, ticker)
+  return {
+    ticker,
+    series,
+    event_ticker: eventTicker,
+    title,
+    line_label: lineLabelFromTitle(title, playerName),
+    kind: propKindForSeries(series),
+    player_name: playerName,
+    team_hint: null,
+    yes_bid: dollarsToNum(m.yes_bid_dollars ?? m.yes_bid),
+    yes_ask: dollarsToNum(m.yes_ask_dollars ?? m.yes_ask),
+    no_bid: dollarsToNum(m.no_bid_dollars ?? m.no_bid),
+    no_ask: dollarsToNum(m.no_ask_dollars ?? m.no_ask),
+    last: dollarsToNum(m.last_price_dollars ?? m.last_price),
+    volume: contractsToNum(m.volume_fp ?? m.volume),
+    volume_24h: contractsToNum(m.volume_24h_fp ?? m.volume_24h),
+    open_interest: contractsToNum(m.open_interest_fp ?? m.open_interest),
+    yes_bid_size: contractsToNum(m.yes_bid_size_fp ?? m.yes_bid_size),
+    yes_ask_size: contractsToNum(m.yes_ask_size_fp ?? m.yes_ask_size),
+    url: urls.seriesUrl,
+    url_market: urls.marketUrl,
+    url_yes: urls.yesUrl,
+    url_no: urls.noUrl,
+  }
+}
+
+/** Resolve `26SEP24ATLGB`-style slug from the open KXNFLGAME event for this matchup. */
+async function resolveKalshiGameSuffix(away: string, home: string): Promise<string | null> {
+  const data = (await fetchJson(
+    `${KALSHI_BASE}/events?series_ticker=KXNFLGAME&status=open&limit=200`,
+  )) as { events?: Array<Record<string, unknown>> }
+  const events = Array.isArray(data.events) ? data.events : []
+  for (const ev of events) {
+    const et = String(ev.event_ticker || '')
+    if (!eventMatchesTeams(et, away, home)) continue
+    const prefix = 'KXNFLGAME-'
+    if (et.toUpperCase().startsWith(prefix)) return et.slice(prefix.length)
+  }
+  return null
+}
+
+async function fetchKalshiSeriesForSuffix(
+  series: string,
+  suffix: string,
+): Promise<NflGameFantasyProp[]> {
+  const out: NflGameFantasyProp[] = []
+  let cursor = ''
+  for (let page = 0; page < 4; page++) {
+    const q = new URLSearchParams({
+      series_ticker: series,
+      status: 'open',
+      limit: '200',
+      with_nested_markets: 'true',
+    })
+    if (cursor) q.set('cursor', cursor)
+    const data = (await fetchJson(`${KALSHI_BASE}/events?${q}`)) as {
+      events?: Array<Record<string, unknown>>
+      cursor?: string
+    }
+    const events = Array.isArray(data.events) ? data.events : []
+    for (const ev of events) {
+      const eventTicker = String(ev.event_ticker || '')
+      if (!eventMatchesGameSuffix(eventTicker, suffix)) continue
+      const markets = Array.isArray(ev.markets) ? (ev.markets as Array<Record<string, unknown>>) : []
+      for (const m of markets) {
+        const status = String(m.status || 'open').toLowerCase()
+        if (status && status !== 'open' && status !== 'active') continue
+        out.push(mapKalshiMarket(series, eventTicker, m))
+      }
+    }
+    cursor = String(data.cursor || '')
+    if (!cursor || events.length === 0) break
+  }
+  return out
+}
+
+async function mapPool<T, R>(items: readonly T[], concurrency: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length)
+  let next = 0
+  async function worker() {
+    while (next < items.length) {
+      const i = next++
+      results[i] = await fn(items[i])
+    }
+  }
+  const n = Math.min(concurrency, items.length)
+  await Promise.all(Array.from({ length: n }, () => worker()))
+  return results
+}
+
+function takeTopByLiquidity(list: NflGameFantasyProp[], limit: number): NflGameFantasyProp[] {
+  return [...list].sort((a, b) => propLiquidity(b) - propLiquidity(a)).slice(0, limit)
 }
 
 async function loadPlayersFromDb(
@@ -267,63 +495,48 @@ async function loadSleeperSeasonStats(season: string): Promise<Map<string, Sleep
 }
 
 async function loadKalshiProps(away: string, home: string): Promise<NflGameFantasyProp[]> {
-  const props: NflGameFantasyProp[] = []
-  for (const series of KALSHI_SERIES) {
-    let cursor = ''
-    for (let page = 0; page < 6; page++) {
-      const q = new URLSearchParams({ series_ticker: series, status: 'open', limit: '200' })
-      if (cursor) q.set('cursor', cursor)
-      const data = (await fetchJson(`${KALSHI_BASE}/markets?${q}`)) as {
-        markets?: Array<Record<string, unknown>>
-        cursor?: string
-      }
-      const markets = Array.isArray(data.markets) ? data.markets : []
-      for (const m of markets) {
-        const eventTicker = String(m.event_ticker || '')
-        if (!eventMatchesTeams(eventTicker, away, home)) continue
-        const title = String(m.title || m.yes_sub_title || '')
-        const playerName = parsePlayerFromKalshiTitle(title)
-        const ticker = String(m.ticker || '')
-        const urls = kalshiMarketUrls(series, eventTicker, ticker)
-        props.push({
-          ticker,
-          series,
-          event_ticker: eventTicker,
-          title,
-          player_name: playerName,
-          team_hint: null,
-          yes_bid: dollarsToNum(m.yes_bid_dollars ?? m.yes_bid),
-          yes_ask: dollarsToNum(m.yes_ask_dollars ?? m.yes_ask),
-          no_bid: dollarsToNum(m.no_bid_dollars ?? m.no_bid),
-          no_ask: dollarsToNum(m.no_ask_dollars ?? m.no_ask),
-          last: dollarsToNum(m.last_price_dollars ?? m.last_price),
-          volume: contractsToNum(m.volume_fp ?? m.volume),
-          volume_24h: contractsToNum(m.volume_24h_fp ?? m.volume_24h),
-          open_interest: contractsToNum(m.open_interest_fp ?? m.open_interest),
-          yes_bid_size: contractsToNum(m.yes_bid_size_fp ?? m.yes_bid_size),
-          yes_ask_size: contractsToNum(m.yes_ask_size_fp ?? m.yes_ask_size),
-          url: urls.seriesUrl,
-          url_market: urls.marketUrl,
-          url_yes: urls.yesUrl,
-          url_no: urls.noUrl,
-        })
-      }
-      cursor = String(data.cursor || '')
-      if (!cursor || markets.length === 0) break
-    }
+  const suffix = await resolveKalshiGameSuffix(away, home)
+  if (!suffix) return []
+
+  const batches = await mapPool(KALSHI_SERIES, KALSHI_FETCH_CONCURRENCY, (series) =>
+    fetchKalshiSeriesForSuffix(series, suffix).catch(() => [] as NflGameFantasyProp[]),
+  )
+  const all = batches.flat()
+  const seen = new Set<string>()
+  const deduped: NflGameFantasyProp[] = []
+  for (const p of all) {
+    if (!p.ticker || seen.has(p.ticker)) continue
+    seen.add(p.ticker)
+    deduped.push(p)
   }
-  // Prefer liquid / active books, then mid-probability props.
-  props.sort((a, b) => {
-    const liq = (p: NflGameFantasyProp) =>
-      (p.volume_24h ?? 0) * 2 + (p.volume ?? 0) + (p.open_interest ?? 0) + (p.yes_bid_size ?? 0) + (p.yes_ask_size ?? 0)
-    const dLiq = liq(b) - liq(a)
-    if (dLiq !== 0) return dLiq
-    const pa = a.yes_ask ?? a.yes_bid ?? a.last ?? 0
-    const pb = b.yes_ask ?? b.yes_bid ?? b.last ?? 0
-    const score = (p: number) => -Math.abs(p - 0.45)
-    return score(pb) - score(pa)
+
+  const game = takeTopByLiquidity(
+    deduped.filter((p) => p.kind === 'game'),
+    KALSHI_MAX_GAME,
+  )
+  const period = takeTopByLiquidity(
+    deduped.filter((p) => p.kind === 'period'),
+    KALSHI_MAX_PERIOD,
+  )
+  const player = takeTopByLiquidity(
+    deduped.filter((p) => p.kind === 'player'),
+    KALSHI_MAX_PLAYER,
+  )
+
+  const merged = [...game, ...period, ...player]
+  merged.sort((a, b) => {
+    const kindRank = (k: NflGameFantasyPropKind) => (k === 'game' ? 0 : k === 'period' ? 1 : 2)
+    const dk = kindRank(a.kind) - kindRank(b.kind)
+    if (dk !== 0) return dk
+    if (a.kind === 'player') {
+      const na = a.player_name || a.title
+      const nb = b.player_name || b.title
+      const byName = na.localeCompare(nb)
+      if (byName !== 0) return byName
+    }
+    return propLiquidity(b) - propLiquidity(a)
   })
-  return props.slice(0, 40)
+  return merged
 }
 
 async function loadFantasyPros(

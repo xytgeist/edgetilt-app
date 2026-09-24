@@ -3711,6 +3711,18 @@ html.light [data-lounge-game-players] select {
 html.light [data-lounge-game-players] [data-pos-filter-caret] {
   color: #18181b;
 }
+html.light [data-lounge-game-players] [data-roster-list],
+html.light [data-lounge-game-players] [data-roster-player-card] {
+  background-color: #ffffff;
+  border-color: #e4e4e7;
+}
+html.light [data-lounge-game-players] [data-roster-list].divide-zinc-800 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #e4e4e7;
+}
+html.light [data-lounge-game-players] [data-roster-player-card] {
+  border-color: #d4d4d8;
+  box-shadow: 0 8px 24px rgba(24, 24, 27, 0.08);
+}
 html.light [data-lounge-game-players] [data-roster-season-stats] {
   background-color: #ffffff;
   border-color: #e4e4e7;

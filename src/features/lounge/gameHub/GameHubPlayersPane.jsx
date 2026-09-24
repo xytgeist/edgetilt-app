@@ -623,65 +623,99 @@ function RosterBoard({ players }) {
     return <div className="py-6 text-center text-sm text-zinc-500">No players for that filter.</div>
   }
 
-  return (
-    <ul className="divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
-      {sorted.map((p) => {
-        const headline = seasonHeadline(p)
-        const rank =
-          p.season_pos_rank != null
-            ? `#${p.season_pos_rank}${p.season_pos_rank_of != null ? `/${p.season_pos_rank_of}` : ''}`
-            : null
-        const id = String(p.sleeper_id)
-        const expanded = expandedId === id
-        const hasStats = buildStatGroups(p).length > 0
-        return (
-          <li key={id} className="px-3.5 py-3.5">
-            <button
-              type="button"
-              disabled={!hasStats}
-              aria-expanded={hasStats ? expanded : undefined}
-              onClick={() => {
-                if (!hasStats) return
-                setExpandedId((cur) => (cur === id ? null : id))
-              }}
-              className={`flex w-full items-start gap-3 text-left touch-manipulation ${
-                hasStats ? 'active:opacity-90' : ''
-              }`}
+  const expandedIdx = sorted.findIndex((p) => String(p.sleeper_id) === expandedId)
+
+  const renderRow = (p, { expanded = false } = {}) => {
+    const headline = seasonHeadline(p)
+    const rank =
+      p.season_pos_rank != null
+        ? `#${p.season_pos_rank}${p.season_pos_rank_of != null ? `/${p.season_pos_rank_of}` : ''}`
+        : null
+    const id = String(p.sleeper_id)
+    const hasStats = buildStatGroups(p).length > 0
+    return (
+      <li key={id} className="px-3.5 py-3.5">
+        <button
+          type="button"
+          disabled={!hasStats}
+          aria-expanded={hasStats ? expanded : undefined}
+          onClick={() => {
+            if (!hasStats) return
+            setExpandedId((cur) => (cur === id ? null : id))
+          }}
+          className={`flex w-full items-start gap-3 text-left touch-manipulation ${
+            hasStats ? 'active:opacity-90' : ''
+          }`}
+        >
+          <PlayerAvatar player={p} />
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-center gap-1.5">
+              <div className="truncate text-[16px] font-semibold text-zinc-100">{p.name}</div>
+              <InjuryPill status={p.injury_status} />
+            </div>
+            <div className="mt-0.5 text-[12px] text-zinc-500">
+              {p.position || '-'} · {p.team}
+              {p.is_starter ? ' · Starter' : ''}
+              {rank ? ` · ${rank}` : ''}
+            </div>
+          </div>
+          {headline ? (
+            <div className="shrink-0 pt-0.5 text-right">
+              <div className="text-[18px] font-bold tabular-nums text-zinc-100">{headline.value}</div>
+              <div className="text-[10px] uppercase tracking-wide text-zinc-500">{headline.label}</div>
+            </div>
+          ) : null}
+          {hasStats ? (
+            <span
+              aria-hidden
+              className={`mt-2 shrink-0 text-zinc-500 transition-transform ${expanded ? 'rotate-180' : ''}`}
             >
-              <PlayerAvatar player={p} />
-              <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <div className="truncate text-[16px] font-semibold text-zinc-100">{p.name}</div>
-                  <InjuryPill status={p.injury_status} />
-                </div>
-                <div className="mt-0.5 text-[12px] text-zinc-500">
-                  {p.position || '-'} · {p.team}
-                  {p.is_starter ? ' · Starter' : ''}
-                  {rank ? ` · ${rank}` : ''}
-                </div>
-              </div>
-              {headline ? (
-                <div className="shrink-0 pt-0.5 text-right">
-                  <div className="text-[18px] font-bold tabular-nums text-zinc-100">{headline.value}</div>
-                  <div className="text-[10px] uppercase tracking-wide text-zinc-500">{headline.label}</div>
-                </div>
-              ) : null}
-              {hasStats ? (
-                <span
-                  aria-hidden
-                  className={`mt-2 shrink-0 text-zinc-500 transition-transform ${expanded ? 'rotate-180' : ''}`}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </span>
-              ) : null}
-            </button>
-            {expanded ? <RosterSeasonStatsTable player={p} /> : null}
-          </li>
-        )
-      })}
-    </ul>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </span>
+          ) : null}
+        </button>
+        {expanded ? <RosterSeasonStatsTable player={p} /> : null}
+      </li>
+    )
+  }
+
+  const listClass =
+    'divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900'
+
+  if (expandedIdx < 0) {
+    return (
+      <ul data-roster-list className={listClass}>
+        {sorted.map((p) => renderRow(p))}
+      </ul>
+    )
+  }
+
+  const before = sorted.slice(0, expandedIdx)
+  const mid = sorted[expandedIdx]
+  const after = sorted.slice(expandedIdx + 1)
+
+  return (
+    <div className="space-y-2">
+      {before.length ? (
+        <ul data-roster-list className={listClass}>
+          {before.map((p) => renderRow(p))}
+        </ul>
+      ) : null}
+      <ul
+        data-roster-player-card
+        data-expanded=""
+        className="overflow-hidden rounded-2xl border border-zinc-600 bg-zinc-900 shadow-lg shadow-black/30"
+      >
+        {renderRow(mid, { expanded: true })}
+      </ul>
+      {after.length ? (
+        <ul data-roster-list className={listClass}>
+          {after.map((p) => renderRow(p))}
+        </ul>
+      ) : null}
+    </div>
   )
 }
 

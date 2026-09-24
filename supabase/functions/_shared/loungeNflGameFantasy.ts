@@ -103,6 +103,15 @@ export type NflGameFantasyPlayer = {
   side: 'home' | 'away'
   headshot_url: string | null
   search_rank: number | null
+  /** Sleeper depth_chart_order (1 = listed starter for that slot). */
+  depth_chart_order: number | null
+  /** Sleeper depth slot (QB, RB, LWR, RWR, SWR, TE, …). */
+  depth_chart_position: string | null
+  /**
+   * Likely starter: depth_chart_order === 1, else fill typical starter count
+   * per team+position via search_rank (covers stale Sleeper depth).
+   */
+  is_starter: boolean
   /** This-week Sleeper PPR projection (DFF / weekly fantasy). */
   projected_ppr: number | null
   projected_pass_yd: number | null
@@ -463,7 +472,7 @@ async function loadPlayersFromDb(
   const { data, error } = await admin
     .from('nfl_players')
     .select(
-      'sleeper_id, espn_id, full_name, position, team, fantasy_positions, search_rank, headshot_url, local_headshot_path',
+      'sleeper_id, espn_id, full_name, position, team, fantasy_positions, search_rank, depth_chart_order, depth_chart_position, headshot_url, local_headshot_path',
     )
     .in('team', [away, home])
   if (error) throw new Error(error.message)
@@ -492,6 +501,11 @@ async function loadPlayersFromSleeper(away: string, home: string): Promise<Array
       team,
       fantasy_positions: fantasy,
       search_rank: Number.isFinite(Number(p.search_rank)) ? Number(p.search_rank) : null,
+      depth_chart_order:
+        p.depth_chart_order != null && Number.isFinite(Number(p.depth_chart_order))
+          ? Number(p.depth_chart_order)
+          : null,
+      depth_chart_position: p.depth_chart_position != null ? String(p.depth_chart_position) : null,
       headshot_url: espnId ? HEADSHOT_CDN(espnId) : null,
       local_headshot_path: espnId ? `/sports/nfl/players/${espnId}.png` : null,
     })
@@ -681,6 +695,13 @@ function mapDbRow(
     side: team === home ? 'home' : 'away',
     headshot_url: cdn || local,
     search_rank: Number.isFinite(Number(row.search_rank)) ? Number(row.search_rank) : null,
+    depth_chart_order:
+      row.depth_chart_order != null && Number.isFinite(Number(row.depth_chart_order))
+        ? Number(row.depth_chart_order)
+        : null,
+    depth_chart_position:
+      row.depth_chart_position != null ? String(row.depth_chart_position) : null,
+    is_starter: false,
     projected_ppr: null,
     projected_pass_yd: null,
     projected_rush_yd: null,
@@ -695,6 +716,70 @@ function mapDbRow(
     ecr: null,
     fantasypros_pts: null,
   }
+}
+
+/** Typical fantasy starter seats per position … fills when Sleeper depth is stale. */
+const STARTER_SEATS: Record<string, number> = { QB: 1, RB: 2, WR: 3, TE: 1 }
+
+function markStarters(players: NflGameFantasyPlayer[]): void {
+  const byTeamPos = new Map<string, NflGameFantasyPlayer[]>()
+  for (const p of players) {
+    p.is_starter = false
+    const pos = String(p.position || '')
+      .toUpperCase()
+      .replace(/[^A-Z]/g, '')
+    const key = `${p.team}|${pos}`
+    if (!byTeamPos.has(key)) byTeamPos.set(key, [])
+    byTeamPos.get(key)!.push(p)
+  }
+  for (const [, group] of byTeamPos) {
+    for (const p of group) {
+      if (p.depth_chart_order === 1) p.is_starter = true
+    }
+    const pos = String(group[0]?.position || '')
+      .toUpperCase()
+      .replace(/[^A-Z]/g, '')
+    const seats = STARTER_SEATS[pos] ?? 0
+    if (seats <= 0) continue
+    let have = group.filter((p) => p.is_starter).length
+    if (have >= seats) continue
+    const fillers = group
+      .filter((p) => !p.is_starter)
+      .sort((a, b) => (a.search_rank ?? 999999) - (b.search_rank ?? 999999))
+    for (const p of fillers) {
+      if (have >= seats) break
+      p.is_starter = true
+      have += 1
+    }
+  }
+}
+
+function sortPlayersForRoster(players: NflGameFantasyPlayer[]): void {
+  const posRank = (pos: string | null) => {
+    const p = String(pos || '')
+      .toUpperCase()
+      .replace(/[^A-Z]/g, '')
+    if (p === 'QB') return 0
+    if (p === 'RB' || p === 'FB' || p === 'HB') return 1
+    if (p === 'WR') return 2
+    if (p === 'TE') return 3
+    return 50
+  }
+  players.sort((a, b) => {
+    const sa = a.is_starter ? 0 : 1
+    const sb = b.is_starter ? 0 : 1
+    if (sa !== sb) return sa - sb
+    const pa = posRank(a.position)
+    const pb = posRank(b.position)
+    if (pa !== pb) return pa - pb
+    const da = a.depth_chart_order ?? 99
+    const db = b.depth_chart_order ?? 99
+    if (da !== db) return da - db
+    const ra = a.search_rank ?? 9999
+    const rb = b.search_rank ?? 9999
+    if (ra !== rb) return ra - rb
+    return a.name.localeCompare(b.name)
+  })
 }
 
 export async function buildNflGameFantasy(
@@ -766,15 +851,8 @@ export async function buildNflGameFantasy(
     players.push(mapped)
   }
 
-  players.sort((a, b) => {
-    const pa = a.projected_ppr ?? -1
-    const pb = b.projected_ppr ?? -1
-    if (pb !== pa) return pb - pa
-    const ra = a.search_rank ?? 9999
-    const rb = b.search_rank ?? 9999
-    if (ra !== rb) return ra - rb
-    return a.name.localeCompare(b.name)
-  })
+  markStarters(players)
+  sortPlayersForRoster(players)
 
   const byName = new Map(players.map((p) => [nameKey(p.name), p]))
   if (season && week != null) {

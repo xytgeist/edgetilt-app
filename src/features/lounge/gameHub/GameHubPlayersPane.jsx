@@ -110,9 +110,15 @@ function RosterBoard({ players, awayAbbrev, homeAbbrev }) {
       return true
     })
     list.sort((a, b) => {
+      const sa = a.is_starter === true ? 0 : 1
+      const sb = b.is_starter === true ? 0 : 1
+      if (sa !== sb) return sa - sb
       const pa = positionRank(a.position)
       const pb = positionRank(b.position)
       if (pa !== pb) return pa - pb
+      const da = a.depth_chart_order != null ? Number(a.depth_chart_order) : 99
+      const db = b.depth_chart_order != null ? Number(b.depth_chart_order) : 99
+      if (da !== db) return da - db
       const ya = seasonPrimaryYards(a)
       const yb = seasonPrimaryYards(b)
       if (yb !== ya) return yb - ya
@@ -157,6 +163,7 @@ function RosterBoard({ players, awayAbbrev, homeAbbrev }) {
                 <div className="truncate text-[14px] font-semibold text-zinc-100">{p.name}</div>
                 <div className="truncate text-[12px] text-zinc-500">
                   {p.position || '—'} · {p.team}
+                  {p.is_starter ? ' · Starter' : ''}
                   {detail ? ` · ${detail}` : ''}
                 </div>
               </div>

@@ -103,6 +103,11 @@ async function main() {
       team,
       fantasy_positions: fantasy,
       search_rank: Number.isFinite(Number(p.search_rank)) ? Number(p.search_rank) : null,
+      depth_chart_order:
+        p.depth_chart_order != null && Number.isFinite(Number(p.depth_chart_order))
+          ? Number(p.depth_chart_order)
+          : null,
+      depth_chart_position: p.depth_chart_position != null ? String(p.depth_chart_position) : null,
       status: p.status != null ? String(p.status) : null,
       headshot_url: espnId ? HEADSHOT_CDN(espnId) : null,
       local_headshot_path: localPath,

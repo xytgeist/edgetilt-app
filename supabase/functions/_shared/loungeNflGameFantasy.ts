@@ -94,6 +94,10 @@ export type NflGameFantasyPlayer = {
   projected_rush_yd: number | null
   projected_rec_yd: number | null
   projected_rec: number | null
+  /** This-week actual Sleeper PPR (live / final box). */
+  game_ppr: number | null
+  /** Sleeper injury_status (Questionable / Doubtful / Out / …). */
+  injury_status: string | null
   /** Season-to-date Sleeper PPR + counting stats. */
   season_ppr: number | null
   season_gp: number | null
@@ -482,11 +486,30 @@ async function loadPlayersFromSleeper(away: string, home: string): Promise<Array
           ? Number(p.depth_chart_order)
           : null,
       depth_chart_position: p.depth_chart_position != null ? String(p.depth_chart_position) : null,
+      injury_status: p.injury_status != null ? String(p.injury_status) : null,
       headshot_url: espnId ? HEADSHOT_CDN(espnId) : null,
       local_headshot_path: espnId ? `/sports/nfl/players/${espnId}.png` : null,
     })
   }
   return out
+}
+
+/** Fresh Sleeper injury tags for the two teams (overlay even when roster comes from DB). */
+async function loadSleeperInjuryMap(away: string, home: string): Promise<Map<string, string>> {
+  const map = new Map<string, string>()
+  try {
+    const raw = (await fetchJson(SLEEPER_PLAYERS)) as Record<string, Record<string, unknown>>
+    for (const [id, p] of Object.entries(raw || {})) {
+      if (!p || typeof p !== 'object') continue
+      const team = normTeam(String(p.team || ''))
+      if (team !== away && team !== home) continue
+      const inj = String(p.injury_status || '').trim()
+      if (inj) map.set(String(id), inj)
+    }
+  } catch {
+    // optional overlay
+  }
+  return map
 }
 
 type SleeperStatRow = {
@@ -544,6 +567,13 @@ async function loadSleeperProjections(
   week: number,
 ): Promise<Map<string, SleeperStatRow>> {
   return loadSleeperStatMap('projections', season, week)
+}
+
+async function loadSleeperWeekStats(
+  season: string,
+  week: number,
+): Promise<Map<string, SleeperStatRow>> {
+  return loadSleeperStatMap('stats', season, week)
 }
 
 async function loadSleeperSeasonStats(season: string): Promise<Map<string, SleeperStatRow>> {
@@ -702,6 +732,11 @@ function mapDbRow(
     projected_rush_yd: null,
     projected_rec_yd: null,
     projected_rec: null,
+    game_ppr: null,
+    injury_status:
+      row.injury_status != null && String(row.injury_status).trim()
+        ? String(row.injury_status).trim()
+        : null,
     season_ppr: null,
     season_gp: null,
     season_pass_yd: null,
@@ -819,8 +854,15 @@ export async function buildNflGameFantasy(
     season && week != null ? await loadSleeperProjections(season, week) : new Map<string, SleeperStatRow>()
   if (projections.size) sources.push('sleeper_projections')
 
+  const weekStats =
+    season && week != null ? await loadSleeperWeekStats(season, week) : new Map<string, SleeperStatRow>()
+  if (weekStats.size) sources.push('sleeper_week_stats')
+
   const seasonStats = season ? await loadSleeperSeasonStats(season) : new Map<string, SleeperStatRow>()
   if (seasonStats.size) sources.push('sleeper_season_stats')
+
+  const injuryMap = await loadSleeperInjuryMap(away, home)
+  if (injuryMap.size) sources.push('sleeper_injury')
 
   const players: NflGameFantasyPlayer[] = []
   for (const row of rawRows) {
@@ -834,6 +876,10 @@ export async function buildNflGameFantasy(
       mapped.projected_rec_yd = intOrNull(proj.rec_yd)
       mapped.projected_rec = numOrNull(proj.rec)
     }
+    const weekRow = weekStats.get(mapped.sleeper_id)
+    if (weekRow) {
+      mapped.game_ppr = numOrNull(weekRow.pts_ppr ?? weekRow.pts_half_ppr ?? weekRow.pts_std)
+    }
     const sea = seasonStats.get(mapped.sleeper_id)
     if (sea) {
       mapped.season_ppr = numOrNull(sea.pts_ppr ?? sea.pts_half_ppr ?? sea.pts_std)
@@ -843,6 +889,8 @@ export async function buildNflGameFantasy(
       mapped.season_rec_yd = intOrNull(sea.rec_yd)
       mapped.season_rec = numOrNull(sea.rec)
     }
+    const inj = injuryMap.get(mapped.sleeper_id)
+    if (inj) mapped.injury_status = inj
     players.push(mapped)
   }
 

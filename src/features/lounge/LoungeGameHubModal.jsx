@@ -335,6 +335,7 @@ export default function LoungeGameHubModal({
             players={fantasy.players}
             loading={fantasyLoading}
             error={fantasyErr}
+            gameStatus={game.status}
           />
         ) : (
           <div className="py-2">

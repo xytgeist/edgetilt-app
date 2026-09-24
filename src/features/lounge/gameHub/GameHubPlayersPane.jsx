@@ -1,5 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
 import { KalshiPlayerPropsBoard } from './GameHubKalshiProps.jsx'
+import { injuryTag } from './GameHubFantasyPane.jsx'
+
+function InjuryPill({ status }) {
+  const tag = injuryTag(status)
+  if (!tag) return null
+  return (
+    <span
+      title={tag.label}
+      className={`inline-flex shrink-0 items-center rounded-md px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide ring-1 ring-inset ${tag.className}`}
+    >
+      {tag.code}
+    </span>
+  )
+}
 
 function PlayerAvatar({ player }) {
   const [failed, setFailed] = useState(false)
@@ -168,7 +182,10 @@ function RosterBoard({ players, awayAbbrev, homeAbbrev, position = 'all' }) {
             <li key={p.sleeper_id} className="flex items-center gap-3 px-3 py-2.5">
               <PlayerAvatar player={p} />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[14px] font-semibold text-zinc-100">{p.name}</div>
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <div className="truncate text-[14px] font-semibold text-zinc-100">{p.name}</div>
+                  <InjuryPill status={p.injury_status} />
+                </div>
                 <div className="truncate text-[12px] text-zinc-500">
                   {p.position || '-'} · {p.team}
                   {p.is_starter ? ' · Starter' : ''}

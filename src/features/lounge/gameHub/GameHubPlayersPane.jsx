@@ -641,11 +641,11 @@ function RosterPlayerHeader({ player, accent, expanded, hasStats, onToggle }) {
   return (
     <div data-roster-player-header className="relative overflow-hidden px-3.5 py-3.5">
       <span
-        className="pointer-events-none absolute top-1/2 z-[0] -translate-y-1/2 -right-[10%]"
-        style={{ opacity: 0.14 }}
+        className="pointer-events-none absolute top-1/2 z-[0] -translate-y-1/2 right-1"
+        style={{ opacity: 0.12 }}
         aria-hidden="true"
       >
-        <LoungeSportsTeamLogo side={accent.side} treatment={accent.treatment} size={112} />
+        <LoungeSportsTeamLogo side={accent.side} treatment={accent.treatment} size={196} />
       </span>
       <button
         type="button"

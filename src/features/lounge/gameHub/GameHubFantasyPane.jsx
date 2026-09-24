@@ -362,7 +362,7 @@ function MatchupHalf({
           <LoungeSportsTeamLogo side={teamSide} treatment={logoTreatment} size={168} />
         </span>
         <span
-          className={`absolute top-2 z-[3] rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${positionPillClass(
+          className={`absolute top-2 z-[4] rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${positionPillClass(
             slotPos,
           )} ${align === 'right' ? 'right-2' : 'left-2'}`}
         >
@@ -370,7 +370,7 @@ function MatchupHalf({
         </span>
         {!empty && !isDef ? (
           <div
-            className={`absolute z-[3] flex h-[8.75rem] w-full items-end ${
+            className={`pointer-events-none absolute z-[2] flex h-[8.75rem] w-full items-end ${
               align === 'right' ? 'justify-start pl-0.5' : 'justify-end pr-0.5'
             }`}
             style={{ bottom: '-10%' }}
@@ -387,7 +387,7 @@ function MatchupHalf({
         ) : null}
       </div>
 
-      <div className="relative z-[2] w-full bg-zinc-900/95 px-2.5 pb-3 pt-2">
+      <div className="relative z-[3] w-full bg-zinc-900/95 px-2.5 pb-3 pt-2">
         <div className={`flex items-start gap-1.5 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
           <div className="min-w-0 flex-1">
             <div className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : ''}`}>

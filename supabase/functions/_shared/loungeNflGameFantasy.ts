@@ -104,9 +104,13 @@ export type NflGameFantasyPlayer = {
   season_ppr: number | null
   season_gp: number | null
   season_pass_yd: number | null
+  season_pass_cmp: number | null
+  season_pass_att: number | null
   season_rush_yd: number | null
+  season_rush_att: number | null
   season_rec_yd: number | null
   season_rec: number | null
+  season_rec_tgt: number | null
   season_pass_td: number | null
   season_pass_int: number | null
   season_rush_td: number | null
@@ -116,6 +120,9 @@ export type NflGameFantasyPlayer = {
   season_fgmiss: number | null
   season_pts_allow: number | null
   season_sack: number | null
+  season_def_int: number | null
+  season_fum_rec: number | null
+  season_def_td: number | null
   /** Sleeper PPR rank within position (1 = best). */
   season_pos_rank: number | null
   /** How many players at that position were ranked (for quartile color). */
@@ -533,9 +540,13 @@ type SleeperStatRow = {
   pts_std?: number | null
   gp?: number | null
   pass_yd?: number | null
+  pass_cmp?: number | null
+  pass_att?: number | null
   rush_yd?: number | null
+  rush_att?: number | null
   rec_yd?: number | null
   rec?: number | null
+  rec_tgt?: number | null
   pass_td?: number | null
   pass_int?: number | null
   rush_td?: number | null
@@ -545,6 +556,9 @@ type SleeperStatRow = {
   fgmiss?: number | null
   pts_allow?: number | null
   sack?: number | null
+  int?: number | null
+  fum_rec?: number | null
+  td?: number | null
   pos_rank_ppr?: number | null
   rank_ppr?: number | null
   stats?: SleeperStatRow
@@ -825,9 +839,13 @@ function mapDbRow(
     season_ppr: null,
     season_gp: null,
     season_pass_yd: null,
+    season_pass_cmp: null,
+    season_pass_att: null,
     season_rush_yd: null,
+    season_rush_att: null,
     season_rec_yd: null,
     season_rec: null,
+    season_rec_tgt: null,
     season_pass_td: null,
     season_pass_int: null,
     season_rush_td: null,
@@ -837,6 +855,9 @@ function mapDbRow(
     season_fgmiss: null,
     season_pts_allow: null,
     season_sack: null,
+    season_def_int: null,
+    season_fum_rec: null,
+    season_def_td: null,
     season_pos_rank: null,
     season_pos_rank_of: null,
     ecr: null,
@@ -1018,9 +1039,13 @@ export async function buildNflGameFantasy(
       mapped.season_ppr = numOrNull(sea.pts_ppr ?? sea.pts_half_ppr ?? sea.pts_std)
       mapped.season_gp = intOrNull(sea.gp)
       mapped.season_pass_yd = intOrNull(sea.pass_yd)
+      mapped.season_pass_cmp = intOrNull(sea.pass_cmp)
+      mapped.season_pass_att = intOrNull(sea.pass_att)
       mapped.season_rush_yd = intOrNull(sea.rush_yd)
+      mapped.season_rush_att = intOrNull(sea.rush_att)
       mapped.season_rec_yd = intOrNull(sea.rec_yd)
       mapped.season_rec = numOrNull(sea.rec)
+      mapped.season_rec_tgt = intOrNull(sea.rec_tgt)
       mapped.season_pass_td = intOrNull(sea.pass_td)
       mapped.season_pass_int = intOrNull(sea.pass_int)
       mapped.season_rush_td = intOrNull(sea.rush_td)
@@ -1030,6 +1055,9 @@ export async function buildNflGameFantasy(
       mapped.season_fgmiss = intOrNull(sea.fgmiss)
       mapped.season_pts_allow = numOrNull(sea.pts_allow)
       mapped.season_sack = numOrNull(sea.sack)
+      mapped.season_def_int = intOrNull(sea.int)
+      mapped.season_fum_rec = intOrNull(sea.fum_rec)
+      mapped.season_def_td = intOrNull(sea.td)
       mapped.season_pos_rank = intOrNull(sea.pos_rank_ppr)
       let pos = fantasyPosKey(mapped.position)
       if (pos === 'FB' || pos === 'HB') pos = 'RB'

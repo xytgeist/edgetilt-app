@@ -31,7 +31,7 @@ function PlayerAvatar({ player }) {
 
   if (isDefOrDst(player) && team && !failed) {
     return (
-      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-800 p-1.5 ring-1 ring-zinc-700/80">
+      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-zinc-800 p-2 ring-1 ring-zinc-700/80">
         <img
           src={`/sports/nfl/logos/${team}.png`}
           alt=""
@@ -46,7 +46,7 @@ function PlayerAvatar({ player }) {
 
   if (!player?.headshot_url || failed) {
     return (
-      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-sm font-bold text-zinc-300">
+      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-base font-bold text-zinc-300">
         {letter}
       </span>
     )
@@ -55,7 +55,7 @@ function PlayerAvatar({ player }) {
     <img
       src={player.headshot_url}
       alt=""
-      className="h-12 w-12 shrink-0 rounded-full object-cover bg-zinc-800"
+      className="h-14 w-14 shrink-0 rounded-full object-cover bg-zinc-800"
       onError={() => setFailed(true)}
     />
   )
@@ -78,54 +78,91 @@ function fmtStat(n, digits = 0) {
   return Number.isInteger(v) || digits === 0 ? String(Math.round(v)) : v.toFixed(digits)
 }
 
-/** Full season counting line for roster cards (wraps … not truncated). */
-function seasonStatLine(player) {
+function pushCell(cells, label, value, digits = 0, { skipZero = false } = {}) {
+  if (value == null || !Number.isFinite(Number(value))) return
+  if (skipZero && Number(value) === 0) return
+  const v = fmtStat(value, digits)
+  if (v == null) return
+  cells.push({ label, value: v })
+}
+
+/** Position-aware season cells for the roster grid. */
+function seasonStatCells(player) {
   const pos = String(player?.position || '')
     .toUpperCase()
     .replace(/[^A-Z]/g, '')
-  const parts = []
+  const cells = []
   if (pos === 'QB') {
-    if (player.season_pass_yd != null) parts.push(`${fmtStat(player.season_pass_yd)} pass yd`)
-    if (player.season_pass_td != null) parts.push(`${fmtStat(player.season_pass_td, 0)} TD`)
-    if (player.season_pass_int != null) parts.push(`${fmtStat(player.season_pass_int, 0)} INT`)
-    if (player.season_rush_yd != null && Number(player.season_rush_yd) > 0) {
-      parts.push(`${fmtStat(player.season_rush_yd)} rush yd`)
+    if (player.season_pass_cmp != null && player.season_pass_att != null) {
+      cells.push({
+        label: 'CMP/ATT',
+        value: `${fmtStat(player.season_pass_cmp, 0)}/${fmtStat(player.season_pass_att, 0)}`,
+      })
     }
+    pushCell(cells, 'PASS YD', player.season_pass_yd)
+    pushCell(cells, 'TD', player.season_pass_td)
+    pushCell(cells, 'INT', player.season_pass_int)
+    pushCell(cells, 'RUSH YD', player.season_rush_yd, 0, { skipZero: true })
+    pushCell(cells, 'RUSH TD', player.season_rush_td, 0, { skipZero: true })
   } else if (pos === 'RB' || pos === 'FB' || pos === 'HB') {
-    if (player.season_rush_yd != null) parts.push(`${fmtStat(player.season_rush_yd)} rush yd`)
-    if (player.season_rush_td != null) parts.push(`${fmtStat(player.season_rush_td, 0)} rush TD`)
-    if (player.season_rec != null) parts.push(`${fmtStat(player.season_rec, 0)} rec`)
-    if (player.season_rec_yd != null) parts.push(`${fmtStat(player.season_rec_yd)} rec yd`)
-    if (player.season_rec_td != null) parts.push(`${fmtStat(player.season_rec_td, 0)} rec TD`)
+    pushCell(cells, 'ATT', player.season_rush_att)
+    pushCell(cells, 'RUSH YD', player.season_rush_yd)
+    pushCell(cells, 'RUSH TD', player.season_rush_td)
+    pushCell(cells, 'TGT', player.season_rec_tgt)
+    pushCell(cells, 'REC', player.season_rec)
+    pushCell(cells, 'REC YD', player.season_rec_yd)
+    pushCell(cells, 'REC TD', player.season_rec_td, 0, { skipZero: true })
   } else if (pos === 'WR' || pos === 'TE') {
-    if (player.season_rec != null) parts.push(`${fmtStat(player.season_rec, 0)} rec`)
-    if (player.season_rec_yd != null) parts.push(`${fmtStat(player.season_rec_yd)} rec yd`)
-    if (player.season_rec_td != null) parts.push(`${fmtStat(player.season_rec_td, 0)} TD`)
-    if (player.season_rush_yd != null && Number(player.season_rush_yd) > 0) {
-      parts.push(`${fmtStat(player.season_rush_yd)} rush yd`)
-    }
+    pushCell(cells, 'TGT', player.season_rec_tgt)
+    pushCell(cells, 'REC', player.season_rec)
+    pushCell(cells, 'REC YD', player.season_rec_yd)
+    pushCell(cells, 'TD', player.season_rec_td)
+    pushCell(cells, 'RUSH YD', player.season_rush_yd, 0, { skipZero: true })
+    pushCell(cells, 'RUSH TD', player.season_rush_td, 0, { skipZero: true })
   } else if (pos === 'K' || pos === 'PK') {
     if (player.season_fgm != null || player.season_fgmiss != null) {
       const made = Number(player.season_fgm) || 0
       const miss = Number(player.season_fgmiss) || 0
-      parts.push(`${made}/${made + miss} FG`)
+      cells.push({ label: 'FG', value: `${made}/${made + miss}` })
     }
   } else if (pos === 'DEF' || pos === 'DST' || pos === 'D') {
-    if (player.season_pts_allow != null) parts.push(`${fmtStat(player.season_pts_allow, 0)} allowed`)
-    if (player.season_sack != null) {
-      parts.push(`${fmtStat(player.season_sack, Number(player.season_sack) % 1 === 0 ? 0 : 1)} sack`)
-    }
+    pushCell(cells, 'SACK', player.season_sack, Number(player.season_sack) % 1 === 0 ? 0 : 1)
+    pushCell(cells, 'INT', player.season_def_int)
+    pushCell(cells, 'FR', player.season_fum_rec)
+    pushCell(cells, 'TD', player.season_def_td)
+    pushCell(cells, 'PA', player.season_pts_allow)
   } else {
-    if (player.season_pass_yd != null) parts.push(`${fmtStat(player.season_pass_yd)} pass yd`)
-    if (player.season_rush_yd != null) parts.push(`${fmtStat(player.season_rush_yd)} rush yd`)
-    if (player.season_rec_yd != null) parts.push(`${fmtStat(player.season_rec_yd)} rec yd`)
-    else if (player.season_rec != null) parts.push(`${fmtStat(player.season_rec, 0)} rec`)
+    pushCell(cells, 'PASS YD', player.season_pass_yd)
+    pushCell(cells, 'RUSH YD', player.season_rush_yd)
+    pushCell(cells, 'REC YD', player.season_rec_yd)
+    pushCell(cells, 'REC', player.season_rec)
   }
-  return parts.join(' · ')
+  pushCell(cells, 'FUM', player.season_fum_lost, 0, { skipZero: true })
+  return cells
+}
+
+function SeasonStatGrid({ cells }) {
+  if (!cells?.length) return null
+  return (
+    <div className="mt-2.5 grid grid-cols-4 gap-1.5 sm:grid-cols-5">
+      {cells.map((c) => (
+        <div
+          key={c.label}
+          className="rounded-lg bg-zinc-950/70 px-1.5 py-1.5 text-center ring-1 ring-inset ring-zinc-800"
+        >
+          <div className="text-[13px] font-bold tabular-nums leading-none text-zinc-100">{c.value}</div>
+          <div className="mt-1 text-[9px] font-semibold uppercase tracking-wide text-zinc-500">{c.label}</div>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 /** Position-primary season number for the right rail. */
 function seasonHeadline(player) {
+  if (player.season_ppr != null) {
+    return { value: fmtStat(player.season_ppr, 1), label: 'PPR' }
+  }
   const pos = String(player.position || '')
     .toUpperCase()
     .replace(/[^A-Z]/g, '')
@@ -205,29 +242,34 @@ function RosterBoard({ players }) {
     <ul className="divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
       {sorted.map((p) => {
         const headline = seasonHeadline(p)
-        const detail = seasonStatLine(p)
+        const cells = seasonStatCells(p)
+        const rank =
+          p.season_pos_rank != null
+            ? `#${p.season_pos_rank}${p.season_pos_rank_of != null ? `/${p.season_pos_rank_of}` : ''}`
+            : null
         return (
-          <li key={p.sleeper_id} className="flex items-start gap-3 px-3.5 py-3.5">
-            <PlayerAvatar player={p} />
-            <div className="min-w-0 flex-1">
-              <div className="flex min-w-0 items-center gap-1.5">
-                <div className="truncate text-[15px] font-semibold text-zinc-100">{p.name}</div>
-                <InjuryPill status={p.injury_status} />
+          <li key={p.sleeper_id} className="px-3.5 py-4">
+            <div className="flex items-start gap-3">
+              <PlayerAvatar player={p} />
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <div className="truncate text-[16px] font-semibold text-zinc-100">{p.name}</div>
+                  <InjuryPill status={p.injury_status} />
+                </div>
+                <div className="mt-0.5 text-[12px] text-zinc-500">
+                  {p.position || '-'} · {p.team}
+                  {p.is_starter ? ' · Starter' : ''}
+                  {rank ? ` · ${rank}` : ''}
+                </div>
               </div>
-              <div className="mt-0.5 text-[12px] text-zinc-500">
-                {p.position || '-'} · {p.team}
-                {p.is_starter ? ' · Starter' : ''}
-              </div>
-              {detail ? (
-                <div className="mt-1.5 text-[12px] leading-snug text-zinc-300">{detail}</div>
+              {headline ? (
+                <div className="shrink-0 pt-0.5 text-right">
+                  <div className="text-[18px] font-bold tabular-nums text-zinc-100">{headline.value}</div>
+                  <div className="text-[10px] uppercase tracking-wide text-zinc-500">{headline.label}</div>
+                </div>
               ) : null}
             </div>
-            {headline ? (
-              <div className="shrink-0 pt-0.5 text-right">
-                <div className="text-[16px] font-bold tabular-nums text-zinc-100">{headline.value}</div>
-                <div className="text-[10px] uppercase tracking-wide text-zinc-500">{headline.label}</div>
-              </div>
-            ) : null}
+            <SeasonStatGrid cells={cells} />
           </li>
         )
       })}

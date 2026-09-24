@@ -21,7 +21,7 @@ function PlayerAvatar({ player }) {
 }
 
 function fmt(n, digits = 1) {
-  if (n == null || !Number.isFinite(Number(n))) return '—'
+  if (n == null || !Number.isFinite(Number(n))) return '-'
   const v = Number(n)
   return Number.isInteger(v) || digits === 0 ? String(Math.round(v)) : v.toFixed(digits)
 }
@@ -46,22 +46,10 @@ function yardLine(player, mode) {
 
 /**
  * Sleeper weekly (DFF) + season fantasy stats for this matchup.
+ * Top-level Game Hub tab (not nested under Players).
  */
-export default function GameHubFantasyPane({
-  players,
-  loading,
-  error,
-  season,
-  week,
-  sources,
-  /** When embedded under Players, hide the outer chrome / mode is controlled by parent. */
-  embedded = false,
-  mode: modeProp,
-  onModeChange,
-}) {
-  const [internalMode, setInternalMode] = useState('weekly')
-  const mode = modeProp || internalMode
-  const setMode = onModeChange || setInternalMode
+export default function GameHubFantasyPane({ players, loading, error }) {
+  const [mode, setMode] = useState('weekly')
 
   const ranked = useMemo(() => {
     const list = [...(players || [])].filter((p) =>
@@ -85,57 +73,27 @@ export default function GameHubFantasyPane({
   if (loading) return <div className="py-10 text-center text-sm text-zinc-500">Loading fantasy…</div>
   if (error) return <div className="py-10 text-center text-sm text-lv-red">{error}</div>
 
-  const hasSleeper =
-    Array.isArray(sources) &&
-    (sources.includes('sleeper_projections') || sources.includes('sleeper_season_stats'))
-
   return (
-    <div data-lounge-game-fantasy className={embedded ? 'space-y-3' : 'space-y-3 py-3'}>
-      {!embedded ? (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="text-[12px] text-zinc-500">
-            {season && week != null ? `Week ${week} · ${season}` : 'This matchup'}
-            {hasSleeper ? ' · Sleeper' : ''}
-          </div>
-          <div className="flex gap-1 rounded-full bg-zinc-900 p-0.5">
-            {[
-              { id: 'weekly', label: 'Weekly' },
-              { id: 'season', label: 'Season' },
-            ].map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => setMode(opt.id)}
-                className={`rounded-full px-3 py-1 text-[12px] font-semibold ${
-                  mode === opt.id ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-400'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
+    <div data-lounge-game-fantasy className="space-y-3 py-3">
+      <div className="flex justify-end">
+        <div className="flex gap-1 rounded-full bg-zinc-900 p-0.5">
+          {[
+            { id: 'weekly', label: 'Weekly' },
+            { id: 'season', label: 'Season' },
+          ].map((opt) => (
+            <button
+              key={opt.id}
+              type="button"
+              onClick={() => setMode(opt.id)}
+              className={`rounded-full px-3 py-1 text-[12px] font-semibold ${
+                mode === opt.id ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-400'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
-      ) : (
-        <div className="flex justify-end">
-          <div className="flex gap-1 rounded-full bg-zinc-900 p-0.5">
-            {[
-              { id: 'weekly', label: 'Weekly' },
-              { id: 'season', label: 'Season' },
-            ].map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => setMode(opt.id)}
-                className={`rounded-full px-3 py-1 text-[12px] font-semibold ${
-                  mode === opt.id ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-400'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      </div>
 
       <ul className="divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
         {ranked.slice(0, 40).map((p, i) => {

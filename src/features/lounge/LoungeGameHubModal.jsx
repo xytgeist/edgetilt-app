@@ -13,12 +13,13 @@ import {
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 import GameHubHero from './gameHub/GameHubHero.jsx'
 import GameHubPlayersPane from './gameHub/GameHubPlayersPane.jsx'
+import GameHubFantasyPane from './gameHub/GameHubFantasyPane.jsx'
 import { KalshiGamePropsBoard } from './gameHub/GameHubKalshiProps.jsx'
 import { BoxScoreCard, OddsTable, PlayList, PlayerStats, PostList } from './gameHub/GameHubPanes.jsx'
 
 /**
  * Game destination opened from the in-post score pill.
- * X-style hero, Posts (Top/Latest), Stats, Plays, Players (roster/fantasy/props), Chat.
+ * X-style hero, Posts (Top/Latest), Stats, Plays, Players, Fantasy, Chat.
  */
 export default function LoungeGameHubModal({
   supabaseClient,
@@ -166,10 +167,10 @@ export default function LoungeGameHubModal({
   }, [game, hydratePosts, postSort, postsNonce, searchQuery, supabaseClient, tab, wantsPosts])
 
   useEffect(() => {
-    // Pregame → Players (fantasy subview); live → Chat; post → Posts
+    // Pregame → Fantasy; live → Chat; post → Posts
     if (!game?.id) return
     if (game.status === 'in') setTab('chat')
-    else if (game.status === 'pre') setTab('players')
+    else if (game.status === 'pre') setTab('fantasy')
     else setTab('posts')
     setPostsSort('top')
     setDraft('')
@@ -221,6 +222,7 @@ export default function LoungeGameHubModal({
     { id: 'stats', label: 'Stats' },
     { id: 'plays', label: 'Plays' },
     { id: 'players', label: 'Players' },
+    { id: 'fantasy', label: 'Fantasy' },
     { id: 'chat', label: 'Chat' },
   ]
 
@@ -327,10 +329,12 @@ export default function LoungeGameHubModal({
             error={fantasyErr}
             awayAbbrev={game.away?.abbrev}
             homeAbbrev={game.home?.abbrev}
-            season={fantasy.season}
-            week={fantasy.week}
-            sources={fantasy.sources}
-            defaultView={game.status === 'pre' ? 'fantasy' : 'roster'}
+          />
+        ) : tab === 'fantasy' ? (
+          <GameHubFantasyPane
+            players={fantasy.players}
+            loading={fantasyLoading}
+            error={fantasyErr}
           />
         ) : (
           <div className="py-2">

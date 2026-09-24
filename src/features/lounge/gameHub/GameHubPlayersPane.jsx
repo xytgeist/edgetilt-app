@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import GameHubFantasyPane from './GameHubFantasyPane.jsx'
 import { KalshiPlayerPropsBoard } from './GameHubKalshiProps.jsx'
 
 function PlayerAvatar({ player }) {
@@ -202,7 +201,7 @@ const POSITION_FILTERS = [
 ]
 
 /**
- * Players hub surface: Roster + Fantasy board + Kalshi player props.
+ * Players hub surface: Roster + Kalshi/Poly player props.
  */
 export default function GameHubPlayersPane({
   players,
@@ -211,17 +210,13 @@ export default function GameHubPlayersPane({
   error,
   awayAbbrev,
   homeAbbrev,
-  season,
-  week,
-  sources,
-  /** Prefer fantasy on pregame (hub used to open Fantasy tab). */
   defaultView = 'roster',
 }) {
-  const [view, setView] = useState(defaultView)
+  const [view, setView] = useState(defaultView === 'props' ? 'props' : 'roster')
   const [position, setPosition] = useState('all')
 
   useEffect(() => {
-    setView(defaultView)
+    setView(defaultView === 'props' ? 'props' : 'roster')
   }, [defaultView])
 
   const filteredPlayers = useMemo(() => {
@@ -252,7 +247,6 @@ export default function GameHubPlayersPane({
         <div className="flex gap-1 rounded-full bg-zinc-900 p-0.5">
           {[
             { id: 'roster', label: 'Roster' },
-            { id: 'fantasy', label: 'Fantasy' },
             { id: 'props', label: 'Props' },
           ].map((opt) => (
             <button
@@ -290,18 +284,6 @@ export default function GameHubPlayersPane({
           awayAbbrev={awayAbbrev}
           homeAbbrev={homeAbbrev}
           position={position}
-        />
-      ) : null}
-
-      {view === 'fantasy' ? (
-        <GameHubFantasyPane
-          players={filteredPlayers}
-          loading={false}
-          error=""
-          season={season}
-          week={week}
-          sources={sources}
-          embedded
         />
       ) : null}
 

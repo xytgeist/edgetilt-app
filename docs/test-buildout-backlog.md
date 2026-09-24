@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-23:** **Fantasy out of Players tab (Mac).** Game hub top-level **Fantasy** tab; Players is Roster|Props only. Pregame opens Fantasy. Web **`1.4.526`**.
 - **2026-09-23:** **Game props strike ladders (Mac).** Stats Kalshi/Poly totals/spreads/team totals collapse into Poly-style slider cards (period pills + strike rail + Yes/No %). Raised game prop caps; per-series trim keeps ladders. Redeploy test **`lounge-nfl-game-fantasy`**. Web **`1.4.525`**.
 - **2026-09-23:** **Odds consensus legend (Mac).** Dot legend next to Odds title (“furthest from consensus”). Web **`1.4.524`**.
 - **2026-09-23:** **Odds book consensus outlier dot (Mac).** Stats book chips: amber dot on the book furthest from median consensus (spread/total/ML). Web **`1.4.523`**.

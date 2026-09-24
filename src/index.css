@@ -3685,8 +3685,14 @@ html.light [data-lounge-game-hero] [data-lounge-game-hero-ml] .text-white\/40 {
   display: none;
 }
 html.light [data-lounge-game-players] input,
+html.light [data-lounge-game-players] select,
 html.light [data-lounge-game-fantasy] a {
   color: inherit;
+}
+html.light [data-lounge-game-players] select {
+  background-color: #f4f4f5;
+  border-color: #d4d4d8;
+  color: #18181b;
 }
 html.light [data-lounge-game-fantasy] .text-emerald-300,
 html.light [data-lounge-game-fantasy] .text-emerald-300\/90 {

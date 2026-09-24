@@ -121,16 +121,9 @@ function normalizePos(pos) {
   return p
 }
 
-function RosterBoard({ players, awayAbbrev, homeAbbrev, position = 'all' }) {
-  const [side, setSide] = useState('all')
-
-  const filtered = useMemo(() => {
-    const list = (players || []).filter((p) => {
-      if (side === 'away' && p.side !== 'away') return false
-      if (side === 'home' && p.side !== 'home') return false
-      if (position !== 'all' && normalizePos(p.position) !== position) return false
-      return true
-    })
+function RosterBoard({ players }) {
+  const sorted = useMemo(() => {
+    const list = [...(players || [])]
     list.sort((a, b) => {
       const sa = a.is_starter === true ? 0 : 1
       const sb = b.is_starter === true ? 0 : 1
@@ -147,65 +140,41 @@ function RosterBoard({ players, awayAbbrev, homeAbbrev, position = 'all' }) {
       return (a.search_rank ?? 9999) - (b.search_rank ?? 9999)
     })
     return list
-  }, [players, side, position])
+  }, [players])
 
-  if (!players?.length) {
-    return <div className="py-10 text-center text-sm text-zinc-500">No roster data for this matchup yet.</div>
+  if (!sorted.length) {
+    return <div className="py-6 text-center text-sm text-zinc-500">No players for that filter.</div>
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2">
-        {[
-          { id: 'all', label: 'Both' },
-          { id: 'away', label: awayAbbrev || 'Away' },
-          { id: 'home', label: homeAbbrev || 'Home' },
-        ].map((opt) => (
-          <button
-            key={opt.id}
-            type="button"
-            onClick={() => setSide(opt.id)}
-            className={`rounded-full px-2.5 py-1.5 text-[12px] font-semibold ${
-              side === opt.id ? 'bg-zinc-100 text-zinc-950' : 'bg-zinc-800 text-zinc-300'
-            }`}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
-
-      <ul className="divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
-        {filtered.map((p) => {
-          const headline = seasonHeadline(p)
-          const detail = seasonStatLine(p, headline)
-          return (
-            <li key={p.sleeper_id} className="flex items-center gap-3 px-3 py-2.5">
-              <PlayerAvatar player={p} />
-              <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <div className="truncate text-[14px] font-semibold text-zinc-100">{p.name}</div>
-                  <InjuryPill status={p.injury_status} />
-                </div>
-                <div className="truncate text-[12px] text-zinc-500">
-                  {p.position || '-'} · {p.team}
-                  {p.is_starter ? ' · Starter' : ''}
-                  {detail ? ` · ${detail}` : ''}
-                </div>
+    <ul className="divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
+      {sorted.map((p) => {
+        const headline = seasonHeadline(p)
+        const detail = seasonStatLine(p, headline)
+        return (
+          <li key={p.sleeper_id} className="flex items-center gap-3 px-3 py-2.5">
+            <PlayerAvatar player={p} />
+            <div className="min-w-0 flex-1">
+              <div className="flex min-w-0 items-center gap-1.5">
+                <div className="truncate text-[14px] font-semibold text-zinc-100">{p.name}</div>
+                <InjuryPill status={p.injury_status} />
               </div>
-              {headline ? (
-                <div className="shrink-0 text-right">
-                  <div className="text-[14px] font-bold tabular-nums text-zinc-100">{headline.value}</div>
-                  <div className="text-[10px] uppercase tracking-wide text-zinc-500">{headline.label}</div>
-                </div>
-              ) : null}
-            </li>
-          )
-        })}
-      </ul>
-      {!filtered.length ? (
-        <div className="py-6 text-center text-sm text-zinc-500">No players for that filter.</div>
-      ) : null}
-    </div>
+              <div className="truncate text-[12px] text-zinc-500">
+                {p.position || '-'} · {p.team}
+                {p.is_starter ? ' · Starter' : ''}
+                {detail ? ` · ${detail}` : ''}
+              </div>
+            </div>
+            {headline ? (
+              <div className="shrink-0 text-right">
+                <div className="text-[14px] font-bold tabular-nums text-zinc-100">{headline.value}</div>
+                <div className="text-[10px] uppercase tracking-wide text-zinc-500">{headline.label}</div>
+              </div>
+            ) : null}
+          </li>
+        )
+      })}
+    </ul>
   )
 }
 
@@ -225,8 +194,6 @@ export default function GameHubPlayersPane({
   props,
   loading,
   error,
-  awayAbbrev,
-  homeAbbrev,
   defaultView = 'roster',
 }) {
   const [view, setView] = useState(defaultView === 'props' ? 'props' : 'roster')
@@ -260,7 +227,7 @@ export default function GameHubPlayersPane({
 
   return (
     <div data-lounge-game-players className="space-y-3 py-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <div className="flex gap-1 rounded-full bg-zinc-900 p-0.5">
           {[
             { id: 'roster', label: 'Roster' },
@@ -278,30 +245,28 @@ export default function GameHubPlayersPane({
             </button>
           ))}
         </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-1.5">
-        {POSITION_FILTERS.map((opt) => (
-          <button
-            key={opt.id}
-            type="button"
-            onClick={() => setPosition(opt.id)}
-            className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
-              position === opt.id ? 'bg-zinc-100 text-zinc-950' : 'bg-zinc-800 text-zinc-300'
-            }`}
+        <label className="ml-auto inline-flex items-center gap-1.5">
+          <span className="sr-only">Position</span>
+          <select
+            value={position}
+            onChange={(e) => setPosition(e.target.value)}
+            className="rounded-full border border-zinc-700 bg-zinc-900 py-1 pl-3 pr-8 text-[12px] font-semibold text-zinc-200 outline-none focus:border-zinc-500"
           >
-            {opt.label}
-          </button>
-        ))}
+            {POSITION_FILTERS.map((opt) => (
+              <option key={opt.id} value={opt.id}>
+                {opt.id === 'all' ? 'All positions' : opt.label}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       {view === 'roster' ? (
-        <RosterBoard
-          players={players}
-          awayAbbrev={awayAbbrev}
-          homeAbbrev={homeAbbrev}
-          position={position}
-        />
+        !players?.length ? (
+          <div className="py-10 text-center text-sm text-zinc-500">No roster data for this matchup yet.</div>
+        ) : (
+          <RosterBoard players={filteredPlayers} />
+        )
       ) : null}
 
       {view === 'props' ? (

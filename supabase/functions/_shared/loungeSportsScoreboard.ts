@@ -621,7 +621,7 @@ async function cachedPinnacleOdds(sportKey: string) {
   const pack = await fetchSportOdds(
     sportKey,
     PINNACLE_REGIONS,
-    ['h2h', 'spreads'],
+    ['h2h', 'spreads', 'totals'],
     { bookmakers: PINNACLE_BOOKS },
   ).catch(() => null)
   pinnacleCache.set(key, { at: Date.now(), pack })
@@ -856,14 +856,14 @@ function eventHasH2h(ev: OddsEventRow): boolean {
 }
 
 async function cachedHistoricalPinnacle(sportKey: string, dateIso: string) {
-  const key = `pinh2h|${sportKey}|${dateIso}`
+  const key = `pin|${sportKey}|${dateIso}`
   const cached = histOddsCache.get(key)
   if (cached && Date.now() - cached.at < cached.ttl) return cached.pack
   const pack = await fetchSportOddsHistorical(
     sportKey,
     dateIso,
     PINNACLE_REGIONS,
-    ['spreads', 'h2h'],
+    ['spreads', 'h2h', 'totals'],
     { bookmakers: PINNACLE_BOOKS },
   ).catch(() => null)
   const events = Array.isArray(pack?.events) ? pack!.events as OddsEventRow[] : []

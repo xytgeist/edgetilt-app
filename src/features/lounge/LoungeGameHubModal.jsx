@@ -334,6 +334,7 @@ export default function LoungeGameHubModal({
             loading={fantasyLoading}
             error={fantasyErr}
             gameStatus={game.status}
+            game={game}
           />
         ) : (
           <div className="py-2">

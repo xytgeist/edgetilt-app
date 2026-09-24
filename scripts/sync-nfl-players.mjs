@@ -15,7 +15,7 @@ import { loadSupabaseEnv, readSupabaseCredentials } from './lib/supabaseEnv.mjs'
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const repoRoot = path.resolve(__dirname, '..')
 const SLEEPER_PLAYERS = 'https://api.sleeper.app/v1/players/nfl'
-const FANTASY_POS = new Set(['QB', 'RB', 'WR', 'TE'])
+const FANTASY_POS = new Set(['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'DST'])
 const HEADSHOT_CDN = (espnId) =>
   `https://a.espncdn.com/i/headshots/nfl/players/full/${espnId}.png`
 

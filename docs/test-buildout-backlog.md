@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Fantasy H2H carousel (Mac).** QB/RB1/WR1/TE/K/DEF head-to-head cards (swipe/chevrons); rest of board list below. Edge pulls K/DEF from Sleeper when DB lacks them; sync script includes those seats. Redeployed test **`lounge-nfl-game-fantasy`**. Web **`1.4.530`**.
 - **2026-09-24:** **Players tab chrome (Mac).** Dropped Both/team filter pills; Position is a dropdown on the Roster|Props row. Web **`1.4.529`**.
 - **2026-09-23:** **Fantasy Game scored + injury tags (Mac).** Game column = proj pregame, scored PPR live/final with proj under; Q/D/OUT pills from Sleeper. Migration **`20260924010000`** on test; redeployed **`lounge-nfl-game-fantasy`**. Web **`1.4.528`**.
 - **2026-09-23:** **Fantasy Proj + Season columns (Mac).** Dropped Weekly/Season toggle; each row shows Proj PPR + Season YTD. Web **`1.4.527`**.

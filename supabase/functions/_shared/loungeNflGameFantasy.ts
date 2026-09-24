@@ -10,7 +10,7 @@ const SLEEPER_STATE = 'https://api.sleeper.app/v1/state/nfl'
 const KALSHI_BASE = 'https://external-api.kalshi.com/trade-api/v2'
 const FP_BASE = 'https://api.fantasypros.com/public/v2/json'
 
-const FANTASY_POS = new Set(['QB', 'RB', 'WR', 'TE'])
+const FANTASY_POS = new Set(['QB', 'RB', 'WR', 'TE', 'K', 'DEF', 'DST'])
 
 /** Core game lines only … ML / spread / total / team total (drop exotics that flood Stats). */
 const KALSHI_GAME_SERIES = [
@@ -701,6 +701,30 @@ async function loadFantasyPros(
   }
 }
 
+function fantasyPosKey(pos: unknown): string {
+  return String(pos || '')
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+}
+
+function rowIsFantasyRelevant(row: Record<string, unknown>): boolean {
+  const pos = fantasyPosKey(row.position)
+  if (FANTASY_POS.has(pos) || pos === 'PK') return true
+  const fantasy = Array.isArray(row.fantasy_positions)
+    ? row.fantasy_positions.map((x) => fantasyPosKey(x))
+    : []
+  return fantasy.some((fp) => FANTASY_POS.has(fp) || fp === 'PK')
+}
+
+function isKickerOrDefense(row: Record<string, unknown>): boolean {
+  const pos = fantasyPosKey(row.position)
+  if (pos === 'K' || pos === 'PK' || pos === 'DEF' || pos === 'DST') return true
+  const fantasy = Array.isArray(row.fantasy_positions)
+    ? row.fantasy_positions.map((x) => fantasyPosKey(x))
+    : []
+  return fantasy.some((fp) => fp === 'K' || fp === 'PK' || fp === 'DEF' || fp === 'DST')
+}
+
 function mapDbRow(
   row: Record<string, unknown>,
   away: string,
@@ -708,6 +732,7 @@ function mapDbRow(
 ): NflGameFantasyPlayer | null {
   const team = normTeam(String(row.team || ''))
   if (team !== away && team !== home) return null
+  if (!rowIsFantasyRelevant(row)) return null
   const espnId = row.espn_id != null ? String(row.espn_id) : null
   const local = row.local_headshot_path != null ? String(row.local_headshot_path) : null
   const cdn = row.headshot_url != null ? String(row.headshot_url) : espnId ? HEADSHOT_CDN(espnId) : null
@@ -749,7 +774,7 @@ function mapDbRow(
 }
 
 /** Typical fantasy starter seats per position … fills when Sleeper depth is stale. */
-const STARTER_SEATS: Record<string, number> = { QB: 1, RB: 2, WR: 3, TE: 1 }
+const STARTER_SEATS: Record<string, number> = { QB: 1, RB: 2, WR: 3, TE: 1, K: 1, DEF: 1, DST: 1 }
 
 function markStarters(players: NflGameFantasyPlayer[]): void {
   const byTeamPos = new Map<string, NflGameFantasyPlayer[]>()
@@ -793,6 +818,8 @@ function sortPlayersForRoster(players: NflGameFantasyPlayer[]): void {
     if (p === 'RB' || p === 'FB' || p === 'HB') return 1
     if (p === 'WR') return 2
     if (p === 'TE') return 3
+    if (p === 'K' || p === 'PK') return 4
+    if (p === 'DEF' || p === 'DST') return 5
     return 50
   }
   players.sort((a, b) => {
@@ -837,6 +864,25 @@ export async function buildNflGameFantasy(
   let rawRows = await loadPlayersFromDb(admin, away, home)
   if (rawRows.length >= 8) {
     sources.push('nfl_players')
+    // Skill roster is synced without K/DEF today … pull those seats from Sleeper.
+    if (!rawRows.some((row) => isKickerOrDefense(row))) {
+      try {
+        const sleeperRows = await loadPlayersFromSleeper(away, home)
+        const have = new Set(rawRows.map((row) => String(row.sleeper_id)))
+        let added = 0
+        for (const row of sleeperRows) {
+          if (!isKickerOrDefense(row)) continue
+          const id = String(row.sleeper_id || '')
+          if (!id || have.has(id)) continue
+          rawRows.push(row)
+          have.add(id)
+          added += 1
+        }
+        if (added) sources.push('sleeper_k_def')
+      } catch {
+        // optional seats
+      }
+    }
   } else {
     rawRows = await loadPlayersFromSleeper(away, home)
     sources.push('sleeper_players')

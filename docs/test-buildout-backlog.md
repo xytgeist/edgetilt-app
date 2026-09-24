@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Players Roster wash + logo on every row (Mac).** Collapsed and expanded roster rows get Fantasy H2H mesh/tint wash plus faded team logo. Web **`1.4.575`**.
 - **2026-09-24:** **Players Roster expand jersey wash (Mac).** Dropped Starter label; expanded card header uses Fantasy H2H mesh + team wash. Web **`1.4.574`**.
 - **2026-09-24:** **Players Roster drop pos rank (Mac).** Roster cards no longer show `#rank/of` … Fantasy tab keeps PosRankMark. Web **`1.4.573`**.
 - **2026-09-24:** **Players Roster expand grid flush bottom (Mac).** Expanded card drops bottom padding so the stats grid meets the card edge. Web **`1.4.572`**.

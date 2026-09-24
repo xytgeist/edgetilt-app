@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState, Fragment } from 'react'
 import { KalshiPlayerPropsBoard } from './GameHubKalshiProps.jsx'
 import { injuryTag } from './GameHubFantasyPane.jsx'
-import { useLoungeSportsPillWashAndLogos } from '../loungeSportsPillPaint.jsx'
+import {
+  LoungeSportsTeamLogo,
+  useLoungeSportsPillWashAndLogos,
+} from '../loungeSportsPillPaint.jsx'
 
 function InjuryPill({ status }) {
   const tag = injuryTag(status)
@@ -607,22 +610,103 @@ function teamAbbrev(value) {
     .replace(/[^A-Z]/g, '')
 }
 
-function rosterWashForPlayer(player, game, awayColor, homeColor) {
+function rosterWashForPlayer(player, game, paint) {
   const team = teamAbbrev(player?.team)
   const away = teamAbbrev(game?.away?.abbrev)
   const home = teamAbbrev(game?.home?.abbrev)
   if (team && away && team === away) {
-    return { color: awayColor || '#3f3f46', meshSrc: '/sports/nfl/textures/jersey-mesh-1.jpg' }
+    return {
+      color: paint.awayColor || '#3f3f46',
+      meshSrc: '/sports/nfl/textures/jersey-mesh-1.jpg',
+      side: game?.away || { abbrev: team },
+      treatment: paint.awayTreatment || 'halo',
+    }
   }
   if (team && home && team === home) {
-    return { color: homeColor || '#3f3f46', meshSrc: '/sports/nfl/textures/jersey-mesh-2.jpg' }
+    return {
+      color: paint.homeColor || '#3f3f46',
+      meshSrc: '/sports/nfl/textures/jersey-mesh-2.jpg',
+      side: game?.home || { abbrev: team },
+      treatment: paint.homeTreatment || 'halo',
+    }
   }
-  return { color: homeColor || awayColor || '#3f3f46', meshSrc: '/sports/nfl/textures/jersey-mesh-1.jpg' }
+  return {
+    color: paint.homeColor || paint.awayColor || '#3f3f46',
+    meshSrc: '/sports/nfl/textures/jersey-mesh-1.jpg',
+    side: game?.home || game?.away || { abbrev: team || '?' },
+    treatment: paint.homeTreatment || paint.awayTreatment || 'halo',
+  }
+}
+
+function RosterPlayerHeader({
+  player,
+  wash,
+  expanded,
+  hasStats,
+  onToggle,
+}) {
+  const headline = seasonHeadline(player)
+  return (
+    <div
+      data-fantasy-h2h-wash
+      data-roster-player-wash
+      className="relative px-3.5 py-3.5"
+      style={{ '--fantasy-wash': wash.color }}
+    >
+      <span className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
+        <img data-fantasy-h2h-mesh src={wash.meshSrc} alt="" />
+        <span data-fantasy-h2h-tint />
+      </span>
+      <span
+        className="pointer-events-none absolute top-1/2 z-[1] -translate-y-1/2 -right-[12%]"
+        style={{ opacity: 0.32 }}
+        aria-hidden="true"
+      >
+        <LoungeSportsTeamLogo side={wash.side} treatment={wash.treatment} size={118} />
+      </span>
+      <button
+        type="button"
+        disabled={!hasStats}
+        aria-expanded={hasStats ? expanded : undefined}
+        onClick={onToggle}
+        className={`relative z-[2] flex w-full items-start gap-3 text-left touch-manipulation ${
+          hasStats ? 'active:opacity-90' : ''
+        }`}
+      >
+        <PlayerAvatar player={player} />
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <div className="truncate text-[16px] font-semibold text-white">{player.name}</div>
+            <InjuryPill status={player.injury_status} />
+          </div>
+          <div className="mt-0.5 text-[12px] text-white/70">
+            {player.position || '-'} · {player.team}
+          </div>
+        </div>
+        {headline ? (
+          <div className="shrink-0 pt-0.5 text-right">
+            <div className="text-[18px] font-bold tabular-nums text-white">{headline.value}</div>
+            <div className="text-[10px] uppercase tracking-wide text-white/65">{headline.label}</div>
+          </div>
+        ) : null}
+        {hasStats ? (
+          <span
+            aria-hidden
+            className={`mt-2 shrink-0 text-white/70 transition-transform ${expanded ? 'rotate-180' : ''}`}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+        ) : null}
+      </button>
+    </div>
+  )
 }
 
 function RosterBoard({ players, game }) {
   const [expandedId, setExpandedId] = useState(null)
-  const { awayColor, homeColor } = useLoungeSportsPillWashAndLogos(game)
+  const paint = useLoungeSportsPillWashAndLogos(game)
   const sorted = useMemo(() => {
     const list = [...(players || [])]
     list.sort((a, b) => {
@@ -650,55 +734,28 @@ function RosterBoard({ players, game }) {
   const expandedIdx = sorted.findIndex((p) => String(p.sleeper_id) === expandedId)
 
   const renderCollapsedRow = (p) => {
-    const headline = seasonHeadline(p)
     const id = String(p.sleeper_id)
     const hasStats = buildStatGroups(p).length > 0
+    const wash = rosterWashForPlayer(p, game, paint)
     return (
-      <li key={id} className="px-3.5 py-3.5">
-        <button
-          type="button"
-          disabled={!hasStats}
-          aria-expanded={false}
-          onClick={() => {
+      <li key={id} className="overflow-hidden">
+        <RosterPlayerHeader
+          player={p}
+          wash={wash}
+          expanded={false}
+          hasStats={hasStats}
+          onToggle={() => {
             if (!hasStats) return
             setExpandedId(id)
           }}
-          className={`flex w-full items-start gap-3 text-left touch-manipulation ${
-            hasStats ? 'active:opacity-90' : ''
-          }`}
-        >
-          <PlayerAvatar player={p} />
-          <div className="min-w-0 flex-1">
-            <div className="flex min-w-0 items-center gap-1.5">
-              <div className="truncate text-[16px] font-semibold text-zinc-100">{p.name}</div>
-              <InjuryPill status={p.injury_status} />
-            </div>
-            <div className="mt-0.5 text-[12px] text-zinc-500">
-              {p.position || '-'} · {p.team}
-            </div>
-          </div>
-          {headline ? (
-            <div className="shrink-0 pt-0.5 text-right">
-              <div className="text-[18px] font-bold tabular-nums text-zinc-100">{headline.value}</div>
-              <div className="text-[10px] uppercase tracking-wide text-zinc-500">{headline.label}</div>
-            </div>
-          ) : null}
-          {hasStats ? (
-            <span aria-hidden className="mt-2 shrink-0 text-zinc-500">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </span>
-          ) : null}
-        </button>
+        />
       </li>
     )
   }
 
   const renderExpandedCard = (p) => {
-    const headline = seasonHeadline(p)
     const id = String(p.sleeper_id)
-    const wash = rosterWashForPlayer(p, game, awayColor, homeColor)
+    const wash = rosterWashForPlayer(p, game, paint)
     return (
       <ul
         key={id}
@@ -707,44 +764,13 @@ function RosterBoard({ players, game }) {
         className="overflow-hidden rounded-2xl border border-zinc-600 bg-zinc-900 shadow-lg shadow-black/30"
       >
         <li>
-          <div
-            data-fantasy-h2h-wash
-            className="relative px-3.5 pb-3 pt-3.5"
-            style={{ '--fantasy-wash': wash.color }}
-          >
-            <span className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
-              <img data-fantasy-h2h-mesh src={wash.meshSrc} alt="" />
-              <span data-fantasy-h2h-tint />
-            </span>
-            <button
-              type="button"
-              aria-expanded
-              onClick={() => setExpandedId(null)}
-              className="relative z-[2] flex w-full items-start gap-3 text-left touch-manipulation active:opacity-90"
-            >
-              <PlayerAvatar player={p} />
-              <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-center gap-1.5">
-                  <div className="truncate text-[16px] font-semibold text-white">{p.name}</div>
-                  <InjuryPill status={p.injury_status} />
-                </div>
-                <div className="mt-0.5 text-[12px] text-white/70">
-                  {p.position || '-'} · {p.team}
-                </div>
-              </div>
-              {headline ? (
-                <div className="shrink-0 pt-0.5 text-right">
-                  <div className="text-[18px] font-bold tabular-nums text-white">{headline.value}</div>
-                  <div className="text-[10px] uppercase tracking-wide text-white/65">{headline.label}</div>
-                </div>
-              ) : null}
-              <span aria-hidden className="mt-2 shrink-0 rotate-180 text-white/70">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </span>
-            </button>
-          </div>
+          <RosterPlayerHeader
+            player={p}
+            wash={wash}
+            expanded
+            hasStats
+            onToggle={() => setExpandedId(null)}
+          />
           <RosterSeasonStatsTable player={p} edgeBleed />
         </li>
       </ul>
@@ -752,7 +778,7 @@ function RosterBoard({ players, game }) {
   }
 
   const listClass =
-    'divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900'
+    'divide-y divide-zinc-800/80 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900'
 
   if (expandedIdx < 0) {
     return (

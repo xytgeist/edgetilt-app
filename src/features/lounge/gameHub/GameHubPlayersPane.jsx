@@ -157,9 +157,18 @@ const RECEIVING_COLS = [
 const FUMBLES_COLS = [{ key: 'lost', label: 'FUM' }]
 
 const KICKING_COLS = [
-  { key: 'fgm', label: 'FGM' },
-  { key: 'fga', label: 'FGA' },
   { key: 'fgPct', label: 'FG%' },
+  { key: 'fg', label: 'FG' },
+  { key: 'fg019', label: '1-19' },
+  { key: 'fg2029', label: '20-29' },
+  { key: 'fg3039', label: '30-39' },
+  { key: 'fg4049', label: '40-49' },
+  { key: 'fg50p', label: '50+' },
+  { key: 'avg', label: 'AVG' },
+  { key: 'lng', label: 'LNG' },
+  { key: 'xpm', label: 'XPM' },
+  { key: 'xpa', label: 'XPA' },
+  { key: 'pts', label: 'PTS' },
 ]
 
 const DEFENSE_COLS = [
@@ -170,121 +179,175 @@ const DEFENSE_COLS = [
   { key: 'pa', label: 'PA' },
 ]
 
-function passingRow(player, mode) {
-  const gp = player.season_gp
-  const take = (v, digits = 0) => (mode === 'projected' ? paceSeason(v, gp, digits) : v)
-  const cmp = take(player.season_pass_cmp)
-  const att = take(player.season_pass_att)
-  const yd = take(player.season_pass_yd)
-  const td = take(player.season_pass_td)
-  const ints = take(player.season_pass_int)
-  const sack = take(player.season_pass_sack, 1)
+/** season | projected (pace) | career (summed Sleeper seasons). */
+function getStat(player, mode, seasonKey, careerKey, digits = 0) {
+  if (mode === 'projected') return paceSeason(player[seasonKey], player.season_gp, digits)
+  if (mode === 'career') {
+    const v = player.career?.[careerKey]
+    return v == null || !Number.isFinite(Number(v)) ? null : Number(v)
+  }
+  const v = player[seasonKey]
+  return v == null || !Number.isFinite(Number(v)) ? null : Number(v)
+}
+
+function fmtMadeAtt(made, miss, forceZeros = false) {
+  if (made == null && miss == null) return forceZeros ? '0-0' : null
+  const m = Number(made) || 0
+  const a = m + (Number(miss) || 0)
+  return `${m}-${a}`
+}
+
+function passingRow(player, mode, { forceZeros = false } = {}) {
+  const cmp = getStat(player, mode, 'season_pass_cmp', 'pass_cmp')
+  const att = getStat(player, mode, 'season_pass_att', 'pass_att')
+  const yd = getStat(player, mode, 'season_pass_yd', 'pass_yd')
+  const td = getStat(player, mode, 'season_pass_td', 'pass_td')
+  const ints = getStat(player, mode, 'season_pass_int', 'pass_int')
+  const sack = getStat(player, mode, 'season_pass_sack', 'pass_sack', 1)
   const has =
     cmp != null || att != null || yd != null || td != null || ints != null || sack != null
-  if (!has) return null
+  if (!forceZeros && !has) return null
   const ypa =
     mode === 'season' && player.season_pass_ypa != null
       ? player.season_pass_ypa
-      : avg(yd, att, 1)
+      : mode === 'career' && player.career?.pass_ypa != null
+        ? player.career.pass_ypa
+        : avg(yd, att, 1)
+  const cell = forceZeros ? fmtStatOrZero : fmtStat
+  const cellComma = forceZeros ? fmtCommaOrZero : fmtComma
+  const lngRaw =
+    mode === 'projected' ? null : getStat(player, mode, 'season_pass_lng', 'pass_lng')
+  const rtgRaw = mode === 'season' ? player.season_pass_rtg : null
   return {
-    cmp: fmtStat(cmp, 0),
-    att: fmtStat(att, 0),
-    cmpPct: fmtStat(pct(cmp, att), 1),
-    yds: fmtComma(yd, 0),
-    avg: fmtStat(ypa, 1),
-    td: fmtStat(td, 0),
-    int: fmtStat(ints, 0),
-    lng: mode === 'season' ? fmtStat(player.season_pass_lng, 0) : null,
-    sack: fmtStat(sack, Number(sack) % 1 === 0 ? 0 : 1),
-    rtg: mode === 'season' ? fmtStat(player.season_pass_rtg, 1) : null,
+    cmp: cell(cmp, 0),
+    att: cell(att, 0),
+    cmpPct: forceZeros ? fmtStatOrZero(pct(cmp, att), 1) : fmtStat(pct(cmp, att), 1),
+    yds: cellComma(yd, 0),
+    avg: forceZeros ? fmtStatOrZero(ypa, 1) : fmtStat(ypa, 1),
+    td: cell(td, 0),
+    int: cell(ints, 0),
+    lng: mode === 'projected' ? null : forceZeros ? fmtStatOrZero(lngRaw, 0) : fmtStat(lngRaw, 0),
+    sack: cell(sack, Number(sack) % 1 === 0 ? 0 : 1),
+    rtg: mode === 'season' ? fmtStat(rtgRaw, 1) : null,
   }
 }
 
 function rushingRow(player, mode, { forceZeros = false } = {}) {
-  const gp = player.season_gp
-  const take = (v, digits = 0) => (mode === 'projected' ? paceSeason(v, gp, digits) : v)
-  const car = take(player.season_rush_att)
-  const yd = take(player.season_rush_yd)
-  const td = take(player.season_rush_td)
+  const car = getStat(player, mode, 'season_rush_att', 'rush_att')
+  const yd = getStat(player, mode, 'season_rush_yd', 'rush_yd')
+  const td = getStat(player, mode, 'season_rush_td', 'rush_td')
   if (!forceZeros && car == null && yd == null && td == null) return null
   const ypa =
     mode === 'season' && player.season_rush_ypa != null
       ? player.season_rush_ypa
-      : avg(yd, car, 1)
+      : mode === 'career' && player.career?.rush_ypa != null
+        ? player.career.rush_ypa
+        : avg(yd, car, 1)
   const cell = forceZeros ? fmtStatOrZero : fmtStat
   const cellComma = forceZeros ? fmtCommaOrZero : fmtComma
-  const lngRaw = mode === 'season' ? player.season_rush_lng : null
+  const lngRaw =
+    mode === 'projected' ? null : getStat(player, mode, 'season_rush_lng', 'rush_lng')
   return {
     car: cell(car, 0),
     yds: cellComma(yd, 0),
     avg: forceZeros ? fmtStatOrZero(ypa, 1) : fmtStat(ypa, 1),
     td: cell(td, 0),
-    lng: mode === 'season' ? (forceZeros ? fmtStatOrZero(lngRaw, 0) : fmtStat(lngRaw, 0)) : null,
+    lng: mode === 'projected' ? null : forceZeros ? fmtStatOrZero(lngRaw, 0) : fmtStat(lngRaw, 0),
   }
 }
 
 function receivingRow(player, mode, { forceZeros = false } = {}) {
-  const gp = player.season_gp
-  const take = (v, digits = 0) => (mode === 'projected' ? paceSeason(v, gp, digits) : v)
-  const tgt = take(player.season_rec_tgt)
-  const rec = take(player.season_rec, 1)
-  const yd = take(player.season_rec_yd)
-  const td = take(player.season_rec_td)
+  const tgt = getStat(player, mode, 'season_rec_tgt', 'rec_tgt')
+  const rec = getStat(player, mode, 'season_rec', 'rec', 1)
+  const yd = getStat(player, mode, 'season_rec_yd', 'rec_yd')
+  const td = getStat(player, mode, 'season_rec_td', 'rec_td')
   if (!forceZeros && tgt == null && rec == null && yd == null && td == null) return null
   const cell = forceZeros ? fmtStatOrZero : fmtStat
   const cellComma = forceZeros ? fmtCommaOrZero : fmtComma
   const ypr = avg(yd, rec, 1)
-  const lngRaw = mode === 'season' ? player.season_rec_lng : null
+  const lngRaw =
+    mode === 'projected' ? null : getStat(player, mode, 'season_rec_lng', 'rec_lng')
   return {
     tgt: cell(tgt, 0),
     rec: cell(rec, Number(rec) % 1 === 0 ? 0 : 1),
     yds: cellComma(yd, 0),
     avg: forceZeros ? fmtStatOrZero(ypr, 1) : fmtStat(ypr, 1),
     td: cell(td, 0),
-    lng: mode === 'season' ? (forceZeros ? fmtStatOrZero(lngRaw, 0) : fmtStat(lngRaw, 0)) : null,
+    lng: mode === 'projected' ? null : forceZeros ? fmtStatOrZero(lngRaw, 0) : fmtStat(lngRaw, 0),
   }
 }
 
 function fumblesRow(player, mode, { forceZeros = false } = {}) {
-  const gp = player.season_gp
-  const take = (v, digits = 0) => (mode === 'projected' ? paceSeason(v, gp, digits) : v)
-  const lost = take(player.season_fum_lost)
+  const lost = getStat(player, mode, 'season_fum_lost', 'fum_lost')
   if (!forceZeros && lost == null) return null
   return {
     lost: forceZeros ? fmtStatOrZero(lost, 0) : fmtStat(lost, 0),
   }
 }
 
-function kickingRow(player, mode) {
-  const gp = player.season_gp
-  const take = (v) => (mode === 'projected' ? paceSeason(v, gp, 0) : v)
-  const made = take(player.season_fgm)
-  const miss = take(player.season_fgmiss)
-  if (made == null && miss == null) return null
-  const m = Number(made) || 0
-  const a = m + (Number(miss) || 0)
+function kickingRow(player, mode, { forceZeros = false } = {}) {
+  const made = getStat(player, mode, 'season_fgm', 'fgm')
+  const miss = getStat(player, mode, 'season_fgmiss', 'fgmiss')
+  const m019 = getStat(player, mode, 'season_fgm_0_19', 'fgm_0_19')
+  const x019 = getStat(player, mode, 'season_fgmiss_0_19', 'fgmiss_0_19')
+  const m2029 = getStat(player, mode, 'season_fgm_20_29', 'fgm_20_29')
+  const x2029 = getStat(player, mode, 'season_fgmiss_20_29', 'fgmiss_20_29')
+  const m3039 = getStat(player, mode, 'season_fgm_30_39', 'fgm_30_39')
+  const x3039 = getStat(player, mode, 'season_fgmiss_30_39', 'fgmiss_30_39')
+  const m4049 = getStat(player, mode, 'season_fgm_40_49', 'fgm_40_49')
+  const x4049 = getStat(player, mode, 'season_fgmiss_40_49', 'fgmiss_40_49')
+  const m50 = getStat(player, mode, 'season_fgm_50p', 'fgm_50p')
+  const x50 = getStat(player, mode, 'season_fgmiss_50p', 'fgmiss_50p')
+  const yds = getStat(player, mode, 'season_fgm_yds', 'fgm_yds')
+  const lng = mode === 'projected' ? null : getStat(player, mode, 'season_fgm_lng', 'fgm_lng')
+  const xpm = getStat(player, mode, 'season_xpm', 'xpm')
+  const xpa = getStat(player, mode, 'season_xpa', 'xpa')
+  const pts = getStat(player, mode, 'season_kick_pts', 'kick_pts', 1)
+  const has =
+    made != null ||
+    miss != null ||
+    xpm != null ||
+    m2029 != null ||
+    m3039 != null ||
+    m4049 != null ||
+    m50 != null
+  if (!forceZeros && !has) return null
+  const m = made == null && !forceZeros ? null : Number(made) || 0
+  const a = m == null ? null : m + (Number(miss) || 0)
+  const fgAvg = avg(yds, made, 1)
+  const cell = forceZeros ? fmtStatOrZero : fmtStat
   return {
-    fgm: fmtStat(m, 0),
-    fga: fmtStat(a, 0),
-    fgPct: fmtStat(pct(m, a), 1),
+    fgPct: forceZeros ? fmtStatOrZero(pct(m, a), 1) : fmtStat(pct(m, a), 1),
+    fg: fmtMadeAtt(made, miss, forceZeros),
+    fg019: fmtMadeAtt(m019, x019, forceZeros),
+    fg2029: fmtMadeAtt(m2029, x2029, forceZeros),
+    fg3039: fmtMadeAtt(m3039, x3039, forceZeros),
+    fg4049: fmtMadeAtt(m4049, x4049, forceZeros),
+    fg50p: fmtMadeAtt(m50, x50, forceZeros),
+    avg: mode === 'projected' ? null : forceZeros ? fmtStatOrZero(fgAvg, 1) : fmtStat(fgAvg, 1),
+    lng: mode === 'projected' ? null : forceZeros ? fmtStatOrZero(lng, 0) : fmtStat(lng, 0),
+    xpm: cell(xpm, 0),
+    xpa: cell(xpa, 0),
+    pts: cell(pts, Number(pts) % 1 === 0 ? 0 : 1),
   }
 }
 
-function defenseRow(player, mode) {
-  const gp = player.season_gp
-  const take = (v, digits = 0) => (mode === 'projected' ? paceSeason(v, gp, digits) : v)
-  const sack = take(player.season_sack, 1)
-  const ints = take(player.season_def_int)
-  const fr = take(player.season_fum_rec)
-  const td = take(player.season_def_td)
-  const pa = take(player.season_pts_allow, 1)
-  if (sack == null && ints == null && fr == null && td == null && pa == null) return null
+function defenseRow(player, mode, { forceZeros = false } = {}) {
+  const sack = getStat(player, mode, 'season_sack', 'sack', 1)
+  const ints = getStat(player, mode, 'season_def_int', 'def_int')
+  const fr = getStat(player, mode, 'season_fum_rec', 'fum_rec')
+  const td = getStat(player, mode, 'season_def_td', 'def_td')
+  const pa = getStat(player, mode, 'season_pts_allow', 'pts_allow', 1)
+  if (!forceZeros && sack == null && ints == null && fr == null && td == null && pa == null) {
+    return null
+  }
+  const cell = forceZeros ? fmtStatOrZero : fmtStat
   return {
-    sack: fmtStat(sack, Number(sack) % 1 === 0 ? 0 : 1),
-    int: fmtStat(ints, 0),
-    fr: fmtStat(fr, 0),
-    td: fmtStat(td, 0),
-    pa: fmtStat(pa, Number(pa) % 1 === 0 ? 0 : 1),
+    sack: cell(sack, Number(sack) % 1 === 0 ? 0 : 1),
+    int: cell(ints, 0),
+    fr: cell(fr, 0),
+    td: cell(td, 0),
+    pa: cell(pa, Number(pa) % 1 === 0 ? 0 : 1),
   }
 }
 
@@ -293,17 +356,20 @@ function buildStatGroups(player) {
     .toUpperCase()
     .replace(/[^A-Z]/g, '')
   const groups = []
+  const hasCareer = player?.career != null && typeof player.career === 'object'
 
   const addGroup = (title, cols, builder, opts = {}) => {
     const season = builder(player, 'season', opts)
     const projected = builder(player, 'projected', opts)
-    if (!season && !projected) return
+    const career = hasCareer ? builder(player, 'career', opts) : null
+    if (!season && !projected && !career) return
     groups.push({
       title,
       cols,
       rows: [
         { label: 'Regular Season', cells: season },
         { label: 'Projected', cells: projected },
+        { label: 'Career', cells: career },
       ].filter((r) => r.cells),
     })
   }
@@ -312,7 +378,6 @@ function buildStatGroups(player) {
     addGroup('Passing', PASSING_COLS, passingRow)
     addGroup('Rushing', RUSHING_COLS, rushingRow)
   } else if (pos === 'RB' || pos === 'FB' || pos === 'HB') {
-    // Always show full rush / rec / fum … zeros when Sleeper has no line.
     addGroup('Rushing', RUSHING_COLS, rushingRow, { forceZeros: true })
     addGroup('Receiving', RECEIVING_COLS, receivingRow, { forceZeros: true })
     addGroup('Fumbles', FUMBLES_COLS, fumblesRow, { forceZeros: true })
@@ -321,7 +386,7 @@ function buildStatGroups(player) {
     addGroup('Rushing', RUSHING_COLS, rushingRow, { forceZeros: true })
     addGroup('Fumbles', FUMBLES_COLS, fumblesRow, { forceZeros: true })
   } else if (pos === 'K' || pos === 'PK') {
-    addGroup('Kicking', KICKING_COLS, kickingRow)
+    addGroup('Kicking', KICKING_COLS, kickingRow, { forceZeros: true })
   } else if (pos === 'DEF' || pos === 'DST' || pos === 'D') {
     addGroup('Defense', DEFENSE_COLS, defenseRow)
   } else {
@@ -344,7 +409,7 @@ function RosterSeasonStatsTable({ player }) {
   const groups = buildStatGroups(player)
   if (!groups.length) return null
 
-  const rowLabels = ['Regular Season', 'Projected'].filter((label) =>
+  const rowLabels = ['Regular Season', 'Projected', 'Career'].filter((label) =>
     groups.some((g) => g.rows.some((r) => r.label === label)),
   )
   const fatCapable = groups.some((g) => g.cols.length >= FAT_STAT_COL_MIN)

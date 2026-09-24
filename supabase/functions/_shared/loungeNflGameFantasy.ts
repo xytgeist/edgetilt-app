@@ -126,6 +126,21 @@ export type NflGameFantasyPlayer = {
   season_fum_lost: number | null
   season_fgm: number | null
   season_fgmiss: number | null
+  season_fgm_0_19: number | null
+  season_fgmiss_0_19: number | null
+  season_fgm_20_29: number | null
+  season_fgmiss_20_29: number | null
+  season_fgm_30_39: number | null
+  season_fgmiss_30_39: number | null
+  season_fgm_40_49: number | null
+  season_fgmiss_40_49: number | null
+  season_fgm_50p: number | null
+  season_fgmiss_50p: number | null
+  season_fgm_yds: number | null
+  season_fgm_lng: number | null
+  season_xpm: number | null
+  season_xpa: number | null
+  season_kick_pts: number | null
   season_pts_allow: number | null
   season_sack: number | null
   season_def_int: number | null
@@ -138,6 +153,58 @@ export type NflGameFantasyPlayer = {
   /** Optional FantasyPros enrich when key is set. */
   ecr: number | null
   fantasypros_pts: number | null
+  /**
+   * Career regular-season totals summed from Sleeper season files (lookback).
+   * Null when no historical rows found.
+   */
+  career: NflGameFantasyCareerStats | null
+}
+
+/** Flattened career counting stats for Roster expand (Regular / Projected / Career). */
+export type NflGameFantasyCareerStats = {
+  gp: number | null
+  pass_yd: number | null
+  pass_cmp: number | null
+  pass_att: number | null
+  pass_ypa: number | null
+  pass_lng: number | null
+  pass_sack: number | null
+  pass_td: number | null
+  pass_int: number | null
+  rush_yd: number | null
+  rush_att: number | null
+  rush_ypa: number | null
+  rush_lng: number | null
+  rush_td: number | null
+  rec: number | null
+  rec_yd: number | null
+  rec_tgt: number | null
+  rec_lng: number | null
+  rec_td: number | null
+  fum_lost: number | null
+  fgm: number | null
+  fgmiss: number | null
+  fgm_0_19: number | null
+  fgmiss_0_19: number | null
+  fgm_20_29: number | null
+  fgmiss_20_29: number | null
+  fgm_30_39: number | null
+  fgmiss_30_39: number | null
+  fgm_40_49: number | null
+  fgmiss_40_49: number | null
+  fgm_50p: number | null
+  fgmiss_50p: number | null
+  fgm_yds: number | null
+  fgm_lng: number | null
+  xpm: number | null
+  xpa: number | null
+  kick_pts: number | null
+  pts_allow: number | null
+  sack: number | null
+  def_int: number | null
+  fum_rec: number | null
+  def_td: number | null
+  ppr: number | null
 }
 
 export type NflGameFantasyPropKind = 'game' | 'period' | 'player'
@@ -550,18 +617,42 @@ type SleeperStatRow = {
   pass_yd?: number | null
   pass_cmp?: number | null
   pass_att?: number | null
+  pass_ypa?: number | null
+  pass_lng?: number | null
+  pass_sack?: number | null
+  pass_rtg?: number | null
+  pass_td?: number | null
+  pass_int?: number | null
   rush_yd?: number | null
   rush_att?: number | null
+  rush_ypa?: number | null
+  rush_lng?: number | null
+  rush_td?: number | null
   rec_yd?: number | null
   rec?: number | null
   rec_tgt?: number | null
-  pass_td?: number | null
-  pass_int?: number | null
-  rush_td?: number | null
+  rec_lng?: number | null
   rec_td?: number | null
   fum_lost?: number | null
   fgm?: number | null
   fgmiss?: number | null
+  fga?: number | null
+  fgm_0_19?: number | null
+  fgmiss_0_19?: number | null
+  fgm_20_29?: number | null
+  fgmiss_20_29?: number | null
+  fgm_30_39?: number | null
+  fgmiss_30_39?: number | null
+  fgm_40_49?: number | null
+  fgmiss_40_49?: number | null
+  fgm_50p?: number | null
+  fgmiss_50p?: number | null
+  fgm_yds?: number | null
+  fgm_lng?: number | null
+  xpm?: number | null
+  xpa?: number | null
+  xpmiss?: number | null
+  kick_pts?: number | null
   pts_allow?: number | null
   sack?: number | null
   int?: number | null
@@ -633,6 +724,191 @@ async function loadSleeperWeekStats(
 
 async function loadSleeperSeasonStats(season: string): Promise<Map<string, SleeperStatRow>> {
   return loadSleeperStatMap('stats', season, null)
+}
+
+/** Past seasons rarely change … keep in isolate memory so 90s fantasy rebuilds stay cheap. */
+const SLEEPER_SEASON_CACHE = new Map<string, { at: number; map: Map<string, SleeperStatRow> }>()
+const SLEEPER_SEASON_CACHE_TTL_MS = 6 * 60 * 60 * 1000
+/** How many regular seasons to fold into career (includes current). */
+const CAREER_LOOKBACK_SEASONS = 20
+
+async function loadSleeperSeasonStatsCached(season: string): Promise<Map<string, SleeperStatRow>> {
+  const hit = SLEEPER_SEASON_CACHE.get(season)
+  if (hit && Date.now() - hit.at < SLEEPER_SEASON_CACHE_TTL_MS) return hit.map
+  const map = await loadSleeperSeasonStats(season)
+  if (map.size) SLEEPER_SEASON_CACHE.set(season, { at: Date.now(), map })
+  return map
+}
+
+const CAREER_SUM_KEYS = [
+  'gp',
+  'pass_yd',
+  'pass_cmp',
+  'pass_att',
+  'pass_sack',
+  'pass_td',
+  'pass_int',
+  'rush_yd',
+  'rush_att',
+  'rush_td',
+  'rec',
+  'rec_yd',
+  'rec_tgt',
+  'rec_td',
+  'fum_lost',
+  'fgm',
+  'fgmiss',
+  'fgm_0_19',
+  'fgmiss_0_19',
+  'fgm_20_29',
+  'fgmiss_20_29',
+  'fgm_30_39',
+  'fgmiss_30_39',
+  'fgm_40_49',
+  'fgmiss_40_49',
+  'fgm_50p',
+  'fgmiss_50p',
+  'fgm_yds',
+  'xpm',
+  'xpa',
+  'xpmiss',
+  'kick_pts',
+  'pts_allow',
+  'sack',
+  'fum_rec',
+  'td',
+  'pts_ppr',
+  'pts_half_ppr',
+  'pts_std',
+] as const
+
+const CAREER_MAX_KEYS = ['pass_lng', 'rush_lng', 'rec_lng', 'fgm_lng'] as const
+
+function sumCareerStats(
+  seasonMaps: Map<string, SleeperStatRow>[],
+  sleeperId: string,
+): NflGameFantasyCareerStats | null {
+  if (!seasonMaps.length || !sleeperId) return null
+  const sums: Record<string, number> = {}
+  const maxes: Record<string, number> = {}
+  let defInt = 0
+  let sawDefInt = false
+  let sawAny = false
+
+  for (const map of seasonMaps) {
+    const row = map.get(sleeperId)
+    if (!row) continue
+    for (const key of CAREER_SUM_KEYS) {
+      const raw = (row as Record<string, unknown>)[key]
+      const n = Number(raw)
+      if (!Number.isFinite(n)) continue
+      sums[key] = (sums[key] || 0) + n
+      sawAny = true
+    }
+    const ints = intOrNull(row.int)
+    if (ints != null) {
+      defInt += ints
+      sawDefInt = true
+      sawAny = true
+    }
+    for (const key of CAREER_MAX_KEYS) {
+      const v = plausiblePlayLng((row as Record<string, unknown>)[key])
+      if (v == null) continue
+      maxes[key] = Math.max(maxes[key] || 0, v)
+      sawAny = true
+    }
+  }
+  if (!sawAny) return null
+
+  const passYd = sums.pass_yd != null ? Math.round(sums.pass_yd) : null
+  const passAtt = sums.pass_att != null ? Math.round(sums.pass_att) : null
+  const rushYd = sums.rush_yd != null ? Math.round(sums.rush_yd) : null
+  const rushAtt = sums.rush_att != null ? Math.round(sums.rush_att) : null
+  const xpm = sums.xpm != null ? Math.round(sums.xpm) : null
+  let xpa = sums.xpa != null ? Math.round(sums.xpa) : null
+  if (xpa == null && (xpm != null || sums.xpmiss != null)) {
+    xpa = (xpm || 0) + Math.round(sums.xpmiss || 0)
+  }
+
+  return {
+    gp: sums.gp != null ? Math.round(sums.gp) : null,
+    pass_yd: passYd,
+    pass_cmp: sums.pass_cmp != null ? Math.round(sums.pass_cmp) : null,
+    pass_att: passAtt,
+    pass_ypa:
+      passYd != null && passAtt != null && passAtt > 0
+        ? Math.round((passYd / passAtt) * 10) / 10
+        : null,
+    pass_lng: maxes.pass_lng ?? null,
+    pass_sack: sums.pass_sack != null ? Math.round(sums.pass_sack * 10) / 10 : null,
+    pass_td: sums.pass_td != null ? Math.round(sums.pass_td) : null,
+    pass_int: sums.pass_int != null ? Math.round(sums.pass_int) : null,
+    rush_yd: rushYd,
+    rush_att: rushAtt,
+    rush_ypa:
+      rushYd != null && rushAtt != null && rushAtt > 0
+        ? Math.round((rushYd / rushAtt) * 10) / 10
+        : null,
+    rush_lng: maxes.rush_lng ?? null,
+    rush_td: sums.rush_td != null ? Math.round(sums.rush_td) : null,
+    rec: sums.rec != null ? Math.round(sums.rec * 10) / 10 : null,
+    rec_yd: sums.rec_yd != null ? Math.round(sums.rec_yd) : null,
+    rec_tgt: sums.rec_tgt != null ? Math.round(sums.rec_tgt) : null,
+    rec_lng: maxes.rec_lng ?? null,
+    rec_td: sums.rec_td != null ? Math.round(sums.rec_td) : null,
+    fum_lost: sums.fum_lost != null ? Math.round(sums.fum_lost) : null,
+    fgm: sums.fgm != null ? Math.round(sums.fgm) : null,
+    fgmiss: sums.fgmiss != null ? Math.round(sums.fgmiss) : null,
+    fgm_0_19: sums.fgm_0_19 != null ? Math.round(sums.fgm_0_19) : null,
+    fgmiss_0_19: sums.fgmiss_0_19 != null ? Math.round(sums.fgmiss_0_19) : null,
+    fgm_20_29: sums.fgm_20_29 != null ? Math.round(sums.fgm_20_29) : null,
+    fgmiss_20_29: sums.fgmiss_20_29 != null ? Math.round(sums.fgmiss_20_29) : null,
+    fgm_30_39: sums.fgm_30_39 != null ? Math.round(sums.fgm_30_39) : null,
+    fgmiss_30_39: sums.fgmiss_30_39 != null ? Math.round(sums.fgmiss_30_39) : null,
+    fgm_40_49: sums.fgm_40_49 != null ? Math.round(sums.fgm_40_49) : null,
+    fgmiss_40_49: sums.fgmiss_40_49 != null ? Math.round(sums.fgmiss_40_49) : null,
+    fgm_50p: sums.fgm_50p != null ? Math.round(sums.fgm_50p) : null,
+    fgmiss_50p: sums.fgmiss_50p != null ? Math.round(sums.fgmiss_50p) : null,
+    fgm_yds: sums.fgm_yds != null ? Math.round(sums.fgm_yds) : null,
+    fgm_lng: maxes.fgm_lng ?? null,
+    xpm,
+    xpa,
+    kick_pts:
+      sums.kick_pts != null
+        ? Math.round(sums.kick_pts * 10) / 10
+        : sums.pts_std != null
+          ? Math.round(sums.pts_std * 10) / 10
+          : null,
+    pts_allow: sums.pts_allow != null ? Math.round(sums.pts_allow * 10) / 10 : null,
+    sack: sums.sack != null ? Math.round(sums.sack * 10) / 10 : null,
+    def_int: sawDefInt ? defInt : null,
+    fum_rec: sums.fum_rec != null ? Math.round(sums.fum_rec) : null,
+    def_td: sums.td != null ? Math.round(sums.td) : null,
+    ppr:
+      sums.pts_ppr != null
+        ? Math.round(sums.pts_ppr * 10) / 10
+        : sums.pts_half_ppr != null
+          ? Math.round(sums.pts_half_ppr * 10) / 10
+          : sums.pts_std != null
+            ? Math.round(sums.pts_std * 10) / 10
+            : null,
+  }
+}
+
+async function loadCareerSeasonMaps(
+  currentSeason: string,
+  currentMap: Map<string, SleeperStatRow>,
+): Promise<Map<string, SleeperStatRow>[]> {
+  const year = Number(currentSeason)
+  if (!Number.isFinite(year) || year < 2000) return currentMap.size ? [currentMap] : []
+  const past: string[] = []
+  for (let y = year - 1; y >= year - (CAREER_LOOKBACK_SEASONS - 1); y--) {
+    past.push(String(y))
+  }
+  const pastMaps = await mapPool(past, 5, (s) => loadSleeperSeasonStatsCached(s))
+  const maps = pastMaps.filter((m) => m.size > 0)
+  if (currentMap.size) maps.push(currentMap)
+  return maps
 }
 
 /** League-wide PPR position pools from nfl_players × season pts (for quartile color). */
@@ -875,6 +1151,21 @@ function mapDbRow(
     season_fum_lost: null,
     season_fgm: null,
     season_fgmiss: null,
+    season_fgm_0_19: null,
+    season_fgmiss_0_19: null,
+    season_fgm_20_29: null,
+    season_fgmiss_20_29: null,
+    season_fgm_30_39: null,
+    season_fgmiss_30_39: null,
+    season_fgm_40_49: null,
+    season_fgmiss_40_49: null,
+    season_fgm_50p: null,
+    season_fgmiss_50p: null,
+    season_fgm_yds: null,
+    season_fgm_lng: null,
+    season_xpm: null,
+    season_xpa: null,
+    season_kick_pts: null,
     season_pts_allow: null,
     season_sack: null,
     season_def_int: null,
@@ -884,6 +1175,7 @@ function mapDbRow(
     season_pos_rank_of: null,
     ecr: null,
     fantasypros_pts: null,
+    career: null,
   }
 }
 
@@ -1028,6 +1320,12 @@ export async function buildNflGameFantasy(
   const seasonStats = season ? await loadSleeperSeasonStats(season) : new Map<string, SleeperStatRow>()
   if (seasonStats.size) sources.push('sleeper_season_stats')
 
+  let careerMaps: Map<string, SleeperStatRow>[] = []
+  if (season && seasonStats.size) {
+    careerMaps = await loadCareerSeasonMaps(season, seasonStats)
+    if (careerMaps.length > 1) sources.push('sleeper_career_stats')
+  }
+
   const posRankOf = seasonStats.size
     ? await loadPosRankPoolSizes(admin, seasonStats)
     : new Map<string, number>()
@@ -1082,6 +1380,29 @@ export async function buildNflGameFantasy(
       mapped.season_fum_lost = intOrNull(sea.fum_lost)
       mapped.season_fgm = intOrNull(sea.fgm)
       mapped.season_fgmiss = intOrNull(sea.fgmiss)
+      mapped.season_fgm_0_19 = intOrNull(sea.fgm_0_19)
+      mapped.season_fgmiss_0_19 = intOrNull(sea.fgmiss_0_19)
+      mapped.season_fgm_20_29 = intOrNull(sea.fgm_20_29)
+      mapped.season_fgmiss_20_29 = intOrNull(sea.fgmiss_20_29)
+      mapped.season_fgm_30_39 = intOrNull(sea.fgm_30_39)
+      mapped.season_fgmiss_30_39 = intOrNull(sea.fgmiss_30_39)
+      mapped.season_fgm_40_49 = intOrNull(sea.fgm_40_49)
+      mapped.season_fgmiss_40_49 = intOrNull(sea.fgmiss_40_49)
+      mapped.season_fgm_50p = intOrNull(sea.fgm_50p)
+      mapped.season_fgmiss_50p = intOrNull(sea.fgmiss_50p)
+      mapped.season_fgm_yds = intOrNull(sea.fgm_yds)
+      mapped.season_fgm_lng = plausiblePlayLng(sea.fgm_lng)
+      mapped.season_xpm = intOrNull(sea.xpm)
+      {
+        const xpa = intOrNull(sea.xpa)
+        if (xpa != null) mapped.season_xpa = xpa
+        else if (sea.xpm != null || sea.xpmiss != null) {
+          mapped.season_xpa = (intOrNull(sea.xpm) ?? 0) + (intOrNull(sea.xpmiss) ?? 0)
+        } else {
+          mapped.season_xpa = null
+        }
+      }
+      mapped.season_kick_pts = numOrNull(sea.kick_pts ?? sea.pts_std)
       mapped.season_pts_allow = numOrNull(sea.pts_allow)
       mapped.season_sack = numOrNull(sea.sack)
       mapped.season_def_int = intOrNull(sea.int)
@@ -1094,6 +1415,9 @@ export async function buildNflGameFantasy(
       if (pos === 'PK') pos = 'K'
       const of = posRankOf.get(pos)
       mapped.season_pos_rank_of = of != null && of > 0 ? of : null
+    }
+    if (careerMaps.length) {
+      mapped.career = sumCareerStats(careerMaps, mapped.sleeper_id)
     }
     const inj = injuryMap.get(mapped.sleeper_id)
     if (inj) mapped.injury_status = inj

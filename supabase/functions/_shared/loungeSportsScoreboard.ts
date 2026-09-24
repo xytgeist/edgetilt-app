@@ -712,22 +712,45 @@ function compactBook(
 
 function compactOddsBooksFromEvent(ev: OddsEventRow, homeName: string, awayName: string): LoungeSportsOddsRow[] {
   const books = Array.isArray(ev.bookmakers) ? ev.bookmakers : []
-  const preferred = ['pinnacle', 'lowvig', 'fanduel', 'draftkings', 'betmgm', 'caesars', 'fanatics']
+  // Pinnacle first always … then sharp/retail staples, then whatever else The Odds API returned.
+  const preferred = ['pinnacle', 'lowvig', 'fanduel', 'draftkings', 'betmgm', 'caesars', 'fanatics', 'williamhill_us']
   const ordered: OddsBookmaker[] = []
   for (const key of preferred) {
-    const hit = books.find((b) => b.key === key)
+    const hit = books.find((b) => String(b.key || '').toLowerCase() === key)
     if (hit) ordered.push(hit)
   }
   for (const book of books) {
     if (!ordered.includes(book)) ordered.push(book)
   }
   const rows: LoungeSportsOddsRow[] = []
+  let pinnacleRow: LoungeSportsOddsRow | null = null
   for (const book of ordered) {
     const row = compactBook(book, homeName, awayName)
-    if (row) rows.push(row)
-    if (rows.length >= 5) break
+    if (!row) continue
+    if (String(book.key || '').toLowerCase() === 'pinnacle') {
+      pinnacleRow = row
+      continue
+    }
+    rows.push(row)
   }
-  return rows
+  // Compacted rows are tiny (~0.2KB each) … keep 8, with Pinnacle pinned first when present.
+  const out = pinnacleRow ? [pinnacleRow, ...rows] : rows
+  return out.slice(0, 8)
+}
+
+/** Merge a Pinnacle bookmaker from the eu-region pack onto a us/us2 event (Pinnacle often absent there). */
+function mergePinnacleBookmaker(target: OddsEventRow, pinPack: { events?: OddsEventRow[] } | null): OddsEventRow {
+  const pinEvents = Array.isArray(pinPack?.events) ? pinPack!.events as OddsEventRow[] : []
+  if (!pinEvents.length) return target
+  const matched = pinEvents.find((ev) =>
+    String(ev.home_team || '').toLowerCase() === String(target.home_team || '').toLowerCase() &&
+    String(ev.away_team || '').toLowerCase() === String(target.away_team || '').toLowerCase()
+  )
+  const pinBook = matched ? pinnacleBookFromEvent(matched) : null
+  if (!pinBook) return target
+  const existing = Array.isArray(target.bookmakers) ? [...target.bookmakers] : []
+  const withoutPin = existing.filter((b) => String(b.key || '').toLowerCase() !== 'pinnacle')
+  return { ...target, bookmakers: [pinBook, ...withoutPin] }
 }
 
 function gameHasSpread(game: LoungeSportsGame): boolean {
@@ -921,11 +944,12 @@ export async function fetchLoungeSportsGameDetail(
   stats: LoungeSportsPlayerStat[]
 }> {
   const eventId = encodeURIComponent(game.id)
-  const [eventRaw, playsRaw, statsRaw, oddsPack] = await Promise.all([
+  const [eventRaw, playsRaw, statsRaw, oddsPack, pinPack] = await Promise.all([
     rundownGet<unknown>(`/events/${eventId}`),
     rundownGet<unknown>(`/events/${eventId}/plays`),
     rundownGet<unknown>(`/events/${eventId}/players/stats`),
     cachedSportOdds(game.sport_key),
+    cachedPinnacleOdds(game.sport_key),
   ])
 
   const eventObj = eventRaw && typeof eventRaw === 'object'
@@ -989,9 +1013,10 @@ export async function fetchLoungeSportsGameDetail(
   }
 
   const events = Array.isArray(oddsPack?.events) ? oddsPack.events as OddsEventRow[] : []
-  const matched = events.find((ev) =>
+  const matchedRaw = events.find((ev) =>
     oddsNamesHit(String(ev.home_team || ''), game.home) && oddsNamesHit(String(ev.away_team || ''), game.away)
   )
+  const matched = matchedRaw ? mergePinnacleBookmaker(matchedRaw, pinPack) : null
   const odds = matched
     ? compactOddsBooksFromEvent(matched, String(matched.home_team || game.home.name), String(matched.away_team || game.away.name))
     : []

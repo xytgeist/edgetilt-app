@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-23:** **Game hub odds top 8 + Pinnacle (Mac).** Detail odds cap 5→8 (~1.5KB); merge eu Pinnacle into us/us2 pack so Pinnacle stays first chip. Redeploy test **`lounge-sports-scoreboard`**. Web **`1.4.522`**.
 - **2026-09-23:** **Game hub odds single card (Mac).** Stats Odds: one card with horizontal sliding book chips; lines swap under the selected book. Web **`1.4.521`**.
 - **2026-09-23:** **Game hub Players position filter (Mac).** All/QB/RB/WR/TE chips across Roster/Fantasy/Props; dropped the Week/season/Kalshi/Poly chrome line. Web **`1.4.520`**.
 - **2026-09-23:** **Game hub hero moneyline strip (Mac).** Dropped Pregame pill; hero bottom shows Poly/Kalshi FG winner (%, multiplier, deep link) with sportsbook ML fallback. Fantasy props fetch on hub open. Web **`1.4.519`**.

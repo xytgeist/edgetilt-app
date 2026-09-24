@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Players Roster logo-only depth (Mac).** Keep faded team mark; drop hairline accent and avatar ring. Web **`1.4.577`**.
 - **2026-09-24:** **Players Roster calm chrome (Mac).** Dropped jersey wash bomb; rows use left hairline + faded team logo + avatar ring in team color. Web **`1.4.576`**.
 - **2026-09-24:** **Players Roster wash + logo on every row (Mac).** Collapsed and expanded roster rows get Fantasy H2H mesh/tint wash plus faded team logo. Web **`1.4.575`**.
 - **2026-09-24:** **Players Roster expand jersey wash (Mac).** Dropped Starter label; expanded card header uses Fantasy H2H mesh + team wash. Web **`1.4.574`**.

@@ -3726,8 +3726,12 @@ html.light [data-lounge-game-players] [data-roster-season-stats] .text-zinc-300 
 html.light [data-lounge-game-players] [data-roster-season-stats] .text-zinc-400 {
   color: #71717a !important;
 }
-html.light [data-lounge-game-players] [data-roster-season-stats] .text-zinc-200 {
+html.light [data-lounge-game-players] [data-roster-season-stats] .text-zinc-200,
+html.light [data-lounge-game-players] [data-roster-season-stats] .text-zinc-100 {
   color: #27272a !important;
+}
+html.light [data-lounge-game-players] [data-roster-season-stats] .text-zinc-500 {
+  color: #71717a !important;
 }
 html.light [data-lounge-game-fantasy] [data-fantasy-h2h] {
   color: inherit;

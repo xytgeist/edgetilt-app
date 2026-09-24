@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, Fragment } from 'react'
 import { KalshiPlayerPropsBoard } from './GameHubKalshiProps.jsx'
 import { injuryTag } from './GameHubFantasyPane.jsx'
 
@@ -300,8 +300,12 @@ function buildStatGroups(player) {
   return groups
 }
 
+const FAT_STAT_COL_MIN = 5
+
 /**
- * ESPN-style season table: sticky STATS labels + horizontally scrollable groups.
+ * Fat groups (Passing / Rushing / Receiving): one CSS grid with sticky STATS col
+ * so vertical rules share a single track. Thin groups (Kicking / Defense): full-width
+ * Regular Season | Projected stacks … no empty ESPN chrome.
  */
 function RosterSeasonStatsTable({ player }) {
   const groups = buildStatGroups(player)
@@ -310,77 +314,119 @@ function RosterSeasonStatsTable({ player }) {
   const rowLabels = ['Regular Season', 'Projected'].filter((label) =>
     groups.some((g) => g.rows.some((r) => r.label === label)),
   )
+  const fatGroups = groups.filter((g) => g.cols.length >= FAT_STAT_COL_MIN)
+  const thinGroups = groups.filter((g) => g.cols.length < FAT_STAT_COL_MIN)
 
   return (
-    <div
-      data-roster-season-stats
-      className="mt-3 overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950"
-    >
-      <div className="flex min-w-0">
-        <div className="z-[1] shrink-0 border-r border-zinc-700/80 bg-zinc-950">
-          <div className="h-8 border-b border-zinc-700/80" />
-          <div className="flex h-7 items-center border-b border-zinc-700/80 px-2.5">
+    <div data-roster-season-stats className="mt-3 space-y-2">
+      {fatGroups.length ? <RosterFatStatsGrid groups={fatGroups} rowLabels={rowLabels} /> : null}
+      {thinGroups.map((group) => (
+        <RosterThinStatsBlock key={group.title} group={group} rowLabels={rowLabels} />
+      ))}
+    </div>
+  )
+}
+
+function RosterFatStatsGrid({ groups, rowLabels }) {
+  const dataCols = groups.flatMap((g) => g.cols.map((c) => ({ ...c, group: g.title })))
+  const colCount = dataCols.length
+  if (!colCount) return null
+
+  const gridCols = `minmax(5.75rem, max-content) repeat(${colCount}, minmax(2.5rem, max-content))`
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950">
+      <div className="overflow-x-auto overscroll-x-contain">
+        <div
+          className="grid w-max min-w-full border-collapse"
+          style={{ gridTemplateColumns: gridCols }}
+        >
+          <div className="sticky left-0 z-[1] border-b border-r border-zinc-700/80 bg-zinc-950" />
+          {groups.map((group) => (
+            <div
+              key={`cat-${group.title}`}
+              className="flex h-8 items-end justify-center border-b border-zinc-700/80 px-1 pb-1"
+              style={{ gridColumn: `span ${group.cols.length}` }}
+            >
+              <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-300">
+                {group.title}
+              </span>
+            </div>
+          ))}
+
+          <div className="sticky left-0 z-[1] flex h-7 items-center border-b border-r border-zinc-700/80 bg-zinc-950 px-2.5">
             <span className="text-[10px] font-bold uppercase tracking-[0.08em] text-zinc-400">
               Stats
             </span>
           </div>
-          {rowLabels.map((label) => (
-            <div
-              key={label}
-              className="flex h-8 items-center border-b border-zinc-700/80 px-2.5 last:border-b-0"
-            >
-              <span className="whitespace-nowrap text-[11px] text-zinc-400">{label}</span>
-            </div>
+          {groups.map((group) =>
+            group.cols.map((col) => (
+              <div
+                key={`h-${group.title}-${col.key}`}
+                className="flex h-7 items-center justify-center border-b border-l border-zinc-700/80 px-1 text-[10px] font-bold uppercase tracking-wide text-zinc-400"
+              >
+                {col.label}
+              </div>
+            )),
+          )}
+
+          {rowLabels.map((label, rowIdx) => (
+            <Fragment key={label}>
+              <div
+                className={`sticky left-0 z-[1] flex h-8 items-center border-r border-zinc-700/80 bg-zinc-950 px-2.5 ${
+                  rowIdx < rowLabels.length - 1 ? 'border-b' : ''
+                }`}
+              >
+                <span className="whitespace-nowrap text-[11px] text-zinc-400">{label}</span>
+              </div>
+              {groups.map((group) => {
+                const row = group.rows.find((r) => r.label === label)
+                return group.cols.map((col) => (
+                  <div
+                    key={`${label}-${group.title}-${col.key}`}
+                    className={`flex h-8 items-center justify-center border-l border-zinc-700/80 px-1 text-[12px] tabular-nums text-zinc-200 ${
+                      rowIdx < rowLabels.length - 1 ? 'border-b' : ''
+                    }`}
+                  >
+                    {row?.cells?.[col.key] ?? '—'}
+                  </div>
+                ))
+              })}
+            </Fragment>
           ))}
         </div>
+      </div>
+    </div>
+  )
+}
 
-        <div className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain">
-          <div className="flex w-max">
-            {groups.map((group) => (
-              <div key={group.title} className="border-r border-zinc-700/80 last:border-r-0">
-                <div className="flex h-8 items-end justify-center border-b border-zinc-700/80 px-1 pb-1">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-300">
-                    {group.title}
-                  </span>
-                </div>
-                <div
-                  className="grid border-b border-zinc-700/80"
-                  style={{ gridTemplateColumns: `repeat(${group.cols.length}, minmax(2.4rem, auto))` }}
-                >
-                  {group.cols.map((col) => (
-                    <div
-                      key={col.key}
-                      className="flex h-7 items-center justify-center px-1 text-[10px] font-bold uppercase tracking-wide text-zinc-400"
-                    >
+function RosterThinStatsBlock({ group, rowLabels }) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-zinc-700/80 bg-zinc-950 px-3 py-2.5">
+      <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-zinc-300">{group.title}</div>
+      <div className="mt-2 grid grid-cols-2 gap-3">
+        {rowLabels.map((label) => {
+          const row = group.rows.find((r) => r.label === label)
+          return (
+            <div key={label} className="min-w-0">
+              <div className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                {label}
+              </div>
+              <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1.5">
+                {group.cols.map((col) => (
+                  <div key={col.key} className="min-w-[2.5rem]">
+                    <div className="text-[14px] font-bold tabular-nums leading-none text-zinc-100">
+                      {row?.cells?.[col.key] ?? '—'}
+                    </div>
+                    <div className="mt-0.5 text-[9px] font-semibold uppercase tracking-wide text-zinc-500">
                       {col.label}
                     </div>
-                  ))}
-                </div>
-                {rowLabels.map((label) => {
-                  const row = group.rows.find((r) => r.label === label)
-                  return (
-                    <div
-                      key={label}
-                      className="grid border-b border-zinc-700/80 last:border-b-0"
-                      style={{
-                        gridTemplateColumns: `repeat(${group.cols.length}, minmax(2.4rem, auto))`,
-                      }}
-                    >
-                      {group.cols.map((col) => (
-                        <div
-                          key={col.key}
-                          className="flex h-8 items-center justify-center px-1 text-[12px] tabular-nums text-zinc-200"
-                        >
-                          {row?.cells?.[col.key] ?? '—'}
-                        </div>
-                      ))}
-                    </div>
-                  )
-                })}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )

@@ -21,7 +21,9 @@ function PlayerAvatar({ player }) {
   )
 }
 
-/** Fixed-frame headshot for H2H (same height both sides). Missing → bust silhouette. */
+/** Fixed-frame headshot for H2H (same height both sides). Missing → bust silhouette.
+ * Sources are landscape busts (~1.4:1). Use contain + bottom so shoulders aren't
+ * sliced by a tall object-cover crop. */
 function MatchupPortrait({ player, isDef }) {
   const [failed, setFailed] = useState(false)
   const src = player?.headshot_url
@@ -43,7 +45,7 @@ function MatchupPortrait({ player, isDef }) {
     <img
       src={src}
       alt=""
-      className="h-full w-full object-cover object-[center_18%]"
+      className="h-full w-full object-contain object-bottom"
       onError={() => setFailed(true)}
     />
   )
@@ -375,7 +377,8 @@ function MatchupHalf({
             }`}
             style={{ bottom: '-10%' }}
           >
-            <div className="h-[8.75rem] w-[6.75rem] overflow-hidden">
+            {/* Wide enough for landscape NFL/ESPN busts (~1.4:1) without side-slicing shoulders. */}
+            <div className="h-[8.75rem] w-[9.5rem] overflow-hidden">
               <MatchupPortrait player={player} isDef={false} />
             </div>
           </div>

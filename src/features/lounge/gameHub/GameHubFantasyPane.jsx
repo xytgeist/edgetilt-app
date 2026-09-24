@@ -30,15 +30,18 @@ function MatchupPortrait({ player, isDef, align = 'left' }) {
   const showPhoto = Boolean(src) && !failed && !isDef
   // Home (right half) hugs left/center; away (left half) hugs right/center.
   const objectPos = align === 'right' ? 'object-[left_bottom]' : 'object-[right_bottom]'
+  const scaleOrigin = align === 'right' ? 'origin-bottom-left' : 'origin-bottom-right'
 
   if (isDef) return null
 
   if (!showPhoto) {
+    // Silhouette asset is ~square; landscape player busts render shorter under contain.
+    // Scale to ~photo height so empty seats match real headshots.
     return (
       <img
         src="/sports/nfl/silhouettes/player-bust.png"
         alt=""
-        className={`h-full w-full object-contain opacity-80 ${objectPos}`}
+        className={`h-full w-full object-contain opacity-80 scale-[0.78] ${scaleOrigin} ${objectPos}`}
       />
     )
   }

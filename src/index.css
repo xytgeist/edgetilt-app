@@ -3729,6 +3729,7 @@ html.light [data-lounge-kalshi-game-props] a {
 }
 html.light [data-lounge-kalshi-player-props] .text-emerald-300,
 html.light [data-lounge-kalshi-player-props] .text-emerald-300\/90,
+html.light [data-lounge-kalshi-player-props] .text-emerald-400\/80,
 html.light [data-lounge-kalshi-game-props] .text-emerald-300,
 html.light [data-lounge-kalshi-game-props] .text-emerald-300\/90 {
   color: #059669 !important;
@@ -3743,6 +3744,7 @@ html.light [data-lounge-kalshi-game-props] .bg-emerald-500\/15 {
 }
 html.light [data-lounge-kalshi-player-props] .text-rose-300,
 html.light [data-lounge-kalshi-player-props] .text-rose-300\/90,
+html.light [data-lounge-kalshi-player-props] .text-rose-400\/80,
 html.light [data-lounge-kalshi-game-props] .text-rose-300,
 html.light [data-lounge-kalshi-game-props] .text-rose-300\/90 {
   color: #e11d48 !important;

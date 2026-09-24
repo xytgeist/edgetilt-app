@@ -151,17 +151,15 @@ export function KalshiLiqStrip({ vol, oi, book, scale, compact = false }) {
   )
 }
 
-/** Compact Yes/No deep-link chips … dashes (no link) when a venue has no book. */
+/** Compact Yes/No deep-link chips … price only (Y/N labeled in column headers). */
 function YesNoButtons({ prop }) {
   if (!prop) {
     return (
       <div className="inline-flex shrink-0 overflow-hidden rounded-lg ring-1 ring-inset ring-zinc-800 opacity-55">
-        <span className="inline-flex items-center gap-1 px-2 py-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Y</span>
+        <span className="inline-flex min-w-[2rem] items-center justify-center px-1.5 py-1">
           <span className="text-[12px] font-bold tabular-nums text-zinc-500">—</span>
         </span>
-        <span className="inline-flex items-center gap-1 border-l border-zinc-800 px-2 py-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">N</span>
+        <span className="inline-flex min-w-[2rem] items-center justify-center border-l border-zinc-800 px-1.5 py-1">
           <span className="text-[12px] font-bold tabular-nums text-zinc-500">—</span>
         </span>
       </div>
@@ -180,18 +178,16 @@ function YesNoButtons({ prop }) {
         href={yesHref}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-1 bg-emerald-500/15 px-2 py-1 touch-manipulation active:opacity-80"
+        className="inline-flex min-w-[2rem] items-center justify-center bg-emerald-500/15 px-1.5 py-1 touch-manipulation active:opacity-80"
       >
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-emerald-300/90">Y</span>
         <span className="text-[12px] font-bold tabular-nums text-emerald-300">{kalshiCents(yesPx)}</span>
       </a>
       <a
         href={noHref}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-1 border-l border-zinc-700/80 bg-rose-500/10 px-2 py-1 touch-manipulation active:opacity-80"
+        className="inline-flex min-w-[2rem] items-center justify-center border-l border-zinc-700/80 bg-rose-500/10 px-1.5 py-1 touch-manipulation active:opacity-80"
       >
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-rose-300/90">N</span>
         <span className="text-[12px] font-bold tabular-nums text-rose-300">{kalshiCents(noPx)}</span>
       </a>
     </div>
@@ -238,6 +234,31 @@ function displayLineLabel(prop, playerName) {
   return s || prop?.line_label || prop?.title || 'Line'
 }
 
+/** Skill-group rank for in-card market order (pass → rush → rec → TD → fantasy → other). */
+function lineCategoryRank(key) {
+  const k = String(key || '')
+  if (k.includes('passyd')) return 10
+  if (k.includes('comp')) return 20
+  if (k.includes('att') && !k.includes('pass')) return 30
+  if (k.includes('pass') && k.includes('td')) return 40
+  if (k.includes('rushyd')) return 50
+  if (k.includes('rush') && k.includes('td')) return 60
+  if (k.includes('recyd')) return 70
+  if (k.includes('rec') && !k.includes('td') && !k.includes('recyd')) return 80
+  if (k.includes('rec') && k.includes('td')) return 90
+  if (k.includes('firsttd')) return 100
+  if (k.includes('td')) return 110
+  if (k.includes('fpts')) return 120
+  return 200
+}
+
+function lineStrikeNum(key, label) {
+  const fromKey = String(key || '').match(/(\d+(?:\.\d+)?)/)
+  if (fromKey) return Number(fromKey[1])
+  const fromLabel = String(label || '').match(/(\d+(?:\.\d+)?)/)
+  return fromLabel ? Number(fromLabel[1]) : 0
+}
+
 /** Pair Kalshi + Polymarket books that describe the same strike. */
 function pairPlayerLines(lines, playerName) {
   const byKey = new Map()
@@ -260,15 +281,27 @@ function pairPlayerLines(lines, playerName) {
   }
   const rows = [...byKey.values()]
   rows.sort((a, b) => {
-    const score = (row) => {
-      const props = [row.kalshi, row.polymarket].filter(Boolean)
-      return props.reduce((s, p) => s + ((p.volume_24h ?? p.volume) || 0), 0)
-    }
-    const ds = score(b) - score(a)
-    if (ds !== 0) return ds
+    const ca = lineCategoryRank(a.key)
+    const cb = lineCategoryRank(b.key)
+    if (ca !== cb) return ca - cb
+    const na = lineStrikeNum(a.key, a.label)
+    const nb = lineStrikeNum(b.key, b.label)
+    if (na !== nb) return na - nb
     return String(a.label).localeCompare(String(b.label))
   })
   return rows
+}
+
+const POSITION_ORDER = { QB: 0, RB: 1, WR: 2, TE: 3 }
+
+function positionRank(pos) {
+  const p = String(pos || '')
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+  if (p in POSITION_ORDER) return POSITION_ORDER[p]
+  // FB / HB → RB bucket; everything else after skill positions
+  if (p === 'FB' || p === 'HB') return POSITION_ORDER.RB
+  return 50
 }
 
 function KalshiGamePropCard({ prop, liqScale }) {
@@ -331,17 +364,29 @@ function KalshiPlayerPropGroup({ group, liqScale }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(6.75rem,auto)_minmax(6.75rem,auto)] gap-x-2 border-b border-zinc-800/80 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-zinc-600">
-        <span>Line</span>
-        <span className="text-center">Kalshi</span>
-        <span className="text-center">Poly</span>
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(4.5rem,auto)_minmax(4.5rem,auto)] gap-x-2 border-b border-zinc-800/80 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-zinc-600">
+        <span className="self-end">Line</span>
+        <span className="text-center leading-tight">
+          Kalshi
+          <span className="mt-0.5 flex justify-center gap-3 font-semibold normal-case tracking-normal text-zinc-500">
+            <span className="text-emerald-400/80">Y</span>
+            <span className="text-rose-400/80">N</span>
+          </span>
+        </span>
+        <span className="text-center leading-tight">
+          Poly
+          <span className="mt-0.5 flex justify-center gap-3 font-semibold normal-case tracking-normal text-zinc-500">
+            <span className="text-emerald-400/80">Y</span>
+            <span className="text-rose-400/80">N</span>
+          </span>
+        </span>
       </div>
 
       <div className="divide-y divide-zinc-800/70">
         {pairs.map((row) => (
           <div
             key={row.key}
-            className="grid grid-cols-[minmax(0,1fr)_minmax(6.75rem,auto)_minmax(6.75rem,auto)] items-center gap-x-2 px-3 py-2"
+            className="grid grid-cols-[minmax(0,1fr)_minmax(4.5rem,auto)_minmax(4.5rem,auto)] items-center gap-x-2 px-3 py-2"
           >
             <div className="min-w-0 truncate text-[13px] font-semibold leading-snug text-zinc-100">
               {row.label}
@@ -396,6 +441,9 @@ function groupPlayerProps(props, rosterPlayers) {
   }
   const groups = [...byPlayer.values()]
   groups.sort((a, b) => {
+    const pa = positionRank(a.roster?.position)
+    const pb = positionRank(b.roster?.position)
+    if (pa !== pb) return pa - pb
     const la = a.lines.reduce((s, p) => s + ((p.volume_24h ?? p.volume) || 0), 0)
     const lb = b.lines.reduce((s, p) => s + ((p.volume_24h ?? p.volume) || 0), 0)
     if (lb !== la) return lb - la

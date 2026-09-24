@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-23:** **NFL headshots restored + sync harden (Mac).** Depth sync had wiped `espn_id`/`headshot_url` (Sleeper nulls). `nfl:players:sync` now preserves existing ESPN/R2 media. Re-ran espn-ids (**805**) + R2 mirror (**803**). Web **`1.4.515`**. No prod SQL.
 - **2026-09-23:** **Roster starters-first ordering (Mac).** Sleeper `depth_chart_order` / `depth_chart_position` on test `nfl_players` (`20260924010000`); sync + Edge `is_starter` (depth=1, then fill QB1/RB2/WR3/TE1 via `search_rank`). Roster lists all starters by position, then backups. Web **`1.4.514`**. Test Edge redeployed. No prod SQL/Edge.
 - **2026-09-23:** **Sports Hub + NFL Hub in hamburger (Mac).** Menu → Lounge sports slate (`LoungeSportsHubSlate`); NFL filter uses week window. Tap pill opens per-game hub. Web **`1.4.505`**.
 - **2026-09-23:** **Game hub hero gridiron wash (Mac).** Hero uses same silver gridiron SVG + multiply team stains + center seam as Lounge post pills. Web **`1.4.504`**.

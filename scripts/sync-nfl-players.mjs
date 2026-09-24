@@ -71,6 +71,61 @@ async function downloadHeadshot(espnId, destPath) {
   return true
 }
 
+function isR2HeadshotUrl(url) {
+  return String(url || '').includes('/sports/nfl/players/')
+}
+
+/** Prefer existing ESPN / R2 media when Sleeper omits espn_id (common for star players). */
+function mergeMediaFields(row, prev) {
+  if (!prev) return row
+  let espnId = row.espn_id
+  let headshotUrl = row.headshot_url
+  let localPath = row.local_headshot_path
+
+  if (!espnId && prev.espn_id) {
+    espnId = String(prev.espn_id)
+    headshotUrl = prev.headshot_url || HEADSHOT_CDN(espnId)
+    localPath = prev.local_headshot_path || `/sports/nfl/players/${espnId}.png`
+  } else if (espnId && isR2HeadshotUrl(prev.headshot_url)) {
+    // Keep mirrored R2 URL … do not downgrade back to ESPN CDN on every sync.
+    headshotUrl = prev.headshot_url
+    localPath = prev.local_headshot_path || `/sports/nfl/players/${espnId}.png`
+  } else if (espnId && !headshotUrl && prev.headshot_url) {
+    headshotUrl = prev.headshot_url
+    localPath = prev.local_headshot_path || localPath
+  }
+
+  return {
+    ...row,
+    espn_id: espnId,
+    headshot_url: headshotUrl,
+    local_headshot_path: localPath,
+  }
+}
+
+async function loadExistingMedia(supabase) {
+  const map = new Map()
+  const pageSize = 1000
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabase
+      .from('nfl_players')
+      .select('sleeper_id, espn_id, headshot_url, local_headshot_path')
+      .range(from, from + pageSize - 1)
+    if (error) throw new Error(`load existing media: ${error.message}`)
+    const rows = Array.isArray(data) ? data : []
+    for (const row of rows) {
+      map.set(String(row.sleeper_id), {
+        espn_id: row.espn_id != null ? String(row.espn_id) : null,
+        headshot_url: row.headshot_url != null ? String(row.headshot_url) : null,
+        local_headshot_path:
+          row.local_headshot_path != null ? String(row.local_headshot_path) : null,
+      })
+    }
+    if (rows.length < pageSize) break
+  }
+  return map
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2))
   loadSupabaseEnv(args.target)
@@ -122,14 +177,28 @@ async function main() {
   }
 
   const supabase = createClient(url, key, { auth: { persistSession: false } })
+  const existing = await loadExistingMedia(supabase)
+  let preservedEspn = 0
+  let preservedR2 = 0
+  const merged = rows.map((row) => {
+    const prev = existing.get(row.sleeper_id)
+    const next = mergeMediaFields(row, prev)
+    if (!row.espn_id && next.espn_id) preservedEspn += 1
+    if (row.espn_id && isR2HeadshotUrl(prev?.headshot_url) && next.headshot_url === prev.headshot_url) {
+      preservedR2 += 1
+    }
+    return next
+  })
+  console.log(`Preserved espn_id=${preservedEspn} R2 headshots=${preservedR2}`)
+
   const chunk = 200
   let wrote = 0
-  for (let i = 0; i < rows.length; i += chunk) {
-    const slice = rows.slice(i, i + chunk)
+  for (let i = 0; i < merged.length; i += chunk) {
+    const slice = merged.slice(i, i + chunk)
     const { error } = await supabase.from('nfl_players').upsert(slice, { onConflict: 'sleeper_id' })
     if (error) throw new Error(`upsert failed: ${error.message}`)
     wrote += slice.length
-    process.stdout.write(`\rupserted ${wrote}/${rows.length}`)
+    process.stdout.write(`\rupserted ${wrote}/${merged.length}`)
   }
   console.log('')
 
@@ -139,7 +208,7 @@ async function main() {
     let ok = 0
     let skip = 0
     let fail = 0
-    for (const row of rows) {
+    for (const row of merged) {
       if (!row.espn_id) {
         skip += 1
         continue

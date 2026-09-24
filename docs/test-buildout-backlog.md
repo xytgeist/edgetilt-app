@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-23:** **Odds consensus legend (Mac).** Dot legend next to Odds title (“furthest from consensus”). Web **`1.4.524`**.
 - **2026-09-23:** **Odds book consensus outlier dot (Mac).** Stats book chips: amber dot on the book furthest from median consensus (spread/total/ML). Web **`1.4.523`**.
 - **2026-09-23:** **Game hub odds top 8 + Pinnacle (Mac).** Detail odds cap 5→8 (~1.5KB); merge eu Pinnacle into us/us2 pack so Pinnacle stays first chip. Redeploy test **`lounge-sports-scoreboard`**. Web **`1.4.522`**.
 - **2026-09-23:** **Game hub odds single card (Mac).** Stats Odds: one card with horizontal sliding book chips; lines swap under the selected book. Web **`1.4.521`**.

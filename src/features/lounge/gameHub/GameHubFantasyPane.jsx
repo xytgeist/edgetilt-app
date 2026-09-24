@@ -372,10 +372,9 @@ function MatchupHalf({
         </span>
         {!empty && !isDef ? (
           <div
-            className={`pointer-events-none absolute z-[2] flex h-[8.75rem] w-full items-end ${
+            className={`pointer-events-none absolute bottom-0 z-[2] flex h-[8.75rem] w-full items-end ${
               align === 'right' ? 'justify-start pl-0.5' : 'justify-end pr-0.5'
             }`}
-            style={{ bottom: '-10%' }}
           >
             {/* Wide enough for landscape NFL/ESPN busts (~1.4:1) without side-slicing shoulders. */}
             <div className="h-[8.75rem] w-[9.5rem] overflow-hidden">

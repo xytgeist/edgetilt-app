@@ -272,8 +272,11 @@ function PosRankMark({ player }) {
   const tone = posRankTone(rank, of)
   if (rank == null || !tone) return null
   return (
-    <span className={`font-semibold tabular-nums ${tone}`} title={of != null ? `#${rank} of ${of}` : `#${rank}`}>
-      #{rank}
+    <span
+      className={`shrink-0 font-semibold tabular-nums ${tone}`}
+      title={of != null ? `#${rank} of ${of}` : `#${rank}`}
+    >
+      ({rank})
     </span>
   )
 }
@@ -338,11 +341,13 @@ function MatchupHalf({
     >
       <div
         data-fantasy-h2h-wash
-        className="relative h-[8.2rem] w-full overflow-hidden"
+        className="relative h-[8.2rem] w-full overflow-visible"
         style={{ '--fantasy-wash': washColor || '#3f3f46' }}
       >
-        <img data-fantasy-h2h-mesh src={meshSrc} alt="" aria-hidden="true" />
-        <span data-fantasy-h2h-tint aria-hidden="true" />
+        <span className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
+          <img data-fantasy-h2h-mesh src={meshSrc} alt="" />
+          <span data-fantasy-h2h-tint />
+        </span>
         <span
           className={`pointer-events-none absolute top-1/2 z-[1] -translate-y-1/2 ${
             isDef
@@ -365,11 +370,12 @@ function MatchupHalf({
         </span>
         {!empty && !isDef ? (
           <div
-            className={`absolute -bottom-2 z-[2] flex h-[7rem] w-full items-end ${
+            className={`absolute z-[3] flex h-[8.75rem] w-full items-end ${
               align === 'right' ? 'justify-start pl-0.5' : 'justify-end pr-0.5'
             }`}
+            style={{ bottom: '-10%' }}
           >
-            <div className="h-[7rem] w-[5.4rem] overflow-hidden">
+            <div className="h-[8.75rem] w-[6.75rem] overflow-hidden">
               <MatchupPortrait player={player} isDef={false} />
             </div>
           </div>
@@ -392,20 +398,15 @@ function MatchupHalf({
             </div>
             {stats || (!empty && player?.season_pos_rank != null) ? (
               <div
-                className={`mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] font-medium text-zinc-400 ${
+                className={`mt-0.5 flex min-w-0 items-center gap-1 text-[11px] font-medium text-zinc-400 ${
                   align === 'right' ? 'justify-end' : ''
                 }`}
               >
                 {stats ? <span className="truncate">{stats}</span> : null}
-                {!empty && player?.season_pos_rank != null ? (
-                  <>
-                    {stats ? <span className="shrink-0 text-zinc-600">·</span> : null}
-                    <PosRankMark player={player} />
-                  </>
-                ) : null}
+                {!empty && player?.season_pos_rank != null ? <PosRankMark player={player} /> : null}
               </div>
             ) : null}
-            {avg ? <div className="mt-0.5 text-[11px] text-zinc-500">{avg}</div> : null}
+            {avg ? <div className="mt-0.5 text-[11px] font-medium text-zinc-400">{avg}</div> : null}
           </div>
           <div className="flex h-[3.25rem] w-[3.25rem] shrink-0 flex-col items-center justify-center rounded-xl bg-zinc-800 ring-1 ring-zinc-700/80">
             <div className="text-[15px] font-bold tabular-nums leading-none text-zinc-50">{fmt(main)}</div>

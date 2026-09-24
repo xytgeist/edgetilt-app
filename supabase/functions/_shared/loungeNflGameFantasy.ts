@@ -58,8 +58,8 @@ const KALSHI_PLAYER_SERIES_SET = new Set<string>(KALSHI_PLAYER_SERIES)
 const KALSHI_PERIOD_SERIES_SET = new Set<string>(KALSHI_PERIOD_SERIES)
 
 /** Soft caps so one game does not return hundreds of strike lines. */
-const KALSHI_MAX_GAME = 16
-const KALSHI_MAX_PERIOD = 12
+const KALSHI_MAX_GAME = 48
+const KALSHI_MAX_PERIOD = 28
 const KALSHI_MAX_PLAYER = 80
 /** Keep low ... Kalshi public API 429s hard under fan-out. */
 const KALSHI_FETCH_CONCURRENCY = 2
@@ -566,18 +566,37 @@ async function loadKalshiProps(away: string, home: string): Promise<NflGameFanta
     deduped.push(p)
   }
 
-  const game = takeTopByLiquidity(
-    deduped.filter((p) => p.kind === 'game'),
-    KALSHI_MAX_GAME,
-  )
-  const period = takeTopByLiquidity(
-    deduped.filter((p) => p.kind === 'period'),
-    KALSHI_MAX_PERIOD,
-  )
+  const gameProps = deduped.filter((p) => p.kind === 'game')
+  const periodProps = deduped.filter((p) => p.kind === 'period')
   const player = takeTopByLiquidity(
     deduped.filter((p) => p.kind === 'player'),
     KALSHI_MAX_PLAYER,
   )
+
+  /** Keep strike ladders intact … don't let one liquid ML wipe 20 totals. */
+  const takeBySeries = (list: NflGameFantasyProp[], softCap: number) => {
+    const bySeries = new Map<string, NflGameFantasyProp[]>()
+    for (const p of list) {
+      const s = String(p.series || 'other')
+      if (!bySeries.has(s)) bySeries.set(s, [])
+      bySeries.get(s)!.push(p)
+    }
+    const out: NflGameFantasyProp[] = []
+    for (const [series, rows] of bySeries) {
+      const upper = series.toUpperCase()
+      const perSeries =
+        upper.includes('TOTAL') || upper.includes('SPREAD')
+          ? 18
+          : upper.includes('GAME')
+            ? 4
+            : 8
+      out.push(...takeTopByLiquidity(rows, perSeries))
+    }
+    return out.length <= softCap ? out : takeTopByLiquidity(out, softCap)
+  }
+
+  const game = takeBySeries(gameProps, KALSHI_MAX_GAME)
+  const period = takeBySeries(periodProps, KALSHI_MAX_PERIOD)
 
   const merged = [...game, ...period, ...player]
   merged.sort((a, b) => {

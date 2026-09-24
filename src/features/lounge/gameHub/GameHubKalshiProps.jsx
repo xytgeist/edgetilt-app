@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { kalshiCents, kalshiContracts } from './gameHubFormatters.js'
+import { GameStrikeLaddersBoard } from './GameHubStrikeLadders.jsx'
 
 function nameKey(name) {
   return String(name || '')
@@ -553,213 +554,21 @@ function isPastHalftime(game, live) {
   return Number.isFinite(period) && period >= 3
 }
 
-function gamePeriodTag(prop) {
-  const series = String(prop?.series || '').toLowerCase()
-  const text = `${prop?.line_label || ''} ${prop?.title || ''}`.toLowerCase()
-  if (series.includes('2h') || series.includes('second_half') || /\b2nd half\b|\bsecond half\b|\b2h\b/.test(text)) {
-    return '2h'
-  }
-  if (series.includes('1h') || series.includes('first_half') || /\b1st half\b|\bfirst half\b|\b1h\b/.test(text)) {
-    return '1h'
-  }
-  return 'fg'
-}
-
-function gameLineCategory(prop) {
-  const series = String(prop?.series || '').toLowerCase()
-  const text = `${prop?.line_label || ''} ${prop?.title || ''}`.toLowerCase()
-  if (
-    series.includes('teamtotal') ||
-    series.includes('team_total') ||
-    series.includes('points_full_game') ||
-    (series.includes('team') && series.includes('total')) ||
-    /\b(atl|ari|bal|buf|car|chi|cin|cle|dal|den|det|gb|hou|ind|jax|kc|lac|lar|lv|mia|min|ne|no|nyg|nyj|phi|pit|sea|sf|tb|ten|was)\s+over\b/i.test(
-      text,
-    )
-  ) {
-    return 'teamtotal'
-  }
-  if (series.includes('spread') || /[+-]\d+(?:\.\d+)?/.test(text) && /\bspread\b/.test(series + text)) {
-    return 'spread'
-  }
-  if (series.includes('total') || /\bover\b|\bunder\b|\btotal\b/.test(text)) return 'total'
-  if (
-    series.includes('winner') ||
-    series.includes('kxnflgame') ||
-    /\bvs\b|\bwins?\b|\bmoneyline\b|\bml\b/.test(text) ||
-    /^[a-z]{2,3}(?:\s+1h|\s+2h)?$/i.test(String(prop?.line_label || '').trim())
-  ) {
-    return 'ml'
-  }
-  return 'other'
-}
-
-/** Normalize game/period lines so Kalshi + Poly share a row. */
-function gameLineMatchKey(prop) {
-  const period = gamePeriodTag(prop)
-  const cat = gameLineCategory(prop)
-  let text = compressTeamNames(String(prop?.line_label || prop?.title || ''))
-    .toLowerCase()
-    .replace(/\b(?:1st|first)\s*half\b/g, '1h')
-    .replace(/\b(?:2nd|second)\s*half\b/g, '2h')
-    .replace(/\bmoneyline\b/g, ' ')
-    .replace(/\bpoints?\b/g, ' ')
-    .replace(/\bwill\b/g, ' ')
-    .replace(/\bthe\b/g, ' ')
-    .replace(/\brecord\b/g, ' ')
-  const team =
-    (text.match(
-      /\b(atl|ari|bal|buf|car|chi|cin|cle|dal|den|det|gb|hou|ind|jax|kc|lac|lar|lv|mia|min|ne|no|nyg|nyj|phi|pit|sea|sf|tb|ten|was|tie)\b/,
-    ) || [])[1] || ''
-  const num = (text.match(/(\d+(?:\.\d+)?)/) || [])[1] || ''
-  const side = /\bunder\b/.test(text) ? 'u' : /\bover\b/.test(text) ? 'o' : ''
-  if (cat === 'ml') return `${period}:ml:${team || 'game'}`
-  if (cat === 'spread') return `${period}:spread:${team}:${num}`
-  if (cat === 'teamtotal') return `${period}:tt:${team}:${side}${num}`
-  if (cat === 'total') return `${period}:total:${side}${num}`
-  return `${period}:${cat}:${text.replace(/[^a-z0-9+.]/g, '').slice(0, 40)}`
-}
-
-function displayGameLineLabel(prop) {
-  const raw = String(prop?.line_label || prop?.title || '').trim()
-  return normalizeMarketLabel(raw) || raw || 'Line'
-}
-
-function gameLineSortRank(key) {
-  const period = key.startsWith('2h:') ? 2 : key.startsWith('1h:') ? 1 : 0
-  let cat = 9
-  if (key.includes(':ml:')) cat = 0
-  else if (key.includes(':spread:')) cat = 1
-  else if (key.includes(':total:')) cat = 2
-  else if (key.includes(':tt:')) cat = 3
-  return period * 10 + cat
-}
-
-function pairGameLines(list) {
-  const byKey = new Map()
-  for (const p of list || []) {
-    const key = gameLineMatchKey(p)
-    if (!byKey.has(key)) {
-      byKey.set(key, {
-        key,
-        label: displayGameLineLabel(p),
-        kalshi: null,
-        polymarket: null,
-      })
-    }
-    const row = byKey.get(key)
-    const src = p.source || 'kalshi'
-    if (src === 'polymarket') row.polymarket = p
-    else row.kalshi = p
-    row.label = preferShorterLabel(row.label, displayGameLineLabel(p))
-  }
-  const rows = [...byKey.values()]
-  rows.sort((a, b) => {
-    const ra = gameLineSortRank(a.key)
-    const rb = gameLineSortRank(b.key)
-    if (ra !== rb) return ra - rb
-    const na = lineStrikeNum(a.key, a.label)
-    const nb = lineStrikeNum(b.key, b.label)
-    if (na !== nb) return na - nb
-    return String(a.label).localeCompare(String(b.label))
-  })
-  return rows
-}
-
-function VenueColumnsHeader() {
-  return (
-    <div className="grid grid-cols-[minmax(0,1fr)_minmax(4.5rem,auto)_minmax(4.5rem,auto)] gap-x-2 border-b border-zinc-800/80 px-3 py-1.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-zinc-600">
-      <span className="self-end">Line</span>
-      <span className="text-center leading-tight">
-        Kalshi
-        <span className="mt-0.5 flex justify-center gap-3 font-semibold normal-case tracking-normal text-zinc-500">
-          <span className="text-emerald-400/80">Y</span>
-          <span className="text-rose-400/80">N</span>
-        </span>
-      </span>
-      <span className="text-center leading-tight">
-        Poly
-        <span className="mt-0.5 flex justify-center gap-3 font-semibold normal-case tracking-normal text-zinc-500">
-          <span className="text-emerald-400/80">Y</span>
-          <span className="text-rose-400/80">N</span>
-        </span>
-      </span>
-    </div>
-  )
-}
-
-function PairedPropRows({ pairs }) {
-  return (
-    <div className="divide-y divide-zinc-800/70">
-      {pairs.map((row) => (
-        <div
-          key={row.key}
-          className="grid grid-cols-[minmax(0,1fr)_minmax(4.5rem,auto)_minmax(4.5rem,auto)] items-center gap-x-2 px-3 py-2"
-        >
-          <div className="min-w-0 truncate text-[13px] font-semibold leading-snug text-zinc-100">
-            {row.label}
-          </div>
-          <div className="flex justify-center">
-            <YesNoButtons prop={row.kalshi} />
-          </div>
-          <div className="flex justify-center">
-            <YesNoButtons prop={row.polymarket} />
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function GamePropsSection({ title, lines, liqScale }) {
-  const pairs = useMemo(() => pairGameLines(lines), [lines])
-  const aggVol = sumField(lines, 'volume_24h') ?? sumField(lines, 'volume')
-  const aggOi = sumField(lines, 'open_interest')
-  const aggBook = lines.reduce((acc, p) => {
-    const d = propBookDepth(p)
-    return d == null ? acc : (acc || 0) + d
-  }, null)
-  if (!pairs.length) return null
-  return (
-    <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
-      <div className="border-b border-zinc-800/80 px-3 py-2.5">
-        <div className="flex items-baseline justify-between gap-2">
-          <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
-            {title}
-          </h3>
-          <span className="text-[11px] tabular-nums text-zinc-600">{pairs.length}</span>
-        </div>
-        <div className="mt-2">
-          <KalshiLiqStrip vol={aggVol} oi={aggOi} book={aggBook} scale={liqScale} compact />
-        </div>
-      </div>
-      <VenueColumnsHeader />
-      <PairedPropRows pairs={pairs} />
-    </div>
-  )
-}
-
-/** Game + period markets … Kalshi | Poly columns (same pattern as player props). */
+/** Game + period markets … strike ladders (Total / Spread) instead of 20 Over rows. */
 export function KalshiGamePropsBoard({ props, game = null, live = null, showPeriods = true }) {
   const pastHalftime = isPastHalftime(game, live)
 
-  const { gameList, periodList, scale } = useMemo(() => {
-    const list = (Array.isArray(props) ? props : []).filter((p) => {
+  const filtered = useMemo(() => {
+    return (Array.isArray(props) ? props : []).filter((p) => {
       if (p.kind === 'player') return false
       if (!(p.kind === 'game' || p.kind === 'period' || (!p.kind && !p.player_name))) return false
       if (isSecondHalfProp(p) && !pastHalftime) return false
+      if (!showPeriods && p.kind === 'period') return false
       return true
     })
-    const gameRows = list.filter((p) => p.kind === 'game' || (!p.kind && !p.player_name))
-    const periodRows = list.filter((p) => p.kind === 'period')
-    return {
-      gameList: gameRows,
-      periodList: periodRows,
-      scale: liqScaleFor(list),
-    }
-  }, [props, pastHalftime])
+  }, [props, pastHalftime, showPeriods])
 
-  if (!gameList.length && !(showPeriods && periodList.length)) {
+  if (!filtered.length) {
     return (
       <div className="py-6 text-center text-sm text-zinc-500">
         No open game markets for this matchup right now.
@@ -769,12 +578,7 @@ export function KalshiGamePropsBoard({ props, game = null, live = null, showPeri
 
   return (
     <div className="space-y-3" data-lounge-kalshi-game-props>
-      {gameList.length ? (
-        <GamePropsSection title="Game" lines={gameList} liqScale={scale} />
-      ) : null}
-      {showPeriods && periodList.length ? (
-        <GamePropsSection title="Halves" lines={periodList} liqScale={scale} />
-      ) : null}
+      <GameStrikeLaddersBoard props={filtered} game={game} />
     </div>
   )
 }

@@ -5,8 +5,8 @@
 
 const POLY_BASE = 'https://gateway.polymarket.us'
 const POLY_WEB = 'https://polymarket.us'
-const POLY_MAX_GAME = 12
-const POLY_MAX_PERIOD = 10
+const POLY_MAX_GAME = 40
+const POLY_MAX_PERIOD = 24
 const POLY_MAX_PLAYER = 70
 
 /** Popular board types only … skip quarters / race / margin / specialty noise. */

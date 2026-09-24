@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-23:** **Game hub pills chrome (Mac).** Removed edge fade overlays + native scrollbar on sibling game pills. Web **`1.4.501`**.
 - **2026-09-23:** **Game hub glass pills Safari-safe (Mac).** Dropped `mask-image` + `backdrop-blur` on sibling game chips (WebKit blank-tab risk); edge fades via overlay gradients; hardened box-score / Kalshi nulls. Web **`1.4.500`**.
 - **2026-09-23:** **Sleeper weekly + season fantasy on game hub (Mac).** Fantasy tab: Weekly (proj PPR + yards) / Season (YTD PPR + counting) / Props (Kalshi). Fixed Sleeper paths to `/nfl/regular/{season}…`. Web **`1.4.498`**. Test Edge redeployed. No FantasyPros required.
 - **2026-09-23:** **NFL player headshots on R2 (Mac).** ESPN → Cloudflare R2 at `sports/nfl/players/{espn_id}.png` (shared bucket; one copy for test+prod URLs). Filled missing Sleeper `espn_id` via ESPN core roster match. **803** mirrored on test `nfl_players`; 2 ESPN-missing skips; 30 still no espn_id. Scripts: `nfl:players:espn-ids`, `nfl:players:headshots:r2`. Edge `mirror_headshots` on **`lounge-nfl-game-fantasy`**. Web **`1.4.497`**. No prod SQL.

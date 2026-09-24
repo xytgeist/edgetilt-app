@@ -22,23 +22,104 @@ function PlayerAvatar({ player }) {
   )
 }
 
+const POSITION_ORDER = { QB: 0, RB: 1, WR: 2, TE: 3 }
+
+function positionRank(pos) {
+  const p = String(pos || '')
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+  if (p in POSITION_ORDER) return POSITION_ORDER[p]
+  if (p === 'FB' || p === 'HB') return POSITION_ORDER.RB
+  return 50
+}
+
+function fmtStat(n, digits = 0) {
+  if (n == null || !Number.isFinite(Number(n))) return null
+  const v = Number(n)
+  return Number.isInteger(v) || digits === 0 ? String(Math.round(v)) : v.toFixed(digits)
+}
+
+/** Season counting line for roster (not fantasy PPR). Omits the headline yards already on the right. */
+function seasonStatLine(player, headline) {
+  const parts = []
+  const pass = fmtStat(player.season_pass_yd)
+  const rush = fmtStat(player.season_rush_yd)
+  const recYd = fmtStat(player.season_rec_yd)
+  const rec = fmtStat(player.season_rec, 1)
+  const gp = fmtStat(player.season_gp)
+  const skip = headline?.label
+  if (pass && skip !== 'Pass yd') parts.push(`${pass} pass`)
+  if (rush && skip !== 'Rush yd') parts.push(`${rush} rush`)
+  if (recYd && skip !== 'Rec yd') parts.push(`${recYd} rec yd`)
+  else if (rec && skip !== 'Rec') parts.push(`${rec} rec`)
+  if (gp) parts.push(`${gp} gp`)
+  return parts.join(' · ')
+}
+
+/** Position-primary season number for the right rail. */
+function seasonHeadline(player) {
+  const pos = String(player.position || '')
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+  if (pos === 'QB' && player.season_pass_yd != null) {
+    return { value: fmtStat(player.season_pass_yd), label: 'Pass yd' }
+  }
+  if ((pos === 'RB' || pos === 'FB' || pos === 'HB') && player.season_rush_yd != null) {
+    return { value: fmtStat(player.season_rush_yd), label: 'Rush yd' }
+  }
+  if ((pos === 'WR' || pos === 'TE') && player.season_rec_yd != null) {
+    return { value: fmtStat(player.season_rec_yd), label: 'Rec yd' }
+  }
+  if (player.season_pass_yd != null) {
+    return { value: fmtStat(player.season_pass_yd), label: 'Pass yd' }
+  }
+  if (player.season_rush_yd != null) {
+    return { value: fmtStat(player.season_rush_yd), label: 'Rush yd' }
+  }
+  if (player.season_rec_yd != null) {
+    return { value: fmtStat(player.season_rec_yd), label: 'Rec yd' }
+  }
+  if (player.season_rec != null) {
+    return { value: fmtStat(player.season_rec, 1), label: 'Rec' }
+  }
+  return null
+}
+
+function seasonPrimaryYards(player) {
+  const pos = String(player.position || '')
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+  if (pos === 'QB') return Number(player.season_pass_yd) || 0
+  if (pos === 'RB' || pos === 'FB' || pos === 'HB') return Number(player.season_rush_yd) || 0
+  if (pos === 'WR' || pos === 'TE') return Number(player.season_rec_yd) || 0
+  return (
+    Number(player.season_pass_yd) ||
+    Number(player.season_rush_yd) ||
+    Number(player.season_rec_yd) ||
+    0
+  )
+}
+
 function RosterBoard({ players, awayAbbrev, homeAbbrev }) {
-  const [q, setQ] = useState('')
   const [side, setSide] = useState('all')
 
   const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase()
-    return (players || []).filter((p) => {
+    const list = (players || []).filter((p) => {
       if (side === 'away' && p.side !== 'away') return false
       if (side === 'home' && p.side !== 'home') return false
-      if (!needle) return true
-      return (
-        String(p.name || '').toLowerCase().includes(needle) ||
-        String(p.position || '').toLowerCase().includes(needle) ||
-        String(p.team || '').toLowerCase().includes(needle)
-      )
+      return true
     })
-  }, [players, q, side])
+    list.sort((a, b) => {
+      const pa = positionRank(a.position)
+      const pb = positionRank(b.position)
+      if (pa !== pb) return pa - pb
+      const ya = seasonPrimaryYards(a)
+      const yb = seasonPrimaryYards(b)
+      if (yb !== ya) return yb - ya
+      return (a.search_rank ?? 9999) - (b.search_rank ?? 9999)
+    })
+    return list
+  }, [players, side])
 
   if (!players?.length) {
     return <div className="py-10 text-center text-sm text-zinc-500">No roster data for this matchup yet.</div>
@@ -47,13 +128,6 @@ function RosterBoard({ players, awayAbbrev, homeAbbrev }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <input
-          type="search"
-          value={q}
-          onChange={(ev) => setQ(ev.target.value)}
-          placeholder="Search players"
-          className="min-w-0 flex-1 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-2 text-[13px] text-white outline-none placeholder:text-zinc-500"
-        />
         {[
           { id: 'all', label: 'Both' },
           { id: 'away', label: awayAbbrev || 'Away' },
@@ -73,31 +147,31 @@ function RosterBoard({ players, awayAbbrev, homeAbbrev }) {
       </div>
 
       <ul className="divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
-        {filtered.map((p) => (
-          <li key={p.sleeper_id} className="flex items-center gap-3 px-3 py-2.5">
-            <PlayerAvatar player={p} />
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[14px] font-semibold text-zinc-100">{p.name}</div>
-              <div className="text-[12px] text-zinc-500">
-                {p.position || '—'} · {p.team}
-                {p.search_rank != null ? ` · #${p.search_rank}` : ''}
-              </div>
-            </div>
-            {p.projected_ppr != null || p.season_ppr != null ? (
-              <div className="shrink-0 text-right">
-                <div className="text-[14px] font-bold tabular-nums text-zinc-100">
-                  {p.projected_ppr != null ? p.projected_ppr : '—'}
-                </div>
-                <div className="text-[10px] uppercase tracking-wide text-zinc-500">
-                  {p.season_ppr != null ? `YTD ${p.season_ppr}` : 'Proj'}
+        {filtered.map((p) => {
+          const headline = seasonHeadline(p)
+          const detail = seasonStatLine(p, headline)
+          return (
+            <li key={p.sleeper_id} className="flex items-center gap-3 px-3 py-2.5">
+              <PlayerAvatar player={p} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[14px] font-semibold text-zinc-100">{p.name}</div>
+                <div className="truncate text-[12px] text-zinc-500">
+                  {p.position || '—'} · {p.team}
+                  {detail ? ` · ${detail}` : ''}
                 </div>
               </div>
-            ) : null}
-          </li>
-        ))}
+              {headline ? (
+                <div className="shrink-0 text-right">
+                  <div className="text-[14px] font-bold tabular-nums text-zinc-100">{headline.value}</div>
+                  <div className="text-[10px] uppercase tracking-wide text-zinc-500">{headline.label}</div>
+                </div>
+              ) : null}
+            </li>
+          )
+        })}
       </ul>
       {!filtered.length ? (
-        <div className="py-6 text-center text-sm text-zinc-500">No players match that filter.</div>
+        <div className="py-6 text-center text-sm text-zinc-500">No players on that side.</div>
       ) : null}
     </div>
   )

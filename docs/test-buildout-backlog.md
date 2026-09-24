@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Fantasy H2H portraits up (Mac).** Dropped the −10% hang; busts sit on the wash bottom again (still contain + wide frame). Web **`1.4.542`**.
 - **2026-09-24:** **Fantasy H2H shoulder crop fix (Mac).** Same bust source; tall `object-cover` frame was slicing sleeves vertically. Now `object-contain object-bottom` + wider frame. Web **`1.4.541`**.
 - **2026-09-24:** **Odds amber badge → Hanging / Outlier (Mac).** Replaces “furthest from consensus.” Thresholds: ≥2% de-vig ML (3% if ±300+), 0.5pt spread/total, 10¢ same-number juice; noise under 1.5% ignored. Hanging when a majority cluster exists and the book sits outside (no line-history yet). Web **`1.4.540`**.
 - **2026-09-24:** **NFL.com headshots → R2 v2 (Mac).** nflverse `espn_id`→Cloudinary crosswalk; Edge `mirror_nflcom_headshots`; keys `sports/nfl/players/v2/{espn_id}.png` (cache-bust vs ESPN). Scripts `nfl:players:headshots:nflcom:r2` (+ prod). Redeploy test+prod **`lounge-nfl-game-fantasy`**. Web **`1.4.539`**.

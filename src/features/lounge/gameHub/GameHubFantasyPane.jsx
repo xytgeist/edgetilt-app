@@ -1,19 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { NFL_TEAM_CATALOG } from '../loungeSportsMatch.js'
-import { LoungeSportsTeamLogo } from '../loungeSportsPillPaint.jsx'
+import { LoungeSportsTeamLogo, useLoungeSportsPillWashAndLogos } from '../loungeSportsPillPaint.jsx'
 
-function PlayerAvatar({ player, size = 'sm' }) {
+function PlayerAvatar({ player }) {
   const [failed, setFailed] = useState(false)
-  const dim = size === 'lg' ? 'h-full w-full' : 'h-9 w-9'
   const letter = String(player?.name || '?').slice(0, 1).toUpperCase()
   if (!player?.headshot_url || failed) {
-    if (size === 'lg') {
-      return (
-        <span className="flex h-full w-full items-center justify-center text-4xl font-bold text-white/70">
-          {letter}
-        </span>
-      )
-    }
     return (
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs font-bold text-zinc-300">
         {letter}
@@ -24,7 +15,43 @@ function PlayerAvatar({ player, size = 'sm' }) {
     <img
       src={player.headshot_url}
       alt=""
-      className={`${dim} shrink-0 object-cover object-top ${size === 'lg' ? '' : 'rounded-full bg-zinc-800'}`}
+      className="h-9 w-9 shrink-0 rounded-full object-cover bg-zinc-800"
+      onError={() => setFailed(true)}
+    />
+  )
+}
+
+/** Fixed-frame headshot for H2H (same height both sides). Missing → silhouette. */
+function MatchupPortrait({ player, isDef }) {
+  const [failed, setFailed] = useState(false)
+  const src = player?.headshot_url
+  const showPhoto = Boolean(src) && !failed && !isDef
+
+  if (isDef) return null
+
+  if (!showPhoto) {
+    return (
+      <svg
+        viewBox="0 0 80 100"
+        className="h-full w-full text-white/55"
+        aria-hidden="true"
+        fill="currentColor"
+      >
+        <ellipse cx="40" cy="22" rx="16" ry="18" />
+        <path d="M18 98c0-22 10-36 22-36h0c12 0 22 14 22 36H18z" />
+        <path
+          d="M12 62c6-10 14-14 28-14s22 4 28 14l-8 6c-5-6-11-8-20-8s-15 2-20 8l-8-6z"
+          opacity="0.85"
+        />
+      </svg>
+    )
+  }
+
+  return (
+    <img
+      src={src}
+      alt=""
+      className="h-full w-full object-cover object-[center_18%]"
       onError={() => setFailed(true)}
     />
   )
@@ -34,6 +61,11 @@ function fmt(n, digits = 1) {
   if (n == null || !Number.isFinite(Number(n))) return '-'
   const v = Number(n)
   return Number.isInteger(v) || digits === 0 ? String(Math.round(v)) : v.toFixed(digits)
+}
+
+function fmtYd(n) {
+  if (n == null || !Number.isFinite(Number(n))) return null
+  return String(Math.round(Number(n)))
 }
 
 function projYardLine(player) {
@@ -74,29 +106,23 @@ function InjuryPill({ status }) {
   )
 }
 
-const TEAM_BY_ABBREV = new Map(NFL_TEAM_CATALOG.map((row) => [row.abbrev, row]))
-
-function catalogForTeam(abbrev) {
-  const key = String(abbrev || '')
-    .trim()
-    .toUpperCase()
-  if (!key) return null
-  if (key === 'JAC') return TEAM_BY_ABBREV.get('JAX') || null
-  if (key === 'WSH') return TEAM_BY_ABBREV.get('WAS') || null
-  return TEAM_BY_ABBREV.get(key) || null
-}
-
-function teamColor(abbrev) {
-  return catalogForTeam(abbrev)?.color || '#3f3f46'
-}
-
-function teamSideFromAbbrev(abbrev, gameSide) {
-  const row = catalogForTeam(abbrev)
-  return {
-    abbrev: row?.abbrev || abbrev || gameSide?.abbrev || '',
-    logo: gameSide?.logo || (row ? `/sports/nfl/logos/${row.abbrev}.png` : ''),
-    logoLight: gameSide?.logoLight || (row ? `/sports/nfl/logos/${row.abbrev}-light.png` : ''),
-    name: gameSide?.name || row?.names?.[0] || abbrev || '',
+/** Position tag colors inspired by the reference pills. */
+function positionPillClass(pos) {
+  switch (pos) {
+    case 'QB':
+      return 'bg-[#1a2a4a] text-[#7ec8ff] ring-1 ring-[#5aa0d8]/60'
+    case 'RB':
+      return 'bg-[#2a3230] text-[#7dffb3] ring-1 ring-[#3d4a45]/70'
+    case 'WR':
+      return 'bg-[#3a2218] text-[#ff9a5c] ring-1 ring-[#6a3a28]/55'
+    case 'TE':
+      return 'bg-[#3a1520] text-[#f0a8c0] ring-1 ring-[#6a3040]/50'
+    case 'K':
+      return 'bg-[#2a2818] text-[#f5d76e] ring-1 ring-[#6a5a28]/55'
+    case 'DEF':
+      return 'bg-[#1a2838] text-[#9ec4e8] ring-1 ring-[#3a5878]/55'
+    default:
+      return 'bg-zinc-800 text-zinc-200 ring-1 ring-zinc-600/50'
   }
 }
 
@@ -119,7 +145,8 @@ function normalizeFantasyPos(player) {
   return raw
 }
 
-function shortDisplayName(name) {
+function shortDisplayName(name, { isDef = false, teamNickname = '' } = {}) {
+  if (isDef) return String(teamNickname || 'DEF').toUpperCase()
   const parts = String(name || '')
     .trim()
     .split(/\s+/)
@@ -131,13 +158,75 @@ function shortDisplayName(name) {
   return `${first}. ${rest}`
 }
 
-function seasonAvgLine(player) {
-  const season = player?.season_ppr
-  const gp = player?.season_gp
-  if (season != null && gp != null && Number(gp) > 0) {
-    return `${fmt(Number(season) / Number(gp))} avg`
+/** Last token of “Atlanta Falcons” / side.mascot → “Falcons”. */
+function teamNickname(side) {
+  const mascot = String(side?.mascot || '').trim()
+  if (mascot) return mascot
+  const name = String(side?.name || '').trim()
+  if (!name) return String(side?.abbrev || '').trim()
+  const parts = name.split(/\s+/).filter(Boolean)
+  return parts[parts.length - 1] || name
+}
+
+function matchupStatLine(player, pos) {
+  if (!player) return null
+  const p = pos || normalizeFantasyPos(player)
+  if (p === 'QB') {
+    const pass = fmtYd(player.season_pass_yd)
+    const rush = Number(player.season_rush_yd) || 0
+    const tot =
+      player.season_pass_yd != null ? fmtYd(Number(player.season_pass_yd) + rush) : null
+    const td = player.season_pass_td
+    const ints = player.season_pass_int
+    const parts = []
+    if (pass != null && tot != null && tot !== pass) parts.push(`${pass}/${tot} yd`)
+    else if (pass != null) parts.push(`${pass} yd`)
+    else if (tot != null) parts.push(`${tot} yd`)
+    if (td != null) parts.push(`${fmt(td, 0)} TD`)
+    if (ints != null) parts.push(`${fmt(ints, 0)} INT`)
+    return parts.length ? parts.join(' · ') : null
   }
-  if (season != null) return `${fmt(season)} YTD`
+  if (p === 'RB') {
+    const rush = fmtYd(player.season_rush_yd)
+    const rec = Number(player.season_rec_yd) || 0
+    const tot =
+      player.season_rush_yd != null
+        ? fmtYd(Number(player.season_rush_yd) + rec)
+        : fmtYd(player.season_rec_yd)
+    const td = (Number(player.season_rush_td) || 0) + (Number(player.season_rec_td) || 0)
+    const fum = player.season_fum_lost
+    const parts = []
+    if (rush != null && tot != null && tot !== rush) parts.push(`${rush}/${tot} yd`)
+    else if (rush != null) parts.push(`${rush} yd`)
+    else if (tot != null) parts.push(`${tot} yd`)
+    if (td > 0 || player.season_rush_td != null || player.season_rec_td != null) {
+      parts.push(`${fmt(td, 0)} TD`)
+    }
+    if (fum != null) parts.push(`${fmt(fum, 0)} FUM`)
+    return parts.length ? parts.join(' · ') : null
+  }
+  if (p === 'WR' || p === 'TE') {
+    const yd = fmtYd(player.season_rec_yd)
+    const td = player.season_rec_td
+    const parts = []
+    if (yd != null) parts.push(`${yd} yd`)
+    if (td != null) parts.push(`${fmt(td, 0)} TD`)
+    return parts.length ? parts.join(' · ') : null
+  }
+  if (p === 'K') {
+    const made = player.season_fgm
+    const miss = player.season_fgmiss
+    if (made == null && miss == null) return null
+    return `${fmt(made ?? 0, 0)}/${fmt(miss ?? 0, 0)} FG`
+  }
+  if (p === 'DEF') {
+    const pts = player.season_pts_allow
+    const sack = player.season_sack
+    const parts = []
+    if (pts != null) parts.push(`${fmt(pts, 0)} pts`)
+    if (sack != null) parts.push(`${fmt(sack, sack % 1 === 0 ? 0 : 1)} sack`)
+    return parts.length ? parts.join(' · ') : null
+  }
   return null
 }
 
@@ -174,63 +263,65 @@ function pickDepth(ranked, depth) {
 function MatchupHalf({
   player,
   slotLabel,
+  slotPos,
   align,
-  teamAbbrev,
-  oppAbbrev,
+  washColor,
   teamSide,
+  logoTreatment,
   liveOrFinal,
 }) {
-  const color = teamColor(teamAbbrev)
-  const isDef = normalizeFantasyPos(player) === 'DEF' || slotLabel === 'DEF'
+  const isDef = slotPos === 'DEF' || normalizeFantasyPos(player) === 'DEF'
   const proj = player?.projected_ppr ?? player?.fantasypros_pts
   const scored = player?.game_ppr
   const main = liveOrFinal ? scored : proj
   const showProjUnder = liveOrFinal && proj != null
-  const avg = seasonAvgLine(player)
   const empty = !player
+  const nick = teamNickname(teamSide)
+  const stats = matchupStatLine(player, slotPos)
+  const logoOpacity = isDef ? 0.72 : 0.22
 
   return (
-    <div className={`relative flex min-w-0 flex-1 flex-col ${align === 'right' ? 'items-end text-right' : 'items-start text-left'}`}>
+    <div
+      className={`relative flex min-w-0 flex-1 flex-col ${
+        align === 'right' ? 'items-end text-right' : 'items-start text-left'
+      }`}
+    >
       <div
-        className="relative h-[9.5rem] w-full overflow-hidden"
-        style={{
-          background: `linear-gradient(180deg, ${color}cc 0%, ${color}66 45%, #18181b 100%)`,
-        }}
+        data-fantasy-h2h-wash
+        className="relative h-[10.25rem] w-full overflow-hidden"
+        style={{ '--fantasy-wash': washColor || '#3f3f46' }}
       >
+        <span data-fantasy-h2h-mesh aria-hidden="true" />
         <span
-          className={`pointer-events-none absolute inset-0 flex items-center justify-center opacity-[0.18] ${
-            align === 'right' ? 'translate-x-[12%]' : '-translate-x-[12%]'
-          }`}
+          className="pointer-events-none absolute left-1/2 top-1/2 z-[1] -translate-x-1/2 -translate-y-1/2"
+          style={{ opacity: logoOpacity }}
           aria-hidden="true"
         >
-          <LoungeSportsTeamLogo side={teamSide} treatment="halo" size={120} />
+          <LoungeSportsTeamLogo side={teamSide} treatment={logoTreatment} size={118} />
         </span>
         <span
-          className={`absolute top-2 z-[2] rounded-md bg-orange-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white ${
-            align === 'right' ? 'right-2' : 'left-2'
-          }`}
+          className={`absolute top-2 z-[3] rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${positionPillClass(
+            slotPos,
+          )} ${align === 'right' ? 'right-2' : 'left-2'}`}
         >
           {slotLabel}
         </span>
-        {!empty ? (
+        {!empty && !isDef ? (
           <div
-            className={`absolute bottom-0 z-[1] h-[8.75rem] w-[7.5rem] ${
-              align === 'right' ? 'right-1' : 'left-1'
+            className={`absolute bottom-0 z-[2] flex h-[8.75rem] w-full items-end ${
+              align === 'right' ? 'justify-start pl-0.5' : 'justify-end pr-0.5'
             }`}
           >
-            {isDef || !player.headshot_url ? (
-              <div className="flex h-full w-full items-end justify-center pb-2">
-                <LoungeSportsTeamLogo side={teamSide} treatment="halo" size={72} />
-              </div>
-            ) : (
-              <PlayerAvatar player={player} size="lg" />
-            )}
+            <div className="h-[8.75rem] w-[6.75rem] overflow-hidden">
+              <MatchupPortrait player={player} isDef={false} />
+            </div>
           </div>
-        ) : (
-          <div className="absolute inset-0 z-[1] flex items-center justify-center text-[12px] font-semibold text-white/50">
+        ) : null}
+        {empty ? (
+          <div className="absolute inset-0 z-[2] flex items-center justify-center text-[12px] font-semibold text-white/50">
             —
           </div>
-        )}
+        ) : null}
       </div>
 
       <div className="relative z-[2] w-full bg-zinc-900/95 px-2.5 pb-3 pt-2">
@@ -238,14 +329,15 @@ function MatchupHalf({
           <div className="min-w-0 flex-1">
             <div className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : ''}`}>
               <div className="truncate text-[13px] font-bold uppercase tracking-wide text-zinc-50">
-                {empty ? 'TBD' : shortDisplayName(player.name)}
+                {empty ? 'TBD' : shortDisplayName(player.name, { isDef, teamNickname: nick })}
               </div>
-              {!empty ? <InjuryPill status={player.injury_status} /> : null}
+              {!empty && !isDef ? <InjuryPill status={player.injury_status} /> : null}
             </div>
-            <div className="mt-0.5 text-[11px] font-medium text-zinc-400">
-              {teamAbbrev || '—'} vs. {oppAbbrev || '—'}
-            </div>
-            {avg ? <div className="mt-0.5 text-[11px] text-zinc-500">{avg}</div> : null}
+            {stats ? (
+              <div className="mt-0.5 truncate text-[11px] font-medium text-zinc-400">{stats}</div>
+            ) : (
+              <div className="mt-0.5 text-[11px] font-medium text-zinc-500">Season stats TBD</div>
+            )}
           </div>
           <div className="flex h-[3.25rem] w-[3.25rem] shrink-0 flex-col items-center justify-center rounded-xl bg-zinc-800 ring-1 ring-zinc-700/80">
             <div className="text-[15px] font-bold tabular-nums leading-none text-zinc-50">{fmt(main)}</div>
@@ -268,6 +360,7 @@ function MatchupHalf({
 function FantasyMatchupCarousel({ matchups, game, liveOrFinal }) {
   const [index, setIndex] = useState(0)
   const [touchX, setTouchX] = useState(null)
+  const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(game)
 
   useEffect(() => {
     setIndex(0)
@@ -278,10 +371,8 @@ function FantasyMatchupCarousel({ matchups, game, liveOrFinal }) {
 
   if (!current) return null
 
-  const awayAbbrev = game?.away?.abbrev || ''
-  const homeAbbrev = game?.home?.abbrev || ''
-  const awaySide = teamSideFromAbbrev(awayAbbrev, game?.away)
-  const homeSide = teamSideFromAbbrev(homeAbbrev, game?.home)
+  const awaySide = game?.away || { abbrev: '' }
+  const homeSide = game?.home || { abbrev: '' }
 
   const go = (dir) => {
     if (!matchups.length) return
@@ -306,20 +397,22 @@ function FantasyMatchupCarousel({ matchups, game, liveOrFinal }) {
           <MatchupHalf
             player={current.away}
             slotLabel={current.label}
+            slotPos={current.pos}
             align="left"
-            teamAbbrev={awayAbbrev}
-            oppAbbrev={homeAbbrev}
+            washColor={awayColor}
             teamSide={awaySide}
+            logoTreatment={awayTreatment}
             liveOrFinal={liveOrFinal}
           />
           <div className="w-px shrink-0 self-stretch bg-zinc-800" aria-hidden="true" />
           <MatchupHalf
             player={current.home}
             slotLabel={current.label}
+            slotPos={current.pos}
             align="right"
-            teamAbbrev={homeAbbrev}
-            oppAbbrev={awayAbbrev}
+            washColor={homeColor}
             teamSide={homeSide}
+            logoTreatment={homeTreatment}
             liveOrFinal={liveOrFinal}
           />
         </div>
@@ -330,7 +423,7 @@ function FantasyMatchupCarousel({ matchups, game, liveOrFinal }) {
               type="button"
               aria-label="Previous matchup"
               onClick={() => go(-1)}
-              className="absolute left-1.5 top-[4.25rem] z-[3] flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white ring-1 ring-white/15 backdrop-blur-sm"
+              className="absolute left-1.5 top-[4.5rem] z-[4] flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white ring-1 ring-white/15 backdrop-blur-sm"
             >
               ‹
             </button>
@@ -338,7 +431,7 @@ function FantasyMatchupCarousel({ matchups, game, liveOrFinal }) {
               type="button"
               aria-label="Next matchup"
               onClick={() => go(1)}
-              className="absolute right-1.5 top-[4.25rem] z-[3] flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white ring-1 ring-white/15 backdrop-blur-sm"
+              className="absolute right-1.5 top-[4.5rem] z-[4] flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white ring-1 ring-white/15 backdrop-blur-sm"
             >
               ›
             </button>

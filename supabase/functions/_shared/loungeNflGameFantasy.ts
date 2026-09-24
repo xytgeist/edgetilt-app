@@ -105,6 +105,15 @@ export type NflGameFantasyPlayer = {
   season_rush_yd: number | null
   season_rec_yd: number | null
   season_rec: number | null
+  season_pass_td: number | null
+  season_pass_int: number | null
+  season_rush_td: number | null
+  season_rec_td: number | null
+  season_fum_lost: number | null
+  season_fgm: number | null
+  season_fgmiss: number | null
+  season_pts_allow: number | null
+  season_sack: number | null
   /** Optional FantasyPros enrich when key is set. */
   ecr: number | null
   fantasypros_pts: number | null
@@ -521,6 +530,15 @@ type SleeperStatRow = {
   rush_yd?: number | null
   rec_yd?: number | null
   rec?: number | null
+  pass_td?: number | null
+  pass_int?: number | null
+  rush_td?: number | null
+  rec_td?: number | null
+  fum_lost?: number | null
+  fgm?: number | null
+  fgmiss?: number | null
+  pts_allow?: number | null
+  sack?: number | null
   stats?: SleeperStatRow
 }
 
@@ -768,6 +786,15 @@ function mapDbRow(
     season_rush_yd: null,
     season_rec_yd: null,
     season_rec: null,
+    season_pass_td: null,
+    season_pass_int: null,
+    season_rush_td: null,
+    season_rec_td: null,
+    season_fum_lost: null,
+    season_fgm: null,
+    season_fgmiss: null,
+    season_pts_allow: null,
+    season_sack: null,
     ecr: null,
     fantasypros_pts: null,
   }
@@ -934,6 +961,15 @@ export async function buildNflGameFantasy(
       mapped.season_rush_yd = intOrNull(sea.rush_yd)
       mapped.season_rec_yd = intOrNull(sea.rec_yd)
       mapped.season_rec = numOrNull(sea.rec)
+      mapped.season_pass_td = intOrNull(sea.pass_td)
+      mapped.season_pass_int = intOrNull(sea.pass_int)
+      mapped.season_rush_td = intOrNull(sea.rush_td)
+      mapped.season_rec_td = intOrNull(sea.rec_td)
+      mapped.season_fum_lost = intOrNull(sea.fum_lost)
+      mapped.season_fgm = intOrNull(sea.fgm)
+      mapped.season_fgmiss = intOrNull(sea.fgmiss)
+      mapped.season_pts_allow = numOrNull(sea.pts_allow)
+      mapped.season_sack = numOrNull(sea.sack)
     }
     const inj = injuryMap.get(mapped.sleeper_id)
     if (inj) mapped.injury_status = inj

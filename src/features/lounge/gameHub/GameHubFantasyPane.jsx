@@ -116,11 +116,7 @@ export default function GameHubFantasyPane({
           </div>
         </div>
       ) : (
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="text-[12px] text-zinc-500">
-            {season && week != null ? `Week ${week} · ${season}` : 'This matchup'}
-            {hasSleeper ? ' · Sleeper' : ''}
-          </div>
+        <div className="flex justify-end">
           <div className="flex gap-1 rounded-full bg-zinc-900 p-0.5">
             {[
               { id: 'weekly', label: 'Weekly' },

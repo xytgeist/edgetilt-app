@@ -100,13 +100,22 @@ function seasonPrimaryYards(player) {
   )
 }
 
-function RosterBoard({ players, awayAbbrev, homeAbbrev }) {
+function normalizePos(pos) {
+  const p = String(pos || '')
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+  if (p === 'FB' || p === 'HB') return 'RB'
+  return p
+}
+
+function RosterBoard({ players, awayAbbrev, homeAbbrev, position = 'all' }) {
   const [side, setSide] = useState('all')
 
   const filtered = useMemo(() => {
     const list = (players || []).filter((p) => {
       if (side === 'away' && p.side !== 'away') return false
       if (side === 'home' && p.side !== 'home') return false
+      if (position !== 'all' && normalizePos(p.position) !== position) return false
       return true
     })
     list.sort((a, b) => {
@@ -125,7 +134,7 @@ function RosterBoard({ players, awayAbbrev, homeAbbrev }) {
       return (a.search_rank ?? 9999) - (b.search_rank ?? 9999)
     })
     return list
-  }, [players, side])
+  }, [players, side, position])
 
   if (!players?.length) {
     return <div className="py-10 text-center text-sm text-zinc-500">No roster data for this matchup yet.</div>
@@ -162,7 +171,7 @@ function RosterBoard({ players, awayAbbrev, homeAbbrev }) {
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[14px] font-semibold text-zinc-100">{p.name}</div>
                 <div className="truncate text-[12px] text-zinc-500">
-                  {p.position || '—'} · {p.team}
+                  {p.position || '-'} · {p.team}
                   {p.is_starter ? ' · Starter' : ''}
                   {detail ? ` · ${detail}` : ''}
                 </div>
@@ -178,11 +187,19 @@ function RosterBoard({ players, awayAbbrev, homeAbbrev }) {
         })}
       </ul>
       {!filtered.length ? (
-        <div className="py-6 text-center text-sm text-zinc-500">No players on that side.</div>
+        <div className="py-6 text-center text-sm text-zinc-500">No players for that filter.</div>
       ) : null}
     </div>
   )
 }
+
+const POSITION_FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'QB', label: 'QB' },
+  { id: 'RB', label: 'RB' },
+  { id: 'WR', label: 'WR' },
+  { id: 'TE', label: 'TE' },
+]
 
 /**
  * Players hub surface: Roster + Fantasy board + Kalshi player props.
@@ -201,25 +218,37 @@ export default function GameHubPlayersPane({
   defaultView = 'roster',
 }) {
   const [view, setView] = useState(defaultView)
+  const [position, setPosition] = useState('all')
 
   useEffect(() => {
     setView(defaultView)
   }, [defaultView])
 
+  const filteredPlayers = useMemo(() => {
+    if (position === 'all') return players || []
+    return (players || []).filter((p) => normalizePos(p.position) === position)
+  }, [players, position])
+
+  const filteredProps = useMemo(() => {
+    if (position === 'all') return props || []
+    const names = new Set(
+      (players || [])
+        .filter((p) => normalizePos(p.position) === position)
+        .map((p) => String(p.name || '').trim().toLowerCase())
+        .filter(Boolean),
+    )
+    return (props || []).filter((p) => {
+      const name = String(p.player_name || '').trim().toLowerCase()
+      return name && names.has(name)
+    })
+  }, [props, players, position])
+
   if (loading) return <div className="py-10 text-center text-sm text-zinc-500">Loading players…</div>
   if (error) return <div className="py-10 text-center text-sm text-lv-red">{error}</div>
-
-  const hasKalshi = Array.isArray(sources) && sources.includes('kalshi')
-  const hasPoly = Array.isArray(sources) && sources.includes('polymarket')
 
   return (
     <div data-lounge-game-players className="space-y-3 py-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-[12px] text-zinc-500">
-          {season && week != null ? `Week ${week} · ${season}` : 'This matchup'}
-          {view === 'props' && hasKalshi ? ' · Kalshi' : ''}
-          {view === 'props' && hasPoly ? ' · Polymarket' : ''}
-        </div>
         <div className="flex gap-1 rounded-full bg-zinc-900 p-0.5">
           {[
             { id: 'roster', label: 'Roster' },
@@ -240,13 +269,33 @@ export default function GameHubPlayersPane({
         </div>
       </div>
 
+      <div className="flex flex-wrap items-center gap-1.5">
+        {POSITION_FILTERS.map((opt) => (
+          <button
+            key={opt.id}
+            type="button"
+            onClick={() => setPosition(opt.id)}
+            className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+              position === opt.id ? 'bg-zinc-100 text-zinc-950' : 'bg-zinc-800 text-zinc-300'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
       {view === 'roster' ? (
-        <RosterBoard players={players} awayAbbrev={awayAbbrev} homeAbbrev={homeAbbrev} />
+        <RosterBoard
+          players={players}
+          awayAbbrev={awayAbbrev}
+          homeAbbrev={homeAbbrev}
+          position={position}
+        />
       ) : null}
 
       {view === 'fantasy' ? (
         <GameHubFantasyPane
-          players={players}
+          players={filteredPlayers}
           loading={false}
           error=""
           season={season}
@@ -257,7 +306,7 @@ export default function GameHubPlayersPane({
       ) : null}
 
       {view === 'props' ? (
-        <KalshiPlayerPropsBoard props={props} players={players} />
+        <KalshiPlayerPropsBoard props={filteredProps} players={filteredPlayers} />
       ) : null}
     </div>
   )

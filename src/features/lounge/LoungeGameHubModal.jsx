@@ -226,6 +226,51 @@ export default function LoungeGameHubModal({
     { id: 'chat', label: 'Chat' },
   ]
 
+  const hubTopBar = (
+    <div
+      {...(embedded ? { 'data-lounge-align-feed-title': '' } : {})}
+      className={
+        embedded
+          ? `flex items-center gap-2 ${LOUNGE_FEED_TITLE_BAR_ROW_CLASS}`
+          : 'flex items-center gap-2 px-2 pt-[max(0.5rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-1'
+      }
+    >
+      <button
+        type="button"
+        onClick={() => sports.closeHub?.()}
+        data-lounge-game-glass-chip
+        className={`inline-flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} items-center justify-center rounded-full border border-white/25 bg-white/15 text-white shadow-sm backdrop-blur-md touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/25`}
+        aria-label="Back"
+      >
+        <ChevronLeft className="h-6 w-6" />
+      </button>
+      <div data-lounge-game-pills-scroll className="min-w-0 flex-1 overflow-x-auto">
+        <div className="flex gap-2 px-1 pr-3">
+          {sameSportGames.map((g) => {
+            const active = g.id === game.id
+            return (
+              <button
+                key={g.id}
+                type="button"
+                data-lounge-game-glass-chip={active ? 'active' : 'idle'}
+                onClick={() => sports.openHub?.(g)}
+                className={`shrink-0 rounded-full border px-2.5 py-1 text-[12px] font-semibold touch-manipulation backdrop-blur-md ${
+                  active
+                    ? 'border-white/55 bg-white/35 text-white shadow-sm'
+                    : 'border-white/20 bg-white/12 text-white/85'
+                }`}
+              >
+                {g.away?.abbrev} {g.status === 'pre' ? '@' : g.away?.score ?? ''} {g.home?.abbrev}{' '}
+                {g.status === 'pre' ? '' : g.home?.score ?? ''} ·{' '}
+                {g.status === 'post' ? 'F' : g.status === 'in' ? 'Live' : g.status_label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    </div>
+  )
+
   const hubRoot = (
     <div
       data-lounge-game-hub
@@ -236,46 +281,7 @@ export default function LoungeGameHubModal({
       }
       style={embedded ? undefined : { zIndex: Z_APP_MODAL }}
     >
-      <div
-        {...(embedded ? { 'data-lounge-align-feed-title': '' } : {})}
-        className={
-          embedded
-            ? `flex items-center gap-2 ${LOUNGE_FEED_TITLE_BAR_ROW_CLASS}`
-            : 'flex items-center gap-2 px-2 pt-[max(0.5rem,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-1'
-        }
-      >
-        <button
-          type="button"
-          onClick={() => sports.closeHub?.()}
-          className={`inline-flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} items-center justify-center rounded-full touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-zinc-800`}
-          aria-label="Back"
-        >
-          <ChevronLeft className="h-6 w-6" />
-        </button>
-        <div className="min-w-0 flex-1 overflow-x-auto">
-          <div className="flex gap-2 pr-2">
-            {sameSportGames.map((g) => {
-              const active = g.id === game.id
-              return (
-                <button
-                  key={g.id}
-                  type="button"
-                  onClick={() => sports.openHub?.(g)}
-                  className={`shrink-0 rounded-full px-2.5 py-1 text-[12px] font-semibold touch-manipulation ${
-                    active ? 'bg-zinc-100 text-zinc-950' : 'bg-zinc-800 text-zinc-300'
-                  }`}
-                >
-                  {g.away?.abbrev} {g.status === 'pre' ? '@' : g.away?.score ?? ''} {g.home?.abbrev}{' '}
-                  {g.status === 'pre' ? '' : g.home?.score ?? ''} ·{' '}
-                  {g.status === 'post' ? 'F' : g.status === 'in' ? 'Live' : g.status_label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-
-      <GameHubHero game={game} live={live} lastPlay={lastPlay} />
+      <GameHubHero game={game} live={live} lastPlay={lastPlay} topBar={hubTopBar} />
 
       <div className="flex shrink-0 gap-5 overflow-x-auto border-b border-zinc-800 px-4">
         {tabs.map((item) => (

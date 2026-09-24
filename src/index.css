@@ -3565,6 +3565,35 @@ html.light [data-lounge-game-hero] .text-white\/55 {
 html.light [data-lounge-game-hero] .text-rose-300 {
   color: #fda4af !important;
 }
+/* Glass game pills: keep translucent white on team wash (both themes) */
+html.light [data-lounge-game-hero] [data-lounge-game-glass-chip],
+html.light [data-lounge-game-hero] [data-lounge-game-glass-chip='idle'],
+html.light [data-lounge-game-hero] [data-lounge-game-glass-chip='active'] {
+  color: #fff !important;
+  background-color: rgba(255, 255, 255, 0.18) !important;
+  border-color: rgba(255, 255, 255, 0.28) !important;
+}
+html.light [data-lounge-game-hero] [data-lounge-game-glass-chip='active'] {
+  background-color: rgba(255, 255, 255, 0.38) !important;
+  border-color: rgba(255, 255, 255, 0.55) !important;
+}
+/* Soft fade on horizontal pill scroller bounds */
+[data-lounge-game-pills-scroll] {
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 14px,
+    #000 calc(100% - 18px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    90deg,
+    transparent 0,
+    #000 14px,
+    #000 calc(100% - 18px),
+    transparent 100%
+  );
+}
 html.light [data-lounge-game-players] input,
 html.light [data-lounge-game-fantasy] a {
   color: inherit;

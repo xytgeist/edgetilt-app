@@ -80,9 +80,10 @@ function FieldViz({ game, live }) {
 }
 
 /**
- * X-style split team-color hero for the game hub.
+ * X-style split team-color hero. `topBar` (back + game pills) sits inside the wash
+ * so colors run under the status / title row.
  */
-export default function GameHubHero({ game, live, lastPlay }) {
+export default function GameHubHero({ game, live, lastPlay, topBar = null }) {
   const awayMeta = teamMeta(game.away?.abbrev)
   const homeMeta = teamMeta(game.home?.abbrev)
   const awayColor = awayMeta?.color || '#3f3f46'
@@ -100,9 +101,11 @@ export default function GameHubHero({ game, live, lastPlay }) {
           background: `linear-gradient(90deg, ${awayColor} 0%, ${awayColor} 46%, ${homeColor} 54%, ${homeColor} 100%)`,
         }}
       />
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/25 via-black/35 to-zinc-950" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/20 via-black/30 to-zinc-950" />
 
-      <div className="relative px-4 pb-2 pt-3">
+      {topBar ? <div className="relative z-[1]">{topBar}</div> : null}
+
+      <div className="relative px-4 pb-2 pt-2">
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
             <TeamLogo side={game.away} size={52} />
@@ -128,7 +131,7 @@ export default function GameHubHero({ game, live, lastPlay }) {
             {yard ? <span className="text-[12px] font-semibold text-white/70">{yard}</span> : null}
             {kickoff ? <span className="text-[11px] font-medium text-white/70">{kickoff}</span> : null}
             {game.status === 'pre' ? (
-              <span className="mt-1 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/90">
+              <span className="mt-1 rounded-full border border-white/20 bg-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/90 backdrop-blur-md">
                 Pregame
               </span>
             ) : null}

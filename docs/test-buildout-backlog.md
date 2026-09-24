@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Players Roster cards roomier (Mac).** Larger avatar/padding; season stats on their own wrapping line (full pos line: yd/TD/INT/rec … not truncated). Web **`1.4.559`**.
 - **2026-09-24:** **Game hub public splits = bar + pair (Mac).** Dropped `$` seam tick. One bets bar; side labels `bets·$` under abbrevs (amber money when skewed). Web **`1.4.558`**.
 - **2026-09-24:** **Game hub public splits = one bar (Mac).** Bets fill the opposing rail; money is a `$` seam tick on the same axis; side labels `bets·money`. Web **`1.4.557`**.
 - **2026-09-24:** **Game hub hero public betting overlay (Mac).** Removed Pinnacle/Kalshi WINNER card. Hero shows twin no-card rails for pasted ticket % (bets) + handle % (money) from `syndicate_betting_splits` via `lounge-sports-scoreboard` detail. Money rail accents when bets≠money. Redeploy **`lounge-sports-scoreboard`**. Web **`1.4.556`**.

@@ -57,8 +57,8 @@ function FieldViz({ game, live }) {
   const pos = fieldPercent(live)
   const hasLine = pos != null
 
-  // Map 0..100 yard line to 13.5% .. 86.5% across the floating field image (between goal lines)
-  const scrimLeft = hasLine ? 13.5 + (pos / 100) * 73 : null
+  // Map 0..100 between the goal lines at mid-turf depth (perspective slants the lines).
+  const scrimLeft = hasLine ? 15.4 + (pos / 100) * 68.6 : null
 
   // First down line
   let firstDownLeft = null
@@ -66,7 +66,7 @@ function FieldViz({ game, live }) {
     const dist = Number(live.distance)
     const dir = live.possession === 'home' ? -1 : 1
     const targetPos = Math.max(0, Math.min(100, pos + dir * dist))
-    firstDownLeft = 13.5 + (targetPos / 100) * 73
+    firstDownLeft = 15.4 + (targetPos / 100) * 68.6
   }
 
   return (
@@ -79,10 +79,10 @@ function FieldViz({ game, live }) {
           className="pointer-events-none block w-full select-none"
         />
 
-        {/* Dynamic overlay plane matching turf bounds: top 32.2%, height 51.8% */}
+        {/* Dynamic overlay plane matching turf bounds on this cutout */}
         <div
           className="pointer-events-none absolute inset-x-0"
-          style={{ top: '32.2%', height: '51.8%' }}
+          style={{ top: '36.8%', height: '56.7%' }}
         >
           {/* First down line (yellow) */}
           {firstDownLeft != null ? (

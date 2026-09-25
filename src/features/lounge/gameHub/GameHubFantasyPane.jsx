@@ -74,15 +74,12 @@ function MatchupPortrait({ player, isDef, align = 'left' }) {
   if (isDef) return null
 
   if (!showPhoto) {
-    // Silhouette is ~square (reads bigger than landscape headshots). Match photo
-    // inside-edge bias, but pull a hair off the VS line.
-    const silOrigin = align === 'right' ? 'origin-bottom-left' : 'origin-bottom-right'
-    const silNudge = align === 'right' ? 'translate-x-2' : '-translate-x-2'
+    // Same contain + bottom-inside framing as real headshots (no scale/nudge).
     return (
       <img
         src="/sports/nfl/silhouettes/player-bust.png"
         alt=""
-        className={`h-full w-full object-contain opacity-80 scale-[0.72] translate-y-2 ${silNudge} ${silOrigin}`}
+        className={`h-full w-full object-contain opacity-80 ${objectPos}`}
       />
     )
   }

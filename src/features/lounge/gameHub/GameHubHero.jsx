@@ -569,10 +569,9 @@ function FieldViz({ game, live, awayColor, homeColor }) {
  * One bets bar (away left / home right). Money lives in the side pair `bets·$`
  * under each abbrev … no second rail, no seam tick.
  */
+/** Public bets/$ bar … pre-game only (live/post stay scoreboard + field chrome). */
 function HeroPublicBetting({ game, splits, awayColor, homeColor }) {
-  if (!splits) return null
-  // Live: clock / down-distance own the chrome … hide public bets/$ bar.
-  if (game?.status === 'in') return null
+  if (!splits || game?.status !== 'pre') return null
   const awayBets = Math.max(0, Math.min(100, Number(splits.away_ticket_pct)))
   const homeBets = Math.max(0, Math.min(100, Number(splits.home_ticket_pct)))
   const awayMoney = Math.max(0, Math.min(100, Number(splits.away_handle_pct)))
@@ -643,9 +642,6 @@ function HeroPublicBetting({ game, splits, awayColor, homeColor }) {
     </div>
   )
 }
-
-/** Flip back on when we want the public bets/$ bar under the scoreboard again. */
-const SHOW_HERO_PUBLIC_SPLITS = false
 
 /**
  * X-style split team-color hero. Same silver gridiron + multiply washes as Lounge
@@ -816,14 +812,12 @@ export default function GameHubHero({
       )}
 
       <div className="relative z-[4]">
-        {SHOW_HERO_PUBLIC_SPLITS ? (
-          <HeroPublicBetting
-            game={game}
-            splits={splits}
-            awayColor={awayColor}
-            homeColor={homeColor}
-          />
-        ) : null}
+        <HeroPublicBetting
+          game={game}
+          splits={splits}
+          awayColor={awayColor}
+          homeColor={homeColor}
+        />
         {showField ? (
           <div className="relative">
             <FieldViz

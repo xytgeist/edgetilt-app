@@ -3785,3 +3785,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-25:** **Game Hub score mid-gap:** Centered each team score in the flex gap between its logo column and the middle clock/status block in `GameHubHero.jsx`. Bumped to v1.4.640.
 - **2026-09-25:** **Game Hub condensed scoreboard live-only:** Roomier stacked logo+score hero for pre/post; condensed mid-gap scoreboard only when the 3D field is showing (`status === 'in'`). Bumped to v1.4.641.
 - **2026-09-25:** **Game Hub pre-game shows spread:** Hero score slots use ATS spread (`+3.5` / `PK`) before kickoff via `scoreText` in `gameHubFormatters.js` (same shape as feed pills). Bumped to v1.4.642.
+- **2026-09-25:** **Game Hub public bets/$ bar pre-only:** Restored `HeroPublicBetting` under the pre-game scoreboard (`status === 'pre'` only … still hidden live/post). Removed `SHOW_HERO_PUBLIC_SPLITS` kill switch. Bumped to v1.4.643.

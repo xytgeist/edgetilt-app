@@ -11,6 +11,51 @@ import {
 import { LOUNGE_SPORTS_HUB_FILTER_ALL, LOUNGE_SPORTS_HUB_FILTER_NFL } from './loungeSportsHubNav.js'
 import { loungeSportsSlateGames } from './loungeSportsSlateWindow.js'
 
+const SPORTS_HUB_LEAGUES = [
+  { id: 'nfl', label: 'NFL', icon: '🏈', ready: true },
+  { id: 'nba', label: 'NBA', icon: '🏀', ready: false },
+  { id: 'mlb', label: 'MLB', icon: '⚾', ready: false },
+  { id: 'nhl', label: 'NHL', icon: '🏒', ready: false },
+  { id: 'pga', label: 'PGA', icon: '⛳', ready: false },
+  { id: 'mls', label: 'MLS', icon: '⚽', ready: false },
+]
+
+function isNflHubFilter(filter) {
+  return filter === LOUNGE_SPORTS_HUB_FILTER_NFL || String(filter || '').includes('nfl')
+}
+
+function SportsHubLeagueButtons({ onOpenNfl }) {
+  return (
+    <div
+      data-lounge-sports-hub-leagues
+      className="grid grid-cols-3 gap-2 px-1 pb-4 pt-1"
+    >
+      {SPORTS_HUB_LEAGUES.map((league) => {
+        const soon = !league.ready
+        return (
+          <button
+            key={league.id}
+            type="button"
+            disabled={soon}
+            data-sports-hub-league={soon ? 'soon' : 'ready'}
+            onClick={soon ? undefined : onOpenNfl}
+            aria-label={soon ? `${league.label}, coming soon` : `Open ${league.label} Hub`}
+            className="flex min-h-[4.75rem] flex-col items-center justify-center gap-0.5 rounded-2xl border touch-manipulation [-webkit-tap-highlight-color:transparent]"
+          >
+            <span className="text-[1.65rem] leading-none" aria-hidden>
+              {league.icon}
+            </span>
+            <span className="text-[13px] font-semibold tracking-tight">{league.label}</span>
+            {soon ? (
+              <span className="text-[10px] font-medium uppercase tracking-wide">Coming soon</span>
+            ) : null}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 function sportSectionLabel(sportKey) {
   const sk = String(sportKey || '').toLowerCase()
   if (sk.includes('nfl')) return 'NFL'
@@ -37,8 +82,10 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
     [filter, sports?.games],
   )
 
+  const nflHub = isNflHubFilter(filter)
+
   const sections = useMemo(() => {
-    if (filter === LOUNGE_SPORTS_HUB_FILTER_NFL || String(filter || '').includes('nfl')) {
+    if (nflHub) {
       return [{ key: 'nfl', label: 'NFL', games }]
     }
     const bySport = new Map()
@@ -52,14 +99,11 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
       label: sportSectionLabel(key),
       games: list,
     }))
-  }, [filter, games])
+  }, [filter, games, nflHub])
 
   if (!open || typeof document === 'undefined') return null
 
-  const title =
-    filter === LOUNGE_SPORTS_HUB_FILTER_NFL || String(filter || '').includes('nfl')
-      ? 'NFL Hub'
-      : 'Sports Hub'
+  const title = nflHub ? 'NFL Hub' : 'Sports Hub'
 
   const root = (
     <div
@@ -96,6 +140,11 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-[max(1.25rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
+        {nflHub ? null : (
+          <SportsHubLeagueButtons
+            onOpenNfl={() => sports.openSlate?.(LOUNGE_SPORTS_HUB_FILTER_NFL)}
+          />
+        )}
         {!games.length ? (
           <div className="px-2 py-16 text-center text-sm text-zinc-500">
             No games on this slate right now. Pull to refresh from Lounge, or check back closer to kickoff.

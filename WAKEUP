@@ -70,6 +70,10 @@ The agent should treat the following as **standing instructions for this session
 - **Ops paste UI** stays as backup / VSiN.
 - **Ryan next:** run the install task once on the Windows box so it actually fires.
 
+### Mac Theo ACTIVE TRACK 2026-09-25 ... sports hub league tiles
+
+**I am Mac Theo.** Sports Hub has NFL / NBA / MLB / NHL / PGA / MLS tiles. NFL opens NFL Hub. Others gray Coming soon. Web **`1.4.652`**.
+
 ### Mac Theo ACTIVE TRACK 2026-09-25 ... ignore canceled module imports
 
 **I am Mac Theo.** Safari `Importing a module script is canceled` no longer pages Sentry or hard-reloads. Ignore-only. Stale-deploy **failed** chunks still reload once. Web **`1.4.651`**.

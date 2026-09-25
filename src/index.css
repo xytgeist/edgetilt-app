@@ -3529,6 +3529,33 @@ html.light [data-lounge-sports-hub-slate] {
 html.light [data-lounge-sports-hub-slate] .text-zinc-500 {
   color: #71717a !important;
 }
+[data-lounge-sports-hub-leagues] [data-sports-hub-league] {
+  border-color: rgb(39 39 42);
+  background: rgb(24 24 27 / 0.88);
+  color: #fafafa;
+}
+[data-lounge-sports-hub-leagues] [data-sports-hub-league='ready']:active {
+  background: rgb(39 39 42);
+}
+[data-lounge-sports-hub-leagues] [data-sports-hub-league='soon'] {
+  opacity: 0.42;
+  filter: grayscale(0.4);
+  cursor: not-allowed;
+  color: #a1a1aa;
+}
+html.light [data-lounge-sports-hub-leagues] [data-sports-hub-league='ready'] {
+  background: #ffffff;
+  border-color: #d4d4d8;
+  color: #18181b;
+}
+html.light [data-lounge-sports-hub-leagues] [data-sports-hub-league='ready']:active {
+  background: #f4f4f5;
+}
+html.light [data-lounge-sports-hub-leagues] [data-sports-hub-league='soon'] {
+  background: #f4f4f5;
+  border-color: #e4e4e7;
+  color: #a1a1aa;
+}
 html.light [data-lounge-game-hub] .bg-zinc-800,
 html.light [data-lounge-game-hub] .bg-zinc-900 {
   background-color: #e4e4e7 !important;

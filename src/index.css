@@ -3883,7 +3883,7 @@ html.light [data-lounge-game-players] [data-roster-player-card] {
   object-fit: cover;
   object-position: center;
   /* Soft fabric on the existing zinc-900 card … keep it dark. */
-  opacity: 0.2;
+  opacity: 0.1;
   mix-blend-mode: soft-light;
 }
 [data-lounge-game-players] [data-roster-jersey-tint] {
@@ -3893,7 +3893,7 @@ html.light [data-lounge-game-players] [data-roster-player-card] {
   z-index: 0;
   /* Nudge any soft-light lift back toward card gray. */
   background: #18181b;
-  opacity: 0.35;
+  opacity: 0.45;
 }
 html.light [data-lounge-game-players] [data-roster-jersey-mesh] {
   opacity: 1;

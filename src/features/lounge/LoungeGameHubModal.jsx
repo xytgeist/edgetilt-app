@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronLeft } from 'lucide-react'
 import { loungeNflGameFantasy, loungeSportsGameDetail } from '../../utils/loungeSportsApi.js'
@@ -6,6 +6,8 @@ import { formatLoungeSearchError, loungeSearch, LOUNGE_SEARCH_SORT } from './lou
 import { executeLoungeCommunityPostSubmission } from './loungePostSubmitJob.js'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import { loungeSportsHubGames } from './loungeSportsSlateWindow.js'
+import LoungeGameHubPillChip from './LoungeGameHubPillChip.jsx'
+import { useLoungeSlowTicker } from './useLoungeSlowTicker.js'
 import {
   LOUNGE_FEED_TITLE_BAR_ROW_CLASS,
   LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS,
@@ -182,6 +184,18 @@ export default function LoungeGameHubModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: game.id gate
   }, [game?.id])
 
+  const pillsScrollRef = useRef(null)
+  const tickerGames = useMemo(() => {
+    if (!sameSportGames.length) return []
+    // Duplicate for seamless ticker when the strip overflows.
+    return sameSportGames.length > 1 ? [...sameSportGames, ...sameSportGames] : sameSportGames
+  }, [sameSportGames])
+  useLoungeSlowTicker(pillsScrollRef, {
+    enabled: sameSportGames.length > 1,
+    speedPxPerSec: 22,
+    loop: sameSportGames.length > 1,
+  })
+
   if (!game || typeof document === 'undefined') return null
 
   const sendChat = async () => {
@@ -245,26 +259,17 @@ export default function LoungeGameHubModal({
       >
         <ChevronLeft className="h-6 w-6" />
       </button>
-      <div data-lounge-game-pills-scroll className="min-w-0 flex-1 overflow-x-auto">
+      <div data-lounge-game-pills-scroll ref={pillsScrollRef} className="min-w-0 flex-1 overflow-x-auto">
         <div className="flex gap-2 px-1 pr-3">
-          {sameSportGames.map((g) => {
+          {tickerGames.map((g, idx) => {
             const active = g.id === game.id
             return (
-              <button
-                key={g.id}
-                type="button"
-                data-lounge-game-glass-chip={active ? 'active' : 'idle'}
+              <LoungeGameHubPillChip
+                key={`${String(g.id)}-${idx}`}
+                game={g}
+                active={active}
                 onClick={() => sports.openHub?.(g)}
-                className={`shrink-0 rounded-full border px-2.5 py-1 text-[12px] font-semibold touch-manipulation ${
-                  active
-                    ? 'border-white/55 bg-white/35 text-white shadow-sm'
-                    : 'border-white/20 bg-white/10 text-white/80'
-                }`}
-              >
-                {g.away?.abbrev} {g.status === 'pre' ? '@' : g.away?.score ?? ''} {g.home?.abbrev}{' '}
-                {g.status === 'pre' ? '' : g.home?.score ?? ''} ·{' '}
-                {g.status === 'post' ? 'F' : g.status === 'in' ? 'Live' : g.status_label}
-              </button>
+              />
             )
           })}
         </div>

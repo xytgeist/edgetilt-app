@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import LoungeGameScorePill from './LoungeGameScorePill.jsx'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import { LOUNGE_FEED_ATTACHMENT_COLUMN_CLASS } from './loungeFeedAvatar.js'
@@ -8,6 +8,7 @@ import {
   loungeFeedCarouselMeasureLayout,
 } from './loungeFeedImageAttachment.js'
 import { useLoungeFeedCarouselAxisLock } from './useLoungeFeedCarouselAxisLock.js'
+import { useLoungeSlowTicker } from './useLoungeSlowTicker.js'
 
 /**
  * Feed / detail sports cards. Pin-only (via context `gamesForPost`). Multi = minichart carousel.
@@ -32,8 +33,17 @@ export default function LoungeGameScorePillStrip({ post, className = '', variant
 
   const multi = games.length > 1
   const carouselFullBleed = multi && loungeFeedCarouselFullBleed(variant)
+  const tickerGames = useMemo(
+    () => (multi ? [...games, ...games] : games),
+    [games, multi],
+  )
 
   useLoungeFeedCarouselAxisLock(carouselScrollRef, multi)
+  useLoungeSlowTicker(carouselScrollRef, {
+    enabled: multi,
+    speedPxPerSec: 24,
+    loop: multi,
+  })
 
   useLayoutEffect(() => {
     if (!multi) return undefined
@@ -100,9 +110,9 @@ export default function LoungeGameScorePillStrip({ post, className = '', variant
         {...(multi ? { 'data-lounge-feed-carousel-track': true } : null)}
         className={multi ? 'flex flex-nowrap items-stretch gap-2' : 'w-full'}
       >
-        {games.map((game) => (
+        {tickerGames.map((game, idx) => (
           <div
-            key={`${String(game.id)}-${hubPaintEpoch}`}
+            key={`${String(game.id)}-${hubPaintEpoch}-${idx}`}
             className={multi ? 'relative shrink-0' : 'relative w-full max-w-full'}
             style={slideWidthStyle}
             {...(carouselFullBleed ? { 'data-lounge-feed-carousel-slide': true } : null)}

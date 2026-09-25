@@ -132,8 +132,8 @@ function HeroPublicBetting({ game, splits, awayColor, homeColor }) {
 }
 
 /**
- * X-style split team-color hero. Same silver gridiron + multiply washes as Lounge
- * post game cards. `topBar` sits inside the wash so colors run under the status row.
+ * X-style split team-color hero. Soft radial team glows (same recipe as Lounge
+ * post game cards). `topBar` sits inside the wash so colors run under the status row.
  */
 export default function GameHubHero({
   game,

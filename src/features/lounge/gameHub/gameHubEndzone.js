@@ -127,7 +127,7 @@ export function resolveEndzoneDesign(side, fallbackColor = '#3f3f46', sideKey = 
  * bump W so COWBOYS / COMMANDERS breathe without changing the font.
  */
 const GLYPH_ADVANCE = {
-  W: 1.28,
+  W: 1.42,
 }
 
 function getGlyphAdvance(char) {

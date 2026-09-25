@@ -3787,3 +3787,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-25:** **Game Hub pre-game shows spread:** Hero score slots use ATS spread (`+3.5` / `PK`) before kickoff via `scoreText` in `gameHubFormatters.js` (same shape as feed pills). Bumped to v1.4.642.
 - **2026-09-25:** **Game Hub public bets/$ bar pre-only:** Restored `HeroPublicBetting` under the pre-game scoreboard (`status === 'pre'` only … still hidden live/post). Removed `SHOW_HERO_PUBLIC_SPLITS` kill switch. Bumped to v1.4.643.
 - **2026-09-25:** **Game Hub drop duplicate kickoff:** Removed extra `formatKickoff` span under the hero clock … pre-game already shows kickoff via `status_label`. Bumped to v1.4.644.
+- **2026-09-25:** **Game Hub pre/post logos + mid-gap scores:** Pre/post hero logos 52→68; scores sit in the midpoint between logo column and center clock (same mid-gap pattern as live condensed). Bumped to v1.4.645.

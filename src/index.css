@@ -3817,6 +3817,12 @@ html.light [data-lounge-game-players] [data-roster-player-card] {
   background-color: #ffffff;
   border-color: #e4e4e7;
 }
+[data-lounge-game-players] [data-roster-list] > li[data-expanded] {
+  background-color: rgba(39, 39, 42, 0.55);
+}
+html.light [data-lounge-game-players] [data-roster-list] > li[data-expanded] {
+  background-color: #f4f4f5;
+}
 html.light [data-lounge-game-players] [data-roster-list].divide-zinc-800 > :not([hidden]) ~ :not([hidden]),
 html.light [data-lounge-game-players] [data-roster-list].divide-zinc-800\/80 > :not([hidden]) ~ :not([hidden]) {
   border-color: #e4e4e7;

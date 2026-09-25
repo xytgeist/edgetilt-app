@@ -739,81 +739,40 @@ function RosterBoard({ players, game }) {
     return <div className="py-6 text-center text-sm text-zinc-500">No players for that filter.</div>
   }
 
-  const expandedIdx = sorted.findIndex((p) => String(p.sleeper_id) === expandedId)
-
-  const renderCollapsedRow = (p) => {
-    const id = String(p.sleeper_id)
-    const hasStats = buildStatGroups(p).length > 0
-    const accent = rosterAccentForPlayer(p, game, paint)
-    return (
-      <li key={id} className="overflow-hidden">
-        <RosterPlayerHeader
-          player={p}
-          accent={accent}
-          expanded={false}
-          hasStats={hasStats}
-          onToggle={() => {
-            if (!hasStats) return
-            setExpandedId(id)
-          }}
-        />
-      </li>
-    )
-  }
-
-  const renderExpandedCard = (p) => {
-    const id = String(p.sleeper_id)
-    const accent = rosterAccentForPlayer(p, game, paint)
-    return (
-      <ul
-        key={id}
-        data-roster-player-card
-        data-expanded=""
-        className="overflow-hidden rounded-2xl border border-zinc-600 bg-zinc-900 shadow-lg shadow-black/30"
-      >
-        <li>
-          <RosterPlayerHeader
-            player={p}
-            accent={accent}
-            expanded
-            hasStats
-            onToggle={() => setExpandedId(null)}
-          />
-          <RosterSeasonStatsTable player={p} edgeBleed />
-        </li>
-      </ul>
-    )
-  }
-
-  const listClass =
-    'divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900'
-
-  if (expandedIdx < 0) {
-    return (
-      <ul data-roster-list className={listClass}>
-        {sorted.map((p) => renderCollapsedRow(p))}
-      </ul>
-    )
-  }
-
-  const before = sorted.slice(0, expandedIdx)
-  const mid = sorted[expandedIdx]
-  const after = sorted.slice(expandedIdx + 1)
-
+  // One stable <ul> ... expand in place. Splitting into before/mid/after lists remounted
+  // every row (new parents) and made headshots + jersey mesh flash on each tap.
   return (
-    <div className="space-y-2">
-      {before.length ? (
-        <ul data-roster-list className={listClass}>
-          {before.map((p) => renderCollapsedRow(p))}
-        </ul>
-      ) : null}
-      {renderExpandedCard(mid)}
-      {after.length ? (
-        <ul data-roster-list className={listClass}>
-          {after.map((p) => renderCollapsedRow(p))}
-        </ul>
-      ) : null}
-    </div>
+    <ul
+      data-roster-list
+      className="divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900"
+    >
+      {sorted.map((p) => {
+        const id = String(p.sleeper_id)
+        const hasStats = buildStatGroups(p).length > 0
+        const accent = rosterAccentForPlayer(p, game, paint)
+        const expanded = expandedId === id
+        return (
+          <li
+            key={id}
+            data-roster-player-card={expanded ? '' : undefined}
+            data-expanded={expanded ? '' : undefined}
+            className="overflow-hidden"
+          >
+            <RosterPlayerHeader
+              player={p}
+              accent={accent}
+              expanded={expanded}
+              hasStats={hasStats}
+              onToggle={() => {
+                if (!hasStats) return
+                setExpandedId((cur) => (cur === id ? null : id))
+              }}
+            />
+            {expanded && hasStats ? <RosterSeasonStatsTable player={p} edgeBleed /> : null}
+          </li>
+        )
+      })}
+    </ul>
   )
 }
 

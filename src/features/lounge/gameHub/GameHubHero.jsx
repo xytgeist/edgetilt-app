@@ -329,18 +329,17 @@ function FieldViz({ game, live, awayColor, homeColor }) {
             </g>
           ))}
 
-          {/* Midfield Home Logo (perspective flattened on the 50-yd line) */}
+          {/* Midfield Home Logo (perspective flattened on the 50-yd line, painted onto grass under yard lines) */}
           {homeLogoSrc ? (
             <g transform="translate(628.7, 334.5) scale(1, 0.72) translate(-628.7, -334.5)">
               <image
                 href={homeLogoSrc}
-                x={628.7 - 38}
-                y={334.5 - 38}
-                width="76"
-                height="76"
+                x={628.7 - 72}
+                y={334.5 - 72}
+                width="144"
+                height="144"
                 preserveAspectRatio="xMidYMid meet"
-                opacity="0.85"
-                style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))' }}
+                opacity="0.65"
               />
             </g>
           ) : null}

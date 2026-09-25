@@ -51,13 +51,14 @@ function PossessionFootball({ side }) {
   )
 }
 
-// 19 interior yard lines (every 5 yards from 5 to 95)
-const YARD_LINES = Array.from({ length: 19 }, (_, i) => {
-  const p = (i + 1) * 5
+// 21 yard lines (every 5 yards from 0 to 100, including goal lines)
+const YARD_LINES = Array.from({ length: 21 }, (_, i) => {
+  const p = i * 5
+  const isGoal = p === 0 || p === 100
   const isMajor = p % 10 === 0
   const xTop = 239.0 + (p / 100.0) * 784.0
   const xBot = 161.0 + (p / 100.0) * 937.0
-  return { p, isMajor, xTop, xBot }
+  return { p, isGoal, isMajor, xTop, xBot }
 })
 
 // Numbers strictly on the 10-yard lines: 10, 20, 30, 40, 50, 40, 30, 20, 10
@@ -116,7 +117,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
       <div className="relative w-full overflow-hidden">
         {/* Layer 1: Floating field base graphic */}
         <img
-          src="/sports/nfl/gamecast-field-floating.png?v=609"
+          src="/sports/nfl/gamecast-field-floating.png?v=612"
           alt="Gamecast Field"
           className="pointer-events-none block w-full select-none"
         />
@@ -211,8 +212,14 @@ function FieldViz({ game, live, awayColor, homeColor }) {
             </g>
           ) : null}
 
-          {/* 19 Interior Yard Lines (every 5 yards, from 5 to 95) */}
-          {YARD_LINES.map(({ p, isMajor, xTop, xBot }) => (
+          {/* Outer Field Perimeter: Sidelines & Endlines */}
+          <line x1="168" y1="191" x2="1096" y2="191" stroke="#ffffff" strokeWidth="2.2" strokeOpacity="0.85" />
+          <line x1="68" y1="478" x2="1193" y2="478" stroke="#ffffff" strokeWidth="2.5" strokeOpacity="0.85" />
+          <line x1="168" y1="191" x2="68" y2="478" stroke="#ffffff" strokeWidth="2.2" strokeOpacity="0.80" />
+          <line x1="1096" y1="191" x2="1193" y2="478" stroke="#ffffff" strokeWidth="2.2" strokeOpacity="0.80" />
+
+          {/* 21 Yard Lines (every 5 yards from 0 to 100, including Goal Lines) */}
+          {YARD_LINES.map(({ p, isGoal, isMajor, xTop, xBot }) => (
             <line
               key={p}
               x1={xTop.toFixed(1)}
@@ -220,8 +227,8 @@ function FieldViz({ game, live, awayColor, homeColor }) {
               x2={xBot.toFixed(1)}
               y2="478"
               stroke="#ffffff"
-              strokeWidth={isMajor ? '2.2' : '1.4'}
-              strokeOpacity={isMajor ? '0.85' : '0.50'}
+              strokeWidth={isGoal ? '3.0' : isMajor ? '2.2' : '1.5'}
+              strokeOpacity={isGoal ? '0.95' : isMajor ? '0.85' : '0.60'}
             />
           ))}
 
@@ -309,7 +316,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
 
         {/* Layer 3: Foreground Goalposts Overlay (prevents endzone paint from tinting uprights/pads) */}
         <img
-          src="/sports/nfl/gamecast-goalposts-overlay.png?v=609"
+          src="/sports/nfl/gamecast-goalposts-overlay.png?v=612"
           alt=""
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 block h-full w-full select-none"

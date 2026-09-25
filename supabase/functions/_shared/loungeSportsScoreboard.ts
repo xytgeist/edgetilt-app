@@ -643,10 +643,22 @@ async function rundownGet<T>(path: string): Promise<T | null> {
   }
 }
 
-/** Unofficial ESPN public summary … fills NFL PBP / clock when TheRundown plays are empty. */
+/** Unofficial ESPN public summary … fills NFL PBP / clock when TheRundown plays are empty.
+ *  Prod only (`jtjgtucumuoswnbauxry`) … skip on test so sandbox hub polls do not burn ESPN.
+ */
+const PROD_SUPABASE_REF = 'jtjgtucumuoswnbauxry'
+
+function isProdSupabaseProject(): boolean {
+  const url = Deno.env.get('SUPABASE_URL') || ''
+  return url.includes(PROD_SUPABASE_REF)
+}
+
 async function fetchEspnNflLivePack(
   game: LoungeSportsGame,
 ): Promise<{ live: LoungeSportsLiveState | null; plays: LoungeSportsPlay[] }> {
+  if (!isProdSupabaseProject()) {
+    return { live: null, plays: [] }
+  }
   if (!String(game.sport_key || '').includes('americanfootball_nfl')) {
     return { live: null, plays: [] }
   }

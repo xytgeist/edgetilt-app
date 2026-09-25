@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **ESPN NFL PBP fallback prod-only (Mac).** Gate ESPN summary calls to `jtjgtucumuoswnbauxry`; test sandbox skips. Redeploy Edge test+prod. Web **`1.4.590`**.
 - **2026-09-24:** **NFL hub PBP ESPN fallback (Mac).** When TheRundown `/plays` / live last-play is empty, `lounge-sports-scoreboard` detail fills from ESPN public summary. Redeploy Edge test+prod. Web **`1.4.589`**.
 - **2026-09-24:** **Revert game card soft-glow (Mac).** Score pills + hub hero back to silver gridiron + multiply team stains (pre-`1.4.581`). Hub matchup chips + ticker kept. Web **`1.4.588`**.
 - **2026-09-24:** **Players Roster mesh quieter still (Mac).** Dark soft-light mesh ~10%. Web **`1.4.587`**.

@@ -8,16 +8,20 @@ function isDefOrDst(player) {
   return p === 'DEF' || p === 'DST' || p === 'D'
 }
 
-function PlayerAvatar({ player }) {
+function PlayerAvatar({ player, accentColor }) {
   const [failed, setFailed] = useState(false)
   const team = String(player?.team || '')
     .toUpperCase()
     .replace(/[^A-Z]/g, '')
   const letter = String(player?.name || team || '?').slice(0, 1).toUpperCase()
+  const fill = accentColor ? { backgroundColor: accentColor } : undefined
 
   if (isDefOrDst(player) && team && !failed) {
     return (
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-800 p-1.5 ring-1 ring-zinc-700/60">
+      <span
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full p-1.5 ring-1 ring-zinc-700/60"
+        style={fill || undefined}
+      >
         <img
           src={`/sports/nfl/logos/${team}.png`}
           alt=""
@@ -32,30 +36,39 @@ function PlayerAvatar({ player }) {
 
   if (!player?.headshot_url || failed) {
     return (
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-xs font-bold text-zinc-300">
+      <span
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white ring-1 ring-zinc-700/60"
+        style={fill || undefined}
+      >
         {letter}
       </span>
     )
   }
   return (
-    <img
-      src={player.headshot_url}
-      alt=""
-      className="h-9 w-9 shrink-0 rounded-full object-cover bg-zinc-800"
-      onError={() => setFailed(true)}
-    />
+    <span
+      className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full ring-1 ring-zinc-700/60"
+      style={fill || undefined}
+    >
+      <img
+        src={player.headshot_url}
+        alt=""
+        className="absolute inset-0 h-full w-full origin-[center_22%] scale-[1.42] object-cover object-[center_18%]"
+        loading="lazy"
+        decoding="async"
+        onError={() => setFailed(true)}
+      />
+    </span>
   )
 }
 
 /** Fixed-frame headshot for H2H (same height both sides). Missing → bust silhouette.
- * Sources are landscape busts (~1.4:1). Use contain + bottom so shoulders aren't
- * sliced by a tall object-cover crop. Anchor toward the VS center (inner edge). */
+ * Sources are landscape busts (~1.4:1). Zoom toward the face; hug the VS center. */
 function MatchupPortrait({ player, isDef, align = 'left' }) {
   const [failed, setFailed] = useState(false)
   const src = player?.headshot_url
   const showPhoto = Boolean(src) && !failed && !isDef
   // Home (right half) hugs left/center; away (left half) hugs right/center.
-  const objectPos = align === 'right' ? 'object-[left_bottom]' : 'object-[right_bottom]'
+  const objectPos = align === 'right' ? 'object-[38%_16%]' : 'object-[62%_16%]'
 
   if (isDef) return null
 
@@ -68,7 +81,7 @@ function MatchupPortrait({ player, isDef, align = 'left' }) {
       <img
         src="/sports/nfl/silhouettes/player-bust.png"
         alt=""
-        className={`h-full w-full object-contain opacity-80 scale-[0.76] translate-y-3 ${silNudge} ${silOrigin} ${objectPos}`}
+        className={`h-full w-full object-contain opacity-80 scale-[0.76] translate-y-3 ${silNudge} ${silOrigin}`}
       />
     )
   }
@@ -77,7 +90,7 @@ function MatchupPortrait({ player, isDef, align = 'left' }) {
     <img
       src={src}
       alt=""
-      className={`h-full w-full object-contain ${objectPos}`}
+      className={`h-full w-full origin-[center_20%] scale-[1.38] object-cover ${objectPos}`}
       onError={() => setFailed(true)}
     />
   )
@@ -633,6 +646,21 @@ function underToneClass(tone, muted) {
   return muted ? 'text-zinc-500/70' : 'text-zinc-500'
 }
 
+function teamAbbrev(value) {
+  return String(value || '')
+    .toUpperCase()
+    .replace(/[^A-Z]/g, '')
+}
+
+function fantasyAccentColor(player, game, paint) {
+  const team = teamAbbrev(player?.team)
+  const away = teamAbbrev(game?.away?.abbrev)
+  const home = teamAbbrev(game?.home?.abbrev)
+  if (team && away && team === away) return paint.awayColor || '#3f3f46'
+  if (team && home && team === home) return paint.homeColor || '#3f3f46'
+  return paint.homeColor || paint.awayColor || '#3f3f46'
+}
+
 /**
  * Sleeper game PPR + season on each row.
  * Rest of board Game col: PROJ → LIVE (paced) → GAME (vs original).
@@ -648,6 +676,7 @@ export default function GameHubFantasyPane({
 }) {
   const liveOrFinal = gameStatus === 'in' || gameStatus === 'post'
   const gameColTitle = gameStatus === 'post' ? 'Game' : gameStatus === 'in' ? 'Live' : 'Proj'
+  const paint = useLoungeSportsPillWashAndLogos(game)
 
   const { matchups, rest } = useMemo(() => {
     const list = players || []
@@ -720,7 +749,10 @@ export default function GameHubFantasyPane({
                   className="grid grid-cols-[minmax(0,1fr)_3.25rem_3.25rem] items-center gap-x-2 px-3 py-2.5"
                 >
                   <div className="flex min-w-0 items-center gap-3">
-                    <PlayerAvatar player={p} />
+                    <PlayerAvatar
+                      player={p}
+                      accentColor={fantasyAccentColor(p, game, paint)}
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="flex min-w-0 items-center gap-1.5">
                         <div className="truncate text-[14px] font-semibold text-zinc-100">{p.name}</div>

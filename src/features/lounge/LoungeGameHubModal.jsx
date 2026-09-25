@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Share } from 'lucide-react'
 import { loungeNflGameFantasy, loungeSportsGameDetail } from '../../utils/loungeSportsApi.js'
+import { shareViaBestAvailable } from '../../utils/edgeNative.js'
 import { formatLoungeSearchError, loungeSearch, LOUNGE_SEARCH_SORT } from './loungeSearchApi.js'
 import { executeLoungeCommunityPostSubmission } from './loungePostSubmitJob.js'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
@@ -18,6 +19,7 @@ import GameHubPlayersPane from './gameHub/GameHubPlayersPane.jsx'
 import GameHubFantasyPane from './gameHub/GameHubFantasyPane.jsx'
 import { KalshiGamePropsBoard } from './gameHub/GameHubKalshiProps.jsx'
 import { BoxScoreCard, OddsTable, PlayList, PlayerStats, PostList } from './gameHub/GameHubPanes.jsx'
+import { liveClockLabel, scoreText } from './gameHub/gameHubFormatters.js'
 
 /**
  * Game destination opened from the in-post score pill.
@@ -66,6 +68,23 @@ export default function LoungeGameHubModal({
 
   const live = detail.live || game?.live || null
   const lastPlay = String(live?.last_play || detail.plays?.[detail.plays.length - 1]?.description || '').trim()
+
+  async function shareHubGame() {
+    if (!game) return
+    const away = String(game.away?.abbrev || game.away?.mascot || 'AWAY').trim()
+    const home = String(game.home?.abbrev || game.home?.mascot || 'HOME').trim()
+    const clock = liveClockLabel(game, live)
+    const title = `${away} @ ${home}`
+    const text =
+      game.status === 'pre'
+        ? `${title} · ${clock}`
+        : `${away} ${scoreText(game.away, game.status)} @ ${home} ${scoreText(game.home, game.status)} · ${clock}`
+    const url =
+      typeof window !== 'undefined'
+        ? `${window.location.origin}/?tab=home`
+        : 'https://edgetilt.com/?tab=home'
+    await shareViaBestAvailable({ url, title, text })
+  }
 
   useEffect(() => {
     if (!game || !supabaseClient) {
@@ -260,7 +279,7 @@ export default function LoungeGameHubModal({
         <ChevronLeft className="h-6 w-6" />
       </button>
       <div data-lounge-game-pills-scroll ref={pillsScrollRef} className="min-w-0 flex-1 overflow-x-auto">
-        <div className="flex gap-2 px-1 pr-3">
+        <div className="flex gap-2 px-1">
           {tickerGames.map((g, idx) => {
             const active = g.id === game.id
             return (
@@ -274,6 +293,15 @@ export default function LoungeGameHubModal({
           })}
         </div>
       </div>
+      <button
+        type="button"
+        onClick={() => void shareHubGame()}
+        data-lounge-game-glass-chip
+        className={`inline-flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} items-center justify-center rounded-full border border-white/25 bg-white/15 text-white shadow-sm touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/25`}
+        aria-label="Share game"
+      >
+        <Share className="h-5 w-5" strokeWidth={2.25} />
+      </button>
     </div>
   )
 

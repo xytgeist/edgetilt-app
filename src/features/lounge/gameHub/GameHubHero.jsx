@@ -644,6 +644,9 @@ function HeroPublicBetting({ game, splits, awayColor, homeColor }) {
   )
 }
 
+/** Flip back on when we want the public bets/$ bar under the scoreboard again. */
+const SHOW_HERO_PUBLIC_SPLITS = false
+
 /**
  * X-style split team-color hero. Same silver gridiron + multiply washes as Lounge
  * post game cards. `topBar` sits inside the wash so colors run under the status row.
@@ -734,12 +737,14 @@ export default function GameHubHero({
       </div>
 
       <div className="relative z-[4]">
-        <HeroPublicBetting
-          game={game}
-          splits={splits}
-          awayColor={awayColor}
-          homeColor={homeColor}
-        />
+        {SHOW_HERO_PUBLIC_SPLITS ? (
+          <HeroPublicBetting
+            game={game}
+            splits={splits}
+            awayColor={awayColor}
+            homeColor={homeColor}
+          />
+        ) : null}
         <FieldViz
           game={game}
           live={live}

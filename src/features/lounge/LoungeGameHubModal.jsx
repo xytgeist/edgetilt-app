@@ -150,11 +150,11 @@ export default function LoungeGameHubModal({
     }
   }, [game, supabaseClient])
 
-  const wantsPosts = tab === 'posts' || tab === 'chat'
+  // Prefetch Lounge posts as soon as the hub opens (not only when Posts/Chat is selected).
+  // Clearing posts when leaving those tabs forced a full reload on every return.
   const postSort = postsSort === 'top' ? LOUNGE_SEARCH_SORT.ENGAGEMENT : LOUNGE_SEARCH_SORT.RECENT
-
   useEffect(() => {
-    if (!game || !supabaseClient || !wantsPosts || searchQuery.length < 2) {
+    if (!game || !supabaseClient || searchQuery.length < 2) {
       setPosts([])
       setPostsErr('')
       setPostsLoading(false)
@@ -186,7 +186,7 @@ export default function LoungeGameHubModal({
     return () => {
       cancelled = true
     }
-  }, [game, hydratePosts, postSort, postsNonce, searchQuery, supabaseClient, tab, wantsPosts])
+  }, [game, hydratePosts, postSort, postsNonce, searchQuery, supabaseClient, tab])
 
   useEffect(() => {
     // Pregame → Fantasy; live → Chat; post → Posts
@@ -197,8 +197,9 @@ export default function LoungeGameHubModal({
     setPostsSort('top')
     setDraft('')
     setChatErr('')
-    setDetail({ odds: [], plays: [], stats: [], live: null })
+    setDetail({ odds: [], plays: [], stats: [], live: null, splits: null })
     setFantasy({ players: [], props: [], season: null, week: null, sources: [] })
+    setPosts([])
     // Reset chrome when switching games only (status is read for default tab).
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: game.id gate
   }, [game?.id])
@@ -339,22 +340,21 @@ export default function LoungeGameHubModal({
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[max(1.25rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
-        {tab === 'stats' ? (
-          <div className="space-y-3 py-3">
-            <OddsTable game={game} books={detail.odds} />
-            {fantasyLoading && !(fantasy.props || []).length ? (
-              <div className="py-4 text-center text-sm text-zinc-500">Loading Kalshi markets…</div>
-            ) : (
-              <KalshiGamePropsBoard props={fantasy.props} game={game} live={live} />
-            )}
-            <BoxScoreCard game={game} />
-            <PlayerStats game={game} stats={detail.stats} />
-          </div>
-        ) : tab === 'plays' ? (
-          <div className="py-2">
-            <PlayList game={game} plays={detail.plays} />
-          </div>
-        ) : tab === 'players' ? (
+        {/* Keep every pane mounted so tab switches stay instant (data is already prefetched). */}
+        <div hidden={tab !== 'stats'} className="space-y-3 py-3">
+          <OddsTable game={game} books={detail.odds} />
+          {fantasyLoading && !(fantasy.props || []).length ? (
+            <div className="py-4 text-center text-sm text-zinc-500">Loading Kalshi markets…</div>
+          ) : (
+            <KalshiGamePropsBoard props={fantasy.props} game={game} live={live} />
+          )}
+          <BoxScoreCard game={game} />
+          <PlayerStats game={game} stats={detail.stats} />
+        </div>
+        <div hidden={tab !== 'plays'} className="py-2">
+          <PlayList game={game} plays={detail.plays} />
+        </div>
+        <div hidden={tab !== 'players'}>
           <GameHubPlayersPane
             players={fantasy.players}
             props={fantasy.props}
@@ -362,7 +362,8 @@ export default function LoungeGameHubModal({
             error={fantasyErr}
             game={game}
           />
-        ) : tab === 'fantasy' ? (
+        </div>
+        <div hidden={tab !== 'fantasy'}>
           <GameHubFantasyPane
             players={fantasy.players}
             loading={fantasyLoading}
@@ -371,37 +372,36 @@ export default function LoungeGameHubModal({
             game={game}
             live={live}
           />
-        ) : (
-          <div className="py-2">
-            {tab === 'posts' ? (
-              <div className="mb-2 flex gap-1 rounded-full bg-zinc-900 p-0.5 w-fit">
-                {[
-                  { id: 'top', label: 'Top' },
-                  { id: 'latest', label: 'Latest' },
-                ].map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => setPostsSort(opt.id)}
-                    className={`rounded-full px-3 py-1 text-[12px] font-semibold ${
-                      postsSort === opt.id ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-400'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            ) : null}
-            <PostList
-              posts={posts}
-              postsLoading={postsLoading}
-              postsErr={postsErr}
-              emptyLabel="No Lounge posts on this game yet."
-              onOpenPost={onOpenPost}
-              closeHub={sports.closeHub}
-            />
-          </div>
-        )}
+        </div>
+        <div hidden={tab !== 'posts' && tab !== 'chat'} className="py-2">
+          {tab === 'posts' ? (
+            <div className="mb-2 flex gap-1 rounded-full bg-zinc-900 p-0.5 w-fit">
+              {[
+                { id: 'top', label: 'Top' },
+                { id: 'latest', label: 'Latest' },
+              ].map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  onClick={() => setPostsSort(opt.id)}
+                  className={`rounded-full px-3 py-1 text-[12px] font-semibold ${
+                    postsSort === opt.id ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-400'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          <PostList
+            posts={posts}
+            postsLoading={postsLoading}
+            postsErr={postsErr}
+            emptyLabel="No Lounge posts on this game yet."
+            onOpenPost={onOpenPost}
+            closeHub={sports.closeHub}
+          />
+        </div>
       </div>
 
       {tab === 'chat' && !loungeReadOnly ? (

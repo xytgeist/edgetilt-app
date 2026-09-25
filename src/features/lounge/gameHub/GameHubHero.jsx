@@ -150,8 +150,10 @@ const YARD_MARKERS_FAR = YARD_MARKERS_CONFIG.map(({ p, label, dir }) => {
 })
 
 function FieldViz({ game, live, awayColor, homeColor }) {
-  if (!String(game.sport_key || '').includes('football')) return null
-  if (game.status === 'pre') return null
+  const sportKey = String(game?.sport_key || '').toLowerCase()
+  const isFootball = sportKey.includes('football') || (!sportKey && Boolean(game?.away && game?.home))
+  if (!isFootball) return null
+
   const pos = fieldPercent(live)
   const hasLine = pos != null
 
@@ -173,9 +175,9 @@ function FieldViz({ game, live, awayColor, homeColor }) {
     firstDownBot = 161.0 + (targetPos / 100) * 937.0
   }
 
-  const homeLogoSrc = game.home?.logo || ''
-  const awayEndzone = resolveEndzoneDesign(game.away, awayColor, 'left')
-  const homeEndzone = resolveEndzoneDesign(game.home, homeColor, 'right')
+  const homeLogoSrc = game?.home?.logo || (game?.home?.abbrev ? `/sports/nfl/logos/${game.home.abbrev}.png` : '')
+  const awayEndzone = resolveEndzoneDesign(game?.away, awayColor, 'left')
+  const homeEndzone = resolveEndzoneDesign(game?.home, homeColor, 'right')
 
   return (
     <div data-lounge-game-field className="relative w-full px-1 pb-1 pt-0 sm:px-2">

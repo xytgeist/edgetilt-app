@@ -3783,3 +3783,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-25:** **Game Hub prefetch all tabs:** Prefetch Lounge posts as soon as the hub opens (no longer clear/refetch only when visiting Posts/Chat), and keep Stats / Plays / Players / Fantasy / Posts panes mounted behind `hidden` so tab switches stay instant. Bumped to v1.4.638.
 - **2026-09-25:** **3D Gamecast live-only field:** `GameHubHero` only renders `FieldViz` + last-play overlay when `game.status === 'in'` (pre/post stay scoreboard-only). Bumped to v1.4.639.
 - **2026-09-25:** **Game Hub score mid-gap:** Centered each team score in the flex gap between its logo column and the middle clock/status block in `GameHubHero.jsx`. Bumped to v1.4.640.
+- **2026-09-25:** **Game Hub condensed scoreboard live-only:** Roomier stacked logo+score hero for pre/post; condensed mid-gap scoreboard only when the 3D field is showing (`status === 'in'`). Bumped to v1.4.641.

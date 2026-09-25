@@ -73,6 +73,10 @@ The agent should treat the following as **standing instructions for this session
 - **Ops paste / vision** stays as backup (VSiN + trench repair).
 - **Ryan next:** apply migration **`20260925160000`** on **prod** if Edge Monitor does not list the two jobs yet (test can be applied by agent). Re-run install task optional.
 
+### Mac Theo ACTIVE TRACK 2026-09-25 ... CFB Hub
+
+**I am Mac Theo.** CFB Hub shipped on **`test`** (`f848a0eb`, web **`1.4.657`**). Sports Hub CFB tile + hamburger CFB Hub. Per-game hub = NFL minus Fantasy; endzones use **Graduate**. Edge **`lounge-sports-scoreboard`** NFL+CFB parallel (redeploy test). Prod Edge / `main` not pushed unless Ryan asks.
+
 ### Mac Theo ACTIVE TRACK 2026-09-25 ... sports hub league tiles
 
 **I am Mac Theo.** Sports Hub has NFL / NBA / MLB / NHL / PGA / MLS tiles. NFL opens NFL Hub. Others gray Coming soon. Promoted **`test` → `main` (`2353d3fc`)**. Vercel prod web **`1.4.652`**. Also in this push: canceled-import Sentry ignore, kickoff local time (no zone suffix). No new prod SQL. Store IPA marketing still **1.4.95**.

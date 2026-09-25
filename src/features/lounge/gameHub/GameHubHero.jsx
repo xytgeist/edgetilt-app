@@ -10,7 +10,6 @@ import {
 import {
   downDistanceLabel,
   fieldPercent,
-  formatKickoff,
   liveClockLabel,
   scoreText,
   yardLineLabel,
@@ -658,7 +657,6 @@ export default function GameHubHero({
   const clock = liveClockLabel(game, live)
   const down = downDistanceLabel(live)
   const yard = yardLineLabel(game, live)
-  const kickoff = game.status === 'pre' ? formatKickoff(game.commence_time) : ''
   const isFootball = String(game.sport_key || '').includes('football')
   const showLiveChrome = isFootball && game.status === 'in'
   const awayHasBall = showLiveChrome && live?.possession === 'away'
@@ -727,7 +725,6 @@ export default function GameHubHero({
               </span>
               {down ? <span className="text-[11px] font-semibold leading-tight text-white/90">{down}</span> : null}
               {yard ? <span className="text-[11px] font-semibold leading-tight text-white/70">{yard}</span> : null}
-              {kickoff ? <span className="text-[10px] font-medium leading-tight text-white/70">{kickoff}</span> : null}
             </div>
 
             <div className="flex min-w-0 flex-1 items-center">
@@ -785,7 +782,6 @@ export default function GameHubHero({
               </span>
               {down ? <span className="text-[12px] font-semibold text-white/90">{down}</span> : null}
               {yard ? <span className="text-[12px] font-semibold text-white/70">{yard}</span> : null}
-              {kickoff ? <span className="text-[11px] font-medium text-white/70">{kickoff}</span> : null}
             </div>
 
             <div className="flex min-w-0 flex-1 flex-col items-end gap-1">

@@ -643,6 +643,182 @@ async function rundownGet<T>(path: string): Promise<T | null> {
   }
 }
 
+/** Unofficial ESPN public summary … fills NFL PBP / clock when TheRundown plays are empty. */
+async function fetchEspnNflLivePack(
+  game: LoungeSportsGame,
+): Promise<{ live: LoungeSportsLiveState | null; plays: LoungeSportsPlay[] }> {
+  if (!String(game.sport_key || '').includes('americanfootball_nfl')) {
+    return { live: null, plays: [] }
+  }
+  const awayAbb = String(game.away?.abbrev || '').trim().toUpperCase()
+  const homeAbb = String(game.home?.abbrev || '').trim().toUpperCase()
+  if (!awayAbb || !homeAbb) return { live: null, plays: [] }
+
+  const dates: string[] = []
+  const kick = game.commence_time ? new Date(game.commence_time) : new Date()
+  for (const delta of [-1, 0, 1]) {
+    const d = new Date(kick)
+    d.setUTCDate(d.getUTCDate() + delta)
+    const y = d.getUTCFullYear()
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+    const day = String(d.getUTCDate()).padStart(2, '0')
+    dates.push(`${y}${m}${day}`)
+  }
+  dates.push('') // also try undated scoreboard
+
+  const headers = { 'User-Agent': 'EdgeTiltLounge/1.0', Accept: 'application/json' }
+  let eventId = ''
+  let homeEspnId = ''
+  let awayEspnId = ''
+  let statusPeriod: number | null = null
+  let statusClock = ''
+
+  for (const date of dates) {
+    const url = date
+      ? `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=${date}`
+      : 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard'
+    try {
+      const res = await fetch(url, { headers, signal: AbortSignal.timeout(8_000) })
+      if (!res.ok) continue
+      const pack = await res.json() as { events?: Array<Record<string, unknown>> }
+      for (const ev of Array.isArray(pack.events) ? pack.events : []) {
+        const comps = (ev.competitions as Array<Record<string, unknown>> | undefined)?.[0]
+        const competitors = Array.isArray(comps?.competitors) ? comps.competitors as Array<Record<string, unknown>> : []
+        let home: Record<string, unknown> | null = null
+        let away: Record<string, unknown> | null = null
+        for (const c of competitors) {
+          const team = (c.team && typeof c.team === 'object') ? c.team as Record<string, unknown> : {}
+          const abb = String(team.abbreviation || '').trim().toUpperCase()
+          if (c.homeAway === 'home') home = { ...c, abb }
+          if (c.homeAway === 'away') away = { ...c, abb }
+        }
+        if (!home || !away) continue
+        if (String(home.abb) !== homeAbb || String(away.abb) !== awayAbb) continue
+        eventId = String(ev.id || '').trim()
+        homeEspnId = String(home.id || (home.team as { id?: string } | undefined)?.id || '')
+        awayEspnId = String(away.id || (away.team as { id?: string } | undefined)?.id || '')
+        const status = (comps?.status && typeof comps.status === 'object')
+          ? comps.status as Record<string, unknown>
+          : (ev.status && typeof ev.status === 'object')
+            ? ev.status as Record<string, unknown>
+            : {}
+        const type = (status.type && typeof status.type === 'object') ? status.type as Record<string, unknown> : {}
+        statusPeriod = numOrNull(status.period ?? type.period)
+        statusClock = String(status.displayClock || type.detail || '').trim()
+        break
+      }
+    } catch {
+      // try next date
+    }
+    if (eventId) break
+  }
+  if (!eventId) return { live: null, plays: [] }
+
+  try {
+    const res = await fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event=${encodeURIComponent(eventId)}`,
+      { headers, signal: AbortSignal.timeout(10_000) },
+    )
+    if (!res.ok) return { live: null, plays: [] }
+    const summary = await res.json() as Record<string, unknown>
+    const drivesObj = (summary.drives && typeof summary.drives === 'object')
+      ? summary.drives as Record<string, unknown>
+      : {}
+    const driveList: Array<Record<string, unknown>> = []
+    if (Array.isArray(drivesObj.previous)) driveList.push(...drivesObj.previous as Array<Record<string, unknown>>)
+    if (drivesObj.current && typeof drivesObj.current === 'object') {
+      driveList.push(drivesObj.current as Record<string, unknown>)
+    }
+
+    const sideForEspnTeamId = (id: string): 'home' | 'away' | null => {
+      if (!id) return null
+      if (homeEspnId && id === homeEspnId) return 'home'
+      if (awayEspnId && id === awayEspnId) return 'away'
+      return null
+    }
+
+    const plays: LoungeSportsPlay[] = []
+    for (const drive of driveList) {
+      for (const row of Array.isArray(drive.plays) ? drive.plays as Array<Record<string, unknown>> : []) {
+        const text = String(row.text || row.description || '').trim()
+        if (!text) continue
+        const participants = Array.isArray(row.teamParticipants)
+          ? row.teamParticipants as Array<Record<string, unknown>>
+          : []
+        const offense = participants.find((p) => String(p.type || '') === 'offense')
+        const start = (row.start && typeof row.start === 'object') ? row.start as Record<string, unknown> : null
+        const startTeam = (start?.team && typeof start.team === 'object')
+          ? start.team as Record<string, unknown>
+          : null
+        const teamId = String(offense?.id || startTeam?.id || '').trim()
+        const periodObj = (row.period && typeof row.period === 'object')
+          ? row.period as Record<string, unknown>
+          : null
+        const clockObj = (row.clock && typeof row.clock === 'object')
+          ? row.clock as Record<string, unknown>
+          : null
+        plays.push({
+          id: String(row.id || row.sequenceNumber || `${plays.length}`),
+          period: numOrNull(periodObj?.number ?? row.period),
+          clock: String(clockObj?.displayValue || row.clock || '').trim(),
+          description: text,
+          team: sideForEspnTeamId(teamId),
+        })
+      }
+    }
+
+    const last = plays.length ? plays[plays.length - 1] : null
+    const lastDrive = driveList.length ? driveList[driveList.length - 1] : null
+    const lastPlayRow = lastDrive && Array.isArray(lastDrive.plays) && lastDrive.plays.length
+      ? lastDrive.plays[lastDrive.plays.length - 1] as Record<string, unknown>
+      : null
+    const end = lastPlayRow && lastPlayRow.end && typeof lastPlayRow.end === 'object'
+      ? lastPlayRow.end as Record<string, unknown>
+      : null
+    const endTeam = end?.team && typeof end.team === 'object' ? end.team as Record<string, unknown> : null
+    const possession = sideForEspnTeamId(String(endTeam?.id || ''))
+    const yardLine = numOrNull(end?.yardLine ?? end?.yardsToEndzone)
+    const down = numOrNull(end?.down)
+    const distance = numOrNull(end?.distance)
+
+    const live: LoungeSportsLiveState | null = (statusClock || statusPeriod != null || last?.description)
+      ? {
+          clock: statusClock.includes(' - ') ? '' : statusClock,
+          period: statusPeriod ?? last?.period ?? null,
+          down: down && down > 0 ? down : null,
+          distance: distance && distance > 0 ? distance : null,
+          yard_line: yardLine,
+          yard_side: null,
+          possession,
+          last_play: last?.description || '',
+        }
+      : null
+
+    return { live, plays: plays.slice(-80) }
+  } catch {
+    return { live: null, plays: [] }
+  }
+}
+
+function mergeLiveState(
+  primary: LoungeSportsLiveState | null,
+  fallback: LoungeSportsLiveState | null,
+): LoungeSportsLiveState | null {
+  if (!primary && !fallback) return null
+  if (!primary) return fallback
+  if (!fallback) return primary
+  return {
+    clock: primary.clock || fallback.clock,
+    period: primary.period ?? fallback.period,
+    down: primary.down ?? fallback.down,
+    distance: primary.distance ?? fallback.distance,
+    yard_line: primary.yard_line ?? fallback.yard_line,
+    yard_side: primary.yard_side ?? fallback.yard_side,
+    possession: primary.possession ?? fallback.possession,
+    last_play: primary.last_play || fallback.last_play,
+  }
+}
+
 type OddsBookmaker = {
   key?: string
   title?: string
@@ -977,6 +1153,17 @@ export async function fetchLoungeSportsGameDetail(
     }
   }).filter((p) => p.description)
 
+  let liveOut = live
+  let playsOut = plays
+  const needEspn =
+    String(game.sport_key || '').includes('americanfootball_nfl') &&
+    (playsOut.length === 0 || !String(liveOut?.last_play || '').trim() || !String(liveOut?.clock || '').trim())
+  if (needEspn) {
+    const espn = await fetchEspnNflLivePack(game)
+    if (espn.plays.length && playsOut.length === 0) playsOut = espn.plays
+    liveOut = mergeLiveState(liveOut, espn.live)
+  }
+
   const statRows: unknown[] = Array.isArray(statsRaw)
     ? statsRaw
     : Array.isArray((statsRaw as { players?: unknown[] } | null)?.players)
@@ -1022,9 +1209,9 @@ export async function fetchLoungeSportsGameDetail(
     : []
 
   return {
-    live,
+    live: liveOut,
     odds,
-    plays,
+    plays: playsOut,
     stats,
   }
 }

@@ -706,6 +706,11 @@ export default function GameHubHero({
                 <div className="mt-0.5 w-full text-center text-[13px] font-semibold uppercase tracking-wide text-white/85">
                   {game.away?.abbrev}
                 </div>
+                {game.away?.record ? (
+                  <div className="mt-0.5 w-full text-center text-[10px] font-medium tabular-nums leading-none text-white/55">
+                    {game.away.record}
+                  </div>
+                ) : null}
                 {awayTimeouts != null ? <TimeoutDots remaining={awayTimeouts} align="center" /> : null}
               </div>
               <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1">
@@ -762,6 +767,11 @@ export default function GameHubHero({
                 <div className="mt-0.5 w-full text-center text-[13px] font-semibold uppercase tracking-wide text-white/85">
                   {game.home?.abbrev}
                 </div>
+                {game.home?.record ? (
+                  <div className="mt-0.5 w-full text-center text-[10px] font-medium tabular-nums leading-none text-white/55">
+                    {game.home.record}
+                  </div>
+                ) : null}
                 {homeTimeouts != null ? <TimeoutDots remaining={homeTimeouts} align="center" /> : null}
               </div>
             </div>
@@ -777,6 +787,11 @@ export default function GameHubHero({
                 <div className="mt-1 w-full text-center text-[15px] font-semibold uppercase tracking-wide text-white/90">
                   {game.away?.abbrev}
                 </div>
+                {game.away?.record ? (
+                  <div className="mt-0.5 w-full text-center text-[12px] font-medium tabular-nums leading-none text-white/55">
+                    {game.away.record}
+                  </div>
+                ) : null}
                 {awayTimeouts != null ? <TimeoutDots remaining={awayTimeouts} align="center" /> : null}
               </div>
               <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1">
@@ -833,6 +848,11 @@ export default function GameHubHero({
                 <div className="mt-1 w-full text-center text-[15px] font-semibold uppercase tracking-wide text-white/90">
                   {game.home?.abbrev}
                 </div>
+                {game.home?.record ? (
+                  <div className="mt-0.5 w-full text-center text-[12px] font-medium tabular-nums leading-none text-white/55">
+                    {game.home.record}
+                  </div>
+                ) : null}
                 {homeTimeouts != null ? <TimeoutDots remaining={homeTimeouts} align="center" /> : null}
               </div>
             </div>

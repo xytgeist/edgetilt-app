@@ -36,6 +36,8 @@ export type LoungeSportsGameSide = {
   spread?: number | null
   /** Pinnacle American moneyline for this side. */
   ml?: number | null
+  /** Season W-L (e.g. "3-1") from ESPN scoreboard when available. */
+  record?: string | null
   team_id?: number | null
 }
 
@@ -167,6 +169,7 @@ function sideFromRundown(
     linescores: lines,
     spread: null,
     ml: null,
+    record: null,
     team_id: Number.isFinite(teamId) && teamId > 0 ? teamId : null,
   }
 }
@@ -482,6 +485,7 @@ function gameFromOdds(sportKey: string, sportLabel: string, logoLeague: string, 
     linescores: [],
     spread: null,
     ml: null,
+    record: null,
   }
   const away: LoungeSportsGameSide = {
     name: awayName,
@@ -492,6 +496,7 @@ function gameFromOdds(sportKey: string, sportLabel: string, logoLeague: string, 
     linescores: [],
     spread: null,
     ml: null,
+    record: null,
   }
   return {
     id: String(ev.id || `${sportKey}:${awayName}@${homeName}`).trim(),
@@ -570,6 +575,101 @@ function slateDedupeKey(game: LoungeSportsGame): string {
   return `${game.sport_key}:${a}@${h}:${ptDateFromIso(game.commence_time)}`
 }
 
+function nflAbbrevKey(value: unknown): string {
+  const u = String(value || '').trim().toUpperCase()
+  if (u === 'WSH') return 'WAS'
+  if (u === 'JAC') return 'JAX'
+  return u
+}
+
+/** ESPN competitor `records[].summary` … prefer overall/total (e.g. "3-1"). */
+function recordFromEspnCompetitor(c: Record<string, unknown>): string | null {
+  const records = Array.isArray(c.records) ? c.records as Array<Record<string, unknown>> : []
+  if (!records.length) return null
+  const preferred =
+    records.find((r) => String(r.type || '').toLowerCase() === 'total')
+    || records.find((r) => {
+      const name = String(r.name || '').toLowerCase()
+      return name.includes('overall') || name.includes('ytd') || name === 'total'
+    })
+    || records[0]
+  const summary = String(preferred?.summary || '').trim()
+  if (!summary) return null
+  if (!/^\d+-\d+(-\d+)?$/.test(summary)) return summary
+  return summary
+}
+
+const ESPN_RECORDS_TTL_MS = 10 * 60 * 1000
+let espnNflRecordsCache: { at: number; byAbbrev: Map<string, string> } | null = null
+
+/**
+ * Season W-L from ESPN public scoreboard (unofficial). Cached 10m so the 45s
+ * pill poll does not hammer ESPN. Allowed on test + prod (cheap vs PBP summary).
+ */
+async function loadEspnNflRecordsByAbbrev(
+  games: LoungeSportsGame[],
+): Promise<Map<string, string>> {
+  if (espnNflRecordsCache && Date.now() - espnNflRecordsCache.at < ESPN_RECORDS_TTL_MS) {
+    return espnNflRecordsCache.byAbbrev
+  }
+  const byAbbrev = new Map<string, string>()
+  const dateSet = new Set<string>()
+  for (const g of games) {
+    if (!String(g.sport_key || '').includes('americanfootball_nfl')) continue
+    const day = ptDateFromIso(g.commence_time)
+    if (day) dateSet.add(day.replace(/-/g, ''))
+  }
+  // Undated board first (today's slate), then each kickoff date on our board.
+  const dates = ['', ...[...dateSet].sort()]
+  const headers = { 'User-Agent': 'EdgeTiltLounge/1.0', Accept: 'application/json' }
+
+  await Promise.all(dates.map(async (date) => {
+    const url = date
+      ? `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=${date}`
+      : 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard'
+    try {
+      const res = await fetch(url, { headers, signal: AbortSignal.timeout(8_000) })
+      if (!res.ok) return
+      const pack = await res.json() as { events?: Array<Record<string, unknown>> }
+      for (const ev of Array.isArray(pack.events) ? pack.events : []) {
+        const comps = (ev.competitions as Array<Record<string, unknown>> | undefined)?.[0]
+        const competitors = Array.isArray(comps?.competitors)
+          ? comps.competitors as Array<Record<string, unknown>>
+          : []
+        for (const c of competitors) {
+          const team = (c.team && typeof c.team === 'object') ? c.team as Record<string, unknown> : {}
+          const abb = nflAbbrevKey(team.abbreviation)
+          const rec = recordFromEspnCompetitor(c)
+          if (abb && rec) byAbbrev.set(abb, rec)
+        }
+      }
+    } catch {
+      // soft-fail … slate still paints without records
+    }
+  }))
+
+  espnNflRecordsCache = { at: Date.now(), byAbbrev }
+  return byAbbrev
+}
+
+async function enrichNflRecordsFromEspn(games: LoungeSportsGame[]): Promise<LoungeSportsGame[]> {
+  const nfl = games.filter((g) => String(g.sport_key || '').includes('americanfootball_nfl'))
+  if (!nfl.length) return games
+  const byAbbrev = await loadEspnNflRecordsByAbbrev(nfl)
+  if (!byAbbrev.size) return games
+  return games.map((g) => {
+    if (!String(g.sport_key || '').includes('americanfootball_nfl')) return g
+    const awayRec = byAbbrev.get(nflAbbrevKey(g.away?.abbrev)) || null
+    const homeRec = byAbbrev.get(nflAbbrevKey(g.home?.abbrev)) || null
+    if (!awayRec && !homeRec) return g
+    return {
+      ...g,
+      away: { ...g.away, record: awayRec ?? g.away?.record ?? null },
+      home: { ...g.home, record: homeRec ?? g.home?.record ?? null },
+    }
+  })
+}
+
 export async function buildLoungeSportsScoreboard(
   admin?: SupabaseClient,
 ): Promise<{ games: LoungeSportsGame[]; source: string }> {
@@ -633,7 +733,8 @@ export async function buildLoungeSportsScoreboard(
     if (d) return d
     return String(a.commence_time).localeCompare(String(b.commence_time))
   })
-  return { games, source }
+  const withRecords = await enrichNflRecordsFromEspn(games)
+  return { games: withRecords, source }
 }
 
 const RUNDOWN_BASE = 'https://therundown.io/api/v2'

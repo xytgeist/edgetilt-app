@@ -3789,3 +3789,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-25:** **Game Hub drop duplicate kickoff:** Removed extra `formatKickoff` span under the hero clock … pre-game already shows kickoff via `status_label`. Bumped to v1.4.644.
 - **2026-09-25:** **Game Hub pre/post logos + mid-gap scores:** Pre/post hero logos 52→68; scores sit in the midpoint between logo column and center clock (same mid-gap pattern as live condensed). Bumped to v1.4.645.
 - **2026-09-25:** **Game Hub ML under spread + larger centered abbrevs:** Hero shows Pinnacle ML under the score/spread stack; team abbrevs larger and centered under logos. Bumped to v1.4.646.
+- **2026-09-25:** **Game Hub team records:** Slate enriches NFL sides with ESPN season W-L (`home.record` / `away.record`, 10m cache). Hero shows the record under each abbrev. Redeploy **`lounge-sports-scoreboard`**. Bumped to v1.4.647.

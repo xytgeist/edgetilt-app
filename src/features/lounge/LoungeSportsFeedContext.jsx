@@ -65,16 +65,20 @@ function preserveSpreads(next, prev) {
     const awaySpread = sideNum(game.away, 'spread') ?? sideNum(old.away, 'spread')
     const homeMl = sideNum(game.home, 'ml') ?? sideNum(old.home, 'ml')
     const awayMl = sideNum(game.away, 'ml') ?? sideNum(old.away, 'ml')
+    const homeRecord = game.home?.record || old.home?.record || null
+    const awayRecord = game.away?.record || old.away?.record || null
     if (
       homeSpread === sideNum(game.home, 'spread')
       && awaySpread === sideNum(game.away, 'spread')
       && homeMl === sideNum(game.home, 'ml')
       && awayMl === sideNum(game.away, 'ml')
+      && homeRecord === (game.home?.record || null)
+      && awayRecord === (game.away?.record || null)
     ) return game
     return {
       ...game,
-      home: { ...game.home, spread: homeSpread, ml: homeMl },
-      away: { ...game.away, spread: awaySpread, ml: awayMl },
+      home: { ...game.home, spread: homeSpread, ml: homeMl, record: homeRecord },
+      away: { ...game.away, spread: awaySpread, ml: awayMl, record: awayRecord },
     }
   })
 }

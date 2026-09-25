@@ -3872,7 +3872,7 @@ html.light [data-lounge-game-players] [data-roster-player-card] {
   box-shadow: 0 8px 24px rgba(24, 24, 27, 0.08);
 }
 
-/* Roster header: same jersey mesh as Fantasy H2H, tinted with card color (not team wash). */
+/* Roster header: Fantasy jersey mesh. Dark = zinc-900 card + whisper of texture. */
 [data-lounge-game-players] [data-roster-jersey-mesh] {
   pointer-events: none;
   position: absolute;
@@ -3882,16 +3882,22 @@ html.light [data-lounge-game-players] [data-roster-player-card] {
   height: 100%;
   object-fit: cover;
   object-position: center;
+  /* Soft fabric on the existing zinc-900 card … keep it dark. */
+  opacity: 0.2;
+  mix-blend-mode: soft-light;
 }
 [data-lounge-game-players] [data-roster-jersey-tint] {
   pointer-events: none;
   position: absolute;
   inset: 0;
   z-index: 0;
-  /* Match Tailwind bg-zinc-900 on the roster card. */
+  /* Nudge any soft-light lift back toward card gray. */
   background: #18181b;
-  mix-blend-mode: multiply;
-  opacity: 0.82;
+  opacity: 0.35;
+}
+html.light [data-lounge-game-players] [data-roster-jersey-mesh] {
+  opacity: 1;
+  mix-blend-mode: normal;
 }
 html.light [data-lounge-game-players] [data-roster-jersey-tint] {
   background: #f4f4f5;

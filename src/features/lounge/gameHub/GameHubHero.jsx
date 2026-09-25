@@ -678,6 +678,7 @@ export default function GameHubHero({
   const awayScoreDim = scoresComparable && awayScoreN < homeScoreN
   const homeScoreDim = scoresComparable && homeScoreN < awayScoreN
   const lastPlayText = String(lastPlay || '').trim()
+  const showField = isFootball && game.status === 'in'
 
   return (
     <div
@@ -763,29 +764,33 @@ export default function GameHubHero({
             homeColor={homeColor}
           />
         ) : null}
-        <div className="relative">
-          <FieldViz
-            game={game}
-            live={live}
-            awayColor={awayColor}
-            homeColor={homeColor}
-          />
-          {lastPlayText ? (
-            <div
-              data-lounge-game-last-play
-              className="pointer-events-none absolute inset-x-2 bottom-2 z-[5] overflow-hidden rounded-xl border border-white/15 bg-black/55 px-3 py-2 shadow-lg backdrop-blur-md"
-            >
-              <div className="flex items-baseline gap-2">
-                <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">
-                  Last play
-                </span>
+        {showField ? (
+          <div className="relative">
+            <FieldViz
+              game={game}
+              live={live}
+              awayColor={awayColor}
+              homeColor={homeColor}
+            />
+            {lastPlayText ? (
+              <div
+                data-lounge-game-last-play
+                className="pointer-events-none absolute inset-x-2 bottom-2 z-[5] overflow-hidden rounded-xl border border-white/15 bg-black/55 px-3 py-2 shadow-lg backdrop-blur-md"
+              >
+                <div className="flex items-baseline gap-2">
+                  <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">
+                    Last play
+                  </span>
+                </div>
+                <div className="mt-0.5 line-clamp-2 text-[12px] font-medium leading-snug text-white/90">
+                  {lastPlayText}
+                </div>
               </div>
-              <div className="mt-0.5 line-clamp-2 text-[12px] font-medium leading-snug text-white/90">
-                {lastPlayText}
-              </div>
-            </div>
-          ) : null}
-        </div>
+            ) : null}
+          </div>
+        ) : (
+          <div className="h-2" aria-hidden="true" />
+        )}
       </div>
     </div>
   )

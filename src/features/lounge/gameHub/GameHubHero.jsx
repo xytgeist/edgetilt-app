@@ -2,6 +2,7 @@ import {
   LoungeSportsTeamLogo,
   useLoungeSportsPillWashAndLogos,
 } from '../loungeSportsPillPaint.jsx'
+import { formatLoungeSportsMoneyline } from '../LoungeGameScorePill.jsx'
 import {
   CORNER_PYLONS,
   ENDZONE_COORDS,
@@ -20,9 +21,11 @@ const TIMEOUT_SLOTS = 3
 
 function TimeoutDots({ remaining, align = 'left' }) {
   const left = remaining == null ? TIMEOUT_SLOTS : Math.max(0, Math.min(TIMEOUT_SLOTS, Math.round(remaining)))
+  const justify =
+    align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start'
   return (
     <div
-      className={`mt-0.5 flex items-center gap-1 ${align === 'right' ? 'justify-end' : 'justify-start'}`}
+      className={`mt-0.5 flex items-center gap-1 ${justify}`}
       aria-label={`${left} timeout${left === 1 ? '' : 's'} remaining`}
     >
       {Array.from({ length: TIMEOUT_SLOTS }, (_, i) => {
@@ -673,6 +676,8 @@ export default function GameHubHero({
   const homeScoreDim = scoresComparable && homeScoreN < awayScoreN
   const lastPlayText = String(lastPlay || '').trim()
   const showField = isFootball && game.status === 'in'
+  const awayMl = formatLoungeSportsMoneyline(game.away?.ml)
+  const homeMl = formatLoungeSportsMoneyline(game.home?.ml)
 
   return (
     <div
@@ -696,20 +701,27 @@ export default function GameHubHero({
         <div className="relative z-[4] px-3 pb-1 pt-1">
           <div className="flex items-center justify-between gap-1.5">
             <div className="flex min-w-0 flex-1 items-center">
-              <div className="flex shrink-0 flex-col items-start">
+              <div className="flex w-[40px] shrink-0 flex-col items-center">
                 <LoungeSportsTeamLogo side={game.away} treatment={awayTreatment} size={40} />
-                <div className="mt-0.5 truncate text-[11px] font-semibold uppercase tracking-wide text-white/80">
+                <div className="mt-0.5 w-full text-center text-[13px] font-semibold uppercase tracking-wide text-white/85">
                   {game.away?.abbrev}
                 </div>
-                {awayTimeouts != null ? <TimeoutDots remaining={awayTimeouts} align="left" /> : null}
+                {awayTimeouts != null ? <TimeoutDots remaining={awayTimeouts} align="center" /> : null}
               </div>
               <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1">
-                <div
-                  className={`text-[34px] font-bold leading-none tabular-nums drop-shadow ${
-                    awayScoreDim ? 'text-white/45' : 'text-white'
-                  }`}
-                >
-                  {scoreText(game.away, game.status)}
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`text-[34px] font-bold leading-none tabular-nums drop-shadow ${
+                      awayScoreDim ? 'text-white/45' : 'text-white'
+                    }`}
+                  >
+                    {scoreText(game.away, game.status)}
+                  </div>
+                  {awayMl ? (
+                    <div className="mt-0.5 text-[11px] font-semibold leading-none tabular-nums text-white/70 drop-shadow">
+                      {awayMl}
+                    </div>
+                  ) : null}
                 </div>
                 {awayHasBall ? <PossessionFootball side="away" /> : null}
               </div>
@@ -730,43 +742,57 @@ export default function GameHubHero({
             <div className="flex min-w-0 flex-1 items-center">
               <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1">
                 {homeHasBall ? <PossessionFootball side="home" /> : null}
-                <div
-                  className={`text-[34px] font-bold leading-none tabular-nums drop-shadow ${
-                    homeScoreDim ? 'text-white/45' : 'text-white'
-                  }`}
-                >
-                  {scoreText(game.home, game.status)}
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`text-[34px] font-bold leading-none tabular-nums drop-shadow ${
+                      homeScoreDim ? 'text-white/45' : 'text-white'
+                    }`}
+                  >
+                    {scoreText(game.home, game.status)}
+                  </div>
+                  {homeMl ? (
+                    <div className="mt-0.5 text-[11px] font-semibold leading-none tabular-nums text-white/70 drop-shadow">
+                      {homeMl}
+                    </div>
+                  ) : null}
                 </div>
               </div>
-              <div className="flex shrink-0 flex-col items-end">
+              <div className="flex w-[40px] shrink-0 flex-col items-center">
                 <LoungeSportsTeamLogo side={game.home} treatment={homeTreatment} size={40} />
-                <div className="mt-0.5 truncate text-[11px] font-semibold uppercase tracking-wide text-white/80">
+                <div className="mt-0.5 w-full text-center text-[13px] font-semibold uppercase tracking-wide text-white/85">
                   {game.home?.abbrev}
                 </div>
-                {homeTimeouts != null ? <TimeoutDots remaining={homeTimeouts} align="right" /> : null}
+                {homeTimeouts != null ? <TimeoutDots remaining={homeTimeouts} align="center" /> : null}
               </div>
             </div>
           </div>
         </div>
       ) : (
-        /* Roomier pre/post: larger logos, score centered in logo↔clock gap */
+        /* Roomier pre/post: larger logos, score/spread + ML in logo↔clock gap */
         <div className="relative z-[4] px-4 pb-3 pt-2">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 flex-1 items-center">
-              <div className="flex shrink-0 flex-col items-start">
+              <div className="flex w-[68px] shrink-0 flex-col items-center">
                 <LoungeSportsTeamLogo side={game.away} treatment={awayTreatment} size={68} />
-                <div className="mt-1 truncate text-[13px] font-semibold uppercase tracking-wide text-white/80">
+                <div className="mt-1 w-full text-center text-[15px] font-semibold uppercase tracking-wide text-white/90">
                   {game.away?.abbrev}
                 </div>
-                {awayTimeouts != null ? <TimeoutDots remaining={awayTimeouts} align="left" /> : null}
+                {awayTimeouts != null ? <TimeoutDots remaining={awayTimeouts} align="center" /> : null}
               </div>
               <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1">
-                <div
-                  className={`text-[40px] font-bold leading-none tabular-nums drop-shadow ${
-                    awayScoreDim ? 'text-white/45' : 'text-white'
-                  }`}
-                >
-                  {scoreText(game.away, game.status)}
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`text-[40px] font-bold leading-none tabular-nums drop-shadow ${
+                      awayScoreDim ? 'text-white/45' : 'text-white'
+                    }`}
+                  >
+                    {scoreText(game.away, game.status)}
+                  </div>
+                  {awayMl ? (
+                    <div className="mt-1 text-[13px] font-semibold leading-none tabular-nums text-white/70 drop-shadow">
+                      {awayMl}
+                    </div>
+                  ) : null}
                 </div>
                 {awayHasBall ? <PossessionFootball side="away" /> : null}
               </div>
@@ -787,20 +813,27 @@ export default function GameHubHero({
             <div className="flex min-w-0 flex-1 items-center">
               <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1">
                 {homeHasBall ? <PossessionFootball side="home" /> : null}
-                <div
-                  className={`text-[40px] font-bold leading-none tabular-nums drop-shadow ${
-                    homeScoreDim ? 'text-white/45' : 'text-white'
-                  }`}
-                >
-                  {scoreText(game.home, game.status)}
+                <div className="flex flex-col items-center">
+                  <div
+                    className={`text-[40px] font-bold leading-none tabular-nums drop-shadow ${
+                      homeScoreDim ? 'text-white/45' : 'text-white'
+                    }`}
+                  >
+                    {scoreText(game.home, game.status)}
+                  </div>
+                  {homeMl ? (
+                    <div className="mt-1 text-[13px] font-semibold leading-none tabular-nums text-white/70 drop-shadow">
+                      {homeMl}
+                    </div>
+                  ) : null}
                 </div>
               </div>
-              <div className="flex shrink-0 flex-col items-end">
+              <div className="flex w-[68px] shrink-0 flex-col items-center">
                 <LoungeSportsTeamLogo side={game.home} treatment={homeTreatment} size={68} />
-                <div className="mt-1 truncate text-[13px] font-semibold uppercase tracking-wide text-white/80">
+                <div className="mt-1 w-full text-center text-[15px] font-semibold uppercase tracking-wide text-white/90">
                   {game.home?.abbrev}
                 </div>
-                {homeTimeouts != null ? <TimeoutDots remaining={homeTimeouts} align="right" /> : null}
+                {homeTimeouts != null ? <TimeoutDots remaining={homeTimeouts} align="center" /> : null}
               </div>
             </div>
           </div>

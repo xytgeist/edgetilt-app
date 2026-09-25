@@ -4,6 +4,30 @@ import { lazy } from 'react'
 export const STALE_CHUNK_RELOAD_KEY = 'lvsp_stale_chunk_reload'
 
 /** @param {unknown} err */
+function rejectionMessage(err) {
+  if (err == null) return ''
+  if (typeof err === 'string') return err
+  return String(err.message || err)
+}
+
+/**
+ * Safari / WebKit aborted a dynamic import on purpose (tab hide, remount, nav).
+ * Not a stale deploy. Do not reload. Swallow so Sentry does not page it.
+ * @param {unknown} err
+ */
+export function isCanceledModuleImport(err) {
+  const msg = rejectionMessage(err).toLowerCase()
+  if (!msg) return false
+  if (msg.includes('importing a module script') && msg.includes('cancel')) return true
+  return (
+    msg.includes('module script is canceled') ||
+    msg.includes('module script was canceled') ||
+    msg.includes('module script is cancelled') ||
+    msg.includes('module script was cancelled')
+  )
+}
+
+/** @param {unknown} err */
 export function isStaleChunkLoadError(err) {
   const msg = String(err?.message || err || '').toLowerCase()
   return (
@@ -61,6 +85,9 @@ export function importRoute(importFn, reloadKey = STALE_CHUNK_RELOAD_KEY) {
       return /** @type {{ default: import('react').ComponentType<any> }} */ (mod)
     })
     .catch((err) => {
+      if (isCanceledModuleImport(err)) {
+        return new Promise(() => {})
+      }
       if (isStaleChunkLoadError(err) && reloadOnceForStaleChunk(reloadKey)) {
         return new Promise(() => {})
       }
@@ -104,6 +131,10 @@ export function installStaleChunkReloadListener(reloadKey = STALE_CHUNK_RELOAD_K
   })
 
   window.addEventListener('unhandledrejection', (event) => {
+    if (isCanceledModuleImport(event.reason)) {
+      event.preventDefault()
+      return
+    }
     if (!isStaleChunkLoadError(event.reason)) return
     // One hard reload for Safari "Load failed" / stale chunk. Swallow only when we
     // are recovering so the tab does not look like a crash mid-reload.

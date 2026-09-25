@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-25:** **Ignore Safari canceled module imports (Mac).** `Importing a module script is canceled` is a tab hide / remount abort, not a stale deploy. Swallow in `importRoute` + `unhandledrejection` (no reload). Sentry `ignoreErrors` + `beforeSend` drop it. Failed / MIME stale chunks still reload once. Frontend **`1.4.651`**. Web only.
 - **2026-09-24:** **Gamecast 3D field master rebuild + dynamic SVG overlay (Mac).** Rebuilt high-res 3D field asset with correct 10-yard numbering sequence, exact 4-hashmark segments, and halo-free alpha un-mixing. Built 3-layer architecture in GameHubHero: Base turf slab (Layer 1), dynamic SVG overlay with 6-segment rounded-corner team endzone paint, 3D-perspective wordmarks, midfield home logo, and perspective-slanted scrimmage/first-down lines (Layer 2), and foreground goalposts overlay (Layer 3) to prevent endzone paint from tinting uprights and red pads. Web **`1.4.606`**.
 
 - **2026-09-24:** **Remove Gamecast field endzone overlay boxes (Mac).** Dropped translucent team-color boxes and vertical abbrevs so clean 3D turf and endlines show through. Web **`1.4.597`**.

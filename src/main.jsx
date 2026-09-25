@@ -10,6 +10,7 @@ import {
 import {
   importRoute,
   installStaleChunkReloadListener,
+  isCanceledModuleImport,
 } from './utils/lazyImportWithChunkReload.js'
 import { applyTheme, watchSystemTheme, applyPlatformClass } from './utils/theme.js'
 import { installAppDebugLog } from './utils/appDebugLog.js'
@@ -44,10 +45,19 @@ Sentry.init({
     'Failed to fetch',
     'NetworkError when attempting to fetch resource',
     'Importing a module script failed',
+    'Importing a module script is canceled',
+    'Importing a module script was canceled',
     'Failed to load module script',
     'Network request failed',
     /Non-Error promise rejection captured with value:.*Load failed/i,
+    /Non-Error promise rejection captured with value:.*module script is cancel/i,
   ],
+  beforeSend(event, hint) {
+    if (isCanceledModuleImport(hint?.originalException)) return null
+    const value = event?.exception?.values?.[0]?.value || event?.message || ''
+    if (isCanceledModuleImport(value)) return null
+    return event
+  },
 })
 
 if (shouldShowLoungeColdBootSplash({ tab: 'home', pendingWork: readLoungeComposerDraftPendingWork() })) {

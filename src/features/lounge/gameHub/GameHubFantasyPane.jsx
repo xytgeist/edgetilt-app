@@ -81,7 +81,7 @@ function MatchupPortrait({ player, isDef, align = 'left' }) {
       <img
         src="/sports/nfl/silhouettes/player-bust.png"
         alt=""
-        className={`h-full w-full object-contain opacity-80 scale-[0.76] translate-y-3 ${silNudge} ${silOrigin}`}
+        className={`h-full w-full object-contain opacity-80 scale-[0.68] translate-y-2.5 ${silNudge} ${silOrigin}`}
       />
     )
   }
@@ -90,7 +90,7 @@ function MatchupPortrait({ player, isDef, align = 'left' }) {
     <img
       src={src}
       alt=""
-      className={`h-full w-full origin-[center_20%] scale-[1.38] object-cover ${objectPos}`}
+      className={`h-full w-full origin-[center_20%] scale-[1.22] object-cover ${objectPos}`}
       onError={() => setFailed(true)}
     />
   )
@@ -388,7 +388,7 @@ function MatchupHalf({
     >
       <div
         data-fantasy-h2h-wash
-        className="relative h-[8.2rem] w-full overflow-hidden"
+        className="relative h-[6.75rem] w-full overflow-hidden"
         style={{ '--fantasy-wash': washColor || '#3f3f46' }}
       >
         <span className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
@@ -406,7 +406,7 @@ function MatchupHalf({
           style={{ opacity: logoOpacity }}
           aria-hidden="true"
         >
-          <LoungeSportsTeamLogo side={teamSide} treatment={logoTreatment} size={168} />
+          <LoungeSportsTeamLogo side={teamSide} treatment={logoTreatment} size={140} />
         </span>
         <span
           className={`absolute top-2 z-[4] rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${positionPillClass(
@@ -417,8 +417,8 @@ function MatchupHalf({
         </span>
         {!empty && !isDef ? (
           <div
-            className={`pointer-events-none absolute bottom-0 z-[2] h-[10.725rem] w-[11.55rem] overflow-hidden ${
-              align === 'right' ? '-left-8' : '-right-8'
+            className={`pointer-events-none absolute bottom-0 z-[2] h-[8.25rem] w-[8.9rem] overflow-hidden ${
+              align === 'right' ? '-left-6' : '-right-6'
             }`}
           >
             <MatchupPortrait player={player} isDef={false} align={align} />

@@ -79,7 +79,6 @@ export function resolveEndzoneDesign(side, fallbackColor = '#3f3f46', sideKey = 
 
   // Standard base font size for Impact athletic block typography.
   // Glyphs dynamically scale so every letter spans ~77% of the 10-yard end zone width.
-  const len = mascot.length
   const fontSize = 58
   const letterSpacing = 5
 
@@ -123,12 +122,28 @@ export function resolveEndzoneDesign(side, fallbackColor = '#3f3f46', sideKey = 
 }
 
 /**
+ * Optical advance weights for Impact / Arial Black endzone glyphs.
+ * Equal-slot layout crowds wide letters (especially W) into neighbors ...
+ * bump W so COWBOYS / COMMANDERS breathe without changing the font.
+ */
+const GLYPH_ADVANCE = {
+  W: 1.28,
+}
+
+function getGlyphAdvance(char) {
+  return GLYPH_ADVANCE[char] ?? 1
+}
+
+/**
  * Computes individual letter glyph positions, 3D perspective depth scaling,
  * and ground-plane alignment for authentic stadium end zones.
  *
  * Each letter dynamically scales so that its height spans the exact same fraction
  * (~78%) of the 10-yard end zone width at its specific location, naturally shrinking
  * from near to far along with the 3D stadium perspective without extreme over-scaling.
+ *
+ * Sideline placement uses cumulative advance weights (not equal i/len slots) so
+ * optically wide glyphs like W get a little extra breathing room.
  *
  * @param {string} mascot - Team mascot wordmark (e.g. "FALCONS", "PACKERS")
  * @param {boolean} isLeft - True for away/left endzone, false for home/right endzone
@@ -168,16 +183,23 @@ export function computeEndzonePerspectiveGlyphs(mascot, isLeft, _fontSize = 58) 
   const syRef = 1.28
   const sBase = getMascotBaseWidthScale(len)
 
+  const advances = Array.from(text, getGlyphAdvance)
+  const totalAdvance = advances.reduce((sum, a) => sum + a, 0)
+
   const glyphs = []
+  let cursor = 0
   for (let i = 0; i < len; i++) {
     const char = text[i]
+    const advance = advances[i]
+    // Center of this glyph in reading-order advance space [0, 1]
+    const mid = (cursor + advance / 2) / totalAdvance
+    cursor += advance
+
     // Word reading flow:
     // Right endzone (Packers): reads far-to-near (top-to-bottom), i=0 is at far sideline, i=len-1 is at near sideline
     // Left endzone (Falcons): reads near-to-far (bottom-to-top), i=0 is at near sideline, i=len-1 is at far sideline
     // so both have letter feet anchored along their respective goal lines, facing outward toward uprights.
-    const u = isLeft
-      ? (1 - (i + 0.5) / len)
-      : (i + 0.5) / len
+    const u = isLeft ? 1 - mid : mid
 
     // Project ground fraction u into screen perspective t
     const t = (Math.pow(ratio, u) - 1) / (ratio - 1)
@@ -215,6 +237,7 @@ export function computeEndzonePerspectiveGlyphs(mascot, isLeft, _fontSize = 58) 
       w: Number(w.toFixed(1)),
       s,
       sy,
+      advance,
       transform,
     })
   }

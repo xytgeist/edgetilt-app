@@ -47,6 +47,9 @@ export type LoungeSportsLiveState = {
   yard_line: number | null
   yard_side: 'home' | 'away' | null
   possession: 'home' | 'away' | null
+  /** Remaining timeouts this half (0–3). Null when the feed does not send them. */
+  home_timeouts: number | null
+  away_timeouts: number | null
   last_play: string
 }
 
@@ -232,6 +235,40 @@ function numOrNull(value: unknown): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+/** NFL: 3 timeouts per half. Clamp remaining into 0–3. */
+function timeoutsRemaining(value: unknown): number | null {
+  const n = numOrNull(value)
+  if (n == null) return null
+  return Math.max(0, Math.min(3, Math.round(n)))
+}
+
+function pickTimeouts(
+  raw: Record<string, unknown>,
+  side: 'home' | 'away',
+): number | null {
+  const nested = (raw.timeouts && typeof raw.timeouts === 'object')
+    ? raw.timeouts as Record<string, unknown>
+    : null
+  if (side === 'home') {
+    return timeoutsRemaining(
+      raw.home_timeouts
+        ?? raw.home_timeouts_remaining
+        ?? raw.home_team_timeouts
+        ?? raw.timeouts_remaining_home
+        ?? nested?.home
+        ?? nested?.home_remaining,
+    )
+  }
+  return timeoutsRemaining(
+    raw.away_timeouts
+      ?? raw.away_timeouts_remaining
+      ?? raw.away_team_timeouts
+      ?? raw.timeouts_remaining_away
+      ?? nested?.away
+      ?? nested?.away_remaining,
+  )
+}
+
 function liveFromRundown(
   event: Record<string, unknown>,
   homeId: number | null,
@@ -275,6 +312,8 @@ function liveFromRundown(
     yard_line: yardLine,
     yard_side: yardSide,
     possession,
+    home_timeouts: pickTimeouts(raw, 'home') ?? pickTimeouts(score, 'home'),
+    away_timeouts: pickTimeouts(raw, 'away') ?? pickTimeouts(score, 'away'),
     last_play: lastPlay,
   }
 }
@@ -684,6 +723,9 @@ async function fetchEspnNflLivePack(
   let awayEspnId = ''
   let statusPeriod: number | null = null
   let statusClock = ''
+  let boardHomeTimeouts: number | null = null
+  let boardAwayTimeouts: number | null = null
+  let boardPossession: 'home' | 'away' | null = null
 
   for (const date of dates) {
     const url = date
@@ -717,6 +759,16 @@ async function fetchEspnNflLivePack(
         const type = (status.type && typeof status.type === 'object') ? status.type as Record<string, unknown> : {}
         statusPeriod = numOrNull(status.period ?? type.period)
         statusClock = String(status.displayClock || type.detail || '').trim()
+        const sit = (comps?.situation && typeof comps.situation === 'object')
+          ? comps.situation as Record<string, unknown>
+          : null
+        if (sit) {
+          boardHomeTimeouts = timeoutsRemaining(sit.homeTimeouts)
+          boardAwayTimeouts = timeoutsRemaining(sit.awayTimeouts)
+          const possId = String(sit.possession || '').trim()
+          if (possId && homeEspnId && possId === homeEspnId) boardPossession = 'home'
+          else if (possId && awayEspnId && possId === awayEspnId) boardPossession = 'away'
+        }
         break
       }
     } catch {
@@ -801,7 +853,9 @@ async function fetchEspnNflLivePack(
           distance: distance && distance > 0 ? distance : null,
           yard_line: yardLine,
           yard_side: null,
-          possession,
+          possession: boardPossession ?? possession,
+          home_timeouts: boardHomeTimeouts,
+          away_timeouts: boardAwayTimeouts,
           last_play: last?.description || '',
         }
       : null
@@ -827,6 +881,8 @@ function mergeLiveState(
     yard_line: primary.yard_line ?? fallback.yard_line,
     yard_side: primary.yard_side ?? fallback.yard_side,
     possession: primary.possession ?? fallback.possession,
+    home_timeouts: primary.home_timeouts ?? fallback.home_timeouts,
+    away_timeouts: primary.away_timeouts ?? fallback.away_timeouts,
     last_play: primary.last_play || fallback.last_play,
   }
 }

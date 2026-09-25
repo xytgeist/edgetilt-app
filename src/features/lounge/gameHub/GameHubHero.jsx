@@ -11,6 +11,46 @@ import {
   yardLineLabel,
 } from './gameHubFormatters.js'
 
+const FOOTBALL_POSSESSION_ICON = '/sports/nfl/icons/football-possession.png'
+const TIMEOUT_SLOTS = 3
+
+function TimeoutDots({ remaining, align = 'left' }) {
+  const left = remaining == null ? TIMEOUT_SLOTS : Math.max(0, Math.min(TIMEOUT_SLOTS, Math.round(remaining)))
+  return (
+    <div
+      className={`mt-1.5 flex items-center gap-1 ${align === 'right' ? 'justify-end' : 'justify-start'}`}
+      aria-label={`${left} timeout${left === 1 ? '' : 's'} remaining`}
+    >
+      {Array.from({ length: TIMEOUT_SLOTS }, (_, i) => {
+        const available = i < left
+        return (
+          <span
+            key={i}
+            className={
+              available
+                ? 'h-1.5 w-1.5 rounded-full bg-white'
+                : 'h-1.5 w-1.5 rounded-full border border-white/70 bg-transparent'
+            }
+            aria-hidden="true"
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+function PossessionFootball({ side }) {
+  return (
+    <img
+      src={FOOTBALL_POSSESSION_ICON}
+      alt=""
+      aria-hidden="true"
+      title={`${side} possession`}
+      className="h-[14px] w-[14px] shrink-0 brightness-0 invert drop-shadow-[0_1px_1px_rgba(0,0,0,0.55)]"
+    />
+  )
+}
+
 function FieldViz({ game, live }) {
   if (!String(game.sport_key || '').includes('football')) return null
   if (game.status === 'pre') return null
@@ -149,6 +189,12 @@ export default function GameHubHero({
   const down = downDistanceLabel(live)
   const yard = yardLineLabel(game, live)
   const kickoff = game.status === 'pre' ? formatKickoff(game.commence_time) : ''
+  const isFootball = String(game.sport_key || '').includes('football')
+  const showLiveChrome = isFootball && game.status === 'in'
+  const awayHasBall = showLiveChrome && live?.possession === 'away'
+  const homeHasBall = showLiveChrome && live?.possession === 'home'
+  const awayTimeouts = showLiveChrome ? (live?.away_timeouts ?? TIMEOUT_SLOTS) : null
+  const homeTimeouts = showLiveChrome ? (live?.home_timeouts ?? TIMEOUT_SLOTS) : null
 
   return (
     <div
@@ -175,9 +221,13 @@ export default function GameHubHero({
               <div className="truncate text-[13px] font-semibold uppercase tracking-wide text-white/80">
                 {game.away?.abbrev}
               </div>
-              <div className="text-[40px] font-bold leading-none tabular-nums text-white drop-shadow">
-                {scoreText(game.away, game.status)}
+              <div className="flex items-center gap-1.5">
+                <div className="text-[40px] font-bold leading-none tabular-nums text-white drop-shadow">
+                  {scoreText(game.away, game.status)}
+                </div>
+                {awayHasBall ? <PossessionFootball side="away" /> : null}
               </div>
+              {awayTimeouts != null ? <TimeoutDots remaining={awayTimeouts} align="left" /> : null}
             </div>
           </div>
 
@@ -200,9 +250,13 @@ export default function GameHubHero({
               <div className="truncate text-[13px] font-semibold uppercase tracking-wide text-white/80">
                 {game.home?.abbrev}
               </div>
-              <div className="text-[40px] font-bold leading-none tabular-nums text-white drop-shadow">
-                {scoreText(game.home, game.status)}
+              <div className="flex items-center justify-end gap-1.5">
+                {homeHasBall ? <PossessionFootball side="home" /> : null}
+                <div className="text-[40px] font-bold leading-none tabular-nums text-white drop-shadow">
+                  {scoreText(game.home, game.status)}
+                </div>
               </div>
+              {homeTimeouts != null ? <TimeoutDots remaining={homeTimeouts} align="right" /> : null}
             </div>
           </div>
         </div>

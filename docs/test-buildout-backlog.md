@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Hub live timeouts + possession football (Mac).** Hero shows 3 timeout dots under each score (filled = remaining, hollow = used) + football icon on the inner side of the team with the ball. Live state gains `home_timeouts` / `away_timeouts` (Rundown + ESPN situation). Redeploy Edge **`lounge-sports-scoreboard`**. Web **`1.4.595`**.
 - **2026-09-24:** **Hide hub bets/$ bar while live (Mac).** `HeroPublicBetting` returns null when `game.status === 'in'`. Web **`1.4.594`**.
 - **2026-09-24:** **Dump game hub coliseum canvas (Mac).** Removed R3F/Three stadium + deps; restored slim CSS FieldViz. Web **`1.4.593`**.
 - **2026-09-24:** **Fantasy H2H half fills frame without stats (Mac).** MatchupHalf info panel `flex-1` so a no-stat side (e.g. Penix) still paints zinc to the card bottom. Web **`1.4.592`**.

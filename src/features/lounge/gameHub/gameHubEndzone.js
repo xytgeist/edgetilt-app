@@ -56,6 +56,9 @@ export function resolveEndzoneDesign(side, fallbackColor = '#3f3f46', sideKey = 
     const nameTokens = String(side?.name || '').trim().split(/\s+/)
     mascot = (nameTokens[nameTokens.length - 1] || abbrev).toUpperCase()
   }
+  if (mascot.startsWith('LA ') || mascot.startsWith('NY ')) {
+    mascot = mascot.slice(3)
+  }
 
   const primary = side?.color || catalog?.color || fallbackColor || '#3f3f46'
   const secondary = side?.color2 || catalog?.color2 || '#ffffff'
@@ -74,28 +77,11 @@ export function resolveEndzoneDesign(side, fallbackColor = '#3f3f46', sideKey = 
   const gradMid = wash
   const gradDeep = mixHex(wash, '#000000', 0.16)
 
-  // Typography calibration: dynamic size for word lengths from 4 to 10 characters
-  // Calibrated for Impact athletic block typography to boldly span the end zone on mobile
+  // Standard base font size for Impact athletic block typography.
+  // Glyphs dynamically scale so every letter spans ~77% of the 10-yard end zone width.
   const len = mascot.length
-  let fontSize = 58
-  let letterSpacing = 5
-  if (len <= 4) {
-    fontSize = 72
-    letterSpacing = 14
-  } else if (len <= 6) {
-    fontSize = 64
-    letterSpacing = 8
-  } else if (len <= 7) {
-    fontSize = 58
-    letterSpacing = 5
-  } else if (len <= 8) {
-    fontSize = 52
-    letterSpacing = 4
-  } else {
-    // 9-10 letters (e.g. BUCCANEERS, COMMANDERS)
-    fontSize = 44
-    letterSpacing = 2.5
-  }
+  const fontSize = 58
+  const letterSpacing = 5
 
   // Text fill and outline hierarchy
   const isGoldText = GOLD_TEXT_TEAMS.has(abbrev)
@@ -118,7 +104,7 @@ export function resolveEndzoneDesign(side, fallbackColor = '#3f3f46', sideKey = 
   }
 
   const isLeft = sideKey === 'left'
-  const glyphs = computeEndzonePerspectiveGlyphs(mascot, isLeft)
+  const glyphs = computeEndzonePerspectiveGlyphs(mascot, isLeft, fontSize)
 
   return {
     abbrev,
@@ -140,11 +126,16 @@ export function resolveEndzoneDesign(side, fallbackColor = '#3f3f46', sideKey = 
  * Computes individual letter glyph positions, 3D perspective depth scaling,
  * and ground-plane alignment for authentic stadium end zones.
  *
+ * Each letter dynamically scales so that its height spans the exact same fraction
+ * (~78%) of the 10-yard end zone width at its specific location, naturally shrinking
+ * from near to far along with the 3D stadium perspective without extreme over-scaling.
+ *
  * @param {string} mascot - Team mascot wordmark (e.g. "FALCONS", "PACKERS")
  * @param {boolean} isLeft - True for away/left endzone, false for home/right endzone
- * @returns {Array<{ char: string, transform: string, s: number, x: number, y: number }>}
+ * @param {number} _fontSize - Base SVG font size (default 58)
+ * @returns {Array<{ char: string, transform: string, s: number, sy: number, x: number, y: number }>}
  */
-export function computeEndzonePerspectiveGlyphs(mascot, isLeft) {
+export function computeEndzonePerspectiveGlyphs(mascot, isLeft, _fontSize = 58) {
   const text = String(mascot || '').trim().toUpperCase()
   const len = text.length
   if (!len) return []
@@ -154,27 +145,28 @@ export function computeEndzonePerspectiveGlyphs(mascot, isLeft) {
   let yFar = 216
   let yNear = 454
   if (len <= 4) {
-    yFar = 236
-    yNear = 434
+    yFar = 240
+    yNear = 430
   } else if (len <= 6) {
-    yFar = 222
-    yNear = 448
+    yFar = 226
+    yNear = 444
   } else if (len <= 8) {
-    yFar = 214
-    yNear = 456
+    yFar = 216
+    yNear = 454
   } else {
     // 9-10 letters (e.g. BUCCANEERS, COMMANDERS)
-    yFar = 206
-    yNear = 464
+    yFar = 208
+    yNear = 462
   }
 
   const span = yNear - yFar
-  // 3D perspective depth scale:
-  // In true stadium perspective, the far endzone width is 71px and near width is 93px (ratio ~1.31)
-  // Letters visibly shrink as they recede into the distance (towards yFar)
-  const sFar = 0.62
-  const sNear = 1.08
-  const ratio = sNear / sFar // ~1.74
+  // Rational perspective spacing matching the ~1.305 ratio of near (94px) to far (72px) endzone width
+  const ratio = 94 / 72
+
+  // Reference width and height scale calibrated to span ~78% of the 10-yard end zone depth
+  const wRef = 89.7
+  const syRef = 1.28
+  const sBase = getMascotBaseWidthScale(len)
 
   const glyphs = []
   for (let i = 0; i < len; i++) {
@@ -190,15 +182,23 @@ export function computeEndzonePerspectiveGlyphs(mascot, isLeft) {
     // Project ground fraction u into screen perspective t
     const t = (Math.pow(ratio, u) - 1) / (ratio - 1)
     const y = yFar + t * span
-    const s = sFar + t * (sNear - sFar)
-    // 1.16 athletic height scale to fill end zone depth
-    const sy = s * 1.16
 
     // End zone 3D centerline x-coordinate at this vertical level y:
     const tField = (y - 191) / 287
     const x = isLeft
       ? 203.5 * (1 - tField) + 114.5 * tField
       : 1059.5 * (1 - tField) + 1145.5 * tField
+
+    // Width of the end zone between goal line and end line at this y:
+    const w = isLeft
+      ? 71 + 22 * tField
+      : 73 + 22 * tField
+
+    // Constant percentage scaling:
+    // sy ensures the letter height spans the exact same fraction of endzone width at any y
+    const sy = Number((syRef * (w / wRef)).toFixed(3))
+    // s preserves the aspect ratio along the sideline while respecting letter count density
+    const s = Number((sBase * (w / wRef)).toFixed(3))
 
     // Rotation:
     // Left endzone: -90 deg rotation with +16.5 deg perspective shear matching left yard lines
@@ -212,12 +212,28 @@ export function computeEndzonePerspectiveGlyphs(mascot, isLeft) {
       i,
       x: Number(x.toFixed(1)),
       y: Number(y.toFixed(1)),
-      s: Number(s.toFixed(3)),
+      w: Number(w.toFixed(1)),
+      s,
+      sy,
       transform,
     })
   }
 
   return glyphs
+}
+
+/**
+ * Base horizontal scale along the sideline depending on letter count
+ * to prevent character collision while filling available end zone corridor.
+ */
+function getMascotBaseWidthScale(len) {
+  if (len <= 4) return 1.20
+  if (len <= 5) return 1.10
+  if (len <= 6) return 1.04
+  if (len <= 7) return 0.98
+  if (len <= 8) return 0.88
+  if (len <= 9) return 0.78
+  return 0.70 // 10 letters e.g. BUCCANEERS, COMMANDERS
 }
 
 /** 3D Endzone boundary and typography paths (viewBox 0 0 1266 533) */

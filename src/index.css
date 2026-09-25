@@ -3871,6 +3871,45 @@ html.light [data-lounge-game-players] [data-roster-player-card] {
   border-color: #d4d4d8;
   box-shadow: 0 8px 24px rgba(24, 24, 27, 0.08);
 }
+
+/* Roster cards: gridiron texture tinted with the card color (no team wash). */
+[data-lounge-game-players] [data-roster-list],
+[data-lounge-game-players] [data-roster-player-card] {
+  position: relative;
+  isolation: isolate;
+}
+[data-lounge-game-players] [data-roster-list]::before,
+[data-lounge-game-players] [data-roster-player-card]::before {
+  content: '';
+  position: absolute;
+  inset: -12%;
+  z-index: 0;
+  pointer-events: none;
+  background: url('/sports/nfl/gridiron-silver.svg') center / cover no-repeat;
+  transform: rotate(-6deg) scale(1.08);
+  opacity: 1;
+}
+[data-lounge-game-players] [data-roster-list]::after,
+[data-lounge-game-players] [data-roster-player-card]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  /* Same as Tailwind bg-zinc-900 on the card. */
+  background-color: #18181b;
+  opacity: 0.9;
+}
+html.light [data-lounge-game-players] [data-roster-list]::after,
+html.light [data-lounge-game-players] [data-roster-player-card]::after {
+  background-color: #ffffff;
+  opacity: 0.92;
+}
+[data-lounge-game-players] [data-roster-list] > li,
+[data-lounge-game-players] [data-roster-player-card] > li {
+  position: relative;
+  z-index: 1;
+}
 html.light [data-lounge-game-players] [data-roster-season-stats] {
   background-color: #ffffff;
   border-color: #e4e4e7;

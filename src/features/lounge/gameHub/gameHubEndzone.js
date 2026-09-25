@@ -46,7 +46,7 @@ const GOLD_TEXT_TEAMS = new Set(['GB', 'PIT', 'WAS', 'MIN', 'LAR', 'KC'])
  * Universal end zone styling for all 32 NFL teams.
  * Calibrates colors, lighting gradients, dynamic letter scaling, and outlines.
  */
-export function resolveEndzoneDesign(side, fallbackColor = '#3f3f46') {
+export function resolveEndzoneDesign(side, fallbackColor = '#3f3f46', sideKey = 'left') {
   const abbrev = String(side?.abbrev || '').trim().toUpperCase()
   const catalog = NFL_TEAM_CATALOG.find((t) => t.abbrev === abbrev) || null
 
@@ -74,26 +74,26 @@ export function resolveEndzoneDesign(side, fallbackColor = '#3f3f46') {
   const gradMid = wash
   const gradDeep = mixHex(wash, '#000000', 0.16)
 
-  // Typography calibration: dynamic size & tracking for word lengths from 4 to 10 characters
+  // Typography calibration: dynamic size for word lengths from 4 to 10 characters
   // Calibrated for Impact athletic block typography to boldly span the end zone on mobile
   const len = mascot.length
-  let fontSize = 62
+  let fontSize = 58
   let letterSpacing = 5
   if (len <= 4) {
-    fontSize = 76
+    fontSize = 72
     letterSpacing = 14
   } else if (len <= 6) {
-    fontSize = 68
+    fontSize = 64
     letterSpacing = 8
   } else if (len <= 7) {
-    fontSize = 62
+    fontSize = 58
     letterSpacing = 5
   } else if (len <= 8) {
-    fontSize = 54
+    fontSize = 52
     letterSpacing = 4
   } else {
     // 9-10 letters (e.g. BUCCANEERS, COMMANDERS)
-    fontSize = 46
+    fontSize = 44
     letterSpacing = 2.5
   }
 
@@ -117,6 +117,9 @@ export function resolveEndzoneDesign(side, fallbackColor = '#3f3f46') {
     textStroke = '#000000'
   }
 
+  const isLeft = sideKey === 'left'
+  const glyphs = computeEndzonePerspectiveGlyphs(mascot, isLeft)
+
   return {
     abbrev,
     mascot,
@@ -129,7 +132,92 @@ export function resolveEndzoneDesign(side, fallbackColor = '#3f3f46') {
     textFill,
     textStroke,
     isGoldText,
+    glyphs,
   }
+}
+
+/**
+ * Computes individual letter glyph positions, 3D perspective depth scaling,
+ * and ground-plane alignment for authentic stadium end zones.
+ *
+ * @param {string} mascot - Team mascot wordmark (e.g. "FALCONS", "PACKERS")
+ * @param {boolean} isLeft - True for away/left endzone, false for home/right endzone
+ * @returns {Array<{ char: string, transform: string, s: number, x: number, y: number }>}
+ */
+export function computeEndzonePerspectiveGlyphs(mascot, isLeft) {
+  const text = String(mascot || '').trim().toUpperCase()
+  const len = text.length
+  if (!len) return []
+
+  // Dynamic corridor bounds based on word length to fill the end zone space
+  // Far sideline: y=191, Near sideline: y=478 (depth span: 287px)
+  let yFar = 216
+  let yNear = 454
+  if (len <= 4) {
+    yFar = 236
+    yNear = 434
+  } else if (len <= 6) {
+    yFar = 222
+    yNear = 448
+  } else if (len <= 8) {
+    yFar = 214
+    yNear = 456
+  } else {
+    // 9-10 letters (e.g. BUCCANEERS, COMMANDERS)
+    yFar = 206
+    yNear = 464
+  }
+
+  const span = yNear - yFar
+  // 3D perspective depth scale:
+  // In true stadium perspective, the far endzone width is 71px and near width is 93px (ratio ~1.31)
+  // Letters visibly shrink as they recede into the distance (towards yFar)
+  const sFar = 0.62
+  const sNear = 1.08
+  const ratio = sNear / sFar // ~1.74
+
+  const glyphs = []
+  for (let i = 0; i < len; i++) {
+    const char = text[i]
+    // Word reading flow:
+    // Right endzone (Packers): reads far-to-near (top-to-bottom), i=0 is at far sideline, i=len-1 is at near sideline
+    // Left endzone (Falcons): reads near-to-far (bottom-to-top), i=0 is at near sideline, i=len-1 is at far sideline
+    // so both have letter feet anchored along their respective goal lines, facing outward toward uprights.
+    const u = isLeft
+      ? (1 - (i + 0.5) / len)
+      : (i + 0.5) / len
+
+    // Project ground fraction u into screen perspective t
+    const t = (Math.pow(ratio, u) - 1) / (ratio - 1)
+    const y = yFar + t * span
+    const s = sFar + t * (sNear - sFar)
+    // 1.16 athletic height scale to fill end zone depth
+    const sy = s * 1.16
+
+    // End zone 3D centerline x-coordinate at this vertical level y:
+    const tField = (y - 191) / 287
+    const x = isLeft
+      ? 203.5 * (1 - tField) + 114.5 * tField
+      : 1059.5 * (1 - tField) + 1145.5 * tField
+
+    // Rotation:
+    // Left endzone: -90 deg rotation with +16.5 deg perspective shear matching left yard lines
+    // Right endzone: +90 deg rotation with -16.0 deg perspective shear matching right yard lines
+    const rot = isLeft ? -90 : 90
+    const skew = isLeft ? 16.5 : -16.0
+
+    const transform = `translate(${x.toFixed(1)}, ${y.toFixed(1)}) rotate(${rot}) skewY(${skew}) scale(${s.toFixed(3)}, ${sy.toFixed(3)})`
+    glyphs.push({
+      char,
+      i,
+      x: Number(x.toFixed(1)),
+      y: Number(y.toFixed(1)),
+      s: Number(s.toFixed(3)),
+      transform,
+    })
+  }
+
+  return glyphs
 }
 
 /** 3D Endzone boundary and typography paths (viewBox 0 0 1266 533) */

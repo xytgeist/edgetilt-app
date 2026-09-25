@@ -174,8 +174,8 @@ function FieldViz({ game, live, awayColor, homeColor }) {
   }
 
   const homeLogoSrc = game.home?.logo || ''
-  const awayEndzone = resolveEndzoneDesign(game.away, awayColor)
-  const homeEndzone = resolveEndzoneDesign(game.home, homeColor)
+  const awayEndzone = resolveEndzoneDesign(game.away, awayColor, 'left')
+  const homeEndzone = resolveEndzoneDesign(game.home, homeColor, 'right')
 
   return (
     <div data-lounge-game-field className="relative w-full px-1 pb-1 pt-0 sm:px-2">
@@ -226,8 +226,8 @@ function FieldViz({ game, live, awayColor, homeColor }) {
           <path d={ENDZONE_COORDS.right.paintPath} fill="url(#ez-home-grad)" />
 
           {/* Away Endzone Mascot Wordmark (Left) */}
-          {awayEndzone.mascot ? (
-            <g transform={ENDZONE_COORDS.left.transform}>
+          {awayEndzone.glyphs?.map((g, idx) => (
+            <g key={`away-glyph-${idx}`} transform={g.transform}>
               <text
                 x="0"
                 y="0"
@@ -240,10 +240,9 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 fontFamily="Impact, 'Arial Black', sans-serif"
                 fontSize={awayEndzone.fontSize}
                 fontWeight="900"
-                letterSpacing={awayEndzone.letterSpacing}
                 opacity="0.95"
               >
-                {awayEndzone.mascot}
+                {g.char}
               </text>
               <text
                 x="0"
@@ -257,9 +256,8 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 fontFamily="Impact, 'Arial Black', sans-serif"
                 fontSize={awayEndzone.fontSize}
                 fontWeight="900"
-                letterSpacing={awayEndzone.letterSpacing}
               >
-                {awayEndzone.mascot}
+                {g.char}
               </text>
               <text
                 x="0"
@@ -272,16 +270,15 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 fontFamily="Impact, 'Arial Black', sans-serif"
                 fontSize={awayEndzone.fontSize}
                 fontWeight="900"
-                letterSpacing={awayEndzone.letterSpacing}
               >
-                {awayEndzone.mascot}
+                {g.char}
               </text>
             </g>
-          ) : null}
+          ))}
 
           {/* Home Endzone Mascot Wordmark (Right) */}
-          {homeEndzone.mascot ? (
-            <g transform={ENDZONE_COORDS.right.transform}>
+          {homeEndzone.glyphs?.map((g, idx) => (
+            <g key={`home-glyph-${idx}`} transform={g.transform}>
               <text
                 x="0"
                 y="0"
@@ -294,10 +291,9 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 fontFamily="Impact, 'Arial Black', sans-serif"
                 fontSize={homeEndzone.fontSize}
                 fontWeight="900"
-                letterSpacing={homeEndzone.letterSpacing}
                 opacity="0.95"
               >
-                {homeEndzone.mascot}
+                {g.char}
               </text>
               <text
                 x="0"
@@ -311,9 +307,8 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 fontFamily="Impact, 'Arial Black', sans-serif"
                 fontSize={homeEndzone.fontSize}
                 fontWeight="900"
-                letterSpacing={homeEndzone.letterSpacing}
               >
-                {homeEndzone.mascot}
+                {g.char}
               </text>
               <text
                 x="0"
@@ -326,12 +321,11 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 fontFamily="Impact, 'Arial Black', sans-serif"
                 fontSize={homeEndzone.fontSize}
                 fontWeight="900"
-                letterSpacing={homeEndzone.letterSpacing}
               >
-                {homeEndzone.mascot}
+                {g.char}
               </text>
             </g>
-          ) : null}
+          ))}
 
           {/* Midfield Home Logo (perspective flattened on the 50-yd line) */}
           {homeLogoSrc ? (

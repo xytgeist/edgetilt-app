@@ -144,7 +144,7 @@ const YARD_MARKERS_FAR = YARD_MARKERS_CONFIG.map(({ p, label, dir }) => {
   return { p, label, dir, x, skewAngle }
 })
 
-function FieldViz({ game, live, awayColor, homeColor }) {
+function FieldViz({ game, live, awayColor: _awayColor, homeColor: _homeColor }) {
   if (!String(game.sport_key || '').includes('football')) return null
   if (game.status === 'pre') return null
   const pos = fieldPercent(live)
@@ -168,10 +168,6 @@ function FieldViz({ game, live, awayColor, homeColor }) {
     firstDownBot = 161.0 + (targetPos / 100) * 937.0
   }
 
-  const awayTint = awayColor || '#ef4444'
-  const homeTint = homeColor || '#22c55e'
-  const awayAbbrev = game.away?.abbrev || ''
-  const homeAbbrev = game.home?.abbrev || ''
   const homeLogoSrc = game.home?.logo || ''
 
   return (
@@ -206,60 +202,6 @@ function FieldViz({ game, live, awayColor, homeColor }) {
               <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#000000" floodOpacity="0.85" />
             </filter>
           </defs>
-
-          {/* Away Endzone Paint (rounded 6-segment path) */}
-          <path
-            d="M 239 191 L 168 191 Q 150 193 147 197 L 56 469 Q 58 477 68 478 L 161 478 Z"
-            fill={awayTint}
-            fillOpacity="0.82"
-            style={{ mixBlendMode: 'multiply' }}
-          />
-
-          {/* Away Endzone Wordmark / Abbreviation */}
-          {awayAbbrev ? (
-            <g transform="translate(150, 335) skewY(-15) scale(1, 0.85)">
-              <text
-                x="0"
-                y="11"
-                textAnchor="middle"
-                fill="#ffffff"
-                fillOpacity="0.92"
-                fontFamily="Impact, Arial Black, sans-serif"
-                fontSize={awayAbbrev.length > 3 ? '32' : '42'}
-                letterSpacing="3"
-                filter="url(#text-shadow)"
-              >
-                {awayAbbrev}
-              </text>
-            </g>
-          ) : null}
-
-          {/* Home Endzone Paint (rounded 6-segment path) */}
-          <path
-            d="M 1023 191 L 1096 191 Q 1113 193 1116 197 L 1208 469 Q 1205 477 1193 478 L 1098 478 Z"
-            fill={homeTint}
-            fillOpacity="0.82"
-            style={{ mixBlendMode: 'multiply' }}
-          />
-
-          {/* Home Endzone Wordmark / Abbreviation */}
-          {homeAbbrev ? (
-            <g transform="translate(1115, 335) skewY(15) scale(1, 0.85)">
-              <text
-                x="0"
-                y="11"
-                textAnchor="middle"
-                fill="#ffffff"
-                fillOpacity="0.92"
-                fontFamily="Impact, Arial Black, sans-serif"
-                fontSize={homeAbbrev.length > 3 ? '32' : '42'}
-                letterSpacing="3"
-                filter="url(#text-shadow)"
-              >
-                {homeAbbrev}
-              </text>
-            </g>
-          ) : null}
 
           {/* Midfield Home Logo (perspective flattened on the 50-yd line) */}
           {homeLogoSrc ? (

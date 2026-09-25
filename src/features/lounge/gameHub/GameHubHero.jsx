@@ -23,7 +23,7 @@ function TimeoutDots({ remaining, align = 'left' }) {
   const left = remaining == null ? TIMEOUT_SLOTS : Math.max(0, Math.min(TIMEOUT_SLOTS, Math.round(remaining)))
   return (
     <div
-      className={`mt-1.5 flex items-center gap-1 ${align === 'right' ? 'justify-end' : 'justify-start'}`}
+      className={`mt-0.5 flex items-center gap-1 ${align === 'right' ? 'justify-end' : 'justify-start'}`}
       aria-label={`${left} timeout${left === 1 ? '' : 's'} remaining`}
     >
       {Array.from({ length: TIMEOUT_SLOTS }, (_, i) => {
@@ -33,8 +33,8 @@ function TimeoutDots({ remaining, align = 'left' }) {
             key={i}
             className={
               available
-                ? 'h-1.5 w-1.5 rounded-full bg-white'
-                : 'h-1.5 w-1.5 rounded-full border border-white/70 bg-transparent'
+                ? 'h-1 w-3 rounded-[1px] bg-white'
+                : 'h-1 w-3 rounded-[1px] border border-white/55 bg-transparent'
             }
             aria-hidden="true"
           />
@@ -180,7 +180,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
   const homeEndzone = resolveEndzoneDesign(game?.home, homeColor, 'right')
 
   return (
-    <div data-lounge-game-field className="relative w-full px-1 pb-1 pt-0 sm:px-2">
+    <div data-lounge-game-field className="relative w-full px-1 pb-0 pt-0 sm:px-1.5">
       <div className="relative w-full overflow-hidden">
         {/* Layer 1: Floating field base graphic */}
         <img
@@ -670,6 +670,15 @@ export default function GameHubHero({
   const awayTimeouts = showLiveChrome ? (live?.away_timeouts ?? TIMEOUT_SLOTS) : null
   const homeTimeouts = showLiveChrome ? (live?.home_timeouts ?? TIMEOUT_SLOTS) : null
 
+  const isFinal = game.status === 'post'
+  const awayScoreN = Number(game.away?.score)
+  const homeScoreN = Number(game.home?.score)
+  const scoresComparable =
+    isFinal && Number.isFinite(awayScoreN) && Number.isFinite(homeScoreN)
+  const awayScoreDim = scoresComparable && awayScoreN < homeScoreN
+  const homeScoreDim = scoresComparable && homeScoreN < awayScoreN
+  const lastPlayText = String(lastPlay || '').trim()
+
   return (
     <div
       data-lounge-game-hero
@@ -687,48 +696,57 @@ export default function GameHubHero({
 
       {topBar ? <div className="relative z-[4]">{topBar}</div> : null}
 
-      <div className="relative z-[4] px-4 pb-2 pt-2">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
-            <LoungeSportsTeamLogo side={game.away} treatment={awayTreatment} size={52} />
-            <div className="min-w-0">
-              <div className="truncate text-[13px] font-semibold uppercase tracking-wide text-white/80">
+      {/* ESPN-style compact scoreboard: logo+abbrev | score || status || score | logo+abbrev */}
+      <div className="relative z-[4] px-3 pb-1 pt-1">
+        <div className="flex items-center justify-between gap-1.5">
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <div className="flex min-w-0 flex-col items-start">
+              <LoungeSportsTeamLogo side={game.away} treatment={awayTreatment} size={40} />
+              <div className="mt-0.5 truncate text-[11px] font-semibold uppercase tracking-wide text-white/80">
                 {game.away?.abbrev}
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="text-[40px] font-bold leading-none tabular-nums text-white drop-shadow">
-                  {scoreText(game.away, game.status)}
-                </div>
-                {awayHasBall ? <PossessionFootball side="away" /> : null}
               </div>
               {awayTimeouts != null ? <TimeoutDots remaining={awayTimeouts} align="left" /> : null}
             </div>
+            <div className="flex min-w-0 items-center gap-1.5">
+              <div
+                className={`text-[34px] font-bold leading-none tabular-nums drop-shadow ${
+                  awayScoreDim ? 'text-white/45' : 'text-white'
+                }`}
+              >
+                {scoreText(game.away, game.status)}
+              </div>
+              {awayHasBall ? <PossessionFootball side="away" /> : null}
+            </div>
           </div>
 
-          <div className="flex max-w-[38%] flex-col items-center gap-0.5 px-1 text-center">
+          <div className="flex max-w-[36%] shrink-0 flex-col items-center gap-0 px-1 text-center">
             <span
-              className={`text-[13px] font-bold tracking-wide ${
+              className={`text-[12px] font-bold tracking-wide ${
                 game.status === 'in' ? 'text-rose-300' : 'text-white/85'
               }`}
             >
               {clock}
             </span>
-            {down ? <span className="text-[12px] font-semibold text-white/90">{down}</span> : null}
-            {yard ? <span className="text-[12px] font-semibold text-white/70">{yard}</span> : null}
-            {kickoff ? <span className="text-[11px] font-medium text-white/70">{kickoff}</span> : null}
+            {down ? <span className="text-[11px] font-semibold leading-tight text-white/90">{down}</span> : null}
+            {yard ? <span className="text-[11px] font-semibold leading-tight text-white/70">{yard}</span> : null}
+            {kickoff ? <span className="text-[10px] font-medium leading-tight text-white/70">{kickoff}</span> : null}
           </div>
 
-          <div className="flex min-w-0 flex-1 flex-col items-end gap-1">
-            <LoungeSportsTeamLogo side={game.home} treatment={homeTreatment} size={52} />
-            <div className="min-w-0 text-right">
-              <div className="truncate text-[13px] font-semibold uppercase tracking-wide text-white/80">
-                {game.home?.abbrev}
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+            <div className="flex min-w-0 items-center gap-1.5">
+              {homeHasBall ? <PossessionFootball side="home" /> : null}
+              <div
+                className={`text-[34px] font-bold leading-none tabular-nums drop-shadow ${
+                  homeScoreDim ? 'text-white/45' : 'text-white'
+                }`}
+              >
+                {scoreText(game.home, game.status)}
               </div>
-              <div className="flex items-center justify-end gap-1.5">
-                {homeHasBall ? <PossessionFootball side="home" /> : null}
-                <div className="text-[40px] font-bold leading-none tabular-nums text-white drop-shadow">
-                  {scoreText(game.home, game.status)}
-                </div>
+            </div>
+            <div className="flex min-w-0 flex-col items-end">
+              <LoungeSportsTeamLogo side={game.home} treatment={homeTreatment} size={40} />
+              <div className="mt-0.5 truncate text-[11px] font-semibold uppercase tracking-wide text-white/80">
+                {game.home?.abbrev}
               </div>
               {homeTimeouts != null ? <TimeoutDots remaining={homeTimeouts} align="right" /> : null}
             </div>
@@ -745,20 +763,30 @@ export default function GameHubHero({
             homeColor={homeColor}
           />
         ) : null}
-        <FieldViz
-          game={game}
-          live={live}
-          awayColor={awayColor}
-          homeColor={homeColor}
-        />
-      </div>
-
-      {lastPlay ? (
-        <div className="relative z-[4] truncate px-4 pb-3 text-[12px] text-white/75">
-          <span className="font-semibold uppercase tracking-wide text-white/55">Last play </span>
-          {lastPlay}
+        <div className="relative">
+          <FieldViz
+            game={game}
+            live={live}
+            awayColor={awayColor}
+            homeColor={homeColor}
+          />
+          {lastPlayText ? (
+            <div
+              data-lounge-game-last-play
+              className="pointer-events-none absolute inset-x-2 bottom-2 z-[5] overflow-hidden rounded-xl border border-white/15 bg-black/55 px-3 py-2 shadow-lg backdrop-blur-md"
+            >
+              <div className="flex items-baseline gap-2">
+                <span className="shrink-0 text-[10px] font-bold uppercase tracking-[0.14em] text-white/45">
+                  Last play
+                </span>
+              </div>
+              <div className="mt-0.5 line-clamp-2 text-[12px] font-medium leading-snug text-white/90">
+                {lastPlayText}
+              </div>
+            </div>
+          ) : null}
         </div>
-      ) : null}
+      </div>
     </div>
   )
 }

@@ -184,7 +184,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
       <div className="relative w-full overflow-hidden">
         {/* Layer 1: Floating field base graphic */}
         <img
-          src="/sports/nfl/gamecast-field-floating.png?v=627"
+          src="/sports/nfl/gamecast-field-floating.png?v=628"
           alt="Gamecast Field"
           className="pointer-events-none block w-full select-none"
         />
@@ -555,7 +555,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
 
         {/* Layer 3: Foreground Goalposts Overlay (prevents endzone paint from tinting uprights/pads) */}
         <img
-          src="/sports/nfl/gamecast-goalposts-overlay.png?v=627"
+          src="/sports/nfl/gamecast-goalposts-overlay.png?v=628"
           alt=""
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 block h-full w-full select-none"

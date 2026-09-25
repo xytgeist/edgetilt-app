@@ -33,7 +33,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
-**Branch:** `test` (match `origin/test` before edits). `main` @ **`1b81b5ac`** (promoted 2026-09-21 evening, web **1.4.473**). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
+**Branch:** `test` (match `origin/test` before edits). `main` @ **`2353d3fc`** (promoted 2026-09-25, web **1.4.652**). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
 
 **Supabase (do not swap these):**
 
@@ -72,7 +72,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo ACTIVE TRACK 2026-09-25 ... sports hub league tiles
 
-**I am Mac Theo.** Sports Hub has NFL / NBA / MLB / NHL / PGA / MLS tiles. NFL opens NFL Hub. Others gray Coming soon. Web **`1.4.652`**.
+**I am Mac Theo.** Sports Hub has NFL / NBA / MLB / NHL / PGA / MLS tiles. NFL opens NFL Hub. Others gray Coming soon. Promoted **`test` → `main` (`2353d3fc`)**. Vercel prod web **`1.4.652`**. Also in this push: canceled-import Sentry ignore, kickoff local time (no zone suffix). No new prod SQL. Store IPA marketing still **1.4.95**.
 
 ### Mac Theo ACTIVE TRACK 2026-09-25 ... ignore canceled module imports
 

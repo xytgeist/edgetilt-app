@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-25:** **Promoted `test` → `main` (`2353d3fc`).** Vercel prod = web **`1.4.652`**. Sports Hub league tiles, Safari canceled-import ignore, kickoff local time (no zone suffix), Action Network splits scripts (home PC). No new prod SQL. Store IPA marketing still **1.4.95**.
 - **2026-09-25:** **Sports Hub league tiles (Mac).** Sports Hub shows NFL / NBA / MLB / NHL / PGA / MLS. NFL opens NFL Hub. The rest are grayed Coming soon. Light tiles scoped under `data-lounge-sports-hub-leagues`. Frontend **`1.4.652`**. Web only.
 - **2026-09-25:** **Action Network public-betting auto pull (Windows).** Home-PC cron replaces weekly Action PRO screenshots. API v2 `.../scoreboard/publicbetting/{nfl|ncaaf}` → ticket/handle % into `syndicate_betting_splits` (`action_pro`). HTML `__NEXT_DATA__` fallback. Install: `npm run syndicate:sync-action-splits:install-windows-task` (daily 10am + 6pm local). Manual: `npm run syndicate:sync-action-splits:both`. Paste UI kept for VSiN / repair.
 - **2026-09-25:** **Ignore Safari canceled module imports (Mac).** `Importing a module script is canceled` is a tab hide / remount abort, not a stale deploy. Swallow in `importRoute` + `unhandledrejection` (no reload). Sentry `ignoreErrors` + `beforeSend` drop it. Failed / MIME stale chunks still reload once. Frontend **`1.4.651`**. Web only.

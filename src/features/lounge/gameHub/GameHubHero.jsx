@@ -74,7 +74,7 @@ function FieldViz({ game, live }) {
       <div className="relative w-full overflow-hidden">
         {/* Floating field base graphic */}
         <img
-          src="/sports/nfl/gamecast-field-floating.png?v=606"
+          src="/sports/nfl/gamecast-field-floating.png?v=607"
           alt="Gamecast Field"
           className="pointer-events-none block w-full select-none"
         />

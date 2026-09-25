@@ -95,6 +95,10 @@ export type LoungeSportsGame = {
   away: LoungeSportsGameSide
   aliases: string[]
   live: LoungeSportsLiveState | null
+  /** National TV / stream label (e.g. "FOX", "Prime Video"). */
+  broadcast?: string | null
+  /** Watch / stream site for the broadcast pill. */
+  broadcast_url?: string | null
 }
 
 function espnLogo(league: string, abbrev: string): string {
@@ -599,27 +603,87 @@ function recordFromEspnCompetitor(c: Record<string, unknown>): string | null {
   return summary
 }
 
-const ESPN_RECORDS_TTL_MS = 10 * 60 * 1000
-let espnNflRecordsCache: { at: number; byAbbrev: Map<string, string> } | null = null
+/** Prefer national TV name from ESPN competition broadcasts / geoBroadcasts. */
+function broadcastFromEspnCompetition(comps: Record<string, unknown> | null | undefined): string | null {
+  if (!comps) return null
+  const broadcasts = Array.isArray(comps.broadcasts) ? comps.broadcasts as Array<Record<string, unknown>> : []
+  let fallback: string | null = null
+  for (const b of broadcasts) {
+    const names = Array.isArray(b.names) ? b.names.map((n) => String(n || '').trim()).filter(Boolean) : []
+    if (!names.length) continue
+    const market = String(b.market || '').toLowerCase()
+    if (market === 'national' || market === '') return names[0]
+    if (!fallback) fallback = names[0]
+  }
+  const geo = Array.isArray(comps.geoBroadcasts) ? comps.geoBroadcasts as Array<Record<string, unknown>> : []
+  for (const g of geo) {
+    const media = (g.media && typeof g.media === 'object') ? g.media as Record<string, unknown> : null
+    const short = String(media?.shortName || media?.name || '').trim()
+    if (!short) continue
+    const market = (g.market && typeof g.market === 'object')
+      ? String((g.market as Record<string, unknown>).type || '').toLowerCase()
+      : ''
+    if (market === 'national' || market === '') return short
+    if (!fallback) fallback = short
+  }
+  return fallback
+}
+
+/** Official / primary watch destinations for NFL national windows. */
+const NFL_WATCH_URL_BY_NETWORK: Array<{ match: RegExp; url: string; label?: string }> = [
+  { match: /\bprime\b|amazon/i, url: 'https://www.amazon.com/gp/video/sports', label: 'Prime Video' },
+  { match: /\bnetflix\b/i, url: 'https://www.netflix.com/', label: 'Netflix' },
+  { match: /\bpeacock\b/i, url: 'https://www.peacocktv.com/sports/nfl', label: 'Peacock' },
+  { match: /\bnbc\b/i, url: 'https://www.peacocktv.com/sports/nfl' },
+  { match: /\bcbs\b|paramount/i, url: 'https://www.paramountplus.com/sports/nfl/' },
+  { match: /\bfox\b|fs1\b/i, url: 'https://www.foxsports.com/live' },
+  { match: /\bespn\+?\b|\babc\b/i, url: 'https://www.espn.com/watch/' },
+  { match: /\bnfl\s*network\b|\bnfln\b/i, url: 'https://www.nfl.com/network/watch/', label: 'NFL Network' },
+  { match: /\bnfl\+/i, url: 'https://www.nfl.com/plus/', label: 'NFL+' },
+]
+
+function watchMetaForNetwork(network: string): { label: string; url: string } | null {
+  const raw = String(network || '').trim()
+  if (!raw) return null
+  for (const row of NFL_WATCH_URL_BY_NETWORK) {
+    if (row.match.test(raw)) {
+      return { label: row.label || raw, url: row.url }
+    }
+  }
+  // Unknown network … still show the label; link NFL.com watch hub as a safe default.
+  return { label: raw, url: 'https://www.nfl.com/schedules/' }
+}
+
+function espnMatchupKey(awayAbb: string, homeAbb: string, commenceIso: string): string {
+  return `${nflAbbrevKey(awayAbb)}@${nflAbbrevKey(homeAbb)}:${ptDateFromIso(commenceIso)}`
+}
+
+type EspnSlateExtras = {
+  recordsByAbbrev: Map<string, string>
+  broadcastByMatchup: Map<string, { label: string; url: string }>
+}
+
+const ESPN_SLATE_TTL_MS = 10 * 60 * 1000
+let espnNflSlateCache: { at: number; extras: EspnSlateExtras } | null = null
 
 /**
- * Season W-L from ESPN public scoreboard (unofficial). Cached 10m so the 45s
- * pill poll does not hammer ESPN. Allowed on test + prod (cheap vs PBP summary).
+ * Season W-L + national broadcast from ESPN public scoreboard (unofficial).
+ * Cached 10m so the 45s pill poll does not hammer ESPN. Allowed on test + prod.
  */
-async function loadEspnNflRecordsByAbbrev(
+async function loadEspnNflSlateExtras(
   games: LoungeSportsGame[],
-): Promise<Map<string, string>> {
-  if (espnNflRecordsCache && Date.now() - espnNflRecordsCache.at < ESPN_RECORDS_TTL_MS) {
-    return espnNflRecordsCache.byAbbrev
+): Promise<EspnSlateExtras> {
+  if (espnNflSlateCache && Date.now() - espnNflSlateCache.at < ESPN_SLATE_TTL_MS) {
+    return espnNflSlateCache.extras
   }
-  const byAbbrev = new Map<string, string>()
+  const recordsByAbbrev = new Map<string, string>()
+  const broadcastByMatchup = new Map<string, { label: string; url: string }>()
   const dateSet = new Set<string>()
   for (const g of games) {
     if (!String(g.sport_key || '').includes('americanfootball_nfl')) continue
     const day = ptDateFromIso(g.commence_time)
     if (day) dateSet.add(day.replace(/-/g, ''))
   }
-  // Undated board first (today's slate), then each kickoff date on our board.
   const dates = ['', ...[...dateSet].sort()]
   const headers = { 'User-Agent': 'EdgeTiltLounge/1.0', Accept: 'application/json' }
 
@@ -636,36 +700,61 @@ async function loadEspnNflRecordsByAbbrev(
         const competitors = Array.isArray(comps?.competitors)
           ? comps.competitors as Array<Record<string, unknown>>
           : []
+        let homeAbb = ''
+        let awayAbb = ''
         for (const c of competitors) {
           const team = (c.team && typeof c.team === 'object') ? c.team as Record<string, unknown> : {}
           const abb = nflAbbrevKey(team.abbreviation)
           const rec = recordFromEspnCompetitor(c)
-          if (abb && rec) byAbbrev.set(abb, rec)
+          if (abb && rec) recordsByAbbrev.set(abb, rec)
+          if (c.homeAway === 'home') homeAbb = abb
+          if (c.homeAway === 'away') awayAbb = abb
+        }
+        const network = broadcastFromEspnCompetition(comps)
+        const watch = network ? watchMetaForNetwork(network) : null
+        const commence = String(ev.date || comps?.date || '').trim()
+        if (watch && awayAbb && homeAbb && commence) {
+          broadcastByMatchup.set(espnMatchupKey(awayAbb, homeAbb, commence), watch)
         }
       }
     } catch {
-      // soft-fail … slate still paints without records
+      // soft-fail … slate still paints without extras
     }
   }))
 
-  espnNflRecordsCache = { at: Date.now(), byAbbrev }
-  return byAbbrev
+  const extras = { recordsByAbbrev, broadcastByMatchup }
+  espnNflSlateCache = { at: Date.now(), extras }
+  return extras
 }
 
-async function enrichNflRecordsFromEspn(games: LoungeSportsGame[]): Promise<LoungeSportsGame[]> {
+async function enrichNflEspnExtras(games: LoungeSportsGame[]): Promise<LoungeSportsGame[]> {
   const nfl = games.filter((g) => String(g.sport_key || '').includes('americanfootball_nfl'))
   if (!nfl.length) return games
-  const byAbbrev = await loadEspnNflRecordsByAbbrev(nfl)
-  if (!byAbbrev.size) return games
+  const { recordsByAbbrev, broadcastByMatchup } = await loadEspnNflSlateExtras(nfl)
+  if (!recordsByAbbrev.size && !broadcastByMatchup.size) return games
   return games.map((g) => {
     if (!String(g.sport_key || '').includes('americanfootball_nfl')) return g
-    const awayRec = byAbbrev.get(nflAbbrevKey(g.away?.abbrev)) || null
-    const homeRec = byAbbrev.get(nflAbbrevKey(g.home?.abbrev)) || null
-    if (!awayRec && !homeRec) return g
+    const awayRec = recordsByAbbrev.get(nflAbbrevKey(g.away?.abbrev)) || null
+    const homeRec = recordsByAbbrev.get(nflAbbrevKey(g.home?.abbrev)) || null
+    const watch = broadcastByMatchup.get(
+      espnMatchupKey(g.away?.abbrev || '', g.home?.abbrev || '', g.commence_time),
+    ) || null
+    const nextAway = awayRec ? { ...g.away, record: awayRec ?? g.away?.record ?? null } : g.away
+    const nextHome = homeRec ? { ...g.home, record: homeRec ?? g.home?.record ?? null } : g.home
+    const broadcast = watch?.label || g.broadcast || null
+    const broadcastUrl = watch?.url || g.broadcast_url || null
+    if (
+      nextAway === g.away
+      && nextHome === g.home
+      && broadcast === (g.broadcast || null)
+      && broadcastUrl === (g.broadcast_url || null)
+    ) return g
     return {
       ...g,
-      away: { ...g.away, record: awayRec ?? g.away?.record ?? null },
-      home: { ...g.home, record: homeRec ?? g.home?.record ?? null },
+      away: nextAway,
+      home: nextHome,
+      broadcast,
+      broadcast_url: broadcastUrl,
     }
   })
 }
@@ -733,7 +822,7 @@ export async function buildLoungeSportsScoreboard(
     if (d) return d
     return String(a.commence_time).localeCompare(String(b.commence_time))
   })
-  const withRecords = await enrichNflRecordsFromEspn(games)
+  const withRecords = await enrichNflEspnExtras(games)
   return { games: withRecords, source }
 }
 

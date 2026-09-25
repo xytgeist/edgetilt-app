@@ -25,8 +25,12 @@ function sameHubGame(a, b) {
   return (
     a.status === b.status &&
     a.status_label === b.status_label &&
+    a.broadcast === b.broadcast &&
+    a.broadcast_url === b.broadcast_url &&
     a.home?.score === b.home?.score &&
     a.away?.score === b.away?.score &&
+    a.home?.record === b.home?.record &&
+    a.away?.record === b.away?.record &&
     JSON.stringify(a.live || null) === JSON.stringify(b.live || null)
   )
 }
@@ -67,6 +71,8 @@ function preserveSpreads(next, prev) {
     const awayMl = sideNum(game.away, 'ml') ?? sideNum(old.away, 'ml')
     const homeRecord = game.home?.record || old.home?.record || null
     const awayRecord = game.away?.record || old.away?.record || null
+    const broadcast = game.broadcast || old.broadcast || null
+    const broadcastUrl = game.broadcast_url || old.broadcast_url || null
     if (
       homeSpread === sideNum(game.home, 'spread')
       && awaySpread === sideNum(game.away, 'spread')
@@ -74,9 +80,13 @@ function preserveSpreads(next, prev) {
       && awayMl === sideNum(game.away, 'ml')
       && homeRecord === (game.home?.record || null)
       && awayRecord === (game.away?.record || null)
+      && broadcast === (game.broadcast || null)
+      && broadcastUrl === (game.broadcast_url || null)
     ) return game
     return {
       ...game,
+      broadcast,
+      broadcast_url: broadcastUrl,
       home: { ...game.home, spread: homeSpread, ml: homeMl, record: homeRecord },
       away: { ...game.away, spread: awaySpread, ml: awayMl, record: awayRecord },
     }

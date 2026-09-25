@@ -4,6 +4,7 @@ import {
 } from '../loungeSportsPillPaint.jsx'
 import { formatLoungeSportsMoneyline } from '../LoungeGameScorePill.jsx'
 import { hubTeamLabel } from '../loungeSportsMatch.js'
+import { openExternalUrl } from '../../../utils/edgeNative.js'
 import {
   CORNER_PYLONS,
   ENDZONE_COORDS,
@@ -56,6 +57,27 @@ function PossessionFootball({ side }) {
       title={`${side} possession`}
       className="h-[14px] w-[14px] shrink-0 brightness-0 invert drop-shadow-[0_1px_1px_rgba(0,0,0,0.55)]"
     />
+  )
+}
+
+/** National TV / stream chip under the kickoff clock … opens the watch site. */
+function WatchBroadcastPill({ label, url }) {
+  const text = String(label || '').trim()
+  const href = String(url || '').trim()
+  if (!text) return null
+  return (
+    <button
+      type="button"
+      data-lounge-game-watch-pill
+      onClick={() => {
+        if (href) void openExternalUrl(href)
+      }}
+      disabled={!href}
+      className="mt-1 inline-flex max-w-full items-center justify-center rounded-full border border-white/25 bg-white/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm backdrop-blur-sm touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/25 disabled:opacity-60"
+      aria-label={href ? `Watch on ${text}` : text}
+    >
+      <span className="truncate">{text}</span>
+    </button>
   )
 }
 
@@ -746,6 +768,7 @@ export default function GameHubHero({
               </span>
               {down ? <span className="text-[11px] font-semibold leading-tight text-white/90">{down}</span> : null}
               {yard ? <span className="text-[11px] font-semibold leading-tight text-white/70">{yard}</span> : null}
+              <WatchBroadcastPill label={game.broadcast} url={game.broadcast_url} />
             </div>
 
             <div className="flex min-w-0 flex-1 items-center">
@@ -837,6 +860,7 @@ export default function GameHubHero({
               </span>
               {down ? <span className="text-[12px] font-semibold text-white/90">{down}</span> : null}
               {yard ? <span className="text-[12px] font-semibold text-white/70">{yard}</span> : null}
+              <WatchBroadcastPill label={game.broadcast} url={game.broadcast_url} />
             </div>
 
             <div className="flex min-w-0 flex-1 items-center">

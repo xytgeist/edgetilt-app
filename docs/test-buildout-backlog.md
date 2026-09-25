@@ -3791,3 +3791,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-25:** **Game Hub ML under spread + larger centered abbrevs:** Hero shows Pinnacle ML under the score/spread stack; team abbrevs larger and centered under logos. Bumped to v1.4.646.
 - **2026-09-25:** **Game Hub team records:** Slate enriches NFL sides with ESPN season W-L (`home.record` / `away.record`, 10m cache). Hero shows the record under each abbrev. Redeploy **`lounge-sports-scoreboard`**. Bumped to v1.4.647.
 - **2026-09-25:** **Game Hub pre-game full team names:** Pre hero labels use short full names (`LA Rams`, `Denver Broncos` via `hubTeamLabel`); live/final stay abbrevs. Bumped to v1.4.648.
+- **2026-09-25:** **Game Hub watch broadcast pill:** ESPN slate enrich adds `broadcast` + `broadcast_url`; hero shows a glass pill under kickoff/clock that opens FOX/CBS/NBC/Prime/etc. Redeploy **`lounge-sports-scoreboard`**. Bumped to v1.4.649.

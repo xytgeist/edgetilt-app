@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Revert Players Roster gridiron texture (Mac).** Pulled the card-tinted gridiron veil off roster list/cards. Web **`1.4.583`**.
 - **2026-09-24:** **Players Roster gridiron texture (Mac).** Roster list + expanded cards get gridiron texture under a zinc/white card-color veil (no team wash). Web **`1.4.582`**.
 - **2026-09-24:** **Game pills soft glow + slow ticker (Mac).** Feed score cards + hub hero use soft radial team glows (larger logos); hub top chips are logo matchup pills (`LoungeGameHubPillChip`) with auto-ticker; multi feed strips ticker via `useLoungeSlowTicker`. Web **`1.4.581`**.
 - **2026-09-24:** **Fantasy tab avatar fill + face zoom (Mac).** Rest-of-board circles get team color fill + tight face crop; H2H portraits zoom toward the face. Web **`1.4.580`**.

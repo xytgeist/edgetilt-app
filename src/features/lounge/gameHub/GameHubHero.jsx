@@ -101,8 +101,8 @@ const INBOUND_HASH_MARKS = (() => {
 })()
 
 // Numbers strictly on the 10-yard lines: 10, 20, 30, 40, 50, 40, 30, 20, 10
-// Moved inward: near row y=434 (was 446), far row y=236 (was 224)
-const Y_NUM_NEAR = 434
+// Near row equidistant between middle of hash mark (y=384.5) and sideline (y=478): y=431.25
+const Y_NUM_NEAR = 431.25
 const T_NUM_NEAR = (Y_NUM_NEAR - 191) / (478 - 191)
 
 const Y_NUM_FAR = 236
@@ -120,20 +120,22 @@ const YARD_MARKERS_CONFIG = [
   { p: 90, label: '10', dir: 'right' },
 ]
 
-// Near sideline yard markers (bottom of field)
+// Near sideline yard markers (bottom of field) angled to match hash mark perspective slant
 const YARD_MARKERS_NEAR = YARD_MARKERS_CONFIG.map(({ p, label, dir }) => {
   const xTop = 239.0 + (p / 100.0) * 784.0
   const xBot = 161.0 + (p / 100.0) * 937.0
   const x = xTop * (1 - T_NUM_NEAR) + xBot * T_NUM_NEAR
-  return { p, label, dir, x }
+  const angle = Math.atan2(xTop - xBot, 287.0) * (180 / Math.PI)
+  return { p, label, dir, x, angle }
 })
 
-// Far sideline yard markers (opposite/top of field)
+// Far sideline yard markers (opposite/top of field) angled to match hash mark perspective slant
 const YARD_MARKERS_FAR = YARD_MARKERS_CONFIG.map(({ p, label, dir }) => {
   const xTop = 239.0 + (p / 100.0) * 784.0
   const xBot = 161.0 + (p / 100.0) * 937.0
   const x = xTop * (1 - T_NUM_FAR) + xBot * T_NUM_FAR
-  return { p, label, dir, x }
+  const angle = Math.atan2(xTop - xBot, 287.0) * (180 / Math.PI)
+  return { p, label, dir, x, angle }
 })
 
 function FieldViz({ game, live, awayColor, homeColor }) {
@@ -303,8 +305,8 @@ function FieldViz({ game, live, awayColor, homeColor }) {
             />
           ))}
 
-          {/* Numbers strictly on the 10-yard lines: Far Sideline (opposite side, flipped upside down) */}
-          {YARD_MARKERS_FAR.map(({ p, label, dir, x }) => (
+          {/* Numbers strictly on the 10-yard lines: Far Sideline (opposite side, flipped upside down & angled to hash mark) */}
+          {YARD_MARKERS_FAR.map(({ p, label, dir, x, angle }) => (
             <g key={`far-${p}`} filter="url(#text-shadow-sm)">
               <text
                 x={x.toFixed(1)}
@@ -317,7 +319,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 fontSize="18"
                 fontWeight="900"
                 letterSpacing="0.5"
-                transform={`rotate(180, ${x.toFixed(1)}, ${Y_NUM_FAR})`}
+                transform={`rotate(${(180 + angle).toFixed(2)}, ${x.toFixed(1)}, ${Y_NUM_FAR})`}
               >
                 {label}
               </text>
@@ -326,6 +328,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                   points={`${(x - 23).toFixed(1)},${Y_NUM_FAR} ${(x - 16).toFixed(1)},${Y_NUM_FAR - 4} ${(x - 16).toFixed(1)},${Y_NUM_FAR + 4}`}
                   fill="#ffffff"
                   fillOpacity="0.85"
+                  transform={`rotate(${angle.toFixed(2)}, ${x.toFixed(1)}, ${Y_NUM_FAR})`}
                 />
               ) : null}
               {dir === 'right' ? (
@@ -333,14 +336,19 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                   points={`${(x + 23).toFixed(1)},${Y_NUM_FAR} ${(x + 16).toFixed(1)},${Y_NUM_FAR - 4} ${(x + 16).toFixed(1)},${Y_NUM_FAR + 4}`}
                   fill="#ffffff"
                   fillOpacity="0.85"
+                  transform={`rotate(${angle.toFixed(2)}, ${x.toFixed(1)}, ${Y_NUM_FAR})`}
                 />
               ) : null}
             </g>
           ))}
 
-          {/* Numbers strictly on the 10-yard lines: Near Sideline */}
-          {YARD_MARKERS_NEAR.map(({ p, label, dir, x }) => (
-            <g key={`near-${p}`} filter="url(#text-shadow)">
+          {/* Numbers strictly on the 10-yard lines: Near Sideline (angled to hash mark) */}
+          {YARD_MARKERS_NEAR.map(({ p, label, dir, x, angle }) => (
+            <g
+              key={`near-${p}`}
+              filter="url(#text-shadow)"
+              transform={`rotate(${angle.toFixed(2)}, ${x.toFixed(1)}, ${Y_NUM_NEAR})`}
+            >
               <text
                 x={x.toFixed(1)}
                 y={Y_NUM_NEAR}

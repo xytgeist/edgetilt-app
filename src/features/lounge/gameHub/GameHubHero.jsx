@@ -3,6 +3,11 @@ import {
   useLoungeSportsPillWashAndLogos,
 } from '../loungeSportsPillPaint.jsx'
 import {
+  CORNER_PYLONS,
+  ENDZONE_COORDS,
+  resolveEndzoneDesign,
+} from './gameHubEndzone.js'
+import {
   downDistanceLabel,
   fieldPercent,
   formatKickoff,
@@ -144,7 +149,7 @@ const YARD_MARKERS_FAR = YARD_MARKERS_CONFIG.map(({ p, label, dir }) => {
   return { p, label, dir, x, skewAngle }
 })
 
-function FieldViz({ game, live, awayColor: _awayColor, homeColor: _homeColor }) {
+function FieldViz({ game, live, awayColor, homeColor }) {
   if (!String(game.sport_key || '').includes('football')) return null
   if (game.status === 'pre') return null
   const pos = fieldPercent(live)
@@ -169,6 +174,8 @@ function FieldViz({ game, live, awayColor: _awayColor, homeColor: _homeColor }) 
   }
 
   const homeLogoSrc = game.home?.logo || ''
+  const awayEndzone = resolveEndzoneDesign(game.away, awayColor)
+  const homeEndzone = resolveEndzoneDesign(game.home, homeColor)
 
   return (
     <div data-lounge-game-field className="relative w-full px-1 pb-1 pt-0 sm:px-2">
@@ -201,7 +208,148 @@ function FieldViz({ game, live, awayColor: _awayColor, homeColor: _homeColor }) 
             <filter id="text-shadow-sm" x="-30%" y="-30%" width="160%" height="160%">
               <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#000000" floodOpacity="0.85" />
             </filter>
+            {/* Endzone lighting gradients */}
+            <linearGradient id="ez-away-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor={awayEndzone.gradSheen} stopOpacity="0.84" />
+              <stop offset="45%" stopColor={awayEndzone.gradMid} stopOpacity="0.78" />
+              <stop offset="100%" stopColor={awayEndzone.gradDeep} stopOpacity="0.86" />
+            </linearGradient>
+            <linearGradient id="ez-home-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor={homeEndzone.gradSheen} stopOpacity="0.84" />
+              <stop offset="45%" stopColor={homeEndzone.gradMid} stopOpacity="0.78" />
+              <stop offset="100%" stopColor={homeEndzone.gradDeep} stopOpacity="0.86" />
+            </linearGradient>
           </defs>
+
+          {/* Endzone Turf Washes */}
+          <path d={ENDZONE_COORDS.left.paintPath} fill="url(#ez-away-grad)" />
+          <path d={ENDZONE_COORDS.right.paintPath} fill="url(#ez-home-grad)" />
+
+          {/* Endzone Inset Chalk Frames (~2 yards inside perimeter) */}
+          <path
+            d={ENDZONE_COORDS.left.chalkPath}
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="1.6"
+            strokeOpacity="0.65"
+          />
+          <path
+            d={ENDZONE_COORDS.right.chalkPath}
+            fill="none"
+            stroke="#ffffff"
+            strokeWidth="1.6"
+            strokeOpacity="0.65"
+          />
+
+          {/* Away Endzone Mascot Wordmark (Left) */}
+          {awayEndzone.mascot ? (
+            <g transform={ENDZONE_COORDS.left.transform}>
+              <text
+                x="0"
+                y="0"
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill="none"
+                stroke="#000000"
+                strokeWidth="7"
+                strokeLinejoin="round"
+                fontFamily="'Arial Black', Impact, sans-serif"
+                fontSize={awayEndzone.fontSize}
+                fontWeight="900"
+                letterSpacing={awayEndzone.letterSpacing}
+                opacity="0.85"
+                filter="url(#text-shadow)"
+              >
+                {awayEndzone.mascot}
+              </text>
+              <text
+                x="0"
+                y="0"
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill="none"
+                stroke={awayEndzone.textStroke}
+                strokeWidth="4"
+                strokeLinejoin="round"
+                fontFamily="'Arial Black', Impact, sans-serif"
+                fontSize={awayEndzone.fontSize}
+                fontWeight="900"
+                letterSpacing={awayEndzone.letterSpacing}
+              >
+                {awayEndzone.mascot}
+              </text>
+              <text
+                x="0"
+                y="0"
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill={awayEndzone.textFill}
+                stroke={awayEndzone.isGoldText ? '#ffffff' : 'none'}
+                strokeWidth={awayEndzone.isGoldText ? '0.8' : '0'}
+                fontFamily="'Arial Black', Impact, sans-serif"
+                fontSize={awayEndzone.fontSize}
+                fontWeight="900"
+                letterSpacing={awayEndzone.letterSpacing}
+              >
+                {awayEndzone.mascot}
+              </text>
+            </g>
+          ) : null}
+
+          {/* Home Endzone Mascot Wordmark (Right) */}
+          {homeEndzone.mascot ? (
+            <g transform={ENDZONE_COORDS.right.transform}>
+              <text
+                x="0"
+                y="0"
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill="none"
+                stroke="#000000"
+                strokeWidth="7"
+                strokeLinejoin="round"
+                fontFamily="'Arial Black', Impact, sans-serif"
+                fontSize={homeEndzone.fontSize}
+                fontWeight="900"
+                letterSpacing={homeEndzone.letterSpacing}
+                opacity="0.85"
+                filter="url(#text-shadow)"
+              >
+                {homeEndzone.mascot}
+              </text>
+              <text
+                x="0"
+                y="0"
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill="none"
+                stroke={homeEndzone.textStroke}
+                strokeWidth="4"
+                strokeLinejoin="round"
+                fontFamily="'Arial Black', Impact, sans-serif"
+                fontSize={homeEndzone.fontSize}
+                fontWeight="900"
+                letterSpacing={homeEndzone.letterSpacing}
+              >
+                {homeEndzone.mascot}
+              </text>
+              <text
+                x="0"
+                y="0"
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill={homeEndzone.textFill}
+                stroke={homeEndzone.isGoldText ? '#ffffff' : 'none'}
+                strokeWidth={homeEndzone.isGoldText ? '0.8' : '0'}
+                fontFamily="'Arial Black', Impact, sans-serif"
+                fontSize={homeEndzone.fontSize}
+                fontWeight="900"
+                letterSpacing={homeEndzone.letterSpacing}
+              >
+                {homeEndzone.mascot}
+              </text>
+            </g>
+          ) : null}
 
           {/* Midfield Home Logo (perspective flattened on the 50-yd line) */}
           {homeLogoSrc ? (
@@ -376,6 +524,54 @@ function FieldViz({ game, live, awayColor: _awayColor, homeColor: _homeColor }) 
               />
             </g>
           ) : null}
+
+          {/* Corner Pylons (Fluorescent Orange at the 8 end zone corners with perspective scaling) */}
+          {CORNER_PYLONS.map(({ key, x, y, isNear }) => {
+            const w = isNear ? 4.5 : 3.2
+            const h = isNear ? 13 : 9.5
+            return (
+              <g key={key}>
+                {/* 3D ground shadow cast to the right/back */}
+                <ellipse
+                  cx={x + 1}
+                  cy={y + 1}
+                  rx={isNear ? 4 : 2.8}
+                  ry={isNear ? 1.8 : 1.2}
+                  fill="#000000"
+                  opacity="0.55"
+                />
+                {/* Pylon upright body */}
+                <rect
+                  x={x - w / 2}
+                  y={y - h}
+                  width={w}
+                  height={h}
+                  fill="#ff5500"
+                  stroke="#b83000"
+                  strokeWidth="0.5"
+                  rx="0.5"
+                />
+                {/* Front vertical highlight sheen */}
+                <line
+                  x1={x}
+                  y1={y - h + 1}
+                  x2={x}
+                  y2={y - 1}
+                  stroke="#ffaa44"
+                  strokeWidth={isNear ? 1.2 : 0.8}
+                  strokeOpacity="0.75"
+                />
+                {/* Top cap */}
+                <ellipse
+                  cx={x}
+                  cy={y - h}
+                  rx={w / 2}
+                  ry={isNear ? 1.2 : 0.8}
+                  fill="#ff8833"
+                />
+              </g>
+            )
+          })}
         </svg>
 
         {/* Layer 3: Foreground Goalposts Overlay (prevents endzone paint from tinting uprights/pads) */}

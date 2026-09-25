@@ -51,44 +51,103 @@ function PossessionFootball({ side }) {
   )
 }
 
-function FieldViz({ game, live }) {
+function FieldViz({ game, live, awayColor, homeColor }) {
   if (!String(game.sport_key || '').includes('football')) return null
   if (game.status === 'pre') return null
   const pos = fieldPercent(live)
-  if (pos == null && !live?.possession) return null
-  const left = pos == null ? 50 : pos
+  const hasLine = pos != null
+
+  // Map 0..100 yard line to 12.5% .. 87.5% across the floating field image
+  const scrimLeft = hasLine ? 12.5 + (pos / 100) * 75 : null
+
+  // First down line
+  let firstDownLeft = null
+  if (hasLine && live?.down && live?.distance && Number.isFinite(Number(live.distance))) {
+    const dist = Number(live.distance)
+    const dir = live.possession === 'home' ? -1 : 1
+    const targetPos = Math.max(0, Math.min(100, pos + dir * dist))
+    firstDownLeft = 12.5 + (targetPos / 100) * 75
+  }
+
+  const awayAbbrev = game.away?.abbrev || ''
+  const homeAbbrev = game.home?.abbrev || ''
+
   return (
-    <div data-lounge-game-field className="px-4 pb-3 pt-1">
-      <div className="relative h-[64px] overflow-hidden rounded-2xl border border-white/10 bg-emerald-900/90 shadow-inner">
+    <div data-lounge-game-field className="relative w-full px-1 pb-1 pt-0 sm:px-2">
+      <div className="relative w-full overflow-hidden">
+        {/* Floating field base graphic */}
+        <img
+          src="/sports/nfl/gamecast-field-floating.png"
+          alt="Gamecast Field"
+          className="pointer-events-none block w-full select-none"
+        />
+
+        {/* Dynamic overlay plane matching turf bounds: top 32.2%, height 51.8% */}
         <div
-          className="pointer-events-none absolute inset-0 opacity-40"
-          style={{
-            backgroundImage:
-              'repeating-linear-gradient(90deg, transparent, transparent 9.5%, rgba(255,255,255,0.08) 9.5%, rgba(255,255,255,0.08) 10%)',
-          }}
-        />
-        <div className="absolute inset-y-0 left-[20%] w-px bg-white/30" />
-        <div className="absolute inset-y-0 left-1/2 w-px bg-yellow-300/90" />
-        <div className="absolute inset-y-0 left-[80%] w-px bg-white/30" />
-        <span className="absolute left-2 top-1.5 text-[10px] font-bold uppercase tracking-wide text-white/85">
-          {game.away?.abbrev}
-        </span>
-        <span className="absolute right-2 top-1.5 text-[10px] font-bold uppercase tracking-wide text-white/85">
-          {game.home?.abbrev}
-        </span>
-        <span className="absolute bottom-1.5 left-[20%] -translate-x-1/2 text-[9px] font-semibold text-white/70">
-          20
-        </span>
-        <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-[9px] font-semibold text-white/70">
-          50
-        </span>
-        <span className="absolute bottom-1.5 left-[80%] -translate-x-1/2 text-[9px] font-semibold text-white/70">
-          20
-        </span>
-        <span
-          className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-amber-300 shadow-lg"
-          style={{ left: `${left}%` }}
-        />
+          className="pointer-events-none absolute inset-x-0"
+          style={{ top: '32.2%', height: '51.8%' }}
+        >
+          {/* Away Endzone (left) */}
+          <div
+            className="absolute bottom-0 left-[4.5%] top-0 flex w-[8%] items-center justify-center"
+            style={{
+              backgroundColor: awayColor || '#7f1d1d',
+              opacity: 0.5,
+              mixBlendMode: 'multiply',
+            }}
+          />
+          <div
+            className="absolute bottom-0 left-[4.5%] top-0 flex w-[8%] items-center justify-center select-none"
+            aria-hidden="true"
+          >
+            <span className="rotate-180 text-[11px] font-black uppercase tracking-wider text-white/90 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] [writing-mode:vertical-rl]">
+              {awayAbbrev}
+            </span>
+          </div>
+
+          {/* Home Endzone (right) */}
+          <div
+            className="absolute bottom-0 right-[4.5%] top-0 flex w-[8%] items-center justify-center"
+            style={{
+              backgroundColor: homeColor || '#14532d',
+              opacity: 0.5,
+              mixBlendMode: 'multiply',
+            }}
+          />
+          <div
+            className="absolute bottom-0 right-[4.5%] top-0 flex w-[8%] items-center justify-center select-none"
+            aria-hidden="true"
+          >
+            <span className="text-[11px] font-black uppercase tracking-wider text-white/90 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] [writing-mode:vertical-rl]">
+              {homeAbbrev}
+            </span>
+          </div>
+
+          {/* First down line (yellow) */}
+          {firstDownLeft != null ? (
+            <div
+              className="absolute bottom-0 top-0 w-[3px] -translate-x-1/2 bg-yellow-300 drop-shadow-[0_0_6px_rgba(253,224,71,0.9)]"
+              style={{ left: `${firstDownLeft}%` }}
+            />
+          ) : null}
+
+          {/* Line of scrimmage (light blue) */}
+          {scrimLeft != null ? (
+            <div
+              className="absolute bottom-0 top-0 w-[3px] -translate-x-1/2 bg-sky-400 drop-shadow-[0_0_6px_rgba(56,189,248,0.9)]"
+              style={{ left: `${scrimLeft}%` }}
+            >
+              {/* Ball marker */}
+              <div className="absolute top-1/2 flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/80 bg-zinc-950/80 shadow-md">
+                <img
+                  src={FOOTBALL_POSSESSION_ICON}
+                  alt=""
+                  className="h-3 w-3 brightness-0 invert"
+                />
+              </div>
+            </div>
+          ) : null}
+        </div>
       </div>
     </div>
   )
@@ -269,7 +328,12 @@ export default function GameHubHero({
           awayColor={awayColor}
           homeColor={homeColor}
         />
-        <FieldViz game={game} live={live} />
+        <FieldViz
+          game={game}
+          live={live}
+          awayColor={awayColor}
+          homeColor={homeColor}
+        />
       </div>
 
       {lastPlay ? (

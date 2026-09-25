@@ -113,7 +113,12 @@
     "poker:catalog:sync:production:dry": "node scripts/sync-poker-tournament-catalog.mjs --target=production --dry-run",
     "poker:catalog:sync:mirror": "node scripts/sync-poker-tournament-catalog.mjs --target=test --mirror-production",
     "poker:catalog:sync:mirror:dry": "node scripts/sync-poker-tournament-catalog.mjs --target=test --mirror-production --dry-run",
-    "poker:catalog:install-windows-task": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-poker-catalog-windows-task.ps1"
+    "poker:catalog:install-windows-task": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-poker-catalog-windows-task.ps1",
+    "syndicate:sync-action-splits:test": "node scripts/sync-action-public-betting-splits.mjs --target=test",
+    "syndicate:sync-action-splits:test:dry": "node scripts/sync-action-public-betting-splits.mjs --target=test --dry-run",
+    "syndicate:sync-action-splits:production": "node scripts/sync-action-public-betting-splits.mjs --target=production",
+    "syndicate:sync-action-splits:both": "node scripts/sync-action-public-betting-splits.mjs --target=both",
+    "syndicate:sync-action-splits:install-windows-task": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-action-public-betting-windows-task.ps1"
   },
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",

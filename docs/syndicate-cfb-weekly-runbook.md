@@ -56,7 +56,7 @@ Public site shows Consensus + Off/Def/HFA/Tempo. Model A/B/C columns are **blurr
 | Current spreads / juice from books | **Live** via odds poll / ingest | — |
 | **Market file** (`lounge_market_files`) | **Live on poll** (test after `20260902200000` + Edge redeploy) | Open = first seen; current = each poll; close locks ≤5 min before kickoff (or after start). Prefers Pinnacle/Circa/LowVig else consensus. Football uses next-slate cluster (not just “today PT”). |
 | Key numbers / hooks | **Partial** | Useful; not a full steam desk |
-| Betting splits / RLM | **Paste path live** | Table `syndicate_betting_splits` + **https://sharpesyndicate.com/ops** → Chedda Splits Paste (also still on EdgeTilt bots). Paste/drop Action PRO screenshots (multi + Ctrl+V) or manual row; vision extracts ticket%/handle%. Synthetic never votes. Real API still five-figure fork. |
+| Betting splits / RLM | **Auto pull live** | Home-PC cron pulls Action Network public betting (API v2) → `syndicate_betting_splits` (`source=action_pro`). Ops paste / vision still works as backup (VSiN + repair). |
 | Weather / rest / travel | **Modules exist** | Not yet first-class Tank totals publish lane |
 | Starting QB / injury modifiers | **Live** (`syndicate_side_modifiers` + Rundown×PVAL) | Manual CFB first; auto only on known PVAL. Scott vs **current** market; Rocco gets hurt-side strength flag (not Scott’s pts). |
 | Desk scoreboard (ATS/CLV by desk + bucket) | **Live (test + prod)** | Edge `syndicate_monthly_scoreboard` + **Ops** Monthly Board (and EdgeTilt Sharp Desk). Bucket×desk is truth; desk rollup is mixed/informal. CLV = side vs locked close. Trust floor **n ≥ 25**. No adaptive weights until real sample. FEI waits. |
@@ -238,7 +238,7 @@ Treat desks at different confidence. Do not pretend Chedda has Circa handle.
 ### Close gaps later (priority … not this build sprint)
 
 1. **Chedda splits** … real ticket/handle (Action / paid steam). Until then keep his bucket weight low.
-2. **Chedda Action PRO nag emails (planned):** day before Fri lock (NFL 1pm PT / CFB 12pm PT), email Ryan every **10 minutes** until paste is in `syndicate_betting_splits` (or skipped). Stop when screenshots submitted.
+2. **Chedda Action PRO nag emails (parked):** auto pull replaces weekly screenshots. Keep ops paste as backup. Nag emails only if puller is down.
 3. **Syndicate collection failure monitoring (planned):** Edge Monitor registry for slate/grade/VIP crons + Odds API / table freshness. **Done 2026-09-02:** Tue GHA syncs **prod + test** + heartbeat `syndicate_football_metrics_sync_production`.
 4. **Scott juice / live CLV** … PASS when the number already moved to the model.
 5. **Rocco trenches** … SP+ line units, CFBD havoc/stuff, returning/gutted OL flags so he can disagree with raw power.

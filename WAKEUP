@@ -58,7 +58,17 @@ The agent should treat the following as **standing instructions for this session
 
 ## Pick up here (Aug 2026 ... session 2026-08-22)
 
-**Dual-machine handoff.** Ryan has **Cursor on Mac** + **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. **2026-09-21 evening:** Mac ending landscape/rail/Poker pane track at web **`1.4.462`**. Windows owns sports-pill paint + live-data decision. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
+**Dual-machine handoff.** Ryan has **Cursor on Mac** + **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
+
+### Windows Theo ACTIVE TRACK 2026-09-25 ... Action public-betting auto pull
+
+**I am Windows Theo.** Weekly Action PRO screenshots are replaced by a home-PC puller (same idea as MTTDB).
+
+- **Fetch:** `api.actionnetwork.com/web/v2/scoreboard/publicbetting/{nfl|ncaaf}` (ticket % / handle % on spread + totals). HTML `__NEXT_DATA__` fallback if API fails.
+- **Write:** `syndicate_betting_splits` with `source=action_pro` (deactivates prior Action rows only … VSiN paste stays).
+- **Scripts:** `npm run syndicate:sync-action-splits:test:dry` / `:both`. Install task: `npm run syndicate:sync-action-splits:install-windows-task` (daily **10:00 AM + 6:00 PM** local).
+- **Ops paste UI** stays as backup / VSiN.
+- **Ryan next:** run the install task once on the Windows box so it actually fires.
 
 ### Mac Theo ACTIVE TRACK 2026-09-25 ... ignore canceled module imports
 

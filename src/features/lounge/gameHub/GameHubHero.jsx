@@ -60,6 +60,8 @@ function FieldViz({ game, live }) {
  */
 function HeroPublicBetting({ game, splits, awayColor, homeColor }) {
   if (!splits) return null
+  // Live: clock / down-distance own the chrome … hide public bets/$ bar.
+  if (game?.status === 'in') return null
   const awayBets = Math.max(0, Math.min(100, Number(splits.away_ticket_pct)))
   const homeBets = Math.max(0, Math.min(100, Number(splits.home_ticket_pct)))
   const awayMoney = Math.max(0, Math.min(100, Number(splits.away_handle_pct)))

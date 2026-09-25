@@ -43,8 +43,18 @@ export function signedPoint(point) {
   return String(n)
 }
 
+/** Pre-game: show ATS spread (same shape as feed pills). Live/final: score. */
 export function scoreText(side, status) {
-  if (status === 'pre' || side?.score == null) return '-'
+  if (status === 'pre') {
+    const point = side?.spread
+    if (point == null || !Number.isFinite(Number(point))) return '-'
+    const n = Number(point)
+    if (n === 0) return 'PK'
+    const abs = Math.abs(n)
+    const body = Number.isInteger(abs) ? String(abs) : String(abs)
+    return n > 0 ? `+${body}` : `-${body}`
+  }
+  if (side?.score == null) return '-'
   return String(side.score)
 }
 

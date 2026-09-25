@@ -137,12 +137,12 @@ function classifyRundownStatus(status: string, detail: string): 'pre' | 'in' | '
 function formatKickoffLabel(iso: string): string {
   const t = Date.parse(iso)
   if (!Number.isFinite(t)) return 'Upcoming'
+  // PT wall clock without zone suffix … clients prefer commence_time for true local.
   return new Intl.DateTimeFormat('en-US', {
     timeZone: 'America/Los_Angeles',
     weekday: 'short',
     hour: 'numeric',
     minute: '2-digit',
-    timeZoneName: 'short',
   }).format(new Date(t))
 }
 

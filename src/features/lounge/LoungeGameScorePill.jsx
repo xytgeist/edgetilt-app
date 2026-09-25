@@ -6,6 +6,7 @@ import {
   LoungeSportsTeamLogo,
   useLoungeSportsPillWashAndLogos,
 } from './loungeSportsPillPaint.jsx'
+import { formatKickoff, stripTimeZoneSuffix } from './gameHub/gameHubFormatters.js'
 
 const PRE_SPREAD_MAX_PX = 28
 const PRE_SPREAD_MIN_PX = 13
@@ -161,6 +162,10 @@ export default function LoungeGameScorePill({
   const homeSpread = formatLoungeSportsSpread(game.home?.spread)
   const awayMl = formatLoungeSportsMoneyline(game.away?.ml)
   const homeMl = formatLoungeSportsMoneyline(game.home?.ml)
+  const statusDisplay =
+    game.status === 'pre'
+      ? formatKickoff(game.commence_time) || stripTimeZoneSuffix(game.status_label) || 'Upcoming'
+      : game.status_label
   const coverNote = homeCovered
     ? `${game.home?.abbrev} covered`
     : awayCovered
@@ -178,7 +183,7 @@ export default function LoungeGameScorePill({
       : [homeSpread, homeMl].filter(Boolean).join(' ')
   const label = pendingInclude
     ? `Tap to include ${game.away?.abbrev} at ${game.home?.abbrev}`
-    : `${game.away?.abbrev} ${scoreLabel(game.away, game.status)}${awayLine ? ` ${awayLine}` : ''} ${game.home?.abbrev} ${scoreLabel(game.home, game.status)}${homeLine ? ` ${homeLine}` : ''} ${game.status_label}${coverNote ? ` ${coverNote}` : ''}`
+    : `${game.away?.abbrev} ${scoreLabel(game.away, game.status)}${awayLine ? ` ${awayLine}` : ''} ${game.home?.abbrev} ${scoreLabel(game.home, game.status)}${homeLine ? ` ${homeLine}` : ''} ${statusDisplay}${coverNote ? ` ${coverNote}` : ''}`
 
   return (
     <div
@@ -224,7 +229,7 @@ export default function LoungeGameScorePill({
           <span data-lounge-game-pill-status>
             {live ? <span className="mb-0.5 h-1.5 w-1.5 rounded-full bg-rose-400 shadow-[0_0_8px_rgba(251,113,133,0.9)]" /> : null}
             <span className="text-center text-[10px] font-semibold uppercase leading-tight tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]">
-              {game.status_label}
+              {statusDisplay}
             </span>
           </span>
           <span data-lounge-game-pill-score-gutter>

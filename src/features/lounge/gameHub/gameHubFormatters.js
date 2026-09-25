@@ -60,13 +60,24 @@ export function scoreText(side, status) {
 
 export function liveClockLabel(game, live) {
   if (game.status === 'post') return game.status_label || 'Final'
-  if (game.status === 'pre') return game.status_label || 'Upcoming'
+  if (game.status === 'pre') {
+    return formatKickoff(game.commence_time) || stripTimeZoneSuffix(game.status_label) || 'Upcoming'
+  }
   const period = live?.period != null ? ordinal(live.period) : ''
   const clock = String(live?.clock || '').trim()
   if (period && clock) return `${period} ${clock}`
   if (clock) return clock
   if (period) return period
   return game.status_label || 'Live'
+}
+
+/** Drop trailing zone tokens (PDT, EST, GMT+1, …) from a kickoff label. */
+export function stripTimeZoneSuffix(label) {
+  const s = String(label || '').trim()
+  if (!s) return ''
+  return s
+    .replace(/\s+(?:[A-Z]{2,5}|GMT[+-]?\d{0,2}|UTC[+-]?\d{0,2})$/i, '')
+    .trim()
 }
 
 export function downDistanceLabel(live) {
@@ -113,10 +124,9 @@ export function formatKickoff(commenceTime) {
   if (!commenceTime) return ''
   const d = new Date(commenceTime)
   if (Number.isNaN(d.getTime())) return ''
+  // Local wall time … no timeZoneName (PDT/EST) so it reads as the viewer's clock.
   return d.toLocaleString(undefined, {
     weekday: 'short',
-    month: 'short',
-    day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
   })

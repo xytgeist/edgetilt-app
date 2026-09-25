@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { american, formatPostAge, ordinal, periodLabel, signedPoint } from './gameHubFormatters.js'
+import { american, formatKickoff, formatPostAge, ordinal, periodLabel, signedPoint, stripTimeZoneSuffix } from './gameHubFormatters.js'
 import { feedPostDisplayCaption } from '../../../utils/communityFeedPost.js'
 
 function numOrNull(v) {
@@ -237,7 +237,11 @@ export function BoxScoreCard({ game }) {
             ? ` · ${new Date(game.commence_time).toLocaleDateString(undefined, { weekday: 'short' })}`
             : ''}
         </span>
-        <span className={live ? 'text-rose-400' : ''}>{game.status_label}</span>
+        <span className={live ? 'text-rose-400' : ''}>
+          {game.status === 'pre'
+            ? formatKickoff(game.commence_time) || stripTimeZoneSuffix(game.status_label) || 'Upcoming'
+            : game.status_label}
+        </span>
       </div>
       {cols > 0 ? (
         <div className="overflow-x-auto px-3 py-2">

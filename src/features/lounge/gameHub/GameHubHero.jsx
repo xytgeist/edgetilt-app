@@ -344,9 +344,13 @@ function FieldViz({ game, live, awayColor, homeColor }) {
             </g>
           ) : null}
 
-          {/* Playing Field Sidelines (Goal Line to Goal Line) */}
-          <line x1="239" y1="191" x2="1023" y2="191" stroke="#ffffff" strokeWidth="2.2" strokeOpacity="0.85" />
-          <line x1="161" y1="478" x2="1098" y2="478" stroke="#ffffff" strokeWidth="2.5" strokeOpacity="0.85" />
+          {/* Field Sidelines (Continuous boundary lines running full length through both end zones) */}
+          <line x1="168" y1="191" x2="1096" y2="191" stroke="#ffffff" strokeWidth="2.2" strokeOpacity="0.85" />
+          <line x1="68" y1="478" x2="1193" y2="478" stroke="#ffffff" strokeWidth="2.5" strokeOpacity="0.85" />
+
+          {/* End Lines (Out of bounds lines framing the back of each end zone) */}
+          <line x1="168" y1="191" x2="68" y2="478" stroke="#ffffff" strokeWidth="3.0" strokeOpacity="0.95" />
+          <line x1="1096" y1="191" x2="1193" y2="478" stroke="#ffffff" strokeWidth="3.0" strokeOpacity="0.95" />
 
           {/* 21 Yard Lines (every 5 yards from 0 to 100, including Goal Lines) */}
           {YARD_LINES.map(({ p, isGoal, isMajor, xTop, xBot }) => (

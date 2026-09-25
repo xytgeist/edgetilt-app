@@ -1149,6 +1149,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Gamecast 3D field master rebuild + dynamic SVG overlay (Mac).** Rebuilt high-res 3D field asset with correct 10-yard numbering sequence, exact 4-hashmark segments, and halo-free alpha un-mixing. Built 3-layer architecture in GameHubHero: Base turf slab (Layer 1), dynamic SVG overlay with 6-segment rounded-corner team endzone paint, 3D-perspective wordmarks, midfield home logo, and perspective-slanted scrimmage/first-down lines (Layer 2), and foreground goalposts overlay (Layer 3) to prevent endzone paint from tinting uprights and red pads. Web **`1.4.606`**.
+
 - **2026-09-24:** **Remove Gamecast field endzone overlay boxes (Mac).** Dropped translucent team-color boxes and vertical abbrevs so clean 3D turf and endlines show through. Web **`1.4.597`**.
 - **2026-09-24:** **Floating Gamecast field in hero (Mac).** Replaced 64px 2D bar with panoramic floating field diorama asset (`gamecast-field-floating.png`) stretching edge-to-edge with uprights barely in frame; dynamic team-color endzones, scrimmage line (sky-blue), 1st down line (yellow), and football ball marker. Web **`1.4.596`**.
 - **2026-09-24:** **Gamecast field swap (Mac).** Replaced the diorama with a clean white-keyed render (`gamecast-field-floating.png`). Goalposts stay in the source pixels (no vector overlay). Scrimmage plane retargeted to this cutout: turf `top 36.8%` / `height 56.7%`, goal line to goal line `15.4%`–`84.0%` at mid-turf depth. Web **`1.4.598`**.

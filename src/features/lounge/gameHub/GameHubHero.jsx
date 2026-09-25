@@ -51,64 +51,192 @@ function PossessionFootball({ side }) {
   )
 }
 
-function FieldViz({ game, live }) {
+function FieldViz({ game, live, awayColor, homeColor }) {
   if (!String(game.sport_key || '').includes('football')) return null
   if (game.status === 'pre') return null
   const pos = fieldPercent(live)
   const hasLine = pos != null
 
-  // Map 0..100 between the goal lines at mid-turf depth (perspective slants the lines).
-  const scrimLeft = hasLine ? 15.4 + (pos / 100) * 68.6 : null
+  // Calibrated 3D field coordinates (viewBox="0 0 1266 533")
+  // Left Goal Line: top=(239.0, 191), bot=(161.0, 478)
+  // Right Goal Line: top=(1023.0, 191), bot=(1098.0, 478)
+  const scrimTop = hasLine ? 239.0 + (pos / 100) * 784.0 : null
+  const scrimBot = hasLine ? 161.0 + (pos / 100) * 937.0 : null
+  const scrimMidX = hasLine ? (scrimTop + scrimBot) / 2 : null
 
   // First down line
-  let firstDownLeft = null
+  let firstDownTop = null
+  let firstDownBot = null
   if (hasLine && live?.down && live?.distance && Number.isFinite(Number(live.distance))) {
     const dist = Number(live.distance)
     const dir = live.possession === 'home' ? -1 : 1
     const targetPos = Math.max(0, Math.min(100, pos + dir * dist))
-    firstDownLeft = 15.4 + (targetPos / 100) * 68.6
+    firstDownTop = 239.0 + (targetPos / 100) * 784.0
+    firstDownBot = 161.0 + (targetPos / 100) * 937.0
   }
+
+  const awayTint = awayColor || '#ef4444'
+  const homeTint = homeColor || '#22c55e'
+  const awayAbbrev = game.away?.abbrev || ''
+  const homeAbbrev = game.home?.abbrev || ''
+  const homeLogoSrc = game.home?.logo || ''
 
   return (
     <div data-lounge-game-field className="relative w-full px-1 pb-1 pt-0 sm:px-2">
       <div className="relative w-full overflow-hidden">
-        {/* Floating field base graphic */}
+        {/* Layer 1: Floating field base graphic */}
         <img
-          src="/sports/nfl/gamecast-field-floating.png?v=607"
+          src="/sports/nfl/gamecast-field-floating.png?v=608"
           alt="Gamecast Field"
           className="pointer-events-none block w-full select-none"
         />
 
-        {/* Dynamic overlay plane matching turf bounds on this cutout */}
-        <div
-          className="pointer-events-none absolute inset-x-0"
-          style={{ top: '36.8%', height: '56.7%' }}
+        {/* Layer 2: Dynamic SVG overlay plane matching 3D field coordinates */}
+        <svg
+          viewBox="0 0 1266 533"
+          className="pointer-events-none absolute inset-0 h-full w-full select-none"
+          xmlns="http://www.w3.org/2000/svg"
         >
+          <defs>
+            <filter id="glow-scrim" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="2.5" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+            <filter id="glow-1st" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="2.5" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+            <filter id="text-shadow" x="-30%" y="-30%" width="160%" height="160%">
+              <feDropShadow dx="1" dy="2" stdDeviation="1.5" floodColor="#000000" floodOpacity="0.8" />
+            </filter>
+          </defs>
+
+          {/* Away Endzone Paint (rounded 6-segment path) */}
+          <path
+            d="M 239 191 L 168 191 Q 150 193 147 197 L 56 469 Q 58 477 68 478 L 161 478 Z"
+            fill={awayTint}
+            fillOpacity="0.82"
+            style={{ mixBlendMode: 'multiply' }}
+          />
+
+          {/* Away Endzone Wordmark / Abbreviation */}
+          {awayAbbrev ? (
+            <g transform="translate(150, 335) skewY(-15) scale(1, 0.85)">
+              <text
+                x="0"
+                y="11"
+                textAnchor="middle"
+                fill="#ffffff"
+                fillOpacity="0.92"
+                fontFamily="Impact, Arial Black, sans-serif"
+                fontSize={awayAbbrev.length > 3 ? '32' : '42'}
+                letterSpacing="3"
+                filter="url(#text-shadow)"
+              >
+                {awayAbbrev}
+              </text>
+            </g>
+          ) : null}
+
+          {/* Home Endzone Paint (rounded 6-segment path) */}
+          <path
+            d="M 1023 191 L 1096 191 Q 1113 193 1116 197 L 1208 469 Q 1205 477 1193 478 L 1098 478 Z"
+            fill={homeTint}
+            fillOpacity="0.82"
+            style={{ mixBlendMode: 'multiply' }}
+          />
+
+          {/* Home Endzone Wordmark / Abbreviation */}
+          {homeAbbrev ? (
+            <g transform="translate(1115, 335) skewY(15) scale(1, 0.85)">
+              <text
+                x="0"
+                y="11"
+                textAnchor="middle"
+                fill="#ffffff"
+                fillOpacity="0.92"
+                fontFamily="Impact, Arial Black, sans-serif"
+                fontSize={homeAbbrev.length > 3 ? '32' : '42'}
+                letterSpacing="3"
+                filter="url(#text-shadow)"
+              >
+                {homeAbbrev}
+              </text>
+            </g>
+          ) : null}
+
+          {/* Midfield Home Logo (perspective flattened on the 50-yd line) */}
+          {homeLogoSrc ? (
+            <g transform="translate(628.7, 334.5) scale(1, 0.72) translate(-628.7, -334.5)">
+              <image
+                href={homeLogoSrc}
+                x={628.7 - 38}
+                y={334.5 - 38}
+                width="76"
+                height="76"
+                preserveAspectRatio="xMidYMid meet"
+                opacity="0.85"
+                style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.6))' }}
+              />
+            </g>
+          ) : null}
+
           {/* First down line (yellow) */}
-          {firstDownLeft != null ? (
-            <div
-              className="absolute bottom-0 top-0 w-[3px] -translate-x-1/2 bg-yellow-300 drop-shadow-[0_0_6px_rgba(253,224,71,0.9)]"
-              style={{ left: `${firstDownLeft}%` }}
+          {firstDownTop != null && firstDownBot != null ? (
+            <line
+              x1={firstDownTop}
+              y1={191}
+              x2={firstDownBot}
+              y2={478}
+              stroke="#fde047"
+              strokeWidth="3.5"
+              strokeLinecap="round"
+              filter="url(#glow-1st)"
             />
           ) : null}
 
           {/* Line of scrimmage (light blue) */}
-          {scrimLeft != null ? (
-            <div
-              className="absolute bottom-0 top-0 w-[3px] -translate-x-1/2 bg-sky-400 drop-shadow-[0_0_6px_rgba(56,189,248,0.9)]"
-              style={{ left: `${scrimLeft}%` }}
-            >
-              {/* Ball marker */}
-              <div className="absolute top-1/2 flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-white/80 bg-zinc-950/80 shadow-md">
-                <img
-                  src={FOOTBALL_POSSESSION_ICON}
-                  alt=""
-                  className="h-3 w-3 brightness-0 invert"
-                />
-              </div>
-            </div>
+          {scrimTop != null && scrimBot != null ? (
+            <g>
+              <line
+                x1={scrimTop}
+                y1={191}
+                x2={scrimBot}
+                y2={478}
+                stroke="#38bdf8"
+                strokeWidth="3.5"
+                strokeLinecap="round"
+                filter="url(#glow-scrim)"
+              />
+              {/* Ball marker at mid-depth on scrimmage line */}
+              <circle
+                cx={scrimMidX}
+                cy={334.5}
+                r={10.5}
+                fill="#09090b"
+                stroke="#ffffff"
+                strokeWidth="1.5"
+                style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.7))' }}
+              />
+              <image
+                href={FOOTBALL_POSSESSION_ICON}
+                x={scrimMidX - 7}
+                y={334.5 - 7}
+                width="14"
+                height="14"
+                style={{ filter: 'brightness(0) invert(1)' }}
+              />
+            </g>
           ) : null}
-        </div>
+        </svg>
+
+        {/* Layer 3: Foreground Goalposts Overlay (prevents endzone paint from tinting uprights/pads) */}
+        <img
+          src="/sports/nfl/gamecast-goalposts-overlay.png?v=608"
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 block h-full w-full select-none"
+        />
       </div>
     </div>
   )
@@ -289,7 +417,12 @@ export default function GameHubHero({
           awayColor={awayColor}
           homeColor={homeColor}
         />
-        <FieldViz game={game} live={live} />
+        <FieldViz
+          game={game}
+          live={live}
+          awayColor={awayColor}
+          homeColor={homeColor}
+        />
       </div>
 
       {lastPlay ? (

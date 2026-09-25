@@ -12,7 +12,9 @@ function rejectionMessage(err) {
 
 /**
  * Safari / WebKit aborted a dynamic import on purpose (tab hide, remount, nav).
- * Not a stale deploy. Do not reload. Swallow so Sentry does not page it.
+ * Not a stale deploy. Do not hard-reload the page … but DO retry the import.
+ * Returning a never-settling promise left React.lazy on the black Suspense forever
+ * (iPhone Chrome / Safari refresh after deploy).
  * @param {unknown} err
  */
 export function isCanceledModuleImport(err) {
@@ -69,30 +71,47 @@ export function reloadOnceForStaleChunk(reloadKey = STALE_CHUNK_RELOAD_KEY) {
 }
 
 /**
+ * @param {() => Promise<unknown>} importFn
+ * @returns {Promise<{ default: import('react').ComponentType<any> }>}
+ */
+function loadLazyModule(importFn) {
+  return importFn().then((mod) => {
+    // React.lazy requires `{ default: Component }`. A missing default usually means the
+    // browser got HTML (SPA fallback) or a mismatched chunk after deploy.
+    if (mod == null || typeof /** @type {{ default?: unknown }} */ (mod).default === 'undefined') {
+      throw new Error('Lazy route module missing default export')
+    }
+    return /** @type {{ default: import('react').ComponentType<any> }} */ (mod)
+  })
+}
+
+/**
  * Wrap dynamic import() so a stale deploy (missing hashed chunk → HTML fallback) triggers one reload.
+ * WebKit cancel on refresh → retry a few times instead of hanging Suspense on zinc-950.
  * Use for prefetch `void importRoute(...)` as well as lazy routes.
  * @param {() => Promise<unknown>} importFn
  * @param {string} [reloadKey]
  */
 export function importRoute(importFn, reloadKey = STALE_CHUNK_RELOAD_KEY) {
-  return importFn()
-    .then((mod) => {
-      // React.lazy requires `{ default: Component }`. A missing default usually means the
-      // browser got HTML (SPA fallback) or a mismatched chunk after deploy.
-      if (mod == null || typeof /** @type {{ default?: unknown }} */ (mod).default === 'undefined') {
-        throw new Error('Lazy route module missing default export')
-      }
-      return /** @type {{ default: import('react').ComponentType<any> }} */ (mod)
-    })
-    .catch((err) => {
-      if (isCanceledModuleImport(err)) {
-        return new Promise(() => {})
+  const MAX_CANCEL_ATTEMPTS = 3
+
+  const attempt = (cancelAttempt) =>
+    loadLazyModule(importFn).catch((err) => {
+      if (isCanceledModuleImport(err) && cancelAttempt < MAX_CANCEL_ATTEMPTS) {
+        const waitMs = 32 * (cancelAttempt + 1)
+        return new Promise((resolve, reject) => {
+          window.setTimeout(() => {
+            attempt(cancelAttempt + 1).then(resolve, reject)
+          }, waitMs)
+        })
       }
       if (isStaleChunkLoadError(err) && reloadOnceForStaleChunk(reloadKey)) {
         return new Promise(() => {})
       }
       throw err
     })
+
+  return attempt(0)
 }
 
 /** @deprecated Prefer importRoute — kept as alias for existing call sites. */

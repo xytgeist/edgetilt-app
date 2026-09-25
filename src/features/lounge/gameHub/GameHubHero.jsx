@@ -326,22 +326,22 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 fill="#ffffff"
                 fillOpacity="0.88"
                 fontFamily="'Arial Black', Impact, sans-serif"
-                fontSize="32"
+                fontSize="26"
                 fontWeight="900"
-                letterSpacing="1"
+                letterSpacing="0.8"
               >
                 {label}
               </text>
               {dir === 'left' ? (
                 <polygon
-                  points="32,0 24,-6 24,6"
+                  points="26,0 19,-5 19,5"
                   fill="#ffffff"
                   fillOpacity="0.85"
                 />
               ) : null}
               {dir === 'right' ? (
                 <polygon
-                  points="-32,0 -24,-6 -24,6"
+                  points="-26,0 -19,-5 -19,5"
                   fill="#ffffff"
                   fillOpacity="0.85"
                 />
@@ -364,22 +364,22 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 fill="#ffffff"
                 fillOpacity="0.92"
                 fontFamily="'Arial Black', Impact, sans-serif"
-                fontSize="42"
+                fontSize="34"
                 fontWeight="900"
-                letterSpacing="1.5"
+                letterSpacing="1.2"
               >
                 {label}
               </text>
               {dir === 'left' ? (
                 <polygon
-                  points="-40,0 -30,-7.5 -30,7.5"
+                  points="-33,0 -25,-6 -25,6"
                   fill="#ffffff"
                   fillOpacity="0.88"
                 />
               ) : null}
               {dir === 'right' ? (
                 <polygon
-                  points="40,0 30,-7.5 30,7.5"
+                  points="33,0 25,-6 25,6"
                   fill="#ffffff"
                   fillOpacity="0.88"
                 />

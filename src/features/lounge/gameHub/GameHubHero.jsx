@@ -697,63 +697,123 @@ export default function GameHubHero({
 
       {topBar ? <div className="relative z-[4]">{topBar}</div> : null}
 
-      {/* Compact scoreboard: logo | score mid-gap | status | score mid-gap | logo */}
-      <div className="relative z-[4] px-3 pb-1 pt-1">
-        <div className="flex items-center justify-between gap-1.5">
-          <div className="flex min-w-0 flex-1 items-center">
-            <div className="flex shrink-0 flex-col items-start">
-              <LoungeSportsTeamLogo side={game.away} treatment={awayTreatment} size={40} />
-              <div className="mt-0.5 truncate text-[11px] font-semibold uppercase tracking-wide text-white/80">
-                {game.away?.abbrev}
+      {showField ? (
+        /* Condensed scoreboard only while the 3D field is up: logo | score mid-gap | status | … */
+        <div className="relative z-[4] px-3 pb-1 pt-1">
+          <div className="flex items-center justify-between gap-1.5">
+            <div className="flex min-w-0 flex-1 items-center">
+              <div className="flex shrink-0 flex-col items-start">
+                <LoungeSportsTeamLogo side={game.away} treatment={awayTreatment} size={40} />
+                <div className="mt-0.5 truncate text-[11px] font-semibold uppercase tracking-wide text-white/80">
+                  {game.away?.abbrev}
+                </div>
+                {awayTimeouts != null ? <TimeoutDots remaining={awayTimeouts} align="left" /> : null}
               </div>
-              {awayTimeouts != null ? <TimeoutDots remaining={awayTimeouts} align="left" /> : null}
+              <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1">
+                <div
+                  className={`text-[34px] font-bold leading-none tabular-nums drop-shadow ${
+                    awayScoreDim ? 'text-white/45' : 'text-white'
+                  }`}
+                >
+                  {scoreText(game.away, game.status)}
+                </div>
+                {awayHasBall ? <PossessionFootball side="away" /> : null}
+              </div>
             </div>
-            <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1">
-              <div
-                className={`text-[34px] font-bold leading-none tabular-nums drop-shadow ${
-                  awayScoreDim ? 'text-white/45' : 'text-white'
+
+            <div className="flex max-w-[36%] shrink-0 flex-col items-center gap-0 px-1 text-center">
+              <span
+                className={`text-[12px] font-bold tracking-wide ${
+                  game.status === 'in' ? 'text-rose-300' : 'text-white/85'
                 }`}
               >
-                {scoreText(game.away, game.status)}
-              </div>
-              {awayHasBall ? <PossessionFootball side="away" /> : null}
+                {clock}
+              </span>
+              {down ? <span className="text-[11px] font-semibold leading-tight text-white/90">{down}</span> : null}
+              {yard ? <span className="text-[11px] font-semibold leading-tight text-white/70">{yard}</span> : null}
+              {kickoff ? <span className="text-[10px] font-medium leading-tight text-white/70">{kickoff}</span> : null}
             </div>
-          </div>
 
-          <div className="flex max-w-[36%] shrink-0 flex-col items-center gap-0 px-1 text-center">
-            <span
-              className={`text-[12px] font-bold tracking-wide ${
-                game.status === 'in' ? 'text-rose-300' : 'text-white/85'
-              }`}
-            >
-              {clock}
-            </span>
-            {down ? <span className="text-[11px] font-semibold leading-tight text-white/90">{down}</span> : null}
-            {yard ? <span className="text-[11px] font-semibold leading-tight text-white/70">{yard}</span> : null}
-            {kickoff ? <span className="text-[10px] font-medium leading-tight text-white/70">{kickoff}</span> : null}
-          </div>
-
-          <div className="flex min-w-0 flex-1 items-center">
-            <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1">
-              {homeHasBall ? <PossessionFootball side="home" /> : null}
-              <div
-                className={`text-[34px] font-bold leading-none tabular-nums drop-shadow ${
-                  homeScoreDim ? 'text-white/45' : 'text-white'
-                }`}
-              >
-                {scoreText(game.home, game.status)}
+            <div className="flex min-w-0 flex-1 items-center">
+              <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1">
+                {homeHasBall ? <PossessionFootball side="home" /> : null}
+                <div
+                  className={`text-[34px] font-bold leading-none tabular-nums drop-shadow ${
+                    homeScoreDim ? 'text-white/45' : 'text-white'
+                  }`}
+                >
+                  {scoreText(game.home, game.status)}
+                </div>
               </div>
-            </div>
-            <div className="flex shrink-0 flex-col items-end">
-              <LoungeSportsTeamLogo side={game.home} treatment={homeTreatment} size={40} />
-              <div className="mt-0.5 truncate text-[11px] font-semibold uppercase tracking-wide text-white/80">
-                {game.home?.abbrev}
+              <div className="flex shrink-0 flex-col items-end">
+                <LoungeSportsTeamLogo side={game.home} treatment={homeTreatment} size={40} />
+                <div className="mt-0.5 truncate text-[11px] font-semibold uppercase tracking-wide text-white/80">
+                  {game.home?.abbrev}
+                </div>
+                {homeTimeouts != null ? <TimeoutDots remaining={homeTimeouts} align="right" /> : null}
               </div>
-              {homeTimeouts != null ? <TimeoutDots remaining={homeTimeouts} align="right" /> : null}
             </div>
           </div>
         </div>
-      </div>
+      ) : (
+        /* Roomier pre/post scoreboard: logo stacked over abbrev + large score */
+        <div className="relative z-[4] px-4 pb-3 pt-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
+              <LoungeSportsTeamLogo side={game.away} treatment={awayTreatment} size={52} />
+              <div className="min-w-0">
+                <div className="truncate text-[13px] font-semibold uppercase tracking-wide text-white/80">
+                  {game.away?.abbrev}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div
+                    className={`text-[40px] font-bold leading-none tabular-nums drop-shadow ${
+                      awayScoreDim ? 'text-white/45' : 'text-white'
+                    }`}
+                  >
+                    {scoreText(game.away, game.status)}
+                  </div>
+                  {awayHasBall ? <PossessionFootball side="away" /> : null}
+                </div>
+                {awayTimeouts != null ? <TimeoutDots remaining={awayTimeouts} align="left" /> : null}
+              </div>
+            </div>
+
+            <div className="flex max-w-[38%] flex-col items-center gap-0.5 px-1 text-center">
+              <span
+                className={`text-[13px] font-bold tracking-wide ${
+                  game.status === 'in' ? 'text-rose-300' : 'text-white/85'
+                }`}
+              >
+                {clock}
+              </span>
+              {down ? <span className="text-[12px] font-semibold text-white/90">{down}</span> : null}
+              {yard ? <span className="text-[12px] font-semibold text-white/70">{yard}</span> : null}
+              {kickoff ? <span className="text-[11px] font-medium text-white/70">{kickoff}</span> : null}
+            </div>
+
+            <div className="flex min-w-0 flex-1 flex-col items-end gap-1">
+              <LoungeSportsTeamLogo side={game.home} treatment={homeTreatment} size={52} />
+              <div className="min-w-0 text-right">
+                <div className="truncate text-[13px] font-semibold uppercase tracking-wide text-white/80">
+                  {game.home?.abbrev}
+                </div>
+                <div className="flex items-center justify-end gap-1.5">
+                  {homeHasBall ? <PossessionFootball side="home" /> : null}
+                  <div
+                    className={`text-[40px] font-bold leading-none tabular-nums drop-shadow ${
+                      homeScoreDim ? 'text-white/45' : 'text-white'
+                    }`}
+                  >
+                    {scoreText(game.home, game.status)}
+                  </div>
+                </div>
+                {homeTimeouts != null ? <TimeoutDots remaining={homeTimeouts} align="right" /> : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="relative z-[4]">
         {SHOW_HERO_PUBLIC_SPLITS ? (

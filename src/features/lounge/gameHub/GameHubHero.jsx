@@ -101,10 +101,11 @@ const INBOUND_HASH_MARKS = (() => {
 })()
 
 // Numbers strictly on the 10-yard lines: 10, 20, 30, 40, 50, 40, 30, 20, 10
-const Y_NUM_NEAR = 446
+// Moved inward: near row y=434 (was 446), far row y=236 (was 224)
+const Y_NUM_NEAR = 434
 const T_NUM_NEAR = (Y_NUM_NEAR - 191) / (478 - 191)
 
-const Y_NUM_FAR = 224
+const Y_NUM_FAR = 236
 const T_NUM_FAR = (Y_NUM_FAR - 191) / (478 - 191)
 
 const YARD_MARKERS_CONFIG = [
@@ -170,7 +171,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
       <div className="relative w-full overflow-hidden">
         {/* Layer 1: Floating field base graphic */}
         <img
-          src="/sports/nfl/gamecast-field-floating.png?v=613"
+          src="/sports/nfl/gamecast-field-floating.png?v=614"
           alt="Gamecast Field"
           className="pointer-events-none block w-full select-none"
         />
@@ -302,32 +303,34 @@ function FieldViz({ game, live, awayColor, homeColor }) {
             />
           ))}
 
-          {/* Numbers strictly on the 10-yard lines: Far Sideline (opposite side) */}
+          {/* Numbers strictly on the 10-yard lines: Far Sideline (opposite side, flipped upside down) */}
           {YARD_MARKERS_FAR.map(({ p, label, dir, x }) => (
             <g key={`far-${p}`} filter="url(#text-shadow-sm)">
               <text
                 x={x.toFixed(1)}
-                y="224"
+                y={Y_NUM_FAR}
                 textAnchor="middle"
+                dominantBaseline="central"
                 fill="#ffffff"
                 fillOpacity="0.88"
                 fontFamily="'Arial Black', Impact, sans-serif"
-                fontSize="14"
+                fontSize="18"
                 fontWeight="900"
                 letterSpacing="0.5"
+                transform={`rotate(180, ${x.toFixed(1)}, ${Y_NUM_FAR})`}
               >
                 {label}
               </text>
               {dir === 'left' ? (
                 <polygon
-                  points={`${(x - 20).toFixed(1)},219 ${(x - 15).toFixed(1)},215 ${(x - 15).toFixed(1)},223`}
+                  points={`${(x - 23).toFixed(1)},${Y_NUM_FAR} ${(x - 16).toFixed(1)},${Y_NUM_FAR - 4} ${(x - 16).toFixed(1)},${Y_NUM_FAR + 4}`}
                   fill="#ffffff"
                   fillOpacity="0.85"
                 />
               ) : null}
               {dir === 'right' ? (
                 <polygon
-                  points={`${(x + 20).toFixed(1)},219 ${(x + 15).toFixed(1)},215 ${(x + 15).toFixed(1)},223`}
+                  points={`${(x + 23).toFixed(1)},${Y_NUM_FAR} ${(x + 16).toFixed(1)},${Y_NUM_FAR - 4} ${(x + 16).toFixed(1)},${Y_NUM_FAR + 4}`}
                   fill="#ffffff"
                   fillOpacity="0.85"
                 />
@@ -340,12 +343,13 @@ function FieldViz({ game, live, awayColor, homeColor }) {
             <g key={`near-${p}`} filter="url(#text-shadow)">
               <text
                 x={x.toFixed(1)}
-                y="450"
+                y={Y_NUM_NEAR}
                 textAnchor="middle"
+                dominantBaseline="central"
                 fill="#ffffff"
                 fillOpacity="0.90"
                 fontFamily="'Arial Black', Impact, sans-serif"
-                fontSize="20"
+                fontSize="26"
                 fontWeight="900"
                 letterSpacing="1"
               >
@@ -353,14 +357,14 @@ function FieldViz({ game, live, awayColor, homeColor }) {
               </text>
               {dir === 'left' ? (
                 <polygon
-                  points={`${(x - 25).toFixed(1)},444 ${(x - 19).toFixed(1)},440 ${(x - 19).toFixed(1)},448`}
+                  points={`${(x - 32).toFixed(1)},${Y_NUM_NEAR} ${(x - 23).toFixed(1)},${Y_NUM_NEAR - 5.5} ${(x - 23).toFixed(1)},${Y_NUM_NEAR + 5.5}`}
                   fill="#ffffff"
                   fillOpacity="0.85"
                 />
               ) : null}
               {dir === 'right' ? (
                 <polygon
-                  points={`${(x + 25).toFixed(1)},444 ${(x + 19).toFixed(1)},440 ${(x + 19).toFixed(1)},448`}
+                  points={`${(x + 32).toFixed(1)},${Y_NUM_NEAR} ${(x + 23).toFixed(1)},${Y_NUM_NEAR - 5.5} ${(x + 23).toFixed(1)},${Y_NUM_NEAR + 5.5}`}
                   fill="#ffffff"
                   fillOpacity="0.85"
                 />
@@ -419,7 +423,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
 
         {/* Layer 3: Foreground Goalposts Overlay (prevents endzone paint from tinting uprights/pads) */}
         <img
-          src="/sports/nfl/gamecast-goalposts-overlay.png?v=613"
+          src="/sports/nfl/gamecast-goalposts-overlay.png?v=614"
           alt=""
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 block h-full w-full select-none"

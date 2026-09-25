@@ -329,21 +329,6 @@ function FieldViz({ game, live, awayColor, homeColor }) {
             </g>
           ))}
 
-          {/* Midfield Home Logo (perspective flattened on the 50-yd line, painted onto grass under yard lines) */}
-          {homeLogoSrc ? (
-            <g transform="translate(628.7, 334.5) scale(1, 0.72) translate(-628.7, -334.5)">
-              <image
-                href={homeLogoSrc}
-                x={628.7 - 72}
-                y={334.5 - 72}
-                width="144"
-                height="144"
-                preserveAspectRatio="xMidYMid meet"
-                opacity="0.65"
-              />
-            </g>
-          ) : null}
-
           {/* Field Sidelines (Continuous boundary lines running full length through both end zones) */}
           <line x1="168" y1="191" x2="1096" y2="191" stroke="#ffffff" strokeWidth="2.2" strokeOpacity="0.85" />
           <line x1="68" y1="478" x2="1193" y2="478" stroke="#ffffff" strokeWidth="2.5" strokeOpacity="0.85" />
@@ -455,6 +440,21 @@ function FieldViz({ game, live, awayColor, homeColor }) {
               ) : null}
             </g>
           ))}
+
+          {/* Midfield Home Logo (perspective flattened on the 50-yd line, painted on top of yard lines with slight transparency) */}
+          {homeLogoSrc ? (
+            <g transform="translate(628.7, 334.5) scale(1, 0.72) translate(-628.7, -334.5)">
+              <image
+                href={homeLogoSrc}
+                x={628.7 - 72}
+                y={334.5 - 72}
+                width="144"
+                height="144"
+                preserveAspectRatio="xMidYMid meet"
+                opacity="0.92"
+              />
+            </g>
+          ) : null}
 
           {/* First down line (yellow) */}
           {firstDownTop != null && firstDownBot != null ? (

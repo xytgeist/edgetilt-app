@@ -1,5 +1,8 @@
 import { pickAmbiguousTeamGame, pickSpecificMatchupGame, gameHasTeam, sideAbbrev } from './loungeSportsSlateWindow.js'
 import { LOUNGE_SPORTS_GAME_PIN_MAX } from './loungeSportsGameField.js'
+import { CFB_TEAM_CATALOG } from './cfbTeamCatalog.generated.js'
+
+export { CFB_TEAM_CATALOG }
 
 /** NFL aliases + notable names so captions like "Jayden Daniels" still hit today's game. */
 export const NFL_TEAM_CATALOG = [
@@ -46,6 +49,23 @@ for (const row of NFL_TEAM_CATALOG) {
 CATALOG_BY_ABBREV.set('JAC', CATALOG_BY_ABBREV.get('JAX'))
 CATALOG_BY_ABBREV.set('WSH', CATALOG_BY_ABBREV.get('WAS'))
 
+const CFB_BY_ABBREV = new Map()
+const CFB_BY_ESPN_ID = new Map()
+for (const row of CFB_TEAM_CATALOG) {
+  CFB_BY_ABBREV.set(String(row.abbrev || '').toUpperCase(), row)
+  const espnId = String(row.espn || '').trim()
+  if (espnId) CFB_BY_ESPN_ID.set(espnId, row)
+}
+
+function isCfbSportKey(sportKey) {
+  return String(sportKey || '').includes('ncaaf')
+}
+
+function isNflSportKey(sportKey) {
+  const sk = String(sportKey || '')
+  return sk.includes('nfl') && !sk.includes('ncaaf')
+}
+
 function norm(value) {
   return String(value || '')
     .toLowerCase()
@@ -71,8 +91,22 @@ function softNormForCommit(value) {
 }
 
 function catalogRowForSide(side, sportKey) {
-  if (!String(sportKey || '').includes('nfl')) return null
   const hay = ` ${norm(`${side?.name || ''} ${side?.mascot || ''}`)} `
+  if (isCfbSportKey(sportKey)) {
+    const espnId = String(side?.team_id ?? side?.espn_id ?? '').trim()
+    if (espnId && CFB_BY_ESPN_ID.has(espnId)) return CFB_BY_ESPN_ID.get(espnId)
+    const byName = CFB_TEAM_CATALOG.find((row) =>
+      (row.names || []).some((n) => {
+        const p = norm(n)
+        return p.length >= 4 && hay.includes(` ${p} `)
+      }),
+    )
+    if (byName) return byName
+    const abbrev = String(side?.abbrev || '').trim().toUpperCase()
+    if (abbrev.length >= 2 && CFB_BY_ABBREV.has(abbrev)) return CFB_BY_ABBREV.get(abbrev)
+    return null
+  }
+  if (!isNflSportKey(sportKey)) return null
   const byName = NFL_TEAM_CATALOG.find((row) =>
     row.names.some((n) => {
       const p = norm(n)
@@ -275,14 +309,16 @@ export function probeLogoWashConflict(src, washHex) {
 export function enrichLoungeSportsGame(game) {
   if (!game) return game
   const sportKey = String(game.sport_key || '')
+  const logoBase = isCfbSportKey(sportKey) ? '/sports/cfb/logos' : '/sports/nfl/logos'
   const patchSide = (side) => {
     const row = catalogRowForSide(side, sportKey)
     if (!row) return side
     return {
       ...side,
       abbrev: row.abbrev,
-      logo: `/sports/nfl/logos/${row.abbrev}.png`,
-      logoLight: `/sports/nfl/logos/${row.abbrev}-light.png`,
+      mascot: side?.mascot || row.mascot || side?.mascot,
+      logo: `${logoBase}/${row.abbrev}.png`,
+      logoLight: `${logoBase}/${row.abbrev}-light.png`,
       color: row.color,
       color2: row.color2,
     }
@@ -293,7 +329,7 @@ export function enrichLoungeSportsGame(game) {
   for (const side of [home, away]) {
     const row = catalogRowForSide(side, sportKey)
     if (!row) continue
-    extra.push(...row.names, ...row.players, row.abbrev)
+    extra.push(...(row.names || []), ...(row.players || []), row.abbrev)
   }
   return {
     ...game,

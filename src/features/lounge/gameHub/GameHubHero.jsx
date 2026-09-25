@@ -207,7 +207,11 @@ function FieldViz({ game, live, awayColor, homeColor }) {
     firstDownBot = 161.0 + (targetPos / 100) * 937.0
   }
 
-  const homeLogoSrc = game?.home?.logo || (game?.home?.abbrev ? `/sports/nfl/logos/${game.home.abbrev}.png` : '')
+  const homeLogoSrc =
+    game?.home?.logo ||
+    (game?.home?.abbrev
+      ? `${isCfbSport(sportKey) ? '/sports/cfb/logos' : '/sports/nfl/logos'}/${game.home.abbrev}.png`
+      : '')
   const college = isCfbSport(sportKey)
   const endzoneFont = college ? ENDZONE_FONT_CFB : ENDZONE_FONT_NFL
   const awayEndzone = resolveEndzoneDesign(game?.away, awayColor, 'left', { college })

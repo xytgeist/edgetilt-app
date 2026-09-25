@@ -431,7 +431,8 @@ function MatchupHalf({
         ) : null}
       </div>
 
-      <div className="relative z-[3] w-full bg-zinc-900/95 px-2.5 pb-3 pt-2">
+      {/* flex-1 so a no-stats half still paints to the bottom of the H2H frame */}
+      <div className="relative z-[3] flex w-full flex-1 flex-col bg-zinc-900/95 px-2.5 pb-3 pt-2">
         <div className={`flex items-start gap-1.5 ${align === 'right' ? 'flex-row-reverse' : ''}`}>
           <div className="min-w-0 flex-1">
             <div className={`flex items-center gap-1 ${align === 'right' ? 'justify-end' : ''}`}>

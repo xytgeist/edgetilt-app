@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Fantasy H2H half fills frame without stats (Mac).** MatchupHalf info panel `flex-1` so a no-stat side (e.g. Penix) still paints zinc to the card bottom. Web **`1.4.592`**.
 - **2026-09-24:** **Game hub coliseum canvas Phase 1 (Mac).** Lazy Three.js/`@react-three/fiber` field replaces slim FieldViz … isometric turf, team endzones, goalposts, Lambeau-style bowl + home-heavy instanced crowd. WebGL/CSS fallback + reduced-motion static frame. Web **`1.4.591`**.
 - **2026-09-24:** **ESPN NFL PBP fallback prod-only (Mac).** Gate ESPN summary calls to `jtjgtucumuoswnbauxry`; test sandbox skips. Redeploy Edge test+prod. Web **`1.4.590`**.
 - **2026-09-24:** **NFL hub PBP ESPN fallback (Mac).** When TheRundown `/plays` / live last-play is empty, `lounge-sports-scoreboard` detail fills from ESPN public summary. Redeploy Edge test+prod. Web **`1.4.589`**.

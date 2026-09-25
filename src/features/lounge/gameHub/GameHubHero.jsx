@@ -61,11 +61,53 @@ const YARD_LINES = Array.from({ length: 21 }, (_, i) => {
   return { p, isGoal, isMajor, xTop, xBot }
 })
 
-// Numbers strictly on the 10-yard lines: 10, 20, 30, 40, 50, 40, 30, 20, 10
-const Y_NUM = 446
-const T_NUM = (Y_NUM - 191) / (478 - 191)
+// Inbound hash marks on either side of the middle of the field (yards 1 to 99, excluding multiples of 5)
+// Top hash row: y=281..288 (above midfield logo), Bottom hash row: y=380..389 (below midfield logo)
+const INBOUND_HASH_MARKS = (() => {
+  const marks = []
+  const tTop1 = (281.0 - 191.0) / 287.0
+  const tTop2 = (288.0 - 191.0) / 287.0
+  const tBot1 = (380.0 - 191.0) / 287.0
+  const tBot2 = (389.0 - 191.0) / 287.0
 
-const YARD_MARKERS = [
+  for (let p = 1; p < 100; p++) {
+    if (p % 5 === 0) continue
+    const xTop = 239.0 + (p / 100.0) * 784.0
+    const xBot = 161.0 + (p / 100.0) * 937.0
+
+    // Top hash mark
+    marks.push({
+      key: `t-${p}`,
+      x1: (xTop * (1 - tTop1) + xBot * tTop1).toFixed(1),
+      y1: '281',
+      x2: (xTop * (1 - tTop2) + xBot * tTop2).toFixed(1),
+      y2: '288',
+      strokeWidth: '1.4',
+      opacity: '0.65',
+    })
+
+    // Bottom hash mark
+    marks.push({
+      key: `b-${p}`,
+      x1: (xTop * (1 - tBot1) + xBot * tBot1).toFixed(1),
+      y1: '380',
+      x2: (xTop * (1 - tBot2) + xBot * tBot2).toFixed(1),
+      y2: '389',
+      strokeWidth: '1.6',
+      opacity: '0.70',
+    })
+  }
+  return marks
+})()
+
+// Numbers strictly on the 10-yard lines: 10, 20, 30, 40, 50, 40, 30, 20, 10
+const Y_NUM_NEAR = 446
+const T_NUM_NEAR = (Y_NUM_NEAR - 191) / (478 - 191)
+
+const Y_NUM_FAR = 224
+const T_NUM_FAR = (Y_NUM_FAR - 191) / (478 - 191)
+
+const YARD_MARKERS_CONFIG = [
   { p: 10, label: '10', dir: 'left' },
   { p: 20, label: '20', dir: 'left' },
   { p: 30, label: '30', dir: 'left' },
@@ -75,10 +117,21 @@ const YARD_MARKERS = [
   { p: 70, label: '30', dir: 'right' },
   { p: 80, label: '20', dir: 'right' },
   { p: 90, label: '10', dir: 'right' },
-].map(({ p, label, dir }) => {
+]
+
+// Near sideline yard markers (bottom of field)
+const YARD_MARKERS_NEAR = YARD_MARKERS_CONFIG.map(({ p, label, dir }) => {
   const xTop = 239.0 + (p / 100.0) * 784.0
   const xBot = 161.0 + (p / 100.0) * 937.0
-  const x = xTop * (1 - T_NUM) + xBot * T_NUM
+  const x = xTop * (1 - T_NUM_NEAR) + xBot * T_NUM_NEAR
+  return { p, label, dir, x }
+})
+
+// Far sideline yard markers (opposite/top of field)
+const YARD_MARKERS_FAR = YARD_MARKERS_CONFIG.map(({ p, label, dir }) => {
+  const xTop = 239.0 + (p / 100.0) * 784.0
+  const xBot = 161.0 + (p / 100.0) * 937.0
+  const x = xTop * (1 - T_NUM_FAR) + xBot * T_NUM_FAR
   return { p, label, dir, x }
 })
 
@@ -117,7 +170,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
       <div className="relative w-full overflow-hidden">
         {/* Layer 1: Floating field base graphic */}
         <img
-          src="/sports/nfl/gamecast-field-floating.png?v=612"
+          src="/sports/nfl/gamecast-field-floating.png?v=613"
           alt="Gamecast Field"
           className="pointer-events-none block w-full select-none"
         />
@@ -139,6 +192,9 @@ function FieldViz({ game, live, awayColor, homeColor }) {
             </filter>
             <filter id="text-shadow" x="-30%" y="-30%" width="160%" height="160%">
               <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" floodColor="#000000" floodOpacity="0.8" />
+            </filter>
+            <filter id="text-shadow-sm" x="-30%" y="-30%" width="160%" height="160%">
+              <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#000000" floodOpacity="0.85" />
             </filter>
           </defs>
 
@@ -232,9 +288,56 @@ function FieldViz({ game, live, awayColor, homeColor }) {
             />
           ))}
 
-          {/* Numbers strictly on the 10-yard lines */}
-          {YARD_MARKERS.map(({ p, label, dir, x }) => (
-            <g key={p} filter="url(#text-shadow)">
+          {/* Inbound hash marks on either side of the middle of the field */}
+          {INBOUND_HASH_MARKS.map(({ key, x1, y1, x2, y2, strokeWidth, opacity }) => (
+            <line
+              key={key}
+              x1={x1}
+              y1={y1}
+              x2={x2}
+              y2={y2}
+              stroke="#ffffff"
+              strokeWidth={strokeWidth}
+              strokeOpacity={opacity}
+            />
+          ))}
+
+          {/* Numbers strictly on the 10-yard lines: Far Sideline (opposite side) */}
+          {YARD_MARKERS_FAR.map(({ p, label, dir, x }) => (
+            <g key={`far-${p}`} filter="url(#text-shadow-sm)">
+              <text
+                x={x.toFixed(1)}
+                y="224"
+                textAnchor="middle"
+                fill="#ffffff"
+                fillOpacity="0.88"
+                fontFamily="'Arial Black', Impact, sans-serif"
+                fontSize="14"
+                fontWeight="900"
+                letterSpacing="0.5"
+              >
+                {label}
+              </text>
+              {dir === 'left' ? (
+                <polygon
+                  points={`${(x - 20).toFixed(1)},219 ${(x - 15).toFixed(1)},215 ${(x - 15).toFixed(1)},223`}
+                  fill="#ffffff"
+                  fillOpacity="0.85"
+                />
+              ) : null}
+              {dir === 'right' ? (
+                <polygon
+                  points={`${(x + 20).toFixed(1)},219 ${(x + 15).toFixed(1)},215 ${(x + 15).toFixed(1)},223`}
+                  fill="#ffffff"
+                  fillOpacity="0.85"
+                />
+              ) : null}
+            </g>
+          ))}
+
+          {/* Numbers strictly on the 10-yard lines: Near Sideline */}
+          {YARD_MARKERS_NEAR.map(({ p, label, dir, x }) => (
+            <g key={`near-${p}`} filter="url(#text-shadow)">
               <text
                 x={x.toFixed(1)}
                 y="450"
@@ -316,7 +419,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
 
         {/* Layer 3: Foreground Goalposts Overlay (prevents endzone paint from tinting uprights/pads) */}
         <img
-          src="/sports/nfl/gamecast-goalposts-overlay.png?v=612"
+          src="/sports/nfl/gamecast-goalposts-overlay.png?v=613"
           alt=""
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 block h-full w-full select-none"

@@ -225,22 +225,6 @@ function FieldViz({ game, live, awayColor, homeColor }) {
           <path d={ENDZONE_COORDS.left.paintPath} fill="url(#ez-away-grad)" />
           <path d={ENDZONE_COORDS.right.paintPath} fill="url(#ez-home-grad)" />
 
-          {/* Endzone Inset Chalk Frames (~2 yards inside perimeter) */}
-          <path
-            d={ENDZONE_COORDS.left.chalkPath}
-            fill="none"
-            stroke="#ffffff"
-            strokeWidth="1.6"
-            strokeOpacity="0.65"
-          />
-          <path
-            d={ENDZONE_COORDS.right.chalkPath}
-            fill="none"
-            stroke="#ffffff"
-            strokeWidth="1.6"
-            strokeOpacity="0.65"
-          />
-
           {/* Away Endzone Mascot Wordmark (Left) */}
           {awayEndzone.mascot ? (
             <g transform={ENDZONE_COORDS.left.transform}>
@@ -251,14 +235,13 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 dominantBaseline="central"
                 fill="none"
                 stroke="#000000"
-                strokeWidth="7"
+                strokeWidth="8"
                 strokeLinejoin="round"
-                fontFamily="'Arial Black', Impact, sans-serif"
+                fontFamily="Impact, 'Arial Black', sans-serif"
                 fontSize={awayEndzone.fontSize}
                 fontWeight="900"
                 letterSpacing={awayEndzone.letterSpacing}
-                opacity="0.85"
-                filter="url(#text-shadow)"
+                opacity="0.95"
               >
                 {awayEndzone.mascot}
               </text>
@@ -269,9 +252,9 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 dominantBaseline="central"
                 fill="none"
                 stroke={awayEndzone.textStroke}
-                strokeWidth="4"
+                strokeWidth="4.5"
                 strokeLinejoin="round"
-                fontFamily="'Arial Black', Impact, sans-serif"
+                fontFamily="Impact, 'Arial Black', sans-serif"
                 fontSize={awayEndzone.fontSize}
                 fontWeight="900"
                 letterSpacing={awayEndzone.letterSpacing}
@@ -285,8 +268,8 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 dominantBaseline="central"
                 fill={awayEndzone.textFill}
                 stroke={awayEndzone.isGoldText ? '#ffffff' : 'none'}
-                strokeWidth={awayEndzone.isGoldText ? '0.8' : '0'}
-                fontFamily="'Arial Black', Impact, sans-serif"
+                strokeWidth={awayEndzone.isGoldText ? '1' : '0'}
+                fontFamily="Impact, 'Arial Black', sans-serif"
                 fontSize={awayEndzone.fontSize}
                 fontWeight="900"
                 letterSpacing={awayEndzone.letterSpacing}
@@ -306,14 +289,13 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 dominantBaseline="central"
                 fill="none"
                 stroke="#000000"
-                strokeWidth="7"
+                strokeWidth="8"
                 strokeLinejoin="round"
-                fontFamily="'Arial Black', Impact, sans-serif"
+                fontFamily="Impact, 'Arial Black', sans-serif"
                 fontSize={homeEndzone.fontSize}
                 fontWeight="900"
                 letterSpacing={homeEndzone.letterSpacing}
-                opacity="0.85"
-                filter="url(#text-shadow)"
+                opacity="0.95"
               >
                 {homeEndzone.mascot}
               </text>
@@ -324,9 +306,9 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 dominantBaseline="central"
                 fill="none"
                 stroke={homeEndzone.textStroke}
-                strokeWidth="4"
+                strokeWidth="4.5"
                 strokeLinejoin="round"
-                fontFamily="'Arial Black', Impact, sans-serif"
+                fontFamily="Impact, 'Arial Black', sans-serif"
                 fontSize={homeEndzone.fontSize}
                 fontWeight="900"
                 letterSpacing={homeEndzone.letterSpacing}
@@ -340,8 +322,8 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 dominantBaseline="central"
                 fill={homeEndzone.textFill}
                 stroke={homeEndzone.isGoldText ? '#ffffff' : 'none'}
-                strokeWidth={homeEndzone.isGoldText ? '0.8' : '0'}
-                fontFamily="'Arial Black', Impact, sans-serif"
+                strokeWidth={homeEndzone.isGoldText ? '1' : '0'}
+                fontFamily="Impact, 'Arial Black', sans-serif"
                 fontSize={homeEndzone.fontSize}
                 fontWeight="900"
                 letterSpacing={homeEndzone.letterSpacing}
@@ -367,11 +349,9 @@ function FieldViz({ game, live, awayColor, homeColor }) {
             </g>
           ) : null}
 
-          {/* Outer Field Perimeter: Sidelines & Endlines */}
-          <line x1="168" y1="191" x2="1096" y2="191" stroke="#ffffff" strokeWidth="2.2" strokeOpacity="0.85" />
-          <line x1="68" y1="478" x2="1193" y2="478" stroke="#ffffff" strokeWidth="2.5" strokeOpacity="0.85" />
-          <line x1="168" y1="191" x2="68" y2="478" stroke="#ffffff" strokeWidth="2.2" strokeOpacity="0.80" />
-          <line x1="1096" y1="191" x2="1193" y2="478" stroke="#ffffff" strokeWidth="2.2" strokeOpacity="0.80" />
+          {/* Playing Field Sidelines (Goal Line to Goal Line) */}
+          <line x1="239" y1="191" x2="1023" y2="191" stroke="#ffffff" strokeWidth="2.2" strokeOpacity="0.85" />
+          <line x1="161" y1="478" x2="1098" y2="478" stroke="#ffffff" strokeWidth="2.5" strokeOpacity="0.85" />
 
           {/* 21 Yard Lines (every 5 yards from 0 to 100, including Goal Lines) */}
           {YARD_LINES.map(({ p, isGoal, isMajor, xTop, xBot }) => (

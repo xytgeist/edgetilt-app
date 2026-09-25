@@ -75,25 +75,26 @@ export function resolveEndzoneDesign(side, fallbackColor = '#3f3f46') {
   const gradDeep = mixHex(wash, '#000000', 0.16)
 
   // Typography calibration: dynamic size & tracking for word lengths from 4 to 10 characters
+  // Calibrated for Impact athletic block typography to boldly span the end zone on mobile
   const len = mascot.length
-  let fontSize = 35
+  let fontSize = 62
   let letterSpacing = 5
   if (len <= 4) {
-    fontSize = 42
-    letterSpacing = 8
+    fontSize = 76
+    letterSpacing = 14
   } else if (len <= 6) {
-    fontSize = 38
-    letterSpacing = 6
+    fontSize = 68
+    letterSpacing = 8
   } else if (len <= 7) {
-    fontSize = 35
+    fontSize = 62
     letterSpacing = 5
   } else if (len <= 8) {
-    fontSize = 31
+    fontSize = 54
     letterSpacing = 4
   } else {
     // 9-10 letters (e.g. BUCCANEERS, COMMANDERS)
-    fontSize = 27
-    letterSpacing = 3
+    fontSize = 46
+    letterSpacing = 2.5
   }
 
   // Text fill and outline hierarchy
@@ -131,27 +132,23 @@ export function resolveEndzoneDesign(side, fallbackColor = '#3f3f46') {
   }
 }
 
-/** 3D Endzone boundary and chalk paths (viewBox 0 0 1266 533) */
+/** 3D Endzone boundary and typography paths (viewBox 0 0 1266 533) */
 export const ENDZONE_COORDS = {
   left: {
     // Bounded by goal line (top 239, bot 161) and end line (top 168, bot 68)
     paintPath: 'M 239 191 L 168 191 L 68 478 L 161 478 Z',
-    // Inset chalk frame ~2 yards inside perimeter
-    chalkPath: 'M 230.5 201 L 176.5 201 L 79 468 L 150 468 Z',
     centerX: 159,
     centerY: 334.5,
-    // Baseline parallel to goal line, 3D shear aligning crossbars with sidelines
-    transform: 'translate(159, 334.5) rotate(90) skewY(16.5) scale(0.88, 0.62)',
+    // Unified top-to-bottom reading with 3D perspective shear aligned with yard lines
+    transform: 'translate(159, 334.5) rotate(90) skewY(16.5) scale(1, 1.15)',
   },
   right: {
     // Bounded by goal line (top 1023, bot 1098) and end line (top 1096, bot 1193)
     paintPath: 'M 1023 191 L 1096 191 L 1193 478 L 1098 478 Z',
-    // Inset chalk frame ~2 yards inside perimeter
-    chalkPath: 'M 1032 201 L 1087 201 L 1182 468 L 1109 468 Z',
     centerX: 1102.5,
     centerY: 334.5,
-    // Baseline parallel to goal line, 3D shear aligning crossbars with sidelines
-    transform: 'translate(1102.5, 334.5) rotate(-90) skewY(-16.0) scale(0.88, 0.62)',
+    // Unified top-to-bottom reading with 3D perspective shear aligned with yard lines
+    transform: 'translate(1102.5, 334.5) rotate(90) skewY(-16.0) scale(1, 1.15)',
   },
 }
 

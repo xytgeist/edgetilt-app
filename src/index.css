@@ -3872,41 +3872,31 @@ html.light [data-lounge-game-players] [data-roster-player-card] {
   box-shadow: 0 8px 24px rgba(24, 24, 27, 0.08);
 }
 
-/* Roster cards: Fantasy jersey mesh under a card-color veil (no team wash). */
-[data-lounge-game-players] [data-roster-list],
-[data-lounge-game-players] [data-roster-player-card] {
-  position: relative;
-  isolation: isolate;
-}
-[data-lounge-game-players] [data-roster-list]::before,
-[data-lounge-game-players] [data-roster-player-card]::before {
-  content: '';
+/* Roster header: same jersey mesh as Fantasy H2H, tinted with card color (not team wash). */
+[data-lounge-game-players] [data-roster-jersey-mesh] {
+  pointer-events: none;
   position: absolute;
   inset: 0;
   z-index: 0;
-  pointer-events: none;
-  background: url('/sports/nfl/textures/jersey-mesh-1.jpg') center / cover no-repeat;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
 }
-[data-lounge-game-players] [data-roster-list]::after,
-[data-lounge-game-players] [data-roster-player-card]::after {
-  content: '';
+[data-lounge-game-players] [data-roster-jersey-tint] {
+  pointer-events: none;
   position: absolute;
   inset: 0;
   z-index: 0;
-  pointer-events: none;
-  /* Same as Tailwind bg-zinc-900 … mesh peeks through. */
-  background-color: #18181b;
+  /* Match Tailwind bg-zinc-900 on the roster card. */
+  background: #18181b;
+  mix-blend-mode: multiply;
+  opacity: 0.82;
+}
+html.light [data-lounge-game-players] [data-roster-jersey-tint] {
+  background: #f4f4f5;
+  mix-blend-mode: soft-light;
   opacity: 0.88;
-}
-html.light [data-lounge-game-players] [data-roster-list]::after,
-html.light [data-lounge-game-players] [data-roster-player-card]::after {
-  background-color: #ffffff;
-  opacity: 0.9;
-}
-[data-lounge-game-players] [data-roster-list] > li,
-[data-lounge-game-players] [data-roster-player-card] > li {
-  position: relative;
-  z-index: 1;
 }
 
 html.light [data-lounge-game-players] [data-roster-season-stats] {

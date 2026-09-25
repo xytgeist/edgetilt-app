@@ -649,13 +649,24 @@ function rosterAccentForPlayer(player, game, paint) {
   }
 }
 
-/** Faded team logo only … no wash / hairline / accent ring. */
+/** Faded team logo + Fantasy jersey mesh (card-color tint, not team wash). */
 function RosterPlayerHeader({ player, accent, expanded, hasStats, onToggle }) {
   const headline = seasonHeadline(player)
   return (
     <div data-roster-player-header className="relative overflow-hidden px-3.5 py-3.5">
       <span
-        className="pointer-events-none absolute top-1/2 z-[0] -translate-y-1/2 right-1"
+        className="pointer-events-none absolute inset-0 z-0 overflow-hidden"
+        aria-hidden="true"
+      >
+        <img
+          data-roster-jersey-mesh
+          src="/sports/nfl/textures/jersey-mesh-1.jpg"
+          alt=""
+        />
+        <span data-roster-jersey-tint />
+      </span>
+      <span
+        className="pointer-events-none absolute top-1/2 z-[1] -translate-y-1/2 right-1"
         style={{ opacity: 0.12 }}
         aria-hidden="true"
       >

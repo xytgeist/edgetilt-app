@@ -1155,6 +1155,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 - **2026-09-24:** **Gamecast field defringe (Mac).** Stripped the leftover white-blend pixels on the silhouette (far sideline and goalpost edges) so the cutout no longer halos on dark or tinted hero backgrounds. Web **`1.4.599`**.
 - **2026-09-24:** **Gamecast field crook (Mac).** Removed the leftover white blobs in the gap between each goalpost curve and the turf. Sideline stayed. Web **`1.4.600`**.
 - **2026-09-24:** **Gamecast 40 arrow (Mac).** The near-sideline 40 on the right half had no direction mark. Copied the same arrow used on the 30. Web **`1.4.601`**.
+- **2026-09-24:** **Gamecast 40 arrow, right number (Mac).** The first mark landed in the gap after the 30, not the 40. Moved it to the right of that 40, and cache-busted the field image. Web **`1.4.602`**.
 - **2026-09-24:** **Hub live timeouts + possession football (Mac).** Hero shows 3 timeout dots under each score (filled = remaining, hollow = used) + football icon on the inner side of the team with the ball. Live state gains `home_timeouts` / `away_timeouts` (Rundown + ESPN situation). Redeploy Edge **`lounge-sports-scoreboard`**. Web **`1.4.595`**.
 - **2026-09-24:** **Hide hub bets/$ bar while live (Mac).** `HeroPublicBetting` returns null when `game.status === 'in'`. Web **`1.4.594`**.
 - **2026-09-24:** **Dump game hub coliseum canvas (Mac).** Removed R3F/Three stadium + deps; restored slim CSS FieldViz. Web **`1.4.593`**.

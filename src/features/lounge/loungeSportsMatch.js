@@ -85,6 +85,30 @@ function catalogRowForSide(side, sportKey) {
   return null
 }
 
+/**
+ * Short market full name for hub chrome … "LA Rams" / "Denver Broncos"
+ * (prefers LA/NY short forms when catalog has them).
+ */
+export function nflTeamShortName(side) {
+  const row = catalogRowForSide(side, 'americanfootball_nfl')
+  if (row?.names?.length) {
+    const short = row.names.find((n) => /^(LA|NY)\s/i.test(String(n)))
+    if (short) return short
+    return row.names[0]
+  }
+  const name = String(side?.name || '').trim()
+  if (name) return name
+  const mascot = String(side?.mascot || '').trim()
+  if (mascot) return mascot
+  return String(side?.abbrev || '').trim()
+}
+
+/** Pre-game: full short name. Live/final: abbrev. */
+export function hubTeamLabel(side, status) {
+  if (status === 'pre') return nflTeamShortName(side)
+  return String(side?.abbrev || '').trim()
+}
+
 function hexToRgb(hex) {
   const n = String(hex || '').replace('#', '')
   if (n.length !== 6) return null

@@ -3,6 +3,7 @@ import {
   useLoungeSportsPillWashAndLogos,
 } from '../loungeSportsPillPaint.jsx'
 import { formatLoungeSportsMoneyline } from '../LoungeGameScorePill.jsx'
+import { hubTeamLabel } from '../loungeSportsMatch.js'
 import {
   CORNER_PYLONS,
   ENDZONE_COORDS,
@@ -678,6 +679,9 @@ export default function GameHubHero({
   const showField = isFootball && game.status === 'in'
   const awayMl = formatLoungeSportsMoneyline(game.away?.ml)
   const homeMl = formatLoungeSportsMoneyline(game.home?.ml)
+  const awayLabel = hubTeamLabel(game.away, game.status)
+  const homeLabel = hubTeamLabel(game.home, game.status)
+  const preLabels = game.status === 'pre'
 
   return (
     <div
@@ -704,7 +708,7 @@ export default function GameHubHero({
               <div className="flex w-[40px] shrink-0 flex-col items-center">
                 <LoungeSportsTeamLogo side={game.away} treatment={awayTreatment} size={40} />
                 <div className="mt-0.5 w-full text-center text-[13px] font-semibold uppercase tracking-wide text-white/85">
-                  {game.away?.abbrev}
+                  {awayLabel}
                 </div>
                 {game.away?.record ? (
                   <div className="mt-0.5 w-full text-center text-[10px] font-medium tabular-nums leading-none text-white/55">
@@ -765,7 +769,7 @@ export default function GameHubHero({
               <div className="flex w-[40px] shrink-0 flex-col items-center">
                 <LoungeSportsTeamLogo side={game.home} treatment={homeTreatment} size={40} />
                 <div className="mt-0.5 w-full text-center text-[13px] font-semibold uppercase tracking-wide text-white/85">
-                  {game.home?.abbrev}
+                  {homeLabel}
                 </div>
                 {game.home?.record ? (
                   <div className="mt-0.5 w-full text-center text-[10px] font-medium tabular-nums leading-none text-white/55">
@@ -782,10 +786,20 @@ export default function GameHubHero({
         <div className="relative z-[4] px-4 pb-3 pt-2">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 flex-1 items-center">
-              <div className="flex w-[68px] shrink-0 flex-col items-center">
+              <div
+                className={`flex shrink-0 flex-col items-center ${
+                  preLabels ? 'w-[7.25rem]' : 'w-[68px]'
+                }`}
+              >
                 <LoungeSportsTeamLogo side={game.away} treatment={awayTreatment} size={68} />
-                <div className="mt-1 w-full text-center text-[15px] font-semibold uppercase tracking-wide text-white/90">
-                  {game.away?.abbrev}
+                <div
+                  className={`mt-1 w-full text-center font-semibold leading-snug text-white/90 ${
+                    preLabels
+                      ? 'text-[12px] tracking-tight'
+                      : 'text-[15px] uppercase tracking-wide'
+                  }`}
+                >
+                  {awayLabel}
                 </div>
                 {game.away?.record ? (
                   <div className="mt-0.5 w-full text-center text-[12px] font-medium tabular-nums leading-none text-white/55">
@@ -843,10 +857,20 @@ export default function GameHubHero({
                   ) : null}
                 </div>
               </div>
-              <div className="flex w-[68px] shrink-0 flex-col items-center">
+              <div
+                className={`flex shrink-0 flex-col items-center ${
+                  preLabels ? 'w-[7.25rem]' : 'w-[68px]'
+                }`}
+              >
                 <LoungeSportsTeamLogo side={game.home} treatment={homeTreatment} size={68} />
-                <div className="mt-1 w-full text-center text-[15px] font-semibold uppercase tracking-wide text-white/90">
-                  {game.home?.abbrev}
+                <div
+                  className={`mt-1 w-full text-center font-semibold leading-snug text-white/90 ${
+                    preLabels
+                      ? 'text-[12px] tracking-tight'
+                      : 'text-[15px] uppercase tracking-wide'
+                  }`}
+                >
+                  {homeLabel}
                 </div>
                 {game.home?.record ? (
                   <div className="mt-0.5 w-full text-center text-[12px] font-medium tabular-nums leading-none text-white/55">

@@ -106,7 +106,10 @@ async function main() {
   const { url, key } = readSupabaseCredentials()
   if (!url || !key) throw new Error('Missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY')
 
-  let teams = [...CFB_TEAM_CATALOG]
+  let teams = [...CFB_TEAM_CATALOG].map((t) => ({
+    ...t,
+    abbrev: String(t.abbrev || '').replace(/[^A-Z0-9-]/g, ''),
+  }))
   if (args.limitTeams > 0) teams = teams.slice(0, args.limitTeams)
   console.log(`CFB players sync  target=${args.target}  teams=${teams.length}`)
 

@@ -95,7 +95,7 @@ export const CFB_TEAM_CATALOG = [
   { abbrev: "SMU", espn: "2567", espnSlug: "", color: "#D70000", color2: "#FFFFFF", conference: "ACC", mascot: "Mustangs", school: "SMU", names: ["SMU Mustangs","SMU","Mustangs"] },
   { abbrev: "STAN", espn: "24", espnSlug: "stanford-cardinal", color: "#8C1515", color2: "#FFFFFF", conference: "ACC", mascot: "Cardinal", school: "Stanford", names: ["Stanford Cardinal","Stanford","Cardinal"] },
   { abbrev: "SYR", espn: "183", espnSlug: "syracuse-orange", color: "#000E54", color2: "#FF431B", conference: "ACC", mascot: "Orange", school: "Syracuse", names: ["Syracuse Orange","Syracuse","Orange"] },
-  { abbrev: "TA&M", espn: "245", espnSlug: "texas-am-aggies", color: "#500000", color2: "#FFFFFF", conference: "SEC", mascot: "Aggies", school: "Texas A&M", names: ["Texas A&M Aggies","Texas A&M","Aggies"] },
+  { abbrev: "TAM", espn: "245", espnSlug: "texas-am-aggies", color: "#500000", color2: "#FFFFFF", conference: "SEC", mascot: "Aggies", school: "Texas A&M", names: ["Texas A&M Aggies","Texas A&M","Aggies"] },
   { abbrev: "TCU", espn: "2628", espnSlug: "", color: "#4D1979", color2: "#FFFFFF", conference: "Big 12", mascot: "Horned Frogs", school: "TCU", names: ["TCU Horned Frogs","TCU","Horned Frogs"] },
   { abbrev: "TEM", espn: "218", espnSlug: "temple-owls", color: "#A41E35", color2: "#FFFFFF", conference: "American Athletic", mascot: "Owls", school: "Temple", names: ["Temple Owls","Temple","Owls"] },
   { abbrev: "TENN", espn: "2633", espnSlug: "", color: "#FF8200", color2: "#FFFFFF", conference: "SEC", mascot: "Volunteers", school: "Tennessee", names: ["Tennessee Volunteers","Tennessee","Volunteers"] },

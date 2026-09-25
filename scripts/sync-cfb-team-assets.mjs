@@ -119,7 +119,11 @@ async function mapPool(items, limit, fn) {
 
 function buildCatalogRow(cfbd, espn) {
   const espnId = String(cfbd.id || espn?.id || '').trim()
-  const abbrev = String(cfbd.abbreviation || espn?.abbreviation || '').trim().toUpperCase()
+  // File/URL-safe … CFBD uses TA&M which breaks query strings in logo paths.
+  const abbrev = String(cfbd.abbreviation || espn?.abbreviation || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9-]/g, '')
   const school = String(cfbd.school || espn?.location || '').trim()
   const mascot = String(cfbd.mascot || espn?.name || espn?.nickname || '').trim()
   const display =

@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Revert game card soft-glow (Mac).** Score pills + hub hero back to silver gridiron + multiply team stains (pre-`1.4.581`). Hub matchup chips + ticker kept. Web **`1.4.588`**.
 - **2026-09-24:** **Players Roster mesh quieter still (Mac).** Dark soft-light mesh ~10%. Web **`1.4.587`**.
 - **2026-09-24:** **Players Roster mesh quieter in dark (Mac).** Soft-light mesh at ~20% + light zinc veil so cards stay zinc-900 with a bit of fabric. Light mode unchanged. Web **`1.4.586`**.
 - **2026-09-24:** **Players Roster jersey mesh visible (Mac).** Real Fantasy `jersey-mesh-1.jpg` on each roster header + multiply card-color tint (same recipe as H2H, not a buried CSS veil). Web **`1.4.585`**.

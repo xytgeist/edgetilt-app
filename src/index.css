@@ -3296,8 +3296,7 @@ html.light [data-lounge-market-chart-mini] .text-cyan-300 {
   isolation: isolate;
   display: block;
   width: 100%;
-  /* Soft field … team color lives in radial glows, not a jersey bomb. */
-  background-color: #18181b;
+  background-color: #7a7a84;
   container-type: inline-size;
   container-name: lounge-game-pill;
 }
@@ -3310,33 +3309,35 @@ html.light [data-lounge-market-chart-mini] .text-cyan-300 {
 }
 [data-lounge-game-pill] [data-lounge-game-pill-field] {
   z-index: 0;
-  /* Whisper of field texture without competing with the glows. */
-  inset: -12%;
+  inset: -18%;
   background:
     url('/sports/nfl/gridiron-silver.svg') center / cover no-repeat;
-  transform: rotate(-6deg) scale(1.08);
-  opacity: 0.12;
-  filter: contrast(1.05) saturate(0.55);
+  transform: rotate(-7deg) scale(1.12);
+  filter: contrast(1.08) saturate(0.7);
 }
 [data-lounge-game-pill] [data-lounge-game-pill-away],
 [data-lounge-game-pill] [data-lounge-game-pill-home] {
   z-index: 1;
-  mix-blend-mode: normal;
+  mix-blend-mode: multiply;
 }
 [data-lounge-game-pill] [data-lounge-game-pill-away] {
-  background: radial-gradient(
-    ellipse 78% 130% at 0% 50%,
-    color-mix(in srgb, var(--pill-away, #3f3f46) 72%, transparent) 0%,
-    color-mix(in srgb, var(--pill-away, #3f3f46) 38%, transparent) 42%,
-    transparent 72%
+  background: linear-gradient(
+    108deg,
+    var(--pill-away, #3f3f46) 0%,
+    var(--pill-away, #3f3f46) 18%,
+    color-mix(in srgb, var(--pill-away, #3f3f46) 72%, transparent) 38%,
+    color-mix(in srgb, var(--pill-away, #3f3f46) 22%, transparent) 52%,
+    transparent 68%
   );
 }
 [data-lounge-game-pill] [data-lounge-game-pill-home] {
-  background: radial-gradient(
-    ellipse 78% 130% at 100% 50%,
-    color-mix(in srgb, var(--pill-home, #3f3f46) 72%, transparent) 0%,
-    color-mix(in srgb, var(--pill-home, #3f3f46) 38%, transparent) 42%,
-    transparent 72%
+  background: linear-gradient(
+    252deg,
+    var(--pill-home, #3f3f46) 0%,
+    var(--pill-home, #3f3f46) 18%,
+    color-mix(in srgb, var(--pill-home, #3f3f46) 72%, transparent) 38%,
+    color-mix(in srgb, var(--pill-home, #3f3f46) 22%, transparent) 52%,
+    transparent 68%
   );
 }
 [data-lounge-game-pill] [data-lounge-game-pill-seam] {
@@ -3345,54 +3346,23 @@ html.light [data-lounge-market-chart-mini] .text-cyan-300 {
   bottom: -45%;
   left: 50%;
   z-index: 2;
-  width: 5.5rem;
+  width: 4.5rem;
   pointer-events: none;
-  transform: translateX(-50%) rotate(12deg);
+  transform: translateX(-50%) rotate(18deg);
   background: linear-gradient(
     90deg,
     transparent 0%,
-    color-mix(in srgb, var(--pill-away, #fff) 12%, transparent) 28%,
-    rgba(255, 255, 255, 0.16) 50%,
-    color-mix(in srgb, var(--pill-home, #fff) 12%, transparent) 72%,
+    color-mix(in srgb, var(--pill-away, #fff) 22%, transparent) 22%,
+    rgba(255, 255, 255, 0.34) 50%,
+    color-mix(in srgb, var(--pill-home, #fff) 22%, transparent) 78%,
     transparent 100%
   );
-  filter: blur(18px);
-  opacity: 0.7;
+  filter: blur(16px);
 }
 
 html.light [data-lounge-game-pill] {
-  background-color: #ffffff !important;
-}
-html.light [data-lounge-game-pill] [data-lounge-game-pill-field] {
-  opacity: 0.06;
-  filter: contrast(1.02) saturate(0.4);
-}
-html.light [data-lounge-game-pill] [data-lounge-game-pill-away] {
-  background: radial-gradient(
-    ellipse 78% 130% at 0% 50%,
-    color-mix(in srgb, var(--pill-away, #3f3f46) 48%, transparent) 0%,
-    color-mix(in srgb, var(--pill-away, #3f3f46) 22%, transparent) 44%,
-    transparent 74%
-  );
-}
-html.light [data-lounge-game-pill] [data-lounge-game-pill-home] {
-  background: radial-gradient(
-    ellipse 78% 130% at 100% 50%,
-    color-mix(in srgb, var(--pill-home, #3f3f46) 48%, transparent) 0%,
-    color-mix(in srgb, var(--pill-home, #3f3f46) 22%, transparent) 44%,
-    transparent 74%
-  );
-}
-html.light [data-lounge-game-pill] [data-lounge-game-pill-seam] {
-  opacity: 0.35;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    rgba(24, 24, 27, 0.04) 28%,
-    rgba(24, 24, 27, 0.07) 50%,
-    rgba(24, 24, 27, 0.04) 72%,
-    transparent 100%
-  );
+  /* Silver gridiron + team stain stays in both modes. */
+  background-color: #7a7a84 !important;
 }
 html.light [data-lounge-game-pill] .text-white,
 html.light [data-lounge-game-pill] .text-white\/90,
@@ -3401,18 +3371,7 @@ html.light [data-lounge-game-pill] .text-white\/70,
 html.light [data-lounge-game-pill] .text-white\/60,
 html.light [data-lounge-game-pill] .text-white\/55,
 html.light [data-lounge-game-pill] .text-zinc-100 {
-  color: #18181b !important;
-  text-shadow: none !important;
-}
-html.light [data-lounge-game-pill] .drop-shadow-\[0_1px_2px_rgba\(0\,0\,0\,0\.7\)\] {
-  filter: none !important;
-}
-html.light [data-lounge-game-pill] .bg-rose-400 {
-  background-color: #e11d48 !important;
-  box-shadow: 0 0 8px rgba(225, 29, 72, 0.55) !important;
-}
-html.light [data-lounge-game-pill-chevron] .text-white\/70 {
-  color: #52525b !important;
+  color: #fff !important;
 }
 [data-lounge-game-pill-num] {
   min-width: 0;
@@ -3478,13 +3437,13 @@ html.light [data-lounge-game-pill-chevron] .text-white\/70 {
   box-sizing: border-box;
 }
 [data-lounge-game-pill-mark] {
-  width: 3.65rem;
-  height: 3.65rem;
+  width: 2.75rem;
+  height: 2.75rem;
 }
 @media (min-width: 640px) {
   [data-lounge-game-pill-mark] {
-    width: 4rem;
-    height: 4rem;
+    width: 3rem;
+    height: 3rem;
   }
 }
 @container lounge-game-pill (max-width: 300px) {
@@ -3498,8 +3457,8 @@ html.light [data-lounge-game-pill-chevron] .text-white\/70 {
     padding-right: clamp(1.4rem, 5cqi, 1.6rem);
   }
   [data-lounge-game-pill-mark] {
-    width: 3rem;
-    height: 3rem;
+    width: 2.25rem;
+    height: 2.25rem;
   }
   [data-lounge-game-pill-status] {
     max-width: 3.25rem;
@@ -3510,19 +3469,19 @@ html.light [data-lounge-game-pill-chevron] .text-white\/70 {
   }
 }
 html.light [data-lounge-game-pill-spread-cover] {
-  color: #18181b !important;
+  color: #fff !important;
 }
 html.light [data-lounge-game-pill-cover-dot] {
-  background-color: #18181b !important;
+  background-color: #fff !important;
 }
 [data-lounge-game-pill] [data-lounge-game-pill-logo],
 [data-lounge-game-hero] [data-lounge-game-pill-logo] {
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.65));
 }
 /* ESPN 500-dark marks (light ink on dark jersey wash). Soft shadow only. */
 [data-lounge-game-pill] [data-lounge-game-pill-logo='light'],
 [data-lounge-game-hero] [data-lounge-game-pill-logo='light'] {
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
 }
 /* Full-color mark + thin white edge. Default path for anything that is not a light asset. */
 [data-lounge-game-pill] [data-lounge-game-pill-logo='halo'],
@@ -3531,14 +3490,8 @@ html.light [data-lounge-game-pill-cover-dot] {
 [data-lounge-game-hero] [data-lounge-game-pill-logo='dark'] {
   filter:
     drop-shadow(0 0 0.7px #fff)
-    drop-shadow(0 0 1.35px rgba(255, 255, 255, 0.75))
-    drop-shadow(0 1px 2px rgba(0, 0, 0, 0.28));
-}
-html.light [data-lounge-game-pill] [data-lounge-game-pill-logo='halo'],
-html.light [data-lounge-game-pill] [data-lounge-game-pill-logo='dark'] {
-  filter:
-    drop-shadow(0 0 0.5px rgba(255, 255, 255, 0.9))
-    drop-shadow(0 1px 2px rgba(0, 0, 0, 0.18));
+    drop-shadow(0 0 1.35px rgba(255, 255, 255, 0.85))
+    drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
 }
 /* Fallback when *-light.png missing: white silhouette of the default mark. */
 [data-lounge-game-pill] [data-lounge-game-pill-logo='silhouette'],
@@ -3611,10 +3564,10 @@ html.light [data-lounge-game-chat] {
 html.light [data-lounge-game-chat]::placeholder {
   color: #71717a !important;
 }
-/* Game hub hero: soft radial team glows (same recipe as post score pills). */
+/* Game hub hero: silver gridiron + multiply team stains (same recipe as post pills). */
 [data-lounge-game-hero] {
   isolation: isolate;
-  background-color: #18181b;
+  background-color: #7a7a84;
 }
 [data-lounge-game-hero] [data-lounge-game-hero-field],
 [data-lounge-game-hero] [data-lounge-game-hero-away],
@@ -3625,31 +3578,34 @@ html.light [data-lounge-game-chat]::placeholder {
 }
 [data-lounge-game-hero] [data-lounge-game-hero-field] {
   z-index: 0;
-  inset: -14%;
+  inset: -22%;
   background: url('/sports/nfl/gridiron-silver.svg') center / cover no-repeat;
-  transform: rotate(-6deg) scale(1.1);
-  opacity: 0.1;
-  filter: contrast(1.05) saturate(0.55);
+  transform: rotate(-6deg) scale(1.14);
+  filter: contrast(1.1) saturate(0.72);
 }
 [data-lounge-game-hero] [data-lounge-game-hero-away],
 [data-lounge-game-hero] [data-lounge-game-hero-home] {
   z-index: 1;
-  mix-blend-mode: normal;
+  mix-blend-mode: multiply;
 }
 [data-lounge-game-hero] [data-lounge-game-hero-away] {
-  background: radial-gradient(
-    ellipse 78% 130% at 0% 42%,
-    color-mix(in srgb, var(--hero-away, #3f3f46) 78%, transparent) 0%,
-    color-mix(in srgb, var(--hero-away, #3f3f46) 42%, transparent) 44%,
-    transparent 74%
+  background: linear-gradient(
+    105deg,
+    var(--hero-away, #3f3f46) 0%,
+    var(--hero-away, #3f3f46) 22%,
+    color-mix(in srgb, var(--hero-away, #3f3f46) 78%, transparent) 42%,
+    color-mix(in srgb, var(--hero-away, #3f3f46) 28%, transparent) 56%,
+    transparent 72%
   );
 }
 [data-lounge-game-hero] [data-lounge-game-hero-home] {
-  background: radial-gradient(
-    ellipse 78% 130% at 100% 42%,
-    color-mix(in srgb, var(--hero-home, #3f3f46) 78%, transparent) 0%,
-    color-mix(in srgb, var(--hero-home, #3f3f46) 42%, transparent) 44%,
-    transparent 74%
+  background: linear-gradient(
+    255deg,
+    var(--hero-home, #3f3f46) 0%,
+    var(--hero-home, #3f3f46) 22%,
+    color-mix(in srgb, var(--hero-home, #3f3f46) 78%, transparent) 42%,
+    color-mix(in srgb, var(--hero-home, #3f3f46) 28%, transparent) 56%,
+    transparent 72%
   );
 }
 [data-lounge-game-hero] [data-lounge-game-hero-seam] {
@@ -3660,24 +3616,20 @@ html.light [data-lounge-game-chat]::placeholder {
   z-index: 2;
   width: 5.5rem;
   pointer-events: none;
-  transform: translateX(-50%) rotate(12deg);
+  transform: translateX(-50%) rotate(16deg);
   background: linear-gradient(
     90deg,
     transparent 0%,
-    color-mix(in srgb, var(--hero-away, #fff) 12%, transparent) 28%,
-    rgba(255, 255, 255, 0.14) 50%,
-    color-mix(in srgb, var(--hero-home, #fff) 12%, transparent) 72%,
+    color-mix(in srgb, var(--hero-away, #fff) 20%, transparent) 22%,
+    rgba(255, 255, 255, 0.38) 50%,
+    color-mix(in srgb, var(--hero-home, #fff) 20%, transparent) 78%,
     transparent 100%
   );
   filter: blur(18px);
-  opacity: 0.65;
 }
-/* Soft-glow hero stays light-on-dark in both themes (bottom veil blends into hub chrome). */
+/* Team-color hero stays light-on-dark even in light mode */
 html.light [data-lounge-game-hero] {
-  background-color: #18181b !important;
-}
-html.light [data-lounge-game-hero] [data-lounge-game-hero-field] {
-  opacity: 0.1;
+  background-color: #7a7a84 !important;
 }
 html.light [data-lounge-game-hero] .text-white,
 html.light [data-lounge-game-hero] .text-white\/90,
@@ -3691,7 +3643,7 @@ html.light [data-lounge-game-hero] .text-white\/55 {
 html.light [data-lounge-game-hero] .text-rose-300 {
   color: #fda4af !important;
 }
-/* Back chip stays translucent glass on the dark soft-glow hero */
+/* Glass game pills: keep translucent white on team wash (both themes) */
 html.light [data-lounge-game-hero] [data-lounge-game-glass-chip],
 html.light [data-lounge-game-hero] [data-lounge-game-glass-chip='idle'],
 html.light [data-lounge-game-hero] [data-lounge-game-glass-chip='active'] {

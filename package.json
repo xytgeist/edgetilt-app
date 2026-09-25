@@ -1,7 +1,7 @@
 {
   "name": "phoenixlinkcalc",
   "private": true,
-  "version": "1.4.592",
+  "version": "1.4.593",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -125,8 +125,6 @@
     "@livekit/egress-sdk": "^0.2.1",
     "@lottiefiles/dotlottie-web": "^0.74.0",
     "@lucide/lab": "^0.2.0",
-    "@react-three/drei": "^10.7.8",
-    "@react-three/fiber": "^9.8.1",
     "@sentry/react": "^10.53.1",
     "@supabase/supabase-js": "^2.100.0",
     "chart.js": "^4.5.1",
@@ -149,7 +147,6 @@
     "scanic": "^1.5.1",
     "sharp": "^0.34.5",
     "tesseract.js": "^7.0.0",
-    "three": "^0.186.1",
     "tus-js-client": "^4.3.1"
   },
   "devDependencies": {

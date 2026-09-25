@@ -1,28 +1,57 @@
-import { lazy, Suspense } from 'react'
 import {
   LoungeSportsTeamLogo,
   useLoungeSportsPillWashAndLogos,
 } from '../loungeSportsPillPaint.jsx'
 import {
   downDistanceLabel,
+  fieldPercent,
   formatKickoff,
   liveClockLabel,
   scoreText,
   yardLineLabel,
 } from './gameHubFormatters.js'
-import GameHubFieldFallback from './GameHubFieldFallback.jsx'
 
-const GameHubFieldCanvas = lazy(() => import('./GameHubFieldCanvas.jsx'))
-
-function shouldShowFieldCanvas(game) {
-  if (!String(game?.sport_key || '').includes('football')) return false
-  if (game.status === 'pre') return false
-  return true
-}
-
-/** Slim CSS stub while the Three.js chunk loads (or as Suspense fallback). */
-function FieldCanvasLoading({ game, awayColor, homeColor }) {
-  return <GameHubFieldFallback game={game} awayColor={awayColor} homeColor={homeColor} />
+function FieldViz({ game, live }) {
+  if (!String(game.sport_key || '').includes('football')) return null
+  if (game.status === 'pre') return null
+  const pos = fieldPercent(live)
+  if (pos == null && !live?.possession) return null
+  const left = pos == null ? 50 : pos
+  return (
+    <div data-lounge-game-field className="px-4 pb-3 pt-1">
+      <div className="relative h-[64px] overflow-hidden rounded-2xl border border-white/10 bg-emerald-900/90 shadow-inner">
+        <div
+          className="pointer-events-none absolute inset-0 opacity-40"
+          style={{
+            backgroundImage:
+              'repeating-linear-gradient(90deg, transparent, transparent 9.5%, rgba(255,255,255,0.08) 9.5%, rgba(255,255,255,0.08) 10%)',
+          }}
+        />
+        <div className="absolute inset-y-0 left-[20%] w-px bg-white/30" />
+        <div className="absolute inset-y-0 left-1/2 w-px bg-yellow-300/90" />
+        <div className="absolute inset-y-0 left-[80%] w-px bg-white/30" />
+        <span className="absolute left-2 top-1.5 text-[10px] font-bold uppercase tracking-wide text-white/85">
+          {game.away?.abbrev}
+        </span>
+        <span className="absolute right-2 top-1.5 text-[10px] font-bold uppercase tracking-wide text-white/85">
+          {game.home?.abbrev}
+        </span>
+        <span className="absolute bottom-1.5 left-[20%] -translate-x-1/2 text-[9px] font-semibold text-white/70">
+          20
+        </span>
+        <span className="absolute bottom-1.5 left-1/2 -translate-x-1/2 text-[9px] font-semibold text-white/70">
+          50
+        </span>
+        <span className="absolute bottom-1.5 left-[80%] -translate-x-1/2 text-[9px] font-semibold text-white/70">
+          20
+        </span>
+        <span
+          className="absolute top-1/2 h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-amber-300 shadow-lg"
+          style={{ left: `${left}%` }}
+        />
+      </div>
+    </div>
+  )
 }
 
 /**
@@ -184,15 +213,7 @@ export default function GameHubHero({
           awayColor={awayColor}
           homeColor={homeColor}
         />
-        {shouldShowFieldCanvas(game) ? (
-          <Suspense
-            fallback={
-              <FieldCanvasLoading game={game} awayColor={awayColor} homeColor={homeColor} />
-            }
-          >
-            <GameHubFieldCanvas game={game} awayColor={awayColor} homeColor={homeColor} />
-          </Suspense>
-        ) : null}
+        <FieldViz game={game} live={live} />
       </div>
 
       {lastPlay ? (

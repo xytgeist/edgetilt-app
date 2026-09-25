@@ -62,26 +62,27 @@ function PlayerAvatar({ player, accentColor }) {
 }
 
 /** Fixed-frame headshot for H2H (same height both sides). Missing → bust silhouette.
- * Sources are landscape busts (~1.4:1). Zoom toward the face; hug the VS center. */
+ * Sources are landscape busts (~1.4:1). Use contain + bottom so shoulders/arms aren't
+ * sliced by a tall object-cover crop (see 3d22164c). */
 function MatchupPortrait({ player, isDef, align = 'left' }) {
   const [failed, setFailed] = useState(false)
   const src = player?.headshot_url
   const showPhoto = Boolean(src) && !failed && !isDef
-  // Home (right half) hugs left/center; away (left half) hugs right/center.
-  const objectPos = align === 'right' ? 'object-[38%_16%]' : 'object-[62%_16%]'
+  // Soft inside bias without cover-zoom crop.
+  const objectPos = align === 'right' ? 'object-left-bottom' : 'object-right-bottom'
 
   if (isDef) return null
 
   if (!showPhoto) {
     // Silhouette is ~square (reads bigger than landscape headshots). Match photo
-    // inside-edge bias, but pull a hair off the VS line; size between prior 0.64 / 0.78.
+    // inside-edge bias, but pull a hair off the VS line.
     const silOrigin = align === 'right' ? 'origin-bottom-left' : 'origin-bottom-right'
-    const silNudge = align === 'right' ? 'translate-x-3' : '-translate-x-3'
+    const silNudge = align === 'right' ? 'translate-x-2' : '-translate-x-2'
     return (
       <img
         src="/sports/nfl/silhouettes/player-bust.png"
         alt=""
-        className={`h-full w-full object-contain opacity-80 scale-[0.52] translate-y-1.5 ${silNudge} ${silOrigin}`}
+        className={`h-full w-full object-contain opacity-80 scale-[0.58] translate-y-1.5 ${silNudge} ${silOrigin}`}
       />
     )
   }
@@ -90,7 +91,7 @@ function MatchupPortrait({ player, isDef, align = 'left' }) {
     <img
       src={src}
       alt=""
-      className={`h-full w-full origin-[center_20%] scale-[1.08] object-cover ${objectPos}`}
+      className={`h-full w-full object-contain ${objectPos}`}
       onError={() => setFailed(true)}
     />
   )
@@ -388,7 +389,7 @@ function MatchupHalf({
     >
       <div
         data-fantasy-h2h-wash
-        className="relative h-[5rem] w-full overflow-hidden"
+        className="relative h-[5.5rem] w-full overflow-hidden"
         style={{ '--fantasy-wash': washColor || '#3f3f46' }}
       >
         <span className="pointer-events-none absolute inset-0 z-0 overflow-hidden" aria-hidden="true">
@@ -406,7 +407,7 @@ function MatchupHalf({
           style={{ opacity: logoOpacity }}
           aria-hidden="true"
         >
-          <LoungeSportsTeamLogo side={teamSide} treatment={logoTreatment} size={108} />
+          <LoungeSportsTeamLogo side={teamSide} treatment={logoTreatment} size={112} />
         </span>
         <span
           className={`absolute top-2 z-[4] rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${positionPillClass(
@@ -416,9 +417,10 @@ function MatchupHalf({
           {slotLabel}
         </span>
         {!empty && !isDef ? (
+          // Wide ~1.4:1 slot so landscape busts keep shoulders/arms (contain, not cover).
           <div
-            className={`pointer-events-none absolute bottom-0 z-[2] h-[5.75rem] w-[6.2rem] overflow-hidden ${
-              align === 'right' ? '-left-4' : '-right-4'
+            className={`pointer-events-none absolute bottom-0 z-[2] h-[5.5rem] w-[7.7rem] overflow-hidden ${
+              align === 'right' ? '-left-2' : '-right-2'
             }`}
           >
             <MatchupPortrait player={player} isDef={false} align={align} />

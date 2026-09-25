@@ -451,7 +451,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 width="144"
                 height="144"
                 preserveAspectRatio="xMidYMid meet"
-                opacity="0.92"
+                opacity="0.8"
               />
             </g>
           ) : null}

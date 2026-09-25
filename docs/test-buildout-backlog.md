@@ -1149,6 +1149,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-24:** **Remove Gamecast field endzone overlay boxes (Mac).** Dropped translucent team-color boxes and vertical abbrevs so clean 3D turf and endlines show through. Web **`1.4.597`**.
 - **2026-09-24:** **Floating Gamecast field in hero (Mac).** Replaced 64px 2D bar with panoramic floating field diorama asset (`gamecast-field-floating.png`) stretching edge-to-edge with uprights barely in frame; dynamic team-color endzones, scrimmage line (sky-blue), 1st down line (yellow), and football ball marker. Web **`1.4.596`**.
 - **2026-09-24:** **Hub live timeouts + possession football (Mac).** Hero shows 3 timeout dots under each score (filled = remaining, hollow = used) + football icon on the inner side of the team with the ball. Live state gains `home_timeouts` / `away_timeouts` (Rundown + ESPN situation). Redeploy Edge **`lounge-sports-scoreboard`**. Web **`1.4.595`**.
 - **2026-09-24:** **Hide hub bets/$ bar while live (Mac).** `HeroPublicBetting` returns null when `game.status === 'in'`. Web **`1.4.594`**.

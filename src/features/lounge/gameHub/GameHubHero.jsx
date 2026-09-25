@@ -51,14 +51,14 @@ function PossessionFootball({ side }) {
   )
 }
 
-function FieldViz({ game, live, awayColor, homeColor }) {
+function FieldViz({ game, live }) {
   if (!String(game.sport_key || '').includes('football')) return null
   if (game.status === 'pre') return null
   const pos = fieldPercent(live)
   const hasLine = pos != null
 
-  // Map 0..100 yard line to 12.5% .. 87.5% across the floating field image
-  const scrimLeft = hasLine ? 12.5 + (pos / 100) * 75 : null
+  // Map 0..100 yard line to 13.5% .. 86.5% across the floating field image (between goal lines)
+  const scrimLeft = hasLine ? 13.5 + (pos / 100) * 73 : null
 
   // First down line
   let firstDownLeft = null
@@ -66,11 +66,8 @@ function FieldViz({ game, live, awayColor, homeColor }) {
     const dist = Number(live.distance)
     const dir = live.possession === 'home' ? -1 : 1
     const targetPos = Math.max(0, Math.min(100, pos + dir * dist))
-    firstDownLeft = 12.5 + (targetPos / 100) * 75
+    firstDownLeft = 13.5 + (targetPos / 100) * 73
   }
-
-  const awayAbbrev = game.away?.abbrev || ''
-  const homeAbbrev = game.home?.abbrev || ''
 
   return (
     <div data-lounge-game-field className="relative w-full px-1 pb-1 pt-0 sm:px-2">
@@ -87,42 +84,6 @@ function FieldViz({ game, live, awayColor, homeColor }) {
           className="pointer-events-none absolute inset-x-0"
           style={{ top: '32.2%', height: '51.8%' }}
         >
-          {/* Away Endzone (left) */}
-          <div
-            className="absolute bottom-0 left-[4.5%] top-0 flex w-[8%] items-center justify-center"
-            style={{
-              backgroundColor: awayColor || '#7f1d1d',
-              opacity: 0.5,
-              mixBlendMode: 'multiply',
-            }}
-          />
-          <div
-            className="absolute bottom-0 left-[4.5%] top-0 flex w-[8%] items-center justify-center select-none"
-            aria-hidden="true"
-          >
-            <span className="rotate-180 text-[11px] font-black uppercase tracking-wider text-white/90 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] [writing-mode:vertical-rl]">
-              {awayAbbrev}
-            </span>
-          </div>
-
-          {/* Home Endzone (right) */}
-          <div
-            className="absolute bottom-0 right-[4.5%] top-0 flex w-[8%] items-center justify-center"
-            style={{
-              backgroundColor: homeColor || '#14532d',
-              opacity: 0.5,
-              mixBlendMode: 'multiply',
-            }}
-          />
-          <div
-            className="absolute bottom-0 right-[4.5%] top-0 flex w-[8%] items-center justify-center select-none"
-            aria-hidden="true"
-          >
-            <span className="text-[11px] font-black uppercase tracking-wider text-white/90 drop-shadow-[0_1px_2px_rgba(0,0,0,0.85)] [writing-mode:vertical-rl]">
-              {homeAbbrev}
-            </span>
-          </div>
-
           {/* First down line (yellow) */}
           {firstDownLeft != null ? (
             <div
@@ -328,12 +289,7 @@ export default function GameHubHero({
           awayColor={awayColor}
           homeColor={homeColor}
         />
-        <FieldViz
-          game={game}
-          live={live}
-          awayColor={awayColor}
-          homeColor={homeColor}
-        />
+        <FieldViz game={game} live={live} />
       </div>
 
       {lastPlay ? (

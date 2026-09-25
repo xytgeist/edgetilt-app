@@ -697,18 +697,18 @@ export default function GameHubHero({
 
       {topBar ? <div className="relative z-[4]">{topBar}</div> : null}
 
-      {/* ESPN-style compact scoreboard: logo+abbrev | score || status || score | logo+abbrev */}
+      {/* Compact scoreboard: logo | score mid-gap | status | score mid-gap | logo */}
       <div className="relative z-[4] px-3 pb-1 pt-1">
         <div className="flex items-center justify-between gap-1.5">
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <div className="flex min-w-0 flex-col items-start">
+          <div className="flex min-w-0 flex-1 items-center">
+            <div className="flex shrink-0 flex-col items-start">
               <LoungeSportsTeamLogo side={game.away} treatment={awayTreatment} size={40} />
               <div className="mt-0.5 truncate text-[11px] font-semibold uppercase tracking-wide text-white/80">
                 {game.away?.abbrev}
               </div>
               {awayTimeouts != null ? <TimeoutDots remaining={awayTimeouts} align="left" /> : null}
             </div>
-            <div className="flex min-w-0 items-center gap-1.5">
+            <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1">
               <div
                 className={`text-[34px] font-bold leading-none tabular-nums drop-shadow ${
                   awayScoreDim ? 'text-white/45' : 'text-white'
@@ -733,8 +733,8 @@ export default function GameHubHero({
             {kickoff ? <span className="text-[10px] font-medium leading-tight text-white/70">{kickoff}</span> : null}
           </div>
 
-          <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
-            <div className="flex min-w-0 items-center gap-1.5">
+          <div className="flex min-w-0 flex-1 items-center">
+            <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1">
               {homeHasBall ? <PossessionFootball side="home" /> : null}
               <div
                 className={`text-[34px] font-bold leading-none tabular-nums drop-shadow ${
@@ -744,7 +744,7 @@ export default function GameHubHero({
                 {scoreText(game.home, game.status)}
               </div>
             </div>
-            <div className="flex min-w-0 flex-col items-end">
+            <div className="flex shrink-0 flex-col items-end">
               <LoungeSportsTeamLogo side={game.home} treatment={homeTreatment} size={40} />
               <div className="mt-0.5 truncate text-[11px] font-semibold uppercase tracking-wide text-white/80">
                 {game.home?.abbrev}

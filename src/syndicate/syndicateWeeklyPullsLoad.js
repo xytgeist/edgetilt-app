@@ -1,7 +1,9 @@
 import {
   WEEKLY_PULL_ROLLUP,
   WEEKLY_PULLS,
+  HOME_PC_PULLS,
   resolveWeeklyPullStatus,
+  resolveHomePcPullStatus,
 } from './syndicateWeeklyPulls.js'
 
 function laterIso(a, b) {
@@ -15,6 +17,7 @@ function laterIso(a, b) {
 async function probeTableFreshness(supabase, pull) {
   let q = supabase.from(pull.table).select(pull.timeCol).order(pull.timeCol, { ascending: false }).limit(1)
   if (pull.skipOverrides) q = q.eq('is_custom_override', false)
+  if (pull.sourceEq) q = q.eq('source', pull.sourceEq)
   if (pull.notesLike) q = q.like('notes', pull.notesLike)
   if (pull.notesIlike) q = q.ilike('notes', pull.notesIlike)
   if (pull.notesNotIlike) q = q.not('notes', 'ilike', pull.notesNotIlike)
@@ -27,6 +30,7 @@ async function probeTableFreshness(supabase, pull) {
       .order(pull.fallbackTimeCol, { ascending: false })
       .limit(1)
     if (pull.skipOverrides) q2 = q2.eq('is_custom_override', false)
+    if (pull.sourceEq) q2 = q2.eq('source', pull.sourceEq)
     const retry = await q2
     if (retry.error) return { at: null, rowsHint: retry.error.message, error: retry.error.message }
     return { at: retry.data?.[0]?.[pull.fallbackTimeCol] || null, rowsHint: null }
@@ -35,8 +39,33 @@ async function probeTableFreshness(supabase, pull) {
   return { at: data?.[0]?.[pull.timeCol] || null, rowsHint: null }
 }
 
+function buildPullRow(pull, beat, probe, resolveStatus) {
+  const lastOkAt = laterIso(beat?.last_success_at, probe.at)
+  const lastFailAt = beat?.last_failure_at || null
+  const lastStatus = beat?.last_status || (probe.at ? 'ok' : 'unknown')
+  const status = resolveStatus({
+    lastOkAt,
+    lastFailAt,
+    lastStatus,
+  })
+  return {
+    ...pull,
+    status,
+    lastOkAt,
+    lastFailAt,
+    lastStatus,
+    source: beat?.last_success_at || beat?.last_failure_at ? 'heartbeat' : probe.at ? 'table' : 'none',
+    tableError: probe.error || null,
+    message: beat?.last_detail?.message || probe.error || null,
+  }
+}
+
 export async function loadWeeklyPullBoard(supabase) {
-  const jobIds = [...WEEKLY_PULLS.map((p) => p.jobId), WEEKLY_PULL_ROLLUP.jobId]
+  const jobIds = [
+    ...WEEKLY_PULLS.map((p) => p.jobId),
+    ...HOME_PC_PULLS.map((p) => p.jobId),
+    WEEKLY_PULL_ROLLUP.jobId,
+  ]
   const { data: beats, error: beatErr } = await supabase
     .from('admin_ops_job_heartbeats')
     .select('job_id, last_success_at, last_failure_at, last_status, last_detail, updated_at')
@@ -47,25 +76,13 @@ export async function loadWeeklyPullBoard(supabase) {
   const rows = []
   for (const pull of WEEKLY_PULLS) {
     const probe = await probeTableFreshness(supabase, pull)
-    const beat = beatById.get(pull.jobId)
-    const lastOkAt = laterIso(beat?.last_success_at, probe.at)
-    const lastFailAt = beat?.last_failure_at || null
-    const lastStatus = beat?.last_status || (probe.at ? 'ok' : 'unknown')
-    const status = resolveWeeklyPullStatus({
-      lastOkAt,
-      lastFailAt,
-      lastStatus,
-    })
-    rows.push({
-      ...pull,
-      status,
-      lastOkAt,
-      lastFailAt,
-      lastStatus,
-      source: beat?.last_success_at || beat?.last_failure_at ? 'heartbeat' : probe.at ? 'table' : 'none',
-      tableError: probe.error || null,
-      message: beat?.last_detail?.message || probe.error || null,
-    })
+    rows.push(buildPullRow(pull, beatById.get(pull.jobId), probe, resolveWeeklyPullStatus))
+  }
+
+  const homePcRows = []
+  for (const pull of HOME_PC_PULLS) {
+    const probe = await probeTableFreshness(supabase, pull)
+    homePcRows.push(buildPullRow(pull, beatById.get(pull.jobId), probe, resolveHomePcPullStatus))
   }
 
   const rollBeat = beatById.get(WEEKLY_PULL_ROLLUP.jobId)
@@ -83,5 +100,5 @@ export async function loadWeeklyPullBoard(supabase) {
     message: rollBeat?.last_detail?.message || (beatErr ? beatErr.message : null),
   }
 
-  return { rows, rollup, beatError: beatErr?.message || null }
+  return { rows, homePcRows, rollup, beatError: beatErr?.message || null }
 }

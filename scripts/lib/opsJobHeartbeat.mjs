@@ -2,6 +2,9 @@
 
 export const POKER_CATALOG_SYNC_JOB_ID = 'poker_catalog_sync_production'
 export const SYNDICATE_FOOTBALL_METRICS_SYNC_JOB_ID = 'syndicate_football_metrics_sync_production'
+export const SYNDICATE_ACTION_SPLITS_SYNC_JOB_ID =
+  'syndicate_action_public_betting_sync_production'
+export const SYNDICATE_ESPN_TRENCH_SYNC_JOB_ID = 'syndicate_espn_nfl_trench_sync_production'
 
 /**
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
@@ -51,4 +54,28 @@ export async function recordOpsJobHeartbeatForTarget(supabase, target, status, d
 export async function recordSyndicateMetricsHeartbeatForTarget(supabase, target, status, detail = null) {
   if (target !== 'production') return
   await recordOpsJobHeartbeat(supabase, SYNDICATE_FOOTBALL_METRICS_SYNC_JOB_ID, status, detail)
+}
+
+/**
+ * Home-PC Action / ESPN pulls write Edge Monitor + Ops Weekly Pulls heartbeats on production only.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {'test' | 'production' | 'both'} target
+ * @param {string} jobId
+ * @param {'ok' | 'failed'} status
+ * @param {Record<string, unknown> | null} [detail]
+ */
+export async function recordSyndicateHomePcHeartbeatForTarget(
+  supabase,
+  target,
+  jobId,
+  status,
+  detail = null,
+) {
+  if (target !== 'production' && target !== 'both') return
+  if (!jobId) return
+  await recordOpsJobHeartbeat(supabase, jobId, status, {
+    source: 'home_pc',
+    recorded_at: new Date().toISOString(),
+    ...(detail || {}),
+  })
 }

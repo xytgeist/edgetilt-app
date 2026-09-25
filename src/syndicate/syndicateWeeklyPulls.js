@@ -1,8 +1,13 @@
 /**
- * Weekly syndicate data pulls (Tuesday GHA 7:00am PT).
+ * Weekly syndicate data pulls (Tuesday GHA 7:00am PT) + home-PC daily pulls.
  * Pass/fail uses job heartbeats when present, else last write on the dest table.
  */
 import { ptClockParts, shopWeekTuesdayYmd } from './syndicateSplitsDropSchedule.js'
+
+/** Must match scripts/lib/opsJobHeartbeat.mjs */
+export const SYNDICATE_ACTION_SPLITS_SYNC_JOB_ID =
+  'syndicate_action_public_betting_sync_production'
+export const SYNDICATE_ESPN_TRENCH_SYNC_JOB_ID = 'syndicate_espn_nfl_trench_sync_production'
 
 const PT_OFFSETS = ['-07:00', '-08:00']
 const FRESH_SLACK_MS = 30 * 60 * 1000
@@ -81,6 +86,35 @@ export const WEEKLY_PULL_ROLLUP = {
   sports: 'All',
 }
 
+/** Home-PC twice daily (10am + 6pm local). Stale after ~26h. */
+export const HOME_PC_PULL_SCHEDULE = 'daily 10am + 6pm PT'
+const HOME_PC_STALE_MS = 26 * 3600_000
+
+export const HOME_PC_PULLS = [
+  {
+    id: 'action_splits',
+    jobId: SYNDICATE_ACTION_SPLITS_SYNC_JOB_ID,
+    label: 'Action public betting',
+    detail: 'Home-PC API pull → syndicate_betting_splits (action_pro). Ops paste stays for VSiN.',
+    tab: 'splits',
+    sports: 'NFL+CFB',
+    table: 'syndicate_betting_splits',
+    timeCol: 'updated_at',
+    sourceEq: 'action_pro',
+  },
+  {
+    id: 'espn_trench',
+    jobId: SYNDICATE_ESPN_TRENCH_SYNC_JOB_ID,
+    label: 'ESPN trench',
+    detail: 'Home-PC ESPN content feed → PBWR/PRWR/RBWR/RSWR. Vision paste stays as backup.',
+    tab: 'trench_epa',
+    sports: 'NFL',
+    table: 'nfl_team_metrics',
+    timeCol: 'updated_at',
+    skipOverrides: true,
+  },
+]
+
 function ptWallMs(ymd, hour, minute = 0) {
   const hh = String(hour).padStart(2, '0')
   const mm = String(minute).padStart(2, '0')
@@ -116,6 +150,21 @@ export function resolveWeeklyPullStatus({ lastOkAt, lastFailAt, lastStatus, now 
   if (afterDue && !hasOk) return 'fail'
   if (afterDue && hasOk && okMs < dueMs - FRESH_SLACK_MS) return 'fail'
   return 'stale'
+}
+
+/** Home-PC twice-daily jobs: fail if latest heartbeat failed; stale if last ok >26h. */
+export function resolveHomePcPullStatus({ lastOkAt, lastFailAt, lastStatus, now = new Date() }) {
+  const nowMs = now.getTime()
+  const okMs = lastOkAt ? Date.parse(lastOkAt) : NaN
+  const failMs = lastFailAt ? Date.parse(lastFailAt) : NaN
+  const hasOk = Number.isFinite(okMs)
+  const hasFail = Number.isFinite(failMs)
+  const failIsLatest = hasFail && (!hasOk || failMs >= okMs) && lastStatus === 'failed'
+
+  if (failIsLatest) return 'fail'
+  if (hasOk && nowMs - okMs <= HOME_PC_STALE_MS) return 'pass'
+  if (hasOk) return 'stale'
+  return 'waiting'
 }
 
 export function formatPullWhen(iso) {

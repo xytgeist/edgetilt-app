@@ -20,6 +20,10 @@ import {
   fetchEspnTeamWinRateBoardIfChanged,
   writeEspnTrenchLiveState,
 } from './lib/espnNflTeamWinRatesLive.mjs'
+import {
+  SYNDICATE_ESPN_TRENCH_SYNC_JOB_ID,
+  recordSyndicateHomePcHeartbeatForTarget,
+} from './lib/opsJobHeartbeat.mjs'
 
 function parseArgs(argv) {
   let target = 'test'
@@ -87,45 +91,94 @@ async function applyBoard(supabase, board, { dryRun, label }) {
   return { updated, skipped }
 }
 
+async function heartbeatProd(argTarget, status, detail) {
+  loadSupabaseEnv('production')
+  const supabase = createSupabaseServiceClient(createClient)
+  await recordSyndicateHomePcHeartbeatForTarget(
+    supabase,
+    argTarget,
+    SYNDICATE_ESPN_TRENCH_SYNC_JOB_ID,
+    status,
+    detail,
+  )
+}
+
 async function main() {
   const { target, dryRun, force } = parseArgs(process.argv)
-  const { skip, reason, board } = await fetchEspnTeamWinRateBoardIfChanged({ force })
+  try {
+    const { skip, reason, board } = await fetchEspnTeamWinRateBoardIfChanged({ force })
 
-  console.log(
-    `[espn-trench] story=${board.storyId} lastModified=${board.lastModified || '?'} ` +
-      `through=${board.through || '?'} teams=${board.teamCount}`,
-  )
-  console.log(`[espn-trench] ${board.headline}`)
-
-  if (skip) {
-    console.log(`[espn-trench] skip write: ${reason}`)
-    return
-  }
-
-  const targets = target === 'both' ? ['test', 'production'] : [target]
-  for (const t of targets) {
-    loadSupabaseEnv(t)
-    const supabase = createSupabaseServiceClient(createClient)
-    const { updated, skipped } = await applyBoard(supabase, board, {
-      dryRun,
-      label: targetHuman(t),
-    })
     console.log(
-      `[espn-trench] ${targetHuman(t)} updated=${updated} skipped=${skipped}${dryRun ? ' (dry)' : ''}`,
+      `[espn-trench] story=${board.storyId} lastModified=${board.lastModified || '?'} ` +
+        `through=${board.through || '?'} teams=${board.teamCount}`,
     )
-  }
+    console.log(`[espn-trench] ${board.headline}`)
 
-  if (!dryRun) {
-    writeEspnTrenchLiveState({
-      storyId: board.storyId,
-      lastModified: board.lastModified,
-      through: board.through,
-      headline: board.headline,
-      pulledAt: new Date().toISOString(),
-      teamCount: board.teamCount,
-    })
+    if (skip) {
+      console.log(`[espn-trench] skip write: ${reason}`)
+      if (!dryRun) {
+        await heartbeatProd(target, 'ok', {
+          message: reason,
+          skippedUnchanged: true,
+          storyId: board.storyId,
+          lastModified: board.lastModified,
+          through: board.through,
+          teams: board.teamCount,
+        })
+      }
+      return
+    }
+
+    const targets = target === 'both' ? ['test', 'production'] : [target]
+    let lastUpdated = 0
+    let lastSkipped = 0
+    for (const t of targets) {
+      loadSupabaseEnv(t)
+      const supabase = createSupabaseServiceClient(createClient)
+      const { updated, skipped } = await applyBoard(supabase, board, {
+        dryRun,
+        label: targetHuman(t),
+      })
+      lastUpdated = updated
+      lastSkipped = skipped
+      console.log(
+        `[espn-trench] ${targetHuman(t)} updated=${updated} skipped=${skipped}${dryRun ? ' (dry)' : ''}`,
+      )
+    }
+
+    if (!dryRun) {
+      writeEspnTrenchLiveState({
+        storyId: board.storyId,
+        lastModified: board.lastModified,
+        through: board.through,
+        headline: board.headline,
+        pulledAt: new Date().toISOString(),
+        teamCount: board.teamCount,
+      })
+      await heartbeatProd(target, 'ok', {
+        message: `updated=${lastUpdated} skippedOverrides=${lastSkipped}`,
+        storyId: board.storyId,
+        lastModified: board.lastModified,
+        through: board.through,
+        teams: board.teamCount,
+        updated: lastUpdated,
+        skippedOverrides: lastSkipped,
+        mirrored: targets,
+      })
+    }
+    console.log('[espn-trench] done')
+  } catch (err) {
+    if (!dryRun) {
+      try {
+        await heartbeatProd(target, 'failed', {
+          message: err?.message || String(err),
+        })
+      } catch {
+        /* best-effort */
+      }
+    }
+    throw err
   }
-  console.log('[espn-trench] done')
 }
 
 main().catch((err) => {

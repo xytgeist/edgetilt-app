@@ -1150,6 +1150,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-25:** **Home-PC Action + ESPN trench on Ops monitor.** Sync scripts heartbeat production (`syndicate_action_public_betting_sync_production`, `syndicate_espn_nfl_trench_sync_production`). Ops **Weekly Pulls** shows pass/fail (stale >26h). Ops week calendar greens ESPN trench from heartbeat/table (no mark-in). Splits cells already auto from `syndicate_betting_splits`. Edge Monitor registry migration **`20260925160000`**. Frontend **`1.4.653`**.
 - **2026-09-25:** **ESPN NFL trench live auto pull (Windows).** Home-PC cron pulls ESPN Analytics team win rates via `content.core.api.espn.com` (`?enable=inlines`, story `49742016`) → PBWR/PRWR/RBWR/RSWR on `nfl_team_metrics` (skips custom overrides). `lastModified` skip. Same Windows task as Action splits. Manual: `npm run syndicate:sync-espn-trench:both` / `:both:force`. Vision paste kept as backup. Frozen 2025 JSON script still for one-shots.
 - **2026-09-25:** **Promoted `test` → `main` (`2353d3fc`).** Vercel prod = web **`1.4.652`**. Sports Hub league tiles, Safari canceled-import ignore, kickoff local time (no zone suffix), Action Network splits scripts (home PC). No new prod SQL. Store IPA marketing still **1.4.95**.
 - **2026-09-25:** **Sports Hub league tiles (Mac).** Sports Hub shows NFL / NBA / MLB / NHL / PGA / MLS. NFL opens NFL Hub. The rest are grayed Coming soon. Light tiles scoped under `data-lounge-sports-hub-leagues`. Frontend **`1.4.652`**. Web only.

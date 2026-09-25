@@ -68,9 +68,10 @@ The agent should treat the following as **standing instructions for this session
 - **Action write:** `syndicate_betting_splits` with `source=action_pro` (VSiN paste stays).
 - **ESPN fetch:** `content.core.api.espn.com/v1/sports/news/{storyId}?enable=inlines` (default story `49742016`; override `ESPN_NFL_TRENCH_STORY_ID`). Skips when `lastModified` unchanged.
 - **ESPN write:** `nfl_team_metrics` four win-rate columns only (skips `is_custom_override`). Does not touch EPA.
+- **Monitor:** production heartbeats `syndicate_action_public_betting_sync_production` + `syndicate_espn_nfl_trench_sync_production`. Ops Weekly Pulls + Edge Monitor. Calendar: no mark-in for Action splits or ESPN trench.
 - **Scripts:** `npm run syndicate:sync-action-splits:test:dry` / `:both`. `npm run syndicate:sync-espn-trench:test:dry` / `:both` / `:both:force`. Same Windows task runs both: `npm run syndicate:sync-action-splits:install-windows-task` (daily **10:00 AM + 6:00 PM** local).
 - **Ops paste / vision** stays as backup (VSiN + trench repair).
-- **Ryan next:** re-run the install task once so the runner picks up ESPN (same task name).
+- **Ryan next:** apply migration **`20260925160000`** on **prod** if Edge Monitor does not list the two jobs yet (test can be applied by agent). Re-run install task optional.
 
 ### Mac Theo ACTIVE TRACK 2026-09-25 ... sports hub league tiles
 

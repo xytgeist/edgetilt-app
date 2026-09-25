@@ -12,6 +12,7 @@ import {
   splitsCoverageOk,
   splitsDropAfterWindow,
 } from './syndicateSplitsDropSchedule.js'
+import { SYNDICATE_ESPN_TRENCH_SYNC_JOB_ID } from './syndicateWeeklyPulls.js'
 
 const PT = 'America/Los_Angeles'
 const MARK_PREFIX = 'syndicate-ops-week-done:'
@@ -134,8 +135,8 @@ export const OPS_WEEK_TASKS = [
     id: 'nfl_seed',
     sports: ['nfl'],
     kind: 'shot',
-    label: 'Seed shot',
-    detail: 'Full NFL sides board. Action PRO or VSiN. Every remaining game.',
+    label: 'Splits seed',
+    detail: 'Home-PC Action pull (or VSiN paste). Full NFL sides this shop week.',
     days: [2, 3],
     startHour: 0,
     endHour: 24,
@@ -147,8 +148,8 @@ export const OPS_WEEK_TASKS = [
     id: 'cfb_seed',
     sports: ['cfb'],
     kind: 'shot',
-    label: 'Seed shot',
-    detail: 'Full CFB sides board. Every remaining game.',
+    label: 'Splits seed',
+    detail: 'Home-PC Action pull (or VSiN paste). Full CFB sides this shop week.',
     days: [2, 3],
     startHour: 0,
     endHour: 24,
@@ -159,14 +160,14 @@ export const OPS_WEEK_TASKS = [
   {
     id: 'nfl_trench',
     sports: ['nfl'],
-    kind: 'shot',
+    kind: 'check',
     label: 'ESPN trench',
-    detail: 'If ESPN posted a new 2026 team win-rate table, paste it on NFL Trenches. Frozen 2025 stays until then.',
+    detail: 'Home-PC ESPN content feed → win rates. Pass/fail on Weekly Pulls. Vision paste is backup only.',
     days: [2, 3],
     startHour: 0,
     endHour: 24,
     tab: 'trench_epa',
-    markable: true,
+    autoEvidence: 'espn_trench',
   },
   {
     id: 'nfl_pval_check',
@@ -236,8 +237,8 @@ export const OPS_WEEK_TASKS = [
     id: 'cfb_movers',
     sports: ['cfb'],
     kind: 'shot',
-    label: 'Movers shot',
-    detail: 'Reshoot CFB sides before Friday lock. Movers only is fine.',
+    label: 'Movers pull',
+    detail: 'Home-PC Action refresh before Friday lock. VSiN paste if puller is down.',
     days: [4, 5],
     startHour: 12,
     endHour: 14,
@@ -249,8 +250,8 @@ export const OPS_WEEK_TASKS = [
     id: 'nfl_movers',
     sports: ['nfl'],
     kind: 'shot',
-    label: 'Movers shot',
-    detail: 'Reshoot NFL sides after TNF lock. Movers + leftover weekend games.',
+    label: 'Movers pull',
+    detail: 'Home-PC Action refresh after TNF. VSiN paste if puller is down.',
     days: [4, 5],
     startHour: 18,
     endHour: 18,
@@ -306,7 +307,7 @@ export const OPS_WEEK_TASKS = [
     sports: ['cfb'],
     kind: 'shot',
     label: 'Lock + totals',
-    detail: 'Last CFB sides refresh + totals tab before Saturday kickoffs. Needed before Fri 12pm house lock.',
+    detail: 'Home-PC Action refresh (sides + totals) before Saturday. Needed before Fri 12pm house lock.',
     days: [5, 6],
     startHour: 7,
     endHour: 14,
@@ -378,7 +379,7 @@ export const OPS_WEEK_TASKS = [
     sports: ['nfl'],
     kind: 'shot',
     label: 'Lock + totals',
-    detail: 'Last NFL sides refresh, then the totals tab. Sat-Sun morning.',
+    detail: 'Home-PC Action refresh (sides + totals). Sat-Sun morning window.',
     days: [6, 0],
     startHour: 7,
     endHour: 12,
@@ -616,7 +617,7 @@ export function setOpsWeekCalendarOpen(open) {
 }
 
 export function emptyOpsWeekEvidence() {
-  return { logs: [], picks: [], posts: [], splits: null }
+  return { logs: [], picks: [], posts: [], splits: null, trench: null }
 }
 
 function evidenceYmd(iso) {
@@ -706,6 +707,34 @@ function splitsRowsForWeek(rows, evidence) {
   return evidence.splits != null ? evidence.splits : rows
 }
 
+function shopWeekStartMs(shopTueYmd) {
+  return ptYmdStartMs(shopTueYmd)
+}
+
+function isoInShopWeek(iso, shopTueYmd) {
+  const ms = iso ? Date.parse(String(iso)) : NaN
+  if (!Number.isFinite(ms)) return false
+  return ms >= shopWeekStartMs(shopTueYmd)
+}
+
+/**
+ * @param {{ lastOkAt?: string | null, lastFailAt?: string | null, lastStatus?: string | null, tableAt?: string | null } | null} trench
+ * @param {string} shopTue
+ */
+function trenchEvidenceStatus(trench, shopTue) {
+  if (!trench) return 'none'
+  const okMs = trench.lastOkAt ? Date.parse(trench.lastOkAt) : NaN
+  const failMs = trench.lastFailAt ? Date.parse(trench.lastFailAt) : NaN
+  const hasOk = Number.isFinite(okMs)
+  const hasFail = Number.isFinite(failMs)
+  const failIsLatest =
+    hasFail && (!hasOk || failMs >= okMs) && trench.lastStatus === 'failed'
+  if (failIsLatest && isoInShopWeek(trench.lastFailAt, shopTue)) return 'failed'
+  if (hasOk && isoInShopWeek(trench.lastOkAt, shopTue)) return 'ok'
+  if (isoInShopWeek(trench.tableAt, shopTue)) return 'ok'
+  return 'none'
+}
+
 /**
  * @param {typeof OPS_WEEK_TASKS[number]} task
  * @param {string} dayYmd
@@ -757,6 +786,26 @@ export function evaluateOpsWeekTaskOnDay(task, dayYmd, rows, now = new Date(), e
       return { ...task, status: live?.status === 'due' ? 'due' : 'upcoming', dayYmd, shopTue, marked: false }
     }
     return { ...task, status: 'missed', dayYmd, shopTue, marked: false }
+  }
+
+  if (task.autoEvidence === 'espn_trench') {
+    const trenchStatus = trenchEvidenceStatus(evidence.trench, shopTue)
+    if (trenchStatus === 'ok') {
+      return { ...task, status: 'done', dayYmd, shopTue, marked: false }
+    }
+    if (trenchStatus === 'failed') {
+      return { ...task, status: 'missed', dayYmd, shopTue, marked: false }
+    }
+    if (dayYmd > clock.ymd) {
+      return { ...task, status: 'upcoming', dayYmd, shopTue, marked: false }
+    }
+    if (dayYmd === clock.ymd && inTaskClockWindow(task, clock)) {
+      return { ...task, status: 'due', dayYmd, shopTue, marked: false }
+    }
+    if (dayYmd < clock.ymd || afterTaskWindow(task, clock)) {
+      return { ...task, status: 'missed', dayYmd, shopTue, marked: false }
+    }
+    return { ...task, status: 'upcoming', dayYmd, shopTue, marked: false }
   }
 
   if (marked) {
@@ -911,11 +960,35 @@ export function opsWeekQuerySinceIso(now = new Date()) {
 export async function fetchOpsWeekEvidence(supabaseClient, botUserId, now = new Date()) {
   if (!supabaseClient) return emptyOpsWeekEvidence()
   const splitsPromise = fetchSplitsCoverageRows(supabaseClient, now)
+  const trenchPromise = (async () => {
+    const [beatRes, tableRes] = await Promise.all([
+      supabaseClient
+        .from('admin_ops_job_heartbeats')
+        .select('last_success_at, last_failure_at, last_status, last_detail')
+        .eq('job_id', SYNDICATE_ESPN_TRENCH_SYNC_JOB_ID)
+        .maybeSingle(),
+      supabaseClient
+        .from('nfl_team_metrics')
+        .select('updated_at')
+        .eq('is_custom_override', false)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ])
+    return {
+      lastOkAt: beatRes.data?.last_success_at || null,
+      lastFailAt: beatRes.data?.last_failure_at || null,
+      lastStatus: beatRes.data?.last_status || null,
+      tableAt: tableRes.data?.updated_at || null,
+      message: beatRes.data?.last_detail?.message || beatRes.error?.message || tableRes.error?.message || null,
+    }
+  })()
   if (!botUserId) {
-    return { ...emptyOpsWeekEvidence(), splits: await splitsPromise }
+    const [splits, trench] = await Promise.all([splitsPromise, trenchPromise])
+    return { ...emptyOpsWeekEvidence(), splits, trench }
   }
   const since = opsWeekQuerySinceIso(now)
-  const [logsRes, picksRes, postsRes, splits] = await Promise.all([
+  const [logsRes, picksRes, postsRes, splits, trench] = await Promise.all([
     supabaseClient
       .from('lounge_bot_publish_log')
       .select('post_kind,status,created_at,dedupe_key,caption')
@@ -939,11 +1012,13 @@ export async function fetchOpsWeekEvidence(supabaseClient, botUserId, now = new 
       .order('created_at', { ascending: false })
       .limit(80),
     splitsPromise,
+    trenchPromise,
   ])
   return {
     logs: logsRes.data || [],
     picks: picksRes.data || [],
     posts: postsRes.data || [],
     splits,
+    trench,
   }
 }

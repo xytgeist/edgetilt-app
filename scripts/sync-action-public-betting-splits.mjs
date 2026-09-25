@@ -23,6 +23,10 @@ import {
   ACTION_SPORTS,
   fetchActionPublicBettingRows,
 } from './lib/actionNetworkPublicBetting.mjs'
+import {
+  SYNDICATE_ACTION_SPLITS_SYNC_JOB_ID,
+  recordSyndicateHomePcHeartbeatForTarget,
+} from './lib/opsJobHeartbeat.mjs'
 
 function parseArgs(argv) {
   let target = 'test'
@@ -104,6 +108,8 @@ async function runForTarget(target, sports, { dryRun, preferHtml }) {
   console.log(`[action-splits] target=${targetHuman(target)} sports=${sports.join(',')}`)
 
   let totalSaved = 0
+  /** @type {Record<string, number>} */
+  const bySport = {}
   for (const sport of sports) {
     if (!ACTION_SPORTS[sport]) continue
     const board = await fetchActionPublicBettingRows(sport, { preferHtml })
@@ -116,18 +122,58 @@ async function runForTarget(target, sports, { dryRun, preferHtml }) {
     })
     console.log(`[action-splits] ${sport} saved=${saved} skipped=${skipped}${dryRun ? ' (dry)' : ''}`)
     totalSaved += saved
+    bySport[sport] = saved
   }
-  return totalSaved
+  return { totalSaved, bySport, supabase }
+}
+
+async function heartbeatProd(argTarget, status, detail) {
+  loadSupabaseEnv('production')
+  const supabase = createSupabaseServiceClient(createClient)
+  await recordSyndicateHomePcHeartbeatForTarget(
+    supabase,
+    argTarget,
+    SYNDICATE_ACTION_SPLITS_SYNC_JOB_ID,
+    status,
+    detail,
+  )
 }
 
 async function main() {
   const { target, dryRun, sports, preferHtml } = parseArgs(process.argv)
   const targets = target === 'both' ? ['test', 'production'] : [target]
   let sum = 0
-  for (const t of targets) {
-    sum += await runForTarget(t, sports, { dryRun, preferHtml })
+  /** @type {Record<string, number>} */
+  const bySport = {}
+  try {
+    for (const t of targets) {
+      const result = await runForTarget(t, sports, { dryRun, preferHtml })
+      sum += result.totalSaved
+      for (const [sport, n] of Object.entries(result.bySport)) {
+        bySport[sport] = (bySport[sport] || 0) + n
+      }
+    }
+    if (!dryRun) {
+      await heartbeatProd(target, 'ok', {
+        message: `saved=${sum}`,
+        rows: sum,
+        bySport,
+        mirrored: targets,
+      })
+    }
+    console.log(`[action-splits] done saved=${sum}${dryRun ? ' (dry)' : ''}`)
+  } catch (err) {
+    if (!dryRun) {
+      try {
+        await heartbeatProd(target, 'failed', {
+          message: err?.message || String(err),
+        })
+      } catch {
+        /* best-effort */
+      }
+    }
+    throw err
   }
-  console.log(`[action-splits] done saved=${sum}${dryRun ? ' (dry)' : ''}`)
 }
 
 main().catch((err) => {

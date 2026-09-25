@@ -60,6 +60,9 @@ export default function LoungeGameHubModal({
     [game?.sport_key, sports?.games],
   )
 
+  const isCfbGame = String(game?.sport_key || '').includes('ncaaf')
+  const showFantasyTab = Boolean(game) && !isCfbGame
+
   const searchQuery = useMemo(() => {
     if (!game) return ''
     const mascot = (side) => String(side?.mascot || side?.name || '').trim()
@@ -115,6 +118,13 @@ export default function LoungeGameHubModal({
 
   useEffect(() => {
     if (!game || !supabaseClient) return undefined
+    // CFB hub has no Fantasy tab / Sleeper board … skip the NFL fantasy Edge call.
+    if (String(game.sport_key || '').includes('ncaaf')) {
+      setFantasy({ players: [], props: [], season: null, week: null, sources: [] })
+      setFantasyLoading(false)
+      setFantasyErr('')
+      return undefined
+    }
     let cancelled = false
 
     const loadFantasy = ({ showLoading }) => {
@@ -162,7 +172,7 @@ export default function LoungeGameHubModal({
       cancelled = true
       if (id) window.clearInterval(id)
     }
-  }, [game?.id, game?.status, game?.away?.abbrev, game?.home?.abbrev, supabaseClient])
+  }, [game?.id, game?.status, game?.sport_key, game?.away?.abbrev, game?.home?.abbrev, supabaseClient])
 
   // Prefetch Lounge posts as soon as the hub opens (not only when Posts/Chat is selected).
   // Clearing posts when leaving those tabs forced a full reload on every return.
@@ -203,10 +213,11 @@ export default function LoungeGameHubModal({
   }, [game, hydratePosts, postSort, postsNonce, searchQuery, supabaseClient, tab])
 
   useEffect(() => {
-    // Pregame → Fantasy; live → Chat; post → Posts
+    // Pregame → Fantasy (NFL) / Posts (CFB); live → Chat; post → Posts
     if (!game?.id) return
+    const cfb = String(game.sport_key || '').includes('ncaaf')
     if (game.status === 'in') setTab('chat')
-    else if (game.status === 'pre') setTab('fantasy')
+    else if (game.status === 'pre') setTab(cfb ? 'posts' : 'fantasy')
     else setTab('posts')
     setPostsSort('top')
     setDraft('')
@@ -271,7 +282,7 @@ export default function LoungeGameHubModal({
     { id: 'stats', label: 'Stats' },
     { id: 'plays', label: 'Plays' },
     { id: 'players', label: 'Players' },
-    { id: 'fantasy', label: 'Fantasy' },
+    ...(showFantasyTab ? [{ id: 'fantasy', label: 'Fantasy' }] : []),
     { id: 'chat', label: 'Chat' },
   ]
 
@@ -377,16 +388,18 @@ export default function LoungeGameHubModal({
             game={game}
           />
         </div>
-        <div hidden={tab !== 'fantasy'}>
-          <GameHubFantasyPane
-            players={fantasy.players}
-            loading={fantasyLoading}
-            error={fantasyErr}
-            gameStatus={game.status}
-            game={game}
-            live={live}
-          />
-        </div>
+        {showFantasyTab ? (
+          <div hidden={tab !== 'fantasy'}>
+            <GameHubFantasyPane
+              players={fantasy.players}
+              loading={fantasyLoading}
+              error={fantasyErr}
+              gameStatus={game.status}
+              game={game}
+              live={live}
+            />
+          </div>
+        ) : null}
         <div hidden={tab !== 'posts' && tab !== 'chat'} className="py-2">
           {tab === 'posts' ? (
             <div className="mb-2 flex gap-1 rounded-full bg-zinc-900 p-0.5 w-fit">

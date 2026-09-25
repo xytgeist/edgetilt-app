@@ -476,8 +476,13 @@ function gameFromOdds(sportKey: string, sportLabel: string, logoLeague: string, 
   const awayScore = scoreForName(ev.scores, awayName)
   const kicked = commence ? Date.parse(commence) <= Date.now() : false
   const status: LoungeSportsGame['status'] = completed ? 'post' : kicked && (homeScore != null || awayScore != null) ? 'in' : 'pre'
-  const homeAbbrev = sportKey.includes('nfl') ? nflAbbrevFromOddsName(homeName) : (homeName.split(/\s+/).pop() || homeName).slice(0, 3).toUpperCase()
-  const awayAbbrev = sportKey.includes('nfl') ? nflAbbrevFromOddsName(awayName) : (awayName.split(/\s+/).pop() || awayName).slice(0, 3).toUpperCase()
+  const useNflAbbrev = isNflSportKey(sportKey)
+  const homeAbbrev = useNflAbbrev
+    ? nflAbbrevFromOddsName(homeName)
+    : (homeName.split(/\s+/).pop() || homeName).slice(0, 3).toUpperCase()
+  const awayAbbrev = useNflAbbrev
+    ? nflAbbrevFromOddsName(awayName)
+    : (awayName.split(/\s+/).pop() || awayName).slice(0, 3).toUpperCase()
   const homeMascot = homeName.split(/\s+/).pop() || homeName
   const awayMascot = awayName.split(/\s+/).pop() || awayName
   const home: LoungeSportsGameSide = {
@@ -565,6 +570,30 @@ export function nflFetchDates(now = Date.now()): string[] {
   const dow = ptWeekdaySun0(now)
   const secondary = addDaysYmd(primary, dow === 2 || dow === 3 ? -7 : 7)
   return [...new Set([...nflWeekDatesFromThursday(primary), ...nflWeekDatesFromThursday(secondary)])].sort()
+}
+
+/** CFB Edge fetch … current Thu–Mon only (higher volume than NFL). */
+export function cfbFetchDates(now = Date.now()): string[] {
+  return nflWeekDatesFromThursday(nflCalendarThursdayYmd(now))
+}
+
+function isNflSportKey(sportKey: string): boolean {
+  const sk = String(sportKey || '')
+  return sk.includes('americanfootball_nfl') && !sk.includes('ncaaf')
+}
+
+function isCfbSportKey(sportKey: string): boolean {
+  return String(sportKey || '').includes('americanfootball_ncaaf')
+}
+
+type EspnFootballLeague = 'nfl' | 'college-football'
+
+function espnFootballScoreboardPath(league: EspnFootballLeague): string {
+  return `https://site.api.espn.com/apis/site/v2/sports/football/${league}/scoreboard`
+}
+
+function espnFootballSummaryPath(league: EspnFootballLeague, eventId: string): string {
+  return `https://site.api.espn.com/apis/site/v2/sports/football/${league}/summary?event=${encodeURIComponent(eventId)}`
 }
 
 function gameOnSlate(game: LoungeSportsGame, dates: string[]): boolean {
@@ -664,33 +693,35 @@ type EspnSlateExtras = {
 }
 
 const ESPN_SLATE_TTL_MS = 10 * 60 * 1000
-let espnNflSlateCache: { at: number; extras: EspnSlateExtras } | null = null
+const espnFootballSlateCache = new Map<EspnFootballLeague, { at: number; extras: EspnSlateExtras }>()
 
 /**
  * Season W-L + national broadcast from ESPN public scoreboard (unofficial).
  * Cached 10m so the 45s pill poll does not hammer ESPN. Allowed on test + prod.
  */
-async function loadEspnNflSlateExtras(
+async function loadEspnFootballSlateExtras(
   games: LoungeSportsGame[],
+  league: EspnFootballLeague,
+  sportMatch: (sportKey: string) => boolean,
 ): Promise<EspnSlateExtras> {
-  if (espnNflSlateCache && Date.now() - espnNflSlateCache.at < ESPN_SLATE_TTL_MS) {
-    return espnNflSlateCache.extras
+  const cached = espnFootballSlateCache.get(league)
+  if (cached && Date.now() - cached.at < ESPN_SLATE_TTL_MS) {
+    return cached.extras
   }
   const recordsByAbbrev = new Map<string, string>()
   const broadcastByMatchup = new Map<string, { label: string; url: string }>()
   const dateSet = new Set<string>()
   for (const g of games) {
-    if (!String(g.sport_key || '').includes('americanfootball_nfl')) continue
+    if (!sportMatch(String(g.sport_key || ''))) continue
     const day = ptDateFromIso(g.commence_time)
     if (day) dateSet.add(day.replace(/-/g, ''))
   }
   const dates = ['', ...[...dateSet].sort()]
   const headers = { 'User-Agent': 'EdgeTiltLounge/1.0', Accept: 'application/json' }
+  const base = espnFootballScoreboardPath(league)
 
   await Promise.all(dates.map(async (date) => {
-    const url = date
-      ? `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=${date}`
-      : 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard'
+    const url = date ? `${base}?dates=${date}` : base
     try {
       const res = await fetch(url, { headers, signal: AbortSignal.timeout(8_000) })
       if (!res.ok) return
@@ -723,17 +754,25 @@ async function loadEspnNflSlateExtras(
   }))
 
   const extras = { recordsByAbbrev, broadcastByMatchup }
-  espnNflSlateCache = { at: Date.now(), extras }
+  espnFootballSlateCache.set(league, { at: Date.now(), extras })
   return extras
 }
 
-async function enrichNflEspnExtras(games: LoungeSportsGame[]): Promise<LoungeSportsGame[]> {
-  const nfl = games.filter((g) => String(g.sport_key || '').includes('americanfootball_nfl'))
-  if (!nfl.length) return games
-  const { recordsByAbbrev, broadcastByMatchup } = await loadEspnNflSlateExtras(nfl)
+async function enrichEspnFootballExtras(
+  games: LoungeSportsGame[],
+  league: EspnFootballLeague,
+  sportMatch: (sportKey: string) => boolean,
+): Promise<LoungeSportsGame[]> {
+  const subset = games.filter((g) => sportMatch(String(g.sport_key || '')))
+  if (!subset.length) return games
+  const { recordsByAbbrev, broadcastByMatchup } = await loadEspnFootballSlateExtras(
+    subset,
+    league,
+    sportMatch,
+  )
   if (!recordsByAbbrev.size && !broadcastByMatchup.size) return games
   return games.map((g) => {
-    if (!String(g.sport_key || '').includes('americanfootball_nfl')) return g
+    if (!sportMatch(String(g.sport_key || ''))) return g
     const awayRec = recordsByAbbrev.get(nflAbbrevKey(g.away?.abbrev)) || null
     const homeRec = recordsByAbbrev.get(nflAbbrevKey(g.home?.abbrev)) || null
     const watch = broadcastByMatchup.get(
@@ -763,9 +802,11 @@ export async function buildLoungeSportsScoreboard(
   admin?: SupabaseClient,
 ): Promise<{ games: LoungeSportsGame[]; source: string }> {
   const nflDates = nflFetchDates()
+  const cfbDates = cfbFetchDates()
   const byKey = new Map<string, LoungeSportsGame>()
   let source = 'none'
   const nflSport = LOUNGE_SPORTS_SCOREBOARD_SPORTS.find((s) => s.key === 'americanfootball_nfl')
+  const cfbSport = LOUNGE_SPORTS_SCOREBOARD_SPORTS.find((s) => s.key === 'americanfootball_ncaaf')
 
   const upsert = (game: LoungeSportsGame, overwrite = false) => {
     const key = slateDedupeKey(game)
@@ -773,16 +814,29 @@ export async function buildLoungeSportsScoreboard(
     byKey.set(key, game)
   }
 
-  // NFL + Odds only. Fetching CFB/MLB/NBA/NHL/MLS sequentially after a 10-day NFL
-  // Rundown round was burning the Edge wall clock (10s timeout × 6 sports) so the
-  // invoke 502'd and the Lounge painted zero pills.
-  if (nflSport) {
-    const [nflBatches, nflScores, nflOddsPack, pinPack] = await Promise.all([
-      Promise.all(nflDates.map((date) => listRundownDayEvents(nflSport.key, date).catch(() => []))),
-      fetchSportScores('americanfootball_nfl', 3).catch(() => []),
-      cachedSportOdds('americanfootball_nfl'),
-      cachedPinnacleOdds('americanfootball_nfl'),
-    ])
+  // NFL + CFB in parallel. Other leagues stay skipped … sequential 6-sport fetch
+  // burned the Edge wall clock and 502'd the Lounge pills.
+  const [nflPack, cfbPack] = await Promise.all([
+    nflSport
+      ? Promise.all([
+        Promise.all(nflDates.map((date) => listRundownDayEvents(nflSport.key, date).catch(() => []))),
+        fetchSportScores('americanfootball_nfl', 3).catch(() => []),
+        cachedSportOdds('americanfootball_nfl'),
+        cachedPinnacleOdds('americanfootball_nfl'),
+      ])
+      : Promise.resolve(null),
+    cfbSport
+      ? Promise.all([
+        Promise.all(cfbDates.map((date) => listRundownDayEvents(cfbSport.key, date).catch(() => []))),
+        fetchSportScores('americanfootball_ncaaf', 3).catch(() => []),
+        cachedSportOdds('americanfootball_ncaaf'),
+        cachedPinnacleOdds('americanfootball_ncaaf'),
+      ])
+      : Promise.resolve(null),
+  ])
+
+  if (nflSport && nflPack) {
+    const [nflBatches, nflScores, nflOddsPack, pinPack] = nflPack
     for (const events of nflBatches) {
       if (events.length) source = source === 'none' ? 'rundown' : source
       for (const ev of events) {
@@ -798,8 +852,11 @@ export async function buildLoungeSportsScoreboard(
       }
     }
     if (nflOddsPack || pinPack) source = source.includes('odds') ? source : source === 'none' ? 'odds' : `${source}+odds`
-    let games = applyPinnacleQuotes([...byKey.values()], pinPack, false)
-    // Persist live Pinnacle quotes while Odds still lists the event (open/current → close at tip).
+    let nflGames = applyPinnacleQuotes(
+      [...byKey.values()].filter((g) => isNflSportKey(g.sport_key)),
+      pinPack,
+      false,
+    )
     if (admin && pinPack?.events?.length) {
       await upsertMarketFilesFromEvents(
         admin,
@@ -807,13 +864,57 @@ export async function buildLoungeSportsScoreboard(
         pinPack.events as OddsEvent[],
       ).catch(() => null)
     }
-    games = await applyMarketFileCloses(games, admin, nflDates)
-    games = await fillClosingQuotesFromHistorical(games, 'americanfootball_nfl', admin)
+    nflGames = await applyMarketFileCloses(nflGames, admin, nflDates)
+    nflGames = await fillClosingQuotesFromHistorical(nflGames, 'americanfootball_nfl', admin)
     if (admin) {
       await lockDueMarketFileCloses(admin, 'americanfootball_nfl').catch(() => null)
     }
-    byKey.clear()
-    for (const game of games) upsert(game, true)
+    for (const game of [...byKey.values()]) {
+      if (isNflSportKey(game.sport_key)) byKey.delete(slateDedupeKey(game))
+    }
+    for (const game of nflGames) upsert(game, true)
+  }
+
+  if (cfbSport && cfbPack) {
+    const [cfbBatches, cfbScores, cfbOddsPack, cfbPinPack] = cfbPack
+    for (const events of cfbBatches) {
+      if (events.length) source = source === 'none' ? 'rundown' : source
+      for (const ev of events) {
+        const game = gameFromRundown(cfbSport.key, cfbSport.label, cfbSport.logoLeague, ev)
+        if (game && gameOnSlate(game, cfbDates)) upsert(game, true)
+      }
+    }
+    if (cfbScores.length) {
+      source = source === 'none' ? 'odds' : source.includes('odds') ? source : `${source}+odds`
+      for (const ev of cfbScores) {
+        const game = gameFromOdds('americanfootball_ncaaf', 'CFB', 'ncaa', ev)
+        if (game && gameOnSlate(game, cfbDates)) upsert(game, false)
+      }
+    }
+    if (cfbOddsPack || cfbPinPack) {
+      source = source.includes('odds') ? source : source === 'none' ? 'odds' : `${source}+odds`
+    }
+    let cfbGames = applyPinnacleQuotes(
+      [...byKey.values()].filter((g) => isCfbSportKey(g.sport_key)),
+      cfbPinPack,
+      false,
+    )
+    if (admin && cfbPinPack?.events?.length) {
+      await upsertMarketFilesFromEvents(
+        admin,
+        'americanfootball_ncaaf',
+        cfbPinPack.events as OddsEvent[],
+      ).catch(() => null)
+    }
+    cfbGames = await applyMarketFileCloses(cfbGames, admin, cfbDates)
+    cfbGames = await fillClosingQuotesFromHistorical(cfbGames, 'americanfootball_ncaaf', admin)
+    if (admin) {
+      await lockDueMarketFileCloses(admin, 'americanfootball_ncaaf').catch(() => null)
+    }
+    for (const game of [...byKey.values()]) {
+      if (isCfbSportKey(game.sport_key)) byKey.delete(slateDedupeKey(game))
+    }
+    for (const game of cfbGames) upsert(game, true)
   }
 
   const games = [...byKey.values()].sort((a, b) => {
@@ -822,7 +923,8 @@ export async function buildLoungeSportsScoreboard(
     if (d) return d
     return String(a.commence_time).localeCompare(String(b.commence_time))
   })
-  const withRecords = await enrichNflEspnExtras(games)
+  let withRecords = await enrichEspnFootballExtras(games, 'nfl', isNflSportKey)
+  withRecords = await enrichEspnFootballExtras(withRecords, 'college-football', isCfbSportKey)
   return { games: withRecords, source }
 }
 
@@ -882,17 +984,21 @@ function isProdSupabaseProject(): boolean {
   return url.includes(PROD_SUPABASE_REF)
 }
 
-async function fetchEspnNflLivePack(
+async function fetchEspnFootballLivePack(
   game: LoungeSportsGame,
 ): Promise<{ live: LoungeSportsLiveState | null; plays: LoungeSportsPlay[] }> {
   if (!isProdSupabaseProject()) {
     return { live: null, plays: [] }
   }
-  if (!String(game.sport_key || '').includes('americanfootball_nfl')) {
-    return { live: null, plays: [] }
-  }
-  const awayAbb = String(game.away?.abbrev || '').trim().toUpperCase()
-  const homeAbb = String(game.home?.abbrev || '').trim().toUpperCase()
+  const sk = String(game.sport_key || '')
+  const league: EspnFootballLeague | null = isCfbSportKey(sk)
+    ? 'college-football'
+    : isNflSportKey(sk)
+      ? 'nfl'
+      : null
+  if (!league) return { live: null, plays: [] }
+  const awayAbb = nflAbbrevKey(game.away?.abbrev)
+  const homeAbb = nflAbbrevKey(game.home?.abbrev)
   if (!awayAbb || !homeAbb) return { live: null, plays: [] }
 
   const dates: string[] = []
@@ -916,11 +1022,10 @@ async function fetchEspnNflLivePack(
   let boardHomeTimeouts: number | null = null
   let boardAwayTimeouts: number | null = null
   let boardPossession: 'home' | 'away' | null = null
+  const boardBase = espnFootballScoreboardPath(league)
 
   for (const date of dates) {
-    const url = date
-      ? `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=${date}`
-      : 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard'
+    const url = date ? `${boardBase}?dates=${date}` : boardBase
     try {
       const res = await fetch(url, { headers, signal: AbortSignal.timeout(8_000) })
       if (!res.ok) continue
@@ -932,7 +1037,7 @@ async function fetchEspnNflLivePack(
         let away: Record<string, unknown> | null = null
         for (const c of competitors) {
           const team = (c.team && typeof c.team === 'object') ? c.team as Record<string, unknown> : {}
-          const abb = String(team.abbreviation || '').trim().toUpperCase()
+          const abb = nflAbbrevKey(team.abbreviation)
           if (c.homeAway === 'home') home = { ...c, abb }
           if (c.homeAway === 'away') away = { ...c, abb }
         }
@@ -970,7 +1075,7 @@ async function fetchEspnNflLivePack(
 
   try {
     const res = await fetch(
-      `https://site.api.espn.com/apis/site/v2/sports/football/nfl/summary?event=${encodeURIComponent(eventId)}`,
+      espnFootballSummaryPath(league, eventId),
       { headers, signal: AbortSignal.timeout(10_000) },
     )
     if (!res.ok) return { live: null, plays: [] }
@@ -1413,11 +1518,12 @@ export async function fetchLoungeSportsGameDetail(
 
   let liveOut = live
   let playsOut = plays
+  const sk = String(game.sport_key || '')
   const needEspn =
-    String(game.sport_key || '').includes('americanfootball_nfl') &&
+    (isNflSportKey(sk) || isCfbSportKey(sk)) &&
     (playsOut.length === 0 || !String(liveOut?.last_play || '').trim() || !String(liveOut?.clock || '').trim())
   if (needEspn) {
-    const espn = await fetchEspnNflLivePack(game)
+    const espn = await fetchEspnFootballLivePack(game)
     if (espn.plays.length && playsOut.length === 0) playsOut = espn.plays
     liveOut = mergeLiveState(liveOut, espn.live)
   }

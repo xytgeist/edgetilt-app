@@ -7,16 +7,20 @@ export const LOUNGE_SPORTS_HUB_PENDING_KEY = 'loungeSportsHubPending:v1'
 export const LOUNGE_SPORTS_HUB_FILTER_ALL = 'all'
 /** NFL week window (same filter as per-game hub sibling pills). */
 export const LOUNGE_SPORTS_HUB_FILTER_NFL = 'americanfootball_nfl'
+/** CFB week window (Thu–Mon; no Fantasy tab in the per-game hub). */
+export const LOUNGE_SPORTS_HUB_FILTER_CFB = 'americanfootball_ncaaf'
 
 /**
  * @param {string} [filter]
  * @returns {string}
  */
 export function normalizeLoungeSportsHubFilter(filter) {
-  const raw = String(filter || '').trim()
+  const raw = String(filter || '').trim().toLowerCase()
   if (!raw || raw === LOUNGE_SPORTS_HUB_FILTER_ALL) return LOUNGE_SPORTS_HUB_FILTER_ALL
+  // ncaaf before nfl … "americanfootball_ncaaf" must not be treated as NFL.
+  if (raw === 'cfb' || raw === 'ncaaf' || raw.includes('ncaaf')) return LOUNGE_SPORTS_HUB_FILTER_CFB
   if (raw === 'nfl' || raw.includes('nfl')) return LOUNGE_SPORTS_HUB_FILTER_NFL
-  return raw
+  return String(filter || '').trim()
 }
 
 /**

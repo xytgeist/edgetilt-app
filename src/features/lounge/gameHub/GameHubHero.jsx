@@ -20,6 +20,13 @@ import {
 
 const FOOTBALL_POSSESSION_ICON = '/sports/nfl/icons/football-possession.png'
 const TIMEOUT_SLOTS = 3
+/** NFL athletic block; CFB uses Graduate (college slab) loaded in index.html. */
+const ENDZONE_FONT_NFL = "Impact, 'Arial Black', sans-serif"
+const ENDZONE_FONT_CFB = "Graduate, Impact, 'Arial Black', serif"
+
+function isCfbSport(sportKey) {
+  return String(sportKey || '').includes('ncaaf')
+}
 
 function TimeoutDots({ remaining, align = 'left' }) {
   const left = remaining == null ? TIMEOUT_SLOTS : Math.max(0, Math.min(TIMEOUT_SLOTS, Math.round(remaining)))
@@ -201,8 +208,10 @@ function FieldViz({ game, live, awayColor, homeColor }) {
   }
 
   const homeLogoSrc = game?.home?.logo || (game?.home?.abbrev ? `/sports/nfl/logos/${game.home.abbrev}.png` : '')
-  const awayEndzone = resolveEndzoneDesign(game?.away, awayColor, 'left')
-  const homeEndzone = resolveEndzoneDesign(game?.home, homeColor, 'right')
+  const college = isCfbSport(sportKey)
+  const endzoneFont = college ? ENDZONE_FONT_CFB : ENDZONE_FONT_NFL
+  const awayEndzone = resolveEndzoneDesign(game?.away, awayColor, 'left', { college })
+  const homeEndzone = resolveEndzoneDesign(game?.home, homeColor, 'right', { college })
 
   return (
     <div data-lounge-game-field className="relative w-full px-1 pb-0 pt-0 sm:px-1.5">
@@ -264,7 +273,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 stroke="#000000"
                 strokeWidth="8"
                 strokeLinejoin="round"
-                fontFamily="Impact, 'Arial Black', sans-serif"
+                fontFamily={endzoneFont}
                 fontSize={awayEndzone.fontSize}
                 fontWeight="900"
                 opacity="0.95"
@@ -280,7 +289,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 stroke={awayEndzone.textStroke}
                 strokeWidth="4.5"
                 strokeLinejoin="round"
-                fontFamily="Impact, 'Arial Black', sans-serif"
+                fontFamily={endzoneFont}
                 fontSize={awayEndzone.fontSize}
                 fontWeight="900"
               >
@@ -294,7 +303,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 fill={awayEndzone.textFill}
                 stroke={awayEndzone.isGoldText ? '#ffffff' : 'none'}
                 strokeWidth={awayEndzone.isGoldText ? '1' : '0'}
-                fontFamily="Impact, 'Arial Black', sans-serif"
+                fontFamily={endzoneFont}
                 fontSize={awayEndzone.fontSize}
                 fontWeight="900"
               >
@@ -315,7 +324,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 stroke="#000000"
                 strokeWidth="8"
                 strokeLinejoin="round"
-                fontFamily="Impact, 'Arial Black', sans-serif"
+                fontFamily={endzoneFont}
                 fontSize={homeEndzone.fontSize}
                 fontWeight="900"
                 opacity="0.95"
@@ -331,7 +340,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 stroke={homeEndzone.textStroke}
                 strokeWidth="4.5"
                 strokeLinejoin="round"
-                fontFamily="Impact, 'Arial Black', sans-serif"
+                fontFamily={endzoneFont}
                 fontSize={homeEndzone.fontSize}
                 fontWeight="900"
               >
@@ -345,7 +354,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 fill={homeEndzone.textFill}
                 stroke={homeEndzone.isGoldText ? '#ffffff' : 'none'}
                 strokeWidth={homeEndzone.isGoldText ? '1' : '0'}
-                fontFamily="Impact, 'Arial Black', sans-serif"
+                fontFamily={endzoneFont}
                 fontSize={homeEndzone.fontSize}
                 fontWeight="900"
               >

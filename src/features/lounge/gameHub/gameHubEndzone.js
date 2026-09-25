@@ -43,12 +43,14 @@ function mixHex(a, b, t) {
 const GOLD_TEXT_TEAMS = new Set(['GB', 'PIT', 'WAS', 'MIN', 'LAR', 'KC'])
 
 /**
- * Universal end zone styling for all 32 NFL teams.
+ * Universal end zone styling (NFL catalog colors when known; CFB uses side paint/mascot).
  * Calibrates colors, lighting gradients, dynamic letter scaling, and outlines.
+ * @param {{ college?: boolean }} [opts] - college → Graduate footprint (~0.8× Impact)
  */
-export function resolveEndzoneDesign(side, fallbackColor = '#3f3f46', sideKey = 'left') {
+export function resolveEndzoneDesign(side, fallbackColor = '#3f3f46', sideKey = 'left', opts = {}) {
+  const college = Boolean(opts?.college)
   const abbrev = String(side?.abbrev || '').trim().toUpperCase()
-  const catalog = NFL_TEAM_CATALOG.find((t) => t.abbrev === abbrev) || null
+  const catalog = college ? null : (NFL_TEAM_CATALOG.find((t) => t.abbrev === abbrev) || null)
 
   // Mascot text resolution: side.mascot -> catalog names[1] -> last word of side.name -> abbrev
   let mascot = String(side?.mascot || catalog?.names?.[1] || '').trim().toUpperCase()
@@ -77,9 +79,8 @@ export function resolveEndzoneDesign(side, fallbackColor = '#3f3f46', sideKey = 
   const gradMid = wash
   const gradDeep = mixHex(wash, '#000000', 0.16)
 
-  // Standard base font size for Impact athletic block typography.
-  // Glyphs dynamically scale so every letter spans ~77% of the 10-yard end zone width.
-  const fontSize = 58
+  // Impact base 58; Graduate reads wider so scale ~0.8 for the same endzone footprint.
+  const fontSize = college ? 46 : 58
   const letterSpacing = 5
 
   // Text fill and outline hierarchy

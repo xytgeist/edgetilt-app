@@ -54,7 +54,12 @@ export function nflFetchDates(now = Date.now()) {
 }
 
 function isNflGame(game) {
-  return String(game?.sport_key || '').includes('nfl')
+  const sk = String(game?.sport_key || '')
+  return sk.includes('nfl') && !sk.includes('ncaaf')
+}
+
+function isCfbGame(game) {
+  return String(game?.sport_key || '').includes('ncaaf')
 }
 
 function commenceMs(game) {
@@ -73,6 +78,16 @@ function gameDay(game) {
 export function nflGamesOnDates(games, dates) {
   const set = new Set(dates)
   return (Array.isArray(games) ? games : []).filter((g) => isNflGame(g) && set.has(gameDay(g)))
+}
+
+export function cfbGamesOnDates(games, dates) {
+  const set = new Set(dates)
+  return (Array.isArray(games) ? games : []).filter((g) => isCfbGame(g) && set.has(gameDay(g)))
+}
+
+/** Edge fetch window for CFB … current Thu–Mon only (volume is higher than NFL). */
+export function cfbFetchDates(now = Date.now()) {
+  return nflWeekDatesFromThursday(nflCalendarThursdayYmd(now))
 }
 
 /**
@@ -98,24 +113,64 @@ export function nflHubDates(games, now = Date.now()) {
   return nflWeekDatesFromThursday(addDaysYmd(calThu, 7))
 }
 
+/**
+ * True once this week's CFB closer is final: Mon/Sun if any, else Saturday.
+ * Live games always keep the week open.
+ */
+export function cfbWeekComplete(games, weekDates, now = Date.now()) {
+  const week = cfbGamesOnDates(games, weekDates)
+  if (week.some((g) => g.status === 'in')) return false
+  for (const idx of [4, 3, 2]) {
+    const day = weekDates[idx]
+    if (!day) continue
+    const dayGames = week.filter((g) => gameDay(g) === day)
+    if (dayGames.length) return dayGames.every((g) => g.status === 'post')
+  }
+  if (!week.length) {
+    const dow = ptWeekdaySun0(now)
+    return dow === 0 || dow === 1 || dow === 2 || dow === 3
+  }
+  const last = [...week].sort((a, b) => commenceMs(b) - commenceMs(a))[0]
+  return last?.status === 'post'
+}
+
+/** Hub list: this week until the CFB closer is final, then the upcoming week. */
+export function cfbHubDates(games, now = Date.now()) {
+  const calThu = nflCalendarThursdayYmd(now)
+  const calDates = nflWeekDatesFromThursday(calThu)
+  if (!cfbWeekComplete(games, calDates, now)) return calDates
+  return nflWeekDatesFromThursday(addDaysYmd(calThu, 7))
+}
+
 export function loungeSportsHubGames(games, sportKey, now = Date.now()) {
   const list = Array.isArray(games) ? games : []
   const sport = String(sportKey || '')
   const same = list.filter((g) => !sport || g.sport_key === sport)
-  if (!sport.includes('nfl')) return same
-  const dates = new Set(nflHubDates(list, now))
-  return same.filter((g) => g.status === 'in' || dates.has(gameDay(g)))
+  if (sport.includes('ncaaf')) {
+    const dates = new Set(cfbHubDates(list, now))
+    return same.filter((g) => g.status === 'in' || dates.has(gameDay(g)))
+  }
+  if (sport.includes('nfl') && !sport.includes('ncaaf')) {
+    const dates = new Set(nflHubDates(list, now))
+    return same.filter((g) => g.status === 'in' || dates.has(gameDay(g)))
+  }
+  return same
 }
 
-/** Sports Hub slate list: `all` = current multi-sport slate; NFL uses week window across nfl* keys. */
+/** Sports Hub slate list: `all` = current multi-sport slate; NFL/CFB use week windows. */
 export function loungeSportsSlateGames(games, filter, now = Date.now()) {
   const list = Array.isArray(games) ? games : []
   const key = String(filter || '').trim()
   if (!key || key === 'all') {
     return list.filter((g) => isLoungeSportsCurrentSlateGame(g, now))
   }
+  if (key.includes('ncaaf')) {
+    const cfb = list.filter((g) => isCfbGame(g))
+    const dates = new Set(cfbHubDates(list, now))
+    return cfb.filter((g) => g.status === 'in' || dates.has(gameDay(g)))
+  }
   if (key.includes('nfl')) {
-    const nfl = list.filter((g) => String(g?.sport_key || '').includes('nfl'))
+    const nfl = list.filter((g) => isNflGame(g))
     const dates = new Set(nflHubDates(list, now))
     return nfl.filter((g) => g.status === 'in' || dates.has(gameDay(g)))
   }
@@ -127,8 +182,9 @@ export function isLoungeSportsCurrentSlateGame(game, now = Date.now()) {
   if (game.status === 'in') return true
   const day = gameDay(game)
   if (!day) return true
-  const dates = isNflGame(game) ? nflFetchDates(now) : otherSportSlateDates(now)
-  return dates.includes(day)
+  if (isNflGame(game)) return nflFetchDates(now).includes(day)
+  if (isCfbGame(game)) return cfbFetchDates(now).includes(day)
+  return otherSportSlateDates(now).includes(day)
 }
 
 export function sideAbbrev(side) {

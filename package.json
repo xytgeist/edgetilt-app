@@ -118,7 +118,12 @@
     "syndicate:sync-action-splits:test:dry": "node scripts/sync-action-public-betting-splits.mjs --target=test --dry-run",
     "syndicate:sync-action-splits:production": "node scripts/sync-action-public-betting-splits.mjs --target=production",
     "syndicate:sync-action-splits:both": "node scripts/sync-action-public-betting-splits.mjs --target=both",
-    "syndicate:sync-action-splits:install-windows-task": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-action-public-betting-windows-task.ps1"
+    "syndicate:sync-action-splits:install-windows-task": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-action-public-betting-windows-task.ps1",
+    "syndicate:sync-espn-trench:test": "node scripts/sync-espn-nfl-trench-live.mjs --target=test",
+    "syndicate:sync-espn-trench:test:dry": "node scripts/sync-espn-nfl-trench-live.mjs --target=test --dry-run",
+    "syndicate:sync-espn-trench:production": "node scripts/sync-espn-nfl-trench-live.mjs --target=production",
+    "syndicate:sync-espn-trench:both": "node scripts/sync-espn-nfl-trench-live.mjs --target=both",
+    "syndicate:sync-espn-trench:both:force": "node scripts/sync-espn-nfl-trench-live.mjs --target=both --force"
   },
   "dependencies": {
     "@emoji-mart/data": "^1.2.1",

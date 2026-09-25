@@ -825,15 +825,18 @@ Use **`npm run db:query:production`** / **`db:query:test`** — not parallel raw
 
 ## NFL EPA + CFB consensus metric sync (real ingest)
 
-**Problem we fixed:** `nfl_team_metrics` and `cfb_team_power_ratings` originally shipped with **hand-seeded** boards (no live feed). Trench win rates are **ESPN Analytics 2025 Week 18** (screenshot ingest for later weeks). Model uses them again: Scott spread = EPA + trench; Rocco votes a ≥0.8 pt trench mismatch as a house reason.
+**Problem we fixed:** `nfl_team_metrics` and `cfb_team_power_ratings` originally shipped with **hand-seeded** boards (no live feed). Trench win rates are **live ESPN Analytics** (home-PC content feed) with Ops vision paste as backup. Model uses them: Scott spread = EPA + trench; Rocco votes a ≥0.8 pt trench mismatch as a house reason.
 
 **NFL (free):** [`scripts/sync-nfl-team-metrics.mjs`](../scripts/sync-nfl-team-metrics.mjs) pulls nflverse play-by-play and upserts `off_epa_play`, `def_epa_play`, `success_rate`. Skips `is_custom_override` rows. Does **not** overwrite trench columns.
 
-**NFL trench (frozen 2025 + screenshot ingest):** [`scripts/sync-nfl-trench-win-rates.mjs`](../scripts/sync-nfl-trench-win-rates.mjs) writes the Week 18 2025 board from [`data/syndicate/espn-nfl-2025-team-win-rates.json`](../data/syndicate/espn-nfl-2025-team-win-rates.json). Weekly refresh is Ops **NFL Trenches** → paste ESPN team table screenshot → Edge **`syndicate-trench-vision`** → review → apply (four win-rate columns only; skips `is_custom_override`). Pressure rates stay unused leftovers.
+**NFL trench (live ESPN + backup):** [`scripts/sync-espn-nfl-trench-live.mjs`](../scripts/sync-espn-nfl-trench-live.mjs) pulls the current board from ESPN content API (`content.core.api.espn.com/.../news/{id}?enable=inlines`, default story **`49742016`**, override `ESPN_NFL_TRENCH_STORY_ID`). Writes four win-rate columns only; skips `is_custom_override`. Skips write when `lastModified` unchanged (state file `data/syndicate/.espn-trench-live-state.json`, gitignored). Folded into the same home-PC Windows task as Action splits (`npm run syndicate:sync-action-splits:install-windows-task`). Ops **NFL Trenches** vision paste stays as backup / repair. Frozen Week 18 2025 JSON ([`scripts/sync-nfl-trench-win-rates.mjs`](../scripts/sync-nfl-trench-win-rates.mjs) + [`data/syndicate/espn-nfl-2025-team-win-rates.json`](../data/syndicate/espn-nfl-2025-team-win-rates.json)) remains for one-shot restores. Pressure rates stay unused leftovers.
 
 ```bash
+npm run syndicate:sync-espn-trench:test:dry
+npm run syndicate:sync-espn-trench:both
+npm run syndicate:sync-espn-trench:both:force
+# legacy frozen board one-shot:
 npm run syndicate:sync-nfl-trench:test
-npm run syndicate:sync-nfl-trench:test -- --dry-run
 npm run syndicate:sync-nfl-trench:production   # Ryan explicit only
 ```
 
@@ -904,7 +907,7 @@ Chat and X do **not** render Lounge markdown. Tags like `[gold]`, `**bold**`, `#
 
 **Ops week calendar (PT):** Mon-Sun grid on **https://sharpesyndicate.com/ops** (above the desk tabs). Sport chips All / NFL / CFB / UFC. Screenshot cells: Due / In / Missed. Expected Lounge posts show the cron time (Wed 11am TNF VIP, Wed 2pm CFB VIP, Thu 3:30pm TNF + CFB night, Fri 12pm CFB house + 1pm NFL lean + 1:30 Wong, Sat 9am UFC slate, Sat 7pm NFL steam, Sat 10am CFB adds/kills, Sun 8:30/11:30am NFL window locks, Sun 3:30pm SNF, Mon 2:00pm MNF lean, Tue 7:30am weekly recap). **Posted** turns green from `lounge_bot_publish_log` (VIP satellites), same-day `lounge_bot_picks`, or the Syndicate Lounge **caption** (`community_feed_posts.caption` … not `body`). Primetime / recap / slate / lock needles are the live card titles so a missing `post_kind` log still goes green. Action/VSiN splits read `syndicate_betting_splits` rows **updated this shop week** (Tuesday 00:00 PT). No 200-row active cap... leftover older actives do not hide a fresh seed paste. ESPN trench, PVAL/CFB/UFC checks and Grade are mark-in. Tuesday metrics sync stays Auto (GHA, not a Lounge post). Click a cell to jump tabs. Splits paste tab keeps the detailed Action/VSiN list. Desktop alert optional.
 
-**Splits auto pull (PT):** Home-PC Windows task runs Action Network public betting twice daily (`npm run syndicate:sync-action-splits:install-windows-task` … 10am + 6pm local). Writes `syndicate_betting_splits` (`source=action_pro`) for NFL + NCAAF. Ops paste / vision stays for VSiN + repair. Bulk save still deactivates **same source** only so Action + VSiN can both stay live.
+**Splits auto pull (PT):** Home-PC Windows task runs Action Network public betting + ESPN trench twice daily (`npm run syndicate:sync-action-splits:install-windows-task` … 10am + 6pm local). Action → `syndicate_betting_splits` (`source=action_pro`) for NFL + NCAAF. ESPN → `nfl_team_metrics` win rates. Ops paste / vision stays for VSiN + trench repair. Bulk save still deactivates **same source** only so Action + VSiN can both stay live.
 
 **X never gets the uncut VIP caption unless you check X on that Publish**, except NFL primetime (no fan-only Lounge twin) … X is the same 4-desk card as VIP chat. House slate and other tease drops still use the public tease on X. **Wed TNF VIP** cron is fan-only Lounge + VIP chat (public + X off). Halftime, middle/arb, steam, and the Sunday locks are public Lounge, so they tweet the public caption. Sat adds/kills and CFB Wed VIP stay chat-only. **UFC slate** cron and default Send to are public + fan-only + VIP + X. X gets the public tease (`formatUfcCardCaption`), not the fan card. Scott + Rocco. Fan-only and chat-only drops (Wed TNF VIP, Sat adds/kills, CFB Wed VIP) stay off X unless X is checked.
 

@@ -60,15 +60,17 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
-### Windows Theo ACTIVE TRACK 2026-09-25 ... Action public-betting auto pull
+### Windows Theo ACTIVE TRACK 2026-09-25 ... Action splits + ESPN trench auto pull
 
-**I am Windows Theo.** Weekly Action PRO screenshots are replaced by a home-PC puller (same idea as MTTDB).
+**I am Windows Theo.** Weekly Action PRO + ESPN trench screenshots are replaced by a home-PC puller (same idea as MTTDB).
 
-- **Fetch:** `api.actionnetwork.com/web/v2/scoreboard/publicbetting/{nfl|ncaaf}` (ticket % / handle % on spread + totals). HTML `__NEXT_DATA__` fallback if API fails.
-- **Write:** `syndicate_betting_splits` with `source=action_pro` (deactivates prior Action rows only … VSiN paste stays).
-- **Scripts:** `npm run syndicate:sync-action-splits:test:dry` / `:both`. Install task: `npm run syndicate:sync-action-splits:install-windows-task` (daily **10:00 AM + 6:00 PM** local).
-- **Ops paste UI** stays as backup / VSiN.
-- **Ryan next:** run the install task once on the Windows box so it actually fires.
+- **Action fetch:** `api.actionnetwork.com/web/v2/scoreboard/publicbetting/{nfl|ncaaf}` (ticket % / handle %). HTML `__NEXT_DATA__` fallback.
+- **Action write:** `syndicate_betting_splits` with `source=action_pro` (VSiN paste stays).
+- **ESPN fetch:** `content.core.api.espn.com/v1/sports/news/{storyId}?enable=inlines` (default story `49742016`; override `ESPN_NFL_TRENCH_STORY_ID`). Skips when `lastModified` unchanged.
+- **ESPN write:** `nfl_team_metrics` four win-rate columns only (skips `is_custom_override`). Does not touch EPA.
+- **Scripts:** `npm run syndicate:sync-action-splits:test:dry` / `:both`. `npm run syndicate:sync-espn-trench:test:dry` / `:both` / `:both:force`. Same Windows task runs both: `npm run syndicate:sync-action-splits:install-windows-task` (daily **10:00 AM + 6:00 PM** local).
+- **Ops paste / vision** stays as backup (VSiN + trench repair).
+- **Ryan next:** re-run the install task once so the runner picks up ESPN (same task name).
 
 ### Mac Theo ACTIVE TRACK 2026-09-25 ... sports hub league tiles
 

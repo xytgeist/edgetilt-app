@@ -1,5 +1,5 @@
-# Action Network public-betting → syndicate_betting_splits (Windows Task Scheduler).
-# Residential egress. Writes test then production (source=action_pro only).
+# Syndicate home-PC sync (Windows Task Scheduler): Action public betting + ESPN trench.
+# Residential egress. Writes test then production.
 # Run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/action-public-betting-sync-windows.ps1
 $ErrorActionPreference = 'Continue'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
@@ -14,7 +14,7 @@ function Write-Log([string]$line) {
 }
 
 Write-Log ''
-Write-Log "===== $stamp action public betting sync (test + prod) ====="
+Write-Log "===== $stamp syndicate home-PC sync (Action splits + ESPN trench) ====="
 Write-Log "repo=$repo"
 
 if (-not (Test-Path $node)) {
@@ -35,12 +35,21 @@ try {
 }
 
 $env:Path = 'C:\Program Files\nodejs;' + $env:Path
-$script = Join-Path $repo 'scripts\sync-action-public-betting-splits.mjs'
+$exit = 0
 
-$out = & $node $script --target=both 2>&1
-$exit = $LASTEXITCODE
-foreach ($line in $out) {
-  Write-Log ([string]$line)
-}
+$splits = Join-Path $repo 'scripts\sync-action-public-betting-splits.mjs'
+$out = & $node $splits --target=both 2>&1
+$code = $LASTEXITCODE
+foreach ($line in $out) { Write-Log ([string]$line) }
+Write-Log "action-splits exit=$code"
+if ($code -ne 0) { $exit = $code }
+
+$trench = Join-Path $repo 'scripts\sync-espn-nfl-trench-live.mjs'
+$out2 = & $node $trench --target=both 2>&1
+$code2 = $LASTEXITCODE
+foreach ($line in $out2) { Write-Log ([string]$line) }
+Write-Log "espn-trench exit=$code2"
+if ($code2 -ne 0) { $exit = $code2 }
+
 Write-Log "exit=$exit"
 exit $exit

@@ -1,4 +1,5 @@
-# Install Windows scheduled tasks for Action Network public-betting sync.
+# Install Windows scheduled tasks for syndicate home-PC sync
+# (Action Network public betting + ESPN NFL trench win rates).
 # Covers Chedda/Tank seed + movers + lock windows (local time; set PC to PT).
 # powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-action-public-betting-windows-task.ps1
 $ErrorActionPreference = 'Stop'
@@ -35,11 +36,12 @@ Register-ScheduledTask `
   -Trigger @($triggerMorning, $triggerEvening) `
   -Settings $settings `
   -Principal $principal `
-  -Description 'Pull Action Network NFL+NCAAF public betting (ticket/handle %) into syndicate_betting_splits on test+prod. Home-PC egress. Replaces weekly screenshot ritual; ops paste stays as backup.' `
+  -Description 'Home-PC: Action Network NFL+NCAAF public betting → syndicate_betting_splits (action_pro) and ESPN trench PBWR/PRWR/RBWR/RSWR → nfl_team_metrics on test+prod. Ops paste/vision stays as backup.' `
   -Force | Out-Null
 
 Get-ScheduledTask -TaskName $taskName | Get-ScheduledTaskInfo | Format-List TaskName, LastRunTime, NextRunTime, LastTaskResult
 Write-Host "Installed '$taskName' daily 10:00 AM + 6:00 PM as $env:USERNAME (interactive logon)."
 Write-Host "Logs: $repo\scripts\.action-public-betting-sync.log"
 Write-Host "Manual run: powershell -NoProfile -ExecutionPolicy Bypass -File `"$runner`""
-Write-Host "Dry run: npm run syndicate:sync-action-splits:test:dry"
+Write-Host "Dry run splits: npm run syndicate:sync-action-splits:test:dry"
+Write-Host "Dry run trench: npm run syndicate:sync-espn-trench:test:dry"

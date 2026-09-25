@@ -1150,6 +1150,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-25:** **Fantasy VS live chip + swipe stack (Mac).** H2H score box flips PROJ → LIVE (0 until Sleeper `game_ppr`) when the game is in; fantasy quiet-polls every 45s while live. Cards are a deck … swipe L/R sends the top card to the back. Frontend **`1.4.656`**.
 - **2026-09-25:** **iPhone Chrome black screen on refresh (Mac).** `importRoute` was returning a never-settling promise on WebKit `Importing a module script is canceled` (1.4.651), so React.lazy stuck on the zinc-950 Suspense forever until cache clear. Now retries canceled imports (up to 3) instead of hanging. Frontend **`1.4.655`**.
 - **2026-09-25:** **Fantasy VS silhouette matches headshot frame.** Placeholder bust uses the same `object-contain` + bottom-inside positioning as real H2H portraits (dropped scale/translate nudge). Frontend **`1.4.654`**.
 - **2026-09-25:** **Home-PC Action + ESPN trench on Ops monitor.** Sync scripts heartbeat production (`syndicate_action_public_betting_sync_production`, `syndicate_espn_nfl_trench_sync_production`). Ops **Weekly Pulls** shows pass/fail (stale >26h). Ops week calendar greens ESPN trench from heartbeat/table (no mark-in). Splits cells already auto from `syndicate_betting_splits`. Edge Monitor registry migration **`20260925160000`**. Frontend **`1.4.653`**.

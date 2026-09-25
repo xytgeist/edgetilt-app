@@ -116,39 +116,53 @@ export default function LoungeGameHubModal({
   useEffect(() => {
     if (!game || !supabaseClient) return undefined
     let cancelled = false
-    setFantasyLoading(true)
-    setFantasyErr('')
-    void loungeNflGameFantasy(supabaseClient, {
-      eventId: game.id,
-      awayAbbrev: game.away?.abbrev,
-      homeAbbrev: game.home?.abbrev,
-    })
-      .then((data) => {
-        if (cancelled) return
-        if (data?.error) {
-          setFantasyErr(String(data.error))
-          setFantasy({ players: [], props: [], season: null, week: null, sources: [] })
-          return
-        }
-        setFantasy({
-          players: Array.isArray(data.players) ? data.players : [],
-          props: Array.isArray(data.props) ? data.props : [],
-          season: data.season ?? null,
-          week: data.week ?? null,
-          sources: Array.isArray(data.sources) ? data.sources : [],
+
+    const loadFantasy = ({ showLoading }) => {
+      if (showLoading) {
+        setFantasyLoading(true)
+        setFantasyErr('')
+      }
+      void loungeNflGameFantasy(supabaseClient, {
+        eventId: game.id,
+        awayAbbrev: game.away?.abbrev,
+        homeAbbrev: game.home?.abbrev,
+      })
+        .then((data) => {
+          if (cancelled) return
+          if (data?.error) {
+            setFantasyErr(String(data.error))
+            if (showLoading) {
+              setFantasy({ players: [], props: [], season: null, week: null, sources: [] })
+            }
+            return
+          }
+          setFantasy({
+            players: Array.isArray(data.players) ? data.players : [],
+            props: Array.isArray(data.props) ? data.props : [],
+            season: data.season ?? null,
+            week: data.week ?? null,
+            sources: Array.isArray(data.sources) ? data.sources : [],
+          })
         })
-      })
-      .catch((err) => {
-        if (cancelled) return
-        setFantasyErr(err?.message || 'Fantasy request failed.')
-      })
-      .finally(() => {
-        if (!cancelled) setFantasyLoading(false)
-      })
+        .catch((err) => {
+          if (cancelled) return
+          if (showLoading) setFantasyErr(err?.message || 'Fantasy request failed.')
+        })
+        .finally(() => {
+          if (!cancelled && showLoading) setFantasyLoading(false)
+        })
+    }
+
+    // Fresh load on game open / status flip (pre → in flips PROJ → LIVE).
+    loadFantasy({ showLoading: true })
+    // Quiet poll while live so game_ppr keeps moving without a loading flash.
+    const pollMs = game.status === 'in' ? 45_000 : 0
+    const id = pollMs ? window.setInterval(() => loadFantasy({ showLoading: false }), pollMs) : 0
     return () => {
       cancelled = true
+      if (id) window.clearInterval(id)
     }
-  }, [game, supabaseClient])
+  }, [game?.id, game?.status, game?.away?.abbrev, game?.home?.abbrev, supabaseClient])
 
   // Prefetch Lounge posts as soon as the hub opens (not only when Posts/Chat is selected).
   // Clearing posts when leaving those tabs forced a full reload on every return.

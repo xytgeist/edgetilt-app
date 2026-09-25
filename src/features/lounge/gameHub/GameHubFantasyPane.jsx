@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { LoungeSportsTeamLogo, useLoungeSportsPillWashAndLogos } from '../loungeSportsPillPaint.jsx'
 
 function isDefOrDst(player) {
@@ -356,6 +356,22 @@ function pickDepth(ranked, depth) {
   return ranked[depth - 1] || null
 }
 
+/** H2H score chip: pre = PROJ, live = LIVE pts (0 until Sleeper posts), post = PPR + proj under. */
+function matchupPointsBox(player, gameStatus) {
+  const projRaw = player?.projected_ppr ?? player?.fantasypros_pts
+  const scoredRaw = player?.game_ppr
+  const proj = projRaw != null && Number.isFinite(Number(projRaw)) ? Number(projRaw) : null
+  const scored = scoredRaw != null && Number.isFinite(Number(scoredRaw)) ? Number(scoredRaw) : null
+
+  if (gameStatus === 'post') {
+    return { main: scored, under: proj, label: 'PPR' }
+  }
+  if (gameStatus === 'in') {
+    return { main: scored ?? 0, under: proj, label: 'LIVE' }
+  }
+  return { main: proj, under: null, label: 'PROJ' }
+}
+
 function MatchupHalf({
   player,
   slotLabel,
@@ -364,14 +380,11 @@ function MatchupHalf({
   washColor,
   teamSide,
   logoTreatment,
-  liveOrFinal,
+  gameStatus = 'pre',
   meshSrc,
 }) {
   const isDef = slotPos === 'DEF' || normalizeFantasyPos(player) === 'DEF'
-  const proj = player?.projected_ppr ?? player?.fantasypros_pts
-  const scored = player?.game_ppr
-  const main = liveOrFinal ? scored : proj
-  const showProjUnder = liveOrFinal && proj != null
+  const points = matchupPointsBox(player, gameStatus)
   const empty = !player
   const nick = teamNickname(teamSide)
   const stats = matchupStatLine(player, slotPos)
@@ -453,14 +466,14 @@ function MatchupHalf({
             {avg ? <div className="mt-0.5 text-[11px] font-medium text-zinc-400">{avg}</div> : null}
           </div>
           <div className="flex h-[3.25rem] w-[3.25rem] shrink-0 flex-col items-center justify-center rounded-xl bg-zinc-800 ring-1 ring-zinc-700/80">
-            <div className="text-[15px] font-bold tabular-nums leading-none text-zinc-50">{fmt(main)}</div>
-            {showProjUnder ? (
+            <div className="text-[15px] font-bold tabular-nums leading-none text-zinc-50">{fmt(points.main)}</div>
+            {points.under != null ? (
               <div className="mt-0.5 text-[8px] font-semibold uppercase tracking-wide text-zinc-500">
-                {fmt(proj)} proj
+                {fmt(points.under)} proj
               </div>
             ) : (
               <div className="mt-0.5 text-[8px] font-semibold uppercase tracking-wide text-zinc-500">
-                {liveOrFinal ? 'PPR' : 'PROJ'}
+                {points.label}
               </div>
             )}
           </div>
@@ -470,103 +483,186 @@ function MatchupHalf({
   )
 }
 
-function FantasyMatchupCarousel({ matchups, game, liveOrFinal }) {
-  const [index, setIndex] = useState(0)
-  const [touchX, setTouchX] = useState(null)
+const SWIPE_THRESHOLD_PX = 56
+const SWIPE_OUT_MS = 240
+
+function MatchupCardFace({ matchup, game, gameStatus, awayColor, homeColor, awayTreatment, homeTreatment }) {
+  const awaySide = game?.away || { abbrev: '' }
+  const homeSide = game?.home || { abbrev: '' }
+  return (
+    <div className="flex h-full w-full overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950">
+      <MatchupHalf
+        player={matchup.away}
+        slotLabel={matchup.label}
+        slotPos={matchup.pos}
+        align="left"
+        washColor={awayColor}
+        teamSide={awaySide}
+        logoTreatment={awayTreatment}
+        gameStatus={gameStatus}
+        meshSrc="/sports/nfl/textures/jersey-mesh-1.jpg"
+      />
+      <div className="w-px shrink-0 self-stretch bg-zinc-800" aria-hidden="true" />
+      <MatchupHalf
+        player={matchup.home}
+        slotLabel={matchup.label}
+        slotPos={matchup.pos}
+        align="right"
+        washColor={homeColor}
+        teamSide={homeSide}
+        logoTreatment={homeTreatment}
+        gameStatus={gameStatus}
+        meshSrc="/sports/nfl/textures/jersey-mesh-2.jpg"
+      />
+    </div>
+  )
+}
+
+/** Deck of H2H cards … swipe L/R sends the top card to the back of the stack. */
+function FantasyMatchupStack({ matchups, game, gameStatus }) {
+  const idsKey = matchups.map((m) => m.id).join('|')
+  const [order, setOrder] = useState(() => matchups.map((_, i) => i))
+  const [dragX, setDragX] = useState(0)
+  const [exitX, setExitX] = useState(null)
+  const [isDragging, setIsDragging] = useState(false)
+  const pointerX = useRef(null)
   const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(game)
 
   useEffect(() => {
-    setIndex(0)
-  }, [matchups])
+    setOrder(matchups.map((_, i) => i))
+    setDragX(0)
+    setExitX(null)
+    setIsDragging(false)
+    // idsKey tracks slot identity; avoid resetting mid-swipe when PPR ticks.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional idsKey gate
+  }, [idsKey])
 
-  const safeIndex = matchups.length ? Math.min(index, matchups.length - 1) : 0
-  const current = matchups[safeIndex] || null
+  const stack = order.map((i) => matchups[i]).filter(Boolean)
+  if (!stack.length) return null
 
-  if (!current) return null
-
-  const awaySide = game?.away || { abbrev: '' }
-  const homeSide = game?.home || { abbrev: '' }
-
-  const go = (dir) => {
-    if (!matchups.length) return
-    setIndex((i) => (i + dir + matchups.length) % matchups.length)
+  const sendToBack = (dir) => {
+    if (stack.length < 2 || exitX != null) return
+    const out = dir < 0 ? -1 : 1
+    setIsDragging(false)
+    setExitX(out * (typeof window !== 'undefined' ? Math.min(window.innerWidth, 480) : 420))
+    window.setTimeout(() => {
+      setOrder((prev) => (prev.length < 2 ? prev : [...prev.slice(1), prev[0]]))
+      setDragX(0)
+      setExitX(null)
+    }, SWIPE_OUT_MS)
   }
+
+  const onPointerDown = (e) => {
+    if (stack.length < 2 || exitX != null) return
+    // Ignore vertical-ish starts so the hub can still scroll.
+    setIsDragging(true)
+    pointerX.current = e.clientX
+    try {
+      e.currentTarget.setPointerCapture?.(e.pointerId)
+    } catch {
+      /* ignore */
+    }
+  }
+
+  const onPointerMove = (e) => {
+    if (!isDragging || pointerX.current == null || exitX != null) return
+    setDragX(e.clientX - pointerX.current)
+  }
+
+  const endDrag = (e) => {
+    if (!isDragging && pointerX.current == null) return
+    const start = pointerX.current
+    pointerX.current = null
+    setIsDragging(false)
+    try {
+      e.currentTarget.releasePointerCapture?.(e.pointerId)
+    } catch {
+      /* ignore */
+    }
+    if (start == null) {
+      setDragX(0)
+      return
+    }
+    const dx = e.clientX - start
+    if (Math.abs(dx) >= SWIPE_THRESHOLD_PX) {
+      sendToBack(dx < 0 ? -1 : 1)
+      return
+    }
+    setDragX(0)
+  }
+
+  const visible = stack.slice(0, 3)
+  const topDx = exitX != null ? exitX : dragX
+  const topRot = Math.max(-12, Math.min(12, topDx / 28))
 
   return (
     <div data-fantasy-h2h className="space-y-2">
       <div
-        className="relative overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-950"
-        onTouchStart={(e) => setTouchX(e.changedTouches?.[0]?.clientX ?? null)}
-        onTouchEnd={(e) => {
-          if (touchX == null) return
-          const x = e.changedTouches?.[0]?.clientX
-          if (x == null) return
-          const dx = x - touchX
-          if (Math.abs(dx) > 40) go(dx < 0 ? 1 : -1)
-          setTouchX(null)
-        }}
+        className="relative touch-pan-y select-none"
+        style={{ minHeight: '14.5rem' }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
       >
-        <div className="flex">
-          <MatchupHalf
-            player={current.away}
-            slotLabel={current.label}
-            slotPos={current.pos}
-            align="left"
-            washColor={awayColor}
-            teamSide={awaySide}
-            logoTreatment={awayTreatment}
-            liveOrFinal={liveOrFinal}
-            meshSrc="/sports/nfl/textures/jersey-mesh-1.jpg"
-          />
-          <div className="w-px shrink-0 self-stretch bg-zinc-800" aria-hidden="true" />
-          <MatchupHalf
-            player={current.home}
-            slotLabel={current.label}
-            slotPos={current.pos}
-            align="right"
-            washColor={homeColor}
-            teamSide={homeSide}
-            logoTreatment={homeTreatment}
-            liveOrFinal={liveOrFinal}
-            meshSrc="/sports/nfl/textures/jersey-mesh-2.jpg"
+        {visible
+          .slice()
+          .reverse()
+          .map((m, revIdx) => {
+            const depth = visible.length - 1 - revIdx
+            const isTop = depth === 0
+            const scale = 1 - depth * 0.04
+            const y = depth * 10
+            const opacity = 1 - depth * 0.12
+            return (
+              <div
+                key={m.id}
+                className={`absolute inset-x-0 top-0 ${
+                  isTop && exitX == null ? '' : 'pointer-events-none'
+                }`}
+                style={{
+                  zIndex: 10 - depth,
+                  transform: isTop
+                    ? `translateX(${topDx}px) translateY(${y}px) rotate(${topRot}deg) scale(${scale})`
+                    : `translateY(${y}px) scale(${scale})`,
+                  opacity,
+                  transition:
+                    isTop && isDragging && exitX == null
+                      ? 'none'
+                      : `transform ${SWIPE_OUT_MS}ms ease-out, opacity ${SWIPE_OUT_MS}ms ease-out`,
+                  willChange: 'transform',
+                }}
+              >
+                <MatchupCardFace
+                  matchup={m}
+                  game={game}
+                  gameStatus={gameStatus}
+                  awayColor={awayColor}
+                  homeColor={homeColor}
+                  awayTreatment={awayTreatment}
+                  homeTreatment={homeTreatment}
+                />
+              </div>
+            )
+          })}
+        {/* Spacer keeps stack height in flow (absolute cards don't expand the parent). */}
+        <div className="invisible" aria-hidden="true">
+          <MatchupCardFace
+            matchup={stack[0]}
+            game={game}
+            gameStatus={gameStatus}
+            awayColor={awayColor}
+            homeColor={homeColor}
+            awayTreatment={awayTreatment}
+            homeTreatment={homeTreatment}
           />
         </div>
-
-        {matchups.length > 1 ? (
-          <>
-            <button
-              type="button"
-              aria-label="Previous matchup"
-              onClick={() => go(-1)}
-              className="absolute left-1.5 top-[4.5rem] z-[4] flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white ring-1 ring-white/15 backdrop-blur-sm"
-            >
-              ‹
-            </button>
-            <button
-              type="button"
-              aria-label="Next matchup"
-              onClick={() => go(1)}
-              className="absolute right-1.5 top-[4.5rem] z-[4] flex h-8 w-8 items-center justify-center rounded-full bg-black/55 text-white ring-1 ring-white/15 backdrop-blur-sm"
-            >
-              ›
-            </button>
-          </>
-        ) : null}
       </div>
 
-      {matchups.length > 1 ? (
-        <div className="flex items-center justify-center gap-1.5">
-          {matchups.map((m, i) => (
-            <button
-              key={m.id}
-              type="button"
-              aria-label={m.label}
-              onClick={() => setIndex(i)}
-              className={`h-1.5 rounded-full transition-all ${
-                i === safeIndex ? 'w-4 bg-zinc-200' : 'w-1.5 bg-zinc-700'
-              }`}
-            />
-          ))}
+      {stack.length > 1 ? (
+        <div className="text-center text-[11px] font-medium text-zinc-500">
+          Swipe to cycle · {stack[0]?.label}
+          <span className="text-zinc-600"> · {stack.length} cards</span>
         </div>
       ) : null}
     </div>
@@ -674,8 +770,16 @@ export default function GameHubFantasyPane({
   game = null,
   live = null,
 }) {
-  const liveOrFinal = gameStatus === 'in' || gameStatus === 'post'
-  const gameColTitle = gameStatus === 'post' ? 'Game' : gameStatus === 'in' ? 'Live' : 'Proj'
+  // Prefer slate status; if live state already has a period, treat as in-game
+  // so the H2H chip flips even if the slate poll lags a beat after kickoff.
+  const status =
+    gameStatus === 'post' || game?.status === 'post'
+      ? 'post'
+      : gameStatus === 'in' || game?.status === 'in' || Number(live?.period) >= 1
+        ? 'in'
+        : 'pre'
+  const liveOrFinal = status === 'in' || status === 'post'
+  const gameColTitle = status === 'post' ? 'Game' : status === 'in' ? 'Live' : 'Proj'
   const paint = useLoungeSportsPillWashAndLogos(game)
 
   const { matchups, rest } = useMemo(() => {
@@ -728,7 +832,7 @@ export default function GameHubFantasyPane({
 
   return (
     <div data-lounge-game-fantasy className="space-y-4 py-3">
-      <FantasyMatchupCarousel matchups={matchups} game={game} liveOrFinal={liveOrFinal} />
+      <FantasyMatchupStack matchups={matchups} game={game} gameStatus={status} />
 
       {rest.length ? (
         <div className="space-y-2">
@@ -742,7 +846,7 @@ export default function GameHubFantasyPane({
             {rest.slice(0, 40).map((p) => {
               const season = p.season_ppr
               const detail = seasonDetailLine(p)
-              const col = restBoardPointsColumn(p, gameStatus, live)
+              const col = restBoardPointsColumn(p, status, live)
               return (
                 <li
                   key={p.sleeper_id}

@@ -51,6 +51,36 @@ function PossessionFootball({ side }) {
   )
 }
 
+// 19 interior yard lines (every 5 yards from 5 to 95)
+const YARD_LINES = Array.from({ length: 19 }, (_, i) => {
+  const p = (i + 1) * 5
+  const isMajor = p % 10 === 0
+  const xTop = 239.0 + (p / 100.0) * 784.0
+  const xBot = 161.0 + (p / 100.0) * 937.0
+  return { p, isMajor, xTop, xBot }
+})
+
+// Numbers strictly on the 10-yard lines: 10, 20, 30, 40, 50, 40, 30, 20, 10
+const Y_NUM = 446
+const T_NUM = (Y_NUM - 191) / (478 - 191)
+
+const YARD_MARKERS = [
+  { p: 10, label: '10', dir: 'left' },
+  { p: 20, label: '20', dir: 'left' },
+  { p: 30, label: '30', dir: 'left' },
+  { p: 40, label: '40', dir: 'left' },
+  { p: 50, label: '50', dir: 'none' },
+  { p: 60, label: '40', dir: 'right' },
+  { p: 70, label: '30', dir: 'right' },
+  { p: 80, label: '20', dir: 'right' },
+  { p: 90, label: '10', dir: 'right' },
+].map(({ p, label, dir }) => {
+  const xTop = 239.0 + (p / 100.0) * 784.0
+  const xBot = 161.0 + (p / 100.0) * 937.0
+  const x = xTop * (1 - T_NUM) + xBot * T_NUM
+  return { p, label, dir, x }
+})
+
 function FieldViz({ game, live, awayColor, homeColor }) {
   if (!String(game.sport_key || '').includes('football')) return null
   if (game.status === 'pre') return null
@@ -86,7 +116,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
       <div className="relative w-full overflow-hidden">
         {/* Layer 1: Floating field base graphic */}
         <img
-          src="/sports/nfl/gamecast-field-floating.png?v=608"
+          src="/sports/nfl/gamecast-field-floating.png?v=609"
           alt="Gamecast Field"
           className="pointer-events-none block w-full select-none"
         />
@@ -107,7 +137,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
               <feComposite in="SourceGraphic" in2="blur" operator="over" />
             </filter>
             <filter id="text-shadow" x="-30%" y="-30%" width="160%" height="160%">
-              <feDropShadow dx="1" dy="2" stdDeviation="1.5" floodColor="#000000" floodOpacity="0.8" />
+              <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" floodColor="#000000" floodOpacity="0.8" />
             </filter>
           </defs>
 
@@ -181,6 +211,53 @@ function FieldViz({ game, live, awayColor, homeColor }) {
             </g>
           ) : null}
 
+          {/* 19 Interior Yard Lines (every 5 yards, from 5 to 95) */}
+          {YARD_LINES.map(({ p, isMajor, xTop, xBot }) => (
+            <line
+              key={p}
+              x1={xTop.toFixed(1)}
+              y1="191"
+              x2={xBot.toFixed(1)}
+              y2="478"
+              stroke="#ffffff"
+              strokeWidth={isMajor ? '2.2' : '1.4'}
+              strokeOpacity={isMajor ? '0.85' : '0.50'}
+            />
+          ))}
+
+          {/* Numbers strictly on the 10-yard lines */}
+          {YARD_MARKERS.map(({ p, label, dir, x }) => (
+            <g key={p} filter="url(#text-shadow)">
+              <text
+                x={x.toFixed(1)}
+                y="450"
+                textAnchor="middle"
+                fill="#ffffff"
+                fillOpacity="0.90"
+                fontFamily="'Arial Black', Impact, sans-serif"
+                fontSize="20"
+                fontWeight="900"
+                letterSpacing="1"
+              >
+                {label}
+              </text>
+              {dir === 'left' ? (
+                <polygon
+                  points={`${(x - 25).toFixed(1)},444 ${(x - 19).toFixed(1)},440 ${(x - 19).toFixed(1)},448`}
+                  fill="#ffffff"
+                  fillOpacity="0.85"
+                />
+              ) : null}
+              {dir === 'right' ? (
+                <polygon
+                  points={`${(x + 25).toFixed(1)},444 ${(x + 19).toFixed(1)},440 ${(x + 19).toFixed(1)},448`}
+                  fill="#ffffff"
+                  fillOpacity="0.85"
+                />
+              ) : null}
+            </g>
+          ))}
+
           {/* First down line (yellow) */}
           {firstDownTop != null && firstDownBot != null ? (
             <line
@@ -232,7 +309,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
 
         {/* Layer 3: Foreground Goalposts Overlay (prevents endzone paint from tinting uprights/pads) */}
         <img
-          src="/sports/nfl/gamecast-goalposts-overlay.png?v=608"
+          src="/sports/nfl/gamecast-goalposts-overlay.png?v=609"
           alt=""
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 block h-full w-full select-none"

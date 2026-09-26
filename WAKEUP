@@ -79,7 +79,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo ACTIVE TRACK 2026-09-25 ... CFB logo matching
 
-**I am Mac Theo.** Missing/wrong CFB logos were catalog match order (mascot-first) + Odds 3-letter mascot abbrevs + NFL `WSH`→`WAS` on ncaaf. Fixed on **`test`** web **`1.4.664`**. Redeploy test **`lounge-sports-scoreboard`**. Prod Edge/main still older until Ryan asks.
+**I am Mac Theo.** Missing/wrong CFB logos were catalog match order (mascot-first) + Odds 3-letter mascot abbrevs + NFL `WSH`→`WAS` on ncaaf. Fixed on **`test`** web **`1.4.664`**. Then **`1.4.665`**: FCS cupcakes on slate (Howard HOW, etc.) + `NW`→`NU`. Redeploy test **`lounge-sports-scoreboard`**. Prod Edge/main still older until Ryan asks.
 
 ### Mac Theo ACTIVE TRACK 2026-09-25 ... CFB Players + PBP
 

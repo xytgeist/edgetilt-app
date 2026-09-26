@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-25:** **CFB FCS cupcake logos + NW alias (Mac).** This week's slate had **14** FCS sides with no local mark (Howard Bison @ Rutgers, etc.). Synced those logos into `public/sports/cfb/logos` + catalog (**150** teams). `NW`→`NU` for Northwestern. Sync script now pulls ESPN scoreboard FCS extras. Redeploy test **`lounge-sports-scoreboard`**. Frontend **`1.4.665`**.
 - **2026-09-25:** **CFB logos match by abbrev first (Mac).** Client enrich was mascot-poisoned (Huskies→UConn, Eagles→BC). Now ESPN id → catalog/alias abbrev → longest school name. Odds/Rundown stop slicing mascot to 3 letters and skip NFL `WSH`→`WAS` on ncaaf. Redeploy test **`lounge-sports-scoreboard`**. Frontend **`1.4.664`**.
 - **2026-09-25:** **Possession football icon (Mac).** Scoreboard possession mark is inline SVG (dropped PNG `<img>` that showed as can't-load). Frontend **`1.4.662`**. Promoted with tip to **`main`**.
 - **2026-09-25:** **Promoted `test` → `main` (`63c28769`).** Vercel prod = web **`1.4.661`**. CFB Hub + logos/colors, Players (`lounge-cfb-game-players`), ESPN college PBP, last-play under field, ball marker fix. Prod SQL **`20260925200000_cfb_players`** + **13,600** roster rows. Deployed prod Edge **`lounge-sports-scoreboard`** + **`lounge-cfb-game-players`**. Store IPA marketing still **1.4.95**.

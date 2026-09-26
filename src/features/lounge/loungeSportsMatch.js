@@ -92,6 +92,10 @@ const CFB_ABBREV_ALIASES = {
   WASHST: 'WSU',
   MSU: 'MSU',
   MICHST: 'MSU',
+  NW: 'NU',
+  NWU: 'NU',
+  NWEST: 'NU',
+  HOWARD: 'HOW',
 }
 
 function resolveCfbCatalogAbbrev(raw) {
@@ -372,7 +376,16 @@ export function enrichLoungeSportsGame(game) {
   const logoBase = isCfbSportKey(sportKey) ? '/sports/cfb/logos' : '/sports/nfl/logos'
   const patchSide = (side) => {
     const row = catalogRowForSide(side, sportKey)
-    if (!row) return side
+    if (!row) {
+      // FCS / unknown: keep local if already set; else ESPN numeric id (not letter slug).
+      if (!isCfbSportKey(sportKey)) return side
+      const espnId = String(side?.team_id ?? side?.espn_id ?? '').trim()
+      if (!/^\d+$/.test(espnId)) return side
+      const logo = `https://a.espncdn.com/i/teamlogos/ncaa/500/${espnId}.png`
+      const cur = String(side?.logo || '')
+      if (cur.startsWith('/sports/') || cur.includes(`/ncaa/500/${espnId}.png`)) return side
+      return { ...side, logo }
+    }
     return {
       ...side,
       abbrev: row.abbrev,

@@ -2,8 +2,10 @@
 /**
  * Download FBS college football team logos (+ light/dark wash variants) and
  * regenerate the client catalog (colors, names, ESPN ids).
+ * Also pulls FCS / non-FBS opponents from the current ESPN scoreboard window
+ * so cupcake games (Howard Bison, etc.) get local marks.
  *
- * Source: CFBD /teams/fbs + ESPN team board for alternateColor / logo URLs.
+ * Source: CFBD /teams/fbs + ESPN team board + ESPN scoreboard.
  * Helmets: no public ESPN/CFBD helmet pack (NFL cartoon helmets were removed).
  *
  *   node scripts/sync-cfb-team-assets.mjs
@@ -18,13 +20,13 @@ import { fileURLToPath } from 'url'
 import { loadSupabaseEnv, repoRoot } from './lib/supabaseEnv.mjs'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const YEAR = 2025
+const YEAR = 2026
 const LOGOS_DIR = path.join(repoRoot, 'public/sports/cfb/logos')
 const CATALOG_OUT = path.join(repoRoot, 'src/features/lounge/cfbTeamCatalog.generated.js')
 const ESPN_MAP_OUT = path.join(repoRoot, 'supabase/functions/_shared/cfbTeamEspnByAbbrev.json')
 const NAME_ABBREV_OUT = path.join(repoRoot, 'supabase/functions/_shared/cfbTeamNameAbbrev.json')
 const ESPN_TEAMS_URL =
-  'https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams?limit=400'
+  'https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams?limit=1000'
 const UA = 'EdgeTiltCfbAssets/1.0'
 const CONCURRENCY = 8
 
@@ -72,6 +74,61 @@ async function loadEspnById() {
     }
   }
   return map
+}
+
+/** Non-FBS teams on the live ESPN scoreboard (±4 days) so cupcake logos exist. */
+async function loadEspnSlateExtras(haveEspnIds) {
+  const extras = new Map()
+  const base = new Date()
+  for (let i = -4; i <= 4; i++) {
+    const d = new Date(base)
+    d.setDate(d.getDate() + i)
+    const yyyymmdd = d.toISOString().slice(0, 10).replace(/-/g, '')
+    const url =
+      `https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard?dates=${yyyymmdd}&limit=300`
+    const res = await fetch(url, {
+      headers: { Accept: 'application/json', 'User-Agent': UA },
+    })
+    if (!res.ok) continue
+    const pack = await res.json()
+    for (const ev of pack.events || []) {
+      for (const c of ev.competitions?.[0]?.competitors || []) {
+        const t = c.team || {}
+        const id = String(t.id || '').trim()
+        if (!id || haveEspnIds.has(id) || extras.has(id)) continue
+        const abbrev = String(t.abbreviation || '')
+          .trim()
+          .toUpperCase()
+          .replace(/[^A-Z0-9-]/g, '')
+        if (!abbrev) continue
+        const school = String(t.location || t.shortDisplayName || '').trim()
+        const display = String(t.displayName || t.name || '').trim()
+        const mascot = display.replace(new RegExp(`^${school}\\s*`, 'i'), '').trim() || school
+        const logos = Array.isArray(t.logos) ? t.logos : []
+        const defaultLogo =
+          logos.find((l) => (l.rel || []).includes('default'))?.href ||
+          logos[0]?.href ||
+          `https://a.espncdn.com/i/teamlogos/ncaa/500/${id}.png`
+        const darkLogo =
+          logos.find((l) => (l.rel || []).includes('dark'))?.href ||
+          `https://a.espncdn.com/i/teamlogos/ncaa/500-dark/${id}.png`
+        extras.set(id, {
+          abbrev,
+          espn: id,
+          espnSlug: String(t.slug || '').trim(),
+          color: normHex(t.color),
+          color2: normHex(t.alternateColor, '#FFFFFF'),
+          conference: 'FCS',
+          mascot,
+          school: school || display,
+          names: [...new Set([display, school, mascot, `${school} ${mascot}`.trim()].filter(Boolean))],
+          defaultUrl: String(defaultLogo),
+          darkUrl: String(darkLogo),
+        })
+      }
+    }
+  }
+  return extras
 }
 
 function pickLogoHref(espnTeam, preferDark) {
@@ -215,6 +272,8 @@ async function main() {
 
   const rows = []
   const jobs = []
+  const usedAbbrev = new Set()
+  const haveEspnIds = new Set()
   for (const cfbd of cfbdTeams) {
     const espnId = String(cfbd.id || '').trim()
     const espn = espnById.get(espnId) || null
@@ -224,6 +283,8 @@ async function main() {
       continue
     }
     rows.push(row)
+    usedAbbrev.add(row.abbrev)
+    haveEspnIds.add(row.espn)
     const defaultUrl =
       pickLogoHref(espn, false) ||
       `https://a.espncdn.com/i/teamlogos/ncaa/500/${row.espn}.png`
@@ -239,12 +300,31 @@ async function main() {
     })
   }
 
+  const slateExtras = await loadEspnSlateExtras(haveEspnIds)
+  console.log(`ESPN slate FCS extras=${slateExtras.size}`)
+  for (const extra of slateExtras.values()) {
+    let abbrev = extra.abbrev
+    if (usedAbbrev.has(abbrev)) abbrev = `${abbrev}${extra.espn.slice(-2)}`
+    usedAbbrev.add(abbrev)
+    haveEspnIds.add(extra.espn)
+    const { defaultUrl, darkUrl, ...row } = { ...extra, abbrev }
+    rows.push(row)
+    jobs.push({
+      abbrev,
+      defaultUrl,
+      darkUrl,
+      dest: path.join(LOGOS_DIR, `${abbrev}.png`),
+      destLight: path.join(LOGOS_DIR, `${abbrev}-light.png`),
+    })
+  }
+
   let ok = 0
   let fail = 0
   await mapPool(jobs, CONCURRENCY, async (job) => {
     const a = await downloadPng(job.defaultUrl, job.dest, args)
     const b = await downloadPng(job.darkUrl, job.destLight, args)
-    if (a.ok && b.ok) {
+    if (a.ok && (b.ok || args.dryRun)) {
+      if (!b.ok && !args.dryRun && a.ok) fs.copyFileSync(job.dest, job.destLight)
       ok += 1
       process.stdout.write('.')
     } else {

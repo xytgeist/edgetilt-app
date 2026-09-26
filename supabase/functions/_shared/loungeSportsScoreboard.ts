@@ -46,6 +46,10 @@ const CFB_ABBREV_ALIASES: Record<string, string> = {
   HAWAII: 'HAW',
   WASHST: 'WSU',
   MICHST: 'MSU',
+  NW: 'NU',
+  NWU: 'NU',
+  NWEST: 'NU',
+  HOWARD: 'HOW',
 }
 
 function foldCfbName(value: string): string {

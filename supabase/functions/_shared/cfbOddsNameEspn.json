@@ -1,0 +1,394 @@
+{
+  "abilene christian wildcats": {
+    "abbrev": "ACU",
+    "espn": "2000"
+  },
+  "albany": {
+    "abbrev": "UALB",
+    "espn": "399"
+  },
+  "albany great danes": {
+    "abbrev": "UALB",
+    "espn": "399"
+  },
+  "alcorn state braves": {
+    "abbrev": "ALCN",
+    "espn": "2016"
+  },
+  "angelo state rams": {
+    "abbrev": "AGSU",
+    "espn": "2025"
+  },
+  "appalachian state mountaineers": {
+    "abbrev": "APP",
+    "espn": "2026"
+  },
+  "austin peay governors": {
+    "abbrev": "APSU",
+    "espn": "2046"
+  },
+  "bethune cookman wildcats": {
+    "abbrev": "BCU",
+    "espn": "2065"
+  },
+  "brown bears": {
+    "abbrev": "BRWN",
+    "espn": "225"
+  },
+  "bryant bulldogs": {
+    "abbrev": "BRY",
+    "espn": "2803"
+  },
+  "butler bulldogs": {
+    "abbrev": "BTLR",
+    "espn": "2086"
+  },
+  "cal poly mustangs": {
+    "abbrev": "CP",
+    "espn": "13"
+  },
+  "campbell fighting camels": {
+    "abbrev": "CAM",
+    "espn": "2097"
+  },
+  "central connecticut blue devils": {
+    "abbrev": "CCSU",
+    "espn": "2115"
+  },
+  "charleston southern buccaneers": {
+    "abbrev": "CHSO",
+    "espn": "2127"
+  },
+  "chattanooga mocs": {
+    "abbrev": "UTC",
+    "espn": "236"
+  },
+  "chicago state cougars": {
+    "abbrev": "CHST",
+    "espn": "2130"
+  },
+  "citadel bulldogs": {
+    "abbrev": "CIT",
+    "espn": "2643"
+  },
+  "colgate raiders": {
+    "abbrev": "COLG",
+    "espn": "2142"
+  },
+  "columbia lions": {
+    "abbrev": "COLU",
+    "espn": "171"
+  },
+  "cornell big red": {
+    "abbrev": "COR",
+    "espn": "172"
+  },
+  "dartmouth big green": {
+    "abbrev": "DART",
+    "espn": "159"
+  },
+  "davidson wildcats": {
+    "abbrev": "DAV",
+    "espn": "2166"
+  },
+  "dayton flyers": {
+    "abbrev": "DAY",
+    "espn": "2168"
+  },
+  "dixie state trailblazers": {
+    "abbrev": "UTU",
+    "espn": "3101"
+  },
+  "drake bulldogs": {
+    "abbrev": "DRKE",
+    "espn": "2181"
+  },
+  "duquesne dukes": {
+    "abbrev": "DUQ",
+    "espn": "2184"
+  },
+  "elon phoenix": {
+    "abbrev": "ELON",
+    "espn": "2210"
+  },
+  "ferris state bulldogs": {
+    "abbrev": "FRST",
+    "espn": "2222"
+  },
+  "fordham rams": {
+    "abbrev": "FOR",
+    "espn": "2230"
+  },
+  "furman paladins": {
+    "abbrev": "FUR",
+    "espn": "231"
+  },
+  "georgetown hoyas": {
+    "abbrev": "GTWN",
+    "espn": "46"
+  },
+  "grambling state tigers": {
+    "abbrev": "GRAM",
+    "espn": "2755"
+  },
+  "hampton pirates": {
+    "abbrev": "HAMP",
+    "espn": "2261"
+  },
+  "harvard crimson": {
+    "abbrev": "HARV",
+    "espn": "108"
+  },
+  "holy cross crusaders": {
+    "abbrev": "HC",
+    "espn": "107"
+  },
+  "idaho state bengals": {
+    "abbrev": "IDST",
+    "espn": "304"
+  },
+  "idaho vandals": {
+    "abbrev": "IDHO",
+    "espn": "70"
+  },
+  "jackson state tigers": {
+    "abbrev": "JKST",
+    "espn": "2296"
+  },
+  "johnson c smith golden bulls": {
+    "abbrev": "JCSU",
+    "espn": "2304"
+  },
+  "lafayette leopards": {
+    "abbrev": "LAF",
+    "espn": "322"
+  },
+  "lamar cardinals": {
+    "abbrev": "LAM",
+    "espn": "2320"
+  },
+  "lehigh mountain hawks": {
+    "abbrev": "LEH",
+    "espn": "2329"
+  },
+  "liu sharks": {
+    "abbrev": "LIU",
+    "espn": "2341"
+  },
+  "maine black bears": {
+    "abbrev": "ME",
+    "espn": "311"
+  },
+  "marist red foxes": {
+    "abbrev": "MRST",
+    "espn": "2368"
+  },
+  "mcneese state cowboys": {
+    "abbrev": "MCN",
+    "espn": "2377"
+  },
+  "mercer bears": {
+    "abbrev": "MER",
+    "espn": "2382"
+  },
+  "merrimack warriors": {
+    "abbrev": "MRMK",
+    "espn": "2771"
+  },
+  "mississippi valley state delta devils": {
+    "abbrev": "MVSU",
+    "espn": "2400"
+  },
+  "monmouth hawks": {
+    "abbrev": "MONM",
+    "espn": "2405"
+  },
+  "montana grizzlies": {
+    "abbrev": "MONT",
+    "espn": "149"
+  },
+  "montana state bobcats": {
+    "abbrev": "MTST",
+    "espn": "147"
+  },
+  "morehead state eagles": {
+    "abbrev": "MORE",
+    "espn": "2413"
+  },
+  "morgan state bears": {
+    "abbrev": "MORG",
+    "espn": "2415"
+  },
+  "murray state racers": {
+    "abbrev": "MUR",
+    "espn": "93"
+  },
+  "new hampshire wildcats": {
+    "abbrev": "UNH",
+    "espn": "160"
+  },
+  "new haven chargers": {
+    "abbrev": "NHVN",
+    "espn": "2441"
+  },
+  "nicholls state colonels": {
+    "abbrev": "NICH",
+    "espn": "2447"
+  },
+  "norfolk state spartans": {
+    "abbrev": "NORF",
+    "espn": "2450"
+  },
+  "north dakota fighting hawks": {
+    "abbrev": "UND",
+    "espn": "155"
+  },
+  "north dakota state bison": {
+    "abbrev": "NDSU",
+    "espn": "2449"
+  },
+  "pennsylvania quakers": {
+    "abbrev": "PENN",
+    "espn": "219"
+  },
+  "portland state vikings": {
+    "abbrev": "PRST",
+    "espn": "2502"
+  },
+  "prairie view a m panthers": {
+    "abbrev": "PV",
+    "espn": "2504"
+  },
+  "presbyterian college blue hose": {
+    "abbrev": "PRES",
+    "espn": "2506"
+  },
+  "princeton tigers": {
+    "abbrev": "PRIN",
+    "espn": "163"
+  },
+  "rhode island rams": {
+    "abbrev": "URI",
+    "espn": "227"
+  },
+  "richmond spiders": {
+    "abbrev": "RICH",
+    "espn": "257"
+  },
+  "sacred heart pioneers": {
+    "abbrev": "SHU",
+    "espn": "2529"
+  },
+  "samford bulldogs": {
+    "abbrev": "SAM",
+    "espn": "2535"
+  },
+  "san diego toreros": {
+    "abbrev": "USD",
+    "espn": "301"
+  },
+  "savannah state tigers": {
+    "abbrev": "SAV",
+    "espn": "2542"
+  },
+  "south dakota coyotes": {
+    "abbrev": "SDAK",
+    "espn": "233"
+  },
+  "south dakota state jackrabbits": {
+    "abbrev": "SDST",
+    "espn": "2571"
+  },
+  "southern mississippi golden eagles": {
+    "abbrev": "USM",
+    "espn": "2572"
+  },
+  "southern university jaguars": {
+    "abbrev": "SOU",
+    "espn": "2582"
+  },
+  "st francis pa red flash": {
+    "abbrev": "SFPA",
+    "espn": "2598"
+  },
+  "st thomas mn tommies": {
+    "abbrev": "STMN",
+    "espn": "2900"
+  },
+  "stephen f austin lumberjacks": {
+    "abbrev": "SFA",
+    "espn": "2617"
+  },
+  "stetson hatters": {
+    "abbrev": "STET",
+    "espn": "56"
+  },
+  "stony brook seawolves": {
+    "abbrev": "STBK",
+    "espn": "2619"
+  },
+  "tarleton state texans": {
+    "abbrev": "TAR",
+    "espn": "2627"
+  },
+  "towson tigers": {
+    "abbrev": "TOW",
+    "espn": "119"
+  },
+  "uc davis aggies": {
+    "abbrev": "UCD",
+    "espn": "302"
+  },
+  "umass minutemen": {
+    "abbrev": "MASS",
+    "espn": "113"
+  },
+  "ut martin skyhawks": {
+    "abbrev": "UTM",
+    "espn": "2630"
+  },
+  "valparaiso beacons": {
+    "abbrev": "VAL",
+    "espn": "2674"
+  },
+  "villanova wildcats": {
+    "abbrev": "VILL",
+    "espn": "222"
+  },
+  "vmi keydets": {
+    "abbrev": "VMI",
+    "espn": "2678"
+  },
+  "wagner seahawks": {
+    "abbrev": "WAG",
+    "espn": "2681"
+  },
+  "weber state wildcats": {
+    "abbrev": "WEB",
+    "espn": "2692"
+  },
+  "western carolina catamounts": {
+    "abbrev": "WCU",
+    "espn": "2717"
+  },
+  "william and mary tribe": {
+    "abbrev": "WM",
+    "espn": "2729"
+  },
+  "wingate bulldogs": {
+    "abbrev": "WINU",
+    "espn": "351"
+  },
+  "wofford terriers": {
+    "abbrev": "WOF",
+    "espn": "2747"
+  },
+  "yale university bulldogs": {
+    "abbrev": "YALE",
+    "espn": "43"
+  },
+  "youngstown st penguins": {
+    "abbrev": "YSU",
+    "espn": "2754"
+  }
+}

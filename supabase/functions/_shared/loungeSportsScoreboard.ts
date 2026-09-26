@@ -338,6 +338,61 @@ function numOrNull(value: unknown): number | null {
   return Number.isFinite(n) ? n : null
 }
 
+/**
+ * Football LOS for UI: yard_line is 1–50 (50 = midfield), yard_side is territory.
+ * Prefers ESPN possessionText ("HOW 1"), then yards-to-endzone + possession, then absolute 0–100.
+ */
+function resolveFootballYardSpot(opts: {
+  possessionText?: string | null
+  yardsToEndzone?: number | null
+  absoluteYardLine?: number | null
+  possession: 'home' | 'away' | null
+  homeAbbrev?: string
+  awayAbbrev?: string
+}): { yard_line: number | null; yard_side: 'home' | 'away' | null } {
+  const foldAbbrev = (v: string) => String(v || '').toUpperCase().replace(/[^A-Z0-9-]/g, '')
+  const homeA = foldAbbrev(opts.homeAbbrev || '')
+  const awayA = foldAbbrev(opts.awayAbbrev || '')
+
+  const text = String(opts.possessionText || '').trim()
+  const m = text.match(/^([A-Za-z0-9&.\-]+)\s+(\d{1,2})$/)
+  if (m) {
+    const token = foldAbbrev(m[1])
+    const yard = Number(m[2])
+    if (Number.isFinite(yard) && yard >= 0 && yard <= 50) {
+      if (yard === 50) return { yard_line: 50, yard_side: null }
+      let side: 'home' | 'away' | null = null
+      if (token && homeA && (token === homeA || homeA.startsWith(token) || token.startsWith(homeA))) {
+        side = 'home'
+      } else if (token && awayA && (token === awayA || awayA.startsWith(token) || token.startsWith(awayA))) {
+        side = 'away'
+      }
+      return { yard_line: Math.max(1, yard), yard_side: side }
+    }
+  }
+
+  const yte = opts.yardsToEndzone
+  if (yte != null && Number.isFinite(yte) && opts.possession) {
+    if (yte === 50) return { yard_line: 50, yard_side: null }
+    if (yte > 50 && yte <= 99) {
+      return { yard_line: 100 - Math.round(yte), yard_side: opts.possession }
+    }
+    if (yte >= 0 && yte < 50) {
+      const opp = opts.possession === 'home' ? 'away' : 'home'
+      return { yard_line: Math.max(1, Math.round(yte)), yard_side: opp }
+    }
+  }
+
+  const abs = opts.absoluteYardLine
+  if (abs != null && Number.isFinite(abs) && abs >= 0 && abs <= 100) {
+    if (abs === 50) return { yard_line: 50, yard_side: null }
+    if (abs < 50) return { yard_line: Math.max(1, Math.round(abs)), yard_side: 'home' }
+    return { yard_line: Math.max(1, 100 - Math.round(abs)), yard_side: 'away' }
+  }
+
+  return { yard_line: null, yard_side: null }
+}
+
 /** NFL: 3 timeouts per half. Clamp remaining into 0–3. */
 function timeoutsRemaining(value: unknown): number | null {
   const n = numOrNull(value)
@@ -393,7 +448,6 @@ function liveFromRundown(
   const period = numOrNull(raw.period ?? raw.quarter ?? score.game_period)
   const down = numOrNull(raw.down)
   const distance = numOrNull(raw.distance ?? raw.yards_to_go)
-  const yardLine = numOrNull(raw.yard_line ?? raw.yards_from_goal ?? raw.field_position)
   const possRaw = raw.possession ?? raw.possession_team_id ?? raw.team_in_possession
   let possession: 'home' | 'away' | null = null
   if (possRaw === 'home' || possRaw === 'away') possession = possRaw
@@ -406,6 +460,23 @@ function liveFromRundown(
   const sideRaw = String(raw.yard_line_side || raw.side || raw.territory || '').toLowerCase()
   if (sideRaw.includes('home')) yardSide = 'home'
   if (sideRaw.includes('away')) yardSide = 'away'
+  const yte = numOrNull(raw.yards_to_endzone ?? raw.yards_from_goal)
+  const rawYard = numOrNull(raw.yard_line ?? raw.field_position)
+  const spot = resolveFootballYardSpot({
+    possessionText: String(raw.possession_text || raw.field_position_text || '').trim() || null,
+    yardsToEndzone: yte ?? (rawYard != null && rawYard > 50 ? rawYard : null),
+    absoluteYardLine: rawYard != null && rawYard > 50 && yte == null ? rawYard : null,
+    possession,
+  })
+  // Prefer explicit Rundown side when present and yard already 1–50.
+  let yardLine = spot.yard_line
+  let yardSideOut = spot.yard_side
+  if (yardSide && rawYard != null && rawYard >= 1 && rawYard <= 50) {
+    yardLine = rawYard
+    yardSideOut = yardSide
+  } else if (yardSide && yardLine != null) {
+    yardSideOut = yardSide
+  }
   if (!clock && period == null && down == null && !lastPlay) return null
   return {
     clock,
@@ -413,7 +484,7 @@ function liveFromRundown(
     down,
     distance,
     yard_line: yardLine,
-    yard_side: yardSide,
+    yard_side: yardSideOut,
     possession,
     home_timeouts: pickTimeouts(raw, 'home') ?? pickTimeouts(score, 'home'),
     away_timeouts: pickTimeouts(raw, 'away') ?? pickTimeouts(score, 'away'),
@@ -1167,6 +1238,11 @@ async function fetchEspnFootballLivePack(
   let boardHomeTimeouts: number | null = null
   let boardAwayTimeouts: number | null = null
   let boardPossession: 'home' | 'away' | null = null
+  let boardPossessionText: string | null = null
+  let boardYardLine: number | null = null
+  let boardYardsToEndzone: number | null = null
+  let boardHomeAbbrev = homeAbb
+  let boardAwayAbbrev = awayAbb
   const boardBase = espnFootballScoreboardPath(league)
 
   for (const date of dates) {
@@ -1208,6 +1284,19 @@ async function fetchEspnFootballLivePack(
           const possId = String(sit.possession || '').trim()
           if (possId && homeEspnId && possId === homeEspnId) boardPossession = 'home'
           else if (possId && awayEspnId && possId === awayEspnId) boardPossession = 'away'
+          boardPossessionText = String(sit.possessionText || '').trim() || null
+          boardYardLine = numOrNull(sit.yardLine)
+          // ESPN absolute: 0 = home endzone, 100 = away endzone.
+          // Home attacks toward 100 → yte = 100 - abs. Away attacks toward 0 → yte = abs.
+          if (boardPossession === 'home' && boardYardLine != null) {
+            boardYardsToEndzone = 100 - boardYardLine
+          } else if (boardPossession === 'away' && boardYardLine != null) {
+            boardYardsToEndzone = boardYardLine
+          }
+          const homeTeam = (home.team && typeof home.team === 'object') ? home.team as Record<string, unknown> : {}
+          const awayTeam = (away.team && typeof away.team === 'object') ? away.team as Record<string, unknown> : {}
+          boardHomeAbbrev = nflAbbrevKey(homeTeam.abbreviation) || boardHomeAbbrev
+          boardAwayAbbrev = nflAbbrevKey(awayTeam.abbreviation) || boardAwayAbbrev
         }
         break
       }
@@ -1280,20 +1369,32 @@ async function fetchEspnFootballLivePack(
       ? lastPlayRow.end as Record<string, unknown>
       : null
     const endTeam = end?.team && typeof end.team === 'object' ? end.team as Record<string, unknown> : null
-    const possession = sideForEspnTeamId(String(endTeam?.id || ''))
-    const yardLine = numOrNull(end?.yardLine ?? end?.yardsToEndzone)
+    const possession = boardPossession ?? sideForEspnTeamId(String(endTeam?.id || ''))
+    const possessionText = String(
+      end?.possessionText || boardPossessionText || '',
+    ).trim() || null
+    const yardsToEndzone = numOrNull(end?.yardsToEndzone) ?? boardYardsToEndzone
+    const absoluteYardLine = numOrNull(end?.yardLine) ?? boardYardLine
+    const spot = resolveFootballYardSpot({
+      possessionText,
+      yardsToEndzone,
+      absoluteYardLine,
+      possession,
+      homeAbbrev: boardHomeAbbrev || game.home?.abbrev,
+      awayAbbrev: boardAwayAbbrev || game.away?.abbrev,
+    })
     const down = numOrNull(end?.down)
     const distance = numOrNull(end?.distance)
 
-    const live: LoungeSportsLiveState | null = (statusClock || statusPeriod != null || last?.description)
+    const live: LoungeSportsLiveState | null = (statusClock || statusPeriod != null || last?.description || possessionText)
       ? {
           clock: statusClock.includes(' - ') ? '' : statusClock,
           period: statusPeriod ?? last?.period ?? null,
           down: down && down > 0 ? down : null,
           distance: distance && distance > 0 ? distance : null,
-          yard_line: yardLine,
-          yard_side: null,
-          possession: boardPossession ?? possession,
+          yard_line: spot.yard_line,
+          yard_side: spot.yard_side,
+          possession,
           home_timeouts: boardHomeTimeouts,
           away_timeouts: boardAwayTimeouts,
           last_play: last?.description || '',

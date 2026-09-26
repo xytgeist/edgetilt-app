@@ -89,35 +89,68 @@ export function downDistanceLabel(live) {
   return ''
 }
 
+/**
+ * Field position label … "IU 35" / "NU 37" / "50".
+ * Territory is whose half the ball is on (not who has possession).
+ * Yard number is always 1–50 (bare "50" at midfield).
+ */
 export function yardLineLabel(game, live) {
-  if (live?.yard_line == null) return ''
-  const yard = Math.round(Number(live.yard_line))
-  if (!Number.isFinite(yard)) return ''
-  const side =
-    live.yard_side === 'home'
-      ? game.home?.abbrev
-      : live.yard_side === 'away'
-        ? game.away?.abbrev
-        : live.possession === 'home'
-          ? game.home?.abbrev
-          : live.possession === 'away'
-            ? game.away?.abbrev
-            : ''
-  return side ? `${side} ${yard}` : String(yard)
+  const normalized = normalizeYardTerritory(live)
+  if (!normalized) return ''
+  if (normalized.midfield) return '50'
+  if (!normalized.side) return String(normalized.yard)
+  const abbrev =
+    normalized.side === 'home'
+      ? String(game?.home?.abbrev || '').trim()
+      : String(game?.away?.abbrev || '').trim()
+  if (!abbrev) return String(normalized.yard)
+  return `${abbrev} ${normalized.yard}`
 }
 
+/** Map live yard fields onto 0–100 field percent (away endzone left → home right). */
 export function fieldPercent(live) {
-  const yard = Number(live?.yard_line)
-  if (!Number.isFinite(yard)) {
+  const normalized = normalizeYardTerritory(live)
+  if (!normalized) {
     if (live?.possession === 'home') return 62
     if (live?.possession === 'away') return 38
     return null
   }
-  let pos = yard
-  if (live.yard_side === 'home') pos = 100 - yard
-  else if (live.yard_side === 'away') pos = yard
-  else if (live.possession === 'home') pos = 100 - yard
+  if (normalized.midfield) return 50
+  const pos = normalized.side === 'home' ? 100 - normalized.yard : normalized.yard
   return Math.max(6, Math.min(94, pos))
+}
+
+/**
+ * Resolve territory + 1–50 yard line.
+ * Prefers explicit `yard_side`. Values above 50 are treated as ESPN absolute
+ * (0 = home endzone, 100 = away endzone) … scoreboard should already fold
+ * yards-to-endzone into 1–50 + side before the client sees them.
+ */
+export function normalizeYardTerritory(live) {
+  if (!live) return null
+  let yard = live.yard_line == null ? null : Math.round(Number(live.yard_line))
+  if (yard != null && !Number.isFinite(yard)) yard = null
+  if (yard == null) return null
+
+  const side = live.yard_side === 'home' || live.yard_side === 'away' ? live.yard_side : null
+
+  if (yard === 50) return { midfield: true, side: null, yard: 50 }
+
+  if (side) {
+    const n = yard > 50 ? 100 - yard : yard
+    return { midfield: false, side, yard: Math.max(1, Math.min(50, n)) }
+  }
+
+  // Safety net for raw ESPN absolute (e.g. 99 → away 1).
+  if (yard > 50 && yard <= 100) {
+    return { midfield: false, side: 'away', yard: Math.max(1, 100 - yard) }
+  }
+  if (yard >= 0 && yard < 50 && live.espn_absolute === true) {
+    return { midfield: false, side: 'home', yard: Math.max(1, yard) }
+  }
+
+  if (yard >= 1 && yard <= 50) return { midfield: false, side: null, yard }
+  return null
 }
 
 export function formatKickoff(commenceTime) {

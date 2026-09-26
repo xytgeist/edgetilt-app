@@ -3865,3 +3865,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-26:** **Promoted `test` → `main` (`7be7dd12`).** Vercel prod = web **`1.4.708`** (CFB Cardinals hub label fix). **No SQL / Edge.**
 - **2026-09-26:** **Field gap + live logos:** Field `pt-5`, condensed scoreboard `pb-3`, logos 52px. Frontend **`1.4.709`**.
 - **2026-09-26:** **Promoted `test` → `main` (`af0f9ce9`).** Vercel prod = web **`1.4.709`** (field gap + live logos). **No SQL / Edge.**
+- **2026-09-26:** **Final hub chrome:** Hide down/distance + yard line when status is post. Frontend **`1.4.710`**.

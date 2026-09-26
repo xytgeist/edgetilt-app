@@ -1692,8 +1692,10 @@ export default function GameHubHero({
 }) {
   const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(game)
   const clock = liveClockLabel(game, live)
-  const down = downDistanceLabel(live)
-  const yard = yardLineLabel(game, live)
+  const isFinal = game.status === 'post'
+  // Final: clock still says Final … drop stale down/distance + yard line.
+  const down = isFinal ? null : downDistanceLabel(live)
+  const yard = isFinal ? null : yardLineLabel(game, live)
   const isFootball = String(game.sport_key || '').includes('football')
   const showLiveChrome = isFootball && game.status === 'in'
   const awayHasBall = showLiveChrome && live?.possession === 'away'
@@ -1701,7 +1703,6 @@ export default function GameHubHero({
   const awayTimeouts = showLiveChrome ? (live?.away_timeouts ?? TIMEOUT_SLOTS) : null
   const homeTimeouts = showLiveChrome ? (live?.home_timeouts ?? TIMEOUT_SLOTS) : null
 
-  const isFinal = game.status === 'post'
   const awayScoreN = Number(game.away?.score)
   const homeScoreN = Number(game.home?.score)
   const scoresComparable =

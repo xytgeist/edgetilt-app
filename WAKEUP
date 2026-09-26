@@ -33,7 +33,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
-**Branch:** `test` (match `origin/test` before edits). `main` @ **`b9d4d00c`** (promoted 2026-09-26, web **1.4.704**). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
+**Branch:** `test` (match `origin/test` before edits). `main` @ **`5b752e98`** (promoted 2026-09-26, web **1.4.705**). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
 
 **Supabase (do not swap these):**
 
@@ -79,11 +79,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... field-less scoreboard layout
 
-**I am Mac Theo.** Pre/post hub scoreboard (no field): stack spread/score + ML under each team column so kickoff/broadcast own the center. Tip web **`1.4.705`**.
-
-### Mac Theo ACTIVE TRACK 2026-09-26 ... light hero text contrast
-
-**I am Mac Theo.** Promoted **`test` → `main` (`b9d4d00c`)**. Vercel prod web **`1.4.704`** (light hero veil + PUBLIC/Final contrast). **No SQL / Edge.**
+**I am Mac Theo.** Promoted **`test` → `main` (`5b752e98`)**. Vercel prod web **`1.4.705`** (field-less scoreboard stack). **No SQL / Edge.**
 
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... hub pill light wash
 

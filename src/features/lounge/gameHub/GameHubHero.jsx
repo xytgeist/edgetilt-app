@@ -13,6 +13,7 @@ import {
 } from './gameHubEndzone.js'
 import GameHubRushFigure from './GameHubRushFigure.jsx'
 import GameHubCatchFigure from './GameHubCatchFigure.jsx'
+import { resolveTeamKit } from './gameHubFigureColors.js'
 import {
   CATCH_HANDS_LOCAL,
   CATCH_VIEWBOX_H,
@@ -130,10 +131,15 @@ function possessionKit(live, game, awayColor, homeColor) {
   if (!secondary || secondary.toLowerCase() === primary.toLowerCase()) {
     secondary = '#fafafa'
   }
+  const sideAbbrev = String(side?.abbrev || '')
+  const resolved = resolveTeamKit(sideAbbrev, primary, secondary)
   return {
     primary,
     secondary,
-    sideAbbrev: String(side?.abbrev || ''),
+    helmetColor: resolved.helmetColor,
+    pantsColor: resolved.pantsColor,
+    tightsColor: resolved.tightsColor,
+    sideAbbrev,
   }
 }
 
@@ -532,6 +538,9 @@ function FieldViz({
       y: RUSH_Y,
       primary: kit.primary,
       secondary: kit.secondary,
+      helmetColor: kit.helmetColor,
+      pantsColor: kit.pantsColor,
+      tightsColor: kit.tightsColor,
       headshotUrl,
       jerseyNumber,
       facing,
@@ -665,6 +674,7 @@ function FieldViz({
     )
     const matched = matchRushPlayer(parsed.playerHint, players, kit.sideAbbrev)
     const headshotUrl = matched?.headshot_url ? String(matched.headshot_url) : ''
+    const jerseyNumber = matched?.jersey ? String(matched.jersey) : ''
 
     const figTopAtEnd = RUSH_Y - RUSH_FIG_H + 8
     const figLeftAtEnd = endX - RUSH_FIG_W / 2
@@ -684,7 +694,11 @@ function FieldViz({
       y: RUSH_Y,
       primary: kit.primary,
       secondary: kit.secondary,
+      helmetColor: kit.helmetColor,
+      pantsColor: kit.pantsColor,
+      tightsColor: kit.tightsColor,
       headshotUrl,
+      jerseyNumber,
       facing,
       yards: parsed.yards,
       ballStart,
@@ -1183,6 +1197,9 @@ function FieldViz({
                 <GameHubRushFigure
                   primary={rushAnim.primary}
                   secondary={rushAnim.secondary}
+                  helmetColor={rushAnim.helmetColor}
+                  pantsColor={rushAnim.pantsColor}
+                  tightsColor={rushAnim.tightsColor}
                   headshotUrl={rushAnim.headshotUrl}
                   jerseyNumber={rushAnim.jerseyNumber}
                   facing={rushAnim.facing}
@@ -1215,7 +1232,11 @@ function FieldViz({
                 <GameHubCatchFigure
                   primary={catchAnim.primary}
                   secondary={catchAnim.secondary}
+                  helmetColor={catchAnim.helmetColor}
+                  pantsColor={catchAnim.pantsColor}
+                  tightsColor={catchAnim.tightsColor}
                   headshotUrl={catchAnim.headshotUrl}
+                  jerseyNumber={catchAnim.jerseyNumber}
                   facing={catchAnim.facing}
                   width={RUSH_FIG_W}
                   height={RUSH_FIG_H}

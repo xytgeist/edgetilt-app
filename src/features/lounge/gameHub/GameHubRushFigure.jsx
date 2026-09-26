@@ -1,5 +1,6 @@
-import { useId } from 'react'
+import { useId, useMemo } from 'react'
 import { RUSH_PIECES } from './gameHubRushPieces.js'
+import { buildRushColorMap } from './gameHubFigureColors.js'
 
 /**
  * Authentic Running Back figure assembled from the 15-piece studio sculpt.
@@ -7,17 +8,18 @@ import { RUSH_PIECES } from './gameHubRushPieces.js'
  * - Dynamic forward-sprint pose with right arm tucking football tight to chest
  * - Planted front foot aligned to turf yard line
  * - Trailing leg kicked high at sprint angle
- * - Detailed helmet shell, multi-bar facemask, athletic facial features & skin contours
- * - Authentic football with textured pebble shading and pro laces
+ * - Dynamic team kit recoloring (helmet shell, jersey, pants, compression tights/socks, gloves)
+ * - Detailed multi-bar facemask, athletic facial contours, football pebble texture & pro laces
  * - Dynamic chest jersey number angled to match torso lean (un-mirrored, always readable)
  * - Horizontal flip based on play direction (facing >= 0 for rightward drive, < 0 for leftward drive)
  */
 export default function GameHubRushFigure({
-  _primary = '#C4122E',
+  primary = '#C4122E',
   secondary = '#FFFFFF',
   accent = '#000000',
-  _helmetColor,
-  _pantsColor,
+  helmetColor,
+  pantsColor,
+  tightsColor,
   jerseyNumber = '',
   _headshotUrl = '',
   facing = 1,
@@ -29,6 +31,18 @@ export default function GameHubRushFigure({
 
   const secondaryColor = secondary || '#FFFFFF'
   const accentColor = accent || '#000000'
+
+  const colorMap = useMemo(
+    () =>
+      buildRushColorMap({
+        primary,
+        secondary: secondaryColor,
+        helmetColor,
+        pantsColor,
+        tightsColor,
+      }),
+    [primary, secondaryColor, helmetColor, pantsColor, tightsColor]
+  )
 
   // The base cutout naturally faces left (facing < 0).
   // When running toward the right endzone (facing >= 0), flip the player body horizontally across viewBox width (728).
@@ -72,7 +86,7 @@ export default function GameHubRushFigure({
                   <path
                     key={`${piece.id}-${i}`}
                     d={p.d}
-                    fill={p.fill}
+                    fill={colorMap[`${piece.id}:${p.fill}`] || p.fill}
                     transform={p.transform || undefined}
                   />
                 ))}

@@ -1,26 +1,29 @@
-import { useId } from 'react'
+import { useId, useMemo } from 'react'
 import {
   CATCH_HANDS_LOCAL,
   CATCH_PIECES,
   CATCH_VIEWBOX_H,
   CATCH_VIEWBOX_W,
 } from './gameHubCatchPieces.js'
+import { buildCatchColorMap } from './gameHubFigureColors.js'
 
 /**
  * Authentic Wide Receiver / Tight End figure assembled from the 12-piece studio sculpt.
  * - Exact vector paths and Z-stacking from wr-cutout-studio / wr_puzzle_pieces.json
  * - Dynamic leaping catch pose with both arms extended upward reaching for the football
  * - Planted lead cleat and high trailing kick cleat
- * - Blue helmet with detailed multi-bar facemask and athlete facial features
- * - Blue jersey, yellow pants with athletic stripes, blue compression socks
- * - White pro receiving gloves
+ * - Dynamic team kit recoloring (helmet shell, jersey, pants, compression tights/socks)
+ * - Photorealistic skin contours, athletic facial features, receiving gloves, and pro cleats
  * - Dynamic chest jersey number (un-mirrored, always readable)
  * - Horizontal flip based on play direction (facing >= 0 for rightward drive, < 0 for leftward drive)
  */
 export default function GameHubCatchFigure({
-  _primary = '#002244',
+  primary = '#002244',
   secondary = '#FFFFFF',
   accent = '#000000',
+  helmetColor,
+  pantsColor,
+  tightsColor,
   jerseyNumber = '',
   _headshotUrl = '',
   facing = 1,
@@ -32,6 +35,18 @@ export default function GameHubCatchFigure({
 
   const secondaryColor = secondary || '#FFFFFF'
   const accentColor = accent || '#000000'
+
+  const colorMap = useMemo(
+    () =>
+      buildCatchColorMap({
+        primary,
+        secondary: secondaryColor,
+        helmetColor,
+        pantsColor,
+        tightsColor,
+      }),
+    [primary, secondaryColor, helmetColor, pantsColor, tightsColor]
+  )
 
   // The base sculpt naturally faces right (facing >= 0).
   // When driving toward the left endzone (facing < 0), flip horizontally across viewBox width (710).
@@ -75,7 +90,7 @@ export default function GameHubCatchFigure({
                   <path
                     key={`${piece.id}-${i}`}
                     d={p.d}
-                    fill={p.fill}
+                    fill={colorMap[`${piece.id}:${p.fill}`] || p.fill}
                     transform={p.transform || undefined}
                   />
                 ))}

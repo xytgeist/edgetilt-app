@@ -234,15 +234,15 @@
       </div>
       <div class="preview-box">
         <svg id="svgFigureIsolated" viewBox="0 0 740 1378" style="height: 350px; width: auto; overflow: visible; filter: drop-shadow(0 15px 15px rgba(0,0,0,0.8));">
-          <g id="figureIsolatedGroup">
-            <!-- Base Player Cutout (Clean without numbers) -->
+          <!-- Base Player Cutout (flipped when running right) -->
+          <g id="figureIsolatedImageGroup">
             <image href="/sports/nfl/cardinals-rb-player.png" width="740" height="1378" preserveAspectRatio="xMidYMid meet" />
+          </g>
 
-            <!-- Dynamic Chest Number Overlay -->
-            <g id="isolatedNumberG" transform="translate(230, 410) rotate(-14)">
-              <text id="isolatedNumOutline" x="0" y="0" text-anchor="middle" dominant-baseline="central" fill="none" stroke="#000000" stroke-width="26" stroke-linejoin="round" font-family="'Arial Black', Impact, sans-serif" font-size="140" font-weight="900" letter-spacing="-4">31</text>
-              <text id="isolatedNumFill" x="0" y="0" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="'Arial Black', Impact, sans-serif" font-size="140" font-weight="900" letter-spacing="-4">31</text>
-            </g>
+          <!-- Dynamic Chest Number Overlay (UN-MIRRORED, positioned & tilted to match torso direction) -->
+          <g id="isolatedNumberG" transform="translate(459, 411) rotate(14)">
+            <text id="isolatedNumOutline" x="0" y="0" text-anchor="middle" dominant-baseline="central" fill="none" stroke="#000000" stroke-width="26" stroke-linejoin="round" font-family="'Arial Black', Impact, sans-serif" font-size="140" font-weight="900" letter-spacing="-4">31</text>
+            <text id="isolatedNumFill" x="0" y="0" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="'Arial Black', Impact, sans-serif" font-size="140" font-weight="900" letter-spacing="-4">31</text>
           </g>
         </svg>
       </div>
@@ -272,15 +272,15 @@
         <!-- Runner container -->
         <div id="runnerWrap" class="runner-animated">
           <svg id="svgFigureField" viewBox="0 0 740 1378" style="height: 90px; width: auto; overflow: visible; filter: drop-shadow(0 8px 8px rgba(0,0,0,0.6));">
-            <g id="figureFieldGroup" transform="scale(-1, 1) translate(-740, 0)">
-              <!-- Base Player Cutout -->
+            <!-- Base Player Cutout (flipped when running right) -->
+            <g id="figureFieldImageGroup" transform="scale(-1, 1) translate(-740, 0)">
               <image href="/sports/nfl/cardinals-rb-player.png" width="740" height="1378" preserveAspectRatio="xMidYMid meet" />
+            </g>
 
-              <!-- Dynamic Chest Number Overlay -->
-              <g id="fieldNumberG" transform="translate(230, 410) rotate(-14)">
-                <text id="fieldNumOutline" x="0" y="0" text-anchor="middle" dominant-baseline="central" fill="none" stroke="#000000" stroke-width="26" stroke-linejoin="round" font-family="'Arial Black', Impact, sans-serif" font-size="140" font-weight="900" letter-spacing="-4">31</text>
-                <text id="fieldNumFill" x="0" y="0" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="'Arial Black', Impact, sans-serif" font-size="140" font-weight="900" letter-spacing="-4">31</text>
-              </g>
+            <!-- Dynamic Chest Number Overlay (UN-MIRRORED) -->
+            <g id="fieldNumberG" transform="translate(459, 411) rotate(14)">
+              <text id="fieldNumOutline" x="0" y="0" text-anchor="middle" dominant-baseline="central" fill="none" stroke="#000000" stroke-width="26" stroke-linejoin="round" font-family="'Arial Black', Impact, sans-serif" font-size="140" font-weight="900" letter-spacing="-4">31</text>
+              <text id="fieldNumFill" x="0" y="0" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="'Arial Black', Impact, sans-serif" font-size="140" font-weight="900" letter-spacing="-4">31</text>
             </g>
           </svg>
         </div>
@@ -348,8 +348,8 @@
     const fieldNumFill = document.getElementById('fieldNumFill');
     const fieldNumberG = document.getElementById('fieldNumberG');
 
-    const figureIsolatedGroup = document.getElementById('figureIsolatedGroup');
-    const figureFieldGroup = document.getElementById('figureFieldGroup');
+    const figureIsolatedImageGroup = document.getElementById('figureIsolatedImageGroup');
+    const figureFieldImageGroup = document.getElementById('figureFieldImageGroup');
     const runnerWrap = document.getElementById('runnerWrap');
     const fieldTrail = document.getElementById('fieldTrail');
 
@@ -371,13 +371,19 @@
     function updateFacing() {
       const facing = facingSelect.value;
       if (facing === 'right') {
-        // Natural image faces left. To face right, flip X:
-        figureIsolatedGroup.setAttribute('transform', 'scale(-1, 1) translate(-740, 0)');
-        figureFieldGroup.setAttribute('transform', 'scale(-1, 1) translate(-740, 0)');
+        // Natural image faces left. To face right, flip player image X:
+        figureIsolatedImageGroup.setAttribute('transform', 'scale(-1, 1) translate(-740, 0)');
+        figureFieldImageGroup.setAttribute('transform', 'scale(-1, 1) translate(-740, 0)');
+        // Chest number NEVER mirrors horizontally, tilts forward (+14 deg) with torso:
+        isolatedNumberG.setAttribute('transform', 'translate(459, 411) rotate(14)');
+        fieldNumberG.setAttribute('transform', 'translate(459, 411) rotate(14)');
       } else {
         // Natural left facing:
-        figureIsolatedGroup.setAttribute('transform', '');
-        figureFieldGroup.setAttribute('transform', '');
+        figureIsolatedImageGroup.setAttribute('transform', '');
+        figureFieldImageGroup.setAttribute('transform', '');
+        // Chest number tilts forward (-14 deg) with leftward sprint:
+        isolatedNumberG.setAttribute('transform', 'translate(281, 411) rotate(-14)');
+        fieldNumberG.setAttribute('transform', 'translate(281, 411) rotate(-14)');
       }
     }
 

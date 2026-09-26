@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-25:** **RB figure dynamic number un-mirrored on rightward sprint (Mac).** Isolated player body horizontal flip from dynamic jersey number overlay so digits always paint left-to-right in natural un-mirrored order while tilting (+14 deg rightward, -14 deg leftward) to match torso sprint lean. Frontend **`1.4.675`**.
 - **2026-09-25:** **RB figure numberless vector sculpt + dynamic chest overlay (Mac).** Integrated clean transparent cutout from segments-4 with numberless red jersey, authentic forward-sprint sculpt, dynamic chest number overlay tilted with torso lean, and live studio workbench with segment breakdown. Frontend **`1.4.674`**.
 - **2026-09-25:** **RB figure sculpt match & live studio (Mac).** Live figure studio workbench at `/rb-studio.html` matching McFarlane Cardinals #31 sculpt with side-by-side, onion-skin overlay, and field-scale views. Frontend **`1.4.673`**.
 - **2026-09-25:** **WR catch ball timing + yardage arc (Mac).** Football launches after WR is 25% to the catch; arc height scales with pass yards (short = low, deep = high). Frontend **`1.4.672`**.

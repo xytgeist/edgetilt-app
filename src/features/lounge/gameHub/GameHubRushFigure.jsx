@@ -22,9 +22,15 @@ export default function GameHubRushFigure({
   const uid = useId().replace(/:/g, '')
 
   // The base cutout naturally faces left (facing < 0).
-  // When running toward the right endzone (facing >= 0), flip horizontally across the viewBox width (740).
+  // When running toward the right endzone (facing >= 0), flip the player body horizontally across the viewBox width (740).
   const isFacingRight = facing >= 0
-  const flip = isFacingRight ? 'scale(-1, 1) translate(-740, 0)' : ''
+  const bodyFlip = isFacingRight ? 'scale(-1, 1) translate(-740, 0)' : undefined
+
+  // Number placement: when facing right, mirror the horizontal position (740 - 281 = 459) and tilt angle (+14 deg),
+  // but NEVER apply horizontal scale(-1) so glyphs always paint in natural left-to-right reading order.
+  const numTransform = isFacingRight
+    ? 'translate(459, 411) rotate(14)'
+    : 'translate(281, 411) rotate(-14)'
 
   const num = String(jerseyNumber || '').trim()
 
@@ -44,18 +50,20 @@ export default function GameHubRushFigure({
         </filter>
       </defs>
 
-      <g transform={flip} filter={`url(#shadow-${uid})`}>
-        {/* Isolated high-fidelity figure cutout */}
-        <image
-          href="/sports/nfl/cardinals-rb-player.png"
-          width="740"
-          height="1378"
-          preserveAspectRatio="xMidYMid meet"
-        />
+      <g filter={`url(#shadow-${uid})`}>
+        {/* Base player sculpt, flipped horizontally when driving right */}
+        <g transform={bodyFlip}>
+          <image
+            href="/sports/nfl/cardinals-rb-player.png"
+            width="740"
+            height="1378"
+            preserveAspectRatio="xMidYMid meet"
+          />
+        </g>
 
-        {/* Dynamic jersey number on chest, tilted with player forward sprint lean (-14 deg) */}
+        {/* Dynamic chest number overlay - ALWAYS un-mirrored and readable */}
         {num ? (
-          <g transform="translate(230, 410) rotate(-14)">
+          <g transform={numTransform}>
             {/* Dark contrast stroke */}
             <text
               x="0"
@@ -73,7 +81,7 @@ export default function GameHubRushFigure({
             >
               {num}
             </text>
-            {/* White/secondary fill */}
+            {/* Clean readable athletic fill */}
             <text
               x="0"
               y="0"

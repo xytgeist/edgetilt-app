@@ -731,11 +731,11 @@ function FieldViz({ game, live, awayColor, homeColor }) {
         {centerBanner ? (
           <div
             data-lounge-game-field-banner
-            className="pointer-events-none absolute inset-0 z-[6] flex items-center justify-center px-4"
+            className="pointer-events-none absolute inset-0 z-[6] flex items-center justify-center px-4 pb-[18%]"
             aria-live="polite"
           >
             <span
-              className="max-w-full text-center text-[28px] font-black uppercase leading-none tracking-[0.08em] text-white sm:text-[36px]"
+              className="max-w-full -translate-y-2 text-center text-[28px] font-black uppercase leading-none tracking-[0.08em] text-white sm:text-[36px] sm:-translate-y-3"
               style={{
                 fontFamily: "Oswald, Graduate, Impact, 'Arial Black', sans-serif",
                 textShadow:

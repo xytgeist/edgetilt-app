@@ -553,10 +553,18 @@ export function parsePassPlay(text) {
 
   let playerHint = ''
   // Prefer explicit receiver after "… to #80 C.Becker" (not "to the NW 05").
+  // ESPN often tacks the tackler on immediately: "to #80 C.Becker (#42 E.Walton)".
   const toMatch = raw.match(
-    /\b(?:complete(?:d)?|pass(?:ed|es|ing)?)\b(?:\s+(?:short|deep|left|right|middle|complete(?:d)?))*\s+to\s+(?!the\b)((?:#?\d{1,2}\s+)?[A-Za-z][A-Za-z.'’-]*(?:\s+[A-Za-z][A-Za-z.'’-]*){0,3}?)(?=\s+(?:for|to the|ran|pushed)\b|\s*$|,)/i,
+    /\b(?:complete(?:d)?|pass(?:ed|es|ing)?)\b(?:\s+(?:short|deep|left|right|middle|complete(?:d)?))*\s+to\s+(?!the\b)((?:#?\d{1,2}\s+)?[A-Za-z][A-Za-z.'’-]*(?:\s+[A-Za-z][A-Za-z.'’-]*){0,3}?)(?=\s*(?:\(|(?:,|\s+(?:for|to the|ran|pushed)\b)|\s*$))/i,
   )
   if (toMatch) playerHint = toMatch[1].trim()
+  // Fallback: buried "to #80 C.Becker" when lane words / formation break the primary regex.
+  if (!playerHint) {
+    const buried = raw.match(
+      /\bto\s+(?!the\b)(#?\d{1,2}\s+[A-Za-z][A-Za-z.'’-]*(?:\s+[A-Za-z][A-Za-z.'’-]*){0,2}|[A-Za-z][A-Za-z.'’-]*(?:\s+[A-Za-z][A-Za-z.'’-]*){0,2})(?=\s*(?:\(|(?:,|\s+(?:for|to the|ran|pushed)\b)|\s*$))/i,
+    )
+    if (buried) playerHint = buried[1].trim()
+  }
 
   const { jersey: jerseyHint } = splitPlayerHint(playerHint)
   return { yards, playerHint, jerseyHint, isTouchdown }

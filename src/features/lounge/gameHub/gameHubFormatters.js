@@ -411,6 +411,28 @@ const ESPN_RUSH_LANE =
 const FORMATION_SKIP =
   /^(?:shotgun|no huddle|no[\s-]huddle|pistol|wildcat|empty|trips|bunch)$/i
 
+/**
+ * Strip clock parens + formation tags so the ballcarrier/QB starts the string.
+ * Handles "No Huddle-Shotgun", "No Huddle, Shotgun", bare "Shotgun", etc.
+ */
+function stripPlayFormationPrefix(raw) {
+  let s = String(raw || '')
+    .replace(/^(?:\([^)]*\)\s*)+/g, '')
+    .trim()
+  // Repeat: ESPN sometimes stacks "No Huddle-Shotgun" as one token with hyphens/commas.
+  for (let i = 0; i < 4; i += 1) {
+    const next = s
+      .replace(
+        /^(?:no[\s-]?huddle|shotgun|pistol|wildcat)(?:[\s,-]+(?:no[\s-]?huddle|shotgun|pistol|wildcat))*[\s,-]*/i,
+        '',
+      )
+      .trim()
+    if (next === s) break
+    s = next
+  }
+  return s
+}
+
 /** "#80 C.Becker" / "C.Becker" / "Beebe" → jersey digits + remaining name text. */
 export function splitPlayerHint(raw) {
   const s = String(raw || '').trim()
@@ -471,10 +493,7 @@ export function parseRushPlay(text) {
   if (!isTouchdown && yards < 1) return null
 
   let playerHint = ''
-  const cleaned = raw
-    .replace(/^(?:\([^)]*\)\s*)+/g, '')
-    .replace(/^(?:no[\s-]?huddle(?:,\s*)?)*(?:shotgun|pistol|wildcat)?\s*/i, '')
-    .trim()
+  const cleaned = stripPlayFormationPrefix(raw)
   const nameMatch = cleaned.match(
     new RegExp(
       `^((?:#?\\d{1,2}\\s+)?[A-Za-z][A-Za-z.'’-]*(?:\\s+[A-Za-z][A-Za-z.'’-]*){0,3}?)\\s+(?:rush(?:ed|es|ing)?|run(?:s|ning)?|scrambl(?:e|es|ed|ing)|left|right|up the)\\b`,
@@ -486,6 +505,13 @@ export function parseRushPlay(text) {
     const parts = hint.split(/\s+/)
     while (parts.length && FORMATION_SKIP.test(parts[0])) parts.shift()
     playerHint = parts.join(' ').trim()
+  }
+  // Fallback: "#5 S.Brown rush …" buried after a formation we didn't strip.
+  if (!playerHint) {
+    const buried = cleaned.match(
+      /#(\d{1,2})\s+([A-Za-z][A-Za-z.'’-]*(?:\s+[A-Za-z][A-Za-z.'’-]*){0,2})\s+(?:rush(?:ed|es|ing)?|run(?:s|ning)?|scrambl(?:e|es|ed|ing)|left|right|up the)\b/i,
+    )
+    if (buried) playerHint = `#${buried[1]} ${buried[2]}`.trim()
   }
 
   const { jersey: jerseyHint } = splitPlayerHint(playerHint)

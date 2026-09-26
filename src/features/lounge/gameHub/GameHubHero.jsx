@@ -25,7 +25,18 @@ import {
   yardLineLabel,
 } from './gameHubFormatters.js'
 
-const RUSH_ANIM_MS = 1100
+/** RB slide duration (start LOS → gain yardage). */
+const RUSH_RUN_MS = 1100
+/** Hold RB at end of run before he exits. */
+const RUSH_HOLD_MS = 2000
+/** Pause after RB disappears before LOS / 1st-down lines move. */
+const RUSH_POST_EXIT_GAP_MS = 500
+/** LOS + 1st-down line slide duration. */
+const RUSH_LINES_MS = 700
+/** Pause after lines settle before the ball returns on the new LOS. */
+const RUSH_BALL_DELAY_MS = 1000
+const RUSH_TOTAL_MS =
+  RUSH_RUN_MS + RUSH_HOLD_MS + RUSH_POST_EXIT_GAP_MS + RUSH_LINES_MS + RUSH_BALL_DELAY_MS
 const CATCH_ANIM_MS = 1250
 /** WR path progress before the football leaves the LOS on its arc. */
 const CATCH_BALL_LAUNCH_AT = 0.25
@@ -33,10 +44,34 @@ const RUSH_Y = 334.5
 const RUSH_FIG_W = 124
 const RUSH_FIG_H = 144
 
+function fieldTopXFromPercent(p) {
+  return 239.0 + (p / 100) * 784.0
+}
+
+function fieldBotXFromPercent(p) {
+  return 161.0 + (p / 100) * 937.0
+}
+
 function fieldMidXFromPercent(p) {
-  const top = 239.0 + (p / 100) * 784.0
-  const bot = 161.0 + (p / 100) * 937.0
-  return (top + bot) / 2
+  return (fieldTopXFromPercent(p) + fieldBotXFromPercent(p)) / 2
+}
+
+function firstDownPercentFromLive(live, scrimPct) {
+  if (
+    scrimPct == null ||
+    !live?.down ||
+    live?.distance == null ||
+    !Number.isFinite(Number(live.distance))
+  ) {
+    return null
+  }
+  const dist = Number(live.distance)
+  const dir = live.possession === 'home' ? -1 : 1
+  return Math.max(0, Math.min(100, scrimPct + dir * dist))
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t
 }
 
 function easeOutCubic(t) {
@@ -407,6 +442,8 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
   const catchKeyRef = useRef('')
   const rushRafRef = useRef(0)
   const catchRafRef = useRef(0)
+  /** Last settled LOS / 1st-down percents … held during rush until lines phase. */
+  const settledLinesRef = useRef({ scrimPct: null, firstDownPct: null })
 
   useEffect(() => {
     if (!isFootball || hideLiveLines || !hasLine || pos == null) return undefined
@@ -436,6 +473,29 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
     const headshotUrl = matched?.headshot_url ? String(matched.headshot_url) : ''
     const jerseyNumber = matched?.jersey ? String(matched.jersey) : ''
 
+    const toFirstDownPct = firstDownPercentFromLive(live, endPct)
+    const settled = settledLinesRef.current
+    // Old LOS is always prior yardline from the play text (live pos is already post-play).
+    const fromScrimPct = startPct
+    const settledStillPrePlay =
+      settled.scrimPct != null &&
+      Math.abs(settled.scrimPct - startPct) <= Math.abs(settled.scrimPct - endPct) + 0.01
+    let fromFirstDownPct =
+      settledStillPrePlay &&
+      settled.firstDownPct != null &&
+      Number.isFinite(settled.firstDownPct)
+        ? settled.firstDownPct
+        : null
+    if (fromFirstDownPct == null) {
+      const priorDist = Number(live?.distance)
+      fromFirstDownPct = Number.isFinite(priorDist)
+        ? firstDownPercentFromLive(
+            { ...live, distance: priorDist + parsed.yards },
+            startPct
+          )
+        : toFirstDownPct
+    }
+
     const base = {
       playKey: lastPlayText,
       startX,
@@ -446,28 +506,93 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
       headshotUrl,
       jerseyNumber,
       facing,
+      fromScrimPct,
+      toScrimPct: endPct,
+      fromFirstDownPct,
+      toFirstDownPct,
     }
 
     if (prefersReducedMotion()) {
-      setRushAnim({ ...base, progress: 1, playing: false, showTrail: false })
+      settledLinesRef.current = {
+        scrimPct: endPct,
+        firstDownPct: toFirstDownPct,
+      }
+      setRushAnim(null)
       return undefined
     }
 
-    setRushAnim({ ...base, progress: 0, playing: true, showTrail: true })
+    setRushAnim({
+      ...base,
+      progress: 0,
+      linesProgress: 0,
+      showFigure: true,
+      showTrail: true,
+      playing: true,
+    })
     const t0 = performance.now()
     const tick = (now) => {
-      const t = Math.min(1, (now - t0) / RUSH_ANIM_MS)
-      const progress = easeOutCubic(t)
-      if (t >= 1) {
-        setRushAnim((prev) =>
-          prev && prev.playKey === lastPlayText
-            ? { ...prev, progress: 1, playing: false }
-            : prev
-        )
+      const elapsed = now - t0
+      if (elapsed >= RUSH_TOTAL_MS) {
+        settledLinesRef.current = {
+          scrimPct: endPct,
+          firstDownPct: toFirstDownPct,
+        }
+        setRushAnim(null)
         return
       }
+
+      let progress = 1
+      let linesProgress = 0
+      let showFigure = false
+      let showTrail = false
+      let playing = true
+
+      if (elapsed < RUSH_RUN_MS) {
+        progress = easeOutCubic(elapsed / RUSH_RUN_MS)
+        showFigure = true
+        showTrail = true
+      } else if (elapsed < RUSH_RUN_MS + RUSH_HOLD_MS) {
+        progress = 1
+        showFigure = true
+        showTrail = true
+      } else if (
+        elapsed <
+        RUSH_RUN_MS + RUSH_HOLD_MS + RUSH_POST_EXIT_GAP_MS
+      ) {
+        // RB gone; lines still frozen at pre-play marks.
+        progress = 1
+      } else if (
+        elapsed <
+        RUSH_RUN_MS +
+          RUSH_HOLD_MS +
+          RUSH_POST_EXIT_GAP_MS +
+          RUSH_LINES_MS
+      ) {
+        progress = 1
+        const lineT =
+          (elapsed -
+            RUSH_RUN_MS -
+            RUSH_HOLD_MS -
+            RUSH_POST_EXIT_GAP_MS) /
+          RUSH_LINES_MS
+        linesProgress = easeOutCubic(Math.min(1, lineT))
+      } else {
+        // Lines settled; ball still withheld until RUSH_BALL_DELAY_MS.
+        progress = 1
+        linesProgress = 1
+      }
+
       setRushAnim((prev) =>
-        prev && prev.playKey === lastPlayText ? { ...prev, progress } : prev
+        prev && prev.playKey === lastPlayText
+          ? {
+              ...prev,
+              progress,
+              linesProgress,
+              showFigure,
+              showTrail,
+              playing,
+            }
+          : prev
       )
       rushRafRef.current = requestAnimationFrame(tick)
     }
@@ -482,6 +607,8 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
     pos,
     lastPlayText,
     live?.possession,
+    live?.down,
+    live?.distance,
     awayColor,
     homeColor,
     game?.away,
@@ -585,24 +712,59 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
     players,
   ])
 
+  useEffect(() => {
+    if (rushAnim || !hasLine || pos == null || hideLiveLines) return
+    settledLinesRef.current = {
+      scrimPct: pos,
+      firstDownPct: firstDownPercentFromLive(live, pos),
+    }
+  }, [
+    rushAnim,
+    hasLine,
+    pos,
+    hideLiveLines,
+    live?.possession,
+    live?.down,
+    live?.distance,
+  ])
+
   if (!isFootball) return null
 
   // Calibrated 3D field coordinates (viewBox="0 0 1266 533")
   // Left Goal Line: top=(239.0, 191), bot=(161.0, 478)
   // Right Goal Line: top=(1023.0, 191), bot=(1098.0, 478)
-  const scrimTop = hasLine ? 239.0 + (pos / 100) * 784.0 : null
-  const scrimBot = hasLine ? 161.0 + (pos / 100) * 937.0 : null
-  const scrimMidX = hasLine ? (scrimTop + scrimBot) / 2 : null
+  const linesT = rushAnim != null ? Number(rushAnim.linesProgress) || 0 : 1
+  const displayScrimPct =
+    rushAnim != null
+      ? lerp(rushAnim.fromScrimPct, rushAnim.toScrimPct, linesT)
+      : pos
+  const liveFirstDownPct = firstDownPercentFromLive(live, pos)
+  const displayFirstDownPct =
+    rushAnim != null &&
+    rushAnim.fromFirstDownPct != null &&
+    rushAnim.toFirstDownPct != null
+      ? lerp(rushAnim.fromFirstDownPct, rushAnim.toFirstDownPct, linesT)
+      : liveFirstDownPct
+
+  const scrimTop =
+    hasLine && displayScrimPct != null
+      ? fieldTopXFromPercent(displayScrimPct)
+      : null
+  const scrimBot =
+    hasLine && displayScrimPct != null
+      ? fieldBotXFromPercent(displayScrimPct)
+      : null
+  const scrimMidX =
+    hasLine && displayScrimPct != null
+      ? fieldMidXFromPercent(displayScrimPct)
+      : null
 
   // First down line
   let firstDownTop = null
   let firstDownBot = null
-  if (hasLine && live?.down && live?.distance && Number.isFinite(Number(live.distance))) {
-    const dist = Number(live.distance)
-    const dir = live.possession === 'home' ? -1 : 1
-    const targetPos = Math.max(0, Math.min(100, pos + dir * dist))
-    firstDownTop = 239.0 + (targetPos / 100) * 784.0
-    firstDownBot = 161.0 + (targetPos / 100) * 937.0
+  if (hasLine && displayFirstDownPct != null) {
+    firstDownTop = fieldTopXFromPercent(displayFirstDownPct)
+    firstDownBot = fieldBotXFromPercent(displayFirstDownPct)
   }
 
   // Prefer local logo files inside SVG <image> … ESPN CDN hrefs often paint as broken
@@ -623,15 +785,15 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
   const awayEndzone = resolveEndzoneDesign(game?.away, awayColor, 'left', { college })
   const homeEndzone = resolveEndzoneDesign(game?.home, homeColor, 'right', { college })
 
-  const rushPlaying = Boolean(rushAnim?.playing)
   const catchPlaying = Boolean(catchAnim?.playing)
-  const playAnimActive = rushPlaying || catchPlaying
+  // Hide LOS ball for the full rush sequence (run → hold → exit → lines → pre-ball).
+  const playAnimActive = rushAnim != null || catchPlaying
   const rushX =
-    rushAnim != null
+    rushAnim != null && rushAnim.showFigure
       ? rushAnim.startX + (rushAnim.endX - rushAnim.startX) * rushAnim.progress
       : null
   const rushTrailVisible =
-    Boolean(rushAnim?.showTrail && rushAnim.progress > 0.02)
+    Boolean(rushAnim?.showTrail && rushAnim.showFigure && rushAnim.progress > 0.02)
   const catchX =
     catchAnim != null
       ? catchAnim.startX + (catchAnim.endX - catchAnim.startX) * catchAnim.progress
@@ -965,7 +1127,7 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
                 strokeLinecap="round"
                 filter="url(#glow-scrim)"
               />
-              {/* Ball marker at mid-depth on scrimmage … hidden while rush/catch anim runs. */}
+              {/* Ball on LOS … hidden for full rush sequence / while catch is playing. */}
               {!playAnimActive ? (
                 <g transform={`translate(${scrimMidX - 18} ${334.5 - 12})`}>
                   <AmericanFootballMark tone="field" size={36} rotate={-26} />

@@ -20,7 +20,7 @@ let instanceCounter = 0
  */
 export function renderRbFigureSvg({
   primary = '#C4122E',
-  secondary = '#FFFFFF',
+  _secondary = '#FFFFFF',
   accent = '#000000',
   helmetColor = '#FFFFFF',
   pantsColor = '#FFFFFF',

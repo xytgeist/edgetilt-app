@@ -1,41 +1,56 @@
-import { useId, useState, useEffect } from 'react'
+import { useId } from 'react'
+import {
+  CATCH_HANDS_LOCAL,
+  CATCH_PIECES,
+  CATCH_VIEWBOX_H,
+  CATCH_VIEWBOX_W,
+} from './gameHubCatchPieces.js'
 
 /**
- * Stylized WR in a leaping catch pose (reference: high reach, trail knee up, lead plant).
- * Faces +X. Flip with `facing={-1}` for the other way.
- *
- * Color draping (Broncos-style reference map):
- * - primary → jersey body, cleats
- * - secondary → helmet shell, pant stripe, sock band, jersey side panel
- * - pants body stays near-white for contrast
- *
- * Catch hands (local viewBox, facing +X): ~(92, 14) … parent uses this for ball arc end.
+ * Authentic Wide Receiver / Tight End figure assembled from the 12-piece studio sculpt.
+ * - Exact vector paths and Z-stacking from wr-cutout-studio / wr_puzzle_pieces.json
+ * - Dynamic leaping catch pose with both arms extended upward reaching for the football
+ * - Planted lead cleat and high trailing kick cleat
+ * - Blue helmet with detailed multi-bar facemask and athlete facial features
+ * - Blue jersey, yellow pants with athletic stripes, blue compression socks
+ * - White pro receiving gloves
+ * - Dynamic chest jersey number (un-mirrored, always readable)
+ * - Horizontal flip based on play direction (facing >= 0 for rightward drive, < 0 for leftward drive)
  */
-export const CATCH_HANDS_LOCAL = { x: 92, y: 14 }
-
 export default function GameHubCatchFigure({
-  primary = '#fb4f14',
-  secondary = '#002244',
-  headshotUrl = '',
+  _primary = '#002244',
+  secondary = '#FFFFFF',
+  accent = '#000000',
+  jerseyNumber = '',
+  _headshotUrl = '',
   facing = 1,
-  width = 64,
-  height = 74,
+  width = 124,
+  height = 156,
   className = '',
 }) {
   const uid = useId().replace(/:/g, '')
-  const clipId = `wr-head-${uid}`
-  const [imgFailed, setImgFailed] = useState(false)
-  useEffect(() => {
-    setImgFailed(false)
-  }, [headshotUrl])
 
-  const showHead = Boolean(headshotUrl) && !imgFailed
-  const flip = facing < 0 ? 'scale(-1,1) translate(-120,0)' : ''
-  const pants = '#f4f4f5'
+  const secondaryColor = secondary || '#FFFFFF'
+  const accentColor = accent || '#000000'
+
+  // The base sculpt naturally faces right (facing >= 0).
+  // When driving toward the left endzone (facing < 0), flip horizontally across viewBox width (710).
+  const isFacingRight = facing >= 0
+  const bodyFlip = isFacingRight ? undefined : 'scale(-1, 1) translate(-710, 0)'
+
+  // Number placement: centered on the chest plate.
+  // Right-facing center is at x=480, y=440 with -8 deg upright tilt.
+  // Left-facing center is mirrored at x=230 (710 - 480), y=440 with +8 deg upright tilt.
+  // Glyphs are rendered in un-mirrored space so they always read left-to-right naturally.
+  const numTransform = isFacingRight
+    ? 'translate(480, 440) rotate(-8)'
+    : 'translate(230, 440) rotate(8)'
+
+  const num = String(jerseyNumber || '').trim()
 
   return (
     <svg
-      viewBox="0 0 120 140"
+      viewBox={`0 0 ${CATCH_VIEWBOX_W} ${CATCH_VIEWBOX_H}`}
       width={width}
       height={height}
       className={className}
@@ -43,118 +58,68 @@ export default function GameHubCatchFigure({
       aria-hidden="true"
     >
       <defs>
-        <clipPath id={clipId}>
-          <circle cx="52" cy="28" r="17" />
-        </clipPath>
+        {/* Soft ground shadow cast below the leaping figure */}
+        <filter id={`shadow-${uid}`} x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="16" stdDeviation="12" floodColor="#000000" floodOpacity="0.45" />
+        </filter>
       </defs>
-      <g transform={flip}>
-        {/* Soft ground contact under lead foot */}
-        <ellipse cx="58" cy="132" rx="24" ry="4" fill="#000000" opacity="0.32" />
 
-        {/* Trailing leg … kicked back, knee bent */}
-        <path
-          d="M44 78 C38 72 28 74 24 84 C20 94 22 108 28 118 L38 116 C34 106 32 94 36 88 C40 82 44 82 44 78 Z"
-          fill={pants}
-        />
-        <path
-          d="M28 116 C24 120 22 128 28 130 C36 132 44 128 46 122 C40 122 34 120 32 116 Z"
-          fill={primary}
-        />
-        <path
-          d="M36 86 C32 94 30 104 32 112 L28 110 C28 100 30 92 34 86 Z"
-          fill={secondary}
-          opacity="0.95"
-        />
-        <path d="M30 112 L38 114 L37 118 L29 116 Z" fill={secondary} />
-
-        {/* Lead leg … extended forward plant */}
-        <path
-          d="M52 76 C58 82 68 96 72 114 L60 116 C58 100 52 88 48 80 Z"
-          fill={pants}
-        />
-        <path
-          d="M70 112 C74 116 82 122 78 128 C72 134 60 132 56 126 C62 124 68 120 70 114 Z"
-          fill={primary}
-        />
-        <path
-          d="M56 92 C60 100 64 108 66 114 L62 116 C58 108 56 100 54 94 Z"
-          fill={secondary}
-          opacity="0.95"
-        />
-        <path d="M64 112 L72 114 L71 118 L63 116 Z" fill={secondary} />
-
-        {/* Torso / jersey lean */}
-        <path
-          d="M40 40 C36 48 34 60 38 72 C42 82 54 86 64 80 C72 74 74 62 70 50 C68 42 60 34 50 32 C44 32 42 36 40 40 Z"
-          fill={primary}
-        />
-        {/* Side panel / trim */}
-        <path
-          d="M42 48 C40 58 42 68 46 74 L52 70 C48 64 46 56 48 48 Z"
-          fill={secondary}
-          opacity="0.55"
-        />
-        {/* Collar */}
-        <path
-          d="M46 34 C50 32 58 32 62 36 L60 42 C56 40 50 40 46 42 Z"
-          fill={secondary}
-        />
-
-        {/* Trailing arm … bent at chest, open hand */}
-        <path
-          d="M44 52 C36 56 30 64 32 72 C34 78 42 78 46 72 C46 64 46 56 44 52 Z"
-          fill={primary}
-        />
-        <ellipse cx="34" cy="74" rx="5.5" ry="5" fill="#c4a484" />
-
-        {/* Lead arm … high reach for the ball */}
-        <path
-          d="M62 48 C72 40 82 28 90 16 C94 12 98 14 96 20 C90 32 80 44 70 52 Z"
-          fill={primary}
-        />
-        <ellipse cx="94" cy="14" rx="6.5" ry="6" fill="#c4a484" />
-        {/* Fingers suggestion */}
-        <g stroke="#8a6a4a" strokeWidth="1.1" fill="none" strokeLinecap="round">
-          <path d="M92 8 L90 4" />
-          <path d="M96 9 L98 4" />
-          <path d="M99 12 L104 10" />
+      <g filter={`url(#shadow-${uid})`}>
+        {/* Assembled 12-piece sculpt, flipped horizontally when driving left */}
+        <g transform={bodyFlip}>
+          {CATCH_PIECES.map((piece) => {
+            const transform = `translate(${piece.x}, ${piece.y}) rotate(${piece.rot}) scale(${piece.scale})`
+            return (
+              <g key={piece.id} id={`piece-${piece.id}`} transform={transform}>
+                {piece.paths.map((p, i) => (
+                  <path
+                    key={`${piece.id}-${i}`}
+                    d={p.d}
+                    fill={p.fill}
+                    transform={p.transform || undefined}
+                  />
+                ))}
+              </g>
+            )
+          })}
         </g>
 
-        {/* Helmet shell under avatar */}
-        <ellipse cx="52" cy="30" rx="15" ry="14" fill={secondary} />
-        <g stroke="#1c1917" strokeWidth="1.3" fill="none" strokeLinecap="round">
-          <path d="M44 32 H62" />
-          <path d="M44 36 H60" />
-          <path d="M46 28 V40" />
-          <path d="M52 26 V41" />
-          <path d="M58 28 V40" />
-        </g>
-
-        {/* Oversized avatar head */}
-        {showHead ? (
-          <image
-            href={headshotUrl}
-            xlinkHref={headshotUrl}
-            x={52 - 21}
-            y={28 - 23}
-            width="42"
-            height="46"
-            preserveAspectRatio="xMidYMid slice"
-            clipPath={`url(#${clipId})`}
-            onError={() => setImgFailed(true)}
-          />
-        ) : (
-          <circle cx="52" cy="28" r="17" fill={primary} stroke={secondary} strokeWidth="2" />
-        )}
-        <circle
-          cx="52"
-          cy="28"
-          r="17"
-          fill="none"
-          stroke="#09090b"
-          strokeWidth="1.2"
-          opacity="0.55"
-        />
+        {/* Dynamic chest number overlay - ALWAYS un-mirrored and readable */}
+        {num ? (
+          <g transform={numTransform}>
+            {/* Dark contrast stroke */}
+            <text
+              x="0"
+              y="0"
+              textAnchor="middle"
+              dominantBaseline="central"
+              fill="none"
+              stroke={accentColor}
+              strokeWidth="24"
+              strokeLinejoin="round"
+              fontFamily="'Arial Black', Impact, sans-serif"
+              fontSize="130"
+              fontWeight="900"
+              letterSpacing="-4"
+            >
+              {num}
+            </text>
+            {/* Clean readable athletic fill */}
+            <text
+              x="0"
+              y="0"
+              textAnchor="middle"
+              dominantBaseline="central"
+              fill={secondaryColor}
+              fontFamily="'Arial Black', Impact, sans-serif"
+              fontSize="130"
+              fontWeight="900"
+              letterSpacing="-4"
+            >
+              {num}
+            </text>
+          </g>
+        ) : null}
       </g>
     </svg>
   )

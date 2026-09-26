@@ -12,7 +12,12 @@ import {
   resolveEndzoneDesign,
 } from './gameHubEndzone.js'
 import GameHubRushFigure from './GameHubRushFigure.jsx'
-import GameHubCatchFigure, { CATCH_HANDS_LOCAL } from './GameHubCatchFigure.jsx'
+import GameHubCatchFigure from './GameHubCatchFigure.jsx'
+import {
+  CATCH_HANDS_LOCAL,
+  CATCH_VIEWBOX_H,
+  CATCH_VIEWBOX_W,
+} from './gameHubCatchPieces.js'
 import {
   downDistanceLabel,
   fieldCenterBanner,
@@ -108,10 +113,10 @@ function catchArcLiftFromYards(yards) {
 
 /** World-space catch-hand point for a placed WR figure (top-left origin). */
 function catchHandsWorld(figLeft, figTop, facing, figW, figH) {
-  const lx = facing < 0 ? 120 - CATCH_HANDS_LOCAL.x : CATCH_HANDS_LOCAL.x
+  const lx = facing < 0 ? CATCH_VIEWBOX_W - CATCH_HANDS_LOCAL.x : CATCH_HANDS_LOCAL.x
   return {
-    x: figLeft + (lx / 120) * figW,
-    y: figTop + (CATCH_HANDS_LOCAL.y / 140) * figH,
+    x: figLeft + (lx / CATCH_VIEWBOX_W) * figW,
+    y: figTop + (CATCH_HANDS_LOCAL.y / CATCH_VIEWBOX_H) * figH,
   }
 }
 

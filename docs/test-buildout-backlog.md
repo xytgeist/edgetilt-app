@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-25:** **RB figure sculpt match & live studio (Mac).** Live figure studio workbench at `/rb-studio.html` matching McFarlane Cardinals #31 sculpt with side-by-side, onion-skin overlay, and field-scale views. Frontend **`1.4.673`**.
 - **2026-09-25:** **WR catch ball timing + yardage arc (Mac).** Football launches after WR is 25% to the catch; arc height scales with pass yards (short = low, deep = high). Frontend **`1.4.672`**.
 - **2026-09-25:** **WR catch field anim (Mac).** Completed-pass last-plays slide a team-colored SVG WR with primary trail; football flies a bezier arc from LOS into raised hands at gained yardage. Frontend **`1.4.671`**.
 - **2026-09-25:** **RB field runner anim (Mac).** Rush last-plays slide a team-colored SVG RB from prior LOS across gained yards with a primary trail + oversized roster headshot when matched; skip on center banners / reduced-motion snap. Frontend **`1.4.670`**.

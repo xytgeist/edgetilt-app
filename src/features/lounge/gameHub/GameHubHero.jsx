@@ -434,6 +434,7 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
     const kit = possessionKit(live, game, awayColor, homeColor)
     const matched = matchRushPlayer(parsed.playerHint, players, kit.sideAbbrev)
     const headshotUrl = matched?.headshot_url ? String(matched.headshot_url) : ''
+    const jerseyNumber = matched?.jersey ? String(matched.jersey) : ''
 
     const base = {
       playKey: lastPlayText,
@@ -443,6 +444,7 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
       primary: kit.primary,
       secondary: kit.secondary,
       headshotUrl,
+      jerseyNumber,
       facing,
     }
 
@@ -995,6 +997,7 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
                   primary={rushAnim.primary}
                   secondary={rushAnim.secondary}
                   headshotUrl={rushAnim.headshotUrl}
+                  jerseyNumber={rushAnim.jerseyNumber}
                   facing={rushAnim.facing}
                   width={RUSH_FIG_W}
                   height={RUSH_FIG_H}

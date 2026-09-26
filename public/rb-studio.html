@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EdgeTilt RB Studio — Live Figure Workbench</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #09090b;
+      color: #fafafa;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: #18181b;
+      border-bottom: 1px solid #27272a;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .hdr-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    h1 { font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .badge { background: #b91c1c; color: white; font-size: 10px; padding: 2px 7px; border-radius: 999px; font-weight: 600; text-transform: uppercase; }
+
+    /* Tab switcher */
+    .view-tabs {
+      display: flex;
+      background: #27272a;
+      border-radius: 8px;
+      padding: 3px;
+      gap: 3px;
+    }
+    .view-tab {
+      flex: 1;
+      padding: 6px 4px;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: #a1a1aa;
+      border: none;
+      background: transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .view-tab.active {
+      background: #09090b;
+      color: #ffffff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      font-size: 12px;
+      background: #121215;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #27272a;
+    }
+    .ctrl-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    label { color: #a1a1aa; font-size: 11px; font-weight: 500; }
+    select, button, input[type="text"] {
+      background: #27272a;
+      color: white;
+      border: 1px solid #3f3f46;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    input[type="range"] { accent-color: #ef4444; cursor: pointer; }
+
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+      overflow-y: auto;
+    }
+
+    /* Views */
+    .tab-view {
+      display: none;
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
+      width: 100%;
+    }
+    .tab-view.active {
+      display: flex;
+    }
+
+    .compare-container {
+      position: relative;
+      width: 310px;
+      height: 380px;
+      border-radius: 10px;
+      background: #000;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      border: 1px solid #27272a;
+    }
+    .ref-img {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .svg-layer {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      pointer-events: none;
+    }
+
+    .side-by-side-row {
+      display: flex;
+      flex-direction: row;
+      gap: 12px;
+      width: 100%;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .card {
+      background: #121215;
+      border: 1px solid #27272a;
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #a1a1aa;
+    }
+
+    /* Field turf simulator */
+    .field-turf {
+      width: 320px;
+      height: 240px;
+      background: linear-gradient(180deg, #15803d 0%, #166534 50%, #14532d 100%);
+      border-radius: 8px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.6);
+      overflow: hidden;
+      border: 1px solid #27272a;
+    }
+    .field-yardline {
+      position: absolute;
+      width: 3px;
+      height: 100%;
+      background: rgba(255,255,255,0.7);
+    }
+    .field-scrim {
+      position: absolute;
+      width: 3px;
+      height: 100%;
+      background: #38bdf8;
+      box-shadow: 0 0 10px #38bdf8;
+    }
+    .field-firstdown {
+      position: absolute;
+      width: 3px;
+      height: 100%;
+      background: #fde047;
+      box-shadow: 0 0 10px #fde047;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="hdr-top">
+      <h1>
+        EdgeTilt RB Studio
+        <span class="badge">Live</span>
+      </h1>
+      <span style="font-size: 11px; color: #71717a;">Cardinals #31 Match</span>
+    </div>
+
+    <!-- Quick Tab Switcher -->
+    <div class="view-tabs">
+      <button class="view-tab active" data-tab="side-by-side">Side-by-Side</button>
+      <button class="view-tab" data-tab="overlay">Overlay</button>
+      <button class="view-tab" data-tab="svg-only">Vector Only</button>
+      <button class="view-tab" data-tab="field-turf">Field View</button>
+    </div>
+
+    <div class="toolbar">
+      <div class="ctrl-group">
+        <label>Team:</label>
+        <select id="teamPreset">
+          <option value="ARI" selected>Cardinals (Red/White)</option>
+          <option value="SF">49ers (Red/Gold)</option>
+          <option value="KC">Chiefs (Red/Gold)</option>
+          <option value="PHI">Eagles (Green/Silver)</option>
+          <option value="DET">Lions (Blue/Silver)</option>
+          <option value="BAL">Ravens (Purple/Gold)</option>
+        </select>
+      </div>
+      <div class="ctrl-group">
+        <label>#:</label>
+        <input type="text" id="numInput" value="31" style="width: 32px; text-align: center;" />
+      </div>
+      <div class="ctrl-group">
+        <label>Head:</label>
+        <select id="headMode">
+          <option value="helmet" selected>Helmet</option>
+          <option value="avatar">Avatar</option>
+        </select>
+      </div>
+      <div class="ctrl-group" id="opacityGroup">
+        <label>Opacity:</label>
+        <input type="range" id="opacitySlider" min="0" max="100" value="65" style="width: 60px;" />
+        <span id="opacityVal" style="font-size:10px; color:#a1a1aa;">65%</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Tab 1: Side by Side -->
+    <div class="tab-view active" id="view-side-by-side">
+      <div class="side-by-side-row">
+        <div class="card">
+          <div class="card-title">Reference Sculpt</div>
+          <div style="width: 145px; height: 210px; position: relative;">
+            <img src="/sports/nfl/ref-cardinals-rb.png" alt="Reference" style="width: 100%; height: 100%; object-fit: contain;" />
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">SVG Vector Model</div>
+          <div id="sideBySideSvgHost" style="width: 145px; height: 210px; display: flex; align-items: center; justify-content: center;">
+            <!-- Live SVG -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 2: Overlay -->
+    <div class="tab-view" id="view-overlay">
+      <div class="compare-container">
+        <img src="/sports/nfl/ref-cardinals-rb.png" alt="Reference" class="ref-img" style="opacity: 0.6;" />
+        <div class="svg-layer" id="overlaySvgHost" style="opacity: 0.65;">
+          <!-- Live SVG -->
+        </div>
+      </div>
+      <div style="font-size: 11px; color: #71717a;">Adjust slider above to blend between Photo and Vector</div>
+    </div>
+
+    <!-- Tab 3: SVG Only (Large) -->
+    <div class="tab-view" id="view-svg-only">
+      <div class="card" style="width: 310px; height: 380px;">
+        <div class="card-title">Pure Vector Figure (300px)</div>
+        <div id="largeSvgHost" style="flex: 1; width: 100%; display: flex; align-items: center; justify-content: center;">
+          <!-- Live SVG -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 4: Field Turf Scale -->
+    <div class="tab-view" id="view-field-turf">
+      <div class="card" style="width: 320px;">
+        <div class="card-title">Gamecast Field Scale (65px)</div>
+        <div class="field-turf">
+          <div class="field-yardline" style="left: 25%;"></div>
+          <div class="field-firstdown" style="left: 70%;"></div>
+          <div class="field-scrim" style="left: 45%;"></div>
+          <div id="fieldTurfHost" style="position: absolute; left: 45%; bottom: 42px; transform: translateX(-50%);">
+            <!-- Mini SVG -->
+          </div>
+        </div>
+        <div style="font-size: 11px; color: #71717a; margin-top: 6px;">Foot planted on yardline with team colors</div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="/src/features/lounge/gameHub/rbFigureStudioHarness.js"></script>
+</body>
+</html>

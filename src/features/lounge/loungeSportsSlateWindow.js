@@ -69,6 +69,24 @@ function commenceMs(game) {
 
 export { commenceMs as loungeSportsCommenceMs }
 
+function sideRank(side) {
+  const r = Number(side?.rank)
+  return Number.isInteger(r) && r >= 1 && r <= 25 ? r : Infinity
+}
+
+/** Kickoff first; same kickoff → best Top 25 rank in the matchup, then the other side's rank. */
+export function sortLoungeSportsGamesByKickoffRank(games) {
+  return [...(Array.isArray(games) ? games : [])].sort((a, b) => {
+    const t = commenceMs(a) - commenceMs(b)
+    if (t) return t
+    const [aBest, aOther] = [sideRank(a?.away), sideRank(a?.home)].sort((x, y) => x - y)
+    const [bBest, bOther] = [sideRank(b?.away), sideRank(b?.home)].sort((x, y) => x - y)
+    if (aBest !== bBest) return aBest < bBest ? -1 : 1
+    if (aOther !== bOther) return aOther < bOther ? -1 : 1
+    return 0
+  })
+}
+
 const MS_48H = 48 * 3600 * 1000
 
 function gameDay(game) {
@@ -143,6 +161,10 @@ export function cfbHubDates(games, now = Date.now()) {
 }
 
 export function loungeSportsHubGames(games, sportKey, now = Date.now()) {
+  return sortLoungeSportsGamesByKickoffRank(hubGamesUnsorted(games, sportKey, now))
+}
+
+function hubGamesUnsorted(games, sportKey, now) {
   const list = Array.isArray(games) ? games : []
   const sport = String(sportKey || '')
   const same = list.filter((g) => !sport || g.sport_key === sport)
@@ -159,6 +181,10 @@ export function loungeSportsHubGames(games, sportKey, now = Date.now()) {
 
 /** Sports Hub slate list: `all` = current multi-sport slate; NFL/CFB use week windows. */
 export function loungeSportsSlateGames(games, filter, now = Date.now()) {
+  return sortLoungeSportsGamesByKickoffRank(slateGamesUnsorted(games, filter, now))
+}
+
+function slateGamesUnsorted(games, filter, now) {
   const list = Array.isArray(games) ? games : []
   const key = String(filter || '').trim()
   if (!key || key === 'all') {
@@ -174,7 +200,7 @@ export function loungeSportsSlateGames(games, filter, now = Date.now()) {
     const dates = new Set(nflHubDates(list, now))
     return nfl.filter((g) => g.status === 'in' || dates.has(gameDay(g)))
   }
-  return loungeSportsHubGames(list, key, now)
+  return hubGamesUnsorted(list, key, now)
 }
 
 export function isLoungeSportsCurrentSlateGame(game, now = Date.now()) {

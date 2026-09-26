@@ -30,8 +30,8 @@ const CATCH_ANIM_MS = 1250
 /** WR path progress before the football leaves the LOS on its arc. */
 const CATCH_BALL_LAUNCH_AT = 0.25
 const RUSH_Y = 334.5
-const RUSH_FIG_W = 62
-const RUSH_FIG_H = 72
+const RUSH_FIG_W = 124
+const RUSH_FIG_H = 144
 
 function fieldMidXFromPercent(p) {
   const top = 239.0 + (p / 100) * 784.0

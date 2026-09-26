@@ -23,8 +23,8 @@ export default function GameHubRushFigure({
   jerseyNumber = '',
   _headshotUrl = '',
   facing = 1,
-  width = 54,
-  height = 72,
+  width = 108,
+  height = 144,
   className = '',
 }) {
   const uid = useId().replace(/:/g, '')

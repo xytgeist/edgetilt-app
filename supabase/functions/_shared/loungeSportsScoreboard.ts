@@ -152,6 +152,8 @@ export type LoungeSportsPlay = {
   clock: string
   description: string
   team: 'home' | 'away' | null
+  /** Line of scrimmage for this play (ESPN `start`) … same 1–50 + territory shape as live. */
+  start_spot?: { yard_line: number | null; yard_side: 'home' | 'away' | null } | null
 }
 
 export type LoungeSportsPlayerStat = {
@@ -1397,12 +1399,23 @@ async function fetchEspnFootballLivePack(
         const clockObj = (row.clock && typeof row.clock === 'object')
           ? row.clock as Record<string, unknown>
           : null
+        const startSpot = start
+          ? resolveFootballYardSpot({
+              possessionText: String(start.possessionText || '').trim() || null,
+              yardsToEndzone: numOrNull(start.yardsToEndzone),
+              absoluteYardLine: numOrNull(start.yardLine),
+              possession: sideForEspnTeamId(String(startTeam?.id || '').trim()),
+              homeAbbrev: boardHomeAbbrev || game.home?.abbrev,
+              awayAbbrev: boardAwayAbbrev || game.away?.abbrev,
+            })
+          : null
         plays.push({
           id: playId || `${plays.length}`,
           period: numOrNull(periodObj?.number ?? row.period),
           clock: String(clockObj?.displayValue || row.clock || '').trim(),
           description: text,
           team: sideForEspnTeamId(teamId),
+          start_spot: startSpot && startSpot.yard_line != null ? startSpot : null,
         })
       }
     }

@@ -796,6 +796,17 @@ function territoryToFieldPercent(side, yard, flipped = false) {
 }
 
 /**
+ * Play `start_spot` ({ yard_line 1–50, yard_side }) → 0–100 field percent. 50 with no side = midfield.
+ * @returns {number|null}
+ */
+export function playSpotFieldPercent(spot, flipped = false) {
+  const yard = Number(spot?.yard_line)
+  if (!Number.isFinite(yard) || yard < 0 || yard > 50) return null
+  if (yard === 50) return 50
+  return territoryToFieldPercent(spot?.yard_side, yard, flipped)
+}
+
+/**
  * Parse "to the NW 05" / "to the 50" / "to the End Zone" into a field percent.
  * @returns {number|null}
  */
@@ -840,11 +851,23 @@ export function resolvePlayAnimationPercents({
   preferTextSpots = false,
   isTouchdown = false,
   flipped = false,
+  knownStartPct = null,
 } = {}) {
   const attackDir = attackDirection(possessionSide, flipped)
   const yd = Number(yards)
   const hasYards = Number.isFinite(yd) && yd > 0
   const textEnd = parsePlayEndFieldPercent(text, game, attackDir, flipped)
+
+  // Feed LOS for this exact play … no inference from live pos or yardage.
+  if (knownStartPct != null && Number.isFinite(Number(knownStartPct))) {
+    const startPct = Math.max(0, Math.min(100, Number(knownStartPct)))
+    let endPct
+    if (textEnd != null) endPct = textEnd
+    else if (isTouchdown) endPct = attackDir < 0 ? 0 : 100
+    else if (Number.isFinite(yd)) endPct = startPct + attackDir * yd
+    else endPct = startPct
+    return { startPct, endPct: Math.max(0, Math.min(100, endPct)), fromText: true }
+  }
 
   let endPct = null
   let startPct = null

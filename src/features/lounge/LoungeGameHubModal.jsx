@@ -83,18 +83,23 @@ export default function LoungeGameHubModal({
   const fieldPlayText = String(fieldReplay.text || lastPlay).trim()
   // Prefer the PBP row's team over live.possession … live often already flipped
   // to the next play by the time last_play text lands.
-  const feedTeamForFieldPlay = (() => {
-    if (fieldReplay.team === 'home' || fieldReplay.team === 'away') return fieldReplay.team
+  const feedRowForFieldPlay = (() => {
     const needle = fieldPlayText
     if (!needle) return null
     const rows = Array.isArray(detail.plays) ? detail.plays : []
-    const hit = rows.find((p) => String(p?.description || '').trim() === needle)
+    // Newest match … identical play text can repeat in a game.
+    return rows.findLast((p) => String(p?.description || '').trim() === needle) || null
+  })()
+  const feedTeamForFieldPlay = (() => {
+    if (fieldReplay.team === 'home' || fieldReplay.team === 'away') return fieldReplay.team
+    const hit = feedRowForFieldPlay
     if (hit?.team === 'home' || hit?.team === 'away') return hit.team
-    if (newestFeedPlay?.description && String(newestFeedPlay.description).trim() === needle) {
-      if (newestFeedPlay.team === 'home' || newestFeedPlay.team === 'away') return newestFeedPlay.team
-    }
     return null
   })()
+  const fieldPlayStartSpot =
+    Number(fieldReplay.nonce) > 0 && fieldReplay.text
+      ? fieldReplay.startSpot || null
+      : feedRowForFieldPlay?.start_spot || null
   const lastPlayMeta = {
     period: live?.period ?? newestFeedPlay?.period ?? null,
     clock: live?.clock || newestFeedPlay?.clock || '',
@@ -121,6 +126,7 @@ export default function LoungeGameHubModal({
     setFieldReplay((prev) => ({
       text,
       team,
+      startSpot: play?.start_spot || null,
       nonce: (Number(prev.nonce) || 0) + 1,
     }))
     // Bring the field back into view if the plays list is scrolled deep.
@@ -392,6 +398,7 @@ export default function LoungeGameHubModal({
         lastPlay={fieldPlayText}
         playReplayNonce={fieldReplay.nonce}
         replayTeam={feedTeamForFieldPlay}
+        playStartSpot={fieldPlayStartSpot}
         topBar={hubTopBar}
         splits={detail.splits}
         players={fantasy.players}

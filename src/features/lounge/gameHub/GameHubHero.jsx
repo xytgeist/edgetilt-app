@@ -35,6 +35,7 @@ import {
   playTextIsTouchdown,
   resolveFigureJersey,
   resolvePlayAnimationPercents,
+  playSpotFieldPercent,
   scoreText,
   yardLineLabel,
 } from './gameHubFormatters.js'
@@ -126,10 +127,17 @@ function resolveFgLosAndKick({
   livePos,
   settledScrimPct,
   flipped,
+  knownLosPct = null,
 }) {
   const attackDir = attackDirection(possessionSide, flipped)
   const goalPct = attackDir > 0 ? 100 : 0
   const y = Number(fgYards)
+
+  if (knownLosPct != null && Number.isFinite(Number(knownLosPct))) {
+    const losPct = Math.max(2, Math.min(98, Number(knownLosPct)))
+    const kickPct = Math.max(2, Math.min(98, losPct - attackDir * FG_HOLDER_BEHIND_LOS))
+    return { losPct, kickPct, attackDir }
+  }
 
   let impliedKick = null
   let impliedLos = null
@@ -674,6 +682,7 @@ function FieldViz({
   players = [],
   playReplayNonce = 0,
   replayTeam = null,
+  playStartSpot = null,
 }) {
   const sportKey = String(game?.sport_key || '').toLowerCase()
   const isFootball = sportKey.includes('football') || (!sportKey && Boolean(game?.away && game?.home))
@@ -695,6 +704,7 @@ function FieldViz({
       : live?.possession === 'home' || live?.possession === 'away'
         ? live.possession
         : null
+  const knownStartPct = playSpotFieldPercent(playStartSpot, fieldFlipped)
 
   const [rushAnim, setRushAnim] = useState(null)
   const [catchAnim, setCatchAnim] = useState(null)
@@ -722,6 +732,7 @@ function FieldViz({
     homeColor: '',
     possessionSide: null,
     fieldFlipped: false,
+    knownStartPct: null,
   })
   fieldAnimCtxRef.current = {
     pos,
@@ -732,6 +743,7 @@ function FieldViz({
     homeColor,
     possessionSide,
     fieldFlipped,
+    knownStartPct,
   }
   /** Gates auto-play start without thrashing on every yard-line tick. */
   const autoPlayReady = Boolean(
@@ -783,11 +795,12 @@ function FieldViz({
       preferTextSpots: isUserReplay,
       isTouchdown,
       flipped: ctx.fieldFlipped,
+      knownStartPct: ctx.knownStartPct,
     })
     const endPct = spots.endPct
     let startPct = spots.startPct
     // Goal-line chips need a visible run-up or the TD celebrate never "reads".
-    if (isTouchdown) {
+    if (isTouchdown && ctx.knownStartPct == null) {
       const minRun = 18
       if (attackDir < 0) startPct = Math.max(startPct, endPct + minRun)
       else startPct = Math.min(startPct, endPct - minRun)
@@ -1008,11 +1021,12 @@ function FieldViz({
       preferTextSpots: isUserReplay,
       isTouchdown,
       flipped: ctx.fieldFlipped,
+      knownStartPct: ctx.knownStartPct,
     })
     const gainPct = spots.endPct
     let startPct = spots.startPct
     // Goal-line chips need a visible run-up or the TD celebrate never "reads".
-    if (isTouchdown) {
+    if (isTouchdown && ctx.knownStartPct == null) {
       const minRun = 18
       if (attackDir < 0) startPct = Math.max(startPct, gainPct + minRun)
       else startPct = Math.min(startPct, gainPct - minRun)
@@ -1249,6 +1263,7 @@ function FieldViz({
       livePos: ctx.pos,
       settledScrimPct: settled?.scrimPct,
       flipped: ctx.fieldFlipped,
+      knownLosPct: ctx.knownStartPct,
     })
     const start = {
       x: fieldMidXFromPercent(kickPct),
@@ -2267,6 +2282,7 @@ export default function GameHubHero({
   lastPlay,
   playReplayNonce = 0,
   replayTeam = null,
+  playStartSpot = null,
   topBar = null,
   splits = null,
   players = [],
@@ -2517,6 +2533,7 @@ export default function GameHubHero({
             lastPlay={lastPlayText}
             playReplayNonce={playReplayNonce}
             replayTeam={replayTeam}
+            playStartSpot={playStartSpot}
             players={players}
           />
         ) : (

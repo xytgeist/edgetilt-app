@@ -26,11 +26,13 @@ export default function GameHubRushFigure({
   const isFacingRight = facing >= 0
   const bodyFlip = isFacingRight ? 'scale(-1, 1) translate(-740, 0)' : undefined
 
-  // Number placement: when facing right, mirror the horizontal position (740 - 281 = 459) and tilt angle (+14 deg),
-  // but NEVER apply horizontal scale(-1) so glyphs always paint in natural left-to-right reading order.
+  // Number placement: centered on the red torso chest plate.
+  // Left-facing center is at x=255, y=410 with -14 deg forward tilt.
+  // Right-facing center is mirrored at x=485 (740 - 255), y=410 with +14 deg forward tilt.
+  // Glyphs are rendered in un-mirrored space so they always read left-to-right naturally.
   const numTransform = isFacingRight
-    ? 'translate(459, 411) rotate(14)'
-    : 'translate(281, 411) rotate(-14)'
+    ? 'translate(485, 410) rotate(14)'
+    : 'translate(255, 410) rotate(-14)'
 
   const num = String(jerseyNumber || '').trim()
 

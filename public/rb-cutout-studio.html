@@ -27,7 +27,8 @@
 
     .controls {
       display: flex;
-      gap: 12px;
+      flex-wrap: wrap;
+      gap: 16px;
       align-items: center;
       background: #18181b;
       border-bottom: 1px solid #27272a;
@@ -35,7 +36,7 @@
       font-size: 12px;
     }
     .controls label { display: flex; align-items: center; gap: 6px; font-weight: 600; color: #a1a1aa; }
-    .controls input, .controls select {
+    .controls input[type="text"], .controls select {
       background: #27272a;
       border: 1px solid #3f3f46;
       color: white;
@@ -43,6 +44,32 @@
       border-radius: 6px;
       font-size: 12px;
     }
+    .slider-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #27272a;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid #3f3f46;
+    }
+    .slider-group span { font-weight: 700; color: #e4e4e7; min-width: 42px; font-family: monospace; }
+    .slider-group input[type="range"] {
+      width: 90px;
+      accent-color: #38bdf8;
+      cursor: pointer;
+    }
+    .btn-nudge {
+      background: #3f3f46;
+      border: none;
+      color: white;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+    }
+    .btn-nudge:hover { background: #52525b; }
 
     main {
       flex: 1;
@@ -199,20 +226,20 @@
   <header>
     <h1>
       EdgeTilt RB Cutout Studio
-      <span class="badge">Segments-4 (No Numbers)</span>
+      <span class="badge">Live Nudge Sliders</span>
     </h1>
     <span style="font-size: 11px; color: #71717a;">Vector Cutout · Clean Transparent BG</span>
   </header>
 
   <div class="controls">
     <label>
-      Jersey Number:
+      Jersey #:
       <input type="text" id="numInput" value="31" maxlength="2" style="width: 45px; text-align: center;" />
     </label>
     <label>
       Facing:
       <select id="facingSelect">
-        <option value="right">Running Right (Normal Drive)</option>
+        <option value="right" selected>Running Right (Normal Drive)</option>
         <option value="left">Running Left (Opposite Endzone)</option>
       </select>
     </label>
@@ -223,6 +250,29 @@
         <option value="static">Static on Scrimmage</option>
       </select>
     </label>
+
+    <!-- Real-time Nudge Sliders -->
+    <div class="slider-group">
+      <label style="color: #38bdf8;">X Offset:</label>
+      <button class="btn-nudge" onclick="nudgeX(-5)">-5</button>
+      <input type="range" id="xSlider" min="200" max="600" value="485" />
+      <button class="btn-nudge" onclick="nudgeX(5)">+5</button>
+      <span id="xVal">485</span>
+    </div>
+
+    <div class="slider-group">
+      <label style="color: #facc15;">Y Offset:</label>
+      <button class="btn-nudge" onclick="nudgeY(-5)">-5</button>
+      <input type="range" id="ySlider" min="300" max="550" value="410" />
+      <button class="btn-nudge" onclick="nudgeY(5)">+5</button>
+      <span id="yVal">410</span>
+    </div>
+
+    <div class="slider-group">
+      <label style="color: #4ade80;">Tilt °:</label>
+      <input type="range" id="rotSlider" min="-30" max="30" value="14" style="width: 70px;" />
+      <span id="rotVal">14°</span>
+    </div>
   </div>
 
   <main>
@@ -230,17 +280,17 @@
     <div class="card">
       <div class="card-title">
         <span>1. Clean Cutout & Dynamic Number Overlay</span>
-        <span style="font-size: 10px; color: #71717a;">740 × 1378 RGBA</span>
+        <span id="coordBadge" style="font-size: 10px; color: #38bdf8; font-family: monospace;">translate(485, 410) rotate(14)</span>
       </div>
       <div class="preview-box">
         <svg id="svgFigureIsolated" viewBox="0 0 740 1378" style="height: 350px; width: auto; overflow: visible; filter: drop-shadow(0 15px 15px rgba(0,0,0,0.8));">
           <!-- Base Player Cutout (flipped when running right) -->
-          <g id="figureIsolatedImageGroup">
+          <g id="figureIsolatedImageGroup" transform="scale(-1, 1) translate(-740, 0)">
             <image href="/sports/nfl/cardinals-rb-player.png" width="740" height="1378" preserveAspectRatio="xMidYMid meet" />
           </g>
 
           <!-- Dynamic Chest Number Overlay (UN-MIRRORED, positioned & tilted to match torso direction) -->
-          <g id="isolatedNumberG" transform="translate(459, 411) rotate(14)">
+          <g id="isolatedNumberG" transform="translate(485, 410) rotate(14)">
             <text id="isolatedNumOutline" x="0" y="0" text-anchor="middle" dominant-baseline="central" fill="none" stroke="#000000" stroke-width="26" stroke-linejoin="round" font-family="'Arial Black', Impact, sans-serif" font-size="140" font-weight="900" letter-spacing="-4">31</text>
             <text id="isolatedNumFill" x="0" y="0" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="'Arial Black', Impact, sans-serif" font-size="140" font-weight="900" letter-spacing="-4">31</text>
           </g>
@@ -278,7 +328,7 @@
             </g>
 
             <!-- Dynamic Chest Number Overlay (UN-MIRRORED) -->
-            <g id="fieldNumberG" transform="translate(459, 411) rotate(14)">
+            <g id="fieldNumberG" transform="translate(485, 410) rotate(14)">
               <text id="fieldNumOutline" x="0" y="0" text-anchor="middle" dominant-baseline="central" fill="none" stroke="#000000" stroke-width="26" stroke-linejoin="round" font-family="'Arial Black', Impact, sans-serif" font-size="140" font-weight="900" letter-spacing="-4">31</text>
               <text id="fieldNumFill" x="0" y="0" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="'Arial Black', Impact, sans-serif" font-size="140" font-weight="900" letter-spacing="-4">31</text>
             </g>
@@ -340,6 +390,15 @@
     const facingSelect = document.getElementById('facingSelect');
     const animSelect = document.getElementById('animSelect');
 
+    const xSlider = document.getElementById('xSlider');
+    const ySlider = document.getElementById('ySlider');
+    const rotSlider = document.getElementById('rotSlider');
+
+    const xVal = document.getElementById('xVal');
+    const yVal = document.getElementById('yVal');
+    const rotVal = document.getElementById('rotVal');
+    const coordBadge = document.getElementById('coordBadge');
+
     const isolatedNumOutline = document.getElementById('isolatedNumOutline');
     const isolatedNumFill = document.getElementById('isolatedNumFill');
     const isolatedNumberG = document.getElementById('isolatedNumberG');
@@ -352,6 +411,30 @@
     const figureFieldImageGroup = document.getElementById('figureFieldImageGroup');
     const runnerWrap = document.getElementById('runnerWrap');
     const fieldTrail = document.getElementById('fieldTrail');
+
+    function applyTransform() {
+      const x = Number(xSlider.value);
+      const y = Number(ySlider.value);
+      const rot = Number(rotSlider.value);
+
+      xVal.textContent = x;
+      yVal.textContent = y;
+      rotVal.textContent = rot + '°';
+
+      const transformStr = `translate(${x}, ${y}) rotate(${rot})`;
+      isolatedNumberG.setAttribute('transform', transformStr);
+      fieldNumberG.setAttribute('transform', transformStr);
+      coordBadge.textContent = transformStr;
+    }
+
+    function nudgeX(delta) {
+      xSlider.value = Number(xSlider.value) + delta;
+      applyTransform();
+    }
+    function nudgeY(delta) {
+      ySlider.value = Number(ySlider.value) + delta;
+      applyTransform();
+    }
 
     function updateNumber() {
       const val = numInput.value.trim();
@@ -371,20 +454,19 @@
     function updateFacing() {
       const facing = facingSelect.value;
       if (facing === 'right') {
-        // Natural image faces left. To face right, flip player image X:
         figureIsolatedImageGroup.setAttribute('transform', 'scale(-1, 1) translate(-740, 0)');
         figureFieldImageGroup.setAttribute('transform', 'scale(-1, 1) translate(-740, 0)');
-        // Chest number NEVER mirrors horizontally, tilts forward (+14 deg) with torso:
-        isolatedNumberG.setAttribute('transform', 'translate(459, 411) rotate(14)');
-        fieldNumberG.setAttribute('transform', 'translate(459, 411) rotate(14)');
+        xSlider.value = 485;
+        ySlider.value = 410;
+        rotSlider.value = 14;
       } else {
-        // Natural left facing:
         figureIsolatedImageGroup.setAttribute('transform', '');
         figureFieldImageGroup.setAttribute('transform', '');
-        // Chest number tilts forward (-14 deg) with leftward sprint:
-        isolatedNumberG.setAttribute('transform', 'translate(281, 411) rotate(-14)');
-        fieldNumberG.setAttribute('transform', 'translate(281, 411) rotate(-14)');
+        xSlider.value = 255;
+        ySlider.value = 410;
+        rotSlider.value = -14;
       }
+      applyTransform();
     }
 
     function updateMode() {
@@ -402,10 +484,13 @@
     facingSelect.addEventListener('change', updateFacing);
     animSelect.addEventListener('change', updateMode);
 
+    xSlider.addEventListener('input', applyTransform);
+    ySlider.addEventListener('input', applyTransform);
+    rotSlider.addEventListener('input', applyTransform);
+
     // Initial setup
     updateNumber();
-    updateFacing();
-    updateMode();
+    applyTransform();
   </script>
 </body>
 </html>

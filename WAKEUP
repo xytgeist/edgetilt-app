@@ -77,6 +77,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Mac Theo.** Promoted **`test` → `main` (`63c28769`)**. Vercel **`1.4.661`**. Prod Edge **`lounge-sports-scoreboard`** + **`lounge-cfb-game-players`**. Prod **`cfb_players`** **13,600**. Store IPA still **1.4.95**.
 
+### Mac Theo ACTIVE TRACK 2026-09-26 ... field art ready before play anim
+
+**I am Mac Theo.** Live/replay field anims wait until the field PNG has layout (`fieldArtReady` + aspect-ratio box) so absolute overlays are not painting in a 0-height plate. Tip web **`1.4.730`**.
+
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... promote 1.4.729
 
 **I am Mac Theo.** Promoted **`test` → `main` (`29233cb4`)**. Vercel prod web **`1.4.729`** (FG between-posts cutout, TD replay RAF fix, FG LOS/z, possession PNG, odds hang dots + Pinnacle graft). Redeploying prod Edge **`lounge-sports-scoreboard`** for Pinnacle freshest/scrub. **No SQL.**

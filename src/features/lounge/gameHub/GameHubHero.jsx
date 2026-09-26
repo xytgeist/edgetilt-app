@@ -652,6 +652,8 @@ function FieldViz({
   const [rushAnim, setRushAnim] = useState(null)
   const [catchAnim, setCatchAnim] = useState(null)
   const [fgAnim, setFgAnim] = useState(null)
+  /** Field PNG must own layout height before absolute SVG overlays paint. */
+  const [fieldArtReady, setFieldArtReady] = useState(false)
   const rushKeyRef = useRef('')
   const catchKeyRef = useRef('')
   const fgKeyRef = useRef('')
@@ -688,11 +690,21 @@ function FieldViz({
   const autoPlayReady = Boolean(
     isUserReplay || (!hideLiveLines && hasLine && pos != null),
   )
+  /** Don't run play chrome until the field plate has real pixel size. */
+  const playAnimReady = Boolean(fieldArtReady && (isUserReplay || autoPlayReady))
+
+  const markFieldArtReady = () => {
+    setFieldArtReady(true)
+  }
+  const bindFieldArtImg = (el) => {
+    if (!el) return
+    if (el.complete && el.naturalWidth > 0) setFieldArtReady(true)
+  }
 
   useEffect(() => {
     if (!isFootball || !lastPlayText) return undefined
     const ctx = fieldAnimCtxRef.current
-    if (!isUserReplay && !autoPlayReady) return undefined
+    if (!playAnimReady) return undefined
     if (ctx.pos == null && !isUserReplay) return undefined
     if (parseFieldGoalPlay(lastPlayText)) return undefined
     const parsed = parseRushPlay(lastPlayText)
@@ -903,12 +915,12 @@ function FieldViz({
     return () => {
       if (rushRafRef.current) cancelAnimationFrame(rushRafRef.current)
     }
-  }, [isFootball, lastPlayText, animKey, isUserReplay, autoPlayReady])
+  }, [isFootball, lastPlayText, animKey, isUserReplay, playAnimReady])
 
   useEffect(() => {
     if (!isFootball || !lastPlayText) return undefined
     const ctx = fieldAnimCtxRef.current
-    if (!isUserReplay && !autoPlayReady) return undefined
+    if (!playAnimReady) return undefined
     if (ctx.pos == null && !isUserReplay) return undefined
     // Rush / FG win if both somehow match.
     if (parseRushPlay(lastPlayText) || parseFieldGoalPlay(lastPlayText)) return undefined
@@ -1144,12 +1156,12 @@ function FieldViz({
     return () => {
       if (catchRafRef.current) cancelAnimationFrame(catchRafRef.current)
     }
-  }, [isFootball, lastPlayText, animKey, isUserReplay, autoPlayReady])
+  }, [isFootball, lastPlayText, animKey, isUserReplay, playAnimReady])
 
   useEffect(() => {
     if (!isFootball || !lastPlayText) return undefined
     const ctx = fieldAnimCtxRef.current
-    if (!isUserReplay && !autoPlayReady) return undefined
+    if (!playAnimReady) return undefined
     if (ctx.pos == null && !isUserReplay) return undefined
     if (parseRushPlay(lastPlayText) || parsePassPlay(lastPlayText)) return undefined
     const parsed = parseFieldGoalPlay(lastPlayText)
@@ -1296,7 +1308,7 @@ function FieldViz({
     return () => {
       if (fgRafRef.current) cancelAnimationFrame(fgRafRef.current)
     }
-  }, [isFootball, lastPlayText, animKey, isUserReplay, autoPlayReady])
+  }, [isFootball, lastPlayText, animKey, isUserReplay, playAnimReady])
 
   useEffect(() => {
     if (rushAnim || catchAnim || fgAnim || !hasLine || pos == null || hideLiveLines) return
@@ -1511,12 +1523,18 @@ function FieldViz({
   }
   return (
     <div data-lounge-game-field className="relative z-[5] w-full px-1 pb-0 pt-5 sm:px-1.5">
-      <div className="relative w-full overflow-visible">
+      <div className="relative w-full overflow-visible" style={{ aspectRatio: '1266 / 533' }}>
         {/* Layer 1: Floating field base graphic */}
         <img
+          ref={bindFieldArtImg}
           src="/sports/nfl/gamecast-field-floating.png?v=629"
           alt="Gamecast Field"
-          className="pointer-events-none block w-full select-none"
+          width={1266}
+          height={533}
+          decoding="async"
+          onLoad={markFieldArtReady}
+          onError={markFieldArtReady}
+          className="pointer-events-none absolute inset-0 block h-full w-full select-none"
         />
 
         {/* Layer 2: Dynamic SVG overlay plane matching 3D field coordinates */}

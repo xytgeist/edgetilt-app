@@ -350,6 +350,25 @@ export function playTextIsTouchdown(text) {
   return /\btouchdown\b/.test(lower) || /\bfor\s+a\s+td\b/.test(lower) || /\b\d+\s*-?\s*yds?\s+td\b/.test(lower)
 }
 
+/**
+ * ESPN often appends PAT / clock / review junk after the scoring play
+ * ("… TOUCHDOWN, clock 09:39 #15 N.Radicic kick attempt good").
+ * Strip that trailer so kick/extra-point filters don't kill TD replays.
+ */
+function scoringPlayCoreText(text) {
+  const raw = String(text || '').trim()
+  if (!raw) return ''
+  const td = raw.match(/\btouchdown\b/i)
+  if (td && td.index != null) {
+    return `${raw.slice(0, td.index)}TOUCHDOWN`.trim()
+  }
+  const forTd = raw.match(/\bfor\s+a\s+td\b/i)
+  if (forTd && forTd.index != null) {
+    return `${raw.slice(0, forTd.index)}for a TD`.trim()
+  }
+  return raw
+}
+
 const PLAYER_NAME_TOKEN =
   '(?:#?\\d+\\s+)?[A-Za-z][A-Za-z.\'’-]*(?:\\s+[A-Za-z][A-Za-z.\'’-]*){0,3}'
 
@@ -368,12 +387,15 @@ const FORMATION_SKIP =
  * @returns {{ yards: number, playerHint: string, isTouchdown: boolean } | null}
  */
 export function parseRushPlay(text) {
-  const raw = String(text || '').trim()
-  if (!raw) return null
+  const rawFull = String(text || '').trim()
+  if (!rawFull) return null
+  const raw = scoringPlayCoreText(rawFull)
   const lower = raw.toLowerCase()
   if (/\bpass(?:ed|es|ing)?\b/.test(lower) && !/\bscrambl/.test(lower)) return null
   if (/\bsack(?:ed|s)?\b/.test(lower)) return null
-  if (/\bkick(?:ed|s|ing|off)?\b/.test(lower)) return null
+  // Kickoff / FG only … do not reject PAT trailers (already stripped) or "kick attempt".
+  if (/\bkickoff\b/.test(lower)) return null
+  if (/\bkicked\b/.test(lower)) return null
   if (/\bpunt(?:ed|s|ing)?\b/.test(lower)) return null
   if (/\bpenalty\b/.test(lower)) return null
   if (/\btimeout\b/.test(lower)) return null
@@ -424,8 +446,9 @@ export function parseRushPlay(text) {
  * @returns {{ yards: number, playerHint: string, isTouchdown: boolean } | null}
  */
 export function parsePassPlay(text) {
-  const raw = String(text || '').trim()
-  if (!raw) return null
+  const rawFull = String(text || '').trim()
+  if (!rawFull) return null
+  const raw = scoringPlayCoreText(rawFull)
   const lower = raw.toLowerCase()
   if (!/\bpass(?:ed|es|ing)?\b/.test(lower) && !/\b\d+\s*-?\s*yds?\s+td\s+pass\b/.test(lower)) {
     return null

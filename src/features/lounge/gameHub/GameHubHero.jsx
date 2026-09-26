@@ -27,6 +27,8 @@ import {
   matchRushPlayer,
   parsePassPlay,
   parseRushPlay,
+  playTextIsTouchdown,
+  resolvePlayAnimationPercents,
   scoreText,
   yardLineLabel,
 } from './gameHubFormatters.js'
@@ -107,10 +109,6 @@ function easeOutCubic(t) {
 function prefersReducedMotion() {
   if (typeof window === 'undefined' || !window.matchMedia) return false
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
-}
-
-function playTextIsTouchdown(text) {
-  return /\btouchdown\b/i.test(String(text || ''))
 }
 
 function quadBezier(p0, p1, p2, t) {
@@ -507,7 +505,7 @@ function FieldViz({
   useEffect(() => {
     if (!isFootball || !lastPlayText) return undefined
     if (!isUserReplay && (hideLiveLines || !hasLine || pos == null)) return undefined
-    if (pos == null) return undefined
+    if (pos == null && !isUserReplay) return undefined
     const parsed = parseRushPlay(lastPlayText)
     if (!parsed) {
       if (rushKeyRef.current && animKey !== rushKeyRef.current) {
@@ -523,12 +521,22 @@ function FieldViz({
     if (catchRafRef.current) cancelAnimationFrame(catchRafRef.current)
 
     const attackDir = possessionSide === 'home' ? -1 : 1
-    const endPct = Math.max(0, Math.min(100, pos))
-    const startPct = Math.max(0, Math.min(100, pos - attackDir * parsed.yards))
+    const spots = resolvePlayAnimationPercents({
+      text: lastPlayText,
+      yards: parsed.yards,
+      game,
+      possessionSide,
+      livePos: pos,
+      preferTextSpots: isUserReplay,
+      isTouchdown: Boolean(parsed.isTouchdown) || playTextIsTouchdown(lastPlayText),
+    })
+    const endPct = spots.endPct
+    const startPct = spots.startPct
     const startX = fieldMidXFromPercent(startPct)
     const endX = fieldMidXFromPercent(endPct)
     const travel = endX - startX
-    const facing = travel < 0 ? -1 : 1
+    // Prefer attack direction when travel is tiny (spot clamp / 0-yd edge).
+    const facing = Math.abs(travel) < 0.5 ? attackDir : travel < 0 ? -1 : 1
     const kit = possessionKit(
       possessionSide ? { ...live, possession: possessionSide } : live,
       game,
@@ -673,7 +681,7 @@ function FieldViz({
   useEffect(() => {
     if (!isFootball || !lastPlayText) return undefined
     if (!isUserReplay && (hideLiveLines || !hasLine || pos == null)) return undefined
-    if (pos == null) return undefined
+    if (pos == null && !isUserReplay) return undefined
     // Rush wins if both somehow match (parseRush already excludes pass text).
     if (parseRushPlay(lastPlayText)) return undefined
     const parsed = parsePassPlay(lastPlayText)
@@ -690,10 +698,20 @@ function FieldViz({
     setRushAnim(null)
     if (rushRafRef.current) cancelAnimationFrame(rushRafRef.current)
 
-    const isTouchdown = playTextIsTouchdown(lastPlayText)
+    const isTouchdown =
+      Boolean(parsed.isTouchdown) || playTextIsTouchdown(lastPlayText)
     const attackDir = possessionSide === 'home' ? -1 : 1
-    const gainPct = Math.max(0, Math.min(100, pos))
-    const startPct = Math.max(0, Math.min(100, pos - attackDir * parsed.yards))
+    const spots = resolvePlayAnimationPercents({
+      text: lastPlayText,
+      yards: parsed.yards,
+      game,
+      possessionSide,
+      livePos: pos,
+      preferTextSpots: isUserReplay,
+      isTouchdown,
+    })
+    const gainPct = spots.endPct
+    const startPct = spots.startPct
     const startX = fieldMidXFromPercent(startPct)
     // TD: slide halfway into the scored endzone (away → right, home → left).
     const endX = isTouchdown
@@ -702,7 +720,7 @@ function FieldViz({
         : ENDZONE_COORDS.right.centerX
       : fieldMidXFromPercent(gainPct)
     const travel = endX - startX
-    const facing = travel < 0 ? -1 : 1
+    const facing = Math.abs(travel) < 0.5 ? attackDir : travel < 0 ? -1 : 1
     const kit = possessionKit(
       possessionSide ? { ...live, possession: possessionSide } : live,
       game,

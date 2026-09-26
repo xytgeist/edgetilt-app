@@ -330,14 +330,24 @@ function extractPlayYards(raw) {
   if (m) return Number(m[1])
   m = raw.match(/\b(?:gain|gained)\s+of\s+(\d+)\s+yards?\b/i)
   if (m) return Number(m[1])
+  m = raw.match(/\bfor\s+(\d+)\s+yds?\s+(?:gain|gained)?\b/i)
+  if (m) return Number(m[1])
   m = raw.match(/\bfor\s+-(\d+)\s+yards?\b/i)
   if (m) return -Number(m[1])
   m = raw.match(/\bfor\s+(\d+)\s+yards?\b/i)
   if (m) return Number(m[1])
   m = raw.match(/\b(?:a\s+)?loss\s+of\s+(\d+)\s+yards?\b/i)
   if (m) return -Number(m[1])
+  // Short cards: "25 Yd TD Rush", "20-yd touchdown pass"
+  m = raw.match(/\b(\d+)\s*-?\s*yds?(?:\s+td|\s+touchdown)?\b/i)
+  if (m) return Number(m[1])
   if (/\bfor\s+no\s+gain\b/i.test(raw)) return 0
   return null
+}
+
+export function playTextIsTouchdown(text) {
+  const lower = String(text || '').toLowerCase()
+  return /\btouchdown\b/.test(lower) || /\bfor\s+a\s+td\b/.test(lower) || /\b\d+\s*-?\s*yds?\s+td\b/.test(lower)
 }
 
 const PLAYER_NAME_TOKEN =
@@ -347,12 +357,15 @@ const PLAYER_NAME_TOKEN =
 const ESPN_RUSH_LANE =
   /\b(?:left|right)\s+(?:end|tackle|guard)\b|\bup the middle\b|\b(?:left|right)\s+middle\b/i
 
+const FORMATION_SKIP =
+  /^(?:shotgun|no huddle|no[\s-]huddle|pistol|wildcat|empty|trips|bunch)$/i
+
 /**
  * Parse ESPN / Rundown rush / scramble play text.
  * Covers explicit "rushed/run/scramble" and ESPN lane verbs
  * ("left end", "up the middle", "right tackle").
- * Only positive-yard gains are replayable (no-gain / losses rejected).
- * @returns {{ yards: number, playerHint: string } | null}
+ * Positive-yard gains and rushing TDs are replayable.
+ * @returns {{ yards: number, playerHint: string, isTouchdown: boolean } | null}
  */
 export function parseRushPlay(text) {
   const raw = String(text || '').trim()
@@ -367,27 +380,40 @@ export function parseRushPlay(text) {
   if (/\bfield\s+goal\b/.test(lower)) return null
   if (/\bextra\s+point\b/.test(lower)) return null
 
+  const isTouchdown = playTextIsTouchdown(raw)
   const explicitRush =
     /\brush(?:ed|es|ing)?\b/.test(lower) ||
     /\brun(?:s|ning)?\b/.test(lower) ||
-    /\bscrambl(?:e|es|ed|ing)\b/.test(lower)
+    /\bscrambl(?:e|es|ed|ing)\b/.test(lower) ||
+    /\b\d+\s*-?\s*yds?\s+td\s+rush\b/.test(lower)
   const espnLaneRush = ESPN_RUSH_LANE.test(lower)
   if (!explicitRush && !espnLaneRush) return null
 
-  const yards = extractPlayYards(raw)
-  // Runs for a gain only … skip no-gain and losses.
-  if (yards == null || !Number.isFinite(yards) || yards < 1) return null
+  let yards = extractPlayYards(raw)
+  // TD with no explicit yards still replays (spots resolver aims at the endzone).
+  if (yards == null && isTouchdown) yards = 0
+  if (yards == null || !Number.isFinite(yards)) return null
+  if (!isTouchdown && yards < 1) return null
 
   let playerHint = ''
-  const nameMatch = raw.match(
+  const cleaned = raw
+    .replace(/^(?:\([^)]*\)\s*)+/g, '')
+    .replace(/^(?:no[\s-]?huddle(?:,\s*)?)*(?:shotgun|pistol|wildcat)?\s*/i, '')
+    .trim()
+  const nameMatch = cleaned.match(
     new RegExp(
-      `^(?:\\([^)]*\\)\\s*)*((?:#?\\d+\\s+)?[A-Za-z][A-Za-z.'’-]*(?:\\s+[A-Za-z][A-Za-z.'’-]*){0,3}?)\\s+(?:rush(?:ed|es|ing)?|run(?:s|ning)?|scrambl(?:e|es|ed|ing)|left|right|up the)\\b`,
+      `^((?:#?\\d+\\s+)?[A-Za-z][A-Za-z.'’-]*(?:\\s+[A-Za-z][A-Za-z.'’-]*){0,3}?)\\s+(?:rush(?:ed|es|ing)?|run(?:s|ning)?|scrambl(?:e|es|ed|ing)|left|right|up the)\\b`,
       'i',
     ),
   )
-  if (nameMatch) playerHint = nameMatch[1].trim()
+  if (nameMatch) {
+    const hint = nameMatch[1].trim()
+    const parts = hint.split(/\s+/)
+    while (parts.length && FORMATION_SKIP.test(parts[0])) parts.shift()
+    playerHint = parts.join(' ').trim()
+  }
 
-  return { yards, playerHint }
+  return { yards, playerHint, isTouchdown }
 }
 
 /**
@@ -395,42 +421,186 @@ export function parseRushPlay(text) {
  * Player hint is the receiver (catcher), not the QB.
  * Handles "pass complete to X" and ESPN "pass short right to X … for N yards".
  * Incomplete / INT / sack / no-play penalties are excluded.
- * @returns {{ yards: number, playerHint: string } | null}
+ * @returns {{ yards: number, playerHint: string, isTouchdown: boolean } | null}
  */
 export function parsePassPlay(text) {
   const raw = String(text || '').trim()
   if (!raw) return null
   const lower = raw.toLowerCase()
-  if (!/\bpass(?:ed|es|ing)?\b/.test(lower)) return null
+  if (!/\bpass(?:ed|es|ing)?\b/.test(lower) && !/\b\d+\s*-?\s*yds?\s+td\s+pass\b/.test(lower)) {
+    return null
+  }
   if (/\bincomplete\b/.test(lower)) return null
   if (/\bintercept(?:ed|ion|s)?\b/.test(lower)) return null
   if (/\bsack(?:ed|s)?\b/.test(lower)) return null
   if (/\bpenalty\b/.test(lower) && /\bno\s+play\b/.test(lower)) return null
+  const isTouchdown = playTextIsTouchdown(raw)
   // "pass short/deep left/right/middle to Name" or "pass complete to Name"
   const looksComplete =
     /\bcomplete(?:d)?\b/.test(lower) ||
-    /\bpass(?:ed|es|ing)?(?:\s+\w+){0,5}\s+to\b/.test(lower)
+    /\bpass(?:ed|es|ing)?(?:\s+\w+){0,5}\s+to\b/.test(lower) ||
+    /\b\d+\s*-?\s*yds?\s+td\s+pass\b/.test(lower) ||
+    (isTouchdown && /\bpass(?:ed|es|ing)?\b/.test(lower))
   if (!looksComplete) return null
 
-  const yards = extractPlayYards(raw)
-  // Completed passes with measurable yardage (incl. short gains / TDs).
-  if (yards == null || !Number.isFinite(yards) || yards < 1) return null
+  let yards = extractPlayYards(raw)
+  if (yards == null && isTouchdown) yards = 0
+  if (yards == null || !Number.isFinite(yards)) return null
+  if (!isTouchdown && yards < 1) return null
 
   let playerHint = ''
   const toMatch = raw.match(
     new RegExp(
-      `\\b(?:complete(?:d)?\\s+to|pass(?:ed|es|ing)?(?:\\s+(?:short|deep|left|right|middle))+\\s+to|pass(?:ed|es|ing)?\\s+to)\\s+(${PLAYER_NAME_TOKEN})(?:\\s+(?:to|for|ran|pushed)\\b|\\s*$|,)`,
+      `\\b(?:complete(?:d)?\\s+to|pass(?:ed|es|ing)?(?:\\s+(?:short|deep|left|right|middle))+\\s+to|pass(?:ed|es|ing)?\\s+to)\\s+((?:#?\\d+\\s+)?[A-Za-z][A-Za-z.'’-]*(?:\\s+[A-Za-z][A-Za-z.'’-]*){0,3}?)(?=\\s+(?:to|for|ran|pushed)\\b|\\s*$|,)`,
       'i',
     ),
   )
   if (toMatch) playerHint = toMatch[1].trim()
 
-  return { yards, playerHint }
+  return { yards, playerHint, isTouchdown }
 }
 
-/** True when a PBP row is a completed pass or a run for a gain (field replay). */
+/** True when a PBP row is a completed pass or a run for a gain / TD (field replay). */
 export function isFieldReplayablePlay(text) {
   return Boolean(parseRushPlay(text) || parsePassPlay(text))
+}
+
+/**
+ * Map a territory label ("NW", "IU", "IND") onto home/away for this game.
+ * @returns {'home'|'away'|null}
+ */
+function matchTerritorySide(token, game) {
+  const raw = String(token || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+  if (!raw) return null
+
+  const scoreSide = (side) => {
+    if (!side) return 0
+    const abbrev = String(side.abbrev || '')
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+    const mascot = String(side.mascot || '')
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+    const name = String(side.name || '')
+      .trim()
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, '')
+    let score = 0
+    if (abbrev && (raw === abbrev || abbrev.startsWith(raw) || raw.startsWith(abbrev))) score += 3
+    if (mascot && (raw === mascot || mascot.startsWith(raw))) score += 2
+    if (name && name.includes(raw) && raw.length >= 2) score += 1
+    // CFB PBP often prints NW while the slate abbrev is NU.
+    if (raw === 'NW' && (abbrev === 'NU' || mascot.includes('WILDCAT') || name.includes('NORTHWESTERN'))) {
+      score += 3
+    }
+    if (raw === 'NU' && abbrev === 'NW') score += 3
+    return score
+  }
+
+  const away = scoreSide(game?.away)
+  const home = scoreSide(game?.home)
+  if (away <= 0 && home <= 0) return null
+  if (away === home) return null
+  return away > home ? 'away' : 'home'
+}
+
+/**
+ * Convert side + 1–50 yard line into 0–100 field percent
+ * (away endzone left → home endzone right).
+ */
+function territoryToFieldPercent(side, yard) {
+  const y = Math.max(0, Math.min(50, Math.round(Number(yard))))
+  if (side === 'home') return Math.max(0, Math.min(100, 100 - y))
+  if (side === 'away') return Math.max(0, Math.min(100, y))
+  return null
+}
+
+/**
+ * Parse "to the NW 05" / "to the 50" / "to the End Zone" into a field percent.
+ * @returns {number|null}
+ */
+export function parsePlayEndFieldPercent(text, game, attackDir = 1) {
+  const raw = String(text || '')
+  if (!raw) return null
+
+  if (/\bto(?:\s+the)?\s+(?:50|midfield)\b/i.test(raw)) return 50
+
+  const m = raw.match(/\bto(?:\s+the)?\s+([A-Za-z]{2,5})\s*(\d{1,2})\b/i)
+  if (m) {
+    const side = matchTerritorySide(m[1], game)
+    const yard = Number(m[2])
+    if (side && Number.isFinite(yard)) return territoryToFieldPercent(side, yard)
+  }
+
+  if (/\bto(?:\s+the)?\s+end\s*zones?\b/i.test(raw) || playTextIsTouchdown(raw)) {
+    return attackDir < 0 ? 0 : 100
+  }
+
+  return null
+}
+
+/**
+ * Resolve start/end field percents for a rush/catch animation.
+ * Prefer PBP "to the NW 05" (and yards) over the live LOS whenever both parse …
+ * live LOS is often already the *next* play's spot on historical taps.
+ *
+ * @returns {{ startPct: number, endPct: number, fromText: boolean }}
+ */
+export function resolvePlayAnimationPercents({
+  text,
+  yards,
+  game,
+  possessionSide,
+  livePos,
+  preferTextSpots = false,
+  isTouchdown = false,
+} = {}) {
+  const attackDir = possessionSide === 'home' ? -1 : 1
+  const yd = Number(yards)
+  const hasYards = Number.isFinite(yd) && yd > 0
+  const textEnd = parsePlayEndFieldPercent(text, game, attackDir)
+
+  let endPct = null
+  let startPct = null
+  let fromText = false
+
+  // Text spots win whenever we can resolve an end yardline + positive yards.
+  if (textEnd != null && hasYards) {
+    endPct = textEnd
+    startPct = endPct - attackDir * yd
+    fromText = true
+  } else if ((preferTextSpots || isTouchdown) && textEnd != null) {
+    endPct = textEnd
+    fromText = true
+    if (hasYards) {
+      startPct = endPct - attackDir * yd
+    } else if (isTouchdown) {
+      startPct = attackDir > 0 ? Math.max(0, endPct - 25) : Math.min(100, endPct + 25)
+    }
+  }
+
+  if (endPct == null && livePos != null && Number.isFinite(Number(livePos))) {
+    endPct = Number(livePos)
+  }
+  if (startPct == null && endPct != null && hasYards) {
+    startPct = endPct - attackDir * yd
+  }
+  if (startPct == null && endPct != null) {
+    startPct = endPct
+  }
+  if (endPct == null) {
+    endPct = 50
+    startPct = 50
+  }
+
+  startPct = Math.max(0, Math.min(100, startPct))
+  endPct = Math.max(0, Math.min(100, endPct))
+  return { startPct, endPct, fromText }
 }
 
 function normalizePlayerToken(s) {

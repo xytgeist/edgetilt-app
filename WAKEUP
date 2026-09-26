@@ -77,6 +77,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Mac Theo.** Promoted **`test` → `main` (`63c28769`)**. Vercel **`1.4.661`**. Prod Edge **`lounge-sports-scoreboard`** + **`lounge-cfb-game-players`**. Prod **`cfb_players`** **13,600**. Store IPA still **1.4.95**.
 
+### Mac Theo ACTIVE TRACK 2026-09-26 ... catch path vs stale possession
+
+**I am Mac Theo.** Live deep passes: when `live.possession` already flipped, WR start was clamped onto the catch (49-yd Ole Miss play). Spot resolver now picks the on-field start from PBP geometry; hub passes PBP row team for live anims. Tip web **`1.4.732`**.
+
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... rush/catch above posts
 
 **I am Mac Theo.** Live red-zone rush/catch figures were under the goalposts overlay (invisible until TD banner). Play chrome now sits at z-8 with FG ball, under front-pole cutout. Tip web **`1.4.731`**.

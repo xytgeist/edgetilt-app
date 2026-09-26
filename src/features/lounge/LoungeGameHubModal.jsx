@@ -79,10 +79,24 @@ export default function LoungeGameHubModal({
   const newestFeedPlay = sortPlaysNewestFirst(detail.plays)[0]
   const lastPlay = String(live?.last_play || newestFeedPlay?.description || '').trim()
   const fieldPlayText = String(fieldReplay.text || lastPlay).trim()
+  // Prefer the PBP row's team over live.possession … live often already flipped
+  // to the next play by the time last_play text lands.
+  const feedTeamForFieldPlay = (() => {
+    if (fieldReplay.team === 'home' || fieldReplay.team === 'away') return fieldReplay.team
+    const needle = fieldPlayText
+    if (!needle) return null
+    const rows = Array.isArray(detail.plays) ? detail.plays : []
+    const hit = rows.find((p) => String(p?.description || '').trim() === needle)
+    if (hit?.team === 'home' || hit?.team === 'away') return hit.team
+    if (newestFeedPlay?.description && String(newestFeedPlay.description).trim() === needle) {
+      if (newestFeedPlay.team === 'home' || newestFeedPlay.team === 'away') return newestFeedPlay.team
+    }
+    return null
+  })()
   const lastPlayMeta = {
     period: live?.period ?? newestFeedPlay?.period ?? null,
     clock: live?.clock || newestFeedPlay?.clock || '',
-    possession: live?.possession || newestFeedPlay?.team || null,
+    possession: feedTeamForFieldPlay || live?.possession || newestFeedPlay?.team || null,
   }
 
   useEffect(() => {
@@ -394,7 +408,7 @@ export default function LoungeGameHubModal({
         live={live}
         lastPlay={fieldPlayText}
         playReplayNonce={fieldReplay.nonce}
-        replayTeam={fieldReplay.team}
+        replayTeam={feedTeamForFieldPlay}
         topBar={hubTopBar}
         splits={detail.splits}
         players={fantasy.players}

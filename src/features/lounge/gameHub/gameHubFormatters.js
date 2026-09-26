@@ -804,6 +804,11 @@ export function parsePlayEndFieldPercent(text, game, attackDir = 1, flipped = fa
  * Prefer PBP "to the NW 05" (and yards) over the live LOS whenever both parse …
  * live LOS is often already the *next* play's spot on historical taps.
  *
+ * When text end + yards are known, pick the attack direction that keeps the
+ * start on the field. Live `possession` is often already the *next* play
+ * (or the defense) by the time last_play lands, which used to clamp a 49-yd
+ * start onto the catch spot so the WR only appeared at the reception.
+ *
  * @returns {{ startPct: number, endPct: number, fromText: boolean }}
  */
 export function resolvePlayAnimationPercents({
@@ -828,7 +833,20 @@ export function resolvePlayAnimationPercents({
   // Text spots win whenever we can resolve an end yardline + positive yards.
   if (textEnd != null && hasYards) {
     endPct = textEnd
-    startPct = endPct - attackDir * yd
+    const startAlong = textEnd - attackDir * yd
+    const startOpposite = textEnd + attackDir * yd
+    const alongOk = startAlong >= 0 && startAlong <= 100
+    const oppositeOk = startOpposite >= 0 && startOpposite <= 100
+    if (alongOk && !oppositeOk) {
+      startPct = startAlong
+    } else if (oppositeOk && !alongOk) {
+      // Possession/attackDir is stale relative to the PBP … trust geometry.
+      startPct = startOpposite
+    } else if (alongOk) {
+      startPct = startAlong
+    } else {
+      startPct = Math.max(0, Math.min(100, startAlong))
+    }
     fromText = true
   } else if ((preferTextSpots || isTouchdown) && textEnd != null) {
     endPct = textEnd
@@ -844,7 +862,13 @@ export function resolvePlayAnimationPercents({
     endPct = Number(livePos)
   }
   if (startPct == null && endPct != null && hasYards) {
-    startPct = endPct - attackDir * yd
+    const startAlong = endPct - attackDir * yd
+    const startOpposite = endPct + attackDir * yd
+    const alongOk = startAlong >= 0 && startAlong <= 100
+    const oppositeOk = startOpposite >= 0 && startOpposite <= 100
+    if (alongOk && !oppositeOk) startPct = startAlong
+    else if (oppositeOk && !alongOk) startPct = startOpposite
+    else startPct = startAlong
   }
   if (startPct == null && endPct != null) {
     startPct = endPct

@@ -3878,3 +3878,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-26:** **FG speed + tumble:** Slower hang, takeoff-fast → ease into apex → hold pace on descent; ~20 end-over-end revs. Frontend **`1.4.717`**.
 - **2026-09-26:** **Rush TD banner:** Touchdown graphic celebrate phases now fire on rush TDs (was pass/catch-only). Frontend **`1.4.718`**.
 - **2026-09-26:** **FG apex hitch:** Flight time remap C1 through apex (Hermite rise matches descent slope) … removes easeOutQuad dead-stop/jerk at the top. Frontend **`1.4.719`**.
+- **2026-09-26:** **FG tumble direction:** End-over-end spin = leftward CW / rightward CCW (was inverted). Frontend **`1.4.720`**.

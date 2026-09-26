@@ -1398,7 +1398,8 @@ function FieldViz({
   let fgBallRotate = -82
   if (fgAnim?.showBall) {
     const { phase, t, start, land, hit, bounce, lift, facing } = fgAnim
-    const tumble = facing > 0 ? 1 : -1
+    // SVG +rotate = clockwise. Leftward kick = CW (backwards); rightward = CCW.
+    const tumble = facing < 0 ? 1 : -1
     if (phase === 'hold') {
       fgBall = { x: start.x, y: start.y }
       // Slight tee lean before the plant (not a perfect -90 statue).

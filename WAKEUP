@@ -77,6 +77,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Mac Theo.** Promoted **`test` → `main` (`63c28769`)**. Vercel **`1.4.661`**. Prod Edge **`lounge-sports-scoreboard`** + **`lounge-cfb-game-players`**. Prod **`cfb_players`** **13,600**. Store IPA still **1.4.95**.
 
+### Mac Theo ACTIVE TRACK 2026-09-26 ... red zone tint
+
+**I am Mac Theo.** Gamecast tints the opponent 20-to-goal band red (16% opacity, 450ms fade) when the displayed LOS is inside it (`attackDirection` + field pct 80-100 / 0-20). Follows LOS during play anims, fades with TD line fade, hidden with post-TD / banner suppression. Tip web **`1.4.737`** (test only).
+
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... NFL/CFB hub waits for full load
 
 **I am Mac Theo.** NFL Hub / CFB Hub slate shows a spinner until the first network board fetch (`boardFetched` in `LoungeSportsFeedContext`), every pill logo + light variant decodes, wash treatments probe, and fonts are ready (6s cap). Pills read finished probes sync (`peekLogoWashTreatment`) so no halo→light flip on paint. Reopen same hub is instant. Sports Hub "all" slate unchanged. Tip web **`1.4.736`** (test only).

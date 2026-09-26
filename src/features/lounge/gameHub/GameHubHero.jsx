@@ -1460,6 +1460,24 @@ function FieldViz({
     firstDownBot = fieldBotXFromPercent(displayFirstDownPct)
   }
 
+  // Red zone: LOS inside the opponent's 20 → tint that 20-to-goal band.
+  const redZoneAttackDir = possessionSide ? attackDirection(possessionSide, fieldFlipped) : 0
+  const redZoneSide =
+    showLiveScrimMarkers && redZoneAttackDir !== 0
+      ? redZoneAttackDir > 0 && displayScrimPct >= 80
+        ? 'right'
+        : redZoneAttackDir < 0 && displayScrimPct <= 20
+          ? 'left'
+          : null
+      : null
+  const redZonePoints = (fromPct, toPct) =>
+    [
+      `${fieldTopXFromPercent(fromPct)},191`,
+      `${fieldTopXFromPercent(toPct)},191`,
+      `${fieldBotXFromPercent(toPct)},478`,
+      `${fieldBotXFromPercent(fromPct)},478`,
+    ].join(' ')
+
   // Prefer local logo files inside SVG <image> … ESPN CDN hrefs often paint as broken
   // images in WebKit (cross-origin). Enrich maps abbrevs onto /sports/{nfl|cfb}/logos.
   const logoBase = isCfbSport(sportKey) ? '/sports/cfb/logos' : '/sports/nfl/logos'
@@ -1864,6 +1882,22 @@ function FieldViz({
               />
             </g>
           ) : null}
+
+          {/* Red zone tint (opponent 20 → goal line) */}
+          <g data-lounge-red-zone={redZoneSide || undefined}>
+            <polygon
+              points={redZonePoints(0, 20)}
+              fill="#ef4444"
+              opacity={redZoneSide === 'left' ? 0.16 * linesFadeOpacity : 0}
+              style={{ transition: 'opacity 450ms ease' }}
+            />
+            <polygon
+              points={redZonePoints(80, 100)}
+              fill="#ef4444"
+              opacity={redZoneSide === 'right' ? 0.16 * linesFadeOpacity : 0}
+              style={{ transition: 'opacity 450ms ease' }}
+            />
+          </g>
 
           {/* First down line (yellow) */}
           {!hideLiveLines &&

@@ -1463,6 +1463,8 @@ function mergeLiveState(
 type OddsBookmaker = {
   key?: string
   title?: string
+  /** ISO timestamp from The Odds API … used to pick freshest Pinnacle across region packs. */
+  last_update?: string
   markets?: Array<{ key?: string; outcomes?: Array<{ name?: string; price?: number; point?: number }> }>
 }
 
@@ -1489,6 +1491,103 @@ function outcomePoint(outcomes: Array<{ name?: string; price?: number; point?: n
     price: numOrNull(row?.price),
     point: numOrNull(row?.point),
   }
+}
+
+function americanToImpliedProb(ml: number | null): number | null {
+  if (ml == null || ml === 0) return null
+  return ml > 0 ? 100 / (ml + 100) : -ml / (-ml + 100)
+}
+
+/** Two-way de-vig home win probability. */
+function deVigHomeImpliedProb(homeMl: number | null, awayMl: number | null): number | null {
+  const h = americanToImpliedProb(homeMl)
+  const a = americanToImpliedProb(awayMl)
+  if (h == null) return null
+  if (a == null || h + a <= 0) return h
+  return h / (h + a)
+}
+
+function medianFinite(values: Array<number | null | undefined>): number | null {
+  const a = values.filter((v): v is number => v != null && Number.isFinite(v)).sort((x, y) => x - y)
+  if (!a.length) return null
+  const mid = Math.floor(a.length / 2)
+  return a.length % 2 ? a[mid] : (a[mid - 1] + a[mid]) / 2
+}
+
+function bookLastUpdateMs(book: OddsBookmaker | null | undefined): number {
+  const t = Date.parse(String(book?.last_update || ''))
+  return Number.isFinite(t) ? t : 0
+}
+
+/** Prefer the Pinnacle snapshot with the newest last_update (0 = unknown). */
+function pickFresherBook(a: OddsBookmaker | null, b: OddsBookmaker | null): OddsBookmaker | null {
+  if (!a) return b
+  if (!b) return a
+  const ta = bookLastUpdateMs(a)
+  const tb = bookLastUpdateMs(b)
+  if (tb !== ta) return tb > ta ? b : a
+  // Equal / unknown … keep existing (usually the us/us2 event book) over the grafted pack.
+  return a
+}
+
+/**
+ * Drop Pinnacle markets that are miles off the other books' consensus.
+ * Typical failure: eu Pinnacle graft still carrying a suspended/stale spread next to a live total.
+ */
+const PIN_STALE_SPREAD_PTS = 3.5
+const PIN_STALE_TOTAL_PTS = 6
+const PIN_STALE_ML_PCT = 0.12
+
+function scrubStalePinnacleRow(
+  pin: LoungeSportsOddsRow,
+  others: LoungeSportsOddsRow[],
+): LoungeSportsOddsRow | null {
+  if (!others.length) return pin
+  const medSpread = medianFinite(others.map((b) => numOrNull(b.home_spread)))
+  const medTotal = medianFinite(others.map((b) => numOrNull(b.total)))
+  const medMl = medianFinite(others.map((b) => deVigHomeImpliedProb(numOrNull(b.home_ml), numOrNull(b.away_ml))))
+  let next: LoungeSportsOddsRow = { ...pin }
+
+  const sp = numOrNull(pin.home_spread)
+  if (sp != null && medSpread != null && Math.abs(sp - medSpread) >= PIN_STALE_SPREAD_PTS) {
+    next = {
+      ...next,
+      home_spread: null,
+      home_spread_price: null,
+      away_spread: null,
+      away_spread_price: null,
+    }
+  }
+
+  const tot = numOrNull(pin.total)
+  if (tot != null && medTotal != null && Math.abs(tot - medTotal) >= PIN_STALE_TOTAL_PTS) {
+    next = {
+      ...next,
+      total: null,
+      over_price: null,
+      under_price: null,
+    }
+  }
+
+  const pinMl = deVigHomeImpliedProb(numOrNull(pin.home_ml), numOrNull(pin.away_ml))
+  if (pinMl != null && medMl != null && Math.abs(pinMl - medMl) >= PIN_STALE_ML_PCT) {
+    next = {
+      ...next,
+      home_ml: null,
+      away_ml: null,
+    }
+  }
+
+  if (
+    next.home_spread == null &&
+    next.away_spread == null &&
+    next.total == null &&
+    next.home_ml == null &&
+    next.away_ml == null
+  ) {
+    return null
+  }
+  return next
 }
 
 function compactBook(
@@ -1550,22 +1649,32 @@ function compactOddsBooksFromEvent(ev: OddsEventRow, homeName: string, awayName:
     }
     rows.push(row)
   }
+  if (pinnacleRow) {
+    pinnacleRow = scrubStalePinnacleRow(pinnacleRow, rows)
+  }
   // Compacted rows are tiny (~0.2KB each) … keep 8, with Pinnacle pinned first when present.
   const out = pinnacleRow ? [pinnacleRow, ...rows] : rows
   return out.slice(0, 8)
 }
 
-/** Merge a Pinnacle bookmaker from the eu-region pack onto a us/us2 event (Pinnacle often absent there). */
+/**
+ * Merge Pinnacle from the dedicated pin pack onto a us/us2 event when missing,
+ * but keep whichever Pinnacle snapshot is fresher (never blindly overwrite live us).
+ */
 function mergePinnacleBookmaker(target: OddsEventRow, pinPack: { events?: OddsEventRow[] } | null): OddsEventRow {
   const pinEvents = Array.isArray(pinPack?.events) ? pinPack!.events as OddsEventRow[] : []
-  if (!pinEvents.length) return target
-  const matched = pinEvents.find((ev) =>
-    String(ev.home_team || '').toLowerCase() === String(target.home_team || '').toLowerCase() &&
-    String(ev.away_team || '').toLowerCase() === String(target.away_team || '').toLowerCase()
-  )
-  const pinBook = matched ? pinnacleBookFromEvent(matched) : null
-  if (!pinBook) return target
   const existing = Array.isArray(target.bookmakers) ? [...target.bookmakers] : []
+  const existingPin = existing.find((b) => String(b.key || '').toLowerCase() === 'pinnacle') || null
+  let packPin: OddsBookmaker | null = null
+  if (pinEvents.length) {
+    const matched = pinEvents.find((ev) =>
+      String(ev.home_team || '').toLowerCase() === String(target.home_team || '').toLowerCase() &&
+      String(ev.away_team || '').toLowerCase() === String(target.away_team || '').toLowerCase()
+    )
+    packPin = matched ? pinnacleBookFromEvent(matched) : null
+  }
+  const pinBook = pickFresherBook(existingPin, packPin)
+  if (!pinBook) return target
   const withoutPin = existing.filter((b) => String(b.key || '').toLowerCase() !== 'pinnacle')
   return { ...target, bookmakers: [pinBook, ...withoutPin] }
 }
@@ -1727,10 +1836,45 @@ function sameNflSide(oddsName: string, side: LoungeSportsGameSide): boolean {
 }
 
 function oddsNamesHit(oddsName: string, side: LoungeSportsGameSide): boolean {
-  const o = String(oddsName || '').toLowerCase()
+  const o = String(oddsName || '').toLowerCase().trim()
   if (!o) return false
-  const tokens = [side.mascot, side.abbrev, side.name].map((s) => String(s || '').toLowerCase()).filter((s) => s.length >= 3)
-  return tokens.some((t) => o.includes(t) || t.includes(o.split(/\s+/).pop() || o))
+  const name = String(side.name || '').toLowerCase().trim()
+  const mascot = String(side.mascot || '').toLowerCase().trim()
+  const abbrev = String(side.abbrev || '').toLowerCase().trim()
+
+  // Full display name (preferred).
+  if (name.length >= 6) {
+    if (o === name || o.includes(name) || name.includes(o)) return true
+    // Same school prefix ("Colorado …") must also agree on the next token so
+    // Colorado State does not match Colorado Buffaloes via "colo"/"colorado".
+    const school = name.split(/\s+/)[0] || ''
+    if (school.length >= 5 && (o === school || o.startsWith(`${school} `))) {
+      const oRest = o.slice(school.length).trim()
+      const nRest = name.slice(school.length).trim()
+      if (!oRest || !nRest) return true
+      const oSecond = oRest.split(/\s+/)[0] || ''
+      const nSecond = nRest.split(/\s+/)[0] || ''
+      if (oSecond && nSecond && (oSecond === nSecond || oRest.includes(nSecond) || nRest.includes(oSecond))) {
+        return true
+      }
+      return false
+    }
+  }
+
+  // Mascot as a whole word / suffix ("Bears", "Buffaloes") … not a short substring.
+  if (mascot.length >= 4) {
+    if (o === mascot || o.endsWith(` ${mascot}`) || o.endsWith(mascot)) return true
+  }
+
+  // Abbrev only as its own token on short odds labels ("BAY"), never substring
+  // ("bay" inside "Green Bay Packers") or 3-letter prefix of a school name.
+  if (abbrev.length >= 3) {
+    if (o === abbrev) return true
+    const tokens = o.split(/[^a-z0-9]+/).filter(Boolean)
+    if (tokens.length <= 2 && tokens.includes(abbrev)) return true
+  }
+
+  return false
 }
 
 function playTeam(raw: unknown, homeId: number | null, awayId: number | null): 'home' | 'away' | null {

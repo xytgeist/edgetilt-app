@@ -3884,3 +3884,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-26:** **Possession PNG alpha:** Re-keyed `football-possession.png` to solid oval + real transparency; hub possession back on PNG. Frontend **`1.4.722`**.
 - **2026-09-26:** **FG proper LOS:** Kick 7 yd behind pre-kick LOS (FG yards / settled; ignore post-make kickoff); hold scrimmage for flight. Frontend **`1.4.723`**.
 - **2026-09-26:** **Odds hang never Pinnacle:** Hang/outlier skips Pinnacle; dots on the triggering Spread/Total/ML cells when that book is open. Frontend **`1.4.724`**.
+- **2026-09-26:** **Pinnacle live graft:** Freshest `last_update` wins across us/eu pin packs; scrub Pinnacle markets miles off other-book consensus; tighter CFB name match (COLO≠CSU). Redeployed test Edge **`lounge-sports-scoreboard`**.

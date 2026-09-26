@@ -639,9 +639,85 @@ function extractPassReceiverHint(raw) {
   return parts.join(' ').trim()
 }
 
-/** True when a PBP row is a completed pass or a run for a gain / TD (field replay). */
+/** True when a PBP row is a completed pass, a run for a gain / TD, or a FG attempt (field replay). */
 export function isFieldReplayablePlay(text) {
-  return Boolean(parseRushPlay(text) || parsePassPlay(text))
+  return Boolean(parseRushPlay(text) || parsePassPlay(text) || parseFieldGoalPlay(text))
+}
+
+/**
+ * Parse ESPN / Rundown field-goal attempt text (made or missed).
+ * @returns {{
+ *   yards: number|null,
+ *   made: boolean,
+ *   missSide: 'left'|'right'|null,
+ *   playerHint: string,
+ *   jerseyHint: string|null,
+ * } | null}
+ */
+export function parseFieldGoalPlay(text) {
+  const raw = String(text || '').trim()
+  if (!raw) return null
+  const lower = raw.toLowerCase()
+  const looksFg =
+    /\bfield\s+goals?\b/.test(lower) ||
+    /\b\d{1,2}\s*-?\s*yds?\s+fg\b/.test(lower) ||
+    /\bfg\s+(?:is\s+)?(?:good|no\s+good)\b/.test(lower)
+  if (!looksFg) return null
+  // Formation-only lines without an attempt result are not replayable.
+  const hasResult =
+    /\b(?:is\s+)?(?:good|no\s+good)\b/.test(lower) ||
+    /\b(?:made|miss(?:ed|es)?|wide\s+(?:left|right)|short|blocked)\b/.test(lower) ||
+    /\bfg\s+good\b/.test(lower)
+  if (!hasResult) return null
+
+  const noGood = /\bno\s+good\b/.test(lower)
+  const missed =
+    noGood ||
+    /\bmiss(?:ed|es)?\b/.test(lower) ||
+    /\bwide\s+(?:left|right)\b/.test(lower) ||
+    /\bblocked\b/.test(lower) ||
+    (/\bshort\b/.test(lower) && /\bfield\s+goal\b/.test(lower))
+  const made = !missed && (/\b(?:is\s+)?good\b/.test(lower) || /\bfg\s+good\b/.test(lower) || /\bmade\b/.test(lower))
+  if (!made && !missed) return null
+
+  let yards = null
+  let m =
+    raw.match(/(\d{1,2})\s*-?\s*(?:yard|yds?)\s+field\s+goals?\b/i) ||
+    raw.match(/\bfield\s+goals?\b.*?(\d{1,2})\s*-?\s*(?:yard|yds?)\b/i) ||
+    raw.match(/(\d{1,2})\s*-?\s*yds?\s+fg\b/i) ||
+    raw.match(/\bfg\b.*?(\d{1,2})\s*-?\s*(?:yard|yds?)\b/i)
+  if (m) {
+    const n = Number(m[1])
+    if (Number.isFinite(n) && n >= 17 && n <= 75) yards = n
+  }
+
+  let missSide = null
+  if (missed) {
+    if (/\bwide\s+left\b/i.test(raw) || /\bleft\s+upright\b/i.test(raw)) missSide = 'left'
+    else if (/\bwide\s+right\b/i.test(raw) || /\bright\s+upright\b/i.test(raw)) missSide = 'right'
+    else {
+      // Stable pick from text so replays don't flip sides.
+      let h = 0
+      for (let i = 0; i < raw.length; i += 1) h = (h + raw.charCodeAt(i) * (i + 1)) % 2
+      missSide = h === 0 ? 'left' : 'right'
+    }
+  }
+
+  let playerHint = ''
+  const cleaned = stripPlayFormationPrefix(raw.replace(/^\([^)]*\)\s*/g, ''))
+  const nameMatch = cleaned.match(
+    new RegExp(
+      `^((?:#?\\d{1,2}\\s+)?[A-Za-z][A-Za-z.'’-]*(?:\\s+[A-Za-z][A-Za-z.'’-]*){0,3}?)\\s+(?:\\d{1,2}\\s*-?\\s*(?:yard|yds?)\\s+)?(?:field\\s+goal|fg)\\b`,
+      'i',
+    ),
+  )
+  if (nameMatch) {
+    const parts = nameMatch[1].trim().split(/\s+/)
+    while (parts.length && FORMATION_SKIP.test(parts[0])) parts.shift()
+    playerHint = parts.join(' ').trim()
+  }
+  const { jersey: jerseyHint } = splitPlayerHint(playerHint)
+  return { yards, made, missSide, playerHint, jerseyHint }
 }
 
 /**

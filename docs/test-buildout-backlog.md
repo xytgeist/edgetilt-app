@@ -3872,3 +3872,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-26:** **Promoted `test` → `main` (`8027e029`).** Vercel prod = web **`1.4.712`**. Redeployed prod Edge **`lounge-sports-scoreboard`**. **No SQL.**
 - **2026-09-26:** **Timeout gap under score:** Live timeout dots `mt-2`. Frontend **`1.4.713`**.
 - **2026-09-26:** **Plays Latest + possession icon:** Removed Plays "Latest" badge; scoreboard possession uses PNG again (not chalk SVG). Frontend **`1.4.714`**.
+- **2026-09-26:** **Field-goal kick animation:** Made/miss FG on the hub field … plant behind LOS, flatter arc on long kicks, through uprights off-screen when good, upright glance + bounce when miss. Frontend **`1.4.715`**.

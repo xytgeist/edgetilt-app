@@ -27,6 +27,7 @@ import {
   isFieldOrientationFlipped,
   liveClockLabel,
   matchRushPlayer,
+  parseFieldGoalPlay,
   parsePassPlay,
   parseRushPlay,
   playTextIsTouchdown,
@@ -71,10 +72,50 @@ const CATCH_TD_LINES_FADE_MS = 600
 const CATCH_TD_TOTAL_MS =
   CATCH_RUN_MS + CATCH_TD_PRE_LABEL_MS + CATCH_TD_CELEBRATE_MS + CATCH_TD_LABEL_TAIL_MS
 
+/** Field-goal kick: plant upright, fly, then exit (made) or bounce (miss). */
+const FG_HOLD_MS = 480
+const FG_FLIGHT_MS = 1450
+const FG_EXIT_MS = 900
+const FG_BOUNCE_MS = 920
+const FG_MADE_TOTAL_MS = FG_HOLD_MS + FG_FLIGHT_MS + FG_EXIT_MS
+const FG_MISS_TOTAL_MS = FG_HOLD_MS + FG_FLIGHT_MS + FG_BOUNCE_MS
+
+/**
+ * Goalpost uprights from gamecast-goalposts-overlay.png (viewBox 1266×533).
+ * `uLo` / `uHi` = screen-left / screen-right upright X; gap center through the uprights.
+ */
+const FG_POSTS = {
+  left: { uLo: 96, uHi: 136, centerX: 116, crossbarY: 208, tipY: 18, exitX: -90 },
+  right: { uLo: 1128, uHi: 1164, centerX: 1146, crossbarY: 208, tipY: 18, exitX: 1356 },
+}
+
 const RUSH_Y = 334.5
 const RUSH_FIG_W = 124
 const RUSH_FIG_H = 144
 
+/** Kick spot percent: 7 yards behind LOS, or from FG distance (kick = FG − 10 from goal line). */
+function resolveFgKickPercent({ fgYards, possessionSide, livePos, flipped }) {
+  const attackDir = attackDirection(possessionSide, flipped)
+  const goalPct = attackDir > 0 ? 100 : 0
+  const y = Number(fgYards)
+  if (Number.isFinite(y) && y >= 18 && y <= 75) {
+    // Official FG yards ≈ kick-to-posts; posts sit 10 yd past the goal line.
+    const fromGoal = y - 10
+    return Math.max(2, Math.min(98, goalPct - attackDir * fromGoal))
+  }
+  if (livePos != null && Number.isFinite(Number(livePos))) {
+    return Math.max(2, Math.min(98, Number(livePos) - attackDir * 7))
+  }
+  // Midfield-ish fallback for tap-to-replay with no LOS.
+  return Math.max(2, Math.min(98, goalPct - attackDir * 35))
+}
+
+function fgArcLiftFromYards(yards) {
+  const abs = Math.abs(Number(yards) || 40)
+  // Short chips loft high; long attempts flatten toward a line drive.
+  const t = Math.min(1, Math.max(0, (abs - 18) / 40))
+  return 150 - t * 105
+}
 function fieldTopXFromPercent(p) {
   return 239.0 + (p / 100) * 784.0
 }
@@ -499,10 +540,13 @@ function FieldViz({
 
   const [rushAnim, setRushAnim] = useState(null)
   const [catchAnim, setCatchAnim] = useState(null)
+  const [fgAnim, setFgAnim] = useState(null)
   const rushKeyRef = useRef('')
   const catchKeyRef = useRef('')
+  const fgKeyRef = useRef('')
   const rushRafRef = useRef(0)
   const catchRafRef = useRef(0)
+  const fgRafRef = useRef(0)
   /** Last settled LOS / 1st-down percents … held during rush until lines phase. */
   const settledLinesRef = useRef({ scrimPct: null, firstDownPct: null })
 
@@ -510,6 +554,7 @@ function FieldViz({
     if (!isFootball || !lastPlayText) return undefined
     if (!isUserReplay && (hideLiveLines || !hasLine || pos == null)) return undefined
     if (pos == null && !isUserReplay) return undefined
+    if (parseFieldGoalPlay(lastPlayText)) return undefined
     const parsed = parseRushPlay(lastPlayText)
     if (!parsed) {
       if (rushKeyRef.current && animKey !== rushKeyRef.current) {
@@ -521,8 +566,11 @@ function FieldViz({
     if (animKey === rushKeyRef.current) return undefined
     rushKeyRef.current = animKey
     catchKeyRef.current = ''
+    fgKeyRef.current = ''
     setCatchAnim(null)
+    setFgAnim(null)
     if (catchRafRef.current) cancelAnimationFrame(catchRafRef.current)
+    if (fgRafRef.current) cancelAnimationFrame(fgRafRef.current)
 
     const attackDir = attackDirection(possessionSide, fieldFlipped)
     const spots = resolvePlayAnimationPercents({
@@ -689,8 +737,8 @@ function FieldViz({
     if (!isFootball || !lastPlayText) return undefined
     if (!isUserReplay && (hideLiveLines || !hasLine || pos == null)) return undefined
     if (pos == null && !isUserReplay) return undefined
-    // Rush wins if both somehow match (parseRush already excludes pass text).
-    if (parseRushPlay(lastPlayText)) return undefined
+    // Rush / FG win if both somehow match.
+    if (parseRushPlay(lastPlayText) || parseFieldGoalPlay(lastPlayText)) return undefined
     const parsed = parsePassPlay(lastPlayText)
     if (!parsed) {
       if (catchKeyRef.current && animKey !== catchKeyRef.current) {
@@ -702,8 +750,11 @@ function FieldViz({
     if (animKey === catchKeyRef.current) return undefined
     catchKeyRef.current = animKey
     rushKeyRef.current = ''
+    fgKeyRef.current = ''
     setRushAnim(null)
+    setFgAnim(null)
     if (rushRafRef.current) cancelAnimationFrame(rushRafRef.current)
+    if (fgRafRef.current) cancelAnimationFrame(fgRafRef.current)
 
     const isTouchdown =
       Boolean(parsed.isTouchdown) || playTextIsTouchdown(lastPlayText)
@@ -931,7 +982,143 @@ function FieldViz({
   ])
 
   useEffect(() => {
-    if (rushAnim || catchAnim || !hasLine || pos == null || hideLiveLines) return
+    if (!isFootball || !lastPlayText) return undefined
+    if (!isUserReplay && (hideLiveLines || !hasLine || pos == null)) return undefined
+    if (pos == null && !isUserReplay) return undefined
+    if (parseRushPlay(lastPlayText) || parsePassPlay(lastPlayText)) return undefined
+    const parsed = parseFieldGoalPlay(lastPlayText)
+    if (!parsed) {
+      if (fgKeyRef.current && animKey !== fgKeyRef.current) {
+        setFgAnim(null)
+        fgKeyRef.current = ''
+      }
+      return undefined
+    }
+    if (animKey === fgKeyRef.current) return undefined
+    fgKeyRef.current = animKey
+    rushKeyRef.current = ''
+    catchKeyRef.current = ''
+    setRushAnim(null)
+    setCatchAnim(null)
+    if (rushRafRef.current) cancelAnimationFrame(rushRafRef.current)
+    if (catchRafRef.current) cancelAnimationFrame(catchRafRef.current)
+
+    const attackDir = attackDirection(possessionSide, fieldFlipped)
+    const posts = attackDir > 0 ? FG_POSTS.right : FG_POSTS.left
+    const kickPct = resolveFgKickPercent({
+      fgYards: parsed.yards,
+      possessionSide,
+      livePos: pos,
+      flipped: fieldFlipped,
+    })
+    const start = {
+      x: fieldMidXFromPercent(kickPct),
+      y: RUSH_Y - 10,
+    }
+    // Through the upright opening (well above the crossbar).
+    const through = {
+      x: posts.centerX,
+      y: posts.crossbarY - 58,
+    }
+    // Made: keep flying past the posts and off the canvas.
+    const exit = {
+      x: posts.exitX,
+      y: posts.tipY - 110,
+    }
+    const hitX =
+      parsed.missSide === 'left'
+        ? Math.min(posts.uLo, posts.uHi)
+        : Math.max(posts.uLo, posts.uHi)
+    const hit = {
+      x: hitX,
+      y: posts.crossbarY - 36,
+    }
+    // Bounce back toward the field and settle near turf.
+    const bounce = {
+      x: hit.x - attackDir * 55,
+      y: RUSH_Y - 28,
+    }
+    const yards = Number.isFinite(Number(parsed.yards)) ? Number(parsed.yards) : 40
+    const lift = fgArcLiftFromYards(yards)
+    const made = Boolean(parsed.made)
+    const facing = attackDir
+
+    if (prefersReducedMotion()) {
+      setFgAnim(null)
+      return undefined
+    }
+
+    setFgAnim({
+      playKey: animKey,
+      made,
+      facing,
+      yards,
+      start,
+      through,
+      exit,
+      hit,
+      bounce,
+      lift,
+      phase: 'hold',
+      t: 0,
+      showBall: true,
+      playing: true,
+    })
+
+    const totalMs = made ? FG_MADE_TOTAL_MS : FG_MISS_TOTAL_MS
+    const t0 = performance.now()
+    const tick = (now) => {
+      const elapsed = now - t0
+      if (elapsed >= totalMs) {
+        setFgAnim(null)
+        return
+      }
+
+      let phase = 'hold'
+      let t = 0
+      let showBall = true
+
+      if (elapsed < FG_HOLD_MS) {
+        phase = 'hold'
+        t = 0
+      } else if (elapsed < FG_HOLD_MS + FG_FLIGHT_MS) {
+        phase = 'flight'
+        t = easeOutCubic((elapsed - FG_HOLD_MS) / FG_FLIGHT_MS)
+      } else if (made) {
+        phase = 'exit'
+        t = easeOutCubic((elapsed - FG_HOLD_MS - FG_FLIGHT_MS) / FG_EXIT_MS)
+      } else {
+        phase = 'bounce'
+        t = easeOutCubic((elapsed - FG_HOLD_MS - FG_FLIGHT_MS) / FG_BOUNCE_MS)
+      }
+
+      setFgAnim((prev) =>
+        prev && prev.playKey === animKey
+          ? { ...prev, phase, t, showBall, playing: true }
+          : prev,
+      )
+      fgRafRef.current = requestAnimationFrame(tick)
+    }
+    fgRafRef.current = requestAnimationFrame(tick)
+    return () => {
+      if (fgRafRef.current) cancelAnimationFrame(fgRafRef.current)
+    }
+  }, [
+    isFootball,
+    hideLiveLines,
+    hasLine,
+    pos,
+    lastPlayText,
+    animKey,
+    isUserReplay,
+    possessionSide,
+    fieldFlipped,
+    live,
+    game,
+  ])
+
+  useEffect(() => {
+    if (rushAnim || catchAnim || fgAnim || !hasLine || pos == null || hideLiveLines) return
     settledLinesRef.current = {
       scrimPct: pos,
       firstDownPct: firstDownPercentFromLive(live, pos, fieldFlipped),
@@ -939,6 +1126,7 @@ function FieldViz({
   }, [
     rushAnim,
     catchAnim,
+    fgAnim,
     hasLine,
     pos,
     hideLiveLines,
@@ -1029,9 +1217,10 @@ function FieldViz({
       (catchAnim.showFigure || catchAnim.showTdLabel || catchAnim.playing),
   )
   const rushPlaying = Boolean(rushAnim?.playing || (rushAnim != null && rushAnim.showFigure))
-  // Hide LOS ball for the full rush/catch sequence (run → hold → exit → lines → pre-ball / TD label).
-  const playAnimActive = rushAnim != null || catchAnim != null
-  const suppressBanner = isUserReplay && (rushPlaying || catchPlaying)
+  const fgPlaying = Boolean(fgAnim?.playing || (fgAnim != null && fgAnim.showBall))
+  // Hide LOS ball for the full rush/catch/FG sequence.
+  const playAnimActive = rushAnim != null || catchAnim != null || fgAnim != null
+  const suppressBanner = isUserReplay && (rushPlaying || catchPlaying || fgPlaying)
   const rushX =
     rushAnim != null && rushAnim.showFigure
       ? rushAnim.startX + (rushAnim.endX - rushAnim.startX) * rushAnim.progress
@@ -1088,6 +1277,42 @@ function FieldViz({
       : 0
   const showTdBanner = Boolean(catchAnim?.showTdLabel)
 
+  // Field-goal ball: upright plant → arc (flatter on long kicks) → through posts / bounce.
+  let fgBall = null
+  let fgBallRotate = -90
+  if (fgAnim?.showBall) {
+    const { phase, t, start, through, exit, hit, bounce, lift, facing, made } = fgAnim
+    const tumble = facing > 0 ? 1 : -1
+    if (phase === 'hold') {
+      fgBall = { x: start.x, y: start.y }
+      fgBallRotate = -90
+    } else if (phase === 'flight') {
+      const end = made ? through : hit
+      const ctrl = {
+        x: (start.x + end.x) / 2,
+        y: Math.min(start.y, end.y) - lift,
+      }
+      fgBall = quadBezier(start, ctrl, end, t)
+      // End-over-end backwards tumble while rising into the uprights.
+      fgBallRotate = -90 + tumble * (220 + t * 320)
+    } else if (phase === 'exit') {
+      // Continue through the upright gap and off the canvas.
+      const ctrl = {
+        x: (through.x + exit.x) / 2,
+        y: Math.min(through.y, exit.y) - lift * 0.22,
+      }
+      fgBall = quadBezier(through, ctrl, exit, t)
+      fgBallRotate = -90 + tumble * (540 + t * 400)
+    } else {
+      // Miss: carom off the upright and drop back toward the field.
+      const ctrl = {
+        x: (hit.x + bounce.x) / 2 + tumble * 18,
+        y: Math.min(hit.y, bounce.y) - 36,
+      }
+      fgBall = quadBezier(hit, ctrl, bounce, t)
+      fgBallRotate = -90 + tumble * (540 + t * 520)
+    }
+  }
   return (
     <div data-lounge-game-field className="relative w-full px-1 pb-0 pt-5 sm:px-1.5">
       <div className="relative w-full overflow-hidden">
@@ -1492,6 +1717,12 @@ function FieldViz({
                   />
                 </g>
               ) : null}
+            </g>
+          ) : null}
+
+          {fgBall ? (
+            <g transform={`translate(${fgBall.x - 11} ${fgBall.y - 9})`}>
+              <AmericanFootballMark tone="field" size={22} rotate={fgBallRotate} />
             </g>
           ) : null}
 

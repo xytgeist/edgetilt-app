@@ -1043,10 +1043,9 @@ function FieldViz({
           RUSH_FIG_H,
         )
       : null
-  // Stick to gloves once the arc finishes (and for the whole hold).
-  const catchBallCaught = Boolean(
-    catchBallVisible && catchHandsLive && (catchBallT >= 0.98 || catchAnim.progress >= 1),
-  )
+  // Clamp flight t to 1 for the hold … same bezier end as live hands (no position snap).
+  const catchBallFlightT =
+    catchAnim != null && catchAnim.progress >= 1 ? 1 : catchBallT
   const catchBallCtrl =
     catchAnim != null && catchHandsLive
       ? {
@@ -1058,15 +1057,19 @@ function FieldViz({
       : null
   const catchBall =
     catchBallVisible && catchHandsLive && catchBallCtrl
-      ? catchBallCaught
-        ? catchHandsLive
-        : quadBezier(catchAnim.ballStart, catchBallCtrl, catchHandsLive, catchBallT)
+      ? quadBezier(
+          catchAnim.ballStart,
+          catchBallCtrl,
+          catchHandsLive,
+          catchBallFlightT,
+        )
       : null
-  const catchBallRotate = catchAnim
-    ? catchBallCaught
-      ? -18 * (catchAnim.facing < 0 ? -1 : 1)
-      : -40 + catchBallT * 220 * (catchAnim.facing < 0 ? -1 : 1)
-    : 0
+  // Gentle spiral into the held angle … old path jumped ~180° → -18° on catch.
+  const catchBallFacingSign = catchAnim && catchAnim.facing < 0 ? -1 : 1
+  const catchBallRotate =
+    catchAnim != null
+      ? (-36 + catchBallFlightT * 18) * catchBallFacingSign
+      : 0
   const showTdBanner = Boolean(catchAnim?.showTdLabel)
 
   return (
@@ -1445,18 +1448,6 @@ function FieldViz({
                   filter="url(#glow-rush)"
                 />
               ) : null}
-              {/* Caught ball under gloves so palms read as securing it. */}
-              {catchBall && catchBallCaught ? (
-                <g
-                  transform={`translate(${catchBall.x - 11} ${catchBall.y - 8})`}
-                >
-                  <AmericanFootballMark
-                    tone="field"
-                    size={22}
-                    rotate={catchBallRotate}
-                  />
-                </g>
-              ) : null}
               <g
                 transform={`translate(${catchX - RUSH_FIG_W / 2} ${catchAnim.y - RUSH_FIG_H + 8})`}
               >
@@ -1473,8 +1464,8 @@ function FieldViz({
                   height={RUSH_FIG_H}
                 />
               </g>
-              {/* In-flight ball above the figure. */}
-              {catchBall && !catchBallCaught ? (
+              {/* One continuous ball mark … no remount / size / rotate snap on catch. */}
+              {catchBall ? (
                 <g
                   transform={`translate(${catchBall.x - 12} ${catchBall.y - 9})`}
                 >

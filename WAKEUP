@@ -77,6 +77,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Mac Theo.** Promoted **`test` → `main` (`63c28769`)**. Vercel **`1.4.661`**. Prod Edge **`lounge-sports-scoreboard`** + **`lounge-cfb-game-players`**. Prod **`cfb_players`** **13,600**. Store IPA still **1.4.95**.
 
+### Mac Theo ACTIVE TRACK 2026-09-26 ... NFL/CFB hub waits for full load
+
+**I am Mac Theo.** NFL Hub / CFB Hub slate shows a spinner until the first network board fetch (`boardFetched` in `LoungeSportsFeedContext`), every pill logo + light variant decodes, wash treatments probe, and fonts are ready (6s cap). Pills read finished probes sync (`peekLogoWashTreatment`) so no halo→light flip on paint. Reopen same hub is instant. Sports Hub "all" slate unchanged. Tip web **`1.4.736`** (test only).
+
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... hide LOS/ball after TD by play text
 
 **I am Mac Theo.** 1.4.734 only hid markers when live pos was within 1.5 of a goal line, but ESPN parks the spot on the try line (CFB 3, NFL 15), so LOS/ball still appeared. Now `playTextIsScoreTry` (TD, extra point, kick attempt, PAT, two-point; not kickoff or FG) hides LOS/ball/1st-down and blocks settle until the kickoff play lands. Tip web **`1.4.735`** (test only).

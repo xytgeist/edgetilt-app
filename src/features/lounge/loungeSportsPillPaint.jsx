@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react'
 import {
   nflPillWashLikelyTreatment,
+  peekLogoWashTreatment,
   probeLogoWashTreatment,
   resolveNflPillWashes,
 } from './loungeSportsMatch.js'
+
+function initialTreatment(src, washHex) {
+  return (src && peekLogoWashTreatment(src, washHex)) || nflPillWashLikelyTreatment(washHex)
+}
 
 /**
  * Same wash + logo treatment as Lounge post game cards.
@@ -17,11 +22,11 @@ export function useLoungeSportsPillWashAndLogos(game) {
   const homeColor = washes.homeWash
   const awaySrc = game?.away?.logo || ''
   const homeSrc = game?.home?.logo || ''
-  const [awayTreatment, setAwayTreatment] = useState(() => nflPillWashLikelyTreatment(awayColor))
-  const [homeTreatment, setHomeTreatment] = useState(() => nflPillWashLikelyTreatment(homeColor))
+  const [awayTreatment, setAwayTreatment] = useState(() => initialTreatment(awaySrc, awayColor))
+  const [homeTreatment, setHomeTreatment] = useState(() => initialTreatment(homeSrc, homeColor))
   useEffect(() => {
-    setAwayTreatment(nflPillWashLikelyTreatment(awayColor))
-    setHomeTreatment(nflPillWashLikelyTreatment(homeColor))
+    setAwayTreatment(initialTreatment(awaySrc, awayColor))
+    setHomeTreatment(initialTreatment(homeSrc, homeColor))
     if (typeof document === 'undefined') return undefined
     let alive = true
     if (awaySrc) {

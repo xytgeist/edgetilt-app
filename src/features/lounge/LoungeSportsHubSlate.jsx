@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronLeft } from 'lucide-react'
+import { ChevronLeft, Loader2 } from 'lucide-react'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import LoungeGameScorePill from './LoungeGameScorePill.jsx'
@@ -14,6 +14,38 @@ import {
   LOUNGE_SPORTS_HUB_FILTER_NFL,
 } from './loungeSportsHubNav.js'
 import { loungeSportsSlateGames } from './loungeSportsSlateWindow.js'
+import { probeLogoWashTreatment, resolveNflPillWashes } from './loungeSportsMatch.js'
+
+/** Never hold a league hub behind the loader longer than this (slow CDN / missing art). */
+const LEAGUE_HUB_ASSET_CAP_MS = 6000
+
+function preloadImage(src) {
+  if (!src || typeof Image === 'undefined') return Promise.resolve()
+  const img = new Image()
+  img.decoding = 'async'
+  img.src = src
+  return img.decode().catch(() => {})
+}
+
+/** Logos (+ light variants) decoded and wash treatments probed for every pill on the slate. */
+function preloadSlatePillAssets(games) {
+  const jobs = []
+  for (const game of games) {
+    const { homeWash, awayWash } = resolveNflPillWashes(game?.home, game?.away)
+    for (const [side, wash] of [
+      [game?.away, awayWash],
+      [game?.home, homeWash],
+    ]) {
+      if (side?.logo) {
+        jobs.push(preloadImage(side.logo))
+        jobs.push(probeLogoWashTreatment(side.logo, wash))
+      }
+      if (side?.logoLight) jobs.push(preloadImage(side.logoLight))
+    }
+  }
+  if (typeof document !== 'undefined' && document.fonts?.ready) jobs.push(document.fonts.ready)
+  return Promise.allSettled(jobs)
+}
 
 const SPORTS_HUB_LEAGUES = [
   { id: 'nfl', label: 'NFL', icon: '🏈', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_NFL },
@@ -96,6 +128,30 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
   const nflHub = isNflHubFilter(filter)
   const cfbHub = isCfbHubFilter(filter)
   const leagueHub = nflHub || cfbHub
+  const boardFetched = Boolean(sports?.boardFetched)
+
+  // Once a league hub is ready it stays ready for that open … live polls must not re-gate.
+  const [readyFilter, setReadyFilter] = useState(null)
+  const leagueReady = !leagueHub || readyFilter === filter
+
+  useEffect(() => {
+    if (!leagueHub || readyFilter === filter) return undefined
+    const cap = setTimeout(() => setReadyFilter(filter), LEAGUE_HUB_ASSET_CAP_MS)
+    return () => clearTimeout(cap)
+  }, [leagueHub, filter, readyFilter])
+
+  useEffect(() => {
+    if (!leagueHub || !boardFetched || readyFilter === filter) return undefined
+    let alive = true
+    void preloadSlatePillAssets(games).then(() => {
+      if (alive) setReadyFilter(filter)
+    })
+    return () => {
+      alive = false
+    }
+    // games intentionally read once per open … score polls must not restart the preload.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueHub, boardFetched, filter, readyFilter])
 
   const sections = useMemo(() => {
     if (nflHub) return [{ key: 'nfl', label: 'NFL', games }]
@@ -146,7 +202,11 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
         <div className="min-w-0 flex-1">
           <div className="truncate text-[17px] font-semibold tracking-tight">{title}</div>
           <div className="truncate text-[12px] text-zinc-500">
-            {games.length ? `${games.length} game${games.length === 1 ? '' : 's'}` : 'Loading slate…'}
+            {!leagueReady
+              ? 'Loading slate…'
+              : games.length
+                ? `${games.length} game${games.length === 1 ? '' : 's'}`
+                : 'Loading slate…'}
           </div>
         </div>
       </div>
@@ -157,7 +217,16 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
             onOpenLeague={(next) => sports.openSlate?.(next)}
           />
         )}
-        {!games.length ? (
+        {!leagueReady ? (
+          <div
+            data-lounge-sports-hub-loading
+            className="flex items-center justify-center py-24 text-zinc-500"
+            role="status"
+            aria-label={`Loading ${title}`}
+          >
+            <Loader2 className="h-7 w-7 animate-spin" aria-hidden />
+          </div>
+        ) : !games.length ? (
           <div className="px-2 py-16 text-center text-sm text-zinc-500">
             No games on this slate right now. Pull to refresh from Lounge, or check back closer to kickoff.
           </div>

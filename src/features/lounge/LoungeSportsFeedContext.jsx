@@ -102,6 +102,8 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
   const [hubGame, setHubGame] = useState(null)
   /** null = closed; `all` or a sport_key (e.g. americanfootball_nfl). */
   const [slateFilter, setSlateFilter] = useState(null)
+  /** First network board attempt finished (success or fail) … cache-only paint is not "loaded". */
+  const [boardFetched, setBoardFetched] = useState(false)
   const inflightRef = useRef(false)
   const gamesRef = useRef(games)
   gamesRef.current = games
@@ -121,6 +123,7 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
       console.warn('[lounge] sports scoreboard:', err)
     } finally {
       inflightRef.current = false
+      setBoardFetched(true)
     }
   }, [supabaseClient])
 
@@ -189,6 +192,7 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
   const value = useMemo(
     () => ({
       games,
+      boardFetched,
       hubGame,
       slateFilter,
       slateOpen: Boolean(slateFilter),
@@ -201,6 +205,7 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
       refresh: loadBoard,
     }),
     [
+      boardFetched,
       closeHub,
       closeSlate,
       games,

@@ -352,6 +352,16 @@ export function nflPillWashLikelyAir(washHex) {
 }
 
 const logoWashTreatmentCache = new Map()
+const logoWashTreatmentResolved = new Map()
+
+function logoWashTreatmentKey(src, washHex) {
+  return `${String(src || '')}|${String(washHex || '').toLowerCase()}`
+}
+
+/** Finished probe result (sync) or null … lets pills paint the final treatment on first frame. */
+export function peekLogoWashTreatment(src, washHex) {
+  return logoWashTreatmentResolved.get(logoWashTreatmentKey(src, washHex)) || null
+}
 
 /**
  * Sample the default PNG against the wash.
@@ -360,10 +370,10 @@ const logoWashTreatmentCache = new Map()
  *   (NYG blue on red looks “fine” to WCAG contrast but still needs the edge)
  */
 export function probeLogoWashTreatment(src, washHex) {
-  const key = `${String(src || '')}|${String(washHex || '').toLowerCase()}`
+  const key = logoWashTreatmentKey(src, washHex)
   const hit = logoWashTreatmentCache.get(key)
   if (hit) return hit
-  const job = (async () => {
+  const run = async () => {
     const wash = hexToRgb(washHex)
     if (!src || !wash || typeof document === 'undefined') return nflPillWashLikelyTreatment(washHex)
     try {
@@ -396,7 +406,11 @@ export function probeLogoWashTreatment(src, washHex) {
     } catch {
       return nflPillWashLikelyTreatment(washHex)
     }
-  })()
+  }
+  const job = run().then((treatment) => {
+    logoWashTreatmentResolved.set(key, treatment)
+    return treatment
+  })
   logoWashTreatmentCache.set(key, job)
   return job
 }

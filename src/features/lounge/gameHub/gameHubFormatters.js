@@ -551,23 +551,32 @@ export function parsePassPlay(text) {
   if (yards == null || !Number.isFinite(yards)) return null
   if (!isTouchdown && yards < 1) return null
 
-  let playerHint = ''
-  // Prefer explicit receiver after "… to #80 C.Becker" (not "to the NW 05").
-  // ESPN often tacks the tackler on immediately: "to #80 C.Becker (#42 E.Walton)".
-  const toMatch = raw.match(
-    /\b(?:complete(?:d)?|pass(?:ed|es|ing)?)\b(?:\s+(?:short|deep|left|right|middle|complete(?:d)?))*\s+to\s+(?!the\b)((?:#?\d{1,2}\s+)?[A-Za-z][A-Za-z.'’-]*(?:\s+[A-Za-z][A-Za-z.'’-]*){0,3}?)(?=\s*(?:\(|(?:,|\s+(?:for|to the|ran|pushed)\b)|\s*$))/i,
-  )
-  if (toMatch) playerHint = toMatch[1].trim()
-  // Fallback: buried "to #80 C.Becker" when lane words / formation break the primary regex.
-  if (!playerHint) {
-    const buried = raw.match(
-      /\bto\s+(?!the\b)(#?\d{1,2}\s+[A-Za-z][A-Za-z.'’-]*(?:\s+[A-Za-z][A-Za-z.'’-]*){0,2}|[A-Za-z][A-Za-z.'’-]*(?:\s+[A-Za-z][A-Za-z.'’-]*){0,2})(?=\s*(?:\(|(?:,|\s+(?:for|to the|ran|pushed)\b)|\s*$))/i,
-    )
-    if (buried) playerHint = buried[1].trim()
-  }
-
+  let playerHint = extractPassReceiverHint(raw)
   const { jersey: jerseyHint } = splitPlayerHint(playerHint)
   return { yards, playerHint, jerseyHint, isTouchdown }
+}
+
+/**
+ * Receiver after "… to #4 K.Davis" / "to C.Becker".
+ * Stops at ESPN trailers: caught at / for / to the / tackler parens / etc.
+ */
+function extractPassReceiverHint(raw) {
+  const s = String(raw || '')
+  if (!s) return ''
+  const lead =
+    s.match(
+      /\b(?:complete(?:d)?|pass(?:ed|es|ing)?)\b(?:\s+(?:short|deep|left|right|middle|complete(?:d)?))*\s+to\s+(?!the\b)/i,
+    ) || s.match(/\bto\s+(?!the\b)/i)
+  if (!lead || lead.index == null) return ''
+  const rest = s.slice(lead.index + lead[0].length)
+  const stop = rest.search(
+    /\s+(?:caught|for|to the|ran|pushed|out of bounds|touchdown|yds?\b|yards?\b)\b|\s*\(|,/i,
+  )
+  const chunk = (stop >= 0 ? rest.slice(0, stop) : rest).trim()
+  const name = chunk.match(
+    /^((?:#?\d{1,2}\s+)?[A-Za-z][A-Za-z.'’-]*(?:\s+[A-Za-z][A-Za-z.'’-]*){0,3})/,
+  )
+  return name ? name[1].trim() : ''
 }
 
 /** True when a PBP row is a completed pass or a run for a gain / TD (field replay). */

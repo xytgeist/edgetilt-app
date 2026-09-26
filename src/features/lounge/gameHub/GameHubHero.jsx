@@ -27,6 +27,8 @@ import {
 
 const RUSH_ANIM_MS = 1100
 const CATCH_ANIM_MS = 1250
+/** WR path progress before the football leaves the LOS on its arc. */
+const CATCH_BALL_LAUNCH_AT = 0.25
 const RUSH_Y = 334.5
 const RUSH_FIG_W = 62
 const RUSH_FIG_H = 72
@@ -52,6 +54,23 @@ function quadBezier(p0, p1, p2, t) {
     x: u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x,
     y: u * u * p0.y + 2 * u * t * p1.y + t * t * p2.y,
   }
+}
+
+/** Map WR path progress → ball flight 0..1 (ball sits until CATCH_BALL_LAUNCH_AT). */
+function catchBallFlightProgress(wrProgress) {
+  const p = Number(wrProgress)
+  if (!Number.isFinite(p) || p < CATCH_BALL_LAUNCH_AT) return 0
+  return Math.min(1, (p - CATCH_BALL_LAUNCH_AT) / (1 - CATCH_BALL_LAUNCH_AT))
+}
+
+/**
+ * Arc apex lift in field SVG units from pass yardage.
+ * ~5 yd stays low; ~50 yd (and beyond) climbs hard.
+ */
+function catchArcLiftFromYards(yards) {
+  const abs = Math.abs(Number(yards) || 0)
+  const t = Math.min(1, abs / 50)
+  return 22 + t * 138
 }
 
 /** World-space catch-hand point for a placed WR figure (top-left origin). */
@@ -502,8 +521,7 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
     const handsEnd = catchHandsWorld(figLeftAtEnd, figTopAtEnd, facing, RUSH_FIG_W, RUSH_FIG_H)
     const ballStart = { x: startX, y: RUSH_Y - 6 }
     const ballEnd = { x: handsEnd.x, y: handsEnd.y }
-    const span = Math.abs(ballEnd.x - ballStart.x)
-    const arcLift = Math.min(120, Math.max(52, span * 0.38))
+    const arcLift = catchArcLiftFromYards(parsed.yards)
     const ballCtrl = {
       x: (ballStart.x + ballEnd.x) / 2,
       y: Math.min(ballStart.y, ballEnd.y) - arcLift,
@@ -518,6 +536,7 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
       secondary: kit.secondary,
       headshotUrl,
       facing,
+      yards: parsed.yards,
       ballStart,
       ballCtrl,
       ballEnd,
@@ -617,17 +636,22 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
       : null
   const catchTrailVisible =
     Boolean(catchAnim?.showTrail && catchAnim.progress > 0.02)
-  const catchBall =
-    catchAnim != null
-      ? quadBezier(
-          catchAnim.ballStart,
-          catchAnim.ballCtrl,
-          catchAnim.ballEnd,
-          catchAnim.progress
-        )
-      : null
+  const catchBallT =
+    catchAnim != null ? catchBallFlightProgress(catchAnim.progress) : 0
+  const catchBallVisible =
+    catchAnim != null &&
+    (catchBallT > 0 || catchAnim.progress >= 1) &&
+    (catchAnim.playing || catchAnim.progress >= 1)
+  const catchBall = catchBallVisible
+    ? quadBezier(
+        catchAnim.ballStart,
+        catchAnim.ballCtrl,
+        catchAnim.ballEnd,
+        catchBallT
+      )
+    : null
   const catchBallRotate = catchAnim
-    ? -40 + catchAnim.progress * 220 * (catchAnim.facing < 0 ? -1 : 1)
+    ? -40 + catchBallT * 220 * (catchAnim.facing < 0 ? -1 : 1)
     : 0
 
   return (
@@ -1007,7 +1031,7 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
                   height={RUSH_FIG_H}
                 />
               </g>
-              {catchBall && (catchAnim.playing || catchAnim.progress >= 1) ? (
+              {catchBall ? (
                 <g
                   transform={`translate(${catchBall.x - 14} ${catchBall.y - 10})`}
                 >

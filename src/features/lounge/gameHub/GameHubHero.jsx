@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import {
   LoungeSportsTeamLogo,
   useLoungeSportsPillWashAndLogos,
@@ -54,24 +55,145 @@ function TimeoutDots({ remaining, align = 'left' }) {
   )
 }
 
-function PossessionFootball({ side }) {
+/**
+ * Inline American football … pointed leather oval with stripes + laces.
+ * `tone`: field (brown 3D) | chalk (white, scoreboard possession).
+ */
+function AmericanFootballMark({
+  tone = 'field',
+  size = 28,
+  rotate = -28,
+  className = '',
+  title,
+}) {
+  const uid = useId().replace(/:/g, '')
+  const leatherId = `fb-leather-${uid}`
+  const depthId = `fb-depth-${uid}`
+  const sheenId = `fb-sheen-${uid}`
+  const clipId = `fb-clip-${uid}`
+  const isChalk = tone === 'chalk'
+  const body =
+    'M-12 0 C-11.2 -2.8 -8.6 -6.5 0 -6.5 C8.6 -6.5 11.2 -2.8 12 0 C11.2 2.8 8.6 6.5 0 6.5 C-8.6 6.5 -11.2 2.8 -12 0 Z'
   return (
     <svg
-      viewBox="0 0 20 20"
-      width="14"
-      height="14"
-      aria-hidden="true"
-      title={`${side} possession`}
-      className="h-[14px] w-[14px] shrink-0 drop-shadow-[0_1px_1px_rgba(0,0,0,0.55)]"
+      viewBox="-15 -11 30 24"
+      width={size}
+      height={size * (24 / 30)}
+      overflow="visible"
+      aria-hidden={title ? undefined : true}
+      role={title ? 'img' : undefined}
+      aria-label={title}
+      className={className}
     >
-      <g transform="translate(10 10) rotate(-32)">
-        <ellipse rx="7.2" ry="4.6" fill="#fafafa" stroke="#18181b" strokeWidth="0.6" />
-        <line x1="-3.6" y1="0" x2="3.6" y2="0" stroke="#18181b" strokeWidth="0.9" strokeLinecap="round" />
-        <line x1="-1.3" y1="-1.9" x2="-1.3" y2="1.9" stroke="#18181b" strokeWidth="0.75" strokeLinecap="round" />
-        <line x1="0" y1="-1.9" x2="0" y2="1.9" stroke="#18181b" strokeWidth="0.75" strokeLinecap="round" />
-        <line x1="1.3" y1="-1.9" x2="1.3" y2="1.9" stroke="#18181b" strokeWidth="0.75" strokeLinecap="round" />
+      <defs>
+        <linearGradient id={leatherId} x1="18%" y1="8%" x2="88%" y2="92%">
+          {isChalk ? (
+            <>
+              <stop offset="0%" stopColor="#ffffff" />
+              <stop offset="48%" stopColor="#f4f4f5" />
+              <stop offset="100%" stopColor="#a1a1aa" />
+            </>
+          ) : (
+            <>
+              <stop offset="0%" stopColor="#d4a574" />
+              <stop offset="22%" stopColor="#b8733d" />
+              <stop offset="55%" stopColor="#7a4424" />
+              <stop offset="100%" stopColor="#2c160c" />
+            </>
+          )}
+        </linearGradient>
+        <linearGradient id={depthId} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#000000" stopOpacity="0" />
+          <stop offset="45%" stopColor="#000000" stopOpacity="0.08" />
+          <stop offset="100%" stopColor="#000000" stopOpacity={isChalk ? 0.22 : 0.38} />
+        </linearGradient>
+        <radialGradient id={sheenId} cx="30%" cy="26%" r="58%">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity={isChalk ? 0.65 : 0.5} />
+          <stop offset="40%" stopColor="#ffffff" stopOpacity={isChalk ? 0.18 : 0.14} />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+        </radialGradient>
+        <clipPath id={clipId}>
+          <path d={body} />
+        </clipPath>
+      </defs>
+      {!isChalk ? (
+        <ellipse cx="1.5" cy="8.4" rx="10.2" ry="2.4" fill="#000000" opacity="0.5" />
+      ) : null}
+      <g transform={`rotate(${rotate})`}>
+        <path
+          d={body}
+          fill={`url(#${leatherId})`}
+          stroke={isChalk ? '#18181b' : '#1a0e08'}
+          strokeWidth="0.6"
+        />
+        <path d={body} fill={`url(#${depthId})`} />
+        <path d={body} fill={`url(#${sheenId})`} />
+        {/* Seam / equator stitch */}
+        <path
+          d="M-10.2 0 C-6.5 0.55 0 0.7 10.2 0"
+          fill="none"
+          stroke={isChalk ? '#27272a' : '#1c1008'}
+          strokeWidth="0.45"
+          strokeOpacity="0.55"
+          clipPath={`url(#${clipId})`}
+        />
+        {/* End stripes */}
+        <path
+          d="M-7.6 -5.15 C-6.7 -5.85 -4.05 -6.15 -4.05 -6.15 L-4.05 6.15 C-4.05 6.15 -6.7 5.85 -7.6 5.15 C-8.45 3.95 -8.75 2.05 -8.75 0 C-8.75 -2.05 -8.45 -3.95 -7.6 -5.15 Z"
+          fill={isChalk ? '#18181b' : '#fafafa'}
+          opacity={isChalk ? 0.88 : 0.96}
+          clipPath={`url(#${clipId})`}
+        />
+        <path
+          d="M7.6 -5.15 C6.7 -5.85 4.05 -6.15 4.05 -6.15 L4.05 6.15 C4.05 6.15 6.7 5.85 7.6 5.15 C8.45 3.95 8.75 2.05 8.75 0 C8.75 -2.05 8.45 -3.95 7.6 -5.15 Z"
+          fill={isChalk ? '#18181b' : '#fafafa'}
+          opacity={isChalk ? 0.88 : 0.96}
+          clipPath={`url(#${clipId})`}
+        />
+        {/* Laces panel */}
+        <ellipse
+          cx="0"
+          cy="0"
+          rx="3.1"
+          ry="2.35"
+          fill={isChalk ? '#e4e4e7' : '#5c3318'}
+          opacity={isChalk ? 0.35 : 0.35}
+        />
+        <line
+          x1="-2.55"
+          y1="0"
+          x2="2.55"
+          y2="0"
+          stroke={isChalk ? '#18181b' : '#0c0704'}
+          strokeWidth="0.95"
+          strokeLinecap="round"
+        />
+        {[-1.55, -0.55, 0.55, 1.55].map((x) => (
+          <line
+            key={x}
+            x1={x}
+            y1="-1.65"
+            x2={x}
+            y2="1.65"
+            stroke={isChalk ? '#18181b' : '#0c0704'}
+            strokeWidth="0.75"
+            strokeLinecap="round"
+          />
+        ))}
       </g>
     </svg>
+  )
+}
+
+function PossessionFootball({ side }) {
+  return (
+    <AmericanFootballMark
+      tone="chalk"
+      size={15}
+      rotate={-32}
+      title={`${side} possession`}
+      className="h-[14px] w-[14px] shrink-0 drop-shadow-[0_1px_1px_rgba(0,0,0,0.55)]"
+    />
   )
 }
 
@@ -533,20 +655,9 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 strokeLinecap="round"
                 filter="url(#glow-scrim)"
               />
-              {/* Ball marker at mid-depth on scrimmage line */}
-              {/* Ball marker at mid-depth on scrimmage line (inline SVG … no external image). */}
-              <g
-                transform={`translate(${scrimMidX} 334.5)`}
-                style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.7))' }}
-              >
-                <circle r="10.5" fill="#09090b" stroke="#ffffff" strokeWidth="1.5" />
-                <g transform="rotate(-32)">
-                  <ellipse rx="6.2" ry="4.1" fill="#f4f4f5" />
-                  <line x1="-3.2" y1="0" x2="3.2" y2="0" stroke="#18181b" strokeWidth="0.85" strokeLinecap="round" />
-                  <line x1="-1.1" y1="-1.7" x2="-1.1" y2="1.7" stroke="#18181b" strokeWidth="0.7" strokeLinecap="round" />
-                  <line x1="0" y1="-1.7" x2="0" y2="1.7" stroke="#18181b" strokeWidth="0.7" strokeLinecap="round" />
-                  <line x1="1.1" y1="-1.7" x2="1.1" y2="1.7" stroke="#18181b" strokeWidth="0.7" strokeLinecap="round" />
-                </g>
+              {/* Ball marker at mid-depth on scrimmage (3D inline SVG football). */}
+              <g transform={`translate(${scrimMidX - 18} ${334.5 - 12})`}>
+                <AmericanFootballMark tone="field" size={36} rotate={-26} />
               </g>
             </g>
           ) : null}

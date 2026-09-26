@@ -77,6 +77,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Mac Theo.** Promoted **`test` → `main` (`63c28769`)**. Vercel **`1.4.661`**. Prod Edge **`lounge-sports-scoreboard`** + **`lounge-cfb-game-players`**. Prod **`cfb_players`** **13,600**. Store IPA still **1.4.95**.
 
+### Mac Theo ACTIVE TRACK 2026-09-26 ... TD markers + figure ball anchors
+
+**I am Mac Theo.** After a TD, LOS/ball no longer park on the goal line (reduced-motion settle + live pos near 0/100 suppressed until kickoff). RB/WR figures offset so ball-on-figure (RB ~25% from front, WR hands) sits on LOS at start and line of gain at end; catch TD ends on the goal line not endzone center. Tip web **`1.4.734`**.
+
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... play anim stuck-key after ready flicker
 
 **I am Mac Theo.** Live `playAnimReady` flicker was canceling RAF while leaving `rushKeyRef`/`catchKeyRef`/`fgKeyRef` claimed, so that play never restarted (next new play text still could). Cleanup now clears the key only on mid-flight teardown; finished ticks zero the RAF ref so natural completes stay claimed. Tip web **`1.4.733`**.

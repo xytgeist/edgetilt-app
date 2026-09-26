@@ -305,6 +305,30 @@ function catchHandsWorld(figLeft, figTop, facing, figW, figH) {
   }
 }
 
+/**
+ * RB ball tuck sits ~25% in from the leading edge of the figure slot.
+ * Place the figure so that point sits on `ballX` (LOS / gain mid-field X).
+ */
+const RUSH_BALL_FROM_FRONT = 0.25
+
+function rushFigLeftForBallX(ballX, facing) {
+  const fromLeft = facing >= 0 ? 1 - RUSH_BALL_FROM_FRONT : RUSH_BALL_FROM_FRONT
+  return ballX - fromLeft * RUSH_FIG_W
+}
+
+/** Place WR/TE so the front-of-hands pocket sits on `ballX`. */
+function catchFigLeftForHandsX(ballX, facing, figW = RUSH_FIG_W, figH = RUSH_FIG_H) {
+  const scale = Math.min(figW / CATCH_VIEWBOX_W, figH / CATCH_VIEWBOX_H)
+  const padX = (figW - CATCH_VIEWBOX_W * scale) / 2
+  const lx = facing < 0 ? CATCH_VIEWBOX_W - CATCH_HANDS_LOCAL.x : CATCH_HANDS_LOCAL.x
+  return ballX - padX - lx * scale
+}
+
+/** True when a live yard % is still parked on a goal line (TD end / not yet kickoff). */
+function isNearGoalLinePct(pct) {
+  return pct != null && Number.isFinite(Number(pct)) && (Number(pct) <= 1.5 || Number(pct) >= 98.5)
+}
+
 function possessionKit(live, game, awayColor, homeColor) {
   const possHome = live?.possession === 'home'
   const side = possHome ? game?.home : game?.away
@@ -806,9 +830,12 @@ function FieldViz({
     }
 
     if (prefersReducedMotion()) {
-      settledLinesRef.current = {
-        scrimPct: endPct,
-        firstDownPct: toFirstDownPct,
+      // TD: never park LOS/ball on the goal line … wait for kickoff / next drive.
+      if (!isTouchdown) {
+        settledLinesRef.current = {
+          scrimPct: endPct,
+          firstDownPct: toFirstDownPct,
+        }
       }
       setRushAnim(null)
       return undefined
@@ -969,12 +996,8 @@ function FieldViz({
       startPct = Math.max(0, Math.min(100, startPct))
     }
     const startX = fieldMidXFromPercent(startPct)
-    // TD: slide halfway into the scored (opponent) endzone along attackDir.
-    const endX = isTouchdown
-      ? attackDir < 0
-        ? ENDZONE_COORDS.left.centerX
-        : ENDZONE_COORDS.right.centerX
-      : fieldMidXFromPercent(gainPct)
+    // Ball-on-figure track ends on the line of gain (goal line for TD … not endzone center).
+    const endX = fieldMidXFromPercent(gainPct)
     const travel = endX - startX
     const facing = Math.abs(travel) < 0.5 ? attackDir : travel < 0 ? -1 : 1
     const kit = possessionKit(
@@ -988,7 +1011,7 @@ function FieldViz({
     const jerseyNumber = resolveFigureJersey(parsed, matched)
 
     const figTopAtEnd = RUSH_Y - RUSH_FIG_H + 8
-    const figLeftAtEnd = endX - RUSH_FIG_W / 2
+    const figLeftAtEnd = catchFigLeftForHandsX(endX, facing, RUSH_FIG_W, RUSH_FIG_H)
     const handsEnd = catchHandsWorld(figLeftAtEnd, figTopAtEnd, facing, RUSH_FIG_W, RUSH_FIG_H)
     const ballStart = { x: startX, y: RUSH_Y - 6 }
     const ballEnd = { x: handsEnd.x, y: handsEnd.y }
@@ -1046,9 +1069,12 @@ function FieldViz({
     }
 
     if (prefersReducedMotion()) {
-      settledLinesRef.current = {
-        scrimPct: gainPct,
-        firstDownPct: toFirstDownPct,
+      // TD: never park LOS/ball on the goal line … wait for kickoff / next drive.
+      if (!isTouchdown) {
+        settledLinesRef.current = {
+          scrimPct: gainPct,
+          firstDownPct: toFirstDownPct,
+        }
       }
       setCatchAnim(null)
       return undefined
@@ -1339,6 +1365,10 @@ function FieldViz({
     ) {
       return
     }
+    // After a TD, ESPN often still reports the goal line … don't adopt that as LOS/ball.
+    if (lastPlayText && playTextIsTouchdown(lastPlayText) && isNearGoalLinePct(pos)) {
+      return
+    }
     settledLinesRef.current = {
       scrimPct: pos,
       firstDownPct: firstDownPercentFromLive(live, pos, fieldFlipped),
@@ -1397,24 +1427,43 @@ function FieldViz({
     tdAnim?.linesOpacity != null
       ? Math.max(0, Math.min(1, Number(tdAnim.linesOpacity)))
       : 1
+  // After a TD play, keep LOS + field ball off the goal line until kickoff / next drive.
+  const suppressPostTdMarkers = Boolean(
+    !rushAnim &&
+      !catchAnim &&
+      !fgAnim &&
+      lastPlayText &&
+      playTextIsTouchdown(lastPlayText) &&
+      isNearGoalLinePct(displayScrimPct),
+  )
+  const showLiveScrimMarkers =
+    hasLine &&
+    !hideLiveLines &&
+    !suppressPostTdMarkers &&
+    displayScrimPct != null &&
+    linesFadeOpacity > 0.02
 
   const scrimTop =
-    hasLine && displayScrimPct != null
+    showLiveScrimMarkers && displayScrimPct != null
       ? fieldTopXFromPercent(displayScrimPct)
       : null
   const scrimBot =
-    hasLine && displayScrimPct != null
+    showLiveScrimMarkers && displayScrimPct != null
       ? fieldBotXFromPercent(displayScrimPct)
       : null
   const scrimMidX =
-    hasLine && displayScrimPct != null
+    showLiveScrimMarkers && displayScrimPct != null
       ? fieldMidXFromPercent(displayScrimPct)
       : null
 
   // First down line
   let firstDownTop = null
   let firstDownBot = null
-  if (hasLine && displayFirstDownPct != null) {
+  if (
+    showLiveScrimMarkers &&
+    displayFirstDownPct != null &&
+    !suppressPostTdMarkers
+  ) {
     firstDownTop = fieldTopXFromPercent(displayFirstDownPct)
     firstDownBot = fieldBotXFromPercent(displayFirstDownPct)
   }
@@ -1474,7 +1523,7 @@ function FieldViz({
   const catchHandsLive =
     catchX != null && catchAnim != null
       ? catchHandsWorld(
-          catchX - RUSH_FIG_W / 2,
+          catchFigLeftForHandsX(catchX, catchAnim.facing, RUSH_FIG_W, RUSH_FIG_H),
           catchAnim.y - RUSH_FIG_H + 8,
           catchAnim.facing,
           RUSH_FIG_W,
@@ -1955,7 +2004,7 @@ function FieldViz({
                 />
               ) : null}
               <g
-                transform={`translate(${rushX - RUSH_FIG_W / 2} ${rushAnim.y - RUSH_FIG_H + 8})`}
+                transform={`translate(${rushFigLeftForBallX(rushX, rushAnim.facing)} ${rushAnim.y - RUSH_FIG_H + 8})`}
               >
                 <GameHubRushFigure
                   primary={rushAnim.primary}
@@ -1988,7 +2037,7 @@ function FieldViz({
                 />
               ) : null}
               <g
-                transform={`translate(${catchX - RUSH_FIG_W / 2} ${catchAnim.y - RUSH_FIG_H + 8})`}
+                transform={`translate(${catchFigLeftForHandsX(catchX, catchAnim.facing)} ${catchAnim.y - RUSH_FIG_H + 8})`}
               >
                 <GameHubCatchFigure
                   primary={catchAnim.primary}

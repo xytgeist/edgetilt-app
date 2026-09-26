@@ -3690,11 +3690,12 @@ html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-white\/5
 html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-white\/45 {
   color: rgba(255, 255, 255, 0.5) !important;
 }
-html.light [data-lounge-game-hero] [data-lounge-game-last-play] .text-white\/90 {
-  color: rgba(255, 255, 255, 0.92) !important;
+/* Last play sits below the field as muted hero text (not a card). Keep white in light. */
+html.light [data-lounge-game-hero] [data-lounge-game-last-play] {
+  color: rgba(255, 255, 255, 0.75) !important;
 }
-html.light [data-lounge-game-hero] [data-lounge-game-last-play] .text-white\/45 {
-  color: rgba(255, 255, 255, 0.45) !important;
+html.light [data-lounge-game-hero] [data-lounge-game-last-play] .text-white\/55 {
+  color: rgba(255, 255, 255, 0.55) !important;
 }
 
 /* Hub top matchup pills: soft team glows + logos (ESPN scoreboard chips). */

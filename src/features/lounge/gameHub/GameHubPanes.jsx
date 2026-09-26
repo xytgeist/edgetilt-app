@@ -3,6 +3,7 @@ import {
   american,
   formatKickoff,
   formatPostAge,
+  isFieldReplayablePlay,
   mergeLastPlayIntoPlays,
   normalizePlayDescription,
   ordinal,
@@ -471,7 +472,7 @@ export function PlayList({
         const side = play.team === 'home' ? game.home : play.team === 'away' ? game.away : null
         const desc = String(play.description || '').trim()
         const isActive = activeNorm && normalizePlayDescription(desc) === activeNorm
-        const canReplay = Boolean(onSelectPlay && desc)
+        const canReplay = Boolean(onSelectPlay && desc && isFieldReplayablePlay(desc))
         return (
           <li key={play.id || `${play.period}-${play.clock}-${i}`}>
             <button

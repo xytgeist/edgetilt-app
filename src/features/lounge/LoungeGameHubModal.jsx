@@ -99,6 +99,14 @@ export default function LoungeGameHubModal({
       team,
       nonce: (Number(prev.nonce) || 0) + 1,
     }))
+    // Bring the field back into view if the plays list is scrolled deep.
+    try {
+      document
+        .querySelector('[data-lounge-game-hub] [data-lounge-game-field]')
+        ?.scrollIntoView?.({ block: 'nearest', behavior: 'smooth' })
+    } catch {
+      /* ignore */
+    }
   }
 
   async function shareHubGame() {

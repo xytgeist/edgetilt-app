@@ -324,47 +324,66 @@ export function kalshiContracts(value) {
   return String(n)
 }
 
+/** Extract signed yardage from ESPN / Rundown PBP text. */
+function extractPlayYards(raw) {
+  let m = raw.match(/\bfor\s+(\d+)\s+yards?\s+(?:gain|gained)\b/i)
+  if (m) return Number(m[1])
+  m = raw.match(/\b(?:gain|gained)\s+of\s+(\d+)\s+yards?\b/i)
+  if (m) return Number(m[1])
+  m = raw.match(/\bfor\s+-(\d+)\s+yards?\b/i)
+  if (m) return -Number(m[1])
+  m = raw.match(/\bfor\s+(\d+)\s+yards?\b/i)
+  if (m) return Number(m[1])
+  m = raw.match(/\b(?:a\s+)?loss\s+of\s+(\d+)\s+yards?\b/i)
+  if (m) return -Number(m[1])
+  if (/\bfor\s+no\s+gain\b/i.test(raw)) return 0
+  return null
+}
+
+const PLAYER_NAME_TOKEN =
+  '(?:#?\\d+\\s+)?[A-Za-z][A-Za-z.\'’-]*(?:\\s+[A-Za-z][A-Za-z.\'’-]*){0,3}'
+
+/** ESPN rush lanes without an explicit "rush/run" verb. */
+const ESPN_RUSH_LANE =
+  /\b(?:left|right)\s+(?:end|tackle|guard)\b|\bup the middle\b|\b(?:left|right)\s+middle\b/i
+
 /**
- * Parse ESPN-style rush / scramble play text.
+ * Parse ESPN / Rundown rush / scramble play text.
+ * Covers explicit "rushed/run/scramble" and ESPN lane verbs
+ * ("left end", "up the middle", "right tackle").
+ * Only positive-yard gains are replayable (no-gain / losses rejected).
  * @returns {{ yards: number, playerHint: string } | null}
  */
 export function parseRushPlay(text) {
   const raw = String(text || '').trim()
   if (!raw) return null
   const lower = raw.toLowerCase()
-  const isRush =
+  if (/\bpass(?:ed|es|ing)?\b/.test(lower) && !/\bscrambl/.test(lower)) return null
+  if (/\bsack(?:ed|s)?\b/.test(lower)) return null
+  if (/\bkick(?:ed|s|ing|off)?\b/.test(lower)) return null
+  if (/\bpunt(?:ed|s|ing)?\b/.test(lower)) return null
+  if (/\bpenalty\b/.test(lower)) return null
+  if (/\btimeout\b/.test(lower)) return null
+  if (/\bfield\s+goal\b/.test(lower)) return null
+  if (/\bextra\s+point\b/.test(lower)) return null
+
+  const explicitRush =
     /\brush(?:ed|es|ing)?\b/.test(lower) ||
     /\brun(?:s|ning)?\b/.test(lower) ||
     /\bscrambl(?:e|es|ed|ing)\b/.test(lower)
-  if (!isRush) return null
-  // Pass plays that mention "run after catch" etc. still have "pass" — skip those.
-  if (/\bpass(?:ed|es|ing)?\b/.test(lower) && !/\bscrambl/.test(lower)) return null
+  const espnLaneRush = ESPN_RUSH_LANE.test(lower)
+  if (!explicitRush && !espnLaneRush) return null
 
-  let yards = null
-  let m = raw.match(/\bfor\s+(\d+)\s+yards?\s+(?:gain|gained)\b/i)
-  if (m) yards = Number(m[1])
-  if (yards == null) {
-    m = raw.match(/\b(?:gain|gained)\s+of\s+(\d+)\s+yards?\b/i)
-    if (m) yards = Number(m[1])
-  }
-  if (yards == null) {
-    m = raw.match(/\bfor\s+(\d+)\s+yards?\b/i)
-    if (m) yards = Number(m[1])
-  }
-  if (yards == null) {
-    m = raw.match(/\b(?:a\s+)?loss\s+of\s+(\d+)\s+yards?\b/i)
-    if (m) yards = -Number(m[1])
-  }
-  if (yards == null) {
-    m = raw.match(/\bfor\s+no\s+gain\b/i)
-    if (m) yards = 0
-  }
-  if (yards == null || !Number.isFinite(yards) || Math.abs(yards) < 1) return null
+  const yards = extractPlayYards(raw)
+  // Runs for a gain only … skip no-gain and losses.
+  if (yards == null || !Number.isFinite(yards) || yards < 1) return null
 
-  // Leading name / "#N Name" before the verb
   let playerHint = ''
   const nameMatch = raw.match(
-    /^((?:#?\d+\s+)?[A-Za-z][A-Za-z.'’-]*(?:\s+[A-Za-z][A-Za-z.'’-]*){0,3})\s+(?:rush|run|scrambl)/i
+    new RegExp(
+      `^(?:\\([^)]*\\)\\s*)*((?:#?\\d+\\s+)?[A-Za-z][A-Za-z.'’-]*(?:\\s+[A-Za-z][A-Za-z.'’-]*){0,3}?)\\s+(?:rush(?:ed|es|ing)?|run(?:s|ning)?|scrambl(?:e|es|ed|ing)|left|right|up the)\\b`,
+      'i',
+    ),
   )
   if (nameMatch) playerHint = nameMatch[1].trim()
 
@@ -372,8 +391,10 @@ export function parseRushPlay(text) {
 }
 
 /**
- * Parse ESPN-style completed pass play text.
+ * Parse ESPN / Rundown completed pass play text.
  * Player hint is the receiver (catcher), not the QB.
+ * Handles "pass complete to X" and ESPN "pass short right to X … for N yards".
+ * Incomplete / INT / sack / no-play penalties are excluded.
  * @returns {{ yards: number, playerHint: string } | null}
  */
 export function parsePassPlay(text) {
@@ -384,41 +405,32 @@ export function parsePassPlay(text) {
   if (/\bincomplete\b/.test(lower)) return null
   if (/\bintercept(?:ed|ion|s)?\b/.test(lower)) return null
   if (/\bsack(?:ed|s)?\b/.test(lower)) return null
-  // Require a completion cue, or "pass to Name for N yards"
+  if (/\bpenalty\b/.test(lower) && /\bno\s+play\b/.test(lower)) return null
+  // "pass short/deep left/right/middle to Name" or "pass complete to Name"
   const looksComplete =
     /\bcomplete(?:d)?\b/.test(lower) ||
-    /\bpass(?:ed|es|ing)?\s+to\b/.test(lower) ||
-    /\bpass(?:ed|es|ing)?\s+complete\b/.test(lower)
+    /\bpass(?:ed|es|ing)?(?:\s+\w+){0,5}\s+to\b/.test(lower)
   if (!looksComplete) return null
 
-  let yards = null
-  let m = raw.match(/\bfor\s+(\d+)\s+yards?\s+(?:gain|gained)\b/i)
-  if (m) yards = Number(m[1])
-  if (yards == null) {
-    m = raw.match(/\b(?:gain|gained)\s+of\s+(\d+)\s+yards?\b/i)
-    if (m) yards = Number(m[1])
-  }
-  if (yards == null) {
-    m = raw.match(/\bfor\s+(\d+)\s+yards?\b/i)
-    if (m) yards = Number(m[1])
-  }
-  if (yards == null) {
-    m = raw.match(/\b(?:a\s+)?loss\s+of\s+(\d+)\s+yards?\b/i)
-    if (m) yards = -Number(m[1])
-  }
-  if (yards == null) {
-    m = raw.match(/\bfor\s+no\s+gain\b/i)
-    if (m) yards = 0
-  }
-  if (yards == null || !Number.isFinite(yards) || Math.abs(yards) < 1) return null
+  const yards = extractPlayYards(raw)
+  // Completed passes with measurable yardage (incl. short gains / TDs).
+  if (yards == null || !Number.isFinite(yards) || yards < 1) return null
 
   let playerHint = ''
   const toMatch = raw.match(
-    /\b(?:complete(?:d)?\s+to|pass(?:ed|es|ing)?\s+to)\s+((?:#?\d+\s+)?[A-Za-z][A-Za-z.'’-]*(?:\s+[A-Za-z][A-Za-z.'’-]*){0,3})(?:\s+for\b|\s*$)/i
+    new RegExp(
+      `\\b(?:complete(?:d)?\\s+to|pass(?:ed|es|ing)?(?:\\s+(?:short|deep|left|right|middle))+\\s+to|pass(?:ed|es|ing)?\\s+to)\\s+(${PLAYER_NAME_TOKEN})(?:\\s+(?:to|for|ran|pushed)\\b|\\s*$|,)`,
+      'i',
+    ),
   )
   if (toMatch) playerHint = toMatch[1].trim()
 
   return { yards, playerHint }
+}
+
+/** True when a PBP row is a completed pass or a run for a gain (field replay). */
+export function isFieldReplayablePlay(text) {
+  return Boolean(parseRushPlay(text) || parsePassPlay(text))
 }
 
 function normalizePlayerToken(s) {

@@ -3591,6 +3591,37 @@ html.light [data-lounge-game-chat] {
 html.light [data-lounge-game-chat]::placeholder {
   color: #71717a !important;
 }
+
+/* Pass TD celebration banner on the 3D field */
+@keyframes lounge-td-banner-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(0.62);
+    filter: blur(6px);
+    letter-spacing: 0.32em;
+  }
+  58% {
+    opacity: 1;
+    transform: translateY(-3px) scale(1.1);
+    filter: blur(0);
+    letter-spacing: 0.12em;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+    letter-spacing: 0.14em;
+  }
+}
+[data-lounge-td-banner] .lounge-td-banner-text {
+  animation: lounge-td-banner-pop 0.58s cubic-bezier(0.2, 1.35, 0.32, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-lounge-td-banner] .lounge-td-banner-text {
+    animation: none;
+  }
+}
+
 /* Game hub hero: silver gridiron + multiply team stains (same recipe as post pills). */
 [data-lounge-game-hero] {
   isolation: isolate;

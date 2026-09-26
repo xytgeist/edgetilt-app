@@ -41,9 +41,31 @@ const RUSH_LINES_MS = 700
 const RUSH_BALL_DELAY_MS = 1000
 const RUSH_TOTAL_MS =
   RUSH_RUN_MS + RUSH_HOLD_MS + RUSH_LINES_MS + RUSH_BALL_DELAY_MS
-const CATCH_ANIM_MS = 1250
+
+/** WR/TE slide duration (prior LOS → catch spot). */
+const CATCH_RUN_MS = 1250
+/** Hold WR at catch spot before he exits (mirrors RB hold). */
+const CATCH_HOLD_MS = RUSH_HOLD_MS
+/** LOS + 1st-down line slide after WR exits. */
+const CATCH_LINES_MS = RUSH_LINES_MS
+/** Pause after lines settle before LOS ball returns. */
+const CATCH_BALL_DELAY_MS = RUSH_BALL_DELAY_MS
+const CATCH_TOTAL_MS =
+  CATCH_RUN_MS + CATCH_HOLD_MS + CATCH_LINES_MS + CATCH_BALL_DELAY_MS
 /** WR path progress before the football leaves the LOS on its arc. */
 const CATCH_BALL_LAUNCH_AT = 0.25
+
+/** TD: pause after landing before TOUCHDOWN label. */
+const CATCH_TD_PRE_LABEL_MS = 1000
+/** TD: figure + ball + TOUCHDOWN label hold. */
+const CATCH_TD_CELEBRATE_MS = 3000
+/** TD: label-only hold after figure/ball removed. */
+const CATCH_TD_LABEL_TAIL_MS = 2000
+/** TD: LOS + 1st-down fade-out duration (no line slide). */
+const CATCH_TD_LINES_FADE_MS = 600
+const CATCH_TD_TOTAL_MS =
+  CATCH_RUN_MS + CATCH_TD_PRE_LABEL_MS + CATCH_TD_CELEBRATE_MS + CATCH_TD_LABEL_TAIL_MS
+
 const RUSH_Y = 334.5
 const RUSH_FIG_W = 124
 const RUSH_FIG_H = 144
@@ -85,6 +107,10 @@ function easeOutCubic(t) {
 function prefersReducedMotion() {
   if (typeof window === 'undefined' || !window.matchMedia) return false
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+function playTextIsTouchdown(text) {
+  return /\btouchdown\b/i.test(String(text || ''))
 }
 
 function quadBezier(p0, p1, p2, t) {
@@ -659,11 +685,17 @@ function FieldViz({
     setRushAnim(null)
     if (rushRafRef.current) cancelAnimationFrame(rushRafRef.current)
 
+    const isTouchdown = playTextIsTouchdown(lastPlayText)
     const attackDir = possessionSide === 'home' ? -1 : 1
-    const endPct = Math.max(0, Math.min(100, pos))
+    const gainPct = Math.max(0, Math.min(100, pos))
     const startPct = Math.max(0, Math.min(100, pos - attackDir * parsed.yards))
     const startX = fieldMidXFromPercent(startPct)
-    const endX = fieldMidXFromPercent(endPct)
+    // TD: slide halfway into the scored endzone (away → right, home → left).
+    const endX = isTouchdown
+      ? attackDir < 0
+        ? ENDZONE_COORDS.left.centerX
+        : ENDZONE_COORDS.right.centerX
+      : fieldMidXFromPercent(gainPct)
     const travel = endX - startX
     const facing = travel < 0 ? -1 : 1
     const kit = possessionKit(
@@ -687,6 +719,28 @@ function FieldViz({
       y: Math.min(ballStart.y, ballEnd.y) - arcLift,
     }
 
+    const toFirstDownPct = firstDownPercentFromLive(live, gainPct)
+    const settled = settledLinesRef.current
+    const fromScrimPct = startPct
+    const settledStillPrePlay =
+      settled.scrimPct != null &&
+      Math.abs(settled.scrimPct - startPct) <= Math.abs(settled.scrimPct - gainPct) + 0.01
+    let fromFirstDownPct =
+      settledStillPrePlay &&
+      settled.firstDownPct != null &&
+      Number.isFinite(settled.firstDownPct)
+        ? settled.firstDownPct
+        : null
+    if (fromFirstDownPct == null) {
+      const priorDist = Number(live?.distance)
+      fromFirstDownPct = Number.isFinite(priorDist)
+        ? firstDownPercentFromLive(
+            { ...live, distance: priorDist + parsed.yards },
+            startPct,
+          )
+        : toFirstDownPct
+    }
+
     const base = {
       playKey: animKey,
       startX,
@@ -701,31 +755,125 @@ function FieldViz({
       jerseyNumber,
       facing,
       yards: parsed.yards,
+      isTouchdown,
       ballStart,
       ballCtrl,
       ballEnd,
+      fromScrimPct,
+      toScrimPct: gainPct,
+      fromFirstDownPct,
+      toFirstDownPct,
     }
 
     if (prefersReducedMotion()) {
-      setCatchAnim({ ...base, progress: 1, playing: false, showTrail: false })
+      settledLinesRef.current = {
+        scrimPct: gainPct,
+        firstDownPct: toFirstDownPct,
+      }
+      setCatchAnim(null)
       return undefined
     }
 
-    setCatchAnim({ ...base, progress: 0, playing: true, showTrail: true })
+    const totalMs = isTouchdown ? CATCH_TD_TOTAL_MS : CATCH_TOTAL_MS
+    setCatchAnim({
+      ...base,
+      progress: 0,
+      linesProgress: 0,
+      linesOpacity: 1,
+      showFigure: true,
+      showTrail: true,
+      showBall: true,
+      showTdLabel: false,
+      playing: true,
+    })
     const t0 = performance.now()
     const tick = (now) => {
-      const t = Math.min(1, (now - t0) / CATCH_ANIM_MS)
-      const progress = easeOutCubic(t)
-      if (t >= 1) {
-        setCatchAnim((prev) =>
-          prev && prev.playKey === animKey
-            ? { ...prev, progress: 1, playing: false }
-            : prev
-        )
+      const elapsed = now - t0
+      if (elapsed >= totalMs) {
+        if (!isTouchdown) {
+          settledLinesRef.current = {
+            scrimPct: gainPct,
+            firstDownPct: toFirstDownPct,
+          }
+        }
+        setCatchAnim(null)
         return
       }
+
+      let progress = 1
+      let linesProgress = 0
+      let linesOpacity = 1
+      let showFigure = false
+      let showTrail = false
+      let showBall = false
+      let showTdLabel = false
+
+      if (isTouchdown) {
+        if (elapsed < CATCH_RUN_MS) {
+          progress = easeOutCubic(elapsed / CATCH_RUN_MS)
+          showFigure = true
+          showTrail = true
+          showBall = true
+        } else if (elapsed < CATCH_RUN_MS + CATCH_TD_PRE_LABEL_MS) {
+          progress = 1
+          showFigure = true
+          showTrail = true
+          showBall = true
+        } else if (
+          elapsed <
+          CATCH_RUN_MS + CATCH_TD_PRE_LABEL_MS + CATCH_TD_CELEBRATE_MS
+        ) {
+          progress = 1
+          showFigure = true
+          showTrail = true
+          showBall = true
+          showTdLabel = true
+          const fadeElapsed =
+            elapsed - CATCH_RUN_MS - CATCH_TD_PRE_LABEL_MS
+          linesOpacity = Math.max(
+            0,
+            1 - Math.min(1, fadeElapsed / CATCH_TD_LINES_FADE_MS),
+          )
+        } else {
+          // Label-only tail … figure and catch ball already gone.
+          progress = 1
+          showTdLabel = true
+          linesOpacity = 0
+        }
+      } else if (elapsed < CATCH_RUN_MS) {
+        progress = easeOutCubic(elapsed / CATCH_RUN_MS)
+        showFigure = true
+        showTrail = true
+        showBall = true
+      } else if (elapsed < CATCH_RUN_MS + CATCH_HOLD_MS) {
+        progress = 1
+        showFigure = true
+        showTrail = true
+        showBall = true
+      } else if (elapsed < CATCH_RUN_MS + CATCH_HOLD_MS + CATCH_LINES_MS) {
+        progress = 1
+        const lineT =
+          (elapsed - CATCH_RUN_MS - CATCH_HOLD_MS) / CATCH_LINES_MS
+        linesProgress = easeOutCubic(Math.min(1, lineT))
+      } else {
+        progress = 1
+        linesProgress = 1
+      }
+
       setCatchAnim((prev) =>
-        prev && prev.playKey === animKey ? { ...prev, progress } : prev
+        prev && prev.playKey === animKey
+          ? {
+              ...prev,
+              progress,
+              linesProgress,
+              linesOpacity,
+              showFigure,
+              showTrail,
+              showBall,
+              showTdLabel,
+              playing: true,
+            }
+          : prev,
       )
       catchRafRef.current = requestAnimationFrame(tick)
     }
@@ -750,13 +898,14 @@ function FieldViz({
   ])
 
   useEffect(() => {
-    if (rushAnim || !hasLine || pos == null || hideLiveLines) return
+    if (rushAnim || catchAnim || !hasLine || pos == null || hideLiveLines) return
     settledLinesRef.current = {
       scrimPct: pos,
       firstDownPct: firstDownPercentFromLive(live, pos),
     }
   }, [
     rushAnim,
+    catchAnim,
     hasLine,
     pos,
     hideLiveLines,
@@ -770,18 +919,32 @@ function FieldViz({
   // Calibrated 3D field coordinates (viewBox="0 0 1266 533")
   // Left Goal Line: top=(239.0, 191), bot=(161.0, 478)
   // Right Goal Line: top=(1023.0, 191), bot=(1098.0, 478)
-  const linesT = rushAnim != null ? Number(rushAnim.linesProgress) || 0 : 1
-  const displayScrimPct =
+  const lineDriver =
     rushAnim != null
-      ? lerp(rushAnim.fromScrimPct, rushAnim.toScrimPct, linesT)
-      : pos
+      ? rushAnim
+      : catchAnim != null && !catchAnim.isTouchdown
+        ? catchAnim
+        : null
+  const linesT = lineDriver != null ? Number(lineDriver.linesProgress) || 0 : 1
+  const displayScrimPct =
+    lineDriver != null
+      ? lerp(lineDriver.fromScrimPct, lineDriver.toScrimPct, linesT)
+      : catchAnim?.isTouchdown
+        ? catchAnim.fromScrimPct
+        : pos
   const liveFirstDownPct = firstDownPercentFromLive(live, pos)
   const displayFirstDownPct =
-    rushAnim != null &&
-    rushAnim.fromFirstDownPct != null &&
-    rushAnim.toFirstDownPct != null
-      ? lerp(rushAnim.fromFirstDownPct, rushAnim.toFirstDownPct, linesT)
-      : liveFirstDownPct
+    lineDriver != null &&
+    lineDriver.fromFirstDownPct != null &&
+    lineDriver.toFirstDownPct != null
+      ? lerp(lineDriver.fromFirstDownPct, lineDriver.toFirstDownPct, linesT)
+      : catchAnim?.isTouchdown
+        ? catchAnim.fromFirstDownPct
+        : liveFirstDownPct
+  const linesFadeOpacity =
+    catchAnim?.isTouchdown && catchAnim.linesOpacity != null
+      ? Math.max(0, Math.min(1, Number(catchAnim.linesOpacity)))
+      : 1
 
   const scrimTop =
     hasLine && displayScrimPct != null
@@ -822,10 +985,13 @@ function FieldViz({
   const awayEndzone = resolveEndzoneDesign(game?.away, awayColor, 'left', { college })
   const homeEndzone = resolveEndzoneDesign(game?.home, homeColor, 'right', { college })
 
-  const catchPlaying = Boolean(catchAnim?.playing)
+  const catchPlaying = Boolean(
+    catchAnim != null &&
+      (catchAnim.showFigure || catchAnim.showTdLabel || catchAnim.playing),
+  )
   const rushPlaying = Boolean(rushAnim?.playing || (rushAnim != null && rushAnim.showFigure))
-  // Hide LOS ball for the full rush sequence (run → hold → exit → lines → pre-ball).
-  const playAnimActive = rushAnim != null || catchPlaying
+  // Hide LOS ball for the full rush/catch sequence (run → hold → exit → lines → pre-ball / TD label).
+  const playAnimActive = rushAnim != null || catchAnim != null
   const suppressBanner = isUserReplay && (rushPlaying || catchPlaying)
   const rushX =
     rushAnim != null && rushAnim.showFigure
@@ -834,28 +1000,28 @@ function FieldViz({
   const rushTrailVisible =
     Boolean(rushAnim?.showTrail && rushAnim.showFigure && rushAnim.progress > 0.02)
   const catchX =
-    catchAnim != null
+    catchAnim != null && catchAnim.showFigure
       ? catchAnim.startX + (catchAnim.endX - catchAnim.startX) * catchAnim.progress
       : null
   const catchTrailVisible =
-    Boolean(catchAnim?.showTrail && catchAnim.progress > 0.02)
+    Boolean(catchAnim?.showTrail && catchAnim.showFigure && catchAnim.progress > 0.02)
   const catchBallT =
     catchAnim != null ? catchBallFlightProgress(catchAnim.progress) : 0
   const catchBallVisible =
-    catchAnim != null &&
-    (catchBallT > 0 || catchAnim.progress >= 1) &&
-    (catchAnim.playing || catchAnim.progress >= 1)
+    Boolean(catchAnim?.showBall) &&
+    (catchBallT > 0 || (catchAnim != null && catchAnim.progress >= 1))
   const catchBall = catchBallVisible
     ? quadBezier(
         catchAnim.ballStart,
         catchAnim.ballCtrl,
         catchAnim.ballEnd,
-        catchBallT
+        catchBallT,
       )
     : null
   const catchBallRotate = catchAnim
     ? -40 + catchBallT * 220 * (catchAnim.facing < 0 ? -1 : 1)
     : 0
+  const showTdBanner = Boolean(catchAnim?.showTdLabel)
 
   return (
     <div data-lounge-game-field className="relative w-full px-1 pb-0 pt-0 sm:px-1.5">
@@ -1140,7 +1306,10 @@ function FieldViz({
           ) : null}
 
           {/* First down line (yellow) */}
-          {!hideLiveLines && firstDownTop != null && firstDownBot != null ? (
+          {!hideLiveLines &&
+          firstDownTop != null &&
+          firstDownBot != null &&
+          linesFadeOpacity > 0.02 ? (
             <line
               x1={firstDownTop}
               y1={191}
@@ -1149,13 +1318,17 @@ function FieldViz({
               stroke="#fde047"
               strokeWidth="3.5"
               strokeLinecap="round"
+              strokeOpacity={linesFadeOpacity}
               filter="url(#glow-1st)"
             />
           ) : null}
 
           {/* Line of scrimmage (light blue) */}
-          {!hideLiveLines && scrimTop != null && scrimBot != null ? (
-            <g>
+          {!hideLiveLines &&
+          scrimTop != null &&
+          scrimBot != null &&
+          linesFadeOpacity > 0.02 ? (
+            <g opacity={linesFadeOpacity}>
               <line
                 x1={scrimTop}
                 y1={191}
@@ -1166,7 +1339,7 @@ function FieldViz({
                 strokeLinecap="round"
                 filter="url(#glow-scrim)"
               />
-              {/* Ball on LOS … hidden for full rush sequence / while catch is playing. */}
+              {/* Ball on LOS … hidden for full rush/catch sequence. */}
               {!playAnimActive ? (
                 <g transform={`translate(${scrimMidX - 18} ${334.5 - 12})`}>
                   <AmericanFootballMark tone="field" size={36} rotate={-26} />
@@ -1314,7 +1487,7 @@ function FieldViz({
         />
 
         {/* Stoppage / break banner … TIMEOUT, End of 1st, HALFTIME, End of 3rd, GAME OVER */}
-        {centerBanner && !suppressBanner ? (
+        {centerBanner && !suppressBanner && !showTdBanner ? (
           <div
             data-lounge-game-field-banner
             className="pointer-events-none absolute inset-0 z-[6] flex items-center justify-center px-4 pb-[18%]"
@@ -1330,6 +1503,27 @@ function FieldViz({
               }}
             >
               {centerBanner}
+            </span>
+          </div>
+        ) : null}
+
+        {/* Pass TD celebration */}
+        {showTdBanner ? (
+          <div
+            data-lounge-td-banner
+            className="pointer-events-none absolute inset-0 z-[7] flex items-center justify-center px-4 pb-[18%]"
+            aria-live="polite"
+          >
+            <span
+              className="lounge-td-banner-text max-w-full text-center text-[34px] font-black uppercase leading-none tracking-[0.14em] text-amber-300 sm:text-[44px]"
+              style={{
+                fontFamily: "Oswald, Graduate, Impact, 'Arial Black', sans-serif",
+                textShadow:
+                  '0 0 18px rgba(251,191,36,0.55), 0 1px 0 #000, 0 3px 0 #000, 0 10px 28px rgba(0,0,0,0.7)',
+                WebkitTextStroke: '1px rgba(0,0,0,0.4)',
+              }}
+            >
+              Touchdown
             </span>
           </div>
         ) : null}

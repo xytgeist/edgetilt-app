@@ -3888,3 +3888,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-26:** **FG ball over scoreboard:** Field `z-[5]` above scoreboard; FG ball drawn above goalposts overlay so apex clears board chrome. Frontend **`1.4.725`**.
 - **2026-09-26:** **FG between uprights (fake front pole):** During FG, yellow perspective-near upright (left `uHi` / right `uLo`) draws above the ball while the full posts PNG stays behind. Frontend **`1.4.726`**.
 - **2026-09-26:** **TD replay celebrate survives live polls:** Rush/catch/FG RAF deps no longer include volatile `live`/`pos`/`players` (poll cleanup was canceling before TOUCHDOWN label). Goal-line TDs force a min run-up. Frontend **`1.4.728`**.
+- **2026-09-26:** **FG front pole cutout:** Near uprights = shorter stems in art (left `uLo` / right `uHi`). Pixel-cut front overlay above FG ball; punched from posts overlay. Frontend **`1.4.729`**.

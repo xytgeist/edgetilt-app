@@ -98,31 +98,13 @@ const FG_TAKEOFF_SLOPE_MULT = 2.35
 /**
  * Goalpost uprights from gamecast-goalposts-overlay.png (viewBox 1266×533).
  * `uLo` / `uHi` = screen-left / screen-right upright X.
- * `front*` = perspective-near upright (taller in the art) drawn above the FG
- * ball so the kick reads between the posts without splitting the overlay PNG.
+ * Perspective-near (front) uprights are the *shorter* stems in the art
+ * (left `uLo`, right `uHi`) … cut into gamecast-goalposts-front-poles.png
+ * and drawn above the FG ball. Taller stems stay in the back overlay.
  */
-const FG_POST_YELLOW = '#be8800'
 const FG_POSTS = {
-  left: {
-    uLo: 96,
-    uHi: 136,
-    centerX: 116,
-    crossbarY: 208,
-    frontX: 136,
-    frontTopY: 25,
-    frontBotY: 213,
-    frontW: 10,
-  },
-  right: {
-    uLo: 1128,
-    uHi: 1164,
-    centerX: 1146,
-    crossbarY: 208,
-    frontX: 1128,
-    frontTopY: 25,
-    frontBotY: 212,
-    frontW: 10,
-  },
+  left: { uLo: 96, uHi: 136, centerX: 116, crossbarY: 208, frontX: 96 },
+  right: { uLo: 1128, uHi: 1164, centerX: 1146, crossbarY: 208, frontX: 1168 },
 }
 
 const RUSH_Y = 334.5
@@ -1505,12 +1487,10 @@ function FieldViz({
   // End-over-end topple like a placekick (Science of NFL Football / toppling-flight papers).
   let fgBall = null
   let fgBallRotate = -82
-  let fgFrontPost = null
   if (fgAnim?.showBall) {
     const { phase, t, start, land, hit, bounce, lift, facing } = fgAnim
     // SVG +rotate = clockwise. Leftward kick = CW (backwards); rightward = CCW.
     const tumble = facing < 0 ? 1 : -1
-    fgFrontPost = facing > 0 ? FG_POSTS.right : FG_POSTS.left
     if (phase === 'hold') {
       fgBall = { x: start.x, y: start.y }
       // Slight tee lean before the plant (not a perfect -90 statue).
@@ -1985,9 +1965,9 @@ function FieldViz({
           })}
         </svg>
 
-        {/* Layer 3: Foreground Goalposts Overlay (prevents endzone paint from tinting uprights/pads) */}
+        {/* Layer 3: Goalposts back plate (front/near uprights punched out). */}
         <img
-          src="/sports/nfl/gamecast-goalposts-overlay.png?v=629"
+          src="/sports/nfl/gamecast-goalposts-overlay.png?v=728"
           alt=""
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 block h-full w-full select-none"
@@ -2006,24 +1986,13 @@ function FieldViz({
             </g>
           </svg>
         ) : null}
-        {/* Perspective-near upright above the ball … fake “between the posts” without splitting the PNG. */}
-        {fgFrontPost ? (
-          <svg
-            viewBox="0 0 1266 533"
-            className="pointer-events-none absolute inset-0 z-[9] h-full w-full select-none"
-            xmlns="http://www.w3.org/2000/svg"
-            aria-hidden="true"
-          >
-            <rect
-              x={fgFrontPost.frontX - fgFrontPost.frontW / 2}
-              y={fgFrontPost.frontTopY}
-              width={fgFrontPost.frontW}
-              height={fgFrontPost.frontBotY - fgFrontPost.frontTopY}
-              rx={fgFrontPost.frontW / 2}
-              fill={FG_POST_YELLOW}
-            />
-          </svg>
-        ) : null}
+        {/* Near (shorter) uprights above the ball … pixel-cut from the posts art. */}
+        <img
+          src="/sports/nfl/gamecast-goalposts-front-poles.png?v=728"
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-[9] block h-full w-full select-none"
+        />
         {/* Stoppage / break banner … TIMEOUT, End of 1st, HALFTIME, End of 3rd, GAME OVER */}
         {centerBanner && !suppressBanner && !showTdBanner ? (
           <div

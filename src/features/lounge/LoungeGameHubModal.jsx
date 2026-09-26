@@ -86,8 +86,16 @@ export default function LoungeGameHubModal({
   }
 
   useEffect(() => {
-    // New live last-play from the feed … drop any manual replay override.
-    setFieldReplay({ text: '', team: null, nonce: 0 })
+    // New live last-play from the feed … don't wipe an in-flight user replay of
+    // that same play (poll object churn used to cancel the TD celebrate RAF).
+    const next = String(live?.last_play || '').trim()
+    setFieldReplay((prev) => {
+      if (Number(prev.nonce) <= 0) return { text: '', team: null, nonce: 0 }
+      if (next && prev.text && next !== prev.text) {
+        return { text: '', team: null, nonce: 0 }
+      }
+      return prev
+    })
   }, [live?.last_play])
 
   function replayPlayOnField(play) {

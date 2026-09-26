@@ -678,11 +678,40 @@ function FieldViz({
   const fgRafRef = useRef(0)
   /** Last settled LOS / 1st-down percents … held during rush until lines phase. */
   const settledLinesRef = useRef({ scrimPct: null, firstDownPct: null })
+  /**
+   * Snapshot for play anims … hub polls rebuild `live` / `pos` / `players` often.
+   * Those must not be effect deps or cleanup cancels RAF before the TD label fires.
+   */
+  const fieldAnimCtxRef = useRef({
+    pos: null,
+    live: null,
+    players: [],
+    game: null,
+    awayColor: '',
+    homeColor: '',
+    possessionSide: null,
+    fieldFlipped: false,
+  })
+  fieldAnimCtxRef.current = {
+    pos,
+    live,
+    players,
+    game,
+    awayColor,
+    homeColor,
+    possessionSide,
+    fieldFlipped,
+  }
+  /** Gates auto-play start without thrashing on every yard-line tick. */
+  const autoPlayReady = Boolean(
+    isUserReplay || (!hideLiveLines && hasLine && pos != null),
+  )
 
   useEffect(() => {
     if (!isFootball || !lastPlayText) return undefined
-    if (!isUserReplay && (hideLiveLines || !hasLine || pos == null)) return undefined
-    if (pos == null && !isUserReplay) return undefined
+    const ctx = fieldAnimCtxRef.current
+    if (!isUserReplay && !autoPlayReady) return undefined
+    if (ctx.pos == null && !isUserReplay) return undefined
     if (parseFieldGoalPlay(lastPlayText)) return undefined
     const parsed = parseRushPlay(lastPlayText)
     if (!parsed) {
@@ -701,37 +730,44 @@ function FieldViz({
     if (catchRafRef.current) cancelAnimationFrame(catchRafRef.current)
     if (fgRafRef.current) cancelAnimationFrame(fgRafRef.current)
 
-    const attackDir = attackDirection(possessionSide, fieldFlipped)
+    const attackDir = attackDirection(ctx.possessionSide, ctx.fieldFlipped)
     const isTouchdown =
       Boolean(parsed.isTouchdown) || playTextIsTouchdown(lastPlayText)
     const spots = resolvePlayAnimationPercents({
       text: lastPlayText,
       yards: parsed.yards,
-      game,
-      possessionSide,
-      livePos: pos,
+      game: ctx.game,
+      possessionSide: ctx.possessionSide,
+      livePos: ctx.pos,
       preferTextSpots: isUserReplay,
       isTouchdown,
-      flipped: fieldFlipped,
+      flipped: ctx.fieldFlipped,
     })
     const endPct = spots.endPct
-    const startPct = spots.startPct
+    let startPct = spots.startPct
+    // Goal-line chips need a visible run-up or the TD celebrate never "reads".
+    if (isTouchdown) {
+      const minRun = 18
+      if (attackDir < 0) startPct = Math.max(startPct, endPct + minRun)
+      else startPct = Math.min(startPct, endPct - minRun)
+      startPct = Math.max(0, Math.min(100, startPct))
+    }
     const startX = fieldMidXFromPercent(startPct)
     const endX = fieldMidXFromPercent(endPct)
     const travel = endX - startX
     // Prefer attack direction when travel is tiny (spot clamp / 0-yd edge).
     const facing = Math.abs(travel) < 0.5 ? attackDir : travel < 0 ? -1 : 1
     const kit = possessionKit(
-      possessionSide ? { ...live, possession: possessionSide } : live,
-      game,
-      awayColor,
-      homeColor,
+      ctx.possessionSide ? { ...ctx.live, possession: ctx.possessionSide } : ctx.live,
+      ctx.game,
+      ctx.awayColor,
+      ctx.homeColor,
     )
-    const matched = matchRushPlayer(parsed.playerHint, players, kit.sideAbbrev)
+    const matched = matchRushPlayer(parsed.playerHint, ctx.players, kit.sideAbbrev)
     const headshotUrl = matched?.headshot_url ? String(matched.headshot_url) : ''
     const jerseyNumber = resolveFigureJersey(parsed, matched)
 
-    const toFirstDownPct = firstDownPercentFromLive(live, endPct, fieldFlipped)
+    const toFirstDownPct = firstDownPercentFromLive(ctx.live, endPct, ctx.fieldFlipped)
     const settled = settledLinesRef.current
     // Old LOS is always prior yardline from the play text (live pos is already post-play).
     const fromScrimPct = startPct
@@ -745,12 +781,12 @@ function FieldViz({
         ? settled.firstDownPct
         : null
     if (fromFirstDownPct == null) {
-      const priorDist = Number(live?.distance)
+      const priorDist = Number(ctx.live?.distance)
       fromFirstDownPct = Number.isFinite(priorDist)
         ? firstDownPercentFromLive(
-            { ...live, distance: priorDist + parsed.yards },
+            { ...ctx.live, distance: priorDist + parsed.yards },
             startPct,
-            fieldFlipped,
+            ctx.fieldFlipped,
           )
         : toFirstDownPct
     }
@@ -885,27 +921,13 @@ function FieldViz({
     return () => {
       if (rushRafRef.current) cancelAnimationFrame(rushRafRef.current)
     }
-  }, [
-    isFootball,
-    hideLiveLines,
-    hasLine,
-    pos,
-    lastPlayText,
-    animKey,
-    isUserReplay,
-    possessionSide,
-    fieldFlipped,
-    live,
-    awayColor,
-    homeColor,
-    game,
-    players,
-  ])
+  }, [isFootball, lastPlayText, animKey, isUserReplay, autoPlayReady])
 
   useEffect(() => {
     if (!isFootball || !lastPlayText) return undefined
-    if (!isUserReplay && (hideLiveLines || !hasLine || pos == null)) return undefined
-    if (pos == null && !isUserReplay) return undefined
+    const ctx = fieldAnimCtxRef.current
+    if (!isUserReplay && !autoPlayReady) return undefined
+    if (ctx.pos == null && !isUserReplay) return undefined
     // Rush / FG win if both somehow match.
     if (parseRushPlay(lastPlayText) || parseFieldGoalPlay(lastPlayText)) return undefined
     const parsed = parsePassPlay(lastPlayText)
@@ -927,19 +949,26 @@ function FieldViz({
 
     const isTouchdown =
       Boolean(parsed.isTouchdown) || playTextIsTouchdown(lastPlayText)
-    const attackDir = attackDirection(possessionSide, fieldFlipped)
+    const attackDir = attackDirection(ctx.possessionSide, ctx.fieldFlipped)
     const spots = resolvePlayAnimationPercents({
       text: lastPlayText,
       yards: parsed.yards,
-      game,
-      possessionSide,
-      livePos: pos,
+      game: ctx.game,
+      possessionSide: ctx.possessionSide,
+      livePos: ctx.pos,
       preferTextSpots: isUserReplay,
       isTouchdown,
-      flipped: fieldFlipped,
+      flipped: ctx.fieldFlipped,
     })
     const gainPct = spots.endPct
-    const startPct = spots.startPct
+    let startPct = spots.startPct
+    // Goal-line chips need a visible run-up or the TD celebrate never "reads".
+    if (isTouchdown) {
+      const minRun = 18
+      if (attackDir < 0) startPct = Math.max(startPct, gainPct + minRun)
+      else startPct = Math.min(startPct, gainPct - minRun)
+      startPct = Math.max(0, Math.min(100, startPct))
+    }
     const startX = fieldMidXFromPercent(startPct)
     // TD: slide halfway into the scored (opponent) endzone along attackDir.
     const endX = isTouchdown
@@ -950,12 +979,12 @@ function FieldViz({
     const travel = endX - startX
     const facing = Math.abs(travel) < 0.5 ? attackDir : travel < 0 ? -1 : 1
     const kit = possessionKit(
-      possessionSide ? { ...live, possession: possessionSide } : live,
-      game,
-      awayColor,
-      homeColor,
+      ctx.possessionSide ? { ...ctx.live, possession: ctx.possessionSide } : ctx.live,
+      ctx.game,
+      ctx.awayColor,
+      ctx.homeColor,
     )
-    const matched = matchRushPlayer(parsed.playerHint, players, kit.sideAbbrev)
+    const matched = matchRushPlayer(parsed.playerHint, ctx.players, kit.sideAbbrev)
     const headshotUrl = matched?.headshot_url ? String(matched.headshot_url) : ''
     const jerseyNumber = resolveFigureJersey(parsed, matched)
 
@@ -970,7 +999,7 @@ function FieldViz({
       y: Math.min(ballStart.y, ballEnd.y) - arcLift,
     }
 
-    const toFirstDownPct = firstDownPercentFromLive(live, gainPct, fieldFlipped)
+    const toFirstDownPct = firstDownPercentFromLive(ctx.live, gainPct, ctx.fieldFlipped)
     const settled = settledLinesRef.current
     const fromScrimPct = startPct
     const settledStillPrePlay =
@@ -983,12 +1012,12 @@ function FieldViz({
         ? settled.firstDownPct
         : null
     if (fromFirstDownPct == null) {
-      const priorDist = Number(live?.distance)
+      const priorDist = Number(ctx.live?.distance)
       fromFirstDownPct = Number.isFinite(priorDist)
         ? firstDownPercentFromLive(
-            { ...live, distance: priorDist + parsed.yards },
+            { ...ctx.live, distance: priorDist + parsed.yards },
             startPct,
-            fieldFlipped,
+            ctx.fieldFlipped,
           )
         : toFirstDownPct
     }
@@ -1133,27 +1162,13 @@ function FieldViz({
     return () => {
       if (catchRafRef.current) cancelAnimationFrame(catchRafRef.current)
     }
-  }, [
-    isFootball,
-    hideLiveLines,
-    hasLine,
-    pos,
-    lastPlayText,
-    animKey,
-    isUserReplay,
-    possessionSide,
-    fieldFlipped,
-    live,
-    awayColor,
-    homeColor,
-    game,
-    players,
-  ])
+  }, [isFootball, lastPlayText, animKey, isUserReplay, autoPlayReady])
 
   useEffect(() => {
     if (!isFootball || !lastPlayText) return undefined
-    if (!isUserReplay && (hideLiveLines || !hasLine || pos == null)) return undefined
-    if (pos == null && !isUserReplay) return undefined
+    const ctx = fieldAnimCtxRef.current
+    if (!isUserReplay && !autoPlayReady) return undefined
+    if (ctx.pos == null && !isUserReplay) return undefined
     if (parseRushPlay(lastPlayText) || parsePassPlay(lastPlayText)) return undefined
     const parsed = parseFieldGoalPlay(lastPlayText)
     if (!parsed) {
@@ -1172,15 +1187,15 @@ function FieldViz({
     if (rushRafRef.current) cancelAnimationFrame(rushRafRef.current)
     if (catchRafRef.current) cancelAnimationFrame(catchRafRef.current)
 
-    const attackDir = attackDirection(possessionSide, fieldFlipped)
+    const attackDir = attackDirection(ctx.possessionSide, ctx.fieldFlipped)
     const posts = attackDir > 0 ? FG_POSTS.right : FG_POSTS.left
     const settled = settledLinesRef.current
     const { losPct, kickPct } = resolveFgLosAndKick({
       fgYards: parsed.yards,
-      possessionSide,
-      livePos: pos,
+      possessionSide: ctx.possessionSide,
+      livePos: ctx.pos,
       settledScrimPct: settled?.scrimPct,
-      flipped: fieldFlipped,
+      flipped: ctx.fieldFlipped,
     })
     const start = {
       x: fieldMidXFromPercent(kickPct),
@@ -1202,7 +1217,7 @@ function FieldViz({
       settled.firstDownPct != null &&
       Number.isFinite(settled.firstDownPct)
         ? settled.firstDownPct
-        : firstDownPercentFromLive(live, losPct, fieldFlipped)
+        : firstDownPercentFromLive(ctx.live, losPct, ctx.fieldFlipped)
     // Made: same continuous parabola through the uprights and land past them
     // (Science of NFL Football … horizontal speed holds, gravity turns the apex).
     // Miss: aim an upright, then bounce.
@@ -1299,19 +1314,7 @@ function FieldViz({
     return () => {
       if (fgRafRef.current) cancelAnimationFrame(fgRafRef.current)
     }
-  }, [
-    isFootball,
-    hideLiveLines,
-    hasLine,
-    pos,
-    lastPlayText,
-    animKey,
-    isUserReplay,
-    possessionSide,
-    fieldFlipped,
-    live,
-    game,
-  ])
+  }, [isFootball, lastPlayText, animKey, isUserReplay, autoPlayReady])
 
   useEffect(() => {
     if (rushAnim || catchAnim || fgAnim || !hasLine || pos == null || hideLiveLines) return

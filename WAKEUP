@@ -77,6 +77,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Mac Theo.** Promoted **`test` → `main` (`63c28769`)**. Vercel **`1.4.661`**. Prod Edge **`lounge-sports-scoreboard`** + **`lounge-cfb-game-players`**. Prod **`cfb_players`** **13,600**. Store IPA still **1.4.95**.
 
+### Mac Theo ACTIVE TRACK 2026-09-26 ... TD replay celebrate
+
+**I am Mac Theo.** Pass/rush/FG field anims no longer cancel on live `pos`/`live` poll churn (RAF survived until TD label). Goal-line TDs get a min run-up. Tip web **`1.4.728`**.
+
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... FG front upright fake
 
 **I am Mac Theo.** FG “between the posts”: full posts PNG behind the ball + yellow perspective-near upright drawn above the ball (left `uHi`, right `uLo`). Tip web **`1.4.726`**.

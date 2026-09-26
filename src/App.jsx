@@ -127,6 +127,7 @@ import { edgeNativeInvoke, isEdgeiOSShell } from './utils/edgeNative.js'
 import { syncEdgeNativeAuthSession } from './utils/edgeNativeAuthSession.js'
 
 const EdgeMonitorDesktopPage = lazyRoute(() => import('./features/ops/EdgeMonitorDesktopPage.jsx'))
+const FgKickTestPage = lazyRoute(() => import('./features/lounge/gameHub/FgKickTestPage.jsx'))
 const PokerTournamentSwapClaimPage = lazyRoute(
   () => import('./features/poker-bankroll/PokerTournamentSwapClaimPage.jsx'),
 )
@@ -190,6 +191,7 @@ function App() {
   const [isChecking, setIsChecking] = useState(true)
   const [currentView, setCurrentView] = useState(() => {
     if (typeof window === 'undefined') return 'app'
+    if ((window.location.pathname || '/').replace(/\/+$/, '') === '/fg-kick-test') return 'fg-kick-test'
     if (parseMonitorPathname(window.location.pathname || '/')) return 'monitor'
     if (parseAuthConfirmFromLocation(window.location.pathname || '/', window.location.search || '')) {
       return 'auth-confirm'
@@ -1563,6 +1565,10 @@ function App() {
         setCurrentView(slug)
         return
       }
+      if ((window.location.pathname || '/').replace(/\/+$/, '') === '/fg-kick-test') {
+        setCurrentView('fg-kick-test')
+        return
+      }
       if (parseMonitorPathname(window.location.pathname)) {
         setCurrentView('monitor')
         return
@@ -1838,6 +1844,18 @@ function App() {
         </Suspense>
         {renderAuthModal('← Cancel')}
       </>
+    )
+  }
+
+  if (currentView === 'fg-kick-test') {
+    return (
+      <Suspense
+        fallback={
+          <div className="min-h-screen bg-zinc-950 text-zinc-400 flex items-center justify-center">Loading…</div>
+        }
+      >
+        <FgKickTestPage />
+      </Suspense>
     )
   }
 

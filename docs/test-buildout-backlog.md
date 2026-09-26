@@ -3875,3 +3875,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-26:** **Field-goal kick animation:** Made/miss FG on the hub field … plant behind LOS, flatter arc on long kicks, through uprights off-screen when good, upright glance + bounce when miss. Frontend **`1.4.715`**.
 - **2026-09-26:** **Promoted `test` → `main` (`c8a4d5ce`).** Vercel prod = web **`1.4.715`** (FG anim + timeout gap + possession PNG + drop Latest). **No SQL / Edge.**
 - **2026-09-26:** **FG flight polish:** Faster end-over-end tumble, continuous rise/fall parabola through uprights (land past posts, no off-screen sky exit), larger ball. Frontend **`1.4.716`**.
+- **2026-09-26:** **FG speed + tumble:** Slower hang, takeoff-fast → ease into apex → hold pace on descent; ~20 end-over-end revs. Frontend **`1.4.717`**.

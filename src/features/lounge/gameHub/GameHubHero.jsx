@@ -74,9 +74,17 @@ const CATCH_TD_TOTAL_MS =
 
 /** Field-goal kick: plant upright, then a real parabola (rise → fall) through the uprights. */
 const FG_HOLD_MS = 420
-const FG_FLIGHT_BASE_MS = 1350
+/** Overall hang time … placekicks feel slow vs a pass; keep the ball readable. */
+const FG_FLIGHT_BASE_MS = 2400
 const FG_BOUNCE_MS = 880
 const FG_BALL_SIZE = 30
+/** End-over-end revolutions over the full flight (path t 0→1). */
+const FG_TUMBLE_REVS = 20
+/**
+ * Path apex (t=0.5) lands at this fraction of flight time.
+ * Below 0.5 → snappy takeoff, then a steadier hang after the top.
+ */
+const FG_APEX_TIME = 0.34
 
 /**
  * Goalpost uprights from gamecast-goalposts-overlay.png (viewBox 1266×533).
@@ -128,6 +136,23 @@ function fgParabolaPoint(start, end, lift, t) {
     x: lerp(start.x, end.x, u),
     y: lerp(start.y, end.y, u) - 4 * lift * u * (1 - u),
   }
+}
+
+/**
+ * Map linear flight time → path t.
+ * Fastest at plant, eases out into the apex, then holds that slower pace
+ * through the descent (stylized … not true gravity re-acceleration).
+ */
+function fgFlightPathT(u) {
+  const x = Math.max(0, Math.min(1, u))
+  const apexU = FG_APEX_TIME
+  if (x <= apexU) {
+    const v = x / apexU
+    // easeOutQuad … takeoff covers ground quick, then softens into the top.
+    const eased = 1 - (1 - v) * (1 - v)
+    return 0.5 * eased
+  }
+  return 0.5 + 0.5 * ((x - apexU) / (1 - apexU))
 }
 
 /** Minimum apex so the ball is still above the crossbar when it crosses the posts. */
@@ -1070,7 +1095,7 @@ function FieldViz({
       y: RUSH_Y - 22,
     }
     // Longer attempts hang a bit more in the air.
-    const flightMs = FG_FLIGHT_BASE_MS + Math.min(750, Math.max(0, yards - 25) * 16)
+    const flightMs = FG_FLIGHT_BASE_MS + Math.min(900, Math.max(0, yards - 25) * 22)
 
     if (prefersReducedMotion()) {
       setFgAnim(null)
@@ -1112,8 +1137,8 @@ function FieldViz({
         t = 0
       } else if (elapsed < FG_HOLD_MS + flightMs) {
         phase = 'flight'
-        // Linear in time … near-constant horizontal speed like a real kick.
-        t = Math.min(1, (elapsed - FG_HOLD_MS) / flightMs)
+        // Fast plant → ease into apex → hold that slower pace on the way down.
+        t = fgFlightPathT((elapsed - FG_HOLD_MS) / flightMs)
       } else {
         phase = 'bounce'
         t = easeOutCubic((elapsed - FG_HOLD_MS - flightMs) / FG_BOUNCE_MS)
@@ -1317,8 +1342,8 @@ function FieldViz({
       fgBallRotate = -82
     } else if (phase === 'flight') {
       fgBall = fgParabolaPoint(start, land, lift, t)
-      // ~5 full end-over-end revolutions over the flight.
-      fgBallRotate = -82 + tumble * t * 1800
+      // ~20 full end-over-end revolutions over the flight.
+      fgBallRotate = -82 + tumble * t * (FG_TUMBLE_REVS * 360)
     } else {
       // Miss: carom off the upright and drop back toward the field.
       const ctrl = {
@@ -1326,7 +1351,7 @@ function FieldViz({
         y: Math.min(hit.y, bounce.y) - 40,
       }
       fgBall = quadBezier(hit, ctrl, bounce, t)
-      fgBallRotate = -82 + tumble * (1800 + t * 720)
+      fgBallRotate = -82 + tumble * (FG_TUMBLE_REVS * 360 + t * 720)
     }
   }
   return (

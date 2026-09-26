@@ -3866,3 +3866,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-26:** **Field gap + live logos:** Field `pt-5`, condensed scoreboard `pb-3`, logos 52px. Frontend **`1.4.709`**.
 - **2026-09-26:** **Promoted `test` → `main` (`af0f9ce9`).** Vercel prod = web **`1.4.709`** (field gap + live logos). **No SQL / Edge.**
 - **2026-09-26:** **Final hub chrome:** Hide down/distance + yard line when status is post. Frontend **`1.4.710`**.
+- **2026-09-26:** **Live timeouts under score:** Condensed hub timeout dots centered under score, not logo. Frontend **`1.4.711`**.

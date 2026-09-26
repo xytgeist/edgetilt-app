@@ -1752,7 +1752,6 @@ export default function GameHubHero({
                     {game.away.record}
                   </div>
                 ) : null}
-                {awayTimeouts != null ? <TimeoutDots remaining={awayTimeouts} align="center" /> : null}
               </div>
               <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1">
                 <div className="flex flex-col items-center">
@@ -1768,6 +1767,7 @@ export default function GameHubHero({
                       {awayMl}
                     </div>
                   ) : null}
+                  {awayTimeouts != null ? <TimeoutDots remaining={awayTimeouts} align="center" /> : null}
                 </div>
                 {awayHasBall ? <PossessionFootball side="away" /> : null}
               </div>
@@ -1802,6 +1802,7 @@ export default function GameHubHero({
                       {homeMl}
                     </div>
                   ) : null}
+                  {homeTimeouts != null ? <TimeoutDots remaining={homeTimeouts} align="center" /> : null}
                 </div>
               </div>
               <div className="flex w-[52px] shrink-0 flex-col items-center">
@@ -1814,7 +1815,6 @@ export default function GameHubHero({
                     {game.home.record}
                   </div>
                 ) : null}
-                {homeTimeouts != null ? <TimeoutDots remaining={homeTimeouts} align="center" /> : null}
               </div>
             </div>
           </div>

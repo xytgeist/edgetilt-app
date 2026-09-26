@@ -1,6 +1,6 @@
 import { useId, useMemo } from 'react'
 import { RUSH_PIECES } from './gameHubRushPieces.js'
-import { buildRushColorMap } from './gameHubFigureColors.js'
+import { buildRushColorMap, resolveJerseyNumberPaint } from './gameHubFigureColors.js'
 
 /**
  * Authentic Running Back figure assembled from the 15-piece studio sculpt.
@@ -16,7 +16,7 @@ import { buildRushColorMap } from './gameHubFigureColors.js'
 export default function GameHubRushFigure({
   primary = '#C4122E',
   secondary = '#FFFFFF',
-  accent = '#000000',
+  accent: _accent = '#000000',
   helmetColor,
   pantsColor,
   tightsColor,
@@ -30,7 +30,10 @@ export default function GameHubRushFigure({
   const uid = useId().replace(/:/g, '')
 
   const secondaryColor = secondary || '#FFFFFF'
-  const accentColor = accent || '#000000'
+  const numberPaint = useMemo(
+    () => resolveJerseyNumberPaint(primary, secondaryColor),
+    [primary, secondaryColor],
+  )
 
   const colorMap = useMemo(
     () =>
@@ -105,7 +108,7 @@ export default function GameHubRushFigure({
             textAnchor="middle"
             dominantBaseline="central"
             fill="none"
-            stroke={accentColor}
+            stroke={numberPaint.stroke}
             strokeWidth="24"
             strokeLinejoin="round"
             fontFamily="'Arial Black', Impact, sans-serif"
@@ -120,7 +123,7 @@ export default function GameHubRushFigure({
             y="0"
             textAnchor="middle"
             dominantBaseline="central"
-            fill={secondaryColor}
+            fill={numberPaint.fill}
             fontFamily="'Arial Black', Impact, sans-serif"
             fontSize="140"
             fontWeight="900"

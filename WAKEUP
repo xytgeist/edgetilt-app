@@ -77,6 +77,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Mac Theo.** Promoted **`test` → `main` (`63c28769`)**. Vercel **`1.4.661`**. Prod Edge **`lounge-sports-scoreboard`** + **`lounge-cfb-game-players`**. Prod **`cfb_players`** **13,600**. Store IPA still **1.4.95**.
 
+### Mac Theo ACTIVE TRACK 2026-09-26 ... jersey number contrast
+
+**I am Mac Theo.** Chest numbers pick fill/outline for contrast vs jersey fabric (`resolveJerseyNumberPaint`) … ATL black-on-red → white + black outline. Tip web **`1.4.700`**.
+
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... NFL name match for jersey paint
 
 **I am Mac Theo.** Promoted **`test` → `main` (`a8eb664e`)**. Vercel prod web **`1.4.699`** (NFL name-match jersey paint). **No SQL / Edge.**

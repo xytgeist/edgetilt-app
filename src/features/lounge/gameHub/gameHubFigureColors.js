@@ -74,6 +74,27 @@ export function resolveTeamKit(abbrev, primary, secondary) {
   }
 }
 
+/**
+ * Chest number fill + outline that stay readable on the jersey fabric.
+ * Prefers team secondary when it contrasts; otherwise flips to white/black.
+ * Outline is the opposite of fill so glyphs never melt into the kit (ATL black-on-red).
+ */
+export function resolveJerseyNumberPaint(primary, secondary) {
+  const jerseyHex = primary || '#002244'
+  const secHex = secondary || '#FFFFFF'
+  const jerseyL = getLuminance(hexToRgb(jerseyHex))
+  const secL = getLuminance(hexToRgb(secHex))
+  const MIN_DELTA = 0.28
+
+  let fill = secHex
+  if (Math.abs(secL - jerseyL) < MIN_DELTA) {
+    fill = jerseyL < 0.55 ? '#FFFFFF' : '#0A0A0A'
+  }
+  const fillL = getLuminance(hexToRgb(fill))
+  const stroke = fillL > 0.55 ? '#0A0A0A' : '#FFFFFF'
+  return { fill, stroke }
+}
+
 /** Converts #RRGGBB or #RGB to [r, g, b] in 0..255. */
 export function hexToRgb(hex) {
   if (!hex || typeof hex !== 'string') return [0, 0, 0]

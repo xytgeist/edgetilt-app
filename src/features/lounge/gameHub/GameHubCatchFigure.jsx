@@ -4,7 +4,7 @@ import {
   CATCH_VIEWBOX_H,
   CATCH_VIEWBOX_W,
 } from './gameHubCatchPieces.js'
-import { buildCatchColorMap } from './gameHubFigureColors.js'
+import { buildCatchColorMap, resolveJerseyNumberPaint } from './gameHubFigureColors.js'
 
 /**
  * Authentic Wide Receiver / Tight End figure assembled from the 12-piece studio sculpt.
@@ -19,7 +19,7 @@ import { buildCatchColorMap } from './gameHubFigureColors.js'
 export default function GameHubCatchFigure({
   primary = '#002244',
   secondary = '#FFFFFF',
-  accent = '#000000',
+  accent: _accent = '#000000',
   helmetColor,
   pantsColor,
   tightsColor,
@@ -33,7 +33,10 @@ export default function GameHubCatchFigure({
   const uid = useId().replace(/:/g, '')
 
   const secondaryColor = secondary || '#FFFFFF'
-  const accentColor = accent || '#000000'
+  const numberPaint = useMemo(
+    () => resolveJerseyNumberPaint(primary, secondaryColor),
+    [primary, secondaryColor],
+  )
 
   const colorMap = useMemo(
     () =>
@@ -108,7 +111,7 @@ export default function GameHubCatchFigure({
             textAnchor="middle"
             dominantBaseline="central"
             fill="none"
-            stroke={accentColor}
+            stroke={numberPaint.stroke}
             strokeWidth="33"
             strokeLinejoin="round"
             fontFamily="'Arial Black', Impact, sans-serif"
@@ -123,7 +126,7 @@ export default function GameHubCatchFigure({
             y="0"
             textAnchor="middle"
             dominantBaseline="central"
-            fill={secondaryColor}
+            fill={numberPaint.fill}
             fontFamily="'Arial Black', Impact, sans-serif"
             fontSize="177"
             fontWeight="900"

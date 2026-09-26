@@ -52,13 +52,12 @@ export default function GameHubCatchFigure({
   const isFacingRight = facing >= 0
   const bodyFlip = isFacingRight ? undefined : 'scale(-1, 1) translate(-710, 0)'
 
-  // Number placement: centered on the chest plate.
-  // Right-facing center is at x=480, y=440 with -8 deg upright tilt.
-  // Left-facing center is mirrored at x=230 (710 - 480), y=440 with +8 deg upright tilt.
-  // Glyphs are rendered in un-mirrored space so they always read left-to-right naturally.
+  // Number placement: mid chest plate below the NFL collar (collar ~480,415).
+  // Right-facing lean matches the leaping torso (~-22 deg CCW); left mirrors.
+  // Glyphs stay un-mirrored so they always read left-to-right.
   const numTransform = isFacingRight
-    ? 'translate(480, 440) rotate(-8)'
-    : 'translate(230, 440) rotate(8)'
+    ? 'translate(470, 530) rotate(-22)'
+    : 'translate(240, 530) rotate(22)'
 
   const num = String(jerseyNumber ?? '').trim()
 
@@ -110,10 +109,10 @@ export default function GameHubCatchFigure({
             dominantBaseline="central"
             fill="none"
             stroke={accentColor}
-            strokeWidth="24"
+            strokeWidth="22"
             strokeLinejoin="round"
             fontFamily="'Arial Black', Impact, sans-serif"
-            fontSize="130"
+            fontSize="118"
             fontWeight="900"
             letterSpacing="-4"
           >
@@ -126,7 +125,7 @@ export default function GameHubCatchFigure({
             dominantBaseline="central"
             fill={secondaryColor}
             fontFamily="'Arial Black', Impact, sans-serif"
-            fontSize="130"
+            fontSize="118"
             fontWeight="900"
             letterSpacing="-4"
           >

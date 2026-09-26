@@ -13,6 +13,7 @@ import {
 } from './gameHubEndzone.js'
 import {
   downDistanceLabel,
+  fieldCenterBanner,
   fieldPercent,
   liveClockLabel,
   scoreText,
@@ -354,6 +355,8 @@ function FieldViz({ game, live, awayColor, homeColor }) {
   const endzoneFont = college ? ENDZONE_FONT_CFB : ENDZONE_FONT_NFL
   const awayEndzone = resolveEndzoneDesign(game?.away, awayColor, 'left', { college })
   const homeEndzone = resolveEndzoneDesign(game?.home, homeColor, 'right', { college })
+  const centerBanner = fieldCenterBanner(game, live)
+  const hideLiveLines = Boolean(centerBanner)
 
   return (
     <div data-lounge-game-field className="relative w-full px-1 pb-0 pt-0 sm:px-1.5">
@@ -634,7 +637,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
           ) : null}
 
           {/* First down line (yellow) */}
-          {firstDownTop != null && firstDownBot != null ? (
+          {!hideLiveLines && firstDownTop != null && firstDownBot != null ? (
             <line
               x1={firstDownTop}
               y1={191}
@@ -648,7 +651,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
           ) : null}
 
           {/* Line of scrimmage (light blue) */}
-          {scrimTop != null && scrimBot != null ? (
+          {!hideLiveLines && scrimTop != null && scrimBot != null ? (
             <g>
               <line
                 x1={scrimTop}
@@ -723,6 +726,27 @@ function FieldViz({ game, live, awayColor, homeColor }) {
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 block h-full w-full select-none"
         />
+
+        {/* Stoppage / break banner … TIMEOUT, End of 1st, HALFTIME, End of 3rd, GAME OVER */}
+        {centerBanner ? (
+          <div
+            data-lounge-game-field-banner
+            className="pointer-events-none absolute inset-0 z-[6] flex items-center justify-center px-4"
+            aria-live="polite"
+          >
+            <span
+              className="max-w-full text-center text-[28px] font-black uppercase leading-none tracking-[0.08em] text-white sm:text-[36px]"
+              style={{
+                fontFamily: endzoneFont,
+                textShadow:
+                  '0 1px 0 #000, 0 2px 0 #000, 0 3px 0 rgba(0,0,0,0.85), 0 8px 24px rgba(0,0,0,0.65)',
+                WebkitTextStroke: '1px rgba(0,0,0,0.35)',
+              }}
+            >
+              {centerBanner}
+            </span>
+          </div>
+        ) : null}
       </div>
     </div>
   )
@@ -836,7 +860,7 @@ export default function GameHubHero({
   const awayScoreDim = scoresComparable && awayScoreN < homeScoreN
   const homeScoreDim = scoresComparable && homeScoreN < awayScoreN
   const lastPlayText = String(lastPlay || '').trim()
-  const showField = isFootball && game.status === 'in'
+  const showField = isFootball && (game.status === 'in' || game.status === 'post')
   const awayMl = formatLoungeSportsMoneyline(game.away?.ml)
   const homeMl = formatLoungeSportsMoneyline(game.home?.ml)
   const awayLabel = hubTeamLabel(game.away, game.status)

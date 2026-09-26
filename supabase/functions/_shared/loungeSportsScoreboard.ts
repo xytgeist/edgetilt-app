@@ -125,6 +125,10 @@ export type LoungeSportsLiveState = {
   home_timeouts: number | null
   away_timeouts: number | null
   last_play: string
+  /** ESPN/Rundown status key … STATUS_HALFTIME, STATUS_TIMEOUT, etc. */
+  status_name?: string | null
+  /** Human status detail … "Halftime", "End of 1st", "Timeout". */
+  status_detail?: string | null
 }
 
 export type LoungeSportsOddsRow = {
@@ -478,6 +482,8 @@ function liveFromRundown(
     yardSideOut = yardSide
   }
   if (!clock && period == null && down == null && !lastPlay) return null
+  const statusDetail = String(score.event_status_detail || raw.event_status_detail || '').trim() || null
+  const statusName = String(score.event_status || raw.event_status || '').trim() || null
   return {
     clock,
     period,
@@ -489,6 +495,8 @@ function liveFromRundown(
     home_timeouts: pickTimeouts(raw, 'home') ?? pickTimeouts(score, 'home'),
     away_timeouts: pickTimeouts(raw, 'away') ?? pickTimeouts(score, 'away'),
     last_play: lastPlay,
+    status_name: statusName,
+    status_detail: statusDetail,
   }
 }
 
@@ -1243,6 +1251,8 @@ async function fetchEspnFootballLivePack(
   let boardYardsToEndzone: number | null = null
   let boardHomeAbbrev = homeAbb
   let boardAwayAbbrev = awayAbb
+  let boardStatusName = ''
+  let boardStatusDetail = ''
   const boardBase = espnFootballScoreboardPath(league)
 
   for (const date of dates) {
@@ -1274,7 +1284,12 @@ async function fetchEspnFootballLivePack(
             : {}
         const type = (status.type && typeof status.type === 'object') ? status.type as Record<string, unknown> : {}
         statusPeriod = numOrNull(status.period ?? type.period)
-        statusClock = String(status.displayClock || type.detail || '').trim()
+        statusClock = String(status.displayClock || '').trim()
+        boardStatusName = String(type.name || '').trim()
+        boardStatusDetail = String(type.shortDetail || type.detail || type.description || '').trim()
+        if (!statusClock && boardStatusDetail && !boardStatusDetail.includes(' - ')) {
+          statusClock = boardStatusDetail
+        }
         const sit = (comps?.situation && typeof comps.situation === 'object')
           ? comps.situation as Record<string, unknown>
           : null
@@ -1386,7 +1401,7 @@ async function fetchEspnFootballLivePack(
     const down = numOrNull(end?.down)
     const distance = numOrNull(end?.distance)
 
-    const live: LoungeSportsLiveState | null = (statusClock || statusPeriod != null || last?.description || possessionText)
+    const live: LoungeSportsLiveState | null = (statusClock || statusPeriod != null || last?.description || possessionText || boardStatusName)
       ? {
           clock: statusClock.includes(' - ') ? '' : statusClock,
           period: statusPeriod ?? last?.period ?? null,
@@ -1398,6 +1413,8 @@ async function fetchEspnFootballLivePack(
           home_timeouts: boardHomeTimeouts,
           away_timeouts: boardAwayTimeouts,
           last_play: last?.description || '',
+          status_name: boardStatusName || null,
+          status_detail: boardStatusDetail || null,
         }
       : null
 
@@ -1425,6 +1442,8 @@ function mergeLiveState(
     home_timeouts: primary.home_timeouts ?? fallback.home_timeouts,
     away_timeouts: primary.away_timeouts ?? fallback.away_timeouts,
     last_play: primary.last_play || fallback.last_play,
+    status_name: primary.status_name || fallback.status_name || null,
+    status_detail: primary.status_detail || fallback.status_detail || null,
   }
 }
 

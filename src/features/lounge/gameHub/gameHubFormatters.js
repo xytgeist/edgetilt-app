@@ -90,6 +90,71 @@ export function downDistanceLabel(live) {
 }
 
 /**
+ * Big center-field banner for stoppages … TIMEOUT / End of 1st / HALFTIME / End of 3rd / GAME OVER.
+ */
+export function fieldCenterBanner(game, live) {
+  if (!game) return ''
+  if (game.status === 'post') return 'GAME OVER'
+
+  const statusName = String(live?.status_name || '').toUpperCase().replace(/\s+/g, '_')
+  const detail = String(live?.status_detail || game.status_label || '').trim()
+  const detailLower = detail.toLowerCase()
+  const clock = String(live?.clock || '').trim()
+  const clockLower = clock.toLowerCase()
+  const lastPlay = String(live?.last_play || '').toLowerCase()
+  const period = Number(live?.period)
+  const hay = `${statusName} ${detailLower} ${clockLower}`
+
+  if (
+    /STATUS_TIMEOUT|STATUS_TV_TIMEOUT|TIMEOUT/.test(statusName)
+    || /\btimeout\b/.test(detailLower)
+    || /\btimeout\b/.test(clockLower)
+    || /\btimeout\b/.test(lastPlay)
+  ) {
+    return 'TIMEOUT'
+  }
+
+  if (
+    /STATUS_HALFTIME|HALFTIME/.test(statusName)
+    || /\bhalf\s*time\b|\bhalftime\b|\bht\b/.test(detailLower)
+    || /\bhalf\s*time\b|\bhalftime\b/.test(clockLower)
+  ) {
+    return 'HALFTIME'
+  }
+
+  if (/STATUS_FINAL|STATUS_FULL_TIME/.test(statusName) || /\bfinal\b|\bgame over\b/.test(detailLower)) {
+    return 'GAME OVER'
+  }
+
+  if (/STATUS_END_PERIOD|END_PERIOD|END_OF_PERIOD/.test(statusName) || /end of\b/.test(detailLower)) {
+    if (/1st|first|\bq1\b/.test(detailLower) || period === 1) return 'End of 1st'
+    if (/3rd|third|\bq3\b/.test(detailLower) || period === 3) return 'End of 3rd'
+    if (/2nd|second|\bq2\b/.test(detailLower) || period === 2) return 'HALFTIME'
+    if (/4th|fourth|\bq4\b/.test(detailLower) || period === 4) return 'GAME OVER'
+    if (Number.isFinite(period) && period >= 1) {
+      if (period === 1) return 'End of 1st'
+      if (period === 2) return 'HALFTIME'
+      if (period === 3) return 'End of 3rd'
+      return 'GAME OVER'
+    }
+  }
+
+  // Clock at :00 with a known quarter often means the period just ended.
+  if (/^(?:0:00|00:00|0\.00)$/.test(clock) && Number.isFinite(period) && period >= 1) {
+    if (period === 1) return 'End of 1st'
+    if (period === 2) return 'HALFTIME'
+    if (period === 3) return 'End of 3rd'
+    if (period >= 4) return 'GAME OVER'
+  }
+
+  // Detail-only phrases without STATUS_* keys (Rundown).
+  if (/end of\s*(the\s*)?(1st|first)/i.test(hay)) return 'End of 1st'
+  if (/end of\s*(the\s*)?(3rd|third)/i.test(hay)) return 'End of 3rd'
+
+  return ''
+}
+
+/**
  * Field position label … "IU 35" / "NU 37" / "50".
  * Territory is whose half the ball is on (not who has possession).
  * Yard number is always 1–50 (bare "50" at midfield).

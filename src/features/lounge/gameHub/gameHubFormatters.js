@@ -411,12 +411,33 @@ const ESPN_RUSH_LANE =
 const FORMATION_SKIP =
   /^(?:shotgun|no huddle|no[\s-]huddle|pistol|wildcat|empty|trips|bunch)$/i
 
+/** "#80 C.Becker" / "C.Becker" / "Beebe" → jersey digits + remaining name text. */
+export function splitPlayerHint(raw) {
+  const s = String(raw || '').trim()
+  if (!s) return { jersey: null, namePart: '' }
+  const m = s.match(/^#?(\d{1,2})\s+(.+)$/)
+  if (m) return { jersey: m[1], namePart: m[2].trim() }
+  return { jersey: null, namePart: s }
+}
+
+/**
+ * Jersey for the field figure: roster match wins, else `#N` from PBP text.
+ * Treats jersey `0` as valid.
+ */
+export function resolveFigureJersey(parsed, matched) {
+  const roster = matched?.jersey
+  if (roster != null && String(roster).trim() !== '') return String(roster).trim()
+  const fromText = parsed?.jerseyHint
+  if (fromText != null && String(fromText).trim() !== '') return String(fromText).trim()
+  return ''
+}
+
 /**
  * Parse ESPN / Rundown rush / scramble play text.
  * Covers explicit "rushed/run/scramble" and ESPN lane verbs
  * ("left end", "up the middle", "right tackle").
  * Positive-yard gains and rushing TDs are replayable.
- * @returns {{ yards: number, playerHint: string, isTouchdown: boolean } | null}
+ * @returns {{ yards: number, playerHint: string, jerseyHint: string|null, isTouchdown: boolean } | null}
  */
 export function parseRushPlay(text) {
   const rawFull = String(text || '').trim()
@@ -456,7 +477,7 @@ export function parseRushPlay(text) {
     .trim()
   const nameMatch = cleaned.match(
     new RegExp(
-      `^((?:#?\\d+\\s+)?[A-Za-z][A-Za-z.'’-]*(?:\\s+[A-Za-z][A-Za-z.'’-]*){0,3}?)\\s+(?:rush(?:ed|es|ing)?|run(?:s|ning)?|scrambl(?:e|es|ed|ing)|left|right|up the)\\b`,
+      `^((?:#?\\d{1,2}\\s+)?[A-Za-z][A-Za-z.'’-]*(?:\\s+[A-Za-z][A-Za-z.'’-]*){0,3}?)\\s+(?:rush(?:ed|es|ing)?|run(?:s|ning)?|scrambl(?:e|es|ed|ing)|left|right|up the)\\b`,
       'i',
     ),
   )
@@ -467,7 +488,8 @@ export function parseRushPlay(text) {
     playerHint = parts.join(' ').trim()
   }
 
-  return { yards, playerHint, isTouchdown }
+  const { jersey: jerseyHint } = splitPlayerHint(playerHint)
+  return { yards, playerHint, jerseyHint, isTouchdown }
 }
 
 /**
@@ -475,7 +497,7 @@ export function parseRushPlay(text) {
  * Player hint is the receiver (catcher), not the QB.
  * Handles "pass complete to X" and ESPN "pass short right to X … for N yards".
  * Incomplete / INT / sack / no-play penalties are excluded.
- * @returns {{ yards: number, playerHint: string, isTouchdown: boolean } | null}
+ * @returns {{ yards: number, playerHint: string, jerseyHint: string|null, isTouchdown: boolean } | null}
  */
 export function parsePassPlay(text) {
   const rawFull = String(text || '').trim()
@@ -504,15 +526,14 @@ export function parsePassPlay(text) {
   if (!isTouchdown && yards < 1) return null
 
   let playerHint = ''
+  // Prefer explicit receiver after "… to #80 C.Becker" (not "to the NW 05").
   const toMatch = raw.match(
-    new RegExp(
-      `\\b(?:complete(?:d)?\\s+to|pass(?:ed|es|ing)?(?:\\s+(?:short|deep|left|right|middle))+\\s+to|pass(?:ed|es|ing)?\\s+to)\\s+((?:#?\\d+\\s+)?[A-Za-z][A-Za-z.'’-]*(?:\\s+[A-Za-z][A-Za-z.'’-]*){0,3}?)(?=\\s+(?:to|for|ran|pushed)\\b|\\s*$|,)`,
-      'i',
-    ),
+    /\b(?:complete(?:d)?|pass(?:ed|es|ing)?)\b(?:\s+(?:short|deep|left|right|middle|complete(?:d)?))*\s+to\s+(?!the\b)((?:#?\d{1,2}\s+)?[A-Za-z][A-Za-z.'’-]*(?:\s+[A-Za-z][A-Za-z.'’-]*){0,3}?)(?=\s+(?:for|to the|ran|pushed)\b|\s*$|,)/i,
   )
   if (toMatch) playerHint = toMatch[1].trim()
 
-  return { yards, playerHint, isTouchdown }
+  const { jersey: jerseyHint } = splitPlayerHint(playerHint)
+  return { yards, playerHint, jerseyHint, isTouchdown }
 }
 
 /** True when a PBP row is a completed pass or a run for a gain / TD (field replay). */
@@ -668,8 +689,23 @@ function normalizePlayerToken(s) {
 }
 
 /**
- * Match a rush ballcarrier hint against hub roster rows.
+ * ESPN often prints "C.Beebe" / "J.Gibbs". Detect Initial.Last before we
+ * strip the period (otherwise it collapses to one token and last-name match dies).
+ */
+function parseInitialLastName(namePart) {
+  const raw = String(namePart || '').trim()
+  const m = raw.match(/^([A-Za-z])[.'’-]([A-Za-z][A-Za-z.'’-]+)$/)
+  if (!m) return null
+  return {
+    initial: m[1].toLowerCase(),
+    last: normalizePlayerToken(m[2]),
+  }
+}
+
+/**
+ * Match a rush/catch player hint against hub roster rows.
  * Prefers possession-side `team` abbrev when provided.
+ * Handles "#80 C.Becker", "C.Becker", "Beebe", and full names.
  * @returns {object | null} player row with headshot_url preferred
  */
 export function matchRushPlayer(hint, players, sideAbbrev = '') {
@@ -680,17 +716,12 @@ export function matchRushPlayer(hint, players, sideAbbrev = '') {
     .trim()
     .toUpperCase()
 
-  let jersey = null
-  let namePart = raw
-  const jMatch = raw.match(/^#?(\d+)\s+(.+)$/)
-  if (jMatch) {
-    jersey = jMatch[1]
-    namePart = jMatch[2].trim()
-  }
-
+  const { jersey, namePart } = splitPlayerHint(raw)
+  const initialLast = parseInitialLastName(namePart)
   const hintNorm = normalizePlayerToken(namePart)
   const hintParts = hintNorm.split(' ').filter(Boolean)
-  const hintLast = hintParts.length ? hintParts[hintParts.length - 1] : ''
+  const hintLast = initialLast?.last || (hintParts.length ? hintParts[hintParts.length - 1] : '')
+  const hintInitial = initialLast?.initial || null
 
   const scored = []
   for (const p of list) {
@@ -699,17 +730,23 @@ export function matchRushPlayer(hint, players, sideAbbrev = '') {
     if (!pName) continue
     const pParts = pName.split(' ').filter(Boolean)
     const pLast = pParts.length ? pParts[pParts.length - 1] : ''
-    const pJersey = p.jersey != null ? String(p.jersey) : ''
+    const pFirst = pParts.length ? pParts[0] : ''
+    const pJersey = p.jersey != null ? String(p.jersey).trim() : ''
     const pTeam = String(p.team || p.team_abbrev || '')
       .trim()
       .toUpperCase()
 
     let score = 0
     if (hintNorm && pName === hintNorm) score += 100
-    else if (hintNorm && pName.includes(hintNorm)) score += 70
+    else if (hintInitial && hintLast && pLast === hintLast && pFirst.startsWith(hintInitial)) {
+      score += 85
+    } else if (hintNorm && pName.includes(hintNorm) && hintNorm.length >= 3) score += 70
     else if (hintLast && pLast === hintLast) score += 50
-    else if (hintLast && pName.includes(hintLast)) score += 30
-    else continue
+    else if (hintLast && hintLast.length >= 4 && pName.includes(hintLast)) score += 30
+    else if (jersey && pJersey && jersey === pJersey && side && pTeam && side === pTeam) {
+      // Jersey + side only … last resort when name tokens miss.
+      score += 35
+    } else continue
 
     if (jersey && pJersey && jersey === pJersey) score += 40
     if (side && pTeam && side === pTeam) score += 25

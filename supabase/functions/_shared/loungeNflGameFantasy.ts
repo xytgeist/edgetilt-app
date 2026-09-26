@@ -78,6 +78,8 @@ export type NflGameFantasyPlayer = {
   team: string
   side: 'home' | 'away'
   headshot_url: string | null
+  /** Uniform number (Sleeper `number` / nfl_players.jersey). */
+  jersey: string | null
   search_rank: number | null
   /** Sleeper depth_chart_order (1 = listed starter for that slot). */
   depth_chart_order: number | null
@@ -549,7 +551,7 @@ async function loadPlayersFromDb(
   const { data, error } = await admin
     .from('nfl_players')
     .select(
-      'sleeper_id, espn_id, full_name, position, team, fantasy_positions, search_rank, depth_chart_order, depth_chart_position, headshot_url, local_headshot_path, injury_status',
+      'sleeper_id, espn_id, full_name, position, team, fantasy_positions, search_rank, depth_chart_order, depth_chart_position, headshot_url, local_headshot_path, injury_status, jersey',
     )
     .in('team', [away, home])
   if (error) throw new Error(error.message)
@@ -584,6 +586,10 @@ async function loadPlayersFromSleeper(away: string, home: string): Promise<Array
           : null,
       depth_chart_position: p.depth_chart_position != null ? String(p.depth_chart_position) : null,
       injury_status: p.injury_status != null ? String(p.injury_status) : null,
+      jersey:
+        p.number != null && String(p.number).trim() !== ''
+          ? String(p.number).trim()
+          : null,
       headshot_url: espnId ? HEADSHOT_CDN(espnId) : null,
       local_headshot_path: espnId ? `/sports/nfl/players/${espnId}.png` : null,
     })
@@ -591,9 +597,13 @@ async function loadPlayersFromSleeper(away: string, home: string): Promise<Array
   return out
 }
 
-/** Fresh Sleeper injury tags for the two teams (overlay even when roster comes from DB). */
-async function loadSleeperInjuryMap(away: string, home: string): Promise<Map<string, string>> {
-  const map = new Map<string, string>()
+/** Fresh Sleeper injury + jersey tags for the two teams (overlay even when roster comes from DB). */
+async function loadSleeperRosterOverlay(
+  away: string,
+  home: string,
+): Promise<{ injury: Map<string, string>; jersey: Map<string, string> }> {
+  const injury = new Map<string, string>()
+  const jersey = new Map<string, string>()
   try {
     const raw = (await fetchJson(SLEEPER_PLAYERS)) as Record<string, Record<string, unknown>>
     for (const [id, p] of Object.entries(raw || {})) {
@@ -601,12 +611,14 @@ async function loadSleeperInjuryMap(away: string, home: string): Promise<Map<str
       const team = normTeam(String(p.team || ''))
       if (team !== away && team !== home) continue
       const inj = String(p.injury_status || '').trim()
-      if (inj) map.set(String(id), inj)
+      if (inj) injury.set(String(id), inj)
+      const num = p.number != null ? String(p.number).trim() : ''
+      if (num) jersey.set(String(id), num)
     }
   } catch {
     // optional overlay
   }
-  return map
+  return { injury, jersey }
 }
 
 type SleeperStatRow = {
@@ -1108,6 +1120,10 @@ function mapDbRow(
     team,
     side: team === home ? 'home' : 'away',
     headshot_url: cdn || local,
+    jersey:
+      row.jersey != null && String(row.jersey).trim() !== ''
+        ? String(row.jersey).trim()
+        : null,
     search_rank: Number.isFinite(Number(row.search_rank)) ? Number(row.search_rank) : null,
     depth_chart_order:
       row.depth_chart_order != null && Number.isFinite(Number(row.depth_chart_order))
@@ -1331,8 +1347,9 @@ export async function buildNflGameFantasy(
     : new Map<string, number>()
   if (posRankOf.size) sources.push('pos_rank_pools')
 
-  const injuryMap = await loadSleeperInjuryMap(away, home)
-  if (injuryMap.size) sources.push('sleeper_injury')
+  const sleeperOverlay = await loadSleeperRosterOverlay(away, home)
+  if (sleeperOverlay.injury.size) sources.push('sleeper_injury')
+  if (sleeperOverlay.jersey.size) sources.push('sleeper_jersey')
 
   const players: NflGameFantasyPlayer[] = []
   for (const row of rawRows) {
@@ -1419,8 +1436,10 @@ export async function buildNflGameFantasy(
     if (careerMaps.length) {
       mapped.career = sumCareerStats(careerMaps, mapped.sleeper_id)
     }
-    const inj = injuryMap.get(mapped.sleeper_id)
+    const inj = sleeperOverlay.injury.get(mapped.sleeper_id)
     if (inj) mapped.injury_status = inj
+    const jersey = sleeperOverlay.jersey.get(mapped.sleeper_id)
+    if (jersey) mapped.jersey = jersey
     players.push(mapped)
   }
 

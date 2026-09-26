@@ -30,6 +30,7 @@ import {
   parsePassPlay,
   parseRushPlay,
   playTextIsTouchdown,
+  resolveFigureJersey,
   resolvePlayAnimationPercents,
   scoreText,
   yardLineLabel,
@@ -549,7 +550,7 @@ function FieldViz({
     )
     const matched = matchRushPlayer(parsed.playerHint, players, kit.sideAbbrev)
     const headshotUrl = matched?.headshot_url ? String(matched.headshot_url) : ''
-    const jerseyNumber = matched?.jersey ? String(matched.jersey) : ''
+    const jerseyNumber = resolveFigureJersey(parsed, matched)
 
     const toFirstDownPct = firstDownPercentFromLive(live, endPct, fieldFlipped)
     const settled = settledLinesRef.current
@@ -736,7 +737,7 @@ function FieldViz({
     )
     const matched = matchRushPlayer(parsed.playerHint, players, kit.sideAbbrev)
     const headshotUrl = matched?.headshot_url ? String(matched.headshot_url) : ''
-    const jerseyNumber = matched?.jersey ? String(matched.jersey) : ''
+    const jerseyNumber = resolveFigureJersey(parsed, matched)
 
     const figTopAtEnd = RUSH_Y - RUSH_FIG_H + 8
     const figLeftAtEnd = endX - RUSH_FIG_W / 2

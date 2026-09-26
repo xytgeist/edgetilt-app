@@ -165,6 +165,10 @@ async function main() {
       depth_chart_position: p.depth_chart_position != null ? String(p.depth_chart_position) : null,
       status: p.status != null ? String(p.status) : null,
       injury_status: p.injury_status != null ? String(p.injury_status) : null,
+      jersey:
+        p.number != null && String(p.number).trim() !== ''
+          ? String(p.number).trim()
+          : null,
       headshot_url: espnId ? HEADSHOT_CDN(espnId) : null,
       local_headshot_path: localPath,
       updated_at: new Date().toISOString(),

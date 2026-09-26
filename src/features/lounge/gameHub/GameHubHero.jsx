@@ -1649,15 +1649,15 @@ function HeroPublicBetting({ game, splits, awayColor, homeColor }) {
           </div>
           <div className="mt-0.5 text-[12px] font-bold tabular-nums leading-none text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
             {Math.round(awayBets)}
-            <span className="mx-0.5 font-semibold text-white/40">·</span>
+            <span className="mx-0.5 font-semibold text-white/55">·</span>
             <span className={moneySkew ? 'text-amber-200' : 'text-white/75'}>
               {Math.round(awayMoney)}
             </span>
           </div>
         </div>
-        <div className="pt-0.5 text-center text-[9px] font-semibold uppercase tracking-[0.14em] text-white/40">
+        <div className="pt-0.5 text-center text-[9px] font-semibold uppercase tracking-[0.14em] text-white/70">
           <div>{moneySkew ? 'Public · $ split' : 'Public'}</div>
-          <div className="mt-0.5 font-medium normal-case tracking-normal text-white/30">bets · $</div>
+          <div className="mt-0.5 font-medium normal-case tracking-normal text-white/55">bets · $</div>
         </div>
         <div className="min-w-0 text-right">
           <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70 drop-shadow">
@@ -1665,7 +1665,7 @@ function HeroPublicBetting({ game, splits, awayColor, homeColor }) {
           </div>
           <div className="mt-0.5 text-[12px] font-bold tabular-nums leading-none text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
             {Math.round(homeBets)}
-            <span className="mx-0.5 font-semibold text-white/40">·</span>
+            <span className="mx-0.5 font-semibold text-white/55">·</span>
             <span className={moneySkew ? 'text-amber-200' : 'text-white/75'}>
               {Math.round(homeMoney)}
             </span>
@@ -1729,7 +1729,10 @@ export default function GameHubHero({
       <span data-lounge-game-hero-away aria-hidden="true" />
       <span data-lounge-game-hero-home aria-hidden="true" />
       <span data-lounge-game-hero-seam aria-hidden="true" />
-      <div className="pointer-events-none absolute inset-0 z-[3] bg-gradient-to-b from-black/15 via-black/28 to-zinc-950" />
+      <div
+        data-lounge-game-hero-veil
+        className="pointer-events-none absolute inset-0 z-[3] bg-gradient-to-b from-black/15 via-black/28 to-[#09090b]"
+      />
 
       {topBar ? <div className="relative z-[4]">{topBar}</div> : null}
 

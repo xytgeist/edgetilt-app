@@ -3704,13 +3704,21 @@ html.light [data-lounge-game-chat]::placeholder {
 html.light [data-lounge-game-hero] {
   background-color: #7a7a84 !important;
 }
+/* Pin veil bottom stop … to-zinc-950 remaps to white in light and kills white splits text. */
+html.light [data-lounge-game-hero] [data-lounge-game-hero-veil] {
+  --tw-gradient-to: #09090b !important;
+}
 html.light [data-lounge-game-hero] .text-white,
 html.light [data-lounge-game-hero] .text-white\/90,
 html.light [data-lounge-game-hero] .text-white\/85,
 html.light [data-lounge-game-hero] .text-white\/80,
 html.light [data-lounge-game-hero] .text-white\/75,
 html.light [data-lounge-game-hero] .text-white\/70,
-html.light [data-lounge-game-hero] .text-white\/55 {
+html.light [data-lounge-game-hero] .text-white\/55,
+html.light [data-lounge-game-hero] .text-white\/50,
+html.light [data-lounge-game-hero] .text-white\/45,
+html.light [data-lounge-game-hero] .text-white\/40,
+html.light [data-lounge-game-hero] .text-white\/30 {
   color: #fff !important;
 }
 html.light [data-lounge-game-hero] .text-rose-300 {
@@ -3729,12 +3737,15 @@ html.light [data-lounge-game-hero] [data-lounge-game-glass-chip='active'] {
   border-color: rgba(255, 255, 255, 0.55) !important;
 }
 html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-white,
-html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-white\/70 {
+html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-white\/70,
+html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-white\/55 {
   color: #fff !important;
 }
 html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-white\/50,
-html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-white\/45 {
-  color: rgba(255, 255, 255, 0.5) !important;
+html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-white\/45,
+html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-white\/40,
+html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-white\/30 {
+  color: rgba(255, 255, 255, 0.7) !important;
 }
 /* Last play sits below the field as muted hero text (not a card). Keep white in light. */
 html.light [data-lounge-game-hero] [data-lounge-game-last-play] {
@@ -3805,7 +3816,8 @@ html.light [data-lounge-game-hero] [data-lounge-game-last-play] .text-white\/55 
   margin-top: 1px;
   font-size: 9px;
   font-weight: 600;
-  color: rgba(255, 255, 255, 0.62);
+  color: rgba(255, 255, 255, 0.82);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
 }
 [data-lounge-hub-game-pill] [data-lounge-game-pill-mark] {
   width: 1.375rem;
@@ -3840,7 +3852,8 @@ html.light [data-lounge-hub-game-pill-home] {
   );
 }
 html.light [data-lounge-hub-game-pill-meta] {
-  color: rgba(255, 255, 255, 0.68) !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
 }
 
 /* Game hub sibling pills: hide scrollbar + soft edge fade (mask only … no backdrop-blur on chips). */

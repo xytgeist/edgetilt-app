@@ -33,7 +33,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
-**Branch:** `test` (match `origin/test` before edits). `main` @ **`a8eb664e`** (promoted 2026-09-26, web **1.4.699**). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
+**Branch:** `test` (match `origin/test` before edits). `main` @ **`f502d8ea`** (promoted 2026-09-26, web **1.4.703**). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
 
 **Supabase (do not swap these):**
 
@@ -79,7 +79,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... hub pill light wash
 
-**I am Mac Theo.** Hub matchup chips on the dark field strip: light mode drops white wash for dark glass (same language as dark) + hub logos get halo/silhouette filters. Tip web **`1.4.703`**.
+**I am Mac Theo.** Promoted **`test` → `main` (`f502d8ea`)**. Vercel prod web **`1.4.703`** (jersey number contrast + hub chips dark glass in light). **No SQL / Edge.**
 
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... jersey number contrast
 

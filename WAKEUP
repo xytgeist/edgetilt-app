@@ -77,6 +77,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Mac Theo.** Promoted **`test` → `main` (`63c28769`)**. Vercel **`1.4.661`**. Prod Edge **`lounge-sports-scoreboard`** + **`lounge-cfb-game-players`**. Prod **`cfb_players`** **13,600**. Store IPA still **1.4.95**.
 
+### Mac Theo ACTIVE TRACK 2026-09-26 ... field down + live logos
+
+**I am Mac Theo.** Live field `pt-5` / scoreboard `pb-3`; condensed logos 40→52. Tip web **`1.4.709`**.
+
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... Ball State ≠ Arizona Cardinals
 
 **I am Mac Theo.** Promoted **`test` → `main` (`7be7dd12`)**. Vercel prod web **`1.4.708`** (CFB Cardinals label fix). **No SQL / Edge.**

@@ -1089,7 +1089,7 @@ function FieldViz({
   const showTdBanner = Boolean(catchAnim?.showTdLabel)
 
   return (
-    <div data-lounge-game-field className="relative w-full px-1 pb-0 pt-3 sm:px-1.5">
+    <div data-lounge-game-field className="relative w-full px-1 pb-0 pt-5 sm:px-1.5">
       <div className="relative w-full overflow-hidden">
         {/* Layer 1: Floating field base graphic */}
         <img
@@ -1738,11 +1738,11 @@ export default function GameHubHero({
 
       {showField ? (
         /* Condensed scoreboard only while the 3D field is up: logo | score mid-gap | status | … */
-        <div data-lounge-game-scoreboard className="relative z-[4] px-3 pb-2 pt-1">
+        <div data-lounge-game-scoreboard className="relative z-[4] px-3 pb-3 pt-1">
           <div className="flex items-center justify-between gap-1.5">
             <div className="flex min-w-0 flex-1 items-center">
-              <div className="flex w-[40px] shrink-0 flex-col items-center">
-                <LoungeSportsTeamLogo side={game.away} treatment={awayTreatment} size={40} />
+              <div className="flex w-[52px] shrink-0 flex-col items-center">
+                <LoungeSportsTeamLogo side={game.away} treatment={awayTreatment} size={52} />
                 <div className="mt-0.5 w-full text-center text-[13px] font-semibold uppercase tracking-wide text-white/85">
                   {awayLabel}
                 </div>
@@ -1803,8 +1803,8 @@ export default function GameHubHero({
                   ) : null}
                 </div>
               </div>
-              <div className="flex w-[40px] shrink-0 flex-col items-center">
-                <LoungeSportsTeamLogo side={game.home} treatment={homeTreatment} size={40} />
+              <div className="flex w-[52px] shrink-0 flex-col items-center">
+                <LoungeSportsTeamLogo side={game.home} treatment={homeTreatment} size={52} />
                 <div className="mt-0.5 w-full text-center text-[13px] font-semibold uppercase tracking-wide text-white/85">
                   {homeLabel}
                 </div>

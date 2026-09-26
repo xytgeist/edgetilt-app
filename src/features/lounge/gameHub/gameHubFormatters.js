@@ -702,10 +702,10 @@ export function parseFieldGoalPlay(text) {
 
   let yards = null
   let m =
-    raw.match(/(\d{1,2})\s*-?\s*(?:yard|yds?)\s+field\s+goals?\b/i) ||
-    raw.match(/\bfield\s+goals?\b.*?(\d{1,2})\s*-?\s*(?:yard|yds?)\b/i) ||
+    raw.match(/(\d{1,2})\s*-?\s*(?:yards?|yds?)\s+field\s+goals?\b/i) ||
+    raw.match(/\bfield\s+goals?\b.*?(\d{1,2})\s*-?\s*(?:yards?|yds?)\b/i) ||
     raw.match(/(\d{1,2})\s*-?\s*yds?\s+fg\b/i) ||
-    raw.match(/\bfg\b.*?(\d{1,2})\s*-?\s*(?:yard|yds?)\b/i)
+    raw.match(/\bfg\b.*?(\d{1,2})\s*-?\s*(?:yards?|yds?)\b/i)
   if (m) {
     const n = Number(m[1])
     if (Number.isFinite(n) && n >= 17 && n <= 75) yards = n

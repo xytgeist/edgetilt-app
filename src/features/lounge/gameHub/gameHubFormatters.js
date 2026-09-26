@@ -172,16 +172,48 @@ export function yardLineLabel(game, live) {
   return `${abbrev} ${normalized.yard}`
 }
 
-/** Map live yard fields onto 0–100 field percent (away endzone left → home right). */
-export function fieldPercent(live) {
+/**
+ * Field orientation flips at halftime (teams switch ends).
+ * First half / pregame: home endzone on the right.
+ * Halftime + 2H + OT: home endzone on the left.
+ */
+export function isFieldOrientationFlipped(game, live) {
+  const period = Number(live?.period)
+  if (Number.isFinite(period) && period >= 3) return true
+  return fieldCenterBanner(game, live) === 'HALFTIME'
+}
+
+/**
+ * Attack direction on the 0–100 field axis.
+ * First half: home toward left (−1), away toward right (+1).
+ * After flip: invert.
+ */
+export function attackDirection(possessionSide, flipped = false) {
+  const base = possessionSide === 'home' ? -1 : 1
+  return flipped ? -base : base
+}
+
+/**
+ * Map live yard fields onto 0–100 field percent.
+ * First half: away endzone left → home right. Flipped: home left → away right.
+ */
+export function fieldPercent(live, opts = {}) {
+  const flipped = Boolean(opts.flipped)
   const normalized = normalizeYardTerritory(live)
   if (!normalized) {
-    if (live?.possession === 'home') return 62
-    if (live?.possession === 'away') return 38
+    if (live?.possession === 'home') return flipped ? 38 : 62
+    if (live?.possession === 'away') return flipped ? 62 : 38
     return null
   }
   if (normalized.midfield) return 50
-  const pos = normalized.side === 'home' ? 100 - normalized.yard : normalized.yard
+  let pos
+  if (normalized.side === 'home') {
+    pos = flipped ? normalized.yard : 100 - normalized.yard
+  } else if (normalized.side === 'away') {
+    pos = flipped ? 100 - normalized.yard : normalized.yard
+  } else {
+    return null
+  }
   return Math.max(6, Math.min(94, pos))
 }
 
@@ -533,13 +565,13 @@ function matchTerritorySide(token, game) {
 }
 
 /**
- * Convert side + 1–50 yard line into 0–100 field percent
- * (away endzone left → home endzone right).
+ * Convert side + 1–50 yard line into 0–100 field percent.
+ * First half: away left → home right. Flipped: home left → away right.
  */
-function territoryToFieldPercent(side, yard) {
+function territoryToFieldPercent(side, yard, flipped = false) {
   const y = Math.max(0, Math.min(50, Math.round(Number(yard))))
-  if (side === 'home') return Math.max(0, Math.min(100, 100 - y))
-  if (side === 'away') return Math.max(0, Math.min(100, y))
+  if (side === 'home') return Math.max(0, Math.min(100, flipped ? y : 100 - y))
+  if (side === 'away') return Math.max(0, Math.min(100, flipped ? 100 - y : y))
   return null
 }
 
@@ -547,7 +579,7 @@ function territoryToFieldPercent(side, yard) {
  * Parse "to the NW 05" / "to the 50" / "to the End Zone" into a field percent.
  * @returns {number|null}
  */
-export function parsePlayEndFieldPercent(text, game, attackDir = 1) {
+export function parsePlayEndFieldPercent(text, game, attackDir = 1, flipped = false) {
   const raw = String(text || '')
   if (!raw) return null
 
@@ -557,7 +589,7 @@ export function parsePlayEndFieldPercent(text, game, attackDir = 1) {
   if (m) {
     const side = matchTerritorySide(m[1], game)
     const yard = Number(m[2])
-    if (side && Number.isFinite(yard)) return territoryToFieldPercent(side, yard)
+    if (side && Number.isFinite(yard)) return territoryToFieldPercent(side, yard, flipped)
   }
 
   if (/\bto(?:\s+the)?\s+end\s*zones?\b/i.test(raw) || playTextIsTouchdown(raw)) {
@@ -582,11 +614,12 @@ export function resolvePlayAnimationPercents({
   livePos,
   preferTextSpots = false,
   isTouchdown = false,
+  flipped = false,
 } = {}) {
-  const attackDir = possessionSide === 'home' ? -1 : 1
+  const attackDir = attackDirection(possessionSide, flipped)
   const yd = Number(yards)
   const hasYards = Number.isFinite(yd) && yd > 0
-  const textEnd = parsePlayEndFieldPercent(text, game, attackDir)
+  const textEnd = parsePlayEndFieldPercent(text, game, attackDir, flipped)
 
   let endPct = null
   let startPct = null

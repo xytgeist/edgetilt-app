@@ -20,9 +20,11 @@ import {
   CATCH_VIEWBOX_W,
 } from './gameHubCatchPieces.js'
 import {
+  attackDirection,
   downDistanceLabel,
   fieldCenterBanner,
   fieldPercent,
+  isFieldOrientationFlipped,
   liveClockLabel,
   matchRushPlayer,
   parsePassPlay,
@@ -84,7 +86,7 @@ function fieldMidXFromPercent(p) {
   return (fieldTopXFromPercent(p) + fieldBotXFromPercent(p)) / 2
 }
 
-function firstDownPercentFromLive(live, scrimPct) {
+function firstDownPercentFromLive(live, scrimPct, flipped = false) {
   if (
     scrimPct == null ||
     !live?.down ||
@@ -94,7 +96,7 @@ function firstDownPercentFromLive(live, scrimPct) {
     return null
   }
   const dist = Number(live.distance)
-  const dir = live.possession === 'home' ? -1 : 1
+  const dir = attackDirection(live.possession, flipped)
   return Math.max(0, Math.min(100, scrimPct + dir * dist))
 }
 
@@ -478,7 +480,8 @@ function FieldViz({
   const isFootball = sportKey.includes('football') || (!sportKey && Boolean(game?.away && game?.home))
 
   const isUserReplay = Number(playReplayNonce) > 0
-  const posRaw = fieldPercent(live)
+  const fieldFlipped = isFieldOrientationFlipped(game, live)
+  const posRaw = fieldPercent(live, { flipped: fieldFlipped })
   // Midfield fallback so tap-to-replay still animates on final / missing LOS.
   const pos = posRaw != null ? posRaw : isUserReplay ? 50 : null
   const hasLine = pos != null
@@ -520,7 +523,7 @@ function FieldViz({
     setCatchAnim(null)
     if (catchRafRef.current) cancelAnimationFrame(catchRafRef.current)
 
-    const attackDir = possessionSide === 'home' ? -1 : 1
+    const attackDir = attackDirection(possessionSide, fieldFlipped)
     const spots = resolvePlayAnimationPercents({
       text: lastPlayText,
       yards: parsed.yards,
@@ -529,6 +532,7 @@ function FieldViz({
       livePos: pos,
       preferTextSpots: isUserReplay,
       isTouchdown: Boolean(parsed.isTouchdown) || playTextIsTouchdown(lastPlayText),
+      flipped: fieldFlipped,
     })
     const endPct = spots.endPct
     const startPct = spots.startPct
@@ -547,7 +551,7 @@ function FieldViz({
     const headshotUrl = matched?.headshot_url ? String(matched.headshot_url) : ''
     const jerseyNumber = matched?.jersey ? String(matched.jersey) : ''
 
-    const toFirstDownPct = firstDownPercentFromLive(live, endPct)
+    const toFirstDownPct = firstDownPercentFromLive(live, endPct, fieldFlipped)
     const settled = settledLinesRef.current
     // Old LOS is always prior yardline from the play text (live pos is already post-play).
     const fromScrimPct = startPct
@@ -565,7 +569,8 @@ function FieldViz({
       fromFirstDownPct = Number.isFinite(priorDist)
         ? firstDownPercentFromLive(
             { ...live, distance: priorDist + parsed.yards },
-            startPct
+            startPct,
+            fieldFlipped,
           )
         : toFirstDownPct
     }
@@ -671,6 +676,7 @@ function FieldViz({
     animKey,
     isUserReplay,
     possessionSide,
+    fieldFlipped,
     live,
     awayColor,
     homeColor,
@@ -700,7 +706,7 @@ function FieldViz({
 
     const isTouchdown =
       Boolean(parsed.isTouchdown) || playTextIsTouchdown(lastPlayText)
-    const attackDir = possessionSide === 'home' ? -1 : 1
+    const attackDir = attackDirection(possessionSide, fieldFlipped)
     const spots = resolvePlayAnimationPercents({
       text: lastPlayText,
       yards: parsed.yards,
@@ -709,11 +715,12 @@ function FieldViz({
       livePos: pos,
       preferTextSpots: isUserReplay,
       isTouchdown,
+      flipped: fieldFlipped,
     })
     const gainPct = spots.endPct
     const startPct = spots.startPct
     const startX = fieldMidXFromPercent(startPct)
-    // TD: slide halfway into the scored endzone (away → right, home → left).
+    // TD: slide halfway into the scored (opponent) endzone along attackDir.
     const endX = isTouchdown
       ? attackDir < 0
         ? ENDZONE_COORDS.left.centerX
@@ -742,7 +749,7 @@ function FieldViz({
       y: Math.min(ballStart.y, ballEnd.y) - arcLift,
     }
 
-    const toFirstDownPct = firstDownPercentFromLive(live, gainPct)
+    const toFirstDownPct = firstDownPercentFromLive(live, gainPct, fieldFlipped)
     const settled = settledLinesRef.current
     const fromScrimPct = startPct
     const settledStillPrePlay =
@@ -760,6 +767,7 @@ function FieldViz({
         ? firstDownPercentFromLive(
             { ...live, distance: priorDist + parsed.yards },
             startPct,
+            fieldFlipped,
           )
         : toFirstDownPct
     }
@@ -913,6 +921,7 @@ function FieldViz({
     animKey,
     isUserReplay,
     possessionSide,
+    fieldFlipped,
     live,
     awayColor,
     homeColor,
@@ -924,7 +933,7 @@ function FieldViz({
     if (rushAnim || catchAnim || !hasLine || pos == null || hideLiveLines) return
     settledLinesRef.current = {
       scrimPct: pos,
-      firstDownPct: firstDownPercentFromLive(live, pos),
+      firstDownPct: firstDownPercentFromLive(live, pos, fieldFlipped),
     }
   }, [
     rushAnim,
@@ -932,6 +941,7 @@ function FieldViz({
     hasLine,
     pos,
     hideLiveLines,
+    fieldFlipped,
     live?.possession,
     live?.down,
     live?.distance,
@@ -955,7 +965,7 @@ function FieldViz({
       : catchAnim?.isTouchdown
         ? catchAnim.fromScrimPct
         : pos
-  const liveFirstDownPct = firstDownPercentFromLive(live, pos)
+  const liveFirstDownPct = firstDownPercentFromLive(live, pos, fieldFlipped)
   const displayFirstDownPct =
     lineDriver != null &&
     lineDriver.fromFirstDownPct != null &&
@@ -1005,8 +1015,13 @@ function FieldViz({
       : ''
   const college = isCfbSport(sportKey)
   const endzoneFont = college ? ENDZONE_FONT_CFB : ENDZONE_FONT_NFL
-  const awayEndzone = resolveEndzoneDesign(game?.away, awayColor, 'left', { college })
-  const homeEndzone = resolveEndzoneDesign(game?.home, homeColor, 'right', { college })
+  // First half: away left / home right. After flip: home left / away right.
+  const leftSide = fieldFlipped ? game?.home : game?.away
+  const rightSide = fieldFlipped ? game?.away : game?.home
+  const leftColor = fieldFlipped ? homeColor : awayColor
+  const rightColor = fieldFlipped ? awayColor : homeColor
+  const leftEndzone = resolveEndzoneDesign(leftSide, leftColor, 'left', { college })
+  const rightEndzone = resolveEndzoneDesign(rightSide, rightColor, 'right', { college })
 
   const catchPlaying = Boolean(
     catchAnim != null &&
@@ -1108,25 +1123,25 @@ function FieldViz({
               <feDropShadow dx="0" dy="1" stdDeviation="1" floodColor="#000000" floodOpacity="0.85" />
             </filter>
             {/* Endzone lighting gradients */}
-            <linearGradient id="ez-away-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor={awayEndzone.gradSheen} stopOpacity="0.84" />
-              <stop offset="45%" stopColor={awayEndzone.gradMid} stopOpacity="0.78" />
-              <stop offset="100%" stopColor={awayEndzone.gradDeep} stopOpacity="0.86" />
+            <linearGradient id="ez-left-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor={leftEndzone.gradSheen} stopOpacity="0.84" />
+              <stop offset="45%" stopColor={leftEndzone.gradMid} stopOpacity="0.78" />
+              <stop offset="100%" stopColor={leftEndzone.gradDeep} stopOpacity="0.86" />
             </linearGradient>
-            <linearGradient id="ez-home-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor={homeEndzone.gradSheen} stopOpacity="0.84" />
-              <stop offset="45%" stopColor={homeEndzone.gradMid} stopOpacity="0.78" />
-              <stop offset="100%" stopColor={homeEndzone.gradDeep} stopOpacity="0.86" />
+            <linearGradient id="ez-right-grad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor={rightEndzone.gradSheen} stopOpacity="0.84" />
+              <stop offset="45%" stopColor={rightEndzone.gradMid} stopOpacity="0.78" />
+              <stop offset="100%" stopColor={rightEndzone.gradDeep} stopOpacity="0.86" />
             </linearGradient>
           </defs>
 
           {/* Endzone Turf Washes */}
-          <path d={ENDZONE_COORDS.left.paintPath} fill="url(#ez-away-grad)" />
-          <path d={ENDZONE_COORDS.right.paintPath} fill="url(#ez-home-grad)" />
+          <path d={ENDZONE_COORDS.left.paintPath} fill="url(#ez-left-grad)" />
+          <path d={ENDZONE_COORDS.right.paintPath} fill="url(#ez-right-grad)" />
 
-          {/* Away Endzone Mascot Wordmark (Left) */}
-          {awayEndzone.glyphs?.map((g, idx) => (
-            <g key={`away-glyph-${idx}`} transform={g.transform}>
+          {/* Left Endzone Mascot Wordmark (away 1H / home 2H) */}
+          {leftEndzone.glyphs?.map((g, idx) => (
+            <g key={`left-glyph-${idx}`} transform={g.transform}>
               <text
                 x="0"
                 y="0"
@@ -1137,7 +1152,7 @@ function FieldViz({
                 strokeWidth="8"
                 strokeLinejoin="round"
                 fontFamily={endzoneFont}
-                fontSize={awayEndzone.fontSize}
+                fontSize={leftEndzone.fontSize}
                 fontWeight="900"
                 opacity="0.95"
               >
@@ -1149,11 +1164,11 @@ function FieldViz({
                 textAnchor="middle"
                 dominantBaseline="central"
                 fill="none"
-                stroke={awayEndzone.textStroke}
+                stroke={leftEndzone.textStroke}
                 strokeWidth="4.5"
                 strokeLinejoin="round"
                 fontFamily={endzoneFont}
-                fontSize={awayEndzone.fontSize}
+                fontSize={leftEndzone.fontSize}
                 fontWeight="900"
               >
                 {g.char}
@@ -1163,11 +1178,11 @@ function FieldViz({
                 y="0"
                 textAnchor="middle"
                 dominantBaseline="central"
-                fill={awayEndzone.textFill}
-                stroke={awayEndzone.isGoldText ? '#ffffff' : 'none'}
-                strokeWidth={awayEndzone.isGoldText ? '1' : '0'}
+                fill={leftEndzone.textFill}
+                stroke={leftEndzone.isGoldText ? '#ffffff' : 'none'}
+                strokeWidth={leftEndzone.isGoldText ? '1' : '0'}
                 fontFamily={endzoneFont}
-                fontSize={awayEndzone.fontSize}
+                fontSize={leftEndzone.fontSize}
                 fontWeight="900"
               >
                 {g.char}
@@ -1175,9 +1190,9 @@ function FieldViz({
             </g>
           ))}
 
-          {/* Home Endzone Mascot Wordmark (Right) */}
-          {homeEndzone.glyphs?.map((g, idx) => (
-            <g key={`home-glyph-${idx}`} transform={g.transform}>
+          {/* Right Endzone Mascot Wordmark (home 1H / away 2H) */}
+          {rightEndzone.glyphs?.map((g, idx) => (
+            <g key={`right-glyph-${idx}`} transform={g.transform}>
               <text
                 x="0"
                 y="0"
@@ -1188,7 +1203,7 @@ function FieldViz({
                 strokeWidth="8"
                 strokeLinejoin="round"
                 fontFamily={endzoneFont}
-                fontSize={homeEndzone.fontSize}
+                fontSize={rightEndzone.fontSize}
                 fontWeight="900"
                 opacity="0.95"
               >
@@ -1200,11 +1215,11 @@ function FieldViz({
                 textAnchor="middle"
                 dominantBaseline="central"
                 fill="none"
-                stroke={homeEndzone.textStroke}
+                stroke={rightEndzone.textStroke}
                 strokeWidth="4.5"
                 strokeLinejoin="round"
                 fontFamily={endzoneFont}
-                fontSize={homeEndzone.fontSize}
+                fontSize={rightEndzone.fontSize}
                 fontWeight="900"
               >
                 {g.char}
@@ -1214,11 +1229,11 @@ function FieldViz({
                 y="0"
                 textAnchor="middle"
                 dominantBaseline="central"
-                fill={homeEndzone.textFill}
-                stroke={homeEndzone.isGoldText ? '#ffffff' : 'none'}
-                strokeWidth={homeEndzone.isGoldText ? '1' : '0'}
+                fill={rightEndzone.textFill}
+                stroke={rightEndzone.isGoldText ? '#ffffff' : 'none'}
+                strokeWidth={rightEndzone.isGoldText ? '1' : '0'}
                 fontFamily={endzoneFont}
-                fontSize={homeEndzone.fontSize}
+                fontSize={rightEndzone.fontSize}
                 fontWeight="900"
               >
                 {g.char}

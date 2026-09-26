@@ -3832,7 +3832,8 @@ html.light [data-lounge-hub-game-pill-home] {
   );
 }
 html.light [data-lounge-hub-game-pill-meta] {
-  color: #71717a !important;
+  /* Darker than zinc-500 … translucent wash + team glow eats lighter gray. */
+  color: #3f3f46 !important;
 }
 html.light [data-lounge-hub-game-pill] [data-lounge-game-pill-logo='silhouette'] {
   filter:

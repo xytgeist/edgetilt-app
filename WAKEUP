@@ -79,7 +79,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... hub pill light wash
 
-**I am Mac Theo.** Light-mode hub matchup chips: solid white → `rgba(255,255,255,0.42)` + stronger team glows (42%→58%). Dark unchanged. Tip web **`1.4.701`**.
+**I am Mac Theo.** Light-mode hub matchup chips: translucent wash `0.42` / active `0.58` + stronger glows; meta (`Final`) darkened to `#3f3f46` so it reads on the wash. Dark unchanged. Tip web **`1.4.702`**.
 
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... jersey number contrast
 

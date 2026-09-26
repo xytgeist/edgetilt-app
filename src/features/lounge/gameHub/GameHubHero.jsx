@@ -88,6 +88,11 @@ const FG_TUMBLE_REVS = 20
  * Below 0.5 → snappy takeoff, then a steadier hang after the top.
  */
 const FG_APEX_TIME = 0.34
+/**
+ * Takeoff slope vs descent cruise (df/du). >1 = snappy plant; must stay
+ * monotonic on the Hermite rise (m0+m1 ≤ 3·Δpath ≈ 1.5 in v-space).
+ */
+const FG_TAKEOFF_SLOPE_MULT = 2.35
 
 /**
  * Goalpost uprights from gamecast-goalposts-overlay.png (viewBox 1266×533).
@@ -143,17 +148,23 @@ function fgParabolaPoint(start, end, lift, t) {
 
 /**
  * Map linear flight time → path t.
- * Fastest at plant, eases out into the apex, then holds that slower pace
- * through the descent (stylized … not true gravity re-acceleration).
+ * Snappy plant into the apex, then cruise on the way down.
+ * Rise is Hermite so slope matches the linear descent at t=0.5 … avoids the
+ * old easeOutQuad dead-stop then jerk at the top.
  */
 function fgFlightPathT(u) {
   const x = Math.max(0, Math.min(1, u))
   const apexU = FG_APEX_TIME
+  const descentDu = 0.5 / (1 - apexU)
   if (x <= apexU) {
     const v = x / apexU
-    // easeOutQuad … takeoff covers ground quick, then softens into the top.
-    const eased = 1 - (1 - v) * (1 - v)
-    return 0.5 * eased
+    // Tangents in v-space (df/dv = (df/du) · apexU).
+    const m0 = descentDu * apexU * FG_TAKEOFF_SLOPE_MULT
+    const m1 = descentDu * apexU
+    const v2 = v * v
+    const v3 = v2 * v
+    // Cubic Hermite: p0=0 → p1=0.5, C1 into the descent segment.
+    return (v3 - 2 * v2 + v) * m0 + (-2 * v3 + 3 * v2) * 0.5 + (v3 - v2) * m1
   }
   return 0.5 + 0.5 * ((x - apexU) / (1 - apexU))
 }
@@ -1180,7 +1191,7 @@ function FieldViz({
         t = 0
       } else if (elapsed < FG_HOLD_MS + flightMs) {
         phase = 'flight'
-        // Fast plant → ease into apex → hold that slower pace on the way down.
+        // Snappy plant → C1 through apex → steady cruise on the way down.
         t = fgFlightPathT((elapsed - FG_HOLD_MS) / flightMs)
       } else {
         phase = 'bounce'

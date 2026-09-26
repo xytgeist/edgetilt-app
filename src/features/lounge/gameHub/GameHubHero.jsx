@@ -1819,36 +1819,30 @@ export default function GameHubHero({
           </div>
         </div>
       ) : (
-        /* Roomier pre/post: larger logos, score/spread + ML in logo↔clock gap */
+        /* Pre/post without field: logo → name → odds stacked per side; center owns kickoff. */
         <div data-lounge-game-scoreboard className="relative z-[4] px-4 pb-3 pt-2">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex min-w-0 flex-1 items-center">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex min-w-0 flex-1 max-w-[9rem] flex-col items-center">
+              <LoungeSportsTeamLogo side={game.away} treatment={awayTreatment} size={68} />
               <div
-                className={`flex shrink-0 flex-col items-center ${
-                  preLabels ? 'w-[7.25rem]' : 'w-[68px]'
+                className={`mt-1 w-full text-center font-semibold leading-snug text-white/90 ${
+                  preLabels
+                    ? 'text-[12px] tracking-tight'
+                    : 'text-[15px] uppercase tracking-wide'
                 }`}
               >
-                <LoungeSportsTeamLogo side={game.away} treatment={awayTreatment} size={68} />
-                <div
-                  className={`mt-1 w-full text-center font-semibold leading-snug text-white/90 ${
-                    preLabels
-                      ? 'text-[12px] tracking-tight'
-                      : 'text-[15px] uppercase tracking-wide'
-                  }`}
-                >
-                  {awayLabel}
-                </div>
-                {game.away?.record ? (
-                  <div className="mt-0.5 w-full text-center text-[12px] font-medium tabular-nums leading-none text-white/55">
-                    {game.away.record}
-                  </div>
-                ) : null}
-                {awayTimeouts != null ? <TimeoutDots remaining={awayTimeouts} align="center" /> : null}
+                {awayLabel}
               </div>
-              <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1">
+              {game.away?.record ? (
+                <div className="mt-0.5 w-full text-center text-[12px] font-medium tabular-nums leading-none text-white/55">
+                  {game.away.record}
+                </div>
+              ) : null}
+              {awayTimeouts != null ? <TimeoutDots remaining={awayTimeouts} align="center" /> : null}
+              <div className="mt-2 flex items-center justify-center gap-1.5">
                 <div className="flex flex-col items-center">
                   <div
-                    className={`text-[40px] font-bold leading-none tabular-nums drop-shadow ${
+                    className={`text-[32px] font-bold leading-none tabular-nums drop-shadow ${
                       awayScoreDim ? 'text-white/45' : 'text-white'
                     }`}
                   >
@@ -1864,7 +1858,7 @@ export default function GameHubHero({
               </div>
             </div>
 
-            <div className="flex max-w-[36%] shrink-0 flex-col items-center gap-0.5 px-1 text-center">
+            <div className="flex shrink-0 flex-col items-center gap-0.5 px-2 pt-5 text-center">
               <span
                 className={`text-[13px] font-bold tracking-wide ${
                   game.status === 'in' ? 'text-rose-300' : 'text-white/85'
@@ -1877,12 +1871,28 @@ export default function GameHubHero({
               <WatchBroadcastPill label={game.broadcast} url={game.broadcast_url} />
             </div>
 
-            <div className="flex min-w-0 flex-1 items-center">
-              <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1">
+            <div className="flex min-w-0 flex-1 max-w-[9rem] flex-col items-center">
+              <LoungeSportsTeamLogo side={game.home} treatment={homeTreatment} size={68} />
+              <div
+                className={`mt-1 w-full text-center font-semibold leading-snug text-white/90 ${
+                  preLabels
+                    ? 'text-[12px] tracking-tight'
+                    : 'text-[15px] uppercase tracking-wide'
+                }`}
+              >
+                {homeLabel}
+              </div>
+              {game.home?.record ? (
+                <div className="mt-0.5 w-full text-center text-[12px] font-medium tabular-nums leading-none text-white/55">
+                  {game.home.record}
+                </div>
+              ) : null}
+              {homeTimeouts != null ? <TimeoutDots remaining={homeTimeouts} align="center" /> : null}
+              <div className="mt-2 flex items-center justify-center gap-1.5">
                 {homeHasBall ? <PossessionFootball side="home" /> : null}
                 <div className="flex flex-col items-center">
                   <div
-                    className={`text-[40px] font-bold leading-none tabular-nums drop-shadow ${
+                    className={`text-[32px] font-bold leading-none tabular-nums drop-shadow ${
                       homeScoreDim ? 'text-white/45' : 'text-white'
                     }`}
                   >
@@ -1894,28 +1904,6 @@ export default function GameHubHero({
                     </div>
                   ) : null}
                 </div>
-              </div>
-              <div
-                className={`flex shrink-0 flex-col items-center ${
-                  preLabels ? 'w-[7.25rem]' : 'w-[68px]'
-                }`}
-              >
-                <LoungeSportsTeamLogo side={game.home} treatment={homeTreatment} size={68} />
-                <div
-                  className={`mt-1 w-full text-center font-semibold leading-snug text-white/90 ${
-                    preLabels
-                      ? 'text-[12px] tracking-tight'
-                      : 'text-[15px] uppercase tracking-wide'
-                  }`}
-                >
-                  {homeLabel}
-                </div>
-                {game.home?.record ? (
-                  <div className="mt-0.5 w-full text-center text-[12px] font-medium tabular-nums leading-none text-white/55">
-                    {game.home.record}
-                  </div>
-                ) : null}
-                {homeTimeouts != null ? <TimeoutDots remaining={homeTimeouts} align="center" /> : null}
               </div>
             </div>
           </div>

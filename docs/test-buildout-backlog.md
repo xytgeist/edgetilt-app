@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-25:** **RB field runner anim (Mac).** Rush last-plays slide a team-colored SVG RB from prior LOS across gained yards with a primary trail + oversized roster headshot when matched; skip on center banners / reduced-motion snap. Frontend **`1.4.670`**.
 - **2026-09-25:** **Field banner nudge up (Mac).** TIMEOUT / HALFTIME / period-end overlays sit higher on the gamecast turf. Frontend **`1.4.669`**.
 - **2026-09-25:** **Scoreboard athletic font (Mac).** Hero scoreboard (scores / clock / team labels) uses condensed **Oswald**; field stoppage banners match. Frontend **`1.4.668`**.
 - **2026-09-25:** **Field stoppage banners (Mac).** Gamecast center overlay for TIMEOUT / End of 1st / HALFTIME / End of 3rd / GAME OVER (from ESPN status + clock heuristics). Finals keep the field so GAME OVER can show. Redeploy test **`lounge-sports-scoreboard`**. Frontend **`1.4.667`**.

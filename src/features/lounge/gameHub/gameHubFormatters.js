@@ -244,3 +244,112 @@ export function kalshiContracts(value) {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}k`
   return String(n)
 }
+
+/**
+ * Parse ESPN-style rush / scramble play text.
+ * @returns {{ yards: number, playerHint: string } | null}
+ */
+export function parseRushPlay(text) {
+  const raw = String(text || '').trim()
+  if (!raw) return null
+  const lower = raw.toLowerCase()
+  const isRush =
+    /\brush(?:ed|es|ing)?\b/.test(lower) ||
+    /\brun(?:s|ning)?\b/.test(lower) ||
+    /\bscrambl(?:e|es|ed|ing)\b/.test(lower)
+  if (!isRush) return null
+  // Pass plays that mention "run after catch" etc. still have "pass" — skip those.
+  if (/\bpass(?:ed|es|ing)?\b/.test(lower) && !/\bscrambl/.test(lower)) return null
+
+  let yards = null
+  let m = raw.match(/\bfor\s+(\d+)\s+yards?\s+(?:gain|gained)\b/i)
+  if (m) yards = Number(m[1])
+  if (yards == null) {
+    m = raw.match(/\b(?:gain|gained)\s+of\s+(\d+)\s+yards?\b/i)
+    if (m) yards = Number(m[1])
+  }
+  if (yards == null) {
+    m = raw.match(/\bfor\s+(\d+)\s+yards?\b/i)
+    if (m) yards = Number(m[1])
+  }
+  if (yards == null) {
+    m = raw.match(/\b(?:a\s+)?loss\s+of\s+(\d+)\s+yards?\b/i)
+    if (m) yards = -Number(m[1])
+  }
+  if (yards == null) {
+    m = raw.match(/\bfor\s+no\s+gain\b/i)
+    if (m) yards = 0
+  }
+  if (yards == null || !Number.isFinite(yards) || Math.abs(yards) < 1) return null
+
+  // Leading name / "#N Name" before the verb
+  let playerHint = ''
+  const nameMatch = raw.match(
+    /^((?:#?\d+\s+)?[A-Za-z][A-Za-z.'’-]*(?:\s+[A-Za-z][A-Za-z.'’-]*){0,3})\s+(?:rush|run|scrambl)/i
+  )
+  if (nameMatch) playerHint = nameMatch[1].trim()
+
+  return { yards, playerHint }
+}
+
+function normalizePlayerToken(s) {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/[#.’']/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+/**
+ * Match a rush ballcarrier hint against hub roster rows.
+ * Prefers possession-side `team` abbrev when provided.
+ * @returns {object | null} player row with headshot_url preferred
+ */
+export function matchRushPlayer(hint, players, sideAbbrev = '') {
+  const list = Array.isArray(players) ? players : []
+  if (!list.length || !hint) return null
+  const raw = String(hint).trim()
+  const side = String(sideAbbrev || '')
+    .trim()
+    .toUpperCase()
+
+  let jersey = null
+  let namePart = raw
+  const jMatch = raw.match(/^#?(\d+)\s+(.+)$/)
+  if (jMatch) {
+    jersey = jMatch[1]
+    namePart = jMatch[2].trim()
+  }
+
+  const hintNorm = normalizePlayerToken(namePart)
+  const hintParts = hintNorm.split(' ').filter(Boolean)
+  const hintLast = hintParts.length ? hintParts[hintParts.length - 1] : ''
+
+  const scored = []
+  for (const p of list) {
+    if (!p || typeof p !== 'object') continue
+    const pName = normalizePlayerToken(p.name || p.full_name || '')
+    if (!pName) continue
+    const pParts = pName.split(' ').filter(Boolean)
+    const pLast = pParts.length ? pParts[pParts.length - 1] : ''
+    const pJersey = p.jersey != null ? String(p.jersey) : ''
+    const pTeam = String(p.team || p.team_abbrev || '')
+      .trim()
+      .toUpperCase()
+
+    let score = 0
+    if (hintNorm && pName === hintNorm) score += 100
+    else if (hintNorm && pName.includes(hintNorm)) score += 70
+    else if (hintLast && pLast === hintLast) score += 50
+    else if (hintLast && pName.includes(hintLast)) score += 30
+    else continue
+
+    if (jersey && pJersey && jersey === pJersey) score += 40
+    if (side && pTeam && side === pTeam) score += 25
+    if (p.headshot_url) score += 5
+    scored.push({ p, score })
+  }
+  if (!scored.length) return null
+  scored.sort((a, b) => b.score - a.score)
+  return scored[0].p
+}

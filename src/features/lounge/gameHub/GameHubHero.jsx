@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import {
   LoungeSportsTeamLogo,
   useLoungeSportsPillWashAndLogos,
@@ -11,14 +11,37 @@ import {
   ENDZONE_COORDS,
   resolveEndzoneDesign,
 } from './gameHubEndzone.js'
+import GameHubRushFigure from './GameHubRushFigure.jsx'
 import {
   downDistanceLabel,
   fieldCenterBanner,
   fieldPercent,
   liveClockLabel,
+  matchRushPlayer,
+  parseRushPlay,
   scoreText,
   yardLineLabel,
 } from './gameHubFormatters.js'
+
+const RUSH_ANIM_MS = 1100
+const RUSH_Y = 334.5
+const RUSH_FIG_W = 62
+const RUSH_FIG_H = 72
+
+function fieldMidXFromPercent(p) {
+  const top = 239.0 + (p / 100) * 784.0
+  const bot = 161.0 + (p / 100) * 937.0
+  return (top + bot) / 2
+}
+
+function easeOutCubic(t) {
+  return 1 - (1 - t) ** 3
+}
+
+function prefersReducedMotion() {
+  if (typeof window === 'undefined' || !window.matchMedia) return false
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
 
 const TIMEOUT_SLOTS = 3
 /** NFL athletic block; CFB uses Graduate (college slab) loaded in index.html. */
@@ -312,13 +335,107 @@ const YARD_MARKERS_FAR = YARD_MARKERS_CONFIG.map(({ p, label, dir }) => {
   return { p, label, dir, x, skewAngle }
 })
 
-function FieldViz({ game, live, awayColor, homeColor }) {
+function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [] }) {
   const sportKey = String(game?.sport_key || '').toLowerCase()
   const isFootball = sportKey.includes('football') || (!sportKey && Boolean(game?.away && game?.home))
-  if (!isFootball) return null
 
   const pos = fieldPercent(live)
   const hasLine = pos != null
+  const centerBanner = fieldCenterBanner(game, live)
+  const hideLiveLines = Boolean(centerBanner)
+  const lastPlayText = String(lastPlay || '').trim()
+
+  const [rushAnim, setRushAnim] = useState(null)
+  const rushKeyRef = useRef('')
+  const rushRafRef = useRef(0)
+
+  useEffect(() => {
+    if (!isFootball || hideLiveLines || !hasLine || pos == null) return undefined
+    const parsed = parseRushPlay(lastPlayText)
+    if (!parsed) {
+      if (rushKeyRef.current && lastPlayText !== rushKeyRef.current) {
+        setRushAnim(null)
+        rushKeyRef.current = ''
+      }
+      return undefined
+    }
+    if (lastPlayText === rushKeyRef.current) return undefined
+    rushKeyRef.current = lastPlayText
+
+    const attackDir = live?.possession === 'home' ? -1 : 1
+    const endPct = Math.max(0, Math.min(100, pos))
+    const startPct = Math.max(0, Math.min(100, pos - attackDir * parsed.yards))
+    const startX = fieldMidXFromPercent(startPct)
+    const endX = fieldMidXFromPercent(endPct)
+    const travel = endX - startX
+    const facing = travel < 0 ? -1 : 1
+
+    const possHome = live?.possession === 'home'
+    const side = possHome ? game?.home : game?.away
+    const primary = String(
+      (possHome ? homeColor : awayColor) || side?.color || '#b91c1c'
+    )
+    let secondary = String(side?.color2 || '')
+    if (!secondary || secondary.toLowerCase() === primary.toLowerCase()) {
+      secondary = '#fafafa'
+    }
+    const sideAbbrev = String(side?.abbrev || '')
+    const matched = matchRushPlayer(parsed.playerHint, players, sideAbbrev)
+    const headshotUrl = matched?.headshot_url ? String(matched.headshot_url) : ''
+
+    const base = {
+      playKey: lastPlayText,
+      startX,
+      endX,
+      y: RUSH_Y,
+      primary,
+      secondary,
+      headshotUrl,
+      facing,
+    }
+
+    if (prefersReducedMotion()) {
+      setRushAnim({ ...base, progress: 1, playing: false, showTrail: false })
+      return undefined
+    }
+
+    setRushAnim({ ...base, progress: 0, playing: true, showTrail: true })
+    const t0 = performance.now()
+    const tick = (now) => {
+      const t = Math.min(1, (now - t0) / RUSH_ANIM_MS)
+      const progress = easeOutCubic(t)
+      if (t >= 1) {
+        setRushAnim((prev) =>
+          prev && prev.playKey === lastPlayText
+            ? { ...prev, progress: 1, playing: false }
+            : prev
+        )
+        return
+      }
+      setRushAnim((prev) =>
+        prev && prev.playKey === lastPlayText ? { ...prev, progress } : prev
+      )
+      rushRafRef.current = requestAnimationFrame(tick)
+    }
+    rushRafRef.current = requestAnimationFrame(tick)
+    return () => {
+      if (rushRafRef.current) cancelAnimationFrame(rushRafRef.current)
+    }
+  }, [
+    isFootball,
+    hideLiveLines,
+    hasLine,
+    pos,
+    lastPlayText,
+    live?.possession,
+    awayColor,
+    homeColor,
+    game?.away,
+    game?.home,
+    players,
+  ])
+
+  if (!isFootball) return null
 
   // Calibrated 3D field coordinates (viewBox="0 0 1266 533")
   // Left Goal Line: top=(239.0, 191), bot=(161.0, 478)
@@ -355,8 +472,14 @@ function FieldViz({ game, live, awayColor, homeColor }) {
   const endzoneFont = college ? ENDZONE_FONT_CFB : ENDZONE_FONT_NFL
   const awayEndzone = resolveEndzoneDesign(game?.away, awayColor, 'left', { college })
   const homeEndzone = resolveEndzoneDesign(game?.home, homeColor, 'right', { college })
-  const centerBanner = fieldCenterBanner(game, live)
-  const hideLiveLines = Boolean(centerBanner)
+
+  const rushPlaying = Boolean(rushAnim?.playing)
+  const rushX =
+    rushAnim != null
+      ? rushAnim.startX + (rushAnim.endX - rushAnim.startX) * rushAnim.progress
+      : null
+  const rushTrailVisible =
+    Boolean(rushAnim?.showTrail && rushAnim.progress > 0.02)
 
   return (
     <div data-lounge-game-field className="relative w-full px-1 pb-0 pt-0 sm:px-1.5">
@@ -381,6 +504,10 @@ function FieldViz({ game, live, awayColor, homeColor }) {
             </filter>
             <filter id="glow-1st" x="-20%" y="-20%" width="140%" height="140%">
               <feGaussianBlur stdDeviation="2.5" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+            <filter id="glow-rush" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="3.5" result="blur" />
               <feComposite in="SourceGraphic" in2="blur" operator="over" />
             </filter>
             <filter id="text-shadow" x="-30%" y="-30%" width="160%" height="160%">
@@ -663,9 +790,42 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 strokeLinecap="round"
                 filter="url(#glow-scrim)"
               />
-              {/* Ball marker at mid-depth on scrimmage (3D inline SVG football). */}
-              <g transform={`translate(${scrimMidX - 18} ${334.5 - 12})`}>
-                <AmericanFootballMark tone="field" size={36} rotate={-26} />
+              {/* Ball marker at mid-depth on scrimmage … hidden while rush anim runs. */}
+              {!rushPlaying ? (
+                <g transform={`translate(${scrimMidX - 18} ${334.5 - 12})`}>
+                  <AmericanFootballMark tone="field" size={36} rotate={-26} />
+                </g>
+              ) : null}
+            </g>
+          ) : null}
+
+          {/* Rush trail + RB figure (once per distinct last-play text) */}
+          {rushAnim && rushX != null ? (
+            <g data-lounge-rush-anim>
+              {rushTrailVisible ? (
+                <line
+                  x1={rushAnim.startX}
+                  y1={rushAnim.y}
+                  x2={rushX}
+                  y2={rushAnim.y}
+                  stroke={rushAnim.primary}
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeOpacity="0.88"
+                  filter="url(#glow-rush)"
+                />
+              ) : null}
+              <g
+                transform={`translate(${rushX - RUSH_FIG_W / 2} ${rushAnim.y - RUSH_FIG_H + 8})`}
+              >
+                <GameHubRushFigure
+                  primary={rushAnim.primary}
+                  secondary={rushAnim.secondary}
+                  headshotUrl={rushAnim.headshotUrl}
+                  facing={rushAnim.facing}
+                  width={RUSH_FIG_W}
+                  height={RUSH_FIG_H}
+                />
               </g>
             </g>
           ) : null}
@@ -840,6 +1000,7 @@ export default function GameHubHero({
   lastPlay,
   topBar = null,
   splits = null,
+  players = [],
 }) {
   const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(game)
   const clock = liveClockLabel(game, live)
@@ -1083,6 +1244,8 @@ export default function GameHubHero({
             live={live}
             awayColor={awayColor}
             homeColor={homeColor}
+            lastPlay={lastPlayText}
+            players={players}
           />
         ) : (
           <div className="h-2" aria-hidden="true" />

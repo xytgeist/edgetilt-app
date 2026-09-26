@@ -353,6 +353,7 @@ export default function LoungeGameHubModal({
         lastPlay={lastPlay}
         topBar={hubTopBar}
         splits={detail.splits}
+        players={fantasy.players}
       />
 
       <div className="flex shrink-0 gap-5 overflow-x-auto border-b border-zinc-800 px-4">

@@ -21,6 +21,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const YEAR = 2025
 const LOGOS_DIR = path.join(repoRoot, 'public/sports/cfb/logos')
 const CATALOG_OUT = path.join(repoRoot, 'src/features/lounge/cfbTeamCatalog.generated.js')
+const ESPN_MAP_OUT = path.join(repoRoot, 'supabase/functions/_shared/cfbTeamEspnByAbbrev.json')
 const ESPN_TEAMS_URL =
   'https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams?limit=400'
 const UA = 'EdgeTiltCfbAssets/1.0'
@@ -165,6 +166,12 @@ function writeCatalog(rows) {
     `export const CFB_TEAM_CATALOG = [\n${body}\n]\n`
   fs.mkdirSync(path.dirname(CATALOG_OUT), { recursive: true })
   fs.writeFileSync(CATALOG_OUT, src)
+  const espnMap = {}
+  for (const r of sorted) {
+    if (r.abbrev && r.espn) espnMap[r.abbrev] = String(r.espn)
+  }
+  fs.mkdirSync(path.dirname(ESPN_MAP_OUT), { recursive: true })
+  fs.writeFileSync(ESPN_MAP_OUT, `${JSON.stringify(espnMap)}\n`)
   return sorted.length
 }
 

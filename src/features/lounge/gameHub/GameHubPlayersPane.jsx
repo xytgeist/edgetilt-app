@@ -26,11 +26,15 @@ function isDefOrDst(player) {
   return p === 'DEF' || p === 'DST' || p === 'D'
 }
 
-function PlayerAvatar({ player, accentColor }) {
-  const [failed, setFailed] = useState(false)
-  const team = String(player?.team || '')
+function logoTeamKey(team) {
+  return String(team || '')
     .toUpperCase()
-    .replace(/[^A-Z]/g, '')
+    .replace(/[^A-Z0-9-]/g, '')
+}
+
+function PlayerAvatar({ player, accentColor, logoBase = '/sports/nfl/logos' }) {
+  const [failed, setFailed] = useState(false)
+  const team = logoTeamKey(player?.team)
   const letter = String(player?.name || team || '?').slice(0, 1).toUpperCase()
   const fill = accentColor ? { backgroundColor: accentColor } : undefined
 
@@ -41,7 +45,7 @@ function PlayerAvatar({ player, accentColor }) {
         style={fill || undefined}
       >
         <img
-          src={`/sports/nfl/logos/${team}.png`}
+          src={`${logoBase}/${team}.png`}
           alt=""
           className="h-full w-full object-contain"
           loading="lazy"
@@ -615,13 +619,20 @@ function normalizePos(pos) {
     .toUpperCase()
     .replace(/[^A-Z]/g, '')
   if (p === 'FB' || p === 'HB') return 'RB'
+  if (p === 'OT' || p === 'OG' || p === 'G' || p === 'T' || p === 'C' || p === 'OL') return 'OL'
+  if (p === 'DE' || p === 'DT' || p === 'NT' || p === 'DL') return 'DL'
+  if (p === 'ILB' || p === 'OLB' || p === 'LB' || p === 'MLB') return 'LB'
+  if (p === 'CB' || p === 'S' || p === 'SAF' || p === 'FS' || p === 'SS' || p === 'DB') return 'DB'
+  if (p === 'PK') return 'K'
   return p
 }
 
 function teamAbbrev(value) {
-  return String(value || '')
-    .toUpperCase()
-    .replace(/[^A-Z]/g, '')
+  return logoTeamKey(value)
+}
+
+function isCfbGame(game) {
+  return String(game?.sport_key || '').includes('ncaaf')
 }
 
 function rosterAccentForPlayer(player, game, paint) {
@@ -650,7 +661,7 @@ function rosterAccentForPlayer(player, game, paint) {
 }
 
 /** Faded team logo + Fantasy jersey mesh (card-color tint, not team wash). */
-function RosterPlayerHeader({ player, accent, expanded, hasStats, onToggle }) {
+function RosterPlayerHeader({ player, accent, expanded, hasStats, onToggle, logoBase }) {
   const headline = seasonHeadline(player)
   return (
     <div data-roster-player-header className="relative overflow-hidden px-3.5 py-3.5">
@@ -681,14 +692,17 @@ function RosterPlayerHeader({ player, accent, expanded, hasStats, onToggle }) {
           hasStats ? 'active:opacity-90' : ''
         }`}
       >
-        <PlayerAvatar player={player} accentColor={accent.color} />
+        <PlayerAvatar player={player} accentColor={accent.color} logoBase={logoBase} />
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-1.5">
             <div className="truncate text-[16px] font-semibold text-zinc-100">{player.name}</div>
             <InjuryPill status={player.injury_status} />
           </div>
           <div className="mt-0.5 text-[12px] text-zinc-500">
-            {player.position || '-'} · {player.team}
+            {player.position || '-'}
+            {player.jersey ? ` #${player.jersey}` : ''}
+            {' · '}
+            {player.team}
           </div>
         </div>
         {headline ? (
@@ -715,6 +729,7 @@ function RosterPlayerHeader({ player, accent, expanded, hasStats, onToggle }) {
 function RosterBoard({ players, game }) {
   const [expandedId, setExpandedId] = useState(null)
   const paint = useLoungeSportsPillWashAndLogos(game)
+  const logoBase = isCfbGame(game) ? '/sports/cfb/logos' : '/sports/nfl/logos'
   const sorted = useMemo(() => {
     const list = [...(players || [])]
     list.sort((a, b) => {
@@ -727,6 +742,9 @@ function RosterBoard({ players, game }) {
       const da = a.depth_chart_order != null ? Number(a.depth_chart_order) : 99
       const db = b.depth_chart_order != null ? Number(b.depth_chart_order) : 99
       if (da !== db) return da - db
+      const ja = Number(a.jersey)
+      const jb = Number(b.jersey)
+      if (Number.isFinite(ja) && Number.isFinite(jb) && ja !== jb) return ja - jb
       const ya = seasonPrimaryYards(a)
       const yb = seasonPrimaryYards(b)
       if (yb !== ya) return yb - ya
@@ -763,6 +781,7 @@ function RosterBoard({ players, game }) {
               accent={accent}
               expanded={expanded}
               hasStats={hasStats}
+              logoBase={logoBase}
               onToggle={() => {
                 if (!hasStats) return
                 setExpandedId((cur) => (cur === id ? null : id))
@@ -776,7 +795,7 @@ function RosterBoard({ players, game }) {
   )
 }
 
-const POSITION_FILTERS = [
+const NFL_POSITION_FILTERS = [
   { id: 'all', label: 'All' },
   { id: 'QB', label: 'QB' },
   { id: 'RB', label: 'RB' },
@@ -784,8 +803,23 @@ const POSITION_FILTERS = [
   { id: 'TE', label: 'TE' },
 ]
 
+const CFB_POSITION_FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'QB', label: 'QB' },
+  { id: 'RB', label: 'RB' },
+  { id: 'WR', label: 'WR' },
+  { id: 'TE', label: 'TE' },
+  { id: 'OL', label: 'OL' },
+  { id: 'DL', label: 'DL' },
+  { id: 'LB', label: 'LB' },
+  { id: 'DB', label: 'DB' },
+  { id: 'K', label: 'K' },
+  { id: 'P', label: 'P' },
+]
+
 /**
- * Players hub surface: Roster + Kalshi/Poly player props.
+ * Players hub surface: Roster + Kalshi/Poly player props (NFL).
+ * CFB: roster only from cfb_players.
  */
 export default function GameHubPlayersPane({
   players,
@@ -795,12 +829,18 @@ export default function GameHubPlayersPane({
   game = null,
   defaultView = 'roster',
 }) {
-  const [view, setView] = useState(defaultView === 'props' ? 'props' : 'roster')
+  const cfb = isCfbGame(game)
+  const positionFilters = cfb ? CFB_POSITION_FILTERS : NFL_POSITION_FILTERS
+  const [view, setView] = useState(defaultView === 'props' && !cfb ? 'props' : 'roster')
   const [position, setPosition] = useState('all')
 
   useEffect(() => {
-    setView(defaultView === 'props' ? 'props' : 'roster')
-  }, [defaultView])
+    setView(defaultView === 'props' && !cfb ? 'props' : 'roster')
+  }, [defaultView, cfb])
+
+  useEffect(() => {
+    setPosition('all')
+  }, [game?.id, cfb])
 
   const filteredPlayers = useMemo(() => {
     if (position === 'all') return players || []
@@ -827,31 +867,33 @@ export default function GameHubPlayersPane({
   return (
     <div data-lounge-game-players className="space-y-3 py-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="flex gap-1 rounded-full bg-zinc-900 p-0.5">
-          {[
-            { id: 'roster', label: 'Roster' },
-            { id: 'props', label: 'Props' },
-          ].map((opt) => (
-            <button
-              key={opt.id}
-              type="button"
-              onClick={() => setView(opt.id)}
-              className={`rounded-full px-3 py-1 text-[12px] font-semibold ${
-                view === opt.id ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-400'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-        <label className="relative ml-auto inline-flex items-center">
+        {cfb ? null : (
+          <div className="flex gap-1 rounded-full bg-zinc-900 p-0.5">
+            {[
+              { id: 'roster', label: 'Roster' },
+              { id: 'props', label: 'Props' },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setView(opt.id)}
+                className={`rounded-full px-3 py-1 text-[12px] font-semibold ${
+                  view === opt.id ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-400'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        )}
+        <label className={`relative inline-flex items-center ${cfb ? '' : 'ml-auto'}`}>
           <span className="sr-only">Position</span>
           <select
             value={position}
             onChange={(e) => setPosition(e.target.value)}
             className="appearance-none rounded-full border border-zinc-700 bg-zinc-900 py-1 pl-3 pr-7 font-sans text-[12px] font-semibold leading-none text-zinc-200 outline-none focus:border-zinc-500"
           >
-            {POSITION_FILTERS.map((opt) => (
+            {positionFilters.map((opt) => (
               <option key={opt.id} value={opt.id}>
                 {opt.id === 'all' ? 'All positions' : opt.label}
               </option>

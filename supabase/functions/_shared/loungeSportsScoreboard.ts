@@ -15,6 +15,9 @@ import {
   upsertMarketFilesFromEvents,
   type MarketFileRow,
 } from './loungeBotMarketFile.ts'
+import cfbTeamEspnByAbbrev from './cfbTeamEspnByAbbrev.json' with { type: 'json' }
+
+const CFB_ESPN_BY_ABBREV = cfbTeamEspnByAbbrev as Record<string, string>
 
 export const LOUNGE_SPORTS_SCOREBOARD_SPORTS = [
   { key: 'americanfootball_nfl', label: 'NFL', logoLeague: 'nfl' },
@@ -108,11 +111,29 @@ function espnLogo(league: string, abbrev: string): string {
 }
 
 function espnLogoSlug(league: string, abbrev: string): string {
-  const a = String(abbrev || '').trim().toLowerCase()
+  const a = String(abbrev || '').trim().toUpperCase()
   if (!a) return ''
-  if (league === 'nfl' && a === 'was') return 'wsh'
-  if (league === 'nfl' && a === 'wsh') return 'wsh'
-  return a.replace(/[^a-z0-9]/g, '')
+  if (league === 'ncaa') {
+    const espnId = CFB_ESPN_BY_ABBREV[a.replace(/[^A-Z0-9-]/g, '')] || CFB_ESPN_BY_ABBREV[a]
+    if (espnId) return espnId
+  }
+  const lower = a.toLowerCase()
+  if (league === 'nfl' && (lower === 'was' || lower === 'wsh')) return 'wsh'
+  return lower.replace(/[^a-z0-9]/g, '')
+}
+
+/** Prefer ESPN team ids on CFB sides so hub PBP can match college-football scoreboard. */
+function attachCfbEspnTeamIds(game: LoungeSportsGame): LoungeSportsGame {
+  if (!isCfbSportKey(game.sport_key)) return game
+  const patch = (side: LoungeSportsGameSide): LoungeSportsGameSide => {
+    const abb = String(side?.abbrev || '').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '')
+    const espnId = Number(CFB_ESPN_BY_ABBREV[abb] || 0)
+    if (!Number.isFinite(espnId) || espnId <= 0) return side
+    const logo = espnLogo('ncaa', abb) || side.logo
+    if (side.team_id === espnId && side.logo === logo) return side
+    return { ...side, team_id: espnId, logo }
+  }
+  return { ...game, away: patch(game.away), home: patch(game.home) }
 }
 
 function parseScore(value: unknown): number | null {
@@ -925,6 +946,7 @@ export async function buildLoungeSportsScoreboard(
   })
   let withRecords = await enrichEspnFootballExtras(games, 'nfl', isNflSportKey)
   withRecords = await enrichEspnFootballExtras(withRecords, 'college-football', isCfbSportKey)
+  withRecords = withRecords.map(attachCfbEspnTeamIds)
   return { games: withRecords, source }
 }
 
@@ -974,8 +996,9 @@ async function rundownGet<T>(path: string): Promise<T | null> {
   }
 }
 
-/** Unofficial ESPN public summary … fills NFL PBP / clock when TheRundown plays are empty.
- *  Prod only (`jtjgtucumuoswnbauxry`) … skip on test so sandbox hub polls do not burn ESPN.
+/** Unofficial ESPN public summary … fills football PBP / clock when TheRundown plays are empty.
+ *  NFL: prod only (`jtjgtucumuoswnbauxry`) so sandbox hub polls do not burn ESPN.
+ *  CFB: allowed on test + prod (college hub Plays tab needs it when Rundown is thin).
  */
 const PROD_SUPABASE_REF = 'jtjgtucumuoswnbauxry'
 
@@ -984,12 +1007,45 @@ function isProdSupabaseProject(): boolean {
   return url.includes(PROD_SUPABASE_REF)
 }
 
+function espnCompetitorTeamId(c: Record<string, unknown>): string {
+  const team = (c.team && typeof c.team === 'object') ? c.team as Record<string, unknown> : {}
+  return String(c.id || team.id || '').trim()
+}
+
+function espnSideMatchesGame(
+  espnSide: Record<string, unknown>,
+  gameSide: LoungeSportsGameSide | undefined,
+): boolean {
+  if (!espnSide || !gameSide) return false
+  const espnAbb = nflAbbrevKey(espnSide.abb)
+  const gameAbb = nflAbbrevKey(gameSide.abbrev)
+  if (espnAbb && gameAbb && espnAbb === gameAbb) return true
+  const espnId = espnCompetitorTeamId(espnSide)
+  const gameTid = gameSide.team_id != null ? String(gameSide.team_id) : ''
+  if (espnId && gameTid && espnId === gameTid) return true
+  const espnTeam = (espnSide.team && typeof espnSide.team === 'object')
+    ? espnSide.team as Record<string, unknown>
+    : {}
+  const espnName = String(espnTeam.displayName || espnTeam.name || espnSide.abb || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+  const gameName = String(gameSide.name || gameSide.mascot || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+  if (espnName.length >= 6 && gameName.length >= 6) {
+    if (espnName.includes(gameName) || gameName.includes(espnName)) return true
+    const espnTok = espnName.split(' ').filter((t) => t.length > 3)
+    const gameTok = new Set(gameName.split(' ').filter((t) => t.length > 3))
+    if (espnTok.some((t) => gameTok.has(t))) return true
+  }
+  return false
+}
+
 async function fetchEspnFootballLivePack(
   game: LoungeSportsGame,
 ): Promise<{ live: LoungeSportsLiveState | null; plays: LoungeSportsPlay[] }> {
-  if (!isProdSupabaseProject()) {
-    return { live: null, plays: [] }
-  }
   const sk = String(game.sport_key || '')
   const league: EspnFootballLeague | null = isCfbSportKey(sk)
     ? 'college-football'
@@ -997,9 +1053,15 @@ async function fetchEspnFootballLivePack(
       ? 'nfl'
       : null
   if (!league) return { live: null, plays: [] }
+  // NFL ESPN fallback stays prod-only; CFB runs on test too.
+  if (league === 'nfl' && !isProdSupabaseProject()) {
+    return { live: null, plays: [] }
+  }
   const awayAbb = nflAbbrevKey(game.away?.abbrev)
   const homeAbb = nflAbbrevKey(game.home?.abbrev)
-  if (!awayAbb || !homeAbb) return { live: null, plays: [] }
+  if ((!awayAbb || !homeAbb) && game.away?.team_id == null && game.home?.team_id == null) {
+    return { live: null, plays: [] }
+  }
 
   const dates: string[] = []
   const kick = game.commence_time ? new Date(game.commence_time) : new Date()
@@ -1038,14 +1100,14 @@ async function fetchEspnFootballLivePack(
         for (const c of competitors) {
           const team = (c.team && typeof c.team === 'object') ? c.team as Record<string, unknown> : {}
           const abb = nflAbbrevKey(team.abbreviation)
-          if (c.homeAway === 'home') home = { ...c, abb }
-          if (c.homeAway === 'away') away = { ...c, abb }
+          if (c.homeAway === 'home') home = { ...c, abb, team }
+          if (c.homeAway === 'away') away = { ...c, abb, team }
         }
         if (!home || !away) continue
-        if (String(home.abb) !== homeAbb || String(away.abb) !== awayAbb) continue
+        if (!espnSideMatchesGame(away, game.away) || !espnSideMatchesGame(home, game.home)) continue
         eventId = String(ev.id || '').trim()
-        homeEspnId = String(home.id || (home.team as { id?: string } | undefined)?.id || '')
-        awayEspnId = String(away.id || (away.team as { id?: string } | undefined)?.id || '')
+        homeEspnId = espnCompetitorTeamId(home)
+        awayEspnId = espnCompetitorTeamId(away)
         const status = (comps?.status && typeof comps.status === 'object')
           ? comps.status as Record<string, unknown>
           : (ev.status && typeof ev.status === 'object')

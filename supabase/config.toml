@@ -45,6 +45,9 @@ verify_jwt = true
 [functions.lounge-nfl-game-fantasy]
 verify_jwt = false
 
+[functions.lounge-cfb-game-players]
+verify_jwt = false
+
 # Invoked from pg_net on activity_events INSERT; shared secret header (see migration + README).
 [functions.lounge-send-activity-push]
 verify_jwt = false

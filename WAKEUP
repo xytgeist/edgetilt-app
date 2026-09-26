@@ -73,6 +73,10 @@ The agent should treat the following as **standing instructions for this session
 - **Ops paste / vision** stays as backup (VSiN + trench repair).
 - **Ryan next:** apply migration **`20260925160000`** on **prod** if Edge Monitor does not list the two jobs yet (test can be applied by agent). Re-run install task optional.
 
+### Mac Theo ACTIVE TRACK 2026-09-25 ... CFB Players + PBP
+
+**I am Mac Theo.** CFB hub Players wired via **`lounge-cfb-game-players`** → `cfb_players`. ESPN college PBP fallback on test+prod (NFL ESPN still prod-only). Tip **`1.4.659`**. Redeployed test Edge scoreboard + cfb-game-players.
+
 ### Mac Theo ACTIVE TRACK 2026-09-25 ... CFB assets
 
 **I am Mac Theo.** FBS assets on **`test`**: **136** team logos (`public/sports/cfb/logos`) + catalog colors; **`cfb_players`** **13,600** with ESPN headshot URLs. Scripts `cfb:teams:assets` / `cfb:players:sync`. No helmets (source none). Web **`1.4.658`**. Prod SQL/players not applied.

@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronLeft, Share } from 'lucide-react'
-import { loungeNflGameFantasy, loungeSportsGameDetail } from '../../utils/loungeSportsApi.js'
+import {
+  loungeCfbGamePlayers,
+  loungeNflGameFantasy,
+  loungeSportsGameDetail,
+} from '../../utils/loungeSportsApi.js'
 import { shareViaBestAvailable } from '../../utils/edgeNative.js'
 import { formatLoungeSearchError, loungeSearch, LOUNGE_SEARCH_SORT } from './loungeSearchApi.js'
 import { executeLoungeCommunityPostSubmission } from './loungePostSubmitJob.js'
@@ -118,25 +122,26 @@ export default function LoungeGameHubModal({
 
   useEffect(() => {
     if (!game || !supabaseClient) return undefined
-    // CFB hub has no Fantasy tab / Sleeper board … skip the NFL fantasy Edge call.
-    if (String(game.sport_key || '').includes('ncaaf')) {
-      setFantasy({ players: [], props: [], season: null, week: null, sources: [] })
-      setFantasyLoading(false)
-      setFantasyErr('')
-      return undefined
-    }
+    const cfb = String(game.sport_key || '').includes('ncaaf')
     let cancelled = false
 
-    const loadFantasy = ({ showLoading }) => {
+    const loadRoster = ({ showLoading }) => {
       if (showLoading) {
         setFantasyLoading(true)
         setFantasyErr('')
       }
-      void loungeNflGameFantasy(supabaseClient, {
-        eventId: game.id,
-        awayAbbrev: game.away?.abbrev,
-        homeAbbrev: game.home?.abbrev,
-      })
+      const req = cfb
+        ? loungeCfbGamePlayers(supabaseClient, {
+            eventId: game.id,
+            awayAbbrev: game.away?.abbrev,
+            homeAbbrev: game.home?.abbrev,
+          })
+        : loungeNflGameFantasy(supabaseClient, {
+            eventId: game.id,
+            awayAbbrev: game.away?.abbrev,
+            homeAbbrev: game.home?.abbrev,
+          })
+      void req
         .then((data) => {
           if (cancelled) return
           if (data?.error) {
@@ -156,18 +161,19 @@ export default function LoungeGameHubModal({
         })
         .catch((err) => {
           if (cancelled) return
-          if (showLoading) setFantasyErr(err?.message || 'Fantasy request failed.')
+          if (showLoading) {
+            setFantasyErr(err?.message || (cfb ? 'Roster request failed.' : 'Fantasy request failed.'))
+          }
         })
         .finally(() => {
           if (!cancelled && showLoading) setFantasyLoading(false)
         })
     }
 
-    // Fresh load on game open / status flip (pre → in flips PROJ → LIVE).
-    loadFantasy({ showLoading: true })
-    // Quiet poll while live so game_ppr keeps moving without a loading flash.
-    const pollMs = game.status === 'in' ? 45_000 : 0
-    const id = pollMs ? window.setInterval(() => loadFantasy({ showLoading: false }), pollMs) : 0
+    loadRoster({ showLoading: true })
+    // NFL fantasy quiet-poll while live; CFB roster is static for the week.
+    const pollMs = !cfb && game.status === 'in' ? 45_000 : 0
+    const id = pollMs ? window.setInterval(() => loadRoster({ showLoading: false }), pollMs) : 0
     return () => {
       cancelled = true
       if (id) window.clearInterval(id)

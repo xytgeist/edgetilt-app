@@ -8,7 +8,6 @@ import {
 } from '../../utils/loungeSportsApi.js'
 import { shareViaBestAvailable } from '../../utils/edgeNative.js'
 import { formatLoungeSearchError, loungeSearch, LOUNGE_SEARCH_SORT } from './loungeSearchApi.js'
-import { executeLoungeCommunityPostSubmission } from './loungePostSubmitJob.js'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import { loungeSportsHubGames } from './loungeSportsSlateWindow.js'
 import LoungeGameHubPillChip from './LoungeGameHubPillChip.jsx'
@@ -21,6 +20,9 @@ import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 import GameHubHero from './gameHub/GameHubHero.jsx'
 import GameHubPlayersPane from './gameHub/GameHubPlayersPane.jsx'
 import GameHubFantasyPane from './gameHub/GameHubFantasyPane.jsx'
+import GameHubChatPane from './gameHub/GameHubChatPane.jsx'
+import { GAME_CHAT_MAX_CHARS } from './gameHub/gameHubChatApi.js'
+import { useGameHubChat } from './gameHub/useGameHubChat.js'
 import { KalshiGamePropsBoard } from './gameHub/GameHubKalshiProps.jsx'
 import { BoxScoreCard, OddsTable, PlayList, PlayerStats, PostList } from './gameHub/GameHubPanes.jsx'
 import { liveClockLabel, scoreText, sortPlaysNewestFirst } from './gameHub/gameHubFormatters.js'
@@ -44,7 +46,6 @@ export default function LoungeGameHubModal({
   const [posts, setPosts] = useState([])
   const [postsLoading, setPostsLoading] = useState(false)
   const [postsErr, setPostsErr] = useState('')
-  const [postsNonce, setPostsNonce] = useState(0)
   const [detail, setDetail] = useState({ odds: [], plays: [], stats: [], live: null, splits: null })
   const [fantasy, setFantasy] = useState({
     players: [],
@@ -60,6 +61,7 @@ export default function LoungeGameHubModal({
   const [chatErr, setChatErr] = useState('')
   /** User-picked PBP row for field replay … { text, team, nonce }. */
   const [fieldReplay, setFieldReplay] = useState({ text: '', team: null, nonce: 0 })
+  const chat = useGameHubChat(supabaseClient, game?.id ? String(game.id) : '')
 
   const sameSportGames = useMemo(
     () => loungeSportsHubGames(sports?.games || [], game?.sport_key),
@@ -235,8 +237,8 @@ export default function LoungeGameHubModal({
     }
   }, [game?.id, game?.status, game?.sport_key, game?.away?.abbrev, game?.home?.abbrev, supabaseClient])
 
-  // Prefetch Lounge posts as soon as the hub opens (not only when Posts/Chat is selected).
-  // Clearing posts when leaving those tabs forced a full reload on every return.
+  // Prefetch Lounge posts as soon as the hub opens (not only when Posts is selected).
+  // Clearing posts when leaving the tab forced a full reload on every return.
   const postSort = postsSort === 'top' ? LOUNGE_SEARCH_SORT.ENGAGEMENT : LOUNGE_SEARCH_SORT.RECENT
   useEffect(() => {
     if (!game || !supabaseClient || searchQuery.length < 2) {
@@ -249,7 +251,7 @@ export default function LoungeGameHubModal({
     setPostsLoading(true)
     setPostsErr('')
     void loungeSearch(supabaseClient, searchQuery, {
-      sort: tab === 'chat' ? LOUNGE_SEARCH_SORT.RECENT : postSort,
+      sort: postSort,
       postsLimit: 16,
       profilesLimit: 0,
       commentsLimit: 0,
@@ -271,7 +273,7 @@ export default function LoungeGameHubModal({
     return () => {
       cancelled = true
     }
-  }, [game, hydratePosts, postSort, postsNonce, searchQuery, supabaseClient, tab])
+  }, [game, hydratePosts, postSort, searchQuery, supabaseClient])
 
   useEffect(() => {
     // Pregame → Fantasy (NFL) / Posts (CFB); live → Chat; post → Posts
@@ -306,34 +308,15 @@ export default function LoungeGameHubModal({
   if (!game || typeof document === 'undefined') return null
 
   const sendChat = async () => {
-    const caption = draft.trim()
-    if (!caption || posting || loungeReadOnly) return
+    const body = draft.trim()
+    if (!body || posting || loungeReadOnly) return
     setPosting(true)
     setChatErr('')
     try {
-      await executeLoungeCommunityPostSubmission({
-        supabaseClient,
-        snapshot: {
-          caption,
-          gifOnlyUrl: '',
-          imageFiles: [],
-          existingImageUrls: [],
-          videoFile: null,
-          streamVideoUid: '',
-          wantsPin: false,
-          isStaffPoster: false,
-          categoryPills: ['sports'],
-          marketSymbols: [],
-          sportsGame: { suppress: false, eventId: game.id, eventIds: [game.id] },
-        },
-        signal: new AbortController().signal,
-        rateLimitMessage: (msg) => String(msg || 'Slow down a second and try again.'),
-      })
+      await chat.send(body)
       setDraft('')
-      setTab('chat')
-      setPostsNonce((n) => n + 1)
     } catch (err) {
-      setChatErr(err?.message || 'Could not post.')
+      setChatErr(err?.message || 'Could not send.')
     } finally {
       setPosting(false)
     }
@@ -472,7 +455,21 @@ export default function LoungeGameHubModal({
             />
           </div>
         ) : null}
-        <div hidden={tab !== 'posts' && tab !== 'chat'} className="py-2">
+        {tab === 'chat' ? (
+          <div className="py-2">
+            <GameHubChatPane
+              messages={chat.messages}
+              loading={chat.loading}
+              error={chat.error}
+              viewerId={chat.viewerId}
+              readOnly={loungeReadOnly}
+              onDelete={(id) => {
+                void chat.remove(id).catch((err) => setChatErr(err?.message || 'Could not delete.'))
+              }}
+            />
+          </div>
+        ) : null}
+        <div hidden={tab !== 'posts'} className="py-2">
           {tab === 'posts' ? (
             <div className="mb-2 flex gap-1 rounded-full bg-zinc-900 p-0.5 w-fit">
               {[
@@ -518,8 +515,8 @@ export default function LoungeGameHubModal({
               type="text"
               value={draft}
               onChange={(ev) => setDraft(ev.target.value)}
-              maxLength={280}
-              placeholder="Talk about the game"
+              maxLength={GAME_CHAT_MAX_CHARS}
+              placeholder="Chat about the game"
               className="min-w-0 flex-1 rounded-full border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-[14px] text-white outline-none placeholder:text-zinc-500"
             />
             <button
@@ -527,7 +524,7 @@ export default function LoungeGameHubModal({
               disabled={posting || !draft.trim()}
               className="shrink-0 rounded-full bg-zinc-100 px-3 py-2 text-[13px] font-semibold text-zinc-950 disabled:opacity-40"
             >
-              {posting ? '…' : 'Post'}
+              {posting ? '…' : 'Send'}
             </button>
           </div>
         </form>

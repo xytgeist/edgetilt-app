@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-26:** **Game Hub Chat is a real chat room (Mac).** Chat tab no longer shows Lounge posts (it was a fuzzy `lounge_search` on mascots, so "I'm here!" matched "Herd"). New **`lounge_game_chat_messages`** (event_id keyed, public read, own insert unless banned, own/staff delete, 2s rate limit, realtime). Hub loads + subscribes on open; newest message at top under tabs; own messages have an X to delete; empty state "No messages yet. Start the conversation." Composer = "Chat about the game" / Send. Posts tab unchanged. Migration **`20260926230000`** applied on **test**; prod pending (checklist §2). Frontend **`1.4.739`**. Smoke: two accounts in the same live game see each other's messages without refresh; signed-out can read, not send.
 - **2026-09-26:** **Red zone tint to 40% (Mac).** Bumped from 16% per Ryan. Frontend **`1.4.738`**.
 - **2026-09-26:** **Gamecast red zone tint (Mac).** When the LOS is inside the opponent's 20, the 20-to-goal band on that end gets a slight red overlay (fades in/out, follows play anims, hidden after TD / during stoppage banners). Frontend **`1.4.737`**.
 - **2026-09-26:** **NFL/CFB hub waits for full load (Mac).** League hub slate holds a spinner until the fresh scoreboard fetch, all pill logos (+ light variants), wash treatment probes, and fonts finish (6s cap). `peekLogoWashTreatment` lets pills paint the final treatment on first frame. Sports Hub "all" unchanged. Frontend **`1.4.736`**.

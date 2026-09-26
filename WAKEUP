@@ -77,6 +77,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Mac Theo.** Promoted **`test` → `main` (`63c28769`)**. Vercel **`1.4.661`**. Prod Edge **`lounge-sports-scoreboard`** + **`lounge-cfb-game-players`**. Prod **`cfb_players`** **13,600**. Store IPA still **1.4.95**.
 
+### Mac Theo ACTIVE TRACK 2026-09-26 ... Game Hub live chat
+
+**I am Mac Theo.** Hub Chat tab is now a real per-game chat room, not Lounge posts. Table **`lounge_game_chat_messages`** (migration **`20260926230000`**, applied **test** only) + realtime. Code: `gameHub/gameHubChatApi.js`, `useGameHubChat.js`, `GameHubChatPane.jsx`, wired in `LoungeGameHubModal.jsx`. **Prod needs the migration before `main` promote** (checklist §2). Tip web **`1.4.739`** (test only).
+
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... red zone tint
 
 **I am Mac Theo.** Gamecast tints the opponent 20-to-goal band red (40% opacity per Ryan, 450ms fade; was 16% in 1.4.737) when the displayed LOS is inside it (`attackDirection` + field pct 80-100 / 0-20). Follows LOS during play anims, fades with TD line fade, hidden with post-TD / banner suppression. Tip web **`1.4.738`** (test only).

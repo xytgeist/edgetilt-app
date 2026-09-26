@@ -230,6 +230,85 @@ export function formatKickoff(commenceTime) {
   })
 }
 
+/**
+ * Football game clock → seconds remaining in the period ("14:32" → 872).
+ * Returns null when the string is not a mm:ss / m:ss clock.
+ */
+export function playClockToSeconds(clock) {
+  const m = String(clock || '')
+    .trim()
+    .match(/^(\d{1,2}):(\d{2})$/)
+  if (!m) return null
+  const mins = Number(m[1])
+  const secs = Number(m[2])
+  if (!Number.isFinite(mins) || !Number.isFinite(secs) || secs >= 60) return null
+  return mins * 60 + secs
+}
+
+/** Normalize PBP text for last-play ↔ list dedupe. */
+export function normalizePlayDescription(text) {
+  return String(text || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+}
+
+/**
+ * Chronological compare for football PBP (oldest → newest).
+ * Period asc, then clock remaining desc (clocks count down), then stable index.
+ */
+export function comparePlaysChronological(a, b, aIndex = 0, bIndex = 0) {
+  const ap = Number(a?.period)
+  const bp = Number(b?.period)
+  const aHasP = Number.isFinite(ap) && ap > 0
+  const bHasP = Number.isFinite(bp) && bp > 0
+  if (aHasP && bHasP && ap !== bp) return ap - bp
+  if (aHasP !== bHasP) return aHasP ? -1 : 1
+
+  const ac = playClockToSeconds(a?.clock)
+  const bc = playClockToSeconds(b?.clock)
+  if (ac != null && bc != null && ac !== bc) return bc - ac
+  if ((ac != null) !== (bc != null)) return ac != null ? -1 : 1
+
+  return aIndex - bIndex
+}
+
+/** Newest play first for the Hub Plays tab. */
+export function sortPlaysNewestFirst(plays) {
+  if (!Array.isArray(plays) || plays.length === 0) return []
+  const indexed = plays.map((play, index) => ({ play, index }))
+  indexed.sort((a, b) => -comparePlaysChronological(a.play, b.play, a.index, b.index))
+  return indexed.map((row) => row.play)
+}
+
+/**
+ * Ensure the live last-play string sits at the top of the Plays list when the
+ * PBP feed omitted it (common Rundown ↔ live mismatch). Dedupes on description.
+ */
+export function mergeLastPlayIntoPlays(plays, lastPlayText, meta = null) {
+  const sorted = sortPlaysNewestFirst(plays)
+  const last = String(lastPlayText || '').trim()
+  if (!last) return sorted
+  const norm = normalizePlayDescription(last)
+  if (sorted.some((p) => normalizePlayDescription(p?.description) === norm)) {
+    return sorted
+  }
+  return [
+    {
+      id: 'hub-live-last-play',
+      period: meta?.period ?? null,
+      clock: String(meta?.clock || '').trim(),
+      description: last,
+      team: meta?.team === 'home' || meta?.team === 'away'
+        ? meta.team
+        : meta?.possession === 'home' || meta?.possession === 'away'
+          ? meta.possession
+          : null,
+    },
+    ...sorted,
+  ]
+}
+
 export function kalshiCents(value) {
   if (value == null || !Number.isFinite(Number(value))) return '—'
   return `${Math.round(Number(value) * 100)}¢`

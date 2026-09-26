@@ -429,15 +429,34 @@ const YARD_MARKERS_FAR = YARD_MARKERS_CONFIG.map(({ p, label, dir }) => {
   return { p, label, dir, x, skewAngle }
 })
 
-function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [] }) {
+function FieldViz({
+  game,
+  live,
+  awayColor,
+  homeColor,
+  lastPlay = '',
+  players = [],
+  playReplayNonce = 0,
+  replayTeam = null,
+}) {
   const sportKey = String(game?.sport_key || '').toLowerCase()
   const isFootball = sportKey.includes('football') || (!sportKey && Boolean(game?.away && game?.home))
 
-  const pos = fieldPercent(live)
+  const isUserReplay = Number(playReplayNonce) > 0
+  const posRaw = fieldPercent(live)
+  // Midfield fallback so tap-to-replay still animates on final / missing LOS.
+  const pos = posRaw != null ? posRaw : isUserReplay ? 50 : null
   const hasLine = pos != null
   const centerBanner = fieldCenterBanner(game, live)
   const hideLiveLines = Boolean(centerBanner)
   const lastPlayText = String(lastPlay || '').trim()
+  const animKey = `${lastPlayText}::${Number(playReplayNonce) || 0}`
+  const possessionSide =
+    replayTeam === 'home' || replayTeam === 'away'
+      ? replayTeam
+      : live?.possession === 'home' || live?.possession === 'away'
+        ? live.possession
+        : null
 
   const [rushAnim, setRushAnim] = useState(null)
   const [catchAnim, setCatchAnim] = useState(null)
@@ -449,29 +468,36 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
   const settledLinesRef = useRef({ scrimPct: null, firstDownPct: null })
 
   useEffect(() => {
-    if (!isFootball || hideLiveLines || !hasLine || pos == null) return undefined
+    if (!isFootball || !lastPlayText) return undefined
+    if (!isUserReplay && (hideLiveLines || !hasLine || pos == null)) return undefined
+    if (pos == null) return undefined
     const parsed = parseRushPlay(lastPlayText)
     if (!parsed) {
-      if (rushKeyRef.current && lastPlayText !== rushKeyRef.current) {
+      if (rushKeyRef.current && animKey !== rushKeyRef.current) {
         setRushAnim(null)
         rushKeyRef.current = ''
       }
       return undefined
     }
-    if (lastPlayText === rushKeyRef.current) return undefined
-    rushKeyRef.current = lastPlayText
+    if (animKey === rushKeyRef.current) return undefined
+    rushKeyRef.current = animKey
     catchKeyRef.current = ''
     setCatchAnim(null)
     if (catchRafRef.current) cancelAnimationFrame(catchRafRef.current)
 
-    const attackDir = live?.possession === 'home' ? -1 : 1
+    const attackDir = possessionSide === 'home' ? -1 : 1
     const endPct = Math.max(0, Math.min(100, pos))
     const startPct = Math.max(0, Math.min(100, pos - attackDir * parsed.yards))
     const startX = fieldMidXFromPercent(startPct)
     const endX = fieldMidXFromPercent(endPct)
     const travel = endX - startX
     const facing = travel < 0 ? -1 : 1
-    const kit = possessionKit(live, game, awayColor, homeColor)
+    const kit = possessionKit(
+      possessionSide ? { ...live, possession: possessionSide } : live,
+      game,
+      awayColor,
+      homeColor,
+    )
     const matched = matchRushPlayer(parsed.playerHint, players, kit.sideAbbrev)
     const headshotUrl = matched?.headshot_url ? String(matched.headshot_url) : ''
     const jerseyNumber = matched?.jersey ? String(matched.jersey) : ''
@@ -500,7 +526,7 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
     }
 
     const base = {
-      playKey: lastPlayText,
+      playKey: animKey,
       startX,
       endX,
       y: RUSH_Y,
@@ -571,7 +597,7 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
       }
 
       setRushAnim((prev) =>
-        prev && prev.playKey === lastPlayText
+        prev && prev.playKey === animKey
           ? {
               ...prev,
               progress,
@@ -594,42 +620,49 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
     hasLine,
     pos,
     lastPlayText,
-    live?.possession,
-    live?.down,
-    live?.distance,
+    animKey,
+    isUserReplay,
+    possessionSide,
+    live,
     awayColor,
     homeColor,
-    game?.away,
-    game?.home,
+    game,
     players,
   ])
 
   useEffect(() => {
-    if (!isFootball || hideLiveLines || !hasLine || pos == null) return undefined
+    if (!isFootball || !lastPlayText) return undefined
+    if (!isUserReplay && (hideLiveLines || !hasLine || pos == null)) return undefined
+    if (pos == null) return undefined
     // Rush wins if both somehow match (parseRush already excludes pass text).
     if (parseRushPlay(lastPlayText)) return undefined
     const parsed = parsePassPlay(lastPlayText)
     if (!parsed) {
-      if (catchKeyRef.current && lastPlayText !== catchKeyRef.current) {
+      if (catchKeyRef.current && animKey !== catchKeyRef.current) {
         setCatchAnim(null)
         catchKeyRef.current = ''
       }
       return undefined
     }
-    if (lastPlayText === catchKeyRef.current) return undefined
-    catchKeyRef.current = lastPlayText
+    if (animKey === catchKeyRef.current) return undefined
+    catchKeyRef.current = animKey
     rushKeyRef.current = ''
     setRushAnim(null)
     if (rushRafRef.current) cancelAnimationFrame(rushRafRef.current)
 
-    const attackDir = live?.possession === 'home' ? -1 : 1
+    const attackDir = possessionSide === 'home' ? -1 : 1
     const endPct = Math.max(0, Math.min(100, pos))
     const startPct = Math.max(0, Math.min(100, pos - attackDir * parsed.yards))
     const startX = fieldMidXFromPercent(startPct)
     const endX = fieldMidXFromPercent(endPct)
     const travel = endX - startX
     const facing = travel < 0 ? -1 : 1
-    const kit = possessionKit(live, game, awayColor, homeColor)
+    const kit = possessionKit(
+      possessionSide ? { ...live, possession: possessionSide } : live,
+      game,
+      awayColor,
+      homeColor,
+    )
     const matched = matchRushPlayer(parsed.playerHint, players, kit.sideAbbrev)
     const headshotUrl = matched?.headshot_url ? String(matched.headshot_url) : ''
 
@@ -645,7 +678,7 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
     }
 
     const base = {
-      playKey: lastPlayText,
+      playKey: animKey,
       startX,
       endX,
       y: RUSH_Y,
@@ -671,14 +704,14 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
       const progress = easeOutCubic(t)
       if (t >= 1) {
         setCatchAnim((prev) =>
-          prev && prev.playKey === lastPlayText
+          prev && prev.playKey === animKey
             ? { ...prev, progress: 1, playing: false }
             : prev
         )
         return
       }
       setCatchAnim((prev) =>
-        prev && prev.playKey === lastPlayText ? { ...prev, progress } : prev
+        prev && prev.playKey === animKey ? { ...prev, progress } : prev
       )
       catchRafRef.current = requestAnimationFrame(tick)
     }
@@ -692,11 +725,13 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
     hasLine,
     pos,
     lastPlayText,
-    live?.possession,
+    animKey,
+    isUserReplay,
+    possessionSide,
+    live,
     awayColor,
     homeColor,
-    game?.away,
-    game?.home,
+    game,
     players,
   ])
 
@@ -774,8 +809,10 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
   const homeEndzone = resolveEndzoneDesign(game?.home, homeColor, 'right', { college })
 
   const catchPlaying = Boolean(catchAnim?.playing)
+  const rushPlaying = Boolean(rushAnim?.playing || (rushAnim != null && rushAnim.showFigure))
   // Hide LOS ball for the full rush sequence (run → hold → exit → lines → pre-ball).
   const playAnimActive = rushAnim != null || catchPlaying
+  const suppressBanner = isUserReplay && (rushPlaying || catchPlaying)
   const rushX =
     rushAnim != null && rushAnim.showFigure
       ? rushAnim.startX + (rushAnim.endX - rushAnim.startX) * rushAnim.progress
@@ -1256,7 +1293,7 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
         />
 
         {/* Stoppage / break banner … TIMEOUT, End of 1st, HALFTIME, End of 3rd, GAME OVER */}
-        {centerBanner ? (
+        {centerBanner && !suppressBanner ? (
           <div
             data-lounge-game-field-banner
             className="pointer-events-none absolute inset-0 z-[6] flex items-center justify-center px-4 pb-[18%]"
@@ -1366,6 +1403,8 @@ export default function GameHubHero({
   game,
   live,
   lastPlay,
+  playReplayNonce = 0,
+  replayTeam = null,
   topBar = null,
   splits = null,
   players = [],
@@ -1613,6 +1652,8 @@ export default function GameHubHero({
             awayColor={awayColor}
             homeColor={homeColor}
             lastPlay={lastPlayText}
+            playReplayNonce={playReplayNonce}
+            replayTeam={replayTeam}
             players={players}
           />
         ) : (

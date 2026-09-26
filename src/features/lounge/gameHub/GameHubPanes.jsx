@@ -1,5 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { american, formatKickoff, formatPostAge, ordinal, periodLabel, signedPoint, stripTimeZoneSuffix } from './gameHubFormatters.js'
+import {
+  american,
+  formatKickoff,
+  formatPostAge,
+  mergeLastPlayIntoPlays,
+  normalizePlayDescription,
+  ordinal,
+  periodLabel,
+  signedPoint,
+  stripTimeZoneSuffix,
+} from './gameHubFormatters.js'
 import { feedPostDisplayCaption } from '../../../utils/communityFeedPost.js'
 
 function numOrNull(v) {
@@ -438,34 +448,63 @@ export function PlayerStats({ game, stats }) {
   )
 }
 
-export function PlayList({ game, plays }) {
-  if (!Array.isArray(plays) || plays.length === 0) {
+export function PlayList({
+  game,
+  plays,
+  lastPlayText = '',
+  lastPlayMeta = null,
+  onSelectPlay,
+  activePlayText = '',
+}) {
+  const rows = mergeLastPlayIntoPlays(plays, lastPlayText, lastPlayMeta)
+  if (!rows.length) {
     return (
       <div className="py-8 text-center text-sm text-zinc-500">
         Play-by-play is not on this feed yet. Scores and Lounge chat still update.
       </div>
     )
   }
-  const newestFirst = [...plays].reverse()
+  const activeNorm = normalizePlayDescription(activePlayText)
   return (
     <ul className="divide-y divide-zinc-800">
-      {newestFirst.map((play, i) => {
+      {rows.map((play, i) => {
         const side = play.team === 'home' ? game.home : play.team === 'away' ? game.away : null
+        const desc = String(play.description || '').trim()
+        const isActive = activeNorm && normalizePlayDescription(desc) === activeNorm
+        const canReplay = Boolean(onSelectPlay && desc)
         return (
-          <li key={play.id || i} className="py-3">
-            <div className="flex items-center gap-2 text-[12px] font-semibold text-zinc-400">
-              {side?.logo ? <img src={side.logo} alt="" className="h-4 w-4 object-contain" /> : null}
-              <span>
-                {play.period != null ? ordinal(play.period) : ''}
-                {play.clock ? ` · ${play.clock}` : ''}
-              </span>
-              {i === 0 ? (
-                <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-zinc-300">
-                  Latest
+          <li key={play.id || `${play.period}-${play.clock}-${i}`}>
+            <button
+              type="button"
+              disabled={!canReplay}
+              onClick={() => {
+                if (!canReplay) return
+                onSelectPlay?.(play)
+              }}
+              className={`w-full py-3 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] ${
+                canReplay ? 'active:opacity-80' : ''
+              } ${isActive ? 'bg-white/[0.04]' : ''}`}
+              aria-label={canReplay ? `Replay play: ${desc}` : undefined}
+            >
+              <div className="flex items-center gap-2 text-[12px] font-semibold text-zinc-400">
+                {side?.logo ? <img src={side.logo} alt="" className="h-4 w-4 object-contain" /> : null}
+                <span>
+                  {play.period != null ? ordinal(play.period) : ''}
+                  {play.clock ? ` · ${play.clock}` : ''}
                 </span>
-              ) : null}
-            </div>
-            <p className="mt-1 text-[14px] leading-snug text-zinc-200">{play.description}</p>
+                {i === 0 ? (
+                  <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-zinc-300">
+                    Latest
+                  </span>
+                ) : null}
+                {canReplay ? (
+                  <span className="ml-auto text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+                    Tap to replay
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-1 text-[14px] leading-snug text-zinc-200">{desc}</p>
+            </button>
           </li>
         )
       })}

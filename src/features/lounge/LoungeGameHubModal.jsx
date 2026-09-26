@@ -23,7 +23,7 @@ import GameHubPlayersPane from './gameHub/GameHubPlayersPane.jsx'
 import GameHubFantasyPane from './gameHub/GameHubFantasyPane.jsx'
 import { KalshiGamePropsBoard } from './gameHub/GameHubKalshiProps.jsx'
 import { BoxScoreCard, OddsTable, PlayList, PlayerStats, PostList } from './gameHub/GameHubPanes.jsx'
-import { liveClockLabel, scoreText } from './gameHub/gameHubFormatters.js'
+import { liveClockLabel, scoreText, sortPlaysNewestFirst } from './gameHub/gameHubFormatters.js'
 
 /**
  * Game destination opened from the in-post score pill.
@@ -58,6 +58,8 @@ export default function LoungeGameHubModal({
   const [draft, setDraft] = useState('')
   const [posting, setPosting] = useState(false)
   const [chatErr, setChatErr] = useState('')
+  /** User-picked PBP row for field replay … { text, team, nonce }. */
+  const [fieldReplay, setFieldReplay] = useState({ text: '', team: null, nonce: 0 })
 
   const sameSportGames = useMemo(
     () => loungeSportsHubGames(sports?.games || [], game?.sport_key),
@@ -74,7 +76,30 @@ export default function LoungeGameHubModal({
   }, [game])
 
   const live = detail.live || game?.live || null
-  const lastPlay = String(live?.last_play || detail.plays?.[detail.plays.length - 1]?.description || '').trim()
+  const newestFeedPlay = sortPlaysNewestFirst(detail.plays)[0]
+  const lastPlay = String(live?.last_play || newestFeedPlay?.description || '').trim()
+  const fieldPlayText = String(fieldReplay.text || lastPlay).trim()
+  const lastPlayMeta = {
+    period: live?.period ?? newestFeedPlay?.period ?? null,
+    clock: live?.clock || newestFeedPlay?.clock || '',
+    possession: live?.possession || newestFeedPlay?.team || null,
+  }
+
+  useEffect(() => {
+    // New live last-play from the feed … drop any manual replay override.
+    setFieldReplay({ text: '', team: null, nonce: 0 })
+  }, [live?.last_play])
+
+  function replayPlayOnField(play) {
+    const text = String(play?.description || '').trim()
+    if (!text) return
+    const team = play?.team === 'home' || play?.team === 'away' ? play.team : null
+    setFieldReplay((prev) => ({
+      text,
+      team,
+      nonce: (Number(prev.nonce) || 0) + 1,
+    }))
+  }
 
   async function shareHubGame() {
     if (!game) return
@@ -231,6 +256,7 @@ export default function LoungeGameHubModal({
     setDetail({ odds: [], plays: [], stats: [], live: null, splits: null })
     setFantasy({ players: [], props: [], season: null, week: null, sources: [] })
     setPosts([])
+    setFieldReplay({ text: '', team: null, nonce: 0 })
     // Reset chrome when switching games only (status is read for default tab).
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: game.id gate
   }, [game?.id])
@@ -350,7 +376,9 @@ export default function LoungeGameHubModal({
       <GameHubHero
         game={game}
         live={live}
-        lastPlay={lastPlay}
+        lastPlay={fieldPlayText}
+        playReplayNonce={fieldReplay.nonce}
+        replayTeam={fieldReplay.team}
         topBar={hubTopBar}
         splits={detail.splits}
         players={fantasy.players}
@@ -384,7 +412,14 @@ export default function LoungeGameHubModal({
           <PlayerStats game={game} stats={detail.stats} />
         </div>
         <div hidden={tab !== 'plays'} className="py-2">
-          <PlayList game={game} plays={detail.plays} />
+          <PlayList
+            game={game}
+            plays={detail.plays}
+            lastPlayText={lastPlay}
+            lastPlayMeta={lastPlayMeta}
+            activePlayText={fieldPlayText}
+            onSelectPlay={replayPlayOnField}
+          />
         </div>
         <div hidden={tab !== 'players'}>
           <GameHubPlayersPane

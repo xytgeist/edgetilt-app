@@ -33,7 +33,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
-**Branch:** `test` (match `origin/test` before edits). `main` @ **`2353d3fc`** (promoted 2026-09-25, web **1.4.652**). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
+**Branch:** `test` (match `origin/test` before edits). `main` @ **`d3ae5edd`** (promoted 2026-09-26, web **1.4.698**). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
 
 **Supabase (do not swap these):**
 
@@ -79,7 +79,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... WR jersey number place/rotate
 
-**I am Mac Theo.** WR chest number paint works; mid-chest `470,530` / `240,530`, lean right `+22` / left `-22`, font **177** (~50% larger). Tip web **`1.4.698`**.
+**I am Mac Theo.** Promoted **`test` → `main` (`d3ae5edd`)**. Vercel prod web **`1.4.698`** (WR jersey mid-chest + lean + larger glyphs; #0/filter paint harden). **No SQL / Edge.** Store IPA still **1.4.95**.
 
 ### Mac Theo ACTIVE TRACK 2026-09-25 ... WR catch runner
 

@@ -1151,6 +1151,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-26:** **Red zone tint to 40% (Mac).** Bumped from 16% per Ryan. Frontend **`1.4.738`**.
+- **2026-09-26:** **Gamecast red zone tint (Mac).** When the LOS is inside the opponent's 20, the 20-to-goal band on that end gets a slight red overlay (fades in/out, follows play anims, hidden after TD / during stoppage banners). Frontend **`1.4.737`**.
 - **2026-09-26:** **NFL/CFB hub waits for full load (Mac).** League hub slate holds a spinner until the fresh scoreboard fetch, all pill logos (+ light variants), wash treatment probes, and fonts finish (6s cap). `peekLogoWashTreatment` lets pills paint the final treatment on first frame. Sports Hub "all" unchanged. Frontend **`1.4.736`**.
 - **2026-09-26:** **Hide LOS/ball after TD by play text (Mac).** Goal-line % check missed ESPN's try spot (CFB 3 / NFL 15). `playTextIsScoreTry` (TD / PAT / kick attempt / two-point, not kickoff or FG) now suppresses LOS, ball, and 1st-down line and blocks settle until the kickoff play. Frontend **`1.4.735`**.
 - **2026-09-26:** **Promoted `test` → `main` (`5bf1d9ee`).** Vercel prod = web **`1.4.734`** (play anim stuck-key fix, figure ball anchors on LOS/gain, post-TD marker suppression, deep-pass stale possession, play chrome above posts, field-art ready gate). Web only … no SQL, no Edge.

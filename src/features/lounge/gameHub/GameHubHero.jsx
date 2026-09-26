@@ -1888,13 +1888,13 @@ function FieldViz({
             <polygon
               points={redZonePoints(0, 20)}
               fill="#ef4444"
-              opacity={redZoneSide === 'left' ? 0.16 * linesFadeOpacity : 0}
+              opacity={redZoneSide === 'left' ? 0.4 * linesFadeOpacity : 0}
               style={{ transition: 'opacity 450ms ease' }}
             />
             <polygon
               points={redZonePoints(80, 100)}
               fill="#ef4444"
-              opacity={redZoneSide === 'right' ? 0.16 * linesFadeOpacity : 0}
+              opacity={redZoneSide === 'right' ? 0.4 * linesFadeOpacity : 0}
               style={{ transition: 'opacity 450ms ease' }}
             />
           </g>

@@ -79,7 +79,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... timeout keeps field + Top 25 ranks
 
-**I am Mac Theo.** TIMEOUT banner keeps LOS/ball/1st down/red zone. Hero board shows AP Top 25 rank before team label from ESPN `curatedRank` (`side.rank`). Test Edge **`lounge-sports-scoreboard`** redeployed; prod Edge redeploy owed on promote. Game pills (hub slate + hub strip) now sort kickoff then Top 25 rank (`sortLoungeSportsGamesByKickoffRank`). Tip web **`1.4.743`** (test only). 1.4.742 FG yards parser handles "from N yards"; 1.4.743 play animations use per-play ESPN `start_spot` as the LOS (test Edge deployed, prod Edge owed).
+**I am Mac Theo.** TIMEOUT banner keeps LOS/ball/1st down/red zone. Hero board shows AP Top 25 rank before team label from ESPN `curatedRank` (`side.rank`). Test Edge **`lounge-sports-scoreboard`** redeployed; prod Edge redeploy owed on promote. Game pills (hub slate + hub strip) now sort kickoff then Top 25 rank (`sortLoungeSportsGamesByKickoffRank`). Tip web **`1.4.744`** (test only; 1.4.744 LOS falls back to previous real play's `end_spot`). 1.4.742 FG yards parser handles "from N yards"; 1.4.743 play animations use per-play ESPN `start_spot` as the LOS (test Edge deployed, prod Edge owed).
 
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... Game Hub live chat
 

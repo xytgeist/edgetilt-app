@@ -328,6 +328,30 @@ export function sortPlaysNewestFirst(plays) {
   return indexed.map((row) => row.play)
 }
 
+function hasYardSpot(spot) {
+  return spot != null && Number.isFinite(Number(spot.yard_line))
+}
+
+/**
+ * LOS for one play from the feed rows: its own `start_spot`, else the `end_spot` of the nearest
+ * earlier row that has one (penalty rows move the ball; timeouts / quarter ends carry no spot).
+ * `play` is matched by reference first, then newest row with the same text. When the text is not
+ * in the list yet (live last_play ahead of the PBP poll), the newest row's end is the LOS.
+ * @returns {{ yard_line: number, yard_side: 'home'|'away'|null } | null}
+ */
+export function resolvePlayStartSpot(plays, { play = null, text = '' } = {}) {
+  const newestFirst = sortPlaysNewestFirst(plays)
+  if (!newestFirst.length) return null
+  const needle = String(text || play?.description || '').trim()
+  let idx = play ? newestFirst.indexOf(play) : -1
+  if (idx < 0 && needle) idx = newestFirst.findIndex((p) => String(p?.description || '').trim() === needle)
+  if (idx >= 0 && hasYardSpot(newestFirst[idx]?.start_spot)) return newestFirst[idx].start_spot
+  for (let i = idx >= 0 ? idx + 1 : 0; i < newestFirst.length; i += 1) {
+    if (hasYardSpot(newestFirst[i]?.end_spot)) return newestFirst[i].end_spot
+  }
+  return null
+}
+
 /** Drop adjacent/list dupes that share description (or play id). */
 export function dedupePlaysByDescription(plays) {
   if (!Array.isArray(plays) || plays.length === 0) return []

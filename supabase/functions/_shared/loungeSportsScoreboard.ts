@@ -154,6 +154,8 @@ export type LoungeSportsPlay = {
   team: 'home' | 'away' | null
   /** Line of scrimmage for this play (ESPN `start`) … same 1–50 + territory shape as live. */
   start_spot?: { yard_line: number | null; yard_side: 'home' | 'away' | null } | null
+  /** Ball spot after this play (ESPN `end`) … the next play's LOS when its own start is missing. */
+  end_spot?: { yard_line: number | null; yard_side: 'home' | 'away' | null } | null
 }
 
 export type LoungeSportsPlayerStat = {
@@ -1399,23 +1401,35 @@ async function fetchEspnFootballLivePack(
         const clockObj = (row.clock && typeof row.clock === 'object')
           ? row.clock as Record<string, unknown>
           : null
-        const startSpot = start
-          ? resolveFootballYardSpot({
-              possessionText: String(start.possessionText || '').trim() || null,
-              yardsToEndzone: numOrNull(start.yardsToEndzone),
-              absoluteYardLine: numOrNull(start.yardLine),
-              possession: sideForEspnTeamId(String(startTeam?.id || '').trim()),
-              homeAbbrev: boardHomeAbbrev || game.home?.abbrev,
-              awayAbbrev: boardAwayAbbrev || game.away?.abbrev,
-            })
-          : null
+        const spotFrom = (s: Record<string, unknown> | null) => {
+          if (!s) return null
+          const t = (s.team && typeof s.team === 'object') ? s.team as Record<string, unknown> : null
+          const out = resolveFootballYardSpot({
+            possessionText: String(s.possessionText || '').trim() || null,
+            yardsToEndzone: numOrNull(s.yardsToEndzone),
+            absoluteYardLine: numOrNull(s.yardLine),
+            possession: sideForEspnTeamId(String(t?.id || '').trim()),
+            homeAbbrev: boardHomeAbbrev || game.home?.abbrev,
+            awayAbbrev: boardAwayAbbrev || game.away?.abbrev,
+          })
+          return out.yard_line != null ? out : null
+        }
+        const endRaw = (row.end && typeof row.end === 'object') ? row.end as Record<string, unknown> : null
+        const typeText = String(
+          (row.type && typeof row.type === 'object' ? (row.type as Record<string, unknown>).text : '') || '',
+        )
+        // ESPN timeout / period rows carry stale spots … never a LOS source.
+        const noSpot = /timeout|end\s+(?:period|of\s+(?:half|game|quarter))|two[-\s]minute/i.test(typeText)
+        const startSpot = noSpot ? null : spotFrom(start)
+        const endSpot = noSpot ? null : spotFrom(endRaw)
         plays.push({
           id: playId || `${plays.length}`,
           period: numOrNull(periodObj?.number ?? row.period),
           clock: String(clockObj?.displayValue || row.clock || '').trim(),
           description: text,
           team: sideForEspnTeamId(teamId),
-          start_spot: startSpot && startSpot.yard_line != null ? startSpot : null,
+          start_spot: startSpot,
+          end_spot: endSpot,
         })
       }
     }

@@ -25,7 +25,12 @@ import { GAME_CHAT_MAX_CHARS } from './gameHub/gameHubChatApi.js'
 import { useGameHubChat } from './gameHub/useGameHubChat.js'
 import { KalshiGamePropsBoard } from './gameHub/GameHubKalshiProps.jsx'
 import { BoxScoreCard, OddsTable, PlayList, PlayerStats, PostList } from './gameHub/GameHubPanes.jsx'
-import { liveClockLabel, scoreText, sortPlaysNewestFirst } from './gameHub/gameHubFormatters.js'
+import {
+  liveClockLabel,
+  resolvePlayStartSpot,
+  scoreText,
+  sortPlaysNewestFirst,
+} from './gameHub/gameHubFormatters.js'
 
 /**
  * Game destination opened from the in-post score pill.
@@ -99,7 +104,7 @@ export default function LoungeGameHubModal({
   const fieldPlayStartSpot =
     Number(fieldReplay.nonce) > 0 && fieldReplay.text
       ? fieldReplay.startSpot || null
-      : feedRowForFieldPlay?.start_spot || null
+      : resolvePlayStartSpot(detail.plays, { text: fieldPlayText })
   const lastPlayMeta = {
     period: live?.period ?? newestFeedPlay?.period ?? null,
     clock: live?.clock || newestFeedPlay?.clock || '',
@@ -126,7 +131,7 @@ export default function LoungeGameHubModal({
     setFieldReplay((prev) => ({
       text,
       team,
-      startSpot: play?.start_spot || null,
+      startSpot: resolvePlayStartSpot(detail.plays, { play, text }),
       nonce: (Number(prev.nonce) || 0) + 1,
     }))
     // Bring the field back into view if the plays list is scrolled deep.

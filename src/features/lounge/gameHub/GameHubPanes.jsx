@@ -493,11 +493,6 @@ export function PlayList({
                   {play.period != null ? ordinal(play.period) : ''}
                   {play.clock ? ` · ${play.clock}` : ''}
                 </span>
-                {i === 0 ? (
-                  <span className="rounded bg-zinc-800 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-zinc-300">
-                    Latest
-                  </span>
-                ) : null}
                 {canReplay ? (
                   <span className="ml-auto text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
                     Tap to replay

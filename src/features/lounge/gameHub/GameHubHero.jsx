@@ -355,6 +355,33 @@ function isCfbSport(sportKey) {
   return String(sportKey || '').includes('ncaaf')
 }
 
+/** Top 25 rank (1-25) or null. */
+function teamTop25Rank(side) {
+  const n = Number(side?.rank)
+  return Number.isInteger(n) && n >= 1 && n <= 25 ? n : null
+}
+
+/**
+ * Team label with a small leading Top 25 rank (broadcast style "15 UTAH").
+ * Short abbrev labels stay on one line and spill evenly past the logo column.
+ */
+function RankedTeamLabel({ side, label, className = '', wrap = false }) {
+  const rank = teamTop25Rank(side)
+  const layout = wrap
+    ? 'w-full text-center'
+    : 'flex w-full items-baseline justify-center whitespace-nowrap'
+  return (
+    <div className={`${layout} ${className}`.trim()}>
+      {rank != null ? (
+        <span data-lounge-team-rank className="mr-[3px] text-[0.72em] font-bold tabular-nums text-white/60">
+          {rank}
+        </span>
+      ) : null}
+      <span>{label}</span>
+    </div>
+  )
+}
+
 function TimeoutDots({ remaining, align = 'left' }) {
   const left = remaining == null ? TIMEOUT_SLOTS : Math.max(0, Math.min(TIMEOUT_SLOTS, Math.round(remaining)))
   const justify =
@@ -658,7 +685,8 @@ function FieldViz({
   const pos = posRaw != null ? posRaw : isUserReplay ? 50 : null
   const hasLine = pos != null
   const centerBanner = fieldCenterBanner(game, live)
-  const hideLiveLines = Boolean(centerBanner)
+  // Timeouts keep LOS / 1st down / ball / red zone … the drive is still live.
+  const hideLiveLines = Boolean(centerBanner) && centerBanner !== 'TIMEOUT'
   const lastPlayText = String(lastPlay || '').trim()
   const animKey = `${lastPlayText}::${Number(playReplayNonce) || 0}`
   const possessionSide =
@@ -2297,9 +2325,11 @@ export default function GameHubHero({
             <div className="flex min-w-0 flex-1 items-center">
               <div className="flex w-[52px] shrink-0 flex-col items-center">
                 <LoungeSportsTeamLogo side={game.away} treatment={awayTreatment} size={52} />
-                <div className="mt-0.5 w-full text-center text-[13px] font-semibold uppercase tracking-wide text-white/85">
-                  {awayLabel}
-                </div>
+                <RankedTeamLabel
+                  side={game.away}
+                  label={awayLabel}
+                  className="mt-0.5 text-[13px] font-semibold uppercase tracking-wide text-white/85"
+                />
                 {game.away?.record ? (
                   <div className="mt-0.5 w-full text-center text-[10px] font-medium tabular-nums leading-none text-white/55">
                     {game.away.record}
@@ -2360,9 +2390,11 @@ export default function GameHubHero({
               </div>
               <div className="flex w-[52px] shrink-0 flex-col items-center">
                 <LoungeSportsTeamLogo side={game.home} treatment={homeTreatment} size={52} />
-                <div className="mt-0.5 w-full text-center text-[13px] font-semibold uppercase tracking-wide text-white/85">
-                  {homeLabel}
-                </div>
+                <RankedTeamLabel
+                  side={game.home}
+                  label={homeLabel}
+                  className="mt-0.5 text-[13px] font-semibold uppercase tracking-wide text-white/85"
+                />
                 {game.home?.record ? (
                   <div className="mt-0.5 w-full text-center text-[10px] font-medium tabular-nums leading-none text-white/55">
                     {game.home.record}
@@ -2379,15 +2411,15 @@ export default function GameHubHero({
             <div className="flex min-w-0 flex-1 items-center">
               <div className="flex w-[68px] shrink-0 flex-col items-center">
                 <LoungeSportsTeamLogo side={game.away} treatment={awayTreatment} size={68} />
-                <div
-                  className={`mt-0.5 w-full text-center font-semibold leading-snug text-white/85 ${
+                <RankedTeamLabel
+                  side={game.away}
+                  label={awayLabel}
+                  className={`mt-0.5 font-semibold leading-snug text-white/85 ${
                     preLabels
                       ? 'text-[12px] tracking-tight'
                       : 'text-[13px] uppercase tracking-wide'
                   }`}
-                >
-                  {awayLabel}
-                </div>
+                />
                 {game.away?.record ? (
                   <div className="mt-0.5 w-full text-center text-[10px] font-medium tabular-nums leading-none text-white/55">
                     {game.away.record}
@@ -2447,15 +2479,15 @@ export default function GameHubHero({
               </div>
               <div className="flex w-[68px] shrink-0 flex-col items-center">
                 <LoungeSportsTeamLogo side={game.home} treatment={homeTreatment} size={68} />
-                <div
-                  className={`mt-0.5 w-full text-center font-semibold leading-snug text-white/85 ${
+                <RankedTeamLabel
+                  side={game.home}
+                  label={homeLabel}
+                  className={`mt-0.5 font-semibold leading-snug text-white/85 ${
                     preLabels
                       ? 'text-[12px] tracking-tight'
                       : 'text-[13px] uppercase tracking-wide'
                   }`}
-                >
-                  {homeLabel}
-                </div>
+                />
                 {game.home?.record ? (
                   <div className="mt-0.5 w-full text-center text-[10px] font-medium tabular-nums leading-none text-white/55">
                     {game.home.record}

@@ -110,6 +110,8 @@ export type LoungeSportsGameSide = {
   ml?: number | null
   /** Season W-L (e.g. "3-1") from ESPN scoreboard when available. */
   record?: string | null
+  /** AP / CFP Top 25 rank (1-25) from ESPN `curatedRank`; null when unranked. */
+  rank?: number | null
   team_id?: number | null
 }
 
@@ -872,6 +874,7 @@ function espnMatchupKey(awayAbb: string, homeAbb: string, commenceIso: string): 
 
 type EspnSlateExtras = {
   recordsByAbbrev: Map<string, string>
+  ranksByAbbrev: Map<string, number>
   broadcastByMatchup: Map<string, { label: string; url: string }>
 }
 
@@ -892,6 +895,7 @@ async function loadEspnFootballSlateExtras(
     return cached.extras
   }
   const recordsByAbbrev = new Map<string, string>()
+  const ranksByAbbrev = new Map<string, number>()
   const broadcastByMatchup = new Map<string, { label: string; url: string }>()
   const dateSet = new Set<string>()
   for (const g of games) {
@@ -921,6 +925,12 @@ async function loadEspnFootballSlateExtras(
           const abb = nflAbbrevKey(team.abbreviation)
           const rec = recordFromEspnCompetitor(c)
           if (abb && rec) recordsByAbbrev.set(abb, rec)
+          const curated = (c.curatedRank && typeof c.curatedRank === 'object')
+            ? Number((c.curatedRank as Record<string, unknown>).current)
+            : NaN
+          if (abb && Number.isInteger(curated) && curated >= 1 && curated <= 25) {
+            ranksByAbbrev.set(abb, curated)
+          }
           if (c.homeAway === 'home') homeAbb = abb
           if (c.homeAway === 'away') awayAbb = abb
         }
@@ -936,7 +946,7 @@ async function loadEspnFootballSlateExtras(
     }
   }))
 
-  const extras = { recordsByAbbrev, broadcastByMatchup }
+  const extras = { recordsByAbbrev, ranksByAbbrev, broadcastByMatchup }
   espnFootballSlateCache.set(league, { at: Date.now(), extras })
   return extras
 }
@@ -948,21 +958,30 @@ async function enrichEspnFootballExtras(
 ): Promise<LoungeSportsGame[]> {
   const subset = games.filter((g) => sportMatch(String(g.sport_key || '')))
   if (!subset.length) return games
-  const { recordsByAbbrev, broadcastByMatchup } = await loadEspnFootballSlateExtras(
+  const { recordsByAbbrev, ranksByAbbrev, broadcastByMatchup } = await loadEspnFootballSlateExtras(
     subset,
     league,
     sportMatch,
   )
-  if (!recordsByAbbrev.size && !broadcastByMatchup.size) return games
+  if (!recordsByAbbrev.size && !ranksByAbbrev.size && !broadcastByMatchup.size) return games
+  const withSideExtras = (side: LoungeSportsGameSide) => {
+    const key = nflAbbrevKey(side?.abbrev)
+    const rec = recordsByAbbrev.get(key) || null
+    const rank = ranksByAbbrev.get(key) ?? null
+    if (!rec && rank == null) return side
+    return {
+      ...side,
+      record: rec ?? side?.record ?? null,
+      rank: rank ?? side?.rank ?? null,
+    }
+  }
   return games.map((g) => {
     if (!sportMatch(String(g.sport_key || ''))) return g
-    const awayRec = recordsByAbbrev.get(nflAbbrevKey(g.away?.abbrev)) || null
-    const homeRec = recordsByAbbrev.get(nflAbbrevKey(g.home?.abbrev)) || null
     const watch = broadcastByMatchup.get(
       espnMatchupKey(g.away?.abbrev || '', g.home?.abbrev || '', g.commence_time),
     ) || null
-    const nextAway = awayRec ? { ...g.away, record: awayRec ?? g.away?.record ?? null } : g.away
-    const nextHome = homeRec ? { ...g.home, record: homeRec ?? g.home?.record ?? null } : g.home
+    const nextAway = withSideExtras(g.away)
+    const nextHome = withSideExtras(g.home)
     const broadcast = watch?.label || g.broadcast || null
     const broadcastUrl = watch?.url || g.broadcast_url || null
     if (

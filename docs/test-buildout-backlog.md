@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-25:** **Gamecast ball marker + midfield logo load fix (Mac).** Scrimmage ball is inline SVG (no broken `<image>`). Midfield home mark uses local `/sports/{nfl|cfb}/logos` only so ESPN CDN hrefs do not blank in WebKit. Frontend **`1.4.661`**.
 - **2026-09-25:** **Game Hub last play back under field (Mac).** Dropped the glass overlay card on the 3D field; last play is single-line muted text below the field again. Frontend **`1.4.660`**.
 - **2026-09-25:** **CFB Players + PBP wire (Mac).** Edge **`lounge-cfb-game-players`** reads `cfb_players` for hub Players (roster only, no Props/Fantasy). ESPN **college-football** PBP fallback now runs on **test + prod** (NFL ESPN fallback stays prod-only); match by abbrev / team_id / soft name. Redeploy test **`lounge-cfb-game-players`** + **`lounge-sports-scoreboard`**. Frontend **`1.4.659`**.
 - **2026-09-25:** **CFB team + player assets (Mac).** Synced **136** FBS teams: logos + light variants → `public/sports/cfb/logos/`, colors/names → `cfbTeamCatalog.generated.js` (`npm run cfb:teams:assets`). Pills/hero enrich local logos + wash colors. **`cfb_players`** on test (**13,600** ESPN roster seats with headshot CDN URLs; `npm run cfb:players:sync`). No helmet pack (ESPN/CFBD have none; NFL cartoon helmets already removed). Frontend **`1.4.658`**. Prod SQL/players not applied.

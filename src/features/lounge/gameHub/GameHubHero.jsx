@@ -207,11 +207,14 @@ function FieldViz({ game, live, awayColor, homeColor }) {
     firstDownBot = 161.0 + (targetPos / 100) * 937.0
   }
 
-  const homeLogoSrc =
-    game?.home?.logo ||
-    (game?.home?.abbrev
-      ? `${isCfbSport(sportKey) ? '/sports/cfb/logos' : '/sports/nfl/logos'}/${game.home.abbrev}.png`
-      : '')
+  // Prefer local logo files inside SVG <image> … ESPN CDN hrefs often paint as broken
+  // images in WebKit (cross-origin). Enrich maps abbrevs onto /sports/{nfl|cfb}/logos.
+  const logoBase = isCfbSport(sportKey) ? '/sports/cfb/logos' : '/sports/nfl/logos'
+  const homeAbbrev = String(game?.home?.abbrev || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9-]/g, '')
+  const homeLogoSrc = homeAbbrev ? `${logoBase}/${homeAbbrev}.png` : ''
   const college = isCfbSport(sportKey)
   const endzoneFont = college ? ENDZONE_FONT_CFB : ENDZONE_FONT_NFL
   const awayEndzone = resolveEndzoneDesign(game?.away, awayColor, 'left', { college })
@@ -484,6 +487,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
             <g transform="translate(628.7, 334.5) scale(1, 0.72) translate(-628.7, -334.5)">
               <image
                 href={homeLogoSrc}
+                xlinkHref={homeLogoSrc}
                 x={628.7 - 72}
                 y={334.5 - 72}
                 width="144"
@@ -522,23 +526,20 @@ function FieldViz({ game, live, awayColor, homeColor }) {
                 filter="url(#glow-scrim)"
               />
               {/* Ball marker at mid-depth on scrimmage line */}
-              <circle
-                cx={scrimMidX}
-                cy={334.5}
-                r={10.5}
-                fill="#09090b"
-                stroke="#ffffff"
-                strokeWidth="1.5"
+              {/* Ball marker at mid-depth on scrimmage line (inline SVG … no external image). */}
+              <g
+                transform={`translate(${scrimMidX} 334.5)`}
                 style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.7))' }}
-              />
-              <image
-                href={FOOTBALL_POSSESSION_ICON}
-                x={scrimMidX - 7}
-                y={334.5 - 7}
-                width="14"
-                height="14"
-                style={{ filter: 'brightness(0) invert(1)' }}
-              />
+              >
+                <circle r="10.5" fill="#09090b" stroke="#ffffff" strokeWidth="1.5" />
+                <g transform="rotate(-32)">
+                  <ellipse rx="6.2" ry="4.1" fill="#f4f4f5" />
+                  <line x1="-3.2" y1="0" x2="3.2" y2="0" stroke="#18181b" strokeWidth="0.85" strokeLinecap="round" />
+                  <line x1="-1.1" y1="-1.7" x2="-1.1" y2="1.7" stroke="#18181b" strokeWidth="0.7" strokeLinecap="round" />
+                  <line x1="0" y1="-1.7" x2="0" y2="1.7" stroke="#18181b" strokeWidth="0.7" strokeLinecap="round" />
+                  <line x1="1.1" y1="-1.7" x2="1.1" y2="1.7" stroke="#18181b" strokeWidth="0.7" strokeLinecap="round" />
+                </g>
+              </g>
             </g>
           ) : null}
 

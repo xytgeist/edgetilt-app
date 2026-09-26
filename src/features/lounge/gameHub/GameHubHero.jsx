@@ -98,10 +98,31 @@ const FG_TAKEOFF_SLOPE_MULT = 2.35
 /**
  * Goalpost uprights from gamecast-goalposts-overlay.png (viewBox 1266×533).
  * `uLo` / `uHi` = screen-left / screen-right upright X.
+ * `front*` = perspective-near upright (taller in the art) drawn above the FG
+ * ball so the kick reads between the posts without splitting the overlay PNG.
  */
+const FG_POST_YELLOW = '#be8800'
 const FG_POSTS = {
-  left: { uLo: 96, uHi: 136, centerX: 116, crossbarY: 208 },
-  right: { uLo: 1128, uHi: 1164, centerX: 1146, crossbarY: 208 },
+  left: {
+    uLo: 96,
+    uHi: 136,
+    centerX: 116,
+    crossbarY: 208,
+    frontX: 136,
+    frontTopY: 25,
+    frontBotY: 213,
+    frontW: 10,
+  },
+  right: {
+    uLo: 1128,
+    uHi: 1164,
+    centerX: 1146,
+    crossbarY: 208,
+    frontX: 1128,
+    frontTopY: 25,
+    frontBotY: 212,
+    frontW: 10,
+  },
 }
 
 const RUSH_Y = 334.5
@@ -1481,10 +1502,12 @@ function FieldViz({
   // End-over-end topple like a placekick (Science of NFL Football / toppling-flight papers).
   let fgBall = null
   let fgBallRotate = -82
+  let fgFrontPost = null
   if (fgAnim?.showBall) {
     const { phase, t, start, land, hit, bounce, lift, facing } = fgAnim
     // SVG +rotate = clockwise. Leftward kick = CW (backwards); rightward = CCW.
     const tumble = facing < 0 ? 1 : -1
+    fgFrontPost = facing > 0 ? FG_POSTS.right : FG_POSTS.left
     if (phase === 'hold') {
       fgBall = { x: start.x, y: start.y }
       // Slight tee lean before the plant (not a perfect -90 statue).
@@ -1978,6 +2001,24 @@ function FieldViz({
             <g transform={`translate(${fgBall.x - FG_BALL_SIZE / 2} ${fgBall.y - FG_BALL_SIZE * 0.38})`}>
               <AmericanFootballMark tone="field" size={FG_BALL_SIZE} rotate={fgBallRotate} />
             </g>
+          </svg>
+        ) : null}
+        {/* Perspective-near upright above the ball … fake “between the posts” without splitting the PNG. */}
+        {fgFrontPost ? (
+          <svg
+            viewBox="0 0 1266 533"
+            className="pointer-events-none absolute inset-0 z-[9] h-full w-full select-none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <rect
+              x={fgFrontPost.frontX - fgFrontPost.frontW / 2}
+              y={fgFrontPost.frontTopY}
+              width={fgFrontPost.frontW}
+              height={fgFrontPost.frontBotY - fgFrontPost.frontTopY}
+              rx={fgFrontPost.frontW / 2}
+              fill={FG_POST_YELLOW}
+            />
           </svg>
         ) : null}
         {/* Stoppage / break banner … TIMEOUT, End of 1st, HALFTIME, End of 3rd, GAME OVER */}

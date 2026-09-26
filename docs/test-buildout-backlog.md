@@ -3886,3 +3886,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-26:** **Odds hang never Pinnacle:** Hang/outlier skips Pinnacle; dots on the triggering Spread/Total/ML cells when that book is open. Frontend **`1.4.724`**.
 - **2026-09-26:** **Pinnacle live graft:** Freshest `last_update` wins across us/eu pin packs; scrub Pinnacle markets miles off other-book consensus; tighter CFB name match (COLO≠CSU). Redeployed test Edge **`lounge-sports-scoreboard`**.
 - **2026-09-26:** **FG ball over scoreboard:** Field `z-[5]` above scoreboard; FG ball drawn above goalposts overlay so apex clears board chrome. Frontend **`1.4.725`**.
+- **2026-09-26:** **FG between uprights (fake front pole):** During FG, yellow perspective-near upright (left `uHi` / right `uLo`) draws above the ball while the full posts PNG stays behind. Frontend **`1.4.726`**.

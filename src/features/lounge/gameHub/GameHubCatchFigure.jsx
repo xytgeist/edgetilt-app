@@ -109,12 +109,12 @@ export default function GameHubCatchFigure({
             dominantBaseline="central"
             fill="none"
             stroke={accentColor}
-            strokeWidth="22"
+            strokeWidth="33"
             strokeLinejoin="round"
             fontFamily="'Arial Black', Impact, sans-serif"
-            fontSize="118"
+            fontSize="177"
             fontWeight="900"
-            letterSpacing="-4"
+            letterSpacing="-6"
           >
             {num}
           </text>
@@ -125,9 +125,9 @@ export default function GameHubCatchFigure({
             dominantBaseline="central"
             fill={secondaryColor}
             fontFamily="'Arial Black', Impact, sans-serif"
-            fontSize="118"
+            fontSize="177"
             fontWeight="900"
-            letterSpacing="-4"
+            letterSpacing="-6"
           >
             {num}
           </text>

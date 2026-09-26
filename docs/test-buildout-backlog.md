@@ -3850,3 +3850,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-26:** **NFL figure jersey via tighter name match:** Pass hint no longer swallows `to DET 12` trailers; `matchRushPlayer` uses compact keys, Initial.Last compounds (A.St.Brown / AJ Brown), team aliases (LA/WSH), and unique last-name on possession. Frontend **`1.4.699`**.
 - **2026-09-26:** **Promoted `test` → `main` (`a8eb664e`).** Vercel prod = web **`1.4.699`** (NFL name-match jersey paint). **No SQL / Edge.**
 - **2026-09-26:** **Jersey number contrast:** `resolveJerseyNumberPaint` flips fill/outline when secondary melts into jersey (ATL black-on-red → white + black stroke). Frontend **`1.4.700`**.
+- **2026-09-26:** **Hub pill light wash:** `html.light [data-lounge-hub-game-pill]` solid white → translucent `0.42` (active `0.58`) + stronger side glows. Dark unchanged. Frontend **`1.4.701`**.

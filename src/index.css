@@ -3807,25 +3807,27 @@ html.light [data-lounge-game-hero] [data-lounge-game-last-play] .text-white\/55 
   height: 1.375rem;
 }
 html.light [data-lounge-hub-game-pill] {
-  background-color: #ffffff !important;
-  border-color: #d4d4d8 !important;
+  /* Translucent wash … solid white was blowing out logos + killing team glows. */
+  background-color: rgba(255, 255, 255, 0.42) !important;
+  border-color: rgba(24, 24, 27, 0.14) !important;
   color: #18181b !important;
 }
 html.light [data-lounge-hub-game-pill='active'] {
   border-color: #18181b !important;
   box-shadow: 0 0 0 1.5px #18181b !important;
+  background-color: rgba(255, 255, 255, 0.58) !important;
 }
 html.light [data-lounge-hub-game-pill-away] {
   background: radial-gradient(
     ellipse 90% 140% at 0% 50%,
-    color-mix(in srgb, var(--pill-away, #3f3f46) 42%, transparent) 0%,
+    color-mix(in srgb, var(--pill-away, #3f3f46) 58%, transparent) 0%,
     transparent 72%
   );
 }
 html.light [data-lounge-hub-game-pill-home] {
   background: radial-gradient(
     ellipse 90% 140% at 100% 50%,
-    color-mix(in srgb, var(--pill-home, #3f3f46) 42%, transparent) 0%,
+    color-mix(in srgb, var(--pill-home, #3f3f46) 58%, transparent) 0%,
     transparent 72%
   );
 }

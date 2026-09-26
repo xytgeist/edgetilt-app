@@ -1334,8 +1334,15 @@ async function fetchEspnFootballLivePack(
       : {}
     const driveList: Array<Record<string, unknown>> = []
     if (Array.isArray(drivesObj.previous)) driveList.push(...drivesObj.previous as Array<Record<string, unknown>>)
+    // ESPN often repeats the active drive as both `previous[-1]` and `current`.
+    // Concatenating both doubles every play on that drive in the Hub Plays tab.
     if (drivesObj.current && typeof drivesObj.current === 'object') {
-      driveList.push(drivesObj.current as Record<string, unknown>)
+      const cur = drivesObj.current as Record<string, unknown>
+      const curId = String(cur.id || '').trim()
+      const already = curId
+        ? driveList.some((d) => String(d.id || '').trim() === curId)
+        : false
+      if (!already) driveList.push(cur)
     }
 
     const sideForEspnTeamId = (id: string): 'home' | 'away' | null => {
@@ -1346,10 +1353,16 @@ async function fetchEspnFootballLivePack(
     }
 
     const plays: LoungeSportsPlay[] = []
+    const seenPlayIds = new Set<string>()
     for (const drive of driveList) {
       for (const row of Array.isArray(drive.plays) ? drive.plays as Array<Record<string, unknown>> : []) {
         const text = String(row.text || row.description || '').trim()
         if (!text) continue
+        const playId = String(row.id || row.sequenceNumber || '').trim()
+        if (playId) {
+          if (seenPlayIds.has(playId)) continue
+          seenPlayIds.add(playId)
+        }
         const participants = Array.isArray(row.teamParticipants)
           ? row.teamParticipants as Array<Record<string, unknown>>
           : []
@@ -1366,7 +1379,7 @@ async function fetchEspnFootballLivePack(
           ? row.clock as Record<string, unknown>
           : null
         plays.push({
-          id: String(row.id || row.sequenceNumber || `${plays.length}`),
+          id: playId || `${plays.length}`,
           period: numOrNull(periodObj?.number ?? row.period),
           clock: String(clockObj?.displayValue || row.clock || '').trim(),
           description: text,

@@ -285,6 +285,21 @@ export function normalizePlayDescription(text) {
     .replace(/\s+/g, ' ')
 }
 
+/** True when two PBP blurbs are the same play (exact or one is a prefix/suffix of the other). */
+export function playDescriptionsMatch(a, b) {
+  const na = normalizePlayDescription(a)
+  const nb = normalizePlayDescription(b)
+  if (!na || !nb) return false
+  if (na === nb) return true
+  // Live last_play often strips the leading "(12:05) " clock ESPN puts on drive plays.
+  const stripClock = (s) => s.replace(/^\(\d{1,2}:\d{2}\)\s+/, '')
+  const ca = stripClock(na)
+  const cb = stripClock(nb)
+  if (ca === cb) return true
+  if (ca.length >= 24 && cb.length >= 24 && (ca.includes(cb) || cb.includes(ca))) return true
+  return false
+}
+
 /**
  * Chronological compare for football PBP (oldest → newest).
  * Period asc, then clock remaining desc (clocks count down), then stable index.
@@ -313,16 +328,33 @@ export function sortPlaysNewestFirst(plays) {
   return indexed.map((row) => row.play)
 }
 
+/** Drop adjacent/list dupes that share description (or play id). */
+export function dedupePlaysByDescription(plays) {
+  if (!Array.isArray(plays) || plays.length === 0) return []
+  const out = []
+  const seenIds = new Set()
+  for (const play of plays) {
+    const id = String(play?.id || '').trim()
+    if (id && id !== 'hub-live-last-play') {
+      if (seenIds.has(id)) continue
+      seenIds.add(id)
+    }
+    const desc = play?.description
+    if (out.some((p) => playDescriptionsMatch(p?.description, desc))) continue
+    out.push(play)
+  }
+  return out
+}
+
 /**
  * Ensure the live last-play string sits at the top of the Plays list when the
  * PBP feed omitted it (common Rundown ↔ live mismatch). Dedupes on description.
  */
 export function mergeLastPlayIntoPlays(plays, lastPlayText, meta = null) {
-  const sorted = sortPlaysNewestFirst(plays)
+  const sorted = dedupePlaysByDescription(sortPlaysNewestFirst(plays))
   const last = String(lastPlayText || '').trim()
   if (!last) return sorted
-  const norm = normalizePlayDescription(last)
-  if (sorted.some((p) => normalizePlayDescription(p?.description) === norm)) {
+  if (sorted.some((p) => playDescriptionsMatch(p?.description, last))) {
     return sorted
   }
   return [

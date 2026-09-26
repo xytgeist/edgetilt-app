@@ -29,14 +29,12 @@ import {
 const RUSH_RUN_MS = 1100
 /** Hold RB at end of run before he exits. */
 const RUSH_HOLD_MS = 2000
-/** Pause after RB disappears before LOS / 1st-down lines move. */
-const RUSH_POST_EXIT_GAP_MS = 500
-/** LOS + 1st-down line slide duration. */
+/** LOS + 1st-down line slide duration (starts as soon as RB exits). */
 const RUSH_LINES_MS = 700
 /** Pause after lines settle before the ball returns on the new LOS. */
 const RUSH_BALL_DELAY_MS = 1000
 const RUSH_TOTAL_MS =
-  RUSH_RUN_MS + RUSH_HOLD_MS + RUSH_POST_EXIT_GAP_MS + RUSH_LINES_MS + RUSH_BALL_DELAY_MS
+  RUSH_RUN_MS + RUSH_HOLD_MS + RUSH_LINES_MS + RUSH_BALL_DELAY_MS
 const CATCH_ANIM_MS = 1250
 /** WR path progress before the football leaves the LOS on its arc. */
 const CATCH_BALL_LAUNCH_AT = 0.25
@@ -555,26 +553,11 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
         progress = 1
         showFigure = true
         showTrail = true
-      } else if (
-        elapsed <
-        RUSH_RUN_MS + RUSH_HOLD_MS + RUSH_POST_EXIT_GAP_MS
-      ) {
-        // RB gone; lines still frozen at pre-play marks.
-        progress = 1
-      } else if (
-        elapsed <
-        RUSH_RUN_MS +
-          RUSH_HOLD_MS +
-          RUSH_POST_EXIT_GAP_MS +
-          RUSH_LINES_MS
-      ) {
+      } else if (elapsed < RUSH_RUN_MS + RUSH_HOLD_MS + RUSH_LINES_MS) {
+        // RB gone; lines slide to post-play marks immediately.
         progress = 1
         const lineT =
-          (elapsed -
-            RUSH_RUN_MS -
-            RUSH_HOLD_MS -
-            RUSH_POST_EXIT_GAP_MS) /
-          RUSH_LINES_MS
+          (elapsed - RUSH_RUN_MS - RUSH_HOLD_MS) / RUSH_LINES_MS
         linesProgress = easeOutCubic(Math.min(1, lineT))
       } else {
         // Lines settled; ball still withheld until RUSH_BALL_DELAY_MS.

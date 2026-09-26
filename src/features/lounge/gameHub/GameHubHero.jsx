@@ -1712,8 +1712,8 @@ export default function GameHubHero({
   const showField = isFootball && (game.status === 'in' || game.status === 'post')
   const awayMl = formatLoungeSportsMoneyline(game.away?.ml)
   const homeMl = formatLoungeSportsMoneyline(game.home?.ml)
-  const awayLabel = hubTeamLabel(game.away, game.status)
-  const homeLabel = hubTeamLabel(game.home, game.status)
+  const awayLabel = hubTeamLabel(game.away, game.status, game.sport_key)
+  const homeLabel = hubTeamLabel(game.home, game.status, game.sport_key)
   const preLabels = game.status === 'pre'
 
   return (

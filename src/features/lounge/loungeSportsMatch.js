@@ -171,28 +171,65 @@ function catalogRowForSide(side, sportKey) {
     return cfbRowByLongestName(hay)
   }
   if (!isNflSportKey(sportKey)) return null
-  const byName = NFL_TEAM_CATALOG.find((row) =>
-    row.names.some((n) => {
-      const p = norm(n)
-      return p.length >= 4 && hay.includes(` ${p} `)
-    }),
-  )
+  // Prefer longest full name ("Arizona Cardinals") over bare mascot ("Cardinals") so
+  // CFB Ball State / Louisville never paint as the NFL Cardinals when sport is mis-keyed.
+  const byName = nflRowByLongestName(hay)
   if (byName) return byName
   const abbrev = String(side?.abbrev || '').trim().toUpperCase()
   if (abbrev.length >= 2 && CATALOG_BY_ABBREV.has(abbrev)) return CATALOG_BY_ABBREV.get(abbrev)
   return null
 }
 
+/** NFL name match: longest phrase wins; bare mascots only when hay is that word alone. */
+function nflRowByLongestName(hay) {
+  const compact = String(hay || '').trim()
+  let best = null
+  let bestLen = 0
+  for (const row of NFL_TEAM_CATALOG) {
+    const full = norm(row.names?.[0] || '')
+    for (const n of row.names || []) {
+      const p = norm(n)
+      if (p.length < 4) continue
+      const isBareMascot = Boolean(full) && p !== full && full.endsWith(` ${p}`)
+      if (isBareMascot) {
+        if (compact !== p) continue
+      } else if (!hay.includes(` ${p} `)) {
+        continue
+      }
+      if (p.length > bestLen) {
+        best = row
+        bestLen = p.length
+      }
+    }
+  }
+  return best
+}
+
 /**
- * Short market full name for hub chrome … "LA Rams" / "Denver Broncos"
- * (prefers LA/NY short forms when catalog has them).
+ * Short market full name for hub chrome … "LA Rams" / "Ball State Cardinals"
+ * (prefers LA/NY short forms when NFL catalog has them).
  */
 export function nflTeamShortName(side) {
-  const row = catalogRowForSide(side, 'americanfootball_nfl')
+  return hubTeamShortName(side, 'americanfootball_nfl')
+}
+
+export function hubTeamShortName(side, sportKey = 'americanfootball_nfl') {
+  const sk = String(sportKey || 'americanfootball_nfl')
+  const row = catalogRowForSide(side, sk)
   if (row?.names?.length) {
-    const short = row.names.find((n) => /^(LA|NY)\s/i.test(String(n)))
-    if (short) return short
+    if (isNflSportKey(sk)) {
+      const short = row.names.find((n) => /^(LA|NY)\s/i.test(String(n)))
+      if (short) return short
+    }
     return row.names[0]
+  }
+  if (isCfbSportKey(sk)) {
+    const school = String(row?.school || side?.name || '').trim()
+    const mascot = String(row?.mascot || side?.mascot || '').trim()
+    if (school && mascot && !norm(school).includes(norm(mascot))) {
+      return `${school} ${mascot}`
+    }
+    if (school) return school
   }
   const name = String(side?.name || '').trim()
   if (name) return name
@@ -202,8 +239,8 @@ export function nflTeamShortName(side) {
 }
 
 /** Pre-game: full short name. Live/final: abbrev. */
-export function hubTeamLabel(side, status) {
-  if (status === 'pre') return nflTeamShortName(side)
+export function hubTeamLabel(side, status, sportKey) {
+  if (status === 'pre') return hubTeamShortName(side, sportKey)
   return String(side?.abbrev || '').trim()
 }
 

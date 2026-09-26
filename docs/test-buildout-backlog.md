@@ -3861,3 +3861,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-26:** **Field gap under scoreboard:** Live/post field `pt-3` + condensed scoreboard `pb-2`. Frontend **`1.4.706`**.
 - **2026-09-26:** **Field-less scoreboard rhythm:** Pre/post matches live condensed layout (logo | odds | center | odds | logo); logos 68px. Frontend **`1.4.707`**.
 - **2026-09-26:** **Promoted `test` → `main` (`dcaff206`).** Vercel prod = web **`1.4.707`** (field-less hub rhythm + field gap). **No SQL / Edge.**
+- **2026-09-26:** **CFB hub label Cardinals fix:** Pre-game `hubTeamLabel` is sport-aware (Ball State / Louisville no longer become Arizona). NFL bare-mascot name match tightened. Frontend **`1.4.708`**.

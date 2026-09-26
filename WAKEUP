@@ -73,6 +73,10 @@ The agent should treat the following as **standing instructions for this session
 - **Ops paste / vision** stays as backup (VSiN + trench repair).
 - **Ryan next:** apply migration **`20260925160000`** on **prod** if Edge Monitor does not list the two jobs yet (test can be applied by agent). Re-run install task optional.
 
+### Mac Theo ACTIVE TRACK 2026-09-25 ... CFB stack on prod
+
+**I am Mac Theo.** Promoted **`test` → `main` (`63c28769`)**. Vercel **`1.4.661`**. Prod Edge **`lounge-sports-scoreboard`** + **`lounge-cfb-game-players`**. Prod **`cfb_players`** **13,600**. Store IPA still **1.4.95**.
+
 ### Mac Theo ACTIVE TRACK 2026-09-25 ... CFB Players + PBP
 
 **I am Mac Theo.** CFB hub Players wired via **`lounge-cfb-game-players`** → `cfb_players`. ESPN college PBP fallback on test+prod (NFL ESPN still prod-only). Tip **`1.4.659`**. Redeployed test Edge scoreboard + cfb-game-players.

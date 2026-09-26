@@ -25,6 +25,7 @@ import {
   fieldCenterBanner,
   fieldPercent,
   isFieldOrientationFlipped,
+  isFieldReplayablePlay,
   liveClockLabel,
   matchRushPlayer,
   parseFieldGoalPlay,
@@ -106,22 +107,65 @@ const FG_POSTS = {
 const RUSH_Y = 334.5
 const RUSH_FIG_W = 124
 const RUSH_FIG_H = 144
+/** Holder / tee sit this many yards behind the LOS on a placekick. */
+const FG_HOLDER_BEHIND_LOS = 7
 
-/** Kick spot percent: 7 yards behind LOS, or from FG distance (kick = FG − 10 from goal line). */
-function resolveFgKickPercent({ fgYards, possessionSide, livePos, flipped }) {
+/**
+ * FG LOS + kick spot (field %).
+ * Official FG yards ≈ kick-to-posts (posts 10 yd past the goal line); kick sits
+ * ~7 yd behind the LOS. Prefer settled / live LOS when it still matches that
+ * geometry … live pos is often already the *next* play after a made FG.
+ */
+function resolveFgLosAndKick({
+  fgYards,
+  possessionSide,
+  livePos,
+  settledScrimPct,
+  flipped,
+}) {
   const attackDir = attackDirection(possessionSide, flipped)
   const goalPct = attackDir > 0 ? 100 : 0
   const y = Number(fgYards)
+
+  let impliedKick = null
+  let impliedLos = null
   if (Number.isFinite(y) && y >= 18 && y <= 75) {
-    // Official FG yards ≈ kick-to-posts; posts sit 10 yd past the goal line.
-    const fromGoal = y - 10
-    return Math.max(2, Math.min(98, goalPct - attackDir * fromGoal))
+    impliedKick = goalPct - attackDir * (y - 10)
+    impliedLos = impliedKick + attackDir * FG_HOLDER_BEHIND_LOS
   }
-  if (livePos != null && Number.isFinite(Number(livePos))) {
-    return Math.max(2, Math.min(98, Number(livePos) - attackDir * 7))
+
+  const nearImplied = (pct) =>
+    impliedLos == null || Math.abs(Number(pct) - impliedLos) <= 12
+
+  let losPct = null
+  if (settledScrimPct != null && Number.isFinite(Number(settledScrimPct)) && nearImplied(settledScrimPct)) {
+    losPct = Number(settledScrimPct)
   }
-  // Midfield-ish fallback for tap-to-replay with no LOS.
-  return Math.max(2, Math.min(98, goalPct - attackDir * 35))
+  if (losPct == null && impliedLos != null) {
+    losPct = impliedLos
+  }
+  if (
+    losPct == null &&
+    livePos != null &&
+    Number.isFinite(Number(livePos)) &&
+    nearImplied(livePos)
+  ) {
+    losPct = Number(livePos)
+  }
+  if (losPct == null && impliedLos != null) {
+    losPct = impliedLos
+  }
+  if (losPct == null) {
+    // Midfield-ish fallback for tap-to-replay with no LOS / yards.
+    losPct = goalPct - attackDir * 35
+  }
+
+  losPct = Math.max(2, Math.min(98, losPct))
+  const kickPct = Math.max(
+    2,
+    Math.min(98, losPct - attackDir * FG_HOLDER_BEHIND_LOS),
+  )
+  return { losPct, kickPct, attackDir }
 }
 
 /**
@@ -1109,10 +1153,12 @@ function FieldViz({
 
     const attackDir = attackDirection(possessionSide, fieldFlipped)
     const posts = attackDir > 0 ? FG_POSTS.right : FG_POSTS.left
-    const kickPct = resolveFgKickPercent({
+    const settled = settledLinesRef.current
+    const { losPct, kickPct } = resolveFgLosAndKick({
       fgYards: parsed.yards,
       possessionSide,
       livePos: pos,
+      settledScrimPct: settled?.scrimPct,
       flipped: fieldFlipped,
     })
     const start = {
@@ -1123,6 +1169,19 @@ function FieldViz({
     const yards = Number.isFinite(Number(parsed.yards)) ? Number(parsed.yards) : 40
     const made = Boolean(parsed.made)
     const facing = attackDir
+    // Hold the pre-kick LOS on the field for the whole flight (live pos often
+    // already jumped to the kickoff spot after a make).
+    const fromScrimPct = losPct
+    const toScrimPct = losPct
+    const settledStillPreKick =
+      settled?.scrimPct != null &&
+      Math.abs(settled.scrimPct - losPct) <= 12
+    const fromFirstDownPct =
+      settledStillPreKick &&
+      settled.firstDownPct != null &&
+      Number.isFinite(settled.firstDownPct)
+        ? settled.firstDownPct
+        : firstDownPercentFromLive(live, losPct, fieldFlipped)
     // Made: same continuous parabola through the uprights and land past them
     // (Science of NFL Football … horizontal speed holds, gravity turns the apex).
     // Miss: aim an upright, then bounce.
@@ -1156,6 +1215,11 @@ function FieldViz({
       return undefined
     }
 
+    settledLinesRef.current = {
+      scrimPct: losPct,
+      firstDownPct: fromFirstDownPct,
+    }
+
     setFgAnim({
       playKey: animKey,
       made,
@@ -1167,6 +1231,11 @@ function FieldViz({
       bounce,
       lift,
       flightMs,
+      fromScrimPct,
+      toScrimPct,
+      fromFirstDownPct,
+      toFirstDownPct: fromFirstDownPct,
+      linesProgress: 1,
       phase: 'hold',
       t: 0,
       showBall: true,
@@ -1225,6 +1294,18 @@ function FieldViz({
 
   useEffect(() => {
     if (rushAnim || catchAnim || fgAnim || !hasLine || pos == null || hideLiveLines) return
+    // New replayable play: keep the pre-play LOS until rush/catch/FG claims this animKey.
+    // Otherwise a made FG's kickoff spot (or post-rush LOS) can clobber settled before RAF starts.
+    if (
+      lastPlayText &&
+      isFieldReplayablePlay(lastPlayText) &&
+      animKey &&
+      animKey !== rushKeyRef.current &&
+      animKey !== catchKeyRef.current &&
+      animKey !== fgKeyRef.current
+    ) {
+      return
+    }
     settledLinesRef.current = {
       scrimPct: pos,
       firstDownPct: firstDownPercentFromLive(live, pos, fieldFlipped),
@@ -1240,6 +1321,8 @@ function FieldViz({
     live?.possession,
     live?.down,
     live?.distance,
+    lastPlayText,
+    animKey,
   ])
 
   if (!isFootball) return null
@@ -1252,7 +1335,9 @@ function FieldViz({
       ? rushAnim
       : catchAnim != null && !catchAnim.isTouchdown
         ? catchAnim
-        : null
+        : fgAnim != null
+          ? fgAnim
+          : null
   const linesT = lineDriver != null ? Number(lineDriver.linesProgress) || 0 : 1
   const tdAnim =
     rushAnim?.isTouchdown

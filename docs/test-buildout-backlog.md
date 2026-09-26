@@ -3882,3 +3882,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-26:** **Possession football chalk:** Hub possession mark back to chalk SVG … opaque PNG + invert was a white square. Frontend **`1.4.721`**.
 - **2026-09-26:** **Promoted `test` → `main` (`1558ae88`).** Vercel prod = web **`1.4.721`** (FG apex/tumble + rush TD banner + possession chalk). **No SQL / Edge.**
 - **2026-09-26:** **Possession PNG alpha:** Re-keyed `football-possession.png` to solid oval + real transparency; hub possession back on PNG. Frontend **`1.4.722`**.
+- **2026-09-26:** **FG proper LOS:** Kick 7 yd behind pre-kick LOS (FG yards / settled; ignore post-make kickoff); hold scrimmage for flight. Frontend **`1.4.723`**.

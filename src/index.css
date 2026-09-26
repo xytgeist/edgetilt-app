@@ -3506,6 +3506,40 @@ html.light [data-lounge-game-pill-cover-dot] {
     invert(1)
     drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
 }
+/*
+ * Pills only (not the hero): very small soft glow behind the mark. Kept tiny because some
+ * logos ship their own glow. First in the chain so it follows the logo, not the drop shadow.
+ */
+[data-lounge-game-pill] [data-lounge-game-pill-logo],
+[data-lounge-hub-game-pill] [data-lounge-game-pill-logo] {
+  filter:
+    drop-shadow(0 0 2.5px rgba(255, 255, 255, 0.28))
+    drop-shadow(0 1px 2px rgba(0, 0, 0, 0.65));
+}
+[data-lounge-game-pill] [data-lounge-game-pill-logo='light'],
+[data-lounge-hub-game-pill] [data-lounge-game-pill-logo='light'] {
+  filter:
+    drop-shadow(0 0 2.5px rgba(255, 255, 255, 0.28))
+    drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
+}
+[data-lounge-game-pill] [data-lounge-game-pill-logo='halo'],
+[data-lounge-game-pill] [data-lounge-game-pill-logo='dark'],
+[data-lounge-hub-game-pill] [data-lounge-game-pill-logo='halo'],
+[data-lounge-hub-game-pill] [data-lounge-game-pill-logo='dark'] {
+  filter:
+    drop-shadow(0 0 2.5px rgba(255, 255, 255, 0.28))
+    drop-shadow(0 0 0.7px #fff)
+    drop-shadow(0 0 1.35px rgba(255, 255, 255, 0.85))
+    drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+}
+[data-lounge-game-pill] [data-lounge-game-pill-logo='silhouette'],
+[data-lounge-hub-game-pill] [data-lounge-game-pill-logo='silhouette'] {
+  filter:
+    brightness(0)
+    invert(1)
+    drop-shadow(0 0 2.5px rgba(255, 255, 255, 0.28))
+    drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+}
 html.light [data-lounge-composer-game-pill] > button {
   background-color: rgba(24, 24, 27, 0.88) !important;
   color: #f4f4f5 !important;

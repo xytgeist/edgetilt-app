@@ -1843,92 +1843,12 @@ function FieldViz({
                 strokeLinecap="round"
                 filter="url(#glow-scrim)"
               />
-              {/* Ball on LOS … hidden for full rush/catch sequence. */}
+          {/* Ball on LOS … hidden for full rush/catch/FG sequence.
+              Rush/catch figures render above the posts overlay (z-8) so
+              red-zone plays are not buried under the uprights plate. */}
               {!playAnimActive ? (
                 <g transform={`translate(${scrimMidX - 18} ${334.5 - 12})`}>
                   <AmericanFootballMark tone="field" size={36} rotate={-26} />
-                </g>
-              ) : null}
-            </g>
-          ) : null}
-
-          {/* Rush trail + RB figure (once per distinct last-play text) */}
-          {rushAnim && rushX != null ? (
-            <g data-lounge-rush-anim>
-              {rushTrailVisible ? (
-                <line
-                  x1={rushAnim.startX}
-                  y1={rushAnim.y}
-                  x2={rushX}
-                  y2={rushAnim.y}
-                  stroke={rushAnim.primary}
-                  strokeWidth="4"
-                  strokeLinecap="round"
-                  strokeOpacity="0.88"
-                  filter="url(#glow-rush)"
-                />
-              ) : null}
-              <g
-                transform={`translate(${rushX - RUSH_FIG_W / 2} ${rushAnim.y - RUSH_FIG_H + 8})`}
-              >
-                <GameHubRushFigure
-                  primary={rushAnim.primary}
-                  secondary={rushAnim.secondary}
-                  helmetColor={rushAnim.helmetColor}
-                  pantsColor={rushAnim.pantsColor}
-                  tightsColor={rushAnim.tightsColor}
-                  headshotUrl={rushAnim.headshotUrl}
-                  jerseyNumber={rushAnim.jerseyNumber}
-                  facing={rushAnim.facing}
-                  width={RUSH_FIG_W}
-                  height={RUSH_FIG_H}
-                />
-              </g>
-            </g>
-          ) : null}
-
-          {/* Pass catch … WR slide + football arc into raised hands */}
-          {catchAnim && catchX != null ? (
-            <g data-lounge-catch-anim>
-              {catchTrailVisible ? (
-                <line
-                  x1={catchAnim.startX}
-                  y1={catchAnim.y}
-                  x2={catchX}
-                  y2={catchAnim.y}
-                  stroke={catchAnim.primary}
-                  strokeWidth="4"
-                  strokeLinecap="round"
-                  strokeOpacity="0.88"
-                  filter="url(#glow-rush)"
-                />
-              ) : null}
-              <g
-                transform={`translate(${catchX - RUSH_FIG_W / 2} ${catchAnim.y - RUSH_FIG_H + 8})`}
-              >
-                <GameHubCatchFigure
-                  primary={catchAnim.primary}
-                  secondary={catchAnim.secondary}
-                  helmetColor={catchAnim.helmetColor}
-                  pantsColor={catchAnim.pantsColor}
-                  tightsColor={catchAnim.tightsColor}
-                  headshotUrl={catchAnim.headshotUrl}
-                  jerseyNumber={catchAnim.jerseyNumber}
-                  facing={catchAnim.facing}
-                  width={RUSH_FIG_W}
-                  height={RUSH_FIG_H}
-                />
-              </g>
-              {/* One continuous ball mark … no remount / size / rotate snap on catch. */}
-              {catchBall ? (
-                <g
-                  transform={`translate(${catchBall.x - 12} ${catchBall.y - 9})`}
-                >
-                  <AmericanFootballMark
-                    tone="field"
-                    size={24}
-                    rotate={catchBallRotate}
-                  />
                 </g>
               ) : null}
             </g>
@@ -1991,19 +1911,103 @@ function FieldViz({
           className="pointer-events-none absolute inset-0 block h-full w-full select-none"
         />
 
-        {/* FG ball above posts + scoreboard stack … apex was painting under the board chrome. */}
-        {fgBall ? (
-          <svg
-            viewBox="0 0 1266 533"
-            className="pointer-events-none absolute inset-0 z-[8] h-full w-full select-none"
-            xmlns="http://www.w3.org/2000/svg"
-            aria-hidden="true"
-          >
-            <g transform={`translate(${fgBall.x - FG_BALL_SIZE / 2} ${fgBall.y - FG_BALL_SIZE * 0.38})`}>
+        {/* Play chrome above posts … rush/catch were buried under uprights in the red zone. */}
+        <svg
+          viewBox="0 0 1266 533"
+          className="pointer-events-none absolute inset-0 z-[8] h-full w-full select-none"
+          xmlns="http://www.w3.org/2000/svg"
+          aria-hidden="true"
+        >
+          <defs>
+            <filter id="glow-play-chrome" x="-40%" y="-40%" width="180%" height="180%">
+              <feGaussianBlur stdDeviation="3.5" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+          {rushAnim && rushX != null ? (
+            <g data-lounge-rush-anim>
+              {rushTrailVisible ? (
+                <line
+                  x1={rushAnim.startX}
+                  y1={rushAnim.y}
+                  x2={rushX}
+                  y2={rushAnim.y}
+                  stroke={rushAnim.primary}
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeOpacity="0.88"
+                  filter="url(#glow-play-chrome)"
+                />
+              ) : null}
+              <g
+                transform={`translate(${rushX - RUSH_FIG_W / 2} ${rushAnim.y - RUSH_FIG_H + 8})`}
+              >
+                <GameHubRushFigure
+                  primary={rushAnim.primary}
+                  secondary={rushAnim.secondary}
+                  helmetColor={rushAnim.helmetColor}
+                  pantsColor={rushAnim.pantsColor}
+                  tightsColor={rushAnim.tightsColor}
+                  headshotUrl={rushAnim.headshotUrl}
+                  jerseyNumber={rushAnim.jerseyNumber}
+                  facing={rushAnim.facing}
+                  width={RUSH_FIG_W}
+                  height={RUSH_FIG_H}
+                />
+              </g>
+            </g>
+          ) : null}
+          {catchAnim && catchX != null ? (
+            <g data-lounge-catch-anim>
+              {catchTrailVisible ? (
+                <line
+                  x1={catchAnim.startX}
+                  y1={catchAnim.y}
+                  x2={catchX}
+                  y2={catchAnim.y}
+                  stroke={catchAnim.primary}
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeOpacity="0.88"
+                  filter="url(#glow-play-chrome)"
+                />
+              ) : null}
+              <g
+                transform={`translate(${catchX - RUSH_FIG_W / 2} ${catchAnim.y - RUSH_FIG_H + 8})`}
+              >
+                <GameHubCatchFigure
+                  primary={catchAnim.primary}
+                  secondary={catchAnim.secondary}
+                  helmetColor={catchAnim.helmetColor}
+                  pantsColor={catchAnim.pantsColor}
+                  tightsColor={catchAnim.tightsColor}
+                  headshotUrl={catchAnim.headshotUrl}
+                  jerseyNumber={catchAnim.jerseyNumber}
+                  facing={catchAnim.facing}
+                  width={RUSH_FIG_W}
+                  height={RUSH_FIG_H}
+                />
+              </g>
+              {catchBall ? (
+                <g transform={`translate(${catchBall.x - 12} ${catchBall.y - 9})`}>
+                  <AmericanFootballMark
+                    tone="field"
+                    size={24}
+                    rotate={catchBallRotate}
+                  />
+                </g>
+              ) : null}
+            </g>
+          ) : null}
+          {fgBall ? (
+            <g
+              data-lounge-fg-anim
+              transform={`translate(${fgBall.x - FG_BALL_SIZE / 2} ${fgBall.y - FG_BALL_SIZE * 0.38})`}
+            >
               <AmericanFootballMark tone="field" size={FG_BALL_SIZE} rotate={fgBallRotate} />
             </g>
-          </svg>
-        ) : null}
+          ) : null}
+        </svg>
         {/* Near (shorter) uprights above the ball … pixel-cut from the posts art. */}
         <img
           src="/sports/nfl/gamecast-goalposts-front-poles.png?v=728"

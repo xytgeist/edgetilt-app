@@ -33,7 +33,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
-**Branch:** `test` (match `origin/test` before edits). `main` @ **`test` tip** (promoted 2026-09-26, web **1.4.744**; prod `lounge-sports-scoreboard` redeployed for play spots; prod chat migration `20260926230000` + prod `lounge-sports-scoreboard` Edge applied). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
+**Branch:** `test` (match `origin/test` before edits). `main` @ **`test` tip** (promoted 2026-09-26, web **1.4.747**; prod `lounge-sports-scoreboard` redeployed for play spots + CFB odds-name aliases; prod chat migration `20260926230000` + prod `lounge-sports-scoreboard` Edge applied). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
 
 **Supabase (do not swap these):**
 
@@ -79,7 +79,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... timeout keeps field + Top 25 ranks
 
-**I am Mac Theo.** TIMEOUT banner keeps LOS/ball/1st down/red zone. Hero board shows AP Top 25 rank before team label from ESPN `curatedRank` (`side.rank`). Test Edge **`lounge-sports-scoreboard`** redeployed; prod Edge redeploy owed on promote. Game pills (hub slate + hub strip) now sort kickoff then Top 25 rank (`sortLoungeSportsGamesByKickoffRank`). Tip web **`1.4.747`** on test (finals last + hub pill ticker fix; CFB odds-name aliases `cfbOddsNameEspn.json`, prod Edge owed; pill logo glow); prod at 1.4.744 ( 1.4.744 LOS falls back to previous real play's `end_spot`). 1.4.742 FG yards parser handles "from N yards"; 1.4.743 play animations use per-play ESPN `start_spot` as the LOS (test Edge deployed, prod Edge owed).
+**I am Mac Theo.** TIMEOUT banner keeps LOS/ball/1st down/red zone. Hero board shows AP Top 25 rank before team label from ESPN `curatedRank` (`side.rank`). Test Edge **`lounge-sports-scoreboard`** redeployed; prod Edge redeploy owed on promote. Game pills (hub slate + hub strip) now sort kickoff then Top 25 rank (`sortLoungeSportsGamesByKickoffRank`). Tip web **`1.4.747`** on prod (finals last + hub pill ticker fix; CFB odds-name aliases `cfbOddsNameEspn.json`; pill logo glow) ( 1.4.744 LOS falls back to previous real play's `end_spot`). 1.4.742 FG yards parser handles "from N yards"; 1.4.743 play animations use per-play ESPN `start_spot` as the LOS (test Edge deployed, prod Edge owed).
 
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... Game Hub live chat
 

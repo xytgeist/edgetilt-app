@@ -14,11 +14,11 @@ export const CATCH_VIEWBOX_W = 710
 export const CATCH_VIEWBOX_H = 1580
 
 /**
- * Catch hands in local viewBox space (facing right / +X).
- * Located at the receiving gloves reach: ~(580, 40) out of (710 x 1580).
- * Parent components use this to calculate the ball trajectory apex & target.
+ * Catch-hand pocket in local viewBox space (facing right / +X).
+ * Midpoint of the two receiving gloves (left ~551,43 · right ~655,113).
+ * Parent maps this through SVG meet letterboxing onto the field.
  */
-export const CATCH_HANDS_LOCAL = { x: 580, y: 40 }
+export const CATCH_HANDS_LOCAL = { x: 593, y: 68 }
 
 export const CATCH_PIECES = [
   {

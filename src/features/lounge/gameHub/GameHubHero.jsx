@@ -140,10 +140,15 @@ function catchArcLiftFromYards(yards) {
 
 /** World-space catch-hand point for a placed WR figure (top-left origin). */
 function catchHandsWorld(figLeft, figTop, facing, figW, figH) {
+  // GameHubCatchFigure uses default SVG meet (uniform scale + center). Do not
+  // stretch-map viewBox → slot or the ball will miss the gloves on X.
+  const scale = Math.min(figW / CATCH_VIEWBOX_W, figH / CATCH_VIEWBOX_H)
+  const padX = (figW - CATCH_VIEWBOX_W * scale) / 2
+  const padY = (figH - CATCH_VIEWBOX_H * scale) / 2
   const lx = facing < 0 ? CATCH_VIEWBOX_W - CATCH_HANDS_LOCAL.x : CATCH_HANDS_LOCAL.x
   return {
-    x: figLeft + (lx / CATCH_VIEWBOX_W) * figW,
-    y: figTop + (CATCH_HANDS_LOCAL.y / CATCH_VIEWBOX_H) * figH,
+    x: figLeft + padX + lx * scale,
+    y: figTop + padY + CATCH_HANDS_LOCAL.y * scale,
   }
 }
 
@@ -1010,16 +1015,39 @@ function FieldViz({
   const catchBallVisible =
     Boolean(catchAnim?.showBall) &&
     (catchBallT > 0 || (catchAnim != null && catchAnim.progress >= 1))
-  const catchBall = catchBallVisible
-    ? quadBezier(
-        catchAnim.ballStart,
-        catchAnim.ballCtrl,
-        catchAnim.ballEnd,
-        catchBallT,
-      )
-    : null
+  const catchHandsLive =
+    catchX != null && catchAnim != null
+      ? catchHandsWorld(
+          catchX - RUSH_FIG_W / 2,
+          catchAnim.y - RUSH_FIG_H + 8,
+          catchAnim.facing,
+          RUSH_FIG_W,
+          RUSH_FIG_H,
+        )
+      : null
+  // Stick to gloves once the arc finishes (and for the whole hold).
+  const catchBallCaught = Boolean(
+    catchBallVisible && catchHandsLive && (catchBallT >= 0.98 || catchAnim.progress >= 1),
+  )
+  const catchBallCtrl =
+    catchAnim != null && catchHandsLive
+      ? {
+          x: (catchAnim.ballStart.x + catchHandsLive.x) / 2,
+          y:
+            Math.min(catchAnim.ballStart.y, catchHandsLive.y) -
+            catchArcLiftFromYards(catchAnim.yards),
+        }
+      : null
+  const catchBall =
+    catchBallVisible && catchHandsLive && catchBallCtrl
+      ? catchBallCaught
+        ? catchHandsLive
+        : quadBezier(catchAnim.ballStart, catchBallCtrl, catchHandsLive, catchBallT)
+      : null
   const catchBallRotate = catchAnim
-    ? -40 + catchBallT * 220 * (catchAnim.facing < 0 ? -1 : 1)
+    ? catchBallCaught
+      ? -18 * (catchAnim.facing < 0 ? -1 : 1)
+      : -40 + catchBallT * 220 * (catchAnim.facing < 0 ? -1 : 1)
     : 0
   const showTdBanner = Boolean(catchAnim?.showTdLabel)
 
@@ -1399,6 +1427,18 @@ function FieldViz({
                   filter="url(#glow-rush)"
                 />
               ) : null}
+              {/* Caught ball under gloves so palms read as securing it. */}
+              {catchBall && catchBallCaught ? (
+                <g
+                  transform={`translate(${catchBall.x - 11} ${catchBall.y - 8})`}
+                >
+                  <AmericanFootballMark
+                    tone="field"
+                    size={22}
+                    rotate={catchBallRotate}
+                  />
+                </g>
+              ) : null}
               <g
                 transform={`translate(${catchX - RUSH_FIG_W / 2} ${catchAnim.y - RUSH_FIG_H + 8})`}
               >
@@ -1415,13 +1455,14 @@ function FieldViz({
                   height={RUSH_FIG_H}
                 />
               </g>
-              {catchBall ? (
+              {/* In-flight ball above the figure. */}
+              {catchBall && !catchBallCaught ? (
                 <g
-                  transform={`translate(${catchBall.x - 14} ${catchBall.y - 10})`}
+                  transform={`translate(${catchBall.x - 12} ${catchBall.y - 9})`}
                 >
                   <AmericanFootballMark
                     tone="field"
-                    size={28}
+                    size={24}
                     rotate={catchBallRotate}
                   />
                 </g>

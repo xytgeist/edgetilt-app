@@ -1,6 +1,5 @@
 import { useId, useMemo } from 'react'
 import {
-  CATCH_HANDS_LOCAL,
   CATCH_PIECES,
   CATCH_VIEWBOX_H,
   CATCH_VIEWBOX_W,
@@ -68,6 +67,7 @@ export default function GameHubCatchFigure({
       viewBox={`0 0 ${CATCH_VIEWBOX_W} ${CATCH_VIEWBOX_H}`}
       width={width}
       height={height}
+      preserveAspectRatio="xMidYMid meet"
       className={className}
       overflow="visible"
       aria-hidden="true"

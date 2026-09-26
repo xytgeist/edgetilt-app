@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-25:** **Scoreboard athletic font (Mac).** Hero scoreboard (scores / clock / team labels) uses condensed **Oswald**; field stoppage banners match. Frontend **`1.4.668`**.
 - **2026-09-25:** **Field stoppage banners (Mac).** Gamecast center overlay for TIMEOUT / End of 1st / HALFTIME / End of 3rd / GAME OVER (from ESPN status + clock heuristics). Finals keep the field so GAME OVER can show. Redeploy test **`lounge-sports-scoreboard`**. Frontend **`1.4.667`**.
 - **2026-09-25:** **Yard-line label territory fix (Mac).** LOS label now uses whose half the ball is on (never >50): own 35 → `IU 35`, past midfield → opponent `NU 37`. ESPN was sending absolute 99 / null side and we fell back to possession. Parses `possessionText` + yards-to-endzone. Redeploy test **`lounge-sports-scoreboard`**. Frontend **`1.4.666`**.
 - **2026-09-25:** **CFB FCS cupcake logos + NW alias (Mac).** This week's slate had **14** FCS sides with no local mark (Howard Bison @ Rutgers, etc.). Synced those logos into `public/sports/cfb/logos` + catalog (**150** teams). `NW`→`NU` for Northwestern. Sync script now pulls ESPN scoreboard FCS extras. Redeploy test **`lounge-sports-scoreboard`**. Frontend **`1.4.665`**.

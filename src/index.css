@@ -3596,6 +3596,16 @@ html.light [data-lounge-game-chat]::placeholder {
   isolation: isolate;
   background-color: #7a7a84;
 }
+/* Condensed athletic scoreboard face (Oswald) … scores, clock, team marks. */
+[data-lounge-game-scoreboard] {
+  font-family: Oswald, 'Arial Narrow', Impact, sans-serif;
+  font-synthesis: none;
+  letter-spacing: 0.04em;
+}
+[data-lounge-game-scoreboard] .tabular-nums {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
 [data-lounge-game-hero] [data-lounge-game-hero-field],
 [data-lounge-game-hero] [data-lounge-game-hero-away],
 [data-lounge-game-hero] [data-lounge-game-hero-home] {

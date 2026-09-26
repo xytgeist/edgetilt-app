@@ -737,7 +737,7 @@ function FieldViz({ game, live, awayColor, homeColor }) {
             <span
               className="max-w-full text-center text-[28px] font-black uppercase leading-none tracking-[0.08em] text-white sm:text-[36px]"
               style={{
-                fontFamily: endzoneFont,
+                fontFamily: "Oswald, Graduate, Impact, 'Arial Black', sans-serif",
                 textShadow:
                   '0 1px 0 #000, 0 2px 0 #000, 0 3px 0 rgba(0,0,0,0.85), 0 8px 24px rgba(0,0,0,0.65)',
                 WebkitTextStroke: '1px rgba(0,0,0,0.35)',
@@ -886,7 +886,7 @@ export default function GameHubHero({
 
       {showField ? (
         /* Condensed scoreboard only while the 3D field is up: logo | score mid-gap | status | … */
-        <div className="relative z-[4] px-3 pb-1 pt-1">
+        <div data-lounge-game-scoreboard className="relative z-[4] px-3 pb-1 pt-1">
           <div className="flex items-center justify-between gap-1.5">
             <div className="flex min-w-0 flex-1 items-center">
               <div className="flex w-[40px] shrink-0 flex-col items-center">
@@ -968,7 +968,7 @@ export default function GameHubHero({
         </div>
       ) : (
         /* Roomier pre/post: larger logos, score/spread + ML in logo↔clock gap */
-        <div className="relative z-[4] px-4 pb-3 pt-2">
+        <div data-lounge-game-scoreboard className="relative z-[4] px-4 pb-3 pt-2">
           <div className="flex items-center justify-between gap-2">
             <div className="flex min-w-0 flex-1 items-center">
               <div

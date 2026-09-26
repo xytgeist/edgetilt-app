@@ -190,7 +190,7 @@ function TimeoutDots({ remaining, align = 'left' }) {
     align === 'right' ? 'justify-end' : align === 'center' ? 'justify-center' : 'justify-start'
   return (
     <div
-      className={`mt-0.5 flex items-center gap-1 ${justify}`}
+      className={`mt-2 flex items-center gap-1 ${justify}`}
       aria-label={`${left} timeout${left === 1 ? '' : 's'} remaining`}
     >
       {Array.from({ length: TIMEOUT_SLOTS }, (_, i) => {

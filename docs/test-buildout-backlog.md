@@ -3870,3 +3870,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-26:** **Promoted `test` → `main` (`5a3a9c05`).** Vercel prod = web **`1.4.711`** (timeouts under score + final hide down/yard). **No SQL / Edge.**
 - **2026-09-26:** **Plays tab ESPN drive dedupe:** `drives.current` often equals `previous[-1]` … concatenating doubled the active drive. Skip when id already present + play-id set; client last-play fuzzy dedupe. Redeploy test **`lounge-sports-scoreboard`**. Frontend **`1.4.712`**.
 - **2026-09-26:** **Promoted `test` → `main` (`8027e029`).** Vercel prod = web **`1.4.712`**. Redeployed prod Edge **`lounge-sports-scoreboard`**. **No SQL.**
+- **2026-09-26:** **Timeout gap under score:** Live timeout dots `mt-2`. Frontend **`1.4.713`**.

@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-25:** **Possession football icon (Mac).** Scoreboard possession mark is inline SVG (dropped PNG `<img>` that showed as can't-load). Frontend **`1.4.662`**. Promoted with tip to **`main`**.
 - **2026-09-25:** **Promoted `test` → `main` (`63c28769`).** Vercel prod = web **`1.4.661`**. CFB Hub + logos/colors, Players (`lounge-cfb-game-players`), ESPN college PBP, last-play under field, ball marker fix. Prod SQL **`20260925200000_cfb_players`** + **13,600** roster rows. Deployed prod Edge **`lounge-sports-scoreboard`** + **`lounge-cfb-game-players`**. Store IPA marketing still **1.4.95**.
 - **2026-09-25:** **Gamecast ball marker + midfield logo load fix (Mac).** Scrimmage ball is inline SVG (no broken `<image>`). Midfield home mark uses local `/sports/{nfl|cfb}/logos` only so ESPN CDN hrefs do not blank in WebKit. Frontend **`1.4.661`**.
 - **2026-09-25:** **Game Hub last play back under field (Mac).** Dropped the glass overlay card on the 3D field; last play is single-line muted text below the field again. Frontend **`1.4.660`**.

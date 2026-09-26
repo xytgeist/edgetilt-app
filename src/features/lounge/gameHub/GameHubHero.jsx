@@ -18,7 +18,6 @@ import {
   yardLineLabel,
 } from './gameHubFormatters.js'
 
-const FOOTBALL_POSSESSION_ICON = '/sports/nfl/icons/football-possession.png'
 const TIMEOUT_SLOTS = 3
 /** NFL athletic block; CFB uses Graduate (college slab) loaded in index.html. */
 const ENDZONE_FONT_NFL = "Impact, 'Arial Black', sans-serif"
@@ -57,13 +56,22 @@ function TimeoutDots({ remaining, align = 'left' }) {
 
 function PossessionFootball({ side }) {
   return (
-    <img
-      src={FOOTBALL_POSSESSION_ICON}
-      alt=""
+    <svg
+      viewBox="0 0 20 20"
+      width="14"
+      height="14"
       aria-hidden="true"
       title={`${side} possession`}
-      className="h-[14px] w-[14px] shrink-0 brightness-0 invert drop-shadow-[0_1px_1px_rgba(0,0,0,0.55)]"
-    />
+      className="h-[14px] w-[14px] shrink-0 drop-shadow-[0_1px_1px_rgba(0,0,0,0.55)]"
+    >
+      <g transform="translate(10 10) rotate(-32)">
+        <ellipse rx="7.2" ry="4.6" fill="#fafafa" stroke="#18181b" strokeWidth="0.6" />
+        <line x1="-3.6" y1="0" x2="3.6" y2="0" stroke="#18181b" strokeWidth="0.9" strokeLinecap="round" />
+        <line x1="-1.3" y1="-1.9" x2="-1.3" y2="1.9" stroke="#18181b" strokeWidth="0.75" strokeLinecap="round" />
+        <line x1="0" y1="-1.9" x2="0" y2="1.9" stroke="#18181b" strokeWidth="0.75" strokeLinecap="round" />
+        <line x1="1.3" y1="-1.9" x2="1.3" y2="1.9" stroke="#18181b" strokeWidth="0.75" strokeLinecap="round" />
+      </g>
+    </svg>
   )
 }
 

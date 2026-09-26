@@ -415,6 +415,26 @@ export function playTextIsTouchdown(text) {
 }
 
 /**
+ * TD or its try (PAT / two-point). ESPN parks the spot on the try line (CFB 3, NFL 15),
+ * so the field should show no LOS/ball until the kickoff play lands.
+ */
+export function playTextIsScoreTry(text) {
+  const lower = String(text || '').toLowerCase()
+  if (!lower) return false
+  if (playTextIsTouchdown(lower)) return true
+  if (/\bkickoff\b/.test(lower)) return false
+  // Missed FG leaves a live spot … only PAT-style kicks count here.
+  if (/\bfield\s+goal\b|\bfg\b/.test(lower)) return false
+  return (
+    /\bextra\s+point\b/.test(lower) ||
+    /\bkick\s+attempt\b/.test(lower) ||
+    /\bpat\b/.test(lower) ||
+    /\btwo[-\s]point\b/.test(lower) ||
+    /\b2[-\s]?pt\b/.test(lower)
+  )
+}
+
+/**
  * ESPN often appends PAT / clock / review junk after the scoring play
  * ("… TOUCHDOWN, clock 09:39 #15 N.Radicic kick attempt good").
  * Strip that trailer so kick/extra-point filters don't kill TD replays.

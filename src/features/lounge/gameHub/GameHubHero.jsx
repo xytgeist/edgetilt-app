@@ -31,6 +31,7 @@ import {
   parseFieldGoalPlay,
   parsePassPlay,
   parseRushPlay,
+  playTextIsScoreTry,
   playTextIsTouchdown,
   resolveFigureJersey,
   resolvePlayAnimationPercents,
@@ -323,12 +324,6 @@ function catchFigLeftForHandsX(ballX, facing, figW = RUSH_FIG_W, figH = RUSH_FIG
   const lx = facing < 0 ? CATCH_VIEWBOX_W - CATCH_HANDS_LOCAL.x : CATCH_HANDS_LOCAL.x
   return ballX - padX - lx * scale
 }
-
-/** True when a live yard % is still parked on a goal line (TD end / not yet kickoff). */
-function isNearGoalLinePct(pct) {
-  return pct != null && Number.isFinite(Number(pct)) && (Number(pct) <= 1.5 || Number(pct) >= 98.5)
-}
-
 function possessionKit(live, game, awayColor, homeColor) {
   const possHome = live?.possession === 'home'
   const side = possHome ? game?.home : game?.away
@@ -1365,10 +1360,8 @@ function FieldViz({
     ) {
       return
     }
-    // After a TD, ESPN often still reports the goal line … don't adopt that as LOS/ball.
-    if (lastPlayText && playTextIsTouchdown(lastPlayText) && isNearGoalLinePct(pos)) {
-      return
-    }
+    // After a TD / try, ESPN reports the try spot … don't adopt that as LOS/ball.
+    if (lastPlayText && playTextIsScoreTry(lastPlayText)) return
     settledLinesRef.current = {
       scrimPct: pos,
       firstDownPct: firstDownPercentFromLive(live, pos, fieldFlipped),
@@ -1427,14 +1420,13 @@ function FieldViz({
     tdAnim?.linesOpacity != null
       ? Math.max(0, Math.min(1, Number(tdAnim.linesOpacity)))
       : 1
-  // After a TD play, keep LOS + field ball off the goal line until kickoff / next drive.
+  // After a TD / PAT / 2-pt, no LOS or field ball until the kickoff play lands.
   const suppressPostTdMarkers = Boolean(
     !rushAnim &&
       !catchAnim &&
       !fgAnim &&
       lastPlayText &&
-      playTextIsTouchdown(lastPlayText) &&
-      isNearGoalLinePct(displayScrimPct),
+      playTextIsScoreTry(lastPlayText),
   )
   const showLiveScrimMarkers =
     hasLine &&

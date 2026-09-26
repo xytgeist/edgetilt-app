@@ -77,6 +77,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Mac Theo.** Promoted **`test` → `main` (`63c28769`)**. Vercel **`1.4.661`**. Prod Edge **`lounge-sports-scoreboard`** + **`lounge-cfb-game-players`**. Prod **`cfb_players`** **13,600**. Store IPA still **1.4.95**.
 
+### Mac Theo ACTIVE TRACK 2026-09-26 ... hide LOS/ball after TD by play text
+
+**I am Mac Theo.** 1.4.734 only hid markers when live pos was within 1.5 of a goal line, but ESPN parks the spot on the try line (CFB 3, NFL 15), so LOS/ball still appeared. Now `playTextIsScoreTry` (TD, extra point, kick attempt, PAT, two-point; not kickoff or FG) hides LOS/ball/1st-down and blocks settle until the kickoff play lands. Tip web **`1.4.735`** (test only).
+
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... TD markers + figure ball anchors
 
 **I am Mac Theo.** After a TD, LOS/ball no longer park on the goal line (reduced-motion settle + live pos near 0/100 suppressed until kickoff). RB/WR figures offset so ball-on-figure (RB ~25% from front, WR hands) sits on LOS at start and line of gain at end; catch TD ends on the goal line not endzone center. Tip web **`1.4.734`**.

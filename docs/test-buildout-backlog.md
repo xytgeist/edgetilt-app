@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-26:** **Play anim stuck-key after ready flicker (Mac).** Rush/catch/FG cleanup clears the claimed anim key only on mid-flight teardown (`playAnimReady` flicker was canceling RAF and leaving the key claimed so that play never restarted). Finished ticks zero the RAF ref so natural completes stay claimed. Frontend **`1.4.733`**.
 - **2026-09-25:** **RB rush exit → lines → ball (Mac).** After the 2s hold the RB exits, lines move immediately, then the ball returns 1s after lines settle (dropped the 0.5s post-exit gap). Frontend **`1.4.679`**.
 - **2026-09-25:** **RB rush staged field timing (Mac).** Ball hides when RB appears; LOS/1st-down hold through the run; trail draws from prior LOS behind the slide; 2s hold then RB exits; 0.5s later lines move; 1s after lines settle the ball returns on the new LOS. Frontend **`1.4.678`**.
 - **2026-09-25:** **RB figure dynamic jersey number centered on chest plate (Mac).** Calibrated chest center coordinates in `GameHubRushFigure.jsx` to `translate(485, 410) rotate(14)` for rightward drives and `translate(255, 410) rotate(-14)` for leftward drives... added real-time nudge sliders to `rb-cutout-studio.html` workbench. Frontend **`1.4.676`**.

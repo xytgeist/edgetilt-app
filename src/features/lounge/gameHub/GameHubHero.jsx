@@ -829,6 +829,7 @@ function FieldViz({
     const tick = (now) => {
       const elapsed = now - t0
       if (elapsed >= totalMs) {
+        rushRafRef.current = 0
         if (!isTouchdown) {
           settledLinesRef.current = {
             scrimPct: endPct,
@@ -913,7 +914,11 @@ function FieldViz({
     }
     rushRafRef.current = requestAnimationFrame(tick)
     return () => {
-      if (rushRafRef.current) cancelAnimationFrame(rushRafRef.current)
+      if (!rushRafRef.current) return
+      cancelAnimationFrame(rushRafRef.current)
+      rushRafRef.current = 0
+      // Mid-flight teardown only … finished ticks already zeroed the ref.
+      if (rushKeyRef.current === animKey) rushKeyRef.current = ''
     }
   }, [isFootball, lastPlayText, animKey, isUserReplay, playAnimReady])
 
@@ -1065,6 +1070,7 @@ function FieldViz({
     const tick = (now) => {
       const elapsed = now - t0
       if (elapsed >= totalMs) {
+        catchRafRef.current = 0
         if (!isTouchdown) {
           settledLinesRef.current = {
             scrimPct: gainPct,
@@ -1154,7 +1160,11 @@ function FieldViz({
     }
     catchRafRef.current = requestAnimationFrame(tick)
     return () => {
-      if (catchRafRef.current) cancelAnimationFrame(catchRafRef.current)
+      if (!catchRafRef.current) return
+      cancelAnimationFrame(catchRafRef.current)
+      catchRafRef.current = 0
+      // Mid-flight teardown only … finished ticks already zeroed the ref.
+      if (catchKeyRef.current === animKey) catchKeyRef.current = ''
     }
   }, [isFootball, lastPlayText, animKey, isUserReplay, playAnimReady])
 
@@ -1277,6 +1287,7 @@ function FieldViz({
     const tick = (now) => {
       const elapsed = now - t0
       if (elapsed >= totalMs) {
+        fgRafRef.current = 0
         setFgAnim(null)
         return
       }
@@ -1306,7 +1317,11 @@ function FieldViz({
     }
     fgRafRef.current = requestAnimationFrame(tick)
     return () => {
-      if (fgRafRef.current) cancelAnimationFrame(fgRafRef.current)
+      if (!fgRafRef.current) return
+      cancelAnimationFrame(fgRafRef.current)
+      fgRafRef.current = 0
+      // Mid-flight teardown only … finished ticks already zeroed the ref.
+      if (fgKeyRef.current === animKey) fgKeyRef.current = ''
     }
   }, [isFootball, lastPlayText, animKey, isUserReplay, playAnimReady])
 

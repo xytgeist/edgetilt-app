@@ -72,21 +72,19 @@ const CATCH_TD_LINES_FADE_MS = 600
 const CATCH_TD_TOTAL_MS =
   CATCH_RUN_MS + CATCH_TD_PRE_LABEL_MS + CATCH_TD_CELEBRATE_MS + CATCH_TD_LABEL_TAIL_MS
 
-/** Field-goal kick: plant upright, fly, then exit (made) or bounce (miss). */
-const FG_HOLD_MS = 480
-const FG_FLIGHT_MS = 1450
-const FG_EXIT_MS = 900
-const FG_BOUNCE_MS = 920
-const FG_MADE_TOTAL_MS = FG_HOLD_MS + FG_FLIGHT_MS + FG_EXIT_MS
-const FG_MISS_TOTAL_MS = FG_HOLD_MS + FG_FLIGHT_MS + FG_BOUNCE_MS
+/** Field-goal kick: plant upright, then a real parabola (rise → fall) through the uprights. */
+const FG_HOLD_MS = 420
+const FG_FLIGHT_BASE_MS = 1350
+const FG_BOUNCE_MS = 880
+const FG_BALL_SIZE = 30
 
 /**
  * Goalpost uprights from gamecast-goalposts-overlay.png (viewBox 1266×533).
- * `uLo` / `uHi` = screen-left / screen-right upright X; gap center through the uprights.
+ * `uLo` / `uHi` = screen-left / screen-right upright X.
  */
 const FG_POSTS = {
-  left: { uLo: 96, uHi: 136, centerX: 116, crossbarY: 208, tipY: 18, exitX: -90 },
-  right: { uLo: 1128, uHi: 1164, centerX: 1146, crossbarY: 208, tipY: 18, exitX: 1356 },
+  left: { uLo: 96, uHi: 136, centerX: 116, crossbarY: 208 },
+  right: { uLo: 1128, uHi: 1164, centerX: 1146, crossbarY: 208 },
 }
 
 const RUSH_Y = 334.5
@@ -110,11 +108,38 @@ function resolveFgKickPercent({ fgYards, possessionSide, livePos, flipped }) {
   return Math.max(2, Math.min(98, goalPct - attackDir * 35))
 }
 
-function fgArcLiftFromYards(yards) {
+/**
+ * Stylistic loft in SVG px. Short chips loft higher; long attempts flatten
+ * (NFL placekicks still ~40–45° launch, but the apex sits lower relative to range).
+ */
+function fgStyleLiftFromYards(yards) {
   const abs = Math.abs(Number(yards) || 40)
-  // Short chips loft high; long attempts flatten toward a line drive.
   const t = Math.min(1, Math.max(0, (abs - 18) / 40))
-  return 150 - t * 105
+  return 145 - t * 95
+}
+
+/**
+ * True projectile-style parabola on a chord (SVG y grows down).
+ * Peak lift at mid-flight … ball rises then falls back toward the landing spot.
+ */
+function fgParabolaPoint(start, end, lift, t) {
+  const u = Math.max(0, Math.min(1, t))
+  return {
+    x: lerp(start.x, end.x, u),
+    y: lerp(start.y, end.y, u) - 4 * lift * u * (1 - u),
+  }
+}
+
+/** Minimum apex so the ball is still above the crossbar when it crosses the posts. */
+function fgLiftToClearPosts(start, land, postsX, clearY) {
+  const dx = land.x - start.x
+  if (Math.abs(dx) < 1) return 80
+  const t = (postsX - start.x) / dx
+  if (t <= 0.05 || t >= 0.95) return 80
+  const chordY = lerp(start.y, land.y, t)
+  const denom = 4 * t * (1 - t)
+  if (denom < 0.05) return 80
+  return Math.max(48, (chordY - clearY) / denom)
 }
 function fieldTopXFromPercent(p) {
   return 239.0 + (p / 100) * 784.0
@@ -1013,35 +1038,39 @@ function FieldViz({
     })
     const start = {
       x: fieldMidXFromPercent(kickPct),
-      y: RUSH_Y - 10,
-    }
-    // Through the upright opening (well above the crossbar).
-    const through = {
-      x: posts.centerX,
-      y: posts.crossbarY - 58,
-    }
-    // Made: keep flying past the posts and off the canvas.
-    const exit = {
-      x: posts.exitX,
-      y: posts.tipY - 110,
-    }
-    const hitX =
-      parsed.missSide === 'left'
-        ? Math.min(posts.uLo, posts.uHi)
-        : Math.max(posts.uLo, posts.uHi)
-    const hit = {
-      x: hitX,
-      y: posts.crossbarY - 36,
-    }
-    // Bounce back toward the field and settle near turf.
-    const bounce = {
-      x: hit.x - attackDir * 55,
-      y: RUSH_Y - 28,
+      // Slight tee lean … held near upright before the plant.
+      y: RUSH_Y - 8,
     }
     const yards = Number.isFinite(Number(parsed.yards)) ? Number(parsed.yards) : 40
-    const lift = fgArcLiftFromYards(yards)
     const made = Boolean(parsed.made)
     const facing = attackDir
+    // Made: same continuous parabola through the uprights and land past them
+    // (Science of NFL Football … horizontal speed holds, gravity turns the apex).
+    // Miss: aim an upright, then bounce.
+    const land = made
+      ? {
+          x: posts.centerX + attackDir * 118,
+          y: RUSH_Y + 6,
+        }
+      : {
+          x:
+            (parsed.missSide === 'left'
+              ? Math.min(posts.uLo, posts.uHi)
+              : Math.max(posts.uLo, posts.uHi)),
+          y: posts.crossbarY - 28,
+        }
+    const clearY = posts.crossbarY - 52
+    const minLift = fgLiftToClearPosts(start, land, posts.centerX, clearY)
+    const styleLift = fgStyleLiftFromYards(yards)
+    // Long kicks flatten (styleLift drops) but never skim the crossbar.
+    const lift = Math.max(minLift, styleLift)
+    const hit = { x: land.x, y: land.y }
+    const bounce = {
+      x: hit.x - attackDir * 58,
+      y: RUSH_Y - 22,
+    }
+    // Longer attempts hang a bit more in the air.
+    const flightMs = FG_FLIGHT_BASE_MS + Math.min(750, Math.max(0, yards - 25) * 16)
 
     if (prefersReducedMotion()) {
       setFgAnim(null)
@@ -1054,18 +1083,18 @@ function FieldViz({
       facing,
       yards,
       start,
-      through,
-      exit,
+      land,
       hit,
       bounce,
       lift,
+      flightMs,
       phase: 'hold',
       t: 0,
       showBall: true,
       playing: true,
     })
 
-    const totalMs = made ? FG_MADE_TOTAL_MS : FG_MISS_TOTAL_MS
+    const totalMs = FG_HOLD_MS + flightMs + (made ? 0 : FG_BOUNCE_MS)
     const t0 = performance.now()
     const tick = (now) => {
       const elapsed = now - t0
@@ -1076,20 +1105,18 @@ function FieldViz({
 
       let phase = 'hold'
       let t = 0
-      let showBall = true
+      const showBall = true
 
       if (elapsed < FG_HOLD_MS) {
         phase = 'hold'
         t = 0
-      } else if (elapsed < FG_HOLD_MS + FG_FLIGHT_MS) {
+      } else if (elapsed < FG_HOLD_MS + flightMs) {
         phase = 'flight'
-        t = easeOutCubic((elapsed - FG_HOLD_MS) / FG_FLIGHT_MS)
-      } else if (made) {
-        phase = 'exit'
-        t = easeOutCubic((elapsed - FG_HOLD_MS - FG_FLIGHT_MS) / FG_EXIT_MS)
+        // Linear in time … near-constant horizontal speed like a real kick.
+        t = Math.min(1, (elapsed - FG_HOLD_MS) / flightMs)
       } else {
         phase = 'bounce'
-        t = easeOutCubic((elapsed - FG_HOLD_MS - FG_FLIGHT_MS) / FG_BOUNCE_MS)
+        t = easeOutCubic((elapsed - FG_HOLD_MS - flightMs) / FG_BOUNCE_MS)
       }
 
       setFgAnim((prev) =>
@@ -1277,40 +1304,29 @@ function FieldViz({
       : 0
   const showTdBanner = Boolean(catchAnim?.showTdLabel)
 
-  // Field-goal ball: upright plant → arc (flatter on long kicks) → through posts / bounce.
+  // Field-goal ball: upright plant → true parabola (rise/fall) → land past posts / bounce.
+  // End-over-end topple like a placekick (Science of NFL Football / toppling-flight papers).
   let fgBall = null
-  let fgBallRotate = -90
+  let fgBallRotate = -82
   if (fgAnim?.showBall) {
-    const { phase, t, start, through, exit, hit, bounce, lift, facing, made } = fgAnim
+    const { phase, t, start, land, hit, bounce, lift, facing } = fgAnim
     const tumble = facing > 0 ? 1 : -1
     if (phase === 'hold') {
       fgBall = { x: start.x, y: start.y }
-      fgBallRotate = -90
+      // Slight tee lean before the plant (not a perfect -90 statue).
+      fgBallRotate = -82
     } else if (phase === 'flight') {
-      const end = made ? through : hit
-      const ctrl = {
-        x: (start.x + end.x) / 2,
-        y: Math.min(start.y, end.y) - lift,
-      }
-      fgBall = quadBezier(start, ctrl, end, t)
-      // End-over-end backwards tumble while rising into the uprights.
-      fgBallRotate = -90 + tumble * (220 + t * 320)
-    } else if (phase === 'exit') {
-      // Continue through the upright gap and off the canvas.
-      const ctrl = {
-        x: (through.x + exit.x) / 2,
-        y: Math.min(through.y, exit.y) - lift * 0.22,
-      }
-      fgBall = quadBezier(through, ctrl, exit, t)
-      fgBallRotate = -90 + tumble * (540 + t * 400)
+      fgBall = fgParabolaPoint(start, land, lift, t)
+      // ~5 full end-over-end revolutions over the flight.
+      fgBallRotate = -82 + tumble * t * 1800
     } else {
       // Miss: carom off the upright and drop back toward the field.
       const ctrl = {
-        x: (hit.x + bounce.x) / 2 + tumble * 18,
-        y: Math.min(hit.y, bounce.y) - 36,
+        x: (hit.x + bounce.x) / 2 + tumble * 16,
+        y: Math.min(hit.y, bounce.y) - 40,
       }
       fgBall = quadBezier(hit, ctrl, bounce, t)
-      fgBallRotate = -90 + tumble * (540 + t * 520)
+      fgBallRotate = -82 + tumble * (1800 + t * 720)
     }
   }
   return (
@@ -1721,8 +1737,8 @@ function FieldViz({
           ) : null}
 
           {fgBall ? (
-            <g transform={`translate(${fgBall.x - 11} ${fgBall.y - 9})`}>
-              <AmericanFootballMark tone="field" size={22} rotate={fgBallRotate} />
+            <g transform={`translate(${fgBall.x - FG_BALL_SIZE / 2} ${fgBall.y - FG_BALL_SIZE * 0.38})`}>
+              <AmericanFootballMark tone="field" size={FG_BALL_SIZE} rotate={fgBallRotate} />
             </g>
           ) : null}
 

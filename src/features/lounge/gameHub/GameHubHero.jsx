@@ -12,18 +12,21 @@ import {
   resolveEndzoneDesign,
 } from './gameHubEndzone.js'
 import GameHubRushFigure from './GameHubRushFigure.jsx'
+import GameHubCatchFigure, { CATCH_HANDS_LOCAL } from './GameHubCatchFigure.jsx'
 import {
   downDistanceLabel,
   fieldCenterBanner,
   fieldPercent,
   liveClockLabel,
   matchRushPlayer,
+  parsePassPlay,
   parseRushPlay,
   scoreText,
   yardLineLabel,
 } from './gameHubFormatters.js'
 
 const RUSH_ANIM_MS = 1100
+const CATCH_ANIM_MS = 1250
 const RUSH_Y = 334.5
 const RUSH_FIG_W = 62
 const RUSH_FIG_H = 72
@@ -41,6 +44,40 @@ function easeOutCubic(t) {
 function prefersReducedMotion() {
   if (typeof window === 'undefined' || !window.matchMedia) return false
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+}
+
+function quadBezier(p0, p1, p2, t) {
+  const u = 1 - t
+  return {
+    x: u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x,
+    y: u * u * p0.y + 2 * u * t * p1.y + t * t * p2.y,
+  }
+}
+
+/** World-space catch-hand point for a placed WR figure (top-left origin). */
+function catchHandsWorld(figLeft, figTop, facing, figW, figH) {
+  const lx = facing < 0 ? 120 - CATCH_HANDS_LOCAL.x : CATCH_HANDS_LOCAL.x
+  return {
+    x: figLeft + (lx / 120) * figW,
+    y: figTop + (CATCH_HANDS_LOCAL.y / 140) * figH,
+  }
+}
+
+function possessionKit(live, game, awayColor, homeColor) {
+  const possHome = live?.possession === 'home'
+  const side = possHome ? game?.home : game?.away
+  const primary = String(
+    (possHome ? homeColor : awayColor) || side?.color || '#b91c1c'
+  )
+  let secondary = String(side?.color2 || '')
+  if (!secondary || secondary.toLowerCase() === primary.toLowerCase()) {
+    secondary = '#fafafa'
+  }
+  return {
+    primary,
+    secondary,
+    sideAbbrev: String(side?.abbrev || ''),
+  }
 }
 
 const TIMEOUT_SLOTS = 3
@@ -346,8 +383,11 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
   const lastPlayText = String(lastPlay || '').trim()
 
   const [rushAnim, setRushAnim] = useState(null)
+  const [catchAnim, setCatchAnim] = useState(null)
   const rushKeyRef = useRef('')
+  const catchKeyRef = useRef('')
   const rushRafRef = useRef(0)
+  const catchRafRef = useRef(0)
 
   useEffect(() => {
     if (!isFootball || hideLiveLines || !hasLine || pos == null) return undefined
@@ -361,6 +401,9 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
     }
     if (lastPlayText === rushKeyRef.current) return undefined
     rushKeyRef.current = lastPlayText
+    catchKeyRef.current = ''
+    setCatchAnim(null)
+    if (catchRafRef.current) cancelAnimationFrame(catchRafRef.current)
 
     const attackDir = live?.possession === 'home' ? -1 : 1
     const endPct = Math.max(0, Math.min(100, pos))
@@ -369,18 +412,8 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
     const endX = fieldMidXFromPercent(endPct)
     const travel = endX - startX
     const facing = travel < 0 ? -1 : 1
-
-    const possHome = live?.possession === 'home'
-    const side = possHome ? game?.home : game?.away
-    const primary = String(
-      (possHome ? homeColor : awayColor) || side?.color || '#b91c1c'
-    )
-    let secondary = String(side?.color2 || '')
-    if (!secondary || secondary.toLowerCase() === primary.toLowerCase()) {
-      secondary = '#fafafa'
-    }
-    const sideAbbrev = String(side?.abbrev || '')
-    const matched = matchRushPlayer(parsed.playerHint, players, sideAbbrev)
+    const kit = possessionKit(live, game, awayColor, homeColor)
+    const matched = matchRushPlayer(parsed.playerHint, players, kit.sideAbbrev)
     const headshotUrl = matched?.headshot_url ? String(matched.headshot_url) : ''
 
     const base = {
@@ -388,8 +421,8 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
       startX,
       endX,
       y: RUSH_Y,
-      primary,
-      secondary,
+      primary: kit.primary,
+      secondary: kit.secondary,
       headshotUrl,
       facing,
     }
@@ -420,6 +453,102 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
     rushRafRef.current = requestAnimationFrame(tick)
     return () => {
       if (rushRafRef.current) cancelAnimationFrame(rushRafRef.current)
+    }
+  }, [
+    isFootball,
+    hideLiveLines,
+    hasLine,
+    pos,
+    lastPlayText,
+    live?.possession,
+    awayColor,
+    homeColor,
+    game?.away,
+    game?.home,
+    players,
+  ])
+
+  useEffect(() => {
+    if (!isFootball || hideLiveLines || !hasLine || pos == null) return undefined
+    // Rush wins if both somehow match (parseRush already excludes pass text).
+    if (parseRushPlay(lastPlayText)) return undefined
+    const parsed = parsePassPlay(lastPlayText)
+    if (!parsed) {
+      if (catchKeyRef.current && lastPlayText !== catchKeyRef.current) {
+        setCatchAnim(null)
+        catchKeyRef.current = ''
+      }
+      return undefined
+    }
+    if (lastPlayText === catchKeyRef.current) return undefined
+    catchKeyRef.current = lastPlayText
+    rushKeyRef.current = ''
+    setRushAnim(null)
+    if (rushRafRef.current) cancelAnimationFrame(rushRafRef.current)
+
+    const attackDir = live?.possession === 'home' ? -1 : 1
+    const endPct = Math.max(0, Math.min(100, pos))
+    const startPct = Math.max(0, Math.min(100, pos - attackDir * parsed.yards))
+    const startX = fieldMidXFromPercent(startPct)
+    const endX = fieldMidXFromPercent(endPct)
+    const travel = endX - startX
+    const facing = travel < 0 ? -1 : 1
+    const kit = possessionKit(live, game, awayColor, homeColor)
+    const matched = matchRushPlayer(parsed.playerHint, players, kit.sideAbbrev)
+    const headshotUrl = matched?.headshot_url ? String(matched.headshot_url) : ''
+
+    const figTopAtEnd = RUSH_Y - RUSH_FIG_H + 8
+    const figLeftAtEnd = endX - RUSH_FIG_W / 2
+    const handsEnd = catchHandsWorld(figLeftAtEnd, figTopAtEnd, facing, RUSH_FIG_W, RUSH_FIG_H)
+    const ballStart = { x: startX, y: RUSH_Y - 6 }
+    const ballEnd = { x: handsEnd.x, y: handsEnd.y }
+    const span = Math.abs(ballEnd.x - ballStart.x)
+    const arcLift = Math.min(120, Math.max(52, span * 0.38))
+    const ballCtrl = {
+      x: (ballStart.x + ballEnd.x) / 2,
+      y: Math.min(ballStart.y, ballEnd.y) - arcLift,
+    }
+
+    const base = {
+      playKey: lastPlayText,
+      startX,
+      endX,
+      y: RUSH_Y,
+      primary: kit.primary,
+      secondary: kit.secondary,
+      headshotUrl,
+      facing,
+      ballStart,
+      ballCtrl,
+      ballEnd,
+    }
+
+    if (prefersReducedMotion()) {
+      setCatchAnim({ ...base, progress: 1, playing: false, showTrail: false })
+      return undefined
+    }
+
+    setCatchAnim({ ...base, progress: 0, playing: true, showTrail: true })
+    const t0 = performance.now()
+    const tick = (now) => {
+      const t = Math.min(1, (now - t0) / CATCH_ANIM_MS)
+      const progress = easeOutCubic(t)
+      if (t >= 1) {
+        setCatchAnim((prev) =>
+          prev && prev.playKey === lastPlayText
+            ? { ...prev, progress: 1, playing: false }
+            : prev
+        )
+        return
+      }
+      setCatchAnim((prev) =>
+        prev && prev.playKey === lastPlayText ? { ...prev, progress } : prev
+      )
+      catchRafRef.current = requestAnimationFrame(tick)
+    }
+    catchRafRef.current = requestAnimationFrame(tick)
+    return () => {
+      if (catchRafRef.current) cancelAnimationFrame(catchRafRef.current)
     }
   }, [
     isFootball,
@@ -474,12 +603,32 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
   const homeEndzone = resolveEndzoneDesign(game?.home, homeColor, 'right', { college })
 
   const rushPlaying = Boolean(rushAnim?.playing)
+  const catchPlaying = Boolean(catchAnim?.playing)
+  const playAnimActive = rushPlaying || catchPlaying
   const rushX =
     rushAnim != null
       ? rushAnim.startX + (rushAnim.endX - rushAnim.startX) * rushAnim.progress
       : null
   const rushTrailVisible =
     Boolean(rushAnim?.showTrail && rushAnim.progress > 0.02)
+  const catchX =
+    catchAnim != null
+      ? catchAnim.startX + (catchAnim.endX - catchAnim.startX) * catchAnim.progress
+      : null
+  const catchTrailVisible =
+    Boolean(catchAnim?.showTrail && catchAnim.progress > 0.02)
+  const catchBall =
+    catchAnim != null
+      ? quadBezier(
+          catchAnim.ballStart,
+          catchAnim.ballCtrl,
+          catchAnim.ballEnd,
+          catchAnim.progress
+        )
+      : null
+  const catchBallRotate = catchAnim
+    ? -40 + catchAnim.progress * 220 * (catchAnim.facing < 0 ? -1 : 1)
+    : 0
 
   return (
     <div data-lounge-game-field className="relative w-full px-1 pb-0 pt-0 sm:px-1.5">
@@ -790,8 +939,8 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
                 strokeLinecap="round"
                 filter="url(#glow-scrim)"
               />
-              {/* Ball marker at mid-depth on scrimmage … hidden while rush anim runs. */}
-              {!rushPlaying ? (
+              {/* Ball marker at mid-depth on scrimmage … hidden while rush/catch anim runs. */}
+              {!playAnimActive ? (
                 <g transform={`translate(${scrimMidX - 18} ${334.5 - 12})`}>
                   <AmericanFootballMark tone="field" size={36} rotate={-26} />
                 </g>
@@ -827,6 +976,48 @@ function FieldViz({ game, live, awayColor, homeColor, lastPlay = '', players = [
                   height={RUSH_FIG_H}
                 />
               </g>
+            </g>
+          ) : null}
+
+          {/* Pass catch … WR slide + football arc into raised hands */}
+          {catchAnim && catchX != null ? (
+            <g data-lounge-catch-anim>
+              {catchTrailVisible ? (
+                <line
+                  x1={catchAnim.startX}
+                  y1={catchAnim.y}
+                  x2={catchX}
+                  y2={catchAnim.y}
+                  stroke={catchAnim.primary}
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeOpacity="0.88"
+                  filter="url(#glow-rush)"
+                />
+              ) : null}
+              <g
+                transform={`translate(${catchX - RUSH_FIG_W / 2} ${catchAnim.y - RUSH_FIG_H + 8})`}
+              >
+                <GameHubCatchFigure
+                  primary={catchAnim.primary}
+                  secondary={catchAnim.secondary}
+                  headshotUrl={catchAnim.headshotUrl}
+                  facing={catchAnim.facing}
+                  width={RUSH_FIG_W}
+                  height={RUSH_FIG_H}
+                />
+              </g>
+              {catchBall && (catchAnim.playing || catchAnim.progress >= 1) ? (
+                <g
+                  transform={`translate(${catchBall.x - 14} ${catchBall.y - 10})`}
+                >
+                  <AmericanFootballMark
+                    tone="field"
+                    size={28}
+                    rotate={catchBallRotate}
+                  />
+                </g>
+              ) : null}
             </g>
           ) : null}
 

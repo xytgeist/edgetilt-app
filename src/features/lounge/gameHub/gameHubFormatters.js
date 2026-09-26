@@ -292,6 +292,56 @@ export function parseRushPlay(text) {
   return { yards, playerHint }
 }
 
+/**
+ * Parse ESPN-style completed pass play text.
+ * Player hint is the receiver (catcher), not the QB.
+ * @returns {{ yards: number, playerHint: string } | null}
+ */
+export function parsePassPlay(text) {
+  const raw = String(text || '').trim()
+  if (!raw) return null
+  const lower = raw.toLowerCase()
+  if (!/\bpass(?:ed|es|ing)?\b/.test(lower)) return null
+  if (/\bincomplete\b/.test(lower)) return null
+  if (/\bintercept(?:ed|ion|s)?\b/.test(lower)) return null
+  if (/\bsack(?:ed|s)?\b/.test(lower)) return null
+  // Require a completion cue, or "pass to Name for N yards"
+  const looksComplete =
+    /\bcomplete(?:d)?\b/.test(lower) ||
+    /\bpass(?:ed|es|ing)?\s+to\b/.test(lower) ||
+    /\bpass(?:ed|es|ing)?\s+complete\b/.test(lower)
+  if (!looksComplete) return null
+
+  let yards = null
+  let m = raw.match(/\bfor\s+(\d+)\s+yards?\s+(?:gain|gained)\b/i)
+  if (m) yards = Number(m[1])
+  if (yards == null) {
+    m = raw.match(/\b(?:gain|gained)\s+of\s+(\d+)\s+yards?\b/i)
+    if (m) yards = Number(m[1])
+  }
+  if (yards == null) {
+    m = raw.match(/\bfor\s+(\d+)\s+yards?\b/i)
+    if (m) yards = Number(m[1])
+  }
+  if (yards == null) {
+    m = raw.match(/\b(?:a\s+)?loss\s+of\s+(\d+)\s+yards?\b/i)
+    if (m) yards = -Number(m[1])
+  }
+  if (yards == null) {
+    m = raw.match(/\bfor\s+no\s+gain\b/i)
+    if (m) yards = 0
+  }
+  if (yards == null || !Number.isFinite(yards) || Math.abs(yards) < 1) return null
+
+  let playerHint = ''
+  const toMatch = raw.match(
+    /\b(?:complete(?:d)?\s+to|pass(?:ed|es|ing)?\s+to)\s+((?:#?\d+\s+)?[A-Za-z][A-Za-z.'’-]*(?:\s+[A-Za-z][A-Za-z.'’-]*){0,3})(?:\s+for\b|\s*$)/i
+  )
+  if (toMatch) playerHint = toMatch[1].trim()
+
+  return { yards, playerHint }
+}
+
 function normalizePlayerToken(s) {
   return String(s || '')
     .toLowerCase()

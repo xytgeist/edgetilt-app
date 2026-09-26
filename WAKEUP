@@ -77,6 +77,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Mac Theo.** Promoted **`test` → `main` (`63c28769`)**. Vercel **`1.4.661`**. Prod Edge **`lounge-sports-scoreboard`** + **`lounge-cfb-game-players`**. Prod **`cfb_players`** **13,600**. Store IPA still **1.4.95**.
 
+### Mac Theo ACTIVE TRACK 2026-09-26 ... field gap under scoreboard
+
+**I am Mac Theo.** Live/post field `pt-3` + condensed scoreboard `pb-2` so the board has a little air above the turf. Tip web **`1.4.706`**.
+
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... field-less scoreboard layout
 
 **I am Mac Theo.** Promoted **`test` → `main` (`5b752e98`)**. Vercel prod web **`1.4.705`** (field-less scoreboard stack). **No SQL / Edge.**

@@ -3858,3 +3858,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-26:** **Promoted `test` → `main` (`b9d4d00c`).** Vercel prod = web **`1.4.704`** (light Game Hub hero text contrast). **No SQL / Edge.**
 - **2026-09-26:** **Field-less scoreboard layout:** Pre/post (no field) stacks logo→name→spread/score→ML per side; center exclusive for kickoff + broadcast. Live+field unchanged. Frontend **`1.4.705`**.
 - **2026-09-26:** **Promoted `test` → `main` (`5b752e98`).** Vercel prod = web **`1.4.705`** (field-less Game Hub scoreboard). **No SQL / Edge.**
+- **2026-09-26:** **Field gap under scoreboard:** Live/post field `pt-3` + condensed scoreboard `pb-2`. Frontend **`1.4.706`**.

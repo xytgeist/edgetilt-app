@@ -1089,7 +1089,7 @@ function FieldViz({
   const showTdBanner = Boolean(catchAnim?.showTdLabel)
 
   return (
-    <div data-lounge-game-field className="relative w-full px-1 pb-0 pt-0 sm:px-1.5">
+    <div data-lounge-game-field className="relative w-full px-1 pb-0 pt-3 sm:px-1.5">
       <div className="relative w-full overflow-hidden">
         {/* Layer 1: Floating field base graphic */}
         <img
@@ -1738,7 +1738,7 @@ export default function GameHubHero({
 
       {showField ? (
         /* Condensed scoreboard only while the 3D field is up: logo | score mid-gap | status | … */
-        <div data-lounge-game-scoreboard className="relative z-[4] px-3 pb-1 pt-1">
+        <div data-lounge-game-scoreboard className="relative z-[4] px-3 pb-2 pt-1">
           <div className="flex items-center justify-between gap-1.5">
             <div className="flex min-w-0 flex-1 items-center">
               <div className="flex w-[40px] shrink-0 flex-col items-center">

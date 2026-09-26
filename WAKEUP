@@ -77,6 +77,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Mac Theo.** Promoted **`test` → `main` (`63c28769`)**. Vercel **`1.4.661`**. Prod Edge **`lounge-sports-scoreboard`** + **`lounge-cfb-game-players`**. Prod **`cfb_players`** **13,600**. Store IPA still **1.4.95**.
 
+### Mac Theo ACTIVE TRACK 2026-09-26 ... possession PNG alpha
+
+**I am Mac Theo.** Re-keyed `football-possession.png` to a solid oval silhouette with real alpha; hub possession uses PNG again (`?v=722` + invert). Tip web **`1.4.722`**.
+
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... promote 1.4.721
 
 **I am Mac Theo.** Promoted **`test` → `main` (`1558ae88`)**. Vercel prod web **`1.4.721`** (FG apex/tumble polish + rush TD banner + possession chalk SVG). **No SQL / Edge.**

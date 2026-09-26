@@ -53,11 +53,11 @@ export default function GameHubCatchFigure({
   const bodyFlip = isFacingRight ? undefined : 'scale(-1, 1) translate(-710, 0)'
 
   // Number placement: mid chest plate below the NFL collar (collar ~480,415).
-  // Right-facing lean matches the leaping torso (~-22 deg CCW); left mirrors.
+  // Right-facing lean is clockwise (~+22); left mirrors with opposite sign.
   // Glyphs stay un-mirrored so they always read left-to-right.
   const numTransform = isFacingRight
-    ? 'translate(470, 530) rotate(-22)'
-    : 'translate(240, 530) rotate(22)'
+    ? 'translate(470, 530) rotate(22)'
+    : 'translate(240, 530) rotate(-22)'
 
   const num = String(jerseyNumber ?? '').trim()
 

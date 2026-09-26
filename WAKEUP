@@ -77,6 +77,10 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Mac Theo.** Promoted **`test` → `main` (`63c28769`)**. Vercel **`1.4.661`**. Prod Edge **`lounge-sports-scoreboard`** + **`lounge-cfb-game-players`**. Prod **`cfb_players`** **13,600**. Store IPA still **1.4.95**.
 
+### Mac Theo ACTIVE TRACK 2026-09-26 ... rush TD banner
+
+**I am Mac Theo.** Rush TDs now fire the same Touchdown banner celebrate timeline as pass TDs (was catch-only). Tip web **`1.4.718`**.
+
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... FG speed + tumble
 
 **I am Mac Theo.** FG: slower hang (~2.4s+), snappy takeoff easing into apex then steady descent pace, ~20 end-over-end revs. Tip web **`1.4.717`**.

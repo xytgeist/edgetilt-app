@@ -71,6 +71,9 @@ const CATCH_TD_LABEL_TAIL_MS = 2000
 const CATCH_TD_LINES_FADE_MS = 600
 const CATCH_TD_TOTAL_MS =
   CATCH_RUN_MS + CATCH_TD_PRE_LABEL_MS + CATCH_TD_CELEBRATE_MS + CATCH_TD_LABEL_TAIL_MS
+/** Rush TD celebrate timeline (same phases as pass TD, keyed off RUSH_RUN_MS). */
+const RUSH_TD_TOTAL_MS =
+  RUSH_RUN_MS + CATCH_TD_PRE_LABEL_MS + CATCH_TD_CELEBRATE_MS + CATCH_TD_LABEL_TAIL_MS
 
 /** Field-goal kick: plant upright, then a real parabola (rise → fall) through the uprights. */
 const FG_HOLD_MS = 420
@@ -623,6 +626,8 @@ function FieldViz({
     if (fgRafRef.current) cancelAnimationFrame(fgRafRef.current)
 
     const attackDir = attackDirection(possessionSide, fieldFlipped)
+    const isTouchdown =
+      Boolean(parsed.isTouchdown) || playTextIsTouchdown(lastPlayText)
     const spots = resolvePlayAnimationPercents({
       text: lastPlayText,
       yards: parsed.yards,
@@ -630,7 +635,7 @@ function FieldViz({
       possessionSide,
       livePos: pos,
       preferTextSpots: isUserReplay,
-      isTouchdown: Boolean(parsed.isTouchdown) || playTextIsTouchdown(lastPlayText),
+      isTouchdown,
       flipped: fieldFlipped,
     })
     const endPct = spots.endPct
@@ -687,6 +692,7 @@ function FieldViz({
       headshotUrl,
       jerseyNumber,
       facing,
+      isTouchdown,
       fromScrimPct,
       toScrimPct: endPct,
       fromFirstDownPct,
@@ -702,21 +708,26 @@ function FieldViz({
       return undefined
     }
 
+    const totalMs = isTouchdown ? RUSH_TD_TOTAL_MS : RUSH_TOTAL_MS
     setRushAnim({
       ...base,
       progress: 0,
       linesProgress: 0,
+      linesOpacity: 1,
       showFigure: true,
       showTrail: true,
+      showTdLabel: false,
       playing: true,
     })
     const t0 = performance.now()
     const tick = (now) => {
       const elapsed = now - t0
-      if (elapsed >= RUSH_TOTAL_MS) {
-        settledLinesRef.current = {
-          scrimPct: endPct,
-          firstDownPct: toFirstDownPct,
+      if (elapsed >= totalMs) {
+        if (!isTouchdown) {
+          settledLinesRef.current = {
+            scrimPct: endPct,
+            firstDownPct: toFirstDownPct,
+          }
         }
         setRushAnim(null)
         return
@@ -724,11 +735,41 @@ function FieldViz({
 
       let progress = 1
       let linesProgress = 0
+      let linesOpacity = 1
       let showFigure = false
       let showTrail = false
+      let showTdLabel = false
       let playing = true
 
-      if (elapsed < RUSH_RUN_MS) {
+      if (isTouchdown) {
+        if (elapsed < RUSH_RUN_MS) {
+          progress = easeOutCubic(elapsed / RUSH_RUN_MS)
+          showFigure = true
+          showTrail = true
+        } else if (elapsed < RUSH_RUN_MS + CATCH_TD_PRE_LABEL_MS) {
+          progress = 1
+          showFigure = true
+          showTrail = true
+        } else if (
+          elapsed <
+          RUSH_RUN_MS + CATCH_TD_PRE_LABEL_MS + CATCH_TD_CELEBRATE_MS
+        ) {
+          progress = 1
+          showFigure = true
+          showTrail = true
+          showTdLabel = true
+          const fadeElapsed = elapsed - RUSH_RUN_MS - CATCH_TD_PRE_LABEL_MS
+          linesOpacity = Math.max(
+            0,
+            1 - Math.min(1, fadeElapsed / CATCH_TD_LINES_FADE_MS),
+          )
+        } else {
+          // Label-only tail … figure already gone.
+          progress = 1
+          showTdLabel = true
+          linesOpacity = 0
+        }
+      } else if (elapsed < RUSH_RUN_MS) {
         progress = easeOutCubic(elapsed / RUSH_RUN_MS)
         showFigure = true
         showTrail = true
@@ -754,8 +795,10 @@ function FieldViz({
               ...prev,
               progress,
               linesProgress,
+              linesOpacity,
               showFigure,
               showTrail,
+              showTdLabel,
               playing,
             }
           : prev
@@ -1194,17 +1237,23 @@ function FieldViz({
   // Left Goal Line: top=(239.0, 191), bot=(161.0, 478)
   // Right Goal Line: top=(1023.0, 191), bot=(1098.0, 478)
   const lineDriver =
-    rushAnim != null
+    rushAnim != null && !rushAnim.isTouchdown
       ? rushAnim
       : catchAnim != null && !catchAnim.isTouchdown
         ? catchAnim
         : null
   const linesT = lineDriver != null ? Number(lineDriver.linesProgress) || 0 : 1
+  const tdAnim =
+    rushAnim?.isTouchdown
+      ? rushAnim
+      : catchAnim?.isTouchdown
+        ? catchAnim
+        : null
   const displayScrimPct =
     lineDriver != null
       ? lerp(lineDriver.fromScrimPct, lineDriver.toScrimPct, linesT)
-      : catchAnim?.isTouchdown
-        ? catchAnim.fromScrimPct
+      : tdAnim
+        ? tdAnim.fromScrimPct
         : pos
   const liveFirstDownPct = firstDownPercentFromLive(live, pos, fieldFlipped)
   const displayFirstDownPct =
@@ -1212,12 +1261,12 @@ function FieldViz({
     lineDriver.fromFirstDownPct != null &&
     lineDriver.toFirstDownPct != null
       ? lerp(lineDriver.fromFirstDownPct, lineDriver.toFirstDownPct, linesT)
-      : catchAnim?.isTouchdown
-        ? catchAnim.fromFirstDownPct
+      : tdAnim
+        ? tdAnim.fromFirstDownPct
         : liveFirstDownPct
   const linesFadeOpacity =
-    catchAnim?.isTouchdown && catchAnim.linesOpacity != null
-      ? Math.max(0, Math.min(1, Number(catchAnim.linesOpacity)))
+    tdAnim?.linesOpacity != null
+      ? Math.max(0, Math.min(1, Number(tdAnim.linesOpacity)))
       : 1
 
   const scrimTop =
@@ -1268,7 +1317,10 @@ function FieldViz({
     catchAnim != null &&
       (catchAnim.showFigure || catchAnim.showTdLabel || catchAnim.playing),
   )
-  const rushPlaying = Boolean(rushAnim?.playing || (rushAnim != null && rushAnim.showFigure))
+  const rushPlaying = Boolean(
+    rushAnim != null &&
+      (rushAnim.showFigure || rushAnim.showTdLabel || rushAnim.playing),
+  )
   const fgPlaying = Boolean(fgAnim?.playing || (fgAnim != null && fgAnim.showBall))
   // Hide LOS ball for the full rush/catch/FG sequence.
   const playAnimActive = rushAnim != null || catchAnim != null || fgAnim != null
@@ -1327,7 +1379,7 @@ function FieldViz({
     catchAnim != null
       ? (-36 + catchBallFlightT * 18) * catchBallFacingSign
       : 0
-  const showTdBanner = Boolean(catchAnim?.showTdLabel)
+  const showTdBanner = Boolean(catchAnim?.showTdLabel || rushAnim?.showTdLabel)
 
   // Field-goal ball: upright plant → true parabola (rise/fall) → land past posts / bounce.
   // End-over-end topple like a placekick (Science of NFL Football / toppling-flight papers).
@@ -1845,7 +1897,7 @@ function FieldViz({
           </div>
         ) : null}
 
-        {/* Pass TD celebration */}
+        {/* Rush / pass TD celebration */}
         {showTdBanner ? (
           <div
             data-lounge-td-banner

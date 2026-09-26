@@ -3475,19 +3475,23 @@ html.light [data-lounge-game-pill-cover-dot] {
   background-color: #fff !important;
 }
 [data-lounge-game-pill] [data-lounge-game-pill-logo],
-[data-lounge-game-hero] [data-lounge-game-pill-logo] {
+[data-lounge-game-hero] [data-lounge-game-pill-logo],
+[data-lounge-hub-game-pill] [data-lounge-game-pill-logo] {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.65));
 }
 /* ESPN 500-dark marks (light ink on dark jersey wash). Soft shadow only. */
 [data-lounge-game-pill] [data-lounge-game-pill-logo='light'],
-[data-lounge-game-hero] [data-lounge-game-pill-logo='light'] {
+[data-lounge-game-hero] [data-lounge-game-pill-logo='light'],
+[data-lounge-hub-game-pill] [data-lounge-game-pill-logo='light'] {
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
 }
 /* Full-color mark + thin white edge. Default path for anything that is not a light asset. */
 [data-lounge-game-pill] [data-lounge-game-pill-logo='halo'],
 [data-lounge-game-pill] [data-lounge-game-pill-logo='dark'],
 [data-lounge-game-hero] [data-lounge-game-pill-logo='halo'],
-[data-lounge-game-hero] [data-lounge-game-pill-logo='dark'] {
+[data-lounge-game-hero] [data-lounge-game-pill-logo='dark'],
+[data-lounge-hub-game-pill] [data-lounge-game-pill-logo='halo'],
+[data-lounge-hub-game-pill] [data-lounge-game-pill-logo='dark'] {
   filter:
     drop-shadow(0 0 0.7px #fff)
     drop-shadow(0 0 1.35px rgba(255, 255, 255, 0.85))
@@ -3495,7 +3499,8 @@ html.light [data-lounge-game-pill-cover-dot] {
 }
 /* Fallback when *-light.png missing: white silhouette of the default mark. */
 [data-lounge-game-pill] [data-lounge-game-pill-logo='silhouette'],
-[data-lounge-game-hero] [data-lounge-game-pill-logo='silhouette'] {
+[data-lounge-game-hero] [data-lounge-game-pill-logo='silhouette'],
+[data-lounge-hub-game-pill] [data-lounge-game-pill-logo='silhouette'] {
   filter:
     brightness(0)
     invert(1)
@@ -3807,38 +3812,35 @@ html.light [data-lounge-game-hero] [data-lounge-game-last-play] .text-white\/55 
   height: 1.375rem;
 }
 html.light [data-lounge-hub-game-pill] {
-  /* Translucent wash … solid white was blowing out logos + killing team glows. */
-  background-color: rgba(255, 255, 255, 0.42) !important;
-  border-color: rgba(24, 24, 27, 0.14) !important;
-  color: #18181b !important;
+  /*
+    Chips sit on the dark field strip in both themes … white wash killed light/gold logos.
+    Keep dark glass + light type so marks and team glows read the same as dark mode.
+  */
+  background-color: rgba(24, 24, 27, 0.88) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #fafafa !important;
 }
 html.light [data-lounge-hub-game-pill='active'] {
-  border-color: #18181b !important;
-  box-shadow: 0 0 0 1.5px #18181b !important;
-  background-color: rgba(255, 255, 255, 0.58) !important;
+  border-color: rgba(255, 255, 255, 0.82) !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.34) !important;
+  background-color: rgba(9, 9, 11, 0.94) !important;
 }
 html.light [data-lounge-hub-game-pill-away] {
   background: radial-gradient(
     ellipse 90% 140% at 0% 50%,
-    color-mix(in srgb, var(--pill-away, #3f3f46) 58%, transparent) 0%,
-    transparent 72%
+    color-mix(in srgb, var(--pill-away, #3f3f46) 72%, transparent) 0%,
+    transparent 70%
   );
 }
 html.light [data-lounge-hub-game-pill-home] {
   background: radial-gradient(
     ellipse 90% 140% at 100% 50%,
-    color-mix(in srgb, var(--pill-home, #3f3f46) 58%, transparent) 0%,
-    transparent 72%
+    color-mix(in srgb, var(--pill-home, #3f3f46) 72%, transparent) 0%,
+    transparent 70%
   );
 }
 html.light [data-lounge-hub-game-pill-meta] {
-  /* Darker than zinc-500 … translucent wash + team glow eats lighter gray. */
-  color: #3f3f46 !important;
-}
-html.light [data-lounge-hub-game-pill] [data-lounge-game-pill-logo='silhouette'] {
-  filter:
-    brightness(0)
-    drop-shadow(0 1px 1px rgba(0, 0, 0, 0.15));
+  color: rgba(255, 255, 255, 0.68) !important;
 }
 
 /* Game hub sibling pills: hide scrollbar + soft edge fade (mask only … no backdrop-blur on chips). */

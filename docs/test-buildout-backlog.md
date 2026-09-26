@@ -3852,3 +3852,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-26:** **Jersey number contrast:** `resolveJerseyNumberPaint` flips fill/outline when secondary melts into jersey (ATL black-on-red → white + black stroke). Frontend **`1.4.700`**.
 - **2026-09-26:** **Hub pill light wash:** `html.light [data-lounge-hub-game-pill]` solid white → translucent `0.42` (active `0.58`) + stronger side glows. Dark unchanged. Frontend **`1.4.701`**.
 - **2026-09-26:** **Hub pill light meta contrast:** `Final` / kickoff time on translucent wash → `#3f3f46` (was zinc-500). Frontend **`1.4.702`**.
+- **2026-09-26:** **Hub pill dark glass (light):** White wash abandoned for chips on the dark field strip … light mode uses dark glass + light type; hub logos get same halo/silhouette filters as feed pills. Frontend **`1.4.703`**.

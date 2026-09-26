@@ -33,7 +33,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
-**Branch:** `test` (match `origin/test` before edits). `main` @ **`8027e029`** (promoted 2026-09-26, web **1.4.712**). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
+**Branch:** `test` (match `origin/test` before edits). `main` @ **`c8a4d5ce`** (promoted 2026-09-26, web **1.4.715**). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
 
 **Supabase (do not swap these):**
 
@@ -79,7 +79,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... field-goal kick animation
 
-**I am Mac Theo.** Hub FG made/miss: plant 7 yd behind LOS, arc (flattens with distance), end-over-end tumble; made flies through uprights off-screen, miss hits upright + bounce. Tip web **`1.4.715`**.
+**I am Mac Theo.** Promoted **`test` → `main` (`c8a4d5ce`)**. Vercel prod web **`1.4.715`** (FG anim + timeout gap + possession PNG + no Latest badge). **No SQL / Edge.**
 
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... Plays Latest + possession icon
 

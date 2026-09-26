@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RB Cutout Studio — McFarlane Sculpt Reference & Segments</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #09090b;
+      color: #fafafa;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: #18181b;
+      border-bottom: 1px solid #27272a;
+      padding: 12px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    h1 { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .badge { background: #16a34a; color: white; font-size: 10px; padding: 2px 7px; border-radius: 999px; font-weight: 600; text-transform: uppercase; }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      background: #18181b;
+      border-bottom: 1px solid #27272a;
+      padding: 10px 20px;
+      font-size: 12px;
+    }
+    .controls label { display: flex; align-items: center; gap: 6px; font-weight: 600; color: #a1a1aa; }
+    .controls input, .controls select {
+      background: #27272a;
+      border: 1px solid #3f3f46;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      padding: 20px;
+    }
+    @media (max-width: 960px) {
+      main { grid-template-columns: 1fr; }
+    }
+
+    .card {
+      background: #121215;
+      border: 1px solid #27272a;
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .card-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #a1a1aa;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Checkerboard to prove transparency */
+    .preview-box {
+      width: 100%;
+      height: 380px;
+      border-radius: 8px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #18181b;
+      background-image:
+        linear-gradient(45deg, #27272a 25%, transparent 25%),
+        linear-gradient(-45deg, #27272a 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #27272a 75%),
+        linear-gradient(-45deg, transparent 75%, #27272a 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+      overflow: hidden;
+      border: 1px solid #3f3f46;
+    }
+
+    /* Turf simulation */
+    .field-turf {
+      width: 100%;
+      height: 380px;
+      background: linear-gradient(180deg, #15803d 0%, #166534 50%, #14532d 100%);
+      border-radius: 8px;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid #27272a;
+      box-shadow: inset 0 2px 10px rgba(0,0,0,0.6);
+    }
+    .field-yardline {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: rgba(255,255,255,0.45);
+    }
+    .field-yardnum {
+      position: absolute;
+      top: 15px;
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.6);
+      transform: translateX(-50%);
+      font-family: monospace;
+    }
+    .field-scrim {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: #38bdf8;
+      box-shadow: 0 0 10px #38bdf8;
+    }
+    .field-firstdown {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      background: #fde047;
+      box-shadow: 0 0 10px #fde047;
+    }
+
+    /* Running animation */
+    @keyframes rushSprint {
+      0% { left: 15%; opacity: 0; }
+      15% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { left: 68%; opacity: 1; }
+    }
+    .runner-animated {
+      position: absolute;
+      bottom: 80px;
+      animation: rushSprint 3s ease-out infinite;
+    }
+    .runner-static {
+      position: absolute;
+      bottom: 80px;
+      left: 50%;
+    }
+
+    /* Segments section */
+    .segments-strip {
+      grid-column: 1 / -1;
+      background: #121215;
+      border: 1px solid #27272a;
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .segments-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .segment-card {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      min-width: 100px;
+    }
+    .segment-card img {
+      max-height: 80px;
+      max-width: 90px;
+      object-fit: contain;
+    }
+    .segment-label {
+      font-size: 10px;
+      color: #a1a1aa;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>
+      EdgeTilt RB Cutout Studio
+      <span class="badge">Segments-4 (No Numbers)</span>
+    </h1>
+    <span style="font-size: 11px; color: #71717a;">Vector Cutout · Clean Transparent BG</span>
+  </header>
+
+  <div class="controls">
+    <label>
+      Jersey Number:
+      <input type="text" id="numInput" value="31" maxlength="2" style="width: 45px; text-align: center;" />
+    </label>
+    <label>
+      Facing:
+      <select id="facingSelect">
+        <option value="right">Running Right (Normal Drive)</option>
+        <option value="left">Running Left (Opposite Endzone)</option>
+      </select>
+    </label>
+    <label>
+      Mode:
+      <select id="animSelect">
+        <option value="anim">Animated Sprint</option>
+        <option value="static">Static on Scrimmage</option>
+      </select>
+    </label>
+  </div>
+
+  <main>
+    <!-- Left: Isolated Cutout on Checkerboard Transparency -->
+    <div class="card">
+      <div class="card-title">
+        <span>1. Clean Cutout & Dynamic Number Overlay</span>
+        <span style="font-size: 10px; color: #71717a;">740 × 1378 RGBA</span>
+      </div>
+      <div class="preview-box">
+        <svg id="svgFigureIsolated" viewBox="0 0 740 1378" style="height: 350px; width: auto; overflow: visible; filter: drop-shadow(0 15px 15px rgba(0,0,0,0.8));">
+          <g id="figureIsolatedGroup">
+            <!-- Base Player Cutout (Clean without numbers) -->
+            <image href="/sports/nfl/cardinals-rb-player.png" width="740" height="1378" preserveAspectRatio="xMidYMid meet" />
+
+            <!-- Dynamic Chest Number Overlay -->
+            <g id="isolatedNumberG" transform="translate(230, 410) rotate(-14)">
+              <text id="isolatedNumOutline" x="0" y="0" text-anchor="middle" dominant-baseline="central" fill="none" stroke="#000000" stroke-width="26" stroke-linejoin="round" font-family="'Arial Black', Impact, sans-serif" font-size="140" font-weight="900" letter-spacing="-4">31</text>
+              <text id="isolatedNumFill" x="0" y="0" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="'Arial Black', Impact, sans-serif" font-size="140" font-weight="900" letter-spacing="-4">31</text>
+            </g>
+          </g>
+        </svg>
+      </div>
+      <span style="font-size: 11px; color: #71717a;">100% clean alpha · No artifacts · Dynamic chest number angled with torso lean</span>
+    </div>
+
+    <!-- Right: Placed on Gamecast Turf with Scrimmage line -->
+    <div class="card">
+      <div class="card-title">
+        <span>2. Gamecast Field Simulation</span>
+        <span style="font-size: 10px; color: #38bdf8;">Line of Scrimmage + Trail</span>
+      </div>
+      <div class="field-turf">
+        <!-- 10 yd lines -->
+        <div class="field-yardline" style="left: 15%;"><span class="field-yardnum">20</span></div>
+        <div class="field-yardline" style="left: 35%;"><span class="field-yardnum">30</span></div>
+        <div class="field-yardline" style="left: 55%;"><span class="field-yardnum">40</span></div>
+        <div class="field-yardline" style="left: 75%;"><span class="field-yardnum">50</span></div>
+
+        <!-- Scrimmage & 1st Down line -->
+        <div class="field-scrim" style="left: 25%;"></div>
+        <div class="field-firstdown" style="left: 65%;"></div>
+
+        <!-- Animated Rush Trail -->
+        <div id="fieldTrail" style="position: absolute; left: 25%; width: 40%; bottom: 102px; height: 4px; background: #97233F; box-shadow: 0 0 10px #97233F; border-radius: 2px;"></div>
+
+        <!-- Runner container -->
+        <div id="runnerWrap" class="runner-animated">
+          <svg id="svgFigureField" viewBox="0 0 740 1378" style="height: 90px; width: auto; overflow: visible; filter: drop-shadow(0 8px 8px rgba(0,0,0,0.6));">
+            <g id="figureFieldGroup" transform="scale(-1, 1) translate(-740, 0)">
+              <!-- Base Player Cutout -->
+              <image href="/sports/nfl/cardinals-rb-player.png" width="740" height="1378" preserveAspectRatio="xMidYMid meet" />
+
+              <!-- Dynamic Chest Number Overlay -->
+              <g id="fieldNumberG" transform="translate(230, 410) rotate(-14)">
+                <text id="fieldNumOutline" x="0" y="0" text-anchor="middle" dominant-baseline="central" fill="none" stroke="#000000" stroke-width="26" stroke-linejoin="round" font-family="'Arial Black', Impact, sans-serif" font-size="140" font-weight="900" letter-spacing="-4">31</text>
+                <text id="fieldNumFill" x="0" y="0" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="'Arial Black', Impact, sans-serif" font-size="140" font-weight="900" letter-spacing="-4">31</text>
+              </g>
+            </g>
+          </svg>
+        </div>
+      </div>
+      <span style="font-size: 11px; color: #71717a;">Exact scale on Gamecast field · Cleat grounded on turf line</span>
+    </div>
+
+    <!-- Bottom Strip: All Segments from segments-4.zip -->
+    <div class="segments-strip">
+      <div class="card-title">
+        <span>3. Individual Segments Extracted (segments-4.zip)</span>
+        <span style="font-size: 10px; color: #71717a;">Available for Tinting & Custom Parts</span>
+      </div>
+      <div class="segments-grid">
+        <div class="segment-card">
+          <img src="/sports/nfl/segments/red-jersey.png" alt="Jersey" />
+          <span class="segment-label">red-jersey.png</span>
+        </div>
+        <div class="segment-card">
+          <img src="/sports/nfl/segments/red-helmet.png" alt="Helmet" />
+          <span class="segment-label">red-helmet.png</span>
+        </div>
+        <div class="segment-card">
+          <img src="/sports/nfl/segments/white-pants.png" alt="Pants" />
+          <span class="segment-label">white-pants.png</span>
+        </div>
+        <div class="segment-card">
+          <img src="/sports/nfl/segments/football.png" alt="Football" />
+          <span class="segment-label">football.png</span>
+        </div>
+        <div class="segment-card">
+          <img src="/sports/nfl/segments/x.png" alt="Laces" />
+          <span class="segment-label">x.png (laces)</span>
+        </div>
+        <div class="segment-card">
+          <img src="/sports/nfl/segments/black-cleats/black-cleats-1.png" alt="Cleat 1" />
+          <span class="segment-label">black-cleats-1</span>
+        </div>
+        <div class="segment-card">
+          <img src="/sports/nfl/segments/black-cleats/black-cleats-2.png" alt="Cleat 2" />
+          <span class="segment-label">black-cleats-2</span>
+        </div>
+        <div class="segment-card">
+          <img src="/sports/nfl/segments/nike-swoosh/nike-swoosh-1.png" alt="Swoosh" />
+          <span class="segment-label">nike-swoosh-1</span>
+        </div>
+        <div class="segment-card">
+          <img src="/sports/nfl/segments/nfl.png" alt="NFL Shield" />
+          <span class="segment-label">nfl.png</span>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const numInput = document.getElementById('numInput');
+    const facingSelect = document.getElementById('facingSelect');
+    const animSelect = document.getElementById('animSelect');
+
+    const isolatedNumOutline = document.getElementById('isolatedNumOutline');
+    const isolatedNumFill = document.getElementById('isolatedNumFill');
+    const isolatedNumberG = document.getElementById('isolatedNumberG');
+
+    const fieldNumOutline = document.getElementById('fieldNumOutline');
+    const fieldNumFill = document.getElementById('fieldNumFill');
+    const fieldNumberG = document.getElementById('fieldNumberG');
+
+    const figureIsolatedGroup = document.getElementById('figureIsolatedGroup');
+    const figureFieldGroup = document.getElementById('figureFieldGroup');
+    const runnerWrap = document.getElementById('runnerWrap');
+    const fieldTrail = document.getElementById('fieldTrail');
+
+    function updateNumber() {
+      const val = numInput.value.trim();
+      if (!val) {
+        isolatedNumberG.style.display = 'none';
+        fieldNumberG.style.display = 'none';
+      } else {
+        isolatedNumberG.style.display = '';
+        fieldNumberG.style.display = '';
+        isolatedNumOutline.textContent = val;
+        isolatedNumFill.textContent = val;
+        fieldNumOutline.textContent = val;
+        fieldNumFill.textContent = val;
+      }
+    }
+
+    function updateFacing() {
+      const facing = facingSelect.value;
+      if (facing === 'right') {
+        // Natural image faces left. To face right, flip X:
+        figureIsolatedGroup.setAttribute('transform', 'scale(-1, 1) translate(-740, 0)');
+        figureFieldGroup.setAttribute('transform', 'scale(-1, 1) translate(-740, 0)');
+      } else {
+        // Natural left facing:
+        figureIsolatedGroup.setAttribute('transform', '');
+        figureFieldGroup.setAttribute('transform', '');
+      }
+    }
+
+    function updateMode() {
+      const mode = animSelect.value;
+      if (mode === 'anim') {
+        runnerWrap.className = 'runner-animated';
+        fieldTrail.style.display = '';
+      } else {
+        runnerWrap.className = 'runner-static';
+        fieldTrail.style.display = 'none';
+      }
+    }
+
+    numInput.addEventListener('input', updateNumber);
+    facingSelect.addEventListener('change', updateFacing);
+    animSelect.addEventListener('change', updateMode);
+
+    // Initial setup
+    updateNumber();
+    updateFacing();
+    updateMode();
+  </script>
+</body>
+</html>

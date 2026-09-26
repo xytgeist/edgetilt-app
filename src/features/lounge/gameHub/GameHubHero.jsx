@@ -1504,8 +1504,8 @@ function FieldViz({
     }
   }
   return (
-    <div data-lounge-game-field className="relative w-full px-1 pb-0 pt-5 sm:px-1.5">
-      <div className="relative w-full overflow-hidden">
+    <div data-lounge-game-field className="relative z-[5] w-full px-1 pb-0 pt-5 sm:px-1.5">
+      <div className="relative w-full overflow-visible">
         {/* Layer 1: Floating field base graphic */}
         <img
           src="/sports/nfl/gamecast-field-floating.png?v=629"
@@ -1910,12 +1910,6 @@ function FieldViz({
             </g>
           ) : null}
 
-          {fgBall ? (
-            <g transform={`translate(${fgBall.x - FG_BALL_SIZE / 2} ${fgBall.y - FG_BALL_SIZE * 0.38})`}>
-              <AmericanFootballMark tone="field" size={FG_BALL_SIZE} rotate={fgBallRotate} />
-            </g>
-          ) : null}
-
           {/* Corner Pylons (Fluorescent Orange at the 8 end zone corners with perspective scaling) */}
           {CORNER_PYLONS.map(({ key, x, y, isNear }) => {
             const w = isNear ? 4.5 : 3.2
@@ -1973,6 +1967,19 @@ function FieldViz({
           className="pointer-events-none absolute inset-0 block h-full w-full select-none"
         />
 
+        {/* FG ball above posts + scoreboard stack … apex was painting under the board chrome. */}
+        {fgBall ? (
+          <svg
+            viewBox="0 0 1266 533"
+            className="pointer-events-none absolute inset-0 z-[8] h-full w-full select-none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <g transform={`translate(${fgBall.x - FG_BALL_SIZE / 2} ${fgBall.y - FG_BALL_SIZE * 0.38})`}>
+              <AmericanFootballMark tone="field" size={FG_BALL_SIZE} rotate={fgBallRotate} />
+            </g>
+          </svg>
+        ) : null}
         {/* Stoppage / break banner … TIMEOUT, End of 1st, HALFTIME, End of 3rd, GAME OVER */}
         {centerBanner && !suppressBanner && !showTdBanner ? (
           <div
@@ -2336,7 +2343,8 @@ export default function GameHubHero({
         </div>
       )}
 
-      <div className="relative z-[4]">
+      {/* z above scoreboard so FG apex / high arcs paint over the board chrome */}
+      <div className="relative z-[5]">
         <HeroPublicBetting
           game={game}
           splits={splits}

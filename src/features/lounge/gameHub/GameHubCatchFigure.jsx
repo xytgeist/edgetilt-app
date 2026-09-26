@@ -60,7 +60,7 @@ export default function GameHubCatchFigure({
     ? 'translate(480, 440) rotate(-8)'
     : 'translate(230, 440) rotate(8)'
 
-  const num = String(jerseyNumber || '').trim()
+  const num = String(jerseyNumber ?? '').trim()
 
   return (
     <svg
@@ -79,8 +79,8 @@ export default function GameHubCatchFigure({
         </filter>
       </defs>
 
+      {/* Body in filter; number OUTSIDE so feDropShadow never clips jersey glyphs. */}
       <g filter={`url(#shadow-${uid})`}>
-        {/* Assembled 12-piece sculpt, flipped horizontally when driving left */}
         <g transform={bodyFlip}>
           {CATCH_PIECES.map((piece) => {
             const transform = `translate(${piece.x}, ${piece.y}) rotate(${piece.rot}) scale(${piece.scale})`
@@ -98,44 +98,42 @@ export default function GameHubCatchFigure({
             )
           })}
         </g>
-
-        {/* Dynamic chest number overlay - ALWAYS un-mirrored and readable */}
-        {num ? (
-          <g transform={numTransform}>
-            {/* Dark contrast stroke */}
-            <text
-              x="0"
-              y="0"
-              textAnchor="middle"
-              dominantBaseline="central"
-              fill="none"
-              stroke={accentColor}
-              strokeWidth="24"
-              strokeLinejoin="round"
-              fontFamily="'Arial Black', Impact, sans-serif"
-              fontSize="130"
-              fontWeight="900"
-              letterSpacing="-4"
-            >
-              {num}
-            </text>
-            {/* Clean readable athletic fill */}
-            <text
-              x="0"
-              y="0"
-              textAnchor="middle"
-              dominantBaseline="central"
-              fill={secondaryColor}
-              fontFamily="'Arial Black', Impact, sans-serif"
-              fontSize="130"
-              fontWeight="900"
-              letterSpacing="-4"
-            >
-              {num}
-            </text>
-          </g>
-        ) : null}
       </g>
+
+      {/* Dynamic chest number overlay - ALWAYS un-mirrored and readable (incl. jersey 0). */}
+      {num.length > 0 ? (
+        <g transform={numTransform}>
+          <text
+            x="0"
+            y="0"
+            textAnchor="middle"
+            dominantBaseline="central"
+            fill="none"
+            stroke={accentColor}
+            strokeWidth="24"
+            strokeLinejoin="round"
+            fontFamily="'Arial Black', Impact, sans-serif"
+            fontSize="130"
+            fontWeight="900"
+            letterSpacing="-4"
+          >
+            {num}
+          </text>
+          <text
+            x="0"
+            y="0"
+            textAnchor="middle"
+            dominantBaseline="central"
+            fill={secondaryColor}
+            fontFamily="'Arial Black', Impact, sans-serif"
+            fontSize="130"
+            fontWeight="900"
+            letterSpacing="-4"
+          >
+            {num}
+          </text>
+        </g>
+      ) : null}
     </svg>
   )
 }

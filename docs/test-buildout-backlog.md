@@ -3845,3 +3845,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-26:** **WR/TE catch jersey from PBP:** Receiver parse died when a tackler followed immediately (`to #80 C.Becker (#42 …)`), so catch figures never got `jerseyHint`. Lookahead now allows `(`. Frontend **`1.4.693`**.
 - **2026-09-26:** **Catch jersey for "caught at" PBP:** ESPN TD trails like `to #4 K.Davis caught at CCU05, for 6 yards` still dropped the receiver. Stop-word extractor (`caught` / `for` / tackler `(`). Frontend **`1.4.694`**.
 - **2026-09-26:** **Promoted `test` → `main` (`90fc1e03`).** Vercel prod = web **`1.4.694`** (No Huddle-Shotgun rush jersey, WR tackler-paren + caught-at receiver extract).
+- **2026-09-26:** **WR/RB jersey paint harden:** Move chest number outside the drop-shadow filter (no glyph clip) + treat jersey `0` as valid (`??` / `length`). Frontend **`1.4.695`**.

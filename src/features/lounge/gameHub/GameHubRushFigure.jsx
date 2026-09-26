@@ -57,7 +57,7 @@ export default function GameHubRushFigure({
     ? 'translate(483, 410) rotate(14)'
     : 'translate(245, 410) rotate(-14)'
 
-  const num = String(jerseyNumber || '').trim()
+  const num = String(jerseyNumber ?? '').trim()
 
   return (
     <svg
@@ -94,44 +94,42 @@ export default function GameHubRushFigure({
             )
           })}
         </g>
-
-        {/* Dynamic chest number overlay - ALWAYS un-mirrored and readable */}
-        {num ? (
-          <g transform={numTransform}>
-            {/* Dark contrast stroke */}
-            <text
-              x="0"
-              y="0"
-              textAnchor="middle"
-              dominantBaseline="central"
-              fill="none"
-              stroke={accentColor}
-              strokeWidth="24"
-              strokeLinejoin="round"
-              fontFamily="'Arial Black', Impact, sans-serif"
-              fontSize="140"
-              fontWeight="900"
-              letterSpacing="-4"
-            >
-              {num}
-            </text>
-            {/* Clean readable athletic fill */}
-            <text
-              x="0"
-              y="0"
-              textAnchor="middle"
-              dominantBaseline="central"
-              fill={secondaryColor}
-              fontFamily="'Arial Black', Impact, sans-serif"
-              fontSize="140"
-              fontWeight="900"
-              letterSpacing="-4"
-            >
-              {num}
-            </text>
-          </g>
-        ) : null}
       </g>
+
+      {/* Dynamic chest number overlay - ALWAYS un-mirrored and readable (incl. jersey 0). */}
+      {num.length > 0 ? (
+        <g transform={numTransform}>
+          <text
+            x="0"
+            y="0"
+            textAnchor="middle"
+            dominantBaseline="central"
+            fill="none"
+            stroke={accentColor}
+            strokeWidth="24"
+            strokeLinejoin="round"
+            fontFamily="'Arial Black', Impact, sans-serif"
+            fontSize="140"
+            fontWeight="900"
+            letterSpacing="-4"
+          >
+            {num}
+          </text>
+          <text
+            x="0"
+            y="0"
+            textAnchor="middle"
+            dominantBaseline="central"
+            fill={secondaryColor}
+            fontFamily="'Arial Black', Impact, sans-serif"
+            fontSize="140"
+            fontWeight="900"
+            letterSpacing="-4"
+          >
+            {num}
+          </text>
+        </g>
+      ) : null}
     </svg>
   )
 }

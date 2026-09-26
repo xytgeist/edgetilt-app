@@ -310,10 +310,12 @@ export default function LoungeGameHubModal({
     // Duplicate for seamless ticker when the strip overflows.
     return sameSportGames.length > 1 ? [...sameSportGames, ...sameSportGames] : sameSportGames
   }, [sameSportGames])
+  // Strip only mounts once a game is open … gate on that so the hook starts with a real element.
+  const pillsTickerOn = Boolean(game) && sameSportGames.length > 1
   useLoungeSlowTicker(pillsScrollRef, {
-    enabled: sameSportGames.length > 1,
+    enabled: pillsTickerOn,
     speedPxPerSec: 22,
-    loop: sameSportGames.length > 1,
+    loop: pillsTickerOn,
   })
 
   if (!game || typeof document === 'undefined') return null

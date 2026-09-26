@@ -74,9 +74,14 @@ function sideRank(side) {
   return Number.isInteger(r) && r >= 1 && r <= 25 ? r : Infinity
 }
 
-/** Kickoff first; same kickoff → best Top 25 rank in the matchup, then the other side's rank. */
+/**
+ * Finals last; then kickoff; same kickoff → best Top 25 rank in the matchup, then the other side's rank.
+ */
 export function sortLoungeSportsGamesByKickoffRank(games) {
   return [...(Array.isArray(games) ? games : [])].sort((a, b) => {
+    const aFinal = a?.status === 'post' ? 1 : 0
+    const bFinal = b?.status === 'post' ? 1 : 0
+    if (aFinal !== bFinal) return aFinal - bFinal
     const t = commenceMs(a) - commenceMs(b)
     if (t) return t
     const [aBest, aOther] = [sideRank(a?.away), sideRank(a?.home)].sort((x, y) => x - y)

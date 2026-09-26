@@ -23,7 +23,10 @@ export function useLoungeSlowTicker(
     let last = performance.now()
     let resumeTimer = 0
     let userPaused = false
-    let selfScroll = false
+    // Float position … browsers can round sub-pixel scrollLeft steps (~0.4px/frame) back to 0.
+    let pos = el.scrollLeft
+    // Scroll events land async, so our own writes are recognized by position, not a sync flag.
+    let lastWritten = el.scrollLeft
 
     const canScroll = () => el.scrollWidth > el.clientWidth + 4
 
@@ -33,6 +36,7 @@ export function useLoungeSlowTicker(
       resumeTimer = window.setTimeout(() => {
         userPaused = false
         last = performance.now()
+        pos = el.scrollLeft
       }, resumeMs)
     }
 
@@ -40,17 +44,15 @@ export function useLoungeSlowTicker(
       const dt = Math.min(0.048, (now - last) / 1000)
       last = now
       if (!userPaused && canScroll()) {
-        selfScroll = true
-        el.scrollLeft += speedPxPerSec * dt
+        pos += speedPxPerSec * dt
         if (loop) {
           const half = el.scrollWidth / 2
-          if (half > el.clientWidth && el.scrollLeft >= half - 1) {
-            el.scrollLeft -= half
-          }
-        } else if (el.scrollLeft + el.clientWidth >= el.scrollWidth - 2) {
-          el.scrollLeft = 0
+          if (half > el.clientWidth && pos >= half - 1) pos -= half
+        } else if (pos + el.clientWidth >= el.scrollWidth - 2) {
+          pos = 0
         }
-        selfScroll = false
+        el.scrollLeft = pos
+        lastWritten = el.scrollLeft
       }
       raf = requestAnimationFrame(tick)
     }
@@ -60,7 +62,7 @@ export function useLoungeSlowTicker(
     const onPointerDown = () => pauseForUser()
     const onWheel = () => pauseForUser()
     const onScroll = () => {
-      if (!selfScroll) pauseForUser()
+      if (Math.abs(el.scrollLeft - lastWritten) > 2) pauseForUser()
     }
 
     el.addEventListener('pointerdown', onPointerDown)

@@ -81,6 +81,14 @@ const SPREAD_POINT_STRONG = 1.0
 const JUICE_CENTS_FLAG = 13
 const NOISE_FLOOR_PCT = 2.0
 
+/** Pinnacle is the sharp anchor … never the hanging/outlier book. */
+function isPinnacleBook(book) {
+  return String(book?.book || book?.key || '')
+    .trim()
+    .toLowerCase()
+    .includes('pinnacle')
+}
+
 /**
  * Flag the book furthest past hanging/outlier thresholds.
  * - Outlier: ≥2.5% de-vig implied off consensus (3.5% when ±300+)
@@ -89,9 +97,15 @@ const NOISE_FLOOR_PCT = 2.0
  * - Spread/total: full 1.0pt off number (0.5pt is ignored … common alt number),
  *   or ≥13¢ juice on the same number
  * - Below ~2% / sub-threshold gaps: no badge
+ * - Pinnacle is always excluded as the badge target (still in consensus math)
  *
  * Needs ≥3 books.
- * @returns {{ book: string, kind: 'hanging'|'outlier', score: number } | null}
+ * @returns {{
+ *   book: string,
+ *   kind: 'hanging'|'outlier',
+ *   score: number,
+ *   markets: Array<'spread'|'total'|'ml'>,
+ * } | null}
  */
 function consensusHangOrOutlier(books) {
   const list = Array.isArray(books) ? books : []
@@ -132,8 +146,10 @@ function consensusHangOrOutlier(books) {
 
   let best = null
   for (const b of list) {
+    if (isPinnacleBook(b)) continue
+
+    /** @type {Array<{ score: number, market: 'spread'|'total'|'ml', hangingHint: boolean }>} */
     const flags = []
-    let hangingHint = false
 
     const sp = numOrNull(b.home_spread)
     const tot = numOrNull(b.total)
@@ -145,13 +161,16 @@ function consensusHangOrOutlier(books) {
     if (ml != null && medMl != null) {
       const gapPct = Math.abs(ml - medMl) * 100
       if (gapPct >= mlThresh) {
-        flags.push(gapPct)
         // ML “moved”: most books within 1% of median and this one isn’t.
         const nearMed = list.filter((row) => {
           const p = deVigHomeImplied(row.home_ml, row.away_ml)
           return p != null && Math.abs(p - medMl) * 100 <= 1.0
         }).length
-        if (nearMed >= majorityNeed) hangingHint = true
+        flags.push({
+          score: gapPct,
+          market: 'ml',
+          hangingHint: nearMed >= majorityNeed,
+        })
       }
     }
 
@@ -159,22 +178,27 @@ function consensusHangOrOutlier(books) {
       const ptGap = Math.abs(sp - medSpread)
       const aloneOnNumber = (spreadCounts.get(halfPointKey(sp)) || 0) <= 1
       if (ptGap >= SPREAD_POINT_STRONG) {
-        flags.push(ptGap * 4)
-        if (spreadSettled && halfPointKey(sp) !== halfPointKey(spreadCluster.value) && aloneOnNumber) {
-          hangingHint = true
-        }
+        flags.push({
+          score: ptGap * 4,
+          market: 'spread',
+          hangingHint:
+            Boolean(spreadSettled) &&
+            halfPointKey(sp) !== halfPointKey(spreadCluster.value) &&
+            aloneOnNumber,
+        })
       } else if (ptGap >= SPREAD_POINT_FLAG) {
         // 0.5pt is a common alt number … only badge when this book is alone there.
         if (aloneOnNumber) {
-          flags.push(ptGap * 4)
-          if (spreadSettled && halfPointKey(sp) !== halfPointKey(spreadCluster.value)) {
-            hangingHint = true
-          }
+          flags.push({
+            score: ptGap * 4,
+            market: 'spread',
+            hangingHint:
+              Boolean(spreadSettled) && halfPointKey(sp) !== halfPointKey(spreadCluster.value),
+          })
         }
       } else if (ptGap < 0.01 && medSpreadJuice != null) {
         const cents = juiceCentsApart(b.home_spread_price, medSpreadJuice)
         if (cents != null && cents >= JUICE_CENTS_FLAG) {
-          flags.push(cents / 5)
           // Hanging juice = worse than median (more negative / shorter plus), not LowVig sharp.
           const mine = numOrNull(b.home_spread_price)
           const worseThanMed =
@@ -182,7 +206,11 @@ function consensusHangOrOutlier(books) {
             medSpreadJuice != null &&
             ((mine < 0 && medSpreadJuice < 0 && mine < medSpreadJuice) ||
               (mine > 0 && medSpreadJuice > 0 && mine < medSpreadJuice))
-          if (spreadSettled && worseThanMed) hangingHint = true
+          flags.push({
+            score: cents / 5,
+            market: 'spread',
+            hangingHint: Boolean(spreadSettled) && worseThanMed,
+          })
         }
       }
     }
@@ -191,45 +219,69 @@ function consensusHangOrOutlier(books) {
       const ptGap = Math.abs(tot - medTotal)
       const aloneOnNumber = (totalCounts.get(halfPointKey(tot)) || 0) <= 1
       if (ptGap >= SPREAD_POINT_STRONG) {
-        flags.push(ptGap * 4)
-        if (totalSettled && halfPointKey(tot) !== halfPointKey(totalCluster.value) && aloneOnNumber) {
-          hangingHint = true
-        }
+        flags.push({
+          score: ptGap * 4,
+          market: 'total',
+          hangingHint:
+            Boolean(totalSettled) &&
+            halfPointKey(tot) !== halfPointKey(totalCluster.value) &&
+            aloneOnNumber,
+        })
       } else if (ptGap >= SPREAD_POINT_FLAG) {
         if (aloneOnNumber) {
-          flags.push(ptGap * 4)
-          if (totalSettled && halfPointKey(tot) !== halfPointKey(totalCluster.value)) {
-            hangingHint = true
-          }
+          flags.push({
+            score: ptGap * 4,
+            market: 'total',
+            hangingHint:
+              Boolean(totalSettled) && halfPointKey(tot) !== halfPointKey(totalCluster.value),
+          })
         }
       } else if (ptGap < 0.01 && medOverJuice != null) {
         const cents = juiceCentsApart(b.over_price, medOverJuice)
         if (cents != null && cents >= JUICE_CENTS_FLAG) {
-          flags.push(cents / 5)
           const mine = numOrNull(b.over_price)
           const worseThanMed =
             mine != null &&
             medOverJuice != null &&
             ((mine < 0 && medOverJuice < 0 && mine < medOverJuice) ||
               (mine > 0 && medOverJuice > 0 && mine < medOverJuice))
-          if (totalSettled && worseThanMed) hangingHint = true
+          flags.push({
+            score: cents / 5,
+            market: 'total',
+            hangingHint: Boolean(totalSettled) && worseThanMed,
+          })
         }
       }
     }
 
     if (!flags.length) continue
-    const score = Math.max(...flags)
+    const score = Math.max(...flags.map((f) => f.score))
     if (score < NOISE_FLOOR_PCT) continue
+    const topFlags = flags.filter((f) => f.score >= NOISE_FLOOR_PCT)
+    const markets = [...new Set(topFlags.map((f) => f.market))]
+    const hangingHint = topFlags.some((f) => f.hangingHint)
     if (!best || score > best.score) {
       best = {
         book: b.book,
         score,
         kind: hangingHint ? 'hanging' : 'outlier',
+        markets,
       }
     }
   }
 
   return best
+}
+
+function OddsMarketDot({ show, label }) {
+  if (!show) return null
+  return (
+    <span
+      className="ml-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400 align-middle"
+      title={label}
+      aria-label={label}
+    />
+  )
 }
 
 export function BoxScoreCard({ game }) {
@@ -298,12 +350,16 @@ export function OddsTable({ game, books }) {
   const badge = useMemo(() => consensusHangOrOutlier(list), [list])
   const badgeBook = badge?.book || null
   const badgeKind = badge?.kind || null
+  const badgeMarkets = Array.isArray(badge?.markets) ? badge.markets : []
   const badgeLabel = badgeKind === 'hanging' ? 'Hanging' : badgeKind === 'outlier' ? 'Outlier' : null
+  const marketHint = badgeMarkets.length
+    ? badgeMarkets.map((m) => (m === 'ml' ? 'ML' : m === 'spread' ? 'spread' : 'total')).join(' + ')
+    : ''
   const badgeTitle =
     badgeKind === 'hanging'
-      ? 'Hanging … ≥2% off consensus while other books clustered elsewhere'
+      ? `Hanging ${marketHint} … ≥2% off consensus while other books clustered elsewhere`
       : badgeKind === 'outlier'
-        ? 'Outlier … ≥2% implied (or 0.5pt / 10¢ juice) off consensus'
+        ? `Outlier ${marketHint} … ≥2% implied (or 0.5pt / 10¢ juice) off consensus`
         : undefined
 
   useEffect(() => {
@@ -321,6 +377,11 @@ export function OddsTable({ game, books }) {
   }
 
   const row = list.find((b) => b.book === bookId) || list[0]
+  const showCellDots = Boolean(badgeBook && row?.book === badgeBook)
+  const flagSpread = showCellDots && badgeMarkets.includes('spread')
+  const flagTotal = showCellDots && badgeMarkets.includes('total')
+  const flagMl = showCellDots && badgeMarkets.includes('ml')
+  const cellDotLabel = badgeLabel || 'Flagged'
 
   return (
     <div
@@ -334,6 +395,7 @@ export function OddsTable({ game, books }) {
             <span className="inline-flex items-center gap-1 text-[10px] font-medium normal-case tracking-normal text-zinc-500">
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" aria-hidden />
               {badgeLabel}
+              {marketHint ? <span className="text-zinc-600">· {marketHint}</span> : null}
             </span>
           ) : null}
         </div>
@@ -348,7 +410,11 @@ export function OddsTable({ game, books }) {
                   type="button"
                   onClick={() => setBookId(b.book)}
                   title={isBadged ? badgeTitle : undefined}
-                  aria-label={isBadged ? `${b.book}, ${badgeLabel}` : b.book}
+                  aria-label={
+                    isBadged
+                      ? `${b.book}, ${badgeLabel}${marketHint ? ` on ${marketHint}` : ''}`
+                      : b.book
+                  }
                   className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-semibold touch-manipulation ${
                     active ? 'bg-zinc-100 text-zinc-950' : 'bg-zinc-800 text-zinc-300'
                   }`}
@@ -383,22 +449,32 @@ export function OddsTable({ game, books }) {
             <td className="px-2 py-2 tabular-nums">
               {signedPoint(row.away_spread)}{' '}
               <span className="text-zinc-500">{american(row.away_spread_price)}</span>
+              <OddsMarketDot show={flagSpread} label={`${cellDotLabel} spread`} />
             </td>
             <td className="px-2 py-2 tabular-nums">
               O {row.total ?? '-'} <span className="text-zinc-500">{american(row.over_price)}</span>
+              <OddsMarketDot show={flagTotal} label={`${cellDotLabel} total`} />
             </td>
-            <td className="px-3 py-2 font-semibold tabular-nums">{american(row.away_ml)}</td>
+            <td className="px-3 py-2 font-semibold tabular-nums">
+              {american(row.away_ml)}
+              <OddsMarketDot show={flagMl} label={`${cellDotLabel} ML`} />
+            </td>
           </tr>
           <tr className="border-t border-zinc-800">
             <td className="px-3 py-2 text-left font-semibold">{game.home?.abbrev}</td>
             <td className="px-2 py-2 tabular-nums">
               {signedPoint(row.home_spread)}{' '}
               <span className="text-zinc-500">{american(row.home_spread_price)}</span>
+              <OddsMarketDot show={flagSpread} label={`${cellDotLabel} spread`} />
             </td>
             <td className="px-2 py-2 tabular-nums">
               U {row.total ?? '-'} <span className="text-zinc-500">{american(row.under_price)}</span>
+              <OddsMarketDot show={flagTotal} label={`${cellDotLabel} total`} />
             </td>
-            <td className="px-3 py-2 font-semibold tabular-nums">{american(row.home_ml)}</td>
+            <td className="px-3 py-2 font-semibold tabular-nums">
+              {american(row.home_ml)}
+              <OddsMarketDot show={flagMl} label={`${cellDotLabel} ML`} />
+            </td>
           </tr>
         </tbody>
       </table>

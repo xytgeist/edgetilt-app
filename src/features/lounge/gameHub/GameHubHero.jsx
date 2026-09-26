@@ -340,11 +340,16 @@ function FieldViz({ game, live, awayColor, homeColor }) {
   // Prefer local logo files inside SVG <image> … ESPN CDN hrefs often paint as broken
   // images in WebKit (cross-origin). Enrich maps abbrevs onto /sports/{nfl|cfb}/logos.
   const logoBase = isCfbSport(sportKey) ? '/sports/cfb/logos' : '/sports/nfl/logos'
+  const homeLogoLocal = String(game?.home?.logo || '')
   const homeAbbrev = String(game?.home?.abbrev || '')
     .trim()
     .toUpperCase()
     .replace(/[^A-Z0-9-]/g, '')
-  const homeLogoSrc = homeAbbrev ? `${logoBase}/${homeAbbrev}.png` : ''
+  const homeLogoSrc = homeLogoLocal.startsWith('/sports/')
+    ? homeLogoLocal
+    : homeAbbrev
+      ? `${logoBase}/${homeAbbrev}.png`
+      : ''
   const college = isCfbSport(sportKey)
   const endzoneFont = college ? ENDZONE_FONT_CFB : ENDZONE_FONT_NFL
   const awayEndzone = resolveEndzoneDesign(game?.away, awayColor, 'left', { college })

@@ -16,8 +16,73 @@ import {
   type MarketFileRow,
 } from './loungeBotMarketFile.ts'
 import cfbTeamEspnByAbbrev from './cfbTeamEspnByAbbrev.json' with { type: 'json' }
+import cfbTeamNameAbbrev from './cfbTeamNameAbbrev.json' with { type: 'json' }
 
 const CFB_ESPN_BY_ABBREV = cfbTeamEspnByAbbrev as Record<string, string>
+const CFB_NAME_ABBREV = cfbTeamNameAbbrev as Record<string, string>
+
+const CFB_ABBREV_ALIASES: Record<string, string> = {
+  WSH: 'WASH',
+  WAS: 'WASH',
+  TAMU: 'TAM',
+  'TA&M': 'TAM',
+  TEXAM: 'TAM',
+  SMISS: 'USM',
+  SOMISS: 'USM',
+  SOUMISS: 'USM',
+  MIOH: 'M-OH',
+  MIAOH: 'M-OH',
+  'MIAMI-OH': 'M-OH',
+  MIAOHIO: 'M-OH',
+  GA: 'UGA',
+  MISSST: 'MSST',
+  MISSSTATE: 'MSST',
+  OKLA: 'OU',
+  OKL: 'OU',
+  PIT: 'PITT',
+  NCST: 'NCSU',
+  FLAST: 'FSU',
+  MIAFL: 'MIA',
+  HAWAII: 'HAW',
+  WASHST: 'WSU',
+  MICHST: 'MSU',
+}
+
+function foldCfbName(value: string): string {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/['’]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+}
+
+function resolveCfbCatalogAbbrev(raw: string): string {
+  const a = String(raw || '').trim().toUpperCase().replace(/[^A-Z0-9&-]/g, '')
+  if (!a) return ''
+  if (CFB_ESPN_BY_ABBREV[a]) return a
+  const aliased = CFB_ABBREV_ALIASES[a]
+  if (aliased && CFB_ESPN_BY_ABBREV[aliased]) return aliased
+  return a
+}
+
+function cfbAbbrevFromOddsName(name: string): string {
+  const n = foldCfbName(name)
+  if (!n) return ''
+  if (CFB_NAME_ABBREV[n]) return CFB_NAME_ABBREV[n]
+  let best = ''
+  let bestLen = 0
+  for (const [key, abbrev] of Object.entries(CFB_NAME_ABBREV)) {
+    if (key.length < 4 || key.length <= bestLen) continue
+    if (` ${n} `.includes(` ${key} `)) {
+      best = abbrev
+      bestLen = key.length
+    }
+  }
+  if (best) return best
+  return resolveCfbCatalogAbbrev((n.split(/\s+/).pop() || n).slice(0, 3).toUpperCase())
+}
 
 export const LOUNGE_SPORTS_SCOREBOARD_SPORTS = [
   { key: 'americanfootball_nfl', label: 'NFL', logoLeague: 'nfl' },
@@ -114,7 +179,8 @@ function espnLogoSlug(league: string, abbrev: string): string {
   const a = String(abbrev || '').trim().toUpperCase()
   if (!a) return ''
   if (league === 'ncaa') {
-    const espnId = CFB_ESPN_BY_ABBREV[a.replace(/[^A-Z0-9-]/g, '')] || CFB_ESPN_BY_ABBREV[a]
+    const catalog = resolveCfbCatalogAbbrev(a)
+    const espnId = CFB_ESPN_BY_ABBREV[catalog] || CFB_ESPN_BY_ABBREV[a.replace(/[^A-Z0-9-]/g, '')] || CFB_ESPN_BY_ABBREV[a]
     if (espnId) return espnId
   }
   const lower = a.toLowerCase()
@@ -126,12 +192,15 @@ function espnLogoSlug(league: string, abbrev: string): string {
 function attachCfbEspnTeamIds(game: LoungeSportsGame): LoungeSportsGame {
   if (!isCfbSportKey(game.sport_key)) return game
   const patch = (side: LoungeSportsGameSide): LoungeSportsGameSide => {
-    const abb = String(side?.abbrev || '').trim().toUpperCase().replace(/[^A-Z0-9-]/g, '')
+    const fromAbbrev = resolveCfbCatalogAbbrev(side?.abbrev || '')
+    const fromName = cfbAbbrevFromOddsName(`${side?.name || ''} ${side?.mascot || ''}`)
+    const abb = (fromAbbrev && CFB_ESPN_BY_ABBREV[fromAbbrev] ? fromAbbrev : '') ||
+      (fromName && CFB_ESPN_BY_ABBREV[fromName] ? fromName : fromAbbrev)
     const espnId = Number(CFB_ESPN_BY_ABBREV[abb] || 0)
     if (!Number.isFinite(espnId) || espnId <= 0) return side
     const logo = espnLogo('ncaa', abb) || side.logo
-    if (side.team_id === espnId && side.logo === logo) return side
-    return { ...side, team_id: espnId, logo }
+    if (side.team_id === espnId && side.logo === logo && side.abbrev === abb) return side
+    return { ...side, abbrev: abb || side.abbrev, team_id: espnId, logo }
   }
   return { ...game, away: patch(game.away), home: patch(game.home) }
 }
@@ -182,7 +251,9 @@ function sideFromRundown(
   const name = String(team?.name || '').trim()
   const mascot = String(team?.mascot || '').trim()
   const abbrevRaw = String(team?.abbreviation || '').trim().toUpperCase()
-  const abbrev = abbrevRaw === 'WSH' ? 'WAS' : abbrevRaw === 'JAC' ? 'JAX' : abbrevRaw
+  const abbrev = logoLeague === 'ncaa'
+    ? (resolveCfbCatalogAbbrev(abbrevRaw) || cfbAbbrevFromOddsName([name, mascot].filter(Boolean).join(' ')))
+    : abbrevRaw === 'WSH' ? 'WAS' : abbrevRaw === 'JAC' ? 'JAX' : abbrevRaw
   const display = [name, mascot].filter(Boolean).join(' ').trim() || abbrev || 'Team'
   const teamId = Number(team?.team_id ?? team?.id)
   return {
@@ -500,10 +571,14 @@ function gameFromOdds(sportKey: string, sportLabel: string, logoLeague: string, 
   const useNflAbbrev = isNflSportKey(sportKey)
   const homeAbbrev = useNflAbbrev
     ? nflAbbrevFromOddsName(homeName)
-    : (homeName.split(/\s+/).pop() || homeName).slice(0, 3).toUpperCase()
+    : isCfbSportKey(sportKey)
+      ? cfbAbbrevFromOddsName(homeName)
+      : (homeName.split(/\s+/).pop() || homeName).slice(0, 3).toUpperCase()
   const awayAbbrev = useNflAbbrev
     ? nflAbbrevFromOddsName(awayName)
-    : (awayName.split(/\s+/).pop() || awayName).slice(0, 3).toUpperCase()
+    : isCfbSportKey(sportKey)
+      ? cfbAbbrevFromOddsName(awayName)
+      : (awayName.split(/\s+/).pop() || awayName).slice(0, 3).toUpperCase()
   const homeMascot = homeName.split(/\s+/).pop() || homeName
   const awayMascot = awayName.split(/\s+/).pop() || awayName
   const home: LoungeSportsGameSide = {
@@ -624,8 +699,12 @@ function gameOnSlate(game: LoungeSportsGame, dates: string[]): boolean {
 }
 
 function slateDedupeKey(game: LoungeSportsGame): string {
-  const a = String(game.away?.abbrev || '').toUpperCase() === 'WSH' ? 'WAS' : String(game.away?.abbrev || '').toUpperCase()
-  const h = String(game.home?.abbrev || '').toUpperCase() === 'WSH' ? 'WAS' : String(game.home?.abbrev || '').toUpperCase()
+  const a = isCfbSportKey(game.sport_key)
+    ? resolveCfbCatalogAbbrev(game.away?.abbrev || '')
+    : nflAbbrevKey(game.away?.abbrev)
+  const h = isCfbSportKey(game.sport_key)
+    ? resolveCfbCatalogAbbrev(game.home?.abbrev || '')
+    : nflAbbrevKey(game.home?.abbrev)
   return `${game.sport_key}:${a}@${h}:${ptDateFromIso(game.commence_time)}`
 }
 

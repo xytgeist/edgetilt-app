@@ -57,6 +57,73 @@ for (const row of CFB_TEAM_CATALOG) {
   if (espnId) CFB_BY_ESPN_ID.set(espnId, row)
 }
 
+/** Rundown / Odds / ESPN letter-codes that are not catalog keys. */
+const CFB_ABBREV_ALIASES = {
+  WSH: 'WASH',
+  WAS: 'WASH',
+  TAMU: 'TAM',
+  'TA&M': 'TAM',
+  TEXAM: 'TAM',
+  SMISS: 'USM',
+  SOMISS: 'USM',
+  SOUMISS: 'USM',
+  MIOH: 'M-OH',
+  MIAOH: 'M-OH',
+  'MIAMI-OH': 'M-OH',
+  MIAOHIO: 'M-OH',
+  GA: 'UGA',
+  UGA: 'UGA',
+  MISSST: 'MSST',
+  MISSSTATE: 'MSST',
+  OKLA: 'OU',
+  OKL: 'OU',
+  PITT: 'PITT',
+  PIT: 'PITT',
+  NCSU: 'NCSU',
+  NCST: 'NCSU',
+  FSU: 'FSU',
+  FLAST: 'FSU',
+  MIAFL: 'MIA',
+  HAWAII: 'HAW',
+  HAW: 'HAW',
+  SDSU: 'SDSU',
+  SJSU: 'SJSU',
+  WSU: 'WSU',
+  WASHST: 'WSU',
+  MSU: 'MSU',
+  MICHST: 'MSU',
+}
+
+function resolveCfbCatalogAbbrev(raw) {
+  const a = String(raw || '').trim().toUpperCase().replace(/[^A-Z0-9&-]/g, '')
+  if (!a) return ''
+  if (CFB_BY_ABBREV.has(a)) return a
+  const aliased = CFB_ABBREV_ALIASES[a]
+  if (aliased && CFB_BY_ABBREV.has(aliased)) return aliased
+  return a
+}
+
+function cfbRowByLongestName(hay) {
+  let best = null
+  let bestLen = 0
+  for (const row of CFB_TEAM_CATALOG) {
+    const mascotN = norm(row.mascot)
+    const schoolN = norm(row.school)
+    for (const n of row.names || []) {
+      const p = norm(n)
+      if (p.length < 4) continue
+      const isBareMascot = Boolean(mascotN) && p === mascotN && p !== schoolN
+      if (isBareMascot) continue
+      if (!hay.includes(` ${p} `)) continue
+      if (p.length > bestLen) {
+        best = row
+        bestLen = p.length
+      }
+    }
+  }
+  return best
+}
+
 function isCfbSportKey(sportKey) {
   return String(sportKey || '').includes('ncaaf')
 }
@@ -95,16 +162,9 @@ function catalogRowForSide(side, sportKey) {
   if (isCfbSportKey(sportKey)) {
     const espnId = String(side?.team_id ?? side?.espn_id ?? '').trim()
     if (espnId && CFB_BY_ESPN_ID.has(espnId)) return CFB_BY_ESPN_ID.get(espnId)
-    const byName = CFB_TEAM_CATALOG.find((row) =>
-      (row.names || []).some((n) => {
-        const p = norm(n)
-        return p.length >= 4 && hay.includes(` ${p} `)
-      }),
-    )
-    if (byName) return byName
-    const abbrev = String(side?.abbrev || '').trim().toUpperCase()
+    const abbrev = resolveCfbCatalogAbbrev(side?.abbrev)
     if (abbrev.length >= 2 && CFB_BY_ABBREV.has(abbrev)) return CFB_BY_ABBREV.get(abbrev)
-    return null
+    return cfbRowByLongestName(hay)
   }
   if (!isNflSportKey(sportKey)) return null
   const byName = NFL_TEAM_CATALOG.find((row) =>

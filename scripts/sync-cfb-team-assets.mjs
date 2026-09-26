@@ -22,6 +22,7 @@ const YEAR = 2025
 const LOGOS_DIR = path.join(repoRoot, 'public/sports/cfb/logos')
 const CATALOG_OUT = path.join(repoRoot, 'src/features/lounge/cfbTeamCatalog.generated.js')
 const ESPN_MAP_OUT = path.join(repoRoot, 'supabase/functions/_shared/cfbTeamEspnByAbbrev.json')
+const NAME_ABBREV_OUT = path.join(repoRoot, 'supabase/functions/_shared/cfbTeamNameAbbrev.json')
 const ESPN_TEAMS_URL =
   'https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams?limit=400'
 const UA = 'EdgeTiltCfbAssets/1.0'
@@ -172,6 +173,27 @@ function writeCatalog(rows) {
   }
   fs.mkdirSync(path.dirname(ESPN_MAP_OUT), { recursive: true })
   fs.writeFileSync(ESPN_MAP_OUT, `${JSON.stringify(espnMap)}\n`)
+  const nameAbbrev = {}
+  const fold = (value) =>
+    String(value || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/['’]/g, '')
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim()
+  for (const r of sorted) {
+    const mascotN = fold(r.mascot)
+    const schoolN = fold(r.school)
+    const keys = [r.school, r.names?.[0], String(r.espnSlug || '').replace(/-/g, ' ')]
+    for (const n of keys) {
+      const p = fold(n)
+      if (!p || p.length < 3) continue
+      if (mascotN && p === mascotN && p !== schoolN) continue
+      nameAbbrev[p] = r.abbrev
+    }
+  }
+  fs.writeFileSync(NAME_ABBREV_OUT, `${JSON.stringify(nameAbbrev)}\n`)
   return sorted.length
 }
 

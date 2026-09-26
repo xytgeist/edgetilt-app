@@ -556,9 +556,28 @@ export function parsePassPlay(text) {
   return { yards, playerHint, jerseyHint, isTouchdown }
 }
 
+/** Tokens that are never part of a player name in PBP. */
+const PLAYER_NAME_STOP = new Set([
+  'to',
+  'for',
+  'at',
+  'the',
+  'caught',
+  'ran',
+  'pushed',
+  'out',
+  'of',
+  'bounds',
+  'touchdown',
+  'yd',
+  'yds',
+  'yard',
+  'yards',
+])
+
 /**
- * Receiver after "… to #4 K.Davis" / "to C.Becker".
- * Stops at ESPN trailers: caught at / for / to the / tackler parens / etc.
+ * Receiver after "… to #4 K.Davis" / "to C.Becker" / "to A.St. Brown".
+ * Stops at ESPN trailers: caught at / for / to the / to DET 12 / tackler parens.
  */
 function extractPassReceiverHint(raw) {
   const s = String(raw || '')
@@ -569,14 +588,23 @@ function extractPassReceiverHint(raw) {
     ) || s.match(/\bto\s+(?!the\b)/i)
   if (!lead || lead.index == null) return ''
   const rest = s.slice(lead.index + lead[0].length)
+  // NFL often writes "to A.St. Brown to DET 12 for 22 yards" (no "the" before team).
   const stop = rest.search(
-    /\s+(?:caught|for|to the|ran|pushed|out of bounds|touchdown|yds?\b|yards?\b)\b|\s*\(|,/i,
+    /\s+(?:caught|for|to the|to\s+[A-Za-z]{2,5}\b|ran|pushed|out of bounds|touchdown|yds?\b|yards?\b)\b|\s*\(|,/i,
   )
   const chunk = (stop >= 0 ? rest.slice(0, stop) : rest).trim()
   const name = chunk.match(
     /^((?:#?\d{1,2}\s+)?[A-Za-z][A-Za-z.'’-]*(?:\s+[A-Za-z][A-Za-z.'’-]*){0,3})/,
   )
-  return name ? name[1].trim() : ''
+  if (!name) return ''
+  const parts = name[1].trim().split(/\s+/).filter(Boolean)
+  while (parts.length && PLAYER_NAME_STOP.has(parts[parts.length - 1].toLowerCase())) {
+    parts.pop()
+  }
+  while (parts.length && PLAYER_NAME_STOP.has(parts[0].toLowerCase())) {
+    parts.shift()
+  }
+  return parts.join(' ').trim()
 }
 
 /** True when a PBP row is a completed pass or a run for a gain / TD (field replay). */
@@ -726,77 +754,164 @@ export function resolvePlayAnimationPercents({
 function normalizePlayerToken(s) {
   return String(s || '')
     .toLowerCase()
+    .replace(/\b(jr|sr|ii|iii|iv|v)\b\.?/gi, '')
     .replace(/[#.’']/g, '')
     .replace(/\s+/g, ' ')
     .trim()
 }
 
+/** Compact alphanumeric key … "Amon-Ra St. Brown" / "A.St.Brown" → amonrastbrown / astbrown. */
+function playerMatchKey(s) {
+  return normalizePlayerToken(s).replace(/[^a-z0-9]/g, '')
+}
+
+function normMatchTeam(team) {
+  const t = String(team || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+  if (t === 'WSH') return 'WAS'
+  if (t === 'JAC') return 'JAX'
+  return t
+}
+
+/** True when slate abbrev and roster team refer to the same club (LA↔LAR/LAC, WSH↔WAS). */
+function teamsMatch(a, b) {
+  const na = normMatchTeam(a)
+  const nb = normMatchTeam(b)
+  if (!na || !nb) return false
+  if (na === nb) return true
+  if ((na === 'LA' && (nb === 'LAR' || nb === 'LAC')) || (nb === 'LA' && (na === 'LAR' || na === 'LAC'))) {
+    return true
+  }
+  return false
+}
+
 /**
- * ESPN often prints "C.Beebe" / "J.Gibbs". Detect Initial.Last before we
- * strip the period (otherwise it collapses to one token and last-name match dies).
+ * ESPN often prints "C.Beebe" / "J.Gibbs" / "A.St. Brown" / "A.J. Brown".
+ * Detect Initial(+optional middle initial) + last before normalize collapses periods.
  */
 function parseInitialLastName(namePart) {
   const raw = String(namePart || '').trim()
-  const m = raw.match(/^([A-Za-z])[.'’-]([A-Za-z][A-Za-z.'’-]+)$/)
-  if (!m) return null
-  return {
-    initial: m[1].toLowerCase(),
-    last: normalizePlayerToken(m[2]),
+  if (!raw) return null
+  // Single-token Initial.Last … "J.Gibbs" / "S.LaPorta"
+  let m = raw.match(/^([A-Za-z])[.'’-]([A-Za-z][A-Za-z.'’-]+)$/)
+  if (m) {
+    return {
+      initial: m[1].toLowerCase(),
+      last: normalizePlayerToken(m[2]),
+    }
   }
+  // "A.St. Brown" / "A.J. Brown" / "A. St Brown" … initial then remainder as last cluster
+  m = raw.match(/^([A-Za-z])[.'’-](.+)$/)
+  if (m && /[\s.'’-]/.test(m[2])) {
+    return {
+      initial: m[1].toLowerCase(),
+      last: normalizePlayerToken(m[2]),
+    }
+  }
+  // "AJ Brown" (no punctuation) when first token is 1–2 letters
+  m = raw.match(/^([A-Za-z]{1,2})\s+([A-Za-z][A-Za-z.'’\s-]+)$/)
+  if (m) {
+    return {
+      initial: m[1][0].toLowerCase(),
+      last: normalizePlayerToken(m[2]),
+    }
+  }
+  return null
 }
 
 /**
  * Match a rush/catch player hint against hub roster rows.
  * Prefers possession-side `team` abbrev when provided.
- * Handles "#80 C.Becker", "C.Becker", "Beebe", and full names.
+ * Handles "#80 C.Becker", "C.Becker", "A.St. Brown", "Beebe", and full names.
+ * NFL PBP rarely has `#N`, so name matching must be strong.
  * @returns {object | null} player row with headshot_url preferred
  */
 export function matchRushPlayer(hint, players, sideAbbrev = '') {
   const list = Array.isArray(players) ? players : []
   if (!list.length || !hint) return null
   const raw = String(hint).trim()
-  const side = String(sideAbbrev || '')
-    .trim()
-    .toUpperCase()
+  const side = normMatchTeam(sideAbbrev)
 
   const { jersey, namePart } = splitPlayerHint(raw)
   const initialLast = parseInitialLastName(namePart)
   const hintNorm = normalizePlayerToken(namePart)
+  const hintKey = playerMatchKey(namePart)
   const hintParts = hintNorm.split(' ').filter(Boolean)
   const hintLast = initialLast?.last || (hintParts.length ? hintParts[hintParts.length - 1] : '')
+  const hintLastKey = playerMatchKey(hintLast)
   const hintInitial = initialLast?.initial || null
+
+  // Unique last-name on the possession side → strong signal when NFL omits `#N`.
+  let uniqueSideLast = null
+  if (side && hintLastKey && hintLastKey.length >= 3) {
+    const sideHits = []
+    for (const p of list) {
+      if (!p || typeof p !== 'object') continue
+      if (!teamsMatch(p.team || p.team_abbrev, side)) continue
+      const pKey = playerMatchKey(p.name || p.full_name || '')
+      if (!pKey) continue
+      if (pKey === hintLastKey || pKey.endsWith(hintLastKey)) sideHits.push(p)
+    }
+    if (sideHits.length === 1) uniqueSideLast = sideHits[0]
+  }
 
   const scored = []
   for (const p of list) {
     if (!p || typeof p !== 'object') continue
-    const pName = normalizePlayerToken(p.name || p.full_name || '')
+    const pRawName = p.name || p.full_name || ''
+    const pName = normalizePlayerToken(pRawName)
     if (!pName) continue
+    const pKey = playerMatchKey(pRawName)
     const pParts = pName.split(' ').filter(Boolean)
     const pLast = pParts.length ? pParts[pParts.length - 1] : ''
+    const pLastKey = playerMatchKey(pLast)
     const pFirst = pParts.length ? pParts[0] : ''
     const pJersey = p.jersey != null ? String(p.jersey).trim() : ''
-    const pTeam = String(p.team || p.team_abbrev || '')
-      .trim()
-      .toUpperCase()
+    const pTeam = normMatchTeam(p.team || p.team_abbrev)
+    const onSide = Boolean(side && pTeam && teamsMatch(side, pTeam))
 
     let score = 0
-    if (hintNorm && pName === hintNorm) score += 100
-    else if (hintInitial && hintLast && pLast === hintLast && pFirst.startsWith(hintInitial)) {
+    if (hintKey && pKey && hintKey === pKey) score += 110
+    else if (hintNorm && pName === hintNorm) score += 100
+    else if (
+      hintInitial &&
+      hintLastKey &&
+      hintLastKey.length >= 3 &&
+      pKey.startsWith(hintInitial) &&
+      (pKey.endsWith(hintLastKey) || pLastKey === hintLastKey)
+    ) {
+      // J.Gibbs → Jahmyr Gibbs; A.St.Brown → Amon-Ra St. Brown
+      score += 92
+    } else if (hintInitial && hintLast && pLast === hintLast && pFirst.startsWith(hintInitial)) {
       score += 85
+    } else if (uniqueSideLast && uniqueSideLast === p) {
+      score += 80
     } else if (hintNorm && pName.includes(hintNorm) && hintNorm.length >= 3) score += 70
-    else if (hintLast && pLast === hintLast) score += 50
+    else if (hintLastKey && hintLastKey.length >= 4 && (pLastKey === hintLastKey || pKey.endsWith(hintLastKey))) {
+      score += 55
+    } else if (hintLast && pLast === hintLast) score += 50
     else if (hintLast && hintLast.length >= 4 && pName.includes(hintLast)) score += 30
-    else if (jersey && pJersey && jersey === pJersey && side && pTeam && side === pTeam) {
+    else if (jersey && pJersey && jersey === pJersey && onSide) {
       // Jersey + side only … last resort when name tokens miss.
       score += 35
     } else continue
 
     if (jersey && pJersey && jersey === pJersey) score += 40
-    if (side && pTeam && side === pTeam) score += 25
+    if (onSide) score += 25
+    else if (side && pTeam && !onSide) score -= 15
     if (p.headshot_url) score += 5
     scored.push({ p, score })
   }
   if (!scored.length) return null
   scored.sort((a, b) => b.score - a.score)
+  // Require a clear winner when top two are close and neither is on-side unique.
+  if (scored.length >= 2 && scored[0].score - scored[1].score < 8) {
+    const aSide = teamsMatch(side, scored[0].p.team || scored[0].p.team_abbrev)
+    const bSide = teamsMatch(side, scored[1].p.team || scored[1].p.team_abbrev)
+    if (aSide && !bSide) return scored[0].p
+    if (bSide && !aSide) return scored[1].p
+  }
   return scored[0].p
 }

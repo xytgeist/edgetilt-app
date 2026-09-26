@@ -6,7 +6,7 @@
     "default_x": 0,
     "default_y": 0,
     "z_order": 1,
-    "default_scale": 1.0,
+    "default_scale": 1,
     "default_rot": 0,
     "width": 728.0,
     "height": 1382.0,
@@ -1531,14 +1531,15 @@
         "fill": "#52050B",
         "transform": "translate(0,0)"
       }
-    ]
+    ],
+    "z_index": 1
   },
   {
     "id": "red-tights",
     "name": "Red Tights (Calves)",
     "default_x": 226,
     "default_y": 911,
-    "default_scale": 1.0,
+    "default_scale": 1,
     "default_rot": 0,
     "z_order": 2,
     "paths": [
@@ -1592,14 +1593,15 @@
         "fill": "#A71522",
         "transform": "translate(16,23)"
       }
-    ]
+    ],
+    "z_index": 2
   },
   {
     "id": "fwd-sock",
     "name": "Forward Leg White Sock",
-    "default_x": 271,
-    "default_y": 1058,
-    "default_scale": 1.0,
+    "default_x": 218,
+    "default_y": 1074,
+    "default_scale": 1.18,
     "default_rot": 0,
     "z_order": 3,
     "paths": [
@@ -1856,14 +1858,15 @@
     ],
     "width": 90.0,
     "height": 140.0,
-    "file": "lossless-fwd-sock.svg"
+    "file": "lossless-fwd-sock.svg",
+    "z_index": 3
   },
   {
     "id": "front-cleat",
     "name": "Planted Cleat (Front Foot)",
-    "default_x": 180,
-    "default_y": 1205,
-    "default_scale": 1.0,
+    "default_x": 170,
+    "default_y": 1212,
+    "default_scale": 1.11,
     "default_rot": 0,
     "z_order": 4,
     "paths": [
@@ -2097,14 +2100,15 @@
         "fill": "#1E1E1C",
         "transform": "translate(54,19)"
       }
-    ]
+    ],
+    "z_index": 4
   },
   {
     "id": "black-cleats",
     "name": "Trailing Cleat (Clean)",
-    "default_x": 504,
-    "default_y": 896,
-    "default_scale": 1.0,
+    "default_x": 502,
+    "default_y": 912,
+    "default_scale": 1,
     "default_rot": 0,
     "z_order": 5,
     "paths": [
@@ -3566,7 +3570,8 @@
     ],
     "width": 212.0,
     "height": 238.0,
-    "file": "trailing-cleat-pure.svg"
+    "file": "trailing-cleat-pure.svg",
+    "z_index": 5
   },
   {
     "id": "white-pants",
@@ -3575,7 +3580,7 @@
     "default_x": 198,
     "default_y": 553,
     "z_order": 6,
-    "default_scale": 1.0,
+    "default_scale": 1,
     "default_rot": 0,
     "width": 242.0,
     "height": 470.0,
@@ -4150,7 +4155,8 @@
         "fill": "#FAE4E5",
         "transform": "translate(156,35)"
       }
-    ]
+    ],
+    "z_index": 6
   },
   {
     "id": "red-jersey",
@@ -4159,7 +4165,7 @@
     "default_x": 31,
     "default_y": 172,
     "z_order": 7,
-    "default_scale": 1.0,
+    "default_scale": 1,
     "default_rot": 0,
     "width": 442.0,
     "height": 493.0,
@@ -5209,7 +5215,8 @@
         "fill": "#F9D4D5",
         "transform": "translate(396,21)"
       }
-    ]
+    ],
+    "z_index": 7
   },
   {
     "id": "football",
@@ -5218,7 +5225,7 @@
     "default_x": 79,
     "default_y": 285,
     "z_order": 8,
-    "default_scale": 1.0,
+    "default_scale": 1,
     "default_rot": 0,
     "width": 124.0,
     "height": 190.0,
@@ -5443,7 +5450,8 @@
         "fill": "#58351C",
         "transform": "translate(14,140)"
       }
-    ]
+    ],
+    "z_index": 8
   },
   {
     "id": "red-gloves-2",
@@ -5452,7 +5460,7 @@
     "default_x": 62,
     "default_y": 278,
     "z_order": 9,
-    "default_scale": 1.0,
+    "default_scale": 1,
     "default_rot": 0,
     "width": 122.0,
     "height": 134.0,
@@ -5692,7 +5700,8 @@
         "fill": "#681510",
         "transform": "translate(71,52)"
       }
-    ]
+    ],
+    "z_index": 9
   },
   {
     "id": "red-gloves-1",
@@ -5701,7 +5710,7 @@
     "default_x": 469,
     "default_y": 460,
     "z_order": 10,
-    "default_scale": 1.0,
+    "default_scale": 1,
     "default_rot": 0,
     "width": 103.0,
     "height": 156.0,
@@ -6111,7 +6120,8 @@
         "fill": "#C50B18",
         "transform": "translate(75,19)"
       }
-    ]
+    ],
+    "z_index": 10
   },
   {
     "id": "red-helmet",
@@ -6120,7 +6130,7 @@
     "default_x": 68,
     "default_y": 2,
     "z_order": 11,
-    "default_scale": 1.0,
+    "default_scale": 1,
     "default_rot": 0,
     "width": 222.0,
     "height": 261.0,
@@ -7750,7 +7760,8 @@
         "fill": "#70080F",
         "transform": "translate(66,89)"
       }
-    ]
+    ],
+    "z_index": 11
   },
   {
     "id": "nike-swoosh-1",
@@ -7759,7 +7770,7 @@
     "default_x": 405,
     "default_y": 189,
     "z_order": 12,
-    "default_scale": 1.0,
+    "default_scale": 1,
     "default_rot": 0,
     "width": 30.0,
     "height": 40.0,
@@ -7809,7 +7820,8 @@
         "fill": "#DB7F84",
         "transform": "translate(2,21)"
       }
-    ]
+    ],
+    "z_index": 12
   },
   {
     "id": "nike-swoosh-2",
@@ -7818,7 +7830,7 @@
     "default_x": 38,
     "default_y": 248,
     "z_order": 13,
-    "default_scale": 1.0,
+    "default_scale": 1,
     "default_rot": 0,
     "width": 18.0,
     "height": 25.0,
@@ -7838,7 +7850,8 @@
         "fill": "#9D1821",
         "transform": "translate(7,8)"
       }
-    ]
+    ],
+    "z_index": 13
   },
   {
     "id": "nike-swoosh-3",
@@ -7847,7 +7860,7 @@
     "default_x": 318,
     "default_y": 580,
     "z_order": 14,
-    "default_scale": 1.0,
+    "default_scale": 1,
     "default_rot": 0,
     "width": 37.0,
     "height": 19.0,
@@ -7887,7 +7900,8 @@
         "fill": "#5E060A",
         "transform": "translate(8,11)"
       }
-    ]
+    ],
+    "z_index": 14
   },
   {
     "id": "nfl-shield-logo",
@@ -7896,7 +7910,7 @@
     "default_x": 181,
     "default_y": 289,
     "z_order": 15,
-    "default_scale": 1.0,
+    "default_scale": 1,
     "default_rot": 0,
     "width": 29.0,
     "height": 33.0,
@@ -7981,6 +7995,7 @@
         "fill": "#CF8F8C",
         "transform": "translate(18,26)"
       }
-    ]
+    ],
+    "z_index": 15
   }
 ]

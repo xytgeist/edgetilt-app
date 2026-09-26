@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>EdgeTilt Running Back - Finalized Vector Sculpt</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #09090b;
+      color: #f4f4f5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      padding: 30px;
+    }
+    header {
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #27272a;
+      padding-bottom: 16px;
+    }
+    h1 {
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .badge {
+      background: #16a34a;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 24px;
+    }
+    .card {
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .card-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: #a1a1aa;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+    }
+    .preview-box {
+      width: 100%;
+      height: 600px;
+      background: #121214;
+      background-image: 
+        linear-gradient(45deg, #1c1c20 25%, transparent 25%), 
+        linear-gradient(-45deg, #1c1c20 25%, transparent 25%), 
+        linear-gradient(45deg, transparent 75%, #1c1c20 75%), 
+        linear-gradient(-45deg, transparent 75%, #1c1c20 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+    .turf-bg {
+      background: radial-gradient(circle at center, #1e4620 0%, #0d2818 100%);
+    }
+    .preview-box object, .preview-box img {
+      max-height: 94%;
+      max-width: 94%;
+      filter: drop-shadow(0 15px 25px rgba(0,0,0,0.6));
+    }
+    .flipped {
+      transform: scaleX(-1);
+    }
+    .zoom-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      width: 100%;
+      margin-top: 12px;
+    }
+    .zoom-box {
+      height: 240px;
+      background: #121214;
+      border: 1px solid #27272a;
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .coords-table {
+      margin-top: 24px;
+      background: #18181b;
+      border: 1px solid #27272a;
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 12px;
+    }
+    .coords-table table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+    .coords-table th, .coords-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid #27272a;
+    }
+    .coords-table th {
+      color: #a1a1aa;
+      font-weight: 600;
+    }
+    .highlight {
+      color: #38bdf8;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Finalized Running Back Vector Sculpt <span class="badge">15 Assembled Segments</span></h1>
+      <p style="color: #71717a; font-size: 13px; margin-top: 4px;">Live vector render using exact studio coordinates & z-order</p>
+    </div>
+    <div style="font-size: 13px; color: #a1a1aa;">
+      ViewBox: <strong>0 0 728 1382</strong> &bull; Total Vector Paths: <strong>1,556</strong>
+    </div>
+  </header>
+
+  <div class="grid">
+    <!-- Panel 1: Natural (Left Facing) -->
+    <div class="card">
+      <div class="card-title">
+        <span>Facing Left (Natural Drive)</span>
+        <span style="color: #71717a;">facing &lt; 0</span>
+      </div>
+      <div class="preview-box">
+        <object data="/sports/nfl/rb-figure-sculpt.svg" type="image/svg+xml" style="height: 560px;"></object>
+      </div>
+    </div>
+
+    <!-- Panel 2: Mirrored (Right Facing) -->
+    <div class="card">
+      <div class="card-title">
+        <span>Facing Right (Mirrored Drive)</span>
+        <span style="color: #71717a;">facing &ge; 0</span>
+      </div>
+      <div class="preview-box">
+        <object data="/sports/nfl/rb-figure-sculpt.svg" type="image/svg+xml" class="flipped" style="height: 560px;"></object>
+      </div>
+    </div>
+
+    <!-- Panel 3: Turf Field Context -->
+    <div class="card">
+      <div class="card-title">
+        <span>Turf Field Context</span>
+        <span style="color: #4ade80;">Game Hub Ready</span>
+      </div>
+      <div class="preview-box turf-bg">
+        <!-- Field line -->
+        <div style="position: absolute; bottom: 42px; left: 0; right: 0; height: 3px; background: rgba(255,255,255,0.7); box-shadow: 0 0 8px rgba(255,255,255,0.4);"></div>
+        <object data="/sports/nfl/rb-figure-sculpt.svg" type="image/svg+xml" class="flipped" style="height: 540px; position: relative; z-index: 2; margin-bottom: -18px;"></object>
+      </div>
+    </div>
+  </div>
+
+  <div class="zoom-grid">
+    <!-- Zoom Box 1: Torso, Football Grip & Arms -->
+    <div class="zoom-box">
+      <div style="position: absolute; top: 10px; left: 10px; font-size: 11px; font-weight: 700; color: #a1a1aa; text-transform: uppercase; z-index: 5; background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 4px;">
+        Grip & Torso Detail
+      </div>
+      <object data="/sports/nfl/rb-figure-sculpt.svg" type="image/svg+xml" style="width: 700px; margin-top: -60px; margin-left: 100px;"></object>
+    </div>
+
+    <!-- Zoom Box 2: Lower Legs, Sock & Both Cleats -->
+    <div class="zoom-box">
+      <div style="position: absolute; top: 10px; left: 10px; font-size: 11px; font-weight: 700; color: #a1a1aa; text-transform: uppercase; z-index: 5; background: rgba(0,0,0,0.6); padding: 2px 6px; border-radius: 4px;">
+        Planted Cleat, Sock & Trailing Cleat Detail
+      </div>
+      <object data="/sports/nfl/rb-figure-sculpt.svg" type="image/svg+xml" style="width: 700px; margin-top: -850px; margin-left: 20px;"></object>
+    </div>
+  </div>
+
+  <div class="coords-table">
+    <h3 style="font-size: 13px; margin-bottom: 8px; color: #e4e4e7;">Locked Coordinates Active in Sculpt:</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Z-Order</th>
+          <th>Piece ID</th>
+          <th>Segment Description</th>
+          <th>X Offset</th>
+          <th>Y Offset</th>
+          <th>Scale</th>
+          <th>Rotation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>1</td><td>body-skin</td><td>Body Skin (Face & Arms)</td><td>0</td><td>0</td><td>1.00</td><td>0&deg;</td></tr>
+        <tr><td>2</td><td>red-tights</td><td>Red Tights (Calves)</td><td>226</td><td>911</td><td>1.00</td><td>0&deg;</td></tr>
+        <tr class="highlight"><td>3</td><td>fwd-sock</td><td>Forward Leg White Sock</td><td>218</td><td>1074</td><td>1.18</td><td>0&deg;</td></tr>
+        <tr class="highlight"><td>4</td><td>front-cleat</td><td>Planted Cleat (Front Foot)</td><td>170</td><td>1212</td><td>1.11</td><td>0&deg;</td></tr>
+        <tr class="highlight"><td>5</td><td>black-cleats</td><td>Trailing Cleat (Clean)</td><td>502</td><td>912</td><td>1.00</td><td>0&deg;</td></tr>
+        <tr><td>6</td><td>white-pants</td><td>Pants</td><td>198</td><td>553</td><td>1.00</td><td>0&deg;</td></tr>
+        <tr><td>7</td><td>red-jersey</td><td>Jersey (Torso & Arms)</td><td>31</td><td>172</td><td>1.00</td><td>0&deg;</td></tr>
+        <tr><td>8</td><td>football</td><td>Football</td><td>79</td><td>285</td><td>1.00</td><td>0&deg;</td></tr>
+        <tr><td>9</td><td>red-gloves-2</td><td>Front Hand (Grip over Football)</td><td>62</td><td>278</td><td>1.00</td><td>0&deg;</td></tr>
+        <tr><td>10</td><td>red-gloves-1</td><td>Trailing Hand (Back Balance)</td><td>469</td><td>460</td><td>1.00</td><td>0&deg;</td></tr>
+        <tr><td>11</td><td>red-helmet</td><td>Helmet & Facemask</td><td>68</td><td>2</td><td>1.00</td><td>0&deg;</td></tr>
+        <tr><td>12</td><td>nike-swoosh-1</td><td>Swoosh (Shoulder)</td><td>405</td><td>189</td><td>1.00</td><td>0&deg;</td></tr>
+        <tr><td>13</td><td>nike-swoosh-2</td><td>Swoosh (Left Sleeve)</td><td>38</td><td>248</td><td>1.00</td><td>0&deg;</td></tr>
+        <tr><td>14</td><td>nike-swoosh-3</td><td>Swoosh (Pants)</td><td>318</td><td>580</td><td>1.00</td><td>0&deg;</td></tr>
+        <tr><td>15</td><td>nfl-shield-logo</td><td>NFL Shield (Collar)</td><td>181</td><td>289</td><td>1.00</td><td>0&deg;</td></tr>
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

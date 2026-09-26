@@ -3855,3 +3855,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-26:** **Hub pill dark glass (light):** White wash abandoned for chips on the dark field strip … light mode uses dark glass + light type; hub logos get same halo/silhouette filters as feed pills. Frontend **`1.4.703`**.
 - **2026-09-26:** **Promoted `test` → `main` (`f502d8ea`).** Vercel prod = web **`1.4.703`** (jersey number contrast; hub pill dark glass in light). **No SQL / Edge.**
 - **2026-09-26:** **Light Game Hub text contrast:** Hero veil `to-[#09090b]` (zinc-950 remapped to white in light); PUBLIC/bets labels bumped; hub chip Final meta `0.82` + shadow. Frontend **`1.4.704`**.
+- **2026-09-26:** **Promoted `test` → `main` (`b9d4d00c`).** Vercel prod = web **`1.4.704`** (light Game Hub hero text contrast). **No SQL / Edge.**

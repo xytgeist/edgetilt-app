@@ -33,7 +33,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
-**Branch:** `test` (match `origin/test` before edits). `main` @ **`c8a4d5ce`** (promoted 2026-09-26, web **1.4.715**). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
+**Branch:** `test` (match `origin/test` before edits). `main` @ **`1558ae88`** (promoted 2026-09-26, web **1.4.721**). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
 
 **Supabase (do not swap these):**
 
@@ -76,6 +76,10 @@ The agent should treat the following as **standing instructions for this session
 ### Mac Theo ACTIVE TRACK 2026-09-25 ... CFB stack on prod
 
 **I am Mac Theo.** Promoted **`test` → `main` (`63c28769`)**. Vercel **`1.4.661`**. Prod Edge **`lounge-sports-scoreboard`** + **`lounge-cfb-game-players`**. Prod **`cfb_players`** **13,600**. Store IPA still **1.4.95**.
+
+### Mac Theo ACTIVE TRACK 2026-09-26 ... promote 1.4.721
+
+**I am Mac Theo.** Promoted **`test` → `main` (`1558ae88`)**. Vercel prod web **`1.4.721`** (FG apex/tumble polish + rush TD banner + possession chalk SVG). **No SQL / Edge.**
 
 ### Mac Theo ACTIVE TRACK 2026-09-26 ... possession football chalk
 

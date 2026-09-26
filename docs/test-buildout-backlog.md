@@ -3880,3 +3880,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-26:** **FG apex hitch:** Flight time remap C1 through apex (Hermite rise matches descent slope) … removes easeOutQuad dead-stop/jerk at the top. Frontend **`1.4.719`**.
 - **2026-09-26:** **FG tumble direction:** End-over-end spin = leftward CW / rightward CCW (was inverted). Frontend **`1.4.720`**.
 - **2026-09-26:** **Possession football chalk:** Hub possession mark back to chalk SVG … opaque PNG + invert was a white square. Frontend **`1.4.721`**.
+- **2026-09-26:** **Promoted `test` → `main` (`1558ae88`).** Vercel prod = web **`1.4.721`** (FG apex/tumble + rush TD banner + possession chalk). **No SQL / Edge.**

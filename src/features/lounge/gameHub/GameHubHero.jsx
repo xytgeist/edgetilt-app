@@ -93,6 +93,10 @@ const KICK_FLIGHT_MS = 2100
 const PUNT_FLIGHT_MS = 1900
 /** Punter stands this many yards behind the LOS. */
 const PUNT_DEPTH_YDS = 15
+/** Typical gross punt when the feed omits the distance. */
+const PUNT_DEFAULT_YDS = 55
+/** Returners don't field punts inside their own 5. */
+const PUNT_MIN_CATCH_YD = 5
 /** Returner starts creeping up onto the down arc at this fraction of the flight. */
 const KICK_CREEP_AT = 0.45
 /** Returner lines up this many yards deeper than where he fields it. */
@@ -1776,7 +1780,7 @@ function FieldViz({
           : settled.scrimPct != null && Number.isFinite(settled.scrimPct)
             ? settled.scrimPct
             : landFromText != null
-              ? landFromText - kickDir * parsed.puntYards
+              ? landFromText - kickDir * (Number.isFinite(parsed.puntYards) ? parsed.puntYards : PUNT_DEFAULT_YDS)
               : null
       if (losPct == null) {
         kickKeyRef.current = ''
@@ -1792,7 +1796,7 @@ function FieldViz({
             : null
       kickFromPct = clampPct(losPct - kickDir * PUNT_DEPTH_YDS)
       // ESPN punt yards run from the LOS; its landing abbrev is sometimes the wrong side.
-      landPct = clampPct(losPct + kickDir * parsed.puntYards)
+      landPct = clampPct(losPct + kickDir * (Number.isFinite(parsed.puntYards) ? parsed.puntYards : PUNT_DEFAULT_YDS))
     } else {
       const kickFromYard = Number.isFinite(parsed.kickFromYard) ? parsed.kickFromYard : 35
       kickFromPct = kickOwnGoal + kickDir * kickFromYard
@@ -1821,10 +1825,15 @@ function FieldViz({
     const headshotUrl = matched?.headshot_url ? String(matched.headshot_url) : ''
     const jerseyNumber = resolveFigureJersey(parsed, matched)
 
-    const landX = fieldMidXFromPercent(landPct)
-    const startX = fieldMidXFromPercent(clampPct(landPct - recDir * KICK_RETURNER_DEPTH_YDS))
+    // Punt returners never field it inside their own 5 … the return still ends on the feed spot.
+    const puntFloorPct = recOwnGoal + recDir * PUNT_MIN_CATCH_YD
+    const insideFloor = (v) => punt && (v - puntFloorPct) * recDir < 0
+    const catchPct = insideFloor(landPct) ? puntFloorPct : landPct
+    const startPct = catchPct - recDir * KICK_RETURNER_DEPTH_YDS
+    const landX = fieldMidXFromPercent(catchPct)
+    const startX = fieldMidXFromPercent(clampPct(insideFloor(startPct) ? puntFloorPct : startPct))
     const endX = fieldMidXFromPercent(endPct)
-    const returnYards = Math.abs(endPct - landPct)
+    const returnYards = Math.abs(endPct - catchPct)
     const returnMs = Math.min(KICK_RETURN_MAX_MS, KICK_RETURN_BASE_MS + returnYards * KICK_RETURN_MS_PER_YD)
     const flightMs = punt ? PUNT_FLIGHT_MS : KICK_FLIGHT_MS
     const runEndMs = flightMs + returnMs

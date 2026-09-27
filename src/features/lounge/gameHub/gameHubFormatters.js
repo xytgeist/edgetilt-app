@@ -812,7 +812,7 @@ export function parseKickoffReturn(text) {
  * yards to DAL 9, Center-C.Stephens. K.Turpin to DAL 24 for 15 yards (J.Doe)." Fair catches,
  * touchbacks, downed / out-of-bounds punts, blocks, and muffs are not replayed.
  * @returns {{
- *   puntYards: number,
+ *   puntYards: number|null,
  *   landAbbrev: string|null,
  *   landYard: number|null,
  *   returnYards: number|null,
@@ -832,11 +832,11 @@ export function parsePuntReturn(text) {
     return null
   }
   const punt = raw.match(
-    /\bpunts?\s+(-?\d+)\s+(?:yards?|yds?)\s+to\s+(?:the\s+)?(?:([A-Za-z]{2,6})\s*(-?\d{1,2})\b|end\s+zone)/i,
+    /\bpunts?\s+(?:(-?\d+)\s+(?:yards?|yds?)\s+)?to\s+(?:the\s+)?(?:([A-Za-z]{2,6})\s*(-?\d{1,2})\b|end\s+zone)/i,
   )
   if (!punt) return null
   const out = {
-    puntYards: Number(punt[1]),
+    puntYards: punt[1] != null ? Number(punt[1]) : null,
     landAbbrev: punt[2] ? punt[2].toUpperCase() : null,
     landYard: punt[3] != null ? Number(punt[3]) : null,
     returnYards: null,

@@ -131,6 +131,8 @@ const PUNT_SCENARIOS = [
   { id: 'pu-kc-10', label: 'Punt NFL · ARI punts own 25 · 45 yds · KC ret 10', format: 'nfl', receiving: 'home', losYard: 25, puntYards: 45, returnYards: 10 },
   { id: 'pu-ari-21', label: 'Punt CFB · KC punts own 30 · 50 yds · ARI ret 21', format: 'cfb', receiving: 'away', losYard: 30, puntYards: 50, returnYards: 21 },
   { id: 'pu-kc-long', label: 'Punt CFB · ARI punts own 40 · 48 yds · KC ret 36', format: 'cfb', receiving: 'home', losYard: 40, puntYards: 48, returnYards: 36 },
+  { id: 'pu-kc-floor', label: 'Punt NFL · ARI punts own 45 · 55 yds to KC 0 · fielded at the 5', format: 'nfl', receiving: 'home', losYard: 45, puntYards: 55, returnYards: 12 },
+  { id: 'pu-ari-55', label: 'Punt CFB · KC punts own 20 · 55 yds · ARI ret 8', format: 'cfb', receiving: 'away', losYard: 20, puntYards: 55, returnYards: 8 },
   { id: 'pu-kc-td', label: 'Punt return TD · ARI punts own 20 · KC scores', format: 'nfl', receiving: 'home', losYard: 20, puntYards: 45, touchdown: true },
 ]
 
@@ -160,7 +162,7 @@ export default function FgKickTestPage() {
   const [kickYards, setKickYards] = useState(62)
   const [kickReturn, setKickReturn] = useState(26)
   const [puntLos, setPuntLos] = useState(25)
-  const [puntYards, setPuntYards] = useState(45)
+  const [puntYards, setPuntYards] = useState(55)
   const [puntReturn, setPuntReturn] = useState(12)
   /** Feed row team when it differs from live possession (punts: the punter). */
   const [feedTeam, setFeedTeam] = useState(null)
@@ -492,7 +494,7 @@ export default function FgKickTestPage() {
               min={20}
               max={75}
               value={puntYards}
-              onChange={(e) => setPuntYards(Math.max(20, Math.min(75, Number(e.target.value) || 45)))}
+              onChange={(e) => setPuntYards(Math.max(20, Math.min(75, Number(e.target.value) || 55)))}
               className="ml-1 w-14 rounded border border-zinc-700 bg-zinc-900 px-1.5 py-1 text-zinc-100"
             />
           </label>

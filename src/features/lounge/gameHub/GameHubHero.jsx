@@ -4121,7 +4121,7 @@ export default function GameHubHero({
               </span>
               {down ? <span className="text-[11px] font-semibold leading-tight text-white/90">{down}</span> : null}
               {yard ? <span className="text-[11px] font-semibold leading-tight text-white/70">{yard}</span> : null}
-              <WatchBroadcastPill label={game.broadcast} url={game.broadcast_url} />
+              {isFinal ? null : <WatchBroadcastPill label={game.broadcast} url={game.broadcast_url} />}
             </div>
 
             <div className="flex min-w-0 flex-1 items-center">
@@ -4212,7 +4212,7 @@ export default function GameHubHero({
               </span>
               {down ? <span className="text-[11px] font-semibold leading-tight text-white/90">{down}</span> : null}
               {yard ? <span className="text-[11px] font-semibold leading-tight text-white/70">{yard}</span> : null}
-              <WatchBroadcastPill label={game.broadcast} url={game.broadcast_url} />
+              {isFinal ? null : <WatchBroadcastPill label={game.broadcast} url={game.broadcast_url} />}
             </div>
 
             <div className="flex min-w-0 flex-1 items-center">

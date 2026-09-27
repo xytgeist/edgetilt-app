@@ -248,6 +248,18 @@ function fieldMidXFromPercent(p) {
   return (fieldTopXFromPercent(p) + fieldBotXFromPercent(p)) / 2
 }
 
+/**
+ * Same play across feed text variants: live "(04:59) …" clock prefix vs PBP row, and ESPN
+ * appending the PAT ("… 12 Yd Run (Nicholson Kick)" / "… TOUCHDOWN. Kick is good").
+ */
+function fieldPlayIdentity(text) {
+  let s = String(text || '').toLowerCase()
+  const td = s.search(/\btouchdown\b/)
+  if (td >= 0) s = s.slice(0, td + 'touchdown'.length)
+  const id = s.replace(/\([^)]*\)/g, ' ').replace(/[^a-z0-9]+/g, '')
+  return id || String(text || '').trim()
+}
+
 function firstDownPercentFromLive(live, scrimPct, flipped = false) {
   if (
     scrimPct == null ||
@@ -697,7 +709,9 @@ function FieldViz({
   // Timeouts keep LOS / 1st down / ball / red zone … the drive is still live.
   const hideLiveLines = Boolean(centerBanner) && centerBanner !== 'TIMEOUT'
   const lastPlayText = String(lastPlay || '').trim()
-  const animKey = `${lastPlayText}::${Number(playReplayNonce) || 0}`
+  const animKey = `${fieldPlayIdentity(lastPlayText)}::${Number(playReplayNonce) || 0}`
+  /** Last auto-play that finished … a TD's text returning after the PAT row must not replay. */
+  const lastAutoPlayedKeyRef = useRef('')
   const possessionSide =
     replayTeam === 'home' || replayTeam === 'away'
       ? replayTeam
@@ -743,6 +757,8 @@ function FieldViz({
     fieldFlipped: false,
     knownStartPct: null,
     knownFirstDownPct: null,
+    /** Anim effects key on `animKey`; text edits of the same play must not re-run them. */
+    lastPlayText: '',
   })
   fieldAnimCtxRef.current = {
     pos,
@@ -755,6 +771,7 @@ function FieldViz({
     fieldFlipped,
     knownStartPct,
     knownFirstDownPct,
+    lastPlayText,
   }
   /** Gates auto-play start without thrashing on every yard-line tick. */
   const autoPlayReady = Boolean(
@@ -772,6 +789,7 @@ function FieldViz({
   }
 
   useEffect(() => {
+    const lastPlayText = fieldAnimCtxRef.current.lastPlayText
     if (!isFootball || !lastPlayText) return undefined
     const ctx = fieldAnimCtxRef.current
     if (!playAnimReady) return undefined
@@ -786,6 +804,7 @@ function FieldViz({
       return undefined
     }
     if (animKey === rushKeyRef.current) return undefined
+    if (!isUserReplay && animKey === lastAutoPlayedKeyRef.current) return undefined
     rushKeyRef.current = animKey
     catchKeyRef.current = ''
     fgKeyRef.current = ''
@@ -906,6 +925,7 @@ function FieldViz({
       const elapsed = now - t0
       if (elapsed >= totalMs) {
         rushRafRef.current = 0
+        if (!isUserReplay) lastAutoPlayedKeyRef.current = animKey
         if (!isTouchdown) {
           settledLinesRef.current = {
             scrimPct: endPct,
@@ -996,9 +1016,10 @@ function FieldViz({
       // Mid-flight teardown only … finished ticks already zeroed the ref.
       if (rushKeyRef.current === animKey) rushKeyRef.current = ''
     }
-  }, [isFootball, lastPlayText, animKey, isUserReplay, playAnimReady])
+  }, [isFootball, animKey, isUserReplay, playAnimReady])
 
   useEffect(() => {
+    const lastPlayText = fieldAnimCtxRef.current.lastPlayText
     if (!isFootball || !lastPlayText) return undefined
     const ctx = fieldAnimCtxRef.current
     if (!playAnimReady) return undefined
@@ -1014,6 +1035,7 @@ function FieldViz({
       return undefined
     }
     if (animKey === catchKeyRef.current) return undefined
+    if (!isUserReplay && animKey === lastAutoPlayedKeyRef.current) return undefined
     catchKeyRef.current = animKey
     rushKeyRef.current = ''
     fgKeyRef.current = ''
@@ -1149,6 +1171,7 @@ function FieldViz({
       const elapsed = now - t0
       if (elapsed >= totalMs) {
         catchRafRef.current = 0
+        if (!isUserReplay) lastAutoPlayedKeyRef.current = animKey
         if (!isTouchdown) {
           settledLinesRef.current = {
             scrimPct: gainPct,
@@ -1244,9 +1267,10 @@ function FieldViz({
       // Mid-flight teardown only … finished ticks already zeroed the ref.
       if (catchKeyRef.current === animKey) catchKeyRef.current = ''
     }
-  }, [isFootball, lastPlayText, animKey, isUserReplay, playAnimReady])
+  }, [isFootball, animKey, isUserReplay, playAnimReady])
 
   useEffect(() => {
+    const lastPlayText = fieldAnimCtxRef.current.lastPlayText
     if (!isFootball || !lastPlayText) return undefined
     const ctx = fieldAnimCtxRef.current
     if (!playAnimReady) return undefined
@@ -1261,6 +1285,7 @@ function FieldViz({
       return undefined
     }
     if (animKey === fgKeyRef.current) return undefined
+    if (!isUserReplay && animKey === lastAutoPlayedKeyRef.current) return undefined
     fgKeyRef.current = animKey
     rushKeyRef.current = ''
     catchKeyRef.current = ''
@@ -1369,6 +1394,7 @@ function FieldViz({
       const elapsed = now - t0
       if (elapsed >= totalMs) {
         fgRafRef.current = 0
+        if (!isUserReplay) lastAutoPlayedKeyRef.current = animKey
         setFgAnim(null)
         return
       }
@@ -1404,7 +1430,7 @@ function FieldViz({
       // Mid-flight teardown only … finished ticks already zeroed the ref.
       if (fgKeyRef.current === animKey) fgKeyRef.current = ''
     }
-  }, [isFootball, lastPlayText, animKey, isUserReplay, playAnimReady])
+  }, [isFootball, animKey, isUserReplay, playAnimReady])
 
   useEffect(() => {
     if (rushAnim || catchAnim || fgAnim || !hasLine || pos == null || hideLiveLines) return

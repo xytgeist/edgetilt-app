@@ -727,6 +727,26 @@ export function parseInterceptionReturn(text) {
   return { returnYards, playerHint, jerseyHint, isTouchdown: true }
 }
 
+const CFB_KICKOFF = /\bkickoff\s+(?:for\s+)?(-?\d+)\s+(?:yds?|yards?)\b(?:\s+to\s+the\s+([A-Za-z]{2,8})\s*(\d{1,2})\b)?/i
+const NFL_KICKOFF = /\bkicks\s+(-?\d+)\s+yards?\s+from\s+([A-Za-z]{2,5})\s+(\d{1,2})\b/i
+
+/**
+ * Kickoff touchback. ESPN CFB: "#33 A.Birr kickoff 65 yards to the STAN00, Touchback";
+ * NFL: "H.Butker kicks 65 yards from KC 35 to end zone, Touchback."
+ * @returns {{ kickYards: number|null, kickFromAbbrev: string|null, kickFromYard: number|null, landAbbrev: string|null } | null}
+ */
+export function parseKickoffTouchback(text) {
+  const raw = String(text || '').trim()
+  if (!raw || !/\btouchback\b/i.test(raw) || /\bno\s+play\b/i.test(raw)) return null
+  const nfl = raw.match(NFL_KICKOFF)
+  if (nfl) {
+    return { kickYards: Number(nfl[1]), kickFromAbbrev: nfl[2].toUpperCase(), kickFromYard: Number(nfl[3]), landAbbrev: null }
+  }
+  const cfb = raw.match(CFB_KICKOFF)
+  if (!cfb) return null
+  return { kickYards: Number(cfb[1]), kickFromAbbrev: null, kickFromYard: null, landAbbrev: cfb[2] ? cfb[2].toUpperCase() : null }
+}
+
 const KICK_RETURNER_NAME =
   '((?:#?\\d{1,2}\\s+)?[A-Za-z][A-Za-z.\'’-]*(?:\\s+[A-Za-z][A-Za-z.\'’-]*){0,2}?)'
 
@@ -760,15 +780,16 @@ export function parseKickoffReturn(text) {
   const nfl = raw.match(
     /\bkicks\s+(-?\d+)\s+yards?\s+from\s+([A-Za-z]{2,5})\s+(\d{1,2})\s+to\s+(?:([A-Za-z]{2,5})\s+(-?\d{1,2})|end\s+zone)/i,
   )
-  const cfb = nfl ? null : raw.match(/\bkickoff\s+for\s+(-?\d+)\s+(?:yds?|yards?)\b/i)
+  // CFB: "kickoff for 65 yds" (older) or "kickoff 65 yards to the USC00" (current ESPN wording).
+  const cfb = nfl ? null : raw.match(CFB_KICKOFF)
   if (!nfl && !cfb) return null
 
   const out = {
     kickYards: Number(nfl ? nfl[1] : cfb[1]),
     kickFromAbbrev: nfl ? nfl[2].toUpperCase() : null,
     kickFromYard: nfl ? Number(nfl[3]) : null,
-    landAbbrev: nfl && nfl[4] ? nfl[4].toUpperCase() : null,
-    landYard: nfl && nfl[5] != null ? Number(nfl[5]) : nfl ? 0 : null,
+    landAbbrev: nfl ? (nfl[4] ? nfl[4].toUpperCase() : null) : cfb[2] ? cfb[2].toUpperCase() : null,
+    landYard: nfl ? (nfl[5] != null ? Number(nfl[5]) : 0) : cfb[3] != null ? Number(cfb[3]) : null,
     returnYards: null,
     endAbbrev: null,
     endYard: null,
@@ -794,9 +815,9 @@ export function parseKickoffReturn(text) {
   } else {
     const ret = after.match(new RegExp(`^[\\s.,]*${KICK_RETURNER_NAME}\\s+return(?:s|ed)?\\b`, 'i'))
     if (ret) out.playerHint = ret[1].trim()
-    const yds = after.match(/\breturn(?:s|ed)?\s+for\s+(-?\d+)\s+(?:yds?|yards?)\b/i)
+    const yds = after.match(/\breturn(?:s|ed)?\s+(?:for\s+)?(-?\d+)\s+(?:yds?|yards?)\b/i)
     if (yds) out.returnYards = Number(yds[1])
-    const end = after.match(/\bto\s+the\s+([A-Za-z]{2,5})\s*(\d{1,2})\b/i)
+    const end = after.match(/\bto\s+the\s+([A-Za-z]{2,8})\s*(\d{1,2})\b/i)
     if (end) {
       out.endAbbrev = end[1].toUpperCase()
       out.endYard = Number(end[2])

@@ -94,6 +94,9 @@ function kickoffText({ format, receiving, kickYards, returnYards, touchdown }) {
 }
 
 const KICK_SCENARIOS = [
+  { id: 'tb-kc-cfb', label: 'Touchback CFB · KC receives', text: '(03:12) #33 A.Birr kickoff 65 yards to the KC00, Touchback' },
+  { id: 'tb-ari-nfl', label: 'Touchback NFL · ARI receives', text: 'H.Butker kicks 65 yards from KC 35 to end zone, Touchback.' },
+  { id: 'ko-cfb-new', label: 'KO CFB new wording · KC receives · ret 18', text: '(02:03) #97 G.Hurych kickoff 65 yards to the KC00 #27 R.Wormley return 18 yards to the KC18 (#22 D.Jackson)' },
   { id: 'ko-kc-25', label: 'KO NFL · KC receives · kick 60 · ret 25', format: 'nfl', receiving: 'home', kickYards: 60, returnYards: 25 },
   { id: 'ko-ari-32', label: 'KO NFL · ARI receives · to goal line · ret 32', format: 'nfl', receiving: 'away', kickYards: 65, returnYards: 32 },
   { id: 'ko-ari-cfb', label: 'KO CFB · ARI receives · "return to the ARI25"', format: 'cfb', receiving: 'away', kickYards: 65, returnYards: null },
@@ -272,12 +275,12 @@ export default function FgKickTestPage() {
   }
 
   const fireKick = (scenario) => {
-    setPossession(scenario.receiving)
-    setKickYards(scenario.kickYards)
+    if (scenario.receiving) setPossession(scenario.receiving)
+    if (scenario.kickYards != null) setKickYards(scenario.kickYards)
     if (scenario.returnYards != null) setKickReturn(scenario.returnYards)
     setStartSpot(null)
     setFeedTeam(null)
-    setLastPlay(kickoffText(scenario))
+    setLastPlay(scenario.text || kickoffText(scenario))
     setNonce((n) => n + 1)
   }
 

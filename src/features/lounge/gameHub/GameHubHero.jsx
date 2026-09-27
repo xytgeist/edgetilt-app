@@ -31,6 +31,7 @@ import {
   parseFieldGoalPlay,
   parseInterceptionReturn,
   parseKickoffReturn,
+  parseKickoffTouchback,
   parsePassPlay,
   parsePuntReturn,
   parseRushPlay,
@@ -110,6 +111,13 @@ const KICK_RETURN_MAX_MS = 2800
 const KICK_HOLD_MS = 1600
 /** Kick apex lift (px above the chord) … a kickoff hangs well above a pass. */
 const KICK_ARC_LIFT = 250
+/** Touchback: lands this deep in the end zone, then hops out the back (end line is 10 yd deep). */
+const TOUCHBACK_LAND_DEPTH_YDS = 4
+const TOUCHBACK_BOUNCES = [
+  { toYds: 8, lift: 34, ms: 420 },
+  { toYds: 12.5, lift: 15, ms: 320 },
+]
+const TOUCHBACK_HOLD_MS = 500
 /** Ball piece center in the RB sculpt viewBox (left-facing art, 728×1382). */
 const RUSH_TUCK_LOCAL = { x: 140, y: 380 }
 const RUSH_VIEWBOX_W = 728
@@ -2011,7 +2019,8 @@ function FieldViz({
     if (!playAnimReady) return undefined
     const kickoff = parseKickoffReturn(lastPlayText)
     const punt = kickoff ? null : parsePuntReturn(lastPlayText)
-    const parsed = kickoff || punt
+    const touchback = kickoff || punt ? null : parseKickoffTouchback(lastPlayText)
+    const parsed = kickoff || punt || touchback
     if (!parsed) {
       if (kickKeyRef.current && animKey !== kickKeyRef.current) {
         setKickAnim(null)
@@ -2053,6 +2062,86 @@ function FieldViz({
     const kickDir = -recDir
     const kickOwnGoal = kickDir > 0 ? 0 : 100
     const recOwnGoal = recDir > 0 ? 0 : 100
+
+    // Touchback: no returner … the ball lands in the end zone and bounces out the back.
+    if (touchback) {
+      if (prefersReducedMotion()) {
+        setKickAnim(null)
+        return undefined
+      }
+      const kickFromYard = Number.isFinite(touchback.kickFromYard) ? touchback.kickFromYard : 35
+      const start = { x: fieldMidXFromPercent(kickOwnGoal + kickDir * kickFromYard), y: RUSH_Y - 6 }
+      const land = { x: fieldMidXFromPercent(recOwnGoal - recDir * TOUCHBACK_LAND_DEPTH_YDS), y: RUSH_Y }
+      const ctrl = { x: (start.x + land.x) / 2, y: Math.min(start.y, land.y) - KICK_ARC_LIFT }
+      const bounceSpots = TOUCHBACK_BOUNCES.map((b) => ({
+        ...b,
+        x: fieldMidXFromPercent(recOwnGoal - recDir * b.toYds),
+      }))
+      const bouncesMs = TOUCHBACK_BOUNCES.reduce((sum, b) => sum + b.ms, 0)
+      const totalMs = KICK_FLIGHT_MS + bouncesMs + TOUCHBACK_HOLD_MS
+      const spin = kickDir > 0 ? 1 : -1
+      const frameAt = (elapsed) => {
+        if (elapsed < KICK_FLIGHT_MS) {
+          const t = elapsed / KICK_FLIGHT_MS
+          return { ball: quadBezier(start, ctrl, land, t), rotate: (-40 + t * 80) * -spin, opacity: 1 }
+        }
+        let at = elapsed - KICK_FLIGHT_MS
+        let fromX = land.x
+        let rot = 40 * -spin
+        for (let i = 0; i < bounceSpots.length; i += 1) {
+          const b = bounceSpots[i]
+          if (at < b.ms) {
+            const u = at / b.ms
+            const last = i === bounceSpots.length - 1
+            return {
+              ball: { x: fromX + (b.x - fromX) * u, y: RUSH_Y - 4 * b.lift * u * (1 - u) },
+              rotate: rot + spin * 260 * u,
+              opacity: last ? Math.max(0, 1 - Math.max(0, u - 0.35) / 0.65) : 1,
+            }
+          }
+          at -= b.ms
+          fromX = b.x
+          rot += spin * 260
+        }
+        return { ball: { x: fromX, y: RUSH_Y }, rotate: rot, opacity: 0 }
+      }
+      setKickAnim({
+        playKey: animKey,
+        touchback: true,
+        isTouchdown: false,
+        y: RUSH_Y,
+        facing: recDir,
+        showFigure: false,
+        showTrail: false,
+        showTdLabel: false,
+        linesOpacity: 1,
+        fromScrimPct: null,
+        fromFirstDownPct: null,
+        showLines: false,
+        tb: frameAt(0),
+        playing: true,
+      })
+      const t0 = performance.now()
+      const tick = (now) => {
+        const elapsed = now - t0
+        if (elapsed >= totalMs) {
+          kickRafRef.current = 0
+          if (!isUserReplay) lastAutoPlayedKeyRef.current = animKey
+          setKickAnim(null)
+          return
+        }
+        const tb = frameAt(elapsed)
+        setKickAnim((prev) => (prev && prev.playKey === animKey ? { ...prev, tb } : prev))
+        kickRafRef.current = requestAnimationFrame(tick)
+      }
+      kickRafRef.current = requestAnimationFrame(tick)
+      return () => {
+        if (!kickRafRef.current) return
+        cancelAnimationFrame(kickRafRef.current)
+        kickRafRef.current = 0
+        if (kickKeyRef.current === animKey) kickKeyRef.current = ''
+      }
+    }
     const clampPct = (v) => Math.max(-8, Math.min(108, v))
     const landSide = sideForFeedAbbrev(parsed.landAbbrev, ctx.game)
     const landFromText =
@@ -3187,6 +3276,15 @@ function FieldViz({
                   hideBall={kickAnim.ballT < 1}
                 />
               </g>
+            </g>
+          ) : null}
+          {kickAnim?.touchback && kickAnim.tb?.opacity > 0 ? (
+            <g
+              data-lounge-kick-anim="touchback"
+              opacity={kickAnim.tb.opacity}
+              transform={`translate(${kickAnim.tb.ball.x - 12} ${kickAnim.tb.ball.y - 9})`}
+            >
+              <AmericanFootballMark tone="field" size={24} rotate={kickAnim.tb.rotate} />
             </g>
           ) : null}
           {kickBall ? (

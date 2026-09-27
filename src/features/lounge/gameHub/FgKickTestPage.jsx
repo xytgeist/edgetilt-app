@@ -256,6 +256,25 @@ export default function FgKickTestPage() {
     setNonce((n) => n + 1)
   }
 
+  const firePenalty = (onDefense) => {
+    const own = possession
+    const def = own === 'home' ? 'away' : 'home'
+    const ownAbbrev = own === 'home' ? 'KC' : 'ARI'
+    const defAbbrev = def === 'home' ? 'KC' : 'ARI'
+    const spot = (yard) => ({ yard_line: yard, yard_side: own })
+    const text = onDefense
+      ? `(09:04) Shotgun #1 K.Murray pass incomplete short middle to #0 C.High thrown to ${ownAbbrev}27 PENALTY ${defAbbrev} Holding (#1 C.Spaulding) 10 yards from ${ownAbbrev}22 to ${ownAbbrev}32, 1ST DOWN. NO PLAY`
+      : `(09:04) Shotgun #1 K.Murray pass short left to #0 C.High for 6 yards PENALTY ${ownAbbrev} Holding (#71 B.Line) 10 yards from ${ownAbbrev}22 to ${ownAbbrev}12. NO PLAY`
+    setFeedTeam(null)
+    setStartSpot(null)
+    setFeedPlays([
+      { id: 'pen-1', period: half, clock: '09:35', sequence: 1, team: own, description: `(09:40) #26 S.Irvin rush right for 3 yards loss to the ${ownAbbrev}22`, start_spot: spot(25), end_spot: spot(22) },
+      { id: `pen-2-${onDefense ? 'def' : 'off'}`, period: half, clock: '09:04', sequence: 2, team: own, description: text, start_spot: spot(22), end_spot: spot(onDefense ? 32 : 12) },
+    ])
+    setLastPlay(text)
+    setNonce((n) => n + 1)
+  }
+
   const fireRun = (scenario) => {
     setFeedTeam(null)
     setFeedPlays(null)
@@ -480,6 +499,20 @@ export default function FgKickTestPage() {
           ))}
         </div>
         <div className="mb-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            className="rounded-md bg-yellow-600 px-3 py-1.5 text-[12px] font-semibold text-white"
+            onClick={() => firePenalty(true)}
+          >
+            Flag on defense (holding, +10)
+          </button>
+          <button
+            type="button"
+            className="rounded-md bg-yellow-600 px-3 py-1.5 text-[12px] font-semibold text-white"
+            onClick={() => firePenalty(false)}
+          >
+            Flag on offense (holding, -10)
+          </button>
           {RUN_SCENARIOS.map((s) => (
             <button
               key={s.label}

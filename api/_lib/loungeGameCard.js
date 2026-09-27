@@ -211,9 +211,19 @@ export function gameCardTree(game, origin) {
         [
           el({ fontSize: 30, color: 'rgba(255,255,255,0.8)', letterSpacing: 4 }, String(game.sport_label || 'NFL').toUpperCase()),
           el(
-            { alignItems: 'center', fontSize: 26, color: isLive ? '#fda4af' : 'rgba(255,255,255,0.6)', letterSpacing: 3 },
+            {
+              alignItems: 'center',
+              fontSize: 26,
+              fontWeight: 700,
+              color: '#ffffff',
+              letterSpacing: 3,
+              padding: '8px 20px 8px 18px',
+              borderRadius: 999,
+              background: isLive ? '#e11d48' : 'rgba(9,9,11,0.7)',
+              border: isLive ? '2px solid rgba(255,255,255,0.35)' : '2px solid rgba(255,255,255,0.18)',
+            },
             [
-              ...(isLive ? [el({ width: 14, height: 14, borderRadius: 7, background: '#f43f5e', marginRight: 10 }, [])] : []),
+              ...(isLive ? [el({ width: 12, height: 12, borderRadius: 6, background: '#ffffff', marginRight: 12 }, [])] : []),
               el({}, isLive ? 'LIVE' : final ? 'FINAL' : 'UPCOMING'),
             ],
           ),

@@ -1360,15 +1360,25 @@ function playHalf(period) {
   return Number.isFinite(n) && n >= 3 ? 2 : 1
 }
 
+/** Snap yardage before any penalty clause: "for 3 yards", "for loss of 6 yards", "for -2 yards", "no gain". */
+function playYardsFromText(text) {
+  const raw = String(text || '')
+  if (/\bno\s+gain\b/i.test(raw)) return 0
+  const m = /\bfor\s+(?:a\s+)?(loss\s+of\s+)?(-?\d+)\s+(?:yards?|yds?)\b/i.exec(raw)
+  if (!m) return null
+  const n = Number(m[2])
+  return m[1] ? -Math.abs(n) : n
+}
+
 function playHasSpot(play) {
   return hasYardSpot(play?.start_spot) || hasYardSpot(play?.end_spot)
 }
 
 /**
  * Current possession's drive chart … rushes / completions / sacks as LOS → new LOS lines, incompletions
- * as a short arc to a red X. Empty once the ball changes hands (kickoff, punt, pick) or the half ends.
+ * as a short arc to a red X, enforced penalties as a red dashed line. Empty once the ball changes hands (kickoff, punt, pick) or the half ends.
  * @returns {{ team: 'home'|'away'|null, attackDir: number, marks: Array<{
- *   key: string, kind: 'line'|'incomplete', text: string, fromPct: number, toPct: number,
+ *   key: string, kind: 'line'|'incomplete'|'penalty', text: string, fromPct: number, toPct: number,
  *   lateral: -1|0|1, isNewest: boolean
  * }> }}
  */
@@ -1398,19 +1408,35 @@ export function buildPossessionDriveMarks(plays) {
     let endPct = playSpotFieldPercent(row.end_spot, flipped) ?? playSpotFieldPercent(next?.start_spot, flipped)
     if (playTextIsTouchdown(text)) endPct = goalPct
     if (endPct != null) prevEnd = endPct
-    if (startPct == null || DRIVE_SKIP_PLAY.test(text)) return
-    if (/\bpenalty\b/i.test(text) && !/\b(?:pass|rush|run|ran|sacked|scrambles?)\b/i.test(text)) return
+    if (startPct == null) return
     const key = String(row.id || `${i}:${text.slice(0, 24)}`)
     const isNewest = row === head
-    const inc = INCOMPLETE_DIR.exec(text)
+
+    const penaltyAt = text.search(/\bpenalty\b/i)
+    const penaltyText = penaltyAt >= 0 ? text.slice(penaltyAt) : ''
+    const penaltyEnforced = Boolean(penaltyText) && !/\b(?:declined|offsetting)\b/i.test(penaltyText)
+    const playText = penaltyAt >= 0 ? text.slice(0, penaltyAt) : text
+    const hasSnap = /\b(?:pass|rush|run|ran|sacked|scrambles?|kneels?)\b/i.test(playText)
+    const pushPenalty = (fromPct) => {
+      if (endPct == null || Math.abs(endPct - fromPct) < 0.2) return
+      marks.push({ key: `${key}:penalty`, kind: 'penalty', text, fromPct, toPct: endPct, lateral: 0, isNewest })
+    }
+    if (penaltyEnforced && (!hasSnap || /\bno\s+play\b/i.test(text))) {
+      pushPenalty(startPct)
+      return
+    }
+    if (DRIVE_SKIP_PLAY.test(playText)) return
+    if (penaltyAt >= 0 && !hasSnap) return
+
+    const inc = INCOMPLETE_DIR.exec(playText)
     if (inc) {
-      const dir = PASS_DIR_ANYWHERE.exec(text)
+      const dir = PASS_DIR_ANYWHERE.exec(playText)
       const depth = (inc[1] || dir?.[1] || '').toLowerCase()
       const side = (inc[2] || dir?.[2] || '').toLowerCase()
       let yds = INCOMPLETE_DEPTH_YDS[depth] ?? INCOMPLETE_DEPTH_YDS.none
       // "thrown to USC40" … the text abbrev can differ from the board's, so take whichever side of the
       // field puts the spot downfield of the LOS.
-      const thrown = THROWN_TO_SPOT.exec(text)
+      const thrown = THROWN_TO_SPOT.exec(playText)
       if (thrown) {
         const yl = Number(thrown[1])
         const depths = [yl, 100 - yl]
@@ -1428,15 +1454,21 @@ export function buildPossessionDriveMarks(plays) {
         lateral: side === 'right' ? 1 : side === 'left' ? -1 : 0,
         isNewest,
       })
+      if (penaltyEnforced) pushPenalty(startPct)
       return
     }
-    if (endPct == null) {
-      const m = /\bfor\s+(?:a\s+)?(?:loss\s+of\s+)?(-?\d+)\s+(?:yards?|yds?)\b/i.exec(text)
-      if (!m) return
-      const loss = /\bloss\s+of\b/i.test(m[0])
-      endPct = startPct + attackDir * (loss ? -Math.abs(Number(m[1])) : Number(m[1]))
+
+    const snapYards = playYardsFromText(playText)
+    // Enforced penalty after a live play: the snap line stops at the play spot, the penalty runs on from there.
+    const playEndPct = penaltyEnforced
+      ? (snapYards != null ? startPct + attackDir * snapYards : null)
+      : endPct ?? (snapYards != null ? startPct + attackDir * snapYards : null)
+    if (playEndPct == null) {
+      if (penaltyEnforced) pushPenalty(startPct)
+      return
     }
-    marks.push({ key, kind: 'line', text, fromPct: startPct, toPct: endPct, lateral: 0, isNewest })
+    marks.push({ key, kind: 'line', text, fromPct: startPct, toPct: playEndPct, lateral: 0, isNewest })
+    if (penaltyEnforced) pushPenalty(playEndPct)
   })
   return { team, attackDir, marks }
 }

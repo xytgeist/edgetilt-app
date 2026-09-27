@@ -304,10 +304,11 @@ function driveArrow(x, y, dir) {
   return `${x + dir * 6},${y} ${x - dir * 4},${y - 5} ${x - dir * 4},${y + 5}`
 }
 
-/** Maroon / navy on turf reads black behind a dark halo … light halo for dark team colors. */
+/** Maroon / navy on turf reads black behind a dark halo … light halo for dark team colors.
+ * No blur filter on these: a horizontal line has a zero-height bbox, so a filtered stroke never paints. */
 function playLineHalo(primary) {
   const light = getLuminance(hexToRgb(primary)) < 0.35
-  return { halo: light ? '#ffffff' : '#000000', haloOpacity: light ? 0.55 : 0.35 }
+  return { halo: light ? '#ffffff' : '#000000', haloOpacity: light ? 0.35 : 0.35 }
 }
 
 function DrivePlayMarks({ marks, attackDir, primary, hideKey }) {
@@ -316,7 +317,7 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey }) {
   const laneOf = new Map()
   for (let i = marks.length - 1; i >= 0; i -= 1) {
     const m = marks[i]
-    if (m.kind !== 'line') continue
+    if (m.kind === 'incomplete') continue
     const lo = Math.min(m.fromPct, m.toPct)
     const hi = Math.max(m.fromPct, m.toPct)
     let lane = 0
@@ -339,19 +340,40 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey }) {
           }
           return (
             <g key={m.key} data-drive-play="line">
-              <line x1={x1} y1={y} x2={x2} y2={y} stroke={halo} strokeOpacity={haloOpacity} strokeWidth="7" strokeLinecap="round" />
+              <line x1={x1} y1={y} x2={x2} y2={y} stroke={halo} strokeOpacity={haloOpacity} strokeWidth="7.5" strokeLinecap="round" />
               <line
                 x1={x1}
                 y1={y}
                 x2={x2}
                 y2={y}
                 stroke={primary}
-                strokeWidth="4"
+                strokeWidth="5.5"
                 strokeLinecap="round"
-                strokeOpacity="0.88"
-                filter="url(#glow-rush)"
+                strokeOpacity="0.95"
               />
               <polygon points={driveArrow((x1 + x2) / 2, y, attackDir)} fill="#000" fillOpacity="0.9" />
+            </g>
+          )
+        }
+        if (m.kind === 'penalty') {
+          const y = RUSH_Y + (laneOf.get(m.key) || 0) * DRIVE_LANE_PX
+          const x1 = fieldXAtY(m.fromPct, y)
+          const x2 = fieldXAtY(m.toPct, y)
+          const penaltyDir = m.toPct >= m.fromPct ? 1 : -1
+          return (
+            <g key={m.key} data-drive-play="penalty">
+              <line x1={x1} y1={y} x2={x2} y2={y} stroke="#000" strokeOpacity="0.45" strokeWidth="6" strokeLinecap="round" />
+              <line
+                x1={x1}
+                y1={y}
+                x2={x2}
+                y2={y}
+                stroke="#ef4444"
+                strokeWidth="3.5"
+                strokeDasharray="8 6"
+                strokeLinecap="round"
+              />
+              <polygon points={driveArrow((x1 + x2) / 2, y, penaltyDir)} fill="#000" fillOpacity="0.9" />
             </g>
           )
         }
@@ -2333,7 +2355,7 @@ function FieldViz({
     ? possessionKit({ possession: drive.team }, game, awayColor, homeColor).primary
     : '#ffffff'
   // The live rush / catch trail paints this play while its figure runs … the persistent line takes over after.
-  const newestDriveMark = drive?.marks[drive.marks.length - 1]
+  const newestDriveMark = drive?.marks.findLast((m) => m.kind === 'line')
   const driveHideKey =
     newestDriveMark?.isNewest &&
     (rushAnim?.showFigure || catchAnim?.showFigure) &&
@@ -2869,7 +2891,7 @@ function FieldViz({
                   y2={rushAnim.y}
                   stroke={playLineHalo(rushAnim.primary).halo}
                   strokeOpacity={playLineHalo(rushAnim.primary).haloOpacity}
-                  strokeWidth="7"
+                  strokeWidth="7.5"
                   strokeLinecap="round"
                 />
               ) : null}
@@ -2880,10 +2902,9 @@ function FieldViz({
                   x2={rushX}
                   y2={rushAnim.y}
                   stroke={rushAnim.primary}
-                  strokeWidth="4"
+                  strokeWidth="5.5"
                   strokeLinecap="round"
-                  strokeOpacity="0.88"
-                  filter="url(#glow-play-chrome)"
+                  strokeOpacity="0.95"
                 />
               ) : null}
               <g
@@ -2914,7 +2935,7 @@ function FieldViz({
                   y2={catchAnim.y}
                   stroke={playLineHalo(catchAnim.primary).halo}
                   strokeOpacity={playLineHalo(catchAnim.primary).haloOpacity}
-                  strokeWidth="7"
+                  strokeWidth="7.5"
                   strokeLinecap="round"
                 />
               ) : null}
@@ -2925,10 +2946,9 @@ function FieldViz({
                   x2={catchX}
                   y2={catchAnim.y}
                   stroke={catchAnim.primary}
-                  strokeWidth="4"
+                  strokeWidth="5.5"
                   strokeLinecap="round"
-                  strokeOpacity="0.88"
-                  filter="url(#glow-play-chrome)"
+                  strokeOpacity="0.95"
                 />
               ) : null}
               <g
@@ -2970,7 +2990,6 @@ function FieldViz({
                   strokeWidth="4"
                   strokeLinecap="round"
                   strokeOpacity="0.88"
-                  filter="url(#glow-play-chrome)"
                 />
               ) : null}
               <g
@@ -3003,7 +3022,6 @@ function FieldViz({
                   strokeWidth="4"
                   strokeLinecap="round"
                   strokeOpacity="0.88"
-                  filter="url(#glow-play-chrome)"
                 />
               ) : null}
               <g transform={`translate(${kickFigLeft} ${kickFigTop})`}>

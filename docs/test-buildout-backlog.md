@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-26:** **Incomplete X always off the ball line (Mac).** "Middle" or directionless incompletions now land half a lane off the mid line, alternating sides per drive so repeats don't stack; left / right keep the full offset. Frontend **`1.4.773`**.
 - **2026-09-26:** **TURNOVER banner copy (Mac).** Reads `TURNOVER · <team> BALL` (e.g. TURNOVER · KC BALL). Frontend **`1.4.772`**.
 - **2026-09-26:** **Drive chart incompletions full strength (Mac).** Incomplete arcs + red X no longer fade to 65%; they draw at full opacity like the other drive lines (removed `lounge-drive-incomplete-settle`). Frontend **`1.4.771`**.
 - **2026-09-26:** **TURNOVER banner (Mac).** Interceptions and opponent fumble recoveries show `TURNOVER <team>` (the team that took the ball, same 7-char name / abbrev rule as the TD banner) once the play anim finishes, held until the next play; pick-sixes keep the TD label. Edge **`lounge-sports-scoreboard`** adds `turnover: true` per play from ESPN's play type (ESPN's own `isTurnover` misses plain interceptions and flags blocked FGs); client falls back to "intercepted" in the text. Lost fumbles also end the drive chart. `/play-anim-test` gets Interception + Fumble lost presets. Test Edge deployed; prod Edge redeploy owed on promote. Frontend **`1.4.770`**.

@@ -1385,7 +1385,7 @@ function playHasSpot(play) {
  * pick, lost fumble via the feed `turnover` flag) or the half ends.
  * @returns {{ team: 'home'|'away'|null, attackDir: number, marks: Array<{
  *   key: string, kind: 'line'|'incomplete'|'penalty', text: string, fromPct: number, toPct: number,
- *   lateral: -1|0|1, isNewest: boolean
+ *   lateral: number (-1 left … 1 right of the offense), isNewest: boolean
  * }> }}
  */
 export function buildPossessionDriveMarks(plays) {
@@ -1409,6 +1409,7 @@ export function buildPossessionDriveMarks(plays) {
   const goalPct = attackDir > 0 ? 100 : 0
   const marks = []
   let prevEnd = null
+  let middleIncompletes = 0
   drive.forEach((row, i) => {
     const text = String(row.description || '').trim()
     const startPct = playSpotFieldPercent(row.start_spot, flipped) ?? prevEnd
@@ -1463,7 +1464,8 @@ export function buildPossessionDriveMarks(plays) {
         text,
         fromPct: startPct,
         toPct: Math.max(0, Math.min(100, startPct + attackDir * yds)),
-        lateral: side === 'right' ? 1 : side === 'left' ? -1 : 0,
+        // Middle / unspecified still lands off the ball line (half width), alternating so repeats don't stack.
+        lateral: side === 'right' ? 1 : side === 'left' ? -1 : (middleIncompletes++ % 2 === 0 ? -0.5 : 0.5),
         isNewest,
       })
       if (penaltyEnforced) pushPenalty(startPct)

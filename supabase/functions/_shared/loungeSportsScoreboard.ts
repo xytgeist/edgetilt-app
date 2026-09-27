@@ -163,10 +163,17 @@ export type LoungeSportsPlay = {
   clock: string
   description: string
   team: 'home' | 'away' | null
-  /** Line of scrimmage for this play (ESPN `start`) … same 1–50 + territory shape as live. */
-  start_spot?: { yard_line: number | null; yard_side: 'home' | 'away' | null } | null
-  /** Ball spot after this play (ESPN `end`) … the next play's LOS when its own start is missing. */
-  end_spot?: { yard_line: number | null; yard_side: 'home' | 'away' | null } | null
+  /** Line of scrimmage + down/distance at the snap (ESPN `start`) … same 1–50 + territory shape as live. */
+  start_spot?: LoungeSportsPlaySpot | null
+  /** Ball spot + next snap's down/distance (ESPN `end`) … the next play's start when its own is missing. */
+  end_spot?: LoungeSportsPlaySpot | null
+}
+
+export type LoungeSportsPlaySpot = {
+  yard_line: number | null
+  yard_side: 'home' | 'away' | null
+  down?: number | null
+  distance?: number | null
 }
 
 export type LoungeSportsPlayerStat = {
@@ -1423,7 +1430,14 @@ async function fetchEspnFootballLivePack(
             homeAbbrev: boardHomeAbbrev || game.home?.abbrev,
             awayAbbrev: boardAwayAbbrev || game.away?.abbrev,
           })
-          return out.yard_line != null ? out : null
+          if (out.yard_line == null) return null
+          const down = numOrNull(s.down)
+          const distance = numOrNull(s.distance)
+          return {
+            ...out,
+            down: down != null && down >= 1 && down <= 4 ? down : null,
+            distance: distance != null && distance > 0 ? distance : null,
+          }
         }
         const endRaw = (row.end && typeof row.end === 'object') ? row.end as Record<string, unknown> : null
         const typeText = String(

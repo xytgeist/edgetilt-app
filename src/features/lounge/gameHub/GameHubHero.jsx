@@ -705,6 +705,15 @@ function FieldViz({
         ? live.possession
         : null
   const knownStartPct = playSpotFieldPercent(playStartSpot, fieldFlipped)
+  // 1st-down line at the snap … live down/distance is already post-play (and empty after a TD).
+  const knownStartDistance = Number(playStartSpot?.distance)
+  const knownFirstDownPct =
+    knownStartPct != null && possessionSide && Number.isFinite(knownStartDistance) && knownStartDistance > 0
+      ? Math.max(
+          0,
+          Math.min(100, knownStartPct + attackDirection(possessionSide, fieldFlipped) * knownStartDistance),
+        )
+      : null
 
   const [rushAnim, setRushAnim] = useState(null)
   const [catchAnim, setCatchAnim] = useState(null)
@@ -733,6 +742,7 @@ function FieldViz({
     possessionSide: null,
     fieldFlipped: false,
     knownStartPct: null,
+    knownFirstDownPct: null,
   })
   fieldAnimCtxRef.current = {
     pos,
@@ -744,6 +754,7 @@ function FieldViz({
     possessionSide,
     fieldFlipped,
     knownStartPct,
+    knownFirstDownPct,
   }
   /** Gates auto-play start without thrashing on every yard-line tick. */
   const autoPlayReady = Boolean(
@@ -829,11 +840,13 @@ function FieldViz({
       settled.scrimPct != null &&
       Math.abs(settled.scrimPct - startPct) <= Math.abs(settled.scrimPct - endPct) + 0.01
     let fromFirstDownPct =
-      settledStillPrePlay &&
-      settled.firstDownPct != null &&
-      Number.isFinite(settled.firstDownPct)
-        ? settled.firstDownPct
-        : null
+      ctx.knownFirstDownPct != null
+        ? ctx.knownFirstDownPct
+        : settledStillPrePlay &&
+            settled.firstDownPct != null &&
+            Number.isFinite(settled.firstDownPct)
+          ? settled.firstDownPct
+          : null
     if (fromFirstDownPct == null) {
       const priorDist = Number(ctx.live?.distance)
       fromFirstDownPct = Number.isFinite(priorDist)
@@ -1065,11 +1078,13 @@ function FieldViz({
       settled.scrimPct != null &&
       Math.abs(settled.scrimPct - startPct) <= Math.abs(settled.scrimPct - gainPct) + 0.01
     let fromFirstDownPct =
-      settledStillPrePlay &&
-      settled.firstDownPct != null &&
-      Number.isFinite(settled.firstDownPct)
-        ? settled.firstDownPct
-        : null
+      ctx.knownFirstDownPct != null
+        ? ctx.knownFirstDownPct
+        : settledStillPrePlay &&
+            settled.firstDownPct != null &&
+            Number.isFinite(settled.firstDownPct)
+          ? settled.firstDownPct
+          : null
     if (fromFirstDownPct == null) {
       const priorDist = Number(ctx.live?.distance)
       fromFirstDownPct = Number.isFinite(priorDist)
@@ -1281,11 +1296,13 @@ function FieldViz({
       settled?.scrimPct != null &&
       Math.abs(settled.scrimPct - losPct) <= 12
     const fromFirstDownPct =
-      settledStillPreKick &&
-      settled.firstDownPct != null &&
-      Number.isFinite(settled.firstDownPct)
-        ? settled.firstDownPct
-        : firstDownPercentFromLive(ctx.live, losPct, ctx.fieldFlipped)
+      ctx.knownFirstDownPct != null
+        ? ctx.knownFirstDownPct
+        : settledStillPreKick &&
+            settled.firstDownPct != null &&
+            Number.isFinite(settled.firstDownPct)
+          ? settled.firstDownPct
+          : firstDownPercentFromLive(ctx.live, losPct, ctx.fieldFlipped)
     // Made: same continuous parabola through the uprights and land past them
     // (Science of NFL Football … horizontal speed holds, gravity turns the apex).
     // Miss: aim an upright, then bounce.

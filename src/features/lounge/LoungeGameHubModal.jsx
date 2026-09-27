@@ -195,6 +195,7 @@ export default function LoungeGameHubModal({
           live: data.game?.live || data.live || null,
           splits: data.splits && typeof data.splits === 'object' ? data.splits : null,
           teamStats: data.team_stats && typeof data.team_stats === 'object' ? data.team_stats : null,
+          playerBox: data.player_box && typeof data.player_box === 'object' ? data.player_box : null,
         })
       })
     }
@@ -664,6 +665,7 @@ export default function LoungeGameHubModal({
           teamStats={detail.teamStats}
           odds={detail.odds}
           marketProps={fantasy.props}
+          playerBox={detail.playerBox}
         />
       </div>,
       document.body,

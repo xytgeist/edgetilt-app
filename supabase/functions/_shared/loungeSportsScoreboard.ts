@@ -212,6 +212,33 @@ export type LoungeSportsTeamStats = {
   away: LoungeSportsTeamStat[]
 }
 
+/** One player's offensive / kicking box line from the ESPN summary (landscape fantasy + prop rails). */
+export type LoungeSportsPlayerBox = {
+  id: string
+  name: string
+  headshot: string
+  jersey: string
+  /** ESPN stat groups the player appears in (passing, rushing, receiving, kicking, …). */
+  groups: string[]
+  pass_yds: number
+  pass_td: number
+  pass_int: number
+  rush_yds: number
+  rush_td: number
+  rec: number
+  rec_yds: number
+  rec_td: number
+  fum_lost: number
+  ret_td: number
+  fg_made: number
+  fg_att: number
+  /** Made FG distances from `scoringPlays` (fantasy distance tiers). */
+  fg_yds: number[]
+  xp_made: number
+}
+
+export type LoungeSportsPlayerBoxes = { home: LoungeSportsPlayerBox[]; away: LoungeSportsPlayerBox[] }
+
 export type LoungeSportsGame = {
   id: string
   sport_key: string
@@ -1366,9 +1393,92 @@ function espnSideMatchesGame(
   return false
 }
 
+/** ESPN summary `boxscore.players` → per-side player box lines (skill players + kickers). */
+function espnPlayerBoxes(
+  box: Record<string, unknown> | null,
+  scoringPlays: unknown,
+  sideForEspnTeamId: (id: string) => 'home' | 'away' | null,
+): LoungeSportsPlayerBoxes {
+  const out: LoungeSportsPlayerBoxes = { home: [], away: [] }
+  const num = (v: unknown) => {
+    const n = Number(String(v ?? '').trim())
+    return Number.isFinite(n) ? n : 0
+  }
+  const madeOf = (v: unknown) => {
+    const m = String(v ?? '').match(/^(\d+)\s*\/\s*(\d+)$/)
+    return m ? [Number(m[1]), Number(m[2])] : [0, 0]
+  }
+  const fgByName = new Map<string, number[]>()
+  for (const sp of Array.isArray(scoringPlays) ? scoringPlays as Array<Record<string, unknown>> : []) {
+    const m = String(sp.text || '').match(/^(.+?)\s+(\d+)\s+Yd\s+Field\s+Goal\b/i)
+    if (!m) continue
+    const k = m[1].trim().toLowerCase()
+    fgByName.set(k, [...(fgByName.get(k) || []), Number(m[2])])
+  }
+  for (const t of Array.isArray(box?.players) ? box!.players as Array<Record<string, unknown>> : []) {
+    const team = (t.team && typeof t.team === 'object') ? t.team as Record<string, unknown> : null
+    const side = sideForEspnTeamId(String(team?.id || '').trim())
+    if (!side) continue
+    const byId = new Map<string, LoungeSportsPlayerBox>()
+    for (const g of Array.isArray(t.statistics) ? t.statistics as Array<Record<string, unknown>> : []) {
+      const group = String(g.name || '')
+      const keys = Array.isArray(g.keys) ? (g.keys as unknown[]).map(String) : []
+      for (const a of Array.isArray(g.athletes) ? g.athletes as Array<Record<string, unknown>> : []) {
+        const ath = (a.athlete && typeof a.athlete === 'object') ? a.athlete as Record<string, unknown> : {}
+        const id = String(ath.id || '').trim()
+        const name = String(ath.displayName || '').trim()
+        if (!id || !name) continue
+        const stats = Array.isArray(a.stats) ? a.stats as unknown[] : []
+        const val = (key: string) => stats[keys.indexOf(key)]
+        let row = byId.get(id)
+        if (!row) {
+          const hs = (ath.headshot && typeof ath.headshot === 'object') ? ath.headshot as Record<string, unknown> : {}
+          row = {
+            id, name, headshot: String(hs.href || ''), jersey: String(ath.jersey || ''), groups: [],
+            pass_yds: 0, pass_td: 0, pass_int: 0, rush_yds: 0, rush_td: 0, rec: 0, rec_yds: 0, rec_td: 0,
+            fum_lost: 0, ret_td: 0, fg_made: 0, fg_att: 0, fg_yds: [], xp_made: 0,
+          }
+          byId.set(id, row)
+        }
+        row.groups.push(group)
+        if (group === 'passing') {
+          row.pass_yds = num(val('passingYards'))
+          row.pass_td = num(val('passingTouchdowns'))
+          row.pass_int = num(val('interceptions'))
+        } else if (group === 'rushing') {
+          row.rush_yds = num(val('rushingYards'))
+          row.rush_td = num(val('rushingTouchdowns'))
+        } else if (group === 'receiving') {
+          row.rec = num(val('receptions'))
+          row.rec_yds = num(val('receivingYards'))
+          row.rec_td = num(val('receivingTouchdowns'))
+        } else if (group === 'fumbles') {
+          row.fum_lost = num(val('fumblesLost'))
+        } else if (group === 'kickReturns') {
+          row.ret_td += num(val('kickReturnTouchdowns'))
+        } else if (group === 'puntReturns') {
+          row.ret_td += num(val('puntReturnTouchdowns'))
+        } else if (group === 'kicking') {
+          ;[row.fg_made, row.fg_att] = madeOf(val('fieldGoalsMade/fieldGoalAttempts'))
+          row.xp_made = madeOf(val('extraPointsMade/extraPointAttempts'))[0]
+          row.fg_yds = fgByName.get(name.toLowerCase()) || []
+        }
+      }
+    }
+    const skill = new Set(['passing', 'rushing', 'receiving', 'kicking', 'kickReturns', 'puntReturns'])
+    out[side] = [...byId.values()].filter((r) => r.groups.some((g) => skill.has(g)))
+  }
+  return out
+}
+
 async function fetchEspnFootballLivePack(
   game: LoungeSportsGame,
-): Promise<{ live: LoungeSportsLiveState | null; plays: LoungeSportsPlay[]; team_stats?: LoungeSportsTeamStats | null }> {
+): Promise<{
+  live: LoungeSportsLiveState | null
+  plays: LoungeSportsPlay[]
+  team_stats?: LoungeSportsTeamStats | null
+  player_box?: LoungeSportsPlayerBoxes | null
+}> {
   const sk = String(game.sport_key || '')
   const league: EspnFootballLeague | null = isCfbSportKey(sk)
     ? 'college-football'
@@ -1652,10 +1762,13 @@ async function fetchEspnFootballLivePack(
       }
     }
 
+    const playerBox = espnPlayerBoxes(box, summary.scoringPlays, sideForEspnTeamId)
+
     return {
       live,
       plays: plays.slice(-80),
       team_stats: teamStats.home.length || teamStats.away.length ? teamStats : null,
+      player_box: playerBox.home.length || playerBox.away.length ? playerBox : null,
     }
   } catch {
     return { live: null, plays: [] }
@@ -2151,6 +2264,7 @@ export async function fetchLoungeSportsGameDetail(
   plays: LoungeSportsPlay[]
   stats: LoungeSportsPlayerStat[]
   team_stats: LoungeSportsTeamStats | null
+  player_box: LoungeSportsPlayerBoxes | null
 }> {
   const eventId = encodeURIComponent(game.id)
   const [eventRaw, playsRaw, statsRaw, oddsPack, pinPack] = await Promise.all([
@@ -2195,6 +2309,7 @@ export async function fetchLoungeSportsGameDetail(
   // Live + final football always hit the ESPN summary for box score team totals (landscape gamecast rails).
   const wantTeamStats = (isNflSportKey(sk) || isCfbSportKey(sk)) && (game.status === 'in' || game.status === 'post')
   let teamStats: LoungeSportsTeamStats | null = null
+  let playerBox: LoungeSportsPlayerBoxes | null = null
   if (needEspn || wantTeamStats) {
     const espn = await fetchEspnFootballLivePack(game)
     if (needEspn) {
@@ -2202,6 +2317,7 @@ export async function fetchLoungeSportsGameDetail(
       liveOut = mergeLiveState(liveOut, espn.live)
     }
     teamStats = espn.team_stats ?? null
+    playerBox = espn.player_box ?? null
   }
 
   const statRows: unknown[] = Array.isArray(statsRaw)
@@ -2254,5 +2370,6 @@ export async function fetchLoungeSportsGameDetail(
     plays: playsOut,
     stats,
     team_stats: teamStats,
+    player_box: playerBox,
   }
 }

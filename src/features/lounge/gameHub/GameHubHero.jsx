@@ -15,6 +15,7 @@ import GameHubRushFigure from './GameHubRushFigure.jsx'
 import GameHubCatchFigure from './GameHubCatchFigure.jsx'
 import { getLuminance, hexToHsl, hexToRgb, resolveTeamKit } from './gameHubFigureColors.js'
 import { pregameGameMarketPicks, pregamePlayerPropRails } from './gameHubPregameProps.js'
+import { liveFantasyRails, livePropRails } from './gameHubLiveRails.js'
 import { pregameBestLines } from './gameHubBestLines.js'
 import { formatFantasyPoints, playFantasyPoints } from './gameHubPlayFantasy.js'
 import {
@@ -3990,17 +3991,11 @@ const STAT_RAIL_MIN_REM = 5.5
  * One team's box score column beside the landscape field (away left / home right). Empty until stats land.
  * `topInset`: the field row runs up under the scoreboard … rails start below it.
  */
-function TeamStatRail({ stats, align, topInset = 0 }) {
+function TeamStatRail({ stats, align }) {
   const byName = new Map((Array.isArray(stats) ? stats : []).map((s) => [s.name, s.value]))
   const rows = TEAM_STAT_RAIL_ROWS.filter(([key]) => byName.has(key))
   return (
-    <div
-      data-lounge-gamecast-stat-rail={align}
-      className={`flex min-w-0 flex-1 flex-col justify-evenly overflow-hidden py-2 ${
-        align === 'left' ? 'items-start pl-3' : 'items-end pr-3'
-      }`}
-      style={{ minWidth: `${STAT_RAIL_MIN_REM}rem`, paddingTop: topInset ? topInset + 4 : undefined }}
-    >
+    <div className={`flex h-full min-w-0 flex-col justify-evenly ${align === 'left' ? 'items-start' : 'items-end'}`}>
       {rows.map(([key, label]) => (
         <div key={key} className={`min-w-0 max-w-full ${align === 'left' ? 'text-left' : 'text-right'}`}>
           <div className="truncate text-[15px] font-bold leading-none tabular-nums text-white drop-shadow">
@@ -4011,6 +4006,171 @@ function TeamStatRail({ stats, align, topInset = 0 }) {
           </div>
         </div>
       ))}
+    </div>
+  )
+}
+
+const RAIL_PAGE_LABEL = { stats: 'Team', fantasy: 'Fantasy', props: 'Props' }
+const RAIL_SWIPE_PX = 28
+const RAIL_WHEEL_COOLDOWN_MS = 450
+
+function railNumber(n) {
+  const v = Math.round(Number(n) * 10) / 10
+  return Number.isInteger(v) ? String(v) : v.toFixed(1)
+}
+
+function RailPlayerName({ name, position, left }) {
+  return (
+    <div className="truncate text-[10px] font-semibold uppercase leading-none tracking-wide text-white/60">
+      {left ? (
+        <>
+          {name} <span className="text-white/35">{position}</span>
+        </>
+      ) : (
+        <>
+          <span className="text-white/35">{position}</span> {name}
+        </>
+      )}
+    </div>
+  )
+}
+
+/** Live fantasy page: points so far, projected PPR beside it. */
+function FantasyRailRows({ rows, align }) {
+  const left = align === 'left'
+  return (
+    <div className={`flex h-full min-w-0 flex-col justify-evenly ${left ? 'items-start text-left' : 'items-end text-right'}`}>
+      {rows.map((r) => (
+        <div key={r.key} className="min-w-0 max-w-full">
+          <RailPlayerName name={r.name} position={r.position} left={left} />
+          <div className="mt-0.5 truncate leading-none tabular-nums">
+            <span className="text-[15px] font-bold text-white drop-shadow">{railNumber(r.points)}</span>
+            {r.proj != null ? <span className="ml-1 text-[10px] font-semibold text-white/45">/ {railNumber(r.proj)}</span> : null}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** Live props page: box score progress toward each player's headline line; taps open the market. */
+function PropRailRows({ rows, align }) {
+  const left = align === 'left'
+  return (
+    <div className={`flex h-full min-w-0 flex-col justify-evenly ${left ? 'items-start text-left' : 'items-end text-right'}`}>
+      {rows.map((r) => (
+        <button
+          key={r.key}
+          type="button"
+          data-lounge-gamecast-market-link
+          disabled={!r.url}
+          onClick={() => void openExternalUrl(r.url)}
+          aria-label={`${r.name} ${r.current ?? 'no stats yet'} of ${r.line} ${r.stat}, open on ${MARKET_SOURCE_LABEL[r.source] || 'market'}`}
+          className={`-mx-1.5 min-w-0 max-w-full rounded-lg px-1.5 py-0.5 touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/15 ${
+            left ? 'text-left' : 'text-right'
+          }`}
+        >
+          <RailPlayerName name={r.name} position={r.position} left={left} />
+          <div className="mt-0.5 truncate leading-none tabular-nums">
+            <span className={`text-[15px] font-bold drop-shadow ${r.hit ? 'text-emerald-300' : 'text-white'}`}>
+              {r.current != null ? railNumber(r.current) : '–'}
+            </span>
+            <span className="ml-0.5 text-[10px] font-semibold text-white/45">/ {r.target != null ? railNumber(r.target) : r.line}</span>
+          </div>
+          <div className="mt-0.5 truncate text-[9px] font-semibold uppercase leading-none tracking-wide text-white/40">
+            {r.stat} <span className="text-emerald-300/80">{kalshiCents(r.price)}</span>
+          </div>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * One side rail beside the landscape field: team stats / fantasy / props pages, swiped up / down (both rails
+ * share `page`, so either side flips both). Pages without data are left out of `pages` by the parent.
+ */
+function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, props }) {
+  const left = align === 'left'
+  const touchRef = useRef(null)
+  const wheelAtRef = useRef(0)
+  const idx = Math.max(0, pages.indexOf(page))
+  const multi = pages.length > 1
+  return (
+    <div
+      data-lounge-gamecast-stat-rail={align}
+      data-lounge-gamecast-rail-page={page}
+      className={`relative flex min-w-0 flex-1 flex-col overflow-hidden ${multi ? 'pb-1 pt-1' : 'py-2'} ${
+        left ? 'items-start pl-3' : 'items-end pr-3'
+      }`}
+      style={{
+        minWidth: `${STAT_RAIL_MIN_REM}rem`,
+        paddingTop: topInset ? topInset + (multi ? 0 : 4) : undefined,
+        touchAction: multi ? 'none' : undefined,
+      }}
+      onTouchStart={
+        multi
+          ? (e) => {
+              const t = e.touches[0]
+              touchRef.current = t ? { x: t.clientX, y: t.clientY } : null
+            }
+          : undefined
+      }
+      onTouchEnd={
+        multi
+          ? (e) => {
+              const start = touchRef.current
+              touchRef.current = null
+              const t = e.changedTouches[0]
+              if (!start || !t) return
+              const dy = t.clientY - start.y
+              if (Math.abs(dy) < RAIL_SWIPE_PX || Math.abs(dy) < Math.abs(t.clientX - start.x)) return
+              onStep(dy < 0 ? 1 : -1)
+            }
+          : undefined
+      }
+      onWheel={
+        multi
+          ? (e) => {
+              if (Math.abs(e.deltaY) < 12) return
+              const now = Date.now()
+              if (now - wheelAtRef.current < RAIL_WHEEL_COOLDOWN_MS) return
+              wheelAtRef.current = now
+              onStep(e.deltaY > 0 ? 1 : -1)
+            }
+          : undefined
+      }
+    >
+      {multi ? (
+        <div className={`flex w-full shrink-0 items-center gap-1.5 pb-0.5 ${left ? 'justify-start' : 'flex-row-reverse justify-start'}`}>
+          <span className="truncate text-[8px] font-semibold uppercase leading-none tracking-[0.14em] text-white/45">
+            {RAIL_PAGE_LABEL[page]}
+          </span>
+          <span className="flex shrink-0 gap-0.5" aria-hidden="true">
+            {pages.map((p) => (
+              <span key={p} className={`h-1 w-1 rounded-full ${p === page ? 'bg-white/80' : 'bg-white/25'}`} />
+            ))}
+          </span>
+        </div>
+      ) : null}
+      <div className="relative min-h-0 w-full flex-1 overflow-hidden">
+        {pages.map((p, i) => (
+          <div
+            key={p}
+            aria-hidden={p !== page}
+            className="absolute inset-0 transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none"
+            style={{
+              transform: `translateY(${(i - idx) * 100}%)`,
+              opacity: p === page ? 1 : 0,
+              pointerEvents: p === page ? undefined : 'none',
+            }}
+          >
+            {p === 'stats' ? <TeamStatRail stats={stats} align={align} /> : null}
+            {p === 'fantasy' ? <FantasyRailRows rows={fantasy} align={align} /> : null}
+            {p === 'props' ? <PropRailRows rows={props} align={align} /> : null}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -4383,10 +4543,36 @@ export default function GameHubHero({
   teamStats = null,
   /** Fullscreen pregame only: per-book lines (first book shown) for the matchup board. */
   odds = null,
-  /** Fullscreen pregame only: Kalshi / Polymarket game + player markets for the board's prop rails. */
+  /** Fullscreen: Kalshi / Polymarket game + player markets (pregame board rails, live props rail page). */
   marketProps = null,
+  /** Fullscreen only: ESPN per-player box lines `{ home, away }` for the fantasy + props rail pages. */
+  playerBox = null,
 }) {
   const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(feedGame)
+  const isNflGame = String(feedGame?.sport_key || '').includes('nfl')
+  const fantasyRails = useMemo(
+    () => (fullscreen ? liveFantasyRails(playerBox, players) : { away: [], home: [] }),
+    [fullscreen, playerBox, players],
+  )
+  const propRails = useMemo(
+    () => (fullscreen && isNflGame ? livePropRails(marketProps, players, playerBox) : { away: [], home: [] }),
+    [fullscreen, isNflGame, marketProps, players, playerBox],
+  )
+  const railPages = useMemo(() => {
+    const pages = ['stats']
+    if (fantasyRails.away.length || fantasyRails.home.length) pages.push('fantasy')
+    if (propRails.away.length || propRails.home.length) pages.push('props')
+    return pages
+  }, [fantasyRails, propRails])
+  const [railPageId, setRailPageId] = useState('stats')
+  const railPage = railPages.includes(railPageId) ? railPageId : 'stats'
+  const stepRailPage = useCallback(
+    (dir) => {
+      const i = railPages.indexOf(railPage)
+      setRailPageId(railPages[(i + dir + railPages.length) % railPages.length])
+    },
+    [railPages, railPage],
+  )
   const playScore = useMemo(() => latestPlayScore(plays), [plays])
   const playScoreId = playScore?.id || ''
   const [playScoreShownId, setPlayScoreShownId] = useState('')
@@ -4716,7 +4902,18 @@ export default function GameHubHero({
         className={fullscreen ? 'relative z-[5] flex min-h-0 flex-1 items-stretch justify-center' : 'relative z-[5]'}
         style={fullscreen ? { containerType: 'size', marginTop: overlapBoard ? -scoreboardH : undefined } : undefined}
       >
-        {showField && fullscreen ? <TeamStatRail stats={teamStats?.away} align="left" topInset={scoreboardH} /> : null}
+        {showField && fullscreen ? (
+          <SwipeRail
+            align="left"
+            topInset={scoreboardH}
+            pages={railPages}
+            page={railPage}
+            onStep={stepRailPage}
+            stats={teamStats?.away}
+            fantasy={fantasyRails.away}
+            props={propRails.away}
+          />
+        ) : null}
         <HeroPublicBetting
           game={game}
           splits={splits}
@@ -4761,7 +4958,18 @@ export default function GameHubHero({
         ) : (
           <div className="h-2" aria-hidden="true" />
         )}
-        {showField && fullscreen ? <TeamStatRail stats={teamStats?.home} align="right" topInset={scoreboardH} /> : null}
+        {showField && fullscreen ? (
+          <SwipeRail
+            align="right"
+            topInset={scoreboardH}
+            pages={railPages}
+            page={railPage}
+            onStep={stepRailPage}
+            stats={teamStats?.home}
+            fantasy={fantasyRails.home}
+            props={propRails.home}
+          />
+        ) : null}
       </div>
 
       {showField && lastPlayText ? (

@@ -1,5 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { LoungeSportsTeamLogo, useLoungeSportsPillWashAndLogos } from '../loungeSportsPillPaint.jsx'
+import {
+  FANTASY_SCORING_OPTIONS,
+  fantasyScoringLabel,
+  playerFantasyPts,
+  setFantasyScoring,
+  useFantasyScoring,
+} from './gameHubFantasyScoring.js'
 
 function isDefOrDst(player) {
   const p = String(player?.position || '')
@@ -235,10 +242,10 @@ function teamNickname(side) {
   return parts[parts.length - 1] || name
 }
 
-function seasonAvgLine(player) {
-  const season = player?.season_ppr
+function seasonAvgLine(player, scoring) {
+  const season = playerFantasyPts(player, 'season', scoring)
   const gp = player?.season_gp
-  const last = player?.last_week_ppr
+  const last = playerFantasyPts(player, 'last_week', scoring)
   const avg =
     season != null && gp != null && Number(gp) > 0 ? Number(season) / Number(gp) : null
   if (last != null && avg != null) return `${fmt(last)} last · ${fmt(avg)} avg`
@@ -356,15 +363,13 @@ function pickDepth(ranked, depth) {
   return ranked[depth - 1] || null
 }
 
-/** H2H score chip: pre = PROJ, live = LIVE pts (0 until Sleeper posts), post = PPR + proj under. */
-function matchupPointsBox(player, gameStatus) {
-  const projRaw = player?.projected_ppr ?? player?.fantasypros_pts
-  const scoredRaw = player?.game_ppr
-  const proj = projRaw != null && Number.isFinite(Number(projRaw)) ? Number(projRaw) : null
-  const scored = scoredRaw != null && Number.isFinite(Number(scoredRaw)) ? Number(scoredRaw) : null
+/** H2H score chip: pre = PROJ, live = LIVE pts (0 until Sleeper posts), post = pts + proj under. */
+function matchupPointsBox(player, gameStatus, scoring) {
+  const proj = playerFantasyPts(player, 'projected', scoring)
+  const scored = playerFantasyPts(player, 'game', scoring)
 
   if (gameStatus === 'post') {
-    return { main: scored, under: proj, label: 'PPR' }
+    return { main: scored, under: proj, label: fantasyScoringLabel(scoring) }
   }
   if (gameStatus === 'in') {
     return { main: scored ?? 0, under: proj, label: 'LIVE' }
@@ -383,12 +388,13 @@ function MatchupHalf({
   gameStatus = 'pre',
   meshSrc,
 }) {
+  const scoring = useFantasyScoring()
   const isDef = slotPos === 'DEF' || normalizeFantasyPos(player) === 'DEF'
-  const points = matchupPointsBox(player, gameStatus)
+  const points = matchupPointsBox(player, gameStatus, scoring)
   const empty = !player
   const nick = teamNickname(teamSide)
   const stats = matchupStatLine(player, slotPos)
-  const avg = seasonAvgLine(player)
+  const avg = seasonAvgLine(player, scoring)
   const logoOpacity = isDef ? 0.82 : 0.3
 
   return (
@@ -705,11 +711,9 @@ function toneVsProj(value, proj) {
  * in  → LIVE pts + paced live proj (green/red vs original)
  * post → GAME pts + original proj (muted green/red beat/miss)
  */
-function restBoardPointsColumn(player, gameStatus, live) {
-  const projRaw = player?.projected_ppr ?? player?.fantasypros_pts
-  const scoredRaw = player?.game_ppr
-  const proj = projRaw != null && Number.isFinite(Number(projRaw)) ? Number(projRaw) : null
-  const scored = scoredRaw != null && Number.isFinite(Number(scoredRaw)) ? Number(scoredRaw) : null
+function restBoardPointsColumn(player, gameStatus, live, scoring) {
+  const proj = playerFantasyPts(player, 'projected', scoring)
+  const scored = playerFantasyPts(player, 'game', scoring)
 
   if (gameStatus === 'pre') {
     return { main: proj, under: null, underTone: 'muted', underMuted: false }
@@ -757,6 +761,41 @@ function fantasyAccentColor(player, game, paint) {
   return paint.homeColor || paint.awayColor || '#3f3f46'
 }
 
+/** Scoring format toggle (Std / Half / PPR, per device) + what the numbers mean right now. */
+function FantasyScoringBar({ scoring, status }) {
+  const caption = status === 'post' ? 'Final · pts' : status === 'in' ? 'Live · pts' : 'Projected · pts'
+  return (
+    <div data-fantasy-scoring-bar className="flex items-center justify-between gap-3 px-1">
+      <div
+        role="radiogroup"
+        aria-label="Fantasy scoring"
+        className="flex rounded-full bg-zinc-900 p-0.5 ring-1 ring-zinc-800"
+      >
+        {FANTASY_SCORING_OPTIONS.map((o) => {
+          const on = o.id === scoring
+          return (
+            <button
+              key={o.id}
+              type="button"
+              role="radio"
+              aria-checked={on}
+              aria-label={o.long}
+              data-on={on || undefined}
+              onClick={() => setFantasyScoring(o.id)}
+              className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide touch-manipulation transition-colors ${
+                on ? 'bg-zinc-100 text-zinc-900' : 'text-zinc-400 active:text-zinc-200'
+              }`}
+            >
+              {o.label}
+            </button>
+          )
+        })}
+      </div>
+      <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-500">{caption}</span>
+    </div>
+  )
+}
+
 /**
  * Sleeper game PPR + season on each row.
  * Rest of board Game col: PROJ → LIVE (paced) → GAME (vs original).
@@ -781,6 +820,7 @@ export default function GameHubFantasyPane({
   const liveOrFinal = status === 'in' || status === 'post'
   const gameColTitle = status === 'post' ? 'Game' : status === 'in' ? 'Live' : 'Proj'
   const paint = useLoungeSportsPillWashAndLogos(game)
+  const scoring = useFantasyScoring()
 
   const { matchups, rest } = useMemo(() => {
     const list = players || []
@@ -803,8 +843,8 @@ export default function GameHubFantasyPane({
       .filter((p) => !featuredIds.has(String(p.sleeper_id)))
     board.sort((a, b) => {
       if (liveOrFinal) {
-        const ga = a.game_ppr ?? -1
-        const gb = b.game_ppr ?? -1
+        const ga = playerFantasyPts(a, 'game', scoring) ?? -1
+        const gb = playerFantasyPts(b, 'game', scoring) ?? -1
         if (gb !== ga) return gb - ga
       }
       const pa = a.projected_ppr ?? a.fantasypros_pts ?? -1
@@ -817,7 +857,7 @@ export default function GameHubFantasyPane({
     })
 
     return { matchups: slots, rest: board }
-  }, [players, liveOrFinal])
+  }, [players, liveOrFinal, scoring])
 
   if (loading) return <div className="py-10 text-center text-sm text-zinc-500">Loading fantasy…</div>
   if (error) return <div className="py-10 text-center text-sm text-lv-red">{error}</div>
@@ -832,6 +872,7 @@ export default function GameHubFantasyPane({
 
   return (
     <div data-lounge-game-fantasy className="space-y-4 py-3">
+      <FantasyScoringBar scoring={scoring} status={status} />
       <FantasyMatchupStack matchups={matchups} game={game} gameStatus={status} />
 
       {rest.length ? (
@@ -844,9 +885,9 @@ export default function GameHubFantasyPane({
 
           <ul className="divide-y divide-zinc-800 overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900">
             {rest.slice(0, 40).map((p) => {
-              const season = p.season_ppr
+              const season = playerFantasyPts(p, 'season', scoring)
               const detail = seasonDetailLine(p)
-              const col = restBoardPointsColumn(p, status, live)
+              const col = restBoardPointsColumn(p, status, live, scoring)
               return (
                 <li
                   key={p.sleeper_id}
@@ -877,7 +918,9 @@ export default function GameHubFantasyPane({
                         {fmt(col.under)}
                       </div>
                     ) : (
-                      <div className="text-[10px] uppercase tracking-wide text-zinc-500">PPR</div>
+                      <div className="text-[10px] uppercase tracking-wide text-zinc-500">
+                        {fantasyScoringLabel(scoring)}
+                      </div>
                     )}
                   </div>
                   <div className="text-right">

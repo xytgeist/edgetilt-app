@@ -1,7 +1,8 @@
 /**
- * Landscape gamecast side-rail pages beyond team stats: live fantasy points (full PPR from the ESPN box score,
+ * Landscape gamecast side-rail pages beyond team stats: live fantasy points (hub scoring format, ESPN box score,
  * `player_box` on the scoreboard detail) and each player's headline prop with live progress toward the line.
  */
+import { playerFantasyPts, receptionPoints } from './gameHubFantasyScoring.js'
 import { pregamePlayerPropRails } from './gameHubPregameProps.js'
 
 function nameKey(name) {
@@ -23,8 +24,8 @@ function lastName(name) {
 const round1 = (n) => Math.round(n * 10) / 10
 const num = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0)
 
-/** Standard full PPR; FG 3 (<40) / 4 (40-49) / 5 (50+), miss -1, PAT 1, fumble lost -2. */
-export function boxFantasyPoints(b) {
+/** `recPts` per catch (1 full PPR); FG 3 (<40) / 4 (40-49) / 5 (50+), miss -1, PAT 1, fumble lost -2. */
+export function boxFantasyPoints(b, recPts = 1) {
   if (!b) return 0
   const fgYds = Array.isArray(b.fg_yds) ? b.fg_yds.map(num) : []
   const fgMade = num(b.fg_made)
@@ -36,7 +37,7 @@ export function boxFantasyPoints(b) {
       num(b.pass_int) * 2 +
       num(b.rush_yds) * 0.1 +
       num(b.rush_td) * 6 +
-      num(b.rec) +
+      num(b.rec) * recPts +
       num(b.rec_yds) * 0.1 +
       num(b.rec_td) * 6 -
       num(b.fum_lost) * 2 +
@@ -67,17 +68,17 @@ function rosterIndex(players) {
 }
 
 /**
- * Top `limit` fantasy scorers per side: `{ key, name, position, points, proj }` (proj = roster projected PPR).
+ * Top `limit` fantasy scorers per side in the `scoring` format: `{ key, name, position, points, proj }`.
  */
-export function liveFantasyRails(playerBox, players, limit = 5) {
+export function liveFantasyRails(playerBox, players, limit = 5, scoring = 'ppr') {
   const roster = rosterIndex(players)
   const out = { away: [], home: [] }
   for (const side of ['away', 'home']) {
     const rows = []
     for (const b of Array.isArray(playerBox?.[side]) ? playerBox[side] : []) {
       const pl = roster.get(nameKey(b.name))
-      const points = boxFantasyPoints(b)
-      const projRaw = pl?.projected_ppr ?? pl?.fantasypros_pts
+      const points = boxFantasyPoints(b, receptionPoints(scoring))
+      const projRaw = playerFantasyPts(pl, 'projected', scoring)
       const proj = projRaw != null && Number.isFinite(Number(projRaw)) ? round1(Number(projRaw)) : null
       if (!points && proj == null) continue
       rows.push({

@@ -19,6 +19,14 @@ import { liveFantasyRails, livePropRails } from './gameHubLiveRails.js'
 import { pregameBestLines } from './gameHubBestLines.js'
 import { formatFantasyPoints, playFantasyPoints } from './gameHubPlayFantasy.js'
 import {
+  fantasyScoringLabel,
+  getFantasyScoring,
+  nextFantasyScoring,
+  receptionPoints,
+  setFantasyScoring,
+  useFantasyScoring,
+} from './gameHubFantasyScoring.js'
+import {
   CATCH_HANDS_LOCAL,
   CATCH_VIEWBOX_H,
   CATCH_VIEWBOX_W,
@@ -2901,6 +2909,7 @@ function FieldViz({
           ? `${isCfbSport(ctx.game?.sport_key) ? '/sports/cfb/logos' : '/sports/nfl/logos'}/${logoKey}.png`
           : '',
       turnover: ctx.turnover === true,
+      recPoints: receptionPoints(getFantasyScoring()),
     })
     if (!rows.length) return undefined
     setFantasyToast({ key: `${animKey}:${Date.now()}`, rows })
@@ -4033,7 +4042,7 @@ function RailPlayerName({ name, position, left }) {
   )
 }
 
-/** Live fantasy page: points so far, projected PPR beside it. */
+/** Live fantasy page: points so far, projection beside it (hub scoring format). */
 function FantasyRailRows({ rows, align }) {
   const left = align === 'left'
   return (
@@ -4106,6 +4115,7 @@ function railScrollRoom(target) {
 
 function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, props }) {
   const left = align === 'left'
+  const scoring = useFantasyScoring()
   const touchRef = useRef(null)
   const wheelAtRef = useRef(0)
   const idx = Math.max(0, pages.indexOf(page))
@@ -4163,9 +4173,20 @@ function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, p
     >
       {multi ? (
         <div className={`flex w-full shrink-0 items-center gap-1.5 pb-0.5 ${left ? 'justify-start' : 'flex-row-reverse justify-start'}`}>
-          <span className="truncate text-[8px] font-semibold uppercase leading-none tracking-[0.14em] text-white/45">
-            {RAIL_PAGE_LABEL[page]}
-          </span>
+          {page === 'fantasy' ? (
+            <button
+              type="button"
+              onClick={() => setFantasyScoring(nextFantasyScoring(scoring))}
+              aria-label={`Fantasy scoring ${fantasyScoringLabel(scoring)}, tap to change`}
+              className="-mx-1 -my-1.5 truncate px-1 py-1.5 text-[8px] font-semibold uppercase leading-none tracking-[0.14em] text-white/45 touch-manipulation [-webkit-tap-highlight-color:transparent] active:text-white/80"
+            >
+              {RAIL_PAGE_LABEL[page]} · <span className="text-white/75">{fantasyScoringLabel(scoring)}</span>
+            </button>
+          ) : (
+            <span className="truncate text-[8px] font-semibold uppercase leading-none tracking-[0.14em] text-white/45">
+              {RAIL_PAGE_LABEL[page]}
+            </span>
+          )}
           <span className="flex shrink-0 gap-0.5" aria-hidden="true">
             {pages.map((p) => (
               <span key={p} className={`h-1 w-1 rounded-full ${p === page ? 'bg-white/80' : 'bg-white/25'}`} />
@@ -4570,9 +4591,10 @@ export default function GameHubHero({
 }) {
   const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(feedGame)
   const isNflGame = String(feedGame?.sport_key || '').includes('nfl')
+  const fantasyScoring = useFantasyScoring()
   const fantasyRails = useMemo(
-    () => (fullscreen ? liveFantasyRails(playerBox, players) : { away: [], home: [] }),
-    [fullscreen, playerBox, players],
+    () => (fullscreen ? liveFantasyRails(playerBox, players, 5, fantasyScoring) : { away: [], home: [] }),
+    [fullscreen, playerBox, players, fantasyScoring],
   )
   const propRails = useMemo(
     () => (fullscreen && isNflGame ? livePropRails(marketProps, players, playerBox) : { away: [], home: [] }),

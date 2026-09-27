@@ -120,6 +120,15 @@ export type NflGameFantasyPlayer = {
   game_ppr: number | null
   /** Prior-week actual Sleeper PPR (for “X last · Y avg” on H2H cards). */
   last_week_ppr: number | null
+  /** Half-PPR / standard twins of projected / game / last_week / season PPR (hub scoring toggle). */
+  projected_half: number | null
+  projected_std: number | null
+  game_half: number | null
+  game_std: number | null
+  last_week_half: number | null
+  last_week_std: number | null
+  season_half: number | null
+  season_std: number | null
   /** Sleeper injury_status (Questionable / Doubtful / Out / …). */
   injury_status: string | null
   /** Season-to-date Sleeper PPR + counting stats. */
@@ -1279,6 +1288,14 @@ function mapDbRow(
     projected_rec: null,
     game_ppr: null,
     last_week_ppr: null,
+    projected_half: null,
+    projected_std: null,
+    game_half: null,
+    game_std: null,
+    last_week_half: null,
+    last_week_std: null,
+    season_half: null,
+    season_std: null,
     injury_status:
       row.injury_status != null && String(row.injury_status).trim()
         ? String(row.injury_status).trim()
@@ -1501,6 +1518,8 @@ export async function buildNflGameFantasy(
     const proj = projections.get(mapped.sleeper_id)
     if (proj) {
       mapped.projected_ppr = numOrNull(proj.pts_ppr ?? proj.pts_half_ppr ?? proj.pts_std)
+      mapped.projected_half = numOrNull(proj.pts_half_ppr)
+      mapped.projected_std = numOrNull(proj.pts_std)
       mapped.projected_pass_yd = intOrNull(proj.pass_yd)
       mapped.projected_rush_yd = intOrNull(proj.rush_yd)
       mapped.projected_rec_yd = intOrNull(proj.rec_yd)
@@ -1509,14 +1528,20 @@ export async function buildNflGameFantasy(
     const weekRow = weekStats.get(mapped.sleeper_id)
     if (weekRow) {
       mapped.game_ppr = numOrNull(weekRow.pts_ppr ?? weekRow.pts_half_ppr ?? weekRow.pts_std)
+      mapped.game_half = numOrNull(weekRow.pts_half_ppr)
+      mapped.game_std = numOrNull(weekRow.pts_std)
     }
     const lastRow = lastWeekStats.get(mapped.sleeper_id)
     if (lastRow) {
       mapped.last_week_ppr = numOrNull(lastRow.pts_ppr ?? lastRow.pts_half_ppr ?? lastRow.pts_std)
+      mapped.last_week_half = numOrNull(lastRow.pts_half_ppr)
+      mapped.last_week_std = numOrNull(lastRow.pts_std)
     }
     const sea = seasonStats.get(mapped.sleeper_id)
     if (sea) {
       mapped.season_ppr = numOrNull(sea.pts_ppr ?? sea.pts_half_ppr ?? sea.pts_std)
+      mapped.season_half = numOrNull(sea.pts_half_ppr)
+      mapped.season_std = numOrNull(sea.pts_std)
       mapped.season_gp = intOrNull(sea.gp)
       mapped.season_pass_yd = intOrNull(sea.pass_yd)
       mapped.season_pass_cmp = intOrNull(sea.pass_cmp)

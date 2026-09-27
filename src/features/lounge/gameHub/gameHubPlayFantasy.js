@@ -1,6 +1,6 @@
 /**
- * Fantasy points a single PBP row earned each player on it, calculated from the play text (standard full PPR):
- * rush / rec 0.1 per yd, rec +1, rush / rec / return TD 6, pass 0.04 per yd, pass TD 4, INT -2,
+ * Fantasy points a single PBP row earned each player on it, calculated from the play text (full PPR default):
+ * rush / rec 0.1 per yd, rec +`recPoints` (1 / 0.5 / 0), rush / rec / return TD 6, pass 0.04 per yd, pass TD 4, INT -2,
  * FG 3 (<40) / 4 (40-49) / 5 (50+), FG miss -1, plus a team DEF row (`playDefenseFantasyPoints`).
  * Player fumbles, 2-pt tries and IDP are not scored.
  */
@@ -94,7 +94,7 @@ export function playDefenseFantasyPoints(text, { defenseAbbrev = '', turnover = 
 
 /**
  * @param {string} text PBP row
- * @param {{ players?: object[], offenseAbbrev?: string, defenseAbbrev?: string, defenseLogo?: string, turnover?: boolean }} ctx
+ * @param {{ players?: object[], offenseAbbrev?: string, defenseAbbrev?: string, defenseLogo?: string, turnover?: boolean, recPoints?: number }} ctx
  * @returns {{ key: string, name: string, position: string, headshotUrl: string, points: number }[]}
  */
 export function playFantasyPoints(text, ctx = {}) {
@@ -108,7 +108,7 @@ export function playFantasyPoints(text, ctx = {}) {
   return out
 }
 
-function playerFantasyPoints(text, { players = [], offenseAbbrev = '', defenseAbbrev = '' } = {}) {
+function playerFantasyPoints(text, { players = [], offenseAbbrev = '', defenseAbbrev = '', recPoints = 1 } = {}) {
   const raw = String(text || '').trim()
   if (!raw) return []
   const out = []
@@ -137,7 +137,7 @@ function playerFantasyPoints(text, { players = [], offenseAbbrev = '', defenseAb
       const lead = raw.match(/^((?:#?\d{1,2}\s+)?[A-Za-z][A-Za-z.'’-]*(?:\s+[A-Za-z][A-Za-z.'’-]*){0,2}?)\s+\d+\s*-?\s*yds?\s+pass\b/i)
       if (lead) receiver = lead[1].trim()
     }
-    push(row(receiver, 1 + pass.yards * 0.1 + (td ? 6 : 0), players, offenseAbbrev))
+    push(row(receiver, recPoints + pass.yards * 0.1 + (td ? 6 : 0), players, offenseAbbrev))
     push(row(parsePasserHint(raw), pass.yards * 0.04 + (td ? 4 : 0), players, offenseAbbrev))
     return out
   }

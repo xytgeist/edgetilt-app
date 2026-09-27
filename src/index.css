@@ -4099,6 +4099,20 @@ html.light [data-lounge-game-players] [data-roster-season-stats] .text-zinc-500 
 html.light [data-lounge-game-fantasy] [data-fantasy-h2h] {
   color: inherit;
 }
+html.light [data-lounge-game-fantasy] [data-fantasy-scoring-bar] [role='radiogroup'] {
+  background-color: #f4f4f5 !important;
+  --tw-ring-color: #e4e4e7;
+}
+html.light [data-lounge-game-fantasy] [data-fantasy-scoring-bar] button {
+  color: #71717a !important;
+}
+html.light [data-lounge-game-fantasy] [data-fantasy-scoring-bar] button[data-on] {
+  background-color: #18181b !important;
+  color: #fafafa !important;
+}
+html.light [data-lounge-game-fantasy] [data-fantasy-scoring-bar] > span {
+  color: #71717a !important;
+}
 [data-fantasy-h2h-wash] {
   background: #111113;
 }

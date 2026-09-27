@@ -111,7 +111,10 @@ function bestSide(rows, pickA, better) {
   return best
 }
 
-/** `{ away: { spread, ml }, home: { spread, ml }, over, under }` … each `{ point, price, book, url, ev }`. */
+/**
+ * `{ books, away: { spread, ml }, home: { spread, ml }, over, under }` … each pick `{ point, price, book, url, ev }`;
+ * `books` = how many books were shopped.
+ */
 export function pregameBestLines(rows) {
   const list = Array.isArray(rows) ? rows : []
   if (!list.length) return null
@@ -123,7 +126,9 @@ export function pregameBestLines(rows) {
     ),
     ml: bestSide(list, (r) => ({ point: null, price: r[`${s}_ml`], otherPrice: r[`${o}_ml`], link: r[`${s}_ml_link`] }), 0),
   })
+  const shopped = list.filter((r) => !isPinnacle(r)).length
   return {
+    books: shopped || list.length,
     away: side('away', 'home'),
     home: side('home', 'away'),
     over: bestSide(list, (r) => ({ point: num(r.total), price: r.over_price, otherPrice: r.under_price, link: r.over_link }), -1),

@@ -4090,6 +4090,14 @@ function LandscapeMatchupBoard({
           />
           <div className="flex flex-col items-center gap-2.5 px-1 text-center">
             <div className="text-[13px] font-semibold uppercase tracking-[0.2em] text-white/45">at</div>
+            {best?.books > 1 ? (
+              <div
+                data-lounge-gamecast-best-price
+                className="-mt-1 rounded-full border border-emerald-300/30 bg-emerald-400/15 px-2 py-0.5 text-[8px] font-bold uppercase leading-none tracking-[0.12em] text-emerald-200"
+              >
+                Best price · {best.books} books
+              </div>
+            ) : null}
             {best?.over || best?.under ? (
               <div className="flex items-start gap-3">
                 <BestLine title="Over" pick={best.over} value={best.over ? `o${best.over.point}` : null} />

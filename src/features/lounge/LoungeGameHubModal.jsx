@@ -194,6 +194,7 @@ export default function LoungeGameHubModal({
           stats: Array.isArray(data.stats) ? data.stats : [],
           live: data.game?.live || data.live || null,
           splits: data.splits && typeof data.splits === 'object' ? data.splits : null,
+          teamStats: data.team_stats && typeof data.team_stats === 'object' ? data.team_stats : null,
         })
       })
     }
@@ -594,12 +595,7 @@ export default function LoungeGameHubModal({
         data-lounge-game-hub
         data-lounge-gamecast-full
         className="fixed inset-0 flex flex-col bg-zinc-950 text-white"
-        style={{
-          zIndex: Z_APP_MODAL,
-          paddingLeft: 'env(safe-area-inset-left, 0px)',
-          paddingRight: 'env(safe-area-inset-right, 0px)',
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-        }}
+        style={{ zIndex: Z_APP_MODAL }}
       >
         <GameHubHero
           fullscreen
@@ -642,6 +638,7 @@ export default function LoungeGameHubModal({
           splits={detail.splits}
           players={fantasy.players}
           plays={detail.plays}
+          teamStats={detail.teamStats}
         />
       </div>,
       document.body,

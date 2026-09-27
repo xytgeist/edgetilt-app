@@ -3833,6 +3833,43 @@ function FieldViz({
   )
 }
 
+/** Landscape gamecast rail rows: ESPN box score key → short label. */
+const TEAM_STAT_RAIL_ROWS = [
+  ['totalYards', 'Total yds'],
+  ['netPassingYards', 'Pass yds'],
+  ['rushingYards', 'Rush yds'],
+  ['firstDowns', '1st downs'],
+  ['thirdDownEff', '3rd down'],
+  ['turnovers', 'Turnovers'],
+  ['possessionTime', 'Possession'],
+  ['totalPenaltiesYards', 'Penalties'],
+]
+
+/** One team's box score column beside the landscape field (away left / home right). Empty until stats land. */
+function TeamStatRail({ stats, align }) {
+  const byName = new Map((Array.isArray(stats) ? stats : []).map((s) => [s.name, s.value]))
+  const rows = TEAM_STAT_RAIL_ROWS.filter(([key]) => byName.has(key))
+  return (
+    <div
+      data-lounge-gamecast-stat-rail={align}
+      className={`flex min-w-0 flex-1 flex-col justify-evenly overflow-hidden py-2 ${
+        align === 'left' ? 'items-start pl-3' : 'items-end pr-3'
+      }`}
+    >
+      {rows.map(([key, label]) => (
+        <div key={key} className={`min-w-0 max-w-full ${align === 'left' ? 'text-left' : 'text-right'}`}>
+          <div className="truncate text-[15px] font-bold leading-none tabular-nums text-white drop-shadow">
+            {byName.get(key)}
+          </div>
+          <div className="mt-0.5 truncate text-[9px] font-semibold uppercase leading-none tracking-wide text-white/55">
+            {label}
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 /**
  * One bets bar (away left / home right). Money lives in the side pair `bets·$`
  * under each abbrev … no second rail, no seam tick.
@@ -3930,6 +3967,8 @@ export default function GameHubHero({
   fullscreen = false,
   /** Fullscreen only: chips flanking the scoreboard (back / mute) … there's no top bar row to spare. */
   sideSlots = null,
+  /** Fullscreen only: ESPN box score totals `{ home, away }` for the rails beside the field. */
+  teamStats = null,
 }) {
   const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(feedGame)
   const playScore = useMemo(() => latestPlayScore(plays), [plays])
@@ -4001,6 +4040,14 @@ export default function GameHubHero({
       style={{
         '--hero-away': awayColor,
         '--hero-home': homeColor,
+        // Wash runs under the notch / home indicator; content stays inside the safe area.
+        ...(fullscreen
+          ? {
+              paddingLeft: 'env(safe-area-inset-left, 0px)',
+              paddingRight: 'env(safe-area-inset-right, 0px)',
+              paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+            }
+          : null),
       }}
     >
       <span data-lounge-game-hero-field aria-hidden="true" />
@@ -4207,9 +4254,10 @@ export default function GameHubHero({
 
       {/* z above scoreboard so FG apex / high arcs paint over the board chrome */}
       <div
-        className={fullscreen ? 'relative z-[5] flex min-h-0 flex-1 items-center justify-center' : 'relative z-[5]'}
+        className={fullscreen ? 'relative z-[5] flex min-h-0 flex-1 items-stretch justify-center' : 'relative z-[5]'}
         style={fullscreen ? { containerType: 'size' } : undefined}
       >
+        {showField && fullscreen ? <TeamStatRail stats={teamStats?.away} align="left" /> : null}
         <HeroPublicBetting
           game={game}
           splits={splits}
@@ -4218,7 +4266,7 @@ export default function GameHubHero({
         />
         {showField && fullscreen ? (
           // FieldViz = 20px top pad + 4px side pads around a 1266:533 plane … widest that fits this box.
-          <div style={{ width: 'min(100cqw, calc((100cqh - 20px) * 1266 / 533 + 8px))' }}>
+          <div className="shrink-0 self-center" style={{ width: 'min(100cqw, calc((100cqh - 20px) * 1266 / 533 + 8px))' }}>
             <FieldViz
               game={game}
               live={live}
@@ -4250,6 +4298,7 @@ export default function GameHubHero({
         ) : (
           <div className="h-2" aria-hidden="true" />
         )}
+        {showField && fullscreen ? <TeamStatRail stats={teamStats?.home} align="right" /> : null}
       </div>
 
       {showField && lastPlayText ? (

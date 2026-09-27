@@ -189,6 +189,22 @@ export type LoungeSportsPlayerStat = {
   line: string
 }
 
+/** ESPN box score team totals (`boxscore.teams[].statistics`) … `name` is ESPN's key (totalYards, thirdDownEff, …). */
+export type LoungeSportsTeamStat = { name: string; label: string; value: string }
+export type LoungeSportsTeamStats = { home: LoungeSportsTeamStat[]; away: LoungeSportsTeamStat[] }
+
+/** ESPN summary `boxscore.teams[].statistics` row (e.g. totalYards · "Total Yards" · "431"). */
+export type LoungeSportsTeamStat = {
+  name: string
+  label: string
+  value: string
+}
+
+export type LoungeSportsTeamStats = {
+  home: LoungeSportsTeamStat[]
+  away: LoungeSportsTeamStat[]
+}
+
 export type LoungeSportsGame = {
   id: string
   sport_key: string
@@ -1339,7 +1355,7 @@ function espnSideMatchesGame(
 
 async function fetchEspnFootballLivePack(
   game: LoungeSportsGame,
-): Promise<{ live: LoungeSportsLiveState | null; plays: LoungeSportsPlay[] }> {
+): Promise<{ live: LoungeSportsLiveState | null; plays: LoungeSportsPlay[]; team_stats?: LoungeSportsTeamStats | null }> {
   const sk = String(game.sport_key || '')
   const league: EspnFootballLeague | null = isCfbSportKey(sk)
     ? 'college-football'
@@ -1606,7 +1622,28 @@ async function fetchEspnFootballLivePack(
         }
       : null
 
-    return { live, plays: plays.slice(-80) }
+    const teamStats: LoungeSportsTeamStats = { home: [], away: [] }
+    const box = (summary.boxscore && typeof summary.boxscore === 'object')
+      ? summary.boxscore as Record<string, unknown>
+      : null
+    const boxTeams = box?.teams
+    for (const t of Array.isArray(boxTeams) ? boxTeams as Array<Record<string, unknown>> : []) {
+      const team = (t.team && typeof t.team === 'object') ? t.team as Record<string, unknown> : null
+      const side = sideForEspnTeamId(String(team?.id || '').trim())
+      if (!side) continue
+      for (const s of Array.isArray(t.statistics) ? t.statistics as Array<Record<string, unknown>> : []) {
+        const name = String(s.name || '').trim()
+        const value = String(s.displayValue ?? '').trim()
+        if (!name || !value) continue
+        teamStats[side].push({ name, label: String(s.label || name).trim(), value })
+      }
+    }
+
+    return {
+      live,
+      plays: plays.slice(-80),
+      team_stats: teamStats.home.length || teamStats.away.length ? teamStats : null,
+    }
   } catch {
     return { live: null, plays: [] }
   }
@@ -2078,6 +2115,7 @@ export async function fetchLoungeSportsGameDetail(
   odds: LoungeSportsOddsRow[]
   plays: LoungeSportsPlay[]
   stats: LoungeSportsPlayerStat[]
+  team_stats: LoungeSportsTeamStats | null
 }> {
   const eventId = encodeURIComponent(game.id)
   const [eventRaw, playsRaw, statsRaw, oddsPack, pinPack] = await Promise.all([
@@ -2119,10 +2157,16 @@ export async function fetchLoungeSportsGameDetail(
   const needEspn =
     (isNflSportKey(sk) || isCfbSportKey(sk)) &&
     (playsOut.length === 0 || !String(liveOut?.last_play || '').trim() || !String(liveOut?.clock || '').trim())
-  if (needEspn) {
+  // Live football always hits the ESPN summary for box score team totals (landscape gamecast rails).
+  const wantTeamStats = (isNflSportKey(sk) || isCfbSportKey(sk)) && game.status === 'in'
+  let teamStats: LoungeSportsTeamStats | null = null
+  if (needEspn || wantTeamStats) {
     const espn = await fetchEspnFootballLivePack(game)
-    if (espn.plays.length && playsOut.length === 0) playsOut = espn.plays
-    liveOut = mergeLiveState(liveOut, espn.live)
+    if (needEspn) {
+      if (espn.plays.length && playsOut.length === 0) playsOut = espn.plays
+      liveOut = mergeLiveState(liveOut, espn.live)
+    }
+    teamStats = espn.team_stats ?? null
   }
 
   const statRows: unknown[] = Array.isArray(statsRaw)
@@ -2174,5 +2218,6 @@ export async function fetchLoungeSportsGameDetail(
     odds,
     plays: playsOut,
     stats,
+    team_stats: teamStats,
   }
 }

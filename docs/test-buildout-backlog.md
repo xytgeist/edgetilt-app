@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-26:** **Prod promote (Mac).** `main` @ `19571f21` (web **`1.4.764`-`1.4.773`** drive chart + turnover banner); prod Edge **`lounge-sports-scoreboard`** deployed.
 - **2026-09-26:** **Incomplete X always off the ball line (Mac).** "Middle" or directionless incompletions now land half a lane off the mid line, alternating sides per drive so repeats don't stack; left / right keep the full offset. Frontend **`1.4.773`**.
 - **2026-09-26:** **TURNOVER banner copy (Mac).** Reads `TURNOVER · <team> BALL` (e.g. TURNOVER · KC BALL). Frontend **`1.4.772`**.
 - **2026-09-26:** **Drive chart incompletions full strength (Mac).** Incomplete arcs + red X no longer fade to 65%; they draw at full opacity like the other drive lines (removed `lounge-drive-incomplete-settle`). Frontend **`1.4.771`**.

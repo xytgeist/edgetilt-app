@@ -775,6 +775,7 @@ Works for Scott Share and all other bots. Does not bypass day/hour caps on autom
 | Portal UI | **`src/features/bots/BotManagementPortal.jsx`**, **`BotComposeImagePicker.jsx`**, **`botPortalApi.js`** |
 | +EV math | **`supabase/functions/_shared/loungeBotOddsCaption.ts`** |
 | Sport pick ranking | **`supabase/functions/_shared/loungeBotSportAnalysis.ts`** |
+| Post copy rule | **Only list lines that change a decision or are highlightable.** No filler like an unchanged number (`-3 → -3`) or "no injury news". Lock posts use `movedNumberLine` and drop the empty inactive note (Sep 27, 2026, Ryan). |
 | Posted kickoff times | **Eastern (ET)** via `formatOddsCommenceTime*` in **`loungeBotOddsCaption.ts`** (Sep 27, 2026). Day bucketing, crons, and ops schedules stay PT. |
 | Example post pack | **`supabase/functions/_shared/loungeBotExamplePosts.ts`** |
 | Coverage tiers | **`supabase/functions/_shared/loungeBotCoverageScope.ts`** |

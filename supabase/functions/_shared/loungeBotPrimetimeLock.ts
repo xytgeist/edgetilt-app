@@ -154,6 +154,14 @@ export function walkNoteBody(note: string): string {
   return String(note || '').replace(/^Number\s+/, '')
 }
 
+/** `Number: …` post line, or '' when the number didn't move (posts only list lines that move a decision). */
+export function movedNumberLine(note: string): string {
+  const body = walkNoteBody(note)
+  const m = body.match(/^(?:Total\s+)?(\S+)\s+→\s+(\S+)/)
+  if (!m || Number(m[1]) === Number(m[2])) return ''
+  return `Number: ${body}`
+}
+
 function signedLine(n: number): string {
   return n > 0 ? `+${n}` : String(n)
 }
@@ -329,7 +337,7 @@ export async function evaluatePrimetimeLock(
       numberNote: walk.confirm && !walk.against
         ? `${walk.note} … steam confirmed our side`
         : walk.note,
-      injuryNote: injuries?.summaryLine || 'No listed-starter shock on the inactive list.',
+      injuryNote: injuries?.summaryLine || '',
       ...(gtdHolds.length
         ? { hold: `Holding lock … ${gtdHolds.join(', ')} still a game-time decision.` }
         : {}),
@@ -362,11 +370,11 @@ export function formatPrimetimeLockCaption(lock: PrimetimeLockEval): string {
     `${kickoff}`,
     '',
     `Lean stands: **${leanDisp}**`,
-    `Number: ${walkNoteBody(lock.numberNote)}`,
-    `🩹 ${lock.injuryNote}`,
+    movedNumberLine(lock.numberNote) || null,
+    lock.injuryNote ? `🩹 ${lock.injuryNote}` : null,
     '',
     `*Official lock. Desks stay as written. No edits after this.*`,
-  ].join('\n')
+  ].filter((l) => l !== null).join('\n')
 }
 
 export type PrimetimeLockPublishResult = {

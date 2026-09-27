@@ -20,6 +20,7 @@ import {
   LOCK_MAX_BEFORE_KICK,
   LOCK_MIN_BEFORE_KICK,
   minutesUntilKick,
+  movedNumberLine,
   walkNoteBody,
 } from './loungeBotPrimetimeLock.ts'
 
@@ -176,7 +177,8 @@ export function formatSundayWindowLockCaption(
     } else {
       lines.push(`🔒 **LOCK** ${away} @ ${home} · ${when}`)
       lines.push(`Lean stands: **${g.leanLineDisplay}**`)
-      lines.push(`Number: ${walkNoteBody(g.numberNote)}`)
+      const numberLine = movedNumberLine(g.numberNote)
+      if (numberLine) lines.push(numberLine)
     }
     if (g.injuryNote) lines.push(`🩹 ${g.injuryNote}`)
     lines.push('')
@@ -269,7 +271,7 @@ export async function publishSundayWindowLock(
       numberNote: walk.confirm && !walk.against
         ? `${walk.note} … steam confirmed our side`
         : walk.note,
-      injuryNote: injuries?.summaryLine || 'No listed-starter shock on the inactive list.',
+      injuryNote: injuries?.summaryLine || '',
     })
   }
 

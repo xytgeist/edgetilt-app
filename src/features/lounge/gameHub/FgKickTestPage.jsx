@@ -142,7 +142,7 @@ const PUNT_SCENARIOS = [
   { id: 'pu-ari-55', label: 'Punt CFB · KC punts own 20 · 55 yds · ARI ret 8', format: 'cfb', receiving: 'away', losYard: 20, puntYards: 55, returnYards: 8 },
   { id: 'pu-kc-fc', label: 'Fair catch NFL · ARI punts own 30 · 45 yds', format: 'nfl', receiving: 'home', losYard: 30, puntYards: 45, fairCatch: true },
   { id: 'pu-ari-fc', label: 'Fair catch CFB · KC punts own 35 · 50 yds', format: 'cfb', receiving: 'away', losYard: 35, puntYards: 50, fairCatch: true },
-  { id: 'pu-loss', label: 'Punt CFB 2H · ARI punts own 14 · 53 yds · KC ret loss of 6', format: 'cfb', receiving: 'home', losYard: 14, puntYards: 53, returnYards: -6, half: 3 },
+  { id: 'pu-loss', label: 'Punt CFB Q3 · ARI punts own 14 · 53 yds · KC ret loss of 6', format: 'cfb', receiving: 'home', losYard: 14, puntYards: 53, returnYards: -6, half: 3 },
   { id: 'pu-kc-td', label: 'Punt return TD · ARI punts own 20 · KC scores', format: 'nfl', receiving: 'home', losYard: 20, puntYards: 45, touchdown: true },
 ]
 
@@ -267,7 +267,7 @@ export default function FgKickTestPage() {
           <div>
             <h1 className="text-lg font-bold tracking-tight text-white">Play animation test</h1>
             <p className="text-[12px] text-zinc-400">
-              Real GameHubHero field … FG flight, pick-six, kickoff + punt returns. Half {half === 1 ? '1 (no flip)' : '2 (flipped)'}.
+              Real GameHubHero field … FG flight, pick-six, kickoff + punt returns. Quarter {half}{half === 2 || half === 4 ? ' (flipped)' : ''} … end zones stay away left / home right.
               Ball buttons set the offense.
             </p>
           </div>
@@ -277,24 +277,22 @@ export default function FgKickTestPage() {
         </div>
 
         <div className="mb-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            className={`rounded-md px-3 py-1.5 text-[12px] font-semibold ${
-              half === 1 ? 'bg-emerald-600 text-white' : 'bg-zinc-800 text-zinc-200'
-            }`}
-            onClick={() => setHalf(1)}
-          >
-            1H
-          </button>
-          <button
-            type="button"
-            className={`rounded-md px-3 py-1.5 text-[12px] font-semibold ${
-              half === 3 ? 'bg-emerald-600 text-white' : 'bg-zinc-800 text-zinc-200'
-            }`}
-            onClick={() => setHalf(3)}
-          >
-            2H (flip)
-          </button>
+          {[
+            [1, 'Q1'],
+            [2, 'Q2 (flip)'],
+            [3, 'Q3'],
+          ].map(([q, label]) => (
+            <button
+              key={q}
+              type="button"
+              className={`rounded-md px-3 py-1.5 text-[12px] font-semibold ${
+                half === q ? 'bg-emerald-600 text-white' : 'bg-zinc-800 text-zinc-200'
+              }`}
+              onClick={() => setHalf(q)}
+            >
+              {label}
+            </button>
+          ))}
           <button
             type="button"
             className={`rounded-md px-3 py-1.5 text-[12px] font-semibold ${

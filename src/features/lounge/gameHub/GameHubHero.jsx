@@ -2269,13 +2269,9 @@ function FieldViz({
       : ''
   const college = isCfbSport(sportKey)
   const endzoneFont = college ? ENDZONE_FONT_CFB : ENDZONE_FONT_NFL
-  // First half: away left / home right. After flip: home left / away right.
-  const leftSide = fieldFlipped ? game?.home : game?.away
-  const rightSide = fieldFlipped ? game?.away : game?.home
-  const leftColor = fieldFlipped ? homeColor : awayColor
-  const rightColor = fieldFlipped ? awayColor : homeColor
-  const leftEndzone = resolveEndzoneDesign(leftSide, leftColor, 'left', { college })
-  const rightEndzone = resolveEndzoneDesign(rightSide, rightColor, 'right', { college })
+  // End zone art is fixed (away left / home right); only the direction of play flips by quarter.
+  const leftEndzone = resolveEndzoneDesign(game?.away, awayColor, 'left', { college })
+  const rightEndzone = resolveEndzoneDesign(game?.home, homeColor, 'right', { college })
 
   const catchPlaying = Boolean(
     catchAnim != null &&
@@ -2509,7 +2505,7 @@ function FieldViz({
           <path d={ENDZONE_COORDS.left.paintPath} fill="url(#ez-left-grad)" />
           <path d={ENDZONE_COORDS.right.paintPath} fill="url(#ez-right-grad)" />
 
-          {/* Left Endzone Mascot Wordmark (away 1H / home 2H) */}
+          {/* Left Endzone Mascot Wordmark (away, fixed) */}
           {leftEndzone.glyphs?.map((g, idx) => (
             <g key={`left-glyph-${idx}`} transform={g.transform}>
               <text
@@ -2560,7 +2556,7 @@ function FieldViz({
             </g>
           ))}
 
-          {/* Right Endzone Mascot Wordmark (home 1H / away 2H) */}
+          {/* Right Endzone Mascot Wordmark (home, fixed) */}
           {rightEndzone.glyphs?.map((g, idx) => (
             <g key={`right-glyph-${idx}`} transform={g.transform}>
               <text

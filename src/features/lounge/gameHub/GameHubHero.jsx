@@ -32,6 +32,7 @@ import {
   parseInterceptionReturn,
   parseKickoffReturn,
   parsePassPlay,
+  parsePuntReturn,
   parseRushPlay,
   playTextIsScoreTry,
   playTextIsTouchdown,
@@ -88,6 +89,10 @@ const PICK_RETURN_MS_PER_YD = 20
 const PICK_RETURN_MAX_MS = 2600
 /** Kickoff hang time (tee → returner's tuck). */
 const KICK_FLIGHT_MS = 2100
+/** Punt hang time (punter → returner's tuck). */
+const PUNT_FLIGHT_MS = 1900
+/** Punter stands this many yards behind the LOS. */
+const PUNT_DEPTH_YDS = 15
 /** Returner starts creeping up onto the down arc at this fraction of the flight. */
 const KICK_CREEP_AT = 0.45
 /** Returner lines up this many yards deeper than where he fields it. */
@@ -824,6 +829,8 @@ function FieldViz({
     awayColor: '',
     homeColor: '',
     possessionSide: null,
+    /** Feed row team for the play (ESPN offense … the punting side on a punt). */
+    feedTeam: null,
     fieldFlipped: false,
     knownStartPct: null,
     knownFirstDownPct: null,
@@ -838,6 +845,7 @@ function FieldViz({
     awayColor,
     homeColor,
     possessionSide,
+    feedTeam: replayTeam === 'home' || replayTeam === 'away' ? replayTeam : null,
     fieldFlipped,
     knownStartPct,
     knownFirstDownPct,
@@ -1696,14 +1704,16 @@ function FieldViz({
     }
   }, [isFootball, animKey, isUserReplay, playAnimReady])
 
-  // Kickoff return: ball hangs from the kicking team's 35, the RB creeps onto its down arc,
-  // fields it, and slides the return yardage (or all the way for a TD).
+  // Kickoff / punt return: ball hangs from the kicking team's 35 (kickoff) or 15 yd behind the
+  // LOS (punt), the RB creeps onto its down arc, fields it, and slides the return (or scores).
   useEffect(() => {
     const lastPlayText = fieldAnimCtxRef.current.lastPlayText
     if (!isFootball || !lastPlayText) return undefined
     const ctx = fieldAnimCtxRef.current
     if (!playAnimReady) return undefined
-    const parsed = parseKickoffReturn(lastPlayText)
+    const kickoff = parseKickoffReturn(lastPlayText)
+    const punt = kickoff ? null : parsePuntReturn(lastPlayText)
+    const parsed = kickoff || punt
     if (!parsed) {
       if (kickKeyRef.current && animKey !== kickKeyRef.current) {
         setKickAnim(null)
@@ -1716,12 +1726,14 @@ function FieldViz({
 
     const other = (s) => (s === 'home' ? 'away' : s === 'away' ? 'home' : null)
     const livePoss = ctx.live?.possession === 'home' || ctx.live?.possession === 'away' ? ctx.live.possession : null
-    // NFL names the kicking spot; CFB only the return spot (usually the receiving side's own territory).
-    const receiving =
-      other(sideForFeedAbbrev(parsed.kickFromAbbrev, ctx.game)) ||
-      sideForFeedAbbrev(parsed.landAbbrev, ctx.game) ||
-      sideForFeedAbbrev(parsed.endAbbrev, ctx.game) ||
-      livePoss
+    // NFL kickoffs name the kicking spot; CFB only the return spot (usually the receiver's own
+    // territory). Punts: the feed row team is the punter; after the play live possession flips.
+    const receiving = punt
+      ? other(ctx.feedTeam) || sideForFeedAbbrev(parsed.landAbbrev, ctx.game) || livePoss
+      : other(sideForFeedAbbrev(parsed.kickFromAbbrev, ctx.game)) ||
+        sideForFeedAbbrev(parsed.landAbbrev, ctx.game) ||
+        sideForFeedAbbrev(parsed.endAbbrev, ctx.game) ||
+        livePoss
     const kicking = other(receiving)
     if (!receiving || !kicking) return undefined
 
@@ -1744,15 +1756,51 @@ function FieldViz({
     const kickOwnGoal = kickDir > 0 ? 0 : 100
     const recOwnGoal = recDir > 0 ? 0 : 100
     const clampPct = (v) => Math.max(-8, Math.min(108, v))
-    const kickFromYard = Number.isFinite(parsed.kickFromYard) ? parsed.kickFromYard : 35
-    const kickFromPct = kickOwnGoal + kickDir * kickFromYard
+    const landSide = sideForFeedAbbrev(parsed.landAbbrev, ctx.game)
     const landFromText =
-      parsed.landYard != null && sideForFeedAbbrev(parsed.landAbbrev, ctx.game) === receiving
-        ? recOwnGoal + recDir * parsed.landYard
+      parsed.landYard != null && landSide
+        ? landSide === receiving
+          ? recOwnGoal + recDir * parsed.landYard
+          : kickOwnGoal + kickDir * parsed.landYard
         : null
-    const landPct = clampPct(
-      landFromText ?? kickFromPct + kickDir * (Number.isFinite(parsed.kickYards) ? parsed.kickYards : 60),
-    )
+
+    let kickFromPct
+    let landPct
+    let fromScrimPct = null
+    let fromFirstDownPct = null
+    if (punt) {
+      const settled = settledLinesRef.current
+      const losPct =
+        ctx.knownStartPct != null
+          ? ctx.knownStartPct
+          : settled.scrimPct != null && Number.isFinite(settled.scrimPct)
+            ? settled.scrimPct
+            : landFromText != null
+              ? landFromText - kickDir * parsed.puntYards
+              : null
+      if (losPct == null) {
+        kickKeyRef.current = ''
+        return undefined
+      }
+      fromScrimPct = losPct
+      fromFirstDownPct =
+        ctx.knownFirstDownPct != null
+          ? ctx.knownFirstDownPct
+          : settled.firstDownPct != null && Number.isFinite(settled.firstDownPct) &&
+              settled.scrimPct != null && Math.abs(settled.scrimPct - losPct) <= 1
+            ? settled.firstDownPct
+            : null
+      kickFromPct = clampPct(losPct - kickDir * PUNT_DEPTH_YDS)
+      // ESPN punt yards run from the LOS; its landing abbrev is sometimes the wrong side.
+      landPct = clampPct(losPct + kickDir * parsed.puntYards)
+    } else {
+      const kickFromYard = Number.isFinite(parsed.kickFromYard) ? parsed.kickFromYard : 35
+      kickFromPct = kickOwnGoal + kickDir * kickFromYard
+      landPct = clampPct(
+        (landSide === receiving ? landFromText : null) ??
+          kickFromPct + kickDir * (Number.isFinite(parsed.kickYards) ? parsed.kickYards : 60),
+      )
+    }
     let endPct = null
     if (parsed.isTouchdown) endPct = kickOwnGoal
     else if (Number.isFinite(parsed.returnYards)) endPct = landPct + recDir * parsed.returnYards
@@ -1778,7 +1826,8 @@ function FieldViz({
     const endX = fieldMidXFromPercent(endPct)
     const returnYards = Math.abs(endPct - landPct)
     const returnMs = Math.min(KICK_RETURN_MAX_MS, KICK_RETURN_BASE_MS + returnYards * KICK_RETURN_MS_PER_YD)
-    const runEndMs = KICK_FLIGHT_MS + returnMs
+    const flightMs = punt ? PUNT_FLIGHT_MS : KICK_FLIGHT_MS
+    const runEndMs = flightMs + returnMs
     const totalMs = parsed.isTouchdown
       ? runEndMs + CATCH_TD_PRE_LABEL_MS + CATCH_TD_CELEBRATE_MS + CATCH_TD_LABEL_TAIL_MS
       : runEndMs + KICK_HOLD_MS
@@ -1808,8 +1857,10 @@ function FieldViz({
       showTrail: false,
       showTdLabel: false,
       linesOpacity: 1,
-      fromScrimPct: null,
-      fromFirstDownPct: null,
+      fromScrimPct,
+      fromFirstDownPct,
+      /** Punt: snap LOS / line to gain stay up until the returner fields it. */
+      showLines: fromScrimPct != null,
       playing: true,
     })
     const t0 = performance.now()
@@ -1826,14 +1877,14 @@ function FieldViz({
       let showFigure = true
       let showTrail = true
       let showTdLabel = false
-      if (elapsed < KICK_FLIGHT_MS) {
-        const t = elapsed / KICK_FLIGHT_MS
+      if (elapsed < flightMs) {
+        const t = elapsed / flightMs
         ballT = t
         const creep = t < KICK_CREEP_AT ? 0 : (t - KICK_CREEP_AT) / (1 - KICK_CREEP_AT)
         figX = startX + (landX - startX) * easeOutCubic(creep)
         showTrail = false
       } else if (elapsed < runEndMs) {
-        const t = easeOutCubic((elapsed - KICK_FLIGHT_MS) / returnMs)
+        const t = easeOutCubic((elapsed - flightMs) / returnMs)
         figX = landX + (endX - landX) * t
         showTrail = t > 0.02
       } else if (parsed.isTouchdown) {
@@ -1843,7 +1894,16 @@ function FieldViz({
       }
       setKickAnim((prev) =>
         prev && prev.playKey === animKey
-          ? { ...prev, figX, ballT, showFigure, showTrail, showTdLabel, playing: true }
+          ? {
+              ...prev,
+              figX,
+              ballT,
+              showFigure,
+              showTrail,
+              showTdLabel,
+              showLines: prev.fromScrimPct != null && elapsed < flightMs,
+              playing: true,
+            }
           : prev,
       )
       kickRafRef.current = requestAnimationFrame(tick)
@@ -1920,23 +1980,19 @@ function FieldViz({
       : catchAnim?.isTouchdown
         ? catchAnim
         : pickAnim ?? (kickAnim?.isTouchdown ? kickAnim : null)
-  const displayScrimPct =
-    lineDriver != null
-      ? lerp(lineDriver.fromScrimPct, lineDriver.toScrimPct, linesT)
-      : tdAnim
-        ? tdAnim.fromScrimPct
-        : pos
+  const kickLinesUp = Boolean(kickAnim?.showLines && kickAnim.fromScrimPct != null)
+  let displayScrimPct = pos
+  if (kickAnim != null) displayScrimPct = kickLinesUp ? kickAnim.fromScrimPct : null
+  else if (lineDriver != null) displayScrimPct = lerp(lineDriver.fromScrimPct, lineDriver.toScrimPct, linesT)
+  else if (tdAnim) displayScrimPct = tdAnim.fromScrimPct
   const liveFirstDownPct =
     feedFirstDownPct ??
     (centerBanner === 'TIMEOUT' && pos != null && heldFirstDown?.pos === pos ? heldFirstDown.pct : null)
-  const displayFirstDownPct =
-    lineDriver != null &&
-    lineDriver.fromFirstDownPct != null &&
-    lineDriver.toFirstDownPct != null
-      ? lerp(lineDriver.fromFirstDownPct, lineDriver.toFirstDownPct, linesT)
-      : tdAnim
-        ? tdAnim.fromFirstDownPct
-        : liveFirstDownPct
+  let displayFirstDownPct = liveFirstDownPct
+  if (kickAnim != null) displayFirstDownPct = kickLinesUp ? kickAnim.fromFirstDownPct : null
+  else if (lineDriver != null && lineDriver.fromFirstDownPct != null && lineDriver.toFirstDownPct != null) {
+    displayFirstDownPct = lerp(lineDriver.fromFirstDownPct, lineDriver.toFirstDownPct, linesT)
+  } else if (tdAnim) displayFirstDownPct = tdAnim.fromFirstDownPct
   const linesFadeOpacity =
     tdAnim?.linesOpacity != null
       ? Math.max(0, Math.min(1, Number(tdAnim.linesOpacity)))
@@ -1955,7 +2011,7 @@ function FieldViz({
     hasLine &&
     !hideLiveLines &&
     !suppressPostTdMarkers &&
-    !kickAnim &&
+    (!kickAnim || kickLinesUp) &&
     displayScrimPct != null &&
     linesFadeOpacity > 0.02
 
@@ -1987,7 +2043,8 @@ function FieldViz({
   // Red zone: LOS inside the opponent's 20 → tint that 20-to-goal band.
   // `possessionSide` is the last play's team (a punt/turnover flips it) … only trust it mid-anim.
   const livePossession = live?.possession === 'home' || live?.possession === 'away' ? live.possession : null
-  const redZoneTeam = lineDriver != null || tdAnim != null ? possessionSide : livePossession
+  const redZoneTeam =
+    lineDriver != null || tdAnim != null || kickAnim != null ? possessionSide : livePossession
   const redZoneAttackDir = redZoneTeam ? attackDirection(redZoneTeam, fieldFlipped) : 0
   const redZoneSide =
     showLiveScrimMarkers && redZoneAttackDir !== 0

@@ -102,6 +102,38 @@ const KICK_SCENARIOS = [
   { id: 'ko-kc-td', label: 'KO return TD · KC · CFB text', format: 'cfb', receiving: 'home', kickYards: 65, touchdown: true },
 ]
 
+/**
+ * Punt return. `receiving` fields it; the other side punts from its own `losYard` (4th & 8).
+ * Punt yards run from the LOS (ESPN gross); the punter lines up 15 yd behind it.
+ */
+function puntText({ format, receiving, losYard, puntYards, returnYards, touchdown }) {
+  const recAb = receiving === 'home' ? MOCK_GAME.home.abbrev : MOCK_GAME.away.abbrev
+  const puntAb = receiving === 'home' ? MOCK_GAME.away.abbrev : MOCK_GAME.home.abbrev
+  const spot = (own) => (own > 50 ? { ab: recAb, y: 100 - own } : { ab: puntAb, y: own })
+  const land = spot(losYard + puntYards)
+  const ret = touchdown ? losYard + puntYards : returnYards
+  const end = spot(losYard + puntYards - ret)
+  if (format === 'nfl') {
+    const head = `T.Way punts ${puntYards} yards to ${land.ab} ${land.y}, Center-C.Stephens.`
+    if (touchdown) return `${head} K.Turpin for ${ret} yards, TOUCHDOWN.`
+    return `${head} K.Turpin to ${end.ab} ${end.y} for ${ret} yards (J.Doe).`
+  }
+  const head = `#48 E.Jasso punt ${puntYards} yards to the ${land.ab}${String(land.y).padStart(2, '0')} #20 D.Crowe return`
+  if (touchdown) return `${head} ${ret} yards for a TD`
+  return `${head} ${ret} yards to the ${end.ab}${String(end.y).padStart(2, '0')} (#20 B.Hay)`
+}
+
+function puntStartSpot({ receiving, losYard }) {
+  return { yard_line: losYard, yard_side: receiving === 'home' ? 'away' : 'home', down: 4, distance: 8 }
+}
+
+const PUNT_SCENARIOS = [
+  { id: 'pu-kc-10', label: 'Punt NFL · ARI punts own 25 · 45 yds · KC ret 10', format: 'nfl', receiving: 'home', losYard: 25, puntYards: 45, returnYards: 10 },
+  { id: 'pu-ari-21', label: 'Punt CFB · KC punts own 30 · 50 yds · ARI ret 21', format: 'cfb', receiving: 'away', losYard: 30, puntYards: 50, returnYards: 21 },
+  { id: 'pu-kc-long', label: 'Punt CFB · ARI punts own 40 · 48 yds · KC ret 36', format: 'cfb', receiving: 'home', losYard: 40, puntYards: 48, returnYards: 36 },
+  { id: 'pu-kc-td', label: 'Punt return TD · ARI punts own 20 · KC scores', format: 'nfl', receiving: 'home', losYard: 20, puntYards: 45, touchdown: true },
+]
+
 function playText({ yards, made, missSide }) {
   const who = '#3 H.Butker'
   if (made) return `${who} ${yards} yard field goal is GOOD`
@@ -111,7 +143,7 @@ function playText({ yards, made, missSide }) {
 }
 
 /**
- * Local harness for Game Hub field animations (FG flight / front pole, pick-six, kickoff return) … not linked from nav.
+ * Local harness for Game Hub field animations (FG flight / front pole, pick-six, kickoff + punt returns) … not linked from nav.
  * Open `/play-anim-test` (or legacy `/fg-kick-test`) on the Vite app or test deploy.
  */
 export default function FgKickTestPage() {
@@ -127,6 +159,11 @@ export default function FgKickTestPage() {
   const [pickLosOwn, setPickLosOwn] = useState(true)
   const [kickYards, setKickYards] = useState(62)
   const [kickReturn, setKickReturn] = useState(26)
+  const [puntLos, setPuntLos] = useState(25)
+  const [puntYards, setPuntYards] = useState(45)
+  const [puntReturn, setPuntReturn] = useState(12)
+  /** Feed row team when it differs from live possession (punts: the punter). */
+  const [feedTeam, setFeedTeam] = useState(null)
 
   const live = useMemo(
     () =>
@@ -144,12 +181,14 @@ export default function FgKickTestPage() {
     setPossession(nextPossession)
     setYards(scenario.yards)
     setStartSpot(null)
+    setFeedTeam(null)
     setLastPlay(playText(scenario))
     setNonce((n) => n + 1)
   }
 
   const fireCustom = ({ made, missSide }) => {
     setStartSpot(null)
+    setFeedTeam(null)
     setLastPlay(playText({ yards, made, missSide }))
     setNonce((n) => n + 1)
   }
@@ -160,13 +199,34 @@ export default function FgKickTestPage() {
     setPickLosYard(scenario.losYard)
     setPickLosOwn(scenario.losOwn)
     setStartSpot(pickStartSpot(scenario))
+    setFeedTeam(null)
     setLastPlay(pickSixText(scenario))
     setNonce((n) => n + 1)
   }
 
   const firePickCustom = (format) => {
     setStartSpot(pickStartSpot({ offense: possession, losYard: pickLosYard, losOwn: pickLosOwn }))
+    setFeedTeam(null)
     setLastPlay(pickSixText({ format, returnYards: pickReturn }))
+    setNonce((n) => n + 1)
+  }
+
+  const firePunt = (scenario) => {
+    setPossession(scenario.receiving)
+    setFeedTeam(scenario.receiving === 'home' ? 'away' : 'home')
+    setPuntLos(scenario.losYard)
+    setPuntYards(scenario.puntYards)
+    if (scenario.returnYards != null) setPuntReturn(scenario.returnYards)
+    setStartSpot(puntStartSpot(scenario))
+    setLastPlay(puntText(scenario))
+    setNonce((n) => n + 1)
+  }
+
+  const firePuntCustom = ({ format, touchdown = false }) => {
+    const scenario = { format, receiving: possession, losYard: puntLos, puntYards, returnYards: puntReturn, touchdown }
+    setFeedTeam(possession === 'home' ? 'away' : 'home')
+    setStartSpot(puntStartSpot(scenario))
+    setLastPlay(puntText(scenario))
     setNonce((n) => n + 1)
   }
 
@@ -175,12 +235,14 @@ export default function FgKickTestPage() {
     setKickYards(scenario.kickYards)
     if (scenario.returnYards != null) setKickReturn(scenario.returnYards)
     setStartSpot(null)
+    setFeedTeam(null)
     setLastPlay(kickoffText(scenario))
     setNonce((n) => n + 1)
   }
 
   const fireKickCustom = ({ format, touchdown = false }) => {
     setStartSpot(null)
+    setFeedTeam(null)
     setLastPlay(kickoffText({ format, receiving: possession, kickYards, returnYards: kickReturn, touchdown }))
     setNonce((n) => n + 1)
   }
@@ -192,7 +254,7 @@ export default function FgKickTestPage() {
           <div>
             <h1 className="text-lg font-bold tracking-tight text-white">Play animation test</h1>
             <p className="text-[12px] text-zinc-400">
-              Real GameHubHero field … FG flight, pick-six, kickoff return. Half {half === 1 ? '1 (no flip)' : '2 (flipped)'}.
+              Real GameHubHero field … FG flight, pick-six, kickoff + punt returns. Half {half === 1 ? '1 (no flip)' : '2 (flipped)'}.
               Ball buttons set the offense.
             </p>
           </div>
@@ -408,13 +470,85 @@ export default function FgKickTestPage() {
           ))}
         </div>
 
+        <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+          Punt return (ball buttons = receiving team; other side punts)
+        </div>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <label className="text-[12px] text-zinc-400">
+            LOS (punter own){' '}
+            <input
+              type="number"
+              min={1}
+              max={60}
+              value={puntLos}
+              onChange={(e) => setPuntLos(Math.max(1, Math.min(60, Number(e.target.value) || 25)))}
+              className="ml-1 w-14 rounded border border-zinc-700 bg-zinc-900 px-1.5 py-1 text-zinc-100"
+            />
+          </label>
+          <label className="text-[12px] text-zinc-400">
+            Punt yds{' '}
+            <input
+              type="number"
+              min={20}
+              max={75}
+              value={puntYards}
+              onChange={(e) => setPuntYards(Math.max(20, Math.min(75, Number(e.target.value) || 45)))}
+              className="ml-1 w-14 rounded border border-zinc-700 bg-zinc-900 px-1.5 py-1 text-zinc-100"
+            />
+          </label>
+          <label className="text-[12px] text-zinc-400">
+            Return yds{' '}
+            <input
+              type="number"
+              min={-10}
+              max={100}
+              value={puntReturn}
+              onChange={(e) => setPuntReturn(Math.max(-10, Math.min(100, Number(e.target.value) || 0)))}
+              className="ml-1 w-14 rounded border border-zinc-700 bg-zinc-900 px-1.5 py-1 text-zinc-100"
+            />
+          </label>
+          <button
+            type="button"
+            className="rounded-md bg-cyan-700 px-3 py-1.5 text-[12px] font-semibold text-white"
+            onClick={() => firePuntCustom({ format: 'nfl' })}
+          >
+            Punt (NFL text)
+          </button>
+          <button
+            type="button"
+            className="rounded-md bg-cyan-700 px-3 py-1.5 text-[12px] font-semibold text-white"
+            onClick={() => firePuntCustom({ format: 'cfb' })}
+          >
+            Punt (CFB text)
+          </button>
+          <button
+            type="button"
+            className="rounded-md bg-cyan-700 px-3 py-1.5 text-[12px] font-semibold text-white"
+            onClick={() => firePuntCustom({ format: 'nfl', touchdown: true })}
+          >
+            Return TD
+          </button>
+        </div>
+        <div className="mb-4 flex flex-wrap gap-2">
+          {PUNT_SCENARIOS.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className="rounded-md bg-zinc-800 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-100 hover:bg-zinc-700"
+              onClick={() => firePunt(s)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+
         <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl">
           <GameHubHero
             game={MOCK_GAME}
             live={live}
             lastPlay={lastPlay}
             playReplayNonce={nonce}
-            replayTeam={possession}
+            replayTeam={feedTeam || possession}
             playStartSpot={startSpot}
           />
         </div>

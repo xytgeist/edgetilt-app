@@ -806,14 +806,92 @@ export function parseKickoffReturn(text) {
   return out
 }
 
-/** True when a PBP row is a completed pass, a run for a gain / TD, a FG attempt, a pick-six, or a kickoff return (field replay). */
+/**
+ * Punt that was fielded and returned. ESPN CFB: "#48 E.Jasso punt 42 yards to the TXST30 #20 D.Crowe
+ * return 21 yards to the UIW49" / "return for loss of 4 yards to the KSU31"; NFL: "T.Way punts 51
+ * yards to DAL 9, Center-C.Stephens. K.Turpin to DAL 24 for 15 yards (J.Doe)." Fair catches,
+ * touchbacks, downed / out-of-bounds punts, blocks, and muffs are not replayed.
+ * @returns {{
+ *   puntYards: number,
+ *   landAbbrev: string|null,
+ *   landYard: number|null,
+ *   returnYards: number|null,
+ *   endAbbrev: string|null,
+ *   endYard: number|null,
+ *   playerHint: string,
+ *   jerseyHint: string|null,
+ *   isTouchdown: boolean,
+ * } | null}
+ */
+export function parsePuntReturn(text) {
+  const rawFull = String(text || '').trim()
+  if (!rawFull) return null
+  const raw = scoringPlayCoreText(rawFull)
+  const lower = raw.toLowerCase()
+  if (/\btouchback\b|\bfair\s+catch\b|\bblocked\b|\bmuff(?:ed|s)?\b|\bfumble[sd]?\b|\bno\s+play\b/.test(lower)) {
+    return null
+  }
+  const punt = raw.match(
+    /\bpunts?\s+(-?\d+)\s+(?:yards?|yds?)\s+to\s+(?:the\s+)?(?:([A-Za-z]{2,6})\s*(-?\d{1,2})\b|end\s+zone)/i,
+  )
+  if (!punt) return null
+  const out = {
+    puntYards: Number(punt[1]),
+    landAbbrev: punt[2] ? punt[2].toUpperCase() : null,
+    landYard: punt[3] != null ? Number(punt[3]) : null,
+    returnYards: null,
+    endAbbrev: null,
+    endYard: null,
+    playerHint: '',
+    jerseyHint: null,
+    isTouchdown: playTextIsTouchdown(raw),
+  }
+  const after = raw.slice(punt.index + punt[0].length)
+
+  const cfb = after.match(new RegExp(`^[\\s,]*${KICK_RETURNER_NAME}\\s+return(?:s|ed)?\\b`, 'i'))
+  if (cfb) {
+    out.playerHint = cfb[1].trim()
+    const tail = after.slice(cfb.index + cfb[0].length)
+    const yds = tail.match(/^\s*(?:for\s+)?(?:(loss\s+of\s+)?(\d+)\s+(?:yards?|yds?)|(no\s+gain))/i)
+    if (yds) out.returnYards = yds[3] ? 0 : Number(yds[2]) * (yds[1] ? -1 : 1)
+    const end = tail.match(/\bto\s+the\s+([A-Za-z]{2,6})\s*(\d{1,2})\b/i)
+    if (end) {
+      out.endAbbrev = end[1].toUpperCase()
+      out.endYard = Number(end[2])
+    }
+  } else {
+    // NFL: returner sentence follows ", Center-X." … anchor on a sentence break.
+    const nfl = after.match(
+      new RegExp(`\\.\\s+${KICK_RETURNER_NAME}\\s+(?:to|for|ran|pushed|runs)\\b`, 'i'),
+    )
+    if (!nfl) return null
+    out.playerHint = nfl[1].trim()
+    const tail = after.slice(nfl.index)
+    const yds = tail.match(/\bfor\s+(-?\d+)\s+yards?\b/i)
+    if (yds) out.returnYards = Number(yds[1])
+    else if (/\bfor\s+no\s+gain\b/i.test(tail)) out.returnYards = 0
+    const end = tail.match(/\b(?:to|ob\s+at)\s+([A-Za-z]{2,5})\s+(\d{1,2})\b/i)
+    if (end) {
+      out.endAbbrev = end[1].toUpperCase()
+      out.endYard = Number(end[2])
+    }
+  }
+
+  if (!out.playerHint) return null
+  if (out.returnYards == null && out.endYard == null && !out.isTouchdown) return null
+  out.jerseyHint = splitPlayerHint(out.playerHint).jersey
+  return out
+}
+
+/** True when a PBP row is a completed pass, a run for a gain / TD, a FG attempt, a pick-six, or a kick / punt return (field replay). */
 export function isFieldReplayablePlay(text) {
   return Boolean(
     parseRushPlay(text) ||
       parsePassPlay(text) ||
       parseFieldGoalPlay(text) ||
       parseInterceptionReturn(text) ||
-      parseKickoffReturn(text),
+      parseKickoffReturn(text) ||
+      parsePuntReturn(text),
   )
 }
 

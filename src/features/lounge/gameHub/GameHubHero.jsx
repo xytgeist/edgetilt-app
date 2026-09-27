@@ -16,7 +16,7 @@ import GameHubCatchFigure from './GameHubCatchFigure.jsx'
 import { getLuminance, hexToHsl, hexToRgb, resolveTeamKit } from './gameHubFigureColors.js'
 import { pregameGameMarketPicks, pregamePlayerPropRails } from './gameHubPregameProps.js'
 import { liveFantasyRails, livePropRails } from './gameHubLiveRails.js'
-import { pregameBestLines } from './gameHubBestLines.js'
+import { liveBestLines, pregameBestLines } from './gameHubBestLines.js'
 import { formatFantasyPoints, playFantasyPoints } from './gameHubPlayFantasy.js'
 import {
   fantasyScoringLabel,
@@ -4361,6 +4361,28 @@ function MatchupLine({ title, value, sub, href = '', source = '', book = '', tag
   )
 }
 
+/** Scoreboard spread / ML under-over the score: taps open the best book's betslip (or book home) when shopped. */
+function ScoreboardLine({ pick, text, label, className = '' }) {
+  const base = `leading-none tabular-nums drop-shadow ${className}`
+  if (!pick?.url) return <div className={base}>{text}</div>
+  const price = american(pick.price)
+  return (
+    <button
+      type="button"
+      data-lounge-gamecast-market-link
+      onClick={(e) => {
+        e.stopPropagation()
+        void openExternalUrl(pick.url)
+      }}
+      aria-label={`${label} ${text}${label === 'Spread' && price ? ` ${price}` : ''}, open on ${pick.book || 'sportsbook'}`}
+      title={`${pick.book || 'Sportsbook'} ${text}${label === 'Spread' && price ? ` (${price})` : ''}`}
+      className={`${base} -mx-1 rounded px-1 underline decoration-white/25 underline-offset-2 touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/15`}
+    >
+      {text}
+    </button>
+  )
+}
+
 /** Best-line pick (`pregameBestLines`) as a MatchupLine; falls back to the scoreboard number without a book. */
 function BestLine({ title, pick, value, fallback }) {
   if (!pick) return fallback != null ? <MatchupLine title={title} value={fallback} /> : null
@@ -4679,7 +4701,7 @@ export default function GameHubHero({
   bottomBar = null,
   /** Fullscreen only: ESPN box score totals `{ home, away }` for the rails beside the field. */
   teamStats = null,
-  /** Fullscreen pregame only: per-book lines (first book shown) for the matchup board. */
+  /** Per-book lines: scoreboard best spread / ML (live + pregame) and the fullscreen pregame matchup board. */
   odds = null,
   /** Fullscreen: Kalshi / Polymarket game + player markets (pregame board rails, live props rail page). */
   marketProps = null,
@@ -4767,8 +4789,27 @@ export default function GameHubHero({
   const homeScoreDim = scoresComparable && homeScoreN < awayScoreN
   const lastPlayText = String(lastPlay || '').trim()
   const showField = isFootball && (game.status === 'in' || game.status === 'post')
-  const awayMl = clockExpiredFinal ? '' : formatLoungeSportsMoneyline(game.away?.ml)
-  const homeMl = clockExpiredFinal ? '' : formatLoungeSportsMoneyline(game.home?.ml)
+  // Best line per side, each a book deep link: pregame ranks by EV vs Pinnacle no-vig; live shops only fresh
+  // books at the consensus number (`liveBestLines`) so a suspended book's stale price can't win.
+  const shopLines = !clockExpiredFinal && (game.status === 'in' || game.status === 'pre')
+  const scoreBest = useMemo(
+    () => (!shopLines ? null : game.status === 'in' ? liveBestLines(odds) : pregameBestLines(odds)),
+    [shopLines, odds, game.status],
+  )
+  const awayMl = clockExpiredFinal
+    ? ''
+    : scoreBest?.away?.ml
+      ? american(scoreBest.away.ml.price)
+      : formatLoungeSportsMoneyline(game.away?.ml)
+  const homeMl = clockExpiredFinal
+    ? ''
+    : scoreBest?.home?.ml
+      ? american(scoreBest.home.ml.price)
+      : formatLoungeSportsMoneyline(game.home?.ml)
+  const spreadText = (side, pick) =>
+    !shopLines ? '' : pick ? signedPoint(pick.point) : side?.spread != null ? signedPoint(side.spread) : ''
+  const awaySpreadText = spreadText(game.away, scoreBest?.away?.spread)
+  const homeSpreadText = spreadText(game.home, scoreBest?.home?.spread)
   const awayLabel = hubTeamLabel(game.away, game.status, game.sport_key)
   const homeLabel = hubTeamLabel(game.home, game.status, game.sport_key)
   const preLabels = game.status === 'pre'
@@ -4875,6 +4916,14 @@ export default function GameHubHero({
               </div>
               <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1">
                 <div className="flex flex-col items-center">
+                  {awaySpreadText ? (
+                    <ScoreboardLine
+                      pick={scoreBest?.away?.spread}
+                      text={awaySpreadText}
+                      label="Spread"
+                      className="mb-0.5 text-[11px] font-semibold text-white/70"
+                    />
+                  ) : null}
                   <div
                     className={`text-[34px] font-bold leading-none tabular-nums drop-shadow ${
                       awayScoreDim ? 'text-white/45' : 'text-white'
@@ -4883,9 +4932,12 @@ export default function GameHubHero({
                     {scoreText(game.away, game.status)}
                   </div>
                   {awayMl ? (
-                    <div className="mt-0.5 text-[11px] font-semibold leading-none tabular-nums text-white/70 drop-shadow">
-                      {awayMl}
-                    </div>
+                    <ScoreboardLine
+                      pick={scoreBest?.away?.ml}
+                      text={awayMl}
+                      label="Moneyline"
+                      className="mt-0.5 text-[11px] font-semibold text-white/70"
+                    />
                   ) : null}
                   {awayTimeouts != null ? <TimeoutDots remaining={awayTimeouts} align="center" /> : null}
                 </div>
@@ -4913,6 +4965,14 @@ export default function GameHubHero({
               <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1">
                 {homeHasBall ? <PossessionFootball side="home" /> : null}
                 <div className="flex flex-col items-center">
+                  {homeSpreadText ? (
+                    <ScoreboardLine
+                      pick={scoreBest?.home?.spread}
+                      text={homeSpreadText}
+                      label="Spread"
+                      className="mb-0.5 text-[11px] font-semibold text-white/70"
+                    />
+                  ) : null}
                   <div
                     className={`text-[34px] font-bold leading-none tabular-nums drop-shadow ${
                       homeScoreDim ? 'text-white/45' : 'text-white'
@@ -4921,9 +4981,12 @@ export default function GameHubHero({
                     {scoreText(game.home, game.status)}
                   </div>
                   {homeMl ? (
-                    <div className="mt-0.5 text-[11px] font-semibold leading-none tabular-nums text-white/70 drop-shadow">
-                      {homeMl}
-                    </div>
+                    <ScoreboardLine
+                      pick={scoreBest?.home?.ml}
+                      text={homeMl}
+                      label="Moneyline"
+                      className="mt-0.5 text-[11px] font-semibold text-white/70"
+                    />
                   ) : null}
                   {homeTimeouts != null ? <TimeoutDots remaining={homeTimeouts} align="center" /> : null}
                 </div>
@@ -4970,6 +5033,14 @@ export default function GameHubHero({
               </div>
               <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1">
                 <div className="flex flex-col items-center">
+                  {awaySpreadText ? (
+                    <ScoreboardLine
+                      pick={scoreBest?.away?.spread}
+                      text={awaySpreadText}
+                      label="Spread"
+                      className="mb-0.5 text-[11px] font-semibold text-white/70"
+                    />
+                  ) : null}
                   <div
                     className={`text-[34px] font-bold leading-none tabular-nums drop-shadow ${
                       awayScoreDim ? 'text-white/45' : 'text-white'
@@ -4978,9 +5049,12 @@ export default function GameHubHero({
                     {scoreText(game.away, game.status)}
                   </div>
                   {awayMl ? (
-                    <div className="mt-0.5 text-[11px] font-semibold leading-none tabular-nums text-white/70 drop-shadow">
-                      {awayMl}
-                    </div>
+                    <ScoreboardLine
+                      pick={scoreBest?.away?.ml}
+                      text={awayMl}
+                      label="Moneyline"
+                      className="mt-0.5 text-[11px] font-semibold text-white/70"
+                    />
                   ) : null}
                 </div>
                 {awayHasBall ? <PossessionFootball side="away" /> : null}
@@ -5004,6 +5078,14 @@ export default function GameHubHero({
               <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1">
                 {homeHasBall ? <PossessionFootball side="home" /> : null}
                 <div className="flex flex-col items-center">
+                  {homeSpreadText ? (
+                    <ScoreboardLine
+                      pick={scoreBest?.home?.spread}
+                      text={homeSpreadText}
+                      label="Spread"
+                      className="mb-0.5 text-[11px] font-semibold text-white/70"
+                    />
+                  ) : null}
                   <div
                     className={`text-[34px] font-bold leading-none tabular-nums drop-shadow ${
                       homeScoreDim ? 'text-white/45' : 'text-white'
@@ -5012,9 +5094,12 @@ export default function GameHubHero({
                     {scoreText(game.home, game.status)}
                   </div>
                   {homeMl ? (
-                    <div className="mt-0.5 text-[11px] font-semibold leading-none tabular-nums text-white/70 drop-shadow">
-                      {homeMl}
-                    </div>
+                    <ScoreboardLine
+                      pick={scoreBest?.home?.ml}
+                      text={homeMl}
+                      label="Moneyline"
+                      className="mt-0.5 text-[11px] font-semibold text-white/70"
+                    />
                   ) : null}
                 </div>
               </div>

@@ -135,3 +135,94 @@ export function pregameBestLines(rows) {
     under: bestSide(list, (r) => ({ point: num(r.total), price: r.under_price, otherPrice: r.over_price, link: r.under_link }), 1),
   }
 }
+
+/** Live books move every few seconds; a book this far behind the freshest one has likely suspended the market. */
+const LIVE_FRESH_MS = 30_000
+/** Drop a live price whose no-vig win prob sits this far off the fresh-book median (stale / suspended). */
+const LIVE_ML_OUTLIER = 0.06
+
+function stampMs(row) {
+  const t = Date.parse(String(row?.last_update || ''))
+  return Number.isFinite(t) ? t : null
+}
+
+function pickFrom(row, price, point, link) {
+  return {
+    point,
+    price: num(price),
+    book: displayBook(row.book),
+    url: usableLink(link) || sportsbookHomeUrl(row.book),
+    ev: null,
+  }
+}
+
+/** Most common point among books; ties go to the one nearest the median. */
+function consensusPoint(points) {
+  const list = points.filter((p) => p != null)
+  if (!list.length) return null
+  const counts = new Map()
+  for (const p of list) counts.set(p, (counts.get(p) || 0) + 1)
+  const mid = median(list)
+  let best = null
+  for (const [p, c] of counts) {
+    if (!best || c > best.c || (c === best.c && Math.abs(p - mid) < Math.abs(best.p - mid))) best = { p, c }
+  }
+  return best.p
+}
+
+/**
+ * In-game line shopping: only books stamped within `LIVE_FRESH_MS` of the freshest book, moneylines that
+ * agree with the fresh consensus, spreads at the consensus number … then the best price per side.
+ * The pregame EV ranking doesn't hold live (stale Pinnacle reference, books spread across 4+ points).
+ * Same shape as `pregameBestLines` (`ev` is always null).
+ */
+export function liveBestLines(rows) {
+  const list = Array.isArray(rows) ? rows : []
+  const stamps = list.map(stampMs).filter((t) => t != null)
+  if (!stamps.length) return null
+  const newest = Math.max(...stamps)
+  const fresh = list.filter((r) => {
+    const t = stampMs(r)
+    return t != null && newest - t <= LIVE_FRESH_MS
+  })
+  if (!fresh.length) return null
+  const books = fresh.filter((r) => !isPinnacle(r))
+  const pool = books.length ? books : fresh
+
+  const homeProbs = fresh.map((r) => noVig(r.home_ml, r.away_ml))
+  const mlMid = median(homeProbs)
+  const mlOk = (r) => {
+    const p = noVig(r.home_ml, r.away_ml)
+    return p != null && (mlMid == null || Math.abs(p - mlMid) <= LIVE_ML_OUTLIER)
+  }
+  const bestMl = (s) => {
+    let best = null
+    for (const r of pool) {
+      if (!mlOk(r)) continue
+      const dec = decimal(r[`${s}_ml`])
+      if (dec != null && (!best || dec > best.dec)) best = { dec, pick: pickFrom(r, r[`${s}_ml`], null, r[`${s}_ml_link`]) }
+    }
+    return best?.pick || null
+  }
+
+  const homePoint = consensusPoint(pool.map((r) => num(r.home_spread)))
+  const bestSpread = (s) => {
+    if (homePoint == null) return null
+    const want = s === 'home' ? homePoint : -homePoint
+    let best = null
+    for (const r of pool) {
+      if (num(r[`${s}_spread`]) !== want) continue
+      const dec = decimal(r[`${s}_spread_price`])
+      if (dec != null && (!best || dec > best.dec)) {
+        best = { dec, pick: pickFrom(r, r[`${s}_spread_price`], want, r[`${s}_spread_link`]) }
+      }
+    }
+    return best?.pick || null
+  }
+
+  return {
+    books: pool.length,
+    away: { spread: bestSpread('away'), ml: bestMl('away') },
+    home: { spread: bestSpread('home'), ml: bestMl('home') },
+  }
+}

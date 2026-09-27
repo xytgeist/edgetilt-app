@@ -162,6 +162,8 @@ export type LoungeSportsOddsRow = {
   under_link?: string | null
   home_ml_link?: string | null
   away_ml_link?: string | null
+  /** Book's Odds API `last_update` (ISO) … live line shopping skips books that stopped moving. */
+  last_update?: string | null
 }
 
 export type LoungeSportsPlay = {
@@ -1335,7 +1337,8 @@ export async function buildLoungeSportsScoreboard(
 }
 
 const RUNDOWN_BASE = 'https://therundown.io/api/v2'
-const ODDS_CACHE_MS = 90_000
+/** Live lines move every few seconds; 20s keeps the hub scoreboard close without one fetch per viewer. */
+const ODDS_CACHE_MS = 20_000
 const oddsCache = new Map<string, { at: number; pack: Awaited<ReturnType<typeof fetchSportOdds>> | null }>()
 
 async function cachedSportOdds(sportKey: string) {
@@ -2097,6 +2100,7 @@ function compactBook(
     under_link: deepest(under.link, totalsMarket),
     home_ml_link: deepest(homeH2h.link, h2hMarket),
     away_ml_link: deepest(awayH2h.link, h2hMarket),
+    last_update: String(book.last_update || '').trim() || null,
   }
 }
 

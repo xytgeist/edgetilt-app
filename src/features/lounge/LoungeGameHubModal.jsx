@@ -483,6 +483,7 @@ export default function LoungeGameHubModal({
         splits={detail.splits}
         players={fieldPlayers}
         plays={detail.plays}
+        odds={detail.odds}
       />
 
       <div className="flex shrink-0 gap-5 overflow-x-auto border-b border-zinc-800 px-4">

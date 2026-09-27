@@ -15,6 +15,7 @@ import GameHubRushFigure from './GameHubRushFigure.jsx'
 import GameHubCatchFigure from './GameHubCatchFigure.jsx'
 import { getLuminance, hexToRgb, resolveTeamKit } from './gameHubFigureColors.js'
 import { pregameGameMarketPicks, pregamePlayerPropRails } from './gameHubPregameProps.js'
+import { sportsbookHomeUrl } from './sportsbookLinks.js'
 import {
   CATCH_HANDS_LOCAL,
   CATCH_VIEWBOX_H,
@@ -3897,7 +3898,7 @@ function MatchupLine({ title, value, sub, href = '', source = '' }) {
       type="button"
       data-lounge-gamecast-market-link
       onClick={() => void openExternalUrl(href)}
-      aria-label={`${title} ${value}, open on ${MARKET_SOURCE_LABEL[source] || 'market'}`}
+      aria-label={`${title} ${value}, open on ${MARKET_SOURCE_LABEL[source] || source || 'market'}`}
       className="-mx-1.5 -my-1 flex min-w-[3.5rem] flex-col items-center rounded-lg px-1.5 py-1 touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/15"
     >
       {body}
@@ -3906,7 +3907,7 @@ function MatchupLine({ title, value, sub, href = '', source = '' }) {
 }
 
 /** One team's column on the landscape pregame board: logo, name, record, spread + ML, then team total. */
-function MatchupTeamColumn({ side, label, treatment, spread, spreadPrice, ml, teamTotal }) {
+function MatchupTeamColumn({ side, label, treatment, spread, spreadPrice, ml, teamTotal, bookName, bookUrl }) {
   return (
     <div className="flex min-w-0 flex-col items-center">
       <LoungeSportsTeamLogo side={side} treatment={treatment} size={64} />
@@ -3923,8 +3924,10 @@ function MatchupTeamColumn({ side, label, treatment, spread, spreadPrice, ml, te
           title="Spread"
           value={signedPoint(spread)}
           sub={spreadPrice != null ? american(spreadPrice) : null}
+          href={bookUrl}
+          source={bookName}
         />
-        <MatchupLine title="ML" value={american(ml)} />
+        <MatchupLine title="ML" value={american(ml)} href={bookUrl} source={bookName} />
       </div>
       {teamTotal ? (
         <div className="mt-2">
@@ -4004,6 +4007,8 @@ function LandscapeMatchupBoard({
   marketProps,
 }) {
   const total = book?.total
+  const bookName = String(book?.book || '')
+  const bookUrl = sportsbookHomeUrl(bookName)
   const rails = useMemo(() => pregamePlayerPropRails(marketProps, players), [marketProps, players])
   const picks = useMemo(() => pregameGameMarketPicks(marketProps, game), [marketProps, game])
   const h1Spread = picks.firstHalf.spread
@@ -4049,6 +4054,8 @@ function LandscapeMatchupBoard({
             spreadPrice={book ? book.away_spread_price : null}
             ml={book?.away_ml ?? game.away?.ml}
             teamTotal={picks.teamTotal.away}
+            bookName={bookName}
+            bookUrl={book ? bookUrl : ''}
           />
           <div className="flex flex-col items-center gap-2.5 px-1 text-center">
             <div className="text-[13px] font-semibold uppercase tracking-[0.2em] text-white/45">at</div>
@@ -4057,6 +4064,8 @@ function LandscapeMatchupBoard({
                 title="Total"
                 value={total}
                 sub={`o${american(book.over_price)} / u${american(book.under_price)}`}
+                href={bookUrl}
+                source={bookName}
               />
             ) : null}
             {h1Spread && h1SpreadTeam ? (
@@ -4077,8 +4086,18 @@ function LandscapeMatchupBoard({
                 source={h1Total.source}
               />
             ) : null}
-            {book?.book ? (
-              <div className="text-[10px] font-medium uppercase tracking-wide text-white/40">{book.book}</div>
+            {bookName && bookUrl ? (
+              <button
+                type="button"
+                data-lounge-gamecast-market-link
+                onClick={() => void openExternalUrl(bookUrl)}
+                aria-label={`Open ${bookName}`}
+                className="rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/75 touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/20"
+              >
+                {bookName}
+              </button>
+            ) : bookName ? (
+              <div className="text-[10px] font-medium uppercase tracking-wide text-white/40">{bookName}</div>
             ) : null}
           </div>
           <MatchupTeamColumn
@@ -4089,6 +4108,8 @@ function LandscapeMatchupBoard({
             spreadPrice={book ? book.home_spread_price : null}
             ml={book?.home_ml ?? game.home?.ml}
             teamTotal={picks.teamTotal.home}
+            bookName={bookName}
+            bookUrl={book ? bookUrl : ''}
           />
           <PregamePropRail rows={rails.home} align="right" />
         </div>

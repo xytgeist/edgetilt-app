@@ -29,6 +29,7 @@ import {
   liveClockLabel,
   matchRushPlayer,
   parseFieldGoalPlay,
+  parseInterceptionPlay,
   parseInterceptionReturn,
   parseKickoffReturn,
   parseKickoffTouchback,
@@ -92,6 +93,10 @@ const PICK_DEFENDER_DEPTH_YDS = 7
 const PICK_RETURN_BASE_MS = 900
 const PICK_RETURN_MS_PER_YD = 20
 const PICK_RETURN_MAX_MS = 2600
+/** Non-scoring pick with no return: defender goes down with it. */
+const PICK_DOWN_SETTLE_MS = 350
+/** Non-scoring pick: pause at the return spot before the TURNOVER banner. */
+const PICK_DOWN_HOLD_MS = 900
 /** Kickoff hang time (tee → returner's tuck). */
 const KICK_FLIGHT_MS = 2100
 /** Punt hang time (punter → returner's tuck). */
@@ -1315,6 +1320,10 @@ function FieldViz({
     fieldFlipped: false,
     knownStartPct: null,
     knownFirstDownPct: null,
+    /** Feed row `end_spot` for the play … where an INT return ended (new LOS). */
+    knownEndPct: null,
+    /** Feed row team (offense on the snap). */
+    rowTeam: null,
     /** Anim effects key on `animKey`; text edits of the same play must not re-run them. */
     lastPlayText: '',
   })
@@ -1330,6 +1339,8 @@ function FieldViz({
     fieldFlipped,
     knownStartPct,
     knownFirstDownPct,
+    knownEndPct: playSpotFieldPercent(lastPlayRow?.end_spot, fieldFlipped),
+    rowTeam: lastPlayRow?.team === 'home' || lastPlayRow?.team === 'away' ? lastPlayRow.team : null,
     lastPlayText,
   }
   /** Gates auto-play start without thrashing on every yard-line tick. */
@@ -2025,7 +2036,7 @@ function FieldViz({
     const ctx = fieldAnimCtxRef.current
     if (!playAnimReady) return undefined
     if (ctx.pos == null && !isUserReplay) return undefined
-    const parsed = parseInterceptionReturn(lastPlayText)
+    const parsed = parseInterceptionReturn(lastPlayText) || parseInterceptionPlay(lastPlayText)
     if (!parsed) {
       if (pickKeyRef.current && animKey !== pickKeyRef.current) {
         setPickAnim(null)
@@ -2049,12 +2060,15 @@ function FieldViz({
     setKickAnim(null)
     if (kickRafRef.current) cancelAnimationFrame(kickRafRef.current)
 
-    // Feed row team on an INT is the throwing (offense) side.
-    const offense =
-      ctx.possessionSide || (ctx.live?.possession === 'home' || ctx.live?.possession === 'away'
-        ? ctx.live.possession
-        : null)
-    const defense = offense === 'home' ? 'away' : offense === 'away' ? 'home' : null
+    const isTouchdown = parsed.isTouchdown === true
+    const livePoss = ctx.live?.possession === 'home' || ctx.live?.possession === 'away' ? ctx.live.possession : null
+    const otherSide = (s) => (s === 'home' ? 'away' : s === 'away' ? 'home' : null)
+    // Feed row team on an INT is the throwing (offense) side. After a non-scoring pick the live
+    // feed already hands possession to the defense.
+    const offense = isTouchdown
+      ? ctx.possessionSide || livePoss
+      : ctx.rowTeam || ctx.feedTeam || otherSide(livePoss)
+    const defense = otherSide(offense)
     if (!offense || !defense) {
       pickKeyRef.current = ''
       return undefined
@@ -2062,19 +2076,47 @@ function FieldViz({
     const offDir = attackDirection(offense, ctx.fieldFlipped)
     const defDir = -offDir
     const clampPct = (v) => Math.max(0, Math.min(100, v))
-    // Defense scores at the offense's own goal line.
-    const goalPct = defDir > 0 ? 100 : 0
-    const returnYards = Number.isFinite(Number(parsed.returnYards)) ? Number(parsed.returnYards) : 25
-    const pickPct = clampPct(goalPct - defDir * returnYards)
     const settled = settledLinesRef.current
-    let losPct =
+    const priorLosPct =
       ctx.knownStartPct != null
         ? ctx.knownStartPct
         : settled.scrimPct != null && Number.isFinite(settled.scrimPct)
           ? settled.scrimPct
-          : clampPct(pickPct - offDir * 12)
-    // Throw must travel downfield from the LOS to the pick spot.
-    if ((pickPct - losPct) * offDir < 3) losPct = clampPct(pickPct - offDir * 10)
+          : null
+    const returnYards = Number.isFinite(Number(parsed.returnYards))
+      ? Number(parsed.returnYards)
+      : isTouchdown ? 25 : 0
+    let pickPct
+    let goalPct
+    if (isTouchdown) {
+      // Defense scores at the offense's own goal line.
+      goalPct = defDir > 0 ? 100 : 0
+      pickPct = clampPct(goalPct - defDir * returnYards)
+    } else if (parsed.touchback) {
+      // Picked in the end zone the offense was attacking … downed there.
+      pickPct = offDir > 0 ? 100 : 0
+      goalPct = pickPct
+    } else {
+      // Return ends at the new LOS: row end spot, else live spot once possession flipped.
+      const endPct =
+        ctx.knownEndPct != null
+          ? ctx.knownEndPct
+          : livePoss === defense && ctx.pos != null
+            ? ctx.pos
+            : null
+      if (endPct != null) {
+        pickPct = clampPct(endPct - defDir * returnYards)
+        goalPct = endPct
+      } else {
+        pickPct = clampPct((priorLosPct ?? 50) + offDir * 15)
+        goalPct = clampPct(pickPct + defDir * returnYards)
+      }
+    }
+    let losPct = priorLosPct != null ? priorLosPct : clampPct(pickPct - offDir * 12)
+    // Throw must travel downfield from the LOS to the pick spot. Non-scoring picks trust the feed's LOS.
+    if ((isTouchdown || priorLosPct == null) && (pickPct - losPct) * offDir < 3) {
+      losPct = clampPct(pickPct - offDir * 10)
+    }
     const airYards = Math.abs(pickPct - losPct)
     const fromFirstDownPct =
       ctx.knownFirstDownPct != null
@@ -2093,15 +2135,15 @@ function FieldViz({
     const pickX = fieldMidXFromPercent(pickPct)
     const startX = fieldMidXFromPercent(clampPct(pickPct + offDir * PICK_DEFENDER_DEPTH_YDS))
     const goalX = fieldMidXFromPercent(goalPct)
-    const returnMs = Math.min(
-      PICK_RETURN_MAX_MS,
-      PICK_RETURN_BASE_MS + returnYards * PICK_RETURN_MS_PER_YD,
-    )
+    const returnDist = Math.abs(goalPct - pickPct)
+    const returnMs = !isTouchdown && returnDist < 0.5
+      ? PICK_DOWN_SETTLE_MS
+      : Math.min(PICK_RETURN_MAX_MS, PICK_RETURN_BASE_MS + returnDist * PICK_RETURN_MS_PER_YD)
     const runEndMs = PICK_THROW_MS + returnMs
 
     const base = {
       playKey: animKey,
-      isTouchdown: true,
+      isTouchdown,
       y: RUSH_Y,
       facing: defDir,
       primary: kit.primary,
@@ -2126,7 +2168,10 @@ function FieldViz({
       return undefined
     }
 
-    const totalMs = runEndMs + CATCH_TD_PRE_LABEL_MS + CATCH_TD_CELEBRATE_MS + CATCH_TD_LABEL_TAIL_MS
+    // Non-scoring pick: brief hold at the return spot, then the TURNOVER banner takes over.
+    const totalMs = isTouchdown
+      ? runEndMs + CATCH_TD_PRE_LABEL_MS + CATCH_TD_CELEBRATE_MS + CATCH_TD_LABEL_TAIL_MS
+      : runEndMs + PICK_DOWN_HOLD_MS
     setPickAnim({
       ...base,
       figX: startX,
@@ -2163,6 +2208,9 @@ function FieldViz({
         const t = easeOutCubic((elapsed - PICK_THROW_MS) / returnMs)
         figX = pickX + (goalX - pickX) * t
         showTrail = t > 0.02
+      } else if (!isTouchdown) {
+        figX = goalX
+        showTrail = Math.abs(goalX - pickX) > 1
       } else if (elapsed < runEndMs + CATCH_TD_PRE_LABEL_MS) {
         figX = goalX
         showTrail = true

@@ -242,6 +242,42 @@ export default function FgKickTestPage() {
     setNonce((n) => n + 1)
   }
 
+  /**
+   * Non-scoring pick like the live feed: row team = thrower, `end_spot` = return end, live possession
+   * already flipped to the defense. LOS at the thrower's own 35; `pickYard` in the defense's territory.
+   */
+  const fireIntReturn = ({ pickYard, returnYards, touchback = false, format = 'cfb' }) => {
+    const own = possession
+    const def = own === 'home' ? 'away' : 'home'
+    const ownAb = own === 'home' ? 'KC' : 'ARI'
+    const defAb = def === 'home' ? 'KC' : 'ARI'
+    const endYard = pickYard + returnYards
+    const end = touchback
+      ? { yard_line: 25, yard_side: def }
+      : endYard > 50
+        ? { yard_line: 100 - endYard, yard_side: own }
+        : { yard_line: endYard, yard_side: def }
+    const endLabel = end.yard_line === 50 ? '50' : `${end.yard_side === own ? ownAb : defAb}${String(end.yard_line).padStart(2, '0')}`
+    let text
+    if (touchback) {
+      text = `(07:12) Shotgun #14 J.Maiava pass intercepted by #6 R.Morgan at ${defAb}00, Touchback`
+    } else if (format === 'nfl') {
+      text = `(7:12) (Shotgun) K.Murray pass deep right intended for M.Harrison INTERCEPTED by B.Baker at ${defAb} ${pickYard}. B.Baker to ${endLabel.replace(/(\D+)0?(\d+)/, '$1 $2')} for ${returnYards} yards (M.Harrison).`
+    } else if (returnYards === 0) {
+      text = `(07:12) Shotgun #14 J.Maiava pass intercepted by #6 R.Morgan at ${defAb}${String(pickYard).padStart(2, '0')}, End Of Play`
+    } else {
+      text = `(07:12) Shotgun #14 J.Maiava pass intercepted by #6 R.Morgan at ${defAb}${String(pickYard).padStart(2, '0')} #6 R.Morgan return ${returnYards} yards to the ${endLabel} (#7 I.Obidegwu)`
+    }
+    setFeedTeam(own)
+    setStartSpot({ yard_line: 35, yard_side: own, down: 2, distance: 8 })
+    setFeedPlays([
+      { id: `int-${pickYard}-${returnYards}-${touchback}-${format}`, period: half, clock: '07:12', sequence: 1, team: own, description: text, turnover: true, start_spot: { yard_line: 35, yard_side: own }, end_spot: end },
+    ])
+    setPossession(def)
+    setLastPlay(text)
+    setNonce((n) => n + 1)
+  }
+
   const fireIncomplete = (dir) => {
     const own = possession
     const spot = (yard) => ({ yard_line: yard, yard_side: own })
@@ -480,6 +516,21 @@ export default function FgKickTestPage() {
           >
             Interception (no return)
           </button>
+          {[
+            { label: 'INT at 20 · ret 18', pickYard: 20, returnYards: 18 },
+            { label: 'INT at 8 · ret 45 (NFL)', pickYard: 8, returnYards: 45, format: 'nfl' },
+            { label: 'INT at 30 · End Of Play', pickYard: 30, returnYards: 0 },
+            { label: 'INT touchback', pickYard: 0, returnYards: 0, touchback: true },
+          ].map((s) => (
+            <button
+              key={s.label}
+              type="button"
+              className="rounded-md bg-rose-700 px-3 py-1.5 text-[12px] font-semibold text-white"
+              onClick={() => fireIntReturn(s)}
+            >
+              {s.label}
+            </button>
+          ))}
           <button
             type="button"
             className="rounded-md bg-rose-700 px-3 py-1.5 text-[12px] font-semibold text-white"

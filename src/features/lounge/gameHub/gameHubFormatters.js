@@ -726,7 +726,7 @@ function extractPassReceiverHint(raw) {
  * Interception returned for a TD (pick-six). ESPN CFB: "pass intercepted by #6 R.Morgan at USC23
  * #6 R.Morgan return 23 yards to the USC00 TOUCHDOWN"; NFL: "INTERCEPTED by B.Baker at KC 38.
  * B.Baker for 38 yards, TOUCHDOWN"; scoring card: "Kobe King 44 Yd Interception Return".
- * Non-scoring picks are not replayed (no return spot we can trust yet).
+ * Non-scoring picks: `parseInterceptionPlay`.
  * @returns {{ returnYards: number|null, playerHint: string, jerseyHint: string|null, isTouchdown: true } | null}
  */
 export function parseInterceptionReturn(text) {
@@ -761,6 +761,39 @@ export function parseInterceptionReturn(text) {
   }
   const { jersey: jerseyHint } = splitPlayerHint(playerHint)
   return { returnYards, playerHint, jerseyHint, isTouchdown: true }
+}
+
+/**
+ * Non-scoring interception. ESPN CFB: "pass intercepted by #5 S.Harris at FRES31 #5 S.Harris return
+ * 8 yards to the FRES39 (#56 N.Bledsoe)" / "… at TTU40, End Of Play" / "… at OSU00, Touchback";
+ * NFL: "INTERCEPTED by B.Baker at KC 38. B.Baker to KC 20 for 18 yards (T.Kelce)." Pick-sixes and
+ * NO PLAY rows return null (see `parseInterceptionReturn`). The hero places the pick from the row's
+ * end spot minus the return, so the "at" spot's school codes don't have to resolve.
+ * @returns {{ returnYards: number, playerHint: string, jerseyHint: string|null, touchback: boolean, isTouchdown: false } | null}
+ */
+export function parseInterceptionPlay(text) {
+  const raw = String(text || '').trim()
+  if (!raw) return null
+  const lower = raw.toLowerCase()
+  const at = lower.search(/\bintercept(?:ed|ion|s)?\b/)
+  if (at < 0) return null
+  if (/\bno\s+play\b/.test(lower) || playTextIsTouchdown(raw) || parseInterceptionReturn(raw)) return null
+  const after = raw.slice(at)
+  const touchback = /\btouchback\b/i.test(after)
+  let returnYards = 0
+  if (!touchback) {
+    const ret =
+      after.match(/\breturn(?:s|ed)?\s+(?:for\s+)?(-?\d+)\s+(?:yards?|yds?)\b/i) ||
+      after.match(/\bfor\s+(-?\d+)\s+(?:yards?|yds?)\b/i)
+    if (ret) returnYards = Number(ret[1]) || 0
+  }
+  let playerHint = ''
+  const by = after.match(
+    /\bintercept(?:ed|ion)?\s+by\s+((?:#?\d{1,2}\s+)?[A-Za-z][A-Za-z.'’-]*(?:\s+[A-Za-z][A-Za-z.'’-]*){0,2}?)(?=\s+(?:at|return|returns|returned|for|to|ran|runs|pushed)\b|\s*[,.(]|$)/i,
+  )
+  if (by) playerHint = by[1].trim()
+  const { jersey: jerseyHint } = splitPlayerHint(playerHint)
+  return { returnYards, playerHint, jerseyHint, touchback, isTouchdown: false }
 }
 
 const CFB_KICKOFF = /\bkickoff\s+(?:for\s+)?(-?\d+)\s+(?:yds?|yards?)\b(?:\s+to\s+the\s+([A-Za-z]{2,8})\s*(\d{1,2})\b)?/i
@@ -968,13 +1001,14 @@ export function parsePuntReturn(text) {
   return out
 }
 
-/** True when a PBP row is a completed pass, a run for a gain / TD, a FG attempt, a pick-six, or a kick / punt return (field replay). */
+/** True when a PBP row is a completed pass, a run for a gain / TD, a FG attempt, an interception, or a kick / punt return (field replay). */
 export function isFieldReplayablePlay(text) {
   return Boolean(
     parseRushPlay(text) ||
       parsePassPlay(text) ||
       parseFieldGoalPlay(text) ||
       parseInterceptionReturn(text) ||
+      parseInterceptionPlay(text) ||
       parseKickoffReturn(text) ||
       parsePuntReturn(text),
   )

@@ -239,6 +239,45 @@ export type LoungeSportsPlayerBox = {
 
 export type LoungeSportsPlayerBoxes = { home: LoungeSportsPlayerBox[]; away: LoungeSportsPlayerBox[] }
 
+/** ESPN team roster row … current uniform numbers for every player (returners, defenders too). */
+export type LoungeSportsRosterPlayer = { name: string; jersey: string; position: string; headshot: string }
+export type LoungeSportsRosters = { home: LoungeSportsRosterPlayer[]; away: LoungeSportsRosterPlayer[] }
+
+const ESPN_ROSTER_TTL_MS = 6 * 60 * 60 * 1000
+const ESPN_NFL_ROSTER_ABBREV: Record<string, string> = { WAS: 'WSH', JAC: 'JAX', LA: 'LAR', OAK: 'LV' }
+const espnRosterCache = new Map<string, { at: number; rows: LoungeSportsRosterPlayer[] }>()
+
+async function fetchEspnNflRoster(abbrev: string | null | undefined): Promise<LoungeSportsRosterPlayer[]> {
+  const raw = String(abbrev || '').trim().toUpperCase()
+  if (!raw) return []
+  const key = ESPN_NFL_ROSTER_ABBREV[raw] || raw
+  const hit = espnRosterCache.get(key)
+  if (hit && Date.now() - hit.at < ESPN_ROSTER_TTL_MS) return hit.rows
+  try {
+    const res = await fetch(
+      `https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams/${key.toLowerCase()}/roster`,
+      { headers: { 'User-Agent': 'EdgeTiltLounge/1.0', Accept: 'application/json' } },
+    )
+    if (!res.ok) return hit?.rows || []
+    const body = await res.json() as { athletes?: Array<{ items?: Array<Record<string, unknown>> }> }
+    const rows: LoungeSportsRosterPlayer[] = []
+    for (const group of Array.isArray(body.athletes) ? body.athletes : []) {
+      for (const a of Array.isArray(group.items) ? group.items : []) {
+        const name = String(a.displayName || '').trim()
+        const jersey = String(a.jersey ?? '').trim()
+        if (!name || !jersey) continue
+        const pos = (a.position && typeof a.position === 'object') ? a.position as Record<string, unknown> : {}
+        const hs = (a.headshot && typeof a.headshot === 'object') ? a.headshot as Record<string, unknown> : {}
+        rows.push({ name, jersey, position: String(pos.abbreviation || ''), headshot: String(hs.href || '') })
+      }
+    }
+    if (rows.length) espnRosterCache.set(key, { at: Date.now(), rows })
+    return rows
+  } catch {
+    return hit?.rows || []
+  }
+}
+
 export type LoungeSportsGame = {
   id: string
   sport_key: string
@@ -2265,6 +2304,7 @@ export async function fetchLoungeSportsGameDetail(
   stats: LoungeSportsPlayerStat[]
   team_stats: LoungeSportsTeamStats | null
   player_box: LoungeSportsPlayerBoxes | null
+  rosters: LoungeSportsRosters | null
 }> {
   const eventId = encodeURIComponent(game.id)
   const [eventRaw, playsRaw, statsRaw, oddsPack, pinPack] = await Promise.all([
@@ -2310,6 +2350,12 @@ export async function fetchLoungeSportsGameDetail(
   const wantTeamStats = (isNflSportKey(sk) || isCfbSportKey(sk)) && (game.status === 'in' || game.status === 'post')
   let teamStats: LoungeSportsTeamStats | null = null
   let playerBox: LoungeSportsPlayerBoxes | null = null
+  // Play text often names players without `#N` … field figures look the number up here.
+  const rostersPromise: Promise<LoungeSportsRosters | null> = isNflSportKey(sk)
+    ? Promise.all([fetchEspnNflRoster(game.away?.abbrev), fetchEspnNflRoster(game.home?.abbrev)]).then(
+      ([away, home]) => (away.length || home.length ? { away, home } : null),
+    )
+    : Promise.resolve(null)
   if (needEspn || wantTeamStats) {
     const espn = await fetchEspnFootballLivePack(game)
     if (needEspn) {
@@ -2371,5 +2417,6 @@ export async function fetchLoungeSportsGameDetail(
     stats,
     team_stats: teamStats,
     player_box: playerBox,
+    rosters: await rostersPromise,
   }
 }

@@ -34,6 +34,7 @@ import { KalshiGamePropsBoard } from './gameHub/GameHubKalshiProps.jsx'
 import { BoxScoreCard, OddsTable, PlayList, PlayerStats, PostList } from './gameHub/GameHubPanes.jsx'
 import {
   liveClockLabel,
+  mergeFieldRoster,
   resolvePlayStartSpot,
   scoreText,
   sortPlaysNewestFirst,
@@ -92,6 +93,10 @@ export default function LoungeGameHubModal({
 
   const isCfbGame = String(game?.sport_key || '').includes('ncaaf')
   const showFantasyTab = Boolean(game) && !isCfbGame
+  const fieldPlayers = useMemo(
+    () => mergeFieldRoster(fantasy.players, detail.rosters, game),
+    [fantasy.players, detail.rosters, game],
+  )
 
   const searchQuery = useMemo(() => {
     if (!game) return ''
@@ -196,6 +201,7 @@ export default function LoungeGameHubModal({
           splits: data.splits && typeof data.splits === 'object' ? data.splits : null,
           teamStats: data.team_stats && typeof data.team_stats === 'object' ? data.team_stats : null,
           playerBox: data.player_box && typeof data.player_box === 'object' ? data.player_box : null,
+          rosters: data.rosters && typeof data.rosters === 'object' ? data.rosters : null,
         })
       })
     }
@@ -458,7 +464,7 @@ export default function LoungeGameHubModal({
         playStartSpot={fieldPlayStartSpot}
         topBar={hubTopBar}
         splits={detail.splits}
-        players={fantasy.players}
+        players={fieldPlayers}
         plays={detail.plays}
       />
 
@@ -660,7 +666,7 @@ export default function LoungeGameHubModal({
           replayTeam={feedTeamForFieldPlay}
           playStartSpot={fieldPlayStartSpot}
           splits={detail.splits}
-          players={fantasy.players}
+          players={fieldPlayers}
           plays={detail.plays}
           teamStats={detail.teamStats}
           odds={detail.odds}

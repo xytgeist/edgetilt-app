@@ -84,6 +84,7 @@ Deno.serve(async (req) => {
       stats: detail.stats,
       team_stats: detail.team_stats,
       player_box: detail.player_box,
+      rosters: detail.rosters,
       splits,
       fetched_at: new Date().toISOString(),
     })

@@ -1439,6 +1439,60 @@ function parseInitialLastName(namePart) {
   return null
 }
 
+const rosterNameKey = (name) =>
+  String(name || '')
+    .toLowerCase()
+    .replace(/\b(jr|sr|ii|iii|iv|v)\b\.?/g, '')
+    .replace(/[^a-z0-9]/g, '')
+
+/**
+ * Field-figure roster: hub players (fantasy / CFB roster) with ESPN's current uniform numbers laid over them,
+ * plus every other ESPN roster player (returners, defenders) so play text without `#N` still finds a number.
+ * @param {object[]} players hub roster rows `{ name, team, side, jersey, … }`
+ * @param {{ away?: object[], home?: object[] } | null} rosters scoreboard detail `rosters`
+ * @param {object} game hub game (side abbrevs)
+ */
+export function mergeFieldRoster(players, rosters, game) {
+  const base = Array.isArray(players) ? players : []
+  if (!rosters || (!rosters.away?.length && !rosters.home?.length)) return base
+  const espnBySide = { away: new Map(), home: new Map() }
+  for (const side of ['away', 'home']) {
+    for (const r of Array.isArray(rosters[side]) ? rosters[side] : []) {
+      const k = rosterNameKey(r?.name)
+      if (k) espnBySide[side].set(k, r)
+    }
+  }
+  const seen = { away: new Set(), home: new Set() }
+  const out = base.map((p) => {
+    const side = p?.side === 'home' || p?.side === 'away' ? p.side : null
+    const k = rosterNameKey(p?.name)
+    const espn = side && k ? espnBySide[side].get(k) : null
+    if (!espn) return p
+    seen[side].add(k)
+    return {
+      ...p,
+      jersey: espn.jersey || p.jersey,
+      headshot_url: p.headshot_url || espn.headshot || null,
+    }
+  })
+  for (const side of ['away', 'home']) {
+    const team = String(game?.[side]?.abbrev || '')
+    for (const [k, r] of espnBySide[side]) {
+      if (seen[side].has(k)) continue
+      out.push({
+        name: r.name,
+        team,
+        side,
+        jersey: r.jersey,
+        position: r.position || null,
+        headshot_url: r.headshot || null,
+        espn_roster_only: true,
+      })
+    }
+  }
+  return out
+}
+
 /**
  * Match a rush/catch player hint against hub roster rows.
  * Prefers possession-side `team` abbrev when provided.

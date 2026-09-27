@@ -52,8 +52,12 @@ export const LOUNGE_SPORTS_GAME_PENDING_KEY = 'loungeSportsGamePending:v1'
  */
 export function loungeSportsGameShareUrl(game, origin) {
   const id = String(game?.id || '').trim()
-  const base = `${origin}/?tab=home`
-  return id ? `${base}&${LOUNGE_SPORTS_GAME_PARAM}=${encodeURIComponent(id)}` : base
+  if (!id) return `${origin}/?tab=home`
+  // `/lounge/g/:id` is a Vercel OG page (live scoreboard card) that forwards to the SPA; Vite dev has no route.
+  if (/\/\/(localhost|127\.0\.0\.1)(:\d+)?$/i.test(origin)) {
+    return `${origin}/?tab=home&${LOUNGE_SPORTS_GAME_PARAM}=${encodeURIComponent(id)}`
+  }
+  return `${origin}/lounge/g/${encodeURIComponent(id)}`
 }
 
 /**

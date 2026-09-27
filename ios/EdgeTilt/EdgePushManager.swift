@@ -130,7 +130,7 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
     }
   }
 
-  /// HTTPS + our hosts + auth confirm, Lounge share paths, or SPA `post` / `u` / `profile` query.
+  /// HTTPS + our hosts + auth confirm, Lounge share paths (post / game / profile), or SPA `post` / `u` / `profile` / `game` query.
   /// AASA is the other half of this gate.
   static func isAllowedUniversalLink(_ url: URL) -> Bool {
     guard let scheme = url.scheme?.lowercased(), scheme == "https",
@@ -141,6 +141,7 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
     let path = url.path.lowercased()
     if path == "/auth/confirm" || path.hasPrefix("/auth/confirm/") { return true }
     if path.hasPrefix("/lounge/p/") { return true }
+    if path.hasPrefix("/lounge/g/") { return true }
     if path.hasPrefix("/u/") { return true }
     if path == "/" || path.isEmpty {
       let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
@@ -148,13 +149,13 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
         let name = item.name.lowercased()
         let value = (item.value ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         if value.isEmpty { continue }
-        if name == "post" || name == "u" || name == "profile" { return true }
+        if name == "post" || name == "u" || name == "profile" || name == "game" { return true }
       }
     }
     return false
   }
 
-  /// Map share permalinks to the SPA query the web already opens (`/?tab=home&post=` / `&u=`).
+  /// Map share permalinks to the SPA query the web already opens (`/?tab=home&post=` / `&game=` / `&u=`).
   /// Avoids loading the OG HTML shell inside WKWebView.
   static func canonicalWebURL(fromUniversalLink url: URL) -> URL {
     let path = url.path
@@ -172,6 +173,22 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
         comps?.queryItems = [
           URLQueryItem(name: "tab", value: "home"),
           URLQueryItem(name: "post", value: id),
+        ]
+        if let next = comps?.url { return next }
+      }
+    }
+
+    if pathLower.hasPrefix("/lounge/g/") {
+      let id = String(path.dropFirst("/lounge/g/".count))
+        .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        .split(separator: "/")
+        .first
+        .map(String.init) ?? ""
+      if !id.isEmpty {
+        comps?.path = "/"
+        comps?.queryItems = [
+          URLQueryItem(name: "tab", value: "home"),
+          URLQueryItem(name: "game", value: id),
         ]
         if let next = comps?.url { return next }
       }

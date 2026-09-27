@@ -1,7 +1,7 @@
 {
   "name": "phoenixlinkcalc",
   "private": true,
-  "version": "1.4.851",
+  "version": "1.4.852",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -140,6 +140,7 @@
     "@lucide/lab": "^0.2.0",
     "@sentry/react": "^10.53.1",
     "@supabase/supabase-js": "^2.100.0",
+    "@vercel/og": "^0.8.6",
     "chart.js": "^4.5.1",
     "country-state-city": "^3.2.1",
     "date-fns": "^4.1.0",

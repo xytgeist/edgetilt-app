@@ -42,6 +42,9 @@ verify_jwt = true
 [functions.lounge-sports-scoreboard]
 verify_jwt = true
 
+[functions.lounge-game-card]
+verify_jwt = false
+
 [functions.lounge-nfl-game-fantasy]
 verify_jwt = false
 

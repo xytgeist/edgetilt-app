@@ -67,6 +67,10 @@
       "destination": "/api/lounge-post-og?postId=:postId"
     },
     {
+      "source": "/lounge/g/:eventId",
+      "destination": "/api/lounge-game-og?eventId=:eventId"
+    },
+    {
       "source": "/u/:handle",
       "destination": "/api/lounge-profile-og?handle=:handle"
     },

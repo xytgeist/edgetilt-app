@@ -17,6 +17,10 @@ function price(p) {
   return Number.isFinite(n) && n >= 0.05 && n <= 0.95 ? n : null
 }
 
+function marketUrl(p) {
+  return p?.url_yes || p?.url_market || p?.url || ''
+}
+
 function lineNumber(p) {
   const text = String(p?.line_label || p?.title || '')
     .replace(/\b[12][HQ]\b|\b\d(?:st|nd|rd|th)\s+(?:half|quarter)\b/gi, ' ')
@@ -71,7 +75,7 @@ function lastName(name) {
 
 /**
  * Up to `limit` players per side: QB pass yds, RB rush yds, WR/TE rec yds (anytime TD when the
- * yardage ladder is missing). Rows: `{ key, name, position, stat, line, price, source }`.
+ * yardage ladder is missing). Rows: `{ key, name, position, stat, line, price, source, url }`.
  */
 export function pregamePlayerPropRails(props, players, limit = 5) {
   const roster = new Map()
@@ -107,6 +111,7 @@ export function pregamePlayerPropRails(props, players, limit = 5) {
       line: `${line}+`,
       price: price(pick),
       source: pick.source,
+      url: marketUrl(pick),
       rank: Number(player.search_rank) || 9999,
     })
   }
@@ -149,13 +154,13 @@ const isSpread = (p) => /spread/.test(String(p?.series || '').toLowerCase())
 const isGameTotal = (p) => /total/.test(String(p?.series || '').toLowerCase()) && !isTeamTotal(p)
 
 /**
- * Team totals `{ away, home }` and 1H `{ spread, total }` picks, each `{ line, price, source, side? }`.
+ * Team totals `{ away, home }` and 1H `{ spread, total }` picks, each `{ line, price, source, url, side? }`.
  */
 export function pregameGameMarketPicks(props, game) {
   const list = (Array.isArray(props) ? props : []).filter((p) => p?.kind === 'game' || p?.kind === 'period')
   const pick = (rows, extra = {}) => {
     const p = nearestEven(rows)
-    return p ? { line: lineNumber(p), price: price(p), source: p.source, ...extra } : null
+    return p ? { line: lineNumber(p), price: price(p), source: p.source, url: marketUrl(p), ...extra } : null
   }
   const fullTeamTotals = list.filter((p) => p.kind === 'game' && isTeamTotal(p))
   const teamTotal = (side) => pick(fullTeamTotals.filter((p) => lineSide(p, game) === side))
@@ -169,6 +174,7 @@ export function pregameGameMarketPicks(props, game) {
         line: lineNumber(h1SpreadRow),
         price: price(h1SpreadRow),
         source: h1SpreadRow.source,
+        url: marketUrl(h1SpreadRow),
       }
     : null
   const h1Total = pick(h1.filter((p) => isGameTotal(p)))

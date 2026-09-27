@@ -3874,13 +3874,34 @@ function TeamStatRail({ stats, align }) {
   )
 }
 
-function MatchupLine({ title, value, sub }) {
-  return (
-    <div className="flex min-w-[3.5rem] flex-col items-center">
+const MARKET_SOURCE_LABEL = { kalshi: 'Kalshi', polymarket: 'Polymarket' }
+
+/** Board stat; with `href` it becomes a tap-through to the market (price reads as the Yes price). */
+function MatchupLine({ title, value, sub, href = '', source = '' }) {
+  const body = (
+    <>
       <div className="text-[9px] font-semibold uppercase leading-none tracking-[0.14em] text-white/55">{title}</div>
       <div className="mt-1 text-[18px] font-bold leading-none tabular-nums text-white drop-shadow">{value}</div>
-      {sub ? <div className="mt-0.5 text-[10px] font-semibold leading-none tabular-nums text-white/55">{sub}</div> : null}
-    </div>
+      {sub ? (
+        <div
+          className={`mt-0.5 text-[10px] font-semibold leading-none tabular-nums ${href ? 'text-emerald-300' : 'text-white/55'}`}
+        >
+          {sub}
+        </div>
+      ) : null}
+    </>
+  )
+  if (!href) return <div className="flex min-w-[3.5rem] flex-col items-center">{body}</div>
+  return (
+    <button
+      type="button"
+      data-lounge-gamecast-market-link
+      onClick={() => void openExternalUrl(href)}
+      aria-label={`${title} ${value}, open on ${MARKET_SOURCE_LABEL[source] || 'market'}`}
+      className="-mx-1.5 -my-1 flex min-w-[3.5rem] flex-col items-center rounded-lg px-1.5 py-1 touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/15"
+    >
+      {body}
+    </button>
   )
 }
 
@@ -3907,7 +3928,13 @@ function MatchupTeamColumn({ side, label, treatment, spread, spreadPrice, ml, te
       </div>
       {teamTotal ? (
         <div className="mt-2">
-          <MatchupLine title="Team total" value={`o${teamTotal.line}`} sub={kalshiCents(teamTotal.price)} />
+          <MatchupLine
+            title="Team total"
+            value={`o${teamTotal.line}`}
+            sub={kalshiCents(teamTotal.price)}
+            href={teamTotal.url}
+            source={teamTotal.source}
+          />
         </div>
       ) : null}
     </div>
@@ -3926,7 +3953,17 @@ function PregamePropRail({ rows, align }) {
         <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/45">Player props</div>
       ) : null}
       {rows.map((r) => (
-        <div key={r.key} className="min-w-0 max-w-full">
+        <button
+          key={r.key}
+          type="button"
+          data-lounge-gamecast-market-link
+          disabled={!r.url}
+          onClick={() => void openExternalUrl(r.url)}
+          aria-label={`${r.name} ${r.line} ${r.stat}, open on ${MARKET_SOURCE_LABEL[r.source] || 'market'}`}
+          className={`-mx-1.5 -my-0.5 min-w-0 max-w-full rounded-lg px-1.5 py-0.5 touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/15 ${
+            left ? 'text-left' : 'text-right'
+          }`}
+        >
           <div className="truncate text-[10px] font-semibold uppercase leading-none tracking-wide text-white/60">
             {left ? (
               <>
@@ -3939,9 +3976,9 @@ function PregamePropRail({ rows, align }) {
             )}
           </div>
           <div className="mt-0.5 truncate text-[13px] font-bold leading-none tabular-nums text-white drop-shadow">
-            {r.line} {r.stat} <span className="font-semibold text-white/60">{kalshiCents(r.price)}</span>
+            {r.line} {r.stat} <span className="font-semibold text-emerald-300">{kalshiCents(r.price)}</span>
           </div>
-        </div>
+        </button>
       ))}
     </div>
   )
@@ -4023,9 +4060,23 @@ function LandscapeMatchupBoard({
               />
             ) : null}
             {h1Spread && h1SpreadTeam ? (
-              <MatchupLine title="1H spread" value={`${h1SpreadTeam} -${h1Spread.line}`} sub={kalshiCents(h1Spread.price)} />
+              <MatchupLine
+                title="1H spread"
+                value={`${h1SpreadTeam} -${h1Spread.line}`}
+                sub={kalshiCents(h1Spread.price)}
+                href={h1Spread.url}
+                source={h1Spread.source}
+              />
             ) : null}
-            {h1Total ? <MatchupLine title="1H total" value={`o${h1Total.line}`} sub={kalshiCents(h1Total.price)} /> : null}
+            {h1Total ? (
+              <MatchupLine
+                title="1H total"
+                value={`o${h1Total.line}`}
+                sub={kalshiCents(h1Total.price)}
+                href={h1Total.url}
+                source={h1Total.source}
+              />
+            ) : null}
             {book?.book ? (
               <div className="text-[10px] font-medium uppercase tracking-wide text-white/40">{book.book}</div>
             ) : null}

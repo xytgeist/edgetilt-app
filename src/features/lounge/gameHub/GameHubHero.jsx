@@ -3126,7 +3126,7 @@ function FieldViz({
             >
               {showTdBanner
                 ? tdTeamLabel ? `Touchdown ${tdTeamLabel}` : 'Touchdown'
-                : turnoverTeamLabel ? `Turnover ${turnoverTeamLabel}` : 'Turnover'}
+                : turnoverTeamLabel ? `Turnover · ${turnoverTeamLabel} Ball` : 'Turnover'}
             </span>
           </div>
         ) : null}

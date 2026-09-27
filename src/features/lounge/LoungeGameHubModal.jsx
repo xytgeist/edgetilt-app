@@ -640,6 +640,7 @@ export default function LoungeGameHubModal({
           plays={detail.plays}
           teamStats={detail.teamStats}
           odds={detail.odds}
+          marketProps={fantasy.props}
         />
       </div>,
       document.body,

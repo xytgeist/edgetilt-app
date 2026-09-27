@@ -14,6 +14,7 @@ import {
 import GameHubRushFigure from './GameHubRushFigure.jsx'
 import GameHubCatchFigure from './GameHubCatchFigure.jsx'
 import { getLuminance, hexToRgb, resolveTeamKit } from './gameHubFigureColors.js'
+import { pregameGameMarketPicks, pregamePlayerPropRails } from './gameHubPregameProps.js'
 import {
   CATCH_HANDS_LOCAL,
   CATCH_VIEWBOX_H,
@@ -24,6 +25,7 @@ import {
   attackDirection,
   downDistanceLabel,
   fieldCenterBanner,
+  kalshiCents,
   fieldPercent,
   isFieldOrientationFlipped,
   isFieldReplayablePlay,
@@ -3872,37 +3874,82 @@ function TeamStatRail({ stats, align }) {
   )
 }
 
-/** One team's column on the landscape pregame board: logo, name, record, then its spread + moneyline. */
-function MatchupTeamColumn({ side, label, treatment, spread, spreadPrice, ml }) {
-  const line = (title, value, sub) => (
-    <div className="flex min-w-[4.5rem] flex-col items-center">
+function MatchupLine({ title, value, sub }) {
+  return (
+    <div className="flex min-w-[3.5rem] flex-col items-center">
       <div className="text-[9px] font-semibold uppercase leading-none tracking-[0.14em] text-white/55">{title}</div>
-      <div className="mt-1 text-[20px] font-bold leading-none tabular-nums text-white drop-shadow">{value}</div>
+      <div className="mt-1 text-[18px] font-bold leading-none tabular-nums text-white drop-shadow">{value}</div>
       {sub ? <div className="mt-0.5 text-[10px] font-semibold leading-none tabular-nums text-white/55">{sub}</div> : null}
     </div>
   )
+}
+
+/** One team's column on the landscape pregame board: logo, name, record, spread + ML, then team total. */
+function MatchupTeamColumn({ side, label, treatment, spread, spreadPrice, ml, teamTotal }) {
   return (
     <div className="flex min-w-0 flex-col items-center">
-      <LoungeSportsTeamLogo side={side} treatment={treatment} size={76} />
+      <LoungeSportsTeamLogo side={side} treatment={treatment} size={64} />
       <RankedTeamLabel
         side={side}
         label={label}
-        className="mt-1 max-w-full truncate text-[15px] font-semibold tracking-tight text-white/90"
+        className="mt-1 max-w-full truncate text-[14px] font-semibold tracking-tight text-white/90"
       />
       {side?.record ? (
         <div className="mt-0.5 text-[11px] font-medium tabular-nums leading-none text-white/55">{side.record}</div>
       ) : null}
-      <div className="mt-3 flex items-start gap-4">
-        {line('Spread', signedPoint(spread), spreadPrice != null ? american(spreadPrice) : null)}
-        {line('ML', american(ml))}
+      <div className="mt-2.5 flex items-start gap-3">
+        <MatchupLine
+          title="Spread"
+          value={signedPoint(spread)}
+          sub={spreadPrice != null ? american(spreadPrice) : null}
+        />
+        <MatchupLine title="ML" value={american(ml)} />
       </div>
+      {teamTotal ? (
+        <div className="mt-2">
+          <MatchupLine title="Team total" value={`o${teamTotal.line}`} sub={kalshiCents(teamTotal.price)} />
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+/** Outer edge of the pregame board: each team's headline player prop (rung nearest 50¢) per player. */
+function PregamePropRail({ rows, align }) {
+  const left = align === 'left'
+  return (
+    <div
+      data-lounge-gamecast-prop-rail={align}
+      className={`flex min-w-0 flex-col justify-center gap-2 ${left ? 'items-start text-left' : 'items-end text-right'}`}
+    >
+      {rows.length ? (
+        <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/45">Player props</div>
+      ) : null}
+      {rows.map((r) => (
+        <div key={r.key} className="min-w-0 max-w-full">
+          <div className="truncate text-[10px] font-semibold uppercase leading-none tracking-wide text-white/60">
+            {left ? (
+              <>
+                {r.name} <span className="text-white/35">{r.position}</span>
+              </>
+            ) : (
+              <>
+                <span className="text-white/35">{r.position}</span> {r.name}
+              </>
+            )}
+          </div>
+          <div className="mt-0.5 truncate text-[13px] font-bold leading-none tabular-nums text-white drop-shadow">
+            {r.line} {r.stat} <span className="font-semibold text-white/60">{kalshiCents(r.price)}</span>
+          </div>
+        </div>
+      ))}
     </div>
   )
 }
 
 /**
- * Landscape phone pregame: matchup board instead of the (empty) field … teams + lines on their own side,
- * kickoff / channel / total in the middle, public betting along the bottom.
+ * Landscape phone pregame: matchup board instead of the (empty) field … player props on the outer edges,
+ * teams + lines next to them, kickoff / channel / total / 1H in the middle, public betting along the bottom.
  */
 function LandscapeMatchupBoard({
   game,
@@ -3916,8 +3963,15 @@ function LandscapeMatchupBoard({
   splits,
   book,
   sideSlots,
+  players,
+  marketProps,
 }) {
   const total = book?.total
+  const rails = useMemo(() => pregamePlayerPropRails(marketProps, players), [marketProps, players])
+  const picks = useMemo(() => pregameGameMarketPicks(marketProps, game), [marketProps, game])
+  const h1Spread = picks.firstHalf.spread
+  const h1Total = picks.firstHalf.total
+  const h1SpreadTeam = h1Spread?.side ? game[h1Spread.side]?.abbrev : null
   return (
     <div
       data-lounge-game-hero
@@ -3948,7 +4002,8 @@ function LandscapeMatchupBoard({
           </div>
           <div className="shrink-0">{sideSlots?.right}</div>
         </div>
-        <div className="grid min-h-0 flex-1 grid-cols-[1fr_auto_1fr] items-center gap-2">
+        <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_auto_minmax(0,1fr)_minmax(0,0.9fr)] items-center gap-2">
+          <PregamePropRail rows={rails.away} align="left" />
           <MatchupTeamColumn
             side={game.away}
             label={awayLabel}
@@ -3956,24 +4011,23 @@ function LandscapeMatchupBoard({
             spread={book?.away_spread ?? game.away?.spread}
             spreadPrice={book ? book.away_spread_price : null}
             ml={book?.away_ml ?? game.away?.ml}
+            teamTotal={picks.teamTotal.away}
           />
-          <div className="flex flex-col items-center px-2 text-center">
+          <div className="flex flex-col items-center gap-2.5 px-1 text-center">
             <div className="text-[13px] font-semibold uppercase tracking-[0.2em] text-white/45">at</div>
             {total != null ? (
-              <>
-                <div className="mt-3 text-[9px] font-semibold uppercase leading-none tracking-[0.14em] text-white/55">
-                  Total
-                </div>
-                <div className="mt-1 text-[20px] font-bold leading-none tabular-nums text-white drop-shadow">
-                  {total}
-                </div>
-                <div className="mt-0.5 text-[10px] font-semibold leading-none tabular-nums text-white/55">
-                  o{american(book.over_price)} / u{american(book.under_price)}
-                </div>
-              </>
+              <MatchupLine
+                title="Total"
+                value={total}
+                sub={`o${american(book.over_price)} / u${american(book.under_price)}`}
+              />
             ) : null}
+            {h1Spread && h1SpreadTeam ? (
+              <MatchupLine title="1H spread" value={`${h1SpreadTeam} -${h1Spread.line}`} sub={kalshiCents(h1Spread.price)} />
+            ) : null}
+            {h1Total ? <MatchupLine title="1H total" value={`o${h1Total.line}`} sub={kalshiCents(h1Total.price)} /> : null}
             {book?.book ? (
-              <div className="mt-3 text-[10px] font-medium uppercase tracking-wide text-white/40">{book.book}</div>
+              <div className="text-[10px] font-medium uppercase tracking-wide text-white/40">{book.book}</div>
             ) : null}
           </div>
           <MatchupTeamColumn
@@ -3983,7 +4037,9 @@ function LandscapeMatchupBoard({
             spread={book?.home_spread ?? game.home?.spread}
             spreadPrice={book ? book.home_spread_price : null}
             ml={book?.home_ml ?? game.home?.ml}
+            teamTotal={picks.teamTotal.home}
           />
+          <PregamePropRail rows={rails.home} align="right" />
         </div>
         <HeroPublicBetting game={game} splits={splits} awayColor={awayColor} homeColor={homeColor} />
       </div>
@@ -4092,6 +4148,8 @@ export default function GameHubHero({
   teamStats = null,
   /** Fullscreen pregame only: per-book lines (first book shown) for the matchup board. */
   odds = null,
+  /** Fullscreen pregame only: Kalshi / Polymarket game + player markets for the board's prop rails. */
+  marketProps = null,
 }) {
   const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(feedGame)
   const playScore = useMemo(() => latestPlayScore(plays), [plays])
@@ -4174,6 +4232,8 @@ export default function GameHubHero({
         splits={splits}
         book={Array.isArray(odds) ? odds[0] || null : null}
         sideSlots={sideSlots}
+        players={players}
+        marketProps={marketProps}
       />
     )
   }

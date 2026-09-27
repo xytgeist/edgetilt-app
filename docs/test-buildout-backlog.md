@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-26** ... **Game hub: loss arrow back at the snap (Mac).** `1.4.807`: Ryan preferred the 1.4.804 placement ... negative-yardage line arrow sits at the snap spot pointing backward. Offensive-penalty arrow keeps the 1.4.805 end-spot placement.
 - **2026-09-26** ... **Game hub: gold TD lines, resting touchback ball, no double plays (Mac).** `1.4.806`: scoring play drive lines (and the live rush/catch trail on a TD) paint gold `#d4a017` via `touchdown` flag on line marks (`gameHubFormatters.js`). Touchback ball no longer fades ... rests inside the end line (`tbRest` keyed by `animKey`, LOS football hidden meanwhile) until the next play. Double-play fixes: `animKey` prefers feed row id (ESPN rewrites play text), and `playAnimReady` stays open while any play anim runs (poll/banner flip mid-anim no longer tears down + restarts).
 - **2026-09-26:** **Game hub: backward drive arrows sit at the end spot (Mac).** 1.4.805: losses + offensive penalties put the arrow at the far (end) side of the segment pointing back; gains + defensive flags keep it at the snap pointing downfield.
 - **2026-09-26:** **Game hub: drive arrows point backward on losses (Mac).** 1.4.804: drive-chart play lines aim their arrow along the actual travel (`lineDir`), so sacks / TFLs point toward the offense's own goal; penalty arrows already follow the enforced direction (offensive flags point back).

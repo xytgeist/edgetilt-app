@@ -3618,6 +3618,7 @@ html.light [data-lounge-game-hub] .bg-zinc-100 {
   color: #fafafa !important;
 }
 html.light [data-lounge-game-box],
+html.light [data-lounge-game-odds] [data-lounge-game-odds-link]:active { background-color: rgb(244 244 245) !important; }
 html.light [data-lounge-game-odds] .border-zinc-800 {
   background-color: #f4f4f5 !important;
   border-color: #d4d4d8 !important;

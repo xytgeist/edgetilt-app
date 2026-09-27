@@ -42,7 +42,7 @@ function median(values) {
 }
 
 /** Some books (BetMGM, Caesars) template the user's state into the URL (`{state}`); we can't fill it. */
-function usableLink(link) {
+export function usableLink(link) {
   const s = String(link || '').trim()
   return s && !/[{}]/.test(s) ? s : null
 }

@@ -475,7 +475,7 @@ function FieldBannerFitText({ text, className, style }) {
   )
 }
 
-function DriveIncompleteMark({ p0, c, p1, attackDir, primary, halo, haloOpacity, throwKey, onThrowDone }) {
+function DriveIncompleteMark({ p0, c, p1, attackDir, primary, halo, haloOpacity, throwKey, onThrowDone, college = false }) {
   const [elapsed, setElapsed] = useState(null)
   const onDoneRef = useRef(onThrowDone)
   useEffect(() => {
@@ -522,7 +522,7 @@ function DriveIncompleteMark({ p0, c, p1, attackDir, primary, halo, haloOpacity,
       ) : null}
       {frame && frame.ballOpacity > 0 ? (
         <g opacity={frame.ballOpacity} transform={`translate(${frame.ball.x - 12} ${frame.ball.y - 9})`}>
-          <AmericanFootballMark tone="field" size={24} rotate={frame.rotate} spiral={passSpiral(frame.t)} />
+          <AmericanFootballMark tone="field" size={24} rotate={frame.rotate} spiral={passSpiral(frame.t)} college={college} />
         </g>
       ) : null}
     </g>
@@ -578,7 +578,7 @@ function DriveTapTag({ x, y, label, tone }) {
   )
 }
 
-function DrivePlayMarks({ marks, attackDir, primary, hideKey, throwKey = '', onThrowDone, onMarkTap }) {
+function DrivePlayMarks({ marks, attackDir, primary, hideKey, throwKey = '', onThrowDone, onMarkTap, college = false }) {
   const { halo, haloOpacity } = playLineHalo(primary)
   /** Fat invisible stroke over a segment … the only tappable thing on the field plane. Stacked lanes overlap,
    * so a tap picks whichever segment is nearest the touch point. */
@@ -722,6 +722,7 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey, throwKey = '', onT
             haloOpacity={haloOpacity}
             throwKey={m.isNewest ? throwKey : ''}
             onThrowDone={onThrowDone}
+            college={college}
           />
         )
       })}
@@ -1018,6 +1019,8 @@ function AmericanFootballMark({
   rotate = -28,
   /** Long-axis roll in degrees (thrown spiral) … laces + panel seams wrap around the body. */
   spiral = null,
+  /** College ball: stripes are half-bands on the laces side only, so they roll with the laces. */
+  college = false,
   className = '',
   title,
 }) {
@@ -1025,6 +1028,16 @@ function AmericanFootballMark({
   const spinning = spiral != null && Number.isFinite(Number(spiral))
   const rollRad = spinning ? (Number(spiral) * Math.PI) / 180 : 0
   const lacesFacing = Math.cos(rollRad)
+  const bandClipId = `fb-band-${uid}`
+  // Laces-side half (roll ± 90°) ∩ near side (± 90°), projected onto the body's height.
+  let stripeBand = null
+  if (spinning && college) {
+    const roll = ((((Number(spiral) + 180) % 360) + 360) % 360) - 180
+    const lo = Math.max(roll - 90, -90)
+    const hi = Math.min(roll + 90, 90)
+    const yAt = (deg) => (Math.abs(deg) >= 90 ? Math.sign(deg) * 7.5 : 6.5 * Math.sin((deg * Math.PI) / 180))
+    stripeBand = hi > lo ? { y: yAt(lo), h: Math.max(0, yAt(hi) - yAt(lo)) } : { y: 0, h: 0 }
+  }
   const leatherId = `fb-leather-${uid}`
   const depthId = `fb-depth-${uid}`
   const sheenId = `fb-sheen-${uid}`
@@ -1073,6 +1086,11 @@ function AmericanFootballMark({
         <clipPath id={clipId}>
           <path d={body} />
         </clipPath>
+        {stripeBand ? (
+          <clipPath id={bandClipId}>
+            <rect x="-13" y={stripeBand.y.toFixed(2)} width="26" height={stripeBand.h.toFixed(2)} />
+          </clipPath>
+        ) : null}
       </defs>
       {!isChalk ? (
         <ellipse cx="1.5" cy="8.4" rx="10.2" ry="2.4" fill="#000000" opacity="0.5" />
@@ -1117,6 +1135,7 @@ function AmericanFootballMark({
           />
         )}
         {/* End stripes */}
+        <g clipPath={stripeBand ? `url(#${bandClipId})` : undefined}>
         <path
           d="M-7.6 -5.15 C-6.7 -5.85 -4.05 -6.15 -4.05 -6.15 L-4.05 6.15 C-4.05 6.15 -6.7 5.85 -7.6 5.15 C-8.45 3.95 -8.75 2.05 -8.75 0 C-8.75 -2.05 -8.45 -3.95 -7.6 -5.15 Z"
           fill={isChalk ? '#18181b' : '#fafafa'}
@@ -1129,6 +1148,7 @@ function AmericanFootballMark({
           opacity={isChalk ? 0.88 : 0.96}
           clipPath={`url(#${clipId})`}
         />
+        </g>
         {/* Laces panel … spiraling: slides over the top and squashes edge-on, hidden on the far side. */}
         {!spinning || lacesFacing > 0.05 ? (
         <g clipPath={spinning ? `url(#${clipId})` : undefined}>
@@ -3353,6 +3373,7 @@ function FieldViz({
               throwKey={throwKey}
               onThrowDone={onThrowDone}
               onMarkTap={onDriveMarkTap}
+              college={college}
             />
           ) : null}
 
@@ -3565,6 +3586,7 @@ function FieldViz({
                     size={24}
                     rotate={catchBallRotate}
                     spiral={passSpiral(catchBallFlightT)}
+                    college={college}
                   />
                 </g>
               ) : null}
@@ -3649,7 +3671,7 @@ function FieldViz({
           ) : null}
           {pickBall ? (
             <g transform={`translate(${pickBall.x - 12} ${pickBall.y - 9})`}>
-              <AmericanFootballMark tone="field" size={24} rotate={pickBallRotate} spiral={passSpiral(pickAnim.ballT)} />
+              <AmericanFootballMark tone="field" size={24} rotate={pickBallRotate} spiral={passSpiral(pickAnim.ballT)} college={college} />
             </g>
           ) : null}
           {fgBall ? (

@@ -181,6 +181,11 @@ function playText({ yards, made, missSide }) {
  */
 export default function FgKickTestPage() {
   const [half, setHalf] = useState(1)
+  const [college, setCollege] = useState(false)
+  const game = useMemo(
+    () => (college ? { ...MOCK_GAME, sport_key: 'americanfootball_ncaaf' } : MOCK_GAME),
+    [college],
+  )
   const [nonce, setNonce] = useState(0)
   const [lastPlay, setLastPlay] = useState('')
   /** Feed rows for the hero … only turnover presets set them (the `turnover` flag comes from the Edge). */
@@ -405,6 +410,15 @@ export default function FgKickTestPage() {
               {label}
             </button>
           ))}
+          <button
+            type="button"
+            className={`rounded-md px-3 py-1.5 text-[12px] font-semibold ${
+              college ? 'bg-emerald-600 text-white' : 'bg-zinc-800 text-zinc-200'
+            }`}
+            onClick={() => setCollege((v) => !v)}
+          >
+            {college ? 'CFB ball' : 'NFL ball'}
+          </button>
           <button
             type="button"
             className={`rounded-md px-3 py-1.5 text-[12px] font-semibold ${
@@ -746,7 +760,7 @@ export default function FgKickTestPage() {
 
         <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl">
           <GameHubHero
-            game={MOCK_GAME}
+            game={game}
             live={live}
             lastPlay={lastPlay}
             plays={feedPlays}

@@ -145,8 +145,13 @@ export function lineWalkedAgainst(
   return {
     against,
     confirm,
-    note: `Number ${leanLine} → ${currentLeanLine}`,
+    note: `Number ${signedLine(leanLine)} → ${signedLine(currentLeanLine)}`,
   }
+}
+
+/** Strip the leading "Number " so labeled lines don't read "Number: Number -3". */
+export function walkNoteBody(note: string): string {
+  return String(note || '').replace(/^Number\s+/, '')
 }
 
 function signedLine(n: number): string {
@@ -299,7 +304,7 @@ export async function evaluatePrimetimeLock(
 
   const reasons: string[] = []
   if (starterHits.length) reasons.push(`Listed starter out: ${starterHits.join(', ')}`)
-  if (walk.against) reasons.push(`Number walked off the edge (${walk.note})`)
+  if (walk.against) reasons.push(`Number walked off the edge (${walkNoteBody(walk.note)})`)
 
   const verdict: PrimetimeLockVerdict = reasons.length ? 'kill' : 'lock'
   const mins = minutesUntilKick(spotlight.commenceTime)
@@ -357,7 +362,7 @@ export function formatPrimetimeLockCaption(lock: PrimetimeLockEval): string {
     `${kickoff}`,
     '',
     `Lean stands: **${leanDisp}**`,
-    `Number: ${lock.numberNote}`,
+    `Number: ${walkNoteBody(lock.numberNote)}`,
     `🩹 ${lock.injuryNote}`,
     '',
     `*Official lock. Desks stay as written. No edits after this.*`,

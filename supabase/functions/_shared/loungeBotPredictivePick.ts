@@ -295,7 +295,7 @@ function applyShoppedTankAts(
  * 🎯 Tank's Pick
  *
  * Under 43.5 (-110)
- * Bills vs Dolphins (1:05 PM PT)
+ * Bills vs Dolphins (4:05 PM ET)
  * 💨 Highmark Stadium · 38°F · Wind 19 mph
  */
 export function formatSoloPredictiveCaption(
@@ -716,7 +716,7 @@ export function formatNflSlateCardCaption(
   if (sportKey === 'americanfootball_nfl' || sportKey === 'americanfootball_nfl_preseason') {
     lines.push('')
     lines.push(
-      `*Lean, not lock. Saturday steam confirms or kills. Official lock is Sunday inactives … early window ~8:30am PT, late window ~11:30am PT.*`,
+      `*Lean, not lock. Saturday steam confirms or kills. Official lock is Sunday inactives … early window ~11:30am ET, late window ~2:30pm ET.*`,
     )
   }
 

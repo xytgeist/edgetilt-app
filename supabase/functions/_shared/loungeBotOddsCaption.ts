@@ -511,26 +511,29 @@ export function filterOddsEventsKickoffPtDay(
     .sort((a, b) => Date.parse(String(a.commence_time)) - Date.parse(String(b.commence_time)))
 }
 
+/** Posted kickoff times use Eastern (US sports standard); PT stays for day bucketing and crons. */
+const POST_KICKOFF_TZ = 'America/New_York'
+
 export function formatOddsCommenceTime(iso: string): string {
   const t = Date.parse(String(iso || ''))
   if (!Number.isFinite(t)) return ''
-  return new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Los_Angeles',
+  const label = new Intl.DateTimeFormat('en-US', {
+    timeZone: POST_KICKOFF_TZ,
     weekday: 'short',
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
-    timeZoneName: 'short',
   }).format(new Date(t))
+  return `${label} ET`
 }
 
-/** Compact kickoff for Scott bot captions (e.g. "Sat 2PM PT" or "Sat 7:11PM PT"). */
+/** Compact kickoff for Scott bot captions (e.g. "Sat 5PM ET" or "Sat 10:11PM ET"). */
 export function formatOddsCommenceTimeShort(iso: string): string {
   const t = Date.parse(String(iso || ''))
   if (!Number.isFinite(t)) return ''
   const d = new Date(t)
-  const tz = 'America/Los_Angeles'
+  const tz = POST_KICKOFF_TZ
   const weekday = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short' }).format(d)
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone: tz,
@@ -542,7 +545,7 @@ export function formatOddsCommenceTimeShort(iso: string): string {
   const minute = parts.find((p) => p.type === 'minute')?.value ?? ''
   const dayPeriod = (parts.find((p) => p.type === 'dayPeriod')?.value ?? '').toUpperCase()
   const time = minute === '00' ? `${hour}${dayPeriod}` : `${hour}:${minute}${dayPeriod}`
-  return `${weekday} ${time} PT`
+  return `${weekday} ${time} ET`
 }
 
 export function formatAmericanOdds(price: number): string {

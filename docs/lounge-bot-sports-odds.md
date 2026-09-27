@@ -57,7 +57,7 @@ Calendar sport pick (portal)  →  lounge-odds-ingest (manual) or lounge-odds-po
 
 **+EV example:**
 ```text
-⚡ World Cup: France vs Paraguay (Sat 2PM PT)
+⚡ World Cup: France vs Paraguay (Sat 5PM ET)
 
 France ML +718 at MyBookie
 Fair +652 (9 books)
@@ -77,7 +77,7 @@ Pirates -1.5 (+172) @ FanDuel
 
 🐕 Dog of the Day:
 Diaz ML +2000 @ MyBookie
-France vs Paraguay (Sat 2PM PT)
+France vs Paraguay (Sat 5PM ET)
 
 Full board breakdown by sport below 👇
 ```
@@ -88,7 +88,7 @@ When no spread or ML clears **~3.5-4%** EV, Scott switches to the tighter voice 
 ```text
 ⚾ MLB
 
-Yankees vs Red Sox (Sat 1PM PT)
+Yankees vs Red Sox (Sat 4PM ET)
 Yankees -110 (FanDuel), Red Sox +105 (DraftKings)
 ```
 
@@ -98,7 +98,7 @@ When no spread clears **+4%** EV, the root post still lists the **best +EV sprea
 ```text
 🔥 Best Bet of the Hour
 Padres ML +219 @ lowvig
-Padres vs Dodgers (Sat 7:11 PM PT)
+Padres vs Dodgers (Sat 10:11 PM ET)
 +7.8% EV
 Market consensus implies ~42% chance Padres win, but they're available at +219. This is currently the sharpest edge on the board.
 ```
@@ -107,10 +107,10 @@ Market consensus implies ~42% chance Padres win, but they're available at +219. 
 ```text
 World Cup slate
 
-France vs Paraguay (Sat 2PM PT)
+France vs Paraguay (Sat 5PM ET)
 France +145 (DraftKings), Draw +652 (FanDuel), Paraguay +718 (MyBookie)
 
-Germany vs Portugal (Sat 5PM PT)
+Germany vs Portugal (Sat 8PM ET)
 Germany -110 (FanDuel), Portugal +105 (DraftKings)
 ```
 
@@ -266,7 +266,7 @@ Dedupe: **one alert per event/market/kind per ~60 min** (`line_evt:{kind}:{event
 🔒 Arb Watch
 Risk-Free Opportunity
 
-France vs Paraguay (Sat 2PM PT)
+France vs Paraguay (Sat 5PM ET)
 
 France ML +102 @ FanDuel
 Draw ML +210 @ DraftKings
@@ -282,7 +282,7 @@ Stake $51 on France and $49 on Draw ($100 total) for $3.40 profit.
 Chiefs -4 moved from -3 to -4 at multiple sharp books.
 
 Sharp money appears to be coming in on Kansas City as the number shortens across books. Line has steamed over the last ~15 minutes.
-NFL: Chiefs vs Raiders (Sun 1:25 PM PT). This is one to watch closely.
+NFL: Chiefs vs Raiders (Sun 4:25 PM ET). This is one to watch closely.
 ```
 
 ### Best Bet of the Hour (hourly)
@@ -377,7 +377,7 @@ Example Starter Spotlight:
 ```text
 🔦 Starter Spotlight
 
-Padres vs Dodgers (Sat 7:11 PM PT)
+Padres vs Dodgers (Sat 10:11 PM ET)
 
 Confirmed Starters:
 • Padres: Dylan Cease
@@ -400,8 +400,8 @@ Example:
 ```text
 📡 Value Bet Radar
 
-• Padres ML +219 @ lowvig (+7.8% EV) · MLB · Sat 7:11 PM PT
-• Canada ML +490 @ BetUS (+3.1% EV) · World Cup · Sat 10AM PT
+• Padres ML +219 @ lowvig (+7.8% EV) · MLB · Sat 10:11 PM ET
+• Canada ML +490 @ BetUS (+3.1% EV) · World Cup · Sat 1PM ET
 • Giron ML +900 @ DraftKings (+4.2% EV)
 ```
 
@@ -429,7 +429,7 @@ Example line movement (sharp money, two-sided ML):
 🔥 Sharp Money Move
 
 Boxing
-August vs Bank · Sat 11AM PT
+August vs Bank · Sat 2PM ET
 
 Bank ML -1500 → -2500
 August ML +800 → +1000
@@ -443,7 +443,7 @@ Example line movement (spread):
 🔥 Sharp Money Move
 
 World Cup
-France vs Paraguay · Sat 2PM PT
+France vs Paraguay · Sat 5PM ET
 
 France spread -3 (-110) → -4 (-108)
 Books: FanDuel, DraftKings
@@ -456,7 +456,7 @@ Example steam:
 💨 Steam Coming In
 
 NFL
-Chiefs vs Raiders · Sun 1:25 PM PT
+Chiefs vs Raiders · Sun 4:25 PM ET
 
 Chiefs spread -3 (-110) → -4 (-108)
 Books: FanDuel, DraftKings
@@ -775,6 +775,7 @@ Works for Scott Share and all other bots. Does not bypass day/hour caps on autom
 | Portal UI | **`src/features/bots/BotManagementPortal.jsx`**, **`BotComposeImagePicker.jsx`**, **`botPortalApi.js`** |
 | +EV math | **`supabase/functions/_shared/loungeBotOddsCaption.ts`** |
 | Sport pick ranking | **`supabase/functions/_shared/loungeBotSportAnalysis.ts`** |
+| Posted kickoff times | **Eastern (ET)** via `formatOddsCommenceTime*` in **`loungeBotOddsCaption.ts`** (Sep 27, 2026). Day bucketing, crons, and ops schedules stay PT. |
 | Example post pack | **`supabase/functions/_shared/loungeBotExamplePosts.ts`** |
 | Coverage tiers | **`supabase/functions/_shared/loungeBotCoverageScope.ts`** |
 | Coffee & Covers | **`supabase/functions/_shared/loungeBotCoffeeAndCovers.ts`** |

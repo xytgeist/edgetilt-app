@@ -472,7 +472,7 @@ export async function runNflSatSteam(
     for (const row of kills) lines.push(`• ${row.line}`, `  ${row.why}`)
     lines.push('')
   }
-  lines.push(`*Still a lean. Early window locks ~8:30am PT. Late window ~11:30am PT.*`)
+  lines.push(`*Still a lean. Early window locks ~11:30am ET. Late window ~2:30pm ET.*`)
   const caption = lines.join('\n')
 
   if (dryRun) {

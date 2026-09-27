@@ -20,6 +20,7 @@ import {
   LOCK_MAX_BEFORE_KICK,
   LOCK_MIN_BEFORE_KICK,
   minutesUntilKick,
+  walkNoteBody,
 } from './loungeBotPrimetimeLock.ts'
 
 export type SundayLockWindow = 'early' | 'late'
@@ -175,7 +176,7 @@ export function formatSundayWindowLockCaption(
     } else {
       lines.push(`🔒 **LOCK** ${away} @ ${home} · ${when}`)
       lines.push(`Lean stands: **${g.leanLineDisplay}**`)
-      lines.push(`Number: ${g.numberNote}`)
+      lines.push(`Number: ${walkNoteBody(g.numberNote)}`)
     }
     if (g.injuryNote) lines.push(`🩹 ${g.injuryNote}`)
     lines.push('')
@@ -249,7 +250,7 @@ export async function publishSundayWindowLock(
     const walk = lineWalkedAgainst('spreads', house.side, house.line, currentHomeSpread, null)
     const reasons: string[] = []
     if (starterHits.length) reasons.push(`Listed starter out: ${starterHits.join(', ')}`)
-    if (walk.against) reasons.push(`Number walked off the edge (${walk.note})`)
+    if (walk.against) reasons.push(`Number walked off the edge (${walkNoteBody(walk.note)})`)
 
     games.push({
       eventId,

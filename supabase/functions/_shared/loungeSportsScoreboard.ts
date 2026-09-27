@@ -2028,7 +2028,17 @@ function compactBook(
 function compactOddsBooksFromEvent(ev: OddsEventRow, homeName: string, awayName: string): LoungeSportsOddsRow[] {
   const books = Array.isArray(ev.bookmakers) ? ev.bookmakers : []
   // Pinnacle first always … then sharp/retail staples, then whatever else The Odds API returned.
-  const preferred = ['pinnacle', 'lowvig', 'fanduel', 'draftkings', 'betmgm', 'caesars', 'fanatics', 'williamhill_us']
+  const preferred = [
+    'pinnacle',
+    'lowvig',
+    'fanduel',
+    'draftkings',
+    'betmgm',
+    'caesars',
+    'fanatics',
+    'hardrockbet',
+    'williamhill_us',
+  ]
   const ordered: OddsBookmaker[] = []
   for (const key of preferred) {
     const hit = books.find((b) => String(b.key || '').toLowerCase() === key)
@@ -2051,9 +2061,9 @@ function compactOddsBooksFromEvent(ev: OddsEventRow, homeName: string, awayName:
   if (pinnacleRow) {
     pinnacleRow = scrubStalePinnacleRow(pinnacleRow, rows)
   }
-  // Compacted rows are tiny (~0.2KB each) … keep 8, with Pinnacle pinned first when present.
+  // Compacted rows are tiny (~0.2KB each) … keep 10, with Pinnacle pinned first when present.
   const out = pinnacleRow ? [pinnacleRow, ...rows] : rows
-  return out.slice(0, 8)
+  return out.slice(0, 10)
 }
 
 /**

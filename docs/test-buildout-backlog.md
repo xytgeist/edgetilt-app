@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-27** **Game hub: Hard Rock Bet in game lines (Mac).** **1.4.837** … `compactOddsBooksFromEvent` kept 8 books and Hard Rock (`hardrockbet`, Odds API `us2`) wasn't preferred, so it was cut behind theScore Bet. Now preferred (after Fanatics) and cap 10. Edge **`lounge-sports-scoreboard`** deployed to test; verified BAL @ DAL returns Hard Rock spread / ML / total.
 - **2026-09-27** **Game hub: live props rail = bettable lines only, scrollable (Mac).** **1.4.836** … landscape Props page skips rungs with no yes bid (in-game Kalshi leaves decided / abandoned rungs `active` with a $0 bid and stale ask) and drops lines already cleared; lists every player + stat ladder (position stat first) in a scroller that hands off to the page swipe at the top / bottom (`railScrollRoom`). Pregame board unchanged.
 - **2026-09-27** **Game hub: fantasy toast over the top hash marks (Mac).** **1.4.835** … post-play fantasy points chips float just above the top hash row (`bottom-[48%]` of the field plane) instead of near the bottom sideline.
 - **2026-09-27** **Game hub: NFL banners use team abbrev (Mac).** **1.4.834** … TOUCHDOWN / TURNOVER field banners name NFL teams by abbrev (BUF, LAC) instead of the mascot; CFB keeps the school name (abbrev when over 7 chars). End zone mascot art unchanged.

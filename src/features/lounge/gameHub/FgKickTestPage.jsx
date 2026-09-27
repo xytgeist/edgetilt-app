@@ -49,6 +49,27 @@ const SCENARIOS = [
   { id: 'miss-wr-l', label: 'Miss WR → left posts', yards: 38, made: false, possession: 'home', missSide: 'right' },
 ]
 
+/** Pick-six texts in both feed dialects; the return yards drive the pick spot. */
+function pickSixText({ format, returnYards }) {
+  if (format === 'nfl') {
+    return `(8:12) (Shotgun) P.Mahomes pass short right intended for T.Kelce INTERCEPTED by B.Baker at KC 38. B.Baker for ${returnYards} yards, TOUCHDOWN. C.Ryland extra point is GOOD.`
+  }
+  return `(02:25) Shotgun #16 L.Sellers pass intercepted by #6 R.Morgan at USC23 #6 R.Morgan return ${returnYards} yards to the USC00 TOUCHDOWN, clock 02:20 #31 C.Talty kick attempt good (H: #32 A.Asparuhov, LS: #55 A.Rozier)`
+}
+
+/** `losOwn` = LOS in the offense's own territory (yard 1-50), else the defense's. */
+const PICK_SCENARIOS = [
+  { id: 'pick-cfb-home', label: 'Pick 6 CFB text · KC ball own 12 · ret 23', offense: 'home', losYard: 12, losOwn: true, returnYards: 23, format: 'cfb' },
+  { id: 'pick-nfl-home', label: 'Pick 6 NFL text · KC ball own 30 · ret 38', offense: 'home', losYard: 30, losOwn: true, returnYards: 38, format: 'nfl' },
+  { id: 'pick-away', label: 'Pick 6 · ARI ball own 35 · ret 40', offense: 'away', losYard: 35, losOwn: true, returnYards: 40, format: 'cfb' },
+  { id: 'pick-long', label: 'Pick 6 · ARI ball at 50 · ret 85', offense: 'away', losYard: 50, losOwn: true, returnYards: 85, format: 'nfl' },
+]
+
+function pickStartSpot({ offense, losYard, losOwn }) {
+  const defense = offense === 'home' ? 'away' : 'home'
+  return { yard_line: losYard, yard_side: losOwn ? offense : defense, down: 3, distance: 7 }
+}
+
 function playText({ yards, made, missSide }) {
   const who = '#3 H.Butker'
   if (made) return `${who} ${yards} yard field goal is GOOD`
@@ -58,8 +79,8 @@ function playText({ yards, made, missSide }) {
 }
 
 /**
- * Local harness for FG flight / front-pole smoke … not linked from nav.
- * Open `/fg-kick-test` on the Vite app (or test deploy).
+ * Local harness for Game Hub field animations (FG flight / front pole, pick-six) … not linked from nav.
+ * Open `/play-anim-test` (or legacy `/fg-kick-test`) on the Vite app or test deploy.
  */
 export default function FgKickTestPage() {
   const [half, setHalf] = useState(1)
@@ -67,6 +88,11 @@ export default function FgKickTestPage() {
   const [lastPlay, setLastPlay] = useState('')
   const [possession, setPossession] = useState('away')
   const [yards, setYards] = useState(40)
+  /** Feed LOS for the replayed play (pick-six); FG derives its own LOS from kick yards. */
+  const [startSpot, setStartSpot] = useState(null)
+  const [pickReturn, setPickReturn] = useState(30)
+  const [pickLosYard, setPickLosYard] = useState(25)
+  const [pickLosOwn, setPickLosOwn] = useState(true)
 
   const live = useMemo(
     () =>
@@ -83,12 +109,30 @@ export default function FgKickTestPage() {
     const nextPossession = scenario.possession
     setPossession(nextPossession)
     setYards(scenario.yards)
+    setStartSpot(null)
     setLastPlay(playText(scenario))
     setNonce((n) => n + 1)
   }
 
   const fireCustom = ({ made, missSide }) => {
+    setStartSpot(null)
     setLastPlay(playText({ yards, made, missSide }))
+    setNonce((n) => n + 1)
+  }
+
+  const firePick = (scenario) => {
+    setPossession(scenario.offense)
+    setPickReturn(scenario.returnYards)
+    setPickLosYard(scenario.losYard)
+    setPickLosOwn(scenario.losOwn)
+    setStartSpot(pickStartSpot(scenario))
+    setLastPlay(pickSixText(scenario))
+    setNonce((n) => n + 1)
+  }
+
+  const firePickCustom = (format) => {
+    setStartSpot(pickStartSpot({ offense: possession, losYard: pickLosYard, losOwn: pickLosOwn }))
+    setLastPlay(pickSixText({ format, returnYards: pickReturn }))
     setNonce((n) => n + 1)
   }
 
@@ -97,9 +141,10 @@ export default function FgKickTestPage() {
       <div className="mx-auto max-w-3xl px-3 py-4 sm:px-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <h1 className="text-lg font-bold tracking-tight text-white">FG kick test</h1>
+            <h1 className="text-lg font-bold tracking-tight text-white">Play animation test</h1>
             <p className="text-[12px] text-zinc-400">
-              Real GameHubHero field … front pole + flight. Half {half === 1 ? '1 (no flip)' : '2 (flipped)'}.
+              Real GameHubHero field … FG flight + pick-six. Half {half === 1 ? '1 (no flip)' : '2 (flipped)'}.
+              Ball buttons set the offense.
             </p>
           </div>
           <a href="/" className="text-[12px] font-semibold text-emerald-400 hover:text-emerald-300">
@@ -194,6 +239,65 @@ export default function FgKickTestPage() {
           ))}
         </div>
 
+        <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-zinc-500">Pick-six</div>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <label className="text-[12px] text-zinc-400">
+            Return yds{' '}
+            <input
+              type="number"
+              min={1}
+              max={100}
+              value={pickReturn}
+              onChange={(e) => setPickReturn(Number(e.target.value) || 30)}
+              className="ml-1 w-14 rounded border border-zinc-700 bg-zinc-900 px-1.5 py-1 text-zinc-100"
+            />
+          </label>
+          <label className="text-[12px] text-zinc-400">
+            LOS{' '}
+            <input
+              type="number"
+              min={1}
+              max={50}
+              value={pickLosYard}
+              onChange={(e) => setPickLosYard(Math.max(1, Math.min(50, Number(e.target.value) || 25)))}
+              className="ml-1 w-14 rounded border border-zinc-700 bg-zinc-900 px-1.5 py-1 text-zinc-100"
+            />
+          </label>
+          <button
+            type="button"
+            className="rounded-md bg-zinc-800 px-2.5 py-1.5 text-[12px] font-semibold text-zinc-100"
+            onClick={() => setPickLosOwn((v) => !v)}
+          >
+            {pickLosOwn ? 'Offense own side' : 'Defense side'}
+          </button>
+          <button
+            type="button"
+            className="rounded-md bg-violet-700 px-3 py-1.5 text-[12px] font-semibold text-white"
+            onClick={() => firePickCustom('cfb')}
+          >
+            Throw pick (CFB text)
+          </button>
+          <button
+            type="button"
+            className="rounded-md bg-violet-700 px-3 py-1.5 text-[12px] font-semibold text-white"
+            onClick={() => firePickCustom('nfl')}
+          >
+            Throw pick (NFL text)
+          </button>
+        </div>
+        <div className="mb-4 flex flex-wrap gap-2">
+          {PICK_SCENARIOS.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className="rounded-md bg-zinc-800 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-100 hover:bg-zinc-700"
+              onClick={() => firePick(s)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+
         <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl">
           <GameHubHero
             game={MOCK_GAME}
@@ -201,6 +305,7 @@ export default function FgKickTestPage() {
             lastPlay={lastPlay}
             playReplayNonce={nonce}
             replayTeam={possession}
+            playStartSpot={startSpot}
           />
         </div>
 

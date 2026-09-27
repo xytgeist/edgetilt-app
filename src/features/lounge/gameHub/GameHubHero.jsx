@@ -29,6 +29,7 @@ import {
   liveClockLabel,
   matchRushPlayer,
   parseFieldGoalPlay,
+  parseInterceptionReturn,
   parsePassPlay,
   parseRushPlay,
   playTextIsScoreTry,
@@ -74,6 +75,16 @@ const CATCH_TD_LABEL_TAIL_MS = 2000
 const CATCH_TD_LINES_FADE_MS = 600
 const CATCH_TD_TOTAL_MS =
   CATCH_RUN_MS + CATCH_TD_PRE_LABEL_MS + CATCH_TD_CELEBRATE_MS + CATCH_TD_LABEL_TAIL_MS
+/** Pick-six: QB throw flight (LOS → defender's hands). */
+const PICK_THROW_MS = 1300
+/** Defender starts drifting onto the ball's down arc at this fraction of the throw. */
+const PICK_BREAK_AT = 0.3
+/** Defender starts this many yards deeper (offense direction) than the pick spot. */
+const PICK_DEFENDER_DEPTH_YDS = 7
+/** Return run: base + per-yard, capped so a 99-yarder still reads. */
+const PICK_RETURN_BASE_MS = 900
+const PICK_RETURN_MS_PER_YD = 20
+const PICK_RETURN_MAX_MS = 2600
 /** Rush TD celebrate timeline (same phases as pass TD, keyed off RUSH_RUN_MS). */
 const RUSH_TD_TOTAL_MS =
   RUSH_RUN_MS + CATCH_TD_PRE_LABEL_MS + CATCH_TD_CELEBRATE_MS + CATCH_TD_LABEL_TAIL_MS
@@ -732,6 +743,9 @@ function FieldViz({
   const [rushAnim, setRushAnim] = useState(null)
   const [catchAnim, setCatchAnim] = useState(null)
   const [fgAnim, setFgAnim] = useState(null)
+  const [pickAnim, setPickAnim] = useState(null)
+  const pickKeyRef = useRef('')
+  const pickRafRef = useRef(0)
   /** Field PNG must own layout height before absolute SVG overlays paint. */
   const [fieldArtReady, setFieldArtReady] = useState(false)
   const rushKeyRef = useRef('')
@@ -812,6 +826,9 @@ function FieldViz({
     setFgAnim(null)
     if (catchRafRef.current) cancelAnimationFrame(catchRafRef.current)
     if (fgRafRef.current) cancelAnimationFrame(fgRafRef.current)
+    pickKeyRef.current = ''
+    setPickAnim(null)
+    if (pickRafRef.current) cancelAnimationFrame(pickRafRef.current)
 
     const attackDir = attackDirection(ctx.possessionSide, ctx.fieldFlipped)
     const isTouchdown =
@@ -1043,6 +1060,9 @@ function FieldViz({
     setFgAnim(null)
     if (rushRafRef.current) cancelAnimationFrame(rushRafRef.current)
     if (fgRafRef.current) cancelAnimationFrame(fgRafRef.current)
+    pickKeyRef.current = ''
+    setPickAnim(null)
+    if (pickRafRef.current) cancelAnimationFrame(pickRafRef.current)
 
     const isTouchdown =
       Boolean(parsed.isTouchdown) || playTextIsTouchdown(lastPlayText)
@@ -1293,6 +1313,9 @@ function FieldViz({
     setCatchAnim(null)
     if (rushRafRef.current) cancelAnimationFrame(rushRafRef.current)
     if (catchRafRef.current) cancelAnimationFrame(catchRafRef.current)
+    pickKeyRef.current = ''
+    setPickAnim(null)
+    if (pickRafRef.current) cancelAnimationFrame(pickRafRef.current)
 
     const attackDir = attackDirection(ctx.possessionSide, ctx.fieldFlipped)
     const posts = attackDir > 0 ? FG_POSTS.right : FG_POSTS.left
@@ -1432,8 +1455,181 @@ function FieldViz({
     }
   }, [isFootball, animKey, isUserReplay, playAnimReady])
 
+  // Pick-six: QB throws downfield (offense direction), a defender drifts onto the ball's
+  // down arc, catches it, and returns it the other way to the goal line.
   useEffect(() => {
-    if (rushAnim || catchAnim || fgAnim || !hasLine || pos == null || hideLiveLines) return
+    const lastPlayText = fieldAnimCtxRef.current.lastPlayText
+    if (!isFootball || !lastPlayText) return undefined
+    const ctx = fieldAnimCtxRef.current
+    if (!playAnimReady) return undefined
+    if (ctx.pos == null && !isUserReplay) return undefined
+    const parsed = parseInterceptionReturn(lastPlayText)
+    if (!parsed) {
+      if (pickKeyRef.current && animKey !== pickKeyRef.current) {
+        setPickAnim(null)
+        pickKeyRef.current = ''
+      }
+      return undefined
+    }
+    if (animKey === pickKeyRef.current) return undefined
+    if (!isUserReplay && animKey === lastAutoPlayedKeyRef.current) return undefined
+    pickKeyRef.current = animKey
+    rushKeyRef.current = ''
+    catchKeyRef.current = ''
+    fgKeyRef.current = ''
+    setRushAnim(null)
+    setCatchAnim(null)
+    setFgAnim(null)
+    if (rushRafRef.current) cancelAnimationFrame(rushRafRef.current)
+    if (catchRafRef.current) cancelAnimationFrame(catchRafRef.current)
+    if (fgRafRef.current) cancelAnimationFrame(fgRafRef.current)
+
+    // Feed row team on an INT is the throwing (offense) side.
+    const offense =
+      ctx.possessionSide || (ctx.live?.possession === 'home' || ctx.live?.possession === 'away'
+        ? ctx.live.possession
+        : null)
+    const defense = offense === 'home' ? 'away' : offense === 'away' ? 'home' : null
+    if (!offense || !defense) {
+      pickKeyRef.current = ''
+      return undefined
+    }
+    const offDir = attackDirection(offense, ctx.fieldFlipped)
+    const defDir = -offDir
+    const clampPct = (v) => Math.max(0, Math.min(100, v))
+    // Defense scores at the offense's own goal line.
+    const goalPct = defDir > 0 ? 100 : 0
+    const returnYards = Number.isFinite(Number(parsed.returnYards)) ? Number(parsed.returnYards) : 25
+    const pickPct = clampPct(goalPct - defDir * returnYards)
+    const settled = settledLinesRef.current
+    let losPct =
+      ctx.knownStartPct != null
+        ? ctx.knownStartPct
+        : settled.scrimPct != null && Number.isFinite(settled.scrimPct)
+          ? settled.scrimPct
+          : clampPct(pickPct - offDir * 12)
+    // Throw must travel downfield from the LOS to the pick spot.
+    if ((pickPct - losPct) * offDir < 3) losPct = clampPct(pickPct - offDir * 10)
+    const airYards = Math.abs(pickPct - losPct)
+    const fromFirstDownPct =
+      ctx.knownFirstDownPct != null
+        ? ctx.knownFirstDownPct
+        : settled.firstDownPct != null && Number.isFinite(settled.firstDownPct) &&
+            settled.scrimPct != null && Math.abs(settled.scrimPct - losPct) <= 1
+          ? settled.firstDownPct
+          : null
+
+    const kit = possessionKit({ ...ctx.live, possession: defense }, ctx.game, ctx.awayColor, ctx.homeColor)
+    const matched = matchRushPlayer(parsed.playerHint, ctx.players, kit.sideAbbrev)
+    const headshotUrl = matched?.headshot_url ? String(matched.headshot_url) : ''
+    const jerseyNumber = resolveFigureJersey(parsed, matched)
+
+    const losX = fieldMidXFromPercent(losPct)
+    const pickX = fieldMidXFromPercent(pickPct)
+    const startX = fieldMidXFromPercent(clampPct(pickPct + offDir * PICK_DEFENDER_DEPTH_YDS))
+    const goalX = fieldMidXFromPercent(goalPct)
+    const returnMs = Math.min(
+      PICK_RETURN_MAX_MS,
+      PICK_RETURN_BASE_MS + returnYards * PICK_RETURN_MS_PER_YD,
+    )
+    const runEndMs = PICK_THROW_MS + returnMs
+
+    const base = {
+      playKey: animKey,
+      isTouchdown: true,
+      y: RUSH_Y,
+      facing: defDir,
+      primary: kit.primary,
+      secondary: kit.secondary,
+      helmetColor: kit.helmetColor,
+      pantsColor: kit.pantsColor,
+      tightsColor: kit.tightsColor,
+      headshotUrl,
+      jerseyNumber,
+      ballStart: { x: losX, y: RUSH_Y - 6 },
+      airYards,
+      pickX,
+      fromScrimPct: losPct,
+      toScrimPct: losPct,
+      fromFirstDownPct,
+      toFirstDownPct: fromFirstDownPct,
+    }
+
+    if (prefersReducedMotion()) {
+      setPickAnim(null)
+      return undefined
+    }
+
+    const totalMs = runEndMs + CATCH_TD_PRE_LABEL_MS + CATCH_TD_CELEBRATE_MS + CATCH_TD_LABEL_TAIL_MS
+    setPickAnim({
+      ...base,
+      figX: startX,
+      ballT: 0,
+      showFigure: true,
+      showBall: true,
+      showTrail: false,
+      showTdLabel: false,
+      linesOpacity: 1,
+      playing: true,
+    })
+    const t0 = performance.now()
+    const tick = (now) => {
+      const elapsed = now - t0
+      if (elapsed >= totalMs) {
+        pickRafRef.current = 0
+        if (!isUserReplay) lastAutoPlayedKeyRef.current = animKey
+        setPickAnim(null)
+        return
+      }
+      let figX = pickX
+      let ballT = 1
+      let showFigure = true
+      let showBall = true
+      let showTrail = false
+      let showTdLabel = false
+      let linesOpacity = 1
+      if (elapsed < PICK_THROW_MS) {
+        const t = elapsed / PICK_THROW_MS
+        ballT = t
+        const drift = t < PICK_BREAK_AT ? 0 : (t - PICK_BREAK_AT) / (1 - PICK_BREAK_AT)
+        figX = startX + (pickX - startX) * easeOutCubic(drift)
+      } else if (elapsed < runEndMs) {
+        const t = easeOutCubic((elapsed - PICK_THROW_MS) / returnMs)
+        figX = pickX + (goalX - pickX) * t
+        showTrail = t > 0.02
+      } else if (elapsed < runEndMs + CATCH_TD_PRE_LABEL_MS) {
+        figX = goalX
+        showTrail = true
+      } else if (elapsed < runEndMs + CATCH_TD_PRE_LABEL_MS + CATCH_TD_CELEBRATE_MS) {
+        figX = goalX
+        showTrail = true
+        showTdLabel = true
+        const fadeElapsed = elapsed - runEndMs - CATCH_TD_PRE_LABEL_MS
+        linesOpacity = Math.max(0, 1 - Math.min(1, fadeElapsed / CATCH_TD_LINES_FADE_MS))
+      } else {
+        showFigure = false
+        showBall = false
+        showTdLabel = true
+        linesOpacity = 0
+      }
+      setPickAnim((prev) =>
+        prev && prev.playKey === animKey
+          ? { ...prev, figX, ballT, showFigure, showBall, showTrail, showTdLabel, linesOpacity, playing: true }
+          : prev,
+      )
+      pickRafRef.current = requestAnimationFrame(tick)
+    }
+    pickRafRef.current = requestAnimationFrame(tick)
+    return () => {
+      if (!pickRafRef.current) return
+      cancelAnimationFrame(pickRafRef.current)
+      pickRafRef.current = 0
+      if (pickKeyRef.current === animKey) pickKeyRef.current = ''
+    }
+  }, [isFootball, animKey, isUserReplay, playAnimReady])
+
+  useEffect(() => {
+    if (rushAnim || catchAnim || fgAnim || pickAnim || !hasLine || pos == null || hideLiveLines) return
     // New replayable play: keep the pre-play LOS until rush/catch/FG claims this animKey.
     // Otherwise a made FG's kickoff spot (or post-rush LOS) can clobber settled before RAF starts.
     if (
@@ -1442,7 +1638,8 @@ function FieldViz({
       animKey &&
       animKey !== rushKeyRef.current &&
       animKey !== catchKeyRef.current &&
-      animKey !== fgKeyRef.current
+      animKey !== fgKeyRef.current &&
+      animKey !== pickKeyRef.current
     ) {
       return
     }
@@ -1456,6 +1653,7 @@ function FieldViz({
     rushAnim,
     catchAnim,
     fgAnim,
+    pickAnim,
     hasLine,
     pos,
     hideLiveLines,
@@ -1486,7 +1684,7 @@ function FieldViz({
       ? rushAnim
       : catchAnim?.isTouchdown
         ? catchAnim
-        : null
+        : pickAnim
   const displayScrimPct =
     lineDriver != null
       ? lerp(lineDriver.fromScrimPct, lineDriver.toScrimPct, linesT)
@@ -1511,6 +1709,7 @@ function FieldViz({
     !rushAnim &&
       !catchAnim &&
       !fgAnim &&
+      !pickAnim &&
       lastPlayText &&
       playTextIsScoreTry(lastPlayText),
   )
@@ -1599,9 +1798,10 @@ function FieldViz({
       (rushAnim.showFigure || rushAnim.showTdLabel || rushAnim.playing),
   )
   const fgPlaying = Boolean(fgAnim?.playing || (fgAnim != null && fgAnim.showBall))
+  const pickPlaying = Boolean(pickAnim != null && (pickAnim.showFigure || pickAnim.showTdLabel || pickAnim.playing))
   // Hide LOS ball for the full rush/catch/FG sequence.
-  const playAnimActive = rushAnim != null || catchAnim != null || fgAnim != null
-  const suppressBanner = isUserReplay && (rushPlaying || catchPlaying || fgPlaying)
+  const playAnimActive = rushAnim != null || catchAnim != null || fgAnim != null || pickAnim != null
+  const suppressBanner = isUserReplay && (rushPlaying || catchPlaying || fgPlaying || pickPlaying)
   const rushX =
     rushAnim != null && rushAnim.showFigure
       ? rushAnim.startX + (rushAnim.endX - rushAnim.startX) * rushAnim.progress
@@ -1656,7 +1856,35 @@ function FieldViz({
     catchAnim != null
       ? (-36 + catchBallFlightT * 18) * catchBallFacingSign
       : 0
-  const showTdBanner = Boolean(catchAnim?.showTdLabel || rushAnim?.showTdLabel)
+  const showTdBanner = Boolean(catchAnim?.showTdLabel || rushAnim?.showTdLabel || pickAnim?.showTdLabel)
+
+  // Pick-six: ball rides a QB arc into the defender's hands, then stays tucked on the return.
+  const pickHands =
+    pickAnim?.showFigure
+      ? catchHandsWorld(
+          catchFigLeftForHandsX(pickAnim.figX, pickAnim.facing, RUSH_FIG_W, RUSH_FIG_H),
+          pickAnim.y - RUSH_FIG_H + 8,
+          pickAnim.facing,
+          RUSH_FIG_W,
+          RUSH_FIG_H,
+        )
+      : null
+  let pickBall = null
+  let pickBallRotate = 0
+  if (pickAnim?.showBall && pickHands) {
+    if (pickAnim.ballT < 1) {
+      const ctrl = {
+        x: (pickAnim.ballStart.x + pickHands.x) / 2,
+        y: Math.min(pickAnim.ballStart.y, pickHands.y) - catchArcLiftFromYards(pickAnim.airYards),
+      }
+      pickBall = quadBezier(pickAnim.ballStart, ctrl, pickHands, pickAnim.ballT)
+      // Spiral points the throw direction (opposite the returner's facing).
+      pickBallRotate = (-36 + pickAnim.ballT * 18) * (pickAnim.facing < 0 ? 1 : -1)
+    } else {
+      pickBall = pickHands
+      pickBallRotate = -18 * (pickAnim.facing < 0 ? -1 : 1)
+    }
+  }
 
   // Field-goal ball: upright plant → true parabola (rise/fall) → land past posts / bounce.
   // End-over-end topple like a placekick (Science of NFL Football / toppling-flight papers).
@@ -2176,6 +2404,44 @@ function FieldViz({
                   />
                 </g>
               ) : null}
+            </g>
+          ) : null}
+          {pickAnim?.showFigure ? (
+            <g data-lounge-pick-anim>
+              {pickAnim.showTrail ? (
+                <line
+                  x1={pickAnim.pickX}
+                  y1={pickAnim.y}
+                  x2={pickAnim.figX}
+                  y2={pickAnim.y}
+                  stroke={pickAnim.primary}
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeOpacity="0.88"
+                  filter="url(#glow-play-chrome)"
+                />
+              ) : null}
+              <g
+                transform={`translate(${catchFigLeftForHandsX(pickAnim.figX, pickAnim.facing)} ${pickAnim.y - RUSH_FIG_H + 8})`}
+              >
+                <GameHubCatchFigure
+                  primary={pickAnim.primary}
+                  secondary={pickAnim.secondary}
+                  helmetColor={pickAnim.helmetColor}
+                  pantsColor={pickAnim.pantsColor}
+                  tightsColor={pickAnim.tightsColor}
+                  headshotUrl={pickAnim.headshotUrl}
+                  jerseyNumber={pickAnim.jerseyNumber}
+                  facing={pickAnim.facing}
+                  width={RUSH_FIG_W}
+                  height={RUSH_FIG_H}
+                />
+              </g>
+            </g>
+          ) : null}
+          {pickBall ? (
+            <g transform={`translate(${pickBall.x - 12} ${pickBall.y - 9})`}>
+              <AmericanFootballMark tone="field" size={24} rotate={pickBallRotate} />
             </g>
           ) : null}
           {fgBall ? (

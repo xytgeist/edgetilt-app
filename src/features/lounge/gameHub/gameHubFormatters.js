@@ -683,9 +683,52 @@ function extractPassReceiverHint(raw) {
   return parts.join(' ').trim()
 }
 
-/** True when a PBP row is a completed pass, a run for a gain / TD, or a FG attempt (field replay). */
+/**
+ * Interception returned for a TD (pick-six). ESPN CFB: "pass intercepted by #6 R.Morgan at USC23
+ * #6 R.Morgan return 23 yards to the USC00 TOUCHDOWN"; NFL: "INTERCEPTED by B.Baker at KC 38.
+ * B.Baker for 38 yards, TOUCHDOWN"; scoring card: "Kobe King 44 Yd Interception Return".
+ * Non-scoring picks are not replayed (no return spot we can trust yet).
+ * @returns {{ returnYards: number|null, playerHint: string, jerseyHint: string|null, isTouchdown: true } | null}
+ */
+export function parseInterceptionReturn(text) {
+  const rawFull = String(text || '').trim()
+  if (!rawFull) return null
+  const raw = scoringPlayCoreText(rawFull)
+  const lower = raw.toLowerCase()
+  const at = lower.search(/\bintercept(?:ed|ion|s)?\b/)
+  if (at < 0) return null
+  if (/\bno\s+play\b/.test(lower)) return null
+  const scoringCard = raw.match(/\b(\d+)\s*-?\s*yds?\s+interception\s+return\b/i)
+  if (!playTextIsTouchdown(raw) && !scoringCard) return null
+
+  const after = raw.slice(at)
+  let returnYards = null
+  const ret =
+    after.match(/\breturn(?:s|ed)?\s+(?:for\s+)?(\d+)\s+(?:yards?|yds?)\b/i) ||
+    after.match(/\bfor\s+(\d+)\s+(?:yards?|yds?)\b/i) ||
+    scoringCard
+  if (ret) returnYards = Number(ret[1])
+
+  let playerHint = ''
+  const by = after.match(
+    /\bintercept(?:ed|ion)?\s+by\s+((?:#?\d{1,2}\s+)?[A-Za-z][A-Za-z.'’-]*(?:\s+[A-Za-z][A-Za-z.'’-]*){0,2}?)(?=\s+(?:at|return|returns|returned|for|to|ran|runs|pushed)\b|\s*[,.(]|$)/i,
+  )
+  if (by) playerHint = by[1].trim()
+  else if (scoringCard) {
+    const lead = stripPlayFormationPrefix(raw).match(
+      /^((?:#?\d{1,2}\s+)?[A-Za-z][A-Za-z.'’-]*(?:\s+[A-Za-z][A-Za-z.'’-]*){0,2}?)\s+\d+\s*-?\s*yds?\s+interception/i,
+    )
+    if (lead) playerHint = lead[1].trim()
+  }
+  const { jersey: jerseyHint } = splitPlayerHint(playerHint)
+  return { returnYards, playerHint, jerseyHint, isTouchdown: true }
+}
+
+/** True when a PBP row is a completed pass, a run for a gain / TD, a FG attempt, or a pick-six (field replay). */
 export function isFieldReplayablePlay(text) {
-  return Boolean(parseRushPlay(text) || parsePassPlay(text) || parseFieldGoalPlay(text))
+  return Boolean(
+    parseRushPlay(text) || parsePassPlay(text) || parseFieldGoalPlay(text) || parseInterceptionReturn(text),
+  )
 }
 
 /**

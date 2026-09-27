@@ -128,6 +128,11 @@ import { syncEdgeNativeAuthSession } from './utils/edgeNativeAuthSession.js'
 
 const EdgeMonitorDesktopPage = lazyRoute(() => import('./features/ops/EdgeMonitorDesktopPage.jsx'))
 const FgKickTestPage = lazyRoute(() => import('./features/lounge/gameHub/FgKickTestPage.jsx'))
+/** Game Hub field-animation harness (FG + pick-six); `/play-anim-test` is the newer alias. */
+function isPlayAnimTestPath(pathname) {
+  const path = String(pathname || '/').replace(/\/+$/, '')
+  return path === '/fg-kick-test' || path === '/play-anim-test'
+}
 const PokerTournamentSwapClaimPage = lazyRoute(
   () => import('./features/poker-bankroll/PokerTournamentSwapClaimPage.jsx'),
 )
@@ -191,7 +196,7 @@ function App() {
   const [isChecking, setIsChecking] = useState(true)
   const [currentView, setCurrentView] = useState(() => {
     if (typeof window === 'undefined') return 'app'
-    if ((window.location.pathname || '/').replace(/\/+$/, '') === '/fg-kick-test') return 'fg-kick-test'
+    if (isPlayAnimTestPath(window.location.pathname)) return 'fg-kick-test'
     if (parseMonitorPathname(window.location.pathname || '/')) return 'monitor'
     if (parseAuthConfirmFromLocation(window.location.pathname || '/', window.location.search || '')) {
       return 'auth-confirm'
@@ -1565,7 +1570,7 @@ function App() {
         setCurrentView(slug)
         return
       }
-      if ((window.location.pathname || '/').replace(/\/+$/, '') === '/fg-kick-test') {
+      if (isPlayAnimTestPath(window.location.pathname)) {
         setCurrentView('fg-kick-test')
         return
       }

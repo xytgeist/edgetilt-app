@@ -108,9 +108,12 @@ export function cfbGamesOnDates(games, dates) {
   return (Array.isArray(games) ? games : []).filter((g) => isCfbGame(g) && set.has(gameDay(g)))
 }
 
-/** Edge fetch window for CFB … current Thu–Mon only (volume is higher than NFL). */
+/** Edge fetch window for CFB … current Thu–Mon (volume is higher than NFL), plus next week on Monday. */
 export function cfbFetchDates(now = Date.now()) {
-  return nflWeekDatesFromThursday(nflCalendarThursdayYmd(now))
+  const primary = nflCalendarThursdayYmd(now)
+  const week = nflWeekDatesFromThursday(primary)
+  if (ptWeekdaySun0(now) !== 1) return week
+  return [...week, ...nflWeekDatesFromThursday(addDaysYmd(primary, 7))]
 }
 
 /**
@@ -157,11 +160,14 @@ export function cfbWeekComplete(games, weekDates, now = Date.now()) {
   return last?.status === 'post'
 }
 
-/** Hub list: this week until the CFB closer is final, then the upcoming week. */
+/**
+ * Hub list: the completed slate stays up through Sunday; Monday flips to the upcoming week once any
+ * Monday games are final. Tue/Wed are already on next week's calendar.
+ */
 export function cfbHubDates(games, now = Date.now()) {
   const calThu = nflCalendarThursdayYmd(now)
   const calDates = nflWeekDatesFromThursday(calThu)
-  if (!cfbWeekComplete(games, calDates, now)) return calDates
+  if (ptWeekdaySun0(now) !== 1 || !cfbWeekComplete(games, calDates, now)) return calDates
   return nflWeekDatesFromThursday(addDaysYmd(calThu, 7))
 }
 

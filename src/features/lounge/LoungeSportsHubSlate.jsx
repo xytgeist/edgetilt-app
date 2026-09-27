@@ -206,7 +206,9 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
               ? 'Loading slate…'
               : games.length
                 ? `${games.length} game${games.length === 1 ? '' : 's'}`
-                : 'Loading slate…'}
+                : boardFetched
+                  ? 'No games'
+                  : 'Loading slate…'}
           </div>
         </div>
       </div>

@@ -798,7 +798,11 @@ export function nflFetchDates(now = Date.now()): string[] {
 
 /** CFB Edge fetch … current Thu–Mon only (higher volume than NFL). */
 export function cfbFetchDates(now = Date.now()): string[] {
-  return nflWeekDatesFromThursday(nflCalendarThursdayYmd(now))
+  const primary = nflCalendarThursdayYmd(now)
+  const week = nflWeekDatesFromThursday(primary)
+  // Monday: the hub flips to next week's slate once any Monday games are final.
+  if (ptWeekdaySun0(now) !== 1) return week
+  return [...week, ...nflWeekDatesFromThursday(addDaysYmd(primary, 7))]
 }
 
 function isNflSportKey(sportKey: string): boolean {

@@ -433,10 +433,11 @@ function MatchupHalf({
           {slotLabel}
         </span>
         {!empty && !isDef ? (
-          // Wide ~1.4:1 slot so landscape busts keep shoulders/arms (contain, not cover).
+          // Slot matches ESPN's 600x436 bust so contain fills it. Bottom ~9% tucks under the stat panel (head keeps
+          // its headroom) and the inside offset eats the ~12% transparent margin so the near shoulder meets the edge.
           <div
-            className={`pointer-events-none absolute bottom-0 z-[2] h-[6.9rem] w-[9.65rem] overflow-hidden ${
-              align === 'right' ? '-left-2' : '-right-2'
+            className={`pointer-events-none absolute -bottom-[0.7rem] z-[2] h-[8rem] w-[11rem] overflow-hidden ${
+              align === 'right' ? '-left-[1.6rem]' : '-right-[1.6rem]'
             }`}
           >
             <MatchupPortrait player={player} isDef={false} align={align} />

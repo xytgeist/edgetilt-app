@@ -147,6 +147,12 @@ const FG_BOUNCE_MS = 880
 const FG_BALL_SIZE = 30
 /** End-over-end revolutions over the full flight (path t 0→1). */
 const FG_TUMBLE_REVS = 20
+/** Thrown spiral: whole long-axis turns per flight, so the laces land back on top (no snap at the catch). */
+const PASS_SPIRAL_REVS = 5
+function passSpiral(flightT) {
+  const t = Number(flightT)
+  return Number.isFinite(t) && t > 0 && t < 1 ? t * PASS_SPIRAL_REVS * 360 : null
+}
 /** Kickoffs / punts tumble end-over-end at the field goal's rate (revs per ms of flight). */
 const KICK_TUMBLE_DEG_PER_MS = (FG_TUMBLE_REVS * 360) / FG_FLIGHT_BASE_MS
 /** Backwards end-over-end from the tee lean … SVG +rotate is clockwise, so a leftward kick spins CW. */
@@ -516,7 +522,7 @@ function DriveIncompleteMark({ p0, c, p1, attackDir, primary, halo, haloOpacity,
       ) : null}
       {frame && frame.ballOpacity > 0 ? (
         <g opacity={frame.ballOpacity} transform={`translate(${frame.ball.x - 12} ${frame.ball.y - 9})`}>
-          <AmericanFootballMark tone="field" size={24} rotate={frame.rotate} />
+          <AmericanFootballMark tone="field" size={24} rotate={frame.rotate} spiral={passSpiral(frame.t)} />
         </g>
       ) : null}
     </g>
@@ -1010,10 +1016,15 @@ function AmericanFootballMark({
   tone = 'field',
   size = 28,
   rotate = -28,
+  /** Long-axis roll in degrees (thrown spiral) … laces + panel seams wrap around the body. */
+  spiral = null,
   className = '',
   title,
 }) {
   const uid = useId().replace(/:/g, '')
+  const spinning = spiral != null && Number.isFinite(Number(spiral))
+  const rollRad = spinning ? (Number(spiral) * Math.PI) / 180 : 0
+  const lacesFacing = Math.cos(rollRad)
   const leatherId = `fb-leather-${uid}`
   const depthId = `fb-depth-${uid}`
   const sheenId = `fb-sheen-${uid}`
@@ -1075,15 +1086,36 @@ function AmericanFootballMark({
         />
         <path d={body} fill={`url(#${depthId})`} />
         <path d={body} fill={`url(#${sheenId})`} />
-        {/* Seam / equator stitch */}
-        <path
-          d="M-10.2 0 C-6.5 0.55 0 0.7 10.2 0"
-          fill="none"
-          stroke={isChalk ? '#27272a' : '#1c1008'}
-          strokeWidth="0.45"
-          strokeOpacity="0.55"
-          clipPath={`url(#${clipId})`}
-        />
+        {/* Seam / equator stitch … spiraling: four panel seams at 90° riding the body's curve (near side only). */}
+        {spinning ? (
+          <g clipPath={`url(#${clipId})`}>
+            {[0, 90, 180, 270].map((deg) => {
+              const a = rollRad + (deg * Math.PI) / 180
+              if (Math.cos(a) <= 0.05) return null
+              return (
+                <path
+                  key={deg}
+                  d="M-12 0 C-11.2 -2.8 -8.6 -6.5 0 -6.5 C8.6 -6.5 11.2 -2.8 12 0"
+                  transform={`scale(1 ${(-Math.sin(a) * 0.92).toFixed(3)})`}
+                  fill="none"
+                  stroke="#1c1008"
+                  strokeWidth="0.4"
+                  strokeOpacity={(0.55 * Math.min(1, Math.cos(a) * 1.5)).toFixed(2)}
+                  vectorEffect="non-scaling-stroke"
+                />
+              )
+            })}
+          </g>
+        ) : (
+          <path
+            d="M-10.2 0 C-6.5 0.55 0 0.7 10.2 0"
+            fill="none"
+            stroke={isChalk ? '#27272a' : '#1c1008'}
+            strokeWidth="0.45"
+            strokeOpacity="0.55"
+            clipPath={`url(#${clipId})`}
+          />
+        )}
         {/* End stripes */}
         <path
           d="M-7.6 -5.15 C-6.7 -5.85 -4.05 -6.15 -4.05 -6.15 L-4.05 6.15 C-4.05 6.15 -6.7 5.85 -7.6 5.15 C-8.45 3.95 -8.75 2.05 -8.75 0 C-8.75 -2.05 -8.45 -3.95 -7.6 -5.15 Z"
@@ -1097,7 +1129,17 @@ function AmericanFootballMark({
           opacity={isChalk ? 0.88 : 0.96}
           clipPath={`url(#${clipId})`}
         />
-        {/* Laces panel */}
+        {/* Laces panel … spiraling: slides over the top and squashes edge-on, hidden on the far side. */}
+        {!spinning || lacesFacing > 0.05 ? (
+        <g clipPath={spinning ? `url(#${clipId})` : undefined}>
+        <g
+          transform={
+            spinning
+              ? `translate(0 ${(Math.sin(rollRad) * 5.6).toFixed(2)}) scale(1 ${lacesFacing.toFixed(3)})`
+              : undefined
+          }
+          opacity={spinning ? Math.min(1, lacesFacing * 1.6).toFixed(2) : undefined}
+        >
         <ellipse
           cx="0"
           cy="0"
@@ -1127,6 +1169,9 @@ function AmericanFootballMark({
             strokeLinecap="round"
           />
         ))}
+        </g>
+        </g>
+        ) : null}
       </g>
     </svg>
   )
@@ -3519,6 +3564,7 @@ function FieldViz({
                     tone="field"
                     size={24}
                     rotate={catchBallRotate}
+                    spiral={passSpiral(catchBallFlightT)}
                   />
                 </g>
               ) : null}
@@ -3603,7 +3649,7 @@ function FieldViz({
           ) : null}
           {pickBall ? (
             <g transform={`translate(${pickBall.x - 12} ${pickBall.y - 9})`}>
-              <AmericanFootballMark tone="field" size={24} rotate={pickBallRotate} />
+              <AmericanFootballMark tone="field" size={24} rotate={pickBallRotate} spiral={passSpiral(pickAnim.ballT)} />
             </g>
           ) : null}
           {fgBall ? (

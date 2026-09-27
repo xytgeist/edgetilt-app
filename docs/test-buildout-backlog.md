@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-27** **Game hub: no 1st-down line on & Goal (Mac).** **1.4.842** … `firstDownPercentFromLive` returns null when LOS + distance reaches the goal line (was clamped onto it, so 3rd & Goal drew a yellow line on the goal line). Anims already skip the lerp when either end is null.
 - **2026-09-27** **Game hub: smaller figure jersey numbers (Mac).** **1.4.841** … ~10% smaller on rush (140 → 126) and catch (177 → 159) figures, outline stroke + letter spacing scaled to match; same centered anchor.
 - **2026-09-27** **Game hub: fantasy toast below two-line banners (Mac).** **1.4.840** … toast `bottom-[48%]` → `bottom-[27%]`; portrait measure: two-line TOUCHDOWN banner 7-79px of a 150px field, toast now 89-116px (was 57-85, overlapping line two). Rests on the bottom hash row.
 - **2026-09-27** **Game hub: fantasy scoring toggle Std / Half / PPR (Mac).** **1.4.839** … per-device setting (`gameHubFantasyScoring.js`, localStorage `edgetilt:gameHubFantasyScoring`, default PPR) drives Fantasy tab points + projections + YTD + H2H chips / last / avg, post-play toasts (`recPoints`), and the landscape Fantasy rail (header reads `Fantasy · Half`, tap cycles). Toggle row above the H2H stack with light-mode rules under `[data-fantasy-scoring-bar]`. Edge **`lounge-nfl-game-fantasy`** adds `{projected,game,last_week,season}_{half,std}` from Sleeper; deployed to test. Verified McConkey Std 6.6 = Yahoo.

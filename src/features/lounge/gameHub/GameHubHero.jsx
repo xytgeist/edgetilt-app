@@ -809,7 +809,10 @@ function firstDownPercentFromLive(live, scrimPct, flipped = false) {
   }
   const dist = Number(live.distance)
   const dir = attackDirection(live.possession, flipped)
-  return Math.max(0, Math.min(100, scrimPct + dir * dist))
+  const target = scrimPct + dir * dist
+  // "& Goal": the line to gain is the goal line itself … no yellow line, like the broadcast.
+  if (target <= 0 || target >= 100) return null
+  return target
 }
 
 function lerp(a, b, t) {

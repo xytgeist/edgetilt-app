@@ -1415,20 +1415,24 @@ export function buildPossessionDriveMarks(plays) {
     const penaltyAt = text.search(/\bpenalty\b/i)
     const penaltyText = penaltyAt >= 0 ? text.slice(penaltyAt) : ''
     const penaltyEnforced = Boolean(penaltyText) && !/\b(?:declined|offsetting)\b/i.test(penaltyText)
-    const playText = penaltyAt >= 0 ? text.slice(0, penaltyAt) : text
+    let playText = penaltyAt >= 0 ? text.slice(0, penaltyAt) : text
+    // ESPN appends the PAT to the TD row ("… TOUCHDOWN, clock 00:31 #80 S.X kick attempt good").
+    const tdAt = playText.search(/\btouchdown\b/i)
+    if (tdAt >= 0) playText = playText.slice(0, tdAt)
     const hasSnap = /\b(?:pass|rush|run|ran|sacked|scrambles?|kneels?)\b/i.test(playText)
     const pushPenalty = (fromPct) => {
       if (endPct == null || Math.abs(endPct - fromPct) < 0.2) return
       marks.push({ key: `${key}:penalty`, kind: 'penalty', text, fromPct, toPct: endPct, lateral: 0, isNewest })
     }
-    if (penaltyEnforced && (!hasSnap || /\bno\s+play\b/i.test(text))) {
+    const inc = INCOMPLETE_DIR.exec(playText)
+    // A nullified run / catch shows only the flag; an incompletion still happened (DPI, holding), so it keeps its arc.
+    if (penaltyEnforced && (!hasSnap || (!inc && /\bno\s+play\b/i.test(text)))) {
       pushPenalty(startPct)
       return
     }
     if (DRIVE_SKIP_PLAY.test(playText)) return
     if (penaltyAt >= 0 && !hasSnap) return
 
-    const inc = INCOMPLETE_DIR.exec(playText)
     if (inc) {
       const dir = PASS_DIR_ANYWHERE.exec(playText)
       const depth = (inc[1] || dir?.[1] || '').toLowerCase()

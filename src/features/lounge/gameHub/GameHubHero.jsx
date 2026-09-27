@@ -351,7 +351,7 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey }) {
                 strokeLinecap="round"
                 strokeOpacity="0.95"
               />
-              <polygon points={driveArrow((x1 + x2) / 2, y, attackDir)} fill="#000" fillOpacity="0.9" />
+              <polygon points={driveArrow(fieldXAtY(m.fromPct, y), y, attackDir)} fill="#000" fillOpacity="0.9" />
             </g>
           )
         }
@@ -373,7 +373,7 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey }) {
                 strokeDasharray="8 6"
                 strokeLinecap="round"
               />
-              <polygon points={driveArrow((x1 + x2) / 2, y, penaltyDir)} fill="#000" fillOpacity="0.9" />
+              <polygon points={driveArrow(x1, y, penaltyDir)} fill="#000" fillOpacity="0.9" />
             </g>
           )
         }
@@ -386,8 +386,6 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey }) {
         const x1 = fieldXAtY(m.toPct, y1)
         const cx = (x0 + x1) / 2
         const cy = Math.min(y0, y1) - DRIVE_INCOMPLETE_LIFT_PX
-        const mx = 0.25 * x0 + 0.5 * cx + 0.25 * x1
-        const my = 0.25 * y0 + 0.5 * cy + 0.25 * y1
         const d = `M ${x0} ${y0} Q ${cx} ${cy} ${x1} ${y1}`
         return (
           <g
@@ -398,7 +396,7 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey }) {
           >
             <path d={d} fill="none" stroke={halo} strokeOpacity={haloOpacity} strokeWidth="5" strokeDasharray="7 6" strokeLinecap="round" />
             <path d={d} fill="none" stroke={primary} strokeWidth="3" strokeDasharray="7 6" strokeLinecap="round" />
-            <polygon points={driveArrow(mx, my, attackDir)} fill="#000" fillOpacity="0.9" />
+            <polygon points={driveArrow(x0, y0, attackDir)} fill="#000" fillOpacity="0.9" />
             <g strokeLinecap="round">
               <line x1={x1 - 6} y1={y1 - 6} x2={x1 + 6} y2={y1 + 6} stroke="#000" strokeOpacity="0.5" strokeWidth="6" />
               <line x1={x1 - 6} y1={y1 + 6} x2={x1 + 6} y2={y1 - 6} stroke="#000" strokeOpacity="0.5" strokeWidth="6" />

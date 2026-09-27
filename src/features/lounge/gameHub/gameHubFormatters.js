@@ -266,13 +266,12 @@ export function yardLineLabel(game, live) {
 }
 
 /**
- * Direction of play flips for the 2nd and 4th quarters (teams switch ends after Q1 and Q3). ESPN PBP has no
- * physical-end data (`yardLine` is fixed to the home goal) and the 3rd-quarter ends come from the halftime
- * choice, so Q3 / OT reuse the Q1 direction. End zone art never moves: away left, home right.
+ * Each team defends its own painted end zone all game (away left, home right): home always attacks left,
+ * away right. No feed says which physical end a team defends (ESPN spots are team-relative, the toss /
+ * halftime choice isn't published), so mirroring the real quarter-by-quarter switch was a guess.
  */
-export function periodFieldFlipped(period) {
-  const n = Number(period)
-  return n === 2 || n === 4
+export function periodFieldFlipped(_period) {
+  return false
 }
 
 export function isFieldOrientationFlipped(game, live) {
@@ -1771,7 +1770,7 @@ export function buildPossessionDriveMarks(plays, { keepScoringDrive = false, liv
     if (breaksDrive(row) && !(keepHead && row === head)) break
     drive.unshift(row)
   }
-  // Whole drive in the current quarter's direction … a drive that crosses the end of Q1 / Q3 stays one chain.
+  // Whole drive in one direction … a drive that crosses the end of Q1 / Q3 stays one chain.
   const flipped = periodFieldFlipped(head.period)
   const attackDir = attackDirection(team, flipped)
   const goalPct = attackDir > 0 ? 100 : 0

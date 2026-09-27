@@ -384,7 +384,7 @@ export default function FgKickTestPage() {
           <div>
             <h1 className="text-lg font-bold tracking-tight text-white">Play animation test</h1>
             <p className="text-[12px] text-zinc-400">
-              Real GameHubHero field … FG flight, pick-six, kickoff + punt returns. Quarter {half}{half === 2 || half === 4 ? ' (flipped)' : ''} … end zones stay away left / home right.
+              Real GameHubHero field … FG flight, pick-six, kickoff + punt returns. Quarter {half} … each team defends its own end zone (away left, home right).
               Ball buttons set the offense.
             </p>
           </div>
@@ -396,7 +396,7 @@ export default function FgKickTestPage() {
         <div className="mb-3 flex flex-wrap gap-2">
           {[
             [1, 'Q1'],
-            [2, 'Q2 (flip)'],
+            [2, 'Q2'],
             [3, 'Q3'],
           ].map(([q, label]) => (
             <button

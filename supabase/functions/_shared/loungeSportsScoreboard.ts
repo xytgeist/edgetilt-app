@@ -169,6 +169,9 @@ export type LoungeSportsPlay = {
   end_spot?: LoungeSportsPlaySpot | null
   /** Defense took the ball (interception / opponent fumble recovery) … from ESPN play type; `isTurnover` is unreliable. */
   turnover?: boolean
+  /** Running score after a scoring play (ESPN `homeScore` / `awayScore`) … ESPN's board total can lag the PBP row. */
+  home_score?: number
+  away_score?: number
 }
 
 export type LoungeSportsPlaySpot = {
@@ -1453,6 +1456,11 @@ async function fetchEspnFootballLivePack(
         const noSpot = ESPN_NO_SPOT_PLAY_TYPE.test(typeText)
         const startSpot = noSpot ? null : spotFrom(start)
         const endSpot = noSpot ? null : spotFrom(endRaw)
+        const homeScore = numOrNull(row.homeScore)
+        const awayScore = numOrNull(row.awayScore)
+        const scoreAfter = row.scoringPlay === true && homeScore != null && awayScore != null
+          ? { home_score: homeScore, away_score: awayScore }
+          : {}
         plays.push({
           id: playId || `${plays.length}`,
           period: numOrNull(periodObj?.number ?? row.period),
@@ -1462,6 +1470,7 @@ async function fetchEspnFootballLivePack(
           start_spot: startSpot,
           end_spot: endSpot,
           ...(ESPN_TURNOVER_PLAY_TYPE.test(typeText) ? { turnover: true } : {}),
+          ...scoreAfter,
         })
       }
     }

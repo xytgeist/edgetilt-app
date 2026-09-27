@@ -38,6 +38,7 @@ import {
   playTextIsScoreTry,
   buildPossessionDriveMarks,
   lastBallPlayText,
+  latestPlayScore,
   playTextIsTouchdown,
   resolveFigureJersey,
   resolvePlayAnimationPercents,
@@ -303,6 +304,9 @@ function fieldXAtY(p, y) {
   const t = (y - FIELD_FAR_Y) / (FIELD_NEAR_Y - FIELD_FAR_Y)
   return fieldTopXFromPercent(p) + (fieldBotXFromPercent(p) - fieldTopXFromPercent(p)) * t
 }
+
+/** Wait this long after a new scoring PBP row before its score may tick (lets the field anim start first). */
+const PLAY_SCORE_GRACE_MS = 900
 
 /** Full "left end" / "deep right" drift off the ball line for the rush / catch figure. */
 const RUN_LATERAL_PX = 50
@@ -1104,6 +1108,7 @@ function FieldViz({
   replayTeam = null,
   playStartSpot = null,
   plays = null,
+  onPlayAnimActiveChange = null,
 }) {
   const sportKey = String(game?.sport_key || '').toLowerCase()
   const isFootball = sportKey.includes('football') || (!sportKey && Boolean(game?.away && game?.home))
@@ -2440,6 +2445,12 @@ function FieldViz({
     animKey,
   ])
 
+  const anyPlayAnim =
+    rushAnim != null || catchAnim != null || fgAnim != null || pickAnim != null || kickAnim != null
+  useEffect(() => {
+    onPlayAnimActiveChange?.(anyPlayAnim)
+  }, [anyPlayAnim, onPlayAnimActiveChange])
+
   if (!isFootball) return null
 
   // Calibrated 3D field coordinates (viewBox="0 0 1266 533")
@@ -3506,7 +3517,7 @@ function HeroPublicBetting({ game, splits, awayColor, homeColor }) {
  * post game cards. `topBar` sits inside the wash so colors run under the status row.
  */
 export default function GameHubHero({
-  game,
+  game: feedGame,
   live,
   lastPlay,
   playReplayNonce = 0,
@@ -3517,7 +3528,36 @@ export default function GameHubHero({
   players = [],
   plays = null,
 }) {
-  const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(game)
+  const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(feedGame)
+  const playScore = useMemo(() => latestPlayScore(plays), [plays])
+  const playScoreId = playScore?.id || ''
+  const [playScoreShownId, setPlayScoreShownId] = useState('')
+  const fieldAnimActiveRef = useRef(false)
+  const playScoreReadyRef = useRef('')
+  // Grace so a fresh scoring row's field anim can start first; then tick now, or when that anim ends.
+  useEffect(() => {
+    if (!playScoreId) return undefined
+    const t = setTimeout(() => {
+      playScoreReadyRef.current = playScoreId
+      if (!fieldAnimActiveRef.current) setPlayScoreShownId(playScoreId)
+    }, PLAY_SCORE_GRACE_MS)
+    return () => clearTimeout(t)
+  }, [playScoreId])
+  const onFieldAnimActiveChange = useCallback((active) => {
+    fieldAnimActiveRef.current = active
+    if (!active && playScoreReadyRef.current) setPlayScoreShownId(playScoreReadyRef.current)
+  }, [])
+  // ESPN's board total can lag the PBP row … once the scoring play has animated, show the higher of the two.
+  const game = useMemo(() => {
+    if (!playScore || playScoreShownId !== playScore.id || feedGame?.status !== 'in') return feedGame
+    const lift = (side, n) => {
+      const cur = Number(side?.score)
+      return side && (!Number.isFinite(cur) || n > cur) ? { ...side, score: n } : side
+    }
+    const away = lift(feedGame.away, playScore.away)
+    const home = lift(feedGame.home, playScore.home)
+    return away === feedGame.away && home === feedGame.home ? feedGame : { ...feedGame, away, home }
+  }, [feedGame, playScore, playScoreShownId])
   const clock = liveClockLabel(game, live)
   const isFinal = game.status === 'post'
   // Final: clock still says Final … drop stale down/distance + yard line.
@@ -3766,6 +3806,7 @@ export default function GameHubHero({
             playStartSpot={playStartSpot}
             players={players}
             plays={plays}
+            onPlayAnimActiveChange={onFieldAnimActiveChange}
           />
         ) : (
           <div className="h-2" aria-hidden="true" />

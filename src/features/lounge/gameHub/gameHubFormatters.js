@@ -331,6 +331,21 @@ export function sortPlaysNewestFirst(plays) {
   return indexed.map((row) => row.play)
 }
 
+/**
+ * Running score from the newest scoring PBP row (`home_score` / `away_score` from the Edge).
+ * @returns {{ id: string, home: number, away: number } | null}
+ */
+export function latestPlayScore(plays) {
+  for (const row of sortPlaysNewestFirst(plays)) {
+    const home = Number(row?.home_score)
+    const away = Number(row?.away_score)
+    if (row?.home_score != null && row?.away_score != null && Number.isFinite(home) && Number.isFinite(away)) {
+      return { id: String(row.id || `${home}-${away}`), home, away }
+    }
+  }
+  return null
+}
+
 function hasYardSpot(spot) {
   return spot != null && Number.isFinite(Number(spot.yard_line))
 }

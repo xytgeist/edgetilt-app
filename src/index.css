@@ -3673,6 +3673,33 @@ html.light [data-lounge-game-chat]::placeholder {
 .lounge-drive-tap-tag {
   animation: lounge-drive-tap-tag 5s linear both;
 }
+/* Per-play fantasy points chips … duration matches FANTASY_TOAST_MS in GameHubHero.jsx. */
+@keyframes lounge-play-fantasy-toast {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.92);
+  }
+  8% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  86% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-4px) scale(1);
+  }
+}
+.lounge-play-fantasy-toast {
+  animation: lounge-play-fantasy-toast 3.4s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lounge-play-fantasy-toast {
+    animation: none;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   [data-lounge-td-banner] .lounge-td-banner-text {
     animation: none;

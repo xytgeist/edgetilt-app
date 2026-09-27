@@ -16,6 +16,7 @@ import GameHubCatchFigure from './GameHubCatchFigure.jsx'
 import { getLuminance, hexToHsl, hexToRgb, resolveTeamKit } from './gameHubFigureColors.js'
 import { pregameGameMarketPicks, pregamePlayerPropRails } from './gameHubPregameProps.js'
 import { pregameBestLines } from './gameHubBestLines.js'
+import { formatFantasyPoints, playFantasyPoints } from './gameHubPlayFantasy.js'
 import {
   CATCH_HANDS_LOCAL,
   CATCH_VIEWBOX_H,
@@ -393,6 +394,9 @@ function playLineHalo(primary) {
   const light = getLuminance(hexToRgb(primary)) < 0.35
   return { halo: light ? '#ffffff' : '#000000', haloOpacity: light ? 0.35 : 0.35 }
 }
+
+/** How long the per-play fantasy points chips stay up after the play anim ends. */
+const FANTASY_TOAST_MS = 3400
 
 const THROW_FLIGHT_MS = 720
 const THROW_BOUNCES = [
@@ -2856,6 +2860,30 @@ function FieldViz({
     onPlayAnimActiveChange?.(anyPlayAnim)
   }, [anyPlayAnim, onPlayAnimActiveChange])
 
+  // Play anim just finished → pop each involved player's fantasy points for that play.
+  const [fantasyToast, setFantasyToast] = useState(null)
+  const prevAnyPlayAnimRef = useRef(false)
+  useEffect(() => {
+    const was = prevAnyPlayAnimRef.current
+    prevAnyPlayAnimRef.current = anyPlayAnim
+    if (anyPlayAnim) {
+      setFantasyToast(null)
+      return undefined
+    }
+    if (!was) return undefined
+    const ctx = fieldAnimCtxRef.current
+    const offense = ctx.rowTeam || ctx.snapOffenseSide
+    const rows = playFantasyPoints(ctx.lastPlayText, {
+      players: ctx.players,
+      offenseAbbrev: offense === 'home' || offense === 'away' ? String(ctx.game?.[offense]?.abbrev || '') : '',
+    })
+    if (!rows.length) return undefined
+    setFantasyToast({ key: `${animKey}:${Date.now()}`, rows })
+    const t = window.setTimeout(() => setFantasyToast(null), FANTASY_TOAST_MS)
+    return () => window.clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fire on the anim active → idle edge only
+  }, [anyPlayAnim])
+
   if (!isFootball) return null
 
   // Calibrated 3D field coordinates (viewBox="0 0 1266 533")
@@ -3860,6 +3888,51 @@ function FieldViz({
                 WebkitTextStroke: '1px rgba(0,0,0,0.4)',
               }}
             />
+          </div>
+        ) : null}
+
+        {fantasyToast ? (
+          <div
+            key={fantasyToast.key}
+            data-lounge-play-fantasy-points
+            className="lounge-play-fantasy-toast pointer-events-none absolute inset-x-0 bottom-[6%] z-[8] flex flex-wrap items-center justify-center gap-1.5 px-3"
+            aria-live="polite"
+          >
+            {fantasyToast.rows.map((r) => (
+              <div
+                key={r.key}
+                className="flex items-center gap-1.5 rounded-full py-0.5 pl-0.5 pr-2.5 shadow-lg"
+                style={{ background: 'rgba(9,9,11,0.82)', border: '1px solid rgba(255,255,255,0.18)' }}
+              >
+                {r.headshotUrl ? (
+                  <img
+                    src={r.headshotUrl}
+                    alt=""
+                    className="h-6 w-6 rounded-full object-cover"
+                    style={{ background: 'rgba(255,255,255,0.12)' }}
+                  />
+                ) : (
+                  <span className="h-6 w-1" aria-hidden="true" />
+                )}
+                <span className="text-[12px] font-semibold leading-none" style={{ color: '#fff' }}>
+                  {r.name}
+                  {r.position ? (
+                    <span className="ml-1 text-[9px] font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                      {r.position}
+                    </span>
+                  ) : null}
+                </span>
+                <span
+                  className="text-[13px] font-bold leading-none tabular-nums"
+                  style={{ color: r.points < 0 ? '#fda4af' : '#6ee7b7' }}
+                >
+                  {formatFantasyPoints(r.points)}
+                </span>
+                <span className="text-[8px] font-bold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                  pts
+                </span>
+              </div>
+            ))}
           </div>
         ) : null}
       </div>

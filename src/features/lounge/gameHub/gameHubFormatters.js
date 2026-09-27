@@ -727,6 +727,28 @@ export function parsePassPlay(text) {
   return { yards, playerHint, jerseyHint, isTouchdown, lateral: playLateralFromText(raw, 'pass') }
 }
 
+/**
+ * Thrower on a pass / interception row: "(Shotgun) P.Mahomes pass short right to …", "#11 C.Ward pass complete
+ * to …", scoring card "X.Restrepo 12 Yd pass from Cam Ward (…)".
+ * @returns {string} player hint ('' when the row doesn't name one)
+ */
+export function parsePasserHint(text) {
+  const raw = String(text || '').trim()
+  if (!raw) return ''
+  const from = raw.match(
+    /\bpass\s+from\s+((?:#?\d{1,2}\s+)?[A-Za-z][A-Za-z.'’-]*(?:\s+[A-Za-z][A-Za-z.'’-]*){0,2}?)(?=\s*[(,.]|\s+for\b|$)/i,
+  )
+  if (from) return from[1].trim()
+  const cleaned = stripPlayFormationPrefix(raw)
+  const lead = cleaned.match(
+    /^((?:#?\d{1,2}\s+)?[A-Za-z][A-Za-z.'’-]*(?:\s+[A-Za-z][A-Za-z.'’-]*){0,3}?)\s+pass(?:es|ed)?\b/i,
+  )
+  if (!lead) return ''
+  const parts = lead[1].trim().split(/\s+/)
+  while (parts.length && FORMATION_SKIP.test(parts[0])) parts.shift()
+  return parts.join(' ').trim()
+}
+
 /** Tokens that are never part of a player name in PBP. */
 const PLAYER_NAME_STOP = new Set([
   'to',
@@ -1372,7 +1394,7 @@ function normMatchTeam(team) {
 }
 
 /** True when slate abbrev and roster team refer to the same club (LA↔LAR/LAC, WSH↔WAS). */
-function teamsMatch(a, b) {
+export function teamsMatch(a, b) {
   const na = normMatchTeam(a)
   const nb = normMatchTeam(b)
   if (!na || !nb) return false

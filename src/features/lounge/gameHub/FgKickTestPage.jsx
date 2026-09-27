@@ -182,6 +182,11 @@ function playText({ yards, made, missSide }) {
 export default function FgKickTestPage() {
   const [half, setHalf] = useState(1)
   const [college, setCollege] = useState(false)
+  // `?landscape=915x412` renders the fullscreen gamecast in a phone-sized box (tall Android ≈ 915x412).
+  const landscapeBox = useMemo(() => {
+    const m = String(new URLSearchParams(window.location.search).get('landscape') || '').match(/^(\d+)x(\d+)$/)
+    return m ? { w: Number(m[1]), h: Number(m[2]) } : null
+  }, [])
   const game = useMemo(
     () => (college ? { ...MOCK_GAME, sport_key: 'americanfootball_ncaaf' } : MOCK_GAME),
     [college],
@@ -758,7 +763,10 @@ export default function FgKickTestPage() {
           ))}
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl">
+        <div
+          className={`overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl ${landscapeBox ? 'flex flex-col' : ''}`}
+          style={landscapeBox ? { width: landscapeBox.w, height: landscapeBox.h } : undefined}
+        >
           <GameHubHero
             game={game}
             live={live}
@@ -767,6 +775,7 @@ export default function FgKickTestPage() {
             playReplayNonce={nonce}
             replayTeam={feedTeam || possession}
             playStartSpot={startSpot}
+            fullscreen={Boolean(landscapeBox)}
           />
         </div>
 

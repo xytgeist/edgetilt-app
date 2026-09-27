@@ -473,6 +473,62 @@ function incompleteThrowFrame(p0, c, p1, elapsed) {
  * Field banner text that stays on one line … shrinks the font to the banner's inner width instead of wrapping.
  * Measures an unanimated twin so the pop-in's wide letter-spacing doesn't under-size it.
  */
+/** Space kept between the scoreboard's center stack and a field banner (covers the text's own -translate-y). */
+const BANNER_FLOOR_GAP_PX = 12
+
+/**
+ * Field banner layer that slides down just enough to clear `floorRef` (the scoreboard's center stack … clock,
+ * down, channel pill). Landscape lets the field run up under the board, so tall phones would otherwise center
+ * the banner on the pill. Measures offsets, not rects, since the banner text animates its transform.
+ */
+function FloorClearBanner({ floorRef = null, measureKey = '', className, children, ...attrs }) {
+  const wrapRef = useRef(null)
+  const shiftRef = useRef(0)
+  const [shift, setShift] = useState(0)
+
+  useLayoutEffect(() => {
+    const wrap = wrapRef.current
+    const floor = floorRef?.current
+    if (!wrap || !floor) return undefined
+    // Block line spans inside the (inline, transformed) visible text: real boxes for ResizeObserver; their
+    // offsetParent is that text span, which sits at `vis.offsetTop` inside `wrap`.
+    const lineEls = () => [...(wrap.lastElementChild?.children || [])]
+    const measure = () => {
+      const vis = wrap.lastElementChild
+      const lines = lineEls()
+      if (!vis || !lines.length) return
+      const last = lines[lines.length - 1]
+      const top = vis.offsetTop + lines[0].offsetTop
+      const bottom = vis.offsetTop + last.offsetTop + last.offsetHeight
+      const textTop = wrap.getBoundingClientRect().top - shiftRef.current + top
+      const room = Math.max(0, wrap.clientHeight - bottom)
+      const need = floor.getBoundingClientRect().bottom + BANNER_FLOOR_GAP_PX - textTop
+      const next = Math.max(0, Math.min(Math.ceil(need), room))
+      if (next === shiftRef.current) return
+      shiftRef.current = next
+      setShift(next)
+    }
+    measure()
+    if (typeof ResizeObserver === 'undefined') return undefined
+    const ro = new ResizeObserver(measure)
+    ro.observe(wrap)
+    ro.observe(floor)
+    for (const el of lineEls()) ro.observe(el)
+    return () => ro.disconnect()
+  }, [floorRef, measureKey])
+
+  return (
+    <div
+      ref={wrapRef}
+      className={className}
+      style={shift ? { transform: `translateY(${shift}px)` } : undefined}
+      {...attrs}
+    >
+      {children}
+    </div>
+  )
+}
+
 function FieldBannerFitText({ text, className, style }) {
   const measureRef = useRef(null)
   const [fontPx, setFontPx] = useState(null)
@@ -1416,6 +1472,7 @@ function FieldViz({
   playStartSpot = null,
   plays = null,
   onPlayAnimActiveChange = null,
+  bannerFloorRef = null,
 }) {
   const sportKey = String(game?.sport_key || '').toLowerCase()
   const isFootball = sportKey.includes('football') || (!sportKey && Boolean(game?.away && game?.home))
@@ -3175,6 +3232,9 @@ function FieldViz({
       sportKey,
     )
     : ''
+  const playBannerText = showTdBanner
+    ? tdTeamLabel ? `Touchdown\n${tdTeamLabel}` : 'Touchdown'
+    : turnoverTeamLabel ? `Turnover\n${turnoverTeamLabel} Ball` : 'Turnover'
 
   // Pick-six: ball rides a QB arc into the defender's hands, then stays tucked on the return.
   const pickHands =
@@ -3895,7 +3955,9 @@ function FieldViz({
         />
         {/* Stoppage / break banner … TIMEOUT, End of 1st, HALFTIME, End of 3rd, GAME OVER */}
         {centerBanner && !suppressBanner && !showTdBanner ? (
-          <div
+          <FloorClearBanner
+            floorRef={bannerFloorRef}
+            measureKey={centerBanner}
             data-lounge-game-field-banner
             className="pointer-events-none absolute inset-0 z-[6] flex items-center justify-center px-4 pb-[18%]"
             aria-live="polite"
@@ -3910,23 +3972,21 @@ function FieldViz({
                 WebkitTextStroke: '1px rgba(0,0,0,0.35)',
               }}
             />
-          </div>
+          </FloorClearBanner>
         ) : null}
 
         {/* Rush / pass TD celebration */}
         {showTdBanner || showTurnoverBanner ? (
-          <div
+          <FloorClearBanner
+            floorRef={bannerFloorRef}
+            measureKey={playBannerText}
             data-lounge-td-banner
             data-lounge-field-play-banner={showTdBanner ? 'touchdown' : 'turnover'}
             className="pointer-events-none absolute inset-0 z-[7] flex items-center justify-center px-4 pb-[18%]"
             aria-live="polite"
           >
             <FieldBannerFitText
-              text={
-                showTdBanner
-                  ? tdTeamLabel ? `Touchdown\n${tdTeamLabel}` : 'Touchdown'
-                  : turnoverTeamLabel ? `Turnover\n${turnoverTeamLabel} Ball` : 'Turnover'
-              }
+              text={playBannerText}
               className="lounge-td-banner-text text-center text-[34px] font-black uppercase leading-[1.05] tracking-[0.14em] text-amber-300 sm:text-[44px]"
               style={{
                 fontFamily: "Oswald, Graduate, Impact, 'Arial Black', sans-serif",
@@ -3935,7 +3995,7 @@ function FieldViz({
                 WebkitTextStroke: '1px rgba(0,0,0,0.4)',
               }}
             />
-          </div>
+          </FloorClearBanner>
         ) : null}
 
         {fantasyToast ? (
@@ -4693,6 +4753,8 @@ export default function GameHubHero({
   // Landscape gamecast: the field row slides up under the scoreboard (scoreboard paints on top); only the
   // goalpost tops reach that high. Track the board's height so the overlap follows it.
   const scoreboardRef = useRef(null)
+  // Center stack (clock / down / channel pill) … field banners slide below it when the field overlaps the board.
+  const scoreboardCenterRef = useRef(null)
   const [measuredScoreboardH, setScoreboardH] = useState(0)
   const overlapBoard = fullscreen && showField
   const scoreboardH = overlapBoard ? measuredScoreboardH : 0
@@ -4803,7 +4865,10 @@ export default function GameHubHero({
               </div>
             </div>
 
-            <div className="flex max-w-[36%] shrink-0 flex-col items-center gap-0 px-1 text-center">
+            <div
+              ref={scoreboardCenterRef}
+              className="flex max-w-[36%] shrink-0 flex-col items-center gap-0 px-1 text-center"
+            >
               <span
                 className={`text-[12px] font-bold tracking-wide ${
                   game.status === 'in' && !isFinal ? 'text-rose-300' : 'text-white/85'
@@ -4990,6 +5055,7 @@ export default function GameHubHero({
               players={players}
               plays={plays}
               onPlayAnimActiveChange={onFieldAnimActiveChange}
+              bannerFloorRef={overlapBoard ? scoreboardCenterRef : null}
             />
           </div>
         ) : showField ? (

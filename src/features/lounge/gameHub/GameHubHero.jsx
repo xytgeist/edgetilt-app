@@ -1430,6 +1430,8 @@ function FieldViz({
     [isFootball, plays, tdDriveHold, livePeriod],
   )
   const [throwDoneKey, setThrowDoneKey] = useState('')
+  /** Incompletion throw that passed the start gate … see `throwKey`. */
+  const [throwArmedKey, setThrowArmedKey] = useState('')
   const onThrowDone = useCallback(
     (key) => {
       setThrowDoneKey(key)
@@ -3009,13 +3011,16 @@ function FieldViz({
   )
   /** Newest incompletion animates its throw once per play (or replay tap); the LOS ball hides meanwhile. */
   const newestIncomplete = drive?.marks.find((m) => m.isNewest && m.kind === 'incomplete')
-  const throwKey =
+  const throwEligible = Boolean(
     showDriveMarks &&
-    newestIncomplete &&
-    fieldPlayIdentity(newestIncomplete.text) === fieldPlayIdentity(lastPlayText) &&
-    animKey !== throwDoneKey
-      ? animKey
-      : ''
+      newestIncomplete &&
+      fieldPlayIdentity(newestIncomplete.text) === fieldPlayIdentity(lastPlayText) &&
+      animKey !== throwDoneKey,
+  )
+  // Same start gate as the other play anims (field art painted, LOS known, no banner) … a throw fired
+  // into a zero-height field burns its one run unseen. Once armed it finishes even if the gate blips.
+  if (throwEligible && playAnimReady && throwArmedKey !== animKey) setThrowArmedKey(animKey)
+  const throwKey = throwEligible && throwArmedKey === animKey ? animKey : ''
   const drivePrimary = drive?.team
     ? possessionKit({ possession: drive.team }, game, awayColor, homeColor).primary
     : '#ffffff'

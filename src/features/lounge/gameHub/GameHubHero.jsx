@@ -4696,9 +4696,9 @@ export default function GameHubHero({
         />
         {showField && fullscreen ? (
           // FieldViz = 20px top pad + 4px side pads around a 1266:533 plane … widest that fits this box while
-          // leaving each stat rail its min width.
+          // leaving each stat rail its min width. Bottom-anchored: spare height goes up under the scoreboard.
           <div
-            className="shrink-0 self-center"
+            className={`shrink-0 ${overlapBoard ? 'self-end' : 'self-center'}`}
             style={{ width: `min(calc(100cqw - ${2 * STAT_RAIL_MIN_REM}rem), calc((100cqh - 20px) * 1266 / 533 + 8px))` }}
           >
             <FieldViz

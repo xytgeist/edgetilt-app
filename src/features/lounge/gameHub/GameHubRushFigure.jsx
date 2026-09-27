@@ -118,12 +118,12 @@ export default function GameHubRushFigure({
             dominantBaseline="central"
             fill="none"
             stroke={numberPaint.stroke}
-            strokeWidth="24"
+            strokeWidth="22"
             strokeLinejoin="round"
             fontFamily="'Arial Black', Impact, sans-serif"
-            fontSize="140"
+            fontSize="126"
             fontWeight="900"
-            letterSpacing="-4"
+            letterSpacing="-3.6"
           >
             {num}
           </text>
@@ -134,9 +134,9 @@ export default function GameHubRushFigure({
             dominantBaseline="central"
             fill={numberPaint.fill}
             fontFamily="'Arial Black', Impact, sans-serif"
-            fontSize="140"
+            fontSize="126"
             fontWeight="900"
-            letterSpacing="-4"
+            letterSpacing="-3.6"
           >
             {num}
           </text>

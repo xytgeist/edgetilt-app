@@ -118,12 +118,12 @@ export default function GameHubCatchFigure({
             dominantBaseline="central"
             fill="none"
             stroke={numberPaint.stroke}
-            strokeWidth="33"
+            strokeWidth="30"
             strokeLinejoin="round"
             fontFamily="'Arial Black', Impact, sans-serif"
-            fontSize="177"
+            fontSize="159"
             fontWeight="900"
-            letterSpacing="-6"
+            letterSpacing="-5.4"
           >
             {num}
           </text>
@@ -134,9 +134,9 @@ export default function GameHubCatchFigure({
             dominantBaseline="central"
             fill={numberPaint.fill}
             fontFamily="'Arial Black', Impact, sans-serif"
-            fontSize="177"
+            fontSize="159"
             fontWeight="900"
-            letterSpacing="-6"
+            letterSpacing="-5.4"
           >
             {num}
           </text>

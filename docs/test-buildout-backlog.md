@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-26:** **Game hero always dark (Mac).** `html.light [data-lounge-game-hero]` restores the dark zinc token scale (same pattern as the video lightbox) and pins every global light text remap that reaches hero classes (`text-white/*` at their real alphas, `text-amber-200/300`, `text-rose-300`) so the scoreboard + field render identically in both themes (fixes the TOUCHDOWN banner turning burnt orange in light). Light-only CSS; dark unchanged. Frontend **`1.4.776`**.
 - **2026-09-26:** **Incomplete pass throw animation (Mac).** The newest incompletion (when it is the last play) animates once per play / replay tap: the ball leads the dashed arc (arc draws behind it), hits the turf, the red X pops in, the ball bounces 3 decaying hops along the throw line, rests, fades; the LOS ball hides during the throw. `DriveIncompleteMark` in `GameHubHero.jsx`; reduced motion skips to the static mark. `/play-anim-test` gets Incomplete short left / deep right / short middle presets. Frontend **`1.4.775`**.
 - **2026-09-26:** **Drive chart arrows white (Mac).** LOS direction triangles on lines, penalties and incompletions are white with a thin dark outline (was black). Frontend **`1.4.774`**.
 - **2026-09-26:** **Prod promote (Mac).** `main` @ `19571f21` (web **`1.4.764`-`1.4.773`** drive chart + turnover banner); prod Edge **`lounge-sports-scoreboard`** deployed.

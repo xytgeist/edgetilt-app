@@ -3734,30 +3734,44 @@ html.light [data-lounge-game-chat]::placeholder {
   );
   filter: blur(18px);
 }
-/* Team-color hero stays light-on-dark even in light mode */
+/* Game hero (scoreboard + field) is always dark … light mode must not remap anything inside it.
+   Every global / hub `html.light` text remap that can reach a hero class is pinned back to its dark value here. */
 html.light [data-lounge-game-hero] {
+  /* Undo the inverted zinc scale (same restore as the video lightbox) so zinc classes stay dark in here. */
+  --color-zinc-950: #09090b;
+  --color-zinc-900: #18181b;
+  --color-zinc-800: #27272a;
+  --color-zinc-700: #3f3f46;
+  --color-zinc-600: #52525b;
+  --color-zinc-500: #71717a;
+  --color-zinc-400: #a1a1aa;
+  --color-zinc-300: #d4d4d8;
+  --color-zinc-200: #e4e4e7;
+  --color-zinc-100: #f4f4f5;
+  --color-zinc-50: #fafafa;
   background-color: #7a7a84 !important;
+  color: oklch(0.967 0.001 286.375) !important;
+  color-scheme: dark;
 }
 /* Pin veil bottom stop … to-zinc-950 remaps to white in light and kills white splits text. */
 html.light [data-lounge-game-hero] [data-lounge-game-hero-veil] {
   --tw-gradient-to: #09090b !important;
 }
-html.light [data-lounge-game-hero] .text-white,
-html.light [data-lounge-game-hero] .text-white\/90,
-html.light [data-lounge-game-hero] .text-white\/85,
-html.light [data-lounge-game-hero] .text-white\/80,
-html.light [data-lounge-game-hero] .text-white\/75,
-html.light [data-lounge-game-hero] .text-white\/70,
-html.light [data-lounge-game-hero] .text-white\/55,
-html.light [data-lounge-game-hero] .text-white\/50,
-html.light [data-lounge-game-hero] .text-white\/45,
-html.light [data-lounge-game-hero] .text-white\/40,
-html.light [data-lounge-game-hero] .text-white\/30 {
-  color: #fff !important;
-}
-html.light [data-lounge-game-hero] .text-rose-300 {
-  color: #fda4af !important;
-}
+html.light [data-lounge-game-hero] .text-white { color: #fff !important; }
+html.light [data-lounge-game-hero] .text-white\/90 { color: rgb(255 255 255 / 0.9) !important; }
+html.light [data-lounge-game-hero] .text-white\/85 { color: rgb(255 255 255 / 0.85) !important; }
+html.light [data-lounge-game-hero] .text-white\/80 { color: rgb(255 255 255 / 0.8) !important; }
+html.light [data-lounge-game-hero] .text-white\/75 { color: rgb(255 255 255 / 0.75) !important; }
+html.light [data-lounge-game-hero] .text-white\/70 { color: rgb(255 255 255 / 0.7) !important; }
+html.light [data-lounge-game-hero] .text-white\/60 { color: rgb(255 255 255 / 0.6) !important; }
+html.light [data-lounge-game-hero] .text-white\/55 { color: rgb(255 255 255 / 0.55) !important; }
+html.light [data-lounge-game-hero] .text-white\/50 { color: rgb(255 255 255 / 0.5) !important; }
+html.light [data-lounge-game-hero] .text-white\/45 { color: rgb(255 255 255 / 0.45) !important; }
+html.light [data-lounge-game-hero] .text-white\/40 { color: rgb(255 255 255 / 0.4) !important; }
+html.light [data-lounge-game-hero] .text-white\/30 { color: rgb(255 255 255 / 0.3) !important; }
+html.light [data-lounge-game-hero] .text-amber-200 { color: var(--color-amber-200) !important; }
+html.light [data-lounge-game-hero] .text-amber-300 { color: var(--color-amber-300) !important; }
+html.light [data-lounge-game-hero] .text-rose-300 { color: var(--color-rose-300) !important; }
 /* Glass game pills: keep translucent white on team wash (both themes) */
 html.light [data-lounge-game-hero] [data-lounge-game-glass-chip],
 html.light [data-lounge-game-hero] [data-lounge-game-glass-chip='idle'],
@@ -3769,24 +3783,6 @@ html.light [data-lounge-game-hero] [data-lounge-game-glass-chip='active'] {
 html.light [data-lounge-game-hero] [data-lounge-game-glass-chip='active'] {
   background-color: rgba(255, 255, 255, 0.38) !important;
   border-color: rgba(255, 255, 255, 0.55) !important;
-}
-html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-white,
-html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-white\/70,
-html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-white\/55 {
-  color: #fff !important;
-}
-html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-white\/50,
-html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-white\/45,
-html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-white\/40,
-html.light [data-lounge-game-hero] [data-lounge-game-hero-splits] .text-white\/30 {
-  color: rgba(255, 255, 255, 0.7) !important;
-}
-/* Last play sits below the field as muted hero text (not a card). Keep white in light. */
-html.light [data-lounge-game-hero] [data-lounge-game-last-play] {
-  color: rgba(255, 255, 255, 0.75) !important;
-}
-html.light [data-lounge-game-hero] [data-lounge-game-last-play] .text-white\/55 {
-  color: rgba(255, 255, 255, 0.55) !important;
 }
 
 /* Hub top matchup pills: soft team glows + logos (ESPN scoreboard chips). */

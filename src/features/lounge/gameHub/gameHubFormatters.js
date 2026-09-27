@@ -84,6 +84,9 @@ function clockSeconds(clock) {
  */
 export function withFreshestLiveClock(live, game, plays) {
   if (game?.status !== 'in') return live
+  // A period break freezes the board on the period that just ended … a slate row already showing
+  // "Q2 15:00" would otherwise turn End of 1st into HALFTIME for a poll.
+  if (/END_PERIOD|END_OF_PERIOD|HALFTIME/.test(String(live?.status_name || '').toUpperCase())) return live
   const cands = []
   const push = (period, clock) => {
     const p = Number(period)
@@ -183,10 +186,12 @@ export function fieldCenterBanner(game, live) {
   }
 
   if (/STATUS_END_PERIOD|END_PERIOD|END_OF_PERIOD/.test(statusName) || /end of\b/.test(detailLower)) {
-    if (/1st|first|\bq1\b/.test(detailLower) || period === 1) return 'End of 1st'
-    if (/3rd|third|\bq3\b/.test(detailLower) || period === 3) return 'End of 3rd'
-    if (/2nd|second|\bq2\b/.test(detailLower) || period === 2) return 'HALFTIME'
-    if (/4th|fourth|\bq4\b/.test(detailLower) || period === 4) return periodEndBanner()
+    // Ordinals only from an "End of …" phrase … a running label ("Q2 15:00") names the next period.
+    const endDetail = /\bend\b/.test(detailLower) ? detailLower : ''
+    if (/1st|first|\bq1\b/.test(endDetail) || (!endDetail && period === 1)) return 'End of 1st'
+    if (/3rd|third|\bq3\b/.test(endDetail) || (!endDetail && period === 3)) return 'End of 3rd'
+    if (/2nd|second|\bq2\b/.test(endDetail) || (!endDetail && period === 2)) return 'HALFTIME'
+    if (/4th|fourth|\bq4\b/.test(endDetail) || (!endDetail && period === 4)) return periodEndBanner()
     if (Number.isFinite(period) && period >= 1) {
       if (period === 1) return 'End of 1st'
       if (period === 2) return 'HALFTIME'

@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-27** **Game hub: End of 1st no longer flashes HALFTIME (Mac).** **1.4.844** … `withFreshestLiveClock` skips the period bump while the board is END_PERIOD / HALFTIME (a slate row already on "Q2 15:00" made period 2), and `fieldCenterBanner` only reads ordinals from an "End …" phrase, not a running "Q2 15:00" label.
 - **2026-09-27** **Game hub: TD figure runs halfway into the end zone (Mac).** **1.4.843** … rush + catch TD anims end the figure (and its trail / catch point) `TD_FIGURE_END_ZONE_YDS` = 5 past the goal line; LOS / drive chart still stop at the goal line.
 - **2026-09-27** **Game hub: no 1st-down line on & Goal (Mac).** **1.4.842** … `firstDownPercentFromLive` returns null when LOS + distance reaches the goal line (was clamped onto it, so 3rd & Goal drew a yellow line on the goal line). Anims already skip the lerp when either end is null.
 - **2026-09-27** **Game hub: smaller figure jersey numbers (Mac).** **1.4.841** … ~10% smaller on rush (140 → 126) and catch (177 → 159) figures, outline stroke + letter spacing scaled to match; same centered anchor.

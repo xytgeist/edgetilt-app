@@ -3743,11 +3743,6 @@ function FieldViz({
               <feComposite in="SourceGraphic" in2="blur" operator="over" />
             </filter>
           </defs>
-          {driveTap && driveTap.animKey === animKey && showDriveMarks && !playAnimActive ? (
-            <g key={driveTap.n} className="lounge-drive-tap-tag" onAnimationEnd={() => setDriveTap(null)}>
-              <DriveTapTag x={driveTap.x} y={driveTap.y} label={driveTap.label} tone={driveTap.tone} />
-            </g>
-          ) : null}
           {rushAnim && rushX != null ? (
             <g data-lounge-rush-anim>
               {rushTrailVisible ? (
@@ -3953,6 +3948,19 @@ function FieldViz({
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 z-[9] block h-full w-full select-none"
         />
+        {/* Tapped play label … top of the field stack so goalpost pads near the goal line can't cover it. */}
+        {driveTap && driveTap.animKey === animKey && showDriveMarks && !playAnimActive ? (
+          <svg
+            viewBox="0 0 1266 533"
+            className="pointer-events-none absolute inset-0 z-[10] h-full w-full select-none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <g key={driveTap.n} className="lounge-drive-tap-tag" onAnimationEnd={() => setDriveTap(null)}>
+              <DriveTapTag x={driveTap.x} y={driveTap.y} label={driveTap.label} tone={driveTap.tone} />
+            </g>
+          </svg>
+        ) : null}
         {/* Stoppage / break banner … TIMEOUT, End of 1st, HALFTIME, End of 3rd, GAME OVER */}
         {centerBanner && !suppressBanner && !showTdBanner ? (
           <FloorClearBanner

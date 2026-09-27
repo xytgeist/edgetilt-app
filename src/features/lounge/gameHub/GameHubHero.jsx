@@ -1567,6 +1567,7 @@ function FieldViz({
     knownFirstDownPct,
     knownEndPct: playSpotFieldPercent(lastPlayRow?.end_spot, fieldFlipped),
     rowTeam: rowTeamSide,
+    turnover: lastPlayRow?.turnover === true,
     /** Quarter (1 / 3) when this play is a half's opening kickoff, else 0. */
     openingKickoff: openingKickoff ? Number(lastPlayRow.period) : 0,
     lastPlayText,
@@ -2887,9 +2888,21 @@ function FieldViz({
     if (!was) return undefined
     const ctx = fieldAnimCtxRef.current
     const offense = ctx.rowTeam || ctx.snapOffenseSide
+    const hasSide = offense === 'home' || offense === 'away'
+    const defense = offense === 'home' ? 'away' : 'home'
+    const defenseAbbrev = hasSide ? String(ctx.game?.[defense]?.abbrev || '') : ''
+    const defenseLogoRaw = hasSide ? String(ctx.game?.[defense]?.logo || '') : ''
+    const logoKey = defenseAbbrev.trim().toUpperCase().replace(/[^A-Z0-9-]/g, '')
     const rows = playFantasyPoints(ctx.lastPlayText, {
       players: ctx.players,
-      offenseAbbrev: offense === 'home' || offense === 'away' ? String(ctx.game?.[offense]?.abbrev || '') : '',
+      offenseAbbrev: hasSide ? String(ctx.game?.[offense]?.abbrev || '') : '',
+      defenseAbbrev,
+      defenseLogo: defenseLogoRaw.startsWith('/sports/')
+        ? defenseLogoRaw
+        : logoKey
+          ? `${isCfbSport(ctx.game?.sport_key) ? '/sports/cfb/logos' : '/sports/nfl/logos'}/${logoKey}.png`
+          : '',
+      turnover: ctx.turnover === true,
     })
     if (!rows.length) return undefined
     setFantasyToast({ key: `${animKey}:${Date.now()}`, rows })
@@ -3926,7 +3939,7 @@ function FieldViz({
                   <img
                     src={r.headshotUrl}
                     alt=""
-                    className="h-6 w-6 rounded-full object-cover"
+                    className={`h-6 w-6 rounded-full ${r.position === 'DEF' ? 'object-contain p-0.5' : 'object-cover'}`}
                     style={{ background: 'rgba(255,255,255,0.12)' }}
                   />
                 ) : (

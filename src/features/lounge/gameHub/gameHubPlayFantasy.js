@@ -1,7 +1,8 @@
 /**
  * Fantasy points a single PBP row earned each player on it, calculated from the play text (standard full PPR):
  * rush / rec 0.1 per yd, rec +1, rush / rec / return TD 6, pass 0.04 per yd, pass TD 4, INT -2,
- * FG 3 (<40) / 4 (40-49) / 5 (50+), FG miss -1. Fumbles, 2-pt tries and IDP are not scored.
+ * FG 3 (<40) / 4 (40-49) / 5 (50+), FG miss -1, plus a team DEF row (`playDefenseFantasyPoints`).
+ * Player fumbles, 2-pt tries and IDP are not scored.
  */
 import {
   matchRushPlayer,
@@ -54,12 +55,60 @@ function row(hint, points, players, sideAbbrev) {
   }
 }
 
+const abbrevKey = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '')
+
+/**
+ * Team defense / special teams points on one row (standard): sack 1, INT 2, fumble recovery 2, safety 2,
+ * blocked kick 2, defensive or return TD 6. Points-allowed tiers are game-level and not scored per play.
+ */
+export function playDefenseFantasyPoints(text, { defenseAbbrev = '', turnover = false } = {}) {
+  const raw = String(text || '').trim()
+  if (!raw || /\bno\s+play\b/i.test(raw)) return 0
+  const lower = raw.toLowerCase()
+  const td = playTextIsTouchdown(raw)
+  let pts = 0
+
+  if (/\bsack(?:ed)?\b/.test(lower)) pts += 1
+
+  const pick = parseInterceptionReturn(raw) || parseInterceptionPlay(raw)
+  if (pick) pts += 2 + (pick.isTouchdown ? 6 : 0)
+
+  const kickPlay = /\bpunts?\b|\bkicks?\s*off\b|\bkickoff\b/.test(lower)
+  if (!pick && !kickPlay && /\bfumble[sd]?\b/.test(lower)) {
+    const rec = raw.match(/\brecovered\s+by\s+([A-Za-z]{2,5})\s*-/i)
+    const defenseRecovered = rec ? abbrevKey(rec[1]) === abbrevKey(defenseAbbrev) : turnover
+    if (defenseRecovered) pts += 2 + (td ? 6 : 0)
+  }
+
+  if (/\bsafety\b/.test(lower) && !/\bsafety\s+kick\b|\bfree\s+kick\b/.test(lower)) pts += 2
+
+  const blockedKick =
+    /\bblocked\b/.test(lower) && (kickPlay || /\bfield\s+goal\b|\bextra\s+point\b|\bfg\b|\bpat\b|\bkick\b/.test(lower))
+  if (blockedKick) pts += 2 + (td ? 6 : 0)
+
+  const ret = parseKickoffReturn(raw) || parsePuntReturn(raw)
+  if (ret?.isTouchdown && !blockedKick) pts += 6
+
+  return pts
+}
+
 /**
  * @param {string} text PBP row
- * @param {{ players?: object[], offenseAbbrev?: string, defenseAbbrev?: string }} ctx
+ * @param {{ players?: object[], offenseAbbrev?: string, defenseAbbrev?: string, defenseLogo?: string, turnover?: boolean }} ctx
  * @returns {{ key: string, name: string, position: string, headshotUrl: string, points: number }[]}
  */
-export function playFantasyPoints(text, { players = [], offenseAbbrev = '', defenseAbbrev = '' } = {}) {
+export function playFantasyPoints(text, ctx = {}) {
+  const out = playerFantasyPoints(text, ctx)
+  const { defenseAbbrev = '', defenseLogo = '' } = ctx
+  const dst = defenseAbbrev ? playDefenseFantasyPoints(text, ctx) : 0
+  if (dst) {
+    const name = String(defenseAbbrev).toUpperCase()
+    out.push({ key: `DEF:${name}:${dst}`, name, position: 'DEF', headshotUrl: defenseLogo, points: dst })
+  }
+  return out
+}
+
+function playerFantasyPoints(text, { players = [], offenseAbbrev = '', defenseAbbrev = '' } = {}) {
   const raw = String(text || '').trim()
   if (!raw) return []
   const out = []

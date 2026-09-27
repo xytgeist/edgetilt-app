@@ -230,6 +230,20 @@ export default function FgKickTestPage() {
     setNonce((n) => n + 1)
   }
 
+  const fireIncomplete = (dir) => {
+    const own = possession
+    const spot = (yard) => ({ yard_line: yard, yard_side: own })
+    const text = `(06:40) Shotgun #9 G.Brosterhous pass incomplete ${dir} intended for #4 N.Boncore`
+    setFeedTeam(null)
+    setStartSpot(null)
+    setFeedPlays([
+      { id: 'inc-1', period: half, clock: '07:20', sequence: 1, team: own, description: '(07:20) #22 T.Back rush middle for 6 yards to the 31', start_spot: spot(25), end_spot: spot(31) },
+      { id: `inc-2-${dir}`, period: half, clock: '06:40', sequence: 2, team: own, description: text, start_spot: spot(31), end_spot: spot(31) },
+    ])
+    setLastPlay(text)
+    setNonce((n) => n + 1)
+  }
+
   const firePickCustom = (format) => {
     setStartSpot(pickStartSpot({ offense: possession, losYard: pickLosYard, losOwn: pickLosOwn }))
     setFeedTeam(null)
@@ -434,6 +448,16 @@ export default function FgKickTestPage() {
           >
             Fumble lost
           </button>
+          {['short left', 'deep right', 'short middle'].map((dir) => (
+            <button
+              key={dir}
+              type="button"
+              className="rounded-md bg-sky-700 px-3 py-1.5 text-[12px] font-semibold text-white"
+              onClick={() => fireIncomplete(dir)}
+            >
+              Incomplete {dir}
+            </button>
+          ))}
         </div>
         <div className="mb-4 flex flex-wrap gap-2">
           {PICK_SCENARIOS.map((s) => (

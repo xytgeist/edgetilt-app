@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-26:** **Incomplete pass throw animation (Mac).** The newest incompletion (when it is the last play) animates once per play / replay tap: the ball leads the dashed arc (arc draws behind it), hits the turf, the red X pops in, the ball bounces 3 decaying hops along the throw line, rests, fades; the LOS ball hides during the throw. `DriveIncompleteMark` in `GameHubHero.jsx`; reduced motion skips to the static mark. `/play-anim-test` gets Incomplete short left / deep right / short middle presets. Frontend **`1.4.775`**.
 - **2026-09-26:** **Drive chart arrows white (Mac).** LOS direction triangles on lines, penalties and incompletions are white with a thin dark outline (was black). Frontend **`1.4.774`**.
 - **2026-09-26:** **Prod promote (Mac).** `main` @ `19571f21` (web **`1.4.764`-`1.4.773`** drive chart + turnover banner); prod Edge **`lounge-sports-scoreboard`** deployed.
 - **2026-09-26:** **Incomplete X always off the ball line (Mac).** "Middle" or directionless incompletions now land half a lane off the mid line, alternating sides per drive so repeats don't stack; left / right keep the full offset. Frontend **`1.4.773`**.

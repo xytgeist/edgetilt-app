@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import {
   LoungeSportsTeamLogo,
   useLoungeSportsPillWashAndLogos,
@@ -311,7 +311,121 @@ function playLineHalo(primary) {
   return { halo: light ? '#ffffff' : '#000000', haloOpacity: light ? 0.35 : 0.35 }
 }
 
-function DrivePlayMarks({ marks, attackDir, primary, hideKey }) {
+const THROW_FLIGHT_MS = 720
+const THROW_BOUNCES = [
+  { dist: 22, lift: 15, ms: 360 },
+  { dist: 12, lift: 6, ms: 230 },
+  { dist: 6, lift: 2.5, ms: 150 },
+]
+const THROW_REST_MS = 260
+const THROW_FADE_MS = 240
+const THROW_TOTAL_MS =
+  THROW_FLIGHT_MS + THROW_BOUNCES.reduce((s, b) => s + b.ms, 0) + THROW_REST_MS + THROW_FADE_MS
+
+/** Quadratic sub-curve [0, t] as a path … lets the dashed arc trail the ball. */
+function quadPathTo(p0, c, p1, t) {
+  const q = { x: p0.x + (c.x - p0.x) * t, y: p0.y + (c.y - p0.y) * t }
+  const b = quadBezier(p0, c, p1, t)
+  return `M ${p0.x} ${p0.y} Q ${q.x} ${q.y} ${b.x} ${b.y}`
+}
+
+/** Ball + X at `elapsed` ms into the throw: arc flight, ground bounces, rest, fade. */
+function incompleteThrowFrame(p0, c, p1, elapsed) {
+  if (elapsed < THROW_FLIGHT_MS) {
+    const t = elapsed / THROW_FLIGHT_MS
+    const b = quadBezier(p0, c, p1, t)
+    const tx = 2 * (1 - t) * (c.x - p0.x) + 2 * t * (p1.x - c.x)
+    const ty = 2 * (1 - t) * (c.y - p0.y) + 2 * t * (p1.y - c.y)
+    return { t, ball: b, rotate: (Math.atan2(ty, tx) * 180) / Math.PI, ballOpacity: 1, xScale: 0 }
+  }
+  const len = Math.hypot(p1.x - p0.x, p1.y - p0.y) || 1
+  const ux = (p1.x - p0.x) / len
+  const uy = (p1.y - p0.y) / len
+  const spin = ux < 0 ? -1 : 1
+  const xScale = Math.min(1, (elapsed - THROW_FLIGHT_MS) / 140)
+  let at = elapsed - THROW_FLIGHT_MS
+  let sx = p1.x
+  let sy = p1.y
+  let rot = 0
+  for (const bounce of THROW_BOUNCES) {
+    if (at < bounce.ms) {
+      const s = at / bounce.ms
+      return {
+        t: 1,
+        ball: { x: sx + ux * bounce.dist * s, y: sy + uy * bounce.dist * s - 4 * bounce.lift * s * (1 - s) },
+        rotate: rot + spin * 200 * s,
+        ballOpacity: 1,
+        xScale,
+      }
+    }
+    at -= bounce.ms
+    sx += ux * bounce.dist
+    sy += uy * bounce.dist
+    rot += spin * 200
+  }
+  const fade = Math.max(0, at - THROW_REST_MS) / THROW_FADE_MS
+  return { t: 1, ball: { x: sx, y: sy }, rotate: rot, ballOpacity: Math.max(0, 1 - fade), xScale: 1 }
+}
+
+/**
+ * Incompletion on the drive chart … static dashed arc to a red X, or (newest play, once per `throwKey`)
+ * the ball leading the arc, bouncing off the turf, and the X popping in on the first hit.
+ */
+function DriveIncompleteMark({ p0, c, p1, attackDir, primary, halo, haloOpacity, throwKey, onThrowDone }) {
+  const [elapsed, setElapsed] = useState(null)
+  const onDoneRef = useRef(onThrowDone)
+  useEffect(() => {
+    onDoneRef.current = onThrowDone
+  }, [onThrowDone])
+  useEffect(() => {
+    if (!throwKey) return undefined
+    if (prefersReducedMotion()) {
+      onDoneRef.current?.(throwKey)
+      return undefined
+    }
+    let raf = 0
+    const start = performance.now()
+    const tick = (now) => {
+      const e = now - start
+      if (e >= THROW_TOTAL_MS) {
+        setElapsed(null)
+        onDoneRef.current?.(throwKey)
+        return
+      }
+      setElapsed(e)
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [throwKey])
+
+  const frame = throwKey ? incompleteThrowFrame(p0, c, p1, elapsed ?? 0) : null
+  const d = frame ? quadPathTo(p0, c, p1, frame.t) : `M ${p0.x} ${p0.y} Q ${c.x} ${c.y} ${p1.x} ${p1.y}`
+  const xScale = frame ? frame.xScale : 1
+  const { x: x1, y: y1 } = p1
+  return (
+    <g data-drive-play="incomplete" data-drive-throw={frame ? 'playing' : undefined}>
+      <path d={d} fill="none" stroke={halo} strokeOpacity={haloOpacity} strokeWidth="5" strokeDasharray="7 6" strokeLinecap="round" />
+      <path d={d} fill="none" stroke={primary} strokeWidth="3" strokeDasharray="7 6" strokeLinecap="round" />
+      <polygon points={driveArrow(p0.x, p0.y, attackDir)} fill="#fff" stroke="#000" strokeOpacity="0.55" strokeWidth="1" strokeLinejoin="round" />
+      {xScale > 0 ? (
+        <g strokeLinecap="round" transform={`translate(${x1} ${y1}) scale(${xScale}) translate(${-x1} ${-y1})`}>
+          <line x1={x1 - 6} y1={y1 - 6} x2={x1 + 6} y2={y1 + 6} stroke="#000" strokeOpacity="0.5" strokeWidth="6" />
+          <line x1={x1 - 6} y1={y1 + 6} x2={x1 + 6} y2={y1 - 6} stroke="#000" strokeOpacity="0.5" strokeWidth="6" />
+          <line x1={x1 - 6} y1={y1 - 6} x2={x1 + 6} y2={y1 + 6} stroke="#ef4444" strokeWidth="3.2" />
+          <line x1={x1 - 6} y1={y1 + 6} x2={x1 + 6} y2={y1 - 6} stroke="#ef4444" strokeWidth="3.2" />
+        </g>
+      ) : null}
+      {frame && frame.ballOpacity > 0 ? (
+        <g opacity={frame.ballOpacity} transform={`translate(${frame.ball.x - 12} ${frame.ball.y - 9})`}>
+          <AmericanFootballMark tone="field" size={24} rotate={frame.rotate} />
+        </g>
+      ) : null}
+    </g>
+  )
+}
+
+function DrivePlayMarks({ marks, attackDir, primary, hideKey, throwKey = '', onThrowDone }) {
   const { halo, haloOpacity } = playLineHalo(primary)
   // Gains (and flags on the defense) chain on the main line; losses / flags on the offense sit a lane below,
   // stacking further only when they overlap each other.
@@ -389,24 +503,19 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey }) {
         )
         const x0 = fieldXAtY(m.fromPct, y0)
         const x1 = fieldXAtY(m.toPct, y1)
-        const cx = (x0 + x1) / 2
-        const cy = Math.min(y0, y1) - DRIVE_INCOMPLETE_LIFT_PX
-        const d = `M ${x0} ${y0} Q ${cx} ${cy} ${x1} ${y1}`
         return (
-          <g
+          <DriveIncompleteMark
             key={m.key}
-            data-drive-play="incomplete"
-          >
-            <path d={d} fill="none" stroke={halo} strokeOpacity={haloOpacity} strokeWidth="5" strokeDasharray="7 6" strokeLinecap="round" />
-            <path d={d} fill="none" stroke={primary} strokeWidth="3" strokeDasharray="7 6" strokeLinecap="round" />
-            <polygon points={driveArrow(x0, y0, attackDir)} fill="#fff" stroke="#000" strokeOpacity="0.55" strokeWidth="1" strokeLinejoin="round" />
-            <g strokeLinecap="round">
-              <line x1={x1 - 6} y1={y1 - 6} x2={x1 + 6} y2={y1 + 6} stroke="#000" strokeOpacity="0.5" strokeWidth="6" />
-              <line x1={x1 - 6} y1={y1 + 6} x2={x1 + 6} y2={y1 - 6} stroke="#000" strokeOpacity="0.5" strokeWidth="6" />
-              <line x1={x1 - 6} y1={y1 - 6} x2={x1 + 6} y2={y1 + 6} stroke="#ef4444" strokeWidth="3.2" />
-              <line x1={x1 - 6} y1={y1 + 6} x2={x1 + 6} y2={y1 - 6} stroke="#ef4444" strokeWidth="3.2" />
-            </g>
-          </g>
+            p0={{ x: x0, y: y0 }}
+            c={{ x: (x0 + x1) / 2, y: Math.min(y0, y1) - DRIVE_INCOMPLETE_LIFT_PX }}
+            p1={{ x: x1, y: y1 }}
+            attackDir={attackDir}
+            primary={primary}
+            halo={halo}
+            haloOpacity={haloOpacity}
+            throwKey={m.isNewest ? throwKey : ''}
+            onThrowDone={onThrowDone}
+          />
         )
       })}
     </g>
@@ -965,6 +1074,14 @@ function FieldViz({
   /** Scoring team abbrev from the last TD animation … keeps "TOUCHDOWN X" up through the PAT row. */
   const [heldTdTeam, setHeldTdTeam] = useState('')
   const drive = useMemo(() => (isFootball ? buildPossessionDriveMarks(plays) : null), [isFootball, plays])
+  const [throwDoneKey, setThrowDoneKey] = useState('')
+  const onThrowDone = useCallback(
+    (key) => {
+      setThrowDoneKey(key)
+      if (!isUserReplay) lastAutoPlayedKeyRef.current = key
+    },
+    [isUserReplay],
+  )
   const lastPlayRow = useMemo(() => {
     const id = fieldPlayIdentity(lastPlayText)
     if (!id || !Array.isArray(plays)) return null
@@ -2357,6 +2474,15 @@ function FieldViz({
   const showDriveMarks = Boolean(
     drive?.marks.length && game?.status === 'in' && !hideLiveLines && !kickAnim && !pickAnim,
   )
+  /** Newest incompletion animates its throw once per play (or replay tap); the LOS ball hides meanwhile. */
+  const newestIncomplete = drive?.marks.find((m) => m.isNewest && m.kind === 'incomplete')
+  const throwKey =
+    showDriveMarks &&
+    newestIncomplete &&
+    fieldPlayIdentity(newestIncomplete.text) === fieldPlayIdentity(lastPlayText) &&
+    animKey !== throwDoneKey
+      ? animKey
+      : ''
   const drivePrimary = drive?.team
     ? possessionKit({ possession: drive.team }, game, awayColor, homeColor).primary
     : '#ffffff'
@@ -2782,6 +2908,8 @@ function FieldViz({
               attackDir={drive.attackDir}
               primary={drivePrimary}
               hideKey={driveHideKey}
+              throwKey={throwKey}
+              onThrowDone={onThrowDone}
             />
           ) : null}
 
@@ -2822,7 +2950,7 @@ function FieldViz({
           {/* Ball on LOS … hidden for full rush/catch/FG sequence.
               Rush/catch figures render above the posts overlay (z-8) so
               red-zone plays are not buried under the uprights plate. */}
-              {!playAnimActive ? (
+              {!playAnimActive && !throwKey ? (
                 <g transform={`translate(${scrimMidX - 18} ${334.5 - 12})`}>
                   <AmericanFootballMark tone="field" size={36} rotate={-26} />
                 </g>

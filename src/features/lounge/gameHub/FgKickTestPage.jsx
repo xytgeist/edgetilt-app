@@ -106,13 +106,19 @@ const KICK_SCENARIOS = [
  * Punt return. `receiving` fields it; the other side punts from its own `losYard` (4th & 8).
  * Punt yards run from the LOS (ESPN gross); the punter lines up 15 yd behind it.
  */
-function puntText({ format, receiving, losYard, puntYards, returnYards, touchdown }) {
+function puntText({ format, receiving, losYard, puntYards, returnYards, touchdown, fairCatch }) {
   const recAb = receiving === 'home' ? MOCK_GAME.home.abbrev : MOCK_GAME.away.abbrev
   const puntAb = receiving === 'home' ? MOCK_GAME.away.abbrev : MOCK_GAME.home.abbrev
   const spot = (own) => (own > 50 ? { ab: recAb, y: 100 - own } : { ab: puntAb, y: own })
   const land = spot(losYard + puntYards)
   const ret = touchdown ? losYard + puntYards : returnYards
   const end = spot(losYard + puntYards - ret)
+  const pad = (y) => String(y).padStart(2, '0')
+  if (fairCatch) {
+    return format === 'nfl'
+      ? `T.Way punts ${puntYards} yards to ${land.ab} ${land.y}, Center-C.Stephens, fair catch by K.Turpin.`
+      : `#48 E.Jasso punt ${puntYards} yards to the ${land.ab}${pad(land.y)} fair catch by #20 D.Crowe at ${land.ab}${pad(land.y)}`
+  }
   if (format === 'nfl') {
     const head = `T.Way punts ${puntYards} yards to ${land.ab} ${land.y}, Center-C.Stephens.`
     if (touchdown) return `${head} K.Turpin for ${ret} yards, TOUCHDOWN.`
@@ -133,6 +139,8 @@ const PUNT_SCENARIOS = [
   { id: 'pu-kc-long', label: 'Punt CFB · ARI punts own 40 · 48 yds · KC ret 36', format: 'cfb', receiving: 'home', losYard: 40, puntYards: 48, returnYards: 36 },
   { id: 'pu-kc-floor', label: 'Punt NFL · ARI punts own 45 · 55 yds to KC 0 · fielded at the 5', format: 'nfl', receiving: 'home', losYard: 45, puntYards: 55, returnYards: 12 },
   { id: 'pu-ari-55', label: 'Punt CFB · KC punts own 20 · 55 yds · ARI ret 8', format: 'cfb', receiving: 'away', losYard: 20, puntYards: 55, returnYards: 8 },
+  { id: 'pu-kc-fc', label: 'Fair catch NFL · ARI punts own 30 · 45 yds', format: 'nfl', receiving: 'home', losYard: 30, puntYards: 45, fairCatch: true },
+  { id: 'pu-ari-fc', label: 'Fair catch CFB · KC punts own 35 · 50 yds', format: 'cfb', receiving: 'away', losYard: 35, puntYards: 50, fairCatch: true },
   { id: 'pu-kc-td', label: 'Punt return TD · ARI punts own 20 · KC scores', format: 'nfl', receiving: 'home', losYard: 20, puntYards: 45, touchdown: true },
 ]
 
@@ -224,8 +232,8 @@ export default function FgKickTestPage() {
     setNonce((n) => n + 1)
   }
 
-  const firePuntCustom = ({ format, touchdown = false }) => {
-    const scenario = { format, receiving: possession, losYard: puntLos, puntYards, returnYards: puntReturn, touchdown }
+  const firePuntCustom = ({ format, touchdown = false, fairCatch = false }) => {
+    const scenario = { format, receiving: possession, losYard: puntLos, puntYards, returnYards: puntReturn, touchdown, fairCatch }
     setFeedTeam(possession === 'home' ? 'away' : 'home')
     setStartSpot(puntStartSpot(scenario))
     setLastPlay(puntText(scenario))
@@ -529,6 +537,13 @@ export default function FgKickTestPage() {
             onClick={() => firePuntCustom({ format: 'nfl', touchdown: true })}
           >
             Return TD
+          </button>
+          <button
+            type="button"
+            className="rounded-md bg-cyan-700 px-3 py-1.5 text-[12px] font-semibold text-white"
+            onClick={() => firePuntCustom({ format: 'cfb', fairCatch: true })}
+          >
+            Fair catch
           </button>
         </div>
         <div className="mb-4 flex flex-wrap gap-2">

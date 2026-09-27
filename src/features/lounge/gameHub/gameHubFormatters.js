@@ -807,10 +807,12 @@ export function parseKickoffReturn(text) {
 }
 
 /**
- * Punt that was fielded and returned. ESPN CFB: "#48 E.Jasso punt 42 yards to the TXST30 #20 D.Crowe
- * return 21 yards to the UIW49" / "return for loss of 4 yards to the KSU31"; NFL: "T.Way punts 51
- * yards to DAL 9, Center-C.Stephens. K.Turpin to DAL 24 for 15 yards (J.Doe)." Fair catches,
- * touchbacks, downed / out-of-bounds punts, blocks, and muffs are not replayed.
+ * Punt that was fielded (returned or fair caught). ESPN CFB: "#48 E.Jasso punt 42 yards to the TXST30
+ * #20 D.Crowe return 21 yards to the UIW49" / "return for loss of 4 yards to the KSU31" / "fair catch
+ * by #4 T.Burgess Jr. at TXST27"; NFL: "T.Way punts 51 yards to DAL 9, Center-C.Stephens. K.Turpin to
+ * DAL 24 for 15 yards (J.Doe)." Stated punt yards may be gross or net of the return depending on the
+ * feed … the hero prefers end spot minus return for the catch. Touchbacks, downed / out-of-bounds
+ * punts, blocks, and muffs are not replayed.
  * @returns {{
  *   puntYards: number|null,
  *   landAbbrev: string|null,
@@ -821,6 +823,7 @@ export function parseKickoffReturn(text) {
  *   playerHint: string,
  *   jerseyHint: string|null,
  *   isTouchdown: boolean,
+ *   fairCatch: boolean,
  * } | null}
  */
 export function parsePuntReturn(text) {
@@ -828,7 +831,7 @@ export function parsePuntReturn(text) {
   if (!rawFull) return null
   const raw = scoringPlayCoreText(rawFull)
   const lower = raw.toLowerCase()
-  if (/\btouchback\b|\bfair\s+catch\b|\bblocked\b|\bmuff(?:ed|s)?\b|\bfumble[sd]?\b|\bno\s+play\b/.test(lower)) {
+  if (/\btouchback\b|\bblocked\b|\bmuff(?:ed|s)?\b|\bfumble[sd]?\b|\bno\s+play\b/.test(lower)) {
     return null
   }
   const punt = raw.match(
@@ -845,8 +848,30 @@ export function parsePuntReturn(text) {
     playerHint: '',
     jerseyHint: null,
     isTouchdown: playTextIsTouchdown(raw),
+    fairCatch: false,
   }
   const after = raw.slice(punt.index + punt[0].length)
+
+  // "fair catch by #4 T.Burgess Jr. at TXST27" / "fair catch by K.Turpin." … caught where it lands.
+  const fair = after.match(
+    new RegExp(`\\bfair\\s+catch\\s+by\\s+${KICK_RETURNER_NAME}(?=\\s+at\\b|\\s*[,(]|\\.?\\s*$|\\.\\s)`, 'i'),
+  )
+  if (fair) {
+    out.fairCatch = true
+    out.isTouchdown = false
+    out.playerHint = fair[1].trim().replace(/\.$/, '')
+    out.returnYards = 0
+    const at = after.match(/\bfair\s+catch\b[^]*?\bat\s+(?:the\s+)?([A-Za-z]{2,6})\s*(\d{1,2})\b/i)
+    if (at) {
+      out.endAbbrev = at[1].toUpperCase()
+      out.endYard = Number(at[2])
+    } else {
+      out.endAbbrev = out.landAbbrev
+      out.endYard = out.landYard
+    }
+    out.jerseyHint = splitPlayerHint(out.playerHint).jersey
+    return out
+  }
 
   const cfb = after.match(new RegExp(`^[\\s,]*${KICK_RETURNER_NAME}\\s+return(?:s|ed)?\\b`, 'i'))
   if (cfb) {

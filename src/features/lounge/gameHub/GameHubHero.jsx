@@ -1772,6 +1772,7 @@ function FieldViz({
     let landPct
     let fromScrimPct = null
     let fromFirstDownPct = null
+    let puntEndPct = null
     if (punt) {
       const settled = settledLinesRef.current
       const losPct =
@@ -1795,8 +1796,19 @@ function FieldViz({
             ? settled.firstDownPct
             : null
       kickFromPct = clampPct(losPct - kickDir * PUNT_DEPTH_YDS)
-      // ESPN punt yards run from the LOS; its landing abbrev is sometimes the wrong side.
+      // Stated punt yards run from the LOS but can be gross or net of the return depending on the
+      // feed, and ESPN's landing abbrev is sometimes the wrong side … end spot minus return wins.
       landPct = clampPct(losPct + kickDir * (Number.isFinite(parsed.puntYards) ? parsed.puntYards : PUNT_DEFAULT_YDS))
+      const endSide = sideForFeedAbbrev(parsed.endAbbrev, ctx.game)
+      if (!parsed.isTouchdown && parsed.endYard != null && endSide && Number.isFinite(parsed.returnYards)) {
+        const endFromText =
+          endSide === kicking ? kickOwnGoal + kickDir * parsed.endYard : recOwnGoal + recDir * parsed.endYard
+        const catchFromEnd = endFromText - recDir * parsed.returnYards
+        if ((catchFromEnd - losPct) * kickDir > 0) {
+          landPct = clampPct(catchFromEnd)
+          puntEndPct = endFromText
+        }
+      }
     } else {
       const kickFromYard = Number.isFinite(parsed.kickFromYard) ? parsed.kickFromYard : 35
       kickFromPct = kickOwnGoal + kickDir * kickFromYard
@@ -1805,14 +1817,16 @@ function FieldViz({
           kickFromPct + kickDir * (Number.isFinite(parsed.kickYards) ? parsed.kickYards : 60),
       )
     }
-    let endPct = null
-    if (parsed.isTouchdown) endPct = kickOwnGoal
-    else if (Number.isFinite(parsed.returnYards)) endPct = landPct + recDir * parsed.returnYards
-    else if (parsed.endYard != null) {
-      endPct =
-        sideForFeedAbbrev(parsed.endAbbrev, ctx.game) === kicking
-          ? kickOwnGoal + kickDir * parsed.endYard
-          : recOwnGoal + recDir * parsed.endYard
+    let endPct = puntEndPct
+    if (endPct == null) {
+      if (parsed.isTouchdown) endPct = kickOwnGoal
+      else if (Number.isFinite(parsed.returnYards)) endPct = landPct + recDir * parsed.returnYards
+      else if (parsed.endYard != null) {
+        endPct =
+          sideForFeedAbbrev(parsed.endAbbrev, ctx.game) === kicking
+            ? kickOwnGoal + kickDir * parsed.endYard
+            : recOwnGoal + recDir * parsed.endYard
+      }
     }
     if (endPct == null) {
       kickKeyRef.current = ''
@@ -1826,15 +1840,19 @@ function FieldViz({
     const jerseyNumber = resolveFigureJersey(parsed, matched)
 
     // Punt returners never field it inside their own 5 … the return still ends on the feed spot.
+    // A fair catch stays on its feed spot (that's the next LOS).
+    const fairCatch = Boolean(punt?.fairCatch)
     const puntFloorPct = recOwnGoal + recDir * PUNT_MIN_CATCH_YD
-    const insideFloor = (v) => punt && (v - puntFloorPct) * recDir < 0
+    const insideFloor = (v) => Boolean(punt) && !fairCatch && (v - puntFloorPct) * recDir < 0
     const catchPct = insideFloor(landPct) ? puntFloorPct : landPct
     const startPct = catchPct - recDir * KICK_RETURNER_DEPTH_YDS
     const landX = fieldMidXFromPercent(catchPct)
     const startX = fieldMidXFromPercent(clampPct(insideFloor(startPct) ? puntFloorPct : startPct))
-    const endX = fieldMidXFromPercent(endPct)
-    const returnYards = Math.abs(endPct - catchPct)
-    const returnMs = Math.min(KICK_RETURN_MAX_MS, KICK_RETURN_BASE_MS + returnYards * KICK_RETURN_MS_PER_YD)
+    const endX = fairCatch ? landX : fieldMidXFromPercent(endPct)
+    const returnYards = fairCatch ? 0 : Math.abs(endPct - catchPct)
+    const returnMs = fairCatch
+      ? 0
+      : Math.min(KICK_RETURN_MAX_MS, KICK_RETURN_BASE_MS + returnYards * KICK_RETURN_MS_PER_YD)
     const flightMs = punt ? PUNT_FLIGHT_MS : KICK_FLIGHT_MS
     const runEndMs = flightMs + returnMs
     const totalMs = parsed.isTouchdown
@@ -1884,7 +1902,7 @@ function FieldViz({
       let figX = endX
       let ballT = 1
       let showFigure = true
-      let showTrail = true
+      let showTrail = !fairCatch
       let showTdLabel = false
       if (elapsed < flightMs) {
         const t = elapsed / flightMs

@@ -60,15 +60,21 @@ export function loungeSportsGameShareUrl(game, origin) {
   return `${origin}/lounge/g/${encodeURIComponent(id)}`
 }
 
+/** A shared game link waits this long for sign-in / sign-up (email confirm can land in another tab). */
+const LOUNGE_SPORTS_GAME_PENDING_TTL_MS = 6 * 60 * 60 * 1000
+
 /**
- * Queue a game hub open (survives the sign-in prompt) + broadcast to a mounted Lounge.
+ * Queue a game hub open + broadcast to a mounted Lounge. localStorage (not session) so it survives the
+ * sign-in sheet, a new account's email-confirm tab, and the app remount after auth.
  * @param {string} eventId
  */
 export function requestLoungeSportsGameOpen(eventId) {
   const id = String(eventId || '').trim()
   if (!id) return
   try {
-    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(LOUNGE_SPORTS_GAME_PENDING_KEY, id)
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(LOUNGE_SPORTS_GAME_PENDING_KEY, JSON.stringify({ id, at: Date.now() }))
+    }
   } catch {
     /* ignore */
   }
@@ -77,11 +83,19 @@ export function requestLoungeSportsGameOpen(eventId) {
   }
 }
 
-/** Pending shared-game id (kept until the hub actually opens). */
+/** Pending shared-game id (kept until a signed-in hub actually opens), or null once expired. */
 export function peekLoungeSportsGamePending() {
   try {
-    if (typeof sessionStorage === 'undefined') return null
-    return sessionStorage.getItem(LOUNGE_SPORTS_GAME_PENDING_KEY) || null
+    if (typeof localStorage === 'undefined') return null
+    const raw = localStorage.getItem(LOUNGE_SPORTS_GAME_PENDING_KEY)
+    if (!raw) return null
+    const row = JSON.parse(raw)
+    const id = String(row?.id || '').trim()
+    if (!id || !(Date.now() - Number(row?.at) < LOUNGE_SPORTS_GAME_PENDING_TTL_MS)) {
+      localStorage.removeItem(LOUNGE_SPORTS_GAME_PENDING_KEY)
+      return null
+    }
+    return id
   } catch {
     return null
   }
@@ -89,7 +103,7 @@ export function peekLoungeSportsGamePending() {
 
 export function clearLoungeSportsGamePending() {
   try {
-    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(LOUNGE_SPORTS_GAME_PENDING_KEY)
+    if (typeof localStorage !== 'undefined') localStorage.removeItem(LOUNGE_SPORTS_GAME_PENDING_KEY)
   } catch {
     /* ignore */
   }

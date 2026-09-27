@@ -187,16 +187,23 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
     return () => window.removeEventListener(LOUNGE_SPORTS_GAME_OPEN_EVENT, onOpen)
   }, [])
 
+  // Shared links only open (and clear) for a signed-in viewer … signed-out, the id waits through sign-in.
+  const [signedIn, setSignedIn] = useState(false)
   useEffect(() => {
     if (!supabaseClient?.auth?.onAuthStateChange) return undefined
-    const { data } = supabaseClient.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') void loadBoard()
+    const { data } = supabaseClient.auth.onAuthStateChange((event, session) => {
+      setSignedIn(Boolean(session?.user))
+      if (event === 'SIGNED_IN') {
+        void loadBoard()
+        const pending = peekLoungeSportsGamePending()
+        if (pending) setPendingGameId(pending)
+      }
     })
     return () => data?.subscription?.unsubscribe?.()
   }, [loadBoard, supabaseClient])
 
   useEffect(() => {
-    if (!pendingGameId) return undefined
+    if (!pendingGameId || !signedIn) return undefined
     const hit = games.find((g) => String(g.id) === pendingGameId)
     if (hit) {
       clearLoungeSportsGamePending()
@@ -226,7 +233,7 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
     return () => {
       cancelled = true
     }
-  }, [boardFetched, games, pendingGameId, supabaseClient])
+  }, [boardFetched, games, pendingGameId, signedIn, supabaseClient])
 
   const gamesForPost = useCallback(
     (post) => {

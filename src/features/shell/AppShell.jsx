@@ -159,6 +159,7 @@ import {
   LOUNGE_SPORTS_HUB_FILTER_CFB,
   LOUNGE_SPORTS_HUB_FILTER_NFL,
   LOUNGE_SPORTS_GAME_PARAM,
+  peekLoungeSportsGamePending,
   requestLoungeSportsGameOpen,
   requestLoungeSportsHubOpen,
 } from '../lounge/loungeSportsHubNav.js'
@@ -1528,6 +1529,10 @@ export default function AppShell({
         setTab('home')
         setMenuOpen(false)
         if (browseMode === 'anonymous') onRequireAuthRef.current?.()
+      } else if (browseMode !== 'anonymous' && peekLoungeSportsGamePending()) {
+        // Shared game link opened before sign-in / sign-up … land on the Lounge so its hub can open.
+        setTab('home')
+        setMenuOpen(false)
       }
       const targetEventId = params.get('eventId')
       const targetEventIdsRaw = params.get('eventIds')

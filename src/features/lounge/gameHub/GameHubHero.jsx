@@ -4040,6 +4040,7 @@ function LandscapeMatchupBoard({
   splits,
   odds,
   sideSlots,
+  bottomBar,
   players,
   marketProps,
 }) {
@@ -4134,6 +4135,7 @@ function LandscapeMatchupBoard({
         </div>
         <HeroPublicBetting game={game} splits={splits} awayColor={awayColor} homeColor={homeColor} />
       </div>
+      {bottomBar ? <div className="relative z-[4] shrink-0 pb-1">{bottomBar}</div> : null}
     </div>
   )
 }
@@ -4235,6 +4237,8 @@ export default function GameHubHero({
   fullscreen = false,
   /** Fullscreen only: chips flanking the scoreboard (back / mute) … there's no top bar row to spare. */
   sideSlots = null,
+  /** Fullscreen only: strip pinned under the board (hub game pills ticker). */
+  bottomBar = null,
   /** Fullscreen only: ESPN box score totals `{ home, away }` for the rails beside the field. */
   teamStats = null,
   /** Fullscreen pregame only: per-book lines (first book shown) for the matchup board. */
@@ -4323,6 +4327,7 @@ export default function GameHubHero({
         splits={splits}
         odds={odds}
         sideSlots={sideSlots}
+        bottomBar={bottomBar}
         players={players}
         marketProps={marketProps}
       />
@@ -4606,6 +4611,7 @@ export default function GameHubHero({
           {lastPlayText}
         </div>
       ) : null}
+      {fullscreen && bottomBar ? <div className="relative z-[4] shrink-0 pb-1">{bottomBar}</div> : null}
     </div>
   )
 }

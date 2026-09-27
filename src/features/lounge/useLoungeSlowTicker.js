@@ -4,12 +4,14 @@ import { useEffect } from 'react'
  * Slow horizontal marquee for overflow strips (hub game pills, multi score cards).
  * Pauses on pointer/touch/wheel; resumes after idle. Honors prefers-reduced-motion.
  *
+ * `rebindKey`: change it whenever the scroll element remounts so the ticker binds to the new node.
+ *
  * @param {React.RefObject<HTMLElement | null>} scrollRef
- * @param {{ enabled?: boolean, speedPxPerSec?: number, resumeMs?: number, loop?: boolean }} opts
+ * @param {{ enabled?: boolean, speedPxPerSec?: number, resumeMs?: number, loop?: boolean, rebindKey?: string }} opts
  */
 export function useLoungeSlowTicker(
   scrollRef,
-  { enabled = true, speedPxPerSec = 26, resumeMs = 2400, loop = true } = {},
+  { enabled = true, speedPxPerSec = 26, resumeMs = 2400, loop = true, rebindKey = '' } = {},
 ) {
   useEffect(() => {
     if (!enabled) return undefined
@@ -78,5 +80,5 @@ export function useLoungeSlowTicker(
       el.removeEventListener('wheel', onWheel)
       el.removeEventListener('scroll', onScroll)
     }
-  }, [enabled, loop, resumeMs, scrollRef, speedPxPerSec])
+  }, [enabled, loop, rebindKey, resumeMs, scrollRef, speedPxPerSec])
 }

@@ -327,17 +327,28 @@ export default function LoungeGameHubModal({
   }, [game?.id])
 
   const pillsScrollRef = useRef(null)
+  const landscapePillsScrollRef = useRef(null)
   const tickerGames = useMemo(() => {
     if (!sameSportGames.length) return []
     // Duplicate for seamless ticker when the strip overflows.
     return sameSportGames.length > 1 ? [...sameSportGames, ...sameSportGames] : sameSportGames
   }, [sameSportGames])
-  // Strip only mounts once a game is open … gate on that so the hook starts with a real element.
+  // Landscape phone on a football game renders the full-screen gamecast (see below) instead of the tabbed hub.
+  const gamecastFull = Boolean(game) && phoneLandscape && String(game.sport_key || '').includes('football')
+  // Strip only mounts once a game is open … gate on that so the hook starts with a real element. Portrait
+  // top bar and landscape bottom strip are different elements, so each gets its own ticker gated on layout.
   const pillsTickerOn = Boolean(game) && sameSportGames.length > 1
   useLoungeSlowTicker(pillsScrollRef, {
-    enabled: pillsTickerOn,
+    enabled: pillsTickerOn && !gamecastFull,
     speedPxPerSec: 22,
     loop: pillsTickerOn,
+  })
+  useLoungeSlowTicker(landscapePillsScrollRef, {
+    enabled: pillsTickerOn && gamecastFull,
+    speedPxPerSec: 22,
+    loop: pillsTickerOn,
+    // Pregame matchup board vs field gamecast mount the strip in different trees.
+    rebindKey: game?.status === 'pre' ? 'pre' : 'field',
   })
 
   if (!game || typeof document === 'undefined') return null
@@ -366,6 +377,19 @@ export default function LoungeGameHubModal({
     { id: 'chat', label: 'Chat' },
   ]
 
+  const pillsRow = (
+    <div className="flex gap-2 px-1">
+      {tickerGames.map((g, idx) => (
+        <LoungeGameHubPillChip
+          key={`${String(g.id)}-${idx}`}
+          game={g}
+          active={g.id === game.id}
+          onClick={() => sports.openHub?.(g)}
+        />
+      ))}
+    </div>
+  )
+
   const hubTopBar = (
     <div
       {...(embedded ? { 'data-lounge-align-feed-title': '' } : {})}
@@ -385,19 +409,7 @@ export default function LoungeGameHubModal({
         <ChevronLeft className="h-6 w-6" />
       </button>
       <div data-lounge-game-pills-scroll ref={pillsScrollRef} className="min-w-0 flex-1 overflow-x-auto">
-        <div className="flex gap-2 px-1">
-          {tickerGames.map((g, idx) => {
-            const active = g.id === game.id
-            return (
-              <LoungeGameHubPillChip
-                key={`${String(g.id)}-${idx}`}
-                game={g}
-                active={active}
-                onClick={() => sports.openHub?.(g)}
-              />
-            )
-          })}
-        </div>
+        {pillsRow}
       </div>
       <button
         type="button"
@@ -587,7 +599,6 @@ export default function LoungeGameHubModal({
   // Landscape phone on a football game: full-screen gamecast (live / final: scoreboard, field, stat rails;
   // pregame: matchup board) instead of the tabbed hub. Replaces the tabbed root rather than stacking on it
   // so the field anims only run once.
-  const gamecastFull = phoneLandscape && String(game.sport_key || '').includes('football')
   if (gamecastFull) {
     const chipClass = `inline-flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} items-center justify-center rounded-full border border-white/25 bg-white/15 text-white shadow-sm touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/25`
     return createPortal(
@@ -629,6 +640,18 @@ export default function LoungeGameHubModal({
               </button>
             ),
           }}
+          bottomBar={
+            sameSportGames.length > 1 ? (
+              <div
+                data-lounge-game-pills-scroll
+                data-lounge-gamecast-pills
+                ref={landscapePillsScrollRef}
+                className="overflow-x-auto px-2"
+              >
+                {pillsRow}
+              </div>
+            ) : null
+          }
           game={game}
           live={live}
           lastPlay={fieldPlayText}

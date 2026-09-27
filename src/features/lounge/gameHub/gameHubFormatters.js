@@ -1426,6 +1426,8 @@ export function lastBallPlayText(plays, lastPlayText = '') {
   }
   return text
 }
+/** Flagged team: CFB "PENALTY GT Holding", NFL "PENALTY on KC-T.Smith" / "PENALTY on KC, Delay of Game". */
+const PENALTY_TEAM = /\b(?:PENALTY|Penalty)\s+(?:on\s+)?([A-Z][A-Z&]{1,5})(?=[\s,-])/
 const THROWN_TO_SPOT = /\bthrown\s+to\s+(?:the\s+)?[A-Za-z]{2,6}\s*(\d{1,2})\b/i
 const INCOMPLETE_DIR = /\bincomplete\b(?:\s+(short|deep))?(?:\s+(left|right|middle))?/i
 const PASS_DIR_ANYWHERE = /\b(short|deep)\s+(left|right|middle)\b/i
@@ -1458,7 +1460,7 @@ function playHasSpot(play) {
  * pick, lost fumble via the feed `turnover` flag) or the half ends.
  * @returns {{ team: 'home'|'away'|null, attackDir: number, marks: Array<{
  *   key: string, kind: 'line'|'incomplete'|'penalty', text: string, fromPct: number, toPct: number,
- *   lateral: number (-1 left … 1 right of the offense), isNewest: boolean
+ *   lateral: number (-1 left … 1 right of the offense), isNewest: boolean, flagTeam?: string (penalized abbrev)
  * }> }}
  */
 export function buildPossessionDriveMarks(plays) {
@@ -1508,7 +1510,8 @@ export function buildPossessionDriveMarks(plays) {
     const hasSnap = /\b(?:pass|rush|run|ran|sacked|scrambles?|kneels?)\b/i.test(playText)
     const pushPenalty = (fromPct) => {
       if (endPct == null || Math.abs(endPct - fromPct) < 0.2) return
-      marks.push({ key: `${key}:penalty`, kind: 'penalty', text, fromPct, toPct: endPct, lateral: 0, isNewest })
+      const flagTeam = PENALTY_TEAM.exec(penaltyText)?.[1] || ''
+      marks.push({ key: `${key}:penalty`, kind: 'penalty', text, fromPct, toPct: endPct, lateral: 0, isNewest, flagTeam })
     }
     const inc = INCOMPLETE_DIR.exec(playText)
     // A nullified run / catch shows only the flag; an incompletion still happened (DPI, holding), so it keeps its arc.

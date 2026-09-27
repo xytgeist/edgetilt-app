@@ -505,6 +505,32 @@ function DriveIncompleteMark({ p0, c, p1, attackDir, primary, halo, haloOpacity,
   )
 }
 
+/** Flag-yellow "FLAG · GT" tag riding the penalty line … says who got flagged (team color alone can't). */
+function DrivePenaltyTag({ x, y, team }) {
+  const label = `FLAG · ${team}`
+  const w = label.length * 13.4 + 18
+  const h = 30
+  const top = y - h - 9
+  return (
+    <g data-drive-penalty-tag={team}>
+      <rect x={x - w / 2} y={top} width={w} height={h} rx="6" fill="#facc15" stroke="#000" strokeOpacity="0.6" strokeWidth="1.5" />
+      <text
+        x={x}
+        y={top + h / 2 + 0.5}
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill="#111"
+        fontSize="22"
+        fontWeight="800"
+        letterSpacing="0.06em"
+        style={{ fontFamily: "Oswald, 'Arial Narrow', Impact, sans-serif" }}
+      >
+        {label}
+      </text>
+    </g>
+  )
+}
+
 function DrivePlayMarks({ marks, attackDir, primary, hideKey, throwKey = '', onThrowDone }) {
   const { halo, haloOpacity } = playLineHalo(primary)
   // Gains (and flags on the defense) chain on the main line; losses / flags on the offense sit a lane below,
@@ -573,6 +599,7 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey, throwKey = '', onT
                 strokeLinecap="round"
               />
               <polygon points={driveArrow(x1, y, penaltyDir)} fill="#fff" stroke="#000" strokeOpacity="0.55" strokeWidth="1" strokeLinejoin="round" />
+              {m.flagTeam ? <DrivePenaltyTag x={(x1 + x2) / 2} y={y} team={m.flagTeam} /> : null}
             </g>
           )
         }

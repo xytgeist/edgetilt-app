@@ -1570,7 +1570,9 @@ async function fetchEspnFootballLivePack(
       ? lastPlayRow.end as Record<string, unknown>
       : null
     const endTeam = end?.team && typeof end.team === 'object' ? end.team as Record<string, unknown> : null
-    const possession = boardPossession ?? sideForEspnTeamId(String(endTeam?.id || ''))
+    // Possession rides with down / distance / spot from the same summary row … the scoreboard can run a play
+    // ahead (post-punt GT ball against a pre-punt STAN 4th & 7), which drew the line to gain behind the LOS.
+    const possession = sideForEspnTeamId(String(endTeam?.id || '')) ?? boardPossession
     const possessionText = String(
       end?.possessionText || boardPossessionText || '',
     ).trim() || null

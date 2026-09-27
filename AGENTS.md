@@ -284,6 +284,17 @@ npm run db:query:production -f supabase/migrations/foo.sql
 
 `AGENT_RULE_SUPABASE_DB_QUERY` — searchability token.
 
+**Theo's own test account (test Supabase only):** **`@theo_ops`** (`theo+ops@edgetilt.com`), Slots Edge active, excluded from product analytics. Credentials live in **`.env.local`** (`THEO_TEST_EMAIL` / `THEO_TEST_PASSWORD`, gitignored ... never print or commit them). Use it to call user-JWT Edge Functions without asking Ryan to sign in:
+
+```bash
+node scripts/theo-test-session.mjs                                   # short-lived access token
+node scripts/theo-test-session.mjs --invoke lounge-sports-scoreboard '{"event_id":"…"}'
+```
+
+The script refuses anything but the test project. **No prod account** ... prod checks go through Ryan. Browser sign-in: same credentials on the local / `lvslotpro.com` app.
+
+`AGENT_RULE_THEO_TEST_ACCOUNT` — searchability token.
+
 Manual smoke steps live under **Test smoke and release readiness** in `docs/test-buildout-backlog.md`.
 
 ---

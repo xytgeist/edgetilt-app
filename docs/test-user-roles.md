@@ -255,6 +255,10 @@ order by email;
 
 Excluded users do not get new **`app_section_visits`** rows; Monitor aggregates also omit them (including historical rows).
 
+### Theo agent account (test only)
+
+**`@theo_ops`** / **`theo+ops@edgetilt.com`** (auth id `b3b218e3-4765-4f43-84db-bb9c58fc42f6`) … created Sep 27, 2026 via the admin API with the email pre-confirmed (no mailbox needed). `role = user`, **`slots-edge`** active in `user_subscriptions`, email + handle on the analytics blocklists. Password is in `.env.local` only; sign in from scripts with **`scripts/theo-test-session.mjs`**. Flip to free with the revoke-by-handle recipe above (`theo_ops`). Not created on production.
+
 ## 6. Local env override
 
 `VITE_HAS_ACTIVE_SUBSCRIPTION=true` in **`.env.local`** still forces **subscriber UI for every logged-in user** (useful for a quick check). Remove it when testing **per-row** `has_active_subscription`.

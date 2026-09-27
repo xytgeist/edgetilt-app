@@ -4,7 +4,7 @@ import {
   useLoungeSportsPillWashAndLogos,
 } from '../loungeSportsPillPaint.jsx'
 import { formatLoungeSportsMoneyline } from '../LoungeGameScorePill.jsx'
-import { hubTeamLabel } from '../loungeSportsMatch.js'
+import { cfbTeamSchoolName, hubTeamLabel } from '../loungeSportsMatch.js'
 import { openExternalUrl } from '../../../utils/edgeNative.js'
 import {
   CORNER_PYLONS,
@@ -438,6 +438,35 @@ function isCfbSport(sportKey) {
   return String(sportKey || '').includes('ncaaf')
 }
 
+/** "TOUCHDOWN USC" / "TOUCHDOWN MICHIGAN" (CFB school) · "TOUCHDOWN CHIEFS" (NFL mascot). */
+function touchdownTeamLabel(teamAbbrev, game, sportKey) {
+  const abbrev = String(teamAbbrev || '').trim().toUpperCase()
+  if (!abbrev) return ''
+  const side = [game?.away, game?.home].find((s) => String(s?.abbrev || '').trim().toUpperCase() === abbrev)
+  if (!side) return abbrev
+  const name = String(side.name || '').trim()
+  const mascot = String(side.mascot || '').trim()
+  if (!isCfbSport(sportKey)) return mascot || abbrev
+  const school = cfbTeamSchoolName(side)
+  if (school) return school
+  // ESPN `mascot` is only the last word ("Tide"), so stripping it is a fallback for uncataloged schools.
+  if (name && mascot && name.toLowerCase().endsWith(mascot.toLowerCase()) && name.length > mascot.length) {
+    return name.slice(0, name.length - mascot.length).trim()
+  }
+  return name || abbrev
+}
+
+/** No TD animation seen (hub opened after the score) … feed row team, flipped for pick / kick / punt return TDs. */
+function touchdownScorerAbbrevFromText(text, feedTeam, game) {
+  if (feedTeam !== 'home' && feedTeam !== 'away') return ''
+  if (!playTextIsTouchdown(text)) return ''
+  const defenseScored = Boolean(
+    parseInterceptionReturn(text) || parseKickoffReturn(text)?.isTouchdown || parsePuntReturn(text)?.isTouchdown,
+  )
+  const side = defenseScored ? (feedTeam === 'home' ? 'away' : 'home') : feedTeam
+  return String(game?.[side]?.abbrev || '')
+}
+
 /** Top 25 rank (1-25) or null. */
 function teamTop25Rank(side) {
   const n = Number(side?.rank)
@@ -801,6 +830,8 @@ function FieldViz({
   ) {
     setHeldFirstDown({ pos, pct: feedFirstDownPct })
   }
+  /** Scoring team abbrev from the last TD animation … keeps "TOUCHDOWN X" up through the PAT row. */
+  const [heldTdTeam, setHeldTdTeam] = useState('')
 
   const [rushAnim, setRushAnim] = useState(null)
   const [catchAnim, setCatchAnim] = useState(null)
@@ -971,6 +1002,7 @@ function FieldViz({
       endX,
       y: RUSH_Y,
       primary: kit.primary,
+      teamAbbrev: kit.sideAbbrev,
       secondary: kit.secondary,
       helmetColor: kit.helmetColor,
       pantsColor: kit.pantsColor,
@@ -1218,6 +1250,7 @@ function FieldViz({
       endX,
       y: RUSH_Y,
       primary: kit.primary,
+      teamAbbrev: kit.sideAbbrev,
       secondary: kit.secondary,
       helmetColor: kit.helmetColor,
       pantsColor: kit.pantsColor,
@@ -1620,6 +1653,7 @@ function FieldViz({
       y: RUSH_Y,
       facing: defDir,
       primary: kit.primary,
+      teamAbbrev: kit.sideAbbrev,
       secondary: kit.secondary,
       helmetColor: kit.helmetColor,
       pantsColor: kit.pantsColor,
@@ -1870,6 +1904,7 @@ function FieldViz({
       y: RUSH_Y,
       facing: recDir,
       primary: kit.primary,
+      teamAbbrev: kit.sideAbbrev,
       secondary: kit.secondary,
       helmetColor: kit.helmetColor,
       pantsColor: kit.pantsColor,
@@ -2181,9 +2216,24 @@ function FieldViz({
     catchAnim != null
       ? (-36 + catchBallFlightT * 18) * catchBallFacingSign
       : 0
-  const showTdBanner = Boolean(
+  const animTdTeam =
+    [catchAnim, rushAnim, pickAnim, kickAnim].find((a) => a?.showTdLabel)?.teamAbbrev || ''
+  const animTdLabel = Boolean(
     catchAnim?.showTdLabel || rushAnim?.showTdLabel || pickAnim?.showTdLabel || kickAnim?.showTdLabel,
   )
+  // TD / PAT / 2-pt is still the latest row … hold the label until the kickoff or a stoppage banner.
+  const scoreTryWindow = Boolean(isFootball && lastPlayText && playTextIsScoreTry(lastPlayText))
+  if (animTdTeam && heldTdTeam !== animTdTeam) setHeldTdTeam(animTdTeam)
+  else if (!animTdLabel && heldTdTeam && !scoreTryWindow) setHeldTdTeam('')
+  const holdTdBanner = !animTdLabel && scoreTryWindow && !centerBanner && !playAnimActive
+  const showTdBanner = animTdLabel || holdTdBanner
+  const tdTeamLabel = showTdBanner
+    ? touchdownTeamLabel(
+      animTdTeam || heldTdTeam || touchdownScorerAbbrevFromText(lastPlayText, replayTeam, game),
+      game,
+      sportKey,
+    )
+    : ''
 
   // Pick-six: ball rides a QB arc into the defender's hands, then stays tucked on the return.
   const pickHands =
@@ -2871,7 +2921,7 @@ function FieldViz({
             aria-live="polite"
           >
             <span
-              className="lounge-td-banner-text max-w-full text-center text-[34px] font-black uppercase leading-none tracking-[0.14em] text-amber-300 sm:text-[44px]"
+              className="lounge-td-banner-text max-w-full text-center [text-wrap:balance] text-[34px] font-black uppercase leading-none tracking-[0.14em] text-amber-300 sm:text-[44px]"
               style={{
                 fontFamily: "Oswald, Graduate, Impact, 'Arial Black', sans-serif",
                 textShadow:
@@ -2879,7 +2929,7 @@ function FieldViz({
                 WebkitTextStroke: '1px rgba(0,0,0,0.4)',
               }}
             >
-              Touchdown
+              {tdTeamLabel ? `Touchdown ${tdTeamLabel}` : 'Touchdown'}
             </span>
           </div>
         ) : null}

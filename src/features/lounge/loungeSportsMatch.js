@@ -239,6 +239,11 @@ export function hubTeamShortName(side, sportKey = 'americanfootball_nfl') {
 }
 
 /** Pre-game: full short name. Live/final: abbrev. */
+/** CFB school ("Alabama", not "Alabama Crimson") from the catalog; '' when the side is not in it. */
+export function cfbTeamSchoolName(side) {
+  return String(catalogRowForSide(side, 'americanfootball_ncaaf')?.school || '').trim()
+}
+
 export function hubTeamLabel(side, status, sportKey) {
   if (status === 'pre') return hubTeamShortName(side, sportKey)
   return String(side?.abbrev || '').trim()

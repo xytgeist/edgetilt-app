@@ -1615,7 +1615,8 @@ function playHasSpot(play) {
  * pick, lost fumble via the feed `turnover` flag) or the half ends.
  * @returns {{ team: 'home'|'away'|null, attackDir: number, marks: Array<{
  *   key: string, kind: 'line'|'incomplete'|'penalty', text: string, fromPct: number, toPct: number,
- *   lateral: number (-1 left … 1 right of the offense), isNewest: boolean, flagTeam?: string (penalized abbrev)
+ *   lateral: number (-1 left … 1 right of the offense), isNewest: boolean, flagTeam?: string (penalized abbrev),
+ *   touchdown?: boolean (scoring play line … painted gold)
  * }> }}
  */
 export function buildPossessionDriveMarks(plays, { keepScoringDrive = false, livePeriod = null } = {}) {
@@ -1729,7 +1730,16 @@ export function buildPossessionDriveMarks(plays, { keepScoringDrive = false, liv
       if (penaltyEnforced) pushPenalty(startPct)
       return
     }
-    marks.push({ key, kind: 'line', text, fromPct: startPct, toPct: playEndPct, lateral: 0, isNewest })
+    marks.push({
+      key,
+      kind: 'line',
+      text,
+      fromPct: startPct,
+      toPct: playEndPct,
+      lateral: 0,
+      isNewest,
+      ...(playTextIsTouchdown(text) ? { touchdown: true } : {}),
+    })
     if (penaltyEnforced) pushPenalty(playEndPct)
   })
   return { team, attackDir, marks }

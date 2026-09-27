@@ -130,7 +130,7 @@ const PUNT_ARC_LIFT = 400
 const TOUCHBACK_LAND_DEPTH_YDS = 4
 const TOUCHBACK_BOUNCES = [
   { toYds: 8, lift: 34, ms: 420 },
-  { toYds: 12.5, lift: 15, ms: 320 },
+  { toYds: 9.5, lift: 15, ms: 320 },
 ]
 const TOUCHBACK_HOLD_MS = 500
 /** Ball piece center in the RB sculpt viewBox (left-facing art, 728×1382). */
@@ -544,6 +544,8 @@ function DriveIncompleteMark({ p0, c, p1, attackDir, primary, halo, haloOpacity,
 }
 
 const DRIVE_FLAG_DEFENSE = '#facc15'
+/** Scoring play segment … metallic gold, warmer than the defensive-flag yellow. */
+const DRIVE_TD_GOLD = '#d4a017'
 const DRIVE_FLAG_OFFENSE = '#ef4444'
 /** A flag on the defense always moves the ball forward for the offense; one on the offense moves it back. */
 function drivePenaltyOnDefense(m, attackDir) {
@@ -674,13 +676,22 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey, throwKey = '', onT
           addHit(m, `M ${x1} ${y} L ${x2} ${y}`, { x: (x1 + x2) / 2, y }, linePts(x1, x2, y))
           return (
             <g key={m.key} data-drive-play="line">
-              <line x1={x1} y1={y} x2={x2} y2={y} stroke={halo} strokeOpacity={haloOpacity} strokeWidth="7.5" strokeLinecap="round" />
               <line
                 x1={x1}
                 y1={y}
                 x2={x2}
                 y2={y}
-                stroke={primary}
+                stroke={m.touchdown ? '#000' : halo}
+                strokeOpacity={m.touchdown ? 0.5 : haloOpacity}
+                strokeWidth="7.5"
+                strokeLinecap="round"
+              />
+              <line
+                x1={x1}
+                y1={y}
+                x2={x2}
+                y2={y}
+                stroke={m.touchdown ? DRIVE_TD_GOLD : primary}
                 strokeWidth="5.5"
                 strokeLinecap="round"
                 strokeOpacity="0.95"
@@ -797,7 +808,7 @@ function quadBezier(p0, p1, p2, t) {
 
 /**
  * Ball arcs from `start` into the end zone at `goalPct` (traveling `dir`), lands TOUCHBACK_LAND_DEPTH_YDS
- * deep, then hops out the back and fades. Shared by kickoff + punt touchbacks.
+ * deep, then hops out the back and comes to rest. Shared by kickoff + punt touchbacks.
  * @returns {{ frameAt: (elapsed: number) => { ball: {x:number,y:number}, rotate: number, opacity: number }, totalMs: number }}
  */
 function touchbackBallFrames({ start, goalPct, dir, flightMs, arcLift, tumbleDegPerMs = KICK_TUMBLE_DEG_PER_MS }) {
@@ -818,18 +829,17 @@ function touchbackBallFrames({ start, goalPct, dir, flightMs, arcLift, tumbleDeg
       const b = bounceSpots[i]
       if (at < b.ms) {
         const u = at / b.ms
-        const last = i === bounceSpots.length - 1
         return {
           ball: { x: fromX + (b.x - fromX) * u, y: RUSH_Y - 4 * b.lift * u * (1 - u) },
           rotate: rot + spin * 260 * u,
-          opacity: last ? Math.max(0, 1 - Math.max(0, u - 0.35) / 0.65) : 1,
+          opacity: 1,
         }
       }
       at -= b.ms
       fromX = b.x
       rot += spin * 260
     }
-    return { ball: { x: fromX, y: RUSH_Y }, rotate: rot, opacity: 0 }
+    return { ball: { x: fromX, y: RUSH_Y }, rotate: rot, opacity: 1 }
   }
   return { frameAt, totalMs: flightMs + bouncesMs + TOUCHBACK_HOLD_MS }
 }
@@ -1356,7 +1366,14 @@ function FieldViz({
   // Timeouts keep LOS / 1st down / ball / red zone … the drive is still live.
   const hideLiveLines = Boolean(centerBanner) && centerBanner !== 'TIMEOUT'
   const lastPlayText = String(lastPlay || '').trim()
-  const animKey = `${fieldPlayIdentity(lastPlayText)}::${Number(playReplayNonce) || 0}`
+  const lastPlayRow = useMemo(() => {
+    const id = fieldPlayIdentity(lastPlayText)
+    if (!id || !Array.isArray(plays)) return null
+    return plays.findLast((p) => fieldPlayIdentity(p?.description) === id) || null
+  }, [plays, lastPlayText])
+  // Feed row id first … ESPN rewrites a play's text after the fact ("1ST DOWN", corrected yards), which
+  // would otherwise read as a new play and animate it again.
+  const animKey = `${lastPlayRow?.id ? `row:${lastPlayRow.id}` : fieldPlayIdentity(lastPlayText)}::${Number(playReplayNonce) || 0}`
   /** Last auto-play that finished … a TD's text returning after the PAT row must not replay. */
   const lastAutoPlayedKeyRef = useRef('')
   const possessionSide =
@@ -1403,11 +1420,6 @@ function FieldViz({
     },
     [isUserReplay],
   )
-  const lastPlayRow = useMemo(() => {
-    const id = fieldPlayIdentity(lastPlayText)
-    if (!id || !Array.isArray(plays)) return null
-    return plays.findLast((p) => fieldPlayIdentity(p?.description) === id) || null
-  }, [plays, lastPlayText])
   const openingKickoff = isOpeningKickoffRow(lastPlayRow)
   const fieldRootRef = useRef(null)
   /** Game + quarter already whistled … a restarted kick effect or a re-kick after a flag must not blow it twice. */
@@ -1430,6 +1442,8 @@ function FieldViz({
   const pickKeyRef = useRef('')
   const pickRafRef = useRef(0)
   const [kickAnim, setKickAnim] = useState(null)
+  /** Final touchback frame … the ball stays in the end zone until the next play replaces `animKey`. */
+  const [tbRest, setTbRest] = useState(null)
   const kickKeyRef = useRef('')
   const kickRafRef = useRef(0)
   /** Field PNG must own layout height before absolute SVG overlays paint. */
@@ -1488,8 +1502,12 @@ function FieldViz({
   const autoPlayReady = Boolean(
     isUserReplay || (!hideLiveLines && hasLine && pos != null),
   )
+  // A running anim holds the gate open … a poll that drops the LOS or flashes a stoppage banner mid-play
+  // would otherwise tear it down and restart it from the top (the play "animates twice").
+  const anyPlayAnimRunning =
+    rushAnim != null || catchAnim != null || fgAnim != null || pickAnim != null || kickAnim != null
   /** Don't run play chrome until the field plate has real pixel size. */
-  const playAnimReady = Boolean(fieldArtReady && (isUserReplay || autoPlayReady))
+  const playAnimReady = Boolean(fieldArtReady && (isUserReplay || autoPlayReady || anyPlayAnimRunning))
 
   const markFieldArtReady = () => {
     setFieldArtReady(true)
@@ -2495,6 +2513,7 @@ function FieldViz({
         if (elapsed >= totalMs) {
           kickRafRef.current = 0
           if (!isUserReplay) lastAutoPlayedKeyRef.current = animKey
+          setTbRest({ key: animKey, ...frameAt(totalMs) })
           setKickAnim(null)
           return
         }
@@ -3427,7 +3446,7 @@ function FieldViz({
           {/* Ball on LOS … hidden for full rush/catch/FG sequence.
               Rush/catch figures render above the posts overlay (z-8) so
               red-zone plays are not buried under the uprights plate. */}
-              {!playAnimActive && !throwKey ? (
+              {!playAnimActive && !throwKey && tbRest?.key !== animKey ? (
                 <g transform={`translate(${scrimMidX - 18} ${334.5 - 12})`}>
                   <AmericanFootballMark tone="field" size={36} rotate={-26} college={college} />
                 </g>
@@ -3516,8 +3535,8 @@ function FieldViz({
                 <polyline
                   points={runTrailPoints(rushAnim, rushAnim.progress)}
                   fill="none"
-                  stroke={playLineHalo(rushAnim.primary).halo}
-                  strokeOpacity={playLineHalo(rushAnim.primary).haloOpacity}
+                  stroke={rushAnim.isTouchdown ? '#000' : playLineHalo(rushAnim.primary).halo}
+                  strokeOpacity={rushAnim.isTouchdown ? 0.5 : playLineHalo(rushAnim.primary).haloOpacity}
                   strokeWidth="7.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -3527,7 +3546,7 @@ function FieldViz({
                 <polyline
                   points={runTrailPoints(rushAnim, rushAnim.progress)}
                   fill="none"
-                  stroke={rushAnim.primary}
+                  stroke={rushAnim.isTouchdown ? DRIVE_TD_GOLD : rushAnim.primary}
                   strokeWidth="5.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -3558,8 +3577,8 @@ function FieldViz({
                 <polyline
                   points={runTrailPoints(catchAnim, catchAnim.progress)}
                   fill="none"
-                  stroke={playLineHalo(catchAnim.primary).halo}
-                  strokeOpacity={playLineHalo(catchAnim.primary).haloOpacity}
+                  stroke={catchAnim.isTouchdown ? '#000' : playLineHalo(catchAnim.primary).halo}
+                  strokeOpacity={catchAnim.isTouchdown ? 0.5 : playLineHalo(catchAnim.primary).haloOpacity}
                   strokeWidth="7.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -3569,7 +3588,7 @@ function FieldViz({
                 <polyline
                   points={runTrailPoints(catchAnim, catchAnim.progress)}
                   fill="none"
-                  stroke={catchAnim.primary}
+                  stroke={catchAnim.isTouchdown ? DRIVE_TD_GOLD : catchAnim.primary}
                   strokeWidth="5.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
@@ -3675,6 +3694,14 @@ function FieldViz({
               transform={`translate(${kickAnim.tb.ball.x - 12} ${kickAnim.tb.ball.y - 9})`}
             >
               <AmericanFootballMark tone="field" size={24} rotate={kickAnim.tb.rotate} college={college} />
+            </g>
+          ) : null}
+          {!kickAnim && tbRest?.key === animKey ? (
+            <g
+              data-lounge-kick-rest="touchback"
+              transform={`translate(${tbRest.ball.x - 12} ${tbRest.ball.y - 9})`}
+            >
+              <AmericanFootballMark tone="field" size={24} rotate={tbRest.rotate} college={college} />
             </g>
           ) : null}
           {kickBall ? (

@@ -147,6 +147,12 @@ const FG_BOUNCE_MS = 880
 const FG_BALL_SIZE = 30
 /** End-over-end revolutions over the full flight (path t 0→1). */
 const FG_TUMBLE_REVS = 20
+/** Kickoffs / punts tumble end-over-end at the field goal's rate (revs per ms of flight). */
+const KICK_TUMBLE_DEG_PER_MS = (FG_TUMBLE_REVS * 360) / FG_FLIGHT_BASE_MS
+/** Backwards end-over-end from the tee lean … SVG +rotate is clockwise, so a leftward kick spins CW. */
+function kickTumbleRotate(elapsedMs, kickDir) {
+  return -82 + (kickDir < 0 ? 1 : -1) * elapsedMs * KICK_TUMBLE_DEG_PER_MS
+}
 /**
  * Path apex (t=0.5) lands at this fraction of flight time.
  * Below 0.5 → snappy takeoff, then a steadier hang after the top.
@@ -779,11 +785,11 @@ function touchbackBallFrames({ start, goalPct, dir, flightMs, arcLift }) {
   const frameAt = (elapsed) => {
     if (elapsed < flightMs) {
       const t = elapsed / flightMs
-      return { ball: quadBezier(start, ctrl, land, t), rotate: (-40 + t * 80) * -spin, opacity: 1 }
+      return { ball: quadBezier(start, ctrl, land, t), rotate: kickTumbleRotate(elapsed, dir), opacity: 1 }
     }
     let at = elapsed - flightMs
     let fromX = land.x
-    let rot = 40 * -spin
+    let rot = kickTumbleRotate(flightMs, dir)
     for (let i = 0; i < bounceSpots.length; i += 1) {
       const b = bounceSpots[i]
       if (at < b.ms) {
@@ -2550,6 +2556,7 @@ function FieldViz({
       headshotUrl,
       jerseyNumber,
       ballStart: { x: fieldMidXFromPercent(kickFromPct), y: RUSH_Y - 6 },
+      flightMs,
       landX,
       figX: startX,
       ballT: 0,
@@ -2958,9 +2965,8 @@ function FieldViz({
       y: Math.min(kickAnim.ballStart.y, tuck.y) - KICK_ARC_LIFT,
     }
     kickBall = quadBezier(kickAnim.ballStart, ctrl, tuck, kickAnim.ballT)
-    // Nose follows the flight: up off the tee, level at the apex, down into the catch.
-    const kickSign = kickAnim.facing < 0 ? 1 : -1
-    kickBallRotate = (-40 + kickAnim.ballT * 80) * kickSign
+    // Returner faces back up the field, so the kick travels the other way.
+    kickBallRotate = kickTumbleRotate(kickAnim.ballT * (kickAnim.flightMs || KICK_FLIGHT_MS), -kickAnim.facing)
   }
 
   // Field-goal ball: upright plant → true parabola (rise/fall) → land past posts / bounce.

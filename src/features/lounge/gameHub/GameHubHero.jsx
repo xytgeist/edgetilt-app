@@ -3952,8 +3952,14 @@ const TEAM_STAT_RAIL_ROWS = [
   ['totalPenaltiesYards', 'Penalties'],
 ]
 
-/** One team's box score column beside the landscape field (away left / home right). Empty until stats land. */
-function TeamStatRail({ stats, align }) {
+/** Stat rail floor beside the landscape field (rem) … the field's width cap leaves this much per side. */
+const STAT_RAIL_MIN_REM = 5.5
+
+/**
+ * One team's box score column beside the landscape field (away left / home right). Empty until stats land.
+ * `topInset`: the field row runs up under the scoreboard … rails start below it.
+ */
+function TeamStatRail({ stats, align, topInset = 0 }) {
   const byName = new Map((Array.isArray(stats) ? stats : []).map((s) => [s.name, s.value]))
   const rows = TEAM_STAT_RAIL_ROWS.filter(([key]) => byName.has(key))
   return (
@@ -3962,6 +3968,7 @@ function TeamStatRail({ stats, align }) {
       className={`flex min-w-0 flex-1 flex-col justify-evenly overflow-hidden py-2 ${
         align === 'left' ? 'items-start pl-3' : 'items-end pr-3'
       }`}
+      style={{ minWidth: `${STAT_RAIL_MIN_REM}rem`, paddingTop: topInset ? topInset + 4 : undefined }}
     >
       {rows.map(([key, label]) => (
         <div key={key} className={`min-w-0 max-w-full ${align === 'left' ? 'text-left' : 'text-right'}`}>
@@ -4415,6 +4422,25 @@ export default function GameHubHero({
     armGameHubWhistle()
   }, [])
 
+  // Landscape gamecast: the field row slides up under the scoreboard (scoreboard paints on top); only the
+  // goalpost tops reach that high. Track the board's height so the overlap follows it.
+  const scoreboardRef = useRef(null)
+  const [scoreboardH, setScoreboardH] = useState(0)
+  const overlapBoard = fullscreen && showField
+  useLayoutEffect(() => {
+    const el = scoreboardRef.current
+    if (!overlapBoard || !el) {
+      setScoreboardH(0)
+      return undefined
+    }
+    const measure = () => setScoreboardH(el.offsetHeight)
+    measure()
+    if (typeof ResizeObserver === 'undefined') return undefined
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [overlapBoard])
+
   if (fullscreen && game.status === 'pre') {
     return (
       <LandscapeMatchupBoard
@@ -4467,10 +4493,11 @@ export default function GameHubHero({
       {showField ? (
         /* Condensed scoreboard only while the 3D field is up: logo | score mid-gap | status | … */
         <div
+          ref={scoreboardRef}
           data-lounge-game-scoreboard
           className={
             fullscreen
-              ? 'relative z-[4] shrink-0 px-3 pb-0.5 pt-[max(0.375rem,env(safe-area-inset-top,0px))]'
+              ? 'relative z-[6] shrink-0 px-3 pb-0.5 pt-[max(0.375rem,env(safe-area-inset-top,0px))]'
               : 'relative z-[4] px-3 pb-3 pt-1'
           }
         >
@@ -4658,9 +4685,9 @@ export default function GameHubHero({
       {/* z above scoreboard so FG apex / high arcs paint over the board chrome */}
       <div
         className={fullscreen ? 'relative z-[5] flex min-h-0 flex-1 items-stretch justify-center' : 'relative z-[5]'}
-        style={fullscreen ? { containerType: 'size' } : undefined}
+        style={fullscreen ? { containerType: 'size', marginTop: overlapBoard ? -scoreboardH : undefined } : undefined}
       >
-        {showField && fullscreen ? <TeamStatRail stats={teamStats?.away} align="left" /> : null}
+        {showField && fullscreen ? <TeamStatRail stats={teamStats?.away} align="left" topInset={scoreboardH} /> : null}
         <HeroPublicBetting
           game={game}
           splits={splits}
@@ -4668,8 +4695,12 @@ export default function GameHubHero({
           homeColor={homeColor}
         />
         {showField && fullscreen ? (
-          // FieldViz = 20px top pad + 4px side pads around a 1266:533 plane … widest that fits this box.
-          <div className="shrink-0 self-center" style={{ width: 'min(100cqw, calc((100cqh - 20px) * 1266 / 533 + 8px))' }}>
+          // FieldViz = 20px top pad + 4px side pads around a 1266:533 plane … widest that fits this box while
+          // leaving each stat rail its min width.
+          <div
+            className="shrink-0 self-center"
+            style={{ width: `min(calc(100cqw - ${2 * STAT_RAIL_MIN_REM}rem), calc((100cqh - 20px) * 1266 / 533 + 8px))` }}
+          >
             <FieldViz
               game={game}
               live={live}
@@ -4701,7 +4732,7 @@ export default function GameHubHero({
         ) : (
           <div className="h-2" aria-hidden="true" />
         )}
-        {showField && fullscreen ? <TeamStatRail stats={teamStats?.home} align="right" /> : null}
+        {showField && fullscreen ? <TeamStatRail stats={teamStats?.home} align="right" topInset={scoreboardH} /> : null}
       </div>
 
       {showField && lastPlayText ? (

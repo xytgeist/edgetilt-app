@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import {
   LoungeSportsTeamLogo,
   useLoungeSportsPillWashAndLogos,
@@ -405,6 +405,48 @@ function incompleteThrowFrame(p0, c, p1, elapsed) {
  * Incompletion on the drive chart … static dashed arc to a red X, or (newest play, once per `throwKey`)
  * the ball leading the arc, bouncing off the turf, and the X popping in on the first hit.
  */
+/**
+ * Field banner text that stays on one line … shrinks the font to the banner's inner width instead of wrapping.
+ * Measures an unanimated twin so the pop-in's wide letter-spacing doesn't under-size it.
+ */
+function FieldBannerFitText({ text, className, style }) {
+  const measureRef = useRef(null)
+  const [fontPx, setFontPx] = useState(null)
+
+  useLayoutEffect(() => {
+    const twin = measureRef.current
+    const box = twin?.parentElement
+    if (!twin || !box) return undefined
+    const fit = () => {
+      const cs = getComputedStyle(box)
+      const avail = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight)
+      const natural = twin.getBoundingClientRect().width
+      const base = parseFloat(getComputedStyle(twin).fontSize)
+      setFontPx(avail > 0 && natural > avail ? Math.floor(base * (avail / natural) * 0.98 * 2) / 2 : null)
+    }
+    fit()
+    const ro = new ResizeObserver(fit)
+    ro.observe(box)
+    return () => ro.disconnect()
+  }, [text])
+
+  return (
+    <>
+      <span
+        ref={measureRef}
+        aria-hidden="true"
+        className={`${className} invisible absolute left-0 top-0 whitespace-nowrap`}
+        style={{ ...style, animation: 'none', transform: 'none' }}
+      >
+        {text}
+      </span>
+      <span className={`${className} whitespace-nowrap`} style={fontPx ? { ...style, fontSize: `${fontPx}px` } : style}>
+        {text}
+      </span>
+    </>
+  )
+}
+
 function DriveIncompleteMark({ p0, c, p1, attackDir, primary, halo, haloOpacity, throwKey, onThrowDone }) {
   const [elapsed, setElapsed] = useState(null)
   const onDoneRef = useRef(onThrowDone)
@@ -3339,17 +3381,16 @@ function FieldViz({
             className="pointer-events-none absolute inset-0 z-[6] flex items-center justify-center px-4 pb-[18%]"
             aria-live="polite"
           >
-            <span
-              className="max-w-full -translate-y-2 text-center text-[28px] font-black uppercase leading-none tracking-[0.08em] text-white sm:text-[36px] sm:-translate-y-3"
+            <FieldBannerFitText
+              text={centerBanner}
+              className="-translate-y-2 text-center text-[28px] font-black uppercase leading-none tracking-[0.08em] text-white sm:text-[36px] sm:-translate-y-3"
               style={{
                 fontFamily: "Oswald, Graduate, Impact, 'Arial Black', sans-serif",
                 textShadow:
                   '0 1px 0 #000, 0 2px 0 #000, 0 3px 0 rgba(0,0,0,0.85), 0 8px 24px rgba(0,0,0,0.65)',
                 WebkitTextStroke: '1px rgba(0,0,0,0.35)',
               }}
-            >
-              {centerBanner}
-            </span>
+            />
           </div>
         ) : null}
 
@@ -3361,19 +3402,20 @@ function FieldViz({
             className="pointer-events-none absolute inset-0 z-[7] flex items-center justify-center px-4 pb-[18%]"
             aria-live="polite"
           >
-            <span
-              className="lounge-td-banner-text max-w-full text-center [text-wrap:balance] text-[34px] font-black uppercase leading-none tracking-[0.14em] text-amber-300 sm:text-[44px]"
+            <FieldBannerFitText
+              text={
+                showTdBanner
+                  ? tdTeamLabel ? `Touchdown ${tdTeamLabel}` : 'Touchdown'
+                  : turnoverTeamLabel ? `Turnover · ${turnoverTeamLabel} Ball` : 'Turnover'
+              }
+              className="lounge-td-banner-text text-center text-[34px] font-black uppercase leading-none tracking-[0.14em] text-amber-300 sm:text-[44px]"
               style={{
                 fontFamily: "Oswald, Graduate, Impact, 'Arial Black', sans-serif",
                 textShadow:
                   '0 0 18px rgba(251,191,36,0.55), 0 1px 0 #000, 0 3px 0 #000, 0 10px 28px rgba(0,0,0,0.7)',
                 WebkitTextStroke: '1px rgba(0,0,0,0.4)',
               }}
-            >
-              {showTdBanner
-                ? tdTeamLabel ? `Touchdown ${tdTeamLabel}` : 'Touchdown'
-                : turnoverTeamLabel ? `Turnover · ${turnoverTeamLabel} Ball` : 'Turnover'}
-            </span>
+            />
           </div>
         ) : null}
       </div>

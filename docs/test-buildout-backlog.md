@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-27** **Game hub: live props rail = bettable lines only, scrollable (Mac).** **1.4.836** … landscape Props page skips rungs with no yes bid (in-game Kalshi leaves decided / abandoned rungs `active` with a $0 bid and stale ask) and drops lines already cleared; lists every player + stat ladder (position stat first) in a scroller that hands off to the page swipe at the top / bottom (`railScrollRoom`). Pregame board unchanged.
 - **2026-09-27** **Game hub: fantasy toast over the top hash marks (Mac).** **1.4.835** … post-play fantasy points chips float just above the top hash row (`bottom-[48%]` of the field plane) instead of near the bottom sideline.
 - **2026-09-27** **Game hub: NFL banners use team abbrev (Mac).** **1.4.834** … TOUCHDOWN / TURNOVER field banners name NFL teams by abbrev (BUF, LAC) instead of the mascot; CFB keeps the school name (abbrev when over 7 chars). End zone mascot art unchanged.
 - **2026-09-27** **Theo agent test account (Mac).** **`@theo_ops`** (`theo+ops@edgetilt.com`) on **test** Supabase only: admin-API created (email pre-confirmed), profile + active `slots-edge`, analytics-excluded. Credentials in gitignored `.env.local`; **`scripts/theo-test-session.mjs`** prints a token or `--invoke`s an Edge Function as Theo (refuses non-test URLs). Documented in `AGENTS.md` (`AGENT_RULE_THEO_TEST_ACCOUNT`) + `docs/test-user-roles.md`.

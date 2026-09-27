@@ -4051,11 +4051,20 @@ function FantasyRailRows({ rows, align }) {
   )
 }
 
-/** Live props page: box score progress toward each player's headline line; taps open the market. */
+/**
+ * Live props page: box score progress toward every bettable line; scrolls when the list outgrows the rail
+ * (`SwipeRail` only pages once the scroll hits an end). Taps open the market.
+ */
 function PropRailRows({ rows, align }) {
   const left = align === 'left'
   return (
-    <div className={`flex h-full min-w-0 flex-col justify-evenly ${left ? 'items-start text-left' : 'items-end text-right'}`}>
+    <div
+      data-lounge-gamecast-rail-scroll
+      className={`flex h-full min-w-0 flex-col gap-1 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+        left ? 'items-start text-left' : 'items-end text-right'
+      }`}
+      style={{ touchAction: 'pan-y' }}
+    >
       {rows.map((r) => (
         <button
           key={r.key}
@@ -4064,7 +4073,7 @@ function PropRailRows({ rows, align }) {
           disabled={!r.url}
           onClick={() => void openExternalUrl(r.url)}
           aria-label={`${r.name} ${r.current ?? 'no stats yet'} of ${r.line} ${r.stat}, open on ${MARKET_SOURCE_LABEL[r.source] || 'market'}`}
-          className={`-mx-1.5 min-w-0 max-w-full rounded-lg px-1.5 py-0.5 touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/15 ${
+          className={`w-full min-w-0 shrink-0 rounded-lg py-0.5 touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/15 ${
             left ? 'text-left' : 'text-right'
           }`}
         >
@@ -4088,6 +4097,13 @@ function PropRailRows({ rows, align }) {
  * One side rail beside the landscape field: team stats / fantasy / props pages, swiped up / down (both rails
  * share `page`, so either side flips both). Pages without data are left out of `pages` by the parent.
  */
+/** Room left to scroll inside a rail page's own scroller (if the gesture started in one). */
+function railScrollRoom(target) {
+  const el = target instanceof Element ? target.closest('[data-lounge-gamecast-rail-scroll]') : null
+  if (!el || el.scrollHeight <= el.clientHeight + 1) return { up: false, down: false }
+  return { up: el.scrollTop > 1, down: el.scrollTop + el.clientHeight < el.scrollHeight - 1 }
+}
+
 function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, props }) {
   const left = align === 'left'
   const touchRef = useRef(null)
@@ -4110,7 +4126,7 @@ function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, p
         multi
           ? (e) => {
               const t = e.touches[0]
-              touchRef.current = t ? { x: t.clientX, y: t.clientY } : null
+              touchRef.current = t ? { x: t.clientX, y: t.clientY, room: railScrollRoom(e.target) } : null
             }
           : undefined
       }
@@ -4123,6 +4139,7 @@ function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, p
               if (!start || !t) return
               const dy = t.clientY - start.y
               if (Math.abs(dy) < RAIL_SWIPE_PX || Math.abs(dy) < Math.abs(t.clientX - start.x)) return
+              if (dy < 0 ? start.room.down : start.room.up) return
               onStep(dy < 0 ? 1 : -1)
             }
           : undefined
@@ -4131,7 +4148,12 @@ function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, p
         multi
           ? (e) => {
               if (Math.abs(e.deltaY) < 12) return
+              const room = railScrollRoom(e.target)
               const now = Date.now()
+              if (e.deltaY > 0 ? room.down : room.up) {
+                wheelAtRef.current = now
+                return
+              }
               if (now - wheelAtRef.current < RAIL_WHEEL_COOLDOWN_MS) return
               wheelAtRef.current = now
               onStep(e.deltaY > 0 ? 1 : -1)

@@ -96,11 +96,11 @@ export function liveFantasyRails(playerBox, players, limit = 5) {
 const STAT_FROM_LABEL = { 'pass yds': 'pass_yds', 'rush yds': 'rush_yds', 'rec yds': 'rec_yds' }
 
 /**
- * Pregame-style headline prop per player (rung nearest 50¢) plus `current` from the box score and `hit`
- * once the line is cleared. Rows: pregame rail row + `{ current, target, hit }`.
+ * Every still-bettable player line (rung nearest 50¢ per player + stat) with `current` from the box score.
+ * Lines already cleared are settled, so they drop off. Rows: pregame rail row + `{ current, target, hit }`.
  */
-export function livePropRails(props, players, playerBox, limit = 5) {
-  const rails = pregamePlayerPropRails(props, players, limit)
+export function livePropRails(props, players, playerBox, limit = Infinity) {
+  const rails = pregamePlayerPropRails(props, players, limit, { live: true })
   const haveBox = Boolean(playerBox?.away?.length || playerBox?.home?.length)
   const boxByName = new Map()
   for (const side of ['away', 'home']) {
@@ -108,7 +108,8 @@ export function livePropRails(props, players, playerBox, limit = 5) {
   }
   const out = { away: [], home: [] }
   for (const side of ['away', 'home']) {
-    out[side] = rails[side].map((r) => {
+    out[side] = rails[side]
+      .map((r) => {
       // Rail keys are `${nameKey(roster name)}:${stat}`.
       const b = boxByName.get(r.key.slice(0, r.key.lastIndexOf(':')))
       const target = parseFloat(r.line)
@@ -121,7 +122,8 @@ export function livePropRails(props, players, playerBox, limit = 5) {
         target: Number.isFinite(target) ? target : null,
         hit: current != null && Number.isFinite(target) && current >= target,
       }
-    })
+      })
+      .filter((r) => !r.hit)
   }
   return out
 }

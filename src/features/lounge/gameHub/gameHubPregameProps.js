@@ -28,6 +28,16 @@ function lineNumber(p) {
   return m ? Number(m[1]) : null
 }
 
+/**
+ * Live: a real bid on the book. In-game Kalshi keeps decided / abandoned rungs `active` with a $0 bid and a
+ * stale ask, which would otherwise read as a coin flip.
+ */
+function isBettable(p) {
+  const bid = Number(p?.yes_bid)
+  const ask = Number(p?.yes_ask)
+  return Number.isFinite(bid) && bid > 0 && Number.isFinite(ask) && ask < 1
+}
+
 /** Rung closest to a coin flip; Kalshi wins ties. */
 function nearestEven(list) {
   let best = null
@@ -73,11 +83,14 @@ function lastName(name) {
   return parts.length ? parts[parts.length - 1] : String(name || '')
 }
 
+const STAT_ORDER = ['pass', 'rush', 'rec', 'td']
+
 /**
  * Up to `limit` players per side: QB pass yds, RB rush yds, WR/TE rec yds (anytime TD when the
  * yardage ladder is missing). Rows: `{ key, name, position, stat, line, price, source, url }`.
+ * `live`: bettable rungs only, and one row per stat the player has a ladder for (position stat first).
  */
-export function pregamePlayerPropRails(props, players, limit = 5) {
+export function pregamePlayerPropRails(props, players, limit = 5, { live = false } = {}) {
   const roster = new Map()
   for (const pl of Array.isArray(players) ? players : []) {
     const k = nameKey(pl?.name)
@@ -86,6 +99,7 @@ export function pregamePlayerPropRails(props, players, limit = 5) {
   const byPlayer = new Map()
   for (const p of Array.isArray(props) ? props : []) {
     if (p?.kind !== 'player' || !p.player_name) continue
+    if (live && !isBettable(p)) continue
     const stat = propStat(p)
     if (!stat || (stat === 'td' && lineNumber(p) !== 1)) continue
     const pl = roster.get(nameKey(p.player_name))
@@ -98,26 +112,36 @@ export function pregamePlayerPropRails(props, players, limit = 5) {
   const out = { away: [], home: [] }
   for (const { player, byStat } of byPlayer.values()) {
     const want = STAT_BY_POSITION[String(player.position || '').toUpperCase()]
-    const stat = want && byStat[want] ? want : byStat.td ? 'td' : null
-    if (!stat) continue
-    const pick = nearestEven(byStat[stat])
-    if (!pick) continue
-    const line = lineNumber(pick)
-    out[player.side].push({
-      key: `${nameKey(player.name)}:${stat}`,
-      name: lastName(player.name),
-      position: String(player.position || '').toUpperCase(),
-      stat: STAT_LABEL[stat],
-      line: `${line}+`,
-      price: price(pick),
-      source: pick.source,
-      url: marketUrl(pick),
-      rank: Number(player.search_rank) || 9999,
+    const stats = live
+      ? STAT_ORDER.filter((s) => byStat[s]).sort((a, b) => (b === want) - (a === want))
+      : [want && byStat[want] ? want : byStat.td ? 'td' : null].filter(Boolean)
+    stats.forEach((stat, statIdx) => {
+      const pick = nearestEven(byStat[stat])
+      if (!pick) return
+      const line = lineNumber(pick)
+      out[player.side].push({
+        key: `${nameKey(player.name)}:${stat}`,
+        name: lastName(player.name),
+        position: String(player.position || '').toUpperCase(),
+        stat: STAT_LABEL[stat],
+        line: `${line}+`,
+        price: price(pick),
+        source: pick.source,
+        url: marketUrl(pick),
+        rank: Number(player.search_rank) || 9999,
+        statIdx,
+      })
     })
   }
   for (const side of ['away', 'home']) {
     out[side] = out[side]
-      .sort((a, b) => positionOrder(a.position) - positionOrder(b.position) || a.rank - b.rank)
+      .sort(
+        (a, b) =>
+          positionOrder(a.position) - positionOrder(b.position) ||
+          a.rank - b.rank ||
+          a.key.localeCompare(b.key) ||
+          a.statIdx - b.statIdx,
+      )
       .slice(0, limit)
   }
   return out

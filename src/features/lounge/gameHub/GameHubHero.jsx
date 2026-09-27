@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import {
   LoungeSportsTeamLogo,
   useLoungeSportsPillWashAndLogos,
@@ -13,7 +13,7 @@ import {
 } from './gameHubEndzone.js'
 import GameHubRushFigure from './GameHubRushFigure.jsx'
 import GameHubCatchFigure from './GameHubCatchFigure.jsx'
-import { resolveTeamKit } from './gameHubFigureColors.js'
+import { getLuminance, hexToRgb, resolveTeamKit } from './gameHubFigureColors.js'
 import {
   CATCH_HANDS_LOCAL,
   CATCH_VIEWBOX_H,
@@ -35,6 +35,7 @@ import {
   parsePuntReturn,
   parseRushPlay,
   playTextIsScoreTry,
+  buildPossessionDriveMarks,
   playTextIsTouchdown,
   resolveFigureJersey,
   resolvePlayAnimationPercents,
@@ -284,6 +285,109 @@ function fieldBotXFromPercent(p) {
 
 function fieldMidXFromPercent(p) {
   return (fieldTopXFromPercent(p) + fieldBotXFromPercent(p)) / 2
+}
+
+const FIELD_FAR_Y = 191
+const FIELD_NEAR_Y = 478
+/** Perspective x for a field percent at any depth between the far and near sidelines. */
+function fieldXAtY(p, y) {
+  const t = (y - FIELD_FAR_Y) / (FIELD_NEAR_Y - FIELD_FAR_Y)
+  return fieldTopXFromPercent(p) + (fieldBotXFromPercent(p) - fieldTopXFromPercent(p)) * t
+}
+
+/** Drive chart: newest play rides the ball row; older overlapping lines drop a lane toward the near sideline. */
+const DRIVE_LANE_PX = 13
+const DRIVE_INCOMPLETE_LATERAL_PX = 58
+const DRIVE_INCOMPLETE_LIFT_PX = 42
+
+function driveArrow(x, y, dir) {
+  return `${x + dir * 6},${y} ${x - dir * 4},${y - 5} ${x - dir * 4},${y + 5}`
+}
+
+/** Maroon / navy on turf reads black behind a dark halo … light halo for dark team colors. */
+function playLineHalo(primary) {
+  const light = getLuminance(hexToRgb(primary)) < 0.35
+  return { halo: light ? '#ffffff' : '#000000', haloOpacity: light ? 0.55 : 0.35 }
+}
+
+function DrivePlayMarks({ marks, attackDir, primary, hideKey }) {
+  const { halo, haloOpacity } = playLineHalo(primary)
+  const lanes = []
+  const laneOf = new Map()
+  for (let i = marks.length - 1; i >= 0; i -= 1) {
+    const m = marks[i]
+    if (m.kind !== 'line') continue
+    const lo = Math.min(m.fromPct, m.toPct)
+    const hi = Math.max(m.fromPct, m.toPct)
+    let lane = 0
+    while ((lanes[lane] || []).some(([a, b]) => lo < b - 0.3 && hi > a + 0.3)) lane += 1
+    ;(lanes[lane] ||= []).push([lo, hi])
+    laneOf.set(m.key, lane)
+  }
+  return (
+    <g data-lounge-drive-marks>
+      {marks.map((m) => {
+        if (m.key === hideKey) return null
+        if (m.kind === 'line') {
+          const y = RUSH_Y + (laneOf.get(m.key) || 0) * DRIVE_LANE_PX
+          let x1 = fieldXAtY(m.fromPct, y)
+          let x2 = fieldXAtY(m.toPct, y)
+          if (Math.abs(x2 - x1) < 6) {
+            const c = (x1 + x2) / 2
+            x1 = c - 3 * attackDir
+            x2 = c + 3 * attackDir
+          }
+          return (
+            <g key={m.key} data-drive-play="line">
+              <line x1={x1} y1={y} x2={x2} y2={y} stroke={halo} strokeOpacity={haloOpacity} strokeWidth="7" strokeLinecap="round" />
+              <line
+                x1={x1}
+                y1={y}
+                x2={x2}
+                y2={y}
+                stroke={primary}
+                strokeWidth="4"
+                strokeLinecap="round"
+                strokeOpacity="0.88"
+                filter="url(#glow-rush)"
+              />
+              <polygon points={driveArrow((x1 + x2) / 2, y, attackDir)} fill="#000" fillOpacity="0.9" />
+            </g>
+          )
+        }
+        const y0 = RUSH_Y
+        const y1 = Math.max(
+          FIELD_FAR_Y + 12,
+          Math.min(FIELD_NEAR_Y - 12, y0 + m.lateral * attackDir * DRIVE_INCOMPLETE_LATERAL_PX),
+        )
+        const x0 = fieldXAtY(m.fromPct, y0)
+        const x1 = fieldXAtY(m.toPct, y1)
+        const cx = (x0 + x1) / 2
+        const cy = Math.min(y0, y1) - DRIVE_INCOMPLETE_LIFT_PX
+        const mx = 0.25 * x0 + 0.5 * cx + 0.25 * x1
+        const my = 0.25 * y0 + 0.5 * cy + 0.25 * y1
+        const d = `M ${x0} ${y0} Q ${cx} ${cy} ${x1} ${y1}`
+        return (
+          <g
+            key={m.key}
+            data-drive-play="incomplete"
+            className={m.isNewest ? 'lounge-drive-incomplete-fresh' : undefined}
+            opacity={m.isNewest ? undefined : 0.4}
+          >
+            <path d={d} fill="none" stroke={halo} strokeOpacity={haloOpacity} strokeWidth="5" strokeDasharray="7 6" strokeLinecap="round" />
+            <path d={d} fill="none" stroke={primary} strokeWidth="3" strokeDasharray="7 6" strokeLinecap="round" />
+            <polygon points={driveArrow(mx, my, attackDir)} fill="#000" fillOpacity="0.9" />
+            <g strokeLinecap="round">
+              <line x1={x1 - 6} y1={y1 - 6} x2={x1 + 6} y2={y1 + 6} stroke="#000" strokeOpacity="0.5" strokeWidth="6" />
+              <line x1={x1 - 6} y1={y1 + 6} x2={x1 + 6} y2={y1 - 6} stroke="#000" strokeOpacity="0.5" strokeWidth="6" />
+              <line x1={x1 - 6} y1={y1 - 6} x2={x1 + 6} y2={y1 + 6} stroke="#ef4444" strokeWidth="3.2" />
+              <line x1={x1 - 6} y1={y1 + 6} x2={x1 + 6} y2={y1 - 6} stroke="#ef4444" strokeWidth="3.2" />
+            </g>
+          </g>
+        )
+      })}
+    </g>
+  )
 }
 
 /**
@@ -791,6 +895,7 @@ function FieldViz({
   playReplayNonce = 0,
   replayTeam = null,
   playStartSpot = null,
+  plays = null,
 }) {
   const sportKey = String(game?.sport_key || '').toLowerCase()
   const isFootball = sportKey.includes('football') || (!sportKey && Boolean(game?.away && game?.home))
@@ -836,6 +941,7 @@ function FieldViz({
   }
   /** Scoring team abbrev from the last TD animation … keeps "TOUCHDOWN X" up through the PAT row. */
   const [heldTdTeam, setHeldTdTeam] = useState('')
+  const drive = useMemo(() => (isFootball ? buildPossessionDriveMarks(plays) : null), [isFootball, plays])
 
   const [rushAnim, setRushAnim] = useState(null)
   const [catchAnim, setCatchAnim] = useState(null)
@@ -2220,6 +2326,20 @@ function FieldViz({
     catchAnim != null
       ? (-36 + catchBallFlightT * 18) * catchBallFacingSign
       : 0
+  const showDriveMarks = Boolean(
+    drive?.marks.length && game?.status === 'in' && !hideLiveLines && !kickAnim && !pickAnim,
+  )
+  const drivePrimary = drive?.team
+    ? possessionKit({ possession: drive.team }, game, awayColor, homeColor).primary
+    : '#ffffff'
+  // The live rush / catch trail paints this play while its figure runs … the persistent line takes over after.
+  const newestDriveMark = drive?.marks[drive.marks.length - 1]
+  const driveHideKey =
+    newestDriveMark?.isNewest &&
+    (rushAnim?.showFigure || catchAnim?.showFigure) &&
+    fieldPlayIdentity(newestDriveMark.text) === fieldPlayIdentity(lastPlayText)
+      ? newestDriveMark.key
+      : null
   const animTdTeam =
     [catchAnim, rushAnim, pickAnim, kickAnim].find((a) => a?.showTdLabel)?.teamAbbrev || ''
   const animTdLabel = Boolean(
@@ -2615,6 +2735,15 @@ function FieldViz({
             />
           </g>
 
+          {showDriveMarks ? (
+            <DrivePlayMarks
+              marks={drive.marks}
+              attackDir={drive.attackDir}
+              primary={drivePrimary}
+              hideKey={driveHideKey}
+            />
+          ) : null}
+
           {/* First down line (yellow) */}
           {!hideLiveLines &&
           firstDownTop != null &&
@@ -2738,6 +2867,18 @@ function FieldViz({
                   y1={rushAnim.y}
                   x2={rushX}
                   y2={rushAnim.y}
+                  stroke={playLineHalo(rushAnim.primary).halo}
+                  strokeOpacity={playLineHalo(rushAnim.primary).haloOpacity}
+                  strokeWidth="7"
+                  strokeLinecap="round"
+                />
+              ) : null}
+              {rushTrailVisible ? (
+                <line
+                  x1={rushAnim.startX}
+                  y1={rushAnim.y}
+                  x2={rushX}
+                  y2={rushAnim.y}
                   stroke={rushAnim.primary}
                   strokeWidth="4"
                   strokeLinecap="round"
@@ -2765,6 +2906,18 @@ function FieldViz({
           ) : null}
           {catchAnim && catchX != null ? (
             <g data-lounge-catch-anim>
+              {catchTrailVisible ? (
+                <line
+                  x1={catchAnim.startX}
+                  y1={catchAnim.y}
+                  x2={catchX}
+                  y2={catchAnim.y}
+                  stroke={playLineHalo(catchAnim.primary).halo}
+                  strokeOpacity={playLineHalo(catchAnim.primary).haloOpacity}
+                  strokeWidth="7"
+                  strokeLinecap="round"
+                />
+              ) : null}
               {catchTrailVisible ? (
                 <line
                   x1={catchAnim.startX}
@@ -3034,6 +3187,7 @@ export default function GameHubHero({
   topBar = null,
   splits = null,
   players = [],
+  plays = null,
 }) {
   const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(game)
   const clock = liveClockLabel(game, live)
@@ -3283,6 +3437,7 @@ export default function GameHubHero({
             replayTeam={replayTeam}
             playStartSpot={playStartSpot}
             players={players}
+            plays={plays}
           />
         ) : (
           <div className="h-2" aria-hidden="true" />

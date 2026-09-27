@@ -1346,3 +1346,97 @@ export function matchRushPlayer(hint, players, sideAbbrev = '') {
   }
   return scored[0].p
 }
+
+const DRIVE_BREAK_PLAY = /\bkick(?:s|ed)?\s+off\b|\bkickoff\b|\bkicks\s+-?\d+\s+yards?\s+from\b|\bpunts?\b|\bintercept(?:ed|ion)?\b/i
+const DRIVE_SKIP_PLAY =
+  /\bfield\s+goal\b|\bextra\s+point\b|\bkick\s+attempt\b|\bpat\b|\btwo[-\s]point\b|\b2[-\s]?pt\b|\btimeout\b|\bend\s+of\s+(?:the\s+)?(?:\d\w*\s+)?(?:period|half|quarter|game)\b|\bno\s+play\b/i
+const THROWN_TO_SPOT = /\bthrown\s+to\s+(?:the\s+)?[A-Za-z]{2,6}\s*(\d{1,2})\b/i
+const INCOMPLETE_DIR = /\bincomplete\b(?:\s+(short|deep))?(?:\s+(left|right|middle))?/i
+const PASS_DIR_ANYWHERE = /\b(short|deep)\s+(left|right|middle)\b/i
+const INCOMPLETE_DEPTH_YDS = { short: 7, deep: 20, none: 10 }
+
+function playHalf(period) {
+  const n = Number(period)
+  return Number.isFinite(n) && n >= 3 ? 2 : 1
+}
+
+function playHasSpot(play) {
+  return hasYardSpot(play?.start_spot) || hasYardSpot(play?.end_spot)
+}
+
+/**
+ * Current possession's drive chart … rushes / completions / sacks as LOS → new LOS lines, incompletions
+ * as a short arc to a red X. Empty once the ball changes hands (kickoff, punt, pick) or the half ends.
+ * @returns {{ team: 'home'|'away'|null, attackDir: number, marks: Array<{
+ *   key: string, kind: 'line'|'incomplete', text: string, fromPct: number, toPct: number,
+ *   lateral: -1|0|1, isNewest: boolean
+ * }> }}
+ */
+export function buildPossessionDriveMarks(plays) {
+  const empty = { team: null, attackDir: 1, marks: [] }
+  const newestFirst = sortPlaysNewestFirst(plays).filter(playHasSpot)
+  if (!newestFirst.length) return empty
+  const head = newestFirst[0]
+  const team = head?.team === 'home' || head?.team === 'away' ? head.team : null
+  if (!team || DRIVE_BREAK_PLAY.test(String(head?.description || ''))) return empty
+  const half = playHalf(head.period)
+  const drive = []
+  for (const row of newestFirst) {
+    if (row.team !== team || playHalf(row.period) !== half) break
+    if (DRIVE_BREAK_PLAY.test(String(row.description || ''))) break
+    drive.unshift(row)
+  }
+  const flipped = half === 2
+  const attackDir = attackDirection(team, flipped)
+  const goalPct = attackDir > 0 ? 100 : 0
+  const marks = []
+  let prevEnd = null
+  drive.forEach((row, i) => {
+    const text = String(row.description || '').trim()
+    const startPct = playSpotFieldPercent(row.start_spot, flipped) ?? prevEnd
+    const next = drive[i + 1]
+    let endPct = playSpotFieldPercent(row.end_spot, flipped) ?? playSpotFieldPercent(next?.start_spot, flipped)
+    if (playTextIsTouchdown(text)) endPct = goalPct
+    if (endPct != null) prevEnd = endPct
+    if (startPct == null || DRIVE_SKIP_PLAY.test(text)) return
+    if (/\bpenalty\b/i.test(text) && !/\b(?:pass|rush|run|ran|sacked|scrambles?)\b/i.test(text)) return
+    const key = String(row.id || `${i}:${text.slice(0, 24)}`)
+    const isNewest = row === head
+    const inc = INCOMPLETE_DIR.exec(text)
+    if (inc) {
+      const dir = PASS_DIR_ANYWHERE.exec(text)
+      const depth = (inc[1] || dir?.[1] || '').toLowerCase()
+      const side = (inc[2] || dir?.[2] || '').toLowerCase()
+      let yds = INCOMPLETE_DEPTH_YDS[depth] ?? INCOMPLETE_DEPTH_YDS.none
+      // "thrown to USC40" … the text abbrev can differ from the board's, so take whichever side of the
+      // field puts the spot downfield of the LOS.
+      const thrown = THROWN_TO_SPOT.exec(text)
+      if (thrown) {
+        const yl = Number(thrown[1])
+        const depths = [yl, 100 - yl]
+          .map((p) => (p - startPct) * attackDir)
+          .filter((d) => d >= -1 && d <= 60)
+          .sort((a, b) => a - b)
+        if (depths.length) yds = Math.max(3, depths[0])
+      }
+      marks.push({
+        key,
+        kind: 'incomplete',
+        text,
+        fromPct: startPct,
+        toPct: Math.max(0, Math.min(100, startPct + attackDir * yds)),
+        lateral: side === 'right' ? 1 : side === 'left' ? -1 : 0,
+        isNewest,
+      })
+      return
+    }
+    if (endPct == null) {
+      const m = /\bfor\s+(?:a\s+)?(?:loss\s+of\s+)?(-?\d+)\s+(?:yards?|yds?)\b/i.exec(text)
+      if (!m) return
+      const loss = /\bloss\s+of\b/i.test(m[0])
+      endPct = startPct + attackDir * (loss ? -Math.abs(Number(m[1])) : Number(m[1]))
+    }
+    marks.push({ key, kind: 'line', text, fromPct: startPct, toPct: endPct, lateral: 0, isNewest })
+  })
+  return { team, attackDir, marks }
+}

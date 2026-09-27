@@ -3924,7 +3924,8 @@ function FieldViz({
           <div
             key={fantasyToast.key}
             data-lounge-play-fantasy-points
-            className="lounge-play-fantasy-toast pointer-events-none absolute inset-x-0 bottom-[6%] z-[8] flex flex-wrap items-center justify-center gap-1.5 px-3"
+            // Bottom edge just above the top hash row (y≈281 of 533) … `bottom`, since the keyframes own `transform`.
+            className="lounge-play-fantasy-toast pointer-events-none absolute inset-x-0 bottom-[48%] z-[8] flex flex-wrap items-center justify-center gap-1.5 px-3"
             aria-live="polite"
           >
             {fantasyToast.rows.map((r) => (

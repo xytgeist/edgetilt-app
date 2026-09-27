@@ -109,7 +109,7 @@ const KICK_SCENARIOS = [
  * Punt return. `receiving` fields it; the other side punts from its own `losYard` (4th & 8).
  * Punt yards run from the LOS (ESPN gross); the punter lines up 15 yd behind it.
  */
-function puntText({ format, receiving, losYard, puntYards, returnYards, touchdown, fairCatch }) {
+function puntText({ format, receiving, losYard, puntYards, returnYards, touchdown, fairCatch, touchback }) {
   const recAb = receiving === 'home' ? MOCK_GAME.home.abbrev : MOCK_GAME.away.abbrev
   const puntAb = receiving === 'home' ? MOCK_GAME.away.abbrev : MOCK_GAME.home.abbrev
   const spot = (own) => (own > 50 ? { ab: recAb, y: 100 - own } : { ab: puntAb, y: own })
@@ -117,6 +117,12 @@ function puntText({ format, receiving, losYard, puntYards, returnYards, touchdow
   const ret = touchdown ? losYard + puntYards : returnYards
   const end = spot(losYard + puntYards - ret)
   const pad = (y) => String(y).padStart(2, '0')
+  if (touchback) {
+    const yds = 100 - losYard
+    return format === 'nfl'
+      ? `T.Way punts ${yds} yards to end zone, Center-C.Stephens, Touchback.`
+      : `#48 E.Jasso punt ${yds} yards to the ${recAb}00, Touchback`
+  }
   if (fairCatch) {
     return format === 'nfl'
       ? `T.Way punts ${puntYards} yards to ${land.ab} ${land.y}, Center-C.Stephens, fair catch by K.Turpin.`
@@ -146,6 +152,8 @@ const PUNT_SCENARIOS = [
   { id: 'pu-kc-fc', label: 'Fair catch NFL · ARI punts own 30 · 45 yds', format: 'nfl', receiving: 'home', losYard: 30, puntYards: 45, fairCatch: true },
   { id: 'pu-ari-fc', label: 'Fair catch CFB · KC punts own 35 · 50 yds', format: 'cfb', receiving: 'away', losYard: 35, puntYards: 50, fairCatch: true },
   { id: 'pu-loss', label: 'Punt CFB Q3 · ARI punts own 14 · 53 yds · KC ret loss of 6', format: 'cfb', receiving: 'home', losYard: 14, puntYards: 53, returnYards: -6, half: 3 },
+  { id: 'pu-tb-cfb', label: 'Punt touchback CFB · ARI punts own 46', format: 'cfb', receiving: 'home', losYard: 46, puntYards: 54, touchback: true },
+  { id: 'pu-tb-nfl', label: 'Punt touchback NFL · KC punts own 40', format: 'nfl', receiving: 'away', losYard: 40, puntYards: 60, touchback: true },
   { id: 'pu-kc-td', label: 'Punt return TD · ARI punts own 20 · KC scores', format: 'nfl', receiving: 'home', losYard: 20, puntYards: 45, touchdown: true },
 ]
 

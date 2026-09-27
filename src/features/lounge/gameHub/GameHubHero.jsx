@@ -33,6 +33,7 @@ import {
   parseInterceptionReturn,
   parseKickoffReturn,
   parseKickoffTouchback,
+  parsePuntTouchback,
   parsePassPlay,
   parsePuntReturn,
   parseRushPlay,
@@ -97,6 +98,8 @@ const PICK_RETURN_MAX_MS = 2600
 const PICK_DOWN_SETTLE_MS = 350
 /** Non-scoring pick: pause at the return spot before the TURNOVER banner. */
 const PICK_DOWN_HOLD_MS = 900
+/** Interception touchback: caught this deep in the end zone (end line is 10 yd deep). */
+const PICK_TOUCHBACK_DEPTH_YDS = 6
 /** Kickoff hang time (tee → returner's tuck). */
 const KICK_FLIGHT_MS = 2100
 /** Punt hang time (punter → returner's tuck). */
@@ -761,7 +764,7 @@ function quadBezier(p0, p1, p2, t) {
 
 /**
  * Ball arcs from `start` into the end zone at `goalPct` (traveling `dir`), lands TOUCHBACK_LAND_DEPTH_YDS
- * deep, then hops out the back and fades. Shared by kickoff + interception touchbacks.
+ * deep, then hops out the back and fades. Shared by kickoff + punt touchbacks.
  * @returns {{ frameAt: (elapsed: number) => { ball: {x:number,y:number}, rotate: number, opacity: number }, totalMs: number }}
  */
 function touchbackBallFrames({ start, goalPct, dir, flightMs, arcLift }) {
@@ -2132,8 +2135,8 @@ function FieldViz({
       goalPct = defDir > 0 ? 100 : 0
       pickPct = clampPct(goalPct - defDir * returnYards)
     } else if (parsed.touchback) {
-      // Picked in the end zone the offense was attacking … downed there.
-      pickPct = offDir > 0 ? 100 : 0
+      // Picked deep in the end zone the offense was attacking … downed there.
+      pickPct = (offDir > 0 ? 100 : 0) + offDir * PICK_TOUCHBACK_DEPTH_YDS
       goalPct = pickPct
     } else {
       // Return ends at the new LOS: row end spot, else live spot once possession flipped.
@@ -2172,7 +2175,12 @@ function FieldViz({
 
     const losX = fieldMidXFromPercent(losPct)
     const pickX = fieldMidXFromPercent(pickPct)
-    const startX = fieldMidXFromPercent(clampPct(pickPct + offDir * PICK_DEFENDER_DEPTH_YDS))
+    // End zone is 10 yd deep … a touchback defender starts near the end line, not past it.
+    const startX = fieldMidXFromPercent(
+      !isTouchdown && parsed.touchback
+        ? (offDir > 0 ? 100 : 0) + offDir * 9
+        : clampPct(pickPct + offDir * PICK_DEFENDER_DEPTH_YDS),
+    )
     const goalX = fieldMidXFromPercent(goalPct)
     const returnDist = Math.abs(goalPct - pickPct)
     const returnMs = !isTouchdown && returnDist < 0.5
@@ -2205,50 +2213,6 @@ function FieldViz({
     if (prefersReducedMotion()) {
       setPickAnim(null)
       return undefined
-    }
-
-    // Pick in the end zone for a touchback: no defender … the ball lands deep and bounces out the back.
-    if (!isTouchdown && parsed.touchback) {
-      const { frameAt, totalMs: tbMs } = touchbackBallFrames({
-        start: base.ballStart,
-        goalPct: offDir > 0 ? 100 : 0,
-        dir: offDir,
-        flightMs: PICK_THROW_MS,
-        arcLift: catchArcLiftFromYards(airYards),
-      })
-      setPickAnim({
-        ...base,
-        touchback: true,
-        figX: pickX,
-        ballT: 0,
-        showFigure: false,
-        showBall: false,
-        showTrail: false,
-        showTdLabel: false,
-        linesOpacity: 1,
-        tb: frameAt(0),
-        playing: true,
-      })
-      const t0 = performance.now()
-      const tick = (now) => {
-        const elapsed = now - t0
-        if (elapsed >= tbMs) {
-          pickRafRef.current = 0
-          if (!isUserReplay) lastAutoPlayedKeyRef.current = animKey
-          setPickAnim(null)
-          return
-        }
-        const tb = frameAt(elapsed)
-        setPickAnim((prev) => (prev && prev.playKey === animKey ? { ...prev, tb } : prev))
-        pickRafRef.current = requestAnimationFrame(tick)
-      }
-      pickRafRef.current = requestAnimationFrame(tick)
-      return () => {
-        if (!pickRafRef.current) return
-        cancelAnimationFrame(pickRafRef.current)
-        pickRafRef.current = 0
-        if (pickKeyRef.current === animKey) pickKeyRef.current = ''
-      }
     }
 
     // Non-scoring pick: brief hold at the return spot, then the TURNOVER banner takes over.
@@ -2334,7 +2298,8 @@ function FieldViz({
     if (!playAnimReady) return undefined
     const kickoff = parseKickoffReturn(lastPlayText)
     const punt = kickoff ? null : parsePuntReturn(lastPlayText)
-    const touchback = kickoff || punt ? null : parseKickoffTouchback(lastPlayText)
+    const touchback = kickoff || punt ? null : parseKickoffTouchback(lastPlayText) || parsePuntTouchback(lastPlayText)
+    const puntTouchback = touchback?.punt === true
     const parsed = kickoff || punt || touchback
     if (!parsed) {
       if (kickKeyRef.current && animKey !== kickKeyRef.current) {
@@ -2350,7 +2315,7 @@ function FieldViz({
     const livePoss = ctx.live?.possession === 'home' || ctx.live?.possession === 'away' ? ctx.live.possession : null
     // NFL kickoffs name the kicking spot; CFB only the return spot (usually the receiver's own
     // territory). Punts: the feed row team is the punter; after the play live possession flips.
-    const receiving = punt
+    const receiving = punt || puntTouchback
       ? other(ctx.feedTeam) || sideForFeedAbbrev(parsed.landAbbrev, ctx.game) || livePoss
       : other(sideForFeedAbbrev(parsed.kickFromAbbrev, ctx.game)) ||
         sideForFeedAbbrev(parsed.landAbbrev, ctx.game) ||
@@ -2384,8 +2349,22 @@ function FieldViz({
         setKickAnim(null)
         return undefined
       }
-      const kickFromYard = Number.isFinite(touchback.kickFromYard) ? touchback.kickFromYard : 35
-      const start = { x: fieldMidXFromPercent(kickOwnGoal + kickDir * kickFromYard), y: RUSH_Y - 6 }
+      let kickFromPct
+      if (puntTouchback) {
+        // Punter stands PUNT_DEPTH_YDS behind the LOS; punt yards run LOS → receiving goal line.
+        const settled = settledLinesRef.current
+        const losPct =
+          ctx.knownStartPct != null
+            ? ctx.knownStartPct
+            : settled.scrimPct != null && Number.isFinite(settled.scrimPct)
+              ? settled.scrimPct
+              : recOwnGoal - kickDir * (Number.isFinite(touchback.puntYards) ? touchback.puntYards : PUNT_DEFAULT_YDS)
+        kickFromPct = losPct - kickDir * PUNT_DEPTH_YDS
+      } else {
+        const kickFromYard = Number.isFinite(touchback.kickFromYard) ? touchback.kickFromYard : 35
+        kickFromPct = kickOwnGoal + kickDir * kickFromYard
+      }
+      const start = { x: fieldMidXFromPercent(kickFromPct), y: RUSH_Y - 6 }
       const { frameAt, totalMs } = touchbackBallFrames({
         start,
         goalPct: recOwnGoal,
@@ -3590,15 +3569,6 @@ function FieldViz({
           {kickBall ? (
             <g transform={`translate(${kickBall.x - 12} ${kickBall.y - 9})`}>
               <AmericanFootballMark tone="field" size={24} rotate={kickBallRotate} />
-            </g>
-          ) : null}
-          {pickAnim?.touchback && pickAnim.tb?.opacity > 0 ? (
-            <g
-              data-lounge-pick-anim="touchback"
-              opacity={pickAnim.tb.opacity}
-              transform={`translate(${pickAnim.tb.ball.x - 12} ${pickAnim.tb.ball.y - 9})`}
-            >
-              <AmericanFootballMark tone="field" size={24} rotate={pickAnim.tb.rotate} />
             </g>
           ) : null}
           {pickBall ? (

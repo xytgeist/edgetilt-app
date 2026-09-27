@@ -816,6 +816,19 @@ export function parseKickoffTouchback(text) {
   return { kickYards: Number(cfb[1]), kickFromAbbrev: null, kickFromYard: null, landAbbrev: cfb[2] ? cfb[2].toUpperCase() : null }
 }
 
+/**
+ * Punt touchback. ESPN CFB: "#43 M.Chiumento punt 54 yards to the TENN00, Touchback";
+ * NFL: "T.Townsend punts 60 yards to end zone, Center-M.Cox, Touchback."
+ * @returns {{ puntYards: number|null, punt: true } | null}
+ */
+export function parsePuntTouchback(text) {
+  const raw = String(text || '').trim()
+  if (!raw || !/\btouchback\b/i.test(raw) || /\bno\s+play\b|\bblocked\b/i.test(raw)) return null
+  const m = raw.match(/\bpunts?\s+(?:for\s+)?(-?\d+)\s+(?:yards?|yds?)\b/i)
+  if (!m && !/\bpunts?\b/i.test(raw)) return null
+  return { puntYards: m ? Number(m[1]) : null, punt: true }
+}
+
 const KICK_RETURNER_NAME =
   '((?:#?\\d{1,2}\\s+)?[A-Za-z][A-Za-z.\'’-]*(?:\\s+[A-Za-z][A-Za-z.\'’-]*){0,2}?)'
 
@@ -1010,7 +1023,9 @@ export function isFieldReplayablePlay(text) {
       parseInterceptionReturn(text) ||
       parseInterceptionPlay(text) ||
       parseKickoffReturn(text) ||
-      parsePuntReturn(text),
+      parsePuntReturn(text) ||
+      parseKickoffTouchback(text) ||
+      parsePuntTouchback(text),
   )
 }
 

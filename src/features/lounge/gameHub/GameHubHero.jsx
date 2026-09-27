@@ -49,6 +49,7 @@ import {
   scoreText,
   yardLineLabel,
 } from './gameHubFormatters.js'
+import { armGameHubWhistle, playGameHubWhistle } from './gameHubWhistle.js'
 
 /** RB slide duration (start LOS → gain yardage). */
 const RUSH_RUN_MS = 1100
@@ -3790,6 +3791,30 @@ export default function GameHubHero({
   const awayLabel = hubTeamLabel(game.away, game.status, game.sport_key)
   const homeLabel = hubTeamLabel(game.home, game.status, game.sport_key)
   const preLabels = game.status === 'pre'
+
+  // Whistle on kickoff (pre → live) and when the 3rd quarter starts … only for transitions seen
+  // while this hero is up, never on first paint or when switching games.
+  const livePeriod = Number(live?.period ?? feedGame?.live?.period)
+  const whistlePhase = !isFootball
+    ? ''
+    : game.status === 'pre'
+      ? 'pre'
+      : game.status === 'in'
+        ? Number.isFinite(livePeriod) && livePeriod >= 3 ? 'h2' : 'h1'
+        : 'post'
+  const whistleGameId = String(game.id || '')
+  const whistleSeenRef = useRef({ id: '', phase: '' })
+  useEffect(() => {
+    armGameHubWhistle()
+  }, [])
+  useEffect(() => {
+    const prev = whistleSeenRef.current
+    whistleSeenRef.current = { id: whistleGameId, phase: whistlePhase }
+    if (!whistlePhase || !prev.phase || prev.id !== whistleGameId) return
+    const kickoff = prev.phase === 'pre' && (whistlePhase === 'h1' || whistlePhase === 'h2')
+    const secondHalf = prev.phase === 'h1' && whistlePhase === 'h2'
+    if (kickoff || secondHalf) playGameHubWhistle()
+  }, [whistleGameId, whistlePhase])
 
   return (
     <div

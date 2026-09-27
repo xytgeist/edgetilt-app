@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import GameHubHero from './GameHubHero.jsx'
+import { playGameHubWhistle } from './gameHubWhistle.js'
 
 const MOCK_GAME = {
   sport_key: 'americanfootball_nfl',
@@ -545,6 +546,13 @@ export default function FgKickTestPage() {
             onClick={() => fireTurnover('fumble')}
           >
             Fumble lost
+          </button>
+          <button
+            type="button"
+            className="rounded-md bg-amber-600 px-3 py-1.5 text-[12px] font-semibold text-white"
+            onClick={() => playGameHubWhistle()}
+          >
+            Whistle (kickoff / 2nd half)
           </button>
           {['short left', 'deep right', 'short middle'].map((dir) => (
             <button

@@ -24,6 +24,14 @@ const MOCK_GAME = {
   },
 }
 
+/** `?away=BAL&home=DAL` swaps the mock teams (NFL abbrevs) to check kit / end zone colors. */
+for (const key of ['away', 'home']) {
+  const ab = typeof window === 'undefined' ? '' : String(new URLSearchParams(window.location.search).get(key) || '').trim().toUpperCase()
+  if (/^[A-Z]{2,3}$/.test(ab)) {
+    MOCK_GAME[key] = { ...MOCK_GAME[key], name: ab, abbrev: ab, logo: `/sports/nfl/logos/${ab}.png`, primary: undefined }
+  }
+}
+
 function buildLive({ possession, period, yardLine }) {
   return {
     possession,

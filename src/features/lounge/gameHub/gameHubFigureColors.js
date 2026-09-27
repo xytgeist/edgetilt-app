@@ -42,7 +42,7 @@ export const NFL_TEAM_KITS = {
   SF:  { helmet: '#B3995D', pants: '#B3995D' },
   SEA: { helmet: '#002244', pants: '#002244' },
   TB:  { helmet: '#54585A', pants: '#54585A' },
-  TEN: { helmet: '#FFFFFF', pants: '#0C2340' },
+  TEN: { helmet: '#0C2340', pants: '#FFFFFF' },
   WAS: { helmet: '#5A1414', pants: '#FFB612' },
 }
 

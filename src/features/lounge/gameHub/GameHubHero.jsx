@@ -3354,14 +3354,14 @@ function FieldViz({
             </filter>
             {/* Endzone lighting gradients */}
             <linearGradient id="ez-left-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor={leftEndzone.gradSheen} stopOpacity="0.84" />
-              <stop offset="45%" stopColor={leftEndzone.gradMid} stopOpacity="0.78" />
-              <stop offset="100%" stopColor={leftEndzone.gradDeep} stopOpacity="0.86" />
+              <stop offset="0%" stopColor={leftEndzone.gradSheen} stopOpacity={0.84 + leftEndzone.washOpacityBoost} />
+              <stop offset="45%" stopColor={leftEndzone.gradMid} stopOpacity={0.78 + leftEndzone.washOpacityBoost} />
+              <stop offset="100%" stopColor={leftEndzone.gradDeep} stopOpacity={0.86 + leftEndzone.washOpacityBoost} />
             </linearGradient>
             <linearGradient id="ez-right-grad" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" stopColor={rightEndzone.gradSheen} stopOpacity="0.84" />
-              <stop offset="45%" stopColor={rightEndzone.gradMid} stopOpacity="0.78" />
-              <stop offset="100%" stopColor={rightEndzone.gradDeep} stopOpacity="0.86" />
+              <stop offset="0%" stopColor={rightEndzone.gradSheen} stopOpacity={0.84 + rightEndzone.washOpacityBoost} />
+              <stop offset="45%" stopColor={rightEndzone.gradMid} stopOpacity={0.78 + rightEndzone.washOpacityBoost} />
+              <stop offset="100%" stopColor={rightEndzone.gradDeep} stopOpacity={0.86 + rightEndzone.washOpacityBoost} />
             </linearGradient>
           </defs>
 

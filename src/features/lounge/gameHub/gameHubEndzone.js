@@ -66,13 +66,16 @@ export function resolveEndzoneDesign(side, fallbackColor = '#3f3f46', sideKey = 
   const secondary = side?.color2 || catalog?.color2 || '#ffffff'
 
   // Turf wash luminance clamping:
-  // Deep black / midnight navy teams (Raiders, Steelers, Bears, Texans) are lifted
-  // to a rich slate so turf texture remains visible underneath without mud.
+  // Neutral blacks (Raiders, Steelers) are lifted to a rich slate so turf texture stays visible.
+  // Navy primaries (DAL / NE / SEA / CHI / HOU) keep their hue ... lifting them reads grey-blue.
   let wash = primary
-  const lum = hexLuminance(primary)
-  if (lum < 0.02) {
+  const rgb = hexToRgb(primary)
+  const chroma = rgb ? Math.max(rgb.r, rgb.g, rgb.b) - Math.min(rgb.r, rgb.g, rgb.b) : 0
+  if (hexLuminance(primary) < 0.02 && chroma < 24) {
     wash = mixHex(primary, '#ffffff', 0.20)
   }
+  // Turf green bleeding through a deep navy wash reads teal ... paint those a bit more opaque.
+  const washOpacityBoost = hexLuminance(primary) < 0.02 && chroma >= 24 ? 0.1 : 0
 
   // 3-stop lighting gradient across the 3D stadium surface (subtle paint wash showing grass texture)
   const gradSheen = mixHex(wash, '#ffffff', 0.18)
@@ -113,6 +116,7 @@ export function resolveEndzoneDesign(side, fallbackColor = '#3f3f46', sideKey = 
     gradSheen,
     gradMid,
     gradDeep,
+    washOpacityBoost,
     fontSize,
     letterSpacing,
     textFill,

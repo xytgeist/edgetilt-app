@@ -36,6 +36,7 @@ import {
   resolvePlayStartSpot,
   scoreText,
   sortPlaysNewestFirst,
+  withFreshestLiveClock,
 } from './gameHub/gameHubFormatters.js'
 
 /**
@@ -96,7 +97,8 @@ export default function LoungeGameHubModal({
     return `${mascot(game.away)} ${mascot(game.home)}`.trim().slice(0, 80)
   }, [game])
 
-  const live = detail.live || game?.live || null
+  const baseLive = detail.live || game?.live || null
+  const live = useMemo(() => withFreshestLiveClock(baseLive, game, detail.plays), [baseLive, game, detail.plays])
   const newestFeedPlay = sortPlaysNewestFirst(detail.plays)[0]
   const lastPlay = String(live?.last_play || newestFeedPlay?.description || '').trim()
   const fieldPlayText = String(fieldReplay.text || lastPlay).trim()

@@ -71,6 +71,42 @@ export function liveClockLabel(game, live) {
   return game.status_label || 'Live'
 }
 
+function clockSeconds(clock) {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(String(clock || '').trim())
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null
+}
+
+/**
+ * Most advanced period + clock across the hub's ESPN reads … the game detail poll, the slate row
+ * (`game.live` / "Q3 10:33" `status_label`) and the newest PBP "(mm:ss)" snap stamps. Each can lag on its own
+ * (Q3 stuck at 15:00 while plays run), so take whichever is furthest into the game.
+ * @returns {object|null} `live` with `period` / `clock` replaced when a fresher pair exists
+ */
+export function withFreshestLiveClock(live, game, plays) {
+  if (game?.status !== 'in') return live
+  const cands = []
+  const push = (period, clock) => {
+    const p = Number(period)
+    const s = clockSeconds(clock)
+    if (Number.isFinite(p) && p >= 1 && s != null) cands.push({ p, s, clock: String(clock).trim() })
+  }
+  push(live?.period, live?.clock)
+  push(game?.live?.period, game?.live?.clock)
+  const label = /^Q(\d)\s+(\d{1,2}:\d{2})$/.exec(String(game?.status_label || '').trim())
+  if (label) push(label[1], label[2])
+  for (const row of Array.isArray(plays) ? plays : []) {
+    const stamp = /^\s*\((\d{1,2}:\d{2})\)/.exec(String(row?.description || ''))?.[1]
+    if (stamp) push(row.period, stamp)
+  }
+  const curP = Number(live?.period)
+  const curS = clockSeconds(live?.clock)
+  // Halftime / end-of-period boards carry no running clock … leave those alone.
+  if (!cands.length || !Number.isFinite(curP) || curS == null) return live
+  const best = cands.reduce((a, b) => (b.p > a.p || (b.p === a.p && b.s < a.s) ? b : a))
+  if (best.p < curP || (best.p === curP && best.s >= curS)) return live
+  return { ...live, period: best.p, clock: best.clock }
+}
+
 /** Drop trailing zone tokens (PDT, EST, GMT+1, …) from a kickoff label. */
 export function stripTimeZoneSuffix(label) {
   const s = String(label || '').trim()
@@ -80,10 +116,23 @@ export function stripTimeZoneSuffix(label) {
     .trim()
 }
 
+/** Yards from the ball to the offense's goal line, or null when possession / territory is unknown. */
+function yardsToGoal(live) {
+  const t = normalizeYardTerritory(live)
+  if (!t) return null
+  if (t.midfield) return 50
+  const poss = live?.possession
+  if (!t.side || (poss !== 'home' && poss !== 'away')) return null
+  return t.side === poss ? 100 - t.yard : t.yard
+}
+
 export function downDistanceLabel(live) {
   if (!live) return ''
   const down = live.down != null ? ordinal(live.down) : ''
   const dist = live.distance != null && Number.isFinite(Number(live.distance)) ? String(live.distance) : ''
+  // Line to gain at or past the goal line … no first down without a flag, so it's "& Goal".
+  const toGoal = yardsToGoal(live)
+  if (down && dist && toGoal != null && Number(dist) >= toGoal) return `${down} & Goal`
   if (down && dist) return `${down} & ${dist}`
   if (down) return down
   return ''

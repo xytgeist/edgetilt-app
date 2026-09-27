@@ -1519,6 +1519,17 @@ function playHalf(period) {
   return Number.isFinite(n) && n >= 3 ? 2 : 1
 }
 
+/**
+ * Live clock has moved into the next half but the feed's newest row is still from the last one (Q3 15:00
+ * before the kickoff lands) … its drive, LOS and down/distance are stale.
+ */
+export function playsFromEarlierHalf(plays, livePeriod) {
+  const live = Number(livePeriod)
+  const newest = sortPlaysNewestFirst(plays).find((row) => Number.isFinite(Number(row?.period)))
+  if (!Number.isFinite(live) || !newest) return false
+  return playHalf(newest.period) < playHalf(live)
+}
+
 /** Snap yardage before any penalty clause: "for 3 yards", "for loss of 6 yards", "for -2 yards", "no gain". */
 function playYardsFromText(text) {
   const raw = String(text || '')
@@ -1544,8 +1555,9 @@ function playHasSpot(play) {
  *   lateral: number (-1 left … 1 right of the offense), isNewest: boolean, flagTeam?: string (penalized abbrev)
  * }> }}
  */
-export function buildPossessionDriveMarks(plays, { keepScoringDrive = false } = {}) {
+export function buildPossessionDriveMarks(plays, { keepScoringDrive = false, livePeriod = null } = {}) {
   const empty = { team: null, attackDir: 1, marks: [] }
+  if (playsFromEarlierHalf(plays, livePeriod)) return empty
   let newestFirst = sortPlaysNewestFirst(plays).filter(playHasSpot)
   // Scoring drive mode: skip a trailing PAT / 2-pt row so the offensive TD row leads and its drive is kept.
   if (keepScoringDrive) {

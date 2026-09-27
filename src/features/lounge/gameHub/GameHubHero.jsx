@@ -40,6 +40,7 @@ import {
   playTextIsScoreTry,
   buildPossessionDriveMarks,
   drivePlayShortLabel,
+  playsFromEarlierHalf,
   lastBallPlayText,
   latestPlayScore,
   playTextIsTouchdown,
@@ -1309,9 +1310,11 @@ function FieldViz({
   const [heldTdTeam, setHeldTdTeam] = useState('')
   // TD / PAT still the latest row and no stoppage banner = the TD label's lifetime … keep the scoring drive up with it.
   const tdDriveHold = Boolean(isFootball && lastPlayText && playTextIsScoreTry(lastPlayText) && !centerBanner)
+  const livePeriod = live?.period
+  const staleHalf = Boolean(isFootball && game?.status === 'in' && playsFromEarlierHalf(plays, livePeriod))
   const drive = useMemo(
-    () => (isFootball ? buildPossessionDriveMarks(plays, { keepScoringDrive: tdDriveHold }) : null),
-    [isFootball, plays, tdDriveHold],
+    () => (isFootball ? buildPossessionDriveMarks(plays, { keepScoringDrive: tdDriveHold, livePeriod }) : null),
+    [isFootball, plays, tdDriveHold, livePeriod],
   )
   const [throwDoneKey, setThrowDoneKey] = useState('')
   const onThrowDone = useCallback(
@@ -2704,6 +2707,7 @@ function FieldViz({
     hasLine &&
     !hideLiveLines &&
     !suppressPostTdMarkers &&
+    (!staleHalf || kickAnim != null) &&
     (!kickAnim || kickLinesUp) &&
     displayScrimPct != null &&
     linesFadeOpacity > 0.02
@@ -3769,8 +3773,10 @@ export default function GameHubHero({
   const clock = liveClockLabel(game, live)
   const isFinal = game.status === 'post'
   // Final: clock still says Final … drop stale down/distance + yard line.
-  const down = isFinal ? null : downDistanceLabel(live)
-  const yard = isFinal ? null : yardLineLabel(game, live)
+  // New half before its kickoff row … ESPN still carries the last snap's down / spot.
+  const staleHalf = game.status === 'in' && playsFromEarlierHalf(plays, live?.period)
+  const down = isFinal || staleHalf ? null : downDistanceLabel(live)
+  const yard = isFinal || staleHalf ? null : yardLineLabel(game, live)
   const isFootball = String(game.sport_key || '').includes('football')
   const showLiveChrome = isFootball && game.status === 'in'
   const awayHasBall = showLiveChrome && live?.possession === 'away'

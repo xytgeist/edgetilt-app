@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-26:** **Game hub: white laces (Mac).** 1.4.801: field-tone `AmericanFootballMark` laces are white (NFL + college) over a thin dark underlay for contrast; chalk tone unchanged.
 - **2026-09-26:** **Game hub: NFL balls have no stripes (Mac).** 1.4.800: `AmericanFootballMark` draws the end stripes only when `college` … every field ball (LOS, pass, pick, kick, touchback, FG, drive-chart incompletion) now gets `college={isCfbSport}`, so NFL games show plain leather.
 - **2026-09-26:** **Game hub: CFB spiral stripes only on the laces side (Mac).** 1.4.799: `AmericanFootballMark` `college` prop … while spiraling, the end stripes are clipped to the laces-side half-band (roll ± 90° ∩ near side), so they roll with the laces and vanish when the laces are behind. NFL thrown balls keep full rings. `/play-anim-test` gains an NFL / CFB ball toggle.
 - **2026-09-26:** **Game hub: thrown balls spiral on the long axis (Mac).** 1.4.798: `AmericanFootballMark` `spiral` prop (degrees) … laces slide over the top edge / squash edge-on / hide on the far side, four panel seams ride the body curve. `passSpiral(flightT)` = 5 whole turns per flight (laces land back on top, no snap) on completions, pick throws and drive-chart incompletions. Kicks keep the end-over-end tumble.

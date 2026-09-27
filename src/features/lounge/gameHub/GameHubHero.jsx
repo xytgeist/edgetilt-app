@@ -1170,26 +1170,14 @@ function AmericanFootballMark({
           fill={isChalk ? '#e4e4e7' : '#5c3318'}
           opacity={isChalk ? 0.35 : 0.35}
         />
-        <line
-          x1="-2.55"
-          y1="0"
-          x2="2.55"
-          y2="0"
-          stroke={isChalk ? '#18181b' : '#0c0704'}
-          strokeWidth="0.95"
-          strokeLinecap="round"
-        />
-        {[-1.55, -0.55, 0.55, 1.55].map((x) => (
-          <line
-            key={x}
-            x1={x}
-            y1="-1.65"
-            x2={x}
-            y2="1.65"
-            stroke={isChalk ? '#18181b' : '#0c0704'}
-            strokeWidth="0.75"
-            strokeLinecap="round"
-          />
+        {/* Field laces are white on both NFL + college balls … a dark underlay keeps them crisp on the leather. */}
+        {(isChalk ? [['#18181b', 0]] : [['#1a0e08', 0.5], ['#fafafa', 0]]).map(([stroke, pad]) => (
+          <g key={stroke} stroke={stroke} strokeLinecap="round" strokeOpacity={pad ? 0.7 : 1}>
+            <line x1="-2.55" y1="0" x2="2.55" y2="0" strokeWidth={0.95 + pad} />
+            {[-1.55, -0.55, 0.55, 1.55].map((x) => (
+              <line key={x} x1={x} y1="-1.65" x2={x} y2="1.65" strokeWidth={0.75 + pad} />
+            ))}
+          </g>
         ))}
         </g>
         </g>

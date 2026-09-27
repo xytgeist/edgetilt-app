@@ -740,6 +740,16 @@ function FieldViz({
         )
       : null
 
+  const feedFirstDownPct = isFootball ? firstDownPercentFromLive(live, pos, fieldFlipped) : null
+  /** Last feed line to gain + its LOS … ESPN drops down/distance while a timeout is on. */
+  const [heldFirstDown, setHeldFirstDown] = useState(null)
+  if (
+    feedFirstDownPct != null &&
+    (heldFirstDown?.pos !== pos || heldFirstDown?.pct !== feedFirstDownPct)
+  ) {
+    setHeldFirstDown({ pos, pct: feedFirstDownPct })
+  }
+
   const [rushAnim, setRushAnim] = useState(null)
   const [catchAnim, setCatchAnim] = useState(null)
   const [fgAnim, setFgAnim] = useState(null)
@@ -1645,9 +1655,12 @@ function FieldViz({
     }
     // After a TD / try, ESPN reports the try spot … don't adopt that as LOS/ball.
     if (lastPlayText && playTextIsScoreTry(lastPlayText)) return
+    const prior = settledLinesRef.current
     settledLinesRef.current = {
       scrimPct: pos,
-      firstDownPct: firstDownPercentFromLive(live, pos, fieldFlipped),
+      firstDownPct:
+        firstDownPercentFromLive(live, pos, fieldFlipped) ??
+        (centerBanner === 'TIMEOUT' && prior.scrimPct === pos ? prior.firstDownPct : null),
     }
   }, [
     rushAnim,
@@ -1657,6 +1670,7 @@ function FieldViz({
     hasLine,
     pos,
     hideLiveLines,
+    centerBanner,
     fieldFlipped,
     live?.possession,
     live?.down,
@@ -1691,7 +1705,9 @@ function FieldViz({
       : tdAnim
         ? tdAnim.fromScrimPct
         : pos
-  const liveFirstDownPct = firstDownPercentFromLive(live, pos, fieldFlipped)
+  const liveFirstDownPct =
+    feedFirstDownPct ??
+    (centerBanner === 'TIMEOUT' && pos != null && heldFirstDown?.pos === pos ? heldFirstDown.pct : null)
   const displayFirstDownPct =
     lineDriver != null &&
     lineDriver.fromFirstDownPct != null &&

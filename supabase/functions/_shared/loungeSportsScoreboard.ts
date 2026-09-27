@@ -1199,6 +1199,9 @@ async function rundownGet<T>(path: string): Promise<T | null> {
   }
 }
 
+/** ESPN timeout / period rows carry stale spots and no down/distance … never a LOS source. */
+const ESPN_NO_SPOT_PLAY_TYPE = /timeout|end\s+(?:period|of\s+(?:half|game|quarter))|two[-\s]minute/i
+
 /** Unofficial ESPN public summary … fills football PBP / clock when TheRundown plays are empty.
  *  NFL: prod only (`jtjgtucumuoswnbauxry`) so sandbox hub polls do not burn ESPN.
  *  CFB: allowed on test + prod (college hub Plays tab needs it when Rundown is thin).
@@ -1443,8 +1446,7 @@ async function fetchEspnFootballLivePack(
         const typeText = String(
           (row.type && typeof row.type === 'object' ? (row.type as Record<string, unknown>).text : '') || '',
         )
-        // ESPN timeout / period rows carry stale spots … never a LOS source.
-        const noSpot = /timeout|end\s+(?:period|of\s+(?:half|game|quarter))|two[-\s]minute/i.test(typeText)
+        const noSpot = ESPN_NO_SPOT_PLAY_TYPE.test(typeText)
         const startSpot = noSpot ? null : spotFrom(start)
         const endSpot = noSpot ? null : spotFrom(endRaw)
         plays.push({
@@ -1461,9 +1463,14 @@ async function fetchEspnFootballLivePack(
 
     const last = plays.length ? plays[plays.length - 1] : null
     const lastDrive = driveList.length ? driveList[driveList.length - 1] : null
-    const lastPlayRow = lastDrive && Array.isArray(lastDrive.plays) && lastDrive.plays.length
-      ? lastDrive.plays[lastDrive.plays.length - 1] as Record<string, unknown>
-      : null
+    const lastDriveRows = lastDrive && Array.isArray(lastDrive.plays)
+      ? lastDrive.plays as Record<string, unknown>[]
+      : []
+    // A trailing timeout row has no down/distance … the line to gain would vanish mid-drive.
+    const lastPlayRow = [...lastDriveRows].reverse().find((row) => {
+      const type = row?.type && typeof row.type === 'object' ? row.type as Record<string, unknown> : null
+      return !ESPN_NO_SPOT_PLAY_TYPE.test(String(type?.text || ''))
+    }) ?? lastDriveRows[lastDriveRows.length - 1] ?? null
     const end = lastPlayRow && lastPlayRow.end && typeof lastPlayRow.end === 'object'
       ? lastPlayRow.end as Record<string, unknown>
       : null

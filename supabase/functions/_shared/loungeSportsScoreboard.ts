@@ -167,6 +167,8 @@ export type LoungeSportsPlay = {
   start_spot?: LoungeSportsPlaySpot | null
   /** Ball spot + next snap's down/distance (ESPN `end`) … the next play's start when its own is missing. */
   end_spot?: LoungeSportsPlaySpot | null
+  /** Defense took the ball (interception / opponent fumble recovery) … from ESPN play type; `isTurnover` is unreliable. */
+  turnover?: boolean
 }
 
 export type LoungeSportsPlaySpot = {
@@ -1200,6 +1202,8 @@ async function rundownGet<T>(path: string): Promise<T | null> {
 }
 
 /** ESPN timeout / period rows carry stale spots and no down/distance … never a LOS source. */
+/** ESPN `isTurnover` misses plain interceptions and flags blocked FGs, so key off the play type instead. */
+const ESPN_TURNOVER_PLAY_TYPE = /interception|fumble\s+recovery\s*\(opponent\)|fumble\s+return\s+touchdown/i
 const ESPN_NO_SPOT_PLAY_TYPE = /timeout|end\s+(?:period|of\s+(?:half|game|quarter))|two[-\s]minute/i
 
 /** Unofficial ESPN public summary … fills football PBP / clock when TheRundown plays are empty.
@@ -1457,6 +1461,7 @@ async function fetchEspnFootballLivePack(
           team: sideForEspnTeamId(teamId),
           start_spot: startSpot,
           end_spot: endSpot,
+          ...(ESPN_TURNOVER_PLAY_TYPE.test(typeText) ? { turnover: true } : {}),
         })
       }
     }

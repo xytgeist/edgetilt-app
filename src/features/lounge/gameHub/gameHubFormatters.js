@@ -1381,7 +1381,8 @@ function playHasSpot(play) {
 
 /**
  * Current possession's drive chart … rushes / completions / sacks as LOS → new LOS lines, incompletions
- * as a short arc to a red X, enforced penalties as a red dashed line. Empty once the ball changes hands (kickoff, punt, pick) or the half ends.
+ * as a short arc to a red X, enforced penalties as a red dashed line. Empty once the ball changes hands (kickoff, punt,
+ * pick, lost fumble via the feed `turnover` flag) or the half ends.
  * @returns {{ team: 'home'|'away'|null, attackDir: number, marks: Array<{
  *   key: string, kind: 'line'|'incomplete'|'penalty', text: string, fromPct: number, toPct: number,
  *   lateral: -1|0|1, isNewest: boolean
@@ -1393,12 +1394,13 @@ export function buildPossessionDriveMarks(plays) {
   if (!newestFirst.length) return empty
   const head = newestFirst[0]
   const team = head?.team === 'home' || head?.team === 'away' ? head.team : null
-  if (!team || DRIVE_BREAK_PLAY.test(String(head?.description || ''))) return empty
+  const breaksDrive = (row) => row?.turnover === true || DRIVE_BREAK_PLAY.test(String(row?.description || ''))
+  if (!team || breaksDrive(head)) return empty
   const half = playHalf(head.period)
   const drive = []
   for (const row of newestFirst) {
     if (row.team !== team || playHalf(row.period) !== half) break
-    if (DRIVE_BREAK_PLAY.test(String(row.description || ''))) break
+    if (breaksDrive(row)) break
     drive.unshift(row)
   }
   // Whole drive in the current quarter's direction … a drive that crosses the end of Q1 / Q3 stays one chain.

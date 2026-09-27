@@ -162,6 +162,8 @@ export default function FgKickTestPage() {
   const [half, setHalf] = useState(1)
   const [nonce, setNonce] = useState(0)
   const [lastPlay, setLastPlay] = useState('')
+  /** Feed rows for the hero … only turnover presets set them (the `turnover` flag comes from the Edge). */
+  const [feedPlays, setFeedPlays] = useState(null)
   const [possession, setPossession] = useState('away')
   const [yards, setYards] = useState(40)
   /** Feed LOS for the replayed play (pick-six); FG derives its own LOS from kick yards. */
@@ -213,6 +215,18 @@ export default function FgKickTestPage() {
     setStartSpot(pickStartSpot(scenario))
     setFeedTeam(null)
     setLastPlay(pickSixText(scenario))
+    setNonce((n) => n + 1)
+  }
+
+  const fireTurnover = (kind) => {
+    const text =
+      kind === 'fumble'
+        ? '(07:12) Shotgun #9 G.Brosterhous pass complete short right to #4 N.Boncore caught at TROY40, for 12 yards to the TROY28 fumbled by #4 N.Boncore at TROY28 forced by #9 J.Keyes, recovered by TROY #5 A.Smith at TROY26'
+        : '(07:12) Shotgun #14 J.Maiava pass intercepted by #6 R.Morgan at USC23 broken up by #7 I.Obidegwu, End Of Play'
+    setFeedTeam(null)
+    setStartSpot(null)
+    setFeedPlays([{ id: `to-${kind}`, period: half, clock: '07:12', description: text, team: possession, turnover: true }])
+    setLastPlay(text)
     setNonce((n) => n + 1)
   }
 
@@ -406,6 +420,20 @@ export default function FgKickTestPage() {
           >
             Throw pick (NFL text)
           </button>
+          <button
+            type="button"
+            className="rounded-md bg-rose-700 px-3 py-1.5 text-[12px] font-semibold text-white"
+            onClick={() => fireTurnover('pick')}
+          >
+            Interception (no return)
+          </button>
+          <button
+            type="button"
+            className="rounded-md bg-rose-700 px-3 py-1.5 text-[12px] font-semibold text-white"
+            onClick={() => fireTurnover('fumble')}
+          >
+            Fumble lost
+          </button>
         </div>
         <div className="mb-4 flex flex-wrap gap-2">
           {PICK_SCENARIOS.map((s) => (
@@ -565,6 +593,7 @@ export default function FgKickTestPage() {
             game={MOCK_GAME}
             live={live}
             lastPlay={lastPlay}
+            plays={feedPlays}
             playReplayNonce={nonce}
             replayTeam={feedTeam || possession}
             playStartSpot={startSpot}

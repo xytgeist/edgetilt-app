@@ -570,8 +570,8 @@ function isCfbSport(sportKey) {
 /** Longer schools / NFL mascots overflow the banner, so they fall back to the abbrev ("TOUCHDOWN MTSU", "TOUCHDOWN TB"). */
 const TD_BANNER_SCHOOL_MAX_CHARS = 7
 
-/** "TOUCHDOWN USC" / "TOUCHDOWN OREGON" (CFB school) · "TOUCHDOWN CHIEFS" (NFL mascot). */
-function touchdownTeamLabel(teamAbbrev, game, sportKey) {
+/** Team word for "TOUCHDOWN X" / "TURNOVER X": CFB school ("USC", "OREGON") · NFL mascot ("CHIEFS"). */
+function fieldBannerTeamLabel(teamAbbrev, game, sportKey) {
   const abbrev = String(teamAbbrev || '').trim().toUpperCase()
   if (!abbrev) return ''
   const side = [game?.away, game?.home].find((s) => String(s?.abbrev || '').trim().toUpperCase() === abbrev)
@@ -967,6 +967,11 @@ function FieldViz({
   /** Scoring team abbrev from the last TD animation … keeps "TOUCHDOWN X" up through the PAT row. */
   const [heldTdTeam, setHeldTdTeam] = useState('')
   const drive = useMemo(() => (isFootball ? buildPossessionDriveMarks(plays) : null), [isFootball, plays])
+  const lastPlayRow = useMemo(() => {
+    const id = fieldPlayIdentity(lastPlayText)
+    if (!id || !Array.isArray(plays)) return null
+    return plays.findLast((p) => fieldPlayIdentity(p?.description) === id) || null
+  }, [plays, lastPlayText])
 
   const [rushAnim, setRushAnim] = useState(null)
   const [catchAnim, setCatchAnim] = useState(null)
@@ -2376,8 +2381,21 @@ function FieldViz({
   else if (!animTdLabel && heldTdTeam && !scoreTryWindow) setHeldTdTeam('')
   const holdTdBanner = !animTdLabel && scoreTryWindow && !centerBanner && !playAnimActive
   const showTdBanner = animTdLabel || holdTdBanner
+  // Interception / opponent fumble recovery is still the latest row … name the team that took the ball.
+  const turnoverOffense =
+    lastPlayRow?.team === 'home' || lastPlayRow?.team === 'away' ? lastPlayRow.team : replayTeam
+  const isTurnoverPlay = Boolean(
+    isFootball &&
+      lastPlayText &&
+      (lastPlayRow?.turnover === true || /\bintercept(?:ed|ion)\b/i.test(lastPlayText)) &&
+      (turnoverOffense === 'home' || turnoverOffense === 'away'),
+  )
+  const showTurnoverBanner = isTurnoverPlay && !showTdBanner && !centerBanner && !playAnimActive
+  const turnoverTeamLabel = showTurnoverBanner
+    ? fieldBannerTeamLabel(game?.[turnoverOffense === 'home' ? 'away' : 'home']?.abbrev, game, sportKey)
+    : ''
   const tdTeamLabel = showTdBanner
-    ? touchdownTeamLabel(
+    ? fieldBannerTeamLabel(
       animTdTeam || heldTdTeam || touchdownScorerAbbrevFromText(lastPlayText, replayTeam, game),
       game,
       sportKey,
@@ -3092,9 +3110,10 @@ function FieldViz({
         ) : null}
 
         {/* Rush / pass TD celebration */}
-        {showTdBanner ? (
+        {showTdBanner || showTurnoverBanner ? (
           <div
             data-lounge-td-banner
+            data-lounge-field-play-banner={showTdBanner ? 'touchdown' : 'turnover'}
             className="pointer-events-none absolute inset-0 z-[7] flex items-center justify-center px-4 pb-[18%]"
             aria-live="polite"
           >
@@ -3107,7 +3126,9 @@ function FieldViz({
                 WebkitTextStroke: '1px rgba(0,0,0,0.4)',
               }}
             >
-              {tdTeamLabel ? `Touchdown ${tdTeamLabel}` : 'Touchdown'}
+              {showTdBanner
+                ? tdTeamLabel ? `Touchdown ${tdTeamLabel}` : 'Touchdown'
+                : turnoverTeamLabel ? `Turnover ${turnoverTeamLabel}` : 'Turnover'}
             </span>
           </div>
         ) : null}

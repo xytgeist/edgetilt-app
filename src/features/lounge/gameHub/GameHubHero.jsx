@@ -105,8 +105,8 @@ const PICK_DOWN_HOLD_MS = 900
 const PICK_TOUCHBACK_DEPTH_YDS = 6
 /** Kickoff hang time (tee → returner's tuck). */
 const KICK_FLIGHT_MS = 2100
-/** Punt hang time (punter → returner's tuck). */
-const PUNT_FLIGHT_MS = 1900
+/** Punt hang time (punter → returner's tuck) … a punt hangs longer than a kickoff over a shorter chord. */
+const PUNT_FLIGHT_MS = 2400
 /** Punter stands this many yards behind the LOS. */
 const PUNT_DEPTH_YDS = 15
 /** Typical gross punt when the feed omits the distance. */
@@ -124,6 +124,8 @@ const KICK_RETURN_MAX_MS = 2800
 const KICK_HOLD_MS = 1600
 /** Kick apex lift (px above the chord) … a kickoff hangs well above a pass. */
 const KICK_ARC_LIFT = 250
+/** Punts go up much higher than kickoffs. */
+const PUNT_ARC_LIFT = 400
 /** Touchback: lands this deep in the end zone, then hops out the back (end line is 10 yd deep). */
 const TOUCHBACK_LAND_DEPTH_YDS = 4
 const TOUCHBACK_BOUNCES = [
@@ -166,8 +168,10 @@ function passSpiral(flightT, yards, flightMs) {
 /** Kickoffs / punts tumble end-over-end at the field goal's rate (revs per ms of flight). */
 const KICK_TUMBLE_DEG_PER_MS = (FG_TUMBLE_REVS * 360) / FG_FLIGHT_BASE_MS
 /** Backwards end-over-end from the tee lean … SVG +rotate is clockwise, so a leftward kick spins CW. */
-function kickTumbleRotate(elapsedMs, kickDir) {
-  return -82 + (kickDir < 0 ? 1 : -1) * elapsedMs * KICK_TUMBLE_DEG_PER_MS
+/** Punts turn over lazily (~1.5 revs/s) vs a kickoff's hard tumble. */
+const PUNT_TUMBLE_DEG_PER_MS = (1.5 * 360) / 1000
+function kickTumbleRotate(elapsedMs, kickDir, degPerMs = KICK_TUMBLE_DEG_PER_MS) {
+  return -82 + (kickDir < 0 ? 1 : -1) * elapsedMs * degPerMs
 }
 /**
  * Path apex (t=0.5) lands at this fraction of flight time.
@@ -794,7 +798,7 @@ function quadBezier(p0, p1, p2, t) {
  * deep, then hops out the back and fades. Shared by kickoff + punt touchbacks.
  * @returns {{ frameAt: (elapsed: number) => { ball: {x:number,y:number}, rotate: number, opacity: number }, totalMs: number }}
  */
-function touchbackBallFrames({ start, goalPct, dir, flightMs, arcLift }) {
+function touchbackBallFrames({ start, goalPct, dir, flightMs, arcLift, tumbleDegPerMs = KICK_TUMBLE_DEG_PER_MS }) {
   const land = { x: fieldMidXFromPercent(goalPct + dir * TOUCHBACK_LAND_DEPTH_YDS), y: RUSH_Y }
   const ctrl = { x: (start.x + land.x) / 2, y: Math.min(start.y, land.y) - arcLift }
   const bounceSpots = TOUCHBACK_BOUNCES.map((b) => ({ ...b, x: fieldMidXFromPercent(goalPct + dir * b.toYds) }))
@@ -803,11 +807,11 @@ function touchbackBallFrames({ start, goalPct, dir, flightMs, arcLift }) {
   const frameAt = (elapsed) => {
     if (elapsed < flightMs) {
       const t = elapsed / flightMs
-      return { ball: quadBezier(start, ctrl, land, t), rotate: kickTumbleRotate(elapsed, dir), opacity: 1 }
+      return { ball: quadBezier(start, ctrl, land, t), rotate: kickTumbleRotate(elapsed, dir, tumbleDegPerMs), opacity: 1 }
     }
     let at = elapsed - flightMs
     let fromX = land.x
-    let rot = kickTumbleRotate(flightMs, dir)
+    let rot = kickTumbleRotate(flightMs, dir, tumbleDegPerMs)
     for (let i = 0; i < bounceSpots.length; i += 1) {
       const b = bounceSpots[i]
       if (at < b.ms) {
@@ -2462,8 +2466,9 @@ function FieldViz({
         start,
         goalPct: recOwnGoal,
         dir: kickDir,
-        flightMs: KICK_FLIGHT_MS,
-        arcLift: KICK_ARC_LIFT,
+        flightMs: puntTouchback ? PUNT_FLIGHT_MS : KICK_FLIGHT_MS,
+        arcLift: puntTouchback ? PUNT_ARC_LIFT : KICK_ARC_LIFT,
+        tumbleDegPerMs: puntTouchback ? PUNT_TUMBLE_DEG_PER_MS : KICK_TUMBLE_DEG_PER_MS,
       })
       setKickAnim({
         playKey: animKey,
@@ -2623,6 +2628,7 @@ function FieldViz({
       jerseyNumber,
       ballStart: { x: fieldMidXFromPercent(kickFromPct), y: RUSH_Y - 6 },
       flightMs,
+      punt: Boolean(punt),
       landX,
       figX: startX,
       ballT: 0,
@@ -3028,11 +3034,15 @@ function FieldViz({
     const tuck = rushTuckWorld(kickFigLeft, kickFigTop, kickAnim.facing)
     const ctrl = {
       x: (kickAnim.ballStart.x + tuck.x) / 2,
-      y: Math.min(kickAnim.ballStart.y, tuck.y) - KICK_ARC_LIFT,
+      y: Math.min(kickAnim.ballStart.y, tuck.y) - (kickAnim.punt ? PUNT_ARC_LIFT : KICK_ARC_LIFT),
     }
     kickBall = quadBezier(kickAnim.ballStart, ctrl, tuck, kickAnim.ballT)
     // Returner faces back up the field, so the kick travels the other way.
-    kickBallRotate = kickTumbleRotate(kickAnim.ballT * (kickAnim.flightMs || KICK_FLIGHT_MS), -kickAnim.facing)
+    kickBallRotate = kickTumbleRotate(
+      kickAnim.ballT * (kickAnim.flightMs || KICK_FLIGHT_MS),
+      -kickAnim.facing,
+      kickAnim.punt ? PUNT_TUMBLE_DEG_PER_MS : KICK_TUMBLE_DEG_PER_MS,
+    )
   }
 
   // Field-goal ball: upright plant → true parabola (rise/fall) → land past posts / bounce.

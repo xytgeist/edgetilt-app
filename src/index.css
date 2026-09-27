@@ -3655,6 +3655,24 @@ html.light [data-lounge-game-chat]::placeholder {
 [data-lounge-td-banner] .lounge-td-banner-text {
   animation: lounge-td-banner-pop 0.58s cubic-bezier(0.2, 1.35, 0.32, 1) both;
 }
+/* Tapped drive segment label … up for 5s total, then fades; unmounted instantly when a new play animates. */
+@keyframes lounge-drive-tap-tag {
+  0% {
+    opacity: 0;
+  }
+  4% {
+    opacity: 1;
+  }
+  88% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.lounge-drive-tap-tag {
+  animation: lounge-drive-tap-tag 5s linear both;
+}
 @media (prefers-reduced-motion: reduce) {
   [data-lounge-td-banner] .lounge-td-banner-text {
     animation: none;

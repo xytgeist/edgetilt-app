@@ -37,6 +37,7 @@ import {
   parseRushPlay,
   playTextIsScoreTry,
   buildPossessionDriveMarks,
+  drivePlayShortLabel,
   lastBallPlayText,
   latestPlayScore,
   playTextIsTouchdown,
@@ -505,24 +506,47 @@ function DriveIncompleteMark({ p0, c, p1, attackDir, primary, halo, haloOpacity,
   )
 }
 
-/** Flag-yellow "FLAG · GT" tag riding the penalty line … says who got flagged (team color alone can't). */
-function DrivePenaltyTag({ x, y, team }) {
-  const label = `FLAG · ${team}`
-  const w = label.length * 13.4 + 18
+const DRIVE_FLAG_DEFENSE = '#facc15'
+const DRIVE_FLAG_OFFENSE = '#ef4444'
+/** A flag on the defense always moves the ball forward for the offense; one on the offense moves it back. */
+function drivePenaltyOnDefense(m, attackDir) {
+  return (m.toPct - m.fromPct) * attackDir > 0
+}
+
+/** Tap a drive segment → short play label above it; fades out on its own (CSS), gone instantly on the next play. */
+function DriveTapTag({ x, y, label, tone }) {
+  const textRef = useRef(null)
+  const rectRef = useRef(null)
+  const placeX = (w) => Math.max(w / 2 + 8, Math.min(1266 - w / 2 - 8, x))
+  // Fit the pill to the rendered text (Oswald width varies too much to estimate).
+  useLayoutEffect(() => {
+    const len = textRef.current?.getComputedTextLength?.()
+    if (!(len > 0) || !rectRef.current) return
+    const fitW = Math.min(1200, len + 24)
+    const fitX = placeX(fitW)
+    rectRef.current.setAttribute('x', String(fitX - fitW / 2))
+    rectRef.current.setAttribute('width', String(fitW))
+    textRef.current.setAttribute('x', String(fitX))
+  })
+  const w = Math.min(1200, label.length * 9 + 24)
   const h = 30
-  const top = y - h - 9
+  const cx = placeX(w)
+  const top = Math.max(4, y - h - 10)
+  const fill = tone === 'flag-defense' ? DRIVE_FLAG_DEFENSE : tone === 'flag-offense' ? '#dc2626' : 'rgba(9,9,11,0.88)'
+  const ink = tone === 'flag-defense' ? '#111' : '#fff'
   return (
-    <g data-drive-penalty-tag={team}>
-      <rect x={x - w / 2} y={top} width={w} height={h} rx="6" fill="#facc15" stroke="#000" strokeOpacity="0.6" strokeWidth="1.5" />
+    <g data-drive-tap-tag={tone}>
+      <rect ref={rectRef} x={cx - w / 2} y={top} width={w} height={h} rx="6" fill={fill} stroke="#000" strokeOpacity="0.6" strokeWidth="1.5" />
       <text
-        x={x}
+        ref={textRef}
+        x={cx}
         y={top + h / 2 + 0.5}
         textAnchor="middle"
         dominantBaseline="central"
-        fill="#111"
-        fontSize="22"
-        fontWeight="800"
-        letterSpacing="0.06em"
+        fill={ink}
+        fontSize="20"
+        fontWeight="700"
+        letterSpacing="0.03em"
         style={{ fontFamily: "Oswald, 'Arial Narrow', Impact, sans-serif" }}
       >
         {label}
@@ -531,8 +555,53 @@ function DrivePenaltyTag({ x, y, team }) {
   )
 }
 
-function DrivePlayMarks({ marks, attackDir, primary, hideKey, throwKey = '', onThrowDone }) {
+function DrivePlayMarks({ marks, attackDir, primary, hideKey, throwKey = '', onThrowDone, onMarkTap }) {
   const { halo, haloOpacity } = playLineHalo(primary)
+  /** Fat invisible stroke over a segment … the only tappable thing on the field plane. Stacked lanes overlap,
+   * so a tap picks whichever segment is nearest the touch point. */
+  const hits = []
+  const geoms = []
+  const pickNearest = (e, fallback) => {
+    const svg = e.currentTarget.ownerSVGElement
+    const ctm = svg?.getScreenCTM?.()
+    if (!ctm) return fallback
+    const p = new DOMPoint(e.clientX, e.clientY).matrixTransform(ctm.inverse())
+    let best = fallback
+    let bestD = Infinity
+    for (const g of geoms) {
+      for (const q of g.pts) {
+        const dd = (q.x - p.x) ** 2 + (q.y - p.y) ** 2
+        if (dd < bestD) {
+          bestD = dd
+          best = g
+        }
+      }
+    }
+    return best
+  }
+  const addHit = (m, d, at, pts) => {
+    if (!onMarkTap) return
+    const geom = { m, at, pts }
+    geoms.push(geom)
+    hits.push(
+      <path
+        key={`${m.key}:hit`}
+        d={d}
+        fill="none"
+        stroke="transparent"
+        strokeWidth="28"
+        strokeLinecap="round"
+        data-drive-play-hit={m.kind}
+        style={{ pointerEvents: 'stroke', cursor: 'pointer' }}
+        onClick={(e) => {
+          e.stopPropagation()
+          const g = pickNearest(e, geom)
+          onMarkTap(g.m, g.at)
+        }}
+      />,
+    )
+  }
+  const linePts = (x1, x2, y) => Array.from({ length: 9 }, (_, i) => ({ x: x1 + ((x2 - x1) * i) / 8, y }))
   // Gains (and flags on the defense) chain on the main line; losses / flags on the offense sit a lane below,
   // stacking further only when they overlap each other.
   const backLanes = []
@@ -563,6 +632,7 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey, throwKey = '', onT
             x1 = c - 3 * attackDir
             x2 = c + 3 * attackDir
           }
+          addHit(m, `M ${x1} ${y} L ${x2} ${y}`, { x: (x1 + x2) / 2, y }, linePts(x1, x2, y))
           return (
             <g key={m.key} data-drive-play="line">
               <line x1={x1} y1={y} x2={x2} y2={y} stroke={halo} strokeOpacity={haloOpacity} strokeWidth="7.5" strokeLinecap="round" />
@@ -585,21 +655,21 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey, throwKey = '', onT
           const x1 = fieldXAtY(m.fromPct, y)
           const x2 = fieldXAtY(m.toPct, y)
           const penaltyDir = m.toPct >= m.fromPct ? 1 : -1
+          addHit(m, `M ${x1} ${y} L ${x2} ${y}`, { x: (x1 + x2) / 2, y }, linePts(x1, x2, y))
           return (
-            <g key={m.key} data-drive-play="penalty">
+            <g key={m.key} data-drive-play="penalty" data-drive-flag-on={drivePenaltyOnDefense(m, attackDir) ? 'defense' : 'offense'}>
               <line x1={x1} y1={y} x2={x2} y2={y} stroke="#000" strokeOpacity="0.45" strokeWidth="6" strokeLinecap="round" />
               <line
                 x1={x1}
                 y1={y}
                 x2={x2}
                 y2={y}
-                stroke="#ef4444"
+                stroke={drivePenaltyOnDefense(m, attackDir) ? DRIVE_FLAG_DEFENSE : DRIVE_FLAG_OFFENSE}
                 strokeWidth="3.5"
                 strokeDasharray="8 6"
                 strokeLinecap="round"
               />
               <polygon points={driveArrow(x1, y, penaltyDir)} fill="#fff" stroke="#000" strokeOpacity="0.55" strokeWidth="1" strokeLinejoin="round" />
-              {m.flagTeam ? <DrivePenaltyTag x={(x1 + x2) / 2} y={y} team={m.flagTeam} /> : null}
             </g>
           )
         }
@@ -610,11 +680,18 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey, throwKey = '', onT
         )
         const x0 = fieldXAtY(m.fromPct, y0)
         const x1 = fieldXAtY(m.toPct, y1)
+        const c = { x: (x0 + x1) / 2, y: Math.min(y0, y1) - DRIVE_INCOMPLETE_LIFT_PX }
+        addHit(
+          m,
+          `M ${x0} ${y0} Q ${c.x} ${c.y} ${x1} ${y1}`,
+          { x: x1, y: Math.min(y0, y1) - DRIVE_INCOMPLETE_LIFT_PX / 2 },
+          Array.from({ length: 11 }, (_, i) => quadBezier({ x: x0, y: y0 }, c, { x: x1, y: y1 }, i / 10)),
+        )
         return (
           <DriveIncompleteMark
             key={m.key}
             p0={{ x: x0, y: y0 }}
-            c={{ x: (x0 + x1) / 2, y: Math.min(y0, y1) - DRIVE_INCOMPLETE_LIFT_PX }}
+            c={c}
             p1={{ x: x1, y: y1 }}
             attackDir={attackDir}
             primary={primary}
@@ -625,6 +702,7 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey, throwKey = '', onT
           />
         )
       })}
+      {hits}
     </g>
   )
 }
@@ -2472,6 +2550,14 @@ function FieldViz({
     animKey,
   ])
 
+  const [driveTap, setDriveTap] = useState(null)
+  const onDriveMarkTap = useCallback(
+    (m, at) => {
+      const tone = m.kind !== 'penalty' ? 'play' : drivePenaltyOnDefense(m, drive?.attackDir ?? 1) ? 'flag-defense' : 'flag-offense'
+      setDriveTap((prev) => ({ n: (prev?.n || 0) + 1, animKey, label: drivePlayShortLabel(m), tone, x: at.x, y: at.y }))
+    },
+    [animKey, drive?.attackDir],
+  )
   const anyPlayAnim =
     rushAnim != null || catchAnim != null || fgAnim != null || pickAnim != null || kickAnim != null
   useEffect(() => {
@@ -3103,6 +3189,7 @@ function FieldViz({
               hideKey={driveHideKey}
               throwKey={throwKey}
               onThrowDone={onThrowDone}
+              onMarkTap={onDriveMarkTap}
             />
           ) : null}
 
@@ -3221,6 +3308,11 @@ function FieldViz({
               <feComposite in="SourceGraphic" in2="blur" operator="over" />
             </filter>
           </defs>
+          {driveTap && driveTap.animKey === animKey && showDriveMarks && !playAnimActive ? (
+            <g key={driveTap.n} className="lounge-drive-tap-tag" onAnimationEnd={() => setDriveTap(null)}>
+              <DriveTapTag x={driveTap.x} y={driveTap.y} label={driveTap.label} tone={driveTap.tone} />
+            </g>
+          ) : null}
           {rushAnim && rushX != null ? (
             <g data-lounge-rush-anim>
               {rushTrailVisible ? (

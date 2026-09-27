@@ -1426,6 +1426,36 @@ export function lastBallPlayText(plays, lastPlayText = '') {
   }
   return text
 }
+const DRIVE_LABEL_MAX = 54
+
+/**
+ * Short label for a tapped drive segment: "S.Irvin rush right for 3 yards loss", "D.Warren pass incomplete short
+ * middle to C.High", "FLAG · GT · Holding · 10 yds".
+ */
+export function drivePlayShortLabel(mark) {
+  const text = String(mark?.text || '')
+  const penAt = text.search(/\bpenalty\b/i)
+  if (mark?.kind === 'penalty') {
+    const pen = penAt >= 0 ? text.slice(penAt) : text
+    const foul = /\bPENALTY\s+(?:on\s+)?[A-Z][A-Z&]{1,5}(?:-[^,]+)?[,\s]+([A-Za-z][A-Za-z' -]*?)(?=\s*\(|,|\s+\d+\s+yards?|$)/i.exec(pen)?.[1]
+    const yds = /\b(\d+)\s+yards?\b/i.exec(pen)?.[1]
+    return ['FLAG', mark.flagTeam, foul?.trim(), yds ? `${yds} yds` : ''].filter(Boolean).join(' · ')
+  }
+  let s = stripPlayFormationPrefix(penAt >= 0 ? text.slice(0, penAt) : text)
+    .replace(/#\d{1,2}\s+/g, '')
+    .replace(/\s*\([^)]*\)/g, '')
+    .replace(/,?\s*clock\s+\d{1,2}:\d{2}.*$/i, '')
+    .replace(/\s+(?:caught|sacked)?\s*at\s+[A-Za-z]{2,8}\s*\d{1,2}\b,?/gi, (m) => (/sacked/i.test(m) ? ' sacked' : ''))
+    .replace(/\s+to\s+[A-Z]{2,4}\s+\d{1,2}\b/g, '')
+    .replace(/\s+(?:thrown\s+to|to\s+the|out\s+of\s+bounds)\b.*$/i, '')
+    .replace(/[\s,.]+$/, '')
+    .trim()
+  const forYards = /^(.*?\b(?:for\s+(?:a\s+)?(?:loss\s+of\s+)?-?\d+\s+(?:yards?|yds?)(?:\s+loss)?|no\s+gain))\b/i.exec(s)
+  if (forYards) s = forYards[1]
+  s = s.replace(/\bpass\s+complete(?:d)?\b/i, 'pass').replace(/\b(\d+)\s+yards?\b/gi, '$1 yds')
+  return s.length > DRIVE_LABEL_MAX ? `${s.slice(0, DRIVE_LABEL_MAX - 1).trimEnd()}…` : s
+}
+
 /** Flagged team: CFB "PENALTY GT Holding", NFL "PENALTY on KC-T.Smith" / "PENALTY on KC, Delay of Game". */
 const PENALTY_TEAM = /\b(?:PENALTY|Penalty)\s+(?:on\s+)?([A-Z][A-Z&]{1,5})(?=[\s,-])/
 const THROWN_TO_SPOT = /\bthrown\s+to\s+(?:the\s+)?[A-Za-z]{2,6}\s*(\d{1,2})\b/i

@@ -105,7 +105,15 @@ export function withFreshestLiveClock(live, game, plays) {
   const curS = clockSeconds(live?.clock)
   // Halftime / end-of-period boards carry no running clock … leave those alone.
   if (!cands.length || !Number.isFinite(curP) || curS == null) return live
-  const best = cands.reduce((a, b) => (b.p > a.p || (b.p === a.p && b.s < a.s) ? b : a))
+  // A later quarter needs a PBP row in it … a slate row alone can run ahead and flip the field early.
+  let rowP = curP
+  for (const row of Array.isArray(plays) ? plays : []) {
+    const rp = Number(row?.period)
+    if (Number.isFinite(rp) && rp > rowP) rowP = rp
+  }
+  const allowed = cands.filter((c) => c.p <= rowP)
+  if (!allowed.length) return live
+  const best = allowed.reduce((a, b) => (b.p > a.p || (b.p === a.p && b.s < a.s) ? b : a))
   if (best.p < curP || (best.p === curP && best.s >= curS)) return live
   return { ...live, period: best.p, clock: best.clock }
 }
@@ -142,6 +150,20 @@ export function downDistanceLabel(live) {
 }
 
 /**
+ * Last snap at 0:00 that leaves the period open: a TD whose try hasn't posted, an accepted penalty
+ * ("No Play" … untimed down), or a replay review.
+ */
+function periodEndPending(lastPlay) {
+  const t = String(lastPlay || '').toLowerCase()
+  if (!t) return false
+  if (/\breview|\bchalleng|\bno play\b/.test(t)) return true
+  if (/\btouchdown\b/.test(t) && !/\bnullified\b/.test(t)) {
+    return !/extra point|\bkick\)|\bkick is\b|two-point|2-pt|\bpat\b|conversion/.test(t)
+  }
+  return false
+}
+
+/**
  * Big center-field banner for stoppages … TIMEOUT / End of 1st / HALFTIME / End of 3rd / GAME OVER.
  */
 export function fieldCenterBanner(game, live) {
@@ -164,11 +186,15 @@ export function fieldCenterBanner(game, live) {
       ? (period > 4 ? 'End of OT' : 'End of Regulation')
       : 'GAME OVER'
 
+  // A period break / final outranks a timeout that only lingers in the last play or detail text.
+  const statusBreak = /END_PERIOD|END_OF_PERIOD|HALFTIME|FINAL|FULL_TIME/.test(statusName)
   if (
     /STATUS_TIMEOUT|STATUS_TV_TIMEOUT|TIMEOUT/.test(statusName)
-    || /\btimeout\b/.test(detailLower)
-    || /\btimeout\b/.test(clockLower)
-    || /\btimeout\b/.test(lastPlay)
+    || (!statusBreak && (
+      /\btimeout\b/.test(detailLower)
+      || /\btimeout\b/.test(clockLower)
+      || /\btimeout\b/.test(lastPlay)
+    ))
   ) {
     return 'TIMEOUT'
   }
@@ -200,8 +226,14 @@ export function fieldCenterBanner(game, live) {
     }
   }
 
-  // Clock at :00 with a known quarter often means the period just ended.
-  if (/^(?:0:00|00:00|0\.00)$/.test(clock) && Number.isFinite(period) && period >= 1) {
+  // Clock at :00 with a known quarter often means the period just ended … unless the last snap left a try,
+  // an untimed down or a review to play.
+  if (
+    /^(?:0:00|00:00|0\.00)$/.test(clock)
+    && Number.isFinite(period)
+    && period >= 1
+    && !periodEndPending(live?.last_play)
+  ) {
     if (period === 1) return 'End of 1st'
     if (period === 2) return 'HALFTIME'
     if (period === 3) return 'End of 3rd'

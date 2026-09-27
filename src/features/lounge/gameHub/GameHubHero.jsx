@@ -2595,13 +2595,13 @@ function FieldViz({
   else if (!animTdLabel && heldTdTeam && !scoreTryWindow) setHeldTdTeam('')
   const holdTdBanner = !animTdLabel && scoreTryWindow && !centerBanner && !playAnimActive
   const showTdBanner = animTdLabel || holdTdBanner
-  // Interception / opponent fumble recovery is still the latest row … name the team that took the ball.
+  // Interception / opponent fumble recovery / turnover on downs is still the latest row … name the team that took the ball.
   const turnoverOffense =
     lastPlayRow?.team === 'home' || lastPlayRow?.team === 'away' ? lastPlayRow.team : replayTeam
   const isTurnoverPlay = Boolean(
     isFootball &&
       lastPlayText &&
-      (lastPlayRow?.turnover === true || /\bintercept(?:ed|ion)\b/i.test(lastPlayText)) &&
+      (lastPlayRow?.turnover === true || /\bintercept(?:ed|ion)\b|\bturnover\s+on\s+downs\b/i.test(lastPlayText)) &&
       (turnoverOffense === 'home' || turnoverOffense === 'away'),
   )
   const showTurnoverBanner = isTurnoverPlay && !showTdBanner && !centerBanner && !playAnimActive

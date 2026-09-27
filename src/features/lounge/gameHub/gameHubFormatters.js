@@ -1371,7 +1371,7 @@ export function matchRushPlayer(hint, players, sideAbbrev = '') {
   return scored[0].p
 }
 
-const DRIVE_BREAK_PLAY = /\bkick(?:s|ed)?\s+off\b|\bkickoff\b|\bkicks\s+-?\d+\s+yards?\s+from\b|\bpunts?\b|\bintercept(?:ed|ion)?\b/i
+const DRIVE_BREAK_PLAY = /\bkick(?:s|ed)?\s+off\b|\bkickoff\b|\bkicks\s+-?\d+\s+yards?\s+from\b|\bpunts?\b|\bintercept(?:ed|ion)?\b|\bturnover\s+on\s+downs\b/i
 const DRIVE_SKIP_PLAY =
   /\bfield\s+goal\b|\bextra\s+point\b|\bkick\s+attempt\b|\bpat\b|\btwo[-\s]point\b|\b2[-\s]?pt\b|\btimeout\b|\bend\s+of\s+(?:the\s+)?(?:\d\w*\s+)?(?:period|half|quarter|game)\b|\bno\s+play\b/i
 const DRIVE_SCORE_FG = /\bfield\s+goal\b[^.]*\b(?:is\s+)?good\b/i

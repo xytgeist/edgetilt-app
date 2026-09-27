@@ -438,7 +438,10 @@ function isCfbSport(sportKey) {
   return String(sportKey || '').includes('ncaaf')
 }
 
-/** "TOUCHDOWN USC" / "TOUCHDOWN MICHIGAN" (CFB school) · "TOUCHDOWN CHIEFS" (NFL mascot). */
+/** Longer schools overflow the banner, so they fall back to the abbrev ("TOUCHDOWN MTSU"). */
+const TD_BANNER_SCHOOL_MAX_CHARS = 7
+
+/** "TOUCHDOWN USC" / "TOUCHDOWN OREGON" (CFB school) · "TOUCHDOWN CHIEFS" (NFL mascot). */
 function touchdownTeamLabel(teamAbbrev, game, sportKey) {
   const abbrev = String(teamAbbrev || '').trim().toUpperCase()
   if (!abbrev) return ''
@@ -447,13 +450,12 @@ function touchdownTeamLabel(teamAbbrev, game, sportKey) {
   const name = String(side.name || '').trim()
   const mascot = String(side.mascot || '').trim()
   if (!isCfbSport(sportKey)) return mascot || abbrev
-  const school = cfbTeamSchoolName(side)
-  if (school) return school
+  let school = cfbTeamSchoolName(side)
   // ESPN `mascot` is only the last word ("Tide"), so stripping it is a fallback for uncataloged schools.
-  if (name && mascot && name.toLowerCase().endsWith(mascot.toLowerCase()) && name.length > mascot.length) {
-    return name.slice(0, name.length - mascot.length).trim()
+  if (!school && name && mascot && name.toLowerCase().endsWith(mascot.toLowerCase()) && name.length > mascot.length) {
+    school = name.slice(0, name.length - mascot.length).trim()
   }
-  return name || abbrev
+  return school && school.length <= TD_BANNER_SCHOOL_MAX_CHARS ? school : abbrev
 }
 
 /** No TD animation seen (hub opened after the score) … feed row team, flipped for pick / kick / punt return TDs. */

@@ -63,6 +63,8 @@ export function liveClockLabel(game, live) {
   if (game.status === 'pre') {
     return formatKickoff(game.commence_time) || stripTimeZoneSuffix(game.status_label) || 'Upcoming'
   }
+  // Same call as the field banner … never "2nd 0:00" at the break.
+  if (fieldCenterBanner(game, live) === 'HALFTIME') return 'Halftime'
   const period = live?.period != null ? ordinal(live.period) : ''
   const clock = String(live?.clock || '').trim()
   if (period && clock) return `${period} ${clock}`

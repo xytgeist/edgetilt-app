@@ -155,6 +155,13 @@ export type LoungeSportsOddsRow = {
   under_price: number | null
   home_ml: number | null
   away_ml: number | null
+  /** Book deep links (The Odds API `includeLinks`): deepest available per side … betslip > market > event. */
+  home_spread_link?: string | null
+  away_spread_link?: string | null
+  over_link?: string | null
+  under_link?: string | null
+  home_ml_link?: string | null
+  away_ml_link?: string | null
 }
 
 export type LoungeSportsPlay = {
@@ -1267,7 +1274,9 @@ async function cachedSportOdds(sportKey: string) {
   const key = String(sportKey || '')
   const cached = oddsCache.get(key)
   if (cached && Date.now() - cached.at < ODDS_CACHE_MS) return cached.pack
-  const pack = await fetchSportOdds(key, ['us', 'us2'], ['h2h', 'spreads', 'totals']).catch(() => null)
+  const pack = await fetchSportOdds(key, ['us', 'us2'], ['h2h', 'spreads', 'totals'], { includeLinks: true }).catch(
+    () => null,
+  )
   oddsCache.set(key, { at: Date.now(), pack })
   return pack
 }
@@ -1681,7 +1690,13 @@ type OddsBookmaker = {
   title?: string
   /** ISO timestamp from The Odds API … used to pick freshest Pinnacle across region packs. */
   last_update?: string
-  markets?: Array<{ key?: string; outcomes?: Array<{ name?: string; price?: number; point?: number }> }>
+  /** Event page on the book (includeLinks). */
+  link?: string | null
+  markets?: Array<{
+    key?: string
+    link?: string | null
+    outcomes?: Array<{ name?: string; price?: number; point?: number; link?: string | null }>
+  }>
 }
 
 type OddsEventRow = {
@@ -1692,9 +1707,12 @@ type OddsEventRow = {
   bookmakers?: OddsBookmaker[]
 }
 
-function outcomePoint(outcomes: Array<{ name?: string; price?: number; point?: number }>, name: string) {
+function outcomePoint(
+  outcomes: Array<{ name?: string; price?: number; point?: number; link?: string | null }>,
+  name: string,
+) {
   const want = String(name || '').trim().toLowerCase()
-  if (!want) return { price: null, point: null }
+  if (!want) return { price: null, point: null, link: null }
   const wantLast = want.split(/\s+/).pop() || want
   const row = outcomes.find((o) => {
     const n = String(o.name || '').trim().toLowerCase()
@@ -1706,6 +1724,7 @@ function outcomePoint(outcomes: Array<{ name?: string; price?: number; point?: n
   return {
     price: numOrNull(row?.price),
     point: numOrNull(row?.point),
+    link: String(row?.link || '').trim() || null,
   }
 }
 
@@ -1812,9 +1831,15 @@ function compactBook(
   awayName: string,
 ): LoungeSportsOddsRow | null {
   const markets = Array.isArray(book.markets) ? book.markets : []
-  const h2h = markets.find((m) => m.key === 'h2h')?.outcomes || []
-  const spreads = markets.find((m) => m.key === 'spreads')?.outcomes || []
-  const totals = markets.find((m) => m.key === 'totals')?.outcomes || []
+  const h2hMarket = markets.find((m) => m.key === 'h2h')
+  const spreadsMarket = markets.find((m) => m.key === 'spreads')
+  const totalsMarket = markets.find((m) => m.key === 'totals')
+  const h2h = h2hMarket?.outcomes || []
+  const spreads = spreadsMarket?.outcomes || []
+  const totals = totalsMarket?.outcomes || []
+  const eventLink = String(book.link || '').trim() || null
+  const deepest = (outcome: string | null, market: { link?: string | null } | undefined) =>
+    outcome || String(market?.link || '').trim() || eventLink
   const homeH2h = outcomePoint(h2h, homeName)
   const awayH2h = outcomePoint(h2h, awayName)
   const homeSp = outcomePoint(spreads, homeName)
@@ -1839,6 +1864,12 @@ function compactBook(
     under_price: under.price,
     home_ml: homeH2h.price,
     away_ml: awayH2h.price,
+    home_spread_link: deepest(homeSp.link, spreadsMarket),
+    away_spread_link: deepest(awaySp.link, spreadsMarket),
+    over_link: deepest(over.link, totalsMarket),
+    under_link: deepest(under.link, totalsMarket),
+    home_ml_link: deepest(homeH2h.link, h2hMarket),
+    away_ml_link: deepest(awayH2h.link, h2hMarket),
   }
 }
 

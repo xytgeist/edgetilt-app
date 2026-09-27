@@ -286,7 +286,7 @@ export async function fetchActiveSportKeys(): Promise<Set<string>> {
 /** Hard cap so slate/preview Edge calls fail fast instead of hitting Supabase 150s idle timeout. */
 const ODDS_FETCH_TIMEOUT_MS = 25_000
 
-export type OddsFetchOpts = { bookmakers?: string[] }
+export type OddsFetchOpts = { bookmakers?: string[]; includeLinks?: boolean }
 
 function oddsQuery(key: string, regions: string[], markets: string[], opts?: OddsFetchOpts) {
   const qs = new URLSearchParams({
@@ -296,6 +296,8 @@ function oddsQuery(key: string, regions: string[], markets: string[], opts?: Odd
     oddsFormat: 'american',
   })
   if (opts?.bookmakers?.length) qs.set('bookmakers', opts.bookmakers.join(','))
+  // Book event / market / betslip deep links … no extra quota cost (billed per market x region).
+  if (opts?.includeLinks) qs.set('includeLinks', 'true')
   return qs
 }
 

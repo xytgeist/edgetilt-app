@@ -15,7 +15,7 @@ import GameHubRushFigure from './GameHubRushFigure.jsx'
 import GameHubCatchFigure from './GameHubCatchFigure.jsx'
 import { getLuminance, hexToRgb, resolveTeamKit } from './gameHubFigureColors.js'
 import { pregameGameMarketPicks, pregamePlayerPropRails } from './gameHubPregameProps.js'
-import { sportsbookHomeUrl } from './sportsbookLinks.js'
+import { pregameBestLines } from './gameHubBestLines.js'
 import {
   CATCH_HANDS_LOCAL,
   CATCH_VIEWBOX_H,
@@ -3877,8 +3877,15 @@ function TeamStatRail({ stats, align }) {
 
 const MARKET_SOURCE_LABEL = { kalshi: 'Kalshi', polymarket: 'Polymarket' }
 
-/** Board stat; with `href` it becomes a tap-through to the market (price reads as the Yes price). */
-function MatchupLine({ title, value, sub, href = '', source = '' }) {
+function evTag(ev) {
+  return ev != null && ev > 0 ? `+${(ev * 100).toFixed(1)}% EV` : ''
+}
+
+/**
+ * Board stat; with `href` it becomes a tap-through to the market / book (price reads as the Yes price for
+ * prediction markets). `book` labels which sportsbook has the best line; `tag` is an optional EV badge.
+ */
+function MatchupLine({ title, value, sub, href = '', source = '', book = '', tag = '' }) {
   const body = (
     <>
       <div className="text-[9px] font-semibold uppercase leading-none tracking-[0.14em] text-white/55">{title}</div>
@@ -3888,6 +3895,16 @@ function MatchupLine({ title, value, sub, href = '', source = '' }) {
           className={`mt-0.5 text-[10px] font-semibold leading-none tabular-nums ${href ? 'text-emerald-300' : 'text-white/55'}`}
         >
           {sub}
+        </div>
+      ) : null}
+      {book ? (
+        <div className="mt-0.5 max-w-[5.5rem] truncate text-[8px] font-semibold uppercase leading-none tracking-wide text-white/45">
+          {book}
+        </div>
+      ) : null}
+      {tag ? (
+        <div className="mt-0.5 rounded-full bg-emerald-400/20 px-1 text-[8px] font-bold leading-[1.4] tabular-nums text-emerald-200">
+          {tag}
         </div>
       ) : null}
     </>
@@ -3906,8 +3923,24 @@ function MatchupLine({ title, value, sub, href = '', source = '' }) {
   )
 }
 
-/** One team's column on the landscape pregame board: logo, name, record, spread + ML, then team total. */
-function MatchupTeamColumn({ side, label, treatment, spread, spreadPrice, ml, teamTotal, bookName, bookUrl }) {
+/** Best-line pick (`pregameBestLines`) as a MatchupLine; falls back to the scoreboard number without a book. */
+function BestLine({ title, pick, value, fallback }) {
+  if (!pick) return fallback != null ? <MatchupLine title={title} value={fallback} /> : null
+  return (
+    <MatchupLine
+      title={title}
+      value={value}
+      sub={value === american(pick.price) ? null : american(pick.price)}
+      href={pick.url || ''}
+      source={pick.book}
+      book={pick.book}
+      tag={evTag(pick.ev)}
+    />
+  )
+}
+
+/** One team's column on the landscape pregame board: logo, name, record, best spread + ML, then team total. */
+function MatchupTeamColumn({ side, label, treatment, best, teamTotal }) {
   return (
     <div className="flex min-w-0 flex-col items-center">
       <LoungeSportsTeamLogo side={side} treatment={treatment} size={64} />
@@ -3920,14 +3953,18 @@ function MatchupTeamColumn({ side, label, treatment, spread, spreadPrice, ml, te
         <div className="mt-0.5 text-[11px] font-medium tabular-nums leading-none text-white/55">{side.record}</div>
       ) : null}
       <div className="mt-2.5 flex items-start gap-3">
-        <MatchupLine
+        <BestLine
           title="Spread"
-          value={signedPoint(spread)}
-          sub={spreadPrice != null ? american(spreadPrice) : null}
-          href={bookUrl}
-          source={bookName}
+          pick={best?.spread}
+          value={best?.spread ? signedPoint(best.spread.point) : null}
+          fallback={side?.spread != null ? signedPoint(side.spread) : null}
         />
-        <MatchupLine title="ML" value={american(ml)} href={bookUrl} source={bookName} />
+        <BestLine
+          title="ML"
+          pick={best?.ml}
+          value={best?.ml ? american(best.ml.price) : null}
+          fallback={side?.ml != null ? american(side.ml) : null}
+        />
       </div>
       {teamTotal ? (
         <div className="mt-2">
@@ -4001,14 +4038,12 @@ function LandscapeMatchupBoard({
   awayTreatment,
   homeTreatment,
   splits,
-  book,
+  odds,
   sideSlots,
   players,
   marketProps,
 }) {
-  const total = book?.total
-  const bookName = String(book?.book || '')
-  const bookUrl = sportsbookHomeUrl(bookName)
+  const best = useMemo(() => pregameBestLines(odds), [odds])
   const rails = useMemo(() => pregamePlayerPropRails(marketProps, players), [marketProps, players])
   const picks = useMemo(() => pregameGameMarketPicks(marketProps, game), [marketProps, game])
   const h1Spread = picks.firstHalf.spread
@@ -4050,23 +4085,16 @@ function LandscapeMatchupBoard({
             side={game.away}
             label={awayLabel}
             treatment={awayTreatment}
-            spread={book?.away_spread ?? game.away?.spread}
-            spreadPrice={book ? book.away_spread_price : null}
-            ml={book?.away_ml ?? game.away?.ml}
+            best={best?.away}
             teamTotal={picks.teamTotal.away}
-            bookName={bookName}
-            bookUrl={book ? bookUrl : ''}
           />
           <div className="flex flex-col items-center gap-2.5 px-1 text-center">
             <div className="text-[13px] font-semibold uppercase tracking-[0.2em] text-white/45">at</div>
-            {total != null ? (
-              <MatchupLine
-                title="Total"
-                value={total}
-                sub={`o${american(book.over_price)} / u${american(book.under_price)}`}
-                href={bookUrl}
-                source={bookName}
-              />
+            {best?.over || best?.under ? (
+              <div className="flex items-start gap-3">
+                <BestLine title="Over" pick={best.over} value={best.over ? `o${best.over.point}` : null} />
+                <BestLine title="Under" pick={best.under} value={best.under ? `u${best.under.point}` : null} />
+              </div>
             ) : null}
             {h1Spread && h1SpreadTeam ? (
               <MatchupLine
@@ -4086,30 +4114,13 @@ function LandscapeMatchupBoard({
                 source={h1Total.source}
               />
             ) : null}
-            {bookName && bookUrl ? (
-              <button
-                type="button"
-                data-lounge-gamecast-market-link
-                onClick={() => void openExternalUrl(bookUrl)}
-                aria-label={`Open ${bookName}`}
-                className="rounded-full border border-white/20 bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/75 touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/20"
-              >
-                {bookName}
-              </button>
-            ) : bookName ? (
-              <div className="text-[10px] font-medium uppercase tracking-wide text-white/40">{bookName}</div>
-            ) : null}
           </div>
           <MatchupTeamColumn
             side={game.home}
             label={homeLabel}
             treatment={homeTreatment}
-            spread={book?.home_spread ?? game.home?.spread}
-            spreadPrice={book ? book.home_spread_price : null}
-            ml={book?.home_ml ?? game.home?.ml}
+            best={best?.home}
             teamTotal={picks.teamTotal.home}
-            bookName={bookName}
-            bookUrl={book ? bookUrl : ''}
           />
           <PregamePropRail rows={rails.home} align="right" />
         </div>
@@ -4302,7 +4313,7 @@ export default function GameHubHero({
         awayTreatment={awayTreatment}
         homeTreatment={homeTreatment}
         splits={splits}
-        book={Array.isArray(odds) ? odds[0] || null : null}
+        odds={odds}
         sideSlots={sideSlots}
         players={players}
         marketProps={marketProps}

@@ -759,6 +759,45 @@ function quadBezier(p0, p1, p2, t) {
   }
 }
 
+/**
+ * Ball arcs from `start` into the end zone at `goalPct` (traveling `dir`), lands TOUCHBACK_LAND_DEPTH_YDS
+ * deep, then hops out the back and fades. Shared by kickoff + interception touchbacks.
+ * @returns {{ frameAt: (elapsed: number) => { ball: {x:number,y:number}, rotate: number, opacity: number }, totalMs: number }}
+ */
+function touchbackBallFrames({ start, goalPct, dir, flightMs, arcLift }) {
+  const land = { x: fieldMidXFromPercent(goalPct + dir * TOUCHBACK_LAND_DEPTH_YDS), y: RUSH_Y }
+  const ctrl = { x: (start.x + land.x) / 2, y: Math.min(start.y, land.y) - arcLift }
+  const bounceSpots = TOUCHBACK_BOUNCES.map((b) => ({ ...b, x: fieldMidXFromPercent(goalPct + dir * b.toYds) }))
+  const bouncesMs = TOUCHBACK_BOUNCES.reduce((sum, b) => sum + b.ms, 0)
+  const spin = dir > 0 ? 1 : -1
+  const frameAt = (elapsed) => {
+    if (elapsed < flightMs) {
+      const t = elapsed / flightMs
+      return { ball: quadBezier(start, ctrl, land, t), rotate: (-40 + t * 80) * -spin, opacity: 1 }
+    }
+    let at = elapsed - flightMs
+    let fromX = land.x
+    let rot = 40 * -spin
+    for (let i = 0; i < bounceSpots.length; i += 1) {
+      const b = bounceSpots[i]
+      if (at < b.ms) {
+        const u = at / b.ms
+        const last = i === bounceSpots.length - 1
+        return {
+          ball: { x: fromX + (b.x - fromX) * u, y: RUSH_Y - 4 * b.lift * u * (1 - u) },
+          rotate: rot + spin * 260 * u,
+          opacity: last ? Math.max(0, 1 - Math.max(0, u - 0.35) / 0.65) : 1,
+        }
+      }
+      at -= b.ms
+      fromX = b.x
+      rot += spin * 260
+    }
+    return { ball: { x: fromX, y: RUSH_Y }, rotate: rot, opacity: 0 }
+  }
+  return { frameAt, totalMs: flightMs + bouncesMs + TOUCHBACK_HOLD_MS }
+}
+
 /** Map WR path progress → ball flight 0..1 (ball sits until CATCH_BALL_LAUNCH_AT). */
 function catchBallFlightProgress(wrProgress) {
   const p = Number(wrProgress)
@@ -2168,6 +2207,50 @@ function FieldViz({
       return undefined
     }
 
+    // Pick in the end zone for a touchback: no defender … the ball lands deep and bounces out the back.
+    if (!isTouchdown && parsed.touchback) {
+      const { frameAt, totalMs: tbMs } = touchbackBallFrames({
+        start: base.ballStart,
+        goalPct: offDir > 0 ? 100 : 0,
+        dir: offDir,
+        flightMs: PICK_THROW_MS,
+        arcLift: catchArcLiftFromYards(airYards),
+      })
+      setPickAnim({
+        ...base,
+        touchback: true,
+        figX: pickX,
+        ballT: 0,
+        showFigure: false,
+        showBall: false,
+        showTrail: false,
+        showTdLabel: false,
+        linesOpacity: 1,
+        tb: frameAt(0),
+        playing: true,
+      })
+      const t0 = performance.now()
+      const tick = (now) => {
+        const elapsed = now - t0
+        if (elapsed >= tbMs) {
+          pickRafRef.current = 0
+          if (!isUserReplay) lastAutoPlayedKeyRef.current = animKey
+          setPickAnim(null)
+          return
+        }
+        const tb = frameAt(elapsed)
+        setPickAnim((prev) => (prev && prev.playKey === animKey ? { ...prev, tb } : prev))
+        pickRafRef.current = requestAnimationFrame(tick)
+      }
+      pickRafRef.current = requestAnimationFrame(tick)
+      return () => {
+        if (!pickRafRef.current) return
+        cancelAnimationFrame(pickRafRef.current)
+        pickRafRef.current = 0
+        if (pickKeyRef.current === animKey) pickKeyRef.current = ''
+      }
+    }
+
     // Non-scoring pick: brief hold at the return spot, then the TURNOVER banner takes over.
     const totalMs = isTouchdown
       ? runEndMs + CATCH_TD_PRE_LABEL_MS + CATCH_TD_CELEBRATE_MS + CATCH_TD_LABEL_TAIL_MS
@@ -2303,40 +2386,13 @@ function FieldViz({
       }
       const kickFromYard = Number.isFinite(touchback.kickFromYard) ? touchback.kickFromYard : 35
       const start = { x: fieldMidXFromPercent(kickOwnGoal + kickDir * kickFromYard), y: RUSH_Y - 6 }
-      const land = { x: fieldMidXFromPercent(recOwnGoal - recDir * TOUCHBACK_LAND_DEPTH_YDS), y: RUSH_Y }
-      const ctrl = { x: (start.x + land.x) / 2, y: Math.min(start.y, land.y) - KICK_ARC_LIFT }
-      const bounceSpots = TOUCHBACK_BOUNCES.map((b) => ({
-        ...b,
-        x: fieldMidXFromPercent(recOwnGoal - recDir * b.toYds),
-      }))
-      const bouncesMs = TOUCHBACK_BOUNCES.reduce((sum, b) => sum + b.ms, 0)
-      const totalMs = KICK_FLIGHT_MS + bouncesMs + TOUCHBACK_HOLD_MS
-      const spin = kickDir > 0 ? 1 : -1
-      const frameAt = (elapsed) => {
-        if (elapsed < KICK_FLIGHT_MS) {
-          const t = elapsed / KICK_FLIGHT_MS
-          return { ball: quadBezier(start, ctrl, land, t), rotate: (-40 + t * 80) * -spin, opacity: 1 }
-        }
-        let at = elapsed - KICK_FLIGHT_MS
-        let fromX = land.x
-        let rot = 40 * -spin
-        for (let i = 0; i < bounceSpots.length; i += 1) {
-          const b = bounceSpots[i]
-          if (at < b.ms) {
-            const u = at / b.ms
-            const last = i === bounceSpots.length - 1
-            return {
-              ball: { x: fromX + (b.x - fromX) * u, y: RUSH_Y - 4 * b.lift * u * (1 - u) },
-              rotate: rot + spin * 260 * u,
-              opacity: last ? Math.max(0, 1 - Math.max(0, u - 0.35) / 0.65) : 1,
-            }
-          }
-          at -= b.ms
-          fromX = b.x
-          rot += spin * 260
-        }
-        return { ball: { x: fromX, y: RUSH_Y }, rotate: rot, opacity: 0 }
-      }
+      const { frameAt, totalMs } = touchbackBallFrames({
+        start,
+        goalPct: recOwnGoal,
+        dir: kickDir,
+        flightMs: KICK_FLIGHT_MS,
+        arcLift: KICK_ARC_LIFT,
+      })
       setKickAnim({
         playKey: animKey,
         touchback: true,
@@ -3534,6 +3590,15 @@ function FieldViz({
           {kickBall ? (
             <g transform={`translate(${kickBall.x - 12} ${kickBall.y - 9})`}>
               <AmericanFootballMark tone="field" size={24} rotate={kickBallRotate} />
+            </g>
+          ) : null}
+          {pickAnim?.touchback && pickAnim.tb?.opacity > 0 ? (
+            <g
+              data-lounge-pick-anim="touchback"
+              opacity={pickAnim.tb.opacity}
+              transform={`translate(${pickAnim.tb.ball.x - 12} ${pickAnim.tb.ball.y - 9})`}
+            >
+              <AmericanFootballMark tone="field" size={24} rotate={pickAnim.tb.rotate} />
             </g>
           ) : null}
           {pickBall ? (

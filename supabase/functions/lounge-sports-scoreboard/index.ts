@@ -12,6 +12,38 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+/**
+ * Per-isolate caches with in-flight sharing: the pill poll and every hub viewer of a game reuse one slate build
+ * and one detail build (TheRundown + ESPN + Odds) instead of each request fetching its own.
+ */
+const BOARD_TTL_MS = 8_000
+const DETAIL_TTL_MS = 4_000
+let boardCache: { at: number; promise: ReturnType<typeof buildLoungeSportsScoreboard> } | null = null
+const detailCache = new Map<string, { at: number; promise: Promise<Record<string, unknown> | null> }>()
+
+function cachedBoard(admin: ReturnType<typeof createClient>) {
+  if (boardCache && Date.now() - boardCache.at < BOARD_TTL_MS) return boardCache.promise
+  const promise = buildLoungeSportsScoreboard(admin)
+  const entry = { at: Date.now(), promise }
+  boardCache = entry
+  promise.catch(() => {
+    if (boardCache === entry) boardCache = null
+  })
+  return promise
+}
+
+function cachedDetail(key: string, build: () => Promise<Record<string, unknown> | null>) {
+  const hit = detailCache.get(key)
+  if (hit && Date.now() - hit.at < DETAIL_TTL_MS) return hit.promise
+  for (const [k, v] of detailCache) {
+    if (Date.now() - v.at >= DETAIL_TTL_MS) detailCache.delete(k)
+  }
+  const promise = build()
+  detailCache.set(key, { at: Date.now(), promise })
+  promise.catch(() => detailCache.delete(key))
+  return promise
+}
+
 function json(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -50,44 +82,47 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const board = await buildLoungeSportsScoreboard(admin)
+    const board = await cachedBoard(admin)
     if (!eventId) {
       return json(200, { ok: true, ...board, fetched_at: new Date().toISOString() })
     }
     const game = board.games.find((g) => g.id === eventId)
     if (!game) return json(404, { error: 'Game not on the current slate.' })
-    const detail = await fetchLoungeSportsGameDetail(game)
-    const splitMap = await loadPastedBettingSplitsForSlate(admin, game.sport_key, [
-      {
-        id: game.id,
-        home_team: game.home?.name || game.home?.mascot || '',
-        away_team: game.away?.name || game.away?.mascot || '',
-      },
-    ])
-    const summary = splitMap.get(game.id)
-    const splits = summary
-      ? {
-          away_ticket_pct: Math.round(Number(summary.awayTicketPct) || 0),
-          away_handle_pct: Math.round(Number(summary.awayHandlePct) || 0),
-          home_ticket_pct: Math.round(Number(summary.homeTicketPct) || 0),
-          home_handle_pct: Math.round(Number(summary.homeHandlePct) || 0),
-          source: summary.source || null,
-          is_fade_public: Boolean(summary.isFadePublic),
-          divergence_pts: Math.round(Number(summary.divergencePts) || 0),
-        }
-      : null
-    return json(200, {
-      ok: true,
-      game: { ...game, live: detail.live || game.live },
-      odds: detail.odds,
-      plays: detail.plays,
-      stats: detail.stats,
-      team_stats: detail.team_stats,
-      player_box: detail.player_box,
-      rosters: detail.rosters,
-      splits,
-      fetched_at: new Date().toISOString(),
+    const payload = await cachedDetail(eventId, async () => {
+      const detail = await fetchLoungeSportsGameDetail(game)
+      const splitMap = await loadPastedBettingSplitsForSlate(admin, game.sport_key, [
+        {
+          id: game.id,
+          home_team: game.home?.name || game.home?.mascot || '',
+          away_team: game.away?.name || game.away?.mascot || '',
+        },
+      ])
+      const summary = splitMap.get(game.id)
+      const splits = summary
+        ? {
+            away_ticket_pct: Math.round(Number(summary.awayTicketPct) || 0),
+            away_handle_pct: Math.round(Number(summary.awayHandlePct) || 0),
+            home_ticket_pct: Math.round(Number(summary.homeTicketPct) || 0),
+            home_handle_pct: Math.round(Number(summary.homeHandlePct) || 0),
+            source: summary.source || null,
+            is_fade_public: Boolean(summary.isFadePublic),
+            divergence_pts: Math.round(Number(summary.divergencePts) || 0),
+          }
+        : null
+      return {
+        ok: true,
+        game: { ...game, live: detail.live || game.live },
+        odds: detail.odds,
+        plays: detail.plays,
+        stats: detail.stats,
+        team_stats: detail.team_stats,
+        player_box: detail.player_box,
+        rosters: detail.rosters,
+        splits,
+        fetched_at: new Date().toISOString(),
+      }
     })
+    return json(200, payload || { error: 'Scoreboard failed.' })
   } catch (err) {
     return json(502, { error: err instanceof Error ? err.message : 'Scoreboard failed.' })
   }

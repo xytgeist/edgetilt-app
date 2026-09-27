@@ -1486,7 +1486,11 @@ function FieldViz({
   const centerBanner = fieldCenterBanner(game, live)
   // Timeouts keep LOS / 1st down / ball / red zone … the drive is still live.
   const hideLiveLines = Boolean(centerBanner) && centerBanner !== 'TIMEOUT'
-  const lastPlayText = String(lastPlay || '').trim()
+  const feedLastPlayText = String(lastPlay || '').trim()
+  // One-play queue: a play that lands mid-animation waits for it to finish (newest wins), so a PAT or
+  // timeout row a poll after a TD no longer cuts the celebration off. Tap replays bypass the hold.
+  const [heldPlayText, setHeldPlayText] = useState(feedLastPlayText)
+  const lastPlayText = isUserReplay ? feedLastPlayText : heldPlayText
   const lastPlayRow = useMemo(() => {
     const id = fieldPlayIdentity(lastPlayText)
     if (!id || !Array.isArray(plays)) return null
@@ -1498,10 +1502,12 @@ function FieldViz({
   const playKey = useMemo(() => {
     const aliases = playKeyAliasRef.current
     const rowKey = lastPlayRow?.id ? `row:${lastPlayRow.id}` : ''
+    // Same snap merged from another feed (TheRundown → ESPN) keeps the key it had under the old id.
+    const sourceKeys = Array.isArray(lastPlayRow?.source_ids) ? lastPlayRow.source_ids.map((id) => `row:${id}`) : []
     const textKey = fieldPlayIdentity(lastPlayText)
-    const key = (rowKey && aliases.get(rowKey)) || (textKey && aliases.get(textKey)) || rowKey || textKey
-    if (rowKey) aliases.set(rowKey, key)
-    if (textKey) aliases.set(textKey, key)
+    const known = [rowKey, ...sourceKeys, textKey].find((k) => k && aliases.get(k))
+    const key = (known && aliases.get(known)) || rowKey || textKey
+    for (const k of [rowKey, ...sourceKeys, textKey]) if (k) aliases.set(k, key)
     return key
   }, [lastPlayRow, lastPlayText])
   const animKey = `${playKey}::${Number(playReplayNonce) || 0}`
@@ -1544,9 +1550,16 @@ function FieldViz({
   const tdDriveHold = Boolean(isFootball && lastPlayText && playTextIsScoreTry(lastPlayText) && !centerBanner)
   const livePeriod = live?.period
   const staleHalf = Boolean(isFootball && game?.status === 'in' && playsFromEarlierHalf(plays, livePeriod))
+  // While a newer play is queued, the drive chart stops at the play on the field.
+  const drivePlays = useMemo(() => {
+    if (isUserReplay || !Array.isArray(plays) || lastPlayText === feedLastPlayText) return plays
+    const id = fieldPlayIdentity(lastPlayText)
+    const idx = id ? plays.findLastIndex((p) => fieldPlayIdentity(p?.description) === id) : -1
+    return idx >= 0 ? plays.slice(0, idx + 1) : plays
+  }, [isUserReplay, plays, lastPlayText, feedLastPlayText])
   const drive = useMemo(
-    () => (isFootball ? buildPossessionDriveMarks(plays, { keepScoringDrive: tdDriveHold, livePeriod }) : null),
-    [isFootball, plays, tdDriveHold, livePeriod],
+    () => (isFootball ? buildPossessionDriveMarks(drivePlays, { keepScoringDrive: tdDriveHold, livePeriod }) : null),
+    [isFootball, drivePlays, tdDriveHold, livePeriod],
   )
   const [throwDoneKey, setThrowDoneKey] = useState('')
   /** Incompletion throw that passed the start gate … see `throwKey`. */
@@ -2983,6 +2996,13 @@ function FieldViz({
     return () => window.clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- fire on the anim active → idle edge only
   }, [anyPlayAnim])
+
+  const throwRunning = Boolean(throwArmedKey) && throwArmedKey === animKey && throwDoneKey !== animKey
+  const fieldAnimBusy = anyPlayAnimRunning || throwRunning
+  useEffect(() => {
+    if (isUserReplay || fieldAnimBusy || heldPlayText === feedLastPlayText) return
+    setHeldPlayText(feedLastPlayText)
+  }, [isUserReplay, fieldAnimBusy, heldPlayText, feedLastPlayText])
 
   if (!isFootball) return null
 

@@ -195,6 +195,8 @@ export default function FgKickTestPage() {
     const m = String(new URLSearchParams(window.location.search).get('landscape') || '').match(/^(\d+)x(\d+)$/)
     return m ? { w: Number(m[1]), h: Number(m[2]) } : null
   }, [])
+  // `?feed=1` sends plays as live feed rows (nonce 0) so the one-play queue applies, like a real poll.
+  const feedMode = useMemo(() => new URLSearchParams(window.location.search).get('feed') === '1', [])
   const game = useMemo(
     () => (college ? { ...MOCK_GAME, sport_key: 'americanfootball_ncaaf' } : MOCK_GAME),
     [college],
@@ -780,7 +782,7 @@ export default function FgKickTestPage() {
             live={live}
             lastPlay={lastPlay}
             plays={feedPlays}
-            playReplayNonce={nonce}
+            playReplayNonce={feedMode ? 0 : nonce}
             replayTeam={feedTeam || possession}
             playStartSpot={startSpot}
             fullscreen={Boolean(landscapeBox)}

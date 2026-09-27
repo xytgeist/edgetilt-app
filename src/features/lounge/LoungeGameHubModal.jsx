@@ -184,14 +184,20 @@ export default function LoungeGameHubModal({
     await shareViaBestAvailable({ url, title, text })
   }
 
+  const detailGameId = game?.id || null
+  const detailGameLive = game?.status === 'in'
   useEffect(() => {
-    if (!game || !supabaseClient) {
+    if (!detailGameId || !supabaseClient) {
       setDetail({ odds: [], plays: [], stats: [], live: null, splits: null })
       return undefined
     }
     let cancelled = false
+    let inflight = false
     const load = () => {
-      void loungeSportsGameDetail(supabaseClient, game.id).then((data) => {
+      if (inflight) return
+      inflight = true
+      void loungeSportsGameDetail(supabaseClient, detailGameId).then((data) => {
+        inflight = false
         if (cancelled || data?.error) return
         setDetail({
           odds: Array.isArray(data.odds) ? data.odds : [],
@@ -203,16 +209,27 @@ export default function LoungeGameHubModal({
           playerBox: data.player_box && typeof data.player_box === 'object' ? data.player_box : null,
           rosters: data.rosters && typeof data.rosters === 'object' ? data.rosters : null,
         })
+      }, () => {
+        inflight = false
       })
     }
     load()
-    const ms = game.status === 'in' ? 20_000 : 120_000
-    const id = setInterval(load, ms)
+    // Live: ~6s behind ESPN at worst (server shares a 4s per-game cache across viewers). Paused while hidden.
+    const ms = detailGameLive ? 6_000 : 120_000
+    const id = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return
+      load()
+    }, ms)
+    const onVisible = () => {
+      if (!document.hidden) load()
+    }
+    document.addEventListener('visibilitychange', onVisible)
     return () => {
       cancelled = true
       clearInterval(id)
+      document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [game, supabaseClient])
+  }, [detailGameId, detailGameLive, supabaseClient])
 
   useEffect(() => {
     if (!game || !supabaseClient) return undefined

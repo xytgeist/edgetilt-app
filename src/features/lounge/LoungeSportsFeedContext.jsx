@@ -135,8 +135,11 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
     if (!feedActive || !supabaseClient) return undefined
     void loadBoard()
     const live = gamesRef.current.some((g) => g.status === 'in') || hubGame?.status === 'in'
-    const ms = hubGame ? (hubGame.status === 'in' ? 20_000 : 60_000) : live ? 45_000 : 5 * 60_000
-    const id = setInterval(() => void loadBoard(), ms)
+    const ms = hubGame ? (hubGame.status === 'in' ? 10_000 : 60_000) : live ? 15_000 : 5 * 60_000
+    const id = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return
+      void loadBoard()
+    }, ms)
     return () => clearInterval(id)
   }, [feedActive, hubGame, loadBoard, supabaseClient, games.some((g) => g.status === 'in')])
 

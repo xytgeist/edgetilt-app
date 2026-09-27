@@ -179,6 +179,8 @@ export type LoungeSportsPlay = {
   /** Running score after a scoring play (ESPN `homeScore` / `awayScore`) … ESPN's board total can lag the PBP row. */
   home_score?: number
   away_score?: number
+  /** Ids of the same snap from other feeds (TheRundown) merged into this row. */
+  source_ids?: string[]
 }
 
 export type LoungeSportsPlaySpot = {
@@ -1071,7 +1073,7 @@ async function loadEspnFootballSlateExtras(
   return extras
 }
 
-const ESPN_CLOCK_TTL_MS = 20_000
+const ESPN_CLOCK_TTL_MS = 5_000
 const espnFootballClockCache = new Map<string, { at: number; events: Array<Record<string, unknown>> }>()
 
 /** ESPN status → compact pill clock ("Q2 4:12", "Halftime", "End Q1", "OT 3:05"). */
@@ -1385,17 +1387,9 @@ async function rundownGet<T>(path: string): Promise<T | null> {
 const ESPN_TURNOVER_PLAY_TYPE = /interception|fumble\s+recovery\s*\(opponent\)|fumble\s+return\s+touchdown/i
 const ESPN_NO_SPOT_PLAY_TYPE = /timeout|end\s+(?:period|of\s+(?:half|game|quarter))|two[-\s]minute/i
 
-/** Unofficial ESPN public summary … fills football PBP / clock when TheRundown plays are empty.
- *  NFL: prod only (`jtjgtucumuoswnbauxry`) so sandbox hub polls do not burn ESPN.
- *  CFB: allowed on test + prod (college hub Plays tab needs it when Rundown is thin).
+/** Unofficial ESPN public summary … football PBP / clock / box, merged with TheRundown (NFL + CFB, test + prod).
+ *  Hub detail responses are cached per game in `lounge-sports-scoreboard`, so viewers share ESPN reads.
  */
-const PROD_SUPABASE_REF = 'jtjgtucumuoswnbauxry'
-
-function isProdSupabaseProject(): boolean {
-  const url = Deno.env.get('SUPABASE_URL') || ''
-  return url.includes(PROD_SUPABASE_REF)
-}
-
 function espnCompetitorTeamId(c: Record<string, unknown>): string {
   const team = (c.team && typeof c.team === 'object') ? c.team as Record<string, unknown> : {}
   return String(c.id || team.id || '').trim()
@@ -1525,10 +1519,6 @@ async function fetchEspnFootballLivePack(
       ? 'nfl'
       : null
   if (!league) return { live: null, plays: [] }
-  // NFL ESPN fallback stays prod-only; CFB runs on test too.
-  if (league === 'nfl' && !isProdSupabaseProject()) {
-    return { live: null, plays: [] }
-  }
   const awayAbb = nflAbbrevKey(game.away?.abbrev)
   const homeAbb = nflAbbrevKey(game.home?.abbrev)
   if ((!awayAbb || !homeAbb) && game.away?.team_id == null && game.home?.team_id == null) {
@@ -1537,7 +1527,8 @@ async function fetchEspnFootballLivePack(
 
   const dates: string[] = []
   const kick = game.commence_time ? new Date(game.commence_time) : new Date()
-  for (const delta of [-1, 0, 1]) {
+  // Kickoff day first … trying the day before first cost a wasted ESPN round trip on every live poll.
+  for (const delta of [0, -1, 1]) {
     const d = new Date(kick)
     d.setUTCDate(d.getUTCDate() + delta)
     const y = d.getUTCFullYear()
@@ -1812,6 +1803,90 @@ async function fetchEspnFootballLivePack(
   } catch {
     return { live: null, plays: [] }
   }
+}
+
+function clockSeconds(clock: string): number | null {
+  const m = String(clock || '').trim().match(/^(\d{1,2}):(\d{2})/)
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null
+}
+
+/** Game seconds elapsed at a period + clock (15-minute quarters, NFL and CFB) … null when unknown. */
+function gameElapsedSeconds(period: number | null | undefined, clock: string): number | null {
+  const sec = clockSeconds(clock)
+  if (period == null || !Number.isFinite(Number(period)) || sec == null) return null
+  return (Number(period) - 1) * 900 + (900 - sec)
+}
+
+/** Which live read is further into the game … the fresher source leads the merge. */
+function fresherLiveFirst(
+  a: LoungeSportsLiveState | null,
+  b: LoungeSportsLiveState | null,
+): [LoungeSportsLiveState | null, LoungeSportsLiveState | null] {
+  const ea = a ? gameElapsedSeconds(a.period, a.clock) : null
+  const eb = b ? gameElapsedSeconds(b.period, b.clock) : null
+  if (ea != null && eb != null && eb > ea) return [b, a]
+  if (ea == null && eb != null) return [b, a]
+  return [a, b]
+}
+
+function footballPlayKind(text: string): string {
+  const t = String(text || '').toLowerCase()
+  if (/\btimeout\b/.test(t)) return 'timeout'
+  if (/\bextra point\b/.test(t)) return 'xp'
+  if (/two[-\s]point/.test(t)) return '2pt'
+  if (/\bfield goal\b/.test(t)) return 'fg'
+  if (/\bkicks?\b.*\b(yards?|touchback)\b/.test(t) || /\bkickoff\b/.test(t)) return 'kickoff'
+  if (/\bpunts?\b/.test(t)) return 'punt'
+  if (/\bsacked\b/.test(t)) return 'sack'
+  if (/\bintercept/.test(t)) return 'int'
+  if (/\bincomplete\b/.test(t)) return 'inc'
+  if (/\bpass\b/.test(t)) return 'pass'
+  if (/\bkneels?\b/.test(t)) return 'kneel'
+  if (/\bspike/.test(t)) return 'spike'
+  if (/^\s*(\(.*?\)\s*)?penalty\b/.test(t) || /\bno play\b/.test(t)) return 'penalty'
+  if (/\bend of\b|\bend quarter\b|\bend game\b|two[-\s]minute/.test(t)) return 'break'
+  return 'run'
+}
+
+/**
+ * One feed from TheRundown + ESPN plays: the same snap (period + clock + play kind) from both sources collapses
+ * into the ESPN row (spots, turnover, running score) with the other id kept in `source_ids`, so the field keys
+ * one animation and the feed prints the play once. Plays only one source has yet stay, in game order.
+ */
+function mergeFootballPlays(primary: LoungeSportsPlay[], espn: LoungeSportsPlay[]): LoungeSportsPlay[] {
+  if (!primary.length) return espn
+  if (!espn.length) return primary
+  const keyOf = (p: LoungeSportsPlay) => {
+    const sec = clockSeconds(p.clock)
+    if (p.period == null || sec == null) return ''
+    return `${p.period}|${sec}|${footballPlayKind(p.description)}`
+  }
+  const espnByKey = new Map<string, LoungeSportsPlay[]>()
+  const out: LoungeSportsPlay[] = espn.map((p) => ({ ...p }))
+  for (const p of out) {
+    const k = keyOf(p)
+    if (!k) continue
+    const list = espnByKey.get(k) || []
+    list.push(p)
+    espnByKey.set(k, list)
+  }
+  const extras: LoungeSportsPlay[] = []
+  for (const p of primary) {
+    const k = keyOf(p)
+    const match = k ? espnByKey.get(k)?.shift() : undefined
+    if (match) {
+      match.source_ids = [...(match.source_ids || []), p.id]
+    } else {
+      extras.push(p)
+    }
+  }
+  if (!extras.length) return out
+  const ordered = [...out, ...extras].map((p, i) => ({ p, i, at: gameElapsedSeconds(p.period, p.clock) }))
+  ordered.sort((a, b) => {
+    if (a.at == null || b.at == null) return a.i - b.i
+    return a.at - b.at || a.i - b.i
+  })
+  return ordered.map((r) => r.p)
 }
 
 function mergeLiveState(
@@ -2368,9 +2443,10 @@ export async function fetchLoungeSportsGameDetail(
     : Promise.resolve(null)
   if (needEspn || wantTeamStats) {
     const espn = await fetchEspnFootballLivePack(game)
-    if (needEspn) {
-      if (espn.plays.length && playsOut.length === 0) playsOut = espn.plays
-      liveOut = mergeLiveState(liveOut, espn.live)
+    if (espn.plays.length) playsOut = mergeFootballPlays(playsOut, espn.plays)
+    if (espn.live) {
+      const [lead, rest] = fresherLiveFirst(liveOut, espn.live)
+      liveOut = mergeLiveState(lead, rest)
     }
     teamStats = espn.team_stats ?? null
     playerBox = espn.player_box ?? null

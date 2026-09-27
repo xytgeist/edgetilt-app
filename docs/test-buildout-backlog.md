@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-26:** **Game hub: backward drive arrows sit at the end spot (Mac).** 1.4.805: losses + offensive penalties put the arrow at the far (end) side of the segment pointing back; gains + defensive flags keep it at the snap pointing downfield.
 - **2026-09-26:** **Game hub: drive arrows point backward on losses (Mac).** 1.4.804: drive-chart play lines aim their arrow along the actual travel (`lineDir`), so sacks / TFLs point toward the offense's own goal; penalty arrows already follow the enforced direction (offensive flags point back).
 - **2026-09-26:** **Game hub: punts hang high with a lazy backspin (Mac).** 1.4.803: `PUNT_ARC_LIFT` 400 (kickoff 250), `PUNT_FLIGHT_MS` 1900 → 2400, `PUNT_TUMBLE_DEG_PER_MS` ~1.5 revs/s (kickoff keeps the FG rate). Applies to punt returns, fair catches and punt touchbacks.
 - **2026-09-26:** **Game hub: spiral turns scale with throw distance (Mac).** 1.4.802: `passSpiralRevs(yards, flightMs)` … whole turns = round(3 + (yds - 5) × 0.48), 2-20 (5 yds ≈ 3, 30 yds ≈ 15), capped at 16 turns/s of flight so 60fps doesn't strobe. Catch uses the play's gain, pick throws air yards, drive-chart incompletions the mark depth.

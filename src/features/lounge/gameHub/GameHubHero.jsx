@@ -662,7 +662,7 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey, throwKey = '', onT
         if (m.key === hideKey) return null
         if (m.kind === 'line') {
           const y = RUSH_Y + (laneOf.get(m.key) || 0) * DRIVE_LANE_PX
-          // Loss (sack, TFL) points back toward the offense's own goal.
+          // Gain: arrow at the snap pointing downfield. Loss (sack, TFL): arrow at the end spot pointing back.
           const lineDir = (m.toPct - m.fromPct) * attackDir < -0.2 ? -attackDir : attackDir
           let x1 = fieldXAtY(m.fromPct, y)
           let x2 = fieldXAtY(m.toPct, y)
@@ -685,7 +685,7 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey, throwKey = '', onT
                 strokeLinecap="round"
                 strokeOpacity="0.95"
               />
-              <polygon points={driveArrow(fieldXAtY(m.fromPct, y), y, lineDir)} fill="#fff" stroke="#000" strokeOpacity="0.55" strokeWidth="1" strokeLinejoin="round" />
+              <polygon points={driveArrow(fieldXAtY(lineDir === attackDir ? m.fromPct : m.toPct, y), y, lineDir)} fill="#fff" stroke="#000" strokeOpacity="0.55" strokeWidth="1" strokeLinejoin="round" />
             </g>
           )
         }
@@ -708,7 +708,7 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey, throwKey = '', onT
                 strokeDasharray="8 6"
                 strokeLinecap="round"
               />
-              <polygon points={driveArrow(x1, y, penaltyDir)} fill="#fff" stroke="#000" strokeOpacity="0.55" strokeWidth="1" strokeLinejoin="round" />
+              <polygon points={driveArrow(penaltyDir === attackDir ? x1 : x2, y, penaltyDir)} fill="#fff" stroke="#000" strokeOpacity="0.55" strokeWidth="1" strokeLinejoin="round" />
             </g>
           )
         }

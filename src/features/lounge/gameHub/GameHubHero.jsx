@@ -147,11 +147,21 @@ const FG_BOUNCE_MS = 880
 const FG_BALL_SIZE = 30
 /** End-over-end revolutions over the full flight (path t 0→1). */
 const FG_TUMBLE_REVS = 20
-/** Thrown spiral: whole long-axis turns per flight, so the laces land back on top (no snap at the catch). */
-const PASS_SPIRAL_REVS = 5
-function passSpiral(flightT) {
+/**
+ * Thrown spiral: whole long-axis turns per flight (laces land back on top, no snap at the catch), scaled by
+ * distance … ~3 turns at 5 yds, ~15 at 30 yds.
+ */
+/** Past ~16 turns/s a 60fps frame steps ~100°+ and the laces strobe / wagon-wheel backwards. */
+const PASS_SPIRAL_MAX_REVS_PER_S = 16
+function passSpiralRevs(yards, flightMs) {
+  const y = Math.abs(Number(yards))
+  const want = Number.isFinite(y) ? Math.round(Math.max(2, Math.min(20, 3 + (y - 5) * 0.48))) : 5
+  const cap = Math.max(2, Math.floor((PASS_SPIRAL_MAX_REVS_PER_S * flightMs) / 1000))
+  return Math.min(want, cap)
+}
+function passSpiral(flightT, yards, flightMs) {
   const t = Number(flightT)
-  return Number.isFinite(t) && t > 0 && t < 1 ? t * PASS_SPIRAL_REVS * 360 : null
+  return Number.isFinite(t) && t > 0 && t < 1 ? t * passSpiralRevs(yards, flightMs) * 360 : null
 }
 /** Kickoffs / punts tumble end-over-end at the field goal's rate (revs per ms of flight). */
 const KICK_TUMBLE_DEG_PER_MS = (FG_TUMBLE_REVS * 360) / FG_FLIGHT_BASE_MS
@@ -475,7 +485,7 @@ function FieldBannerFitText({ text, className, style }) {
   )
 }
 
-function DriveIncompleteMark({ p0, c, p1, attackDir, primary, halo, haloOpacity, throwKey, onThrowDone, college = false }) {
+function DriveIncompleteMark({ p0, c, p1, attackDir, primary, halo, haloOpacity, throwKey, onThrowDone, college = false, yards = null }) {
   const [elapsed, setElapsed] = useState(null)
   const onDoneRef = useRef(onThrowDone)
   useEffect(() => {
@@ -522,7 +532,7 @@ function DriveIncompleteMark({ p0, c, p1, attackDir, primary, halo, haloOpacity,
       ) : null}
       {frame && frame.ballOpacity > 0 ? (
         <g opacity={frame.ballOpacity} transform={`translate(${frame.ball.x - 12} ${frame.ball.y - 9})`}>
-          <AmericanFootballMark tone="field" size={24} rotate={frame.rotate} spiral={passSpiral(frame.t)} college={college} />
+          <AmericanFootballMark tone="field" size={24} rotate={frame.rotate} spiral={passSpiral(frame.t, yards, THROW_FLIGHT_MS)} college={college} />
         </g>
       ) : null}
     </g>
@@ -723,6 +733,7 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey, throwKey = '', onT
             throwKey={m.isNewest ? throwKey : ''}
             onThrowDone={onThrowDone}
             college={college}
+            yards={Math.abs(m.toPct - m.fromPct)}
           />
         )
       })}
@@ -3575,7 +3586,7 @@ function FieldViz({
                     tone="field"
                     size={24}
                     rotate={catchBallRotate}
-                    spiral={passSpiral(catchBallFlightT)}
+                    spiral={passSpiral(catchBallFlightT, catchAnim.yards, CATCH_RUN_MS * (1 - CATCH_BALL_LAUNCH_AT))}
                     college={college}
                   />
                 </g>
@@ -3661,7 +3672,7 @@ function FieldViz({
           ) : null}
           {pickBall ? (
             <g transform={`translate(${pickBall.x - 12} ${pickBall.y - 9})`}>
-              <AmericanFootballMark tone="field" size={24} rotate={pickBallRotate} spiral={passSpiral(pickAnim.ballT)} college={college} />
+              <AmericanFootballMark tone="field" size={24} rotate={pickBallRotate} spiral={passSpiral(pickAnim.ballT, pickAnim.airYards, PICK_THROW_MS)} college={college} />
             </g>
           ) : null}
           {fgBall ? (

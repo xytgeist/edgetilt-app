@@ -1353,6 +1353,24 @@ export function matchRushPlayer(hint, players, sideAbbrev = '') {
 const DRIVE_BREAK_PLAY = /\bkick(?:s|ed)?\s+off\b|\bkickoff\b|\bkicks\s+-?\d+\s+yards?\s+from\b|\bpunts?\b|\bintercept(?:ed|ion)?\b/i
 const DRIVE_SKIP_PLAY =
   /\bfield\s+goal\b|\bextra\s+point\b|\bkick\s+attempt\b|\bpat\b|\btwo[-\s]point\b|\b2[-\s]?pt\b|\btimeout\b|\bend\s+of\s+(?:the\s+)?(?:\d\w*\s+)?(?:period|half|quarter|game)\b|\bno\s+play\b/i
+const DRIVE_SCORE_FG = /\bfield\s+goal\b[^.]*\b(?:is\s+)?good\b/i
+/** Stoppage rows that don't change the ball … timeouts, quarter breaks, reviews. */
+const PLAY_STOPPAGE = /^\s*(?:\(\d{1,2}:\d{2}\)\s*)?(?:timeout\b|end\s+of\s+(?:the\s+)?(?:\d\w*\s+)?(?:period|quarter)\b|official\s+timeout\b|injury\s+timeout\b)/i
+
+/**
+ * Last real play once stoppage rows (timeouts, quarter breaks) are skipped … a timeout right after a TD must
+ * not bring the LOS / drive back before the kickoff.
+ * @returns {string}
+ */
+export function lastBallPlayText(plays, lastPlayText = '') {
+  const text = String(lastPlayText || '').trim()
+  if (text && !PLAY_STOPPAGE.test(text)) return text
+  for (const row of sortPlaysNewestFirst(plays)) {
+    const desc = String(row?.description || '').trim()
+    if (desc && !PLAY_STOPPAGE.test(desc)) return desc
+  }
+  return text
+}
 const THROWN_TO_SPOT = /\bthrown\s+to\s+(?:the\s+)?[A-Za-z]{2,6}\s*(\d{1,2})\b/i
 const INCOMPLETE_DIR = /\bincomplete\b(?:\s+(short|deep))?(?:\s+(left|right|middle))?/i
 const PASS_DIR_ANYWHERE = /\b(short|deep)\s+(left|right|middle)\b/i
@@ -1394,7 +1412,11 @@ export function buildPossessionDriveMarks(plays) {
   if (!newestFirst.length) return empty
   const head = newestFirst[0]
   const team = head?.team === 'home' || head?.team === 'away' ? head.team : null
-  const breaksDrive = (row) => row?.turnover === true || DRIVE_BREAK_PLAY.test(String(row?.description || ''))
+  // A score ends the possession too … the field clears until the kickoff (timeouts after it stay empty).
+  const breaksDrive = (row) => {
+    const desc = String(row?.description || '')
+    return row?.turnover === true || DRIVE_BREAK_PLAY.test(desc) || playTextIsTouchdown(desc) || DRIVE_SCORE_FG.test(desc)
+  }
   if (!team || breaksDrive(head)) return empty
   const half = playHalf(head.period)
   const drive = []

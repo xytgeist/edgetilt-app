@@ -36,6 +36,7 @@ import {
   parseRushPlay,
   playTextIsScoreTry,
   buildPossessionDriveMarks,
+  lastBallPlayText,
   playTextIsTouchdown,
   resolveFigureJersey,
   resolvePlayAnimationPercents,
@@ -2326,7 +2327,7 @@ function FieldViz({
       !pickAnim &&
       !kickAnim &&
       lastPlayText &&
-      playTextIsScoreTry(lastPlayText),
+      playTextIsScoreTry(lastBallPlayText(plays, lastPlayText)),
   )
   const showLiveScrimMarkers =
     hasLine &&

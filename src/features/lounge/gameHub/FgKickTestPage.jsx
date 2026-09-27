@@ -186,7 +186,7 @@ export default function FgKickTestPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100">
+    <div className="fixed inset-0 overflow-y-auto overscroll-contain bg-zinc-950 text-zinc-100 [-webkit-overflow-scrolling:touch]">
       <div className="mx-auto max-w-3xl px-3 py-4 sm:px-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>

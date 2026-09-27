@@ -42,7 +42,7 @@ export default function GameHubMoreMenu({ chipClassName, muted, onToggleMuted, o
   }, [open])
 
   const itemClass =
-    'flex w-full items-center gap-3 px-4 py-3 text-left text-[15px] font-medium touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/10'
+    'flex w-full items-center gap-3 px-4 py-3 text-left text-[15px] font-medium touch-manipulation [-webkit-tap-highlight-color:transparent] '
 
   return (
     <>
@@ -64,7 +64,7 @@ export default function GameHubMoreMenu({ chipClassName, muted, onToggleMuted, o
               ref={menuRef}
               role="menu"
               data-lounge-game-more-menu
-              className="fixed min-w-[13rem] overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/95 text-white shadow-2xl backdrop-blur-md"
+              className="fixed min-w-[13rem] overflow-hidden rounded-2xl border shadow-sm"
               style={{ top: anchor.top, right: anchor.right, zIndex: Z_APP_MODAL + 1 }}
             >
               <button
@@ -84,7 +84,7 @@ export default function GameHubMoreMenu({ chipClassName, muted, onToggleMuted, o
                 )}
                 {muted ? 'Unmute game sounds' : 'Mute game sounds'}
               </button>
-              <div data-lounge-game-more-menu-divider className="h-px bg-white/10" />
+              <div data-lounge-game-more-menu-divider className="h-px" />
               <button
                 type="button"
                 role="menuitem"

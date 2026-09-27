@@ -126,7 +126,8 @@ function puntText({ format, receiving, losYard, puntYards, returnYards, touchdow
   }
   const head = `#48 E.Jasso punt ${puntYards} yards to the ${land.ab}${String(land.y).padStart(2, '0')} #20 D.Crowe return`
   if (touchdown) return `${head} ${ret} yards for a TD`
-  return `${head} ${ret} yards to the ${end.ab}${String(end.y).padStart(2, '0')} (#20 B.Hay)`
+  const retWords = ret < 0 ? `for loss of ${-ret} yards` : `${ret} yards`
+  return `${head} ${retWords} to the ${end.ab}${String(end.y).padStart(2, '0')} (#20 B.Hay)`
 }
 
 function puntStartSpot({ receiving, losYard }) {
@@ -141,6 +142,7 @@ const PUNT_SCENARIOS = [
   { id: 'pu-ari-55', label: 'Punt CFB · KC punts own 20 · 55 yds · ARI ret 8', format: 'cfb', receiving: 'away', losYard: 20, puntYards: 55, returnYards: 8 },
   { id: 'pu-kc-fc', label: 'Fair catch NFL · ARI punts own 30 · 45 yds', format: 'nfl', receiving: 'home', losYard: 30, puntYards: 45, fairCatch: true },
   { id: 'pu-ari-fc', label: 'Fair catch CFB · KC punts own 35 · 50 yds', format: 'cfb', receiving: 'away', losYard: 35, puntYards: 50, fairCatch: true },
+  { id: 'pu-loss', label: 'Punt CFB 2H · ARI punts own 14 · 53 yds · KC ret loss of 6', format: 'cfb', receiving: 'home', losYard: 14, puntYards: 53, returnYards: -6, half: 3 },
   { id: 'pu-kc-td', label: 'Punt return TD · ARI punts own 20 · KC scores', format: 'nfl', receiving: 'home', losYard: 20, puntYards: 45, touchdown: true },
 ]
 
@@ -222,6 +224,7 @@ export default function FgKickTestPage() {
   }
 
   const firePunt = (scenario) => {
+    if (scenario.half) setHalf(scenario.half)
     setPossession(scenario.receiving)
     setFeedTeam(scenario.receiving === 'home' ? 'away' : 'home')
     setPuntLos(scenario.losYard)

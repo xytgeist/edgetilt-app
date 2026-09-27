@@ -816,6 +816,55 @@ const CAREER_SUM_KEYS = [
 
 const CAREER_MAX_KEYS = ['pass_lng', 'rush_lng', 'rec_lng', 'fgm_lng'] as const
 
+/** Finished weeks rarely change … cache games-played per player so live YTD stays cheap on 90s rebuilds. */
+const SLEEPER_PAST_WEEK_GP_CACHE = new Map<string, { at: number; gp: Map<string, number> }>()
+
+async function loadPastWeekGp(season: string, week: number): Promise<Map<string, number>> {
+  const key = `${season}:${week}`
+  const hit = SLEEPER_PAST_WEEK_GP_CACHE.get(key)
+  if (hit && Date.now() - hit.at < SLEEPER_SEASON_CACHE_TTL_MS) return hit.gp
+  const rows = await loadSleeperWeekStats(season, week)
+  const gp = new Map<string, number>()
+  for (const [id, row] of rows) {
+    const n = Number(row.gp)
+    if (Number.isFinite(n) && n > 0) gp.set(id, n)
+  }
+  if (rows.size) SLEEPER_PAST_WEEK_GP_CACHE.set(key, { at: Date.now(), gp })
+  return gp
+}
+
+/**
+ * Sleeper's season totals trail the current week (they absorb it a day or two after it closes). Fold the
+ * current week's rows in for anyone whose season gp still equals their finished-week gp, so YTD / season
+ * lines tick live without double counting once Sleeper catches up. Rates / longs stay Sleeper's.
+ */
+async function withLiveWeekInSeason(
+  season: string,
+  week: number,
+  seasonStats: Map<string, SleeperStatRow>,
+  weekStats: Map<string, SleeperStatRow>,
+): Promise<Map<string, SleeperStatRow>> {
+  if (!weekStats.size) return seasonStats
+  const pastWeeks = Array.from({ length: Math.max(0, week - 1) }, (_, i) => i + 1)
+  const pastGp = await mapPool(pastWeeks, 5, (w) => loadPastWeekGp(season, w))
+  const merged = new Map(seasonStats)
+  for (const [id, wk] of weekStats) {
+    if (!(Number(wk.gp) > 0)) continue
+    const sea = seasonStats.get(id) || {}
+    const priorGp = pastGp.reduce((s, m) => s + (m.get(id) || 0), 0)
+    if ((Number(sea.gp) || 0) > priorGp) continue
+    const row: Record<string, unknown> = { ...sea }
+    for (const k of CAREER_SUM_KEYS) {
+      const a = Number((sea as Record<string, unknown>)[k])
+      const b = Number((wk as Record<string, unknown>)[k])
+      if (!Number.isFinite(b)) continue
+      row[k] = (Number.isFinite(a) ? a : 0) + b
+    }
+    merged.set(id, row as SleeperStatRow)
+  }
+  return merged
+}
+
 function sumCareerStats(
   seasonMaps: Map<string, SleeperStatRow>[],
   sleeperId: string,
@@ -1424,8 +1473,11 @@ export async function buildNflGameFantasy(
       : new Map<string, SleeperStatRow>()
   if (lastWeekStats.size) sources.push('sleeper_last_week_stats')
 
-  const seasonStats = season ? await loadSleeperSeasonStats(season) : new Map<string, SleeperStatRow>()
+  let seasonStats = season ? await loadSleeperSeasonStats(season) : new Map<string, SleeperStatRow>()
   if (seasonStats.size) sources.push('sleeper_season_stats')
+  if (season && week != null && weekStats.size) {
+    seasonStats = await withLiveWeekInSeason(season, week, seasonStats, weekStats).catch(() => seasonStats)
+  }
 
   let careerMaps: Map<string, SleeperStatRow>[] = []
   if (season && seasonStats.size) {

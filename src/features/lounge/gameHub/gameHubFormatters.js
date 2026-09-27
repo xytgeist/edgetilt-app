@@ -153,6 +153,13 @@ export function fieldCenterBanner(game, live) {
   const lastPlay = String(live?.last_play || '').toLowerCase()
   const period = Number(live?.period)
   const hay = `${statusName} ${detailLower} ${clockLower}`
+  const awayN = Number(game.away?.score)
+  const homeN = Number(game.home?.score)
+  // Tied after the 4th / an OT period … overtime is next, not a final.
+  const periodEndBanner = () =>
+    Number.isFinite(awayN) && awayN === homeN
+      ? (period > 4 ? 'End of OT' : 'End of Regulation')
+      : 'GAME OVER'
 
   if (
     /STATUS_TIMEOUT|STATUS_TV_TIMEOUT|TIMEOUT/.test(statusName)
@@ -179,12 +186,12 @@ export function fieldCenterBanner(game, live) {
     if (/1st|first|\bq1\b/.test(detailLower) || period === 1) return 'End of 1st'
     if (/3rd|third|\bq3\b/.test(detailLower) || period === 3) return 'End of 3rd'
     if (/2nd|second|\bq2\b/.test(detailLower) || period === 2) return 'HALFTIME'
-    if (/4th|fourth|\bq4\b/.test(detailLower) || period === 4) return 'GAME OVER'
+    if (/4th|fourth|\bq4\b/.test(detailLower) || period === 4) return periodEndBanner()
     if (Number.isFinite(period) && period >= 1) {
       if (period === 1) return 'End of 1st'
       if (period === 2) return 'HALFTIME'
       if (period === 3) return 'End of 3rd'
-      return 'GAME OVER'
+      return periodEndBanner()
     }
   }
 
@@ -193,7 +200,7 @@ export function fieldCenterBanner(game, live) {
     if (period === 1) return 'End of 1st'
     if (period === 2) return 'HALFTIME'
     if (period === 3) return 'End of 3rd'
-    if (period >= 4) return 'GAME OVER'
+    if (period >= 4) return periodEndBanner()
   }
 
   // Detail-only phrases without STATUS_* keys (Rundown).

@@ -4000,15 +4000,19 @@ export default function GameHubHero({
     const home = lift(feedGame.home, playScore.home)
     return away === feedGame.away && home === feedGame.home ? feedGame : { ...feedGame, away, home }
   }, [feedGame, playScore, playScoreShownId])
-  const clock = liveClockLabel(game, live)
-  const isFinal = game.status === 'post'
+  // Feed can sit on status 'in' at 4th 0:00 for minutes after the whistle … read it as final like the field banner.
+  const clockExpiredFinal = game.status === 'in' && fieldCenterBanner(game, live) === 'GAME OVER'
+  const isFinal = game.status === 'post' || clockExpiredFinal
+  const clock = clockExpiredFinal
+    ? (Number(live?.period) > 4 ? 'Final/OT' : 'Final')
+    : liveClockLabel(game, live)
   // Final: clock still says Final … drop stale down/distance + yard line.
   // New half before its kickoff row … ESPN still carries the last snap's down / spot.
   const staleHalf = game.status === 'in' && playsFromEarlierHalf(plays, live?.period)
   const down = isFinal || staleHalf ? null : downDistanceLabel(live)
   const yard = isFinal || staleHalf ? null : yardLineLabel(game, live)
   const isFootball = String(game.sport_key || '').includes('football')
-  const showLiveChrome = isFootball && game.status === 'in'
+  const showLiveChrome = isFootball && game.status === 'in' && !clockExpiredFinal
   const awayHasBall = showLiveChrome && live?.possession === 'away'
   const homeHasBall = showLiveChrome && live?.possession === 'home'
   const awayTimeouts = showLiveChrome ? (live?.away_timeouts ?? TIMEOUT_SLOTS) : null
@@ -4022,8 +4026,8 @@ export default function GameHubHero({
   const homeScoreDim = scoresComparable && homeScoreN < awayScoreN
   const lastPlayText = String(lastPlay || '').trim()
   const showField = isFootball && (game.status === 'in' || game.status === 'post')
-  const awayMl = formatLoungeSportsMoneyline(game.away?.ml)
-  const homeMl = formatLoungeSportsMoneyline(game.home?.ml)
+  const awayMl = clockExpiredFinal ? '' : formatLoungeSportsMoneyline(game.away?.ml)
+  const homeMl = clockExpiredFinal ? '' : formatLoungeSportsMoneyline(game.home?.ml)
   const awayLabel = hubTeamLabel(game.away, game.status, game.sport_key)
   const homeLabel = hubTeamLabel(game.home, game.status, game.sport_key)
   const preLabels = game.status === 'pre'
@@ -4110,7 +4114,7 @@ export default function GameHubHero({
             <div className="flex max-w-[36%] shrink-0 flex-col items-center gap-0 px-1 text-center">
               <span
                 className={`text-[12px] font-bold tracking-wide ${
-                  game.status === 'in' ? 'text-rose-300' : 'text-white/85'
+                  game.status === 'in' && !isFinal ? 'text-rose-300' : 'text-white/85'
                 }`}
               >
                 {clock}
@@ -4201,7 +4205,7 @@ export default function GameHubHero({
             <div className="flex max-w-[36%] shrink-0 flex-col items-center gap-0 px-1 text-center">
               <span
                 className={`text-[12px] font-bold tracking-wide ${
-                  game.status === 'in' ? 'text-rose-300' : 'text-white/85'
+                  game.status === 'in' && !isFinal ? 'text-rose-300' : 'text-white/85'
                 }`}
               >
                 {clock}

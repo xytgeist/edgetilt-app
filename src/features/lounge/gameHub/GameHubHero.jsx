@@ -396,8 +396,6 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey }) {
           <g
             key={m.key}
             data-drive-play="incomplete"
-            className={m.isNewest ? 'lounge-drive-incomplete-fresh' : undefined}
-            opacity={m.isNewest ? undefined : 0.65}
           >
             <path d={d} fill="none" stroke={halo} strokeOpacity={haloOpacity} strokeWidth="5" strokeDasharray="7 6" strokeLinecap="round" />
             <path d={d} fill="none" stroke={primary} strokeWidth="3" strokeDasharray="7 6" strokeLinecap="round" />

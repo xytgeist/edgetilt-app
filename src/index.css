@@ -3631,23 +3631,6 @@ html.light [data-lounge-game-chat]::placeholder {
   color: #71717a !important;
 }
 
-/* Drive chart: a fresh incompletion shows bright, then settles faint like the older ones */
-@keyframes lounge-drive-incomplete-settle {
-  0% { opacity: 0; }
-  10% { opacity: 1; }
-  75% { opacity: 1; }
-  100% { opacity: 0.65; }
-}
-[data-lounge-drive-marks] .lounge-drive-incomplete-fresh {
-  animation: lounge-drive-incomplete-settle 3.2s ease-out both;
-}
-@media (prefers-reduced-motion: reduce) {
-  [data-lounge-drive-marks] .lounge-drive-incomplete-fresh {
-    animation: none;
-    opacity: 0.65;
-  }
-}
-
 /* Pass TD celebration banner on the 3D field */
 @keyframes lounge-td-banner-pop {
   0% {

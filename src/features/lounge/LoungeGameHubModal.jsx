@@ -306,10 +306,10 @@ export default function LoungeGameHubModal({
   }, [game, hydratePosts, postSort, searchQuery, supabaseClient])
 
   useEffect(() => {
-    // Pregame → Fantasy (NFL) / Posts (CFB); live → Chat; post → Posts
+    // Pregame → Fantasy (NFL) / Posts (CFB); live → Plays; post → Posts
     if (!game?.id) return
     const cfb = String(game.sport_key || '').includes('ncaaf')
-    if (game.status === 'in') setTab('chat')
+    if (game.status === 'in') setTab('plays')
     else if (game.status === 'pre') setTab(cfb ? 'posts' : 'fantasy')
     else setTab('posts')
     setPostsSort('top')

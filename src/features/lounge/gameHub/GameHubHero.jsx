@@ -155,6 +155,8 @@ const RUSH_TUCK_LOCAL = { x: 140, y: 380 }
 const RUSH_VIEWBOX_W = 728
 const RUSH_VIEWBOX_H = 1382
 /** Rush TD celebrate timeline (same phases as pass TD, keyed off RUSH_RUN_MS). */
+/** TD: the figure finishes this deep in the end zone (half its 10 yd depth); drive lines still stop at the goal line. */
+const TD_FIGURE_END_ZONE_YDS = 5
 const RUSH_TD_TOTAL_MS =
   RUSH_RUN_MS + CATCH_TD_PRE_LABEL_MS + CATCH_TD_CELEBRATE_MS + CATCH_TD_LABEL_TAIL_MS
 
@@ -1673,7 +1675,9 @@ function FieldViz({
       startPct = Math.max(0, Math.min(100, startPct))
     }
     const startX = fieldMidXFromPercent(startPct)
-    const endX = fieldMidXFromPercent(endPct)
+    const endX = fieldMidXFromPercent(
+      isTouchdown ? (attackDir > 0 ? 100 : 0) + attackDir * TD_FIGURE_END_ZONE_YDS : endPct,
+    )
     const travel = endX - startX
     // Prefer attack direction when travel is tiny (spot clamp / 0-yd edge).
     const facing = Math.abs(travel) < 0.5 ? attackDir : travel < 0 ? -1 : 1
@@ -1916,8 +1920,10 @@ function FieldViz({
       startPct = Math.max(0, Math.min(100, startPct))
     }
     const startX = fieldMidXFromPercent(startPct)
-    // Ball-on-figure track ends on the line of gain (goal line for TD … not endzone center).
-    const endX = fieldMidXFromPercent(gainPct)
+    // Ball-on-figure track ends on the line of gain (TD: halfway into the end zone).
+    const endX = fieldMidXFromPercent(
+      isTouchdown ? (attackDir > 0 ? 100 : 0) + attackDir * TD_FIGURE_END_ZONE_YDS : gainPct,
+    )
     const travel = endX - startX
     const facing = Math.abs(travel) < 0.5 ? attackDir : travel < 0 ? -1 : 1
     const kit = possessionKit(

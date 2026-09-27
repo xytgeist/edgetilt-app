@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-27** **Game hub: TD figure runs halfway into the end zone (Mac).** **1.4.843** … rush + catch TD anims end the figure (and its trail / catch point) `TD_FIGURE_END_ZONE_YDS` = 5 past the goal line; LOS / drive chart still stop at the goal line.
 - **2026-09-27** **Game hub: no 1st-down line on & Goal (Mac).** **1.4.842** … `firstDownPercentFromLive` returns null when LOS + distance reaches the goal line (was clamped onto it, so 3rd & Goal drew a yellow line on the goal line). Anims already skip the lerp when either end is null.
 - **2026-09-27** **Game hub: smaller figure jersey numbers (Mac).** **1.4.841** … ~10% smaller on rush (140 → 126) and catch (177 → 159) figures, outline stroke + letter spacing scaled to match; same centered anchor.
 - **2026-09-27** **Game hub: fantasy toast below two-line banners (Mac).** **1.4.840** … toast `bottom-[48%]` → `bottom-[27%]`; portrait measure: two-line TOUCHDOWN banner 7-79px of a 150px field, toast now 89-116px (was 57-85, overlapping line two). Rests on the bottom hash row.

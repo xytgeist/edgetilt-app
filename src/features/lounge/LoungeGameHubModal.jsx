@@ -18,6 +18,7 @@ import {
   LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS,
 } from './loungeFeedAvatar.js'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
+import { usePhoneLandscapeNotTablet } from '../../utils/edgeiOSComposerPortraitLock.js'
 import GameHubHero from './gameHub/GameHubHero.jsx'
 import {
   isGameHubWhistleMuted,
@@ -53,6 +54,7 @@ export default function LoungeGameHubModal({
 }) {
   const sports = useLoungeSportsFeed()
   const game = sports?.hubGame
+  const phoneLandscape = usePhoneLandscapeNotTablet()
   const [tab, setTab] = useState('posts')
   const [postsSort, setPostsSort] = useState('top')
   const [posts, setPosts] = useState([])
@@ -580,6 +582,71 @@ export default function LoungeGameHubModal({
       ) : null}
     </div>
   )
+
+  // Landscape phone on a live football game: full-screen gamecast (scoreboard, field, last play) instead of
+  // the tabbed hub. Replaces the tabbed root rather than stacking on it so the field anims only run once.
+  const gamecastFull =
+    phoneLandscape && game.status === 'in' && String(game.sport_key || '').includes('football')
+  if (gamecastFull) {
+    const chipClass = `inline-flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} items-center justify-center rounded-full border border-white/25 bg-white/15 text-white shadow-sm touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/25`
+    return createPortal(
+      <div
+        data-lounge-game-hub
+        data-lounge-gamecast-full
+        className="fixed inset-0 flex flex-col bg-zinc-950 text-white"
+        style={{
+          zIndex: Z_APP_MODAL,
+          paddingLeft: 'env(safe-area-inset-left, 0px)',
+          paddingRight: 'env(safe-area-inset-right, 0px)',
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        }}
+      >
+        <GameHubHero
+          fullscreen
+          sideSlots={{
+            left: (
+              <button
+                type="button"
+                onClick={() => sports.closeHub?.()}
+                data-lounge-game-glass-chip
+                className={chipClass}
+                aria-label="Back"
+              >
+                <ChevronLeft className="h-6 w-6" />
+              </button>
+            ),
+            right: (
+              <button
+                type="button"
+                onClick={toggleWhistleMuted}
+                data-lounge-game-glass-chip
+                data-lounge-hub-whistle-toggle={whistleMuted ? 'muted' : 'on'}
+                className={chipClass}
+                aria-label={whistleMuted ? 'Unmute game sounds' : 'Mute game sounds'}
+                aria-pressed={whistleMuted}
+              >
+                {whistleMuted ? (
+                  <VolumeX className="h-5 w-5 opacity-70" strokeWidth={2.25} />
+                ) : (
+                  <Volume2 className="h-5 w-5" strokeWidth={2.25} />
+                )}
+              </button>
+            ),
+          }}
+          game={game}
+          live={live}
+          lastPlay={fieldPlayText}
+          playReplayNonce={fieldReplay.nonce}
+          replayTeam={feedTeamForFieldPlay}
+          playStartSpot={fieldPlayStartSpot}
+          splits={detail.splits}
+          players={fantasy.players}
+          plays={detail.plays}
+        />
+      </div>,
+      document.body,
+    )
+  }
 
   if (embedded) return hubRoot
   return createPortal(hubRoot, document.body)

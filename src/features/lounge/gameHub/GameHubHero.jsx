@@ -3926,6 +3926,10 @@ export default function GameHubHero({
   splits = null,
   players = [],
   plays = null,
+  /** Landscape phone gamecast: fills its parent, field sized to the height left under the scoreboard. */
+  fullscreen = false,
+  /** Fullscreen only: chips flanking the scoreboard (back / mute) … there's no top bar row to spare. */
+  sideSlots = null,
 }) {
   const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(feedGame)
   const playScore = useMemo(() => latestPlayScore(plays), [plays])
@@ -3993,7 +3997,7 @@ export default function GameHubHero({
   return (
     <div
       data-lounge-game-hero
-      className="relative overflow-hidden"
+      className={fullscreen ? 'relative flex min-h-0 flex-1 flex-col overflow-hidden' : 'relative overflow-hidden'}
       style={{
         '--hero-away': awayColor,
         '--hero-home': homeColor,
@@ -4012,8 +4016,16 @@ export default function GameHubHero({
 
       {showField ? (
         /* Condensed scoreboard only while the 3D field is up: logo | score mid-gap | status | … */
-        <div data-lounge-game-scoreboard className="relative z-[4] px-3 pb-3 pt-1">
+        <div
+          data-lounge-game-scoreboard
+          className={
+            fullscreen
+              ? 'relative z-[4] shrink-0 px-3 pb-0.5 pt-[max(0.375rem,env(safe-area-inset-top,0px))]'
+              : 'relative z-[4] px-3 pb-3 pt-1'
+          }
+        >
           <div className="flex items-center justify-between gap-1.5">
+            {fullscreen && sideSlots?.left ? <div className="shrink-0 self-start">{sideSlots.left}</div> : null}
             <div className="flex min-w-0 flex-1 items-center">
               <div className="flex w-[52px] shrink-0 flex-col items-center">
                 <LoungeSportsTeamLogo side={game.away} treatment={awayTreatment} size={52} />
@@ -4094,6 +4106,7 @@ export default function GameHubHero({
                 ) : null}
               </div>
             </div>
+            {fullscreen && sideSlots?.right ? <div className="shrink-0 self-start">{sideSlots.right}</div> : null}
           </div>
         </div>
       ) : (
@@ -4193,14 +4206,34 @@ export default function GameHubHero({
       )}
 
       {/* z above scoreboard so FG apex / high arcs paint over the board chrome */}
-      <div className="relative z-[5]">
+      <div
+        className={fullscreen ? 'relative z-[5] flex min-h-0 flex-1 items-center justify-center' : 'relative z-[5]'}
+        style={fullscreen ? { containerType: 'size' } : undefined}
+      >
         <HeroPublicBetting
           game={game}
           splits={splits}
           awayColor={awayColor}
           homeColor={homeColor}
         />
-        {showField ? (
+        {showField && fullscreen ? (
+          // FieldViz = 20px top pad + 4px side pads around a 1266:533 plane … widest that fits this box.
+          <div style={{ width: 'min(100cqw, calc((100cqh - 20px) * 1266 / 533 + 8px))' }}>
+            <FieldViz
+              game={game}
+              live={live}
+              awayColor={awayColor}
+              homeColor={homeColor}
+              lastPlay={lastPlayText}
+              playReplayNonce={playReplayNonce}
+              replayTeam={replayTeam}
+              playStartSpot={playStartSpot}
+              players={players}
+              plays={plays}
+              onPlayAnimActiveChange={onFieldAnimActiveChange}
+            />
+          </div>
+        ) : showField ? (
           <FieldViz
             game={game}
             live={live}
@@ -4222,7 +4255,7 @@ export default function GameHubHero({
       {showField && lastPlayText ? (
         <div
           data-lounge-game-last-play
-          className="relative z-[4] truncate px-3 pb-2.5 pt-0.5 text-[12px] text-white/75"
+          className={`relative z-[4] truncate px-3 pt-0.5 text-[12px] text-white/75 ${fullscreen ? 'shrink-0 pb-2' : 'pb-2.5'}`}
         >
           <span className="font-semibold uppercase tracking-wide text-white/55">Last play </span>
           {lastPlayText}

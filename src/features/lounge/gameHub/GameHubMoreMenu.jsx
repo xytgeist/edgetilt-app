@@ -1,13 +1,20 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { MoreHorizontal, Share, Volume2, VolumeX } from 'lucide-react'
+import { MapPin, MoreHorizontal, Share, Volume2, VolumeX } from 'lucide-react'
 import { Z_APP_MODAL } from '../../../constants/appZIndex.js'
 
 /**
- * Hub "..." chip: game sounds toggle + share. Menu portals to body (the hero clips overflow) and
+ * Hub "..." chip: game sounds toggle, Nevada-books toggle, share. Menu portals to body (the hero clips overflow) and
  * anchors under the chip's right edge.
  */
-export default function GameHubMoreMenu({ chipClassName, muted, onToggleMuted, onShare }) {
+export default function GameHubMoreMenu({
+  chipClassName,
+  muted,
+  onToggleMuted,
+  nevadaBooks,
+  onToggleNevadaBooks,
+  onShare,
+}) {
   const [open, setOpen] = useState(false)
   const [anchor, setAnchor] = useState(null)
   const btnRef = useRef(null)
@@ -83,6 +90,22 @@ export default function GameHubMoreMenu({ chipClassName, muted, onToggleMuted, o
                   <VolumeX className="h-5 w-5 shrink-0" strokeWidth={2.25} />
                 )}
                 {muted ? 'Unmute game sounds' : 'Mute game sounds'}
+              </button>
+              <div data-lounge-game-more-menu-divider className="h-px" />
+              <button
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={Boolean(nevadaBooks)}
+                className={itemClass}
+                data-lounge-game-nevada-toggle={nevadaBooks ? 'on' : 'off'}
+                onClick={() => {
+                  onToggleNevadaBooks?.()
+                  setOpen(false)
+                }}
+              >
+                <MapPin className="h-5 w-5 shrink-0" strokeWidth={2.25} />
+                <span className="flex-1">Nevada books only</span>
+                <span className="text-[12px] font-semibold opacity-70">{nevadaBooks ? 'On' : 'Off'}</span>
               </button>
               <div data-lounge-game-more-menu-divider className="h-px" />
               <button

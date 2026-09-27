@@ -24,7 +24,7 @@ const SPORTSBOOK_HOME_BY_KEY = {
   ballybet: 'https://play.ballybet.com',
 }
 
-function bookKey(name) {
+export function bookKey(name) {
   return String(name || '')
     .toLowerCase()
     .replace(/\.(ag|com|eu|lv|us)$/i, '')

@@ -3844,8 +3844,8 @@ html.light [data-lounge-game-more-menu] {
   background-color: rgba(255, 255, 255, 0.18) !important;
   border-color: rgba(255, 255, 255, 0.28) !important;
 }
-[data-lounge-game-more-menu] [role='menuitem'] { color: #fff !important; }
-[data-lounge-game-more-menu] [role='menuitem']:active { background-color: rgba(255, 255, 255, 0.12) !important; }
+[data-lounge-game-more-menu] [role^='menuitem'] { color: #fff !important; }
+[data-lounge-game-more-menu] [role^='menuitem']:active { background-color: rgba(255, 255, 255, 0.12) !important; }
 [data-lounge-game-more-menu] [data-lounge-game-more-menu-divider] { background-color: rgba(255, 255, 255, 0.2) !important; }
 
 /* Hub top matchup pills: soft team glows + logos (ESPN scoreboard chips). */

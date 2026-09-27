@@ -3,6 +3,7 @@
  * Pinnacle's no-vig price (consensus no-vig when Pinnacle is missing). Pinnacle is the reference, not a pick.
  */
 import { sportsbookHomeUrl } from './sportsbookLinks.js'
+import { fillBookLinkState, isNevadaBook } from './gameHubNevadaBooks.js'
 
 /** Rule-of-thumb cover / total prob per half point off the reference number (ranking only). */
 const PROB_PER_HALF_POINT = 0.015
@@ -47,6 +48,18 @@ export function usableLink(link) {
   return s && !/[{}]/.test(s) ? s : null
 }
 
+function bookUrl(row, link, nevada) {
+  return usableLink(fillBookLinkState(link, nevada)) || sportsbookHomeUrl(row.book)
+}
+
+/** Nevada mode: only Nevada-licensed books can be picked (Pinnacle stays as the pregame reference). */
+function shopRows(rows, nevada) {
+  const list = Array.isArray(rows) ? rows : []
+  if (!nevada) return list
+  const nv = list.filter((r) => isNevadaBook(r.book))
+  return nv.length ? [...list.filter(isPinnacle), ...nv] : []
+}
+
 function displayBook(name) {
   return String(name || '').replace(/\.(ag|com|eu|lv)$/i, '').replace(/\s*\(US\)\s*$/i, '').trim()
 }
@@ -80,7 +93,7 @@ function reference(rows, pickA) {
  * Best candidate for one side. `better` = +1 when a higher point helps this side (dog spread, under),
  * -1 when lower helps (over); 0 for moneylines. EV is exact when the point matches the reference.
  */
-function bestSide(rows, pickA, better) {
+function bestSide(rows, pickA, better, nevada) {
   const ref = reference(rows, pickA)
   const candidates = rows.filter((r) => !isPinnacle(r))
   const pool = candidates.length ? candidates : rows
@@ -103,7 +116,7 @@ function bestSide(rows, pickA, better) {
         point: r.point,
         price: num(r.price),
         book: displayBook(row.book),
-        url: usableLink(r.link) || sportsbookHomeUrl(row.book),
+        url: bookUrl(row, r.link, nevada),
         ev,
       }
     }
@@ -115,24 +128,25 @@ function bestSide(rows, pickA, better) {
  * `{ books, away: { spread, ml }, home: { spread, ml }, over, under }` … each pick `{ point, price, book, url, ev }`;
  * `books` = how many books were shopped.
  */
-export function pregameBestLines(rows) {
-  const list = Array.isArray(rows) ? rows : []
+export function pregameBestLines(rows, { nevada = false } = {}) {
+  const list = shopRows(rows, nevada)
   if (!list.length) return null
   const side = (s, o) => ({
     spread: bestSide(
       list,
       (r) => ({ point: num(r[`${s}_spread`]), price: r[`${s}_spread_price`], otherPrice: r[`${o}_spread_price`], link: r[`${s}_spread_link`] }),
       1,
+      nevada,
     ),
-    ml: bestSide(list, (r) => ({ point: null, price: r[`${s}_ml`], otherPrice: r[`${o}_ml`], link: r[`${s}_ml_link`] }), 0),
+    ml: bestSide(list, (r) => ({ point: null, price: r[`${s}_ml`], otherPrice: r[`${o}_ml`], link: r[`${s}_ml_link`] }), 0, nevada),
   })
   const shopped = list.filter((r) => !isPinnacle(r)).length
   return {
     books: shopped || list.length,
     away: side('away', 'home'),
     home: side('home', 'away'),
-    over: bestSide(list, (r) => ({ point: num(r.total), price: r.over_price, otherPrice: r.under_price, link: r.over_link }), -1),
-    under: bestSide(list, (r) => ({ point: num(r.total), price: r.under_price, otherPrice: r.over_price, link: r.under_link }), 1),
+    over: bestSide(list, (r) => ({ point: num(r.total), price: r.over_price, otherPrice: r.under_price, link: r.over_link }), -1, nevada),
+    under: bestSide(list, (r) => ({ point: num(r.total), price: r.under_price, otherPrice: r.over_price, link: r.under_link }), 1, nevada),
   }
 }
 
@@ -146,12 +160,12 @@ function stampMs(row) {
   return Number.isFinite(t) ? t : null
 }
 
-function pickFrom(row, price, point, link) {
+function pickFrom(row, price, point, link, nevada) {
   return {
     point,
     price: num(price),
     book: displayBook(row.book),
-    url: usableLink(link) || sportsbookHomeUrl(row.book),
+    url: bookUrl(row, link, nevada),
     ev: null,
   }
 }
@@ -176,8 +190,8 @@ function consensusPoint(points) {
  * The pregame EV ranking doesn't hold live (stale Pinnacle reference, books spread across 4+ points).
  * Same shape as `pregameBestLines` (`ev` is always null).
  */
-export function liveBestLines(rows) {
-  const list = Array.isArray(rows) ? rows : []
+export function liveBestLines(rows, { nevada = false } = {}) {
+  const list = shopRows(rows, nevada)
   const stamps = list.map(stampMs).filter((t) => t != null)
   if (!stamps.length) return null
   const newest = Math.max(...stamps)
@@ -187,7 +201,7 @@ export function liveBestLines(rows) {
   })
   if (!fresh.length) return null
   const books = fresh.filter((r) => !isPinnacle(r))
-  const pool = books.length ? books : fresh
+  const pool = books.length || nevada ? books : fresh
 
   const homeProbs = fresh.map((r) => noVig(r.home_ml, r.away_ml))
   const mlMid = median(homeProbs)
@@ -200,7 +214,7 @@ export function liveBestLines(rows) {
     for (const r of pool) {
       if (!mlOk(r)) continue
       const dec = decimal(r[`${s}_ml`])
-      if (dec != null && (!best || dec > best.dec)) best = { dec, pick: pickFrom(r, r[`${s}_ml`], null, r[`${s}_ml_link`]) }
+      if (dec != null && (!best || dec > best.dec)) best = { dec, pick: pickFrom(r, r[`${s}_ml`], null, r[`${s}_ml_link`], nevada) }
     }
     return best?.pick || null
   }
@@ -214,7 +228,7 @@ export function liveBestLines(rows) {
       if (num(r[`${s}_spread`]) !== want) continue
       const dec = decimal(r[`${s}_spread_price`])
       if (dec != null && (!best || dec > best.dec)) {
-        best = { dec, pick: pickFrom(r, r[`${s}_spread_price`], want, r[`${s}_spread_link`]) }
+        best = { dec, pick: pickFrom(r, r[`${s}_spread_price`], want, r[`${s}_spread_link`], nevada) }
       }
     }
     return best?.pick || null

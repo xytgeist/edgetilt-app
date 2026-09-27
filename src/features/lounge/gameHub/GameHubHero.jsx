@@ -17,6 +17,7 @@ import { getLuminance, hexToHsl, hexToRgb, resolveTeamKit } from './gameHubFigur
 import { pregameGameMarketPicks, pregamePlayerPropRails } from './gameHubPregameProps.js'
 import { liveFantasyRails, livePropRails } from './gameHubLiveRails.js'
 import { liveBestLines, pregameBestLines } from './gameHubBestLines.js'
+import { useNevadaBooks } from './gameHubNevadaBooks.js'
 import { formatFantasyPoints, playFantasyPoints } from './gameHubPlayFantasy.js'
 import {
   fantasyScoringLabel,
@@ -4504,7 +4505,8 @@ function LandscapeMatchupBoard({
   players,
   marketProps,
 }) {
-  const best = useMemo(() => pregameBestLines(odds), [odds])
+  const { nevada } = useNevadaBooks()
+  const best = useMemo(() => pregameBestLines(odds, { nevada }), [odds, nevada])
   const rails = useMemo(() => pregamePlayerPropRails(marketProps, players), [marketProps, players])
   const picks = useMemo(() => pregameGameMarketPicks(marketProps, game), [marketProps, game])
   const h1Spread = picks.firstHalf.spread
@@ -4711,6 +4713,7 @@ export default function GameHubHero({
   const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(feedGame)
   const isNflGame = String(feedGame?.sport_key || '').includes('nfl')
   const fantasyScoring = useFantasyScoring()
+  const { nevada: nevadaBooks } = useNevadaBooks()
   const fantasyRails = useMemo(
     () => (fullscreen ? liveFantasyRails(playerBox, players, 5, fantasyScoring) : { away: [], home: [] }),
     [fullscreen, playerBox, players, fantasyScoring],
@@ -4793,8 +4796,13 @@ export default function GameHubHero({
   // books at the consensus number (`liveBestLines`) so a suspended book's stale price can't win.
   const shopLines = !clockExpiredFinal && (game.status === 'in' || game.status === 'pre')
   const scoreBest = useMemo(
-    () => (!shopLines ? null : game.status === 'in' ? liveBestLines(odds) : pregameBestLines(odds)),
-    [shopLines, odds, game.status],
+    () =>
+      !shopLines
+        ? null
+        : game.status === 'in'
+          ? liveBestLines(odds, { nevada: nevadaBooks })
+          : pregameBestLines(odds, { nevada: nevadaBooks }),
+    [shopLines, odds, game.status, nevadaBooks],
   )
   const awayMl = clockExpiredFinal
     ? ''

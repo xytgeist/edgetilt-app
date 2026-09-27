@@ -356,7 +356,7 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey }) {
                 strokeLinecap="round"
                 strokeOpacity="0.95"
               />
-              <polygon points={driveArrow(fieldXAtY(m.fromPct, y), y, attackDir)} fill="#000" fillOpacity="0.9" />
+              <polygon points={driveArrow(fieldXAtY(m.fromPct, y), y, attackDir)} fill="#fff" stroke="#000" strokeOpacity="0.55" strokeWidth="1" strokeLinejoin="round" />
             </g>
           )
         }
@@ -378,7 +378,7 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey }) {
                 strokeDasharray="8 6"
                 strokeLinecap="round"
               />
-              <polygon points={driveArrow(x1, y, penaltyDir)} fill="#000" fillOpacity="0.9" />
+              <polygon points={driveArrow(x1, y, penaltyDir)} fill="#fff" stroke="#000" strokeOpacity="0.55" strokeWidth="1" strokeLinejoin="round" />
             </g>
           )
         }
@@ -399,7 +399,7 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey }) {
           >
             <path d={d} fill="none" stroke={halo} strokeOpacity={haloOpacity} strokeWidth="5" strokeDasharray="7 6" strokeLinecap="round" />
             <path d={d} fill="none" stroke={primary} strokeWidth="3" strokeDasharray="7 6" strokeLinecap="round" />
-            <polygon points={driveArrow(x0, y0, attackDir)} fill="#000" fillOpacity="0.9" />
+            <polygon points={driveArrow(x0, y0, attackDir)} fill="#fff" stroke="#000" strokeOpacity="0.55" strokeWidth="1" strokeLinejoin="round" />
             <g strokeLinecap="round">
               <line x1={x1 - 6} y1={y1 - 6} x2={x1 + 6} y2={y1 + 6} stroke="#000" strokeOpacity="0.5" strokeWidth="6" />
               <line x1={x1 - 6} y1={y1 + 6} x2={x1 + 6} y2={y1 - 6} stroke="#000" strokeOpacity="0.5" strokeWidth="6" />

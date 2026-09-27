@@ -31,6 +31,8 @@ The agent should treat the following as **standing instructions for this session
 
 ---
 
+**When a new App Store build goes live:** work **`docs/ios-native-bridge.md`** → *After the next App Store build goes live* (currently: add `/lounge/g/*` + `?game=` to the AASA).
+
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
 **Branch:** `test` (match `origin/test` before edits). `main` @ **`test` tip** (promoted 2026-09-26, web **1.4.747**; prod `lounge-sports-scoreboard` redeployed for play spots + CFB odds-name aliases; prod chat migration `20260926230000` + prod `lounge-sports-scoreboard` Edge applied). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.

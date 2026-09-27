@@ -131,7 +131,7 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
   }
 
   /// HTTPS + our hosts + auth confirm, Lounge share paths (post / game / profile), or SPA `post` / `u` / `profile` / `game` query.
-  /// AASA is the other half of this gate.
+  /// AASA is the other half of this gate. Never claim a path in AASA before a live App Store build allows it here.
   static func isAllowedUniversalLink(_ url: URL) -> Bool {
     guard let scheme = url.scheme?.lowercased(), scheme == "https",
           let host = url.host?.lowercased() else {

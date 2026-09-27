@@ -10,6 +10,14 @@
 
 ---
 
+## After the next App Store build goes live (do these, then delete the line)
+
+Any agent (Mac or Windows) handling an App Store release or seeing a new build go **Ready for Distribution** must work this list. Web-only follow-ups that would break the *previous* IPA if shipped early.
+
+- [ ] **Claim game share links in AASA.** Once a live App Store build includes the `EdgePushManager` `/lounge/g/` allow + rewrite (landed on `test` 2026-09-27, first IPA after web `1.4.852`), add `{ "/": "/lounge/g/*", "comment": "Game hub share link (live scoreboard OG)" }` next to `/lounge/p/*` in **`public/.well-known/apple-app-site-association.json`**, plus `{ "/": "/", "?": { "game": "?*" }, "comment": "SPA game deep link" }`. Commit, push `test`, promote. Before that build is live, the old IPA's `isAllowedUniversalLink` returns false and the app opens to nothing.
+
+---
+
 ## Principle: the IPA uses native when iOS has a better option
 
 The store shell is **not** a shared React call stack with CallKit glued on. **If iOS has a better option, the IPA uses it.** Web / PWA / Android keep `livekit-client` and `LiveKitRoom`. The IPA owns call **media** with the official **LiveKit Swift SDK**.

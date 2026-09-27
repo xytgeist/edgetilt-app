@@ -1,7 +1,7 @@
 {
   "name": "phoenixlinkcalc",
   "private": true,
-  "version": "1.4.786",
+  "version": "1.4.787",
   "type": "module",
   "scripts": {
     "dev": "vite",

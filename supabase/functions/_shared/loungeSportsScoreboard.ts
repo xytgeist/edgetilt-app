@@ -978,6 +978,85 @@ async function loadEspnFootballSlateExtras(
   return extras
 }
 
+const ESPN_CLOCK_TTL_MS = 20_000
+const espnFootballClockCache = new Map<string, { at: number; events: Array<Record<string, unknown>> }>()
+
+/** ESPN status → compact pill clock ("Q2 4:12", "Halftime", "End Q1", "OT 3:05"). */
+function espnLiveClockLabel(status: Record<string, unknown> | undefined): string | null {
+  if (!status) return null
+  const type = (status.type && typeof status.type === 'object') ? status.type as Record<string, unknown> : {}
+  if (type.state !== 'in') return null
+  const name = String(type.name || '').toUpperCase()
+  const period = Number(status.period)
+  const q = !Number.isFinite(period) || period < 1
+    ? ''
+    : period <= 4 ? `Q${period}` : period === 5 ? 'OT' : `${period - 4}OT`
+  if (name.includes('HALFTIME')) return 'Halftime'
+  if (name.includes('END_PERIOD')) return q ? `End ${q}` : null
+  const clock = String(status.displayClock || '').trim()
+  if (q && clock) return `${q} ${clock}`
+  return q || null
+}
+
+/**
+ * Rundown only says "Live" for in-progress games … pull the real clock from ESPN's dated scoreboard.
+ * Short cache so the 45s pill poll stays near-live without hammering ESPN; skipped when nothing is live.
+ */
+async function enrichEspnFootballLiveClock(
+  games: LoungeSportsGame[],
+  league: EspnFootballLeague,
+  sportMatch: (sportKey: string) => boolean,
+): Promise<LoungeSportsGame[]> {
+  const live = games.filter((g) => g.status === 'in' && sportMatch(String(g.sport_key || '')))
+  if (!live.length) return games
+  const dates = [...new Set(live.map((g) => String(ptDateFromIso(g.commence_time) || '').replace(/-/g, '')).filter(Boolean))]
+  const headers = { 'User-Agent': 'EdgeTiltLounge/1.0', Accept: 'application/json' }
+  const base = espnFootballScoreboardPath(league)
+  const events: Array<Record<string, unknown>> = []
+  await Promise.all(dates.map(async (date) => {
+    const key = `${league}:${date}`
+    const cached = espnFootballClockCache.get(key)
+    if (cached && Date.now() - cached.at < ESPN_CLOCK_TTL_MS) {
+      events.push(...cached.events)
+      return
+    }
+    try {
+      const res = await fetch(`${base}?dates=${date}&limit=300`, { headers, signal: AbortSignal.timeout(6_000) })
+      if (!res.ok) return
+      const pack = await res.json() as { events?: Array<Record<string, unknown>> }
+      const list = Array.isArray(pack.events) ? pack.events : []
+      espnFootballClockCache.set(key, { at: Date.now(), events: list })
+      events.push(...list)
+    } catch {
+      // soft-fail … pill keeps "Live"
+    }
+  }))
+  if (!events.length) return games
+
+  const sideOf = (comps: Record<string, unknown> | undefined, homeAway: string) => {
+    const list = Array.isArray(comps?.competitors) ? comps.competitors as Array<Record<string, unknown>> : []
+    const c = list.find((x) => x.homeAway === homeAway)
+    if (!c) return null
+    const team = (c.team && typeof c.team === 'object') ? c.team as Record<string, unknown> : {}
+    return { ...c, abb: team.abbreviation }
+  }
+  return games.map((g) => {
+    if (g.status !== 'in' || !sportMatch(String(g.sport_key || ''))) return g
+    for (const ev of events) {
+      const comps = (ev.competitions as Array<Record<string, unknown>> | undefined)?.[0]
+      const home = sideOf(comps, 'home')
+      const away = sideOf(comps, 'away')
+      if (!home || !away) continue
+      if (!espnSideMatchesGame(home, g.home) || !espnSideMatchesGame(away, g.away)) continue
+      const label = espnLiveClockLabel(
+        (comps?.status || ev.status) as Record<string, unknown> | undefined,
+      )
+      return label ? { ...g, status_label: label } : g
+    }
+    return g
+  })
+}
+
 async function enrichEspnFootballExtras(
   games: LoungeSportsGame[],
   league: EspnFootballLeague,
@@ -1155,6 +1234,8 @@ export async function buildLoungeSportsScoreboard(
   let withRecords = await enrichEspnFootballExtras(games, 'nfl', isNflSportKey)
   withRecords = await enrichEspnFootballExtras(withRecords, 'college-football', isCfbSportKey)
   withRecords = withRecords.map(attachCfbEspnTeamIds)
+  withRecords = await enrichEspnFootballLiveClock(withRecords, 'nfl', isNflSportKey)
+  withRecords = await enrichEspnFootballLiveClock(withRecords, 'college-football', isCfbSportKey)
   return { games: withRecords, source }
 }
 

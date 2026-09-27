@@ -3874,19 +3874,35 @@ html.light [data-lounge-game-hero] [data-lounge-game-glass-chip='active'] {
   z-index: 1;
   min-width: 1.05rem;
   height: 1.05rem;
-  padding: 0 0.22rem;
+  padding: 0 0.24rem 0 0.2rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 9999px;
-  background: rgba(9, 9, 11, 0.78);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.28);
-  color: #fff;
+  gap: 0.04rem;
+  border-radius: 0.3rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 48%),
+    linear-gradient(155deg, #fef3c7 0%, #fbbf24 38%, #d97706 72%, #92400e 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 251, 235, 0.55),
+    0 0 0 1px rgba(28, 25, 23, 0.85),
+    0 1px 3px rgba(0, 0, 0, 0.6),
+    0 0 8px rgba(251, 191, 36, 0.45);
+  color: #1c1917;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 900;
   line-height: 1;
+  letter-spacing: -0.02em;
+  text-shadow: 0 1px 0 rgba(255, 251, 235, 0.45);
   font-variant-numeric: tabular-nums;
   pointer-events: none;
+}
+[data-lounge-team-rank-badge]::before {
+  content: '#';
+  font-size: 0.72em;
+  font-weight: 800;
+  opacity: 0.7;
+  transform: translateY(-0.04em);
 }
 [data-lounge-team-rank-badge='left'] {
   left: -0.4rem;
@@ -3898,7 +3914,8 @@ html.light [data-lounge-game-hero] [data-lounge-game-glass-chip='active'] {
   top: -0.35rem;
   min-width: 0.85rem;
   height: 0.85rem;
-  padding: 0 0.16rem;
+  padding: 0 0.18rem 0 0.14rem;
+  border-radius: 0.24rem;
   font-size: 8px;
 }
 [data-lounge-hub-game-pill] [data-lounge-team-rank-badge='left'] {

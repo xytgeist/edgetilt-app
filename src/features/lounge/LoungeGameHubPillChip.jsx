@@ -25,7 +25,11 @@ export default function LoungeGameHubPillChip({ game, active = false, onClick })
   const awayScore = game.away?.score
   const homeScore = game.home?.score
   const statusLine =
-    game.status === 'post' ? 'Final' : game.status === 'in' ? 'Live' : time || game.status_label || ''
+    game.status === 'post'
+      ? 'Final'
+      : game.status === 'in'
+        ? game.status_label || 'Live'
+        : time || game.status_label || ''
 
   return (
     <button

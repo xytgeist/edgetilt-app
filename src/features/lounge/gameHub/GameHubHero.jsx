@@ -721,7 +721,7 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey, throwKey = '', onT
                 strokeDasharray="8 6"
                 strokeLinecap="round"
               />
-              <polygon points={driveArrow(penaltyDir === attackDir ? x1 : x2, y, penaltyDir)} fill="#fff" stroke="#000" strokeOpacity="0.55" strokeWidth="1" strokeLinejoin="round" />
+              <polygon points={driveArrow(x1, y, penaltyDir)} fill="#fff" stroke="#000" strokeOpacity="0.55" strokeWidth="1" strokeLinejoin="round" />
             </g>
           )
         }

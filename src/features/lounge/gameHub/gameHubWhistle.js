@@ -8,6 +8,25 @@
 let sharedCtx = null
 let armed = false
 
+const MUTE_KEY = 'edgetilt:gameHubWhistleMuted'
+
+export function isGameHubWhistleMuted() {
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem(MUTE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function setGameHubWhistleMuted(muted) {
+  try {
+    if (muted) localStorage.setItem(MUTE_KEY, '1')
+    else localStorage.removeItem(MUTE_KEY)
+  } catch {
+    /* private mode */
+  }
+}
+
 function getCtx() {
   if (typeof window === 'undefined') return null
   if (!sharedCtx) {
@@ -48,8 +67,9 @@ export function armGameHubWhistle() {
   window.addEventListener('keydown', unlockFromGesture, true)
 }
 
-/** One long referee blast (~0.9s). No-op when hidden or audio is locked. */
-export function playGameHubWhistle() {
+/** One long referee blast (~0.9s). No-op when muted, hidden, or audio is locked. */
+export function playGameHubWhistle({ force = false } = {}) {
+  if (!force && isGameHubWhistleMuted()) return
   if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
   const ctx = getCtx()
   if (!ctx) return

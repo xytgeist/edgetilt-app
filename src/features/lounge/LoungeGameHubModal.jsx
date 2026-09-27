@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronLeft, Share } from 'lucide-react'
+import { ChevronLeft, Share, Volume2, VolumeX } from 'lucide-react'
 import {
   loungeCfbGamePlayers,
   loungeNflGameFantasy,
@@ -19,6 +19,11 @@ import {
 } from './loungeFeedAvatar.js'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 import GameHubHero from './gameHub/GameHubHero.jsx'
+import {
+  isGameHubWhistleMuted,
+  playGameHubWhistle,
+  setGameHubWhistleMuted,
+} from './gameHub/gameHubWhistle.js'
 import GameHubPlayersPane from './gameHub/GameHubPlayersPane.jsx'
 import GameHubFantasyPane from './gameHub/GameHubFantasyPane.jsx'
 import GameHubChatPane from './gameHub/GameHubChatPane.jsx'
@@ -67,6 +72,14 @@ export default function LoungeGameHubModal({
   const [chatErr, setChatErr] = useState('')
   /** User-picked PBP row for field replay … { text, team, nonce }. */
   const [fieldReplay, setFieldReplay] = useState({ text: '', team: null, nonce: 0 })
+  const [whistleMuted, setWhistleMuted] = useState(isGameHubWhistleMuted)
+  const toggleWhistleMuted = () => {
+    const next = !whistleMuted
+    setWhistleMuted(next)
+    setGameHubWhistleMuted(next)
+    // Unmuting is a tap … sample the whistle (also unlocks iOS audio for the next real one).
+    if (!next) playGameHubWhistle({ force: true })
+  }
   const chat = useGameHubChat(supabaseClient, game?.id ? String(game.id) : '')
 
   const sameSportGames = useMemo(
@@ -381,6 +394,21 @@ export default function LoungeGameHubModal({
           })}
         </div>
       </div>
+      <button
+        type="button"
+        onClick={toggleWhistleMuted}
+        data-lounge-game-glass-chip
+        data-lounge-hub-whistle-toggle={whistleMuted ? 'muted' : 'on'}
+        className={`inline-flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} items-center justify-center rounded-full border border-white/25 bg-white/15 text-white shadow-sm touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/25`}
+        aria-label={whistleMuted ? 'Unmute game sounds' : 'Mute game sounds'}
+        aria-pressed={whistleMuted}
+      >
+        {whistleMuted ? (
+          <VolumeX className="h-5 w-5 opacity-70" strokeWidth={2.25} />
+        ) : (
+          <Volume2 className="h-5 w-5" strokeWidth={2.25} />
+        )}
+      </button>
       <button
         type="button"
         onClick={() => void shareHubGame()}

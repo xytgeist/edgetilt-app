@@ -550,7 +550,7 @@ export default function FgKickTestPage() {
           <button
             type="button"
             className="rounded-md bg-amber-600 px-3 py-1.5 text-[12px] font-semibold text-white"
-            onClick={() => playGameHubWhistle()}
+            onClick={() => playGameHubWhistle({ force: true })}
           >
             Whistle (kickoff / 2nd half)
           </button>

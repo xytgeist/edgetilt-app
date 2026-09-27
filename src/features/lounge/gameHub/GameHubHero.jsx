@@ -3804,6 +3804,7 @@ export default function GameHubHero({
         : 'post'
   const whistleGameId = String(game.id || '')
   const whistleSeenRef = useRef({ id: '', phase: '' })
+  const heroRootRef = useRef(null)
   useEffect(() => {
     armGameHubWhistle()
   }, [])
@@ -3813,11 +3814,14 @@ export default function GameHubHero({
     if (!whistlePhase || !prev.phase || prev.id !== whistleGameId) return
     const kickoff = prev.phase === 'pre' && (whistlePhase === 'h1' || whistlePhase === 'h2')
     const secondHalf = prev.phase === 'h1' && whistlePhase === 'h2'
-    if (kickoff || secondHalf) playGameHubWhistle()
+    // Lounge can stay mounted but hidden while another app tab is up … only whistle when on screen.
+    const onScreen = Boolean(heroRootRef.current?.getClientRects().length)
+    if ((kickoff || secondHalf) && onScreen) playGameHubWhistle()
   }, [whistleGameId, whistlePhase])
 
   return (
     <div
+      ref={heroRootRef}
       data-lounge-game-hero
       className="relative overflow-hidden"
       style={{

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronLeft, Share, Volume2, VolumeX } from 'lucide-react'
+import { ChevronLeft } from 'lucide-react'
 import {
   loungeCfbGamePlayers,
   loungeNflGameFantasy,
@@ -20,6 +20,7 @@ import {
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 import { usePhoneLandscapeNotTablet } from '../../utils/edgeiOSComposerPortraitLock.js'
 import GameHubHero from './gameHub/GameHubHero.jsx'
+import GameHubMoreMenu from './gameHub/GameHubMoreMenu.jsx'
 import {
   isGameHubWhistleMuted,
   playGameHubWhistle,
@@ -435,30 +436,12 @@ export default function LoungeGameHubModal({
       <div data-lounge-game-pills-scroll ref={pillsScrollRef} className="min-w-0 flex-1 overflow-x-auto">
         {pillsRow}
       </div>
-      <button
-        type="button"
-        onClick={toggleWhistleMuted}
-        data-lounge-game-glass-chip
-        data-lounge-hub-whistle-toggle={whistleMuted ? 'muted' : 'on'}
-        className={`inline-flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} items-center justify-center rounded-full border border-white/25 bg-white/15 text-white shadow-sm touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/25`}
-        aria-label={whistleMuted ? 'Unmute game sounds' : 'Mute game sounds'}
-        aria-pressed={whistleMuted}
-      >
-        {whistleMuted ? (
-          <VolumeX className="h-5 w-5 opacity-70" strokeWidth={2.25} />
-        ) : (
-          <Volume2 className="h-5 w-5" strokeWidth={2.25} />
-        )}
-      </button>
-      <button
-        type="button"
-        onClick={() => void shareHubGame()}
-        data-lounge-game-glass-chip
-        className={`inline-flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} items-center justify-center rounded-full border border-white/25 bg-white/15 text-white shadow-sm touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/25`}
-        aria-label="Share game"
-      >
-        <Share className="h-5 w-5" strokeWidth={2.25} />
-      </button>
+      <GameHubMoreMenu
+        chipClassName={`inline-flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} items-center justify-center rounded-full border border-white/25 bg-white/15 text-white shadow-sm touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/25`}
+        muted={whistleMuted}
+        onToggleMuted={toggleWhistleMuted}
+        onShare={shareHubGame}
+      />
     </div>
   )
 
@@ -648,21 +631,12 @@ export default function LoungeGameHubModal({
               </button>
             ),
             right: (
-              <button
-                type="button"
-                onClick={toggleWhistleMuted}
-                data-lounge-game-glass-chip
-                data-lounge-hub-whistle-toggle={whistleMuted ? 'muted' : 'on'}
-                className={chipClass}
-                aria-label={whistleMuted ? 'Unmute game sounds' : 'Mute game sounds'}
-                aria-pressed={whistleMuted}
-              >
-                {whistleMuted ? (
-                  <VolumeX className="h-5 w-5 opacity-70" strokeWidth={2.25} />
-                ) : (
-                  <Volume2 className="h-5 w-5" strokeWidth={2.25} />
-                )}
-              </button>
+              <GameHubMoreMenu
+                chipClassName={chipClass}
+                muted={whistleMuted}
+                onToggleMuted={toggleWhistleMuted}
+                onShare={shareHubGame}
+              />
             ),
           }}
           bottomBar={

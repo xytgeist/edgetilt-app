@@ -3830,6 +3830,15 @@ html.light [data-lounge-game-hero] [data-lounge-game-glass-chip='active'] {
   border-color: rgba(255, 255, 255, 0.55) !important;
 }
 
+/* Hub "..." menu (portaled to body) */
+html.light [data-lounge-game-more-menu] {
+  background-color: rgba(255, 255, 255, 0.97) !important;
+  border-color: rgb(228 228 231) !important;
+  color: rgb(24 24 27) !important;
+}
+html.light [data-lounge-game-more-menu] [role='menuitem']:active { background-color: rgb(244 244 245) !important; }
+html.light [data-lounge-game-more-menu] [data-lounge-game-more-menu-divider] { background-color: rgb(228 228 231) !important; }
+
 /* Hub top matchup pills: soft team glows + logos (ESPN scoreboard chips). */
 [data-lounge-hub-game-pill] {
   isolation: isolate;

@@ -133,6 +133,8 @@ const TOUCHBACK_BOUNCES = [
   { toYds: 9.5, lift: 15, ms: 320 },
 ]
 const TOUCHBACK_HOLD_MS = 500
+/** Max wait for the live last play's feed row before auto-playing without it. */
+const PLAY_ROW_WAIT_MS = 6000
 /** Ball piece center in the RB sculpt viewBox (left-facing art, 728×1382). */
 const RUSH_TUCK_LOCAL = { x: 140, y: 380 }
 const RUSH_VIEWBOX_W = 728
@@ -1371,9 +1373,19 @@ function FieldViz({
     if (!id || !Array.isArray(plays)) return null
     return plays.findLast((p) => fieldPlayIdentity(p?.description) === id) || null
   }, [plays, lastPlayText])
-  // Feed row id first … ESPN rewrites a play's text after the fact ("1ST DOWN", corrected yards), which
-  // would otherwise read as a new play and animate it again.
-  const animKey = `${lastPlayRow?.id ? `row:${lastPlayRow.id}` : fieldPlayIdentity(lastPlayText)}::${Number(playReplayNonce) || 0}`
+  // One key per play … ESPN rewrites a play's text after the fact ("1ST DOWN", corrected yards), and the
+  // feed row can land a poll after the live text. Either would otherwise read as a new play and replay it.
+  const playKeyAliasRef = useRef(new Map())
+  const playKey = useMemo(() => {
+    const aliases = playKeyAliasRef.current
+    const rowKey = lastPlayRow?.id ? `row:${lastPlayRow.id}` : ''
+    const textKey = fieldPlayIdentity(lastPlayText)
+    const key = (rowKey && aliases.get(rowKey)) || (textKey && aliases.get(textKey)) || rowKey || textKey
+    if (rowKey) aliases.set(rowKey, key)
+    if (textKey) aliases.set(textKey, key)
+    return key
+  }, [lastPlayRow, lastPlayText])
+  const animKey = `${playKey}::${Number(playReplayNonce) || 0}`
   /** Last auto-play that finished … a TD's text returning after the PAT row must not replay. */
   const lastAutoPlayedKeyRef = useRef('')
   const possessionSide =
@@ -1382,14 +1394,19 @@ function FieldViz({
       : live?.possession === 'home' || live?.possession === 'away'
         ? live.possession
         : null
+  const rowTeamSide = lastPlayRow?.team === 'home' || lastPlayRow?.team === 'away' ? lastPlayRow.team : null
+  // Offense on the snap … live possession is already post-play, so a turnover on downs / lost fumble
+  // would run the play in the other team's kit and direction.
+  const snapOffenseSide =
+    replayTeam === 'home' || replayTeam === 'away' ? replayTeam : rowTeamSide || possessionSide
   const knownStartPct = playSpotFieldPercent(playStartSpot, fieldFlipped)
   // 1st-down line at the snap … live down/distance is already post-play (and empty after a TD).
   const knownStartDistance = Number(playStartSpot?.distance)
   const knownFirstDownPct =
-    knownStartPct != null && possessionSide && Number.isFinite(knownStartDistance) && knownStartDistance > 0
+    knownStartPct != null && snapOffenseSide && Number.isFinite(knownStartDistance) && knownStartDistance > 0
       ? Math.max(
           0,
-          Math.min(100, knownStartPct + attackDirection(possessionSide, fieldFlipped) * knownStartDistance),
+          Math.min(100, knownStartPct + attackDirection(snapOffenseSide, fieldFlipped) * knownStartDistance),
         )
       : null
 
@@ -1468,6 +1485,8 @@ function FieldViz({
     awayColor: '',
     homeColor: '',
     possessionSide: null,
+    /** Offense on the snap (replay team → feed row team → live possession) … rush / catch / FG anims. */
+    snapOffenseSide: null,
     /** Feed row team for the play (ESPN offense … the punting side on a punt). */
     feedTeam: null,
     fieldFlipped: false,
@@ -1488,19 +1507,38 @@ function FieldViz({
     awayColor,
     homeColor,
     possessionSide,
+    snapOffenseSide,
     feedTeam: replayTeam === 'home' || replayTeam === 'away' ? replayTeam : null,
     fieldFlipped,
     knownStartPct,
     knownFirstDownPct,
     knownEndPct: playSpotFieldPercent(lastPlayRow?.end_spot, fieldFlipped),
-    rowTeam: lastPlayRow?.team === 'home' || lastPlayRow?.team === 'away' ? lastPlayRow.team : null,
+    rowTeam: rowTeamSide,
     /** Quarter (1 / 3) when this play is a half's opening kickoff, else 0. */
     openingKickoff: openingKickoff ? Number(lastPlayRow.period) : 0,
     lastPlayText,
   }
+  // Live text can beat its feed row by a poll … the row carries the snap team and spot (a turnover on
+  // downs would otherwise run in the new offense's kit). Wait briefly, then play without it.
+  const awaitingPlayRow = Boolean(
+    isFootball &&
+      !isUserReplay &&
+      lastPlayText &&
+      !lastPlayRow &&
+      Array.isArray(plays) &&
+      plays.length > 0 &&
+      isFieldReplayablePlay(lastPlayText),
+  )
+  const [playRowWaitDoneKey, setPlayRowWaitDoneKey] = useState('')
+  useEffect(() => {
+    if (!awaitingPlayRow) return undefined
+    const t = setTimeout(() => setPlayRowWaitDoneKey(playKey), PLAY_ROW_WAIT_MS)
+    return () => clearTimeout(t)
+  }, [awaitingPlayRow, playKey])
+  const holdForPlayRow = awaitingPlayRow && playRowWaitDoneKey !== playKey
   /** Gates auto-play start without thrashing on every yard-line tick. */
   const autoPlayReady = Boolean(
-    isUserReplay || (!hideLiveLines && hasLine && pos != null),
+    isUserReplay || (!hideLiveLines && hasLine && pos != null && !holdForPlayRow),
   )
   // A running anim holds the gate open … a poll that drops the LOS or flashes a stoppage banner mid-play
   // would otherwise tear it down and restart it from the top (the play "animates twice").
@@ -1548,14 +1586,14 @@ function FieldViz({
     setKickAnim(null)
     if (kickRafRef.current) cancelAnimationFrame(kickRafRef.current)
 
-    const attackDir = attackDirection(ctx.possessionSide, ctx.fieldFlipped)
+    const attackDir = attackDirection(ctx.snapOffenseSide, ctx.fieldFlipped)
     const isTouchdown =
       Boolean(parsed.isTouchdown) || playTextIsTouchdown(lastPlayText)
     const spots = resolvePlayAnimationPercents({
       text: lastPlayText,
       yards: parsed.yards,
       game: ctx.game,
-      possessionSide: ctx.possessionSide,
+      possessionSide: ctx.snapOffenseSide,
       livePos: ctx.pos,
       preferTextSpots: isUserReplay,
       isTouchdown,
@@ -1577,7 +1615,7 @@ function FieldViz({
     // Prefer attack direction when travel is tiny (spot clamp / 0-yd edge).
     const facing = Math.abs(travel) < 0.5 ? attackDir : travel < 0 ? -1 : 1
     const kit = possessionKit(
-      ctx.possessionSide ? { ...ctx.live, possession: ctx.possessionSide } : ctx.live,
+      ctx.snapOffenseSide ? { ...ctx.live, possession: ctx.snapOffenseSide } : ctx.live,
       ctx.game,
       ctx.awayColor,
       ctx.homeColor,
@@ -1791,12 +1829,12 @@ function FieldViz({
 
     const isTouchdown =
       Boolean(parsed.isTouchdown) || playTextIsTouchdown(lastPlayText)
-    const attackDir = attackDirection(ctx.possessionSide, ctx.fieldFlipped)
+    const attackDir = attackDirection(ctx.snapOffenseSide, ctx.fieldFlipped)
     const spots = resolvePlayAnimationPercents({
       text: lastPlayText,
       yards: parsed.yards,
       game: ctx.game,
-      possessionSide: ctx.possessionSide,
+      possessionSide: ctx.snapOffenseSide,
       livePos: ctx.pos,
       preferTextSpots: isUserReplay,
       isTouchdown,
@@ -1818,7 +1856,7 @@ function FieldViz({
     const travel = endX - startX
     const facing = Math.abs(travel) < 0.5 ? attackDir : travel < 0 ? -1 : 1
     const kit = possessionKit(
-      ctx.possessionSide ? { ...ctx.live, possession: ctx.possessionSide } : ctx.live,
+      ctx.snapOffenseSide ? { ...ctx.live, possession: ctx.snapOffenseSide } : ctx.live,
       ctx.game,
       ctx.awayColor,
       ctx.homeColor,
@@ -2049,12 +2087,12 @@ function FieldViz({
     setKickAnim(null)
     if (kickRafRef.current) cancelAnimationFrame(kickRafRef.current)
 
-    const attackDir = attackDirection(ctx.possessionSide, ctx.fieldFlipped)
+    const attackDir = attackDirection(ctx.snapOffenseSide, ctx.fieldFlipped)
     const posts = attackDir > 0 ? FG_POSTS.right : FG_POSTS.left
     const settled = settledLinesRef.current
     const { losPct, kickPct } = resolveFgLosAndKick({
       fgYards: parsed.yards,
-      possessionSide: ctx.possessionSide,
+      possessionSide: ctx.snapOffenseSide,
       livePos: ctx.pos,
       settledScrimPct: settled?.scrimPct,
       flipped: ctx.fieldFlipped,
@@ -2857,10 +2895,14 @@ function FieldViz({
   }
 
   // Red zone: LOS inside the opponent's 20 → tint that 20-to-goal band.
-  // `possessionSide` is the last play's team (a punt/turnover flips it) … only trust it mid-anim.
+  // Mid-anim the offense is the snap team (a turnover flips live possession) … otherwise trust the live feed.
   const livePossession = live?.possession === 'home' || live?.possession === 'away' ? live.possession : null
   const redZoneTeam =
-    lineDriver != null || tdAnim != null || kickAnim != null ? possessionSide : livePossession
+    lineDriver != null || tdAnim != null
+      ? snapOffenseSide
+      : kickAnim != null
+        ? possessionSide
+        : livePossession
   const redZoneAttackDir = redZoneTeam ? attackDirection(redZoneTeam, fieldFlipped) : 0
   const redZoneSide =
     showLiveScrimMarkers && redZoneAttackDir !== 0

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import {
+  loungeSportsGameDetail,
   loungeSportsScoreboard,
   readLoungeSportsScoreboardCache,
   writeLoungeSportsScoreboardCache,
@@ -8,8 +9,11 @@ import { enrichLoungeSportsGame } from './loungeSportsMatch.js'
 import { isLoungeSportsCurrentSlateGame, ptDateFromIsoLocal } from './loungeSportsSlateWindow.js'
 import { parseLoungeSportsGameField } from './loungeSportsGameField.js'
 import {
+  clearLoungeSportsGamePending,
   consumeLoungeSportsHubPending,
+  LOUNGE_SPORTS_GAME_OPEN_EVENT,
   LOUNGE_SPORTS_HUB_FILTER_ALL,
+  peekLoungeSportsGamePending,
   LOUNGE_SPORTS_HUB_OPEN_EVENT,
   normalizeLoungeSportsHubFilter,
 } from './loungeSportsHubNav.js'
@@ -167,6 +171,59 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
     window.addEventListener(LOUNGE_SPORTS_HUB_OPEN_EVENT, onOpen)
     return () => window.removeEventListener(LOUNGE_SPORTS_HUB_OPEN_EVENT, onOpen)
   }, [openSlate])
+
+  // Shared game link (`?game=`): open that hub once the board has it (or a one-game lookup does).
+  const [pendingGameId, setPendingGameId] = useState(peekLoungeSportsGamePending)
+  const pendingLookupRef = useRef('')
+  useEffect(() => {
+    const onOpen = (event) => {
+      const id = String(event?.detail?.eventId || '').trim()
+      if (id) setPendingGameId(id)
+    }
+    window.addEventListener(LOUNGE_SPORTS_GAME_OPEN_EVENT, onOpen)
+    return () => window.removeEventListener(LOUNGE_SPORTS_GAME_OPEN_EVENT, onOpen)
+  }, [])
+
+  useEffect(() => {
+    if (!supabaseClient?.auth?.onAuthStateChange) return undefined
+    const { data } = supabaseClient.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_IN') void loadBoard()
+    })
+    return () => data?.subscription?.unsubscribe?.()
+  }, [loadBoard, supabaseClient])
+
+  useEffect(() => {
+    if (!pendingGameId) return undefined
+    const hit = games.find((g) => String(g.id) === pendingGameId)
+    if (hit) {
+      clearLoungeSportsGamePending()
+      setPendingGameId(null)
+      setHubGame(hit)
+      return undefined
+    }
+    if (!boardFetched || !supabaseClient || pendingLookupRef.current === pendingGameId) return undefined
+    // Not on the painted slate … the Edge event lookup still finds current-slate games.
+    pendingLookupRef.current = pendingGameId
+    let cancelled = false
+    void loungeSportsGameDetail(supabaseClient, pendingGameId).then((data) => {
+      if (cancelled) return
+      const game = data?.game && typeof data.game === 'object' ? enrichLoungeSportsGame(data.game) : null
+      if (game) {
+        clearLoungeSportsGamePending()
+        setPendingGameId(null)
+        setHubGame(game)
+      } else if (/not on the current slate/i.test(String(data?.error || ''))) {
+        clearLoungeSportsGamePending()
+        setPendingGameId(null)
+      } else {
+        // Signed out / network … retry after the next board load (e.g. sign-in).
+        pendingLookupRef.current = ''
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [boardFetched, games, pendingGameId, supabaseClient])
 
   const gamesForPost = useCallback(
     (post) => {

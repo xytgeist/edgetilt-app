@@ -158,6 +158,8 @@ import {
   LOUNGE_SPORTS_HUB_FILTER_ALL,
   LOUNGE_SPORTS_HUB_FILTER_CFB,
   LOUNGE_SPORTS_HUB_FILTER_NFL,
+  LOUNGE_SPORTS_GAME_PARAM,
+  requestLoungeSportsGameOpen,
   requestLoungeSportsHubOpen,
 } from '../lounge/loungeSportsHubNav.js'
 
@@ -1511,6 +1513,21 @@ export default function AppShell({
       ) {
         setTab('home')
         setMenuOpen(false)
+      }
+      const sharedGameId = (params.get(LOUNGE_SPORTS_GAME_PARAM) || '').trim()
+      // Wait for the session to resolve so a signed-in recipient isn't bounced to the auth sheet.
+      if (sharedGameId && (browseMode !== 'anonymous' || authSessionReady)) {
+        requestLoungeSportsGameOpen(sharedGameId)
+        try {
+          const u = new URL(window.location.href)
+          u.searchParams.delete(LOUNGE_SPORTS_GAME_PARAM)
+          window.history.replaceState(window.history.state, '', `${u.pathname}${u.search}${u.hash}`)
+        } catch {
+          /* ignore */
+        }
+        setTab('home')
+        setMenuOpen(false)
+        if (browseMode === 'anonymous') onRequireAuthRef.current?.()
       }
       const targetEventId = params.get('eventId')
       const targetEventIdsRaw = params.get('eventIds')

@@ -41,6 +41,56 @@ export function requestLoungeSportsHubOpen(filter = LOUNGE_SPORTS_HUB_FILTER_ALL
   }
 }
 
+/** Shared game link: `/?tab=home&game=<event id>` opens that game's hub. */
+export const LOUNGE_SPORTS_GAME_PARAM = 'game'
+export const LOUNGE_SPORTS_GAME_OPEN_EVENT = 'lounge:sports-game-open'
+export const LOUNGE_SPORTS_GAME_PENDING_KEY = 'loungeSportsGamePending:v1'
+
+/**
+ * @param {{ id?: string|number } | null} game
+ * @param {string} origin
+ */
+export function loungeSportsGameShareUrl(game, origin) {
+  const id = String(game?.id || '').trim()
+  const base = `${origin}/?tab=home`
+  return id ? `${base}&${LOUNGE_SPORTS_GAME_PARAM}=${encodeURIComponent(id)}` : base
+}
+
+/**
+ * Queue a game hub open (survives the sign-in prompt) + broadcast to a mounted Lounge.
+ * @param {string} eventId
+ */
+export function requestLoungeSportsGameOpen(eventId) {
+  const id = String(eventId || '').trim()
+  if (!id) return
+  try {
+    if (typeof sessionStorage !== 'undefined') sessionStorage.setItem(LOUNGE_SPORTS_GAME_PENDING_KEY, id)
+  } catch {
+    /* ignore */
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(LOUNGE_SPORTS_GAME_OPEN_EVENT, { detail: { eventId: id } }))
+  }
+}
+
+/** Pending shared-game id (kept until the hub actually opens). */
+export function peekLoungeSportsGamePending() {
+  try {
+    if (typeof sessionStorage === 'undefined') return null
+    return sessionStorage.getItem(LOUNGE_SPORTS_GAME_PENDING_KEY) || null
+  } catch {
+    return null
+  }
+}
+
+export function clearLoungeSportsGamePending() {
+  try {
+    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(LOUNGE_SPORTS_GAME_PENDING_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
 /**
  * Read + clear pending filter. Returns null when none.
  * @returns {string | null}

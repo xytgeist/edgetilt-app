@@ -10,6 +10,7 @@ import { shareViaBestAvailable } from '../../utils/edgeNative.js'
 import { formatLoungeSearchError, loungeSearch, LOUNGE_SEARCH_SORT } from './loungeSearchApi.js'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import { loungeSportsHubGames } from './loungeSportsSlateWindow.js'
+import { loungeSportsGameShareUrl } from './loungeSportsHubNav.js'
 import LoungeGameHubPillChip from './LoungeGameHubPillChip.jsx'
 import { useLoungeSlowTicker } from './useLoungeSlowTicker.js'
 import {
@@ -154,10 +155,10 @@ export default function LoungeGameHubModal({
       game.status === 'pre'
         ? `${title} · ${clock}`
         : `${away} ${scoreText(game.away, game.status)} @ ${home} ${scoreText(game.home, game.status)} · ${clock}`
-    const url =
-      typeof window !== 'undefined'
-        ? `${window.location.origin}/?tab=home`
-        : 'https://edgetilt.com/?tab=home'
+    const url = loungeSportsGameShareUrl(
+      game,
+      typeof window !== 'undefined' ? window.location.origin : 'https://edgetilt.com',
+    )
     await shareViaBestAvailable({ url, title, text })
   }
 

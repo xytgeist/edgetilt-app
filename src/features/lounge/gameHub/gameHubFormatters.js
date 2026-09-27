@@ -453,6 +453,8 @@ function extractPlayYards(raw) {
 
 export function playTextIsTouchdown(text) {
   const lower = String(text || '').toLowerCase()
+  // "… TOUCHDOWN nullified by penalty … NO PLAY" … the drive goes on.
+  if (/\btouchdown\s+(?:is\s+|was\s+)?(?:nullified|negated|reversed|overturned|called\s+back|wiped\s+out)\b/.test(lower)) return false
   return /\btouchdown\b/.test(lower) || /\bfor\s+a\s+td\b/.test(lower) || /\b\d+\s*-?\s*yds?\s+td\b/.test(lower)
 }
 
@@ -1493,9 +1495,17 @@ function playHasSpot(play) {
  *   lateral: number (-1 left … 1 right of the offense), isNewest: boolean, flagTeam?: string (penalized abbrev)
  * }> }}
  */
-export function buildPossessionDriveMarks(plays) {
+export function buildPossessionDriveMarks(plays, { keepScoringDrive = false } = {}) {
   const empty = { team: null, attackDir: 1, marks: [] }
-  const newestFirst = sortPlaysNewestFirst(plays).filter(playHasSpot)
+  let newestFirst = sortPlaysNewestFirst(plays).filter(playHasSpot)
+  // Scoring drive mode: skip a trailing PAT / 2-pt row so the offensive TD row leads and its drive is kept.
+  if (keepScoringDrive) {
+    const lead = newestFirst.findIndex((row) => {
+      const desc = String(row?.description || '')
+      return !(playTextIsScoreTry(desc) && !playTextIsTouchdown(desc))
+    })
+    newestFirst = lead > 0 ? newestFirst.slice(lead) : newestFirst
+  }
   if (!newestFirst.length) return empty
   const head = newestFirst[0]
   const team = head?.team === 'home' || head?.team === 'away' ? head.team : null
@@ -1504,12 +1514,16 @@ export function buildPossessionDriveMarks(plays) {
     const desc = String(row?.description || '')
     return row?.turnover === true || DRIVE_BREAK_PLAY.test(desc) || playTextIsTouchdown(desc) || DRIVE_SCORE_FG.test(desc)
   }
-  if (!team || breaksDrive(head)) return empty
+  // Offensive TD at the head (not a pick-six / return score) stays on the chart while its label is up.
+  const headDesc = String(head?.description || '')
+  const keepHead =
+    keepScoringDrive && head?.turnover !== true && !DRIVE_BREAK_PLAY.test(headDesc) && playTextIsTouchdown(headDesc)
+  if (!team || (breaksDrive(head) && !keepHead)) return empty
   const half = playHalf(head.period)
   const drive = []
   for (const row of newestFirst) {
     if (row.team !== team || playHalf(row.period) !== half) break
-    if (breaksDrive(row)) break
+    if (breaksDrive(row) && !(keepHead && row === head)) break
     drive.unshift(row)
   }
   // Whole drive in the current quarter's direction … a drive that crosses the end of Q1 / Q3 stays one chain.

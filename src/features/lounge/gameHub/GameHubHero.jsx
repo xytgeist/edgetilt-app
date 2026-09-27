@@ -1259,7 +1259,12 @@ function FieldViz({
   }
   /** Scoring team abbrev from the last TD animation … keeps "TOUCHDOWN X" up through the PAT row. */
   const [heldTdTeam, setHeldTdTeam] = useState('')
-  const drive = useMemo(() => (isFootball ? buildPossessionDriveMarks(plays) : null), [isFootball, plays])
+  // TD / PAT still the latest row and no stoppage banner = the TD label's lifetime … keep the scoring drive up with it.
+  const tdDriveHold = Boolean(isFootball && lastPlayText && playTextIsScoreTry(lastPlayText) && !centerBanner)
+  const drive = useMemo(
+    () => (isFootball ? buildPossessionDriveMarks(plays, { keepScoringDrive: tdDriveHold }) : null),
+    [isFootball, plays, tdDriveHold],
+  )
   const [throwDoneKey, setThrowDoneKey] = useState('')
   const onThrowDone = useCallback(
     (key) => {

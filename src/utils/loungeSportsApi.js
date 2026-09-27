@@ -91,9 +91,10 @@ export async function loungeSportsGameDetail(supabase, eventId) {
 }
 
 /**
- * Game-scoped CFB Players roster (cfb_players … no Fantasy).
+ * Game-scoped CFB Players roster (cfb_players … no Fantasy) + Kalshi / Polymarket game markets.
+ * Names + kickoff let the Edge match venue events whose codes differ from ESPN abbrevs.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
- * @param {{ eventId: string, awayAbbrev: string, homeAbbrev: string }} opts
+ * @param {{ eventId: string, awayAbbrev: string, homeAbbrev: string, awayName?: string, homeName?: string, commenceTime?: string }} opts
  */
 export async function loungeCfbGamePlayers(supabase, opts) {
   let {
@@ -111,6 +112,9 @@ export async function loungeCfbGamePlayers(supabase, opts) {
     event_id: String(opts?.eventId || '').trim(),
     away_abbrev: String(opts?.awayAbbrev || '').trim(),
     home_abbrev: String(opts?.homeAbbrev || '').trim(),
+    away_name: String(opts?.awayName || '').trim(),
+    home_name: String(opts?.homeName || '').trim(),
+    commence_time: String(opts?.commenceTime || '').trim(),
   }
   if (!body.event_id || !body.away_abbrev || !body.home_abbrev) {
     return { error: 'Missing event or teams.' }

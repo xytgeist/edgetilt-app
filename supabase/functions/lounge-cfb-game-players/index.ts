@@ -1,8 +1,9 @@
 /**
- * Logged-in Lounge CFB game hub: Players roster from cfb_players (no Fantasy).
+ * Logged-in Lounge CFB game hub: Players roster from cfb_players (no Fantasy)
+ * + Kalshi / Polymarket game, half, and team-total markets.
  *
  * User JWT:
- *   { event_id, away_abbrev, home_abbrev }
+ *   { event_id, away_abbrev, home_abbrev, away_name?, home_name?, commence_time? }
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { buildCfbGamePlayers } from '../_shared/loungeCfbGamePlayers.ts'
@@ -57,7 +58,14 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const payload = await buildCfbGamePlayers(admin, { eventId, awayAbbrev, homeAbbrev })
+    const payload = await buildCfbGamePlayers(admin, {
+      eventId,
+      awayAbbrev,
+      homeAbbrev,
+      awayName: String(body?.away_name || '').trim(),
+      homeName: String(body?.home_name || '').trim(),
+      commenceIso: String(body?.commence_time || '').trim() || null,
+    })
     return json(200, payload as unknown as Record<string, unknown>)
   } catch (err) {
     return json(502, { error: err instanceof Error ? err.message : 'CFB roster payload failed.' })

@@ -203,6 +203,9 @@ export default function LoungeGameHubModal({
             eventId: game.id,
             awayAbbrev: game.away?.abbrev,
             homeAbbrev: game.home?.abbrev,
+            awayName: game.away?.name,
+            homeName: game.home?.name,
+            commenceTime: game.commence_time,
           })
         : loungeNflGameFantasy(supabaseClient, {
             eventId: game.id,

@@ -3,6 +3,8 @@
  * Public market data … no key. Prefer polymarket.us URLs for US persons.
  */
 
+import { easternDateParts, matchMarketPair, type MarketSideHint } from './marketTeamMatch.ts'
+
 const POLY_BASE = 'https://gateway.polymarket.us'
 const POLY_WEB = 'https://polymarket.us'
 const POLY_MAX_GAME = 40
@@ -80,12 +82,16 @@ function normTeam(team: string | null | undefined): string {
   return t
 }
 
+/** Gateway list calls have taken 20-90s; bound them so the Kalshi half still returns. */
+const POLY_FETCH_TIMEOUT_MS = 45_000
+
 async function fetchJson(url: string): Promise<unknown> {
   const res = await fetch(url, {
     headers: {
       Accept: 'application/json',
       'User-Agent': 'EdgeTilt-lounge-nfl-game-fantasy/1.0',
     },
+    signal: AbortSignal.timeout(POLY_FETCH_TIMEOUT_MS),
   })
   if (!res.ok) throw new Error(`${url} → ${res.status}`)
   return res.json()
@@ -121,11 +127,11 @@ function sidePrice(
 }
 
 /**
- * Polymarket US sports boards live under /sports/nfl/{eventSlug}.
+ * Polymarket US sports boards live under /sports/{league}/{eventSlug}.
  * Legacy /event/{event}/{market} paths 404 on polymarket.us.
  */
-function polyUrls(eventSlug: string, marketSlug: string) {
-  const eventUrl = `${POLY_WEB}/sports/nfl/${encodeURIComponent(eventSlug)}`
+function polyUrls(league: PolyLeague, eventSlug: string, marketSlug: string) {
+  const eventUrl = `${POLY_WEB}/sports/${league}/${encodeURIComponent(eventSlug)}`
   const qs = new URLSearchParams()
   if (marketSlug) qs.set('market', marketSlug)
   const marketUrl = qs.toString() ? `${eventUrl}?${qs.toString()}` : eventUrl
@@ -142,6 +148,7 @@ function polyUrls(eventSlug: string, marketSlug: string) {
 }
 
 function mapPolyMarket(
+  league: PolyLeague,
   eventSlug: string,
   m: Record<string, unknown>,
 ): PolyProp | null {
@@ -172,7 +179,7 @@ function mapPolyMarket(
     no = { bid: inv, ask: inv }
   }
 
-  const urls = polyUrls(eventSlug, slug)
+  const urls = polyUrls(league, eventSlug, slug)
   return {
     ticker: `poly:${slug}`,
     series: sportsType || 'polymarket',
@@ -234,12 +241,96 @@ async function resolvePolyEventSlug(away: string, home: string): Promise<string 
   return null
 }
 
-export async function loadPolymarketProps(away: string, home: string): Promise<PolyProp[]> {
+/** CFB: ESPN abbrevs rarely equal Polymarket's, so match on names too and prefer the kickoff date. */
+async function resolvePolyCfbEventSlug(
+  away: MarketSideHint,
+  home: MarketSideHint,
+  commenceIso: string | null,
+): Promise<{ slug: string; codeToAbbrev: Record<string, string> } | null> {
+  const d = easternDateParts(commenceIso)
+  const dateTag = d ? `-${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}` : ''
+  let best: { slug: string; score: number; codeToAbbrev: Record<string, string> } | null = null
+  for (let offset = 0; offset < 300; offset += 100) {
+    const data = (await fetchJson(
+      `${POLY_BASE}/v2/leagues/cfb/events?limit=100&offset=${offset}&type=sport&section=general`,
+    )) as { events?: Array<Record<string, unknown>> }
+    const events = Array.isArray(data.events) ? data.events : []
+    for (const ev of events) {
+      const slug = String(ev.slug || '').trim()
+      if (!slug) continue
+      const teams = Array.isArray(ev.teams) ? (ev.teams as Array<Record<string, unknown>>) : []
+      const venue = teams.map((t) => ({
+        code: String(t.displayAbbreviation || ''),
+        name: `${String(t.name || '')} ${String(t.alias || '')}`.trim(),
+      }))
+      let match = matchMarketPair(venue, away, home)
+      if (!match.score) {
+        // "Penn State" alone still prefixes "Penn State Nittany Lions" when alias differs.
+        match = matchMarketPair(
+          teams.map((t) => ({ code: String(t.displayAbbreviation || ''), name: String(t.name || '') })),
+          away,
+          home,
+        )
+      }
+      if (!match.score) continue
+      let score = match.score
+      if (dateTag && slug.endsWith(dateTag)) score += 10
+      if (!best || score > best.score) best = { slug, score, codeToAbbrev: match.codeToAbbrev }
+    }
+    // Events are date-ordered; once we have a same-day hit, later pages are future weeks.
+    if ((best && best.score >= 10) || events.length < 100) break
+  }
+  return best ? { slug: best.slug, codeToAbbrev: best.codeToAbbrev } : null
+}
+
+export type PolyLeague = 'nfl' | 'cfb'
+
+/** Team-scoped markets tag every side with the same team (`PSU over 21.5`); winners carry both. */
+function polyTeamHint(m: Record<string, unknown>, codeToAbbrev: Record<string, string>): string | null {
+  const sides = Array.isArray(m.marketSides) ? (m.marketSides as Array<Record<string, unknown>>) : []
+  const codes = new Set(
+    sides
+      .map((sd) => {
+        const team = sd.team && typeof sd.team === 'object' ? (sd.team as Record<string, unknown>) : null
+        return String(team?.displayAbbreviation || '').toUpperCase()
+      })
+      .filter(Boolean),
+  )
+  if (codes.size !== 1) return null
+  return codeToAbbrev[[...codes][0]] || null
+}
+
+export type PolyLoadOpts = {
+  league?: PolyLeague
+  /** CFB only … full display names ("Penn State Nittany Lions") for name matching. */
+  awayNames?: string[]
+  homeNames?: string[]
+  commenceIso?: string | null
+}
+
+export async function loadPolymarketProps(
+  away: string,
+  home: string,
+  opts: PolyLoadOpts = {},
+): Promise<PolyProp[]> {
+  const league: PolyLeague = opts.league || 'nfl'
   const a = normTeam(away)
   const h = normTeam(home)
   if (!a || !h) return []
 
-  const eventSlug = await resolvePolyEventSlug(a, h)
+  let eventSlug: string | null = null
+  let codeToAbbrev: Record<string, string> = {}
+  if (league === 'cfb') {
+    const hit = await resolvePolyCfbEventSlug(
+      { abbrev: a, names: opts.awayNames || [] },
+      { abbrev: h, names: opts.homeNames || [] },
+      opts.commenceIso ?? null,
+    )
+    eventSlug = hit?.slug || null
+    codeToAbbrev = hit?.codeToAbbrev || {}
+  } else {
+    eventSlug = await resolvePolyEventSlug(a, h)
+  }
   if (!eventSlug) return []
 
   const wrap = (await fetchJson(
@@ -255,8 +346,9 @@ export async function loadPolymarketProps(away: string, home: string): Promise<P
     const st = String(m.sportsMarketType || '')
     // Cover-style spreads don't map cleanly to Yes/No chips … skip for v1.
     if (st.includes('spread') && !st.includes('winner')) continue
-    const mapped = mapPolyMarket(eventSlug, m)
+    const mapped = mapPolyMarket(league, eventSlug, m)
     if (!mapped || seen.has(mapped.ticker)) continue
+    if (league === 'cfb') mapped.team_hint = polyTeamHint(m, codeToAbbrev)
     // Player props stay; game/period only when on the popular allowlist.
     if (mapped.kind !== 'player' && !isPopularPolyNonPlayer(st)) continue
     seen.add(mapped.ticker)

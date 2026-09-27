@@ -120,7 +120,7 @@ function isFullGameMoneyline(prop) {
   if (/\bspread\b|\bover\b|\bunder\b|\btotal\b/.test(text) && !/\bwinner\b|\bmoneyline\b/.test(text)) {
     return false
   }
-  if (series.includes('kxnflgame') || series.includes('winner') || series.includes('moneyline')) return true
+  if (series.includes('kxnflgame') || series.includes('kxncaafgame') || series.includes('winner') || series.includes('moneyline')) return true
   if (/\bwinner\b|\bmoneyline\b|\bml\b|\bvs\b|\bwins?\b/.test(text)) return true
   // Bare abbrev labels like "GB" / "ATL"
   const compressed = compressTeams(prop.line_label || prop.title || '').trim()
@@ -128,6 +128,9 @@ function isFullGameMoneyline(prop) {
 }
 
 function propTeamAbbrev(prop) {
+  // CFB props arrive pre-stamped with our ESPN abbrev (college names aren't in NFL_ABBR).
+  const hint = String(prop?.team_hint || '').trim().toUpperCase()
+  if (hint) return hint
   const compressed = compressTeams(`${prop?.line_label || ''} ${prop?.title || ''} ${prop?.team_hint || ''}`)
   const m = compressed.match(new RegExp(`\\b(${NFL_ABBR})\\b`, 'i'))
   return m ? m[1].toUpperCase() : ''

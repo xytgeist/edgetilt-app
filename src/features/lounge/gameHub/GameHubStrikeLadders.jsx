@@ -56,7 +56,8 @@ function categoryOf(prop) {
     series.includes('points_full_game') ||
     new RegExp(`\\b(?:${NFL_ABBR})\\s+over\\b`, 'i').test(text)
   ) {
-    return 'teamtotal'
+    // Poly `football_team_full_game_total` is the game total ("Over 35.5 total points").
+    return teamOf(prop) ? 'teamtotal' : 'total'
   }
   if (series.includes('spread') || (/\bspread\b/.test(series + text) && /[+-]?\d+(?:\.\d+)?/.test(text))) {
     return 'spread'
@@ -65,6 +66,7 @@ function categoryOf(prop) {
   if (
     series.includes('winner') ||
     series.includes('kxnflgame') ||
+    series.includes('kxncaafgame') ||
     /\bvs\b|\bwins?\b|\bmoneyline\b|\bml\b/.test(text) ||
     new RegExp(`^(?:${NFL_ABBR})(?:\\s+(?:1h|2h))?$`, 'i').test(String(prop?.line_label || '').trim())
   ) {
@@ -74,12 +76,19 @@ function categoryOf(prop) {
 }
 
 function strikeOf(prop) {
-  const text = `${prop?.line_label || ''} ${prop?.title || ''}`
+  // "wins 2H by over 6.5" … period tokens aren't the strike.
+  const text = `${prop?.line_label || ''} ${prop?.title || ''}`.replace(
+    /\b[1-4](?:st|nd|rd|th)?\s*(?:h|q|half|quarter)\b/gi,
+    ' ',
+  )
   const m = text.match(/(\d+(?:\.\d+)?)/)
   return m ? Number(m[1]) : null
 }
 
 function teamOf(prop) {
+  // CFB props arrive pre-stamped with our ESPN abbrev (college names aren't in NFL_ABBR).
+  const hint = String(prop?.team_hint || '').trim().toUpperCase()
+  if (hint) return hint
   const text = `${prop?.line_label || ''} ${prop?.title || ''} ${prop?.team_hint || ''}`
   const m = text.match(new RegExp(`\\b(${NFL_ABBR})\\b`, 'i'))
   return m ? m[1].toUpperCase() : ''

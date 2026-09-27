@@ -4,6 +4,7 @@
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { loadPolymarketProps } from './loungePolymarketNflProps.ts'
+import { easternDateParts, matchMarketPair, type MarketSideHint } from './marketTeamMatch.ts'
 
 const SLEEPER_PLAYERS = 'https://api.sleeper.app/v1/players/nfl'
 const SLEEPER_STATE = 'https://api.sleeper.app/v1/state/nfl'
@@ -56,6 +57,25 @@ const KALSHI_SERIES = [
 
 const KALSHI_PLAYER_SERIES_SET = new Set<string>(KALSHI_PLAYER_SERIES)
 const KALSHI_PERIOD_SERIES_SET = new Set<string>(KALSHI_PERIOD_SERIES)
+
+/** CFB mirrors the NFL board scope (Kalshi has no college player-prop series). */
+const KALSHI_CFB_GAME_SERIES = [
+  'KXNCAAFGAME',
+  'KXNCAAFSPREAD',
+  'KXNCAAFTOTAL',
+  'KXNCAAFTEAMTOTAL',
+] as const
+const KALSHI_CFB_PERIOD_SERIES = [
+  'KXNCAAF1H',
+  'KXNCAAF2H',
+  'KXNCAAF1HSPREAD',
+  'KXNCAAF1HTOTAL',
+  'KXNCAAF1HTEAMTOTAL',
+  'KXNCAAF2HSPREAD',
+  'KXNCAAF2HTOTAL',
+] as const
+const KALSHI_CFB_SERIES = [...KALSHI_CFB_GAME_SERIES, ...KALSHI_CFB_PERIOD_SERIES] as const
+const KALSHI_CFB_PERIOD_SERIES_SET = new Set<string>(KALSHI_CFB_PERIOD_SERIES)
 
 /** Soft caps so one game does not return hundreds of strike lines. */
 const KALSHI_MAX_GAME = 48
@@ -361,7 +381,7 @@ function lineLabelFromTitle(title: string, playerName: string): string {
 
 function propKindForSeries(series: string): NflGameFantasyPropKind {
   if (KALSHI_PLAYER_SERIES_SET.has(series)) return 'player'
-  if (KALSHI_PERIOD_SERIES_SET.has(series)) return 'period'
+  if (KALSHI_PERIOD_SERIES_SET.has(series) || KALSHI_CFB_PERIOD_SERIES_SET.has(series)) return 'period'
   return 'game'
 }
 
@@ -963,7 +983,78 @@ async function loadKalshiProps(away: string, home: string): Promise<NflGameFanta
   const batches = await mapPool(KALSHI_SERIES, KALSHI_FETCH_CONCURRENCY, (series) =>
     fetchKalshiSeriesForSuffix(series, suffix).catch(() => [] as NflGameFantasyProp[]),
   )
-  const all = batches.flat()
+  return capAndSortKalshiProps(batches.flat())
+}
+
+const KALSHI_MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']
+
+/** Kalshi event date token (`26SEP26`) in US Eastern, matching how it stamps tickers. */
+function kalshiDateToken(iso: string | null | undefined): string {
+  const d = easternDateParts(iso)
+  if (!d) return ''
+  return `${String(d.y % 100).padStart(2, '0')}${KALSHI_MONTHS[d.m - 1]}${String(d.d).padStart(2, '0')}`
+}
+
+/** `26SEP26WISPSU` suffix for this CFB matchup (paged … the open slate is > 200 events). */
+async function resolveKalshiCfbGameSuffix(
+  away: MarketSideHint,
+  home: MarketSideHint,
+  commenceIso: string | null,
+): Promise<{ suffix: string; codeToAbbrev: Record<string, string> } | null> {
+  const prefix = 'KXNCAAFGAME-'
+  const dateToken = kalshiDateToken(commenceIso)
+  let best: { suffix: string; score: number; codeToAbbrev: Record<string, string> } | null = null
+  let cursor = ''
+  for (let page = 0; page < 6; page++) {
+    const q = new URLSearchParams({ series_ticker: 'KXNCAAFGAME', status: 'open', limit: '200' })
+    if (cursor) q.set('cursor', cursor)
+    const data = (await fetchJson(`${KALSHI_BASE}/events?${q}`)) as {
+      events?: Array<Record<string, unknown>>
+      cursor?: string
+    }
+    const events = Array.isArray(data.events) ? data.events : []
+    for (const ev of events) {
+      const et = String(ev.event_ticker || '')
+      if (!et.toUpperCase().startsWith(prefix)) continue
+      const suffix = et.slice(prefix.length)
+      // "WIS vs PSU (Sep 26)" / "Wisconsin vs Penn St."
+      const codes = String(ev.sub_title || '').replace(/\(.*\)/, '').split(/\s+vs\.?\s+/i).map((s) => s.trim())
+      const names = String(ev.title || '').split(/\s+vs\.?\s+/i).map((s) => s.trim())
+      if (codes.length !== 2 && names.length !== 2) continue
+      const venue = [0, 1].map((i) => ({ code: codes[i] || '', name: names[i] || '' }))
+      const match = matchMarketPair(venue, away, home)
+      if (!match.score) continue
+      let score = match.score
+      if (dateToken && suffix.toUpperCase().startsWith(dateToken)) score += 10
+      if (!best || score > best.score) best = { suffix, score, codeToAbbrev: match.codeToAbbrev }
+    }
+    cursor = String(data.cursor || '')
+    if (!cursor || events.length === 0) break
+  }
+  return best ? { suffix: best.suffix, codeToAbbrev: best.codeToAbbrev } : null
+}
+
+/** CFB game / team total / half markets for the Stats board (no player series exist on Kalshi). */
+export async function loadKalshiCfbProps(
+  away: MarketSideHint,
+  home: MarketSideHint,
+  commenceIso: string | null,
+): Promise<NflGameFantasyProp[]> {
+  const resolved = await resolveKalshiCfbGameSuffix(away, home, commenceIso)
+  if (!resolved) return []
+  const batches = await mapPool(KALSHI_CFB_SERIES, KALSHI_FETCH_CONCURRENCY, (series) =>
+    fetchKalshiSeriesForSuffix(series, resolved.suffix).catch(() => [] as NflGameFantasyProp[]),
+  )
+  // Team-scoped tickers end in the venue code (`-PSU7`, `-WIS`); totals are numeric only.
+  for (const p of batches.flat()) {
+    const m = /-([A-Z]+)\d*(?:\.\d+)?$/i.exec(p.ticker)
+    const hint = m ? resolved.codeToAbbrev[m[1].toUpperCase()] : undefined
+    if (hint) p.team_hint = hint
+  }
+  return capAndSortKalshiProps(batches.flat())
+}
+
+function capAndSortKalshiProps(all: NflGameFantasyProp[]): NflGameFantasyProp[] {
   const seen = new Set<string>()
   const deduped: NflGameFantasyProp[] = []
   for (const p of all) {

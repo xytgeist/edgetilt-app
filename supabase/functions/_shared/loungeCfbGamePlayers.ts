@@ -1,7 +1,12 @@
 /**
- * CFB game hub Players tab … roster from public.cfb_players (no Fantasy/Sleeper).
+ * CFB game hub Players tab … roster from public.cfb_players (no Fantasy/Sleeper),
+ * plus Kalshi + Polymarket game / half / team-total markets (neither lists college player props).
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
+import { loadKalshiCfbProps, type NflGameFantasyProp } from './loungeNflGameFantasy.ts'
+import { loadPolymarketProps } from './loungePolymarketNflProps.ts'
+
+const PROPS_CACHE_TTL_MS = 90_000
 
 export type CfbGamePlayer = {
   sleeper_id: string
@@ -26,7 +31,7 @@ export type CfbGamePlayersPayload = {
   away_abbrev: string
   home_abbrev: string
   players: CfbGamePlayer[]
-  props: []
+  props: NflGameFantasyProp[]
   season: null
   week: null
   sources: string[]
@@ -107,9 +112,84 @@ function mapRow(row: DbRow, side: 'home' | 'away', team: string): CfbGamePlayer 
   }
 }
 
+type CfbMarketOpts = {
+  eventId: string
+  away: string
+  home: string
+  awayName: string
+  homeName: string
+  commenceIso: string | null
+}
+
+/** Cached under `cfb:<event_id>` in nfl_game_fantasy_cache (ESPN event ids never collide across sports). */
+async function loadCfbMarkets(
+  admin: SupabaseClient,
+  o: CfbMarketOpts,
+): Promise<{ props: NflGameFantasyProp[]; sources: string[] }> {
+  const cacheKey = `cfb:${o.eventId}`
+  const { data: cached } = await admin
+    .from('nfl_game_fantasy_cache')
+    .select('payload, fetched_at')
+    .eq('event_id', cacheKey)
+    .maybeSingle()
+  if (cached?.payload && cached.fetched_at) {
+    const age = Date.now() - new Date(cached.fetched_at).getTime()
+    if (age >= 0 && age < PROPS_CACHE_TTL_MS) {
+      const p = cached.payload as { props?: NflGameFantasyProp[]; sources?: string[] }
+      return { props: Array.isArray(p.props) ? p.props : [], sources: Array.isArray(p.sources) ? p.sources : [] }
+    }
+  }
+
+  const awayNames = [o.awayName].filter(Boolean)
+  const homeNames = [o.homeName].filter(Boolean)
+  const [kalshi, poly] = await Promise.all([
+    loadKalshiCfbProps(
+      { abbrev: o.away, names: awayNames },
+      { abbrev: o.home, names: homeNames },
+      o.commenceIso,
+    ).catch(() => [] as NflGameFantasyProp[]),
+    loadPolymarketProps(o.away, o.home, {
+      league: 'cfb',
+      awayNames,
+      homeNames,
+      commenceIso: o.commenceIso,
+    }).catch(() => [] as NflGameFantasyProp[]),
+  ])
+  const sources: string[] = []
+  if (kalshi.length) sources.push('kalshi')
+  if (poly.length) sources.push('polymarket')
+  const props = [...kalshi, ...(poly as NflGameFantasyProp[])]
+  const kindRank = (k: string) => (k === 'game' ? 0 : k === 'period' ? 1 : 2)
+  props.sort((a, b) => {
+    const dk = kindRank(a.kind) - kindRank(b.kind)
+    if (dk !== 0) return dk
+    if (a.source !== b.source) return a.source === 'kalshi' ? -1 : 1
+    return 0
+  })
+
+  await admin.from('nfl_game_fantasy_cache').upsert(
+    {
+      event_id: cacheKey,
+      away_abbrev: o.away,
+      home_abbrev: o.home,
+      payload: { props, sources },
+      fetched_at: new Date().toISOString(),
+    },
+    { onConflict: 'event_id' },
+  )
+  return { props, sources }
+}
+
 export async function buildCfbGamePlayers(
   admin: SupabaseClient,
-  opts: { eventId: string; awayAbbrev: string; homeAbbrev: string },
+  opts: {
+    eventId: string
+    awayAbbrev: string
+    homeAbbrev: string
+    awayName?: string
+    homeName?: string
+    commenceIso?: string | null
+  },
 ): Promise<CfbGamePlayersPayload> {
   const eventId = String(opts.eventId || '').trim()
   const away = canonAbbrev(opts.awayAbbrev)
@@ -118,12 +198,22 @@ export async function buildCfbGamePlayers(
     throw new Error('event_id, away_abbrev, and home_abbrev are required.')
   }
 
+  const marketsPromise = loadCfbMarkets(admin, {
+    eventId,
+    away,
+    home,
+    awayName: String(opts.awayName || '').trim(),
+    homeName: String(opts.homeName || '').trim(),
+    commenceIso: opts.commenceIso ? String(opts.commenceIso) : null,
+  }).catch(() => ({ props: [] as NflGameFantasyProp[], sources: [] as string[] }))
+
   const { data, error } = await admin
     .from('cfb_players')
     .select('espn_id, full_name, position, jersey, team_abbrev, headshot_url, status')
     .in('team_abbrev', [away, home])
 
   if (error) throw new Error(error.message)
+  const markets = await marketsPromise
 
   const players: CfbGamePlayer[] = []
   for (const row of (data || []) as DbRow[]) {
@@ -149,9 +239,9 @@ export async function buildCfbGamePlayers(
     away_abbrev: away,
     home_abbrev: home,
     players,
-    props: [],
+    props: markets.props,
     season: null,
     week: null,
-    sources: ['cfb_players'],
+    sources: ['cfb_players', ...markets.sources],
   }
 }

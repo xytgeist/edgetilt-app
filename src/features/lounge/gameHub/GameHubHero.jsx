@@ -1134,7 +1134,8 @@ function AmericanFootballMark({
             clipPath={`url(#${clipId})`}
           />
         )}
-        {/* End stripes */}
+        {/* End stripes … college balls only (NFL balls have none). */}
+        {college || isChalk ? (
         <g clipPath={stripeBand ? `url(#${bandClipId})` : undefined}>
         <path
           d="M-7.6 -5.15 C-6.7 -5.85 -4.05 -6.15 -4.05 -6.15 L-4.05 6.15 C-4.05 6.15 -6.7 5.85 -7.6 5.15 C-8.45 3.95 -8.75 2.05 -8.75 0 C-8.75 -2.05 -8.45 -3.95 -7.6 -5.15 Z"
@@ -1149,6 +1150,7 @@ function AmericanFootballMark({
           clipPath={`url(#${clipId})`}
         />
         </g>
+        ) : null}
         {/* Laces panel … spiraling: slides over the top and squashes edge-on, hidden on the far side. */}
         {!spinning || lacesFacing > 0.05 ? (
         <g clipPath={spinning ? `url(#${clipId})` : undefined}>
@@ -3416,7 +3418,7 @@ function FieldViz({
               red-zone plays are not buried under the uprights plate. */}
               {!playAnimActive && !throwKey ? (
                 <g transform={`translate(${scrimMidX - 18} ${334.5 - 12})`}>
-                  <AmericanFootballMark tone="field" size={36} rotate={-26} />
+                  <AmericanFootballMark tone="field" size={36} rotate={-26} college={college} />
                 </g>
               ) : null}
             </g>
@@ -3661,12 +3663,12 @@ function FieldViz({
               opacity={kickAnim.tb.opacity}
               transform={`translate(${kickAnim.tb.ball.x - 12} ${kickAnim.tb.ball.y - 9})`}
             >
-              <AmericanFootballMark tone="field" size={24} rotate={kickAnim.tb.rotate} />
+              <AmericanFootballMark tone="field" size={24} rotate={kickAnim.tb.rotate} college={college} />
             </g>
           ) : null}
           {kickBall ? (
             <g transform={`translate(${kickBall.x - 12} ${kickBall.y - 9})`}>
-              <AmericanFootballMark tone="field" size={24} rotate={kickBallRotate} />
+              <AmericanFootballMark tone="field" size={24} rotate={kickBallRotate} college={college} />
             </g>
           ) : null}
           {pickBall ? (
@@ -3679,7 +3681,7 @@ function FieldViz({
               data-lounge-fg-anim
               transform={`translate(${fgBall.x - FG_BALL_SIZE / 2} ${fgBall.y - FG_BALL_SIZE * 0.38})`}
             >
-              <AmericanFootballMark tone="field" size={FG_BALL_SIZE} rotate={fgBallRotate} />
+              <AmericanFootballMark tone="field" size={FG_BALL_SIZE} rotate={fgBallRotate} college={college} />
             </g>
           ) : null}
         </svg>

@@ -3636,7 +3636,7 @@ html.light [data-lounge-game-chat]::placeholder {
   0% { opacity: 0; }
   10% { opacity: 1; }
   75% { opacity: 1; }
-  100% { opacity: 0.4; }
+  100% { opacity: 0.65; }
 }
 [data-lounge-drive-marks] .lounge-drive-incomplete-fresh {
   animation: lounge-drive-incomplete-settle 3.2s ease-out both;
@@ -3644,7 +3644,7 @@ html.light [data-lounge-game-chat]::placeholder {
 @media (prefers-reduced-motion: reduce) {
   [data-lounge-drive-marks] .lounge-drive-incomplete-fresh {
     animation: none;
-    opacity: 0.4;
+    opacity: 0.65;
   }
 }
 

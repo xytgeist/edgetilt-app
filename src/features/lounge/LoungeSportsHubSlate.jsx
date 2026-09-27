@@ -15,6 +15,7 @@ import {
 } from './loungeSportsHubNav.js'
 import { loungeSportsSlateGames } from './loungeSportsSlateWindow.js'
 import { probeLogoWashTreatment, resolveNflPillWashes } from './loungeSportsMatch.js'
+import { usePhoneLandscapeNotTablet } from '../../utils/edgeiOSComposerPortraitLock.js'
 
 /** Never hold a league hub behind the loader longer than this (slow CDN / missing art). */
 const LEAGUE_HUB_ASSET_CAP_MS = 6000
@@ -117,6 +118,7 @@ function sportSectionLabel(sportKey) {
  */
 export default function LoungeSportsHubSlate({ embedded = false }) {
   const sports = useLoungeSportsFeed()
+  const phoneLandscape = usePhoneLandscapeNotTablet()
   const filter = sports?.slateFilter
   const open = Boolean(filter)
 
@@ -181,7 +183,17 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
           ? 'flex h-full min-h-0 flex-col bg-zinc-950 text-white'
           : 'fixed inset-0 flex flex-col bg-zinc-950 text-white'
       }
-      style={embedded ? undefined : { zIndex: Z_APP_MODAL - 1 }}
+      style={
+        embedded
+          ? undefined
+          : {
+              zIndex: Z_APP_MODAL - 1,
+              // Landscape phone: keep the list clear of the notch / Dynamic Island side.
+              ...(phoneLandscape
+                ? { paddingLeft: 'env(safe-area-inset-left, 0px)', paddingRight: 'env(safe-area-inset-right, 0px)' }
+                : null),
+            }
+      }
     >
       <div
         {...(embedded ? { 'data-lounge-align-feed-title': '' } : {})}
@@ -241,7 +253,7 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
                     {section.label}
                   </h2>
                 ) : null}
-                <ul className="space-y-2">
+                <ul className={phoneLandscape && !embedded ? 'grid grid-cols-2 gap-2' : 'space-y-2'}>
                   {section.games.map((game) => (
                     <li key={game.id}>
                       <LoungeGameScorePill game={game} className="mt-0" />

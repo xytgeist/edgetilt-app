@@ -584,10 +584,10 @@ export default function LoungeGameHubModal({
     </div>
   )
 
-  // Landscape phone on a live football game: full-screen gamecast (scoreboard, field, last play) instead of
-  // the tabbed hub. Replaces the tabbed root rather than stacking on it so the field anims only run once.
-  const gamecastFull =
-    phoneLandscape && game.status === 'in' && String(game.sport_key || '').includes('football')
+  // Landscape phone on a football game: full-screen gamecast (live / final: scoreboard, field, stat rails;
+  // pregame: matchup board) instead of the tabbed hub. Replaces the tabbed root rather than stacking on it
+  // so the field anims only run once.
+  const gamecastFull = phoneLandscape && String(game.sport_key || '').includes('football')
   if (gamecastFull) {
     const chipClass = `inline-flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} items-center justify-center rounded-full border border-white/25 bg-white/15 text-white shadow-sm touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/25`
     return createPortal(
@@ -639,6 +639,7 @@ export default function LoungeGameHubModal({
           players={fantasy.players}
           plays={detail.plays}
           teamStats={detail.teamStats}
+          odds={detail.odds}
         />
       </div>,
       document.body,

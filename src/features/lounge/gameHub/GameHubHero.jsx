@@ -20,6 +20,7 @@ import {
   CATCH_VIEWBOX_W,
 } from './gameHubCatchPieces.js'
 import {
+  american,
   attackDirection,
   downDistanceLabel,
   fieldCenterBanner,
@@ -49,6 +50,7 @@ import {
   resolvePlayAnimationPercents,
   playSpotFieldPercent,
   scoreText,
+  signedPoint,
   yardLineLabel,
 } from './gameHubFormatters.js'
 import { armGameHubWhistle, playGameHubWhistle } from './gameHubWhistle.js'
@@ -3870,6 +3872,125 @@ function TeamStatRail({ stats, align }) {
   )
 }
 
+/** One team's column on the landscape pregame board: logo, name, record, then its spread + moneyline. */
+function MatchupTeamColumn({ side, label, treatment, spread, spreadPrice, ml }) {
+  const line = (title, value, sub) => (
+    <div className="flex min-w-[4.5rem] flex-col items-center">
+      <div className="text-[9px] font-semibold uppercase leading-none tracking-[0.14em] text-white/55">{title}</div>
+      <div className="mt-1 text-[20px] font-bold leading-none tabular-nums text-white drop-shadow">{value}</div>
+      {sub ? <div className="mt-0.5 text-[10px] font-semibold leading-none tabular-nums text-white/55">{sub}</div> : null}
+    </div>
+  )
+  return (
+    <div className="flex min-w-0 flex-col items-center">
+      <LoungeSportsTeamLogo side={side} treatment={treatment} size={76} />
+      <RankedTeamLabel
+        side={side}
+        label={label}
+        className="mt-1 max-w-full truncate text-[15px] font-semibold tracking-tight text-white/90"
+      />
+      {side?.record ? (
+        <div className="mt-0.5 text-[11px] font-medium tabular-nums leading-none text-white/55">{side.record}</div>
+      ) : null}
+      <div className="mt-3 flex items-start gap-4">
+        {line('Spread', signedPoint(spread), spreadPrice != null ? american(spreadPrice) : null)}
+        {line('ML', american(ml))}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Landscape phone pregame: matchup board instead of the (empty) field … teams + lines on their own side,
+ * kickoff / channel / total in the middle, public betting along the bottom.
+ */
+function LandscapeMatchupBoard({
+  game,
+  clock,
+  awayLabel,
+  homeLabel,
+  awayColor,
+  homeColor,
+  awayTreatment,
+  homeTreatment,
+  splits,
+  book,
+  sideSlots,
+}) {
+  const total = book?.total
+  return (
+    <div
+      data-lounge-game-hero
+      data-lounge-gamecast-matchup
+      className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
+      style={{
+        '--hero-away': awayColor,
+        '--hero-home': homeColor,
+        paddingLeft: 'env(safe-area-inset-left, 0px)',
+        paddingRight: 'env(safe-area-inset-right, 0px)',
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
+    >
+      <span data-lounge-game-hero-field aria-hidden="true" />
+      <span data-lounge-game-hero-away aria-hidden="true" />
+      <span data-lounge-game-hero-home aria-hidden="true" />
+      <span data-lounge-game-hero-seam aria-hidden="true" />
+      <div
+        data-lounge-game-hero-veil
+        className="pointer-events-none absolute inset-0 z-[3] bg-gradient-to-b from-black/15 via-black/28 to-[#09090b]"
+      />
+      <div className="relative z-[4] flex min-h-0 flex-1 flex-col px-3 pt-[max(0.375rem,env(safe-area-inset-top,0px))]">
+        <div className="flex items-start justify-between gap-2">
+          <div className="shrink-0">{sideSlots?.left}</div>
+          <div className="flex min-w-0 flex-col items-center pt-1 text-center">
+            <span className="text-[15px] font-bold tracking-wide text-white/90">{clock}</span>
+            <WatchBroadcastPill label={game.broadcast} url={game.broadcast_url} />
+          </div>
+          <div className="shrink-0">{sideSlots?.right}</div>
+        </div>
+        <div className="grid min-h-0 flex-1 grid-cols-[1fr_auto_1fr] items-center gap-2">
+          <MatchupTeamColumn
+            side={game.away}
+            label={awayLabel}
+            treatment={awayTreatment}
+            spread={book?.away_spread ?? game.away?.spread}
+            spreadPrice={book ? book.away_spread_price : null}
+            ml={book?.away_ml ?? game.away?.ml}
+          />
+          <div className="flex flex-col items-center px-2 text-center">
+            <div className="text-[13px] font-semibold uppercase tracking-[0.2em] text-white/45">at</div>
+            {total != null ? (
+              <>
+                <div className="mt-3 text-[9px] font-semibold uppercase leading-none tracking-[0.14em] text-white/55">
+                  Total
+                </div>
+                <div className="mt-1 text-[20px] font-bold leading-none tabular-nums text-white drop-shadow">
+                  {total}
+                </div>
+                <div className="mt-0.5 text-[10px] font-semibold leading-none tabular-nums text-white/55">
+                  o{american(book.over_price)} / u{american(book.under_price)}
+                </div>
+              </>
+            ) : null}
+            {book?.book ? (
+              <div className="mt-3 text-[10px] font-medium uppercase tracking-wide text-white/40">{book.book}</div>
+            ) : null}
+          </div>
+          <MatchupTeamColumn
+            side={game.home}
+            label={homeLabel}
+            treatment={homeTreatment}
+            spread={book?.home_spread ?? game.home?.spread}
+            spreadPrice={book ? book.home_spread_price : null}
+            ml={book?.home_ml ?? game.home?.ml}
+          />
+        </div>
+        <HeroPublicBetting game={game} splits={splits} awayColor={awayColor} homeColor={homeColor} />
+      </div>
+    </div>
+  )
+}
+
 /**
  * One bets bar (away left / home right). Money lives in the side pair `bets·$`
  * under each abbrev … no second rail, no seam tick.
@@ -3969,6 +4090,8 @@ export default function GameHubHero({
   sideSlots = null,
   /** Fullscreen only: ESPN box score totals `{ home, away }` for the rails beside the field. */
   teamStats = null,
+  /** Fullscreen pregame only: per-book lines (first book shown) for the matchup board. */
+  odds = null,
 }) {
   const { awayColor, homeColor, awayTreatment, homeTreatment } = useLoungeSportsPillWashAndLogos(feedGame)
   const playScore = useMemo(() => latestPlayScore(plays), [plays])
@@ -4036,6 +4159,24 @@ export default function GameHubHero({
   useEffect(() => {
     armGameHubWhistle()
   }, [])
+
+  if (fullscreen && game.status === 'pre') {
+    return (
+      <LandscapeMatchupBoard
+        game={game}
+        clock={clock}
+        awayLabel={awayLabel}
+        homeLabel={homeLabel}
+        awayColor={awayColor}
+        homeColor={homeColor}
+        awayTreatment={awayTreatment}
+        homeTreatment={homeTreatment}
+        splits={splits}
+        book={Array.isArray(odds) ? odds[0] || null : null}
+        sideSlots={sideSlots}
+      />
+    )
+  }
 
   return (
     <div

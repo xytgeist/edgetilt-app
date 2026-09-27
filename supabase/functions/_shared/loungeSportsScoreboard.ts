@@ -2161,8 +2161,8 @@ export async function fetchLoungeSportsGameDetail(
   const needEspn =
     (isNflSportKey(sk) || isCfbSportKey(sk)) &&
     (playsOut.length === 0 || !String(liveOut?.last_play || '').trim() || !String(liveOut?.clock || '').trim())
-  // Live football always hits the ESPN summary for box score team totals (landscape gamecast rails).
-  const wantTeamStats = (isNflSportKey(sk) || isCfbSportKey(sk)) && game.status === 'in'
+  // Live + final football always hit the ESPN summary for box score team totals (landscape gamecast rails).
+  const wantTeamStats = (isNflSportKey(sk) || isCfbSportKey(sk)) && (game.status === 'in' || game.status === 'post')
   let teamStats: LoungeSportsTeamStats | null = null
   if (needEspn || wantTeamStats) {
     const espn = await fetchEspnFootballLivePack(game)

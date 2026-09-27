@@ -474,18 +474,25 @@ function FieldBannerFitText({ text, className, style }) {
     return () => ro.disconnect()
   }, [text])
 
+  // "\n" stacks lines … the widest line sets the shrink.
+  const lines = String(text || '').split('\n')
+  const body = lines.map((line, i) => (
+    <span key={i} className="block">
+      {line}
+    </span>
+  ))
   return (
     <>
       <span
         ref={measureRef}
         aria-hidden="true"
-        className={`${className} invisible absolute left-0 top-0 whitespace-nowrap`}
+        className={`${className} invisible absolute left-0 top-0 inline-block whitespace-nowrap`}
         style={{ ...style, animation: 'none', transform: 'none' }}
       >
-        {text}
+        {body}
       </span>
       <span className={`${className} whitespace-nowrap`} style={fontPx ? { ...style, fontSize: `${fontPx}px` } : style}>
-        {text}
+        {body}
       </span>
     </>
   )
@@ -3808,10 +3815,10 @@ function FieldViz({
             <FieldBannerFitText
               text={
                 showTdBanner
-                  ? tdTeamLabel ? `Touchdown ${tdTeamLabel}` : 'Touchdown'
-                  : turnoverTeamLabel ? `Turnover · ${turnoverTeamLabel} Ball` : 'Turnover'
+                  ? tdTeamLabel ? `Touchdown\n${tdTeamLabel}` : 'Touchdown'
+                  : turnoverTeamLabel ? `Turnover\n${turnoverTeamLabel} Ball` : 'Turnover'
               }
-              className="lounge-td-banner-text text-center text-[34px] font-black uppercase leading-none tracking-[0.14em] text-amber-300 sm:text-[44px]"
+              className="lounge-td-banner-text text-center text-[34px] font-black uppercase leading-[1.05] tracking-[0.14em] text-amber-300 sm:text-[44px]"
               style={{
                 fontFamily: "Oswald, Graduate, Impact, 'Arial Black', sans-serif",
                 textShadow:

@@ -1151,6 +1151,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-26** ... **Game hub: play banners stack on two lines (Mac).** `1.4.813`: TURNOVER / <TEAM> BALL and TOUCHDOWN / <TEAM> render as two lines instead of one wide line; `FieldBannerFitText` splits on `\n` and shrinks to the widest line. Stoppage banners (TIMEOUT, HALFTIME, End of 1st) unchanged.
 - **2026-09-26** ... **Game hub: live possession rides with the summary row's down/distance/spot (Mac, Edge).** `1.4.812` / Edge **`lounge-sports-scoreboard`** (`_shared/loungeSportsScoreboard.ts`): ESPN `live.possession` now comes from the last PBP row's `end.team` (same row as down, distance, spot, last play), scoreboard `situation.possession` only as fallback. GT at STAN: scoreboard was a play ahead (post-punt GT ball) vs summary still at STAN 4th & 7 at the 28, so the 1st-down line drew 7 yds behind the LOS and the header dot sat on GT. **Deployed to test + prod** 2026-09-26 (web `1.4.804`-`1.4.812` promoted to `main` same night).
 - **2026-09-26** ... **Game hub: live games open on Plays (Mac).** `1.4.811`: `LoungeGameHubModal` default tab for `status === 'in'` is **Plays** (was Chat). Pregame (Fantasy NFL / Posts CFB) and final (Posts) unchanged.
 - **2026-09-26** ... **Game hub: offensive-flag arrow back at the enforcement start (Mac).** `1.4.810`: penalty arrow sits at the from spot pointing the way the ball moved (matches the loss arrow at the snap). Reverts the 1.4.805 end-spot placement for both.

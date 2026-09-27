@@ -295,7 +295,7 @@ function fieldXAtY(p, y) {
   return fieldTopXFromPercent(p) + (fieldBotXFromPercent(p) - fieldTopXFromPercent(p)) * t
 }
 
-/** Drive chart: newest play rides the ball row; older overlapping lines drop a lane toward the near sideline. */
+/** Drive chart lane spacing … losses / flags on the offense drop one lane toward the near sideline. */
 const DRIVE_LANE_PX = 13
 const DRIVE_INCOMPLETE_LATERAL_PX = 58
 const DRIVE_INCOMPLETE_LIFT_PX = 42
@@ -313,17 +313,22 @@ function playLineHalo(primary) {
 
 function DrivePlayMarks({ marks, attackDir, primary, hideKey }) {
   const { halo, haloOpacity } = playLineHalo(primary)
-  const lanes = []
+  // Gains (and flags on the defense) chain on the main line; losses / flags on the offense sit a lane below,
+  // stacking further only when they overlap each other.
+  const backLanes = []
   const laneOf = new Map()
-  for (let i = marks.length - 1; i >= 0; i -= 1) {
-    const m = marks[i]
+  for (const m of marks) {
     if (m.kind === 'incomplete') continue
+    if ((m.toPct - m.fromPct) * attackDir >= 0) {
+      laneOf.set(m.key, 0)
+      continue
+    }
     const lo = Math.min(m.fromPct, m.toPct)
     const hi = Math.max(m.fromPct, m.toPct)
     let lane = 0
-    while ((lanes[lane] || []).some(([a, b]) => lo < b - 0.3 && hi > a + 0.3)) lane += 1
-    ;(lanes[lane] ||= []).push([lo, hi])
-    laneOf.set(m.key, lane)
+    while ((backLanes[lane] || []).some(([a, b]) => lo < b - 0.3 && hi > a + 0.3)) lane += 1
+    ;(backLanes[lane] ||= []).push([lo, hi])
+    laneOf.set(m.key, lane + 1)
   }
   return (
     <g data-lounge-drive-marks>
@@ -1143,6 +1148,8 @@ function FieldViz({
       isTouchdown,
       fromScrimPct,
       toScrimPct: endPct,
+      /** Loss: the trail rides the drive chart's offset lane so the handoff doesn't jump. */
+      trailY: RUSH_Y + ((endPct - startPct) * attackDir < 0 ? DRIVE_LANE_PX : 0),
       fromFirstDownPct,
       toFirstDownPct,
     }
@@ -1395,6 +1402,8 @@ function FieldViz({
       ballEnd,
       fromScrimPct,
       toScrimPct: gainPct,
+      /** Loss: the trail rides the drive chart's offset lane so the handoff doesn't jump. */
+      trailY: RUSH_Y + ((gainPct - startPct) * attackDir < 0 ? DRIVE_LANE_PX : 0),
       fromFirstDownPct,
       toFirstDownPct,
     }
@@ -2880,9 +2889,9 @@ function FieldViz({
               {rushTrailVisible ? (
                 <line
                   x1={rushAnim.startX}
-                  y1={rushAnim.y}
+                  y1={rushAnim.trailY}
                   x2={rushX}
-                  y2={rushAnim.y}
+                  y2={rushAnim.trailY}
                   stroke={playLineHalo(rushAnim.primary).halo}
                   strokeOpacity={playLineHalo(rushAnim.primary).haloOpacity}
                   strokeWidth="7.5"
@@ -2892,9 +2901,9 @@ function FieldViz({
               {rushTrailVisible ? (
                 <line
                   x1={rushAnim.startX}
-                  y1={rushAnim.y}
+                  y1={rushAnim.trailY}
                   x2={rushX}
-                  y2={rushAnim.y}
+                  y2={rushAnim.trailY}
                   stroke={rushAnim.primary}
                   strokeWidth="5.5"
                   strokeLinecap="round"
@@ -2924,9 +2933,9 @@ function FieldViz({
               {catchTrailVisible ? (
                 <line
                   x1={catchAnim.startX}
-                  y1={catchAnim.y}
+                  y1={catchAnim.trailY}
                   x2={catchX}
-                  y2={catchAnim.y}
+                  y2={catchAnim.trailY}
                   stroke={playLineHalo(catchAnim.primary).halo}
                   strokeOpacity={playLineHalo(catchAnim.primary).haloOpacity}
                   strokeWidth="7.5"
@@ -2936,9 +2945,9 @@ function FieldViz({
               {catchTrailVisible ? (
                 <line
                   x1={catchAnim.startX}
-                  y1={catchAnim.y}
+                  y1={catchAnim.trailY}
                   x2={catchX}
-                  y2={catchAnim.y}
+                  y2={catchAnim.trailY}
                   stroke={catchAnim.primary}
                   strokeWidth="5.5"
                   strokeLinecap="round"

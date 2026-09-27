@@ -1367,6 +1367,8 @@ function playHalf(period) {
 function playYardsFromText(text) {
   const raw = String(text || '')
   if (/\bno\s+gain\b/i.test(raw)) return 0
+  const trailingLoss = /\bfor\s+(\d+)\s+(?:yards?|yds?)\s+loss\b/i.exec(raw)
+  if (trailingLoss) return -Number(trailingLoss[1])
   const m = /\bfor\s+(?:a\s+)?(loss\s+of\s+)?(-?\d+)\s+(?:yards?|yds?)\b/i.exec(raw)
   if (!m) return null
   const n = Number(m[2])

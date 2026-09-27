@@ -1521,7 +1521,10 @@ function FieldViz({
   }
 
   // Red zone: LOS inside the opponent's 20 → tint that 20-to-goal band.
-  const redZoneAttackDir = possessionSide ? attackDirection(possessionSide, fieldFlipped) : 0
+  // `possessionSide` is the last play's team (a punt/turnover flips it) … only trust it mid-anim.
+  const livePossession = live?.possession === 'home' || live?.possession === 'away' ? live.possession : null
+  const redZoneTeam = lineDriver != null || tdAnim != null ? possessionSide : livePossession
+  const redZoneAttackDir = redZoneTeam ? attackDirection(redZoneTeam, fieldFlipped) : 0
   const redZoneSide =
     showLiveScrimMarkers && redZoneAttackDir !== 0
       ? redZoneAttackDir > 0 && displayScrimPct >= 80

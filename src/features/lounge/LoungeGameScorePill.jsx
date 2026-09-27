@@ -217,7 +217,7 @@ export default function LoungeGameScorePill({
         <span data-lounge-game-pill-home aria-hidden="true" />
         <span data-lounge-game-pill-seam aria-hidden="true" />
         <span data-lounge-game-pill-row>
-          <LoungeSportsTeamLogo side={game.away} treatment={paint.awayTreatment} />
+          <LoungeSportsTeamLogo side={game.away} treatment={paint.awayTreatment} rankCorner="left" />
           <span data-lounge-game-pill-score-gutter>
             <ScoreStack
               side={game.away}
@@ -240,7 +240,7 @@ export default function LoungeGameScorePill({
               covered={homeCovered}
             />
           </span>
-          <LoungeSportsTeamLogo side={game.home} treatment={paint.homeTreatment} />
+          <LoungeSportsTeamLogo side={game.home} treatment={paint.homeTreatment} rankCorner="right" />
         </span>
         {canOpenHub ? (
           <span data-lounge-game-pill-chevron aria-hidden="true">

@@ -43,7 +43,7 @@ export default function LoungeGameHubPillChip({ game, active = false, onClick })
       <span data-lounge-hub-game-pill-away aria-hidden="true" />
       <span data-lounge-hub-game-pill-home aria-hidden="true" />
       <span data-lounge-hub-game-pill-row>
-        <LoungeSportsTeamLogo side={game.away} treatment={awayTreatment} size={22} />
+        <LoungeSportsTeamLogo side={game.away} treatment={awayTreatment} size={22} rankCorner="right" />
         <span data-lounge-hub-game-pill-center>
           {pre ? (
             <>
@@ -59,7 +59,7 @@ export default function LoungeGameHubPillChip({ game, active = false, onClick })
             </>
           )}
         </span>
-        <LoungeSportsTeamLogo side={game.home} treatment={homeTreatment} size={22} />
+        <LoungeSportsTeamLogo side={game.home} treatment={homeTreatment} size={22} rankCorner="left" />
       </span>
     </button>
   )

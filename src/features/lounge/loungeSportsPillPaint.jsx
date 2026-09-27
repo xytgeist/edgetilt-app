@@ -50,7 +50,17 @@ export function useLoungeSportsPillWashAndLogos(game) {
  * Team mark with light / halo / silhouette treatment (shared by post pills + game hub hero).
  * Optional `size` sets inline width/height (hero); pills size via CSS on `[data-lounge-game-pill-mark]`.
  */
-export function LoungeSportsTeamLogo({ side, treatment = 'halo', size = null, className = '' }) {
+/** Top 25 rank (1-25) or null … ESPN `curatedRank` via the board's `side.rank`. */
+function loungeTeamTop25Rank(side) {
+  const n = Number(side?.rank)
+  return Number.isInteger(n) && n >= 1 && n <= 25 ? n : null
+}
+
+/**
+ * `rankCorner` ('left' | 'right') opts into a small Top 25 badge on that top corner of the mark.
+ */
+export function LoungeSportsTeamLogo({ side, treatment = 'halo', size = null, className = '', rankCorner = null }) {
+  const rank = rankCorner ? loungeTeamTop25Rank(side) : null
   const defaultSrc = side?.logo || ''
   const lightSrc = side?.logoLight || ''
   const [lightFailed, setLightFailed] = useState(false)
@@ -88,6 +98,11 @@ export function LoungeSportsTeamLogo({ side, treatment = 'halo', size = null, cl
       ) : (
         <span className="text-[13px] font-bold text-white/80">{letter}</span>
       )}
+      {rank != null ? (
+        <span data-lounge-team-rank-badge={rankCorner} aria-label={`Ranked ${rank}`}>
+          {rank}
+        </span>
+      ) : null}
     </span>
   )
 }

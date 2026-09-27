@@ -70,6 +70,38 @@ function pickStartSpot({ offense, losYard, losOwn }) {
   return { yard_line: losYard, yard_side: losOwn ? offense : defense, down: 3, distance: 7 }
 }
 
+/**
+ * Kickoff return from the kicking team's 35. `receiving` gets the ball; land spot = 65 − kick yards
+ * on the receiving side (≤0 = end zone). `returnYards: null` → CFB "return to the XX25" (no yards).
+ */
+function kickoffText({ format, receiving, kickYards, returnYards, touchdown }) {
+  const recAb = receiving === 'home' ? MOCK_GAME.home.abbrev : MOCK_GAME.away.abbrev
+  const kickAb = receiving === 'home' ? MOCK_GAME.away.abbrev : MOCK_GAME.home.abbrev
+  const land = 65 - kickYards
+  const ret = touchdown ? 100 - land : returnYards
+  const endOwn = land + (ret ?? 25)
+  const endAb = endOwn > 50 ? kickAb : recAb
+  const endYard = endOwn > 50 ? 100 - endOwn : endOwn
+  if (format === 'nfl') {
+    const head = `N.Folk kicks ${kickYards} yards from ${kickAb} 35 to ${recAb} ${land}.`
+    if (touchdown) return `${head} S.Moore for ${ret} yards, TOUCHDOWN.`
+    return `${head} S.Moore to ${endAb} ${endYard} for ${ret} yards (N.Muse).`
+  }
+  const head = `#15 L.Cooper kickoff for ${kickYards} yds , #3 X.Smith return`
+  if (touchdown) return `${head} for ${ret} yds for a TD`
+  if (returnYards == null) return `${head} to the ${endAb}${endYard}`
+  return `${head} for ${ret} yds to the ${endAb} ${endYard}`
+}
+
+const KICK_SCENARIOS = [
+  { id: 'ko-kc-25', label: 'KO NFL · KC receives · kick 60 · ret 25', format: 'nfl', receiving: 'home', kickYards: 60, returnYards: 25 },
+  { id: 'ko-ari-32', label: 'KO NFL · ARI receives · to goal line · ret 32', format: 'nfl', receiving: 'away', kickYards: 65, returnYards: 32 },
+  { id: 'ko-ari-cfb', label: 'KO CFB · ARI receives · "return to the ARI25"', format: 'cfb', receiving: 'away', kickYards: 65, returnYards: null },
+  { id: 'ko-kc-54', label: 'KO NFL · KC receives · ret 54 past midfield', format: 'nfl', receiving: 'home', kickYards: 64, returnYards: 54 },
+  { id: 'ko-ari-td', label: 'KO return TD · ARI · from the end zone', format: 'nfl', receiving: 'away', kickYards: 67, touchdown: true },
+  { id: 'ko-kc-td', label: 'KO return TD · KC · CFB text', format: 'cfb', receiving: 'home', kickYards: 65, touchdown: true },
+]
+
 function playText({ yards, made, missSide }) {
   const who = '#3 H.Butker'
   if (made) return `${who} ${yards} yard field goal is GOOD`
@@ -79,7 +111,7 @@ function playText({ yards, made, missSide }) {
 }
 
 /**
- * Local harness for Game Hub field animations (FG flight / front pole, pick-six) … not linked from nav.
+ * Local harness for Game Hub field animations (FG flight / front pole, pick-six, kickoff return) … not linked from nav.
  * Open `/play-anim-test` (or legacy `/fg-kick-test`) on the Vite app or test deploy.
  */
 export default function FgKickTestPage() {
@@ -93,6 +125,8 @@ export default function FgKickTestPage() {
   const [pickReturn, setPickReturn] = useState(30)
   const [pickLosYard, setPickLosYard] = useState(25)
   const [pickLosOwn, setPickLosOwn] = useState(true)
+  const [kickYards, setKickYards] = useState(62)
+  const [kickReturn, setKickReturn] = useState(26)
 
   const live = useMemo(
     () =>
@@ -136,6 +170,21 @@ export default function FgKickTestPage() {
     setNonce((n) => n + 1)
   }
 
+  const fireKick = (scenario) => {
+    setPossession(scenario.receiving)
+    setKickYards(scenario.kickYards)
+    if (scenario.returnYards != null) setKickReturn(scenario.returnYards)
+    setStartSpot(null)
+    setLastPlay(kickoffText(scenario))
+    setNonce((n) => n + 1)
+  }
+
+  const fireKickCustom = ({ format, touchdown = false }) => {
+    setStartSpot(null)
+    setLastPlay(kickoffText({ format, receiving: possession, kickYards, returnYards: kickReturn, touchdown }))
+    setNonce((n) => n + 1)
+  }
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100">
       <div className="mx-auto max-w-3xl px-3 py-4 sm:px-4">
@@ -143,7 +192,7 @@ export default function FgKickTestPage() {
           <div>
             <h1 className="text-lg font-bold tracking-tight text-white">Play animation test</h1>
             <p className="text-[12px] text-zinc-400">
-              Real GameHubHero field … FG flight + pick-six. Half {half === 1 ? '1 (no flip)' : '2 (flipped)'}.
+              Real GameHubHero field … FG flight, pick-six, kickoff return. Half {half === 1 ? '1 (no flip)' : '2 (flipped)'}.
               Ball buttons set the offense.
             </p>
           </div>
@@ -292,6 +341,67 @@ export default function FgKickTestPage() {
               type="button"
               className="rounded-md bg-zinc-800 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-100 hover:bg-zinc-700"
               onClick={() => firePick(s)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="mb-2 text-[11px] font-bold uppercase tracking-wider text-zinc-500">
+          Kickoff return (ball buttons = receiving team)
+        </div>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <label className="text-[12px] text-zinc-400">
+            Kick yds{' '}
+            <input
+              type="number"
+              min={40}
+              max={75}
+              value={kickYards}
+              onChange={(e) => setKickYards(Math.max(40, Math.min(75, Number(e.target.value) || 62)))}
+              className="ml-1 w-14 rounded border border-zinc-700 bg-zinc-900 px-1.5 py-1 text-zinc-100"
+            />
+          </label>
+          <label className="text-[12px] text-zinc-400">
+            Return yds{' '}
+            <input
+              type="number"
+              min={0}
+              max={100}
+              value={kickReturn}
+              onChange={(e) => setKickReturn(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+              className="ml-1 w-14 rounded border border-zinc-700 bg-zinc-900 px-1.5 py-1 text-zinc-100"
+            />
+          </label>
+          <button
+            type="button"
+            className="rounded-md bg-teal-700 px-3 py-1.5 text-[12px] font-semibold text-white"
+            onClick={() => fireKickCustom({ format: 'nfl' })}
+          >
+            Kick (NFL text)
+          </button>
+          <button
+            type="button"
+            className="rounded-md bg-teal-700 px-3 py-1.5 text-[12px] font-semibold text-white"
+            onClick={() => fireKickCustom({ format: 'cfb' })}
+          >
+            Kick (CFB text)
+          </button>
+          <button
+            type="button"
+            className="rounded-md bg-teal-700 px-3 py-1.5 text-[12px] font-semibold text-white"
+            onClick={() => fireKickCustom({ format: 'nfl', touchdown: true })}
+          >
+            Return TD
+          </button>
+        </div>
+        <div className="mb-4 flex flex-wrap gap-2">
+          {KICK_SCENARIOS.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className="rounded-md bg-zinc-800 px-2.5 py-1.5 text-[11px] font-semibold text-zinc-100 hover:bg-zinc-700"
+              onClick={() => fireKick(s)}
             >
               {s.label}
             </button>

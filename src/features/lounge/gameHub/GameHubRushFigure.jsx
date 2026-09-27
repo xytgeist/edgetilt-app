@@ -26,6 +26,8 @@ export default function GameHubRushFigure({
   width = 124,
   height = 144,
   className = '',
+  /** Empty-handed pose (kick returner before the catch). */
+  hideBall = false,
 }) {
   const uid = useId().replace(/:/g, '')
 
@@ -82,6 +84,7 @@ export default function GameHubRushFigure({
         {/* Assembled 15-piece sculpt, flipped horizontally when driving right */}
         <g transform={bodyFlip}>
           {RUSH_PIECES.map((piece) => {
+            if (hideBall && piece.id === 'football') return null
             const transform = `translate(${piece.x}, ${piece.y}) rotate(${piece.rot}) scale(${piece.scale})`
             return (
               <g key={piece.id} id={`piece-${piece.id}`} transform={transform}>

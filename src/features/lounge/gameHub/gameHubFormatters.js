@@ -724,10 +724,96 @@ export function parseInterceptionReturn(text) {
   return { returnYards, playerHint, jerseyHint, isTouchdown: true }
 }
 
-/** True when a PBP row is a completed pass, a run for a gain / TD, a FG attempt, or a pick-six (field replay). */
+const KICK_RETURNER_NAME =
+  '((?:#?\\d{1,2}\\s+)?[A-Za-z][A-Za-z.\'’-]*(?:\\s+[A-Za-z][A-Za-z.\'’-]*){0,2}?)'
+
+/**
+ * Kickoff that was fielded and returned. NFL: "N.Folk kicks 55 yards from ATL 35 to GB 10.
+ * B.Melton to GB 31 for 21 yards (C.Harris)."; ESPN CFB: "#15 L.Cooper kickoff for 65 yds ,
+ * #3 X.Smith return to the FLA25" / "… return for 23 yds to the ALA 26". Touchbacks, fair catches,
+ * onside kicks, and fumbles/muffs are not replayed. Spots are raw feed abbrevs … the hero maps sides.
+ * @returns {{
+ *   kickYards: number|null,
+ *   kickFromAbbrev: string|null,
+ *   kickFromYard: number|null,
+ *   landAbbrev: string|null,
+ *   landYard: number|null,
+ *   returnYards: number|null,
+ *   endAbbrev: string|null,
+ *   endYard: number|null,
+ *   playerHint: string,
+ *   jerseyHint: string|null,
+ *   isTouchdown: boolean,
+ * } | null}
+ */
+export function parseKickoffReturn(text) {
+  const rawFull = String(text || '').trim()
+  if (!rawFull) return null
+  const raw = scoringPlayCoreText(rawFull)
+  const lower = raw.toLowerCase()
+  if (/\btouchback\b|\bfair\s+catch\b|\bonside\b|\bfumble[sd]?\b|\bmuff(?:ed|s)?\b|\bno\s+play\b/.test(lower)) {
+    return null
+  }
+  const nfl = raw.match(
+    /\bkicks\s+(-?\d+)\s+yards?\s+from\s+([A-Za-z]{2,5})\s+(\d{1,2})\s+to\s+(?:([A-Za-z]{2,5})\s+(-?\d{1,2})|end\s+zone)/i,
+  )
+  const cfb = nfl ? null : raw.match(/\bkickoff\s+for\s+(-?\d+)\s+(?:yds?|yards?)\b/i)
+  if (!nfl && !cfb) return null
+
+  const out = {
+    kickYards: Number(nfl ? nfl[1] : cfb[1]),
+    kickFromAbbrev: nfl ? nfl[2].toUpperCase() : null,
+    kickFromYard: nfl ? Number(nfl[3]) : null,
+    landAbbrev: nfl && nfl[4] ? nfl[4].toUpperCase() : null,
+    landYard: nfl && nfl[5] != null ? Number(nfl[5]) : nfl ? 0 : null,
+    returnYards: null,
+    endAbbrev: null,
+    endYard: null,
+    playerHint: '',
+    jerseyHint: null,
+    isTouchdown: playTextIsTouchdown(raw),
+  }
+  const after = raw.slice((nfl || cfb).index + (nfl || cfb)[0].length)
+
+  if (nfl) {
+    const ret = after.match(
+      new RegExp(`^[\\s.,]*${KICK_RETURNER_NAME}\\s+(?:to|for|ran|pushed|runs|return(?:s|ed)?)\\b`, 'i'),
+    )
+    if (ret) out.playerHint = ret[1].trim()
+    const yds = after.match(/\bfor\s+(-?\d+)\s+yards?\b/i)
+    if (yds) out.returnYards = Number(yds[1])
+    else if (/\bfor\s+no\s+gain\b/i.test(after)) out.returnYards = 0
+    const end = after.match(/\b(?:to|ob\s+at|at)\s+([A-Za-z]{2,5})\s+(\d{1,2})\b/i)
+    if (end) {
+      out.endAbbrev = end[1].toUpperCase()
+      out.endYard = Number(end[2])
+    }
+  } else {
+    const ret = after.match(new RegExp(`^[\\s.,]*${KICK_RETURNER_NAME}\\s+return(?:s|ed)?\\b`, 'i'))
+    if (ret) out.playerHint = ret[1].trim()
+    const yds = after.match(/\breturn(?:s|ed)?\s+for\s+(-?\d+)\s+(?:yds?|yards?)\b/i)
+    if (yds) out.returnYards = Number(yds[1])
+    const end = after.match(/\bto\s+the\s+([A-Za-z]{2,5})\s*(\d{1,2})\b/i)
+    if (end) {
+      out.endAbbrev = end[1].toUpperCase()
+      out.endYard = Number(end[2])
+    }
+  }
+
+  if (!out.playerHint) return null
+  if (out.returnYards == null && out.endYard == null && !out.isTouchdown) return null
+  out.jerseyHint = splitPlayerHint(out.playerHint).jersey
+  return out
+}
+
+/** True when a PBP row is a completed pass, a run for a gain / TD, a FG attempt, a pick-six, or a kickoff return (field replay). */
 export function isFieldReplayablePlay(text) {
   return Boolean(
-    parseRushPlay(text) || parsePassPlay(text) || parseFieldGoalPlay(text) || parseInterceptionReturn(text),
+    parseRushPlay(text) ||
+      parsePassPlay(text) ||
+      parseFieldGoalPlay(text) ||
+      parseInterceptionReturn(text) ||
+      parseKickoffReturn(text),
   )
 }
 

@@ -40,6 +40,7 @@ import {
   playTextIsScoreTry,
   buildPossessionDriveMarks,
   drivePlayShortLabel,
+  isOpeningKickoffRow,
   playsFromEarlierHalf,
   lastBallPlayText,
   latestPlayScore,
@@ -1329,6 +1330,20 @@ function FieldViz({
     if (!id || !Array.isArray(plays)) return null
     return plays.findLast((p) => fieldPlayIdentity(p?.description) === id) || null
   }, [plays, lastPlayText])
+  const openingKickoff = isOpeningKickoffRow(lastPlayRow)
+  const fieldRootRef = useRef(null)
+  /** Game + quarter already whistled … a restarted kick effect or a re-kick after a flag must not blow it twice. */
+  const whistledKickRef = useRef('')
+  // Referee whistle as the opening kickoff of each half starts animating (live auto-play only).
+  const whistleOpeningKick = useCallback(() => {
+    const ctx = fieldAnimCtxRef.current
+    if (isUserReplay || !ctx.openingKickoff) return
+    const key = `${ctx.game?.id || ''}::${ctx.openingKickoff}`
+    if (whistledKickRef.current === key) return
+    whistledKickRef.current = key
+    // Lounge can stay mounted but hidden while another app tab is up … only whistle when on screen.
+    if (fieldRootRef.current?.getClientRects().length) playGameHubWhistle()
+  }, [isUserReplay])
 
   const [rushAnim, setRushAnim] = useState(null)
   const [catchAnim, setCatchAnim] = useState(null)
@@ -1387,6 +1402,8 @@ function FieldViz({
     knownFirstDownPct,
     knownEndPct: playSpotFieldPercent(lastPlayRow?.end_spot, fieldFlipped),
     rowTeam: lastPlayRow?.team === 'home' || lastPlayRow?.team === 'away' ? lastPlayRow.team : null,
+    /** Quarter (1 / 3) when this play is a half's opening kickoff, else 0. */
+    openingKickoff: openingKickoff ? Number(lastPlayRow.period) : 0,
     lastPlayText,
   }
   /** Gates auto-play start without thrashing on every yard-line tick. */
@@ -2392,6 +2409,7 @@ function FieldViz({
         tb: frameAt(0),
         playing: true,
       })
+      whistleOpeningKick()
       const t0 = performance.now()
       const tick = (now) => {
         const elapsed = now - t0
@@ -2545,6 +2563,7 @@ function FieldViz({
       showLines: fromScrimPct != null,
       playing: true,
     })
+    if (!punt) whistleOpeningKick()
     const t0 = performance.now()
     const tick = (now) => {
       const elapsed = now - t0
@@ -2597,7 +2616,7 @@ function FieldViz({
       kickRafRef.current = 0
       if (kickKeyRef.current === animKey) kickKeyRef.current = ''
     }
-  }, [isFootball, animKey, isUserReplay, playAnimReady])
+  }, [isFootball, animKey, isUserReplay, playAnimReady, whistleOpeningKick])
 
   useEffect(() => {
     if (rushAnim || catchAnim || fgAnim || pickAnim || kickAnim || !hasLine || pos == null || hideLiveLines) return
@@ -2971,7 +2990,7 @@ function FieldViz({
     }
   }
   return (
-    <div data-lounge-game-field className="relative z-[5] w-full px-1 pb-0 pt-5 sm:px-1.5">
+    <div ref={fieldRootRef} data-lounge-game-field className="relative z-[5] w-full px-1 pb-0 pt-5 sm:px-1.5">
       <div className="relative w-full overflow-visible" style={{ aspectRatio: '1266 / 533' }}>
         {/* Layer 1: Floating field base graphic */}
         <img
@@ -3798,36 +3817,13 @@ export default function GameHubHero({
   const homeLabel = hubTeamLabel(game.home, game.status, game.sport_key)
   const preLabels = game.status === 'pre'
 
-  // Whistle on kickoff (pre → live) and when the 3rd quarter starts … only for transitions seen
-  // while this hero is up, never on first paint or when switching games.
-  const livePeriod = Number(live?.period ?? feedGame?.live?.period)
-  const whistlePhase = !isFootball
-    ? ''
-    : game.status === 'pre'
-      ? 'pre'
-      : game.status === 'in'
-        ? Number.isFinite(livePeriod) && livePeriod >= 3 ? 'h2' : 'h1'
-        : 'post'
-  const whistleGameId = String(game.id || '')
-  const whistleSeenRef = useRef({ id: '', phase: '' })
-  const heroRootRef = useRef(null)
+  // Opening-kickoff whistle fires from the field's kick animation … arm audio unlock while the hub is up.
   useEffect(() => {
     armGameHubWhistle()
   }, [])
-  useEffect(() => {
-    const prev = whistleSeenRef.current
-    whistleSeenRef.current = { id: whistleGameId, phase: whistlePhase }
-    if (!whistlePhase || !prev.phase || prev.id !== whistleGameId) return
-    const kickoff = prev.phase === 'pre' && (whistlePhase === 'h1' || whistlePhase === 'h2')
-    const secondHalf = prev.phase === 'h1' && whistlePhase === 'h2'
-    // Lounge can stay mounted but hidden while another app tab is up … only whistle when on screen.
-    const onScreen = Boolean(heroRootRef.current?.getClientRects().length)
-    if ((kickoff || secondHalf) && onScreen) playGameHubWhistle()
-  }, [whistleGameId, whistlePhase])
 
   return (
     <div
-      ref={heroRootRef}
       data-lounge-game-hero
       className="relative overflow-hidden"
       style={{

@@ -1530,6 +1530,20 @@ export function playsFromEarlierHalf(plays, livePeriod) {
   return playHalf(newest.period) < playHalf(live)
 }
 
+const KICKOFF_ROW = /\bkick(?:s|ed)?\s+off\b|\bkickoff\b|\bkicks\s+-?\d+\s+yards?\s+from\b/i
+
+/**
+ * Opening kick of a half (Q1 / Q3 at 15:00), not one after a score. The feed only carries the newest ~80 rows,
+ * so "first kickoff in the list" isn't reliable … the 15:00 clock is.
+ */
+export function isOpeningKickoffRow(row) {
+  const period = Number(row?.period)
+  const desc = String(row?.description || '')
+  if ((period !== 1 && period !== 3) || !KICKOFF_ROW.test(desc)) return false
+  const clock = String(row.clock || '').trim() || /^\s*\((\d{1,2}:\d{2})\)/.exec(desc)?.[1] || ''
+  return /^15:00$/.test(clock)
+}
+
 /** Snap yardage before any penalty clause: "for 3 yards", "for loss of 6 yards", "for -2 yards", "no gain". */
 function playYardsFromText(text) {
   const raw = String(text || '')

@@ -13,7 +13,7 @@ import {
 } from './gameHubEndzone.js'
 import GameHubRushFigure from './GameHubRushFigure.jsx'
 import GameHubCatchFigure from './GameHubCatchFigure.jsx'
-import { getLuminance, hexToRgb, resolveTeamKit } from './gameHubFigureColors.js'
+import { getLuminance, hexToHsl, hexToRgb, resolveTeamKit } from './gameHubFigureColors.js'
 import { pregameGameMarketPicks, pregamePlayerPropRails } from './gameHubPregameProps.js'
 import { pregameBestLines } from './gameHubBestLines.js'
 import {
@@ -537,8 +537,8 @@ function DriveIncompleteMark({ p0, c, p1, attackDir, primary, halo, haloOpacity,
   const { x: x1, y: y1 } = p1
   return (
     <g data-drive-play="incomplete" data-drive-throw={frame ? 'playing' : undefined}>
-      <path d={d} fill="none" stroke={halo} strokeOpacity={haloOpacity} strokeWidth="5" strokeDasharray="7 6" strokeLinecap="round" />
-      <path d={d} fill="none" stroke={primary} strokeWidth="3" strokeDasharray="7 6" strokeLinecap="round" />
+      <path d={d} fill="none" stroke={halo} strokeOpacity={haloOpacity} strokeWidth="6.5" strokeDasharray="7 6" strokeLinecap="round" />
+      <path d={d} fill="none" stroke={primary} strokeWidth="4.2" strokeDasharray="7 6" strokeLinecap="round" />
       <polygon points={driveArrow(p0.x, p0.y, attackDir)} fill="#fff" stroke="#000" strokeOpacity="0.55" strokeWidth="1" strokeLinejoin="round" />
       {xScale > 0 ? (
         <g strokeLinecap="round" transform={`translate(${x1} ${y1}) scale(${xScale}) translate(${-x1} ${-y1})`}>
@@ -697,7 +697,7 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey, throwKey = '', onT
                 y2={y}
                 stroke={m.touchdown ? '#000' : halo}
                 strokeOpacity={m.touchdown ? 0.5 : haloOpacity}
-                strokeWidth="7.5"
+                strokeWidth="9.5"
                 strokeLinecap="round"
               />
               <line
@@ -706,7 +706,7 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey, throwKey = '', onT
                 x2={x2}
                 y2={y}
                 stroke={m.touchdown ? DRIVE_TD_GOLD : primary}
-                strokeWidth="5.5"
+                strokeWidth="7"
                 strokeLinecap="round"
                 strokeOpacity="0.95"
               />
@@ -722,14 +722,14 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey, throwKey = '', onT
           addHit(m, `M ${x1} ${y} L ${x2} ${y}`, { x: (x1 + x2) / 2, y }, linePts(x1, x2, y))
           return (
             <g key={m.key} data-drive-play="penalty" data-drive-flag-on={drivePenaltyOnDefense(m, attackDir) ? 'defense' : 'offense'}>
-              <line x1={x1} y1={y} x2={x2} y2={y} stroke="#000" strokeOpacity="0.45" strokeWidth="6" strokeLinecap="round" />
+              <line x1={x1} y1={y} x2={x2} y2={y} stroke="#000" strokeOpacity="0.45" strokeWidth="7.5" strokeLinecap="round" />
               <line
                 x1={x1}
                 y1={y}
                 x2={x2}
                 y2={y}
                 stroke={drivePenaltyOnDefense(m, attackDir) ? DRIVE_FLAG_DEFENSE : DRIVE_FLAG_OFFENSE}
-                strokeWidth="3.5"
+                strokeWidth="4.5"
                 strokeDasharray="8 6"
                 strokeLinecap="round"
               />
@@ -932,6 +932,30 @@ function catchFigLeftForHandsX(ballX, facing, figW = RUSH_FIG_W, figH = RUSH_FIG
   const lx = facing < 0 ? CATCH_VIEWBOX_W - CATCH_HANDS_LOCAL.x : CATCH_HANDS_LOCAL.x
   return ballX - padX - lx * scale
 }
+function isRedHex(hex) {
+  if (!/^#?[0-9a-f]{3}([0-9a-f]{3})?$/i.test(String(hex || '').trim())) return false
+  const { h, s, l } = hexToHsl(hex)
+  return (h >= 340 || h <= 12) && s >= 0.45 && l >= 0.12 && l <= 0.75
+}
+
+function isGoldHex(hex) {
+  if (!/^#?[0-9a-f]{3}([0-9a-f]{3})?$/i.test(String(hex || '').trim())) return false
+  const { h, s, l } = hexToHsl(hex)
+  return h >= 38 && h <= 62 && s >= 0.5 && l >= 0.3
+}
+
+/**
+ * Drive / play line color. Red primaries read as the offensive-flag red and the incomplete X, so they switch
+ * to the team's secondary … unless that is also red, gold (TD segment / defensive flag), or too dark on turf,
+ * in which case white.
+ */
+function playLineColor(primary, secondary) {
+  if (!isRedHex(primary)) return primary
+  const alt = String(secondary || '')
+  if (!alt || isRedHex(alt) || isGoldHex(alt) || getLuminance(hexToRgb(alt)) < 0.25) return '#ffffff'
+  return alt
+}
+
 function possessionKit(live, game, awayColor, homeColor) {
   const possHome = live?.possession === 'home'
   const side = possHome ? game?.home : game?.away
@@ -947,6 +971,7 @@ function possessionKit(live, game, awayColor, homeColor) {
   return {
     primary,
     secondary,
+    line: playLineColor(primary, side?.color2),
     helmetColor: resolved.helmetColor,
     pantsColor: resolved.pantsColor,
     tightsColor: resolved.tightsColor,
@@ -1670,6 +1695,7 @@ function FieldViz({
       endX,
       y: RUSH_Y,
       primary: kit.primary,
+      line: kit.line,
       teamAbbrev: kit.sideAbbrev,
       secondary: kit.secondary,
       helmetColor: kit.helmetColor,
@@ -1921,6 +1947,7 @@ function FieldViz({
       endX,
       y: RUSH_Y,
       primary: kit.primary,
+      line: kit.line,
       teamAbbrev: kit.sideAbbrev,
       secondary: kit.secondary,
       helmetColor: kit.helmetColor,
@@ -2363,6 +2390,7 @@ function FieldViz({
       y: RUSH_Y,
       facing: defDir,
       primary: kit.primary,
+      line: kit.line,
       teamAbbrev: kit.sideAbbrev,
       secondary: kit.secondary,
       helmetColor: kit.helmetColor,
@@ -2692,6 +2720,7 @@ function FieldViz({
       y: RUSH_Y,
       facing: recDir,
       primary: kit.primary,
+      line: kit.line,
       teamAbbrev: kit.sideAbbrev,
       secondary: kit.secondary,
       helmetColor: kit.helmetColor,
@@ -3034,7 +3063,7 @@ function FieldViz({
   if (throwEligible && playAnimReady && throwArmedKey !== animKey) setThrowArmedKey(animKey)
   const throwKey = throwEligible && throwArmedKey === animKey ? animKey : ''
   const drivePrimary = drive?.team
-    ? possessionKit({ possession: drive.team }, game, awayColor, homeColor).primary
+    ? possessionKit({ possession: drive.team }, game, awayColor, homeColor).line
     : '#ffffff'
   // The live rush / catch trail paints this play while its figure runs … the persistent line takes over after.
   const newestDriveMark = drive?.marks.findLast((m) => m.kind === 'line')
@@ -3594,9 +3623,9 @@ function FieldViz({
                 <polyline
                   points={runTrailPoints(rushAnim, rushAnim.progress)}
                   fill="none"
-                  stroke={rushAnim.isTouchdown ? '#000' : playLineHalo(rushAnim.primary).halo}
-                  strokeOpacity={rushAnim.isTouchdown ? 0.5 : playLineHalo(rushAnim.primary).haloOpacity}
-                  strokeWidth="7.5"
+                  stroke={rushAnim.isTouchdown ? '#000' : playLineHalo(rushAnim.line).halo}
+                  strokeOpacity={rushAnim.isTouchdown ? 0.5 : playLineHalo(rushAnim.line).haloOpacity}
+                  strokeWidth="9.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
@@ -3605,8 +3634,8 @@ function FieldViz({
                 <polyline
                   points={runTrailPoints(rushAnim, rushAnim.progress)}
                   fill="none"
-                  stroke={rushAnim.isTouchdown ? DRIVE_TD_GOLD : rushAnim.primary}
-                  strokeWidth="5.5"
+                  stroke={rushAnim.isTouchdown ? DRIVE_TD_GOLD : rushAnim.line}
+                  strokeWidth="7"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeOpacity="0.95"
@@ -3636,9 +3665,9 @@ function FieldViz({
                 <polyline
                   points={runTrailPoints(catchAnim, catchAnim.progress)}
                   fill="none"
-                  stroke={catchAnim.isTouchdown ? '#000' : playLineHalo(catchAnim.primary).halo}
-                  strokeOpacity={catchAnim.isTouchdown ? 0.5 : playLineHalo(catchAnim.primary).haloOpacity}
-                  strokeWidth="7.5"
+                  stroke={catchAnim.isTouchdown ? '#000' : playLineHalo(catchAnim.line).halo}
+                  strokeOpacity={catchAnim.isTouchdown ? 0.5 : playLineHalo(catchAnim.line).haloOpacity}
+                  strokeWidth="9.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                 />
@@ -3647,8 +3676,8 @@ function FieldViz({
                 <polyline
                   points={runTrailPoints(catchAnim, catchAnim.progress)}
                   fill="none"
-                  stroke={catchAnim.isTouchdown ? DRIVE_TD_GOLD : catchAnim.primary}
-                  strokeWidth="5.5"
+                  stroke={catchAnim.isTouchdown ? DRIVE_TD_GOLD : catchAnim.line}
+                  strokeWidth="7"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeOpacity="0.95"
@@ -3691,8 +3720,8 @@ function FieldViz({
                   y1={pickAnim.y}
                   x2={pickAnim.figX}
                   y2={pickAnim.y}
-                  stroke={pickAnim.primary}
-                  strokeWidth="4"
+                  stroke={pickAnim.line}
+                  strokeWidth="5.5"
                   strokeLinecap="round"
                   strokeOpacity="0.88"
                 />
@@ -3723,8 +3752,8 @@ function FieldViz({
                   y1={kickAnim.y}
                   x2={kickAnim.figX}
                   y2={kickAnim.y}
-                  stroke={kickAnim.primary}
-                  strokeWidth="4"
+                  stroke={kickAnim.line}
+                  strokeWidth="5.5"
                   strokeLinecap="round"
                   strokeOpacity="0.88"
                 />

@@ -164,7 +164,7 @@ export function hexToHsl(hex) {
  * Maps an original vector path color to a target team color while preserving
  * shadow depth, midtone texture, and highlight specular sheen.
  */
-export function recolorTone(origHex, targetHex, baseMidL = 0.35) {
+export function recolorTone(origHex, targetHex, baseMidL = 0.35, maxLift = 1) {
   const origRgb = hexToRgb(origHex)
   const targetRgb = hexToRgb(targetHex)
   const lOrig = getLuminance(origRgb)
@@ -175,11 +175,37 @@ export function recolorTone(origHex, targetHex, baseMidL = 0.35) {
     return rgbToHex(targetRgb.map((c) => c * t))
   }
   // Lighten towards specular highlight
-  const t = Math.pow((lOrig - baseMidL) / Math.max(0.01, 1.0 - baseMidL), 1.15)
+  const t = maxLift * Math.pow((lOrig - baseMidL) / Math.max(0.01, 1.0 - baseMidL), 1.15)
   return rgbToHex(targetRgb.map((c) => c + (255 - c) * t))
 }
 
 const WHITE_HEX_SET = new Set(['#FFFFFF', '#FAF9F6', '#FAFAFA', '#F8F9FA'])
+
+const isWhiteHex = (hex) => WHITE_HEX_SET.has(String(hex || '').toUpperCase())
+
+/**
+ * Road-white fabric from a sculpt tone: folds stay a soft cool gray instead of `recolorTone`'s near-black
+ * shadows (white × shadow factor), highlights go pure white.
+ */
+function whiteFabricTone(origHex, baseMidL = 0.2) {
+  const l = getLuminance(hexToRgb(origHex))
+  if (l >= baseMidL) return '#FFFFFF'
+  // Sculpt jersey mid-tones sit ~0.15-0.2 luminance … those land near-white; only deep folds go gray.
+  const t = 0.66 + 0.34 * Math.pow(l / baseMidL, 0.75)
+  return rgbToHex([255 * t, 255 * t, 258 * t])
+}
+
+/** Jersey fabric: `jerseyColor` overrides the team primary (away whites). */
+function jerseyTone(origHex, jersey) {
+  return isWhiteHex(jersey) ? whiteFabricTone(origHex) : recolorTone(origHex, jersey, 0.35)
+}
+
+/** Pants stripe: team primary, unless the pants are already that color (away pants) … then white. */
+function pantsStripeTone(origHex, primary, pants) {
+  return String(pants || '').toUpperCase() === String(primary || '').toUpperCase()
+    ? whiteFabricTone(origHex)
+    : recolorTone(origHex, primary, 0.35)
+}
 
 /**
  * Builds the O(1) fill-lookup table for the WR/TE Catch figure.
@@ -187,11 +213,13 @@ const WHITE_HEX_SET = new Set(['#FFFFFF', '#FAF9F6', '#FAFAFA', '#F8F9FA'])
  */
 export function buildCatchColorMap({
   primary = '#002244',
-  _secondary = '#FFFFFF',
+  secondary: _secondary = '#FFFFFF',
+  jerseyColor,
   helmetColor,
   pantsColor,
   tightsColor,
 } = {}) {
+  const jersey = jerseyColor || primary
   const helmet = helmetColor || primary
   const pants = pantsColor || '#FFFFFF'
   const tights = tightsColor || primary
@@ -207,7 +235,7 @@ export function buildCatchColorMap({
       if (map[key] !== undefined) continue
 
       if (pid === 'blue-jersey') {
-        map[key] = recolorTone(orig, primary, 0.35)
+        map[key] = jerseyTone(orig, jersey)
       } else if (pid === 'blue-sock-trailing' || pid === 'blue-sock-front') {
         map[key] = recolorTone(orig, tights, 0.35)
       } else if (pid === 'blue-helmet') {
@@ -219,13 +247,13 @@ export function buildCatchColorMap({
         const { h, s, l } = hexToHsl(orig)
         if (s > 0.25 && h >= 180 && h <= 260) {
           // Athletic side stripe -> team primary
-          map[key] = recolorTone(orig, primary, 0.35)
+          map[key] = pantsStripeTone(orig, primary, pants)
         } else if (s > 0.20 && h >= 25 && h <= 75) {
-          // Yellow base fabric -> pantsColor
-          map[key] = recolorTone(orig, pants, 0.55)
+          // Yellow base fabric -> pantsColor (sculpt fabric sits ~0.7 luminance; lower mid points wash it out)
+          map[key] = recolorTone(orig, pants, 0.74)
         } else if (l > 0.85 && !isPantsWhite) {
           // Specular highlights on colored pants
-          map[key] = recolorTone(orig, pants, 0.55)
+          map[key] = recolorTone(orig, pants, 0.74)
         } else {
           // Neutral highlights / shadow folds on white pants
           map[key] = isPantsWhite ? orig : recolorTone(orig, pants, 0.55)
@@ -247,10 +275,12 @@ export function buildCatchColorMap({
 export function buildRushColorMap({
   primary = '#C4122E',
   secondary = '#FFFFFF',
+  jerseyColor,
   helmetColor,
   pantsColor,
   tightsColor,
 } = {}) {
+  const jersey = jerseyColor || primary
   const helmet = helmetColor || primary
   const pants = pantsColor || '#FFFFFF'
   const tights = tightsColor || primary
@@ -266,7 +296,7 @@ export function buildRushColorMap({
       if (map[key] !== undefined) continue
 
       if (pid === 'red-jersey') {
-        map[key] = recolorTone(orig, primary, 0.35)
+        map[key] = jerseyTone(orig, jersey)
       } else if (pid === 'red-tights' || pid === 'fwd-sock') {
         map[key] = recolorTone(orig, tights, 0.35)
       } else if (pid === 'red-gloves-1' || pid === 'red-gloves-2') {
@@ -280,15 +310,17 @@ export function buildRushColorMap({
         const { h, s } = hexToHsl(orig)
         // Red pants stripe -> primary
         if (s > 0.3 && (h < 25 || h > 340)) {
-          map[key] = recolorTone(orig, primary, 0.35)
+          map[key] = pantsStripeTone(orig, primary, pants)
         } else if (!isPantsWhite) {
-          // Tint white pants to team pants color (e.g. gold, yellow, silver)
-          map[key] = recolorTone(orig, pants, 0.70)
+          // Tint white pants to team pants color (e.g. gold, yellow, silver). The sculpt fabric is near-white
+          // (~0.95+ luminance), so the mid point sits up there and the sheen is capped or it washes out pale.
+          map[key] = recolorTone(orig, pants, 0.985, 0.22)
         } else {
           map[key] = orig
         }
       } else if (pid.startsWith('nike-swoosh')) {
-        map[key] = secondary || '#FFFFFF'
+        // Swoosh sits on the jersey … on road whites it takes the team color.
+        map[key] = isWhiteHex(jersey) ? primary : secondary || '#FFFFFF'
       } else {
         // Keep body-skin, front-cleat, black-cleats, football, nfl-shield-logo intact
         map[key] = orig

@@ -972,15 +972,25 @@ function possessionKit(live, game, awayColor, homeColor) {
   }
   const sideAbbrev = String(side?.abbrev || '')
   const resolved = resolveTeamKit(sideAbbrev, primary, secondary)
+  const inWhite = possHome === homeTeamWearsWhite(game)
+  const whitePants = /^#?f{3}(f{3})?$/i.test(String(resolved.pantsColor || '')) || !resolved.pantsColor
   return {
     primary,
     secondary,
+    /** Road whites (colored numbers); home wears the team color. */
+    jerseyColor: inWhite ? '#FFFFFF' : '',
     line: playLineColor(primary, side?.color2),
     helmetColor: resolved.helmetColor,
-    pantsColor: resolved.pantsColor,
+    // White team pants under a white jersey reads all-white … road kit takes the team color instead.
+    pantsColor: inWhite && whitePants ? primary : resolved.pantsColor,
     tightsColor: resolved.tightsColor,
     sideAbbrev,
   }
+}
+
+/** Dallas wears white at home (opponent in color); everyone else wears color at home. */
+function homeTeamWearsWhite(game) {
+  return String(game?.sport_key || '').includes('nfl') && String(game?.home?.abbrev || '').toUpperCase() === 'DAL'
 }
 
 const TIMEOUT_SLOTS = 3
@@ -1700,6 +1710,7 @@ function FieldViz({
       y: RUSH_Y,
       primary: kit.primary,
       line: kit.line,
+      jerseyColor: kit.jerseyColor,
       teamAbbrev: kit.sideAbbrev,
       secondary: kit.secondary,
       helmetColor: kit.helmetColor,
@@ -1952,6 +1963,7 @@ function FieldViz({
       y: RUSH_Y,
       primary: kit.primary,
       line: kit.line,
+      jerseyColor: kit.jerseyColor,
       teamAbbrev: kit.sideAbbrev,
       secondary: kit.secondary,
       helmetColor: kit.helmetColor,
@@ -2395,6 +2407,7 @@ function FieldViz({
       facing: defDir,
       primary: kit.primary,
       line: kit.line,
+      jerseyColor: kit.jerseyColor,
       teamAbbrev: kit.sideAbbrev,
       secondary: kit.secondary,
       helmetColor: kit.helmetColor,
@@ -2725,6 +2738,7 @@ function FieldViz({
       facing: recDir,
       primary: kit.primary,
       line: kit.line,
+      jerseyColor: kit.jerseyColor,
       teamAbbrev: kit.sideAbbrev,
       secondary: kit.secondary,
       helmetColor: kit.helmetColor,
@@ -3675,6 +3689,7 @@ function FieldViz({
                 <GameHubRushFigure
                   primary={rushAnim.primary}
                   secondary={rushAnim.secondary}
+                  jerseyColor={rushAnim.jerseyColor}
                   helmetColor={rushAnim.helmetColor}
                   pantsColor={rushAnim.pantsColor}
                   tightsColor={rushAnim.tightsColor}
@@ -3717,6 +3732,7 @@ function FieldViz({
                 <GameHubCatchFigure
                   primary={catchAnim.primary}
                   secondary={catchAnim.secondary}
+                  jerseyColor={catchAnim.jerseyColor}
                   helmetColor={catchAnim.helmetColor}
                   pantsColor={catchAnim.pantsColor}
                   tightsColor={catchAnim.tightsColor}
@@ -3760,6 +3776,7 @@ function FieldViz({
                 <GameHubCatchFigure
                   primary={pickAnim.primary}
                   secondary={pickAnim.secondary}
+                  jerseyColor={pickAnim.jerseyColor}
                   helmetColor={pickAnim.helmetColor}
                   pantsColor={pickAnim.pantsColor}
                   tightsColor={pickAnim.tightsColor}
@@ -3790,6 +3807,7 @@ function FieldViz({
                 <GameHubRushFigure
                   primary={kickAnim.primary}
                   secondary={kickAnim.secondary}
+                  jerseyColor={kickAnim.jerseyColor}
                   helmetColor={kickAnim.helmetColor}
                   pantsColor={kickAnim.pantsColor}
                   tightsColor={kickAnim.tightsColor}
@@ -4425,14 +4443,12 @@ export default function GameHubHero({
   // Landscape gamecast: the field row slides up under the scoreboard (scoreboard paints on top); only the
   // goalpost tops reach that high. Track the board's height so the overlap follows it.
   const scoreboardRef = useRef(null)
-  const [scoreboardH, setScoreboardH] = useState(0)
+  const [measuredScoreboardH, setScoreboardH] = useState(0)
   const overlapBoard = fullscreen && showField
+  const scoreboardH = overlapBoard ? measuredScoreboardH : 0
   useLayoutEffect(() => {
     const el = scoreboardRef.current
-    if (!overlapBoard || !el) {
-      setScoreboardH(0)
-      return undefined
-    }
+    if (!overlapBoard || !el) return undefined
     const measure = () => setScoreboardH(el.offsetHeight)
     measure()
     if (typeof ResizeObserver === 'undefined') return undefined

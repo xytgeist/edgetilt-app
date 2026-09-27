@@ -18,6 +18,8 @@ import { buildCatchColorMap, resolveJerseyNumberPaint } from './gameHubFigureCol
  */
 export default function GameHubCatchFigure({
   primary = '#002244',
+  /** Jersey fabric override (away whites); numbers contrast against it. Defaults to `primary`. */
+  jerseyColor = '',
   secondary = '#FFFFFF',
   accent: _accent = '#000000',
   helmetColor,
@@ -34,8 +36,11 @@ export default function GameHubCatchFigure({
 
   const secondaryColor = secondary || '#FFFFFF'
   const numberPaint = useMemo(
-    () => resolveJerseyNumberPaint(primary, secondaryColor),
-    [primary, secondaryColor],
+    () =>
+      jerseyColor
+        ? resolveJerseyNumberPaint(jerseyColor, primary)
+        : resolveJerseyNumberPaint(primary, secondaryColor),
+    [jerseyColor, primary, secondaryColor],
   )
 
   const colorMap = useMemo(
@@ -43,11 +48,12 @@ export default function GameHubCatchFigure({
       buildCatchColorMap({
         primary,
         secondary: secondaryColor,
+        jerseyColor: jerseyColor || undefined,
         helmetColor,
         pantsColor,
         tightsColor,
       }),
-    [primary, secondaryColor, helmetColor, pantsColor, tightsColor]
+    [primary, secondaryColor, jerseyColor, helmetColor, pantsColor, tightsColor]
   )
 
   // The base sculpt naturally faces right (facing >= 0).

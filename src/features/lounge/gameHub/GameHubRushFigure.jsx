@@ -15,6 +15,8 @@ import { buildRushColorMap, resolveJerseyNumberPaint } from './gameHubFigureColo
  */
 export default function GameHubRushFigure({
   primary = '#C4122E',
+  /** Jersey fabric override (away whites); numbers contrast against it. Defaults to `primary`. */
+  jerseyColor = '',
   secondary = '#FFFFFF',
   accent: _accent = '#000000',
   helmetColor,
@@ -33,8 +35,11 @@ export default function GameHubRushFigure({
 
   const secondaryColor = secondary || '#FFFFFF'
   const numberPaint = useMemo(
-    () => resolveJerseyNumberPaint(primary, secondaryColor),
-    [primary, secondaryColor],
+    () =>
+      jerseyColor
+        ? resolveJerseyNumberPaint(jerseyColor, primary)
+        : resolveJerseyNumberPaint(primary, secondaryColor),
+    [jerseyColor, primary, secondaryColor],
   )
 
   const colorMap = useMemo(
@@ -42,11 +47,12 @@ export default function GameHubRushFigure({
       buildRushColorMap({
         primary,
         secondary: secondaryColor,
+        jerseyColor: jerseyColor || undefined,
         helmetColor,
         pantsColor,
         tightsColor,
       }),
-    [primary, secondaryColor, helmetColor, pantsColor, tightsColor]
+    [primary, secondaryColor, jerseyColor, helmetColor, pantsColor, tightsColor]
   )
 
   // The base cutout naturally faces left (facing < 0).

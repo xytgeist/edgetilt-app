@@ -304,6 +304,31 @@ function fieldXAtY(p, y) {
   return fieldTopXFromPercent(p) + (fieldBotXFromPercent(p) - fieldTopXFromPercent(p)) * t
 }
 
+/** Full "left end" / "deep right" drift off the ball line for the rush / catch figure. */
+const RUN_LATERAL_PX = 50
+
+/** Most of the drift lands in the first half of the run, then the figure heads straight upfield. */
+function runLateralAt(lateralPx, progress) {
+  if (!lateralPx) return 0
+  return lateralPx * easeOutCubic(Math.min(1, Math.max(0, progress) / 0.55))
+}
+
+/** Rush / catch figure spot at `progress`, perspective-correct once it drifts off the ball line. */
+function runPoint(anim, progress, baseY = anim.y) {
+  const y = baseY + runLateralAt(anim.lateralPx, progress)
+  return { x: fieldXAtY(lerp(anim.fromScrimPct, anim.toScrimPct, progress), y), y }
+}
+
+function runTrailPoints(anim, progress) {
+  const n = Math.max(2, Math.ceil(progress * 16))
+  const pts = []
+  for (let i = 0; i <= n; i += 1) {
+    const p = runPoint(anim, (progress * i) / n, anim.trailY)
+    pts.push(`${p.x.toFixed(1)},${p.y.toFixed(1)}`)
+  }
+  return pts.join(' ')
+}
+
 /** Drive chart lane spacing … losses / flags on the offense drop one lane toward the near sideline. */
 const DRIVE_LANE_PX = 13
 const DRIVE_INCOMPLETE_LATERAL_PX = 58
@@ -1279,6 +1304,7 @@ function FieldViz({
       toScrimPct: endPct,
       /** Loss: the trail rides the drive chart's offset lane so the handoff doesn't jump. */
       trailY: RUSH_Y + ((endPct - startPct) * attackDir < 0 ? DRIVE_LANE_PX : 0),
+      lateralPx: (parsed.lateral || 0) * attackDir * RUN_LATERAL_PX,
       fromFirstDownPct,
       toFirstDownPct,
     }
@@ -1533,6 +1559,7 @@ function FieldViz({
       toScrimPct: gainPct,
       /** Loss: the trail rides the drive chart's offset lane so the handoff doesn't jump. */
       trailY: RUSH_Y + ((gainPct - startPct) * attackDir < 0 ? DRIVE_LANE_PX : 0),
+      lateralPx: (parsed.lateral || 0) * attackDir * RUN_LATERAL_PX,
       fromFirstDownPct,
       toFirstDownPct,
     }
@@ -2507,16 +2534,12 @@ function FieldViz({
   const playAnimActive =
     rushAnim != null || catchAnim != null || fgAnim != null || pickAnim != null || kickAnim != null
   const suppressBanner = isUserReplay && (rushPlaying || catchPlaying || fgPlaying || pickPlaying || kickPlaying)
-  const rushX =
-    rushAnim != null && rushAnim.showFigure
-      ? rushAnim.startX + (rushAnim.endX - rushAnim.startX) * rushAnim.progress
-      : null
+  const rushPt = rushAnim != null && rushAnim.showFigure ? runPoint(rushAnim, rushAnim.progress) : null
+  const rushX = rushPt?.x ?? null
   const rushTrailVisible =
     Boolean(rushAnim?.showTrail && rushAnim.showFigure && rushAnim.progress > 0.02)
-  const catchX =
-    catchAnim != null && catchAnim.showFigure
-      ? catchAnim.startX + (catchAnim.endX - catchAnim.startX) * catchAnim.progress
-      : null
+  const catchPt = catchAnim != null && catchAnim.showFigure ? runPoint(catchAnim, catchAnim.progress) : null
+  const catchX = catchPt?.x ?? null
   const catchTrailVisible =
     Boolean(catchAnim?.showTrail && catchAnim.showFigure && catchAnim.progress > 0.02)
   const catchBallT =
@@ -2528,7 +2551,7 @@ function FieldViz({
     catchX != null && catchAnim != null
       ? catchHandsWorld(
           catchFigLeftForHandsX(catchX, catchAnim.facing, RUSH_FIG_W, RUSH_FIG_H),
-          catchAnim.y - RUSH_FIG_H + 8,
+          catchPt.y - RUSH_FIG_H + 8,
           catchAnim.facing,
           RUSH_FIG_W,
           RUSH_FIG_H,
@@ -3121,31 +3144,29 @@ function FieldViz({
           {rushAnim && rushX != null ? (
             <g data-lounge-rush-anim>
               {rushTrailVisible ? (
-                <line
-                  x1={rushAnim.startX}
-                  y1={rushAnim.trailY}
-                  x2={rushX}
-                  y2={rushAnim.trailY}
+                <polyline
+                  points={runTrailPoints(rushAnim, rushAnim.progress)}
+                  fill="none"
                   stroke={playLineHalo(rushAnim.primary).halo}
                   strokeOpacity={playLineHalo(rushAnim.primary).haloOpacity}
                   strokeWidth="7.5"
                   strokeLinecap="round"
+                  strokeLinejoin="round"
                 />
               ) : null}
               {rushTrailVisible ? (
-                <line
-                  x1={rushAnim.startX}
-                  y1={rushAnim.trailY}
-                  x2={rushX}
-                  y2={rushAnim.trailY}
+                <polyline
+                  points={runTrailPoints(rushAnim, rushAnim.progress)}
+                  fill="none"
                   stroke={rushAnim.primary}
                   strokeWidth="5.5"
                   strokeLinecap="round"
+                  strokeLinejoin="round"
                   strokeOpacity="0.95"
                 />
               ) : null}
               <g
-                transform={`translate(${rushFigLeftForBallX(rushX, rushAnim.facing)} ${rushAnim.y - RUSH_FIG_H + 8})`}
+                transform={`translate(${rushFigLeftForBallX(rushX, rushAnim.facing)} ${rushPt.y - RUSH_FIG_H + 8})`}
               >
                 <GameHubRushFigure
                   primary={rushAnim.primary}
@@ -3165,31 +3186,29 @@ function FieldViz({
           {catchAnim && catchX != null ? (
             <g data-lounge-catch-anim>
               {catchTrailVisible ? (
-                <line
-                  x1={catchAnim.startX}
-                  y1={catchAnim.trailY}
-                  x2={catchX}
-                  y2={catchAnim.trailY}
+                <polyline
+                  points={runTrailPoints(catchAnim, catchAnim.progress)}
+                  fill="none"
                   stroke={playLineHalo(catchAnim.primary).halo}
                   strokeOpacity={playLineHalo(catchAnim.primary).haloOpacity}
                   strokeWidth="7.5"
                   strokeLinecap="round"
+                  strokeLinejoin="round"
                 />
               ) : null}
               {catchTrailVisible ? (
-                <line
-                  x1={catchAnim.startX}
-                  y1={catchAnim.trailY}
-                  x2={catchX}
-                  y2={catchAnim.trailY}
+                <polyline
+                  points={runTrailPoints(catchAnim, catchAnim.progress)}
+                  fill="none"
                   stroke={catchAnim.primary}
                   strokeWidth="5.5"
                   strokeLinecap="round"
+                  strokeLinejoin="round"
                   strokeOpacity="0.95"
                 />
               ) : null}
               <g
-                transform={`translate(${catchFigLeftForHandsX(catchX, catchAnim.facing)} ${catchAnim.y - RUSH_FIG_H + 8})`}
+                transform={`translate(${catchFigLeftForHandsX(catchX, catchAnim.facing)} ${catchPt.y - RUSH_FIG_H + 8})`}
               >
                 <GameHubCatchFigure
                   primary={catchAnim.primary}

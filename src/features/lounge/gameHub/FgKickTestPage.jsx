@@ -149,6 +149,15 @@ const PUNT_SCENARIOS = [
   { id: 'pu-kc-td', label: 'Punt return TD · ARI punts own 20 · KC scores', format: 'nfl', receiving: 'home', losYard: 20, puntYards: 45, touchdown: true },
 ]
 
+/** Rush / catch lanes … figure drifts toward the called side (offense's left / right). */
+const RUN_SCENARIOS = [
+  { label: 'Rush left end', text: '(10:02) (Shotgun) J.Taylor left end to KC 47 for 12 yards (D.Smith)' },
+  { label: 'Rush right (CFB)', text: '(10:02) #22 T.Back rush right for 9 yards to the 44' },
+  { label: 'Rush up the middle', text: '(10:02) J.Taylor up the middle to KC 41 for 6 yards' },
+  { label: 'Catch deep left', text: '(10:02) P.Mahomes pass deep left to T.Kelce to KC 40 for 25 yards' },
+  { label: 'Catch short right', text: '(10:02) #9 G.Brosterhous pass complete short right to #4 N.Boncore caught at 43, for 8 yards to the 43' },
+]
+
 function playText({ yards, made, missSide }) {
   const who = '#3 H.Butker'
   if (made) return `${who} ${yards} yard field goal is GOOD`
@@ -244,6 +253,14 @@ export default function FgKickTestPage() {
       { id: `inc-2-${dir}`, period: half, clock: '06:40', sequence: 2, team: own, description: text, start_spot: spot(31), end_spot: spot(31) },
     ])
     setLastPlay(text)
+    setNonce((n) => n + 1)
+  }
+
+  const fireRun = (scenario) => {
+    setFeedTeam(null)
+    setFeedPlays(null)
+    setStartSpot({ yard_line: 35, yard_side: possession })
+    setLastPlay(scenario.text)
     setNonce((n) => n + 1)
   }
 
@@ -459,6 +476,18 @@ export default function FgKickTestPage() {
               onClick={() => fireIncomplete(dir)}
             >
               Incomplete {dir}
+            </button>
+          ))}
+        </div>
+        <div className="mb-4 flex flex-wrap gap-2">
+          {RUN_SCENARIOS.map((s) => (
+            <button
+              key={s.label}
+              type="button"
+              className="rounded-md bg-teal-700 px-3 py-1.5 text-[12px] font-semibold text-white"
+              onClick={() => fireRun(s)}
+            >
+              {s.label}
             </button>
           ))}
         </div>

@@ -487,6 +487,25 @@ const PLAYER_NAME_TOKEN =
 const ESPN_RUSH_LANE =
   /\b(?:left|right)\s+(?:end|tackle|guard)\b|\bup the middle\b|\b(?:left|right)\s+middle\b/i
 
+const RUSH_LANE_DEPTH = { end: 1, tackle: 0.65, guard: 0.35 }
+
+/**
+ * Called side of a snap from the offense's view: -1 left … 1 right, 0 middle / unstated.
+ * NFL lanes ("left end", "right guard", "up the middle"), CFB "rush left", pass "short right" / "deep left".
+ */
+function playLateralFromText(raw, kind) {
+  const s = String(raw || '').toLowerCase()
+  const sign = (side) => (side === 'left' ? -1 : side === 'right' ? 1 : 0)
+  if (kind === 'pass') {
+    const m = /\bpass(?:\s+complete(?:d)?)?\s+(short|deep)\s+(left|right|middle)\b/.exec(s)
+    return m ? sign(m[2]) * (m[1] === 'deep' ? 1 : 0.75) : 0
+  }
+  const lane = /\b(left|right)\s+(end|tackle|guard)\b/.exec(s)
+  if (lane) return sign(lane[1]) * RUSH_LANE_DEPTH[lane[2]]
+  const cfb = /\b(?:rush(?:ed|es)?|runs?|scrambl(?:e|es|ed))\s+(left|right|middle)\b/.exec(s)
+  return cfb ? sign(cfb[1]) * 0.8 : 0
+}
+
 const FORMATION_SKIP =
   /^(?:shotgun|no huddle|no[\s-]huddle|pistol|wildcat|empty|trips|bunch)$/i
 
@@ -538,7 +557,7 @@ export function resolveFigureJersey(parsed, matched) {
  * Covers explicit "rushed/run/scramble" and ESPN lane verbs
  * ("left end", "up the middle", "right tackle").
  * Positive-yard gains and rushing TDs are replayable.
- * @returns {{ yards: number, playerHint: string, jerseyHint: string|null, isTouchdown: boolean } | null}
+ * @returns {{ yards: number, playerHint: string, jerseyHint: string|null, isTouchdown: boolean, lateral: number } | null}
  */
 export function parseRushPlay(text) {
   const rawFull = String(text || '').trim()
@@ -594,7 +613,7 @@ export function parseRushPlay(text) {
   }
 
   const { jersey: jerseyHint } = splitPlayerHint(playerHint)
-  return { yards, playerHint, jerseyHint, isTouchdown }
+  return { yards, playerHint, jerseyHint, isTouchdown, lateral: playLateralFromText(raw, 'rush') }
 }
 
 /**
@@ -602,7 +621,7 @@ export function parseRushPlay(text) {
  * Player hint is the receiver (catcher), not the QB.
  * Handles "pass complete to X" and ESPN "pass short right to X … for N yards".
  * Incomplete / INT / sack / no-play penalties are excluded.
- * @returns {{ yards: number, playerHint: string, jerseyHint: string|null, isTouchdown: boolean } | null}
+ * @returns {{ yards: number, playerHint: string, jerseyHint: string|null, isTouchdown: boolean, lateral: number } | null}
  */
 export function parsePassPlay(text) {
   const rawFull = String(text || '').trim()
@@ -632,7 +651,7 @@ export function parsePassPlay(text) {
 
   let playerHint = extractPassReceiverHint(raw)
   const { jersey: jerseyHint } = splitPlayerHint(playerHint)
-  return { yards, playerHint, jerseyHint, isTouchdown }
+  return { yards, playerHint, jerseyHint, isTouchdown, lateral: playLateralFromText(raw, 'pass') }
 }
 
 /** Tokens that are never part of a player name in PBP. */

@@ -6,9 +6,9 @@ import { toPlainOutboundText } from './loungeBotPlainOutbound.ts'
 import { formatXApiFailure } from './loungeBotXApi.ts'
 
 const TWEET_URL = 'https://api.x.com/2/tweets'
-/** Default tweet cap (free / standard). */
+/** Standard tweet length. Timeline shows about this much before "Show more". */
 export const X_SAFE_CHARS = 280
-/** Premium long-form cap … used when X gets the same card as VIP chat (TNF / SNF / MNF). */
+/** Premium long-form cap. Every @sharpesyndicate drop posts at this cap. */
 export const X_LONG_FORM_CHARS = 4000
 
 export type SyndicateXPublishResult = {
@@ -92,8 +92,8 @@ function stripHttpUrls(text: string): string {
     .trim()
 }
 
-export function formatSyndicateXText(raw: string, maxChars: number = X_SAFE_CHARS): string {
-  const cap = Number.isFinite(maxChars) && maxChars > 0 ? maxChars : X_SAFE_CHARS
+export function formatSyndicateXText(raw: string, maxChars: number = X_LONG_FORM_CHARS): string {
+  const cap = Number.isFinite(maxChars) && maxChars > 0 ? maxChars : X_LONG_FORM_CHARS
   const plain = stripHttpUrls(toPlainOutboundText(raw))
   if (plain.length <= cap) return plain
   return `${plain.slice(0, cap - 3).trimEnd()}...`

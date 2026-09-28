@@ -6,7 +6,7 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { publishLoungeBotPost, publishLoungeBotPostWithThread, type BotThreadPart } from './loungeBotPublish.ts'
 import { publishBotSubChatMessage } from './loungeBotSubChatPublish.ts'
 import { toPlainOutboundText } from './loungeBotPlainOutbound.ts'
-import { formatSyndicateXText, publishSyndicateXPost } from './loungeBotXPublish.ts'
+import { X_LONG_FORM_CHARS, formatSyndicateXText, publishSyndicateXPost } from './loungeBotXPublish.ts'
 
 export type PublishDestinations = {
   loungePublic: boolean
@@ -150,7 +150,7 @@ export function buildSyndicateDestPreview(input: DestPreviewInput): SyndicateDes
         body: toPlainOutboundText(p.body),
       })),
     },
-    x: { caption: xOut, threadParts: [], chars: xOut.length, ...(xMaxChars ? { limit: xMaxChars } : {}) },
+    x: { caption: xOut, threadParts: [], chars: xOut.length, limit: xMaxChars || X_LONG_FORM_CHARS },
   }
 }
 

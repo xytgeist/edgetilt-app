@@ -898,7 +898,7 @@ Chat and X do **not** render Lounge markdown. Tags like `[gold]`, `**bold**`, `#
 **Rule:** author once in Lounge markdown. At fan-out, strip.
 
 - Chat choke point: `publishBotSubChatMessage` → `toPlainOutboundText` (`loungeBotPlainOutbound.ts`).
-- X posts **must** call `toPlainOutboundText` (`loungeBotXPublish.ts` → `formatSyndicateXText`). No URLs (X bills URL tweets ~$0.20 vs ~$0.015). Default one tweet, 280-char cap. Primetime (no fan-only Lounge twin) uses the VIP card at the 4000 long-form cap. Do not send Lounge captions raw.
+- X posts **must** call `toPlainOutboundText` (`loungeBotXPublish.ts` → `formatSyndicateXText`). No URLs (X bills URL tweets ~$0.20 vs ~$0.015). One tweet per drop at the 4000 long-form cap (default since 2026-09-28 ... no more 280 clipping). Timeline shows ~280 before "Show more", so lead with the hook. Primetime (no fan-only Lounge twin) uses the VIP card. Do not send Lounge captions raw.
 - Lounge `publishLoungeBotPost` must **not** strip.
 
 ### Ops Send to + X (`2026-09-09`)

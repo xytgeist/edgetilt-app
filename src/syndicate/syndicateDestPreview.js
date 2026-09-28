@@ -4,7 +4,7 @@
  */
 
 const COLOR_NAMES = 'green|red|gold|blue|purple'
-const X_SAFE_CHARS = 280
+const X_LONG_FORM_CHARS = 4000
 
 export const DEST_PREVIEW_TABS = [
   { id: 'public', label: 'Public' },
@@ -17,7 +17,7 @@ export const DEST_PREVIEW_NOTES = {
   public: 'Lounge markdown. Posts when Lounge public is checked.',
   private: 'Fan-only Lounge markdown. Posts when Lounge fan-only is checked.',
   chat: 'VIP chat plain text. Posts when VIP chat is checked.',
-  x: 'Tweet as @sharpesyndicate. Posts when X is checked. No URLs. 280 default … primetime uses the VIP card (long-form).',
+  x: 'Tweet as @sharpesyndicate. Posts when X is checked. No URLs. Long-form (4000). Timeline shows ~280 before Show more, so the top lines carry the hook.',
 }
 
 function colorPairRe() {
@@ -73,8 +73,8 @@ export function toPlainPreviewText(raw) {
 
 export function formatXPreviewText(raw) {
   const plain = toPlainPreviewText(raw)
-  if (plain.length <= X_SAFE_CHARS) return plain
-  return `${plain.slice(0, X_SAFE_CHARS - 3).trimEnd()}...`
+  if (plain.length <= X_LONG_FORM_CHARS) return plain
+  return `${plain.slice(0, X_LONG_FORM_CHARS - 3).trimEnd()}...`
 }
 
 function emptySlot() {

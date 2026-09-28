@@ -39,7 +39,7 @@ import {
   stopOutgoingRingback,
   unlockChatCallAudio,
 } from './chatCallRingTone.js'
-import { acceptNativeCall, dismissEdgeCallKeyboard, endEdgeNativeCall, getEdgeCallKitCapabilities, getEdgeVoIPPushToken, installEdgeCallKitListeners, markEdgeCallKitWebReady, preloadEdgeAvatar, reportEdgeIncomingCall, startNativeCall } from '../../../utils/edgeCallKit.js'
+import { acceptNativeCall, dismissEdgeCallKeyboard, endEdgeNativeCall, getEdgeVoIPPushToken, installEdgeCallKitListeners, markEdgeCallKitWebReady, preloadEdgeAvatar, reportEdgeIncomingCall, startNativeCall } from '../../../utils/edgeCallKit.js'
 import { getEdgeiOSPushToken, isEdgeiOSShell } from '../../../utils/edgeNative.js'
 import { upsertMyApnsDeviceToken } from '../../../utils/apnsDeviceTokenApi.js'
 import ChatCallSession from './ChatCallSession.jsx'
@@ -153,9 +153,6 @@ export function ChatCallProvider({
   )
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  /** IPA defaults on so the in-app overlay does not flash before capabilities land. China flips this off. */
-  const [callKitSupported, setCallKitSupported] = useState(() => isEdgeiOSShell())
-  const [incomingUseWebOverlay, setIncomingUseWebOverlay] = useState(false)
   const broadcastByRoomRef = useRef(/** @type {Map<string, ReturnType<typeof subscribeToChatCallBroadcast>>} */ (new Map()))
 
   const showCallStatusToast = useCallback((message) => {
@@ -177,23 +174,6 @@ export function ChatCallProvider({
   const callerProfileFetchedRef = useRef(/** @type {Set<string>} */ (new Set()))
   activeCallRef.current = activeCall
   incomingRef.current = incoming
-  useEffect(() => {
-    if (!incoming) setIncomingUseWebOverlay(false)
-  }, [incoming])
-
-  useEffect(() => {
-    if (!isEdgeiOSShell()) {
-      setCallKitSupported(false)
-      return undefined
-    }
-    let cancelled = false
-    getEdgeCallKitCapabilities().then((caps) => {
-      if (!cancelled) setCallKitSupported(caps.supported)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   const resolveCallerProfile = useCallback(
     (roomId, fromUserId) => {
@@ -336,11 +316,14 @@ export function ChatCallProvider({
       if (current) {
         const sameCall = current.callId === row.id || current.serverCallId === row.id
         if (sameCall) return
-        // Leftover outgoing chrome (pending: tap-to-open) must not swallow a real ring.
-        if (isPlaceholderCallId(current.callId)) {
+        // Leftover outgoing chrome (pending or still ringing-out) must not swallow a real ring.
+        if (isPlaceholderCallId(current.callId) || current.isOutgoing) {
           activeCallRef.current = null
           setActiveCall(null)
-          void endEdgeNativeCall({ reason: 'remote' })
+          void endEdgeNativeCall({
+            callId: current.serverCallId || current.callId,
+            reason: 'remote',
+          })
         } else {
           return
         }
@@ -351,7 +334,6 @@ export function ChatCallProvider({
       const mediaMode = (row.media_mode || row.mediaMode) === 'video' ? 'video' : 'audio'
       if (roomId) ensureBroadcast(roomId)
       const profile = resolveCallerProfile(roomId, fromUserId)
-      setIncomingUseWebOverlay(false)
       setIncoming({
         callId: row.id,
         roomId,
@@ -367,11 +349,6 @@ export function ChatCallProvider({
         handle: profile.title || 'Incoming call',
         hasVideo: mediaMode === 'video',
         avatarUrl: profile.avatarUrl,
-      }).then((res) => {
-        if (incomingRef.current?.callId !== String(row.id)) return
-        if (res?.via === 'noop' || res?.via === 'error' || res?.skipped || res?.ok === false) {
-          setIncomingUseWebOverlay(true)
-        }
       })
       void resolveCallerProfileAsync(roomId, fromUserId).then((next) => {
         setIncoming((prev) =>
@@ -467,7 +444,6 @@ export function ChatCallProvider({
         if (cancelled) return
         if (!call || ['ended', 'missed', 'declined'].includes(call.status)) {
           setIncoming((prev) => (prev?.callId === callId ? null : prev))
-          setIncomingUseWebOverlay(false)
           void endEdgeNativeCall({ callId, reason: 'remote' })
         }
       } catch {
@@ -503,10 +479,7 @@ export function ChatCallProvider({
           const row = payload.new
           if (!row?.id) return
           if (['ended', 'missed', 'declined'].includes(row.status)) {
-            if (incomingRef.current?.callId === row.id) {
-              setIncoming(null)
-              setIncomingUseWebOverlay(false)
-            }
+            if (incomingRef.current?.callId === row.id) setIncoming(null)
             const live = activeCallRef.current
             if (
               live &&
@@ -1484,12 +1457,7 @@ export function ChatCallProvider({
     <ChatCallContext.Provider value={value}>
       {children}
       <ChatIncomingCallOverlay
-        open={
-          Boolean(incoming) &&
-          !activeCall &&
-          !callbackPrompt &&
-          (!callKitSupported || incomingUseWebOverlay)
-        }
+        open={Boolean(incoming) && !activeCall && !callbackPrompt}
         title={incoming?.title || 'Incoming call'}
         avatarUrl={incoming?.avatarUrl || null}
         subtitle={

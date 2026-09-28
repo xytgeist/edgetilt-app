@@ -1152,6 +1152,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-28:** **IPA incoming Accept sheet (`1.4.889`).** 1.4.888 still missed on Prod IPA (invites land, hangup ~23s). Overlay no longer waits on CallKit skip. Leftover real outgoing chrome (not only `pending:`) is dropped so a different incoming can present. Store marketing still **1.4.95**.
 - **2026-09-28:** **IPA incoming ring (`1.4.888`).** Prod Edge Lord ↔ Dean: `start_call` + invite rows landed, neither phone rang. Leftover `pending:` outgoing blocked `presentIncoming`; IPA hides the web overlay so a skipped CallKit report is silence. Drop pending chrome for a real incoming, poll the open DM, show the web overlay if CallKit skips. Store marketing still **1.4.95**.
 - **2026-09-28:** **Promoted `1.4.887` `test` → `main` (`c5ccea1b`).** OTP auto-confirm (add phone, email, remove number, Continue with Phone). **No SQL / Edge.** Force-quit Prod IPA after Vercel. Store marketing still **1.4.95**.
 - **2026-09-28:** **OTP auto-confirm (`1.4.887`).** Six digits submit on their own for Account info add-phone, email change, remove-number, and Continue with Phone. No Confirm tap. Store marketing still **1.4.95**.

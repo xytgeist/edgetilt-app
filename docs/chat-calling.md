@@ -69,6 +69,7 @@ Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, remove
 ## iOS / PWA limits
 
 - **No CallKit** ... incoming = web push + in-app overlay only.
+- **IPA:** CallKit is extra. While an incoming row is set and there is no live `activeCall`, `ChatIncomingCallOverlay` always shows (Accept / Decline). Leftover outgoing chrome (`pending:` or still ringing-out) is dropped so a different incoming can present.
 - `getUserMedia` only after user tap (Start / Accept, or first-open PWA mic opt-in).
 - **Mic permission:** request only when a call is **made or received** (LiveKit / `getUserMedia` on the call path). Do **not** show a first-open / sign-in mic sheet (`AppShell` no longer queues PWA mic opt-in). Helpers remain in `src/utils/pwaMicrophonePrompt.js` if call-side priming needs them.
 - Keep Edge open during calls (background mic is best-effort on iPhone Safari/PWA).

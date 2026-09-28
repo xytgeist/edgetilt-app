@@ -1683,7 +1683,10 @@ export default function LoungeDockSlidePanels({
                 <span className="min-w-0">
                   <span className="inline-flex items-center gap-2">
                     <span className="block text-[15px] font-semibold text-zinc-100">Edge Pro preferences</span>
-                    <span className="inline-flex items-center rounded-full bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-400 ring-1 ring-amber-500/40">
+                    <span
+                      data-settings-pro-pill
+                      className="inline-flex items-center rounded-full bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-amber-500/20 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-amber-400 ring-1 ring-amber-500/40"
+                    >
                       PRO
                     </span>
                   </span>

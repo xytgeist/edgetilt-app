@@ -2794,7 +2794,7 @@ function CallDockItem({
   } else if (variant === 'active-white' || (active && variant === 'default')) {
     variantStyle = 'bg-white text-zinc-950 shadow-[0_0_24px_rgba(255,255,255,0.35)] font-bold'
   } else if (variant === 'danger') {
-    variantStyle = 'bg-rose-600 hover:bg-rose-500 text-white shadow-[0_8px_24px_rgba(225,29,72,0.45)]'
+    variantStyle = 'bg-rose-600 hover:bg-rose-500 text-white shadow-md'
   } else if (variant === 'warning') {
     variantStyle = 'bg-amber-500 text-zinc-950 shadow-[0_6px_20px_rgba(245,158,11,0.35)]'
   } else if (variant === 'disabled' || disabled) {

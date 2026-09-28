@@ -172,7 +172,7 @@ export default function ChatIncomingCallOverlay({
                 stopToneNow()
                 onDecline()
               }}
-              className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-600 text-white shadow-[0_8px_24px_rgba(225,29,72,0.45)] touch-manipulation active:scale-95 transition-all disabled:opacity-50"
+              className="flex h-16 w-16 items-center justify-center rounded-full bg-rose-600 text-white shadow-md touch-manipulation active:scale-95 transition-all disabled:opacity-50"
               aria-label="Decline call"
             >
               <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden>

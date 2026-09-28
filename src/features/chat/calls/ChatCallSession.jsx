@@ -479,6 +479,7 @@ function SwitchToVideoConfirmModal({ onCancel, onConfirm }) {
           </button>
           <button
             type="button"
+            data-switch-to-video-confirm=""
             className="flex-1 rounded-2xl bg-white/15 py-3.5 text-[15px] font-semibold text-white shadow-lg transition active:scale-95 touch-manipulation hover:bg-white/20"
             onClick={onConfirm}
           >

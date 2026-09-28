@@ -11054,6 +11054,15 @@ html.light [data-chat-call-session] .text-white\/80,
 html.light [data-chat-call-incoming] .text-white\/80 {
   color: rgb(255 255 255 / 0.8) !important;
 }
+
+/* Switch CTA: bg-white/15 + text-white is invisible on the inverted white sheet. */
+html.light [data-switch-to-video-confirm] {
+  background-color: #2563eb !important;
+  color: #fff !important;
+}
+html.light [data-switch-to-video-confirm]:hover {
+  background-color: #1d4ed8 !important;
+}
 [data-chat-call-session]:not([data-call-minimized='1']) [data-chat-call-interactive] {
   touch-action: manipulation;
 }

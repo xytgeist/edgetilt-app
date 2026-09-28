@@ -11,7 +11,7 @@ import { ODDSPAPI_FOOTBALL_MARKETS, ODDSPAPI_FOOTBALL_PARTICIPANTS } from './odd
 const HOUR_MS = 60 * 60 * 1000
 /**
  * Calls per rolling 30 days (free cap 250, rest is slack for catalog regen / manual checks; rolling, so their
- * reset date doesn't matter). Test + prod share one key, so each sets `ODDSPAPI_BUDGET_30D` (prod 210, test 25).
+ * reset date doesn't matter). Prod sets `ODDSPAPI_BUDGET_30D=210`; test runs keyless (no calls) unless Circa needs retesting.
  */
 const DEFAULT_BUDGET_30D = 235
 const MEMORY_MS = 5 * 60 * 1000

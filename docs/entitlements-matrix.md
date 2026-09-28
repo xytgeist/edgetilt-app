@@ -197,6 +197,7 @@ Track implementation in `docs/test-buildout-backlog.md` when Phase 1 work starts
 | 2026-09-05 | **`apple-iap-verify` deployed on test** after sandbox confirm 404. Client fails closed before StoreKit if begin cannot reach the function. **`1.4.92`.** |
 | 2026-09-14 | **Lifetime IAP list is `$1,499.99`.** Ryan dropped offer codes. Immediate global on `com.edgetilt.app.slots_edge_lifetime`. Raise to `$1,999` when founding ends. |
 | 2026-09-14 | **Founding Lifetime offer codes.** ASC offer **Founding Lifetime** (`e4b718f8-3bfc-44a8-861c-56fe90217797`) on `com.edgetilt.app.slots_edge_lifetime`. **Superseded same day** when the list moved to `$1,499.99`. |
+| 2026-09-28 | **Promoted Sharpe staff fan-price preview to prod (`1.4.875`).** No SQL / Edge. |
 | 2026-09-28 | **Promoted fan pills-under-headline to prod (`1.4.874`).** No SQL / Edge. |
 | 2026-09-28 | **Fan pills replace the headline price (`1.4.874`).** iPhone / Web selector sits under the offer headline. Footer is one Subscribe. |
 | 2026-09-28 | **Promoted fan 1.15 + pills to prod (`1.4.873`).** US IPA fan sheet pills + `/mo`. Settings light Verify/PRO chips. No SQL / Edge. |

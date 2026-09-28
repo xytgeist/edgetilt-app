@@ -261,6 +261,10 @@ Excluded users do not get new **`app_section_visits`** rows; Monitor aggregates 
 
 **Production twin** (Sep 27, 2026, Ryan approved): same email/handle, auth id `e92d6d7a-f2ea-460f-a846-5702ea3ee9e9`, `role = user`, `slots-edge` comp with `admin_comp_<uid>` Stripe ids (billing reconcile skips `admin_comp_*`), same analytics blocklists. Separate password: `THEO_PROD_EMAIL` / `THEO_PROD_PASSWORD` / `THEO_PROD_ANON_KEY` in `.env.local`. Use `--prod` on the session script for read-style checks only; no posting or writes as Theo on prod without Ryan asking.
 
+### App Store Review logins (production)
+
+Apple Sign-In Information is **`appstorereview@edgetilt.com`** (`@appstorereview`, `38444254-…`). Second CallKit login **`appstorereview2@edgetilt.com`** (`@appstorereview2`, `4260f0f5-…`) … created Sep 28, 2026, email pre-confirmed, `role = user`, same password as the ASC demo field, analytics-excluded. They follow each other. Do not give reviewers `@theo_ops`.
+
 ## 6. Local env override
 
 `VITE_HAS_ACTIVE_SUBSCRIPTION=true` in **`.env.local`** still forces **subscriber UI for every logged-in user** (useful for a quick check). Remove it when testing **per-row** `has_active_subscription`.

@@ -573,6 +573,18 @@ export function playTextIsScoreTry(text) {
 }
 
 /**
+ * Scoring play that hands the ball over by kickoff (TD / try, made FG, safety). ESPN keeps the old spot
+ * until the kickoff row lands, so the field should drop LOS / ball / red zone in between.
+ */
+export function playTextAwaitsKickoff(text) {
+  const lower = String(text || '').toLowerCase()
+  if (!lower || /\bkickoff\b|\bkicks\b/.test(lower)) return false
+  if (playTextIsScoreTry(lower)) return true
+  if (/\bfor\s+a\s+safety\b|\bin\s+end\s+zone\s+for\s+safety\b|,\s*safety\b/.test(lower)) return true
+  return Boolean(parseFieldGoalPlay(text)?.made)
+}
+
+/**
  * ESPN often appends PAT / clock / review junk after the scoring play
  * ("… TOUCHDOWN, clock 09:39 #15 N.Radicic kick attempt good").
  * Strip that trailer so kick/extra-point filters don't kill TD replays.

@@ -53,6 +53,7 @@ import {
   parsePuntReturn,
   parseRushPlay,
   playTextIsScoreTry,
+  playTextAwaitsKickoff,
   buildPossessionDriveMarks,
   drivePlayShortLabel,
   isOpeningKickoffRow,
@@ -3042,7 +3043,7 @@ function FieldViz({
     tdAnim?.linesOpacity != null
       ? Math.max(0, Math.min(1, Number(tdAnim.linesOpacity)))
       : 1
-  // After a TD / PAT / 2-pt, no LOS or field ball until the kickoff play lands.
+  // After a TD / PAT / 2-pt, made FG or safety, no LOS or field ball until the kickoff play lands.
   const suppressPostTdMarkers = Boolean(
     !rushAnim &&
       !catchAnim &&
@@ -3050,7 +3051,7 @@ function FieldViz({
       !pickAnim &&
       !kickAnim &&
       lastPlayText &&
-      playTextIsScoreTry(lastBallPlayText(plays, lastPlayText)),
+      playTextAwaitsKickoff(lastBallPlayText(plays, lastPlayText)),
   )
   const showLiveScrimMarkers =
     hasLine &&

@@ -48,8 +48,6 @@ import {
 import { profileAvatarInitials, profileAvatarToneClass } from '../profiles/profileGate.js'
 
 const ALL_PLAN_SLUGS = [PRODUCT_SLOTS_EDGE_STARTER, PRODUCT_SLOTS_EDGE, PRODUCT_SLOTS_EDGE_LIFETIME]
-/** Shell Review path: Starter + Pro only until Lifetime IAP rides a submission. Web keeps the card. */
-const IPA_PLAN_SLUGS = [PRODUCT_SLOTS_EDGE_STARTER, PRODUCT_SLOTS_EDGE]
 
 /** @param {number} index @param {number} activeIndex @param {number} slideCount */
 function getSlideOffset(index, activeIndex, slideCount) {
@@ -456,15 +454,13 @@ export default function SubscribeModal({
   starterPriceInterval = null,
   fullPriceInterval = null,
 }) {
-  // IPA hides Lifetime so Review cannot swipe onto an IAP that is not in the submission.
-  const hideLifetimeCard = isEdgeiOSShell()
-  const planSlugs = hideLifetimeCard ? IPA_PLAN_SLUGS : ALL_PLAN_SLUGS
+  const planSlugs = ALL_PLAN_SLUGS
   const slideCount = planSlugs.length
   const [usStorefront, setUsStorefront] = useState(/** @type {boolean | null} */ (null))
   const showWebComparePrice = canShowIapWebComparePrice(usStorefront)
 
   const defaultPlan = useMemo(() => {
-    if (initialProductSlug === PRODUCT_SLOTS_EDGE_LIFETIME && !hideLifetimeCard) {
+    if (initialProductSlug === PRODUCT_SLOTS_EDGE_LIFETIME) {
       return PRODUCT_SLOTS_EDGE_LIFETIME
     }
     if (initialProductSlug === PRODUCT_SLOTS_EDGE_STARTER) return PRODUCT_SLOTS_EDGE_STARTER
@@ -472,11 +468,12 @@ export default function SubscribeModal({
     if (hasSlotsEdgeStarter && !hasSlotsEdgePro && !hasSlotsEdgeLifetime) return PRODUCT_SLOTS_EDGE_STARTER
     if (hasSlotsEdgePro && !hasSlotsEdgeLifetime) return PRODUCT_SLOTS_EDGE
     return PRODUCT_SLOTS_EDGE
-  }, [hasSlotsEdgeLifetime, hasSlotsEdgePro, hasSlotsEdgeStarter, hideLifetimeCard, initialProductSlug])
+  }, [hasSlotsEdgeLifetime, hasSlotsEdgePro, hasSlotsEdgeStarter, initialProductSlug])
 
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [storeProductsById, setStoreProductsById] = useState(() => new Map())
+  const [storeCatalogReady, setStoreCatalogReady] = useState(() => !isEdgeiOSShell())
   const [restoreBusy, setRestoreBusy] = useState(false)
   const [affiliatePromo, setAffiliatePromo] = useState(() => getAffiliateStampForSubscribeUi())
   const [militaryPromo, setMilitaryPromo] = useState(() => Boolean(readMilitaryPromoStamp()?.code))
@@ -520,6 +517,7 @@ export default function SubscribeModal({
     setBusy(false)
     setRestoreBusy(false)
     setStoreProductsById(new Map())
+    setStoreCatalogReady(!isEdgeiOSShell())
     setUsStorefront(null)
     setPayVia('iap')
     setInstantSlideIndexes(new Set())
@@ -551,16 +549,13 @@ export default function SubscribeModal({
           if (!cancelled) setUsStorefront(null)
         }
         try {
-          const productIds = hideLifetimeCard
-            ? allKnownIapProductIds().filter(
-                (id) => id !== iapProductIdForPlan(PRODUCT_SLOTS_EDGE_LIFETIME),
-              )
-            : allKnownIapProductIds()
-          const { products } = await fetchEdgeStoreProducts(supabaseClient, productIds)
+          const { products } = await fetchEdgeStoreProducts(supabaseClient, allKnownIapProductIds())
           if (cancelled) return
           setStoreProductsById(indexStoreProductsById(products))
         } catch {
           if (!cancelled) setStoreProductsById(new Map())
+        } finally {
+          if (!cancelled) setStoreCatalogReady(true)
         }
       })()
     }
@@ -865,6 +860,12 @@ export default function SubscribeModal({
           : selectedPlan === PRODUCT_SLOTS_EDGE_STARTER
             ? starterInterval
             : 'monthly'
+
+      if (isEdgeiOSShell() && !canIapSelected) {
+        setBusy(false)
+        setError('This App Store product is not available yet.')
+        return
+      }
 
       const wantIap = via === 'iap' || (via === 'auto' && canIapSelected)
       if (wantIap) {
@@ -1348,7 +1349,6 @@ export default function SubscribeModal({
                     </SubscribeCardScale>
                     </div>
 
-                    {hideLifetimeCard ? null : (
                     <div
                       className={[
                         'subscribe-plan-slide-3d',
@@ -1437,18 +1437,22 @@ export default function SubscribeModal({
                     </div>
                     </SubscribeCardScale>
                     </div>
-                    )}
                   </div>
                 </div>
               </div>
 
               <div className="subscribe-modal-footer shrink-0 pt-2">
-              {canIapSelected ? null : (
+              {canIapSelected || isEdgeiOSShell() ? null : (
                 <p className="text-center text-xs leading-relaxed text-zinc-500">
                   Secure checkout powered by Stripe.
                 </p>
               )}
-              <p className={`${canIapSelected ? '' : 'mt-1'} text-center text-[11px] leading-relaxed text-zinc-600`}>
+              {isEdgeiOSShell() && storeCatalogReady && !canIapSelected ? (
+                <p className="text-center text-xs leading-relaxed text-zinc-500">
+                  This App Store product is not available on this build.
+                </p>
+              ) : null}
+              <p className={`${canIapSelected || isEdgeiOSShell() ? '' : 'mt-1'} text-center text-[11px] leading-relaxed text-zinc-600`}>
                 <a href="/terms?from=settings" className="underline underline-offset-2 hover:text-zinc-400">
                   Terms
                 </a>
@@ -1478,6 +1482,14 @@ export default function SubscribeModal({
                       : selectedWebCtaPrice
                         ? `Subscribe on the web · ${selectedWebCtaPrice}`
                         : 'Subscribe on the web'}
+                </button>
+              ) : isEdgeiOSShell() ? (
+                <button
+                  type="button"
+                  disabled
+                  className="subscribe-modal-checkout-btn mt-4 w-full min-h-12 shrink-0 rounded-2xl bg-gradient-to-r from-cyan-600 to-cyan-500 font-bold text-white opacity-50"
+                >
+                  {storeCatalogReady ? 'App Store product unavailable' : 'Checking App Store…'}
                 </button>
               ) : (
                 <button

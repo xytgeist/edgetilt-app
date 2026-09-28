@@ -54,6 +54,7 @@ export default function CreatorFanSubscribeModal({
   const [error, setError] = useState('')
   const [storePrice, setStorePrice] = useState('')
   const [canIap, setCanIap] = useState(false)
+  const [iapCatalogReady, setIapCatalogReady] = useState(() => !isEdgeiOSShell())
   const [showWebComparePrice, setShowWebComparePrice] = useState(true)
   const [billingProvider, setBillingProvider] = useState('stripe')
 
@@ -63,6 +64,7 @@ export default function CreatorFanSubscribeModal({
     setError('')
     setStorePrice('')
     setCanIap(false)
+    setIapCatalogReady(!isEdgeiOSShell())
     setShowWebComparePrice(!isEdgeiOSShell())
     setBillingProvider('stripe')
   }, [open])
@@ -82,7 +84,10 @@ export default function CreatorFanSubscribeModal({
           // keep stripe
         }
       }
-      if (!isEdgeiOSShell() || !tierKey) return
+      if (!isEdgeiOSShell() || !tierKey) {
+        if (!cancelled) setIapCatalogReady(true)
+        return
+      }
       try {
         const storefront = await fetchAppleStorefront()
         if (!cancelled) setShowWebComparePrice(canShowIapWebComparePrice(storefront.isUnitedStates))
@@ -90,7 +95,13 @@ export default function CreatorFanSubscribeModal({
         if (!cancelled) setShowWebComparePrice(false)
       }
       const productId = iapProductIdForFanTier(tierKey)
-      if (!productId) return
+      if (!productId) {
+        if (!cancelled) {
+          setCanIap(false)
+          setIapCatalogReady(true)
+        }
+        return
+      }
       try {
         const { products } = await fetchEdgeStoreProducts(supabaseClient, [productId])
         const row = indexStoreProductsById(products).get(productId)
@@ -102,6 +113,8 @@ export default function CreatorFanSubscribeModal({
           setCanIap(false)
           setStorePrice('')
         }
+      } finally {
+        if (!cancelled) setIapCatalogReady(true)
       }
     })()
     return () => {
@@ -156,9 +169,21 @@ export default function CreatorFanSubscribeModal({
   const creatorUserId = String(offer.creator_user_id || '')
   const fanAccessThroughLabel = formatFanSubAccessThrough(fanCurrentPeriodEnd)
   const fanPendingCancel = alreadySubscribed && fanCancelAtPeriodEnd
+  const showIapCta = isEdgeiOSShell() && canIap
+  const showWebCta = !isEdgeiOSShell() || (canIap && showWebComparePrice)
+  const ipaWaiting = isEdgeiOSShell() && !iapCatalogReady
+  const ipaUnavailable = isEdgeiOSShell() && iapCatalogReady && !canIap
 
   const onSubscribe = async (via = 'web') => {
     if (!supabaseClient || !creatorUserId || busy || alreadySubscribed) return
+    if (isEdgeiOSShell() && via === 'web' && (!canIap || !showWebComparePrice)) {
+      setError('Paid fan access uses in-app purchase on iPhone.')
+      return
+    }
+    if (isEdgeiOSShell() && via === 'iap' && !canIap) {
+      setError('This App Store product is not available on this build.')
+      return
+    }
     setBusy(true)
     setError('')
     try {
@@ -394,9 +419,15 @@ export default function CreatorFanSubscribeModal({
                 ) : null}
 
                 <p className="mt-6 text-[12px] leading-snug text-zinc-600">
-                  {canIap
-                    ? 'Web checkout uses Stripe. iPhone checkout uses your Apple ID. Alerts only is free.'
-                    : 'Paid fan access is billed monthly through Stripe. Alerts only is free post notifications.'}
+                  {showIapCta
+                    ? showWebCta
+                      ? 'iPhone checkout uses your Apple ID. Web checkout uses Stripe. Alerts only is free.'
+                      : 'Paid fan access uses your Apple ID. Alerts only is free.'
+                    : ipaUnavailable
+                      ? 'Paid fan access uses in-app purchase. This App Store product is not available on this build. Alerts only is free.'
+                      : ipaWaiting
+                        ? 'Checking App Store products… Alerts only is free.'
+                        : 'Paid fan access is billed monthly through Stripe. Alerts only is free post notifications.'}
                 </p>
                 <p className="mt-2 text-[11px] leading-snug text-zinc-600">
                   <a href="/terms?from=settings" className="underline underline-offset-2 hover:text-zinc-400">
@@ -416,28 +447,45 @@ export default function CreatorFanSubscribeModal({
           <div className="shrink-0 border-t border-zinc-800/90 bg-zinc-950 px-5 pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] pt-4">
             {!alreadySubscribed ? (
               <>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void onSubscribe('web')}
-                  className="flex min-h-[3.25rem] w-full items-center justify-center rounded-full bg-orange-500 px-5 text-[16px] font-bold text-zinc-950 touch-manipulation hover:bg-orange-400 disabled:opacity-50"
-                >
-                  {busy
-                    ? '…'
-                    : canIap
-                      ? showWebComparePrice
-                        ? `Subscribe on the web · ${tierLabel}`
-                        : 'Subscribe on the web'
-                      : `Subscribe · ${tierLabel}`}
-                </button>
-                {canIap ? (
+                {ipaWaiting ? (
+                  <button
+                    type="button"
+                    disabled
+                    className="flex min-h-[3.25rem] w-full items-center justify-center rounded-full bg-orange-500 px-5 text-[16px] font-bold text-zinc-950 opacity-50"
+                  >
+                    Checking App Store…
+                  </button>
+                ) : showIapCta ? (
                   <button
                     type="button"
                     disabled={busy}
                     onClick={() => void onSubscribe('iap')}
-                    className="mt-3 flex min-h-11 w-full items-center justify-center rounded-full border border-zinc-700/90 px-4 text-[15px] font-semibold text-zinc-200 touch-manipulation hover:bg-zinc-900/80 disabled:opacity-50"
+                    className="flex min-h-[3.25rem] w-full items-center justify-center rounded-full bg-orange-500 px-5 text-[16px] font-bold text-zinc-950 touch-manipulation hover:bg-orange-400 disabled:opacity-50"
                   >
                     {busy ? '…' : `Subscribe on iPhone${storePrice ? ` · ${storePrice}` : ''}`}
+                  </button>
+                ) : showWebCta ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void onSubscribe('web')}
+                    className="flex min-h-[3.25rem] w-full items-center justify-center rounded-full bg-orange-500 px-5 text-[16px] font-bold text-zinc-950 touch-manipulation hover:bg-orange-400 disabled:opacity-50"
+                  >
+                    {busy ? '…' : `Subscribe · ${tierLabel}`}
+                  </button>
+                ) : (
+                  <p className="text-center text-[13px] leading-relaxed text-zinc-500">
+                    Paid subscribe is not available in the App Store on this build.
+                  </p>
+                )}
+                {showIapCta && showWebCta ? (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void onSubscribe('web')}
+                    className="mt-3 flex min-h-11 w-full items-center justify-center rounded-full border border-zinc-700/90 px-4 text-[15px] font-semibold text-zinc-200 touch-manipulation hover:bg-zinc-900/80 disabled:opacity-50"
+                  >
+                    {busy ? '…' : `Subscribe on the web · ${tierLabel}`}
                   </button>
                 ) : null}
                 <button

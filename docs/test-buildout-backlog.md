@@ -1152,6 +1152,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-28:** **ASC resubmit chrome (Mac, web `1.4.871`).** IPA Subscribe carousel shows Lifetime again (Starter + Pro + Lifetime). Fan subscribe sheet leads with StoreKit; US Safari is the second door; IPA never offers Stripe-only when the fan/platform SKU is missing. Ryan still attaches Lifetime `6809032089` + seven `com.edgetilt.app.fan_tier_*.monthly` on the version, sets Age Rating Gambling = Yes, films the backgrounded CallKit clip. Do not bump iOS **1.4.95**.
 - **2026-09-27** ... **1.4.870:** Game Hub roster/fantasy fetch: background-aborted quiet polls no longer set `fantasyErr` (stuck red error on Fantasy/Players after iOS resume); success clears the error; 45s live poll skips while `document.hidden`; `visibilitychange` refetches (live, or if first load failed).
 - **2026-09-27** **Incomplete arcs on top (web `1.4.869`).** `DriveMarks` renders non-incomplete marks first, incompletes last (hit targets follow), so a later gain line no longer covers the dashed arc / X.
 - **2026-09-27** **No stale LOS after a made FG (web `1.4.868`).** `playTextIsScoreTry` skips FGs (misses keep a live spot), so after "field goal is GOOD" + official timeout the field kept the old LOS / red zone. New `playTextAwaitsKickoff` (TD/try, made FG, safety) drives `suppressPostTdMarkers`; TD label timing untouched.

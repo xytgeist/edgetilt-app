@@ -9,6 +9,7 @@ import {
 } from 'react'
 import {
   CHAT_CALL_RECORDING_MAX_SECONDS,
+  abandonOpenRoomCall,
   chatAcceptCall,
   chatDeclineCall,
   chatFetchActiveRoomCall,
@@ -16,6 +17,7 @@ import {
   chatJoinCall,
   chatLeaveCall,
   chatStartCall,
+  isExpiredCallStartedAt,
   chatStartRecording,
   chatStopRecording,
   chatUpdateRecordingFocus,
@@ -52,6 +54,7 @@ function isPlaceholderCallId(id) {
 /**
  * @typedef {{
  *   callId: string,
+ *   serverCallId?: string,
  *   roomId: string,
  *   kind: ChatCallKind,
  *   mediaMode: ChatCallMediaMode,
@@ -168,6 +171,7 @@ export function ChatCallProvider({
   const activeCallRef = useRef(activeCall)
   const incomingRef = useRef(incoming)
   const endingRef = useRef(false)
+  const inFlightServerCallIdRef = useRef(/** @type {string | null} */ (null))
   const callerProfileCacheRef = useRef(/** @type {Map<string, CallerProfileSnap>} */ (new Map()))
   const callerProfileFetchedRef = useRef(/** @type {Set<string>} */ (new Set()))
   activeCallRef.current = activeCall
@@ -911,19 +915,22 @@ export function ChatCallProvider({
         ...recordingFieldsFromCall(null),
       }
       endingRef.current = false
+      inFlightServerCallIdRef.current = null
       activeCallRef.current = optimistic
       setActiveCall(optimistic)
       setIncoming(null)
-      try {
-        let res
+      const requestOutgoing = async () => {
         if (isEdgeiOSShell()) {
-          res = await startNativeCall({ roomId, mediaMode, title })
-          if (!res.ok) throw new Error(res.error || 'Could not start call')
-        } else {
-          res = await chatStartCall(supabaseClient, roomId, mediaMode)
+          const nativeRes = await startNativeCall({ roomId, mediaMode, title })
+          if (!nativeRes.ok) throw new Error(nativeRes.error || 'Could not start call')
+          return nativeRes
         }
+        return chatStartCall(supabaseClient, roomId, mediaMode)
+      }
+      const applyStarted = async (res) => {
         const call = res.call
         if (!call?.id) throw new Error('Could not start call')
+        inFlightServerCallIdRef.current = String(call.id)
         if (endingRef.current || activeCallRef.current?.sessionKey !== sessionKey) {
           if (supabaseClient) {
             try {
@@ -932,6 +939,7 @@ export function ChatCallProvider({
               /* already gone */
             }
           }
+          inFlightServerCallIdRef.current = null
           void endEdgeNativeCall({ callId: call.id })
           return null
         }
@@ -944,6 +952,7 @@ export function ChatCallProvider({
         })
         const next = {
           callId: call.id,
+          serverCallId: String(call.id),
           roomId,
           kind: call.kind === 'group_audio' ? 'group_audio' : 'dm_av',
           mediaMode: call.media_mode === 'video' ? 'video' : 'audio',
@@ -988,13 +997,23 @@ export function ChatCallProvider({
           })()
         }
         return call
+      }
+      try {
+        return await applyStarted(await requestOutgoing())
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Could not start call'
-        // Group: call already open → join instead of dead-end 409 toast.
-        if (/already in progress|in progress/i.test(msg)) {
+        // Own leftover / timed-out open row: end it and start fresh.
+        // Someone else's live call in this room: join. Never join an expired row.
+        if (/already in progress|in progress|has expired/i.test(msg)) {
           try {
             const open = await chatFetchActiveRoomCall(supabaseClient, roomId)
             if (open?.id) {
+              const mine = String(open.started_by || '') === String(viewerUserId)
+              const stale = isExpiredCallStartedAt(open.started_at)
+              if (mine || stale) {
+                await abandonOpenRoomCall(supabaseClient, open.id)
+                return await applyStarted(await requestOutgoing())
+              }
               if (activeCallRef.current?.sessionKey === sessionKey) {
                 activeCallRef.current = null
                 setActiveCall(null)
@@ -1007,8 +1026,15 @@ export function ChatCallProvider({
                 openRoom: false,
               })
             }
-          } catch {
-            /* fall through to toast */
+          } catch (retryErr) {
+            const retryMsg = retryErr instanceof Error ? retryErr.message : msg
+            if (activeCallRef.current?.sessionKey === sessionKey) {
+              activeCallRef.current = null
+              setActiveCall(null)
+            }
+            stopOutgoingRingback()
+            showCallStatusToast(retryMsg)
+            return null
           }
         }
         if (activeCallRef.current?.sessionKey === sessionKey) {
@@ -1127,7 +1153,14 @@ export function ChatCallProvider({
       },
       onEnd: (detail) => {
         const callId = String(detail?.callId || '').trim()
-        if (activeCallRef.current && (!callId || activeCallRef.current.callId === callId)) {
+        const current = activeCallRef.current
+        if (
+          current &&
+          (!callId ||
+            current.callId === callId ||
+            isPlaceholderCallId(current.callId) ||
+            current.serverCallId === callId)
+        ) {
           void hangupRef.current?.()
         }
       },
@@ -1190,21 +1223,29 @@ export function ChatCallProvider({
     }
     endingRef.current = true
     setBusy(true)
+    const serverCallId = [
+      isPlaceholderCallId(current.callId) ? '' : current.callId,
+      current.serverCallId,
+      inFlightServerCallIdRef.current,
+    ]
+      .map((id) => String(id || '').trim())
+      .find((id) => id && !isPlaceholderCallId(id)) || ''
     try {
-      if (supabaseClient && !isPlaceholderCallId(current.callId)) {
+      if (supabaseClient && serverCallId) {
         // leave_call: group member exits alone; DM / last participant ends the room.
-        const result = await chatLeaveCall(supabaseClient, current.callId)
+        const result = await chatLeaveCall(supabaseClient, serverCallId)
         if (result?.call_ended !== false) {
-          ensureBroadcast(current.roomId)?.emit('end', { callId: current.callId })
+          ensureBroadcast(current.roomId)?.emit('end', { callId: serverCallId })
         }
       }
     } catch {
       /* still clear local */
     } finally {
+      inFlightServerCallIdRef.current = null
       setActiveCall(null)
       setBusy(false)
       endingRef.current = false
-      void endEdgeNativeCall({ callId: current.callId })
+      void endEdgeNativeCall({ callId: serverCallId || current.callId })
     }
   }, [supabaseClient, ensureBroadcast])
   hangupRef.current = hangup

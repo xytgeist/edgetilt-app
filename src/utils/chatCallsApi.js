@@ -152,6 +152,29 @@ export function chatAttachRecordingPoster(supabase, { messageId, posterUrl, widt
 /** Manual RoomComposite hard cap (must match Edge MAX_RECORDING_SECONDS). */
 export const CHAT_CALL_RECORDING_MAX_SECONDS = 600
 
+/** Must match Edge `MAX_CALL_DURATION_MS` in `chat-calls`. */
+export const CHAT_CALL_MAX_DURATION_MS = 60 * 60 * 1000
+
+export function isExpiredCallStartedAt(startedAt) {
+  const t = Date.parse(String(startedAt || ''))
+  if (!Number.isFinite(t)) return false
+  return Date.now() - t > CHAT_CALL_MAX_DURATION_MS
+}
+
+export async function abandonOpenRoomCall(supabase, callId) {
+  const id = String(callId || '').trim()
+  if (!id) return
+  try {
+    await chatLeaveCall(supabase, id)
+  } catch {
+    try {
+      await chatEndCall(supabase, id)
+    } catch {
+      /* already gone */
+    }
+  }
+}
+
 /**
  * Open ringing/active call for a room (member RLS on `chat_calls`).
  * Includes active participant ids/count (rows with `left_at` null).

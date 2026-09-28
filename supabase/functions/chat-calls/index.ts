@@ -366,6 +366,23 @@ function callTimedOut(startedAt: string | null | undefined) {
   return Date.now() - new Date(startedAt).getTime() > MAX_CALL_DURATION_MS
 }
 
+/** Own abandoned ring, or any open row past the hard cap... Start should not 409 those. */
+function shouldReclaimOpenCall(
+  existing: {
+    started_by?: string
+    status?: string
+    started_at?: string
+    answered_at?: string | null
+  } | null,
+  userId: string,
+) {
+  if (!existing) return false
+  if (callTimedOut(existing.started_at)) return true
+  if (existing.started_by !== userId) return false
+  if (existing.status === 'ringing') return true
+  return existing.status === 'active' && !existing.answered_at
+}
+
 async function endCallRow(
   admin: Admin,
   call: {
@@ -814,22 +831,44 @@ Deno.serve(async (req) => {
           .single()
       }
 
+      const reclaimIfNeeded = async (
+        existing: {
+          id: string
+          chat_room_id: string
+          livekit_room_name: string
+          started_by: string
+          started_at: string
+          answered_at: string | null
+          status: string
+          kind: string
+          media_mode?: string | null
+        } | null,
+      ) => {
+        if (!existing || !shouldReclaimOpenCall(existing, user.id)) return false
+        await stopActiveRecordingEgress(admin, lk, existing)
+        await endCallRow(admin, existing, 'reclaim')
+        await deleteLiveKitRoom(lk.httpUrl, lk.apiKey, lk.apiSecret, existing.livekit_room_name)
+        return true
+      }
+
+      const { data: existingOpen } = await admin
+        .from('chat_calls')
+        .select(CALL_SELECT_BASE)
+        .eq('chat_room_id', roomId)
+        .in('status', ['ringing', 'active'])
+        .maybeSingle()
+      await reclaimIfNeeded(existingOpen)
+
       let { data: inserted, error: insertErr } = await insertCallRow()
 
       if (insertErr?.code === '23505') {
-        // Reclaim own stuck ringing call (failed connect / abandoned start).
         const { data: existing } = await admin
           .from('chat_calls')
-          .select(
-            CALL_SELECT_BASE,
-          )
+          .select(CALL_SELECT_BASE)
           .eq('chat_room_id', roomId)
           .in('status', ['ringing', 'active'])
           .maybeSingle()
-        if (existing && existing.started_by === user.id && existing.status === 'ringing') {
-          await stopActiveRecordingEgress(admin, lk, existing)
-          await endCallRow(admin, existing, 'reclaim')
-          await deleteLiveKitRoom(lk.httpUrl, lk.apiKey, lk.apiSecret, existing.livekit_room_name)
+        if (await reclaimIfNeeded(existing)) {
           ;({ data: inserted, error: insertErr } = await insertCallRow())
         }
       }

@@ -4017,6 +4017,27 @@ html.light [data-lounge-hub-game-pill-meta] {
 [data-lounge-game-pills-scroll]::-webkit-scrollbar {
   display: none;
 }
+/* Player prop cards: live progress per line, live/final box line, pregame lean. */
+[data-lounge-kalshi-player-props] [data-prop-line-stat='sky'] [data-prop-stat-fill] { background: #38bdf8; }
+[data-lounge-kalshi-player-props] [data-prop-line-stat='sky'] [data-prop-stat-value] { color: #f4f4f5; }
+[data-lounge-kalshi-player-props] [data-prop-line-stat='emerald'] [data-prop-stat-fill] { background: #34d399; }
+[data-lounge-kalshi-player-props] [data-prop-line-stat='emerald'] [data-prop-stat-value] { color: #6ee7b7; }
+[data-lounge-kalshi-player-props] [data-prop-line-stat='rose'] [data-prop-stat-fill] { background: rgb(251 113 133 / 0.7); }
+[data-lounge-kalshi-player-props] [data-prop-line-stat='rose'] [data-prop-stat-value] { color: #fda4af; }
+[data-lounge-kalshi-player-props] [data-prop-line-pregame='over'] { color: rgb(110 231 183 / 0.85); }
+[data-lounge-kalshi-player-props] [data-prop-card-live-tag='live'] { background: rgb(239 68 68 / 0.2); color: #fca5a5; }
+[data-lounge-kalshi-player-props] [data-prop-card-live-tag='final'] { background: rgb(63 63 70); color: #d4d4d8; }
+html.light [data-lounge-kalshi-player-props] [data-prop-stat-track] { background-color: #d4d4d8 !important; }
+html.light [data-lounge-kalshi-player-props] [data-prop-line-stat='sky'] [data-prop-stat-fill] { background: #0284c7; }
+html.light [data-lounge-kalshi-player-props] [data-prop-line-stat='sky'] [data-prop-stat-value] { color: #18181b; }
+html.light [data-lounge-kalshi-player-props] [data-prop-line-stat='emerald'] [data-prop-stat-fill] { background: #059669; }
+html.light [data-lounge-kalshi-player-props] [data-prop-line-stat='emerald'] [data-prop-stat-value] { color: #047857; }
+html.light [data-lounge-kalshi-player-props] [data-prop-line-stat='rose'] [data-prop-stat-fill] { background: #e11d48; }
+html.light [data-lounge-kalshi-player-props] [data-prop-line-stat='rose'] [data-prop-stat-value] { color: #be123c; }
+html.light [data-lounge-kalshi-player-props] [data-prop-line-pregame='over'] { color: #047857 !important; }
+html.light [data-lounge-kalshi-player-props] [data-prop-card-live] { background-color: #fafafa !important; color: #27272a !important; }
+html.light [data-lounge-kalshi-player-props] [data-prop-card-live-tag='live'] { background: rgb(239 68 68 / 0.12); color: #b91c1c; }
+html.light [data-lounge-kalshi-player-props] [data-prop-card-live-tag='final'] { background: #d4d4d8; color: #3f3f46; }
 /* Match Roster/Props pill type (12px / semibold). Global select floor is 16px for iOS zoom. */
 [data-lounge-game-players] select {
   appearance: none;

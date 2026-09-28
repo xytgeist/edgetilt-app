@@ -533,6 +533,8 @@ export default function LoungeGameHubModal({
             loading={fantasyLoading}
             error={fantasyErr}
             game={game}
+            live={live}
+            playerBox={detail.playerBox}
           />
         </div>
         {showFantasyTab ? (

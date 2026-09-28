@@ -230,11 +230,17 @@ export type LoungeSportsPlayerBox = {
   pass_yds: number
   pass_td: number
   pass_int: number
+  pass_cmp: number
+  pass_att: number
   rush_yds: number
   rush_td: number
+  rush_att: number
+  rush_lng: number
   rec: number
   rec_yds: number
   rec_td: number
+  rec_tgt: number
+  rec_lng: number
   fum_lost: number
   ret_td: number
   fg_made: number
@@ -1474,7 +1480,9 @@ function espnPlayerBoxes(
           const hs = (ath.headshot && typeof ath.headshot === 'object') ? ath.headshot as Record<string, unknown> : {}
           row = {
             id, name, headshot: String(hs.href || ''), jersey: String(ath.jersey || ''), groups: [],
-            pass_yds: 0, pass_td: 0, pass_int: 0, rush_yds: 0, rush_td: 0, rec: 0, rec_yds: 0, rec_td: 0,
+            pass_yds: 0, pass_td: 0, pass_int: 0, pass_cmp: 0, pass_att: 0,
+            rush_yds: 0, rush_td: 0, rush_att: 0, rush_lng: 0,
+            rec: 0, rec_yds: 0, rec_td: 0, rec_tgt: 0, rec_lng: 0,
             fum_lost: 0, ret_td: 0, fg_made: 0, fg_att: 0, fg_yds: [], xp_made: 0,
           }
           byId.set(id, row)
@@ -1484,13 +1492,18 @@ function espnPlayerBoxes(
           row.pass_yds = num(val('passingYards'))
           row.pass_td = num(val('passingTouchdowns'))
           row.pass_int = num(val('interceptions'))
+          ;[row.pass_cmp, row.pass_att] = madeOf(val('completions/passingAttempts'))
         } else if (group === 'rushing') {
           row.rush_yds = num(val('rushingYards'))
           row.rush_td = num(val('rushingTouchdowns'))
+          row.rush_att = num(val('rushingAttempts'))
+          row.rush_lng = num(val('longRushing'))
         } else if (group === 'receiving') {
           row.rec = num(val('receptions'))
           row.rec_yds = num(val('receivingYards'))
           row.rec_td = num(val('receivingTouchdowns'))
+          row.rec_tgt = num(val('receivingTargets'))
+          row.rec_lng = num(val('longReception'))
         } else if (group === 'fumbles') {
           row.fum_lost = num(val('fumblesLost'))
         } else if (group === 'kickReturns') {

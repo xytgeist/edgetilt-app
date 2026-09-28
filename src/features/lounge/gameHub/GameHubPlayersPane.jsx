@@ -827,6 +827,8 @@ export default function GameHubPlayersPane({
   loading,
   error,
   game = null,
+  live = null,
+  playerBox = null,
   defaultView = 'roster',
 }) {
   const cfb = isCfbGame(game)
@@ -924,7 +926,13 @@ export default function GameHubPlayersPane({
       ) : null}
 
       {view === 'props' ? (
-        <KalshiPlayerPropsBoard props={filteredProps} players={filteredPlayers} />
+        <KalshiPlayerPropsBoard
+          props={filteredProps}
+          players={filteredPlayers}
+          game={game}
+          live={live}
+          playerBox={playerBox}
+        />
       ) : null}
     </div>
   )

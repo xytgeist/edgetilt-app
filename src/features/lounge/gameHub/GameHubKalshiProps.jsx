@@ -1,6 +1,15 @@
 import { useMemo, useState } from 'react'
 import { kalshiCents, kalshiContracts } from './gameHubFormatters.js'
 import { GameStrikeLaddersBoard } from './GameHubStrikeLadders.jsx'
+import {
+  boxForPlayer,
+  boxSummaryParts,
+  classifyPropLine,
+  clearsLine,
+  gameFraction,
+  indexPlayerBox,
+  propLineStats,
+} from './gameHubPropStats.js'
 
 function nameKey(name) {
   return String(name || '')
@@ -394,9 +403,53 @@ function positionRank(pos) {
   return 50
 }
 
-function KalshiPlayerPropGroup({ group, liqScale }) {
+function fmtStatNum(n) {
+  if (n == null) return '-'
+  return Number.isInteger(n) ? String(n) : n.toFixed(1)
+}
+
+/** Under each line: live progress toward the strike, or pregame season average + projection. */
+function PropLineStat({ line, stats }) {
+  if (!line || !stats) return null
+  if (stats.current != null) {
+    const pct = line.strike > 0 ? Math.max(3, Math.min(100, Math.round((stats.current / line.strike) * 100))) : 100
+    const missed = stats.final && !stats.hit
+    const tone = stats.hit ? 'emerald' : missed ? 'rose' : 'sky'
+    return (
+      <div className="mt-1 flex items-center gap-2" data-prop-line-stat={tone}>
+        <div data-prop-stat-track className="h-1 w-14 shrink-0 overflow-hidden rounded-full bg-zinc-800">
+          <div data-prop-stat-fill className="h-full rounded-full" style={{ width: `${pct}%` }} />
+        </div>
+        <span data-prop-stat-value className="truncate text-[11px] font-semibold tabular-nums">
+          {stats.hit ? '✓ ' : ''}
+          {fmtStatNum(stats.current)} {stats.label}
+          {stats.final ? ' final' : ''}
+          {stats.pace != null && !stats.hit ? (
+            <span className="font-normal text-zinc-500"> · pace {stats.pace}</span>
+          ) : null}
+        </span>
+      </div>
+    )
+  }
+  const bits = []
+  if (stats.avg != null) bits.push(`${stats.avgIsMax ? 'Season long' : 'Avg'} ${fmtStatNum(stats.avg)}${stats.avgIsMax ? '' : '/g'}`)
+  if (stats.proj != null) bits.push(`Proj ${fmtStatNum(stats.proj)}`)
+  if (!bits.length) return null
+  const lean = stats.proj ?? stats.avg
+  const over = lean != null && clearsLine(lean, line)
+  return (
+    <div className="mt-0.5 truncate text-[11px] tabular-nums text-zinc-500" data-prop-line-pregame={over ? 'over' : 'under'}>
+      {bits.join(' · ')}
+    </div>
+  )
+}
+
+function KalshiPlayerPropGroup({ group, liqScale, statCtx }) {
   const { name, roster, lines } = group
   const pairs = useMemo(() => pairPlayerLines(lines, name), [lines, name])
+  const box = statCtx ? boxForPlayer(statCtx.index, roster, name) : null
+  const started = statCtx?.status === 'in' || statCtx?.status === 'post'
+  const summary = started ? boxSummaryParts(box) : []
   const aggVol = sumField(lines, 'volume_24h') ?? sumField(lines, 'volume')
   const aggOi = sumField(lines, 'open_interest')
   const aggBook = lines.reduce((acc, p) => {
@@ -417,6 +470,20 @@ function KalshiPlayerPropGroup({ group, liqScale }) {
             </div>
           </div>
         </div>
+        {started && statCtx?.index?.any ? (
+          <div
+            data-prop-card-live
+            className="mt-2 flex items-start gap-2 rounded-lg bg-zinc-800/60 px-2 py-1.5 text-[12px] font-semibold tabular-nums text-zinc-200"
+          >
+            <span
+              data-prop-card-live-tag={statCtx.status === 'post' ? 'final' : 'live'}
+              className="mt-px shrink-0 rounded px-1 text-[9px] font-bold uppercase tracking-wider"
+            >
+              {statCtx.status === 'post' ? 'Final' : 'Live'}
+            </span>
+            <span className="min-w-0">{summary.length ? summary.join(' · ') : 'No stats yet'}</span>
+          </div>
+        ) : null}
         <div className="mt-3">
           <KalshiLiqStrip vol={aggVol} oi={aggOi} book={aggBook} scale={liqScale} compact />
         </div>
@@ -441,13 +508,25 @@ function KalshiPlayerPropGroup({ group, liqScale }) {
       </div>
 
       <div className="divide-y divide-zinc-800/70">
-        {pairs.map((row) => (
+        {pairs.map((row) => {
+          const line = classifyPropLine(row.kalshi || row.polymarket)
+          const stats = statCtx
+            ? propLineStats(line, {
+                box,
+                roster,
+                boxLoaded: statCtx.index.any,
+                status: statCtx.status,
+                fraction: statCtx.fraction,
+              })
+            : null
+          return (
           <div
             key={row.key}
             className="grid grid-cols-[minmax(0,1fr)_minmax(4.5rem,auto)_minmax(4.5rem,auto)] items-center gap-x-2 px-3 py-2"
           >
-            <div className="min-w-0 truncate text-[13px] font-semibold leading-snug text-zinc-100">
-              {row.label}
+            <div className="min-w-0">
+              <div className="truncate text-[13px] font-semibold leading-snug text-zinc-100">{row.label}</div>
+              <PropLineStat line={line} stats={stats} />
             </div>
             <div className="flex justify-center">
               <YesNoButtons prop={row.kalshi} />
@@ -456,7 +535,8 @@ function KalshiPlayerPropGroup({ group, liqScale }) {
               <YesNoButtons prop={row.polymarket} />
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
@@ -511,8 +591,15 @@ function groupPlayerProps(props, rosterPlayers) {
 }
 
 /** Player strike markets grouped under each player … Kalshi | Poly columns. */
-export function KalshiPlayerPropsBoard({ props, players, emptyLabel }) {
+export function KalshiPlayerPropsBoard({ props, players, emptyLabel, game = null, live = null, playerBox = null }) {
   const groups = useMemo(() => groupPlayerProps(props, players), [props, players])
+  const statCtx = useMemo(
+    () =>
+      game
+        ? { index: indexPlayerBox(playerBox), status: game.status, fraction: gameFraction(game, live) }
+        : null,
+    [game, live, playerBox],
+  )
   const scale = useMemo(() => {
     const lines = groups.flatMap((g) => g.lines)
     return liqScaleFor(lines)
@@ -529,7 +616,7 @@ export function KalshiPlayerPropsBoard({ props, players, emptyLabel }) {
   return (
     <div className="space-y-3" data-lounge-kalshi-player-props>
       {groups.map((group) => (
-        <KalshiPlayerPropGroup key={group.key} group={group} liqScale={scale} />
+        <KalshiPlayerPropGroup key={group.key} group={group} liqScale={scale} statCtx={statCtx} />
       ))}
     </div>
   )

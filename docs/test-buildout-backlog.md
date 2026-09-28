@@ -1152,6 +1152,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-28:** **Fan IAP prices are web × 1.15.** ASC Creator Fan SKUs relisted: $4.99→$5.79, $9.99→$11.49, $19.99→$22.99, $49.99→$57.99, $99.99→$114.99, $149.99→$172.99, $249.99→$289.99. iPhone CTA reads StoreKit (force-quit if it still shows web parity). Product ids unchanged. No IPA bump.
 - **2026-09-28:** **Promoted `1.4.871` `test` → `main`.** Prod IPA (`edgetilt.com`) now shows Lifetime on Subscribe. Fan sheet IAP-first. No SQL / Edge. Ryan still attaches Lifetime `6809032089` + seven fan SKUs, Age Rating Gambling = Yes, CallKit clip. Do not bump iOS **1.4.95**.
 - **2026-09-28:** **ASC resubmit chrome (Mac, web `1.4.871`).** IPA Subscribe carousel shows Lifetime again (Starter + Pro + Lifetime). Fan subscribe sheet leads with StoreKit; US Safari is the second door; IPA never offers Stripe-only when the fan/platform SKU is missing. Ryan still attaches Lifetime `6809032089` + seven `com.edgetilt.app.fan_tier_*.monthly` on the version, sets Age Rating Gambling = Yes, films the backgrounded CallKit clip. Do not bump iOS **1.4.95**.
 - **2026-09-27** ... **1.4.870:** Game Hub roster/fantasy fetch: background-aborted quiet polls no longer set `fantasyErr` (stuck red error on Fantasy/Players after iOS resume); success clears the error; 45s live poll skips while `document.hidden`; `visibilitychange` refetches (live, or if first load failed).

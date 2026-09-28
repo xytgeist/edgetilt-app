@@ -145,6 +145,7 @@ get_my_entitlements(user_id) → {
 | Who can enable | **Verified** users + completed Connect onboarding |
 | Pricing | **Preset monthly tiers only** (no custom amount). Creators pick **one** tier at enable time; change tier later via settings (new subscribers at new price; existing subs follow Stripe price-change rules). |
 | Tier MSRP (monthly) | **$4.99**, **$9.99**, **$19.99**, **$49.99**, **$99.99**, **$149.99**, **$249.99** ... locked **2026-07-21** (Ryan; added $149 / $249) |
+| App Store list (US) | Web × **1.15**, next Apple point: **$5.79**, **$11.49**, **$22.99**, **$57.99**, **$114.99**, **$172.99**, **$289.99**. Product ids stay on web cents. |
 | Tier keys (Stripe / DB) | `fan-tier-499`, `fan-tier-999`, `fan-tier-1999`, `fan-tier-4999`, `fan-tier-9999`, `fan-tier-14999`, `fan-tier-24999` ... one shared Connect Price per key platform-wide |
 | Benefits | Fan-only posts + one **Private Subs** fan group chat (creator-named, description + topic keywords, editable avatar) |
 | Chat | **Not E2EE**; creator-owned moderation (§5 UI after tab ships); **Private Subs** tab lists all live fan rooms with in-tab search (name, description, keywords); member rooms highlighted + top; **not** in Inbox; message access members-only |
@@ -196,6 +197,7 @@ Track implementation in `docs/test-buildout-backlog.md` when Phase 1 work starts
 | 2026-09-05 | **`apple-iap-verify` deployed on test** after sandbox confirm 404. Client fails closed before StoreKit if begin cannot reach the function. **`1.4.92`.** |
 | 2026-09-14 | **Lifetime IAP list is `$1,499.99`.** Ryan dropped offer codes. Immediate global on `com.edgetilt.app.slots_edge_lifetime`. Raise to `$1,999` when founding ends. |
 | 2026-09-14 | **Founding Lifetime offer codes.** ASC offer **Founding Lifetime** (`e4b718f8-3bfc-44a8-861c-56fe90217797`) on `com.edgetilt.app.slots_edge_lifetime`. **Superseded same day** when the list moved to `$1,499.99`. |
+| 2026-09-28 | **Fan IAP list is web × 1.15.** ASC Creator Fan SKUs were first priced at web parity (both CTAs showed $49.99). Relisted to next Apple point at or above 1.15: $5.79 / $11.49 / $22.99 / $57.99 / $114.99 / $172.99 / $289.99. Same rule as Edge Pro $9.99 → $11.49. |
 | 2026-09-28 | **IPA Subscribe shows Lifetime again + fan IAP-first.** Review **3.1.1** (Sep 28): fan sheet was Safari/Stripe primary and fan SKUs were not in the submission. Shell carousel = Starter + Pro + Lifetime; fan modal leads with StoreKit; IPA never Stripe-only when the product is missing. Attach Lifetime `6809032089` + seven `fan_tier_*.monthly` on the version. **`1.4.871`.** |
 | 2026-09-23 | **IPA Subscribe carousel hides Lifetime again.** Review **2.1(b)** (Sep 23): app referenced lifetime pro but Lifetime IAP was not in the submission. Shell = Starter + Pro only; web keeps the card. **`1.4.494`.** Superseded **2026-09-28**. |
 | 2026-09-14 | **IPA Subscribe carousel shows Lifetime again.** Apple approved higher price points. Starter + Pro + Lifetime, same as web. **`1.4.210`.** Superseded **2026-09-23**. |

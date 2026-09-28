@@ -1152,6 +1152,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-28:** **Promoted `1.4.873` `test` → `main`.** Fan IAP list web × 1.15, US fan sheet pills + `/mo`, Settings light Verify/PRO chips. **No SQL / Edge.** Prod IPA force-quit after Vercel. Store marketing still **1.4.95**.
 - **2026-09-28:** **Settings light Verify + PRO pills (`1.4.873`).** White Settings canvas made cyan-300 Verify and amber-400 PRO unreadable. Scoped darker cyan / orange-800 PRO under `data-settings-account-section` / `data-settings-pro-pill`. Dark unchanged.
 - **2026-09-28:** **Fan subscribe pills (web `1.4.872`).** US IPA sheet is iPhone / Web pills + one Subscribe CTA. Apple price prints `/mo`. Light pill track under `data-fan-pay-via`.
 - **2026-09-28:** **Fan IAP prices are web × 1.15.** ASC Creator Fan SKUs relisted: $4.99→$5.79, $9.99→$11.49, $19.99→$22.99, $49.99→$57.99, $99.99→$114.99, $149.99→$172.99, $249.99→$289.99. iPhone CTA reads StoreKit (force-quit if it still shows web parity). Product ids unchanged. No IPA bump.

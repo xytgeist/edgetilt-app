@@ -4307,6 +4307,16 @@ html.light [data-lounge-kalshi-player-props] .bg-rose-500\/10,
 html.light [data-lounge-kalshi-game-props] .bg-rose-500\/10 {
   background-color: rgb(244 63 94 / 0.1) !important;
 }
+/* Strike ladder rules: the hub remap paints bg-zinc-800 the same gray as the card, so the lines vanished. */
+html.light [data-lounge-strike-ladder] .h-px.bg-zinc-800 {
+  background-color: #d4d4d8 !important;
+}
+html.light [data-lounge-strike-ladder] .border-zinc-800\/80 {
+  border-color: #d4d4d8 !important;
+}
+html.light [data-lounge-strike-ladder] .w-px.bg-zinc-700 {
+  background-color: #a1a1aa !important;
+}
 
 html.light [data-lounge-market-chart-modal] .border-cyan-400 {
   border-color: var(--color-cyan-600);

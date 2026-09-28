@@ -1152,6 +1152,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-28:** **`chat-calls` on prod** (`jtjgtucumuoswnbauxry`). Start reclaim of own leftover / timed-out open rows. Web **`1.4.885`** already on `main`. Force-quit Prod IPA. Store marketing still **1.4.95**.
 - **2026-09-28:** **Promoted `1.4.885` `test` → `main` (`83a3d9c4`).** Start after unanswered does not join an expired leftover. **No SQL.** Redeploy **`chat-calls`** on test. Force-quit Prod IPA after Vercel. Store marketing still **1.4.95**.
 - **2026-09-28:** **Start after an unanswered call (`1.4.885`).** Hangup now ends the in-flight server row even while chrome is still `pending:`. Start reclaims own leftover / timed-out open rows instead of joining them (that path 410'd "This call has expired" and wrote a new missed card). Redeploy **`chat-calls`** on test. Store marketing still **1.4.95**.
 - **2026-09-28:** **Promoted `1.4.884` `test` → `main` (`ab1cd485`).** Immediate call chrome + outgoing video preview. **No SQL / Edge.** Force-quit Prod IPA after Vercel. Store marketing still **1.4.95**.

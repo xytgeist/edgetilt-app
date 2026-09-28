@@ -1152,6 +1152,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-28:** **OTP auto-confirm (`1.4.887`).** Six digits submit on their own for Account info add-phone, email change, remove-number, and Continue with Phone. No Confirm tap. Store marketing still **1.4.95**.
 - **2026-09-28:** **Account info phone confirm (`1.4.886`).** Save stays disabled until the new number is confirmed. Six digits auto-verify and save. No Confirm tap. Store marketing still **1.4.95**.
 - **2026-09-28:** **`chat-calls` on prod** (`jtjgtucumuoswnbauxry`). Start reclaim of own leftover / timed-out open rows. Web **`1.4.885`** already on `main`. Force-quit Prod IPA. Store marketing still **1.4.95**.
 - **2026-09-28:** **Promoted `1.4.885` `test` → `main` (`83a3d9c4`).** Start after unanswered does not join an expired leftover. **No SQL.** Redeploy **`chat-calls`** on test. Force-quit Prod IPA after Vercel. Store marketing still **1.4.95**.

@@ -12,6 +12,7 @@ import {
 } from './profileGate.js'
 import { countryFromE164, formatPhoneDisplay, nationalFromE164, toE164ForCountry } from '../auth/phoneSignIn.js'
 import PhoneCountryField from '../auth/PhoneCountryField.jsx'
+import { useAutoSubmitOtp } from '../auth/useAutoSubmitOtp.js'
 import { dismissEdgeKeyboard } from '../../utils/edgeNative.js'
 
 const HANDLE_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000
@@ -120,7 +121,6 @@ export default function SettingsAccountInfoScreen({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteConfirmArmed, setDeleteConfirmArmed] = useState(false)
   const fieldActionAtRef = useRef(0)
-  const lastAutoPhoneTokenRef = useRef('')
 
   const reloadProfile = useCallback(async () => {
     if (!supabaseClient || !userId) {
@@ -212,6 +212,15 @@ export default function SettingsAccountInfoScreen({
     return undefined
   }, [phoneCodeFor])
 
+  useEffect(() => {
+    if (!phoneReleaseFor) return undefined
+    const input = document.getElementById('settings-account-phone-release-code')
+    if (!(input instanceof HTMLInputElement)) return undefined
+    input.focus()
+    input.scrollIntoView({ block: 'center' })
+    return undefined
+  }, [phoneReleaseFor])
+
   const normalizedHandleDraft = useMemo(() => normalizeHandle(handleDraft), [handleDraft])
   const trimmedEmailDraft = useMemo(() => String(emailDraft || '').trim(), [emailDraft])
 
@@ -222,7 +231,7 @@ export default function SettingsAccountInfoScreen({
   const authPhoneE164 = toE164ForCountry(authUser?.phone || '')
   const phoneNeedsOtp = Boolean(phoneDirty && nextPhoneE164 && nextPhoneE164 !== authPhoneE164)
   const formDirty = handleDirty || emailDirty || phoneDirty
-  const canSaveChanges = formDirty && !phoneNeedsOtp && !phoneCodeFor
+  const canSaveChanges = formDirty && !phoneNeedsOtp && !phoneCodeFor && !emailCodeFor
   const loginPhoneVerified =
     Boolean(toE164ForCountry(authUser?.phone || '')) && Boolean(authUser?.phone_confirmed_at)
   const accountEmail = String(authUser?.email || '').trim()
@@ -253,7 +262,6 @@ export default function SettingsAccountInfoScreen({
     }
     setPhoneCode('')
     setPhoneCodeFor(nextE164)
-    lastAutoPhoneTokenRef.current = ''
     setPhoneReleaseFor('')
     setPhoneReleaseCode('')
     setSaveMessage(`Code sent to ${formatPhoneDisplay(nextE164)}. Enter it below.`)
@@ -475,15 +483,6 @@ export default function SettingsAccountInfoScreen({
     }
   }, [authUser?.id, onAuthUserUpdated, onUpdated, phoneCode, phoneCodeFor, saveBusy, supabaseClient])
 
-  useEffect(() => {
-    const token = phoneCode.replace(/\D/g, '')
-    if (token.length !== 6 || !phoneCodeFor || saveBusy) return
-    const key = `${phoneCodeFor}:${token}`
-    if (lastAutoPhoneTokenRef.current === key) return
-    lastAutoPhoneTokenRef.current = key
-    void confirmPhoneCode()
-  }, [confirmPhoneCode, phoneCode, phoneCodeFor, saveBusy])
-
   const confirmEmailCode = useCallback(async () => {
     if (!supabaseClient || !authUser?.id || saveBusy || !emailCodeFor) return
     const token = emailCode.replace(/\D/g, '')
@@ -618,6 +617,25 @@ export default function SettingsAccountInfoScreen({
       setSaveBusy(false)
     }
   }, [authUser, onAuthUserUpdated, onUpdated, phoneReleaseCode, phoneReleaseFor, saveBusy, supabaseClient])
+
+  useAutoSubmitOtp({
+    code: phoneCode,
+    scope: phoneCodeFor,
+    busy: saveBusy,
+    onSubmit: confirmPhoneCode,
+  })
+  useAutoSubmitOtp({
+    code: emailCode,
+    scope: emailCodeFor,
+    busy: saveBusy,
+    onSubmit: confirmEmailCode,
+  })
+  useAutoSubmitOtp({
+    code: phoneReleaseCode,
+    scope: phoneReleaseFor,
+    busy: saveBusy,
+    onSubmit: confirmPhoneRelease,
+  })
 
   const onSendPhoneCode = useCallback(async () => {
     if (!supabaseClient || !authUser?.id || saveBusy) return
@@ -817,25 +835,17 @@ export default function SettingsAccountInfoScreen({
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   placeholder="6-digit code"
-                  enterKeyHint="go"
+                  enterKeyHint="done"
                   value={emailCode}
                   onChange={(e) => {
-                    setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 10))
+                    setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))
                     setSaveError('')
                   }}
                   className="min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 px-3 text-[15px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-500/50"
                 />
-                <div className="flex flex-wrap gap-x-4">
-                  <button
-                    type="button"
-                    disabled={saveBusy}
-                    {...fieldActionHandlers(() => {
-                      void confirmEmailCode()
-                    })}
-                    className={PHONE_ACTION_CLASS}
-                  >
-                    {saveBusy ? 'Checking…' : 'Confirm email code'}
-                  </button>
+                {saveBusy ? (
+                  <p className="text-[13px] text-zinc-400">Checking…</p>
+                ) : (
                   <button
                     type="button"
                     disabled={saveBusy}
@@ -846,7 +856,7 @@ export default function SettingsAccountInfoScreen({
                   >
                     Send again
                   </button>
-                </div>
+                )}
               </div>
             ) : null}
           </div>
@@ -951,24 +961,28 @@ export default function SettingsAccountInfoScreen({
                       inputMode="numeric"
                       autoComplete="one-time-code"
                       placeholder="6-digit code"
-                      enterKeyHint="go"
+                      enterKeyHint="done"
                       value={phoneReleaseCode}
                       onChange={(e) => {
-                        setPhoneReleaseCode(e.target.value.replace(/\D/g, '').slice(0, 10))
+                        setPhoneReleaseCode(e.target.value.replace(/\D/g, '').slice(0, 6))
                         setSaveError('')
                       }}
                       className="min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 px-3 text-[15px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-500/50"
                     />
-                    <button
-                      type="button"
-                      disabled={saveBusy}
-                      {...fieldActionHandlers(() => {
-                        void confirmPhoneRelease()
-                      })}
-                      className={PHONE_ACTION_CLASS}
-                    >
-                      {saveBusy ? 'Removing…' : 'Confirm and remove'}
-                    </button>
+                    {saveBusy ? (
+                      <p className="text-[13px] text-zinc-400">Removing…</p>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={saveBusy}
+                        {...fieldActionHandlers(() => {
+                          void startPhoneRelease()
+                        })}
+                        className={PHONE_ACTION_CLASS}
+                      >
+                        Send again
+                      </button>
+                    )}
                   </div>
                 ) : null}
               </div>

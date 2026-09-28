@@ -6,6 +6,7 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { listRundownDayEvents, ptDateFromIso, rundownApiKey } from './loungeBotRundownContext.ts'
 import { fetchSportScores, type ScoreEvent } from './loungeBotLiveContent.ts'
 import { fetchSportOdds, fetchSportOddsHistorical, ptTodayDate } from './loungeBotOddsRun.ts'
+import { type CircaFixture, loadCircaFootballFixtures } from './oddspapiCirca.ts'
 import type { OddsEvent } from './loungeBotOddsCaption.ts'
 import {
   loadMarketFilesForSportWindow,
@@ -164,6 +165,8 @@ export type LoungeSportsOddsRow = {
   away_ml_link?: string | null
   /** Book's Odds API `last_update` (ISO) … live line shopping skips books that stopped moving. */
   last_update?: string | null
+  /** Periodic snapshot (Circa via OddsPapi), not a live feed … client never lets it win on a stale number. */
+  snapshot?: boolean
 }
 
 export type LoungeSportsPlay = {
@@ -2323,6 +2326,31 @@ function sameNflSide(oddsName: string, side: LoungeSportsGameSide): boolean {
   return Boolean(oddsAbbrev) && oddsAbbrev === sideAbbrev
 }
 
+/** Circa (OddsPapi) pregame line as an odds row; `snapshot` = refreshed every few hours, not live. */
+function circaRowForGame(game: LoungeSportsGame, fixtures: CircaFixture[]): LoungeSportsOddsRow | null {
+  const kickoff = Date.parse(String(game.commence_time || ''))
+  const hit = fixtures.find((f) => {
+    const start = Date.parse(f.start)
+    const sameDay = !Number.isFinite(kickoff) || !Number.isFinite(start) || Math.abs(start - kickoff) < 12 * 3600_000
+    return sameDay && oddsNamesHit(f.home, game.home) && oddsNamesHit(f.away, game.away)
+  })
+  if (!hit) return null
+  return {
+    book: 'Circa Sports',
+    home_spread: hit.home_spread,
+    home_spread_price: hit.home_spread_price,
+    away_spread: hit.home_spread != null ? -hit.home_spread : null,
+    away_spread_price: hit.away_spread_price,
+    total: hit.total,
+    over_price: hit.over_price,
+    under_price: hit.under_price,
+    home_ml: hit.home_ml,
+    away_ml: hit.away_ml,
+    last_update: hit.changed_at,
+    snapshot: true,
+  }
+}
+
 function oddsNamesHit(oddsName: string, side: LoungeSportsGameSide): boolean {
   const o = String(oddsName || '').toLowerCase().trim()
   if (!o) return false
@@ -2386,6 +2414,7 @@ function categorizeStat(name: string, abbr: string): string | null {
 
 export async function fetchLoungeSportsGameDetail(
   game: LoungeSportsGame,
+  admin?: SupabaseClient,
 ): Promise<{
   live: LoungeSportsLiveState | null
   odds: LoungeSportsOddsRow[]
@@ -2499,6 +2528,10 @@ export async function fetchLoungeSportsGameDetail(
   const odds = matched
     ? compactOddsBooksFromEvent(matched, String(matched.home_team || game.home.name), String(matched.away_team || game.away.name))
     : []
+  if (game.status === 'pre' && String(game.sport_key || '').includes('football')) {
+    const circa = circaRowForGame(game, await loadCircaFootballFixtures(admin).catch(() => []))
+    if (circa) odds.push(circa)
+  }
 
   return {
     live: liveOut,

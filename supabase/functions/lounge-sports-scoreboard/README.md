@@ -9,6 +9,8 @@ Logged-in Lounge in-post **game pill** + **live game hub**.
 
 **Secrets (project-level, already on odds bots):** `THERUNDOWN_API_KEY`, `THE_ODDS_API_KEY`.
 
+**Circa (optional):** `ODDSPAPI_API_KEY` (OddsPapi free tier, 250 req/mo; account `theo+ops@edgetilt.com`, creds in Mac `.env.local`). Pregame football detail appends a `Circa Sports` odds row (`snapshot: true`) from `_shared/oddspapiCirca.ts`: one `odds-by-tournaments` call (NFL 31 + NCAA 27653) at most every 3h, stored in `market_quote_cache` key `oddspapi:circa:football` so cold starts don't spend quota. Main line = active rung with the most balanced prices (Circa leaves lopsided alt rungs active). Market ids / team names are bundled in `_shared/oddspapiFootballCatalog.ts` … regenerate with `node scripts/oddspapi-football-catalog.mjs` (2 requests). Without the secret the row is simply absent.
+
 ```bash
 supabase functions deploy lounge-sports-scoreboard --project-ref kcosfvmreeiosdjdzycb
 ```

@@ -89,7 +89,7 @@ Deno.serve(async (req) => {
     const game = board.games.find((g) => g.id === eventId)
     if (!game) return json(404, { error: 'Game not on the current slate.' })
     const payload = await cachedDetail(eventId, async () => {
-      const detail = await fetchLoungeSportsGameDetail(game)
+      const detail = await fetchLoungeSportsGameDetail(game, admin)
       const splitMap = await loadPastedBettingSplitsForSlate(admin, game.sport_key, [
         {
           id: game.id,

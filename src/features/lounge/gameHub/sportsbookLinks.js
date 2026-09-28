@@ -1,6 +1,8 @@
 /** Sportsbook homepages for odds-feed book names ("FanDuel", "LowVig.ag", …). No per-bet deep links exist. */
 const SPORTSBOOK_HOME_BY_KEY = {
   pinnacle: 'https://www.pinnacle.com',
+  circasports: 'https://www.circasports.com',
+  circa: 'https://www.circasports.com',
   lowvig: 'https://www.lowvig.ag',
   fanduel: 'https://sportsbook.fanduel.com',
   draftkings: 'https://sportsbook.draftkings.com',

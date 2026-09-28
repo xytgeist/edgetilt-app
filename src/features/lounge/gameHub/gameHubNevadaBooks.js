@@ -6,8 +6,8 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { bookKey } from './sportsbookLinks.js'
 
-/** Odds-feed books with a licensed Nevada app. Circa / Westgate / Station / South Point aren't in the feed. */
-const NEVADA_BOOK_KEYS = new Set(['betmgm', 'caesars', 'williamhill', 'williamhillus'])
+/** Feed books with a licensed Nevada app (Circa via OddsPapi, pregame). Westgate / Station / South Point aren't fed. */
+const NEVADA_BOOK_KEYS = new Set(['betmgm', 'caesars', 'williamhill', 'williamhillus', 'circasports', 'circa'])
 
 const OVERRIDE_KEY = 'edgeNevadaBooks:v1'
 const GEO_KEY = 'edgeGeoRegion:v1'

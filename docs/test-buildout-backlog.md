@@ -1152,6 +1152,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-27** **Incomplete arcs on top (web `1.4.869`).** `DriveMarks` renders non-incomplete marks first, incompletes last (hit targets follow), so a later gain line no longer covers the dashed arc / X.
 - **2026-09-27** **No stale LOS after a made FG (web `1.4.868`).** `playTextIsScoreTry` skips FGs (misses keep a live spot), so after "field goal is GOOD" + official timeout the field kept the old LOS / red zone. New `playTextAwaitsKickoff` (TD/try, made FG, safety) drives `suppressPostTdMarkers`; TD label timing untouched.
 - **2026-09-27** **Roster stripe spans expanded card (web `1.4.867`).** `data-roster-team-bar` now sits on the card `<li>` (z-3) instead of the header, so it runs through the stats table. Light only.
 - **2026-09-27** **Light roster cards redesign (web `1.4.866`).** Ryan picked "team color wash": `data-roster-team-wash` (color-mix gradient of `--roster-team`), `data-roster-team-bar`, `data-roster-light-logo` (raw full-color logo) render only under `html.light`; mesh + treated logo hidden there. Dark mode computed styles unchanged.

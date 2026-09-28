@@ -745,9 +745,11 @@ function DrivePlayMarks({ marks, attackDir, primary, hideKey, throwKey = '', onT
     ;(backLanes[lane] ||= []).push([lo, hi])
     laneOf.set(m.key, lane + 1)
   }
+  // Incomplete arcs + X paint last so later gain / penalty lines never cover them.
+  const paintOrder = [...marks.filter((m) => m.kind !== 'incomplete'), ...marks.filter((m) => m.kind === 'incomplete')]
   return (
     <g data-lounge-drive-marks>
-      {marks.map((m) => {
+      {paintOrder.map((m) => {
         if (m.key === hideKey) return null
         if (m.kind === 'line') {
           const y = RUSH_Y + (laneOf.get(m.key) || 0) * DRIVE_LANE_PX

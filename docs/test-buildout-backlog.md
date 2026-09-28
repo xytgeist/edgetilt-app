@@ -1152,6 +1152,8 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-28:** **Ops calendar grade cells auto (Windows).** Mon Grade leftover + Sun Grade games (NFL / CFB) read `lounge_bot_picks` still `pending` 4h+ after kickoff (last 7 days). Zero → In. Otherwise Due with "N stuck". No mark-in. Grade Pending refreshes the calendar right away. Frontend **`1.4.876`**.
+
 - **2026-09-28:** **Promoted `1.4.875` `test` → `main`.** Sharpe staff fan-price preview dropdown. **No SQL / Edge.** Prod IPA force-quit after Vercel. Store marketing still **1.4.95**.
 - **2026-09-28:** **Sharpe fan-price preview (`1.4.875`).** Staff/admin on `@sharpesignal` tap SUB/bell → native dropdown of the seven fan SKUs, then the subscribe sheet uses that tier. Screenshot helper only.
 - **2026-09-28:** **Promoted `1.4.874` `test` → `main`.** Fan iPhone/Web pills sit under the offer headline. **No SQL / Edge.** Prod IPA force-quit after Vercel. Store marketing still **1.4.95**.

@@ -152,6 +152,7 @@ export function BotSharpDeskPanel({
   const [recentPicks, setRecentPicks] = useState([])
   const [loading, setLoading] = useState(false)
   const [grading, setGrading] = useState(false)
+  const [calendarRefreshKey, setCalendarRefreshKey] = useState(0)
   const [dropping, setDropping] = useState(false)
   const [selectedPicker, setSelectedPicker] = useState('auto')
   const [cardMode, setCardMode] = useState('auto')
@@ -314,6 +315,7 @@ export function BotSharpDeskPanel({
       } else {
         const count = data?.resolved ?? 0
         setToast?.(`Graded ${count} pending pick${count === 1 ? '' : 's'}.`)
+        setCalendarRefreshKey((n) => n + 1)
         await loadData()
       }
     } catch (err) {
@@ -910,6 +912,7 @@ export function BotSharpDeskPanel({
           supabaseClient={supabaseClient}
           botUserId={botUserId}
           onOpenTab={(tab) => setActiveTab(tab)}
+          refreshKey={calendarRefreshKey}
         />
       </div>
 

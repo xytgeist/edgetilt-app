@@ -87,24 +87,24 @@ export const OPS_WEEK_TASKS = [
     sports: ['nfl'],
     kind: 'check',
     label: 'Grade leftover',
-    detail: 'Hit Grade Pending if Sunday auto-grade lagged.',
+    detail: 'Green when no NFL picks are still pending 4h after kickoff. Otherwise hit Grade Pending.',
     days: [1],
     startHour: 0,
     endHour: 18,
     tab: 'scorecard',
-    markable: true,
+    stuckSport: 'nfl',
   },
   {
     id: 'cfb_grade_mon',
     sports: ['cfb'],
     kind: 'check',
     label: 'Grade leftover',
-    detail: 'Hit Grade Pending if Saturday auto-grade lagged.',
+    detail: 'Green when no CFB picks are still pending 4h after kickoff. Otherwise hit Grade Pending.',
     days: [1],
     startHour: 0,
     endHour: 18,
     tab: 'scorecard',
-    markable: true,
+    stuckSport: 'cfb',
   },
   {
     id: 'tue_sync',
@@ -448,12 +448,12 @@ export const OPS_WEEK_TASKS = [
     sports: ['cfb'],
     kind: 'check',
     label: 'Grade games',
-    detail: 'Auto-grade after kickoffs. Hit Grade Pending if anything stuck.',
+    detail: 'Green when no CFB picks are still pending 4h after kickoff. Otherwise hit Grade Pending.',
     days: [0],
     startHour: 12,
     endHour: 22,
     tab: 'scorecard',
-    markable: true,
+    stuckSport: 'cfb',
   },
   {
     id: 'nfl_snf',
@@ -489,12 +489,12 @@ export const OPS_WEEK_TASKS = [
     sports: ['nfl'],
     kind: 'check',
     label: 'Grade games',
-    detail: 'Auto-grade after kickoffs. Hit Grade Pending if anything stuck.',
+    detail: 'Green when no NFL picks are still pending 4h after kickoff. Otherwise hit Grade Pending.',
     days: [0],
     startHour: 17,
     endHour: 23,
     tab: 'scorecard',
-    markable: true,
+    stuckSport: 'nfl',
   },
 ]
 
@@ -617,7 +617,41 @@ export function setOpsWeekCalendarOpen(open) {
 }
 
 export function emptyOpsWeekEvidence() {
-  return { logs: [], picks: [], posts: [], splits: null, trench: null }
+  return { logs: [], picks: [], posts: [], splits: null, trench: null, stuck: null }
+}
+
+const STUCK_SPORT_KEYS = {
+  nfl: 'americanfootball_nfl',
+  cfb: 'americanfootball_ncaaf',
+}
+/** Kickoff + this = game should be final and auto-graded. */
+const STUCK_AFTER_KICKOFF_MS = 4 * 3600_000
+/** Older stuck rows the grader can no longer resolve should not pin the cell red forever. */
+const STUCK_LOOKBACK_MS = 7 * 86_400_000
+
+/**
+ * Pending picks whose game kicked off 4h+ ago (last 7 days), per sport.
+ * @returns {Promise<{ nfl: number, cfb: number } | null>}
+ */
+async function fetchStuckPickCounts(supabaseClient, botUserId, now = new Date()) {
+  if (!supabaseClient || !botUserId) return null
+  const before = new Date(now.getTime() - STUCK_AFTER_KICKOFF_MS).toISOString()
+  const after = new Date(now.getTime() - STUCK_LOOKBACK_MS).toISOString()
+  const count = async (sportKey) => {
+    const { count: n, error } = await supabaseClient
+      .from('lounge_bot_picks')
+      .select('id', { count: 'exact', head: true })
+      .eq('bot_user_id', botUserId)
+      .eq('status', 'pending')
+      .eq('sport_key', sportKey)
+      .lt('commence_time', before)
+      .gte('commence_time', after)
+    if (error) return null
+    return n ?? 0
+  }
+  const [nfl, cfb] = await Promise.all([count(STUCK_SPORT_KEYS.nfl), count(STUCK_SPORT_KEYS.cfb)])
+  if (nfl == null || cfb == null) return null
+  return { nfl, cfb }
 }
 
 function evidenceYmd(iso) {
@@ -808,6 +842,28 @@ export function evaluateOpsWeekTaskOnDay(task, dayYmd, rows, now = new Date(), e
     return { ...task, status: 'upcoming', dayYmd, shopTue, marked: false }
   }
 
+  if (task.stuckSport) {
+    if (dayYmd > clock.ymd) {
+      return { ...task, status: 'upcoming', dayYmd, shopTue, marked: false }
+    }
+    const n = evidence.stuck?.[task.stuckSport]
+    if (n == null) {
+      return { ...task, status: 'upcoming', dayYmd, shopTue, marked: false }
+    }
+    if (n === 0) {
+      return { ...task, status: 'done', dayYmd, shopTue, marked: false, stuckCount: 0 }
+    }
+    return {
+      ...task,
+      status: 'due',
+      dayYmd,
+      shopTue,
+      marked: false,
+      stuckCount: n,
+      detail: `${n} ${task.stuckSport.toUpperCase()} pick${n === 1 ? '' : 's'} still pending 4h+ after kickoff. Hit Grade Pending.`,
+    }
+  }
+
   if (marked) {
     return { ...task, status: 'done', dayYmd, shopTue, marked: true }
   }
@@ -988,7 +1044,7 @@ export async function fetchOpsWeekEvidence(supabaseClient, botUserId, now = new 
     return { ...emptyOpsWeekEvidence(), splits, trench }
   }
   const since = opsWeekQuerySinceIso(now)
-  const [logsRes, picksRes, postsRes, splits, trench] = await Promise.all([
+  const [logsRes, picksRes, postsRes, splits, trench, stuck] = await Promise.all([
     supabaseClient
       .from('lounge_bot_publish_log')
       .select('post_kind,status,created_at,dedupe_key,caption')
@@ -1013,6 +1069,7 @@ export async function fetchOpsWeekEvidence(supabaseClient, botUserId, now = new 
       .limit(80),
     splitsPromise,
     trenchPromise,
+    fetchStuckPickCounts(supabaseClient, botUserId, now),
   ])
   return {
     logs: logsRes.data || [],
@@ -1020,5 +1077,6 @@ export async function fetchOpsWeekEvidence(supabaseClient, botUserId, now = new 
     posts: postsRes.data || [],
     splits,
     trench,
+    stuck,
   }
 }

@@ -28,6 +28,7 @@ import {
  *   supabaseClient?: import('@supabase/supabase-js').SupabaseClient | null
  *   botUserId?: string
  *   onOpenTab?: (tab: string) => void
+ *   refreshKey?: number
  * }} props
  */
 export function SyndicateOpsWeekCalendar({
@@ -35,6 +36,7 @@ export function SyndicateOpsWeekCalendar({
   supabaseClient = null,
   botUserId = '',
   onOpenTab,
+  refreshKey = 0,
 }) {
   const [nowTick, setNowTick] = useState(() => Date.now())
   const [sport, setSport] = useState(() => opsWeekSportFilter())
@@ -61,7 +63,7 @@ export function SyndicateOpsWeekCalendar({
       cancelled = true
       window.clearInterval(t)
     }
-  }, [supabaseClient, botUserId])
+  }, [supabaseClient, botUserId, refreshKey])
 
   const week = useMemo(
     () => buildOpsWeek(rows, new Date(nowTick), evidence),
@@ -248,6 +250,11 @@ export function SyndicateOpsWeekCalendar({
                             <p className="mt-0.5 text-[11px] font-medium text-zinc-200 leading-snug">
                               {task.label}
                             </p>
+                            {task.stuckCount > 0 ? (
+                              <p className="mt-0.5 text-[10px] font-semibold text-amber-300">
+                                {task.stuckCount} stuck
+                              </p>
+                            ) : null}
                           </button>
                           {task.search ? (
                             <button

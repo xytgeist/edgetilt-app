@@ -439,12 +439,10 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
         completion(.success(["ok": true, "skipped": "voip-in-flight"]))
         return
       }
-      if appState != .active {
-        NSLog("EdgeCallKit skip JS/APNs: not active (\(Self.applicationStateLabel(appState))) callId=\(trimmedCallId)")
-        EdgeCallKitCallerAvatar.prefetchToCache(avatarUrl: avatarUrl)
-        completion(.success(["ok": true, "skipped": "background"]))
-        return
-      }
+      // A running backgrounded IPA still gets Realtime. Skipping here made
+      // CallKit depend only on PushKit, so a missed VoIP wake was silence.
+      // Try the report. iOS accepts this when the process is already running.
+      // PushKit still reports in its own callback if this fails or never lands.
     }
     // Clean up any stale previous calls before reporting this new one.
     if !trimmedCallId.isEmpty {

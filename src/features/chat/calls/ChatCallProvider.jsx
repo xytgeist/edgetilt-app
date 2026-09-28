@@ -153,6 +153,7 @@ export function ChatCallProvider({
   )
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [incomingUseWebOverlay, setIncomingUseWebOverlay] = useState(false)
   const broadcastByRoomRef = useRef(/** @type {Map<string, ReturnType<typeof subscribeToChatCallBroadcast>>} */ (new Map()))
 
   const showCallStatusToast = useCallback((message) => {
@@ -174,6 +175,9 @@ export function ChatCallProvider({
   const callerProfileFetchedRef = useRef(/** @type {Set<string>} */ (new Set()))
   activeCallRef.current = activeCall
   incomingRef.current = incoming
+  useEffect(() => {
+    if (!incoming) setIncomingUseWebOverlay(false)
+  }, [incoming])
 
   const resolveCallerProfile = useCallback(
     (roomId, fromUserId) => {
@@ -334,6 +338,7 @@ export function ChatCallProvider({
       const mediaMode = (row.media_mode || row.mediaMode) === 'video' ? 'video' : 'audio'
       if (roomId) ensureBroadcast(roomId)
       const profile = resolveCallerProfile(roomId, fromUserId)
+      setIncomingUseWebOverlay(!isEdgeiOSShell())
       setIncoming({
         callId: row.id,
         roomId,
@@ -349,6 +354,11 @@ export function ChatCallProvider({
         handle: profile.title || 'Incoming call',
         hasVideo: mediaMode === 'video',
         avatarUrl: profile.avatarUrl,
+      }).then((res) => {
+        if (incomingRef.current?.callId !== String(row.id)) return
+        if (res?.via === 'noop' || res?.via === 'error' || res?.skipped || res?.ok === false) {
+          setIncomingUseWebOverlay(true)
+        }
       })
       void resolveCallerProfileAsync(roomId, fromUserId).then((next) => {
         setIncoming((prev) =>
@@ -1457,7 +1467,7 @@ export function ChatCallProvider({
     <ChatCallContext.Provider value={value}>
       {children}
       <ChatIncomingCallOverlay
-        open={Boolean(incoming) && !activeCall && !callbackPrompt}
+        open={Boolean(incoming) && !activeCall && !callbackPrompt && incomingUseWebOverlay}
         title={incoming?.title || 'Incoming call'}
         avatarUrl={incoming?.avatarUrl || null}
         subtitle={

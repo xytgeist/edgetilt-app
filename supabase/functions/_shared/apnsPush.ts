@@ -289,6 +289,7 @@ export async function postVoipApns(
     'content-type': 'application/json',
   }
   const body: Record<string, unknown> = {
+    aps: { 'content-available': 1 },
     eventType: payload.eventType || 'chat_call_invite',
     chatCallId: payload.chatCallId,
     roomId: payload.roomId || '',
@@ -343,25 +344,26 @@ export async function sendVoipApnsToUser(
   let removed = 0
 
   for (const row of tokens) {
-    const env: ApnsEnvironment = row.environment === 'production' ? 'production' : 'sandbox'
+    const preferred: ApnsEnvironment = row.environment === 'production' ? 'production' : 'sandbox'
+    const order: ApnsEnvironment[] = [preferred, otherEnvironment(preferred)]
     try {
-      let result = await postVoipApns(config, row.token, env, row.bundle_id, payload)
-      if (!result.ok && shouldRetryOtherEnvironment(result.reason)) {
-        const alt = otherEnvironment(env)
-        const retry = await postVoipApns(config, row.token, alt, row.bundle_id, payload)
-        if (retry.ok) {
-          await admin.from('apns_device_tokens').update({ environment: alt }).eq('id', row.id)
-          result = retry
-        } else {
-          result = retry
+      let delivered = false
+      let last: ApnsPostResult | null = null
+      for (const env of order) {
+        const attempt = await postVoipApns(config, row.token, env, row.bundle_id, payload)
+        last = attempt
+        if (attempt.ok) {
+          if (env !== preferred) {
+            await admin.from('apns_device_tokens').update({ environment: env }).eq('id', row.id)
+          }
+          sent += 1
+          delivered = true
+          break
         }
       }
-      if (result.ok) {
-        sent += 1
-        continue
-      }
+      if (delivered) continue
       failed += 1
-      if (shouldDropToken(result.status, result.reason) || result.reason === 'BadDeviceToken' || (result.status === 403 && result.reason === 'BadEnvironmentKeyInToken')) {
+      if (last && shouldDropToken(last.status, last.reason)) {
         const { error: deleteError } = await admin
           .from('apns_device_tokens')
           .delete()

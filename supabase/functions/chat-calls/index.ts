@@ -252,16 +252,20 @@ async function enqueueCallInvitePush(
   if (recipientIds.length > 0) {
     try {
       await Promise.allSettled(
-        recipientIds.map((uid) =>
-          sendVoipApnsToUser(admin, uid, {
+        recipientIds.map(async (uid) => {
+          const stats = await sendVoipApnsToUser(admin, uid, {
             chatCallId: callId,
             eventType: 'chat_call_invite',
             roomId,
             callerName: callerName || 'Incoming call',
             hasVideo: Boolean(hasVideo),
             avatarUrl: avatarUrl || undefined,
-          }),
-        ),
+          })
+          console.log(
+            `chat-calls: voip invite user=${uid} call=${callId} sent=${stats.sent} failed=${stats.failed} skipped=${stats.skipped} reason=${stats.reason || ''}`,
+          )
+          return stats
+        }),
       )
     } catch (err) {
       console.warn('chat-calls: direct voip invite push failed', err)

@@ -77,7 +77,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo ACTIVE TRACK 2026-09-28 ... ASC IAP chrome for resubmit
 
-**I am Mac Theo.** **1.4.95** Waiting for Review on **20260928212300** with Lifetime + Creator Fan + 7 fan SKUs (`4d7a133d`, 10 items). Web **`1.4.889`** incoming always shows the in-app Accept sheet on IPA (CallKit is extra). Leftover outgoing chrome cannot swallow a ring. Do not bump **1.4.95**.
+**I am Mac Theo.** **1.4.95** Waiting for Review on **20260928212300** with Lifetime + Creator Fan + 7 fan SKUs (`4d7a133d`, 10 items). Web **`1.4.890`**: focused incoming is CallKit pill only. Native no longer skips JS CallKit when backgrounded (needs a new Prod IPA). VoIP send tries both APNs hosts. Do not bump **1.4.95**.
 
 ### Mac Theo ACTIVE TRACK 2026-09-25 ... CFB stack on prod
 

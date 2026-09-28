@@ -243,6 +243,7 @@ export default function LoungeGameHubModal({
     const cachedFantasy = readGameHubCache(gameId)?.fantasy
     setFantasy(cachedFantasy || EMPTY_FANTASY)
     let cancelled = false
+    let haveRoster = Boolean(cachedFantasy)
 
     const loadRoster = ({ showLoading }) => {
       if (showLoading) {
@@ -267,12 +268,15 @@ export default function LoungeGameHubModal({
         .then((data) => {
           if (cancelled) return
           if (data?.error) {
-            setFantasyErr(String(data.error))
+            // Quiet polls keep the last good roster; iOS aborts in-flight fetches on background.
             if (showLoading) {
+              setFantasyErr(String(data.error))
               setFantasy({ players: [], props: [], season: null, week: null, sources: [] })
             }
             return
           }
+          setFantasyErr('')
+          haveRoster = true
           const next = {
             players: Array.isArray(data.players) ? data.players : [],
             props: Array.isArray(data.props) ? data.props : [],
@@ -301,10 +305,20 @@ export default function LoungeGameHubModal({
     loadRoster({ showLoading: !cachedFantasy })
     // NFL fantasy quiet-poll while live; CFB roster is static for the week.
     const pollMs = !cfb && game.status === 'in' ? 45_000 : 0
-    const id = pollMs ? window.setInterval(() => loadRoster({ showLoading: false }), pollMs) : 0
+    const id = pollMs
+      ? window.setInterval(() => {
+          if (typeof document !== 'undefined' && document.hidden) return
+          loadRoster({ showLoading: false })
+        }, pollMs)
+      : 0
+    const onVisible = () => {
+      if (!document.hidden && (pollMs || !haveRoster)) loadRoster({ showLoading: false })
+    }
+    document.addEventListener('visibilitychange', onVisible)
     return () => {
       cancelled = true
       if (id) window.clearInterval(id)
+      document.removeEventListener('visibilitychange', onVisible)
     }
   }, [game?.id, game?.status, game?.sport_key, game?.away?.abbrev, game?.home?.abbrev, supabaseClient])
 

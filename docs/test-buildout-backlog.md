@@ -1152,6 +1152,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-27** **Theo prod account + Circa verified on prod.** Created `@theo_ops` on production (Slots Edge `admin_comp_` comp, analytics-excluded; `scripts/theo-test-session.mjs --prod`). Prod MNF detail returned the Circa row (+3.5 -105/-115, 41.5, +175/-200); prod cache `oddspapi:circa:football` has 49 fixtures, 1 call used.
 - **2026-09-27** **Test OddsPapi key removed.** Circa verified, so test no longer holds `ODDSPAPI_API_KEY` / `ODDSPAPI_BUDGET_30D` (zero requests; no Circa row on lvslotpro). Prod keeps the key at 210/30d.
 - **2026-09-27** **Circa budget split + prod promote.** Test and prod share one OddsPapi key, so the rolling cap is per-env via `ODDSPAPI_BUDGET_30D` (prod 210, test 25; weekly brake = 7/30 of it). Prod secrets set + Edge deployed with web `1.4.862`.
 - **2026-09-27** **Circa refresh follows kickoffs (Mac, test Edge `lounge-sports-scoreboard`).** Flat 3h replaced by `circaRefreshDue` in `_shared/oddspapiCirca.ts`: hourly within 4h of the next Circa kickoff, 2h within 12h, 6h otherwise, nothing midnight-6am PT; rolling-30-day hard cap 235 (call stamps in the cache payload) and doubled intervals past 54 calls/7 days. Worst-case demand sim (a pregame detail open every 5 min, full NFL + CFB slate): 235 calls spread across the whole 30 days, ~Sat 15 / Sun 13 / Fri 12 / Thu 10 / Mon 6 / Tue-Wed 2.

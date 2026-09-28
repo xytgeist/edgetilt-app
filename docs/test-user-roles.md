@@ -255,9 +255,11 @@ order by email;
 
 Excluded users do not get new **`app_section_visits`** rows; Monitor aggregates also omit them (including historical rows).
 
-### Theo agent account (test only)
+### Theo agent account (test + production)
 
-**`@theo_ops`** / **`theo+ops@edgetilt.com`** (auth id `b3b218e3-4765-4f43-84db-bb9c58fc42f6`) … created Sep 27, 2026 via the admin API with the email pre-confirmed (no mailbox needed). `role = user`, **`slots-edge`** active in `user_subscriptions`, email + handle on the analytics blocklists. Password is in `.env.local` only; sign in from scripts with **`scripts/theo-test-session.mjs`**. Flip to free with the revoke-by-handle recipe above (`theo_ops`). Not created on production.
+**`@theo_ops`** / **`theo+ops@edgetilt.com`** (auth id `b3b218e3-4765-4f43-84db-bb9c58fc42f6`) … created Sep 27, 2026 via the admin API with the email pre-confirmed (no mailbox needed). `role = user`, **`slots-edge`** active in `user_subscriptions`, email + handle on the analytics blocklists. Password is in `.env.local` only; sign in from scripts with **`scripts/theo-test-session.mjs`**. Flip to free with the revoke-by-handle recipe above (`theo_ops`).
+
+**Production twin** (Sep 27, 2026, Ryan approved): same email/handle, auth id `e92d6d7a-f2ea-460f-a846-5702ea3ee9e9`, `role = user`, `slots-edge` comp with `admin_comp_<uid>` Stripe ids (billing reconcile skips `admin_comp_*`), same analytics blocklists. Separate password: `THEO_PROD_EMAIL` / `THEO_PROD_PASSWORD` / `THEO_PROD_ANON_KEY` in `.env.local`. Use `--prod` on the session script for read-style checks only; no posting or writes as Theo on prod without Ryan asking.
 
 ## 6. Local env override
 

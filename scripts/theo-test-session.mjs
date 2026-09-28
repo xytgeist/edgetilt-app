@@ -1,17 +1,20 @@
 #!/usr/bin/env node
 /**
- * Theo's agent test account (@theo_ops on the TEST Supabase project only).
+ * Theo's agent account (@theo_ops, separate users on test and production).
  *
- *   node scripts/theo-test-session.mjs                       → prints a short-lived access token
+ *   node scripts/theo-test-session.mjs                       → prints a short-lived access token (test)
  *   node scripts/theo-test-session.mjs --invoke <fn> [json]  → calls an Edge Function as Theo, prints JSON
+ *   add --prod                                               → same against production (read-style calls only)
  *
- * Reads THEO_TEST_EMAIL / THEO_TEST_PASSWORD + VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY from `.env.local`.
- * Refuses to run against anything but the test project (`kcosfvmreeiosdjdzycb`).
+ * Test: THEO_TEST_EMAIL / THEO_TEST_PASSWORD + VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY from `.env.local`.
+ * Prod: THEO_PROD_EMAIL / THEO_PROD_PASSWORD / THEO_PROD_ANON_KEY from `.env.local` + SUPABASE_URL from
+ * `.env.supabase.production`. Each mode refuses any project but its own.
  */
 import fs from 'node:fs'
 import path from 'node:path'
 
 const TEST_REF = 'kcosfvmreeiosdjdzycb'
+const PROD_REF = 'jtjgtucumuoswnbauxry'
 
 function readEnv(file) {
   const out = {}
@@ -23,18 +26,22 @@ function readEnv(file) {
   return out
 }
 
+const args = process.argv.slice(2)
+const prod = args.includes('--prod')
 const env = { ...readEnv(path.resolve('.env.local')), ...process.env }
-const url = String(env.VITE_SUPABASE_URL || '').replace(/\/$/, '')
-const anon = env.VITE_SUPABASE_ANON_KEY
-const email = env.THEO_TEST_EMAIL
-const password = env.THEO_TEST_PASSWORD
+const prodEnv = prod ? readEnv(path.resolve('.env.supabase.production')) : {}
+const url = String((prod ? prodEnv.SUPABASE_URL : env.VITE_SUPABASE_URL) || '').replace(/\/$/, '')
+const anon = prod ? env.THEO_PROD_ANON_KEY : env.VITE_SUPABASE_ANON_KEY
+const email = prod ? env.THEO_PROD_EMAIL : env.THEO_TEST_EMAIL
+const password = prod ? env.THEO_PROD_PASSWORD : env.THEO_TEST_PASSWORD
+const ref = prod ? PROD_REF : TEST_REF
 
-if (!url.includes(TEST_REF)) {
-  console.error(`Refusing: VITE_SUPABASE_URL is not the test project (${TEST_REF}).`)
+if (!url.includes(ref)) {
+  console.error(`Refusing: Supabase URL is not the ${prod ? 'production' : 'test'} project (${ref}).`)
   process.exit(1)
 }
 if (!anon || !email || !password) {
-  console.error('Missing VITE_SUPABASE_ANON_KEY / THEO_TEST_EMAIL / THEO_TEST_PASSWORD in .env.local.')
+  console.error(`Missing ${prod ? 'THEO_PROD_*' : 'VITE_SUPABASE_ANON_KEY / THEO_TEST_*'} credentials in .env.local.`)
   process.exit(1)
 }
 
@@ -49,12 +56,12 @@ if (!auth.ok || !session.access_token) {
   process.exit(1)
 }
 
-const args = process.argv.slice(2)
-const invokeAt = args.indexOf('--invoke')
+const positional = args.filter((a) => a !== '--prod')
+const invokeAt = positional.indexOf('--invoke')
 if (invokeAt === -1) {
   process.stdout.write(`${session.access_token}\n`)
 } else {
-  await invoke(args[invokeAt + 1], args[invokeAt + 2] || '{}')
+  await invoke(positional[invokeAt + 1], positional[invokeAt + 2] || '{}')
 }
 
 // process.exit() would truncate large piped output … set the code and let stdout drain.

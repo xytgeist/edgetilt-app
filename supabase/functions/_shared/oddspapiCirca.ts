@@ -9,10 +9,11 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { ODDSPAPI_FOOTBALL_MARKETS, ODDSPAPI_FOOTBALL_PARTICIPANTS } from './oddspapiFootballCatalog.ts'
 
 const HOUR_MS = 60 * 60 * 1000
-/** Free cap is 250 per month; the rest is slack for catalog regen / manual checks. Rolling, so their reset date doesn't matter. */
-const BUDGET_30D = 235
-/** ~235 / 30 * 7 … past this in 7 days, every interval doubles. */
-const WEEK_SOFT_CAP = 54
+/**
+ * Calls per rolling 30 days (free cap 250, rest is slack for catalog regen / manual checks; rolling, so their
+ * reset date doesn't matter). Test + prod share one key, so each sets `ODDSPAPI_BUDGET_30D` (prod 210, test 25).
+ */
+const DEFAULT_BUDGET_30D = 235
 const MEMORY_MS = 5 * 60 * 1000
 const CACHE_KEY = 'oddspapi:circa:football'
 const TOURNAMENT_IDS = [31, 27653] // NFL, NCAA regular season
@@ -49,17 +50,24 @@ function ptHour(ms: number): number {
 
 /**
  * Spend the free tier where lines move: hourly within 4h of the next Circa kickoff, 2h within 12h, 6h
- * otherwise; nothing midnight-6am PT (8h max gap); hard stop at `BUDGET_30D` calls in a rolling 30 days.
+ * otherwise; nothing midnight-6am PT (8h max gap); hard stop at `budget30d` calls in a rolling 30 days.
  */
-export function circaRefreshDue(stored: Payload | null, lastAttemptMs: number, now = Date.now()): boolean {
+export function circaRefreshDue(
+  stored: Payload | null,
+  lastAttemptMs: number,
+  now = Date.now(),
+  budget30d = DEFAULT_BUDGET_30D,
+): boolean {
   const calls = (stored?.calls || []).map((c) => Date.parse(c)).filter((t) => now - t < 30 * 24 * HOUR_MS)
-  if (calls.length >= BUDGET_30D) return false
+  if (calls.length >= budget30d) return false
+  // Past a 7-day share of the budget, every interval doubles so one busy week can't eat the month.
+  const weekSoftCap = Math.floor((budget30d * 7) / 30)
   const since = now - lastAttemptMs
   if (!stored?.fixtures?.length) return since >= HOUR_MS / 2
   const kicks = stored.fixtures.map((f) => Date.parse(f.start)).filter((t) => t > now)
   const hoursToKick = kicks.length ? (Math.min(...kicks) - now) / HOUR_MS : Infinity
   let interval = hoursToKick <= 4 ? HOUR_MS : hoursToKick <= 12 ? 2 * HOUR_MS : 6 * HOUR_MS
-  if (calls.filter((t) => now - t < 7 * 24 * HOUR_MS).length >= WEEK_SOFT_CAP) interval *= 2
+  if (calls.filter((t) => now - t < 7 * 24 * HOUR_MS).length >= weekSoftCap) interval *= 2
   if (ptHour(now) < 6) return since >= 8 * HOUR_MS
   return since >= interval
 }
@@ -160,7 +168,8 @@ async function refresh(admin: SupabaseClient): Promise<Payload | null> {
     .maybeSingle()
   const stored = (row?.payload as Payload | undefined) || null
   const storedAt = row?.fetched_at ? Date.parse(String(row.fetched_at)) : 0
-  if (!circaRefreshDue(stored, storedAt)) return stored
+  const budget = Number(Deno.env.get('ODDSPAPI_BUDGET_30D')) || DEFAULT_BUDGET_30D
+  if (!circaRefreshDue(stored, storedAt, Date.now(), budget)) return stored
 
   const key = Deno.env.get('ODDSPAPI_API_KEY')?.trim()
   if (!key) return stored

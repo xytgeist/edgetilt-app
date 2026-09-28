@@ -48,6 +48,7 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: 'Method not allowed' }, 405)
   }
 
+  let creatorUserId = ''
   try {
     const admin = createBillingAdmin()
     const auth = await getUserFromJwt(admin, req)
@@ -60,7 +61,7 @@ Deno.serve(async (req) => {
     } catch {
       body = {}
     }
-    const creatorUserId = String(body.creator_user_id || '').trim()
+    creatorUserId = String(body.creator_user_id || '').trim()
 
     const { data: profile, error: profileErr } = await admin
       .from('profiles')
@@ -104,11 +105,26 @@ Deno.serve(async (req) => {
       const stripeSubId = String(fanSub?.stripe_subscription_id || '').trim()
       const fanStatus = String(fanSub?.status || '')
       const fanActive = fanStatus === 'active' || fanStatus === 'trialing'
-      if (!fanActive || !stripeSubId.startsWith('sub_')) {
+      const localOnly =
+        /^sub_manual_/i.test(stripeSubId) ||
+        /_manual_/i.test(stripeSubId) ||
+        /^admin_comp_/i.test(stripeSubId) ||
+        /^test_/i.test(stripeSubId)
+      if (!fanActive || !stripeSubId) {
         return jsonResponse(
           { error: 'No active fan subscription found to manage in billing.' },
           400,
         )
+      }
+
+      if (localOnly) {
+        const { error: dropErr } = await admin
+          .from('creator_subscriptions')
+          .delete()
+          .eq('subscriber_user_id', auth.user.id)
+          .eq('creator_user_id', creatorUserId)
+        if (dropErr) throw new Error(dropErr.message)
+        return jsonResponse({ dropped: true })
       }
 
       sessionParams.flow_data = {
@@ -128,6 +144,23 @@ Deno.serve(async (req) => {
     return jsonResponse({ url: portal.url })
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
+    const missing = /no such subscription/i.test(msg)
+    if (missing && creatorUserId) {
+      try {
+        const admin = createBillingAdmin()
+        const auth = await getUserFromJwt(admin, req)
+        if (!('error' in auth)) {
+          const { error: dropErr } = await admin
+            .from('creator_subscriptions')
+            .delete()
+            .eq('subscriber_user_id', auth.user.id)
+            .eq('creator_user_id', creatorUserId)
+          if (!dropErr) return jsonResponse({ dropped: true })
+        }
+      } catch {
+        // fall through
+      }
+    }
     return jsonResponse({ error: msg || 'Server error' }, 500)
   }
 })

@@ -2846,7 +2846,6 @@ export default function LoungeProfileFullScreen({
   const canPreviewFanTiers = Boolean(
     isSharpeFanPreviewProfile &&
       creatorFanOffer &&
-      !hasCreatorFanSub &&
       !isOwnProfile &&
       (viewerIsAdmin || postCardProps?.loungeViewerIsStaff),
   )
@@ -3894,33 +3893,30 @@ export default function LoungeProfileFullScreen({
               ) : !isOwnProfile ? (
                 <div className="pointer-events-auto relative z-20 mb-1 shrink-0">
                   <div className="flex flex-wrap items-center justify-end gap-2">
-                  {creatorFanOffer && hasCreatorFanSub ? (
-                    <ProfileFanSubPillButton
-                      disabled={socialBusy}
-                      subscribed
-                      onClick={() => supportCreatorFan()}
-                      title="View your fan subscription"
-                      aria-label="Fan subscription and post alerts"
-                    />
-                  ) : creatorFanOffer ? (
+                  {creatorFanOffer ? (
                     <span className="relative inline-flex">
                       <ProfileFanSubPillButton
                         disabled={socialBusy}
-                        postAlertsOn={isSubscribed}
+                        subscribed={hasCreatorFanSub}
+                        postAlertsOn={!hasCreatorFanSub && isSubscribed}
                         onClick={() => supportCreatorFan()}
                         title={
-                          isSubscribed
-                            ? 'Manage post alerts or subscribe'
-                            : canPreviewFanTiers
-                              ? 'Pick a fan price to preview'
-                              : `Subscribe or post alerts · ${formatFanTierLabel(creatorFanOffer.fan_tier_key)}`
+                          canPreviewFanTiers
+                            ? 'Pick a fan price to preview'
+                            : hasCreatorFanSub
+                              ? 'View your fan subscription'
+                              : isSubscribed
+                                ? 'Manage post alerts or subscribe'
+                                : `Subscribe or post alerts · ${formatFanTierLabel(creatorFanOffer.fan_tier_key)}`
                         }
                         aria-label={
-                          isSubscribed
-                            ? 'Manage post alerts or subscribe'
-                            : canPreviewFanTiers
-                              ? 'Pick a fan price to preview'
-                              : 'Subscribe or turn on post alerts'
+                          canPreviewFanTiers
+                            ? 'Pick a fan price to preview'
+                            : hasCreatorFanSub
+                              ? 'Fan subscription and post alerts'
+                              : isSubscribed
+                                ? 'Manage post alerts or subscribe'
+                                : 'Subscribe or turn on post alerts'
                         }
                       />
                       {canPreviewFanTiers ? (
@@ -4515,7 +4511,7 @@ export default function LoungeProfileFullScreen({
         onClose={() => setFanSubscribeModalOpen(false)}
         supabaseClient={supabaseClient}
         offer={displayFanOffer}
-        alreadySubscribed={hasCreatorFanSub}
+        alreadySubscribed={hasCreatorFanSub && !fanTierPreviewKey}
         fanCancelAtPeriodEnd={fanSubCancelAtPeriodEnd}
         fanCurrentPeriodEnd={fanSubPeriodEnd}
         postAlertsEnabled={isSubscribed}

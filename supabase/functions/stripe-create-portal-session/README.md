@@ -9,7 +9,7 @@ User JWT (`Authorization: Bearer …`).
 ## Behavior
 
 - Loads **`profiles.stripe_customer_id`**
-- **Body (optional):** `{ "creator_user_id": "uuid" }` … opens **subscription cancel** flow for that **creator fan** row in **`creator_subscriptions`** (real Stripe `sub_…` id). Used by the profile fan subscribe sheet **Cancel Subscription**.
+- **Body (optional):** `{ "creator_user_id": "uuid" }` … opens **subscription cancel** flow for that **creator fan** row in **`creator_subscriptions`** (real Stripe `sub_…` id). Used by the profile fan subscribe sheet **Cancel Subscription**. Manual / seed ids (`sub_manual_*`) and Stripe **no such subscription** drop the local row and return `{ dropped: true }` instead of a portal URL.
 - **Body omitted:** opens **Customer Portal home** (platform Slots Edge manage/cancel … no deep-link to test-only `user_subscriptions` ids).
 - Return URL: `/?billing=portal`
 

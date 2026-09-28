@@ -277,7 +277,13 @@ export default function CreatorFanSubscribeModal({
       if (billingProvider === 'apple') {
         await openAppleSubscriptionManagement(supabaseClient)
       } else {
-        await openCreatorFanBillingPortal(supabaseClient, creatorUserId)
+        const portal = await openCreatorFanBillingPortal(supabaseClient, creatorUserId)
+        if (portal?.dropped) {
+          await onSubscribed?.()
+          setBusy(false)
+          onClose()
+          return
+        }
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not open billing portal.')

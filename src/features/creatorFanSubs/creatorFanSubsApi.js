@@ -185,6 +185,17 @@ export async function deactivateCreatorFanPromoCode(supabaseClient, id) {
  * @param {import('@supabase/supabase-js').SupabaseClient} supabaseClient
  * @param {string} creatorUserId
  */
+/** Manual / seed grants that are not a real Stripe `sub_1…` id. */
+export function isManualCreatorFanSubscriptionId(subscriptionId) {
+  const id = String(subscriptionId || '').trim()
+  if (!id) return false
+  if (/^sub_manual_/i.test(id)) return true
+  if (/_manual_/i.test(id)) return true
+  if (/^admin_comp_/i.test(id)) return true
+  if (/^test_/i.test(id)) return true
+  return false
+}
+
 export async function openCreatorFanBillingPortal(supabaseClient, creatorUserId) {
   const id = String(creatorUserId || '').trim()
   if (!id) throw new Error('Creator id required.')
@@ -198,10 +209,21 @@ export async function openCreatorFanBillingPortal(supabaseClient, creatorUserId)
   if (data?.error) {
     throw new Error(String(data.error))
   }
+  if (data?.dropped) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('edge:creator-fan-billing-return', {
+          detail: { creatorUserId: id },
+        }),
+      )
+    }
+    return { dropped: true }
+  }
   if (!data?.url) {
     throw new Error('Portal URL missing from server response.')
   }
   await openExternalBillingUrl(data.url)
+  return { dropped: false }
 }
 
 /**

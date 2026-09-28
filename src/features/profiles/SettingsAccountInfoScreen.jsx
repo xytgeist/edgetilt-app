@@ -120,6 +120,7 @@ export default function SettingsAccountInfoScreen({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deleteConfirmArmed, setDeleteConfirmArmed] = useState(false)
   const fieldActionAtRef = useRef(0)
+  const lastAutoPhoneTokenRef = useRef('')
 
   const reloadProfile = useCallback(async () => {
     if (!supabaseClient || !userId) {
@@ -202,13 +203,26 @@ export default function SettingsAccountInfoScreen({
     return undefined
   }, [emailCodeFor])
 
+  useEffect(() => {
+    if (!phoneCodeFor) return undefined
+    const input = document.getElementById('settings-account-phone-code')
+    if (!(input instanceof HTMLInputElement)) return undefined
+    input.focus()
+    input.scrollIntoView({ block: 'center' })
+    return undefined
+  }, [phoneCodeFor])
+
   const normalizedHandleDraft = useMemo(() => normalizeHandle(handleDraft), [handleDraft])
   const trimmedEmailDraft = useMemo(() => String(emailDraft || '').trim(), [emailDraft])
 
   const handleDirty = normalizedHandleDraft !== serverHandle
   const emailDirty = trimmedEmailDraft !== String(initialEmail || authUser?.email || '').trim()
   const phoneDirty = phoneKey(phoneDraft, phoneCountry) !== phoneKey(serverPhone, phoneCountry)
+  const nextPhoneE164 = toE164ForCountry(phoneDraft, phoneCountry)
+  const authPhoneE164 = toE164ForCountry(authUser?.phone || '')
+  const phoneNeedsOtp = Boolean(phoneDirty && nextPhoneE164 && nextPhoneE164 !== authPhoneE164)
   const formDirty = handleDirty || emailDirty || phoneDirty
+  const canSaveChanges = formDirty && !phoneNeedsOtp && !phoneCodeFor
   const loginPhoneVerified =
     Boolean(toE164ForCountry(authUser?.phone || '')) && Boolean(authUser?.phone_confirmed_at)
   const accountEmail = String(authUser?.email || '').trim()
@@ -239,6 +253,7 @@ export default function SettingsAccountInfoScreen({
     }
     setPhoneCode('')
     setPhoneCodeFor(nextE164)
+    lastAutoPhoneTokenRef.current = ''
     setPhoneReleaseFor('')
     setPhoneReleaseCode('')
     setSaveMessage(`Code sent to ${formatPhoneDisplay(nextE164)}. Enter it below.`)
@@ -341,7 +356,6 @@ export default function SettingsAccountInfoScreen({
           setHandleChangedAt(identityRow.handle_changed_at || null)
         }
 
-        let phoneNotice = ''
         if (phoneDirty) {
           const nextE164 = toE164ForCountry(phoneDraft, phoneCountry)
           const authE164 = toE164ForCountry(authUser?.phone || '')
@@ -377,22 +391,13 @@ export default function SettingsAccountInfoScreen({
             setPhoneDraft(nationalDraft(nextE164))
             setPhoneCodeFor('')
             setPhoneCode('')
-          } else {
-            const sent = await requestPhoneCode(nextE164)
-            if (!sent) return
-            phoneNotice = `Code sent to ${formatPhoneDisplay(nextE164)}. Enter it below. The number is not linked until you confirm.`
           }
         }
 
         if (emailDirty) {
           const sent = await requestEmailCode(nextEmail)
           if (!sent) return
-          if (phoneNotice) {
-            setSaveMessage(`Code sent to ${nextEmail}. Enter it below. ${phoneNotice}`)
-          }
-        } else if (phoneNotice) {
-          setSaveMessage(phoneNotice)
-        } else if (handleDirty || phoneDirty) {
+        } else if (handleDirty || (phoneDirty && !phoneNeedsOtp)) {
           setSaveMessage('Account info saved.')
         }
 
@@ -414,8 +419,8 @@ export default function SettingsAccountInfoScreen({
       phoneCountry,
       phoneDirty,
       phoneDraft,
+      phoneNeedsOtp,
       requestEmailCode,
-      requestPhoneCode,
       saveBusy,
       serverPhone,
       supabaseClient,
@@ -461,6 +466,7 @@ export default function SettingsAccountInfoScreen({
       setPhoneCodeFor('')
       dismissEdgeKeyboard()
       setPhoneVerifiedFor(phoneCodeFor)
+      setSaveMessage('Phone number saved.')
       if (phoneRow) onUpdated?.(phoneRow)
     } catch (e) {
       setSaveError(formatProfileSaveDebugError(e, 'Phone'))
@@ -468,6 +474,15 @@ export default function SettingsAccountInfoScreen({
       setSaveBusy(false)
     }
   }, [authUser?.id, onAuthUserUpdated, onUpdated, phoneCode, phoneCodeFor, saveBusy, supabaseClient])
+
+  useEffect(() => {
+    const token = phoneCode.replace(/\D/g, '')
+    if (token.length !== 6 || !phoneCodeFor || saveBusy) return
+    const key = `${phoneCodeFor}:${token}`
+    if (lastAutoPhoneTokenRef.current === key) return
+    lastAutoPhoneTokenRef.current = key
+    void confirmPhoneCode()
+  }, [confirmPhoneCode, phoneCode, phoneCodeFor, saveBusy])
 
   const confirmEmailCode = useCallback(async () => {
     if (!supabaseClient || !authUser?.id || saveBusy || !emailCodeFor) return
@@ -623,7 +638,7 @@ export default function SettingsAccountInfoScreen({
   }, [authUser?.id, phoneCountry, phoneDraft, requestPhoneCode, saveBusy, supabaseClient])
 
   const onSaveClick = useCallback(() => {
-    if (!formDirty || saveBusy) return
+    if (!canSaveChanges || saveBusy) return
 
     if (handleDirty) {
       const unlockAt = handleCooldownUnlockAt(handleChangedAt)
@@ -636,7 +651,7 @@ export default function SettingsAccountInfoScreen({
     }
 
     void persistAccountInfo()
-  }, [formDirty, handleChangedAt, handleDirty, persistAccountInfo, saveBusy])
+  }, [canSaveChanges, handleChangedAt, handleDirty, persistAccountInfo, saveBusy])
 
   const onFieldKeyDown = useCallback((e) => {
     if (e.key !== 'Enter') return
@@ -856,16 +871,16 @@ export default function SettingsAccountInfoScreen({
                 setSaveError('')
               }}
             />
-            {!loginPhoneVerified ? (
+            {phoneNeedsOtp && !phoneCodeFor ? (
               <button
                 type="button"
-                disabled={saveBusy || !toE164ForCountry(phoneDraft, phoneCountry)}
+                disabled={saveBusy || !nextPhoneE164}
                 {...fieldActionHandlers(() => {
                   void onSendPhoneCode()
                 })}
                 className={`mt-2 ${PHONE_ACTION_CLASS}`}
               >
-                {saveBusy && !phoneCode ? 'Sending…' : phoneCodeFor ? 'Send again' : 'Send code'}
+                {saveBusy ? 'Sending…' : 'Send code'}
               </button>
             ) : null}
             {phoneCodeFor ? (
@@ -879,29 +894,33 @@ export default function SettingsAccountInfoScreen({
                   inputMode="numeric"
                   autoComplete="one-time-code"
                   placeholder="6-digit code"
-                  enterKeyHint="go"
+                  enterKeyHint="done"
                   value={phoneCode}
                   onChange={(e) => {
-                    setPhoneCode(e.target.value.replace(/\D/g, '').slice(0, 10))
+                    setPhoneCode(e.target.value.replace(/\D/g, '').slice(0, 6))
                     setSaveError('')
                   }}
                   className="min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 px-3 text-[15px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-500/50"
                 />
-                <button
-                  type="button"
-                  disabled={saveBusy}
-                  {...fieldActionHandlers(() => {
-                    void confirmPhoneCode()
-                  })}
-                  className={PHONE_ACTION_CLASS}
-                >
-                  {saveBusy ? 'Checking…' : 'Confirm code'}
-                </button>
+                {saveBusy ? (
+                  <p className="text-[13px] text-zinc-400">Checking…</p>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={saveBusy}
+                    {...fieldActionHandlers(() => {
+                      void onSendPhoneCode()
+                    })}
+                    className={PHONE_ACTION_CLASS}
+                  >
+                    Send again
+                  </button>
+                )}
               </div>
             ) : null}
-            {!loginPhoneVerified ? (
+            {phoneNeedsOtp || phoneCodeFor ? (
               <p className="mt-1.5 text-[12px] leading-snug text-zinc-500">
-                Enter a mobile number, then Send code. Confirm the text to use it for sign-in.
+                Enter a mobile number, then Send code. The 6-digit text links and saves it.
               </p>
             ) : null}
             {toE164ForCountry(authUser?.phone || '') ? (
@@ -958,7 +977,7 @@ export default function SettingsAccountInfoScreen({
 
           <button
             type="button"
-            disabled={!formDirty || saveBusy}
+            disabled={!canSaveChanges || saveBusy}
             {...fieldActionHandlers(() => onSaveClick())}
             className="min-h-11 w-full rounded-xl bg-cyan-600 px-4 text-[15px] font-semibold text-white touch-manipulation hover:bg-cyan-500 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
           >

@@ -7,6 +7,7 @@ import {
   sendGameChatMessage,
   subscribeGameChat,
 } from './gameHubChatApi.js'
+import { readGameHubCache, writeGameHubCache } from './gameHubCache.js'
 
 /**
  * Per-game live chat state. Loads + subscribes as soon as the hub opens a game
@@ -18,6 +19,15 @@ export function useGameHubChat(supabaseClient, eventId) {
   const [error, setError] = useState('')
   const [viewerId, setViewerId] = useState(null)
   const profilesRef = useRef(new Map())
+  const eventRef = useRef(eventId)
+
+  const commitMessages = useCallback((update) => {
+    setMessages((prev) => {
+      const next = typeof update === 'function' ? update(prev) : update
+      if (next !== prev) writeGameHubCache(eventRef.current, { chat: next })
+      return next
+    })
+  }, [])
 
   useEffect(() => {
     if (!supabaseClient) return undefined
@@ -39,29 +49,31 @@ export function useGameHubChat(supabaseClient, eventId) {
     (row) => {
       if (!row?.id) return
       remember(row)
-      setMessages((prev) => {
+      commitMessages((prev) => {
         if (prev.some((m) => m.id === row.id)) return prev
         const next = [...prev, row].sort((a, b) => String(a.created_at).localeCompare(String(b.created_at)))
         return next.length > GAME_CHAT_PAGE * 2 ? next.slice(-GAME_CHAT_PAGE * 2) : next
       })
     },
-    [remember],
+    [remember, commitMessages],
   )
 
   useEffect(() => {
-    setMessages([])
+    eventRef.current = eventId
+    const cached = readGameHubCache(eventId)?.chat
+    setMessages(cached || [])
     setError('')
     if (!supabaseClient || !eventId) return undefined
     let alive = true
-    setLoading(true)
+    setLoading(!cached)
     void fetchGameChatMessages(supabaseClient, eventId)
       .then((rows) => {
         if (!alive) return
         rows.forEach(remember)
-        setMessages(rows)
+        commitMessages(rows)
       })
       .catch((err) => {
-        if (alive) setError(err?.message || 'Could not load chat.')
+        if (alive && !cached) setError(err?.message || 'Could not load chat.')
       })
       .finally(() => {
         if (alive) setLoading(false)
@@ -85,14 +97,14 @@ export function useGameHubChat(supabaseClient, eventId) {
       },
       onDelete: (old) => {
         if (!alive || !old?.id) return
-        setMessages((prev) => prev.filter((m) => m.id !== old.id))
+        commitMessages((prev) => prev.filter((m) => m.id !== old.id))
       },
     })
     return () => {
       alive = false
       unsubscribe()
     }
-  }, [supabaseClient, eventId, remember, upsert])
+  }, [supabaseClient, eventId, remember, upsert, commitMessages])
 
   const send = useCallback(
     async (body) => {
@@ -106,10 +118,10 @@ export function useGameHubChat(supabaseClient, eventId) {
   const remove = useCallback(
     async (id) => {
       if (!supabaseClient || !id) return
-      setMessages((prev) => prev.filter((m) => m.id !== id))
+      commitMessages((prev) => prev.filter((m) => m.id !== id))
       await deleteGameChatMessage(supabaseClient, id)
     },
-    [supabaseClient],
+    [supabaseClient, commitMessages],
   )
 
   return { messages, loading, error, viewerId, send, remove }

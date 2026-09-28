@@ -42,6 +42,11 @@ import {
   sortPlaysNewestFirst,
   withFreshestLiveClock,
 } from './gameHub/gameHubFormatters.js'
+import { readGameHubCache, writeGameHubCache } from './gameHub/gameHubCache.js'
+
+const EMPTY_DETAIL = { odds: [], plays: [], stats: [], live: null, splits: null }
+const EMPTY_FANTASY = { players: [], props: [], season: null, week: null, sources: [] }
+const EMPTY_POSTS = { top: null, latest: null }
 
 /**
  * Game destination opened from the in-post score pill.
@@ -60,17 +65,11 @@ export default function LoungeGameHubModal({
   const phoneLandscape = usePhoneLandscapeNotTablet()
   const [tab, setTab] = useState('posts')
   const [postsSort, setPostsSort] = useState('top')
-  const [posts, setPosts] = useState([])
+  const [postsBySort, setPostsBySort] = useState(EMPTY_POSTS)
   const [postsLoading, setPostsLoading] = useState(false)
   const [postsErr, setPostsErr] = useState('')
-  const [detail, setDetail] = useState({ odds: [], plays: [], stats: [], live: null, splits: null })
-  const [fantasy, setFantasy] = useState({
-    players: [],
-    props: [],
-    season: null,
-    week: null,
-    sources: [],
-  })
+  const [detail, setDetail] = useState(EMPTY_DETAIL)
+  const [fantasy, setFantasy] = useState(EMPTY_FANTASY)
   const [fantasyLoading, setFantasyLoading] = useState(false)
   const [fantasyErr, setFantasyErr] = useState('')
   const [draft, setDraft] = useState('')
@@ -191,9 +190,10 @@ export default function LoungeGameHubModal({
   const detailGameLive = game?.status === 'in'
   useEffect(() => {
     if (!detailGameId || !supabaseClient) {
-      setDetail({ odds: [], plays: [], stats: [], live: null, splits: null })
+      setDetail(EMPTY_DETAIL)
       return undefined
     }
+    setDetail(readGameHubCache(detailGameId)?.detail || EMPTY_DETAIL)
     let cancelled = false
     let inflight = false
     const load = () => {
@@ -202,7 +202,7 @@ export default function LoungeGameHubModal({
       void loungeSportsGameDetail(supabaseClient, detailGameId).then((data) => {
         inflight = false
         if (cancelled || data?.error) return
-        setDetail({
+        const next = {
           odds: Array.isArray(data.odds) ? data.odds : [],
           plays: Array.isArray(data.plays) ? data.plays : [],
           stats: Array.isArray(data.stats) ? data.stats : [],
@@ -211,7 +211,9 @@ export default function LoungeGameHubModal({
           teamStats: data.team_stats && typeof data.team_stats === 'object' ? data.team_stats : null,
           playerBox: data.player_box && typeof data.player_box === 'object' ? data.player_box : null,
           rosters: data.rosters && typeof data.rosters === 'object' ? data.rosters : null,
-        })
+        }
+        writeGameHubCache(detailGameId, { detail: next })
+        setDetail(next)
       }, () => {
         inflight = false
       })
@@ -237,6 +239,9 @@ export default function LoungeGameHubModal({
   useEffect(() => {
     if (!game || !supabaseClient) return undefined
     const cfb = String(game.sport_key || '').includes('ncaaf')
+    const gameId = game.id
+    const cachedFantasy = readGameHubCache(gameId)?.fantasy
+    setFantasy(cachedFantasy || EMPTY_FANTASY)
     let cancelled = false
 
     const loadRoster = ({ showLoading }) => {
@@ -268,13 +273,15 @@ export default function LoungeGameHubModal({
             }
             return
           }
-          setFantasy({
+          const next = {
             players: Array.isArray(data.players) ? data.players : [],
             props: Array.isArray(data.props) ? data.props : [],
             season: data.season ?? null,
             week: data.week ?? null,
             sources: Array.isArray(data.sources) ? data.sources : [],
-          })
+          }
+          writeGameHubCache(gameId, { fantasy: next })
+          setFantasy(next)
         })
         .catch((err) => {
           if (cancelled) return
@@ -287,7 +294,11 @@ export default function LoungeGameHubModal({
         })
     }
 
-    loadRoster({ showLoading: true })
+    if (cachedFantasy) {
+      setFantasyLoading(false)
+      setFantasyErr('')
+    }
+    loadRoster({ showLoading: !cachedFantasy })
     // NFL fantasy quiet-poll while live; CFB roster is static for the week.
     const pollMs = !cfb && game.status === 'in' ? 45_000 : 0
     const id = pollMs ? window.setInterval(() => loadRoster({ showLoading: false }), pollMs) : 0
@@ -297,34 +308,41 @@ export default function LoungeGameHubModal({
     }
   }, [game?.id, game?.status, game?.sport_key, game?.away?.abbrev, game?.home?.abbrev, supabaseClient])
 
-  // Prefetch Lounge posts as soon as the hub opens (not only when Posts is selected).
-  // Clearing posts when leaving the tab forced a full reload on every return.
-  const postSort = postsSort === 'top' ? LOUNGE_SEARCH_SORT.ENGAGEMENT : LOUNGE_SEARCH_SORT.RECENT
+  // Prefetch both Top and Latest as soon as the hub opens so neither the tab nor the sort toggle reloads.
+  // Keyed on game id (not the game object, which churns on every board poll).
+  const postsGameId = game?.id || null
   useEffect(() => {
-    if (!game || !supabaseClient || searchQuery.length < 2) {
-      setPosts([])
+    if (!postsGameId || !supabaseClient || searchQuery.length < 2) {
+      setPostsBySort(EMPTY_POSTS)
       setPostsErr('')
       setPostsLoading(false)
       return undefined
     }
-    let cancelled = false
-    setPostsLoading(true)
+    const cachedPosts = readGameHubCache(postsGameId)?.posts
+    setPostsBySort(cachedPosts || EMPTY_POSTS)
+    setPostsLoading(!cachedPosts)
     setPostsErr('')
-    void loungeSearch(supabaseClient, searchQuery, {
-      sort: postSort,
-      postsLimit: 16,
-      profilesLimit: 0,
-      commentsLimit: 0,
-    })
-      .then(async (result) => {
-        if (cancelled) return
+    let cancelled = false
+    const fetchSort = (sort) =>
+      loungeSearch(supabaseClient, searchQuery, {
+        sort,
+        postsLimit: 16,
+        profilesLimit: 0,
+        commentsLimit: 0,
+      }).then(async (result) => {
         const raw = Array.isArray(result.posts) ? result.posts : []
-        const hydrated = hydratePosts ? await hydratePosts(raw) : raw
-        if (!cancelled) setPosts(hydrated)
+        return hydratePosts ? hydratePosts(raw) : raw
+      })
+    void Promise.all([fetchSort(LOUNGE_SEARCH_SORT.ENGAGEMENT), fetchSort(LOUNGE_SEARCH_SORT.RECENT)])
+      .then(([top, latest]) => {
+        if (cancelled) return
+        const next = { top, latest }
+        writeGameHubCache(postsGameId, { posts: next })
+        setPostsBySort(next)
       })
       .catch((err) => {
-        if (cancelled) return
-        setPosts([])
+        if (cancelled || cachedPosts) return
+        setPostsBySort(EMPTY_POSTS)
         setPostsErr(formatLoungeSearchError(err))
       })
       .finally(() => {
@@ -333,7 +351,8 @@ export default function LoungeGameHubModal({
     return () => {
       cancelled = true
     }
-  }, [game, hydratePosts, postSort, searchQuery, supabaseClient])
+  }, [postsGameId, hydratePosts, searchQuery, supabaseClient])
+  const posts = postsBySort[postsSort === 'top' ? 'top' : 'latest'] || []
 
   useEffect(() => {
     // Pregame → Fantasy (NFL) / Posts (CFB); live → Plays; post → Posts
@@ -345,9 +364,6 @@ export default function LoungeGameHubModal({
     setPostsSort('top')
     setDraft('')
     setChatErr('')
-    setDetail({ odds: [], plays: [], stats: [], live: null, splits: null })
-    setFantasy({ players: [], props: [], season: null, week: null, sources: [] })
-    setPosts([])
     setFieldReplay({ text: '', team: null, nonce: 0 })
     // Reset chrome when switching games only (status is read for default tab).
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: game.id gate
@@ -531,20 +547,18 @@ export default function LoungeGameHubModal({
             />
           </div>
         ) : null}
-        {tab === 'chat' ? (
-          <div className="py-2">
-            <GameHubChatPane
-              messages={chat.messages}
-              loading={chat.loading}
-              error={chat.error}
-              viewerId={chat.viewerId}
-              readOnly={loungeReadOnly}
-              onDelete={(id) => {
-                void chat.remove(id).catch((err) => setChatErr(err?.message || 'Could not delete.'))
-              }}
-            />
-          </div>
-        ) : null}
+        <div hidden={tab !== 'chat'} className="py-2">
+          <GameHubChatPane
+            messages={chat.messages}
+            loading={chat.loading}
+            error={chat.error}
+            viewerId={chat.viewerId}
+            readOnly={loungeReadOnly}
+            onDelete={(id) => {
+              void chat.remove(id).catch((err) => setChatErr(err?.message || 'Could not delete.'))
+            }}
+          />
+        </div>
         <div hidden={tab !== 'posts'} className="py-2">
           {tab === 'posts' ? (
             <div className="mb-2 flex gap-1 rounded-full bg-zinc-900 p-0.5 w-fit">

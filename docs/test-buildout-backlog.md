@@ -1152,6 +1152,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-27** **Game hub tab cache (web `1.4.863`).** `gameHub/gameHubCache.js` keeps the last 12 games' detail / fantasy / posts (both sorts) / chat in memory; reopening a game or pill-hopping back shows no loading states (verified locally). Posts effect now keys on `game.id` (board polls no longer refetch it), Top + Latest fetch together, Chat pane stays mounted.
 - **2026-09-27** **Theo prod account + Circa verified on prod.** Created `@theo_ops` on production (Slots Edge `admin_comp_` comp, analytics-excluded; `scripts/theo-test-session.mjs --prod`). Prod MNF detail returned the Circa row (+3.5 -105/-115, 41.5, +175/-200); prod cache `oddspapi:circa:football` has 49 fixtures, 1 call used.
 - **2026-09-27** **Test OddsPapi key removed.** Circa verified, so test no longer holds `ODDSPAPI_API_KEY` / `ODDSPAPI_BUDGET_30D` (zero requests; no Circa row on lvslotpro). Prod keeps the key at 210/30d.
 - **2026-09-27** **Circa budget split + prod promote.** Test and prod share one OddsPapi key, so the rolling cap is per-env via `ODDSPAPI_BUDGET_30D` (prod 210, test 25; weekly brake = 7/30 of it). Prod secrets set + Edge deployed with web `1.4.862`.

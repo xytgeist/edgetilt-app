@@ -525,7 +525,79 @@ export default function ChatCallSession(props) {
   if (isEdgeiOSShell()) {
     return <NativeIpaCallSession {...props} />
   }
+  if (!props.token || !props.serverUrl) {
+    return <WebPendingCallSession {...props} />
+  }
   return <WebLiveKitCallSession {...props} />
+}
+
+/** Web chrome while start/join is still fetching a LiveKit token. */
+function WebPendingCallSession({
+  title,
+  mediaMode,
+  isOutgoing = false,
+  avatarUrl = null,
+  onHangup,
+}) {
+  const videoEnabled = mediaMode === 'video'
+  return (
+    <div
+      className="fixed inset-0 flex flex-col bg-[#0b141a]"
+      style={{ zIndex: 128, width: '100vw', height: '100dvh' }}
+      data-chat-feature
+      data-chat-call-session
+    >
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-zinc-950 via-[#0a1018] to-zinc-950" />
+      <div
+        className="relative z-[1] flex shrink-0 items-start justify-center px-4 pb-2"
+        style={{ paddingTop: 'calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 0.75rem)' }}
+      >
+        <div className="min-w-0 flex-1 px-3 text-center">
+          <p className="truncate text-[20px] font-bold tracking-tight text-white">{title}</p>
+          <p className="mt-1 font-mono text-[13px] font-medium tracking-wide text-zinc-300/90">
+            {isOutgoing ? 'Ringing…' : 'Connecting…'}
+          </p>
+        </div>
+      </div>
+      <div className="relative z-[1] min-h-0 flex-1 px-4">
+        <div className="flex h-full flex-col items-center justify-center pb-6">
+          <CallAvatarCircle
+            avatarUrl={avatarUrl}
+            title={title}
+            sizeClass="h-44 w-44"
+            textClass="text-[52px]"
+            ring
+          />
+        </div>
+      </div>
+      <div
+        className="relative z-[1] flex shrink-0 justify-center px-4 pt-2"
+        style={{
+          paddingBottom: 'calc(max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)) + 1.25rem)',
+        }}
+      >
+        <div
+          data-chat-call-interactive=""
+          className="pointer-events-auto mx-auto flex w-full max-w-[22.5rem] items-center justify-between rounded-full border border-white/10 bg-zinc-950/85 px-4 py-3 shadow-[0_20px_60px_rgba(0,0,0,0.7)] backdrop-blur-2xl backdrop-saturate-150"
+        >
+          <CallDockItem
+            icon={<VideoIcon off={!videoEnabled} />}
+            label="Video"
+            active={videoEnabled}
+            disabled
+          />
+          <CallDockItem icon={<SpeakerIcon />} label="Speaker" disabled />
+          <CallDockItem icon={<MicIcon muted={false} />} label="Mute" disabled />
+          <CallDockItem
+            icon={<HangupIcon />}
+            label="End"
+            variant="danger"
+            onClick={() => onHangup?.()}
+          />
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function WebLiveKitCallSession({
@@ -863,7 +935,15 @@ function NativeIpaCallSession({
   useEffect(() => {
     const apply = (detail) => {
       if (!detail) return
-      if (callId && detail.callId && String(detail.callId) !== String(callId)) return
+      const pendingLocal = String(callId || '').startsWith('pending:')
+      if (
+        callId &&
+        detail.callId &&
+        String(detail.callId) !== String(callId) &&
+        !pendingLocal
+      ) {
+        return
+      }
       if (typeof detail.remoteCount === 'number') setRemoteCount(detail.remoteCount)
       if (Array.isArray(detail.participants)) {
         setNativeRoster(
@@ -913,7 +993,14 @@ function NativeIpaCallSession({
   useEffect(() => {
     const onExpand = (event) => {
       const id = String(event?.detail?.callId || '').trim()
-      if (id && callId && id !== String(callId)) return
+      if (
+        id &&
+        callId &&
+        id !== String(callId) &&
+        !String(callId).startsWith('pending:')
+      ) {
+        return
+      }
       setMinimized(false)
     }
     window.addEventListener('edge-native-call-expand', onExpand)

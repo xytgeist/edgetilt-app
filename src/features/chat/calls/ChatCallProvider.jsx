@@ -1,7 +1,5 @@
 import {
   createContext,
-  lazy,
-  Suspense,
   useCallback,
   useContext,
   useEffect,
@@ -42,8 +40,11 @@ import {
 import { acceptNativeCall, dismissEdgeCallKeyboard, endEdgeNativeCall, getEdgeCallKitCapabilities, getEdgeVoIPPushToken, installEdgeCallKitListeners, markEdgeCallKitWebReady, preloadEdgeAvatar, reportEdgeIncomingCall, startNativeCall } from '../../../utils/edgeCallKit.js'
 import { getEdgeiOSPushToken, isEdgeiOSShell } from '../../../utils/edgeNative.js'
 import { upsertMyApnsDeviceToken } from '../../../utils/apnsDeviceTokenApi.js'
+import ChatCallSession from './ChatCallSession.jsx'
 
-const ChatCallSession = lazy(() => import('./ChatCallSession.jsx'))
+function isPlaceholderCallId(id) {
+  return String(id || '').startsWith('pending:')
+}
 
 /** @typedef {'audio' | 'video'} ChatCallMediaMode */
 /** @typedef {'dm_av' | 'group_audio'} ChatCallKind */
@@ -66,6 +67,7 @@ const ChatCallSession = lazy(() => import('./ChatCallSession.jsx'))
  *   recordingStartedBy?: string | null,
  *   recordingStartedAt?: string | null,
  *   recordingMaxSeconds?: number,
+ *   sessionKey?: string,
  * }} ActiveChatCall
  */
 
@@ -707,40 +709,40 @@ export function ChatCallProvider({
         const optimisticRoomId = String(opts.roomId || incomingSnap?.roomId || '')
         const optimisticMedia =
           opts.hasVideo || incomingSnap?.mediaMode === 'video' ? 'video' : 'audio'
-        if (isEdgeiOSShell()) {
-          // Show in-call chrome on answer. Native connect can take a beat.
-          const optimistic = {
-            callId: id,
-            roomId: optimisticRoomId,
-            kind: incomingSnap?.kind === 'group_audio' ? 'group_audio' : 'dm_av',
-            mediaMode: /** @type {'audio' | 'video'} */ (optimisticMedia),
-            token: 'native',
-            livekitUrl: 'native',
-            viaNative: true,
-            title: opts.title || incomingSnap?.title || 'Chat call',
-            isOutgoing: false,
-            avatarUrl:
-              typeof opts.avatarUrl === 'string' && opts.avatarUrl.trim()
-                ? opts.avatarUrl.trim()
-                : incomingSnap?.avatarUrl || null,
-            viewerAvatarUrl:
-              typeof opts.viewerAvatarUrl === 'string' && opts.viewerAvatarUrl.trim()
-                ? opts.viewerAvatarUrl.trim()
-                : null,
-            peerUserId:
-              typeof opts.peerUserId === 'string' && opts.peerUserId.trim()
-                ? opts.peerUserId.trim()
-                : incomingSnap?.fromUserId || null,
-            callStartedBy: null,
-            startMinimized: Boolean(opts.startMinimized),
-            ...recordingFieldsFromCall(null),
-          }
-          endingRef.current = false
-          activeCallRef.current = optimistic
-          setActiveCall(optimistic)
-          setIncoming(null)
-          if (opts.openRoom !== false && optimisticRoomId) onOpenRoom?.(optimisticRoomId)
+        const joinSessionKey = `in:${id}`
+        // Chrome first, then accept/join. Incoming overlay unmounts as soon as this lands.
+        const optimistic = {
+          callId: id,
+          roomId: optimisticRoomId,
+          kind: incomingSnap?.kind === 'group_audio' ? 'group_audio' : 'dm_av',
+          mediaMode: /** @type {'audio' | 'video'} */ (optimisticMedia),
+          token: isEdgeiOSShell() ? 'native' : '',
+          livekitUrl: isEdgeiOSShell() ? 'native' : '',
+          viaNative: isEdgeiOSShell(),
+          title: opts.title || incomingSnap?.title || 'Chat call',
+          isOutgoing: false,
+          avatarUrl:
+            typeof opts.avatarUrl === 'string' && opts.avatarUrl.trim()
+              ? opts.avatarUrl.trim()
+              : incomingSnap?.avatarUrl || null,
+          viewerAvatarUrl:
+            typeof opts.viewerAvatarUrl === 'string' && opts.viewerAvatarUrl.trim()
+              ? opts.viewerAvatarUrl.trim()
+              : null,
+          peerUserId:
+            typeof opts.peerUserId === 'string' && opts.peerUserId.trim()
+              ? opts.peerUserId.trim()
+              : incomingSnap?.fromUserId || null,
+          callStartedBy: null,
+          startMinimized: Boolean(opts.startMinimized),
+          sessionKey: joinSessionKey,
+          ...recordingFieldsFromCall(null),
         }
+        endingRef.current = false
+        activeCallRef.current = optimistic
+        setActiveCall(optimistic)
+        setIncoming(null)
+        if (opts.openRoom !== false && optimisticRoomId) onOpenRoom?.(optimisticRoomId)
         let res
         if (isEdgeiOSShell()) {
           res = await acceptNativeCall({
@@ -800,8 +802,8 @@ export function ChatCallProvider({
           roomId,
           kind: call?.kind === 'group_audio' ? 'group_audio' : 'dm_av',
           mediaMode: call?.media_mode === 'video' || res.hasVideo ? 'video' : 'audio',
-          token: res.token || 'native',
-          livekitUrl: res.livekit_url || res.livekitUrl || 'native',
+          token: res.token || (isEdgeiOSShell() ? 'native' : ''),
+          livekitUrl: res.livekit_url || res.livekitUrl || (isEdgeiOSShell() ? 'native' : ''),
           viaNative: isEdgeiOSShell(),
           title: initialTitle,
           isOutgoing: false,
@@ -810,7 +812,11 @@ export function ChatCallProvider({
           peerUserId: callerUserId,
           callStartedBy: call?.started_by ? String(call.started_by) : null,
           startMinimized: Boolean(opts.startMinimized),
+          sessionKey: joinSessionKey,
           ...recordingFieldsFromCall(call),
+        }
+        if (endingRef.current || activeCallRef.current?.sessionKey !== joinSessionKey) {
+          return call || { id: resolvedCallId, chat_room_id: roomId }
         }
         stopAllChatCallTones()
         activeCallRef.current = next
@@ -837,11 +843,11 @@ export function ChatCallProvider({
         }
         return call || { id: resolvedCallId, chat_room_id: roomId }
       } catch (err) {
+        if (activeCallRef.current?.callId === id) {
+          activeCallRef.current = null
+          setActiveCall(null)
+        }
         if (isEdgeiOSShell()) {
-          if (activeCallRef.current?.callId === id) {
-            activeCallRef.current = null
-            setActiveCall(null)
-          }
           void endEdgeNativeCall({ callId: id, reason: 'remote' })
         }
         showCallStatusToast(err instanceof Error ? err.message : 'Could not join call')
@@ -886,6 +892,28 @@ export function ChatCallProvider({
           : null
       const peerUserId =
         typeof opts?.peerUserId === 'string' && opts.peerUserId.trim() ? opts.peerUserId.trim() : null
+      const sessionKey = `pending:${roomId}:${Date.now()}`
+      const optimistic = {
+        callId: sessionKey,
+        roomId,
+        kind: 'dm_av',
+        mediaMode: mediaMode === 'video' ? 'video' : 'audio',
+        token: isEdgeiOSShell() ? 'native' : '',
+        livekitUrl: isEdgeiOSShell() ? 'native' : '',
+        viaNative: isEdgeiOSShell(),
+        title,
+        isOutgoing: true,
+        avatarUrl: avatarFromOpts,
+        viewerAvatarUrl: viewerAvatarFromOpts,
+        peerUserId,
+        callStartedBy: viewerUserId,
+        sessionKey,
+        ...recordingFieldsFromCall(null),
+      }
+      endingRef.current = false
+      activeCallRef.current = optimistic
+      setActiveCall(optimistic)
+      setIncoming(null)
       try {
         let res
         if (isEdgeiOSShell()) {
@@ -896,6 +924,17 @@ export function ChatCallProvider({
         }
         const call = res.call
         if (!call?.id) throw new Error('Could not start call')
+        if (endingRef.current || activeCallRef.current?.sessionKey !== sessionKey) {
+          if (supabaseClient) {
+            try {
+              await chatLeaveCall(supabaseClient, call.id)
+            } catch {
+              /* already gone */
+            }
+          }
+          void endEdgeNativeCall({ callId: call.id })
+          return null
+        }
         const sub = ensureBroadcast(roomId)
         sub?.emit('invite', {
           callId: call.id,
@@ -903,40 +942,51 @@ export function ChatCallProvider({
           mediaMode: call.media_mode,
           fromUserId: viewerUserId,
         })
-        setIncoming(null)
-        endingRef.current = false
-        let avatarUrl = avatarFromOpts
-        if (!avatarUrl && peerUserId) {
-          const profile = await resolveCallerProfileAsync(roomId, peerUserId)
-          avatarUrl = profile.avatarUrl
-        }
-        let viewerAvatarUrl = viewerAvatarFromOpts
-        if (!viewerAvatarUrl && viewerUserId) {
-          try {
-            const viewerSnap = await resolveCallerProfileAsync(roomId, viewerUserId)
-            viewerAvatarUrl = viewerSnap.avatarUrl
-          } catch {
-            /* optional */
-          }
-        }
-        stopAllChatCallTones()
-        if (!isEdgeiOSShell()) startOutgoingRingback()
-        setActiveCall({
+        const next = {
           callId: call.id,
           roomId,
           kind: call.kind === 'group_audio' ? 'group_audio' : 'dm_av',
           mediaMode: call.media_mode === 'video' ? 'video' : 'audio',
-          token: res.token || 'native',
-          livekitUrl: res.livekit_url || res.livekitUrl || 'native',
+          token: res.token || (isEdgeiOSShell() ? 'native' : ''),
+          livekitUrl: res.livekit_url || res.livekitUrl || (isEdgeiOSShell() ? 'native' : ''),
           viaNative: isEdgeiOSShell(),
           title,
           isOutgoing: true,
-          avatarUrl,
-          viewerAvatarUrl,
+          avatarUrl: avatarFromOpts,
+          viewerAvatarUrl: viewerAvatarFromOpts,
           peerUserId,
           callStartedBy: call.started_by ? String(call.started_by) : viewerUserId,
+          sessionKey,
           ...recordingFieldsFromCall(call),
-        })
+        }
+        activeCallRef.current = next
+        setActiveCall(next)
+        if ((!avatarFromOpts && peerUserId) || !viewerAvatarFromOpts) {
+          void (async () => {
+            try {
+              let avatarUrl = avatarFromOpts
+              if (!avatarUrl && peerUserId) {
+                const profile = await resolveCallerProfileAsync(roomId, peerUserId)
+                avatarUrl = profile.avatarUrl
+              }
+              let viewerAvatarUrl = viewerAvatarFromOpts
+              if (!viewerAvatarUrl && viewerUserId) {
+                const viewerSnap = await resolveCallerProfileAsync(roomId, viewerUserId)
+                viewerAvatarUrl = viewerSnap.avatarUrl
+              }
+              setActiveCall((prev) => {
+                if (!prev || prev.sessionKey !== sessionKey) return prev
+                return {
+                  ...prev,
+                  avatarUrl: prev.avatarUrl || avatarUrl,
+                  viewerAvatarUrl: prev.viewerAvatarUrl || viewerAvatarUrl,
+                }
+              })
+            } catch {
+              /* optional */
+            }
+          })()
+        }
         return call
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Could not start call'
@@ -945,6 +995,10 @@ export function ChatCallProvider({
           try {
             const open = await chatFetchActiveRoomCall(supabaseClient, roomId)
             if (open?.id) {
+              if (activeCallRef.current?.sessionKey === sessionKey) {
+                activeCallRef.current = null
+                setActiveCall(null)
+              }
               setBusy(false)
               return await joinCall(open.id, {
                 title,
@@ -956,6 +1010,10 @@ export function ChatCallProvider({
           } catch {
             /* fall through to toast */
           }
+        }
+        if (activeCallRef.current?.sessionKey === sessionKey) {
+          activeCallRef.current = null
+          setActiveCall(null)
         }
         stopOutgoingRingback()
         showCallStatusToast(msg)
@@ -1133,7 +1191,7 @@ export function ChatCallProvider({
     endingRef.current = true
     setBusy(true)
     try {
-      if (supabaseClient) {
+      if (supabaseClient && !isPlaceholderCallId(current.callId)) {
         // leave_call: group member exits alone; DM / last participant ends the room.
         const result = await chatLeaveCall(supabaseClient, current.callId)
         if (result?.call_ended !== false) {
@@ -1154,6 +1212,7 @@ export function ChatCallProvider({
   const startRecording = useCallback(async (featuredIdentity = null) => {
     const current = activeCallRef.current
     if (!supabaseClient || !current) return null
+    if (isPlaceholderCallId(current.callId)) return null
     if (current.mediaMode !== 'video') {
       showCallStatusToast('Recording is only available on video calls.')
       return null
@@ -1369,61 +1428,51 @@ export function ChatCallProvider({
         }}
       />
       {activeCall ? (
-        <Suspense
-          fallback={
-            activeCall.startMinimized ? null : (
-              <div className="fixed inset-0 z-[128] flex items-center justify-center bg-[#09090b] text-[#a1a1aa]">
-                Connecting...
-              </div>
+        <ChatCallSession
+          key={`${activeCall.sessionKey || activeCall.callId}:${activeCall.connectNonce || 0}`}
+          initialMinimized={Boolean(activeCall.startMinimized)}
+          callId={activeCall.callId}
+          roomId={activeCall.roomId}
+          token={activeCall.token}
+          serverUrl={activeCall.livekitUrl}
+          mediaMode={activeCall.mediaMode}
+          kind={activeCall.kind}
+          title={activeCall.title}
+          isOutgoing={Boolean(activeCall.isOutgoing)}
+          avatarUrl={activeCall.avatarUrl || null}
+          viewerAvatarUrl={activeCall.viewerAvatarUrl || null}
+          peerUserId={activeCall.peerUserId || null}
+          viewerUserId={viewerUserId}
+          callStartedBy={activeCall.callStartedBy || null}
+          recordingStatus={activeCall.recordingStatus || 'idle'}
+          recordingStartedBy={activeCall.recordingStartedBy || null}
+          recordingStartedAt={activeCall.recordingStartedAt || null}
+          recordingMaxSeconds={activeCall.recordingMaxSeconds || CHAT_CALL_RECORDING_MAX_SECONDS}
+          supabaseClient={supabaseClient}
+          onError={(msg) => showCallStatusToast(msg || 'Call connection failed')}
+          onDisconnected={() => {
+            // End DB call so a drop/disconnect cannot leave a stuck ringing row.
+            void hangup()
+          }}
+          onHangup={() => void hangup()}
+          onStartRecording={(featuredIdentity) => void startRecording(featuredIdentity)}
+          onUpdateRecordingFocus={(featuredIdentity) => void updateRecordingFocus(featuredIdentity)}
+          onStopRecording={() => void stopRecording()}
+          onCallPromoted={(patch) => {
+            const nextRoom = String(patch?.roomId || '').trim()
+            if (!nextRoom) return
+            setActiveCall((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    roomId: nextRoom,
+                    kind: patch.kind === 'group_audio' ? 'group_audio' : prev.kind,
+                    title: patch.title || prev.title,
+                  }
+                : prev,
             )
-          }
-        >
-          <ChatCallSession
-            key={`${activeCall.callId}:${activeCall.connectNonce || 0}`}
-            initialMinimized={Boolean(activeCall.startMinimized)}
-            callId={activeCall.callId}
-            roomId={activeCall.roomId}
-            token={activeCall.token}
-            serverUrl={activeCall.livekitUrl}
-            mediaMode={activeCall.mediaMode}
-            kind={activeCall.kind}
-            title={activeCall.title}
-            isOutgoing={Boolean(activeCall.isOutgoing)}
-            avatarUrl={activeCall.avatarUrl || null}
-            viewerAvatarUrl={activeCall.viewerAvatarUrl || null}
-            peerUserId={activeCall.peerUserId || null}
-            viewerUserId={viewerUserId}
-            callStartedBy={activeCall.callStartedBy || null}
-            recordingStatus={activeCall.recordingStatus || 'idle'}
-            recordingStartedBy={activeCall.recordingStartedBy || null}
-            recordingStartedAt={activeCall.recordingStartedAt || null}
-            recordingMaxSeconds={activeCall.recordingMaxSeconds || CHAT_CALL_RECORDING_MAX_SECONDS}
-            supabaseClient={supabaseClient}
-            onError={(msg) => showCallStatusToast(msg || 'Call connection failed')}
-            onDisconnected={() => {
-              // End DB call so a drop/disconnect cannot leave a stuck ringing row.
-              void hangup()
-            }}
-            onHangup={() => void hangup()}
-            onStartRecording={(featuredIdentity) => void startRecording(featuredIdentity)}
-            onUpdateRecordingFocus={(featuredIdentity) => void updateRecordingFocus(featuredIdentity)}
-            onStopRecording={() => void stopRecording()}
-            onCallPromoted={(patch) => {
-              const nextRoom = String(patch?.roomId || '').trim()
-              if (!nextRoom) return
-              setActiveCall((prev) =>
-                prev
-                  ? {
-                      ...prev,
-                      roomId: nextRoom,
-                      kind: patch.kind === 'group_audio' ? 'group_audio' : prev.kind,
-                      title: patch.title || prev.title,
-                    }
-                  : prev,
-              )
-            }}
-          />
-        </Suspense>
+          }}
+        />
       ) : null}
       {error ? (
         <div className="pointer-events-none fixed inset-x-0 bottom-[calc(max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px))+5rem)] z-[131] flex justify-center px-4">

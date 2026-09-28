@@ -1152,6 +1152,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-28:** **Light-mode call dock icons (`1.4.880`).** Global zinc invert turned the always-dark call pill white, so Video/Speaker/Mute/End SVGs (`text-white` on `bg-white/10`) disappeared. Restore dark zinc + white text under `data-chat-call-session` / `data-chat-call-incoming`. Dark unchanged.
 - **2026-09-28:** **Prod App Store Review login 2.** `appstorereview2@edgetilt.com` / `@appstorereview2` (`4260f0f5-…`), email confirmed, same password as ASC Sign-In Information, follows `@appstorereview`. Analytics-excluded. Put both logins in Review notes before **Update Review**.
 - **2026-09-28:** **Removed Sharpe fan-price preview (`1.4.878`).** SUB/bell is back to normal subscribe / manage. Portal still drops `sub_manual_*` if cancel hits a seed grant.
 - **2026-09-28:** **Sharpe picker works while subscribed (`1.4.877`).** Staff preview dropdown is on the SUBSCRIBED pill too. Picking a tier opens the subscribe sheet (not the manage sheet). Portal drops `sub_manual_*` / missing Stripe fan rows (`{ dropped: true }`).

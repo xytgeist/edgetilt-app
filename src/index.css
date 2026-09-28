@@ -11021,6 +11021,39 @@ html.light [data-chat-call-recording] .text-white {
   height: 100%;
   max-height: 100dvh;
 }
+
+/*
+ * Call stage is always cinema-dark. Light mode inverts the zinc scale globally,
+ * so bg-zinc-950/85 becomes a white pill and text-white icons vanish on
+ * bg-white/10 circles. Restore the dark palette inside the call only.
+ */
+html.light [data-chat-call-session],
+html.light [data-chat-call-incoming] {
+  --color-zinc-950: #09090b;
+  --color-zinc-900: #18181b;
+  --color-zinc-800: #27272a;
+  --color-zinc-700: #3f3f46;
+  --color-zinc-600: #52525b;
+  --color-zinc-500: #71717a;
+  --color-zinc-400: #a1a1aa;
+  --color-zinc-300: #d4d4d8;
+  --color-zinc-200: #e4e4e7;
+  --color-zinc-100: #f4f4f5;
+  --color-zinc-50: #fafafa;
+  color-scheme: dark;
+}
+html.light [data-chat-call-session] .text-white,
+html.light [data-chat-call-incoming] .text-white {
+  color: #fff !important;
+}
+html.light [data-chat-call-session] .text-white\/90,
+html.light [data-chat-call-incoming] .text-white\/90 {
+  color: rgb(255 255 255 / 0.9) !important;
+}
+html.light [data-chat-call-session] .text-white\/80,
+html.light [data-chat-call-incoming] .text-white\/80 {
+  color: rgb(255 255 255 / 0.8) !important;
+}
 [data-chat-call-session]:not([data-call-minimized='1']) [data-chat-call-interactive] {
   touch-action: manipulation;
 }

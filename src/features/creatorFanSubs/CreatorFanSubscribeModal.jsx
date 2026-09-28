@@ -412,7 +412,45 @@ export default function CreatorFanSubscribeModal({
             ) : (
               <>
                 <p className="text-[17px] font-bold text-zinc-100">{headline}</p>
-                {iapMonthlyLabel || showWebComparePrice ? (
+                {showPayViaPills ? (
+                  <div
+                    data-fan-pay-via
+                    className="mt-3 flex rounded-xl border border-zinc-700/80 bg-zinc-900 p-1"
+                    role="tablist"
+                    aria-label="Checkout"
+                  >
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={payVia === 'iap'}
+                      disabled={busy}
+                      onClick={() => setPayVia('iap')}
+                      className={[
+                        'flex-1 min-h-9 rounded-lg px-1 text-[13px] font-semibold touch-manipulation transition-colors disabled:opacity-50',
+                        payVia === 'iap'
+                          ? 'bg-orange-500 text-zinc-950 shadow-sm'
+                          : 'text-zinc-400 hover:text-zinc-200',
+                      ].join(' ')}
+                    >
+                      iPhone{iapMonthlyLabel ? ` · ${iapMonthlyLabel}` : ''}
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={payVia === 'web'}
+                      disabled={busy}
+                      onClick={() => setPayVia('web')}
+                      className={[
+                        'flex-1 min-h-9 rounded-lg px-1 text-[13px] font-semibold touch-manipulation transition-colors disabled:opacity-50',
+                        payVia === 'web'
+                          ? 'bg-orange-500 text-zinc-950 shadow-sm'
+                          : 'text-zinc-400 hover:text-zinc-200',
+                      ].join(' ')}
+                    >
+                      Web · {tierLabel}
+                    </button>
+                  </div>
+                ) : selectedMonthlyLabel || iapMonthlyLabel || (showWebComparePrice && tierLabel) ? (
                   <p className="mt-1 text-[14px] font-semibold text-orange-400">
                     {selectedMonthlyLabel || iapMonthlyLabel || tierLabel}
                   </p>
@@ -468,45 +506,6 @@ export default function CreatorFanSubscribeModal({
           <div className="shrink-0 border-t border-zinc-800/90 bg-zinc-950 px-5 pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] pt-4">
             {!alreadySubscribed ? (
               <>
-                {showPayViaPills ? (
-                  <div
-                    data-fan-pay-via
-                    className="mb-3 flex rounded-xl border border-zinc-700/80 bg-zinc-900 p-1"
-                    role="tablist"
-                    aria-label="Checkout"
-                  >
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={payVia === 'iap'}
-                      disabled={busy}
-                      onClick={() => setPayVia('iap')}
-                      className={[
-                        'flex-1 min-h-9 rounded-lg px-1 text-[13px] font-semibold touch-manipulation transition-colors disabled:opacity-50',
-                        payVia === 'iap'
-                          ? 'bg-orange-500 text-zinc-950 shadow-sm'
-                          : 'text-zinc-400 hover:text-zinc-200',
-                      ].join(' ')}
-                    >
-                      iPhone{iapMonthlyLabel ? ` · ${iapMonthlyLabel}` : ''}
-                    </button>
-                    <button
-                      type="button"
-                      role="tab"
-                      aria-selected={payVia === 'web'}
-                      disabled={busy}
-                      onClick={() => setPayVia('web')}
-                      className={[
-                        'flex-1 min-h-9 rounded-lg px-1 text-[13px] font-semibold touch-manipulation transition-colors disabled:opacity-50',
-                        payVia === 'web'
-                          ? 'bg-orange-500 text-zinc-950 shadow-sm'
-                          : 'text-zinc-400 hover:text-zinc-200',
-                      ].join(' ')}
-                    >
-                      Web · {tierLabel}
-                    </button>
-                  </div>
-                ) : null}
                 {ipaWaiting ? (
                   <button
                     type="button"

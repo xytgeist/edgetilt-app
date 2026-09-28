@@ -1152,6 +1152,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-28:** **Fan pills sit under the offer headline (`1.4.874`).** US IPA sheet: iPhone/Web selector replaces the price line under the headline. Footer is one Subscribe + Alerts only.
 - **2026-09-28:** **Promoted `1.4.873` `test` → `main`.** Fan IAP list web × 1.15, US fan sheet pills + `/mo`, Settings light Verify/PRO chips. **No SQL / Edge.** Prod IPA force-quit after Vercel. Store marketing still **1.4.95**.
 - **2026-09-28:** **Settings light Verify + PRO pills (`1.4.873`).** White Settings canvas made cyan-300 Verify and amber-400 PRO unreadable. Scoped darker cyan / orange-800 PRO under `data-settings-account-section` / `data-settings-pro-pill`. Dark unchanged.
 - **2026-09-28:** **Fan subscribe pills (web `1.4.872`).** US IPA sheet is iPhone / Web pills + one Subscribe CTA. Apple price prints `/mo`. Light pill track under `data-fan-pay-via`.

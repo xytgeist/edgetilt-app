@@ -6224,6 +6224,9 @@ html.light [data-creator-fan-subscribe-sheet] .text-zinc-600 {
 html.light [data-creator-fan-subscribe-sheet] .text-zinc-200 {
   color: #3f3f46 !important;
 }
+html.light [data-creator-fan-subscribe-sheet] .text-orange-400 {
+  color: #c2410c !important;
+}
 html.light [data-creator-fan-subscribe-sheet] .bg-zinc-950 {
   background-color: #ffffff !important;
 }
@@ -6256,6 +6259,16 @@ html.light [data-creator-fan-subscribe-sheet] .border-red-800\/70 {
 }
 html.light [data-creator-fan-subscribe-sheet] .text-red-300 {
   color: #b91c1c !important;
+}
+html.light [data-creator-fan-subscribe-sheet] [data-fan-pay-via] {
+  background-color: #f4f4f5 !important;
+  border-color: #d4d4d8 !important;
+}
+html.light [data-creator-fan-subscribe-sheet] [data-fan-pay-via] .text-zinc-400 {
+  color: #71717a !important;
+}
+html.light [data-creator-fan-subscribe-sheet] [data-fan-pay-via] .hover\:text-zinc-200:hover {
+  color: #3f3f46 !important;
 }
 
 /* Creator fan subscribe dialog (large modal, not full-screen) */

@@ -22,6 +22,14 @@ import {
 } from '../profiles/profileGate.js'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 
+/** StoreKit is "$57.99"; web tiers already include /mo. */
+function withPerMonth(price) {
+  const raw = String(price || '').trim()
+  if (!raw) return ''
+  if (/\/mo$/i.test(raw)) return raw
+  return `${raw.replace(/\/(?:mo|yr)$/i, '')}/mo`
+}
+
 /**
  * @param {{
  *   open: boolean,
@@ -57,6 +65,7 @@ export default function CreatorFanSubscribeModal({
   const [iapCatalogReady, setIapCatalogReady] = useState(() => !isEdgeiOSShell())
   const [showWebComparePrice, setShowWebComparePrice] = useState(true)
   const [billingProvider, setBillingProvider] = useState('stripe')
+  const [payVia, setPayVia] = useState(/** @type {'iap' | 'web'} */ ('iap'))
 
   useEffect(() => {
     if (!open) return
@@ -67,6 +76,7 @@ export default function CreatorFanSubscribeModal({
     setIapCatalogReady(!isEdgeiOSShell())
     setShowWebComparePrice(!isEdgeiOSShell())
     setBillingProvider('stripe')
+    setPayVia('iap')
   }, [open])
 
   useEffect(() => {
@@ -90,9 +100,16 @@ export default function CreatorFanSubscribeModal({
       }
       try {
         const storefront = await fetchAppleStorefront()
-        if (!cancelled) setShowWebComparePrice(canShowIapWebComparePrice(storefront.isUnitedStates))
+        const usCompare = canShowIapWebComparePrice(storefront.isUnitedStates)
+        if (!cancelled) {
+          setShowWebComparePrice(usCompare)
+          if (!usCompare) setPayVia('iap')
+        }
       } catch {
-        if (!cancelled) setShowWebComparePrice(false)
+        if (!cancelled) {
+          setShowWebComparePrice(false)
+          setPayVia('iap')
+        }
       }
       const productId = iapProductIdForFanTier(tierKey)
       if (!productId) {
@@ -171,8 +188,12 @@ export default function CreatorFanSubscribeModal({
   const fanPendingCancel = alreadySubscribed && fanCancelAtPeriodEnd
   const showIapCta = isEdgeiOSShell() && canIap
   const showWebCta = !isEdgeiOSShell() || (canIap && showWebComparePrice)
+  const showPayViaPills = showIapCta && showWebCta
   const ipaWaiting = isEdgeiOSShell() && !iapCatalogReady
   const ipaUnavailable = isEdgeiOSShell() && iapCatalogReady && !canIap
+  const iapMonthlyLabel = withPerMonth(storePrice)
+  const selectedVia = showPayViaPills ? payVia : showIapCta ? 'iap' : 'web'
+  const selectedMonthlyLabel = selectedVia === 'iap' ? iapMonthlyLabel : tierLabel
 
   const onSubscribe = async (via = 'web') => {
     if (!supabaseClient || !creatorUserId || busy || alreadySubscribed) return
@@ -391,9 +412,9 @@ export default function CreatorFanSubscribeModal({
             ) : (
               <>
                 <p className="text-[17px] font-bold text-zinc-100">{headline}</p>
-                {storePrice || showWebComparePrice ? (
+                {iapMonthlyLabel || showWebComparePrice ? (
                   <p className="mt-1 text-[14px] font-semibold text-orange-400">
-                    {storePrice || tierLabel}
+                    {selectedMonthlyLabel || iapMonthlyLabel || tierLabel}
                   </p>
                 ) : null}
 
@@ -447,6 +468,45 @@ export default function CreatorFanSubscribeModal({
           <div className="shrink-0 border-t border-zinc-800/90 bg-zinc-950 px-5 pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] pt-4">
             {!alreadySubscribed ? (
               <>
+                {showPayViaPills ? (
+                  <div
+                    data-fan-pay-via
+                    className="mb-3 flex rounded-xl border border-zinc-700/80 bg-zinc-900 p-1"
+                    role="tablist"
+                    aria-label="Checkout"
+                  >
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={payVia === 'iap'}
+                      disabled={busy}
+                      onClick={() => setPayVia('iap')}
+                      className={[
+                        'flex-1 min-h-9 rounded-lg px-1 text-[13px] font-semibold touch-manipulation transition-colors disabled:opacity-50',
+                        payVia === 'iap'
+                          ? 'bg-orange-500 text-zinc-950 shadow-sm'
+                          : 'text-zinc-400 hover:text-zinc-200',
+                      ].join(' ')}
+                    >
+                      iPhone{iapMonthlyLabel ? ` · ${iapMonthlyLabel}` : ''}
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={payVia === 'web'}
+                      disabled={busy}
+                      onClick={() => setPayVia('web')}
+                      className={[
+                        'flex-1 min-h-9 rounded-lg px-1 text-[13px] font-semibold touch-manipulation transition-colors disabled:opacity-50',
+                        payVia === 'web'
+                          ? 'bg-orange-500 text-zinc-950 shadow-sm'
+                          : 'text-zinc-400 hover:text-zinc-200',
+                      ].join(' ')}
+                    >
+                      Web · {tierLabel}
+                    </button>
+                  </div>
+                ) : null}
                 {ipaWaiting ? (
                   <button
                     type="button"
@@ -455,39 +515,24 @@ export default function CreatorFanSubscribeModal({
                   >
                     Checking App Store…
                   </button>
-                ) : showIapCta ? (
+                ) : showIapCta || showWebCta ? (
                   <button
                     type="button"
                     disabled={busy}
-                    onClick={() => void onSubscribe('iap')}
+                    onClick={() => void onSubscribe(selectedVia)}
                     className="flex min-h-[3.25rem] w-full items-center justify-center rounded-full bg-orange-500 px-5 text-[16px] font-bold text-zinc-950 touch-manipulation hover:bg-orange-400 disabled:opacity-50"
                   >
-                    {busy ? '…' : `Subscribe on iPhone${storePrice ? ` · ${storePrice}` : ''}`}
-                  </button>
-                ) : showWebCta ? (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void onSubscribe('web')}
-                    className="flex min-h-[3.25rem] w-full items-center justify-center rounded-full bg-orange-500 px-5 text-[16px] font-bold text-zinc-950 touch-manipulation hover:bg-orange-400 disabled:opacity-50"
-                  >
-                    {busy ? '…' : `Subscribe · ${tierLabel}`}
+                    {busy
+                      ? '…'
+                      : selectedVia === 'iap'
+                        ? `Subscribe on iPhone${iapMonthlyLabel ? ` · ${iapMonthlyLabel}` : ''}`
+                        : `Subscribe on the web · ${tierLabel}`}
                   </button>
                 ) : (
                   <p className="text-center text-[13px] leading-relaxed text-zinc-500">
                     Paid subscribe is not available in the App Store on this build.
                   </p>
                 )}
-                {showIapCta && showWebCta ? (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => void onSubscribe('web')}
-                    className="mt-3 flex min-h-11 w-full items-center justify-center rounded-full border border-zinc-700/90 px-4 text-[15px] font-semibold text-zinc-200 touch-manipulation hover:bg-zinc-900/80 disabled:opacity-50"
-                  >
-                    {busy ? '…' : `Subscribe on the web · ${tierLabel}`}
-                  </button>
-                ) : null}
                 <button
                   type="button"
                   disabled={busy}

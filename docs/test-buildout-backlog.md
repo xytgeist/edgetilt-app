@@ -1152,6 +1152,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-28:** **Removed Sharpe fan-price preview (`1.4.878`).** SUB/bell is back to normal subscribe / manage. Portal still drops `sub_manual_*` if cancel hits a seed grant.
 - **2026-09-28:** **Sharpe picker works while subscribed (`1.4.877`).** Staff preview dropdown is on the SUBSCRIBED pill too. Picking a tier opens the subscribe sheet (not the manage sheet). Portal drops `sub_manual_*` / missing Stripe fan rows (`{ dropped: true }`).
 - **2026-09-28:** **Ops calendar grade cells auto (Windows).** Mon Grade leftover + Sun Grade games (NFL / CFB) read `lounge_bot_picks` still `pending` 4h+ after kickoff (last 7 days). Zero → In. Otherwise Due with "N stuck". No mark-in. Grade Pending refreshes the calendar right away. Frontend **`1.4.876`**.
 - **2026-09-28:** **Promoted `1.4.875` `test` → `main`.** Sharpe staff fan-price preview dropdown. **No SQL / Edge.** Prod IPA force-quit after Vercel. Store marketing still **1.4.95**.

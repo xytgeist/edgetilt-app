@@ -709,8 +709,11 @@ final class EdgeLiveKitCallManager: NSObject, RoomDelegate {
     guard let webView, let parent = webView.superview else { return }
 
     // Chrome `videoVisible` is the video-call stage. Show tiles even when every
-    // camera is off so avatars still fill the grid.
-    let isVideoCall = state.connected && videoVisible
+    // camera is off so avatars still fill the grid. Outgoing ring with a camera
+    // stays full-bleed You until the first remote joins (JS may still send
+    // videoVisible false on an old web chunk).
+    let showLocalRingPreview = waitingForRemoteAnswer && (wantsCamera || state.camOn)
+    let isVideoCall = state.connected && (videoVisible || showLocalRingPreview)
     if !isVideoCall {
       overlay.isHidden = true
       restoreWebViewBackground()

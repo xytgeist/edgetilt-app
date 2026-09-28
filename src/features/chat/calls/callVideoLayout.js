@@ -2,7 +2,7 @@
  * Count-based video-call tile plan.
  * Keep in sync with `layoutVideoViews` in `ios/EdgeTilt/EdgeLiveKitCallManager.swift`.
  *
- * 1: You fill the stage
+ * 1: You fill the stage (outgoing video ring is this until they answer)
  * 2: featured full-bleed + other as inset (tap inset to swap). You can be featured.
  * 3–7: featured full-bleed + 3-wide 3:4 inset chips (You rightmost / bottom-right).
  *      3–4 = one row. 5–7 = two rows, extras on the bottom (5 = 2+2, 6 = 2+3, 7 = 3+3).

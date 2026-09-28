@@ -77,7 +77,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo ACTIVE TRACK 2026-09-28 ... ASC IAP chrome for resubmit
 
-**I am Mac Theo.** Promoted **`1.4.882` `test` → `main` (`f667ed82`)**. Vercel prod live. ASC notes written (CallKit two-login, Gambling Yes, Lifetime + fan SKUs). IAP draft **`4d7a133d`** 9 items READY_FOR_REVIEW. **Update Review on 1.4.95 is the send** ... do not click it until Ryan says submit. Force-quit Prod IPA. iOS **1.4.95** unchanged.
+**I am Mac Theo.** **1.4.95** Waiting for Review on **20260928212300** with Lifetime + Creator Fan + 7 fan SKUs (`4d7a133d`, 10 items). Outgoing video preview (**`1.4.883`**): You full-bleed until they answer, then pip. New IPA for the Swift overlay fallback. Do not bump **1.4.95**.
 
 ### Mac Theo ACTIVE TRACK 2026-09-25 ... CFB stack on prod
 

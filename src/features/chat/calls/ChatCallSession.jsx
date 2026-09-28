@@ -92,13 +92,13 @@ function hideChromeForInvite(open, { hideTimerRef, setControlsHidden, resetContr
 }
 
 /** Android web: the pill already sits under the stage, so cinema-hide only moves the inset. */
-function armCallChromeHide(hideTimerRef, setControlsHidden, isVideoMode) {
+function armCallChromeHide(hideTimerRef, setControlsHidden, isVideoMode, { keepVisible = false } = {}) {
   if (hideTimerRef.current) {
     window.clearTimeout(hideTimerRef.current)
     hideTimerRef.current = null
   }
   setControlsHidden(false)
-  if (!isVideoMode || isAndroidDevice()) return
+  if (!isVideoMode || isAndroidDevice() || keepVisible) return
   hideTimerRef.current = window.setTimeout(() => {
     setControlsHidden(true)
   }, 4500)
@@ -808,11 +808,15 @@ function NativeIpaCallSession({
   const awaitingAnswer =
     Boolean(isOutgoing) && !hadRemoteRef.current && remoteCount === 0
 
-  const isVideoMode = (videoEnabled || camOn || hasVideo || remoteHasVideo) && !awaitingAnswer
+  // Outgoing video (or audio upgraded to video before they answer) stays on the
+  // video stage so You is full-bleed. Layout drops You to the pip when they join.
+  const isVideoMode = Boolean(videoEnabled || camOn || hasVideo || remoteHasVideo)
 
   const resetControlsTimer = useCallback(() => {
-    armCallChromeHide(hideTimerRef, setControlsHidden, isVideoMode)
-  }, [isVideoMode])
+    armCallChromeHide(hideTimerRef, setControlsHidden, isVideoMode, {
+      keepVisible: awaitingAnswer,
+    })
+  }, [isVideoMode, awaitingAnswer])
 
   useEffect(() => {
     if (isVideoMode) {
@@ -1710,12 +1714,14 @@ function CallChrome({
 
   const anyParticipantHasCamera =
     participantHasLiveCamera(localParticipant) || remotes.some(participantHasLiveCamera)
-  const showVideoStage = (videoEnabled || camOn || anyParticipantHasCamera) && !awaitingAnswer
+  const showVideoStage = Boolean(videoEnabled || camOn || anyParticipantHasCamera)
   const isVideoMode = Boolean(showVideoStage)
 
   const resetControlsTimer = useCallback(() => {
-    armCallChromeHide(hideTimerRef, setControlsHidden, isVideoMode)
-  }, [isVideoMode])
+    armCallChromeHide(hideTimerRef, setControlsHidden, isVideoMode, {
+      keepVisible: awaitingAnswer,
+    })
+  }, [isVideoMode, awaitingAnswer])
 
   useEffect(() => {
     if (isVideoMode) {

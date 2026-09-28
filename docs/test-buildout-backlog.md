@@ -1152,6 +1152,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-27** **Roster stripe spans expanded card (web `1.4.867`).** `data-roster-team-bar` now sits on the card `<li>` (z-3) instead of the header, so it runs through the stats table. Light only.
 - **2026-09-27** **Light roster cards redesign (web `1.4.866`).** Ryan picked "team color wash": `data-roster-team-wash` (color-mix gradient of `--roster-team`), `data-roster-team-bar`, `data-roster-light-logo` (raw full-color logo) render only under `html.light`; mesh + treated logo hidden there. Dark mode computed styles unchanged.
 - **2026-09-27** **Light-mode strike ladder lines (web `1.4.865`).** Hub light remap painted the Yes/No `h-px bg-zinc-800` rules the card gray; scoped `html.light [data-lounge-strike-ladder]` rules restore the rules, top divider and slider ticks. Dark unchanged.
 - **2026-09-27** **Prop cards get live stats (web `1.4.864`, test Edge `lounge-sports-scoreboard`).** `gameHub/gameHubPropStats.js` maps every Kalshi/Poly player series (pass/rush/rec yds, rush+rec, comp, pass att, carries, rec, TD, INT, long rec, PPR fpts) to box score + season fields. Live/final: header box line + per-line progress bar, pace (counting stats, after 15% of regulation), ✓ when cleared, rose on final miss. Pregame: Avg/g + Proj, green when the lean clears. `player_box` gained `pass_cmp`, `pass_att`, `rush_att`, `rush_lng`, `rec_tgt`, `rec_lng`. Verified on live LAR-DEN + pregame PHI-CHI, both themes.

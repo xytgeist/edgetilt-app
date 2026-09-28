@@ -676,17 +676,11 @@ function RosterPlayerHeader({ player, accent, expanded, hasStats, onToggle, logo
         />
         <span data-roster-jersey-tint />
       </span>
-      {/* Light mode only (hidden in dark via index.css): team wash, full-color logo, accent bar. */}
+      {/* Light mode only (hidden in dark via index.css): team wash + full-color logo. Accent bar lives on the <li>. */}
       <span
         data-roster-team-wash
         className="pointer-events-none absolute inset-0 z-0"
         style={{ '--roster-team': accent.color }}
-        aria-hidden="true"
-      />
-      <span
-        data-roster-team-bar
-        className="pointer-events-none absolute inset-y-0 left-0 z-[1] w-1"
-        style={{ backgroundColor: accent.color }}
         aria-hidden="true"
       />
       {accent.side?.logo ? (
@@ -799,8 +793,14 @@ function RosterBoard({ players, game }) {
             key={id}
             data-roster-player-card={expanded ? '' : undefined}
             data-expanded={expanded ? '' : undefined}
-            className="overflow-hidden"
+            className="relative overflow-hidden"
           >
+            <span
+              data-roster-team-bar
+              className="pointer-events-none absolute inset-y-0 left-0 z-[3] w-1"
+              style={{ backgroundColor: accent.color }}
+              aria-hidden="true"
+            />
             <RosterPlayerHeader
               player={p}
               accent={accent}

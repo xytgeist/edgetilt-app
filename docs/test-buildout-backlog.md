@@ -1152,6 +1152,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-28:** **Promoted `1.4.882` `test` → `main` (`f667ed82`).** Vercel prod live (`appBuildInfo-BPRwOQm5.js`). Sharpe picker gone, light call dock + Switch CTA, End halo off. **No SQL / Edge.** ASC Review notes rewritten (CallKit two-login path, Gambling Yes, Lifetime + Creator Fan SKUs). IAP draft `4d7a133d` has 9 items READY_FOR_REVIEW. **Update Review on 1.4.95 is the send.** Force-quit Prod IPA. Store marketing still **1.4.95**.
 - **2026-09-28:** **Light Switch-to-video CTA (`1.4.882`).** Confirm Switch was `text-white` on `bg-white/15` over the inverted white sheet. `data-switch-to-video-confirm` is blue-600 + white in light only. Dark unchanged.
 - **2026-09-28:** **Call End has no red halo (`1.4.881`).** Hangup / incoming decline dropped the rose `0_8px_24px` glow. Solid `bg-rose-600` + `shadow-md` only.
 - **2026-09-28:** **Light-mode call dock icons (`1.4.880`).** Global zinc invert turned the always-dark call pill white, so Video/Speaker/Mute/End SVGs (`text-white` on `bg-white/10`) disappeared. Restore dark zinc + white text under `data-chat-call-session` / `data-chat-call-incoming`. Dark unchanged.

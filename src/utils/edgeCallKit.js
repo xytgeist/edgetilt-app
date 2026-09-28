@@ -27,9 +27,14 @@ export async function reportEdgeIncomingCall(args) {
       uuid: args.uuid || undefined,
       ...(avatarUrl ? { avatarUrl } : {}),
     })
-    return { ok: result?.ok !== false, via: 'bridge', uuid: result?.uuid || null }
+    return {
+      ok: result?.ok !== false,
+      via: 'bridge',
+      uuid: result?.uuid || null,
+      skipped: result?.skipped || null,
+    }
   } catch {
-    return { ok: false, via: 'error' }
+    return { ok: false, via: 'error', skipped: null }
   }
 }
 

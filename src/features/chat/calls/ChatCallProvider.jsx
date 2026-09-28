@@ -155,6 +155,7 @@ export function ChatCallProvider({
   const [error, setError] = useState('')
   /** IPA defaults on so the in-app overlay does not flash before capabilities land. China flips this off. */
   const [callKitSupported, setCallKitSupported] = useState(() => isEdgeiOSShell())
+  const [incomingUseWebOverlay, setIncomingUseWebOverlay] = useState(false)
   const broadcastByRoomRef = useRef(/** @type {Map<string, ReturnType<typeof subscribeToChatCallBroadcast>>} */ (new Map()))
 
   const showCallStatusToast = useCallback((message) => {
@@ -176,6 +177,9 @@ export function ChatCallProvider({
   const callerProfileFetchedRef = useRef(/** @type {Set<string>} */ (new Set()))
   activeCallRef.current = activeCall
   incomingRef.current = incoming
+  useEffect(() => {
+    if (!incoming) setIncomingUseWebOverlay(false)
+  }, [incoming])
 
   useEffect(() => {
     if (!isEdgeiOSShell()) {
@@ -327,13 +331,27 @@ export function ChatCallProvider({
   const presentIncoming = useCallback(
     (row) => {
       if (!row?.id) return
-      if (activeCallRef.current || incomingRef.current?.callId === row.id) return
+      if (incomingRef.current?.callId === row.id) return
+      const current = activeCallRef.current
+      if (current) {
+        const sameCall = current.callId === row.id || current.serverCallId === row.id
+        if (sameCall) return
+        // Leftover outgoing chrome (pending: tap-to-open) must not swallow a real ring.
+        if (isPlaceholderCallId(current.callId)) {
+          activeCallRef.current = null
+          setActiveCall(null)
+          void endEdgeNativeCall({ reason: 'remote' })
+        } else {
+          return
+        }
+      }
       const roomId = String(row.chat_room_id || row.roomId || '')
       const fromUserId = String(row.started_by || row.fromUserId || '')
       const kind = row.kind === 'group_audio' ? 'group_audio' : 'dm_av'
       const mediaMode = (row.media_mode || row.mediaMode) === 'video' ? 'video' : 'audio'
       if (roomId) ensureBroadcast(roomId)
       const profile = resolveCallerProfile(roomId, fromUserId)
+      setIncomingUseWebOverlay(false)
       setIncoming({
         callId: row.id,
         roomId,
@@ -349,6 +367,11 @@ export function ChatCallProvider({
         handle: profile.title || 'Incoming call',
         hasVideo: mediaMode === 'video',
         avatarUrl: profile.avatarUrl,
+      }).then((res) => {
+        if (incomingRef.current?.callId !== String(row.id)) return
+        if (res?.via === 'noop' || res?.via === 'error' || res?.skipped || res?.ok === false) {
+          setIncomingUseWebOverlay(true)
+        }
       })
       void resolveCallerProfileAsync(roomId, fromUserId).then((next) => {
         setIncoming((prev) =>
@@ -444,6 +467,7 @@ export function ChatCallProvider({
         if (cancelled) return
         if (!call || ['ended', 'missed', 'declined'].includes(call.status)) {
           setIncoming((prev) => (prev?.callId === callId ? null : prev))
+          setIncomingUseWebOverlay(false)
           void endEdgeNativeCall({ callId, reason: 'remote' })
         }
       } catch {
@@ -479,8 +503,20 @@ export function ChatCallProvider({
           const row = payload.new
           if (!row?.id) return
           if (['ended', 'missed', 'declined'].includes(row.status)) {
-            if (incomingRef.current?.callId === row.id) setIncoming(null)
-            if (activeCallRef.current?.callId === row.id) setActiveCall(null)
+            if (incomingRef.current?.callId === row.id) {
+              setIncoming(null)
+              setIncomingUseWebOverlay(false)
+            }
+            const live = activeCallRef.current
+            if (
+              live &&
+              (live.callId === row.id ||
+                live.serverCallId === row.id ||
+                (isPlaceholderCallId(live.callId) && live.roomId === row.chat_room_id))
+            ) {
+              activeCallRef.current = null
+              setActiveCall(null)
+            }
             void endEdgeNativeCall({ callId: row.id, reason: 'remote' })
             return
           }
@@ -1387,11 +1423,27 @@ export function ChatCallProvider({
     (roomId) => {
       if (!roomId) return () => {}
       ensureBroadcast(roomId)
+      if (!supabaseClient || !viewerUserId) return () => {}
+      let cancelled = false
+      const check = async () => {
+        try {
+          const open = await chatFetchActiveRoomCall(supabaseClient, roomId)
+          if (cancelled || !open?.id) return
+          if (String(open.started_by || '') === String(viewerUserId)) return
+          if (!['ringing', 'active'].includes(open.status)) return
+          presentIncomingRef.current(open)
+        } catch {
+          /* ignore transient */
+        }
+      }
+      void check()
+      const id = window.setInterval(() => void check(), 2000)
       return () => {
-        // Keep broadcast while provider lives so inbox can still get invites for recently opened rooms.
+        cancelled = true
+        window.clearInterval(id)
       }
     },
-    [ensureBroadcast],
+    [ensureBroadcast, supabaseClient, viewerUserId],
   )
 
   const value = useMemo(
@@ -1432,7 +1484,12 @@ export function ChatCallProvider({
     <ChatCallContext.Provider value={value}>
       {children}
       <ChatIncomingCallOverlay
-        open={Boolean(incoming) && !activeCall && !callbackPrompt && !callKitSupported}
+        open={
+          Boolean(incoming) &&
+          !activeCall &&
+          !callbackPrompt &&
+          (!callKitSupported || incomingUseWebOverlay)
+        }
         title={incoming?.title || 'Incoming call'}
         avatarUrl={incoming?.avatarUrl || null}
         subtitle={

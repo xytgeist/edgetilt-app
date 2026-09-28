@@ -4103,14 +4103,35 @@ html.light [data-lounge-game-players] [data-roster-player-card] {
   background: #18181b;
   opacity: 0.45;
 }
-html.light [data-lounge-game-players] [data-roster-jersey-mesh] {
-  opacity: 1;
-  mix-blend-mode: normal;
+/* Light roster cards: clean white + team wash from the logo side, full-color logo, team accent bar. */
+[data-lounge-game-players] [data-roster-team-wash],
+[data-lounge-game-players] [data-roster-team-bar],
+[data-lounge-game-players] [data-roster-light-logo] {
+  display: none;
 }
-html.light [data-lounge-game-players] [data-roster-jersey-tint] {
-  background: #f4f4f5;
-  mix-blend-mode: soft-light;
-  opacity: 0.88;
+html.light [data-lounge-game-players] [data-roster-jersey-mesh],
+html.light [data-lounge-game-players] [data-roster-jersey-tint],
+html.light [data-lounge-game-players] [data-roster-dark-logo] {
+  display: none;
+}
+html.light [data-lounge-game-players] [data-roster-player-header] {
+  background-color: #ffffff;
+}
+html.light [data-lounge-game-players] [data-roster-team-wash] {
+  display: block;
+  background: linear-gradient(
+    to left,
+    color-mix(in srgb, var(--roster-team) 22%, transparent) 0%,
+    color-mix(in srgb, var(--roster-team) 8%, transparent) 45%,
+    transparent 80%
+  );
+}
+html.light [data-lounge-game-players] [data-roster-team-bar] {
+  display: block;
+}
+html.light [data-lounge-game-players] [data-roster-light-logo] {
+  display: block;
+  opacity: 0.16;
 }
 
 html.light [data-lounge-game-players] [data-roster-season-stats] {

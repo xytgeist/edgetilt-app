@@ -676,7 +676,32 @@ function RosterPlayerHeader({ player, accent, expanded, hasStats, onToggle, logo
         />
         <span data-roster-jersey-tint />
       </span>
+      {/* Light mode only (hidden in dark via index.css): team wash, full-color logo, accent bar. */}
       <span
+        data-roster-team-wash
+        className="pointer-events-none absolute inset-0 z-0"
+        style={{ '--roster-team': accent.color }}
+        aria-hidden="true"
+      />
+      <span
+        data-roster-team-bar
+        className="pointer-events-none absolute inset-y-0 left-0 z-[1] w-1"
+        style={{ backgroundColor: accent.color }}
+        aria-hidden="true"
+      />
+      {accent.side?.logo ? (
+        <img
+          data-roster-light-logo
+          src={accent.side.logo}
+          alt=""
+          className="pointer-events-none absolute top-1/2 right-1 z-[1] h-[196px] w-[196px] -translate-y-1/2 object-contain"
+          loading="lazy"
+          decoding="async"
+          aria-hidden="true"
+        />
+      ) : null}
+      <span
+        data-roster-dark-logo
         className="pointer-events-none absolute top-1/2 z-[1] -translate-y-1/2 right-1"
         style={{ opacity: 0.12 }}
         aria-hidden="true"

@@ -48,6 +48,10 @@ Web side: `src/utils/edgeAndroid.js` (`isEdgeAndroidShell()` = UA has `EdgeAndro
 | `openAppSettings()` | This app's notification settings |
 | `info()` | JSON `{ appId, version, firebase }` |
 
+## Permissions at first launch
+
+Like the IPA, `MainActivity.askPermissionsOnFirstLaunch` asks for location and (Android 13+) notifications on the first launch only (`edge_shell` prefs flag), so later launches never nag. A grant there is enough for push: the Lounge hook uploads the FCM token once the member signs in (Lounge push pref defaults on). Web location calls then get granted silently by `onGeolocationPermissionsShowPrompt`.
+
 ## Push (FCM)
 
 Web: `src/utils/edgeNativePush.js` routes Lounge Settings / Offers reminders to FCM in this shell (APNs in EdgeiOS). Tokens land in **`fcm_device_tokens`** (`upsert_my_fcm_device_token` / `delete_my_fcm_device_token`, migration `20260929040000`). Server: `supabase/functions/_shared/fcmPush.ts` sends data-only HIGH priority messages next to every APNs send (`lounge-send-activity-push`, `send-due-offer-reminders`, `send-test-push`). Android has no CallKit, so call invites / missed calls arrive as normal alerts from the activity worker. `EdgePushService` builds the notification; tapping opens the `url` in the app.
@@ -62,6 +66,6 @@ Web: `src/utils/edgeNativePush.js` routes Lounge Settings / Offers reminders to 
 
 ## Known gaps (MVP)
 
-- **Google sign-in:** Google refuses OAuth in UAs that announce an embedded WebView (`; wv`), so the shell UA drops that marker (same trick as the IPA's Safari-style UA). Emulator: Google account lookup works; full sign-in needs a real account smoke. If Google ever tightens detection, fall back to a Custom Tab + deep link back.
+- **Google sign-in:** Google refuses OAuth in embedded WebViews. `EdgeWebViews.presentAsChrome` (both activities) drops the `; wv` UA marker and rewrites the Sec-CH-UA brand from "Android WebView" to "Google Chrome". `X-Requested-With: <package>` is still sent: current WebView ignores `setRequestedWithHeaderOriginAllowList` (verified on WebView 133). Polymarket Google login (Auth0 redirect, not a popup) went blank after sign-in on Ryan's phone (Sep 28); retest with this build. If it still blanks, the remaining tell is that header and the fallback is Apple / email login or the sheet's "Open app".
 - **Billing:** Play policy on web subscriptions from the app is not settled (see backlog Android section).
 - **App Links:** no `assetlinks.json` yet, so edgetilt.com links open in Chrome, not the app.

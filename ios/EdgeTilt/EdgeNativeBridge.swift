@@ -98,6 +98,33 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       }
     case "bustServiceWorker":
       bustServiceWorker(completion: completion)
+    case "getCurrentPosition":
+      let highAccuracy = payload?["highAccuracy"] as? Bool ?? false
+      let maximumAgeMs = (payload?["maximumAgeMs"] as? NSNumber)?.doubleValue ?? 0
+      EdgeLocationManager.shared.currentPosition(
+        highAccuracy: highAccuracy,
+        maximumAge: maximumAgeMs / 1000
+      ) { result in
+        switch result {
+        case .success(let loc):
+          var fix: [String: Any] = [
+            "ok": true,
+            "latitude": loc.coordinate.latitude,
+            "longitude": loc.coordinate.longitude,
+            "accuracy": loc.horizontalAccuracy,
+            "timestamp": loc.timestamp.timeIntervalSince1970 * 1000,
+          ]
+          if loc.verticalAccuracy >= 0 {
+            fix["altitude"] = loc.altitude
+            fix["altitudeAccuracy"] = loc.verticalAccuracy
+          }
+          if loc.course >= 0 { fix["heading"] = loc.course }
+          if loc.speed >= 0 { fix["speed"] = loc.speed }
+          completion(.success(fix))
+        case .failure(let error):
+          completion(.success(["ok": false, "code": error.code, "message": error.message]))
+        }
+      }
     case "getPushPermissionStatus":
       EdgePushManager.shared.permissionStatus(completion: completion)
     case "requestPushPermission":
@@ -547,21 +574,6 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     decisionHandler(.grant)
   }
 
-  /// Grant webpage geolocation when app-level When In Use is already authorized.
-  @available(iOS 15.0, *)
-  func webView(
-    _ webView: WKWebView,
-    requestGeolocationPermissionFor origin: WKSecurityOrigin,
-    initiatedByFrame frame: WKFrameInfo,
-    decisionHandler: @escaping (WKPermissionDecision) -> Void
-  ) {
-    if EdgeLocationManager.shared.webViewMayGrantGeolocation() {
-      decisionHandler(.grant)
-    } else {
-      decisionHandler(.deny)
-    }
-  }
-
   /// Custom `uiDelegate` replaces WK defaults. Missing these makes `alert`/`confirm` silent no-ops.
   func webView(
     _ webView: WKWebView,
@@ -902,6 +914,76 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
         entry.reject(new Error(message || 'native error'));
       }
     };
+
+    // WebKit re-prompts per origin every launch; route location through CoreLocation instead.
+    var geo = navigator.geolocation;
+    if (geo) {
+      var geoError = function (code, message) {
+        return { code: code, message: message || '', PERMISSION_DENIED: 1, POSITION_UNAVAILABLE: 2, TIMEOUT: 3 };
+      };
+      var locate = function (success, error, options) {
+        var opts = options || {};
+        var done = false;
+        var timer = null;
+        if (typeof opts.timeout === 'number' && isFinite(opts.timeout)) {
+          timer = setTimeout(function () {
+            if (done) return;
+            done = true;
+            if (error) error(geoError(3, 'Timeout expired'));
+          }, Math.max(0, opts.timeout));
+        }
+        call('getCurrentPosition', {
+          highAccuracy: !!opts.enableHighAccuracy,
+          maximumAgeMs: typeof opts.maximumAge === 'number' ? opts.maximumAge : 0
+        }).then(function (r) {
+          if (done) return;
+          done = true;
+          if (timer) clearTimeout(timer);
+          if (r && r.ok) {
+            success({
+              coords: {
+                latitude: r.latitude,
+                longitude: r.longitude,
+                accuracy: r.accuracy,
+                altitude: r.altitude == null ? null : r.altitude,
+                altitudeAccuracy: r.altitudeAccuracy == null ? null : r.altitudeAccuracy,
+                heading: r.heading == null ? null : r.heading,
+                speed: r.speed == null ? null : r.speed
+              },
+              timestamp: r.timestamp || Date.now()
+            });
+          } else if (error) {
+            error(geoError((r && r.code) || 2, r && r.message));
+          }
+        }, function (err) {
+          if (done) return;
+          done = true;
+          if (timer) clearTimeout(timer);
+          if (error) error(geoError(2, err && err.message));
+        });
+      };
+      var watches = {};
+      var nextWatchId = 1;
+      try {
+        geo.getCurrentPosition = function (success, error, options) {
+          locate(success, error, options);
+        };
+        geo.watchPosition = function (success, error, options) {
+          var id = nextWatchId++;
+          var tick = function () {
+            if (!watches[id]) return;
+            locate(success, error, options);
+          };
+          watches[id] = setInterval(tick, 15000);
+          tick();
+          return id;
+        };
+        geo.clearWatch = function (id) {
+          if (watches[id]) clearInterval(watches[id]);
+          delete watches[id];
+        };
+      } catch (e) {}
+    }
   })();
   """
 

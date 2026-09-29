@@ -63,9 +63,9 @@ class BetSheetActivity : Activity() {
       javaScriptEnabled = true
       domStorageEnabled = true
       setSupportMultipleWindows(false)
-      // Plain Chrome mobile UA … no "; wv" / Version token, so the books serve normal mobile web.
-      userAgentString = userAgentString.replace("; wv", "").replace(Regex("Version/\\S+ "), "")
     }
+    // Plain Chrome mobile, so the books serve normal mobile web and Google sign-in is allowed.
+    EdgeWebViews.presentAsChrome(webView.settings)
     CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
     webView.webViewClient = SheetClient()
     webView.webChromeClient = object : WebChromeClient() {

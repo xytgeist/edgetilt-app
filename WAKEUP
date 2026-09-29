@@ -75,6 +75,25 @@ The agent should treat the following as **standing instructions for this session
 - **Ops paste / vision** stays as backup (VSiN + trench repair).
 - **Ryan next:** apply migration **`20260925160000`** on **prod** if Edge Monitor does not list the two jobs yet (test can be applied by agent). Re-run install task optional.
 
+### Mac Theo ACTIVE TRACK 2026-09-29 ... Android shell + native parity roadmap
+
+**I am Mac Theo.** Android Kotlin shell (`android/`, `android/README.md`) is live-capable end to end. Next work is native parity with the IPA (list below).
+
+- **Shipped Sep 28-29:** FCM push on test + prod (Firebase `edge-ce06c`). Push + location asked after sign-in (web `1.4.902` on `test`, **not promoted**; `main` = `1.4.901`). Chrome disguise for Google sign-in (`EdgeWebViews.presentAsChrome`). Bet sheet real popups (`1d504278`) so Polymarket's Auth0 Google login from a market page completes (verified on Ryan's Galaxy A15 over adb). iOS got the same popup fix.
+- **APKs:** Ryan sideloads debug builds (`~/Desktop/Edge-android-prod.apk`, `EdgeTest-android.apk`). Same debug keystore (`~/.android/debug.keystore`), so installs update in place; keep that file backed up. No Play account / upload key yet.
+- **iOS TestFlight (not attached to review):** prod **1.4.95 (20260929071055)** from `test` @ `1d504278`. **Convention:** test IPAs come only from Xcode Cloud **TestFlight Internal** (short numbers like 201); prod = local EdgeTilt Prod archive with DTG. Stray local test build **1.4.95 (20260929070812)** broke that ... Ryan to expire it in ASC. See `ios/README.md`.
+- **Debug recipe:** phone on USB + USB debugging → `adb forward tcp:9222 localabstract:webview_devtools_remote_<pid>` → CDP. That is how the Polymarket popup bug was found.
+
+**Android native parity roadmap (Ryan, 2026-09-29).** Each item needs a web side in `src/` (Windows lane) … agree the `window.EdgeAndroid` method in `android/README.md` first. Checkboxes in backlog **Android**.
+
+1. **Incoming calls that ring** ... FCM high-priority data push + `ConnectionService` / full-screen intent (CallKit equivalent). Biggest gap.
+2. **Live sessions in the status bar** ... Android 16 Live Updates (promoted ongoing notification + status-bar chip), ongoing-notification fallback on older phones (Dynamic Island equivalent).
+3. **Lounge video in the background** ... native pick + Media3 Transformer trim/compress + WorkManager / foreground-service tus upload (IPA video pipeline equivalent).
+4. **App Links** ... `assetlinks.json` on edgetilt.com / lvslotpro.com so links open the app.
+5. **Quick hooks:** native share sheet (Android WebView has no `navigator.share`), ML Kit document scanner + on-device text recognition (W-2G / Offers), system photo picker, haptics, composer orientation lock, call speaker/earpiece routing.
+6. **Android-only extras:** app shortcuts (long-press icon: Start session / Lounge / Log a win), home-screen bankroll / live-session widget.
+- **Skip:** Sign in with Apple, service-worker bust (iOS quirks). Play Billing is a policy/fee decision, parked in backlog.
+
 ### Mac Theo ACTIVE TRACK 2026-09-28 ... ASC IAP chrome for resubmit
 
 **I am Mac Theo.** Dual-machine: Mac owns `ios/` + ASC. Windows owns `src/**`. Do not bump **1.4.95**.

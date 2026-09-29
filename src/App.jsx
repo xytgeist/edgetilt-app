@@ -1110,6 +1110,19 @@ function App() {
       skipSubscribeOpenForAuthReloadRef.current = false
       if (isInvalidLoginCredentialsError(error)) {
         const nextEmail = String(email || '').trim()
+        const { data: signInKind, error: kindError } = await supabase.rpc('auth_email_sign_in_kind', {
+          p_email: nextEmail,
+        })
+        if (!kindError && signInKind === 'password') {
+          setLoginError('Incorrect password. Try again or tap Trouble signing in.')
+          setIsLoggingIn(false)
+          return
+        }
+        if (!kindError && signInKind === 'oauth') {
+          setLoginError('That email signs in with Google or Apple. Tap that icon above, or tap Trouble signing in to set a password.')
+          setIsLoggingIn(false)
+          return
+        }
         setSignupEmail(nextEmail)
         setSignupPassword(password)
         setSignupConfirmPassword('')

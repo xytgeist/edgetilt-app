@@ -2,7 +2,8 @@
 /**
  * Backtest the NFL trench blend against real results and suggest TRENCH_Z_TO_POINTS.
  *
- * Boards: data/syndicate/espn-nfl-{season}-trench-history.json (one board per "through week N").
+ * Boards: nfl_trench_board_snapshots on test (written weekly by sync-espn-nfl-trench-live.mjs),
+ *         merged over data/syndicate/espn-nfl-{season}-trench-history.json. Table wins per week.
  * Games:  nflverse games.csv (closing spread_line + result).
  *
  * Out-of-sample: week W games scored with the board through week W-1 (what we knew at kickoff).
@@ -13,9 +14,11 @@
  *
  *   node scripts/syndicate-trench-recalibrate.mjs [--season=2026] [--clamp=2.5]
  */
-import { readFileSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
+import { createClient } from '@supabase/supabase-js'
+import { loadSupabaseEnv, createSupabaseServiceClient } from './lib/supabaseEnv.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..')
 const GAMES_URL = 'https://github.com/nflverse/nfldata/raw/master/data/games.csv'
@@ -83,7 +86,7 @@ function report(label, rows) {
   const margin = fitThroughOrigin(zs, rows.map((r) => r.result))
   const ats = fitThroughOrigin(zs, rows.map((r) => r.result - r.spread))
   const market = fitThroughOrigin(zs, rows.map((r) => r.spread))
-  const flagged = rows.filter((r) => Math.abs(r.z * CURRENT_Z_TO_POINTS) >= MISMATCH_PTS)
+  const flagged = rows.filter((r) => Math.abs(Math.round(r.z * CURRENT_Z_TO_POINTS * 10) / 10) >= MISMATCH_PTS)
   const decided = flagged.filter((r) => r.result !== r.spread)
   const covers = decided.filter((r) => Math.sign(r.result - r.spread) === Math.sign(r.z)).length
   const f = (x) => (x >= 0 ? '+' : '') + x.toFixed(2)
@@ -99,9 +102,40 @@ function median(xs) {
   return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2
 }
 
+async function loadBoards() {
+  const byWeek = new Map()
+  const file = join(ROOT, `data/syndicate/espn-nfl-${season}-trench-history.json`)
+  if (existsSync(file)) {
+    for (const b of JSON.parse(readFileSync(file, 'utf8')).boards) byWeek.set(b.through_week, b)
+  }
+  try {
+    loadSupabaseEnv('test')
+    const { data, error } = await createSupabaseServiceClient(createClient)
+      .from('nfl_trench_board_snapshots')
+      .select('through_week, team_abbr, pass_block_win_rate, pass_rush_win_rate, run_block_win_rate, run_stop_win_rate')
+      .eq('season', season)
+    if (error) throw error
+    const fromDb = new Map()
+    for (const r of data || []) {
+      const b = fromDb.get(r.through_week) || { through_week: r.through_week, teams: {} }
+      b.teams[r.team_abbr] = {
+        pbwr: Number(r.pass_block_win_rate),
+        prwr: Number(r.pass_rush_win_rate),
+        rbwr: Number(r.run_block_win_rate),
+        rswr: Number(r.run_stop_win_rate),
+      }
+      fromDb.set(r.through_week, b)
+    }
+    for (const [week, b] of fromDb) if (Object.keys(b.teams).length === 32) byWeek.set(week, b)
+  } catch (err) {
+    console.warn(`[trench-recalibrate] snapshot table unavailable, using JSON only: ${err?.message || err}`)
+  }
+  if (!byWeek.size) throw new Error(`no ${season} boards in the table or ${file}`)
+  return [...byWeek.values()].sort((a, b) => a.through_week - b.through_week)
+}
+
 async function main() {
-  const history = JSON.parse(readFileSync(join(ROOT, `data/syndicate/espn-nfl-${season}-trench-history.json`), 'utf8'))
-  const boards = [...history.boards].sort((a, b) => a.through_week - b.through_week)
+  const boards = await loadBoards()
   const latest = boards[boards.length - 1]
   const res = await fetch(GAMES_URL)
   if (!res.ok) throw new Error(`games.csv HTTP ${res.status}`)

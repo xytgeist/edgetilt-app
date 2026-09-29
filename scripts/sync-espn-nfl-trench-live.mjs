@@ -94,7 +94,9 @@ async function applyBoard(supabase, board, { dryRun, label }) {
 /** Raw ESPN board (overrides ignored) → nfl_trench_board_snapshots. Never fails the sync. */
 async function snapshotBoard(supabase, board, { dryRun, label }) {
   const week = Number(String(board.through || '').match(/\d+/)?.[0])
-  const season = Number(String(board.lastModified || '').slice(0, 4)) || new Date().getUTCFullYear()
+  const stamp = new Date(board.lastModified || Date.now())
+  // Late-season boards (Weeks 17-18) update in January and still belong to the prior season.
+  const season = stamp.getUTCMonth() < 2 ? stamp.getUTCFullYear() - 1 : stamp.getUTCFullYear()
   if (!week) {
     console.warn(`[espn-trench] ${label} snapshot skipped: no "through Week N" on the board`)
     return

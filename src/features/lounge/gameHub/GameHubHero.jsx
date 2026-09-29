@@ -4387,6 +4387,47 @@ function ScoreboardLine({ pick, text, label, className = '' }) {
   )
 }
 
+/**
+ * One side of the no-field board (pregame / non-football final): logo, name (full name wraps to two lines
+ * pregame), record, then the big number (best spread pregame, score after) with the moneyline under it.
+ */
+function BoardTeamColumn({ side, label, treatment, preLabels, bigText, bigPick, bigDim, ml, mlPick }) {
+  return (
+    <div className="flex min-w-0 flex-1 flex-col items-center text-center">
+      <LoungeSportsTeamLogo side={side} treatment={treatment} size={76} />
+      <div className={`mt-1.5 flex w-full flex-col items-center justify-center ${preLabels ? 'min-h-[2.3em] text-[15px]' : ''}`}>
+        <RankedTeamLabel
+          side={side}
+          label={label}
+          wrap={preLabels}
+          className={`font-semibold text-white/90 ${
+            preLabels
+              ? 'line-clamp-2 text-[15px] leading-[1.15] [text-wrap:balance]'
+              : 'text-[16px] uppercase leading-none tracking-wide'
+          }`}
+        />
+      </div>
+      {side?.record ? (
+        <div className="mt-1 text-[11px] font-medium tabular-nums leading-none text-white/60">{side.record}</div>
+      ) : null}
+      <div className="mt-auto flex flex-col items-center pt-2.5">
+        <ScoreboardLine
+          pick={bigPick}
+          text={bigText}
+          label="Spread"
+          className={`text-[42px] font-bold ${bigDim ? 'text-white/45' : 'text-white'}`}
+        />
+        {ml ? (
+          <div className="mt-1 flex items-baseline gap-1 text-[13px] font-semibold text-white/70">
+            <span className="text-[10px] font-bold tracking-[0.12em] text-white/60">ML</span>
+            <ScoreboardLine pick={mlPick} text={ml} label="Moneyline" />
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
 /** Best-line pick (`pregameBestLines`) as a MatchupLine; falls back to the scoreboard number without a book. */
 function BestLine({ title, pick, value, fallback }) {
   if (!pick) return fallback != null ? <MatchupLine title={title} value={fallback} /> : null
@@ -5020,119 +5061,45 @@ export default function GameHubHero({
           </div>
         </div>
       ) : (
-        /* Pre/post without field: same logo | odds | center | odds | logo rhythm; bigger logos. */
-        <div data-lounge-game-scoreboard className="relative z-[4] px-3 pb-3 pt-2">
-          <div className="flex items-center justify-between gap-1.5">
-            <div className="flex min-w-0 flex-1 items-center">
-              <div className="flex w-[68px] shrink-0 flex-col items-center">
-                <LoungeSportsTeamLogo side={game.away} treatment={awayTreatment} size={68} />
-                <RankedTeamLabel
-                  side={game.away}
-                  label={awayLabel}
-                  className={`mt-0.5 font-semibold leading-snug text-white/85 ${
-                    preLabels
-                      ? 'text-[12px] tracking-tight'
-                      : 'text-[13px] uppercase tracking-wide'
-                  }`}
-                />
-                {game.away?.record ? (
-                  <div className="mt-0.5 w-full text-center text-[10px] font-medium tabular-nums leading-none text-white/55">
-                    {game.away.record}
-                  </div>
-                ) : null}
-                {awayTimeouts != null ? <TimeoutDots remaining={awayTimeouts} align="center" /> : null}
-              </div>
-              <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1">
-                <div className="flex flex-col items-center">
-                  {awaySpreadText ? (
-                    <ScoreboardLine
-                      pick={scoreBest?.away?.spread}
-                      text={awaySpreadText}
-                      label="Spread"
-                      className="mb-0.5 text-[11px] font-semibold text-white/70"
-                    />
-                  ) : null}
-                  <div
-                    className={`text-[34px] font-bold leading-none tabular-nums drop-shadow ${
-                      awayScoreDim ? 'text-white/45' : 'text-white'
-                    }`}
-                  >
-                    {scoreText(game.away, game.status)}
-                  </div>
-                  {awayMl ? (
-                    <ScoreboardLine
-                      pick={scoreBest?.away?.ml}
-                      text={awayMl}
-                      label="Moneyline"
-                      className="mt-0.5 text-[11px] font-semibold text-white/70"
-                    />
-                  ) : null}
-                </div>
-                {awayHasBall ? <PossessionFootball side="away" /> : null}
-              </div>
-            </div>
+        /* Pre/post without field: two stacked team columns (logo, name, record, big line) around the clock. */
+        <div data-lounge-game-scoreboard className="relative z-[4] px-3 pb-4 pt-3">
+          <div className="flex items-stretch justify-between gap-2">
+            <BoardTeamColumn
+              side={game.away}
+              label={awayLabel}
+              treatment={awayTreatment}
+              preLabels={preLabels}
+              bigText={awaySpreadText || scoreText(game.away, game.status)}
+              bigPick={awaySpreadText ? scoreBest?.away?.spread : null}
+              bigDim={awayScoreDim}
+              ml={awayMl}
+              mlPick={scoreBest?.away?.ml}
+            />
 
-            <div className="flex max-w-[36%] shrink-0 flex-col items-center gap-0 px-1 text-center">
+            <div className="flex max-w-[34%] shrink-0 flex-col items-center justify-center gap-1 px-1 pb-8 text-center">
               <span
-                className={`text-[12px] font-bold tracking-wide ${
+                className={`text-[15px] font-bold leading-tight tracking-wide ${
                   game.status === 'in' && !isFinal ? 'text-rose-300' : 'text-white/85'
                 }`}
               >
                 {clock}
               </span>
-              {down ? <span className="text-[11px] font-semibold leading-tight text-white/90">{down}</span> : null}
-              {yard ? <span className="text-[11px] font-semibold leading-tight text-white/70">{yard}</span> : null}
+              {down ? <span className="text-[12px] font-semibold leading-tight text-white/90">{down}</span> : null}
+              {yard ? <span className="text-[12px] font-semibold leading-tight text-white/70">{yard}</span> : null}
               {isFinal ? null : <WatchBroadcastPill label={game.broadcast} url={game.broadcast_url} />}
             </div>
 
-            <div className="flex min-w-0 flex-1 items-center">
-              <div className="flex min-w-0 flex-1 items-center justify-center gap-1.5 px-1">
-                {homeHasBall ? <PossessionFootball side="home" /> : null}
-                <div className="flex flex-col items-center">
-                  {homeSpreadText ? (
-                    <ScoreboardLine
-                      pick={scoreBest?.home?.spread}
-                      text={homeSpreadText}
-                      label="Spread"
-                      className="mb-0.5 text-[11px] font-semibold text-white/70"
-                    />
-                  ) : null}
-                  <div
-                    className={`text-[34px] font-bold leading-none tabular-nums drop-shadow ${
-                      homeScoreDim ? 'text-white/45' : 'text-white'
-                    }`}
-                  >
-                    {scoreText(game.home, game.status)}
-                  </div>
-                  {homeMl ? (
-                    <ScoreboardLine
-                      pick={scoreBest?.home?.ml}
-                      text={homeMl}
-                      label="Moneyline"
-                      className="mt-0.5 text-[11px] font-semibold text-white/70"
-                    />
-                  ) : null}
-                </div>
-              </div>
-              <div className="flex w-[68px] shrink-0 flex-col items-center">
-                <LoungeSportsTeamLogo side={game.home} treatment={homeTreatment} size={68} />
-                <RankedTeamLabel
-                  side={game.home}
-                  label={homeLabel}
-                  className={`mt-0.5 font-semibold leading-snug text-white/85 ${
-                    preLabels
-                      ? 'text-[12px] tracking-tight'
-                      : 'text-[13px] uppercase tracking-wide'
-                  }`}
-                />
-                {game.home?.record ? (
-                  <div className="mt-0.5 w-full text-center text-[10px] font-medium tabular-nums leading-none text-white/55">
-                    {game.home.record}
-                  </div>
-                ) : null}
-                {homeTimeouts != null ? <TimeoutDots remaining={homeTimeouts} align="center" /> : null}
-              </div>
-            </div>
+            <BoardTeamColumn
+              side={game.home}
+              label={homeLabel}
+              treatment={homeTreatment}
+              preLabels={preLabels}
+              bigText={homeSpreadText || scoreText(game.home, game.status)}
+              bigPick={homeSpreadText ? scoreBest?.home?.spread : null}
+              bigDim={homeScoreDim}
+              ml={homeMl}
+              mlPick={scoreBest?.home?.ml}
+            />
           </div>
         </div>
       )}

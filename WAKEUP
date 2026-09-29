@@ -77,7 +77,7 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo ACTIVE TRACK 2026-09-28 ... ASC IAP chrome for resubmit
 
-**I am Mac Theo.** **1.4.95** Waiting for Review on **20260928212300** with Lifetime + Creator Fan + 7 fan SKUs (`4d7a133d`, 10 items). New Prod IPA **1.4.95 (20260928234616)** uploaded (background JS CallKit report). Web **`1.4.890`**. Do not bump **1.4.95**. Do not attach this build to the review packet unless Ryan asks.
+**I am Mac Theo.** **1.4.95** Waiting for Review on **20260928212300**. Prod IPA **20260928234616** on both phones. Web **`1.4.891`**: app-wide incoming scan on resume (any tab, not only the DM). VoIP payload no longer has `aps`. Do not bump **1.4.95**.
 
 ### Mac Theo ACTIVE TRACK 2026-09-25 ... CFB stack on prod
 

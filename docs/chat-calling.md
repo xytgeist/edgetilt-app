@@ -69,7 +69,7 @@ Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, remove
 ## iOS / PWA limits
 
 - **No CallKit** ... incoming = web push + in-app overlay only.
-- **IPA:** focused incoming is CallKit pill only. The web Accept sheet shows only when CallKit skips or fails. A running backgrounded IPA now reports CallKit from JS (needs a new Prod IPA). Killed / suspended still depends on PushKit VoIP. Leftover outgoing chrome is dropped so a different incoming can present.
+- **IPA:** focused incoming is CallKit pill only. The web Accept sheet shows only when CallKit skips or fails. A frozen WKWebView drops Realtime, so resume / any-tab 2s poll fetches open incoming calls (not only the last DM). Killed / suspended still depends on PushKit VoIP. Leftover outgoing chrome is dropped so a different incoming can present.
 - `getUserMedia` only after user tap (Start / Accept, or first-open PWA mic opt-in).
 - **Mic permission:** request only when a call is **made or received** (LiveKit / `getUserMedia` on the call path). Do **not** show a first-open / sign-in mic sheet (`AppShell` no longer queues PWA mic opt-in). Helpers remain in `src/utils/pwaMicrophonePrompt.js` if call-side priming needs them.
 - Keep Edge open during calls (background mic is best-effort on iPhone Safari/PWA).

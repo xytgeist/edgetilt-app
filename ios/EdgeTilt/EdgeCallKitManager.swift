@@ -219,6 +219,7 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
   func handleDidBecomeActive() {
     EdgeLiveKitCallManager.shared.handleDidBecomeActive()
     revealInAppCallIfNeeded(force: false)
+    dispatchToWeb(event: "edge-app-became-active", detail: [:])
   }
 
   /// Device unlocked while we may still be backgrounded. Ask iOS to show Edge.

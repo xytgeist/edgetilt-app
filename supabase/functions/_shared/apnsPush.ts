@@ -289,7 +289,6 @@ export async function postVoipApns(
     'content-type': 'application/json',
   }
   const body: Record<string, unknown> = {
-    aps: { 'content-available': 1 },
     eventType: payload.eventType || 'chat_call_invite',
     chatCallId: payload.chatCallId,
     roomId: payload.roomId || '',

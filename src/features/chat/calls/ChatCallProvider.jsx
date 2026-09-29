@@ -13,6 +13,7 @@ import {
   chatAcceptCall,
   chatDeclineCall,
   chatFetchActiveRoomCall,
+  chatFetchIncomingOpenCalls,
   chatGetCall,
   chatJoinCall,
   chatLeaveCall,
@@ -590,22 +591,39 @@ export function ChatCallProvider({
 
   // iOS PWA: notificationclick often lands before auth/provider is ready, or drops
   // postMessage... re-peek session stash when the page becomes visible again.
+  // IPA: Realtime INSERT is dropped while WKWebView is frozen. Opening any tab
+  // must pick up a live ring, not only the last DM (watchRoom).
   useEffect(() => {
     if (typeof document === 'undefined') return
-    const onResume = () => {
+    if (!supabaseClient || !viewerUserId) return undefined
+    const scanIncoming = () => {
       if (document.visibilityState === 'hidden') return
-      if (callbackPrompt || incoming || activeCall) return
+      const live = activeCallRef.current
+      if (live && !live.isOutgoing && !isPlaceholderCallId(live.callId)) return
       const stashed = peekPendingChatCallDeepLink()
-      if (!stashed?.callId) return
-      setDeepLinkRetry((n) => n + 1)
+      if (stashed?.callId) setDeepLinkRetry((n) => n + 1)
+      void chatFetchIncomingOpenCalls(supabaseClient, viewerUserId)
+        .then((rows) => {
+          const row = rows.find((item) => item?.id && item.started_by !== viewerUserId)
+          if (row) presentIncomingRef.current(row)
+        })
+        .catch(() => {})
     }
+    const onResume = () => scanIncoming()
+    scanIncoming()
     document.addEventListener('visibilitychange', onResume)
     window.addEventListener('pageshow', onResume)
+    window.addEventListener('focus', onResume)
+    window.addEventListener('edge-app-became-active', onResume)
+    const interval = window.setInterval(scanIncoming, 2000)
     return () => {
       document.removeEventListener('visibilitychange', onResume)
       window.removeEventListener('pageshow', onResume)
+      window.removeEventListener('focus', onResume)
+      window.removeEventListener('edge-app-became-active', onResume)
+      window.clearInterval(interval)
     }
-  }, [callbackPrompt, incoming, activeCall])
+  }, [supabaseClient, viewerUserId])
 
   // Deep link ?call= / ?missedCall= (prop and/or sessionStorage stash).
   useEffect(() => {

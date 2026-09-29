@@ -176,6 +176,26 @@ export async function abandonOpenRoomCall(supabase, callId) {
 }
 
 /**
+ * Open ringing/active calls the viewer did not start (member RLS).
+ * Used on IPA resume so a ring is not trapped in the one DM that was last open.
+ * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+ * @param {string} viewerUserId
+ */
+export async function chatFetchIncomingOpenCalls(supabase, viewerUserId) {
+  const me = String(viewerUserId || '').trim()
+  if (!me) return []
+  const { data, error } = await supabase
+    .from('chat_calls')
+    .select('id, chat_room_id, kind, status, started_by, started_at, answered_at, media_mode')
+    .in('status', ['ringing', 'active'])
+    .neq('started_by', me)
+    .order('started_at', { ascending: false })
+    .limit(8)
+  if (error) throw new Error(error.message || 'Could not load incoming calls.')
+  return Array.isArray(data) ? data : []
+}
+
+/**
  * Open ringing/active call for a room (member RLS on `chat_calls`).
  * Includes active participant ids/count (rows with `left_at` null).
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase

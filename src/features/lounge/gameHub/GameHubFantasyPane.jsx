@@ -880,7 +880,7 @@ export default function GameHubFantasyPane({
       {rest.length ? (
         <div className="space-y-2">
           <div className="grid grid-cols-[minmax(0,1fr)_3.25rem_3.25rem] gap-x-2 px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-600">
-            <span>{status === 'post' ? 'Final board' : status === 'in' ? 'Live board' : 'Rest of board'}</span>
+            <span>{liveOrFinal ? 'Player' : 'Rest of board'}</span>
             <span className="text-right">{gameColTitle}</span>
             <span className="text-right">Season</span>
           </div>

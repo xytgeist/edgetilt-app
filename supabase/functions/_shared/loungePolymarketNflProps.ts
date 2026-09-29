@@ -129,22 +129,20 @@ function sidePrice(
 /**
  * Polymarket US sports boards live under /sports/{league}/{eventSlug}.
  * Legacy /event/{event}/{market} paths 404 on polymarket.us.
+ * The board preselects a trade via `?marketSlug={slug}&outcomeId={marketId}-long|short`
+ * (their `EVENT_TRADE_SELECTION_PARAMS`); `market` / `side` are ignored.
  */
-function polyUrls(league: PolyLeague, eventSlug: string, marketSlug: string) {
+function polyUrls(league: PolyLeague, eventSlug: string, marketSlug: string, marketId: string) {
   const eventUrl = `${POLY_WEB}/sports/${league}/${encodeURIComponent(eventSlug)}`
-  const qs = new URLSearchParams()
-  if (marketSlug) qs.set('market', marketSlug)
-  const marketUrl = qs.toString() ? `${eventUrl}?${qs.toString()}` : eventUrl
-  const yesQs = new URLSearchParams(qs)
-  yesQs.set('side', 'yes')
-  const noQs = new URLSearchParams(qs)
-  noQs.set('side', 'no')
-  return {
-    seriesUrl: eventUrl,
-    marketUrl,
-    yesUrl: `${eventUrl}?${yesQs.toString()}`,
-    noUrl: `${eventUrl}?${noQs.toString()}`,
+  if (!marketSlug || !marketId) {
+    return { seriesUrl: eventUrl, marketUrl: eventUrl, yesUrl: eventUrl, noUrl: eventUrl }
   }
+  const pick = (isLong: boolean) =>
+    `${eventUrl}?${new URLSearchParams({
+      marketSlug,
+      outcomeId: `${marketId}-${isLong ? 'long' : 'short'}`,
+    })}`
+  return { seriesUrl: eventUrl, marketUrl: pick(true), yesUrl: pick(true), noUrl: pick(false) }
 }
 
 function mapPolyMarket(
@@ -179,7 +177,7 @@ function mapPolyMarket(
     no = { bid: inv, ask: inv }
   }
 
-  const urls = polyUrls(league, eventSlug, slug)
+  const urls = polyUrls(league, eventSlug, slug, String(m.id ?? '').trim())
   return {
     ticker: `poly:${slug}`,
     series: sportsType || 'polymarket',

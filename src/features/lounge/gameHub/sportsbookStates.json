@@ -1,6 +1,7 @@
 {
   "updated_at": "2026-09-29",
   "note": "States where each odds-feed book runs a licensed online/mobile sportsbook. Refreshed weekly per docs/sportsbook-states-refresh.md. Offshore books, Pinnacle, and sweepstakes apps are licensed nowhere and stay out of this file.",
+  "changelog": [],
   "books": {
     "draftkings": {
       "name": "DraftKings",

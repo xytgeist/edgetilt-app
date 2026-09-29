@@ -9,6 +9,8 @@ alwaysApply: true
 
 **Do not push `main` unless Ryan explicitly asks** (saves Vercel credits … dual test+main deploys were burning quota). Revoked standing `main` push Aug 9, 2026.
 
+**One exception:** the weekly **Sportsbook state list refresh** automation may commit `src/features/lounge/gameHub/sportsbookStates.json` (that file only) straight to `main`, then merge `main` into `test`. Procedure: `docs/sportsbook-states-refresh.md` § Shipping. Approved by Ryan 2026-09-29.
+
 ## When to do it
 
 After you **finish an implementation task** (code/docs/migrations intended for the sandbox / app):

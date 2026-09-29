@@ -79,6 +79,8 @@ The agent should treat the following as **standing instructions for this session
 
 **I am Mac Theo.** Dual-machine: Mac owns `ios/` + ASC. Windows owns `src/**`. Do not bump **1.4.95**.
 
+**Bet sheet build (2026-09-28):** local EdgeTilt Prod archive **1.4.95 (20260929024139)** from `16eeddde` uploaded to ASC (TestFlight, edgetilt.com, includes `EdgeBetSheet`). **Not attached** to the review. Ryan chose: keep 1.4.95 in review, ship the bet sheet as the next update after approval. That update must be **1.4.96** (approved version trains close), so bump `MARKETING_VERSION` in `project.yml` + pbxproj then re-archive once 1.4.95 is approved. If Review rejects 1.4.95 again, `20260929024139` can be swapped in instead.
+
 **ASC:** Waiting for Review on **1.4.95 (20260928212300)** … Lifetime + Creator Fan + 7 fan SKUs (`4d7a133d`, 10 items). **Do not attach `20260928234616`.** The Home / killed fix is the prod APNs key, not a new binary.
 
 **Phones:** Prod IPA **20260928234616** (TestFlight) loads `edgetilt.com`. Extra native: JS can report CallKit if the process is still running in the background; `edge-app-became-active` on foreground.

@@ -12,6 +12,8 @@
 
 ## After the next App Store build goes live (do these, then delete the line)
 
+- [ ] **Ship the bet sheet update.** When 1.4.95 is approved: bump `MARKETING_VERSION` to **1.4.96** (`ios/project.yml` + `project.pbxproj`), archive **EdgeTilt Prod**, upload, submit. Prod web already serves `/native/bet-sheet-polymarket.js`. (1.4.95 build `20260929024139` has the sheet but can only be a TestFlight / swap-in for the current review.)
+
 Any agent (Mac or Windows) handling an App Store release or seeing a new build go **Ready for Distribution** must work this list. Web-only follow-ups that would break the *previous* IPA if shipped early.
 
 - [ ] **Claim game share links in AASA.** Once a live App Store build includes the `EdgePushManager` `/lounge/g/` allow + rewrite (landed on `test` 2026-09-27, first IPA after web `1.4.852`), add `{ "/": "/lounge/g/*", "comment": "Game hub share link (live scoreboard OG)" }` next to `/lounge/p/*` in **`public/.well-known/apple-app-site-association.json`**, plus `{ "/": "/", "?": { "game": "?*" }, "comment": "SPA game deep link" }`. Commit, push `test`, promote. Before that build is live, the old IPA's `isAllowedUniversalLink` returns false and the app opens to nothing.

@@ -58,7 +58,7 @@ Web: `src/utils/edgeNativePush.js` routes Lounge Settings / Offers reminders to 
 2. Add Android apps `com.edgetilt.app` and `com.edgetilt.app.test`, download `google-services.json` (one file covers both) into `android/app/`. The Gradle plugin only applies when that file exists, so builds without it simply have push off.
 3. Project settings → Service accounts → Generate new private key. Paste the whole JSON as Supabase secret **`FCM_SERVICE_ACCOUNT_JSON`** (test first, prod on promote).
 
-**Status:** Firebase project **`edge-ce06c`** ("Edge", investigence@gmail.com). Both apps registered; `app/google-services.json` is committed (client config, not a secret). Test secret set Sep 28 from service account `firebase-adminsdk-fbsvc@edge-ce06c`; the same key sits in gitignored `.env.fcm-service-account.local` on Ryan's Mac for the prod promote (`npx supabase secrets set --env-file .env.fcm-service-account.local --project-ref jtjgtucumuoswnbauxry`). Emulator smoke: token registered as Theo, `send-test-push` returned `sent:1`, notification showed on the `edge_alerts` channel, tap reopened the app on the link.
+**Status:** Firebase project **`edge-ce06c`** ("Edge", investigence@gmail.com). Both apps registered; `app/google-services.json` is committed (client config, not a secret). Test secret set Sep 28 from service account `firebase-adminsdk-fbsvc@edge-ce06c`; prod secret set from the same key (kept in gitignored `.env.fcm-service-account.local` on Ryan's Mac), prod migration + 3 Edge deploys done Sep 28. Emulator smoke: token registered as Theo, `send-test-push` returned `sent:1`, notification showed on the `edge_alerts` channel, tap reopened the app on the link.
 
 ## Known gaps (MVP)
 

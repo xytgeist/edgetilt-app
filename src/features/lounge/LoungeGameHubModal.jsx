@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { ChevronLeft } from 'lucide-react'
 import {
   loungeCfbGamePlayers,
+  loungeGameNews,
   loungeNflGameFantasy,
   loungeSportsGameDetail,
 } from '../../utils/loungeSportsApi.js'
@@ -30,6 +31,7 @@ import {
 import GameHubPlayersPane from './gameHub/GameHubPlayersPane.jsx'
 import GameHubFantasyPane from './gameHub/GameHubFantasyPane.jsx'
 import GameHubChatPane from './gameHub/GameHubChatPane.jsx'
+import GameHubNewsPane from './gameHub/GameHubNewsPane.jsx'
 import { GAME_CHAT_MAX_CHARS } from './gameHub/gameHubChatApi.js'
 import { useGameHubChat } from './gameHub/useGameHubChat.js'
 import { KalshiGamePropsBoard } from './gameHub/GameHubKalshiProps.jsx'
@@ -50,7 +52,7 @@ const EMPTY_POSTS = { top: null, latest: null }
 
 /**
  * Game destination opened from the in-post score pill.
- * X-style hero, Posts (Top/Latest), Stats, Plays, Players, Fantasy, Chat.
+ * X-style hero, News, Stats, Plays (live/final only), Players, Fantasy, Posts (Top/Latest), Chat.
  */
 export default function LoungeGameHubModal({
   supabaseClient,
@@ -63,7 +65,10 @@ export default function LoungeGameHubModal({
   const sports = useLoungeSportsFeed()
   const game = sports?.hubGame
   const phoneLandscape = usePhoneLandscapeNotTablet()
-  const [tab, setTab] = useState('posts')
+  const [tab, setTab] = useState('news')
+  const [news, setNews] = useState(null)
+  const [newsLoading, setNewsLoading] = useState(false)
+  const [newsErr, setNewsErr] = useState('')
   const [postsSort, setPostsSort] = useState('top')
   const [postsBySort, setPostsBySort] = useState(EMPTY_POSTS)
   const [postsLoading, setPostsLoading] = useState(false)
@@ -95,6 +100,8 @@ export default function LoungeGameHubModal({
 
   const isCfbGame = String(game?.sport_key || '').includes('ncaaf')
   const showFantasyTab = Boolean(game) && !isCfbGame
+  const showNewsTab = Boolean(game) && String(game?.sport_key || '').includes('americanfootball')
+  const showPlaysTab = Boolean(game) && game.status !== 'pre'
   const fieldPlayers = useMemo(
     () => mergeFieldRoster(fantasy.players, detail.rosters, game),
     [fantasy.players, detail.rosters, game],
@@ -322,6 +329,49 @@ export default function LoungeGameHubModal({
     }
   }, [game?.id, game?.status, game?.sport_key, game?.away?.abbrev, game?.home?.abbrev, supabaseClient])
 
+  const newsGameId = showNewsTab ? game?.id || null : null
+  useEffect(() => {
+    if (!newsGameId || !supabaseClient || !game) {
+      setNews(null)
+      setNewsErr('')
+      setNewsLoading(false)
+      return undefined
+    }
+    const cachedNews = readGameHubCache(newsGameId)?.news
+    setNews(cachedNews || null)
+    setNewsErr('')
+    let cancelled = false
+    const load = ({ showLoading }) => {
+      if (showLoading) setNewsLoading(true)
+      void loungeGameNews(supabaseClient, game)
+        .then((data) => {
+          if (cancelled) return
+          if (data?.error) {
+            if (showLoading) setNewsErr(String(data.error))
+            return
+          }
+          setNewsErr('')
+          writeGameHubCache(newsGameId, { news: data.news })
+          setNews(data.news)
+        })
+        .finally(() => {
+          if (!cancelled && showLoading) setNewsLoading(false)
+        })
+    }
+    load({ showLoading: !cachedNews })
+    // Server caches ~5 min; injuries and notes move on practice-report cadence, not per play.
+    const id = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return
+      load({ showLoading: false })
+    }, 5 * 60_000)
+    return () => {
+      cancelled = true
+      window.clearInterval(id)
+    }
+    // Game object churns on every board poll … id + status is the real identity.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [newsGameId, game?.status, supabaseClient])
+
   // Prefetch both Top and Latest as soon as the hub opens so neither the tab nor the sort toggle reloads.
   // Keyed on game id (not the game object, which churns on every board poll).
   const postsGameId = game?.id || null
@@ -369,12 +419,11 @@ export default function LoungeGameHubModal({
   const posts = postsBySort[postsSort === 'top' ? 'top' : 'latest'] || []
 
   useEffect(() => {
-    // Pregame → Fantasy (NFL) / Posts (CFB); live → Plays; post → Posts
+    // Live → Plays; pregame + final → News (football) / Posts
     if (!game?.id) return
-    const cfb = String(game.sport_key || '').includes('ncaaf')
+    const football = String(game.sport_key || '').includes('americanfootball')
     if (game.status === 'in') setTab('plays')
-    else if (game.status === 'pre') setTab(cfb ? 'posts' : 'fantasy')
-    else setTab('posts')
+    else setTab(football ? 'news' : 'posts')
     setPostsSort('top')
     setDraft('')
     setChatErr('')
@@ -426,13 +475,15 @@ export default function LoungeGameHubModal({
   }
 
   const tabs = [
-    { id: 'posts', label: 'Posts' },
+    ...(showNewsTab ? [{ id: 'news', label: 'News' }] : []),
     { id: 'stats', label: 'Stats' },
-    { id: 'plays', label: 'Plays' },
+    ...(showPlaysTab ? [{ id: 'plays', label: 'Plays' }] : []),
     { id: 'players', label: 'Players' },
     ...(showFantasyTab ? [{ id: 'fantasy', label: 'Fantasy' }] : []),
+    { id: 'posts', label: 'Posts' },
     { id: 'chat', label: 'Chat' },
   ]
+  const activeTab = tabs.some((t) => t.id === tab) ? tab : tabs[0].id
 
   const pillsRow = (
     <div className="flex gap-2 px-1">
@@ -510,7 +561,7 @@ export default function LoungeGameHubModal({
             type="button"
             onClick={() => setTab(item.id)}
             className={`-mb-px shrink-0 border-b-2 pb-2.5 pt-1 text-[15px] font-semibold touch-manipulation ${
-              tab === item.id ? 'border-white text-white' : 'border-transparent text-zinc-500'
+              activeTab === item.id ? 'border-white text-white' : 'border-transparent text-zinc-500'
             }`}
           >
             {item.label}
@@ -520,7 +571,12 @@ export default function LoungeGameHubModal({
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[max(1.25rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
         {/* Keep every pane mounted so tab switches stay instant (data is already prefetched). */}
-        <div hidden={tab !== 'stats'} className="space-y-3 py-3">
+        {showNewsTab ? (
+          <div hidden={activeTab !== 'news'}>
+            <GameHubNewsPane news={news} loading={newsLoading} error={newsErr} game={game} />
+          </div>
+        ) : null}
+        <div hidden={activeTab !== 'stats'} className="space-y-3 py-3">
           <OddsTable game={game} books={detail.odds} nevada={nevadaBooks} />
           {fantasyLoading && !(fantasy.props || []).length ? (
             <div className="py-4 text-center text-sm text-zinc-500">Loading Kalshi markets…</div>
@@ -530,7 +586,7 @@ export default function LoungeGameHubModal({
           <BoxScoreCard game={game} />
           <PlayerStats game={game} stats={detail.stats} />
         </div>
-        <div hidden={tab !== 'plays'} className="py-2">
+        <div hidden={activeTab !== 'plays'} className="py-2">
           <PlayList
             game={game}
             plays={detail.plays}
@@ -540,7 +596,7 @@ export default function LoungeGameHubModal({
             onSelectPlay={replayPlayOnField}
           />
         </div>
-        <div hidden={tab !== 'players'}>
+        <div hidden={activeTab !== 'players'}>
           <GameHubPlayersPane
             players={fantasy.players}
             props={fantasy.props}
@@ -552,7 +608,7 @@ export default function LoungeGameHubModal({
           />
         </div>
         {showFantasyTab ? (
-          <div hidden={tab !== 'fantasy'}>
+          <div hidden={activeTab !== 'fantasy'}>
             <GameHubFantasyPane
               players={fantasy.players}
               loading={fantasyLoading}
@@ -563,7 +619,7 @@ export default function LoungeGameHubModal({
             />
           </div>
         ) : null}
-        <div hidden={tab !== 'chat'} className="py-2">
+        <div hidden={activeTab !== 'chat'} className="py-2">
           <GameHubChatPane
             messages={chat.messages}
             loading={chat.loading}
@@ -575,8 +631,8 @@ export default function LoungeGameHubModal({
             }}
           />
         </div>
-        <div hidden={tab !== 'posts'} className="py-2">
-          {tab === 'posts' ? (
+        <div hidden={activeTab !== 'posts'} className="py-2">
+          {activeTab === 'posts' ? (
             <div className="mb-2 flex gap-1 rounded-full bg-zinc-900 p-0.5 w-fit">
               {[
                 { id: 'top', label: 'Top' },
@@ -606,7 +662,7 @@ export default function LoungeGameHubModal({
         </div>
       </div>
 
-      {tab === 'chat' && !loungeReadOnly ? (
+      {activeTab === 'chat' && !loungeReadOnly ? (
         <form
           className="shrink-0 border-t border-zinc-800 px-3 pb-[max(0.75rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] pt-2"
           onSubmit={(ev) => {

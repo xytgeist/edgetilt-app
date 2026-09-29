@@ -1502,6 +1502,80 @@ function espnSideMatchesGame(
   return false
 }
 
+export type EspnFootballEventRef = {
+  league: EspnFootballLeague
+  event_id: string
+  home_team_id: string
+  away_team_id: string
+  home_location: string
+  away_location: string
+}
+
+const espnEventRefCache = new Map<string, { at: number; ref: EspnFootballEventRef | null }>()
+const ESPN_EVENT_REF_TTL_MS = 6 * 60 * 60 * 1000
+const ESPN_EVENT_REF_MISS_TTL_MS = 5 * 60 * 1000
+
+/** Hub game (Rundown id) → ESPN event + team ids, via the kickoff-day scoreboard. Cached per game. */
+export async function resolveEspnFootballEvent(game: LoungeSportsGame): Promise<EspnFootballEventRef | null> {
+  const sk = String(game?.sport_key || '')
+  const league: EspnFootballLeague | null = isCfbSportKey(sk) ? 'college-football' : isNflSportKey(sk) ? 'nfl' : null
+  if (!league) return null
+  const cacheKey = `${league}:${game.id}:${nflAbbrevKey(game.away?.abbrev)}@${nflAbbrevKey(game.home?.abbrev)}`
+  const hit = espnEventRefCache.get(cacheKey)
+  if (hit && Date.now() - hit.at < (hit.ref ? ESPN_EVENT_REF_TTL_MS : ESPN_EVENT_REF_MISS_TTL_MS)) return hit.ref
+
+  const kick = game.commence_time ? new Date(game.commence_time) : new Date()
+  const dates: string[] = []
+  for (const delta of [0, -1, 1]) {
+    const d = new Date(kick)
+    d.setUTCDate(d.getUTCDate() + delta)
+    dates.push(`${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, '0')}${String(d.getUTCDate()).padStart(2, '0')}`)
+  }
+  const headers = { 'User-Agent': 'EdgeTiltLounge/1.0', Accept: 'application/json' }
+  // CFB boards default to ranked/FBS groups … groups=80 pulls every FBS game for the date.
+  const groups = league === 'college-football' ? '&groups=80&limit=400' : ''
+  let ref: EspnFootballEventRef | null = null
+  for (const date of dates) {
+    try {
+      const res = await fetch(`${espnFootballScoreboardPath(league)}?dates=${date}${groups}`, {
+        headers,
+        signal: AbortSignal.timeout(8_000),
+      })
+      if (!res.ok) continue
+      const pack = await res.json() as { events?: Array<Record<string, unknown>> }
+      for (const ev of Array.isArray(pack.events) ? pack.events : []) {
+        const comps = (ev.competitions as Array<Record<string, unknown>> | undefined)?.[0]
+        const competitors = Array.isArray(comps?.competitors) ? comps.competitors as Array<Record<string, unknown>> : []
+        let home: Record<string, unknown> | null = null
+        let away: Record<string, unknown> | null = null
+        for (const c of competitors) {
+          const team = (c.team && typeof c.team === 'object') ? c.team as Record<string, unknown> : {}
+          const abb = nflAbbrevKey(team.abbreviation)
+          if (c.homeAway === 'home') home = { ...c, abb, team }
+          if (c.homeAway === 'away') away = { ...c, abb, team }
+        }
+        if (!home || !away) continue
+        if (!espnSideMatchesGame(away, game.away) || !espnSideMatchesGame(home, game.home)) continue
+        const loc = (side: Record<string, unknown>) => String((side.team as Record<string, unknown>)?.location || '').trim()
+        ref = {
+          league,
+          event_id: String(ev.id || '').trim(),
+          home_team_id: espnCompetitorTeamId(home),
+          away_team_id: espnCompetitorTeamId(away),
+          home_location: loc(home),
+          away_location: loc(away),
+        }
+        break
+      }
+    } catch {
+      /* try next date */
+    }
+    if (ref) break
+  }
+  espnEventRefCache.set(cacheKey, { at: Date.now(), ref })
+  return ref
+}
+
 /** ESPN summary `boxscore.players` → per-side player box lines (skill players + kickers). */
 function espnPlayerBoxes(
   box: Record<string, unknown> | null,

@@ -35,6 +35,8 @@ function sameHubGame(a, b) {
     a.away?.score === b.away?.score &&
     a.home?.record === b.home?.record &&
     a.away?.record === b.away?.record &&
+    a.home?.division_record === b.home?.division_record &&
+    a.away?.division_record === b.away?.division_record &&
     JSON.stringify(a.live || null) === JSON.stringify(b.live || null)
   )
 }
@@ -75,6 +77,10 @@ function preserveSpreads(next, prev) {
     const awayMl = sideNum(game.away, 'ml') ?? sideNum(old.away, 'ml')
     const homeRecord = game.home?.record || old.home?.record || null
     const awayRecord = game.away?.record || old.away?.record || null
+    const homeDiv = game.home?.division_record || old.home?.division_record || null
+    const awayDiv = game.away?.division_record || old.away?.division_record || null
+    const homeDivLabel = game.home?.division_record_label || old.home?.division_record_label || null
+    const awayDivLabel = game.away?.division_record_label || old.away?.division_record_label || null
     const broadcast = game.broadcast || old.broadcast || null
     const broadcastUrl = game.broadcast_url || old.broadcast_url || null
     if (
@@ -84,6 +90,8 @@ function preserveSpreads(next, prev) {
       && awayMl === sideNum(game.away, 'ml')
       && homeRecord === (game.home?.record || null)
       && awayRecord === (game.away?.record || null)
+      && homeDiv === (game.home?.division_record || null)
+      && awayDiv === (game.away?.division_record || null)
       && broadcast === (game.broadcast || null)
       && broadcastUrl === (game.broadcast_url || null)
     ) return game
@@ -91,8 +99,22 @@ function preserveSpreads(next, prev) {
       ...game,
       broadcast,
       broadcast_url: broadcastUrl,
-      home: { ...game.home, spread: homeSpread, ml: homeMl, record: homeRecord },
-      away: { ...game.away, spread: awaySpread, ml: awayMl, record: awayRecord },
+      home: {
+        ...game.home,
+        spread: homeSpread,
+        ml: homeMl,
+        record: homeRecord,
+        division_record: homeDiv,
+        division_record_label: homeDivLabel,
+      },
+      away: {
+        ...game.away,
+        spread: awaySpread,
+        ml: awayMl,
+        record: awayRecord,
+        division_record: awayDiv,
+        division_record_label: awayDivLabel,
+      },
     }
   })
 }

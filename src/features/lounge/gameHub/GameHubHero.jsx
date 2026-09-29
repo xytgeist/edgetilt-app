@@ -4407,9 +4407,7 @@ function BoardTeamColumn({ side, label, treatment, preLabels, bigText, bigPick, 
           }`}
         />
       </div>
-      {side?.record ? (
-        <div className="mt-1 text-[11px] font-medium tabular-nums leading-none text-white/60">{side.record}</div>
-      ) : null}
+      <TeamRecordLine side={side} className="mt-1 text-white/60" />
       <div className="mt-auto flex flex-col items-center pt-2.5">
         <ScoreboardLine
           pick={bigPick}
@@ -4444,6 +4442,23 @@ function BestLine({ title, pick, value, fallback }) {
   )
 }
 
+/** Overall W-L plus division (NFL) / conference (CFB) W-L when the scoreboard has it. */
+function TeamRecordLine({ side, className = '' }) {
+  if (!side?.record) return null
+  const div = side.division_record && side.division_record_label ? side.division_record : null
+  return (
+    <div className={`text-[11px] font-medium tabular-nums leading-none ${className}`}>
+      {side.record}
+      {div ? (
+        <>
+          <span className="mx-1 opacity-60">·</span>
+          {div} <span className="text-[9px] font-bold tracking-[0.1em]">{side.division_record_label}</span>
+        </>
+      ) : null}
+    </div>
+  )
+}
+
 /** One team's column on the landscape pregame board: logo, name, record, best spread + ML, then team total. */
 function MatchupTeamColumn({ side, label, treatment, best, teamTotal }) {
   return (
@@ -4454,9 +4469,7 @@ function MatchupTeamColumn({ side, label, treatment, best, teamTotal }) {
         label={label}
         className="mt-1 max-w-full truncate text-[14px] font-semibold tracking-tight text-white/90"
       />
-      {side?.record ? (
-        <div className="mt-0.5 text-[11px] font-medium tabular-nums leading-none text-white/55">{side.record}</div>
-      ) : null}
+      <TeamRecordLine side={side} className="mt-0.5 text-white/55" />
       <div className="mt-2.5 flex items-start gap-3">
         <BestLine
           title="Spread"

@@ -122,6 +122,9 @@ export type LoungeSportsGameSide = {
   ml?: number | null
   /** Season W-L (e.g. "3-1") from ESPN scoreboard when available. */
   record?: string | null
+  /** Division (NFL) or conference (CFB) W-L from ESPN standings, e.g. "1-0". */
+  division_record?: string | null
+  division_record_label?: 'DIV' | 'CONF' | null
   /** AP / CFP Top 25 rank (1-25) from ESPN `curatedRank`; null when unranked. */
   rank?: number | null
   team_id?: number | null
@@ -1084,6 +1087,63 @@ async function loadEspnFootballSlateExtras(
   return extras
 }
 
+type EspnDivisionRecord = { summary: string; label: 'DIV' | 'CONF' }
+
+const ESPN_STANDINGS_TTL_MS = 30 * 60 * 1000
+const espnFootballStandingsCache = new Map<EspnFootballLeague, { at: number; byAbbrev: Map<string, EspnDivisionRecord> }>()
+
+/**
+ * Division (NFL `vsdiv`) or conference (CFB `vsconf`) W-L from ESPN public standings (unofficial).
+ * Scoreboard competitors only carry overall/home/road. Cached 30m; soft-fails to an empty map.
+ */
+async function loadEspnFootballDivisionRecords(
+  league: EspnFootballLeague,
+): Promise<Map<string, EspnDivisionRecord>> {
+  const cached = espnFootballStandingsCache.get(league)
+  if (cached && Date.now() - cached.at < ESPN_STANDINGS_TTL_MS) return cached.byAbbrev
+  const byAbbrev = new Map<string, EspnDivisionRecord>()
+  const statType = league === 'nfl' ? 'vsdiv' : 'vsconf'
+  const label: EspnDivisionRecord['label'] = league === 'nfl' ? 'DIV' : 'CONF'
+  try {
+    const res = await fetch(`https://site.api.espn.com/apis/v2/sports/football/${league}/standings`, {
+      headers: { 'User-Agent': 'EdgeTiltLounge/1.0', Accept: 'application/json' },
+      signal: AbortSignal.timeout(8_000),
+    })
+    if (res.ok) {
+      const pack = await res.json() as Record<string, unknown>
+      const walk = (node: Record<string, unknown>) => {
+        // CFB independents have no conference games … skip rather than show a permanent 0-0.
+        if (String(node.abbreviation || '').toLowerCase() === 'ind') return
+        const standings = (node.standings && typeof node.standings === 'object')
+          ? node.standings as Record<string, unknown>
+          : null
+        const entries = Array.isArray(standings?.entries) ? standings.entries as Array<Record<string, unknown>> : []
+        for (const e of entries) {
+          const team = (e.team && typeof e.team === 'object') ? e.team as Record<string, unknown> : {}
+          const abb = nflAbbrevKey(team.abbreviation)
+          const stats = Array.isArray(e.stats) ? e.stats as Array<Record<string, unknown>> : []
+          const stat = stats.find((s) => String(s.type || '').toLowerCase() === statType)
+          const summary = String(stat?.summary || stat?.displayValue || '').trim()
+          if (abb && /^\d+-\d+(-\d+)?$/.test(summary)) byAbbrev.set(abb, { summary, label })
+        }
+        const children = Array.isArray(node.children) ? node.children as Array<Record<string, unknown>> : []
+        for (const child of children) walk(child)
+      }
+      walk(pack)
+    }
+  } catch {
+    // soft-fail … board shows overall record only
+  }
+  if (byAbbrev.size) {
+    espnFootballStandingsCache.set(league, { at: Date.now(), byAbbrev })
+    return byAbbrev
+  }
+  // Failed or empty fetch: keep whatever we had and retry in 2m instead of every poll.
+  const kept = cached?.byAbbrev || byAbbrev
+  espnFootballStandingsCache.set(league, { at: Date.now() - ESPN_STANDINGS_TTL_MS + 2 * 60 * 1000, byAbbrev: kept })
+  return kept
+}
+
 const ESPN_CLOCK_TTL_MS = 5_000
 const espnFootballClockCache = new Map<string, { at: number; events: Array<Record<string, unknown>> }>()
 
@@ -1170,21 +1230,25 @@ async function enrichEspnFootballExtras(
 ): Promise<LoungeSportsGame[]> {
   const subset = games.filter((g) => sportMatch(String(g.sport_key || '')))
   if (!subset.length) return games
-  const { recordsByAbbrev, ranksByAbbrev, broadcastByMatchup } = await loadEspnFootballSlateExtras(
-    subset,
-    league,
-    sportMatch,
-  )
-  if (!recordsByAbbrev.size && !ranksByAbbrev.size && !broadcastByMatchup.size) return games
+  const [{ recordsByAbbrev, ranksByAbbrev, broadcastByMatchup }, divisionByAbbrev] = await Promise.all([
+    loadEspnFootballSlateExtras(subset, league, sportMatch),
+    loadEspnFootballDivisionRecords(league),
+  ])
+  if (!recordsByAbbrev.size && !ranksByAbbrev.size && !broadcastByMatchup.size && !divisionByAbbrev.size) {
+    return games
+  }
   const withSideExtras = (side: LoungeSportsGameSide) => {
     const key = nflAbbrevKey(side?.abbrev)
     const rec = recordsByAbbrev.get(key) || null
     const rank = ranksByAbbrev.get(key) ?? null
-    if (!rec && rank == null) return side
+    const div = divisionByAbbrev.get(key) || null
+    if (!rec && rank == null && !div) return side
     return {
       ...side,
       record: rec ?? side?.record ?? null,
       rank: rank ?? side?.rank ?? null,
+      division_record: div?.summary ?? side?.division_record ?? null,
+      division_record_label: div?.label ?? side?.division_record_label ?? null,
     }
   }
   return games.map((g) => {

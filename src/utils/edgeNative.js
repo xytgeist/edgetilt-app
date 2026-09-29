@@ -252,6 +252,39 @@ export function dismissEdgeKeyboard() {
 }
 
 /**
+ * Android hands kalshi.com links to the Kalshi app, which drops the `op_market_ticker` ticket (Ryan, 2026-09-28).
+ * An intent pinned to Chrome keeps the web ticket; `browser_fallback_url` covers phones without Chrome.
+ * Every other URL / platform passes through unchanged.
+ *
+ * @param {string} url
+ * @returns {string}
+ */
+export function androidBetHref(url) {
+  const href = String(url || '').trim()
+  if (typeof navigator === 'undefined' || !/Android/i.test(navigator.userAgent || '')) return href
+  let parsed
+  try {
+    parsed = new URL(href)
+  } catch {
+    return href
+  }
+  if (parsed.protocol !== 'https:' || !/(^|\.)kalshi\.com$/i.test(parsed.hostname)) return href
+  return `intent://${parsed.host}${parsed.pathname}${parsed.search}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(href)};end`
+}
+
+/**
+ * Anchor props for a Kalshi / Polymarket bet link (`androidBetHref` + no `_blank` on intents).
+ *
+ * @param {string} url
+ * @returns {{ href: string, target?: string, rel?: string }}
+ */
+export function betLinkProps(url) {
+  const href = androidBetHref(url)
+  if (href.startsWith('intent:')) return { href }
+  return { href, target: '_blank', rel: 'noopener noreferrer' }
+}
+
+/**
  * Open an arbitrary http(s) URL outside the app.
  * EdgeiOS shell → system Safari (`openInSafari`). Elsewhere → `window.open`.
  * Prefer this over raw `window.open` so the IPA never spawns a blank child WKWebView.
@@ -271,6 +304,13 @@ export async function openExternalUrl(url) {
     } catch {
       return { ok: false, via: 'error' }
     }
+  }
+
+  const androidHref = androidBetHref(href)
+  if (androidHref !== href) {
+    // Intents resolve in place; a `_blank` window would leave an empty tab behind.
+    window.location.href = androidHref
+    return { ok: true, via: 'window' }
   }
 
   try {

@@ -60,6 +60,6 @@ Web: `src/utils/edgeNativePush.js` routes Lounge Settings / Offers reminders to 
 
 ## Known gaps (MVP)
 
-- **Google sign-in:** Google blocks OAuth inside WebViews (`disallowed_useragent`). Email / password works. Fix: open Google OAuth in a Custom Tab and deep link back.
+- **Google sign-in:** Google refuses OAuth in UAs that announce an embedded WebView (`; wv`), so the shell UA drops that marker (same trick as the IPA's Safari-style UA). Emulator: Google account lookup works; full sign-in needs a real account smoke. If Google ever tightens detection, fall back to a Custom Tab + deep link back.
 - **Billing:** Play policy on web subscriptions from the app is not settled (see backlog Android section).
 - **App Links:** no `assetlinks.json` yet, so edgetilt.com links open in Chrome, not the app.

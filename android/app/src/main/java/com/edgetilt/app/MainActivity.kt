@@ -55,7 +55,9 @@ class MainActivity : Activity() {
       setSupportMultipleWindows(false)
       mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
       allowFileAccess = false
-      userAgentString = "$userAgentString ${SHELL_UA_TOKEN}"
+      // Google sign-in rejects UAs that announce an embedded WebView ("; wv"), like the IPA's Safari-style UA.
+      val chromeUa = userAgentString.replace("; wv", "").replace(Regex("Version/\\S+ "), "")
+      userAgentString = "$chromeUa ${SHELL_UA_TOKEN}"
     }
     CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
     webView.webViewClient = ShellClient()

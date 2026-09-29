@@ -1152,6 +1152,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-28:** **Prod APNs key (`CH5MAD3P93`).** Prod IPA VoIP was `403 BadEnvironmentKeyInToken` on `api.push.apple.com` with `YCS38Y799P` (sandbox-only). Test Edge had a newer key since Aug 29. Prod secrets now `CH5MAD3P93`. Dean diagnostic: production VoIP **200**. Redeployed prod `chat-calls`, `lounge-send-activity-push`, `send-test-push`. Store marketing still **1.4.95**.
 - **2026-09-28:** **Incoming scan on resume (`1.4.891`).** Ryan: focused pill works. Background/killed still silent. Foregrounding Edge during a ring did nothing until the DM (`watchRoom`). App-wide fetch of open incoming calls on visible / focus / 2s poll. Removed `aps` from VoIP payload (possible wake miss). Redeploy **`chat-calls`**. Store marketing still **1.4.95**.
 - **2026-09-28:** **Prod IPA `20260928234616` uploaded.** Local EdgeTilt Prod / Release → `edgetilt.com`. Marketing **1.4.95**. Includes the background JS CallKit report. Not attached to the Waiting for Review packet (`20260928212300`). Install from TestFlight after processing.
 - **2026-09-28:** **Incoming in all app states (`1.4.890`).** Ryan: only focused IPA rang (pill + web sheet). Hide the web sheet when CallKit presents. Stop skipping JS `reportIncomingCall` when the IPA is backgrounded but still running. VoIP send tries both APNs hosts and no longer deletes a token on BadDeviceToken. **New Prod IPA owed** for the Swift skip removal. Redeploy **`chat-calls`**. Store marketing still **1.4.95**.

@@ -7,6 +7,7 @@ import android.graphics.Typeface
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Message
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -32,6 +33,8 @@ import kotlin.concurrent.thread
  */
 class BetSheetActivity : Activity() {
   private lateinit var webView: WebView
+  private lateinit var stack: FrameLayout
+  private val popups = mutableListOf<WebView>()
   private lateinit var progress: ProgressBar
   private var autoTapSource: String? = null
   private var pageReady = false
@@ -54,26 +57,14 @@ class BetSheetActivity : Activity() {
     root.addView(header(), LinearLayout.LayoutParams(-1, dp(52)))
     progress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply { max = 100 }
     root.addView(progress, LinearLayout.LayoutParams(-1, dp(3)))
-    webView = WebView(this)
-    root.addView(webView, LinearLayout.LayoutParams(-1, 0, 1f))
+    stack = FrameLayout(this)
+    root.addView(stack, LinearLayout.LayoutParams(-1, 0, 1f))
+    webView = newSheetWebView()
+    stack.addView(webView, FrameLayout.LayoutParams(-1, -1))
     setContentView(root)
     applySystemInsets(root)
 
-    webView.settings.apply {
-      javaScriptEnabled = true
-      domStorageEnabled = true
-      setSupportMultipleWindows(false)
-    }
-    // Plain Chrome mobile, so the books serve normal mobile web and Google sign-in is allowed.
-    EdgeWebViews.presentAsChrome(webView.settings)
-    CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
     webView.webViewClient = SheetClient()
-    webView.webChromeClient = object : WebChromeClient() {
-      override fun onProgressChanged(view: WebView, newProgress: Int) {
-        progress.progress = newProgress
-        progress.visibility = if (newProgress >= 100) View.INVISIBLE else View.VISIBLE
-      }
-    }
     registerBack()
     fetchAutoTapScript()
     webView.loadUrl(initialUrl.toString())
@@ -85,8 +76,67 @@ class BetSheetActivity : Activity() {
   }
 
   override fun onDestroy() {
+    popups.forEach { it.destroy() }
+    popups.clear()
     if (::webView.isInitialized) webView.destroy()
     super.onDestroy()
+  }
+
+  @SuppressLint("SetJavaScriptEnabled")
+  private fun newSheetWebView(): WebView = WebView(this).apply {
+    settings.apply {
+      javaScriptEnabled = true
+      domStorageEnabled = true
+      setSupportMultipleWindows(true)
+      javaScriptCanOpenWindowsAutomatically = true
+    }
+    // Plain Chrome mobile, so the books serve normal mobile web and Google sign-in is allowed.
+    EdgeWebViews.presentAsChrome(settings)
+    CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
+    webChromeClient = chromeClient
+  }
+
+  /**
+   * Auth0 popup logins (Polymarket Google sign-in from a market page) hand the code back through
+   * `window.opener.postMessage`, so popups need a real child WebView instead of loading in place.
+   */
+  private val chromeClient = object : WebChromeClient() {
+    override fun onProgressChanged(view: WebView, newProgress: Int) {
+      if (view != topWebView()) return
+      progress.progress = newProgress
+      progress.visibility = if (newProgress >= 100) View.INVISIBLE else View.VISIBLE
+    }
+
+    override fun onCreateWindow(view: WebView, isDialog: Boolean, isUserGesture: Boolean, resultMsg: Message): Boolean {
+      val popup = newSheetWebView()
+      popup.webViewClient = PopupClient()
+      popups.add(popup)
+      stack.addView(popup, FrameLayout.LayoutParams(-1, -1))
+      (resultMsg.obj as WebView.WebViewTransport).webView = popup
+      resultMsg.sendToTarget()
+      return true
+    }
+
+    override fun onCloseWindow(window: WebView) {
+      closePopup(window)
+    }
+  }
+
+  private fun topWebView(): WebView = popups.lastOrNull() ?: webView
+
+  private fun closePopup(popup: WebView) {
+    if (!popups.remove(popup)) return
+    stack.removeView(popup)
+    popup.destroy()
+  }
+
+  private fun goBackOrClose() {
+    val top = topWebView()
+    when {
+      top.canGoBack() -> top.goBack()
+      top != webView -> closePopup(top)
+      else -> finish()
+    }
   }
 
   private fun header(): View {
@@ -175,17 +225,26 @@ class BetSheetActivity : Activity() {
     }
   }
 
+  private inner class PopupClient : WebViewClient() {
+    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+      val uri = request.url
+      if (EdgeLinks.isHttp(uri)) return false
+      EdgeLinks.openOutside(this@BetSheetActivity, uri)
+      return true
+    }
+  }
+
   private fun registerBack() {
     if (Build.VERSION.SDK_INT >= 33) {
       onBackInvokedDispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT) {
-        if (webView.canGoBack()) webView.goBack() else finish()
+        goBackOrClose()
       }
     }
   }
 
   @Deprecated("Pre-33 back")
   override fun onBackPressed() {
-    if (webView.canGoBack()) webView.goBack() else finish()
+    goBackOrClose()
   }
 
   private fun applySystemInsets(root: View) {

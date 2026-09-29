@@ -72,6 +72,7 @@ final class EdgeBetSheetController: UIViewController, WKNavigationDelegate, WKUI
     config.allowsInlineMediaPlayback = true
     // Plain Mobile Safari UA … no EdgeiOS token, so the books serve their normal mobile web.
     config.applicationNameForUserAgent = "Version/18.0 Mobile/15E148 Safari/604.1"
+    config.preferences.javaScriptCanOpenWindowsAutomatically = true
     let view = WKWebView(frame: .zero, configuration: config)
     view.navigationDelegate = self
     view.uiDelegate = self
@@ -79,6 +80,7 @@ final class EdgeBetSheetController: UIViewController, WKNavigationDelegate, WKUI
     return view
   }()
   private let progress = UIProgressView(progressViewStyle: .bar)
+  private var popups: [WKWebView] = []
 
   init(url: URL, autoTapScriptURL: URL?) {
     initialURL = url
@@ -195,25 +197,38 @@ final class EdgeBetSheetController: UIViewController, WKNavigationDelegate, WKUI
       decisionHandler(.cancel)
       return
     }
-    if navigationAction.targetFrame == nil {
-      webView.load(URLRequest(url: url))
-      decisionHandler(.cancel)
-      return
-    }
     decisionHandler(.allow)
   }
 
   // MARK: - WKUIDelegate
 
+  /// Auth0 popup logins (Polymarket Google sign-in from a market page) hand the code back through
+  /// `window.opener.postMessage`, so popups get a real child WKWebView layered over the sheet.
   func webView(
     _ webView: WKWebView,
     createWebViewWith configuration: WKWebViewConfiguration,
     for navigationAction: WKNavigationAction,
     windowFeatures: WKWindowFeatures
   ) -> WKWebView? {
-    if let url = navigationAction.request.url {
-      webView.load(URLRequest(url: url))
-    }
-    return nil
+    let popup = WKWebView(frame: .zero, configuration: configuration)
+    popup.navigationDelegate = self
+    popup.uiDelegate = self
+    popup.allowsBackForwardNavigationGestures = true
+    popup.translatesAutoresizingMaskIntoConstraints = false
+    view.insertSubview(popup, belowSubview: progress)
+    NSLayoutConstraint.activate([
+      popup.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+      popup.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+      popup.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+      popup.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+    ])
+    popups.append(popup)
+    return popup
+  }
+
+  func webViewDidClose(_ webView: WKWebView) {
+    guard let index = popups.firstIndex(of: webView) else { return }
+    popups.remove(at: index)
+    webView.removeFromSuperview()
   }
 }

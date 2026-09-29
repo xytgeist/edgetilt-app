@@ -23,6 +23,8 @@ object EdgeLinks {
     return scheme == "http" || scheme == "https"
   }
 
+  fun isAppHost(uri: Uri): Boolean = isHttp(uri) && hostMatches(uri, appHosts)
+
   fun isBet(uri: Uri): Boolean = isHttp(uri) && hostMatches(uri, betHosts)
 
   fun staysInApp(uri: Uri): Boolean = isHttp(uri) && (hostMatches(uri, appHosts) || hostMatches(uri, authHosts))

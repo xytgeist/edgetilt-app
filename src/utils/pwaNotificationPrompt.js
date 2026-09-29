@@ -3,6 +3,7 @@ import {
   OFFERS_IOS_PWA_NOTIF_PROMPT_KEY_PREFIX,
 } from '../features/offers/offerStorageKeys'
 import { isEdgeiOSShell } from './edgeNative.js'
+import { isEdgeAndroidShell } from './edgeAndroid.js'
 
 export function isIosDevice() {
   if (typeof window === 'undefined') return false
@@ -39,7 +40,7 @@ export function isStandalonePwa() {
 
 /** Installed PWA (Add to Home Screen / Install app) — eligible for one-time push opt-in prompt. */
 export function isInstalledPwaNotifPromptEligible() {
-  if (isEdgeiOSShell()) return false
+  if (isEdgeiOSShell() || isEdgeAndroidShell()) return false
   return isStandalonePwa()
 }
 
@@ -208,6 +209,6 @@ export function pwaInstallBannerSteps(isSafariBrowserFlag = isSafariBrowser()) {
 
 /** Show install chip in browser tabs only ... never in installed PWA or EdgeiOS shell. */
 export function shouldShowPwaInstallBanner() {
-  if (isEdgeiOSShell()) return false
+  if (isEdgeiOSShell() || isEdgeAndroidShell()) return false
   return !isStandalonePwa()
 }

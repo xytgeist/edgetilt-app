@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
 import { sendApnsToUser } from '../_shared/apnsPush.ts'
+import { sendFcmToUser } from '../_shared/fcmPush.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -105,7 +106,12 @@ Deno.serve(async (req) => {
     failed += apns.failed
     removed += apns.removed
 
-    if (webList.length === 0 && apns.reason === 'no_tokens') {
+    const fcm = await sendFcmToUser(admin, userId, payload)
+    sent += fcm.sent
+    failed += fcm.failed
+    removed += fcm.removed
+
+    if (webList.length === 0 && apns.reason === 'no_tokens' && fcm.reason === 'no_tokens') {
       return new Response(
         JSON.stringify({
           sent: 0,

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { isEdgeiOSShell } from '../../../utils/edgeNative.js'
 import {
-  disableEdgeIOSApnsPush,
-  enableEdgeIOSApnsPush,
-  syncEdgeIOSApnsPushState,
-} from '../../../utils/edgeIOSApnsPush.js'
+  disableNativePush,
+  enableNativePush,
+  isNativePushShell,
+  syncNativePushState,
+} from '../../../utils/edgeNativePush.js'
 import { writePushOptInIntent } from '../../../utils/pushOptInIntent.js'
 
 /** Registration that owns our push-sw.js worker (avoid mixing with unrelated SW registrations). */
@@ -47,7 +47,7 @@ function readSubscriptionKeys(subscription) {
 }
 
 export default function useWebPushNotifications({ supabaseClient }) {
-  const isIpaShell = typeof window !== 'undefined' && isEdgeiOSShell()
+  const isIpaShell = typeof window !== 'undefined' && isNativePushShell()
   const [nativeStatus, setNativeStatus] = useState(/** @type {'granted' | 'denied' | 'prompt'} */ ('prompt'))
   const [nativeToken, setNativeToken] = useState(/** @type {string | null} */ (null))
   const [nativeServerRegistered, setNativeServerRegistered] = useState(
@@ -82,7 +82,7 @@ export default function useWebPushNotifications({ supabaseClient }) {
 
   const syncNativeState = useCallback(async () => {
     if (!isIpaShell || !supabaseClient) return
-    const next = await syncEdgeIOSApnsPushState(supabaseClient)
+    const next = await syncNativePushState(supabaseClient)
     setNativeStatus(next.status)
     setNativeToken(next.token)
     setNativeServerRegistered(next.serverRegistered)
@@ -212,7 +212,7 @@ export default function useWebPushNotifications({ supabaseClient }) {
     if (uploadedTokenRef.current === nativeToken && nativeServerRegistered === true) return
     let cancelled = false
     void (async () => {
-      const next = await syncEdgeIOSApnsPushState(supabaseClient)
+      const next = await syncNativePushState(supabaseClient)
       if (cancelled) return
       setNativeServerRegistered(next.serverRegistered)
       if (next.token && next.serverRegistered) uploadedTokenRef.current = next.token
@@ -279,10 +279,10 @@ export default function useWebPushNotifications({ supabaseClient }) {
       if (silent) return nativeStatus === 'granted' && nativeServerRegistered === true
       setIsBusy(true)
       setStatusMessage('')
-      const result = await enableEdgeIOSApnsPush(supabaseClient)
+      const result = await enableNativePush(supabaseClient)
       setNativeStatus(result.status)
       if (result.ok) {
-        const { token } = await syncEdgeIOSApnsPushState(supabaseClient)
+        const { token } = await syncNativePushState(supabaseClient)
         setNativeToken(token)
         setNativeServerRegistered(true)
         if (token) uploadedTokenRef.current = token
@@ -368,7 +368,7 @@ export default function useWebPushNotifications({ supabaseClient }) {
     if (isIpaShell) {
       setIsBusy(true)
       setStatusMessage('')
-      const result = await disableEdgeIOSApnsPush(supabaseClient, nativeToken || uploadedTokenRef.current)
+      const result = await disableNativePush(supabaseClient, nativeToken || uploadedTokenRef.current)
       uploadedTokenRef.current = ''
       setNativeToken(null)
       setNativeServerRegistered(false)

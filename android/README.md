@@ -36,9 +36,30 @@ adb install -r app/build/outputs/apk/staging/debug/app-staging-debug.apk
 
 Upload key goes in `android/keystore.properties` (gitignored) with `storeFile`, `storePassword`, `keyAlias`, `keyPassword`; `./gradlew bundleProdRelease` then signs with it. Bump `versionCode` every upload.
 
+## JS bridge (`window.EdgeAndroid`)
+
+Web side: `src/utils/edgeAndroid.js` (`isEdgeAndroidShell()` = UA has `EdgeAndroid/`). Methods only answer while the main frame is on edgetilt.com / lvslotpro.com.
+
+| Method | Returns |
+| --- | --- |
+| `pushStatus()` | `granted` / `denied` / `prompt` (POST_NOTIFICATIONS on Android 13+) |
+| `requestPush()` | Shows the permission dialog, then fires `window` event `edge-android-push` with `detail.status` |
+| `pushToken()` | FCM token, `''` until Firebase is configured / has minted one |
+| `openAppSettings()` | This app's notification settings |
+| `info()` | JSON `{ appId, version, firebase }` |
+
+## Push (FCM)
+
+Web: `src/utils/edgeNativePush.js` routes Lounge Settings / Offers reminders to FCM in this shell (APNs in EdgeiOS). Tokens land in **`fcm_device_tokens`** (`upsert_my_fcm_device_token` / `delete_my_fcm_device_token`, migration `20260929040000`). Server: `supabase/functions/_shared/fcmPush.ts` sends data-only HIGH priority messages next to every APNs send (`lounge-send-activity-push`, `send-due-offer-reminders`, `send-test-push`). Android has no CallKit, so call invites / missed calls arrive as normal alerts from the activity worker. `EdgePushService` builds the notification; tapping opens the `url` in the app.
+
+**Setup (one time, Firebase console):**
+
+1. Create a Firebase project (Ryan's Google account / org).
+2. Add Android apps `com.edgetilt.app` and `com.edgetilt.app.test`, download `google-services.json` (one file covers both) into `android/app/`. The Gradle plugin only applies when that file exists, so builds without it simply have push off.
+3. Project settings → Service accounts → Generate new private key. Paste the whole JSON as Supabase secret **`FCM_SERVICE_ACCOUNT_JSON`** (test first, prod on promote).
+
 ## Known gaps (MVP)
 
 - **Google sign-in:** Google blocks OAuth inside WebViews (`disallowed_useragent`). Email / password works. Fix: open Google OAuth in a Custom Tab and deep link back.
-- **Push:** Web Push does not work in a WebView. Needs FCM + a native bridge.
 - **Billing:** Play policy on web subscriptions from the app is not settled (see backlog Android section).
 - **App Links:** no `assetlinks.json` yet, so edgetilt.com links open in Chrome, not the app.

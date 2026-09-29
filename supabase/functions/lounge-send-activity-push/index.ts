@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
 import { sendApnsToUser } from '../_shared/apnsPush.ts'
+import { sendFcmToUser } from '../_shared/fcmPush.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -784,7 +785,18 @@ async function sendPushToUser(
     apnsReason = String(apns.reason || '')
   }
 
-  if (webList.length === 0 && sent === 0 && (skipApnsAlert || apnsReason === 'no_tokens')) {
+  // Android has no CallKit / direct chat-calls path, so call invites + missed calls go here too.
+  const fcm = await sendFcmToUser(admin, userId, notification)
+  sent += fcm.sent
+  failed += fcm.failed
+  removed += fcm.removed
+
+  if (
+    webList.length === 0 &&
+    sent === 0 &&
+    (skipApnsAlert || apnsReason === 'no_tokens') &&
+    fcm.reason === 'no_tokens'
+  ) {
     return { sent: 0, failed: 0, removed: 0, message: 'No push destinations for recipient.' }
   }
 

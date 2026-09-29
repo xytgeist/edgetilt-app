@@ -4,6 +4,11 @@ plugins {
   id("com.android.application")
 }
 
+// Push stays off (empty FCM token) until the Firebase config lands in app/google-services.json.
+if (file("google-services.json").exists()) {
+  apply(plugin = "com.google.gms.google-services")
+}
+
 // Upload key lives outside git: android/keystore.properties (storeFile, storePassword, keyAlias, keyPassword).
 val keystoreProps = Properties().apply {
   val f = rootProject.file("keystore.properties")
@@ -64,4 +69,9 @@ android {
     sourceCompatibility = JavaVersion.VERSION_17
     targetCompatibility = JavaVersion.VERSION_17
   }
+}
+
+dependencies {
+  implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
+  implementation("com.google.firebase:firebase-messaging")
 }

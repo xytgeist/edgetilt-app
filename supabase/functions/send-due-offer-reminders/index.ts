@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
 import { sendApnsToUser } from '../_shared/apnsPush.ts'
+import { sendFcmToUser } from '../_shared/fcmPush.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -196,6 +197,15 @@ Deno.serve(async (req) => {
           .limit(1)
         if (apnsError) throw apnsError
         hasApns = Boolean(apnsRows && apnsRows.length > 0)
+        if (!hasApns) {
+          const { data: fcmRows, error: fcmError } = await admin
+            .from('fcm_device_tokens')
+            .select('id')
+            .eq('user_id', ev.user_id)
+            .limit(1)
+          if (fcmError) throw fcmError
+          hasApns = Boolean(fcmRows && fcmRows.length > 0)
+        }
         apnsTokenCache.set(ev.user_id, hasApns)
       }
 
@@ -270,6 +280,19 @@ Deno.serve(async (req) => {
       if (apns.sent > 0) hadSuccess = true
       if (!hadSuccess && apns.reason === 'not_configured') {
         errorSummary = errorSummary || 'APNs is not configured on this Edge project.'
+      }
+
+      const fcm = await sendFcmToUser(admin, ev.user_id, {
+        title,
+        body: nBody,
+        url: targetUrl,
+      })
+      sent += fcm.sent
+      failed += fcm.failed
+      removed += fcm.removed
+      if (fcm.sent > 0) hadSuccess = true
+      if (!hadSuccess && fcm.reason === 'not_configured') {
+        errorSummary = errorSummary || 'FCM is not configured on this Edge project.'
       }
 
       // Never let this fail silently: this row IS the dedupe record, so a dropped write

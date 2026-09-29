@@ -7,7 +7,7 @@ It:
 - reads enabled rows from `offer_notification_rules`
 - finds matching `offer_events` based on each rule's `lead_minutes`
 - dedupes with `offer_notification_sends`
-- sends push payloads to `push_subscriptions` and `apns_device_tokens`
+- sends push payloads to `push_subscriptions`, `apns_device_tokens`, and `fcm_device_tokens` (Android shell, secret `FCM_SERVICE_ACCOUNT_JSON`)
 - cleans stale endpoints (`404/410`)
 
 ## Required secrets

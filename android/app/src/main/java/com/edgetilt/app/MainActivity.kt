@@ -10,10 +10,12 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.view.View
 import android.view.WindowInsets
 import android.webkit.CookieManager
 import android.webkit.GeolocationPermissions
+import android.webkit.JavascriptInterface
 import android.webkit.PermissionRequest
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.ValueCallback
@@ -24,6 +26,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.FrameLayout
 import android.window.OnBackInvokedDispatcher
+import org.json.JSONObject
 
 /** Loads the live site (no bundled web build), like the iOS WKWebView shell. */
 class MainActivity : Activity() {
@@ -31,6 +34,8 @@ class MainActivity : Activity() {
   private var fileCallback: ValueCallback<Array<Uri>>? = null
   private var pendingMediaRequest: PermissionRequest? = null
   private var pendingGeo: Pair<String, GeolocationPermissions.Callback>? = null
+  /** The JS bridge only answers while the main frame is on our own site (not Supabase / Google auth hops). */
+  @Volatile private var onAppPage = false
 
   @SuppressLint("SetJavaScriptEnabled")
   override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,6 +61,8 @@ class MainActivity : Activity() {
     webView.webViewClient = ShellClient()
     webView.webChromeClient = ShellChrome()
     webView.setDownloadListener { url, _, _, _, _ -> EdgeLinks.openOutside(this, Uri.parse(url)) }
+    webView.addJavascriptInterface(Bridge(), "EdgeAndroid")
+    EdgePush.refreshToken(this)
 
     registerBack()
     val start = intent?.data?.takeIf { EdgeLinks.staysInApp(it) }?.toString() ?: BuildConfig.BASE_URL
@@ -101,6 +108,10 @@ class MainActivity : Activity() {
   // MARK: - Links
 
   private inner class ShellClient : WebViewClient() {
+    override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
+      onAppPage = EdgeLinks.isAppHost(Uri.parse(url))
+    }
+
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
       if (!request.isForMainFrame) return false
       val uri = request.url
@@ -121,6 +132,56 @@ class MainActivity : Activity() {
       recreate()
       return true
     }
+  }
+
+  // MARK: - JS bridge (`src/utils/edgeAndroid.js`)
+
+  private inner class Bridge {
+    @JavascriptInterface
+    fun pushStatus(): String = if (onAppPage) EdgePush.status(this@MainActivity) else "prompt"
+
+    @JavascriptInterface
+    fun pushToken(): String = if (onAppPage) EdgePush.token(this@MainActivity) else ""
+
+    @JavascriptInterface
+    fun requestPush() {
+      if (onAppPage) runOnUiThread { requestPushPermission() }
+    }
+
+    @JavascriptInterface
+    fun openAppSettings() {
+      if (!onAppPage) return
+      runOnUiThread {
+        startActivity(
+          Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, packageName),
+        )
+      }
+    }
+
+    @JavascriptInterface
+    fun info(): String = JSONObject()
+      .put("appId", BuildConfig.APPLICATION_ID)
+      .put("version", BuildConfig.VERSION_NAME)
+      .put("firebase", EdgePush.firebaseReady(this@MainActivity))
+      .toString()
+  }
+
+  private fun requestPushPermission() {
+    EdgePush.refreshToken(this)
+    if (Build.VERSION.SDK_INT >= 33 && EdgePush.status(this) == "prompt") {
+      EdgePush.markAsked(this)
+      requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), REQ_NOTIFY)
+    } else {
+      dispatchPushStatus()
+    }
+  }
+
+  private fun dispatchPushStatus() {
+    val status = EdgePush.status(this)
+    webView.evaluateJavascript(
+      "window.dispatchEvent(new CustomEvent('edge-android-push',{detail:{status:'$status'}}))",
+      null,
+    )
   }
 
   // MARK: - Uploads, camera / mic, location
@@ -205,6 +266,10 @@ class MainActivity : Activity() {
   override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, results: IntArray) {
     super.onRequestPermissionsResult(requestCode, permissions, results)
     when (requestCode) {
+      REQ_NOTIFY -> {
+        EdgePush.refreshToken(this)
+        dispatchPushStatus()
+      }
       REQ_MEDIA -> {
         val request = pendingMediaRequest ?: return
         pendingMediaRequest = null
@@ -246,5 +311,6 @@ class MainActivity : Activity() {
     private const val REQ_FILES = 41
     private const val REQ_MEDIA = 42
     private const val REQ_GEO = 43
+    private const val REQ_NOTIFY = 44
   }
 }

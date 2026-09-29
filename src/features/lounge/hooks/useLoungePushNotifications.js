@@ -1,20 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import useWebPushNotifications from '../../offers/hooks/useWebPushNotifications.js'
 import {
-  disableEdgeIOSApnsPush,
-  enableEdgeIOSApnsPush,
-  syncEdgeIOSApnsPushState,
-} from '../../../utils/edgeIOSApnsPush.js'
-import {
-  getEdgeiOSPushPermissionStatus,
-  getEdgeiOSPushToken,
-  isEdgeiOSShell,
-} from '../../../utils/edgeNative.js'
+  disableNativePush,
+  enableNativePush,
+  getNativePushPermissionStatus,
+  getNativePushToken,
+  isNativePushShell,
+  nativePushDeviceLabel,
+  syncNativePushState as readNativePushState,
+  upsertNativePushToken,
+} from '../../../utils/edgeNativePush.js'
 import {
   consumePwaNotifEnablePending,
   iosPwaInstallRequired,
 } from '../../../utils/pwaNotificationPrompt.js'
-import { upsertMyApnsDeviceToken } from '../../../utils/apnsDeviceTokenApi.js'
 import {
   readLoungePushNotificationsEnabled,
   subscribeLoungePushNotificationsEnabled,
@@ -30,10 +29,11 @@ import {
 /**
  * Lounge Settings push toggle.
  * EdgeiOS → native APNs permission + upload hex token to `apns_device_tokens`.
+ * EdgeAndroid → FCM token to `fcm_device_tokens` (same native branch, `edgeNativePush.js`).
  * Everywhere else → web push + `push_subscriptions`.
  */
 export default function useLoungePushNotifications({ supabaseClient, viewerUserId }) {
-  const isIpaShell = typeof window !== 'undefined' && isEdgeiOSShell()
+  const isIpaShell = typeof window !== 'undefined' && isNativePushShell()
 
   const pushPrefEnabled = useSyncExternalStore(
     subscribeLoungePushNotificationsEnabled,
@@ -71,8 +71,8 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
   const syncNativePushState = useCallback(async () => {
     if (!isIpaShell) return
     const [{ status }, { token }] = await Promise.all([
-      getEdgeiOSPushPermissionStatus(),
-      getEdgeiOSPushToken(),
+      getNativePushPermissionStatus(),
+      getNativePushToken(),
     ])
     setNativeStatus(status)
     setNativeToken(token)
@@ -91,7 +91,7 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
     const tick = async () => {
       if (cancelled || attempts >= 8) return
       attempts += 1
-      const { token } = await getEdgeiOSPushToken()
+      const { token } = await getNativePushToken()
       if (cancelled) return
       if (token) {
         setNativeToken(token)
@@ -119,7 +119,7 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
     if (uploadedTokenRef.current === nativeToken) return
     let cancelled = false
     void (async () => {
-      const result = await upsertMyApnsDeviceToken(supabaseClient, nativeToken)
+      const result = await upsertNativePushToken(supabaseClient, nativeToken)
       if (cancelled) return
       if (result.ok) {
         uploadedTokenRef.current = nativeToken
@@ -149,9 +149,9 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
           : 'Permission granted. Waiting for device token…'
       }
       if (pushPrefEnabled && nativeStatus === 'granted' && nativeServerRegistered === false) {
-        return 'Could not save this iPhone for alerts. Turn off, then on again.'
+        return `Could not save this ${nativePushDeviceLabel()} for alerts. Turn off, then on again.`
       }
-      return 'Turn on to allow Edge alerts on this iPhone (native push).'
+      return `Turn on to allow Edge alerts on this ${nativePushDeviceLabel()} (native push).`
     }
     if (iosPwaInstallRequired()) {
       return 'Add Edge to your Home Screen, then open from the icon to enable push here.'
@@ -283,7 +283,7 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
         syncingPrefRef.current = true
         try {
           if (nextEnabled) {
-            const result = await enableEdgeIOSApnsPush(supabaseClient)
+            const result = await enableNativePush(supabaseClient)
             setNativeStatus(result.status)
             if (!result.ok) {
               writeLoungePushNotificationsEnabled(false)
@@ -293,7 +293,7 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
             }
             writeLoungePushNotificationsEnabled(true)
             writePushOptInIntent(viewerUserId, true)
-            const next = await syncEdgeIOSApnsPushState(supabaseClient)
+            const next = await readNativePushState(supabaseClient)
             setNativeToken(next.token)
             setNativeServerRegistered(next.serverRegistered)
             if (next.token) uploadedTokenRef.current = next.token
@@ -304,7 +304,7 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
             const tokenToDrop = nativeToken
             uploadedTokenRef.current = ''
             setNativeServerRegistered(false)
-            const result = await disableEdgeIOSApnsPush(supabaseClient, tokenToDrop)
+            const result = await disableNativePush(supabaseClient, tokenToDrop)
             setNativeToken(null)
             setNativeStatusMessage(result.message || '')
           }

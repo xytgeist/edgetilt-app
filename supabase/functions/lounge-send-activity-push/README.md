@@ -1,6 +1,6 @@
 # lounge-send-activity-push
 
-Supabase Edge Function invoked from Postgres (`pg_net`) when a row is inserted into **`activity_events`**. Sends a web push to all **`push_subscriptions`** and an APNs alert to all **`apns_device_tokens`** for the **recipient** user.
+Supabase Edge Function invoked from Postgres (`pg_net`) when a row is inserted into **`activity_events`**. Sends a web push to all **`push_subscriptions`** and an APNs alert to all **`apns_device_tokens`** and an FCM message to all **`fcm_device_tokens`** (Android shell, secret `FCM_SERVICE_ACCOUNT_JSON`) for the **recipient** user.
 
 ## Required secrets
 

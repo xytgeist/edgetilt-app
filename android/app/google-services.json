@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "364409584074",
+    "project_id": "edge-ce06c",
+    "storage_bucket": "edge-ce06c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:364409584074:android:583a96d4acba80dc487733",
+        "android_client_info": {
+          "package_name": "com.edgetilt.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBjaWAvZMvCRTA0_FzzLX7eUMkrIPoS7sw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:364409584074:android:c55dc9e75516e426487733",
+        "android_client_info": {
+          "package_name": "com.edgetilt.app.test"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBjaWAvZMvCRTA0_FzzLX7eUMkrIPoS7sw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

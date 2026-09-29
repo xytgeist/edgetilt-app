@@ -5,6 +5,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
@@ -34,6 +35,7 @@ class MainActivity : Activity() {
   @SuppressLint("SetJavaScriptEnabled")
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
     val root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
     webView = WebView(this).apply { setBackgroundColor(Color.BLACK) }
     root.addView(webView, FrameLayout.LayoutParams(-1, -1))
@@ -124,6 +126,9 @@ class MainActivity : Activity() {
   // MARK: - Uploads, camera / mic, location
 
   private inner class ShellChrome : WebChromeClient() {
+    // Default poster is a gray Android glyph over every <video> until its first frame.
+    override fun getDefaultVideoPoster(): Bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+
     override fun onShowFileChooser(
       view: WebView,
       callback: ValueCallback<Array<Uri>>,

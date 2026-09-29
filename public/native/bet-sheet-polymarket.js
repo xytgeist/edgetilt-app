@@ -77,13 +77,17 @@
       })
     }, 10000)
     if (!tab) return false
-    if (tab.getAttribute('aria-selected') !== 'true') {
+    // Android WebView can run this before React hydrates, and those early clicks are dropped.
+    for (var i = 0; i < 12 && tab.getAttribute('aria-selected') !== 'true'; i++) {
       tab.scrollIntoView({ block: 'center' })
       await sleep(200)
       tab.click()
       await sleep(700)
+      if (!tab.isConnected) tab = Array.prototype.find.call(document.querySelectorAll('[role=tab]'), function (t) {
+        return norm(t.innerText) === want
+      }) || tab
     }
-    return true
+    return tab.getAttribute('aria-selected') === 'true'
   }
 
   async function openCategory(label) {
@@ -231,7 +235,10 @@
     if (!btn) return
     btn.scrollIntoView({ block: 'center' })
     await sleep(200)
-    btn.click()
+    for (var i = 0; i < 8; i++) {
+      btn.click()
+      if (await waitFor(function () { return document.querySelector('[role=dialog]') }, 1200)) return
+    }
   }
 
   async function run() {

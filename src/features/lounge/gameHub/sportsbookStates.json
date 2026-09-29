@@ -1,0 +1,91 @@
+{
+  "updated_at": "2026-09-29",
+  "note": "States where each odds-feed book runs a licensed online/mobile sportsbook. Refreshed weekly per docs/sportsbook-states-refresh.md. Offshore books, Pinnacle, and sweepstakes apps are licensed nowhere and stay out of this file.",
+  "books": {
+    "draftkings": {
+      "name": "DraftKings",
+      "states": ["AZ", "CO", "CT", "DC", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MO", "NH", "NJ", "NY", "NC", "OH", "OR", "PA", "TN", "VT", "VA", "WV", "WY"],
+      "verified_at": null,
+      "sources": [],
+      "uncertain": ["DC"]
+    },
+    "fanduel": {
+      "name": "FanDuel",
+      "states": ["AZ", "CO", "CT", "DC", "IL", "IN", "IA", "KS", "KY", "LA", "MD", "MA", "MI", "MO", "NJ", "NY", "NC", "OH", "PA", "TN", "VT", "VA", "WV", "WY"],
+      "verified_at": null,
+      "sources": [],
+      "uncertain": []
+    },
+    "betmgm": {
+      "name": "BetMGM",
+      "states": ["AZ", "CO", "DC", "IL", "IN", "IA", "KS", "KY", "LA", "MD", "MA", "MI", "MO", "NV", "NJ", "NY", "NC", "OH", "PA", "TN", "VA", "WV", "WY"],
+      "verified_at": null,
+      "sources": [],
+      "uncertain": []
+    },
+    "caesars": {
+      "name": "Caesars",
+      "states": ["AZ", "CO", "DC", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MO", "NV", "NJ", "NY", "NC", "OH", "PA", "TN", "VA", "WV", "WY"],
+      "verified_at": null,
+      "sources": [],
+      "uncertain": []
+    },
+    "fanatics": {
+      "name": "Fanatics",
+      "states": ["AZ", "CO", "CT", "DC", "IL", "IN", "IA", "KS", "KY", "LA", "MD", "MA", "MI", "MO", "NJ", "NY", "NC", "OH", "PA", "TN", "VT", "VA", "WV", "WY"],
+      "verified_at": null,
+      "sources": [],
+      "uncertain": []
+    },
+    "betrivers": {
+      "name": "BetRivers",
+      "states": ["AZ", "DE", "IL", "IN", "IA", "LA", "MD", "MI", "NJ", "NY", "OH", "PA", "VA", "WV"],
+      "verified_at": null,
+      "sources": [],
+      "uncertain": []
+    },
+    "thescorebet": {
+      "name": "theScore Bet (was ESPN BET)",
+      "states": ["AZ", "CO", "IL", "IN", "IA", "KS", "KY", "LA", "MD", "MA", "MI", "NJ", "NY", "NC", "OH", "PA", "TN", "VA", "WV"],
+      "verified_at": null,
+      "sources": [],
+      "uncertain": ["ALL"]
+    },
+    "hardrock": {
+      "name": "Hard Rock Bet",
+      "states": ["AZ", "FL", "IL", "IN", "IA", "MI", "NJ", "OH", "TN", "VA"],
+      "verified_at": null,
+      "sources": [],
+      "uncertain": ["MI"]
+    },
+    "bet365": {
+      "name": "bet365",
+      "states": ["AZ", "CO", "IL", "IN", "IA", "KS", "KY", "LA", "MO", "NJ", "NC", "OH", "PA", "TN", "VA"],
+      "verified_at": null,
+      "sources": [],
+      "uncertain": []
+    },
+    "ballybet": {
+      "name": "Bally Bet",
+      "states": ["AZ", "IN", "IA", "NY", "OH", "VA"],
+      "verified_at": null,
+      "sources": [],
+      "uncertain": []
+    },
+    "circasports": {
+      "name": "Circa Sports",
+      "states": ["CO", "IL", "IA", "KY", "NV", "WY"],
+      "verified_at": null,
+      "sources": [],
+      "uncertain": []
+    }
+  },
+  "aliases": {
+    "espnbet": "thescorebet",
+    "thescore": "thescorebet",
+    "williamhill": "caesars",
+    "williamhillus": "caesars",
+    "hardrockbet": "hardrock",
+    "circa": "circasports"
+  }
+}

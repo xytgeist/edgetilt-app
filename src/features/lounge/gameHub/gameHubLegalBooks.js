@@ -7,6 +7,7 @@
  */
 import { useEffect, useSyncExternalStore } from 'react'
 import { bookKey } from './sportsbookLinks.js'
+import sportsbookStates from './sportsbookStates.json'
 
 export const US_STATES = {
   AL: 'Alabama', AK: 'Alaska', AZ: 'Arizona', AR: 'Arkansas', CA: 'California', CO: 'Colorado',
@@ -20,28 +21,16 @@ export const US_STATES = {
   WV: 'West Virginia', WI: 'Wisconsin', WY: 'Wyoming',
 }
 
-const states = (list) => new Set(list.split(' '))
-
 /**
- * States where each feed book runs a licensed online/mobile app. Hand-kept from operator state lists;
- * recheck when a state launches or a book exits. Offshore books (Bovada, BetOnline, MyBookie, BetUS,
- * LowVig, BookMaker), Pinnacle, and sweepstakes apps (Fliff, Rebet) hold no US sportsbook license, so
- * they never appear here.
+ * States where each feed book runs a licensed online/mobile app (`sportsbookStates.json`, refreshed weekly;
+ * see docs/sportsbook-states-refresh.md). Offshore books (Bovada, BetOnline, MyBookie, BetUS, LowVig,
+ * BookMaker), Pinnacle, and sweepstakes apps (Fliff, ReBet) hold no US sportsbook license, so they never
+ * appear there.
  */
-const BOOK_STATES = {
-  draftkings: states('AZ CO CT DC IL IN IA KS KY LA ME MD MA MI MO NH NJ NY NC OH OR PA TN VT VA WV WY'),
-  fanduel: states('AZ CO CT DC IL IN IA KS KY LA MD MA MI MO NJ NY NC OH PA TN VT VA WV WY'),
-  betmgm: states('AZ CO DC IL IN IA KS KY LA MD MA MI MO NV NJ NY NC OH PA TN VA WV WY'),
-  caesars: states('AZ CO DC IL IN IA KS KY LA ME MD MA MI MO NV NJ NY NC OH PA TN VA WV WY'),
-  fanatics: states('AZ CO CT DC IL IN IA KS KY LA MD MA MI MO NJ NY NC OH PA TN VT VA WV WY'),
-  betrivers: states('AZ DE IL IN IA LA MD MI NJ NY OH PA VA WV'),
-  espnbet: states('AZ CO IL IN IA KS KY LA MD MA MI NJ NY NC OH PA TN VA WV'),
-  hardrock: states('AZ FL IL IN IA MI NJ OH TN VA'),
-  bet365: states('AZ CO IL IN IA KS KY LA MO NJ NC OH PA TN VA'),
-  ballybet: states('AZ IN IA NY OH VA'),
-  circasports: states('CO IL IA KY NV WY'),
-}
-const BOOK_ALIASES = { thescorebet: 'espnbet', thescore: 'espnbet', williamhill: 'caesars', williamhillus: 'caesars', hardrockbet: 'hardrock', circa: 'circasports' }
+const BOOK_STATES = Object.fromEntries(
+  Object.entries(sportsbookStates.books).map(([key, book]) => [key, new Set(book.states)]),
+)
+const BOOK_ALIASES = sportsbookStates.aliases
 
 function licensedStates(name) {
   const key = bookKey(name)

@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react'
-import { betLinkProps } from '../../../utils/edgeNative.js'
 import { kalshiCents, kalshiContracts } from './gameHubFormatters.js'
 import { GameStrikeLaddersBoard } from './GameHubStrikeLadders.jsx'
 import {
@@ -279,13 +278,17 @@ function YesNoButtons({ prop }) {
   return (
     <div className="inline-flex shrink-0 overflow-hidden rounded-lg ring-1 ring-inset ring-zinc-700/80">
       <a
-        {...betLinkProps(yesHref)}
+        href={yesHref}
+        target="_blank"
+        rel="noopener noreferrer"
         className="inline-flex min-w-[2rem] items-center justify-center bg-emerald-500/15 px-1.5 py-1 touch-manipulation active:opacity-80"
       >
         <span className="text-[12px] font-bold tabular-nums text-emerald-300">{kalshiCents(yesPx)}</span>
       </a>
       <a
-        {...betLinkProps(noHref)}
+        href={noHref}
+        target="_blank"
+        rel="noopener noreferrer"
         className="inline-flex min-w-[2rem] items-center justify-center border-l border-zinc-700/80 bg-rose-500/10 px-1.5 py-1 touch-manipulation active:opacity-80"
       >
         <span className="text-[12px] font-bold tabular-nums text-rose-300">{kalshiCents(noPx)}</span>

@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { betLinkProps } from '../../../utils/edgeNative.js'
 import { kalshiCents } from './gameHubFormatters.js'
 
 const NFL_ABBR =
@@ -261,7 +260,9 @@ function YesNoOutcomeRow({ label, prob, mult, href, emphasize }) {
   if (href) {
     return (
       <a
-        {...betLinkProps(href)}
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
         className="flex items-center gap-3 touch-manipulation active:opacity-85"
       >
         {inner}

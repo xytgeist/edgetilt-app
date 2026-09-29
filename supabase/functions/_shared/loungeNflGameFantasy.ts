@@ -344,21 +344,58 @@ function contractsToNum(v: unknown): number | null {
   return Math.round(n)
 }
 
-function kalshiMarketUrls(series: string, eventTicker: string, ticker: string) {
-  const seriesSlug = String(series || '').trim().toLowerCase()
+/** Slugified Kalshi series titles … the middle segment of `kalshi.com/markets/{series}/{slug}/{event}`. */
+const KALSHI_SERIES_TITLE_SLUG: Record<string, string> = {
+  KXNFLGAME: 'professional-football-game',
+  KXNFLSPREAD: 'pro-football-spread',
+  KXNFLTOTAL: 'pro-football-total-points',
+  KXNFLTEAMTOTAL: 'pro-football-team-total-points',
+  KXNFL1H: 'pro-football-1st-half-winner',
+  KXNFL2H: 'pro-football-2nd-half',
+  KXNFL1HSPREAD: 'pro-football-1st-half-spread',
+  KXNFL1HTOTAL: 'pro-football-1st-half-total-points',
+  KXNFL1HTEAMTOTAL: 'pro-football-1st-half-team-total',
+  KXNFL2HSPREAD: 'pro-football-2nd-half-spread',
+  KXNFL2HTOTAL: 'pro-football-2nd-half-total',
+  KXNFLPASSYDS: 'pro-football-passing-yards',
+  KXNFLRSHYDS: 'pro-football-rushing-yards',
+  KXNFLRECYDS: 'pro-football-receiving-yards',
+  KXNFLTD: 'pro-football-touchdowns',
+  KXNFLREC: 'pro-football-player-receptions',
+  KXNFLRSHATT: 'pro-football-rushing-attempts',
+  KXNFLPASSATT: 'pro-football-passing-attempts',
+  KXNFLPASSCOMP: 'pro-football-passing-completions',
+  KXNFLRRYDS: 'pro-football-rush-and-receiving-yards',
+  KXNFLFIRSTTD: 'pro-football-first-touchdown',
+  KXNFLTEAMFIRSTTD: 'pro-football-first-touchdown',
+  KXNFLSACK: 'pro-football-sacks',
+  KXNFLTKL: 'pro-football-tackles',
+  KXNCAAFGAME: 'college-football-game',
+  KXNCAAFSPREAD: 'college-football-spread',
+  KXNCAAFTOTAL: 'college-football-total-points',
+  KXNCAAFTEAMTOTAL: 'college-football-team-total-points',
+  KXNCAAF1H: 'college-football-1st-half-winner',
+  KXNCAAF2H: 'college-football-2nd-half-winner',
+  KXNCAAF1HSPREAD: 'college-football-1st-half-spread',
+  KXNCAAF1HTOTAL: 'college-football-1st-half-total',
+  KXNCAAF1HTEAMTOTAL: 'college-football-1st-half-team-total-points',
+  KXNCAAF2HSPREAD: 'college-football-2nd-half-spread',
+  KXNCAAF2HTOTAL: 'college-football-2nd-half-total',
+}
+
+/**
+ * Kalshi pages are per event (`/markets/{series}/{title-slug}/{event_ticker}`); a market ticker in the
+ * last segment renders "Something went wrong" in the app and mobile web. Kalshi has no market/side deep link.
+ */
+function kalshiMarketUrls(series: string, eventTicker: string, _ticker: string) {
+  const seriesKey = String(series || '').trim().toUpperCase()
+  const seriesSlug = seriesKey.toLowerCase()
   const eventSlug = String(eventTicker || '').trim().toLowerCase()
-  const tickerSlug = String(ticker || '').trim().toLowerCase()
+  const titleSlug = KALSHI_SERIES_TITLE_SLUG[seriesKey] || 'market'
   const seriesUrl = seriesSlug ? `https://kalshi.com/markets/${seriesSlug}` : 'https://kalshi.com/markets'
   const marketUrl =
-    seriesSlug && eventSlug && tickerSlug
-      ? `https://kalshi.com/markets/${seriesSlug}/${eventSlug}/${tickerSlug}`
-      : tickerSlug
-        ? `https://kalshi.com/markets/${tickerSlug}`
-        : seriesUrl
-  // Kalshi web accepts side hints on market URLs; if ignored, user still lands on the book.
-  const yesUrl = `${marketUrl}?side=yes`
-  const noUrl = `${marketUrl}?side=no`
-  return { seriesUrl, marketUrl, yesUrl, noUrl }
+    seriesSlug && eventSlug ? `https://kalshi.com/markets/${seriesSlug}/${titleSlug}/${eventSlug}` : seriesUrl
+  return { seriesUrl, marketUrl, yesUrl: marketUrl, noUrl: marketUrl }
 }
 
 /** Player strike titles look like `Micah Parsons: 1+ sacks`. Game titles do not. */

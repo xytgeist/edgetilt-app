@@ -1152,6 +1152,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-09-28:** **Leave ASC on `20260928212300`.** Ryan asked. Home / killed fix is the prod APNs key, already live for the review binary. `20260928234616` stays TestFlight only. Web **`1.4.891`** on `main`. Store marketing still **1.4.95**.
 - **2026-09-28:** **Ryan PASSED Prod IPA incoming (Home / killed).** Edge Lord → Dean after `CH5MAD3P93`. CallKit sheet. Store marketing still **1.4.95**.
 - **2026-09-28:** **Prod APNs key (`CH5MAD3P93`).** Prod IPA VoIP was `403 BadEnvironmentKeyInToken` on `api.push.apple.com` with `YCS38Y799P` (sandbox-only). Test Edge had a newer key since Aug 29. Prod secrets now `CH5MAD3P93`. Dean diagnostic: production VoIP **200**. Redeployed prod `chat-calls`, `lounge-send-activity-push`, `send-test-push`. Store marketing still **1.4.95**.
 - **2026-09-28:** **Incoming scan on resume (`1.4.891`).** Ryan: focused pill works. Background/killed still silent. Foregrounding Edge during a ring did nothing until the DM (`watchRoom`). App-wide fetch of open incoming calls on visible / focus / 2s poll. Removed `aps` from VoIP payload (possible wake miss). Redeploy **`chat-calls`**. Store marketing still **1.4.95**.

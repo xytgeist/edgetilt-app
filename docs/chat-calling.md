@@ -70,6 +70,7 @@ Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, remove
 
 - **No CallKit** ... incoming = web push + in-app overlay only.
 - **IPA:** focused incoming is CallKit pill only. The web Accept sheet shows only when CallKit skips or fails. A frozen WKWebView drops Realtime, so resume / any-tab 2s poll fetches open incoming calls (not only the last DM). Killed / suspended still depends on PushKit VoIP. Leftover outgoing chrome is dropped so a different incoming can present.
+- **Prod APNs (2026-09-28):** Prod IPA tokens are production. Edge `APNS_KEY_ID` / `APNS_P8` must work on `api.push.apple.com`. `YCS38Y799P` did not (`403 BadEnvironmentKeyInToken`). Live prod key is **`CH5MAD3P93`**. Ryan PASSED Edge Lord → Dean Home / killed. Diagnostic: `chat-calls` `test_voip_push`. Do not treat HTTP 200 as CallKit presented.
 - `getUserMedia` only after user tap (Start / Accept, or first-open PWA mic opt-in).
 - **Mic permission:** request only when a call is **made or received** (LiveKit / `getUserMedia` on the call path). Do **not** show a first-open / sign-in mic sheet (`AppShell` no longer queues PWA mic opt-in). Helpers remain in `src/utils/pwaMicrophonePrompt.js` if call-side priming needs them.
 - Keep Edge open during calls (background mic is best-effort on iPhone Safari/PWA).
@@ -91,7 +92,7 @@ Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, remove
 1. Create LiveKit Cloud project; copy URL + API key/secret.
 2. Apply SQL `20260728000000`–`20260728080000` on test (then prod when promoting).
 3. Set Edge secrets `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` on the project (**both** test + prod). Reuse Lounge R2 secrets for egress output (`LOUNGE_CF_R2_*` / Cloudflare account). Optional override **`CHAT_CALL_EGRESS_TEMPLATE_BASE_URL`** (defaults: test → `https://lvslotpro.com/call-egress.html`, prod → `https://edgetilt.com/call-egress.html`).
-4. Deploy `chat-calls` + `livekit-egress-webhook` + redeploy `lounge-send-activity-push` when invite push changes. Apply SQL through **`20260728090000`**.
+4. Deploy `chat-calls` + `livekit-egress-webhook` + redeploy `lounge-send-activity-push` when invite push changes. Apply SQL through **`20260728090000`**. Prod APNs Auth Key must send to **production** device tokens (`CH5MAD3P93` as of 2026-09-28). A sandbox-only key looks fine on Test IPA and silent on Prod IPA.
 5. LiveKit Cloud → Webhooks → `https://<project-ref>.supabase.co/functions/v1/livekit-egress-webhook` (at least **egress_ended**). Ensure the LiveKit project can write to the R2 bucket (S3-compatible).
 6. Smoke: DM video unchanged; group video 3+ (strip/pin/cam off); **pin remote → Record → Stop → playback features pinned cam**; no pin → features recorder; Record by A blanks B; cues; stop early → card; hangup while recording finalizes file.
 

@@ -77,7 +77,15 @@ The agent should treat the following as **standing instructions for this session
 
 ### Mac Theo ACTIVE TRACK 2026-09-28 ... ASC IAP chrome for resubmit
 
-**I am Mac Theo.** **1.4.95** Waiting for Review on **20260928212300**. Prod IPA **20260928234616**. Prod APNs key **`CH5MAD3P93`**. Ryan PASSED Edge Lord → Dean Home / killed CallKit. Do not bump **1.4.95**.
+**I am Mac Theo.** Dual-machine: Mac owns `ios/` + ASC. Windows owns `src/**`. Do not bump **1.4.95**.
+
+**ASC:** Waiting for Review on **1.4.95 (20260928212300)** … Lifetime + Creator Fan + 7 fan SKUs (`4d7a133d`, 10 items). **Do not attach `20260928234616`.** The Home / killed fix is the prod APNs key, not a new binary.
+
+**Phones:** Prod IPA **20260928234616** (TestFlight) loads `edgetilt.com`. Extra native: JS can report CallKit if the process is still running in the background; `edge-app-became-active` on foreground.
+
+**Calls (Ryan PASSED 2026-09-28):** Edge Lord → Dean Home / killed CallKit after prod APNs key **`CH5MAD3P93`**. Old prod key `YCS38Y799P` was sandbox-only (`403 BadEnvironmentKeyInToken` on `api.push.apple.com`). Focused = CallKit pill only (web **`1.4.891`** on `main`). Resume / any-tab 2s poll picks up a ring without opening the DM. Prod `chat-calls` / `lounge-send-activity-push` / `send-test-push` redeployed. Diagnostic: `chat-calls` `test_voip_push` at `pokerdean` (`37b8d15f-…`).
+
+**Do not:** rotate APNs keys casually (Apple `TooManyProviderTokenUpdates`); treat VoIP HTTP 200 as CallKit presented; push `main` unless Ryan asks (already on `main` through `1.4.891` + this note).
 
 ### Mac Theo ACTIVE TRACK 2026-09-25 ... CFB stack on prod
 

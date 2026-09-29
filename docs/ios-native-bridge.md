@@ -169,6 +169,8 @@ Paths 2 and 3 used to both fire because **`lounge-send-activity-push` sent an al
 
 **Ryan sign-off 2026-08-28:** deleted the old install, installed `32c0be35`, icon launch, backgrounded. CallKit pill on Theo Mac → Edge Lord **without** tapping the banner.
 
+**2026-09-28 Prod IPA Home / killed was the APNs key, not CallKit.** Focused JS pill still worked. `test_voip_push` to Dean: sandbox `400 BadDeviceToken`, production `403 BadEnvironmentKeyInToken` on `YCS38Y799P` (prod Edge secret since 2026-08-26). That key cannot send to `api.push.apple.com`. Test Edge had a newer key since 2026-08-29. Prod now **`CH5MAD3P93`**. Dean diagnostic then production **200**. Ryan PASSED Edge Lord → Dean Home / killed CallKit. Review packet stays **1.4.95 (20260928212300)** … do not attach **20260928234616**. Web **`1.4.891`**: any-tab resume scan. Do not swap prod back to `YCS38Y799P`.
+
 **Also hardened:** `resolveUUID` no longer falls back to `calls.keys.first` when a **specific** `callId` was named but not found, so hanging up call B cannot tear down call A. The argument-less fallback stays; `endAllCalls()` is the blanket teardown.
 
 ### ⚠️ CallKit decline must end the server row without waiting for JS `incoming` (2026-08-27)

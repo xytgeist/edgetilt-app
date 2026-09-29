@@ -437,7 +437,7 @@ export function OddsTable({ game, books, legalState = null }) {
         </div>
         {noLegalBooks ? (
           <div data-lounge-game-odds-legal-note className="mb-1.5 px-1 text-[11px] leading-snug text-zinc-500">
-            No licensed sportsbooks in {legalName}. Lines shown for reference only.
+            No sportsbooks operate in {legalName} yet. Lines shown for reference only.
           </div>
         ) : null}
         <div className="-mx-1 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -527,7 +527,7 @@ export function OddsTable({ game, books, legalState = null }) {
       {usableLink(row.away_ml_link) || usableLink(row.away_spread_link) || sportsbookHomeUrl(row.book) ? (
         <div className="border-t border-zinc-800/80 px-3 py-1.5 text-[11px] text-zinc-500">
           {legalState && !isLegalBook(row.book, legalState)
-            ? `${row.book} isn't licensed in ${legalName || legalState}`
+            ? `${row.book} doesn't operate in ${legalName || legalState}`
             : `Tap a line to bet it at ${row.book}`}
         </div>
       ) : null}

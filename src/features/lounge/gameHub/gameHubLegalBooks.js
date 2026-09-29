@@ -2,8 +2,8 @@
  * Legal-books mode for the game hub. Most books in the odds feed are licensed in only some states (and the
  * offshore ones in none), so with it on, best lines shop only books licensed in the viewer's state and
  * `{state}` link templates fill with that state.
- * State = viewer pick, else IP geo (`/api/geo`). On by default only for Nevada (the original Nevada-books
- * mode); everyone else opts in from the hub "..." menu. Choices are stored per device.
+ * State = viewer pick, else IP geo (`/api/geo`). Off by default (every book); viewers opt in from the hub
+ * "..." menu. Choices are stored per device.
  */
 import { useEffect, useSyncExternalStore } from 'react'
 import { bookKey } from './sportsbookLinks.js'
@@ -41,7 +41,7 @@ const BOOK_STATES = {
   ballybet: states('AZ IN IA NY OH VA'),
   circasports: states('CO IL IA KY NV WY'),
 }
-const BOOK_ALIASES = { williamhill: 'caesars', williamhillus: 'caesars', hardrockbet: 'hardrock', circa: 'circasports' }
+const BOOK_ALIASES = { thescorebet: 'espnbet', thescore: 'espnbet', williamhill: 'caesars', williamhillus: 'caesars', hardrockbet: 'hardrock', circa: 'circasports' }
 
 function licensedStates(name) {
   const key = bookKey(name)
@@ -120,7 +120,7 @@ function computeSnapshot() {
   const geo = readGeoRegion()
   const geoState = geo && US_STATES[geo] ? geo : null
   const state = prefs.state || geoState
-  const on = prefs.on ? prefs.on === 'on' : state === 'NV'
+  const on = prefs.on === 'on'
   return {
     /** Two-letter state to filter by, or null when the mode is off / no state is known. */
     legalState: on && state ? state : null,
@@ -171,12 +171,9 @@ function savePrefs(next) {
   notify()
 }
 
-/** Toggle legal-only. Matching the geo default clears the override so travel re-detects. */
+/** Toggle state-only books. Off (the default) shows every book. */
 export function setLegalBooksOn(on) {
-  const prefs = readPrefs()
-  const geo = readGeoRegion()
-  const defaultOn = (prefs.state || (geo && US_STATES[geo] ? geo : null)) === 'NV'
-  savePrefs({ ...prefs, on: on === defaultOn ? null : on ? 'on' : 'off' })
+  savePrefs({ ...readPrefs(), on: on ? 'on' : null })
 }
 
 /** Pick a state (two-letter code) and turn the mode on, or null to follow IP geo. */

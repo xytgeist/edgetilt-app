@@ -5,7 +5,7 @@ import { Z_APP_MODAL } from '../../../constants/appZIndex.js'
 import { stateName, US_STATES } from './gameHubLegalBooks.js'
 
 /**
- * Hub "..." chip: game sounds toggle, legal-books toggle + state picker, share. Menu portals to body (the hero
+ * Hub "..." chip: game sounds toggle, books-in-my-state toggle + state picker, share. Menu portals to body (the hero
  * clips overflow) and anchors under the chip's right edge.
  */
 export default function GameHubMoreMenu({
@@ -106,7 +106,7 @@ export default function GameHubMoreMenu({
                 }}
               >
                 <ShieldCheck className="h-5 w-5 shrink-0" strokeWidth={2.25} />
-                <span className="flex-1">Legal books only</span>
+                <span className="flex-1">Only books in my state</span>
                 <span className="text-[12px] font-semibold opacity-70">
                   {legalBooks?.on ? (legalBooks.state ? `On · ${legalBooks.state}` : 'Pick state') : 'Off'}
                 </span>
@@ -120,7 +120,7 @@ export default function GameHubMoreMenu({
                     : 'Not detected'}
                 </span>
                 <select
-                  aria-label="State for legal books"
+                  aria-label="Your state"
                   className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
                   value={legalBooks?.statePicked ? legalBooks.state || '' : ''}
                   onChange={(e) => {

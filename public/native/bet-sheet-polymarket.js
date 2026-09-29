@@ -171,6 +171,15 @@
     return false
   }
 
+  /** Taps landing mid-hydration or while the line dial closes are swallowed, so retry until the trade sheet opens. */
+  async function clickUntilSheet(btn) {
+    for (var i = 0; i < 8; i++) {
+      btn.click()
+      if (await waitFor(function () { return document.querySelector('[role=dialog]') }, 1200)) return true
+    }
+    return false
+  }
+
   async function chooseNoInSheet() {
     var no = await waitFor(function () {
       var dlg = document.querySelector('[role=dialog]')
@@ -216,7 +225,7 @@
       return firstLine(b).indexOf('yes') === 0
     })
     if (!yes) return
-    yes.click()
+    if (!(await clickUntilSheet(yes))) return
     if (side === 'no') await chooseNoInSheet()
   }
 
@@ -235,10 +244,7 @@
     if (!btn) return
     btn.scrollIntoView({ block: 'center' })
     await sleep(200)
-    for (var i = 0; i < 8; i++) {
-      btn.click()
-      if (await waitFor(function () { return document.querySelector('[role=dialog]') }, 1200)) return
-    }
+    await clickUntilSheet(btn)
   }
 
   async function run() {

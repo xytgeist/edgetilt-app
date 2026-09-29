@@ -92,16 +92,21 @@
 
   async function openCategory(label) {
     var want = norm(label)
-    var pill = await waitFor(function () {
+    var find = function () {
       return Array.prototype.find.call(document.querySelectorAll('button'), function (b) {
         return visible(b) && !inSheet(b) && firstLine(b) === want
       })
-    })
+    }
+    var pill = await waitFor(find)
     if (!pill) return false
-    pill.scrollIntoView({ block: 'nearest', inline: 'center' })
-    pill.click()
-    await sleep(700)
-    return true
+    for (var i = 0; i < 12; i++) {
+      pill.scrollIntoView({ block: 'nearest', inline: 'center' })
+      pill.click()
+      await sleep(700)
+      pill = find() || pill
+      if (!pill.hasAttribute('aria-pressed') || pill.getAttribute('aria-pressed') === 'true') return true
+    }
+    return false
   }
 
   function findPlayerRow(player) {

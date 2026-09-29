@@ -4038,6 +4038,14 @@ html.light [data-lounge-kalshi-player-props] [data-prop-line-pregame='over'] { c
 html.light [data-lounge-kalshi-player-props] [data-prop-card-live] { background-color: #fafafa !important; color: #27272a !important; }
 html.light [data-lounge-kalshi-player-props] [data-prop-card-live-tag='live'] { background: rgb(239 68 68 / 0.12); color: #b91c1c; }
 html.light [data-lounge-kalshi-player-props] [data-prop-card-live-tag='final'] { background: #d4d4d8; color: #3f3f46; }
+[data-lounge-kalshi-player-props] [data-prop-arb] { background: rgb(16 185 129 / 0.05); }
+[data-lounge-kalshi-player-props] [data-prop-arb-tag] { color: #6ee7b7; box-shadow: inset 0 0 0 1px rgb(52 211 153 / 0.35); background: rgb(16 185 129 / 0.08); }
+[data-lounge-kalshi-player-props] [data-prop-arb-leg] { box-shadow: inset 0 0 0 1.5px rgb(52 211 153 / 0.75); }
+[data-lounge-kalshi-player-props] [data-prop-arb-note] { color: #a1a1aa; }
+html.light [data-lounge-kalshi-player-props] [data-prop-arb] { background: rgb(16 185 129 / 0.07); }
+html.light [data-lounge-kalshi-player-props] [data-prop-arb-tag] { color: #047857; box-shadow: inset 0 0 0 1px rgb(5 150 105 / 0.4); background: rgb(16 185 129 / 0.1); }
+html.light [data-lounge-kalshi-player-props] [data-prop-arb-leg] { box-shadow: inset 0 0 0 1.5px rgb(5 150 105 / 0.8); }
+html.light [data-lounge-kalshi-player-props] [data-prop-arb-note] { color: #52525b; }
 html.light [data-lounge-kalshi-player-props] [data-prop-lines] > *,
 html.light [data-lounge-kalshi-player-props] .border-zinc-800\/80 { border-color: #d4d4d8 !important; }
 /* Match Roster/Props pill type (12px / semibold). Global select floor is 16px for iOS zoom. */

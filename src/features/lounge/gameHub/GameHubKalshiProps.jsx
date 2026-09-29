@@ -254,8 +254,43 @@ export function KalshiLiqStrip({ vol, oi, book, scale, compact = false }) {
   )
 }
 
+/** Taker fee per contract: Kalshi 0.07·p·(1−p), Polymarket US 0.06·p·(1−p) (both schedules as of Jul 2026). */
+const TAKER_FEE_THETA = { kalshi: 0.07, polymarket: 0.06 }
+const ARB_MIN_EDGE = 0.005
+
+function takerFee(source, price) {
+  return (TAKER_FEE_THETA[source] ?? 0.07) * price * (1 - price)
+}
+
+function askOf(prop, side) {
+  const v = side === 'yes' ? prop?.yes_ask : prop?.no_ask
+  const n = v == null ? NaN : Number(v)
+  return Number.isFinite(n) && n > 0 && n < 1 ? n : null
+}
+
+/**
+ * Cross-book lock: Yes on one book + No on the other for under $1 after taker fees. Asks only (never bid / last),
+ * so a flag means both legs are buyable at the shown prices. `{ yesSource, noSource, yes, no, edge }` or null.
+ */
+function crossBookArb(kalshi, polymarket) {
+  if (!kalshi || !polymarket) return null
+  let best = null
+  for (const [yesProp, noProp] of [[kalshi, polymarket], [polymarket, kalshi]]) {
+    const yes = askOf(yesProp, 'yes')
+    const no = askOf(noProp, 'no')
+    if (yes == null || no == null) continue
+    const edge = 1 - yes - no - takerFee(yesProp.source || 'kalshi', yes) - takerFee(noProp.source || 'kalshi', no)
+    if (edge >= ARB_MIN_EDGE && (!best || edge > best.edge)) {
+      best = { yesSource: yesProp.source || 'kalshi', noSource: noProp.source || 'kalshi', yes, no, edge }
+    }
+  }
+  return best
+}
+
+const BOOK_NAME = { kalshi: 'Kalshi', polymarket: 'Poly' }
+
 /** Compact Yes/No deep-link chips … price only (Y/N labeled in column headers). */
-function YesNoButtons({ prop }) {
+function YesNoButtons({ prop, arbSide = null }) {
   if (!prop) {
     return (
       <div className="inline-flex shrink-0 overflow-hidden rounded-lg ring-1 ring-inset ring-zinc-800 opacity-55">
@@ -281,6 +316,7 @@ function YesNoButtons({ prop }) {
         href={yesHref}
         target="_blank"
         rel="noopener noreferrer"
+        data-prop-arb-leg={arbSide === 'yes' ? '' : undefined}
         className="inline-flex min-w-[2rem] items-center justify-center bg-emerald-500/15 px-1.5 py-1 touch-manipulation active:opacity-80"
       >
         <span className="text-[12px] font-bold tabular-nums text-emerald-300">{kalshiCents(yesPx)}</span>
@@ -289,6 +325,7 @@ function YesNoButtons({ prop }) {
         href={noHref}
         target="_blank"
         rel="noopener noreferrer"
+        data-prop-arb-leg={arbSide === 'no' ? '' : undefined}
         className="inline-flex min-w-[2rem] items-center justify-center border-l border-zinc-700/80 bg-rose-500/10 px-1.5 py-1 touch-manipulation active:opacity-80"
       >
         <span className="text-[12px] font-bold tabular-nums text-rose-300">{kalshiCents(noPx)}</span>
@@ -556,6 +593,7 @@ function PropLineStat({ line, stats }) {
 function KalshiPlayerPropGroup({ group, liqScale, statCtx }) {
   const { name, roster, lines } = group
   const allPairs = useMemo(() => pairPlayerLines(lines, name), [lines, name])
+  const [arbOpen, setArbOpen] = useState(null)
   const box = statCtx ? boxForPlayer(statCtx.index, roster, name) : null
   const rowStats = useMemo(() => {
     const out = new Map()
@@ -640,21 +678,45 @@ function KalshiPlayerPropGroup({ group, liqScale, statCtx }) {
       <div data-prop-lines className="divide-y divide-zinc-800/70">
         {pairs.map((row) => {
           const { line, stats } = rowStats.get(row.key) || {}
+          const arb = crossBookArb(row.kalshi, row.polymarket)
+          const legFor = (source) => (!arb ? null : arb.yesSource === source ? 'yes' : arb.noSource === source ? 'no' : null)
+          const arbShown = arb && arbOpen === row.key
           return (
           <div
             key={row.key}
+            data-prop-arb={arb ? '' : undefined}
             className="grid grid-cols-[minmax(0,1fr)_minmax(4.5rem,auto)_minmax(4.5rem,auto)] items-center gap-x-2 px-3 py-2"
           >
             <div className="min-w-0">
-              <div className="truncate text-[13px] font-semibold leading-snug text-zinc-100">{row.label}</div>
+              <div className="flex min-w-0 items-center gap-1.5">
+                <span className="truncate text-[13px] font-semibold leading-snug text-zinc-100">{row.label}</span>
+                {arb ? (
+                  <button
+                    type="button"
+                    data-prop-arb-tag
+                    aria-expanded={arbShown}
+                    onClick={() => setArbOpen(arbShown ? null : row.key)}
+                    className="shrink-0 rounded px-1 py-px text-[9px] font-bold uppercase tracking-[0.1em] tabular-nums touch-manipulation"
+                  >
+                    Arb +{(arb.edge * 100).toFixed(1)}¢
+                  </button>
+                ) : null}
+              </div>
               <PropLineStat line={line} stats={stats} />
             </div>
             <div className="flex justify-center">
-              <YesNoButtons prop={row.kalshi} />
+              <YesNoButtons prop={row.kalshi} arbSide={legFor('kalshi')} />
             </div>
             <div className="flex justify-center">
-              <YesNoButtons prop={row.polymarket} />
+              <YesNoButtons prop={row.polymarket} arbSide={legFor('polymarket')} />
             </div>
+            {arbShown ? (
+              <div data-prop-arb-note className="col-span-3 mt-1.5 text-[11px] leading-snug">
+                {BOOK_NAME[arb.yesSource]} Yes {kalshiCents(arb.yes)} + {BOOK_NAME[arb.noSource]} No {kalshiCents(arb.no)} pays
+                $1 either way … about {(arb.edge * 100).toFixed(1)}¢ per pair after taker fees. Prices move fast and
+                books are thin … confirm both tickets, and that both books settle this line the same way.
+              </div>
+            ) : null}
           </div>
           )
         })}

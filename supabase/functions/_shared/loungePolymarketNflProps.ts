@@ -115,6 +115,11 @@ function polyKind(sportsType: string): PropKind {
   return 'game'
 }
 
+/**
+ * Each side's `quote` is what it costs to buy that side (Yes quote = long best ask, No quote = 1 − long best bid).
+ * Its `price` is not: Yes `price` is the long best bid and No `price` is the long best ask, so reading `price`
+ * as the No cost showed 60¢ on a No that cost 41¢. Bid for a side = 1 − the other side's quote.
+ */
 function sidePrice(
   sides: Array<Record<string, unknown>>,
   labels: string[],
@@ -122,8 +127,15 @@ function sidePrice(
   const want = new Set(labels.map((l) => l.toLowerCase()))
   const side = sides.find((s) => want.has(String(s.description || '').toLowerCase()))
   if (!side) return { bid: null, ask: null }
-  const px = dollarsToNum(side.price)
-  return { bid: px, ask: px }
+  const other = sides.find((s) => s !== side)
+  const ask = dollarsToNum(side.quote)
+  const otherAsk = other ? dollarsToNum(other.quote) : null
+  if (ask == null) {
+    const px = dollarsToNum(side.price)
+    return { bid: px, ask: px }
+  }
+  const bid = otherAsk == null ? null : Math.max(0, Math.round((1 - otherAsk) * 10000) / 10000)
+  return { bid, ask }
 }
 
 /**
@@ -172,9 +184,10 @@ function mapPolyMarket(
     const ask = dollarsToNum(m.bestAskQuote)
     yes = { bid, ask }
   }
-  if (no.ask == null && no.bid == null && yes.ask != null) {
-    const inv = Math.max(0, Math.min(1, 1 - Number(yes.ask)))
-    no = { bid: inv, ask: inv }
+  if (no.ask == null && no.bid == null && (yes.ask != null || yes.bid != null)) {
+    // Buying No = selling Yes at its bid; selling No = buying Yes at its ask.
+    const inv = (v: number | null) => (v == null ? null : Math.max(0, Math.min(1, Math.round((1 - v) * 10000) / 10000)))
+    no = { bid: inv(yes.ask), ask: inv(yes.bid ?? yes.ask) }
   }
 
   const urls = polyUrls(league, eventSlug, slug, String(m.id ?? '').trim())

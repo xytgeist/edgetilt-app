@@ -29,6 +29,8 @@ enum EdgeBetSheet {
         open.load(url)
         return
       }
+      // The books' mobile web is portrait-only; iPhone landscape rotates back when the sheet closes.
+      EdgeOrientationLock.setSheetPortrait(true)
       let controller = EdgeBetSheetController(url: url, autoTapScriptURL: autoTapScriptURL(for: url))
       let nav = UINavigationController(rootViewController: controller)
       nav.modalPresentationStyle = .pageSheet
@@ -117,6 +119,13 @@ final class EdgeBetSheetController: UIViewController, WKNavigationDelegate, WKUI
       primaryAction: UIAction { [weak self] _ in self?.openOutside() }
     )
     load(initialURL)
+  }
+
+  override func viewDidDisappear(_ animated: Bool) {
+    super.viewDidDisappear(animated)
+    if isBeingDismissed || navigationController?.isBeingDismissed == true {
+      EdgeOrientationLock.setSheetPortrait(false)
+    }
   }
 
   func load(_ url: URL) {

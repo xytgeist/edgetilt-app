@@ -4,6 +4,22 @@ import UIKit
 /// iPad never locks. Safari / PWA cannot call this.
 enum EdgeOrientationLock {
   private(set) static var portraitLocked = false
+  /// Native-only hold (bet sheet). Separate from the JS lock so dismissing it never clears a web lock.
+  private(set) static var sheetPortrait = false
+
+  static func setSheetPortrait(_ on: Bool) {
+    let apply = {
+      guard UIDevice.current.userInterfaceIdiom == .phone, sheetPortrait != on else { return }
+      sheetPortrait = on
+      requestGeometry()
+      NSLog("EdgeOrientation sheetPortrait=\(sheetPortrait)")
+    }
+    if Thread.isMainThread {
+      apply()
+    } else {
+      DispatchQueue.main.async(execute: apply)
+    }
+  }
 
   static func setPortraitLocked(_ locked: Bool, completion: (([String: Any]) -> Void)? = nil) {
     let apply = {
@@ -46,7 +62,7 @@ enum EdgeOrientationLock {
     if UIDevice.current.userInterfaceIdiom != .phone {
       return .all
     }
-    if portraitLocked {
+    if portraitLocked || sheetPortrait {
       return .portrait
     }
     return [.portrait, .landscapeLeft, .landscapeRight]

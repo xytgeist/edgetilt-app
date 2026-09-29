@@ -60,11 +60,14 @@ export const TRENCH_RUN_Z_WEIGHT = 0.45
 /**
  * Blended trench-z to spread points. Calibrated on ESPN 2025 Week 18 so
  * median |pts| and the >=0.8 hit rate match the old raw /12 / /25 board.
- * Recalibrate after 3-4 weeks of a 2026 vintage.
+ * 2026 backtest through Week 3 (scripts/syndicate-trench-recalibrate.mjs)
+ * fit +1.2 ±1.6 per z out-of-sample: too noisy to move it. Re-run at Week 8.
  * Later: scheme mixer, then sack/hit flags. Scheduler:
  * data/syndicate/trench-followup.json
  */
 export const TRENCH_Z_TO_POINTS = 0.56
+/** One outlier team (GB 2026 PBWR 16) must not swing a spread by itself. */
+export const TRENCH_TEAM_Z_CAP = 2.5
 const TRENCH_ZSCORE_MIN_N = 16
 const TRENCH_STDEV_FLOOR = 1e-6
 
@@ -88,7 +91,8 @@ export function sampleMoment(values: number[]): WinRateMoment | null {
 }
 
 export function zScore(value: number, moment: WinRateMoment): number {
-  return (value - moment.mean) / moment.stdev
+  const z = (value - moment.mean) / moment.stdev
+  return Math.max(-TRENCH_TEAM_Z_CAP, Math.min(TRENCH_TEAM_Z_CAP, z))
 }
 
 export function computeTrenchLeagueMoments(

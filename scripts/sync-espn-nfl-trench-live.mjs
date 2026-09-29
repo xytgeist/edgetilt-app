@@ -91,6 +91,37 @@ async function applyBoard(supabase, board, { dryRun, label }) {
   return { updated, skipped }
 }
 
+/** Raw ESPN board (overrides ignored) → nfl_trench_board_snapshots. Never fails the sync. */
+async function snapshotBoard(supabase, board, { dryRun, label }) {
+  const week = Number(String(board.through || '').match(/\d+/)?.[0])
+  const season = Number(String(board.lastModified || '').slice(0, 4)) || new Date().getUTCFullYear()
+  if (!week) {
+    console.warn(`[espn-trench] ${label} snapshot skipped: no "through Week N" on the board`)
+    return
+  }
+  if (dryRun) {
+    console.log(`[espn-trench] dry ${label} snapshot season=${season} through_week=${week}`)
+    return
+  }
+  const rows = Object.entries(board.teams).map(([abbr, t]) => ({
+    season,
+    through_week: week,
+    team_abbr: abbr,
+    pass_block_win_rate: t.pbwr,
+    pass_rush_win_rate: t.prwr,
+    run_block_win_rate: t.rbwr,
+    run_stop_win_rate: t.rswr,
+    source: board.articleUrl || null,
+    source_updated_at: board.lastModified || null,
+    captured_at: new Date().toISOString(),
+  }))
+  const { error } = await supabase
+    .from('nfl_trench_board_snapshots')
+    .upsert(rows, { onConflict: 'season,through_week,team_abbr' })
+  if (error) console.warn(`[espn-trench] ${label} snapshot failed: ${error.message}`)
+  else console.log(`[espn-trench] ${label} snapshot season=${season} through_week=${week} rows=${rows.length}`)
+}
+
 async function heartbeatProd(argTarget, status, detail) {
   loadSupabaseEnv('production')
   const supabase = createSupabaseServiceClient(createClient)
@@ -139,6 +170,7 @@ async function main() {
         dryRun,
         label: targetHuman(t),
       })
+      await snapshotBoard(supabase, board, { dryRun, label: targetHuman(t) })
       lastUpdated = updated
       lastSkipped = skipped
       console.log(

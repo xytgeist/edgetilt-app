@@ -1,0 +1,603 @@
+{
+  "season": 2026,
+  "note": "ESPN Analytics team win rates (2026 formula) by week. One board per \"through week N\" update. Weeks 1-2 recovered from nfllines.com, which republished ESPN's team table; week 3+ captured from ESPN directly. Used by scripts/syndicate-trench-recalibrate.mjs; the live sync also writes nfl_trench_board_snapshots.",
+  "boards": [
+    {
+      "through_week": 1,
+      "as_of": "2026-09-15",
+      "source": "https://nfllines.com/2026-week-1-offensive-line-ratings-rankings/",
+      "teams": {
+        "ARI": {
+          "pbwr": 22,
+          "prwr": 61,
+          "rbwr": 70,
+          "rswr": 32
+        },
+        "ATL": {
+          "pbwr": 71,
+          "prwr": 45,
+          "rbwr": 70,
+          "rswr": 30
+        },
+        "BAL": {
+          "pbwr": 38,
+          "prwr": 46,
+          "rbwr": 80,
+          "rswr": 25
+        },
+        "BUF": {
+          "pbwr": 71,
+          "prwr": 45,
+          "rbwr": 72,
+          "rswr": 29
+        },
+        "CAR": {
+          "pbwr": 40,
+          "prwr": 52,
+          "rbwr": 83,
+          "rswr": 26
+        },
+        "CHI": {
+          "pbwr": 48,
+          "prwr": 60,
+          "rbwr": 72,
+          "rswr": 17
+        },
+        "CIN": {
+          "pbwr": 37,
+          "prwr": 54,
+          "rbwr": 82,
+          "rswr": 26
+        },
+        "CLE": {
+          "pbwr": 67,
+          "prwr": 36,
+          "rbwr": 79,
+          "rswr": 27
+        },
+        "DAL": {
+          "pbwr": 58,
+          "prwr": 33,
+          "rbwr": 71,
+          "rswr": 26
+        },
+        "DEN": {
+          "pbwr": 42,
+          "prwr": 60,
+          "rbwr": 72,
+          "rswr": 25
+        },
+        "DET": {
+          "pbwr": 57,
+          "prwr": 60,
+          "rbwr": 72,
+          "rswr": 30
+        },
+        "GB": {
+          "pbwr": 9,
+          "prwr": 41,
+          "rbwr": 72,
+          "rswr": 26
+        },
+        "HOU": {
+          "pbwr": 55,
+          "prwr": 29,
+          "rbwr": 74,
+          "rswr": 29
+        },
+        "IND": {
+          "pbwr": 54,
+          "prwr": 63,
+          "rbwr": 76,
+          "rswr": 23
+        },
+        "JAX": {
+          "pbwr": 64,
+          "prwr": 33,
+          "rbwr": 77,
+          "rswr": 25
+        },
+        "KC": {
+          "pbwr": 40,
+          "prwr": 58,
+          "rbwr": 77,
+          "rswr": 32
+        },
+        "LV": {
+          "pbwr": 67,
+          "prwr": 53,
+          "rbwr": 75,
+          "rswr": 37
+        },
+        "LAC": {
+          "pbwr": 39,
+          "prwr": 78,
+          "rbwr": 74,
+          "rswr": 36
+        },
+        "LAR": {
+          "pbwr": 43,
+          "prwr": 35,
+          "rbwr": 78,
+          "rswr": 30
+        },
+        "MIA": {
+          "pbwr": 47,
+          "prwr": 33,
+          "rbwr": 64,
+          "rswr": 27
+        },
+        "MIN": {
+          "pbwr": 59,
+          "prwr": 91,
+          "rbwr": 79,
+          "rswr": 33
+        },
+        "NE": {
+          "pbwr": 52,
+          "prwr": 50,
+          "rbwr": 70,
+          "rswr": 24
+        },
+        "NO": {
+          "pbwr": 40,
+          "prwr": 43,
+          "rbwr": 73,
+          "rswr": 28
+        },
+        "NYG": {
+          "pbwr": 67,
+          "prwr": 42,
+          "rbwr": 79,
+          "rswr": 32
+        },
+        "NYJ": {
+          "pbwr": 45,
+          "prwr": 65,
+          "rbwr": 77,
+          "rswr": 27
+        },
+        "PHI": {
+          "pbwr": 64,
+          "prwr": 47,
+          "rbwr": 78,
+          "rswr": 35
+        },
+        "PIT": {
+          "pbwr": 55,
+          "prwr": 29,
+          "rbwr": 73,
+          "rswr": 30
+        },
+        "SF": {
+          "pbwr": 65,
+          "prwr": 57,
+          "rbwr": 71,
+          "rswr": 24
+        },
+        "SEA": {
+          "pbwr": 50,
+          "prwr": 48,
+          "rbwr": 79,
+          "rswr": 32
+        },
+        "TB": {
+          "pbwr": 46,
+          "prwr": 63,
+          "rbwr": 80,
+          "rswr": 23
+        },
+        "TEN": {
+          "pbwr": 35,
+          "prwr": 55,
+          "rbwr": 73,
+          "rswr": 25
+        },
+        "WAS": {
+          "pbwr": 53,
+          "prwr": 36,
+          "rbwr": 67,
+          "rswr": 28
+        }
+      }
+    },
+    {
+      "through_week": 2,
+      "as_of": "2026-09-22",
+      "source": "https://nfllines.com/2026-offensive-line-rankings-week-2/",
+      "teams": {
+        "ARI": {
+          "pbwr": 22,
+          "prwr": 68,
+          "rbwr": 71,
+          "rswr": 30
+        },
+        "ATL": {
+          "pbwr": 59,
+          "prwr": 46,
+          "rbwr": 71,
+          "rswr": 32
+        },
+        "BAL": {
+          "pbwr": 35,
+          "prwr": 55,
+          "rbwr": 79,
+          "rswr": 26
+        },
+        "BUF": {
+          "pbwr": 58,
+          "prwr": 43,
+          "rbwr": 78,
+          "rswr": 32
+        },
+        "CAR": {
+          "pbwr": 46,
+          "prwr": 51,
+          "rbwr": 75,
+          "rswr": 27
+        },
+        "CHI": {
+          "pbwr": 51,
+          "prwr": 60,
+          "rbwr": 70,
+          "rswr": 21
+        },
+        "CIN": {
+          "pbwr": 46,
+          "prwr": 52,
+          "rbwr": 79,
+          "rswr": 34
+        },
+        "CLE": {
+          "pbwr": 61,
+          "prwr": 48,
+          "rbwr": 72,
+          "rswr": 28
+        },
+        "DAL": {
+          "pbwr": 54,
+          "prwr": 38,
+          "rbwr": 66,
+          "rswr": 28
+        },
+        "DEN": {
+          "pbwr": 50,
+          "prwr": 63,
+          "rbwr": 77,
+          "rswr": 30
+        },
+        "DET": {
+          "pbwr": 58,
+          "prwr": 58,
+          "rbwr": 71,
+          "rswr": 24
+        },
+        "GB": {
+          "pbwr": 18,
+          "prwr": 45,
+          "rbwr": 73,
+          "rswr": 28
+        },
+        "HOU": {
+          "pbwr": 51,
+          "prwr": 36,
+          "rbwr": 69,
+          "rswr": 28
+        },
+        "IND": {
+          "pbwr": 52,
+          "prwr": 45,
+          "rbwr": 76,
+          "rswr": 24
+        },
+        "JAX": {
+          "pbwr": 46,
+          "prwr": 37,
+          "rbwr": 73,
+          "rswr": 26
+        },
+        "KC": {
+          "pbwr": 57,
+          "prwr": 54,
+          "rbwr": 76,
+          "rswr": 28
+        },
+        "LV": {
+          "pbwr": 63,
+          "prwr": 46,
+          "rbwr": 72,
+          "rswr": 32
+        },
+        "LAC": {
+          "pbwr": 50,
+          "prwr": 60,
+          "rbwr": 73,
+          "rswr": 35
+        },
+        "LAR": {
+          "pbwr": 47,
+          "prwr": 53,
+          "rbwr": 78,
+          "rswr": 32
+        },
+        "MIA": {
+          "pbwr": 47,
+          "prwr": 44,
+          "rbwr": 73,
+          "rswr": 28
+        },
+        "MIN": {
+          "pbwr": 51,
+          "prwr": 69,
+          "rbwr": 78,
+          "rswr": 34
+        },
+        "NE": {
+          "pbwr": 55,
+          "prwr": 50,
+          "rbwr": 72,
+          "rswr": 31
+        },
+        "NO": {
+          "pbwr": 39,
+          "prwr": 55,
+          "rbwr": 74,
+          "rswr": 29
+        },
+        "NYG": {
+          "pbwr": 51,
+          "prwr": 46,
+          "rbwr": 74,
+          "rswr": 28
+        },
+        "NYJ": {
+          "pbwr": 49,
+          "prwr": 64,
+          "rbwr": 75,
+          "rswr": 29
+        },
+        "PHI": {
+          "pbwr": 58,
+          "prwr": 46,
+          "rbwr": 72,
+          "rswr": 35
+        },
+        "PIT": {
+          "pbwr": 52,
+          "prwr": 35,
+          "rbwr": 68,
+          "rswr": 30
+        },
+        "SF": {
+          "pbwr": 53,
+          "prwr": 55,
+          "rbwr": 71,
+          "rswr": 24
+        },
+        "SEA": {
+          "pbwr": 36,
+          "prwr": 60,
+          "rbwr": 76,
+          "rswr": 31
+        },
+        "TB": {
+          "pbwr": 46,
+          "prwr": 54,
+          "rbwr": 76,
+          "rswr": 28
+        },
+        "TEN": {
+          "pbwr": 43,
+          "prwr": 49,
+          "rbwr": 70,
+          "rswr": 29
+        },
+        "WAS": {
+          "pbwr": 56,
+          "prwr": 43,
+          "rbwr": 70,
+          "rswr": 34
+        }
+      }
+    },
+    {
+      "through_week": 3,
+      "as_of": "2026-09-29",
+      "source": "https://www.espn.com/nfl/story/_/id/49742016",
+      "teams": {
+        "ARI": {
+          "pbwr": 32,
+          "prwr": 57,
+          "rbwr": 72,
+          "rswr": 28
+        },
+        "ATL": {
+          "pbwr": 53,
+          "prwr": 61,
+          "rbwr": 74,
+          "rswr": 32
+        },
+        "BAL": {
+          "pbwr": 41,
+          "prwr": 55,
+          "rbwr": 77,
+          "rswr": 28
+        },
+        "BUF": {
+          "pbwr": 62,
+          "prwr": 49,
+          "rbwr": 78,
+          "rswr": 31
+        },
+        "CAR": {
+          "pbwr": 47,
+          "prwr": 53,
+          "rbwr": 71,
+          "rswr": 28
+        },
+        "CHI": {
+          "pbwr": 49,
+          "prwr": 55,
+          "rbwr": 70,
+          "rswr": 23
+        },
+        "CIN": {
+          "pbwr": 50,
+          "prwr": 49,
+          "rbwr": 78,
+          "rswr": 30
+        },
+        "CLE": {
+          "pbwr": 54,
+          "prwr": 50,
+          "rbwr": 71,
+          "rswr": 32
+        },
+        "DAL": {
+          "pbwr": 50,
+          "prwr": 40,
+          "rbwr": 67,
+          "rswr": 30
+        },
+        "DEN": {
+          "pbwr": 48,
+          "prwr": 55,
+          "rbwr": 75,
+          "rswr": 30
+        },
+        "DET": {
+          "pbwr": 60,
+          "prwr": 53,
+          "rbwr": 72,
+          "rswr": 26
+        },
+        "GB": {
+          "pbwr": 16,
+          "prwr": 49,
+          "rbwr": 73,
+          "rswr": 26
+        },
+        "HOU": {
+          "pbwr": 55,
+          "prwr": 42,
+          "rbwr": 72,
+          "rswr": 31
+        },
+        "IND": {
+          "pbwr": 51,
+          "prwr": 42,
+          "rbwr": 72,
+          "rswr": 24
+        },
+        "JAX": {
+          "pbwr": 40,
+          "prwr": 45,
+          "rbwr": 76,
+          "rswr": 26
+        },
+        "KC": {
+          "pbwr": 53,
+          "prwr": 53,
+          "rbwr": 76,
+          "rswr": 31
+        },
+        "LAC": {
+          "pbwr": 45,
+          "prwr": 50,
+          "rbwr": 73,
+          "rswr": 34
+        },
+        "LAR": {
+          "pbwr": 49,
+          "prwr": 54,
+          "rbwr": 76,
+          "rswr": 31
+        },
+        "LV": {
+          "pbwr": 59,
+          "prwr": 42,
+          "rbwr": 73,
+          "rswr": 29
+        },
+        "MIA": {
+          "pbwr": 47,
+          "prwr": 48,
+          "rbwr": 70,
+          "rswr": 28
+        },
+        "MIN": {
+          "pbwr": 51,
+          "prwr": 64,
+          "rbwr": 76,
+          "rswr": 35
+        },
+        "NE": {
+          "pbwr": 51,
+          "prwr": 56,
+          "rbwr": 71,
+          "rswr": 27
+        },
+        "NO": {
+          "pbwr": 47,
+          "prwr": 52,
+          "rbwr": 74,
+          "rswr": 29
+        },
+        "NYG": {
+          "pbwr": 53,
+          "prwr": 46,
+          "rbwr": 74,
+          "rswr": 26
+        },
+        "NYJ": {
+          "pbwr": 51,
+          "prwr": 53,
+          "rbwr": 73,
+          "rswr": 29
+        },
+        "PHI": {
+          "pbwr": 58,
+          "prwr": 48,
+          "rbwr": 73,
+          "rswr": 34
+        },
+        "PIT": {
+          "pbwr": 54,
+          "prwr": 39,
+          "rbwr": 72,
+          "rswr": 29
+        },
+        "SEA": {
+          "pbwr": 42,
+          "prwr": 63,
+          "rbwr": 74,
+          "rswr": 36
+        },
+        "SF": {
+          "pbwr": 58,
+          "prwr": 54,
+          "rbwr": 74,
+          "rswr": 25
+        },
+        "TB": {
+          "pbwr": 47,
+          "prwr": 52,
+          "rbwr": 73,
+          "rswr": 28
+        },
+        "TEN": {
+          "pbwr": 46,
+          "prwr": 47,
+          "rbwr": 74,
+          "rswr": 29
+        },
+        "WAS": {
+          "pbwr": 49,
+          "prwr": 46,
+          "rbwr": 67,
+          "rswr": 34
+        }
+      }
+    }
+  ]
+}

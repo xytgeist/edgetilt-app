@@ -13,8 +13,8 @@
     },
     {
       "id": "recalibrate",
-      "done": false,
-      "note": "After 3-4 weeks of a real 2026 ESPN board, plot trench points vs ATS / close error and retune TRENCH_Z_TO_POINTS. Do not mix 2026 raw % with 2025 raw %. Do not treat 0.8 as a z cutoff."
+      "done": true,
+      "note": "Done 2026-09-29. scripts/syndicate-trench-recalibrate.mjs on weeks 1-3: out-of-sample +1.2 ±1.6 pts per z (32 games), trench flag covered 7/12. Too noisy to move, kept 0.56. Added team z cap ±2.5 (GB PBWR 16). Board history now in nfl_trench_board_snapshots + data/syndicate/espn-nfl-2026-trench-history.json. Re-run the script at Week 8."
     },
     {
       "id": "scheme",

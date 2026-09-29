@@ -447,13 +447,22 @@ function propKindForSeries(series: string): NflGameFantasyPropKind {
   return 'game'
 }
 
+/** Kalshi's NFL team codes where they differ from ours (JACCIN, PHIJAC). */
+const KALSHI_NFL_TEAM_CODE: Record<string, string> = { JAX: 'JAC' }
+
+function kalshiTeamCode(abbr: string): string {
+  const t = normTeam(abbr)
+  return KALSHI_NFL_TEAM_CODE[t] || t
+}
+
 function eventMatchesTeams(eventTicker: string, away: string, home: string): boolean {
-  const t = String(eventTicker || '').toUpperCase()
-  const a = away.toUpperCase()
-  const h = home.toUpperCase()
-  if (!t || !a || !h) return false
-  // e.g. KXNFLPASSYDS-26SEP24ATLGB or KXNFLGAME-26SEP24ATLGB
-  return (t.includes(a) && t.includes(h)) || t.endsWith(`${a}${h}`) || t.endsWith(`${h}${a}`)
+  // e.g. KXNFLGAME-26SEP24ATLGB. Compare the whole team block after the date so
+  // "NO" can't match the NOV in a date and "NE" can't match inside another code.
+  const m = String(eventTicker || '').toUpperCase().match(/-\d{2}[A-Z]{3}\d{2}([A-Z]+)$/)
+  const a = kalshiTeamCode(away)
+  const h = kalshiTeamCode(home)
+  if (!m || !a || !h) return false
+  return m[1] === `${a}${h}` || m[1] === `${h}${a}`
 }
 
 function eventMatchesGameSuffix(eventTicker: string, suffix: string): boolean {

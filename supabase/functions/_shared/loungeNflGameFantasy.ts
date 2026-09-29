@@ -383,19 +383,35 @@ const KALSHI_SERIES_TITLE_SLUG: Record<string, string> = {
   KXNCAAF2HTOTAL: 'college-football-2nd-half-total',
 }
 
+function kalshiEventPageUrl(seriesKey: string, eventTicker: string): string {
+  const slug = KALSHI_SERIES_TITLE_SLUG[seriesKey] || 'market'
+  return `https://kalshi.com/markets/${seriesKey.toLowerCase()}/${slug}/${eventTicker.toLowerCase()}`
+}
+
 /**
  * Kalshi pages are per event (`/markets/{series}/{title-slug}/{event_ticker}`); a market ticker in the
- * last segment renders "Something went wrong" in the app and mobile web. Kalshi has no market/side deep link.
+ * path renders "Something went wrong". Order tickets open on the matchup's game page via
+ * `op_market_ticker` + `op_order_side` (same shape kalshi.com uses when you tap Yes/No).
  */
-function kalshiMarketUrls(series: string, eventTicker: string, _ticker: string) {
+function kalshiMarketUrls(series: string, eventTicker: string, ticker: string) {
   const seriesKey = String(series || '').trim().toUpperCase()
-  const seriesSlug = seriesKey.toLowerCase()
-  const eventSlug = String(eventTicker || '').trim().toLowerCase()
-  const titleSlug = KALSHI_SERIES_TITLE_SLUG[seriesKey] || 'market'
-  const seriesUrl = seriesSlug ? `https://kalshi.com/markets/${seriesSlug}` : 'https://kalshi.com/markets'
-  const marketUrl =
-    seriesSlug && eventSlug ? `https://kalshi.com/markets/${seriesSlug}/${titleSlug}/${eventSlug}` : seriesUrl
-  return { seriesUrl, marketUrl, yesUrl: marketUrl, noUrl: marketUrl }
+  const eventKey = String(eventTicker || '').trim().toUpperCase()
+  const tickerKey = String(ticker || '').trim().toUpperCase()
+  const seriesUrl = seriesKey ? `https://kalshi.com/markets/${seriesKey.toLowerCase()}` : 'https://kalshi.com/markets'
+  if (!seriesKey || !eventKey) return { seriesUrl, marketUrl: seriesUrl, yesUrl: seriesUrl, noUrl: seriesUrl }
+  const marketUrl = kalshiEventPageUrl(seriesKey, eventKey)
+  const matchup = eventKey.startsWith(`${seriesKey}-`) ? eventKey.slice(seriesKey.length + 1) : ''
+  if (!tickerKey || !matchup) return { seriesUrl, marketUrl, yesUrl: marketUrl, noUrl: marketUrl }
+  const gameSeries = seriesKey.startsWith('KXNCAAF') ? 'KXNCAAFGAME' : 'KXNFLGAME'
+  const gamePage = kalshiEventPageUrl(gameSeries, `${gameSeries}-${matchup}`)
+  const ticket = (side: 'yes' | 'no') =>
+    `${gamePage}?${new URLSearchParams({
+      op_market_ticker: tickerKey,
+      op_order_side: side,
+      op_side: 'BUY',
+      op_order_type: 'dollars',
+    })}`
+  return { seriesUrl, marketUrl, yesUrl: ticket('yes'), noUrl: ticket('no') }
 }
 
 /** Player strike titles look like `Micah Parsons: 1+ sacks`. Game titles do not. */

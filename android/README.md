@@ -1,0 +1,44 @@
+# EdgeTilt Android shell
+
+A thin native WebView around the live site (like the iOS WKWebView shell) plus an in-app **bet sheet** for Kalshi and Polymarket links.
+
+**Why it exists:** on Android, App Links send kalshi.com / polymarket.us taps from Chrome or the PWA into the Kalshi / Polymarket apps, which drop the order ticket. Web-only workarounds (Chrome `intent://`, same-site hops) all still opened the apps (Ryan tested Sep 28, web `1.4.896` / `1.4.897`). A WebView never fires App Links, so the bet sheet lands on the exact ticket.
+
+## Layout
+
+| File | What |
+| --- | --- |
+| `app/src/main/java/com/edgetilt/app/MainActivity.kt` | Full-screen WebView on `BuildConfig.BASE_URL`. File picker, camera/mic (getUserMedia), geolocation, back = history, render-crash recovery. |
+| `.../BetSheetActivity.kt` | Portrait-locked light sheet (Done / title / Open app). Kalshi loads the `op_` ticket URL as is. Polymarket runs `/native/bet-sheet-polymarket.js` (same auto-tap script the IPA uses) once after the first page load. |
+| `.../EdgeLinks.kt` | Link routing: app hosts stay in the WebView, bet hosts open the sheet, Supabase / Google auth stays in the WebView, everything else opens outside (browser / app). |
+| `app/build.gradle.kts` | Flavors: `prod` (`com.edgetilt.app`, edgetilt.com, "Edge") and `staging` (`com.edgetilt.app.test`, lvslotpro.com, "Edge Test"). |
+
+UA gets ` EdgeAndroid/<versionName>` appended so the site can detect the shell later. The bet sheet strips `; wv` so Kalshi / Polymarket serve their normal mobile web.
+
+Logins inside the bet sheet persist (shared WebView cookie store).
+
+## Build
+
+Needs JDK 17 and the Android SDK (platform 36, build-tools 36). On Ryan's Mac:
+
+```bash
+export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home
+export ANDROID_HOME=$HOME/Library/Android/sdk
+cd android
+./gradlew assembleStagingDebug   # app/build/outputs/apk/staging/debug/app-staging-debug.apk
+./gradlew assembleProdDebug
+adb install -r app/build/outputs/apk/staging/debug/app-staging-debug.apk
+```
+
+`local.properties` (`sdk.dir=...`) is gitignored; `ANDROID_HOME` works too.
+
+## Release (Play)
+
+Upload key goes in `android/keystore.properties` (gitignored) with `storeFile`, `storePassword`, `keyAlias`, `keyPassword`; `./gradlew bundleProdRelease` then signs with it. Bump `versionCode` every upload.
+
+## Known gaps (MVP)
+
+- **Google sign-in:** Google blocks OAuth inside WebViews (`disallowed_useragent`). Email / password works. Fix: open Google OAuth in a Custom Tab and deep link back.
+- **Push:** Web Push does not work in a WebView. Needs FCM + a native bridge.
+- **Billing:** Play policy on web subscriptions from the app is not settled (see backlog Android section).
+- **App Links:** no `assetlinks.json` yet, so edgetilt.com links open in Chrome, not the app.

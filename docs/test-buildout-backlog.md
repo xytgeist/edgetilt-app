@@ -167,11 +167,15 @@ Full inventory from codebase pass. Dual-machine: **Mac** = `ios/**`; **Windows**
 
 Hot Windows files (first cuts): `pwaNotificationPrompt.js`, `PwaInstallBanner.jsx`, `useWebPushNotifications.js`, `OffersCalendar.jsx`, `stripeBillingApi.js`, `creatorFanSubsApi.js`, `affiliatePortalApi.js`, Lounge Stream / autoplay stack.
 
-### Android (later / cheap)
+### Android
 
-- [ ] Keep **PWA** as the Android product path.
-- [ ] **Optional TWA** (Bubblewrap / Play listing → `edgetilt.com`) when we want a store badge without a real shell.
-- [ ] **Do not** build a fat native Android shell unless calls/push/autoplay prove broken on Chrome PWA after iOS ships.
+**2026-09-28 change of plan:** a native WebView shell (**`android/`**, see **`android/README.md`**) now exists because the PWA cannot keep Kalshi / Polymarket bet tickets (App Links open their apps, which drop the ticket). The PWA stays live for everyone else.
+
+- [x] MVP shell: WebView on the live site, `prod` / `staging` flavors, in-app bet sheet (Kalshi `op_` URL, Polymarket auto-tap script). Builds (`assembleStagingDebug`).
+- [ ] Ryan device smoke (sideload the staging APK): login, Lounge, Game Hub bet taps, camera / file upload.
+- [ ] Google sign-in via Custom Tab + deep link back (WebView OAuth is blocked).
+- [ ] FCM push + native bridge (Web Push is dead in a WebView).
+- [ ] `assetlinks.json` + upload key, Play **organization** account (Ryan has a D-U-N-S; org accounts skip the 12-tester closed test).
 - [ ] If a Play binary ever sells digital goods: enroll **billing choice**, choice screen, assume ~10% on web-from-Play and ~15% on Play Billing (subs / first $1M).
 
 ---
@@ -1189,6 +1193,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 - **2026-09-28:** **Fan IAP prices are web × 1.15.** ASC Creator Fan SKUs relisted: $4.99→$5.79, $9.99→$11.49, $19.99→$22.99, $49.99→$57.99, $99.99→$114.99, $149.99→$172.99, $249.99→$289.99. iPhone CTA reads StoreKit (force-quit if it still shows web parity). Product ids unchanged. No IPA bump.
 - **2026-09-28:** **Promoted `1.4.871` `test` → `main`.** Prod IPA (`edgetilt.com`) now shows Lifetime on Subscribe. Fan sheet IAP-first. No SQL / Edge. Ryan still attaches Lifetime `6809032089` + seven fan SKUs, Age Rating Gambling = Yes, CallKit clip. Do not bump iOS **1.4.95**.
 - **2026-09-28:** **ASC resubmit chrome (Mac, web `1.4.871`).** IPA Subscribe carousel shows Lifetime again (Starter + Pro + Lifetime). Fan subscribe sheet leads with StoreKit; US Safari is the second door; IPA never offers Stripe-only when the fan/platform SKU is missing. Ryan still attaches Lifetime `6809032089` + seven `com.edgetilt.app.fan_tier_*.monthly` on the version, sets Age Rating Gambling = Yes, films the backgrounded CallKit clip. Do not bump iOS **1.4.95**.
+- **2026-09-28** ... **Android native shell MVP (Mac, `android/`):** Kotlin WebView on the live site (`staging` = lvslotpro.com `com.edgetilt.app.test`, `prod` = edgetilt.com `com.edgetilt.app`) with a portrait bet sheet for kalshi.com / polymarket.us (reuses `public/native/bet-sheet-polymarket.js`). A WebView never fires App Links, so tickets survive. AGP 9.4.1 / Gradle 9.8, compileSdk 36, minSdk 28. No web or SQL change. Gaps: Google OAuth, FCM push, Play listing. See `android/README.md`.
 - **2026-09-28** ... **Android Kalshi Chrome intent rolled back (`1.4.897`):** Ryan tested on Android with the apps installed: plain link, `intent://` pinned to Chrome, and a same-site hop (meta refresh / JS redirect, no gesture) all still open the Kalshi / Polymarket apps, which drop the ticket. No web-only way around App Links from a PWA. Links are plain again. Real fix = a native Android shell with an in-app bet sheet (same as `EdgeBetSheet.swift`).
 - **2026-09-28** ... **Kalshi tickets on Android (`1.4.896`, web):** the Kalshi Android app drops `op_market_ticker` (Ryan confirmed; web without the app opens the ticket). On Android, kalshi.com links now open as an `intent://` pinned to Chrome with `browser_fallback_url` (`androidBetHref` / `betLinkProps` in `edgeNative.js`), used by `openExternalUrl` and the Game Hub prop / ladder anchors. Polymarket and every other platform unchanged. Polymarket Android stays "market preselected, tap Yes" (no way to script another site from a PWA). Needs Android smoke.
 - **2026-09-28** ... **Bet sheet forces portrait on iPhone (IPA only):** tapping a Kalshi / Polymarket bet in landscape rotates to portrait while the sheet is open, then back on close. Native hold `EdgeOrientationLock.setSheetPortrait`, separate from the web orientation lock. Not in uploaded build `20260929024139`; lands in the 1.4.96 archive. Needs device smoke.

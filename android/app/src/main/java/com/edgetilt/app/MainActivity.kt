@@ -1,0 +1,245 @@
+package com.edgetilt.app
+
+import android.Manifest
+import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Color
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import android.view.View
+import android.view.WindowInsets
+import android.webkit.CookieManager
+import android.webkit.GeolocationPermissions
+import android.webkit.PermissionRequest
+import android.webkit.RenderProcessGoneDetail
+import android.webkit.ValueCallback
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebSettings
+import android.webkit.WebView
+import android.webkit.WebViewClient
+import android.widget.FrameLayout
+import android.window.OnBackInvokedDispatcher
+
+/** Loads the live site (no bundled web build), like the iOS WKWebView shell. */
+class MainActivity : Activity() {
+  private lateinit var webView: WebView
+  private var fileCallback: ValueCallback<Array<Uri>>? = null
+  private var pendingMediaRequest: PermissionRequest? = null
+  private var pendingGeo: Pair<String, GeolocationPermissions.Callback>? = null
+
+  @SuppressLint("SetJavaScriptEnabled")
+  override fun onCreate(savedInstanceState: Bundle?) {
+    super.onCreate(savedInstanceState)
+    val root = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
+    webView = WebView(this).apply { setBackgroundColor(Color.BLACK) }
+    root.addView(webView, FrameLayout.LayoutParams(-1, -1))
+    setContentView(root)
+    applySystemInsets(root)
+
+    webView.settings.apply {
+      javaScriptEnabled = true
+      domStorageEnabled = true
+      mediaPlaybackRequiresUserGesture = false
+      // target=_blank / window.open navigate this view, so shouldOverrideUrlLoading can route them.
+      setSupportMultipleWindows(false)
+      mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
+      allowFileAccess = false
+      userAgentString = "$userAgentString ${SHELL_UA_TOKEN}"
+    }
+    CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
+    webView.webViewClient = ShellClient()
+    webView.webChromeClient = ShellChrome()
+    webView.setDownloadListener { url, _, _, _, _ -> EdgeLinks.openOutside(this, Uri.parse(url)) }
+
+    registerBack()
+    val start = intent?.data?.takeIf { EdgeLinks.staysInApp(it) }?.toString() ?: BuildConfig.BASE_URL
+    if (savedInstanceState == null || webView.restoreState(savedInstanceState) == null) {
+      webView.loadUrl(start)
+    }
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    intent.data?.takeIf { EdgeLinks.staysInApp(it) }?.let { webView.loadUrl(it.toString()) }
+  }
+
+  override fun onSaveInstanceState(outState: Bundle) {
+    super.onSaveInstanceState(outState)
+    webView.saveState(outState)
+  }
+
+  override fun onResume() {
+    super.onResume()
+    webView.onResume()
+  }
+
+  override fun onPause() {
+    webView.onPause()
+    CookieManager.getInstance().flush()
+    super.onPause()
+  }
+
+  private fun registerBack() {
+    if (Build.VERSION.SDK_INT >= 33) {
+      onBackInvokedDispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT) {
+        if (webView.canGoBack()) webView.goBack() else moveTaskToBack(true)
+      }
+    }
+  }
+
+  @Deprecated("Pre-33 back")
+  override fun onBackPressed() {
+    if (webView.canGoBack()) webView.goBack() else moveTaskToBack(true)
+  }
+
+  // MARK: - Links
+
+  private inner class ShellClient : WebViewClient() {
+    override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+      if (!request.isForMainFrame) return false
+      val uri = request.url
+      return when {
+        EdgeLinks.isBet(uri) -> {
+          EdgeLinks.openBetSheet(this@MainActivity, uri)
+          true
+        }
+        EdgeLinks.staysInApp(uri) -> false
+        else -> {
+          EdgeLinks.openOutside(this@MainActivity, uri)
+          true
+        }
+      }
+    }
+
+    override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+      recreate()
+      return true
+    }
+  }
+
+  // MARK: - Uploads, camera / mic, location
+
+  private inner class ShellChrome : WebChromeClient() {
+    override fun onShowFileChooser(
+      view: WebView,
+      callback: ValueCallback<Array<Uri>>,
+      params: FileChooserParams,
+    ): Boolean {
+      fileCallback?.onReceiveValue(null)
+      fileCallback = callback
+      val pick = params.createIntent().apply {
+        if (params.mode == FileChooserParams.MODE_OPEN_MULTIPLE) putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+      }
+      return try {
+        startActivityForResult(pick, REQ_FILES)
+        true
+      } catch (e: Exception) {
+        fileCallback = null
+        false
+      }
+    }
+
+    override fun onPermissionRequest(request: PermissionRequest) {
+      runOnUiThread {
+        val missing = mediaPermissionsFor(request.resources).filter {
+          checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missing.isEmpty()) {
+          request.grant(request.resources)
+        } else {
+          pendingMediaRequest?.deny()
+          pendingMediaRequest = request
+          requestPermissions(missing.toTypedArray(), REQ_MEDIA)
+        }
+      }
+    }
+
+    override fun onGeolocationPermissionsShowPrompt(origin: String, callback: GeolocationPermissions.Callback) {
+      if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+        callback.invoke(origin, true, false)
+      } else {
+        pendingGeo = origin to callback
+        requestPermissions(
+          arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+          REQ_GEO,
+        )
+      }
+    }
+  }
+
+  private fun mediaPermissionsFor(resources: Array<String>): List<String> = buildList {
+    if (PermissionRequest.RESOURCE_VIDEO_CAPTURE in resources) add(Manifest.permission.CAMERA)
+    if (PermissionRequest.RESOURCE_AUDIO_CAPTURE in resources) add(Manifest.permission.RECORD_AUDIO)
+  }
+
+  @Deprecated("Platform Activity result")
+  override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    if (requestCode != REQ_FILES) {
+      super.onActivityResult(requestCode, resultCode, data)
+      return
+    }
+    val callback = fileCallback ?: return
+    fileCallback = null
+    if (resultCode != RESULT_OK || data == null) {
+      callback.onReceiveValue(null)
+      return
+    }
+    val clip = data.clipData
+    val uris = if (clip != null) {
+      Array(clip.itemCount) { clip.getItemAt(it).uri }
+    } else {
+      WebChromeClient.FileChooserParams.parseResult(resultCode, data) ?: emptyArray()
+    }
+    callback.onReceiveValue(uris)
+  }
+
+  override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, results: IntArray) {
+    super.onRequestPermissionsResult(requestCode, permissions, results)
+    when (requestCode) {
+      REQ_MEDIA -> {
+        val request = pendingMediaRequest ?: return
+        pendingMediaRequest = null
+        val granted = request.resources.filter { res ->
+          mediaPermissionsFor(arrayOf(res)).all { checkSelfPermission(it) == PackageManager.PERMISSION_GRANTED }
+        }
+        if (granted.isEmpty()) request.deny() else request.grant(granted.toTypedArray())
+      }
+      REQ_GEO -> {
+        val (origin, callback) = pendingGeo ?: return
+        pendingGeo = null
+        val ok = results.any { it == PackageManager.PERMISSION_GRANTED }
+        callback.invoke(origin, ok, false)
+      }
+    }
+  }
+
+  private fun applySystemInsets(root: View) {
+    root.setOnApplyWindowInsetsListener { v, insets ->
+      if (Build.VERSION.SDK_INT >= 30) {
+        val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.ime())
+        v.setPadding(bars.left, bars.top, bars.right, bars.bottom)
+      } else {
+        @Suppress("DEPRECATION")
+        v.setPadding(
+          insets.systemWindowInsetLeft,
+          insets.systemWindowInsetTop,
+          insets.systemWindowInsetRight,
+          insets.systemWindowInsetBottom,
+        )
+      }
+      insets
+    }
+  }
+
+  companion object {
+    /** Web can detect the shell by this token (like `EdgeiOS/` on iOS). */
+    const val SHELL_UA_TOKEN = "EdgeAndroid/1.0.0"
+    private const val REQ_FILES = 41
+    private const val REQ_MEDIA = 42
+    private const val REQ_GEO = 43
+  }
+}

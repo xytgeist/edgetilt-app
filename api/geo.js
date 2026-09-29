@@ -1,6 +1,6 @@
 /**
  * Visitor IP geo from Vercel's edge headers: `{ country, region }` (region = ISO 3166-2 subdivision, e.g. "NV").
- * Drives the game hub's Nevada-books mode; the client caches it and lets the viewer override.
+ * Drives the game hub's legal-books mode (state default); the client caches it and lets the viewer override.
  * Local `vite` has no `/api` … the client treats a failed fetch as "not Nevada".
  */
 export default function handler(req, res) {

@@ -22,7 +22,7 @@ import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 import { usePhoneLandscapeNotTablet } from '../../utils/edgeiOSComposerPortraitLock.js'
 import GameHubHero from './gameHub/GameHubHero.jsx'
 import GameHubMoreMenu from './gameHub/GameHubMoreMenu.jsx'
-import { setNevadaBooks, useNevadaBooks } from './gameHub/gameHubNevadaBooks.js'
+import { setLegalBooksOn, setLegalBooksState, useLegalBooks } from './gameHub/gameHubLegalBooks.js'
 import {
   isGameHubWhistleMuted,
   playGameHubWhistle,
@@ -90,7 +90,7 @@ export default function LoungeGameHubModal({
     // Unmuting is a tap … sample the whistle (also unlocks iOS audio for the next real one).
     if (!next) playGameHubWhistle({ force: true })
   }
-  const { nevada: nevadaBooks } = useNevadaBooks()
+  const legalBooks = useLegalBooks()
   const chat = useGameHubChat(supabaseClient, game?.id ? String(game.id) : '')
 
   const sameSportGames = useMemo(
@@ -523,8 +523,9 @@ export default function LoungeGameHubModal({
         chipClassName={`inline-flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} items-center justify-center rounded-full border border-white/25 bg-white/15 text-white shadow-sm touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/25`}
         muted={whistleMuted}
         onToggleMuted={toggleWhistleMuted}
-        nevadaBooks={nevadaBooks}
-        onToggleNevadaBooks={() => setNevadaBooks(!nevadaBooks)}
+        legalBooks={legalBooks}
+        onToggleLegalBooks={() => setLegalBooksOn(!legalBooks.on)}
+        onPickLegalState={setLegalBooksState}
         onShare={shareHubGame}
       />
     </div>
@@ -577,7 +578,7 @@ export default function LoungeGameHubModal({
           </div>
         ) : null}
         <div hidden={activeTab !== 'stats'} className="space-y-3 py-3">
-          <OddsTable game={game} books={detail.odds} nevada={nevadaBooks} />
+          <OddsTable game={game} books={detail.odds} legalState={legalBooks.legalState} />
           {fantasyLoading && !(fantasy.props || []).length ? (
             <div className="py-4 text-center text-sm text-zinc-500">Loading Kalshi markets…</div>
           ) : (
@@ -725,8 +726,9 @@ export default function LoungeGameHubModal({
                 chipClassName={chipClass}
                 muted={whistleMuted}
                 onToggleMuted={toggleWhistleMuted}
-        nevadaBooks={nevadaBooks}
-        onToggleNevadaBooks={() => setNevadaBooks(!nevadaBooks)}
+        legalBooks={legalBooks}
+        onToggleLegalBooks={() => setLegalBooksOn(!legalBooks.on)}
+        onPickLegalState={setLegalBooksState}
                 onShare={shareHubGame}
               />
             ),

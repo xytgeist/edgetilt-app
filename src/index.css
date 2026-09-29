@@ -3617,6 +3617,7 @@ html.light [data-lounge-game-hub] .bg-zinc-100 {
   background-color: #18181b !important;
   color: #fafafa !important;
 }
+[data-lounge-game-odds] [data-lounge-game-odds-unlicensed] { opacity: 0.45; }
 [data-game-news] [data-game-news-injury='out'] { background: rgb(239 68 68 / 0.18); color: #fca5a5; }
 [data-game-news] [data-game-news-injury='doubtful'] { background: rgb(249 115 22 / 0.18); color: #fdba74; }
 [data-game-news] [data-game-news-injury='questionable'] { background: rgb(234 179 8 / 0.16); color: #fde047; }

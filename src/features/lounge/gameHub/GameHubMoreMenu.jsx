@@ -1,18 +1,20 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { MapPin, MoreHorizontal, Share, Volume2, VolumeX } from 'lucide-react'
+import { MapPin, MoreHorizontal, Share, ShieldCheck, Volume2, VolumeX } from 'lucide-react'
 import { Z_APP_MODAL } from '../../../constants/appZIndex.js'
+import { stateName, US_STATES } from './gameHubLegalBooks.js'
 
 /**
- * Hub "..." chip: game sounds toggle, Nevada-books toggle, share. Menu portals to body (the hero clips overflow) and
- * anchors under the chip's right edge.
+ * Hub "..." chip: game sounds toggle, legal-books toggle + state picker, share. Menu portals to body (the hero
+ * clips overflow) and anchors under the chip's right edge.
  */
 export default function GameHubMoreMenu({
   chipClassName,
   muted,
   onToggleMuted,
-  nevadaBooks,
-  onToggleNevadaBooks,
+  legalBooks,
+  onToggleLegalBooks,
+  onPickLegalState,
   onShare,
 }) {
   const [open, setOpen] = useState(false)
@@ -95,18 +97,49 @@ export default function GameHubMoreMenu({
               <button
                 type="button"
                 role="menuitemcheckbox"
-                aria-checked={Boolean(nevadaBooks)}
+                aria-checked={Boolean(legalBooks?.on)}
                 className={itemClass}
-                data-lounge-game-nevada-toggle={nevadaBooks ? 'on' : 'off'}
+                data-lounge-game-legal-toggle={legalBooks?.on ? 'on' : 'off'}
                 onClick={() => {
-                  onToggleNevadaBooks?.()
+                  onToggleLegalBooks?.()
                   setOpen(false)
                 }}
               >
-                <MapPin className="h-5 w-5 shrink-0" strokeWidth={2.25} />
-                <span className="flex-1">Nevada books only</span>
-                <span className="text-[12px] font-semibold opacity-70">{nevadaBooks ? 'On' : 'Off'}</span>
+                <ShieldCheck className="h-5 w-5 shrink-0" strokeWidth={2.25} />
+                <span className="flex-1">Legal books only</span>
+                <span className="text-[12px] font-semibold opacity-70">
+                  {legalBooks?.on ? (legalBooks.state ? `On · ${legalBooks.state}` : 'Pick state') : 'Off'}
+                </span>
               </button>
+              <label role="menuitem" className={`${itemClass} relative`} data-lounge-game-legal-state>
+                <MapPin className="h-5 w-5 shrink-0" strokeWidth={2.25} />
+                <span className="flex-1">State</span>
+                <span className="text-[12px] font-semibold opacity-70">
+                  {legalBooks?.state
+                    ? `${stateName(legalBooks.state)}${legalBooks.statePicked ? '' : ' (auto)'}`
+                    : 'Not detected'}
+                </span>
+                <select
+                  aria-label="State for legal books"
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                  value={legalBooks?.statePicked ? legalBooks.state || '' : ''}
+                  onChange={(e) => {
+                    onPickLegalState?.(e.target.value || null)
+                    setOpen(false)
+                  }}
+                >
+                  <option value="">
+                    {legalBooks?.geoState ? `Auto-detect (${stateName(legalBooks.geoState)})` : 'Auto-detect'}
+                  </option>
+                  {Object.entries(US_STATES)
+                    .sort((a, b) => a[1].localeCompare(b[1]))
+                    .map(([code, name]) => (
+                      <option key={code} value={code}>
+                        {name}
+                      </option>
+                    ))}
+                </select>
+              </label>
               <div data-lounge-game-more-menu-divider className="h-px" />
               <button
                 type="button"

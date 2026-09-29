@@ -3,7 +3,7 @@
  * Pinnacle's no-vig price (consensus no-vig when Pinnacle is missing). Pinnacle is the reference, not a pick.
  */
 import { sportsbookHomeUrl } from './sportsbookLinks.js'
-import { fillBookLinkState, isNevadaBook } from './gameHubNevadaBooks.js'
+import { fillBookLinkState, isLegalBook } from './gameHubLegalBooks.js'
 
 /** Rule-of-thumb cover / total prob per half point off the reference number (ranking only). */
 const PROB_PER_HALF_POINT = 0.015
@@ -42,22 +42,22 @@ function median(values) {
   return a.length % 2 ? a[mid] : (a[mid - 1] + a[mid]) / 2
 }
 
-/** Some books (BetMGM, Caesars) template the user's state into the URL (`{state}`); we can't fill it. */
+/** Some books (BetMGM, Caesars) template the user's state into the URL (`{state}`); we can't fill it without a state. */
 export function usableLink(link) {
   const s = String(link || '').trim()
   return s && !/[{}]/.test(s) ? s : null
 }
 
-function bookUrl(row, link, nevada) {
-  return usableLink(fillBookLinkState(link, nevada)) || sportsbookHomeUrl(row.book)
+function bookUrl(row, link, legalState) {
+  return usableLink(fillBookLinkState(link, legalState)) || sportsbookHomeUrl(row.book)
 }
 
-/** Nevada mode: only Nevada-licensed books can be picked (Pinnacle stays as the pregame reference). */
-function shopRows(rows, nevada) {
+/** Legal-books mode: only books licensed in the viewer's state can be picked (Pinnacle stays as the pregame reference). */
+function shopRows(rows, legalState) {
   const list = Array.isArray(rows) ? rows : []
-  if (!nevada) return list
-  const nv = list.filter((r) => isNevadaBook(r.book))
-  return nv.length ? [...list.filter(isPinnacle), ...nv] : []
+  if (!legalState) return list
+  const legal = list.filter((r) => isLegalBook(r.book, legalState))
+  return legal.length ? [...list.filter(isPinnacle), ...legal] : []
 }
 
 function displayBook(name) {
@@ -93,7 +93,7 @@ function reference(rows, pickA) {
  * Best candidate for one side. `better` = +1 when a higher point helps this side (dog spread, under),
  * -1 when lower helps (over); 0 for moneylines. EV is exact when the point matches the reference.
  */
-function bestSide(rows, pickA, better, nevada) {
+function bestSide(rows, pickA, better, legalState) {
   const ref = reference(rows, pickA)
   const candidates = rows.filter((r) => !isPinnacle(r))
   const pool = candidates.length ? candidates : rows
@@ -118,7 +118,7 @@ function bestSide(rows, pickA, better, nevada) {
         point: r.point,
         price: num(r.price),
         book: displayBook(row.book),
-        url: bookUrl(row, r.link, nevada),
+        url: bookUrl(row, r.link, legalState),
         ev,
       }
     }
@@ -130,25 +130,25 @@ function bestSide(rows, pickA, better, nevada) {
  * `{ books, away: { spread, ml }, home: { spread, ml }, over, under }` … each pick `{ point, price, book, url, ev }`;
  * `books` = how many books were shopped.
  */
-export function pregameBestLines(rows, { nevada = false } = {}) {
-  const list = shopRows(rows, nevada)
+export function pregameBestLines(rows, { legalState = null } = {}) {
+  const list = shopRows(rows, legalState)
   if (!list.length) return null
   const side = (s, o) => ({
     spread: bestSide(
       list,
       (r) => ({ point: num(r[`${s}_spread`]), price: r[`${s}_spread_price`], otherPrice: r[`${o}_spread_price`], link: r[`${s}_spread_link`] }),
       1,
-      nevada,
+      legalState,
     ),
-    ml: bestSide(list, (r) => ({ point: null, price: r[`${s}_ml`], otherPrice: r[`${o}_ml`], link: r[`${s}_ml_link`] }), 0, nevada),
+    ml: bestSide(list, (r) => ({ point: null, price: r[`${s}_ml`], otherPrice: r[`${o}_ml`], link: r[`${s}_ml_link`] }), 0, legalState),
   })
   const shopped = list.filter((r) => !isPinnacle(r)).length
   return {
     books: shopped || list.length,
     away: side('away', 'home'),
     home: side('home', 'away'),
-    over: bestSide(list, (r) => ({ point: num(r.total), price: r.over_price, otherPrice: r.under_price, link: r.over_link }), -1, nevada),
-    under: bestSide(list, (r) => ({ point: num(r.total), price: r.under_price, otherPrice: r.over_price, link: r.under_link }), 1, nevada),
+    over: bestSide(list, (r) => ({ point: num(r.total), price: r.over_price, otherPrice: r.under_price, link: r.over_link }), -1, legalState),
+    under: bestSide(list, (r) => ({ point: num(r.total), price: r.under_price, otherPrice: r.over_price, link: r.under_link }), 1, legalState),
   }
 }
 
@@ -162,12 +162,12 @@ function stampMs(row) {
   return Number.isFinite(t) ? t : null
 }
 
-function pickFrom(row, price, point, link, nevada) {
+function pickFrom(row, price, point, link, legalState) {
   return {
     point,
     price: num(price),
     book: displayBook(row.book),
-    url: bookUrl(row, link, nevada),
+    url: bookUrl(row, link, legalState),
     ev: null,
   }
 }
@@ -192,8 +192,8 @@ function consensusPoint(points) {
  * The pregame EV ranking doesn't hold live (stale Pinnacle reference, books spread across 4+ points).
  * Same shape as `pregameBestLines` (`ev` is always null).
  */
-export function liveBestLines(rows, { nevada = false } = {}) {
-  const list = shopRows(rows, nevada)
+export function liveBestLines(rows, { legalState = null } = {}) {
+  const list = shopRows(rows, legalState)
   const stamps = list.map(stampMs).filter((t) => t != null)
   if (!stamps.length) return null
   const newest = Math.max(...stamps)
@@ -203,7 +203,7 @@ export function liveBestLines(rows, { nevada = false } = {}) {
   })
   if (!fresh.length) return null
   const books = fresh.filter((r) => !isPinnacle(r))
-  const pool = books.length || nevada ? books : fresh
+  const pool = books.length || legalState ? books : fresh
 
   const homeProbs = fresh.map((r) => noVig(r.home_ml, r.away_ml))
   const mlMid = median(homeProbs)
@@ -216,7 +216,7 @@ export function liveBestLines(rows, { nevada = false } = {}) {
     for (const r of pool) {
       if (!mlOk(r)) continue
       const dec = decimal(r[`${s}_ml`])
-      if (dec != null && (!best || dec > best.dec)) best = { dec, pick: pickFrom(r, r[`${s}_ml`], null, r[`${s}_ml_link`], nevada) }
+      if (dec != null && (!best || dec > best.dec)) best = { dec, pick: pickFrom(r, r[`${s}_ml`], null, r[`${s}_ml_link`], legalState) }
     }
     return best?.pick || null
   }
@@ -230,7 +230,7 @@ export function liveBestLines(rows, { nevada = false } = {}) {
       if (num(r[`${s}_spread`]) !== want) continue
       const dec = decimal(r[`${s}_spread_price`])
       if (dec != null && (!best || dec > best.dec)) {
-        best = { dec, pick: pickFrom(r, r[`${s}_spread_price`], want, r[`${s}_spread_link`], nevada) }
+        best = { dec, pick: pickFrom(r, r[`${s}_spread_price`], want, r[`${s}_spread_link`], legalState) }
       }
     }
     return best?.pick || null

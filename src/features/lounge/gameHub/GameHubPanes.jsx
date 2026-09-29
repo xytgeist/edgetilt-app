@@ -15,11 +15,11 @@ import { feedPostDisplayCaption } from '../../../utils/communityFeedPost.js'
 import { openExternalUrl } from '../../../utils/edgeNative.js'
 import { usableLink } from './gameHubBestLines.js'
 import { sportsbookHomeUrl } from './sportsbookLinks.js'
-import { fillBookLinkState, isNevadaBook } from './gameHubNevadaBooks.js'
+import { fillBookLinkState, isLegalBook, stateHasLegalBooks, stateName } from './gameHubLegalBooks.js'
 
 /** Odds cell that opens the book's bet slip (market deep link) or the book's home page. */
-function OddsCell({ row, linkKey, label, className, nevada, children }) {
-  const url = usableLink(fillBookLinkState(row?.[linkKey], nevada)) || sportsbookHomeUrl(row?.book)
+function OddsCell({ row, linkKey, label, className, legalState, children }) {
+  const url = usableLink(fillBookLinkState(row?.[linkKey], legalState)) || sportsbookHomeUrl(row?.book)
   if (!url) return <td className={className}>{children}</td>
   return (
     <td className={String(className).replace(/\bp[xy]-\d+\b/g, '').trim()}>
@@ -367,11 +367,15 @@ export function BoxScoreCard({ game }) {
   )
 }
 
-export function OddsTable({ game, books, nevada = false }) {
+export function OddsTable({ game, books, legalState = null }) {
   const list = useMemo(() => {
     const rows = Array.isArray(books) ? books : []
-    return nevada ? [...rows.filter((r) => isNevadaBook(r.book)), ...rows.filter((r) => !isNevadaBook(r.book))] : rows
-  }, [books, nevada])
+    if (!legalState) return rows
+    const legal = (r) => isLegalBook(r.book, legalState)
+    return [...rows.filter(legal), ...rows.filter((r) => !legal(r))]
+  }, [books, legalState])
+  const legalName = stateName(legalState)
+  const noLegalBooks = Boolean(legalState) && !stateHasLegalBooks(legalState)
   const [bookId, setBookId] = useState(() => list[0]?.book || '')
   const badge = useMemo(() => consensusHangOrOutlier(list), [list])
   const badgeBook = badge?.book || null
@@ -398,11 +402,11 @@ export function OddsTable({ game, books, nevada = false }) {
     }
   }, [list, bookId])
 
-  // Nevada mode flips on (geo lands / toggle): jump to the first Nevada book.
+  // Legal-books mode flips on or changes state (geo lands / menu): jump to the first licensed book.
   const firstBook = list[0]?.book || ''
   useEffect(() => {
-    if (nevada && firstBook) setBookId(firstBook)
-  }, [nevada, firstBook])
+    if (legalState && firstBook) setBookId(firstBook)
+  }, [legalState, firstBook])
 
   if (!list.length) {
     return <div className="py-4 text-center text-sm text-zinc-500">Live lines are not up for this game yet.</div>
@@ -431,16 +435,23 @@ export function OddsTable({ game, books, nevada = false }) {
             </span>
           ) : null}
         </div>
+        {noLegalBooks ? (
+          <div data-lounge-game-odds-legal-note className="mb-1.5 px-1 text-[11px] leading-snug text-zinc-500">
+            No licensed sportsbooks in {legalName}. Lines shown for reference only.
+          </div>
+        ) : null}
         <div className="-mx-1 overflow-x-auto px-1 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex w-max gap-1.5">
             {list.map((b) => {
               const active = b.book === row.book
               const isBadged = badgeBook != null && b.book === badgeBook
+              const licensed = legalState ? isLegalBook(b.book, legalState) : null
               return (
                 <button
                   key={b.book}
                   type="button"
                   onClick={() => setBookId(b.book)}
+                  data-lounge-game-odds-unlicensed={licensed === false && !active ? '' : undefined}
                   title={isBadged ? badgeTitle : undefined}
                   aria-label={
                     isBadged
@@ -460,8 +471,8 @@ export function OddsTable({ game, books, nevada = false }) {
                     />
                   ) : null}
                   {b.book}
-                  {nevada && isNevadaBook(b.book) ? (
-                    <span className="text-[9px] font-bold uppercase tracking-wide opacity-60">NV</span>
+                  {licensed ? (
+                    <span className="text-[9px] font-bold uppercase tracking-wide opacity-60">{legalState}</span>
                   ) : null}
                 </button>
               )
@@ -481,32 +492,32 @@ export function OddsTable({ game, books, nevada = false }) {
         <tbody className="text-zinc-200">
           <tr className="border-t border-zinc-800">
             <td className="px-3 py-2 text-left font-semibold">{game.away?.abbrev}</td>
-            <OddsCell nevada={nevada} row={row} linkKey="away_spread_link" label={`${game.away?.abbrev || 'Away'} spread`} className="px-2 py-2 tabular-nums">
+            <OddsCell legalState={legalState} row={row} linkKey="away_spread_link" label={`${game.away?.abbrev || 'Away'} spread`} className="px-2 py-2 tabular-nums">
               {signedPoint(row.away_spread)}{' '}
               <span className="text-zinc-500">{american(row.away_spread_price)}</span>
               <OddsMarketDot show={flagSpread} label={`${cellDotLabel} spread`} />
             </OddsCell>
-            <OddsCell nevada={nevada} row={row} linkKey="over_link" label="Over" className="px-2 py-2 tabular-nums">
+            <OddsCell legalState={legalState} row={row} linkKey="over_link" label="Over" className="px-2 py-2 tabular-nums">
               O {row.total ?? '-'} <span className="text-zinc-500">{american(row.over_price)}</span>
               <OddsMarketDot show={flagTotal} label={`${cellDotLabel} total`} />
             </OddsCell>
-            <OddsCell nevada={nevada} row={row} linkKey="away_ml_link" label={`${game.away?.abbrev || 'Away'} moneyline`} className="px-3 py-2 font-semibold tabular-nums">
+            <OddsCell legalState={legalState} row={row} linkKey="away_ml_link" label={`${game.away?.abbrev || 'Away'} moneyline`} className="px-3 py-2 font-semibold tabular-nums">
               {american(row.away_ml)}
               <OddsMarketDot show={flagMl} label={`${cellDotLabel} ML`} />
             </OddsCell>
           </tr>
           <tr className="border-t border-zinc-800">
             <td className="px-3 py-2 text-left font-semibold">{game.home?.abbrev}</td>
-            <OddsCell nevada={nevada} row={row} linkKey="home_spread_link" label={`${game.home?.abbrev || 'Home'} spread`} className="px-2 py-2 tabular-nums">
+            <OddsCell legalState={legalState} row={row} linkKey="home_spread_link" label={`${game.home?.abbrev || 'Home'} spread`} className="px-2 py-2 tabular-nums">
               {signedPoint(row.home_spread)}{' '}
               <span className="text-zinc-500">{american(row.home_spread_price)}</span>
               <OddsMarketDot show={flagSpread} label={`${cellDotLabel} spread`} />
             </OddsCell>
-            <OddsCell nevada={nevada} row={row} linkKey="under_link" label="Under" className="px-2 py-2 tabular-nums">
+            <OddsCell legalState={legalState} row={row} linkKey="under_link" label="Under" className="px-2 py-2 tabular-nums">
               U {row.total ?? '-'} <span className="text-zinc-500">{american(row.under_price)}</span>
               <OddsMarketDot show={flagTotal} label={`${cellDotLabel} total`} />
             </OddsCell>
-            <OddsCell nevada={nevada} row={row} linkKey="home_ml_link" label={`${game.home?.abbrev || 'Home'} moneyline`} className="px-3 py-2 font-semibold tabular-nums">
+            <OddsCell legalState={legalState} row={row} linkKey="home_ml_link" label={`${game.home?.abbrev || 'Home'} moneyline`} className="px-3 py-2 font-semibold tabular-nums">
               {american(row.home_ml)}
               <OddsMarketDot show={flagMl} label={`${cellDotLabel} ML`} />
             </OddsCell>
@@ -515,8 +526,8 @@ export function OddsTable({ game, books, nevada = false }) {
       </table>
       {usableLink(row.away_ml_link) || usableLink(row.away_spread_link) || sportsbookHomeUrl(row.book) ? (
         <div className="border-t border-zinc-800/80 px-3 py-1.5 text-[11px] text-zinc-500">
-          {nevada && !isNevadaBook(row.book)
-            ? `${row.book} doesn't take bets in Nevada`
+          {legalState && !isLegalBook(row.book, legalState)
+            ? `${row.book} isn't licensed in ${legalName || legalState}`
             : `Tap a line to bet it at ${row.book}`}
         </div>
       ) : null}

@@ -76,6 +76,11 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
         completion(.success(["ok": false]))
         return
       }
+      if EdgeBetSheet.handles(url) {
+        EdgeBetSheet.present(url: url)
+        completion(.success(["ok": true, "sheet": true]))
+        return
+      }
       DispatchQueue.main.async {
         UIApplication.shared.open(url, options: [:]) { ok in
           completion(.success(["ok": ok]))
@@ -522,6 +527,10 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
   private static func openHttpUrlInSafari(_ url: URL) {
     let scheme = url.scheme?.lowercased() ?? ""
     guard scheme == "http" || scheme == "https" else { return }
+    if EdgeBetSheet.handles(url) {
+      EdgeBetSheet.present(url: url)
+      return
+    }
     DispatchQueue.main.async {
       UIApplication.shared.open(url, options: [:], completionHandler: nil)
     }

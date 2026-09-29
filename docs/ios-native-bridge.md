@@ -77,7 +77,7 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | Method | Direction | Payload (draft) | Result (draft) | Owner first | Status |
 | --- | --- | --- | --- | --- | --- |
 | `getInfo` | JS→native | none | `{ shellVersion, build, environment: 'test'\|'prod', apsEnvironment: 'development'\|'production', ua }` | Mac | **native** (`ios/` scaffold). `apsEnvironment` mirrors entitlements (still `development` until App Store). |
-| `openInSafari` | JS→native | `{ url: string }` | `{ ok: boolean }` | Mac | **native** (`ios/` scaffold). **2026-09-21:** `WKUIDelegate.createWebView` + nil-`targetFrame` navigations also route http(s) to Safari and return/cancel (no blank child WKWebView from `window.open` / `target=_blank`). Web callers: **`openExternalUrl`** / **`openExternalBillingUrl`**. |
+| `openInSafari` | JS→native | `{ url: string }` | `{ ok: boolean }` | Mac | **native** (`ios/` scaffold). **2026-09-21:** `WKUIDelegate.createWebView` + nil-`targetFrame` navigations also route http(s) to Safari and return/cancel (no blank child WKWebView from `window.open` / `target=_blank`). Web callers: **`openExternalUrl`** / **`openExternalBillingUrl`**. **2026-09-28:** kalshi.com / polymarket.us URLs (all three paths) open the in-app **Bet sheet** instead (result adds `sheet: true`). See below. |
 | `requestPushPermission` | JS→native | none | `{ status: 'granted'\|'denied'\|'prompt' }` | Mac | **native** + **web caller** (2026-08-25): Lounge Settings toggle → `requestEdgeiOSPushPermission()` |
 | `getPushPermissionStatus` | JS→native | none | `{ status: 'granted'\|'denied'\|'prompt' }` | Mac | **native** + **web** (2026-08-25): read-only; never prompts |
 | `getPushToken` | JS→native | none | `{ token: string \| null }` | Mac | **native** + **web** (2026-08-25): Lounge Settings polls after grant and **uploads** hex to `apns_device_tokens`. Send needs Edge `APNS_*` secrets + function redeploy. |
@@ -141,6 +141,15 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | Call audio session in shell | Mac + Windows web | **Web caller (2026-08-26):** `chatCallAudioSession.js` → `setAudioSession({ mode: 'voiceChat' })` on call enter, `default` on exit (native `.defaultToSpeaker` for voiceChat). **Device smoke pending** (speaker vs earpiece). |
 
 **v1.1 (do not stub-implement yet):** CallKit, StoreKit IAP, background ring.
+
+### Bet sheet (Kalshi / Polymarket tickets, 2026-09-28)
+
+**Why:** `UIApplication.open` on kalshi.com / polymarket.us fires universal links into the Kalshi and Polymarket apps, and both apps drop the ticket params (land on the game). Desktop Safari honors them. So the IPA never hands these hosts to Safari.
+
+- **Native:** `EdgeBetSheet.swift`. `openInSafari`, `createWebView`, and nil-`targetFrame` navigations route kalshi.com / polymarket.us (and subdomains) to a `.pageSheet` WKWebView (default data store, so book logins persist; plain Mobile Safari UA without the `EdgeiOS/` token). Done button + "open outside" button (`UIApplication.open`, i.e. the book's app). Non-http schemes inside the sheet go to `UIApplication.open`; popups load in place.
+- **Kalshi:** no script. The `op_market_ticker` / `op_order_side` ticket URL works in mobile web.
+- **Polymarket:** mobile polymarket.us only opens the trade sheet from a user tap (`?marketSlug=&outcomeId=` alone shows the game). After the first main-frame finish the sheet evaluates **`public/native/bet-sheet-polymarket.js`**, fetched from `AppConfig.baseURL` (so fixes ship with a web deploy, 5 min cache). The script reads the market from `gateway.polymarket.us/v1/events/slug/{event}` and taps tab → category pill → player row (expands "Show N more") → line dial (pointer events at notch coordinates; `.click()` always picks the first notch) → Yes → No inside the sheet for `-short`. Moneyline (`football_team_full_game_winner`) taps the team button. Other market types just show the page. Skips at ≥1024px (desktop rail already honors the params).
+- **Web:** no change. Existing `target=_blank` anchors and `openExternalUrl` already reach these native paths. Old IPA keeps Safari / app handoff.
 
 ### StoreKit IAP (dual-path, 2026-09-05)
 

@@ -46,14 +46,17 @@ Pick **EdgeTilt Test** in Xcode and Run (▶) on a Simulator or a paired iPhone 
 
 **Simulator console:** Fig / FigCapture / Accessibility plist / `UIAccessibilityLoaderWebShared` lines on iOS 27 are WebKit noise. A real load prints `EdgeWebView load`, then `didStart` / `didFinish`. If those never appear, the first navigation never started.
 
-**Archive / TestFlight build number:** do not pass `CURRENT_PROJECT_VERSION=126`. App Store Connect wants one increasing sequence across Test Fast, Prod, and local uploads. Stamp it:
+**Build number convention (Ryan):**
+
+- **Test (lvslotpro.com):** Xcode Cloud workflow **TestFlight Internal** only (Test Fast scheme). Its short sequential numbers (e.g. `1.4.95 (201)`) are how Ryan tells test builds apart in TestFlight. Do **not** archive and upload Test Fast locally.
+- **Prod (edgetilt.com):** local **EdgeTilt Prod** archive with a UTC date-time-group (DTG) build number:
 
 ```bash
 BUILD_NUMBER="$(ios/scripts/next-ios-build-number.sh)"   # e.g. 20260911154432
-xcodebuild ... CURRENT_PROJECT_VERSION="$BUILD_NUMBER" archive
+xcodebuild ... -scheme "EdgeTilt Prod" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" archive
 ```
 
-Xcode Cloud uses the same stamp in `ios/ci_scripts/ci_post_clone.sh`.
+App Store Connect only needs build numbers unique per version, so Cloud's short numbers and the DTGs coexist. `ios/ci_scripts/ci_post_clone.sh` stamps a DTG too, but Cloud builds still land in ASC with the short sequence.
 
 ### App Store status bar (9:41 / full Wi-Fi / full battery)
 

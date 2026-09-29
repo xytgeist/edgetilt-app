@@ -1,6 +1,6 @@
 # Sportsbook states refresh (weekly)
 
-The game hub's **Only books in my state** filter reads `src/features/lounge/gameHub/sportsbookStates.json`: which US states (plus DC) each odds-feed sportsbook runs a **licensed online/mobile** sportsbook in. A weekly agent keeps it current. This doc is its runbook.
+The game hub's **Only books in my state** filter reads `src/features/lounge/gameHub/sportsbookStates.json`: which US states (plus DC) each odds-feed sportsbook runs a **licensed online/mobile** sportsbook in. A weekly agent keeps it current. This doc is its runbook. The agent is the Cursor Automation **Sportsbook state list refresh** (Mondays 6:00 am PT, repo `xytgeist/edgetilt-app`, branch `test`), saved 2026-09-29.
 
 ## Scope
 

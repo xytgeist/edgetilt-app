@@ -8,6 +8,7 @@ final class EdgeLocationManager: NSObject, CLLocationManagerDelegate {
 
   private let manager = CLLocationManager()
   private var waiting: [(Result<CLLocation, LocationError>) -> Void] = []
+  private var authWaiting: [(String) -> Void] = []
 
   enum LocationError: Error {
     case denied
@@ -56,6 +57,26 @@ final class EdgeLocationManager: NSObject, CLLocationManagerDelegate {
     }
   }
 
+  /// Post-sign-in ask from web. Completes with `granted` / `denied` once the member decides (or at once if already decided).
+  func requestWhenInUse(completion: @escaping (String) -> Void) {
+    DispatchQueue.main.async { [self] in
+      guard manager.authorizationStatus == .notDetermined else {
+        completion(Self.statusString(manager.authorizationStatus))
+        return
+      }
+      authWaiting.append(completion)
+      manager.requestWhenInUseAuthorization()
+    }
+  }
+
+  private static func statusString(_ status: CLAuthorizationStatus) -> String {
+    switch status {
+    case .authorizedAlways, .authorizedWhenInUse: return "granted"
+    case .denied, .restricted: return "denied"
+    default: return "prompt"
+    }
+  }
+
   /// One fix for the web shim. Reuses a cached fix younger than `maximumAge`; waits out a first-time prompt.
   func currentPosition(
     highAccuracy: Bool,
@@ -93,6 +114,12 @@ final class EdgeLocationManager: NSObject, CLLocationManagerDelegate {
   // MARK: - CLLocationManagerDelegate
 
   func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+    if manager.authorizationStatus != .notDetermined, !authWaiting.isEmpty {
+      let status = Self.statusString(manager.authorizationStatus)
+      let callbacks = authWaiting
+      authWaiting.removeAll()
+      callbacks.forEach { $0(status) }
+    }
     guard !waiting.isEmpty else { return }
     switch manager.authorizationStatus {
     case .authorizedAlways, .authorizedWhenInUse:

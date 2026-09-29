@@ -63,7 +63,6 @@ class MainActivity : Activity() {
     webView.setDownloadListener { url, _, _, _, _ -> EdgeLinks.openOutside(this, Uri.parse(url)) }
     webView.addJavascriptInterface(Bridge(), "EdgeAndroid")
     EdgePush.refreshToken(this)
-    if (savedInstanceState == null) askPermissionsOnFirstLaunch()
 
     registerBack()
     val start = intent?.data?.takeIf { EdgeLinks.staysInApp(it) }?.toString() ?: BuildConfig.BASE_URL
@@ -150,6 +149,11 @@ class MainActivity : Activity() {
     }
 
     @JavascriptInterface
+    fun requestLocation() {
+      if (onAppPage) runOnUiThread { requestLocationPermission() }
+    }
+
+    @JavascriptInterface
     fun openAppSettings() {
       if (!onAppPage) return
       runOnUiThread {
@@ -177,22 +181,12 @@ class MainActivity : Activity() {
     }
   }
 
-  /** Same up-front ask as the IPA (push + location at launch), once per install so we never nag. */
-  private fun askPermissionsOnFirstLaunch() {
-    val prefs = getSharedPreferences(SHELL_PREFS, MODE_PRIVATE)
-    if (prefs.getBoolean(KEY_LAUNCH_ASKED, false)) return
-    prefs.edit().putBoolean(KEY_LAUNCH_ASKED, true).apply()
-    val wanted = buildList {
-      if (Build.VERSION.SDK_INT >= 33 && EdgePush.status(this@MainActivity) == "prompt") {
-        EdgePush.markAsked(this@MainActivity)
-        add(Manifest.permission.POST_NOTIFICATIONS)
-      }
-      if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-        add(Manifest.permission.ACCESS_FINE_LOCATION)
-        add(Manifest.permission.ACCESS_COARSE_LOCATION)
-      }
-    }
-    if (wanted.isNotEmpty()) requestPermissions(wanted.toTypedArray(), REQ_LAUNCH)
+  private fun requestLocationPermission() {
+    if (checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) return
+    requestPermissions(
+      arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+      REQ_LOCATION,
+    )
   }
 
   private fun dispatchPushStatus() {
@@ -285,7 +279,7 @@ class MainActivity : Activity() {
   override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, results: IntArray) {
     super.onRequestPermissionsResult(requestCode, permissions, results)
     when (requestCode) {
-      REQ_NOTIFY, REQ_LAUNCH -> {
+      REQ_NOTIFY -> {
         EdgePush.refreshToken(this)
         dispatchPushStatus()
       }
@@ -331,8 +325,6 @@ class MainActivity : Activity() {
     private const val REQ_MEDIA = 42
     private const val REQ_GEO = 43
     private const val REQ_NOTIFY = 44
-    private const val REQ_LAUNCH = 45
-    private const val SHELL_PREFS = "edge_shell"
-    private const val KEY_LAUNCH_ASKED = "launch_permissions_asked"
+    private const val REQ_LOCATION = 45
   }
 }

@@ -14,7 +14,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     EdgeCallKitManager.shared.configure()
     EdgeLiveKitCallManager.shared.configure()
     EdgeLocationManager.shared.configure()
-    EdgeLocationManager.shared.ensureWhenInUseAuthorization()
     EdgeAudioSession.ensurePlaybackUnlessVoiceChat()
     EdgeWebKitKeyboard.hideAccessoryBar()
     EdgeVideoStore.shared.sweepStaleFiles()

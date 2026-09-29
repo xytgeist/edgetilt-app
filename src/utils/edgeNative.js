@@ -379,6 +379,22 @@ export async function requestEdgeiOSPushPermission() {
 }
 
 /**
+ * iOS When In Use prompt (skipped when already decided). Old IPAs without the method are a no-op.
+ * @returns {Promise<{ status: string, via: 'bridge' | 'noop' | 'error' }>}
+ */
+export async function requestEdgeiOSLocationPermission() {
+  if (typeof window === 'undefined' || typeof window.EdgeNative?.requestLocationPermission !== 'function') {
+    return { status: 'prompt', via: 'noop' }
+  }
+  try {
+    const result = await edgeNativeInvoke('requestLocationPermission')
+    return { status: String(result?.status || 'prompt'), via: 'bridge' }
+  } catch {
+    return { status: 'prompt', via: 'error' }
+  }
+}
+
+/**
  * Device token hex when APNs has registered. May be null briefly after grant.
  * @returns {Promise<{ token: string | null, via: 'bridge' | 'noop' | 'error' }>}
  */

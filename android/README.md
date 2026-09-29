@@ -44,13 +44,14 @@ Web side: `src/utils/edgeAndroid.js` (`isEdgeAndroidShell()` = UA has `EdgeAndro
 | --- | --- |
 | `pushStatus()` | `granted` / `denied` / `prompt` (POST_NOTIFICATIONS on Android 13+) |
 | `requestPush()` | Shows the permission dialog, then fires `window` event `edge-android-push` with `detail.status` |
+| `requestLocation()` | Shows the location dialog unless already granted (no result event) |
 | `pushToken()` | FCM token, `''` until Firebase is configured / has minted one |
 | `openAppSettings()` | This app's notification settings |
 | `info()` | JSON `{ appId, version, firebase }` |
 
-## Permissions at first launch
+## Permissions after sign-in
 
-Like the IPA, `MainActivity.askPermissionsOnFirstLaunch` asks for location and (Android 13+) notifications on the first launch only (`edge_shell` prefs flag), so later launches never nag. A grant there is enough for push: the Lounge hook uploads the FCM token once the member signs in (Lounge push pref defaults on). Web location calls then get granted silently by `onGeolocationPermissionsShowPrompt`.
+Nothing prompts at launch. After sign-in / account creation (member UI up, splash gone), `src/utils/nativeStartupPermissions.js` calls `EdgeAndroid.requestPush()` then `EdgeAndroid.requestLocation()`, once per member per device (localStorage). The push answer fires `edge-native-push-changed`, so the Lounge hook re-reads status and uploads the FCM token (Lounge push pref defaults on). Same flow on the IPA. Web location calls then get granted silently by `onGeolocationPermissionsShowPrompt`.
 
 ## Push (FCM)
 

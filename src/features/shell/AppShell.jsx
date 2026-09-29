@@ -53,6 +53,7 @@ import {
   markPwaNotifPromptSeen,
   setPwaNotifEnablePending,
 } from '../../utils/pwaNotificationPrompt'
+import { requestNativeStartupPermissionsOnce } from '../../utils/nativeStartupPermissions'
 import {
   bootstrapPushOptInIntentIfNeeded,
   canShowPushReenablePrompt,
@@ -2839,6 +2840,16 @@ export default function AppShell({
 
     return () => subscription.unsubscribe()
   }, [supabaseClient])
+
+  /** iOS / Android shells: push + location system prompts after sign-in, once the member UI has settled. */
+  useEffect(() => {
+    if (!chatCallViewerUserId) return undefined
+    if (browseMode !== 'member' || !authSessionReady || splashVisible) return undefined
+    const timer = window.setTimeout(() => {
+      void requestNativeStartupPermissionsOnce(chatCallViewerUserId)
+    }, 600)
+    return () => window.clearTimeout(timer)
+  }, [chatCallViewerUserId, browseMode, authSessionReady, splashVisible])
 
   /** Show queued PWA notification prompt only after signed-in member UI + cold-boot splash finish. */
   useEffect(() => {

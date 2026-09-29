@@ -25,6 +25,7 @@ import {
   setPushReenablePromptPending,
   writePushOptInIntent,
 } from '../../../utils/pushOptInIntent.js'
+import { NATIVE_PUSH_CHANGED_EVENT } from '../../../utils/nativeStartupPermissions.js'
 
 /**
  * Lounge Settings push toggle.
@@ -82,6 +83,16 @@ export default function useLoungePushNotifications({ supabaseClient, viewerUserI
     if (!isIpaShell) return
     void syncNativePushState()
   }, [isIpaShell, syncNativePushState, viewerUserId])
+
+  /** Post-sign-in shell prompt answered while this hook was already mounted. */
+  useEffect(() => {
+    if (!isIpaShell) return undefined
+    const onChange = () => {
+      void syncNativePushState()
+    }
+    window.addEventListener(NATIVE_PUSH_CHANGED_EVENT, onChange)
+    return () => window.removeEventListener(NATIVE_PUSH_CHANGED_EVENT, onChange)
+  }, [isIpaShell, syncNativePushState])
 
   /** After grant, token often lands a beat later. */
   useEffect(() => {

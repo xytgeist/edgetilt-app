@@ -98,6 +98,10 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       }
     case "bustServiceWorker":
       bustServiceWorker(completion: completion)
+    case "requestLocationPermission":
+      EdgeLocationManager.shared.requestWhenInUse { status in
+        completion(.success(["status": status]))
+      }
     case "getCurrentPosition":
       let highAccuracy = payload?["highAccuracy"] as? Bool ?? false
       let maximumAgeMs = (payload?["maximumAgeMs"] as? NSNumber)?.doubleValue ?? 0
@@ -900,6 +904,9 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       },
       bustServiceWorker: function () {
         return call('bustServiceWorker', null);
+      },
+      requestLocationPermission: function () {
+        return call('requestLocationPermission', null);
       },
       _resolve: function (id, value) {
         var entry = pending[id];

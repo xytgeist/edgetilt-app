@@ -66,6 +66,18 @@ export function requestEdgeAndroidPushPermission() {
   })
 }
 
+/** Android location prompt (skipped when already granted). Result is not reported back. */
+export async function requestEdgeAndroidLocationPermission() {
+  const b = bridge()
+  if (!b || typeof b.requestLocation !== 'function') return { ok: false, via: 'noop' }
+  try {
+    b.requestLocation()
+    return { ok: true, via: 'bridge' }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
 /**
  * FCM registration token, or null when Firebase is not configured in this build or has not
  * minted a token yet.

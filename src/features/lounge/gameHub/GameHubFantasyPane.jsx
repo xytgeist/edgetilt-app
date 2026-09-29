@@ -800,7 +800,7 @@ function FantasyScoringBar({ scoring, status }) {
 /**
  * Sleeper game PPR + season on each row.
  * Rest of board Game col: PROJ → LIVE (paced) → GAME (vs original).
- * Top: H2H carousel for QB / RB1 / WR1 / TE / K / DEF.
+ * Top (pregame only): H2H carousel for QB / RB1 / WR1 / TE / K / DEF; live / final fold it into the board.
  */
 export default function GameHubFantasyPane({
   players,
@@ -839,9 +839,10 @@ export default function GameHubFantasyPane({
       slots.push({ ...slot, away, home })
     }
 
+    // Live / final: the H2H stack folds into the board so every player ranks by points scored.
     const board = list
       .filter((p) => ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].includes(normalizeFantasyPos(p)))
-      .filter((p) => !featuredIds.has(String(p.sleeper_id)))
+      .filter((p) => liveOrFinal || !featuredIds.has(String(p.sleeper_id)))
     board.sort((a, b) => {
       if (liveOrFinal) {
         const ga = playerFantasyPts(a, 'game', scoring) ?? -1
@@ -874,12 +875,12 @@ export default function GameHubFantasyPane({
   return (
     <div data-lounge-game-fantasy className="space-y-4 py-3">
       <FantasyScoringBar scoring={scoring} status={status} />
-      <FantasyMatchupStack matchups={matchups} game={game} gameStatus={status} />
+      {liveOrFinal ? null : <FantasyMatchupStack matchups={matchups} game={game} gameStatus={status} />}
 
       {rest.length ? (
         <div className="space-y-2">
           <div className="grid grid-cols-[minmax(0,1fr)_3.25rem_3.25rem] gap-x-2 px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-600">
-            <span>Rest of board</span>
+            <span>{status === 'post' ? 'Final board' : status === 'in' ? 'Live board' : 'Rest of board'}</span>
             <span className="text-right">{gameColTitle}</span>
             <span className="text-right">Season</span>
           </div>

@@ -328,67 +328,176 @@ function lineMatchKey(prop, playerName) {
   return s || String(prop?.ticker || '')
 }
 
-function displayLineLabel(prop, playerName) {
+/** Display names per stat … one casing for Kalshi + Polymarket ("275+ Pass Yds"). */
+const STAT_DISPLAY = {
+  pass_yds: 'Pass Yds',
+  pass_cmp: 'Pass Comp',
+  pass_att: 'Pass Att',
+  pass_td: 'Pass TD',
+  pass_int: 'INT',
+  rush_yds: 'Rush Yds',
+  rush_att: 'Rush Att',
+  rr_yds: 'Rush + Rec Yds',
+  scrim_yds: 'Scrim Yds',
+  rec_yds: 'Rec Yds',
+  rec: 'Rec',
+  rec_lng: 'Long Rec',
+  td: 'TD',
+  fpts: 'FPTS',
+}
+
+/** In-card order: passing → rushing → receiving → TDs → specials → other → fantasy last. */
+const STAT_RANK = {
+  pass_yds: 10,
+  pass_cmp: 11,
+  pass_att: 12,
+  pass_td: 13,
+  pass_int: 14,
+  rush_yds: 20,
+  rush_att: 21,
+  rr_yds: 22,
+  scrim_yds: 23,
+  rec_yds: 30,
+  rec: 31,
+  rec_lng: 32,
+  td: 40,
+}
+const RANK_FIRST_TD = 41
+const RANK_LEADER = 50
+const RANK_OTHER = 90
+const RANK_FPTS = 99
+
+const LEADER_SERIES_STAT = {
+  passing_yards: 'pass_yds',
+  rushing_yards: 'rush_yds',
+  receiving_yards: 'rec_yds',
+  receptions: 'rec',
+  passing_touchdowns: 'pass_td',
+}
+
+/** Polymarket "most passing yards" style markets arrive labeled with just the player's name. */
+function leaderStat(prop) {
+  const m = /^football_player_most_(\w+)$/.exec(String(prop?.series || '').toLowerCase())
+  return m ? LEADER_SERIES_STAT[m[1]] || null : null
+}
+
+function isFirstTdProp(prop) {
+  if (/firsttd/i.test(String(prop?.series || ''))) return true
+  return /\b(?:1st|first)\s+(?:\w+\s+)?(?:touchdown|td)\b/i.test(`${prop?.line_label || ''} ${prop?.title || ''}`)
+}
+
+function stripPlayerName(raw, name) {
+  let s = String(raw || '').trim()
+  if (name) {
+    s = s.replace(new RegExp(`^${escapeRegExp(name)}\\s*[:\\-]?\\s*`, 'i'), '')
+    s = s.replace(new RegExp(`\\b${escapeRegExp(name)}\\b`, 'ig'), ' ')
+  }
+  return s.replace(/\s{2,}/g, ' ').trim()
+}
+
+/** Fallback casing for labels we can't rebuild from a stat ("1st CLE TDs" → "1st CLE TD", "16+rush att" → "16+ Rush Att"). */
+function tidyLabelCase(s) {
+  return String(s || '')
+    .replace(/\b(pass|rush|rec|yds|att|comp|long|scrim)\b/gi, (w) => w[0].toUpperCase() + w.slice(1).toLowerCase())
+    .replace(/\bfantasy\b/gi, 'FPTS')
+    .replace(/\bint\b/gi, 'INT')
+    .replace(/\btds?\b/gi, 'TD')
+    .replace(/(\d)\+(?=[A-Za-z])/g, '$1+ ')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+}
+
+/**
+ * `{ label, rank, stat, strike }` for one book's line, or null when the market has no readable context
+ * (a bare player name with no known series). Original `line_label` / URLs stay on the prop for deep links.
+ */
+function describeLine(prop, playerName) {
   const name = String(playerName || prop?.player_name || '').trim()
   const raw = String(prop?.line_label || prop?.title || '').trim()
-  return normalizeMarketLabel(raw, { playerName: name }) || raw || 'Line'
-}
-
-/** Skill-group rank for in-card market order (pass → rush → rec → TD → fantasy → other). */
-function lineCategoryRank(key) {
-  const k = String(key || '')
-  if (k.includes('passyd')) return 10
-  if (k.includes('comp')) return 20
-  if (k.includes('att') && !k.includes('pass')) return 30
-  if (k.includes('pass') && k.includes('td')) return 40
-  if (k.includes('rushyd')) return 50
-  if (k.includes('rush') && k.includes('td')) return 60
-  if (k.includes('recyd')) return 70
-  if (k.includes('rec') && !k.includes('td') && !k.includes('recyd')) return 80
-  if (k.includes('rec') && k.includes('td')) return 90
-  if (k.includes('firsttd')) return 100
-  if (k.includes('td')) return 110
-  if (k.includes('fpts')) return 120
-  return 200
-}
-
-function lineStrikeNum(key, label) {
-  const fromKey = String(key || '').match(/(\d+(?:\.\d+)?)/)
-  if (fromKey) return Number(fromKey[1])
-  const fromLabel = String(label || '').match(/(\d+(?:\.\d+)?)/)
-  return fromLabel ? Number(fromLabel[1]) : 0
+  const leader = leaderStat(prop)
+  if (leader) {
+    return { label: `Most ${STAT_DISPLAY[leader]} in Game`, rank: RANK_LEADER + (STAT_RANK[leader] || 0) / 100, stat: null, strike: 0 }
+  }
+  if (isFirstTdProp(prop)) {
+    const teamish = normalizeMarketLabel(raw, { playerName: name })
+    const label = /^1st\s*TDs?$/i.test(teamish.replace(/\s+/g, ' ')) ? '1st TD' : tidyLabelCase(teamish.replace(/^first\b/i, '1st'))
+    return { label: label || '1st TD', rank: RANK_FIRST_TD, stat: null, strike: 0 }
+  }
+  const rest = stripPlayerName(raw, name)
+  if (!rest || !/[a-z]/i.test(rest)) return null
+  const line = classifyPropLine(prop)
+  // Rebuild simple "N+ stat" / "O N stat" ladders from the stat so every book reads the same.
+  const simple = /^\s*(?:o(?:ver)?\s*)?\d+(?:\.\d+)?\s*\+?\s*[a-z .()+&]+$/i.test(rest)
+    && !/\b(?:1st|2nd|first|second|half|quarter|1h|2h|[1-4]q)\b/i.test(rest)
+  if (line && STAT_DISPLAY[line.stat] && simple) {
+    const n = String(line.strike)
+    const label = line.inclusive ? `${n}+ ${STAT_DISPLAY[line.stat]}` : `Over ${n} ${STAT_DISPLAY[line.stat]}`
+    return { label, rank: line.stat === 'fpts' ? RANK_FPTS : STAT_RANK[line.stat] ?? RANK_OTHER, stat: line.stat, strike: line.strike }
+  }
+  const label = tidyLabelCase(normalizeMarketLabel(raw, { playerName: name })) || rest
+  const rank = line?.stat === 'fpts' ? RANK_FPTS : line ? STAT_RANK[line.stat] ?? RANK_OTHER : RANK_OTHER
+  return { label, rank, stat: line?.stat || null, strike: line?.strike ?? 0 }
 }
 
 /** Pair Kalshi + Polymarket books that describe the same strike. */
 function pairPlayerLines(lines, playerName) {
   const byKey = new Map()
   for (const p of lines || []) {
+    const desc = describeLine(p, playerName)
+    if (!desc) continue
     const key = lineMatchKey(p, playerName)
     if (!byKey.has(key)) {
-      byKey.set(key, {
-        key,
-        label: displayLineLabel(p, playerName),
-        kalshi: null,
-        polymarket: null,
-      })
+      byKey.set(key, { key, ...desc, kalshi: null, polymarket: null })
     }
     const row = byKey.get(key)
     const src = p.source || 'kalshi'
     if (src === 'polymarket') row.polymarket = p
     else row.kalshi = p
-    row.label = preferShorterLabel(row.label, displayLineLabel(p, playerName))
+    row.label = preferShorterLabel(row.label, desc.label)
   }
   const rows = [...byKey.values()]
   rows.sort((a, b) => {
-    const ca = lineCategoryRank(a.key)
-    const cb = lineCategoryRank(b.key)
-    if (ca !== cb) return ca - cb
-    const na = lineStrikeNum(a.key, a.label)
-    const nb = lineStrikeNum(b.key, b.label)
-    if (na !== nb) return na - nb
+    if (a.rank !== b.rank) return a.rank - b.rank
+    if (a.strike !== b.strike) return a.strike - b.strike
     return String(a.label).localeCompare(String(b.label))
   })
   return rows
+}
+
+const LIVE_LINES_PER_STAT = 3
+const COUNT_STATS = new Set(['td', 'pass_td', 'pass_int'])
+
+/**
+ * Live: each N+ ladder keeps the 3 strikes nearest where the player is headed (current + rest of game at
+ * the pregame rate), skipping lines already cleared and lines needing more than 2x his expected remaining
+ * output (TD / INT ladders always allow one more). Pregame / final boards keep every strike.
+ */
+function trimLiveLadders(rows, statsByKey, status) {
+  if (status !== 'in') return rows
+  const byStat = new Map()
+  for (const row of rows) {
+    if (!row.stat) continue
+    if (!byStat.has(row.stat)) byStat.set(row.stat, [])
+    byStat.get(row.stat).push(row)
+  }
+  const drop = new Set()
+  for (const group of byStat.values()) {
+    const stats = statsByKey.get(group[0].key)
+    if (!stats || stats.current == null) continue
+    const target = stats.target ?? stats.current
+    const reach = Math.max(2 * (target - stats.current), COUNT_STATS.has(group[0].stat) ? 1 : 0)
+    const byDistance = (a, b) => Math.abs(a.strike - target) - Math.abs(b.strike - target)
+    const open = group.filter((r) => !statsByKey.get(r.key)?.hit).sort(byDistance)
+    const live = open.filter((r) => r.strike - stats.current <= reach)
+    const keep = live.length
+      ? live.slice(0, LIVE_LINES_PER_STAT)
+      : open.length
+        ? open.slice(0, 1)
+        : group.slice(-1)
+    const keepKeys = new Set(keep.map((r) => r.key))
+    for (const r of group) if (!keepKeys.has(r.key)) drop.add(r.key)
+  }
+  return drop.size ? rows.filter((r) => !drop.has(r.key)) : rows
 }
 
 const POSITION_ORDER = { QB: 0, RB: 1, WR: 2, TE: 3 }
@@ -446,8 +555,29 @@ function PropLineStat({ line, stats }) {
 
 function KalshiPlayerPropGroup({ group, liqScale, statCtx }) {
   const { name, roster, lines } = group
-  const pairs = useMemo(() => pairPlayerLines(lines, name), [lines, name])
+  const allPairs = useMemo(() => pairPlayerLines(lines, name), [lines, name])
   const box = statCtx ? boxForPlayer(statCtx.index, roster, name) : null
+  const rowStats = useMemo(() => {
+    const out = new Map()
+    for (const row of allPairs) {
+      const line = classifyPropLine(row.kalshi || row.polymarket)
+      const stats = statCtx
+        ? propLineStats(line, {
+            box,
+            roster,
+            boxLoaded: statCtx.index.any,
+            status: statCtx.status,
+            fraction: statCtx.fraction,
+          })
+        : null
+      out.set(row.key, { line, stats })
+    }
+    return out
+  }, [allPairs, statCtx, box, roster])
+  const pairs = useMemo(() => {
+    const statsByKey = new Map([...rowStats].map(([k, v]) => [k, v.stats]))
+    return trimLiveLadders(allPairs, statsByKey, statCtx?.status)
+  }, [allPairs, rowStats, statCtx?.status])
   const started = statCtx?.status === 'in' || statCtx?.status === 'post'
   const summary = started ? boxSummaryParts(box) : []
   const aggVol = sumField(lines, 'volume_24h') ?? sumField(lines, 'volume')
@@ -507,18 +637,9 @@ function KalshiPlayerPropGroup({ group, liqScale, statCtx }) {
         </span>
       </div>
 
-      <div className="divide-y divide-zinc-800/70">
+      <div data-prop-lines className="divide-y divide-zinc-800/70">
         {pairs.map((row) => {
-          const line = classifyPropLine(row.kalshi || row.polymarket)
-          const stats = statCtx
-            ? propLineStats(line, {
-                box,
-                roster,
-                boxLoaded: statCtx.index.any,
-                status: statCtx.status,
-                fraction: statCtx.fraction,
-              })
-            : null
+          const { line, stats } = rowStats.get(row.key) || {}
           return (
           <div
             key={row.key}
@@ -560,8 +681,11 @@ function groupPlayerProps(props, rosterPlayers) {
     const k = nameKey(p.name)
     if (k) rosterByName.set(k, p)
   }
+  // Kalshi's first-TD ladder includes a "No Touchdown" outcome … not a player.
   const playerProps = (props || []).filter(
-    (p) => p.kind === 'player' || (p.player_name && p.kind !== 'game' && p.kind !== 'period'),
+    (p) =>
+      (p.kind === 'player' || (p.player_name && p.kind !== 'game' && p.kind !== 'period'))
+      && !/^no\s+(?:touchdown|td)s?$/i.test(String(p.player_name || '').trim()),
   )
   const byPlayer = new Map()
   for (const p of playerProps) {

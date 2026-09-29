@@ -36,6 +36,13 @@ export const PROP_STATS = {
     proj: (pl) => sumOrNull(pl?.projected_rush_yd, pl?.projected_rec_yd),
     pace: true,
   },
+  scrim_yds: {
+    label: 'scrim yds',
+    box: (b) => sumOrNull(b.rush_yds, b.rec_yds),
+    season: (pl) => sumOrNull(pl?.season_rush_yd, pl?.season_rec_yd),
+    proj: (pl) => sumOrNull(pl?.projected_rush_yd, pl?.projected_rec_yd),
+    pace: true,
+  },
   td: { label: 'TD', box: (b) => sumOrNull(b.rush_td, b.rec_td, b.ret_td), season: (pl) => sumOrNull(pl?.season_rush_td, pl?.season_rec_td) },
   rec_lng: { label: 'long rec', box: (b) => num(b.rec_lng), season: (pl) => num(pl?.season_rec_lng), max: true },
   fpts: { label: 'fpts', box: (b) => boxFantasyPoints(b, 1), season: (pl) => num(pl?.season_ppr), proj: (pl) => num(pl?.projected_ppr), pace: true },
@@ -58,6 +65,7 @@ const SERIES_STAT = {
   football_player_rushing_attempts: 'rush_att',
   football_player_receptions: 'rec',
   football_player_receiving_yards: 'rec_yds',
+  football_player_scrimmage_yards: 'scrim_yds',
   football_player_touchdowns: 'td',
   football_player_longest_reception: 'rec_lng',
   football_player_fantasy_points_ppr: 'fpts',
@@ -67,6 +75,7 @@ function statFromText(text) {
   const t = String(text || '').toLowerCase()
   if (/rush(ing)?\s*(and|\+|&)\s*rec/.test(t)) return 'rr_yds'
   if (/long(est)?\s*rec/.test(t)) return 'rec_lng'
+  if (/scrim(mage)?\s*(yds|yards)/.test(t)) return 'scrim_yds'
   if (/fantasy|fpts/.test(t)) return 'fpts'
   if (/pass(ing)?\s*(yds|yards)/.test(t)) return 'pass_yds'
   if (/pass(ing)?\s*(td|touchdown)/.test(t)) return 'pass_td'
@@ -86,6 +95,9 @@ export function classifyPropLine(prop) {
   if (!prop) return null
   const series = String(prop.series || '').trim().toLowerCase()
   const text = String(prop.line_label || prop.title || '')
+  // "1st Touchdown" / "Most passing yards" are not N+ ladders … no strike to track.
+  if (/\b(?:1st|first)\s+(?:\w+\s+)?(?:touchdown|td)\b/i.test(text) || /firsttd/.test(series)) return null
+  if (/^football_player_most_/.test(series)) return null
   const stat = SERIES_STAT[series] || statFromText(text)
   if (!stat) return null
   const plus = text.match(/(\d+(?:\.\d+)?)\s*\+/)
@@ -159,9 +171,20 @@ export function propLineStats(line, { box, roster, boxLoaded, status, fraction }
     status === 'in' && def.pace && current != null && fraction >= 0.15 && fraction < 1
       ? Math.round(current / fraction)
       : null
+  // Where the player is headed: what he has plus the rest of the game at his pregame rate
+  // (projection, else season average, else his live rate).
+  let target = null
+  if (current != null) {
+    const liveRate = fraction >= 0.15 ? current / fraction : null
+    const rate = proj ?? avg ?? liveRate
+    target = def.max || status !== 'in' || rate == null
+      ? current
+      : round1(current + Math.max(0, 1 - (fraction || 0)) * rate)
+  }
   return {
     label: def.label,
     current,
+    target,
     pace,
     avg,
     avgIsMax: Boolean(def.max),

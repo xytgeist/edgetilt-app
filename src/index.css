@@ -4038,6 +4038,8 @@ html.light [data-lounge-kalshi-player-props] [data-prop-line-pregame='over'] { c
 html.light [data-lounge-kalshi-player-props] [data-prop-card-live] { background-color: #fafafa !important; color: #27272a !important; }
 html.light [data-lounge-kalshi-player-props] [data-prop-card-live-tag='live'] { background: rgb(239 68 68 / 0.12); color: #b91c1c; }
 html.light [data-lounge-kalshi-player-props] [data-prop-card-live-tag='final'] { background: #d4d4d8; color: #3f3f46; }
+html.light [data-lounge-kalshi-player-props] [data-prop-lines] > *,
+html.light [data-lounge-kalshi-player-props] .border-zinc-800\/80 { border-color: #d4d4d8 !important; }
 /* Match Roster/Props pill type (12px / semibold). Global select floor is 16px for iOS zoom. */
 [data-lounge-game-players] select {
   appearance: none;

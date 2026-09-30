@@ -22,7 +22,7 @@ import {
 } from './loungeBotOddsCaption.ts'
 import {
   fetchActiveSportsCatalog,
-  fetchSportOdds,
+  fetchSportOddsShared,
   filterLiveOddsEvents,
   ptTodayDate,
   type OddsBotRow,
@@ -335,7 +335,7 @@ export async function runBestBetHourPoll(
     const calendarPriority = Number(row.priority) || 50
 
     try {
-      const { events, remaining } = await fetchSportOdds(sportKey, regions, markets)
+      const { events, remaining } = await fetchSportOddsShared(sportKey, regions, markets)
       requestsRemaining = remaining
       const raw = Array.isArray(events) ? events : []
       const pick = findBestBetOfHour(raw, sportKey, categoryLabel, calendarPriority, minEv, row)

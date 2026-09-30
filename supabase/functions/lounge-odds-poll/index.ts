@@ -1389,6 +1389,7 @@ Deno.serve(async (req) => {
           regions,
           markets,
           dryRun,
+          action === 'poll_edges' ? { sharedMaxAgeMs: 10 * 60 * 1000 } : undefined,
         )
         requestsRemaining = ctx.requestsRemaining
 

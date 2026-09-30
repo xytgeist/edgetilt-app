@@ -1,7 +1,7 @@
 /**
  * Scott scan targets — tier-based sport coverage (primary) + calendar boost (secondary).
  *
- * Poll loops scan every active Odds API sport in Ryan's tier 1–4 scope.
+ * Poll loops scan active Odds API sports in Ryan's tier 1–4 scope that are also on `SCAN_SPORT_ALLOWLIST`.
  * Calendar rows on today's PT date merge in higher priority, captions, and slugs.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
@@ -111,7 +111,38 @@ function pickBestCalendarRowForKey(
   return best
 }
 
-/** Active Odds API sports in Scott tier scope, merged with today's calendar boosts. */
+/**
+ * Sports the scanners pay Odds API credits for (Ryan, Sep 2026: drop the niche long tail … it was ~75% of bot fetches).
+ * An enabled calendar row for today still pulls any other sport in, so special events stay one DB row away.
+ */
+const SCAN_SPORT_ALLOWLIST = new Set([
+  'americanfootball_nfl',
+  'americanfootball_nfl_preseason',
+  'americanfootball_ncaaf',
+  'basketball_nba',
+  'basketball_ncaab',
+  'basketball_wnba',
+  'baseball_mlb',
+  'icehockey_nhl',
+  'mma_mixed_martial_arts',
+  'boxing_boxing',
+  'soccer_epl',
+  'soccer_uefa_champs_league',
+  'soccer_usa_mls',
+  'soccer_spain_la_liga',
+  'soccer_italy_serie_a',
+  'soccer_germany_bundesliga',
+  'soccer_france_ligue_one',
+  'soccer_fifa_world_cup',
+])
+const SCAN_SPORT_PATTERNS = [/^tennis_(atp|wta)_(aus_open|french_open|wimbledon|us_open)/]
+
+export function isScanAllowlistedSport(sportKey: string): boolean {
+  const sk = String(sportKey || '').trim().toLowerCase()
+  return SCAN_SPORT_ALLOWLIST.has(sk) || SCAN_SPORT_PATTERNS.some((re) => re.test(sk))
+}
+
+/** Active Odds API sports in Scott tier scope + scan allowlist, merged with today's calendar boosts. */
 export async function resolveScottScanTargets(
   admin: SupabaseClient,
   activeSports: Set<string>,
@@ -141,6 +172,7 @@ export async function resolveScottScanTargets(
     const inTierScope = tier != null
     const calendarBoost = Boolean(calendarRow)
     if (!inTierScope && !calendarBoost) continue
+    if (!calendarBoost && !isScanAllowlistedSport(sk)) continue
 
     const effectiveTier = tier ?? Number(calendarRow?.coverage_tier) ?? 3
     targets.set(sk, synthesizeTarget(sk, effectiveTier, calendarRow, sportTitles))

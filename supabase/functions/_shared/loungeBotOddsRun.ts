@@ -2,6 +2,7 @@
  * Shared odds fetch, slate, and edge-alert publish logic.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
+import { sharedCachedNoMem } from './edgeSharedCache.ts'
 import {
   buildOddsEdgeAlertCaption,
   resolveScottCategoryLabel,
@@ -331,6 +332,23 @@ export async function fetchSportOdds(
 }
 
 /**
+ * Pregame scanners (edge alerts every 15 min, Value Radar at :05/:35, Best Bet at :05) ask for the same
+ * sport / regions / markets minutes apart. One shared row per combo means the :05 scans reuse the :00 pull
+ * instead of paying for it again. Keep the window under the 15 min edge cadence so every edge tick is fresh.
+ */
+const SCANNER_ODDS_SHARED_MS = 10 * 60 * 1000
+
+export function fetchSportOddsShared(
+  sport: string,
+  regions: string[],
+  markets: string[],
+  maxAgeMs = SCANNER_ODDS_SHARED_MS,
+): ReturnType<typeof fetchSportOdds> {
+  const key = `odds:scan:${sport}:${[...regions].sort().join(',')}:${[...markets].sort().join(',')}`
+  return sharedCachedNoMem(key, { ttlMs: maxAgeMs, leaseMs: 30_000 }, () => fetchSportOdds(sport, regions, markets))
+}
+
+/**
  * Snapshot of /odds at or before `dateIso`. Completed games are gone from live /odds;
  * a kickoff-time snapshot is the closing spread. Historical costs ~10 credits/call.
  */
@@ -439,8 +457,11 @@ export async function loadSportOddsContext(
   regions: string[],
   markets: string[],
   dryRun: boolean,
+  opts?: { sharedMaxAgeMs?: number },
 ): Promise<SportOddsContext> {
-  const { events, remaining } = await fetchSportOdds(sportKey, regions, markets)
+  const { events, remaining } = opts?.sharedMaxAgeMs
+    ? await fetchSportOddsShared(sportKey, regions, markets, opts.sharedMaxAgeMs)
+    : await fetchSportOdds(sportKey, regions, markets)
   const raw = Array.isArray(events) ? events : []
   const inWindow = filterOddsEventsByWindow(raw, DEFAULT_ODDS_WINDOW_HOURS)
   const upcoming = filterOddsEventsForPtCalendarDay(inWindow, ptTodayDate())

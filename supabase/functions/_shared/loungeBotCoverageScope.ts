@@ -6,7 +6,7 @@
  * Tier 3 — Strong secondary: boxing, horse racing, motorsport, WNBA, esports
  * Tier 4 — Completeness / arb: cricket, table tennis, rugby, AFL, volleyball
  *
- * Poll loops scan every active Odds API sport in tiers 1–4.
+ * Poll loops scan active sports in tiers 1–4 that are on `SCAN_SPORT_ALLOWLIST` (`loungeBotScanTargets.ts`).
  * Calendar rows boost priority + captions for special events (not the allowlist).
  */
 

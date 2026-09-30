@@ -22,7 +22,7 @@ import {
 } from './loungeBotOddsCaption.ts'
 import {
   fetchActiveSportsCatalog,
-  fetchSportOdds,
+  fetchSportOddsShared,
   ptMinutesSinceMidnightPt,
   type OddsBotRow,
   type OddsCfgRow,
@@ -284,7 +284,7 @@ export async function runValueBetRadarPoll(
     const categoryLabel = String(row.caption_prefix || row.label_short || '').trim()
 
     try {
-      const { events, remaining } = await fetchSportOdds(sportKey, regions, markets)
+      const { events, remaining } = await fetchSportOddsShared(sportKey, regions, markets)
       requestsRemaining = remaining
       const raw = Array.isArray(events) ? events : []
       allCandidates.push(...collectRadarPicksFromEvents(raw, sportKey, categoryLabel, minEv, row))

@@ -373,7 +373,7 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
           <>
             <h2 id="account-connect-title" className="text-center text-lg font-bold text-white">Connect account?</h2>
             <p className="mt-1 text-center text-sm leading-relaxed text-zinc-400">
-              This is a new account. {shownOffer.others.length > 1 ? 'These accounts have' : 'This account has'} signed in on this device before.
+              {shownOffer.others.length > 1 ? 'These accounts have' : 'This account has'} signed in on this device before.
               Connect to keep one account you can sign in to either way.
             </p>
             <ul className="mt-4 space-y-2">

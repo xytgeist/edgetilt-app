@@ -238,38 +238,43 @@ export function buildStrikeLadders(props, { awayAbbrev = '', homeAbbrev = '' } =
   return out
 }
 
-function YesNoOutcomeRow({ label, prob, mult, href, emphasize }) {
-  const inner = (
-    <>
-      <div className="min-w-0 flex-1">
-        <div className="text-[14px] font-semibold text-zinc-100">{label}</div>
-        <div className="mt-1 h-px w-full bg-zinc-800" />
-      </div>
-      <span className="shrink-0 text-[13px] font-medium tabular-nums text-zinc-400">{mult || '-'}</span>
-      <span
-        className={`inline-flex min-w-[4.25rem] shrink-0 items-center justify-center rounded-full px-3 py-2 text-[14px] font-bold tabular-nums ${
-          emphasize
-            ? 'border border-emerald-400/50 bg-emerald-500/15 text-emerald-300'
-            : 'border border-zinc-700 bg-zinc-800/80 text-zinc-200'
-        }`}
-      >
-        {formatPct(prob)}
-      </span>
-    </>
-  )
+function oddsPillClass(emphasize) {
+  return emphasize
+    ? 'border border-emerald-400/50 bg-emerald-500/15 text-emerald-300'
+    : 'border border-zinc-700 bg-zinc-800/80 text-zinc-200'
+}
+
+function PillLink({ href, className, children }) {
   if (href) {
     return (
       <a
         href={href}
         target="_blank"
         rel="noopener noreferrer"
-        className="flex items-center gap-3 touch-manipulation active:opacity-85"
+        className={`${className} touch-manipulation active:opacity-85`}
       >
-        {inner}
+        {children}
       </a>
     )
   }
-  return <div className="flex items-center gap-3">{inner}</div>
+  return <div className={className}>{children}</div>
+}
+
+/** One outcome as a half-width pill: label left, % + payout right. */
+function YesNoPill({ label, prob, href, emphasize }) {
+  const mult = formatMult(prob)
+  return (
+    <PillLink
+      href={href}
+      className={`flex min-w-0 flex-1 items-center justify-between gap-2 rounded-xl px-3 py-2 ${oddsPillClass(emphasize)}`}
+    >
+      <span className="text-[14px] font-semibold">{label}</span>
+      <span className="flex items-baseline gap-1.5 tabular-nums">
+        <span className="text-[15px] font-bold">{formatPct(prob)}</span>
+        {mult ? <span className="text-[11px] font-medium opacity-70">{mult}</span> : null}
+      </span>
+    </PillLink>
+  )
 }
 
 function StrikeSlider({ strikes, value, onChange }) {
@@ -407,18 +412,16 @@ function StrikeLadderCard({ ladder }) {
 
       <StrikeSlider strikes={strikes} value={selected.value} onChange={setStrike} />
 
-      <div className="mt-1 space-y-3 border-t border-zinc-800/80 pt-3">
-        <YesNoOutcomeRow
+      <div className="mt-1 flex gap-2 border-t border-zinc-800/80 pt-3">
+        <YesNoPill
           label="Yes"
           prob={yes}
-          mult={formatMult(yes)}
           href={yesHref}
           emphasize={yes != null && (no == null || yes >= no)}
         />
-        <YesNoOutcomeRow
+        <YesNoPill
           label="No"
           prob={no}
-          mult={formatMult(no)}
           href={noHref}
           emphasize={no != null && yes != null && no > yes}
         />
@@ -441,45 +444,173 @@ function StrikeLadderCard({ ladder }) {
   )
 }
 
-/** Moneyline stays a short two-team board (no strike ladder). */
-export function MoneylineLadderCard({ props: propList, awayAbbrev, homeAbbrev }) {
-  const sides = useMemo(() => {
-    const mls = (propList || []).filter((p) => categoryOf(p) === 'ml' && periodOf(p) === 'fg')
-    const byTeam = new Map()
-    for (const p of mls) {
-      const t = teamOf(p)
-      if (!t) continue
-      byTeam.set(t, preferProp(byTeam.get(t), p))
-    }
-    const away = byTeam.get(String(awayAbbrev || '').toUpperCase()) || null
-    const home = byTeam.get(String(homeAbbrev || '').toUpperCase()) || null
-    return { away, home }
-  }, [propList, awayAbbrev, homeAbbrev])
+function normalizeTeamText(v) {
+  return String(v || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9& ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 
-  if (!sides.away && !sides.home) return null
-
-  const row = (label, prop) => {
-    const yes = propYes(prop)
-    if (yes == null) return null
-    const href = prop?.url_yes || prop?.url_market || prop?.url
-    return (
-      <YesNoOutcomeRow
-        key={label}
-        label={label}
-        prob={yes}
-        mult={formatMult(yes)}
-        href={href}
-        emphasize={yes >= 0.5}
-      />
-    )
+/** Which of the two game teams a label names: abbrev, then nickname, then city (when the cities differ). */
+function matchGameTeam(text, teams) {
+  const raw = String(text || '')
+  const norm = ` ${normalizeTeamText(raw)} `
+  for (const t of teams) {
+    if (t.abbr && new RegExp(`\\b${t.abbr}\\b`, 'i').test(raw)) return t.abbr
   }
+  for (const t of teams) {
+    if (t.nickname && norm.includes(` ${t.nickname} `)) return t.abbr
+  }
+  const [a, b] = teams
+  if (a?.city && b?.city && a.city !== b.city) {
+    for (const t of teams) {
+      if (t.city && norm.includes(` ${t.city} `)) return t.abbr
+    }
+  }
+  return ''
+}
+
+function gameTeamMeta(side) {
+  const abbr = String(side?.abbrev || '').trim().toUpperCase()
+  const words = normalizeTeamText(side?.name).split(' ').filter(Boolean)
+  return {
+    abbr,
+    nickname: words.length > 1 ? words[words.length - 1] : '',
+    city: words.length > 1 ? words.slice(0, -1).join(' ') : words[0] || '',
+  }
+}
+
+/** `{ yes, no }` team abbrevs a winner market pays on. "PIT vs CLE" books pay Yes on the first team, No on the second. */
+function mlTeamsOf(prop, teams) {
+  const label = String(prop?.line_label || '')
+  const vs = label.match(/^\s*(.+?)\s+(?:vs\.?|v\.?|@|at)\s+(.+?)\s*$/i)
+  if (vs) {
+    const first = matchGameTeam(vs[1], teams)
+    const second = matchGameTeam(vs[2], teams)
+    if (first && second && first !== second) return { yes: first, no: second }
+  }
+  const hint = String(prop?.team_hint || '').trim().toUpperCase()
+  if (hint && teams.some((t) => t.abbr === hint)) return { yes: hint, no: '' }
+  const t = matchGameTeam(`${label} ${prop?.title || ''}`, teams)
+  return t ? { yes: t, no: '' } : null
+}
+
+const ML_SOURCE_ORDER = ['polymarket', 'kalshi']
+
+function sourceLabel(source) {
+  if (source === 'polymarket') return 'Poly'
+  if (source === 'kalshi') return 'Kalshi'
+  return 'Market'
+}
+
+function TeamSide({ side, align }) {
+  const abbr = String(side?.abbrev || '').toUpperCase() || (align === 'left' ? 'AWAY' : 'HOME')
+  const logo = side?.logo ? (
+    <img src={side.logo} alt="" className="h-7 w-7 shrink-0 object-contain" loading="lazy" />
+  ) : null
+  return (
+    <div
+      className={`flex min-w-0 items-center gap-2 ${align === 'right' ? 'justify-end' : 'justify-start'}`}
+    >
+      {align === 'left' ? logo : null}
+      <span className="truncate text-[15px] font-bold text-zinc-100">{abbr}</span>
+      {align === 'right' ? logo : null}
+    </div>
+  )
+}
+
+function MoneylinePill({ entry, emphasize }) {
+  const mult = formatMult(entry?.prob)
+  return (
+    <PillLink
+      href={entry?.href}
+      className={`flex min-w-[4.5rem] flex-col items-center rounded-xl px-2.5 py-1.5 tabular-nums ${oddsPillClass(emphasize)}`}
+    >
+      <span className="text-[15px] font-bold leading-tight">{formatPct(entry?.prob)}</span>
+      <span className="text-[10px] font-medium leading-tight opacity-70">{mult || '-'}</span>
+    </PillLink>
+  )
+}
+
+/** Moneyline: away team left, home team right, both prices in the middle. */
+export function MoneylineLadderCard({ props: propList, game }) {
+  const board = useMemo(() => {
+    const away = gameTeamMeta(game?.away)
+    const home = gameTeamMeta(game?.home)
+    if (!away.abbr || !home.abbr) return null
+    const teams = [away, home]
+    const bySource = new Map()
+    const liq = (p) => (p?.volume_24h ?? 0) + (p?.volume ?? 0) + (p?.open_interest ?? 0)
+    const put = (source, team, entry) => {
+      if (!team || entry.prob == null) return
+      if (!bySource.has(source)) bySource.set(source, new Map())
+      const m = bySource.get(source)
+      const prev = m.get(team)
+      if (!prev || entry.liq > prev.liq) m.set(team, entry)
+    }
+    for (const p of propList || []) {
+      if (categoryOf(p) !== 'ml' || periodOf(p) !== 'fg') continue
+      const sides = mlTeamsOf(p, teams)
+      if (!sides) continue
+      const source = String(p.source || 'market')
+      const yes = propYes(p)
+      put(source, sides.yes, {
+        prob: yes,
+        href: p.url_yes || p.url_market || p.url,
+        liq: liq(p),
+        source,
+      })
+      if (sides.no) {
+        put(source, sides.no, {
+          prob: propNo(p, yes),
+          href: p.url_no || p.url_market || p.url,
+          liq: liq(p),
+          source,
+        })
+      }
+    }
+    const sources = [
+      ...ML_SOURCE_ORDER.filter((s) => bySource.has(s)),
+      ...[...bySource.keys()].filter((s) => !ML_SOURCE_ORDER.includes(s)),
+    ]
+    const full = sources.find((s) => bySource.get(s).has(away.abbr) && bySource.get(s).has(home.abbr))
+    if (full) {
+      const m = bySource.get(full)
+      return { away: m.get(away.abbr), home: m.get(home.abbr), source: full }
+    }
+    const pick = (abbr) => sources.map((s) => bySource.get(s).get(abbr)).find(Boolean) || null
+    const a = pick(away.abbr)
+    const h = pick(home.abbr)
+    if (!a && !h) return null
+    return { away: a, home: h, source: (a || h).source }
+  }, [propList, game?.away, game?.home])
+
+  if (!board) return null
+  const awayProb = board.away?.prob ?? null
+  const homeProb = board.home?.prob ?? null
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 px-3 py-3">
+    <div
+      data-lounge-strike-ladder
+      data-ladder="ml"
+      className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900 px-3 py-3"
+    >
       <div className="text-[15px] font-semibold text-zinc-100">Moneyline</div>
-      <div className="mt-3 space-y-3">
-        {row(String(awayAbbrev || 'Away').toUpperCase(), sides.away)}
-        {row(String(homeAbbrev || 'Home').toUpperCase(), sides.home)}
+      <div className="mt-2.5 grid grid-cols-[minmax(0,1fr)_auto_auto_minmax(0,1fr)] items-center gap-2">
+        <TeamSide side={game?.away} align="left" />
+        <MoneylinePill
+          entry={board.away}
+          emphasize={awayProb != null && (homeProb == null || awayProb >= homeProb)}
+        />
+        <MoneylinePill
+          entry={board.home}
+          emphasize={homeProb != null && (awayProb == null || homeProb > awayProb)}
+        />
+        <TeamSide side={game?.home} align="right" />
+      </div>
+      <div className="mt-2.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-600">
+        {sourceLabel(board.source)}
       </div>
     </div>
   )
@@ -499,11 +630,7 @@ export function GameStrikeLaddersBoard({ props, game = null }) {
 
   return (
     <div className="space-y-3" data-lounge-strike-ladders>
-      <MoneylineLadderCard
-        props={props}
-        awayAbbrev={game?.away?.abbrev}
-        homeAbbrev={game?.home?.abbrev}
-      />
+      <MoneylineLadderCard props={props} game={game} />
       {sliderLadders.map((ladder) => (
         <StrikeLadderCard key={ladder.id} ladder={ladder} />
       ))}

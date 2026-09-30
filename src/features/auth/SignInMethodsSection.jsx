@@ -151,7 +151,7 @@ export default function SignInMethodsSection({
                 </span>
               ) : id === 'phone' ? (
                 <button type="button" className={CONNECT_BTN} onClick={() => onFocusPhone?.()}>
-                  Add
+                  Connect
                 </button>
               ) : id === 'google' || id === 'apple' ? (
                 <button

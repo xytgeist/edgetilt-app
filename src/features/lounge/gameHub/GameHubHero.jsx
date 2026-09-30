@@ -4677,14 +4677,20 @@ function LandscapeMatchupBoard({
 }
 
 /** One public split rail: away % · bar · home % · label. */
-/** Where a dot sits on the tug-of-war track: leans toward the side holding the majority. */
-function publicSplitDotLeft(awayPct) {
+/** Where a marker sits on the tug-of-war track: leans toward the side holding the majority. */
+function publicSplitTrackLeft(awayPct) {
   return `${100 - awayPct}%`
+}
+
+/** Pill center follows its marker but stays inside the track so text never clips. */
+function publicSplitPillLeft(awayPct) {
+  return `clamp(2.5rem, ${100 - awayPct}%, calc(100% - 2.5rem))`
 }
 
 /**
  * Public bets vs money on one track … pre-game only (live/post stay scoreboard + field chrome).
- * Hollow dot = tickets, `$` dot = handle; the gap between them glows amber when money disagrees.
+ * Each number rides in a pill tethered to its spot on the line (bets above, money below) so a
+ * label always sits on the side it describes; the gap glows amber when money disagrees.
  */
 function HeroPublicBetting({ game, splits, awayColor, homeColor }) {
   if (!splits || game?.status !== 'pre') return null
@@ -4704,47 +4710,51 @@ function HeroPublicBetting({ game, splits, awayColor, homeColor }) {
   const moneyLead = Math.round(awayMoney >= 50 ? awayMoney : 100 - awayMoney)
   const gapLo = Math.min(100 - awayBets, 100 - awayMoney)
   const gapWidth = Math.abs(awayBets - awayMoney)
+  const motion = 'duration-500 ease-out'
 
   return (
-    <div data-lounge-game-hero-splits className="px-4 pb-2.5 pt-0.5">
-      <div className="relative mx-2 h-5" aria-hidden>
-        <div className="absolute inset-x-0 top-[9px] flex h-[2px] overflow-hidden rounded-full opacity-75">
+    <div data-lounge-game-hero-splits className="px-4 pb-2 pt-0.5">
+      <div
+        className="relative mx-2 h-[52px]"
+        role="img"
+        aria-label={`Public bets ${betsLead}% ${betsSide ?? ''}, money ${moneyLead}% ${moneySide ?? ''}`}
+      >
+        <div className="absolute inset-x-0 top-[25px] flex h-[2px] overflow-hidden rounded-full opacity-75">
           <div className="h-full w-1/2" style={{ background: awayTint }} />
           <div className="h-full w-1/2" style={{ background: homeTint }} />
         </div>
-        <div className="absolute left-1/2 top-[5px] h-2.5 w-px -translate-x-1/2 bg-white/35" />
+        <div className="absolute left-1/2 top-[21px] h-2.5 w-px -translate-x-1/2 bg-white/35" />
         <div
-          className={`absolute top-2 h-1 rounded-full transition-[left,width] duration-500 ease-out ${
+          className={`absolute top-6 h-1 rounded-full transition-[left,width] ${motion} ${
             moneySkew ? 'bg-amber-300' : 'bg-white/50'
           }`}
           style={{ left: `${gapLo}%`, width: `${gapWidth}%` }}
         />
         <div
-          className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white transition-[left] duration-500 ease-out drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]"
-          style={{ left: publicSplitDotLeft(awayBets) }}
+          className={`absolute top-[17px] h-[9px] w-0.5 -translate-x-1/2 bg-white transition-[left] ${motion}`}
+          style={{ left: publicSplitTrackLeft(awayBets) }}
         />
         <div
-          className={`absolute top-1/2 flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[9px] font-extrabold text-zinc-900 transition-[left] duration-500 ease-out drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)] ${
+          className={`absolute top-[26px] h-[9px] w-0.5 -translate-x-1/2 transition-[left] ${motion} ${
             moneySkew ? 'bg-amber-300' : 'bg-white'
           }`}
-          style={{ left: publicSplitDotLeft(awayMoney) }}
+          style={{ left: publicSplitTrackLeft(awayMoney) }}
+        />
+        <div
+          className={`absolute top-0 flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full bg-black/45 px-1.5 text-[10px] font-extrabold leading-4 tabular-nums text-white ring-1 ring-inset ring-white/35 transition-[left] ${motion}`}
+          style={{ left: publicSplitPillLeft(awayBets) }}
         >
-          $
+          <span className="font-semibold tracking-[0.1em] text-white/70">BETS</span>
+          {betsLead}% {betsSide}
         </div>
-      </div>
-      <div className="mt-1.5 flex items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-[0.14em]">
-        <span className="flex items-center gap-1.5 text-white/70 drop-shadow">
-          <span className="inline-block h-2 w-2 rounded-full border border-white/80" aria-hidden />
-          Bets <span className="tabular-nums text-white">{betsLead}%</span> {betsSide}
-        </span>
-        <span
-          className={`flex items-center gap-1.5 drop-shadow ${moneySkew ? 'text-amber-200/90' : 'text-white/70'}`}
+        <div
+          className={`absolute top-[35px] flex -translate-x-1/2 items-center whitespace-nowrap rounded-full px-1.5 text-[10px] font-extrabold leading-4 tabular-nums text-zinc-900 transition-[left] ${motion} ${
+            moneySkew ? 'bg-amber-300' : 'bg-white'
+          }`}
+          style={{ left: publicSplitPillLeft(awayMoney) }}
         >
-          <span aria-hidden>$</span>
-          Money{' '}
-          <span className={`tabular-nums ${moneySkew ? 'text-amber-200' : 'text-white'}`}>{moneyLead}%</span>{' '}
-          {moneySide}
-        </span>
+          $ {moneyLead}% {moneySide}
+        </div>
       </div>
     </div>
   )

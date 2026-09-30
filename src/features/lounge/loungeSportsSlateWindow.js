@@ -92,6 +92,16 @@ export function sortLoungeSportsGamesByKickoffRank(games) {
   })
 }
 
+/** CFB lists: Top 25 matchups first in rank order (best side, then the other side); the rest keep kickoff order. */
+export function sortCfbGamesTop25First(games) {
+  const byKickoff = sortLoungeSportsGamesByKickoffRank(games)
+  const best = (g) => Math.min(sideRank(g?.away), sideRank(g?.home))
+  const other = (g) => Math.max(sideRank(g?.away), sideRank(g?.home))
+  const ranked = byKickoff.filter((g) => best(g) !== Infinity)
+  ranked.sort((a, b) => best(a) - best(b) || (other(a) === other(b) ? 0 : other(a) < other(b) ? -1 : 1))
+  return [...ranked, ...byKickoff.filter((g) => best(g) === Infinity)]
+}
+
 const MS_48H = 48 * 3600 * 1000
 
 function gameDay(game) {
@@ -172,7 +182,8 @@ export function cfbHubDates(games, now = Date.now()) {
 }
 
 export function loungeSportsHubGames(games, sportKey, now = Date.now()) {
-  return sortLoungeSportsGamesByKickoffRank(hubGamesUnsorted(games, sportKey, now))
+  const list = hubGamesUnsorted(games, sportKey, now)
+  return String(sportKey || '').includes('ncaaf') ? sortCfbGamesTop25First(list) : sortLoungeSportsGamesByKickoffRank(list)
 }
 
 function hubGamesUnsorted(games, sportKey, now) {
@@ -192,7 +203,8 @@ function hubGamesUnsorted(games, sportKey, now) {
 
 /** Sports Hub slate list: `all` = current multi-sport slate; NFL/CFB use week windows. */
 export function loungeSportsSlateGames(games, filter, now = Date.now()) {
-  return sortLoungeSportsGamesByKickoffRank(slateGamesUnsorted(games, filter, now))
+  const list = slateGamesUnsorted(games, filter, now)
+  return String(filter || '').includes('ncaaf') ? sortCfbGamesTop25First(list) : sortLoungeSportsGamesByKickoffRank(list)
 }
 
 function slateGamesUnsorted(games, filter, now) {

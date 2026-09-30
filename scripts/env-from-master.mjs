@@ -21,6 +21,23 @@ if (!fs.existsSync(masterPath)) {
 }
 
 const env = parseEnvText(fs.readFileSync(masterPath, "utf8"));
+const backupStamp = new Date().toISOString().replace(/[:.]/g, "-");
+const backupDir = path.join(root, ".env-backups", backupStamp);
+
+function backupExisting(relPath, nextKeys) {
+  const abs = path.join(root, relPath);
+  if (!fs.existsSync(abs)) return;
+  const prev = fs.readFileSync(abs, "utf8");
+  fs.mkdirSync(backupDir, { recursive: true });
+  fs.writeFileSync(path.join(backupDir, relPath), prev);
+  const prevKeys = Object.entries(parseEnvText(prev))
+    .filter(([, v]) => String(v ?? "").trim() !== "")
+    .map(([k]) => k);
+  const dropped = prevKeys.filter((k) => !nextKeys.has(k));
+  if (dropped.length) {
+    console.warn(`warn  ${relPath} drops: ${dropped.join(", ")} (old copy in .env-backups/${backupStamp}/)`);
+  }
+}
 
 function formatVal(val) {
   const s = String(val ?? "");
@@ -36,16 +53,20 @@ function writeGenerated(relPath, pairs, extraComments = []) {
     ...extraComments,
     "",
   ];
+  const header = lines.length;
+  const nextKeys = new Set();
   for (const [key, val] of pairs) {
     if (val == null || String(val).trim() === "") continue;
     lines.push(`${key}=${formatVal(val)}`);
+    nextKeys.add(key);
   }
-  if (lines.length <= 4) {
+  if (lines.length <= header) {
     if (fs.existsSync(path.join(root, relPath))) {
       console.log(`skip  ${relPath} (no values in .env.master)`);
     }
     return false;
   }
+  backupExisting(relPath, nextKeys);
   fs.writeFileSync(path.join(root, relPath), `${lines.join("\n")}\n`);
   console.log(`wrote ${relPath}`);
   return true;
@@ -62,6 +83,7 @@ writeGenerated(".env.local", [
   ["THEO_PROD_ANON_KEY", firstNonEmpty(env, "THEO_PROD_ANON_KEY")],
   ["STRIPE_SUPPORT_KEY_LIVE", firstNonEmpty(env, "STRIPE_SUPPORT_KEY_LIVE")],
   ["ODDSPAPI_API_KEY", firstNonEmpty(env, "ODDSPAPI_API_KEY")],
+  ["KAGGLE_API_TOKEN", firstNonEmpty(env, "KAGGLE_API_TOKEN")],
 ]);
 
 writeGenerated(
@@ -96,6 +118,7 @@ writeGenerated(
     ["APNS_TEAM_ID", firstNonEmpty(env, "APNS_TEAM_ID")],
     ["THE_ODDS_API_KEY", firstNonEmpty(env, "THE_ODDS_API_KEY")],
     ["THERUNDOWN_API_KEY", firstNonEmpty(env, "THERUNDOWN_API_KEY")],
+    ["CFBD_API_KEY", firstNonEmpty(env, "CFBD_API_KEY")],
   ],
   ["# Production: jtjgtucumuoswnbauxry (edgetilt.com)"],
 );

@@ -1,4 +1,4 @@
-import { phoneCountryById, phoneCountryOptions } from './phoneCountries.js'
+import { countryFromE164, nationalFromE164, phoneCountryById, phoneCountryOptions } from './phoneCountries.js'
 
 function UsFlag() {
   return (
@@ -48,6 +48,25 @@ export default function PhoneCountryField({
 }) {
   const selected = phoneCountryById(country)
   const countryId = selected.id
+
+  const handleChange = (e) => {
+    const next = String(e.target.value || '')
+    const digits = next.replace(/\D/g, '')
+    const prevDigits = String(value || '').replace(/\D/g, '')
+    const bulk = digits.length - prevDigits.length > 1
+    const plusForm = next.trim().startsWith('+')
+    const usCaWithOne = bulk && selected.dial === '1' && digits.length === 11 && digits.startsWith('1')
+    if (plusForm || usCaWithOne) {
+      const nextCountry = countryFromE164(`+${digits}`)
+      const national = nationalFromE164(`+${digits}`, nextCountry)
+      if (national) {
+        if (nextCountry !== countryId) onCountryChange?.(nextCountry)
+        onChange?.({ ...e, target: { ...e.target, value: national } })
+        return
+      }
+    }
+    onChange?.(e)
+  }
   const shell =
     tone === 'account'
       ? 'mt-1.5 min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 text-[15px] focus-within:border-cyan-500/50'
@@ -87,14 +106,16 @@ export default function PhoneCountryField({
       </div>
       <input
         id={id}
+        name="phone"
         type="tel"
         inputMode="tel"
-        autoComplete="tel-national"
+        // WebKit only maps plain `tel` to the iOS QuickType "your number" suggestion.
+        autoComplete="tel"
         placeholder={placeholder}
         enterKeyHint={enterKeyHint}
         value={value}
         onKeyDown={onKeyDown}
-        onChange={onChange}
+        onChange={handleChange}
         required={required}
         autoCapitalize="none"
         autoCorrect="off"

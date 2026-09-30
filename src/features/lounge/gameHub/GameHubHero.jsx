@@ -4571,7 +4571,6 @@ function LandscapeMatchupBoard({
   homeColor,
   awayTreatment,
   homeTreatment,
-  splits,
   odds,
   sideSlots,
   bottomBar,
@@ -4671,7 +4670,6 @@ function LandscapeMatchupBoard({
           />
           <PregamePropRail rows={rails.home} align="right" />
         </div>
-        <HeroPublicBetting game={game} splits={splits} awayColor={awayColor} homeColor={homeColor} />
       </div>
       {bottomBar ? <div className="relative z-[4] shrink-0 pb-1">{bottomBar}</div> : null}
     </div>
@@ -4933,7 +4931,6 @@ export default function GameHubHero({
         homeColor={homeColor}
         awayTreatment={awayTreatment}
         homeTreatment={homeTreatment}
-        splits={splits}
         odds={odds}
         sideSlots={sideSlots}
         bottomBar={bottomBar}

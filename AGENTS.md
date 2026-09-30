@@ -284,7 +284,13 @@ npm run db:query:production -f supabase/migrations/foo.sql
 
 `AGENT_RULE_SUPABASE_DB_QUERY` — searchability token.
 
-**Local secrets:** one gitignored **`.env.master`** (copy between machines) + **`npm run env:sync`**. Template: **`.env.master.example`**. That writes `.env.local` + `.env.supabase.{test,production}` so existing scripts keep working.
+**Local secrets:** one gitignored **`.env.master`** (copy between machines) + **`npm run env:sync`**. Template: **`.env.master.example`**. That writes `.env.local` + `.env.supabase.{test,production}` (+ optional Cloudflare / FCM files) so existing scripts keep working. Sync backs up prior generated files under **`.env-backups/`** and warns if a key would drop.
+
+**Secrets hygiene (`AGENT_RULE_SECRETS_HYGIENE`):**
+- **Never paste live secrets into Cursor chat.** Drop a local gitignored file (or use the clipboard) and tell Theo the path. Compare **key names / lengths / sha256 digests** only in chat.
+- Confirm Cursor **Privacy Mode** is on (Settings → General → Privacy).
+- Do **not** store env masters in a **shared** Google Drive folder (e.g. `Apps/EdgeTilt` is shared with a writer). NordPass or private local copies only.
+- **2026-09-30 rolls (prod):** DB password rotated; live Stripe `STRIPE_SECRET_KEY` rotated (old key deleted). **Not** rolled: old-style prod service-role JWT (cut over to `sb_secret` first). Details: **`WAKEUP`** → *Local secrets hygiene ... DONE 2026-09-30*.
 
 **Theo's own account (test + production Supabase, separate users):** **`@theo_ops`** (`theo+ops@edgetilt.com`), Slots Edge active, excluded from product analytics. Credentials live in **`.env.master`** (`THEO_TEST_EMAIL` / `THEO_TEST_PASSWORD`, gitignored ... never print or commit them). Use it to call user-JWT Edge Functions without asking Ryan to sign in:
 

@@ -35,7 +35,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
-**Branch:** `test` (match `origin/test` before edits). `main` @ **`test` tip** (promoted 2026-09-28, web **1.4.887** ... 6-digit OTP auto-confirm). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
+**Branch:** `test` (match `origin/test` before edits). `main` @ **`test` tip** (promoted 2026-09-30, web **1.4.961** ... Game Hub public bets/money split pills). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
 
 **Supabase (do not swap these):**
 
@@ -62,6 +62,40 @@ The agent should treat the following as **standing instructions for this session
 
 **Dual-machine handoff.** Ryan has **Cursor on Mac** + **Windows home PC**. Two Cursor chats = **two Theos with no shared memory**. Fast messages: **https://lvslotpro.com/theo**. Code still git `test` + this file + **`docs/ios-native-bridge.md`**.
 
+### Local secrets hygiene ... DONE 2026-09-30 (kill-chat handoff)
+
+**I am Mac Theo (this session dies after docs land).** Ryan unified secrets across machines, rolled the two high-blast items, and is deleting this chat because live keys were pasted while Cursor **Privacy Mode was off**. New chats: assume Privacy Mode is on; still **never paste secrets into chat**.
+
+**Canonical local file:** gitignored **`.env.master`** on each machine (Mac + Windows already synced). Template: **`.env.master.example`**. After any edit: **`npm run env:sync`** (writes `.env.local`, `.env.supabase.{test,production}`, optional CF + FCM files; backs up prior generated files under **`.env-backups/<stamp>/`** and warns on drops).
+
+**Do / do not**
+- **Do** drop secret notes as a **local gitignored file** (or clipboard → agent `pbpaste`) and say the filename. Compare lengths / sha256 digests only in chat.
+- **Do not** paste live keys into Cursor chat. **Do not** commit `.env*`, `EdgeKeys*`, or Drive env dumps.
+- **Do not** put secrets in **`Apps/EdgeTilt`** on Google Drive (shared with Benjamin Smith as writer). A brief exposure happened 2026-09-30; file was moved to owner-only root then **Ryan deleted the Drive copy** after machines were synced. Prefer NordPass / local `.env.master` only.
+- **`EdgeKeys.txt`** (Vercel recovery codes, Stripe publishables, spare tokens) was reorganized then **deleted** after Ryan saved it in **NordPass**. Do not recreate unless he asks.
+
+**Rotated 2026-09-30 (prod)**
+- **Prod DB password** via Management API `PATCH /v1/projects/jtjgtucumuoswnbauxry/database/password`. Master `PROD_SUPABASE_DB_PASSWORD` + `PROD_SUPABASE_DB_URL` updated; `npm run db:query:production` verified. Old password is dead.
+- **Live Stripe secret** (`STRIPE_SECRET_KEY` on prod Edge). Ryan created a new `sk_live_` in the dashboard, deleted the old one. Master **`PROD_STRIPE_SECRET_KEY`** + prod Edge secret updated (digest match). Verify key with Stripe API before writing Edge.
+
+**Not rotated (by design)**
+- **Prod service-role JWT** (`eyJ…` / `PROD_SUPABASE_SERVICE_ROLE_KEY`) ... still the old-style project JWT. Rolling it also shifts anon and breaks web / iOS / GHA until everything ships. Clean path later: cut over callers to **`sb_secret_…`** (`PROD_SUPABASE_SECRET_KEY` already backed up in master), then kill the JWT. Do not casual-rotate.
+- Third-party Edge keys (Resend, Telnyx, Deepgram, Klipy, Maps, Finnhub, CoinGecko, X bearer) left as-is (lower blast radius). Values **are** in master's **Edge secret backups** section for rebuild.
+
+**Master layout (names only)**
+- Shared: `SUPABASE_ACCESS_TOKEN` (+ spare restricted), `APNS_*`, `THEO_*`, `GOOGLE_TEST_*`, `FCM_SERVICE_ACCOUNT_JSON`, `STRIPE_SUPPORT_KEY_LIVE`, odds keys, `ODDSPAPI_*`, `KAGGLE_API_TOKEN`
+- Test / prod Supabase URLs, service role JWTs, DB pw + pooler URLs, Stream token (test), `*_LOUNGE_BOT_FARM_INGEST_SECRET`
+- CF Ops / Investigence account ids + tokens
+- **Edge secret backups** (not read by `env:sync` day-to-day): VAPID pair, `TEST_STRIPE_SECRET_KEY`, `PROD_STRIPE_SECRET_KEY`, `PROD_SUPABASE_SECRET_KEY` (`sb_secret_…`), prod + test R2 S3 keys, Deepgram / Resend / Klipy / Maps / Finnhub / CoinGecko / X bearer / Telnyx, test push + Stream purge secrets, Google OAuth client id/secret
+
+**Ops notes for next Theo**
+- Stripe live roll is **dashboard-only**; agent can update Edge + master from clipboard after Ryan says **copied** + **go ahead on prod**.
+- Prod Edge `SUPABASE_DB_URL` digest did **not** match master's pooler URL (old or new). No Edge function in-repo reads it; left alone. Local scripts use master → `.env.supabase.production`.
+- Working APNs key id remains **`CH5MAD3P93`**.
+- Web tip **`1.4.961`** on `main` (Game Hub public split = number pills on one track, variant D).
+
+**Ryan next (optional):** Cursor Settings → General → Privacy → **Privacy Mode** (confirm still on). Delete this chat + local transcript when done. Prod service-role cutover only when he wants that project.
+
 ### Windows Theo ACTIVE TRACK 2026-09-25 ... Action splits + ESPN trench auto pull
 
 **I am Windows Theo.** Weekly Action PRO + ESPN trench screenshots are replaced by a home-PC puller (same idea as MTTDB).
@@ -83,7 +117,7 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 
 **I am Mac Theo.** Android Kotlin shell (`android/`, `android/README.md`) is live-capable end to end. Next work is native parity with the IPA (list below).
 
-- **Local secrets:** one gitignored **`.env.master`** (copy between Mac / Windows). After copy: **`npm run env:sync`**. Template: **`.env.master.example`**.
+- **Local secrets:** see **Local secrets hygiene ... DONE 2026-09-30** above. One gitignored **`.env.master`** per machine + **`npm run env:sync`**. Never paste secrets into chat.
 
 - **Shipped Sep 28-29:** FCM push on test + prod (Firebase `edge-ce06c`). Push + location asked after sign-in (web `1.4.902`, promoted Sep 29 with `1.4.904`). Chrome disguise for Google sign-in (`EdgeWebViews.presentAsChrome`). Bet sheet real popups (`1d504278`) so Polymarket's Auth0 Google login from a market page completes (verified on Ryan's Galaxy A15 over adb). iOS got the same popup fix.
 - **APKs:** Ryan sideloads debug builds (`~/Desktop/Edge-android-prod.apk`, `EdgeTest-android.apk`). Same debug keystore (`~/.android/debug.keystore`), so installs update in place; keep that file backed up. No Play account / upload key yet.

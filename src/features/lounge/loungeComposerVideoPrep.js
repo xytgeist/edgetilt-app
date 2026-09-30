@@ -12,6 +12,7 @@ import {
   isIOSBrowser,
   isLikelyIphoneScreenRecording,
   isLoungeAndroidBlockedIphoneSpatialDirectUpload,
+  sniffLoungeAndroidQuicktimeSource,
   isLoungeAndroidBlockedOversizedTrimSource,
   isLoungeCfStreamProcessingError,
   isLoungeVideoQuicktimeMov,
@@ -175,6 +176,7 @@ export async function encodeComposerVideoFileFromSpec({ signal, spec, supabaseCl
       throw new Error(loungeVideoTooLongMessage(limits.maxSeconds))
     }
     validatedDurSec = sourceDur
+    await sniffLoungeAndroidQuicktimeSource(source)
     if (isLoungeAndroidBlockedIphoneSpatialDirectUpload(source)) {
       throw new Error(loungeAndroidIphoneSpatialDirectUploadMessage())
     }

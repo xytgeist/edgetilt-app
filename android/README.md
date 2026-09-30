@@ -8,7 +8,7 @@ A thin native WebView around the live site (like the iOS WKWebView shell) plus a
 
 | File | What |
 | --- | --- |
-| `app/src/main/java/com/edgetilt/app/MainActivity.kt` | Full-screen WebView on `BuildConfig.BASE_URL`. File picker (system photo picker when the input only takes images / videos, Android 13+), camera/mic (getUserMedia), geolocation, back = history, render-crash recovery. |
+| `app/src/main/java/com/edgetilt/app/MainActivity.kt` | Full-screen WebView on `BuildConfig.BASE_URL`. File picker (system photo picker when the input only takes images / videos, Android 13+; it renames files to `<id>.mp4` / `.jpg`, so web sniffs bytes where the name mattered, e.g. `sniffLoungeAndroidQuicktimeSource`), camera/mic (getUserMedia), geolocation, back = history, render-crash recovery. |
 | `.../EdgeShare.kt` | System share sheet for `EdgeAndroid.share` (text / URL / up to 4 images via `FileProvider` `${applicationId}.files`, cache `share/`). |
 | `.../BetSheetActivity.kt` | Portrait-locked light sheet (Done / title / Open app). Kalshi loads the `op_` ticket URL as is. Polymarket runs `/native/bet-sheet-polymarket.js` (same auto-tap script the IPA uses) once after the first page load. |
 | `.../EdgeLinks.kt` | Link routing: app hosts stay in the WebView, bet hosts open the sheet, Supabase / Google auth stays in the WebView, everything else opens outside (browser / app). |

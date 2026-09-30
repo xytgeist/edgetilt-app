@@ -90,6 +90,7 @@ import {
   deleteCfStreamForCommunityFeedPost,
   deleteCfStreamOrphanAsset,
   isLoungeAndroidBlockedIphoneSpatialDirectUpload,
+  sniffLoungeAndroidQuicktimeSource,
   isLoungeAndroidBlockedOversizedTrimSource,
   loungeAndroidIphoneSpatialDirectUploadMessage,
   loungeAndroidIphoneSpatialDirectUploadTitle,
@@ -5585,6 +5586,7 @@ export default function SocialFeed({
           } else setLoungeDetailEditErr('Could not read this video file.')
           return
         }
+        await sniffLoungeAndroidQuicktimeSource(vf)
         const spatialDirectBlocked =
           isLoungeAndroidBlockedIphoneSpatialDirectUpload(vf) &&
           loungeVideoDurationWithinCap(dur)

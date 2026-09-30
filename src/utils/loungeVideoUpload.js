@@ -435,7 +435,32 @@ export function loungeAndroidOversizedTrimSourceMessage(maxSeconds = currentLoun
  */
 export function isLoungeAndroidBlockedIphoneSpatialDirectUpload(file) {
   if (!file || !isAndroidBrowser()) return false
-  return isLoungeVideoQuicktimeMov(file)
+  return isLoungeVideoQuicktimeMov(file) || androidSniffedQuicktimeFiles.has(file)
+}
+
+/** Files whose bytes say QuickTime even though the name / type say MP4 (see {@link sniffLoungeAndroidQuicktimeSource}). */
+const androidSniffedQuicktimeFiles = new WeakSet()
+
+/**
+ * Android's system photo picker hands WebView iPhone MOVs as `<id>.mp4` / `video/mp4`, so the name check misses them.
+ * Reads the `ftyp` major brand (`qt  ` = QuickTime) and remembers the file for
+ * {@link isLoungeAndroidBlockedIphoneSpatialDirectUpload}. Android only; never throws.
+ *
+ * @param {File | Blob | undefined} file
+ * @returns {Promise<boolean>} true when the bytes are QuickTime
+ */
+export async function sniffLoungeAndroidQuicktimeSource(file) {
+  if (!file || !isAndroidBrowser() || typeof file.slice !== 'function') return false
+  if (androidSniffedQuicktimeFiles.has(file)) return true
+  try {
+    const head = new Uint8Array(await file.slice(0, 12).arrayBuffer())
+    const ascii = (a, b) => String.fromCharCode(...head.subarray(a, b))
+    const quicktime = head.length === 12 && ascii(4, 8) === 'ftyp' && ascii(8, 12) === 'qt  '
+    if (quicktime) androidSniffedQuicktimeFiles.add(file)
+    return quicktime
+  } catch {
+    return false
+  }
 }
 
 /**

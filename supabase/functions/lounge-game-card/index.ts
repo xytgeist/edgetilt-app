@@ -1,6 +1,6 @@
 /**
  * Public, read-only game card for link previews (`/lounge/g/:eventId` OG page + PNG on Vercel).
- * GET `?event_id=…` → teams, logos, score, clock / status, down, broadcast, spread / ML. No plays, odds books,
+ * GET `?event_id=…` → teams, logos, score, clock / status, down, broadcast, spread / ML, Pinnacle total. No plays, odds books,
  * splits, or rosters … the logged-in hub keeps using `lounge-sports-scoreboard`.
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
@@ -71,6 +71,7 @@ Deno.serve(async (req) => {
         status_label: game.status_label,
         commence_time: game.commence_time,
         broadcast: game.broadcast || null,
+        total: game.total ?? null,
         away: publicSide(game.away),
         home: publicSide(game.home),
         live: live

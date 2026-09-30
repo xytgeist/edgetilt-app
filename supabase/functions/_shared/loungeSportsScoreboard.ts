@@ -309,6 +309,8 @@ export type LoungeSportsGame = {
   broadcast?: string | null
   /** Watch / stream site for the broadcast pill. */
   broadcast_url?: string | null
+  /** Pinnacle game total (share card). */
+  total?: number | null
 }
 
 function espnLogo(league: string, abbrev: string): string {
@@ -2353,6 +2355,7 @@ function applyPinnacleQuotes(
     const pair = pairSpreads(numOrNull(row.home_spread), numOrNull(row.away_spread))
     return {
       ...game,
+      total: numOrNull(row.total) ?? game.total ?? null,
       home: {
         ...game.home,
         spread: pair.home ?? game.home.spread ?? null,

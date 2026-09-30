@@ -48,7 +48,8 @@ export function userSignInMethods(user) {
   const providers = (user?.identities || []).map((i) => String(i?.provider || '').toLowerCase())
   const fromMeta = Array.isArray(user?.app_metadata?.providers) ? user.app_metadata.providers : []
   const all = [...new Set([...providers, ...fromMeta.map((p) => String(p).toLowerCase())])]
-  return all.filter((p) => METHOD_LABEL[p])
+  // app_metadata.providers keeps "phone" after release_account_phone clears the number.
+  return all.filter((p) => METHOD_LABEL[p] && (p !== 'phone' || user?.phone) && (p !== 'email' || user?.email))
 }
 
 /** The sign-in method this user used most recently (identity `last_sign_in_at`). */

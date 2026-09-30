@@ -56,6 +56,8 @@ BUILD_NUMBER="$(ios/scripts/next-ios-build-number.sh)"   # e.g. 20260911154432
 xcodebuild ... -scheme "EdgeTilt Prod" CURRENT_PROJECT_VERSION="$BUILD_NUMBER" archive
 ```
 
+**Agent autonomy (Ryan 2026-09-30):** agents may archive + upload **EdgeTilt Prod** DTG builds to App Store Connect on their own after iOS changes (TestFlight only; upload with `xcodebuild -exportArchive`, `method app-store-connect`, `destination upload`). **Never touch an App Store submission:** do not attach a build to a version under review, remove a submission from review, swap its build, or submit for review unless Ryan explicitly asks. A new upload never joins a pending submission by itself.
+
 App Store Connect only needs build numbers unique per version, so Cloud's short numbers and the DTGs coexist. `ios/ci_scripts/ci_post_clone.sh` stamps a DTG too, but Cloud builds still land in ASC with the short sequence.
 
 ### App Store status bar (9:41 / full Wi-Fi / full battery)

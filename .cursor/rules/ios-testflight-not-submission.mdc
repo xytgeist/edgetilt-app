@@ -1,0 +1,20 @@
+---
+description: iOS Prod builds may go to TestFlight autonomously; App Store submissions are off-limits
+alwaysApply: true
+---
+
+# iOS builds: TestFlight yes, submission never
+
+**Ryan pre-approved (2026-09-30):** after iOS changes, agents may archive the **EdgeTilt Prod** scheme with a UTC DTG build number and upload it to App Store Connect as a **TestFlight-only** build, without asking. Steps: `ios/README.md` § Build number convention.
+
+**Never, unless Ryan explicitly asks in chat:**
+
+- Attach a build to an App Store version that is in review or waiting for review
+- Remove a submission from review, swap its build, or resubmit
+- Submit a version for review or release it
+
+A new upload lands as another TestFlight build and does not join a pending submission on its own. Tell Ryan the version + build number after each upload.
+
+Test builds (lvslotpro.com) come only from Xcode Cloud **TestFlight Internal** (short numbers). Do not archive Test Fast locally.
+
+`AGENT_RULE_IOS_TESTFLIGHT_NOT_SUBMISSION` — searchability token.

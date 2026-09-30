@@ -299,6 +299,10 @@ node scripts/theo-test-session.mjs --prod --invoke lounge-sports-scoreboard '{"e
 
 `AGENT_RULE_THEO_TEST_ACCOUNT` — searchability token.
 
+**Stripe support (live, Windows PC):** restricted key **`STRIPE_SUPPORT_KEY_LIVE`** in **`.env.local`** (Customers / Invoices / Charges / Events / Customer portal / Checkout read, **Subscriptions write** only). Helper: **`node scripts/stripe-support.mjs lookup <email|cus_>`**, **`events <cus_>`** (portal sessions + sub changes, ~30 days), **`cancel <sub_>`** (at period end), **`resume <sub_>`**. Reads anytime; **cancel / resume only when Ryan names the customer and the action**. Never print the key.
+
+`AGENT_RULE_STRIPE_SUPPORT_KEY` — searchability token.
+
 Manual smoke steps live under **Test smoke and release readiness** in `docs/test-buildout-backlog.md`.
 
 ---

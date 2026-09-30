@@ -35,6 +35,7 @@ import BotTeamMetricsEditor from './BotTeamMetricsEditor.jsx'
 import BotCfbPowerRatingsEditor from './BotCfbPowerRatingsEditor.jsx'
 import BotUfcMetricsEditor from './BotUfcMetricsEditor.jsx'
 import BotBettingSplitsPaste from './BotBettingSplitsPaste.jsx'
+import { isActionCaptureLaunch } from '../../syndicate/actionCaptureBookmarklet.js'
 import { SyndicateDryRunPreview } from '../../syndicate/SyndicateDryRunPreview.jsx'
 import { SyndicateDeskEvalBoard } from '../../syndicate/SyndicateDeskEvalBoard.jsx'
 import { SyndicateOpsDropInfo } from '../../syndicate/SyndicateOpsDropInfo.jsx'
@@ -147,7 +148,7 @@ export function BotSharpDeskPanel({
   busy,
   setBusy,
 }) {
-  const [activeTab, setActiveTab] = useState('scorecard')
+  const [activeTab, setActiveTab] = useState(() => (isActionCaptureLaunch() ? 'splits' : 'scorecard'))
   const [recordData, setRecordData] = useState(null)
   const [recentPicks, setRecentPicks] = useState([])
   const [loading, setLoading] = useState(false)

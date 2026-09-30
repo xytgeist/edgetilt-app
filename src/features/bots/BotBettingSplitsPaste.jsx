@@ -5,6 +5,15 @@ import {
   imageFilesFromNavigatorClipboardRead,
 } from '../../utils/clipboardImagePaste.js'
 import { SyndicateSplitsDropSchedule } from '../../syndicate/SyndicateSplitsDropSchedule.jsx'
+import { ACTION_SPORTS, gameToSplitRow } from '../../syndicate/actionPublicBettingMap.js'
+import {
+  ACTION_CAPTURE_MSG,
+  ACTION_CAPTURE_QUERY_PARAM,
+  ACTION_NETWORK_ORIGIN,
+  ACTION_NETWORK_ORIGIN_RE,
+  buildActionCaptureBookmarklet,
+  isActionCaptureLaunch,
+} from '../../syndicate/actionCaptureBookmarklet.js'
 
 const SPORT_OPTIONS = [
   { id: 'americanfootball_ncaaf', label: 'CFB' },
@@ -54,6 +63,66 @@ function mergePreviewGames(existing, incoming) {
     map.set(gameMatchKey(g.sport_key, g.away_team, g.home_team), g)
   }
   return [...map.values()]
+}
+
+/** Raw Action boards from the bookmarklet → review rows (same shape as vision rows, plus totals/kickoff). */
+function actionCaptureToPreview(boards) {
+  const stamp = Date.now()
+  const out = []
+  const counts = {}
+  for (const [sport, cfg] of Object.entries(ACTION_SPORTS)) {
+    const games = Array.isArray(boards?.[sport]?.games) ? boards[sport].games : []
+    let n = 0
+    for (const game of games) {
+      const row = gameToSplitRow(game, cfg.sportKey, { via: 'capture · actionnetwork' })
+      if (!row) continue
+      n += 1
+      out.push({
+        key: `${row.sport_key}-${row.away_team}-${row.home_team}-${stamp}-${out.length}`,
+        selected: true,
+        sport_key: row.sport_key,
+        away_team: row.away_team,
+        home_team: row.home_team,
+        away_ticket_pct: row.away_ticket_pct,
+        away_handle_pct: row.away_handle_pct,
+        home_ticket_pct: row.home_ticket_pct,
+        home_handle_pct: row.home_handle_pct,
+        over_ticket_pct: row.over_ticket_pct,
+        over_handle_pct: row.over_handle_pct,
+        commence_time: row.commence_time,
+        commence_hint: row.commence_time
+          ? new Date(row.commence_time).toLocaleString([], { weekday: 'short', hour: 'numeric', minute: '2-digit' })
+          : '',
+        notes: row.notes,
+        from_file: 'action capture',
+      })
+    }
+    counts[sport] = { games: games.length, rows: n, via: boards?.[sport]?.via, error: boards?.[sport]?.error }
+  }
+  return { rows: out, counts }
+}
+
+function ActionCaptureBookmarkLink({ setToast }) {
+  const linkRef = useRef(null)
+  useEffect(() => {
+    // React 19 rewrites javascript: hrefs, so set it on the DOM node directly.
+    linkRef.current?.setAttribute('href', buildActionCaptureBookmarklet())
+  }, [])
+  return (
+    <a
+      ref={linkRef}
+      href="#action-capture"
+      draggable
+      onClick={(e) => {
+        e.preventDefault()
+        setToast?.('Drag this button to your bookmarks bar, then click it on actionnetwork.com.')
+      }}
+      className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/60 bg-amber-950/50 px-3 py-1.5 text-xs font-bold text-amber-200 hover:bg-amber-900/50 cursor-grab"
+      title="Drag to your bookmarks bar"
+    >
+      Action → Ops
+    </a>
+  )
 }
 
 function collectImageFiles(fileList) {
@@ -153,6 +222,52 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast, schedu
     const t = window.setTimeout(() => focusPasteZone(), 50)
     return () => window.clearTimeout(t)
   }, [focusPasteZone])
+
+  // Opened by the "Action → Ops" bookmark: ping the Action tab until it hands over the boards.
+  useEffect(() => {
+    if (!isActionCaptureLaunch()) return undefined
+    let received = false
+    let pings = 0
+    const onMessage = (ev) => {
+      if (!ACTION_NETWORK_ORIGIN_RE.test(ev.origin)) return
+      if (ev.data?.type !== ACTION_CAPTURE_MSG.payload) return
+      received = true
+      ev.source?.postMessage({ type: ACTION_CAPTURE_MSG.ack }, ev.origin)
+      const { rows: captured, counts } = actionCaptureToPreview(ev.data.boards)
+      const nfl = counts.nfl?.rows || 0
+      const cfb = counts.ncaaf?.rows || 0
+      if (!captured.length) {
+        const why = [counts.nfl?.error, counts.ncaaf?.error].filter(Boolean).join(' / ')
+        setToast?.(`Action capture came back empty${why ? ` (${why})` : ''}. Open the public betting page and retry.`)
+        return
+      }
+      setPreviewGames(captured)
+      setPreviewSource('action_pro')
+      setPreviewConfidence(null)
+      setToast?.(`Action capture: ${nfl} NFL + ${cfb} CFB games. Review, then Save.`)
+      const url = new URL(window.location.href)
+      url.searchParams.delete(ACTION_CAPTURE_QUERY_PARAM)
+      window.history.replaceState(window.history.state, '', url.toString())
+    }
+    const ping = () => {
+      try {
+        window.opener?.postMessage({ type: ACTION_CAPTURE_MSG.ready }, ACTION_NETWORK_ORIGIN)
+      } catch {
+        /* opener gone */
+      }
+    }
+    window.addEventListener('message', onMessage)
+    ping()
+    const iv = window.setInterval(() => {
+      pings += 1
+      if (received || pings > 40) window.clearInterval(iv)
+      else ping()
+    }, 1500)
+    return () => {
+      window.removeEventListener('message', onMessage)
+      window.clearInterval(iv)
+    }
+  }, [setToast])
 
   useEffect(() => {
     return () => {
@@ -346,18 +461,17 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast, schedu
         sport_key: g.sport_key || bulkSport,
         home_team: String(g.home_team || '').trim(),
         away_team: String(g.away_team || '').trim(),
-        commence_time: null,
+        commence_time: g.commence_time || null,
         event_id: null,
         home_ticket_pct: clampPct(Number(g.home_ticket_pct)),
         home_handle_pct: clampPct(Number(g.home_handle_pct)),
         away_ticket_pct: clampPct(Number(g.away_ticket_pct)),
         away_handle_pct: clampPct(Number(g.away_handle_pct)),
-        over_ticket_pct: null,
-        over_handle_pct: null,
+        over_ticket_pct: g.over_ticket_pct != null ? clampPct(Number(g.over_ticket_pct)) : null,
+        over_handle_pct: g.over_handle_pct != null ? clampPct(Number(g.over_handle_pct)) : null,
         source: previewSource,
-        notes: g.commence_hint
-          ? `screenshot · ${g.commence_hint}`
-          : 'screenshot board parse',
+        notes: g.notes
+          || (g.commence_hint ? `screenshot · ${g.commence_hint}` : 'screenshot board parse'),
         active: true,
         updated_at: new Date().toISOString(),
       }))
@@ -516,6 +630,15 @@ export default function BotBettingSplitsPaste({ supabaseClient, setToast, schedu
       </div>
 
       <SyndicateSplitsDropSchedule rows={rows.length ? rows : scheduleRows || []} />
+
+      <div className="rounded-lg border border-amber-700/40 bg-zinc-900/50 px-4 py-3 flex flex-wrap items-center gap-3">
+        <ActionCaptureBookmarkLink setToast={setToast} />
+        <p className="text-[11px] text-zinc-400 max-w-2xl">
+          <span className="font-semibold text-zinc-200">Action capture (no screenshots).</span>{' '}
+          Drag the button to your bookmarks bar once. Then open Action public betting while signed in to PRO and click it.
+          Ops opens here with every NFL + CFB game (tickets, money, totals) in review. Hit Save.
+        </p>
+      </div>
 
       <div
         ref={dropZoneRef}

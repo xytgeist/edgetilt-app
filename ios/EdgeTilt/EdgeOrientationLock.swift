@@ -72,8 +72,30 @@ enum EdgeOrientationLock {
     let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
     let scene = scenes.first(where: { $0.activationState == .foregroundActive }) ?? scenes.first
     guard let scene else { return }
-    scene.requestGeometryUpdate(.iOS(interfaceOrientations: supportedMask)) { error in
+    // iOS 16+ caches the supported mask per view controller; without this, releasing a portrait
+    // hold leaves the cached portrait-only mask in place and the phone never rotates back.
+    for window in scene.windows {
+      var controller = window.rootViewController
+      while let current = controller {
+        current.setNeedsUpdateOfSupportedInterfaceOrientations()
+        controller = current.presentedViewController
+      }
+    }
+    scene.requestGeometryUpdate(.iOS(interfaceOrientations: targetMask())) { error in
       NSLog("EdgeOrientation requestGeometryUpdate \(error.localizedDescription)")
+    }
+  }
+
+  /// When landscape is allowed again and the phone is physically sideways, ask for that side so it
+  /// rotates back now instead of waiting for the next device-orientation change.
+  private static func targetMask() -> UIInterfaceOrientationMask {
+    let mask = supportedMask
+    guard mask.contains(.landscapeLeft) else { return mask }
+    UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+    switch UIDevice.current.orientation {
+    case .landscapeLeft: return .landscapeRight
+    case .landscapeRight: return .landscapeLeft
+    default: return mask
     }
   }
 }

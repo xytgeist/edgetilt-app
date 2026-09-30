@@ -125,9 +125,18 @@ final class EdgeBetSheetController: UIViewController, WKNavigationDelegate, WKUI
 
   override func viewDidDisappear(_ animated: Bool) {
     super.viewDidDisappear(animated)
-    if isBeingDismissed || navigationController?.isBeingDismissed == true {
+    // `isBeingDismissed` is not reliable on the nav's root by viewDidDisappear (swipe-down dismiss);
+    // a sheet that is gone has no presenter left.
+    let nav = navigationController
+    let gone = isBeingDismissed || nav?.isBeingDismissed == true
+      || (nav ?? self).presentingViewController == nil
+    if gone {
       EdgeOrientationLock.setSheetPortrait(false)
     }
+  }
+
+  deinit {
+    EdgeOrientationLock.setSheetPortrait(false)
   }
 
   func load(_ url: URL) {

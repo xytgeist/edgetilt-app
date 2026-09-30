@@ -150,8 +150,15 @@ export async function fetchMyEntitlements(supabaseClient) {
     }
   }
 
-  const platform =
+  const platformRaw =
     platformData && typeof platformData === 'object' && !platformError ? platformData : {}
+  // Aug 28 RPC shape nested plans under `subscriptions`; prod drifted back to it once (2026-09-30)
+  // and every Stripe member lost Manage membership. Accept both shapes.
+  const { subscriptions: nestedPlans, ...platformRest } = platformRaw
+  const platform =
+    nestedPlans && typeof nestedPlans === 'object' && !Array.isArray(nestedPlans)
+      ? { ...nestedPlans, ...platformRest }
+      : platformRaw
 
   let fan = {}
   const { data: fanData, error: fanError } = fanRes

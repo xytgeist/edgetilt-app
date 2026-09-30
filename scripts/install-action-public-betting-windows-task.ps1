@@ -14,9 +14,9 @@ if (-not (Test-Path $runner)) {
 $arg = "-NoProfile -ExecutionPolicy Bypass -File `"$runner`""
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arg -WorkingDirectory $repo
 
-# Daily twice: morning seed / lock window, evening movers. Script is cheap; over-fetch OK.
+# Once daily since 2026-09-29: Action's WAF flagged the twice-daily pattern. Evening movers come
+# from the Ops "Action → Ops" bookmark instead.
 $triggerMorning = New-ScheduledTaskTrigger -Daily -At 10:00AM
-$triggerEvening = New-ScheduledTaskTrigger -Daily -At 6:00PM
 
 $settings = New-ScheduledTaskSettingsSet `
   -StartWhenAvailable `
@@ -33,14 +33,14 @@ $principal = New-ScheduledTaskPrincipal `
 Register-ScheduledTask `
   -TaskName $taskName `
   -Action $action `
-  -Trigger @($triggerMorning, $triggerEvening) `
+  -Trigger @($triggerMorning) `
   -Settings $settings `
   -Principal $principal `
   -Description 'Home-PC: Action Network NFL+NCAAF public betting → syndicate_betting_splits (action_pro) and ESPN trench PBWR/PRWR/RBWR/RSWR → nfl_team_metrics on test+prod. Ops paste/vision stays as backup.' `
   -Force | Out-Null
 
 Get-ScheduledTask -TaskName $taskName | Get-ScheduledTaskInfo | Format-List TaskName, LastRunTime, NextRunTime, LastTaskResult
-Write-Host "Installed '$taskName' daily 10:00 AM + 6:00 PM as $env:USERNAME (interactive logon)."
+Write-Host "Installed '$taskName' daily 10:00 AM as $env:USERNAME (interactive logon)."
 Write-Host "Logs: $repo\scripts\.action-public-betting-sync.log"
 Write-Host "Manual run: powershell -NoProfile -ExecutionPolicy Bypass -File `"$runner`""
 Write-Host "Dry run splits: npm run syndicate:sync-action-splits:test:dry"

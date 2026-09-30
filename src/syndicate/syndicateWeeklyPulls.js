@@ -86,8 +86,8 @@ export const WEEKLY_PULL_ROLLUP = {
   sports: 'All',
 }
 
-/** Home-PC twice daily (10am + 6pm local). Stale after ~26h. */
-export const HOME_PC_PULL_SCHEDULE = 'daily 10am + 6pm PT'
+/** Home-PC once daily (10am local). Stale after ~26h. */
+export const HOME_PC_PULL_SCHEDULE = 'daily 10am PT'
 const HOME_PC_STALE_MS = 26 * 3600_000
 
 export const HOME_PC_PULLS = [
@@ -152,7 +152,7 @@ export function resolveWeeklyPullStatus({ lastOkAt, lastFailAt, lastStatus, now 
   return 'stale'
 }
 
-/** Home-PC twice-daily jobs: fail if latest heartbeat failed; stale if last ok >26h. */
+/** Home-PC daily jobs: fail if latest heartbeat failed; stale if last ok >26h. */
 export function resolveHomePcPullStatus({ lastOkAt, lastFailAt, lastStatus, now = new Date() }) {
   const nowMs = now.getTime()
   const okMs = lastOkAt ? Date.parse(lastOkAt) : NaN

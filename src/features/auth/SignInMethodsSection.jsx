@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { isEdgeiOSShell } from '../../utils/edgeNative.js'
 import { signInMethodLabel, userSignInMethods } from './deviceAccounts.js'
 import { friendlyLinkError, linkAppleIdentity, linkGoogleIdentity } from './linkSignInMethod.js'
@@ -21,9 +21,46 @@ export default function SignInMethodsSection({
   const [confirming, setConfirming] = useState('')
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [hasPassword, setHasPassword] = useState(null)
   const methods = userSignInMethods(authUser)
   const canApple = isEdgeiOSShell()
   const lastMethod = methods.length <= 1
+  const accountEmail = String(authUser?.email || '').trim()
+
+  useEffect(() => {
+    if (!supabaseClient || !accountEmail) {
+      setHasPassword(null)
+      return undefined
+    }
+    let cancelled = false
+    void supabaseClient.rpc('auth_email_sign_in_kind', { p_email: accountEmail }).then(({ data, error: kindErr }) => {
+      if (!cancelled) setHasPassword(kindErr ? null : data === 'password')
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [supabaseClient, accountEmail])
+
+  // A Google / Apple account with an email has no password until it sets one through the reset link.
+  const emailLinked = methods.includes('email') || hasPassword === true
+
+  const sendPasswordLink = useCallback(async () => {
+    if (!supabaseClient || !accountEmail || busy) return
+    setBusy('password')
+    setError('')
+    setMessage('')
+    try {
+      const { error: resetErr } = await supabaseClient.auth.resetPasswordForEmail(accountEmail, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      })
+      if (resetErr) throw resetErr
+      setMessage(`Link sent to ${accountEmail}. Open it to ${emailLinked ? 'set a new password' : 'set a password'}.`)
+    } catch (e) {
+      setError(e instanceof Error && e.message ? e.message : 'Could not send the link. Try again.')
+    } finally {
+      setBusy('')
+    }
+  }, [supabaseClient, accountEmail, busy, emailLinked])
 
   const refreshUser = useCallback(async () => {
     const { data } = await supabaseClient.auth.getUser()
@@ -93,7 +130,7 @@ export default function SignInMethodsSection({
     { id: 'google', show: true },
     { id: 'apple', show: methods.includes('apple') || canApple },
     { id: 'phone', show: true },
-    { id: 'email', show: methods.includes('email') },
+    { id: 'email', show: Boolean(accountEmail) },
   ].filter((r) => r.show)
 
   return (
@@ -104,7 +141,7 @@ export default function SignInMethodsSection({
       </p>
       <ul className="mt-3 space-y-2">
         {rows.map(({ id }) => {
-          const linked = methods.includes(id)
+          const linked = id === 'email' ? emailLinked : methods.includes(id)
           // Email is the account's recovery address; change it in the Email field instead.
           const canDisconnect = linked && id !== 'email' && !lastMethod
           return (
@@ -133,6 +170,17 @@ export default function SignInMethodsSection({
                   <span className="text-[12px] font-semibold text-emerald-400" data-sign-in-method-linked>
                     {busy === id ? 'Disconnecting…' : 'Connected'}
                   </span>
+                  {id === 'email' ? (
+                    <button
+                      type="button"
+                      className={`${TEXT_BTN} text-zinc-400 underline underline-offset-2`}
+                      disabled={Boolean(busy)}
+                      data-sign-in-method-change-password
+                      onClick={() => void sendPasswordLink()}
+                    >
+                      {busy === 'password' ? 'Sending…' : 'Change password'}
+                    </button>
+                  ) : null}
                   {canDisconnect ? (
                     <button
                       type="button"
@@ -161,6 +209,15 @@ export default function SignInMethodsSection({
                   onClick={() => void connect(id)}
                 >
                   {busy === id ? 'Connecting…' : 'Connect'}
+                </button>
+              ) : id === 'email' ? (
+                <button
+                  type="button"
+                  className={CONNECT_BTN}
+                  disabled={Boolean(busy)}
+                  onClick={() => void sendPasswordLink()}
+                >
+                  {busy === 'password' ? 'Sending…' : 'Set password'}
                 </button>
               ) : null}
             </li>

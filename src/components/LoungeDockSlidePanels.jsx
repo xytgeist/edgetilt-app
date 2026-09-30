@@ -324,9 +324,6 @@ export default function LoungeDockSlidePanels({
   const [iosInstallBannerHidden, setIosInstallBannerHidden] = useState(false)
   const [iosInstallRequired, setIosInstallRequired] = useState(false)
   const [iosSafariBrowser, setIosSafariBrowser] = useState(false)
-  const [passwordResetBusy, setPasswordResetBusy] = useState(false)
-  const [passwordResetMessage, setPasswordResetMessage] = useState('')
-  const [passwordResetError, setPasswordResetError] = useState('')
   const [supportEmailCopyMessage, setSupportEmailCopyMessage] = useState('')
   const [nativeShellInfo, setNativeShellInfo] = useState(/** @type {{ shellVersion?: string, build?: string, environment?: string } | null} */ (null))
 
@@ -430,8 +427,6 @@ export default function LoungeDockSlidePanels({
       setMenuLayoutSettingsOpen(false)
       setAdminUtilsSettingsOpen(false)
       setIosPwaHelpOpen(false)
-      setPasswordResetMessage('')
-      setPasswordResetError('')
     }
   }, [openPanel])
 
@@ -536,25 +531,6 @@ export default function LoungeDockSlidePanels({
 
   const settingsHasPaidMembership =
     settingsHasSlotsEdgeLifetime || settingsHasSlotsEdgePro || settingsHasSlotsEdgeStarter
-
-  const onSettingsChangePassword = useCallback(async () => {
-    const email = String(settingsAccountEmail || '').trim()
-    if (!email || !settingsSupabaseClient || passwordResetBusy) return
-    setPasswordResetBusy(true)
-    setPasswordResetMessage('')
-    setPasswordResetError('')
-    try {
-      const { error } = await settingsSupabaseClient.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
-      })
-      if (error) throw error
-      setPasswordResetMessage('If this email is on your account, a reset link is on its way.')
-    } catch (e) {
-      setPasswordResetError(e instanceof Error ? e.message : 'Could not send reset email.')
-    } finally {
-      setPasswordResetBusy(false)
-    }
-  }, [passwordResetBusy, settingsAccountEmail, settingsSupabaseClient])
 
   const showAccountSection = typeof onLogout === 'function'
   const accountPhoneVerified = accountPhoneIsVerified(settingsAuthUser)
@@ -1980,7 +1956,7 @@ export default function LoungeDockSlidePanels({
                       <span className="min-w-0">
                         <span className="block text-[15px] font-semibold text-zinc-100">Account info</span>
                         <span className="mt-0.5 block text-[12px] font-normal leading-snug text-zinc-500">
-                          Handle, email, phone, and delete account.
+                          Handle, email, phone, password, and delete account.
                         </span>
                       </span>
                       <svg
@@ -1999,26 +1975,6 @@ export default function LoungeDockSlidePanels({
                         />
                       </svg>
                     </button>
-
-                    <div className="px-3.5 py-3">
-                      <button
-                        type="button"
-                        disabled={!settingsAccountEmail || !settingsSupabaseClient || passwordResetBusy}
-                        onClick={() => void onSettingsChangePassword()}
-                        className="min-h-11 rounded-lg border border-zinc-700/90 bg-zinc-900/80 px-4 text-[14px] font-semibold text-zinc-100 touch-manipulation transition-colors hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50 [-webkit-tap-highlight-color:transparent]"
-                      >
-                        {passwordResetBusy ? 'Sending reset link…' : 'Change password'}
-                      </button>
-                      <p className="mt-2 text-[12px] leading-snug text-zinc-500">
-                        We&apos;ll email a link to set a new password.
-                      </p>
-                      {passwordResetMessage ? (
-                        <p className="mt-2 text-[12px] leading-snug text-cyan-200/90">{passwordResetMessage}</p>
-                      ) : null}
-                      {passwordResetError ? (
-                        <p className="mt-2 text-[12px] leading-snug text-red-300/90">{passwordResetError}</p>
-                      ) : null}
-                    </div>
 
                     <div className="px-3.5 py-3">
                       <div className="text-[15px] font-semibold text-zinc-100">Legal</div>

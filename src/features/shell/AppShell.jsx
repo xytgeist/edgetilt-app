@@ -164,8 +164,36 @@ import {
   requestLoungeSportsGameOpen,
   requestLoungeSportsHubOpen,
 } from '../lounge/loungeSportsHubNav.js'
+import {
+  ChartLineUp,
+  ChatsCircle,
+  Cherries,
+  Football,
+  FootballHelmet,
+  Handshake,
+  Robot,
+  SealCheck,
+  Spade,
+  Sparkle,
+  Trophy,
+} from '@phosphor-icons/react'
 
 const LOUNGE_ACTIVITY_INAPP_TOAST_MS = 7000
+
+/** Hamburger glyphs: `tint` on dark tiles, `tintLight` (deeper shade) under `html.light`. */
+const NAV_ICONS = {
+  slots: { Glyph: Cherries, tint: '#fbbf24', tintLight: '#b45309' },
+  poker: { Glyph: Spade, tint: '#fb7185', tintLight: '#be123c' },
+  'sports-hub': { Glyph: Trophy, tint: '#38bdf8', tintLight: '#0369a1' },
+  'nfl-hub': { Glyph: FootballHelmet, tint: '#34d399', tintLight: '#047857' },
+  'cfb-hub': { Glyph: Football, tint: '#fb923c', tintLight: '#c2410c' },
+  chat: { Glyph: ChatsCircle, tint: '#a78bfa', tintLight: '#6d28d9' },
+  monitor: { Glyph: ChartLineUp, tint: '#22d3ee', tintLight: '#0e7490' },
+  bots: { Glyph: Robot, tint: '#cbd5e1', tintLight: '#475569' },
+  affiliates: { Glyph: Handshake, tint: '#2dd4bf', tintLight: '#0f766e' },
+  'stable-smoke': { Glyph: SealCheck, tint: '#a3e635', tintLight: '#4d7c0f' },
+  creator: { Glyph: Sparkle, tint: '#e879f9', tintLight: '#a21caf' },
+}
 
 const SLOTS_TOOL_TAB_IDS = new Set([
   'calculators',
@@ -2316,20 +2344,20 @@ export default function AppShell({
 
   /** Title bar ☰ menu - Slots / Poker / Sports hubs + Chat (Lounge via dock home; Monitor admin-only). */
   const navItems = [
-    { id: 'slots', label: 'Slots', icon: '🎰', subscriberGated: false },
-    { id: 'poker', label: 'Poker', icon: '♠️', subscriberGated: false },
-    { id: 'sports-hub', label: 'Sports Hub', icon: '🏟️', subscriberGated: false },
-    { id: 'nfl-hub', label: 'NFL Hub', icon: '🏈', subscriberGated: false },
-    { id: 'cfb-hub', label: 'CFB Hub', icon: '🎓', subscriberGated: false },
-    { id: 'chat', label: 'Chat', icon: '💬', subscriberGated: false },
-    ...(isAdmin ? [{ id: 'monitor', label: 'Monitor', icon: '📊', subscriberGated: false }] : []),
-    ...(isAdmin ? [{ id: 'bots', label: 'Bots', icon: '🤖', subscriberGated: false }] : []),
-    ...(isAdmin ? [{ id: 'affiliates', label: 'Affiliates', icon: '🤝', subscriberGated: false }] : []),
+    { id: 'slots', label: 'Slots', icon: NAV_ICONS.slots, subscriberGated: false },
+    { id: 'poker', label: 'Poker', icon: NAV_ICONS.poker, subscriberGated: false },
+    { id: 'sports-hub', label: 'Sports Hub', icon: NAV_ICONS['sports-hub'], subscriberGated: false },
+    { id: 'nfl-hub', label: 'NFL Hub', icon: NAV_ICONS['nfl-hub'], subscriberGated: false },
+    { id: 'cfb-hub', label: 'CFB Hub', icon: NAV_ICONS['cfb-hub'], subscriberGated: false },
+    { id: 'chat', label: 'Chat', icon: NAV_ICONS.chat, subscriberGated: false },
+    ...(isAdmin ? [{ id: 'monitor', label: 'Monitor', icon: NAV_ICONS.monitor, subscriberGated: false }] : []),
+    ...(isAdmin ? [{ id: 'bots', label: 'Bots', icon: NAV_ICONS.bots, subscriberGated: false }] : []),
+    ...(isAdmin ? [{ id: 'affiliates', label: 'Affiliates', icon: NAV_ICONS.affiliates, subscriberGated: false }] : []),
     ...(isAdmin && isSmokeChecklistHostAllowed()
-      ? [{ id: 'stable-smoke', label: 'Stable smoke', icon: '✅', subscriberGated: false }]
+      ? [{ id: 'stable-smoke', label: 'Stable smoke', icon: NAV_ICONS['stable-smoke'], subscriberGated: false }]
       : []),
     ...(isActiveAffiliate
-      ? [{ id: 'creator', label: 'Creator', icon: '✨', subscriberGated: false }]
+      ? [{ id: 'creator', label: 'Creator', icon: NAV_ICONS.creator, subscriberGated: false }]
       : []),
   ]
 
@@ -2455,14 +2483,20 @@ export default function AppShell({
             event.stopPropagation()
             selectItem()
           }}
-          className={`lounge-title-nav-menu-item w-full rounded-xl px-3 py-2.5 text-left text-sm touch-manipulation ${
+          className={`lounge-title-nav-menu-item w-full rounded-xl px-2.5 py-1.5 text-left text-sm touch-manipulation ${
             isActive
               ? 'lounge-title-nav-menu-item--active bg-zinc-800 text-white'
               : 'text-zinc-300 hover:bg-zinc-900'
           }`}
         >
-          <span className="relative flex min-w-0 items-center gap-2 pr-2">
-            <span aria-hidden>{item.icon}</span>
+          <span className="relative flex min-w-0 items-center gap-2.5 pr-2">
+            <span
+              aria-hidden
+              className="nav-icon-tile"
+              style={{ '--nav-tint': item.icon.tint, '--nav-tint-light': item.icon.tintLight }}
+            >
+              <item.icon.Glyph weight="duotone" className="nav-icon-tile__glyph" />
+            </span>
             <span className="min-w-0 flex-1 font-semibold truncate">{item.label}</span>
             {showLock ? <NavLockGlyph className="h-3.5 w-3.5 shrink-0 text-amber-400/95" /> : null}
             {showPokerDot ? <AttentionDot className="right-0 top-1/2 -translate-y-1/2" /> : null}

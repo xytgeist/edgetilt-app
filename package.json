@@ -1,7 +1,7 @@
 {
   "name": "phoenixlinkcalc",
   "private": true,
-  "version": "1.4.949",
+  "version": "1.4.950",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -138,6 +138,7 @@
     "@livekit/egress-sdk": "^0.2.1",
     "@lottiefiles/dotlottie-web": "^0.74.0",
     "@lucide/lab": "^0.2.0",
+    "@phosphor-icons/react": "^2.1.10",
     "@sentry/react": "^10.53.1",
     "@supabase/supabase-js": "^2.100.0",
     "@vercel/og": "^0.8.6",

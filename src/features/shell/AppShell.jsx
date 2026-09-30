@@ -164,35 +164,28 @@ import {
   requestLoungeSportsGameOpen,
   requestLoungeSportsHubOpen,
 } from '../lounge/loungeSportsHubNav.js'
-import {
-  ChartLineUp,
-  ChatsCircle,
-  Cherries,
-  Football,
-  FootballHelmet,
-  Handshake,
-  Robot,
-  SealCheck,
-  Spade,
-  Sparkle,
-  Trophy,
-} from '@phosphor-icons/react'
+import { BadgeCheck, Bot, ChartSpline, Cherry, Handshake, MessagesSquare, Spade, Sparkles, Trophy } from 'lucide-react'
+import { football, footballHelmet } from '@lucide/lab'
+import LucideLabIcon from '../../components/LucideLabIcon.jsx'
 
 const LOUNGE_ACTIVITY_INAPP_TOAST_MS = 7000
 
-/** Hamburger glyphs: `tint` on dark tiles, `tintLight` (deeper shade) under `html.light`. */
+const FootballHelmetIcon = (props) => <LucideLabIcon iconNode={footballHelmet} {...props} />
+const FootballIcon = (props) => <LucideLabIcon iconNode={football} {...props} />
+
+/** Hamburger glyphs share the Slots / Poker hub `.slots-icon-tile` treatment (`--tc` tint, light mix in CSS). */
 const NAV_ICONS = {
-  slots: { Glyph: Cherries, tint: '#fbbf24', tintLight: '#b45309' },
-  poker: { Glyph: Spade, tint: '#fb7185', tintLight: '#be123c' },
-  'sports-hub': { Glyph: Trophy, tint: '#38bdf8', tintLight: '#0369a1' },
-  'nfl-hub': { Glyph: FootballHelmet, tint: '#34d399', tintLight: '#047857' },
-  'cfb-hub': { Glyph: Football, tint: '#fb923c', tintLight: '#c2410c' },
-  chat: { Glyph: ChatsCircle, tint: '#a78bfa', tintLight: '#6d28d9' },
-  monitor: { Glyph: ChartLineUp, tint: '#22d3ee', tintLight: '#0e7490' },
-  bots: { Glyph: Robot, tint: '#cbd5e1', tintLight: '#475569' },
-  affiliates: { Glyph: Handshake, tint: '#2dd4bf', tintLight: '#0f766e' },
-  'stable-smoke': { Glyph: SealCheck, tint: '#a3e635', tintLight: '#4d7c0f' },
-  creator: { Glyph: Sparkle, tint: '#e879f9', tintLight: '#a21caf' },
+  slots: { Glyph: Cherry, tint: '#fbbf24' },
+  poker: { Glyph: Spade, tint: '#fb7185' },
+  'sports-hub': { Glyph: Trophy, tint: '#38bdf8' },
+  'nfl-hub': { Glyph: FootballHelmetIcon, tint: '#34d399' },
+  'cfb-hub': { Glyph: FootballIcon, tint: '#fb923c' },
+  chat: { Glyph: MessagesSquare, tint: '#a78bfa' },
+  monitor: { Glyph: ChartSpline, tint: '#22d3ee' },
+  bots: { Glyph: Bot, tint: '#cbd5e1' },
+  affiliates: { Glyph: Handshake, tint: '#2dd4bf' },
+  'stable-smoke': { Glyph: BadgeCheck, tint: '#a3e635' },
+  creator: { Glyph: Sparkles, tint: '#e879f9' },
 }
 
 const SLOTS_TOOL_TAB_IDS = new Set([
@@ -2492,10 +2485,10 @@ export default function AppShell({
           <span className="relative flex min-w-0 items-center gap-2.5 pr-2">
             <span
               aria-hidden
-              className="nav-icon-tile"
-              style={{ '--nav-tint': item.icon.tint, '--nav-tint-light': item.icon.tintLight }}
+              className="slots-icon-tile nav-icon-tile"
+              style={{ '--tc': item.icon.tint }}
             >
-              <item.icon.Glyph weight="duotone" className="nav-icon-tile__glyph" />
+              <item.icon.Glyph size={18} strokeWidth={1.5} className="nav-icon-tile__glyph" />
             </span>
             <span className="min-w-0 flex-1 font-semibold truncate">{item.label}</span>
             {showLock ? <NavLockGlyph className="h-3.5 w-3.5 shrink-0 text-amber-400/95" /> : null}

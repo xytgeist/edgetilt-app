@@ -75,7 +75,6 @@ function writeGenerated(relPath, pairs, extraComments = []) {
 writeGenerated(".env.local", [
   ["VITE_SUPABASE_URL", firstNonEmpty(env, "TEST_VITE_SUPABASE_URL", "TEST_SUPABASE_URL")],
   ["VITE_SUPABASE_ANON_KEY", firstNonEmpty(env, "TEST_VITE_SUPABASE_ANON_KEY")],
-  ["VITE_WEB_PUSH_PUBLIC_KEY", firstNonEmpty(env, "TEST_VITE_WEB_PUSH_PUBLIC_KEY")],
   ["THEO_TEST_EMAIL", firstNonEmpty(env, "THEO_TEST_EMAIL")],
   ["THEO_TEST_PASSWORD", firstNonEmpty(env, "THEO_TEST_PASSWORD")],
   ["THEO_PROD_EMAIL", firstNonEmpty(env, "THEO_PROD_EMAIL")],
@@ -103,8 +102,6 @@ writeGenerated(
     ["THERUNDOWN_API_KEY", firstNonEmpty(env, "THERUNDOWN_API_KEY")],
     ["CFBD_API_KEY", firstNonEmpty(env, "CFBD_API_KEY")],
     ["FANTASYPROS_API_KEY", firstNonEmpty(env, "FANTASYPROS_API_KEY")],
-    ["KALSHI_API_KEY_ID", firstNonEmpty(env, "KALSHI_API_KEY_ID")],
-    ["KALSHI_PRIVATE_KEY", firstNonEmpty(env, "KALSHI_PRIVATE_KEY")],
     ["LOUNGE_BOT_FARM_INGEST_SECRET", firstNonEmpty(env, "TEST_LOUNGE_BOT_FARM_INGEST_SECRET")],
     ["SUPABASE_ACCESS_TOKEN", firstNonEmpty(env, "SUPABASE_ACCESS_TOKEN")],
   ],

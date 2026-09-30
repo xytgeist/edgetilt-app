@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import LoungeBadgeHoverTip from './LoungeBadgeHoverTip.jsx'
+import RetryingImg from '../../components/RetryingImg.jsx'
 
 const BASE = import.meta.env.BASE_URL
 const OG_BADGE_SRC_LIGHT = `${BASE}og-cohort-badge-light.svg`
@@ -45,7 +46,8 @@ export default function LoungeOgBadge({ isOg, size = 'feed' }) {
   return (
     <LoungeBadgeHoverTip tip="OG" tone="og" className={tipClass}>
       <span className="inline-flex items-center leading-none" role="img" aria-label="OG">
-        <img
+        <RetryingImg
+          key={badgeSrc}
           src={badgeSrc}
           alt=""
           className={`lounge-og-badge ${iconClass}`}

@@ -4,16 +4,16 @@
  * splits, or rosters … the logged-in hub keeps using `lounge-sports-scoreboard`.
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { buildLoungeSportsScoreboard, type LoungeSportsGame } from '../_shared/loungeSportsScoreboard.ts'
+import { cachedLoungeSportsScoreboard, type LoungeSportsGame } from '../_shared/loungeSportsScoreboard.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-/** Crawlers fan out on a paste (iMessage, Slack, X) … one board build per isolate per window. */
+/** Crawlers fan out on a paste (iMessage, Slack, X) … reads the same shared slate row as the hub scoreboard. */
 const BOARD_TTL_MS = 20_000
-let boardCache: { at: number; games: LoungeSportsGame[] } | null = null
+let admin: ReturnType<typeof createClient> | null = null
 
 const EVENT_ID_RE = /^[A-Za-z0-9_-]{6,80}$/
 
@@ -54,11 +54,9 @@ Deno.serve(async (req) => {
   if (!supabaseUrl || !serviceKey) return json(500, { error: 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY' })
 
   try {
-    if (!boardCache || Date.now() - boardCache.at > BOARD_TTL_MS) {
-      const board = await buildLoungeSportsScoreboard(createClient(supabaseUrl, serviceKey))
-      boardCache = { at: Date.now(), games: board.games }
-    }
-    const game = boardCache.games.find((g) => g.id === eventId)
+    admin ??= createClient(supabaseUrl, serviceKey)
+    const board = await cachedLoungeSportsScoreboard(admin, BOARD_TTL_MS)
+    const game = board.games.find((g) => g.id === eventId)
     if (!game) return json(404, { error: 'Game not on the current slate.' }, 60)
     const live = game.live
     return json(200, {

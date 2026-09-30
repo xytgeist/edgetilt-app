@@ -6,6 +6,7 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { listRundownDayEvents, ptDateFromIso, rundownApiKey } from './loungeBotRundownContext.ts'
 import { fetchSportScores, type ScoreEvent } from './loungeBotLiveContent.ts'
 import { fetchSportOdds, fetchSportOddsHistorical, ptTodayDate } from './loungeBotOddsRun.ts'
+import { sharedCached, sharedCachedNoMem } from './edgeSharedCache.ts'
 import { type CircaFixture, loadCircaFootballFixtures } from './oddspapiCirca.ts'
 import type { OddsEvent } from './loungeBotOddsCaption.ts'
 import {
@@ -1278,6 +1279,14 @@ async function enrichEspnFootballExtras(
   })
 }
 
+/** One slate build per TTL across every isolate of every function that reads the board. */
+export function cachedLoungeSportsScoreboard(
+  admin: SupabaseClient,
+  ttlMs = 8_000,
+): Promise<{ games: LoungeSportsGame[]; source: string }> {
+  return sharedCached('scoreboard:board', { ttlMs, leaseMs: 20_000, admin }, () => buildLoungeSportsScoreboard(admin))
+}
+
 export async function buildLoungeSportsScoreboard(
   admin?: SupabaseClient,
 ): Promise<{ games: LoungeSportsGame[]; source: string }> {
@@ -1414,35 +1423,32 @@ export async function buildLoungeSportsScoreboard(
 const RUNDOWN_BASE = 'https://therundown.io/api/v2'
 /** Live lines move every few seconds; 20s keeps the hub scoreboard close without one fetch per viewer. */
 const ODDS_CACHE_MS = 20_000
-const oddsCache = new Map<string, { at: number; pack: Awaited<ReturnType<typeof fetchSportOdds>> | null }>()
+type OddsPack = Awaited<ReturnType<typeof fetchSportOdds>>
 
-async function cachedSportOdds(sportKey: string) {
+function cachedSportOdds(sportKey: string): Promise<OddsPack | null> {
   const key = String(sportKey || '')
-  const cached = oddsCache.get(key)
-  if (cached && Date.now() - cached.at < ODDS_CACHE_MS) return cached.pack
-  const pack = await fetchSportOdds(key, ['us', 'us2'], ['h2h', 'spreads', 'totals'], { includeLinks: true }).catch(
-    () => null,
+  return sharedCached<OddsPack | null>(
+    `odds:board:${key}`,
+    { ttlMs: ODDS_CACHE_MS, shouldStore: (pack) => pack != null },
+    () => fetchSportOdds(key, ['us', 'us2'], ['h2h', 'spreads', 'totals'], { includeLinks: true }).catch(() => null),
   )
-  oddsCache.set(key, { at: Date.now(), pack })
-  return pack
 }
 
 const PINNACLE_REGIONS = ['eu', 'us', 'us2']
 const PINNACLE_BOOKS = ['pinnacle']
-const pinnacleCache = new Map<string, { at: number; pack: Awaited<ReturnType<typeof fetchSportOdds>> | null }>()
 
-async function cachedPinnacleOdds(sportKey: string) {
-  const key = `pin:${sportKey}`
-  const cached = pinnacleCache.get(key)
-  if (cached && Date.now() - cached.at < ODDS_CACHE_MS) return cached.pack
-  const pack = await fetchSportOdds(
-    sportKey,
-    PINNACLE_REGIONS,
-    ['h2h', 'spreads', 'totals'],
-    { bookmakers: PINNACLE_BOOKS },
-  ).catch(() => null)
-  pinnacleCache.set(key, { at: Date.now(), pack })
-  return pack
+function cachedPinnacleOdds(sportKey: string): Promise<OddsPack | null> {
+  return sharedCached<OddsPack | null>(
+    `odds:pinnacle:${sportKey}`,
+    { ttlMs: ODDS_CACHE_MS, shouldStore: (pack) => pack != null },
+    () =>
+      fetchSportOdds(
+        sportKey,
+        PINNACLE_REGIONS,
+        ['h2h', 'spreads', 'totals'],
+        { bookmakers: PINNACLE_BOOKS },
+      ).catch(() => null),
+  )
 }
 
 async function rundownGet<T>(path: string): Promise<T | null> {
@@ -2430,14 +2436,21 @@ async function cachedHistoricalPinnacle(sportKey: string, dateIso: string) {
   const key = `pin|${sportKey}|${dateIso}`
   const cached = histOddsCache.get(key)
   if (cached && Date.now() - cached.at < cached.ttl) return cached.pack
-  const pack = await fetchSportOddsHistorical(
-    sportKey,
-    dateIso,
-    PINNACLE_REGIONS,
-    ['spreads', 'h2h', 'totals'],
-    { bookmakers: PINNACLE_BOOKS },
-  ).catch(() => null)
-  const events = Array.isArray(pack?.events) ? pack!.events as OddsEventRow[] : []
+  // Kickoff snapshots never change once they carry h2h, so one fetch serves every isolate for 12h.
+  const events = await sharedCachedNoMem<OddsEventRow[]>(
+    `odds:hist:${key}`,
+    { ttlMs: HIST_ODDS_CACHE_MS, shouldStore: (rows) => rows.some(eventHasH2h) },
+    async () => {
+      const pack = await fetchSportOddsHistorical(
+        sportKey,
+        dateIso,
+        PINNACLE_REGIONS,
+        ['spreads', 'h2h', 'totals'],
+        { bookmakers: PINNACLE_BOOKS },
+      ).catch(() => null)
+      return Array.isArray(pack?.events) ? pack!.events as OddsEventRow[] : []
+    },
+  ).catch(() => [] as OddsEventRow[])
   const next = { events }
   if (events.length) {
     const ttl = events.some(eventHasH2h) ? HIST_ODDS_CACHE_MS : 3 * 60 * 1000

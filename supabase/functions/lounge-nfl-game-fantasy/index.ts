@@ -21,6 +21,25 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+/**
+ * `buildNflGameFantasy` already shares one 90s row (`nfl_game_fantasy_cache`) across isolates; this memory layer
+ * keeps every live viewer's 45s poll from re-reading that ~500KB row.
+ */
+const MEM_TTL_MS = 20_000
+const memCache = new Map<string, { at: number; promise: ReturnType<typeof buildNflGameFantasy> }>()
+
+function memoFantasy(key: string, build: () => ReturnType<typeof buildNflGameFantasy>) {
+  const hit = memCache.get(key)
+  if (hit && Date.now() - hit.at < MEM_TTL_MS) return hit.promise
+  for (const [k, v] of memCache) if (Date.now() - v.at >= MEM_TTL_MS) memCache.delete(k)
+  const entry = { at: Date.now(), promise: build() }
+  memCache.set(key, entry)
+  entry.promise.catch(() => {
+    if (memCache.get(key) === entry) memCache.delete(key)
+  })
+  return entry.promise
+}
+
 function json(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -98,7 +117,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const payload = await buildNflGameFantasy(admin, { eventId, awayAbbrev, homeAbbrev })
+    const payload = await memoFantasy(`${eventId}:${awayAbbrev}:${homeAbbrev}`, () =>
+      buildNflGameFantasy(admin, { eventId, awayAbbrev, homeAbbrev }))
     return json(200, payload)
   } catch (err) {
     return json(502, { error: err instanceof Error ? err.message : 'Fantasy payload failed.' })

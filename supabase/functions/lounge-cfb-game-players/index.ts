@@ -13,6 +13,22 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+/** Roster rows + the 90s shared props row are read once per isolate per window, not once per viewer poll. */
+const MEM_TTL_MS = 20_000
+const memCache = new Map<string, { at: number; promise: ReturnType<typeof buildCfbGamePlayers> }>()
+
+function memoPlayers(key: string, build: () => ReturnType<typeof buildCfbGamePlayers>) {
+  const hit = memCache.get(key)
+  if (hit && Date.now() - hit.at < MEM_TTL_MS) return hit.promise
+  for (const [k, v] of memCache) if (Date.now() - v.at >= MEM_TTL_MS) memCache.delete(k)
+  const entry = { at: Date.now(), promise: build() }
+  memCache.set(key, entry)
+  entry.promise.catch(() => {
+    if (memCache.get(key) === entry) memCache.delete(key)
+  })
+  return entry.promise
+}
+
 function json(status: number, body: Record<string, unknown>) {
   return new Response(JSON.stringify(body), {
     status,
@@ -58,14 +74,15 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const payload = await buildCfbGamePlayers(admin, {
-      eventId,
-      awayAbbrev,
-      homeAbbrev,
-      awayName: String(body?.away_name || '').trim(),
-      homeName: String(body?.home_name || '').trim(),
-      commenceIso: String(body?.commence_time || '').trim() || null,
-    })
+    const payload = await memoPlayers(`${eventId}:${awayAbbrev}:${homeAbbrev}`, () =>
+      buildCfbGamePlayers(admin, {
+        eventId,
+        awayAbbrev,
+        homeAbbrev,
+        awayName: String(body?.away_name || '').trim(),
+        homeName: String(body?.home_name || '').trim(),
+        commenceIso: String(body?.commence_time || '').trim() || null,
+      }))
     return json(200, payload as unknown as Record<string, unknown>)
   } catch (err) {
     return json(502, { error: err instanceof Error ? err.message : 'CFB roster payload failed.' })

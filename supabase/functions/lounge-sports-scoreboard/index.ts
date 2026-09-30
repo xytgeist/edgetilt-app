@@ -4,8 +4,9 @@
  * Hub detail: plays, player stats, multi-book Odds API lines.
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
-import { buildLoungeSportsScoreboard, fetchLoungeSportsGameDetail } from '../_shared/loungeSportsScoreboard.ts'
+import { cachedLoungeSportsScoreboard, fetchLoungeSportsGameDetail } from '../_shared/loungeSportsScoreboard.ts'
 import { loadPastedBettingSplitsForSlate } from '../_shared/loungeBotBettingSplits.ts'
+import { sharedCached } from '../_shared/edgeSharedCache.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,35 +14,14 @@ const corsHeaders = {
 }
 
 /**
- * Per-isolate caches with in-flight sharing: the pill poll and every hub viewer of a game reuse one slate build
- * and one detail build (TheRundown + ESPN + Odds) instead of each request fetching its own.
+ * Memory + shared-row caches (`edgeSharedCache.ts`): the pill poll and every hub viewer, across all isolates,
+ * reuse one slate build and one detail build (TheRundown + ESPN + Odds) per TTL.
  */
 const BOARD_TTL_MS = 8_000
 const DETAIL_TTL_MS = 4_000
-let boardCache: { at: number; promise: ReturnType<typeof buildLoungeSportsScoreboard> } | null = null
-const detailCache = new Map<string, { at: number; promise: Promise<Record<string, unknown> | null> }>()
 
-function cachedBoard(admin: ReturnType<typeof createClient>) {
-  if (boardCache && Date.now() - boardCache.at < BOARD_TTL_MS) return boardCache.promise
-  const promise = buildLoungeSportsScoreboard(admin)
-  const entry = { at: Date.now(), promise }
-  boardCache = entry
-  promise.catch(() => {
-    if (boardCache === entry) boardCache = null
-  })
-  return promise
-}
-
-function cachedDetail(key: string, build: () => Promise<Record<string, unknown> | null>) {
-  const hit = detailCache.get(key)
-  if (hit && Date.now() - hit.at < DETAIL_TTL_MS) return hit.promise
-  for (const [k, v] of detailCache) {
-    if (Date.now() - v.at >= DETAIL_TTL_MS) detailCache.delete(k)
-  }
-  const promise = build()
-  detailCache.set(key, { at: Date.now(), promise })
-  promise.catch(() => detailCache.delete(key))
-  return promise
+function cachedDetail(key: string, admin: ReturnType<typeof createClient>, build: () => Promise<Record<string, unknown> | null>) {
+  return sharedCached(`scoreboard:detail:${key}`, { ttlMs: DETAIL_TTL_MS, leaseMs: 15_000, admin }, build)
 }
 
 function json(status: number, body: Record<string, unknown>) {
@@ -82,13 +62,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const board = await cachedBoard(admin)
+    const board = await cachedLoungeSportsScoreboard(admin, BOARD_TTL_MS)
     if (!eventId) {
       return json(200, { ok: true, ...board, fetched_at: new Date().toISOString() })
     }
     const game = board.games.find((g) => g.id === eventId)
     if (!game) return json(404, { error: 'Game not on the current slate.' })
-    const payload = await cachedDetail(eventId, async () => {
+    const payload = await cachedDetail(eventId, admin, async () => {
       const detail = await fetchLoungeSportsGameDetail(game, admin)
       const splitMap = await loadPastedBettingSplitsForSlate(admin, game.sport_key, [
         {

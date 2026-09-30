@@ -8,6 +8,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
 import { buildGameNews } from '../_shared/loungeGameNews.ts'
 import type { LoungeSportsGame } from '../_shared/loungeSportsScoreboard.ts'
+import { sharedCached } from '../_shared/edgeSharedCache.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -75,7 +76,11 @@ Deno.serve(async (req) => {
   } as unknown as LoungeSportsGame
 
   try {
-    const payload = await buildGameNews(game)
+    const payload = await sharedCached(
+      `news:${sportKey}:${eventId}:${game.status}`,
+      { ttlMs: 5 * 60 * 1000, leaseMs: 30_000, admin },
+      () => buildGameNews(game),
+    )
     if (!payload) return json(200, { news: null })
     return json(200, { news: payload as unknown as Record<string, unknown> })
   } catch (err) {

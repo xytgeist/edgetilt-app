@@ -149,6 +149,7 @@ export default function AuthModalPanel({
   onOpenLegalDocument,
   onSendPhoneCode,
   onVerifyPhoneCode,
+  connectNotice = '',
 }) {
   const signupMessageRef = useRef(null)
   const ipadStage = useIpadAuthStage()
@@ -369,6 +370,15 @@ export default function AuthModalPanel({
 
   return (
       <div className="flex flex-col">
+        {connectNotice ? (
+          <div
+            data-auth-connect-notice
+            role="status"
+            className={`${ipadStage ? 'mt-16' : ''} mb-4 p-3 bg-sky-900/40 border border-sky-500/60 rounded-xl text-sky-200 text-sm text-center leading-relaxed`}
+          >
+            {connectNotice}
+          </div>
+        ) : null}
         {signupMessage ? (
           <div
             ref={signupMessageRef}

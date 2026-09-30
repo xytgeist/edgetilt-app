@@ -12,6 +12,7 @@ import {
 } from './profileGate.js'
 import { countryFromE164, formatPhoneDisplay, nationalFromE164, toE164ForCountry } from '../auth/phoneSignIn.js'
 import PhoneCountryField from '../auth/PhoneCountryField.jsx'
+import SignInMethodsSection from '../auth/SignInMethodsSection.jsx'
 import { useAutoSubmitOtp } from '../auth/useAutoSubmitOtp.js'
 import { dismissEdgeKeyboard } from '../../utils/edgeNative.js'
 
@@ -1006,6 +1007,18 @@ export default function SettingsAccountInfoScreen({
               {typeof saveError === 'string' ? saveError : 'Could not save account info.'}
             </p>
           ) : null}
+
+          <SignInMethodsSection
+            supabaseClient={supabaseClient}
+            authUser={authUser}
+            onAuthUserUpdated={onAuthUserUpdated}
+            onFocusPhone={() => {
+              const input = document.getElementById('settings-account-phone')
+              if (!(input instanceof HTMLInputElement)) return
+              input.focus()
+              input.scrollIntoView({ block: 'center' })
+            }}
+          />
 
           {typeof onDeleteAccount === 'function' ? (
             <div className="border-t border-zinc-800/90 pt-5">

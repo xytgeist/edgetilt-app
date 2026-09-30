@@ -147,6 +147,10 @@ verify_jwt = false
 [functions.delete-own-account]
 verify_jwt = true
 
+# Connect-account flow: delete the caller's brand-new, empty account. User JWT required.
+[functions.account-connect-discard]
+verify_jwt = true
+
 # Account info: drop a login phone after an SMS code. User JWT required.
 [functions.account-phone-release]
 verify_jwt = true

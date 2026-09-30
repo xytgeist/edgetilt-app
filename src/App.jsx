@@ -13,6 +13,7 @@ import {
 } from './features/auth/emailConfirmRouting.js'
 import AuthConfirmScreen from './features/auth/AuthConfirmScreen.jsx'
 import AuthModalPanel from './features/auth/AuthModalPanel'
+import AccountConnectSheet from './features/auth/AccountConnectSheet.jsx'
 import AuthPasswordField from './features/auth/AuthPasswordField'
 import AuthModalShell from './features/auth/AuthModalShell'
 import {
@@ -236,6 +237,10 @@ function App() {
   const [authPanelOpen, setAuthPanelOpen] = useState(false)
   /** Optional shell banner (e.g. future account notices). */
   const [accessNotice, setAccessNotice] = useState('')
+  const [connectNotice, setConnectNotice] = useState('')
+  useEffect(() => {
+    if (user?.id) setConnectNotice('')
+  }, [user?.id])
   const ACCESS_NOTICE_DISMISS_MS = 4500
   /** Moderator/admin: full access; hamburger hides subscriber-only lock icons. */
   const [isStaffRole, setIsStaffRole] = useState(false)
@@ -1718,6 +1723,7 @@ function App() {
       onOpenLegalDocument={(slug) => openLegalDocument(slug, 'auth')}
       onSendPhoneCode={handleSendPhoneCode}
       onVerifyPhoneCode={handleVerifyPhoneCode}
+      connectNotice={user ? '' : connectNotice}
       onOAuthSignIn={({ provider, setErrorTarget }) => {
         const setError =
           setErrorTarget === 'forgot'
@@ -2057,6 +2063,15 @@ function App() {
             starterWeeklyDropPoolExhausted: starterWeeklyDropPoolExhausted,
             gatesMap: contentAccessGatesMap,
           }}
+        />
+        <AccountConnectSheet
+          supabase={supabase}
+          user={user}
+          onRequestSignIn={(message) => {
+            setConnectNotice(message)
+            setAuthPanelOpen(true)
+          }}
+          onNotice={setAccessNotice}
         />
         {legalAcceptancePending && user ? (
           <LegalAcceptanceModal

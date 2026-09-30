@@ -6,6 +6,13 @@
  * (`AGENT_RULE_POSITIVE_PLATFORM_GUARDS`).
  */
 
+import {
+  canEdgeAndroidHaptic,
+  canShareEdgeAndroid,
+  shareEdgeAndroid,
+  triggerEdgeAndroidHaptic,
+} from './edgeAndroid.js'
+
 const EDGE_IOS_UA_RE = /EdgeiOS\/(\d+(?:\.\d+)*)/i
 
 /**
@@ -76,10 +83,11 @@ export async function setEdgeKeyboardAccessoryVisible(visible) {
 }
 
 /**
- * True when the IPA can present `UIActivityViewController`.
+ * True when the IPA can present `UIActivityViewController` or the EdgeAndroid APK its share sheet.
  * @returns {boolean}
  */
 export function canShareEdgeNative() {
+  if (canShareEdgeAndroid()) return true
   if (typeof window === 'undefined' || !isEdgeiOSShell()) return false
   return typeof window.EdgeNative?.share === 'function'
 }
@@ -145,13 +153,15 @@ export async function shareEdgeNative(opts = {}) {
       filename: row.filename ? String(row.filename) : undefined,
     }))
   if (!url && !text && images.length === 0) return { ok: false }
+  const payload = {
+    url: url || undefined,
+    text: text || undefined,
+    title: title || undefined,
+    images: images.length ? images : undefined,
+  }
+  if (canShareEdgeAndroid()) return shareEdgeAndroid(payload)
   try {
-    const result = await edgeNativeInvoke('share', {
-      url: url || undefined,
-      text: text || undefined,
-      title: title || undefined,
-      images: images.length ? images : undefined,
-    })
+    const result = await edgeNativeInvoke('share', payload)
     return {
       ok: result?.ok !== false,
       cancelled: result?.cancelled === true,
@@ -413,10 +423,11 @@ export async function getEdgeiOSPushToken() {
 }
 
 /**
- * Native UIKit haptics in EdgeiOS shell. No-op elsewhere.
+ * Native haptics in the EdgeiOS shell (UIKit) and EdgeAndroid APK. No-op elsewhere.
  * @param {'light' | 'medium' | 'heavy' | 'success' | 'warning' | 'error'} [style]
  */
 export async function triggerEdgeNativeHaptic(style = 'light') {
+  if (canEdgeAndroidHaptic()) return triggerEdgeAndroidHaptic(style)
   if (typeof window === 'undefined' || !isEdgeiOSShell()) return { ok: false, via: 'noop' }
   try {
     const result = await edgeNativeInvoke('triggerHaptic', { style })

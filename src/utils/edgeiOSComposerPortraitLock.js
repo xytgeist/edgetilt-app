@@ -1,4 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react'
+import { canLockEdgeAndroidOrientation, setEdgeAndroidOrientationLock } from './edgeAndroid.js'
 import { edgeNativeInvoke, isEdgeiOSShell } from './edgeNative.js'
 import { IPAD_SHELL_QUERY } from '../features/shell/quickLinkDestinations.js'
 
@@ -17,7 +18,16 @@ function canNativeLock() {
   return typeof window.EdgeNative?.setOrientationLock === 'function'
 }
 
+/** IPA (any build) or an EdgeAndroid APK with `setOrientationLock` rotates composers itself. */
+export function composerRotatesNatively() {
+  return isEdgeiOSShell() || canLockEdgeAndroidOrientation()
+}
+
 async function sendLock(lock) {
+  if (canLockEdgeAndroidOrientation()) {
+    setEdgeAndroidOrientationLock(lock)
+    return
+  }
   if (!canNativeLock()) return
   try {
     await edgeNativeInvoke('setOrientationLock', { lock })
@@ -56,11 +66,11 @@ export function getComposerPortraitWanted() {
 }
 
 /**
- * Safari / PWA / Android cannot force-rotate. While the phone is landscape,
+ * Safari / PWA / Android Chrome cannot force-rotate. While the phone is landscape,
  * do not raise the software keyboard on a composer field.
  */
 export function shouldBlockComposerKeyboard() {
-  if (typeof window === 'undefined' || isEdgeiOSShell()) return false
+  if (typeof window === 'undefined' || composerRotatesNatively()) return false
   return readPhoneLandscapeNotTablet()
 }
 
@@ -108,7 +118,7 @@ export function usePhoneLandscapeNotTablet() {
 }
 
 /**
- * While `active`, composers want portrait. IPA iPhone force-rotates. Other phones
+ * While `active`, composers want portrait. IPA iPhone and the Android APK force-rotate. Other phones
  * show the rotate hint. Unlock / hide when the last composer closes.
  *
  * @param {boolean} active

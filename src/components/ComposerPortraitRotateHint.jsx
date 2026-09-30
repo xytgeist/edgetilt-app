@@ -1,8 +1,8 @@
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { Z_COMPOSER_PORTRAIT_HINT } from '../constants/appZIndex.js'
-import { isEdgeiOSShell } from '../utils/edgeNative.js'
 import {
+  composerRotatesNatively,
   isComposerKeyboardField,
   shouldBlockComposerKeyboard,
   useComposerPortraitWanted,
@@ -20,17 +20,17 @@ function blurComposerKeyboard() {
 }
 
 /**
- * Safari / PWA / Android cannot force-rotate. While a composer is open on a
+ * Safari / PWA / Android Chrome cannot force-rotate. While a composer is open on a
  * landscape phone, show a rotate-to-portrait icon and keep the software
- * keyboard down (it would cover the hint). IPA already locks, so this stays off.
+ * keyboard down (it would cover the hint). IPA and the Android APK already lock, so this stays off.
  */
 export default function ComposerPortraitRotateHint() {
   const wanted = useComposerPortraitWanted()
   const phoneLandscape = usePhoneLandscapeNotTablet()
-  const showHint = wanted && phoneLandscape && !isEdgeiOSShell()
+  const showHint = wanted && phoneLandscape && !composerRotatesNatively()
 
   useEffect(() => {
-    if (typeof document === 'undefined' || isEdgeiOSShell()) return undefined
+    if (typeof document === 'undefined' || composerRotatesNatively()) return undefined
 
     const blockPointer = (event) => {
       if (!shouldBlockComposerKeyboard()) return

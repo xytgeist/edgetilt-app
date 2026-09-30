@@ -1,3 +1,4 @@
+import { canEdgeAndroidHaptic, triggerEdgeAndroidHaptic } from './edgeAndroid.js'
 import { isEdgeiOSShell, triggerEdgeNativeHaptic } from './edgeNative.js'
 import { isAndroidDevice, isIosDevice } from './pwaNotificationPrompt.js'
 
@@ -23,7 +24,7 @@ function isMobileTapEnvironment() {
 export function isTapHapticSupported() {
   if (typeof document === 'undefined') return false
   if (!isMobileTapEnvironment()) return false
-  return hasVibrationApi() || isIosDevice()
+  return hasVibrationApi() || isIosDevice() || canEdgeAndroidHaptic()
 }
 
 const IOS_HAPTIC_HIDDEN_STYLE =
@@ -57,7 +58,7 @@ function fireAndroidVibrate() {
   }
 }
 
-/** Standard button taps. IPA uses medium impact (light felt weaker than X). Safari / PWA stay on the switch trick. */
+/** Standard button taps. IPA uses medium impact (light felt weaker than X), the APK its virtual-key click. Safari / PWA stay on the switch trick. */
 export function triggerTapHapticLight() {
   if (!isTapHapticSupported()) return
 
@@ -68,6 +69,11 @@ export function triggerTapHapticLight() {
 
   if (isIosDevice()) {
     fireIosSwitchHaptic()
+    return
+  }
+
+  if (canEdgeAndroidHaptic()) {
+    triggerEdgeAndroidHaptic('medium')
     return
   }
 

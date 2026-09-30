@@ -4,13 +4,16 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
 import android.provider.Settings
+import android.view.HapticFeedbackConstants
 import android.view.View
 import android.view.WindowInsets
 import android.webkit.CookieManager
@@ -110,6 +113,8 @@ class MainActivity : Activity() {
   private inner class ShellClient : WebViewClient() {
     override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
       onAppPage = EdgeLinks.isAppHost(Uri.parse(url))
+      // A full load drops the web's composer lock count, so drop the native lock with it.
+      requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     }
 
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
@@ -164,11 +169,51 @@ class MainActivity : Activity() {
     }
 
     @JavascriptInterface
+    fun share(json: String): Boolean {
+      if (!onAppPage) return false
+      val chooser = try {
+        EdgeShare.chooser(this@MainActivity, JSONObject(json))
+      } catch (e: Exception) {
+        null
+      } ?: return false
+      runOnUiThread { startActivity(chooser) }
+      return true
+    }
+
+    @JavascriptInterface
+    fun haptic(style: String) {
+      if (onAppPage) runOnUiThread { webView.performHapticFeedback(hapticConstant(style)) }
+    }
+
+    @JavascriptInterface
+    fun setOrientationLock(lock: String) {
+      if (!onAppPage) return
+      runOnUiThread {
+        // Tablets keep free rotation, like the iPad build.
+        if (resources.configuration.smallestScreenWidthDp >= 600) return@runOnUiThread
+        requestedOrientation = if (lock == "portrait") {
+          ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        } else {
+          ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+      }
+    }
+
+    @JavascriptInterface
     fun info(): String = JSONObject()
       .put("appId", BuildConfig.APPLICATION_ID)
       .put("version", BuildConfig.VERSION_NAME)
       .put("firebase", EdgePush.firebaseReady(this@MainActivity))
       .toString()
+  }
+
+  /** Styles match the IPA's `triggerHaptic`. */
+  private fun hapticConstant(style: String): Int = when (style) {
+    "light" -> HapticFeedbackConstants.CLOCK_TICK
+    "heavy" -> HapticFeedbackConstants.LONG_PRESS
+    "success" -> if (Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.VIRTUAL_KEY
+    "warning", "error" -> if (Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.REJECT else HapticFeedbackConstants.LONG_PRESS
+    else -> HapticFeedbackConstants.VIRTUAL_KEY
   }
 
   private fun requestPushPermission() {
@@ -210,7 +255,7 @@ class MainActivity : Activity() {
     ): Boolean {
       fileCallback?.onReceiveValue(null)
       fileCallback = callback
-      val pick = params.createIntent().apply {
+      val pick = photoPickerIntent(params) ?: params.createIntent().apply {
         if (params.mode == FileChooserParams.MODE_OPEN_MULTIPLE) putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
       }
       return try {
@@ -246,6 +291,24 @@ class MainActivity : Activity() {
           arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
           REQ_GEO,
         )
+      }
+    }
+  }
+
+  /**
+   * System photo picker (no storage permission, multi-select) when the input only takes images / videos.
+   * Other inputs keep the documents picker.
+   */
+  private fun photoPickerIntent(params: WebChromeClient.FileChooserParams): Intent? {
+    if (Build.VERSION.SDK_INT < 33 || params.isCaptureEnabled) return null
+    val types = params.acceptTypes.orEmpty().map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+    if (types.isEmpty() || !types.all { it.startsWith("image/") || it.startsWith("video/") }) return null
+    val images = types.all { it.startsWith("image/") }
+    val videos = types.all { it.startsWith("video/") }
+    return Intent(MediaStore.ACTION_PICK_IMAGES).apply {
+      if (images) type = "image/*" else if (videos) type = "video/*"
+      if (params.mode == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE) {
+        putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, minOf(MediaStore.getPickImagesMaxLimit(), PHOTO_PICKER_MAX))
       }
     }
   }
@@ -320,7 +383,8 @@ class MainActivity : Activity() {
 
   companion object {
     /** Web can detect the shell by this token (like `EdgeiOS/` on iOS). */
-    const val SHELL_UA_TOKEN = "EdgeAndroid/1.0.0"
+    const val SHELL_UA_TOKEN = "EdgeAndroid/" + BuildConfig.VERSION_NAME
+    private const val PHOTO_PICKER_MAX = 20
     private const val REQ_FILES = 41
     private const val REQ_MEDIA = 42
     private const val REQ_GEO = 43

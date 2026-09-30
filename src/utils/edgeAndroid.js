@@ -106,6 +106,68 @@ export async function openEdgeAndroidAppSettings() {
   }
 }
 
+/** Bridge when this APK ships `name` (older APKs lack the newer methods). */
+function bridgeWith(name) {
+  const b = bridge()
+  return b && typeof b[name] === 'function' ? b : null
+}
+
+/** True when this APK can open the system share sheet. */
+export function canShareEdgeAndroid() {
+  return Boolean(bridgeWith('share'))
+}
+
+/**
+ * System share sheet. Same payload as the IPA's `share`.
+ * The chooser does not report cancel, so a shown sheet is `{ ok: true }`.
+ *
+ * @param {{ url?: string, text?: string, title?: string, images?: Array<{ mimeType: string, base64: string, filename?: string }> }} payload
+ * @returns {{ ok: boolean }}
+ */
+export function shareEdgeAndroid(payload) {
+  const b = bridgeWith('share')
+  if (!b) return { ok: false }
+  try {
+    return { ok: b.share(JSON.stringify(payload || {})) === true }
+  } catch {
+    return { ok: false }
+  }
+}
+
+/** True when this APK can fire native haptics. */
+export function canEdgeAndroidHaptic() {
+  return Boolean(bridgeWith('haptic'))
+}
+
+/** @param {'light' | 'medium' | 'heavy' | 'success' | 'warning' | 'error'} [style] */
+export function triggerEdgeAndroidHaptic(style = 'light') {
+  const b = bridgeWith('haptic')
+  if (!b) return { ok: false, via: 'noop' }
+  try {
+    b.haptic(String(style))
+    return { ok: true, via: 'bridge' }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
+/** True when this APK can force portrait (phones only; tablets ignore the lock natively). */
+export function canLockEdgeAndroidOrientation() {
+  return Boolean(bridgeWith('setOrientationLock'))
+}
+
+/** @param {'portrait' | 'none'} lock */
+export function setEdgeAndroidOrientationLock(lock) {
+  const b = bridgeWith('setOrientationLock')
+  if (!b) return { ok: false, via: 'noop' }
+  try {
+    b.setOrientationLock(lock === 'portrait' ? 'portrait' : 'none')
+    return { ok: true, via: 'bridge' }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
 /** `com.edgetilt.app` or `com.edgetilt.app.test`. */
 export function readEdgeAndroidAppId() {
   const b = bridge()

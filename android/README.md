@@ -8,7 +8,8 @@ A thin native WebView around the live site (like the iOS WKWebView shell) plus a
 
 | File | What |
 | --- | --- |
-| `app/src/main/java/com/edgetilt/app/MainActivity.kt` | Full-screen WebView on `BuildConfig.BASE_URL`. File picker, camera/mic (getUserMedia), geolocation, back = history, render-crash recovery. |
+| `app/src/main/java/com/edgetilt/app/MainActivity.kt` | Full-screen WebView on `BuildConfig.BASE_URL`. File picker (system photo picker when the input only takes images / videos, Android 13+), camera/mic (getUserMedia), geolocation, back = history, render-crash recovery. |
+| `.../EdgeShare.kt` | System share sheet for `EdgeAndroid.share` (text / URL / up to 4 images via `FileProvider` `${applicationId}.files`, cache `share/`). |
 | `.../BetSheetActivity.kt` | Portrait-locked light sheet (Done / title / Open app). Kalshi loads the `op_` ticket URL as is. Polymarket runs `/native/bet-sheet-polymarket.js` (same auto-tap script the IPA uses) once after the first page load. |
 | `.../EdgeLinks.kt` | Link routing: app hosts stay in the WebView, bet hosts open the sheet, Supabase / Google auth stays in the WebView, everything else opens outside (browser / app). |
 | `app/build.gradle.kts` | Flavors: `prod` (`com.edgetilt.app`, edgetilt.com, "Edge") and `staging` (`com.edgetilt.app.test`, lvslotpro.com, "Edge Test"). |
@@ -48,6 +49,11 @@ Web side: `src/utils/edgeAndroid.js` (`isEdgeAndroidShell()` = UA has `EdgeAndro
 | `pushToken()` | FCM token, `''` until Firebase is configured / has minted one |
 | `openAppSettings()` | This app's notification settings |
 | `info()` | JSON `{ appId, version, firebase }` |
+| `share(json)` | Opens the system share sheet. `json` = `{ url?, text?, title?, images?: [{ mimeType, base64, filename? }] }` (IPA `share` payload). `true` when shown (the chooser does not report cancel). APK 1.1.0+ |
+| `haptic(style)` | `light` / `medium` / `heavy` / `success` / `warning` / `error` via `performHapticFeedback` (IPA `triggerHaptic` styles). APK 1.1.0+ |
+| `setOrientationLock(lock)` | `portrait` forces portrait while a composer is open, `none` releases. Phones only (smallest width < 600dp). A full page load also releases. APK 1.1.0+ |
+
+Web feature-detects each newer method (`typeof EdgeAndroid.share === 'function'`), so older sideloaded APKs keep the web fallbacks. `shareViaBestAvailable`, `triggerEdgeNativeHaptic`, tap haptics and the composer portrait lock route to these automatically.
 
 ## Permissions after sign-in
 

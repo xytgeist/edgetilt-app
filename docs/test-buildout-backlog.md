@@ -4159,3 +4159,4 @@ Items are ordered by priority. ✅ = implemented. 🔜 = next. ⏳ = deferred (m
 - **2026-09-29:** Sign-in methods phone button says "Connect" like the others (`1.4.927`).
 - **2026-09-29:** **Lounge OG badge retries on load error (`1.4.928`).** After the connect-account reload, WKWebView sometimes dropped the `og-cohort-badge-*.svg` fetch and left an empty box beside the name. `LoungeOgBadge` now uses shared `src/components/RetryingImg.jsx` (extracted from `EdgeLogoMarks`, up to 3 cache-busted retries).
 - **2026-09-29:** Connect account prompt drops the "This is a new account." lead sentence (`1.4.929`).
+- **2026-09-29:** Connect account prompt secondary button reads "Continue with new account" (`1.4.930`).

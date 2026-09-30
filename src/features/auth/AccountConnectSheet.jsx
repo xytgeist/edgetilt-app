@@ -388,7 +388,7 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
               disabled={actionsLocked}
               className="mt-4 w-full rounded-full border border-zinc-600 py-3 text-[15px] font-semibold text-zinc-200 disabled:opacity-50"
             >
-              Continue with new
+              Continue with new account
             </button>
           </>
         ) : (

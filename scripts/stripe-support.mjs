@@ -14,7 +14,7 @@
 
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { repoRoot } from './lib/supabaseEnv.mjs'
+import { fetchWithConnectRetry, repoRoot } from './lib/supabaseEnv.mjs'
 
 function loadKey() {
   if (process.env.STRIPE_SUPPORT_KEY_LIVE) return process.env.STRIPE_SUPPORT_KEY_LIVE.trim()
@@ -29,7 +29,7 @@ const KEY = loadKey()
 async function stripe(method, path, params) {
   const body = params ? new URLSearchParams(params).toString() : undefined
   const url = `https://api.stripe.com/v1${path}${method === 'GET' && body ? `?${body}` : ''}`
-  const res = await fetch(url, {
+  const res = await fetchWithConnectRetry(url, {
     method,
     headers: {
       Authorization: `Bearer ${KEY}`,

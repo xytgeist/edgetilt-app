@@ -6,6 +6,7 @@
  *   { event_id, away_abbrev, home_abbrev, away_name?, home_name?, commence_time? }
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { userIdFromJwt } from '../_shared/userJwt.ts'
 import { buildCfbGamePlayers } from '../_shared/loungeCfbGamePlayers.ts'
 
 const corsHeaders = {
@@ -60,11 +61,8 @@ Deno.serve(async (req) => {
     body = {}
   }
 
-  const {
-    data: { user },
-    error: userErr,
-  } = await admin.auth.getUser(jwt)
-  if (userErr || !user?.id) return json(401, { error: 'Invalid or expired session.' })
+  const userId = await userIdFromJwt(jwt, admin)
+  if (!userId) return json(401, { error: 'Invalid or expired session.' })
 
   const eventId = String(body?.event_id || '').trim()
   const awayAbbrev = String(body?.away_abbrev || '').trim()

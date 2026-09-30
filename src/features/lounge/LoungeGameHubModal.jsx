@@ -47,6 +47,15 @@ import {
 import { readGameHubCache, writeGameHubCache } from './gameHub/gameHubCache.js'
 
 const EMPTY_DETAIL = { odds: [], plays: [], stats: [], live: null, splits: null }
+
+/** Both sides filled … only then is it safe to ask the server to stop resending rosters. */
+function hasRosterRows(rosters) {
+  return Boolean(
+    rosters
+      && Array.isArray(rosters.home) && rosters.home.length
+      && Array.isArray(rosters.away) && rosters.away.length,
+  )
+}
 const EMPTY_FANTASY = { players: [], props: [], season: null, week: null, sources: [] }
 const EMPTY_POSTS = { top: null, latest: null }
 
@@ -202,15 +211,19 @@ export default function LoungeGameHubModal({
       setDetail(EMPTY_DETAIL)
       return undefined
     }
-    setDetail(readGameHubCache(detailGameId)?.detail || EMPTY_DETAIL)
+    const cachedDetail = readGameHubCache(detailGameId)?.detail
+    setDetail(cachedDetail || EMPTY_DETAIL)
     let cancelled = false
     let inflight = false
+    let knownRosters = hasRosterRows(cachedDetail?.rosters) ? cachedDetail.rosters : null
     const load = () => {
       if (inflight) return
       inflight = true
-      void loungeSportsGameDetail(supabaseClient, detailGameId).then((data) => {
+      void loungeSportsGameDetail(supabaseClient, detailGameId, { omitRosters: Boolean(knownRosters) }).then((data) => {
         inflight = false
         if (cancelled || data?.error) return
+        const freshRosters = data.rosters && typeof data.rosters === 'object' ? data.rosters : null
+        if (hasRosterRows(freshRosters)) knownRosters = freshRosters
         const next = {
           odds: Array.isArray(data.odds) ? data.odds : [],
           plays: Array.isArray(data.plays) ? data.plays : [],
@@ -219,7 +232,7 @@ export default function LoungeGameHubModal({
           splits: data.splits && typeof data.splits === 'object' ? data.splits : null,
           teamStats: data.team_stats && typeof data.team_stats === 'object' ? data.team_stats : null,
           playerBox: data.player_box && typeof data.player_box === 'object' ? data.player_box : null,
-          rosters: data.rosters && typeof data.rosters === 'object' ? data.rosters : null,
+          rosters: knownRosters || freshRosters,
         }
         writeGameHubCache(detailGameId, { detail: next })
         setDetail(next)

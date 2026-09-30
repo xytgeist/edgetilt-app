@@ -134,15 +134,29 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
   const gamesRef = useRef(games)
   gamesRef.current = games
 
-  const loadBoard = useCallback(async () => {
+  const lastFullBoardAtRef = useRef(0)
+
+  /** `active` = server's live / about-to-start / recently-final slice, merged by id into the full slate. */
+  const loadBoard = useCallback(async ({ active = false } = {}) => {
     if (!supabaseClient || inflightRef.current) return
+    const useActive = active && gamesRef.current.length > 0
     inflightRef.current = true
     try {
-      const data = await loungeSportsScoreboard(supabaseClient)
+      const data = await loungeSportsScoreboard(supabaseClient, useActive ? { scope: 'active' } : {})
       if (data?.error || !Array.isArray(data?.games)) return
       const incoming = data.games.map(enrichLoungeSportsGame)
+      if (!useActive) lastFullBoardAtRef.current = Date.now()
       if (!incoming.length) return
-      const next = preserveSpreads(incoming, gamesRef.current)
+      let merged = incoming
+      if (useActive) {
+        const byId = new Map(incoming.map((g) => [String(g.id), g]))
+        const known = new Set(gamesRef.current.map((g) => String(g.id)))
+        merged = [
+          ...gamesRef.current.map((g) => byId.get(String(g.id)) || g),
+          ...incoming.filter((g) => !known.has(String(g.id))),
+        ]
+      }
+      const next = preserveSpreads(merged, gamesRef.current)
       setGames(next)
       writeLoungeSportsScoreboardCache(next)
     } catch (err) {
@@ -158,9 +172,12 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
     void loadBoard()
     const live = gamesRef.current.some((g) => g.status === 'in') || hubGame?.status === 'in'
     const ms = hubGame ? (hubGame.status === 'in' ? 10_000 : 60_000) : live ? 15_000 : 5 * 60_000
+    // Fast live ticks only need the games that are changing; the full slate refreshes every 2 min.
+    const fullEveryMs = ms < 60_000 ? 2 * 60_000 : 0
     const id = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return
-      void loadBoard()
+      const fullDue = !fullEveryMs || Date.now() - lastFullBoardAtRef.current >= fullEveryMs
+      void loadBoard({ active: !fullDue })
     }, ms)
     return () => clearInterval(id)
   }, [feedActive, hubGame, loadBoard, supabaseClient, games.some((g) => g.status === 'in')])

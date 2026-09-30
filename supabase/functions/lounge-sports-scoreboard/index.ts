@@ -7,6 +7,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 import { cachedLoungeSportsScoreboard, fetchLoungeSportsGameDetail } from '../_shared/loungeSportsScoreboard.ts'
 import { loadPastedBettingSplitsForSlate } from '../_shared/loungeBotBettingSplits.ts'
 import { sharedCached } from '../_shared/edgeSharedCache.ts'
+import { userIdFromJwt } from '../_shared/userJwt.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,6 +23,15 @@ const DETAIL_TTL_MS = 4_000
 
 function cachedDetail(key: string, admin: ReturnType<typeof createClient>, build: () => Promise<Record<string, unknown> | null>) {
   return sharedCached(`scoreboard:detail:${key}`, { ttlMs: DETAIL_TTL_MS, leaseMs: 15_000, admin }, build)
+}
+
+/** Feed pills poll this slim slice between full-board refreshes: live, about to start, or recently final. */
+function isActiveBoardGame(game: { status: string; commence_time: string }): boolean {
+  if (game.status === 'in') return true
+  const t = Date.parse(String(game.commence_time || ''))
+  if (!Number.isFinite(t)) return false
+  if (game.status === 'pre') return t - Date.now() <= 30 * 60_000
+  return Date.now() - t <= 8 * 3_600_000
 }
 
 function json(status: number, body: Record<string, unknown>) {
@@ -47,16 +57,17 @@ Deno.serve(async (req) => {
   }
   const jwt = authHeader.replace(/^Bearer\s+/i, '').trim()
   const admin = createClient(supabaseUrl, serviceKey)
-  const {
-    data: { user },
-    error: userErr,
-  } = await admin.auth.getUser(jwt)
-  if (userErr || !user?.id) return json(401, { error: 'Invalid or expired session.' })
+  const userId = await userIdFromJwt(jwt, admin)
+  if (!userId) return json(401, { error: 'Invalid or expired session.' })
 
   let eventId = ''
+  let scope = ''
+  let omitRosters = false
   try {
     const body = await req.json().catch(() => ({}))
     eventId = String(body?.event_id || '').trim()
+    scope = String(body?.scope || '').trim()
+    omitRosters = body?.omit_rosters === true
   } catch {
     eventId = ''
   }
@@ -64,7 +75,8 @@ Deno.serve(async (req) => {
   try {
     const board = await cachedLoungeSportsScoreboard(admin, BOARD_TTL_MS)
     if (!eventId) {
-      return json(200, { ok: true, ...board, fetched_at: new Date().toISOString() })
+      const games = scope === 'active' ? board.games.filter(isActiveBoardGame) : board.games
+      return json(200, { ok: true, ...board, games, scope: scope === 'active' ? 'active' : 'full', fetched_at: new Date().toISOString() })
     }
     const game = board.games.find((g) => g.id === eventId)
     if (!game) return json(404, { error: 'Game not on the current slate.' })
@@ -102,7 +114,12 @@ Deno.serve(async (req) => {
         fetched_at: new Date().toISOString(),
       }
     })
-    return json(200, payload || { error: 'Scoreboard failed.' })
+    if (!payload) return json(200, { error: 'Scoreboard failed.' })
+    if (omitRosters) {
+      const { rosters: _rosters, ...rest } = payload
+      return json(200, rest)
+    }
+    return json(200, payload)
   } catch (err) {
     return json(502, { error: err instanceof Error ? err.message : 'Scoreboard failed.' })
   }

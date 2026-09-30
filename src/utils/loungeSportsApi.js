@@ -83,11 +83,12 @@ export function writeLoungeSportsScoreboardCache(games) {
  * Hub-open detail: live clock/down, multi-book odds, PBP, player stats.
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {string} eventId
+ * @param {{ omitRosters?: boolean }} [opts] omitRosters: caller already holds this game's rosters (static in-game).
  */
-export async function loungeSportsGameDetail(supabase, eventId) {
+export async function loungeSportsGameDetail(supabase, eventId, opts = {}) {
   const id = String(eventId || '').trim()
   if (!id) return { error: 'Missing event.' }
-  return loungeSportsScoreboard(supabase, { event_id: id })
+  return loungeSportsScoreboard(supabase, opts.omitRosters ? { event_id: id, omit_rosters: true } : { event_id: id })
 }
 
 /**

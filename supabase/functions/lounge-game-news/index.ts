@@ -6,6 +6,7 @@
  *   { event_id, sport_key, status?, commence_time?, away: { abbrev, name?, team_id? }, home: { ... } }
  */
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { userIdFromJwt } from '../_shared/userJwt.ts'
 import { buildGameNews } from '../_shared/loungeGameNews.ts'
 import type { LoungeSportsGame } from '../_shared/loungeSportsScoreboard.ts'
 import { sharedCached } from '../_shared/edgeSharedCache.ts'
@@ -52,11 +53,8 @@ Deno.serve(async (req) => {
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>
 
-  const {
-    data: { user },
-    error: userErr,
-  } = await admin.auth.getUser(jwt)
-  if (userErr || !user?.id) return json(401, { error: 'Invalid or expired session.' })
+  const userId = await userIdFromJwt(jwt, admin)
+  if (!userId) return json(401, { error: 'Invalid or expired session.' })
 
   const eventId = String(body?.event_id || '').trim()
   const sportKey = String(body?.sport_key || '').trim()

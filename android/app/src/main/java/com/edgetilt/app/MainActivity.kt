@@ -35,6 +35,7 @@ import org.json.JSONObject
 class MainActivity : Activity() {
   private lateinit var webView: WebView
   private var fileCallback: ValueCallback<Array<Uri>>? = null
+  private lateinit var videoPrep: EdgeVideoPrep
   private var pendingMediaRequest: PermissionRequest? = null
   private var pendingGeo: Pair<String, GeolocationPermissions.Callback>? = null
   /** The JS bridge only answers while the main frame is on our own site (not Supabase / Google auth hops). */
@@ -48,6 +49,7 @@ class MainActivity : Activity() {
     webView = WebView(this).apply { setBackgroundColor(Color.BLACK) }
     root.addView(webView, FrameLayout.LayoutParams(-1, -1))
     setContentView(root)
+    videoPrep = EdgeVideoPrep(this, root)
     applySystemInsets(root)
 
     webView.settings.apply {
@@ -98,6 +100,7 @@ class MainActivity : Activity() {
   private fun registerBack() {
     if (Build.VERSION.SDK_INT >= 33) {
       onBackInvokedDispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT) {
+        if (videoPrep.cancel()) return@registerOnBackInvokedCallback
         if (webView.canGoBack()) webView.goBack() else moveTaskToBack(true)
       }
     }
@@ -105,6 +108,7 @@ class MainActivity : Activity() {
 
   @Deprecated("Pre-33 back")
   override fun onBackPressed() {
+    if (videoPrep.cancel()) return
     if (webView.canGoBack()) webView.goBack() else moveTaskToBack(true)
   }
 
@@ -336,7 +340,7 @@ class MainActivity : Activity() {
     } else {
       WebChromeClient.FileChooserParams.parseResult(resultCode, data) ?: emptyArray()
     }
-    callback.onReceiveValue(uris)
+    videoPrep.prepare(uris) { callback.onReceiveValue(it) }
   }
 
   override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, results: IntArray) {

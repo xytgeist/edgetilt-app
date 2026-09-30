@@ -23,8 +23,8 @@ android {
     applicationId = "com.edgetilt.app"
     minSdk = 28
     targetSdk = 36
-    versionCode = 2
-    versionName = "1.1.0"
+    versionCode = 3
+    versionName = "1.2.0"
   }
 
   buildFeatures {
@@ -76,4 +76,7 @@ dependencies {
   implementation("com.google.firebase:firebase-messaging")
   implementation("androidx.webkit:webkit:1.17.1")
   implementation("androidx.core:core:1.9.0")
+  implementation("androidx.media3:media3-transformer:1.11.1")
+  implementation("androidx.media3:media3-effect:1.11.1")
+  implementation("androidx.media3:media3-common:1.11.1")
 }

@@ -51,6 +51,23 @@ export function userSignInMethods(user) {
   return all.filter((p) => METHOD_LABEL[p])
 }
 
+/** The sign-in method this user used most recently (identity `last_sign_in_at`). */
+export function userLastSignInMethod(user) {
+  let best = ''
+  let bestAt = 0
+  for (const identity of user?.identities || []) {
+    const provider = String(identity?.provider || '').toLowerCase()
+    if (!METHOD_LABEL[provider]) continue
+    const at = Date.parse(identity?.last_sign_in_at || identity?.updated_at || '') || 0
+    if (at >= bestAt) {
+      best = provider
+      bestAt = at
+    }
+  }
+  const fallback = String(user?.app_metadata?.provider || '').toLowerCase()
+  return best || (METHOD_LABEL[fallback] ? fallback : '')
+}
+
 export function signInMethodLabel(method) {
   return METHOD_LABEL[method] || method
 }
@@ -68,6 +85,7 @@ export function rememberDeviceAccount(user, profile) {
     display_name: profile?.display_name || '',
     avatar_url: profile?.avatar_url || '',
     methods: userSignInMethods(user),
+    last_method: userLastSignInMethod(user),
     email_hint: maskEmail(user.email),
     phone_hint: maskPhone(user.phone),
     last_seen: Date.now(),
@@ -104,7 +122,7 @@ export function connectPromptHoldsOnboarding(user) {
   return listDeviceAccounts().some((a) => a.user_id !== user.id)
 }
 
-/** { targetUserId, targetHandle, targetMethods, freshMethod, freshPhone, startedAt } */
+/** { targetUserId, targetHandle, targetMethods, freshMethod, freshPhone, freshEmail, transferToken, startedAt } */
 export function readConnectPending() {
   const p = readJson(PENDING_KEY, null)
   if (!p || !p.targetUserId || Date.now() - Number(p.startedAt || 0) > PENDING_TTL_MS) return null

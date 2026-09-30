@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import AuthModalShell from './AuthModalShell.jsx'
 import { friendlyLinkError, linkAppleIdentity, linkGoogleIdentity } from './linkSignInMethod.js'
+import { createAppleIdTokenNonce } from './appleIdTokenNonce.js'
+import { reloadAfterAuthSession } from './authPostLoginReload.js'
+import { edgeNativeInvoke, isEdgeiOSShell } from '../../utils/edgeNative.js'
 import { isLikelyNewAuthUser } from '../lounge/firstRunChromeTour.js'
 import {
   ensureDefaultProfileRow,
@@ -18,6 +21,60 @@ import {
   wasConnectPromptShown,
   writeConnectPending,
 } from './deviceAccounts.js'
+
+function preferredTargetMethod(account) {
+  const methods = account?.methods || []
+  const order = [account?.last_method, 'google', 'apple', 'phone', 'email']
+  return order.find((m) => m && methods.includes(m) && (m !== 'apple' || isEdgeiOSShell())) || ''
+}
+
+/**
+ * Jump straight into the remembered account's own sign-in (Google redirect / native Apple).
+ * Returns false when it needs the sign-in modal (phone, email, or Apple cancelled).
+ */
+async function signInToRemembered(supabase, account) {
+  const method = preferredTargetMethod(account)
+  try {
+    if (method === 'google') {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/` },
+      })
+      return !error
+    }
+    if (method === 'apple') {
+      const { raw, hashed } = await createAppleIdTokenNonce()
+      const native = await edgeNativeInvoke('signInWithApple', { nonce: hashed })
+      if (native?.cancelled || !native?.identityToken) return false
+      const { data, error } = await supabase.auth.signInWithIdToken({
+        provider: 'apple',
+        token: native.identityToken,
+        nonce: raw,
+      })
+      if (error) return false
+      await reloadAfterAuthSession((u) => ensureDefaultProfileRow(supabase, u), data.user)
+      return true
+    }
+  } catch {
+    return false
+  }
+  return false
+}
+
+async function attachVerifiedTransfer(supabase, transferToken) {
+  const { data, error } = await supabase.functions.invoke('account-connect-attach', {
+    body: { transfer_token: transferToken },
+  })
+  if (!error && data?.ok) return { ok: true }
+  let message = 'Could not connect automatically. Confirm below.'
+  try {
+    const body = await error?.context?.json?.()
+    if (body?.error) message = body.error
+  } catch {
+    /* keep default */
+  }
+  return { ok: false, error: message }
+}
 
 function methodsText(methods) {
   const labels = (methods || []).map(signInMethodLabel)
@@ -89,9 +146,25 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
           if (userSignInMethods(user).includes(pending.freshMethod)) {
             writeConnectPending(null)
             onNotice?.(`${signInMethodLabel(pending.freshMethod)} is now connected to @${pending.targetHandle}.`)
-          } else {
-            setFinish(pending)
+            return
           }
+          if (pending.transferToken) {
+            const result = await attachVerifiedTransfer(supabase, pending.transferToken)
+            if (cancelled) return
+            if (result.ok) {
+              writeConnectPending(null)
+              await supabase.auth.refreshSession().catch(() => {})
+              const { data } = await supabase.auth.getUser()
+              if (data?.user) {
+                const { data: profile } = await ensureDefaultProfileRow(supabase, data.user)
+                rememberDeviceAccount(data.user, profile)
+              }
+              onNotice?.(`Your ${signInMethodLabel(pending.freshMethod)} is now connected to @${pending.targetHandle}.`)
+              return
+            }
+            setError(result.error)
+          }
+          setFinish(pending)
           return
         }
         writeConnectPending(null)
@@ -147,7 +220,9 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
         freshPhone: user.phone || '',
         freshEmail: user.email || '',
       })
-      const { data, error: fnErr } = await supabase.functions.invoke('account-connect-discard', { body: {} })
+      const { data, error: fnErr } = await supabase.functions.invoke('account-connect-discard', {
+        body: { target_user_id: account.user_id },
+      })
       if (fnErr || !data?.ok) {
         writeConnectPending(null)
         let message = 'Could not connect right now. You can connect it later in Settings → Account info.'
@@ -161,10 +236,16 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
         setBusy(false)
         return
       }
+      if (data.transfer_token) {
+        const pending = readConnectPending()
+        if (pending) writeConnectPending({ ...pending, transferToken: data.transfer_token })
+      }
       forgetDeviceAccount(user.id)
       setOffer(null)
       setBusy(false)
       await supabase.auth.signOut({ scope: 'local' })
+      const started = await signInToRemembered(supabase, account)
+      if (started) return
       onRequestSignIn?.(
         `Sign in to @${account.handle} with ${methodsText(account.methods)} to finish connecting ${signInMethodLabel(freshMethod)}.`,
       )

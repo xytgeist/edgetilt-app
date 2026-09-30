@@ -1,4 +1,5 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { CONNECT_TRANSFER_TTL_MS, signConnectTransfer } from '../_shared/accountConnectToken.ts'
 
 /**
  * Connect-account flow, step 1: delete the caller's brand-new, empty account so its sign-in
@@ -64,7 +65,29 @@ Deno.serve(async (req) => {
     }
   }
 
+  // Hand the already-verified phone / email to the target account so it isn't re-verified.
+  let body: { target_user_id?: string } = {}
+  try {
+    body = await req.json()
+  } catch {
+    body = {}
+  }
+  const target = String(body?.target_user_id || '').trim()
+  const providers = Array.isArray(user.app_metadata?.providers) ? user.app_metadata.providers : []
+  const phone = user.phone && user.phone_confirmed_at ? String(user.phone) : ''
+  const email = providers.includes('email') && user.email && user.email_confirmed_at ? String(user.email) : ''
+  let transferToken = ''
+  if (target && target !== user.id && (phone || email)) {
+    transferToken = await signConnectTransfer(serviceRoleKey, {
+      v: 1,
+      target,
+      ...(phone ? { phone } : {}),
+      ...(email ? { email } : {}),
+      exp: Date.now() + CONNECT_TRANSFER_TTL_MS,
+    })
+  }
+
   const { error: delErr } = await admin.auth.admin.deleteUser(user.id)
   if (delErr) return json({ error: delErr.message || 'Could not remove the new account.' }, 400)
-  return json({ ok: true })
+  return json({ ok: true, transfer_token: transferToken || null })
 })

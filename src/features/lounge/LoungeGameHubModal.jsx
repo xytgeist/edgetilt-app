@@ -77,6 +77,8 @@ export default function LoungeGameHubModal({
   const [fantasy, setFantasy] = useState(EMPTY_FANTASY)
   const [fantasyLoading, setFantasyLoading] = useState(false)
   const [fantasyErr, setFantasyErr] = useState('')
+  const fantasyWantedRef = useRef(true)
+  const fantasyRefreshRef = useRef(null)
   const [draft, setDraft] = useState('')
   const [posting, setPosting] = useState(false)
   const [chatErr, setChatErr] = useState('')
@@ -310,21 +312,25 @@ export default function LoungeGameHubModal({
       setFantasyErr('')
     }
     loadRoster({ showLoading: !cachedFantasy })
-    // NFL fantasy quiet-poll while live; CFB roster is static for the week.
+    // NFL fantasy quiet-poll while live and on a surface that shows it; CFB roster is static for the week.
     const pollMs = !cfb && game.status === 'in' ? 45_000 : 0
     const id = pollMs
       ? window.setInterval(() => {
           if (typeof document !== 'undefined' && document.hidden) return
+          if (!fantasyWantedRef.current) return
           loadRoster({ showLoading: false })
         }, pollMs)
       : 0
+    fantasyRefreshRef.current = pollMs ? () => loadRoster({ showLoading: false }) : null
     const onVisible = () => {
-      if (!document.hidden && (pollMs || !haveRoster)) loadRoster({ showLoading: false })
+      if (document.hidden) return
+      if (!haveRoster || (pollMs && fantasyWantedRef.current)) loadRoster({ showLoading: false })
     }
     document.addEventListener('visibilitychange', onVisible)
     return () => {
       cancelled = true
       if (id) window.clearInterval(id)
+      fantasyRefreshRef.current = null
       document.removeEventListener('visibilitychange', onVisible)
     }
   }, [game?.id, game?.status, game?.sport_key, game?.away?.abbrev, game?.home?.abbrev, supabaseClient])
@@ -456,6 +462,14 @@ export default function LoungeGameHubModal({
     // Pregame matchup board vs field gamecast mount the strip in different trees.
     rebindKey: game?.status === 'pre' ? 'pre' : 'field',
   })
+
+  // Live fantasy points + Kalshi props only show on Players / Fantasy / Stats and the full-screen prop rails.
+  const fantasyWanted = gamecastFull || tab === 'players' || tab === 'fantasy' || tab === 'stats'
+  useEffect(() => {
+    const was = fantasyWantedRef.current
+    fantasyWantedRef.current = fantasyWanted
+    if (fantasyWanted && !was) fantasyRefreshRef.current?.()
+  }, [fantasyWanted])
 
   if (!game || typeof document === 'undefined') return null
 

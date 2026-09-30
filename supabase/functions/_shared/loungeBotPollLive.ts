@@ -11,7 +11,7 @@ import {
   ptMinutesSinceMidnightPt,
   type OddsCfgRow,
 } from './loungeBotOddsRun.ts'
-import { calendarPickFromTarget, resolveScottScanTargets } from './loungeBotScanTargets.ts'
+import { calendarPickFromTarget, filterTargetsWithEvents, LIVE_SCAN_WINDOW, resolveScottScanTargets } from './loungeBotScanTargets.ts'
 import {
   fetchSportScores,
   filterInProgressOddsEvents,
@@ -67,7 +67,10 @@ export async function runPollLive(
   }
 
   const activeCatalog = await fetchActiveSportsCatalog()
-  const scanTargets = await resolveScottScanTargets(admin, activeCatalog.keys, activeCatalog.titles)
+  const scanTargets = await filterTargetsWithEvents(
+    await resolveScottScanTargets(admin, activeCatalog.keys, activeCatalog.titles),
+    LIVE_SCAN_WINDOW,
+  )
   if (!scanTargets.length) {
     return { ok: true, skipped: 'no_coverage_sports_active', slug: bot.slug, action: 'poll_live' }
   }

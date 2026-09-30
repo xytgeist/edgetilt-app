@@ -27,7 +27,7 @@ import {
   type OddsBotRow,
   type OddsCfgRow,
 } from './loungeBotOddsRun.ts'
-import { resolveScottScanTargets } from './loungeBotScanTargets.ts'
+import { filterTargetsWithEvents, PREGAME_SCAN_WINDOW, resolveScottScanTargets } from './loungeBotScanTargets.ts'
 import {
   countScheduledKindToday,
   DEFAULT_MIN_POST_GAP_MINUTES,
@@ -236,7 +236,10 @@ export async function runValueBetRadarPoll(
   }
 
   const activeCatalog = await fetchActiveSportsCatalog()
-  const scanTargets = await resolveScottScanTargets(admin, activeCatalog.keys, activeCatalog.titles)
+  const scanTargets = await filterTargetsWithEvents(
+    await resolveScottScanTargets(admin, activeCatalog.keys, activeCatalog.titles),
+    PREGAME_SCAN_WINDOW,
+  )
   if (!scanTargets.length) {
     return { ok: true, slug, action: 'value_bet_radar', dryRun, skipped: 'no_coverage_sports_active' }
   }

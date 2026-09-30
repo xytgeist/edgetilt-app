@@ -1169,7 +1169,10 @@ Deno.serve(async (req) => {
 
     const { keys: activeSports, titles: sportTitles } = await fetchActiveSportsCatalog()
     const scanTargetsModule = await loadScanTargetsModules()
-    const scanTargets = await scanTargetsModule.resolveScottScanTargets(admin, activeSports, sportTitles)
+    const scanTargets = await scanTargetsModule.filterTargetsWithEvents(
+      await scanTargetsModule.resolveScottScanTargets(admin, activeSports, sportTitles),
+      scanTargetsModule.PREGAME_SCAN_WINDOW,
+    )
     const calendarPickFromTarget = scanTargetsModule.calendarPickFromTarget
     if (!scanTargets.length) {
       return adminOpsJson(200, { ok: true, skipped: 'no_coverage_sports_active', slug, action })

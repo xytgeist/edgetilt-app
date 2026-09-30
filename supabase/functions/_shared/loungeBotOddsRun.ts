@@ -2,7 +2,7 @@
  * Shared odds fetch, slate, and edge-alert publish logic.
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
-import { sharedCachedNoMem } from './edgeSharedCache.ts'
+import { sharedCached, sharedCachedNoMem } from './edgeSharedCache.ts'
 import {
   buildOddsEdgeAlertCaption,
   resolveScottCategoryLabel,
@@ -346,6 +346,38 @@ export function fetchSportOddsShared(
 ): ReturnType<typeof fetchSportOdds> {
   const key = `odds:scan:${sport}:${[...regions].sort().join(',')}:${[...markets].sort().join(',')}`
   return sharedCachedNoMem(key, { ttlMs: maxAgeMs, leaseMs: 30_000 }, () => fetchSportOdds(sport, regions, markets))
+}
+
+/** `/events` costs 0 credits and lists in-play + upcoming games … the free gate before paying for `/odds`. */
+function fetchSportEventTimes(sport: string): Promise<number[]> {
+  return sharedCached<number[]>(`odds:events:${sport}`, { ttlMs: 5 * 60 * 1000 }, async () => {
+    const key = oddsApiKey()
+    if (!key) throw new Error('THE_ODDS_API_KEY not set on Edge.')
+    const res = await fetch(`${ODDS_BASE}/sports/${sport}/events?apiKey=${encodeURIComponent(key)}`, {
+      signal: AbortSignal.timeout(10_000),
+    })
+    if (!res.ok) throw new Error(`events ${res.status}`)
+    const rows = await res.json() as Array<{ commence_time?: string }>
+    return (Array.isArray(rows) ? rows : [])
+      .map((row) => Date.parse(String(row?.commence_time || '')))
+      .filter((t) => Number.isFinite(t))
+  })
+}
+
+/** True when the sport has a game that started within `lookbackHours` or starts within `aheadHours`. Fails open. */
+export async function sportHasEventsInWindow(
+  sport: string,
+  window: { lookbackHours: number; aheadHours: number },
+): Promise<boolean> {
+  try {
+    const times = await fetchSportEventTimes(sport)
+    const now = Date.now()
+    const min = now - window.lookbackHours * 3_600_000
+    const max = now + window.aheadHours * 3_600_000
+    return times.some((t) => t >= min && t <= max)
+  } catch {
+    return true
+  }
 }
 
 /**

@@ -28,7 +28,7 @@ import {
   type OddsBotRow,
   type OddsCfgRow,
 } from './loungeBotOddsRun.ts'
-import { resolveScottScanTargets } from './loungeBotScanTargets.ts'
+import { filterTargetsWithEvents, PREGAME_SCAN_WINDOW, resolveScottScanTargets } from './loungeBotScanTargets.ts'
 import {
   DEFAULT_MIN_POST_GAP_MINUTES,
   hasPendingScheduleDedupe,
@@ -311,7 +311,10 @@ export async function runBestBetHourPoll(
   }
 
   const activeCatalog = await fetchActiveSportsCatalog()
-  const scanTargets = await resolveScottScanTargets(admin, activeCatalog.keys, activeCatalog.titles)
+  const scanTargets = await filterTargetsWithEvents(
+    await resolveScottScanTargets(admin, activeCatalog.keys, activeCatalog.titles),
+    PREGAME_SCAN_WINDOW,
+  )
   if (!scanTargets.length) {
     return { ok: true, slug, action: 'best_bet_hour', dryRun, skipped: 'no_coverage_sports_active' }
   }

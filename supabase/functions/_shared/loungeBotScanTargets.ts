@@ -11,7 +11,7 @@ import {
   sortCalendarRowsByCoverage,
   type CalendarRowForCoverage,
 } from './loungeBotCoverageScope.ts'
-import { ptTodayDate } from './loungeBotOddsRun.ts'
+import { ptTodayDate, sportHasEventsInWindow } from './loungeBotOddsRun.ts'
 import { sportDisplayLabel } from './loungeBotSportLabels.ts'
 
 export type CalendarRow = {
@@ -179,6 +179,20 @@ export async function resolveScottScanTargets(
   }
 
   return sortCalendarRowsByCoverage([...targets.values()]) as ScottScanTarget[]
+}
+
+/** Pregame scans: anything live (6h lookback) or inside the 48h odds window. */
+export const PREGAME_SCAN_WINDOW = { lookbackHours: 6, aheadHours: 48 }
+/** In-game scans: only games that kicked off in the last 6h. */
+export const LIVE_SCAN_WINDOW = { lookbackHours: 6, aheadHours: 0 }
+
+/** Drop sports with no games in the window (free `/events` check) before paying for `/odds`. */
+export async function filterTargetsWithEvents<T extends { sportKey: string }>(
+  targets: T[],
+  window: { lookbackHours: number; aheadHours: number },
+): Promise<T[]> {
+  const keep = await Promise.all(targets.map((t) => sportHasEventsInWindow(t.sportKey, window)))
+  return targets.filter((_, i) => keep[i])
 }
 
 export function calendarPickFromTarget(target: ScottScanTarget) {

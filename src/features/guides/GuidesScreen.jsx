@@ -551,6 +551,20 @@ function guideMarkdownUrlTransform(url) {
   return defaultUrlTransform(u)
 }
 
+const GUIDE_APP_HOSTS = new Set(['edgetilt.com', 'www.edgetilt.com', 'lvslotpro.com', 'www.lvslotpro.com'])
+
+/** Off-site guide links open in a new window so the iOS shell shows its in-app browser instead of replacing the app. */
+function isExternalGuideHref(href) {
+  if (typeof href !== 'string' || !/^https?:\/\//i.test(href)) return false
+  try {
+    const host = new URL(href).host.toLowerCase()
+    if (typeof window !== 'undefined' && host === window.location.host.toLowerCase()) return false
+    return !GUIDE_APP_HOSTS.has(host)
+  } catch {
+    return false
+  }
+}
+
 function flattenMarkdownText(children) {
   if (typeof children === 'string' || typeof children === 'number') return String(children)
   if (!Array.isArray(children)) return ''
@@ -681,7 +695,11 @@ function makeGuideMarkdownComponents(accent, { onOpenGuideSlug, allGuides } = {}
         }
       }
       return (
-        <a href={href} className="text-cyan-400 underline font-medium hover:text-cyan-300">
+        <a
+          href={href}
+          className="text-cyan-400 underline font-medium hover:text-cyan-300"
+          {...(isExternalGuideHref(href) ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+        >
           {children}
         </a>
       )

@@ -150,6 +150,10 @@ import {
 import { classifyLoungeFeedLoadError } from './loungeFeedLoadError.js'
 import { isPokerStakeOnboardingActive } from '../poker-bankroll/pokerStakeeOnboarding.js'
 import { ACCOUNT_CONNECT_PROMPT_EVENT, connectPromptHoldsOnboarding } from '../auth/deviceAccounts.js'
+import {
+  NATIVE_STARTUP_PERMISSIONS_DONE_EVENT,
+  nativeStartupPermissionsPending,
+} from '../../utils/nativeStartupPermissions.js'
 import LoungeWelcomeModal from './LoungeWelcomeModal.jsx'
 import LoungeSlotsMenuHintOverlay from './LoungeSlotsMenuHintOverlay.jsx'
 import LoungeFabHintOverlay from './LoungeFabHintOverlay.jsx'
@@ -1100,7 +1104,11 @@ export default function SocialFeed({
   useEffect(() => {
     const onAnswered = () => setConnectPromptAnsweredTick((n) => n + 1)
     window.addEventListener(ACCOUNT_CONNECT_PROMPT_EVENT, onAnswered)
-    return () => window.removeEventListener(ACCOUNT_CONNECT_PROMPT_EVENT, onAnswered)
+    window.addEventListener(NATIVE_STARTUP_PERMISSIONS_DONE_EVENT, onAnswered)
+    return () => {
+      window.removeEventListener(ACCOUNT_CONNECT_PROMPT_EVENT, onAnswered)
+      window.removeEventListener(NATIVE_STARTUP_PERMISSIONS_DONE_EVENT, onAnswered)
+    }
   }, [])
   const [slotsMenuHintOpen, setSlotsMenuHintOpen] = useState(false)
   const [fabHintOpen, setFabHintOpen] = useState(false)
@@ -10425,6 +10433,7 @@ export default function SocialFeed({
     if (coldBootSplashVisible) return
     if (isPokerStakeOnboardingActive()) return
     if (connectPromptHoldsOnboarding(composerAuthUser)) return
+    if (nativeStartupPermissionsPending(composerUserId)) return
     if (readLoungeWelcomeAck(composerUserId)) return
     if (readFirstRunChromeTourStep(composerUserId) === FIRST_RUN_CHROME_TOUR_STEP.DONE) {
       markLoungeWelcomeSeen(supabaseClient, composerUserId)
@@ -10519,7 +10528,7 @@ export default function SocialFeed({
 
   useEffect(() => {
     if (!loungeOnboardingHydrated || !composerUserId) return
-    if (connectPromptHoldsOnboarding(composerAuthUser)) {
+    if (connectPromptHoldsOnboarding(composerAuthUser) || nativeStartupPermissionsPending(composerUserId)) {
       setFirstRunChromeTourActive(false)
       return
     }

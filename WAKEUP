@@ -75,6 +75,10 @@ The agent should treat the following as **standing instructions for this session
 - **Ops paste / vision** stays as backup (VSiN + trench repair).
 - **Ryan next:** apply migration **`20260925160000`** on **prod** if Edge Monitor does not list the two jobs yet (test can be applied by agent). Re-run install task optional.
 
+### Connect account ... LIVE on prod 2026-09-29 (`1.4.916`, `main` `de41d5b6`)
+
+Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
+
 ### Mac Theo ACTIVE TRACK 2026-09-29 ... Android shell + native parity roadmap
 
 **I am Mac Theo.** Android Kotlin shell (`android/`, `android/README.md`) is live-capable end to end. Next work is native parity with the IPA (list below).

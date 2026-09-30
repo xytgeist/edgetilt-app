@@ -56,6 +56,8 @@ export default function LoungePostInteractionBar({
   onShare,
   /** Admin-only: tiny Views count immediately left of bookmark (feed posts). */
   showAdminViewCount = false,
+  /** Admin-only: tap the Views count to list who viewed. */
+  onAdminViewsClick,
 }) {
   const idleUi = {
     liked: false,
@@ -720,7 +722,21 @@ export default function LoungePostInteractionBar({
               : { width: slotBookmark, minWidth: slotBookmark, minHeight: railMinH }
         }
       >
-        {showViews ? (
+        {showViews && typeof onAdminViewsClick === 'function' ? (
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              onAdminViewsClick()
+            }}
+            className="-my-2 -mx-1 whitespace-nowrap px-1 py-2 text-[10px] font-medium leading-none tracking-wide text-zinc-500 touch-manipulation active:text-zinc-300 [-webkit-tap-highlight-color:transparent]"
+            title={`${fullStatCountTitle(viewCount) || `${viewCount.toLocaleString()} views`} ... tap to see who`}
+            aria-label={`${viewCount.toLocaleString()} views. Show who viewed`}
+            data-lounge-admin-view-count=""
+          >
+            Views {formatCompactStatCount(viewCount)}
+          </button>
+        ) : showViews ? (
           <span
             className="whitespace-nowrap text-[10px] font-medium leading-none tracking-wide text-zinc-500"
             title={fullStatCountTitle(viewCount) || `${viewCount.toLocaleString()} views`}

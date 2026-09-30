@@ -10,6 +10,7 @@ import { bodyTextWithLinkPreview } from '../../utils/linkifyText.jsx'
 import { LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
 import LoungeFeedAuthorMetaBadges from './LoungeFeedAuthorMetaBadges.jsx'
 import LoungePostInteractionBar from './LoungePostInteractionBar.jsx'
+import LoungePostViewersSheet from './LoungePostViewersSheet.jsx'
 import { LOUNGE_REPOST_ARROWS_D } from './loungeRepostGlyph.js'
 import LoungePostRowMenu from './LoungePostRowMenu.jsx'
 import LoungePostOriginalUnavailableEmbed from './LoungePostOriginalUnavailableEmbed.jsx'
@@ -186,6 +187,9 @@ function LoungePostArticle({
   const articleRootRef = useRef(null)
   const viewTrackedPostId = isCommentRepost ? null : displayPost?.id
   const viewTrackedAuthorId = isCommentRepost ? null : displayPost?.user_id
+  const [viewersSheetOpen, setViewersSheetOpen] = useState(false)
+  const openViewersSheet = useCallback(() => setViewersSheetOpen(true), [])
+  const closeViewersSheet = useCallback(() => setViewersSheetOpen(false), [])
   useLoungeFeedPostViewTracking({
     enabled: Boolean(viewerUserId && supabaseClient && viewTrackedPostId && !loungeReadOnly),
     postId: viewTrackedPostId,
@@ -863,8 +867,30 @@ function LoungePostArticle({
             openProfileGateIfNeeded={openProfileGateIfNeeded}
             repostMenuScrollRootRef={repostMenuScrollRootRef}
             showAdminViewCount={loungeViewerIsAdmin}
+            onAdminViewsClick={
+              loungeViewerIsAdmin && supabaseClient && viewTrackedPostId ? openViewersSheet : undefined
+            }
           />
         )}
+        {viewersSheetOpen ? (
+          <LoungePostViewersSheet
+            open
+            postId={viewTrackedPostId}
+            viewCount={typeof displayPost?.view_count === 'number' ? displayPost.view_count : 0}
+            supabaseClient={supabaseClient}
+            ageLabel={postAgeLabel}
+            onClose={closeViewersSheet}
+            onOpenProfile={(row) => {
+              setViewersSheetOpen(false)
+              onAvatarClick?.({
+                user_id: row.user_id,
+                handle: row.handle,
+                display_name: row.display_name,
+                avatar_url: row.avatar_url,
+              })
+            }}
+          />
+        ) : null}
       </div>
     </div>
   )

@@ -153,6 +153,7 @@ import { ACCOUNT_CONNECT_PROMPT_EVENT, connectPromptHoldsOnboarding } from '../a
 import LoungeWelcomeModal from './LoungeWelcomeModal.jsx'
 import LoungeSlotsMenuHintOverlay from './LoungeSlotsMenuHintOverlay.jsx'
 import LoungeFabHintOverlay from './LoungeFabHintOverlay.jsx'
+import ChromeTourTapShield from './ChromeTourTapShield.jsx'
 import {
   markLoungeDockMenuLayoutIntroSeen,
   markLoungeFabHintSeen,
@@ -166,6 +167,7 @@ import {
   FIRST_RUN_CHROME_TOUR_FAB_EXPAND_MS,
   FIRST_RUN_CHROME_TOUR_FAB_HINT_MS,
   FIRST_RUN_CHROME_TOUR_MENU_HINT_MS,
+  FIRST_RUN_CHROME_TOUR_MENU_HOLD_MS,
   FIRST_RUN_CHROME_TOUR_STEP,
   markFirstRunChromeTourDone,
   clearFirstRunChromeTourMeta,
@@ -20456,6 +20458,7 @@ export default function SocialFeed({
           open={slotsMenuHintOpen}
           onDismiss={onSlotsMenuHintDismiss}
           autoDismissMs={FIRST_RUN_CHROME_TOUR_MENU_HINT_MS}
+          blockTaps={firstRunChromeTourActive}
         />
       ) : null}
 
@@ -20464,8 +20467,25 @@ export default function SocialFeed({
           open={fabHintOpen}
           onDismiss={onFabHintDismiss}
           autoDismissMs={FIRST_RUN_CHROME_TOUR_FAB_HINT_MS}
+          blockTaps={firstRunChromeTourActive}
         />
       ) : null}
+
+      <ChromeTourTapShield
+        active={
+          firstRunChromeTourActive &&
+          isActivePage &&
+          !coldBootSplashVisible &&
+          (firstRunChromeTourStep === FIRST_RUN_CHROME_TOUR_STEP.MENU_HOLD ||
+            firstRunChromeTourStep === FIRST_RUN_CHROME_TOUR_STEP.FAB_EXPAND)
+        }
+        stepKey={firstRunChromeTourStep}
+        maxMs={
+          (firstRunChromeTourStep === FIRST_RUN_CHROME_TOUR_STEP.MENU_HOLD
+            ? FIRST_RUN_CHROME_TOUR_MENU_HOLD_MS
+            : FIRST_RUN_CHROME_TOUR_FAB_EXPAND_MS) + 1500
+        }
+      />
 
       {profileGateOpen && typeof document !== 'undefined'
         ? createPortal(

@@ -67,7 +67,7 @@ function ArrowToMenu({ menuRect, cardRect }) {
 }
 
 /** One-time hint after Lounge welcome: orange arrow to the real ☰ menu button. */
-export default function LoungeSlotsMenuHintOverlay({ open, onDismiss, autoDismissMs = 0 }) {
+export default function LoungeSlotsMenuHintOverlay({ open, onDismiss, autoDismissMs = 0, blockTaps = false }) {
   const [menuRect, setMenuRect] = useState(null)
   const [cardRect, setCardRect] = useState(null)
   const [cardNode, setCardNode] = useState(null)
@@ -125,12 +125,16 @@ export default function LoungeSlotsMenuHintOverlay({ open, onDismiss, autoDismis
       aria-labelledby="lounge-slots-menu-hint-title"
       data-lounge-slots-menu-hint
     >
-      <button
-        type="button"
-        aria-label="Dismiss slot tools hint"
-        className="absolute inset-0 bg-black/45 backdrop-blur-[1px]"
-        onClick={() => onDismiss?.()}
-      />
+      {blockTaps ? (
+        <div className="absolute inset-0 bg-black/45 backdrop-blur-[1px]" aria-hidden />
+      ) : (
+        <button
+          type="button"
+          aria-label="Dismiss slot tools hint"
+          className="absolute inset-0 bg-black/45 backdrop-blur-[1px]"
+          onClick={() => onDismiss?.()}
+        />
+      )}
 
       {menuRect ? (
         <div

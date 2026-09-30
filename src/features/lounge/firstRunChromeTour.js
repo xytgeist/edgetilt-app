@@ -1,13 +1,13 @@
 /**
- * First-create chrome tour: hamburger pointer → open menu 3s → FAB (phone portrait)
+ * First-create chrome tour: hamburger pointer 3s → open menu 2s → FAB hint 3s → FAB expand 2s (phone portrait)
  * → Community Guidelines. Incomplete FAB / Wheel-Edge explainer survives across sessions.
  * Returning sign-in does not start this tour.
  */
 
-export const FIRST_RUN_CHROME_TOUR_MENU_HINT_MS = 5000
-export const FIRST_RUN_CHROME_TOUR_MENU_HOLD_MS = 5000
-export const FIRST_RUN_CHROME_TOUR_FAB_HINT_MS = 5000
-export const FIRST_RUN_CHROME_TOUR_FAB_EXPAND_MS = 5000
+export const FIRST_RUN_CHROME_TOUR_MENU_HINT_MS = 3000
+export const FIRST_RUN_CHROME_TOUR_MENU_HOLD_MS = 2000
+export const FIRST_RUN_CHROME_TOUR_FAB_HINT_MS = 3000
+export const FIRST_RUN_CHROME_TOUR_FAB_EXPAND_MS = 2000
 
 export const FIRST_RUN_CHROME_TOUR_STEP = {
   MENU_HINT: 'menu-hint',

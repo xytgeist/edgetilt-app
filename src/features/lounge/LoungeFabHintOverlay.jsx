@@ -68,7 +68,7 @@ function ArrowToFab({ fabRect, cardRect }) {
  * One-time hint: cyan arrow to the Lounge dock + FAB (compose, search, chat, settings).
  * Shown after the Slots menu hint on a signed-in member's first Lounge visit.
  */
-export default function LoungeFabHintOverlay({ open, onDismiss, autoDismissMs = 0 }) {
+export default function LoungeFabHintOverlay({ open, onDismiss, autoDismissMs = 0, blockTaps = false }) {
   const [fabRect, setFabRect] = useState(null)
   const [cardRect, setCardRect] = useState(null)
   const [cardPos, setCardPos] = useState(null)
@@ -146,12 +146,16 @@ export default function LoungeFabHintOverlay({ open, onDismiss, autoDismissMs = 
       aria-labelledby="lounge-fab-hint-title"
       data-lounge-fab-hint
     >
-      <button
-        type="button"
-        aria-label="Dismiss Lounge menu hint"
-        className="absolute inset-0 bg-black/45 backdrop-blur-[1px]"
-        onClick={() => onDismiss?.()}
-      />
+      {blockTaps ? (
+        <div className="absolute inset-0 bg-black/45 backdrop-blur-[1px]" aria-hidden />
+      ) : (
+        <button
+          type="button"
+          aria-label="Dismiss Lounge menu hint"
+          className="absolute inset-0 bg-black/45 backdrop-blur-[1px]"
+          onClick={() => onDismiss?.()}
+        />
+      )}
 
       {fabRect ? (
         <div

@@ -178,5 +178,6 @@ async function main() {
 
 main().catch((err) => {
   console.error('[action-splits] FATAL', err)
-  process.exit(1)
+  // process.exit() with undici sockets still closing trips a libuv assertion on Windows.
+  process.exitCode = 1
 })

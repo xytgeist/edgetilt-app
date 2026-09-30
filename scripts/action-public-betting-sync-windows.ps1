@@ -37,12 +37,18 @@ try {
 $env:Path = 'C:\Program Files\nodejs;' + $env:Path
 $exit = 0
 
-$splits = Join-Path $repo 'scripts\sync-action-public-betting-splits.mjs'
-$out = & $node $splits --target=both 2>&1
-$code = $LASTEXITCODE
-foreach ($line in $out) { Write-Log ([string]$line) }
-Write-Log "action-splits exit=$code"
-if ($code -ne 0) { $exit = $code }
+# Delete this marker to resume the Action pull (e.g. after Action Network lifts a WAF block).
+$splitsPaused = Join-Path $repo 'data\syndicate\.action-splits-paused'
+if (Test-Path $splitsPaused) {
+  Write-Log "action-splits paused ($splitsPaused exists)"
+} else {
+  $splits = Join-Path $repo 'scripts\sync-action-public-betting-splits.mjs'
+  $out = & $node $splits --target=both 2>&1
+  $code = $LASTEXITCODE
+  foreach ($line in $out) { Write-Log ([string]$line) }
+  Write-Log "action-splits exit=$code"
+  if ($code -ne 0) { $exit = $code }
+}
 
 $trench = Join-Path $repo 'scripts\sync-espn-nfl-trench-live.mjs'
 $out2 = & $node $trench --target=both 2>&1

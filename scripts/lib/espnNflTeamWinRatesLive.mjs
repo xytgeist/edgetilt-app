@@ -11,6 +11,7 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'fs'
 import { dirname, join } from 'path'
 import { fileURLToPath } from 'url'
+import { fetchWithConnectRetry } from './supabaseEnv.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const STATE_PATH = join(ROOT, 'data', 'syndicate', '.espn-trench-live-state.json')
@@ -189,7 +190,7 @@ export function parseEspnTeamWinRateBoard(payload) {
 export async function fetchEspnTeamWinRateBoard(opts = {}) {
   const storyId = opts.storyId || resolveEspnTrenchStoryId()
   const url = espnContentFeedUrl(storyId)
-  const res = await fetch(url, {
+  const res = await fetchWithConnectRetry(url, {
     headers: { Accept: 'application/json' },
   })
   const text = await res.text()

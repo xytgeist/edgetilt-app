@@ -65,6 +65,7 @@ DerivedData/
 
 # ESPN trench live puller lastModified skip (per home-PC machine)
 data/syndicate/.espn-trench-live-state.json
+data/syndicate/.action-splits-paused
 
 # Local Lounge video fixtures / probe artifacts (never commit)
 IMG_1425.MOV

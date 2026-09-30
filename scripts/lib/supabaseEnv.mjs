@@ -108,5 +108,37 @@ export function createSupabaseServiceClient(createClient) {
   if (!url || !key) {
     throw new Error("Missing SUPABASE_URL and/or SUPABASE_SERVICE_ROLE_KEY.");
   }
-  return createClient(url, key, { auth: { persistSession: false } });
+  return createClient(url, key, {
+    auth: { persistSession: false },
+    global: { fetch: fetchWithConnectRetry },
+  });
+}
+
+/** Connect-phase failures only: the request never reached Supabase, so a retry cannot double-write. */
+const CONNECT_ERROR_CODES = new Set([
+  "UND_ERR_CONNECT_TIMEOUT",
+  "ECONNREFUSED",
+  "ENOTFOUND",
+  "EAI_AGAIN",
+  "ENETUNREACH",
+  "EHOSTUNREACH",
+]);
+const CONNECT_RETRY_DELAYS_MS = [2000, 5000, 10000];
+
+function isConnectError(err) {
+  const code = err?.cause?.code || err?.code;
+  return Boolean(code && CONNECT_ERROR_CODES.has(code));
+}
+
+export async function fetchWithConnectRetry(input, init) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fetch(input, init);
+    } catch (err) {
+      if (!isConnectError(err) || attempt >= CONNECT_RETRY_DELAYS_MS.length) throw err;
+      const delay = CONNECT_RETRY_DELAYS_MS[attempt];
+      console.warn(`[supabase] ${err?.cause?.code || err?.code}, retry ${attempt + 1} in ${delay / 1000}s`);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
 }

@@ -12,6 +12,7 @@ import {
   installStaleChunkReloadListener,
   isCanceledModuleImport,
 } from './utils/lazyImportWithChunkReload.js'
+import BootCrashFallback from './components/BootCrashFallback.jsx'
 import { applyTheme, watchSystemTheme, applyPlatformClass } from './utils/theme.js'
 import { installAppDebugLog } from './utils/appDebugLog.js'
 import { installGlobalTapHaptic } from './utils/tapHaptic.js'
@@ -67,6 +68,8 @@ if (shouldShowLoungeColdBootSplash({ tab: 'home', pendingWork: readLoungeCompose
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <App />
+    <Sentry.ErrorBoundary fallback={({ error }) => <BootCrashFallback error={error} />}>
+      <App />
+    </Sentry.ErrorBoundary>
   </StrictMode>,
 )

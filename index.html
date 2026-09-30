@@ -50,6 +50,72 @@
   </head>
   <body>
     <div id="root"></div>
+    <style>
+      #edge-boot-rescue{position:fixed;inset:0;z-index:2147483647;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(9,9,11,.92);font:15px/1.45 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#e4e4e7}
+      #edge-boot-rescue .card{max-width:340px;width:100%;border-radius:20px;border:1px solid #27272a;background:#18181b;padding:22px;text-align:center}
+      #edge-boot-rescue h2{margin:0 0 6px;font-size:18px;color:#fafafa}
+      #edge-boot-rescue p{margin:0 0 16px;color:#a1a1aa}
+      #edge-boot-rescue button{display:block;width:100%;margin-top:8px;padding:11px 14px;border-radius:12px;border:0;font:600 15px/1 inherit;cursor:pointer}
+      #edge-boot-rescue .primary{background:#fafafa;color:#09090b}
+      #edge-boot-rescue .ghost{background:transparent;color:#a1a1aa}
+      #edge-boot-rescue .reset{background:#27272a;color:#fafafa}
+      #edge-boot-rescue code{display:block;margin-top:12px;font-size:11px;color:#71717a;word-break:break-word}
+      html.light #edge-boot-rescue{background:rgba(244,244,245,.94);color:#27272a}
+      html.light #edge-boot-rescue .card{background:#fff;border-color:#e4e4e7}
+      html.light #edge-boot-rescue h2{color:#09090b}
+      html.light #edge-boot-rescue p,html.light #edge-boot-rescue .ghost{color:#52525b}
+      html.light #edge-boot-rescue .primary{background:#09090b;color:#fafafa}
+      html.light #edge-boot-rescue .reset{background:#f4f4f5;color:#09090b}
+    </style>
+    <script>
+      // Boot rescue: if the app never finishes starting (stuck session restore, dead chunk, render crash),
+      // offer Reload / Reset instead of a blank screen. App sets window.__edgeAppReady once past auth check.
+      (function () {
+        var BOOT_TIMEOUT_MS = 15000
+        window.__edgeResetAppData = function () {
+          var jobs = []
+          try { localStorage.clear() } catch (e) {}
+          try { sessionStorage.clear() } catch (e) {}
+          try {
+            if (window.caches && caches.keys) {
+              jobs.push(caches.keys().then(function (keys) {
+                return Promise.all(keys.map(function (k) { return caches.delete(k) }))
+              }))
+            }
+          } catch (e) {}
+          var done = function () { window.location.replace('/') }
+          Promise.all(jobs).then(done, done)
+          setTimeout(done, 2500)
+        }
+        window.__edgeShowBootRescue = function (detail) {
+          if (window.__edgeAppReady && !detail) return
+          if (document.getElementById('edge-boot-rescue')) return
+          var el = document.createElement('div')
+          el.id = 'edge-boot-rescue'
+          el.innerHTML =
+            '<div class="card"><h2>EdgeTilt is stuck loading</h2>' +
+            '<p>Try a reload first. If that does not fix it, Reset clears saved app data on this browser and signs you out.</p>' +
+            '<button class="primary" data-a="reload">Reload</button>' +
+            '<button class="reset" data-a="reset">Reset and sign in again</button>' +
+            (detail ? '' : '<button class="ghost" data-a="wait">Keep waiting</button>') +
+            '<code></code></div>'
+          el.querySelector('code').textContent = String(detail || 'Startup timed out')
+          el.addEventListener('click', function (ev) {
+            var a = ev.target && ev.target.getAttribute && ev.target.getAttribute('data-a')
+            if (a === 'reload') window.location.reload()
+            else if (a === 'reset') window.__edgeResetAppData()
+            else if (a === 'wait') el.remove()
+          })
+          document.body.appendChild(el)
+          var poll = setInterval(function () {
+            if (window.__edgeAppReady && !detail) { clearInterval(poll); el.remove() }
+          }, 500)
+        }
+        setTimeout(function () {
+          if (!window.__edgeAppReady) window.__edgeShowBootRescue()
+        }, BOOT_TIMEOUT_MS)
+      })()
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

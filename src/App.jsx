@@ -127,6 +127,10 @@ import { createAppleIdTokenNonce } from './features/auth/appleIdTokenNonce.js'
 import { reloadAfterAuthSession } from './features/auth/authPostLoginReload.js'
 import { edgeNativeInvoke, isEdgeiOSShell } from './utils/edgeNative.js'
 import { syncEdgeNativeAuthSession } from './utils/edgeNativeAuthSession.js'
+import * as Sentry from '@sentry/react'
+
+const AUTH_BOOTSTRAP_TIMEOUT_MS = 8000
+const AUTH_BOOTSTRAP_TIMED_OUT = Symbol('auth-bootstrap-timed-out')
 
 const EdgeMonitorDesktopPage = lazyRoute(() => import('./features/ops/EdgeMonitorDesktopPage.jsx'))
 const FgKickTestPage = lazyRoute(() => import('./features/lounge/gameHub/FgKickTestPage.jsx'))
@@ -196,6 +200,9 @@ function App() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [isChecking, setIsChecking] = useState(true)
+  useEffect(() => {
+    if (!isChecking) window.__edgeAppReady = true
+  }, [isChecking])
   const [currentView, setCurrentView] = useState(() => {
     if (typeof window === 'undefined') return 'app'
     if (isPlayAnimTestPath(window.location.pathname)) return 'fg-kick-test'
@@ -612,12 +619,30 @@ function App() {
     }
 
     const bootstrap = async () => {
+      // A wedged auth lock or stalled refresh request must not hold the app on "Loading..." forever.
+      // Past the cap we render (signed out for now); the late restore still signs the user in if it lands.
+      const restore = restoreSupabaseSession(supabase)
+      let timeoutId = 0
+      const timedOut = new Promise((resolve) => {
+        timeoutId = window.setTimeout(() => resolve(AUTH_BOOTSTRAP_TIMED_OUT), AUTH_BOOTSTRAP_TIMEOUT_MS)
+      })
       try {
-        const session = await restoreSupabaseSession(supabase)
-        syncUser(session)
+        const result = await Promise.race([restore, timedOut])
+        if (result === AUTH_BOOTSTRAP_TIMED_OUT) {
+          Sentry.captureMessage('auth bootstrap timed out', 'warning')
+          void restore.then(
+            (session) => {
+              if (session?.user) syncUser(session)
+            },
+            () => {},
+          )
+        } else {
+          syncUser(result)
+        }
       } catch {
         syncUser(null)
       } finally {
+        window.clearTimeout(timeoutId)
         finishAuthCheck()
       }
     }

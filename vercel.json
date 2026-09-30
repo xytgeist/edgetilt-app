@@ -90,6 +90,6 @@
     { "source": "/poker/bankroll", "destination": "/poker-bankroll.html" },
     { "source": "/poker/stable", "destination": "/poker-stable.html" },
     { "source": "/theo", "destination": "/api/theo" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!assets/).*)", "destination": "/index.html" }
   ]
 }

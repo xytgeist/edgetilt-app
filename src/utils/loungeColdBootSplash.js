@@ -8,17 +8,6 @@ export const LOUNGE_COLD_BOOT_SPLASH_CYCLE_KEY = 'loungeColdBootSplashCycle:v1'
 export const LOUNGE_COLD_BOOT_BG_AT_KEY = 'loungeColdBootBgAt:v1'
 
 export const LOUNGE_COLD_BOOT_RESUME_AFTER_MS = 60 * 60 * 1000
-/** Last time a splash finished (localStorage). iOS can drop the backgrounded WKWebView, so a refocus reloads the page and looks like a cold boot. */
-const LOUNGE_COLD_BOOT_LAST_SHOWN_KEY = 'loungeColdBootLastShownAt:v1'
-
-function splashShownWithinResumeWindow() {
-  try {
-    const at = Number(window.localStorage.getItem(LOUNGE_COLD_BOOT_LAST_SHOWN_KEY) || 0)
-    return Number.isFinite(at) && at > 0 && Date.now() - at < LOUNGE_COLD_BOOT_RESUME_AFTER_MS
-  } catch {
-    return false
-  }
-}
 
 /** Dispatched when a long-background resume splash starts (PWA Home / EdgeiOS shell). Listeners refresh feed under the Lottie. */
 export const LOUNGE_COLD_BOOT_RESUME_EVENT = 'lounge:cold-boot-resume'
@@ -80,11 +69,6 @@ export function markLoungeColdBootSplashCycleDone() {
     window.sessionStorage.setItem(LOUNGE_COLD_BOOT_SPLASH_CYCLE_KEY, '1')
   } catch {
     // ignore … memory flag still blocks re-arm
-  }
-  try {
-    window.localStorage.setItem(LOUNGE_COLD_BOOT_LAST_SHOWN_KEY, String(Date.now()))
-  } catch {
-    // ignore
   }
 }
 
@@ -148,7 +132,6 @@ export function shouldShowLoungeColdBootSplash({ tab, pendingWork = false }) {
   if (!isLoungeColdBootHomeIntent()) return false
   if (pendingWork || readLoungeComposerDraftPendingWork()) return false
   if (readLoungeColdBootSplashCycleDone()) return false
-  if (splashShownWithinResumeWindow()) return false
   // Google sends the app back with tokens in the hash. The boot splash is solid black
   // and was covering the signed-in app.
   const hash = window.location.hash || ''

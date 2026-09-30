@@ -1179,7 +1179,7 @@ function App() {
 
     setAccessNotice('')
     setVerificationSuccess(false)
-    setAuthPanelOpen(false)
+    // Keep the sign-in card (busy) up through the reload so the signed-out Lounge never flashes.
     await reloadAfterAuthSession(
       (signedInUser) => ensureDefaultProfileRow(supabase, signedInUser),
       data?.user,
@@ -1226,7 +1226,6 @@ function App() {
         if (isLikelyNewAuthUser(data.user)) markFirstRunChromeTourPending()
         setAccessNotice('')
         setVerificationSuccess(false)
-        setAuthPanelOpen(false)
         await reloadAfterAuthSession(
           (signedInUser) => ensureDefaultProfileRow(supabase, signedInUser),
           data.user,

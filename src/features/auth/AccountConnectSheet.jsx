@@ -12,6 +12,7 @@ import {
 } from '../profiles/profileGate.js'
 import {
   forgetDeviceAccount,
+  connectPromptHoldsOnboarding,
   listDeviceAccounts,
   markConnectPromptShown,
   readConnectPending,
@@ -157,6 +158,7 @@ function AccountRow({ account, onConnect, onForget, busy }) {
  */
 export default function AccountConnectSheet({ supabase, user, onRequestSignIn, onNotice }) {
   const [offer, setOffer] = useState(null)
+  const [resolvedFor, setResolvedFor] = useState('')
   const [finish, setFinish] = useState(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -218,7 +220,9 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
       }
       rememberDeviceAccount(user, profile)
     }
-    void run()
+    void run().finally(() => {
+      if (!cancelled) setResolvedFor(user.id)
+    })
     return () => {
       cancelled = true
     }
@@ -353,28 +357,35 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
     setError('')
   }, [])
 
-  if (!offer && !finish) return null
+  // Show the prompt on the first render from the device list (sync) so the Lounge never paints
+  // underneath; the effect swaps in the live-checked list a moment later.
+  const provisional =
+    !offer && !finish && user?.id && resolvedFor !== user.id && !readConnectPending() && connectPromptHoldsOnboarding(user)
+  const shownOffer = offer || (provisional ? { others: listDeviceAccounts().filter((a) => a.user_id !== user.id), profile: null } : null)
+  const actionsLocked = busy || !offer
+
+  if (!shownOffer && !finish) return null
 
   return (
     <AuthModalShell onClose={() => {}}>
       <div data-account-connect-sheet>
-        {offer ? (
+        {shownOffer ? (
           <>
             <h2 id="account-connect-title" className="text-center text-lg font-bold text-white">Connect account?</h2>
             <p className="mt-1 text-center text-sm leading-relaxed text-zinc-400">
-              This is a new account. {offer.others.length > 1 ? 'These accounts have' : 'This account has'} signed in on this device before.
+              This is a new account. {shownOffer.others.length > 1 ? 'These accounts have' : 'This account has'} signed in on this device before.
               Connect to keep one account you can sign in to either way.
             </p>
             <ul className="mt-4 space-y-2">
-              {offer.others.map((account) => (
-                <AccountRow key={account.user_id} account={account} onConnect={connect} onForget={forget} busy={busy} />
+              {shownOffer.others.map((account) => (
+                <AccountRow key={account.user_id} account={account} onConnect={connect} onForget={forget} busy={actionsLocked} />
               ))}
             </ul>
             {error ? <p className="mt-3 text-sm text-rose-300">{error}</p> : null}
             <button
               type="button"
               onClick={continueWithNew}
-              disabled={busy}
+              disabled={actionsLocked}
               className="mt-4 w-full rounded-full border border-zinc-600 py-3 text-[15px] font-semibold text-zinc-200 disabled:opacity-50"
             >
               Continue with new

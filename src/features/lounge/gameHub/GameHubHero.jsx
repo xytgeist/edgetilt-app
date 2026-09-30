@@ -4677,73 +4677,74 @@ function LandscapeMatchupBoard({
 }
 
 /** One public split rail: away % · bar · home % · label. */
-function SplitRail({ label, awayPct, homePct, awayColor, homeColor, emphasize }) {
-  return (
-    <div className="flex items-center gap-2">
-      <span className="w-7 shrink-0 text-right text-[11px] font-bold tabular-nums text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
-        {Math.round(awayPct)}
-      </span>
-      <div
-        className={`relative h-[5px] min-w-0 flex-1 overflow-hidden rounded-full bg-black/25 ring-1 ring-inset ${
-          emphasize ? 'ring-amber-300/50' : 'ring-white/15'
-        }`}
-      >
-        <div className="absolute inset-0 flex">
-          <div
-            className="h-full transition-[width] duration-500 ease-out"
-            style={{ width: `${awayPct}%`, background: `linear-gradient(90deg, ${awayColor}cc, ${awayColor})` }}
-          />
-          <div
-            className="h-full transition-[width] duration-500 ease-out"
-            style={{ width: `${homePct}%`, background: `linear-gradient(90deg, ${homeColor}, ${homeColor}cc)` }}
-          />
-        </div>
-      </div>
-      <span className="w-7 shrink-0 text-[11px] font-bold tabular-nums text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
-        {Math.round(homePct)}
-      </span>
-      <span
-        className={`w-10 shrink-0 text-right text-[9px] font-semibold uppercase tracking-[0.14em] ${
-          emphasize ? 'text-amber-200/90' : 'text-white/60'
-        }`}
-      >
-        {label}
-      </span>
-    </div>
-  )
+/** Where a dot sits on the tug-of-war track: leans toward the side holding the majority. */
+function publicSplitDotLeft(awayPct) {
+  return `${100 - awayPct}%`
 }
 
-/** Public bets + money rails … pre-game only (live/post stay scoreboard + field chrome). */
+/**
+ * Public bets vs money on one track … pre-game only (live/post stay scoreboard + field chrome).
+ * Hollow dot = tickets, `$` dot = handle; the gap between them glows amber when money disagrees.
+ */
 function HeroPublicBetting({ game, splits, awayColor, homeColor }) {
   if (!splits || game?.status !== 'pre') return null
   const awayBets = Math.max(0, Math.min(100, Number(splits.away_ticket_pct)))
-  const homeBets = Math.max(0, Math.min(100, Number(splits.home_ticket_pct)))
   const awayMoney = Math.max(0, Math.min(100, Number(splits.away_handle_pct)))
-  const homeMoney = Math.max(0, Math.min(100, Number(splits.home_handle_pct)))
-  if ([awayBets, homeBets, awayMoney, homeMoney].some((n) => Number.isNaN(n))) return null
+  if ([awayBets, awayMoney].some((n) => Number.isNaN(n))) return null
 
   const moneySkew =
     Math.abs(awayMoney - awayBets) >= 12 || Boolean(splits.is_fade_public)
   const awayTint = awayColor || '#ef4444'
   const homeTint = homeColor || '#22c55e'
+  const awayAbbrev = game.away?.abbrev
+  const homeAbbrev = game.home?.abbrev
+  const betsSide = awayBets >= 50 ? awayAbbrev : homeAbbrev
+  const betsLead = Math.round(awayBets >= 50 ? awayBets : 100 - awayBets)
+  const moneySide = awayMoney >= 50 ? awayAbbrev : homeAbbrev
+  const moneyLead = Math.round(awayMoney >= 50 ? awayMoney : 100 - awayMoney)
+  const gapLo = Math.min(100 - awayBets, 100 - awayMoney)
+  const gapWidth = Math.abs(awayBets - awayMoney)
 
   return (
     <div data-lounge-game-hero-splits className="px-4 pb-2.5 pt-0.5">
-      <div className="space-y-1.5">
-        <SplitRail label="bets" awayPct={awayBets} homePct={homeBets} awayColor={awayTint} homeColor={homeTint} />
-        <SplitRail
-          label="money"
-          awayPct={awayMoney}
-          homePct={homeMoney}
-          awayColor={awayTint}
-          homeColor={homeTint}
-          emphasize={moneySkew}
+      <div className="relative mx-2 h-5" aria-hidden>
+        <div className="absolute inset-x-0 top-[9px] flex h-[2px] overflow-hidden rounded-full opacity-75">
+          <div className="h-full w-1/2" style={{ background: awayTint }} />
+          <div className="h-full w-1/2" style={{ background: homeTint }} />
+        </div>
+        <div className="absolute left-1/2 top-[5px] h-2.5 w-px -translate-x-1/2 bg-white/35" />
+        <div
+          className={`absolute top-2 h-1 rounded-full transition-[left,width] duration-500 ease-out ${
+            moneySkew ? 'bg-amber-300' : 'bg-white/50'
+          }`}
+          style={{ left: `${gapLo}%`, width: `${gapWidth}%` }}
         />
+        <div
+          className="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white transition-[left] duration-500 ease-out drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]"
+          style={{ left: publicSplitDotLeft(awayBets) }}
+        />
+        <div
+          className={`absolute top-1/2 flex h-4 w-4 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full text-[9px] font-extrabold text-zinc-900 transition-[left] duration-500 ease-out drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)] ${
+            moneySkew ? 'bg-amber-300' : 'bg-white'
+          }`}
+          style={{ left: publicSplitDotLeft(awayMoney) }}
+        >
+          $
+        </div>
       </div>
-      <div className="mt-1.5 flex items-center justify-between gap-2 pr-12 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/60">
-        <span className="text-white/75 drop-shadow">{game.away?.abbrev}</span>
-        <span className="truncate text-center">{moneySkew ? 'Public · money split' : 'Public'}</span>
-        <span className="text-white/75 drop-shadow">{game.home?.abbrev}</span>
+      <div className="mt-1.5 flex items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-[0.14em]">
+        <span className="flex items-center gap-1.5 text-white/70 drop-shadow">
+          <span className="inline-block h-2 w-2 rounded-full border border-white/80" aria-hidden />
+          Bets <span className="tabular-nums text-white">{betsLead}%</span> {betsSide}
+        </span>
+        <span
+          className={`flex items-center gap-1.5 drop-shadow ${moneySkew ? 'text-amber-200/90' : 'text-white/70'}`}
+        >
+          <span aria-hidden>$</span>
+          Money{' '}
+          <span className={`tabular-nums ${moneySkew ? 'text-amber-200' : 'text-white'}`}>{moneyLead}%</span>{' '}
+          {moneySide}
+        </span>
       </div>
     </div>
   )

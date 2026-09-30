@@ -253,7 +253,7 @@ export function dismissEdgeKeyboard() {
 
 /**
  * Open an arbitrary http(s) URL outside the app.
- * EdgeiOS shell → system Safari (`openInSafari`). Elsewhere → `window.open`.
+ * EdgeiOS shell → in-app Safari sheet (`openInSafari`; IPAs before the in-app browser use system Safari). Elsewhere → `window.open`.
  * Prefer this over raw `window.open` so the IPA never spawns a blank child WKWebView.
  *
  * @param {string} url
@@ -295,7 +295,7 @@ export async function openExternalBillingUrl(url) {
   if (typeof window === 'undefined') return { ok: false, via: 'assign' }
 
   if (isEdgeiOSShell()) {
-    const result = await edgeNativeInvoke('openInSafari', { url: href })
+    const result = await edgeNativeInvoke('openInSafari', { url: href, system: true })
     if (result && result.ok === false) {
       throw new Error('Could not open Safari for billing.')
     }

@@ -79,7 +79,7 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 | Method | Direction | Payload (draft) | Result (draft) | Owner first | Status |
 | --- | --- | --- | --- | --- | --- |
 | `getInfo` | JS→native | none | `{ shellVersion, build, environment: 'test'\|'prod', apsEnvironment: 'development'\|'production', ua }` | Mac | **native** (`ios/` scaffold). `apsEnvironment` mirrors entitlements (still `development` until App Store). |
-| `openInSafari` | JS→native | `{ url: string }` | `{ ok: boolean }` | Mac | **native** (`ios/` scaffold). **2026-09-21:** `WKUIDelegate.createWebView` + nil-`targetFrame` navigations also route http(s) to Safari and return/cancel (no blank child WKWebView from `window.open` / `target=_blank`). Web callers: **`openExternalUrl`** / **`openExternalBillingUrl`**. **2026-09-28:** kalshi.com / polymarket.us URLs (all three paths) open the in-app **Bet sheet** instead (result adds `sheet: true`). See below. |
+| `openInSafari` | JS→native | `{ url: string, system?: boolean }` | `{ ok: boolean, inApp?: true, sheet?: true }` | Mac | **native** (`ios/` scaffold). **2026-09-21:** `WKUIDelegate.createWebView` + nil-`targetFrame` navigations also route http(s) to Safari and return/cancel (no blank child WKWebView from `window.open` / `target=_blank`). Web callers: **`openExternalUrl`** / **`openExternalBillingUrl`**. **2026-09-28:** kalshi.com / polymarket.us URLs (all three paths) open the in-app **Bet sheet** instead (result adds `sheet: true`). See below. **2026-09-29:** everything else opens the **In-app browser** (`SFSafariViewController`) unless `system: true` (billing) ... see below. |
 | `requestPushPermission` | JS→native | none | `{ status: 'granted'\|'denied'\|'prompt' }` | Mac | **native** + **web caller** (2026-08-25): Lounge Settings toggle → `requestEdgeiOSPushPermission()` |
 | `getPushPermissionStatus` | JS→native | none | `{ status: 'granted'\|'denied'\|'prompt' }` | Mac | **native** + **web** (2026-08-25): read-only; never prompts |
 | `getPushToken` | JS→native | none | `{ token: string \| null }` | Mac | **native** + **web** (2026-08-25): Lounge Settings polls after grant and **uploads** hex to `apns_device_tokens`. Send needs Edge `APNS_*` secrets + function redeploy. |
@@ -156,6 +156,15 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 - **Polymarket:** mobile polymarket.us only opens the trade sheet from a user tap (`?marketSlug=&outcomeId=` alone shows the game). After the first main-frame finish the sheet evaluates **`public/native/bet-sheet-polymarket.js`**, fetched from `AppConfig.baseURL` (so fixes ship with a web deploy, 5 min cache). The script reads the market from `gateway.polymarket.us/v1/events/slug/{event}` and taps tab → category pill → player row (expands "Show N more") → line dial (pointer events at notch coordinates; `.click()` always picks the first notch) → Yes → No inside the sheet for `-short`. Moneyline (`football_team_full_game_winner`) taps the team button. Other market types just show the page. Skips at ≥1024px (desktop rail already honors the params).
 - **Ryan TestFlight sign-off 2026-09-28:** Kalshi + Polymarket tickets both open correctly.
 - **Web:** no change. Existing `target=_blank` anchors and `openExternalUrl` already reach these native paths. Old IPA keeps Safari / app handoff.
+
+### In-app browser (2026-09-29)
+
+**Why:** ESPN news in the NFL/CFB hubs (and every other outside link) bounced to system Safari, leaving the app.
+
+- **Native:** `EdgeInAppBrowser.swift`. `openInSafari`, `createWebView`, and nil-`targetFrame` navigations present an `SFSafariViewController` (`.pageSheet`, Done button, Reader, shares Safari cookies). Order: Bet sheet hosts first, then system hosts, then in-app. A 1s same-URL guard stops a double present.
+- **System Safari / App Store still:** `openInSafari` with `system: true` (web `openExternalBillingUrl`), plus `checkout.stripe.com`, `billing.stripe.com`, `connect.stripe.com`, `apps.apple.com`, `itunes.apple.com`, `testflight.apple.com` by host. Stripe returns via universal link, which never fires from inside `SFSafariViewController`.
+- **Web:** no change needed for `target=_blank` anchors or `openExternalUrl`. Older IPAs ignore `system` and keep opening Safari.
+- **Smoke (new IPA):** hub News story opens over the app, Done returns to the hub; Lounge link preview / DM link same; Subscribe / Manage billing still opens system Safari.
 
 ### StoreKit IAP (dual-path, 2026-09-05)
 

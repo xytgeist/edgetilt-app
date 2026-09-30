@@ -81,10 +81,14 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
         completion(.success(["ok": true, "sheet": true]))
         return
       }
-      DispatchQueue.main.async {
-        UIApplication.shared.open(url, options: [:]) { ok in
+      if payload?["system"] as? Bool == true {
+        EdgeInAppBrowser.openInSystemSafari(url) { ok in
           completion(.success(["ok": ok]))
         }
+        return
+      }
+      EdgeInAppBrowser.open(url) { ok in
+        completion(.success(["ok": ok, "inApp": true]))
       }
     case "openAppSettings":
       DispatchQueue.main.async {
@@ -528,7 +532,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
 
   /// `window.open` / `target=_blank` with a custom `uiDelegate` and no `createWebView`
   /// used to spawn a blank child WKWebView with no chrome (Ryan had to force-quit).
-  /// Always hand http(s) to system Safari and return nil … never create a second webview.
+  /// Always hand http(s) to `EdgeInAppBrowser` and return nil … never create a second webview.
   func webView(
     _ webView: WKWebView,
     createWebViewWith configuration: WKWebViewConfiguration,
@@ -536,7 +540,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     windowFeatures: WKWindowFeatures
   ) -> WKWebView? {
     if let url = navigationAction.request.url {
-      Self.openHttpUrlInSafari(url)
+      EdgeInAppBrowser.open(url)
     }
     return nil
   }
@@ -548,23 +552,11 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
   ) {
     // Same trap as `window.open`: nil targetFrame means a new-window navigation.
     if navigationAction.targetFrame == nil, let url = navigationAction.request.url {
-      Self.openHttpUrlInSafari(url)
+      EdgeInAppBrowser.open(url)
       decisionHandler(.cancel)
       return
     }
     decisionHandler(.allow)
-  }
-
-  private static func openHttpUrlInSafari(_ url: URL) {
-    let scheme = url.scheme?.lowercased() ?? ""
-    guard scheme == "http" || scheme == "https" else { return }
-    if EdgeBetSheet.handles(url) {
-      EdgeBetSheet.present(url: url)
-      return
-    }
-    DispatchQueue.main.async {
-      UIApplication.shared.open(url, options: [:], completionHandler: nil)
-    }
   }
 
   @available(iOS 15.0, *)

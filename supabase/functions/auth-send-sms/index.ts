@@ -9,11 +9,23 @@ import { Webhook } from 'npm:standardwebhooks@1.0.0'
 const FROM_DEFAULT = '+14803934143'
 const ALPHA_SENDER = 'EdgeTilt'
 
+/**
+ * Auth only reads the error body on HTTP 200. Any other status shows the user
+ * "Unexpected status code returned from hook: N", so the real code rides in http_code.
+ */
 function json(status: number, message: string) {
   return new Response(JSON.stringify({ error: { http_code: status, message } }), {
-    status,
+    status: 200,
     headers: { 'Content-Type': 'application/json' },
   })
+}
+
+/** Telnyx 40300 = the number texted STOP to our sender. */
+function telnyxFailureMessage(code: string) {
+  if (code === '40300') {
+    return 'This number opted out of EdgeTilt texts. Text START to +1 480-393-4143, then try again.'
+  }
+  return "We couldn't text that number. Make sure it can receive texts (landlines and some internet numbers can't)."
 }
 
 function toE164(raw: unknown) {
@@ -82,9 +94,10 @@ Deno.serve(async (req) => {
   })
   const telnyxJson = await telnyxRes.json().catch(() => ({}))
   if (!telnyxRes.ok) {
-    const errors = (telnyxJson as { errors?: Array<{ detail?: string; title?: string }> }).errors
-    console.error('telnyx sms failed', telnyxRes.status, errors?.[0]?.title || '')
-    return json(502, 'Could not send the text.')
+    const errors = (telnyxJson as { errors?: Array<{ code?: string; detail?: string; title?: string }> }).errors
+    const code = String(errors?.[0]?.code || '')
+    console.error('telnyx sms failed', telnyxRes.status, code, errors?.[0]?.title || '', errors?.[0]?.detail || '')
+    return json(422, telnyxFailureMessage(code))
   }
 
   return new Response(JSON.stringify({}), {

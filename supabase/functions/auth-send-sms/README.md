@@ -4,6 +4,8 @@ Supabase Auth **Send SMS** hook. Phone login (`signInWithOtp` / `verifyOtp` type
 
 `verify_jwt` is false. The hook secret signs the body.
 
+Errors always go back as **HTTP 200** with `{ error: { http_code, message } }`. Auth only shows our `message` on a 200; any other status reaches the user as "Unexpected status code returned from hook: N". A Telnyx rejection maps to a readable message (40300 = number opted out with STOP) and logs the Telnyx code + detail.
+
 Account info links a number with `updateUser`. That only calls this hook when **SMS autoconfirm is off**. With autoconfirm on, Auth stamps the number confirmed and never texts. Continue with Phone (`signInWithOtp`) still texts either way. The number to text is `sms.phone`, then `user.new_phone`, then `user.phone`. GoTrue omits the plus.
 
 ## Secrets

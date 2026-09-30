@@ -83,6 +83,10 @@ writeGenerated(".env.local", [
   ["THEO_PROD_ANON_KEY", firstNonEmpty(env, "THEO_PROD_ANON_KEY")],
   ["STRIPE_SUPPORT_KEY_LIVE", firstNonEmpty(env, "STRIPE_SUPPORT_KEY_LIVE")],
   ["ODDSPAPI_API_KEY", firstNonEmpty(env, "ODDSPAPI_API_KEY")],
+  ["ODDSPAPI_EMAIL", firstNonEmpty(env, "ODDSPAPI_EMAIL")],
+  ["ODDSPAPI_PASSWORD", firstNonEmpty(env, "ODDSPAPI_PASSWORD")],
+  ["GOOGLE_TEST_EMAIL", firstNonEmpty(env, "GOOGLE_TEST_EMAIL")],
+  ["GOOGLE_TEST_PASSWORD", firstNonEmpty(env, "GOOGLE_TEST_PASSWORD")],
   ["KAGGLE_API_TOKEN", firstNonEmpty(env, "KAGGLE_API_TOKEN")],
 ]);
 
@@ -101,6 +105,8 @@ writeGenerated(
     ["FANTASYPROS_API_KEY", firstNonEmpty(env, "FANTASYPROS_API_KEY")],
     ["KALSHI_API_KEY_ID", firstNonEmpty(env, "KALSHI_API_KEY_ID")],
     ["KALSHI_PRIVATE_KEY", firstNonEmpty(env, "KALSHI_PRIVATE_KEY")],
+    ["LOUNGE_BOT_FARM_INGEST_SECRET", firstNonEmpty(env, "TEST_LOUNGE_BOT_FARM_INGEST_SECRET")],
+    ["SUPABASE_ACCESS_TOKEN", firstNonEmpty(env, "SUPABASE_ACCESS_TOKEN")],
   ],
   ["# Test: kcosfvmreeiosdjdzycb (lvslotpro.com sandbox)"],
 );
@@ -119,9 +125,14 @@ writeGenerated(
     ["THE_ODDS_API_KEY", firstNonEmpty(env, "THE_ODDS_API_KEY")],
     ["THERUNDOWN_API_KEY", firstNonEmpty(env, "THERUNDOWN_API_KEY")],
     ["CFBD_API_KEY", firstNonEmpty(env, "CFBD_API_KEY")],
+    ["LOUNGE_BOT_FARM_INGEST_SECRET", firstNonEmpty(env, "PROD_LOUNGE_BOT_FARM_INGEST_SECRET")],
   ],
   ["# Production: jtjgtucumuoswnbauxry (edgetilt.com)"],
 );
+
+writeGenerated(".env.fcm-service-account.local", [
+  ["FCM_SERVICE_ACCOUNT_JSON", firstNonEmpty(env, "FCM_SERVICE_ACCOUNT_JSON")],
+]);
 
 if (firstNonEmpty(env, "CF_OPS_API_TOKEN")) {
   writeGenerated(

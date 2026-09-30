@@ -17,13 +17,16 @@ enum EdgeBetSheet {
     return hosts.contains { host == $0 || host.hasSuffix(".\($0)") }
   }
 
+  /// Sheet waiting for the portrait rotation before it presents (a second tap in that window reuses it).
+  private static var pending: EdgeBetSheetController?
+
   static func present(url: URL) {
     DispatchQueue.main.async {
-      guard let presenter = topViewController() else {
-        UIApplication.shared.open(url, options: [:], completionHandler: nil)
+      if let pending {
+        pending.load(url)
         return
       }
-      if let nav = presenter as? UINavigationController,
+      if let nav = topViewController() as? UINavigationController,
          let open = nav.viewControllers.first as? EdgeBetSheetController
       {
         open.load(url)
@@ -32,13 +35,39 @@ enum EdgeBetSheet {
       // The books' mobile web is portrait-only; iPhone landscape rotates back when the sheet closes.
       EdgeOrientationLock.setSheetPortrait(true)
       let controller = EdgeBetSheetController(url: url, autoTapScriptURL: autoTapScriptURL(for: url))
-      let nav = UINavigationController(rootViewController: controller)
-      nav.modalPresentationStyle = .pageSheet
-      if let sheet = nav.sheetPresentationController {
-        sheet.detents = [.large()]
-        sheet.prefersGrabberVisible = true
+      pending = controller
+      // Presenting while the portrait rotation is still running bounces the phone landscape and back.
+      whenPortrait {
+        pending = nil
+        guard let presenter = topViewController() else {
+          EdgeOrientationLock.setSheetPortrait(false)
+          UIApplication.shared.open(url, options: [:], completionHandler: nil)
+          return
+        }
+        let nav = UINavigationController(rootViewController: controller)
+        nav.modalPresentationStyle = .pageSheet
+        if let sheet = nav.sheetPresentationController {
+          sheet.detents = [.large()]
+          sheet.prefersGrabberVisible = true
+        }
+        presenter.present(nav, animated: true)
       }
-      presenter.present(nav, animated: true)
+    }
+  }
+
+  /// Runs `body` once the scene is portrait (immediately on iPad / portrait phones), giving up after ~1.2 s.
+  private static func whenPortrait(_ body: @escaping () -> Void, attempt: Int = 0) {
+    let scene = UIApplication.shared.connectedScenes
+      .compactMap { $0 as? UIWindowScene }
+      .first(where: { $0.activationState == .foregroundActive })
+    let portrait = scene.map { $0.effectiveGeometry.interfaceOrientation.isPortrait } ?? true
+    if portrait || UIDevice.current.userInterfaceIdiom != .phone || attempt >= 24 {
+      // One more beat so the rotation animation fully lands before the sheet animates in.
+      DispatchQueue.main.asyncAfter(deadline: .now() + (attempt > 0 ? 0.15 : 0), execute: body)
+      return
+    }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+      whenPortrait(body, attempt: attempt + 1)
     }
   }
 

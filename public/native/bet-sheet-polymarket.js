@@ -12,6 +12,12 @@
   // lg+ keeps the desktop trade rail, which already honors marketSlug/outcomeId.
   if (window.matchMedia && window.matchMedia('(min-width: 1024px)').matches) return
 
+  /** Step trail for CDP / Web Inspector debugging (`window.__edgeBetPickLog`). */
+  var trail = (window.__edgeBetPickLog = [])
+  function step(s) {
+    trail.push(Math.round(performance.now()) + ' ' + s)
+  }
+
   var GATEWAY = 'https://gateway.polymarket.us/v1/events/slug/'
   var CATEGORY_LABEL = {
     touchdowns: 'Anytime Touchdowns',
@@ -63,6 +69,13 @@
     return Boolean(hit && el.contains(hit))
   }
 
+  /** The board smooth-scrolls and images shift rows as they load, so poll the hit-test instead of one fixed wait. */
+  async function scrollToTappable(el) {
+    el.scrollIntoView({ block: 'center' })
+    var ok = await waitFor(function () { return onScreen(el) }, 2500)
+    return Boolean(ok)
+  }
+
   function categoryLabel(sportsType) {
     var key = String(sportsType || '').toLowerCase().replace(/^football_player_/, '')
     if (CATEGORY_LABEL[key]) return CATEGORY_LABEL[key]
@@ -75,7 +88,7 @@
       return Array.prototype.find.call(document.querySelectorAll('[role=tab]'), function (t) {
         return norm(t.innerText) === want
       })
-    }, 10000)
+    }, 20000)
     if (!tab) return false
     // Android WebView can run this before React hydrates, and those early clicks are dropped.
     for (var i = 0; i < 12 && tab.getAttribute('aria-selected') !== 'true'; i++) {
@@ -145,7 +158,7 @@
         dial = d
       }
     })
-    if (!dial) return false
+    if (!dial) return step('dial miss'), false
     var vp = (dial.querySelector('[data-polykit-slot=game-line-dial-viewport]') || dial).getBoundingClientRect()
     var notches = Array.prototype.slice.call(dial.querySelectorAll('[data-polykit-slot=game-line-dial-notch]'))
     var label = function (n) {
@@ -153,7 +166,7 @@
       return norm(m ? m.textContent : n.textContent)
     }
     var target = notches.find(function (n) { return label(n) === norm(line) })
-    if (!target) return false
+    if (!target) return step('notch miss'), false
     var inView = function (n) {
       var q = n.getBoundingClientRect()
       var c = q.left + q.width / 2
@@ -198,14 +211,16 @@
 
   async function pickPlayerProp(market, side) {
     var meta = market.metadata || {}
-    if (!meta.playerName) return
-    if (!(await openTab('Player Props'))) return
-    if (!(await openCategory(categoryLabel(market.sportsMarketType)))) return
+    if (!meta.playerName) return step('no player')
+    if (!(await openTab('Player Props'))) return step('tab miss')
+    step('tab')
+    if (!(await openCategory(categoryLabel(market.sportsMarketType)))) return step('category miss')
+    step('category')
     var row = await waitFor(function () { return findPlayerRow(meta.playerName) })
-    if (!row) return
-    row.scrollIntoView({ block: 'center' })
-    await sleep(300)
-    if (!onScreen(row)) {
+    if (!row) return step('row miss')
+    var shown = await scrollToTappable(row)
+    step('row onScreen=' + shown)
+    if (!shown) {
       var rowTop = row.getBoundingClientRect().top
       var more = null
       var gap = Infinity
@@ -221,16 +236,17 @@
       more.click()
       await sleep(700)
       row = findPlayerRow(meta.playerName)
-      if (!row) return
-      row.scrollIntoView({ block: 'center' })
-      await sleep(300)
+      if (!row) return step('row miss after more')
+      await scrollToTappable(row)
     }
-    if (meta.lineLabel && !(await setLine(row, meta.lineLabel))) return
+    if (meta.lineLabel && !(await setLine(row, meta.lineLabel))) return step('line miss')
+    step('line')
     var yes = Array.prototype.find.call(row.querySelectorAll('button'), function (b) {
       return firstLine(b).indexOf('yes') === 0
     })
-    if (!yes) return
-    if (!(await clickUntilSheet(yes))) return
+    if (!yes) return step('yes miss')
+    if (!(await clickUntilSheet(yes))) return step('sheet miss')
+    step('sheet')
     if (side === 'no') await chooseNoInSheet()
   }
 
@@ -257,18 +273,22 @@
     var slug = q.get('marketSlug')
     var outcome = q.get('outcomeId') || ''
     var m = location.pathname.match(/^\/sports\/[^/]+\/([^/?#]+)/)
-    if (!slug || !m) return
+    if (!slug || !m) return step('no params')
     var side = /-short$/.test(outcome) ? 'no' : 'yes'
     var res = await fetch(GATEWAY + encodeURIComponent(decodeURIComponent(m[1])))
-    if (!res.ok) return
+    if (!res.ok) return step('gateway ' + res.status)
     var data = await res.json()
     var markets = (data && data.event && data.event.markets) || []
     var market = markets.find(function (x) { return x.slug === slug })
-    if (!market) return
+    if (!market) return step('market miss')
     var type = String(market.sportsMarketType || '')
+    step('market ' + type + ' ' + side)
+    // A sheet opened from a landscape phone can still be rotating; coordinate taps need the settled portrait board.
+    await waitFor(function () { return window.innerWidth < window.innerHeight }, 4000)
+    await sleep(400)
     if (type.indexOf('player') !== -1) await pickPlayerProp(market, side)
     else if (type === 'football_team_full_game_winner') await pickMoneyline(market, side)
   }
 
-  run().catch(function () {})
+  run().catch(function (e) { step('error ' + (e && e.message)) })
 })()

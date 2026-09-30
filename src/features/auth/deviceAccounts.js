@@ -1,7 +1,7 @@
 /**
  * Accounts that have signed in on this device (survives sign-out). Powers the
  * "Connect account? / Continue with new" prompt when a sign-in creates a new account.
- * Display only: connecting still requires signing in to the remembered account.
+ * Connecting still requires signing in to the remembered account (password, text code, Google or Apple).
  */
 
 import { isLikelyNewAuthUser } from '../lounge/firstRunChromeTour.js'
@@ -88,6 +88,9 @@ export function rememberDeviceAccount(user, profile) {
     last_method: userLastSignInMethod(user),
     email_hint: maskEmail(user.email),
     phone_hint: maskPhone(user.phone),
+    // Full identifiers let Connect ask only for the password / text code (this device already signed in with them).
+    login_email: userSignInMethods(user).includes('email') ? user.email || '' : '',
+    login_phone: userSignInMethods(user).includes('phone') && user.phone ? `+${String(user.phone).replace(/^\+/, '')}` : '',
     last_seen: Date.now(),
   }
   const rest = listDeviceAccounts().filter((a) => a.user_id !== user.id)

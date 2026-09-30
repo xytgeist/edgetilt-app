@@ -6131,6 +6131,9 @@ html.light [data-account-connect-sheet] input.bg-zinc-800 {
   background-color: #f4f4f5 !important;
   color: #18181b !important;
 }
+html.light [data-account-connect-sheet] input.bg-zinc-800:read-only {
+  color: #71717a !important;
+}
 html.light [data-account-connect-sheet] .text-rose-300 {
   color: #be123c !important;
 }

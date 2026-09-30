@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { createClient } from '@supabase/supabase-js'
 import AuthModalShell from './AuthModalShell.jsx'
 import { friendlyLinkError, linkAppleIdentity, linkGoogleIdentity } from './linkSignInMethod.js'
 import { createAppleIdTokenNonce } from './appleIdTokenNonce.js'
@@ -49,6 +50,16 @@ async function liveDeviceAccounts(supabase, accounts) {
   return kept
 }
 
+/** Set right before the session swaps to the remembered account; the reload that follows runs attach. */
+let handoffInFlight = false
+
+/** Throwaway client: checks the remembered account's password / code without touching the live session. */
+function createTargetAuthClient() {
+  return createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'edge-connect-target' },
+  })
+}
+
 function preferredTargetMethod(account) {
   const methods = account?.methods || []
   const order = [account?.last_method, 'google', 'apple', 'phone', 'email']
@@ -73,16 +84,21 @@ async function signInToRemembered(supabase, account) {
       const { raw, hashed } = await createAppleIdTokenNonce()
       const native = await edgeNativeInvoke('signInWithApple', { nonce: hashed })
       if (native?.cancelled || !native?.identityToken) return false
+      handoffInFlight = true
       const { data, error } = await supabase.auth.signInWithIdToken({
         provider: 'apple',
         token: native.identityToken,
         nonce: raw,
       })
-      if (error) return false
+      if (error) {
+        handoffInFlight = false
+        return false
+      }
       await reloadAfterAuthSession((u) => ensureDefaultProfileRow(supabase, u), data.user)
       return true
     }
   } catch {
+    handoffInFlight = false
     return false
   }
   return false
@@ -164,9 +180,10 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
   const [error, setError] = useState('')
   const [phoneCodeSent, setPhoneCodeSent] = useState(false)
   const [phoneCode, setPhoneCode] = useState('')
+  const [targetAuth, setTargetAuth] = useState(null)
 
   useEffect(() => {
-    if (!user?.id) return undefined
+    if (!user?.id || handoffInFlight) return undefined
     let cancelled = false
     const run = async () => {
       const pending = readConnectPending()
@@ -246,15 +263,9 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
     [offer, continueWithNew],
   )
 
-  const connect = useCallback(
-    async (account) => {
-      const freshMethod = userSignInMethods(user)[0]
-      if (!freshMethod) {
-        setError('Could not tell how you signed in. Connect it later in Settings → Account info.')
-        return
-      }
-      setBusy(true)
-      setError('')
+  /** Server check + transfer token (deletes nothing). False (with error shown) when this account can't connect. */
+  const prepareConnect = useCallback(
+    async (account, freshMethod) => {
       writeConnectPending({
         targetUserId: account.user_id,
         targetHandle: account.handle,
@@ -276,12 +287,26 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
           /* keep default */
         }
         setError(message)
-        setBusy(false)
-        return
+        return false
       }
       const pending = readConnectPending()
       if (pending) writeConnectPending({ ...pending, transferToken: data.transfer_token })
+      return true
+    },
+    [supabase, user],
+  )
+
+  /** Google redirect / native Apple, else the full sign-in modal. */
+  const connectViaRedirect = useCallback(
+    async (account, freshMethod) => {
+      setBusy(true)
+      setError('')
+      if (!(await prepareConnect(account, freshMethod))) {
+        setBusy(false)
+        return
+      }
       setOffer(null)
+      setTargetAuth(null)
       setBusy(false)
       await supabase.auth.signOut({ scope: 'local' })
       const started = await signInToRemembered(supabase, account)
@@ -290,7 +315,92 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
         `Sign in to @${account.handle} with ${methodsText(account.methods)} to finish connecting ${signInMethodLabel(freshMethod)}.`,
       )
     },
-    [supabase, user, onRequestSignIn],
+    [supabase, prepareConnect, onRequestSignIn],
+  )
+
+  const sendTargetCode = useCallback(async (phone) => {
+    const { error: otpErr } = await createTargetAuthClient().auth.signInWithOtp({
+      phone,
+      options: { channel: 'sms', shouldCreateUser: false },
+    })
+    return otpErr ? 'Could not send a code right now. Try again in a moment.' : ''
+  }, [])
+
+  const connect = useCallback(
+    async (account) => {
+      const freshMethod = userSignInMethods(user)[0]
+      if (!freshMethod) {
+        setError('Could not tell how you signed in. Connect it later in Settings → Account info.')
+        return
+      }
+      const method = preferredTargetMethod(account)
+      setError('')
+      if (method === 'email') {
+        setTargetAuth({ account, freshMethod, method, email: account.login_email || '', password: '', code: '' })
+        return
+      }
+      if (method === 'phone' && account.login_phone) {
+        setBusy(true)
+        const sendErr = await sendTargetCode(account.login_phone)
+        setBusy(false)
+        if (sendErr) {
+          setError(sendErr)
+          return
+        }
+        setTargetAuth({ account, freshMethod, method, email: '', password: '', code: '' })
+        return
+      }
+      await connectViaRedirect(account, freshMethod)
+    },
+    [user, sendTargetCode, connectViaRedirect],
+  )
+
+  /** Password / text code checked on a throwaway client; only a good sign-in swaps the live session. */
+  const submitTargetAuth = useCallback(
+    async (e) => {
+      e?.preventDefault()
+      if (!targetAuth || busy) return
+      const { account, freshMethod, method } = targetAuth
+      setBusy(true)
+      setError('')
+      const tmp = createTargetAuthClient().auth
+      const { data, error: signErr } =
+        method === 'phone'
+          ? await tmp.verifyOtp({ phone: account.login_phone, token: targetAuth.code.trim(), type: 'sms' })
+          : await tmp.signInWithPassword({ email: targetAuth.email.trim(), password: targetAuth.password })
+      if (signErr || !data?.session) {
+        setError(
+          method === 'phone'
+            ? 'That code didn’t work. Check it and try again.'
+            : 'Incorrect email or password. Try again or sign in another way.',
+        )
+        setBusy(false)
+        return
+      }
+      if (data.user?.id !== account.user_id) {
+        setError(`That signs in to a different account, not @${account.handle}.`)
+        setBusy(false)
+        return
+      }
+      if (!(await prepareConnect(account, freshMethod))) {
+        setBusy(false)
+        return
+      }
+      handoffInFlight = true
+      const { error: sessionErr } = await supabase.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      })
+      if (sessionErr) {
+        handoffInFlight = false
+        writeConnectPending(null)
+        setError('Could not switch accounts right now. Try again.')
+        setBusy(false)
+        return
+      }
+      await reloadAfterAuthSession((u) => ensureDefaultProfileRow(supabase, u), data.user)
+    },
+    [targetAuth, busy, supabase, prepareConnect],
   )
 
   const done = useCallback(
@@ -369,7 +479,84 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
   return (
     <AuthModalShell onClose={() => {}}>
       <div data-account-connect-sheet>
-        {shownOffer ? (
+        {shownOffer && targetAuth ? (
+          <form onSubmit={submitTargetAuth}>
+            <h2 id="account-connect-title" className="text-center text-lg font-bold text-white">
+              Sign in to @{targetAuth.account.handle}
+            </h2>
+            <p className="mt-1 text-center text-sm leading-relaxed text-zinc-400">
+              {targetAuth.method === 'phone'
+                ? `Enter the code we texted to ${targetAuth.account.phone_hint || 'your phone'} to connect.`
+                : 'Enter your password to connect.'}
+            </p>
+            {targetAuth.method === 'phone' ? (
+              <input
+                value={targetAuth.code}
+                onChange={(e) => setTargetAuth({ ...targetAuth, code: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="Code"
+                autoFocus
+                className="mt-4 w-full rounded-2xl bg-zinc-800 px-4 py-3 text-lg tracking-widest text-white outline-none"
+              />
+            ) : (
+              <>
+                <input
+                  type="email"
+                  name="email"
+                  value={targetAuth.email}
+                  onChange={(e) => setTargetAuth({ ...targetAuth, email: e.target.value })}
+                  readOnly={Boolean(targetAuth.account.login_email)}
+                  autoComplete="username"
+                  placeholder="Email"
+                  className="mt-4 w-full rounded-2xl bg-zinc-800 px-4 py-3 text-[15px] text-white outline-none read-only:text-zinc-400"
+                />
+                <input
+                  type="password"
+                  name="password"
+                  value={targetAuth.password}
+                  onChange={(e) => setTargetAuth({ ...targetAuth, password: e.target.value })}
+                  autoComplete="current-password"
+                  placeholder="Password"
+                  autoFocus
+                  className="mt-2 w-full rounded-2xl bg-zinc-800 px-4 py-3 text-[15px] text-white outline-none"
+                />
+              </>
+            )}
+            {error ? <p className="mt-3 text-center text-sm text-rose-300">{error}</p> : null}
+            <button
+              type="submit"
+              disabled={
+                busy ||
+                (targetAuth.method === 'phone'
+                  ? targetAuth.code.length < 4
+                  : !targetAuth.password || !targetAuth.email.trim())
+              }
+              className="mt-4 w-full rounded-full bg-orange-600 py-3 text-[15px] font-bold text-white disabled:opacity-50"
+            >
+              {busy ? 'Connecting…' : 'Sign in and connect'}
+            </button>
+            <button
+              type="button"
+              onClick={() => connectViaRedirect(targetAuth.account, targetAuth.freshMethod)}
+              disabled={busy}
+              className="mt-2 w-full py-2 text-[13px] font-medium text-zinc-400"
+            >
+              Sign in another way
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTargetAuth(null)
+                setError('')
+              }}
+              disabled={busy}
+              className="w-full py-2 text-[13px] font-medium text-zinc-500"
+            >
+              Back
+            </button>
+          </form>
+        ) : shownOffer ? (
           <>
             <h2 id="account-connect-title" className="text-center text-lg font-bold text-white">Connect account?</h2>
             <p className="mt-1 text-center text-sm leading-relaxed text-zinc-400">

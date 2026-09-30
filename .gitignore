@@ -14,7 +14,10 @@ dist-syndicate
 dist-ssr
 *.local
 
-# Supabase CLI / slot sync — keep test & prod service keys out of git
+# One-file local secrets (copy between machines). Never commit.
+.env.master
+
+# Generated from .env.master via `npm run env:sync` — keep keys out of git
 .env.supabase.test
 .env.supabase.production
 .env.cloudflare.operations

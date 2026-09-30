@@ -71,6 +71,7 @@ function applyTargetEnvFromProcess(target) {
 
 /** @param {"test" | "production" | null | undefined} target */
 export function loadSupabaseEnv(target) {
+  applyEnvFile(path.join(repoRoot, ".env.master"), { fillEmptyOnly: true });
   applyEnvFile(path.join(repoRoot, ".env"), { fillEmptyOnly: true });
   if (target == null) return;
   const file = TARGET_ENV_FILES[target];
@@ -84,14 +85,26 @@ export function loadSupabaseEnv(target) {
   const full = path.join(repoRoot, file);
   if (applyEnvFile(full, { fillEmptyOnly: false })) return;
 
+  // No split file … map TEST_* / PROD_* from .env.master onto SUPABASE_*.
+  const prefix = target === "production" ? "PROD_" : "TEST_";
+  const mappedUrl = process.env[`${prefix}SUPABASE_URL`]?.trim() || "";
+  const mappedKey = process.env[`${prefix}SUPABASE_SERVICE_ROLE_KEY`]?.trim() || "";
+  const mappedPw = process.env[`${prefix}SUPABASE_DB_PASSWORD`]?.trim() || "";
+  const mappedDb = process.env[`${prefix}SUPABASE_DB_URL`]?.trim() || "";
+  if (mappedUrl) process.env.SUPABASE_URL = mappedUrl.replace(/\/+$/, "");
+  if (mappedKey) process.env.SUPABASE_SERVICE_ROLE_KEY = mappedKey;
+  if (mappedPw) process.env.SUPABASE_DB_PASSWORD = mappedPw;
+  if (mappedDb) process.env.SUPABASE_DB_URL = mappedDb;
+  if (mappedUrl && mappedKey) return;
+
   // Vercel / CI: no gitignored file — use dashboard env (SUPABASE_* or SUPABASE_*_TEST / *_PRODUCTION)
   applyTargetEnvFromProcess(target);
   const { url, key } = readSupabaseCredentials();
   if (url && key) return;
 
   throw new Error(
-    `Missing ${file} for target=${target} (local dev), and no Supabase credentials in process.env. ` +
-      `Local: create repo-root ${file} with SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY. ` +
+    `Missing ${file} for target=${target} (local dev), and no Supabase credentials in .env.master / process.env. ` +
+      `Local: copy .env.master and run npm run env:sync, or set TEST_/PROD_SUPABASE_URL + SERVICE_ROLE_KEY in .env.master. ` +
       `Vercel: set those vars (or SUPABASE_URL_${target === "production" ? "PRODUCTION" : "TEST"} + matching service role key) on the deployment.`
   );
 }

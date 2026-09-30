@@ -6,9 +6,10 @@
  *   node scripts/theo-test-session.mjs --invoke <fn> [json]  → calls an Edge Function as Theo, prints JSON
  *   add --prod                                               → same against production (read-style calls only)
  *
- * Test: THEO_TEST_EMAIL / THEO_TEST_PASSWORD + VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY from `.env.local`.
- * Prod: THEO_PROD_EMAIL / THEO_PROD_PASSWORD / THEO_PROD_ANON_KEY from `.env.local` + SUPABASE_URL from
- * `.env.supabase.production`. Each mode refuses any project but its own.
+ * Test: THEO_TEST_EMAIL / THEO_TEST_PASSWORD + VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY
+ * (`.env.master` or generated `.env.local`).
+ * Prod: THEO_PROD_* + SUPABASE_URL from `.env.master` PROD_* or `.env.supabase.production`.
+ * Each mode refuses any project but its own.
  */
 import fs from 'node:fs'
 import path from 'node:path'
@@ -28,10 +29,19 @@ function readEnv(file) {
 
 const args = process.argv.slice(2)
 const prod = args.includes('--prod')
-const env = { ...readEnv(path.resolve('.env.local')), ...process.env }
-const prodEnv = prod ? readEnv(path.resolve('.env.supabase.production')) : {}
-const url = String((prod ? prodEnv.SUPABASE_URL : env.VITE_SUPABASE_URL) || '').replace(/\/$/, '')
-const anon = prod ? env.THEO_PROD_ANON_KEY : env.VITE_SUPABASE_ANON_KEY
+const master = readEnv(path.resolve('.env.master'))
+const env = { ...master, ...readEnv(path.resolve('.env.local')), ...process.env }
+const prodEnv = prod
+  ? { ...master, ...readEnv(path.resolve('.env.supabase.production')) }
+  : {}
+const url = String(
+  (prod
+    ? prodEnv.SUPABASE_URL || prodEnv.PROD_SUPABASE_URL
+    : env.VITE_SUPABASE_URL || env.TEST_VITE_SUPABASE_URL || env.TEST_SUPABASE_URL) || '',
+).replace(/\/$/, '')
+const anon = prod
+  ? env.THEO_PROD_ANON_KEY
+  : env.VITE_SUPABASE_ANON_KEY || env.TEST_VITE_SUPABASE_ANON_KEY
 const email = prod ? env.THEO_PROD_EMAIL : env.THEO_TEST_EMAIL
 const password = prod ? env.THEO_PROD_PASSWORD : env.THEO_TEST_PASSWORD
 const ref = prod ? PROD_REF : TEST_REF
@@ -41,7 +51,7 @@ if (!url.includes(ref)) {
   process.exit(1)
 }
 if (!anon || !email || !password) {
-  console.error(`Missing ${prod ? 'THEO_PROD_*' : 'VITE_SUPABASE_ANON_KEY / THEO_TEST_*'} credentials in .env.local.`)
+  console.error(`Missing ${prod ? 'THEO_PROD_*' : 'VITE_SUPABASE_ANON_KEY / THEO_TEST_*'} credentials in .env.master / .env.local.`)
   process.exit(1)
 }
 

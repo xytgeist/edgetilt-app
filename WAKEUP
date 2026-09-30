@@ -83,6 +83,8 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 
 **I am Mac Theo.** Android Kotlin shell (`android/`, `android/README.md`) is live-capable end to end. Next work is native parity with the IPA (list below).
 
+- **Local secrets:** one gitignored **`.env.master`** (copy between Mac / Windows). After copy: **`npm run env:sync`**. Template: **`.env.master.example`**.
+
 - **Shipped Sep 28-29:** FCM push on test + prod (Firebase `edge-ce06c`). Push + location asked after sign-in (web `1.4.902`, promoted Sep 29 with `1.4.904`). Chrome disguise for Google sign-in (`EdgeWebViews.presentAsChrome`). Bet sheet real popups (`1d504278`) so Polymarket's Auth0 Google login from a market page completes (verified on Ryan's Galaxy A15 over adb). iOS got the same popup fix.
 - **APKs:** Ryan sideloads debug builds (`~/Desktop/Edge-android-prod.apk`, `EdgeTest-android.apk`). Same debug keystore (`~/.android/debug.keystore`), so installs update in place; keep that file backed up. No Play account / upload key yet.
 - **iOS TestFlight (not attached to review):** prod **1.4.95 (20260929071055)** from `test` @ `1d504278`. **Convention:** test IPAs come only from Xcode Cloud **TestFlight Internal** (short numbers like 201); prod = local EdgeTilt Prod archive with DTG. Stray local test build **1.4.95 (20260929070812)** broke that ... Ryan to expire it in ASC. See `ios/README.md`.

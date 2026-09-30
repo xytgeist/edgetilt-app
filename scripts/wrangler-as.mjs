@@ -53,11 +53,18 @@ if (!account || wranglerArgs.length === 0) {
 }
 
 const fileEnv = loadEnvFile(account.file)
-const token = String(fileEnv.CLOUDFLARE_API_TOKEN || process.env.CLOUDFLARE_API_TOKEN || '').trim()
-const accountId = String(fileEnv.CLOUDFLARE_ACCOUNT_ID || account.accountId).trim()
+const master = loadEnvFile('.env.master')
+const masterTokenKey = alias === 'operations' ? 'CF_OPS_API_TOKEN' : 'CF_INV_API_TOKEN'
+const masterAccountKey = alias === 'operations' ? 'CF_OPS_ACCOUNT_ID' : 'CF_INV_ACCOUNT_ID'
+const token = String(
+  fileEnv.CLOUDFLARE_API_TOKEN || master[masterTokenKey] || process.env.CLOUDFLARE_API_TOKEN || '',
+).trim()
+const accountId = String(
+  fileEnv.CLOUDFLARE_ACCOUNT_ID || master[masterAccountKey] || account.accountId,
+).trim()
 if (!token) {
   console.error(
-    `Missing CLOUDFLARE_API_TOKEN for ${alias} (${account.login}).\nCopy .env.cloudflare.example to ${account.file} and paste a Pages-edit account token.`,
+    `Missing CLOUDFLARE_API_TOKEN for ${alias} (${account.login}).\nSet ${masterTokenKey} in .env.master (then npm run env:sync), or paste a Pages-edit token into ${account.file}.`,
   )
   process.exit(1)
 }

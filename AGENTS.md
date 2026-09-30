@@ -284,7 +284,9 @@ npm run db:query:production -f supabase/migrations/foo.sql
 
 `AGENT_RULE_SUPABASE_DB_QUERY` — searchability token.
 
-**Theo's own account (test + production Supabase, separate users):** **`@theo_ops`** (`theo+ops@edgetilt.com`), Slots Edge active, excluded from product analytics. Credentials live in **`.env.local`** (`THEO_TEST_EMAIL` / `THEO_TEST_PASSWORD`, gitignored ... never print or commit them). Use it to call user-JWT Edge Functions without asking Ryan to sign in:
+**Local secrets:** one gitignored **`.env.master`** (copy between machines) + **`npm run env:sync`**. Template: **`.env.master.example`**. That writes `.env.local` + `.env.supabase.{test,production}` so existing scripts keep working.
+
+**Theo's own account (test + production Supabase, separate users):** **`@theo_ops`** (`theo+ops@edgetilt.com`), Slots Edge active, excluded from product analytics. Credentials live in **`.env.master`** (`THEO_TEST_EMAIL` / `THEO_TEST_PASSWORD`, gitignored ... never print or commit them). Use it to call user-JWT Edge Functions without asking Ryan to sign in:
 
 ```bash
 node scripts/theo-test-session.mjs                                   # short-lived access token

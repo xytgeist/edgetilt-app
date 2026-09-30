@@ -1,4 +1,5 @@
 import { pickDefaultProfileBannerUrl } from './defaultProfileBanners'
+import { degenNameFromSeed } from './degenHandle.js'
 import {
   requestCfR2DirectUpload,
   uploadFileToCfR2PresignedUrl,
@@ -135,6 +136,10 @@ export function profileAvatarToneClass(seedValue) {
 export function profileSeedFromUser(user) {
   const email = String(user?.email || '')
   const local = email.includes('@') ? email.split('@')[0] : ''
+  if (!normalizeHandle(local) && user?.id) {
+    const degen = degenNameFromSeed(user.id)
+    return { baseHandle: degen.handle, displayName: degen.displayName }
+  }
   const baseHandle = normalizeHandle(local) || `user_${String(user?.id || '').slice(0, 6)}`
   const displayFromLocal = local
     .replace(/[._-]+/g, ' ')

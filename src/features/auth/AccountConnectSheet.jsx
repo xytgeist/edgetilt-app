@@ -223,6 +223,8 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
           setFinish(pending)
           return
         }
+        // OAuth return still swapping sessions: keep the pending connect for the target account.
+        if (/access_token=/.test(window.location.hash || '')) return
         writeConnectPending(null)
       }
       const { data: profile } = await ensureDefaultProfileRow(supabase, user)
@@ -305,12 +307,19 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
         setBusy(false)
         return
       }
+      const method = preferredTargetMethod(account)
+      if (method === 'google' || method === 'apple') {
+        // No sign-out first: a signed-out frame auto-opens the sign-in modal. The new session replaces this one.
+        if (await signInToRemembered(supabase, account)) return
+        writeConnectPending(null)
+        setError(`${signInMethodLabel(method)} sign-in didn’t finish. Tap Connect to try again.`)
+        setBusy(false)
+        return
+      }
       setOffer(null)
       setTargetAuth(null)
       setBusy(false)
       await supabase.auth.signOut({ scope: 'local' })
-      const started = await signInToRemembered(supabase, account)
-      if (started) return
       onRequestSignIn?.(
         `Sign in to @${account.handle} with ${methodsText(account.methods)} to finish connecting ${signInMethodLabel(freshMethod)}.`,
       )

@@ -135,7 +135,9 @@ export function profileAvatarToneClass(seedValue) {
 
 export function profileSeedFromUser(user) {
   const email = String(user?.email || '')
-  const local = email.includes('@') ? email.split('@')[0] : ''
+  // Apple "Hide My Email" relay locals are random strings (82f5ngc6nm), not a name.
+  const isAppleRelay = /@privaterelay\.appleid\.com$/i.test(email)
+  const local = email.includes('@') && !isAppleRelay ? email.split('@')[0] : ''
   if (!normalizeHandle(local) && user?.id) {
     const degen = degenNameFromSeed(user.id)
     return { baseHandle: degen.handle, displayName: degen.displayName }

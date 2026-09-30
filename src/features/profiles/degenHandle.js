@@ -1,5 +1,5 @@
 /**
- * Default name for accounts with no email to seed from (phone sign-up): adjective + noun + 10-999,
+ * Default name for accounts with no usable email (phone sign-up, Apple Hide My Email): adjective + noun + 10-999,
  * e.g. handle `tiltedwhale27`, display name `Tilted Whale`.
  * Derived from the user id so every caller of profileSeedFromUser agrees on the same name.
  * Keep words short (handle max 30) and App Store clean.

@@ -89,8 +89,9 @@ const STAT_ORDER = ['pass', 'rush', 'rec', 'td']
  * Up to `limit` players per side: QB pass yds, RB rush yds, WR/TE rec yds (anytime TD when the
  * yardage ladder is missing). Rows: `{ key, name, position, stat, line, price, source, url }`.
  * `live`: bettable rungs only, and one row per stat the player has a ladder for (position stat first).
+ * `allStats`: pregame also gets one row per stat ladder (the scrolling landscape rail).
  */
-export function pregamePlayerPropRails(props, players, limit = 5, { live = false } = {}) {
+export function pregamePlayerPropRails(props, players, limit = 5, { live = false, allStats = false } = {}) {
   const roster = new Map()
   for (const pl of Array.isArray(players) ? players : []) {
     const k = nameKey(pl?.name)
@@ -112,7 +113,7 @@ export function pregamePlayerPropRails(props, players, limit = 5, { live = false
   const out = { away: [], home: [] }
   for (const { player, byStat } of byPlayer.values()) {
     const want = STAT_BY_POSITION[String(player.position || '').toUpperCase()]
-    const stats = live
+    const stats = live || allStats
       ? STAT_ORDER.filter((s) => byStat[s]).sort((a, b) => (b === want) - (a === want))
       : [want && byStat[want] ? want : byStat.td ? 'td' : null].filter(Boolean)
     stats.forEach((stat, statIdx) => {
@@ -121,6 +122,7 @@ export function pregamePlayerPropRails(props, players, limit = 5, { live = false
       const line = lineNumber(pick)
       out[player.side].push({
         key: `${nameKey(player.name)}:${stat}`,
+        playerKey: nameKey(player.name),
         name: lastName(player.name),
         position: String(player.position || '').toUpperCase(),
         stat: STAT_LABEL[stat],
@@ -139,7 +141,7 @@ export function pregamePlayerPropRails(props, players, limit = 5, { live = false
         (a, b) =>
           positionOrder(a.position) - positionOrder(b.position) ||
           a.rank - b.rank ||
-          a.key.localeCompare(b.key) ||
+          a.playerKey.localeCompare(b.playerKey) ||
           a.statIdx - b.statIdx,
       )
       .slice(0, limit)

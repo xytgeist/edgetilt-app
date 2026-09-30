@@ -4499,45 +4499,61 @@ function MatchupTeamColumn({ side, label, treatment, best, teamTotal }) {
   )
 }
 
-/** Outer edge of the pregame board: each team's headline player prop (rung nearest 50¢) per player. */
+const PREGAME_PROP_RAIL_LIMIT = 24
+
+/**
+ * Outer edge of the pregame board: each team's player props (rung nearest 50¢, one per stat ladder).
+ * Scrolls vertically inside its grid cell; short lists stay centered.
+ */
 function PregamePropRail({ rows, align }) {
   const left = align === 'left'
   return (
     <div
       data-lounge-gamecast-prop-rail={align}
-      className={`flex min-w-0 flex-col justify-center gap-2 ${left ? 'items-start text-left' : 'items-end text-right'}`}
+      className={`flex min-h-0 min-w-0 flex-col self-stretch ${left ? 'items-start text-left' : 'items-end text-right'}`}
     >
       {rows.length ? (
-        <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-white/45">Player props</div>
+        <div className="shrink-0 pb-1.5 pt-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-white/45">
+          Player props
+        </div>
       ) : null}
-      {rows.map((r) => (
-        <button
-          key={r.key}
-          type="button"
-          data-lounge-gamecast-market-link
-          disabled={!r.url}
-          onClick={() => void openExternalUrl(r.url)}
-          aria-label={`${r.name} ${r.line} ${r.stat}, open on ${MARKET_SOURCE_LABEL[r.source] || 'market'}`}
-          className={`-mx-1.5 -my-0.5 min-w-0 max-w-full rounded-lg px-1.5 py-0.5 touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/15 ${
-            left ? 'text-left' : 'text-right'
-          }`}
+      <div
+        data-lounge-gamecast-prop-rail-scroll
+        className="min-h-0 w-full flex-1 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [mask-image:linear-gradient(to_bottom,transparent,black_10px,black_calc(100%-14px),transparent)]"
+      >
+        <div
+          className={`flex min-h-full flex-col justify-center gap-2 px-1.5 py-2 ${left ? 'items-start' : 'items-end'}`}
         >
-          <div className="truncate text-[10px] font-semibold uppercase leading-none tracking-wide text-white/60">
-            {left ? (
-              <>
-                {r.name} <span className="text-white/35">{r.position}</span>
-              </>
-            ) : (
-              <>
-                <span className="text-white/35">{r.position}</span> {r.name}
-              </>
-            )}
-          </div>
-          <div className="mt-0.5 truncate text-[13px] font-bold leading-none tabular-nums text-white drop-shadow">
-            {r.line} {r.stat} <span className="font-semibold text-emerald-300">{kalshiCents(r.price)}</span>
-          </div>
-        </button>
-      ))}
+          {rows.map((r) => (
+            <button
+              key={r.key}
+              type="button"
+              data-lounge-gamecast-market-link
+              disabled={!r.url}
+              onClick={() => void openExternalUrl(r.url)}
+              aria-label={`${r.name} ${r.line} ${r.stat}, open on ${MARKET_SOURCE_LABEL[r.source] || 'market'}`}
+              className={`-mx-1.5 -my-0.5 min-w-0 max-w-full rounded-lg px-1.5 py-0.5 touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/15 ${
+                left ? 'text-left' : 'text-right'
+              }`}
+            >
+              <div className="truncate text-[10px] font-semibold uppercase leading-none tracking-wide text-white/60">
+                {left ? (
+                  <>
+                    {r.name} <span className="text-white/35">{r.position}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-white/35">{r.position}</span> {r.name}
+                  </>
+                )}
+              </div>
+              <div className="mt-0.5 truncate text-[13px] font-bold leading-none tabular-nums text-white drop-shadow">
+                {r.line} {r.stat} <span className="font-semibold text-emerald-300">{kalshiCents(r.price)}</span>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   )
 }
@@ -4564,7 +4580,10 @@ function LandscapeMatchupBoard({
 }) {
   const { legalState } = useLegalBooks()
   const best = useMemo(() => pregameBestLines(odds, { legalState }), [odds, legalState])
-  const rails = useMemo(() => pregamePlayerPropRails(marketProps, players), [marketProps, players])
+  const rails = useMemo(
+    () => pregamePlayerPropRails(marketProps, players, PREGAME_PROP_RAIL_LIMIT, { allStats: true }),
+    [marketProps, players],
+  )
   const picks = useMemo(() => pregameGameMarketPicks(marketProps, game), [marketProps, game])
   const h1Spread = picks.firstHalf.spread
   const h1Total = picks.firstHalf.total
@@ -4599,7 +4618,7 @@ function LandscapeMatchupBoard({
           </div>
           <div className="shrink-0">{sideSlots?.right}</div>
         </div>
-        <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_auto_minmax(0,1fr)_minmax(0,0.9fr)] items-center gap-2">
+        <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_auto_minmax(0,1fr)_minmax(0,0.9fr)] grid-rows-[minmax(0,1fr)] items-center gap-2">
           <PregamePropRail rows={rails.away} align="left" />
           <MatchupTeamColumn
             side={game.away}

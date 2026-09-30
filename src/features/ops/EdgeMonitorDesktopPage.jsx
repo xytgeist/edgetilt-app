@@ -1,4 +1,5 @@
 import EdgeMonitorDashboard from './EdgeMonitorDashboard.jsx'
+import EdgeLogoMarks from '../../components/EdgeLogoMarks.jsx'
 
 /**
  * Full-width desktop ops dashboard at `/monitor`.
@@ -99,18 +100,7 @@ export default function EdgeMonitorDesktopPage({
         <div className="mx-auto flex max-w-[1680px] items-center justify-between gap-4 px-6 py-3">
           <div className="flex items-center gap-3 min-w-0">
             <span className="inline-flex shrink-0">
-              <img
-                src="/edge-lounge-logo-transparent.png"
-                alt=""
-                className="edge-logo--dark h-8 w-auto object-contain"
-                draggable={false}
-              />
-              <img
-                src="/edge-lounge-logo-light.png"
-                alt=""
-                className="edge-logo--light h-8 w-auto object-contain"
-                draggable={false}
-              />
+              <EdgeLogoMarks className="h-8 w-auto object-contain" />
             </span>
             <span className="text-sm font-semibold text-zinc-400 truncate hidden sm:inline">
               {userEmail}

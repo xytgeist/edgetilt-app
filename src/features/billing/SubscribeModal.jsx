@@ -46,6 +46,7 @@ import {
   readMilitaryPromoStamp,
 } from './militaryPromoStamp.js'
 import { profileAvatarInitials, profileAvatarToneClass } from '../profiles/profileGate.js'
+import EdgeLogoMarks from '../../components/EdgeLogoMarks.jsx'
 
 const ALL_PLAN_SLUGS = [PRODUCT_SLOTS_EDGE_STARTER, PRODUCT_SLOTS_EDGE, PRODUCT_SLOTS_EDGE_LIFETIME]
 
@@ -973,18 +974,7 @@ export default function SubscribeModal({
           <div className="relative">
             <div className="min-w-0">
               <div className="mb-2 inline-flex h-5 items-center">
-                <img
-                  src="/edge-lounge-logo-transparent.png"
-                  alt="EDGE"
-                  className="edge-logo--dark h-5 w-auto max-w-none object-contain object-left"
-                  draggable={false}
-                />
-                <img
-                  src="/edge-lounge-logo-light.png"
-                  alt="EDGE"
-                  className="edge-logo--light h-5 w-auto max-w-none object-contain object-left"
-                  draggable={false}
-                />
+                <EdgeLogoMarks className="h-5 w-auto max-w-none object-contain object-left" alt="EDGE" />
               </div>
               <h2 id="subscribe-modal-title" className="text-lg font-bold tracking-tight text-white sm:text-xl">
                 {hasSlotsEdgeLifetime ? 'You have Slots Edge Lifetime' : 'Choose your Edge AP Slots plan'}

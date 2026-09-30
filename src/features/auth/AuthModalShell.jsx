@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { linkBtn } from '../shell/shellClasses'
 import { IPAD_SHELL_QUERY } from '../shell/quickLinkDestinations.js'
+import EdgeLogoMarks from '../../components/EdgeLogoMarks.jsx'
 
 /**
  * iPad (and the open Duo, once it is this wide): full-screen centered column.
@@ -39,18 +40,7 @@ function AuthIpadHero() {
   return (
     <div className="flex flex-col items-center px-4 pt-4 text-center">
       <span className="inline-flex" aria-hidden>
-        <img
-          src="/edge-lounge-logo-transparent.png"
-          alt=""
-          className="edge-logo--dark h-[4.25rem] w-auto"
-          draggable={false}
-        />
-        <img
-          src="/edge-lounge-logo-light.png"
-          alt=""
-          className="edge-logo--light h-[4.25rem] w-auto"
-          draggable={false}
-        />
+        <EdgeLogoMarks className="h-[4.25rem] w-auto" />
       </span>
       <h1
         id="auth-modal-title"
@@ -89,18 +79,7 @@ function AuthWordmark() {
           {mark.lead}
         </span>
         <span className="inline-flex shrink-0" aria-hidden>
-          <img
-            src="/edge-lounge-logo-transparent.png"
-            alt=""
-            className={`edge-logo--dark w-auto ${degen ? 'h-[0.78em]' : 'h-[1.2rem]'}`}
-            draggable={false}
-          />
-          <img
-            src="/edge-lounge-logo-light.png"
-            alt=""
-            className={`edge-logo--light w-auto ${degen ? 'h-[0.78em]' : 'h-[1.2rem]'}`}
-            draggable={false}
-          />
+          <EdgeLogoMarks className={`w-auto ${degen ? 'h-[0.78em]' : 'h-[1.2rem]'}`} />
         </span>
       </h1>
     </div>

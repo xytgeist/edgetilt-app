@@ -55,6 +55,7 @@ import { evaluateSystemHealthAlerts } from './opsMonitorSystemHealth.js'
 import EdgeMonitorSectionNav from './EdgeMonitorSectionNav.jsx'
 import { EDGE_MONITOR_PATH } from './opsMonitorNavigation.js'
 import { useEdgeMonitorSection } from './useEdgeMonitorSection.js'
+import EdgeLogoMarks from '../../components/EdgeLogoMarks.jsx'
 
 const MONITOR_PANEL = 'rounded-2xl border border-zinc-800 bg-zinc-900'
 const MONITOR_BTN = 'min-h-10 rounded-xl bg-zinc-800 px-3 text-zinc-200 text-xs font-semibold touch-manipulation hover:bg-zinc-700 disabled:opacity-50'
@@ -1057,18 +1058,7 @@ export default function EdgeMonitorDashboard({
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0 flex items-start gap-4">
               <span className="hidden sm:inline-flex shrink-0">
-                <img
-                  src="/edge-lounge-logo-transparent.png"
-                  alt=""
-                  className="edge-logo--dark h-12 w-auto object-contain"
-                  draggable={false}
-                />
-                <img
-                  src="/edge-lounge-logo-light.png"
-                  alt=""
-                  className="edge-logo--light h-12 w-auto object-contain"
-                  draggable={false}
-                />
+                <EdgeLogoMarks className="h-12 w-auto object-contain" />
               </span>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">

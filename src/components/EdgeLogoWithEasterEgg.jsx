@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { dispatchLoungeActivityNavigate } from '../utils/loungeActivityInAppNavigate.js'
 import { isShellNavLoungeHomeSuppressed } from '../utils/shellNavGhostClickGuard.js'
+import EdgeLogoMarks from './EdgeLogoMarks.jsx'
 
 /**
  * EDGE mark in the title area.
@@ -43,8 +44,7 @@ export default function EdgeLogoWithEasterEgg({ className = '', behavior = 'gigg
 
   const logos = (
     <>
-      <img src="/edge-lounge-logo-transparent.png" alt="" className={`edge-logo--dark ${className}`} draggable={false} />
-      <img src="/edge-lounge-logo-light.png" alt="" className={`edge-logo--light ${className}`} draggable={false} />
+      <EdgeLogoMarks className={className} />
     </>
   )
 

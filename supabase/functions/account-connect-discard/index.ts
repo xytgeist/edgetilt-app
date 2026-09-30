@@ -50,8 +50,14 @@ Deno.serve(async (req) => {
     return json({ error: 'This account is too old to merge automatically.', code: 'too_old' }, 409)
   }
 
+  // Every new profile auto-follows @edgelord (profiles_auto_follow_edgelord_after_insert); not real activity.
+  const { data: edgelord } = await admin.from('profiles').select('user_id').ilike('handle', 'edgelord').maybeSingle()
+  const edgelordId = String(edgelord?.user_id || '')
+
   for (const [table, column] of ACTIVITY_CHECKS) {
-    const { count, error } = await admin.from(table).select(column, { count: 'exact', head: true }).eq(column, user.id)
+    let query = admin.from(table).select(column, { count: 'exact', head: true }).eq(column, user.id)
+    if (table === 'profile_follows' && edgelordId) query = query.neq('following_id', edgelordId)
+    const { count, error } = await query
     if (error) return json({ error: `Could not check ${table}.` }, 500)
     if ((count ?? 0) > 0) {
       return json({ error: 'This account already has activity, so it can’t be merged automatically.', code: 'has_activity' }, 409)

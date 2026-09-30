@@ -8,6 +8,7 @@ import {
 } from './starterWeeklyDropApi.js'
 import { ScratchRevealAudio } from './scratchRevealAudio.js'
 import { loadScratchFoilLogo, paintScratchFoil } from './scratchRevealFoil.js'
+import EdgeLogoMarks from '../../components/EdgeLogoMarks.jsx'
 
 const SCRATCH_BRUSH_RADIUS = 20
 const SCRATCH_REVEAL_RATIO = 0.75
@@ -355,18 +356,7 @@ export default function StarterWeeklyDropScratchModal({
           />
           <div className="relative flex items-start justify-between gap-3">
             <div className="mb-2 inline-flex h-5 items-center">
-              <img
-                src="/edge-lounge-logo-transparent.png"
-                alt="EDGE"
-                className="edge-logo--dark h-5 w-auto max-w-none object-contain object-left"
-                draggable={false}
-              />
-              <img
-                src="/edge-lounge-logo-light.png"
-                alt="EDGE"
-                className="edge-logo--light h-5 w-auto max-w-none object-contain object-left"
-                draggable={false}
-              />
+              <EdgeLogoMarks className="h-5 w-auto max-w-none object-contain object-left" alt="EDGE" />
             </div>
             <button
               type="button"

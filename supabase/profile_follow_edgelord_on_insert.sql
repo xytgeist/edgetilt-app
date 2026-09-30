@@ -1,3 +1,5 @@
+-- SUPERSEDED by migrations/20260930020000_edgelord_follow_back_on_welcome_ack.sql:
+-- signup only makes the new user follow @edgelord; @edgelord follows back on welcome "Got it".
 -- Auto-follow @edgelord for every new profile row (bidirectional).
 -- Run in Supabase SQL editor after `profile_lounge_fullscreen.sql` (`profile_follows` table).
 -- Requires an existing profile with handle `edgelord` (case-insensitive). Safe to re-run.

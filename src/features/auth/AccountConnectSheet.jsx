@@ -100,8 +100,8 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
       const { data: profile } = await ensureDefaultProfileRow(supabase, user)
       if (cancelled) return
       const others = listDeviceAccounts().filter((a) => a.user_id !== user.id)
+      // Marked shown only on an answer: phone / password sign-in hard-reloads right after SIGNED_IN.
       if (isLikelyNewAuthUser(user) && others.length && !wasConnectPromptShown(user.id)) {
-        markConnectPromptShown(user.id)
         setOffer({ others, profile })
         return
       }
@@ -115,6 +115,7 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
   }, [user?.id])
 
   const continueWithNew = useCallback(() => {
+    if (user?.id) markConnectPromptShown(user.id)
     if (offer) rememberDeviceAccount(user, offer.profile)
     setOffer(null)
     setError('')

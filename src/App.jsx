@@ -14,6 +14,7 @@ import {
 import AuthConfirmScreen from './features/auth/AuthConfirmScreen.jsx'
 import AuthModalPanel from './features/auth/AuthModalPanel'
 import AccountConnectSheet from './features/auth/AccountConnectSheet.jsx'
+import { ACCOUNT_CONNECT_PROMPT_EVENT, connectPromptHoldsOnboarding } from './features/auth/deviceAccounts.js'
 import AuthPasswordField from './features/auth/AuthPasswordField'
 import AuthModalShell from './features/auth/AuthModalShell'
 import {
@@ -241,6 +242,12 @@ function App() {
   useEffect(() => {
     if (user?.id) setConnectNotice('')
   }, [user?.id])
+  const [, setConnectPromptAnsweredTick] = useState(0)
+  useEffect(() => {
+    const onAnswered = () => setConnectPromptAnsweredTick((n) => n + 1)
+    window.addEventListener(ACCOUNT_CONNECT_PROMPT_EVENT, onAnswered)
+    return () => window.removeEventListener(ACCOUNT_CONNECT_PROMPT_EVENT, onAnswered)
+  }, [])
   const ACCESS_NOTICE_DISMISS_MS = 4500
   /** Moderator/admin: full access; hamburger hides subscriber-only lock icons. */
   const [isStaffRole, setIsStaffRole] = useState(false)
@@ -2073,7 +2080,7 @@ function App() {
           }}
           onNotice={setAccessNotice}
         />
-        {legalAcceptancePending && user ? (
+        {legalAcceptancePending && user && !connectPromptHoldsOnboarding(user) ? (
           <LegalAcceptanceModal
             busy={legalAcceptanceBusy}
             error={legalAcceptanceError}

@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import AppModalOverlay from '../../components/AppModalOverlay.jsx'
-import { APP_MODAL_SHEET_PANEL_CLASS } from '../../constants/appZIndex.js'
+import AuthModalShell from './AuthModalShell.jsx'
 import { friendlyLinkError, linkAppleIdentity, linkGoogleIdentity } from './linkSignInMethod.js'
 import { isLikelyNewAuthUser } from '../lounge/firstRunChromeTour.js'
 import {
@@ -240,12 +239,12 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
   if (!offer && !finish) return null
 
   return (
-    <AppModalOverlay data-account-connect-sheet>
-      <div className={APP_MODAL_SHEET_PANEL_CLASS} role="dialog" aria-modal="true" aria-labelledby="account-connect-title">
+    <AuthModalShell onClose={() => {}}>
+      <div data-account-connect-sheet>
         {offer ? (
           <>
-            <h2 id="account-connect-title" className="text-lg font-bold text-white">Connect account?</h2>
-            <p className="mt-1 text-sm leading-relaxed text-zinc-400">
+            <h2 id="account-connect-title" className="text-center text-lg font-bold text-white">Connect account?</h2>
+            <p className="mt-1 text-center text-sm leading-relaxed text-zinc-400">
               This is a new account. {offer.others.length > 1 ? 'These accounts have' : 'This account has'} signed in on this device before.
               Connect to keep one account you can sign in to either way.
             </p>
@@ -266,10 +265,10 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
           </>
         ) : (
           <>
-            <h2 id="account-connect-title" className="text-lg font-bold text-white">
+            <h2 id="account-connect-title" className="text-center text-lg font-bold text-white">
               Connect {signInMethodLabel(finish.freshMethod)} to @{finish.targetHandle}
             </h2>
-            <p className="mt-1 text-sm leading-relaxed text-zinc-400">
+            <p className="mt-1 text-center text-sm leading-relaxed text-zinc-400">
               {finish.freshMethod === 'phone'
                 ? 'We’ll text a code to confirm your number.'
                 : finish.freshMethod === 'email'
@@ -306,6 +305,6 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
           </>
         )}
       </div>
-    </AppModalOverlay>
+    </AuthModalShell>
   )
 }

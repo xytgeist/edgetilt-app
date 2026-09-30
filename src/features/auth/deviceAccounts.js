@@ -4,6 +4,8 @@
  * Display only: connecting still requires signing in to the remembered account.
  */
 
+import { isLikelyNewAuthUser } from '../lounge/firstRunChromeTour.js'
+
 const STORE_KEY = 'edgeDeviceAccounts:v1'
 const PENDING_KEY = 'edgeAccountConnectPending:v1'
 const PROMPTED_KEY = 'edgeAccountConnectPrompted:v1'
@@ -85,6 +87,21 @@ export function wasConnectPromptShown(userId) {
 export function markConnectPromptShown(userId) {
   const seen = readJson(PROMPTED_KEY, [])
   if (!seen.includes(userId)) writeJson(PROMPTED_KEY, [...seen, userId].slice(-20))
+  try {
+    window.dispatchEvent(new Event(ACCOUNT_CONNECT_PROMPT_EVENT))
+  } catch {
+    /* non-browser */
+  }
+}
+
+/** Fired when the connect prompt is answered so held-back onboarding can start. */
+export const ACCOUNT_CONNECT_PROMPT_EVENT = 'edge-account-connect-prompt-answered'
+
+/** True while "Connect account?" is (or is about to be) up for this user ... hold first-run tour / welcome. */
+export function connectPromptHoldsOnboarding(user) {
+  if (!user?.id || wasConnectPromptShown(user.id)) return false
+  if (!isLikelyNewAuthUser(user)) return false
+  return listDeviceAccounts().some((a) => a.user_id !== user.id)
 }
 
 /** { targetUserId, targetHandle, targetMethods, freshMethod, freshPhone, startedAt } */

@@ -149,6 +149,7 @@ import {
 } from './loungeStorage'
 import { classifyLoungeFeedLoadError } from './loungeFeedLoadError.js'
 import { isPokerStakeOnboardingActive } from '../poker-bankroll/pokerStakeeOnboarding.js'
+import { ACCOUNT_CONNECT_PROMPT_EVENT, connectPromptHoldsOnboarding } from '../auth/deviceAccounts.js'
 import LoungeWelcomeModal from './LoungeWelcomeModal.jsx'
 import LoungeSlotsMenuHintOverlay from './LoungeSlotsMenuHintOverlay.jsx'
 import LoungeFabHintOverlay from './LoungeFabHintOverlay.jsx'
@@ -1093,6 +1094,12 @@ export default function SocialFeed({
   const loungeWelcomeScheduleRef = useRef(false)
   const reopenWelcomePendingRef = useRef(false)
   const [loungeOnboardingHydrated, setLoungeOnboardingHydrated] = useState(false)
+  const [connectPromptAnsweredTick, setConnectPromptAnsweredTick] = useState(0)
+  useEffect(() => {
+    const onAnswered = () => setConnectPromptAnsweredTick((n) => n + 1)
+    window.addEventListener(ACCOUNT_CONNECT_PROMPT_EVENT, onAnswered)
+    return () => window.removeEventListener(ACCOUNT_CONNECT_PROMPT_EVENT, onAnswered)
+  }, [])
   const [slotsMenuHintOpen, setSlotsMenuHintOpen] = useState(false)
   const [fabHintOpen, setFabHintOpen] = useState(false)
   const [firstRunChromeTourActive, setFirstRunChromeTourActive] = useState(false)
@@ -10415,6 +10422,7 @@ export default function SocialFeed({
     if (!authSessionReady || !composerAuthResolved || !loungeOnboardingHydrated) return
     if (coldBootSplashVisible) return
     if (isPokerStakeOnboardingActive()) return
+    if (connectPromptHoldsOnboarding(composerAuthUser)) return
     if (readLoungeWelcomeAck(composerUserId)) return
     if (readFirstRunChromeTourStep(composerUserId) === FIRST_RUN_CHROME_TOUR_STEP.DONE) {
       markLoungeWelcomeSeen(supabaseClient, composerUserId)
@@ -10446,6 +10454,7 @@ export default function SocialFeed({
     coldBootSplashVisible,
     loungeWelcomeOpen,
     supabaseClient,
+    connectPromptAnsweredTick,
   ])
 
   useEffect(() => {
@@ -10508,6 +10517,10 @@ export default function SocialFeed({
 
   useEffect(() => {
     if (!loungeOnboardingHydrated || !composerUserId) return
+    if (connectPromptHoldsOnboarding(composerAuthUser)) {
+      setFirstRunChromeTourActive(false)
+      return
+    }
     const active = attachFirstRunChromeTour(composerUserId, composerAuthUser, {
       welcomeAcked: readLoungeWelcomeAck(composerUserId),
     })
@@ -10519,7 +10532,7 @@ export default function SocialFeed({
     } else {
       setFirstRunChromeTourStep('')
     }
-  }, [loungeOnboardingHydrated, composerUserId, composerAuthUser])
+  }, [loungeOnboardingHydrated, composerUserId, composerAuthUser, connectPromptAnsweredTick])
 
   useEffect(() => {
     if (!firstRunChromeTourActive || !composerUserId) return undefined

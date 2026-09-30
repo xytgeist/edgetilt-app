@@ -1,12 +1,14 @@
 /**
- * Connect-account hand-off: `account-connect-discard` signs the fresh account's already-verified
- * phone / email for one target user; `account-connect-attach` checks it and attaches them to the
- * target without a second OTP. HMAC key is the service role key (never leaves the server).
+ * Connect-account hand-off: `account-connect-prepare` signs the fresh account id plus its
+ * already-verified phone / email for one target user; `account-connect-attach` (called as the
+ * target) deletes the fresh account and attaches them without a second OTP. HMAC key is the service role key (never leaves the server).
  */
 
 export type ConnectTransfer = {
   v: 1
   target: string
+  /** Fresh account to delete once the target signs in (absent on legacy discard tokens). */
+  fresh?: string
   phone?: string
   email?: string
   exp: number

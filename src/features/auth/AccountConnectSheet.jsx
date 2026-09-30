@@ -22,6 +22,32 @@ import {
   writeConnectPending,
 } from './deviceAccounts.js'
 
+/** Drop remembered accounts that were deleted (or banned); refresh name / avatar from the live profile. */
+async function liveDeviceAccounts(supabase, accounts) {
+  const ids = accounts.map((a) => a.user_id)
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('user_id, handle, display_name, avatar_url')
+    .in('user_id', ids)
+  if (error || !Array.isArray(data)) return accounts
+  const live = new Map(data.map((row) => [row.user_id, row]))
+  const kept = []
+  for (const account of accounts) {
+    const row = live.get(account.user_id)
+    if (!row) {
+      forgetDeviceAccount(account.user_id)
+      continue
+    }
+    kept.push({
+      ...account,
+      handle: row.handle || account.handle,
+      display_name: row.display_name || account.display_name,
+      avatar_url: row.avatar_url || account.avatar_url,
+    })
+  }
+  return kept
+}
+
 function preferredTargetMethod(account) {
   const methods = account?.methods || []
   const order = [account?.last_method, 'google', 'apple', 'phone', 'email']
@@ -125,8 +151,9 @@ function AccountRow({ account, onConnect, onForget, busy }) {
 
 /**
  * After a sign-in creates a brand-new account on a device that remembers another account:
- * "Connect account? / Continue with new". Connect discards the empty new account, has them
- * sign in to the remembered one, then links the new sign-in method to it.
+ * "Connect account? / Continue with new". Connect signs them straight in to the remembered
+ * account; only then does `account-connect-attach` delete the empty new account and hand its
+ * verified phone / email over (Apple / Google still link via `linkIdentity`).
  */
 export default function AccountConnectSheet({ supabase, user, onRequestSignIn, onNotice }) {
   const [offer, setOffer] = useState(null)
@@ -143,26 +170,36 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
       const pending = readConnectPending()
       if (pending) {
         if (pending.targetUserId === user.id) {
+          if (pending.transferToken) {
+            // Signed in to the old account: now the server deletes the new one and hands over its verified number.
+            const result = await attachVerifiedTransfer(supabase, pending.transferToken)
+            if (cancelled) return
+            if (!result.ok) {
+              writeConnectPending(null)
+              setError(result.error)
+              setFinish({ ...pending, transferToken: '', failed: true })
+              return
+            }
+            await supabase.auth.refreshSession().catch(() => {})
+            const { data } = await supabase.auth.getUser()
+            if (cancelled) return
+            const refreshed = data?.user || user
+            const { data: profile } = await ensureDefaultProfileRow(supabase, refreshed)
+            rememberDeviceAccount(refreshed, profile)
+            if (pending.freshMethod === 'phone' || pending.freshMethod === 'email' || userSignInMethods(refreshed).includes(pending.freshMethod)) {
+              writeConnectPending(null)
+              onNotice?.(`Your ${signInMethodLabel(pending.freshMethod)} is now connected to @${pending.targetHandle}.`)
+              return
+            }
+            const next = { ...pending, transferToken: '' }
+            writeConnectPending(next)
+            setFinish(next)
+            return
+          }
           if (userSignInMethods(user).includes(pending.freshMethod)) {
             writeConnectPending(null)
             onNotice?.(`${signInMethodLabel(pending.freshMethod)} is now connected to @${pending.targetHandle}.`)
             return
-          }
-          if (pending.transferToken) {
-            const result = await attachVerifiedTransfer(supabase, pending.transferToken)
-            if (cancelled) return
-            if (result.ok) {
-              writeConnectPending(null)
-              await supabase.auth.refreshSession().catch(() => {})
-              const { data } = await supabase.auth.getUser()
-              if (data?.user) {
-                const { data: profile } = await ensureDefaultProfileRow(supabase, data.user)
-                rememberDeviceAccount(data.user, profile)
-              }
-              onNotice?.(`Your ${signInMethodLabel(pending.freshMethod)} is now connected to @${pending.targetHandle}.`)
-              return
-            }
-            setError(result.error)
           }
           setFinish(pending)
           return
@@ -171,7 +208,9 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
       }
       const { data: profile } = await ensureDefaultProfileRow(supabase, user)
       if (cancelled) return
-      const others = listDeviceAccounts().filter((a) => a.user_id !== user.id)
+      const remembered = listDeviceAccounts().filter((a) => a.user_id !== user.id)
+      const others = remembered.length ? await liveDeviceAccounts(supabase, remembered) : []
+      if (cancelled) return
       // Marked shown only on an answer: phone / password sign-in hard-reloads right after SIGNED_IN.
       if (isLikelyNewAuthUser(user) && others.length && !wasConnectPromptShown(user.id)) {
         setOffer({ others, profile })
@@ -220,10 +259,10 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
         freshPhone: user.phone || '',
         freshEmail: user.email || '',
       })
-      const { data, error: fnErr } = await supabase.functions.invoke('account-connect-discard', {
+      const { data, error: fnErr } = await supabase.functions.invoke('account-connect-prepare', {
         body: { target_user_id: account.user_id },
       })
-      if (fnErr || !data?.ok) {
+      if (fnErr || !data?.ok || !data?.transfer_token) {
         writeConnectPending(null)
         let message = 'Could not connect right now. You can connect it later in Settings → Account info.'
         try {
@@ -236,11 +275,8 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
         setBusy(false)
         return
       }
-      if (data.transfer_token) {
-        const pending = readConnectPending()
-        if (pending) writeConnectPending({ ...pending, transferToken: data.transfer_token })
-      }
-      forgetDeviceAccount(user.id)
+      const pending = readConnectPending()
+      if (pending) writeConnectPending({ ...pending, transferToken: data.transfer_token })
       setOffer(null)
       setBusy(false)
       await supabase.auth.signOut({ scope: 'local' })
@@ -347,10 +383,12 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
         ) : (
           <>
             <h2 id="account-connect-title" className="text-center text-lg font-bold text-white">
-              Connect {signInMethodLabel(finish.freshMethod)} to @{finish.targetHandle}
+              {finish.failed ? 'Couldn’t connect' : `Connect ${signInMethodLabel(finish.freshMethod)} to @${finish.targetHandle}`}
             </h2>
             <p className="mt-1 text-center text-sm leading-relaxed text-zinc-400">
-              {finish.freshMethod === 'phone'
+              {finish.failed
+                ? `You’re signed in to @${finish.targetHandle}. Your other account was left as it was.`
+                : finish.freshMethod === 'phone'
                 ? 'We’ll text a code to confirm your number.'
                 : finish.freshMethod === 'email'
                   ? 'We’ll email a link to confirm the address.'
@@ -366,22 +404,24 @@ export default function AccountConnectSheet({ supabase, user, onRequestSignIn, o
                 className="mt-4 w-full rounded-2xl bg-zinc-800 px-4 py-3 text-lg tracking-widest text-white outline-none"
               />
             ) : null}
-            {error ? <p className="mt-3 text-sm text-rose-300">{error}</p> : null}
-            <button
-              type="button"
-              onClick={linkFresh}
-              disabled={busy || (finish.freshMethod === 'phone' && phoneCodeSent && phoneCode.length < 4)}
-              className="mt-4 w-full rounded-full bg-orange-600 py-3 text-[15px] font-bold text-white disabled:opacity-50"
-            >
-              {finish.freshMethod === 'phone' ? (phoneCodeSent ? 'Confirm code' : 'Send code') : `Connect ${signInMethodLabel(finish.freshMethod)}`}
-            </button>
+            {error ? <p className="mt-3 text-center text-sm text-rose-300">{error}</p> : null}
+            {finish.failed ? null : (
+              <button
+                type="button"
+                onClick={linkFresh}
+                disabled={busy || (finish.freshMethod === 'phone' && phoneCodeSent && phoneCode.length < 4)}
+                className="mt-4 w-full rounded-full bg-orange-600 py-3 text-[15px] font-bold text-white disabled:opacity-50"
+              >
+                {finish.freshMethod === 'phone' ? (phoneCodeSent ? 'Confirm code' : 'Send code') : `Connect ${signInMethodLabel(finish.freshMethod)}`}
+              </button>
+            )}
             <button
               type="button"
               onClick={cancelFinish}
               disabled={busy}
               className="mt-2 w-full py-2 text-[13px] font-medium text-zinc-400"
             >
-              Not now
+              {finish.failed ? 'OK' : 'Not now'}
             </button>
           </>
         )}

@@ -1,11 +1,13 @@
 import { createClient } from 'npm:@supabase/supabase-js@2'
+import { freshAccountActivity } from '../_shared/accountConnectActivity.ts'
 import { verifyConnectTransfer } from '../_shared/accountConnectToken.ts'
 
 /**
  * Connect-account flow, step 2: the caller signed in to the account they chose on
- * "Connect account?". Attach the phone / email the discarded fresh account had already
- * verified (signed by `account-connect-discard`) so they are not asked for another code.
- * Never overwrites a different phone or email already on the account.
+ * "Connect account?". Deletes the fresh account named in the hand-off (signed by
+ * `account-connect-prepare`, re-checked for activity), then attaches the phone / email it had
+ * already verified so they are not asked for another code. Never overwrites a different phone
+ * or email already on the account.
  */
 
 const corsHeaders = {
@@ -46,6 +48,23 @@ Deno.serve(async (req) => {
   const transfer = await verifyConnectTransfer(serviceRoleKey, String(body?.transfer_token || ''))
   if (!transfer) return json({ error: 'This connect link expired. Connect it in Settings → Account info.', code: 'bad_token' }, 400)
   if (transfer.target !== user.id) return json({ error: 'This connect request is for a different account.', code: 'wrong_account' }, 403)
+
+  // Delete the fresh account only now that they proved they own the target. Frees its phone / identity.
+  if (transfer.fresh && transfer.fresh !== user.id) {
+    const { data: freshUser } = await admin.auth.admin.getUserById(transfer.fresh)
+    if (freshUser?.user?.id) {
+      const activity = await freshAccountActivity(admin, transfer.fresh)
+      if (activity === 'error') return json({ error: 'Could not check the new account. Try again.' }, 500)
+      if (activity) {
+        return json(
+          { error: 'The new account has activity now, so it can’t be merged automatically.', code: 'has_activity' },
+          409,
+        )
+      }
+      const { error: delErr } = await admin.auth.admin.deleteUser(transfer.fresh)
+      if (delErr) return json({ error: delErr.message || 'Could not remove the new account.' }, 400)
+    }
+  }
 
   const update: Record<string, unknown> = {}
   const attached: string[] = []

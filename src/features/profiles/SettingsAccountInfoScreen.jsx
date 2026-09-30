@@ -115,6 +115,7 @@ export default function SettingsAccountInfoScreen({
 
   const [saveBusy, setSaveBusy] = useState(false)
   const [saveMessage, setSaveMessage] = useState('')
+  const [codeSentNote, setCodeSentNote] = useState({ flow: '', text: '' })
   const [saveError, setSaveError] = useState('')
 
   const [handleChangeDialog, setHandleChangeDialog] = useState(null)
@@ -265,7 +266,8 @@ export default function SettingsAccountInfoScreen({
     setPhoneCodeFor(nextE164)
     setPhoneReleaseFor('')
     setPhoneReleaseCode('')
-    setSaveMessage(`Code sent to ${formatPhoneDisplay(nextE164)}. Enter it below.`)
+    setSaveMessage('')
+    setCodeSentNote({ flow: 'phone', text: `Code sent to ${formatPhoneDisplay(nextE164)}.` })
     return true
   }, [supabaseClient])
 
@@ -295,7 +297,8 @@ export default function SettingsAccountInfoScreen({
     const sentTo = pending || email
     setEmailCode('')
     setEmailCodeFor(sentTo)
-    setSaveMessage(`Code sent to ${sentTo}. Enter it below.`)
+    setSaveMessage('')
+    setCodeSentNote({ flow: 'email', text: `Code sent to ${sentTo}.` })
     return true
   }, [onAuthUserUpdated, supabaseClient])
 
@@ -561,7 +564,8 @@ export default function SettingsAccountInfoScreen({
       setPhoneReleaseCode('')
       setPhoneReleaseFor(loginPhone)
       setPhoneReleaseDialog(null)
-      setSaveMessage(`Code sent to ${formatPhoneDisplay(loginPhone)}. Enter it below.`)
+      setSaveMessage('')
+      setCodeSentNote({ flow: 'release', text: `Code sent to ${formatPhoneDisplay(loginPhone)}.` })
     } finally {
       setSaveBusy(false)
     }
@@ -844,20 +848,27 @@ export default function SettingsAccountInfoScreen({
                   }}
                   className="min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 px-3 text-[15px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-500/50"
                 />
-                {saveBusy ? (
-                  <p className="text-[13px] text-zinc-400">Checking…</p>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={saveBusy}
-                    {...fieldActionHandlers(() => {
-                      void onSendEmailCode()
-                    })}
-                    className={PHONE_ACTION_CLASS}
-                  >
-                    Send again
-                  </button>
-                )}
+                <div className="flex flex-wrap items-center gap-x-3">
+                  {codeSentNote.flow === 'email' && codeSentNote.text ? (
+                    <p className="text-[13px] leading-snug text-cyan-200/90" data-account-code-sent-note>
+                      {codeSentNote.text}
+                    </p>
+                  ) : null}
+                  {saveBusy ? (
+                    <p className="text-[13px] text-zinc-400">Checking…</p>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={saveBusy}
+                      {...fieldActionHandlers(() => {
+                        void onSendEmailCode()
+                      })}
+                      className={PHONE_ACTION_CLASS}
+                    >
+                      Send again
+                    </button>
+                  )}
+                </div>
               </div>
             ) : null}
           </div>
@@ -913,20 +924,27 @@ export default function SettingsAccountInfoScreen({
                   }}
                   className="min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 px-3 text-[15px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-500/50"
                 />
-                {saveBusy ? (
-                  <p className="text-[13px] text-zinc-400">Checking…</p>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={saveBusy}
-                    {...fieldActionHandlers(() => {
-                      void onSendPhoneCode()
-                    })}
-                    className={PHONE_ACTION_CLASS}
-                  >
-                    Send again
-                  </button>
-                )}
+                <div className="flex flex-wrap items-center gap-x-3">
+                  {codeSentNote.flow === 'phone' && codeSentNote.text ? (
+                    <p className="text-[13px] leading-snug text-cyan-200/90" data-account-code-sent-note>
+                      {codeSentNote.text}
+                    </p>
+                  ) : null}
+                  {saveBusy ? (
+                    <p className="text-[13px] text-zinc-400">Checking…</p>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={saveBusy}
+                      {...fieldActionHandlers(() => {
+                        void onSendPhoneCode()
+                      })}
+                      className={PHONE_ACTION_CLASS}
+                    >
+                      Send again
+                    </button>
+                  )}
+                </div>
               </div>
             ) : null}
             {phoneNeedsOtp || phoneCodeFor ? (
@@ -970,20 +988,27 @@ export default function SettingsAccountInfoScreen({
                       }}
                       className="min-h-11 w-full rounded-xl border border-zinc-700/90 bg-zinc-900/80 px-3 text-[15px] text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-cyan-500/50"
                     />
-                    {saveBusy ? (
-                      <p className="text-[13px] text-zinc-400">Removing…</p>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={saveBusy}
-                        {...fieldActionHandlers(() => {
-                          void startPhoneRelease()
-                        })}
-                        className={PHONE_ACTION_CLASS}
-                      >
-                        Send again
-                      </button>
-                    )}
+                    <div className="flex flex-wrap items-center gap-x-3">
+                      {codeSentNote.flow === 'release' && codeSentNote.text ? (
+                        <p className="text-[13px] leading-snug text-cyan-200/90" data-account-code-sent-note>
+                          {codeSentNote.text}
+                        </p>
+                      ) : null}
+                      {saveBusy ? (
+                        <p className="text-[13px] text-zinc-400">Removing…</p>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={saveBusy}
+                          {...fieldActionHandlers(() => {
+                            void startPhoneRelease()
+                          })}
+                          className={PHONE_ACTION_CLASS}
+                        >
+                          Send again
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ) : null}
               </div>

@@ -6067,6 +6067,10 @@ html.light [data-settings-account-info-dialog] .hover\:bg-zinc-700:hover {
   background-color: #e4e4e7 !important;
 }
 
+html.light [data-settings-account-info] [data-account-code-sent-note] {
+  color: #0e7490 !important;
+}
+
 /* Settings → Account info → Sign-in methods */
 html.light [data-settings-sign-in-methods] li {
   background-color: #ffffff !important;

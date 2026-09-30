@@ -1043,6 +1043,12 @@ export default function SettingsAccountInfoScreen({
               input.focus()
               input.scrollIntoView({ block: 'center' })
             }}
+            onRemovePhone={() => {
+              dismissEdgeKeyboard()
+              setSaveError('')
+              setSaveMessage('')
+              setPhoneReleaseDialog(accountEmail && authUser?.email_confirmed_at ? 'confirm' : 'need-email')
+            }}
           />
 
           {typeof onDeleteAccount === 'function' ? (

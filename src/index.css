@@ -6087,6 +6087,13 @@ html.light [data-settings-sign-in-methods] button.bg-zinc-800\/80 {
 html.light [data-settings-sign-in-methods] button.hover\:bg-zinc-700:hover {
   background-color: #e4e4e7 !important;
 }
+html.light [data-settings-sign-in-methods] [data-sign-in-method-disconnect],
+html.light [data-settings-sign-in-methods] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-settings-sign-in-methods] [data-sign-in-method-disconnect-confirm] {
+  color: #b91c1c !important;
+}
 html.light [data-settings-sign-in-methods] [data-sign-in-method-linked] {
   color: #047857 !important;
 }

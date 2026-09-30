@@ -92,14 +92,21 @@ export function sortLoungeSportsGamesByKickoffRank(games) {
   })
 }
 
-/** CFB lists: Top 25 matchups first in rank order (best side, then the other side); the rest keep kickoff order. */
-export function sortCfbGamesTop25First(games) {
-  const byKickoff = sortLoungeSportsGamesByKickoffRank(games)
+function top25First(byKickoff) {
   const best = (g) => Math.min(sideRank(g?.away), sideRank(g?.home))
   const other = (g) => Math.max(sideRank(g?.away), sideRank(g?.home))
   const ranked = byKickoff.filter((g) => best(g) !== Infinity)
   ranked.sort((a, b) => best(a) - best(b) || (other(a) === other(b) ? 0 : other(a) < other(b) ? -1 : 1))
   return [...ranked, ...byKickoff.filter((g) => best(g) === Infinity)]
+}
+
+/**
+ * CFB lists: live games first, then Top 25 matchups in rank order (best side, then the other side),
+ * then the rest in kickoff order. Live games are ranked-first too.
+ */
+export function sortCfbGamesTop25First(games) {
+  const byKickoff = sortLoungeSportsGamesByKickoffRank(games)
+  return [...top25First(byKickoff.filter((g) => g?.status === 'in')), ...top25First(byKickoff.filter((g) => g?.status !== 'in'))]
 }
 
 const MS_48H = 48 * 3600 * 1000

@@ -4676,11 +4676,44 @@ function LandscapeMatchupBoard({
   )
 }
 
-/**
- * One bets bar (away left / home right). Money lives in the side pair `bets·$`
- * under each abbrev … no second rail, no seam tick.
- */
-/** Public bets/$ bar … pre-game only (live/post stay scoreboard + field chrome). */
+/** One public split rail: away % · bar · home % · label. */
+function SplitRail({ label, awayPct, homePct, awayColor, homeColor, emphasize }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-7 shrink-0 text-right text-[11px] font-bold tabular-nums text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
+        {Math.round(awayPct)}
+      </span>
+      <div
+        className={`relative h-[5px] min-w-0 flex-1 overflow-hidden rounded-full bg-black/25 ring-1 ring-inset ${
+          emphasize ? 'ring-amber-300/50' : 'ring-white/15'
+        }`}
+      >
+        <div className="absolute inset-0 flex">
+          <div
+            className="h-full transition-[width] duration-500 ease-out"
+            style={{ width: `${awayPct}%`, background: `linear-gradient(90deg, ${awayColor}cc, ${awayColor})` }}
+          />
+          <div
+            className="h-full transition-[width] duration-500 ease-out"
+            style={{ width: `${homePct}%`, background: `linear-gradient(90deg, ${homeColor}, ${homeColor}cc)` }}
+          />
+        </div>
+      </div>
+      <span className="w-7 shrink-0 text-[11px] font-bold tabular-nums text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
+        {Math.round(homePct)}
+      </span>
+      <span
+        className={`w-10 shrink-0 text-right text-[9px] font-semibold uppercase tracking-[0.14em] ${
+          emphasize ? 'text-amber-200/90' : 'text-white/60'
+        }`}
+      >
+        {label}
+      </span>
+    </div>
+  )
+}
+
+/** Public bets + money rails … pre-game only (live/post stay scoreboard + field chrome). */
 function HeroPublicBetting({ game, splits, awayColor, homeColor }) {
   if (!splits || game?.status !== 'pre') return null
   const awayBets = Math.max(0, Math.min(100, Number(splits.away_ticket_pct)))
@@ -4696,59 +4729,21 @@ function HeroPublicBetting({ game, splits, awayColor, homeColor }) {
 
   return (
     <div data-lounge-game-hero-splits className="px-4 pb-2.5 pt-0.5">
-      <div
-        className={`relative h-[7px] overflow-hidden rounded-full bg-black/25 ring-1 ring-inset ${
-          moneySkew ? 'ring-amber-300/45' : 'ring-white/15'
-        }`}
-        title="% of bets"
-      >
-        <div className="absolute inset-0 flex">
-          <div
-            className="h-full transition-[width] duration-500 ease-out"
-            style={{
-              width: `${awayBets}%`,
-              background: `linear-gradient(90deg, ${awayTint}bb, ${awayTint})`,
-            }}
-          />
-          <div
-            className="h-full transition-[width] duration-500 ease-out"
-            style={{
-              width: `${homeBets}%`,
-              background: `linear-gradient(90deg, ${homeTint}, ${homeTint}bb)`,
-            }}
-          />
-        </div>
+      <div className="space-y-1.5">
+        <SplitRail label="bets" awayPct={awayBets} homePct={homeBets} awayColor={awayTint} homeColor={homeTint} />
+        <SplitRail
+          label="money"
+          awayPct={awayMoney}
+          homePct={homeMoney}
+          awayColor={awayTint}
+          homeColor={homeTint}
+          emphasize={moneySkew}
+        />
       </div>
-
-      <div className="mt-1.5 flex items-start justify-between gap-2">
-        <div className="min-w-0 text-left">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70 drop-shadow">
-            {game.away?.abbrev}
-          </div>
-          <div className="mt-0.5 text-[12px] font-bold tabular-nums leading-none text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
-            {Math.round(awayBets)}
-            <span className="mx-0.5 font-semibold text-white/55">·</span>
-            <span className={moneySkew ? 'text-amber-200' : 'text-white/75'}>
-              {Math.round(awayMoney)}
-            </span>
-          </div>
-        </div>
-        <div className="pt-0.5 text-center text-[9px] font-semibold uppercase tracking-[0.14em] text-white/70">
-          <div>{moneySkew ? 'Public · $ split' : 'Public'}</div>
-          <div className="mt-0.5 font-medium normal-case tracking-normal text-white/55">bets · $</div>
-        </div>
-        <div className="min-w-0 text-right">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70 drop-shadow">
-            {game.home?.abbrev}
-          </div>
-          <div className="mt-0.5 text-[12px] font-bold tabular-nums leading-none text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)]">
-            {Math.round(homeBets)}
-            <span className="mx-0.5 font-semibold text-white/55">·</span>
-            <span className={moneySkew ? 'text-amber-200' : 'text-white/75'}>
-              {Math.round(homeMoney)}
-            </span>
-          </div>
-        </div>
+      <div className="mt-1.5 flex items-center justify-between gap-2 pr-12 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/60">
+        <span className="text-white/75 drop-shadow">{game.away?.abbrev}</span>
+        <span className="truncate text-center">{moneySkew ? 'Public · money split' : 'Public'}</span>
+        <span className="text-white/75 drop-shadow">{game.home?.abbrev}</span>
       </div>
     </div>
   )

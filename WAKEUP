@@ -113,6 +113,10 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Mac Theo ACTIVE TRACK 2026-09-30 ... CallKit callee crash (VoIP after JS)
+
+**I am Mac Theo.** Selena → Ryan DM call crashed Ryan's IPA. Cause: Aug 30 dedupe skip completed PushKit without `reportNewIncomingCall` when JS/Realtime already reported the same `callId` (worse after Sep 28 background JS report). Fixed in `bb14a27c`. **TestFlight-only Prod 1.4.95 (20261001001246)** uploaded, not attached. Both phones should install that build and retest. If VoIP is silent after prior kills, delete + reinstall once. Do not bump **1.4.95**.
+
 ### Mac Theo ACTIVE TRACK 2026-09-29 ... Android shell + native parity roadmap
 
 **I am Mac Theo.** Android Kotlin shell (`android/`, `android/README.md`) is live-capable end to end. Next work is native parity with the IPA (list below).

@@ -290,7 +290,13 @@ function ChatTabBody({
       if (error) throw error
 
       const enriched = mapChatRoomsRpcRows(data, viewerUserId, profilesCacheRef.current)
-      setRooms(enriched)
+      // While a thread is open, never paint that row unread (mark-read is in flight).
+      const openId = activeRoomIdRef.current
+      setRooms(
+        openId
+          ? enriched.map((r) => (r.id === openId && r.hasUnread ? { ...r, hasUnread: false } : r))
+          : enriched,
+      )
       for (const r of enriched) {
         if (r.peer_avatar_url) void preloadEdgeAvatar(r.peer_avatar_url)
       }
@@ -371,6 +377,15 @@ function ChatTabBody({
     if (showArchivedList) await loadArchivedRooms()
   }, [loadRooms, loadArchivedCount, loadArchivedRooms, refreshPrivateSubsUnread, showArchivedList])
 
+  /** Instant inbox feedback while mark-read is in flight (or raced a refresh). */
+  const clearRoomUnreadLocal = useCallback((roomId) => {
+    const id = String(roomId || '').trim()
+    if (!id) return
+    setRooms((prev) => prev.map((r) => (r.id === id && r.hasUnread ? { ...r, hasUnread: false } : r)))
+    setArchivedRooms((prev) => prev.map((r) => (r.id === id && r.hasUnread ? { ...r, hasUnread: false } : r)))
+    setHydratedOpenRoom((prev) => (prev?.id === id && prev.hasUnread ? { ...prev, hasUnread: false } : prev))
+  }, [])
+
   useEffect(() => {
     void loadRooms()
     void loadArchivedCount()
@@ -422,6 +437,7 @@ function ChatTabBody({
     setDirectOpenRoomId(id)
     setTab('inbox')
     openedFromPrivateSubsRef.current = false
+    clearRoomUnreadLocal(id)
     const skipReloadIfSame = opts.skipReloadIfSame !== false
     if (skipReloadIfSame && activeRoomIdRef.current === id) {
       setActiveRoomId(id)
@@ -451,7 +467,7 @@ function ChatTabBody({
       }
       void loadRooms()
     })()
-  }, [viewerUserId, supabaseClient, loadRooms])
+  }, [viewerUserId, supabaseClient, loadRooms, clearRoomUnreadLocal])
 
   const directOpenRoomIdRef = useRef(directOpenRoomId)
   directOpenRoomIdRef.current = directOpenRoomId
@@ -785,8 +801,9 @@ function ChatTabBody({
     openedFromPrivateSubsRef.current = true
     setHydratedOpenRoom(room)
     setHydrateOpenRoomDone(true)
+    clearRoomUnreadLocal(room?.id)
     setActiveRoomId(room.id)
-  }, [])
+  }, [clearRoomUnreadLocal])
 
   // ── Active room data ──────────────────────────────────────────────────────
 
@@ -906,6 +923,7 @@ function ChatTabBody({
                 profilesById={profilesById}
                 otherUnreadCount={otherUnreadCount}
                 onBack={() => {
+                  const leftId = openRoomId
                   const returnToPrivateSubs =
                     openedFromPrivateSubsRef.current
                     || room?.kind === 'platform_sub'
@@ -914,10 +932,14 @@ function ChatTabBody({
                     openedFromPrivateSubsRef.current = false
                     setTab('privateSubs')
                   }
+                  clearRoomUnreadLocal(leftId)
                   setDirectOpenRoomId(null)
                   setActiveRoomId(null)
                   setHydratedOpenRoom(null)
-                  void refreshInboxLists()
+                  void refreshInboxLists().then(() => {
+                    // Mark-read may still have been in flight during the RPC refresh.
+                    clearRoomUnreadLocal(leftId)
+                  })
                 }}
                 onViewProfile={onViewProfile}
                 onOpenLoungePost={onOpenLoungePost}
@@ -1320,7 +1342,10 @@ function ChatTabBody({
                 label={chatRoomLabel(room)}
                 groupHeaderMembers={groupHeaderByRoomId[room.id] || []}
                 selected={room.id === openRoomId}
-                onOpen={(roomId) => setActiveRoomId(roomId)}
+                onOpen={(roomId) => {
+                  clearRoomUnreadLocal(roomId)
+                  setActiveRoomId(roomId)
+                }}
                 onLongPress={(r, x, y) => setRoomMenu({ room: r, x, y, listMode: 'archived' })}
                 onUnarchive={(r) => void handleRoomAction('unarchive', r)}
                 onDelete={(r) => void handleRoomAction('delete', r)}
@@ -1372,7 +1397,10 @@ function ChatTabBody({
                       ? 'last'
                       : 'middle'
               }
-              onOpen={(roomId) => setActiveRoomId(roomId)}
+              onOpen={(roomId) => {
+                clearRoomUnreadLocal(roomId)
+                setActiveRoomId(roomId)
+              }}
               onLongPress={(r, x, y) => setRoomMenu({ room: r, x, y, listMode: 'inbox' })}
               onArchive={(r) => void handleRoomAction('archive', r)}
               onDelete={(r) => void handleRoomAction('delete', r)}
@@ -1390,7 +1418,10 @@ function ChatTabBody({
               label={chatRoomLabel(room)}
               groupHeaderMembers={groupHeaderByRoomId[room.id] || []}
               selected={room.id === openRoomId}
-              onOpen={(roomId) => setActiveRoomId(roomId)}
+              onOpen={(roomId) => {
+                clearRoomUnreadLocal(roomId)
+                setActiveRoomId(roomId)
+              }}
               onLongPress={(r, x, y) => setRoomMenu({ room: r, x, y, listMode: 'inbox' })}
               onArchive={(r) => void handleRoomAction('archive', r)}
               onDelete={(r) => void handleRoomAction('delete', r)}

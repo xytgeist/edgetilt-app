@@ -236,6 +236,8 @@ export default function ChatConversation({
   const [isAtBottom, setIsAtBottom] = useState(true)
   const typingRef = useRef(null)
   const lastReadDebounceRef = useRef(null)
+  /** First successful open mark-read for this mount (skip the old 2s debounce race). */
+  const lastReadPrimedRef = useRef(false)
   const composerBarRef = useRef(null)
   const composerTouchRef = useRef(null)
   /** Android: bottom gap (px) to restore after swipe keyboard dismiss - shared with RO. */
@@ -1422,31 +1424,64 @@ export default function ChatConversation({
     return cleanup
   }, [supabaseClient, room.id, viewerUserId])
 
-  // ── Read receipt - debounced, never for optimistic ids ───────────────────
+  // ── Read receipt - mark when viewing the latest; never for optimistic ids ─
+
+  const flushMarkLastRead = useCallback(async () => {
+    const msgs = messagesRef.current
+    if (!viewerUserId || msgs.length === 0) return
+    const last = msgs[msgs.length - 1]
+    if (!last?.id || last.id.startsWith('opt-')) return
+    if (lastReadDebounceRef.current) {
+      clearTimeout(lastReadDebounceRef.current)
+      lastReadDebounceRef.current = null
+    }
+    try {
+      await chatUpdateLastRead(supabaseClient, room.id, last.id)
+      onRoomUpdated?.({ hasUnread: false })
+    } catch {
+      /* ignore transient mark-read errors */
+    }
+  }, [supabaseClient, room.id, viewerUserId, onRoomUpdated])
 
   const scheduleMarkLastRead = useCallback(() => {
     const msgs = messagesRef.current
     if (!viewerUserId || msgs.length === 0 || !atBottomRef.current) return
     const last = msgs[msgs.length - 1]
     if (!last?.id || last.id.startsWith('opt-')) return
+    // First paint / open: write immediately so a quick Back cannot race a 2s debounce
+    // and leave the inbox unread indicator stuck until a second visit.
+    if (!lastReadPrimedRef.current) {
+      lastReadPrimedRef.current = true
+      void flushMarkLastRead()
+      return
+    }
     if (lastReadDebounceRef.current) clearTimeout(lastReadDebounceRef.current)
     lastReadDebounceRef.current = setTimeout(() => {
-      void chatUpdateLastRead(supabaseClient, room.id, last.id).catch(() => {})
-    }, 2000)
-  }, [supabaseClient, room.id, viewerUserId])
+      lastReadDebounceRef.current = null
+      void flushMarkLastRead()
+    }, 400)
+  }, [viewerUserId, flushMarkLastRead])
 
   useEffect(() => { scheduleMarkLastRead() }, [messages, scheduleMarkLastRead])
 
-  // Flush on unmount so we don't lose read position
+  // After open pin lands at the tail, mark read even if scroll events never fired.
+  useEffect(() => {
+    if (loading) return
+    if (!atBottomRef.current) return
+    scheduleMarkLastRead()
+  }, [loading, room.id, scheduleMarkLastRead])
+
+  // Flush on unmount so we don't lose read position (always, not only if debounce pending).
   useEffect(() => {
     return () => {
       if (lastReadDebounceRef.current) {
         clearTimeout(lastReadDebounceRef.current)
-        const msgs = messagesRef.current
-        const last = msgs[msgs.length - 1]
-        if (last?.id && !last.id.startsWith('opt-') && viewerUserId) {
-          void chatUpdateLastRead(supabaseClient, room.id, last.id).catch(() => {})
-        }
+        lastReadDebounceRef.current = null
+      }
+      const msgs = messagesRef.current
+      const last = msgs[msgs.length - 1]
+      if (last?.id && !last.id.startsWith('opt-') && viewerUserId) {
+        void chatUpdateLastRead(supabaseClient, room.id, last.id).catch(() => {})
       }
     }
   }, [supabaseClient, room.id, viewerUserId])

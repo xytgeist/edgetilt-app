@@ -1,3 +1,7 @@
 {
-  "css.customData": [".vscode/css-custom-data.json"]
+  "css.customData": [".vscode/css-custom-data.json"],
+  // Cursor bug: after an agent edits package.json, npm task detection
+  // cannot open the file and reports a false "failed to parse" toast on
+  // every window load. The JSON is valid. Terminal npm run is unaffected.
+  "npm.autoDetect": "off"
 }

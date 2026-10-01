@@ -1448,18 +1448,20 @@ export default function ChatConversation({
     if (!viewerUserId || msgs.length === 0 || !atBottomRef.current) return
     const last = msgs[msgs.length - 1]
     if (!last?.id || last.id.startsWith('opt-')) return
-    // First paint / open: write immediately so a quick Back cannot race a 2s debounce
-    // and leave the inbox unread indicator stuck until a second visit.
+    // First open at the tail: write immediately so Back cannot race a debounce
+    // and leave the inbox unread badge stuck until a second visit.
     if (!lastReadPrimedRef.current) {
       lastReadPrimedRef.current = true
       void flushMarkLastRead()
       return
     }
+    // Later marks while staying in-thread: keep the original 2s coalesce so
+    // Realtime bursts + scroll settles do not spam lounge-chat update_last_read.
     if (lastReadDebounceRef.current) clearTimeout(lastReadDebounceRef.current)
     lastReadDebounceRef.current = setTimeout(() => {
       lastReadDebounceRef.current = null
       void flushMarkLastRead()
-    }, 400)
+    }, 2000)
   }, [viewerUserId, flushMarkLastRead])
 
   useEffect(() => { scheduleMarkLastRead() }, [messages, scheduleMarkLastRead])

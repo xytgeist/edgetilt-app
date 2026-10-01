@@ -461,53 +461,47 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     // PushKit is special: every VoIP wake MUST call reportNewIncomingCall before
     // the completion handler returns, or iOS kills the process and blacklists VoIP
     // for this install. JS/APNs may skip when CallKit already accepted the callId.
+    // Never end a same-callId leftover with .failed before re-reporting ... that was
+    // the Aug 30 foreground self-abort (Realtime in flight, VoIP arrived mid-accept).
     if !trimmedCallId.isEmpty,
        let existing = calls.first(where: { $0.value.callId == trimmedCallId })?.key {
-      if acceptedIncomingUUIDs.contains(existing) {
-        if fromPushKit {
-          // Same invite already on CallKit. Still re-report this UUID in this wake.
-          NSLog("EdgeCallKit PushKit: re-report accepted callId=\(trimmedCallId) uuid=\(existing.uuidString)")
-          let replay = CXCallUpdate()
-          if let meta = calls[existing] {
-            replay.remoteHandle = CXHandle(type: .generic, value: meta.callerName)
-            replay.localizedCallerName = meta.callerName
-            replay.hasVideo = meta.hasVideo
-            replay.supportsDTMF = false
-            replay.supportsHolding = false
-            replay.supportsGrouping = false
-            replay.supportsUngrouping = false
-          }
-          provider.reportNewIncomingCall(with: existing, update: replay) { error in
-            if let error {
-              NSLog("EdgeCallKit PushKit re-report: \(error.localizedDescription)")
-            }
-            EdgeCallKitCallerAvatar.prefetchToCache(avatarUrl: avatarUrl)
-            EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
-            completion(.success(["ok": true, "uuid": existing.uuidString.lowercased(), "deduped": true]))
-          }
-          return
+      if fromPushKit {
+        let wasAccepted = acceptedIncomingUUIDs.contains(existing)
+        NSLog("EdgeCallKit PushKit: re-report callId=\(trimmedCallId) uuid=\(existing.uuidString) accepted=\(wasAccepted)")
+        let replay = CXCallUpdate()
+        if let meta = calls[existing] {
+          replay.remoteHandle = CXHandle(type: .generic, value: meta.callerName)
+          replay.localizedCallerName = meta.callerName
+          replay.hasVideo = meta.hasVideo
+          replay.supportsDTMF = false
+          replay.supportsHolding = false
+          replay.supportsGrouping = false
+          replay.supportsUngrouping = false
         }
+        provider.reportNewIncomingCall(with: existing, update: replay) { error in
+          if let error {
+            NSLog("EdgeCallKit PushKit re-report: \(error.localizedDescription)")
+          } else {
+            self.acceptedIncomingUUIDs.insert(existing)
+          }
+          EdgeCallKitCallerAvatar.prefetchToCache(avatarUrl: avatarUrl)
+          EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
+          completion(.success(["ok": true, "uuid": existing.uuidString.lowercased(), "deduped": true]))
+        }
+        return
+      }
+      if acceptedIncomingUUIDs.contains(existing) {
         EdgeCallKitCallerAvatar.prefetchToCache(avatarUrl: avatarUrl)
         EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
         NSLog("EdgeCallKit dedupe accepted callId=\(trimmedCallId) uuid=\(existing.uuidString)")
         completion(.success(["ok": true, "uuid": existing.uuidString.lowercased(), "deduped": true]))
         return
       }
-      if fromPushKit {
-        // JS/APNs inserted a row that CallKit never accepted. Completing this
-        // wake without a report is how iOS kills / blacklists VoIP. Drop leftover.
-        NSLog("EdgeCallKit PushKit: dropping unaccepted leftover \(existing.uuidString) for \(trimmedCallId)")
-        provider.reportCall(with: existing, endedAt: Date(), reason: .failed)
-        calls.removeValue(forKey: existing)
-        answeredUUIDs.remove(existing)
-        acceptedIncomingUUIDs.remove(existing)
-      } else {
-        EdgeCallKitCallerAvatar.prefetchToCache(avatarUrl: avatarUrl)
-        EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
-        NSLog("EdgeCallKit dedupe pending callId=\(trimmedCallId) uuid=\(existing.uuidString)")
-        completion(.success(["ok": true, "uuid": existing.uuidString.lowercased(), "deduped": true, "pending": true]))
-        return
-      }
+      EdgeCallKitCallerAvatar.prefetchToCache(avatarUrl: avatarUrl)
+      EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
+      NSLog("EdgeCallKit dedupe pending callId=\(trimmedCallId) uuid=\(existing.uuidString)")
+      completion(.success(["ok": true, "uuid": existing.uuidString.lowercased(), "deduped": true, "pending": true]))
+      return
     }
     let uuid = Self.uuid(from: uuidString) ?? UUID()
     let callerName = Self.sanitizedCallerName(handle)

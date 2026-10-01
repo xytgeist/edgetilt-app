@@ -122,6 +122,14 @@ That means tracing **callers, imports, shared components, dual-purpose timers/ev
 
 `AGENT_RULE_CROSS_IMPACT_CHECK` — if you are about to change non-trivial code, confirm you have done the above; this token is for searchability in-session.
 
+### Do not blindly “fix” by gutting intentional behavior
+
+> When a delay, debounce, skip, duplicate path, or weird guard looks like the bug, **do not delete or weaken it until you know why it was added.** Find the commit / comment / docs job it still does, then fix **only** the broken path and **keep** the intentional job on the paths that still need it. Example (2026-09-30): chat unread stuck because first-open shared a 2s mark-read debounce … keep the 2s coalesce for live in-thread spam; mark immediately on first open.
+
+Cursor: **`.cursor/rules/preserve-intentional-behavior.mdc`**.
+
+`AGENT_RULE_PRESERVE_INTENTIONAL_BEHAVIOR` — searchability token.
+
 ### Report blast radius before landing changes
 
 > Before implementing (or when summarizing a diff), tell **Ryan** every **other surface** the change will affect — shared CSS classes, reused components, cross-feature imports, light/dark leakage — not only the file or feature he named. Grep the symbol/class first.

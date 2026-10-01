@@ -1,0 +1,32 @@
+---
+description: Do not gut intentional behavior when fixing a nearby bug — learn why it existed first
+alwaysApply: true
+---
+
+# Preserve intentional behavior when fixing
+
+When something looks like “the bug” (a delay, debounce, skip, duplicate path, weird guard), **do not delete or weaken it until you know why it was added.**
+
+Ryan (2026-09-30): agents were fixing one symptom and casually stripping a hold/debounce/guard that still did a different real job.
+
+## Required before changing an existing hold / guard / race fix
+
+1. **Find why it exists** … `git log -S` / blame / commit message / nearby comments / backlog / `docs/ios-native-bridge.md`.
+2. **Name the job it still does** (rate limit, Apple VoIP rule, scroll spam, dedupe, China gate, etc.).
+3. **Fix only the broken path** … keep the intentional job on the paths that still need it.
+4. **Say so to Ryan** in the blast-radius note if you almost removed it.
+
+## Bad
+
+- “2s debounce caused unread to stick … remove the debounce.”
+- “Dedupe skip caused a crash … flatten every PushKit path the same way.”
+
+## Good
+
+- “2s debounce is for live in-thread Edge spam … keep it for later marks; first open marks immediately.”
+- “PushKit must always `reportNewIncomingCall` … re-report the same UUID; do not `.failed` mid-accept.”
+
+## Related
+
+- Cross-impact / blast radius: **`AGENTS.md`** (`AGENT_RULE_CROSS_IMPACT_CHECK`, `AGENT_RULE_BLAST_RADIUS`).
+- This rule’s token: **`AGENT_RULE_PRESERVE_INTENTIONAL_BEHAVIOR`**.

@@ -22,6 +22,7 @@ The agent should treat the following as **standing instructions for this session
 - **Voice:** Confident bestie energy; playful roasts OK when clearly affectionate — **always get serious** for security, correctness, risky merges, and keeping good notes/comments. Full wording: **`AGENTS.md`** → *People & naming* (`AGENT_RULE_RYAN_VOICE`).
 - **Punctuation:** Never use em dashes (`—`). Prefer ellipses (`...`) for prose breaks. Cursor: **`.cursor/rules/no-em-dashes.mdc`**.
 - **Cross-impact:** do not change existing code without checking it will not break other parts of the project (callers, shared components, dual-purpose logic, contracts).
+- **Preserve intentional behavior:** before deleting or weakening a delay / debounce / skip / guard that looks like “the bug,” learn why it was added and keep that job on the paths that still need it. Fix only the broken path. See **`AGENTS.md`** (`AGENT_RULE_PRESERVE_INTENTIONAL_BEHAVIOR`). Cursor: **`.cursor/rules/preserve-intentional-behavior.mdc`**.
 - **Blast radius:** Before landing a change, tell Ryan **every other surface** it will affect (shared CSS classes, reused components, cross-feature imports) — not only the file or feature he named.
 - **Questions:** If **Ryan** asks a question only, answer it — **no code unless he directs you to implement something.**
 - **Design:** reason from **first principles** (concept, trade-offs, UX, maintainability, performance, real-world fit). See **`AGENTS.md`** → *Architecture and design reasoning*.
@@ -35,7 +36,7 @@ The agent should treat the following as **standing instructions for this session
 
 **Machine:** _[Mac = iOS WKWebView shell | Windows home PC = web + poker catalog runner]_
 
-**Branch:** `test` (match `origin/test` before edits). `main` @ **`test` tip** (promoted 2026-09-30, web **1.4.961** ... Game Hub public bets/money split pills). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
+**Branch:** `test` (match `origin/test` before edits). `main` @ **`test` tip** (promoted 2026-09-30, web **1.4.963** ... chat unread first-open mark + preserve-intentional-behavior rule). Dual-machine. Physical iOS 27 → **Xcode 27 beta**.
 
 **Supabase (do not swap these):**
 

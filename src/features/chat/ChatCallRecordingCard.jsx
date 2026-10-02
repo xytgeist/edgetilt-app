@@ -83,8 +83,12 @@ export default function ChatCallRecordingCard({
   const suppressClickRef = useRef(false)
 
   useEffect(() => {
-    setPosterUrl(storedPoster)
-    if (storedPoster) setMediaReady(true)
+    // Only adopt a server poster. Do not wipe a locally captured frame when the
+    // parent row still has null stream_poster_url (Realtime lag / remount race).
+    if (storedPoster) {
+      setPosterUrl(storedPoster)
+      setMediaReady(true)
+    }
   }, [storedPoster])
 
   useEffect(() => {

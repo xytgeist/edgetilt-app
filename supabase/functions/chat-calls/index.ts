@@ -1666,7 +1666,9 @@ Deno.serve(async (req) => {
       await assertMember(admin, msg.room_id, user.id)
 
       const existingPoster = String(msg.stream_poster_url || '').trim()
-      if (existingPoster) {
+      // Clients may send replace:true after detecting a blank first-frame poster.
+      const replace = body.replace === true
+      if (existingPoster && !replace) {
         return json(200, {
           ok: true,
           stream_poster_url: existingPoster,
@@ -1691,12 +1693,15 @@ Deno.serve(async (req) => {
         patch.stream_video_height = height
       }
 
-      const { data: updated, error: upErr } = await admin
+      let updateQuery = admin
         .from('chat_messages')
         .update(patch)
         .eq('id', messageId)
         .eq('content_encoding', 'call_recording')
-        .or('stream_poster_url.is.null,stream_poster_url.eq.')
+      if (!replace) {
+        updateQuery = updateQuery.or('stream_poster_url.is.null,stream_poster_url.eq.')
+      }
+      const { data: updated, error: upErr } = await updateQuery
         .select('id, stream_poster_url, stream_video_width, stream_video_height')
         .maybeSingle()
       if (upErr) throw new Error(upErr.message)

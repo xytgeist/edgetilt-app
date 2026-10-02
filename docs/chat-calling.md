@@ -106,6 +106,8 @@ Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, remove
 
 **2026-10-02 recording fail ("Recording failed to save"):** LiveKit egress aborted with `Start signal not received`. Prod `call-egress.html` loaded the JS module from **`media-test.lvslotpro.com`** while the page itself was on **`media.lvslotpro.com`** … cross-origin ES module, no CORS, so `START_RECORDING` never fired. Fix: publish template assets as same-folder relative `./callEgress-*.js` (Edge **`publish-call-egress-template`** + local publisher). Republished R2 on test + prod. Smoke: Record → Stop → `recording_status=ready` + chat card.
 
+**2026-10-02 blank call-recording poster (`1.4.982`):** Card had a `stream_poster_url` but the JPEG was near-black (first-frame canvas grab before a real sample). Capture now rejects blank frames, seeks later timestamps, and can `replace` a blank poster via **`attach_recording_poster`**. Cleared the bad poster on the latest prod card so clients re-grab. Redeployed **`chat-calls`** test+prod.
+
 ### Prod media host — Gate before Record promote
 
 **Current prod host:** **`https://media.lvslotpro.com`** (R2 custom domain on the Lounge media bucket; same bucket as **`media-test.lvslotpro.com`**).

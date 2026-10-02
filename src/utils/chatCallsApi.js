@@ -139,13 +139,14 @@ export function chatUpdateRecordingFocus(supabase, callId, featuredIdentity) {
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {{ messageId: string, posterUrl: string, width?: number, height?: number }} args
  */
-export function chatAttachRecordingPoster(supabase, { messageId, posterUrl, width, height }) {
+export function chatAttachRecordingPoster(supabase, { messageId, posterUrl, width, height, replace = false }) {
   return chatCallsInvoke(supabase, {
     action: 'attach_recording_poster',
     message_id: messageId,
     poster_url: posterUrl,
     width: width ?? null,
     height: height ?? null,
+    ...(replace ? { replace: true } : {}),
   })
 }
 

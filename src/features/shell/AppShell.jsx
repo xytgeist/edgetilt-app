@@ -5,6 +5,7 @@ import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitl
 import { feedPostDisplayCaption } from '../../utils/communityFeedPost'
 import { isLoungePostShareId, isLoungeProfileHandleSlug, parseLoungeProfilePathHandle } from '../../utils/loungeSharePost'
 import {
+  COMMUNITY_FEED_SELECT,
   fetchLoungeFollowingAuthorIds,
   filterLoungeFeedTimelinePosts,
   LOUNGE_FEED_SCOPE_ALL,
@@ -1065,7 +1066,8 @@ export default function AppShell({
       }
 
       let repostById = {}
-      if (depth === 0) {
+      // Two hops … quote-of-quote needs the inner original (C→B→A). Stop at 2 to avoid cycles.
+      if (depth < 2) {
         const repostTargetIds = [
           ...new Set(
             rows
@@ -1076,10 +1078,24 @@ export default function AppShell({
         ]
         if (repostTargetIds.length > 0) {
           try {
-            const origRows = await fetchLoungeCommunityFeedPostsForViewer(
+            let origRows = await fetchLoungeCommunityFeedPostsForViewer(
               supabaseClient,
               repostTargetIds,
             )
+            const found = new Set((origRows || []).map((p) => uidKey(p.id)))
+            const missing = repostTargetIds.filter((id) => !found.has(id) && !id.startsWith('pending-'))
+            if (missing.length) {
+              const { data: fallbackRows, error: fallbackErr } = await supabaseClient
+                .from('community_feed_posts')
+                .select(COMMUNITY_FEED_SELECT)
+                .in('id', missing)
+                .is('hidden_at', null)
+              if (fallbackErr) {
+                console.warn('hydrateCommunityPosts original fallback:', fallbackErr.message)
+              } else if (fallbackRows?.length) {
+                origRows = [...(origRows || []), ...fallbackRows]
+              }
+            }
             if (origRows?.length) {
               const nested = await hydrateCommunityPosts(origRows, depth + 1)
               repostById = Object.fromEntries(nested.map((p) => [uidKey(p.id), p]))
@@ -1177,7 +1193,7 @@ export default function AppShell({
         ...r,
         author_profile: profileByUserId[uidKey(r.user_id)] || null,
         reposted_post:
-          depth === 0 && r.repost_of_post_id != null && r.repost_of_post_id !== ''
+          depth < 2 && r.repost_of_post_id != null && r.repost_of_post_id !== ''
             ? repostById[uidKey(r.repost_of_post_id)] || null
             : null,
         reposted_comment:

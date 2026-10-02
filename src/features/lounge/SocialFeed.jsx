@@ -8496,6 +8496,25 @@ export default function SocialFeed({
       if (composerUserId && !loungePendingPublishIsOptimisticId(post.id)) {
         void refreshLoungePostInteractions([post.id])
       }
+      const quoteNeedsInner =
+        isQuoteRepostPost(post) &&
+        post.repost_target_unavailable !== true &&
+        ((post.repost_of_post_id && !post.reposted_post) ||
+          (post.reposted_post &&
+            isQuoteRepostPost(post.reposted_post) &&
+            post.reposted_post.repost_target_unavailable !== true &&
+            post.reposted_post.repost_of_post_id &&
+            !post.reposted_post.reposted_post))
+      if (quoteNeedsInner && !loungePendingPublishIsOptimisticId(post.id)) {
+        void hydrateCommunityPosts([post]).then((hydrated) => {
+          const next = hydrated?.[0]
+          if (!next?.id) return
+          setLoungePostDetail((d) => (d && String(d.id) === String(next.id) ? { ...d, ...next } : d))
+          setCommunityPosts((prev) =>
+            prev.map((p) => (String(p.id) === String(next.id) ? { ...p, ...next } : p)),
+          )
+        })
+      }
       setLoungeDetailEditImageUrls([])
       setLoungeDetailEditMediaUrl('')
       if (
@@ -8568,7 +8587,7 @@ export default function SocialFeed({
         })
       })
     },
-    [cancelLoungeDetailEditMediaPrep, composerUserId, loungeFanLockCtx, loungeReadOnly, onRequireAuth, profileModalOpen, profileOverlayStack.length, refreshLoungePostInteractions, supabaseClient]
+    [cancelLoungeDetailEditMediaPrep, composerUserId, hydrateCommunityPosts, loungeFanLockCtx, loungeReadOnly, onRequireAuth, profileModalOpen, profileOverlayStack.length, refreshLoungePostInteractions, setCommunityPosts, supabaseClient]
   )
 
   const openLoungeReplyFailureToast = useCallback(() => {
@@ -18452,6 +18471,7 @@ export default function SocialFeed({
                           handleFor={handleFor}
                           postAgeLabel={postAgeLabel}
                           onOpenOriginal={() => openLoungePostDetail(loungePostDetail.reposted_post)}
+                          onOpenQuotedPost={(quoted) => openLoungePostDetail(quoted)}
                           onLinkPreviewOpen={openLinkPreview}
                           renderMarketStrip={(row, className) => (
                             <LoungeMarketChartStrip

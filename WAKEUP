@@ -114,6 +114,9 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Mac Theo ACTIVE TRACK 2026-10-02 ... Quote-of-quote original missing on detail
+**I am Mac Theo.** On **`test`**, web **`1.4.975`**. Quote-repost of a quote-repost no longer paints the inner original as gone on post detail (two-hop hydrate + nested embed). Not promoted. Marketing still **1.4.95**.
+
 ### Mac Theo ACTIVE TRACK 2026-10-02 ... Island updates while backgrounded + live spread 0/0
 **I am Mac Theo.** Promoted **`test` → `main` (`473fd204`)**. Vercel prod web **`1.4.974`**. **`lounge-sports-scoreboard`** redeployed on **test + prod**. Install TestFlight **1.4.95 (20261002033233)** for native BG Island ticks + Lock Screen refresh. Marketing still **1.4.95**. Back on **`test`**.
 

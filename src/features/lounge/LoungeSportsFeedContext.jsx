@@ -64,6 +64,18 @@ function sideNum(side, key) {
   return Number.isFinite(n) ? n : null
 }
 
+/**
+ * Prefer a real line over a missing one. Also reject mid-game `0` / `0` wipes …
+ * TheRundown often stamps literal zeros when the live line is gone (not pick'em).
+ */
+function preferSpread(nextSide, prevSide) {
+  const n = sideNum(nextSide, 'spread')
+  const p = sideNum(prevSide, 'spread')
+  if (n == null) return p
+  if (n === 0 && p != null && p !== 0) return p
+  return n
+}
+
 /** Odds drop completed games; keep the last Pinnacle close we already painted. */
 function preserveSpreads(next, prev) {
   if (!Array.isArray(next) || !next.length || !Array.isArray(prev) || !prev.length) return next
@@ -72,8 +84,18 @@ function preserveSpreads(next, prev) {
   return next.map((game) => {
     const old = prevById.get(String(game.id)) || prevByMatch.get(matchupKey(game))
     if (!old) return game
-    const homeSpread = sideNum(game.home, 'spread') ?? sideNum(old.home, 'spread')
-    const awaySpread = sideNum(game.away, 'spread') ?? sideNum(old.away, 'spread')
+    let homeSpread = preferSpread(game.home, old.home)
+    let awaySpread = preferSpread(game.away, old.away)
+    // Both sides cleared to 0 … restore the previous pair when it wasn't pick'em.
+    if (
+      sideNum(game.home, 'spread') === 0
+      && sideNum(game.away, 'spread') === 0
+      && (sideNum(old.home, 'spread') != null || sideNum(old.away, 'spread') != null)
+      && !(sideNum(old.home, 'spread') === 0 && sideNum(old.away, 'spread') === 0)
+    ) {
+      homeSpread = sideNum(old.home, 'spread')
+      awaySpread = sideNum(old.away, 'spread')
+    }
     const homeMl = sideNum(game.home, 'ml') ?? sideNum(old.home, 'ml')
     const awayMl = sideNum(game.away, 'ml') ?? sideNum(old.away, 'ml')
     const homeRecord = game.home?.record || old.home?.record || null
@@ -174,15 +196,37 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
     if (!feedActive || !supabaseClient) return undefined
     void loadBoard()
     const live = gamesRef.current.some((g) => g.status === 'in') || hubGame?.status === 'in'
-    const ms = hubGame ? (hubGame.status === 'in' ? 10_000 : 60_000) : live ? 15_000 : 5 * 60_000
+    const watching = Boolean(watchedGameIdRef.current)
+    // Island stays alive after hub close … keep a live tick while watching.
+    const ms = hubGame
+      ? (hubGame.status === 'in' ? 10_000 : 60_000)
+      : watching
+        ? 12_000
+        : live
+          ? 15_000
+          : 5 * 60_000
     // Fast live ticks only need the games that are changing; the full slate refreshes every 2 min.
     const fullEveryMs = ms < 60_000 ? 2 * 60_000 : 0
     const id = setInterval(() => {
-      if (typeof document !== 'undefined' && document.hidden) return
+      // Skip while tabbed away unless a watched-game Island needs board ticks.
+      const keepForIsland = Boolean(watchedGameIdRef.current)
+      if (typeof document !== 'undefined' && document.hidden && !keepForIsland) return
       const fullDue = !fullEveryMs || Date.now() - lastFullBoardAtRef.current >= fullEveryMs
       void loadBoard({ active: !fullDue })
     }, ms)
-    return () => clearInterval(id)
+    const onVis = () => {
+      if (typeof document === 'undefined' || document.hidden) return
+      void loadBoard({ active: true })
+    }
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', onVis)
+    }
+    return () => {
+      clearInterval(id)
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', onVis)
+      }
+    }
   }, [feedActive, hubGame, loadBoard, supabaseClient, games.some((g) => g.status === 'in')])
 
   useEffect(() => {

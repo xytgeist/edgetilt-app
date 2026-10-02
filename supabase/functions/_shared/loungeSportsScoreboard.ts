@@ -1346,6 +1346,8 @@ export async function buildLoungeSportsScoreboard(
       pinPack,
       false,
     )
+    // us/us2 live board … Pinnacle often drops live spreads (null) while Rundown may send 0/0.
+    nflGames = applyUsBoardQuotes(nflGames, nflOddsPack)
     if (admin && pinPack?.events?.length) {
       await upsertMarketFilesFromEvents(
         admin,
@@ -1388,6 +1390,7 @@ export async function buildLoungeSportsScoreboard(
       cfbPinPack,
       false,
     )
+    cfbGames = applyUsBoardQuotes(cfbGames, cfbOddsPack)
     if (admin && cfbPinPack?.events?.length) {
       await upsertMarketFilesFromEvents(
         admin,
@@ -2331,6 +2334,69 @@ function mergePinnacleBookmaker(target: OddsEventRow, pinPack: { events?: OddsEv
 
 function gameHasSpread(game: LoungeSportsGame): boolean {
   return numOrNull(game.home?.spread) != null || numOrNull(game.away?.spread) != null
+}
+
+/** True when both sides are literally 0 … Rundown often clears live lines this way (not a real pick'em). */
+function gameHasBogusZeroSpread(game: LoungeSportsGame): boolean {
+  return numOrNull(game.home?.spread) === 0 && numOrNull(game.away?.spread) === 0
+}
+
+/**
+ * Apply us/us2 Odds API quotes onto the slate game object.
+ * `nflOddsPack` was fetched but unused for board spreads … live Pinnacle often has null spreads
+ * while FanDuel/DK still have the real number, and Rundown may stamp 0/0 mid-game.
+ */
+function applyUsBoardQuotes(
+  games: LoungeSportsGame[],
+  pack: Awaited<ReturnType<typeof fetchSportOdds>> | { events?: OddsEventRow[] } | null,
+): LoungeSportsGame[] {
+  const events = Array.isArray(pack?.events) ? pack!.events as OddsEventRow[] : []
+  if (!events.length) return games
+  return games.map((game) => {
+    if (game.status !== 'in') return game
+    const matched = events.find((ev) =>
+      sameNflSide(String(ev.home_team || ''), game.home) && sameNflSide(String(ev.away_team || ''), game.away)
+    )
+    if (!matched) return game
+    const homeName = String(matched.home_team || game.home.name)
+    const awayName = String(matched.away_team || game.away.name)
+    const rows: LoungeSportsOddsRow[] = []
+    for (const book of matched.bookmakers || []) {
+      if (String(book.key || '').toLowerCase() === 'pinnacle') continue
+      const row = compactBook(book, homeName, awayName)
+      if (row) rows.push(row)
+    }
+    if (!rows.length) return game
+
+    const homeSpreads = rows.map((r) => numOrNull(r.home_spread)).filter((n): n is number => n != null)
+    const nonZero = homeSpreads.filter((n) => n !== 0)
+    const medSpread = medianFinite(nonZero.length ? nonZero : homeSpreads)
+    const medTotal = medianFinite(rows.map((r) => numOrNull(r.total)))
+    const homeMls = rows.map((r) => numOrNull(r.home_ml)).filter((n): n is number => n != null)
+    const awayMls = rows.map((r) => numOrNull(r.away_ml)).filter((n): n is number => n != null)
+    // Prefer a fresh book for ML (not median of stale mix).
+    const freshest = [...rows].sort((a, b) =>
+      Date.parse(String(b.last_update || '')) - Date.parse(String(a.last_update || ''))
+    )[0]
+    const needSpread = !gameHasSpread(game) || gameHasBogusZeroSpread(game)
+    const pair = needSpread && medSpread != null
+      ? pairSpreads(medSpread, -medSpread)
+      : { home: game.home.spread ?? null, away: game.away.spread ?? null }
+    return {
+      ...game,
+      total: medTotal ?? game.total ?? null,
+      home: {
+        ...game.home,
+        spread: pair.home,
+        ml: freshest?.home_ml ?? (homeMls[0] ?? game.home.ml ?? null),
+      },
+      away: {
+        ...game.away,
+        spread: pair.away,
+        ml: freshest?.away_ml ?? (awayMls[0] ?? game.away.ml ?? null),
+      },
+    }
+  })
 }
 
 function pinnacleBookFromEvent(ev: OddsEventRow): OddsBookmaker | null {

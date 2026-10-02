@@ -11,6 +11,7 @@ struct EdgeTiltApp: App {
         .background(Color.black)
         .preferredColorScheme(.dark)
         .onChange(of: scenePhase) { _, phase in
+          EdgeLiveSportsActivity.handleSceneBecameActive(phase == .active)
           if phase == .active {
             EdgeCallKitManager.shared.handleDidBecomeActive()
           }

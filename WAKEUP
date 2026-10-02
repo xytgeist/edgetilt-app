@@ -117,6 +117,9 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 ### Mac Theo ACTIVE TRACK 2026-10-01 ... Watch pills system Safari
 **I am Mac Theo.** Promoted **`test` → `main` (`2ccec72e`)**. Vercel prod web **`1.4.969`** (watch-the-game pills → system Safari / streaming app). No new IPA. Back on **`test`**. Marketing still **1.4.95**.
 
+### Mac Theo ACTIVE TRACK 2026-10-01 ... AP Guides Skins "View guide" miss
+**I am Mac Theo.** Skins "View guide" often no-oped because `openGuideSlug` set `expandedSlug` without expanding the paginated window (and search-clear reset to page 1). Fix: bump `visibleCount` to include the target + keep-expanded-mounted effect. Web **`1.4.972`** on **`test`**. No IPA. Windows lane note: touched `GuidesScreen.jsx` (bug Ryan filed in Mac chat).
+
 ### Mac Theo ACTIVE TRACK 2026-10-01 ... Island bundled CFB logos
 **I am Mac Theo.** Promoted **`test` → `main` (`45de509a`)**. Vercel prod web **`1.4.971`**. Install TestFlight **1.4.95 (20261002024725)** for NFL+CFB Island marks. Back on **`test`**. Marketing still **1.4.95**.
 

@@ -610,7 +610,11 @@ function GuideSkinCard({ targetSlug, label, allGuides, onOpen }) {
   return (
     <button
       type="button"
-      onClick={() => onOpen?.(targetSlug)}
+      onClick={(event) => {
+        // Expanded parent card collapses on background tap … never let this bubble.
+        event.stopPropagation()
+        onOpen?.(targetSlug)
+      }}
       className={[
         'group my-3 w-full text-left rounded-2xl overflow-hidden border border-zinc-700/80',
         accent.mode === 'hex' ? 'guide-accent-themed' : '',
@@ -1687,10 +1691,23 @@ export default function GuidesScreen({
         onRequireSubscribe?.('slots-edge')
         return
       }
+      // Clear search so a mismatched query cannot hide the target. Also expand the
+      // paginated window … `setExpandedSlug` alone is a no-op if the card is past
+      // `visibleCount` (common after scroll, or after query-clear resets to page 1).
       setQuery('')
+      const idxInRows = rows.findIndex((r) => {
+        const m = machineForGuide(r)
+        const s = normalizeGuideAccessSlug(m?.slug || r.slug)
+        return s && String(s).toLowerCase() === String(slug).toLowerCase()
+      })
+      if (idxInRows >= 0) {
+        setVisibleCount(
+          Math.min(rows.length, Math.max(idxInRows + 4, GUIDES_LIST_PAGE_SIZE)),
+        )
+      }
       setExpandedSlug(slug)
     },
-    [gatesMap, hasSlotsEdge, hasSlotsEdgeStarter, starterUnlockedGuideSlugs, isStaff, onRequireSubscribe, resolveGuideReleaseYear],
+    [access, onRequireSubscribe, resolveGuideReleaseYear, rows],
   )
 
   const toggleGuideExpanded = useCallback(
@@ -1950,6 +1967,20 @@ export default function GuidesScreen({
   useEffect(() => {
     setVisibleCount(GUIDES_LIST_PAGE_SIZE)
   }, [query])
+
+  // Keep the expanded card mounted in the paginated window (Skins "View guide", deep links).
+  // Must run after the query→page-size reset so clearing search cannot hide the target.
+  useEffect(() => {
+    if (!expandedSlug || loading) return
+    const idx = filtered.findIndex((row) => {
+      const m = machineForGuide(row)
+      const cardSlug = normalizeGuideAccessSlug(m?.slug || row.slug)
+      return cardSlug && String(cardSlug).toLowerCase() === String(expandedSlug).toLowerCase()
+    })
+    if (idx < 0) return
+    const need = Math.min(filtered.length, Math.max(idx + 4, GUIDES_LIST_PAGE_SIZE))
+    setVisibleCount((prev) => (prev >= need ? prev : need))
+  }, [expandedSlug, filtered, loading])
 
   useEffect(() => {
     if (loading || filtered.length === 0) return

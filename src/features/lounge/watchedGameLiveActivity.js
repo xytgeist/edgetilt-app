@@ -1,5 +1,35 @@
 import { syncEdgeLiveSportsActivity } from '../../utils/edgeNative.js'
 
+/** Absolute HTTPS logo URL for the native Live Activity download. */
+function absoluteLogoUrl(logo) {
+  const raw = String(logo || '').trim()
+  if (!raw) return ''
+  if (/^https?:\/\//i.test(raw)) return raw
+  if (raw.startsWith('//')) return `https:${raw}`
+  const origin =
+    typeof window !== 'undefined' && window.location?.origin
+      ? String(window.location.origin).replace(/\/$/, '')
+      : ''
+  if (!origin) return raw
+  return `${origin}${raw.startsWith('/') ? raw : `/${raw}`}`
+}
+
+/**
+ * Center clock line for the Island / Lock Screen (Prime-style `1st 4:21`).
+ * Prefer a rich status_label when present; otherwise period + clock.
+ */
+function liveClockFields(game, live) {
+  const statusLabel = String(game?.status_label || '').trim()
+  const periodRaw = String(live?.period_label || live?.period || '').trim()
+  const clockRaw = String(live?.clock || '').trim()
+
+  // "Q3 10:33" / "1st 4:21" / "Halftime" … ready for the center column.
+  if (statusLabel && !/^live$/i.test(statusLabel)) {
+    return { clock: statusLabel, period: '' }
+  }
+  return { clock: clockRaw, period: periodRaw }
+}
+
 /**
  * Build the Island payload for a board/detail game, or null to end.
  * @param {object | null | undefined} game
@@ -14,8 +44,7 @@ export function watchedGameLiveActivityPayload(game, opts = {}) {
   if (status !== 'in') return null
 
   const live = game.live || {}
-  const clock = String(live.clock || game.status_label || '').trim()
-  const period = String(live.period_label || live.period || '').trim()
+  const { clock, period } = liveClockFields(game, live)
   const downDistance = String(live.down_distance || live.downDistance || '').trim()
 
   return {
@@ -29,10 +58,12 @@ export function watchedGameLiveActivityPayload(game, opts = {}) {
     away: {
       abbrev: String(game.away?.abbrev || ''),
       score: Number(game.away?.score) || 0,
+      logo: absoluteLogoUrl(game.away?.logo),
     },
     home: {
       abbrev: String(game.home?.abbrev || ''),
       score: Number(game.home?.score) || 0,
+      logo: absoluteLogoUrl(game.home?.logo),
     },
   }
 }

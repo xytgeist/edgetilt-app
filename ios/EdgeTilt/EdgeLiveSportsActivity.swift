@@ -1,5 +1,6 @@
 import ActivityKit
 import Foundation
+import UIKit
 
 /// Starts / updates / ends the watched-game Live Activity from JS.
 /// While a sports Activity is live, bankroll Activities are ended (watched game wins Island).
@@ -31,7 +32,9 @@ enum EdgeLiveSportsActivity {
 
     let away = dict(payload?["away"])
     let home = dict(payload?["home"])
-    let state = LiveSportsAttributes.ContentState(
+    let awayLogoUrl = string(away?["logo"])
+    let homeLogoUrl = string(home?["logo"])
+    let baseState = LiveSportsAttributes.ContentState(
       gameId: gameId,
       sportKey: string(payload?["sportKey"]),
       awayAbbrev: string(away?["abbrev"]).uppercased(),
@@ -43,7 +46,9 @@ enum EdgeLiveSportsActivity {
       period: string(payload?["period"]),
       detail: string(payload?["downDistance"]).isEmpty
         ? string(payload?["detail"])
-        : string(payload?["downDistance"])
+        : string(payload?["downDistance"]),
+      awayLogoData: nil,
+      homeLogoData: nil
     )
 
     guard ActivityAuthorizationInfo().areActivitiesEnabled else {
@@ -58,6 +63,15 @@ enum EdgeLiveSportsActivity {
     Task {
       // Watched game beats bankroll for Island space.
       await endBankrollActivities()
+
+      let prior = Activity<LiveSportsAttributes>.activities.first?.content.state
+      async let awayData = fetchLogoData(awayLogoUrl, fallback: prior?.awayLogoData)
+      async let homeData = fetchLogoData(homeLogoUrl, fallback: prior?.homeLogoData)
+      let (awayLogo, homeLogo) = await (awayData, homeData)
+
+      var state = baseState
+      state.awayLogoData = awayLogo
+      state.homeLogoData = homeLogo
 
       do {
         if let existing = Activity<LiveSportsAttributes>.activities.first {
@@ -118,6 +132,38 @@ enum EdgeLiveSportsActivity {
     for activity in Activity<LiveBankrollAttributes>.activities {
       await activity.end(nil, dismissalPolicy: .immediate)
     }
+  }
+
+  /// Download + shrink team marks so Lock Screen / Island snapshots stay crisp offline.
+  private static func fetchLogoData(_ urlString: String, fallback: Data?) async -> Data? {
+    let trimmed = urlString.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard let url = URL(string: trimmed), !trimmed.isEmpty else { return fallback }
+    do {
+      let (data, response) = try await URLSession.shared.data(from: url)
+      if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
+        return fallback
+      }
+      guard let image = UIImage(data: data) else { return fallback ?? data }
+      return resizedPng(image, maxSide: 96) ?? fallback
+    } catch {
+      return fallback
+    }
+  }
+
+  private static func resizedPng(_ image: UIImage, maxSide: CGFloat) -> Data? {
+    let w = image.size.width
+    let h = image.size.height
+    guard w > 0, h > 0 else { return image.pngData() }
+    let scale = min(1, maxSide / max(w, h))
+    let size = CGSize(width: (w * scale).rounded(), height: (h * scale).rounded())
+    let format = UIGraphicsImageRendererFormat.default()
+    format.scale = 1
+    format.opaque = false
+    let renderer = UIGraphicsImageRenderer(size: size, format: format)
+    let drawn = renderer.image { _ in
+      image.draw(in: CGRect(origin: .zero, size: size))
+    }
+    return drawn.pngData()
   }
 
   private static func dict(_ value: Any?) -> [String: Any]? {

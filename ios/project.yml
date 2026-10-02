@@ -44,6 +44,9 @@ targets:
       - path: EdgeTilt
         excludes:
           - "**/*.md"
+      # Shared ActivityAttributes … must compile into the app (sync) and the extension (UI).
+      - path: EdgeTiltLiveActivity/LiveBankrollAttributes.swift
+      - path: EdgeTiltLiveActivity/LiveSportsAttributes.swift
     dependencies:
       - package: LiveKit
         product: LiveKit

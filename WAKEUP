@@ -114,6 +114,9 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Mac Theo ACTIVE TRACK 2026-10-01 ... Prime-style sports Island
+**I am Mac Theo.** Watched-game Live Activity matches Prime Video board: compact Island logo+score / score+logo (blue keyline), Lock Screen EDGE + logos + big scores + center clock/league. Native downloads team logo HTTPS URLs into Activity PNG bytes. Web **`1.4.966`** + new Prod TestFlight IPA owed. Marketing still **1.4.95**.
+
 ### Mac Theo ACTIVE TRACK 2026-10-01 ... Fantasy tab watch pins
 **I am Mac Theo.** Promoted **`test` → `main` (`3d12420b`)**. Vercel prod web **`1.4.965`** (Fantasy watch pins + blue play toasts). No SQL / Edge / IPA. Back on **`test`**. Marketing still **1.4.95**.
 

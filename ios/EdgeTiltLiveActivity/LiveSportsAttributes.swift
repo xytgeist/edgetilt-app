@@ -5,7 +5,8 @@ import Foundation
 /// Shared by the app and the widget extension. Do not import app-only types.
 ///
 /// Keep `ContentState` tiny … ActivityKit rejects oversized payloads (~4KB). Pass logo
-/// HTTPS URLs (not image bytes) and let the widget load marks with `AsyncImage`.
+/// HTTPS URLs (not image bytes). Widget prefers bundled NFL PNGs (`TeamLogoBundle`), then
+/// `AsyncImage` for CFB / unknown leagues.
 struct LiveSportsAttributes: ActivityAttributes {
   public struct ContentState: Codable, Hashable {
     var gameId: String

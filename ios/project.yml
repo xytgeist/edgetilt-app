@@ -35,6 +35,7 @@ settings:
 configs:
   Debug: debug
   Release: release
+  ReleaseTest: release
 
 targets:
   EdgeTilt:
@@ -75,6 +76,12 @@ targets:
     platform: iOS
     sources:
       - path: EdgeTiltLiveActivity
+        excludes:
+          - "TeamLogos/**"
+    resources:
+      # Bundled NFL marks for Dynamic Island / Lock Screen (AsyncImage is flaky in LA snapshots).
+      - path: EdgeTiltLiveActivity/TeamLogos
+        type: folder
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.edgetilt.app.LiveActivity

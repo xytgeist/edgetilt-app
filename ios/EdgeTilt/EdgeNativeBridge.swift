@@ -90,6 +90,17 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       EdgeInAppBrowser.open(url) { ok in
         completion(.success(["ok": ok, "inApp": true]))
       }
+    case "openSportsbookUrl":
+      guard let urlString = payload?["url"] as? String,
+            let url = URL(string: urlString)
+      else {
+        completion(.success(["ok": false]))
+        return
+      }
+      let book = payload?["book"] as? String
+      EdgeSportsbookOpen.open(url: url, book: book) { ok, via in
+        completion(.success(["ok": ok, "via": via]))
+      }
     case "openAppSettings":
       DispatchQueue.main.async {
         guard let url = URL(string: UIApplication.openSettingsURLString) else {
@@ -214,9 +225,12 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     case "clearAuthSession":
       EdgeAuthSessionStore.clear()
       EdgeLiveBankrollActivity.endFromSignOut()
+      EdgeLiveSportsActivity.endFromSignOut()
       completion(.success(["ok": true]))
     case "syncLiveBankrollActivity":
       EdgeLiveBankrollActivity.sync(payload: payload, completion: completion)
+    case "syncLiveSportsActivity":
+      EdgeLiveSportsActivity.sync(payload: payload, completion: completion)
     case "setLiveBankrollIslandOverlay":
       let visible = Self.payloadFlag(payload, "visible")
       DispatchQueue.main.async {
@@ -764,6 +778,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     window.EdgeNative = {
       getInfo: function () { return call('getInfo', null); },
       openInSafari: function (payload) { return call('openInSafari', payload || {}); },
+      openSportsbookUrl: function (payload) { return call('openSportsbookUrl', payload || {}); },
       openAppSettings: function () { return call('openAppSettings', null); },
       getPushPermissionStatus: function () {
         return call('getPushPermissionStatus', null);
@@ -890,6 +905,9 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       },
       syncLiveBankrollActivity: function (payload) {
         return call('syncLiveBankrollActivity', payload || {});
+      },
+      syncLiveSportsActivity: function (payload) {
+        return call('syncLiveSportsActivity', payload || {});
       },
       setLiveBankrollIslandOverlay: function (payload) {
         return call('setLiveBankrollIslandOverlay', payload || {});

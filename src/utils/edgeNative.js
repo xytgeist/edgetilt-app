@@ -12,6 +12,7 @@ import {
   shareEdgeAndroid,
   triggerEdgeAndroidHaptic,
 } from './edgeAndroid.js'
+import { isHardRockBook, isHardRockUrl } from '../features/lounge/gameHub/sportsbookLinks.js'
 
 const EDGE_IOS_UA_RE = /EdgeiOS\/(\d+(?:\.\d+)*)/i
 
@@ -314,6 +315,33 @@ export async function openExternalBillingUrl(url) {
 
   window.location.assign(href)
   return { ok: true, via: 'assign' }
+}
+
+export async function openSportsbookUrl(url, opts = {}) {
+  const href = String(url || '').trim()
+  if (!href) return { ok: false, via: 'noop' }
+  if (typeof window === 'undefined') return { ok: false, via: 'noop' }
+
+  const hardRock = isHardRockBook(opts.book) || isHardRockUrl(href)
+
+  if (hardRock && isEdgeiOSShell()) {
+    try {
+      const result = await edgeNativeInvoke('openSportsbookUrl', {
+        url: href,
+        book: String(opts.book || 'hardrockbet'),
+      })
+      return { ok: result?.ok !== false, via: result?.via || 'sportsbook' }
+    } catch {
+      try {
+        const result = await edgeNativeInvoke('openInSafari', { url: href, system: true })
+        return { ok: result?.ok !== false, via: 'safari' }
+      } catch {
+        return { ok: false, via: 'error' }
+      }
+    }
+  }
+
+  return openExternalUrl(href)
 }
 
 /**
@@ -717,6 +745,37 @@ export async function syncEdgeLiveBankrollActivity(payload = {}) {
       slots: payload?.slots || null,
       poker: payload?.poker || null,
     })
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
+/**
+ * Sync watched-game Dynamic Island / Lock Screen Live Activity.
+ * Empty / `{ watching: false }` ends it. While active, native ends bankroll Activities.
+ *
+ * @param {{
+ *   watching?: boolean,
+ *   gameId?: string,
+ *   sportKey?: string,
+ *   status?: string,
+ *   clock?: string,
+ *   period?: string,
+ *   downDistance?: string,
+ *   detail?: string,
+ *   away?: { abbrev?: string, score?: number },
+ *   home?: { abbrev?: string, score?: number },
+ * }} [payload]
+ */
+export async function syncEdgeLiveSportsActivity(payload = {}) {
+  if (typeof window === 'undefined' || !isEdgeiOSShell()) {
+    return { ok: false, via: 'web' }
+  }
+  if (typeof window.EdgeNative?.syncLiveSportsActivity !== 'function') {
+    return { ok: false, via: 'missing' }
+  }
+  try {
+    return await edgeNativeInvoke('syncLiveSportsActivity', payload || {})
   } catch {
     return { ok: false, via: 'error' }
   }

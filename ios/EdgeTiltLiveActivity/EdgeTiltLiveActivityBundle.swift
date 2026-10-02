@@ -5,5 +5,6 @@ import WidgetKit
 struct EdgeTiltLiveActivityBundle: WidgetBundle {
   var body: some Widget {
     LiveBankrollActivityWidget()
+    LiveSportsActivityWidget()
   }
 }

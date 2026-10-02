@@ -9,6 +9,11 @@
 /* Begin PBXBuildFile section */
 		5E6A7B8C9D0E1F23A6B7C8D9 /* LiveBankrollAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E1A2B3C4D5E6F708192A3B4 /* LiveBankrollAttributes.swift */; };
 		7F4A5B6C7D8E9F01A4B5C6F1 /* EdgeLiveBankrollActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F3A4B5C6D7E8F90A3B4C5F0 /* EdgeLiveBankrollActivity.swift */; };
+		B2C3D4E5F60718293A4B5C61 /* EdgeSportsbookOpen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B50 /* EdgeSportsbookOpen.swift */; };
+		C3D4E5F60718293A4B5C6D72 /* EdgeLiveSportsActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D4E5F60718293A4B5C6D70 /* EdgeLiveSportsActivity.swift */; };
+		D4E5F60718293A4B5C6D7E83 /* LiveSportsAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F60718293A4B5C6D7E80 /* LiveSportsAttributes.swift */; };
+		E5F60718293A4B5C6D7E8F94 /* LiveSportsAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E5F60718293A4B5C6D7E80 /* LiveSportsAttributes.swift */; };
+		F60718293A4B5C6D7E8F9A05 /* LiveSportsActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60718293A4B5C6D7E8F9A00 /* LiveSportsActivityWidget.swift */; };
 		8F5A6B7C8D9E0F12A5B6C7D0 /* EdgeLiveBankrollIslandOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F4A5B6C7D8E9F01A4B5C6E0 /* EdgeLiveBankrollIslandOverlay.swift */; };
 		EE5A6B7C8D9E0F12A5B6C7E8 /* EdgeTiltLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 4E5A6B7C8D9E0F12A5B6C7D8 /* EdgeTiltLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		6E7A8B9C0D1E2F34A7B8C9E0 /* LiveBankrollAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E1A2B3C4D5E6F708192A3B4 /* LiveBankrollAttributes.swift */; };
@@ -81,6 +86,10 @@
 		E03C51206D4F13C8907E326A /* EdgeChatCallsClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeChatCallsClient.swift; sourceTree = "<group>"; };
 		EAD18A08A4E225758A68EC4B /* EdgeWebsiteDataHygiene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeWebsiteDataHygiene.swift; sourceTree = "<group>"; };
 		6F3A4B5C6D7E8F90A3B4C5F0 /* EdgeLiveBankrollActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeLiveBankrollActivity.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F60718293A4B50 /* EdgeSportsbookOpen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeSportsbookOpen.swift; sourceTree = "<group>"; };
+		C3D4E5F60718293A4B5C6D70 /* EdgeLiveSportsActivity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeLiveSportsActivity.swift; sourceTree = "<group>"; };
+		D4E5F60718293A4B5C6D7E80 /* LiveSportsAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSportsAttributes.swift; sourceTree = "<group>"; };
+		F60718293A4B5C6D7E8F9A00 /* LiveSportsActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveSportsActivityWidget.swift; sourceTree = "<group>"; };
 		7F4A5B6C7D8E9F01A4B5C6E0 /* EdgeLiveBankrollIslandOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeLiveBankrollIslandOverlay.swift; sourceTree = "<group>"; };
 		0E1A2B3C4D5E6F708192A3B4 /* LiveBankrollAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveBankrollAttributes.swift; sourceTree = "<group>"; };
 		1E2A3B4C5D6E7F8092A3B4C5 /* LiveBankrollActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveBankrollActivityWidget.swift; sourceTree = "<group>"; };
@@ -144,6 +153,8 @@
 				E1A4B7C2D3F54A6B8C9D0E12 /* EdgeInAppBrowser.swift */,
 				A50DC0B1CCEF2E8786FA052B /* EdgeLocationManager.swift */,
 				6F3A4B5C6D7E8F90A3B4C5F0 /* EdgeLiveBankrollActivity.swift */,
+				A1B2C3D4E5F60718293A4B50 /* EdgeSportsbookOpen.swift */,
+				C3D4E5F60718293A4B5C6D70 /* EdgeLiveSportsActivity.swift */,
 				7F4A5B6C7D8E9F01A4B5C6E0 /* EdgeLiveBankrollIslandOverlay.swift */,
 				12059FD3E04940779AD6705C /* EdgeNativeBridge.swift */,
 				80BB8BF27C926AB18BA2EA1A /* EdgePushManager.swift */,
@@ -176,6 +187,8 @@
 				2E3A4B5C6D7E8F90A3B4C5D6 /* EdgeTiltLiveActivityBundle.swift */,
 				3E4A5B6C7D8E9F01A4B5C6D7 /* Info.plist */,
 				0E1A2B3C4D5E6F708192A3B4 /* LiveBankrollAttributes.swift */,
+				D4E5F60718293A4B5C6D7E80 /* LiveSportsAttributes.swift */,
+				F60718293A4B5C6D7E8F9A00 /* LiveSportsActivityWidget.swift */,
 				1E2A3B4C5D6E7F8092A3B4C5 /* LiveBankrollActivityWidget.swift */,
 			);
 			path = EdgeTiltLiveActivity;
@@ -338,6 +351,9 @@
 				C9BC839D606179C6D5157C72 /* ShellRootView.swift in Sources */,
 				5E6A7B8C9D0E1F23A6B7C8D9 /* LiveBankrollAttributes.swift in Sources */,
 				7F4A5B6C7D8E9F01A4B5C6F1 /* EdgeLiveBankrollActivity.swift in Sources */,
+				B2C3D4E5F60718293A4B5C61 /* EdgeSportsbookOpen.swift in Sources */,
+				C3D4E5F60718293A4B5C6D72 /* EdgeLiveSportsActivity.swift in Sources */,
+				D4E5F60718293A4B5C6D7E83 /* LiveSportsAttributes.swift in Sources */,
 				8F5A6B7C8D9E0F12A5B6C7D0 /* EdgeLiveBankrollIslandOverlay.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -348,6 +364,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				6E7A8B9C0D1E2F34A7B8C9E0 /* LiveBankrollAttributes.swift in Sources */,
+				E5F60718293A4B5C6D7E8F94 /* LiveSportsAttributes.swift in Sources */,
+				F60718293A4B5C6D7E8F9A05 /* LiveSportsActivityWidget.swift in Sources */,
 				7E8A9B0C1D2E3F45A8B9C0E1 /* LiveBankrollActivityWidget.swift in Sources */,
 				8E9A0B1C2D3E4F56A9B0C1E2 /* EdgeTiltLiveActivityBundle.swift in Sources */,
 			);

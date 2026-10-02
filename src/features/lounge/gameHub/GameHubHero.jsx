@@ -5,7 +5,7 @@ import {
 } from '../loungeSportsPillPaint.jsx'
 import { formatLoungeSportsMoneyline } from '../LoungeGameScorePill.jsx'
 import { cfbTeamSchoolName, hubTeamLabel } from '../loungeSportsMatch.js'
-import { openExternalUrl } from '../../../utils/edgeNative.js'
+import { openExternalUrl, openSportsbookUrl } from '../../../utils/edgeNative.js'
 import {
   CORNER_PYLONS,
   ENDZONE_COORDS,
@@ -4356,7 +4356,7 @@ function MatchupLine({ title, value, sub, href = '', source = '', book = '', tag
     <button
       type="button"
       data-lounge-gamecast-market-link
-      onClick={() => void openExternalUrl(href)}
+      onClick={() => void openSportsbookUrl(href, { book: book || source })}
       aria-label={`${title} ${value}, open on ${MARKET_SOURCE_LABEL[source] || source || 'market'}`}
       className="-mx-1.5 -my-1 flex min-w-[3.5rem] flex-col items-center rounded-lg px-1.5 py-1 touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/15"
     >
@@ -4376,7 +4376,7 @@ function ScoreboardLine({ pick, text, label, className = '' }) {
       data-lounge-gamecast-market-link
       onClick={(e) => {
         e.stopPropagation()
-        void openExternalUrl(pick.url)
+        void openSportsbookUrl(pick.url, { book: pick.book })
       }}
       aria-label={`${label} ${text}${label === 'Spread' && price ? ` ${price}` : ''}, open on ${pick.book || 'sportsbook'}`}
       title={`${pick.book || 'Sportsbook'} ${text}${label === 'Spread' && price ? ` (${price})` : ''}`}
@@ -4898,6 +4898,17 @@ export default function GameHubHero({
     !shopLines ? '' : pick ? signedPoint(pick.point) : side?.spread != null ? signedPoint(side.spread) : ''
   const awaySpreadText = spreadText(game.away, scoreBest?.away?.spread)
   const homeSpreadText = spreadText(game.home, scoreBest?.home?.spread)
+  const totalPick = scoreBest?.over || scoreBest?.under || null
+  const totalPoint =
+    totalPick?.point != null
+      ? totalPick.point
+      : game.total != null && Number.isFinite(Number(game.total))
+        ? Number(game.total)
+        : null
+  const totalText =
+    !shopLines || totalPoint == null
+      ? ''
+      : `O/U ${Number.isInteger(totalPoint) ? totalPoint : totalPoint}`
   const awayLabel = hubTeamLabel(game.away, game.status, game.sport_key)
   const homeLabel = hubTeamLabel(game.home, game.status, game.sport_key)
   const preLabels = game.status === 'pre'
@@ -5045,6 +5056,14 @@ export default function GameHubHero({
               </span>
               {down ? <span className="text-[11px] font-semibold leading-tight text-white/90">{down}</span> : null}
               {yard ? <span className="text-[11px] font-semibold leading-tight text-white/70">{yard}</span> : null}
+              {totalText ? (
+                <ScoreboardLine
+                  pick={totalPick}
+                  text={totalText}
+                  label="Total"
+                  className="mt-0.5 text-[11px] font-semibold text-white/70"
+                />
+              ) : null}
               {isFinal ? null : <WatchBroadcastPill label={game.broadcast} url={game.broadcast_url} />}
             </div>
 
@@ -5121,6 +5140,14 @@ export default function GameHubHero({
               </span>
               {down ? <span className="text-[12px] font-semibold leading-tight text-white/90">{down}</span> : null}
               {yard ? <span className="text-[12px] font-semibold leading-tight text-white/70">{yard}</span> : null}
+              {totalText ? (
+                <ScoreboardLine
+                  pick={totalPick}
+                  text={totalText}
+                  label="Total"
+                  className="text-[12px] font-semibold text-white/70"
+                />
+              ) : null}
               {isFinal ? null : <WatchBroadcastPill label={game.broadcast} url={game.broadcast_url} />}
             </div>
 

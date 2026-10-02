@@ -12,7 +12,7 @@ import {
   stripTimeZoneSuffix,
 } from './gameHubFormatters.js'
 import { feedPostDisplayCaption } from '../../../utils/communityFeedPost.js'
-import { openExternalUrl } from '../../../utils/edgeNative.js'
+import { openSportsbookUrl } from '../../../utils/edgeNative.js'
 import { usableLink } from './gameHubBestLines.js'
 import { sportsbookHomeUrl } from './sportsbookLinks.js'
 import { fillBookLinkState, isLegalBook, stateHasLegalBooks, stateName } from './gameHubLegalBooks.js'
@@ -26,7 +26,7 @@ function OddsCell({ row, linkKey, label, className, legalState, children }) {
       <button
         type="button"
         data-lounge-game-odds-link
-        onClick={() => void openExternalUrl(url)}
+        onClick={() => void openSportsbookUrl(url, { book: row?.book })}
         aria-label={`${label} at ${row.book}`}
         className="w-full rounded-lg px-2 py-2 tabular-nums touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/10"
       >

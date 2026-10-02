@@ -114,6 +114,10 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Mac Theo ACTIVE TRACK 2026-10-01 ... Scoreboard O/U + watched-game Island + Hard Rock
+
+**I am Mac Theo.** Shipped on **`test`**: (1) O/U on hub scoreboard + feed/Sports Hub pills (`liveBestLines` totals, `GameHubHero`, `LoungeGameScorePill`); (2) Hard Rock taps → `openSportsbookUrl` / native app scheme + App Store `id1572525917` (not SFSafari interstitial); (3) watched-game Dynamic Island (`syncLiveSportsActivity`, beats bankroll while live). New **TestFlight Prod IPA** owed. Marketing still **1.4.95**. Web tip **`1.4.964`**.
+
 ### Mac Theo ACTIVE TRACK 2026-10-01 ... Market Edge crypto vs Degentics
 
 **I am Mac Theo.** Ryan: too many Market Edge ↔ Degentics double posts. Shipped on **`test`**: (1) Market Edge no longer seeds/polls Finnhub crypto (soft-disables leftover rows); (2) tighter major-crypto gate (no bare exchange/binance/coinbase); (3) Market Edge near-dupes crypto-looking titles against Crypto Edge's last 10. Redeploy **`lounge-news-poll`** test (+ prod when Ryan asks). Voice brief unchanged: majors only on Market Edge.

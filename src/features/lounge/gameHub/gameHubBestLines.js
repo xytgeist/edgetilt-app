@@ -236,9 +236,27 @@ export function liveBestLines(rows, { legalState = null } = {}) {
     return best?.pick || null
   }
 
+  const totalPoint = consensusPoint(pool.map((r) => num(r.total)))
+  const bestTotal = (side) => {
+    if (totalPoint == null) return null
+    const priceKey = side === 'over' ? 'over_price' : 'under_price'
+    const linkKey = side === 'over' ? 'over_link' : 'under_link'
+    let best = null
+    for (const r of pool) {
+      if (num(r.total) !== totalPoint) continue
+      const dec = decimal(r[priceKey])
+      if (dec != null && (!best || dec > best.dec)) {
+        best = { dec, pick: pickFrom(r, r[priceKey], totalPoint, r[linkKey], legalState) }
+      }
+    }
+    return best?.pick || null
+  }
+
   return {
     books: pool.length,
     away: { spread: bestSpread('away'), ml: bestMl('away') },
     home: { spread: bestSpread('home'), ml: bestMl('home') },
+    over: bestTotal('over'),
+    under: bestTotal('under'),
   }
 }

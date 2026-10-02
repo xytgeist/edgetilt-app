@@ -95,6 +95,13 @@ function scoreLabel(side, status) {
   return String(side.score)
 }
 
+export function formatLoungeSportsTotal(point) {
+  if (point == null || !Number.isFinite(Number(point))) return null
+  const n = Number(point)
+  const body = Number.isInteger(n) ? String(n) : String(n)
+  return `O/U ${body}`
+}
+
 function ScoreStack({ side, status, dimmed, covered }) {
   const pre = status === 'pre'
   const primary = scoreLabel(side, status)
@@ -166,6 +173,7 @@ export default function LoungeGameScorePill({
     game.status === 'pre'
       ? formatKickoff(game.commence_time) || stripTimeZoneSuffix(game.status_label) || 'Upcoming'
       : game.status_label
+  const totalDisplay = formatLoungeSportsTotal(game.total)
   const coverNote = homeCovered
     ? `${game.home?.abbrev} covered`
     : awayCovered
@@ -183,7 +191,7 @@ export default function LoungeGameScorePill({
       : [homeSpread, homeMl].filter(Boolean).join(' ')
   const label = pendingInclude
     ? `Tap to include ${game.away?.abbrev} at ${game.home?.abbrev}`
-    : `${game.away?.abbrev} ${scoreLabel(game.away, game.status)}${awayLine ? ` ${awayLine}` : ''} ${game.home?.abbrev} ${scoreLabel(game.home, game.status)}${homeLine ? ` ${homeLine}` : ''} ${statusDisplay}${coverNote ? ` ${coverNote}` : ''}`
+    : `${game.away?.abbrev} ${scoreLabel(game.away, game.status)}${awayLine ? ` ${awayLine}` : ''} ${game.home?.abbrev} ${scoreLabel(game.home, game.status)}${homeLine ? ` ${homeLine}` : ''} ${statusDisplay}${totalDisplay ? ` ${totalDisplay}` : ''}${coverNote ? ` ${coverNote}` : ''}`
 
   return (
     <div
@@ -231,6 +239,11 @@ export default function LoungeGameScorePill({
             <span className="text-center text-[10px] font-semibold uppercase leading-tight tracking-wide text-white/80 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]">
               {statusDisplay}
             </span>
+            {totalDisplay ? (
+              <span className="mt-0.5 text-center text-[9px] font-semibold leading-none tabular-nums tracking-wide text-white/75 drop-shadow-[0_1px_2px_rgba(0,0,0,0.7)]">
+                {totalDisplay}
+              </span>
+            ) : null}
           </span>
           <span data-lounge-game-pill-score-gutter>
             <ScoreStack

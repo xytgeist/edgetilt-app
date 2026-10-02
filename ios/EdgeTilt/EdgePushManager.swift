@@ -108,6 +108,7 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
 
   /// `edgetilt://auth/confirm?token_hash=&type=` from Gmail / in-app browsers that ignore Universal Links.
   /// `edgetilt://live-session?tab=bankroll` / `poker-bankroll` from the Live Activity.
+  /// `edgetilt://live-game?id=` from the watched-game Live Activity.
   func handleCustomSchemeLink(_ url: URL) {
     if let httpsURL = Self.httpsConfirmURL(fromCustomScheme: url) {
       DispatchQueue.main.async {
@@ -116,6 +117,12 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
       return
     }
     if let httpsURL = Self.httpsLiveSessionURL(fromCustomScheme: url) {
+      DispatchQueue.main.async {
+        self.openDeepLink(httpsURL)
+      }
+      return
+    }
+    if let httpsURL = Self.httpsLiveGameURL(fromCustomScheme: url) {
       DispatchQueue.main.async {
         self.openDeepLink(httpsURL)
       }
@@ -226,6 +233,24 @@ final class EdgePushManager: NSObject, UNUserNotificationCenterDelegate {
     var comps = URLComponents(url: AppConfig.baseURL, resolvingAgainstBaseURL: false)
     comps?.path = "/"
     comps?.query = url.query
+    return comps?.url
+  }
+
+  /// `edgetilt://live-game?id=` → `https://<site>/?tab=home&game=`
+  static func httpsLiveGameURL(fromCustomScheme url: URL) -> URL? {
+    guard url.scheme?.lowercased() == "edgetilt" else { return nil }
+    let host = url.host?.lowercased() ?? ""
+    guard host == "live-game" else { return nil }
+    let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+    let gameId = items.first(where: { $0.name.lowercased() == "id" })?.value?
+      .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    guard !gameId.isEmpty else { return nil }
+    var comps = URLComponents(url: AppConfig.baseURL, resolvingAgainstBaseURL: false)
+    comps?.path = "/"
+    comps?.queryItems = [
+      URLQueryItem(name: "tab", value: "home"),
+      URLQueryItem(name: "game", value: gameId),
+    ]
     return comps?.url
   }
 

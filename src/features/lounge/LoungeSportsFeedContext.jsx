@@ -17,6 +17,7 @@ import {
   LOUNGE_SPORTS_HUB_OPEN_EVENT,
   normalizeLoungeSportsHubFilter,
 } from './loungeSportsHubNav.js'
+import { pushWatchedGameLiveActivity } from './watchedGameLiveActivity.js'
 
 const LoungeSportsFeedContext = createContext(null)
 
@@ -133,6 +134,8 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
   const inflightRef = useRef(false)
   const gamesRef = useRef(games)
   gamesRef.current = games
+  /** Game id for Dynamic Island … survives hub close until final / dismiss / other live game. */
+  const watchedGameIdRef = useRef(null)
 
   const lastFullBoardAtRef = useRef(0)
 
@@ -192,6 +195,24 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
     })
   }, [games])
 
+  // Watched-game Island: keep updating from the board after the hub closes; end on final.
+  useEffect(() => {
+    const watchedId = watchedGameIdRef.current
+    if (!watchedId) return
+    const fromHub =
+      hubGame && String(hubGame.id) === String(watchedId) ? hubGame : null
+    const game = fromHub || games.find((g) => String(g.id) === String(watchedId))
+    if (!game) return
+    if (game.status === 'post') {
+      pushWatchedGameLiveActivity(game, { watching: false })
+      watchedGameIdRef.current = null
+      return
+    }
+    if (game.status === 'in') {
+      pushWatchedGameLiveActivity(game)
+    }
+  }, [games, hubGame])
+
   const openSlate = useCallback((filter = LOUNGE_SPORTS_HUB_FILTER_ALL) => {
     setSlateFilter(normalizeLoungeSportsHubFilter(filter))
   }, [])
@@ -199,6 +220,24 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
   const closeSlate = useCallback(() => {
     setSlateFilter(null)
     setHubGame(null)
+  }, [])
+
+  const openHub = useCallback((game) => {
+    if (!game) return
+    setHubGame(game)
+    if (game.status === 'in') {
+      watchedGameIdRef.current = String(game.id)
+      pushWatchedGameLiveActivity(game)
+    }
+  }, [])
+
+  const closeHub = useCallback(() => setHubGame(null), [])
+
+  const dismissWatchedGame = useCallback(() => {
+    const id = watchedGameIdRef.current
+    const game = id ? gamesRef.current.find((g) => String(g.id) === String(id)) : null
+    pushWatchedGameLiveActivity(game || { id }, { watching: false })
+    watchedGameIdRef.current = null
   }, [])
 
   useEffect(() => {
@@ -237,9 +276,12 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
         const pending = peekLoungeSportsGamePending()
         if (pending) setPendingGameId(pending)
       }
+      if (event === 'SIGNED_OUT') {
+        dismissWatchedGame()
+      }
     })
     return () => data?.subscription?.unsubscribe?.()
-  }, [loadBoard, supabaseClient])
+  }, [dismissWatchedGame, loadBoard, supabaseClient])
 
   useEffect(() => {
     if (!pendingGameId || !signedIn) return undefined
@@ -247,7 +289,7 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
     if (hit) {
       clearLoungeSportsGamePending()
       setPendingGameId(null)
-      setHubGame(hit)
+      openHub(hit)
       return undefined
     }
     if (!boardFetched || !supabaseClient || pendingLookupRef.current === pendingGameId) return undefined
@@ -260,7 +302,7 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
       if (game) {
         clearLoungeSportsGamePending()
         setPendingGameId(null)
-        setHubGame(game)
+        openHub(game)
       } else if (/not on the current slate/i.test(String(data?.error || ''))) {
         clearLoungeSportsGamePending()
         setPendingGameId(null)
@@ -272,7 +314,7 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
     return () => {
       cancelled = true
     }
-  }, [boardFetched, games, pendingGameId, signedIn, supabaseClient])
+  }, [boardFetched, games, openHub, pendingGameId, signedIn, supabaseClient])
 
   const gamesForPost = useCallback(
     (post) => {
@@ -289,12 +331,6 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
     [gamesForPost],
   )
 
-  const openHub = useCallback((game) => {
-    if (game) setHubGame(game)
-  }, [])
-
-  const closeHub = useCallback(() => setHubGame(null), [])
-
   const value = useMemo(
     () => ({
       games,
@@ -306,6 +342,7 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
       gamesForPost,
       openHub,
       closeHub,
+      dismissWatchedGame,
       openSlate,
       closeSlate,
       refresh: loadBoard,
@@ -314,6 +351,7 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
       boardFetched,
       closeHub,
       closeSlate,
+      dismissWatchedGame,
       games,
       gamesForPost,
       hubGame,

@@ -27,6 +27,16 @@ enum EdgeLiveBankrollActivity {
       return
     }
 
+    // Watched-game Island owns the slot while a live game Activity is up.
+    if EdgeLiveSportsActivity.isActive {
+      completion(.success([
+        "ok": true,
+        "supported": true,
+        "deferred": "sports",
+      ]))
+      return
+    }
+
     let pokerPaused = bool(poker?["paused"])
     let state = LiveBankrollAttributes.ContentState(
       slotsId: slotsId,

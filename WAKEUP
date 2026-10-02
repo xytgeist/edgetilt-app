@@ -167,7 +167,7 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 
 ### Mac Theo ACTIVE TRACK 2026-10-02 ... Android incoming call ring
 
-**I am Mac Theo.** APK **1.3.0** (`versionCode` 4): FCM `chat_call_invite` rings via self-managed `ConnectionService` + full-screen Answer/Decline. Bridge methods in `android/README.md`. Web **`1.4.978`** on `test` wires `edgeCallKit.js` for Android (media still web LiveKit). Sideload prod/staging debug APKs; real-device smoke owed (lock / background / killed). Redeploy test **`lounge-send-activity-push`** for `roomId`/`callerName` on FCM. Next parity: live sessions in the status bar.
+**I am Mac Theo.** APK **1.3.1** … Answer from the CallStyle pill no longer opens a second full-screen ring (was re-reporting via `?call=` deep link + Realtime). Handled callIds suppressed 120s; Answer opens chat room without `call=`; join via `edge-callkit-answer`. Web **`1.4.979`**. Sideload Desktop / Drive `Apps/EdgeTilt` APKs. Real-device retest: Answer once → in-call.
 
 ### Mac Theo ACTIVE TRACK 2026-09-29 ... Android shell + native parity roadmap
 

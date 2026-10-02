@@ -1,9 +1,13 @@
 package com.edgetilt.app
 
 import android.app.Activity
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Color
 import android.graphics.Typeface
+import android.os.Build
 import android.os.Bundle
 import android.util.TypedValue
 import android.view.Gravity
@@ -16,15 +20,32 @@ import android.window.OnBackInvokedDispatcher
 class EdgeIncomingCallActivity : Activity() {
   private var invite: EdgeCallRing.Invite? = null
 
+  private val dismissReceiver = object : BroadcastReceiver() {
+    override fun onReceive(context: Context?, intent: Intent?) {
+      val id = intent?.getStringExtra(EdgeCallRing.EXTRA_CALL_ID).orEmpty()
+      val mine = invite?.callId.orEmpty()
+      if (id.isEmpty() || id == mine) finish()
+    }
+  }
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     setShowWhenLocked(true)
     setTurnScreenOn(true)
     invite = EdgeCallRing.inviteFromIntent(intent) ?: EdgeCallRing.activeInvite()
     val call = invite
-    if (call == null) {
+    // Pill Answer already handled this call; a queued full-screen intent must not ask again.
+    if (call == null || EdgeCallRing.isHandled(call.callId) || EdgeCallRing.activeCallId() != call.callId) {
       finish()
       return
+    }
+
+    val filter = IntentFilter(EdgeCallRing.ACTION_DISMISS_UI)
+    if (Build.VERSION.SDK_INT >= 33) {
+      registerReceiver(dismissReceiver, filter, RECEIVER_NOT_EXPORTED)
+    } else {
+      @Suppress("UnspecifiedRegisterReceiverFlag")
+      registerReceiver(dismissReceiver, filter)
     }
 
     val root = LinearLayout(this).apply {
@@ -85,12 +106,28 @@ class EdgeIncomingCallActivity : Activity() {
     root.addView(row)
     setContentView(root)
 
-    if (android.os.Build.VERSION.SDK_INT >= 33) {
+    if (Build.VERSION.SDK_INT >= 33) {
       onBackInvokedDispatcher.registerOnBackInvokedCallback(OnBackInvokedDispatcher.PRIORITY_DEFAULT) {
         EdgeCallRing.decline(this, call.callId)
         finish()
       }
     }
+  }
+
+  override fun onResume() {
+    super.onResume()
+    val id = invite?.callId.orEmpty()
+    if (id.isNotEmpty() && (EdgeCallRing.isHandled(id) || EdgeCallRing.activeCallId() != id)) {
+      finish()
+    }
+  }
+
+  override fun onDestroy() {
+    try {
+      unregisterReceiver(dismissReceiver)
+    } catch (_: Exception) {
+    }
+    super.onDestroy()
   }
 
   override fun onNewIntent(intent: Intent) {

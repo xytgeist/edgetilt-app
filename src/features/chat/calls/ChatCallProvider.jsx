@@ -358,6 +358,8 @@ export function ChatCallProvider({
         avatarUrl: profile.avatarUrl,
       }).then((res) => {
         if (incomingRef.current?.callId !== String(row.id)) return
+        // Native already answered / declined / is ringing this callId … do not pop a second UI.
+        if (res?.deduped || res?.skipped === 'already-handled' || res?.skipped === 'voip-in-flight') return
         if (res?.via === 'noop' || res?.via === 'error' || res?.skipped || res?.ok === false) {
           setIncomingUseWebOverlay(true)
         }

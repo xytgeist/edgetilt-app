@@ -34,10 +34,14 @@ object EdgeCallRing {
   const val EXTRA_AVATAR = "edge_avatar"
   const val ACTION_ANSWER = "com.edgetilt.app.CALL_ANSWER"
   const val ACTION_DECLINE = "com.edgetilt.app.CALL_DECLINE"
+  /** Finishes a live `EdgeIncomingCallActivity` after Answer / Decline from the pill. */
+  const val ACTION_DISMISS_UI = "com.edgetilt.app.CALL_DISMISS_UI"
 
   private const val TAG = "EdgeCallRing"
   private const val ACCOUNT_ID = "edge_chat_calls"
   private const val PREFS = "edge_call_ring"
+  /** Ignore re-reports (Realtime / `?call=` deep link / avatar refresh) after Answer or Decline. */
+  private const val HANDLED_TTL_MS = 120_000L
 
   data class Invite(
     val callId: String,
@@ -55,10 +59,41 @@ object EdgeCallRing {
   @Volatile private var webReady = false
   @Volatile private var host: MainActivity? = null
   private val pendingEvents = ArrayDeque<PendingEvent>()
+  /** callId → handled-at epoch ms (Answer / Decline / missed). */
+  private val recentlyHandled = mutableMapOf<String, Long>()
 
   fun activeCallId(): String? = active?.callId
 
   fun activeInvite(): Invite? = active
+
+  /** True when this call was already answered / declined (do not show a second ring UI). */
+  fun isHandled(callId: String): Boolean {
+    val id = callId.trim()
+    if (id.isEmpty()) return false
+    pruneHandled()
+    return recentlyHandled.containsKey(id)
+  }
+
+  private fun markHandled(callId: String) {
+    val id = callId.trim()
+    if (id.isEmpty()) return
+    recentlyHandled[id] = System.currentTimeMillis()
+    pruneHandled()
+  }
+
+  private fun pruneHandled() {
+    val cutoff = System.currentTimeMillis() - HANDLED_TTL_MS
+    val stale = recentlyHandled.filterValues { it < cutoff }.keys
+    stale.forEach { recentlyHandled.remove(it) }
+  }
+
+  private fun dismissIncomingUi(ctx: Context, callId: String) {
+    ctx.sendBroadcast(
+      Intent(ACTION_DISMISS_UI)
+        .setPackage(ctx.packageName)
+        .putExtra(EXTRA_CALL_ID, callId),
+    )
+  }
 
   fun bindHost(activity: MainActivity?) {
     host = activity
@@ -142,6 +177,9 @@ object EdgeCallRing {
 
   fun reportIncoming(ctx: Context, invite: Invite): JSONObject {
     ensurePhoneAccount(ctx)
+    if (isHandled(invite.callId)) {
+      return JSONObject().put("ok", true).put("deduped", true).put("skipped", "already-handled")
+    }
     val current = active
     if (current?.callId == invite.callId) {
       return JSONObject().put("ok", true).put("deduped", true)
@@ -246,7 +284,15 @@ object EdgeCallRing {
 
   fun answer(ctx: Context, callId: String) {
     val invite = active?.takeIf { it.callId == callId } ?: restoreInvite(ctx)?.takeIf { it.callId == callId }
-    if (invite == null) return
+    if (invite == null) {
+      // Pill Answer raced a queued full-screen UI for an already-cleared invite.
+      markHandled(callId)
+      dismissIncomingUi(ctx, callId)
+      cancelNotification(ctx, callId)
+      return
+    }
+    markHandled(callId)
+    dismissIncomingUi(ctx, callId)
     connection?.let {
       it.setActive()
       it.setDisconnected(android.telecom.DisconnectCause(android.telecom.DisconnectCause.LOCAL))
@@ -256,9 +302,17 @@ object EdgeCallRing {
     cancelNotification(ctx, callId)
     active = null
     clearPrefs(ctx)
+    // Do NOT open `?call=` … that deep link re-runs presentIncoming → second native ring.
+    // Join happens via `edge-callkit-answer` (same as CallKit).
+    val base = BuildConfig.BASE_URL.trimEnd('/')
+    val openUrl = if (invite.roomId.isNotEmpty()) {
+      "$base/?tab=chat&room=${Uri.encode(invite.roomId)}"
+    } else {
+      base
+    }
     val open = Intent(ctx, MainActivity::class.java).apply {
       action = Intent.ACTION_VIEW
-      data = Uri.parse(invite.url)
+      data = Uri.parse(openUrl)
       flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
     }
     ctx.startActivity(open)
@@ -276,6 +330,8 @@ object EdgeCallRing {
 
   fun decline(ctx: Context, callId: String) {
     val invite = active?.takeIf { it.callId == callId } ?: restoreInvite(ctx)?.takeIf { it.callId == callId }
+    markHandled(callId)
+    dismissIncomingUi(ctx, callId)
     endInternal(ctx, callId, remote = false, emitEvent = false)
     if (invite != null) {
       emit(
@@ -317,6 +373,8 @@ object EdgeCallRing {
   }
 
   private fun endInternal(ctx: Context, callId: String, remote: Boolean, emitEvent: Boolean) {
+    markHandled(callId)
+    dismissIncomingUi(ctx, callId)
     val invite = active?.takeIf { it.callId == callId } ?: restoreInvite(ctx)?.takeIf { it.callId == callId }
     connection?.let {
       val cause = if (remote) {

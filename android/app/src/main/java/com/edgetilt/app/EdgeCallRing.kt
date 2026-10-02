@@ -227,6 +227,7 @@ object EdgeCallRing {
 
   fun showIncomingUi(ctx: Context, invite: Invite? = null) {
     val call = invite ?: active ?: return
+    if (isHandled(call.callId)) return
     val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
     ensureChannel(nm)
     val fullScreen = Intent(ctx, EdgeIncomingCallActivity::class.java).apply {

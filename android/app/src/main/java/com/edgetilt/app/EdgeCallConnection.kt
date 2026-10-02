@@ -22,6 +22,7 @@ class EdgeCallConnection(
   }
 
   override fun onShowIncomingCallUi() {
+    if (EdgeCallRing.isHandled(invite.callId)) return
     EdgeCallRing.showIncomingUi(appContext, invite)
   }
 

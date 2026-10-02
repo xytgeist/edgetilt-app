@@ -177,6 +177,28 @@ export function ChatCallProvider({
   const callerProfileFetchedRef = useRef(/** @type {Set<string>} */ (new Set()))
   activeCallRef.current = activeCall
   incomingRef.current = incoming
+  /** callId → ended-at ms … blocks presentIncoming while leave_call is still settling. */
+  const recentlyEndedCallIdsRef = useRef(/** @type {Map<string, number>} */ (new Map()))
+  const markCallEndedLocally = useCallback((callId) => {
+    const id = String(callId || '').trim()
+    if (!id || isPlaceholderCallId(id)) return
+    recentlyEndedCallIdsRef.current.set(id, Date.now())
+    const cutoff = Date.now() - 120_000
+    for (const [key, at] of recentlyEndedCallIdsRef.current) {
+      if (at < cutoff) recentlyEndedCallIdsRef.current.delete(key)
+    }
+  }, [])
+  const wasCallEndedLocally = useCallback((callId) => {
+    const id = String(callId || '').trim()
+    if (!id) return false
+    const at = recentlyEndedCallIdsRef.current.get(id)
+    if (!at) return false
+    if (Date.now() - at > 120_000) {
+      recentlyEndedCallIdsRef.current.delete(id)
+      return false
+    }
+    return true
+  }, [])
   useEffect(() => {
     if (!incoming) setIncomingUseWebOverlay(false)
   }, [incoming])
@@ -317,6 +339,12 @@ export function ChatCallProvider({
   const presentIncoming = useCallback(
     (row) => {
       if (!row?.id) return
+      if (endingRef.current) return
+      if (wasCallEndedLocally(row.id)) return
+      // Auto-ring is for ringing invites only. Active calls use Join / accept paths …
+      // presenting `active` after hangup re-opens the native full-screen ring for ~leave_call lag.
+      const status = String(row.status || '').trim()
+      if (status && status !== 'ringing') return
       if (incomingRef.current?.callId === row.id) return
       const current = activeCallRef.current
       if (current) {
@@ -388,7 +416,7 @@ export function ChatCallProvider({
         }
       })
     },
-    [ensureBroadcast, resolveCallerProfile, resolveCallerProfileAsync],
+    [ensureBroadcast, resolveCallerProfile, resolveCallerProfileAsync, wasCallEndedLocally],
   )
   presentIncomingRef.current = presentIncoming
 
@@ -482,7 +510,7 @@ export function ChatCallProvider({
         (payload) => {
           const row = payload.new
           if (!row?.id || row.started_by === viewerUserId) return
-          if (!['ringing', 'active'].includes(row.status)) return
+          if (row.status !== 'ringing') return
           presentIncoming(row)
         },
       )
@@ -543,7 +571,7 @@ export function ChatCallProvider({
           const res = await chatGetCall(supabaseClient, callId)
           const call = res?.call
           if (!call?.id || call.started_by === viewerUserId) return
-          if (!['ringing', 'active'].includes(call.status)) return
+          if (call.status !== 'ringing') return
           presentIncoming(call)
         } catch {
           /* ignore transient */
@@ -670,13 +698,26 @@ export function ChatCallProvider({
 
         // Live invite → accept UI ASAP (do NOT await profile first).
         // Waiting on profiles was cancellable on PWA wake → DM opened, overlay never showed.
+        // Active (already answered elsewhere) joins via the same answer event … do not re-ring.
         if (['ringing', 'active'].includes(call.status) && intent !== 'callback') {
           if (call.started_by === viewerUserId) {
             void endEdgeNativeCall({ callId, reason: 'remote' })
             return
           }
-          presentIncomingRef.current(call)
           onOpenRoomRef.current?.(roomId)
+          if (call.status === 'ringing') {
+            presentIncomingRef.current(call)
+          } else if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('edge-callkit-answer', {
+                detail: {
+                  callId: call.id,
+                  roomId,
+                  hasVideo: call.media_mode === 'video',
+                },
+              }),
+            )
+          }
           return
         }
 
@@ -1254,10 +1295,12 @@ export function ChatCallProvider({
     stopAllChatCallTones()
     const current = activeCallRef.current
     if (!current) {
+      activeCallRef.current = null
       setActiveCall(null)
       return
     }
     if (endingRef.current) {
+      activeCallRef.current = null
       setActiveCall(null)
       return
     }
@@ -1270,6 +1313,13 @@ export function ChatCallProvider({
     ]
       .map((id) => String(id || '').trim())
       .find((id) => id && !isPlaceholderCallId(id)) || ''
+    // Block presentIncoming / native re-ring while leave_call is in flight (DB still "active").
+    markCallEndedLocally(serverCallId)
+    markCallEndedLocally(current.callId)
+    activeCallRef.current = null
+    setActiveCall(null)
+    setIncoming(null)
+    void endEdgeNativeCall({ callId: serverCallId || current.callId })
     try {
       if (supabaseClient && serverCallId) {
         // leave_call: group member exits alone; DM / last participant ends the room.
@@ -1282,12 +1332,10 @@ export function ChatCallProvider({
       /* still clear local */
     } finally {
       inFlightServerCallIdRef.current = null
-      setActiveCall(null)
       setBusy(false)
       endingRef.current = false
-      void endEdgeNativeCall({ callId: serverCallId || current.callId })
     }
-  }, [supabaseClient, ensureBroadcast])
+  }, [supabaseClient, ensureBroadcast, markCallEndedLocally])
   hangupRef.current = hangup
 
   const startRecording = useCallback(async (featuredIdentity = null) => {
@@ -1434,7 +1482,7 @@ export function ChatCallProvider({
           const open = await chatFetchActiveRoomCall(supabaseClient, roomId)
           if (cancelled || !open?.id) return
           if (String(open.started_by || '') === String(viewerUserId)) return
-          if (!['ringing', 'active'].includes(open.status)) return
+          if (open.status !== 'ringing') return
           presentIncomingRef.current(open)
         } catch {
           /* ignore transient */

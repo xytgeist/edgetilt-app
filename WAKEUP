@@ -167,7 +167,7 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 
 ### Mac Theo ACTIVE TRACK 2026-10-02 ... Android incoming call ring
 
-**I am Mac Theo.** APK **1.3.1** … Answer from the CallStyle pill no longer opens a second full-screen ring (was re-reporting via `?call=` deep link + Realtime). Handled callIds suppressed 120s; Answer opens chat room without `call=`; join via `edge-callkit-answer`. Web **`1.4.979`**. Sideload Desktop / Drive `Apps/EdgeTilt` APKs. Real-device retest: Answer once → in-call.
+**I am Mac Theo.** APK **1.3.2** + web **`1.4.980`**: hangup no longer re-opens the full-screen ring for ~5s (was `presentIncoming` on still-`active` while `leave_call` settled). Hangup marks the call ended locally + ends native ring first; auto-present is ringing-only. Sideload Desktop / Drive `Apps/EdgeTilt`.
 
 ### Mac Theo ACTIVE TRACK 2026-09-29 ... Android shell + native parity roadmap
 

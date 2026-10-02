@@ -34,6 +34,11 @@ class EdgeCallConnectionService : ConnectionService() {
         android.telecom.DisconnectCause(android.telecom.DisconnectCause.ERROR),
       )
     }
+    if (EdgeCallRing.isHandled(invite.callId)) {
+      return Connection.createFailedConnection(
+        android.telecom.DisconnectCause(android.telecom.DisconnectCause.CANCELED),
+      )
+    }
     val conn = EdgeCallConnection(applicationContext, invite)
     conn.setInitializing()
     conn.setRinging()
@@ -46,6 +51,7 @@ class EdgeCallConnectionService : ConnectionService() {
     request: ConnectionRequest?,
   ) {
     val invite = EdgeCallRing.activeInvite() ?: return
+    if (EdgeCallRing.isHandled(invite.callId)) return
     EdgeCallRing.showIncomingUi(applicationContext, invite)
   }
 

@@ -11,6 +11,9 @@ A thin native WebView around the live site (like the iOS WKWebView shell) plus a
 | `app/src/main/java/com/edgetilt/app/MainActivity.kt` | Full-screen WebView on `BuildConfig.BASE_URL`. File picker (system photo picker when the input only takes images / videos, Android 13+; it renames files to `<id>.mp4` / `.jpg`, so web sniffs bytes where the name mattered, e.g. `sniffLoungeAndroidQuicktimeSource`), camera/mic (getUserMedia), geolocation, back = history, render-crash recovery. |
 | `.../EdgeVideoPrep.kt` | Picked iPhone QuickTime videos (`ftyp qt`) are converted with Media3 Transformer (hardware H.264, HDR tone-mapped to SDR, short side capped at 1080) before WebView gets them, behind a "Preparing video" card (Cancel / back cancels). Output `cache/video/` via the same `FileProvider`. Failure hands back the original, so web's iPhone-MOV alert still covers it. APK 1.2.0+ |
 | `.../EdgeShare.kt` | System share sheet for `EdgeAndroid.share` (text / URL / up to 4 images via `FileProvider` `${applicationId}.files`, cache `share/`). |
+| `.../EdgeCallRing.kt` | Incoming chat-call ring orchestrator (Telecom + notification + JS events). APK 1.3.0+ |
+| `.../EdgeCallConnectionService.kt` | Self-managed `ConnectionService` (CallKit equivalent). |
+| `.../EdgeIncomingCallActivity.kt` | Full-screen Answer / Decline on the lock screen. |
 | `.../BetSheetActivity.kt` | Portrait-locked light sheet (Done / title / Open app). Kalshi loads the `op_` ticket URL as is. Polymarket runs `/native/bet-sheet-polymarket.js` (same auto-tap script the IPA uses) once after the first page load. |
 | `.../EdgeLinks.kt` | Link routing: app hosts stay in the WebView, bet hosts open the sheet, Supabase / Google auth stays in the WebView, everything else opens outside (browser / app). |
 | `app/build.gradle.kts` | Flavors: `prod` (`com.edgetilt.app`, edgetilt.com, "Edge") and `staging` (`com.edgetilt.app.test`, lvslotpro.com, "Edge Test"). |
@@ -53,8 +56,11 @@ Web side: `src/utils/edgeAndroid.js` (`isEdgeAndroidShell()` = UA has `EdgeAndro
 | `share(json)` | Opens the system share sheet. `json` = `{ url?, text?, title?, images?: [{ mimeType, base64, filename? }] }` (IPA `share` payload). `true` when shown (the chooser does not report cancel). APK 1.1.0+ |
 | `haptic(style)` | `light` / `medium` / `heavy` / `success` / `warning` / `error` via `performHapticFeedback` (IPA `triggerHaptic` styles). APK 1.1.0+ |
 | `setOrientationLock(lock)` | `portrait` forces portrait while a composer is open, `none` releases. Phones only (smallest width < 600dp). A full page load also releases. APK 1.1.0+ |
+| `reportIncomingCall(json)` | Starts a self-managed Telecom ring + full-screen Answer / Decline UI. `json` = `{ callId, roomId?, handle?, hasVideo?, avatarUrl? }`. Returns JSON `{ ok, deduped? }`. Same events as an FCM `chat_call_invite`. APK **1.3.0+** |
+| `endNativeCall(json)` | Stops the native ring for `{ callId?, reason?: 'remote' }`. Returns JSON `{ ok }`. APK **1.3.0+** |
+| `callRingWebReady()` | Flushes buffered `edge-callkit-answer` / `decline` / `end` window events (cold-start answer before the page existed). Returns JSON `{ ok, replayed }`. APK **1.3.0+** |
 
-Web feature-detects each newer method (`typeof EdgeAndroid.share === 'function'`), so older sideloaded APKs keep the web fallbacks. `shareViaBestAvailable`, `triggerEdgeNativeHaptic`, tap haptics and the composer portrait lock route to these automatically.
+Web feature-detects each newer method (`typeof EdgeAndroid.share === 'function'`), so older sideloaded APKs keep the web fallbacks. `shareViaBestAvailable`, `triggerEdgeNativeHaptic`, tap haptics and the composer portrait lock route to these automatically. Call ring: `src/utils/edgeCallKit.js` routes `reportEdgeIncomingCall` / listeners / `markEdgeCallKitWebReady` to Android when those methods exist; media stays web LiveKit (not a native LiveKit SDK).
 
 ## Permissions after sign-in
 
@@ -62,7 +68,7 @@ Nothing prompts at launch. After sign-in / account creation (member UI up, splas
 
 ## Push (FCM)
 
-Web: `src/utils/edgeNativePush.js` routes Lounge Settings / Offers reminders to FCM in this shell (APNs in EdgeiOS). Tokens land in **`fcm_device_tokens`** (`upsert_my_fcm_device_token` / `delete_my_fcm_device_token`, migration `20260929040000`). Server: `supabase/functions/_shared/fcmPush.ts` sends data-only HIGH priority messages next to every APNs send (`lounge-send-activity-push`, `send-due-offer-reminders`, `send-test-push`). Android has no CallKit, so call invites / missed calls arrive as normal alerts from the activity worker. `EdgePushService` builds the notification; tapping opens the `url` in the app.
+Web: `src/utils/edgeNativePush.js` routes Lounge Settings / Offers reminders to FCM in this shell (APNs in EdgeiOS). Tokens land in **`fcm_device_tokens`** (`upsert_my_fcm_device_token` / `delete_my_fcm_device_token`, migration `20260929040000`). Server: `supabase/functions/_shared/fcmPush.ts` sends data-only HIGH priority messages next to every APNs send (`lounge-send-activity-push`, `send-due-offer-reminders`, `send-test-push`). **`chat_call_invite`** is handled in `EdgePushService` → `EdgeCallRing` (self-managed `ConnectionService` + `CallStyle` notification + full-screen `EdgeIncomingCallActivity`). Answer / Decline fire the same `edge-callkit-*` window events as CallKit. **`chat_call_missed`** ends any active ring for that `chatCallId`, then shows the normal missed alert. Other events still use `EdgePush.show`. APK **1.3.0+**.
 
 **Setup (one time, Firebase console):**
 

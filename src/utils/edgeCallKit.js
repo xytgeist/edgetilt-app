@@ -1,7 +1,15 @@
 /**
- * CallKit bridge for EdgeiOS shell chat calls.
- * Contract: `docs/ios-native-bridge.md`
+ * CallKit bridge for EdgeiOS shell chat calls + EdgeAndroid ConnectionService ring.
+ * iOS contract: `docs/ios-native-bridge.md`
+ * Android contract: `android/README.md` § JS bridge (call ring)
  */
+import {
+  canEdgeAndroidCallRing,
+  endEdgeAndroidNativeCall,
+  isEdgeAndroidShell,
+  markEdgeAndroidCallRingWebReady,
+  reportEdgeAndroidIncomingCall,
+} from './edgeAndroid.js'
 import { dismissEdgeKeyboard, edgeNativeInvoke, isEdgeiOSShell } from './edgeNative.js'
 
 /**
@@ -15,6 +23,9 @@ import { dismissEdgeKeyboard, edgeNativeInvoke, isEdgeiOSShell } from './edgeNat
  * }} args
  */
 export async function reportEdgeIncomingCall(args) {
+  if (canEdgeAndroidCallRing()) {
+    return reportEdgeAndroidIncomingCall(args)
+  }
   if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
   try {
     const avatarUrl =
@@ -74,6 +85,9 @@ export async function preloadEdgeAvatar(avatarUrl) {
  * @param {{ uuid?: string, callId?: string, reason?: 'local' | 'remote' }} [args]
  */
 export async function endEdgeNativeCall(args = {}) {
+  if (canEdgeAndroidCallRing()) {
+    return endEdgeAndroidNativeCall(args)
+  }
   if (!isEdgeiOSShell()) return { ok: false, via: 'noop' }
   try {
     const result = await edgeNativeInvoke('endNativeCall', {
@@ -87,9 +101,10 @@ export async function endEdgeNativeCall(args = {}) {
   }
 }
 
-/** Wire CallKit answer/decline/end → window events for ChatCallProvider. */
+/** Wire CallKit / Android ring answer/decline/end → window events for ChatCallProvider. */
 export function installEdgeCallKitListeners({ onAnswer, onDecline, onEnd, onReveal }) {
-  if (typeof window === 'undefined' || !isEdgeiOSShell()) return () => {}
+  if (typeof window === 'undefined') return () => {}
+  if (!isEdgeiOSShell() && !canEdgeAndroidCallRing() && !isEdgeAndroidShell()) return () => {}
 
   const onAnswerEvent = (event) => {
     const detail = event?.detail || {}
@@ -122,13 +137,16 @@ export function installEdgeCallKitListeners({ onAnswer, onDecline, onEnd, onReve
 }
 
 /**
- * Tell native the web layer can accept CallKit events, so it replays anything it
- * buffered. A VoIP push wakes the shell from terminated, so CallKit can hold an
+ * Tell native the web layer can accept CallKit / Android ring events, so it replays anything it
+ * buffered. A VoIP / FCM push wakes the shell from terminated, so native can hold an
  * answered call before this page exists ... those events are dropped without this.
  * Call it only once listeners are installed AND a session can actually join a call.
  * @returns {Promise<{ ok: boolean, replayed: number, via: 'bridge' | 'noop' | 'error' }>}
  */
 export async function markEdgeCallKitWebReady() {
+  if (canEdgeAndroidCallRing()) {
+    return markEdgeAndroidCallRingWebReady()
+  }
   if (!isEdgeiOSShell()) return { ok: false, replayed: 0, via: 'noop' }
   try {
     const result = await edgeNativeInvoke('callKitWebReady')

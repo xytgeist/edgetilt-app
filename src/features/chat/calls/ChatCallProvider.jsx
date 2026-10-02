@@ -41,6 +41,7 @@ import {
   unlockChatCallAudio,
 } from './chatCallRingTone.js'
 import { acceptNativeCall, dismissEdgeCallKeyboard, endEdgeNativeCall, getEdgeVoIPPushToken, installEdgeCallKitListeners, markEdgeCallKitWebReady, preloadEdgeAvatar, reportEdgeIncomingCall, startNativeCall } from '../../../utils/edgeCallKit.js'
+import { canEdgeAndroidCallRing } from '../../../utils/edgeAndroid.js'
 import { getEdgeiOSPushToken, isEdgeiOSShell } from '../../../utils/edgeNative.js'
 import { upsertMyApnsDeviceToken } from '../../../utils/apnsDeviceTokenApi.js'
 import ChatCallSession from './ChatCallSession.jsx'
@@ -339,7 +340,7 @@ export function ChatCallProvider({
       const mediaMode = (row.media_mode || row.mediaMode) === 'video' ? 'video' : 'audio'
       if (roomId) ensureBroadcast(roomId)
       const profile = resolveCallerProfile(roomId, fromUserId)
-      setIncomingUseWebOverlay(!isEdgeiOSShell())
+      setIncomingUseWebOverlay(!(isEdgeiOSShell() || canEdgeAndroidCallRing()))
       setIncoming({
         callId: row.id,
         roomId,

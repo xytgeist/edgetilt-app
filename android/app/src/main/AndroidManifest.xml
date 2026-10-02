@@ -8,6 +8,11 @@
   <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
   <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+  <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
+  <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
+  <uses-permission android:name="android.permission.VIBRATE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+  <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
 
   <uses-feature android:name="android.hardware.camera" android:required="false" />
   <uses-feature android:name="android.hardware.microphone" android:required="false" />
@@ -40,6 +45,16 @@
       android:screenOrientation="portrait"
       android:theme="@style/Theme.Edge.Sheet" />
 
+    <activity
+      android:name=".EdgeIncomingCallActivity"
+      android:excludeFromRecents="true"
+      android:exported="false"
+      android:launchMode="singleTop"
+      android:showOnLockScreen="true"
+      android:showWhenLocked="true"
+      android:turnScreenOn="true"
+      android:theme="@style/Theme.Edge" />
+
     <provider
       android:name="androidx.core.content.FileProvider"
       android:authorities="${applicationId}.files"
@@ -57,5 +72,19 @@
         <action android:name="com.google.firebase.MESSAGING_EVENT" />
       </intent-filter>
     </service>
+
+    <service
+      android:name=".EdgeCallConnectionService"
+      android:exported="true"
+      android:foregroundServiceType="phoneCall"
+      android:permission="android.permission.BIND_TELECOM_CONNECTION_SERVICE">
+      <intent-filter>
+        <action android:name="android.telecom.ConnectionService" />
+      </intent-filter>
+    </service>
+
+    <receiver
+      android:name=".EdgeCallActionReceiver"
+      android:exported="false" />
   </application>
 </manifest>

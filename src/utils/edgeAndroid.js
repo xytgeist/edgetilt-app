@@ -178,3 +178,82 @@ export function readEdgeAndroidAppId() {
     return 'com.edgetilt.app'
   }
 }
+
+/** True when this APK can present a ConnectionService / full-screen incoming call ring. */
+export function canEdgeAndroidCallRing() {
+  return Boolean(bridgeWith('reportIncomingCall') && bridgeWith('callRingWebReady'))
+}
+
+/**
+ * @param {{
+ *   callId: string
+ *   roomId?: string
+ *   handle?: string
+ *   hasVideo?: boolean
+ *   avatarUrl?: string | null
+ * }} args
+ */
+export function reportEdgeAndroidIncomingCall(args) {
+  const b = bridgeWith('reportIncomingCall')
+  if (!b) return { ok: false, via: 'noop' }
+  try {
+    const avatarUrl =
+      typeof args.avatarUrl === 'string' && args.avatarUrl.trim() ? args.avatarUrl.trim() : ''
+    const raw = b.reportIncomingCall(
+      JSON.stringify({
+        callId: String(args.callId || '').trim(),
+        roomId: String(args.roomId || '').trim(),
+        handle: String(args.handle || 'Incoming call').trim(),
+        hasVideo: Boolean(args.hasVideo),
+        ...(avatarUrl ? { avatarUrl } : {}),
+      }),
+    )
+    const result = typeof raw === 'string' ? JSON.parse(raw || '{}') : raw || {}
+    return {
+      ok: result?.ok !== false,
+      via: 'bridge',
+      deduped: Boolean(result?.deduped),
+      skipped: result?.skipped || null,
+    }
+  } catch {
+    return { ok: false, via: 'error', skipped: null }
+  }
+}
+
+/**
+ * @param {{ uuid?: string, callId?: string, reason?: 'local' | 'remote' }} [args]
+ */
+export function endEdgeAndroidNativeCall(args = {}) {
+  const b = bridgeWith('endNativeCall')
+  if (!b) return { ok: false, via: 'noop' }
+  try {
+    const raw = b.endNativeCall(
+      JSON.stringify({
+        callId: args.callId,
+        reason: args.reason === 'remote' ? 'remote' : undefined,
+      }),
+    )
+    const result = typeof raw === 'string' ? JSON.parse(raw || '{}') : raw || {}
+    return { ok: result?.ok !== false, via: 'bridge' }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}
+
+/** Replay buffered answer / decline / end after ChatCallProvider listeners are installed. */
+export function markEdgeAndroidCallRingWebReady() {
+  const b = bridgeWith('callRingWebReady')
+  if (!b) return { ok: false, replayed: 0, via: 'noop' }
+  try {
+    const raw = b.callRingWebReady()
+    const result = typeof raw === 'string' ? JSON.parse(raw || '{}') : raw || {}
+    const replayed = Number(result?.replayed)
+    return {
+      ok: result?.ok !== false,
+      replayed: Number.isFinite(replayed) ? replayed : 0,
+      via: 'bridge',
+    }
+  } catch {
+    return { ok: false, replayed: 0, via: 'error' }
+  }
+}

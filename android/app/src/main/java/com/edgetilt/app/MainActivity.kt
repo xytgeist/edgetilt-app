@@ -68,6 +68,8 @@ class MainActivity : Activity() {
     webView.setDownloadListener { url, _, _, _, _ -> EdgeLinks.openOutside(this, Uri.parse(url)) }
     webView.addJavascriptInterface(Bridge(), "EdgeAndroid")
     EdgePush.refreshToken(this)
+    EdgeCallRing.ensurePhoneAccount(this)
+    EdgeCallRing.bindHost(this)
 
     registerBack()
     val start = intent?.data?.takeIf { EdgeLinks.staysInApp(it) }?.toString() ?: BuildConfig.BASE_URL
@@ -78,7 +80,13 @@ class MainActivity : Activity() {
 
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
+    setIntent(intent)
     intent.data?.takeIf { EdgeLinks.staysInApp(it) }?.let { webView.loadUrl(it.toString()) }
+  }
+
+  override fun onDestroy() {
+    EdgeCallRing.bindHost(null)
+    super.onDestroy()
   }
 
   override fun onSaveInstanceState(outState: Bundle) {
@@ -88,6 +96,7 @@ class MainActivity : Activity() {
 
   override fun onResume() {
     super.onResume()
+    EdgeCallRing.bindHost(this)
     webView.onResume()
   }
 
@@ -95,6 +104,18 @@ class MainActivity : Activity() {
     webView.onPause()
     CookieManager.getInstance().flush()
     super.onPause()
+  }
+
+  /** Replay / live CallKit-style events into the page (`edge-callkit-*`). */
+  fun deliverWindowEvent(name: String, detail: JSONObject) {
+    runOnUiThread {
+      val safeName = name.replace("'", "")
+      val payload = JSONObject.quote(detail.toString())
+      webView.evaluateJavascript(
+        "(function(){try{var d=JSON.parse($payload);window.dispatchEvent(new CustomEvent('$safeName',{detail:d}));}catch(e){}})()",
+        null,
+      )
+    }
   }
 
   private fun registerBack() {
@@ -208,7 +229,37 @@ class MainActivity : Activity() {
       .put("appId", BuildConfig.APPLICATION_ID)
       .put("version", BuildConfig.VERSION_NAME)
       .put("firebase", EdgePush.firebaseReady(this@MainActivity))
+      .put("callRing", true)
       .toString()
+
+    /** Foreground Realtime invite → native ring (same events as FCM). */
+    @JavascriptInterface
+    fun reportIncomingCall(json: String): String {
+      if (!onAppPage) return JSONObject().put("ok", false).put("skipped", "off-app").toString()
+      val invite = EdgeCallRing.inviteFromJson(json)
+        ?: return JSONObject().put("ok", false).put("skipped", "bad-payload").toString()
+      return EdgeCallRing.reportIncoming(this@MainActivity, invite).toString()
+    }
+
+    @JavascriptInterface
+    fun endNativeCall(json: String): String {
+      if (!onAppPage) return JSONObject().put("ok", false).toString()
+      return try {
+        val o = JSONObject(json.ifBlank { "{}" })
+        val callId = o.optString("callId").trim().ifEmpty { null }
+        val remote = o.optString("reason") == "remote"
+        EdgeCallRing.end(this@MainActivity, callId, remote = remote).toString()
+      } catch (_: Exception) {
+        JSONObject().put("ok", false).toString()
+      }
+    }
+
+    /** Flush buffered answer / decline / end after ChatCallProvider listeners are up. */
+    @JavascriptInterface
+    fun callRingWebReady(): String {
+      if (!onAppPage) return JSONObject().put("ok", false).put("replayed", 0).toString()
+      return EdgeCallRing.markWebReady(this@MainActivity).toString()
+    }
   }
 
   /** Styles match the IPA's `triggerHaptic`. */

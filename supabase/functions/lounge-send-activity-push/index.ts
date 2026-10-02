@@ -331,6 +331,9 @@ type PushNotificationPayload = {
   eventType?: string
   chatCallId?: string
   avatarUrl?: string
+  roomId?: string
+  callerName?: string
+  hasVideo?: boolean
 }
 
 function httpsAvatarUrl(raw: string | null | undefined): string | undefined {
@@ -654,6 +657,10 @@ function buildSingleNotification(
   const phrase = actionPhrase(event.event_type, event.comment_id, isReply)
   const inviteAvatar =
     event.event_type === 'chat_call_invite' ? httpsAvatarUrl(actor?.avatar_url) : undefined
+  const inviteCaller =
+    event.event_type === 'chat_call_invite' || event.event_type === 'chat_call_missed'
+      ? String(who || '').trim() || undefined
+      : undefined
   return {
     title: pushTitleForEventType(event.event_type),
     body: `${who} ${phrase}`,
@@ -664,6 +671,10 @@ function buildSingleNotification(
     event.chat_call_id
       ? { chatCallId: event.chat_call_id }
       : {}),
+    ...(event.event_type === 'chat_call_invite' && event.chat_room_id
+      ? { roomId: event.chat_room_id }
+      : {}),
+    ...(inviteCaller ? { callerName: inviteCaller } : {}),
     ...(inviteAvatar ? { avatarUrl: inviteAvatar } : {}),
   }
 }

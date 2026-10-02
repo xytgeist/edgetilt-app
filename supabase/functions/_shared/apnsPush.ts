@@ -11,6 +11,10 @@ export type ApnsAlertPayload = {
   eventType?: string
   chatCallId?: string
   avatarUrl?: string
+  /** EdgeAndroid call ring (FCM data). */
+  roomId?: string
+  callerName?: string
+  hasVideo?: boolean
 }
 
 type ApnsTokenRow = {

@@ -113,6 +113,9 @@ function buildData(notification: ApnsAlertPayload): Record<string, string> {
   if (notification.eventType) data.eventType = notification.eventType
   if (notification.chatCallId) data.chatCallId = notification.chatCallId
   if (notification.avatarUrl) data.avatarUrl = notification.avatarUrl
+  if (notification.roomId) data.roomId = notification.roomId
+  if (notification.callerName) data.callerName = notification.callerName
+  if (notification.hasVideo != null) data.hasVideo = notification.hasVideo ? 'true' : 'false'
   return data
 }
 

@@ -165,6 +165,10 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 
 **I am Mac Theo.** Selena → Ryan DM call crashed Ryan's IPA. Cause: Aug 30 dedupe skip completed PushKit without `reportNewIncomingCall` when JS/Realtime already reported the same `callId` (worse after Sep 28 background JS report). Fixed in `bb14a27c`, then pending path tightened so PushKit re-reports the same UUID (no `.failed` mid-accept, `7c9ae727`). **TestFlight-only Prod 1.4.95 (20261001001759)** uploaded, not attached. Skip `20261001001246`. Both phones install **01759** and retest. If VoIP is silent after prior kills, delete + reinstall once. Do not bump **1.4.95**.
 
+### Mac Theo ACTIVE TRACK 2026-10-02 ... Android incoming call ring
+
+**I am Mac Theo.** APK **1.3.0** (`versionCode` 4): FCM `chat_call_invite` rings via self-managed `ConnectionService` + full-screen Answer/Decline. Bridge methods in `android/README.md`. Web **`1.4.978`** on `test` wires `edgeCallKit.js` for Android (media still web LiveKit). Sideload prod/staging debug APKs; real-device smoke owed (lock / background / killed). Redeploy test **`lounge-send-activity-push`** for `roomId`/`callerName` on FCM. Next parity: live sessions in the status bar.
+
 ### Mac Theo ACTIVE TRACK 2026-09-29 ... Android shell + native parity roadmap
 
 **I am Mac Theo.** Android Kotlin shell (`android/`, `android/README.md`) is live-capable end to end. Next work is native parity with the IPA (list below).
@@ -178,7 +182,7 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 
 **Android native parity roadmap (Ryan, 2026-09-29).** Each item needs a web side in `src/` (Windows lane) … agree the `window.EdgeAndroid` method in `android/README.md` first. Checkboxes in backlog **Android**.
 
-1. **Incoming calls that ring** ... FCM high-priority data push + `ConnectionService` / full-screen intent (CallKit equivalent). Biggest gap.
+1. **Incoming calls that ring** ... **SHIPPED APK 1.3.0** (2026-10-02). Real-device smoke owed.
 2. **Live sessions in the status bar** ... Android 16 Live Updates (promoted ongoing notification + status-bar chip), ongoing-notification fallback on older phones (Dynamic Island equivalent).
 3. **Lounge video in the background** ... native pick + Media3 Transformer trim/compress + WorkManager / foreground-service tus upload (IPA video pipeline equivalent).
 4. **App Links** ... `assetlinks.json` on edgetilt.com / lvslotpro.com so links open the app.

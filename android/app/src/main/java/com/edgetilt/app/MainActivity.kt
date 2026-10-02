@@ -274,6 +274,20 @@ class MainActivity : Activity() {
       if (!onAppPage) return JSONObject().put("ok", false).put("replayed", 0).toString()
       return EdgeCallRing.markWebReady(this@MainActivity).toString()
     }
+
+    /** In-call earpiece ↔ speakerphone (`AudioManager`). JSON `{ route: 'speaker' | 'earpiece' }`. */
+    @JavascriptInterface
+    fun setAudioRoute(json: String): String {
+      if (!onAppPage) return JSONObject().put("ok", false).toString()
+      return try {
+        val o = JSONObject(json.ifBlank { "{}" })
+        val route = o.optString("route").trim().lowercase()
+        val speaker = route == "speaker" || route == "speakerphone"
+        EdgeCallRing.setSpeakerphone(this@MainActivity, speaker).toString()
+      } catch (_: Exception) {
+        JSONObject().put("ok", false).toString()
+      }
+    }
   }
 
   /** Styles match the IPA's `triggerHaptic`. */

@@ -10,6 +10,11 @@
  * is false. UI must hide the speaker button; use AudioSession play-and-record instead.
  */
 import { Room, Track } from 'livekit-client'
+import {
+  canEdgeAndroidSetAudioRoute,
+  isEdgeAndroidShell,
+  setEdgeAndroidAudioRoute,
+} from '../../../utils/edgeAndroid.js'
 import { isEdgeiOSShell, edgeNativeInvoke } from '../../../utils/edgeNative.js'
 import { isIosDevice } from '../../../utils/pwaNotificationPrompt.js'
 
@@ -111,6 +116,8 @@ function elementSupportsSetSinkId() {
 export async function canToggleCallAudioRoute() {
   try {
     if (isEdgeiOSShell()) return true
+    // APK 1.3.5+: AudioManager speaker/earpiece is authoritative (phantoms alone flap).
+    if (canEdgeAndroidSetAudioRoute()) return true
 
     // Safari / iOS PWA cannot reliably switch earpiece ↔ speakerphone from the web.
     if (isIosDevice()) return false
@@ -176,8 +183,19 @@ export async function applyCallAudioOutput({
     }
   }
 
+  // EdgeAndroid shell: AudioManager owns the loudspeaker. Do this before phantom mic
+  // switches... Answer used to set speakerphone=true once, then web toggles never
+  // updated native, so Speaker On looked lit but stayed on earpiece.
+  let androidNativeOk = false
+  if (canEdgeAndroidSetAudioRoute()) {
+    const native = setEdgeAndroidAudioRoute({
+      route: speakerphoneOn ? 'speaker' : 'earpiece',
+    })
+    androidNativeOk = Boolean(native?.ok)
+  }
+
   const canRoute = await canToggleCallAudioRoute()
-  if (!canRoute) {
+  if (!canRoute && !androidNativeOk) {
     return {
       preferred: prefer,
       routed: false,
@@ -190,8 +208,8 @@ export async function applyCallAudioOutput({
   const devices = await listAudioDevices()
   const route = pickCallAudioRoute(devices, prefer)
 
-  let routed = false
-  let method = 'none'
+  let routed = androidNativeOk
+  let method = androidNativeOk ? 'android-native' : 'none'
 
   const alreadyActive =
     route &&
@@ -199,7 +217,9 @@ export async function applyCallAudioOutput({
     typeof room.getActiveDevice === 'function' &&
     room.getActiveDevice(route.kind) === route.deviceId
 
-  if (alreadyActive) {
+  // On EdgeAndroid, never early-return on alreadyActive... force the phantom mic
+  // restart so WebRTC matches AudioManager after a speaker ↔ earpiece flip.
+  if (alreadyActive && !isEdgeAndroidShell()) {
     return {
       preferred: prefer,
       routed: true,
@@ -209,30 +229,30 @@ export async function applyCallAudioOutput({
     }
   }
 
-  if (route && room && typeof room.switchActiveDevice === 'function') {
+  if (route && room && typeof room.switchActiveDevice === 'function' && !alreadyActive) {
     try {
       await room.switchActiveDevice(route.kind, route.deviceId, true)
       routed = true
-      method = route.kind
+      method = method === 'android-native' ? 'android-native+audioinput' : route.kind
     } catch {
       /* try restartTrack / setSinkId below */
     }
   }
 
-  // Fallback: restart local mic onto phantom Speakerphone / Headset earpiece.
-  if (!routed && route?.kind === 'audioinput' && room?.localParticipant) {
+  // Fallback / Android force: restart local mic onto phantom Speakerphone / Headset earpiece.
+  if (route?.kind === 'audioinput' && room?.localParticipant && (!routed || isEdgeAndroidShell())) {
     const pub = room.localParticipant.getTrackPublication?.(Track.Source.Microphone)
     const track = pub?.track
     if (track && typeof track.restartTrack === 'function') {
       try {
         await track.restartTrack({ deviceId: { exact: route.deviceId } })
         routed = true
-        method = 'audioinput-restart'
+        method = method.startsWith('android-native') ? 'android-native+restart' : 'audioinput-restart'
       } catch {
         try {
           await track.restartTrack({ deviceId: route.deviceId })
           routed = true
-          method = 'audioinput-restart'
+          method = method.startsWith('android-native') ? 'android-native+restart' : 'audioinput-restart'
         } catch {
           /* ignore */
         }
@@ -263,6 +283,6 @@ export async function applyCallAudioOutput({
     routed,
     method,
     deviceId: route?.deviceId || null,
-    canRoute: Boolean(route),
+    canRoute: Boolean(route) || androidNativeOk,
   }
 }

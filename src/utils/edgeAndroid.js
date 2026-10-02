@@ -257,3 +257,28 @@ export function markEdgeAndroidCallRingWebReady() {
     return { ok: false, replayed: 0, via: 'error' }
   }
 }
+
+/** True when this APK can drive earpiece ↔ speakerphone via AudioManager. */
+export function canEdgeAndroidSetAudioRoute() {
+  return Boolean(bridgeWith('setAudioRoute'))
+}
+
+/**
+ * @param {{ route: 'speaker' | 'earpiece' | 'speakerphone' }} args
+ */
+export function setEdgeAndroidAudioRoute(args) {
+  const b = bridgeWith('setAudioRoute')
+  if (!b) return { ok: false, via: 'noop' }
+  try {
+    const route = String(args?.route || '').trim().toLowerCase()
+    const raw = b.setAudioRoute(JSON.stringify({ route }))
+    const result = typeof raw === 'string' ? JSON.parse(raw || '{}') : raw || {}
+    return {
+      ok: result?.ok !== false,
+      via: 'bridge',
+      route: result?.route || (route === 'speaker' || route === 'speakerphone' ? 'speaker' : 'earpiece'),
+    }
+  } catch {
+    return { ok: false, via: 'error' }
+  }
+}

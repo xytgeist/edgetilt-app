@@ -408,11 +408,9 @@ object EdgeCallRing {
 
   /** Hold communication audio mode while the answered Telecom connection is live. */
   private fun enterVoipAudio(ctx: Context, speakerphone: Boolean) {
+    setSpeakerphone(ctx, speakerphone)
     val am = ctx.getSystemService(AudioManager::class.java) ?: return
     try {
-      am.mode = AudioManager.MODE_IN_COMMUNICATION
-      @Suppress("DEPRECATION")
-      am.isSpeakerphoneOn = speakerphone
       if (Build.VERSION.SDK_INT >= 26) {
         val attrs = AudioAttributes.Builder()
           .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
@@ -429,7 +427,28 @@ object EdgeCallRing {
         am.requestAudioFocus(null, AudioManager.STREAM_VOICE_CALL, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
       }
     } catch (e: Exception) {
-      Log.w(TAG, "enterVoipAudio failed", e)
+      Log.w(TAG, "enterVoipAudio focus failed", e)
+    }
+  }
+
+  /**
+   * Earpiece ↔ speakerphone for an active call. Web calls this on every Speaker tap
+   * (`EdgeAndroid.setAudioRoute`); phantom LiveKit mic switches alone are not enough
+   * once Telecom / AudioManager owns the route.
+   */
+  fun setSpeakerphone(ctx: Context, speakerphone: Boolean): JSONObject {
+    val am = ctx.getSystemService(AudioManager::class.java)
+      ?: return JSONObject().put("ok", false).put("error", "no-audio")
+    return try {
+      am.mode = AudioManager.MODE_IN_COMMUNICATION
+      @Suppress("DEPRECATION")
+      am.isSpeakerphoneOn = speakerphone
+      JSONObject()
+        .put("ok", true)
+        .put("route", if (speakerphone) "speaker" else "earpiece")
+    } catch (e: Exception) {
+      Log.w(TAG, "setSpeakerphone failed", e)
+      JSONObject().put("ok", false).put("error", e.message ?: "audio")
     }
   }
 

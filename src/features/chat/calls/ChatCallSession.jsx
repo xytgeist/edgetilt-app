@@ -21,7 +21,7 @@ import {
   unlockChatCallAudio,
 } from './chatCallRingTone.js'
 import { CHAT_CALL_RECORDING_MAX_SECONDS } from '../../../utils/chatCallsApi.js'
-import { isAndroidDevice, isIosDevice } from '../../../utils/pwaNotificationPrompt.js'
+import { isIosDevice } from '../../../utils/pwaNotificationPrompt.js'
 import { isEdgeiOSShell } from '../../../utils/edgeNative.js'
 import {
   getNativeCallState,
@@ -91,14 +91,14 @@ function hideChromeForInvite(open, { hideTimerRef, setControlsHidden, resetContr
   }
 }
 
-/** Android web: the pill already sits under the stage, so cinema-hide only moves the inset. */
+/** Video cinema: hide header + dock after idle. Tap the featured stream to show/hide. */
 function armCallChromeHide(hideTimerRef, setControlsHidden, isVideoMode, { keepVisible = false } = {}) {
   if (hideTimerRef.current) {
     window.clearTimeout(hideTimerRef.current)
     hideTimerRef.current = null
   }
   setControlsHidden(false)
-  if (!isVideoMode || isAndroidDevice() || keepVisible) return
+  if (!isVideoMode || keepVisible) return
   hideTimerRef.current = window.setTimeout(() => {
     setControlsHidden(true)
   }, 4500)
@@ -106,7 +106,6 @@ function armCallChromeHide(hideTimerRef, setControlsHidden, isVideoMode, { keepV
 
 function onActivateFeaturedChrome(event, controlsHidden, resetControlsTimer, setControlsHidden) {
   event?.stopPropagation?.()
-  if (isAndroidDevice()) return
   if (controlsHidden) resetControlsTimer()
   else setControlsHidden(true)
 }
@@ -1393,7 +1392,11 @@ function NativeIpaCallSession({
       </div>
 
       {/* Main Stage */}
-      <div className="relative z-[1] min-h-0 flex-1 px-4">
+      <div
+        className={`relative z-[1] min-h-0 flex-1 transition-[padding] duration-300 ease-in-out ${
+          controlsHidden && isVideoMode ? 'px-0' : 'px-4'
+        }`}
+      >
         {showVideoHole ? (
           <VideoCallStage
             hitOnly
@@ -2268,7 +2271,11 @@ function CallChrome({
         />
       </div>
 
-      <div className="relative z-[1] min-h-0 flex-1 px-4">
+      <div
+        className={`relative z-[1] min-h-0 flex-1 transition-[padding] duration-300 ease-in-out ${
+          controlsHidden && isVideoMode ? 'px-0' : 'px-4'
+        }`}
+      >
         {showVideoStage ? (
           <VideoCallStage
             remotes={stageRemotes}
@@ -2586,7 +2593,9 @@ function VideoCallStage({
   }, [plan.mode, remotes.length])
   const shellClass = hitOnly
     ? 'relative h-full min-h-0 overflow-hidden'
-    : 'relative h-full min-h-0 overflow-hidden rounded-[32px] border border-white/10 bg-zinc-950/80 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-xl'
+    : controlsHidden
+      ? 'relative h-full min-h-0 overflow-hidden bg-black'
+      : 'relative h-full min-h-0 overflow-hidden rounded-[32px] border border-white/10 bg-zinc-950/80 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-xl'
 
   if (plan.mode === 'solo') {
     return (
@@ -2608,7 +2617,7 @@ function VideoCallStage({
   if (plan.mode === 'duo') {
     const pipParticipant = plan.pipId ? byId.get(plan.pipId) : null
     const pipHasCam = participantHasLiveCamera(pipParticipant)
-    const pipChromeHidden = isAndroidDevice() ? false : controlsHidden
+    const pipChromeHidden = controlsHidden
     const pipSize = duoPipSize({
       hasCamera: pipHasCam,
       controlsHidden: pipChromeHidden,

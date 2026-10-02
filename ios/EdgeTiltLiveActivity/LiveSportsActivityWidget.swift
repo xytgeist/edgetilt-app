@@ -108,7 +108,7 @@ private struct LiveSportsTeamLogo: View {
           .resizable()
           .scaledToFit()
       } else if let url = URL(string: urlString), !urlString.isEmpty {
-        // CFB / unknown leagues … remote load when we have no bundled mark.
+        // Unknown league / missing file … remote load when we have no bundled mark.
         AsyncImage(url: url) { phase in
           switch phase {
           case .success(let image):

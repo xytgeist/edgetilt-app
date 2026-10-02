@@ -405,6 +405,9 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
 
   /// Surface an incoming CallKit call.
   /// `fromPushKit` is the only legal reporter when the app is not `.active`.
+  /// When `fromPushKit` is true this method MUST call `reportNewIncomingCall`
+  /// on every path that reaches a live `CXProvider` ... iOS kills the process
+  /// (and blacklists VoIP) if a PushKit wake completes without one.
   func reportIncomingCall(
     uuidString: String?,
     callId: String,
@@ -415,12 +418,18 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     fromPushKit: Bool = false,
     completion: @escaping (Result<[String: Any], Error>) -> Void
   ) {
-    if !EdgeChinaAvailability.callKitAllowed {
+    // JS/APNs may no-op in China. PushKit must still try ... a VoIP wake without
+    // a CallKit report is an immediate kill, and PushKit should already be off
+    // in China (`startPushRegistryIfNeeded` / `tearDownForChina`).
+    if !fromPushKit && !EdgeChinaAvailability.callKitAllowed {
       completion(.success(["ok": false, "skipped": "china"]))
       return
     }
     installProviderIfNeeded()
     guard let provider else {
+      if fromPushKit {
+        NSLog("EdgeCallKit FATAL: PushKit wake with no CXProvider callId=\(callId)")
+      }
       completion(.success(["ok": false, "skipped": "china"]))
       return
     }
@@ -467,17 +476,16 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
        let existing = calls.first(where: { $0.value.callId == trimmedCallId })?.key {
       if fromPushKit {
         let wasAccepted = acceptedIncomingUUIDs.contains(existing)
+        let meta = calls[existing]
         NSLog("EdgeCallKit PushKit: re-report callId=\(trimmedCallId) uuid=\(existing.uuidString) accepted=\(wasAccepted)")
-        let replay = CXCallUpdate()
-        if let meta = calls[existing] {
-          replay.remoteHandle = CXHandle(type: .generic, value: meta.callerName)
-          replay.localizedCallerName = meta.callerName
-          replay.hasVideo = meta.hasVideo
-          replay.supportsDTMF = false
-          replay.supportsHolding = false
-          replay.supportsGrouping = false
-          replay.supportsUngrouping = false
-        }
+        let replay = Self.makeCallUpdate(
+          callerName: meta?.callerName ?? Self.sanitizedCallerName(handle),
+          hasVideo: meta?.hasVideo ?? hasVideo
+        )
+        // Always invoke reportNewIncomingCall for this wake. Duplicate-UUID
+        // errors are fine ... CallKit still marks the PushKit requirement met.
+        // Do not mint a second UUID on failure ... that races the first ring
+        // (maximumCallGroups = 1) and was the Aug 30 foreground self-abort class.
         provider.reportNewIncomingCall(with: existing, update: replay) { error in
           if let error {
             NSLog("EdgeCallKit PushKit re-report: \(error.localizedDescription)")
@@ -503,11 +511,49 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
       completion(.success(["ok": true, "uuid": existing.uuidString.lowercased(), "deduped": true, "pending": true]))
       return
     }
+    reportFreshIncomingCall(
+      provider: provider,
+      uuidString: uuidString,
+      callId: trimmedCallId,
+      roomId: roomId,
+      handle: handle,
+      hasVideo: hasVideo,
+      avatarUrl: avatarUrl,
+      fromPushKit: fromPushKit,
+      appState: appState,
+      completion: completion
+    )
+  }
+
+  private static func makeCallUpdate(callerName: String, hasVideo: Bool) -> CXCallUpdate {
+    let update = CXCallUpdate()
+    update.remoteHandle = CXHandle(type: .generic, value: callerName)
+    update.localizedCallerName = callerName
+    update.hasVideo = hasVideo
+    update.supportsDTMF = false
+    update.supportsHolding = false
+    update.supportsGrouping = false
+    update.supportsUngrouping = false
+    return update
+  }
+
+  private func reportFreshIncomingCall(
+    provider: CXProvider,
+    uuidString: String?,
+    callId: String,
+    roomId: String,
+    handle: String,
+    hasVideo: Bool,
+    avatarUrl: String?,
+    fromPushKit: Bool,
+    appState: UIApplication.State,
+    completion: @escaping (Result<[String: Any], Error>) -> Void
+  ) {
     let uuid = Self.uuid(from: uuidString) ?? UUID()
     let callerName = Self.sanitizedCallerName(handle)
     let resolvedAvatar = EdgeCallKitCallerAvatar.httpsURL(avatarUrl)?.absoluteString
     let meta = CallMeta(
-      callId: trimmedCallId,
+      callId: callId,
       roomId: roomId,
       hasVideo: hasVideo,
       callerName: callerName,
@@ -515,35 +561,27 @@ final class EdgeCallKitManager: NSObject, CXProviderDelegate, PKPushRegistryDele
     )
     calls[uuid] = meta
 
-    let update = CXCallUpdate()
-    update.remoteHandle = CXHandle(type: .generic, value: meta.callerName)
-    update.localizedCallerName = meta.callerName
-    update.hasVideo = hasVideo
-    update.supportsDTMF = false
-    update.supportsHolding = false
-    update.supportsGrouping = false
-    update.supportsUngrouping = false
-    // Safe avatar attachment via Objective-C @try/@catch wrapper.
-    // If a cached local JPEG exists on disk, it applies it to localizedCallerImageURL.
-    // If not (or if iOS rejects the selector), it catches cleanly and proceeds with name/handle.
-    EdgeCallKitCallerAvatar.applyToCallUpdate(update, avatarUrl: resolvedAvatar)
+    let update = Self.makeCallUpdate(callerName: meta.callerName, hasVideo: hasVideo)
+    // Name / handle / video only. Do NOT apply localizedCallerImageURL here.
+    // The undocumented setter crashed VoIP wakes (Aug 28) and blacklisted installs.
+    // Prefetch after accept is fine for the *next* ring.
 
-    NSLog("EdgeCallKit reportNewIncomingCall uuid=\(uuid.uuidString) callId=\(trimmedCallId) fromPushKit=\(fromPushKit) state=\(Self.applicationStateLabel(appState))")
+    NSLog("EdgeCallKit reportNewIncomingCall uuid=\(uuid.uuidString) callId=\(callId) fromPushKit=\(fromPushKit) state=\(Self.applicationStateLabel(appState))")
     provider.reportNewIncomingCall(with: uuid, update: update) { error in
       if let error {
-        NSLog("EdgeCallKit reportNewIncomingCall failed: \(error.localizedDescription) uuid=\(uuid.uuidString) callId=\(trimmedCallId) fromPushKit=\(fromPushKit)")
+        NSLog("EdgeCallKit reportNewIncomingCall failed: \(error.localizedDescription) uuid=\(uuid.uuidString) callId=\(callId) fromPushKit=\(fromPushKit)")
         self.calls.removeValue(forKey: uuid)
         self.acceptedIncomingUUIDs.remove(uuid)
         completion(.failure(error))
         return
       }
-      NSLog("EdgeCallKit reportNewIncomingCall accepted uuid=\(uuid.uuidString) callId=\(trimmedCallId) fromPushKit=\(fromPushKit)")
+      NSLog("EdgeCallKit reportNewIncomingCall accepted uuid=\(uuid.uuidString) callId=\(callId) fromPushKit=\(fromPushKit)")
       self.acceptedIncomingUUIDs.insert(uuid)
       EdgeCallKitCallerAvatar.prefetchToCache(avatarUrl: resolvedAvatar)
       EdgeAudioSession.apply(mode: hasVideo ? "voiceChat" : "voiceChatEarpiece") { _ in }
       // CallKit is now the ring UI. Drop the sibling APNs "X is calling you" card so
       // it does not sit on the lock screen / banner after the user answers.
-      EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: trimmedCallId)
+      EdgePushManager.shared.removeDeliveredCallInviteNotifications(callId: callId)
       self.beginCallBackgroundTask()
       completion(.success(["ok": true, "uuid": uuid.uuidString.lowercased()]))
     }
@@ -996,17 +1034,15 @@ enum EdgeCallKitCallerAvatar {
   private static let maxBytes = 512 * 1024
   private static let fetchTimeout: TimeInterval = 8
 
-  /// Safely apply cached local JPEG to CallKit incoming update via Objective-C helper.
+  /// PARKED off the VoIP report path. Do not call from `reportIncomingCall` /
+  /// PushKit. The undocumented `localizedCallerImageURL` setter crashed wakes
+  /// (Aug 28) and blacklisted installs even behind @try/@catch on setValue ...
+  /// CallKit can still blow up later when presenting the update. Prefetch after
+  /// a successful report is the only live path.
   static func applyToCallUpdate(_ update: CXCallUpdate, avatarUrl: String?) {
-    guard let source = httpsURL(avatarUrl),
-          let data = localJPEGData(for: source),
-          let file = writeShareableJPEG(data)
-    else { return }
-    if EdgeCallKitApplyCallerImageURL(update, file as NSURL) {
-      NSLog("EdgeCallKit avatar first-report file://")
-    } else {
-      NSLog("EdgeCallKit avatar apply failed, reporting without photo")
-    }
+    _ = update
+    _ = avatarUrl
+    // Intentionally a no-op. Keep the symbol so older call sites compile.
   }
 
   /// Warm disk for the **next** ring. Do not hook this to a CallKit update.

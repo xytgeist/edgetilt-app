@@ -2550,3 +2550,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 2. If you’re spinning or the design has real tradeoffs → **Opus**.
 3. If you need pretty words → **Fable**.
 4. Don’t model-hop mid-tiny-fix unless you’re stuck.
+
+### Mac Theo 2026-10-02 … promoted 1.4.981 to main
+
+**I am Mac Theo.** Promoted **`test` → `main` (`f659122a`)**. Web **`1.4.981`**: quote caption truncate, Android ConnectionService call ring (web side), double-answer + hangup re-ring fixes, Android cinema fullscreen. Prod Edge **`lounge-send-activity-push`** redeployed (FCM `roomId`/`callerName`). Sideload APK **1.3.2** still owed on devices (not a store binary). Store marketing still **1.4.95**.

@@ -913,13 +913,19 @@ export default function GameHubFantasyPane({
                         ? `Deselect ${p.name} from fantasy watch`
                         : `Select ${p.name} for fantasy watch`
                     }
-                    className={`grid w-full grid-cols-[minmax(0,1fr)_3.25rem_3.25rem] items-center gap-x-2 px-3 py-2.5 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] ${
-                      pinned
-                        ? 'bg-sky-500/10 ring-1 ring-inset ring-sky-400/35'
-                        : 'active:bg-zinc-800/80'
+                    className={`relative grid w-full grid-cols-[minmax(0,1fr)_3.25rem_3.25rem] items-center gap-x-2 px-3 py-2.5 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] first:rounded-t-2xl last:rounded-b-2xl ${
+                      pinned ? 'bg-sky-500/10' : 'active:bg-zinc-800/80'
                     }`}
                   >
-                    <div className="flex min-w-0 items-center gap-3">
+                    {pinned ? (
+                      // Inset ring sits inside the row so the list's overflow-hidden +
+                      // rounded top no longer clips the watch outline.
+                      <span
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-1 z-[1] rounded-xl ring-1 ring-sky-400/45"
+                      />
+                    ) : null}
+                    <div className="relative z-[2] flex min-w-0 items-center gap-3">
                       <PlayerAvatar
                         player={p}
                         accentColor={fantasyAccentColor(p, game, paint)}

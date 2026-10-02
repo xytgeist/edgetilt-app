@@ -58,7 +58,7 @@ Web side: `src/utils/edgeAndroid.js` (`isEdgeAndroidShell()` = UA has `EdgeAndro
 | `setOrientationLock(lock)` | `portrait` forces portrait while a composer is open, `none` releases. Phones only (smallest width < 600dp). A full page load also releases. APK 1.1.0+ |
 | `reportIncomingCall(json)` | Starts a self-managed Telecom ring + full-screen Answer / Decline UI. `json` = `{ callId, roomId?, handle?, hasVideo?, avatarUrl? }`. Returns JSON `{ ok, deduped? }`. Same events as an FCM `chat_call_invite`. APK **1.3.0+** |
 | `endNativeCall(json)` | Stops the native ring for `{ callId?, reason?: 'remote' }`. Returns JSON `{ ok }`. APK **1.3.0+** |
-| `callRingWebReady()` | Flushes buffered `edge-callkit-answer` / `decline` / `end` window events (cold-start answer before the page existed). Returns JSON `{ ok, replayed }`. APK **1.3.0+** |
+| `callRingWebReady()` | Flushes buffered `edge-callkit-answer` / `decline` / `end` window events (cold-start answer before the page existed). Returns JSON `{ ok, replayed }`. APK **1.3.0+**. **1.3.3+:** Answer / Decline bring the shell forward without a `?tab=chat&room=` `loadUrl` (that reload was killing accept mid-flight on a warm app). Full page loads reset `webReady` so buffered events replay after remount. |
 
 Web feature-detects each newer method (`typeof EdgeAndroid.share === 'function'`), so older sideloaded APKs keep the web fallbacks. `shareViaBestAvailable`, `triggerEdgeNativeHaptic`, tap haptics and the composer portrait lock route to these automatically. Call ring: `src/utils/edgeCallKit.js` routes `reportEdgeIncomingCall` / listeners / `markEdgeCallKitWebReady` to Android when those methods exist; media stays web LiveKit (not a native LiveKit SDK).
 

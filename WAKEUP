@@ -2590,3 +2590,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-02 … promoted 1.4.983 to main
 
 **I am Mac Theo.** Promoted **`test` → `main` (`6e863e2e`)**. Web **`1.4.983`**: Android/web video true edge-to-edge. Back on **`test`**. Marketing still **1.4.95**.
+
+### Mac Theo 2026-10-02 … Android Answer DM-but-no-join race
+
+**I am Mac Theo.** Intermittent: Answer dismisses ring UI, opens DM, caller still ringing. Root cause: Answer opened `?tab=chat&room=` → `MainActivity.onNewIntent` `webView.loadUrl` reloaded SPA mid `edge-callkit-answer` join (warm app). Cold start buffered and worked. **APK 1.3.3**: bring shell without that URI; in-page `replaceState`+`popstate` for other deep links; reset `webReady` on page start. Sideload owed. Windows: no `src/**` this fix (android only).

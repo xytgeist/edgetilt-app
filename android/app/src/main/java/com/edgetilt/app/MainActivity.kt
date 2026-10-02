@@ -81,7 +81,19 @@ class MainActivity : Activity() {
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
     setIntent(intent)
-    intent.data?.takeIf { EdgeLinks.staysInApp(it) }?.let { webView.loadUrl(it.toString()) }
+    val uri = intent.data?.takeIf { EdgeLinks.staysInApp(it) } ?: return
+    // Prefer in-page routing when the SPA is already up. A full loadUrl wipes LiveKit /
+    // ChatCallProvider mid answer (Answer used to open ?tab=chat&room= this way).
+    if (onAppPage && !webView.url.isNullOrBlank()) {
+      val target = uri.toString()
+      val quoted = JSONObject.quote(target)
+      webView.evaluateJavascript(
+        "(function(){try{var u=$quoted;if(location.href===u)return;history.replaceState(null,'',u);window.dispatchEvent(new PopStateEvent('popstate'));}catch(e){location.href=u;}})()",
+        null,
+      )
+    } else {
+      webView.loadUrl(uri.toString())
+    }
   }
 
   override fun onDestroy() {
@@ -138,6 +150,8 @@ class MainActivity : Activity() {
   private inner class ShellClient : WebViewClient() {
     override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
       onAppPage = EdgeLinks.isAppHost(Uri.parse(url))
+      // Full document loads drop JS listeners; buffer call events until callRingWebReady again.
+      EdgeCallRing.resetWebReady()
       // A full load drops the web's composer lock count, so drop the native lock with it.
       requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     }

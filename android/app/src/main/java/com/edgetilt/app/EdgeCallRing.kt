@@ -285,48 +285,34 @@ object EdgeCallRing {
 
   fun answer(ctx: Context, callId: String) {
     val invite = active?.takeIf { it.callId == callId } ?: restoreInvite(ctx)?.takeIf { it.callId == callId }
-    if (invite == null) {
-      // Pill Answer raced a queued full-screen UI for an already-cleared invite.
-      markHandled(callId)
-      dismissIncomingUi(ctx, callId)
-      cancelNotification(ctx, callId)
-      return
-    }
     markHandled(callId)
     dismissIncomingUi(ctx, callId)
     connection?.let {
-      it.setActive()
-      it.setDisconnected(android.telecom.DisconnectCause(android.telecom.DisconnectCause.LOCAL))
-      it.destroy()
+      try {
+        it.setActive()
+        it.setDisconnected(android.telecom.DisconnectCause(android.telecom.DisconnectCause.LOCAL))
+        it.destroy()
+      } catch (_: Exception) {
+      }
     }
     connection = null
     cancelNotification(ctx, callId)
     active = null
     clearPrefs(ctx)
-    // Do NOT open `?call=` … that deep link re-runs presentIncoming → second native ring.
-    // Join happens via `edge-callkit-answer` (same as CallKit).
-    val base = BuildConfig.BASE_URL.trimEnd('/')
-    val openUrl = if (invite.roomId.isNotEmpty()) {
-      "$base/?tab=chat&room=${Uri.encode(invite.roomId)}"
-    } else {
-      base
-    }
-    val open = Intent(ctx, MainActivity::class.java).apply {
-      action = Intent.ACTION_VIEW
-      data = Uri.parse(openUrl)
-      flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-    }
-    ctx.startActivity(open)
-    emit(
-      "edge-callkit-answer",
-      JSONObject()
-        .put("callId", invite.callId)
-        .put("roomId", invite.roomId)
-        .put("handle", invite.handle)
-        .put("callerName", invite.handle)
-        .put("hasVideo", invite.hasVideo)
-        .put("avatarUrl", invite.avatarUrl ?: ""),
-    )
+    // Bring the shell forward WITHOUT a ?tab=chat&room= URL.
+    // MainActivity.onNewIntent used to webView.loadUrl that URI, which reloads the SPA
+    // and kills ChatCallProvider mid edge-callkit-answer → DM opens, accept never lands,
+    // caller keeps ringing (warm-app race). Cold start buffers + replays on callRingWebReady.
+    // Join + openRoom happen in web via the answer event (same as CallKit).
+    bringShellToFront(ctx)
+    val detail = JSONObject()
+      .put("callId", callId)
+      .put("roomId", invite?.roomId ?: "")
+      .put("handle", invite?.handle ?: "Incoming call")
+      .put("callerName", invite?.handle ?: "Incoming call")
+      .put("hasVideo", invite?.hasVideo == true)
+      .put("avatarUrl", invite?.avatarUrl ?: "")
+    emit("edge-callkit-answer", detail)
   }
 
   fun decline(ctx: Context, callId: String) {
@@ -341,20 +327,24 @@ object EdgeCallRing {
           .put("callId", invite.callId)
           .put("roomId", invite.roomId),
       )
-      // Bring the shell up so web can run decline_call once listeners are ready.
-      val base = BuildConfig.BASE_URL.trimEnd('/')
-      val openUrl = if (invite.roomId.isNotEmpty()) {
-        "$base/?tab=chat&room=${Uri.encode(invite.roomId)}"
-      } else {
-        base
-      }
-      val open = Intent(ctx, MainActivity::class.java).apply {
-        action = Intent.ACTION_VIEW
-        data = Uri.parse(openUrl)
-        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-      }
-      ctx.startActivity(open)
+    } else {
+      emit(
+        "edge-callkit-decline",
+        JSONObject().put("callId", callId),
+      )
     }
+    // Same as answer: do not loadUrl a room deep link (wipes decline_call mid-flight).
+    bringShellToFront(ctx)
+  }
+
+  /** Foreground MainActivity without forcing a WebView navigation. */
+  private fun bringShellToFront(ctx: Context) {
+    val open = Intent(ctx, MainActivity::class.java).apply {
+      action = Intent.ACTION_MAIN
+      addCategory(Intent.CATEGORY_LAUNCHER)
+      flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+    }
+    ctx.startActivity(open)
   }
 
   fun end(ctx: Context, callId: String?, remote: Boolean = false): JSONObject {

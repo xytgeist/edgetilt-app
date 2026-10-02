@@ -18463,7 +18463,6 @@ export default function SocialFeed({
                           captionText={loungeDetailCaptionDisplayText(loungePostDetail.reposted_post)}
                           captionOpts={loungePostDetailRichCaptionOpts}
                           showCaption={Boolean(loungeDetailCaptionDisplayText(loungePostDetail.reposted_post))}
-                          captionStartExpanded
                           displayNameFor={displayNameFor}
                           handleFor={handleFor}
                           postAgeLabel={postAgeLabel}

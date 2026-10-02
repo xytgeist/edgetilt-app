@@ -27,6 +27,7 @@ import {
   setFantasyScoring,
   useFantasyScoring,
 } from './gameHubFantasyScoring.js'
+import { useFantasyPins } from './gameHubFantasyPins.js'
 import {
   CATCH_HANDS_LOCAL,
   CATCH_VIEWBOX_H,
@@ -2966,6 +2967,8 @@ function FieldViz({
 
   // Play anim just finished → pop each involved player's fantasy points for that play.
   const [fantasyToast, setFantasyToast] = useState(null)
+  const fantasyPins = useFantasyPins()
+  const fantasyPinSet = useMemo(() => new Set(fantasyPins.map(String)), [fantasyPins])
   const prevAnyPlayAnimRef = useRef(false)
   useEffect(() => {
     const was = prevAnyPlayAnimRef.current
@@ -4038,11 +4041,27 @@ function FieldViz({
             className="lounge-play-fantasy-toast pointer-events-none absolute inset-x-0 bottom-[43%] z-[8] flex flex-wrap items-center justify-center gap-1.5 px-3"
             aria-live="polite"
           >
-            {fantasyToast.rows.map((r) => (
+            {fantasyToast.rows.map((r) => {
+              const watched = Boolean(r.sleeperId) && fantasyPinSet.has(String(r.sleeperId))
+              const ptsColor =
+                r.points < 0 ? '#fda4af' : watched ? '#7dd3fc' : '#6ee7b7'
+              return (
               <div
                 key={r.key}
+                data-lounge-fantasy-toast-watched={watched ? '1' : '0'}
                 className="flex items-center gap-1.5 rounded-full py-0.5 pl-0.5 pr-2.5 shadow-lg"
-                style={{ background: 'rgba(9,9,11,0.82)', border: '1px solid rgba(255,255,255,0.18)' }}
+                style={
+                  watched
+                    ? {
+                        background: 'rgba(12, 74, 110, 0.88)',
+                        border: '1px solid rgba(56, 189, 248, 0.55)',
+                        boxShadow: '0 0 18px rgba(14, 165, 233, 0.35)',
+                      }
+                    : {
+                        background: 'rgba(9,9,11,0.82)',
+                        border: '1px solid rgba(255,255,255,0.18)',
+                      }
+                }
               >
                 {r.headshotUrl ? (
                   <img
@@ -4057,22 +4076,29 @@ function FieldViz({
                 <span className="text-[12px] font-semibold leading-none" style={{ color: '#fff' }}>
                   {r.name}
                   {r.position ? (
-                    <span className="ml-1 text-[9px] font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                    <span
+                      className="ml-1 text-[9px] font-semibold"
+                      style={{ color: watched ? 'rgba(186, 230, 253, 0.7)' : 'rgba(255,255,255,0.5)' }}
+                    >
                       {r.position}
                     </span>
                   ) : null}
                 </span>
                 <span
                   className="text-[13px] font-bold leading-none tabular-nums"
-                  style={{ color: r.points < 0 ? '#fda4af' : '#6ee7b7' }}
+                  style={{ color: ptsColor }}
                 >
                   {formatFantasyPoints(r.points)}
                 </span>
-                <span className="text-[8px] font-bold uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                <span
+                  className="text-[8px] font-bold uppercase tracking-wide"
+                  style={{ color: watched ? 'rgba(186, 230, 253, 0.65)' : 'rgba(255,255,255,0.45)' }}
+                >
                   pts
                 </span>
               </div>
-            ))}
+              )
+            })}
           </div>
         ) : null}
       </div>

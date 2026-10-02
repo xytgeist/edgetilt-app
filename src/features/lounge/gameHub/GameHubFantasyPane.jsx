@@ -7,6 +7,7 @@ import {
   setFantasyScoring,
   useFantasyScoring,
 } from './gameHubFantasyScoring.js'
+import { toggleFantasyPin, useFantasyPins } from './gameHubFantasyPins.js'
 
 function isDefOrDst(player) {
   const p = String(player?.position || '')
@@ -822,6 +823,8 @@ export default function GameHubFantasyPane({
   const gameColTitle = status === 'post' ? 'Game' : status === 'in' ? 'Live' : 'Proj'
   const paint = useLoungeSportsPillWashAndLogos(game)
   const scoring = useFantasyScoring()
+  const pins = useFantasyPins()
+  const pinSet = useMemo(() => new Set(pins.map(String)), [pins])
 
   const { matchups, rest } = useMemo(() => {
     const list = players || []
@@ -844,6 +847,13 @@ export default function GameHubFantasyPane({
       .filter((p) => ['QB', 'RB', 'WR', 'TE', 'K', 'DEF'].includes(normalizeFantasyPos(p)))
       .filter((p) => liveOrFinal || !featuredIds.has(String(p.sleeper_id)))
     board.sort((a, b) => {
+      const aPin = pinSet.has(String(a.sleeper_id))
+      const bPin = pinSet.has(String(b.sleeper_id))
+      if (aPin !== bPin) return aPin ? -1 : 1
+      if (aPin && bPin) {
+        // Preserve most-recently-selected order from the pin list.
+        return pins.indexOf(String(a.sleeper_id)) - pins.indexOf(String(b.sleeper_id))
+      }
       if (liveOrFinal) {
         const ga = playerFantasyPts(a, 'game', scoring) ?? -1
         const gb = playerFantasyPts(b, 'game', scoring) ?? -1
@@ -859,7 +869,7 @@ export default function GameHubFantasyPane({
     })
 
     return { matchups: slots, rest: board }
-  }, [players, liveOrFinal, scoring])
+  }, [players, liveOrFinal, scoring, pinSet, pins])
 
   if (loading) return <div className="py-10 text-center text-sm text-zinc-500">Loading fantasy…</div>
   if (error) return <div className="py-10 text-center text-sm text-lv-red">{error}</div>
@@ -890,45 +900,65 @@ export default function GameHubFantasyPane({
               const season = playerFantasyPts(p, 'season', scoring)
               const detail = seasonDetailLine(p)
               const col = restBoardPointsColumn(p, status, live, scoring)
+              const pinned = pinSet.has(String(p.sleeper_id))
               return (
-                <li
-                  key={p.sleeper_id}
-                  className="grid grid-cols-[minmax(0,1fr)_3.25rem_3.25rem] items-center gap-x-2 px-3 py-2.5"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <PlayerAvatar
-                      player={p}
-                      accentColor={fantasyAccentColor(p, game, paint)}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex min-w-0 items-center gap-1.5">
-                        <div className="truncate text-[14px] font-semibold text-zinc-100">{p.name}</div>
-                        <InjuryPill status={p.injury_status} />
-                      </div>
-                      <div className="truncate text-[12px] text-zinc-500">
-                        {p.position} · {p.team}
-                        {detail ? ` · ${detail}` : ''}
+                <li key={p.sleeper_id}>
+                  <button
+                    type="button"
+                    data-lounge-fantasy-pin={pinned ? '1' : '0'}
+                    onClick={() => toggleFantasyPin(p.sleeper_id)}
+                    aria-pressed={pinned}
+                    aria-label={
+                      pinned
+                        ? `Deselect ${p.name} from fantasy watch`
+                        : `Select ${p.name} for fantasy watch`
+                    }
+                    className={`grid w-full grid-cols-[minmax(0,1fr)_3.25rem_3.25rem] items-center gap-x-2 px-3 py-2.5 text-left touch-manipulation [-webkit-tap-highlight-color:transparent] ${
+                      pinned
+                        ? 'bg-sky-500/10 ring-1 ring-inset ring-sky-400/35'
+                        : 'active:bg-zinc-800/80'
+                    }`}
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <PlayerAvatar
+                        player={p}
+                        accentColor={fantasyAccentColor(p, game, paint)}
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <div className="truncate text-[14px] font-semibold text-zinc-100">{p.name}</div>
+                          {pinned ? (
+                            <span className="shrink-0 rounded-full bg-sky-500/25 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-sky-300">
+                              Watch
+                            </span>
+                          ) : null}
+                          <InjuryPill status={p.injury_status} />
+                        </div>
+                        <div className="truncate text-[12px] text-zinc-500">
+                          {p.position} · {p.team}
+                          {detail ? ` · ${detail}` : ''}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-[14px] font-bold tabular-nums text-zinc-100">{fmt(col.main)}</div>
-                    {col.under != null ? (
-                      <div
-                        className={`text-[10px] tabular-nums ${underToneClass(col.underTone, col.underMuted)}`}
-                      >
-                        {fmt(col.under)}
-                      </div>
-                    ) : (
-                      <div className="text-[10px] uppercase tracking-wide text-zinc-500">
-                        {fantasyScoringLabel(scoring)}
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-right">
-                    <div className="text-[14px] font-bold tabular-nums text-zinc-100">{fmt(season)}</div>
-                    <div className="text-[10px] uppercase tracking-wide text-zinc-500">YTD</div>
-                  </div>
+                    <div className="text-right">
+                      <div className="text-[14px] font-bold tabular-nums text-zinc-100">{fmt(col.main)}</div>
+                      {col.under != null ? (
+                        <div
+                          className={`text-[10px] tabular-nums ${underToneClass(col.underTone, col.underMuted)}`}
+                        >
+                          {fmt(col.under)}
+                        </div>
+                      ) : (
+                        <div className="text-[10px] uppercase tracking-wide text-zinc-500">
+                          {fantasyScoringLabel(scoring)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[14px] font-bold tabular-nums text-zinc-100">{fmt(season)}</div>
+                      <div className="text-[10px] uppercase tracking-wide text-zinc-500">YTD</div>
+                    </div>
+                  </button>
                 </li>
               )
             })}

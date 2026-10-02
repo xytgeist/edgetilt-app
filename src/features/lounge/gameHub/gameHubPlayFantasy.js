@@ -51,6 +51,7 @@ function row(hint, points, players, sideAbbrev) {
     name,
     position: String(matched?.position || '').toUpperCase(),
     headshotUrl: matched?.headshot_url ? String(matched.headshot_url) : '',
+    sleeperId: matched?.sleeper_id != null ? String(matched.sleeper_id) : '',
     points: round1(points),
   }
 }
@@ -95,7 +96,7 @@ export function playDefenseFantasyPoints(text, { defenseAbbrev = '', turnover = 
 /**
  * @param {string} text PBP row
  * @param {{ players?: object[], offenseAbbrev?: string, defenseAbbrev?: string, defenseLogo?: string, turnover?: boolean, recPoints?: number }} ctx
- * @returns {{ key: string, name: string, position: string, headshotUrl: string, points: number }[]}
+ * @returns {{ key: string, name: string, position: string, headshotUrl: string, sleeperId?: string, points: number }[]}
  */
 export function playFantasyPoints(text, ctx = {}) {
   const out = playerFantasyPoints(text, ctx)

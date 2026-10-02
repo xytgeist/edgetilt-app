@@ -115,7 +115,7 @@ The agent should treat the following as **standing instructions for this session
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
 ### Mac Theo ACTIVE TRACK 2026-10-01 ... Island ContentState 4KB fix
-**I am Mac Theo.** Watched-game Island stopped after Prime logo ship: embedding resized PNG bytes in `ContentState` blew ActivityKit’s ~4KB payload cap so `Activity.request` failed. Reverted to **logo HTTPS URLs** + widget `AsyncImage`; start Island immediately (no pre-download). **TestFlight-only Prod 1.4.95 (20261002021652)** uploaded (not attached). Skip `20261002015725`. Marketing still **1.4.95**.
+**I am Mac Theo.** Promoted **`test` → `main` (`ff1d2869`)**. Vercel prod web **`1.4.968`** (Island 4KB fix + Fantasy watch ring inset). Install TestFlight **20261002021652** for Island. Back on **`test`**. Marketing still **1.4.95**.
 
 ### Mac Theo ACTIVE TRACK 2026-10-01 ... Fantasy tab 546 OOM
 **I am Mac Theo.** Promoted **`test` → `main` (`091bcf6a`)**. Vercel prod web **`1.4.967`**. Includes Fantasy OOM fix (Edge already on prod) + Prime Island logo payload. Install TestFlight **20261002015725** for Island logos. Back on **`test`**. Marketing still **1.4.95**.

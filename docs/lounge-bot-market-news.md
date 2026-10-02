@@ -16,6 +16,8 @@ Allowlist poll (cron)  →  dedupe + score  →  caption template  →  auto-pub
 
 **Cross-source near-dupe (Aug 2026):** before publish, compare the candidate title to the last **10** published wire headlines (`loungeBotNewsDedupe.ts` token overlap). Skips CoinDesk vs Cointelegraph rewrites of the same story; also blocks duplicates within the same poll batch (highest score wins).
 
+**Cross-bot crypto near-dupe (Oct 2026):** Market Edge also compares **crypto-looking** candidates to Crypto Edge / Degentics' last **10** published headlines and skips matches. Routine crypto wire stays on Degentics; Market Edge keeps major/macro-overlap crypto only.
+
 **`review_mode`:** `automatic` on `lounge_bot_accounts`. Volume target: **~3–12 posts/day** driven by scoring thresholds, not Ryan's morning pass.
 
 **Audit:** admin **Bot ops** panel (last posts, source health, kill switch). Optional low-score rows logged but not published.
@@ -59,7 +61,6 @@ Migration **`20260705040000`**. Headline rewrite + source link only ... no full-
 | Finnhub general | `finnhub_general` | 3 min | Broad market headlines |
 | Finnhub M&A | `finnhub_category` | 5 min | Deals, takeovers |
 | Finnhub forex | `finnhub_category` | 5 min | Macro / FX |
-| Finnhub crypto | `finnhub_category` | 5 min | Major crypto headlines only (scoring gate) |
 | **SEC press releases** | `rss` | 5 min | Enforcement, rule proposals |
 | **Federal Reserve press** | `rss` | 5 min | FOMC, Fed speakers, policy |
 | **US Treasury press** | `rss` | 7 min | Fiscal, debt ceiling, sanctions |

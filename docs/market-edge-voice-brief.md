@@ -28,7 +28,7 @@
 | Topic | Rule |
 | --- | --- |
 | **SEC EDGAR filings** | **Never** (8-K, 10-Q, 10-K, any filing notice). |
-| **Crypto** | **Sometimes** on Market Edge ... **major stories only** (ETF/regulation, large liquidations, milestone prices, custody/policy). Minor altcoin noise → Crypto Edge or skip. |
+| **Crypto** | **Sometimes** on Market Edge ... **major stories only** (ETF/regulation, large liquidations, milestone prices, custody/policy). Finnhub crypto firehose + routine wire → **Crypto Edge / Degentics**. Near-dupe skips stories Degentics already posted. |
 | **Trump / political quotes** | **Only when market-linked** (tariffs, stocks, Fed, trade, oil, semis, etc.). Generic political quotes → skip. |
 | **Data prints** | **In** ... CPI, ISM, bill/ note auctions, CFTC positioning, SPR inventory, etc. |
 | **Sports + prediction markets** | **In** ... Polymarket, Kalshi, odds tied to macro/market angles. |

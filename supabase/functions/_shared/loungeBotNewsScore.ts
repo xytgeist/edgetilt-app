@@ -330,44 +330,98 @@ const TRUMP_MARKET_CONTEXT = [
   'kalshi',
 ]
 
+/**
+ * Market Edge may still post crypto when it is macro-relevant / major.
+ * Keep this list tight ... bare "exchange" / "binance" / "coinbase" used to
+ * let routine Degentics wire through as Market Edge doubles.
+ */
 const MAJOR_CRYPTO_SIGNALS = [
-  'etf',
+  'bitcoin etf',
+  'ether etf',
+  'ethereum etf',
+  'spot etf',
+  ' etf',
+  'etf ',
+  'sec approv',
+  'sec reject',
   'sec ',
   'regulat',
+  'crypto regul',
   'hack',
-  'billion',
-  'trillion',
+  'exploit',
+  'breach',
   'liquidat',
-  'all-time',
+  'all-time high',
+  'all time high',
+  ' ath',
   'record high',
-  'circuit',
+  'circuit breaker',
   'blackrock',
   'fidelity',
+  'depeg',
   'stablecoin',
-  'reclaims',
-  'falls below',
-  'surpass',
   'custody',
-  'sberbank',
-  'binance',
-  'coinbase',
+  'micar',
+  'mica ',
   'microstrategy',
   'saylor',
-  'mica',
-  'exchange',
+  'trillion',
+  'billion',
 ]
+
+/** Tiers that make a crypto-flavored headline a real Market Edge story. */
+const CRYPTO_MACRO_COMPANION_TIERS = new Set([
+  'economic_data',
+  'fed_central_bank',
+  'regulatory',
+  'geopolitical',
+  'earnings_guidance',
+  'commodities',
+  'ma_distress_activist',
+])
 
 function isNonMarketTrumpStory(blob: string): boolean {
   if (!TRUMP_RE.test(blob)) return false
   return !TRUMP_MARKET_CONTEXT.some((kw) => blob.includes(kw))
 }
 
-function isMinorCryptoOnlyStory(blob: string, matchedTiers: string[]): boolean {
+function hasMajorCryptoSignal(blob: string): boolean {
+  if (MAJOR_CRYPTO_SIGNALS.some((kw) => blob.includes(kw))) return true
+  if (/\$\d{2,}[,\d]*|\d+\s*(billion|million)\b|\d+\s*m liquidat/i.test(blob)) return true
+  return false
+}
+
+/**
+ * True when Market Edge should leave this to Crypto Edge (Degentics):
+ * crypto-flavored, not a major signal, and no strong macro companion tier.
+ */
+function shouldDeferCryptoToCryptoEdge(blob: string, matchedTiers: string[]): boolean {
   if (!matchedTiers.includes('crypto_risk')) return false
-  if (matchedTiers.some((t) => t !== 'crypto_risk')) return false
-  if (MAJOR_CRYPTO_SIGNALS.some((kw) => blob.includes(kw))) return false
-  if (/\$\d{2,}[,\d]*|\d+\s*(billion|million)\b|\d+\s*m liquidat/i.test(blob)) return false
+  if (hasMajorCryptoSignal(blob)) return false
+  if (matchedTiers.some((t) => t !== 'crypto_risk' && CRYPTO_MACRO_COMPANION_TIERS.has(t))) {
+    return false
+  }
   return true
+}
+
+/** Title/summary looks like crypto wire (for cross-bot near-dupe). */
+export function looksLikeCryptoWireStory(title: string, summary = ''): boolean {
+  const blob = `${title} ${summary}`.toLowerCase()
+  if (!blob.trim()) return false
+  return (
+    blob.includes('bitcoin') ||
+    blob.includes('btc') ||
+    blob.includes('ethereum') ||
+    blob.includes(' eth ') ||
+    blob.includes('crypto') ||
+    blob.includes('digital asset') ||
+    blob.includes('defi') ||
+    blob.includes('stablecoin') ||
+    blob.includes('solana') ||
+    blob.includes('$btc') ||
+    blob.includes('$eth') ||
+    blob.includes('$sol')
+  )
 }
 
 const CASHTAG_RE = /\$([A-Za-z][A-Za-z0-9.-]{0,14})\b/g
@@ -460,8 +514,9 @@ export function scoreNewsCandidateDetailed(
 
   const { matchedTiers, tierBonus } = matchTopicTiers(blob)
 
-  if (isMinorCryptoOnlyStory(blob, matchedTiers)) {
-    return { score: Math.min(44, 28 + tierBonus), matchedTiers }
+  if (shouldDeferCryptoToCryptoEdge(blob, matchedTiers)) {
+    // Below default publish threshold (55) ... Degentics owns routine crypto wire.
+    return { score: Math.min(44, 28 + Math.min(tierBonus, 10)), matchedTiers }
   }
 
   // Off-topic general news stays below default publish threshold (55).

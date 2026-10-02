@@ -144,3 +144,30 @@ export async function loadRecentPublishedWireHeadlines(
   }
   return out
 }
+
+/** Resolve a bot slug → user_id (for cross-bot near-dupe). */
+export async function loadBotUserIdBySlug(
+  admin: SupabaseClient,
+  slug: string,
+): Promise<string | null> {
+  const key = String(slug || '').trim()
+  if (!key) return null
+  const { data, error } = await admin
+    .from('lounge_bot_accounts')
+    .select('user_id')
+    .eq('slug', key)
+    .maybeSingle()
+  if (error || !data?.user_id) return null
+  return String(data.user_id)
+}
+
+/** Recent wire headlines for another bot slug (e.g. crypto-edge when Market Edge publishes). */
+export async function loadRecentPublishedWireHeadlinesForSlug(
+  admin: SupabaseClient,
+  slug: string,
+  limit = NEWS_NEAR_DUPE_LOOKBACK,
+): Promise<string[]> {
+  const userId = await loadBotUserIdBySlug(admin, slug)
+  if (!userId) return []
+  return loadRecentPublishedWireHeadlines(admin, userId, limit)
+}

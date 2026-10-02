@@ -15,10 +15,12 @@ import { buildFinancialWireCaption, buildFinancialWirePostAsync } from '../_shar
 import {
   extractTickers,
   isBlockedNewsItem,
+  looksLikeCryptoWireStory,
   normalizeTitleHash,
   scoreNewsCandidate,
 } from '../_shared/loungeBotNewsScore.ts'
 import { DEFAULT_MARKET_EDGE_SLUG } from '../_shared/loungeBotMarketNewsDefaults.ts'
+import { DEFAULT_CRYPTO_EDGE_SLUG } from '../_shared/loungeBotCryptoNewsDefaults.ts'
 import {
   defaultNewsSourcesForProfile,
   newsProfileFromAccount,
@@ -28,6 +30,7 @@ import { fetchAllowlistedFeed, type NormalizedNewsItem } from '../_shared/lounge
 import { publishLoungeBotPost } from '../_shared/loungeBotPublish.ts'
 import {
   loadRecentPublishedWireHeadlines,
+  loadRecentPublishedWireHeadlinesForSlug,
   newsTextNearDuplicateOfAny,
   NEWS_NEAR_DUPE_LOOKBACK,
 } from '../_shared/loungeBotNewsDedupe.ts'
@@ -93,6 +96,31 @@ async function ensureDefaultNewsSources(
       enabled: true,
     })
     existingNames.add(seed.name)
+  }
+}
+
+/**
+ * Market Edge used to poll Finnhub crypto alongside Degentics ... that was a
+ * double-post firehose. Soft-disable leftover rows (defaults no longer seed it).
+ */
+async function disableRetiredMarketCryptoSources(
+  admin: SupabaseClient,
+  profile: ReturnType<typeof newsProfileFromAccount>,
+  existingSources: NewsSource[],
+): Promise<void> {
+  if (profile === 'crypto') return
+  for (const source of existingSources) {
+    if (!source.enabled) continue
+    const category = String(source.api_config?.category || '').trim().toLowerCase()
+    const isFinnhubCrypto =
+      source.kind === 'finnhub_category' && category === 'crypto'
+    const isNamedFinnhubCrypto = String(source.name || '').trim().toLowerCase() === 'finnhub crypto'
+    if (!isFinnhubCrypto && !isNamedFinnhubCrypto) continue
+    await admin
+      .from('lounge_news_sources')
+      .update({ enabled: false, last_error: 'Retired: crypto firehose owned by Crypto Edge.' })
+      .eq('id', source.id)
+    source.enabled = false
   }
 }
 
@@ -351,6 +379,7 @@ Deno.serve(async (req) => {
     const sourceRows = (allSources || []) as NewsSource[]
 
     await ensureDefaultNewsSources(admin, account.user_id, newsProfile, sourceRows)
+    await disableRetiredMarketCryptoSources(admin, newsProfile, sourceRows)
 
     await ensureWatchlistCompanySources(
       admin,
@@ -461,8 +490,18 @@ Deno.serve(async (req) => {
       account.user_id,
       NEWS_NEAR_DUPE_LOOKBACK,
     )
+    // Market Edge: also skip crypto-looking stories Degentics already ran.
+    const siblingCryptoHeadlines =
+      isMarketProfile
+        ? await loadRecentPublishedWireHeadlinesForSlug(
+          admin,
+          DEFAULT_CRYPTO_EDGE_SLUG,
+          NEWS_NEAR_DUPE_LOOKBACK,
+        )
+        : []
     const acceptedHeadlines = [...recentHeadlines]
     let skippedNearDupe = 0
+    let skippedSiblingCryptoDupe = 0
 
     if (!dryRun && publishBudget > 0) {
       for (const cand of candidates) {
@@ -486,6 +525,24 @@ Deno.serve(async (req) => {
             score: cand.score,
             status: 'skipped',
             error_message: `Near-duplicate of a recent wire post (last ${NEWS_NEAR_DUPE_LOOKBACK}).`,
+          })
+          continue
+        }
+
+        if (
+          siblingCryptoHeadlines.length > 0 &&
+          looksLikeCryptoWireStory(cand.item.title, cand.item.summary || '') &&
+          newsTextNearDuplicateOfAny(cand.item.title, siblingCryptoHeadlines)
+        ) {
+          skippedSiblingCryptoDupe += 1
+          skipped += 1
+          await admin.from('lounge_bot_publish_log').insert({
+            bot_user_id: account.user_id,
+            raw_item_id: rawMatch?.id || null,
+            caption: buildFinancialWireCaption(cand.item),
+            score: cand.score,
+            status: 'skipped',
+            error_message: `Near-duplicate of a recent Crypto Edge wire post (last ${NEWS_NEAR_DUPE_LOOKBACK}).`,
           })
           continue
         }
@@ -533,6 +590,14 @@ Deno.serve(async (req) => {
           skippedNearDupe += 1
           continue
         }
+        if (
+          siblingCryptoHeadlines.length > 0 &&
+          looksLikeCryptoWireStory(cand.item.title, cand.item.summary || '') &&
+          newsTextNearDuplicateOfAny(cand.item.title, siblingCryptoHeadlines)
+        ) {
+          skippedSiblingCryptoDupe += 1
+          continue
+        }
         acceptedHeadlines.unshift(cand.item.title)
       }
     }
@@ -555,6 +620,7 @@ Deno.serve(async (req) => {
       published,
       skipped,
       skippedNearDupe,
+      skippedSiblingCryptoDupe,
       nearDupeLookback: NEWS_NEAR_DUPE_LOOKBACK,
       publishBudget: Number.isFinite(publishBudget) ? publishBudget : null,
       publishedHour,

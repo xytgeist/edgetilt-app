@@ -15,7 +15,8 @@ export const DEFAULT_MARKET_NEWS_SOURCES: MarketNewsSourceSeed[] = [
   { name: 'Finnhub general market', kind: 'finnhub_general', api_config: { category: 'general' }, poll_interval_sec: 180 },
   { name: 'Finnhub M&A', kind: 'finnhub_category', api_config: { category: 'merger' }, poll_interval_sec: 300 },
   { name: 'Finnhub forex / macro', kind: 'finnhub_category', api_config: { category: 'forex' }, poll_interval_sec: 300 },
-  { name: 'Finnhub crypto', kind: 'finnhub_category', api_config: { category: 'crypto' }, poll_interval_sec: 300 },
+  // Finnhub crypto firehose lives on Crypto Edge (Degentics) only — Market Edge
+  // still scores major crypto that shows up on general / gov / publisher feeds.
 
   // US government / regulator RSS (public; headline + link) — no SEC EDGAR filing feeds
   {

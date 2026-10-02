@@ -29,7 +29,7 @@ Uses `config.news_profile` (`market` | `crypto`) to pick source allowlist and sc
 
 ## Default sources
 
-- **Market Edge:** Finnhub (general, M&A, forex, crypto), SEC EDGAR, gov RSS, BBC/NPR — `docs/lounge-bot-market-news.md`
+- **Market Edge:** Finnhub (general, M&A, forex … **not** crypto category), gov RSS, BBC/NPR / Yahoo / MarketWatch — `docs/lounge-bot-market-news.md`. Crypto firehose + cross-bot near-dupe → Crypto Edge.
 - **Crypto Edge:** Finnhub crypto + CoinDesk/Block/Decrypt + tier 2 publishers + SEC/CFTC/Fed — `docs/lounge-bot-crypto-news.md`
 
 ## Body

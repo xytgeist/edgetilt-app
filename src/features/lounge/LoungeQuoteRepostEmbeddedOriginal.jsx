@@ -1,8 +1,3 @@
-import {
-  feedPostDisplayCaption,
-  isQuoteRepostPost,
-  quoteRepostOriginalUnavailable,
-} from '../../utils/communityFeedPost.js'
 import { isLoungeFanOnlyPostLocked, showLoungeFanOnlyPostUnlockedTint } from '../../utils/loungeFanOnlyPost.js'
 import LoungeQuoteRepostEmbedAuthorMeta from './LoungeQuoteRepostEmbedAuthorMeta.jsx'
 import LoungeExpandableRichCaption from './LoungeExpandableRichCaption.jsx'
@@ -10,7 +5,6 @@ import LoungeLinkPreviewBlock from './LoungeLinkPreviewBlock.jsx'
 import { LoungePostFeedImagesAndGif } from './LoungePostFeedMedia.jsx'
 import LoungeFanOnlyLockedPostInset from './LoungeFanOnlyLockedPostInset.jsx'
 import LoungeFanOnlyPostRowTint from './LoungeFanOnlyPostRowTint.jsx'
-import LoungePostOriginalUnavailableEmbed from './LoungePostOriginalUnavailableEmbed.jsx'
 import {
   LOUNGE_QUOTE_EMBED_CAPTION_CLASS,
   LOUNGE_QUOTE_EMBED_SHELL_BASE,
@@ -19,7 +13,8 @@ import {
 } from './loungeFeedAvatar.js'
 
 /**
- * Quote-repost card inset: original post body, or locked blur + subscribe for fan-only sources.
+ * Quote-repost card inset: the immediate original’s body only (one level).
+ * If that original is itself a quote, do not nest its target here.
  */
 export default function LoungeQuoteRepostEmbeddedOriginal({
   hostPost,
@@ -33,8 +28,6 @@ export default function LoungeQuoteRepostEmbeddedOriginal({
   postAgeLabel,
   onEmbeddedAuthorProfile,
   onOpenOriginal,
-  /** Open any quoted post (used for the inner original on quote-of-quote). */
-  onOpenQuotedPost,
   onLinkPreviewOpen,
   renderMarketStrip,
   mediaLightboxProps,
@@ -45,8 +38,6 @@ export default function LoungeQuoteRepostEmbeddedOriginal({
   /** `embed` = feed/detail inset; `preview` = quote-repost composer (non-interactive). */
   variant = 'embed',
   previewAriaLabel = 'Quoted post preview',
-  /** One extra nest for quote-of-quote … do not recurse further. */
-  nestDepth = 0,
 }) {
   if (!repostedPost) return null
 
@@ -107,44 +98,6 @@ export default function LoungeQuoteRepostEmbeddedOriginal({
             firstMarginTopClass="mt-2"
             {...mediaLightboxProps}
           />
-          {nestDepth < 1 && isQuoteRepostPost(repostedPost) ? (
-            quoteRepostOriginalUnavailable(repostedPost) ? (
-              <LoungePostOriginalUnavailableEmbed post={repostedPost} className="mt-2" />
-            ) : repostedPost.reposted_post ? (
-              <div className="mt-2">
-                <LoungeQuoteRepostEmbeddedOriginal
-                  hostPost={repostedPost}
-                  repostedPost={repostedPost.reposted_post}
-                  fanLockCtx={fanLockCtx}
-                  captionText={feedPostDisplayCaption(repostedPost.reposted_post)}
-                  captionOpts={captionOpts}
-                  showCaption={Boolean(feedPostDisplayCaption(repostedPost.reposted_post))}
-                  displayNameFor={displayNameFor}
-                  handleFor={handleFor}
-                  postAgeLabel={postAgeLabel}
-                  onEmbeddedAuthorProfile={onEmbeddedAuthorProfile}
-                  onOpenOriginal={
-                    onOpenQuotedPost
-                      ? (e) => {
-                          e?.stopPropagation?.()
-                          onOpenQuotedPost(repostedPost.reposted_post)
-                        }
-                      : undefined
-                  }
-                  onOpenQuotedPost={onOpenQuotedPost}
-                  onLinkPreviewOpen={onLinkPreviewOpen}
-                  renderMarketStrip={renderMarketStrip}
-                  mediaLightboxProps={mediaLightboxProps}
-                  onOpenGuideCard={onOpenGuideCard}
-                  fanSubscribeBusy={fanSubscribeBusy}
-                  onSubscribeToCreatorFan={onSubscribeToCreatorFan}
-                  captionStartExpanded={captionStartExpanded}
-                  variant={variant}
-                  nestDepth={nestDepth + 1}
-                />
-              </div>
-            ) : null
-          ) : null}
           {repostedPost.is_ap_guide_post && repostedPost.game_slug ? (
             <button
               type="button"

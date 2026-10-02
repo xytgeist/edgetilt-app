@@ -8496,16 +8496,13 @@ export default function SocialFeed({
       if (composerUserId && !loungePendingPublishIsOptimisticId(post.id)) {
         void refreshLoungePostInteractions([post.id])
       }
-      const quoteNeedsInner =
+      // Immediate original missing on open … rehydrate one hop (never nest deeper).
+      const quoteNeedsOriginal =
         isQuoteRepostPost(post) &&
         post.repost_target_unavailable !== true &&
-        ((post.repost_of_post_id && !post.reposted_post) ||
-          (post.reposted_post &&
-            isQuoteRepostPost(post.reposted_post) &&
-            post.reposted_post.repost_target_unavailable !== true &&
-            post.reposted_post.repost_of_post_id &&
-            !post.reposted_post.reposted_post))
-      if (quoteNeedsInner && !loungePendingPublishIsOptimisticId(post.id)) {
+        post.repost_of_post_id &&
+        !post.reposted_post
+      if (quoteNeedsOriginal && !loungePendingPublishIsOptimisticId(post.id)) {
         void hydrateCommunityPosts([post]).then((hydrated) => {
           const next = hydrated?.[0]
           if (!next?.id) return
@@ -18471,7 +18468,6 @@ export default function SocialFeed({
                           handleFor={handleFor}
                           postAgeLabel={postAgeLabel}
                           onOpenOriginal={() => openLoungePostDetail(loungePostDetail.reposted_post)}
-                          onOpenQuotedPost={(quoted) => openLoungePostDetail(quoted)}
                           onLinkPreviewOpen={openLinkPreview}
                           renderMarketStrip={(row, className) => (
                             <LoungeMarketChartStrip

@@ -683,7 +683,6 @@ function LoungePostArticle({
                 postAgeLabel={postAgeLabel}
                 onEmbeddedAuthorProfile={onEmbeddedAuthorProfile}
                 onOpenOriginal={() => onPostBodyClick?.(post.reposted_post)}
-                onOpenQuotedPost={(quoted) => onPostBodyClick?.(quoted)}
                 onLinkPreviewOpen={onLinkPreviewOpen}
                 renderMarketStrip={renderMarketStrip}
                 mediaLightboxProps={mediaLightboxProps}

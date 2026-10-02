@@ -1066,8 +1066,8 @@ export default function AppShell({
       }
 
       let repostById = {}
-      // Two hops … quote-of-quote needs the inner original (C→B→A). Stop at 2 to avoid cycles.
-      if (depth < 2) {
+      // One hop only … quote embeds show the immediate original, never a nested quote chain.
+      if (depth === 0) {
         const repostTargetIds = [
           ...new Set(
             rows
@@ -1193,7 +1193,7 @@ export default function AppShell({
         ...r,
         author_profile: profileByUserId[uidKey(r.user_id)] || null,
         reposted_post:
-          depth < 2 && r.repost_of_post_id != null && r.repost_of_post_id !== ''
+          depth === 0 && r.repost_of_post_id != null && r.repost_of_post_id !== ''
             ? repostById[uidKey(r.repost_of_post_id)] || null
             : null,
         reposted_comment:

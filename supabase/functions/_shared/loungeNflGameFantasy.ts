@@ -86,6 +86,8 @@ const KALSHI_FETCH_CONCURRENCY = 2
 const KALSHI_FETCH_RETRIES = 5
 
 const CACHE_TTL_MS = 90_000
+/** Still serve a board this old while a background rebuild runs (or as last resort). */
+const CACHE_STALE_SERVE_MS = 6 * 60 * 60 * 1000
 
 const HEADSHOT_CDN = (espnId: string) =>
   `https://a.espncdn.com/i/headshots/nfl/players/full/${espnId}.png`
@@ -650,6 +652,7 @@ async function loadPlayersFromDb(
 }
 
 async function loadPlayersFromSleeper(away: string, home: string): Promise<Array<Record<string, unknown>>> {
+  // Last-resort roster fill only. This endpoint is ~15MB … avoid on the hot path.
   const raw = (await fetchJson(SLEEPER_PLAYERS)) as Record<string, Record<string, unknown>>
   const out: Array<Record<string, unknown>> = []
   for (const [id, p] of Object.entries(raw || {})) {
@@ -686,30 +689,6 @@ async function loadPlayersFromSleeper(away: string, home: string): Promise<Array
     })
   }
   return out
-}
-
-/** Fresh Sleeper injury + jersey tags for the two teams (overlay even when roster comes from DB). */
-async function loadSleeperRosterOverlay(
-  away: string,
-  home: string,
-): Promise<{ injury: Map<string, string>; jersey: Map<string, string> }> {
-  const injury = new Map<string, string>()
-  const jersey = new Map<string, string>()
-  try {
-    const raw = (await fetchJson(SLEEPER_PLAYERS)) as Record<string, Record<string, unknown>>
-    for (const [id, p] of Object.entries(raw || {})) {
-      if (!p || typeof p !== 'object') continue
-      const team = normTeam(String(p.team || ''))
-      if (team !== away && team !== home) continue
-      const inj = String(p.injury_status || '').trim()
-      if (inj) injury.set(String(id), inj)
-      const num = p.number != null ? String(p.number).trim() : ''
-      if (num) jersey.set(String(id), num)
-    }
-  } catch {
-    // optional overlay
-  }
-  return { injury, jersey }
 }
 
 type SleeperStatRow = {
@@ -833,7 +812,9 @@ async function loadSleeperSeasonStats(season: string): Promise<Map<string, Sleep
 const SLEEPER_SEASON_CACHE = new Map<string, { at: number; map: Map<string, SleeperStatRow> }>()
 const SLEEPER_SEASON_CACHE_TTL_MS = 6 * 60 * 60 * 1000
 /** How many regular seasons to fold into career (includes current). */
-const CAREER_LOOKBACK_SEASONS = 20
+const CAREER_LOOKBACK_SEASONS = 8
+/** Soft cap on parallel past-season fetches … cold isolates OOM when this was 5 × 20 seasons. */
+const CAREER_FETCH_CONCURRENCY = 2
 
 async function loadSleeperSeasonStatsCached(season: string): Promise<Map<string, SleeperStatRow>> {
   const hit = SLEEPER_SEASON_CACHE.get(season)
@@ -1057,7 +1038,7 @@ async function loadCareerSeasonMaps(
   for (let y = year - 1; y >= year - (CAREER_LOOKBACK_SEASONS - 1); y--) {
     past.push(String(y))
   }
-  const pastMaps = await mapPool(past, 5, (s) => loadSleeperSeasonStatsCached(s))
+  const pastMaps = await mapPool(past, CAREER_FETCH_CONCURRENCY, (s) => loadSleeperSeasonStatsCached(s))
   const maps = pastMaps.filter((m) => m.size > 0)
   if (currentMap.size) maps.push(currentMap)
   return maps
@@ -1494,18 +1475,48 @@ export async function buildNflGameFantasy(
     .select('payload, fetched_at')
     .eq('event_id', eventId)
     .maybeSingle()
-  if (cached?.payload && cached.fetched_at) {
-    const age = Date.now() - new Date(cached.fetched_at).getTime()
-    if (age >= 0 && age < CACHE_TTL_MS) {
-      return cached.payload as NflGameFantasyPayload
+  const cacheAge =
+    cached?.payload && cached.fetched_at
+      ? Date.now() - new Date(cached.fetched_at).getTime()
+      : Number.POSITIVE_INFINITY
+  if (cached?.payload && cacheAge >= 0 && cacheAge < CACHE_TTL_MS) {
+    return cached.payload as NflGameFantasyPayload
+  }
+
+  // Soft-expired cache: return last good board immediately and refresh in the background when
+  // the runtime supports it. Avoids hub Fantasy/Players tabs hanging on a cold 15MB rebuild.
+  const staleOk =
+    Boolean(cached?.payload) && cacheAge >= 0 && cacheAge < CACHE_STALE_SERVE_MS
+  if (staleOk) {
+    const edgeRuntime = (globalThis as { EdgeRuntime?: { waitUntil?: (p: Promise<unknown>) => void } })
+      .EdgeRuntime
+    if (typeof edgeRuntime?.waitUntil === 'function') {
+      edgeRuntime.waitUntil(
+        rebuildNflGameFantasyPayload(admin, { eventId, away, home }).catch(() => null),
+      )
+      return cached!.payload as NflGameFantasyPayload
     }
   }
+
+  try {
+    return await rebuildNflGameFantasyPayload(admin, { eventId, away, home })
+  } catch (err) {
+    if (staleOk) return cached!.payload as NflGameFantasyPayload
+    throw err
+  }
+}
+
+async function rebuildNflGameFantasyPayload(
+  admin: SupabaseClient,
+  opts: { eventId: string; away: string; home: string },
+): Promise<NflGameFantasyPayload> {
+  const { eventId, away, home } = opts
 
   const sources: string[] = []
   let rawRows = await loadPlayersFromDb(admin, away, home)
   if (rawRows.length >= 8) {
     sources.push('nfl_players')
-    // Skill roster is synced without K/DEF today … pull those seats from Sleeper.
+    // Prefer DB K/DEF. Only hit Sleeper's ~15MB players dump when both seats are missing.
     if (!rawRows.some((row) => isKickerOrDefense(row))) {
       try {
         const sleeperRows = await loadPlayersFromSleeper(away, home)
@@ -1568,10 +1579,6 @@ export async function buildNflGameFantasy(
     ? await loadPosRankPoolSizes(admin, seasonStats)
     : new Map<string, number>()
   if (posRankOf.size) sources.push('pos_rank_pools')
-
-  const sleeperOverlay = await loadSleeperRosterOverlay(away, home)
-  if (sleeperOverlay.injury.size) sources.push('sleeper_injury')
-  if (sleeperOverlay.jersey.size) sources.push('sleeper_jersey')
 
   const players: NflGameFantasyPlayer[] = []
   for (const row of rawRows) {
@@ -1666,10 +1673,7 @@ export async function buildNflGameFantasy(
     if (careerMaps.length) {
       mapped.career = sumCareerStats(careerMaps, mapped.sleeper_id)
     }
-    const inj = sleeperOverlay.injury.get(mapped.sleeper_id)
-    if (inj) mapped.injury_status = inj
-    const jersey = sleeperOverlay.jersey.get(mapped.sleeper_id)
-    if (jersey) mapped.jersey = jersey
+    // Injury / jersey stay from `nfl_players` (synced) … no Sleeper players-dump overlay.
     players.push(mapped)
   }
 

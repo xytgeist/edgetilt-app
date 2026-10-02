@@ -3,6 +3,27 @@
  * @param {import('@supabase/supabase-js').SupabaseClient} supabase
  * @param {Record<string, unknown>} [body]
  */
+async function edgeInvokeErrorMessage(error, fallback) {
+  let message = error?.message || fallback
+  try {
+    const ctx = error?.context
+    if (ctx && typeof ctx.json === 'function') {
+      const errBody = await ctx.json()
+      if (errBody?.error) message = String(errBody.error)
+      else if (errBody?.message) {
+        const code = errBody.code ? `${errBody.code}: ` : ''
+        message = `${code}${errBody.message}`
+      }
+      if (/WORKER_RESOURCE_LIMIT/i.test(String(errBody?.code || message))) {
+        message = 'Fantasy board is busy … try again in a few seconds.'
+      }
+    }
+  } catch {
+    /* ignore */
+  }
+  return message
+}
+
 export async function loungeSportsScoreboard(supabase, body = {}) {
   let {
     data: { session },
@@ -20,19 +41,7 @@ export async function loungeSportsScoreboard(supabase, body = {}) {
     headers: { Authorization: `Bearer ${session.access_token}` },
   })
 
-  if (error) {
-    let message = error.message || 'Scoreboard request failed.'
-    try {
-      const ctx = error.context
-      if (ctx && typeof ctx.json === 'function') {
-        const errBody = await ctx.json()
-        if (errBody?.error) message = String(errBody.error)
-      }
-    } catch {
-      /* ignore */
-    }
-    return { error: message }
-  }
+  if (error) return { error: await edgeInvokeErrorMessage(error, 'Scoreboard request failed.') }
   if (data && typeof data === 'object' && data.error) return { error: String(data.error) }
   return data
 }
@@ -126,19 +135,7 @@ export async function loungeCfbGamePlayers(supabase, opts) {
     headers: { Authorization: `Bearer ${session.access_token}` },
   })
 
-  if (error) {
-    let message = error.message || 'CFB roster request failed.'
-    try {
-      const ctx = error.context
-      if (ctx && typeof ctx.json === 'function') {
-        const errBody = await ctx.json()
-        if (errBody?.error) message = String(errBody.error)
-      }
-    } catch {
-      /* ignore */
-    }
-    return { error: message }
-  }
+  if (error) return { error: await edgeInvokeErrorMessage(error, 'CFB roster request failed.') }
   if (data && typeof data === 'object' && data.error) return { error: String(data.error) }
   return data
 }
@@ -184,19 +181,7 @@ export async function loungeGameNews(supabase, game) {
     headers: { Authorization: `Bearer ${session.access_token}` },
   })
 
-  if (error) {
-    let message = error.message || 'Game news request failed.'
-    try {
-      const ctx = error.context
-      if (ctx && typeof ctx.json === 'function') {
-        const errBody = await ctx.json()
-        if (errBody?.error) message = String(errBody.error)
-      }
-    } catch {
-      /* ignore */
-    }
-    return { error: message }
-  }
+  if (error) return { error: await edgeInvokeErrorMessage(error, 'Game news request failed.') }
   if (data && typeof data === 'object' && data.error) return { error: String(data.error) }
   return { news: data?.news ?? null }
 }
@@ -232,19 +217,7 @@ export async function loungeNflGameFantasy(supabase, opts) {
     headers: { Authorization: `Bearer ${session.access_token}` },
   })
 
-  if (error) {
-    let message = error.message || 'Fantasy request failed.'
-    try {
-      const ctx = error.context
-      if (ctx && typeof ctx.json === 'function') {
-        const errBody = await ctx.json()
-        if (errBody?.error) message = String(errBody.error)
-      }
-    } catch {
-      /* ignore */
-    }
-    return { error: message }
-  }
+  if (error) return { error: await edgeInvokeErrorMessage(error, 'Fantasy request failed.') }
   if (data && typeof data === 'object' && data.error) return { error: String(data.error) }
   return data
 }

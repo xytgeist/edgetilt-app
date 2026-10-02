@@ -1351,7 +1351,7 @@ function PossessionFootball({ side }) {
   )
 }
 
-/** National TV / stream chip under the kickoff clock … opens the watch site. */
+/** National TV / stream chip under the kickoff clock … opens outside Edge (Safari / streaming app). */
 function WatchBroadcastPill({ label, url }) {
   const text = String(label || '').trim()
   const href = String(url || '').trim()
@@ -1361,7 +1361,8 @@ function WatchBroadcastPill({ label, url }) {
       type="button"
       data-lounge-game-watch-pill
       onClick={() => {
-        if (href) void openExternalUrl(href)
+        // system: true … leave the IPA (universal links can hand off to Prime / ESPN / etc.).
+        if (href) void openExternalUrl(href, { system: true })
       }}
       disabled={!href}
       className="mt-1 inline-flex max-w-full items-center justify-center rounded-full border border-white/25 bg-white/15 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white shadow-sm backdrop-blur-sm touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/25 disabled:opacity-60"

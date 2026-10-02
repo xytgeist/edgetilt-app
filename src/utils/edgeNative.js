@@ -263,21 +263,26 @@ export function dismissEdgeKeyboard() {
 }
 
 /**
- * Open an arbitrary http(s) URL outside the app.
- * EdgeiOS shell → in-app Safari sheet (`openInSafari`; IPAs before the in-app browser use system Safari). Elsewhere → `window.open`.
+ * Open an arbitrary http(s) URL outside the WKWebView.
+ * EdgeiOS shell → in-app Safari sheet by default (`openInSafari`); pass `{ system: true }` for
+ * system Safari / universal-link handoff (billing, watch-the-game). Elsewhere → `window.open`.
  * Prefer this over raw `window.open` so the IPA never spawns a blank child WKWebView.
  *
  * @param {string} url
+ * @param {{ system?: boolean }} [opts]
  * @returns {Promise<{ ok: boolean, via: 'safari' | 'window' | 'noop' | 'error' }>}
  */
-export async function openExternalUrl(url) {
+export async function openExternalUrl(url, opts = {}) {
   const href = String(url || '').trim()
   if (!href) return { ok: false, via: 'noop' }
   if (typeof window === 'undefined') return { ok: false, via: 'noop' }
 
   if (isEdgeiOSShell()) {
     try {
-      const result = await edgeNativeInvoke('openInSafari', { url: href })
+      const result = await edgeNativeInvoke('openInSafari', {
+        url: href,
+        ...(opts.system ? { system: true } : {}),
+      })
       return { ok: result?.ok !== false, via: 'safari' }
     } catch {
       return { ok: false, via: 'error' }

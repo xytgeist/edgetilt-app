@@ -2566,3 +2566,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-02 … promoted CallKit harden to main
 
 **I am Mac Theo.** Promoted **`test` → `main` (`8912bdd2`)**. CallKit PushKit harden is on prod git. Install **TestFlight Prod 1.4.95 (20261002202315)** for the native fix. App Store review binary left alone (not attached). Marketing still **1.4.95**.
+
+### Mac Theo 2026-10-02 … promoted call-recording template fix to main
+
+**I am Mac Theo.** Promoted **`test` → `main` (`c02f9af5`)**. Call egress relative `./callEgress-*.js` publish fix + docs. R2 template already live on prod. Back on **`test`**. Marketing still **1.4.95**.

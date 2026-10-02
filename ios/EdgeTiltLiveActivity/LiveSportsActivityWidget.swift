@@ -1,6 +1,5 @@
 import ActivityKit
 import SwiftUI
-import UIKit
 import WidgetKit
 
 struct LiveSportsActivityWidget: Widget {
@@ -12,7 +11,7 @@ struct LiveSportsActivityWidget: Widget {
       DynamicIsland {
         DynamicIslandExpandedRegion(.leading) {
           LiveSportsExpandedSide(
-            logoData: context.state.awayLogoData,
+            logoUrl: context.state.awayLogoUrl,
             abbrev: context.state.awayAbbrev,
             score: context.state.awayScore,
             align: .leading
@@ -20,7 +19,7 @@ struct LiveSportsActivityWidget: Widget {
         }
         DynamicIslandExpandedRegion(.trailing) {
           LiveSportsExpandedSide(
-            logoData: context.state.homeLogoData,
+            logoUrl: context.state.homeLogoUrl,
             abbrev: context.state.homeAbbrev,
             score: context.state.homeScore,
             align: .trailing
@@ -55,7 +54,7 @@ struct LiveSportsActivityWidget: Widget {
         }
       } compactLeading: {
         HStack(spacing: 4) {
-          LiveSportsTeamLogo(data: context.state.awayLogoData, abbrev: context.state.awayAbbrev, size: 18)
+          LiveSportsTeamLogo(urlString: context.state.awayLogoUrl, abbrev: context.state.awayAbbrev, size: 18)
           Text("\(context.state.awayScore)")
             .font(.caption.weight(.bold).monospacedDigit())
             .foregroundStyle(.white)
@@ -65,10 +64,10 @@ struct LiveSportsActivityWidget: Widget {
           Text("\(context.state.homeScore)")
             .font(.caption.weight(.bold).monospacedDigit())
             .foregroundStyle(.white)
-          LiveSportsTeamLogo(data: context.state.homeLogoData, abbrev: context.state.homeAbbrev, size: 18)
+          LiveSportsTeamLogo(urlString: context.state.homeLogoUrl, abbrev: context.state.homeAbbrev, size: 18)
         }
       } minimal: {
-        LiveSportsTeamLogo(data: context.state.awayLogoData, abbrev: context.state.awayAbbrev, size: 14)
+        LiveSportsTeamLogo(urlString: context.state.awayLogoUrl, abbrev: context.state.awayAbbrev, size: 14)
       }
       // Soft blue rim … closer to Prime Video Island chrome than our bankroll rose tint.
       .keylineTint(Color(red: 0.45, green: 0.72, blue: 0.95))
@@ -80,26 +79,37 @@ struct LiveSportsActivityWidget: Widget {
 // MARK: - Shared marks
 
 private struct LiveSportsTeamLogo: View {
-  var data: Data?
+  var urlString: String
   var abbrev: String
   var size: CGFloat = 24
 
   var body: some View {
     Group {
-      if let data, let ui = UIImage(data: data) {
-        Image(uiImage: ui)
-          .resizable()
-          .scaledToFit()
+      if let url = URL(string: urlString), !urlString.isEmpty {
+        AsyncImage(url: url) { phase in
+          switch phase {
+          case .success(let image):
+            image
+              .resizable()
+              .scaledToFit()
+          default:
+            abbrevBadge
+          }
+        }
       } else {
-        Text(abbrev.isEmpty ? "?" : String(abbrev.prefix(3)))
-          .font(.system(size: max(8, size * 0.34), weight: .bold))
-          .foregroundStyle(.white.opacity(0.9))
-          .frame(maxWidth: .infinity, maxHeight: .infinity)
-          .background(Circle().fill(Color.white.opacity(0.14)))
+        abbrevBadge
       }
     }
     .frame(width: size, height: size)
     .accessibilityHidden(true)
+  }
+
+  private var abbrevBadge: some View {
+    Text(abbrev.isEmpty ? "?" : String(abbrev.prefix(3)))
+      .font(.system(size: max(8, size * 0.34), weight: .bold))
+      .foregroundStyle(.white.opacity(0.9))
+      .frame(maxWidth: .infinity, maxHeight: .infinity)
+      .background(Circle().fill(Color.white.opacity(0.14)))
   }
 }
 
@@ -109,7 +119,7 @@ private enum LiveSportsSideAlign {
 }
 
 private struct LiveSportsExpandedSide: View {
-  var logoData: Data?
+  var logoUrl: String
   var abbrev: String
   var score: Int
   var align: LiveSportsSideAlign
@@ -128,7 +138,7 @@ private struct LiveSportsExpandedSide: View {
 
   private var markStack: some View {
     VStack(spacing: 2) {
-      LiveSportsTeamLogo(data: logoData, abbrev: abbrev, size: 28)
+      LiveSportsTeamLogo(urlString: logoUrl, abbrev: abbrev, size: 28)
       Text(abbrev.isEmpty ? "—" : abbrev)
         .font(.system(size: 10, weight: .semibold))
         .foregroundStyle(.white.opacity(0.55))
@@ -157,7 +167,7 @@ private struct LiveSportsLockScreenView: View {
         .frame(maxWidth: .infinity)
 
       HStack(alignment: .center, spacing: 0) {
-        lockTeam(logo: state.awayLogoData, abbrev: state.awayAbbrev, score: state.awayScore, align: .leading)
+        lockTeam(logoUrl: state.awayLogoUrl, abbrev: state.awayAbbrev, score: state.awayScore, align: .leading)
         Spacer(minLength: 8)
         VStack(spacing: 2) {
           Text(state.clockLine)
@@ -172,7 +182,7 @@ private struct LiveSportsLockScreenView: View {
           }
         }
         Spacer(minLength: 8)
-        lockTeam(logo: state.homeLogoData, abbrev: state.homeAbbrev, score: state.homeScore, align: .trailing)
+        lockTeam(logoUrl: state.homeLogoUrl, abbrev: state.homeAbbrev, score: state.homeScore, align: .trailing)
       }
 
       if !state.detail.isEmpty {
@@ -189,11 +199,11 @@ private struct LiveSportsLockScreenView: View {
   }
 
   @ViewBuilder
-  private func lockTeam(logo: Data?, abbrev: String, score: Int, align: LiveSportsSideAlign) -> some View {
+  private func lockTeam(logoUrl: String, abbrev: String, score: Int, align: LiveSportsSideAlign) -> some View {
     HStack(spacing: 8) {
       if align == .leading {
         VStack(spacing: 3) {
-          LiveSportsTeamLogo(data: logo, abbrev: abbrev, size: 34)
+          LiveSportsTeamLogo(urlString: logoUrl, abbrev: abbrev, size: 34)
           Text(abbrev.isEmpty ? "—" : abbrev)
             .font(.caption.weight(.semibold))
             .foregroundStyle(.white.opacity(0.55))
@@ -206,7 +216,7 @@ private struct LiveSportsLockScreenView: View {
           .font(.system(size: 34, weight: .bold).monospacedDigit())
           .foregroundStyle(.white)
         VStack(spacing: 3) {
-          LiveSportsTeamLogo(data: logo, abbrev: abbrev, size: 34)
+          LiveSportsTeamLogo(urlString: logoUrl, abbrev: abbrev, size: 34)
           Text(abbrev.isEmpty ? "—" : abbrev)
             .font(.caption.weight(.semibold))
             .foregroundStyle(.white.opacity(0.55))

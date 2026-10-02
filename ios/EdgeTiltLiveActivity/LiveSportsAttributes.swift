@@ -3,6 +3,9 @@ import Foundation
 
 /// Watched-game Live Activity (Dynamic Island + Lock Screen).
 /// Shared by the app and the widget extension. Do not import app-only types.
+///
+/// Keep `ContentState` tiny … ActivityKit rejects oversized payloads (~4KB). Pass logo
+/// HTTPS URLs (not image bytes) and let the widget load marks with `AsyncImage`.
 struct LiveSportsAttributes: ActivityAttributes {
   public struct ContentState: Codable, Hashable {
     var gameId: String
@@ -15,9 +18,9 @@ struct LiveSportsAttributes: ActivityAttributes {
     var clock: String
     var period: String
     var detail: String
-    /// Resized PNG bytes from the main app (Lock Screen / Island cannot rely on network).
-    var awayLogoData: Data?
-    var homeLogoData: Data?
+    /// Absolute HTTPS team mark (empty when unknown).
+    var awayLogoUrl: String
+    var homeLogoUrl: String
 
     var compactScore: String {
       "\(awayScore)-\(homeScore)"

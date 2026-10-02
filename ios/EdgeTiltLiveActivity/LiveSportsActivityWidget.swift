@@ -86,7 +86,6 @@ struct LiveSportsActivityWidget: Widget {
           size: 14
         )
       }
-      // Soft blue rim … closer to Prime Video Island chrome than our bankroll rose tint.
       .keylineTint(Color(red: 0.45, green: 0.72, blue: 0.95))
       .widgetURL(context.state.widgetURL)
     }
@@ -103,12 +102,12 @@ private struct LiveSportsTeamLogo: View {
 
   var body: some View {
     Group {
-      if let image = TeamLogoBundle.uiImage(abbrev: abbrev, sportKey: sportKey) {
+      if let image = TeamLogoBundle.uiImage(abbrev: abbrev, sportKey: sportKey, maxPointSize: size) {
         Image(uiImage: image)
+          .renderingMode(.original)
           .resizable()
           .scaledToFit()
       } else if let url = URL(string: urlString), !urlString.isEmpty {
-        // Unknown league / missing file … remote load when we have no bundled mark.
         AsyncImage(url: url) { phase in
           switch phase {
           case .success(let image):
@@ -167,7 +166,6 @@ private struct LiveSportsExpandedSide: View {
   private var markStack: some View {
     VStack(spacing: 2) {
       LiveSportsTeamLogo(urlString: logoUrl, abbrev: abbrev, sportKey: sportKey, size: 28)
-      // Caption under real logos (Prime-style). Skip when badge already shows abbrev.
       if hasBundledLogo || !logoUrl.isEmpty {
         Text(abbrev.isEmpty ? "-" : abbrev)
           .font(.system(size: 10, weight: .semibold))
@@ -184,10 +182,15 @@ private struct LiveSportsExpandedSide: View {
   }
 }
 
-// MARK: - Lock Screen (Prime-style board)
+// MARK: - Lock Screen
 
 private struct LiveSportsLockScreenView: View {
   var state: LiveSportsAttributes.ContentState
+
+  private var possession: String { state.possessionSide }
+  private var totalLine: String {
+    (state.totalLine ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+  }
 
   var body: some View {
     VStack(spacing: 8) {
@@ -203,6 +206,9 @@ private struct LiveSportsLockScreenView: View {
           abbrev: state.awayAbbrev,
           sportKey: state.sportKey,
           score: state.awayScore,
+          spread: state.awaySpread ?? "",
+          ml: state.awayMl ?? "",
+          hasBall: possession == "away",
           align: .leading
         )
         Spacer(minLength: 8)
@@ -212,9 +218,15 @@ private struct LiveSportsLockScreenView: View {
             .foregroundStyle(.white)
             .lineLimit(1)
             .minimumScaleFactor(0.75)
+          if !totalLine.isEmpty {
+            Text(totalLine)
+              .font(.caption2.weight(.semibold).monospacedDigit())
+              .foregroundStyle(.white.opacity(0.7))
+              .lineLimit(1)
+          }
           if !state.leagueLabel.isEmpty {
             Text(state.leagueLabel)
-              .font(.caption2.weight(.medium))
+              .font(.system(size: 9, weight: .medium))
               .foregroundStyle(.white.opacity(0.45))
           }
         }
@@ -224,6 +236,9 @@ private struct LiveSportsLockScreenView: View {
           abbrev: state.homeAbbrev,
           sportKey: state.sportKey,
           score: state.homeScore,
+          spread: state.homeSpread ?? "",
+          ml: state.homeMl ?? "",
+          hasBall: possession == "home",
           align: .trailing
         )
       }
@@ -247,35 +262,71 @@ private struct LiveSportsLockScreenView: View {
     abbrev: String,
     sportKey: String,
     score: Int,
+    spread: String,
+    ml: String,
+    hasBall: Bool,
     align: LiveSportsSideAlign
   ) -> some View {
     let showCaption = TeamLogoBundle.hasLogo(abbrev: abbrev, sportKey: sportKey) || !logoUrl.isEmpty
+    let spreadTrim = spread.trimmingCharacters(in: .whitespacesAndNewlines)
+    let mlTrim = ml.trimmingCharacters(in: .whitespacesAndNewlines)
+
     HStack(spacing: 8) {
       if align == .leading {
-        VStack(spacing: 3) {
-          LiveSportsTeamLogo(urlString: logoUrl, abbrev: abbrev, sportKey: sportKey, size: 34)
-          if showCaption {
-            Text(abbrev.isEmpty ? "-" : abbrev)
-              .font(.caption.weight(.semibold))
-              .foregroundStyle(.white.opacity(0.55))
-          }
-        }
-        Text("\(score)")
-          .font(.system(size: 34, weight: .bold).monospacedDigit())
-          .foregroundStyle(.white)
+        markColumn(logoUrl: logoUrl, abbrev: abbrev, sportKey: sportKey, showCaption: showCaption, hasBall: hasBall)
+        scoreColumn(score: score, spread: spreadTrim, ml: mlTrim, align: .leading)
       } else {
-        Text("\(score)")
-          .font(.system(size: 34, weight: .bold).monospacedDigit())
-          .foregroundStyle(.white)
-        VStack(spacing: 3) {
-          LiveSportsTeamLogo(urlString: logoUrl, abbrev: abbrev, sportKey: sportKey, size: 34)
-          if showCaption {
-            Text(abbrev.isEmpty ? "-" : abbrev)
-              .font(.caption.weight(.semibold))
-              .foregroundStyle(.white.opacity(0.55))
-          }
-        }
+        scoreColumn(score: score, spread: spreadTrim, ml: mlTrim, align: .trailing)
+        markColumn(logoUrl: logoUrl, abbrev: abbrev, sportKey: sportKey, showCaption: showCaption, hasBall: hasBall)
       }
     }
+  }
+
+  @ViewBuilder
+  private func markColumn(
+    logoUrl: String,
+    abbrev: String,
+    sportKey: String,
+    showCaption: Bool,
+    hasBall: Bool
+  ) -> some View {
+    VStack(spacing: 3) {
+      ZStack(alignment: .topTrailing) {
+        LiveSportsTeamLogo(urlString: logoUrl, abbrev: abbrev, sportKey: sportKey, size: 34)
+        if hasBall {
+          Image(systemName: "football.fill")
+            .font(.system(size: 11, weight: .bold))
+            .foregroundStyle(Color.orange)
+            .shadow(color: .black.opacity(0.55), radius: 1, y: 0.5)
+            .offset(x: 4, y: -4)
+            .accessibilityLabel("Possession")
+        }
+      }
+      if showCaption {
+        Text(abbrev.isEmpty ? "-" : abbrev)
+          .font(.caption.weight(.semibold))
+          .foregroundStyle(.white.opacity(0.55))
+      }
+    }
+  }
+
+  @ViewBuilder
+  private func scoreColumn(score: Int, spread: String, ml: String, align: LiveSportsSideAlign) -> some View {
+    VStack(spacing: 2) {
+      if !spread.isEmpty {
+        Text(spread)
+          .font(.system(size: 11, weight: .semibold).monospacedDigit())
+          .foregroundStyle(.white.opacity(0.7))
+      }
+      Text("\(score)")
+        .font(.system(size: 34, weight: .bold).monospacedDigit())
+        .foregroundStyle(.white)
+      if !ml.isEmpty {
+        Text(ml)
+          .font(.system(size: 11, weight: .semibold).monospacedDigit())
+          .foregroundStyle(.white.opacity(0.65))
+      }
+    }
+    .frame(minWidth: 44, alignment: align == .leading ? .leading : .trailing)
   }
 }

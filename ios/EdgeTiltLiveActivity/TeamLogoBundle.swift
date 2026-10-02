@@ -3,27 +3,31 @@ import UIKit
 
 /// Loads team marks shipped inside the Live Activity extension bundle.
 /// Prefer this over `AsyncImage` … ActivityKit snapshots often never finish remote loads.
+///
+/// Dynamic Island compact/minimal silently show a gray square when the source image is larger
+/// than the presentation … always pass `maxPointSize` for those regions.
 enum TeamLogoBundle {
   /// Returns a bundled logo when we ship one for this sport + abbrev.
-  static func uiImage(abbrev: String, sportKey: String) -> UIImage? {
+  /// - Parameter maxPointSize: Cap the bitmap to this many points (× screen scale). Pass the
+  ///   view's frame size for Island compact/minimal; Lock Screen can use the display size too.
+  static func uiImage(abbrev: String, sportKey: String, maxPointSize: CGFloat? = nil) -> UIImage? {
     let key = normalizeAbbrev(abbrev)
     guard !key.isEmpty else { return nil }
     guard let folder = sportFolder(for: sportKey) else { return nil }
 
     for name in candidates(for: key, folder: folder) {
       if let image = loadPNG(named: name, subdirectory: "TeamLogos/\(folder)") {
-        return image
+        return capped(image, maxPointSize: maxPointSize)
       }
-      // Some folder-resource layouts flatten one level.
       if let image = loadPNG(named: name, subdirectory: folder) {
-        return image
+        return capped(image, maxPointSize: maxPointSize)
       }
     }
     return nil
   }
 
   static func hasLogo(abbrev: String, sportKey: String) -> Bool {
-    uiImage(abbrev: abbrev, sportKey: sportKey) != nil
+    uiImage(abbrev: abbrev, sportKey: sportKey, maxPointSize: nil) != nil
   }
 
   // MARK: - Private
@@ -36,12 +40,30 @@ enum TeamLogoBundle {
     return image
   }
 
+  private static func capped(_ image: UIImage, maxPointSize: CGFloat?) -> UIImage {
+    guard let maxPt = maxPointSize, maxPt > 0 else { return image }
+    // ActivityKit compares asset pixel size to presentation points × scale. Use 3× as a safe ceiling.
+    let maxPx = maxPt * 3
+    let w = image.size.width * image.scale
+    let h = image.size.height * image.scale
+    let longest = max(w, h)
+    guard longest > maxPx + 0.5 else { return image }
+    let ratio = maxPx / longest
+    let outW = max(1, (w * ratio).rounded())
+    let outH = max(1, (h * ratio).rounded())
+    let format = UIGraphicsImageRendererFormat.default()
+    format.scale = 1
+    format.opaque = false
+    let renderer = UIGraphicsImageRenderer(size: CGSize(width: outW, height: outH), format: format)
+    return renderer.image { _ in
+      image.draw(in: CGRect(x: 0, y: 0, width: outW, height: outH))
+    }
+  }
+
   private static func sportFolder(for sportKey: String) -> String? {
     let sk = sportKey.lowercased()
-    // College first … "americanfootball_ncaaf" must not fall through as NFL.
     if sk.contains("ncaaf") || sk.contains("cfb") || sk.contains("college") { return "cfb" }
     if sk.contains("nfl") { return "nfl" }
-    // American football without college markers → treat as NFL (board often sends "football").
     if sk.contains("football") { return "nfl" }
     return nil
   }
@@ -49,11 +71,9 @@ enum TeamLogoBundle {
   private static func normalizeAbbrev(_ raw: String) -> String {
     raw.trimmingCharacters(in: .whitespacesAndNewlines)
       .uppercased()
-      // Keep letters/digits/&/- so M-OH / TA&M survive.
       .replacingOccurrences(of: "[^A-Z0-9&-]", with: "", options: .regularExpression)
   }
 
-  /// Prefer board abbrev, then known ESPN/board aliases we ship under a different file name.
   private static func candidates(for key: String, folder: String) -> [String] {
     if folder == "nfl" {
       switch key {
@@ -65,7 +85,6 @@ enum TeamLogoBundle {
     }
 
     if folder == "cfb" {
-      // Mirror `CFB_ABBREV_ALIASES` in loungeSportsMatch.js (file names under TeamLogos/cfb).
       let aliases: [String: String] = [
         "WSH": "WASH",
         "WAS": "WASH",

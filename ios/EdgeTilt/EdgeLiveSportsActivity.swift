@@ -46,7 +46,13 @@ enum EdgeLiveSportsActivity {
         ? string(payload?["detail"])
         : string(payload?["downDistance"]),
       awayLogoUrl: string(away?["logo"]),
-      homeLogoUrl: string(home?["logo"])
+      homeLogoUrl: string(home?["logo"]),
+      possession: string(payload?["possession"]).lowercased(),
+      awaySpread: string(away?["spread"]),
+      homeSpread: string(home?["spread"]),
+      awayMl: string(away?["ml"]),
+      homeMl: string(home?["ml"]),
+      totalLine: string(payload?["totalLine"])
     )
 
     guard ActivityAuthorizationInfo().areActivitiesEnabled else {

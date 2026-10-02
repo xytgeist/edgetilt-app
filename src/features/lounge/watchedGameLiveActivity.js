@@ -1,4 +1,9 @@
 import { syncEdgeLiveSportsActivity } from '../../utils/edgeNative.js'
+import {
+  formatLoungeSportsMoneyline,
+  formatLoungeSportsSpread,
+  formatLoungeSportsTotal,
+} from './LoungeGameScorePill.jsx'
 
 /** Absolute HTTPS logo URL for the native Live Activity download. */
 function absoluteLogoUrl(logo) {
@@ -30,6 +35,11 @@ function liveClockFields(game, live) {
   return { clock: clockRaw, period: periodRaw }
 }
 
+function possessionSide(live) {
+  const p = String(live?.possession || '').trim().toLowerCase()
+  return p === 'home' || p === 'away' ? p : ''
+}
+
 /**
  * Build the Island payload for a board/detail game, or null to end.
  * @param {object | null | undefined} game
@@ -55,15 +65,21 @@ export function watchedGameLiveActivityPayload(game, opts = {}) {
     clock,
     period,
     downDistance,
+    possession: possessionSide(live),
+    totalLine: formatLoungeSportsTotal(game.total) || '',
     away: {
       abbrev: String(game.away?.abbrev || ''),
       score: Number(game.away?.score) || 0,
       logo: absoluteLogoUrl(game.away?.logo),
+      spread: formatLoungeSportsSpread(game.away?.spread) || '',
+      ml: formatLoungeSportsMoneyline(game.away?.ml) || '',
     },
     home: {
       abbrev: String(game.home?.abbrev || ''),
       score: Number(game.home?.score) || 0,
       logo: absoluteLogoUrl(game.home?.logo),
+      spread: formatLoungeSportsSpread(game.home?.spread) || '',
+      ml: formatLoungeSportsMoneyline(game.home?.ml) || '',
     },
   }
 }

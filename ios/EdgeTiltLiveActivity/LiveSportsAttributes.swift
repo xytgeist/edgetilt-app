@@ -5,8 +5,8 @@ import Foundation
 /// Shared by the app and the widget extension. Do not import app-only types.
 ///
 /// Keep `ContentState` tiny … ActivityKit rejects oversized payloads (~4KB). Pass logo
-/// HTTPS URLs (not image bytes). Widget prefers bundled NFL/CFB PNGs (`TeamLogoBundle`), then
-/// `AsyncImage` only when no local mark ships.
+/// HTTPS URLs (not image bytes). Widget prefers bundled NFL/CFB PNGs (`TeamLogoBundle`),
+/// then `AsyncImage` only when no local mark ships.
 struct LiveSportsAttributes: ActivityAttributes {
   public struct ContentState: Codable, Hashable {
     var gameId: String
@@ -22,6 +22,14 @@ struct LiveSportsAttributes: ActivityAttributes {
     /// Absolute HTTPS team mark (empty when unknown).
     var awayLogoUrl: String
     var homeLogoUrl: String
+    /// `home` / `away` / empty.
+    var possession: String?
+    /// Preformatted board lines (short) … e.g. `-3.5`, `+150`, `O/U 47.5`.
+    var awaySpread: String?
+    var homeSpread: String?
+    var awayMl: String?
+    var homeMl: String?
+    var totalLine: String?
 
     var compactScore: String {
       "\(awayScore)-\(homeScore)"
@@ -38,7 +46,6 @@ struct LiveSportsAttributes: ActivityAttributes {
       let p = period.trimmingCharacters(in: .whitespacesAndNewlines)
       let c = clock.trimmingCharacters(in: .whitespacesAndNewlines)
       if !c.isEmpty {
-        // status_label often already has period + clock ("Q1 4:21").
         if p.isEmpty || c.localizedCaseInsensitiveContains(p) || c.contains(" ") {
           return c
         }
@@ -54,6 +61,12 @@ struct LiveSportsAttributes: ActivityAttributes {
       if sk.contains("ncaaf") || sk.contains("college") || sk.contains("cfb") { return "CFB" }
       if sk.contains("nfl") { return "NFL" }
       if sk.contains("football") { return "NFL" }
+      return ""
+    }
+
+    var possessionSide: String {
+      let p = (possession ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+      if p == "home" || p == "away" { return p }
       return ""
     }
 

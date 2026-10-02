@@ -1325,9 +1325,77 @@ function NativeIpaCallSession({
         </div>
       ) : null}
 
-      {/* Top Header - slides up when controlsHidden in video mode */}
+      {/* Video: stage fills the screen; header/dock overlay. Audio keeps the flex stack. */}
       <div
-        className={`relative z-[1] flex shrink-0 items-start justify-between px-4 pb-2 transition-all duration-300 ease-in-out ${
+        className={
+          showVideoHole
+            ? 'absolute inset-0 z-0'
+            : 'relative z-[1] min-h-0 flex-1 px-4'
+        }
+      >
+        {showVideoHole ? (
+          <VideoCallStage
+            hitOnly
+            remotes={nativeStageRemotes}
+            localParticipant={
+              nativeLocalOnStage
+                ? nativeRoster.find((p) => p.isLocal) || { identity: viewerUserId, isLocal: true }
+                : null
+            }
+            featuredIdentity={focusedIdentity}
+            controlsHidden={controlsHidden}
+            cameraByIdentity={EMPTY_CAMERA_BY_IDENTITY}
+            participantHasLiveCamera={(p) => {
+              if (!p) return false
+              if (p.hasVideo) return true
+              return p.isLocal ? camOn : remoteHasVideo
+            }}
+            speakingIds={speakingIds}
+            resolveAvatarForParticipant={resolveAvatarForParticipant}
+            resolveNameForParticipant={resolveNameForParticipant}
+            title={title}
+            showLocalFlip={Boolean(camOn)}
+            onFlipCamera={() => {
+              resetControlsTimer()
+              void setNativeCallCamera({ flip: true })
+            }}
+            onActivateRemote={onNativeStreamTap}
+            onActivateMain={(event) => {
+              onActivateFeaturedChrome(event, controlsHidden, resetControlsTimer, setControlsHidden)
+            }}
+            onActivateYou={(event) => {
+              if (nativeLocalOnStage && canFeatureLocal(nativeStageCount)) {
+                onNativeStreamTap(nativeLocalId, event)
+                return
+              }
+              onActivateFeaturedChrome(event, controlsHidden, resetControlsTimer, setControlsHidden)
+            }}
+          />
+        ) : showGroupAudioStage ? (
+          <GroupAudioStage
+            participants={nativeRoster}
+            speakingIds={speakingIds}
+            resolveAvatarForParticipant={resolveAvatarForParticipant}
+            resolveNameForParticipant={resolveNameForParticipant}
+          />
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center pb-6">
+            <CallAvatarCircle
+              avatarUrl={avatarUrl}
+              title={title}
+              sizeClass="h-44 w-44"
+              textClass="text-[52px]"
+              ring
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Top Header - overlays video; slides up when controlsHidden */}
+      <div
+        className={`${
+          showVideoHole ? 'absolute inset-x-0 top-0 z-[2]' : 'relative z-[1] shrink-0'
+        } flex items-start justify-between px-4 pb-2 transition-all duration-300 ease-in-out ${
           controlsHidden ? '-translate-y-28 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
         }`}
         style={{ paddingTop: 'calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 0.75rem)' }}
@@ -1391,73 +1459,11 @@ function NativeIpaCallSession({
         />
       </div>
 
-      {/* Main Stage */}
+      {/* Bottom Controls - overlays video; slides down when controlsHidden */}
       <div
-        className={`relative z-[1] min-h-0 flex-1 transition-[padding] duration-300 ease-in-out ${
-          controlsHidden && isVideoMode ? 'px-0' : 'px-4'
-        }`}
-      >
-        {showVideoHole ? (
-          <VideoCallStage
-            hitOnly
-            remotes={nativeStageRemotes}
-            localParticipant={
-              nativeLocalOnStage
-                ? nativeRoster.find((p) => p.isLocal) || { identity: viewerUserId, isLocal: true }
-                : null
-            }
-            featuredIdentity={focusedIdentity}
-            controlsHidden={controlsHidden}
-            cameraByIdentity={EMPTY_CAMERA_BY_IDENTITY}
-            participantHasLiveCamera={(p) => {
-              if (!p) return false
-              if (p.hasVideo) return true
-              return p.isLocal ? camOn : remoteHasVideo
-            }}
-            speakingIds={speakingIds}
-            resolveAvatarForParticipant={resolveAvatarForParticipant}
-            resolveNameForParticipant={resolveNameForParticipant}
-            title={title}
-            showLocalFlip={Boolean(camOn)}
-            onFlipCamera={() => {
-              resetControlsTimer()
-              void setNativeCallCamera({ flip: true })
-            }}
-            onActivateRemote={onNativeStreamTap}
-            onActivateMain={(event) => {
-              onActivateFeaturedChrome(event, controlsHidden, resetControlsTimer, setControlsHidden)
-            }}
-            onActivateYou={(event) => {
-              if (nativeLocalOnStage && canFeatureLocal(nativeStageCount)) {
-                onNativeStreamTap(nativeLocalId, event)
-                return
-              }
-              onActivateFeaturedChrome(event, controlsHidden, resetControlsTimer, setControlsHidden)
-            }}
-          />
-        ) : showGroupAudioStage ? (
-          <GroupAudioStage
-            participants={nativeRoster}
-            speakingIds={speakingIds}
-            resolveAvatarForParticipant={resolveAvatarForParticipant}
-            resolveNameForParticipant={resolveNameForParticipant}
-          />
-        ) : (
-          <div className="flex h-full flex-col items-center justify-center pb-6">
-            <CallAvatarCircle
-              avatarUrl={avatarUrl}
-              title={title}
-              sizeClass="h-44 w-44"
-              textClass="text-[52px]"
-              ring
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Bottom Controls - slides down when controlsHidden in video mode */}
-      <div
-        className={`relative z-[1] flex shrink-0 justify-center px-4 pt-2 transition-all duration-300 ease-in-out ${
+        className={`${
+          showVideoHole ? 'absolute inset-x-0 bottom-0 z-[2]' : 'relative z-[1] shrink-0'
+        } flex justify-center px-4 pt-2 transition-all duration-300 ease-in-out ${
           controlsHidden ? 'translate-y-36 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
         }`}
         style={{
@@ -2202,6 +2208,9 @@ function CallChrome({
     </div>
   )
 
+  // Video: stage is always edge-to-edge; header/dock overlay and fade. Audio keeps flex stack.
+  const videoBleed = showVideoStage
+
   return (
     <div className="relative flex h-full min-h-0 flex-col">
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-zinc-950 via-[#0a1018] to-zinc-950">
@@ -2214,9 +2223,67 @@ function CallChrome({
         />
       </div>
 
-      {/* Top Header - slides up when controlsHidden in video mode */}
       <div
-        className={`relative z-[1] flex shrink-0 items-start justify-between px-4 pb-2 transition-all duration-300 ease-in-out ${
+        className={
+          videoBleed
+            ? 'absolute inset-0 z-0'
+            : 'relative z-[1] min-h-0 flex-1 px-4'
+        }
+      >
+        {showVideoStage ? (
+          <VideoCallStage
+            remotes={stageRemotes}
+            localParticipant={stageLocal}
+            featuredIdentity={fullscreenParticipant?.identity}
+            controlsHidden={controlsHidden}
+            cameraByIdentity={cameraByIdentity}
+            resolveAvatarForParticipant={resolveAvatarForParticipant}
+            resolveNameForParticipant={resolveNameForParticipant}
+            participantHasLiveCamera={participantHasLiveCamera}
+            speakingIds={speakingIds}
+            title={title}
+            showLocalFlip={Boolean(camOn && !cameraBusy)}
+            onFlipCamera={() => {
+              resetControlsTimer()
+              void flipCamera()
+            }}
+            onActivateRemote={onWebStreamTap}
+            onActivateMain={(event) => {
+              onActivateFeaturedChrome(event, controlsHidden, resetControlsTimer, setControlsHidden)
+            }}
+            onActivateYou={(event) => {
+              if (stageLocal && canFeatureLocal(stageCount) && localParticipant?.identity) {
+                onWebStreamTap(localParticipant.identity, event)
+                return
+              }
+              onActivateFeaturedChrome(event, controlsHidden, resetControlsTimer, setControlsHidden)
+            }}
+          />
+        ) : isGroup && !awaitingAnswer ? (
+          <GroupAudioStage
+            participants={participants}
+            speakingIds={speakingIds}
+            resolveAvatarForParticipant={resolveAvatarForParticipant}
+            resolveNameForParticipant={resolveNameForParticipant}
+          />
+        ) : (
+          <div className="flex h-full flex-col items-center justify-center pb-6">
+            <CallAvatarCircle
+              avatarUrl={avatarUrl}
+              title={title}
+              sizeClass="h-44 w-44"
+              textClass="text-[52px]"
+              ring
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Top Header - overlays video; slides up when controlsHidden */}
+      <div
+        className={`${
+          videoBleed ? 'absolute inset-x-0 top-0 z-[2]' : 'relative z-[1] shrink-0'
+        } flex items-start justify-between px-4 pb-2 transition-all duration-300 ease-in-out ${
           controlsHidden ? '-translate-y-28 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
         }`}
         style={{ paddingTop: 'calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + 0.75rem)' }}
@@ -2271,63 +2338,11 @@ function CallChrome({
         />
       </div>
 
+      {/* Bottom Controls - overlays video; slides down when controlsHidden */}
       <div
-        className={`relative z-[1] min-h-0 flex-1 transition-[padding] duration-300 ease-in-out ${
-          controlsHidden && isVideoMode ? 'px-0' : 'px-4'
-        }`}
-      >
-        {showVideoStage ? (
-          <VideoCallStage
-            remotes={stageRemotes}
-            localParticipant={stageLocal}
-            featuredIdentity={fullscreenParticipant?.identity}
-            controlsHidden={controlsHidden}
-            cameraByIdentity={cameraByIdentity}
-            resolveAvatarForParticipant={resolveAvatarForParticipant}
-            resolveNameForParticipant={resolveNameForParticipant}
-            participantHasLiveCamera={participantHasLiveCamera}
-            speakingIds={speakingIds}
-            title={title}
-            showLocalFlip={Boolean(camOn && !cameraBusy)}
-            onFlipCamera={() => {
-              resetControlsTimer()
-              void flipCamera()
-            }}
-            onActivateRemote={onWebStreamTap}
-            onActivateMain={(event) => {
-              onActivateFeaturedChrome(event, controlsHidden, resetControlsTimer, setControlsHidden)
-            }}
-            onActivateYou={(event) => {
-              if (stageLocal && canFeatureLocal(stageCount) && localParticipant?.identity) {
-                onWebStreamTap(localParticipant.identity, event)
-                return
-              }
-              onActivateFeaturedChrome(event, controlsHidden, resetControlsTimer, setControlsHidden)
-            }}
-          />
-        ) : isGroup && !awaitingAnswer ? (
-          <GroupAudioStage
-            participants={participants}
-            speakingIds={speakingIds}
-            resolveAvatarForParticipant={resolveAvatarForParticipant}
-            resolveNameForParticipant={resolveNameForParticipant}
-          />
-        ) : (
-          <div className="flex h-full flex-col items-center justify-center pb-6">
-            <CallAvatarCircle
-              avatarUrl={avatarUrl}
-              title={title}
-              sizeClass="h-44 w-44"
-              textClass="text-[52px]"
-              ring
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Bottom Controls - slides down when controlsHidden in video mode */}
-      <div
-        className={`relative z-[1] flex shrink-0 justify-center px-4 pt-2 transition-all duration-300 ease-in-out ${
+        className={`${
+          videoBleed ? 'absolute inset-x-0 bottom-0 z-[2]' : 'relative z-[1] shrink-0'
+        } flex justify-center px-4 pt-2 transition-all duration-300 ease-in-out ${
           controlsHidden ? 'translate-y-36 opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
         }`}
         style={{
@@ -2591,11 +2606,10 @@ function VideoCallStage({
       window.removeEventListener('resize', apply)
     }
   }, [plan.mode, remotes.length])
+  // Web video is always edge-to-edge (chrome overlays). No inset rounded card.
   const shellClass = hitOnly
     ? 'relative h-full min-h-0 overflow-hidden'
-    : controlsHidden
-      ? 'relative h-full min-h-0 overflow-hidden bg-black'
-      : 'relative h-full min-h-0 overflow-hidden rounded-[32px] border border-white/10 bg-zinc-950/80 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-xl'
+    : 'relative h-full min-h-0 overflow-hidden bg-black'
 
   if (plan.mode === 'solo') {
     return (
@@ -2641,30 +2655,19 @@ function VideoCallStage({
         >
           {renderFill(featured, { label: featuredLabel, textClass: 'text-[48px]' })}
         </button>
-        {hitOnly ? (
-          <div
-            className="fixed z-[2] transition-[width,height,bottom] duration-300 ease-in-out"
-            style={{
-              right: DUO_PIP_RIGHT_PX,
-              bottom: pipChromeHidden
-                ? 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 12px))'
-                : DUO_PIP_CHROME_BOTTOM_PX,
-              width: pipSize.width,
-              height: pipSize.height,
-            }}
-          >
-            {pipTile}
-          </div>
-        ) : (
-          <div
-            className={`absolute right-4 z-[2] transition-all duration-300 ease-in-out ${
-              pipChromeHidden ? 'bottom-4 translate-y-16' : 'bottom-10'
-            }`}
-            style={{ width: pipSize.width, height: pipSize.height }}
-          >
-            {pipTile}
-          </div>
-        )}
+        <div
+          className={`${hitOnly ? 'fixed' : 'absolute'} z-[2] transition-[width,height,bottom] duration-300 ease-in-out`}
+          style={{
+            right: DUO_PIP_RIGHT_PX,
+            bottom: pipChromeHidden
+              ? 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 12px))'
+              : DUO_PIP_CHROME_BOTTOM_PX,
+            width: pipSize.width,
+            height: pipSize.height,
+          }}
+        >
+          {pipTile}
+        </div>
         {screenFlip}
       </div>
     )
@@ -2680,12 +2683,8 @@ function VideoCallStage({
     const chip = rowPipSize({ viewportWidth: bankWidth, slots })
     const rows = plan.insetRows?.length ? plan.insetRows : [plan.insetIds || []]
     const rowBottom = controlsHidden
-      ? hitOnly
-        ? 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 12px))'
-        : 16
-      : hitOnly
-        ? ROW_PIP_CHROME_BOTTOM_PX
-        : 40
+      ? 'max(20px, calc(env(safe-area-inset-bottom, 0px) + 12px))'
+      : ROW_PIP_CHROME_BOTTOM_PX
     const wrapClass = hitOnly
       ? 'fixed z-[2] flex flex-col items-stretch transition-[bottom] duration-300 ease-in-out'
       : 'absolute z-[2] flex flex-col items-stretch transition-[bottom] duration-300 ease-in-out'

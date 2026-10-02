@@ -2582,3 +2582,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-02 … promoted blank-poster fix to main
 
 **I am Mac Theo.** Promoted **`test` → `main` (`37adec89`)**. Web **`1.4.982`**: blank call-recording poster fix. Back on **`test`**. Marketing still **1.4.95**.
+
+### Mac Theo 2026-10-02 … Android video true edge-to-edge
+
+**I am Mac Theo.** Ryan’s Android screenshot still showed a letterboxed rounded video card with chrome eating flex space. Web **`1.4.983`**: video stage is always `absolute inset-0`; header/dock overlay and fade; dropped the rounded inset shell; duo/row pip bottoms use `DUO_PIP_CHROME_BOTTOM_PX` on web too. Smoke on Galaxy after Vercel `test` deploys. Windows: `ChatCallSession.jsx` call UI (Mac lane for calls). Not promoted.

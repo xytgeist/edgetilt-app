@@ -118,7 +118,7 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 **I am Mac Theo.** Promoted **`test` → `main` (`2ccec72e`)**. Vercel prod web **`1.4.969`** (watch-the-game pills → system Safari / streaming app). No new IPA. Back on **`test`**. Marketing still **1.4.95**.
 
 ### Mac Theo ACTIVE TRACK 2026-10-01 ... Island bundled NFL logos
-**I am Mac Theo.** Watched-game Island / Lock Screen load NFL marks from **`EdgeTiltLiveActivity/TeamLogos/nfl/{ABBREV}.png`** (`TeamLogoBundle`) … no more `AsyncImage` flaky abbrev badges for NFL. CFB still remote. Web tip **`1.4.970`** on **`test`**. Install newest TestFlight Prod (see upload note). Marketing still **1.4.95**.
+**I am Mac Theo.** Watched-game Island / Lock Screen load NFL marks from **`EdgeTiltLiveActivity/TeamLogos/nfl/{ABBREV}.png`** (`TeamLogoBundle`) … no more `AsyncImage` flaky abbrev badges for NFL. CFB still remote. Web tip **`1.4.970`** on **`test`** (`46b404cb`). Install TestFlight **1.4.95 (20261002024114)** (TestFlight-only, not attached). Marketing still **1.4.95**.
 
 ### Mac Theo ACTIVE TRACK 2026-10-01 ... Island ContentState 4KB fix
 **I am Mac Theo.** Promoted **`test` → `main` (`ff1d2869`)**. Vercel prod web **`1.4.968`** (Island 4KB fix + Fantasy watch ring inset). Install TestFlight **20261002021652** for Island. Back on **`test`**. Marketing still **1.4.95**.

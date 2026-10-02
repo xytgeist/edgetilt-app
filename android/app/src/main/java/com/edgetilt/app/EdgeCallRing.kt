@@ -10,6 +10,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.media.AudioAttributes
+import android.media.AudioFocusRequest
+import android.media.AudioManager
 import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
@@ -55,12 +57,15 @@ object EdgeCallRing {
   data class PendingEvent(val name: String, val detail: JSONObject)
 
   @Volatile private var active: Invite? = null
+  /** Answered invite while the Telecom connection stays active for VoIP audio. */
+  @Volatile private var inCall: Invite? = null
   @Volatile private var connection: EdgeCallConnection? = null
   @Volatile private var webReady = false
   @Volatile private var host: MainActivity? = null
   private val pendingEvents = ArrayDeque<PendingEvent>()
   /** callId → handled-at epoch ms (Answer / Decline / missed). */
   private val recentlyHandled = mutableMapOf<String, Long>()
+  private var audioFocusRequest: android.media.AudioFocusRequest? = null
 
   fun activeCallId(): String? = active?.callId
 
@@ -287,18 +292,20 @@ object EdgeCallRing {
     val invite = active?.takeIf { it.callId == callId } ?: restoreInvite(ctx)?.takeIf { it.callId == callId }
     markHandled(callId)
     dismissIncomingUi(ctx, callId)
+    // Keep the Telecom connection ACTIVE for the whole call. Destroying it on Answer
+    // (old behavior) drops MODE_IN_COMMUNICATION / VoIP audio focus so LiveKit in the
+    // WebView goes silent even though the room joined. Hangup → endNativeCall tears it down.
     connection?.let {
       try {
         it.setActive()
-        it.setDisconnected(android.telecom.DisconnectCause(android.telecom.DisconnectCause.LOCAL))
-        it.destroy()
       } catch (_: Exception) {
       }
     }
-    connection = null
     cancelNotification(ctx, callId)
+    if (invite != null) inCall = invite
     active = null
     clearPrefs(ctx)
+    enterVoipAudio(ctx, speakerphone = invite?.hasVideo == true)
     // Bring the shell forward WITHOUT a ?tab=chat&room= URL.
     // MainActivity.onNewIntent used to webView.loadUrl that URI, which reloads the SPA
     // and kills ChatCallProvider mid edge-callkit-answer → DM opens, accept never lands,
@@ -366,12 +373,15 @@ object EdgeCallRing {
   private fun endInternal(ctx: Context, callId: String, remote: Boolean, emitEvent: Boolean) {
     markHandled(callId)
     dismissIncomingUi(ctx, callId)
-    val invite = active?.takeIf { it.callId == callId } ?: restoreInvite(ctx)?.takeIf { it.callId == callId }
+    val invite =
+      active?.takeIf { it.callId == callId }
+        ?: inCall?.takeIf { it.callId == callId }
+        ?: restoreInvite(ctx)?.takeIf { it.callId == callId }
     connection?.let {
       val cause = if (remote) {
         android.telecom.DisconnectCause(android.telecom.DisconnectCause.REMOTE)
       } else {
-        android.telecom.DisconnectCause(android.telecom.DisconnectCause.REJECTED)
+        android.telecom.DisconnectCause(android.telecom.DisconnectCause.LOCAL)
       }
       try {
         it.setDisconnected(cause)
@@ -382,7 +392,9 @@ object EdgeCallRing {
     connection = null
     cancelNotification(ctx, callId)
     if (active?.callId == callId) active = null
+    if (inCall?.callId == callId) inCall = null
     clearPrefs(ctx)
+    exitVoipAudio(ctx)
     if (emitEvent && invite != null) {
       emit(
         "edge-callkit-end",
@@ -391,6 +403,51 @@ object EdgeCallRing {
           .put("roomId", invite.roomId)
           .put("reason", if (remote) "remote" else "local"),
       )
+    }
+  }
+
+  /** Hold communication audio mode while the answered Telecom connection is live. */
+  private fun enterVoipAudio(ctx: Context, speakerphone: Boolean) {
+    val am = ctx.getSystemService(AudioManager::class.java) ?: return
+    try {
+      am.mode = AudioManager.MODE_IN_COMMUNICATION
+      @Suppress("DEPRECATION")
+      am.isSpeakerphoneOn = speakerphone
+      if (Build.VERSION.SDK_INT >= 26) {
+        val attrs = AudioAttributes.Builder()
+          .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+          .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+          .build()
+        val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
+          .setAudioAttributes(attrs)
+          .setOnAudioFocusChangeListener { }
+          .build()
+        audioFocusRequest = req
+        am.requestAudioFocus(req)
+      } else {
+        @Suppress("DEPRECATION")
+        am.requestAudioFocus(null, AudioManager.STREAM_VOICE_CALL, AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
+      }
+    } catch (e: Exception) {
+      Log.w(TAG, "enterVoipAudio failed", e)
+    }
+  }
+
+  private fun exitVoipAudio(ctx: Context) {
+    val am = ctx.getSystemService(AudioManager::class.java) ?: return
+    try {
+      @Suppress("DEPRECATION")
+      am.isSpeakerphoneOn = false
+      am.mode = AudioManager.MODE_NORMAL
+      if (Build.VERSION.SDK_INT >= 26) {
+        audioFocusRequest?.let { am.abandonAudioFocusRequest(it) }
+        audioFocusRequest = null
+      } else {
+        @Suppress("DEPRECATION")
+        am.abandonAudioFocus(null)
+      }
+    } catch (e: Exception) {
+      Log.w(TAG, "exitVoipAudio failed", e)
     }
   }
 

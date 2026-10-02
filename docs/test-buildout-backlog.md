@@ -1174,6 +1174,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-02:** **CallKit callee crash harden (Mac, IPA).** Ryan still killed on every incoming after the Sep 30 PushKit re-report fix. Parked `localizedCallerImageURL` off `reportNewIncomingCall` again (Aug 28 crash class; `@try` on setValue does not protect CallKit present). PushKit no longer shares the JS China early-return. **TestFlight-only Prod 1.4.95 (20261002202315)** uploaded, not attached. If VoIP silent after prior kills: delete + reinstall once. Marketing still **1.4.95**.
 - **2026-10-02:** **Quote embed caption truncate (Mac, web `1.4.977`).** Post detail passed `captionStartExpanded` into the quote-repost inset, so long quoted captions painted fully with no `… see more`. Same display caps as feed posts (`LOUNGE_CAPTION_DISPLAY_MAX` / lines). File: `SocialFeed.jsx`.
 - **2026-10-02:** **Quote embeds stay one level (Mac, web `1.4.976`).** Product: a quote-repost shows only the post it quotes … never a nested quote chain inside the embed. Removed the nested embed from `1.4.975`; kept first-hop hydrate fallback + detail rehydrate so the immediate original does not paint “no longer available.” Files: `LoungeQuoteRepostEmbeddedOriginal.jsx`, `AppShell.jsx`, `SocialFeed.jsx`.
 - **2026-10-02:** **Quote-of-quote original missing on post detail (Mac, web `1.4.975`).** Hydrate miss painted “This post is no longer available.” Added hydrate fallback + detail rehydrate; briefly also nested a second quote (superseded by `1.4.976` one-level rule).

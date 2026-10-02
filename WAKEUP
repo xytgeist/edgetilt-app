@@ -163,7 +163,7 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 
 ### Mac Theo ACTIVE TRACK 2026-09-30 ... CallKit callee crash (VoIP after JS)
 
-**I am Mac Theo.** Selena → Ryan DM call crashed Ryan's IPA. Cause: Aug 30 dedupe skip completed PushKit without `reportNewIncomingCall` when JS/Realtime already reported the same `callId` (worse after Sep 28 background JS report). Fixed in `bb14a27c`, then pending path tightened so PushKit re-reports the same UUID (no `.failed` mid-accept, `7c9ae727`). **TestFlight-only Prod 1.4.95 (20261001001759)** uploaded, not attached. Skip `20261001001246`. Both phones install **01759** and retest. If VoIP is silent after prior kills, delete + reinstall once. Do not bump **1.4.95**.
+**I am Mac Theo.** Selena → Ryan DM call crashed Ryan's IPA. Cause: Aug 30 dedupe skip completed PushKit without `reportNewIncomingCall` when JS/Realtime already reported the same `callId` (worse after Sep 28 background JS report). Fixed in `bb14a27c`, then pending path tightened so PushKit re-reports the same UUID (no `.failed` mid-accept, `7c9ae727`). **2026-10-02:** Ryan still crashing on every incoming … hardened again (`129e38de`): park `localizedCallerImageURL` off the report path (Aug 28 crash class), PushKit never takes the JS China early-return. **Install TestFlight-only Prod 1.4.95 (20261002202315)** (not attached). Skip older crash-fix builds if VoIP is silent after prior kills … delete + reinstall once. Do not bump **1.4.95**.
 
 ### Mac Theo ACTIVE TRACK 2026-10-02 ... Android incoming call ring
 
@@ -2554,3 +2554,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-02 … promoted 1.4.981 to main
 
 **I am Mac Theo.** Promoted **`test` → `main` (`f659122a`)**. Web **`1.4.981`**: quote caption truncate, Android ConnectionService call ring (web side), double-answer + hangup re-ring fixes, Android cinema fullscreen. Prod Edge **`lounge-send-activity-push`** redeployed (FCM `roomId`/`callerName`). Sideload APK **1.3.2** still owed on devices (not a store binary). Store marketing still **1.4.95**.
+
+### Mac Theo 2026-10-02 … CallKit crash harden TestFlight
+
+**I am Mac Theo.** Ryan crashed on every iOS incoming again. Hardened PushKit wake (`129e38de`): avatar setter parked off report path; PushKit always `reportNewIncomingCall`. **TestFlight-only Prod 1.4.95 (20261002202315)** uploaded, not attached. Install that build (or delete+reinstall if VoIP blacklisted). Do not bump **1.4.95**.

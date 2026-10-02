@@ -115,7 +115,7 @@ The agent should treat the following as **standing instructions for this session
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
 ### Mac Theo ACTIVE TRACK 2026-10-02 ... Quote embeds stay one level
-**I am Mac Theo.** On **`test`**, web **`1.4.976`**. Quote-repost embeds show only the immediate original (no nested quote chain). Keep hydrate fallback + detail rehydrate for a missing first hop. Not promoted. Marketing still **1.4.95**.
+**I am Mac Theo.** Promoted **`test` → `main` (`a3515204`)**. Vercel prod web **`1.4.976`**. Quote embeds one level only. Back on **`test`**. Marketing still **1.4.95**.
 
 ### Mac Theo ACTIVE TRACK 2026-10-02 ... Quote-of-quote original missing on detail
 **I am Mac Theo.** Promoted **`test` → `main` (`d0576394`)**. Vercel prod web **`1.4.975`**. Quote-of-quote post detail shows the inner original again. Back on **`test`**. Marketing still **1.4.95**.

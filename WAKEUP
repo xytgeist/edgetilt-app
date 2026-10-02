@@ -2559,6 +2559,10 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 
 **I am Mac Theo.** Ryan crashed on every iOS incoming again. Hardened PushKit wake (`129e38de`): avatar setter parked off report path; PushKit always `reportNewIncomingCall`. **TestFlight-only Prod 1.4.95 (20261002202315)** uploaded, not attached. Install that build (or delete+reinstall if VoIP blacklisted). Do not bump **1.4.95**.
 
+### Mac Theo 2026-10-02 … call recording Start signal fix
+
+**I am Mac Theo.** Prod Record → Stop showed "Recording failed to save." LiveKit: `Start signal not received` / ABORTED. Template HTML on `media.lvslotpro.com` pointed script at `media-test` (CORS killed the module). Republished R2 with relative `./callEgress-*.js`; redeployed **`publish-call-egress-template`** test+prod. Retry Record/Stop. No IPA bump.
+
 ### Mac Theo 2026-10-02 … promoted CallKit harden to main
 
 **I am Mac Theo.** Promoted **`test` → `main` (`8912bdd2`)**. CallKit PushKit harden is on prod git. Install **TestFlight Prod 1.4.95 (20261002202315)** for the native fix. App Store review binary left alone (not attached). Marketing still **1.4.95**.

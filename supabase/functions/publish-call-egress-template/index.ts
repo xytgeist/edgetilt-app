@@ -89,6 +89,25 @@ function b64ToBytes(b64: string): Uint8Array {
   return out
 }
 
+/** Point script/link tags at same-folder relative URLs (never absolute media hosts). */
+function rewriteEgressAssetRefs(
+  html: string,
+  opts: { rel: string; fileName: string; relativeUrl: string },
+): string {
+  const { rel, fileName, relativeUrl } = opts
+  let next = html
+  next = next.split(`"${rel}"`).join(`"${relativeUrl}"`)
+  next = next.split(`"/assets/${fileName}"`).join(`"${relativeUrl}"`)
+  next = next.split(`"./${fileName}"`).join(`"${relativeUrl}"`)
+  // Scrub a prior bad publish that baked media-test into prod HTML.
+  const absEscaped = fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  next = next.replace(
+    new RegExp(`https://media(?:-test)?\\.lvslotpro\\.com/call-egress/${absEscaped}`, 'g'),
+    relativeUrl,
+  )
+  return next
+}
+
 type DirectAsset = {
   path?: string
   fileName?: string
@@ -151,9 +170,11 @@ Deno.serve(async (req) => {
         await loungeCfR2PutObject(r2, key, bytes, ct)
         const publicUrl = loungeCfR2PublicUrl(r2, key)
         const rel = String(asset.path || `/assets/${fileName}`)
-        html = html.split(`"${rel}"`).join(`"${publicUrl}"`)
-        // Also rewrite bare filename refs if present.
-        html = html.split(`"/assets/${fileName}"`).join(`"${publicUrl}"`)
+        // Same-directory relative URL. Absolute media-test URLs inside a
+        // media.lvslotpro.com HTML page are cross-origin modules with no CORS →
+        // LiveKit never gets START_RECORDING ("Start signal not received").
+        const relativeUrl = `./${fileName}`
+        html = rewriteEgressAssetRefs(html, { rel, fileName, relativeUrl })
         uploaded.push(publicUrl)
       }
     } else {
@@ -180,7 +201,8 @@ Deno.serve(async (req) => {
             : file.contentType
         await loungeCfR2PutObject(r2, key, file.bytes, ct)
         const publicUrl = loungeCfR2PublicUrl(r2, key)
-        html = html.split(`"${assetPath}"`).join(`"${publicUrl}"`)
+        const relativeUrl = `./${fileName}`
+        html = rewriteEgressAssetRefs(html, { rel: assetPath, fileName, relativeUrl })
         uploaded.push(publicUrl)
       }
     }

@@ -104,6 +104,8 @@ Hangup uses **`leave_call`**: marks the caller’s participant `left_at`, remove
 
 **Prod promote (2026-07-28, recording + transcripts):** SQL **`20260728050000`–`110000`** on **`jtjgtucumuoswnbauxry`**; Edge **`chat-calls`** / **`livekit-egress-webhook`** / **`chat-call-transcribe`** / **`publish-call-egress-template`**; R2 host **`https://media.lvslotpro.com`**; template published; LiveKit webhook + Deepgram confirmed. Frontend via **`main`**. **Voice live STT later removed** (product cut)... video recording transcripts remain.
 
+**2026-10-02 recording fail ("Recording failed to save"):** LiveKit egress aborted with `Start signal not received`. Prod `call-egress.html` loaded the JS module from **`media-test.lvslotpro.com`** while the page itself was on **`media.lvslotpro.com`** … cross-origin ES module, no CORS, so `START_RECORDING` never fired. Fix: publish template assets as same-folder relative `./callEgress-*.js` (Edge **`publish-call-egress-template`** + local publisher). Republished R2 on test + prod. Smoke: Record → Stop → `recording_status=ready` + chat card.
+
 ### Prod media host — Gate before Record promote
 
 **Current prod host:** **`https://media.lvslotpro.com`** (R2 custom domain on the Lounge media bucket; same bucket as **`media-test.lvslotpro.com`**).

@@ -65,9 +65,17 @@ for (const assetPath of assetPaths) {
     console.error('Missing asset', abs)
     process.exit(1)
   }
+  const fileName = path.basename(abs)
+  // Same-folder relative URL so media.lvslotpro.com never loads media-test JS
+  // (cross-origin module without CORS → LiveKit "Start signal not received").
+  html = html.split(`"${assetPath}"`).join(`"./${fileName}"`)
+  html = html.replace(
+    new RegExp(`https://media(?:-test)?\\.lvslotpro\\.com/call-egress/${fileName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g'),
+    `./${fileName}`,
+  )
   assets.push({
     path: assetPath,
-    fileName: path.basename(abs),
+    fileName,
     content_base64: fs.readFileSync(abs).toString('base64'),
     content_type: abs.endsWith('.css')
       ? 'text/css; charset=utf-8'

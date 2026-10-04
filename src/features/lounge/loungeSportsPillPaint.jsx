@@ -5,6 +5,7 @@ import {
   probeLogoWashTreatment,
   resolveNflPillWashes,
 } from './loungeSportsMatch.js'
+import { useWebkitResumeSrc } from '../../utils/webkitImageResumeRepair.js'
 
 function initialTreatment(src, washHex) {
   return (src && peekLogoWashTreatment(src, washHex)) || nflPillWashLikelyTreatment(washHex)
@@ -69,6 +70,7 @@ export function LoungeSportsTeamLogo({ side, treatment = 'halo', size = null, cl
   }, [lightSrc, treatment, defaultSrc])
   const wantAssetLight = Boolean(treatment === 'light' && lightSrc && !lightFailed)
   const src = wantAssetLight ? lightSrc : defaultSrc
+  const paintSrc = useWebkitResumeSrc(src)
   const letter = String(side?.abbrev || side?.mascot || '?').slice(0, 1)
   let logoTone = 'halo'
   if (wantAssetLight) logoTone = 'light'
@@ -81,19 +83,17 @@ export function LoungeSportsTeamLogo({ side, treatment = 'halo', size = null, cl
     >
       {src ? (
         <img
-          src={src}
+          key={paintSrc}
+          src={paintSrc}
           alt=""
           data-lounge-game-pill-logo={logoTone}
           className="h-full w-full object-contain"
-          loading="lazy"
           decoding="async"
           onError={(ev) => {
             if (wantAssetLight) {
               setLightFailed(true)
               return
             }
-            // WKWebView dumps decoded bitmaps on background and can fire error.
-            // Hiding the node left empty ovals after resume … leave it for repair.
             void ev
           }}
         />

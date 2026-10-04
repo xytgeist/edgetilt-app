@@ -6,6 +6,7 @@ import {
 import { formatLoungeSportsMoneyline } from '../LoungeGameScorePill.jsx'
 import { cfbTeamSchoolName, hubTeamLabel } from '../loungeSportsMatch.js'
 import { openExternalUrl, openSportsbookUrl } from '../../../utils/edgeNative.js'
+import { useWebkitResumeSrc } from '../../../utils/webkitImageResumeRepair.js'
 import {
   CORNER_PYLONS,
   ENDZONE_COORDS,
@@ -1801,6 +1802,7 @@ function FieldViz({
   const markFieldArtReady = () => {
     setFieldArtReady(true)
   }
+  const fieldArtHref = useWebkitResumeSrc('/sports/nfl/gamecast-field-floating.png?v=629')
   const bindFieldArtImg = (el) => {
     if (!el) return
     if (el.complete && el.naturalWidth > 0) setFieldArtReady(true)
@@ -3457,7 +3459,7 @@ function FieldViz({
         {/* Layer 1: Floating field base graphic */}
         <img
           ref={bindFieldArtImg}
-          src="/sports/nfl/gamecast-field-floating.png?v=629"
+          src={fieldArtHref}
           alt="Gamecast Field"
           width={1266}
           height={533}

@@ -4349,6 +4349,19 @@ function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, p
   const idx = Math.max(0, pages.indexOf(page))
   const multi = pages.length > 1
 
+  const beginGesture = (x, y) => {
+    touchRef.current = { x, y }
+  }
+  const endGesture = (x, y) => {
+    const start = touchRef.current
+    touchRef.current = null
+    if (!start) return
+    const dx = x - start.x
+    const dy = y - start.y
+    if (Math.abs(dx) < RAIL_SWIPE_PX || Math.abs(dx) <= Math.abs(dy)) return
+    onStep(dx < 0 ? 1 : -1)
+  }
+
   return (
     <div
       data-lounge-gamecast-stat-rail={align}
@@ -4360,25 +4373,29 @@ function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, p
         minWidth: `${STAT_RAIL_MIN_REM}rem`,
         paddingTop: topInset ? topInset + (multi ? 0 : 4) : undefined,
       }}
+      onPointerDown={
+        multi
+          ? (e) => {
+              if (e.pointerType === 'mouse' && e.button !== 0) return
+              beginGesture(e.clientX, e.clientY)
+            }
+          : undefined
+      }
+      onPointerUp={multi ? (e) => endGesture(e.clientX, e.clientY) : undefined}
+      onPointerCancel={multi ? () => { touchRef.current = null } : undefined}
       onTouchStart={
         multi
           ? (e) => {
               const t = e.touches[0]
-              touchRef.current = t ? { x: t.clientX, y: t.clientY } : null
+              if (t) beginGesture(t.clientX, t.clientY)
             }
           : undefined
       }
       onTouchEnd={
         multi
           ? (e) => {
-              const start = touchRef.current
-              touchRef.current = null
               const t = e.changedTouches[0]
-              if (!start || !t) return
-              const dx = t.clientX - start.x
-              const dy = t.clientY - start.y
-              if (Math.abs(dx) < RAIL_SWIPE_PX || Math.abs(dx) <= Math.abs(dy)) return
-              onStep(dx < 0 ? 1 : -1)
+              if (t) endGesture(t.clientX, t.clientY)
             }
           : undefined
       }

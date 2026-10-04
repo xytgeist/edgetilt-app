@@ -458,7 +458,7 @@ export async function runNflSatSteam(
   }
 
   const lines = [
-    `🌫️ **Saturday Steam · Sunday leans**`,
+    `💨 **Saturday Steam · Sunday leans**`,
     `Friday stays a lean. This is the steam check. Official lock is Sunday inactives.`,
     '',
   ]

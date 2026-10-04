@@ -1174,6 +1174,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-04:** **Promoted `1.4.989` `test` → `main` (`713a4205`).** HTML boot cover + TDZ fix + & Goal stick. **No SQL / Edge.** Force-quit Prod IPA after Vercel. Store marketing still **1.4.95**.
 - **2026-10-04:** **Boot rescue TDZ (`1.4.989`).** 1.4.988 read `currentView` in a `useEffect` dep array before that state existed → `Cannot access 'm' before initialization` and the stuck-loading sheet. Moved the effect below the state. No product change.
 - **2026-10-04:** **HTML boot cover stays until Lounge mounts (`1.4.988`).** 1.4.987 dropped the EDGE mark as soon as JS ran (or at 12s), then Slow 3G sat on empty `#root` for ~60s while `SocialFeed` downloaded. Cover now holds until feed mount (or auth/legal). Lottie overlay also waits on that mount. Smoke: Chrome Slow 3G + Disable cache … logo until posts chrome, not a black hole.
 - **2026-10-04:** **HTML boot cover on slow pipes (`1.4.987`).** First paint is `index.html` (theme + EDGE mark) instead of empty `#root`. Google Fonts no longer block render. PWA/EdgeiOS home preloads `/boot` WASM+JSON; Lottie upgrades the cover. Dropped early `SocialFeed` prefetch that raced splash. Smoke: Chrome DevTools Slow 3G + Disable cache. Windows/Mac: `index.html` / `LoungeAppSplash.jsx`.

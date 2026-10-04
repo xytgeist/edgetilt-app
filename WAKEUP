@@ -2627,5 +2627,10 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 
 **I am Mac Theo.** Ryan hit stuck-loading `Cannot access 'm' before initialization`. 1.4.988 `useEffect` deps read `currentView` before it was declared. **`1.4.989`**. Hard-reload, do not Reset unless it still loops. Not promoted.
 
+### Mac Theo 2026-10-04 … promoted 1.4.989 to main
+
+**I am Mac Theo.** Promoted **`test` → `main` (`713a4205`)**. Web **`1.4.989`**: HTML boot cover (hold until Lounge), TDZ crash fix, hide 1st-down stick on & Goal (`1.4.986`). Back on **`test`**. Marketing still **1.4.95**.
+
+
 
 

@@ -55,35 +55,45 @@ struct LiveSportsActivityWidget: Widget {
           }
         }
       } compactLeading: {
-        HStack(spacing: 4) {
+        // Shared island (CallKit / another Live Activity) shrinks each lobe. Logo+score
+        // on both sides overflow … trailing goes empty and leading clips to a lone mark.
+        ViewThatFits(in: .horizontal) {
+          HStack(spacing: 3) {
+            LiveSportsTeamLogo(
+              urlString: context.state.awayLogoUrl,
+              abbrev: context.state.awayAbbrev,
+              sportKey: context.state.sportKey,
+              size: 16
+            )
+            LiveSportsCompactScoreText("\(context.state.awayScore)")
+          }
           LiveSportsTeamLogo(
             urlString: context.state.awayLogoUrl,
             abbrev: context.state.awayAbbrev,
             sportKey: context.state.sportKey,
-            size: 18
+            size: 16
           )
-          Text("\(context.state.awayScore)")
-            .font(.caption.weight(.bold).monospacedDigit())
-            .foregroundStyle(.white)
         }
       } compactTrailing: {
-        HStack(spacing: 4) {
-          Text("\(context.state.homeScore)")
-            .font(.caption.weight(.bold).monospacedDigit())
-            .foregroundStyle(.white)
-          LiveSportsTeamLogo(
-            urlString: context.state.homeLogoUrl,
-            abbrev: context.state.homeAbbrev,
-            sportKey: context.state.sportKey,
-            size: 18
-          )
+        ViewThatFits(in: .horizontal) {
+          HStack(spacing: 3) {
+            LiveSportsCompactScoreText("\(context.state.homeScore)")
+            LiveSportsTeamLogo(
+              urlString: context.state.homeLogoUrl,
+              abbrev: context.state.homeAbbrev,
+              sportKey: context.state.sportKey,
+              size: 16
+            )
+          }
+          LiveSportsCompactScoreText(context.state.compactScore)
         }
       } minimal: {
+        // Shared island uses this circle. Keep a tight mark so the pill does not stretch empty.
         LiveSportsTeamLogo(
           urlString: context.state.awayLogoUrl,
           abbrev: context.state.awayAbbrev,
           sportKey: context.state.sportKey,
-          size: 14
+          size: 12
         )
       }
       .keylineTint(Color(red: 0.45, green: 0.72, blue: 0.95))
@@ -93,6 +103,22 @@ struct LiveSportsActivityWidget: Widget {
 }
 
 // MARK: - Shared marks
+
+private struct LiveSportsCompactScoreText: View {
+  var text: String
+
+  init(_ text: String) {
+    self.text = text
+  }
+
+  var body: some View {
+    Text(text)
+      .font(.caption2.weight(.bold).monospacedDigit())
+      .foregroundStyle(.white)
+      .lineLimit(1)
+      .minimumScaleFactor(0.55)
+  }
+}
 
 private struct LiveSportsTeamLogo: View {
   var urlString: String
@@ -123,6 +149,7 @@ private struct LiveSportsTeamLogo: View {
       }
     }
     .frame(width: size, height: size)
+    .clipped()
     .accessibilityHidden(true)
   }
 

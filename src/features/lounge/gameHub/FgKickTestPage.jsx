@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import GameHubHero from './GameHubHero.jsx'
 import { playGameHubWhistle } from './gameHubWhistle.js'
 
@@ -259,7 +259,134 @@ function playText({ yards, made, missSide }) {
 /**
  * Local harness for Game Hub field animations (FG flight / front pole, pick-six, kickoff + punt returns) … not linked from nav.
  * Open `/play-anim-test` (or legacy `/fg-kick-test`) on the Vite app or test deploy.
+ * Portrait tab pager: `/play-anim-test?tabs=1` (mirrors `LoungeGameHubModal` News/Stats swipe).
  */
+const HARNESS_HUB_TABS = [
+  { id: 'news', label: 'News' },
+  { id: 'stats', label: 'Stats' },
+  { id: 'plays', label: 'Plays' },
+  { id: 'players', label: 'Players' },
+  { id: 'fantasy', label: 'Fantasy' },
+  { id: 'posts', label: 'Posts' },
+  { id: 'chat', label: 'Chat' },
+]
+
+function PortraitTabPagerHarness() {
+  const [tab, setTab] = useState('news')
+  const pagerRef = useRef(null)
+  const paneRefs = useRef({})
+  const barRef = useRef(null)
+  const syncLock = useRef(0)
+  const settleRef = useRef(0)
+  const activeTab = HARNESS_HUB_TABS.some((t) => t.id === tab) ? tab : HARNESS_HUB_TABS[0].id
+
+  const scrollToTab = useCallback((id, behavior = 'smooth') => {
+    const pager = pagerRef.current
+    const pane = paneRefs.current[id]
+    if (!pager || !pane) return
+    const left = pane.offsetLeft
+    if (Math.abs(pager.scrollLeft - left) < 2) return
+    syncLock.current = Date.now()
+    pager.scrollTo({ left, behavior })
+  }, [])
+
+  useLayoutEffect(() => {
+    const pager = pagerRef.current
+    const w = pager?.clientWidth || 0
+    if (w >= 8) {
+      const nearest = Math.round(pager.scrollLeft / w)
+      const want = HARNESS_HUB_TABS.findIndex((t) => t.id === activeTab)
+      if (want >= 0 && nearest === want) return
+    }
+    scrollToTab(activeTab, 'instant')
+  }, [activeTab, scrollToTab])
+
+  useEffect(() => {
+    const btn = barRef.current?.querySelector(`[data-lounge-game-hub-tab="${activeTab}"]`)
+    btn?.scrollIntoView({ inline: 'nearest', block: 'nearest' })
+  }, [activeTab])
+
+  useEffect(() => () => window.clearTimeout(settleRef.current), [])
+
+  return (
+    <div
+      data-lounge-game-hub
+      data-play-anim-tab-harness
+      className="fixed inset-0 flex flex-col overflow-hidden overscroll-none bg-zinc-950 text-white"
+    >
+      <div className="shrink-0 border-b border-white/10 bg-red-950 px-4 py-6">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/55">Hero stub</div>
+        <div className="mt-1 text-2xl font-bold">KC @ BUF</div>
+        <div className="mt-1 text-[13px] text-white/70">This block should stay put while tabs page left/right.</div>
+        <a href="/play-anim-test" className="mt-3 inline-block text-[12px] font-semibold text-emerald-400">
+          ← Play anim test
+        </a>
+      </div>
+      <div
+        ref={barRef}
+        className="flex shrink-0 gap-5 overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-none border-b border-zinc-800 px-4 touch-pan-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {HARNESS_HUB_TABS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            data-lounge-game-hub-tab={item.id}
+            onClick={() => {
+              setTab(item.id)
+              scrollToTab(item.id)
+            }}
+            className={`-mb-px shrink-0 border-b-2 pb-2.5 pt-1 text-[15px] font-semibold touch-manipulation ${
+              activeTab === item.id ? 'border-white text-white' : 'border-transparent text-zinc-500'
+            }`}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+      <div
+        ref={pagerRef}
+        data-lounge-game-hub-tab-pager
+        className="flex min-h-0 flex-1 overflow-x-auto overflow-y-hidden snap-x snap-mandatory overscroll-x-contain overscroll-y-none no-scrollbar [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        onScroll={() => {
+          const pager = pagerRef.current
+          if (!pager) return
+          if (Date.now() - syncLock.current < 80) return
+          window.clearTimeout(settleRef.current)
+          settleRef.current = window.setTimeout(() => {
+            const w = pager.clientWidth
+            if (w < 8) return
+            const i = Math.max(0, Math.min(HARNESS_HUB_TABS.length - 1, Math.round(pager.scrollLeft / w)))
+            const id = HARNESS_HUB_TABS[i]?.id
+            if (id && id !== tab) setTab(id)
+          }, 60)
+        }}
+      >
+        {HARNESS_HUB_TABS.map((item) => (
+          <div
+            key={item.id}
+            ref={(el) => {
+              if (el) paneRefs.current[item.id] = el
+              else delete paneRefs.current[item.id]
+            }}
+            data-lounge-game-hub-tab-pane={item.id}
+            className="h-full min-h-0 w-full min-w-full shrink-0 snap-start overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 py-3 [-webkit-overflow-scrolling:touch]"
+          >
+            <div className="text-[15px] font-semibold">{item.label}</div>
+            <p className="mt-2 text-[13px] text-zinc-400">
+              Swipe left/right to change tabs. Scroll this list up/down … the red hero should not drag.
+            </p>
+            {Array.from({ length: 24 }, (_, n) => (
+              <div key={n} className="mt-3 rounded-xl border border-zinc-800 bg-zinc-900 px-3 py-3 text-[13px] text-zinc-200">
+                {item.label} row {n + 1}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 export default function FgKickTestPage() {
   const [half, setHalf] = useState(1)
   const [college, setCollege] = useState(false)
@@ -268,6 +395,7 @@ export default function FgKickTestPage() {
     const m = String(new URLSearchParams(window.location.search).get('landscape') || '').match(/^(\d+)x(\d+)$/)
     return m ? { w: Number(m[1]), h: Number(m[2]) } : null
   }, [])
+  const portraitTabs = useMemo(() => new URLSearchParams(window.location.search).get('tabs') === '1', [])
   // `?feed=1` sends plays as live feed rows (nonce 0) so the one-play queue applies, like a real poll.
   const feedMode = useMemo(() => new URLSearchParams(window.location.search).get('feed') === '1', [])
   const game = useMemo(
@@ -464,6 +592,8 @@ export default function FgKickTestPage() {
     setLastPlay(kickoffText({ format, receiving: possession, kickYards, returnYards: kickReturn, touchdown }))
     setNonce((n) => n + 1)
   }
+
+  if (portraitTabs) return <PortraitTabPagerHarness />
 
   return (
     <div className="fixed inset-0 overflow-y-auto overscroll-contain bg-zinc-950 text-zinc-100 [-webkit-overflow-scrolling:touch]">

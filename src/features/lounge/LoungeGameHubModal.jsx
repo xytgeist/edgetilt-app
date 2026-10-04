@@ -563,8 +563,8 @@ export default function LoungeGameHubModal({
       data-lounge-game-hub
       className={
         embedded
-          ? 'flex h-full min-h-0 flex-col bg-zinc-950 text-white'
-          : 'fixed inset-0 flex flex-col bg-zinc-950 text-white'
+          ? 'flex h-full min-h-0 flex-col overflow-hidden overscroll-none bg-zinc-950 text-white'
+          : 'fixed inset-0 flex flex-col overflow-hidden overscroll-none bg-zinc-950 text-white'
       }
       style={embedded ? undefined : { zIndex: Z_APP_MODAL }}
     >
@@ -597,7 +597,7 @@ export default function LoungeGameHubModal({
         ))}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[max(1.25rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
+      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none overscroll-y-contain px-4 pb-[max(1.25rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
         {/* Keep every pane mounted so tab switches stay instant (data is already prefetched). */}
         {showNewsTab ? (
           <div hidden={activeTab !== 'news'}>
@@ -731,7 +731,7 @@ export default function LoungeGameHubModal({
       <div
         data-lounge-game-hub
         data-lounge-gamecast-full
-        className="fixed inset-0 flex flex-col bg-zinc-950 text-white"
+        className="fixed inset-0 flex flex-col overflow-hidden overscroll-none bg-zinc-950 text-white"
         style={{ zIndex: Z_APP_MODAL }}
       >
         <GameHubHero

@@ -1174,6 +1174,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-04:** **Gamecast rails swipe left/right only (`1.4.991`).** Team / Fantasy / Props used `touch-action: none` + vertical paging, so a finger dragged the whole rail. Pages now `translateX`; vertical pan stays on the list. Hub roots `overscroll-none`.
 - **2026-10-04:** **Promoted `1.4.990` `test` → `main` (`8628a8d8`).** Solid HTML boot cover; wordmark only if still waiting. **No SQL / Edge.** Force-quit Prod IPA after Vercel. Store marketing still **1.4.95**.
 - **2026-10-04:** **HTML cover is solid until Lottie (`1.4.990`).** Fast path showed the static EDGE mark then the Lottie (same beat twice). Cover stays color-only; wordmark only after 800ms if still waiting. PWA/IPA lift the cover when Lottie has drawn frames. Browser still lifts at Lounge mount.
 - **2026-10-04:** **Promoted `1.4.989` `test` → `main` (`713a4205`).** HTML boot cover + TDZ fix + & Goal stick. **No SQL / Edge.** Force-quit Prod IPA after Vercel. Store marketing still **1.4.95**.

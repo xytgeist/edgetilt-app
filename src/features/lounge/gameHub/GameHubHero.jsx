@@ -4199,8 +4199,8 @@ function FantasyRailRows({ rows, align }) {
 }
 
 /**
- * Live props page: box score progress toward every bettable line; scrolls when the list outgrows the rail
- * (`SwipeRail` only pages once the scroll hits an end). Taps open the market.
+ * Live props page: box score progress toward every bettable line; scrolls when the list outgrows the rail.
+ * Horizontal swipe on the rail still pages Team / Fantasy / Props.
  */
 function PropRailRows({ rows, align }) {
   const left = align === 'left'
@@ -4241,25 +4241,42 @@ function PropRailRows({ rows, align }) {
 }
 
 /**
- * One side rail beside the landscape field: team stats / fantasy / props pages, swiped up / down (both rails
- * share `page`, so either side flips both). Pages without data are left out of `pages` by the parent.
+ * One side rail beside the landscape field: team / fantasy / props pages, swiped left / right
+ * (both rails share `page`). Vertical pan stays on the page's own scroller. Pages without
+ * data are left out of `pages` by the parent.
  */
-/** Room left to scroll inside a rail page's own scroller (if the gesture started in one). */
-function railScrollRoom(target) {
-  const el = target instanceof Element ? target.closest('[data-lounge-gamecast-rail-scroll]') : null
-  if (!el || el.scrollHeight <= el.clientHeight + 1) return { up: false, down: false }
-  return { up: el.scrollTop > 1, down: el.scrollTop + el.clientHeight < el.scrollHeight - 1 }
-}
-
 function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, props }) {
   const left = align === 'left'
   const scoring = useFantasyScoring()
+  const rootRef = useRef(null)
   const touchRef = useRef(null)
   const wheelAtRef = useRef(0)
   const idx = Math.max(0, pages.indexOf(page))
   const multi = pages.length > 1
+
+  useEffect(() => {
+    if (!multi) return undefined
+    const el = rootRef.current
+    if (!el) return undefined
+    const onMove = (e) => {
+      const start = touchRef.current
+      const t = e.touches[0]
+      if (!start || !t) return
+      const dx = t.clientX - start.x
+      const dy = t.clientY - start.y
+      if (!start.axis) {
+        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return
+        start.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
+      }
+      if (start.axis === 'x') e.preventDefault()
+    }
+    el.addEventListener('touchmove', onMove, { passive: false })
+    return () => el.removeEventListener('touchmove', onMove)
+  }, [multi])
+
   return (
     <div
+      ref={rootRef}
       data-lounge-gamecast-stat-rail={align}
       data-lounge-gamecast-rail-page={page}
       className={`relative flex min-w-0 flex-1 flex-col overflow-hidden ${multi ? 'pb-1 pt-1' : 'py-2'} ${
@@ -4268,13 +4285,13 @@ function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, p
       style={{
         minWidth: `${STAT_RAIL_MIN_REM}rem`,
         paddingTop: topInset ? topInset + (multi ? 0 : 4) : undefined,
-        touchAction: multi ? 'none' : undefined,
+        touchAction: multi ? 'pan-y' : undefined,
       }}
       onTouchStart={
         multi
           ? (e) => {
               const t = e.touches[0]
-              touchRef.current = t ? { x: t.clientX, y: t.clientY, room: railScrollRoom(e.target) } : null
+              touchRef.current = t ? { x: t.clientX, y: t.clientY, axis: '' } : null
             }
           : undefined
       }
@@ -4284,27 +4301,23 @@ function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, p
               const start = touchRef.current
               touchRef.current = null
               const t = e.changedTouches[0]
-              if (!start || !t) return
+              if (!start || !t || start.axis === 'y') return
+              const dx = t.clientX - start.x
               const dy = t.clientY - start.y
-              if (Math.abs(dy) < RAIL_SWIPE_PX || Math.abs(dy) < Math.abs(t.clientX - start.x)) return
-              if (dy < 0 ? start.room.down : start.room.up) return
-              onStep(dy < 0 ? 1 : -1)
+              if (Math.abs(dx) < RAIL_SWIPE_PX || Math.abs(dx) < Math.abs(dy)) return
+              onStep(dx < 0 ? 1 : -1)
             }
           : undefined
       }
+      onTouchCancel={multi ? () => { touchRef.current = null } : undefined}
       onWheel={
         multi
           ? (e) => {
-              if (Math.abs(e.deltaY) < 12) return
-              const room = railScrollRoom(e.target)
+              if (Math.abs(e.deltaX) < 12 || Math.abs(e.deltaX) < Math.abs(e.deltaY)) return
               const now = Date.now()
-              if (e.deltaY > 0 ? room.down : room.up) {
-                wheelAtRef.current = now
-                return
-              }
               if (now - wheelAtRef.current < RAIL_WHEEL_COOLDOWN_MS) return
               wheelAtRef.current = now
-              onStep(e.deltaY > 0 ? 1 : -1)
+              onStep(e.deltaX > 0 ? 1 : -1)
             }
           : undefined
       }
@@ -4339,7 +4352,7 @@ function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, p
             aria-hidden={p !== page}
             className="absolute inset-0 transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none"
             style={{
-              transform: `translateY(${(i - idx) * 100}%)`,
+              transform: `translateX(${(i - idx) * 100}%)`,
               opacity: p === page ? 1 : 0,
               pointerEvents: p === page ? undefined : 'none',
             }}

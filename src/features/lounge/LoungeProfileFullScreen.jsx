@@ -3430,7 +3430,7 @@ export default function LoungeProfileFullScreen({
             : `${
                 stackedOverlay ? 'absolute' : 'fixed'
               } inset-y-0 right-0 z-10 flex h-dvh max-h-dvh w-full max-w-2xl flex-col overflow-hidden border-l-0 bg-zinc-950 shadow-[-12px_0_40px_rgba(0,0,0,0.45)] transition-transform duration-300 ease-out motion-reduce:transition-none sm:border-l sm:border-zinc-800/90 ${
-                stackedOverlay || panelVisible ? 'translate-x-0' : 'translate-x-full'
+                stackedOverlay || panelVisible ? '' : 'translate-x-full'
               }`
         }
         data-lounge-profile-sheet=""

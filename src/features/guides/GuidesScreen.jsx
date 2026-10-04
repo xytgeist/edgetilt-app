@@ -1419,17 +1419,16 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
       ) : null}
 
       {profileGateOpen ? (
-        <div className="fixed inset-0 z-[115] flex items-center justify-center p-4 bg-black/75" role="dialog" aria-modal>
-          <button
-            type="button"
-            className="absolute inset-0 z-0 cursor-default"
-            aria-label="Close profile gate"
+        <div className="pointer-events-none fixed inset-0 z-[115] flex items-center justify-center p-4" role="dialog" aria-modal>
+          <div
+            className="pointer-events-auto absolute inset-0 bg-black/75"
+            aria-hidden
             onClick={() => {
               setProfileGateAvatarCropFile(null)
               setProfileGateOpen(false)
             }}
           />
-          <div className="relative z-10 w-full max-w-md rounded-3xl border border-zinc-700 bg-zinc-900 shadow-2xl p-5" data-ask-community-profile-gate>
+          <div className="relative z-10 w-full max-w-md pointer-events-auto rounded-3xl border border-zinc-700 bg-zinc-900 shadow-2xl p-5" data-ask-community-profile-gate>
             <div className="profile-gate-kicker text-cyan-200 text-sm font-semibold uppercase tracking-wide">Complete your profile</div>
             <div className="text-white text-lg font-bold mt-1">One-time setup before posting</div>
             <div className="text-zinc-400 text-sm mt-2 leading-relaxed">
@@ -1502,9 +1501,14 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
               <label className="block">
                 <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wide">Display name</span>
                 <input
+                  type="text"
                   value={profileGateDisplayName}
                   onChange={(e) => setProfileGateDisplayName(e.target.value)}
                   maxLength={24}
+                  autoComplete="name"
+                  autoCorrect="on"
+                  spellCheck={true}
+                  enterKeyHint="next"
                   className="mt-1 w-full min-h-11 rounded-xl border border-zinc-700 bg-zinc-950 px-3 text-white text-[16px] focus:outline-none focus:ring-2 focus:ring-cyan-500/40 touch-manipulation"
                   placeholder="Bryan"
                 />
@@ -1512,13 +1516,16 @@ function AskCommunityModal({ open, onClose, guideRow, supabaseClient, onPosted, 
               <label className="block">
                 <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wide">Handle</span>
                 <input
+                  type="text"
                   value={profileGateHandle ? `@${profileGateHandle}` : '@'}
                   onChange={(e) => setProfileGateHandle(handleSlugFromAtInput(e.target.value))}
                   className="mt-1 w-full min-h-11 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white text-[16px] outline-none focus:ring-2 focus:ring-cyan-500/40 touch-manipulation"
                   placeholder="@your_handle"
+                  autoComplete="username"
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
+                  enterKeyHint="done"
                 />
               </label>
               <div className="block">

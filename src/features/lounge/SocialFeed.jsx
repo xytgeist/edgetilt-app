@@ -20502,6 +20502,7 @@ export default function SocialFeed({
           firstRunChromeTourActive &&
           isActivePage &&
           !coldBootSplashVisible &&
+          !profileGateOpen &&
           (firstRunChromeTourStep === FIRST_RUN_CHROME_TOUR_STEP.MENU_HOLD ||
             firstRunChromeTourStep === FIRST_RUN_CHROME_TOUR_STEP.FAB_EXPAND)
         }
@@ -20516,15 +20517,14 @@ export default function SocialFeed({
       {profileGateOpen && typeof document !== 'undefined'
         ? createPortal(
             <div
-              className="fixed inset-0 flex items-center justify-center bg-black/50 p-4 backdrop-blur-[2px]"
+              className="pointer-events-none fixed inset-0 flex items-center justify-center p-4"
               style={{ zIndex: Z_APP_MODAL }}
               role="dialog"
               aria-modal
             >
-          <button
-            type="button"
-            className="absolute inset-0 z-0 cursor-default"
-            aria-label="Close profile gate"
+          <div
+            className="pointer-events-auto absolute inset-0 bg-black/50"
+            aria-hidden
             onClick={() => {
               if (profileGateProvisionalConfirmNeeded) return
               setProfileGateAvatarCropFile(null)
@@ -20532,7 +20532,7 @@ export default function SocialFeed({
             }}
           />
           <div
-            className="relative z-10 w-full max-w-md rounded-3xl border border-zinc-700/85 bg-zinc-950/92 p-5 shadow-2xl backdrop-blur-md"
+            className="relative z-10 w-full max-w-md pointer-events-auto rounded-3xl border border-zinc-700/85 bg-zinc-950/92 p-5 shadow-2xl"
             data-ask-community-profile-gate
           >
             <div className="profile-gate-kicker text-cyan-200 text-[15px] font-semibold uppercase tracking-wide">Complete your profile</div>
@@ -20602,9 +20602,14 @@ export default function SocialFeed({
               <label className="block">
                 <span className="text-zinc-400 text-[13px] font-semibold uppercase tracking-wide">Display name</span>
                 <input
+                  type="text"
                   value={profileGateDisplayName}
                   onChange={(e) => setProfileGateDisplayName(e.target.value)}
                   maxLength={24}
+                  autoComplete="name"
+                  autoCorrect="on"
+                  spellCheck={true}
+                  enterKeyHint="next"
                   className="mt-1 w-full min-h-12 rounded-xl border border-zinc-700 bg-zinc-950 px-3 text-white text-[18px] focus:outline-none focus:ring-2 focus:ring-cyan-500/40 touch-manipulation"
                   placeholder="Bryan"
                 />
@@ -20612,13 +20617,16 @@ export default function SocialFeed({
               <label className="block">
                 <span className="text-zinc-400 text-[13px] font-semibold uppercase tracking-wide">Handle</span>
                 <input
+                  type="text"
                   value={profileGateHandle ? `@${profileGateHandle}` : '@'}
                   onChange={(e) => setProfileGateHandle(handleSlugFromAtInput(e.target.value))}
                   className="mt-1 w-full min-h-12 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2 text-white text-[18px] outline-none focus:ring-2 focus:ring-cyan-500/40 touch-manipulation"
                   placeholder="@your_handle"
+                  autoComplete="username"
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
+                  enterKeyHint="done"
                 />
               </label>
               <div className="block">

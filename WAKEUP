@@ -2602,3 +2602,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-02 … Android speaker toggle
 
 **I am Mac Theo.** Video: Speaker Off works, Speaker On does not. Answer set native speaker once; web toggles never called AudioManager. **APK 1.3.5** + web **`1.4.984`**: `EdgeAndroid.setAudioRoute` + `applyCallAudioOutput` on every tap. Drive APKs. Promote web for prod smoke. Windows: `chatCallAudioOutput.js` / `edgeAndroid.js` (call audio).
+
+### Mac Theo 2026-10-04 … iPhone profile fields dead after phone join
+
+**I am Mac Theo.** Friend could not tap display-name fields on Complete profile + Profile Edit after Connect with phone. Ryan reproduced the steps on his phones and it worked. Web **`1.4.985`**: gate scrim is a div (not a full-screen button) with split pointer-events; open profile sheet drops `translate-x-0`; OTP autocomplete on gate inputs; chrome-tour shield off while gate is open. Not promoted. Windows: `SocialFeed` / `LoungeProfileFullScreen` / `GuidesScreen`.

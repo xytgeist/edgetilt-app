@@ -92,7 +92,9 @@ export function LoungeSportsTeamLogo({ side, treatment = 'halo', size = null, cl
               setLightFailed(true)
               return
             }
-            ev.currentTarget.style.display = 'none'
+            // WKWebView dumps decoded bitmaps on background and can fire error.
+            // Hiding the node left empty ovals after resume … leave it for repair.
+            void ev
           }}
         />
       ) : (

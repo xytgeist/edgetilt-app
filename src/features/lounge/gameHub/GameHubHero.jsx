@@ -1380,9 +1380,21 @@ function WatchBroadcastPill({ label, url }) {
 /** WKWebView dumps decoded SVG `<image>` bitmaps on background. Keep a blob URL and remount on resume. */
 const midfieldLogoBlobUrls = new Map()
 
-async function midfieldLogoBlobHref(src) {
-  const hit = midfieldLogoBlobUrls.get(src)
-  if (hit) return hit
+async function midfieldLogoBlobHref(src, { fresh = false } = {}) {
+  if (!fresh) {
+    const hit = midfieldLogoBlobUrls.get(src)
+    if (hit) return hit
+  } else {
+    const old = midfieldLogoBlobUrls.get(src)
+    if (old) {
+      try {
+        URL.revokeObjectURL(old)
+      } catch {
+        /* already revoked */
+      }
+      midfieldLogoBlobUrls.delete(src)
+    }
+  }
   const res = await fetch(src, { cache: 'force-cache', credentials: 'same-origin' })
   if (!res.ok) throw new Error(`midfield logo ${res.status}`)
   const href = URL.createObjectURL(await res.blob())
@@ -1405,7 +1417,7 @@ function FieldMidfieldLogo({ src }) {
     }
     let cancelled = false
     setShown(false)
-    void midfieldLogoBlobHref(path)
+    void midfieldLogoBlobHref(path, { fresh: paintId > 0 })
       .then((next) => {
         if (!cancelled) {
           setHref(next)

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronLeft } from 'lucide-react'
 import {
@@ -103,6 +103,11 @@ export default function LoungeGameHubModal({
   }
   const legalBooks = useLegalBooks()
   const chat = useGameHubChat(supabaseClient, game?.id ? String(game.id) : '')
+  const tabPagerRef = useRef(null)
+  const tabPaneRefs = useRef({})
+  const tabBarRef = useRef(null)
+  const tabScrollSyncLock = useRef(0)
+  const tabSettleRef = useRef(0)
 
   const sameSportGames = useMemo(
     () => loungeSportsHubGames(sports?.games || [], game?.sport_key),
@@ -511,6 +516,157 @@ export default function LoungeGameHubModal({
     { id: 'chat', label: 'Chat' },
   ]
   const activeTab = tabs.some((t) => t.id === tab) ? tab : tabs[0].id
+  const tabIdsKey = tabs.map((t) => t.id).join(',')
+
+  const scrollTabPagerTo = useCallback((id, behavior = 'smooth') => {
+    const pager = tabPagerRef.current
+    const pane = tabPaneRefs.current[id]
+    if (!pager || !pane) return
+    const left = pane.offsetLeft
+    if (Math.abs(pager.scrollLeft - left) < 2) return
+    tabScrollSyncLock.current = Date.now()
+    const reduce = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    pager.scrollTo({ left, behavior: reduce ? 'instant' : behavior })
+  }, [])
+
+  useLayoutEffect(() => {
+    const pager = tabPagerRef.current
+    const w = pager?.clientWidth || 0
+    if (w >= 8) {
+      const nearest = Math.round(pager.scrollLeft / w)
+      const want = tabs.findIndex((t) => t.id === activeTab)
+      if (want >= 0 && nearest === want) return
+    }
+    scrollTabPagerTo(activeTab, 'instant')
+  }, [activeTab, tabIdsKey, game?.id, scrollTabPagerTo])
+
+  useEffect(() => {
+    const btn = tabBarRef.current?.querySelector(`[data-lounge-game-hub-tab="${activeTab}"]`)
+    btn?.scrollIntoView({ inline: 'nearest', block: 'nearest' })
+  }, [activeTab])
+
+  useEffect(() => () => window.clearTimeout(tabSettleRef.current), [])
+
+  const onTabPagerScroll = () => {
+    const pager = tabPagerRef.current
+    if (!pager) return
+    if (Date.now() - tabScrollSyncLock.current < 80) return
+    window.clearTimeout(tabSettleRef.current)
+    tabSettleRef.current = window.setTimeout(() => {
+      const w = pager.clientWidth
+      if (w < 8) return
+      const i = Math.max(0, Math.min(tabs.length - 1, Math.round(pager.scrollLeft / w)))
+      const id = tabs[i]?.id
+      if (id && id !== tab) setTab(id)
+    }, 60)
+  }
+
+  const renderHubTabPane = (id) => {
+    if (id === 'news') {
+      return <GameHubNewsPane news={news} loading={newsLoading} error={newsErr} game={game} />
+    }
+    if (id === 'stats') {
+      return (
+        <div className="space-y-3 py-3">
+          <OddsTable game={game} books={detail.odds} legalState={legalBooks.legalState} />
+          {fantasyLoading && !(fantasy.props || []).length ? (
+            <div className="py-4 text-center text-sm text-zinc-500">Loading Kalshi markets…</div>
+          ) : (
+            <KalshiGamePropsBoard props={fantasy.props} game={game} live={live} />
+          )}
+          <BoxScoreCard game={game} />
+          <PlayerStats game={game} stats={detail.stats} />
+        </div>
+      )
+    }
+    if (id === 'plays') {
+      return (
+        <div className="py-2">
+          <PlayList
+            game={game}
+            plays={detail.plays}
+            lastPlayText={lastPlay}
+            lastPlayMeta={lastPlayMeta}
+            activePlayText={fieldPlayText}
+            onSelectPlay={replayPlayOnField}
+          />
+        </div>
+      )
+    }
+    if (id === 'players') {
+      return (
+        <GameHubPlayersPane
+          players={fantasy.players}
+          props={fantasy.props}
+          loading={fantasyLoading}
+          error={fantasyErr}
+          game={game}
+          live={live}
+          playerBox={detail.playerBox}
+        />
+      )
+    }
+    if (id === 'fantasy') {
+      return (
+        <GameHubFantasyPane
+          players={fantasy.players}
+          loading={fantasyLoading}
+          error={fantasyErr}
+          gameStatus={game.status}
+          game={game}
+          live={live}
+        />
+      )
+    }
+    if (id === 'chat') {
+      return (
+        <div className="py-2">
+          <GameHubChatPane
+            messages={chat.messages}
+            loading={chat.loading}
+            error={chat.error}
+            viewerId={chat.viewerId}
+            readOnly={loungeReadOnly}
+            onDelete={(cid) => {
+              void chat.remove(cid).catch((err) => setChatErr(err?.message || 'Could not delete.'))
+            }}
+          />
+        </div>
+      )
+    }
+    if (id === 'posts') {
+      return (
+        <div className="py-2">
+          <div className="mb-2 flex w-fit gap-1 rounded-full bg-zinc-900 p-0.5">
+            {[
+              { id: 'top', label: 'Top' },
+              { id: 'latest', label: 'Latest' },
+            ].map((opt) => (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => setPostsSort(opt.id)}
+                className={`rounded-full px-3 py-1 text-[12px] font-semibold ${
+                  postsSort === opt.id ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-400'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          <PostList
+            posts={posts}
+            postsLoading={postsLoading}
+            postsErr={postsErr}
+            emptyLabel="No Lounge posts on this game yet."
+            onOpenPost={onOpenPost}
+            closeHub={sports.closeHub}
+          />
+        </div>
+      )
+    }
+    return null
+  }
 
   const pillsRow = (
     <div className="flex gap-2 px-1">
@@ -582,12 +738,19 @@ export default function LoungeGameHubModal({
         odds={detail.odds}
       />
 
-      <div className="flex shrink-0 gap-5 overflow-x-auto border-b border-zinc-800 px-4">
+      <div
+        ref={tabBarRef}
+        className="flex shrink-0 gap-5 overflow-x-auto overflow-y-hidden overscroll-x-contain overscroll-y-none border-b border-zinc-800 px-4 touch-pan-x [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
         {tabs.map((item) => (
           <button
             key={item.id}
             type="button"
-            onClick={() => setTab(item.id)}
+            data-lounge-game-hub-tab={item.id}
+            onClick={() => {
+              setTab(item.id)
+              scrollTabPagerTo(item.id)
+            }}
             className={`-mb-px shrink-0 border-b-2 pb-2.5 pt-1 text-[15px] font-semibold touch-manipulation ${
               activeTab === item.id ? 'border-white text-white' : 'border-transparent text-zinc-500'
             }`}
@@ -597,97 +760,25 @@ export default function LoungeGameHubModal({
         ))}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-x-none overscroll-y-contain px-4 pb-[max(1.25rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
-        {/* Keep every pane mounted so tab switches stay instant (data is already prefetched). */}
-        {showNewsTab ? (
-          <div hidden={activeTab !== 'news'}>
-            <GameHubNewsPane news={news} loading={newsLoading} error={newsErr} game={game} />
-          </div>
-        ) : null}
-        <div hidden={activeTab !== 'stats'} className="space-y-3 py-3">
-          <OddsTable game={game} books={detail.odds} legalState={legalBooks.legalState} />
-          {fantasyLoading && !(fantasy.props || []).length ? (
-            <div className="py-4 text-center text-sm text-zinc-500">Loading Kalshi markets…</div>
-          ) : (
-            <KalshiGamePropsBoard props={fantasy.props} game={game} live={live} />
-          )}
-          <BoxScoreCard game={game} />
-          <PlayerStats game={game} stats={detail.stats} />
-        </div>
-        <div hidden={activeTab !== 'plays'} className="py-2">
-          <PlayList
-            game={game}
-            plays={detail.plays}
-            lastPlayText={lastPlay}
-            lastPlayMeta={lastPlayMeta}
-            activePlayText={fieldPlayText}
-            onSelectPlay={replayPlayOnField}
-          />
-        </div>
-        <div hidden={activeTab !== 'players'}>
-          <GameHubPlayersPane
-            players={fantasy.players}
-            props={fantasy.props}
-            loading={fantasyLoading}
-            error={fantasyErr}
-            game={game}
-            live={live}
-            playerBox={detail.playerBox}
-          />
-        </div>
-        {showFantasyTab ? (
-          <div hidden={activeTab !== 'fantasy'}>
-            <GameHubFantasyPane
-              players={fantasy.players}
-              loading={fantasyLoading}
-              error={fantasyErr}
-              gameStatus={game.status}
-              game={game}
-              live={live}
-            />
-          </div>
-        ) : null}
-        <div hidden={activeTab !== 'chat'} className="py-2">
-          <GameHubChatPane
-            messages={chat.messages}
-            loading={chat.loading}
-            error={chat.error}
-            viewerId={chat.viewerId}
-            readOnly={loungeReadOnly}
-            onDelete={(id) => {
-              void chat.remove(id).catch((err) => setChatErr(err?.message || 'Could not delete.'))
+      <div
+        ref={tabPagerRef}
+        data-lounge-game-hub-tab-pager
+        className="flex min-h-0 flex-1 overflow-x-auto overflow-y-hidden snap-x snap-mandatory overscroll-x-contain overscroll-y-none no-scrollbar [-webkit-overflow-scrolling:touch] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        onScroll={onTabPagerScroll}
+      >
+        {tabs.map((item) => (
+          <div
+            key={item.id}
+            ref={(el) => {
+              if (el) tabPaneRefs.current[item.id] = el
+              else delete tabPaneRefs.current[item.id]
             }}
-          />
-        </div>
-        <div hidden={activeTab !== 'posts'} className="py-2">
-          {activeTab === 'posts' ? (
-            <div className="mb-2 flex gap-1 rounded-full bg-zinc-900 p-0.5 w-fit">
-              {[
-                { id: 'top', label: 'Top' },
-                { id: 'latest', label: 'Latest' },
-              ].map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setPostsSort(opt.id)}
-                  className={`rounded-full px-3 py-1 text-[12px] font-semibold ${
-                    postsSort === opt.id ? 'bg-zinc-100 text-zinc-950' : 'text-zinc-400'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          ) : null}
-          <PostList
-            posts={posts}
-            postsLoading={postsLoading}
-            postsErr={postsErr}
-            emptyLabel="No Lounge posts on this game yet."
-            onOpenPost={onOpenPost}
-            closeHub={sports.closeHub}
-          />
-        </div>
+            data-lounge-game-hub-tab-pane={item.id}
+            className="h-full min-h-0 w-full min-w-full shrink-0 snap-start overflow-x-hidden overflow-y-auto overscroll-y-contain px-4 pb-[max(1.25rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] [-webkit-overflow-scrolling:touch]"
+          >
+            {renderHubTabPane(item.id)}
+          </div>
+        ))}
       </div>
 
       {activeTab === 'chat' && !loungeReadOnly ? (

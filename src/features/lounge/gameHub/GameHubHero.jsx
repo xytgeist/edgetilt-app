@@ -4210,29 +4210,6 @@ const TEAM_STAT_RAIL_ROWS = [
 /** Stat rail floor beside the landscape field (rem) … the field's width cap leaves this much per side. */
 const STAT_RAIL_MIN_REM = 5.5
 
-const RAIL_PAGE_SCROLL_CLASS =
-  'h-full min-h-0 min-w-0 overflow-x-hidden overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [-webkit-overflow-scrolling:touch]'
-
-/**
- * Native vertical scroller for one landscape rail page. Short lists stay evenly spaced; long lists
- * (live Props) pan here. `touch-action: pan-y` lives on this node only … never on the overflow-hidden
- * pager, or iOS eats the gesture. No ancestor non-passive `touchmove` (that also kills inner scroll).
- */
-function RailPageScroll({ align, children }) {
-  const left = align === 'left'
-  return (
-    <div
-      data-lounge-gamecast-rail-scroll
-      className={`${RAIL_PAGE_SCROLL_CLASS} ${left ? 'text-left' : 'text-right'}`}
-      style={{ touchAction: 'pan-y' }}
-    >
-      <div className={`flex min-h-full flex-col justify-evenly gap-1 py-0.5 ${left ? 'items-start' : 'items-end'}`}>
-        {children}
-      </div>
-    </div>
-  )
-}
-
 /**
  * One team's box score column beside the landscape field (away left / home right). Empty until stats land.
  * `topInset`: the field row runs up under the scoreboard … rails start below it.
@@ -4240,11 +4217,10 @@ function RailPageScroll({ align, children }) {
 function TeamStatRail({ stats, align }) {
   const byName = new Map((Array.isArray(stats) ? stats : []).map((s) => [s.name, s.value]))
   const rows = TEAM_STAT_RAIL_ROWS.filter(([key]) => byName.has(key))
-  const left = align === 'left'
   return (
-    <RailPageScroll align={align}>
+    <div className={`flex h-full min-w-0 flex-col justify-evenly ${align === 'left' ? 'items-start' : 'items-end'}`}>
       {rows.map(([key, label]) => (
-        <div key={key} className={`min-w-0 max-w-full ${left ? 'text-left' : 'text-right'}`}>
+        <div key={key} className={`min-w-0 max-w-full ${align === 'left' ? 'text-left' : 'text-right'}`}>
           <div className="truncate text-[15px] font-bold leading-none tabular-nums text-white drop-shadow">
             {byName.get(key)}
           </div>
@@ -4253,7 +4229,7 @@ function TeamStatRail({ stats, align }) {
           </div>
         </div>
       ))}
-    </RailPageScroll>
+    </div>
   )
 }
 
@@ -4286,7 +4262,7 @@ function RailPlayerName({ name, position, left }) {
 function FantasyRailRows({ rows, align }) {
   const left = align === 'left'
   return (
-    <RailPageScroll align={align}>
+    <div className={`flex h-full min-w-0 flex-col justify-evenly ${left ? 'items-start text-left' : 'items-end text-right'}`}>
       {rows.map((r) => (
         <div key={r.key} className="min-w-0 max-w-full">
           <RailPlayerName name={r.name} position={r.position} left={left} />
@@ -4296,18 +4272,24 @@ function FantasyRailRows({ rows, align }) {
           </div>
         </div>
       ))}
-    </RailPageScroll>
+    </div>
   )
 }
 
 /**
- * Live props page: box score progress toward every bettable line; scrolls when the list outgrows the rail.
- * Horizontal swipe on the rail still pages Team / Fantasy / Props.
+ * Live props page: box score progress toward every bettable line; scrolls when the list outgrows the rail
+ * (`SwipeRail` only pages once the scroll hits an end). Taps open the market.
  */
 function PropRailRows({ rows, align }) {
   const left = align === 'left'
   return (
-    <RailPageScroll align={align}>
+    <div
+      data-lounge-gamecast-rail-scroll
+      className={`flex h-full min-w-0 flex-col gap-1 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+        left ? 'items-start text-left' : 'items-end text-right'
+      }`}
+      style={{ touchAction: 'pan-y' }}
+    >
       {rows.map((r) => (
         <button
           key={r.key}
@@ -4332,15 +4314,21 @@ function PropRailRows({ rows, align }) {
           </div>
         </button>
       ))}
-    </RailPageScroll>
+    </div>
   )
 }
 
 /**
- * One side rail beside the landscape field: team / fantasy / props pages, swiped left / right
- * (both rails share `page`). Vertical pan stays on the page's own scroller. Pages without
- * data are left out of `pages` by the parent.
+ * One side rail beside the landscape field: team stats / fantasy / props pages, swiped up / down (both rails
+ * share `page`, so either side flips both). Pages without data are left out of `pages` by the parent.
  */
+/** Room left to scroll inside a rail page's own scroller (if the gesture started in one). */
+function railScrollRoom(target) {
+  const el = target instanceof Element ? target.closest('[data-lounge-gamecast-rail-scroll]') : null
+  if (!el || el.scrollHeight <= el.clientHeight + 1) return { up: false, down: false }
+  return { up: el.scrollTop > 1, down: el.scrollTop + el.clientHeight < el.scrollHeight - 1 }
+}
+
 function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, props }) {
   const left = align === 'left'
   const scoring = useFantasyScoring()
@@ -4348,20 +4336,6 @@ function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, p
   const wheelAtRef = useRef(0)
   const idx = Math.max(0, pages.indexOf(page))
   const multi = pages.length > 1
-
-  const beginGesture = (x, y) => {
-    touchRef.current = { x, y }
-  }
-  const endGesture = (x, y) => {
-    const start = touchRef.current
-    touchRef.current = null
-    if (!start) return
-    const dx = x - start.x
-    const dy = y - start.y
-    if (Math.abs(dx) < RAIL_SWIPE_PX || Math.abs(dx) <= Math.abs(dy)) return
-    onStep(dx < 0 ? 1 : -1)
-  }
-
   return (
     <div
       data-lounge-gamecast-stat-rail={align}
@@ -4372,30 +4346,27 @@ function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, p
       style={{
         minWidth: `${STAT_RAIL_MIN_REM}rem`,
         paddingTop: topInset ? topInset + (multi ? 0 : 4) : undefined,
+        touchAction: multi ? 'none' : undefined,
       }}
-      onPointerDown={
-        multi
-          ? (e) => {
-              if (e.pointerType === 'mouse' && e.button !== 0) return
-              beginGesture(e.clientX, e.clientY)
-            }
-          : undefined
-      }
-      onPointerUp={multi ? (e) => endGesture(e.clientX, e.clientY) : undefined}
-      onPointerCancel={multi ? () => { touchRef.current = null } : undefined}
       onTouchStart={
         multi
           ? (e) => {
               const t = e.touches[0]
-              if (t) beginGesture(t.clientX, t.clientY)
+              touchRef.current = t ? { x: t.clientX, y: t.clientY, room: railScrollRoom(e.target) } : null
             }
           : undefined
       }
       onTouchEnd={
         multi
           ? (e) => {
+              const start = touchRef.current
+              touchRef.current = null
               const t = e.changedTouches[0]
-              if (t) endGesture(t.clientX, t.clientY)
+              if (!start || !t) return
+              const dy = t.clientY - start.y
+              if (Math.abs(dy) < RAIL_SWIPE_PX || Math.abs(dy) < Math.abs(t.clientX - start.x)) return
+              if (dy < 0 ? start.room.down : start.room.up) return
+              onStep(dy < 0 ? 1 : -1)
             }
           : undefined
       }
@@ -4403,11 +4374,16 @@ function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, p
       onWheel={
         multi
           ? (e) => {
-              if (Math.abs(e.deltaX) < 12 || Math.abs(e.deltaX) < Math.abs(e.deltaY)) return
+              if (Math.abs(e.deltaY) < 12) return
+              const room = railScrollRoom(e.target)
               const now = Date.now()
+              if (e.deltaY > 0 ? room.down : room.up) {
+                wheelAtRef.current = now
+                return
+              }
               if (now - wheelAtRef.current < RAIL_WHEEL_COOLDOWN_MS) return
               wheelAtRef.current = now
-              onStep(e.deltaX > 0 ? 1 : -1)
+              onStep(e.deltaY > 0 ? 1 : -1)
             }
           : undefined
       }
@@ -4442,7 +4418,7 @@ function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, p
             aria-hidden={p !== page}
             className="absolute inset-0 transition-[transform,opacity] duration-300 ease-out motion-reduce:transition-none"
             style={{
-              transform: `translateX(${(i - idx) * 100}%)`,
+              transform: `translateY(${(i - idx) * 100}%)`,
               opacity: p === page ? 1 : 0,
               pointerEvents: p === page ? undefined : 'none',
             }}

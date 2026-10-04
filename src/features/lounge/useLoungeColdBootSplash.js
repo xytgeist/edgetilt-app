@@ -14,6 +14,10 @@ import {
   readLoungeColdBootPendingWork,
   subscribeLoungeColdBootPendingWork,
 } from '../../utils/loungeColdBootPendingWork.js'
+import {
+  readLoungeColdBootFeedMounted,
+  subscribeLoungeColdBootFeedMounted,
+} from '../../utils/loungeColdBootFeedMounted.js'
 
 const SPLASH_FADE_MS = 320
 /** Splash visible this long without a Lottie frame → force dismiss (WASM wedged). */
@@ -76,6 +80,7 @@ export function useLoungeColdBootSplash({ tab, browseMode }) {
   }, [visible, dismissing])
 
   const canFinishSplash = useCallback(() => {
+    if (!readLoungeColdBootFeedMounted()) return false
     const minMs = isMember ? LOUNGE_COLD_BOOT_MEMBER_MIN_MS : LOUNGE_COLD_BOOT_ANON_MIN_MS
     const maxMs = isMember ? LOUNGE_COLD_BOOT_MEMBER_MAX_MS : LOUNGE_COLD_BOOT_ANON_MAX_MS
     const shownElapsed = Date.now() - shownAtRef.current
@@ -152,25 +157,24 @@ export function useLoungeColdBootSplash({ tab, browseMode }) {
 
     const maxMs = isMember ? LOUNGE_COLD_BOOT_MEMBER_MAX_MS : LOUNGE_COLD_BOOT_ANON_MAX_MS
 
-    const tryFinish = () => canFinishSplash()
-
-    if (tryFinish()) {
-      finishSplash()
-      return undefined
+    const tryFinish = () => {
+      if (canFinishSplash()) finishSplash()
     }
 
-    const tick = window.setInterval(() => {
-      if (tryFinish()) finishSplash()
-    }, 48)
+    tryFinish()
+
+    const unsubFeed = subscribeLoungeColdBootFeedMounted(tryFinish)
+    const tick = window.setInterval(tryFinish, 48)
 
     let maxTimer = 0
     if (animationStartedAtRef.current) {
-      maxTimer = window.setTimeout(() => finishSplash(), maxMs + 48)
+      maxTimer = window.setTimeout(tryFinish, maxMs + 48)
     } else {
-      maxTimer = window.setTimeout(() => finishSplash(), SPLASH_ABSOLUTE_MAX_MS)
+      maxTimer = window.setTimeout(tryFinish, SPLASH_ABSOLUTE_MAX_MS)
     }
 
     return () => {
+      unsubFeed()
       window.clearInterval(tick)
       window.clearTimeout(maxTimer)
     }

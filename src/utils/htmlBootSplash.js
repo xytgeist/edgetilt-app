@@ -1,3 +1,8 @@
+import {
+  readLoungeColdBootFeedMounted,
+  subscribeLoungeColdBootFeedMounted,
+} from './loungeColdBootFeedMounted.js'
+
 /** Matches `#edge-html-boot-splash` in `index.html`. */
 export const HTML_BOOT_SPLASH_ID = 'edge-html-boot-splash'
 
@@ -11,8 +16,14 @@ export function dismissHtmlBootSplash() {
   }
 }
 
-/** True when `index.html` is holding the cover for the Lottie upgrade. */
-export function htmlBootSplashWantsLottie() {
-  if (typeof window === 'undefined') return false
-  return window.__edgeHtmlSplashHoldForLottie === true
+/** Keep the HTML cover until Lounge has mounted (or App asks to drop it for auth/legal). */
+export function installHtmlBootSplashRelease() {
+  if (typeof window === 'undefined') return
+  if (readLoungeColdBootFeedMounted()) {
+    dismissHtmlBootSplash()
+    return
+  }
+  subscribeLoungeColdBootFeedMounted(() => {
+    dismissHtmlBootSplash()
+  })
 }

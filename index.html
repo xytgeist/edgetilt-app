@@ -85,7 +85,6 @@
     </div>
     <script>
       (function () {
-        var HOLD_MS = 12000
         var el = document.getElementById('edge-html-boot-splash')
         var hash = String(location.hash || '')
         var params = new URLSearchParams(location.search || '')
@@ -129,7 +128,7 @@
         }
         window.setTimeout(function () {
           if (window.__edgeDismissHtmlSplash) window.__edgeDismissHtmlSplash()
-        }, HOLD_MS)
+        }, 120000)
       })()
     </script>
     <style>

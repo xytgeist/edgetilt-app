@@ -4,14 +4,10 @@ import * as Sentry from '@sentry/react'
 import './index.css'
 import App from './App.jsx'
 import {
-  readLoungeComposerDraftPendingWork,
-  shouldShowLoungeColdBootSplash,
-} from './utils/loungeColdBootSplash.js'
-import {
   installStaleChunkReloadListener,
   isCanceledModuleImport,
 } from './utils/lazyImportWithChunkReload.js'
-import { dismissHtmlBootSplash } from './utils/htmlBootSplash.js'
+import { installHtmlBootSplashRelease } from './utils/htmlBootSplash.js'
 import BootCrashFallback from './components/BootCrashFallback.jsx'
 import { applyTheme, watchSystemTheme, applyPlatformClass } from './utils/theme.js'
 import { installAppDebugLog } from './utils/appDebugLog.js'
@@ -61,9 +57,7 @@ Sentry.init({
   },
 })
 
-if (!shouldShowLoungeColdBootSplash({ tab: 'home', pendingWork: readLoungeComposerDraftPendingWork() })) {
-  dismissHtmlBootSplash()
-}
+installHtmlBootSplashRelease()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

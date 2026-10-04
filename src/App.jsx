@@ -74,6 +74,7 @@ import {
   readLoungeComposerDraftPendingWork,
   shouldShowLoungeColdBootSplash,
 } from './utils/loungeColdBootSplash.js'
+import { dismissHtmlBootSplash } from './utils/htmlBootSplash.js'
 import { clearAccountClientState } from './utils/clearAccountClientState.js'
 import {
   hasStoredSupabaseAuthToken,
@@ -203,6 +204,14 @@ function App() {
   useEffect(() => {
     if (!isChecking) window.__edgeAppReady = true
   }, [isChecking])
+  useEffect(() => {
+    if (currentView !== 'app') {
+      dismissHtmlBootSplash()
+      return
+    }
+    if (isChecking) return
+    if (!user) dismissHtmlBootSplash()
+  }, [isChecking, user, currentView])
   const [currentView, setCurrentView] = useState(() => {
     if (typeof window === 'undefined') return 'app'
     if (isPlayAnimTestPath(window.location.pathname)) return 'fg-kick-test'

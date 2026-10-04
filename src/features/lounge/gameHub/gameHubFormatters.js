@@ -139,13 +139,28 @@ function yardsToGoal(live) {
   return t.side === poss ? 100 - t.yard : t.yard
 }
 
+/**
+ * Line to gain is the goal line (any down "& Goal"). No first down without a flag.
+ * Also matches ESPN copy when distance still looks like a number.
+ */
+export function isGoalToGo(live) {
+  if (!live) return false
+  const blob = [live.shortDownDistanceText, live.downDistanceText, live.possessionText, live.distance]
+    .map((v) => String(v ?? '').toLowerCase())
+    .join(' ')
+  if (/\b&\s*goal\b|\band\s+goal\b/.test(blob)) return true
+  const dist = Number(live.distance)
+  if (!Number.isFinite(dist) || dist < 0) return false
+  const toGoal = yardsToGoal(live)
+  if (toGoal == null) return false
+  return dist + 0.01 >= toGoal
+}
+
 export function downDistanceLabel(live) {
   if (!live) return ''
   const down = live.down != null ? ordinal(live.down) : ''
   const dist = live.distance != null && Number.isFinite(Number(live.distance)) ? String(live.distance) : ''
-  // Line to gain at or past the goal line … no first down without a flag, so it's "& Goal".
-  const toGoal = yardsToGoal(live)
-  if (down && dist && toGoal != null && Number(dist) >= toGoal) return `${down} & Goal`
+  if (down && isGoalToGo(live)) return `${down} & Goal`
   if (down && dist) return `${down} & ${dist}`
   if (down) return down
   return ''

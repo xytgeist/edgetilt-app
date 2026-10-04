@@ -42,6 +42,7 @@ import {
   fieldPercent,
   isFieldOrientationFlipped,
   isFieldReplayablePlay,
+  isGoalToGo,
   liveClockLabel,
   matchRushPlayer,
   parseFieldGoalPlay,
@@ -870,10 +871,13 @@ function firstDownPercentFromLive(live, scrimPct, flipped = false) {
   ) {
     return null
   }
+  // Any down "& Goal": the stick is the goal line itself … do not paint yellow.
+  // fieldPercent also clamps LOS to 6–94, so scrim+distance can land *short* of 0/100
+  // (AUB @ TENN 1st & Goal near the end zone still drew a stick).
+  if (isGoalToGo(live)) return null
   const dist = Number(live.distance)
   const dir = attackDirection(live.possession, flipped)
   const target = scrimPct + dir * dist
-  // "& Goal": the line to gain is the goal line itself … no yellow line, like the broadcast.
   if (target <= 0 || target >= 100) return null
   return target
 }
@@ -1533,12 +1537,18 @@ function FieldViz({
   const knownStartPct = playSpotFieldPercent(playStartSpot, fieldFlipped)
   // 1st-down line at the snap … live down/distance is already post-play (and empty after a TD).
   const knownStartDistance = Number(playStartSpot?.distance)
+  const knownStartGoalToGo = isGoalToGo(playStartSpot)
+  const rawKnownFirstDownPct =
+    knownStartPct != null &&
+    snapOffenseSide &&
+    Number.isFinite(knownStartDistance) &&
+    knownStartDistance > 0 &&
+    !knownStartGoalToGo
+      ? knownStartPct + attackDirection(snapOffenseSide, fieldFlipped) * knownStartDistance
+      : null
   const knownFirstDownPct =
-    knownStartPct != null && snapOffenseSide && Number.isFinite(knownStartDistance) && knownStartDistance > 0
-      ? Math.max(
-          0,
-          Math.min(100, knownStartPct + attackDirection(snapOffenseSide, fieldFlipped) * knownStartDistance),
-        )
+    rawKnownFirstDownPct != null && rawKnownFirstDownPct > 0 && rawKnownFirstDownPct < 100
+      ? rawKnownFirstDownPct
       : null
 
   const feedFirstDownPct = isFootball ? firstDownPercentFromLive(live, pos, fieldFlipped) : null

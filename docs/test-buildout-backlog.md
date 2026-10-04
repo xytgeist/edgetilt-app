@@ -1174,6 +1174,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-04:** **WKWebView image dump after refocus (`1.4.993`).** Same dead-texture ? / empty box as the midfield mark, on any `<img>` or SVG `<image>` (avatars, team marks, feed, field). iOS / iPadOS / EdgeiOS resume rebinds cached `src`/`href` (no cache-bust). Midfield blob remount in `1.4.992` stays as extra insurance.
 - **2026-10-04:** **Midfield logo ? after app refocus (`1.4.992`).** WKWebView dumps decoded SVG `<image>` bitmaps; WebKit paints the blue ? box even though `/sports/nfl/logos/WAS.png` is local and already shown. Cache a blob URL and remount on `visibilitychange` / `pageshow`. Hide until loaded so the broken glyph never shows.
 - **2026-10-04:** **Gamecast rails swipe left/right only (`1.4.991`).** Team / Fantasy / Props used `touch-action: none` + vertical paging, so a finger dragged the whole rail. Pages now `translateX`; vertical pan stays on the list. Hub roots `overscroll-none`.
 - **2026-10-04:** **Promoted `1.4.990` `test` → `main` (`8628a8d8`).** Solid HTML boot cover; wordmark only if still waiting. **No SQL / Edge.** Force-quit Prod IPA after Vercel. Store marketing still **1.4.95**.

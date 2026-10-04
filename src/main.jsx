@@ -15,12 +15,14 @@ import { installGlobalTapHaptic } from './utils/tapHaptic.js'
 import { initGoogleAnalytics } from './utils/googleAnalytics.js'
 import { installChatCallPushProbeListener } from './utils/chatCallPushProbeListener.js'
 import { installEdgeAppVisibilityBeacon } from './utils/edgeAppVisibilityBeacon.js'
+import { installWebkitImageResumeRepair } from './utils/webkitImageResumeRepair.js'
 
 // Capture console output for in-app debug log (staff only)
 installAppDebugLog()
 
 // SW call-push suppress: Cache visibility beacon + MessageChannel probe.
 installEdgeAppVisibilityBeacon()
+installWebkitImageResumeRepair()
 installChatCallPushProbeListener()
 
 // Apply theme before first paint to prevent flash

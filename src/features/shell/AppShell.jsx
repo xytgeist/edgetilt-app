@@ -82,7 +82,6 @@ import EdgeKeyboardAccessorySync from '../../components/EdgeKeyboardAccessorySyn
 import ComposerPortraitRotateHint from '../../components/ComposerPortraitRotateHint.jsx'
 import { useLoungeColdBootSplash } from '../lounge/useLoungeColdBootSplash.js'
 import { LOUNGE_COLD_BOOT_RESUME_EVENT } from '../../utils/loungeColdBootSplash.js'
-import { shouldShowLoungeColdBootSplash } from '../../utils/loungeColdBootSplash.js'
 import { LEGAL_CONTACT_EMAIL } from '../legal/legalPolicyVersion.js'
 import { Z_APP_ALERT } from '../../constants/appZIndex.js'
 import {
@@ -2758,12 +2757,6 @@ export default function AppShell({
       window.removeEventListener(CHROME_TOUR_MENU_HOLD_EVENT, onHold)
       window.clearTimeout(chromeTourMenuHoldTimerRef.current)
       chromeTourMenuHoldRef.current = false
-    }
-  }, [])
-
-  useEffect(() => {
-    if (shouldShowLoungeColdBootSplash({ tab: 'home', pendingWork: false })) {
-    void importRoute(() => import('../lounge/SocialFeed.jsx'))
     }
   }, [])
 

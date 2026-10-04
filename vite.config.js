@@ -3,6 +3,7 @@ import path from 'node:path'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { viteBootSplashAssetsPlugin } from './scripts/vite-boot-splash-assets.mjs'
 
 function resolveBuildSha() {
   const vercelSha = String(process.env.VERCEL_GIT_COMMIT_SHA || '').trim()
@@ -20,6 +21,7 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    viteBootSplashAssetsPlugin(),
     {
       name: 'edge-build-sha-meta',
       transformIndexHtml() {

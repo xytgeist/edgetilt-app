@@ -28,6 +28,15 @@
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=300" }]
     },
     {
+      "source": "/boot/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=86400, stale-while-revalidate=604800"
+        }
+      ]
+    },
+    {
       "source": "/.well-known/apple-app-site-association",
       "headers": [
         { "key": "Content-Type", "value": "application/json" },

@@ -1,17 +1,29 @@
 import { useEffect, useRef } from 'react'
 import { DotLottie } from '@lottiefiles/dotlottie-web'
-import wasmUrl from '@lottiefiles/dotlottie-web/dotlottie-player.wasm?url'
-import edgeSplashDark from '../assets/lottie/edge-splash-v2.json'
-import edgeSplashLight from '../assets/lottie/edge-splash-v2-light.json'
+import wasmBundledUrl from '@lottiefiles/dotlottie-web/dotlottie-player.wasm?url'
+import splashDarkBundledUrl from '../assets/lottie/edge-splash-v2.json?url'
+import splashLightBundledUrl from '../assets/lottie/edge-splash-v2-light.json?url'
 import { isEdgeiOSShell } from '../utils/edgeNative.js'
+import { dismissHtmlBootSplash } from '../utils/htmlBootSplash.js'
 
-DotLottie.setWasmUrl(wasmUrl)
+const BOOT_WASM_URL = '/boot/dotlottie-player.wasm'
+DotLottie.setWasmUrl(BOOT_WASM_URL)
 
-// Pre-stringify both at module load (expensive JSON.stringify done once, not per-render).
-// The CORRECT one is selected inside useLayoutEffect/render where applyTheme() has
-// already run - module-level code executes before main.jsx's own statements fire.
-const EDGE_SPLASH_DATA_DARK = JSON.stringify(edgeSplashDark)
-const EDGE_SPLASH_DATA_LIGHT = JSON.stringify(edgeSplashLight)
+async function loadSplashJson(isDark) {
+  const primary = isDark ? '/boot/edge-splash-v2.json' : '/boot/edge-splash-v2-light.json'
+  const fallback = isDark ? splashDarkBundledUrl : splashLightBundledUrl
+  const tryUrl = async (url) => {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`splash json ${res.status}`)
+    return res.text()
+  }
+  try {
+    return await tryUrl(primary)
+  } catch {
+    DotLottie.setWasmUrl(wasmBundledUrl)
+    return tryUrl(fallback)
+  }
+}
 
 // Black Solid 1 ends at frame 157 → D fly-through begins.
 // Overlay fully transparent at frame 190 (~1 s before animation ends at 251).
@@ -156,10 +168,10 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationStart, 
     let animationStartReported = false
     let drawnFrameCount = 0
 
-    const startPlayer = () => {
+    const startPlayer = (splashData) => {
       if (cancelled) return
       if (!measureSplashCanvas(canvas)) {
-        window.requestAnimationFrame(startPlayer)
+        window.requestAnimationFrame(() => startPlayer(splashData))
         return
       }
 
@@ -186,7 +198,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationStart, 
 
       player = new DotLottie({
         canvas: renderTarget,
-        data: isDarkEffect ? EDGE_SPLASH_DATA_DARK : EDGE_SPLASH_DATA_LIGHT,
+        data: splashData,
         autoplay: true,
         loop: false,
         useFrameInterpolation: false,
@@ -200,6 +212,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationStart, 
         if (completeReported) return
         completeReported = true
         window.clearTimeout(fallback)
+        dismissHtmlBootSplash()
         onCompleteRef.current?.()
       }
       fallback = window.setTimeout(done, SPLASH_MAX_MS)
@@ -227,6 +240,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationStart, 
           preFrameCoverRef.current = null
           requestAnimationFrame(() => {
             cover.style.display = 'none'
+            dismissHtmlBootSplash()
           })
         }
 
@@ -264,9 +278,13 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationStart, 
 
     const { promise, cancel } = waitForStableSplashViewport()
     cancelViewportWait = cancel
-    promise.then(() => {
-      if (!cancelled) startPlayer()
-    })
+    Promise.all([promise, loadSplashJson(isDarkEffect)])
+      .then(([, splashData]) => {
+        if (!cancelled) startPlayer(splashData)
+      })
+      .catch(() => {
+        if (!cancelled) dismissHtmlBootSplash()
+      })
 
     return () => {
       cancelled = true

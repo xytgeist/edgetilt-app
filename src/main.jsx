@@ -8,10 +8,10 @@ import {
   shouldShowLoungeColdBootSplash,
 } from './utils/loungeColdBootSplash.js'
 import {
-  importRoute,
   installStaleChunkReloadListener,
   isCanceledModuleImport,
 } from './utils/lazyImportWithChunkReload.js'
+import { dismissHtmlBootSplash } from './utils/htmlBootSplash.js'
 import BootCrashFallback from './components/BootCrashFallback.jsx'
 import { applyTheme, watchSystemTheme, applyPlatformClass } from './utils/theme.js'
 import { installAppDebugLog } from './utils/appDebugLog.js'
@@ -61,9 +61,8 @@ Sentry.init({
   },
 })
 
-if (shouldShowLoungeColdBootSplash({ tab: 'home', pendingWork: readLoungeComposerDraftPendingWork() })) {
-  void importRoute(() => import('./features/lounge/SocialFeed.jsx'))
-  // WASM is static-imported in LoungeAppSplash (DotLottie.setWasmUrl); duplicate dynamic import here only triggers INEFFECTIVE_DYNAMIC_IMPORT.
+if (!shouldShowLoungeColdBootSplash({ tab: 'home', pendingWork: readLoungeComposerDraftPendingWork() })) {
+  dismissHtmlBootSplash()
 }
 
 createRoot(document.getElementById('root')).render(

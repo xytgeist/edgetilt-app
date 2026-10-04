@@ -204,14 +204,6 @@ function App() {
   useEffect(() => {
     if (!isChecking) window.__edgeAppReady = true
   }, [isChecking])
-  useEffect(() => {
-    if (currentView !== 'app') {
-      dismissHtmlBootSplash()
-      return
-    }
-    if (isChecking) return
-    if (!user) dismissHtmlBootSplash()
-  }, [isChecking, user, currentView])
   const [currentView, setCurrentView] = useState(() => {
     if (typeof window === 'undefined') return 'app'
     if (isPlayAnimTestPath(window.location.pathname)) return 'fg-kick-test'
@@ -250,6 +242,14 @@ function App() {
       ) || 'app'
     )
   })
+  useEffect(() => {
+    if (currentView !== 'app') {
+      dismissHtmlBootSplash()
+      return
+    }
+    if (isChecking) return
+    if (!user) dismissHtmlBootSplash()
+  }, [isChecking, user, currentView])
   /** Login/signup as a modal over the app when the user chooses it or a feature calls onRequireAuth. */
   const [authPanelOpen, setAuthPanelOpen] = useState(false)
   /** Optional shell banner (e.g. future account notices). */

@@ -1377,6 +1377,94 @@ function WatchBroadcastPill({ label, url }) {
   )
 }
 
+/** WKWebView dumps decoded SVG `<image>` bitmaps on background. Keep a blob URL and remount on resume. */
+const midfieldLogoBlobUrls = new Map()
+
+async function midfieldLogoBlobHref(src) {
+  const hit = midfieldLogoBlobUrls.get(src)
+  if (hit) return hit
+  const res = await fetch(src, { cache: 'force-cache', credentials: 'same-origin' })
+  if (!res.ok) throw new Error(`midfield logo ${res.status}`)
+  const href = URL.createObjectURL(await res.blob())
+  midfieldLogoBlobUrls.set(src, href)
+  return href
+}
+
+function FieldMidfieldLogo({ src }) {
+  const path = String(src || '').trim()
+  const [href, setHref] = useState('')
+  const [paintId, setPaintId] = useState(0)
+  const [shown, setShown] = useState(false)
+  const failsRef = useRef(0)
+
+  useEffect(() => {
+    if (!path) {
+      setHref('')
+      setShown(false)
+      return undefined
+    }
+    let cancelled = false
+    setShown(false)
+    void midfieldLogoBlobHref(path)
+      .then((next) => {
+        if (!cancelled) {
+          setHref(next)
+          setShown(true)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setHref(path)
+          setShown(true)
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [path, paintId])
+
+  useEffect(() => {
+    const bump = () => setPaintId((n) => n + 1)
+    const onVis = () => {
+      if (document.visibilityState === 'visible') bump()
+    }
+    document.addEventListener('visibilitychange', onVis)
+    window.addEventListener('pageshow', bump)
+    return () => {
+      document.removeEventListener('visibilitychange', onVis)
+      window.removeEventListener('pageshow', bump)
+    }
+  }, [])
+
+  if (!path || !href) return null
+  return (
+    <g transform="translate(628.7, 334.5) scale(1, 0.72) translate(-628.7, -334.5)">
+      <image
+        key={`${href}:${paintId}`}
+        href={href}
+        xlinkHref={href}
+        x={628.7 - 72}
+        y={334.5 - 72}
+        width="144"
+        height="144"
+        preserveAspectRatio="xMidYMid meet"
+        opacity={shown ? 0.8 : 0}
+        onLoad={() => {
+          failsRef.current = 0
+          setShown(true)
+        }}
+        onError={() => {
+          if (failsRef.current >= 3) return
+          failsRef.current += 1
+          setShown(false)
+          midfieldLogoBlobUrls.delete(path)
+          setPaintId((n) => n + 1)
+        }}
+      />
+    </g>
+  )
+}
+
 // 21 yard lines (every 5 yards from 0 to 100, including goal lines)
 const YARD_LINES = Array.from({ length: 21 }, (_, i) => {
   const p = i * 5
@@ -3137,6 +3225,8 @@ function FieldViz({
     .trim()
     .toUpperCase()
     .replace(/[^A-Z0-9-]/g, '')
+    .replace(/^WSH$/, 'WAS')
+    .replace(/^JAC$/, 'JAX')
   const homeLogoSrc = homeLogoLocal.startsWith('/sports/')
     ? homeLogoLocal
     : homeAbbrev
@@ -3621,21 +3711,9 @@ function FieldViz({
             </g>
           ))}
 
-          {/* Midfield Home Logo (perspective flattened on the 50-yd line, painted on top of yard lines with slight transparency) */}
-          {homeLogoSrc ? (
-            <g transform="translate(628.7, 334.5) scale(1, 0.72) translate(-628.7, -334.5)">
-              <image
-                href={homeLogoSrc}
-                xlinkHref={homeLogoSrc}
-                x={628.7 - 72}
-                y={334.5 - 72}
-                width="144"
-                height="144"
-                preserveAspectRatio="xMidYMid meet"
-                opacity="0.8"
-              />
-            </g>
-          ) : null}
+          {/* Midfield Home Logo (perspective flattened on the 50-yd line). Blob + remount:
+               WKWebView drops decoded SVG <image> after background and paints the ? box. */}
+          {homeLogoSrc ? <FieldMidfieldLogo src={homeLogoSrc} /> : null}
 
           {/* Red zone tint (opponent 20 → goal line) */}
           <g data-lounge-red-zone={redZoneSide || undefined}>

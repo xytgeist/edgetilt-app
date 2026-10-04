@@ -489,23 +489,6 @@ export default function LoungeGameHubModal({
     if (fantasyWanted && !was) fantasyRefreshRef.current?.()
   }, [fantasyWanted])
 
-  if (!game || typeof document === 'undefined') return null
-
-  const sendChat = async () => {
-    const body = draft.trim()
-    if (!body || posting || loungeReadOnly) return
-    setPosting(true)
-    setChatErr('')
-    try {
-      await chat.send(body)
-      setDraft('')
-    } catch (err) {
-      setChatErr(err?.message || 'Could not send.')
-    } finally {
-      setPosting(false)
-    }
-  }
-
   const tabs = [
     ...(showNewsTab ? [{ id: 'news', label: 'News' }] : []),
     { id: 'stats', label: 'Stats' },
@@ -546,6 +529,23 @@ export default function LoungeGameHubModal({
   }, [activeTab])
 
   useEffect(() => () => window.clearTimeout(tabSettleRef.current), [])
+
+  if (!game || typeof document === 'undefined') return null
+
+  const sendChat = async () => {
+    const body = draft.trim()
+    if (!body || posting || loungeReadOnly) return
+    setPosting(true)
+    setChatErr('')
+    try {
+      await chat.send(body)
+      setDraft('')
+    } catch (err) {
+      setChatErr(err?.message || 'Could not send.')
+    } finally {
+      setPosting(false)
+    }
+  }
 
   const onTabPagerScroll = () => {
     const pager = tabPagerRef.current

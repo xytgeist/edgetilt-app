@@ -16,9 +16,10 @@ export function dismissHtmlBootSplash() {
   }
 }
 
-/** Keep the HTML cover until Lounge has mounted (or App asks to drop it for auth/legal). */
+/** Keep the HTML cover until Lounge has mounted (browser) or Lottie takes over (PWA/IPA). */
 export function installHtmlBootSplashRelease() {
   if (typeof window === 'undefined') return
+  if (window.__edgeHtmlSplashHoldForLottie) return
   if (readLoungeColdBootFeedMounted()) {
     dismissHtmlBootSplash()
     return

@@ -18,7 +18,8 @@
       html.light,html.light body,html.light #root{background:#fff}
       #edge-html-boot-splash{position:fixed;inset:0;z-index:2147483646;display:flex;align-items:center;justify-content:center;background:#09090b;pointer-events:none}
       html.light #edge-html-boot-splash{background:#fff}
-      #edge-html-boot-splash img{width:min(42vw,180px);height:auto;opacity:.92}
+      #edge-html-boot-splash img{width:min(42vw,180px);height:auto;opacity:0}
+      #edge-html-boot-splash.edge-html-boot-splash--mark img{opacity:.92;transition:opacity 280ms ease}
       html.light #edge-html-boot-splash img.edge-boot-logo-dark{display:none}
       html:not(.light) #edge-html-boot-splash img.edge-boot-logo-light{display:none}
       #edge-html-boot-splash.edge-html-boot-splash--out{animation:edgeHtmlBootOut 280ms ease-out forwards}
@@ -79,10 +80,7 @@
   </head>
   <body>
     <div id="root"></div>
-    <div id="edge-html-boot-splash" aria-hidden="true">
-      <img class="edge-boot-logo-dark" src="/edge-lounge-logo-transparent.png" alt="" width="180" height="48" />
-      <img class="edge-boot-logo-light" src="/edge-lounge-logo-light.png" alt="" width="180" height="48" />
-    </div>
+    <div id="edge-html-boot-splash" aria-hidden="true"></div>
     <script>
       (function () {
         var el = document.getElementById('edge-html-boot-splash')
@@ -126,6 +124,13 @@
           wasmLink.href = '/boot/dotlottie-player.wasm'
           document.head.appendChild(wasmLink)
         }
+        window.setTimeout(function () {
+          if (!el || el.getAttribute('data-done') === '1') return
+          el.innerHTML =
+            '<img class="edge-boot-logo-dark" src="/edge-lounge-logo-transparent.png" alt="" width="180" height="48" />' +
+            '<img class="edge-boot-logo-light" src="/edge-lounge-logo-light.png" alt="" width="180" height="48" />'
+          el.classList.add('edge-html-boot-splash--mark')
+        }, 800)
         window.setTimeout(function () {
           if (window.__edgeDismissHtmlSplash) window.__edgeDismissHtmlSplash()
         }, 120000)

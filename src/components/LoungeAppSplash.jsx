@@ -4,6 +4,7 @@ import wasmBundledUrl from '@lottiefiles/dotlottie-web/dotlottie-player.wasm?url
 import splashDarkBundledUrl from '../assets/lottie/edge-splash-v2.json?url'
 import splashLightBundledUrl from '../assets/lottie/edge-splash-v2-light.json?url'
 import { isEdgeiOSShell } from '../utils/edgeNative.js'
+import { dismissHtmlBootSplash } from '../utils/htmlBootSplash.js'
 
 const BOOT_WASM_URL = '/boot/dotlottie-player.wasm'
 DotLottie.setWasmUrl(BOOT_WASM_URL)
@@ -238,6 +239,7 @@ export default function LoungeAppSplash({ dismissing = false, onAnimationStart, 
           preFrameCoverRef.current = null
           requestAnimationFrame(() => {
             cover.style.display = 'none'
+            dismissHtmlBootSplash()
           })
         }
 

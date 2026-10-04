@@ -10,6 +10,7 @@ import {
   shouldShowLoungeColdBootResumeSplash,
   shouldShowLoungeColdBootSplash,
 } from '../../utils/loungeColdBootSplash.js'
+import { dismissHtmlBootSplash } from '../../utils/htmlBootSplash.js'
 import {
   readLoungeColdBootPendingWork,
   subscribeLoungeColdBootPendingWork,
@@ -72,6 +73,7 @@ export function useLoungeColdBootSplash({ tab, browseMode }) {
       markLoungeColdBootSplashCycleDone()
     }
     setDismiss(true)
+    dismissHtmlBootSplash()
     window.clearTimeout(dismissTimerRef.current)
     dismissTimerRef.current = window.setTimeout(() => {
       setVisible(false)

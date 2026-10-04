@@ -114,6 +114,9 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Mac Theo ACTIVE TRACK 2026-10-04 ... Landscape NFL rails scroll
+**Web `1.4.994`.** Live gamecast Team / Fantasy / Props sides scroll vertically again; left/right still pages. 1.4.991's pager `touchmove` was eating the list pan. Harness `/play-anim-test?landscape=915x412`. Marketing still **1.4.95**.
+
 ### Mac Theo ACTIVE TRACK 2026-10-02 ... Quote embed caption truncate
 **I am Mac Theo.** On **`test`**, web **`1.4.977`**. Quote-repost embeds use the same caption truncate + see more as feed posts (detail no longer force-expands the quoted caption). Not promoted. Marketing still **1.4.95**.
 

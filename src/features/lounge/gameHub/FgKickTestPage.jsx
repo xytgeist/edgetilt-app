@@ -2,6 +2,79 @@ import { useMemo, useState } from 'react'
 import GameHubHero from './GameHubHero.jsx'
 import { playGameHubWhistle } from './gameHubWhistle.js'
 
+const MOCK_TEAM_STAT_ROWS = [
+  ['totalYards', '312', '348'],
+  ['netPassingYards', '221', '240'],
+  ['rushingYards', '91', '108'],
+  ['firstDowns', '18', '21'],
+  ['thirdDownEff', '5-12', '6-13'],
+  ['turnovers', '1', '0'],
+  ['possessionTime', '27:14', '32:46'],
+  ['totalPenaltiesYards', '4-35', '6-48'],
+]
+
+const MOCK_TEAM_STATS = {
+  away: MOCK_TEAM_STAT_ROWS.map(([name, away]) => ({ name, value: away })),
+  home: MOCK_TEAM_STAT_ROWS.map(([name, , home]) => ({ name, value: home })),
+}
+
+const MOCK_RAIL_PLAYERS = [
+  { name: 'Kyler Murray', position: 'QB', side: 'away', projected_ppr: 18.4 },
+  { name: 'James Conner', position: 'RB', side: 'away', projected_ppr: 14.1 },
+  { name: 'Marvin Harrison', position: 'WR', side: 'away', projected_ppr: 13.6 },
+  { name: 'Trey McBride', position: 'TE', side: 'away', projected_ppr: 11.2 },
+  { name: 'Zay Jones', position: 'WR', side: 'away', projected_ppr: 8.1 },
+  { name: 'Greg Dortch', position: 'WR', side: 'away', projected_ppr: 6.4 },
+  { name: 'Patrick Mahomes', position: 'QB', side: 'home', projected_ppr: 22.8 },
+  { name: 'Isiah Pacheco', position: 'RB', side: 'home', projected_ppr: 12.9 },
+  { name: 'Travis Kelce', position: 'TE', side: 'home', projected_ppr: 13.4 },
+  { name: 'Rashee Rice', position: 'WR', side: 'home', projected_ppr: 15.2 },
+  { name: 'Xavier Worthy', position: 'WR', side: 'home', projected_ppr: 11.8 },
+  { name: 'JuJu Smith-Schuster', position: 'WR', side: 'home', projected_ppr: 7.2 },
+]
+
+function mockBox(name, groups, stats) {
+  return { id: name, name, groups, pass_yds: 0, pass_td: 0, pass_int: 0, rush_yds: 0, rush_td: 0, rec: 0, rec_yds: 0, rec_td: 0, fum_lost: 0, ...stats }
+}
+
+const MOCK_PLAYER_BOX = {
+  away: [
+    mockBox('Kyler Murray', ['passing'], { pass_yds: 186, pass_td: 1, rush_yds: 28 }),
+    mockBox('James Conner', ['rushing'], { rush_yds: 64, rush_td: 1, rec: 2, rec_yds: 18 }),
+    mockBox('Marvin Harrison', ['receiving'], { rec: 4, rec_yds: 71 }),
+    mockBox('Trey McBride', ['receiving'], { rec: 5, rec_yds: 52 }),
+    mockBox('Zay Jones', ['receiving'], { rec: 2, rec_yds: 22 }),
+    mockBox('Greg Dortch', ['receiving'], { rec: 3, rec_yds: 19 }),
+  ],
+  home: [
+    mockBox('Patrick Mahomes', ['passing'], { pass_yds: 214, pass_td: 2, rush_yds: 12 }),
+    mockBox('Isiah Pacheco', ['rushing'], { rush_yds: 71, rec: 1, rec_yds: 9 }),
+    mockBox('Travis Kelce', ['receiving'], { rec: 6, rec_yds: 68, rec_td: 1 }),
+    mockBox('Rashee Rice', ['receiving'], { rec: 5, rec_yds: 81, rec_td: 1 }),
+    mockBox('Xavier Worthy', ['receiving'], { rec: 3, rec_yds: 44 }),
+    mockBox('JuJu Smith-Schuster', ['receiving'], { rec: 2, rec_yds: 21 }),
+  ],
+}
+
+function mockProp(player, series, line) {
+  return {
+    kind: 'player',
+    player_name: player.name,
+    series,
+    line_label: String(line),
+    yes_bid: 0.44,
+    yes_ask: 0.48,
+    source: 'kalshi',
+    url_yes: 'https://kalshi.com',
+  }
+}
+
+const MOCK_MARKET_PROPS = MOCK_RAIL_PLAYERS.flatMap((p) => {
+  if (p.position === 'QB') return [mockProp(p, 'Passing Yards', 289.5), mockProp(p, 'Rushing Yards', 38.5)]
+  if (p.position === 'RB') return [mockProp(p, 'Rushing Yards', 89.5), mockProp(p, 'Receiving Yards', 28.5)]
+  return [mockProp(p, 'Receiving Yards', 94.5), mockProp(p, '1+ TD', 1)]
+})
+
 const MOCK_GAME = {
   sport_key: 'americanfootball_nfl',
   status: 'in',
@@ -786,6 +859,10 @@ export default function FgKickTestPage() {
             replayTeam={feedTeam || possession}
             playStartSpot={startSpot}
             fullscreen={Boolean(landscapeBox)}
+            teamStats={landscapeBox ? MOCK_TEAM_STATS : null}
+            players={landscapeBox ? MOCK_RAIL_PLAYERS : []}
+            playerBox={landscapeBox ? MOCK_PLAYER_BOX : null}
+            marketProps={landscapeBox ? MOCK_MARKET_PROPS : null}
           />
         </div>
 

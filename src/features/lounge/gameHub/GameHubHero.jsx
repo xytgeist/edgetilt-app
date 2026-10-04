@@ -4210,6 +4210,29 @@ const TEAM_STAT_RAIL_ROWS = [
 /** Stat rail floor beside the landscape field (rem) … the field's width cap leaves this much per side. */
 const STAT_RAIL_MIN_REM = 5.5
 
+const RAIL_PAGE_SCROLL_CLASS =
+  'h-full min-h-0 min-w-0 overflow-x-hidden overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [-webkit-overflow-scrolling:touch]'
+
+/**
+ * Native vertical scroller for one landscape rail page. Short lists stay evenly spaced; long lists
+ * (live Props) pan here. `touch-action: pan-y` lives on this node only … never on the overflow-hidden
+ * pager, or iOS eats the gesture. No ancestor non-passive `touchmove` (that also kills inner scroll).
+ */
+function RailPageScroll({ align, children }) {
+  const left = align === 'left'
+  return (
+    <div
+      data-lounge-gamecast-rail-scroll
+      className={`${RAIL_PAGE_SCROLL_CLASS} ${left ? 'text-left' : 'text-right'}`}
+      style={{ touchAction: 'pan-y' }}
+    >
+      <div className={`flex min-h-full flex-col justify-evenly gap-1 py-0.5 ${left ? 'items-start' : 'items-end'}`}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 /**
  * One team's box score column beside the landscape field (away left / home right). Empty until stats land.
  * `topInset`: the field row runs up under the scoreboard … rails start below it.
@@ -4217,10 +4240,11 @@ const STAT_RAIL_MIN_REM = 5.5
 function TeamStatRail({ stats, align }) {
   const byName = new Map((Array.isArray(stats) ? stats : []).map((s) => [s.name, s.value]))
   const rows = TEAM_STAT_RAIL_ROWS.filter(([key]) => byName.has(key))
+  const left = align === 'left'
   return (
-    <div className={`flex h-full min-w-0 flex-col justify-evenly ${align === 'left' ? 'items-start' : 'items-end'}`}>
+    <RailPageScroll align={align}>
       {rows.map(([key, label]) => (
-        <div key={key} className={`min-w-0 max-w-full ${align === 'left' ? 'text-left' : 'text-right'}`}>
+        <div key={key} className={`min-w-0 max-w-full ${left ? 'text-left' : 'text-right'}`}>
           <div className="truncate text-[15px] font-bold leading-none tabular-nums text-white drop-shadow">
             {byName.get(key)}
           </div>
@@ -4229,7 +4253,7 @@ function TeamStatRail({ stats, align }) {
           </div>
         </div>
       ))}
-    </div>
+    </RailPageScroll>
   )
 }
 
@@ -4262,7 +4286,7 @@ function RailPlayerName({ name, position, left }) {
 function FantasyRailRows({ rows, align }) {
   const left = align === 'left'
   return (
-    <div className={`flex h-full min-w-0 flex-col justify-evenly ${left ? 'items-start text-left' : 'items-end text-right'}`}>
+    <RailPageScroll align={align}>
       {rows.map((r) => (
         <div key={r.key} className="min-w-0 max-w-full">
           <RailPlayerName name={r.name} position={r.position} left={left} />
@@ -4272,7 +4296,7 @@ function FantasyRailRows({ rows, align }) {
           </div>
         </div>
       ))}
-    </div>
+    </RailPageScroll>
   )
 }
 
@@ -4283,13 +4307,7 @@ function FantasyRailRows({ rows, align }) {
 function PropRailRows({ rows, align }) {
   const left = align === 'left'
   return (
-    <div
-      data-lounge-gamecast-rail-scroll
-      className={`flex h-full min-w-0 flex-col gap-1 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
-        left ? 'items-start text-left' : 'items-end text-right'
-      }`}
-      style={{ touchAction: 'pan-y' }}
-    >
+    <RailPageScroll align={align}>
       {rows.map((r) => (
         <button
           key={r.key}
@@ -4314,7 +4332,7 @@ function PropRailRows({ rows, align }) {
           </div>
         </button>
       ))}
-    </div>
+    </RailPageScroll>
   )
 }
 
@@ -4326,35 +4344,13 @@ function PropRailRows({ rows, align }) {
 function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, props }) {
   const left = align === 'left'
   const scoring = useFantasyScoring()
-  const rootRef = useRef(null)
   const touchRef = useRef(null)
   const wheelAtRef = useRef(0)
   const idx = Math.max(0, pages.indexOf(page))
   const multi = pages.length > 1
 
-  useEffect(() => {
-    if (!multi) return undefined
-    const el = rootRef.current
-    if (!el) return undefined
-    const onMove = (e) => {
-      const start = touchRef.current
-      const t = e.touches[0]
-      if (!start || !t) return
-      const dx = t.clientX - start.x
-      const dy = t.clientY - start.y
-      if (!start.axis) {
-        if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return
-        start.axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y'
-      }
-      if (start.axis === 'x') e.preventDefault()
-    }
-    el.addEventListener('touchmove', onMove, { passive: false })
-    return () => el.removeEventListener('touchmove', onMove)
-  }, [multi])
-
   return (
     <div
-      ref={rootRef}
       data-lounge-gamecast-stat-rail={align}
       data-lounge-gamecast-rail-page={page}
       className={`relative flex min-w-0 flex-1 flex-col overflow-hidden ${multi ? 'pb-1 pt-1' : 'py-2'} ${
@@ -4363,13 +4359,12 @@ function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, p
       style={{
         minWidth: `${STAT_RAIL_MIN_REM}rem`,
         paddingTop: topInset ? topInset + (multi ? 0 : 4) : undefined,
-        touchAction: multi ? 'pan-y' : undefined,
       }}
       onTouchStart={
         multi
           ? (e) => {
               const t = e.touches[0]
-              touchRef.current = t ? { x: t.clientX, y: t.clientY, axis: '' } : null
+              touchRef.current = t ? { x: t.clientX, y: t.clientY } : null
             }
           : undefined
       }
@@ -4379,10 +4374,10 @@ function SwipeRail({ align, topInset = 0, pages, page, onStep, stats, fantasy, p
               const start = touchRef.current
               touchRef.current = null
               const t = e.changedTouches[0]
-              if (!start || !t || start.axis === 'y') return
+              if (!start || !t) return
               const dx = t.clientX - start.x
               const dy = t.clientY - start.y
-              if (Math.abs(dx) < RAIL_SWIPE_PX || Math.abs(dx) < Math.abs(dy)) return
+              if (Math.abs(dx) < RAIL_SWIPE_PX || Math.abs(dx) <= Math.abs(dy)) return
               onStep(dx < 0 ? 1 : -1)
             }
           : undefined
@@ -4647,7 +4642,8 @@ function PregamePropRail({ rows, align }) {
       ) : null}
       <div
         data-lounge-gamecast-prop-rail-scroll
-        className="min-h-0 w-full flex-1 overflow-y-auto overscroll-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [mask-image:linear-gradient(to_bottom,transparent,black_10px,black_calc(100%-14px),transparent)]"
+        className="min-h-0 w-full flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [-webkit-overflow-scrolling:touch] [mask-image:linear-gradient(to_bottom,transparent,black_10px,black_calc(100%-14px),transparent)]"
+        style={{ touchAction: 'pan-y' }}
       >
         <div
           className={`flex min-h-full flex-col justify-center gap-2 px-1.5 py-2 ${left ? 'items-start' : 'items-end'}`}

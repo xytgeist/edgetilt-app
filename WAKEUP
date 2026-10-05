@@ -2833,3 +2833,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-05 … Promote 1.4.1041
 
 **I am Mac Theo.** Promoted **`test` → `main` (`5cf4fb61`)**. Vercel prod web **`1.4.1041`** (full-frame iPhone landscape side pad). No new IPA. Back on **`test`**.
+
+### Mac Theo 2026-10-05 … iPhone landscape side pad tighter
+
+**I am Mac Theo.** **`1.4.1042`**: phone landscape side floor `1.25rem` → `0.5rem` (still `max` with sal/sar). Hard-refresh on test. Not promoted.

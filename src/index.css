@@ -5108,11 +5108,11 @@ html.light [data-chat-feature][data-chat-landscape-split] [data-chat-landscape-p
      read --edge-rail-inset-*. Skip Duo trailing-rail (different chrome). */
   html[data-ipad-nav]:not([data-ipad-nav-end]) {
     --edge-phone-landscape-side-start: max(
-      1.25rem,
+      0.5rem,
       max(env(safe-area-inset-left, 0px), var(--edge-sal, 0px))
     );
     --edge-phone-landscape-side-end: max(
-      1.25rem,
+      0.5rem,
       max(env(safe-area-inset-right, 0px), var(--edge-sar, 0px))
     );
     --edge-rail-inset-start: calc(var(--edge-ipad-rail) + var(--edge-phone-landscape-side-start));

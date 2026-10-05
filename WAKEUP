@@ -2856,4 +2856,8 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 
 ### Mac Theo 2026-10-05 … pregame prop rails a bit wider
 
-**I am Mac Theo.** **`1.4.1045`**: landscape pregame PLAYER PROPS columns `0.9fr` → `1.15fr` (teams `1fr` → `0.95fr`, gap a hair tighter) so lines like `90+ rush yds 47¢` stop truncating. Hard-refresh on test. Not promoted.
+**I am Mac Theo.** **`1.4.1045`**: landscape pregame PLAYER PROPS columns `0.9fr` → `1.15fr` (teams `1fr` → `0.95fr`, gap a hair tighter) so lines like `90+ rush yds 47¢` stop truncating.
+
+### Mac Theo 2026-10-05 … Promote 1.4.1045
+
+**I am Mac Theo.** Promoted **`test` → `main` (`c94a21c6`)**. Vercel prod web **`1.4.1045`** (wider pregame prop rails). No new IPA. Back on **`test`**.

@@ -102,6 +102,11 @@ export const DUO_VIEWPORT_SEGMENTS_QUERY = '(horizontal-viewport-segments: 2)'
 export function isDuoOpenViewport() {
   if (typeof window === 'undefined') return false
   try {
+    if (document.documentElement?.hasAttribute('data-edge-duo')) return true
+  } catch {
+    /* ignore */
+  }
+  try {
     if (window.matchMedia(DUO_VIEWPORT_SEGMENTS_QUERY).matches) return true
   } catch {
     /* older WebKit */
@@ -112,7 +117,7 @@ export function isDuoOpenViewport() {
   if (!window.matchMedia('(pointer: coarse)').matches) return false
   const w = window.innerWidth || 0
   const h = window.innerHeight || 0
-  return Math.min(w, h) >= 700 && Math.max(w, h) >= 768
+  return Math.min(w, h) >= 640 && Math.max(w, h) >= 900
 }
 
 /** Short landscape ... shrink tools cards. iPad height stays roomy. */

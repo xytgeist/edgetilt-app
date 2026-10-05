@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **Duo rail detection (`1.4.1006`).** Native stamps `data-edge-duo` / `getInfo.isDuo` from `iPhone19,4` (sim `SIMULATOR_MODEL_IDENTIFIER`). Web no longer depends on iPhone UA + 700px floor. Rebuild Test Fast. iPad 11 stays leading.
 - **2026-10-05:** **Duo rail on the right (`1.4.1005`).** Open iPhone Duo (`horizontal-viewport-segments: 2`, or iPhone UA + tablet shell floor) parks the Lounge rail on the trailing edge. iPad 11 stays leading. Shell padding / title bars follow `--edge-rail-inset-start|end`.
 - **2026-10-05:** **iPad auth gap (`1.4.1004`).** Slogan-to-buttons was `2.5rem + 100px` (leftover from a 200px drop on the iPad column). Now `mt-10`. Phone sheet unchanged. Duo uses the same column when it matches the iPad query.
 - **2026-10-05:** **Google OAuth Back (native).** WKWebView Google sign-in has no Safari chrome. Native Back capsule on off-site hosts (accounts.google.com, supabase authorize). Sim rebuild / new IPA. Web `1.4.1003` unchanged.

@@ -67,6 +67,8 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
         // Matches EdgeTilt.entitlements aps-environment (production for TestFlight / App Store).
         "apsEnvironment": "production",
         "ua": AppConfig.userAgentToken,
+        "modelIdentifier": AppConfig.modelIdentifier,
+        "isDuo": AppConfig.isIPhoneDuo,
       ]))
     case "openInSafari":
       guard let urlString = payload?["url"] as? String,
@@ -761,8 +763,19 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
 
   // MARK: - Bootstrap script
 
-  private static let bridgeBootstrapScript = """
+  private static var bridgeBootstrapScript: String {
+    bridgeBootstrapScriptTemplate
+      .replacingOccurrences(of: "__EDGE_MODEL__", with: AppConfig.modelIdentifier)
+      .replacingOccurrences(of: "__EDGE_DUO__", with: AppConfig.isIPhoneDuo ? "true" : "false")
+  }
+
+  private static let bridgeBootstrapScriptTemplate = """
   (function () {
+    try {
+      var _root = document.documentElement;
+      _root.setAttribute('data-edge-model', '__EDGE_MODEL__');
+      if (__EDGE_DUO__) _root.setAttribute('data-edge-duo', '');
+    } catch (e) {}
     if (window.EdgeNative) return;
     var pending = {};
     function call(method, payload) {

@@ -2804,4 +2804,8 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 
 ### Mac Theo 2026-10-05 … iPhone landscape title right pad
 
-**I am Mac Theo.** **`1.4.1038`**: phone landscape Lounge title row was `pr-0.5rem` flush to the trailing edge … hamburger sat in the continuous corner. Right pad is now `max(1rem, sar)`. Left rail E untouched. Hard-refresh on test. Not promoted.
+**I am Mac Theo.** **`1.4.1038`**: phone landscape Lounge title row was `pr-0.5rem` flush to the trailing edge … hamburger sat in the continuous corner. Right pad is now `max(1rem, sar)`. Left rail E untouched. Hard-refresh.
+
+### Mac Theo 2026-10-05 … Promote 1.4.1038
+
+**I am Mac Theo.** Promoted **`test` → `main` (`f9b2c9c8`)**. Vercel prod web **`1.4.1038`** (landscape hamburger right pad). No new IPA. Back on **`test`**.

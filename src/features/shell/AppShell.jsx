@@ -2706,17 +2706,7 @@ export default function AppShell({
         return
       }
       const rect = btn.getBoundingClientRect()
-      if (btn.hasAttribute('data-duo-nav-more')) {
-        const top = 'auto'
-        const bottom = Math.max(8, Math.round(window.innerHeight - rect.bottom))
-        const right = Math.max(8, Math.round(window.innerWidth - rect.left + 8))
-        setMenuAnchor((prev) =>
-          prev && prev.top === top && prev.bottom === bottom && prev.right === right
-            ? prev
-            : { top, bottom, right },
-        )
-        return
-      }
+      // Duo More sits under the status dock (same as title-bar hamburger). Open downward.
       const top = Math.round(rect.bottom + 4)
       const right = Math.max(8, Math.round(window.innerWidth - rect.right))
       setMenuAnchor((prev) =>

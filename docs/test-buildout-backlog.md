@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **Duo bottom cluster + glass (`1.4.1026`).** Order shortcuts → expandable tabs → compose. CSS liquid-glass (blur 48 / saturate 200 / hairline / inset). Trailing pad 8. Web-only … no native preferredColorScheme remount.
 - **2026-10-05:** **Duo extras auto-collapse (`1.4.1025`).** Expanded Search/Alerts/Chat/Settings collapse after selecting an item or tapping outside the tabs pill.
 - **2026-10-05:** **Duo stack centered under wifi (`1.4.1024`).** Single 50px column for compose/shortcuts/tabs; trailing pad 22. Mid slot no longer `w-full` (that was drifting the shortcuts pill).
 - **2026-10-05:** **Duo mid-rail shortcuts pill (`1.4.1023`).** Same iPad rail pin store (max 6) in a frosted pill between compose and the bottom tab pill. `TitleBarQuickLinks` `layout="duo"`.

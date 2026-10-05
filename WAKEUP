@@ -2741,3 +2741,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-05 … Duo extras auto-collapse
 
 **I am Mac Theo.** **`1.4.1025`**: expanded tab extras collapse after picking an item or tapping outside the tabs pill. Hard-refresh until 1.4.1025. Not promoted.
+
+### Mac Theo 2026-10-05 … Duo bottom cluster + glass
+
+**I am Mac Theo.** **`1.4.1026`**: bottom stack = shortcuts → expandable tabs → compose. Apple-style glass CSS (blur/saturate/hairline/inset highlight). Trailing pad 8 to center under wifi. Back stays under the dock when needed. Hard-refresh until 1.4.1026. Not promoted.

@@ -2721,7 +2721,3 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-05 … light theme blank white screen
 
 **I am Mac Theo.** 1018 flipped the wifi glyph then painted the whole WKWebView white. SwiftUI `preferredColorScheme` + white chrome remade/covered the page. Fix: window `overrideUserInterfaceStyle` only; webview stays dark traits + black chrome. Rebuild Test Fast. Not promoted.
-
-### Mac Theo 2026-10-05 … Duo Mail glass pills
-
-**I am Mac Theo.** **`1.4.1019`**: Duo pills drop the drop-shadow (frost + hairline only), icons **28px**, SVG stroke **2.2**. Phone dock / iPad 11 unchanged. Hard-refresh until 1.4.1019. Not promoted.

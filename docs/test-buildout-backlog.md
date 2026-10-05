@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **Sign-off … phone landscape chrome day (`1.4.1041`–`1.4.1053`).** Ryan smoked on device: full-frame side pads, thin rail / E align / shortcuts / hamburger, true 50/50 engagement split, pregame prop rails, game menu State fold-in, dense Calcs cards + Calcs title bar, Guides/Calcs gutters + vertical rhythm. Prod web tip **`1.4.1053`** (`8378808b`). No new IPA.
 - **2026-10-05:** **Guides/Calcs vertical rhythm (`1.4.1053`).** Phone landscape: Guides search→first card `0.5rem` (was `mb-5`); Calcs drops extra list top pad; calc card gap `0.375rem` matching tools hub.
 - **2026-10-05:** **AP Guides pane gutters match tools (`1.4.1052`).** Guides `paneEmbed` scroll gets `data-slots-landscape-pane-scroll` so phone landscape search/cards use the same `0.5rem` gutters as Slots tools.
 - **2026-10-05:** **Calcs pane gutters match tools (`1.4.1051`).** Phone landscape `[data-slots-landscape-pane-scroll]` uses the same `0.5rem` side pad as tools-scroll so calc cards line up with the left list.

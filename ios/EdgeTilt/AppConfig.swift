@@ -22,10 +22,10 @@ enum AppConfig {
     }
     var info = utsname()
     uname(&info)
-    return withUnsafePointer(to: &info.machine) {
-      $0.withMemoryRebound(to: CChar.self, capacity: MemoryLayout.size(ofValue: info.machine)) {
-        String(cString: $0)
-      }
+    var machine = info.machine
+    return withUnsafeBytes(of: &machine) { raw in
+      guard let ptr = raw.baseAddress?.assumingMemoryBound(to: CChar.self) else { return "unknown" }
+      return String(cString: ptr)
     }
   }
 

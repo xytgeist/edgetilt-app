@@ -5104,16 +5104,17 @@ html.light [data-chat-feature][data-chat-landscape-split] [data-chat-landscape-p
     --slots-landscape-pane-col: 50vw;
   }
   /* Phone landscape full frame: inset rail + shell from both continuous corners /
-     camera (sal/sar), not just the title hamburger. Title / dock / feed already
-     read --edge-rail-inset-*. Skip Duo trailing-rail (different chrome). */
+     camera. Use ~half of sal/sar (not the full inset) so chrome sits closer;
+     a rem floor alone never wins when shell injects real --edge-sal/sar.
+     Title / dock / feed already read --edge-rail-inset-*. Skip Duo trailing-rail. */
   html[data-ipad-nav]:not([data-ipad-nav-end]) {
     --edge-phone-landscape-side-start: max(
       0.5rem,
-      max(env(safe-area-inset-left, 0px), var(--edge-sal, 0px))
+      calc(max(env(safe-area-inset-left, 0px), var(--edge-sal, 0px)) * 0.5)
     );
     --edge-phone-landscape-side-end: max(
       0.5rem,
-      max(env(safe-area-inset-right, 0px), var(--edge-sar, 0px))
+      calc(max(env(safe-area-inset-right, 0px), var(--edge-sar, 0px)) * 0.5)
     );
     --edge-rail-inset-start: calc(var(--edge-ipad-rail) + var(--edge-phone-landscape-side-start));
     --edge-rail-inset-end: var(--edge-phone-landscape-side-end);

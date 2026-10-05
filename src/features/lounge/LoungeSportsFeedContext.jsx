@@ -14,6 +14,9 @@ import {
   LOUNGE_SPORTS_GAME_OPEN_EVENT,
   LOUNGE_SPORTS_HUB_FILTER_ALL,
   peekLoungeSportsGamePending,
+  peekRememberedLoungeSportsGameOpen,
+  readLoungeSportsGameIdFromLocation,
+  syncOpenLoungeSportsGame,
   LOUNGE_SPORTS_HUB_OPEN_EVENT,
   normalizeLoungeSportsHubFilter,
 } from './loungeSportsHubNav.js'
@@ -264,18 +267,23 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
   const closeSlate = useCallback(() => {
     setSlateFilter(null)
     setHubGame(null)
+    syncOpenLoungeSportsGame(null)
   }, [])
 
   const openHub = useCallback((game) => {
     if (!game) return
     setHubGame(game)
+    syncOpenLoungeSportsGame(game.id)
     if (game.status === 'in') {
       watchedGameIdRef.current = String(game.id)
       pushWatchedGameLiveActivity(game)
     }
   }, [])
 
-  const closeHub = useCallback(() => setHubGame(null), [])
+  const closeHub = useCallback(() => {
+    setHubGame(null)
+    syncOpenLoungeSportsGame(null)
+  }, [])
 
   const dismissWatchedGame = useCallback(() => {
     const id = watchedGameIdRef.current
@@ -298,7 +306,11 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
   }, [openSlate])
 
   // Shared game link (`?game=`): open that hub once the board has it (or a one-game lookup does).
-  const [pendingGameId, setPendingGameId] = useState(peekLoungeSportsGamePending)
+  const [pendingGameId, setPendingGameId] = useState(
+    () => peekLoungeSportsGamePending()
+      || peekRememberedLoungeSportsGameOpen()
+      || readLoungeSportsGameIdFromLocation(),
+  )
   const pendingLookupRef = useRef('')
   useEffect(() => {
     const onOpen = (event) => {
@@ -322,6 +334,8 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
       }
       if (event === 'SIGNED_OUT') {
         dismissWatchedGame()
+        setHubGame(null)
+        syncOpenLoungeSportsGame(null)
       }
     })
     return () => data?.subscription?.unsubscribe?.()

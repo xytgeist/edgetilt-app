@@ -682,7 +682,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     }
     guard !didReloadAfterContentCrash else { return }
     didReloadAfterContentCrash = true
-    let url = webView.url ?? AppConfig.baseURL
+    let url = EdgeLastSpaURL.restore() ?? webView.url ?? AppConfig.baseURL
     webView.load(URLRequest(url: url))
   }
 
@@ -690,6 +690,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     NSLog("EdgeWebView didFinish \(webView.url?.absoluteString ?? "<nil>")")
     didRetryTransientLoad = false
     didReloadAfterContentCrash = false
+    EdgeLastSpaURL.persist(webView.url)
     applyCustomUserAgent(to: webView)
     onDidFinishNavigation?()
   }

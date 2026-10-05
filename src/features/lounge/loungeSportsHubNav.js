@@ -124,3 +124,64 @@ export function consumeLoungeSportsHubPending() {
     return null
   }
 }
+
+/** Currently-open game hub … survives WKWebView process death (URL + localStorage). */
+export const LOUNGE_SPORTS_GAME_OPEN_KEY = 'loungeSportsGameOpen:v1'
+
+export function readLoungeSportsGameIdFromLocation() {
+  try {
+    if (typeof window === 'undefined') return null
+    const id = new URLSearchParams(window.location.search || '').get(LOUNGE_SPORTS_GAME_PARAM)
+    return String(id || '').trim() || null
+  } catch {
+    return null
+  }
+}
+
+export function peekRememberedLoungeSportsGameOpen() {
+  try {
+    if (typeof localStorage === 'undefined') return null
+    const raw = localStorage.getItem(LOUNGE_SPORTS_GAME_OPEN_KEY)
+    if (!raw) return null
+    const row = JSON.parse(raw)
+    const id = String(row?.id || '').trim()
+    if (!id) {
+      localStorage.removeItem(LOUNGE_SPORTS_GAME_OPEN_KEY)
+      return null
+    }
+    return id
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Keep `?tab=home&game=` on the SPA URL while a hub is open so a WKWebView
+ * restore / process-kill reload reopens the same game instead of Lounge home.
+ */
+export function syncOpenLoungeSportsGame(eventId) {
+  const id = String(eventId || '').trim()
+  try {
+    if (typeof localStorage !== 'undefined') {
+      if (id) localStorage.setItem(LOUNGE_SPORTS_GAME_OPEN_KEY, JSON.stringify({ id, at: Date.now() }))
+      else localStorage.removeItem(LOUNGE_SPORTS_GAME_OPEN_KEY)
+    }
+  } catch {
+    /* ignore */
+  }
+  if (typeof window === 'undefined') return
+  try {
+    const u = new URL(window.location.href)
+    if (id) {
+      if (!u.searchParams.get('tab')) u.searchParams.set('tab', 'home')
+      u.searchParams.set(LOUNGE_SPORTS_GAME_PARAM, id)
+    } else {
+      u.searchParams.delete(LOUNGE_SPORTS_GAME_PARAM)
+    }
+    const next = `${u.pathname}${u.search}${u.hash}`
+    const cur = `${window.location.pathname}${window.location.search}${window.location.hash}`
+    if (next !== cur) window.history.replaceState(window.history.state, '', next)
+  } catch {
+    /* ignore */
+  }
+}

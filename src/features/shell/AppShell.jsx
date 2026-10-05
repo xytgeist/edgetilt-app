@@ -1556,13 +1556,6 @@ export default function AppShell({
       // Wait for the session to resolve so a signed-in recipient isn't bounced to the auth sheet.
       if (sharedGameId && (browseMode !== 'anonymous' || authSessionReady)) {
         requestLoungeSportsGameOpen(sharedGameId)
-        try {
-          const u = new URL(window.location.href)
-          u.searchParams.delete(LOUNGE_SPORTS_GAME_PARAM)
-          window.history.replaceState(window.history.state, '', `${u.pathname}${u.search}${u.hash}`)
-        } catch {
-          /* ignore */
-        }
         setTab('home')
         setMenuOpen(false)
         if (browseMode === 'anonymous') onRequireAuthRef.current?.()

@@ -1,5 +1,42 @@
 import SwiftUI
+import UIKit
 import WebKit
+
+/// Last in-app SPA URL so a scene remake after a long background does not
+/// `load(edgetilt.com/)` and dump the user out of a game hub.
+enum EdgeLastSpaURL {
+  private static let defaultsKey = "edge.webkit.lastSpaUrl"
+
+  static func persist(_ url: URL?) {
+    guard let url, let allowed = allowed(url) else { return }
+    UserDefaults.standard.set(allowed.absoluteString, forKey: defaultsKey)
+  }
+
+  static func restore() -> URL? {
+    guard let raw = UserDefaults.standard.string(forKey: defaultsKey),
+          let url = URL(string: raw)
+    else { return nil }
+    return allowed(url)
+  }
+
+  private static func allowed(_ url: URL) -> URL? {
+    let next = EdgePushManager.canonicalWebURL(fromUniversalLink: url)
+    guard let host = next.host?.lowercased(),
+          let baseHost = AppConfig.baseURL.host?.lowercased()
+    else { return nil }
+    let ok = host == baseHost
+      || host == "www.\(baseHost)"
+      || host.hasSuffix(".\(baseHost)")
+      || host == "edgetilt.com"
+      || host == "www.edgetilt.com"
+      || host == "lvslotpro.com"
+      || host == "www.lvslotpro.com"
+    guard ok else { return nil }
+    let path = next.path.lowercased()
+    if path.hasPrefix("/auth/") { return nil }
+    return next
+  }
+}
 
 struct EdgeWebView: UIViewRepresentable {
   let url: URL
@@ -31,7 +68,9 @@ struct EdgeWebView: UIViewRepresentable {
 
     let store = config.websiteDataStore
     let loadNow = {
-      let url = EdgePushManager.shared.consumePendingDeepLinkURL() ?? context.coordinator.url
+      let url = EdgePushManager.shared.consumePendingDeepLinkURL()
+        ?? EdgeLastSpaURL.restore()
+        ?? context.coordinator.url
       NSLog("EdgeWebView load \(url.absoluteString)")
       webView.load(URLRequest(url: url))
       EdgePushManager.shared.markReadyForDeepLinks()
@@ -62,9 +101,16 @@ struct EdgeWebView: UIViewRepresentable {
     private weak var webView: EdgeInsetAwareWebView?
     private var lastInsets: UIEdgeInsets = .init(top: -1, left: -1, bottom: -1, right: -1)
     var swiftSafeArea: EdgeInsets = EdgeInsets()
+    private var backgroundObserver: NSObjectProtocol?
 
     init(url: URL) {
       self.url = url
+    }
+
+    deinit {
+      if let backgroundObserver {
+        NotificationCenter.default.removeObserver(backgroundObserver)
+      }
     }
 
     func attach(webView: EdgeInsetAwareWebView) {
@@ -75,6 +121,20 @@ struct EdgeWebView: UIViewRepresentable {
       webView.onSafeAreaInsetsChange = { [weak self] in
         guard let self, let webView = self.webView else { return }
         self.pushSafeAreaInsets(from: webView, force: false)
+      }
+      backgroundObserver = NotificationCenter.default.addObserver(
+        forName: UIApplication.didEnterBackgroundNotification,
+        object: nil,
+        queue: .main
+      ) { [weak self] _ in
+        guard let webView = self?.webView else { return }
+        webView.evaluateJavaScript("String(location.href || '')") { result, _ in
+          if let href = result as? String, let url = URL(string: href) {
+            EdgeLastSpaURL.persist(url)
+          } else {
+            EdgeLastSpaURL.persist(webView.url)
+          }
+        }
       }
       bridge.onDidFinishNavigation = { [weak self] in
         guard let self, let webView = self.webView else { return }

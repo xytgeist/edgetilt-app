@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **Duo Mail glass pills (`1.4.1019`).** No drop shadow, 28px icons, heavier SVG stroke (2.2) on the Duo capsules only. Phone dock / iPad 11 unchanged.
 - **2026-10-05:** **Light theme blank white screen.** 1018 `preferredColorScheme` + white WK chrome blanked the page. Window `overrideUserInterfaceStyle` only; webview stays dark traits. Rebuild Test Fast.
 - **2026-10-05:** **IPA status dock follows in-app theme (`1.4.1018`).** `EdgeNative.setPreferredColorScheme` + drop hardcoded `.preferredColorScheme(.dark)`. New Test Fast. Safari / old IPA unchanged.
 - **2026-10-05:** **Duo compose + settings on the rail (`1.4.1017`).** Pill left (28px) and down (134px). Settings in the tab stack. Cyan feed FAB removed; compose is a matching frosted solo button. iPad 11 cyan compose unchanged.

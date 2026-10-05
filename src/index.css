@@ -4706,13 +4706,20 @@ html[data-ipad-nav-end] [data-duo-nav-pill] {
   min-width: 50px !important;
   max-width: 50px !important;
   box-sizing: border-box;
+  box-shadow: none !important;
+}
+html[data-ipad-nav-end] [data-duo-nav-pill] svg path,
+html[data-ipad-nav-end] [data-duo-nav-pill] svg circle,
+html[data-ipad-nav-end] [data-duo-nav-pill] svg line {
+  stroke-width: 2.2;
 }
 html.light [data-duo-nav-rail] {
   background: transparent;
 }
 html.light [data-duo-nav-pill] {
-  background: rgba(244, 244, 245, 0.78);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: none !important;
+  --tw-ring-color: rgba(0, 0, 0, 0.12);
 }
 html.light [data-duo-nav-back],
 html.light [data-duo-nav-more],

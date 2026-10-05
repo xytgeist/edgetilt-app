@@ -37,6 +37,9 @@ const EV_MARKS = [
 const NAV_ORDER = ['home', 'search', 'notifications', 'chat', 'following', 'settings']
 /** Duo tabs. Following stays in More. */
 const DUO_NAV_ORDER = ['home', 'search', 'notifications', 'chat', 'settings']
+/** Mail-style glass: frost + hairline, no drop shadow. */
+const DUO_PILL_GLASS =
+  'flex flex-col items-center overflow-hidden rounded-full bg-white/12 shadow-none backdrop-blur-xl supports-[backdrop-filter]:bg-white/[0.08] ring-1 ring-inset ring-white/25'
 
 /**
  * iPad portrait and landscape, plus phone landscape.
@@ -95,7 +98,7 @@ export default function LoungeIpadNavRail({
             <div
               data-duo-nav-pill
               data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
-              className="flex flex-col items-center overflow-hidden rounded-full bg-zinc-800/70 py-1 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
+              className={`${DUO_PILL_GLASS} py-1`}
               style={pillStyle}
             >
               <button
@@ -103,9 +106,9 @@ export default function LoungeIpadNavRail({
                 data-duo-nav-back
                 aria-label="Back"
                 onClick={() => onBack()}
-                className="grid h-[50px] w-full place-items-center text-zinc-100 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+                className="grid h-[50px] w-full place-items-center font-semibold text-zinc-100 touch-manipulation [-webkit-tap-highlight-color:transparent]"
               >
-                <span className="text-[20px] leading-none" aria-hidden>
+                <span className="text-[22px] leading-none" aria-hidden>
                   ←
                 </span>
               </button>
@@ -116,7 +119,7 @@ export default function LoungeIpadNavRail({
               data-duo-nav-pill
               data-duo-nav-compose
               data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
-              className="flex flex-col items-center overflow-hidden rounded-full bg-zinc-800/70 py-1 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
+              className={`${DUO_PILL_GLASS} py-1`}
               style={pillStyle}
             >
               <RailButton item={compose} compact />
@@ -126,7 +129,7 @@ export default function LoungeIpadNavRail({
             data-duo-nav-pill
             data-duo-nav-tabs
             data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
-            className="flex shrink-0 flex-col items-center gap-0 overflow-hidden rounded-full bg-zinc-800/70 py-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
+            className={`${DUO_PILL_GLASS} shrink-0 gap-0 py-1.5`}
             style={pillStyle}
           >
             {navItems.map((item) => (
@@ -147,9 +150,9 @@ export default function LoungeIpadNavRail({
                 aria-expanded={shellMenuOpen}
                 aria-haspopup="menu"
                 onClick={() => onOpenShellMenu()}
-                className="relative grid h-[50px] w-full place-items-center text-zinc-200 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+                className="relative grid h-[50px] w-full place-items-center font-semibold text-zinc-200 touch-manipulation [-webkit-tap-highlight-color:transparent]"
               >
-                <span aria-hidden className="block leading-none text-xl -translate-y-px">
+                <span aria-hidden className="block leading-none text-2xl -translate-y-px">
                   {shellMenuOpen ? '×' : '☰'}
                 </span>
                 {shellMenuAttention && !shellMenuOpen ? (
@@ -238,8 +241,8 @@ function RailButton({ item, compact = false }) {
       }
     >
       <span
-        className={compact ? 'block h-[24px] w-[24px]' : 'block h-9 w-9'}
-        style={item.iconScale ? { transform: `scale(${item.iconScale})` } : undefined}
+        className={compact ? 'block h-[28px] w-[28px]' : 'block h-9 w-9'}
+        style={!compact && item.iconScale ? { transform: `scale(${item.iconScale})` } : undefined}
       >
         {item.icon}
       </span>

@@ -5105,15 +5105,20 @@ html.light [data-chat-feature][data-chat-landscape-split] [data-chat-landscape-p
   }
   /* Lounge feed title: portrait py-2 + h-8 EDGE is huge on a ~390px-tall phone.
      Keep h-10 tap targets. Shrink pad + wordmark toward the 70% rail E / Slots chrome.
-     Symmetric side floors clear both continuous corners. Trailing uses sar so the
-     hamburger clears the island when that side is the camera; leading island is
-     already under the rail so left stays the 1rem floor (no double-count of sal). */
+     Pull the fixed bar off the trailing bezel (inline right:0 loses to !important), then
+     give the row matching side floors so the hamburger clears the continuous corner /
+     camera on either rotation. Skip split-feed title (left column only). */
+  html[data-ipad-nav]:not([data-ipad-nav-end])
+    [data-lounge-feed-root]:not([data-lounge-landscape-split])
+    [data-lounge-title-bar] {
+    right: max(1.25rem, max(env(safe-area-inset-right, 0px), var(--edge-sar, 0px))) !important;
+  }
   [data-lounge-title-bar] [data-pwa-install-title-row],
   [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-align-feed-title] {
     padding-top: 0.35rem !important;
     padding-bottom: 0.35rem !important;
-    padding-left: 1rem !important;
-    padding-right: max(1rem, max(env(safe-area-inset-right, 0px), var(--edge-sar, 0px))) !important;
+    padding-left: 1.25rem !important;
+    padding-right: 1.25rem !important;
   }
   [data-lounge-title-bar] [data-lounge-title-wordmark] img {
     height: calc(2rem * 0.7) !important;

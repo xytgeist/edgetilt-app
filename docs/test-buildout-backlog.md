@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **iPhone landscape title pad sticks (`1.4.1040`).** Title bar trailing `right: max(1.25rem, sar) !important` (beats inline `right:0`) + row `1.25rem` both sides. 1039’s 1rem-only pad was too weak to clear the continuous corner.
 - **2026-10-05:** **iPhone landscape title both-side pad (`1.4.1039`).** Phone landscape Lounge title row: left `1rem`, right `max(1rem, sar)`. Rail already clears leading island so left is a corner floor only.
 - **2026-10-05:** **iPhone landscape title right pad (`1.4.1038`).** Phone landscape Lounge title row right pad is `max(1rem, sar)` so the hamburger clears the continuous corner. Left rail unchanged.
 - **2026-10-05:** **iPhone landscape title overshoot (`1.4.1037`).** 1036 locked portrait sat by feeding measured scroll-top into root pad. Pad + fixed title `top` back on live CSS sat; orient resets measure to fresh sat. Duo 54px floor unchanged.

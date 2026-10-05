@@ -2872,4 +2872,8 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 
 ### Mac Theo 2026-10-05 … phone landscape true 50/50 split
 
-**I am Mac Theo.** **`1.4.1047`**: phone landscape engagement split subtracts side pads so (pad+rail+feed) = 50vw and (pane+pad) = 50vw. Side insets had left the left half oversized. Same for chat/slots. Hard-refresh on test. Not promoted.
+**I am Mac Theo.** **`1.4.1047`**: phone landscape engagement split subtracts side pads so (pad+rail+feed) = 50vw and (pane+pad) = 50vw. Side insets had left the left half oversized. Same for chat/slots.
+
+### Mac Theo 2026-10-05 … Promote 1.4.1047
+
+**I am Mac Theo.** Promoted **`test` → `main` (`f8857174`)**. Vercel prod web **`1.4.1047`** (true 50/50 landscape split). No new IPA. Back on **`test`**.

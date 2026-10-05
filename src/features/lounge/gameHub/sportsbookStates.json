@@ -1,20 +1,48 @@
 {
-  "updated_at": "2026-09-29",
+  "updated_at": "2026-10-05",
   "note": "States where each odds-feed book runs a licensed online/mobile sportsbook. Refreshed weekly per docs/sportsbook-states-refresh.md. Offshore books, Pinnacle, and sweepstakes apps are licensed nowhere and stay out of this file.",
-  "changelog": [],
+  "changelog": [
+    {
+      "date": "2026-10-05",
+      "changes": [
+        "DraftKings +AR (https://dknetwork.draftkings.com/2026/06/17/draftkings-is-now-available-nationwide-in-the-usa-read-more-inside/)",
+        "DraftKings DC confirmed, cleared uncertain (https://dclottery.com/olg/financials/august-2026-unaudited)",
+        "FanDuel +AR (https://www.fanduel.com/about/news/fanduel-in-arkansas-how-it-works-and-what-it-means)",
+        "BetRivers +CO (https://ir.rushstreetinteractive.com/news/news-details/2026/BetRivers-Launches-in-Alberta-Bringing-Its-Award-Winning-Casino-Gaming-and-Sports-Betting-Mobile-Platform-to-Players-Across-the-Province/default.aspx)",
+        "theScore Bet +MO (http://mgc.dps.mo.gov/SportsWagering/sw_financials/FY26_SWFinReport/06_Jun/SW%20Revenue%20Detail%20Report%200626.pdf)",
+        "theScore Bet DC stayed off the list after the Feb 23 2026 exit (https://thescorebethelp.zendesk.com/hc/en-us/articles/43512655789325-Washington-DC-theScore-Bet-Exit)",
+        "Hard Rock Bet +CO -IA (https://play.google.com/store/apps/details?id=com.hardrockdigital.client)",
+        "Hard Rock Bet MI confirmed, cleared uncertain",
+        "bet365 +MD +MI +WV +DC (https://www.ingame.com/bet365-washington-dc-launch/)",
+        "Bally Bet +CO +MD (https://www.ballybet.com/states-where-sports-betting-is-legal)",
+        "Bally Bet MA NJ TN left in uncertain (operator page lists them, second current source does not)",
+        "Circa Sports +MO -WY (https://www.circasports.com/)"
+      ]
+    }
+  ],
   "books": {
     "draftkings": {
       "name": "DraftKings",
-      "states": ["AZ", "CO", "CT", "DC", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MO", "NH", "NJ", "NY", "NC", "OH", "OR", "PA", "TN", "VT", "VA", "WV", "WY"],
-      "verified_at": null,
-      "sources": [],
-      "uncertain": ["DC"]
+      "states": ["AZ", "AR", "CO", "CT", "DC", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD", "MA", "MI", "MO", "NH", "NJ", "NY", "NC", "OH", "OR", "PA", "TN", "VT", "VA", "WV", "WY"],
+      "verified_at": "2026-10-05",
+      "sources": [
+        "https://dknetwork.draftkings.com/2026/06/17/draftkings-is-now-available-nationwide-in-the-usa-read-more-inside/",
+        "https://sbcamericas.com/2026/03/20/draftkings-fanduel-arkansas-betting/",
+        "https://www.dfa.arkansas.gov/wp-content/uploads/RAC_02262026.pdf",
+        "https://dclottery.com/olg/financials/august-2026-unaudited"
+      ],
+      "uncertain": []
     },
     "fanduel": {
       "name": "FanDuel",
-      "states": ["AZ", "CO", "CT", "DC", "IL", "IN", "IA", "KS", "KY", "LA", "MD", "MA", "MI", "MO", "NJ", "NY", "NC", "OH", "PA", "TN", "VT", "VA", "WV", "WY"],
-      "verified_at": null,
-      "sources": [],
+      "states": ["AZ", "AR", "CO", "CT", "DC", "IL", "IN", "IA", "KS", "KY", "LA", "MD", "MA", "MI", "MO", "NJ", "NY", "NC", "OH", "PA", "TN", "VT", "VA", "WV", "WY"],
+      "verified_at": "2026-10-05",
+      "sources": [
+        "https://account.sportsbook.fanduel.com/select-state",
+        "https://www.fanduel.com/about/news/fanduel-in-arkansas-how-it-works-and-what-it-means",
+        "https://www.fanduel.com/legal-sports-betting-us-map",
+        "https://www.dfa.arkansas.gov/wp-content/uploads/RAC_02262026.pdf"
+      ],
       "uncertain": []
     },
     "betmgm": {
@@ -40,44 +68,72 @@
     },
     "betrivers": {
       "name": "BetRivers",
-      "states": ["AZ", "DE", "IL", "IN", "IA", "LA", "MD", "MI", "NJ", "NY", "OH", "PA", "VA", "WV"],
-      "verified_at": null,
-      "sources": [],
+      "states": ["AZ", "CO", "DE", "IL", "IN", "IA", "LA", "MD", "MI", "NJ", "NY", "OH", "PA", "VA", "WV"],
+      "verified_at": "2026-10-05",
+      "sources": [
+        "https://ir.rushstreetinteractive.com/news/news-details/2026/BetRivers-Launches-in-Alberta-Bringing-Its-Award-Winning-Casino-Gaming-and-Sports-Betting-Mobile-Platform-to-Players-Across-the-Province/default.aspx",
+        "https://co.betrivers.com/?page=landing",
+        "https://sbg.colorado.gov/sites/sbg/files/documents/FINALGU_09Sept26.pdf"
+      ],
       "uncertain": []
     },
     "thescorebet": {
       "name": "theScore Bet (was ESPN BET)",
-      "states": ["AZ", "CO", "IL", "IN", "IA", "KS", "KY", "LA", "MD", "MA", "MI", "NJ", "NY", "NC", "OH", "PA", "TN", "VA", "WV"],
-      "verified_at": null,
-      "sources": [],
-      "uncertain": ["ALL"]
+      "states": ["AZ", "CO", "IL", "IN", "IA", "KS", "KY", "LA", "MD", "MA", "MI", "MO", "NJ", "NY", "NC", "OH", "PA", "TN", "VA", "WV"],
+      "verified_at": "2026-10-05",
+      "sources": [
+        "https://investors.pennentertainment.com/news-releases/news-release-details/thescore-bet-now-live-21-us-jurisdictions",
+        "http://mgc.dps.mo.gov/SportsWagering/sw_financials/FY26_SWFinReport/06_Jun/SW%20Revenue%20Detail%20Report%200626.pdf",
+        "https://thescorebethelp.zendesk.com/hc/en-us/articles/43512655789325-Washington-DC-theScore-Bet-Exit",
+        "https://dclottery.com/olg/financials/august-2026-unaudited"
+      ],
+      "uncertain": []
     },
     "hardrock": {
       "name": "Hard Rock Bet",
-      "states": ["AZ", "FL", "IL", "IN", "IA", "MI", "NJ", "OH", "TN", "VA"],
-      "verified_at": null,
-      "sources": [],
-      "uncertain": ["MI"]
+      "states": ["AZ", "CO", "FL", "IL", "IN", "MI", "NJ", "OH", "TN", "VA"],
+      "verified_at": "2026-10-05",
+      "sources": [
+        "https://play.google.com/store/apps/details?id=com.hardrockdigital.client",
+        "https://sportshandle.com/hard-rock-bet-now-live-in-colorado/",
+        "https://focusgn.com/hard-rock-sportsbook-iowa-to-cease-operations"
+      ],
+      "uncertain": []
     },
     "bet365": {
       "name": "bet365",
-      "states": ["AZ", "CO", "IL", "IN", "IA", "KS", "KY", "LA", "MO", "NJ", "NC", "OH", "PA", "TN", "VA"],
-      "verified_at": null,
-      "sources": [],
+      "states": ["AZ", "CO", "DC", "IL", "IN", "IA", "KS", "KY", "LA", "MD", "MI", "MO", "NJ", "NC", "OH", "PA", "TN", "VA", "WV"],
+      "verified_at": "2026-10-05",
+      "sources": [
+        "https://news.bet365.com/en-us/article/bet365-announces-official-launch-in-west-virginia/2026082622323864551",
+        "https://financialpost.com/pmn/business-wire-news-releases-pmn/bet365-goes-live-in-the-nations-capital-partnering-with-monumental-sports-entertainment",
+        "https://www.legalsportsreport.com/sports-betting/states/washington-dc/",
+        "https://www.ingame.com/bet365-washington-dc-launch/"
+      ],
       "uncertain": []
     },
     "ballybet": {
       "name": "Bally Bet",
-      "states": ["AZ", "IN", "IA", "NY", "OH", "VA"],
-      "verified_at": null,
-      "sources": [],
-      "uncertain": []
+      "states": ["AZ", "CO", "IN", "IA", "MD", "NY", "OH", "VA"],
+      "verified_at": "2026-10-05",
+      "sources": [
+        "https://www.ballybet.com/states-where-sports-betting-is-legal",
+        "https://www.ballybet.com/co",
+        "https://www.ballybet.com/md",
+        "https://www.legalsportsreport.com/sports-betting/"
+      ],
+      "uncertain": ["MA", "NJ", "TN"]
     },
     "circasports": {
       "name": "Circa Sports",
-      "states": ["CO", "IL", "IA", "KY", "NV", "WY"],
-      "verified_at": null,
-      "sources": [],
+      "states": ["CO", "IL", "IA", "KY", "MO", "NV"],
+      "verified_at": "2026-10-05",
+      "sources": [
+        "https://www.circasports.com/",
+        "http://mgc.dps.mo.gov/SportsWagering/sw_financials/FY26_SWFinReport/06_Jun/SW%20Revenue%20Detail%20Report%200626.pdf",
+        "https://www.circasports.com/wp-content/uploads/2025/12/Circa-Sports-in-Missouri-Now-Live-Newsbyte-11.28.25.pdf",
+        "https://www.legalsportsreport.com/sports-betting-states/wyoming/"
+      ],
       "uncertain": []
     }
   },

@@ -4699,14 +4699,14 @@ html[data-ipad-nav][data-ipad-nav-end] {
   --edge-rail-inset-end: var(--edge-ipad-rail);
 }
 html[data-ipad-nav-end] [data-duo-nav-rail] {
-  --edge-ipad-rail: 3.5rem;
+  --edge-ipad-rail: 4.5rem;
 }
 html[data-ipad-nav-end] [data-duo-feed-compose] {
-  right: calc(var(--edge-rail-inset-end, 3.5rem) + 0.75rem);
+  right: calc(var(--edge-rail-inset-end, 4.5rem) + 0.75rem);
   bottom: max(1rem, max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)));
 }
 html[data-ipad-nav-end] [data-lounge-feed-root][data-lounge-landscape-split] [data-duo-feed-compose] {
-  left: calc(50vw - 3rem - 0.75rem);
+  left: calc(50vw - 3.25rem - 0.75rem);
   right: auto;
 }
 html.light [data-duo-nav-rail] {

@@ -4,8 +4,12 @@ import { useDuoNavRailEnd } from '../shell/useIpadNavRail.js'
 /** Same width as `--edge-ipad-rail` in `index.css`. 15% under the old 11rem − 50px column. */
 export const IPAD_NAV_RAIL_WIDTH = 'calc((11rem - 50px) * 0.85)'
 
-/** Open Duo: island-width strip (Apple Music), not the iPad sidebar. */
-export const DUO_NAV_RAIL_WIDTH = '3.5rem'
+/**
+ * Open Duo: Music strip under the island.
+ * Wider than a bare icon column so the right pane has air, and trailing pad
+ * lines the glyphs up with the status cluster (clock + signal).
+ */
+export const DUO_NAV_RAIL_WIDTH = '4.5rem'
 
 /**
  * Visible letter inside the 180px +EV tiles.
@@ -67,7 +71,7 @@ export default function LoungeIpadNavRail({
         data-ipad-nav-rail
         data-duo-nav-rail
         aria-label="Lounge"
-        className="fixed inset-y-0 right-0 z-[60] flex flex-col items-center border-l border-zinc-800 bg-zinc-950 px-0 pt-[calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px))+2.35rem)] pb-[max(0.65rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
+        className="fixed inset-y-0 right-0 z-[60] flex flex-col items-center border-l border-zinc-800 bg-zinc-950 pl-1 pr-2.5 pt-[calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px))+2.35rem)] pb-[max(0.65rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
         style={{ width: DUO_NAV_RAIL_WIDTH }}
       >
         <div className="flex w-full shrink-0 flex-col items-center" data-duo-nav-context>

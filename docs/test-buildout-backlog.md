@@ -1175,7 +1175,6 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- **2026-10-05:** **IPA status dock follows in-app theme (`1.4.1018`).** `EdgeNative.setPreferredColorScheme` + drop hardcoded `.preferredColorScheme(.dark)`. New Test Fast. Safari / old IPA unchanged.
 - **2026-10-05:** **Duo compose + settings on the rail (`1.4.1017`).** Pill left (28px) and down (134px). Settings in the tab stack. Cyan feed FAB removed; compose is a matching frosted solo button. iPad 11 cyan compose unchanged.
 - **2026-10-05:** **Duo pill left + down (`1.4.1016`).** Width back to 50px. Trailing pad 16px, top extra 110px. iPad 11 unchanged.
 - **2026-10-05:** **Duo pill matches dock glass (`1.4.1015`).** 50px was the glyph, not the circle. Capsule 58px, trailing pad 6px so it centers under the wifi dock. Icons 24px. iPad 11 unchanged.

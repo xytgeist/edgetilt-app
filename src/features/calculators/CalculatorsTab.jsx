@@ -31,6 +31,30 @@ function CalculatorLoadingFallback() {
   )
 }
 
+/** Landscape Slots pane chrome … same bar as the left "Slots" tools title. */
+function CalcsPaneChrome() {
+  return (
+    <div
+      data-slots-landscape-pane-chrome
+      className="flex shrink-0 items-center justify-between gap-2 border-b border-zinc-800/95 bg-zinc-950 px-3 py-2"
+    >
+      <h1
+        data-slots-landscape-title
+        className="font-black leading-none tracking-tight text-white text-[1.25rem] sm:text-[1.5rem]"
+      >
+        Calcs
+      </h1>
+    </div>
+  )
+}
+
+const PANE_SCROLL_CLASS =
+  'min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 pt-3 pb-[calc(1.5rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] [-webkit-overflow-scrolling:touch]'
+const HOME_SCROLL_PAD =
+  'px-3 pt-3 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
+const TOOL_SCROLL_PAD =
+  'px-3 pt-3 pb-[calc(3rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]'
+
 function CalculatorsHome({
   onSelectCalculator,
   browseMode,
@@ -194,54 +218,59 @@ export default function CalculatorsTab({
   logPlayLocked = false,
   playLogsRemaining = null,
   freemiumUsageLoading = false,
-  /** Landscape iPad Slots hub: fill the right pane, no second EDGE bar. */
+  /** Landscape Slots hub: fill the right pane with a matching "Calcs" chrome bar. */
   paneEmbed = false,
 }) {
   const ipadShell = useIpadAuthStage()
   const shell = paneEmbed
-    ? { embedded: true, publishScrollReveal: false }
+    ? { embedded: true, fillViewport: true, publishScrollReveal: false }
     : {
         titleBarNavSlot,
         titleBarCenterSlot,
         titleBarToolCloseVisible,
         titleBarBrand: ipadShell ? <TitleBarScreenTitle>Calcs</TitleBarScreenTitle> : null,
       }
+
+  const renderShell = (children, { toolOpen = false } = {}) => (
+    <ScrollLinkedEdgeTitleBarShell
+      {...shell}
+      contentClassName={
+        paneEmbed ? 'flex min-h-0 flex-1 flex-col overflow-hidden p-0' : toolOpen ? TOOL_SCROLL_PAD : HOME_SCROLL_PAD
+      }
+    >
+      {paneEmbed ? (
+        <>
+          <CalcsPaneChrome />
+          <div className={PANE_SCROLL_CLASS}>{children}</div>
+        </>
+      ) : (
+        children
+      )}
+    </ScrollLinkedEdgeTitleBarShell>
+  )
+
   if (!activeCalculator) {
-    return (
-      <ScrollLinkedEdgeTitleBarShell
-        {...shell}
-        contentClassName="px-3 pt-3 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
-      >
-        <CalculatorsHome
-          onSelectCalculator={setActiveCalculator}
-          browseMode={browseMode}
-          onOpenAuth={onOpenAuth}
-          hasSlotsEdge={hasSlotsEdge}
-          hasSlotsEdgeStarter={hasSlotsEdgeStarter}
-          isStaff={isStaff}
-          onRequireSubscribe={onRequireSubscribe}
-          gatesMap={gatesMap}
-          starterUnlockedCalculatorKeys={starterUnlockedCalculatorKeys}
-          isAdmin={isAdmin}
-          gatesDbReady={gatesDbReady}
-          onSetContentGate={onSetContentGate}
-        />
-      </ScrollLinkedEdgeTitleBarShell>
+    return renderShell(
+      <CalculatorsHome
+        onSelectCalculator={setActiveCalculator}
+        browseMode={browseMode}
+        onOpenAuth={onOpenAuth}
+        hasSlotsEdge={hasSlotsEdge}
+        hasSlotsEdgeStarter={hasSlotsEdgeStarter}
+        isStaff={isStaff}
+        onRequireSubscribe={onRequireSubscribe}
+        gatesMap={gatesMap}
+        starterUnlockedCalculatorKeys={starterUnlockedCalculatorKeys}
+        isAdmin={isAdmin}
+        gatesDbReady={gatesDbReady}
+        onSetContentGate={onSetContentGate}
+      />,
     )
   }
   return (
-    <Suspense
-      fallback={
-        <ScrollLinkedEdgeTitleBarShell
-          {...shell}
-          contentClassName="px-3 pt-3 pb-[calc(6rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
-        >
-          <CalculatorLoadingFallback />
-        </ScrollLinkedEdgeTitleBarShell>
-      }
-    >
+    <Suspense fallback={renderShell(<CalculatorLoadingFallback />, { toolOpen: true })}>
       {activeCalculator === 'phoenix' ? (
-        <ScrollLinkedEdgeTitleBarShell {...shell} contentClassName="px-3 pt-3 pb-[calc(3rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
+        renderShell(
           <PhoenixLink
             onBack={() => setActiveCalculator(null)}
             supabaseClient={supabaseClient}
@@ -250,11 +279,12 @@ export default function CalculatorsTab({
             onRequireSubscribe={onRequireSubscribe}
             playLogsRemaining={playLogsRemaining}
             freemiumUsageLoading={freemiumUsageLoading}
-          />
-        </ScrollLinkedEdgeTitleBarShell>
+          />,
+          { toolOpen: true },
+        )
       ) : null}
       {activeCalculator === 'buffalo-link' ? (
-        <ScrollLinkedEdgeTitleBarShell {...shell} contentClassName="px-3 pt-3 pb-[calc(3rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
+        renderShell(
           <BuffaloLink
             onBack={() => setActiveCalculator(null)}
             supabaseClient={supabaseClient}
@@ -263,11 +293,12 @@ export default function CalculatorsTab({
             onRequireSubscribe={onRequireSubscribe}
             playLogsRemaining={playLogsRemaining}
             freemiumUsageLoading={freemiumUsageLoading}
-          />
-        </ScrollLinkedEdgeTitleBarShell>
+          />,
+          { toolOpen: true },
+        )
       ) : null}
       {activeCalculator === 'buffalo-diamond' && !calculatorTemporarilyDisabled('buffalo-diamond') ? (
-        <ScrollLinkedEdgeTitleBarShell {...shell} contentClassName="px-3 pt-3 pb-[calc(3rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
+        renderShell(
           <BuffaloDiamond
             onBack={() => setActiveCalculator(null)}
             supabaseClient={supabaseClient}
@@ -276,11 +307,12 @@ export default function CalculatorsTab({
             onRequireSubscribe={onRequireSubscribe}
             playLogsRemaining={playLogsRemaining}
             freemiumUsageLoading={freemiumUsageLoading}
-          />
-        </ScrollLinkedEdgeTitleBarShell>
+          />,
+          { toolOpen: true },
+        )
       ) : null}
       {activeCalculator === 'stackup' ? (
-        <ScrollLinkedEdgeTitleBarShell {...shell} contentClassName="px-3 pt-3 pb-[calc(3rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
+        renderShell(
           <StackUpPays
             onBack={() => setActiveCalculator(null)}
             supabaseClient={supabaseClient}
@@ -289,11 +321,12 @@ export default function CalculatorsTab({
             onRequireSubscribe={onRequireSubscribe}
             playLogsRemaining={playLogsRemaining}
             freemiumUsageLoading={freemiumUsageLoading}
-          />
-        </ScrollLinkedEdgeTitleBarShell>
+          />,
+          { toolOpen: true },
+        )
       ) : null}
       {activeCalculator === 'mhb' ? (
-        <ScrollLinkedEdgeTitleBarShell {...shell} contentClassName="px-3 pt-3 pb-[calc(3rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
+        renderShell(
           <MHBCalculator
             onBack={() => setActiveCalculator(null)}
             supabaseClient={supabaseClient}
@@ -302,11 +335,12 @@ export default function CalculatorsTab({
             onRequireSubscribe={onRequireSubscribe}
             playLogsRemaining={playLogsRemaining}
             freemiumUsageLoading={freemiumUsageLoading}
-          />
-        </ScrollLinkedEdgeTitleBarShell>
+          />,
+          { toolOpen: true },
+        )
       ) : null}
       {activeCalculator === 'wof-collectors-edition' ? (
-        <ScrollLinkedEdgeTitleBarShell {...shell} contentClassName="px-3 pt-3 pb-[calc(3rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
+        renderShell(
           <WheelOfFortuneCollectorsEdition
             onBack={() => setActiveCalculator(null)}
             supabaseClient={supabaseClient}
@@ -315,8 +349,9 @@ export default function CalculatorsTab({
             onRequireSubscribe={onRequireSubscribe}
             playLogsRemaining={playLogsRemaining}
             freemiumUsageLoading={freemiumUsageLoading}
-          />
-        </ScrollLinkedEdgeTitleBarShell>
+          />,
+          { toolOpen: true },
+        )
       ) : null}
     </Suspense>
   )

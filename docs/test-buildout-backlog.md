@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **Calcs landscape pane title bar (`1.4.1050`).** `paneEmbed` CalculatorsTab renders matching `data-slots-landscape-pane-chrome` "Calcs" bar (same pattern as AP Guides / Play Logbook).
 - **2026-10-05:** **Phone landscape calc cards dense (`1.4.1049`).** Slots landscape pane `.calc-list-btn` shrinks to ~tools-list density (min-height / pad / icon / type); portrait + tall iPad keep the hero cards.
 - **2026-10-05:** **Game hub menu drops separate State row (`1.4.1048`).** "Only books in my state" is the single control (Off / Auto-detect / state pick). Removed the redundant State menu item.
 - **2026-10-05:** **Phone landscape true 50/50 split (`1.4.1047`).** Feed/pane (and chat/slots) cols subtract `--edge-phone-landscape-side-*` so (pad+rail+left) = 50vw and (right+pad) = 50vw; side insets had left the left half oversized.

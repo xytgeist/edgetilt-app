@@ -2893,3 +2893,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-05 … Promote 1.4.1049
 
 **I am Mac Theo.** Promoted **`test` → `main` (`2564e0a3`)**. Vercel prod web **`1.4.1049`** (dense landscape calc cards). No new IPA. Back on **`test`**.
+
+### Mac Theo 2026-10-05 … Calcs landscape pane title bar
+
+**I am Mac Theo.** **`1.4.1050`**: landscape Slots pane Calcs gets matching `data-slots-landscape-pane-chrome` "Calcs" title (same as Guides/Logbook / left Slots bar). Hard-refresh on test. Not promoted.

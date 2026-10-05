@@ -1,6 +1,17 @@
 import { useEffect, useState } from 'react'
 import { useDuoNavRailEnd } from '../shell/useIpadNavRail.js'
 
+function withDuoCollapse(item, collapse) {
+  if (!item) return item
+  return {
+    ...item,
+    onSelect: () => {
+      item.onSelect?.()
+      collapse()
+    },
+  }
+}
+
 /** Same width as `--edge-ipad-rail` in `index.css`. 15% under the old 11rem − 50px column. */
 export const IPAD_NAV_RAIL_WIDTH = 'calc((11rem - 50px) * 0.85)'
 
@@ -74,11 +85,23 @@ export default function LoungeIpadNavRail({
   const compose = byId.get('compose')
   const homeItem = byId.get('home')
   const extraItems = DUO_NAV_EXTRA_IDS.map((id) => byId.get(id)).filter(Boolean)
-  const extraActive = extraItems.some((item) => item.active)
+  const collapseDuoExtras = () => setDuoExtrasOpen(false)
 
   useEffect(() => {
-    if (extraActive) setDuoExtrasOpen(true)
-  }, [extraActive])
+    if (!navEnd || !duoExtrasOpen) return undefined
+    const onPointerDown = (event) => {
+      const target = event.target
+      if (!(target instanceof Element)) {
+        collapseDuoExtras()
+        return
+      }
+      // Stay open for caret toggle / items inside the tabs pill; dismiss everywhere else.
+      if (target.closest('[data-duo-nav-tabs]')) return
+      collapseDuoExtras()
+    }
+    document.addEventListener('pointerdown', onPointerDown, true)
+    return () => document.removeEventListener('pointerdown', onPointerDown, true)
+  }, [navEnd, duoExtrasOpen])
 
   if (navEnd) {
     const pillStyle = {
@@ -177,9 +200,17 @@ export default function LoungeIpadNavRail({
               </button>
             ) : null}
             {duoExtrasOpen
-              ? extraItems.map((item) => <RailButton key={item.id} item={item} compact />)
+              ? extraItems.map((item) => (
+                  <RailButton
+                    key={item.id}
+                    item={withDuoCollapse(item, collapseDuoExtras)}
+                    compact
+                  />
+                ))
               : null}
-            {homeItem ? <RailButton item={homeItem} compact /> : null}
+            {homeItem ? (
+              <RailButton item={withDuoCollapse(homeItem, collapseDuoExtras)} compact />
+            ) : null}
             {onOpenShellMenu ? (
               <button
                 type="button"
@@ -194,7 +225,10 @@ export default function LoungeIpadNavRail({
                 }
                 aria-expanded={shellMenuOpen}
                 aria-haspopup="menu"
-                onClick={() => onOpenShellMenu()}
+                onClick={() => {
+                  collapseDuoExtras()
+                  onOpenShellMenu()
+                }}
                 className="relative grid h-[50px] w-full place-items-center text-zinc-200 touch-manipulation [-webkit-tap-highlight-color:transparent]"
               >
                 <span aria-hidden className="block leading-none text-xl -translate-y-px">

@@ -2737,3 +2737,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-05 … Duo stack under wifi
 
 **I am Mac Theo.** **`1.4.1024`**: one 50px column for compose + shortcuts + tabs (mid slot was `w-full` and drifting). Trailing pad 22 so the stack centers under the wifi dock. Hard-refresh until 1.4.1024. Not promoted.
+
+### Mac Theo 2026-10-05 … Duo extras auto-collapse
+
+**I am Mac Theo.** **`1.4.1025`**: expanded tab extras collapse after picking an item or tapping outside the tabs pill. Hard-refresh until 1.4.1025. Not promoted.

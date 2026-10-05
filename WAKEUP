@@ -2853,3 +2853,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-05 … Promote 1.4.1044
 
 **I am Mac Theo.** Promoted **`test` → `main` (`7a902597`)**. Vercel prod web **`1.4.1044`** (thin phone landscape rail + phone hamburger icons; includes half safe-area side pad from 1043). No new IPA. Back on **`test`**.
+
+### Mac Theo 2026-10-05 … pregame prop rails a bit wider
+
+**I am Mac Theo.** **`1.4.1045`**: landscape pregame PLAYER PROPS columns `0.9fr` → `1.15fr` (teams `1fr` → `0.95fr`, gap a hair tighter) so lines like `90+ rush yds 47¢` stop truncating. Hard-refresh on test. Not promoted.

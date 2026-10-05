@@ -4748,7 +4748,7 @@ function LandscapeMatchupBoard({
           </div>
           <div className="shrink-0">{sideSlots?.right}</div>
         </div>
-        <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,0.9fr)_minmax(0,1fr)_auto_minmax(0,1fr)_minmax(0,0.9fr)] grid-rows-[minmax(0,1fr)] items-center gap-2">
+        <div className="grid min-h-0 flex-1 grid-cols-[minmax(0,1.15fr)_minmax(0,0.95fr)_auto_minmax(0,0.95fr)_minmax(0,1.15fr)] grid-rows-[minmax(0,1fr)] items-center gap-1.5">
           <PregamePropRail rows={rails.away} align="left" />
           <MatchupTeamColumn
             side={game.away}

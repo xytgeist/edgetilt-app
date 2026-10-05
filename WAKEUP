@@ -2709,3 +2709,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-05 … Duo pill left + down
 
 **I am Mac Theo.** Ryan: width was fine, 1015 went the wrong way. **`1.4.1016`**: **50px** again, trailing pad **16px** (left), top extra **110px** (down). Hard-refresh until 1.4.1016. Not promoted.
+
+### Mac Theo 2026-10-05 … Duo pill left/down + compose + settings
+
+**I am Mac Theo.** **`1.4.1017`**: pad **28px** (left), top extra **134px** (down). Settings on the tab pill. Cyan feed FAB gone … compose is its own frosted 50px button above the tabs (Mail). iPad 11 unchanged. Hard-refresh until 1.4.1017. Not promoted.

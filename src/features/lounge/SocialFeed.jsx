@@ -16925,26 +16925,6 @@ export default function SocialFeed({
 
       {loungeIpadRail}
 
-      {duoNavEnd && ipadNavRail && !loungeDockPanel
-        ? (() => {
-            const composeItem = loungeDockWheelItems.find((item) => item.id === 'compose')
-            if (!composeItem) return null
-            return (
-              <button
-                type="button"
-                data-duo-feed-compose
-                aria-label={composeItem.label}
-                disabled={composeItem.disabled}
-                data-active={composeItem.active ? '1' : '0'}
-                onClick={() => composeItem.onSelect?.()}
-                className="fixed z-[55] grid h-12 w-12 place-items-center rounded-full bg-[#06cefc] text-zinc-950 shadow-[0_8px_24px_rgba(6,206,252,0.28)] touch-manipulation [-webkit-tap-highlight-color:transparent] disabled:opacity-40"
-              >
-                <span className="block h-6 w-6">{composeItem.icon}</span>
-              </button>
-            )
-          })()
-        : null}
-
       {isActivePage ? loungeDockCarousel : null}
 
       {!isActivePage && loungeDockCarousel && typeof document !== 'undefined'

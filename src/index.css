@@ -4707,15 +4707,6 @@ html[data-ipad-nav-end] [data-duo-nav-pill] {
   max-width: 50px !important;
   box-sizing: border-box;
 }
-html[data-ipad-nav-end] [data-duo-feed-compose] {
-  right: calc(var(--edge-rail-inset-end, 5.5rem) + 0.75rem);
-  bottom: max(1rem, max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)));
-}
-html[data-ipad-nav-end] [data-lounge-feed-root][data-lounge-landscape-split] [data-duo-feed-compose] {
-  /* Feed is ~40vw on Duo; park compose on the feed pane trailing edge. */
-  left: calc(40vw - 3.25rem - 0.75rem);
-  right: auto;
-}
 html.light [data-duo-nav-rail] {
   background: transparent;
 }

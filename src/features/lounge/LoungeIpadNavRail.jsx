@@ -13,9 +13,9 @@ export const DUO_NAV_RAIL_WIDTH = '5.5rem'
 /** Ryan: width was already fine. Do not grow this to chase the glass. */
 export const DUO_NAV_PILL_WIDTH_PX = 50
 /** Bezel → pill trailing edge. Larger = further left. */
-export const DUO_NAV_PILL_TRAILING_PAD_PX = 16
+export const DUO_NAV_PILL_TRAILING_PAD_PX = 28
 /** Extra below `--edge-sat`. Larger = further down, so the cap clears the wifi circle. */
-export const DUO_NAV_PILL_TOP_EXTRA_PX = 110
+export const DUO_NAV_PILL_TOP_EXTRA_PX = 134
 
 /**
  * Visible letter inside the 180px +EV tiles.
@@ -35,8 +35,8 @@ const EV_MARKS = [
 ]
 
 const NAV_ORDER = ['home', 'search', 'notifications', 'chat', 'following', 'settings']
-/** Music-style Duo tabs. Following + Settings stay in More / hamburger. */
-const DUO_NAV_ORDER = ['home', 'search', 'notifications', 'chat']
+/** Duo tabs. Following stays in More. */
+const DUO_NAV_ORDER = ['home', 'search', 'notifications', 'chat', 'settings']
 
 /**
  * iPad portrait and landscape, plus phone landscape.
@@ -69,7 +69,7 @@ export default function LoungeIpadNavRail({
 
   const byId = new Map(items.map((item) => [item.id, item]))
   const navItems = (navEnd ? DUO_NAV_ORDER : NAV_ORDER).map((id) => byId.get(id)).filter(Boolean)
-  const compose = navEnd ? null : byId.get('compose')
+  const compose = byId.get('compose')
 
   if (navEnd) {
     const pillStyle = {
@@ -109,6 +109,17 @@ export default function LoungeIpadNavRail({
                   ←
                 </span>
               </button>
+            </div>
+          ) : null}
+          {compose ? (
+            <div
+              data-duo-nav-pill
+              data-duo-nav-compose
+              data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
+              className="flex flex-col items-center overflow-hidden rounded-full bg-zinc-800/70 py-1 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
+              style={pillStyle}
+            >
+              <RailButton item={compose} compact />
             </div>
           ) : null}
           <div

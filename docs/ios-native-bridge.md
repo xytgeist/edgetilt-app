@@ -169,6 +169,10 @@ Statuses: **stub** = agreed name, not implemented; **native** / **web** filled i
 - **Web:** no change needed for `target=_blank` anchors or `openExternalUrl`. Older IPAs ignore `system` and keep opening Safari.
 - **Smoke (new IPA):** hub News story opens over the app, Done returns to the hub; Lounge link preview / DM link same; Subscribe / Manage billing still opens system Safari.
 
+### Off-site Back (Google OAuth, 2026-10-05)
+
+Google / other OAuth stays in the same WKWebView (no Safari chrome). A native **Back** capsule appears under the status bar whenever the URL is not lvslotpro / edgetilt. Tap jumps to the last in-app history item (or the restored SPA URL). Hides when the callback returns to Edge. New sim/IPA required.
+
 ### StoreKit IAP (dual-path, 2026-09-05)
 
 IPA can offer **IAP + Safari** for the same unlock. Web / PWA / Android stay Stripe / Connect only.

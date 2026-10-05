@@ -19,6 +19,22 @@ enum EdgeLastSpaURL {
     return allowed(url)
   }
 
+  /// True on lvslotpro / edgetilt (incl. `/auth/` callbacks). False on Google OAuth etc.
+  static func isAppHost(_ url: URL?) -> Bool {
+    guard let url else { return true }
+    let s = url.absoluteString.lowercased()
+    if s.isEmpty || s == "about:blank" { return true }
+    guard let host = url.host?.lowercased() else { return false }
+    guard let baseHost = AppConfig.baseURL.host?.lowercased() else { return false }
+    return host == baseHost
+      || host == "www.\(baseHost)"
+      || host.hasSuffix(".\(baseHost)")
+      || host == "edgetilt.com"
+      || host == "www.edgetilt.com"
+      || host == "lvslotpro.com"
+      || host == "www.lvslotpro.com"
+  }
+
   private static func allowed(_ url: URL) -> URL? {
     let next = EdgePushManager.canonicalWebURL(fromUniversalLink: url)
     guard let host = next.host?.lowercased(),
@@ -38,6 +54,26 @@ enum EdgeLastSpaURL {
   }
 }
 
+final class EdgeWebChromeView: UIView {
+  let webView: EdgeInsetAwareWebView
+
+  init(webView: EdgeInsetAwareWebView) {
+    self.webView = webView
+    super.init(frame: .zero)
+    backgroundColor = .black
+    webView.translatesAutoresizingMaskIntoConstraints = false
+    addSubview(webView)
+    NSLayoutConstraint.activate([
+      webView.topAnchor.constraint(equalTo: topAnchor),
+      webView.leadingAnchor.constraint(equalTo: leadingAnchor),
+      webView.trailingAnchor.constraint(equalTo: trailingAnchor),
+      webView.bottomAnchor.constraint(equalTo: bottomAnchor),
+    ])
+  }
+
+  required init?(coder: NSCoder) { nil }
+}
+
 struct EdgeWebView: UIViewRepresentable {
   let url: URL
   /// SwiftUI geometry safe-area (still correct when this view ignoresSafeArea).
@@ -47,7 +83,7 @@ struct EdgeWebView: UIViewRepresentable {
     Coordinator(url: url)
   }
 
-  func makeUIView(context: Context) -> EdgeInsetAwareWebView {
+  func makeUIView(context: Context) -> EdgeWebChromeView {
     let config = context.coordinator.bridge.makeConfiguration()
     let webView = EdgeInsetAwareWebView(frame: .zero, configuration: config)
     webView.navigationDelegate = context.coordinator.bridge
@@ -64,7 +100,8 @@ struct EdgeWebView: UIViewRepresentable {
     }
     #endif
     context.coordinator.bridge.attach(webView: webView)
-    context.coordinator.attach(webView: webView)
+    let chrome = EdgeWebChromeView(webView: webView)
+    context.coordinator.attach(webView: webView, chrome: chrome)
 
     let store = config.websiteDataStore
     let loadNow = {
@@ -86,22 +123,26 @@ struct EdgeWebView: UIViewRepresentable {
         }
       }
     }
-    return webView
+    return chrome
   }
 
-  func updateUIView(_ uiView: EdgeInsetAwareWebView, context: Context) {
+  func updateUIView(_ uiView: EdgeWebChromeView, context: Context) {
     context.coordinator.swiftSafeArea = swiftSafeArea
-    context.coordinator.pushSafeAreaInsets(from: uiView, force: false)
-    EdgeLiveKitCallManager.shared.attach(webView: uiView)
+    context.coordinator.pushSafeAreaInsets(from: uiView.webView, force: false)
+    EdgeLiveKitCallManager.shared.attach(webView: uiView.webView)
   }
 
   final class Coordinator: NSObject {
     let url: URL
     let bridge = EdgeNativeBridge()
     private weak var webView: EdgeInsetAwareWebView?
+    private weak var chrome: EdgeWebChromeView?
     private var lastInsets: UIEdgeInsets = .init(top: -1, left: -1, bottom: -1, right: -1)
     var swiftSafeArea: EdgeInsets = EdgeInsets()
     private var backgroundObserver: NSObjectProtocol?
+    private var offsiteBackButton: UIButton?
+    private var offsiteBackTop: NSLayoutConstraint?
+    private var offsiteBackLeading: NSLayoutConstraint?
 
     init(url: URL) {
       self.url = url
@@ -113,11 +154,13 @@ struct EdgeWebView: UIViewRepresentable {
       }
     }
 
-    func attach(webView: EdgeInsetAwareWebView) {
+    func attach(webView: EdgeInsetAwareWebView, chrome: EdgeWebChromeView) {
       self.webView = webView
+      self.chrome = chrome
       EdgePushManager.shared.attach(webView: webView)
       EdgeCallKitManager.shared.attach(webView: webView)
       EdgeLiveKitCallManager.shared.attach(webView: webView)
+      installOffsiteBackButton(on: chrome)
       webView.onSafeAreaInsetsChange = { [weak self] in
         guard let self, let webView = self.webView else { return }
         self.pushSafeAreaInsets(from: webView, force: false)
@@ -136,8 +179,12 @@ struct EdgeWebView: UIViewRepresentable {
           }
         }
       }
+      bridge.onNavigationUrl = { [weak self] url in
+        self?.setOffsiteBackVisible(!EdgeLastSpaURL.isAppHost(url))
+      }
       bridge.onDidFinishNavigation = { [weak self] in
         guard let self, let webView = self.webView else { return }
+        self.setOffsiteBackVisible(!EdgeLastSpaURL.isAppHost(webView.url))
         self.pushSafeAreaInsets(from: webView, force: true)
         // WebKit sometimes paints before our first inject sticks; nudge twice.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
@@ -148,6 +195,50 @@ struct EdgeWebView: UIViewRepresentable {
           guard let self, let webView = self.webView else { return }
           self.pushSafeAreaInsets(from: webView, force: true)
         }
+      }
+    }
+
+    private func installOffsiteBackButton(on chrome: EdgeWebChromeView) {
+      var config = UIButton.Configuration.filled()
+      config.title = "Back"
+      config.image = UIImage(systemName: "chevron.left")
+      config.imagePadding = 6
+      config.baseForegroundColor = .white
+      config.baseBackgroundColor = UIColor.black.withAlphaComponent(0.72)
+      config.cornerStyle = .capsule
+      config.contentInsets = NSDirectionalEdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 16)
+      let button = UIButton(configuration: config)
+      button.accessibilityLabel = "Back"
+      button.translatesAutoresizingMaskIntoConstraints = false
+      button.isHidden = true
+      button.addTarget(self, action: #selector(leaveOffsiteAuth), for: .touchUpInside)
+      chrome.addSubview(button)
+      let leading = button.leadingAnchor.constraint(equalTo: chrome.leadingAnchor, constant: 12)
+      let top = button.topAnchor.constraint(equalTo: chrome.topAnchor, constant: 12)
+      NSLayoutConstraint.activate([
+        leading,
+        top,
+      ])
+      offsiteBackButton = button
+      offsiteBackLeading = leading
+      offsiteBackTop = top
+    }
+
+    @objc private func leaveOffsiteAuth() {
+      guard let webView else { return }
+      if let item = webView.backForwardList.backList.last(where: { EdgeLastSpaURL.isAppHost($0.url) }) {
+        webView.go(to: item)
+        return
+      }
+      let url = EdgeLastSpaURL.restore() ?? AppConfig.baseURL
+      webView.load(URLRequest(url: url))
+    }
+
+    private func setOffsiteBackVisible(_ visible: Bool) {
+      guard let button = offsiteBackButton else { return }
+      button.isHidden = !visible
+      if visible, let chrome {
+        chrome.bringSubviewToFront(button)
       }
     }
 
@@ -167,6 +258,8 @@ struct EdgeWebView: UIViewRepresentable {
       }
       lastInsets = insets
       EdgeSafeAreaInsets.apply(insets, to: webView)
+      offsiteBackLeading?.constant = insets.left + 12
+      offsiteBackTop?.constant = insets.top + 8
     }
   }
 }

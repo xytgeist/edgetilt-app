@@ -7,6 +7,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
   private let messageHandlerName = "edgeNative"
   /// Fired after each main-frame navigation finish (safe-area re-inject, etc.).
   var onDidFinishNavigation: (() -> Void)?
+  var onNavigationUrl: ((URL?) -> Void)?
   private var didRetryTransientLoad = false
   private var didReloadAfterContentCrash = false
 
@@ -668,6 +669,7 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
 
   func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
     NSLog("EdgeWebView didStart \(webView.url?.absoluteString ?? "<nil>")")
+    onNavigationUrl?(webView.url)
     applyCustomUserAgent(to: webView)
     // Listeners die with the outgoing page; JS re-marks after it reinstalls them.
     EdgeCallKitManager.shared.invalidateWebReady()
@@ -692,16 +694,19 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
     didReloadAfterContentCrash = false
     EdgeLastSpaURL.persist(webView.url)
     applyCustomUserAgent(to: webView)
+    onNavigationUrl?(webView.url)
     onDidFinishNavigation?()
   }
 
   func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
     NSLog("EdgeWebView didFailProvisional \(error.localizedDescription)")
+    onNavigationUrl?(webView.url)
     retryTransientLoad(on: webView, error: error)
   }
 
   func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
     NSLog("EdgeWebView didFail \(error.localizedDescription)")
+    onNavigationUrl?(webView.url)
   }
 
   private func retryTransientLoad(on webView: WKWebView, error: Error) {

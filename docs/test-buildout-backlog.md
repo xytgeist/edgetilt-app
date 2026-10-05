@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **Google OAuth Back (native).** WKWebView Google sign-in has no Safari chrome. Native Back capsule on off-site hosts (accounts.google.com, supabase authorize). Sim rebuild / new IPA. Web `1.4.1003` unchanged.
 - **2026-10-05:** **Forgot-password `or continue with` (`1.4.1003`).** Same two-hairline divider as the landing `or`. No black chip.
 - **2026-10-05:** **Auth `or` divider (`1.4.1002`).** White `or` with two hairlines, no black chip. Light iPad/sheet still uses zinc text + zinc lines.
 - **2026-10-04:** **Game hub survives a long background (`1.4.1001`).** AppShell used to strip `?game=` as soon as the hub opened, so a 10+ min iOS WKWebView/scene restore reloaded `/?tab=home` and dumped the game. Keep `?game=` (and localStorage) while the hub is open; native saves `location.href` on background and reloads that URL after process death / `makeUIView`. Promoted **`main` `8a9075a6`**. Prod IPA **1.4.95 (20261005030638)** TestFlight-only.

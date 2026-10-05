@@ -5171,12 +5171,16 @@ html.light [data-chat-feature][data-chat-landscape-split] [data-chat-landscape-p
     padding-top: 0.5rem !important;
     padding-bottom: calc(0.75rem + max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))) !important;
   }
-  /* Match tools-scroll gutters so Calcs cards share the same left/right inset. */
+  /* Match tools-scroll gutters so pane content shares the same left/right inset. */
   [data-slots-landscape-pane-scroll] {
     padding-left: 0.5rem !important;
     padding-right: 0.5rem !important;
     padding-top: 0.5rem !important;
     padding-bottom: calc(0.75rem + max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))) !important;
+  }
+  /* Search → first guide card = same 0.5rem as title → search (was mb-5). */
+  [data-slots-landscape-pane-scroll] [data-ap-guides-search] {
+    margin-bottom: 0.5rem !important;
   }
   [data-slots-landscape-tools] [data-slots-hub] > * + * {
     margin-top: 0.375rem !important;
@@ -5203,14 +5207,16 @@ html.light [data-chat-feature][data-chat-landscape-split] [data-chat-landscape-p
     font-size: 0.6875rem !important;
     line-height: 1.25 !important;
   }
-  /* Calc picker cards stay portrait-hero sized; in the landscape pane they were
-     still min-h 7rem + sm:p-8 next to the dense tools list. Match that density. */
+  /* Calc picker: title → first card = tools-scroll 0.5rem; between cards = tools 0.375rem. */
   [data-slots-landscape-pane] [data-calc-list-home] {
-    padding-top: 0.25rem !important;
+    padding-top: 0 !important;
+  }
+  [data-slots-landscape-pane] [data-calc-list-home] > .relative + .relative {
+    margin-top: 0.375rem !important;
   }
   [data-slots-landscape-pane] .calc-list-btn {
     min-height: 3.35rem !important;
-    margin-bottom: 0.375rem !important;
+    margin-bottom: 0 !important;
     gap: 0.625rem !important;
     padding: 0.5rem 0.75rem !important;
     border-radius: 0.9rem !important;

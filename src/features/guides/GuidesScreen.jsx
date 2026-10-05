@@ -2101,7 +2101,7 @@ export default function GuidesScreen({
           </p>
         ) : null}
 
-      <label className="block mb-5">
+      <label className="block mb-5" data-ap-guides-search={paneEmbed ? '' : undefined}>
         <span className="sr-only">Search guides</span>
         <input
           type="search"

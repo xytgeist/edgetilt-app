@@ -7,13 +7,15 @@ export const IPAD_NAV_RAIL_WIDTH = 'calc((11rem - 50px) * 0.85)'
 /**
  * Open Duo: Music gutter under the island / status dock.
  * Pill width/trailing pad are **px** (not rem) so Dynamic Type cannot drift them.
- * 50px matches the status-dock circle. Sit the capsule under that circle (Mail), not at the bottom.
+ * 50px matches the status-dock circle. Capsule starts *below* that circle (native chrome covers the webview).
  */
 export const DUO_NAV_RAIL_WIDTH = '5.5rem'
 /** Match the Duo status-dock circle (clock sits above it). */
 export const DUO_NAV_PILL_WIDTH_PX = 50
-/** Bezel → pill trailing edge. Tight so the 50px capsule centers on the wifi dock, not the gutter. */
-export const DUO_NAV_PILL_TRAILING_PAD_PX = 18
+/** Bezel → pill trailing edge. Tucked so the capsule centers on the wifi dock. */
+export const DUO_NAV_PILL_TRAILING_PAD_PX = 12
+/** Extra below `--edge-sat` / env sat. Sat covers the clock row; the wifi circle hangs ~50px under it. */
+export const DUO_NAV_PILL_TOP_EXTRA_PX = 88
 
 /**
  * Visible letter inside the 180px +EV tiles.
@@ -81,8 +83,12 @@ export default function LoungeIpadNavRail({
         data-ipad-nav-rail
         data-duo-nav-rail
         aria-label="Lounge"
-        className="fixed inset-y-0 right-0 z-[60] flex flex-col items-end bg-transparent pt-[calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px))+2.1rem)] pb-[max(0.85rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
-        style={{ width: DUO_NAV_RAIL_WIDTH, paddingRight: DUO_NAV_PILL_TRAILING_PAD_PX }}
+        className="fixed inset-y-0 right-0 z-[60] flex flex-col items-end bg-transparent pb-[max(0.85rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
+        style={{
+          width: DUO_NAV_RAIL_WIDTH,
+          paddingRight: DUO_NAV_PILL_TRAILING_PAD_PX,
+          paddingTop: `calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + ${DUO_NAV_PILL_TOP_EXTRA_PX}px)`,
+        }}
       >
         <div className="flex shrink-0 flex-col items-center gap-2" data-duo-nav-context>
           {onBack ? (
@@ -97,9 +103,9 @@ export default function LoungeIpadNavRail({
                 data-duo-nav-back
                 aria-label="Back"
                 onClick={() => onBack()}
-                className="grid h-[44px] w-full place-items-center text-zinc-100 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+                className="grid h-[50px] w-full place-items-center text-zinc-100 touch-manipulation [-webkit-tap-highlight-color:transparent]"
               >
-                <span className="text-[17px] leading-none" aria-hidden>
+                <span className="text-[20px] leading-none" aria-hidden>
                   ←
                 </span>
               </button>
@@ -109,7 +115,7 @@ export default function LoungeIpadNavRail({
             data-duo-nav-pill
             data-duo-nav-tabs
             data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
-            className="flex shrink-0 flex-col items-center gap-0 overflow-hidden rounded-full bg-zinc-800/70 py-1 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
+            className="flex shrink-0 flex-col items-center gap-0 overflow-hidden rounded-full bg-zinc-800/70 py-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
             style={pillStyle}
           >
             {navItems.map((item) => (
@@ -130,9 +136,9 @@ export default function LoungeIpadNavRail({
                 aria-expanded={shellMenuOpen}
                 aria-haspopup="menu"
                 onClick={() => onOpenShellMenu()}
-                className="relative grid h-[44px] w-full place-items-center text-zinc-200 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+                className="relative grid h-[50px] w-full place-items-center text-zinc-200 touch-manipulation [-webkit-tap-highlight-color:transparent]"
               >
-                <span aria-hidden className="block leading-none text-base -translate-y-px">
+                <span aria-hidden className="block leading-none text-xl -translate-y-px">
                   {shellMenuOpen ? '×' : '☰'}
                 </span>
                 {shellMenuAttention && !shellMenuOpen ? (
@@ -216,12 +222,12 @@ function RailButton({ item, compact = false }) {
       onClick={() => item.onSelect?.()}
       className={
         compact
-          ? 'relative grid h-[44px] w-full place-items-center text-zinc-200 touch-manipulation [-webkit-tap-highlight-color:transparent] disabled:opacity-40 data-[active=1]:text-white'
+          ? 'relative grid h-[50px] w-full place-items-center text-zinc-200 touch-manipulation [-webkit-tap-highlight-color:transparent] disabled:opacity-40 data-[active=1]:text-white'
           : 'relative grid h-[4.5rem] w-[4.5rem] place-items-center text-zinc-300 touch-manipulation [-webkit-tap-highlight-color:transparent] disabled:opacity-40 data-[active=1]:text-white'
       }
     >
       <span
-        className={compact ? 'block h-[18px] w-[18px]' : 'block h-9 w-9'}
+        className={compact ? 'block h-[24px] w-[24px]' : 'block h-9 w-9'}
         style={item.iconScale ? { transform: `scale(${item.iconScale})` } : undefined}
       >
         {item.icon}

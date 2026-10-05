@@ -2697,3 +2697,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-05 … Duo pill under wifi (50px)
 
 **I am Mac Theo.** Ryan: 50px width was right; it looked small because the capsule sat at the bottom, not centered under the wifi dock. **`1.4.1013`**: pill **50px** again, trailing pad **18px**, tabs+Back stacked under the status circle (Mail). Gutter still **5.5rem**. Hard-refresh until build shows 1.4.1013. Not promoted.
+
+### Mac Theo 2026-10-05 … Duo pill below dock + bigger icons
+
+**I am Mac Theo.** Ryan crop: Home/Search under the native wifi circle, pill left of the dock, icons tiny. **`1.4.1014`**: start **88px** below sat (clears the circle), trailing pad **12px**, compact icons **24px**. Width still **50px**. Hard-refresh until 1.4.1014. Not promoted.

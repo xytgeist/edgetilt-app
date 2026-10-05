@@ -164,3 +164,10 @@ verify_jwt = true
 # Auth Send SMS hook. Signature is the webhook secret, not a user JWT.
 [functions.auth-send-sms]
 verify_jwt = false
+
+[functions.lounge-live-activity-token]
+verify_jwt = true
+
+# pg_cron → pg_net with Vault service_role JWT; auth checked in-function.
+[functions.lounge-live-activity-push]
+verify_jwt = false

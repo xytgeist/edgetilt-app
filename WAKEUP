@@ -119,6 +119,9 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 **Test IPA:** Xcode Cloud **TestFlight Internal** succeeded on **`test` `90b72895`** (2026-10-04). Wait for ASC processing, then install the newest Internal build (lvslotpro.com).
 **Prod IPA uploaded:** EdgeTilt Prod **1.4.95 (20261005020336)** from `main` `c5639bb0` → TestFlight only (`edgetilt.com`). Not attached to review. Wait for ASC processing.
 
+### Mac Theo ACTIVE TRACK 2026-10-04 ... Island APNs 1.4.1000
+**I am Mac Theo.** Background Island/Lock froze after Apple killed the 30s BG poll. ActivityKit **push tokens** + `lounge-live-activity-push` cron. Needs test SQL + Edge deploy + new IPA. Not promoted. Marketing still **1.4.95**.
+
 ### Mac Theo ACTIVE TRACK 2026-10-02 ... Quote embed caption truncate
 **I am Mac Theo.** On **`test`**, web **`1.4.977`**. Quote-repost embeds use the same caption truncate + see more as feed posts (detail no longer force-expands the quoted caption). Not promoted. Marketing still **1.4.95**.
 

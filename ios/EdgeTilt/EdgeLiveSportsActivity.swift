@@ -4,11 +4,13 @@ import UIKit
 
 /// Starts / updates / ends the watched-game Live Activity from JS.
 /// While a sports Activity is live, bankroll Activities are ended (watched game wins Island).
-/// When the app backgrounds, native polls `lounge-sports-scoreboard` so Lock Screen / Island
-/// keep moving after WKWebView stops (JS used to skip polls on `document.hidden`).
+/// Background: ActivityKit push tokens (`pushType: .token`) so APNs can update Island / Lock
+/// Screen after WKWebView and `beginBackgroundTask` die. Native still polls
+/// `lounge-sports-scoreboard` for the short BG window as a fallback.
 enum EdgeLiveSportsActivity {
   private static var backgroundTaskId: UIBackgroundTaskIdentifier = .invalid
   private static var backgroundPollTask: Task<Void, Never>?
+  private static var pushTokenTask: Task<Void, Never>?
 
   static func sync(
     payload: [String: Any]?,
@@ -26,6 +28,8 @@ enum EdgeLiveSportsActivity {
 
     if shouldEnd {
       stopBackgroundRefresh()
+      stopPushTokenListen()
+      Task { await unregisterPushToken(gameId: gameId.isEmpty ? nil : gameId) }
       endAll { ended in
         completion(.success([
           "ok": true,
@@ -78,7 +82,8 @@ enum EdgeLiveSportsActivity {
       do {
         if let existing = Activity<LiveSportsAttributes>.activities.first {
           let merged = mergePreservingLines(incoming: state, previous: existing.content.state)
-          await existing.update(ActivityContent(state: merged, staleDate: nil))
+          await existing.update(ActivityContent(state: merged, staleDate: Date().addingTimeInterval(180)))
+          listenForPushToken(existing, gameId: gameId)
           completion(.success([
             "ok": true,
             "supported": true,
@@ -88,11 +93,21 @@ enum EdgeLiveSportsActivity {
         }
 
         let attributes = LiveSportsAttributes(startedAt: Date())
-        _ = try Activity.request(
-          attributes: attributes,
-          content: ActivityContent(state: state, staleDate: nil),
-          pushType: nil
-        )
+        let requested: Activity<LiveSportsAttributes>
+        do {
+          requested = try Activity.request(
+            attributes: attributes,
+            content: ActivityContent(state: state, staleDate: Date().addingTimeInterval(180)),
+            pushType: .token
+          )
+        } catch {
+          requested = try Activity.request(
+            attributes: attributes,
+            content: ActivityContent(state: state, staleDate: Date().addingTimeInterval(180)),
+            pushType: nil
+          )
+        }
+        listenForPushToken(requested, gameId: gameId)
         completion(.success([
           "ok": true,
           "supported": true,
@@ -110,7 +125,15 @@ enum EdgeLiveSportsActivity {
 
   static func endFromSignOut() {
     stopBackgroundRefresh()
+    stopPushTokenListen()
+    Task { await unregisterPushToken(gameId: nil) }
     endAll { _ in }
+  }
+
+  /// Resume token uploads after a cold start while an Activity is already live.
+  static func bootstrapPushUpdates() {
+    guard let activity = Activity<LiveSportsAttributes>.activities.first else { return }
+    listenForPushToken(activity, gameId: activity.content.state.gameId)
   }
 
   /// True when a watched-game Activity is showing (bankroll sync should defer).
@@ -200,7 +223,7 @@ enum EdgeLiveSportsActivity {
       guard gameStatus == "in" else { return }
 
       let next = contentState(from: game, previous: activity.content.state)
-      await activity.update(ActivityContent(state: next, staleDate: nil))
+      await activity.update(ActivityContent(state: next, staleDate: Date().addingTimeInterval(180)))
     } catch {
       // Soft-fail … next tick retries; missing Keychain session just waits for foreground JS.
     }
@@ -303,6 +326,81 @@ enum EdgeLiveSportsActivity {
     if n == 0 { return "" }
     let body = n == floor(n) ? String(Int(n)) : String(n)
     return "O/U \(body)"
+  }
+
+  private static func listenForPushToken(
+    _ activity: Activity<LiveSportsAttributes>,
+    gameId: String
+  ) {
+    guard !gameId.isEmpty else { return }
+    pushTokenTask?.cancel()
+    pushTokenTask = Task {
+      for await tokenData in activity.pushTokenUpdates {
+        if Task.isCancelled { break }
+        await uploadPushToken(tokenData, gameId: gameId)
+      }
+    }
+  }
+
+  private static func stopPushTokenListen() {
+    pushTokenTask?.cancel()
+    pushTokenTask = nil
+  }
+
+  private static func hexToken(_ data: Data) -> String {
+    data.map { String(format: "%02x", $0) }.joined()
+  }
+
+  private static func apnsEnvironmentHint() -> String {
+    #if DEBUG
+    return "sandbox"
+    #else
+    return "production"
+    #endif
+  }
+
+  private static func uploadPushToken(_ tokenData: Data, gameId: String) async {
+    let token = hexToken(tokenData)
+    guard token.count >= 64 else { return }
+    do {
+      let session = try await EdgeAuthSessionStore.validAccessToken()
+      let base = session.supabaseUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+      guard let url = URL(string: "\(base)/functions/v1/lounge-live-activity-token") else { return }
+      var request = URLRequest(url: url)
+      request.httpMethod = "POST"
+      request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+      request.setValue(session.anonKey, forHTTPHeaderField: "apikey")
+      request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+      request.httpBody = try JSONSerialization.data(withJSONObject: [
+        "token": token,
+        "gameId": gameId,
+        "watching": true,
+        "environment": apnsEnvironmentHint(),
+        "bundleId": "com.edgetilt.app",
+      ])
+      _ = try await URLSession.shared.data(for: request)
+    } catch {
+      // Soft-fail … next token tick or foreground JS retry.
+    }
+  }
+
+  private static func unregisterPushToken(gameId: String?) async {
+    do {
+      let session = try await EdgeAuthSessionStore.validAccessToken()
+      let base = session.supabaseUrl.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+      guard let url = URL(string: "\(base)/functions/v1/lounge-live-activity-token") else { return }
+      var request = URLRequest(url: url)
+      request.httpMethod = "POST"
+      request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+      request.setValue(session.anonKey, forHTTPHeaderField: "apikey")
+      request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+      var body: [String: Any] = ["watching": false]
+      if let gameId, !gameId.isEmpty { body["gameId"] = gameId }
+      request.httpBody = try JSONSerialization.data(withJSONObject: body)
+      _ = try await URLSession.shared.data(for: request)
+    } catch {
+      /* signed out / no session */
+    }
   }
 
   private static func endAll(completion: @escaping (Int) -> Void) {

@@ -381,3 +381,60 @@ export async function sendVoipApnsToUser(
 
   return { sent, failed, removed, skipped: false }
 }
+
+export type LiveActivityPushEvent = 'update' | 'end'
+
+/** ActivityKit APNs (`apns-push-type: liveactivity`). */
+export async function postLiveActivityApns(
+  config: ApnsConfig,
+  tokenHex: string,
+  environment: ApnsEnvironment,
+  bundleId: string,
+  event: LiveActivityPushEvent,
+  contentState: Record<string, unknown>,
+): Promise<ApnsPostResult> {
+  const jwt = await mintApnsJwt(config)
+  const topic = `${(bundleId || config.bundleId || 'com.edgetilt.app').trim()}.push-type.liveactivity`
+  const timestamp = Math.floor(Date.now() / 1000)
+  const aps: Record<string, unknown> = {
+    timestamp,
+    event,
+    'content-state': contentState,
+  }
+  if (event === 'end') {
+    aps['dismissal-date'] = timestamp
+  }
+  const headers: Record<string, string> = {
+    authorization: `bearer ${jwt}`,
+    'apns-topic': topic,
+    'apns-push-type': 'liveactivity',
+    'apns-priority': event === 'end' ? '10' : '5',
+    'apns-expiration': String(timestamp + 60),
+    'content-type': 'application/json',
+  }
+  const res = await fetch(`${apnsHost(environment)}/3/device/${tokenHex}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ aps }),
+  })
+  let reason = ''
+  try {
+    const json = await res.json() as { reason?: string }
+    reason = String(json?.reason || '')
+  } catch {
+    reason = ''
+  }
+  return { ok: res.ok, status: res.status, reason }
+}
+
+export function liveActivityShouldDropToken(status: number, reason: string): boolean {
+  return shouldDropToken(status, reason)
+}
+
+export function liveActivityShouldRetryOtherEnvironment(reason: string): boolean {
+  return shouldRetryOtherEnvironment(reason)
+}
+
+export function otherApnsEnvironment(env: ApnsEnvironment): ApnsEnvironment {
+  return otherEnvironment(env)
+}

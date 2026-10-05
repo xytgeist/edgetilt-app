@@ -10,6 +10,9 @@ struct EdgeTiltApp: App {
       ShellRootView()
         .background(Color.black)
         .preferredColorScheme(.dark)
+        .onAppear {
+          EdgeLiveSportsActivity.bootstrapPushUpdates()
+        }
         .onChange(of: scenePhase) { _, phase in
           EdgeLiveSportsActivity.handleSceneBecameActive(phase == .active)
           if phase == .active {

@@ -268,6 +268,8 @@ Uploads set object metadata **`Cache-Control: public, max-age=31536000, immutabl
 
 ## 4. Supabase Edge Functions (parity with **test**)
 
+- [x] **Island APNs (2026-10-04):** prod SQL `20261005040000` + `lounge-live-activity-token` / `lounge-live-activity-push`. Cron `live_activity_island_push`. Prod IPA **1.4.95 (20261005022834)** TestFlight-only.
+
 After DB + env are correct, redeploy edge functions whose **logical code lives in repo** (`supabase/functions/…`) against **production** so versions don’t drift:
 
 ```bash

@@ -26,6 +26,30 @@ function applyClass(isDark) {
     html.classList.remove(DARK_CLASS)
     html.classList.add(LIGHT_CLASS)
   }
+  syncNativeColorScheme(isDark)
+  syncThemeColorMeta(isDark)
+}
+
+function syncNativeColorScheme(isDark) {
+  try {
+    const fn = typeof window !== 'undefined' ? window.EdgeNative?.setPreferredColorScheme : null
+    if (typeof fn !== 'function') return
+    fn.call(window.EdgeNative, { scheme: isDark ? 'dark' : 'light' })
+  } catch {
+    /* old IPA / Safari */
+  }
+}
+
+function syncThemeColorMeta(isDark) {
+  if (typeof document === 'undefined') return
+  const color = isDark ? '#09090b' : '#ffffff'
+  let meta = document.querySelector('meta[name="theme-color"]')
+  if (!meta) {
+    meta = document.createElement('meta')
+    meta.setAttribute('name', 'theme-color')
+    document.head.appendChild(meta)
+  }
+  meta.setAttribute('content', color)
 }
 
 /** Read pref + system media query and apply the correct class to <html>. */

@@ -299,6 +299,13 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       EdgeOrientationLock.setPortraitLocked(portrait) { result in
         completion(.success(result))
       }
+    case "setPreferredColorScheme":
+      let raw = (payload?["scheme"] as? String) ?? ""
+      EdgeShellAppearance.shared.apply(scheme: raw)
+      completion(.success([
+        "ok": true,
+        "scheme": EdgeShellAppearance.shared.isDark ? "dark" : "light",
+      ]))
     case "getStorefront":
       guard #available(iOS 15.0, *) else {
         completion(.success(["countryCode": "", "isUnitedStates": false]))
@@ -876,6 +883,9 @@ final class EdgeNativeBridge: NSObject, WKScriptMessageHandler, WKNavigationDele
       },
       setOrientationLock: function (payload) {
         return call('setOrientationLock', payload || {});
+      },
+      setPreferredColorScheme: function (payload) {
+        return call('setPreferredColorScheme', payload || {});
       },
       getStorefront: function () {
         return call('getStorefront', null);

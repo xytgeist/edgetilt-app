@@ -32,6 +32,7 @@
 		5F7A18D92C4E4B60A1D9E283 /* EdgePhotoPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E9C41B80A6F4D11C8B3A047 /* EdgePhotoPicker.swift */; };
 		C3A91E70B8D24F61A0E5C214 /* EdgeVideoNative.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F60718293A4B5C /* EdgeVideoNative.swift */; };
 		C4D91E70A8B24C6F91E3D014 /* EdgeShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E8F2A14C0D14B7E9A31B502 /* EdgeShareSheet.swift */; };
+		9E78B1403D32309052B654F3 /* EdgeShellAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = E24D9A0E1C32EAE14CA7B896 /* EdgeShellAppearance.swift */; };
 		A8C2ECB2200B4E77B9DEE8AE /* EdgeBetSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1C212CDFF8D492BA3DD6CF4 /* EdgeBetSheet.swift */; };
 		E1A4B7C2D3F54A6B8C9D0E11 /* EdgeInAppBrowser.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1A4B7C2D3F54A6B8C9D0E12 /* EdgeInAppBrowser.swift */; };
 		32BB1D33156BEBC54B50E16D /* EdgeWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B884711901FA09324B73CC22 /* EdgeWebView.swift */; };
@@ -80,6 +81,7 @@
 		2E9C41B80A6F4D11C8B3A047 /* EdgePhotoPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgePhotoPicker.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F60718293A4B5C /* EdgeVideoNative.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeVideoNative.swift; sourceTree = "<group>"; };
 		6E8F2A14C0D14B7E9A31B502 /* EdgeShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeShareSheet.swift; sourceTree = "<group>"; };
+		E24D9A0E1C32EAE14CA7B896 /* EdgeShellAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeShellAppearance.swift; sourceTree = "<group>"; };
 		F1C212CDFF8D492BA3DD6CF4 /* EdgeBetSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeBetSheet.swift; sourceTree = "<group>"; };
 		E1A4B7C2D3F54A6B8C9D0E12 /* EdgeInAppBrowser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeInAppBrowser.swift; sourceTree = "<group>"; };
 		C25759EB57591E0C2C3A5E5F /* ShellRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellRootView.swift; sourceTree = "<group>"; };
@@ -153,6 +155,7 @@
 				2E9C41B80A6F4D11C8B3A047 /* EdgePhotoPicker.swift */,
 				A1B2C3D4E5F60718293A4B5C /* EdgeVideoNative.swift */,
 				6E8F2A14C0D14B7E9A31B502 /* EdgeShareSheet.swift */,
+				E24D9A0E1C32EAE14CA7B896 /* EdgeShellAppearance.swift */,
 				F1C212CDFF8D492BA3DD6CF4 /* EdgeBetSheet.swift */,
 				E1A4B7C2D3F54A6B8C9D0E12 /* EdgeInAppBrowser.swift */,
 				A50DC0B1CCEF2E8786FA052B /* EdgeLocationManager.swift */,
@@ -344,6 +347,7 @@
 				5F7A18D92C4E4B60A1D9E283 /* EdgePhotoPicker.swift in Sources */,
 				C3A91E70B8D24F61A0E5C214 /* EdgeVideoNative.swift in Sources */,
 				C4D91E70A8B24C6F91E3D014 /* EdgeShareSheet.swift in Sources */,
+				9E78B1403D32309052B654F3 /* EdgeShellAppearance.swift in Sources */,
 				A8C2ECB2200B4E77B9DEE8AE /* EdgeBetSheet.swift in Sources */,
 				E1A4B7C2D3F54A6B8C9D0E11 /* EdgeInAppBrowser.swift in Sources */,
 				AD8603BE6B58AD8A27B8F9BB /* EdgeLocationManager.swift in Sources */,

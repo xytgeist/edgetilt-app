@@ -2888,4 +2888,8 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 
 ### Mac Theo 2026-10-05 … phone landscape calc cards dense
 
-**I am Mac Theo.** **`1.4.1049`**: phone landscape Slots pane calc picker cards shrink to tools-list density (were still 7rem / sm:p-8). Portrait + iPad untouched. Hard-refresh on test. Not promoted.
+**I am Mac Theo.** **`1.4.1049`**: phone landscape Slots pane calc picker cards shrink to tools-list density (were still 7rem / sm:p-8). Portrait + iPad untouched.
+
+### Mac Theo 2026-10-05 … Promote 1.4.1049
+
+**I am Mac Theo.** Promoted **`test` → `main` (`2564e0a3`)**. Vercel prod web **`1.4.1049`** (dense landscape calc cards). No new IPA. Back on **`test`**.

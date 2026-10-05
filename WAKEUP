@@ -2901,3 +2901,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-05 … Promote 1.4.1050
 
 **I am Mac Theo.** Promoted **`test` → `main` (`77ac8765`)**. Vercel prod web **`1.4.1050`** (Calcs landscape title bar). No new IPA. Back on **`test`**.
+
+### Mac Theo 2026-10-05 … Calcs pane gutters match tools
+
+**I am Mac Theo.** **`1.4.1051`**: phone landscape Calcs pane scroll pad `0.5rem` to match Slots tools-scroll (was still `px-3`). Hard-refresh on test. Not promoted.

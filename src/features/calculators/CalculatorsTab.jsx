@@ -241,7 +241,9 @@ export default function CalculatorsTab({
       {paneEmbed ? (
         <>
           <CalcsPaneChrome />
-          <div className={PANE_SCROLL_CLASS}>{children}</div>
+          <div data-slots-landscape-pane-scroll className={PANE_SCROLL_CLASS}>
+            {children}
+          </div>
         </>
       ) : (
         children

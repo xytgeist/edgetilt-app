@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **Auth `or` divider (`1.4.1002`).** White `or` with two hairlines, no black chip. Light iPad/sheet still uses zinc text + zinc lines.
 - **2026-10-04:** **Game hub survives a long background (`1.4.1001`).** AppShell used to strip `?game=` as soon as the hub opened, so a 10+ min iOS WKWebView/scene restore reloaded `/?tab=home` and dumped the game. Keep `?game=` (and localStorage) while the hub is open; native saves `location.href` on background and reloads that URL after process death / `makeUIView`. Promoted **`main` `8a9075a6`**. Prod IPA **1.4.95 (20261005030638)** TestFlight-only.
 - **2026-10-04:** **Island APNs on prod.** SQL + Edge `lounge-live-activity-token` / `lounge-live-activity-push` on **`jtjgtucumuoswnbauxry`**. Prod IPA **1.4.95 (20261005022834)** uploaded TestFlight-only (`main` `66527141`). Not attached to review. Wait for ASC processing, then open a live game on edgetilt.com and background.
 - **2026-10-04:** **Island APNs while backgrounded (`1.4.1000`).** `beginBackgroundTask` dies in ~30s so Lock Screen froze. `Activity.request(pushType: .token)` uploads to `lounge-live-activity-token`; cron `live_activity_island_push` (1 min) runs `lounge-live-activity-push` with existing `APNS_*`. Native 12s poll stays as the short fallback. New TestFlight IPA owed. Test SQL + Edge deploy with this change. Prod SQL/Edge not applied.

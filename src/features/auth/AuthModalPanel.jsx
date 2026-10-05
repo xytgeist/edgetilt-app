@@ -80,15 +80,12 @@ function PhoneIcon() {
   )
 }
 
-function OrDivider({ chipClassName = 'bg-zinc-950', className = 'my-7' }) {
+function OrDivider({ className = 'my-7' }) {
   return (
-    <div className={`relative w-full ${className}`} data-auth-ipad-or>
-      <div className="absolute inset-0 flex items-center" aria-hidden>
-        <div data-auth-ipad-or-line className="w-full border-t border-zinc-700" />
-      </div>
-      <div className="relative flex justify-center text-lg text-zinc-500">
-        <span className={`${chipClassName} px-3`}>or</span>
-      </div>
+    <div className={`flex w-full items-center gap-3 ${className}`} data-auth-ipad-or>
+      <div data-auth-ipad-or-line className="h-px min-w-0 flex-1 bg-white/25" />
+      <span className="shrink-0 text-lg font-medium leading-none text-white">or</span>
+      <div data-auth-ipad-or-line className="h-px min-w-0 flex-1 bg-white/25" />
     </div>
   )
 }
@@ -489,10 +486,7 @@ export default function AuthModalPanel({
           </div>
           {!showEmailFields ? (
             <>
-              <OrDivider
-                chipClassName={ipadStage ? 'bg-zinc-950' : 'bg-black'}
-                className={ipadStage ? 'my-7' : 'my-5'}
-              />
+              <OrDivider className={ipadStage ? 'my-7' : 'my-5'} />
               <button
                 type="button"
                 data-auth-ipad-phone

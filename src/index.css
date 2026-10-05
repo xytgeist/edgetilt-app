@@ -4675,11 +4675,11 @@ html.light [data-auth-ipad-stage] [data-auth-ipad-provider][data-selected='1'] {
   background: #f4f4f5;
 }
 html.light [data-auth-ipad-stage] [data-auth-ipad-or] span {
-  background-color: #fff;
-  color: #71717a;
+  background-color: transparent;
+  color: #18181b;
 }
 html.light [data-auth-ipad-stage] [data-auth-ipad-or-line] {
-  border-color: #e4e4e7;
+  background-color: #d4d4d8;
 }
 html.light [data-auth-ipad-stage] [data-auth-ipad-footer] {
   background: #f4f4f5;
@@ -5306,11 +5306,11 @@ html.light [data-auth-sheet] [data-auth-ipad-provider][data-selected='1'] {
   background: #f4f4f5;
 }
 html.light [data-auth-sheet] [data-auth-ipad-or] span {
-  background-color: #fff;
-  color: #71717a;
+  background-color: transparent;
+  color: #18181b;
 }
 html.light [data-auth-sheet] [data-auth-ipad-or-line] {
-  border-color: #e4e4e7;
+  background-color: #d4d4d8;
 }
 html.light [data-auth-sheet] p a,
 html.light [data-auth-sheet] p a:hover {

@@ -1,12 +1,11 @@
 export function OAuthDivider() {
   return (
-    <div className="relative py-1">
-      <div className="absolute inset-0 flex items-center" aria-hidden>
-        <div className="w-full border-t border-gray-700" />
-      </div>
-      <div className="relative flex justify-center text-xs text-gray-500">
-        <span data-auth-oauth-chip className="bg-black px-3">or continue with</span>
-      </div>
+    <div className="flex w-full items-center gap-3 py-1" data-auth-oauth-or>
+      <div data-auth-oauth-line className="h-px min-w-0 flex-1 bg-white/25" />
+      <span data-auth-oauth-chip className="shrink-0 text-xs font-medium leading-none text-white">
+        or continue with
+      </span>
+      <div data-auth-oauth-line className="h-px min-w-0 flex-1 bg-white/25" />
     </div>
   )
 }

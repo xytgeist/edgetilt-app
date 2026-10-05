@@ -5321,7 +5321,11 @@ html.light [data-auth-sheet] [data-auth-sheet-footer] {
   color: #3f3f46;
 }
 html.light [data-auth-modal] [data-auth-oauth-chip] {
-  background-color: #fff;
+  background-color: transparent;
+  color: #18181b;
+}
+html.light [data-auth-modal] [data-auth-oauth-line] {
+  background-color: #d4d4d8;
 }
 html.light [data-auth-modal] { background-color: #fff !important; box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 16px 48px rgba(0,0,0,0.16), 0 0 0 1px rgba(0,0,0,0.05) !important; }
 html.light [data-auth-modal] .border-gray-700       { border-color: #e4e4e7 !important; }

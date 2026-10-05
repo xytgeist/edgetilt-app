@@ -2864,4 +2864,8 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 
 ### Mac Theo 2026-10-05 … phone landscape E align + shortcut size
 
-**I am Mac Theo.** **`1.4.1046`**: drop rail E to EDGE midline (`sat + 0.85rem`); phone landscape shortcuts match nav item size (were still iPad 4.5rem). Hard-refresh on test. Not promoted.
+**I am Mac Theo.** **`1.4.1046`**: drop rail E to EDGE midline (`sat + 0.85rem`); phone landscape shortcuts match nav item size (were still iPad 4.5rem).
+
+### Mac Theo 2026-10-05 … Promote 1.4.1046
+
+**I am Mac Theo.** Promoted **`test` → `main` (`38386a02`)**. Vercel prod web **`1.4.1046`** (rail E align + shortcut size). No new IPA. Back on **`test`**.

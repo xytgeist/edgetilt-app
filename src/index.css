@@ -4702,9 +4702,9 @@ html[data-ipad-nav-end] [data-duo-nav-rail] {
   --edge-ipad-rail: 5.5rem;
 }
 html[data-ipad-nav-end] [data-duo-nav-pill] {
-  width: 50px !important; /* match Duo status-dock circle; px so rem/Dynamic Type cannot drift */
-  min-width: 50px !important;
-  max-width: 50px !important;
+  width: 72px !important; /* match Duo status-dock / Mail action pill; px so rem/Dynamic Type cannot drift */
+  min-width: 72px !important;
+  max-width: 72px !important;
   box-sizing: border-box;
 }
 html[data-ipad-nav-end] [data-duo-feed-compose] {

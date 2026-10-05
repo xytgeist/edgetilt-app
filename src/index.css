@@ -4702,9 +4702,9 @@ html[data-ipad-nav-end] [data-duo-nav-rail] {
   --edge-ipad-rail: 5.5rem;
 }
 html[data-ipad-nav-end] [data-duo-nav-pill] {
-  width: 58px !important; /* match Duo status-dock glass, not the wifi glyph */
-  min-width: 58px !important;
-  max-width: 58px !important;
+  width: 50px !important;
+  min-width: 50px !important;
+  max-width: 50px !important;
   box-sizing: border-box;
 }
 html[data-ipad-nav-end] [data-duo-feed-compose] {

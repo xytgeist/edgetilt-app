@@ -5,7 +5,7 @@ import LoungeMentionDropdown from './LoungeMentionDropdown.jsx'
 import LoungePostCategoryPillPicker from './LoungePostCategoryPillPicker.jsx'
 import { LoungeImageCarousel } from './LoungePostFeedMedia.jsx'
 import { LOUNGE_CAPTION_MAX, LOUNGE_POST_THREAD_MAX_PARTS } from '../../utils/loungeCommentLimits.js'
-import { isEdgeVideoLocalUrl } from '../../utils/edgeNative.js'
+import { dismissEdgeKeyboard, isEdgeVideoLocalUrl } from '../../utils/edgeNative.js'
 import { LOUNGE_FEED_AVATAR_CLASS } from './loungeFeedAvatar.js'
 import {
   threadComposePartCarouselUrls,
@@ -229,6 +229,12 @@ export default function LoungeThreadComposeSheet({
       keyboardDockActiveRef.current = false
       setKeyboardDockActive(false)
     }, 80)
+  }, [])
+
+  const dismissKeyboard = useCallback(() => {
+    dismissEdgeKeyboard()
+    keyboardDockActiveRef.current = false
+    setKeyboardDockActive(false)
   }, [])
 
   useEffect(() => {
@@ -468,6 +474,7 @@ export default function LoungeThreadComposeSheet({
 
   return (
     <div
+      data-lounge-thread-compose=""
       className="fixed inset-0 z-[98] flex h-dvh max-h-dvh flex-col overflow-hidden bg-zinc-950"
       role="dialog"
       aria-modal="true"
@@ -814,6 +821,26 @@ export default function LoungeThreadComposeSheet({
           ) : null}
           <div className="min-w-0 flex-1" aria-hidden />
           <div className="flex shrink-0 items-center gap-2">
+            {keyboardUp || keyboardDockActive ? (
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={dismissKeyboard}
+                className="flex h-9 w-9 shrink-0 touch-manipulation items-center justify-center rounded-full text-cyan-400 hover:bg-white/10 hover:text-cyan-300 active:bg-white/15"
+                title="Done"
+                aria-label="Done"
+              >
+                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <path
+                    d="M5 12.5l4.5 4.5L19 7.5"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </button>
+            ) : null}
             <LoungeComposerCharRing len={activeLen} max={captionMax} />
             <div className="shrink-0 p-2">
               <button

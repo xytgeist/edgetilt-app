@@ -2,13 +2,15 @@ import { useEffect } from 'react'
 import { isEdgeiOSShell, setEdgeKeyboardAccessoryVisible } from '../utils/edgeNative.js'
 
 /**
- * Native default is accessory **on**. Only GIF search opts out.
+ * Native default is accessory **on**. Opt out where the web UI owns Done + media
+ * (GIF search, fullscreen Lounge composer, thread compose sheet).
  * Do not set false on blur / non-fields ... that forces false→true on the
  * next focus and re-breaks the iPhone keyboard rise.
  */
 function shouldShowAccessory(el) {
   if (!(el instanceof HTMLElement)) return true
   if (el.closest('.klipy-gif-sheet, [data-klipy-gif-picker]')) return false
+  if (el.closest('[data-lounge-fullscreen-composer], [data-lounge-thread-compose]')) return false
   return true
 }
 

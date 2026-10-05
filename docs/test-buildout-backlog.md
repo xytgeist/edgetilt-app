@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **Composer keyboard Done + media pill (`1.4.1034`).** `EdgeKeyboardAccessorySync` hides the stock WK accessory inside fullscreen + thread composers. Write footer is a glass pill with media + Done (thread sheet too). No new IPA (bridge already had `setKeyboardAccessory`).
 - **2026-10-05:** **Duo skips composer portrait lock (`1.4.1033`).** Open Duo does not call `setOrientationLock` for Lounge composers (fullscreen included). iPad already no-ops natively; iPhone (non-Duo) landscape still rotates.
 - **2026-10-05:** **Landscape compose → fullscreen (`1.4.1032`).** Inline feed composer hidden in landscape. Dock/rail Compose opens `LoungeFullScreenComposerModal` for everyone; markdown toolbar only for Edge Pro/staff. Portrait lock unchanged (iPhone IPA rotates; Duo/iPad show hint).
 - **2026-10-05:** **Duo EDGE bleed into composer (`1.4.1031`).** Absolute-centered rail wordmark needed a 3rem title-row min-height … empty TitleBarStatusLine was collapsing the bar under the logo.

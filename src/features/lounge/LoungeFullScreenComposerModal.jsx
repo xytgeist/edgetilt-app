@@ -21,7 +21,7 @@ import {
 import { ensureLoungePostCategoryPill } from '../../utils/loungePostCategoryPills.js'
 import LoungeFlameIcon from './LoungeFlameIcon.jsx'
 import { LOUNGE_COMMENT_BUBBLE_D, LOUNGE_COMMENT_GLYPH_Y_SCALE_CLASS } from './loungeCommentGlyph.js'
-import { isEdgeVideoLocalUrl } from '../../utils/edgeNative.js'
+import { dismissEdgeKeyboard, isEdgeVideoLocalUrl } from '../../utils/edgeNative.js'
 import { LOUNGE_REPOST_ARROWS_D } from './loungeRepostGlyph.js'
 import {
   useLoungeKeyboardOverlapPx,
@@ -345,8 +345,9 @@ export default function LoungeFullScreenComposerModal({
   }, [])
 
   const dismissKeyboard = useCallback(() => {
-    blurActiveInput()
-  }, [blurActiveInput])
+    dismissEdgeKeyboard()
+    setWriteFocused(false)
+  }, [])
 
   const revealWriteAttachments = useCallback(() => {
     setWriteFocused(false)
@@ -1047,32 +1048,48 @@ export default function LoungeFullScreenComposerModal({
         </div>
       )}
 
-      {/* ── Bottom Bar: Clean Media Toolbar & Pro Status ── */}
+      {/* ── Bottom bar: glass media pill (+ Done while keys are up) ── */}
       {activeTab === 'write' ? (
         <footer
-          className="shrink-0 border-t border-zinc-800/90 bg-zinc-900/95 px-4 pt-1.5 backdrop-blur-md sm:px-6 sm:pt-2"
+          className={
+            chromeCompact
+              ? 'shrink-0 border-0 bg-transparent px-3 pt-1 sm:px-4'
+              : 'shrink-0 border-t border-zinc-800/90 bg-zinc-900/95 px-3 pt-1.5 backdrop-blur-md sm:px-4 sm:pt-2'
+          }
           style={{ paddingBottom: footerPadBottom }}
         >
-          <div className="mx-auto flex max-w-3xl items-center justify-between min-h-[2.5rem]">
-            <div className="flex min-w-0 items-center">
-              <LoungeComposerMediaToolbar
-                variant="feed"
-                size="lg"
-                className="!gap-0.5"
-                imageInputId={imageInputId}
-                videoInputId={videoInputId}
-                onImagePointerDown={onImagePointerDown}
-                onVideoPointerDown={onVideoPointerDown}
-                onOpenGifPicker={onOpenGifPicker}
-                onOpenMarketPicker={onOpenMarketPicker}
-                onAddThreadPart={addThreadPart}
-                threadPartDisabled={postBusy || 1 + extraCaptions.length >= LOUNGE_POST_THREAD_MAX_PARTS}
-              />
-            </div>
-
-            <div className="text-xs sm:text-sm font-semibold text-zinc-400">
-              {isEdgePro || isStaff ? '✨ Markdown Enabled' : null}
-            </div>
+          <div className="lounge-thread-compose-toolbar-glass mx-auto flex max-w-3xl min-h-[2.5rem] items-center gap-0.5 rounded-2xl px-2 py-1.5">
+            <LoungeComposerMediaToolbar
+              variant="feed"
+              size="lg"
+              className="!gap-0.5"
+              imageInputId={imageInputId}
+              videoInputId={videoInputId}
+              onImagePointerDown={onImagePointerDown}
+              onVideoPointerDown={onVideoPointerDown}
+              onOpenGifPicker={onOpenGifPicker}
+              onOpenMarketPicker={onOpenMarketPicker}
+              onAddThreadPart={addThreadPart}
+              threadPartDisabled={postBusy || 1 + extraCaptions.length >= LOUNGE_POST_THREAD_MAX_PARTS}
+            />
+            <div className="min-w-0 flex-1" aria-hidden />
+            {!chromeCompact && (isEdgePro || isStaff) ? (
+              <div className="mr-1 shrink-0 text-xs font-semibold text-zinc-400 sm:text-sm">
+                ✨ Markdown Enabled
+              </div>
+            ) : null}
+            {chromeCompact ? (
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={dismissKeyboard}
+                className="flex h-9 w-9 shrink-0 touch-manipulation items-center justify-center rounded-full text-cyan-400 hover:bg-white/10 hover:text-cyan-300 active:bg-white/15"
+                title="Done"
+                aria-label="Done"
+              >
+                <Check className="h-5 w-5" strokeWidth={2.5} aria-hidden />
+              </button>
+            ) : null}
           </div>
         </footer>
       ) : null}

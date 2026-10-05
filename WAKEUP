@@ -2773,3 +2773,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-05 … Duo skips composer portrait lock
 
 **I am Mac Theo.** **`1.4.1033`**: Open Duo no longer requests `setOrientationLock` for Lounge composers (fullscreen included) … Duo is still phone-idiom and that lock was yanking the book to portrait. iPad already skipped natively. Hard-refresh until 1.4.1033. Not promoted.
+
+### Mac Theo 2026-10-05 … Composer keyboard Done + media pill
+
+**I am Mac Theo.** **`1.4.1034`**: Fullscreen + thread composers hide the stock WK Done bar and put media + Done in one web glass footer (no more double stack over the keys). Hard-refresh until 1.4.1034. Not promoted.

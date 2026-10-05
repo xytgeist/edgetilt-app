@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **Duo stack centered under wifi (`1.4.1024`).** Single 50px column for compose/shortcuts/tabs; trailing pad 22. Mid slot no longer `w-full` (that was drifting the shortcuts pill).
 - **2026-10-05:** **Duo mid-rail shortcuts pill (`1.4.1023`).** Same iPad rail pin store (max 6) in a frosted pill between compose and the bottom tab pill. `TitleBarQuickLinks` `layout="duo"`.
 - **2026-10-05:** **Duo tab pill at bottom + chevron caret (`1.4.1022`).** Compose stays under wifi. Tab pill is bottom-anchored; chevron at top expands Search/Alerts/Chat/Settings upward. Shell menu opens up from More.
 - **2026-10-05:** **Duo compose circle + collapsed tab pill (`1.4.1021`).** Compose is a 50×50 circle under the wifi dock. Home + hamburger stay visible; up caret expands the rest. iPad 11 unchanged.

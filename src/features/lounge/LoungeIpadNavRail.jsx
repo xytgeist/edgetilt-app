@@ -12,8 +12,8 @@ export const IPAD_NAV_RAIL_WIDTH = 'calc((11rem - 50px) * 0.85)'
 export const DUO_NAV_RAIL_WIDTH = '5.5rem'
 /** Ryan: width was already fine. Do not grow this to chase the glass. */
 export const DUO_NAV_PILL_WIDTH_PX = 50
-/** Bezel → pill trailing edge. Larger = further left. */
-export const DUO_NAV_PILL_TRAILING_PAD_PX = 28
+/** Bezel → pill trailing edge. Larger = further left. Tuned so the 50px stack centers under the wifi dock. */
+export const DUO_NAV_PILL_TRAILING_PAD_PX = 22
 /** Extra below `--edge-sat`. Larger = further down, so the cap clears the wifi circle. */
 export const DUO_NAV_PILL_TOP_EXTRA_PX = 134
 
@@ -105,103 +105,110 @@ export default function LoungeIpadNavRail({
           paddingTop: `calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + ${DUO_NAV_PILL_TOP_EXTRA_PX}px)`,
         }}
       >
-        <div className="flex shrink-0 flex-col items-center gap-2" data-duo-nav-context>
-          {onBack ? (
-            <div
-              data-duo-nav-pill
-              data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
-              className="flex flex-col items-center overflow-hidden rounded-full bg-zinc-800/70 py-1 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
-              style={pillStyle}
-            >
+        {/* One 50px column under the wifi dock … do not w-full the mid slot or it centers in the gutter. */}
+        <div
+          data-duo-nav-column
+          className="flex h-full min-h-0 flex-col items-center"
+          style={{ width: DUO_NAV_PILL_WIDTH_PX }}
+        >
+          <div className="flex shrink-0 flex-col items-center gap-2" data-duo-nav-context>
+            {onBack ? (
+              <div
+                data-duo-nav-pill
+                data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
+                className="flex flex-col items-center overflow-hidden rounded-full bg-zinc-800/70 py-1 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
+                style={pillStyle}
+              >
+                <button
+                  type="button"
+                  data-duo-nav-back
+                  aria-label="Back"
+                  onClick={() => onBack()}
+                  className="grid h-[50px] w-full place-items-center text-zinc-100 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+                >
+                  <span className="text-[20px] leading-none" aria-hidden>
+                    ←
+                  </span>
+                </button>
+              </div>
+            ) : null}
+            {compose ? (
+              <div
+                data-duo-nav-pill
+                data-duo-nav-compose
+                data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
+                className="flex items-center justify-center overflow-hidden rounded-full bg-zinc-800/70 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
+                style={composeStyle}
+              >
+                <RailButton item={compose} compact />
+              </div>
+            ) : null}
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center py-2">
+            {shortcuts ? (
+              <div
+                data-duo-nav-pill
+                data-duo-nav-shortcuts-pill
+                data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
+                className="flex max-h-full min-h-0 flex-col items-center overflow-y-auto overflow-x-hidden rounded-full bg-zinc-800/70 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
+                style={pillStyle}
+              >
+                {shortcuts}
+              </div>
+            ) : null}
+          </div>
+          <div
+            data-duo-nav-pill
+            data-duo-nav-tabs
+            data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
+            className="flex shrink-0 flex-col items-center gap-0 overflow-hidden rounded-full bg-zinc-800/70 py-1 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
+            style={pillStyle}
+          >
+            {extraItems.length > 0 ? (
               <button
                 type="button"
-                data-duo-nav-back
-                aria-label="Back"
-                onClick={() => onBack()}
-                className="grid h-[50px] w-full place-items-center text-zinc-100 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+                data-duo-nav-expand
+                aria-label={duoExtrasOpen ? 'Hide extra navigation' : 'Show extra navigation'}
+                aria-expanded={duoExtrasOpen}
+                onClick={() => setDuoExtrasOpen((open) => !open)}
+                className="grid h-[44px] w-full place-items-center text-zinc-300 touch-manipulation [-webkit-tap-highlight-color:transparent]"
               >
-                <span className="text-[20px] leading-none" aria-hidden>
-                  ←
-                </span>
+                <DuoCaretIcon open={duoExtrasOpen} />
               </button>
-            </div>
-          ) : null}
-          {compose ? (
-            <div
-              data-duo-nav-pill
-              data-duo-nav-compose
-              data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
-              className="flex items-center justify-center overflow-hidden rounded-full bg-zinc-800/70 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
-              style={composeStyle}
-            >
-              <RailButton item={compose} compact />
-            </div>
-          ) : null}
-        </div>
-        <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center py-2">
-          {shortcuts ? (
-            <div
-              data-duo-nav-pill
-              data-duo-nav-shortcuts-pill
-              data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
-              className="flex max-h-full min-h-0 flex-col items-center overflow-y-auto overflow-x-hidden rounded-full bg-zinc-800/70 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
-              style={pillStyle}
-            >
-              {shortcuts}
-            </div>
-          ) : null}
-        </div>
-        <div
-          data-duo-nav-pill
-          data-duo-nav-tabs
-          data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
-          className="flex shrink-0 flex-col items-center gap-0 overflow-hidden rounded-full bg-zinc-800/70 py-1 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
-          style={pillStyle}
-        >
-          {extraItems.length > 0 ? (
-            <button
-              type="button"
-              data-duo-nav-expand
-              aria-label={duoExtrasOpen ? 'Hide extra navigation' : 'Show extra navigation'}
-              aria-expanded={duoExtrasOpen}
-              onClick={() => setDuoExtrasOpen((open) => !open)}
-              className="grid h-[44px] w-full place-items-center text-zinc-300 touch-manipulation [-webkit-tap-highlight-color:transparent]"
-            >
-              <DuoCaretIcon open={duoExtrasOpen} />
-            </button>
-          ) : null}
-          {duoExtrasOpen
-            ? extraItems.map((item) => <RailButton key={item.id} item={item} compact />)
-            : null}
-          {homeItem ? <RailButton item={homeItem} compact /> : null}
-          {onOpenShellMenu ? (
-            <button
-              type="button"
-              data-title-bar-menu-btn
-              data-duo-nav-more
-              aria-label={
-                shellMenuOpen
-                  ? 'Close navigation menu'
-                  : shellMenuAttention
-                    ? 'Open navigation menu · pending poker offer'
-                    : 'Open navigation menu'
-              }
-              aria-expanded={shellMenuOpen}
-              aria-haspopup="menu"
-              onClick={() => onOpenShellMenu()}
-              className="relative grid h-[50px] w-full place-items-center text-zinc-200 touch-manipulation [-webkit-tap-highlight-color:transparent]"
-            >
-              <span aria-hidden className="block leading-none text-xl -translate-y-px">
-                {shellMenuOpen ? '×' : '☰'}
-              </span>
-              {shellMenuAttention && !shellMenuOpen ? (
-                <span
-                  className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[#06cefc] ring-2 ring-zinc-900"
-                  aria-hidden
-                />
-              ) : null}
-            </button>
-          ) : null}
+            ) : null}
+            {duoExtrasOpen
+              ? extraItems.map((item) => <RailButton key={item.id} item={item} compact />)
+              : null}
+            {homeItem ? <RailButton item={homeItem} compact /> : null}
+            {onOpenShellMenu ? (
+              <button
+                type="button"
+                data-title-bar-menu-btn
+                data-duo-nav-more
+                aria-label={
+                  shellMenuOpen
+                    ? 'Close navigation menu'
+                    : shellMenuAttention
+                      ? 'Open navigation menu · pending poker offer'
+                      : 'Open navigation menu'
+                }
+                aria-expanded={shellMenuOpen}
+                aria-haspopup="menu"
+                onClick={() => onOpenShellMenu()}
+                className="relative grid h-[50px] w-full place-items-center text-zinc-200 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+              >
+                <span aria-hidden className="block leading-none text-xl -translate-y-px">
+                  {shellMenuOpen ? '×' : '☰'}
+                </span>
+                {shellMenuAttention && !shellMenuOpen ? (
+                  <span
+                    className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[#06cefc] ring-2 ring-zinc-900"
+                    aria-hidden
+                  />
+                ) : null}
+              </button>
+            ) : null}
+          </div>
         </div>
       </nav>
     )

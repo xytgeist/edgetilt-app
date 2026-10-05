@@ -1,12 +1,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { MapPin, MoreHorizontal, Share, ShieldCheck, Volume2, VolumeX } from 'lucide-react'
+import { MoreHorizontal, Share, ShieldCheck, Volume2, VolumeX } from 'lucide-react'
 import { Z_APP_MODAL } from '../../../constants/appZIndex.js'
 import { stateName, US_STATES } from './gameHubLegalBooks.js'
 
 /**
- * Hub "..." chip: game sounds toggle, books-in-my-state toggle + state picker, share. Menu portals to body (the hero
- * clips overflow) and anchors under the chip's right edge.
+ * Hub "..." chip: game sounds toggle, books-in-my-state (on/off + state pick), share. Menu portals to body
+ * (the hero clips overflow) and anchors under the chip's right edge.
  */
 export default function GameHubMoreMenu({
   chipClassName,
@@ -53,6 +53,12 @@ export default function GameHubMoreMenu({
   const itemClass =
     'flex w-full items-center gap-3 px-4 py-3 text-left text-[15px] font-medium touch-manipulation [-webkit-tap-highlight-color:transparent] '
 
+  const legalSelectValue = !legalBooks?.on
+    ? '__off__'
+    : legalBooks.statePicked && legalBooks.state
+      ? legalBooks.state
+      : '__auto__'
+
   return (
     <>
       <button
@@ -94,42 +100,42 @@ export default function GameHubMoreMenu({
                 {muted ? 'Unmute game sounds' : 'Mute game sounds'}
               </button>
               <div data-lounge-game-more-menu-divider className="h-px" />
-              <button
-                type="button"
-                role="menuitemcheckbox"
-                aria-checked={Boolean(legalBooks?.on)}
-                className={itemClass}
+              <label
+                role="menuitem"
+                className={`${itemClass} relative`}
                 data-lounge-game-legal-toggle={legalBooks?.on ? 'on' : 'off'}
-                onClick={() => {
-                  onToggleLegalBooks?.()
-                  setOpen(false)
-                }}
               >
                 <ShieldCheck className="h-5 w-5 shrink-0" strokeWidth={2.25} />
                 <span className="flex-1">Only books in my state</span>
                 <span className="text-[12px] font-semibold opacity-70">
-                  {legalBooks?.on ? (legalBooks.state ? `On · ${legalBooks.state}` : 'Pick state') : 'Off'}
-                </span>
-              </button>
-              <label role="menuitem" className={`${itemClass} relative`} data-lounge-game-legal-state>
-                <MapPin className="h-5 w-5 shrink-0" strokeWidth={2.25} />
-                <span className="flex-1">State</span>
-                <span className="text-[12px] font-semibold opacity-70">
-                  {legalBooks?.state
-                    ? `${stateName(legalBooks.state)}${legalBooks.statePicked ? '' : ' (auto)'}`
-                    : 'Not detected'}
+                  {legalBooks?.on
+                    ? legalBooks.state
+                      ? `On · ${legalBooks.state}${legalBooks.statePicked ? '' : ' (auto)'}`
+                      : 'Pick state'
+                    : 'Off'}
                 </span>
                 <select
-                  aria-label="Your state"
+                  aria-label="Only books in my state"
                   className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-                  value={legalBooks?.statePicked ? legalBooks.state || '' : ''}
+                  value={legalSelectValue}
                   onChange={(e) => {
-                    onPickLegalState?.(e.target.value || null)
+                    const next = e.target.value
+                    if (next === '__off__') {
+                      if (legalBooks?.on) onToggleLegalBooks?.()
+                    } else if (next === '__auto__') {
+                      onPickLegalState?.(null)
+                      if (!legalBooks?.on) onToggleLegalBooks?.()
+                    } else {
+                      onPickLegalState?.(next)
+                    }
                     setOpen(false)
                   }}
                 >
-                  <option value="">
-                    {legalBooks?.geoState ? `Auto-detect (${stateName(legalBooks.geoState)})` : 'Auto-detect'}
+                  <option value="__off__">Off</option>
+                  <option value="__auto__">
+                    {legalBooks?.geoState
+                      ? `Auto-detect (${stateName(legalBooks.geoState)})`
+                      : 'Auto-detect'}
                   </option>
                   {Object.entries(US_STATES)
                     .sort((a, b) => a[1].localeCompare(b[1]))

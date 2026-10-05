@@ -2877,3 +2877,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-05 … Promote 1.4.1047
 
 **I am Mac Theo.** Promoted **`test` → `main` (`f8857174`)**. Vercel prod web **`1.4.1047`** (true 50/50 landscape split). No new IPA. Back on **`test`**.
+
+### Mac Theo 2026-10-05 … game menu drop separate State row
+
+**I am Mac Theo.** **`1.4.1048`**: hub "..." menu drops the redundant State row; Off / Auto / state pick lives on "Only books in my state". Hard-refresh on test. Not promoted.

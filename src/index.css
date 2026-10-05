@@ -4699,13 +4699,16 @@ html[data-ipad-nav][data-ipad-nav-end] {
   --edge-rail-inset-end: var(--edge-ipad-rail);
 }
 html[data-ipad-nav-end] [data-duo-nav-rail] {
-  --edge-ipad-rail: 5.25rem;
+  --edge-ipad-rail: 5.5rem;
 }
 html[data-ipad-nav-end] [data-duo-nav-pill] {
-  width: 2.25rem; /* match Duo status-dock circle */
+  width: 50px !important; /* match Duo status-dock circle; px so rem/Dynamic Type cannot drift */
+  min-width: 50px !important;
+  max-width: 50px !important;
+  box-sizing: border-box;
 }
 html[data-ipad-nav-end] [data-duo-feed-compose] {
-  right: calc(var(--edge-rail-inset-end, 5.25rem) + 0.75rem);
+  right: calc(var(--edge-rail-inset-end, 5.5rem) + 0.75rem);
   bottom: max(1rem, max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)));
 }
 html[data-ipad-nav-end] [data-lounge-feed-root][data-lounge-landscape-split] [data-duo-feed-compose] {

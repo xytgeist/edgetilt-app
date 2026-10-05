@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **Duo pill px-locked to status dock (`1.4.1011`).** Right object confirmed (`data-duo-nav-pill` in SocialFeed chunk). Prior rem width drifted; now 50px + 34px trailing pad from a Duo sim crop so width and right edge match the status circle.
 - **2026-10-05:** **Duo menu pill matches status dock (`1.4.1010`).** Pill fixed at 2.25rem (status circle width) + more trailing pad so right edges line up.
 - **2026-10-05:** **Duo Mail/Music layout (`1.4.1009`).** Floating frosted status-aligned strip (not a flush black wall). Lounge engagement split ~40% feed / ~60% detail (charts, games, posts). iPad 11 stays 50/50 + wide leading rail.
 - **2026-10-05:** **Duo rail inset (`1.4.1008`).** Strip 4.5rem + trailing pad so icons sit under the status cluster; right pane gets more air. iPad 11 unchanged.

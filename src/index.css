@@ -5261,7 +5261,9 @@ html.light [data-ipad-nav-rail] [data-ipad-nav-shortcut-rule] {
     width: 3.75rem !important;
     padding-left: 0.25rem !important;
     padding-right: 0.25rem !important;
-    padding-top: calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 0.35rem) !important;
+    /* Extra top pad so the E sits on the EDGE wordmark midline (title row still
+       has ipad min-height 3rem, which centers EDGE below the rail’s old top). */
+    padding-top: calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 0.85rem) !important;
     padding-bottom: max(0.5rem, max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))) !important;
   }
   [data-ipad-nav-rail] > div:first-child {
@@ -5280,6 +5282,26 @@ html.light [data-ipad-nav-rail] [data-ipad-nav-shortcut-rule] {
   [data-ipad-nav-rail] [data-ipad-nav-item] > span.block {
     height: 1.25rem !important;
     width: 1.25rem !important;
+  }
+  /* Quick-link shortcuts were still iPad 4.5rem / glyph 28 … match nav items. */
+  [data-ipad-nav-rail] [data-ipad-nav-shortcuts] {
+    gap: 0.25rem !important;
+    padding-top: 0.25rem !important;
+    padding-bottom: 0.25rem !important;
+  }
+  [data-ipad-nav-rail] [data-ipad-nav-shortcut] {
+    height: 2.35rem !important;
+    width: 2.35rem !important;
+  }
+  [data-ipad-nav-rail] [data-ipad-nav-shortcut] svg {
+    width: 1.25rem !important;
+    height: 1.25rem !important;
+  }
+  [data-ipad-nav-rail] [data-ipad-nav-shortcut] .h-3\.5.w-3\.5 {
+    height: 0.7rem !important;
+    width: 0.7rem !important;
+    bottom: 0.15rem !important;
+    right: 0.15rem !important;
   }
   [data-ipad-nav-rail] [data-ipad-nav-compose] {
     height: 2.5rem !important;

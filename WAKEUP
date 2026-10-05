@@ -2776,4 +2776,8 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 
 ### Mac Theo 2026-10-05 … Composer keyboard Done + media pill
 
-**I am Mac Theo.** **`1.4.1034`**: Fullscreen + thread composers hide the stock WK Done bar and put media + Done in one web glass footer (no more double stack over the keys). Hard-refresh until 1.4.1034. Not promoted.
+**I am Mac Theo.** **`1.4.1034`**: Fullscreen + thread composers hide the stock WK Done bar and put media + Done in one web glass footer (no more double stack over the keys). Hard-refresh until 1.4.1034.
+
+### Mac Theo 2026-10-05 … Promote + Prod IPA
+
+**I am Mac Theo.** Promoted **`test` → `main` (`d9363f25`)**. Vercel prod web **`1.4.1034`** (Duo Lounge chrome, landscape→fullscreen compose, keyboard Done pill, Google OAuth Back, Duo native stamp). **Prod IPA TestFlight-only:** **1.4.95 (20261005191435)** → `edgetilt.com`. Not attached to review. Marketing still **1.4.95**. Wait for ASC processing. Back on **`test`**.

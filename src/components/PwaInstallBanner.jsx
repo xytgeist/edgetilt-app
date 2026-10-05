@@ -236,7 +236,7 @@ export default function PwaInstallTitleBarRow({
   // sides were unequal. iPad passes brandCenter and keeps the chip on the right.
   const row = (
     <div
-      className={`relative flex items-center justify-between gap-2 ${rowClassName}`}
+      className={`relative flex items-center justify-between gap-2 ${pinBrand ? 'min-h-12 ' : ''}${rowClassName}`}
       data-pwa-install-title-row
       data-title-bar-has-center={
         liveSessionActive ? 'live' : showInstallChip ? 'install' : undefined

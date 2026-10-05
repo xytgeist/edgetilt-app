@@ -4959,12 +4959,10 @@ html[data-ipad-nav] [data-lounge-feed-scroll] .-mx-3 {
   margin-left: 0;
   margin-right: 0;
 }
-html[data-ipad-nav] [data-edge-status-bar-plate] {
-  left: var(--edge-rail-inset-start) !important;
-  right: var(--edge-rail-inset-end) !important;
-  width: auto !important;
-  max-width: none !important;
-  transform: none !important;
+/* Rail / Duo: EDGE is absolute-centered. When the right status line is empty the
+   flex row collapses to py-2 and the h-8 wordmark bleeds into the composer. */
+html[data-ipad-nav] [data-lounge-title-bar] [data-pwa-install-title-row] {
+  min-height: 3rem;
 }
 /* Landscape Slots/Poker split: tools column owns its chrome (hamburger sits on its right edge).
    iPad: 50% of leftover after the rail, capped at 28rem.

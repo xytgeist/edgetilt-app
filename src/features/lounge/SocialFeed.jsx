@@ -1961,14 +1961,16 @@ export default function SocialFeed({
   }, [loungePostDetailOverLightbox, loungeDetailCommentFieldFocused])
 
   const quoteRepostComposeOpen = Boolean(quoteRepostModal && quoteRepostModal.mode !== 'remove')
+  // Duo stays landscape … native lock is iPhone-idiom and would yank the open book to portrait.
   useEdgeiOSComposerPortraitLock(
-    composerExpanded ||
-      fullScreenComposerOpen ||
-      threadComposeOpen ||
-      quoteRepostComposeOpen ||
-      loungeDetailEditing ||
-      loungeDetailCommentComposerExpanded ||
-      Boolean(loungeDetailCommentEditingId),
+    !duoNavEnd &&
+      (composerExpanded ||
+        fullScreenComposerOpen ||
+        threadComposeOpen ||
+        quoteRepostComposeOpen ||
+        loungeDetailEditing ||
+        loungeDetailCommentComposerExpanded ||
+        Boolean(loungeDetailCommentEditingId)),
   )
   const {
     overlapPx: quoteRepostKbOverlapPx,

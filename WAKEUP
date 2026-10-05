@@ -2788,8 +2788,12 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 
 ### Mac Theo 2026-10-05 … iPhone landscape title vs filters
 
-**I am Mac Theo.** **`1.4.1036`**: iPhone landscape Lounge was parking Discover/Latest/Tribes under the frosted EDGE bar … root pad used CSS env/sat while the fixed title used a JS px read, and they drifted on rotate (worse with the composer hidden). Same JS top for pad + title; invalidate sat cache on orient. Hard-refresh.
+**I am Mac Theo.** **`1.4.1036`**: first pass synced pad+title via JS px (overcorrected). Superseded by **`1.4.1037`**.
 
 ### Mac Theo 2026-10-05 … Promote 1.4.1036
 
 **I am Mac Theo.** Promoted **`test` → `main` (`44fa84b0`)**. Vercel prod web **`1.4.1036`** (Mac Action/poker fallbacks + landscape title/filters). No new IPA. Back on **`test`**.
+
+### Mac Theo 2026-10-05 … iPhone landscape title overshoot
+
+**I am Mac Theo.** **`1.4.1037`**: 1036 fed measured scroll-top back into root `paddingTop`, which locked portrait sat after landscape rotate and shoved EDGE under Discover. Pad + title `top` back on live CSS sat; orient resets the measure to fresh sat. iPhone landscape only matter … Duo 54px floor unchanged. Hard-refresh. Not promoted.

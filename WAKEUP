@@ -2781,3 +2781,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-05 … Promote + Prod IPA
 
 **I am Mac Theo.** Promoted **`test` → `main` (`d9363f25`)**. Vercel prod web **`1.4.1034`** (Duo Lounge chrome, landscape→fullscreen compose, keyboard Done pill, Google OAuth Back, Duo native stamp). **Prod IPA TestFlight-only:** **1.4.95 (20261005191435)** → `edgetilt.com`. Not attached to review. Marketing still **1.4.95**. Wait for ASC processing. Back on **`test`**.
+
+### Mac Theo 2026-10-05 … Mac fallback for Action + poker catalog
+
+**I am Mac Theo.** **`1.4.1035`**: This Mac is the backup runner when the Windows home PC fails. LaunchAgents: Action+ESPN trench **12:00** local, poker catalog **full sync (incl MTTDB)** **06:00** local. Primary stays Windows (10am / 2am). GHA poker is manual emergency only and **never** scrapes MTTDB. Ran both syncs now … Action OK (26 rows); poker upserted 1197 (MTTDB still CF-blocked off home). SQL **`20261005194000`** on test+prod (Monitor schedule hints). Not promoted.

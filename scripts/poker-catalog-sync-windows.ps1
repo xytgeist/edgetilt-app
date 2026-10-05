@@ -1,6 +1,6 @@
 # Production poker catalog sync for Windows Task Scheduler.
-# Includes MTTDB (residential egress). One scrape → test, then same rows to prod.
-# GitHub Actions skips MTTDB and also mirrors test → prod for the other sources.
+# FULL sync = regional + Wynn + ClubWPT + CoinPoker + MTTDB (same as GHA plus MTTDB).
+# One scrape → test, then same rows to prod. GHA never scrapes MTTDB.
 # Run from repo: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/poker-catalog-sync-windows.ps1
 $ErrorActionPreference = 'Continue'
 $repo = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path

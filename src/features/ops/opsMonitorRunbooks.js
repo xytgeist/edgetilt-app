@@ -63,9 +63,9 @@ export const OPS_MONITOR_RUNBOOKS = [
   },
   {
     id: 'poker-catalog-sync',
-    title: 'Poker catalog GitHub Actions',
-    href: 'https://github.com/xytgeist/edgetilt-app/actions/workflows/poker-catalog-sync-production.yml',
-    hint: 'Windows Task Scheduler daily 2am · this PC',
+    title: 'Poker catalog home PC / Mac',
+    href: opsMonitorGithubDocHref('docs/edge-monitor-roadmap.md'),
+    hint: 'Windows 2am primary · Mac 6am fallback · full sync incl MTTDB · GHA is emergency no-MTTDB only',
   },
   {
     id: 'sentry',

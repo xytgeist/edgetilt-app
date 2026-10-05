@@ -2820,4 +2820,8 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 
 ### Mac Theo 2026-10-05 … iPhone landscape title pad actually sticks
 
-**I am Mac Theo.** **`1.4.1040`**: 1039’s `1rem` row pad was too weak, and the fixed title still had inline `right:0` so the hamburger barely moved. Phone landscape now pulls the title bar trailing edge with `max(1.25rem, sar) !important` and gives the row `1.25rem` both sides. Hard-refresh on test. Not promoted.
+**I am Mac Theo.** **`1.4.1040`**: 1039’s `1rem` row pad was too weak, and the fixed title still had inline `right:0` so the hamburger barely moved. Phone landscape now pulls the title bar trailing edge with `max(1.25rem, sar) !important` and gives the row `1.25rem` both sides. Hard-refresh.
+
+### Mac Theo 2026-10-05 … Promote 1.4.1040
+
+**I am Mac Theo.** Promoted **`test` → `main` (`d367f7ae`)**. Vercel prod web **`1.4.1040`** (landscape title trailing inset). No new IPA. Back on **`test`**.

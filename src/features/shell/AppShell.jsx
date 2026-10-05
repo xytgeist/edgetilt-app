@@ -2707,13 +2707,14 @@ export default function AppShell({
       }
       const rect = btn.getBoundingClientRect()
       if (btn.hasAttribute('data-duo-nav-more')) {
-        // Duo More sits under the wifi dock … open the menu downward.
-        const top = Math.round(rect.bottom + 4)
-        const right = Math.max(8, Math.round(window.innerWidth - rect.right))
+        // Duo More sits with compose at the bottom … open the menu upward.
+        const top = 'auto'
+        const bottom = Math.max(8, Math.round(window.innerHeight - rect.top + 8))
+        const right = Math.max(8, Math.round(window.innerWidth - rect.left + 8))
         setMenuAnchor((prev) =>
-          prev && prev.top === top && prev.right === right && prev.bottom == null
+          prev && prev.top === top && prev.bottom === bottom && prev.right === right
             ? prev
-            : { top, right },
+            : { top, bottom, right },
         )
         return
       }

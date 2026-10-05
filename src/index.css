@@ -4707,7 +4707,8 @@ html[data-ipad-nav-end] [data-duo-nav-pill] {
   max-width: 50px !important;
   box-sizing: border-box;
 }
-html[data-ipad-nav-end] [data-duo-nav-compose] {
+html[data-ipad-nav-end] [data-duo-nav-compose],
+html[data-ipad-nav-end] [data-duo-nav-more-pill] {
   height: 50px !important;
   min-height: 50px !important;
   max-height: 50px !important;

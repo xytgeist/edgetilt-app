@@ -183,37 +183,6 @@ export default function LoungeIpadNavRail({
             {homeItem ? (
               <RailButton item={withDuoCollapse(homeItem, collapseDuoExtras)} compact />
             ) : null}
-            {onOpenShellMenu ? (
-              <button
-                type="button"
-                data-title-bar-menu-btn
-                data-duo-nav-more
-                aria-label={
-                  shellMenuOpen
-                    ? 'Close navigation menu'
-                    : shellMenuAttention
-                      ? 'Open navigation menu · pending poker offer'
-                      : 'Open navigation menu'
-                }
-                aria-expanded={shellMenuOpen}
-                aria-haspopup="menu"
-                onClick={() => {
-                  collapseDuoExtras()
-                  onOpenShellMenu()
-                }}
-                className="relative grid h-[50px] w-full place-items-center text-zinc-200 touch-manipulation [-webkit-tap-highlight-color:transparent]"
-              >
-                <span aria-hidden className="block leading-none text-xl -translate-y-px">
-                  {shellMenuOpen ? '×' : '☰'}
-                </span>
-                {shellMenuAttention && !shellMenuOpen ? (
-                  <span
-                    className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[#06cefc] ring-2 ring-zinc-900"
-                    aria-hidden
-                  />
-                ) : null}
-              </button>
-            ) : null}
             {duoExtrasOpen
               ? extraItems.map((item) => (
                   <RailButton
@@ -241,6 +210,39 @@ export default function LoungeIpadNavRail({
             {shortcuts ? (
               <DuoGlassPill data-duo-nav-shortcuts-pill="" scroll style={pillStyle}>
                 {shortcuts}
+              </DuoGlassPill>
+            ) : null}
+            {onOpenShellMenu ? (
+              <DuoGlassPill data-duo-nav-more-pill="" style={composeStyle}>
+                <button
+                  type="button"
+                  data-title-bar-menu-btn
+                  data-duo-nav-more
+                  aria-label={
+                    shellMenuOpen
+                      ? 'Close navigation menu'
+                      : shellMenuAttention
+                        ? 'Open navigation menu · pending poker offer'
+                        : 'Open navigation menu'
+                  }
+                  aria-expanded={shellMenuOpen}
+                  aria-haspopup="menu"
+                  onClick={() => {
+                    collapseDuoExtras()
+                    onOpenShellMenu()
+                  }}
+                  className="relative grid h-[50px] w-full place-items-center text-zinc-200 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+                >
+                  <span aria-hidden className="block leading-none text-xl -translate-y-px">
+                    {shellMenuOpen ? '×' : '☰'}
+                  </span>
+                  {shellMenuAttention && !shellMenuOpen ? (
+                    <span
+                      className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[#06cefc] ring-2 ring-zinc-900"
+                      aria-hidden
+                    />
+                  ) : null}
+                </button>
               </DuoGlassPill>
             ) : null}
             {compose ? (

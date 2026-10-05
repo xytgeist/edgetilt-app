@@ -81,7 +81,7 @@ function CalculatorsHome({
   }
 
   return (
-    <div className="w-full pt-2 sm:pt-3">
+    <div data-calc-list-home className="w-full pt-2 sm:pt-3">
       {isAdmin && !gatesDbReady ? (
         <p className="mb-6 text-left text-xs text-fuchsia-300/90 sm:mb-8">
           Apply migration `20260526150000_content_access_gates.sql` to enable admin lock switches.

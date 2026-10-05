@@ -5196,6 +5196,41 @@ html.light [data-chat-feature][data-chat-landscape-split] [data-chat-landscape-p
     font-size: 0.6875rem !important;
     line-height: 1.25 !important;
   }
+  /* Calc picker cards stay portrait-hero sized; in the landscape pane they were
+     still min-h 7rem + sm:p-8 next to the dense tools list. Match that density. */
+  [data-slots-landscape-pane] [data-calc-list-home] {
+    padding-top: 0.25rem !important;
+  }
+  [data-slots-landscape-pane] .calc-list-btn {
+    min-height: 3.35rem !important;
+    margin-bottom: 0.375rem !important;
+    gap: 0.625rem !important;
+    padding: 0.5rem 0.75rem !important;
+    border-radius: 0.9rem !important;
+  }
+  [data-slots-landscape-pane] .calc-list-btn > :first-child {
+    height: 2.25rem !important;
+    width: 2.25rem !important;
+    min-height: 2.25rem !important;
+    min-width: 2.25rem !important;
+    border-radius: 0.65rem !important;
+    flex-shrink: 0 !important;
+  }
+  [data-slots-landscape-pane] .calc-list-btn .text-2xl {
+    font-size: 0.9375rem !important;
+    line-height: 1.2 !important;
+  }
+  [data-slots-landscape-pane] .calc-list-btn .text-base {
+    font-size: 0.6875rem !important;
+    line-height: 1.25 !important;
+    margin-top: 0.1rem !important;
+  }
+  [data-slots-landscape-pane] [data-calc-list-home] > .relative > .absolute.right-3.top-3 {
+    right: 0.4rem !important;
+    top: 0.35rem !important;
+    transform: scale(0.85);
+    transform-origin: top right;
+  }
 }
 html[data-ipad-nav] [data-lounge-feed-root] .fixed.left-1\/2:not([data-lounge-title-bar]):not([data-edge-status-bar-plate]) {
   left: calc(var(--edge-rail-inset-start) + (100vw - var(--edge-ipad-rail)) / 2) !important;

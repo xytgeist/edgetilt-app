@@ -4699,26 +4699,35 @@ html[data-ipad-nav][data-ipad-nav-end] {
   --edge-rail-inset-end: var(--edge-ipad-rail);
 }
 html[data-ipad-nav-end] [data-duo-nav-rail] {
-  --edge-ipad-rail: 4.5rem;
+  --edge-ipad-rail: 5.25rem;
 }
 html[data-ipad-nav-end] [data-duo-feed-compose] {
-  right: calc(var(--edge-rail-inset-end, 4.5rem) + 0.75rem);
+  right: calc(var(--edge-rail-inset-end, 5.25rem) + 0.75rem);
   bottom: max(1rem, max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)));
 }
 html[data-ipad-nav-end] [data-lounge-feed-root][data-lounge-landscape-split] [data-duo-feed-compose] {
-  left: calc(50vw - 3.25rem - 0.75rem);
+  /* Feed is ~40vw on Duo; park compose on the feed pane trailing edge. */
+  left: calc(40vw - 3.25rem - 0.75rem);
   right: auto;
 }
 html.light [data-duo-nav-rail] {
-  background: #fafafa;
-  border-left-color: #e4e4e7;
+  background: transparent;
+}
+html.light [data-duo-nav-pill] {
+  background: rgba(244, 244, 245, 0.78);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
 }
 html.light [data-duo-nav-back],
-html.light [data-duo-nav-more] {
+html.light [data-duo-nav-more],
+html.light [data-duo-nav-rail] [data-ipad-nav-item] {
   color: #3f3f46;
 }
-html.light [data-duo-nav-more] span.absolute {
-  --tw-ring-color: #ffffff;
+html.light [data-duo-nav-rail] [data-ipad-nav-item][data-active='1'] {
+  color: #18181b;
+}
+html.light [data-duo-nav-more] span.absolute,
+html.light [data-duo-nav-rail] [data-ipad-nav-badge] {
+  --tw-ring-color: #f4f4f5;
 }
 html[data-ipad-nav] [data-app-shell-root] {
   padding-left: var(--edge-rail-inset-start);
@@ -4938,20 +4947,22 @@ html.light [data-slots-landscape-pane-chrome] {
   box-sizing: border-box;
 }
 /* Landscape Lounge engagement split:
-   (rail + feed) = 50vw, engagement pane = 50vw. Phone chrome on feed (no tall-iPad pad/scale).
+   iPad / phone: (rail + feed) = 50vw, engagement pane = 50vw.
+   Open Duo (Mail / Music): feed ~40%, detail ~60% of the content width left of the status gutter.
+   Phone chrome on feed (no tall-iPad pad/scale).
    Width rules are scoped under the split attr so portrait keep-alive does not keep a 50vw column
    when WebKit leaves `display:contents` children with stale flex basis. */
 html[data-ipad-nav-end] [data-lounge-feed-root][data-lounge-landscape-split] {
-  --lounge-landscape-feed-col: 50vw;
-  --lounge-landscape-pane-col: calc(50vw - var(--edge-ipad-rail, 0px));
+  --lounge-landscape-feed-col: 40vw;
+  --lounge-landscape-pane-col: calc(60vw - var(--edge-ipad-rail, 0px));
 }
 html[data-ipad-nav-end] [data-chat-feature][data-chat-landscape-split] {
-  --chat-landscape-list-col: 50vw;
-  --chat-landscape-pane-col: calc(50vw - var(--edge-ipad-rail, 0px));
+  --chat-landscape-list-col: 40vw;
+  --chat-landscape-pane-col: calc(60vw - var(--edge-ipad-rail, 0px));
 }
 html[data-ipad-nav-end] [data-slots-landscape-split] {
-  --slots-landscape-tools-col: 50vw;
-  --slots-landscape-pane-col: calc(50vw - var(--edge-ipad-rail, 0px));
+  --slots-landscape-tools-col: 40vw;
+  --slots-landscape-pane-col: calc(60vw - var(--edge-ipad-rail, 0px));
 }
 [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-landscape-feed] {
   width: var(--lounge-landscape-feed-col);
@@ -5132,20 +5143,20 @@ html[data-ipad-nav] [data-lounge-dock-panels] {
 html[data-ipad-nav] [data-lounge-dock-panels] > [role='dialog'] {
   max-width: none;
 }
-html.light [data-ipad-nav-rail] {
+html.light [data-ipad-nav-rail]:not([data-duo-nav-rail]) {
   /* Same canvas as remapped zinc-950 (#fff) so the E tile has no gray halo. */
   background-color: #ffffff;
   border-right-color: #e4e4e7;
   color: #52525b;
 }
-html.light [data-ipad-nav-end] [data-ipad-nav-rail] {
+html.light [data-ipad-nav-end] [data-ipad-nav-rail]:not([data-duo-nav-rail]) {
   border-left-color: #e4e4e7;
   border-right-color: transparent;
 }
-[data-ipad-nav-rail] {
+[data-ipad-nav-rail]:not([data-duo-nav-rail]) {
   border-right-width: 0.5px;
 }
-html[data-ipad-nav-end] [data-ipad-nav-rail] {
+html[data-ipad-nav-end] [data-ipad-nav-rail]:not([data-duo-nav-rail]) {
   border-right-width: 0;
   border-left-width: 0.5px;
 }

@@ -1175,7 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
-- **2026-10-05:** **Duo rail inset (`1.4.1008`).** Strip 4.5rem + trailing pad so icons sit under the status cluster; right pane gets more air. iPad 11 unchanged.
+- **2026-10-05:** **Duo Mail/Music layout (`1.4.1009`).** Floating frosted status-aligned strip (not a flush black wall). Lounge engagement split ~40% feed / ~60% detail (charts, games, posts). iPad 11 stays 50/50 + wide leading rail.
 - **2026-10-05:** **Duo rail inset (`1.4.1008`).** Strip 4.5rem + trailing pad so icons sit under the status cluster; right pane gets more air. iPad 11 unchanged.
 - **2026-10-05:** **Duo Music-style rail (`1.4.1007`).** Open Duo drops the E, shrinks the trailing strip, parks Home/Search/Alerts/Chat/More at the bottom (island column), Back under the island when a pane is open, compose FAB on the feed. Title-bar hamburger hides. iPad 11 unchanged. Hard-refresh lvslotpro.
 - **2026-10-05:** **Duo rail detection (`1.4.1006`).** Native stamps `data-edge-duo` / `getInfo.isDuo` from `iPhone19,4` (sim `SIMULATOR_MODEL_IDENTIFIER`). Web no longer depends on iPhone UA + 700px floor. Rebuild Test Fast. iPad 11 stays leading.

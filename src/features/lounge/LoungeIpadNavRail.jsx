@@ -5,11 +5,11 @@ import { useDuoNavRailEnd } from '../shell/useIpadNavRail.js'
 export const IPAD_NAV_RAIL_WIDTH = 'calc((11rem - 50px) * 0.85)'
 
 /**
- * Open Duo: Music strip under the island.
- * Wider than a bare icon column so the right pane has air, and trailing pad
- * lines the glyphs up with the status cluster (clock + signal).
+ * Open Duo: Music gutter under the island / status dock.
+ * Icons sit trailing-aligned with the clock+signal cluster (not flush to the bezel).
+ * Width is the content inset; the strip itself is transparent (floating glyphs).
  */
-export const DUO_NAV_RAIL_WIDTH = '4.5rem'
+export const DUO_NAV_RAIL_WIDTH = '5.25rem'
 
 /**
  * Visible letter inside the 180px +EV tiles.
@@ -71,28 +71,37 @@ export default function LoungeIpadNavRail({
         data-ipad-nav-rail
         data-duo-nav-rail
         aria-label="Lounge"
-        className="fixed inset-y-0 right-0 z-[60] flex flex-col items-center border-l border-zinc-800 bg-zinc-950 pl-1 pr-2.5 pt-[calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px))+2.35rem)] pb-[max(0.65rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
+        className="fixed inset-y-0 right-0 z-[60] flex flex-col items-end bg-transparent pr-[0.85rem] pt-[calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px))+2.1rem)] pb-[max(0.85rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
         style={{ width: DUO_NAV_RAIL_WIDTH }}
       >
-        <div className="flex w-full shrink-0 flex-col items-center" data-duo-nav-context>
+        <div className="flex shrink-0 flex-col items-center" data-duo-nav-context>
           {onBack ? (
-            <button
-              type="button"
-              data-duo-nav-back
-              aria-label="Back"
-              onClick={() => onBack()}
-              className="grid h-11 w-11 place-items-center text-zinc-200 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+            <div
+              data-duo-nav-pill
+              className="flex flex-col items-center rounded-full bg-zinc-800/70 py-1 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
             >
-              <span className="text-[22px] leading-none" aria-hidden>
-                ←
-              </span>
-            </button>
+              <button
+                type="button"
+                data-duo-nav-back
+                aria-label="Back"
+                onClick={() => onBack()}
+                className="grid h-10 w-10 place-items-center text-zinc-100 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+              >
+                <span className="text-[20px] leading-none" aria-hidden>
+                  ←
+                </span>
+              </button>
+            </div>
           ) : (
-            <span className="h-11 w-11" aria-hidden />
+            <span className="h-10 w-10" aria-hidden />
           )}
         </div>
         <div className="min-h-0 flex-1" aria-hidden />
-        <div className="flex w-full shrink-0 flex-col items-center gap-0.5 pb-1" data-duo-nav-tabs>
+        <div
+          data-duo-nav-pill
+          data-duo-nav-tabs
+          className="flex shrink-0 flex-col items-center gap-0.5 rounded-full bg-zinc-800/70 px-0.5 py-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
+        >
           {navItems.map((item) => (
             <RailButton key={item.id} item={item} compact />
           ))}
@@ -111,14 +120,14 @@ export default function LoungeIpadNavRail({
               aria-expanded={shellMenuOpen}
               aria-haspopup="menu"
               onClick={() => onOpenShellMenu()}
-              className="relative grid h-11 w-11 place-items-center text-zinc-300 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+              className="relative grid h-10 w-10 place-items-center text-zinc-200 touch-manipulation [-webkit-tap-highlight-color:transparent]"
             >
-              <span aria-hidden className="block leading-none text-xl -translate-y-px">
+              <span aria-hidden className="block leading-none text-lg -translate-y-px">
                 {shellMenuOpen ? '×' : '☰'}
               </span>
               {shellMenuAttention && !shellMenuOpen ? (
                 <span
-                  className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#06cefc] ring-2 ring-zinc-950"
+                  className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-[#06cefc] ring-2 ring-zinc-900"
                   aria-hidden
                 />
               ) : null}
@@ -196,12 +205,12 @@ function RailButton({ item, compact = false }) {
       onClick={() => item.onSelect?.()}
       className={
         compact
-          ? 'relative grid h-11 w-11 place-items-center text-zinc-300 touch-manipulation [-webkit-tap-highlight-color:transparent] disabled:opacity-40 data-[active=1]:text-white'
+          ? 'relative grid h-10 w-10 place-items-center text-zinc-200 touch-manipulation [-webkit-tap-highlight-color:transparent] disabled:opacity-40 data-[active=1]:text-white'
           : 'relative grid h-[4.5rem] w-[4.5rem] place-items-center text-zinc-300 touch-manipulation [-webkit-tap-highlight-color:transparent] disabled:opacity-40 data-[active=1]:text-white'
       }
     >
       <span
-        className={compact ? 'block h-[1.35rem] w-[1.35rem]' : 'block h-9 w-9'}
+        className={compact ? 'block h-[1.25rem] w-[1.25rem]' : 'block h-9 w-9'}
         style={item.iconScale ? { transform: `scale(${item.iconScale})` } : undefined}
       >
         {item.icon}
@@ -211,7 +220,7 @@ function RailButton({ item, compact = false }) {
           data-ipad-nav-badge
           className={
             compact
-              ? 'absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#06cefc] px-0.5 text-[9px] font-bold leading-none text-zinc-950 ring-2 ring-zinc-950'
+              ? 'absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#06cefc] px-0.5 text-[9px] font-bold leading-none text-zinc-950 ring-2 ring-zinc-900'
               : 'absolute right-1 top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#06cefc] px-1 text-[11px] font-bold leading-none text-zinc-950 ring-2 ring-zinc-950'
           }
           aria-hidden

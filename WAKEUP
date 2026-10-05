@@ -2765,3 +2765,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-05 … Duo EDGE no longer bleeds into composer
 
 **I am Mac Theo.** **`1.4.1031`**: rail title row got `min-height: 3rem` so empty status-line Duo rows cannot collapse under the absolute h-8 EDGE. Hard-refresh until 1.4.1031. Not promoted.
+
+### Mac Theo 2026-10-05 … Landscape compose → fullscreen
+
+**I am Mac Theo.** **`1.4.1032`**: landscape hides the inline feed composer. Rail/dock Compose opens fullscreen (all tiers; markdown toolbar Pros only) and kicks the existing portrait lock. Hard-refresh until 1.4.1032. Not promoted.

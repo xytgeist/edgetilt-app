@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **Landscape compose → fullscreen (`1.4.1032`).** Inline feed composer hidden in landscape. Dock/rail Compose opens `LoungeFullScreenComposerModal` for everyone; markdown toolbar only for Edge Pro/staff. Portrait lock unchanged (iPhone IPA rotates; Duo/iPad show hint).
 - **2026-10-05:** **Duo EDGE bleed into composer (`1.4.1031`).** Absolute-centered rail wordmark needed a 3rem title-row min-height … empty TitleBarStatusLine was collapsing the bar under the logo.
 - **2026-10-05:** **Duo title bar top inset (`1.4.1030`).** Open Duo content segment often has 0 `--edge-sat` … floor Lounge feed/title at 54px so EDGE clears the window chrome.
 - **2026-10-05:** **Duo hamburger with compose (`1.4.1029`).** More is a 50px glass circle above compose. Top tabs pill is Home + caret (extras expand down). Shell menu opens up.

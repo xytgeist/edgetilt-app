@@ -621,12 +621,14 @@ export default function LoungeFullScreenComposerModal({
                 />
               </div>
               <div className="w-full min-w-0">
-                <LoungeMarkdownToolbar
-                  textareaRef={toolbarFieldRef}
-                  onTextChange={(val) => updatePartCaption(activePartIndex, val)}
-                  isEdgePro={isEdgePro || isStaff}
-                  onUpgradeClick={onUpgradeClick}
-                />
+                {isEdgePro || isStaff ? (
+                  <LoungeMarkdownToolbar
+                    textareaRef={toolbarFieldRef}
+                    onTextChange={(val) => updatePartCaption(activePartIndex, val)}
+                    isEdgePro
+                    onUpgradeClick={onUpgradeClick}
+                  />
+                ) : null}
               </div>
             </div>
           </div>
@@ -652,6 +654,7 @@ export default function LoungeFullScreenComposerModal({
               <textarea
                 ref={textareaRef}
                 id="pro-composer-textarea"
+                data-composer-kb-field=""
                 autoFocus
                 rows={isThread ? 5 : 8}
                 value={localText}
@@ -762,6 +765,7 @@ export default function LoungeFullScreenComposerModal({
                     ref={(el) => {
                       extraFieldRefs.current[extraIdx] = el
                     }}
+                    data-composer-kb-field=""
                     rows={5}
                     value={caption}
                     onChange={(e) => {
@@ -1067,7 +1071,7 @@ export default function LoungeFullScreenComposerModal({
             </div>
 
             <div className="text-xs sm:text-sm font-semibold text-zinc-400">
-              {isEdgePro || isStaff ? '✨ Markdown Enabled' : 'Edge Pro Markdown'}
+              {isEdgePro || isStaff ? '✨ Markdown Enabled' : null}
             </div>
           </div>
         </footer>

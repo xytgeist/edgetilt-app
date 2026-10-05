@@ -2548,21 +2548,25 @@ export default function SocialFeed({
     [openProfileGateIfNeeded],
   )
 
-  const openFullScreenComposer = useCallback(() => {
-    if (!isViewerEdgePro) {
-      onOpenBillingManage?.()
-      return
-    }
-    try {
-      composerFieldRef.current?.blur?.()
-      if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
-        document.activeElement.blur()
+  const openFullScreenComposer = useCallback(
+    (opts = {}) => {
+      const allowWithoutPro = opts?.allowWithoutPro === true
+      if (!allowWithoutPro && !isViewerEdgePro && !loungeStaffToolsEnabled) {
+        onOpenBillingManage?.()
+        return
       }
-    } catch {
-      // ignore
-    }
-    setFullScreenComposerOpen(true)
-  }, [isViewerEdgePro, onOpenBillingManage])
+      try {
+        composerFieldRef.current?.blur?.()
+        if (typeof document !== 'undefined' && document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur()
+        }
+      } catch {
+        // ignore
+      }
+      setFullScreenComposerOpen(true)
+    },
+    [isViewerEdgePro, loungeStaffToolsEnabled, onOpenBillingManage],
+  )
 
   const openMarketChartModal = useCallback(({ embed, embeds }) => {
     if (loungeReadOnly) {
@@ -9137,6 +9141,22 @@ export default function SocialFeed({
     ensureLoungeFeedVisible()
     /** Dismiss z-stacked chrome synchronously so the caption is focusable in the same user gesture (iOS keyboard). */
     dismissLoungeStackForDockNavRef.current()
+
+    // Landscape (rail / Duo / split): no inline composer … fullscreen + portrait lock.
+    if (loungeLandscapeSplitRef.current) {
+      flushSync(() => {
+        setLoungeDockPanel(null)
+        setChatDockInitialPeerUserId(null)
+        loungeTitleRevealRef.current = 1
+        setLoungeTitleReveal(1)
+        composerFoldRevealRef.current = 0
+        setComposerFoldReveal(0)
+        composerExpandedRef.current = false
+        setComposerExpanded(false)
+        setFullScreenComposerOpen(true)
+      })
+      return
+    }
 
     flushSync(() => {
       setLoungeDockPanel(null)
@@ -16518,7 +16538,7 @@ export default function SocialFeed({
     () =>
       buildLoungeDockArcCarouselItems({
         onCompose: onLoungeDockCompose,
-        composeActive: composerExpanded,
+        composeActive: composerExpanded || fullScreenComposerOpen,
         composeDisabled: loungeFeedBrowseMode === 'anonymous' || loungeReadOnly,
         onHome: onLoungeDockHome,
         onSearch: onLoungeDockSearch,
@@ -16980,10 +17000,15 @@ export default function SocialFeed({
 
         {loungeReadOnly ? null : (
         <div
-          className={`relative shrink-0 border-b border-zinc-600/65 bg-zinc-700/55 px-3 ${
-            composerExpanded ? 'pt-3 pb-1.5' : 'py-3'
-          }`}
+          className={
+            loungeLandscapeSplit
+              ? 'hidden'
+              : `relative shrink-0 border-b border-zinc-600/65 bg-zinc-700/55 px-3 ${
+                  composerExpanded ? 'pt-3 pb-1.5' : 'py-3'
+                }`
+          }
           data-lounge-feed-composer=""
+          aria-hidden={loungeLandscapeSplit ? true : undefined}
         >
         {loungeComposerPostProgress ? (
           <div

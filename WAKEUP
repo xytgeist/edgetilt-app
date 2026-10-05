@@ -2749,3 +2749,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-05 … Duo glass fix + recenter
 
 **I am Mac Theo.** **`1.4.1027`**: pad 8 was wrong … back to **22** under wifi. Real Mail glass via `.duo-nav-glass-plate` sibling (overflow was clipping shadow + killing backdrop-filter). Hard-refresh until 1.4.1027. Not promoted.
+
+### Mac Theo 2026-10-05 … Duo menu under wifi
+
+**I am Mac Theo.** **`1.4.1028`**: menu pill under wifi (Home/More, caret at **bottom**, extras expand **down**). Shortcuts above compose at the bottom. Shell menu opens downward. Hard-refresh until 1.4.1028. Not promoted.

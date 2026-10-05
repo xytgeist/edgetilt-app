@@ -25,8 +25,8 @@ export const DUO_NAV_RAIL_WIDTH = '5.5rem'
 export const DUO_NAV_PILL_WIDTH_PX = 50
 /** Bezel → pill trailing edge. Larger = further left. 22 centers the 50px column under the wifi dock. */
 export const DUO_NAV_PILL_TRAILING_PAD_PX = 22
-/** Extra below `--edge-sat` for Back under the wifi dock. Main chrome is bottom-anchored. */
-export const DUO_NAV_PILL_TOP_EXTRA_PX = 12
+/** Extra below `--edge-sat` so the menu pill clears the wifi dock. */
+export const DUO_NAV_PILL_TOP_EXTRA_PX = 134
 
 /** Glass plate is a sibling … never put overflow/clip on the same node as the frost. */
 function DuoGlassPill({
@@ -83,7 +83,7 @@ const DUO_NAV_EXTRA_IDS = ['search', 'notifications', 'chat', 'settings']
 /**
  * iPad portrait and landscape, plus phone landscape.
  * Phone portrait keeps the FAB dock.
- * Open Duo: trailing Music strip (no E). Bottom cluster = shortcuts → expandable tabs → compose.
+ * Open Duo: trailing Music strip (no E). Menu under wifi (caret at bottom); shortcuts mid; compose at bottom.
  */
 export default function LoungeIpadNavRail({
   items = [],
@@ -158,14 +158,14 @@ export default function LoungeIpadNavRail({
           paddingTop: `calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px)) + ${DUO_NAV_PILL_TOP_EXTRA_PX}px)`,
         }}
       >
-        {/* One 50px column … Back under wifi; bottom cluster = shortcuts → tabs → compose. */}
+        {/* Menu under wifi (caret bottom, expands down); shortcuts mid; compose at bottom. */}
         <div
           data-duo-nav-column
           className="flex h-full min-h-0 flex-col items-center"
           style={{ width: DUO_NAV_PILL_WIDTH_PX }}
         >
           {onBack ? (
-            <DuoGlassPill className="shrink-0 py-1" style={pillStyle}>
+            <DuoGlassPill className="mb-2 shrink-0 py-1" style={pillStyle}>
               <button
                 type="button"
                 data-duo-nav-back
@@ -179,74 +179,70 @@ export default function LoungeIpadNavRail({
               </button>
             </DuoGlassPill>
           ) : null}
+          <DuoGlassPill data-duo-nav-tabs="" className="shrink-0 py-1" style={pillStyle}>
+            {homeItem ? (
+              <RailButton item={withDuoCollapse(homeItem, collapseDuoExtras)} compact />
+            ) : null}
+            {onOpenShellMenu ? (
+              <button
+                type="button"
+                data-title-bar-menu-btn
+                data-duo-nav-more
+                aria-label={
+                  shellMenuOpen
+                    ? 'Close navigation menu'
+                    : shellMenuAttention
+                      ? 'Open navigation menu · pending poker offer'
+                      : 'Open navigation menu'
+                }
+                aria-expanded={shellMenuOpen}
+                aria-haspopup="menu"
+                onClick={() => {
+                  collapseDuoExtras()
+                  onOpenShellMenu()
+                }}
+                className="relative grid h-[50px] w-full place-items-center text-zinc-200 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+              >
+                <span aria-hidden className="block leading-none text-xl -translate-y-px">
+                  {shellMenuOpen ? '×' : '☰'}
+                </span>
+                {shellMenuAttention && !shellMenuOpen ? (
+                  <span
+                    className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[#06cefc] ring-2 ring-zinc-900"
+                    aria-hidden
+                  />
+                ) : null}
+              </button>
+            ) : null}
+            {duoExtrasOpen
+              ? extraItems.map((item) => (
+                  <RailButton
+                    key={item.id}
+                    item={withDuoCollapse(item, collapseDuoExtras)}
+                    compact
+                  />
+                ))
+              : null}
+            {extraItems.length > 0 ? (
+              <button
+                type="button"
+                data-duo-nav-expand
+                aria-label={duoExtrasOpen ? 'Hide extra navigation' : 'Show extra navigation'}
+                aria-expanded={duoExtrasOpen}
+                onClick={() => setDuoExtrasOpen((open) => !open)}
+                className="grid h-[44px] w-full place-items-center text-zinc-300 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+              >
+                <DuoCaretIcon open={duoExtrasOpen} />
+              </button>
+            ) : null}
+          </DuoGlassPill>
           <div className="min-h-0 flex-1" aria-hidden />
           <div className="flex shrink-0 flex-col items-center gap-2" data-duo-nav-bottom>
             {shortcuts ? (
-              <DuoGlassPill
-                data-duo-nav-shortcuts-pill=""
-                scroll
-                style={pillStyle}
-              >
+              <DuoGlassPill data-duo-nav-shortcuts-pill="" scroll style={pillStyle}>
                 {shortcuts}
               </DuoGlassPill>
             ) : null}
-            <DuoGlassPill data-duo-nav-tabs="" className="py-1" style={pillStyle}>
-              {extraItems.length > 0 ? (
-                <button
-                  type="button"
-                  data-duo-nav-expand
-                  aria-label={duoExtrasOpen ? 'Hide extra navigation' : 'Show extra navigation'}
-                  aria-expanded={duoExtrasOpen}
-                  onClick={() => setDuoExtrasOpen((open) => !open)}
-                  className="grid h-[44px] w-full place-items-center text-zinc-300 touch-manipulation [-webkit-tap-highlight-color:transparent]"
-                >
-                  <DuoCaretIcon open={duoExtrasOpen} />
-                </button>
-              ) : null}
-              {duoExtrasOpen
-                ? extraItems.map((item) => (
-                    <RailButton
-                      key={item.id}
-                      item={withDuoCollapse(item, collapseDuoExtras)}
-                      compact
-                    />
-                  ))
-                : null}
-              {homeItem ? (
-                <RailButton item={withDuoCollapse(homeItem, collapseDuoExtras)} compact />
-              ) : null}
-              {onOpenShellMenu ? (
-                <button
-                  type="button"
-                  data-title-bar-menu-btn
-                  data-duo-nav-more
-                  aria-label={
-                    shellMenuOpen
-                      ? 'Close navigation menu'
-                      : shellMenuAttention
-                        ? 'Open navigation menu · pending poker offer'
-                        : 'Open navigation menu'
-                  }
-                  aria-expanded={shellMenuOpen}
-                  aria-haspopup="menu"
-                  onClick={() => {
-                    collapseDuoExtras()
-                    onOpenShellMenu()
-                  }}
-                  className="relative grid h-[50px] w-full place-items-center text-zinc-200 touch-manipulation [-webkit-tap-highlight-color:transparent]"
-                >
-                  <span aria-hidden className="block leading-none text-xl -translate-y-px">
-                    {shellMenuOpen ? '×' : '☰'}
-                  </span>
-                  {shellMenuAttention && !shellMenuOpen ? (
-                    <span
-                      className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[#06cefc] ring-2 ring-zinc-900"
-                      aria-hidden
-                    />
-                  ) : null}
-                </button>
-              ) : null}
-            </DuoGlassPill>
             {compose ? (
               <DuoGlassPill data-duo-nav-compose="" style={composeStyle}>
                 <RailButton item={compose} compact />
@@ -286,7 +282,7 @@ export default function LoungeIpadNavRail({
   )
 }
 
-/** Chevron caret. Collapsed points up (expand upward); open points down. */
+/** Chevron caret. Collapsed points down (expand down); open points up. */
 function DuoCaretIcon({ open = false }) {
   return (
     <svg
@@ -296,7 +292,7 @@ function DuoCaretIcon({ open = false }) {
       className="block h-5 w-5"
     >
       <path
-        d={open ? 'M6.5 9.5 12 15l5.5-5.5' : 'M6.5 14.5 12 9l5.5 5.5'}
+        d={open ? 'M6.5 14.5 12 9l5.5 5.5' : 'M6.5 9.5 12 15l5.5-5.5'}
         fill="none"
         stroke="currentColor"
         strokeWidth="2.25"

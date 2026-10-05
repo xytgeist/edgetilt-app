@@ -426,7 +426,7 @@ import TitleBarStatusLine from '../../components/TitleBarStatusLine.jsx'
 // import LoungeDockFooterBar from '../../components/LoungeDockFooterBar.jsx'
 import LoungeDockArcCarouselPrototype from '../../components/LoungeDockArcCarouselPrototype.jsx'
 import LoungeIpadNavRail from './LoungeIpadNavRail.jsx'
-import { useIpadNavRail } from '../shell/useIpadNavRail.js'
+import { useDuoNavRailEnd, useIpadNavRail } from '../shell/useIpadNavRail.js'
 import {
   blurLoungeComposerCaption,
   focusLoungeComposerCaption,
@@ -821,8 +821,12 @@ export default function SocialFeed({
   hydrateCommunityPosts = async (rows) => rows ?? [],
   /** Optional shell UI (e.g. hamburger) rendered on the right side of the fixed title bar. */
   titleBarNavSlot = null,
-  /** iPad left rail, under Settings. Phone keeps shortcuts in the title bar. */
+  /** iPad left rail, under Settings. Phone keeps shortcuts in the title bar. Duo uses More. */
   ipadRailShortcuts = null,
+  /** Duo Music strip: opens the same shell hamburger menu. */
+  onOpenShellMenu = null,
+  shellMenuOpen = false,
+  shellMenuAttention = false,
   titleBarCenterSlot = null,
   /** Shell subscription + staff (topic channels); merged in-feed with profile role where useful. */
   hasActiveSubscription = false,
@@ -889,6 +893,7 @@ export default function SocialFeed({
   }
   const loungeComposerInitial = loungeComposerBoot()
   const ipadNavRail = useIpadNavRail()
+  const duoNavEnd = useDuoNavRailEnd()
   const loungeLandscapeSplit = useIpadSlotsLandscape()
   const loungeLandscapeSplitRef = useRef(false)
   loungeLandscapeSplitRef.current = loungeLandscapeSplit
@@ -9580,6 +9585,34 @@ export default function SocialFeed({
     scrollLoungePostDetailToTopInstant,
   ])
 
+  const closeDuoRailBack = useCallback(() => {
+    if (loungePostDetail) {
+      handleLoungePostDetailBack()
+      return
+    }
+    if (marketChartModal.open) {
+      closeMarketChartModal()
+      return
+    }
+    if (loungeSportsGameHubOpen || loungeSportsSlateOpen || loungeSportsHubOpen) {
+      sportsCloseHubRef.current?.()
+      return
+    }
+    if (profileModalOpen || profileOverlayStack.length > 0) {
+      closeProfileModalRef.current?.()
+    }
+  }, [
+    closeMarketChartModal,
+    handleLoungePostDetailBack,
+    loungePostDetail,
+    loungeSportsGameHubOpen,
+    loungeSportsHubOpen,
+    loungeSportsSlateOpen,
+    marketChartModal.open,
+    profileModalOpen,
+    profileOverlayStack.length,
+  ])
+
   const resetPostDetailInlineSound = useCallback(() => {
     try {
       resetPostDetailInlineSoundRef.current?.()
@@ -16524,7 +16557,25 @@ export default function SocialFeed({
   const loungeIpadRail =
     ipadNavRail && typeof document !== 'undefined'
       ? createPortal(
-          <LoungeIpadNavRail items={loungeDockWheelItems} shortcuts={ipadRailShortcuts} />,
+          <LoungeIpadNavRail
+            items={loungeDockWheelItems}
+            shortcuts={duoNavEnd ? null : ipadRailShortcuts}
+            onBack={
+              duoNavEnd &&
+              (loungePostDetail ||
+                marketChartModal.open ||
+                loungeSportsGameHubOpen ||
+                loungeSportsSlateOpen ||
+                loungeSportsHubOpen ||
+                profileModalOpen ||
+                profileOverlayStack.length > 0)
+                ? closeDuoRailBack
+                : null
+            }
+            onOpenShellMenu={duoNavEnd ? onOpenShellMenu : null}
+            shellMenuOpen={shellMenuOpen}
+            shellMenuAttention={shellMenuAttention}
+          />,
           document.body,
         )
       : null
@@ -16844,7 +16895,7 @@ export default function SocialFeed({
                   loading={communityFeedLoading}
                   showBuildBadge={loungeTitleBarShowBuildBadge}
                 />
-                {titleBarNavSlot}
+                {duoNavEnd && ipadNavRail ? null : titleBarNavSlot}
               </>
             }
           />
@@ -16873,6 +16924,26 @@ export default function SocialFeed({
       */}
 
       {loungeIpadRail}
+
+      {duoNavEnd && ipadNavRail && !loungeDockPanel
+        ? (() => {
+            const composeItem = loungeDockWheelItems.find((item) => item.id === 'compose')
+            if (!composeItem) return null
+            return (
+              <button
+                type="button"
+                data-duo-feed-compose
+                aria-label={composeItem.label}
+                disabled={composeItem.disabled}
+                data-active={composeItem.active ? '1' : '0'}
+                onClick={() => composeItem.onSelect?.()}
+                className="fixed z-[55] grid h-12 w-12 place-items-center rounded-full bg-[#06cefc] text-zinc-950 shadow-[0_8px_24px_rgba(6,206,252,0.28)] touch-manipulation [-webkit-tap-highlight-color:transparent] disabled:opacity-40"
+              >
+                <span className="block h-6 w-6">{composeItem.icon}</span>
+              </button>
+            )
+          })()
+        : null}
 
       {isActivePage ? loungeDockCarousel : null}
 
@@ -17949,7 +18020,9 @@ export default function SocialFeed({
               <button
                 type="button"
                 onClick={handleLoungePostDetailBack}
-                className={`flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} touch-manipulation items-center justify-center rounded-full text-zinc-300 hover:bg-zinc-800 hover:text-white [-webkit-tap-highlight-color:transparent]`}
+                className={`flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} touch-manipulation items-center justify-center rounded-full text-zinc-300 hover:bg-zinc-800 hover:text-white [-webkit-tap-highlight-color:transparent] ${
+                  duoNavEnd && loungeDetailInPane ? 'invisible pointer-events-none' : ''
+                }`}
                 aria-label={
                   loungeCommentDetailPathIds.length > 0
                     ? 'Back'

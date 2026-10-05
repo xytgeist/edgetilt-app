@@ -4698,6 +4698,28 @@ html[data-ipad-nav][data-ipad-nav-end] {
   --edge-rail-inset-start: 0px;
   --edge-rail-inset-end: var(--edge-ipad-rail);
 }
+html[data-ipad-nav-end] [data-duo-nav-rail] {
+  --edge-ipad-rail: 3.5rem;
+}
+html[data-ipad-nav-end] [data-duo-feed-compose] {
+  right: calc(var(--edge-rail-inset-end, 3.5rem) + 0.75rem);
+  bottom: max(1rem, max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)));
+}
+html[data-ipad-nav-end] [data-lounge-feed-root][data-lounge-landscape-split] [data-duo-feed-compose] {
+  left: calc(50vw - 3rem - 0.75rem);
+  right: auto;
+}
+html.light [data-duo-nav-rail] {
+  background: #fafafa;
+  border-left-color: #e4e4e7;
+}
+html.light [data-duo-nav-back],
+html.light [data-duo-nav-more] {
+  color: #3f3f46;
+}
+html.light [data-duo-nav-more] span.absolute {
+  --tw-ring-color: #ffffff;
+}
 html[data-ipad-nav] [data-app-shell-root] {
   padding-left: var(--edge-rail-inset-start);
   padding-right: var(--edge-rail-inset-end);
@@ -5152,13 +5174,13 @@ html.light [data-ipad-nav-rail] [data-ipad-nav-shortcut-rule] {
 }
 /* Landscape is short. Portrait keeps the tall gaps. */
 @media (orientation: landscape) {
-  [data-ipad-nav-rail] [data-ipad-nav-stack] {
+  [data-ipad-nav-rail]:not([data-duo-nav-rail]) [data-ipad-nav-stack] {
     gap: 0.25rem;
   }
-  [data-ipad-nav-rail] [data-ipad-nav-item] {
+  [data-ipad-nav-rail]:not([data-duo-nav-rail]) [data-ipad-nav-item] {
     height: 3.5rem;
   }
-  [data-ipad-nav-rail] [data-ipad-nav-shortcut-rule] {
+  [data-ipad-nav-rail]:not([data-duo-nav-rail]) [data-ipad-nav-shortcut-rule] {
     margin-top: 0.45rem;
   }
 }

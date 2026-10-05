@@ -124,7 +124,7 @@ import { guidesTabFullyGated, normalizeGuideAccessSlug } from '../guides/guideAc
 import { parseGuideSlugFromPathname } from '../lounge/loungeCaptionLink.js'
 import { QUICK_LINK_BY_ID } from './quickLinkDestinations.js'
 import { useIpadSlotsLandscape } from './useIpadSlotsLandscape.js'
-import { useIpadNavRail } from './useIpadNavRail.js'
+import { useDuoNavRailEnd, useIpadNavRail } from './useIpadNavRail.js'
 import {
   CHROME_TOUR_MENU_HOLD_DONE_EVENT,
   CHROME_TOUR_MENU_HOLD_EVENT,
@@ -568,6 +568,7 @@ export default function AppShell({
   const ipadShell = useIpadAuthStage()
   const ipadSlotsLandscape = useIpadSlotsLandscape()
   const ipadNavRail = useIpadNavRail()
+  const duoNavEnd = useDuoNavRailEnd()
   /** Hold split through brief landscape MQ flicker … never sticky into portrait. */
   const [pokerSplitLayout, setPokerSplitLayout] = useState(false)
   useLayoutEffect(() => {
@@ -2523,7 +2524,7 @@ export default function AppShell({
         onNavigate={handleQuickLinkNavigate}
       />
       )}
-      <div className="relative z-[55] shrink-0">
+      <div className={`relative z-[55] shrink-0 ${duoNavEnd && ipadNavRail ? 'hidden' : ''}`}>
       <button
         type="button"
         data-title-bar-menu-btn
@@ -2544,7 +2545,9 @@ export default function AppShell({
         }
         aria-expanded={menuOpen}
         aria-haspopup="menu"
-        className="lounge-title-nav-btn relative grid h-10 w-10 place-items-center rounded-xl border border-zinc-700/50 bg-zinc-800/90 text-white shadow-sm touch-manipulation hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent]"
+        className={`lounge-title-nav-btn relative grid h-10 w-10 place-items-center rounded-xl border border-zinc-700/50 bg-zinc-800/90 text-white shadow-sm touch-manipulation hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent] ${
+          duoNavEnd && ipadNavRail ? 'hidden' : ''
+        }`}
       >
         <span aria-hidden className="block leading-none text-xl -translate-y-px">
           {menuOpen ? '×' : '☰'}
@@ -2703,9 +2706,22 @@ export default function AppShell({
         return
       }
       const rect = btn.getBoundingClientRect()
+      if (btn.hasAttribute('data-duo-nav-more')) {
+        const top = 'auto'
+        const bottom = Math.max(8, Math.round(window.innerHeight - rect.bottom))
+        const right = Math.max(8, Math.round(window.innerWidth - rect.left + 8))
+        setMenuAnchor((prev) =>
+          prev && prev.top === top && prev.bottom === bottom && prev.right === right
+            ? prev
+            : { top, bottom, right },
+        )
+        return
+      }
       const top = Math.round(rect.bottom + 4)
       const right = Math.max(8, Math.round(window.innerWidth - rect.right))
-      setMenuAnchor((prev) => (prev && prev.top === top && prev.right === right ? prev : { top, right }))
+      setMenuAnchor((prev) =>
+        prev && prev.top === top && prev.right === right && prev.bottom == null ? prev : { top, right },
+      )
     }
     place()
     window.addEventListener('resize', place)
@@ -3045,8 +3061,18 @@ export default function AppShell({
             loadMoreCommunityFeed={loadMoreCommunityFeed}
             hydrateCommunityPosts={hydrateCommunityPosts}
             titleBarNavSlot={renderTitleBarNavSlot()}
+            onOpenShellMenu={() => {
+              if (chromeTourMenuHoldRef.current) return
+              setMenuOpen((v) => {
+                const next = !v
+                if (next) acknowledgePokerOfferHamburger()
+                return next
+              })
+            }}
+            shellMenuOpen={menuOpen}
+            shellMenuAttention={pokerHamburgerAttention}
             ipadRailShortcuts={
-              ipadNavRail ? (
+              ipadNavRail && !duoNavEnd ? (
                 <TitleBarQuickLinks
                   layout="rail"
                   browseMode={browseMode}
@@ -4005,7 +4031,11 @@ export default function AppShell({
             <div
               className="lounge-title-nav-menu fixed z-[116] mt-0 min-w-[8.05rem] max-w-[min(10.5rem,calc(100vw-1rem))] w-max max-h-[min(22rem,calc(100dvh-max(env(safe-area-inset-top,0px),var(--edge-sat,0px))-max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px))-5rem))] overflow-y-auto overscroll-y-contain rounded-2xl border border-zinc-800/80 bg-zinc-950/98 px-2 py-2 shadow-xl backdrop-blur supports-[backdrop-filter]:bg-zinc-950/90"
               role="menu"
-              style={{ top: menuAnchor.top, right: menuAnchor.right }}
+              style={
+                menuAnchor.bottom != null
+                  ? { top: 'auto', bottom: menuAnchor.bottom, right: menuAnchor.right }
+                  : { top: menuAnchor.top, right: menuAnchor.right }
+              }
             >
               {renderNavMenuItems()}
             </div>,

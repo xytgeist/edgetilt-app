@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **Duo Music-style rail (`1.4.1007`).** Open Duo drops the E, shrinks the trailing strip to 3.5rem, parks Home/Search/Alerts/Chat/More at the bottom (island column), Back under the island when a pane is open, compose FAB on the feed. Title-bar hamburger hides. iPad 11 unchanged. Hard-refresh lvslotpro.
 - **2026-10-05:** **Duo rail detection (`1.4.1006`).** Native stamps `data-edge-duo` / `getInfo.isDuo` from `iPhone19,4` (sim `SIMULATOR_MODEL_IDENTIFIER`). Web no longer depends on iPhone UA + 700px floor. Rebuild Test Fast. iPad 11 stays leading.
 - **2026-10-05:** **Duo rail on the right (`1.4.1005`).** Open iPhone Duo (`horizontal-viewport-segments: 2`, or iPhone UA + tablet shell floor) parks the Lounge rail on the trailing edge. iPad 11 stays leading. Shell padding / title bars follow `--edge-rail-inset-start|end`.
 - **2026-10-05:** **iPad auth gap (`1.4.1004`).** Slogan-to-buttons was `2.5rem + 100px` (leftover from a 200px drop on the iPad column). Now `mt-10`. Phone sheet unchanged. Duo uses the same column when it matches the iPad query.

@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **iPhone landscape title vs filters (`1.4.1036`).** Lounge feed root pad and fixed EDGE title now share the same JS safe-area top (CSS env/sat was drifting on rotate). Filters no longer sit under the frosted title in landscape. Sat cache invalidates on orient.
 - **2026-10-05:** **Mac fallback for Action + poker catalog (`1.4.1035`).** LaunchAgents on this Mac: Action+trench 12:00, full poker catalog (incl MTTDB) 06:00. Windows remains primary. GHA poker = emergency `--skip-mttdb` only. Ran syncs from Mac … Action heartbeats green; poker 1197 upserted (MTTDB CF off-home). SQL **`20261005194000`** test+prod schedule hints.
 - **2026-10-05:** **Promote + Prod IPA.** `test` → `main` (`d9363f25`). Prod web **`1.4.1034`**. EdgeTilt Prod **1.4.95 (20261005191435)** uploaded TestFlight-only (Duo stamp, OAuth Back, wifi-dock theme flip). Not attached. Marketing still **1.4.95**.
 - **2026-10-05:** **Composer keyboard Done + media pill (`1.4.1034`).** `EdgeKeyboardAccessorySync` hides the stock WK accessory inside fullscreen + thread composers. Write footer is a glass pill with media + Done (thread sheet too). No new IPA (bridge already had `setKeyboardAccessory`).

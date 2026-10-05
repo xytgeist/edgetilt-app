@@ -446,7 +446,7 @@ import {
   loungeTitleRevealClampScrollDelta,
   loungeTitleBarHideTranslateYPx,
 } from '../../utils/loungeTitleRevealScroll.js'
-import { readCssSafeAreaTopPx } from '../../utils/edgeSafeAreaCss.js'
+import { invalidateCssSafeAreaTopPxCache, readCssSafeAreaTopPx } from '../../utils/edgeSafeAreaCss.js'
 import EdgeStatusBarScrollPlate from '../../components/EdgeStatusBarScrollPlate.jsx'
 import LoungeDockSlidePanels from '../../components/LoungeDockSlidePanels.jsx'
 import LoungePostCommentThread from './LoungePostCommentThread.jsx'
@@ -2777,6 +2777,7 @@ export default function SocialFeed({
     const el = loungeFeedScrollRef.current
     if (!el) return
     const sync = () => {
+      invalidateCssSafeAreaTopPxCache()
       setLoungeFeedViewportTopPx((prev) => {
         const n = Math.round(el.getBoundingClientRect().top)
         return prev === n ? prev : n
@@ -2790,6 +2791,7 @@ export default function SocialFeed({
     const ro = new ResizeObserver(sync)
     ro.observe(el)
     const onOrient = () => {
+      invalidateCssSafeAreaTopPxCache()
       sync()
       requestAnimationFrame(sync)
     }
@@ -2802,7 +2804,7 @@ export default function SocialFeed({
       window.removeEventListener('orientationchange', onOrient)
       window.visualViewport?.removeEventListener('resize', sync)
     }
-  }, [])
+  }, [loungeDockPanel, ipadNavRail, duoNavEnd, loungeLandscapeSplit])
 
   /** Stable bottom inset for the dock FAB while the upload bar is visible (avoids collision feedback loops). */
   useLayoutEffect(() => {
@@ -16753,14 +16755,14 @@ export default function SocialFeed({
     loungeSlateInPane ||
     loungeProfileInPane
 
-  const loungeFeedTopInsetCss = duoNavEnd
-    ? `max(${DUO_CONTENT_TOP_FALLBACK_PX}px, max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))`
-    : 'max(0px, max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))'
   const loungeTitleBarTopPx = Math.max(
     loungeFeedViewportTopPx,
     readCssSafeAreaTopPx(),
     duoNavEnd ? DUO_CONTENT_TOP_FALLBACK_PX : 0,
   )
+  // Keep root pad and fixed title `top` on the same JS px … CSS env/sat can lag
+  // on landscape rotate and let Discover/Latest/Tribes slide under the frosted bar.
+  const loungeFeedTopInsetPx = loungeTitleBarTopPx
 
   return (
     <div
@@ -16771,7 +16773,7 @@ export default function SocialFeed({
           ? 'mx-auto flex h-dvh max-h-dvh min-h-0 w-full max-w-none flex-col overflow-hidden bg-zinc-950 pb-0'
           : 'mx-auto flex h-dvh max-h-dvh min-h-0 w-full max-w-2xl flex-col overflow-hidden bg-zinc-950 pb-0'
       }
-      style={{ paddingTop: loungeFeedTopInsetCss }}
+      style={{ paddingTop: loungeFeedTopInsetPx }}
     >
       <LoungeStreamLightboxProvider ctx={loungeStreamLightboxCtx}>
       <LoungePendingPublishActionsProvider cancelPendingPublish={cancelAuthorPendingVideoPublish}>

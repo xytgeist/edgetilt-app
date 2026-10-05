@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **iPad auth gap (`1.4.1004`).** Slogan-to-buttons was `2.5rem + 100px` (leftover from a 200px drop on the iPad column). Now `mt-10`. Phone sheet unchanged. Duo uses the same column when it matches the iPad query.
 - **2026-10-05:** **Google OAuth Back (native).** WKWebView Google sign-in has no Safari chrome. Native Back capsule on off-site hosts (accounts.google.com, supabase authorize). Sim rebuild / new IPA. Web `1.4.1003` unchanged.
 - **2026-10-05:** **Forgot-password `or continue with` (`1.4.1003`).** Same two-hairline divider as the landing `or`. No black chip.
 - **2026-10-05:** **Auth `or` divider (`1.4.1002`).** White `or` with two hairlines, no black chip. Light iPad/sheet still uses zinc text + zinc lines.

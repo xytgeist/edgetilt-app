@@ -391,7 +391,7 @@ export default function AuthModalPanel({
             ✅ Account verified - have fun!
           </div>
         ) : null}
-        <div className={`${ipadStage ? 'mt-[calc(2.5rem+100px)] -mb-[100px]' : 'mt-2'} flex flex-col items-center px-1`}>
+        <div className={`${ipadStage ? 'mt-10' : 'mt-2'} flex flex-col items-center px-1`}>
           {phoneStep ? (
             <form
               onSubmit={phoneStep === 'code' ? submitPhoneCode : submitPhoneNumber}

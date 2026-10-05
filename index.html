@@ -33,6 +33,11 @@
           var dark = pref === 'dark' || ((pref !== 'light') && window.matchMedia('(prefers-color-scheme: dark)').matches)
           document.documentElement.classList.toggle('dark', dark)
           document.documentElement.classList.toggle('light', !dark)
+          try {
+            if (window.EdgeNative && typeof window.EdgeNative.setPreferredColorScheme === 'function') {
+              window.EdgeNative.setPreferredColorScheme({ scheme: dark ? 'dark' : 'light' })
+            }
+          } catch (e2) {}
         } catch (e) {}
       })()
     </script>

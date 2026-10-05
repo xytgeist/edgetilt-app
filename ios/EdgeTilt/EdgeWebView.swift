@@ -61,6 +61,8 @@ final class EdgeWebChromeView: UIView {
     self.webView = webView
     super.init(frame: .zero)
     backgroundColor = .black
+    EdgeShellAppearance.lockWebKitDark(self)
+    EdgeShellAppearance.lockWebKitDark(webView)
     webView.translatesAutoresizingMaskIntoConstraints = false
     addSubview(webView)
     NSLayoutConstraint.activate([
@@ -72,6 +74,13 @@ final class EdgeWebChromeView: UIView {
   }
 
   required init?(coder: NSCoder) { nil }
+
+  override func didMoveToWindow() {
+    super.didMoveToWindow()
+    EdgeShellAppearance.lockWebKitDark(self)
+    EdgeShellAppearance.lockWebKitDark(webView)
+    EdgeShellAppearance.shared.attachMainWindow(window)
+  }
 }
 
 struct EdgeWebView: UIViewRepresentable {
@@ -93,6 +102,7 @@ struct EdgeWebView: UIViewRepresentable {
     webView.isOpaque = false
     webView.backgroundColor = .black
     webView.scrollView.backgroundColor = .black
+    EdgeShellAppearance.lockWebKitDark(webView)
     #if DEBUG
     // Required on iOS 16.4+ for Mac Safari → Develop → [device] to list this WKWebView.
     if #available(iOS 16.4, *) {

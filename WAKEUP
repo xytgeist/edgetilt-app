@@ -2717,3 +2717,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-05 … rolled back to 1.4.1017
 
 **I am Mac Theo.** Ryan: multiple pages painted fully white after the in-app light/dark native scheme work (1018+) and the glass-pill pass. Reverted `10e1e7d8` / `77a8f57a` / `fbc1bca7`. Tip is **`1.4.1017`** again (wifi glyph stays white in light mode on the IPA). Rebuild Test Fast off this tip. Not promoted.
+
+### Mac Theo 2026-10-05 … wifi dock only (1.4.1020)
+
+**I am Mac Theo.** **`1.4.1020`**: Duo wifi dock follows in-app light/dark via **main window only**. WKWebView locked dark. No white chrome, no SwiftUI `preferredColorScheme` bind, no walk-every-window. Rebuild Test Fast. If a page goes white, say which tab. Not promoted.

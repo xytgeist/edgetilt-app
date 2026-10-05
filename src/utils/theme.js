@@ -26,6 +26,17 @@ function applyClass(isDark) {
     html.classList.remove(DARK_CLASS)
     html.classList.add(LIGHT_CLASS)
   }
+  syncNativeColorScheme(isDark)
+}
+
+function syncNativeColorScheme(isDark) {
+  try {
+    const fn = typeof window !== 'undefined' ? window.EdgeNative?.setPreferredColorScheme : null
+    if (typeof fn !== 'function') return
+    fn.call(window.EdgeNative, { scheme: isDark ? 'dark' : 'light' })
+  } catch {
+    /* old IPA / Safari */
+  }
 }
 
 /** Read pref + system media query and apply the correct class to <html>. */

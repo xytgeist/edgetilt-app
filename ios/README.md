@@ -12,6 +12,7 @@ Thin native loader for the live Edge site. **Not Capacitor.** No baked Vite `dis
 - Bundle ID: `com.edgetilt.app`
 - Shell version / UA token: `EdgeiOS/0.1.0` (see `AppConfig.swift`)
 - Bridge: `window.EdgeNative` … contract **`docs/ios-native-bridge.md`**
+- **Color scheme:** `EdgeNative.setPreferredColorScheme` flips **only** the main window (Duo wifi dock). WKWebView stays dark-trait. Do not drive SwiftUI `preferredColorScheme` off the web theme (1018 blanked pages).
 - **Keyboard accessory:** WK Done / prev-next starts **on**. GIF search opts out via `EdgeNative.setKeyboardAccessory({ visible: false })` (`EdgeKeyboardAccessorySync` in AppShell). Avoids mid-rise `reloadInputViews` on iPhone. Safari / PWA unchanged. See `EdgeWebKitKeyboard.swift`.
 - **Keyboard dismiss:** `WKWebView.scrollView.keyboardDismissMode = .interactive` (swipe down). Lounge Pro composer also blurs on a downward swipe when the write field is focused.
 - **Audio:** boot + becomeActive apply `AVAudioSession` `.playback` (ignores Ring/Silent) unless a call already owns `.playAndRecord`. Lounge Tap for sound also calls `EdgeNative.setAudioSession({ mode: 'playback' })`.

@@ -9,13 +9,15 @@ struct EdgeTiltApp: App {
     WindowGroup {
       ShellRootView()
         .background(Color.black)
-        .preferredColorScheme(.dark)
+        .environment(\.colorScheme, .dark)
         .onAppear {
+          EdgeShellAppearance.shared.applyToMainWindow()
           EdgeLiveSportsActivity.bootstrapPushUpdates()
         }
         .onChange(of: scenePhase) { _, phase in
           EdgeLiveSportsActivity.handleSceneBecameActive(phase == .active)
           if phase == .active {
+            EdgeShellAppearance.shared.applyToMainWindow()
             EdgeCallKitManager.shared.handleDidBecomeActive()
           }
         }

@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **Wifi dock follows in-app theme without bleaching WKWebView (`1.4.1020`).** Main window `overrideUserInterfaceStyle` only. WebView + SwiftUI env stay dark. Rebuild Test Fast. Do not copy 1018.
 - **2026-10-05:** **Rolled back to `1.4.1017`.** Reverted native `setPreferredColorScheme` / white-screen follow-up / Duo glass-pill pass. In-app light was painting whole pages white. Rebuild Test Fast. Wifi dock stays white in light mode until we redo this without WKWebView remounts.
 - **2026-10-05:** **Duo compose + settings on the rail (`1.4.1017`).** Pill left (28px) and down (134px). Settings in the tab stack. Cyan feed FAB removed; compose is a matching frosted solo button. iPad 11 cyan compose unchanged.
 - **2026-10-05:** **Duo pill left + down (`1.4.1016`).** Width back to 50px. Trailing pad 16px, top extra 110px. iPad 11 unchanged.

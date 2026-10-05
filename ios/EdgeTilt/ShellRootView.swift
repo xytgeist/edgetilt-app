@@ -10,5 +10,6 @@ struct ShellRootView: View {
     }
     .ignoresSafeArea()
     .background(Color.black)
+    .environment(\.colorScheme, .dark)
   }
 }

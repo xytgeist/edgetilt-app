@@ -2088,6 +2088,7 @@ export default function GuidesScreen({
         )}
         <div
           ref={paneEmbed ? guidesScrollRootRef : undefined}
+          data-slots-landscape-pane-scroll={paneEmbed ? '' : undefined}
           className={
             paneEmbed
               ? 'min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-3 pt-3 pb-[calc(1.5rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] [-webkit-overflow-scrolling:touch]'

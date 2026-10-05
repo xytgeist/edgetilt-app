@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **AP Guides pane gutters match tools (`1.4.1052`).** Guides `paneEmbed` scroll gets `data-slots-landscape-pane-scroll` so phone landscape search/cards use the same `0.5rem` gutters as Slots tools.
 - **2026-10-05:** **Calcs pane gutters match tools (`1.4.1051`).** Phone landscape `[data-slots-landscape-pane-scroll]` uses the same `0.5rem` side pad as tools-scroll so calc cards line up with the left list.
 - **2026-10-05:** **Calcs landscape pane title bar (`1.4.1050`).** `paneEmbed` CalculatorsTab renders matching `data-slots-landscape-pane-chrome` "Calcs" bar (same pattern as AP Guides / Play Logbook).
 - **2026-10-05:** **Phone landscape calc cards dense (`1.4.1049`).** Slots landscape pane `.calc-list-btn` shrinks to ~tools-list density (min-height / pad / icon / type); portrait + tall iPad keep the hero cards.

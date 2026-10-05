@@ -2905,3 +2905,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-05 … Calcs pane gutters match tools
 
 **I am Mac Theo.** **`1.4.1051`**: phone landscape Calcs pane scroll pad `0.5rem` to match Slots tools-scroll (was still `px-3`). Hard-refresh on test. Not promoted.
+
+### Mac Theo 2026-10-05 … AP Guides pane gutters match tools
+
+**I am Mac Theo.** **`1.4.1052`**: AP Guides landscape pane scroll uses the same `data-slots-landscape-pane-scroll` `0.5rem` gutters so the search field lines up with Slots tools cards. Hard-refresh on test. Not promoted.

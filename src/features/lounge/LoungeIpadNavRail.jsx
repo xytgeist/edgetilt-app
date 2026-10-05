@@ -23,13 +23,40 @@ export const IPAD_NAV_RAIL_WIDTH = 'calc((11rem - 50px) * 0.85)'
 export const DUO_NAV_RAIL_WIDTH = '5.5rem'
 /** Ryan: width was already fine. Do not grow this to chase the glass. */
 export const DUO_NAV_PILL_WIDTH_PX = 50
-/** Bezel → pill trailing edge. Larger = further left. Tuned so the 50px stack centers under the wifi dock. */
-export const DUO_NAV_PILL_TRAILING_PAD_PX = 8
+/** Bezel → pill trailing edge. Larger = further left. 22 centers the 50px column under the wifi dock. */
+export const DUO_NAV_PILL_TRAILING_PAD_PX = 22
 /** Extra below `--edge-sat` for Back under the wifi dock. Main chrome is bottom-anchored. */
 export const DUO_NAV_PILL_TOP_EXTRA_PX = 12
 
-const DUO_PILL_GLASS =
-  'overflow-hidden rounded-full duo-nav-glass'
+/** Glass plate is a sibling … never put overflow/clip on the same node as the frost. */
+function DuoGlassPill({
+  children,
+  className = '',
+  style,
+  scroll = false,
+  ...attrs
+}) {
+  return (
+    <div
+      data-duo-nav-pill
+      data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
+      className={`relative rounded-full ${className}`}
+      style={style}
+      {...attrs}
+    >
+      <span className="duo-nav-glass-plate" aria-hidden />
+      <div
+        className={
+          scroll
+            ? 'relative z-[1] flex max-h-[40vh] min-h-0 w-full flex-col items-center overflow-y-auto overflow-x-hidden rounded-full'
+            : 'relative z-[1] flex w-full flex-col items-center'
+        }
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
 
 /**
  * Visible letter inside the 180px +EV tiles.
@@ -138,12 +165,7 @@ export default function LoungeIpadNavRail({
           style={{ width: DUO_NAV_PILL_WIDTH_PX }}
         >
           {onBack ? (
-            <div
-              data-duo-nav-pill
-              data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
-              className={`flex shrink-0 flex-col items-center py-1 ${DUO_PILL_GLASS}`}
-              style={pillStyle}
-            >
+            <DuoGlassPill className="shrink-0 py-1" style={pillStyle}>
               <button
                 type="button"
                 data-duo-nav-back
@@ -155,28 +177,20 @@ export default function LoungeIpadNavRail({
                   ←
                 </span>
               </button>
-            </div>
+            </DuoGlassPill>
           ) : null}
           <div className="min-h-0 flex-1" aria-hidden />
           <div className="flex shrink-0 flex-col items-center gap-2" data-duo-nav-bottom>
             {shortcuts ? (
-              <div
-                data-duo-nav-pill
-                data-duo-nav-shortcuts-pill
-                data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
-                className={`flex max-h-[40vh] min-h-0 flex-col items-center overflow-y-auto overflow-x-hidden ${DUO_PILL_GLASS}`}
+              <DuoGlassPill
+                data-duo-nav-shortcuts-pill=""
+                scroll
                 style={pillStyle}
               >
                 {shortcuts}
-              </div>
+              </DuoGlassPill>
             ) : null}
-            <div
-              data-duo-nav-pill
-              data-duo-nav-tabs
-              data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
-              className={`flex flex-col items-center gap-0 py-1 ${DUO_PILL_GLASS}`}
-              style={pillStyle}
-            >
+            <DuoGlassPill data-duo-nav-tabs="" className="py-1" style={pillStyle}>
               {extraItems.length > 0 ? (
                 <button
                   type="button"
@@ -232,17 +246,11 @@ export default function LoungeIpadNavRail({
                   ) : null}
                 </button>
               ) : null}
-            </div>
+            </DuoGlassPill>
             {compose ? (
-              <div
-                data-duo-nav-pill
-                data-duo-nav-compose
-                data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
-                className={`flex items-center justify-center ${DUO_PILL_GLASS}`}
-                style={composeStyle}
-              >
+              <DuoGlassPill data-duo-nav-compose="" style={composeStyle}>
                 <RailButton item={compose} compact />
-              </div>
+              </DuoGlassPill>
             ) : null}
           </div>
         </div>

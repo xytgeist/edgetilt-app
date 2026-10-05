@@ -28,7 +28,7 @@ import EdgeStatusBarScrollPlate from './EdgeStatusBarScrollPlate.jsx'
  *   Use on admin surfaces with native file pickers (Chrome/Windows can shrink `dvh` to ~half).
  * @param {string | null} [titleBarAlignStartWidth=null] - CSS width for a left-aligned fixed title bar
  *   (e.g. `calc(100vw - var(--edge-ipad-rail, 0px))` or `var(--chat-landscape-list-col)`).
- *   When set, the bar sits at `left: var(--edge-ipad-rail, 0px)` instead of centered.
+ *   When set, the bar sits at `left: var(--edge-rail-inset-start)` instead of centered.
  * @param {boolean} [fillParentHeight=false] - use `h-full` of the parent instead of `h-dvh`
  *   (landscape list column inside a split shell).
  */
@@ -252,7 +252,7 @@ export default function ScrollLinkedEdgeTitleBarShell({
             top: feedViewportTopPx,
             ...(titleBarAlignStart
               ? {
-                  left: 'var(--edge-ipad-rail, 0px)',
+                  left: 'var(--edge-rail-inset-start, var(--edge-ipad-rail, 0px))',
                   width: alignStartWidth,
                   maxWidth: 'none',
                   transform: `translate3d(0, ${loungeTitleBarHideTranslateYPx(titleReveal, titleBarHeight, feedViewportTopPx)}px, 0)`,

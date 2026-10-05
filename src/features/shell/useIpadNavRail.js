@@ -1,5 +1,5 @@
 import { useLayoutEffect, useState } from 'react'
-import { IPAD_NAV_RAIL_QUERY } from './quickLinkDestinations.js'
+import { IPAD_NAV_RAIL_QUERY, isDuoOpenViewport } from './quickLinkDestinations.js'
 
 /**
  * True when the left nav rail should show.
@@ -51,4 +51,34 @@ export function useIpadNavRail() {
   }, [])
 
   return matches
+}
+
+/**
+ * Duo open book: park the rail on the trailing edge. iPad 11 stays leading.
+ */
+export function useDuoNavRailEnd() {
+  const [end, setEnd] = useState(() => (typeof window === 'undefined' ? false : isDuoOpenViewport()))
+
+  useLayoutEffect(() => {
+    const sync = () => setEnd(isDuoOpenViewport())
+    sync()
+    let segmentsMq = null
+    try {
+      segmentsMq = window.matchMedia('(horizontal-viewport-segments: 2)')
+      segmentsMq.addEventListener('change', sync)
+    } catch {
+      segmentsMq = null
+    }
+    window.addEventListener('orientationchange', sync)
+    window.addEventListener('resize', sync)
+    window.visualViewport?.addEventListener('resize', sync)
+    return () => {
+      segmentsMq?.removeEventListener('change', sync)
+      window.removeEventListener('orientationchange', sync)
+      window.removeEventListener('resize', sync)
+      window.visualViewport?.removeEventListener('resize', sync)
+    }
+  }, [])
+
+  return end
 }

@@ -92,6 +92,29 @@ export const SLOTS_LANDSCAPE_SPLIT_QUERY =
  */
 export const IPAD_NAV_RAIL_QUERY = `${IPAD_SHELL_QUERY}, ${SLOTS_LANDSCAPE_SPLIT_QUERY}`
 
+/** CSS Foldables: two side-by-side screens (open iPhone Duo). iPad is one segment. */
+export const DUO_VIEWPORT_SEGMENTS_QUERY = '(horizontal-viewport-segments: 2)'
+
+/**
+ * Open iPhone Duo inner book. iPad 11 / mini stay false (UA is iPad, one segment).
+ * Closed Duo is phone-sized and never hits the tablet shell floor.
+ */
+export function isDuoOpenViewport() {
+  if (typeof window === 'undefined') return false
+  try {
+    if (window.matchMedia(DUO_VIEWPORT_SEGMENTS_QUERY).matches) return true
+  } catch {
+    /* older WebKit */
+  }
+  const ua = String(navigator.userAgent || '')
+  if (!/iPhone/i.test(ua) || /iPad/i.test(ua)) return false
+  if (window.matchMedia(IPAD_SHELL_QUERY).matches) return true
+  if (!window.matchMedia('(pointer: coarse)').matches) return false
+  const w = window.innerWidth || 0
+  const h = window.innerHeight || 0
+  return Math.min(w, h) >= 700 && Math.max(w, h) >= 768
+}
+
 /** Short landscape ... shrink tools cards. iPad height stays roomy. */
 export const SLOTS_LANDSCAPE_COMPACT_QUERY =
   '(orientation: landscape) and (max-height: 520px) and (pointer: coarse)'

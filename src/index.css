@@ -4691,9 +4691,16 @@ html[data-ipad-nav] {
   --edge-ipad-rail: calc((11rem - 50px) * 0.85);
   /* Inset post text and media. The feed itself stays full width beside the rail. */
   --edge-ipad-feed-pad: max(2.5rem, calc((100vw - var(--edge-ipad-rail)) * 0.07));
+  --edge-rail-inset-start: var(--edge-ipad-rail);
+  --edge-rail-inset-end: 0px;
+}
+html[data-ipad-nav][data-ipad-nav-end] {
+  --edge-rail-inset-start: 0px;
+  --edge-rail-inset-end: var(--edge-ipad-rail);
 }
 html[data-ipad-nav] [data-app-shell-root] {
-  padding-left: var(--edge-ipad-rail);
+  padding-left: var(--edge-rail-inset-start);
+  padding-right: var(--edge-rail-inset-end);
 }
 html[data-ipad-nav] [data-lounge-feed-root] {
   max-width: none;
@@ -4880,8 +4887,8 @@ html[data-ipad-nav] [data-lounge-feed-scroll] .-mx-3 {
   margin-right: 0;
 }
 html[data-ipad-nav] [data-edge-status-bar-plate] {
-  left: var(--edge-ipad-rail) !important;
-  right: 0 !important;
+  left: var(--edge-rail-inset-start) !important;
+  right: var(--edge-rail-inset-end) !important;
   width: auto !important;
   max-width: none !important;
   transform: none !important;
@@ -4912,12 +4919,17 @@ html.light [data-slots-landscape-pane-chrome] {
    (rail + feed) = 50vw, engagement pane = 50vw. Phone chrome on feed (no tall-iPad pad/scale).
    Width rules are scoped under the split attr so portrait keep-alive does not keep a 50vw column
    when WebKit leaves `display:contents` children with stale flex basis. */
-[data-lounge-feed-root][data-lounge-landscape-split] {
-  max-width: none;
-  /* Phone chrome … do not inherit full-viewport iPad feed pad. */
-  --edge-ipad-feed-pad: 0.75rem;
-  --lounge-landscape-feed-col: calc(50vw - var(--edge-ipad-rail, 0px));
-  --lounge-landscape-pane-col: 50vw;
+html[data-ipad-nav-end] [data-lounge-feed-root][data-lounge-landscape-split] {
+  --lounge-landscape-feed-col: 50vw;
+  --lounge-landscape-pane-col: calc(50vw - var(--edge-ipad-rail, 0px));
+}
+html[data-ipad-nav-end] [data-chat-feature][data-chat-landscape-split] {
+  --chat-landscape-list-col: 50vw;
+  --chat-landscape-pane-col: calc(50vw - var(--edge-ipad-rail, 0px));
+}
+html[data-ipad-nav-end] [data-slots-landscape-split] {
+  --slots-landscape-tools-col: 50vw;
+  --slots-landscape-pane-col: calc(50vw - var(--edge-ipad-rail, 0px));
 }
 [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-landscape-feed] {
   width: var(--lounge-landscape-feed-col);
@@ -4953,8 +4965,8 @@ html.light [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-det
     border-right-width: 0 !important;
   }
   html[data-ipad-nav] [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-title-bar] {
-    left: var(--edge-ipad-rail, 0px) !important;
-    right: 0 !important;
+    left: var(--edge-rail-inset-start, 0px) !important;
+    right: var(--edge-rail-inset-end, 0px) !important;
     width: calc(100vw - var(--edge-ipad-rail, 0px)) !important;
     max-width: none !important;
   }
@@ -5085,15 +5097,15 @@ html.light [data-chat-feature][data-chat-landscape-split] [data-chat-landscape-p
   }
 }
 html[data-ipad-nav] [data-lounge-feed-root] .fixed.left-1\/2:not([data-lounge-title-bar]):not([data-edge-status-bar-plate]) {
-  left: calc(var(--edge-ipad-rail) + (100vw - var(--edge-ipad-rail)) / 2) !important;
+  left: calc(var(--edge-rail-inset-start) + (100vw - var(--edge-ipad-rail)) / 2) !important;
 }
 /* Same rail recenter for ScrollLinkedEdgeTitleBarShell (Chat / Slots / Poker / Guides / …). */
 html[data-ipad-nav] [data-edge-scroll-shell].fixed.left-1\/2 {
-  left: calc(var(--edge-ipad-rail) + (100vw - var(--edge-ipad-rail)) / 2) !important;
+  left: calc(var(--edge-rail-inset-start) + (100vw - var(--edge-ipad-rail)) / 2) !important;
 }
 html[data-ipad-nav] [data-lounge-dock-panels] {
-  left: var(--edge-ipad-rail) !important;
-  right: 0 !important;
+  left: var(--edge-rail-inset-start) !important;
+  right: var(--edge-rail-inset-end) !important;
 }
 html[data-ipad-nav] [data-lounge-dock-panels] > [role='dialog'] {
   max-width: none;
@@ -5104,8 +5116,16 @@ html.light [data-ipad-nav-rail] {
   border-right-color: #e4e4e7;
   color: #52525b;
 }
+html.light [data-ipad-nav-end] [data-ipad-nav-rail] {
+  border-left-color: #e4e4e7;
+  border-right-color: transparent;
+}
 [data-ipad-nav-rail] {
   border-right-width: 0.5px;
+}
+html[data-ipad-nav-end] [data-ipad-nav-rail] {
+  border-right-width: 0;
+  border-left-width: 0.5px;
 }
 html.light [data-ipad-nav-rail] [data-ipad-nav-item] {
   color: #3f3f46;

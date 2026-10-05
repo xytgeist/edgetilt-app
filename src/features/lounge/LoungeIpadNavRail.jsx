@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import { useDuoNavRailEnd } from '../shell/useIpadNavRail.js'
 
 /** Same width as `--edge-ipad-rail` in `index.css`. 15% under the old 11rem − 50px column. */
 export const IPAD_NAV_RAIL_WIDTH = 'calc((11rem - 50px) * 0.85)'
@@ -27,15 +28,20 @@ const NAV_ORDER = ['home', 'search', 'notifications', 'chat', 'following', 'sett
  * Phone portrait keeps the FAB dock.
  */
 export default function LoungeIpadNavRail({ items = [], shortcuts = null }) {
+  const navEnd = useDuoNavRailEnd()
+
   useEffect(() => {
     const root = document.documentElement
     root.dataset.ipadNav = ''
     root.style.setProperty('--edge-ipad-rail', IPAD_NAV_RAIL_WIDTH)
+    if (navEnd) root.dataset.ipadNavEnd = ''
+    else delete root.dataset.ipadNavEnd
     return () => {
       delete root.dataset.ipadNav
+      delete root.dataset.ipadNavEnd
       root.style.removeProperty('--edge-ipad-rail')
     }
-  }, [])
+  }, [navEnd])
 
   const byId = new Map(items.map((item) => [item.id, item]))
   const navItems = NAV_ORDER.map((id) => byId.get(id)).filter(Boolean)
@@ -45,7 +51,9 @@ export default function LoungeIpadNavRail({ items = [], shortcuts = null }) {
     <nav
       data-ipad-nav-rail
       aria-label="Lounge"
-      className="fixed inset-y-0 left-0 z-[60] flex flex-col items-center border-r border-zinc-800 bg-zinc-950 px-2 pt-[calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px))+0.75rem)] pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
+      className={`fixed inset-y-0 z-[60] flex flex-col items-center border-zinc-800 bg-zinc-950 px-2 pt-[calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px))+0.75rem)] pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))] ${
+        navEnd ? 'right-0 border-l' : 'left-0 border-r'
+      }`}
       style={{ width: IPAD_NAV_RAIL_WIDTH }}
     >
       <div className="flex w-full shrink-0 justify-center pb-6">

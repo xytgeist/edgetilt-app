@@ -16805,7 +16805,7 @@ export default function SocialFeed({
             top: loungeFeedViewportTopPx,
             ...(loungeLandscapeEngagementActive
               ? {
-                  left: ipadNavRail ? 'var(--edge-ipad-rail)' : 0,
+                  left: ipadNavRail ? 'var(--edge-rail-inset-start, var(--edge-ipad-rail))' : 0,
                   right: 'auto',
                   width: 'var(--lounge-landscape-feed-col, calc(50vw - var(--edge-ipad-rail, 0px)))',
                   maxWidth: 'none',
@@ -16814,9 +16814,9 @@ export default function SocialFeed({
               : {
                   ...(ipadNavRail
                     ? {
-                        left: 'var(--edge-ipad-rail)',
-                        right: 0,
-                        width: 'calc(100vw - var(--edge-ipad-rail, 0px))',
+                        left: 'var(--edge-rail-inset-start, var(--edge-ipad-rail))',
+                        right: 'var(--edge-rail-inset-end, 0px)',
+                        width: 'auto',
                         maxWidth: 'none',
                       }
                     : {}),

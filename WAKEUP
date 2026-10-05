@@ -123,7 +123,7 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 **I am Mac Theo.** Background Island/Lock froze after Apple killed the 30s BG poll. ActivityKit **push tokens** + `lounge-live-activity-push` cron. Needs test SQL + Edge deploy + new IPA. Not promoted. Marketing still **1.4.95**.
 
 ### Mac Theo ACTIVE TRACK 2026-10-04 ... game hub resume 1.4.1001
-**I am Mac Theo.** Long background on a game screen reloaded Lounge home because `?game=` was stripped. Keep the param + restore last SPA URL natively. New IPA owed. Marketing still **1.4.95**.
+**I am Mac Theo.** Long background on a game screen reloaded Lounge home because `?game=` was stripped. Keep the param + restore last SPA URL natively. Promoted **`main` `8a9075a6`**. Prod IPA **1.4.95 (20261005030638)** TestFlight-only. Marketing still **1.4.95**.
 
 ### Mac Theo ACTIVE TRACK 2026-10-02 ... Quote embed caption truncate
 **I am Mac Theo.** On **`test`**, web **`1.4.977`**. Quote-repost embeds use the same caption truncate + see more as feed posts (detail no longer force-expands the quoted caption). Not promoted. Marketing still **1.4.95**.

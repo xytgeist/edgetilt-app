@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
+import { SLOTS_LANDSCAPE_COMPACT_QUERY } from '../shell/quickLinkDestinations.js'
 import { useDuoNavRailEnd } from '../shell/useIpadNavRail.js'
 
 function withDuoCollapse(item, collapse) {
@@ -14,6 +15,24 @@ function withDuoCollapse(item, collapse) {
 
 /** Same width as `--edge-ipad-rail` in `index.css`. 15% under the old 11rem − 50px column. */
 export const IPAD_NAV_RAIL_WIDTH = 'calc((11rem - 50px) * 0.85)'
+/** Phone landscape only … iPad keeps `IPAD_NAV_RAIL_WIDTH`. Must match CSS width override. */
+export const PHONE_LANDSCAPE_RAIL_WIDTH = '3.75rem'
+
+function useCompactPhoneLandscape() {
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      if (typeof window === 'undefined') return () => {}
+      const mq = window.matchMedia(SLOTS_LANDSCAPE_COMPACT_QUERY)
+      mq.addEventListener('change', onStoreChange)
+      return () => mq.removeEventListener('change', onStoreChange)
+    },
+    () =>
+      typeof window !== 'undefined'
+        ? window.matchMedia(SLOTS_LANDSCAPE_COMPACT_QUERY).matches
+        : false,
+    () => false,
+  )
+}
 
 /**
  * Open Duo: Music gutter under the island / status dock.
@@ -99,7 +118,12 @@ export default function LoungeIpadNavRail({
   shellMenuAttention = false,
 }) {
   const navEnd = useDuoNavRailEnd()
-  const railWidth = navEnd ? DUO_NAV_RAIL_WIDTH : IPAD_NAV_RAIL_WIDTH
+  const phoneLandscape = useCompactPhoneLandscape()
+  const railWidth = navEnd
+    ? DUO_NAV_RAIL_WIDTH
+    : phoneLandscape
+      ? PHONE_LANDSCAPE_RAIL_WIDTH
+      : IPAD_NAV_RAIL_WIDTH
   const [duoExtrasOpen, setDuoExtrasOpen] = useState(false)
 
   useEffect(() => {
@@ -266,7 +290,7 @@ export default function LoungeIpadNavRail({
       data-ipad-nav-rail
       aria-label="Lounge"
       className="fixed inset-y-0 left-0 z-[60] flex flex-col items-center border-r border-zinc-800 bg-zinc-950 px-2 pt-[calc(max(env(safe-area-inset-top,0px),var(--edge-sat,0px))+0.75rem)] pb-[max(1rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]"
-      style={{ width: IPAD_NAV_RAIL_WIDTH }}
+      style={{ width: railWidth }}
     >
       <div className="flex w-full shrink-0 justify-center pb-6">
         <IpadEvMark />

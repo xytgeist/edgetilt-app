@@ -5255,9 +5255,12 @@ html.light [data-ipad-nav-rail] [data-ipad-nav-shortcut-rule] {
     margin-top: 0.45rem;
   }
 }
-/* Phone landscape: tighter E mark + compose so the rail fits. */
+/* Phone landscape: narrow rail + smaller E / items / compose (iPad keeps the wide column). */
 @media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
-  [data-ipad-nav-rail] {
+  [data-ipad-nav-rail]:not([data-duo-nav-rail]) {
+    width: 3.75rem !important;
+    padding-left: 0.25rem !important;
+    padding-right: 0.25rem !important;
     padding-top: calc(max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) + 0.35rem) !important;
     padding-bottom: max(0.5rem, max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px))) !important;
   }
@@ -5271,20 +5274,20 @@ html.light [data-ipad-nav-rail] [data-ipad-nav-shortcut-rule] {
     margin-bottom: -0.6rem;
   }
   [data-ipad-nav-rail] [data-ipad-nav-item] {
-    height: 2.75rem !important;
-    width: 2.75rem !important;
+    height: 2.35rem !important;
+    width: 2.35rem !important;
   }
   [data-ipad-nav-rail] [data-ipad-nav-item] > span.block {
-    height: 1.5rem !important;
-    width: 1.5rem !important;
+    height: 1.25rem !important;
+    width: 1.25rem !important;
   }
   [data-ipad-nav-rail] [data-ipad-nav-compose] {
-    height: 3.25rem !important;
-    width: 3.25rem !important;
+    height: 2.5rem !important;
+    width: 2.5rem !important;
   }
   [data-ipad-nav-rail] [data-ipad-nav-compose] > span.block {
-    height: 1.5rem !important;
-    width: 1.5rem !important;
+    height: 1.15rem !important;
+    width: 1.15rem !important;
   }
   [data-ipad-nav-rail] > div:last-child {
     padding-top: 0.35rem !important;
@@ -5350,6 +5353,45 @@ html[data-ipad-nav] .lounge-title-nav-menu-item .nav-icon-tile__glyph {
 html[data-ipad-nav] .lounge-title-nav-menu .h-3\.5.w-3\.5 {
   height: 1.3rem;
   width: 1.3rem;
+}
+/* Phone landscape inherits data-ipad-nav … reset hamburger expand off the iPad tile scale. */
+@media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+  html[data-ipad-nav] .lounge-title-nav-menu {
+    min-width: 8.05rem;
+    max-width: min(10.5rem, calc(100vw - var(--edge-ipad-rail) - 0.75rem));
+    max-height: min(
+      22rem,
+      calc(
+        100dvh - max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)) -
+          max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)) - 4rem
+      )
+    );
+    padding: 0.5rem;
+  }
+  html[data-ipad-nav] .lounge-title-nav-menu-item {
+    padding: 0.375rem 0.625rem;
+    font-size: 0.875rem;
+  }
+  html[data-ipad-nav] .lounge-title-nav-menu-item > span {
+    gap: 0.625rem;
+  }
+  html[data-ipad-nav] .lounge-title-nav-menu-item > span > [aria-hidden] {
+    font-size: inherit;
+    line-height: inherit;
+  }
+  html[data-ipad-nav] .lounge-title-nav-menu-item > span > .nav-icon-tile {
+    width: 1.875rem;
+    height: 1.875rem;
+    border-radius: 0.6rem;
+  }
+  html[data-ipad-nav] .lounge-title-nav-menu-item .nav-icon-tile__glyph {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+  html[data-ipad-nav] .lounge-title-nav-menu .h-3\.5.w-3\.5 {
+    height: 0.875rem;
+    width: 0.875rem;
+  }
 }
 /* Phone card sizes "Degen with EDGE" to the card, not the viewport, so it stays one line. */
 [data-auth-wordmark-slot] {

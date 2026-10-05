@@ -2845,3 +2845,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-05 … iPhone landscape side pad half safe-area
 
 **I am Mac Theo.** **`1.4.1043`**: 1042 looked identical because sal/sar already beat the rem floor. Now phone landscape sides use `max(0.5rem, sal/sar * 0.5)`. Hard-refresh on test. Not promoted.
+
+### Mac Theo 2026-10-05 … phone landscape thin rail + phone hamburger
+
+**I am Mac Theo.** **`1.4.1044`**: phone landscape rail `3.75rem` (was ~iPad column), smaller compose/items, hamburger expand resets to phone icon tiles (was inheriting iPad `2.6rem` tiles via `data-ipad-nav`). Hard-refresh on test. Not promoted.

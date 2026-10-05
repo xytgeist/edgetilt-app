@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **Phone landscape thin rail + phone hamburger (`1.4.1044`).** Rail width `3.75rem` + smaller compose/items; hamburger expand resets off iPad tile scale (`html[data-ipad-nav]` was leaving 2.6rem icons on short phones).
 - **2026-10-05:** **iPhone landscape side pad half safe-area (`1.4.1043`).** 1042’s rem-floor drop was a no-op when shell sal/sar already exceeded 1.25rem. Sides now `max(0.5rem, sal/sar * 0.5)`.
 - **2026-10-05:** **iPhone landscape side pad tighter (`1.4.1042`).** Phone landscape side floor `1.25rem` → `0.5rem` (still `max` with sal/sar).
 - **2026-10-05:** **iPhone landscape full-frame side pad (`1.4.1041`).** Phone landscape sets `--edge-rail-inset-start/end` from rail + `max(1.25rem, sal/sar)` and parks the rail at the leading side inset so the whole frame (not just the hamburger) clears both bezels/cutouts.

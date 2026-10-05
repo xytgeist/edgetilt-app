@@ -114,9 +114,14 @@ export default function LoungeGameHubModal({
     [game?.sport_key, sports?.games],
   )
 
-  const isCfbGame = String(game?.sport_key || '').includes('ncaaf')
-  const showFantasyTab = Boolean(game) && !isCfbGame
-  const showNewsTab = Boolean(game) && String(game?.sport_key || '').includes('americanfootball')
+  const sportKey = String(game?.sport_key || '')
+  const isFootballGame = sportKey.includes('americanfootball')
+  const isCfbGame = sportKey.includes('ncaaf')
+  // Fantasy is NFL-only … do not show an empty Fantasy tab for CFB / NHL / NBA / MLB.
+  const showFantasyTab = Boolean(game) && sportKey.includes('americanfootball_nfl') && !isCfbGame
+  const showNewsTab = Boolean(game) && isFootballGame
+  // Players needs football roster Edges … hide until NHL/NBA/MLB have their own.
+  const showPlayersTab = Boolean(game) && isFootballGame
   const showPlaysTab = Boolean(game) && game.status !== 'pre'
   const fieldPlayers = useMemo(
     () => mergeFieldRoster(fantasy.players, detail.rosters, game),
@@ -265,7 +270,16 @@ export default function LoungeGameHubModal({
 
   useEffect(() => {
     if (!game || !supabaseClient) return undefined
-    const cfb = String(game.sport_key || '').includes('ncaaf')
+    const sk = String(game.sport_key || '')
+    const football = sk.includes('americanfootball')
+    if (!football) {
+      setFantasy(EMPTY_FANTASY)
+      setFantasyLoading(false)
+      setFantasyErr('')
+      fantasyRefreshRef.current = null
+      return undefined
+    }
+    const cfb = sk.includes('ncaaf')
     const gameId = game.id
     const cachedFantasy = readGameHubCache(gameId)?.fantasy
     setFantasy(cachedFantasy || EMPTY_FANTASY)
@@ -493,7 +507,7 @@ export default function LoungeGameHubModal({
     ...(showNewsTab ? [{ id: 'news', label: 'News' }] : []),
     { id: 'stats', label: 'Stats' },
     ...(showPlaysTab ? [{ id: 'plays', label: 'Plays' }] : []),
-    { id: 'players', label: 'Players' },
+    ...(showPlayersTab ? [{ id: 'players', label: 'Players' }] : []),
     ...(showFantasyTab ? [{ id: 'fantasy', label: 'Fantasy' }] : []),
     { id: 'posts', label: 'Posts' },
     { id: 'chat', label: 'Chat' },

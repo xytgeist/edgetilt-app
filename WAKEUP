@@ -114,6 +114,9 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Mac Theo ACTIVE TRACK 2026-10-05 ... NHL / NBA / MLB hubs v1
+**Web `1.4.1054`.** Sports Hub tiles for NHL / NBA / MLB are live (PGA/MLS still Coming soon). Scoreboard Edge fetches those leagues in parallel with NFL/CFB (short PT window). Per-game hub = Stats / Plays / Posts / Chat (no News / Players / Fantasy yet). **Redeploy `lounge-sports-scoreboard` on test** before smoke. Marketing still **1.4.95**.
+
 ### Mac Theo ACTIVE TRACK 2026-10-04 ... Sports Island shared compact
 **Widget `1.4.999`.** Shared Dynamic Island was a wide black pill with one logo. Compact now `ViewThatFits` so trailing does not vanish. Marketing still **1.4.95**.
 **Test IPA:** Xcode Cloud **TestFlight Internal** succeeded on **`test` `90b72895`** (2026-10-04). Wait for ASC processing, then install the newest Internal build (lvslotpro.com).

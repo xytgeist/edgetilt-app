@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **NHL / NBA / MLB hubs v1 (`1.4.1054`).** Sports Hub tiles open league slates. `lounge-sports-scoreboard` fetches NHL/NBA/MLB in parallel with NFL/CFB (yesterday+today+tomorrow PT; each pack soft-fails). ESPN patches abbrev/logo/record for those leagues. Per-game hub tabs: Stats / Plays (live/final) / Posts / Chat. Fantasy gated to NFL only; News + Players stay football-only until roster Edges exist. PGA/MLS still Coming soon. Redeploy Edge on test; prod on promote.
 - **2026-10-05:** **Sign-off … phone landscape chrome day (`1.4.1041`–`1.4.1053`).** Ryan smoked on device: full-frame side pads, thin rail / E align / shortcuts / hamburger, true 50/50 engagement split, pregame prop rails, game menu State fold-in, dense Calcs cards + Calcs title bar, Guides/Calcs gutters + vertical rhythm. Prod web tip **`1.4.1053`** (`8378808b`). No new IPA.
 - **2026-10-05:** **Guides/Calcs vertical rhythm (`1.4.1053`).** Phone landscape: Guides search→first card `0.5rem` (was `mb-5`); Calcs drops extra list top pad; calc card gap `0.375rem` matching tools hub.
 - **2026-10-05:** **AP Guides pane gutters match tools (`1.4.1052`).** Guides `paneEmbed` scroll gets `data-slots-landscape-pane-scroll` so phone landscape search/cards use the same `0.5rem` gutters as Slots tools.

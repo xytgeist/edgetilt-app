@@ -9,6 +9,12 @@ export const LOUNGE_SPORTS_HUB_FILTER_ALL = 'all'
 export const LOUNGE_SPORTS_HUB_FILTER_NFL = 'americanfootball_nfl'
 /** CFB week window (Thu–Mon; no Fantasy tab in the per-game hub). */
 export const LOUNGE_SPORTS_HUB_FILTER_CFB = 'americanfootball_ncaaf'
+/** NHL short slate (yesterday + today + tomorrow PT). */
+export const LOUNGE_SPORTS_HUB_FILTER_NHL = 'icehockey_nhl'
+/** NBA short slate (yesterday + today + tomorrow PT). */
+export const LOUNGE_SPORTS_HUB_FILTER_NBA = 'basketball_nba'
+/** MLB short slate (yesterday + today + tomorrow PT). */
+export const LOUNGE_SPORTS_HUB_FILTER_MLB = 'baseball_mlb'
 
 /**
  * @param {string} [filter]
@@ -20,6 +26,11 @@ export function normalizeLoungeSportsHubFilter(filter) {
   // ncaaf before nfl … "americanfootball_ncaaf" must not be treated as NFL.
   if (raw === 'cfb' || raw === 'ncaaf' || raw.includes('ncaaf')) return LOUNGE_SPORTS_HUB_FILTER_CFB
   if (raw === 'nfl' || raw.includes('nfl')) return LOUNGE_SPORTS_HUB_FILTER_NFL
+  if (raw === 'nhl' || raw.includes('icehockey_nhl') || raw.includes('hockey')) {
+    return LOUNGE_SPORTS_HUB_FILTER_NHL
+  }
+  if (raw === 'nba' || raw.includes('basketball_nba')) return LOUNGE_SPORTS_HUB_FILTER_NBA
+  if (raw === 'mlb' || raw.includes('baseball_mlb')) return LOUNGE_SPORTS_HUB_FILTER_MLB
   return String(filter || '').trim()
 }
 

@@ -11,6 +11,9 @@ import {
 import {
   LOUNGE_SPORTS_HUB_FILTER_ALL,
   LOUNGE_SPORTS_HUB_FILTER_CFB,
+  LOUNGE_SPORTS_HUB_FILTER_MLB,
+  LOUNGE_SPORTS_HUB_FILTER_NBA,
+  LOUNGE_SPORTS_HUB_FILTER_NHL,
   LOUNGE_SPORTS_HUB_FILTER_NFL,
 } from './loungeSportsHubNav.js'
 import { loungeSportsSlateGames } from './loungeSportsSlateWindow.js'
@@ -51,9 +54,9 @@ function preloadSlatePillAssets(games) {
 const SPORTS_HUB_LEAGUES = [
   { id: 'nfl', label: 'NFL', icon: '🏈', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_NFL },
   { id: 'cfb', label: 'CFB', icon: '🏟️', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_CFB },
-  { id: 'nba', label: 'NBA', icon: '🏀', ready: false },
-  { id: 'mlb', label: 'MLB', icon: '⚾', ready: false },
-  { id: 'nhl', label: 'NHL', icon: '🏒', ready: false },
+  { id: 'nba', label: 'NBA', icon: '🏀', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_NBA },
+  { id: 'mlb', label: 'MLB', icon: '⚾', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_MLB },
+  { id: 'nhl', label: 'NHL', icon: '🏒', ready: true, filter: LOUNGE_SPORTS_HUB_FILTER_NHL },
   { id: 'pga', label: 'PGA', icon: '⛳', ready: false },
   { id: 'mls', label: 'MLS', icon: '⚽', ready: false },
 ]
@@ -66,6 +69,21 @@ function isNflHubFilter(filter) {
 function isCfbHubFilter(filter) {
   const f = String(filter || '')
   return f === LOUNGE_SPORTS_HUB_FILTER_CFB || f.includes('ncaaf') || f === 'cfb'
+}
+
+function isNhlHubFilter(filter) {
+  const f = String(filter || '')
+  return f === LOUNGE_SPORTS_HUB_FILTER_NHL || f.includes('icehockey_nhl') || f === 'nhl'
+}
+
+function isNbaHubFilter(filter) {
+  const f = String(filter || '')
+  return f === LOUNGE_SPORTS_HUB_FILTER_NBA || f.includes('basketball_nba') || f === 'nba'
+}
+
+function isMlbHubFilter(filter) {
+  const f = String(filter || '')
+  return f === LOUNGE_SPORTS_HUB_FILTER_MLB || f.includes('baseball_mlb') || f === 'mlb'
 }
 
 function SportsHubLeagueButtons({ onOpenLeague }) {
@@ -129,7 +147,10 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
 
   const nflHub = isNflHubFilter(filter)
   const cfbHub = isCfbHubFilter(filter)
-  const leagueHub = nflHub || cfbHub
+  const nhlHub = isNhlHubFilter(filter)
+  const nbaHub = isNbaHubFilter(filter)
+  const mlbHub = isMlbHubFilter(filter)
+  const leagueHub = nflHub || cfbHub || nhlHub || nbaHub || mlbHub
   const boardFetched = Boolean(sports?.boardFetched)
 
   // Once a league hub is ready it stays ready for that open … live polls must not re-gate.
@@ -158,6 +179,9 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
   const sections = useMemo(() => {
     if (nflHub) return [{ key: 'nfl', label: 'NFL', games }]
     if (cfbHub) return [{ key: 'cfb', label: 'CFB', games }]
+    if (nhlHub) return [{ key: 'nhl', label: 'NHL', games }]
+    if (nbaHub) return [{ key: 'nba', label: 'NBA', games }]
+    if (mlbHub) return [{ key: 'mlb', label: 'MLB', games }]
     const bySport = new Map()
     for (const game of games) {
       const key = String(game?.sport_key || 'other')
@@ -169,11 +193,21 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
       label: sportSectionLabel(key),
       games: list,
     }))
-  }, [cfbHub, filter, games, nflHub])
+  }, [cfbHub, filter, games, mlbHub, nbaHub, nflHub, nhlHub])
 
   if (!open || typeof document === 'undefined') return null
 
-  const title = nflHub ? 'NFL Hub' : cfbHub ? 'CFB Hub' : 'Sports Hub'
+  const title = nflHub
+    ? 'NFL Hub'
+    : cfbHub
+      ? 'CFB Hub'
+      : nhlHub
+        ? 'NHL Hub'
+        : nbaHub
+          ? 'NBA Hub'
+          : mlbHub
+            ? 'MLB Hub'
+            : 'Sports Hub'
 
   const root = (
     <div
@@ -242,7 +276,7 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
           </div>
         ) : !games.length ? (
           <div className="px-2 py-16 text-center text-sm text-zinc-500">
-            No games on this slate right now. Pull to refresh from Lounge, or check back closer to kickoff.
+            No games on this slate right now. Pull to refresh from Lounge, or check back closer to game time.
           </div>
         ) : (
           <div className="space-y-5 py-2">

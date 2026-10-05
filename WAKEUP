@@ -2828,4 +2828,8 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 
 ### Mac Theo 2026-10-05 … iPhone landscape full-frame side pad
 
-**I am Mac Theo.** **`1.4.1041`**: phone landscape insets the whole frame (rail + shell + title/feed) via `--edge-rail-inset-*` = rail + `max(1.25rem, sal/sar)`. Rail shifts off the leading cutout; trailing content clears the other corner. Not title-only anymore. Hard-refresh on test. Not promoted.
+**I am Mac Theo.** **`1.4.1041`**: phone landscape insets the whole frame (rail + shell + title/feed) via `--edge-rail-inset-*` = rail + `max(1.25rem, sal/sar)`. Rail shifts off the leading cutout; trailing content clears the other corner. Not title-only anymore.
+
+### Mac Theo 2026-10-05 … Promote 1.4.1041
+
+**I am Mac Theo.** Promoted **`test` → `main` (`5cf4fb61`)**. Vercel prod web **`1.4.1041`** (full-frame iPhone landscape side pad). No new IPA. Back on **`test`**.

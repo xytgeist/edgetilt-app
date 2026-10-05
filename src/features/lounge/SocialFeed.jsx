@@ -425,7 +425,7 @@ import TitleBarStatusLine from '../../components/TitleBarStatusLine.jsx'
 // LOUNGE_DOCK_FOOTER_BAR_DISABLED - classic dock icon row (FAB wheel is primary nav). Re-enable import + JSX below to restore.
 // import LoungeDockFooterBar from '../../components/LoungeDockFooterBar.jsx'
 import LoungeDockArcCarouselPrototype from '../../components/LoungeDockArcCarouselPrototype.jsx'
-import LoungeIpadNavRail from './LoungeIpadNavRail.jsx'
+import LoungeIpadNavRail, { DUO_CONTENT_TOP_FALLBACK_PX } from './LoungeIpadNavRail.jsx'
 import { useDuoNavRailEnd, useIpadNavRail } from '../shell/useIpadNavRail.js'
 import {
   blurLoungeComposerCaption,
@@ -16731,15 +16731,25 @@ export default function SocialFeed({
     loungeSlateInPane ||
     loungeProfileInPane
 
+  const loungeFeedTopInsetCss = duoNavEnd
+    ? `max(${DUO_CONTENT_TOP_FALLBACK_PX}px, max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))`
+    : 'max(0px, max(env(safe-area-inset-top, 0px), var(--edge-sat, 0px)))'
+  const loungeTitleBarTopPx = Math.max(
+    loungeFeedViewportTopPx,
+    readCssSafeAreaTopPx(),
+    duoNavEnd ? DUO_CONTENT_TOP_FALLBACK_PX : 0,
+  )
+
   return (
     <div
       data-lounge-feed-root=""
       {...(loungeLandscapeEngagementActive ? { 'data-lounge-landscape-split': '' } : {})}
       className={
         loungeLandscapeEngagementActive
-          ? 'mx-auto flex h-dvh max-h-dvh min-h-0 w-full max-w-none flex-col overflow-hidden bg-zinc-950 pt-[max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-0'
-          : 'mx-auto flex h-dvh max-h-dvh min-h-0 w-full max-w-2xl flex-col overflow-hidden bg-zinc-950 pt-[max(0px,max(env(safe-area-inset-top,0px),var(--edge-sat,0px)))] pb-0'
+          ? 'mx-auto flex h-dvh max-h-dvh min-h-0 w-full max-w-none flex-col overflow-hidden bg-zinc-950 pb-0'
+          : 'mx-auto flex h-dvh max-h-dvh min-h-0 w-full max-w-2xl flex-col overflow-hidden bg-zinc-950 pb-0'
       }
+      style={{ paddingTop: loungeFeedTopInsetCss }}
     >
       <LoungeStreamLightboxProvider ctx={loungeStreamLightboxCtx}>
       <LoungePendingPublishActionsProvider cancelPendingPublish={cancelAuthorPendingVideoPublish}>
@@ -16835,7 +16845,7 @@ export default function SocialFeed({
         <>
         <EdgeStatusBarScrollPlate
           reveal={loungeTitleReveal}
-          heightPx={loungeFeedViewportTopPx}
+          heightPx={loungeTitleBarTopPx}
           className={
             loungeLandscapeEngagementActive
               ? 'max-w-none'
@@ -16853,14 +16863,14 @@ export default function SocialFeed({
               : 'fixed left-1/2 z-[50] w-full max-w-2xl border-b border-zinc-800/95 bg-zinc-950/95 backdrop-blur supports-[backdrop-filter]:bg-zinc-950/85 shadow-[0_1px_0_rgba(0,0,0,0.22)] will-change-transform'
           }
           style={{
-            top: loungeFeedViewportTopPx,
+            top: loungeTitleBarTopPx,
             ...(loungeLandscapeEngagementActive
               ? {
                   left: ipadNavRail ? 'var(--edge-rail-inset-start, var(--edge-ipad-rail))' : 0,
                   right: 'auto',
                   width: 'var(--lounge-landscape-feed-col, calc(50vw - var(--edge-ipad-rail, 0px)))',
                   maxWidth: 'none',
-                  transform: `translate3d(0, ${loungeTitleBarHideTranslateYPx(loungeTitleReveal, loungeTitleBarHeight, loungeFeedViewportTopPx)}px, 0)`,
+                  transform: `translate3d(0, ${loungeTitleBarHideTranslateYPx(loungeTitleReveal, loungeTitleBarHeight, loungeTitleBarTopPx)}px, 0)`,
                 }
               : {
                   ...(ipadNavRail
@@ -16871,7 +16881,7 @@ export default function SocialFeed({
                         maxWidth: 'none',
                       }
                     : {}),
-                  transform: `translate3d(${ipadNavRail ? '0' : '-50%'}, ${loungeTitleBarHideTranslateYPx(loungeTitleReveal, loungeTitleBarHeight, loungeFeedViewportTopPx)}px, 0)`,
+                  transform: `translate3d(${ipadNavRail ? '0' : '-50%'}, ${loungeTitleBarHideTranslateYPx(loungeTitleReveal, loungeTitleBarHeight, loungeTitleBarTopPx)}px, 0)`,
                 }),
             pointerEvents: loungeTitleReveal > 0.12 ? 'auto' : 'none',
           }}

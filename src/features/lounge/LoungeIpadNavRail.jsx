@@ -27,6 +27,11 @@ export const DUO_NAV_PILL_WIDTH_PX = 50
 export const DUO_NAV_PILL_TRAILING_PAD_PX = 22
 /** Extra below `--edge-sat` so the menu pill clears the wifi dock. */
 export const DUO_NAV_PILL_TOP_EXTRA_PX = 134
+/**
+ * Open Duo content pane often reports 0 top safe area (status lives in the trailing dock).
+ * Floor the Lounge title / feed so EDGE is not clipped by the window chrome.
+ */
+export const DUO_CONTENT_TOP_FALLBACK_PX = 54
 
 /** Glass plate is a sibling … never put overflow/clip on the same node as the frost. */
 function DuoGlassPill({

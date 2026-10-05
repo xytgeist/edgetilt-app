@@ -2757,3 +2757,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-05 … Duo hamburger with compose
 
 **I am Mac Theo.** **`1.4.1029`**: hamburger is a glass circle with compose at the bottom. Top menu pill is Home + caret only. Shell menu opens upward. Hard-refresh until 1.4.1029. Not promoted.
+
+### Mac Theo 2026-10-05 … Duo title bar top inset
+
+**I am Mac Theo.** **`1.4.1030`**: Open Duo content pane often reports 0 top safe area (status is in the trailing dock) … EDGE was clipped. Floor feed/title top at 54px on Duo. Hard-refresh until 1.4.1030. Not promoted.

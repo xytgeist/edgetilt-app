@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **Phone landscape true 50/50 split (`1.4.1047`).** Feed/pane (and chat/slots) cols subtract `--edge-phone-landscape-side-*` so (pad+rail+left) = 50vw and (right+pad) = 50vw; side insets had left the left half oversized.
 - **2026-10-05:** **Phone landscape E align + shortcut size (`1.4.1046`).** Rail top pad `sat+0.85rem` so E meets EDGE midline; shortcuts shrink to nav item size (were still iPad 4.5rem).
 - **2026-10-05:** **Pregame prop rails a bit wider (`1.4.1045`).** Landscape matchup board PLAYER PROPS `0.9fr` → `1.15fr` (teams `0.95fr`, gap `1.5`) so cents stop truncating.
 - **2026-10-05:** **Phone landscape thin rail + phone hamburger (`1.4.1044`).** Rail width `3.75rem` + smaller compose/items; hamburger expand resets off iPad tile scale (`html[data-ipad-nav]` was leaving 2.6rem icons on short phones).

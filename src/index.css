@@ -5090,18 +5090,26 @@ html.light [data-chat-feature][data-chat-landscape-split] [data-chat-landscape-p
   background-color: #ffffff;
 }
 @media (orientation: landscape) and (max-height: 520px) and (pointer: coarse) {
+  /* (leading pad + rail + feed) = 50vw, (pane + trailing pad) = 50vw.
+     Side pads live in --edge-rail-inset-*; subtract them here or left eats the split. */
   [data-lounge-feed-root][data-lounge-landscape-split] {
-    --lounge-landscape-feed-col: calc(50vw - var(--edge-ipad-rail, 0px));
-    --lounge-landscape-pane-col: 50vw;
+    --lounge-landscape-feed-col: calc(
+      50vw - var(--edge-ipad-rail, 0px) - var(--edge-phone-landscape-side-start, 0px)
+    );
+    --lounge-landscape-pane-col: calc(50vw - var(--edge-phone-landscape-side-end, 0px));
   }
   [data-chat-feature][data-chat-landscape-split] {
-    --chat-landscape-list-col: calc(50vw - var(--edge-ipad-rail, 0px));
-    --chat-landscape-pane-col: 50vw;
+    --chat-landscape-list-col: calc(
+      50vw - var(--edge-ipad-rail, 0px) - var(--edge-phone-landscape-side-start, 0px)
+    );
+    --chat-landscape-pane-col: calc(50vw - var(--edge-phone-landscape-side-end, 0px));
   }
-  /* (rail + tools) = 50vw, pane = 50vw. Do not use 50% of leftover … that ignores the rail. */
+  /* (leading pad + rail + tools) = 50vw, (pane + trailing pad) = 50vw. */
   [data-slots-landscape-split] {
-    --slots-landscape-tools-col: calc(50vw - var(--edge-ipad-rail, 0px));
-    --slots-landscape-pane-col: 50vw;
+    --slots-landscape-tools-col: calc(
+      50vw - var(--edge-ipad-rail, 0px) - var(--edge-phone-landscape-side-start, 0px)
+    );
+    --slots-landscape-pane-col: calc(50vw - var(--edge-phone-landscape-side-end, 0px));
   }
   /* Phone landscape full frame: inset rail + shell from both continuous corners /
      camera. Use ~half of sal/sar (not the full inset) so chrome sits closer;

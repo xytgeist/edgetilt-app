@@ -16903,7 +16903,7 @@ export default function SocialFeed({
               ? {
                   left: ipadNavRail ? 'var(--edge-rail-inset-start, var(--edge-ipad-rail))' : 0,
                   right: 'auto',
-                  width: 'var(--lounge-landscape-feed-col, calc(50vw - var(--edge-ipad-rail, 0px)))',
+                  width: 'var(--lounge-landscape-feed-col, calc(50vw - var(--edge-ipad-rail, 0px) - var(--edge-phone-landscape-side-start, 0px)))',
                   maxWidth: 'none',
                   transform: `translate3d(0, ${loungeTitleBarHideTranslateYPx(loungeTitleReveal, loungeTitleBarHeight, loungeTitleBarTopPx)}px, 0)`,
                 }

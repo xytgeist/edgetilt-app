@@ -2725,3 +2725,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-05 … Duo compose circle + collapsed tabs
 
 **I am Mac Theo.** **`1.4.1021`**: compose is a 50px circle under the wifi dock. Tab pill is Home + hamburger + up caret; caret expands Search/Alerts/Chat/Settings. iPad 11 unchanged. Hard-refresh until 1.4.1021. Not promoted.
+
+### Mac Theo 2026-10-05 … Duo tab pill bottom + real caret
+
+**I am Mac Theo.** **`1.4.1022`**: tab pill parked at the bottom. Chevron caret at the **top** of the pill; extras expand **up**. Compose stays under wifi. Shell menu opens upward from More. Hard-refresh until 1.4.1022. Not promoted.

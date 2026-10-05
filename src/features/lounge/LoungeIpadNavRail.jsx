@@ -137,60 +137,59 @@ export default function LoungeIpadNavRail({
               <RailButton item={compose} compact />
             </div>
           ) : null}
-          <div
-            data-duo-nav-pill
-            data-duo-nav-tabs
-            data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
-            className="flex shrink-0 flex-col items-center gap-0 overflow-hidden rounded-full bg-zinc-800/70 py-1 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
-            style={pillStyle}
-          >
-            {homeItem ? <RailButton item={homeItem} compact /> : null}
-            {duoExtrasOpen
-              ? extraItems.map((item) => <RailButton key={item.id} item={item} compact />)
-              : null}
-            {onOpenShellMenu ? (
-              <button
-                type="button"
-                data-title-bar-menu-btn
-                data-duo-nav-more
-                aria-label={
-                  shellMenuOpen
-                    ? 'Close navigation menu'
-                    : shellMenuAttention
-                      ? 'Open navigation menu · pending poker offer'
-                      : 'Open navigation menu'
-                }
-                aria-expanded={shellMenuOpen}
-                aria-haspopup="menu"
-                onClick={() => onOpenShellMenu()}
-                className="relative grid h-[50px] w-full place-items-center text-zinc-200 touch-manipulation [-webkit-tap-highlight-color:transparent]"
-              >
-                <span aria-hidden className="block leading-none text-xl -translate-y-px">
-                  {shellMenuOpen ? '×' : '☰'}
-                </span>
-                {shellMenuAttention && !shellMenuOpen ? (
-                  <span
-                    className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[#06cefc] ring-2 ring-zinc-900"
-                    aria-hidden
-                  />
-                ) : null}
-              </button>
-            ) : null}
-            {extraItems.length > 0 ? (
-              <button
-                type="button"
-                data-duo-nav-expand
-                aria-label={duoExtrasOpen ? 'Hide extra navigation' : 'Show extra navigation'}
-                aria-expanded={duoExtrasOpen}
-                onClick={() => setDuoExtrasOpen((open) => !open)}
-                className="grid h-[36px] w-full place-items-center text-zinc-300 touch-manipulation [-webkit-tap-highlight-color:transparent]"
-              >
-                <span aria-hidden className="block text-[15px] leading-none">
-                  {duoExtrasOpen ? '▾' : '▴'}
-                </span>
-              </button>
-            ) : null}
-          </div>
+        </div>
+        <div className="min-h-0 flex-1" aria-hidden />
+        <div
+          data-duo-nav-pill
+          data-duo-nav-tabs
+          data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
+          className="flex shrink-0 flex-col items-center gap-0 overflow-hidden rounded-full bg-zinc-800/70 py-1 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
+          style={pillStyle}
+        >
+          {extraItems.length > 0 ? (
+            <button
+              type="button"
+              data-duo-nav-expand
+              aria-label={duoExtrasOpen ? 'Hide extra navigation' : 'Show extra navigation'}
+              aria-expanded={duoExtrasOpen}
+              onClick={() => setDuoExtrasOpen((open) => !open)}
+              className="grid h-[44px] w-full place-items-center text-zinc-300 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+            >
+              <DuoCaretIcon open={duoExtrasOpen} />
+            </button>
+          ) : null}
+          {duoExtrasOpen
+            ? extraItems.map((item) => <RailButton key={item.id} item={item} compact />)
+            : null}
+          {homeItem ? <RailButton item={homeItem} compact /> : null}
+          {onOpenShellMenu ? (
+            <button
+              type="button"
+              data-title-bar-menu-btn
+              data-duo-nav-more
+              aria-label={
+                shellMenuOpen
+                  ? 'Close navigation menu'
+                  : shellMenuAttention
+                    ? 'Open navigation menu · pending poker offer'
+                    : 'Open navigation menu'
+              }
+              aria-expanded={shellMenuOpen}
+              aria-haspopup="menu"
+              onClick={() => onOpenShellMenu()}
+              className="relative grid h-[50px] w-full place-items-center text-zinc-200 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+            >
+              <span aria-hidden className="block leading-none text-xl -translate-y-px">
+                {shellMenuOpen ? '×' : '☰'}
+              </span>
+              {shellMenuAttention && !shellMenuOpen ? (
+                <span
+                  className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[#06cefc] ring-2 ring-zinc-900"
+                  aria-hidden
+                />
+              ) : null}
+            </button>
+          ) : null}
         </div>
       </nav>
     )
@@ -221,6 +220,27 @@ export default function LoungeIpadNavRail({
         </div>
       ) : null}
     </nav>
+  )
+}
+
+/** Chevron caret. Collapsed points up (expand upward); open points down. */
+function DuoCaretIcon({ open = false }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      aria-hidden
+      className="block h-5 w-5"
+    >
+      <path
+        d={open ? 'M6.5 9.5 12 15l5.5-5.5' : 'M6.5 14.5 12 9l5.5 5.5'}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.25"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   )
 }
 

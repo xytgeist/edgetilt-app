@@ -4701,6 +4701,9 @@ html[data-ipad-nav][data-ipad-nav-end] {
 html[data-ipad-nav-end] [data-duo-nav-rail] {
   --edge-ipad-rail: 5.25rem;
 }
+html[data-ipad-nav-end] [data-duo-nav-pill] {
+  width: 2.25rem; /* match Duo status-dock circle */
+}
 html[data-ipad-nav-end] [data-duo-feed-compose] {
   right: calc(var(--edge-rail-inset-end, 5.25rem) + 0.75rem);
   bottom: max(1rem, max(env(safe-area-inset-bottom, 0px), var(--edge-sab, 0px)));

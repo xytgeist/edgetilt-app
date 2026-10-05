@@ -2681,3 +2681,7 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-05 … Duo Mail/Music layout
 
 **I am Mac Theo.** Web **`1.4.1009`**: floating frosted status-aligned nav (Music), Lounge split ~40/60 feed|detail (Mail). Hard-refresh Duo sim. Not promoted.
+
+### Mac Theo 2026-10-05 … Duo pill = status dock width
+
+**I am Mac Theo.** Web **`1.4.1010`**: menu pill fixed 2.25rem to match the native status circle; trailing pad so right edges align. Hard-refresh. Not promoted.

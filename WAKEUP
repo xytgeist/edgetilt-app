@@ -2796,4 +2796,8 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 
 ### Mac Theo 2026-10-05 … iPhone landscape title overshoot
 
-**I am Mac Theo.** **`1.4.1037`**: 1036 fed measured scroll-top back into root `paddingTop`, which locked portrait sat after landscape rotate and shoved EDGE under Discover. Pad + title `top` back on live CSS sat; orient resets the measure to fresh sat. iPhone landscape only matter … Duo 54px floor unchanged. Hard-refresh. Not promoted.
+**I am Mac Theo.** **`1.4.1037`**: 1036 fed measured scroll-top back into root `paddingTop`, which locked portrait sat after landscape rotate and shoved EDGE under Discover. Pad + title `top` back on live CSS sat; orient resets the measure to fresh sat. iPhone landscape only matter … Duo 54px floor unchanged. Hard-refresh.
+
+### Mac Theo 2026-10-05 … Promote 1.4.1037
+
+**I am Mac Theo.** Promoted **`test` → `main` (`d8623a9f`)**. Vercel prod web **`1.4.1037`** (iPhone landscape title overshoot). No new IPA. Back on **`test`**.

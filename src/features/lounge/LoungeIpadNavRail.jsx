@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useDuoNavRailEnd } from '../shell/useIpadNavRail.js'
 
 /** Same width as `--edge-ipad-rail` in `index.css`. 15% under the old 11rem − 50px column. */
@@ -35,8 +35,9 @@ const EV_MARKS = [
 ]
 
 const NAV_ORDER = ['home', 'search', 'notifications', 'chat', 'following', 'settings']
-/** Duo tabs. Following stays in More. */
+/** Duo tabs. Following stays in More. Home stays visible; the rest hide behind the caret. */
 const DUO_NAV_ORDER = ['home', 'search', 'notifications', 'chat', 'settings']
+const DUO_NAV_EXTRA_IDS = ['search', 'notifications', 'chat', 'settings']
 
 /**
  * iPad portrait and landscape, plus phone landscape.
@@ -53,6 +54,7 @@ export default function LoungeIpadNavRail({
 }) {
   const navEnd = useDuoNavRailEnd()
   const railWidth = navEnd ? DUO_NAV_RAIL_WIDTH : IPAD_NAV_RAIL_WIDTH
+  const [duoExtrasOpen, setDuoExtrasOpen] = useState(false)
 
   useEffect(() => {
     const root = document.documentElement
@@ -70,6 +72,13 @@ export default function LoungeIpadNavRail({
   const byId = new Map(items.map((item) => [item.id, item]))
   const navItems = (navEnd ? DUO_NAV_ORDER : NAV_ORDER).map((id) => byId.get(id)).filter(Boolean)
   const compose = byId.get('compose')
+  const homeItem = byId.get('home')
+  const extraItems = DUO_NAV_EXTRA_IDS.map((id) => byId.get(id)).filter(Boolean)
+  const extraActive = extraItems.some((item) => item.active)
+
+  useEffect(() => {
+    if (extraActive) setDuoExtrasOpen(true)
+  }, [extraActive])
 
   if (navEnd) {
     const pillStyle = {
@@ -77,6 +86,12 @@ export default function LoungeIpadNavRail({
       minWidth: DUO_NAV_PILL_WIDTH_PX,
       maxWidth: DUO_NAV_PILL_WIDTH_PX,
       boxSizing: 'border-box',
+    }
+    const composeStyle = {
+      ...pillStyle,
+      height: DUO_NAV_PILL_WIDTH_PX,
+      minHeight: DUO_NAV_PILL_WIDTH_PX,
+      maxHeight: DUO_NAV_PILL_WIDTH_PX,
     }
     return (
       <nav
@@ -116,8 +131,8 @@ export default function LoungeIpadNavRail({
               data-duo-nav-pill
               data-duo-nav-compose
               data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
-              className="flex flex-col items-center overflow-hidden rounded-full bg-zinc-800/70 py-1 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
-              style={pillStyle}
+              className="flex items-center justify-center overflow-hidden rounded-full bg-zinc-800/70 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
+              style={composeStyle}
             >
               <RailButton item={compose} compact />
             </div>
@@ -126,12 +141,13 @@ export default function LoungeIpadNavRail({
             data-duo-nav-pill
             data-duo-nav-tabs
             data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
-            className="flex shrink-0 flex-col items-center gap-0 overflow-hidden rounded-full bg-zinc-800/70 py-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
+            className="flex shrink-0 flex-col items-center gap-0 overflow-hidden rounded-full bg-zinc-800/70 py-1 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
             style={pillStyle}
           >
-            {navItems.map((item) => (
-              <RailButton key={item.id} item={item} compact />
-            ))}
+            {homeItem ? <RailButton item={homeItem} compact /> : null}
+            {duoExtrasOpen
+              ? extraItems.map((item) => <RailButton key={item.id} item={item} compact />)
+              : null}
             {onOpenShellMenu ? (
               <button
                 type="button"
@@ -158,6 +174,20 @@ export default function LoungeIpadNavRail({
                     aria-hidden
                   />
                 ) : null}
+              </button>
+            ) : null}
+            {extraItems.length > 0 ? (
+              <button
+                type="button"
+                data-duo-nav-expand
+                aria-label={duoExtrasOpen ? 'Hide extra navigation' : 'Show extra navigation'}
+                aria-expanded={duoExtrasOpen}
+                onClick={() => setDuoExtrasOpen((open) => !open)}
+                className="grid h-[36px] w-full place-items-center text-zinc-300 touch-manipulation [-webkit-tap-highlight-color:transparent]"
+              >
+                <span aria-hidden className="block text-[15px] leading-none">
+                  {duoExtrasOpen ? '▾' : '▴'}
+                </span>
               </button>
             ) : null}
           </div>

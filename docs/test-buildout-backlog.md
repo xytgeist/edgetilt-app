@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **Duo compose circle + collapsed tab pill (`1.4.1021`).** Compose is a 50×50 circle under the wifi dock. Home + hamburger stay visible; up caret expands the rest. iPad 11 unchanged.
 - **2026-10-05:** **Wifi dock follows in-app theme without bleaching WKWebView (`1.4.1020`).** Main window `overrideUserInterfaceStyle` only. WebView + SwiftUI env stay dark. Rebuild Test Fast. Do not copy 1018.
 - **2026-10-05:** **Rolled back to `1.4.1017`.** Reverted native `setPreferredColorScheme` / white-screen follow-up / Duo glass-pill pass. In-app light was painting whole pages white. Rebuild Test Fast. Wifi dock stays white in light mode until we redo this without WKWebView remounts.
 - **2026-10-05:** **Duo compose + settings on the rail (`1.4.1017`).** Pill left (28px) and down (134px). Settings in the tab stack. Cyan feed FAB removed; compose is a matching frosted solo button. iPad 11 cyan compose unchanged.

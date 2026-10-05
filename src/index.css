@@ -4707,6 +4707,12 @@ html[data-ipad-nav-end] [data-duo-nav-pill] {
   max-width: 50px !important;
   box-sizing: border-box;
 }
+html[data-ipad-nav-end] [data-duo-nav-compose] {
+  height: 50px !important;
+  min-height: 50px !important;
+  max-height: 50px !important;
+  padding: 0 !important;
+}
 html.light [data-duo-nav-rail] {
   background: transparent;
 }
@@ -4716,6 +4722,7 @@ html.light [data-duo-nav-pill] {
 }
 html.light [data-duo-nav-back],
 html.light [data-duo-nav-more],
+html.light [data-duo-nav-expand],
 html.light [data-duo-nav-rail] [data-ipad-nav-item] {
   color: #3f3f46;
 }

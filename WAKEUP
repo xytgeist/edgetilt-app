@@ -2717,7 +2717,3 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 ### Mac Theo 2026-10-05 … IPA status dock follows in-app theme
 
 **I am Mac Theo.** Wifi glyph stayed white in light mode because the shell was pinned `.preferredColorScheme(.dark)`. **`1.4.1018`** + new Test Fast: `EdgeNative.setPreferredColorScheme`. Web theme drives Duo status dock. Not promoted.
-
-### Mac Theo 2026-10-05 … light theme blank white screen
-
-**I am Mac Theo.** 1018 flipped the wifi glyph then painted the whole WKWebView white. SwiftUI `preferredColorScheme` + white chrome remade/covered the page. Fix: window `overrideUserInterfaceStyle` only; webview stays dark traits + black chrome. Rebuild Test Fast. Not promoted.

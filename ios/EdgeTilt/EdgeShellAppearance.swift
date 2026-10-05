@@ -1,13 +1,18 @@
+import Combine
+import SwiftUI
 import UIKit
 
-/// In-app light/dark from the web (`html.light`).
-/// Window `overrideUserInterfaceStyle` flips the Duo status dock.
-/// WKWebView stays on dark traits so a scheme change cannot blank the page.
-final class EdgeShellAppearance {
+/// In-app light/dark from the web (`html.light`), not iOS Settings.
+/// Duo status dock / wifi glyph follow `preferredColorScheme` + window `overrideUserInterfaceStyle`.
+final class EdgeShellAppearance: ObservableObject {
   static let shared = EdgeShellAppearance()
   private static let defaultsKey = "edge.shell.colorScheme"
 
-  private(set) var isDark: Bool
+  @Published private(set) var isDark: Bool
+
+  var colorScheme: ColorScheme { isDark ? .dark : .light }
+  var background: Color { isDark ? Color.black : Color.white }
+  var uiBackground: UIColor { isDark ? .black : .white }
 
   private init() {
     if let raw = UserDefaults.standard.string(forKey: Self.defaultsKey) {
@@ -25,6 +30,7 @@ final class EdgeShellAppearance {
     let paint = {
       self.isDark = nextDark
       self.applyToWindows()
+      NotificationCenter.default.post(name: .edgeShellAppearanceDidChange, object: nil)
     }
     if Thread.isMainThread {
       paint()
@@ -39,7 +45,12 @@ final class EdgeShellAppearance {
       guard let windowScene = scene as? UIWindowScene else { continue }
       for window in windowScene.windows {
         window.overrideUserInterfaceStyle = style
+        window.backgroundColor = uiBackground
       }
     }
   }
+}
+
+extension Notification.Name {
+  static let edgeShellAppearanceDidChange = Notification.Name("edge.shell.appearanceDidChange")
 }

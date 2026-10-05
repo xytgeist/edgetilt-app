@@ -60,7 +60,11 @@ final class EdgeWebChromeView: UIView {
   init(webView: EdgeInsetAwareWebView) {
     self.webView = webView
     super.init(frame: .zero)
-    applyShellAppearance()
+    backgroundColor = .black
+    // Keep WebKit on dark traits. Window-level light/dark drives the status dock only.
+    // Flipping the webview's style remakes its layer and can paint an empty white screen.
+    overrideUserInterfaceStyle = .dark
+    webView.overrideUserInterfaceStyle = .dark
     webView.translatesAutoresizingMaskIntoConstraints = false
     addSubview(webView)
     NSLayoutConstraint.activate([
@@ -72,13 +76,6 @@ final class EdgeWebChromeView: UIView {
   }
 
   required init?(coder: NSCoder) { nil }
-
-  func applyShellAppearance() {
-    let bg = EdgeShellAppearance.shared.uiBackground
-    backgroundColor = bg
-    webView.backgroundColor = bg
-    webView.scrollView.backgroundColor = bg
-  }
 }
 
 struct EdgeWebView: UIViewRepresentable {
@@ -98,9 +95,9 @@ struct EdgeWebView: UIViewRepresentable {
     webView.scrollView.contentInsetAdjustmentBehavior = .never
     webView.scrollView.keyboardDismissMode = .interactive
     webView.isOpaque = false
-    let bg = EdgeShellAppearance.shared.uiBackground
-    webView.backgroundColor = bg
-    webView.scrollView.backgroundColor = bg
+    webView.backgroundColor = .black
+    webView.scrollView.backgroundColor = .black
+    webView.overrideUserInterfaceStyle = .dark
     #if DEBUG
     // Required on iOS 16.4+ for Mac Safari → Develop → [device] to list this WKWebView.
     if #available(iOS 16.4, *) {
@@ -148,7 +145,6 @@ struct EdgeWebView: UIViewRepresentable {
     private var lastInsets: UIEdgeInsets = .init(top: -1, left: -1, bottom: -1, right: -1)
     var swiftSafeArea: EdgeInsets = EdgeInsets()
     private var backgroundObserver: NSObjectProtocol?
-    private var appearanceObserver: NSObjectProtocol?
     private var offsiteBackButton: UIButton?
     private var offsiteBackTop: NSLayoutConstraint?
     private var offsiteBackLeading: NSLayoutConstraint?
@@ -160,9 +156,6 @@ struct EdgeWebView: UIViewRepresentable {
     deinit {
       if let backgroundObserver {
         NotificationCenter.default.removeObserver(backgroundObserver)
-      }
-      if let appearanceObserver {
-        NotificationCenter.default.removeObserver(appearanceObserver)
       }
     }
 
@@ -194,15 +187,6 @@ struct EdgeWebView: UIViewRepresentable {
       bridge.onNavigationUrl = { [weak self] url in
         self?.setOffsiteBackVisible(!EdgeLastSpaURL.isAppHost(url))
       }
-      appearanceObserver = NotificationCenter.default.addObserver(
-        forName: .edgeShellAppearanceDidChange,
-        object: nil,
-        queue: .main
-      ) { [weak chrome] _ in
-        chrome?.applyShellAppearance()
-      }
-      chrome.applyShellAppearance()
-      EdgeShellAppearance.shared.applyToWindows()
       bridge.onDidFinishNavigation = { [weak self] in
         guard let self, let webView = self.webView else { return }
         self.setOffsiteBackVisible(!EdgeLastSpaURL.isAppHost(webView.url))

@@ -4,13 +4,11 @@ import SwiftUI
 struct EdgeTiltApp: App {
   @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
   @Environment(\.scenePhase) private var scenePhase
-  @ObservedObject private var appearance = EdgeShellAppearance.shared
 
   var body: some Scene {
     WindowGroup {
       ShellRootView()
-        .background(appearance.background)
-        .preferredColorScheme(appearance.colorScheme)
+        .background(Color.black)
         .onAppear {
           EdgeShellAppearance.shared.applyToWindows()
           EdgeLiveSportsActivity.bootstrapPushUpdates()

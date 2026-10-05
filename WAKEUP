@@ -2908,4 +2908,8 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 
 ### Mac Theo 2026-10-05 … AP Guides pane gutters match tools
 
-**I am Mac Theo.** **`1.4.1052`**: AP Guides landscape pane scroll uses the same `data-slots-landscape-pane-scroll` `0.5rem` gutters so the search field lines up with Slots tools cards. Hard-refresh on test. Not promoted.
+**I am Mac Theo.** **`1.4.1052`**: AP Guides landscape pane scroll uses the same `data-slots-landscape-pane-scroll` `0.5rem` gutters so the search field lines up with Slots tools cards.
+
+### Mac Theo 2026-10-05 … Promote 1.4.1052
+
+**I am Mac Theo.** Promoted **`test` → `main` (`84113011`)**. Vercel prod web **`1.4.1052`** (Calcs + AP Guides landscape gutters match tools; includes 1051). No new IPA. Back on **`test`**.

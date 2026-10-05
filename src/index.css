@@ -5104,13 +5104,14 @@ html.light [data-chat-feature][data-chat-landscape-split] [data-chat-landscape-p
     --slots-landscape-pane-col: 50vw;
   }
   /* Lounge feed title: portrait py-2 + h-8 EDGE is huge on a ~390px-tall phone.
-     Keep h-10 tap targets. Shrink pad + wordmark toward the 70% rail E / Slots chrome. */
+     Keep h-10 tap targets. Shrink pad + wordmark toward the 70% rail E / Slots chrome.
+     Right pad clears the continuous corner (and sar when the island/home is trailing). */
   [data-lounge-title-bar] [data-pwa-install-title-row],
   [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-align-feed-title] {
     padding-top: 0.35rem !important;
     padding-bottom: 0.35rem !important;
     padding-left: 0.5rem !important;
-    padding-right: 0.5rem !important;
+    padding-right: max(1rem, max(env(safe-area-inset-right, 0px), var(--edge-sar, 0px))) !important;
   }
   [data-lounge-title-bar] [data-lounge-title-wordmark] img {
     height: calc(2rem * 0.7) !important;

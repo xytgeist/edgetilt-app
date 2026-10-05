@@ -4733,6 +4733,12 @@ html.light [data-duo-nav-more] span.absolute,
 html.light [data-duo-nav-rail] [data-ipad-nav-badge] {
   --tw-ring-color: #f4f4f5;
 }
+html[data-ipad-nav-end] [data-duo-nav-shortcuts-pill] {
+  scrollbar-width: none;
+}
+html[data-ipad-nav-end] [data-duo-nav-shortcuts-pill]::-webkit-scrollbar {
+  display: none;
+}
 html[data-ipad-nav] [data-app-shell-root] {
   padding-left: var(--edge-rail-inset-start);
   padding-right: var(--edge-rail-inset-end);

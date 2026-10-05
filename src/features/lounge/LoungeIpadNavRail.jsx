@@ -42,7 +42,7 @@ const DUO_NAV_EXTRA_IDS = ['search', 'notifications', 'chat', 'settings']
 /**
  * iPad portrait and landscape, plus phone landscape.
  * Phone portrait keeps the FAB dock.
- * Open Duo: trailing Music strip (no E). Tabs + Back sit under the status dock, like Mail.
+ * Open Duo: trailing Music strip (no E). Compose under the dock; shortcuts pill mid-rail; tabs at bottom.
  */
 export default function LoungeIpadNavRail({
   items = [],
@@ -138,7 +138,19 @@ export default function LoungeIpadNavRail({
             </div>
           ) : null}
         </div>
-        <div className="min-h-0 flex-1" aria-hidden />
+        <div className="flex min-h-0 w-full flex-1 flex-col items-center justify-center py-2">
+          {shortcuts ? (
+            <div
+              data-duo-nav-pill
+              data-duo-nav-shortcuts-pill
+              data-duo-nav-pill-w={DUO_NAV_PILL_WIDTH_PX}
+              className="flex max-h-full min-h-0 flex-col items-center overflow-y-auto overflow-x-hidden rounded-full bg-zinc-800/70 shadow-[0_8px_28px_rgba(0,0,0,0.35)] backdrop-blur-xl supports-[backdrop-filter]:bg-zinc-800/55"
+              style={pillStyle}
+            >
+              {shortcuts}
+            </div>
+          ) : null}
+        </div>
         <div
           data-duo-nav-pill
           data-duo-nav-tabs

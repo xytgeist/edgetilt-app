@@ -49,7 +49,7 @@ const ICON_CLASS = {
  *   gatesMap?: Map<string, boolean> | null,
  *   starterUnlockedCalculatorKeys?: Set<string> | null,
  *   onNavigate: (id: string) => void,
- *   layout?: 'bar' | 'rail',
+ *   layout?: 'bar' | 'rail' | 'duo',
  * }} props
  */
 export default function TitleBarQuickLinks({
@@ -63,7 +63,8 @@ export default function TitleBarQuickLinks({
 }) {
   const ids = useQuickLinkIds()
   const rail = layout === 'rail'
-  const shown = ids.slice(0, rail ? QUICK_LINK_MAX_IPAD : QUICK_LINK_MAX)
+  const duo = layout === 'duo'
+  const shown = ids.slice(0, rail || duo ? QUICK_LINK_MAX_IPAD : QUICK_LINK_MAX)
   if (browseMode !== 'member' || shown.length === 0) return null
 
   const showLocks = !isStaff && !hasSlotsEdge
@@ -91,31 +92,43 @@ export default function TitleBarQuickLinks({
         title={locked ? 'Subscribe to unlock' : dest.label}
         aria-label={dest.label}
         onClick={() => onNavigate(id)}
-        data-ipad-nav-shortcut={rail ? '' : undefined}
+        data-ipad-nav-shortcut={rail || duo ? '' : undefined}
         className={
-          rail
-            ? 'relative grid h-[4.5rem] w-[4.5rem] shrink-0 place-items-center touch-manipulation [-webkit-tap-highlight-color:transparent]'
-            : 'lounge-title-nav-btn relative grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-zinc-700/50 bg-zinc-800/90 text-white shadow-sm touch-manipulation hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent]'
+          duo
+            ? 'relative grid h-[50px] w-full shrink-0 place-items-center touch-manipulation [-webkit-tap-highlight-color:transparent]'
+            : rail
+              ? 'relative grid h-[4.5rem] w-[4.5rem] shrink-0 place-items-center touch-manipulation [-webkit-tap-highlight-color:transparent]'
+              : 'lounge-title-nav-btn relative grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-zinc-700/50 bg-zinc-800/90 text-white shadow-sm touch-manipulation hover:bg-zinc-800 [-webkit-tap-highlight-color:transparent]'
         }
       >
         <Icon
-          size={rail ? 28 : 18}
-          strokeWidth={rail ? 1.2 : 1.75}
+          size={duo ? 22 : rail ? 28 : 18}
+          strokeWidth={duo || rail ? 1.2 : 1.75}
           aria-hidden
           className={ICON_CLASS[id] || 'text-cyan-300/95'}
         />
         {locked ? (
           <NavLockGlyph
             className={
-              rail
-                ? 'pointer-events-none absolute bottom-2 right-2 h-3.5 w-3.5 text-amber-400/95'
-                : 'pointer-events-none absolute -bottom-0.5 -right-0.5 h-3 w-3 text-amber-400/95'
+              duo
+                ? 'pointer-events-none absolute bottom-1 right-1 h-3 w-3 text-amber-400/95'
+                : rail
+                  ? 'pointer-events-none absolute bottom-2 right-2 h-3.5 w-3.5 text-amber-400/95'
+                  : 'pointer-events-none absolute -bottom-0.5 -right-0.5 h-3 w-3 text-amber-400/95'
             }
           />
         ) : null}
       </button>
     )
   })
+
+  if (duo) {
+    return (
+      <div className="flex w-full flex-col items-center py-1" data-ipad-nav-shortcuts data-duo-nav-shortcuts>
+        {buttons}
+      </div>
+    )
+  }
 
   if (rail) {
     return (

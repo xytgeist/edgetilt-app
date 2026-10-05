@@ -3073,9 +3073,9 @@ export default function AppShell({
             shellMenuOpen={menuOpen}
             shellMenuAttention={pokerHamburgerAttention}
             ipadRailShortcuts={
-              ipadNavRail && !duoNavEnd ? (
+              ipadNavRail ? (
                 <TitleBarQuickLinks
-                  layout="rail"
+                  layout={duoNavEnd ? 'duo' : 'rail'}
                   browseMode={browseMode}
                   hasSlotsEdge={hasActiveSubscription}
                   isStaff={isStaff}

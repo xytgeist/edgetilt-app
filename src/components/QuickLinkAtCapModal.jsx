@@ -59,7 +59,7 @@ export default function QuickLinkAtCapModal({
           Shortcut limit
         </h2>
         <p className="text-zinc-400 text-sm leading-relaxed mb-4">
-          You can pin up to {cap} tools {onIpad ? 'under Settings' : 'to the title bar'}. Turn one off below to add{' '}
+          You can pin up to {cap} tools {onIpad ? 'on the shortcuts rail' : 'to the title bar'}. Turn one off below to add{' '}
           <span className="text-zinc-200 font-semibold">{pendingLabel}</span>.
         </p>
         <div className="space-y-2 mb-4">

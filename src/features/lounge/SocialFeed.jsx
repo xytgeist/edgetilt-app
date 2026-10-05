@@ -821,7 +821,7 @@ export default function SocialFeed({
   hydrateCommunityPosts = async (rows) => rows ?? [],
   /** Optional shell UI (e.g. hamburger) rendered on the right side of the fixed title bar. */
   titleBarNavSlot = null,
-  /** iPad left rail, under Settings. Phone keeps shortcuts in the title bar. Duo uses More. */
+  /** iPad left rail under Settings; Duo mid-rail shortcuts pill. Phone keeps title-bar pins. */
   ipadRailShortcuts = null,
   /** Duo Music strip: opens the same shell hamburger menu. */
   onOpenShellMenu = null,
@@ -16559,7 +16559,7 @@ export default function SocialFeed({
       ? createPortal(
           <LoungeIpadNavRail
             items={loungeDockWheelItems}
-            shortcuts={duoNavEnd ? null : ipadRailShortcuts}
+            shortcuts={ipadRailShortcuts}
             onBack={
               duoNavEnd &&
               (loungePostDetail ||

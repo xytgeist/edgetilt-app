@@ -7,13 +7,13 @@ export const IPAD_NAV_RAIL_WIDTH = 'calc((11rem - 50px) * 0.85)'
 /**
  * Open Duo: Music gutter under the island / status dock.
  * Pill width/trailing pad are **px** (not rem) so Dynamic Type cannot drift them.
- * 50px matches the status-dock circle. Capsule starts *below* that circle (native chrome covers the webview).
+ * 58px matches the status-dock *glass*. Capsule starts below that circle (native chrome covers the webview).
  */
 export const DUO_NAV_RAIL_WIDTH = '5.5rem'
-/** Match the Duo status-dock circle (clock sits above it). */
-export const DUO_NAV_PILL_WIDTH_PX = 50
-/** Bezel → pill trailing edge. Tucked so the capsule centers on the wifi dock. */
-export const DUO_NAV_PILL_TRAILING_PAD_PX = 12
+/** Match the Duo status-dock *glass* (wider than the wifi glyph). */
+export const DUO_NAV_PILL_WIDTH_PX = 58
+/** Bezel → pill trailing edge. Same as the dock so the capsule centers under it. */
+export const DUO_NAV_PILL_TRAILING_PAD_PX = 6
 /** Extra below `--edge-sat` / env sat. Sat covers the clock row; the wifi circle hangs ~50px under it. */
 export const DUO_NAV_PILL_TOP_EXTRA_PX = 88
 

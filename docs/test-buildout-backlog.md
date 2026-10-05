@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **Duo pill matches dock glass (`1.4.1015`).** 50px was the glyph, not the circle. Capsule 58px, trailing pad 6px so it centers under the wifi dock. Icons 24px. iPad 11 unchanged.
 - **2026-10-05:** **Duo pill below wifi dock + larger icons (`1.4.1014`).** Native status circle covered Home/Search. Extra top pad 88px below sat, trailing pad 12px, compact icons 24px. Width still 50px. iPad 11 rail unchanged.
 - **2026-10-05:** **Duo pill under the wifi dock (`1.4.1013`).** 50px width was already right; tabs lived at the bottom so they looked tiny vs the status circle. Capsule now stacks under the dock (Mail), trailing pad 18px, gutter still 5.5rem. Shell menu opens downward from More.
 - **2026-10-05:** **Duo pill px-locked to status dock (`1.4.1011`).** Right object confirmed (`data-duo-nav-pill` in SocialFeed chunk). Prior rem width drifted; now 50px + 34px trailing pad from a Duo sim crop so width and right edge match the status circle.

@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-05:** **iPhone landscape full-frame side pad (`1.4.1041`).** Phone landscape sets `--edge-rail-inset-start/end` from rail + `max(1.25rem, sal/sar)` and parks the rail at the leading side inset so the whole frame (not just the hamburger) clears both bezels/cutouts.
 - **2026-10-05:** **iPhone landscape title pad sticks (`1.4.1040`).** Title bar trailing `right: max(1.25rem, sar) !important` (beats inline `right:0`) + row `1.25rem` both sides. 1039’s 1rem-only pad was too weak to clear the continuous corner.
 - **2026-10-05:** **iPhone landscape title both-side pad (`1.4.1039`).** Phone landscape Lounge title row: left `1rem`, right `max(1rem, sar)`. Rail already clears leading island so left is a corner floor only.
 - **2026-10-05:** **iPhone landscape title right pad (`1.4.1038`).** Phone landscape Lounge title row right pad is `max(1rem, sar)` so the hamburger clears the continuous corner. Left rail unchanged.

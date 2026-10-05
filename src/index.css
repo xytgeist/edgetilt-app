@@ -5103,22 +5103,33 @@ html.light [data-chat-feature][data-chat-landscape-split] [data-chat-landscape-p
     --slots-landscape-tools-col: calc(50vw - var(--edge-ipad-rail, 0px));
     --slots-landscape-pane-col: 50vw;
   }
+  /* Phone landscape full frame: inset rail + shell from both continuous corners /
+     camera (sal/sar), not just the title hamburger. Title / dock / feed already
+     read --edge-rail-inset-*. Skip Duo trailing-rail (different chrome). */
+  html[data-ipad-nav]:not([data-ipad-nav-end]) {
+    --edge-phone-landscape-side-start: max(
+      1.25rem,
+      max(env(safe-area-inset-left, 0px), var(--edge-sal, 0px))
+    );
+    --edge-phone-landscape-side-end: max(
+      1.25rem,
+      max(env(safe-area-inset-right, 0px), var(--edge-sar, 0px))
+    );
+    --edge-rail-inset-start: calc(var(--edge-ipad-rail) + var(--edge-phone-landscape-side-start));
+    --edge-rail-inset-end: var(--edge-phone-landscape-side-end);
+  }
+  html[data-ipad-nav]:not([data-ipad-nav-end]) [data-ipad-nav-rail]:not([data-duo-nav-rail]) {
+    left: var(--edge-phone-landscape-side-start) !important;
+  }
   /* Lounge feed title: portrait py-2 + h-8 EDGE is huge on a ~390px-tall phone.
      Keep h-10 tap targets. Shrink pad + wordmark toward the 70% rail E / Slots chrome.
-     Pull the fixed bar off the trailing bezel (inline right:0 loses to !important), then
-     give the row matching side floors so the hamburger clears the continuous corner /
-     camera on either rotation. Skip split-feed title (left column only). */
-  html[data-ipad-nav]:not([data-ipad-nav-end])
-    [data-lounge-feed-root]:not([data-lounge-landscape-split])
-    [data-lounge-title-bar] {
-    right: max(1.25rem, max(env(safe-area-inset-right, 0px), var(--edge-sar, 0px))) !important;
-  }
+     Side clearance comes from --edge-rail-inset-* above. */
   [data-lounge-title-bar] [data-pwa-install-title-row],
   [data-lounge-feed-root][data-lounge-landscape-split] [data-lounge-align-feed-title] {
     padding-top: 0.35rem !important;
     padding-bottom: 0.35rem !important;
-    padding-left: 1.25rem !important;
-    padding-right: 1.25rem !important;
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
   }
   [data-lounge-title-bar] [data-lounge-title-wordmark] img {
     height: calc(2rem * 0.7) !important;

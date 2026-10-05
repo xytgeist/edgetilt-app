@@ -2916,4 +2916,8 @@ Standing advice ... not session-ephemeral. Start with **Grok** or **Composer**; 
 
 ### Mac Theo 2026-10-05 … Guides/Calcs vertical rhythm
 
-**I am Mac Theo.** **`1.4.1053`**: phone landscape … Guides search→first card `0.5rem` (match title→search); Calcs title→first card drops extra pad; between calc cards `0.375rem` like tools. Hard-refresh on test. Not promoted.
+**I am Mac Theo.** **`1.4.1053`**: phone landscape … Guides search→first card `0.5rem` (match title→search); Calcs title→first card drops extra pad; between calc cards `0.375rem` like tools.
+
+### Mac Theo 2026-10-05 … Promote 1.4.1053
+
+**I am Mac Theo.** Promoted **`test` → `main` (`8378808b`)**. Vercel prod web **`1.4.1053`** (Guides/Calcs vertical rhythm). No new IPA. Back on **`test`**.

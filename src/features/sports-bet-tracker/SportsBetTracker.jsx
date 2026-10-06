@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Camera, Check, ClipboardList, ClipboardPaste, FileSpreadsheet, Pencil, Plus, RefreshCw, Settings, Trash2, X } from 'lucide-react'
+import { Camera, Check, ChevronLeft, ClipboardList, ClipboardPaste, FileSpreadsheet, Pencil, Plus, RefreshCw, Trash2, X } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
 import AppModalOverlay from '../../components/AppModalOverlay.jsx'
@@ -150,6 +150,7 @@ export default function SportsBetTracker({
   titleBarToolCloseVisible = false,
   pendingPrefill = null,
   onPendingPrefillConsumed = null,
+  onBack = null,
 }) {
   const ipadShell = useIpadAuthStage()
   const [userId, setUserId] = useState(null)
@@ -433,7 +434,7 @@ export default function SportsBetTracker({
       publishScrollReveal
       titleBarNavSlot={titleBarNavSlot}
       titleBarCenterSlot={titleBarCenterSlot}
-      titleBarToolCloseVisible={titleBarToolCloseVisible}
+      titleBarToolCloseVisible={Boolean(onBack) || titleBarToolCloseVisible}
       titleBarBrand={
         ipadShell ? <TitleBarScreenTitle>Bet Tracker</TitleBarScreenTitle> : null
       }
@@ -443,6 +444,16 @@ export default function SportsBetTracker({
         <div className="mb-5">
           {ipadShell ? null : (
             <h1 className="flex items-center gap-2 text-2xl font-black tracking-tight text-white">
+              {onBack ? (
+                <button
+                  type="button"
+                  onClick={onBack}
+                  aria-label="Close Bet Tracker"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-zinc-700 text-zinc-200 touch-manipulation active:bg-zinc-800"
+                >
+                  <ChevronLeft className="h-5 w-5" strokeWidth={2.5} />
+                </button>
+              ) : null}
               <ClipboardList className="h-6 w-6 text-cyan-400" strokeWidth={2.25} />
               Bet Tracker
             </h1>
@@ -467,14 +478,6 @@ export default function SportsBetTracker({
             onClick={openSettings}
           />
         </div>
-        <button
-          type="button"
-          onClick={openSettings}
-          className="mb-4 flex w-full items-center justify-center gap-2 rounded-2xl border border-cyan-500/40 bg-cyan-500/10 py-3 text-[13px] font-bold text-cyan-200 touch-manipulation active:bg-cyan-500/20"
-        >
-          <Settings className="h-4 w-4" />
-          {bankrollNow == null ? 'Set bankroll & unit size' : 'Edit bankroll & unit size'}
-        </button>
 
         <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
           <StatChip
@@ -769,33 +772,28 @@ export default function SportsBetTracker({
       </div>
 
       {composerOpen ? (
-        <div
-          className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 sm:items-center"
+        <AppModalOverlay
           role="dialog"
           aria-modal="true"
-            aria-label={editingId ? 'Edit bet' : 'Log bet'}
+          aria-label={editingId ? 'Edit bet' : 'Log bet'}
+          onClick={() => {
+            setComposerOpen(false)
+            setEditingId(null)
+          }}
         >
-          <button
-            type="button"
-            className="absolute inset-0 cursor-default"
-            aria-label="Close"
-            onClick={() => {
-              setComposerOpen(false)
-              setEditingId(null)
-            }}
-          />
           <div
             data-sports-bet-composer
-            className="relative z-[1] max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-zinc-700 bg-zinc-950 p-4 shadow-xl sm:rounded-3xl"
+            className="relative z-[1] flex w-full max-w-lg min-h-0 flex-col overflow-hidden rounded-t-3xl border border-zinc-700 bg-zinc-950 shadow-xl max-h-[min(85dvh,calc(100dvh-max(env(safe-area-inset-top,0px),var(--edge-sat,0px))-4.5rem))]"
+            onClick={(e) => e.stopPropagation()}
           >
-            <div className="mb-3 flex items-center justify-between">
+            <div className="flex shrink-0 items-center justify-between px-4 pt-4 pb-2">
               <h2 className="text-lg font-black text-white">{editingId ? 'Edit bet' : 'Log a bet'}</h2>
               <button
                 type="button"
                 onClick={() => {
-              setComposerOpen(false)
-              setEditingId(null)
-            }}
+                  setComposerOpen(false)
+                  setEditingId(null)
+                }}
                 className="rounded-full p-2 text-zinc-400 active:bg-zinc-800"
                 aria-label="Close composer"
               >
@@ -803,17 +801,17 @@ export default function SportsBetTracker({
               </button>
             </div>
             {draft.source && draft.source !== 'manual' ? (
-              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-cyan-400">
+              <p className="shrink-0 px-4 pb-1 text-[11px] font-semibold uppercase tracking-wide text-cyan-400">
                 {sportsBetSourceLabel(draft.source)}
               </p>
             ) : null}
             {(draft.away_team || draft.home_team) && (
-              <p className="mb-3 text-sm text-zinc-400">
+              <p className="shrink-0 px-4 pb-2 text-sm text-zinc-400">
                 {[draft.away_team, draft.home_team].filter(Boolean).join(' @ ')}
                 {draft.sport_label ? ` · ${draft.sport_label}` : ''}
               </p>
             )}
-            <div className="space-y-3">
+            <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 pb-3">
               <label className="block text-xs font-semibold uppercase tracking-wide text-zinc-500">
                 Sport
                 <select
@@ -1010,6 +1008,8 @@ export default function SportsBetTracker({
                   onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
                 />
               </label>
+            </div>
+            <div className="shrink-0 border-t border-zinc-800 px-4 pt-3 pb-[calc(0.75rem+max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
               <button
                 type="button"
                 disabled={saving}
@@ -1020,7 +1020,7 @@ export default function SportsBetTracker({
               </button>
             </div>
           </div>
-        </div>
+        </AppModalOverlay>
       ) : null}
 
       {settingsOpen ? (
@@ -1032,7 +1032,7 @@ export default function SportsBetTracker({
         >
           <div
             data-sports-bet-composer
-            className="relative z-[1] max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-zinc-700 bg-zinc-950 p-4 shadow-xl sm:rounded-3xl"
+            className="relative z-[1] max-h-[min(85dvh,calc(100dvh-max(env(safe-area-inset-top,0px),var(--edge-sat,0px))-4.5rem))] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-zinc-700 bg-zinc-950 p-4 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">

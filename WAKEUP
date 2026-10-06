@@ -115,7 +115,7 @@ The agent should treat the following as **standing instructions for this session
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
 ### Mac / Windows Theo ACTIVE TRACK 2026-10-06 ... Sports bet tracker (Pikkit-class, no password scrape)
-**Web `1.4.1066`.** Promoted **`test` → `main`** 2026-10-06. Hold-to-log no longer wiped by hollow `?logBet=1`. Bankroll / unit size door (`1.4.1065`). **No new SQL.** `20261006030000`–**`20261006050000`** already on prod.
+**Web `1.4.1067`.** Bet Tracker: tap Bankroll/Unit chips (no extra button). Log a bet is a bottom sheet under the title bar with sticky Save. Title bar × / back chevron leaves tracker. Hold-to-log fill is **`1.4.1066`** on **main**.
 
 **Canonical notes:** **`docs/sports-bet-tracker.md`** (how BookSync works, what we copy vs refuse, build order). Read that on the other machine.
 

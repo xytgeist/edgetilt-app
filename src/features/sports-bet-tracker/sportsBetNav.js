@@ -104,6 +104,18 @@ export function openSportsBetTracker() {
   window.dispatchEvent(new PopStateEvent('popstate'))
 }
 
+export function closeSportsBetTracker() {
+  if (typeof window === 'undefined') return
+  clearSportsBetLogPending()
+  const url = new URL(window.location.href)
+  url.searchParams.delete('tab')
+  url.searchParams.delete('logBet')
+  url.searchParams.delete(LOUNGE_SPORTS_GAME_PARAM)
+  url.searchParams.delete('event')
+  window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`)
+  window.dispatchEvent(new PopStateEvent('popstate'))
+}
+
 export function isSportsBetTrackerSearch(params) {
   if (!params || typeof params.get !== 'function') return false
   const tab = (params.get('tab') || '').trim()

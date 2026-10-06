@@ -165,7 +165,7 @@ import {
   requestLoungeSportsHubOpen,
   clearLoungeSportsGamePending,
 } from '../lounge/loungeSportsHubNav.js'
-import { isSportsBetTrackerSearch, isUsefulSportsBetPrefill, sportsBetLogOpenEventName, sportsBetPrefillFromSearchParams } from '../sports-bet-tracker/sportsBetNav.js'
+import { isSportsBetTrackerSearch, isUsefulSportsBetPrefill, sportsBetLogOpenEventName, sportsBetPrefillFromSearchParams, closeSportsBetTracker } from '../sports-bet-tracker/sportsBetNav.js'
 import { BadgeCheck, Bot, ChartSpline, Cherry, ClipboardList, Handshake, MessagesSquare, Spade, Sparkles, Trophy } from 'lucide-react'
 import { football, footballHelmet } from '@lucide/lab'
 import LucideLabIcon from '../../components/LucideLabIcon.jsx'
@@ -2360,6 +2360,13 @@ export default function AppShell({
     setMenuOpen(false)
   }, [])
 
+  const closeBetTracker = useCallback(() => {
+    armShellNavGhostClickGuard()
+    closeSportsBetTracker()
+    setTab('home')
+    setMenuOpen(false)
+  }, [])
+
   // `intel` - routable if tab set programmatically; not on Slots hub (Ryan, 2026-05-29).
   const isSlotsAreaTab = (activeTab) => activeTab === 'slots' || SLOTS_TOOL_TAB_IDS.has(activeTab)
   const isPokerAreaTab = (activeTab) => activeTab === 'poker' || POKER_TOOL_TAB_IDS.has(activeTab)
@@ -2597,6 +2604,8 @@ export default function AppShell({
       </div>
       {slotsToolTitleBarCloseVisible ? (
         <TitleBarCloseButton onClick={backToSlotsHub} ariaLabel="Close" />
+      ) : tab === 'sports-bets' ? (
+        <TitleBarCloseButton onClick={closeBetTracker} ariaLabel="Close Bet Tracker" />
       ) : pokerToolTitleBarCloseVisible ? (
         <TitleBarCloseButton onClick={backToPokerHub} ariaLabel="Close" />
       ) : null}
@@ -3816,9 +3825,10 @@ export default function AppShell({
           supabaseClient={supabaseClient}
           titleBarNavSlot={renderTitleBarNavSlot()}
           titleBarCenterSlot={renderTitleBarCenterSlot()}
-          titleBarToolCloseVisible={slotsToolTitleBarCloseVisible}
+          titleBarToolCloseVisible
           pendingPrefill={pendingSportsBetPrefill}
           onPendingPrefillConsumed={() => setPendingSportsBetPrefill(null)}
+          onBack={closeBetTracker}
         />
       )
     } else if (tab === 'w2g-scanner') {

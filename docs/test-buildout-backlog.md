@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-06:** **Promoted iPad landscape gamecast (`1.4.1071`).** Frontend **`test` → `main`** (`d06df584`). No new SQL / Edge. Marketing still **1.4.95**.
 - **2026-10-06:** **iPad gamecast chips (`1.4.1071`).** Back / … stay phone size on tablet landscape; pills + board keep the 1.58× scale. Marketing still **1.4.95**.
 - **2026-10-06:** **iPad gamecast scale (`1.4.1070`).** Tall-tablet landscape (`min-height: 700`) zooms the full-screen game hub ~1.58× (type, logos, rails, pills) so it fills the frame. Phone landscape unchanged. Marketing still **1.4.95**.
 - **2026-10-06:** **iPad landscape gamecast (`1.4.1069`).** Game hub no longer embeds in the Lounge 50/50 pane. Football landscape (phone + iPad) uses the same full-screen gamecast (`useCoarseLandscape`). Other sports stay the tabbed overlay. Post / chart / slate / profile keep the split. Marketing still **1.4.95**.

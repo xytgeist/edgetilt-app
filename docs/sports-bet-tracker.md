@@ -94,7 +94,7 @@ Also improve where they are mediocre: CLV vs locked Pinnacle-style closes; Autof
 - Intake sources `odds_cell` / `slip` / `csv` … **`20261006020000_sports_bets_intake_sources.sql`**
 - CLV: **`sports_bets_refresh_clv()`** security definer reads locked closes for the caller’s event ids (does not widen market-file RLS to the client)
 
-Applied **`20261006010000`** test + prod 2026-10-05. Applied **`20261006020000`** on **test** 2026-10-05 (intake sources). Prod SQL for `20000` on next promote.
+Applied **`20261006010000`** test + prod 2026-10-05. Applied **`20261006020000`** test + prod 2026-10-05 (intake sources).
 
 ## Client
 

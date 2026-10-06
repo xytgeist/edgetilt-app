@@ -122,7 +122,7 @@ Device remembers sign-ins; a brand-new sign-up on a device that remembers anothe
 **Do:** complete hands-off records (odds-cell Log → slip Vision ingest → CSV → later official/white-label connect).
 **Do not:** DIY DK/FD password scrape / store sportsbook logins.
 
-**Shipped:** hamburger **Bet Tracker** (`?tab=sports-bets`) + hub **… → Log a bet**. **Hold** a hub odds cell (or right-click) to prefill that book/line. Paste slip / IPA Vision photo / CSV. Units / ROI / CLV vs locked `lounge_market_files`. SQL **`20261006010000` applied test + prod** (2026-10-05, Mac). Intake sources **`20261006020000`** on test with this bones ship. Marketing still **1.4.95**. Do **not** DIY book-password scrape.
+**Shipped:** hamburger **Bet Tracker** (`?tab=sports-bets`) + hub **… → Log a bet**. **Hold** a hub odds cell (or right-click) to prefill that book/line. Paste slip / IPA Vision photo / CSV. Units / ROI / CLV vs locked `lounge_market_files`. SQL **`20261006010000`** + **`20261006020000`** on test + prod. Frontend promote **`test` → `main`** web **`1.4.1058`**. Marketing still **1.4.95**. Do **not** DIY book-password scrape.
 
 ### Mac Theo ACTIVE TRACK 2026-10-05 ... Sports bet tracker v1
 **Web `1.4.1057`.** Scaffold only. Superseded as product intent by **2026-10-06** track above. Spec **`docs/sports-bet-tracker.md`**.

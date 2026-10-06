@@ -11280,6 +11280,46 @@ html.light [data-play-logbook-ledger-settled] .text-zinc-300 {
   color: #3f3f46 !important;
 }
 
+/* Sports bet tracker (light mode) */
+html.light [data-sports-bet-tracker] h1.text-white,
+html.light [data-sports-bet-tracker] .text-white {
+  color: #18181b !important;
+}
+html.light [data-sports-bet-stat],
+html.light [data-sports-bet-card] {
+  background-color: #ffffff !important;
+  border-color: #e4e4e7 !important;
+}
+html.light [data-sports-bet-tracker] .bg-zinc-900,
+html.light [data-sports-bet-tracker] .bg-zinc-900\/70,
+html.light [data-sports-bet-tracker] .bg-zinc-900\/80 {
+  background-color: #f4f4f5 !important;
+}
+html.light [data-sports-bet-tracker] .border-zinc-800,
+html.light [data-sports-bet-tracker] .border-zinc-700 {
+  border-color: #d4d4d8 !important;
+}
+html.light [data-sports-bet-tracker] .text-zinc-400 {
+  color: #52525b !important;
+}
+html.light [data-sports-bet-tracker] .text-zinc-500 {
+  color: #71717a !important;
+}
+html.light [data-sports-bet-composer] {
+  background-color: #ffffff !important;
+  border-color: #d4d4d8 !important;
+}
+html.light [data-sports-bet-composer] .text-white {
+  color: #18181b !important;
+}
+html.light [data-sports-bet-composer] input,
+html.light [data-sports-bet-composer] select,
+html.light [data-sports-bet-composer] textarea {
+  background-color: #fafafa !important;
+  color: #18181b !important;
+  border-color: #d4d4d8 !important;
+}
+
 /* Quick links - page toggle + at-cap modal (light mode) */
 /* Pill only … bare/pin must stay chrome-free (pin was picking up this #fafafa box). */
 html.light [data-quick-link-toggle]:not([data-quick-link-toggle='bare']):not([data-quick-link-toggle='pin']) {

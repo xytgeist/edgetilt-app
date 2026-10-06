@@ -165,6 +165,7 @@ Copy for modals: distinguish **create account** (anon) vs **subscribe** (free us
 ### 5.5 Future verticals
 
 - **`sports-edge`**, **`crypto-edge`** remain separate product slugs when those verticals ship (not part of Slots Edge Starter/Full pricing above).
+- **Sports Edge / Bet Tracker (v1 scaffold):** hamburger **Bet Tracker** (`?tab=sports-bets`) + hub **Log a bet**. Verified users can log freely while the Stripe SKU is dark. Hard **`sports-edge`** paywall + freemium caps land with **`STRIPE_PRICE_SPORTS_EDGE`**. Spec: **`docs/sports-bet-tracker.md`**.
 
 ---
 

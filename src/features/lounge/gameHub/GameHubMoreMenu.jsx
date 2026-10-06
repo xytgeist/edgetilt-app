@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { MoreHorizontal, Share, ShieldCheck, Volume2, VolumeX } from 'lucide-react'
+import { ClipboardList, MoreHorizontal, Share, ShieldCheck, Volume2, VolumeX } from 'lucide-react'
 import { Z_APP_MODAL } from '../../../constants/appZIndex.js'
 import { stateName, US_STATES } from './gameHubLegalBooks.js'
 
@@ -16,6 +16,7 @@ export default function GameHubMoreMenu({
   onToggleLegalBooks,
   onPickLegalState,
   onShare,
+  onLogBet,
 }) {
   const [open, setOpen] = useState(false)
   const [anchor, setAnchor] = useState(null)
@@ -146,6 +147,23 @@ export default function GameHubMoreMenu({
                     ))}
                 </select>
               </label>
+              {onLogBet ? (
+                <>
+                  <div data-lounge-game-more-menu-divider className="h-px" />
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className={itemClass}
+                    onClick={() => {
+                      setOpen(false)
+                      onLogBet?.()
+                    }}
+                  >
+                    <ClipboardList className="h-5 w-5 shrink-0" strokeWidth={2.25} />
+                    Log a bet
+                  </button>
+                </>
+              ) : null}
               <div data-lounge-game-more-menu-divider className="h-px" />
               <button
                 type="button"

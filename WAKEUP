@@ -114,6 +114,9 @@ The agent should treat the following as **standing instructions for this session
 
 Device remembers sign-ins; a brand-new sign-up on a device that remembers another account gets "Connect account? / Continue with new". Connect deletes the empty new user (Edge **`account-connect-discard`**, < 60 min + no activity), has them sign in to the old account, then `linkIdentity` attaches the new method. Settings → Account info → **Sign-in methods** is the backstop. Manual linking **on** for test + prod. Details: backlog Update log 2026-09-29.
 
+### Mac Theo ACTIVE TRACK 2026-10-05 ... Sports bet tracker v1
+**Web `1.4.1057`.** Hamburger **Bet Tracker** (`?tab=sports-bets`) + Sports Hub **… → Log a bet**. Units / ROI / CLV vs locked closes. Spec **`docs/sports-bet-tracker.md`**. **Apply SQL `20261006010000` on test** before smoke. No book sync yet. Marketing still **1.4.95**.
+
 ### Mac Theo ACTIVE TRACK 2026-10-05 ... Rundown scores-only diet
 **Web `1.4.1056`.** TheRundown day + hub event fetches use `affiliate_ids=0` (scores/status/live only … no market price rows). Hub drops Rundown `/plays` (Ultra-only; football PBP stays ESPN). Odds API still owns books. **Redeploy `lounge-sports-scoreboard` (+ any Edge that shares `_shared/loungeBotRundownContext.ts`) on test** before smoke. Marketing still **1.4.95**.
 

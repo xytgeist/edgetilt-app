@@ -45,6 +45,7 @@ import {
   withFreshestLiveClock,
 } from './gameHub/gameHubFormatters.js'
 import { readGameHubCache, writeGameHubCache } from './gameHub/gameHubCache.js'
+import { requestSportsBetLog } from '../sports-bet-tracker/sportsBetNav.js'
 
 const EMPTY_DETAIL = { odds: [], plays: [], stats: [], live: null, splits: null }
 
@@ -212,6 +213,24 @@ export default function LoungeGameHubModal({
       typeof window !== 'undefined' ? window.location.origin : 'https://edgetilt.com',
     )
     await shareViaBestAvailable({ url, title, text })
+  }
+
+  function logBetFromHub() {
+    if (!game) return
+    sports.closeHub?.()
+    requestSportsBetLog({
+      event_id: game.id,
+      sport_key: game.sport_key,
+      sport_label: game.sport_label,
+      home_team: game.home?.name || game.home?.mascot,
+      away_team: game.away?.name || game.away?.mascot,
+      commence_time: game.commence_time,
+      market: 'spread',
+      side: 'home',
+      line: game.home?.spread ?? '',
+      odds: '-110',
+      source: 'game_hub',
+    })
   }
 
   const detailGameId = game?.id || null
@@ -724,6 +743,7 @@ export default function LoungeGameHubModal({
         onToggleLegalBooks={() => setLegalBooksOn(!legalBooks.on)}
         onPickLegalState={setLegalBooksState}
         onShare={shareHubGame}
+        onLogBet={logBetFromHub}
       />
     </div>
   )
@@ -858,10 +878,11 @@ export default function LoungeGameHubModal({
                 chipClassName={chipClass}
                 muted={whistleMuted}
                 onToggleMuted={toggleWhistleMuted}
-        legalBooks={legalBooks}
-        onToggleLegalBooks={() => setLegalBooksOn(!legalBooks.on)}
-        onPickLegalState={setLegalBooksState}
+                legalBooks={legalBooks}
+                onToggleLegalBooks={() => setLegalBooksOn(!legalBooks.on)}
+                onPickLegalState={setLegalBooksState}
                 onShare={shareHubGame}
+                onLogBet={logBetFromHub}
               />
             ),
           }}

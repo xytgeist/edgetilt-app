@@ -910,6 +910,10 @@ function espnMajorLeagueScoreboardPath(path: MajorLeagueEspnPath): string {
   return `https://site.api.espn.com/apis/site/v2/sports/${path.sport}/${path.league}/scoreboard`
 }
 
+function espnMajorLeagueSummaryPath(path: MajorLeagueEspnPath, eventId: string): string {
+  return `https://site.api.espn.com/apis/site/v2/sports/${path.sport}/${path.league}/summary?event=${encodeURIComponent(eventId)}`
+}
+
 /** Thursday that starts the calendar NFL week. Tue/Wed roll forward. */
 export function nflCalendarThursdayYmd(now = Date.now()): string {
   const today = new Intl.DateTimeFormat('en-CA', {
@@ -1559,6 +1563,108 @@ export async function buildLoungeSportsScoreboard(
 const espnMajorLeagueCache = new Map<string, { at: number; events: Array<Record<string, unknown>> }>()
 const ESPN_MAJOR_LEAGUE_TTL_MS = 10 * 60_000
 
+type MajorLeagueKind = 'nba' | 'nhl' | 'mlb' | 'mls'
+
+function majorLeagueKind(path: MajorLeagueEspnPath): MajorLeagueKind {
+  if (path.league === 'nhl') return 'nhl'
+  if (path.league === 'mlb') return 'mlb'
+  if (path.league === 'usa.1') return 'mls'
+  return 'nba'
+}
+
+function majorLeaguePathForSportKey(sportKey: string): MajorLeagueEspnPath | null {
+  if (isNhlSportKey(sportKey)) return { sport: 'hockey', league: 'nhl' }
+  if (isNbaSportKey(sportKey)) return { sport: 'basketball', league: 'nba' }
+  if (isMlbSportKey(sportKey)) return { sport: 'baseball', league: 'mlb' }
+  if (isMlsSportKey(sportKey)) return { sport: 'soccer', league: 'usa.1', logoLeague: 'mls' }
+  return null
+}
+
+/** Pregame extras can sit 10m. Once a slate game has started, match the football 5s clock cache. */
+function majorLeagueEspnTtlMs(games: LoungeSportsGame[]): number {
+  const now = Date.now()
+  const live = games.some((g) => {
+    if (g.status === 'in') return true
+    if (g.status === 'post') return false
+    const t = Date.parse(String(g.commence_time || ''))
+    return Number.isFinite(t) && t <= now + 5 * 60_000
+  })
+  return live ? ESPN_CLOCK_TTL_MS : ESPN_MAJOR_LEAGUE_TTL_MS
+}
+
+function espnStatusType(status: Record<string, unknown> | undefined): Record<string, unknown> {
+  if (!status) return {}
+  return (status.type && typeof status.type === 'object') ? status.type as Record<string, unknown> : {}
+}
+
+function classifyEspnBoardStatus(status: Record<string, unknown> | undefined): LoungeSportsGame['status'] | null {
+  const type = espnStatusType(status)
+  const state = String(type.state || status?.state || '').toLowerCase()
+  if (state === 'post' || state === 'final') return 'post'
+  if (state === 'in') return 'in'
+  if (state === 'pre') return 'pre'
+  return null
+}
+
+function liveFromEspnBoard(
+  status: Record<string, unknown> | undefined,
+  lastPlay = '',
+): LoungeSportsLiveState | null {
+  if (!status) return null
+  const type = espnStatusType(status)
+  const period = numOrNull(status.period ?? type.period)
+  const clock = String(status.displayClock || '').trim()
+  const name = String(type.name || '').trim()
+  const detail = String(type.shortDetail || type.detail || type.description || '').trim()
+  if (period == null && !clock && !name && !detail && !lastPlay) return null
+  return {
+    clock: clock.includes(' - ') ? '' : clock,
+    period,
+    down: null,
+    distance: null,
+    yard_line: null,
+    yard_side: null,
+    possession: null,
+    home_timeouts: null,
+    away_timeouts: null,
+    last_play: lastPlay,
+    status_name: name || null,
+    status_detail: detail || null,
+  }
+}
+
+/** Compact pill / hub clock … NBA quarters, NHL periods, MLB inning detail, MLS halves. */
+function espnMajorLeagueClockLabel(
+  status: Record<string, unknown> | undefined,
+  kind: MajorLeagueKind,
+): string | null {
+  if (!status) return null
+  const type = espnStatusType(status)
+  const state = String(type.state || status.state || '').toLowerCase()
+  const detail = String(type.shortDetail || type.detail || type.description || '').trim()
+  if (state === 'post' || state === 'final') return detail || 'Final'
+  if (state !== 'in') return null
+  const name = String(type.name || '').toUpperCase()
+  const period = Number(status.period)
+  const clock = String(status.displayClock || '').trim()
+  if (kind === 'mlb') return detail || (Number.isFinite(period) && period > 0 ? `${period}` : 'Live')
+  if (name.includes('HALFTIME') || /\bhalf\s*time\b|\bhalftime\b|\bht\b/i.test(detail)) return 'Halftime'
+  if (kind === 'nba') return espnLiveClockLabel(status) || detail || 'Live'
+  if (kind === 'nhl') {
+    const p = !Number.isFinite(period) || period < 1
+      ? ''
+      : period <= 3 ? `P${period}` : period === 4 ? 'OT' : 'SO'
+    if (name.includes('END_PERIOD')) return p ? `End ${p}` : detail || null
+    if (p && clock) return `${p} ${clock}`
+    return detail || p || 'Live'
+  }
+  const half = !Number.isFinite(period) || period < 1
+    ? ''
+    : period <= 1 ? '1H' : period === 2 ? '2H' : 'ET'
+  if (half && clock) return `${half} ${clock}`
+  return detail || half || 'Live'
+}
+
 function normalizeTeamHay(value: unknown): string {
   return String(value || '')
     .toLowerCase()
@@ -1597,7 +1703,7 @@ function espnCompetitorMatchesSide(
   return false
 }
 
-/** Fill abbrev + CDN logo + record from ESPN so Odds nickname abbrevs don't break marks. */
+/** Fill abbrev + CDN logo + record + live score/clock from ESPN so Odds nickname abbrevs don't break marks. */
 async function enrichEspnMajorLeagueSides(
   games: LoungeSportsGame[],
   path: MajorLeagueEspnPath,
@@ -1611,11 +1717,13 @@ async function enrichEspnMajorLeagueSides(
   if (!dates.length) dates.push(ptTodayDate().replace(/-/g, ''))
   const headers = { 'User-Agent': 'EdgeTiltLounge/1.0', Accept: 'application/json' }
   const base = espnMajorLeagueScoreboardPath(path)
+  const ttlMs = majorLeagueEspnTtlMs(subset)
+  const kind = majorLeagueKind(path)
   const events: Array<Record<string, unknown>> = []
   await Promise.all(dates.map(async (date) => {
     const key = `${path.league}:${date}`
     const cached = espnMajorLeagueCache.get(key)
-    if (cached && Date.now() - cached.at < ESPN_MAJOR_LEAGUE_TTL_MS) {
+    if (cached && Date.now() - cached.at < ttlMs) {
       events.push(...cached.events)
       return
     }
@@ -1678,15 +1786,30 @@ async function enrichEspnMajorLeagueSides(
       if (!espnCompetitorMatchesSide(home, g.home) || !espnCompetitorMatchesSide(away, g.away)) continue
       const nextAway = patchSide(g.away, away)
       const nextHome = patchSide(g.home, home)
+      const awayScore = numOrNull(away?.score)
+      const homeScore = numOrNull(home?.score)
       const statusObj = (comps?.status || ev.status) as Record<string, unknown> | undefined
-      const label = espnLiveClockLabel(statusObj)
+      const espnStatus = classifyEspnBoardStatus(statusObj)
+      const status = espnStatus || g.status
+      const label = espnMajorLeagueClockLabel(statusObj, kind)
       const broadcast = broadcastFromEspnCompetition(comps) || g.broadcast || null
+      const live = status === 'in'
+        ? liveFromEspnBoard(statusObj, g.live?.last_play || '')
+        : status === 'post' ? null : g.live || null
       return {
         ...g,
-        away: nextAway,
-        home: nextHome,
-        status_label: g.status === 'in' && label ? label : g.status_label,
+        status,
+        away: {
+          ...nextAway,
+          score: awayScore != null ? awayScore : nextAway.score,
+        },
+        home: {
+          ...nextHome,
+          score: homeScore != null ? homeScore : nextHome.score,
+        },
+        status_label: label || g.status_label,
         broadcast,
+        live: live || g.live || null,
       }
     }
     return g
@@ -2398,6 +2521,147 @@ async function fetchEspnFootballLivePack(
   }
 }
 
+async function fetchEspnMajorLeagueLivePack(
+  game: LoungeSportsGame,
+): Promise<{
+  live: LoungeSportsLiveState | null
+  plays: LoungeSportsPlay[]
+  team_stats?: LoungeSportsTeamStats | null
+}> {
+  const path = majorLeaguePathForSportKey(String(game.sport_key || ''))
+  if (!path) return { live: null, plays: [] }
+
+  const dates: string[] = []
+  const kick = game.commence_time ? new Date(game.commence_time) : new Date()
+  for (const delta of [0, -1, 1]) {
+    const d = new Date(kick)
+    d.setUTCDate(d.getUTCDate() + delta)
+    const y = d.getUTCFullYear()
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+    const day = String(d.getUTCDate()).padStart(2, '0')
+    dates.push(`${y}${m}${day}`)
+  }
+  dates.push('')
+
+  const headers = { 'User-Agent': 'EdgeTiltLounge/1.0', Accept: 'application/json' }
+  const boardBase = espnMajorLeagueScoreboardPath(path)
+  let eventId = ''
+  let homeEspnId = ''
+  let awayEspnId = ''
+  let statusObj: Record<string, unknown> | undefined
+  for (const date of dates) {
+    const url = date ? `${boardBase}?dates=${date}` : boardBase
+    try {
+      const res = await fetch(url, { headers, signal: AbortSignal.timeout(8_000) })
+      if (!res.ok) continue
+      const pack = await res.json() as { events?: Array<Record<string, unknown>> }
+      for (const ev of Array.isArray(pack.events) ? pack.events : []) {
+        const comps = (ev.competitions as Array<Record<string, unknown>> | undefined)?.[0]
+        const home = (Array.isArray(comps?.competitors) ? comps!.competitors as Array<Record<string, unknown>> : [])
+          .find((c) => c.homeAway === 'home') || null
+        const away = (Array.isArray(comps?.competitors) ? comps!.competitors as Array<Record<string, unknown>> : [])
+          .find((c) => c.homeAway === 'away') || null
+        if (!espnCompetitorMatchesSide(home, game.home) || !espnCompetitorMatchesSide(away, game.away)) continue
+        eventId = String(ev.id || '').trim()
+        homeEspnId = espnCompetitorTeamId(home || {})
+        awayEspnId = espnCompetitorTeamId(away || {})
+        statusObj = (comps?.status || ev.status) as Record<string, unknown> | undefined
+        break
+      }
+    } catch {
+      /* try next date */
+    }
+    if (eventId) break
+  }
+  if (!eventId) return { live: liveFromEspnBoard(statusObj), plays: [] }
+
+  try {
+    const res = await fetch(
+      espnMajorLeagueSummaryPath(path, eventId),
+      { headers, signal: AbortSignal.timeout(10_000) },
+    )
+    if (!res.ok) return { live: liveFromEspnBoard(statusObj), plays: [] }
+    const summary = await res.json() as Record<string, unknown>
+    const header = (summary.header && typeof summary.header === 'object')
+      ? summary.header as Record<string, unknown>
+      : null
+    const headerComp = Array.isArray(header?.competitions)
+      ? (header!.competitions as Array<Record<string, unknown>>)[0]
+      : null
+    const headerStatus = (headerComp?.status || header?.status || statusObj) as Record<string, unknown> | undefined
+
+    const sideForEspnTeamId = (id: string): 'home' | 'away' | null => {
+      if (!id) return null
+      if (homeEspnId && id === homeEspnId) return 'home'
+      if (awayEspnId && id === awayEspnId) return 'away'
+      return null
+    }
+
+    const rawPlays = Array.isArray(summary.plays)
+      ? summary.plays as Array<Record<string, unknown>>
+      : Array.isArray(summary.scoringPlays)
+        ? summary.scoringPlays as Array<Record<string, unknown>>
+        : []
+    const plays: LoungeSportsPlay[] = []
+    const seen = new Set<string>()
+    for (const row of rawPlays) {
+      const text = String(row.text || row.description || '').trim()
+      if (!text) continue
+      const playId = String(row.id || row.sequenceNumber || '').trim()
+      if (playId) {
+        if (seen.has(playId)) continue
+        seen.add(playId)
+      }
+      const team = (row.team && typeof row.team === 'object') ? row.team as Record<string, unknown> : null
+      const periodObj = (row.period && typeof row.period === 'object')
+        ? row.period as Record<string, unknown>
+        : null
+      const clockObj = (row.clock && typeof row.clock === 'object')
+        ? row.clock as Record<string, unknown>
+        : null
+      const homeScore = numOrNull(row.homeScore)
+      const awayScore = numOrNull(row.awayScore)
+      const scoreAfter = row.scoringPlay === true && homeScore != null && awayScore != null
+        ? { home_score: homeScore, away_score: awayScore }
+        : {}
+      plays.push({
+        id: playId || `${plays.length}`,
+        period: numOrNull(periodObj?.number ?? row.period),
+        clock: String(clockObj?.displayValue || row.clock || '').trim(),
+        description: text,
+        team: sideForEspnTeamId(String(team?.id || '').trim()),
+        ...scoreAfter,
+      })
+    }
+
+    const last = plays.length ? plays[plays.length - 1] : null
+    const live = liveFromEspnBoard(headerStatus || statusObj, last?.description || '')
+    const teamStats: LoungeSportsTeamStats = { home: [], away: [] }
+    const box = (summary.boxscore && typeof summary.boxscore === 'object')
+      ? summary.boxscore as Record<string, unknown>
+      : null
+    for (const t of Array.isArray(box?.teams) ? box!.teams as Array<Record<string, unknown>> : []) {
+      const team = (t.team && typeof t.team === 'object') ? t.team as Record<string, unknown> : null
+      const side = sideForEspnTeamId(String(team?.id || '').trim())
+      if (!side) continue
+      for (const s of Array.isArray(t.statistics) ? t.statistics as Array<Record<string, unknown>> : []) {
+        const name = String(s.name || '').trim()
+        const value = String(s.displayValue ?? '').trim()
+        if (!name || !value) continue
+        teamStats[side].push({ name, label: String(s.label || name).trim(), value })
+      }
+    }
+
+    return {
+      live,
+      plays: plays.slice(-80),
+      team_stats: teamStats.home.length || teamStats.away.length ? teamStats : null,
+    }
+  } catch {
+    return { live: liveFromEspnBoard(statusObj), plays: [] }
+  }
+}
+
 function clockSeconds(clock: string): number | null {
   const m = String(clock || '').trim().match(/^(\d{1,2}):(\d{2})/)
   return m ? Number(m[1]) * 60 + Number(m[2]) : null
@@ -3096,11 +3360,18 @@ export async function fetchLoungeSportsGameDetail(
   let liveOut = live
   let playsOut: LoungeSportsPlay[] = []
   const sk = String(game.sport_key || '')
+  const football = isNflSportKey(sk) || isCfbSportKey(sk)
+  const major = Boolean(majorLeaguePathForSportKey(sk))
   const needEspn =
-    (isNflSportKey(sk) || isCfbSportKey(sk)) &&
+    football &&
     (playsOut.length === 0 || !String(liveOut?.last_play || '').trim() || !String(liveOut?.clock || '').trim())
   // Live + final football always hit the ESPN summary for box score team totals (landscape gamecast rails).
-  const wantTeamStats = (isNflSportKey(sk) || isCfbSportKey(sk)) && (game.status === 'in' || game.status === 'post')
+  const wantTeamStats = football && (game.status === 'in' || game.status === 'post')
+  const kickedOff = (() => {
+    const t = Date.parse(String(game.commence_time || ''))
+    return Number.isFinite(t) && t <= Date.now()
+  })()
+  const wantMajorLive = major && (game.status === 'in' || game.status === 'post' || kickedOff)
   let teamStats: LoungeSportsTeamStats | null = null
   let playerBox: LoungeSportsPlayerBoxes | null = null
   // Play text often names players without `#N` … field figures look the number up here.
@@ -3118,6 +3389,11 @@ export async function fetchLoungeSportsGameDetail(
     }
     teamStats = espn.team_stats ?? null
     playerBox = espn.player_box ?? null
+  } else if (wantMajorLive) {
+    const espn = await fetchEspnMajorLeagueLivePack(game)
+    if (espn.plays.length) playsOut = espn.plays
+    if (espn.live) liveOut = mergeLiveState(espn.live, liveOut)
+    teamStats = espn.team_stats ?? null
   }
 
   const statRows: unknown[] = Array.isArray(statsRaw)

@@ -64,14 +64,18 @@ export function liveClockLabel(game, live) {
   if (game.status === 'pre') {
     return formatKickoff(game.commence_time) || stripTimeZoneSuffix(game.status_label) || 'Upcoming'
   }
+  const label = String(game.status_label || live?.status_detail || '').trim()
+  // MLB innings (Top 3rd) and other ESPN short details beat a bare ordinal period.
+  if (/^(top|bot|mid|end|middle)\b/i.test(label)) return label
   // Same call as the field banner … never "2nd 0:00" at the break.
   if (fieldCenterBanner(game, live) === 'HALFTIME') return 'Halftime'
+  if (/^(Q\d|P\d|OT|SO|1H|2H|ET|HT)\b/i.test(label)) return label
   const period = live?.period != null ? ordinal(live.period) : ''
   const clock = String(live?.clock || '').trim()
   if (period && clock) return `${period} ${clock}`
   if (clock) return clock
   if (period) return period
-  return game.status_label || 'Live'
+  return label || 'Live'
 }
 
 function clockSeconds(clock) {
@@ -98,7 +102,9 @@ export function withFreshestLiveClock(live, game, plays) {
   }
   push(live?.period, live?.clock)
   push(game?.live?.period, game?.live?.clock)
-  const label = /^Q(\d)\s+(\d{1,2}:\d{2})$/.exec(String(game?.status_label || '').trim())
+  const label = /^(?:Q|P)(\d)\s+(\d{1,2}:\d{2})$/.exec(String(game?.status_label || '').trim())
+    || /^(1)H\s+(\d{1,2}:\d{2})$/.exec(String(game?.status_label || '').trim())
+    || /^(2)H\s+(\d{1,2}:\d{2})$/.exec(String(game?.status_label || '').trim())
   if (label) push(label[1], label[2])
   for (const row of Array.isArray(plays) ? plays : []) {
     const stamp = /^\s*\((\d{1,2}:\d{2})\)/.exec(String(row?.description || ''))?.[1]

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { ChevronLeft, Loader2 } from 'lucide-react'
+import { ChevronLeft, ClipboardList, Loader2 } from 'lucide-react'
 import { Z_APP_MODAL } from '../../constants/appZIndex.js'
 import { useLoungeSportsFeed } from './LoungeSportsFeedContext.jsx'
 import LoungeGameScorePill from './LoungeGameScorePill.jsx'
@@ -21,6 +21,7 @@ import {
 import { loungeSportsSlateGames } from './loungeSportsSlateWindow.js'
 import { probeLogoWashTreatment, resolveNflPillWashes } from './loungeSportsMatch.js'
 import { usePhoneLandscapeNotTablet } from '../../utils/edgeiOSComposerPortraitLock.js'
+import { openSportsBetTracker } from '../sports-bet-tracker/sportsBetNav.js'
 
 /** Never hold a league hub behind the loader longer than this (slow CDN / missing art). */
 const LEAGUE_HUB_ASSET_CAP_MS = 6000
@@ -98,12 +99,23 @@ function isPgaHubFilter(filter) {
   return f === LOUNGE_SPORTS_HUB_FILTER_PGA || f.includes('golf_pga') || f === 'pga'
 }
 
-function SportsHubLeagueButtons({ onOpenLeague }) {
+function SportsHubLeagueButtons({ onOpenLeague, onOpenTracker }) {
   return (
-    <div
-      data-lounge-sports-hub-leagues
-      className="grid grid-cols-3 gap-2 px-1 pb-4 pt-1"
-    >
+    <div className="px-1 pb-4 pt-1">
+      <button
+        type="button"
+        data-sports-hub-tracker="home"
+        onClick={() => onOpenTracker?.()}
+        aria-label="Open Bet Tracker"
+        className="mb-3 flex w-full min-h-[3.25rem] items-center gap-3 rounded-2xl border px-3.5 text-left touch-manipulation [-webkit-tap-highlight-color:transparent]"
+      >
+        <ClipboardList className="h-5 w-5 shrink-0 text-cyan-400" strokeWidth={2.25} />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-semibold tracking-tight">Bet Tracker</span>
+          <span className="block text-[11px] font-medium text-zinc-500">Units · ROI · CLV</span>
+        </span>
+      </button>
+      <div data-lounge-sports-hub-leagues className="grid grid-cols-3 gap-2">
       {SPORTS_HUB_LEAGUES.map((league) => {
         const soon = !league.ready
         return (
@@ -126,6 +138,7 @@ function SportsHubLeagueButtons({ onOpenLeague }) {
           </button>
         )
       })}
+      </div>
     </div>
   )
 }
@@ -215,6 +228,11 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
 
   if (!open || typeof document === 'undefined') return null
 
+  const openTracker = () => {
+    sports.closeSlate?.()
+    openSportsBetTracker()
+  }
+
   const title = nflHub
     ? 'NFL Hub'
     : cfbHub
@@ -279,12 +297,24 @@ export default function LoungeSportsHubSlate({ embedded = false }) {
                   : 'Loading slate…'}
           </div>
         </div>
+        {leagueHub ? (
+          <button
+            type="button"
+            data-sports-hub-tracker="chip"
+            onClick={openTracker}
+            className={`inline-flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} items-center justify-center rounded-full touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-zinc-800`}
+            aria-label="Open Bet Tracker"
+          >
+            <ClipboardList className="h-5 w-5" strokeWidth={2.25} />
+          </button>
+        ) : null}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 pb-[max(1.25rem,max(env(safe-area-inset-bottom,0px),var(--edge-sab,0px)))]">
         {leagueHub ? null : (
           <SportsHubLeagueButtons
             onOpenLeague={(next) => sports.openSlate?.(next)}
+            onOpenTracker={openTracker}
           />
         )}
         {!leagueReady ? (

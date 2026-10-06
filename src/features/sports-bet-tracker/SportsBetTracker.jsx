@@ -293,7 +293,7 @@ export default function SportsBetTracker({
             </h1>
           )}
           <p className={`text-sm text-zinc-400 ${ipadShell ? '' : 'mt-0.5'}`}>
-            Hold a hub line to log it. Paste a slip or import a CSV. No book passwords.
+            Hold a hub line to log it. Open from Sports Hub.
           </p>
         </div>
 

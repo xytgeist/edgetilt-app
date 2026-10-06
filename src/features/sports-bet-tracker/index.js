@@ -1,6 +1,7 @@
 export { default as SportsBetTracker } from './SportsBetTracker.jsx'
 export {
   requestSportsBetLog,
+  openSportsBetTracker,
   consumeSportsBetLogPending,
   sportsBetLogOpenEventName,
   sportsBetPrefillFromSearchParams,

@@ -49,6 +49,16 @@ export function requestSportsBetLog(prefill) {
   }
 }
 
+/** Open the tracker tab without a log composer (Sports Hub door). */
+export function openSportsBetTracker() {
+  if (typeof window === 'undefined') return
+  const url = new URL(window.location.href)
+  url.searchParams.set('tab', 'sports-bets')
+  url.searchParams.delete('logBet')
+  window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`)
+  window.dispatchEvent(new PopStateEvent('popstate'))
+}
+
 /** @returns {SportsBetPrefill | null} */
 export function consumeSportsBetLogPending() {
   try {

@@ -1175,6 +1175,7 @@ Creators need to know when someone subscribes. **Shipped v1 (2026-07-21):** **`c
 
 ## Update log
 
+- **2026-10-06:** **Bet Tracker lives in Sports Hub (`1.4.1059`).** Door is the hub home row (plus clipboard chip on league slates). Removed from the hamburger. Deep link `?tab=sports-bets` still works.
 - **2026-10-05:** **Promoted bet tracker intake bones (`1.4.1058`).** Applied **`20261006020000`** on **prod**. Frontend **`test` → `main`**. Hold hub odds to log; paste/photo/CSV. Tap still opens the book. No Edge redeploy.
 - **2026-10-05:** **Bet tracker intake bones (`1.4.1058`).** Hold (or right-click) a hub odds cell / pregame best-line to log that book+number; tap still opens the sportsbook. Tracker: paste slip, IPA Vision photo (`purpose: sports-bet-slip`), CSV bulk when multiple rows parse. Sources `odds_cell` / `slip` / `csv` via **`20261006020000`**. Heuristic parse … confirm in composer. Not BookSync.
 - **2026-10-05:** **Promoted hub leagues + bet tracker (`1.4.1057`).** Applied **`20261006010000_sports_bet_tracker.sql`** on **test + prod** (recorded). Redeployed **`lounge-sports-scoreboard`** on **`kcosfvmreeiosdjdzycb`** and **`jtjgtucumuoswnbauxry`**. Frontend **`test` → `main`**. Ships NHL/NBA/MLB/MLS/PGA hub tiles, Rundown scores-only diet, Bet Tracker tab + hub Log a bet.

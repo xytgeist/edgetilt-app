@@ -2380,7 +2380,6 @@ export default function AppShell({
     { id: 'sports-hub', label: 'Sports Hub', icon: NAV_ICONS['sports-hub'], subscriberGated: false },
     { id: 'nfl-hub', label: 'NFL Hub', icon: NAV_ICONS['nfl-hub'], subscriberGated: false },
     { id: 'cfb-hub', label: 'CFB Hub', icon: NAV_ICONS['cfb-hub'], subscriberGated: false },
-    { id: 'sports-bets', label: 'Bet Tracker', icon: NAV_ICONS['sports-bets'], subscriberGated: false },
     { id: 'chat', label: 'Chat', icon: NAV_ICONS.chat, subscriberGated: false },
     ...(isAdmin ? [{ id: 'monitor', label: 'Monitor', icon: NAV_ICONS.monitor, subscriberGated: false }] : []),
     ...(isAdmin ? [{ id: 'bots', label: 'Bots', icon: NAV_ICONS.bots, subscriberGated: false }] : []),

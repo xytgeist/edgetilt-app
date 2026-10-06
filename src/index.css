@@ -3850,6 +3850,10 @@ html.light [data-lounge-game-chat]::placeholder {
   [data-lounge-game-hub].fixed [data-lounge-gamecast-chrome] {
     padding-top: calc(max(0.375rem, env(safe-area-inset-top, 0px)) / var(--gc-tablet-z, 1.58)) !important;
   }
+  /* Back / … chips stay phone-sized. Nested zoom cancels the tablet scale. */
+  [data-lounge-game-hub].fixed [data-lounge-game-glass-chip] {
+    zoom: calc(1 / var(--gc-tablet-z, 1.58));
+  }
 }
 /* Game hero (scoreboard + field) is always dark … light mode must not remap anything inside it.
    Every global / hub `html.light` text remap that can reach a hero class is pinned back to its dark value here. */

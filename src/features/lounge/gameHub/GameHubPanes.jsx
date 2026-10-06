@@ -16,18 +16,31 @@ import { openSportsbookUrl } from '../../../utils/edgeNative.js'
 import { usableLink } from './gameHubBestLines.js'
 import { sportsbookHomeUrl } from './sportsbookLinks.js'
 import { fillBookLinkState, isLegalBook, stateHasLegalBooks, stateName } from './gameHubLegalBooks.js'
+import { useLogSportsBetOdds } from '../../sports-bet-tracker/sportsBetLogContext.jsx'
+import { useOddsLogPress } from '../../sports-bet-tracker/useOddsLogPress.js'
 
-/** Odds cell that opens the book's bet slip (market deep link) or the book's home page. */
-function OddsCell({ row, linkKey, label, className, legalState, children }) {
+/** Odds cell: tap opens the book. Hold / right-click logs the line into Bet Tracker. */
+function OddsCell({ row, linkKey, label, className, legalState, children, logPayload = null }) {
+  const logOdds = useLogSportsBetOdds()
   const url = usableLink(fillBookLinkState(row?.[linkKey], legalState)) || sportsbookHomeUrl(row?.book)
-  if (!url) return <td className={className}>{children}</td>
+  const press = useOddsLogPress({
+    enabled: Boolean(logOdds && logPayload),
+    onLog: () =>
+      logOdds({
+        ...logPayload,
+        book: row?.book,
+      }),
+    onOpen: url ? () => void openSportsbookUrl(url, { book: row?.book }) : null,
+  })
+  if (!url && !(logOdds && logPayload)) return <td className={className}>{children}</td>
   return (
     <td className={String(className).replace(/\bp[xy]-\d+\b/g, '').trim()}>
       <button
         type="button"
         data-lounge-game-odds-link
-        onClick={() => void openSportsbookUrl(url, { book: row?.book })}
+        {...press}
         aria-label={`${label} at ${row.book}`}
+        title="Tap to open book · hold to log"
         className="w-full rounded-lg px-2 py-2 tabular-nums touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/10"
       >
         {children}
@@ -492,32 +505,104 @@ export function OddsTable({ game, books, legalState = null }) {
         <tbody className="text-zinc-200">
           <tr className="border-t border-zinc-800">
             <td className="px-3 py-2 text-left font-semibold">{game.away?.abbrev}</td>
-            <OddsCell legalState={legalState} row={row} linkKey="away_spread_link" label={`${game.away?.abbrev || 'Away'} spread`} className="px-2 py-2 tabular-nums">
+            <OddsCell
+              legalState={legalState}
+              row={row}
+              linkKey="away_spread_link"
+              label={`${game.away?.abbrev || 'Away'} spread`}
+              className="px-2 py-2 tabular-nums"
+              logPayload={{
+                market: 'spread',
+                side: 'away',
+                line: row.away_spread,
+                odds: row.away_spread_price,
+              }}
+            >
               {signedPoint(row.away_spread)}{' '}
               <span className="text-zinc-500">{american(row.away_spread_price)}</span>
               <OddsMarketDot show={flagSpread} label={`${cellDotLabel} spread`} />
             </OddsCell>
-            <OddsCell legalState={legalState} row={row} linkKey="over_link" label="Over" className="px-2 py-2 tabular-nums">
+            <OddsCell
+              legalState={legalState}
+              row={row}
+              linkKey="over_link"
+              label="Over"
+              className="px-2 py-2 tabular-nums"
+              logPayload={{
+                market: 'total',
+                side: 'over',
+                line: row.total,
+                odds: row.over_price,
+              }}
+            >
               O {row.total ?? '-'} <span className="text-zinc-500">{american(row.over_price)}</span>
               <OddsMarketDot show={flagTotal} label={`${cellDotLabel} total`} />
             </OddsCell>
-            <OddsCell legalState={legalState} row={row} linkKey="away_ml_link" label={`${game.away?.abbrev || 'Away'} moneyline`} className="px-3 py-2 font-semibold tabular-nums">
+            <OddsCell
+              legalState={legalState}
+              row={row}
+              linkKey="away_ml_link"
+              label={`${game.away?.abbrev || 'Away'} moneyline`}
+              className="px-3 py-2 font-semibold tabular-nums"
+              logPayload={{
+                market: 'h2h',
+                side: 'away',
+                line: null,
+                odds: row.away_ml,
+              }}
+            >
               {american(row.away_ml)}
               <OddsMarketDot show={flagMl} label={`${cellDotLabel} ML`} />
             </OddsCell>
           </tr>
           <tr className="border-t border-zinc-800">
             <td className="px-3 py-2 text-left font-semibold">{game.home?.abbrev}</td>
-            <OddsCell legalState={legalState} row={row} linkKey="home_spread_link" label={`${game.home?.abbrev || 'Home'} spread`} className="px-2 py-2 tabular-nums">
+            <OddsCell
+              legalState={legalState}
+              row={row}
+              linkKey="home_spread_link"
+              label={`${game.home?.abbrev || 'Home'} spread`}
+              className="px-2 py-2 tabular-nums"
+              logPayload={{
+                market: 'spread',
+                side: 'home',
+                line: row.home_spread,
+                odds: row.home_spread_price,
+              }}
+            >
               {signedPoint(row.home_spread)}{' '}
               <span className="text-zinc-500">{american(row.home_spread_price)}</span>
               <OddsMarketDot show={flagSpread} label={`${cellDotLabel} spread`} />
             </OddsCell>
-            <OddsCell legalState={legalState} row={row} linkKey="under_link" label="Under" className="px-2 py-2 tabular-nums">
+            <OddsCell
+              legalState={legalState}
+              row={row}
+              linkKey="under_link"
+              label="Under"
+              className="px-2 py-2 tabular-nums"
+              logPayload={{
+                market: 'total',
+                side: 'under',
+                line: row.total,
+                odds: row.under_price,
+              }}
+            >
               U {row.total ?? '-'} <span className="text-zinc-500">{american(row.under_price)}</span>
               <OddsMarketDot show={flagTotal} label={`${cellDotLabel} total`} />
             </OddsCell>
-            <OddsCell legalState={legalState} row={row} linkKey="home_ml_link" label={`${game.home?.abbrev || 'Home'} moneyline`} className="px-3 py-2 font-semibold tabular-nums">
+            <OddsCell
+              legalState={legalState}
+              row={row}
+              linkKey="home_ml_link"
+              label={`${game.home?.abbrev || 'Home'} moneyline`}
+              className="px-3 py-2 font-semibold tabular-nums"
+              logPayload={{
+                market: 'h2h',
+                side: 'home',
+                line: null,
+                odds: row.home_ml,
+              }}
+            >
               {american(row.home_ml)}
               <OddsMarketDot show={flagMl} label={`${cellDotLabel} ML`} />
             </OddsCell>
@@ -528,7 +613,7 @@ export function OddsTable({ game, books, legalState = null }) {
         <div className="border-t border-zinc-800/80 px-3 py-1.5 text-[11px] text-zinc-500">
           {legalState && !isLegalBook(row.book, legalState)
             ? `${row.book} doesn't operate in ${legalName || legalState}`
-            : `Tap a line to bet it at ${row.book}`}
+            : `Tap a line to bet it at ${row.book} · hold to log`}
         </div>
       ) : null}
     </div>

@@ -1,6 +1,6 @@
 # Sports bet tracker (Sports Edge)
 
-**Status:** v1 scaffold on **`test`** (`1.4.1057`). Product slug **`sports-edge`** (Stripe price later).
+**Status:** intake bones on **`test`** (`1.4.1058`). Product slug **`sports-edge`** (Stripe price later).
 
 **Ryan lock (2026-10-06, computer change):** be **strong where Pikkit is strong and strong where they are weak**. Manual + our CLV is not enough. Hands-off complete records are required. **Do not DIY sportsbook password scrape.**
 
@@ -62,9 +62,9 @@ Why not DIY BookSync:
 
 ## Build order (next sessions)
 
-1. **Odds-cell Log** … tap the number on the hub board → stake → save. Betstamp’s “from the board” strength. Hub **… → Log a bet** already exists as game-level prefill.
-2. **Slip capture that feels like sync** … photo / share-sheet / paste → Vision (W-2G pipe already exists) → confirm → log. Covers US + offshore. SlipSync’s strength without logins.
-3. **CSV / statement import** … DK/FD exports as a bridge while real connect is dark.
+1. **Odds-cell Log (bones shipped `1.4.1058`)** … **hold** (or right-click) the number on the hub board / odds table. Tap still opens the book. Composer opens with that book/line/odds; last stake units stick.
+2. **Slip capture (bones shipped)** … paste text, or photo on IPA (`EdgeNative.recognizeText`, purpose `sports-bet-slip`) → heuristic parse → confirm. PWA photo falls back to paste. Not a trained slip model yet.
+3. **CSV / statement import (bones shipped)** … file with Odds / Selection columns; bulk insert when more than one row parses.
 4. **Real book connect** … only via licensed aggregator or official partner APIs, behind Sports Edge. **Never scrape logins.**
 
 Also improve where they are mediocre: CLV vs locked Pinnacle-style closes; Autofill **out** through sportsbook deep links we already have on odds rows.
@@ -76,11 +76,13 @@ Also improve where they are mediocre: CLV vs locked Pinnacle-style closes; Autof
 | Ship | Skip (later … see build order) |
 | --- | --- |
 | Manual log + **Log a bet** from game hub (game prefill) | DIY book credential sync (**never**) |
-| Units stake, American odds, market (spread / ML / total / other) | Screenshot OCR slip ingest (**next**) |
-| Open → won / lost / push / void settle | Odds-cell one-tap log (**next**) |
-| P&L units + ROI + record | CSV / statement import |
-| CLV vs locked **`lounge_market_files`** close (RPC) | White-label / official book connect |
-| Free for verified users while Sports Edge SKU is dark | Hard `sports-edge` paywall; parlay legs; verified public record |
+| **Hold odds cell** to log that book/line | Tap-replaces-open-book (tap still opens the sportsbook) |
+| Paste slip + IPA photo OCR + CSV import (heuristic, confirm first) | Trained slip Vision model / share-sheet auto-ingest |
+| Units stake, American odds, market (spread / ML / total / other) | White-label / official book connect |
+| Open → won / lost / push / void settle | Parlay legs; verified public record |
+| P&L units + ROI + record | Hard `sports-edge` paywall |
+| CLV vs locked **`lounge_market_files`** close (RPC) |  |
+| Free for verified users while Sports Edge SKU is dark |  |
 
 **v1 does not** ask for sportsbook passwords or scrape books. That stays true even after “sync feel” ships.
 
@@ -89,9 +91,10 @@ Also improve where they are mediocre: CLV vs locked Pinnacle-style closes; Autof
 ## Data
 
 - Table **`sports_bets`** (RLS: own rows only) … migration **`20261006010000_sports_bet_tracker.sql`**
+- Intake sources `odds_cell` / `slip` / `csv` … **`20261006020000_sports_bets_intake_sources.sql`**
 - CLV: **`sports_bets_refresh_clv()`** security definer reads locked closes for the caller’s event ids (does not widen market-file RLS to the client)
 
-Applied **test + prod** 2026-10-05 (`schema_migrations` **`20261006010000`**).
+Applied **`20261006010000`** test + prod 2026-10-05. Applied **`20261006020000`** on **test** 2026-10-05 (intake sources). Prod SQL for `20000` on next promote.
 
 ## Client
 

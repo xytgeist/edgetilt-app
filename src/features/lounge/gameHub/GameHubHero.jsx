@@ -19,6 +19,8 @@ import { pregameGameMarketPicks, pregamePlayerPropRails } from './gameHubPregame
 import { liveFantasyRails, livePropRails } from './gameHubLiveRails.js'
 import { liveBestLines, pregameBestLines } from './gameHubBestLines.js'
 import { useLegalBooks } from './gameHubLegalBooks.js'
+import { useLogSportsBetOdds } from '../../sports-bet-tracker/sportsBetLogContext.jsx'
+import { useOddsLogPress } from '../../sports-bet-tracker/useOddsLogPress.js'
 import { formatFantasyPoints, playFantasyPoints } from './gameHubPlayFantasy.js'
 import {
   fantasyScoringLabel,
@@ -4457,7 +4459,33 @@ function evTag(ev) {
  * Board stat; with `href` it becomes a tap-through to the market / book (price reads as the Yes price for
  * prediction markets). `book` labels which sportsbook has the best line; `tag` is an optional EV badge.
  */
-function MatchupLine({ title, value, sub, href = '', source = '', book = '', tag = '' }) {
+function pickLogPayload(label, pick, side) {
+  if (pick?.price == null || !Number.isFinite(Number(pick.price)) || Number(pick.price) === 0) return null
+  const market =
+    label === 'Moneyline' || label === 'ML' ? 'h2h'
+      : label === 'Total' || label === 'Over' || label === 'Under' ? 'total'
+        : 'spread'
+  const logSide =
+    label === 'Over' ? 'over'
+      : label === 'Under' ? 'under'
+        : label === 'Total' ? 'over'
+          : side || null
+  return {
+    market,
+    side: logSide,
+    line: market === 'h2h' ? null : pick.point,
+    odds: pick.price,
+    book: pick.book,
+  }
+}
+
+function MatchupLine({ title, value, sub, href = '', source = '', book = '', tag = '', logPayload = null }) {
+  const logOdds = useLogSportsBetOdds()
+  const press = useOddsLogPress({
+    enabled: Boolean(logOdds && logPayload),
+    onLog: () => logOdds(logPayload),
+    onOpen: href ? () => void openSportsbookUrl(href, { book: book || source }) : null,
+  })
   const body = (
     <>
       <div className="text-[9px] font-semibold uppercase leading-none tracking-[0.14em] text-white/55">{title}</div>
@@ -4481,13 +4509,14 @@ function MatchupLine({ title, value, sub, href = '', source = '', book = '', tag
       ) : null}
     </>
   )
-  if (!href) return <div className="flex min-w-[3.5rem] flex-col items-center">{body}</div>
+  if (!href && !(logOdds && logPayload)) return <div className="flex min-w-[3.5rem] flex-col items-center">{body}</div>
   return (
     <button
       type="button"
       data-lounge-gamecast-market-link
-      onClick={() => void openSportsbookUrl(href, { book: book || source })}
-      aria-label={`${title} ${value}, open on ${MARKET_SOURCE_LABEL[source] || source || 'market'}`}
+      {...press}
+      aria-label={`${title} ${value}, ${href ? `open on ${MARKET_SOURCE_LABEL[source] || source || 'market'}` : 'hold to log'}`}
+      title={logPayload ? 'Tap to open book · hold to log' : undefined}
       className="-mx-1.5 -my-1 flex min-w-[3.5rem] flex-col items-center rounded-lg px-1.5 py-1 touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/15"
     >
       {body}
@@ -4495,21 +4524,25 @@ function MatchupLine({ title, value, sub, href = '', source = '', book = '', tag
   )
 }
 
-/** Scoreboard spread / ML under-over the score: taps open the best book's betslip (or book home) when shopped. */
-function ScoreboardLine({ pick, text, label, className = '' }) {
+/** Scoreboard spread / ML under-over the score: taps open the best book's betslip (or book home) when shopped. Hold logs. */
+function ScoreboardLine({ pick, text, label, className = '', side = null }) {
+  const logOdds = useLogSportsBetOdds()
+  const logPayload = pickLogPayload(label, pick, side)
+  const press = useOddsLogPress({
+    enabled: Boolean(logOdds && logPayload),
+    onLog: () => logOdds(logPayload),
+    onOpen: pick?.url ? () => void openSportsbookUrl(pick.url, { book: pick.book }) : null,
+  })
   const base = `leading-none tabular-nums drop-shadow ${className}`
-  if (!pick?.url) return <div className={base}>{text}</div>
-  const price = american(pick.price)
+  if (!pick?.url && !(logOdds && logPayload)) return <div className={base}>{text}</div>
+  const price = american(pick?.price)
   return (
     <button
       type="button"
       data-lounge-gamecast-market-link
-      onClick={(e) => {
-        e.stopPropagation()
-        void openSportsbookUrl(pick.url, { book: pick.book })
-      }}
-      aria-label={`${label} ${text}${label === 'Spread' && price ? ` ${price}` : ''}, open on ${pick.book || 'sportsbook'}`}
-      title={`${pick.book || 'Sportsbook'} ${text}${label === 'Spread' && price ? ` (${price})` : ''}`}
+      {...press}
+      aria-label={`${label} ${text}${label === 'Spread' && price ? ` ${price}` : ''}${pick?.url ? `, open on ${pick.book || 'sportsbook'}` : ''}`}
+      title={`${pick?.book || 'Sportsbook'} ${text} · hold to log`}
       className={`${base} -mx-1 rounded px-1 underline decoration-white/25 underline-offset-2 touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/15`}
     >
       {text}
@@ -4521,7 +4554,7 @@ function ScoreboardLine({ pick, text, label, className = '' }) {
  * One side of the no-field board (pregame / non-football final): logo, name (full name wraps to two lines
  * pregame), record, then the big number (best spread pregame, score after) with the moneyline under it.
  */
-function BoardTeamColumn({ side, label, treatment, preLabels, bigText, bigPick, bigDim, ml, mlPick }) {
+function BoardTeamColumn({ side, label, treatment, preLabels, bigText, bigPick, bigDim, ml, mlPick, sideKey }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col items-center text-center">
       <LoungeSportsTeamLogo side={side} treatment={treatment} size={76} />
@@ -4543,12 +4576,13 @@ function BoardTeamColumn({ side, label, treatment, preLabels, bigText, bigPick, 
           pick={bigPick}
           text={bigText}
           label="Spread"
+          side={sideKey}
           className={`text-[42px] font-bold ${bigDim ? 'text-white/45' : 'text-white'}`}
         />
         {ml ? (
           <div className="mt-1 flex items-baseline gap-1 text-[13px] font-semibold text-white/70">
             <span className="text-[10px] font-bold tracking-[0.12em] text-white/60">ML</span>
-            <ScoreboardLine pick={mlPick} text={ml} label="Moneyline" />
+            <ScoreboardLine pick={mlPick} text={ml} label="Moneyline" side={sideKey} />
           </div>
         ) : null}
       </div>
@@ -4557,7 +4591,8 @@ function BoardTeamColumn({ side, label, treatment, preLabels, bigText, bigPick, 
 }
 
 /** Best-line pick (`pregameBestLines`) as a MatchupLine; falls back to the scoreboard number without a book. */
-function BestLine({ title, pick, value, fallback }) {
+function BestLine({ title, pick, value, fallback, side = null }) {
+  const logPayload = pickLogPayload(title, pick, side)
   if (!pick) return fallback != null ? <MatchupLine title={title} value={fallback} /> : null
   return (
     <MatchupLine
@@ -4568,6 +4603,7 @@ function BestLine({ title, pick, value, fallback }) {
       source={pick.book}
       book={pick.book}
       tag={evTag(pick.ev)}
+      logPayload={logPayload}
     />
   )
 }
@@ -4590,7 +4626,7 @@ function TeamRecordLine({ side, className = '' }) {
 }
 
 /** One team's column on the landscape pregame board: logo, name, record, best spread + ML, then team total. */
-function MatchupTeamColumn({ side, label, treatment, best, teamTotal }) {
+function MatchupTeamColumn({ side, label, treatment, best, teamTotal, sideKey }) {
   return (
     <div className="flex min-w-0 flex-col items-center">
       <LoungeSportsTeamLogo side={side} treatment={treatment} size={64} />
@@ -4603,12 +4639,14 @@ function MatchupTeamColumn({ side, label, treatment, best, teamTotal }) {
       <div className="mt-2.5 flex items-start gap-3">
         <BestLine
           title="Spread"
+          side={sideKey}
           pick={best?.spread}
           value={best?.spread ? signedPoint(best.spread.point) : null}
           fallback={side?.spread != null ? signedPoint(side.spread) : null}
         />
         <BestLine
           title="ML"
+          side={sideKey}
           pick={best?.ml}
           value={best?.ml ? american(best.ml.price) : null}
           fallback={side?.ml != null ? american(side.ml) : null}
@@ -4752,6 +4790,7 @@ function LandscapeMatchupBoard({
           <PregamePropRail rows={rails.away} align="left" />
           <MatchupTeamColumn
             side={game.away}
+            sideKey="away"
             label={awayLabel}
             treatment={awayTreatment}
             best={best?.away}
@@ -4794,6 +4833,7 @@ function LandscapeMatchupBoard({
           </div>
           <MatchupTeamColumn
             side={game.home}
+            sideKey="home"
             label={homeLabel}
             treatment={homeTreatment}
             best={best?.home}
@@ -5150,6 +5190,7 @@ export default function GameHubHero({
                       pick={scoreBest?.away?.spread}
                       text={awaySpreadText}
                       label="Spread"
+                      side="away"
                       className="mb-0.5 text-[11px] font-semibold text-white/70"
                     />
                   ) : null}
@@ -5165,6 +5206,7 @@ export default function GameHubHero({
                       pick={scoreBest?.away?.ml}
                       text={awayMl}
                       label="Moneyline"
+                      side="away"
                       className="mt-0.5 text-[11px] font-semibold text-white/70"
                     />
                   ) : null}
@@ -5207,6 +5249,7 @@ export default function GameHubHero({
                       pick={scoreBest?.home?.spread}
                       text={homeSpreadText}
                       label="Spread"
+                      side="home"
                       className="mb-0.5 text-[11px] font-semibold text-white/70"
                     />
                   ) : null}
@@ -5222,6 +5265,7 @@ export default function GameHubHero({
                       pick={scoreBest?.home?.ml}
                       text={homeMl}
                       label="Moneyline"
+                      side="home"
                       className="mt-0.5 text-[11px] font-semibold text-white/70"
                     />
                   ) : null}
@@ -5251,6 +5295,7 @@ export default function GameHubHero({
           <div className="flex items-stretch justify-between gap-2">
             <BoardTeamColumn
               side={game.away}
+              sideKey="away"
               label={awayLabel}
               treatment={awayTreatment}
               preLabels={preLabels}
@@ -5284,6 +5329,7 @@ export default function GameHubHero({
 
             <BoardTeamColumn
               side={game.home}
+              sideKey="home"
               label={homeLabel}
               treatment={homeTreatment}
               preLabels={preLabels}

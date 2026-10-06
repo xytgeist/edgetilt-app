@@ -46,6 +46,7 @@ import {
 } from './gameHub/gameHubFormatters.js'
 import { readGameHubCache, writeGameHubCache } from './gameHub/gameHubCache.js'
 import { requestSportsBetLog } from '../sports-bet-tracker/sportsBetNav.js'
+import { SportsBetLogGameProvider } from '../sports-bet-tracker/sportsBetLogContext.jsx'
 
 const EMPTY_DETAIL = { odds: [], plays: [], stats: [], live: null, splits: null }
 
@@ -749,6 +750,7 @@ export default function LoungeGameHubModal({
   )
 
   const hubRoot = (
+    <SportsBetLogGameProvider game={game} onBeforeLog={() => sports.closeHub?.()}>
     <div
       data-lounge-game-hub
       className={
@@ -845,6 +847,7 @@ export default function LoungeGameHubModal({
         </form>
       ) : null}
     </div>
+    </SportsBetLogGameProvider>
   )
 
   // Landscape phone on a football game: full-screen gamecast (live / final: scoreboard, field, stat rails;
@@ -853,6 +856,7 @@ export default function LoungeGameHubModal({
   if (gamecastFull) {
     const chipClass = `inline-flex ${LOUNGE_FEED_TITLE_BAR_SIDE_SLOT_CLASS} items-center justify-center rounded-full border border-white/25 bg-white/15 text-white shadow-sm touch-manipulation [-webkit-tap-highlight-color:transparent] active:bg-white/25`
     return createPortal(
+      <SportsBetLogGameProvider game={game} onBeforeLog={() => sports.closeHub?.()}>
       <div
         data-lounge-game-hub
         data-lounge-gamecast-full
@@ -912,7 +916,8 @@ export default function LoungeGameHubModal({
           marketProps={fantasy.props}
           playerBox={detail.playerBox}
         />
-      </div>,
+      </div>
+      </SportsBetLogGameProvider>,
       document.body,
     )
   }

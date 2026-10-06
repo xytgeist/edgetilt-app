@@ -1,4 +1,5 @@
 import { buildSelectionLabel, profitUnitsForStatus } from './sportsBetMath.js'
+import { normalizeSportsBetSource } from './sportsBetSources.js'
 
 const SELECT = `
   id, user_id, event_id, sport_key, sport_label, home_team, away_team, commence_time,
@@ -56,7 +57,7 @@ export async function insertSportsBet(supabaseClient, userId, draft) {
       : Number(draft.stake_dollars),
     notes: draft.notes ? String(draft.notes).trim() : null,
     tags: Array.isArray(draft.tags) ? draft.tags : [],
-    source: draft.source === 'game_hub' ? 'game_hub' : 'manual',
+    source: normalizeSportsBetSource(draft.source, 'manual'),
     status: 'open',
   }
 

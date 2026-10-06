@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { ClipboardList, Plus, RefreshCw, Trash2, X } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Camera, ClipboardList, ClipboardPaste, FileSpreadsheet, Plus, RefreshCw, Trash2, X } from 'lucide-react'
 import ScrollLinkedEdgeTitleBarShell from '../../components/ScrollLinkedEdgeTitleBarShell.jsx'
 import TitleBarScreenTitle from '../../components/TitleBarScreenTitle.jsx'
 import { useIpadAuthStage } from '../auth/AuthModalShell.jsx'
@@ -20,42 +20,53 @@ import {
   sportsBetLogOpenEventName,
   sportsBetPrefillFromSearchParams,
 } from './sportsBetNav.js'
+import { parseSportsBetCsv, parseSportsBetIntake } from './sportsBetParse.js'
+import { ocrSportsBetSlipImage } from './sportsBetOcr.js'
+import { readLastStakeUnits, writeLastStakeUnits } from './sportsBetStake.js'
+import { normalizeSportsBetSource, sportsBetSourceLabel } from './sportsBetSources.js'
 
-const EMPTY_DRAFT = {
-  book: '',
-  market: 'spread',
-  side: 'home',
-  line: '',
-  odds: '-110',
-  stake_units: '1',
-  selection_label: '',
-  notes: '',
-  home_team: '',
-  away_team: '',
-  sport_label: '',
-  event_id: '',
-  sport_key: '',
-  commence_time: '',
-  source: 'manual',
+function emptyDraft() {
+  return {
+    book: '',
+    market: 'spread',
+    side: 'home',
+    line: '',
+    odds: '-110',
+    stake_units: String(readLastStakeUnits()),
+    selection_label: '',
+    notes: '',
+    home_team: '',
+    away_team: '',
+    sport_label: '',
+    event_id: '',
+    sport_key: '',
+    commence_time: '',
+    source: 'manual',
+  }
 }
 
 function draftFromPrefill(prefill) {
-  if (!prefill || typeof prefill !== 'object') return { ...EMPTY_DRAFT }
+  if (!prefill || typeof prefill !== 'object') return emptyDraft()
   return {
-    ...EMPTY_DRAFT,
+    ...emptyDraft(),
     book: prefill.book != null ? String(prefill.book) : '',
     market: prefill.market || 'spread',
     side: prefill.side || 'home',
     line: prefill.line != null ? String(prefill.line) : '',
     odds: prefill.odds != null ? String(prefill.odds) : '-110',
+    stake_units:
+      prefill.stake_units != null && String(prefill.stake_units) !== ''
+        ? String(prefill.stake_units)
+        : String(readLastStakeUnits()),
     selection_label: prefill.selection_label ? String(prefill.selection_label) : '',
+    notes: prefill.notes ? String(prefill.notes) : '',
     home_team: prefill.home_team ? String(prefill.home_team) : '',
     away_team: prefill.away_team ? String(prefill.away_team) : '',
     sport_label: prefill.sport_label ? String(prefill.sport_label) : '',
     event_id: prefill.event_id ? String(prefill.event_id) : '',
     sport_key: prefill.sport_key ? String(prefill.sport_key) : '',
     commence_time: prefill.commence_time ? String(prefill.commence_time) : '',
-    source: prefill.source === 'game_hub' ? 'game_hub' : 'manual',
+    source: normalizeSportsBetSource(prefill.source, 'manual'),
   }
 }
 
@@ -96,9 +107,13 @@ export default function SportsBetTracker({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [composerOpen, setComposerOpen] = useState(false)
-  const [draft, setDraft] = useState(EMPTY_DRAFT)
+  const [draft, setDraft] = useState(emptyDraft)
   const [saving, setSaving] = useState(false)
   const [filter, setFilter] = useState('all')
+  const [pasteOpen, setPasteOpen] = useState(false)
+  const [pasteText, setPasteText] = useState('')
+  const csvInputRef = useRef(null)
+  const photoInputRef = useRef(null)
 
   useEffect(() => {
     if (!supabaseClient) {
@@ -200,8 +215,41 @@ export default function SportsBetTracker({
     }
     setBets((prev) => [bet, ...prev])
     setComposerOpen(false)
-    setDraft(EMPTY_DRAFT)
+    setDraft(emptyDraft())
+    writeLastStakeUnits(draft.stake_units)
     void refreshSportsBetClv(supabaseClient).then(() => load())
+  }
+
+  const applyIntakeDrafts = async (drafts, { bulk = false } = {}) => {
+    const list = Array.isArray(drafts) ? drafts.filter(Boolean) : []
+    if (!list.length) {
+      setError('Could not read a bet from that. Check odds look like -110 / +150.')
+      return
+    }
+    if (!bulk || list.length === 1) {
+      openComposer(list[0])
+      return
+    }
+    if (!userId) {
+      setError('Sign in to import bets.')
+      return
+    }
+    setSaving(true)
+    setError('')
+    const inserted = []
+    let lastErr = ''
+    for (const row of list) {
+      const payload = {
+        ...row,
+        stake_units: row.stake_units || readLastStakeUnits(),
+      }
+      const { bet, error: saveErr } = await insertSportsBet(supabaseClient, userId, payload)
+      if (saveErr) lastErr = saveErr
+      else if (bet) inserted.push(bet)
+    }
+    setSaving(false)
+    if (inserted.length) setBets((prev) => [...inserted, ...prev])
+    if (lastErr) setError(`Imported ${inserted.length}/${list.length}. ${lastErr}`)
   }
 
   const onSettle = async (id, status) => {
@@ -245,7 +293,7 @@ export default function SportsBetTracker({
             </h1>
           )}
           <p className={`text-sm text-zinc-400 ${ipadShell ? '' : 'mt-0.5'}`}>
-            Units · ROI · CLV vs our close … log from Sports Hub or by hand
+            Hold a hub line to log it. Paste a slip or import a CSV. No book passwords.
           </p>
         </div>
 
@@ -313,6 +361,75 @@ export default function SportsBetTracker({
           </button>
         </div>
 
+        <div className="mb-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setPasteText('')
+              setPasteOpen(true)
+              setError('')
+            }}
+            className="inline-flex h-10 items-center gap-1.5 rounded-2xl border border-zinc-700 px-3 text-[12px] font-bold text-zinc-200 active:bg-zinc-800"
+          >
+            <ClipboardPaste className="h-3.5 w-3.5" />
+            Paste slip
+          </button>
+          <button
+            type="button"
+            onClick={() => photoInputRef.current?.click()}
+            className="inline-flex h-10 items-center gap-1.5 rounded-2xl border border-zinc-700 px-3 text-[12px] font-bold text-zinc-200 active:bg-zinc-800"
+          >
+            <Camera className="h-3.5 w-3.5" />
+            Photo
+          </button>
+          <button
+            type="button"
+            onClick={() => csvInputRef.current?.click()}
+            className="inline-flex h-10 items-center gap-1.5 rounded-2xl border border-zinc-700 px-3 text-[12px] font-bold text-zinc-200 active:bg-zinc-800"
+          >
+            <FileSpreadsheet className="h-3.5 w-3.5" />
+            CSV
+          </button>
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (!file) return
+              void (async () => {
+                setError('')
+                const { text, error: ocrErr, native } = await ocrSportsBetSlipImage(file)
+                if (!native) {
+                  setError('Photo OCR is on the iPhone app for now. Paste the slip text instead.')
+                  setPasteOpen(true)
+                  return
+                }
+                if (ocrErr) {
+                  setError(ocrErr)
+                  return
+                }
+                await applyIntakeDrafts(parseSportsBetIntake(text))
+              })()
+            }}
+          />
+          <input
+            ref={csvInputRef}
+            type="file"
+            accept=".csv,text/csv,text/tab-separated-values"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (!file) return
+              void file.text().then((text) => applyIntakeDrafts(parseSportsBetCsv(text), { bulk: true }))
+            }}
+          />
+        </div>
+
         {error ? (
           <div className="mb-3 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">
             {error}
@@ -327,7 +444,7 @@ export default function SportsBetTracker({
           <div className="rounded-2xl border border-dashed border-zinc-700 px-4 py-10 text-center">
             <p className="text-sm font-semibold text-zinc-300">No bets yet</p>
             <p className="mt-1 text-sm text-zinc-500">
-              Open a game in Sports Hub → … → Log a bet, or tap Log above.
+              Hold a line on the Sports Hub odds board, or paste a slip / CSV.
             </p>
           </div>
         ) : null}
@@ -355,7 +472,13 @@ export default function SportsBetTracker({
                       {bet.selection_label}
                     </div>
                     <div className="mt-0.5 text-[12px] text-zinc-400">
-                      {[bet.sport_label || bet.sport_key, bet.book, formatAmericanOdds(bet.odds), `${bet.stake_units}u`]
+                      {[
+                        bet.sport_label || bet.sport_key,
+                        bet.book,
+                        formatAmericanOdds(bet.odds),
+                        `${bet.stake_units}u`,
+                        sportsBetSourceLabel(bet.source),
+                      ]
                         .filter(Boolean)
                         .join(' · ')}
                       {bet.line != null && bet.market !== 'h2h'
@@ -459,6 +582,11 @@ export default function SportsBetTracker({
                 <X className="h-5 w-5" />
               </button>
             </div>
+            {draft.source && draft.source !== 'manual' ? (
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-cyan-400">
+                {sportsBetSourceLabel(draft.source)}
+              </p>
+            ) : null}
             {(draft.away_team || draft.home_team) && (
               <p className="mb-3 text-sm text-zinc-400">
                 {[draft.away_team, draft.home_team].filter(Boolean).join(' @ ')}
@@ -561,6 +689,58 @@ export default function SportsBetTracker({
                 {saving ? 'Saving…' : 'Save bet'}
               </button>
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {pasteOpen ? (
+        <div
+          className="fixed inset-0 z-[80] flex items-end justify-center bg-black/60 sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Paste slip"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 cursor-default"
+            aria-label="Close"
+            onClick={() => setPasteOpen(false)}
+          />
+          <div
+            data-sports-bet-composer
+            className="relative z-[1] max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-3xl border border-zinc-700 bg-zinc-950 p-4 shadow-xl sm:rounded-3xl"
+          >
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-black text-white">Paste slip</h2>
+              <button
+                type="button"
+                onClick={() => setPasteOpen(false)}
+                className="rounded-full p-2 text-zinc-400 active:bg-zinc-800"
+                aria-label="Close paste"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="mb-3 text-sm text-zinc-400">
+              Paste a screenshot caption, share-sheet text, or a CSV. Confirm before it saves.
+            </p>
+            <textarea
+              className={`${inputClass} min-h-[10rem] resize-none`}
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              placeholder={'Chiefs -3.5 (-110) 1u\nor a CSV with Odds / Selection columns'}
+            />
+            <button
+              type="button"
+              className="mt-3 w-full rounded-2xl bg-cyan-600 py-3 text-[15px] font-bold text-white active:bg-cyan-500"
+              onClick={() => {
+                const drafts = parseSportsBetIntake(pasteText)
+                setPasteOpen(false)
+                void applyIntakeDrafts(drafts, { bulk: drafts.length > 1 })
+              }}
+            >
+              Read bets
+            </button>
           </div>
         </div>
       ) : null}

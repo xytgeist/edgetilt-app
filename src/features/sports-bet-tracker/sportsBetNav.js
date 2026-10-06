@@ -1,5 +1,7 @@
 /** In-memory + sessionStorage queue so hub → tracker survives the hub close remount. */
 
+import { normalizeSportsBetSource } from './sportsBetSources.js'
+
 const PENDING_KEY = 'edge.sportsBetLog.pending.v1'
 const OPEN_EVENT = 'edge-sports-bet-log'
 const TTL_MS = 15 * 60 * 1000
@@ -18,7 +20,7 @@ const TTL_MS = 15 * 60 * 1000
  *   line?: number | string | null,
  *   odds?: number | string | null,
  *   selection_label?: string,
- *   source?: 'manual' | 'game_hub',
+ *   source?: 'manual' | 'game_hub' | 'odds_cell' | 'slip' | 'csv',
  * }} SportsBetPrefill
  */
 
@@ -26,7 +28,7 @@ const TTL_MS = 15 * 60 * 1000
 export function requestSportsBetLog(prefill) {
   const row = {
     ...(prefill && typeof prefill === 'object' ? prefill : {}),
-    source: prefill?.source === 'manual' ? 'manual' : 'game_hub',
+    source: normalizeSportsBetSource(prefill?.source, 'game_hub'),
     at: Date.now(),
   }
   try {

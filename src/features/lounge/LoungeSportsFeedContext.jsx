@@ -20,6 +20,7 @@ import {
   LOUNGE_SPORTS_HUB_OPEN_EVENT,
   normalizeLoungeSportsHubFilter,
 } from './loungeSportsHubNav.js'
+import { sportsBetLogOpenEventName } from '../sports-bet-tracker/sportsBetNav.js'
 import { pushWatchedGameLiveActivity } from './watchedGameLiveActivity.js'
 
 const LoungeSportsFeedContext = createContext(null)
@@ -284,6 +285,12 @@ export function LoungeSportsFeedProvider({ supabaseClient, feedActive = true, ch
     setHubGame(null)
     syncOpenLoungeSportsGame(null)
   }, [])
+
+  useEffect(() => {
+    const onLog = () => closeSlate()
+    window.addEventListener(sportsBetLogOpenEventName(), onLog)
+    return () => window.removeEventListener(sportsBetLogOpenEventName(), onLog)
+  }, [closeSlate])
 
   const dismissWatchedGame = useCallback(() => {
     const id = watchedGameIdRef.current

@@ -100,7 +100,7 @@ Applied **`20261006010000`** test + prod 2026-10-05. Applied **`20261006020000`*
 
 - Feature: **`src/features/sports-bet-tracker/`**
 - Tab: **`?tab=sports-bets`** (Sports Hub **Bet Tracker** row; league hubs have a clipboard chip. Not in the hamburger.)
-- Prefill: hub **… → Log a bet** / `requestSportsBetLog(prefill)`
+- Prefill: hub **… → Log a bet** / hold odds / `requestSportsBetLog(prefill)` … closes the sports surface and sets `tab=sports-bets`. Does **not** keep `?game=` (that reopened the league hub).
 - Git: scaffold **`0ef9edbd`** (`1.4.1057`) on **`origin/test`**. Notes commit is the tip after computer-change writeup. Draft PR: `cursor/sports-bet-tracker-9369`.
 
 ## Access

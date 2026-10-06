@@ -1,6 +1,10 @@
 /** In-memory + sessionStorage queue so hub → tracker survives the hub close remount. */
 
 import { normalizeSportsBetSource } from './sportsBetSources.js'
+import {
+  LOUNGE_SPORTS_GAME_PARAM,
+  clearLoungeSportsGamePending,
+} from '../lounge/loungeSportsHubNav.js'
 
 const PENDING_KEY = 'edge.sportsBetLog.pending.v1'
 const OPEN_EVENT = 'edge-sports-bet-log'
@@ -38,25 +42,45 @@ export function requestSportsBetLog(prefill) {
   } catch {
     /* ignore */
   }
+  clearLoungeSportsGamePending()
   if (typeof window !== 'undefined') {
     const url = new URL(window.location.href)
     url.searchParams.set('tab', 'sports-bets')
     url.searchParams.set('logBet', '1')
-    if (row.event_id) url.searchParams.set('event', String(row.event_id))
+    // Keep event_id in sessionStorage. `?game=` would reopen Sports Hub; `?event=` is unused chrome.
+    url.searchParams.delete(LOUNGE_SPORTS_GAME_PARAM)
+    url.searchParams.delete('event')
     window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`)
     window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: row }))
     window.dispatchEvent(new PopStateEvent('popstate'))
   }
 }
 
+export function clearSportsBetLogPending() {
+  try {
+    if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(PENDING_KEY)
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Open the tracker tab without a log composer (Sports Hub door). */
 export function openSportsBetTracker() {
   if (typeof window === 'undefined') return
+  clearSportsBetLogPending()
   const url = new URL(window.location.href)
   url.searchParams.set('tab', 'sports-bets')
   url.searchParams.delete('logBet')
+  url.searchParams.delete(LOUNGE_SPORTS_GAME_PARAM)
+  url.searchParams.delete('event')
   window.history.pushState({}, '', `${url.pathname}${url.search}${url.hash}`)
   window.dispatchEvent(new PopStateEvent('popstate'))
+}
+
+export function isSportsBetTrackerSearch(params) {
+  if (!params || typeof params.get !== 'function') return false
+  const tab = (params.get('tab') || '').trim()
+  return tab === 'sports-bets' || Boolean((params.get('logBet') || '').trim())
 }
 
 /** @returns {SportsBetPrefill | null} */

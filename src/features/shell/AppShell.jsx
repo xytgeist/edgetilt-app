@@ -163,7 +163,9 @@ import {
   peekLoungeSportsGamePending,
   requestLoungeSportsGameOpen,
   requestLoungeSportsHubOpen,
+  clearLoungeSportsGamePending,
 } from '../lounge/loungeSportsHubNav.js'
+import { isSportsBetTrackerSearch, sportsBetLogOpenEventName } from '../sports-bet-tracker/sportsBetNav.js'
 import { BadgeCheck, Bot, ChartSpline, Cherry, ClipboardList, Handshake, MessagesSquare, Spade, Sparkles, Trophy } from 'lucide-react'
 import { football, footballHelmet } from '@lucide/lab'
 import LucideLabIcon from '../../components/LucideLabIcon.jsx'
@@ -1558,8 +1560,12 @@ export default function AppShell({
         setMenuOpen(false)
       }
       const sharedGameId = (params.get(LOUNGE_SPORTS_GAME_PARAM) || '').trim()
+      const wantSportsBets = isSportsBetTrackerSearch(params)
       // Wait for the session to resolve so a signed-in recipient isn't bounced to the auth sheet.
-      if (sharedGameId && (browseMode !== 'anonymous' || authSessionReady)) {
+      // Hold-to-log sets tab=sports-bets on a URL that still had ?game= … do not reopen the hub.
+      if (wantSportsBets) {
+        clearLoungeSportsGamePending()
+      } else if (sharedGameId && (browseMode !== 'anonymous' || authSessionReady)) {
         requestLoungeSportsGameOpen(sharedGameId)
         setTab('home')
         setMenuOpen(false)
@@ -1818,6 +1824,22 @@ export default function AppShell({
     window.addEventListener('popstate', applyFromUrl)
     return () => window.removeEventListener('popstate', applyFromUrl)
   }, [browseMode, isAdmin, authSessionReady, openStableCommitDeepLinkIfPending])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined
+    const onLog = (event) => {
+      if (browseMode === 'anonymous') {
+        onRequireAuthRef.current?.()
+        return
+      }
+      setTab('sports-bets')
+      setMenuOpen(false)
+      const detail = event?.detail
+      if (detail && typeof detail === 'object') setPendingSportsBetPrefill(detail)
+    }
+    window.addEventListener(sportsBetLogOpenEventName(), onLog)
+    return () => window.removeEventListener(sportsBetLogOpenEventName(), onLog)
+  }, [browseMode, setTab])
 
   /** Lounge enter reloads the feed. AP Slots intro overlay is in-memory only. */
   useEffect(() => {
